@@ -6,7 +6,7 @@
  * 作用：为根块提供视觉边界和交互效果
  */
 .root-block-outer {
-  --editor-block-selection-overlay: color-mix(in srgb, var(--color-accent-strong-light) 70%, var(--color-accent-light));
+  --editor-block-selection-overlay: color-mix(in srgb, var(--color-accent-strong-light) 70%, var(--color-accent));
 
   border-radius: var(--radius-md);
 }

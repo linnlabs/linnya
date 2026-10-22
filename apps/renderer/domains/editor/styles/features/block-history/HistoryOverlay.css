@@ -99,11 +99,11 @@
 }
 
 .history-overlay .origin-ai {
-  color: var(--color-accent-light);
+  color: var(--color-accent-text);
 }
 
 .history-overlay .origin-manual {
-  color: var(--color-success-text);
+  color: var(--color-text-secondary);
 }
 
 .history-overlay .origin-restore {

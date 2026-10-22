@@ -563,7 +563,7 @@
   border-radius: var(--radius-full);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
-  color: var(--color-accent-light);
+  color: var(--color-accent-text);
   background-color: var(--color-accent-bg-subtle);
   border: 1px solid var(--color-accent-bg-hover);
 }
@@ -609,7 +609,7 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   background-color: var(--color-accent-strong-light);
-  border: 1px solid var(--color-accent-light);
+  border: 1px solid var(--color-accent);
   flex-shrink: 0;
 }
 

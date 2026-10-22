@@ -39,26 +39,43 @@
 
 .notification-type-success {
   color: var(--color-success-text);
-  background-color: color-mix(in srgb, var(--color-success) 18%, transparent);
+  background-color: var(--color-success-bg);
   border-color: color-mix(in srgb, var(--color-success) 35%, transparent);
 }
 
 .notification-type-error {
   color: var(--color-error-text);
-  background-color: color-mix(in srgb, var(--color-error) 18%, transparent);
+  background-color: var(--color-error-bg);
   border-color: color-mix(in srgb, var(--color-error) 35%, transparent);
 }
 
 .notification-type-info {
   color: var(--color-info-text);
-  background-color: color-mix(in srgb, var(--color-info) 18%, transparent);
+  background-color: var(--color-info-bg);
   border-color: color-mix(in srgb, var(--color-info) 35%, transparent);
 }
 
 .notification-type-warning {
   color: var(--color-warning-text);
-  background-color: color-mix(in srgb, var(--color-warning) 18%, transparent);
+  background-color: var(--color-warning-bg);
   border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
+}
+
+/* 浅色与月蓝用 *-bg 实色，文字对比度才有保证；深色的 *-bg 是大块饱和色，保持半透明轻底。 */
+[data-linnya-ui-theme='dark'] .notification-type-success {
+  background-color: color-mix(in srgb, var(--color-success) 18%, transparent);
+}
+
+[data-linnya-ui-theme='dark'] .notification-type-error {
+  background-color: color-mix(in srgb, var(--color-error) 18%, transparent);
+}
+
+[data-linnya-ui-theme='dark'] .notification-type-info {
+  background-color: color-mix(in srgb, var(--color-info) 18%, transparent);
+}
+
+[data-linnya-ui-theme='dark'] .notification-type-warning {
+  background-color: color-mix(in srgb, var(--color-warning) 18%, transparent);
 }
 
 .notification-bar.notification-fade-enter-active,

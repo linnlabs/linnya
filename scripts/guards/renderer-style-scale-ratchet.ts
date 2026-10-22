@@ -2,7 +2,8 @@
  * Renderer 样式刻度棘轮。
  *
  * 设计规范要求字号、字重、行高、圆角、间距、层级与动效从 Renderer UI token 取值，
- * 颜色只引用随主题切换的语义 token，不直接引用基础色阶；过渡必须列出具体属性，不写 transition: all。
+ * 颜色只引用随主题切换的语义 token，不直接引用基础色阶，也不写十六进制、rgb()、hsl() 字面量；
+ * 过渡必须列出具体属性，不写 transition: all。
  * 存量写死值允许在迁移中减少，但任何文件都不能新增；token owner 文件不在扫描范围内。
  * 规则含义见 packages/renderer-ui/docs/design.md。
  */
@@ -32,7 +33,10 @@ const EXEMPT_PATH_FRAGMENTS = [
 const EXEMPT_FILES = new Set([
   'packages/renderer-ui/src/styles/tokens.css',
   'apps/renderer/app/styles/base/highlight-github.css',
-  'apps/renderer/domains/conversation/styles/theme-tokens.css',
+]);
+/* 色彩字面量的有意例外：外观设置里描述主题本身的预览插画，必须写死各主题的样子。 */
+const COLOR_LITERAL_EXEMPT_FILES = new Set([
+  'apps/renderer/domains/settings/styles/tokens/theme-preview.css',
 ]);
 
 const BASELINE_HEADER = [
@@ -51,6 +55,7 @@ export type StyleScaleRuleId =
   | 'SCALE-08-easing'
   | 'SCALE-09-legacy-alias'
   | 'COLOR-01-base-palette'
+  | 'COLOR-02-raw-color-literal'
   | 'MOTION-01-transition-all';
 
 const STYLE_SCALE_RULE_IDS = new Set<StyleScaleRuleId>([
@@ -64,6 +69,7 @@ const STYLE_SCALE_RULE_IDS = new Set<StyleScaleRuleId>([
   'SCALE-08-easing',
   'SCALE-09-legacy-alias',
   'COLOR-01-base-palette',
+  'COLOR-02-raw-color-literal',
   'MOTION-01-transition-all',
 ]);
 
@@ -85,6 +91,13 @@ const DURATION_PATTERN = /(?<![\w-])(?:\d+\.?\d*|\.\d+)m?s\b/gu;
 const EASING_PATTERN = /cubic-bezier\(|(?<![\w-])ease(?:-in-out|-in|-out)?(?![\w-])/gu;
 /* 基础色阶不随主题切换；黑白只用于遮罩、投影与固定深色蒙层上的文字，不在此统计。 */
 const BASE_PALETTE_PATTERN = /var\(\s*--color-(?:(?:gray|red|blue|yellow|brand)-\d+|dark-(?:bg|surface|elevated))\s*\)/gu;
+/*
+ * 写死的颜色字面量绕过主题切换。纯黑、纯白（含透明度）只用于遮罩、投影与固定深色蒙层，语义在所有主题下相同，不计；
+ * url(#id) 是 SVG 片段引用，不是颜色。
+ */
+const COLOR_FUNCTION_PATTERN = /(?<![\w-])(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\([^()]*\)/giu;
+const HEX_COLOR_PATTERN = /#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![\w-])/giu;
+const URL_REFERENCE_PATTERN = /url\([^)]*\)/giu;
 /* transition 列表中任一段以 all 开头，都会让布局、颜色等无关属性一起参与动画。 */
 const TRANSITION_ALL_PATTERN = /(?:^|,)\s*all(?![\w-])/gu;
 const LEGACY_ALIAS_PATTERN = /var\(\s*--(?:spacing-(?:xxs|xs|sm|md|lg|xl|2xl)|transition-(?:fast|normal|slow))\b/gu;
@@ -105,6 +118,28 @@ const EASING_PROPERTIES = new Set([
   'animation-timing-function',
 ]);
 
+function isPureBlackOrWhiteColor(literal: string): boolean {
+  const normalized = literal.toLowerCase().trim();
+  if (normalized.startsWith('#')) {
+    const digits = normalized.slice(1);
+    const channels = digits.slice(0, digits.length <= 4 ? 3 : 6);
+    return channels === '000' || channels === '000000' || channels === 'fff' || channels === 'ffffff';
+  }
+  const rgb = /^rgba?\(([^()]*)\)$/u.exec(normalized);
+  if (!rgb) return false;
+  // 保留通道分隔，兼容逗号和空格语法；透明度不改变黑白遮罩的角色。
+  const channels = rgb[1].trim().split(/[\s,/]+/u).slice(0, 3);
+  if (channels.length !== 3) return false;
+  return channels.every(channel => Number.parseFloat(channel) === 0)
+    || channels.every(channel => Number(channel) === 255 || channel === '100%');
+}
+
+function countRawColorLiterals(value: string): number {
+  const withoutUrls = value.replace(URL_REFERENCE_PATTERN, 'url()');
+  const accept = (match: string): boolean => !isPureBlackOrWhiteColor(match);
+  return countMatches(withoutUrls, COLOR_FUNCTION_PATTERN, accept) + countMatches(withoutUrls, HEX_COLOR_PATTERN, accept);
+}
+
 /** 把 var(...) 的参数折叠掉，避免 token 名中的数字被当作写死值。 */
 function stripVarReferences(value: string): string {
   let current = value;
@@ -121,10 +156,6 @@ function countMatches(value: string, pattern: RegExp, accept: (match: string) =>
 
 function isNonZeroNumber(text: string): boolean {
   return Number.parseFloat(text) !== 0;
-}
-
-function isBeyondHairline(text: string): boolean {
-  return Math.abs(Number.parseFloat(text)) > 1;
 }
 
 /**
@@ -150,6 +181,7 @@ export function analyzeStyleScaleDeclaration(property: string, rawValue: string)
   };
 
   add('COLOR-01-base-palette', countMatches(value, BASE_PALETTE_PATTERN));
+  add('COLOR-02-raw-color-literal', countRawColorLiterals(value));
   if (name.startsWith('--')) return counts;
 
   add('SCALE-09-legacy-alias', countMatches(value, LEGACY_ALIAS_PATTERN));
@@ -240,6 +272,7 @@ export function collectStyleScaleEntries(): StyleScaleBaselineEntry[] {
       const file = toRepoPath(absolutePath);
       if (isExempt(file)) continue;
       for (const [ruleId, count] of analyzeStyleScaleSource(fs.readFileSync(absolutePath, 'utf8'))) {
+        if (ruleId === 'COLOR-02-raw-color-literal' && COLOR_LITERAL_EXEMPT_FILES.has(file)) continue;
         entries.push({ ruleId, file, count });
       }
     }

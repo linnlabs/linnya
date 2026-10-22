@@ -232,7 +232,7 @@
 }
 .root-block > .content::-webkit-scrollbar-thumb:hover,
 .version-content > .content::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color, var(--color-accent-light)); /* 使用主题变量 */
+  background-color: var(--scrollbar-thumb-hover-color, var(--color-border-hover)); /* 使用主题变量 */
 }
 
 /* 原子块不需要水平滚动 - 它们应该适应容器或有固定显示方式 */

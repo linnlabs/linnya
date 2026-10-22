@@ -186,7 +186,7 @@
 
 .linnya-ui-button--plain.linnya-ui-button--tone-danger:hover:not(:disabled) {
   color: var(--color-error-text);
-  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+  background-color: var(--color-error-bg-subtle);
 }
 
 /* danger：破坏性主操作。 */

@@ -362,7 +362,7 @@
 .plugin-store-view
   .plugin-store-uninstall-button:hover:not(:disabled) {
   color: color-mix(in srgb, var(--color-error) 82%, var(--color-text-primary));
-  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+  background-color: var(--color-error-bg-subtle);
 }
 
 .plugin-store-view

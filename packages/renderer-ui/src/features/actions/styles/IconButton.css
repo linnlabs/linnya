@@ -82,7 +82,7 @@
 
 .linnya-ui-icon-button--danger:not(:disabled):hover {
   color: var(--color-error-text);
-  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+  background-color: var(--color-error-bg-subtle);
 }
 
 .linnya-ui-icon-button:disabled {

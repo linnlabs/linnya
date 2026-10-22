@@ -53,6 +53,30 @@ describe('Renderer style scale ratchet', () => {
     ).toEqual({});
   });
 
+  it('写死的颜色字面量计数，纯黑纯白遮罩、语义 token 与 SVG 片段引用不计', () => {
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('color', '#6b7280'))).toEqual({ 'COLOR-02-raw-color-literal': 1 });
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('--x', '#abc'))).toEqual({ 'COLOR-02-raw-color-literal': 1 });
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('box-shadow', '0 0 0 1px rgba(231, 76, 60, 0.35)'))).toEqual({
+      'COLOR-02-raw-color-literal': 1,
+    });
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('background', 'hsl(210 40% 96%)'))).toEqual({
+      'COLOR-02-raw-color-literal': 1,
+    });
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('box-shadow', '0 4px 16px rgba(0, 0, 0, 0.24)'))).toEqual({});
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('background', 'rgba(255,255,255,.5)'))).toEqual({});
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('color', '#fff'))).toEqual({});
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('color', '#000000'))).toEqual({});
+    for (const color of ['#0008', '#fff8', '#00000080', 'rgb(0 0 0 / 50%)', 'rgb(255 255 255 / .5)', 'rgb(100% 100% 100% / .5)']) {
+      expect(Object.fromEntries(analyzeStyleScaleDeclaration('background', color)), color).toEqual({});
+    }
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('background', 'rgb(0 12 0 / 50%)'))).toEqual({
+      'COLOR-02-raw-color-literal': 1,
+    });
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('fill', 'url(#gradient-a)'))).toEqual({});
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('color', 'color-mix(in srgb, var(--color-error) 35%, transparent)'))).toEqual({});
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('color', 'var(--color-text-primary)'))).toEqual({});
+  });
+
   it('transition 列表里的 all 计数，具体属性与 all 前缀的属性名不计数', () => {
     expect(
       Object.fromEntries(analyzeStyleScaleDeclaration('transition', 'all var(--duration-short) var(--ease-standard)')),

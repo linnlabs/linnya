@@ -2,17 +2,21 @@
 
 :root {
   --conversation-tool-card-shadow: 0 4px 16px rgba(0, 0, 0, 0.035);
-  --conversation-tool-card-border-shadow: 0 0 0 1px rgba(84, 72, 49, 0.1);
-  --conversation-tool-card-error-border-shadow: 0 0 0 1px rgba(231, 76, 60, 0.35);
+}
+
+/* 工具卡描边与错误描边都从语义 token 派生，三套主题层级一致。 */
+[data-linnya-ui-theme] {
+  --conversation-tool-card-border-shadow: 0 0 0 1px var(--color-border-light);
+  --conversation-tool-card-error-border-shadow: 0 0 0 1px color-mix(in srgb, var(--color-error) 35%, transparent);
 }
 
 [data-linnya-ui-theme='light'] {
-  --thought-message-text-color: #6b7280;
-  --thought-message-line-color: #e5e7eb;
-  --thought-message-mark-border-color: #e5e7eb;
-  --thought-message-pre-background: #f8fafc;
-  --thought-message-pre-border-color: #e2e8f0;
-  --thought-message-code-background: #e2e8f0;
+  --thought-message-text-color: var(--color-text-tertiary);
+  --thought-message-line-color: var(--color-border-light);
+  --thought-message-mark-border-color: var(--color-border-light);
+  --thought-message-pre-background: var(--color-bg-subtle);
+  --thought-message-pre-border-color: var(--color-border-light);
+  --thought-message-code-background: var(--color-bg-hover-strong);
   --thought-message-arrow-color: var(--color-text-muted);
   --thought-message-arrow-hover-color: var(--color-text-secondary);
   --thought-message-title-color: var(--color-text-muted);
@@ -22,9 +26,8 @@
 
 /* 暗色与 moon-blue 一样从语义 token 派生，保持与浅色相同的层级：标题和箭头弱于思考正文。 */
 [data-linnya-ui-theme='dark'] {
-  /* 深底上浅色投影与暖色描边都不可见：投影加深，描边改用透明白发丝线。 */
+  /* 深底上浅色投影不可见：投影加深。 */
   --conversation-tool-card-shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
-  --conversation-tool-card-border-shadow: 0 0 0 1px var(--color-border-light);
 
   --thought-message-text-color: var(--color-text-tertiary);
   --thought-message-line-color: var(--color-border-light);
@@ -40,7 +43,7 @@
 }
 
 [data-linnya-ui-theme='moon-blue'] {
-  --thought-message-text-color: color-mix(in srgb, var(--color-blue-800) 32%, var(--color-gray-550));
+  --thought-message-text-color: var(--color-text-tertiary);
   --thought-message-line-color: var(--color-border-light);
   --thought-message-mark-border-color: var(--color-border-light);
   --thought-message-pre-background: var(--color-bg-subtle);

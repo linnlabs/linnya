@@ -60,7 +60,7 @@
   /* 激活态只改变小竖条本身；透明度要克制，避免固定态和 hover 灰色混淆。 */
   background-color: color-mix(
     in srgb,
-    color-mix(in srgb, var(--color-accent-light) 82%, var(--color-text-secondary) 18%) 88%,
+    color-mix(in srgb, var(--color-accent) 82%, var(--color-text-secondary) 18%) 88%,
     transparent
   );
 }
