@@ -36,6 +36,15 @@
       </SettingsRow>
     </SettingsSection>
 
+    <SettingsSection :title="settingsMessage('settings.appearance.fontSmoothing.title')">
+      <SettingsSwitchRow
+        :model-value="uiStore.fontSmoothing"
+        :label="settingsMessage('settings.appearance.fontSmoothing.label')"
+        :description="settingsMessage('settings.appearance.fontSmoothing.description')"
+        @update:model-value="uiStore.setFontSmoothing"
+      />
+    </SettingsSection>
+
     <SettingsSection :title="settingsMessage('settings.appearance.language.title')">
       <SettingsRow
         :label="settingsMessage('settings.appearance.language.label')"
@@ -58,7 +67,7 @@ import { computed } from 'vue';
 import { CustomSelect } from '@linnya/renderer-ui';
 import { useLocalization, type LinnyaLocale } from '@app/localization';
 import type { SettingsMessageKey } from '../../definitions/settingsMessages';
-import { SettingsPage, SettingsRow, SettingsSection } from '../kit';
+import { SettingsPage, SettingsRow, SettingsSection, SettingsSwitchRow } from '../kit';
 import type { ThemePreviewScene } from '../../definitions/themePreview';
 import ThemePreviewArt from './appearance/ThemePreviewArt.vue';
 import { useSettingsLocalization } from '../useSettingsLocalization';

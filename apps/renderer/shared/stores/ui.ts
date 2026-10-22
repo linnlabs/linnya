@@ -38,6 +38,8 @@ export const useUIStore = defineStore('ui', {
     sidebarVisible: true,
     // 外观偏好（主题或跟随系统），默认浅色；持久化由插件处理
     theme: createDefaultTheme(),
+    // 字体抗锯齿（-webkit-font-smoothing: antialiased），默认开启；仅 macOS 有可见差别
+    fontSmoothing: true,
     // 设置模态窗口状态
     settingsModalVisible: false,
     settingsInitialTabId: null as string | null,
@@ -96,6 +98,11 @@ export const useUIStore = defineStore('ui', {
     // 设置外观偏好
     setTheme(theme: ThemePreference) {
       this.theme = theme;
+    },
+
+    // 开关字体抗锯齿；应用到 DOM 由布局层的 useFontSmoothingManager 负责
+    setFontSmoothing(enabled: boolean) {
+      this.fontSmoothing = enabled;
     },
     
     // 切换设置模态窗口显示状态
@@ -242,6 +249,6 @@ export const useUIStore = defineStore('ui', {
   persist: {
     key: 'ui-settings',
     storage: getRendererPersistStorage(),
-    pick: ['theme', 'sidebarVisible', 'sidebarWidth', 'revisionModeEnabled'],
+    pick: ['theme', 'fontSmoothing', 'sidebarVisible', 'sidebarWidth', 'revisionModeEnabled'],
   }
 })
