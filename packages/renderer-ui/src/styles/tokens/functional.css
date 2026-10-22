@@ -1,5 +1,6 @@
 /* 功能语义色：主题只能在这里覆盖，不在组件内各自分叉。 */
 /* 基础色用于图标、描边和进度；*-text 用于文字，在对应 *-bg 与页面背景上都满足 WCAG AA。 */
+/* error-bg-subtle：透明控件悬停、行内错误底。浅色与月蓝用 *-bg 实色保证文字对比度，深色保持轻量半透明，避免出现大块深红。 */
 
 [data-linnya-ui-theme='light'] {
   --color-success: var(--color-brand-500);
@@ -8,7 +9,8 @@
 
   --color-error: var(--color-red-400);
   --color-error-bg: var(--color-red-50);
-  --color-error-text: var(--color-red-450);
+  --color-error-bg-subtle: var(--color-error-bg);
+  --color-error-text: var(--color-red-415);
 
   --color-warning: var(--color-yellow-500);
   --color-warning-bg: var(--color-yellow-50);
@@ -26,6 +28,7 @@
 
   --color-error: var(--color-red-400);
   --color-error-bg: var(--color-red-800);
+  --color-error-bg-subtle: color-mix(in srgb, var(--color-error) 8%, transparent);
   --color-error-text: var(--color-red-300);
 
   --color-warning: var(--color-yellow-500);
@@ -44,7 +47,8 @@
 
   --color-error: var(--color-red-400);
   --color-error-bg: color-mix(in srgb, var(--color-red-50) 72%, var(--color-blue-25));
-  --color-error-text: var(--color-red-450);
+  --color-error-bg-subtle: var(--color-error-bg);
+  --color-error-text: var(--color-red-415);
 
   --color-warning: var(--color-yellow-500);
   --color-warning-bg: color-mix(in srgb, var(--color-yellow-50) 68%, var(--color-blue-25));

@@ -93,7 +93,7 @@
 }
 
 .transcript-segment-wrapper .timestamp-column:has(.timestamp-text:hover)::after {
-  background: var(--color-accent-light);
+  background: var(--color-accent);
 }
 
 .transcript-segment-wrapper.active .timestamp-text {

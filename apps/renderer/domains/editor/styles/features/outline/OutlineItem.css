@@ -39,7 +39,7 @@
 }
 
 .editor-outline-item .outline-item-content.is-active .outline-item-text {
-  color: var(--color-accent-light);
+  color: var(--color-accent-text);
   font-weight: var(--font-weight-medium);
 }
 

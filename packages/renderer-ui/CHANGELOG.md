@@ -4,6 +4,11 @@
 
 ## 2.6.0 - 2026-10-15
 
+- 错误文字色 `--color-error-text` 在浅色与月蓝由 `red-450`（`#b91c1c`）调为新增的 `--color-red-415`（`#d42020`）：白底 5.2:1、`--color-error-bg` 上 4.8:1，仍满足 AA，不再偏暗偏褐；暗色不变。
+- 新增 `--color-error-bg-subtle`（浅色与月蓝取 `--color-error-bg`，暗色为 8% 半透明）：透明控件悬停与行内错误底，替代各处的基础色半透明红底；`BaseButton` 的 plain danger、`IconButton` 的 danger 悬停改用它。
+- `NotificationBar` 浅色与月蓝的四种类型改用 `--color-*-bg` 实色底（info 文字对比度由 4.25:1 提升到 5 以上），暗色保持基础色 18% 半透明轻底。
+- `--color-accent-light` 明确为图形强调色：不再用于文字、状态与小圆点，文字改用 `--color-accent-text`，圆点与手柄改用 `--color-accent`；描边与选区外框改用 `--color-border-accent-light`。三个 token 名称与值不变。
+- 设计规范新增“色彩角色”表、错误文字与半透明底规则；样式刻度棘轮新增 `COLOR-02-raw-color-literal`，拦截十六进制与 `rgb()` / `hsl()` 色彩字面量，会话的思考区与工具卡描边迁到语义 token，月蓝的工具卡描边随之改为 `--color-border-light`。
 - 新增[设计规范](./docs/design.md)，作为表面与文字层级、功能色、字阶、间距、圆角、投影、动效、交互状态和图标的唯一视觉规则入口。
 - 新增 `BaseButton` 及严格 props / slots 类型：primary、secondary、ghost、plain、danger、soft、outline 七种语义 variant，outline 的 accent / info / neutral tone，sm / md / lg 三档尺寸、胶囊形与占满宽度；统一焦点环、禁用与过渡。runtime catalog 与真实 tarball consumer 同步新导出。
 - `BaseButton` 新增 `tint` variant：品牌色平涂浅底加深色文字（`--color-accent-bg` / `--color-accent-text`），用于占满宽度的主操作；设置表单里整条的“添加”、Review 的“开始”等恢复为浅底（迁移前即是浅底），`primary` 实底留给紧凑按钮。

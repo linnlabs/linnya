@@ -322,7 +322,7 @@
 .settings-state.is-error,
 .settings-state.is-unavailable {
   color: var(--color-error-text);
-  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+  background-color: var(--color-error-bg-subtle);
 }
 
 .settings-state-message {

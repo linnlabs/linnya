@@ -3,7 +3,7 @@
   --timeline-dot-inactive-bg: color-mix(in srgb, var(--color-text-primary) 18%, var(--timeline-dot-surface));
   --timeline-dot-active-bg: var(--color-accent);
   --timeline-dot-active-ring: var(--color-accent-bg);
-  --timeline-dot-hover-bg: var(--color-accent-light);
+  --timeline-dot-hover-bg: var(--color-accent);
 
   position: absolute;
   top: calc(var(--timeline-track-padding, 12px) + var(--n) * (100% - 2 * var(--timeline-track-padding, 12px)));

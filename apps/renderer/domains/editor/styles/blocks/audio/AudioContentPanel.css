@@ -83,7 +83,7 @@
 }
 
 .audio-content-panel .panel-content::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color, var(--color-accent-light));
+  background-color: var(--scrollbar-thumb-hover-color, var(--color-border-hover));
 }
 
 .audio-content-panel .resize-handle {

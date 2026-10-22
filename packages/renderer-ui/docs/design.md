@@ -52,7 +52,9 @@
 
 `--color-accent*` 是品牌绿的语义映射，用于主按钮、选中项、激活中的开关与 Tab、焦点环和可交互链接性强调。`moon-blue` 主题把强调色映射为蓝色，因此组件只能引用 `--color-accent*`，不能直接写品牌色阶。
 
-强调色有三种用法，不能混用：作文字、图标、描边时用 `--color-accent`（暗色下偏亮，保证在深底上可读）；作承载反色文字的实底（主按钮等）时用 `--color-accent-solid` 与 `--color-accent-solid-hover`（暗色下更深一档，保证白字 4.5:1）；文字落在强调色浅底（选中、激活的工具条按钮与标签）上时用 `--color-accent-text`，它与 `--color-accent-bg` 的对比度在三套主题里都不低于 4.5:1，`--color-accent` 在暗色浅底上只有约 3.3:1。
+强调色有三种用法，不能混用：作文字、图标、描边时用 `--color-accent`（暗色下偏亮，保证在深底上可读）；作承载反色文字的实底（主按钮等）时用 `--color-accent-solid` 与 `--color-accent-solid-hover`（暗色下更深一档，保证白字 4.5:1）；文字落在强调色浅底（选中、激活的工具条按钮与标签）上时用 `--color-accent-text`，它与 `--color-accent-bg` 的对比度在三套主题里都不低于 4.5:1，`--color-accent` 在暗色浅底上只有约 3.3:1。落在 hover 底（`--color-bg-hover`）这类带色的中性底上时也用 `--color-accent-text`：`--color-accent` 在上面浅色只有 4.49:1、暗色只有 3.9:1。
+
+`--color-accent-light` 是比 `--color-accent` 更亮的**图形**强调色，只用于渐变、光效、静止的强调描边和固定深色蒙层上的图标，不作文字色（白底 3.08:1，月蓝 3.46:1），也不表达状态或充当小圆点与手柄（这些用 `--color-accent`）。`--color-accent-strong-light` 用于强调色的浅填充与选区；强调描边与选区外框用 `--color-border-accent-light`。三者是已发布的公开 token，保留名称，不再新增文字或状态用途。
 
 ### 2.5 功能色
 
@@ -65,6 +67,12 @@
 | 背景色 | `--color-*-bg` | 提示条、徽标和状态胶囊的底色 |
 
 基础色不保证作为文字可读（例如警示黄），状态文字必须使用 `*-text`。状态语义固定为：错误和失败用 error；需要用户处理但未失败（不可用、已过期、配额将尽）用 warning；完成用 success；中性提示用 info。状态不能只靠颜色表达，必须同时有文字或图标。
+
+错误文字色 `--color-error-text`（浅色与月蓝 `red-415`，`#d42020`）在白底 5.2:1、`--color-error-bg` 上 4.8:1，是满足 AA 的最亮一档红；不要为了更鲜艳再调浅，也不要换回 `red-450`（`#b91c1c`，6.5:1，偏暗偏褐）。同一错误态里的文字、描边、危险按钮实底保持 `--color-error-text`、`--color-error`、`--color-error` 这一组，不要另写一个红。
+
+文字所在的底必须是 `--color-*-bg` 实色，不要用基础色的半透明做文字底：半透明底的对比度随下面的内容变化，`red-415` 文字在 18% 红底上只有 3.9:1，info 文字在 18% 蓝底上也只有 4.25:1。透明控件悬停、行内错误底这类轻量背景用 `--color-error-bg-subtle`：浅色与月蓝取 `--color-error-bg`，暗色保持 8% 半透明，避免大块深红。`NotificationBar` 的四种类型在浅色与月蓝用 `--color-*-bg`，暗色的 `*-bg` 是大块饱和色，仍用基础色 18% 半透明轻底。
+
+状态色只表达状态：别的功能不要借用。例如块历史里“手动编辑”不是“成功”，用中性文字色；“AI 改写”用强调色。
 
 info 同时是“信息流入”类入口的识别色：导入、上传、同步等把外部内容带进 Linnya 的页面级入口可以使用 info tone，与“新建”类的强调色区分；它不表达状态。
 
@@ -82,6 +90,7 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 | 品牌色浅底（推荐、已选择） | `--color-accent-bg`、`--color-accent-bg-subtle` | 自行用 `color-mix` 调一个新的绿 |
 | 状态提示条、徽标 | `--color-*-bg` 配 `--color-*-text`，描边或图标用基础色 | 浅色底配基础色文字 |
 | 用户选择的内容颜色、语法高亮 | 所属 domain 的内容色 token | 把内容色上移为通用 token |
+| 任何其他颜色 | 上表的语义 token，或 `color-mix()` 叠加语义 token | 十六进制、`rgb()`、`hsl()` 字面量（棘轮 `COLOR-02` 拦截；纯黑纯白遮罩除外） |
 
 基础色阶（`--color-gray-*`、`--color-red-*` 等）只在 token 层使用：它们不随主题切换，业务 CSS 直接引用会在暗色下出现亮底或看不清的文字。调试面板、刻意固定的深色代码面板、品牌标识色，以及外观设置里描述主题本身的预览插画（调色板集中在 `settings/styles/tokens/theme-preview.css`）是仅有的例外，并应在样式旁注明原因。遮罩、投影和固定深色蒙层上的文字可以使用 `--color-black` / `--color-white`，因为它们在所有主题下语义相同。
 
@@ -103,6 +112,19 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 - 每套主题在根元素上同时声明 `color-scheme`（`light`、`moon-blue` 为 light，`dark` 为 dark），原生滚动条、表单控件与下拉弹层随之切换明暗，不需要业务单独适配。
 - 需要在当前主题里展示另一套主题（例如外观设置里的选择）时，用简洁抽象的固定插画（白天、月白、夜晚）表达，调色板集中定义、不随当前主题变化；不要用基础色阶临摹，也不要把整页缩略图塞进选项里。
 - “跟随系统”是 Host 的外观偏好，不是第四套主题：它只在 `light` 与 `dark` 之间解析，`moon-blue` 必须由用户显式选择。组件只读取解析后的主题 token，不感知偏好本身。
+
+### 2.9 色彩角色
+
+界面里的颜色只属于下面几类，判断一个颜色该用什么，先问它属于哪一类：
+
+| 角色 | 使用 | 说明 |
+| --- | --- | --- |
+| 中性 | `--color-bg-*`、`--color-text-*`、`--color-border-*` | 界面骨架，不带情绪；没有特殊含义的颜色都落在这里 |
+| 强调 | `--color-accent*` | 主操作、选中、焦点与可交互强调；不表达状态。用法见 2.4 |
+| 状态 | `--color-error` / `warning` / `success` / `info` 及 `-text`、`-bg`、`-bg-subtle` | 含义固定：失败 / 需处理 / 完成 / 中性提示；必须配图标或文字；其他功能不借用 |
+| 内容色 | 编辑器块背景与文字色板、表格列引用色、终端 ANSI、代码高亮 | 用户选择或内容自带，独立于界面主题；不借用状态色，也不被借用为状态色。由所属 domain 在色板文件里集中定义，文件头注明原因 |
+| 装饰 | `--color-accent-light` | 渐变、光效、静止强调描边，不承载信息 |
+| 主题预览与调试 | 写死色 | 仅限外观设置的主题预览插画和开发期诊断页面 |
 
 ## 3. 字体
 
@@ -361,6 +383,7 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 | `SCALE-08-easing` | `ease` 系列关键字与 `cubic-bezier()`（`infinite` 循环动画不计） |
 | `SCALE-09-legacy-alias` | 旧别名 `--spacing-*` 与 `--transition-*` |
 | `COLOR-01-base-palette` | 引用 `--color-gray-*`、`--color-red-*`、`--color-blue-*`、`--color-yellow-*`、`--color-brand-*` 与 `--color-dark-*` 基础色阶（自定义属性定义中同样统计） |
+| `COLOR-02-raw-color-literal` | 十六进制、`rgb()` / `rgba()`、`hsl()` 等色彩字面量（含自定义属性定义）；纯黑、纯白及其透明度的遮罩与投影、`url(#id)` 不计。内容色板与 token owner 文件在扫描外，外观设置的主题预览插画 `theme-preview.css` 是唯一按文件列出的例外 |
 | `MOTION-01-transition-all` | `transition` / `transition-property` 中的 `all` |
 
 **有意的例外。** 开发期诊断与试验页面（`LlmRequestDebugPanel`、虚拟列表试验页、`debug.css`）不扫描。其它不在刻度上的有意取值，在声明后写 `/* scale-exempt: 原因 */`，该声明不计数；目前用于图标字形的 `font-size`（取色样本、空态图标、关闭 ×）、根字号和防抖延迟。原因必须写明白，评审时按原因判断是否成立，不要用它压计数。

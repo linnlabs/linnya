@@ -126,11 +126,11 @@
 }
 
 .history-timeline .timeline-dot.origin-restore .dot-indicator {
-  background-color: var(--color-accent-light);
+  background-color: var(--color-accent);
 }
 
 .history-timeline .timeline-dot:hover .dot-indicator {
-  background-color: var(--color-accent-light);
+  background-color: var(--color-accent);
   transform: translate(-50%, -50%) scale(1.2);
 }
 
@@ -148,7 +148,7 @@
 }
 
 .history-timeline .timeline-handle:hover {
-  background: var(--color-accent-light);
+  background: var(--color-accent);
   transform: translate(-50%, -50%) scale(1.2);
 }
 
