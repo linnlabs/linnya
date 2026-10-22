@@ -4,7 +4,7 @@ description: Research, verify, and write in-depth reports and long-form analysis
 compatibility: Linnya agents with skill, Web, Knowledge, Workspace file tools and Shell. Uses only tools available in the current session.
 metadata:
   author: linnya
-  version: "1.7"
+  version: "1.8"
 ---
 
 # Deep Research
