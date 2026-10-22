@@ -138,6 +138,26 @@ describe('durable retry notices, live/reload/control boundaries', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
   });
+  it('other400重试保留请求拒绝文案，历史重放不把它诊断成网络故障', () => {
+    const h = setup();
+    h.append(routeRuntimeEvent(RuntimeEvent.parse({
+      type: 'llm_retry', id: 'other400-wait', version: 1, timestamp: 1000,
+      conversation_id: conversationId, turn_id: 'turn-retry', retry_id: 'retry-other400',
+      status: 'waiting', category: 'other', attempt: 1, max_retries: 3, total_attempts: 2,
+      started_at: 1000, delay_ms: 1500, next_retry_at: 2500,
+      error: 'PRIVATE PROVIDER BODY', error_code: 'llm.provider_http_400',
+    }), { run_id: runId, lane: 'foreground', visibility: 'conversation' }));
+    const notice = h.read()[0];
+    if (notice?.type !== 'execution_notice') throw new Error('Expected notice');
+    const display = projectExecutionNoticePresentation(notice.metadata, 2000, key => key, true);
+    expect(display).toMatchObject({ active: true, failed: false, remainingSeconds: 1 });
+    expect(display.text).not.toContain('conversation.retry.network');
+    expect(display.text).toContain('(1/3)');
+    expect(JSON.stringify(notice)).not.toContain('PRIVATE PROVIDER BODY');
+    rebuildConversationUiProjection(h.db, conversationId, { force: true });
+    expect(h.read()).toEqual([notice]);
+    h.db.close();
+  });
   it('waiting is already readable; success preserves its position and rebuild exactly matches live', () => {
     const h = setup();
     const state = createInitialProjectionState(conversation);

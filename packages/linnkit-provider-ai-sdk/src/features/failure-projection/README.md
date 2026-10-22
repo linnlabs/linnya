@@ -32,6 +32,12 @@ Stream 失败必须先区分 owner：`AiSdkHostStreamInvariantError` 表示 Host
 
 `APICallError` 的非成功 HTTP status 按本 feature 的稳定状态码规则决定重试；没有 status 时只接纳 AI SDK 明确给出的 `isRetryable`。可重试项投影为 `transport/provider_transport_error`，不得从 message 猜测网络故障。
 
+HTTP/decoded stream 的通用400默认不可重试。若已解码字段已明确说明请求过大、不支持能力、
+额度、鉴权、权限或资源不存在，在400或无状态的 stream 中保留更精确的拒绝分类；不让
+通用400遮蔽其语义。真实401/403等状态仍优先。`APICallError` 仅在400补齐额度/鉴权等
+明确拒绝，不改变429等状态原有预算。Host可在精确分类之后按正式连接施加产品容错政策，
+但不能因此改写 SDK 原始分类或把未知400称为传输故障。
+
 HTTP 2xx 只证明请求已接纳，SDK 读取响应 body 失败时仍可能带 status200、`isRetryable=false`（SDK按状态码计算的默认值）。此时 TypeError 传输原因或 SDK 明确可重试信号投影为 `provider_response_read_error`；有类型的 schema/JSON 原因保留对应分类；未知成功响应处理失败为不可重试 `provider_response_invalid`。真实401/403等拒绝不会被内部 cause 覆盖。
 
 响应结构与流不完整必须分开：

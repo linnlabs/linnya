@@ -18,7 +18,7 @@ import type {
 } from '../definitions/inferenceCapability';
 import { createDefaultInferenceCredentialResolver } from './createDefaultInferenceCredentialResolver';
 import { createLinnyaAiSdkLanguageDiagnosticSink } from '../features/ai-sdk-diagnostic-logging/orchestration/createLinnyaAiSdkLanguageDiagnosticSink';
-import { linnyaProviderFailureClassifier } from '../features/provider-failure-policy/functions/classifyLinnyaProviderFailure';
+import { linnyaProviderFailureClassifier } from '../features/provider-failure-policy';
 import { createLinnyaAiSdkInferenceCapability } from '../features/ai-sdk-language-composition/orchestration/createLinnyaAiSdkInferenceCapability';
 import { createLinnyaAiSdkLanguageModelRegistry } from '../features/ai-sdk-language-composition/orchestration/createLinnyaAiSdkLanguageModelRegistry';
 import { getCurrentInferenceSessionId } from '../features/request-session';

@@ -79,7 +79,8 @@ function classifyApiCallResponseDetail(error: APICallError): AiSdkFailureProject
   if (detailCategory === 'unsupported') {
     return { kind: 'protocol', code: 'provider_feature_unsupported', retryable: false };
   }
-  return undefined;
+  // 部分兼容服务把明确的额度/鉴权拒绝也编码为400，不能落成原因不明的请求拒绝。
+  return error.statusCode === 400 ? classifyRequestRejection(detailCategory) : undefined;
 }
 
 interface StructuredProviderError {
@@ -366,6 +367,27 @@ export function projectAiSdkProviderSignal(error: unknown): AiSdkProviderSignal 
   return Object.keys(signal).length === 0 ? undefined : signal;
 }
 
+function classifyRequestRejection(
+  detail: ProviderErrorDetailCategory | undefined
+): AiSdkFailureProjection | undefined {
+  switch (detail) {
+    case 'request_too_large':
+      return { kind: 'provider', code: 'provider_request_too_large', retryable: false };
+    case 'unsupported':
+      return { kind: 'protocol', code: 'provider_feature_unsupported', retryable: false };
+    case 'quota':
+      return { kind: 'provider', code: 'provider_quota_exhausted', retryable: false };
+    case 'authentication':
+      return { kind: 'provider', code: 'provider_http_401', retryable: false };
+    case 'permission':
+      return { kind: 'provider', code: 'provider_http_403', retryable: false };
+    case 'not_found':
+      return { kind: 'provider', code: 'provider_http_404', retryable: false };
+    default:
+      return undefined;
+  }
+}
+
 function classifyStructuredProviderError(error: StructuredProviderError): AiSdkFailureProjection {
   if (
     error.code === 'invalid_prompt' ||
@@ -378,6 +400,14 @@ function classifyStructuredProviderError(error: StructuredProviderError): AiSdkF
   // AI SDK 7 会从 response.failed 的 message 推断出 500；canonical code 仍按流中途失败语义保持稳定。
   if (error.type === 'response.failed' && (error.status === undefined || error.status >= 500)) {
     return { kind: 'provider', code: 'provider_stream_unavailable', retryable: true };
+  }
+  const discriminator = `${error.type ?? ''} ${error.code ?? ''} ${error.reason ?? ''}`;
+  if (error.status === undefined || error.status === 400) {
+    // 已解码的容量、能力等明确拒绝不能被通用400抹掉；真实401/403等状态仍优先。
+    const rejection = classifyRequestRejection(
+      classifyProviderDetail(discriminator) ?? error.detail_category
+    );
+    if (rejection) return rejection;
   }
   if (error.status !== undefined) {
     return {
@@ -425,7 +455,6 @@ function classifyStructuredProviderError(error: StructuredProviderError): AiSdkF
     case 'invalid_request':
       return { kind: 'provider', code: 'provider_http_400', retryable: false };
   }
-  const discriminator = `${error.type ?? ''} ${error.code ?? ''} ${error.reason ?? ''}`;
   if (/(insufficient[_ -]?quota)/u.test(discriminator)) {
     return { kind: 'provider', code: 'provider_quota_exhausted', retryable: false };
   }

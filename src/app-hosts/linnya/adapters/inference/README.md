@@ -29,8 +29,8 @@ body。
 - `features/ai-sdk-language-composition/`：把 Linnya resolved
   route/credential 投影到 package 窄合同，并在 Host seam 核对 Catalog
   binding 与 factory coverage；把 SDK 已识别的思考能力投影到 Catalog 的窄查询端口。
-- `features/provider-failure-policy/`：只注入 Linnya
-  Cloud 等产品级错误语义；通用 AI SDK taxonomy 留在 package。
+- [`features/provider-failure-policy/`](./features/provider-failure-policy/README.md)：注入 Linnya
+  Cloud 等产品级错误语义，并在 SDK 精确分类后投影正式连接范围内的容错政策；通用 AI SDK taxonomy 留在 package。
 - `features/ai-sdk-diagnostic-logging/`：把 package 已脱敏的诊断事件写入 Linnya
   Logger；package 不反向依赖日志实现。
 - `capabilities/ai-sdk/`：首版拆包后只保留 Embedding、Reranking 和 runtime-manifest
@@ -160,6 +160,11 @@ HTTP 400 猜成相同原因。Host 请求集成测试覆盖三种真实 SDK surf
 真实两轮工具闭环：工具调用、工具结果回放、最终正文与 Provider usage 均成功，恰好两次请求。
 凭据仅由既有保护端口在进程内使用，配置文件前后哈希一致；该证据不代表其他 Go surface
 或打包态已完成在线验收。BYOK live smoke 已统一经过 Host 准入与会话装配，不能退回裸 SDK 验证。
+
+正式 Go 连接对残余未知 HTTP400 试用既有 `other` 重试资格，默认最多3次、每次1.5秒。
+这是有限容忍政策，不是网络定因；明确拒绝和其他连接保持原行为。SDK 原分类与 Host
+`policy_applied` 分别保留，Host 审计和 caller 使用同一有效事件。规则、风险及回退由
+[provider-failure-policy](./features/provider-failure-policy/README.md) 持有，不新增 SDK 重试或自动继续。
 
 正式 profile 均通过真实第三方 SDK
 codec 的受控流式 fixture；Chat 额外锁住图片、工具增量、usage

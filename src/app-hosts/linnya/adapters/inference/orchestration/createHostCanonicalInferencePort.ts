@@ -33,6 +33,10 @@ import {
   type TerminalProviderOutboundUsageSummary,
 } from '../functions/projectInferenceResponseAuditSummary';
 import { resolveInferenceAttemptRoute } from '../functions/resolveInferenceAttemptRoute';
+import {
+  projectProviderFailurePolicy,
+  recordProviderFailurePolicyApplication,
+} from '../features/provider-failure-policy';
 
 function recordResponseAudit(input: ProjectInferenceResponseAuditSummaryInput): void {
   recordLlmResponseSummary(projectInferenceResponseAuditSummary(input));
@@ -77,10 +81,8 @@ async function* streamAttempt(
   }
 
   const credential = await resolveCredential(route, dependencies.credential_resolver);
-  const protocolHeaders = projectInferenceProtocolHeaders(
-    route,
-    dependencies.resolve_request_identity?.(request, route)
-  );
+  const requestIdentity = dependencies.resolve_request_identity?.(request, route);
+  const protocolHeaders = projectInferenceProtocolHeaders(route, requestIdentity);
   const headers = {
     ...(credential?.request_headers ?? {}),
     ...(protocolHeaders ?? {}),
@@ -95,8 +97,18 @@ async function* streamAttempt(
   let completed = false;
 
   try {
-    for await (const event of capability.stream({ request, route: attemptRoute, credential })) {
-      assertInferenceEventRoute(event, request, attemptRoute);
+    for await (const originalEvent of capability.stream({ request, route: attemptRoute, credential })) {
+      assertInferenceEventRoute(originalEvent, request, attemptRoute);
+      const projection = projectProviderFailurePolicy({
+        event: originalEvent,
+        provider_connection_definition_id: requestIdentity?.provider_connection_definition_id,
+        aborted: request.signal?.aborted ?? false,
+      });
+      if (projection.application) {
+        recordProviderFailurePolicyApplication(projection.application, request.invocation);
+      }
+      // 所有 Host 观察面与 caller 消费同一有效事件，SDK 原始诊断不被覆写。
+      const event = projection.event;
       recordLlmStreamEvent({
         attemptId: request.invocation.attempt_id,
         traceId: request.invocation.trace_id,

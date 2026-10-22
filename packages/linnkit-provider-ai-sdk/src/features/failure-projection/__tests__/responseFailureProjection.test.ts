@@ -34,7 +34,7 @@ describe('响应失败的重试边界', () => {
     [{ code: 'timeout' }, 'provider_stream_timeout', true],
     [{ type: 'rate_limit_error' }, 'provider_stream_rate_limited', true],
     [{ status: 401 }, 'provider_http_401', false],
-    [{ code: 'context_length_exceeded' }, 'provider_http_400', false],
+    [{ code: 'context_length_exceeded' }, 'provider_request_too_large', false],
   ] as const)('缺少 message 的错误对象仍保留已知语义：%j', (error, code, retryable) => {
     const malformed = new TypeValidationError({
       value: { error },

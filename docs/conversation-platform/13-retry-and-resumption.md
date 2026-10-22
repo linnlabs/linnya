@@ -27,7 +27,8 @@
 | --- | --- | --- |
 | 传输失败、已识别的限流或其他可重试模型错误 | 在当前 LLM 调用内有限等待并重试，期间任务保持执行状态 | 通常无需操作 |
 | 自动重试耗尽 | 结束当前 execution，通常保留原任务为 `paused` | 收口后显式继续原 run |
-| 通用 HTTP400、鉴权或协议等不可自动重试错误 | 跳过自动重试；尚未终态的持久任务通常仍保存为 `paused` | 先判断原因是否已解决，再继续；可以恢复不代表原样重发会成功 |
+| 正式 Go 连接的残余未知 HTTP400 | 试用既有 other 预算，最多重试3次、每次1.5秒；原因仍未明 | 耗尽后按原任务状态处理，不保证坏请求重发有效 |
+| 其他连接的通用 HTTP400、已识别的鉴权或协议等不可自动重试错误 | 跳过自动重试；尚未终态的持久任务通常仍保存为 `paused` | 先判断原因是否已解决，再继续；可以恢复不代表原样重发会成功 |
 | 单次模型输出触及长度上限 | 作为不完整输出报错，不按普通完整回答交付；持久任务通常暂停 | 检查输出与模型限制，不能把“继续”当作无限输出续传 |
 | 普通工具返回业务失败 | 工具结果进入后续模型处理；不直接等同 run 失败 | 模型可改参数或调整方法；连续协议错误等熔断另行暂停 |
 | 用户请求暂停 | 先保存暂停意图、中断 attempt并收口资源，再落已收口 `paused` | 输入框为空时点击恢复 |
@@ -48,16 +49,22 @@ Provider failure的 `retryable` 决定当前模型请求能否进入自动重试
 
 ## 3. 自动重试的唯一执行者
 
-调用链为：Provider SDK解码失败 → AI SDK adapter投影 canonical failure → Linnkit LLM caller按分类和预算重试 → 耗尽或不可重试后交给 Host结算。
+调用链为：Provider SDK解码失败 → AI SDK adapter投影 canonical failure → Host按正式连接投影有效资格 → Linnkit LLM caller按分类和预算重试 → 耗尽或不可重试后交给 Host结算。
 
 - Provider SDK保持零自动重试，避免和 Linnkit叠加。
 - adapter负责失败类型、稳定错误码、`retryable` 和重试类别，不拥有等待或循环。
+- Host的连接容错政策在精确分类之后生效，不覆盖已识别拒绝，也不增加循环；SDK原分类和政策应用分别可查。
 - Linnkit拥有重试次数、等待、取消、失败 attempt输出撤回，以及已允许的切模策略。
 - Linnya的 `createDefaultLlmCaller()` 只装配产品默认预算；root和 child共用该入口。
 
 当前默认是传输类最多重试6次，输出损坏、限流和其他可重试错误各最多3次；首次请求不算重试。完整等待序列、混合错误和切模总上限的唯一详细说明在 [Runtime Assembly](../../src/app-hosts/linnya/adapters/runtime-assembly/README.md#llm-重试策略)，配置实现在 [graphRuntimeFactory.ts](../../src/app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory.ts)。
 
-这些预算仅适用于已允许客户端重试的调用。调用显式禁用、模型配置禁用或云计费等限制仍由框架准入；不能为了补足次数绕过不可重试分类。HTTP状态、SDK类型和已解码信号的规则由 [failure-projection](../../packages/linnkit-provider-ai-sdk/src/features/failure-projection/README.md) 持有，通用 HTTP400当前不自动重试。
+这些预算仅适用于已允许客户端重试的调用。调用显式禁用、模型配置禁用或云计费等限制仍由框架准入；不能为了补足次数绕过准入。HTTP状态、SDK类型和已解码信号的规则由 [failure-projection](../../packages/linnkit-provider-ai-sdk/src/features/failure-projection/README.md) 持有，通用 HTTP400默认不自动重试。
+
+目前唯一的400容错试用是正式 `opencode-go` 连接：SDK精确分类后的残余 `provider_http_400`
+保持 provider 类型，由 Host赋予 other资格。MissingSessionID、已识别的请求过大、鉴权、额度
+和能力拒绝不参与；同URL的Custom API不参与。部分真正的参数错误仍可能被多试，不能将
+试用称为网络修复。范围、观察与回退见 [Host政策](../../src/app-hosts/linnya/adapters/inference/features/provider-failure-policy/README.md)。
 
 重试预算属于一次模型调用；恢复后重新进入模型调用时重新计算该调用的重试机会，但不重置原 run累计步数。产品没有“某类400等待固定时间后自动恢复若干次”的通用规则；外部调用方的恢复策略必须显式区分，不得冒充框架自动重试。
 
@@ -101,6 +108,7 @@ Renderer的 `reconnecting` 或本地请求失败不是 durable RunRegistry终态
 | owner | 拥有的判断 | 不应承担的责任 |
 | --- | --- | --- |
 | AI SDK failure projection | 失败类型、稳定码、自动重试资格 | 任务断点、UI按钮、恢复次数 |
+| Host provider-failure-policy | 产品错误语义、正式连接范围内的有效重试资格 | 第二套等待/重试/恢复循环、Provider wire解析 |
 | Linnkit LLM caller | 有限重试、等待、取消、attempt输出清理 | Linnya数据库、Workspace与页面控制 |
 | Runtime Assembly | root/child默认 caller配置 | 第二套重试循环或 Provider解析 |
 | run-resumption与 Flow | 原输入、恢复准入、checkpoint与副作用交接 | 重写 SDK或 Provider重试分类 |
