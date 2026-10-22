@@ -239,10 +239,12 @@
 .root-block-outer.contains-imageBlock > .root-block > .content,
 .root-block-outer.contains-audioBlock > .root-block > .content,
 .root-block-outer.contains-latexBlock > .root-block > .content,
+.root-block-outer.contains-chartBlock > .root-block > .content,
 .root-block-outer.contains-horizontalRule > .root-block > .content,
 .root-block-outer.contains-imageBlock .version-content > .content,
 .root-block-outer.contains-audioBlock .version-content > .content,
 .root-block-outer.contains-latexBlock .version-content > .content,
+.root-block-outer.contains-chartBlock .version-content > .content,
 .root-block-outer.contains-horizontalRule .version-content > .content {
   overflow-x: visible;
   overflow-y: visible; /* 覆盖默认值，防止原子块出现不必要的滚动条 */

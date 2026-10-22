@@ -13,7 +13,7 @@ import {
   validatePluginAgentRequiredSkills,
   validateSkillExposureConfig,
 } from '../agentSkillExposure';
-import { buildSkillCatalogXml, loadSkillContent } from '../catalog';
+import { buildSkillCatalogXml, loadSkillContent, readSkillResource } from '../catalog';
 import { invalidateSkillCache } from '../discovery';
 import { ensurePluginSkillAvailabilityRegistered } from '../../../app-hosts/linnya/plugin-registry/skillAvailability';
 import {
@@ -96,14 +96,16 @@ describe('agent skill exposure', () => {
     expect(prompt).toContain('name="linnya-markdown"');
   });
 
-  it('discovers the minimal builtin Linnya Markdown skill and loads no resources', () => {
+  it('discovers the builtin Linnya Markdown skill; its only resource is the chart reference', () => {
     invalidateSkillCache();
 
     expect(buildSkillCatalogXml()).toContain('name="linnya-markdown"');
     const skill = loadSkillContent('linnya-markdown');
     expect(skill.body).toContain('<!-- linnya-annotation:v1 ... -->');
     expect(skill.body).toContain('Do not handcraft the canonical JSON');
-    expect(skill.resources).toEqual([]);
+    expect(skill.body).toContain('references/chart.md');
+    expect(skill.resources).toEqual(['references/chart.md']);
+    expect(readSkillResource('linnya-markdown', 'references/chart.md')).toContain('`linnya-chart`');
   });
 
   it('does not inject skill catalog through additional-context', () => {

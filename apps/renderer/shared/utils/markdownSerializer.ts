@@ -3,6 +3,8 @@ import { MarkdownSerializer, MarkdownSerializerState } from 'prosemirror-markdow
 import { Mark as ProseMirrorMark, Node as ProsemirrorNode } from 'prosemirror-model'
 import {
   MarkdownAnnotationsSchema,
+  MarkdownChartSpecSchema,
+  encodeMarkdownChartFence,
   encodeMarkdownEmptyBlockAnnotationAnchorComment,
   encodeMarkdownAnnotationComment,
 } from '@app/schemas'
@@ -356,6 +358,17 @@ const nodes: { [key: string]: NodeSerializer } = {
       state.write('```')
       state.closeBlock(node)
     }
+  },
+  chartBlock(state, node) {
+    // 与后端 serializer 共用 canonical 围栏；spec 损坏时失败，不输出空块掩盖数据问题。
+    const fence = encodeMarkdownChartFence(MarkdownChartSpecSchema.parse(node.attrs.spec))
+    if (getLineBreakStyle(state) === 'newline') {
+      state.write(fence.replace(/\n/g, '\\n'))
+      state.write('\\n\\n')
+      return
+    }
+    state.write(fence)
+    state.closeBlock(node)
   },
   // 新增：内联 LaTeX 节点，序列化为 $...$
   inlineLatex(state, node) {

@@ -14,7 +14,11 @@
 import { parseMarkdownToBlocksByStreaming } from '../../../../shared/services/markdownService';
 import { PastePriority } from './PasteRegistry';
 import { TextSelection } from 'prosemirror-state';
-import { blockEventToRootBlockNode } from '../../services/markdownRuntime';
+import { isMarkdownChartSpecInvalidError } from '@app/schemas';
+import { generateBlockId, generateRootBlockId } from '../../../../shared/utils/idUtils';
+import { blockEventsToRootBlockNodes } from '../../services/markdownRuntime';
+import { confirmInvalidChartPaste } from '../../features/chart-editing';
+import { resolveCurrentEditorMessage } from '../../functions/resolveCurrentEditorMessage';
 
 /**
  * 检测文本是否包含 Markdown 语法
@@ -192,14 +196,17 @@ export const plainTextMarkdownHandler = {
       // 2. 块事件 -> ProseMirror 节点
       const { state } = view;
       const { schema, selection } = state;
-      const nodes = [];
 
-      for (const blockEvent of blockEvents) {
-        console.log('[PlainTextMarkdown] 处理块事件:', blockEvent);
-        const node = blockEventToRootBlockNode(blockEvent, schema);
-        if (node) {
-          nodes.push(node);
-        }
+      // 整批物化：要么全部落地，要么什么都不改。无效的 linnya-chart 围栏不会被静默降级——
+      // 文档保持不变，由用户选择“作为普通代码插入”或取消粘贴。
+      let nodes;
+      try {
+        nodes = blockEventsToRootBlockNodes(blockEvents, schema);
+      } catch (error) {
+        if (!isMarkdownChartSpecInvalidError(error)) throw error;
+        const decision = await confirmInvalidChartPaste(error, resolveCurrentEditorMessage);
+        if (decision === 'cancel' || view.isDestroyed || view.state.doc !== state.doc) return true;
+        nodes = blockEventsToRootBlockNodes(blockEvents, schema, { invalidChartAsCode: true });
       }
 
       if (nodes.length === 0) {

@@ -50,6 +50,18 @@
       "require": "./dist/document-view.js",
       "default": "./dist/esm/document-view.js"
     },
+    "./chart-number-format": {
+      "types": "./dist/chart-number-format.d.ts",
+      "import": "./dist/esm/chart-number-format.js",
+      "require": "./dist/chart-number-format.js",
+      "default": "./dist/esm/chart-number-format.js"
+    },
+    "./markdown-chart": {
+      "types": "./dist/markdown-chart/index.d.ts",
+      "import": "./dist/esm/markdown-chart/index.js",
+      "require": "./dist/markdown-chart/index.js",
+      "default": "./dist/esm/markdown-chart/index.js"
+    },
     "./plugins/manifest": {
       "types": "./dist/plugins/manifest.d.ts",
       "import": "./dist/esm/plugins/manifest.js",

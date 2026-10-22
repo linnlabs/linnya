@@ -1,0 +1,78 @@
+/* 数据表：图表的等价文字视图，也是低对比色的可靠读数通道。 */
+.chart-data-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: var(--border-width-hairline) solid var(--color-border-light);
+}
+
+.chart-data-table__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.chart-data-table__title {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-footnote);
+}
+
+.chart-data-table__scroll {
+  max-height: 16rem;
+  overflow: auto;
+  border: var(--border-width-hairline) solid var(--color-border-light);
+  border-radius: var(--radius-md);
+}
+
+.chart-data-table__scroll:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.chart-data-table__grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-footnote);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-height-footnote);
+}
+
+.chart-data-table__grid th,
+.chart-data-table__grid td {
+  padding: var(--space-1) var(--space-2-5);
+  border-bottom: var(--border-width-hairline) solid var(--color-border-light);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.chart-data-table__grid tbody tr:last-child th,
+.chart-data-table__grid tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.chart-data-table__grid thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.chart-data-table__grid thead th:first-child,
+.chart-data-table__grid tbody th[scope='row'] {
+  text-align: left;
+}
+
+.chart-data-table__grid tbody th[scope='row'] {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-regular);
+}
+
+.chart-data-table__grid td {
+  color: var(--color-text-primary);
+}

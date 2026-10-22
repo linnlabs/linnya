@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { ChartSeries, LayoutChartControls, LayoutChartStyle, StructuredElement } from '@plugin/slides/shared';
-import { isSupportedChartNumberFormat } from '@plugin/slides/shared/chart/numberFormat';
+import { isSupportedChartNumberFormat } from '@app/schemas/chart-number-format';
 
 const text = z.string().min(1);
 const positive = z.number().finite().positive();

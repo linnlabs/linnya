@@ -201,3 +201,8 @@ const { performSearch, findNext, findPrev, replaceCurrent, replaceAll } = useFin
 - [ ] 国际化支持
 - [ ] 无障碍增强（屏幕阅读器通知）
 
+
+## 原子块的查找边界
+
+原子块可通过 Tiptap `renderText` 提供可搜索文字，FindReplace 按整块高亮、借用虚拟化握手定位；不会将属性里的文字伪装成文档位置。
+图表的标题、说明、类目、对象标签和系列名可查找，一张图表计一个结果。当前结果是图表时禁用“替换当前”；“替换全部”只修改普通文字，面板明确提示跳过原子块。图表文字通过图表编辑面板修改。

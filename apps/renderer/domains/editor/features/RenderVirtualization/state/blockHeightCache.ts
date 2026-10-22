@@ -51,6 +51,7 @@ interface NormalizedBlockHeightMeasurement {
 }
 
 export class BlockHeightCache {
+  private estimates: ReadonlyMap<string, number> = new Map()
   private readonly measurements = new Map<string, NormalizedBlockHeightMeasurement>()
   private readonly defaultHeight: number
   private readonly defaultMarginBefore: number
@@ -72,20 +73,29 @@ export class BlockHeightCache {
     this.maxHeight = normalizeHeight(options.maxHeight, 2000)
   }
 
-  get(blockId: string): number {
-    return this.measurements.get(blockId)?.elementHeight ?? this.createDefaultMeasurement().elementHeight
+  replaceEstimates(estimates: ReadonlyMap<string, number>): void {
+    for (const [id, height] of estimates) {
+      if (this.estimates.has(id) && this.estimates.get(id) !== height) this.delete(id)
+    }
+    this.estimates = estimates
+  }
+
+  get(blockId: string, initialEstimate?: number): number {
+    return this.measurements.get(blockId)?.elementHeight ?? this.estimates.get(blockId) ?? initialEstimate ?? this.createDefaultMeasurement().elementHeight
   }
 
   getLayoutHeight(blockId: string): number {
     const measurement = this.measurements.get(blockId) ?? this.createDefaultMeasurement()
-    return measurement.elementHeight + measurement.marginBefore + measurement.marginAfter
+    return this.get(blockId) + measurement.marginBefore + measurement.marginAfter
   }
 
   estimateTotalLayoutHeight(blockCount: number): number {
     const safeBlockCount = Math.max(0, Math.round(blockCount))
     if (safeBlockCount === 0) return 0
     const defaultMeasurement = this.createDefaultMeasurement()
-    return safeBlockCount * (
+    const baseHeight = defaultMeasurement.elementHeight + defaultMeasurement.marginBefore + defaultMeasurement.marginAfter
+    const extra = [...this.estimates.keys()].reduce((sum, id) => sum + this.getLayoutHeight(id) - baseHeight, 0)
+    return extra + safeBlockCount * (
       defaultMeasurement.elementHeight +
       defaultMeasurement.marginBefore +
       defaultMeasurement.marginAfter
@@ -113,6 +123,7 @@ export class BlockHeightCache {
 
   clear(): void {
     this.measurements.clear()
+    this.estimates = new Map()
     this.measuredElementHeightTotal = 0
     this.measuredMarginBeforeTotal = 0
     this.measuredMarginAfterTotal = 0

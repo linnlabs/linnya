@@ -115,6 +115,8 @@ export interface RevisionStore {
   bindCommit: (commit: (decision?: MarkdownRevisionCommit['decision'], draft?: ProseMirrorNode) => Promise<void>) => void
   installPendingSnapshot: (pending: readonly WorkspacePendingRevisionDTO[]) => Promise<void>
   readBaseline: (document?: ProseMirrorNode) => ProseMirrorNode
+  /** 某个块在投影前的原始根块（来自投影账本）；未投影或没有账本时为 null。仅供展示，不可用于提交。 */
+  readProjectionBaseline: (blockId: string) => ProseMirrorNode | null
   // ---- Canonical 事实源 ----
   /** 由后端 pendingRevisions 快照构建，keyed by blockId */
   canonicalPendingSessions: Ref<Record<string, CanonicalPendingSession>>

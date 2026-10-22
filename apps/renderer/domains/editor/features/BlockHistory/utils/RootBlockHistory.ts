@@ -14,13 +14,13 @@ export const RootBlockHistory = Node.create({
   // 分组保持一致，方便样式和选择器复用
   group: NODE_GROUPS.BLOCK_CONTAINER,
   // ⚠️ 注意：这里不再直接使用 NODE_GROUPS.BLOCK_CONTENT
-  // 历史视图仅支持一部分块类型（文本 / 标题 / 列表 / 引用 / 代码），
+  // 历史视图仅支持一部分块类型（文本 / 标题 / 列表 / 引用 / 代码 / 图表），
   // 为了避免 schema 在解析 content expression 时去寻找不存在的节点类型
   //（例如 horizontalRuleBlock / imageBlock / audioBlock），
   // 这里手动列出历史视图允许的子节点类型。
   //
   // 这样既不破坏主编辑器的 Schema，又能保证 History Editor 自己的 Schema 是闭合的。
-  content: 'baseBlock|headingBlock|listItemBlock|quoteBlock|codeBlock{1}',
+  content: 'baseBlock|headingBlock|listItemBlock|quoteBlock|codeBlock|chartBlock{1}',
   
   // 基础属性
   priority: 50,

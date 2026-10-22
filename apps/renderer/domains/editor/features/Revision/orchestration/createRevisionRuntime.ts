@@ -126,6 +126,7 @@ export function createRevisionRuntime(editor: Editor): RevisionStore {
     bindCommit: next => { commit = next; },
     installPendingSnapshot,
     readBaseline,
+    readProjectionBaseline: blockId => state.projections.get(blockId)?.baseline ?? null,
     hasCanonicalPending: blockId => !!state.canonicalPendingSessions.value[blockId],
     getCanonicalSession: blockId => state.canonicalPendingSessions.value[blockId] ?? null,
     hasPendingRevision: blockId => !!state.canonicalPendingSessions.value[blockId],

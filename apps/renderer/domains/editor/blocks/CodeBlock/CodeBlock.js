@@ -4,6 +4,7 @@ import { NODE_GROUPS } from '../../extensions/core/schema' // 确保路径正确
 import { VueNodeViewRenderer } from '@tiptap/vue-3' // 导入 Vue NodeView 渲染器
 import CodeBlockView from './ui/CodeBlockView.vue' // 导入 Vue 组件
 import { DOMParser as PMDOMParser } from '@tiptap/pm/model'
+import { normalizeCodeBlockLanguage } from './functions/codeBlockLanguage'
 
 export const CodeBlock = CodeBlockLowlight.extend({
   name: 'codeBlock', // 保持或修改为你想要的名称
@@ -32,8 +33,14 @@ export const CodeBlock = CodeBlockLowlight.extend({
   },
 
   addAttributes() {
+    const inherited = this.parent?.() ?? {}
     return {
-      ...this.parent?.(), // 继承父类的属性 (如 language)
+      ...inherited, // 继承父类的属性 (如 language)
+      // 图表专属围栏语言不能作为普通代码保存：所有 HTML 解析路径统一在属性层规整。
+      language: {
+        ...inherited.language,
+        parseHTML: element => normalizeCodeBlockLanguage(inherited.language?.parseHTML?.(element) ?? null),
+      },
       // 添加你的标准块属性
       id: {
         default: () => generateBlockId(),

@@ -26,7 +26,14 @@ export function findMatchesInDoc(doc, searchTerm, options = {}) {
     return []
   }
 
-  doc.descendants((node, pos) => {
+  doc.descendants((node, pos, parent, index) => {
+    // 原子块通过 Tiptap renderText 暴露可读文字；只产生一个整块定位结果，禁止将数据属性当行内文字替换。
+    if (!node.isText && node.isAtom && node.type.spec.toText) {
+      pattern.lastIndex = 0
+      const match = pattern.exec(node.type.spec.toText({ node, pos, parent, index, range: { from: pos, to: pos + node.nodeSize } }))
+      if (match) matches.push({ from: pos, to: pos + node.nodeSize, text: match[0], editorType: 'main', replaceable: false })
+      return false
+    }
     if (!node.isText) return
 
     pattern.lastIndex = 0
@@ -47,10 +54,13 @@ export function findMatchesInDoc(doc, searchTerm, options = {}) {
 }
 
 function createDecorations(doc, matches, activeIndex) {
-  const decorations = matches.map((match, index) => Decoration.inline(match.from, match.to, {
-    class: index === activeIndex ? 'find-replace-match-active' : 'find-replace-match',
-    'data-match-index': index,
-  }))
+  const decorations = matches.map((match, index) => {
+    const attrs = {
+      class: index === activeIndex ? 'find-replace-match-active' : 'find-replace-match',
+      'data-match-index': index,
+    }
+    return match.replaceable === false ? Decoration.node(match.from, match.to, attrs) : Decoration.inline(match.from, match.to, attrs)
+  })
   return DecorationSet.create(doc, decorations)
 }
 
@@ -134,10 +144,10 @@ export function replaceCurrentCommand(replaceTerm) {
   return (state, dispatch) => {
     const pluginState = findReplacePluginKey.getState(state)
     const match = pluginState?.matches[pluginState.activeIndex]
-    if (!match) return false
+    if (!match || match.replaceable === false) return false
 
     if (dispatch) {
-      dispatch(state.tr.replaceWith(match.from, match.to, state.schema.text(replaceTerm)))
+      dispatch(state.tr.replaceWith(match.from, match.to, replaceTerm ? state.schema.text(replaceTerm) : null))
     }
     return true
   }
@@ -146,12 +156,13 @@ export function replaceCurrentCommand(replaceTerm) {
 export function replaceAllCommand(replaceTerm) {
   return (state, dispatch) => {
     const pluginState = findReplacePluginKey.getState(state)
-    if (!pluginState || pluginState.matches.length === 0) return false
+    const replaceable = pluginState?.matches.filter(match => match.replaceable !== false) ?? []
+    if (replaceable.length === 0) return false
 
     if (dispatch) {
       let tr = state.tr
-      for (const match of [...pluginState.matches].reverse()) {
-        tr = tr.replaceWith(match.from, match.to, state.schema.text(replaceTerm))
+      for (const match of [...replaceable].reverse()) {
+        tr = tr.replaceWith(match.from, match.to, replaceTerm ? state.schema.text(replaceTerm) : null)
       }
       dispatch(tr.setMeta(findReplacePluginKey, { searchTerm: '', options: {} }))
     }

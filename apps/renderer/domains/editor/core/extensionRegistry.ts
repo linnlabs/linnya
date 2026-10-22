@@ -22,6 +22,7 @@ import {
 } from '../features/Annotation'
 import createAutocompleteExtension from '../features/AutoComplete/Autocomplete'
 import { CodeBlock, CodeBlockExtension, CodeBlockMarkdownInputRules } from '../blocks/CodeBlock'
+import { ChartBlock } from '../blocks/ChartBlock'
 import { ImageBlock, imageDropPlugin } from '../blocks/ImageBlock'
 import { InlineLatexNode, LatexBlock } from '../blocks/LatexBlock'
 import { SlashMenuExtension } from '../features/SlashMenu'
@@ -114,6 +115,7 @@ export function getAllExtensions(dependencies: ExtensionDependencies): Extension
     }),
     LatexBlock,
     InlineLatexNode,
+    ChartBlock,
     ImageBlock,
     TableBlock.configure({
       resizable: true,

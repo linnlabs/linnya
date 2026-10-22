@@ -34,7 +34,7 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 | --- | --- |
 | [deep-research](./builtin/skills/deep-research/SKILL.md) | 深入研究、证据检验与面向读者的长文；也支持固定材料编辑和研究更新 |
 | [mckinsey-research](./builtin/skills/mckinsey-research/SKILL.md) | 既有咨询式商业战略流程；不作为一般深度文章的必经入口 |
-| [linnya-markdown](./builtin/skills/linnya-markdown/SKILL.md) | Linnya Annotation 扩展语法的操作指引；语法事实仍归 Markdown domain |
+| [linnya-markdown](./builtin/skills/linnya-markdown/SKILL.md) | Linnya Annotation 与 `linnya-chart` 图表围栏的操作指引；语法事实仍归 Markdown domain |
 
 `deep-research` 服务报道、财经、时政、评论、学术综述、投研和预测文章。深入研究回答问题、比较解释并交付可追溯的文章；决策支持还需要决策者的目标、约束、备选行动与代价，两者共享证据与建模方法，但不能要求每份研究都填写行动收益表。研究请求不会自动触发决策流程。
 
@@ -55,6 +55,8 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 `references/business-analysis.md` 吸收旧咨询流程中仍适用的双路径估算、驱动量建模、可比性与综合方法；只在商业任务需要时加载。正文、研究记录和评审之间使用实际 locator 关联，不引入第二套持久化或报告发布通道。
 
 资料取得状态、正文支持程度与计算执行分开记录。引用接纳由 [Citation](../../domains/citation/README.md) 拥有，网页取得状态由 [Web](../../tools/web/README.md) 拥有，写入结果由 [Workspace 工具](../../tools/workspace/README.md) 拥有；Skill 不复制校验器或将自述变成通过状态。
+
+图表语法只有一个 owner：`linnya-markdown` 的 [references/chart.md](./builtin/skills/linnya-markdown/references/chart.md)（字段与规则、八种 canonical 示例、回读与修复），由测试对照真实准入与解析器防止漂移。`deep-research` 的 [references/charts.md](./builtin/skills/deep-research/references/charts.md) 只给“画不画、画哪种、怎样不画错”的研究纪律，不复制 schema 或示例；这是行为指引，不是已验证的作图质量保证。
 
 ## 编写与维护
 

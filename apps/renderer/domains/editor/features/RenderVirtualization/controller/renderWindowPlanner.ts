@@ -12,6 +12,7 @@
 import type { EditorState } from 'prosemirror-state'
 import {
   estimateRenderVirtualizationTotalLayoutHeight,
+  syncRenderVirtualizationHeightEstimates,
   getRenderVirtualizationBlockLayoutHeight,
 } from '../state/blockHeightCacheRegistry'
 import type { RenderVirtualizationRefreshReason } from './refreshReason'
@@ -53,6 +54,7 @@ export function planRenderWindowRefresh(params: {
   currentHydratedBlockIds?: readonly string[]
   owner: RenderVirtualizationOwner
 }): RenderWindowRefreshPlan {
+  syncRenderVirtualizationHeightEstimates(params.editorState.doc, params.owner)
   const blockIds = collectRootBlockIds(params.editorState)
   const viewport = readViewportBounds(params.editorRoot, params.scrollRoot)
   const estimatedTotalLayoutHeight = estimateRenderVirtualizationTotalLayoutHeight(

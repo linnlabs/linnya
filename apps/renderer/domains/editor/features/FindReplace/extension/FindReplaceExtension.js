@@ -15,7 +15,7 @@ import {
   handleFindPrev,
   handleOpenFindReplace,
 } from '../keyboard/FindReplaceKeys.js'
-import { positionTextSelectionWithHandshake } from '../../RenderVirtualization'
+import { positionTextSelectionWithHandshake, scrollEditorToBlock, findRootBlockIdAtDocumentPosition } from '../../RenderVirtualization'
 
 function focusAndScrollToMatch(match, view) {
   if (!match || !view || view.isDestroyed) return
@@ -23,8 +23,7 @@ function focusAndScrollToMatch(match, view) {
   view.focus()
   requestAnimationFrame(() => {
     if (view.isDestroyed) return
-    void positionTextSelectionWithHandshake(
-      {
+    const editor = {
         get state() {
           return view.state
         },
@@ -36,10 +35,13 @@ function focusAndScrollToMatch(match, view) {
             return true
           },
         },
-      },
-      match.from,
-      match.to,
-    )
+      }
+    if (match.replaceable === false) {
+      const blockId = findRootBlockIdAtDocumentPosition(editor, match.from)
+      if (blockId) void scrollEditorToBlock(editor, blockId, { select: 'node' })
+    } else {
+      void positionTextSelectionWithHandshake(editor, match.from, match.to)
+    }
   })
 }
 
@@ -137,11 +139,11 @@ export const FindReplaceExtension = Extension.create({
   },
 
   onTransaction({ transaction }) {
-    if (!transaction.getMeta(findReplacePluginKey)) return
+    if (!transaction.getMeta(findReplacePluginKey) && !transaction.docChanged) return
 
     const pluginState = getPluginState(this.editor.state)
     if (!pluginState) return
-    if (pluginState.matches.length !== this.options.store.matchCount) {
+    if (pluginState.matches !== this.options.store.matches) {
       this.options.store.setMatches(pluginState.matches)
     }
     if (pluginState.activeIndex !== this.options.store.activeMatchIndex) {

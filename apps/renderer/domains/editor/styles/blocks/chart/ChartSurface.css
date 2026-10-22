@@ -1,0 +1,145 @@
+/* ChartSurface：图表的阅读外壳。颜色、字阶、间距、圆角全部取自 renderer-ui token；
+   色板是数据语义色，由 TS 主题注入到 ECharts，不在这里出现。 */
+.chart-surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4);
+  border: var(--border-width-hairline) solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.chart-surface__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* 没有标题和说明时，操作栏浮在右上角，不占用一整行。 */
+.chart-surface__header--floating {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 2;
+}
+
+.chart-surface__heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  min-width: 0;
+}
+
+.chart-surface__title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-subtitle);
+  overflow-wrap: anywhere;
+}
+
+.chart-surface__description {
+  margin: 0;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.chart-surface__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-0-5);
+  padding: var(--space-0-5);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
+  opacity: 0;
+  transition: opacity var(--duration-medium) var(--ease-standard);
+}
+
+/* 悬停、键盘聚焦、自定义视图或面板打开时出现；没有 hover 的设备始终可见。 */
+.chart-surface:hover .chart-surface__actions,
+.chart-surface:focus-within .chart-surface__actions,
+.chart-surface.is-custom-view .chart-surface__actions,
+.chart-surface__actions:has([aria-pressed='true']) {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .chart-surface__actions {
+    opacity: 1;
+  }
+}
+
+.chart-surface__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.chart-surface__body[data-legend='left'],
+.chart-surface__body[data-legend='right'] {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.chart-surface__plot-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 绘图区高度只取决于规格的三档尺寸：加载、离屏占位与最终图表之间没有版面跳动。 */
+.chart-surface__plot {
+  width: 100%;
+  height: var(--chart-plot-height);
+}
+
+.chart-surface__notice {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: var(--space-4);
+  color: var(--color-text-muted);
+  text-align: center;
+  pointer-events: none;
+}
+
+.chart-surface__notice--error {
+  color: var(--color-error-text);
+}
+
+.chart-surface__footnote {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.chart-surface__view-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2-5);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}

@@ -86,6 +86,8 @@ export * from './system/process-memory';
 // ============ DocumentView 协议（AI Edit 前后端共享） ============
 export * from './document-view';
 export * from './markdown-annotation';
+export * from './markdown-chart';
+export * from './chart-number-format';
 export type {
   DocumentViewDocType,
   DocumentViewMeta,

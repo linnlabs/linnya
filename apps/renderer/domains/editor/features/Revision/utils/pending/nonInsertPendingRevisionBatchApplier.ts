@@ -14,6 +14,7 @@ import type {
   ParsedPendingRevision,
   PendingRevisionOperation,
 } from './pendingRevisionTypes'
+import { getParsedOperation } from './pendingOperation'
 import {
   convertBlockByRootPosInTr,
   findRootBlockPosByIdInDoc,
@@ -75,14 +76,6 @@ interface PreparedNonInsertSkip {
 type PreparedNonInsertResult = PreparedNonInsertReady | PreparedNonInsertSkip
 
 const PLAIN_TEXT_PREPARE_WITHOUT_YIELD_MAX_LENGTH = 4096
-
-function getParsedOperation(parsed: ParsedPendingRevision): PendingRevisionOperation {
-  const metaOperation = parsed.metadata?.operation
-  if (metaOperation === 'insert' || metaOperation === 'update' || metaOperation === 'delete') {
-    return metaOperation
-  }
-  return parsed.operation
-}
 
 function getNonInsertOperation(
   parsed: ParsedPendingRevision

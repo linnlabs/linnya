@@ -9,6 +9,7 @@ import { HeadingBlock } from '../../../blocks/HeadingBlock'
 import { ListItemBlock } from '../../../blocks/ListItemBlock'
 import { QuoteBlock } from '../../../blocks/QuoteBlock'
 import { CodeBlock } from '../../../blocks/CodeBlock'
+import { ChartBlockReadonly } from '../../../blocks/ChartBlock'
 
 // 导入 Marks
 import TextColorMark from '../../../marks/TextColor'
@@ -43,6 +44,8 @@ export const historyExtensions = [
   CodeBlock.configure({
     lowlight,
   }),
+  // 图表块以只读 NodeView 展示（与主编辑器同一 schema），历史版本里的图表可以直接查看
+  ChartBlockReadonly,
 
   // Marks & 基础格式 (StarterKit)
   StarterKit.configure({

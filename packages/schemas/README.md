@@ -173,6 +173,16 @@ Citation 合同通过显式 `sourceType` 区分知识库、Web、手工来源与
 
 manifest schema 只定义静态合同。插件加载、依赖解析、权限执行、安装和升级流程属于 plugin host，不在本包实现。
 
+### 5.5.1 Markdown 图表与数字格式
+
+`@app/schemas/markdown-chart`（根入口同样导出）拥有 `linnya-chart` 的稳定常量、八种图表的严格规格（`MarkdownChartSpec` 判别联合）、字段间规则、
+唯一准入入口 `admitMarkdownChartSpec` / `admitMarkdownChartFenceBody`、canonical 序列化 `serializeMarkdownChartSpec` / `encodeMarkdownChartFence`、
+统一失败 `MarkdownChartSpecInvalidError`（`MARKDOWN_CHART_SPEC_INVALID`）以及供渲染使用的只读展平视图 `MarkdownChartSpecReadView`。
+后端 schema、Editor、Agent 写入和 Slides 共用它们，渲染库配置不进入规格。
+
+`@app/schemas/chart-number-format` 拥有图表数字格式（`General`、`0.0`、`#,##0`、`0.0%`、`0.0"单位"`）的识别与格式化；百分比格式把输入视为比例。
+Slides 与 Markdown 图表共用，不再各留一份实现。准入上限为发布合同：已存合法规格必须始终可读回，不得直接收紧。
+
 ### 5.6 Workspace mutation
 
 Workspace mutation 合同用于跨模块广播已发生的节点和文档变更。事件携带稳定身份、来源和变更类型，但不负责修改 workspace store 或执行副作用。

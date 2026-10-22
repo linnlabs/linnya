@@ -1,6 +1,7 @@
 import type { Node as ProseMirrorNode, Schema } from 'prosemirror-model'
 import {
   admitMarkdownAnnotationComment,
+  isMarkdownChartSpecInvalidError,
   isMarkdownEmptyBlockAnnotationAnchorComment,
   MarkdownAnnotationsSchema,
 } from '@app/schemas'
@@ -10,6 +11,7 @@ import {
   generateBlockId,
   generateRootBlockId,
 } from '../../../../shared/utils/idUtils'
+import { admitChartBlockEvent, isChartBlockEvent } from './chartEvent'
 import type { BlockEventLike, ContentFragmentLike } from './types'
 import type { MarkdownInlineProjection } from './types'
 import {
@@ -178,17 +180,30 @@ function buildInlineNodesFromBlockEvent(
   return buildInlineNodesFromProjection(projection, schema)
 }
 
+export interface BlockEventMaterializationOptions {
+  /**
+   * 用户在看到诊断后显式选择“作为普通代码插入”：无效的 `linnya-chart` 围栏改存为 `json` 代码块。
+   * 默认 false —— 无效专属围栏整体拒绝，不静默降级，也不保留专属语言的普通代码。
+   */
+  readonly invalidChartAsCode?: boolean
+}
+
+/** 用户显式降级后使用的代码语言；不是专属语言，因此可以通过保存闸门。 */
+const INVALID_CHART_CODE_LANGUAGE = 'json'
+
 export function blockEventsToDocJson(
   blockEvents: BlockEventLike[],
-  schema: Schema
+  schema: Schema,
+  options: BlockEventMaterializationOptions = {}
 ): { type: 'doc'; content: unknown[] } | null {
   if (!Array.isArray(blockEvents) || blockEvents.length === 0) {
     return null
   }
 
   const rootBlocks: unknown[] = []
+  let chartOrdinal = 0
 
-  for (const event of blockEvents) {
+  for (const [eventIndex, event] of blockEvents.entries()) {
     const typeName = normalizeBlockTypeName(event.block_type)
     const rawFallback =
       typeof event.raw_content_fallback === 'string' ? event.raw_content_fallback : null
@@ -282,6 +297,28 @@ export function blockEventsToDocJson(
       }
     }
 
+    let codeLanguage = typeof event.language === 'string' ? event.language : ''
+    if (isChartBlockEvent(event)) {
+      chartOrdinal += 1
+      const chartType = schema.nodes.chartBlock
+      if (!chartType) {
+        throw new Error('[MarkdownImport] 当前 Schema 不支持 chartBlock，无法物化 linnya-chart 围栏')
+      }
+      try {
+        const spec = admitChartBlockEvent(event, { chartOrdinal, blockIndex: eventIndex + 1 })
+        const root = buildRootBlock(
+          chartType.create({ id: generateBlockId(), blockType: 'chart', spec }),
+          schema
+        )
+        if (!root) throw new Error('[MarkdownImport] 无法创建图表根块')
+        rootBlocks.push(root.toJSON())
+        continue
+      } catch (error) {
+        if (!options.invalidChartAsCode || !isMarkdownChartSpecInvalidError(error)) throw error
+        codeLanguage = INVALID_CHART_CODE_LANGUAGE
+      }
+    }
+
     if (typeName === 'CodeBlock') {
       const codeType = schema.nodes.codeBlock
       if (codeType) {
@@ -289,7 +326,7 @@ export function blockEventsToDocJson(
           {
             id: generateBlockId(),
             blockType: 'code',
-            language: typeof event.language === 'string' ? event.language : '',
+            language: codeLanguage,
           },
           rawFallback ? schema.text(rawFallback) : undefined
         )
@@ -388,9 +425,10 @@ export function blockEventsToDocJson(
 
 export function blockEventToRootBlockNode(
   blockEvent: BlockEventLike,
-  schema: Schema
+  schema: Schema,
+  options: BlockEventMaterializationOptions = {}
 ): ProseMirrorNode | null {
-  const docJson = blockEventsToDocJson([blockEvent], schema)
+  const docJson = blockEventsToDocJson([blockEvent], schema, options)
   const rootBlockJson = Array.isArray(docJson?.content) ? docJson.content[0] : null
 
   if (!rootBlockJson) {
@@ -402,4 +440,24 @@ export function blockEventToRootBlockNode(
   } catch {
     return null
   }
+}
+
+/**
+ * 把一批块事件一次物化成 rootBlock 节点：整体成功或整体失败。
+ *
+ * 粘贴等入口需要“要么全部落地、要么什么都不改”：这里的图表序号与块位置覆盖整批输入，
+ * 无效图表的诊断因此能准确指向用户贴入内容里的第几个图表。
+ */
+export function blockEventsToRootBlockNodes(
+  blockEvents: BlockEventLike[],
+  schema: Schema,
+  options: BlockEventMaterializationOptions = {}
+): ProseMirrorNode[] {
+  const docJson = blockEventsToDocJson(blockEvents, schema, options)
+  const rootBlocks = Array.isArray(docJson?.content) ? docJson.content : []
+  return rootBlocks.map(rootBlock => {
+    const node = schema.nodeFromJSON(rootBlock)
+    node.check()
+    return node
+  })
 }

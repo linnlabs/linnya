@@ -7,7 +7,10 @@ import { TextSelection } from 'prosemirror-state';
 import { generateBlockId } from '../../../../../../shared/utils/idUtils';
 import { NodeFinder } from '../../../position/NodeFinder';
 import { PositionUtils } from '../../../position/PositionUtils';
-import { buildInlineNodesFromStructuredContent } from '../../../../services/markdownRuntime';
+import { isMarkdownChartSpecInvalidError } from '@app/schemas';
+import { useNotificationStore } from '@/app/notification';
+import { admitChartBlockEvent, buildInlineNodesFromStructuredContent, isChartBlockEvent } from '../../../../services/markdownRuntime';
+import { listChartIssues } from '../../../../features/chart-editing';
 import { resolveCurrentEditorMessage } from '../../../../functions/resolveCurrentEditorMessage';
 // PositionUtils 已在 EditorContent.vue 中用于初始化插件状态，这里不再直接需要
 
@@ -185,6 +188,25 @@ function insertBlockEvent(editor, blockEvent, isFirstEventInStream, initialBlock
 }
 
 /**
+ * 流式写入的图表围栏与导入共用准入：合法才落地为图表块；无效整体跳过并提示，
+ * 不提交半个规格，已经落地的块与后续内容不受影响。
+ * @returns 准入后的规格；无效时返回 null
+ */
+function admitStreamingChart(blockEvent) {
+    try {
+        return admitChartBlockEvent(blockEvent);
+    } catch (error) {
+        if (!isMarkdownChartSpecInvalidError(error)) throw error;
+        useNotificationStore().show(
+            resolveCurrentEditorMessage('editor.chart.streaming.invalid', { detail: listChartIssues(error)[0] ?? '' }),
+            'warning',
+            4000,
+        );
+        return null;
+    }
+}
+
+/**
  * 辅助函数：创建并插入一个新的 RootBlock
  */
 function insertNewRootBlock(editor, blockEvent, targetInsertPos) {
@@ -199,7 +221,13 @@ function insertNewRootBlock(editor, blockEvent, targetInsertPos) {
     const generatedContentNodeId = generateBlockId(); // Generate ID for the content node
 
     const blockAttrs = { id: generatedContentNodeId }; // Pass this ID to createRootBlock
-    if (contentType === 'LatexBlock') {
+    let chartSpec = null;
+    if (isChartBlockEvent(blockEvent)) {
+        chartSpec = admitStreamingChart(blockEvent);
+        if (!chartSpec) return null;
+        blockAttrs.blockType = 'chart';
+        blockAttrs.spec = chartSpec;
+    } else if (contentType === 'LatexBlock') {
         blockAttrs.latexSource = raw_content_fallback || '';
         blockAttrs.blockType = 'latex'; 
     } else if (contentType === 'HeadingBlock') {
@@ -215,7 +243,7 @@ function insertNewRootBlock(editor, blockEvent, targetInsertPos) {
     }
 
     // 特殊处理：TableBlock 需要根据 attrs 中的 TableModel 构建表格节点树
-    let effectiveContentType = contentType;
+    let effectiveContentType = chartSpec ? 'chartBlock' : contentType;
     let tableChildren = null;
     if (contentType === 'TableBlock') {
         tableChildren = buildTableContentFromBlockEvent(blockEvent, schema);

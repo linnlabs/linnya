@@ -12,7 +12,11 @@ import { Schema, type MarkSpec, type NodeSpec } from 'prosemirror-model';
 import { createWorkspaceMarkdownSchemaContract } from './definitions/workspaceMarkdownSchemaContract';
 import { assertProseMirrorJsonMatchesSchema } from './functions/assertProseMirrorJsonMatchesSchema';
 import type { MarkdownDocJson } from './types';
-import { MarkdownAnnotationsSchema } from '@app/schemas';
+import {
+  MARKDOWN_CHART_FENCE_LANGUAGE,
+  MarkdownAnnotationsSchema,
+  MarkdownChartSpecSchema,
+} from '@app/schemas';
 
 const nodes: Record<string, NodeSpec> = {
   doc: {
@@ -61,7 +65,7 @@ const nodes: Record<string, NodeSpec> = {
   rootBlock: {
     group: 'block',
     content:
-      '(baseBlock | headingBlock | horizontalRuleBlock | listItemBlock | quoteBlock | codeBlock | latexBlock | table | imageBlock | bibliographyBlock){1}',
+      '(baseBlock | headingBlock | horizontalRuleBlock | listItemBlock | quoteBlock | codeBlock | latexBlock | chartBlock | table | imageBlock | bibliographyBlock){1}',
     defining: true,
     selectable: true,
     attrs: {
@@ -161,7 +165,15 @@ const nodes: Record<string, NodeSpec> = {
     attrs: {
       id: { default: '' },
       blockType: { default: 'code' },
-      language: { default: '' },
+      language: {
+        default: '',
+        // 专属图表语言只属于 chartBlock：保存闸门不允许它以普通代码的形态留在正文中。
+        validate: (value: unknown) => {
+          if (value === MARKDOWN_CHART_FENCE_LANGUAGE) {
+            throw new RangeError(`codeBlock language "${MARKDOWN_CHART_FENCE_LANGUAGE}" is reserved for chartBlock`);
+          }
+        },
+      },
       isEmpty: { default: true },
     },
   },
@@ -173,6 +185,21 @@ const nodes: Record<string, NodeSpec> = {
       id: { default: '' },
       blockType: { default: 'latex' },
       latexSource: { default: '' },
+    },
+  },
+  chartBlock: {
+    group: 'blockContent',
+    atom: true,
+    selectable: true,
+    attrs: {
+      id: { default: '' },
+      blockType: { default: 'chart' },
+      // spec 是图表的唯一持久化事实，没有默认值：缺失即非法，不生成空图表。
+      spec: {
+        validate: (value: unknown) => {
+          MarkdownChartSpecSchema.parse(value);
+        },
+      },
     },
   },
   imageBlock: {

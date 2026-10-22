@@ -552,6 +552,7 @@
     "detect-libc": "^2.1.2",
     "diff-match-patch": "^1.0.5",
     "dompurify": "^3.2.6",
+    "echarts": "6.1.0",
     "electron-store": "^10.0.1",
     "electron-updater": "^6.8.9",
     "express": "^5.1.0",

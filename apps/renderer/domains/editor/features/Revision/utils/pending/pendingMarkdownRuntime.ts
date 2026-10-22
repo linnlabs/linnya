@@ -1,6 +1,7 @@
 import {
   blockEventToInlineProjection,
   blockEventsToInlineProjection,
+  isChartBlockEvent,
   parseMarkdownToBlockEvents,
   structuredContentToInlineProjection,
 } from '../../../../services/markdownRuntime'
@@ -123,7 +124,7 @@ function isTableModelEvent(event: BlockEventLike): event is BlockEventLike & { a
   return event?.block_type === 'TableBlock' && isRecord(event.attrs)
 }
 
-function isIgnorableBlockEvent(event: BlockEventLike): boolean {
+export function isIgnorableBlockEvent(event: BlockEventLike): boolean {
   if (event.block_type !== 'BaseBlock') {
     return false
   }
@@ -138,6 +139,9 @@ function isIgnorableBlockEvent(event: BlockEventLike): boolean {
 }
 
 function mapBlockEventToPendingCanonicalBlock(event: BlockEventLike): PendingCanonicalBlock | null {
+  // 图表围栏由 chart/ 下的专用路径处理；这里绝不把它落成带保留语言的普通代码块。
+  if (isChartBlockEvent(event)) return null
+
   if (event.block_type === 'CodeBlock') {
     return {
       contentType: 'codeBlock',

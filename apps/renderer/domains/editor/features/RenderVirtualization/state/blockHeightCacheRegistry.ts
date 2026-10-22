@@ -9,6 +9,8 @@
  * - 文档切换时必须 reset，避免上一个文档的 blockId/height 污染下一个文档。
  */
 
+import type { Node as ProseMirrorNode } from 'prosemirror-model'
+import { estimateRootBlockHeight } from '../functions/estimateRootBlockHeight'
 import { BlockHeightCache, type BlockHeightCacheSnapshot } from './blockHeightCache'
 import type { RenderVirtualizationOwner } from '../definitions/renderVirtualizationOwner'
 
@@ -25,9 +27,10 @@ function getHeightCache(owner: RenderVirtualizationOwner): BlockHeightCache {
 
 export function getRenderVirtualizationBlockHeight(
   blockId: string,
-  owner: RenderVirtualizationOwner
+  owner: RenderVirtualizationOwner,
+  initialEstimate?: number
 ): number {
-  return getHeightCache(owner).get(blockId)
+  return getHeightCache(owner).get(blockId, initialEstimate)
 }
 
 export function getRenderVirtualizationBlockLayoutHeight(
@@ -63,6 +66,7 @@ export function resetRenderVirtualizationBlockHeightCache(
   owner: RenderVirtualizationOwner
 ): void {
   getHeightCache(owner).clear()
+  estimatedDocs.delete(owner)
 }
 
 export function getRenderVirtualizationBlockHeightCacheSnapshot(
@@ -108,4 +112,21 @@ export function getLegacyRenderVirtualizationBlockHeightCacheSnapshotForTest(): 
 function parseCssPixelValue(value: string): number | undefined {
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+const estimatedDocs = new WeakMap<RenderVirtualizationOwner, ProseMirrorNode>()
+
+/** 只在文档身份变化时收集提示；滚动刷新复用结果，不在热路径重扫规格。 */
+export function syncRenderVirtualizationHeightEstimates(doc: ProseMirrorNode, owner: RenderVirtualizationOwner): void {
+  if (estimatedDocs.get(owner) === doc) return
+  const estimates = new Map<string, number>()
+  doc.descendants(root => {
+    if (root.type.name !== 'rootBlock') return true
+    const id: unknown = root.attrs['id']
+    const height = estimateRootBlockHeight(root)
+    if (typeof id === 'string' && height !== undefined) estimates.set(id, height)
+    return false
+  })
+  getHeightCache(owner).replaceEstimates(estimates)
+  estimatedDocs.set(owner, doc)
 }

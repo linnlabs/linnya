@@ -10,6 +10,7 @@
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from 'prosemirror-state';
 import { PasteRegistry } from './PasteRegistry';
+import { handleChartHtmlPaste } from './orchestration/handleChartHtmlPaste';
 
 /**
  * 调试开关（运行时可打开，无需反复改代码）
@@ -82,6 +83,7 @@ export const ClipboardListener = Extension.create({
              */
             paste: (view, event) => {
               debugLog('🔥 粘贴事件被捕获');
+              if (handleChartHtmlPaste(view, event)) return true;
 
               const debugEnabled = isClipboardDebugEnabled();
 

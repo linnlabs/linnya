@@ -18,8 +18,8 @@ import type {
   RenderChartSeries,
   RenderChartAxis,
 } from '../../../types/render';
-import { formatChartValue as formatDataLabelValue } from '@plugin/slides/shared/chart/numberFormat';
-export { formatChartValue as formatDataLabelValue } from '@plugin/slides/shared/chart/numberFormat';
+import { formatChartValue as formatDataLabelValue } from '@app/schemas/chart-number-format';
+export { formatChartValue as formatDataLabelValue } from '@app/schemas/chart-number-format';
 import { CHART_DEFAULT_LABEL_FONT_SIZE_PT } from '@plugin/slides/shared/renderModel';
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../shared/constants';
 

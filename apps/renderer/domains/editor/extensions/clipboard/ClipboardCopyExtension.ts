@@ -28,6 +28,8 @@ import { resolveCurrentEditorMessage } from '../../functions/resolveCurrentEdito
 import { buildEditorMarkdownSerializerLabels } from '../../functions/markdownSerializerLabels'
 import { deriveCitations, getBibliographyStyleId } from '../../features/citation/render/citationDerivation'
 import { renderClipboardCitationHtml } from './functions/renderClipboardCitationHtml'
+import { createClipboardChartEnv, installClipboardChartFenceRule } from './functions/renderClipboardChartFigure'
+import { useLocalizationStore } from '@app/localization'
 
 // markdown-it 插件（项目已依赖）
 import markdownItFootnote from 'markdown-it-footnote'
@@ -88,6 +90,9 @@ const md = useMarkdownItPluginWithOptions(
   { disabled: true, divWrap: false, divClass: 'md-task', idPrefix: 'md-task-' },
 )
 
+// 图表围栏在剪贴板 HTML 中渲染为 <figure>（规格 + 数据表），内部粘贴可无损还原。
+installClipboardChartFenceRule(md)
+
 /**
  * 判断这次“复制/剪切”的内容是否是“块级内容”
  *
@@ -127,7 +132,19 @@ function trySerializeClipboardFromSlice(view: EditorView, slice: Slice): { markd
       labels: buildEditorMarkdownSerializerLabels(resolveCurrentEditorMessage),
     })
     const markdown = serializer.serialize(doc)
-    const html = renderClipboardCitationHtml(doc, serializer, value => md.render(value), view.dom.ownerDocument)
+    const chartEnv = createClipboardChartEnv({
+      ownerDocument: view.dom.ownerDocument,
+      locale: useLocalizationStore().currentLocale,
+      labels: {
+        category: resolveCurrentEditorMessage('editor.chart.table.category'),
+        series: resolveCurrentEditorMessage('editor.chart.table.series'),
+        value: resolveCurrentEditorMessage('editor.chart.table.value'),
+        share: resolveCurrentEditorMessage('editor.chart.table.share'),
+        dimension: resolveCurrentEditorMessage('editor.chart.table.dimension'),
+        pointLabel: resolveCurrentEditorMessage('editor.chart.table.pointLabel'),
+      },
+    })
+    const html = renderClipboardCitationHtml(doc, serializer, value => md.render(value, chartEnv), view.dom.ownerDocument)
     return { markdown, html }
   } catch (e) {
     // 这里不做“防御性修复”，只是明确地回退到默认 copy 行为

@@ -1,0 +1,116 @@
+/* 图表源码编辑面板：左侧源码与诊断，右侧实时预览。 */
+.chart-edit-modal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: var(--space-4);
+  min-height: 0;
+  /* 与弹窗标题的水平留白对齐（内容区为滚动条预留了两侧槽位）。 */
+  padding: 0 var(--space-3);
+}
+
+@media (max-width: 880px) {
+  .chart-edit-modal {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.chart-edit-modal__pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.chart-edit-modal__pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.chart-edit-modal__pane-title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
+}
+
+.chart-edit-modal__status {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.chart-edit-modal__status.is-valid {
+  color: var(--color-success-text);
+}
+
+.chart-edit-modal__status.is-invalid {
+  color: var(--color-error-text);
+}
+
+.chart-edit-modal__hint,
+.chart-edit-modal__stale,
+.chart-edit-modal__notice {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.chart-edit-modal__stale {
+  color: var(--color-warning-text);
+}
+
+.chart-edit-modal .chart-edit-modal__source {
+  min-height: 20rem;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-prose);
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
+.chart-edit-modal__diagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 9rem;
+  margin: 0;
+  padding: var(--space-2) var(--space-2-5);
+  overflow: auto;
+  border-radius: var(--radius-md);
+  background: var(--color-error-bg);
+  list-style: none;
+}
+
+.chart-edit-modal__diagnostic {
+  display: grid;
+  grid-template-columns: minmax(5rem, max-content) minmax(0, 1fr);
+  gap: var(--space-2);
+  color: var(--color-error-text);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.chart-edit-modal__diagnostic-path {
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-medium);
+}
+
+.chart-edit-modal__diagnostic-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chart-edit-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-3) var(--space-5) var(--space-5);
+}

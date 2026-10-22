@@ -11,6 +11,7 @@ const heightCacheMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('../state/blockHeightCacheRegistry', () => ({
+  syncRenderVirtualizationHeightEstimates: vi.fn(),
   estimateRenderVirtualizationTotalLayoutHeight: heightCacheMocks.estimateTotalLayoutHeight,
   getRenderVirtualizationBlockLayoutHeight: heightCacheMocks.getLayoutHeight,
 }))

@@ -1,0 +1,67 @@
+/* 图表块 NodeView 外壳：版面间距、选中态与无法显示的提示。 */
+.chart-block-node-view {
+  position: relative;
+  margin: var(--space-2) 0;
+  border-radius: var(--radius-lg);
+  transition: box-shadow var(--duration-medium) var(--ease-standard);
+}
+
+/* 与图片块一致：选中时描出真实图表外壳，而不是改变图表尺寸。 */
+.chart-block-node-view.ProseMirror-selectednode,
+.root-block-outer.is-block-selected .chart-block-node-view {
+  outline: 2px solid var(--color-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.chart-block-node-view__invalid {
+  margin: 0;
+  padding: var(--space-4);
+  border: var(--border-width-hairline) dashed var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-subtle);
+  color: var(--color-error-text);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+/* Pending：提议/待删除标记条。颜色沿用修订的语义（新增=成功色，删除=错误色），图表数据不拆成行内标记。 */
+.chart-block-node-view__revision {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1-5);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2-5);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.chart-block-node-view__revision[data-kind='proposed'] {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.chart-block-node-view__revision[data-kind='deleted'] {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.chart-block-node-view__revision-badge {
+  font-weight: var(--font-weight-medium);
+}
+
+.chart-block-node-view[data-chart-revision='deleted'] .chart-surface {
+  opacity: 0.72;
+}
+
+.chart-block-node-view__note {
+  margin: 0;
+  padding: var(--space-4);
+  border: var(--border-width-hairline) dashed var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}

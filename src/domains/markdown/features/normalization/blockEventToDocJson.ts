@@ -10,8 +10,11 @@ import {
 } from 'src/shared/utils/idUtils';
 import {
   admitMarkdownAnnotationComment,
+  admitMarkdownChartFenceBody,
+  isMarkdownChartFenceLanguage,
   isMarkdownEmptyBlockAnnotationAnchorComment,
   MarkdownAnnotationsSchema,
+  MarkdownChartSpecInvalidError,
   type MarkdownAnnotation,
 } from '@app/schemas';
 import type {
@@ -238,8 +241,9 @@ export function convertBlockEventsToDocJson(
   }
 
   const rootBlocks: ProseMirrorJsonNode[] = [];
+  let chartOrdinal = 0;
 
-  for (const event of blockEvents) {
+  for (const [eventIndex, event] of blockEvents.entries()) {
     if (!event || typeof event.block_type !== 'string') continue;
 
     const blockTypeName = normalizeBlockTypeName(event.block_type);
@@ -316,6 +320,29 @@ export function convertBlockEventsToDocJson(
           attrs: {
             id: generateEditorBlockId(),
             blockType: 'horizontalRule'
+          }
+        })
+      );
+      continue;
+    }
+
+    if (blockTypeName === 'CodeBlock' && isMarkdownChartFenceLanguage(event.language)) {
+      chartOrdinal += 1;
+      // 专属围栏在所有入口共用同一准入：无效则整体失败，不降级成普通代码，也不先提交其他块。
+      const admission = admitMarkdownChartFenceBody(rawFallback ?? '');
+      if (!admission.ok) {
+        throw new MarkdownChartSpecInvalidError(admission.diagnostics, {
+          chartOrdinal,
+          blockIndex: eventIndex + 1,
+        });
+      }
+      rootBlocks.push(
+        buildRootBlock({
+          type: 'chartBlock',
+          attrs: {
+            id: generateEditorBlockId(),
+            blockType: 'chart',
+            spec: admission.spec
           }
         })
       );

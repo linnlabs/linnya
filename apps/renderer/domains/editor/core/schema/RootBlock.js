@@ -15,6 +15,7 @@ import { createRootBlockShellView } from './RootBlockShellView'
 import { createPlaceholderShellView } from '../../features/RenderVirtualization/view/PlaceholderShellView'
 import { createRootBlockDomNodeView } from '../../features/RenderVirtualization/view/RootBlockDomNodeView'
 import { resolveRootBlockRenderMode } from '../../features/RenderVirtualization/view/resolveRootBlockRenderMode'
+import { estimateRootBlockHeight } from '../../features/RenderVirtualization/functions/estimateRootBlockHeight'
 import { getRenderVirtualizationBlockHeight } from '../../features/RenderVirtualization/state/blockHeightCacheRegistry'
 import {
   ROOT_BLOCK_DOM_ATTRS,
@@ -173,7 +174,7 @@ export const RootBlock = Node.create({
         const placeholderView = createPlaceholderShellView(nodeViewProps.node, {
           resolveMode,
           runtimeRegistryOwner: nodeViewProps.editor,
-          estimatedHeight: getRenderVirtualizationBlockHeight(blockId, nodeViewProps.editor),
+          estimatedHeight: getRenderVirtualizationBlockHeight(blockId, nodeViewProps.editor, estimateRootBlockHeight(nodeViewProps.node)),
         });
         incrementNodeViewCount('placeholder', performance.now() - startedAt);
         return placeholderView;

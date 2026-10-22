@@ -1,3 +1,4 @@
+import type { Editor } from '@tiptap/core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
@@ -39,6 +40,12 @@ vi.mock('../insertPendingRevisionApplier', () => ({
   batchApplyInsertPendingRevisions,
 }))
 
+// 图表 Pending 有独立的分流与应用路径（见 chart/ 下的测试）；这里只验证文本/表格批次的编排。
+vi.mock('../chart', () => ({
+  partitionChartPendingRevisions: async (_doc: unknown, revisions: unknown[]) => ({ chartItems: [], others: revisions }),
+  applyChartPendingItems: () => [],
+}))
+
 import { applyPendingRevisionsToEditor } from '../applyPendingRevisions'
 
 describe('applyPendingRevisionsToEditor', () => {
@@ -75,7 +82,7 @@ describe('applyPendingRevisionsToEditor', () => {
   })
 
   it('batches consecutive updates until a non-update boundary is reached, even when blockId repeats', async () => {
-    const editor = {} as any
+    const editor = { state: { doc: {} } } as unknown as Editor
 
     const result = await applyPendingRevisionsToEditor(editor, [
       {

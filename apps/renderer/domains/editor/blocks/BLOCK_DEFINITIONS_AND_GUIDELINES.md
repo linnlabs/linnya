@@ -59,6 +59,12 @@
 
 ---
 
+### 3.2.1. `ChartBlock`
+
+`chartBlock` 是原子块，属性为 `id`、`blockType`（`chart`）和必填的 `spec`（经 `@app/schemas` 严格准入的图表规格，无默认值）。
+持久形态是 `linnya-chart` 围栏；HTML 往返使用 `<figure data-type="chart-block" data-chart-spec="…">`，非法规格整体丢弃。
+节点定义见 [ChartBlock/README.md](./ChartBlock/README.md)；绘制与阅读交互在 `features/chart-reading`，源码编辑在 `features/chart-editing`。
+
 ### 3.3. `TableBlock`
 
 *   **路径:** `domains/editor/blocks/TableBlock.js`

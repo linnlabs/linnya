@@ -10,7 +10,7 @@
 - [chartParsers](../../codegen/compose/inputParsers/chartParsers.ts) 负责字段族和组合准入：轴范围、系列长度、
   柱堆叠、显式次轴、标签内容与图表族的约束。Direct 和 Flex 使用同一校验，不能只靠类型检查接纳数值关系。
 - 颜色沿用 shared visual colorContract；数字格式的准入与 ECharts 文本输出共用
-  [shared/chart/numberFormat](../../../shared/chart/numberFormat.ts)，不支持完整 Excel 日期/科学计数/条件格式语言。
+  [`@app/schemas/chart-number-format`](../../../../../../schemas/src/chart-number-format.ts)，不支持完整 Excel 日期/科学计数/条件格式语言。
 - 作者字段表、单位、限制见 [Skill Chart 合同](../../../../resources/skills/slides-design/references/syntax.md#9-chart)，
   可执行原子示例见 [chart-controls.js](../../../../resources/skills/slides-design/references/examples/chart-controls.js)。
   d.ts 由 codegen 生成，不手改。

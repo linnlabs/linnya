@@ -1,0 +1,126 @@
+/* 图例：DOM 图例是身份的可靠通道，同时是系列筛选/突出的主入口。 */
+.chart-legend {
+  --chart-key-bar: 10px;
+  --chart-key-line-length: 14px;
+  --chart-key-line-weight: 2px;
+  --chart-key-dot: 8px;
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-0-5) var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chart-legend--top,
+.chart-legend--bottom {
+  justify-content: center;
+}
+
+.chart-legend--left,
+.chart-legend--right {
+  flex: 0 1 auto;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  min-width: 0;
+  max-width: 30%;
+}
+
+.chart-legend__entry {
+  display: flex;
+  min-width: 0;
+}
+
+.chart-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+  padding: var(--space-0-5) var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-short) var(--ease-standard),
+    color var(--duration-short) var(--ease-standard);
+}
+
+.chart-legend__item:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.chart-legend__item:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.chart-legend__item.is-emphasized {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.chart-legend__item.is-hidden {
+  color: var(--color-text-muted);
+}
+
+.chart-legend__item.is-hidden .chart-legend__label {
+  text-decoration: line-through;
+}
+
+.chart-legend__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-legend__hint {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+}
+
+/* 图例与阅读选项共用同一套标记形状：柱/面积=方块，折线=短线，散点=圆点。 */
+.chart-legend__key,
+.chart-reading-options__key {
+  --chart-key-bar: 10px;
+  --chart-key-line-length: 14px;
+  --chart-key-line-weight: 2px;
+  --chart-key-dot: 8px;
+
+  flex: 0 0 auto;
+  background: var(--chart-legend-color);
+}
+
+.chart-legend__key[data-shape='bar'],
+.chart-reading-options__key[data-shape='bar'] {
+  width: var(--chart-key-bar);
+  height: var(--chart-key-bar);
+  border-radius: var(--radius-xs);
+}
+
+.chart-legend__key[data-shape='line'],
+.chart-reading-options__key[data-shape='line'] {
+  width: var(--chart-key-line-length);
+  height: var(--chart-key-line-weight);
+  border-radius: var(--radius-full);
+}
+
+.chart-legend__key[data-shape='dot'],
+.chart-reading-options__key[data-shape='dot'] {
+  width: var(--chart-key-dot);
+  height: var(--chart-key-dot);
+  border-radius: var(--radius-full);
+}
+
+/* 被隐藏的系列：标记变成空心，说明它仍存在、可以再显示。 */
+.chart-legend__item.is-hidden .chart-legend__key {
+  background: transparent;
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--chart-legend-color);
+}

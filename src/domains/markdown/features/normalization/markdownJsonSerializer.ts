@@ -16,6 +16,8 @@
 
 import {
   MarkdownAnnotationsSchema,
+  MarkdownChartSpecSchema,
+  encodeMarkdownChartFence,
   encodeMarkdownEmptyBlockAnnotationAnchorComment,
   encodeMarkdownAnnotationComment,
 } from '@app/schemas';
@@ -432,6 +434,11 @@ function serializeBlockChild(
   if (type === 'latexBlock') {
     const latex = getStringAttr(attrs, 'latexSource') ?? '';
     return `\`\`\`latex\n${latex}\n\`\`\``.trimEnd();
+  }
+
+  if (type === 'chartBlock') {
+    // 图表规格是持久化事实，必须已通过保存闸门；这里不兜底成空文本，避免静默丢图。
+    return encodeMarkdownChartFence(MarkdownChartSpecSchema.parse(attrs['spec']));
   }
 
   if (type === 'horizontalRuleBlock') {

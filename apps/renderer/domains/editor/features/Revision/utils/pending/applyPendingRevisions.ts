@@ -22,6 +22,7 @@ import type {
 import { batchApplyNonInsertPendingRevisions } from './updatePendingRevisionApplier'
 import { batchApplyInsertPendingRevisions } from './insertPendingRevisionApplier'
 import { planPendingExecutionBatches } from './pendingBatchPlanner'
+import { applyChartPendingItems, partitionChartPendingRevisions } from './chart'
 import { infoRevisionDebug, shouldLogRevisionDebug } from '../revisionDebugLogging'
 
 export interface ApplyPendingRevisionsPerfHooks {
@@ -129,10 +130,23 @@ export async function applyPendingRevisionsToEditor(
   // 1. 解析所有 pending revisions
   const parsedRevisions = measureStage(perfHooks, 'parse', () => pendingRevisions.map(parsePendingRevision))
 
-  // 2. 统一交给 batch planner，insert anchor 链与 non-insert 共批策略都在同一个入口收敛
-  const batches = measureStage(perfHooks, 'plan', () => planPendingExecutionBatches(parsedRevisions))
+  // 2. 图表是原子块，不走文本 diff：先分流出图表计划，其余再交给 batch planner。
+  //    insert anchor 链与 non-insert 共批策略都在同一个入口收敛
+  const { chartItems, others } = await measureStageAsync(perfHooks, 'plan', () =>
+    partitionChartPendingRevisions(editor.state.doc, parsedRevisions)
+  )
+  const batches = measureStage(perfHooks, 'plan', () => planPendingExecutionBatches(others))
 
   await measureStageAsync(perfHooks, 'apply', async () => {
+    for (const detail of applyChartPendingItems(editor, chartItems)) {
+      result.details.push(detail)
+      if (detail.success) {
+        result.successIds.push(detail.id)
+      } else {
+        result.failedIds.push(detail.id)
+      }
+    }
+
     for (const batch of batches) {
       const details =
         batch.kind === 'non-insert'

@@ -24,6 +24,20 @@ Revision 展示 Markdown 数据库中的待处理修改，提供块级、行内�
 
 Markdown 解析和物化继续复用 [markdownRuntime](../../services/markdownRuntime/README.md)。Revision 不维护另一套 Markdown 解释器。全文文件写入的 Pending metadata 可携带 `listSeparatorBefore`，用于恢复列表项之间的紧凑/松散间隔；单块 Markdown 本身不含前一项，解析时不得据此猜成松散列表。单项、批次及插入投影都把该事实传给统一 resolver，接受后的正文由后端同一合同确认。现有表格整块替换与历史视图属于显示策略，不改变数据库事务语义。
 
+## 图表块的 Pending
+
+图表是原子块，不拆成行内 mark，也不走文本 diff。`utils/pending/chart/` 是独立的块级计划：`applyPendingRevisionsToEditor` 在规划前先把 Pending 分流——
+`newMarkdown` 恰好是一个 `linnya-chart` 围栏的 insert/update，以及目标块当前是图表的 delete，走图表计划；其余仍走原文本/表格路径。分流只看 Pending 自身，并复用
+markdownRuntime 的统一准入，不重复解析图表 JSON。
+
+- **insert**：占位块的内容替换为提议的图表，计一次新增；**update**：目标块的内容替换为提议的图表（规格未变则不动文档、不登记），计一次新增和一次删除；
+  **delete**：文档不变，只登记一次整图删除。增删计数按“整张图”，不按字符。
+- 原块保存在投影账本里。图表块 NodeView 通过 `readProjectionBaseline(blockId)` 只读展示对照（“查看原内容 / 查看提议”），不能用它提交；保存或拒绝仍从账本还原基线。
+- Pending 期间图表块内容由数据库修订拥有：块内不提供编辑入口，块菜单也不显示“编辑图表”；先接受或拒绝。
+- 无效围栏（只可能来自版本错位，后端写入时已准入）只让该条投影失败，不阻断同批其他块；数据库快照与基线保持原样。
+- chart → 非图表的 update 暂走通用文本路径（新内容以插入标记显示），原图表由账本保存；尚未提供“原图表对照”的专门显示，列为已知限制。
+- 正文、Pending 提议与原内容三种展示的阅读状态互相隔离（`document` / `proposed` / `baseline`），修订期间不播放更新过渡。
+
 ## 用户决策
 
 块级与文档级接受/拒绝均通过文档会话调用同一个后端提交入口。请求携带正文版本、整份 Pending ID/revision 清单及本地基线。后端在同一事务中保存正文、更新或清除 Pending，并返回完整新快照；前端成功后才安装结果。失败不得改走全文保存或无条件清 Pending。

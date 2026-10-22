@@ -179,6 +179,14 @@ Shell pending 投影必须串行执行。该流程归属 Revision 编排层，�
 
 不要让 Revision 直接读取 RenderVirtualization 内部 state；两边通过 blockId、engine snapshot 和公开投影入口协作。
 
+## 图表块
+
+图表 NodeView 以 `useCurrentBlockActivation().isUiActive` 决定是否持有 ECharts 实例：离屏释放实例、监听与未完成的过渡，保留占位（绘图区固定高度）和会话级阅读状态；
+再入屏直接显示最终结果。源码编辑面板打开期间通过保活端口保持所在 rootBlock 不被占位化。
+
+内容块通过 NodeSpec 的 `estimateBlockHeight` 窄合同提供不读取 DOM 的初始高度。RootBlock 首次创建占位和窗口规划都消费该合同；图表贡献三档绘图区高度及标题、说明、图例的估计，不直接写虚拟化缓存。
+估计按文档身份更新，与真实测量分开保存，不进入正文自适应均值；真实测量优先，规格导致估高变化时使旧测量失效。1600 块文档首滚前也能预留图表空间。宽度相关的文字换行仍是近似值，入屏后由实际测量修正。
+
 ## Editor 运行时安装
 
 Editor 级虚拟化 wiring 统一收口在 `ui/runtime/setupEditorVirtualizationRuntime.ts`：

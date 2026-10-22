@@ -132,6 +132,16 @@ Markdown
 -> ProseMirror doc JSON / rootBlock
 ```
 
+### B'. 图表围栏（`linnya-chart`）
+
+parser 把围栏输出为完整 `CodeBlock` 事件；`chartEvent.ts` 是 renderer 侧识别与准入的唯一入口（`isChartBlockEvent` / `admitChartBlockEvent`，
+内部调用 `@app/schemas` 的同一个 `admitMarkdownChartFenceBody`，与后端 `blockEventToDocJson` 判断一致）。
+
+- `blockEventsToDocJson` / `blockEventsToRootBlockNodes` 把合法图表物化为 `chartBlock`；无效围栏抛出 `MarkdownChartSpecInvalidError`，整批不落地。
+  `invalidChartAsCode` 只由用户在“作为普通代码插入”中显式选择，无效内容以 `json` 代码块保存，不保留专属语言。
+- 粘贴（`PlainTextMarkdownHandler`）、流式落块（`queueProcessor`）与 Revision 的图表计划都经过这里，不再各自把专属语言映射成 `codeBlock`。
+- `blockEventsToRootBlockNodes` 一次物化整批事件：要么全部成功，要么全部失败，诊断里的图表序号覆盖整批输入。
+
 ### C. 表格
 
 ```text

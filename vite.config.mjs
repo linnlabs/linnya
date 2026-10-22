@@ -59,7 +59,12 @@ const RENDERER_VENDOR_CHUNKS = [
   },
   {
     name: 'vendor-visualization',
-    moduleFragments: ['/node_modules/konva/', '/node_modules/echarts/', '/node_modules/zrender/'],
+    moduleFragments: ['/node_modules/konva/'],
+  },
+  {
+    // 图表块的运行时只经动态 import 进入：独立成块，文档里没有图表时不加载，也不拖大随 konva 预加载的块。
+    name: 'vendor-charts',
+    moduleFragments: ['/node_modules/echarts/', '/node_modules/zrender/'],
   },
   {
     name: 'vendor-validation',
@@ -104,6 +109,9 @@ export function resolveRendererManualChunk(moduleId) {
   const normalizedId = moduleId.replaceAll('\\', '/')
   const editorPrefix = '/apps/renderer/domains/editor/'
   const editorFeaturePrefix = `${editorPrefix}features/`
+  // 图表运行时（ECharts 注册）只经动态 import 到达：单独成块，才能让 vendor-charts 保持按需加载，
+  // 不被归入随编辑器启动加载的 interaction 块而变成静态依赖。
+  if (normalizedId.includes(`${editorFeaturePrefix}chart-reading/orchestration/runtime/`)) return 'renderer-editor-chart-runtime'
   if (normalizedId.includes(`${editorFeaturePrefix}Revision/`)) return 'renderer-editor-revision'
   if (
     normalizedId.includes(`${editorFeaturePrefix}Annotation/`)

@@ -8,8 +8,13 @@
     :position-offset="{ top: 16, right: 24 }"
     @close="handleClose"
   >
-    <template #title>{{ editorMessage('editor.findReplace.title') }}</template>
-    <div class="find-replace-panel" @keydown.stop>
+    <template #title>
+      {{ editorMessage('editor.findReplace.title') }}
+    </template>
+    <div
+      class="find-replace-panel"
+      @keydown.stop
+    >
       <div class="find-replace-body">
         <!-- Search input -->
         <div class="find-replace-input-group">
@@ -22,7 +27,7 @@
             @keydown.enter.exact.prevent="handleNext"
             @keydown.enter.shift.exact.prevent="handlePrev"
             @keydown.escape="handleClose"
-          />
+          >
           <div class="find-replace-input-actions">
             <span class="find-replace-count">{{ displayPosition }}</span>
             <IconButton
@@ -34,7 +39,10 @@
               :disabled="!hasMatches"
               @click="handlePrev"
             >
-              <ChevronIcon direction="left" class="nav-icon" />
+              <ChevronIcon
+                direction="left"
+                class="nav-icon"
+              />
             </IconButton>
             <IconButton
               :label="editorMessage('editor.findReplace.next')"
@@ -45,7 +53,10 @@
               :disabled="!hasMatches"
               @click="handleNext"
             >
-              <ChevronIcon direction="right" class="nav-icon" />
+              <ChevronIcon
+                direction="right"
+                class="nav-icon"
+              />
             </IconButton>
           </div>
         </div>
@@ -58,30 +69,40 @@
             class="find-replace-input"
             :placeholder="editorMessage('editor.findReplace.replacePlaceholder')"
             @keydown.escape="handleClose"
-          />
+          >
           <div class="find-replace-input-actions">
             <BaseButton
               variant="plain"
-              :disabled="!hasMatches"
-              @click="handleReplaceCurrent"
+              :disabled="!canReplaceCurrent"
               :title="editorMessage('editor.findReplace.replaceCurrent')"
+              @click="handleReplaceCurrent"
             >
               {{ editorMessage('editor.findReplace.replaceCurrent') }}
             </BaseButton>
             <BaseButton
               variant="plain"
-              :disabled="!hasMatches"
-              @click="handleReplaceAll"
+              :disabled="!canReplaceAll"
               :title="editorMessage('editor.findReplace.replaceAll')"
+              @click="handleReplaceAll"
             >
               {{ editorMessage('editor.findReplace.replaceAll') }}
             </BaseButton>
           </div>
         </div>
 
+        <p
+          v-if="hasReadonlyMatches"
+          class="find-replace-no-matches"
+        >
+          {{ editorMessage('editor.findReplace.readonlyMatch') }}
+        </p>
+
         <!-- Options -->
         <div class="find-replace-options">
-          <div class="option-wrapper" @click="localMatchCase = !localMatchCase">
+          <div
+            class="option-wrapper"
+            @click="localMatchCase = !localMatchCase"
+          >
             <CustomCheckbox
               v-model="localMatchCase"
               :class-names="findReplaceCheckboxClassNames"
@@ -89,7 +110,10 @@
               {{ editorMessage('editor.findReplace.matchCase') }}
             </CustomCheckbox>
           </div>
-          <div class="option-wrapper" @click="localWholeWord = !localWholeWord">
+          <div
+            class="option-wrapper"
+            @click="localWholeWord = !localWholeWord"
+          >
             <CustomCheckbox
               v-model="localWholeWord"
               :class-names="findReplaceCheckboxClassNames"
@@ -97,7 +121,10 @@
               {{ editorMessage('editor.findReplace.wholeWord') }}
             </CustomCheckbox>
           </div>
-          <div class="option-wrapper" @click="localUseRegex = !localUseRegex">
+          <div
+            class="option-wrapper"
+            @click="localUseRegex = !localUseRegex"
+          >
             <CustomCheckbox
               v-model="localUseRegex"
               :class-names="findReplaceCheckboxClassNames"
@@ -108,7 +135,10 @@
         </div>
 
         <!-- No matches message -->
-        <div v-if="showNoMatches" class="find-replace-no-matches">
+        <div
+          v-if="showNoMatches"
+          class="find-replace-no-matches"
+        >
           {{ editorMessage('editor.findReplace.noMatches') }}
         </div>
       </div>
@@ -155,6 +185,9 @@ const localMatchCase = ref(false)
 const localWholeWord = ref(false)
 const localUseRegex = ref(false)
 
+const hasReadonlyMatches = computed(() => store.matches.some(match => match.replaceable === false))
+const canReplaceCurrent = computed(() => store.currentMatch && store.currentMatch.replaceable !== false)
+const canReplaceAll = computed(() => store.matches.some(match => match.replaceable !== false))
 const searchInputRef = ref(null)
 const showNoMatches = ref(false) // 是否显示"未找到匹配项"
 

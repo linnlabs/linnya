@@ -21,3 +21,9 @@
 @import './audio/AudioEditorTabs.css';
 @import './audio/TranscriptTab.css';
 @import './audio/TranscriptSegmentView.css';
+@import './chart/ChartBlockView.css';
+@import './chart/ChartSurface.css';
+@import './chart/ChartLegend.css';
+@import './chart/ChartDataTable.css';
+@import './chart/ChartReadingOptions.css';
+@import './chart/ChartEditModal.css';

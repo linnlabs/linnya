@@ -31,6 +31,12 @@ import {
 import { parseEditorDocumentJson } from '../functions/parseEditorDocumentJson'
 import { getAllExtensions } from './extensionRegistry'
 
+const chartFixtureSpec = {
+  chartType: 'bar',
+  categories: ['A', 'B'],
+  series: [{ name: 'S', values: [1, 2] }],
+}
+
 function createProductionEditorSchema() {
   setActivePinia(createPinia())
   const extensions = getAllExtensions({
@@ -126,6 +132,40 @@ describe('Workspace Markdown 与生产 Editor schema conformance', () => {
     ])
   })
 
+  it('后端生成的图表文档可被生产 Editor schema 严格解析，规格原样保留', () => {
+    const docJson = convertBlockEventsToDocJson([
+      {
+        block_type: 'CodeBlock',
+        language: 'linnya-chart',
+        raw_content_fallback: JSON.stringify(chartFixtureSpec),
+      },
+    ])
+    if (!docJson) {
+      throw new Error('后端未生成图表 fixture')
+    }
+
+    const parsed = parseEditorDocumentJson(docJson, createProductionEditorSchema())
+    const chart = parsed.firstChild?.firstChild
+
+    expect(chart?.type.name).toBe('chartBlock')
+    expect(chart?.attrs.spec).toEqual(docJson.content?.[0]?.content?.[0]?.attrs?.spec)
+    expect(chart?.attrs.spec).toMatchObject(chartFixtureSpec)
+  })
+
+  it('图表块没有可用的默认规格：缺少 spec 的文档被 Editor 拒绝', () => {
+    const editorSchema = createProductionEditorSchema()
+    const invalidDoc = {
+      type: 'doc',
+      content: [{
+        type: 'rootBlock',
+        attrs: { id: 'root-chart' },
+        content: [{ type: 'chartBlock', attrs: { id: 'chart-1', blockType: 'chart' } }],
+      }],
+    }
+
+    expect(() => parseEditorDocumentJson(invalidDoc, editorSchema)).toThrow()
+  })
+
   it('Markdown schema 可构造的每种根块和 mark 都能进入生产 Editor', () => {
     const editorSchema = createProductionEditorSchema()
     const rootBlockType = workspaceMarkdownSchemaLite.nodes.rootBlock
@@ -138,13 +178,17 @@ describe('Workspace Markdown 与生产 Editor schema conformance', () => {
       'quoteBlock',
       'codeBlock',
       'latexBlock',
+      'chartBlock',
       'table',
       'imageBlock',
       'bibliographyBlock',
     ] as const
 
     for (const nodeName of rootContentNodeNames) {
-      const inner = workspaceMarkdownSchemaLite.nodes[nodeName].createAndFill()
+      // chartBlock 的 spec 没有默认值，必须显式给出一份合法规格。
+      const inner = nodeName === 'chartBlock'
+        ? workspaceMarkdownSchemaLite.nodes.chartBlock.createChecked({ id: 'chart-fixture', spec: chartFixtureSpec })
+        : workspaceMarkdownSchemaLite.nodes[nodeName].createAndFill()
       if (!inner) {
         throw new Error(`无法构造 Markdown node fixture: ${nodeName}`)
       }

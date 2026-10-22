@@ -67,6 +67,22 @@ normalization 直接接纳 parser-wasm 的 CodeBlock 事件，不在 TypeScript 
 重新导入 canonical Markdown 必须保持代码正文、语言和相邻块边界，不能在 VFS/read_file 补字修复。
 原围栏字符、长度、info string 的附加元数据不持久化，不承诺源文本逐字 round-trip。
 
+## 图表块（`linnya-chart`）
+
+`chartBlock` 是原子 rootBlock 内容，唯一必填属性 `spec` 由 `@app/schemas` 的 `MarkdownChartSpecSchema` 校验（形状严格、字段间规则一并检查）。
+持久化形态就是围栏：语言**恰好**为 `linnya-chart`，正文为一个 JSON 对象；`chart`、`echarts`、`json` 等其他语言始终是普通代码，不嗅探 JSON 形状。
+
+- **统一准入**：导入、Agent 写入、粘贴、流式完整事件与内部富粘贴都调用同一个准入函数（`admitMarkdownChartFenceBody`）。围栏无效时当前原子写入整体不提交，
+  错误码 `MARKDOWN_CHART_SPEC_INVALID`，诊断含图表序号、块位置、字段路径，JSON 语法错误另带行列；不会先提交其他块再留下损坏图表。
+- **保留语言不落地**：`codeBlock.language` 的保存闸门拒绝 `linnya-chart`；人类在编辑器里粘贴无效围栏时由用户显式选择“作为普通代码插入”，以 `json` 保存。
+- **canonical 投影**：`serializeMarkdownChartSpec` 固定键序、两空格缩进、每个系列一行、省略默认值、颜色大写、`-0` 归零；围栏 delimiter 总比正文中的反引号序列更长。
+  首次合法输入可被规范化，此后 `canonical Markdown → doc → canonical Markdown` 字节稳定；只改变键序或空白不制造 Pending。
+- **Pending**：接受图表 Pending 时按同一导入链重新准入 `newMarkdown`；图表是原子块，没有行内 diff。
+- **准入上限**：series ≤ 20、categories ≤ 1000、数据点 ≤ 5000、canonical JSON ≤ 128 KiB。发布后不得直接收紧，已存合法文档必须始终可读回。
+- **字符计量**：Markdown 字符数包含图表 JSON，与代码块一致。
+
+Agent 的写法、字段表和示例只在内置 Skill `linnya-markdown` 的 `references/chart.md`；测试用真实准入与解析器防止它与合同漂移。
+
 ## 行内强调与引用投影
 
 current Markdown 投影按连续 mark 范围输出强调，Citation atom 与相邻文本共同参与范围计算。

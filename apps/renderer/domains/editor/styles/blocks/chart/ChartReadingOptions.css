@@ -1,0 +1,106 @@
+/* 阅读选项：只改变观看方式的会话级控件，不修改文档。 */
+.chart-reading-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-width-hairline) solid var(--color-border-light);
+}
+
+.chart-reading-options__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.chart-reading-options__title {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-footnote);
+}
+
+.chart-reading-options__hint {
+  margin: calc(var(--space-2) * -1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.chart-reading-options__group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.chart-reading-options__legend {
+  margin-bottom: var(--space-1-5);
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-footnote);
+}
+
+.chart-reading-options__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chart-reading-options__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-1) 0;
+}
+
+/* 两列固定宽度：隐藏的系列没有“突出”，也不让“显示”列错位。 */
+.chart-reading-options__cell {
+  display: flex;
+  flex: 0 0 5.5rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.chart-reading-options__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-reading-options__range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.chart-reading-options__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 8rem;
+}
+
+.chart-reading-options__field-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.chart-reading-options__error {
+  margin: var(--space-1-5) 0 0;
+  color: var(--color-error-text);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}

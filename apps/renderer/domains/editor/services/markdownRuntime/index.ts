@@ -10,9 +10,12 @@ export {
 export {
   blockEventToRootBlockNode,
   blockEventsToDocJson,
+  blockEventsToRootBlockNodes,
   buildTableRowsFromInlineProjectionGrid,
   buildTableRowsFromTableModel,
 } from './materializer'
+export type { BlockEventMaterializationOptions } from './materializer'
+export { admitChartBlockEvent, isChartBlockEvent } from './chartEvent'
 export type {
   BlockEventLike,
   ContentFragmentLike,

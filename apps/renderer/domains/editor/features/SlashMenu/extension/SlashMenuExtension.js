@@ -9,6 +9,7 @@ import { PositionUtils } from '../../../extensions/position/PositionUtils'
 import { createSlashMenuKeepAliveController } from './slashMenuVirtualizationKeepAlive'
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage'
 import { pickEmbedAndInsertImage } from '../../../blocks/ImageBlock/orchestration/embedAndInsertImage'
+import { createChartSlashItems } from '../../../blocks/ChartBlock/menu/chartSlashItems'
 
 // 导入Vue相关，如果需要在render中使用
 // import { ref } from 'vue'; 
@@ -45,6 +46,7 @@ export const SlashMenuExtension = Extension.create({
       const editorMessage = resolveCurrentEditorMessage;
       const convertToGroup = editorMessage('editor.slash.group.convertTo');
       const insertGroup = editorMessage('editor.slash.group.insert');
+      const chartGroup = editorMessage('editor.chart.slash.group');
       const aiGroup = editorMessage('editor.slash.group.ai');
 
       // 1. 定义所有可能的菜单项及其分组和命令
@@ -110,6 +112,9 @@ export const SlashMenuExtension = Extension.create({
             });
           }
         },
+
+        // --- 图表 --- 八种图表各一项，选择后插入示例图表并打开源码面板
+        ...createChartSlashItems(editorMessage, chartGroup),
 
         // AI 类
         { 
@@ -195,7 +200,7 @@ export const SlashMenuExtension = Extension.create({
       });
 
       // 3. 定义分组顺序
-      const groupOrder = [convertToGroup, insertGroup, aiGroup];
+      const groupOrder = [convertToGroup, insertGroup, chartGroup, aiGroup];
 
       // 4. 按分组排序
       filteredItems.sort((a, b) => {
