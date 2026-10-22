@@ -3,10 +3,7 @@
 本 README 是 **web_search + web_read** 的长期开发指南与规范（协议、边界、关键路径、验收/回归点）。
 历史上的“方案/计划”文档已合并到这里，避免双份来源长期漂移。
 
-相关文档：
-
-- [`docs/联网搜索与网页抓取调研.md`](./docs/联网搜索与网页抓取调研.md)：对比 Hermes Agent、Codex 与 Linnya 当前实现，说明费用来源和能力边界。
-- [`docs/webupdate_plan.md`](./docs/webupdate_plan.md)：Web 升级实施计划、逐文件施工清单、端到端业务测试与 SLO。
+Electron 隐藏渲染窗的生命周期与网络准入见[本地网页渲染](../../electron-main/web-render/README.md)。
 
 ---
 
