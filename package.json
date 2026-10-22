@@ -646,7 +646,7 @@
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "dotenv": "^17.2.1",
-    "electron": "43.4.0",
+    "electron": "43.7.0",
     "electron-builder": "^26.15.3",
     "electron-builder-squirrel-windows": "^26.15.3",
     "esbuild": "^0.25.11",
