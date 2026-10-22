@@ -161,12 +161,14 @@ composition seam 相遇。
 
 Host 可以注入两类扩展，但不得借此污染通用 adapter：
 
-- `provider_failure_classifier`：把 Host 管理服务的安全结构化错误映射到产品 failure
-  code；
+- `AiSdkInferenceCapabilityInvocation.provider_failure_classifier`：把 Host 管理服务的
+  错误候选映射到产品 failure code。Host按当前请求绑定规则，不在共享capability dependencies
+  上安装全局产品分类器；adapter不接收产品身份，也不替Host解析连接归属；
 - `diagnostic_sink`：消费 adapter 已白名单化的 attempt 请求形状、负载规模（含图片所在消息角色）、流终态、阶段、shape、Provider 的安全 `type/code/reason` 和 retryable 信息，并决定日志级别与文案。请求 fingerprint 只由安全的请求形状摘要计算，不包含 prompt、工具正文或图片字节。
 
-扩展点不能读取或返回 prompt、response body、API key、headers、base
-URL、路径、图片 bytes 或原始错误正文。
+diagnostic_sink只接收白名单投影，不能读取或返回prompt、response body、API key、headers、
+base URL、路径或图片bytes。classifier的既有`candidate.response_body`仅供当前调用内存中的
+产品分类，不得返回、记录或持久化；这不是通用日志/诊断扩展点。
 
 工具调用的输入错误与流状态机违规分开分类。AI SDK 的 `dynamic/invalid`
 不证明流损坏：无法解析或不是 JSON object 的参数形成可重试

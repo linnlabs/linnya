@@ -2,6 +2,7 @@ import type { LanguageModelV4 } from '@ai-sdk/provider';
 import type { ModelReasoningConfig } from '@linnlabs/linnkit/contracts';
 import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
 import type { AiSdkInferenceCapabilityId } from './aiSdkCapabilityIds';
+import type { AiSdkProviderFailureClassifier } from '../features/failure-projection';
 
 /** 当前唯一会改变 adapter 请求投影的 Host profile。 */
 export const CHATGPT_CODEX_REQUEST_PROFILE_ID = 'chatgpt_codex_responses';
@@ -40,6 +41,8 @@ export interface AiSdkInferenceCapabilityInvocation {
   readonly request: CanonicalInferenceRequest;
   readonly route: AiSdkInferenceRoute;
   readonly credential?: AiSdkInferenceCredential;
+  /** Host 按当前 attempt 绑定的产品规则；共享 codec 不保存产品连接身份。 */
+  readonly provider_failure_classifier?: AiSdkProviderFailureClassifier;
 }
 
 export interface AiSdkInferenceCapability {

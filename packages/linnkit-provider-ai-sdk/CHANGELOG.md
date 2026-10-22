@@ -2,6 +2,10 @@
 
 ## 0.1.0
 
+- 将产品失败classifier从共享capability构造依赖移到单次invocation；Host逐次绑定规则，
+  避免同一codec并发服务不同连接时串用产品错误语义。删除旧构造字段，不保留双入口；
+  SDK仍不持有Host产品身份，trace诊断计数与零SDK重试保持不变。
+
 - 修复响应不完整被误归为不可重试 schema 失败、HTTP200后读取失败误归为 HTTP 错误；
   SDK 校验失败中的已解码 error envelope 只恢复可识别的上游语义，真正不兼容仍停止。
   安全诊断区分 SDK 错误类别与响应数据状态，并在 yield 前记录 canonical 终态；

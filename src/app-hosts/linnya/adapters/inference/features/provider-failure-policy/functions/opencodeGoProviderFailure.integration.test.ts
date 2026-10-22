@@ -3,7 +3,6 @@ import { createAiSdkLanguageModelRegistry } from '@linnlabs/linnkit-provider-ai-
 import { describe, expect, it } from 'vitest';
 import type { InferenceCapabilityInvocation, ResolvedInferenceAttemptRoute } from '../../../definitions/inferenceCapability';
 import { createLinnyaAiSdkInferenceCapability } from '../../ai-sdk-language-composition/orchestration/createLinnyaAiSdkInferenceCapability';
-import { linnyaProviderFailureClassifier } from './classifyLinnyaProviderFailure';
 
 const route = {
   model_id: 'model-go',
@@ -33,6 +32,7 @@ function invocation(): InferenceCapabilityInvocation {
     },
     route,
     credential: { profile: 'bearer', secret: 'fixture-secret' },
+    provider_connection_definition_id: 'opencode-go',
   };
 }
 
@@ -49,7 +49,6 @@ describe('OpenCode Go Provider failure policy', () => {
         });
       const capability = createLinnyaAiSdkInferenceCapability(route.capability_id, route.api_surface, {
         language_models: createAiSdkLanguageModelRegistry(fixtureFetch),
-        provider_failure_classifier: linnyaProviderFailureClassifier,
       });
       const events: CanonicalInferenceEvent[] = [];
       for await (const event of capability.stream(invocation())) events.push(event);
@@ -68,7 +67,6 @@ describe('OpenCode Go Provider failure policy', () => {
     }, { status: 400 });
     const capability = createLinnyaAiSdkInferenceCapability(route.capability_id, route.api_surface, {
       language_models: createAiSdkLanguageModelRegistry(fixtureFetch),
-      provider_failure_classifier: linnyaProviderFailureClassifier,
     });
     const events: CanonicalInferenceEvent[] = [];
     for await (const event of capability.stream(invocation())) events.push(event);

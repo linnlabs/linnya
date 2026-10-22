@@ -97,7 +97,10 @@ async function* streamAttempt(
   let completed = false;
 
   try {
-    for await (const originalEvent of capability.stream({ request, route: attemptRoute, credential })) {
+    for await (const originalEvent of capability.stream({
+      request, route: attemptRoute, credential,
+      provider_connection_definition_id: requestIdentity?.provider_connection_definition_id,
+    })) {
       assertInferenceEventRoute(originalEvent, request, attemptRoute);
       const projection = projectProviderFailurePolicy({
         event: originalEvent,

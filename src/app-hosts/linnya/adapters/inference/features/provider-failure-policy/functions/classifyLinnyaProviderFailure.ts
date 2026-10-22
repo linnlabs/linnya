@@ -41,11 +41,13 @@ function isOpenCodeSessionRequired(candidate: AiSdkProviderFailureCandidate): bo
 
 /** 产品错误码只在 Host 边界产生，通用 AI SDK adapter 不认识套餐或客户端接入要求。 */
 export function classifyLinnyaProviderFailure(
-  candidate: AiSdkProviderFailureCandidate
+  candidate: AiSdkProviderFailureCandidate,
+  providerConnectionDefinitionId: string | undefined
 ): AiSdkFailureProjection | undefined {
-  if (isOpenCodeSessionRequired(candidate)) {
+  if (providerConnectionDefinitionId === 'opencode-go' && isOpenCodeSessionRequired(candidate)) {
     return { kind: 'provider', code: 'opencode_session_required', retryable: false };
   }
+  if (providerConnectionDefinitionId !== 'linnya-cloud') return undefined;
   const body = candidate.response_body?.toLowerCase() ?? '';
   if (
     LINNYA_CLOUD_QUOTA_BODY_MARKERS.some(marker => body.includes(marker)) ||
@@ -56,6 +58,9 @@ export function classifyLinnyaProviderFailure(
   return undefined;
 }
 
-export const linnyaProviderFailureClassifier: AiSdkProviderFailureClassifier = {
-  classify: classifyLinnyaProviderFailure,
-};
+/** 产品身份留在Host闭包；SDK只消费本次attempt的窄分类接口。 */
+export function createLinnyaProviderFailureClassifier(
+  providerConnectionDefinitionId: string | undefined
+): AiSdkProviderFailureClassifier {
+  return { classify: candidate => classifyLinnyaProviderFailure(candidate, providerConnectionDefinitionId) };
+}

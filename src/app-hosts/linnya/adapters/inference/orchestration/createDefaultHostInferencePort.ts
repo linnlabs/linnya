@@ -18,7 +18,6 @@ import type {
 } from '../definitions/inferenceCapability';
 import { createDefaultInferenceCredentialResolver } from './createDefaultInferenceCredentialResolver';
 import { createLinnyaAiSdkLanguageDiagnosticSink } from '../features/ai-sdk-diagnostic-logging/orchestration/createLinnyaAiSdkLanguageDiagnosticSink';
-import { linnyaProviderFailureClassifier } from '../features/provider-failure-policy';
 import { createLinnyaAiSdkInferenceCapability } from '../features/ai-sdk-language-composition/orchestration/createLinnyaAiSdkInferenceCapability';
 import { createLinnyaAiSdkLanguageModelRegistry } from '../features/ai-sdk-language-composition/orchestration/createLinnyaAiSdkLanguageModelRegistry';
 import { getCurrentInferenceSessionId } from '../features/request-session';
@@ -48,6 +47,7 @@ const defaultCredentialResolver = createDefaultInferenceCredentialResolver();
 export function createDefaultHostInferencePort(
   dependencies: DefaultHostInferencePortDependencies = {}
 ): CanonicalInferencePort {
+  const catalog = dependencies.model_catalog ?? defaultModelCatalog;
   const languageModels = dependencies.language_models ?? createLinnyaAiSdkLanguageModelRegistry();
   const diagnosticSink = createLinnyaAiSdkLanguageDiagnosticSink();
   const resolveProviderConnectionId = dependencies.resolve_provider_connection_id
@@ -58,14 +58,13 @@ export function createDefaultHostInferencePort(
     ...languageModels.entries.map(entry =>
       createLinnyaAiSdkInferenceCapability(entry.capability_id, entry.surface, {
         language_models: languageModels,
-        provider_failure_classifier: linnyaProviderFailureClassifier,
         diagnostic_sink: diagnosticSink,
       })
     ),
   ]);
 
   return createHostCanonicalInferencePort({
-    model_catalog: dependencies.model_catalog ?? defaultModelCatalog,
+    model_catalog: catalog,
     capability_registry: capabilityRegistry,
     credential_resolver: dependencies.credential_resolver ?? defaultCredentialResolver,
     outbound_diagnostics: dependencies.outbound_diagnostics ?? defaultProviderOutboundDiagnostics,
@@ -74,6 +73,7 @@ export function createDefaultHostInferencePort(
       route,
       client_version: version,
       conversation_session_id: getCurrentInferenceSessionId(),
+      credential_reference: catalog.getModel(request.model_id)?.credential_reference,
       resolve_provider_connection_id: resolveProviderConnectionId,
     }),
   });

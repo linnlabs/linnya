@@ -6,7 +6,6 @@ import type {
   ResolvedInferenceAttemptRoute,
 } from '../../../definitions/inferenceCapability';
 import { createLinnyaAiSdkInferenceCapability } from '../../ai-sdk-language-composition/orchestration/createLinnyaAiSdkInferenceCapability';
-import { linnyaProviderFailureClassifier } from './classifyLinnyaProviderFailure';
 
 const route = {
   model_id: 'model-1',
@@ -37,6 +36,7 @@ function invocation(): InferenceCapabilityInvocation {
     request,
     route,
     credential: { profile: 'bearer', secret: 'fixture-secret' },
+    provider_connection_definition_id: 'linnya-cloud',
   };
 }
 
@@ -60,7 +60,6 @@ describe('Linnya Cloud Provider failure policy', () => {
       route.api_surface,
       {
         language_models: createAiSdkLanguageModelRegistry(fixtureFetch),
-        provider_failure_classifier: linnyaProviderFailureClassifier,
       }
     );
 

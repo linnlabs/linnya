@@ -26,6 +26,8 @@ export interface InferenceCapabilityInvocation {
   readonly request: CanonicalInferenceRequest;
   readonly route: ResolvedInferenceAttemptRoute;
   readonly credential?: InferenceCredential;
+  /** 只在Host内传递；不按endpoint/model名称推测，也不进入SDK route。 */
+  readonly provider_connection_definition_id?: string;
 }
 
 export interface InferenceCapability {

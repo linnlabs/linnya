@@ -2,7 +2,7 @@
 
 这里是 Linnya Host 对 canonical inference
 port 的实现边界。它只负责一次 attempt 的显式 route
-admission、capability 选择、凭据解析与事件身份校验，不执行工具、不决定模型重试/切换、不发布 Graph/Run 终态，也不保存 Provider
+admission、capability 选择、凭据解析与事件身份校验，不执行工具、不执行重试调度或模型切换、不发布 Graph/Run 终态，也不保存 Provider
 body。
 
 ## 目录与 owner
@@ -155,6 +155,11 @@ App Server 使用运行中 Provider registry；独立 Worker 在任务初始化�
 `opencode_session_required`，Renderer 显示明确接入提示；不透传 Provider 错误正文，也不把其他
 HTTP 400 猜成相同原因。Host 请求集成测试覆盖三种真实 SDK surface、跨 run/attempt 与并发会话、
 独立生成、Custom API 隔离及错误脱敏；离线测试不替代真实 Go 两轮验收。
+
+产品失败分类同样必须限定正式身份：Go会话错误只属于Go，Cloud额度错误只属于Cloud。
+Cloud用Model Catalog中宿主管理的凭据引用确认，不要求它有普通Provider配置行。
+Host将本次身份绑定为invocation-scoped classifier；共享SDK capability不持有全局产品分类器，
+SDK合同不接收Linnya连接字段。相同URL、endpoint名或错误文案不能让BYOK冒充产品服务。
 
 2026-10-19 使用应用内已有的 OpenCode Go `deepseek-v4.1-flash` 配置，经源码 Host 装配完成
 真实两轮工具闭环：工具调用、工具结果回放、最终正文与 Provider usage 均成功，恰好两次请求。

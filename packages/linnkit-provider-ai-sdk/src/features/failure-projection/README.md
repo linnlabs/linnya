@@ -17,6 +17,10 @@
 - 不生成 Host UI 文案，也不维护 Provider 产品目录；
 - 不按 URL、模型名或厂商名猜测错误语义。
 
+产品classifier由Host逐次通过`AiSdkInferenceCapabilityInvocation`绑定，不是共享capability
+的构造依赖。它只持有Host选择的窄规则，不要求本package认识产品连接、账号或目录；并发
+attempt各自独立，省略时仅执行通用分类。
+
 新增 AI SDK 解码后错误形状时，只修改本 feature、对应 conformance fixture 和本 README。若需要同步修改 Linnkit、Host UI 或 Model Catalog，必须先复核边界是否泄漏。
 
 Stream 失败必须先区分 owner：`AiSdkHostStreamInvariantError` 表示 Host 已经证明的 part 状态机违规，固定不可重试；普通上游 async stream rejection 没有这种证明，投影为可重试 transport failure。AI SDK timeout abort 的用户取消判别属于相邻 `stream-reliability` feature，不允许在这里通过错误 message 猜 timeout。

@@ -104,8 +104,6 @@ export interface AiSdkInferenceCapabilityDependencies {
   readonly language_models: AiSdkLanguageModelRegistry;
   /** 仅供 Host composition/test 注入；不是 Provider 或模型字段。 */
   readonly stream_idle_timeout_ms?: number;
-  /** 产品级 Provider 错误语义由 Host 注入，adapter 不依赖任何产品或账号体系。 */
-  readonly provider_failure_classifier?: AiSdkProviderFailureClassifier;
   /** adapter 只发布脱敏诊断事件，日志实现与文案由 Host 决定。 */
   readonly diagnostic_sink?: AiSdkLanguageDiagnosticSink;
 }
@@ -134,7 +132,7 @@ export function createAiSdkInferenceCapability(
   return {
     id,
     api_surface: surface,
-    async *stream({ request, route, credential }) {
+    async *stream({ request, route, credential, provider_failure_classifier }) {
       assertAiSdkInferenceRouteMatchesCapability(route, id, surface);
       const requestDiagnostic: AiSdkRequestDiagnosticSummary =
         projectAiSdkRequestDiagnostic(request);
@@ -442,7 +440,7 @@ export function createAiSdkInferenceCapability(
                     part.error,
                     request.signal,
                     'provider_stream',
-                    dependencies.provider_failure_classifier,
+                    provider_failure_classifier,
                     dependencies.diagnostic_sink,
                     diagnosticContext,
                   )
@@ -488,7 +486,7 @@ export function createAiSdkInferenceCapability(
               projectionError,
               request.signal,
               'provider_stream',
-              dependencies.provider_failure_classifier,
+              provider_failure_classifier,
               dependencies.diagnostic_sink,
               diagnosticContext,
               part.type,
@@ -517,7 +515,7 @@ export function createAiSdkInferenceCapability(
             error,
             request.signal,
             failurePhase,
-            dependencies.provider_failure_classifier,
+            provider_failure_classifier,
             dependencies.diagnostic_sink,
             diagnosticContext,
           )

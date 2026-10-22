@@ -6,9 +6,24 @@
 
 ## 两个介入点
 
-- `classifyLinnyaProviderFailure`：在 package 的窄扩展点识别产品错误，例如 Go 缺少会话身份、Cloud 额度拒绝。
+- `createLinnyaProviderFailureClassifier`：按本次 attempt 的正式连接身份绑定窄 classifier。
+  只有 Go 识别缺少会话身份，只有 Linnya Cloud 识别产品额度拒绝；其它连接保留通用分类。
 - `projectProviderFailurePolicy`：在 SDK 完成精确分类、Host 校验事件 route 后，对残余失败投影有效重试资格。
   正式连接身份来自现有 request identity，不进入 SDK，也不按模型名、URL 或 endpoint 前缀推断。
+
+## 身份与并发边界
+
+普通 Provider 从已提交配置归属解析 connection definition；Cloud 不一定存在普通配置行，
+由 Model Catalog 中 `host_managed/linnya-cloud` 凭据引用确认身份。BYOK 的 endpoint、URL、
+model 或 stored-secret 名字相同，不能因此被当作 Cloud。
+
+Host 只解析一次 request identity，把其中的连接身份传给 Host capability composition。
+composition 为每次调用创建仅捕获身份的 classifier 闭包，并通过 SDK 的 invocation 扩展点传入。
+SDK 不接收产品连接字段，也不把 classifier 保存成共享 capability 的全局依赖；并发 Cloud、Go
+及 Custom API 共用同一 codec 时不会串用规则。该改变不重建 capability，不重置其 trace 诊断计数。
+
+HTTP 和已解码流各自保持原有可识别语义；非本产品的相同错误类型/文案不获得产品错误码。
+classifier 只在当前内存调用中处理既有候选字段，不返回或记录 Provider 正文。
 
 ## 未知 HTTP400 试用
 
@@ -39,3 +54,7 @@ SDK `failure_projected` 保留原始分类。`recordProviderFailurePolicyApplica
 [`opencodeGoRetryPolicy.integration.test.ts`](../../__tests__/opencodeGoRetryPolicy.integration.test.ts)
 通过真实 SDK、本地响应和默认 caller 验证次数/等待、身份隔离、明确拒绝优先、取消、
 失败片段撤回及脱敏审计。原有 request identity、持久重试通知和恢复回归仍分别归各 owner。
+
+[`providerFailureScope.integration.test.ts`](../../__tests__/providerFailureScope.integration.test.ts)
+使用共享真实 SDK 的并发调用验证 Cloud/Go/Custom/缺归属的 HTTP 与流式隔离、Cloud宿管凭据身份，
+以及同 URL、模型和 endpoint 名称不产生产品归属。

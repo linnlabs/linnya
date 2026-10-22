@@ -10,7 +10,7 @@ describe('classifyLinnyaProviderFailure', () => {
     const failure = classifyLinnyaProviderFailure({
       phase: 'provider_call',
       ...candidate,
-    });
+    }, 'linnya-cloud');
 
     expect(failure).toEqual({
       kind: 'provider',
@@ -29,7 +29,7 @@ describe('classifyLinnyaProviderFailure', () => {
     { kind: 'decoded_stream', type: 'missingsessionid' },
   ] satisfies readonly Omit<AiSdkProviderFailureCandidate, 'phase'>[])(
     '只按结构化类型识别 OpenCode 缺失会话标识且不传播正文', candidate => {
-      expect(classifyLinnyaProviderFailure({ phase: 'provider_call', ...candidate })).toEqual({
+      expect(classifyLinnyaProviderFailure({ phase: 'provider_call', ...candidate }, 'opencode-go')).toEqual({
         kind: 'provider', code: 'opencode_session_required', retryable: false,
       });
     }
@@ -46,7 +46,7 @@ describe('classifyLinnyaProviderFailure', () => {
     { kind: 'decoded_stream', status_code: 401, type: 'MissingSessionID' },
   ] satisfies readonly Omit<AiSdkProviderFailureCandidate, 'phase'>[])(
     '其它拒绝不被猜测成会话标识缺失', candidate => {
-      expect(classifyLinnyaProviderFailure({ phase: 'provider_call', ...candidate })).toBeUndefined();
+      expect(classifyLinnyaProviderFailure({ phase: 'provider_call', ...candidate }, 'opencode-go')).toBeUndefined();
     }
   );
 });
