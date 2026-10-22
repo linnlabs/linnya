@@ -18,9 +18,22 @@ html, body {
   background-color: var(--color-bg-default);
   border: none !important;
   outline: none !important;
-  /* 让 macOS 字体渲染更清晰纤细 */
+}
+
+/*
+ * 字体抗锯齿：让 macOS 字体渲染更纤细。默认开启，设置 → 外观可关闭。
+ * 只有属性为 off 才关闭，属性缺失时（启动首帧）也是开启，不会闪。
+ */
+html:not([data-linnya-font-smoothing='off']),
+html:not([data-linnya-font-smoothing='off']) body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html[data-linnya-font-smoothing='off'],
+html[data-linnya-font-smoothing='off'] body {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
 }
 
 /* 移除列表样式 */

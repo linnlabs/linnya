@@ -4,6 +4,7 @@
 
 export { useGlobalKeyboardShortcuts } from './useGlobalKeyboardShortcuts';
 export { useThemeManager } from './useThemeManager';
+export { useFontSmoothingManager } from './useFontSmoothingManager';
 export { useSidebarAnimationEvents } from './useSidebarAnimationEvents';
 export { useCssVariables } from './useCssVariables';
 export { useStartupWorkspaceScope } from './useStartupWorkspaceScope';

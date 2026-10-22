@@ -125,6 +125,7 @@ import { CharacterCount } from '@linnya/renderer-ui';
 import { 
   useGlobalKeyboardShortcuts, 
   useThemeManager, 
+  useFontSmoothingManager,
   useSidebarAnimationEvents,
   useCssVariables,
   useStartupWorkspaceScope,
@@ -175,6 +176,7 @@ const notificationReservedTrailingWidth = computed(() => {
 // 初始化 composables
 useGlobalKeyboardShortcuts();
 useThemeManager();
+useFontSmoothingManager();
 useStartupWorkspaceScope();
 useSidebarSelectionVisibility();
 const { emitSidebarTransitionEnd } = useSidebarAnimationEvents();
