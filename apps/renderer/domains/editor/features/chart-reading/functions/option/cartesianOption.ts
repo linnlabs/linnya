@@ -435,7 +435,8 @@ export function buildCartesianOption(view: ChartReadingView, domains: ChartDomai
     grid: {
       left: 4,
       right: rightMargin,
-      top: hasCaption && !horizontal ? 34 : 12,
+      // 横向柱的数值标签位于右侧、轴标题位于下方，无需顶部数字标签的预留空间。
+      top: horizontal ? 4 : hasCaption ? 34 : 12,
       bottom: spec.categoryAxis?.title || (horizontal && spec.valueAxis?.title) ? 36 : 6,
       // ECharts 6：坐标轴刻度文字计入版面，等价于旧版 containLabel。
       outerBoundsMode: 'same',

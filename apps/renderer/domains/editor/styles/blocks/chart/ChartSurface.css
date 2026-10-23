@@ -5,7 +5,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  /* 绘图区本身已为坐标标签留白，标题下方只保留紧凑的内容间距。 */
+  gap: var(--space-1);
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
@@ -169,7 +170,8 @@
 }
 
 .chart-surface__footnote {
-  margin: 0;
+  /* 独立说明仍保留分组留白，不跟随标题与绘图区一起收紧。 */
+  margin: var(--space-2) 0 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-footnote);
   line-height: var(--line-height-footnote);
@@ -180,7 +182,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin: 0;
+  margin: var(--space-2) 0 0;
   padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2-5);
   border-radius: var(--radius-md);
   background: var(--color-bg-subtle);
