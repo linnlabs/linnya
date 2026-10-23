@@ -4,7 +4,7 @@ description: Research, verify, and write in-depth reports and long-form analysis
 compatibility: Linnya agents with skill, Web, Knowledge, Workspace file tools and Shell. Uses only tools available in the current session.
 metadata:
   author: linnya
-  version: "1.9"
+  version: "1.10"
 ---
 
 # Deep Research
@@ -17,7 +17,7 @@ metadata:
 
 区分三类任务：开放研究可检索补查；固定材料编辑只能重组、解释和计算给定资料，不联网或用常识补造缺失事实；研究更新先读旧正文、依据与计算，定位受新材料影响的判断，保留未受影响部分。深入研究可以得到解释、不确定或预测，不必给行动建议；决策另需用户的目标、约束、选项与代价。
 
-通过 `skill` 的 `read_resource` 按需读取资源：写作/改稿在调查足以支持成文后、完整初稿前读 [写作资料包入口](references/article-craft.md)，再按索引选择相关文体卡；比较解释、分析立场利益、间接线索、因果、计算或预测，在分析前读 [立场、线索与解释建模](references/modeling.md)；市场规模、竞争、定价或财务驱动量再读 [商业分析](references/business-analysis.md)；正文需要图表时读 [图表：选图、配色与证据纪律](references/charts.md)。激活入口不等于读过资源，不完整跑咨询清单。
+通过 `skill` 的 `read_resource` 按需读取资源：写作/改稿在调查足以支持成文后、完整初稿前读 [写作资料包入口](references/article-craft.md)，再按索引选择相关文体卡；比较解释、分析立场利益、间接线索、因果、计算或预测，在分析前读 [立场、线索与解释建模](references/modeling.md)；市场规模、竞争、定价或财务驱动量再读 [商业分析](references/business-analysis.md)；使用统计图读 [图表：选图、配色与证据纪律](references/charts.md)，使用照片、作品图或示意图读 [图片：取得、插入与说明](references/images.md)。激活入口不等于读过资源，不完整跑咨询清单。
 
 ## 2. 探索现状，再把未知变成查找任务
 
@@ -50,6 +50,8 @@ metadata:
 ## 4. 按读者理解路径成文
 
 根据问题、读者、用途、实际材料与证据状态选择结构和语言，见写作资料包。报告式的现状、机制、结论及结论先行都是合法选项，不是所有文章的默认顺序。将简短写作方向记在已有研究记录，再完成正文；不强制统一章节。必要概念的最低含义应在依赖它推理前说明。
+
+成文时判断哪些内容值得直接看见：数量的变化与比较用图表，外观、空间关系或作品细节用来源图片。材料可靠且有助于理解时，用普通文件工具把图实际插入正文，在相邻段落说明看什么、它与论点有什么关系，并保留来源。按需读取上面的图表或图片资源，再从 `linnya-markdown` 读取对应语法。图的取舍和数量随内容决定；没有合适材料时保留文字或表格并如实说明。保存后回读图的位置、说明、来源及数据或图片身份。
 
 按所选写法组织材料、段落与篇幅。保留有新作用的回扣，压缩无增量重讲；把篇幅留给真正影响读者理解和判断的部分。不靠堆术语、扩字数或故意改变句长制造“深度”，也不以删除反证换流畅。
 

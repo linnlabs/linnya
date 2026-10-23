@@ -96,7 +96,7 @@ describe('agent skill exposure', () => {
     expect(prompt).toContain('name="linnya-markdown"');
   });
 
-  it('discovers the builtin Linnya Markdown skill; its only resource is the chart reference', () => {
+  it('discovers the builtin Linnya Markdown skill; its chart and image resources are readable', () => {
     invalidateSkillCache();
 
     expect(buildSkillCatalogXml()).toContain('name="linnya-markdown"');
@@ -104,7 +104,8 @@ describe('agent skill exposure', () => {
     expect(skill.body).toContain('<!-- linnya-annotation:v1 ... -->');
     expect(skill.body).toContain('Do not handcraft the canonical JSON');
     expect(skill.body).toContain('references/chart.md');
-    expect(skill.resources).toEqual(['references/chart.md']);
+    expect(skill.resources).toEqual(['references/chart.md', 'references/image.md']);
+    expect(readSkillResource('linnya-markdown', 'references/image.md')).toContain('conversation:/');
     expect(readSkillResource('linnya-markdown', 'references/chart.md')).toContain('`linnya-chart`');
   });
 
