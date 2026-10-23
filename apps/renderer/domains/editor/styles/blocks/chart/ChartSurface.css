@@ -1,6 +1,6 @@
 /* ChartSurface：图表的阅读外壳。颜色、字阶、间距、圆角全部取自 renderer-ui token；
    色系是数据语义色，由 TS 主题注入到 ECharts，不在这里出现。
-   外壳没有边框和底色：图直接落在页面上，与正文同宽，选中态由块外层描出。 */
+   外壳没有边框和底色：图直接落在页面上，与正文同宽，选中提示由 RootBlock 统一提供。 */
 .chart-surface {
   position: relative;
   display: flex;
@@ -10,7 +10,8 @@
   width: 100%;
   min-width: 0;
   margin: 0;
-  padding: var(--space-2) var(--space-1);
+  /* 与标题块从相同内容起点排版，不在标题之前重复叠加垂直留白。 */
+  padding: 0 var(--space-0-5);
   border-radius: var(--radius-lg);
   color: var(--color-text-primary);
   font-size: var(--font-size-body);

@@ -1,16 +1,8 @@
-/* 图表块 NodeView 外壳：版面间距、选中态与无法显示的提示。 */
+/* 图表块不叠加图片式描边；块间距与选中提示统一由 RootBlock 拥有。 */
 .chart-block-node-view {
   position: relative;
-  margin: var(--space-2) 0;
+  margin: 0;
   border-radius: var(--radius-lg);
-  transition: box-shadow var(--duration-medium) var(--ease-standard);
-}
-
-/* 与图片块一致：选中时描出真实图表外壳，而不是改变图表尺寸。 */
-.chart-block-node-view.ProseMirror-selectednode,
-.root-block-outer.is-block-selected .chart-block-node-view {
-  outline: 2px solid var(--color-accent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 20%, transparent);
 }
 
 .chart-block-node-view__invalid {
