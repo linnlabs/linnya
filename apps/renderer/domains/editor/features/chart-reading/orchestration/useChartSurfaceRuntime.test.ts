@@ -3,7 +3,7 @@ import { createApp, defineComponent, h, nextTick, ref, shallowRef } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme'
-import type { MarkdownChartPalette } from '@app/schemas'
+import { admitMarkdownChartFenceBody, encodeMarkdownChartFence, type MarkdownChartPalette } from '@app/schemas'
 import { chartFixture, chartTestTheme } from '../testing/chartTestFixtures'
 import { useChartSurfaceRuntime } from './useChartSurfaceRuntime'
 import { useChartReadingStore } from '../store/chartReadingStore'
@@ -133,4 +133,33 @@ it('类目聚焦后图例高亮转换成可见位置，隐藏系列不能再被�
   await settle()
   chart.runtime.actions.highlight('营收')
   expect(controller.highlight).toHaveBeenLastCalledWith(null)
+})
+
+it('复制 Markdown 使用最新完整规格，筛选不丢数据，围栏可重新准入', async () => {
+  const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue()
+  vi.stubGlobal('navigator', { clipboard: { writeText } })
+  const chart = mountChart()
+  chart.spec.value = chartFixture('line', { title: '包含 ``` 的标题', palette: 'mist' })
+  chart.runtime.actions.toggleSeries('营收')
+  await settle()
+
+  expect(await chart.runtime.copyMarkdown()).toBe(true)
+  const text = writeText.mock.calls[0]?.[0]
+  expect(text).toBe(encodeMarkdownChartFence(chart.spec.value))
+  if (!text) throw new Error('未写入剪贴板')
+  const body = text.split('\n').slice(1, -1).join('\n')
+  const parsed = admitMarkdownChartFenceBody(body)
+  expect(parsed.ok && parsed.spec).toEqual(chart.spec.value)
+})
+
+it('剪贴板拒绝 Markdown 写入时报告失败，不改变图表或阅读状态', async () => {
+  vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } })
+  const report = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const chart = mountChart()
+  chart.runtime.actions.toggleSeries('营收')
+  const before = chart.runtime.state.value
+  expect(await chart.runtime.copyMarkdown()).toBe(false)
+  expect(chart.runtime.state.value).toBe(before)
+  expect(report).toHaveBeenCalledOnce()
+  report.mockRestore()
 })

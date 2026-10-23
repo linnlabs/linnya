@@ -35,42 +35,41 @@
         role="toolbar"
         :aria-label="editorMessage('editor.chart.toolbar.aria')"
       >
-        <slot name="actions" />
-        <IconButton
-          size="xs"
-          :label="editorMessage('editor.chart.action.viewData')"
-          :active="panel === 'data'"
-          :aria-pressed="panel === 'data'"
-          @click.stop="togglePanel('data')"
-        >
-          <TableIcon />
-        </IconButton>
-        <IconButton
-          v-if="hasReadingOptions"
-          size="xs"
-          :label="editorMessage('editor.chart.action.readingOptions')"
-          :active="panel === 'options'"
-          :aria-pressed="panel === 'options'"
-          @click.stop="togglePanel('options')"
-        >
-          <FilterIcon />
-        </IconButton>
         <IconButton
           v-if="!view.isDefault"
-          size="xs"
           :label="editorMessage('editor.chart.action.resetView')"
           @click.stop="actions.reset()"
         >
           <RefreshIcon />
         </IconButton>
-        <IconButton
-          size="xs"
-          :label="editorMessage('editor.chart.action.copyImage')"
+        <CustomSelect
+          :model-value="null"
+          :options="copyOptions"
+          :title="editorMessage('editor.chart.action.copy')"
+          :trigger-aria-label="editorMessage('editor.chart.action.copy')"
+          semantic-role="menu"
+          variant="minimal"
+          :bordered="false"
           :disabled="copying"
-          @click.stop="onCopyImage"
+          min-width="max-content"
+          :class-names="{
+            trigger: 'chart-surface__copy-trigger',
+            selectedValue: 'chart-surface__copy-value',
+            options: 'chart-surface__copy-options',
+          }"
+          @click.stop
+          @update:model-value="onCopy"
         >
-          <ImageIcon />
-        </IconButton>
+          <template #arrow-icon>
+            <span
+              class="chart-surface__copy-icons"
+              aria-hidden="true"
+            >
+              <CopyIcon />
+              <ChevronIcon direction="right" />
+            </span>
+          </template>
+        </CustomSelect>
       </div>
     </header>
 
@@ -132,7 +131,7 @@
       {{ editorMessage('editor.chart.radar.scale', { max: spec.radarScale.max }) }}
     </p>
     <p
-      v-if="!view.isDefault && panel !== 'options'"
+      v-if="!view.isDefault"
       class="chart-surface__view-note"
     >
       <span>{{ editorMessage('editor.chart.view.customNote') }}</span>
@@ -144,38 +143,18 @@
         {{ editorMessage('editor.chart.action.resetView') }}
       </BaseButton>
     </p>
-
-    <ChartReadingOptions
-      v-if="panel === 'options'"
-      :spec="spec"
-      :view="view"
-      :legend="legend"
-      :rangeable="rangeable"
-      :value-rangeable="valueRangeable"
-      @toggle-series="actions.toggleSeries"
-      @toggle-emphasis="actions.toggleEmphasis"
-      @set-category-range="actions.setCategoryRange"
-      @set-value-ranges="actions.setValueRanges"
-      @reset="actions.reset()"
-    />
-    <ChartDataTable
-      v-if="panel === 'data'"
-      :spec="spec"
-    />
   </figure>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef, useId } from 'vue'
-import { BaseButton, IconButton } from '@linnya/renderer-ui'
-import { FilterIcon, ImageIcon, RefreshIcon, TableIcon } from '@linnya/renderer-ui/icons'
+import { computed, ref, toRef } from 'vue'
+import { BaseButton, CustomSelect, IconButton, type CustomSelectOption } from '@linnya/renderer-ui'
+import { ChevronIcon, CopyIcon, RefreshIcon } from '@linnya/renderer-ui/icons'
 import type { MarkdownChartSpec } from '@app/schemas'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
 import { useChartSurfaceRuntime } from '../orchestration/useChartSurfaceRuntime'
 import type { ChartReadingKey } from '../definitions/chartReadingState'
-import ChartDataTable from './ChartDataTable.vue'
 import ChartLegend from './ChartLegend.vue'
-import ChartReadingOptions from './ChartReadingOptions.vue'
 
 const props = withDefaults(defineProps<{
   spec: MarkdownChartSpec
@@ -193,14 +172,14 @@ const props = withDefaults(defineProps<{
 
 const { editorMessage } = useEditorLocalization()
 const plotRef = ref<HTMLElement | null>(null)
-const panel = ref<'none' | 'data' | 'options'>('none')
 const copying = ref(false)
-const instanceId = useId()
+// Tiptap 的 NodeView 各自挂载 Vue 根，useId 只能保证单个应用内唯一，会让多图关联到首图标题。
+const instanceId = `chart-${crypto.randomUUID()}`
 const titleId = `${instanceId}-title`
 const descriptionId = `${instanceId}-description`
 
 const {
-  view, legend, legendPosition, status, plotHeight, rangeable, valueRangeable, hasReadingOptions, actions, copyImage,
+  view, legend, legendPosition, status, plotHeight, actions, copyImage, copyMarkdown,
 } = useChartSurfaceRuntime({
   spec: toRef(props, 'spec'),
   readingKey: toRef(props, 'readingKey'),
@@ -210,6 +189,10 @@ const {
 })
 
 const hasHeading = computed(() => Boolean(props.spec.title || props.spec.description))
+const copyOptions = computed<readonly CustomSelectOption<'image' | 'markdown'>[]>(() => [
+  { value: 'image', text: editorMessage('editor.chart.action.copyImage') },
+  { value: 'markdown', text: editorMessage('editor.chart.action.copyMarkdown') },
+])
 // 图例的 DOM 顺序与视觉顺序一致：上/左在绘图区之前，下/右在其后。
 const legendBefore = computed(() => (legendPosition.value === 'top' || legendPosition.value === 'left' ? legendPosition.value : null))
 const legendAfter = computed(() => (legendPosition.value === 'bottom' || legendPosition.value === 'right' ? legendPosition.value : null))
@@ -221,14 +204,11 @@ const allSeriesHidden = computed(() =>
   && props.spec.chartType !== 'doughnut'
   && view.value.seriesVisible.every(visible => !visible))
 
-function togglePanel(next: 'data' | 'options'): void {
-  panel.value = panel.value === next ? 'none' : next
-}
-
-async function onCopyImage(): Promise<void> {
+async function onCopy(format: 'image' | 'markdown'): Promise<void> {
   copying.value = true
   try {
-    await copyImage()
+    if (format === 'image') await copyImage()
+    else await copyMarkdown()
   } finally {
     copying.value = false
   }

@@ -31,20 +31,7 @@
       :reading-key="readingKey"
       :active="blockActivation.isUiActive.value"
       :transitions="!revision.pending"
-    >
-      <template
-        v-if="editor.isEditable && revision.editable"
-        #actions
-      >
-        <IconButton
-          size="xs"
-          :label="editorMessage('editor.chart.action.edit')"
-          @click.stop="openEditor(false)"
-        >
-          <EditIcon />
-        </IconButton>
-      </template>
-    </ChartSurface>
+    />
     <p
       v-else-if="revision.showBaselineNote"
       class="chart-block-node-view__note"
@@ -73,8 +60,7 @@
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
-import { BaseButton, IconButton } from '@linnya/renderer-ui'
-import { EditIcon } from '@linnya/renderer-ui/icons'
+import { BaseButton } from '@linnya/renderer-ui'
 import { MarkdownChartSpecSchema, type MarkdownChartSpec } from '@app/schemas'
 import { useCurrentBlockActivation } from '../../../ui/composables/useCurrentBlockActivation'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'

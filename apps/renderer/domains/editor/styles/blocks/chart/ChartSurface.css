@@ -55,6 +55,8 @@
 }
 
 .chart-surface__actions {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -66,12 +68,41 @@
   transition: opacity var(--duration-medium) var(--ease-standard);
 }
 
-/* 悬停、键盘聚焦、自定义视图或面板打开时出现；没有 hover 的设备始终可见。 */
+/* 悬停、键盘聚焦、自定义视图或菜单打开时出现；没有 hover 的设备始终可见。 */
 .chart-surface:hover .chart-surface__actions,
 .chart-surface:focus-within .chart-surface__actions,
 .chart-surface.is-custom-view .chart-surface__actions,
-.chart-surface__actions:has([aria-pressed='true']) {
+.chart-surface__actions:has([aria-expanded='true']) {
   opacity: 1;
+}
+
+/* 通过 CustomSelect 的公开 classNames 定制触发器：与其他块的 sm 图标按钮同为 24px 高。 */
+.chart-surface__actions .chart-surface__copy-trigger {
+  height: var(--space-6);
+  min-width: 0;
+  padding: 0 var(--space-1);
+}
+
+.chart-surface__actions .chart-surface__copy-value {
+  display: none;
+}
+
+.chart-surface__copy-icons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-0-5);
+}
+
+.chart-surface__copy-icons > svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 使用公开 options 映射：菜单向左展开，宽度随文案自然撑开，不跟随窄图标触发器。 */
+.chart-surface__copy-options {
+  right: 0;
+  left: auto;
+  width: max-content;
 }
 
 @media (hover: none) {

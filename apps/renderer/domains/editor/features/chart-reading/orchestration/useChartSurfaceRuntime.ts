@@ -10,7 +10,7 @@
  */
 
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, unref, watch, type Ref } from 'vue'
-import { serializeMarkdownChartSpec, type MarkdownChartSpec } from '@app/schemas'
+import { encodeMarkdownChartFence, serializeMarkdownChartSpec, type MarkdownChartSpec } from '@app/schemas'
 import { useNotificationStore } from '@/app/notification'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
 import { DEFAULT_CHART_READING_STATE, type ChartReadingKey, type ChartReadingState } from '../definitions/chartReadingState'
@@ -251,6 +251,19 @@ export function useChartSurfaceRuntime(options: UseChartSurfaceRuntimeOptions) {
     }
   }
 
+  /** 复制完整 canonical 围栏；筛选、聚焦等阅读状态不能改变粘贴后的数据。 */
+  async function copyMarkdown(): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(encodeMarkdownChartFence(options.spec.value))
+      notifications.show(editorMessage('editor.chart.toast.markdownCopied'), 'success', 2000)
+      return true
+    } catch (error) {
+      console.error('[ChartSurface] 复制图表 Markdown 失败', error)
+      notifications.show(editorMessage('editor.chart.toast.markdownCopyFailed'), 'error', 3000)
+      return false
+    }
+  }
+
   return {
     state,
     view,
@@ -264,5 +277,6 @@ export function useChartSurfaceRuntime(options: UseChartSurfaceRuntimeOptions) {
     hasReadingOptions,
     actions,
     copyImage,
+    copyMarkdown,
   }
 }
