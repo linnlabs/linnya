@@ -1,6 +1,6 @@
 /**
  * @file chartImageComposition.ts
- * @description 复制为图片时的整幅构图：标题、说明、图表、图例与量尺脚注。
+ * @description 复制为图片时的整幅构图：标题、说明、图表、图例与量尺脚注。数字用等宽字形，刻度与数值上下对齐。
  *
  * 外部应用（文档、聊天、幻灯片）拿到的是一张自带语境的图，而不是缺少标题和图例的一块画布。
  * 构图是纯函数：文本测量由调用方注入，因此换行与高度可以确定性地测试。
@@ -64,15 +64,17 @@ export function wrapText(text: string, maxWidth: number, fontSize: number, fontW
   return lines
 }
 
+/** 图例键与界面一致：条形/圆点是填充 + 描线轮廓，线键直接用描线色。 */
 function legendKey(item: ChartLegendItem, x: number, y: number): string {
-  const color = escapeXml(item.color)
+  const fill = escapeXml(item.fill)
+  const ink = escapeXml(item.ink)
   switch (item.shape) {
     case 'bar':
-      return `<rect x="${x}" y="${y - 5}" width="10" height="10" rx="2" fill="${color}"/>`
+      return `<rect x="${x + 0.5}" y="${y - 4.5}" width="9" height="9" rx="2" fill="${fill}" stroke="${ink}" stroke-width="1"/>`
     case 'dot':
-      return `<circle cx="${x + 5}" cy="${y}" r="4" fill="${color}"/>`
+      return `<circle cx="${x + 5}" cy="${y}" r="3.5" fill="${fill}" stroke="${ink}" stroke-width="1"/>`
     default:
-      return `<rect x="${x}" y="${y - 1.5}" width="14" height="3" rx="1.5" fill="${color}"/>`
+      return `<rect x="${x}" y="${y - 1.5}" width="14" height="3" rx="1.5" fill="${ink}"/>`
   }
 }
 
@@ -126,7 +128,7 @@ export function composeChartImage(input: ChartImageCompositionInput): ChartImage
   const height = y + PADDING
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"`,
-    ` font-family="${escapeXml(theme.fontFamily)}">`,
+    ` font-family="${escapeXml(theme.fontFamily)}" style="font-variant-numeric:tabular-nums">`,
     `<rect width="${width}" height="${height}" fill="${escapeXml(theme.surface)}"/>`,
     ...parts,
     '</svg>',

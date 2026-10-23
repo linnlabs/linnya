@@ -3,7 +3,7 @@
  * 数据是固定、可复算的研究风格样例，覆盖长中文类目、小数/百分比、负值和大数。
  */
 
-import { admitMarkdownChartSpec, type MarkdownChartSpec, type MarkdownChartType } from '@app/schemas'
+import { admitMarkdownChartSpec, type MarkdownChartPalette, type MarkdownChartSpec, type MarkdownChartType } from '@app/schemas'
 import { baseChartTheme, type ChartScheme, type ChartThemeTokens } from '../definitions/chartTheme'
 import type { ChartRenderContext } from '../definitions/chartRender'
 
@@ -82,8 +82,8 @@ export function chartFixture(type: MarkdownChartType, patch: Record<string, unkn
   return result.spec
 }
 
-export function chartTestTheme(scheme: ChartScheme = 'light'): ChartThemeTokens {
-  return baseChartTheme(scheme)
+export function chartTestTheme(scheme: ChartScheme = 'light', palette?: MarkdownChartPalette): ChartThemeTokens {
+  return baseChartTheme(scheme, palette)
 }
 
 export function chartTestContext(overrides: Partial<ChartRenderContext> = {}): ChartRenderContext {

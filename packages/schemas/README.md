@@ -180,6 +180,9 @@ manifest schema 只定义静态合同。插件加载、依赖解析、权限执�
 统一失败 `MarkdownChartSpecInvalidError`（`MARKDOWN_CHART_SPEC_INVALID`）以及供渲染使用的只读展平视图 `MarkdownChartSpecReadView`。
 后端 schema、Editor、Agent 写入和 Slides 共用它们，渲染库配置不进入规格。
 
+外观只有一个规格字段：可选的 `palette`（`verdant` | `warm` | `aqua`，默认 `verdant`）选择整张图的色系；canonical 形态省略默认值，系列与逐点的显式颜色优先。
+填充加描线的“柔彩”样式是 Renderer 的统一外观，不是规格字段，也不由 Agent 选择。新增色系先在这里扩展枚举，再在 Renderer 的 `chartTheme.ts` 补色值并通过它的色值合同测试。
+
 `@app/schemas/chart-number-format` 拥有图表数字格式（`General`、`0.0`、`#,##0`、`0.0%`、`0.0"单位"`）的识别与格式化；百分比格式把输入视为比例。
 Slides 与 Markdown 图表共用，不再各留一份实现。准入上限为发布合同：已存合法规格必须始终可读回，不得直接收紧。
 

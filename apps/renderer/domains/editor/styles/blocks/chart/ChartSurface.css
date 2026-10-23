@@ -1,5 +1,6 @@
 /* ChartSurface：图表的阅读外壳。颜色、字阶、间距、圆角全部取自 renderer-ui token；
-   色板是数据语义色，由 TS 主题注入到 ECharts，不在这里出现。 */
+   色系是数据语义色，由 TS 主题注入到 ECharts，不在这里出现。
+   外壳没有边框和底色：图直接落在页面上，与正文同宽，选中态由块外层描出。 */
 .chart-surface {
   position: relative;
   display: flex;
@@ -9,10 +10,8 @@
   width: 100%;
   min-width: 0;
   margin: 0;
-  padding: var(--space-4);
-  border: var(--border-width-hairline) solid var(--color-border-light);
+  padding: var(--space-2) var(--space-1);
   border-radius: var(--radius-lg);
-  background: var(--color-bg-surface);
   color: var(--color-text-primary);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
@@ -104,6 +103,8 @@
 .chart-surface__plot {
   width: 100%;
   height: var(--chart-plot-height);
+  /* 刻度与数值等宽对齐：不同位数的数字上下对得齐。 */
+  font-variant-numeric: tabular-nums;
 }
 
 .chart-surface__notice {

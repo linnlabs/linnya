@@ -1,21 +1,22 @@
 /**
  * @file readChartTheme.ts
- * @description 从当前 DOM 解析图表主题：色板按亮/暗选择，其余颜色读取 renderer-ui 的语义 token。
+ * @description 从当前 DOM 解析图表主题：色系按亮/暗与规格的 `palette` 选择，其余颜色读取 renderer-ui 的语义 token。
  *
  * 样式只在挂载、主题切换和导出时读取一次；解析结果是不可变的纯值，option 构建不再触碰 DOM。
  * CSS 颜色（含 `color-mix()`）统一经 canvas 解析为 rgba，保证 ECharts 能够识别。
  */
 
 import { RENDERER_UI_THEME_ATTRIBUTE, type RendererUiTheme } from '@linnya/renderer-ui/theme'
+import { MARKDOWN_CHART_DEFAULT_PALETTE, type MarkdownChartPalette } from '@app/schemas'
 import {
-  CHART_CATEGORICAL_PALETTE,
+  CHART_PALETTES,
   FALLBACK_CHART_THEME,
   baseChartTheme,
   type ChartScheme,
   type ChartThemeTokens,
 } from '../definitions/chartTheme'
 
-/** 月白蓝是用户显式选择的浅色变体，与 light 使用同一组亮色色板。 */
+/** 月白蓝是用户显式选择的浅色变体，与 light 使用同一组亮色色系。 */
 export function chartSchemeOfTheme(theme: string | null): ChartScheme {
   return theme === 'dark' ? 'dark' : 'light'
 }
@@ -73,11 +74,15 @@ export function sanitizeFontFamily(fontFamily: string): string {
   return fontFamily.replace(/"/g, "'")
 }
 
-export function resolveChartTheme(host: Element, scheme: ChartScheme = readActiveChartScheme(host.ownerDocument)): ChartThemeTokens {
+export function resolveChartTheme(
+  host: Element,
+  scheme: ChartScheme = readActiveChartScheme(host.ownerDocument),
+  palette: MarkdownChartPalette = MARKDOWN_CHART_DEFAULT_PALETTE,
+): ChartThemeTokens {
   const doc = host.ownerDocument
   const fallback = FALLBACK_CHART_THEME[scheme]
   const view = doc.defaultView
-  if (!view) return baseChartTheme(scheme)
+  if (!view) return baseChartTheme(scheme, palette)
 
   const style = view.getComputedStyle(host)
   return {
@@ -86,12 +91,11 @@ export function resolveChartTheme(host: Element, scheme: ChartScheme = readActiv
     textPrimary: readToken(style, '--color-text-primary', fallback.textPrimary, doc),
     textSecondary: readToken(style, '--color-text-secondary', fallback.textSecondary, doc),
     textMuted: readToken(style, '--color-text-muted', fallback.textMuted, doc),
-    grid: readToken(style, '--color-border-light', fallback.grid, doc),
-    axisLine: readToken(style, '--color-border-default', fallback.axisLine, doc),
-    tooltipBackground: readToken(style, '--color-bg-elevated', fallback.tooltipBackground, doc),
-    tooltipBorder: readToken(style, '--color-border-default', fallback.tooltipBorder, doc),
+    // 提示框反色：深底浅字，随主题取界面里现成的反色 token。
+    tooltipBackground: readToken(style, '--color-bg-inverse', fallback.tooltipBackground, doc),
+    tooltipText: readToken(style, '--color-text-inverse', fallback.tooltipText, doc),
     fontFamily: sanitizeFontFamily(style.fontFamily || fallback.fontFamily),
-    palette: CHART_CATEGORICAL_PALETTE[scheme],
+    palette: CHART_PALETTES[palette][scheme],
   }
 }
 

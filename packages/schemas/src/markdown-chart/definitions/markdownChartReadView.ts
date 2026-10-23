@@ -6,7 +6,7 @@
  * 任何已准入规格都可以赋给这个形状（无需类型断言），消费者因此不必在每处用 `in` 窄化。
  */
 
-import type { MarkdownChartType } from './markdownChartConstants'
+import type { MarkdownChartPalette, MarkdownChartType } from './markdownChartConstants'
 import type { MarkdownChartCategoryAxis, MarkdownChartSpec, MarkdownChartValueAxis } from './markdownChartSpec'
 
 export interface MarkdownChartSeriesReadView {
@@ -28,6 +28,7 @@ export interface MarkdownChartSpecReadView {
   readonly description?: string
   readonly size?: 'small' | 'medium' | 'large'
   readonly legendPosition?: 'top' | 'bottom' | 'left' | 'right' | 'none'
+  readonly palette?: MarkdownChartPalette
   readonly categories: readonly (string | number)[]
   readonly series: readonly MarkdownChartSeriesReadView[]
   readonly barDirection?: 'vertical' | 'horizontal'

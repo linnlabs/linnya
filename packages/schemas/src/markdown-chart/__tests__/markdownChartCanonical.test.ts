@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MARKDOWN_CHART_TYPES, type MarkdownChartType } from '../definitions/markdownChartConstants';
+import { MARKDOWN_CHART_PALETTES, MARKDOWN_CHART_TYPES, type MarkdownChartType } from '../definitions/markdownChartConstants';
 import { admitMarkdownChartFenceBody, admitMarkdownChartSpec } from '../functions/admitMarkdownChartSpec';
 import { encodeMarkdownChartFence } from '../functions/serializeMarkdownChartSpec';
 import { cloneFixture, markdownChartFixtures } from './markdownChartFixtures';
@@ -56,6 +56,18 @@ describe('canonical 文本', () => {
     expect(comboText).not.toContain('"axis": "primary"');
     expect(comboText).not.toContain('"lineDash"');
     expect(comboText).toContain('"axis": "secondary"');
+  });
+
+  it('默认色系被省略，非默认色系保留并排在 size 之后', () => {
+    const spec = cloneFixture('bar');
+    Object.assign(spec, { palette: 'verdant' });
+    expect(canonicalOf(spec)).not.toContain('"palette"');
+
+    Object.assign(spec, { palette: 'aqua', size: 'large' });
+    const text = canonicalOf(spec);
+    expect(text).toContain('"palette": "aqua"');
+    expect(text.indexOf('"size"')).toBeGreaterThan(-1);
+    expect(text.indexOf('"palette"')).toBeGreaterThan(text.indexOf('"size"'));
   });
 
   it('保留非默认值与显式的“关闭”，避免与未声明混淆', () => {
@@ -188,6 +200,7 @@ function generateSpec(type: MarkdownChartType, random: Random): Record<string, J
   if (chance(random, 0.4)) common.description = pick(random, LABELS);
   if (chance(random, 0.3)) common.size = pick(random, ['small', 'medium', 'large']);
   if (chance(random, 0.3)) common.legendPosition = pick(random, ['top', 'bottom', 'left', 'right', 'none']);
+  if (chance(random, 0.3)) common.palette = pick(random, [...MARKDOWN_CHART_PALETTES]);
 
   const seriesCount = type === 'pie' || type === 'doughnut' ? 1 : type === 'combo' ? between(random, 2, 4) : between(random, 1, 4);
   const series: Json[] = Array.from({ length: seriesCount }, (_, index) => {

@@ -2,12 +2,15 @@
  * @file chartPalette.ts
  * @description 颜色随“实体”而不是随“排名”：系列/类目的颜色由其在完整规格中的位置决定。
  *
- * 隐藏系列、聚焦范围都不会重新分配颜色。作者显式给出的颜色保持其含义，不按主题偷偷换色。
- * 超过 8 个实体时不再生成新色相，而是在同一色板上叠加更浅的色调，并依赖图例与数据表识别。
+ * 每个实体有两个颜色：低饱和高明度的**填充**和同色相更深的**描线**（见 chartTheme.ts）。
+ * 隐藏系列、聚焦范围都不会重新分配颜色。作者显式给出的颜色保持其含义，不按主题偷偷换色：
+ * 它被当作填充，描线由它派生（同色相，浅色主题里更深、深色主题里更亮）。
+ * 超过 8 个实体时不再生成新色相，而是在同一色系上叠加更浅的色调，并依赖图例与数据表识别。
  */
 
 import type { MarkdownChartSeriesReadView as ChartSeries } from '@app/schemas'
-import type { ChartThemeTokens } from '../definitions/chartTheme'
+import type { ChartScheme, ChartThemeTokens } from '../definitions/chartTheme'
+import { oklchToRgb, rgbToOklch } from './chartColorSpace'
 
 interface ParsedColor {
   readonly channels: readonly [number, number, number]
@@ -88,30 +91,60 @@ export function withAlpha(color: string, alpha: number): string {
   return `rgba(${red}, ${green}, ${blue}, ${combined})`
 }
 
-export function paletteColor(theme: ChartThemeTokens, index: number): string {
+/** 一个实体的两个颜色。 */
+export interface ChartMarkColors {
+  readonly fill: string
+  readonly ink: string
+}
+
+/** 描线色的最大彩度：低饱和的描线才与低饱和的填充相配，也避免作者的高饱和填充派生出刺眼的描线。 */
+const INK_MAX_CHROMA = 0.09
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+/**
+ * 由填充派生同色相的描线。浅色主题：淡填充（L > 0.62）压到 0.42–0.57，使描线对白底 ≥ 4:1；已经较深的填充再深一点。
+ * 深色主题：描线提亮到 0.62–0.84。无法解析的颜色原样返回。
+ */
+export function deriveInkColor(fill: string, scheme: ChartScheme): string {
+  const parsed = parseColor(fill)
+  if (!parsed) return fill
+  const { l, c, h } = rgbToOklch(parsed.channels)
+  const lightness = scheme === 'light'
+    ? (l > 0.62 ? clamp(l - 0.3, 0.42, 0.57) : Math.max(0.28, l - 0.1))
+    : clamp(l + 0.22, 0.62, 0.84)
+  return toHex(oklchToRgb({ l: lightness, c: Math.min(c, INK_MAX_CHROMA), h }))
+}
+
+/** 作者显式给出的单色：作为填充，派生描线。 */
+export function markColorsFromFill(fill: string, theme: Pick<ChartThemeTokens, 'scheme'>): ChartMarkColors {
+  return { fill, ink: deriveInkColor(fill, theme.scheme) }
+}
+
+export function paletteMarkColors(theme: ChartThemeTokens, index: number): ChartMarkColors {
   const size = theme.palette.length
   const base = theme.palette[index % size]
   if (base === undefined) throw new RangeError('Chart palette must be non-empty and index non-negative')
   const cycle = Math.floor(index / size)
-  return cycle === 0 ? base : mixColors(base, theme.surface, Math.min(0.7, cycle * 0.35))
+  if (cycle === 0) return base
+  const tint = Math.min(0.7, cycle * 0.35)
+  return { fill: mixColors(base.fill, theme.surface, tint), ink: mixColors(base.ink, theme.surface, tint * 0.6) }
 }
 
-export function seriesColor(
-  theme: ChartThemeTokens,
-  seriesIndex: number,
-  series: ChartSeries,
-): string {
-  return series.color ?? paletteColor(theme, seriesIndex)
+export function seriesMarkColors(theme: ChartThemeTokens, seriesIndex: number, series: ChartSeries): ChartMarkColors {
+  return series.color === undefined ? paletteMarkColors(theme, seriesIndex) : markColorsFromFill(series.color, theme)
 }
 
 /** 饼/环与逐点着色：pointColors 中的 null 沿用按类目序号取得的默认色。 */
-export function categoryColor(
+export function categoryMarkColors(
   theme: ChartThemeTokens,
   categoryIndex: number,
   series: ChartSeries | undefined,
-): string {
+): ChartMarkColors {
   const explicit = series?.pointColors?.[categoryIndex]
-  return explicit ?? paletteColor(theme, categoryIndex)
+  return explicit ? markColorsFromFill(explicit, theme) : paletteMarkColors(theme, categoryIndex)
 }
 
 function relativeLuminance(color: string): number | null {

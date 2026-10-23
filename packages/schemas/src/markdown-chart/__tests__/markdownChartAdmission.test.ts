@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MARKDOWN_CHART_TYPES, type MarkdownChartType } from '../definitions/markdownChartConstants';
+import { MARKDOWN_CHART_PALETTES, MARKDOWN_CHART_TYPES, type MarkdownChartType } from '../definitions/markdownChartConstants';
 import type { MarkdownChartDiagnosticCode } from '../definitions/markdownChartDiagnostic';
 import { admitMarkdownChartFenceBody, admitMarkdownChartSpec } from '../functions/admitMarkdownChartSpec';
 import { MarkdownChartSpecSchema } from '../functions/markdownChartSpecSchema';
@@ -132,6 +132,23 @@ describe('图表规格准入：形状与适用性', () => {
   it('颜色只接受 #RRGGBB', () => {
     for (const color of ['red', '#12345', '#GGGGGG', 'rgb(1,2,3)', 'url(x)']) {
       find(reject('radar', spec => { (spec.series as { color?: string }[])[0].color = color; }), 'invalid_shape', 'series[0].color');
+    }
+  });
+});
+
+describe('图表规格准入：色系', () => {
+  it('palette 只接受已声明的色系名，未知值的诊断列出可选项', () => {
+    for (const palette of MARKDOWN_CHART_PALETTES) {
+      expect(admitMarkdownChartSpec({ ...markdownChartFixtures.bar, palette }).ok, palette).toBe(true);
+    }
+    const unknown = find(reject('bar', spec => { spec.palette = 'neon'; }), 'invalid_shape', 'palette');
+    for (const palette of MARKDOWN_CHART_PALETTES) expect(unknown.message).toContain(palette);
+    find(reject('bar', spec => { spec.palette = 1; }), 'invalid_shape', 'palette');
+  });
+
+  it('八类图表都可以声明色系', () => {
+    for (const type of MARKDOWN_CHART_TYPES) {
+      expect(admitMarkdownChartSpec({ ...markdownChartFixtures[type], palette: 'warm' }).ok, type).toBe(true);
     }
   });
 });

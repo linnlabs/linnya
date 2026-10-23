@@ -15,8 +15,8 @@ ECharts 运行时、主题解析和阅读规则都是内部实现，其他模块
 ## 分层
 
 ```text
-definitions/    纯类型与常量：阅读状态、渲染上下文、主题 token、option 形状
-functions/      纯规则：阅读状态变换、域与刻度、图例、数据表、数字格式、过渡判定、option 构建(option/)
+definitions/    纯类型与常量：阅读状态、渲染上下文、主题 token 与色系（chartTheme.ts）、option 形状
+functions/      纯规则：阅读状态变换、域与刻度、图例、数据表、数字格式、过渡判定、色彩运算(chartColorSpace / chartPalette)、option 构建(option/)
 orchestration/  副作用与时序：ECharts 懒加载与实例控制、主题读取、导出图片、useChartSurfaceRuntime
 store/          会话级阅读状态（Pinia，只同步持有状态，不含规则，不持有 ECharts 实例）
 ui/             薄 Vue：ChartSurface / ChartLegend / ChartReadingOptions / ChartDataTable
@@ -27,8 +27,14 @@ testing/        测试用固定数据（八类图表）
 
 - **按需加载**：ECharts（core + `SVGRenderer`）与四个图表家族（cartesian / scatter / share / radar）只在文档里出现图表并进入可见/预热区域时 `import()`；
   家族注册幂等，加载失败清除缓存允许重试。ECharts 实例只认识创建前已注册的家族，所以切换家族（如柱→饼）会重建实例。
-- **主题**：色板按亮/暗选择，按实体在完整规格中的位置取色（固定顺序）；超过 8 个实体时不生成新色相，而是在同序色板上使用更浅的色调，靠图例和数据表识别。其余颜色读取 renderer-ui 语义 token；解析结果是不可变值，option 构建不触碰 DOM。
-  显式 `color` 保持作者含义，不随主题偷偷换色。
+- **色系**：低饱和、高明度的“同一色系”，由规格的 `palette` 选择：`verdant`（绿，默认）、`warm`、`aqua`，各 8 个槽位。每个槽位有淡**填充**（柱、扇区、面积、图例键）和同色相更深的**描线**（折线、标记、轮廓），
+  深色主题明暗互换。按实体在完整规格中的位置取色（固定顺序）；超过 8 个实体时不生成新色相，而是在同序色系上使用更浅的色调，靠图例、行末直标和数据表识别。
+  色值受 [`chartTheme.test.ts`](./definitions/chartTheme.test.ts) 约束（相邻填充色差、前 4 个描线色差、描线对比度、彩度上限），改色值必须过它。
+  显式 `color` / `pointColors` 保持作者含义，不随主题偷偷换色：它被当作填充，描线在 OKLCH 里派生（浅色加深、深色提亮、彩度封顶）。
+  文字、表面与提示框反色读取 renderer-ui 语义 token；解析结果是不可变值，option 构建不触碰 DOM。
+- **柔彩样式**：统一外观，不是规格字段。标记集中定义在 [`chartMarkStyle.ts`](./functions/option/chartMarkStyle.ts)：柱、扇区、散点是填充加 1px 描线，折线 1.75px 描线色加填充色圆点（末点实心放大），面积是填充色自上而下的渐隐；
+  网格是点状发丝线，类目轴只留基线，辅助线都是文字色的不同透明度；数值标签加粗，数字等宽；提示框反色；饼/环是细环，半径随绘图区宽度收缩以给外侧标签留出空间；外壳没有边框和底色。
+- **行末直标**：折线/面积在不超过 5 个系列且没有显式 `legendPosition` 时，在行末直接标出“系列名 + 末值”，不再放图例（阅读选项里仍可筛选、突出）。系列名是不可信文本，进入富文本标签前先净化花括号。
 - **确定性版面**：绘图区只有三档高度（240/320/420 px），标题与说明是 DOM 自然排版；加载、离屏占位与最终图之间没有版面跳动。
 - **阅读不改变数据语义**：数值轴域、百分比堆叠的分母与颜色都按完整规格计算；隐藏系列或聚焦范围不重新拟合坐标轴、不重新分配颜色。
   饼/环只能突出，不隐藏组成部分，也不重算分母。
@@ -48,5 +54,7 @@ pnpm exec vitest run apps/renderer/domains/editor/features/chart-reading
 
 `buildChartOption.test.ts` 用真实 ECharts SSR 渲染八类图表并在任何 ECharts 日志（warn/error）时失败；`chartInstanceController.test.ts` 覆盖实例创建、家族切换、释放与泄漏。
 视觉质量（排版、配色、亮暗主题、真实 NodeView 交互）不能由这些测试证明，需要在真实应用里用样张和整篇文章验收。
+
+色系合同由 `definitions/chartTheme.test.ts` 约束；色彩运算、tooltip DOM、主题读取与运行时各有单测。
 
 研究数据保真：饼图扇区不设置最小角度；未指定数字格式时保留数值有效精度；单侧显式轴界限之外的数据产生有效自动域。

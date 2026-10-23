@@ -9,20 +9,21 @@
 import type { ChartOption } from '../../definitions/chartOption'
 import type { ChartRenderContext } from '../../definitions/chartRender'
 import { formatPlainNumber } from '../chartNumbers'
-import { seriesColor } from '../chartPalette'
+import { seriesMarkColors } from '../chartPalette'
 import type { ChartReadingView } from '../chartReadingView'
 import { renderChartTooltip, type ChartTooltipContent } from '../chartTooltip'
-import { baseOption, categoryLabel, seriesOpacity, tooltipFrame } from './chartOptionShared'
+import { MARK_STYLE, lineMarker, radarFillAlpha } from './chartMarkStyle'
+import { INK_ALPHA, baseOption, categoryLabel, inkTint, seriesOpacity, tooltipFrame } from './chartOptionShared'
 
 export function buildRadarTooltipContent(view: ChartReadingView, ctx: ChartRenderContext, seriesIndex: number): ChartTooltipContent | null {
   const { spec } = view
   const series = spec.series[seriesIndex]
   if (!series) return null
-  const color = seriesColor(ctx.theme, seriesIndex, series)
+  const colors = seriesMarkColors(ctx.theme, seriesIndex, series)
   return {
     heading: series.name,
     rows: view.categoryIndices.map(category => ({
-      key: { color, shape: 'dot' as const },
+      key: { ...colors, shape: 'dot' as const },
       label: categoryLabel(spec, category),
       value: formatPlainNumber(series.values[category] ?? Number.NaN, ctx.locale),
     })),
@@ -44,8 +45,8 @@ export function buildRadarOption(view: ChartReadingView, ctx: ChartRenderContext
       center: ['50%', '52%'],
       axisNameGap: 10,
       axisName: { color: ctx.theme.textSecondary, fontSize: 12 },
-      axisLine: { lineStyle: { color: ctx.theme.grid, width: 1 } },
-      splitLine: { lineStyle: { color: ctx.theme.grid, width: 1 } },
+      axisLine: { lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.hairline), width: 1 } },
+      splitLine: { lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.hairline), width: 1 } },
       splitArea: { show: false },
       // 量尺是固定且共用的：不在每根轴上重复刻度数字，由图表脚注标明范围。
       axisLabel: { show: false },
@@ -65,16 +66,16 @@ export function buildRadarOption(view: ChartReadingView, ctx: ChartRenderContext
     series: [{
       type: 'radar',
       data: shown.map(({ series, index }) => {
-        const color = seriesColor(ctx.theme, index, series)
+        const colors = seriesMarkColors(ctx.theme, index, series)
         const opacity = seriesOpacity(view, series.name)
         return {
           name: series.name,
           value: view.categoryIndices.map(category => series.values[category] ?? Number.NaN),
           symbol: 'circle',
-          symbolSize: 6,
-          lineStyle: { color, width: 2, opacity },
-          areaStyle: { color, opacity: opacity === 1 ? 0.12 : 0.03 },
-          itemStyle: { color, opacity, borderColor: ctx.theme.surface, borderWidth: 2 },
+          symbolSize: MARK_STYLE.markerSize,
+          lineStyle: { color: colors.ink, width: MARK_STYLE.lineWidth, opacity },
+          areaStyle: { color: colors.fill, opacity: opacity === 1 ? radarFillAlpha(shown.length) : 0.03 },
+          itemStyle: lineMarker(colors, opacity),
         }
       }),
       emphasis: { focus: 'self', lineStyle: { width: 3 } },

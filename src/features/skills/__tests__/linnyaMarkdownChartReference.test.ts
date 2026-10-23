@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   MARKDOWN_CHART_LIMITS,
+  MARKDOWN_CHART_PALETTES,
   MARKDOWN_CHART_SERIES_FIELD_NAMES,
   MARKDOWN_CHART_SPEC_FIELD_NAMES,
   MARKDOWN_CHART_TYPES,
@@ -61,6 +62,20 @@ describe('linnya-markdown 图表参考页', () => {
     for (const field of [...MARKDOWN_CHART_SPEC_FIELD_NAMES, ...MARKDOWN_CHART_SERIES_FIELD_NAMES]) {
       expect(reference, `参考页缺少字段 ${field}`).toContain(`\`${field}\``);
     }
+  });
+
+  it('颜色指引列出合同里的每个色系名', () => {
+    for (const palette of MARKDOWN_CHART_PALETTES) {
+      expect(reference, `参考页缺少色系 ${palette}`).toContain(`\`${palette}\``);
+    }
+  });
+
+  it('颜色指引的强调示例通过真实准入，且已经是 canonical 文本', () => {
+    const body = /### Emphasis example\n\n````markdown\n```linnya-chart\n([\s\S]*?)\n```\n````/.exec(reference)?.[1];
+    if (body === undefined) throw new Error('参考页缺少强调示例');
+    const admission = admitMarkdownChartFenceBody(body);
+    if (!admission.ok) throw new Error(JSON.stringify(admission.diagnostics));
+    expect(admission.canonicalText).toBe(body);
   });
 
   it('上限数字与合同一致', () => {

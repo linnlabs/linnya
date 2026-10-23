@@ -3,25 +3,46 @@
  * @description 饼图与环形图：少数互斥部分占同一整体的份额。
  *
  * 读者可以突出某个组成部分，但不能隐藏它：隐藏会让剩余扇区被放大成整个圆，改变占比的分母。
- * 扇区之间用 2px 表面色间隔；标签位于外侧并带引导线，放不下的小扇区交给 tooltip 与数据表。
+ * 扇区是填充 + 1px 同色相描线；标签位于外侧并带引导线，放不下的小扇区交给 tooltip 与数据表。
+ * 半径随绘图区宽度收缩：外侧标签需要固定的横向空间，窄图里先缩小圆，而不是让标签被截断。
  */
 
 import type { ChartOption } from '../../definitions/chartOption'
 import type { ChartRenderContext } from '../../definitions/chartRender'
 import { formatChartDisplayValue } from '../chartNumbers'
-import { categoryColor } from '../chartPalette'
+import { categoryMarkColors } from '../chartPalette'
 import type { ChartReadingView } from '../chartReadingView'
 import { chartObservationKeys } from '../chartTransition'
 import { renderChartTooltip, type ChartTooltipContent } from '../chartTooltip'
+import { outlinedMark } from './chartMarkStyle'
 import {
   DIMMED_OPACITY,
+  INK_ALPHA,
   baseOption,
   categoryLabel,
   formatShare,
+  inkTint,
   tooltipFrame,
 } from './chartOptionShared'
 
 const MAX_AUTO_LABELED_PARTS = 8
+/** 圆环厚度占半径的比例：细环更克制，也让小份额的标签有空间。 */
+const RING_THICKNESS = 0.1
+/** 外侧标签（引导线 + 文字）需要的单侧横向空间。 */
+const LABEL_ROOM_PX = 96
+const MIN_OUTER_RATIO = 0.4
+const MAX_OUTER_RATIO = 0.66
+
+/** 外半径占 `min(宽, 高) / 2` 的比例：宽图取上限，窄图收缩到给标签留出 {@link LABEL_ROOM_PX}。 */
+export function shareOuterRatio(plotWidth: number, plotHeight: number): number {
+  const halfShortSide = Math.min(plotWidth, plotHeight) / 2
+  const room = (plotWidth / 2 - LABEL_ROOM_PX) / halfShortSide
+  return Math.min(MAX_OUTER_RATIO, Math.max(MIN_OUTER_RATIO, room))
+}
+
+function percent(ratio: number): string {
+  return `${Math.round(ratio * 1000) / 10}%`
+}
 
 function emphasisIndexOf(view: ChartReadingView): number | null {
   return view.state.emphasis === null ? null : Number(view.state.emphasis)
@@ -62,7 +83,7 @@ export function buildShareTooltipContent(view: ChartReadingView, ctx: ChartRende
   return {
     heading: categoryLabel(spec, category),
     rows: [{
-      key: { color: categoryColor(ctx.theme, category, series), shape: 'bar' },
+      key: { ...categoryMarkColors(ctx.theme, category, series), shape: 'bar' },
       label: ctx.messages.share,
       value: total > 0 ? formatShare(value / total, ctx) : '—',
       detail: formatChartDisplayValue(value, { ...(numberFormat ? { numberFormat } : {}), locale: ctx.locale }),
@@ -83,14 +104,11 @@ export function buildShareOption(view: ChartReadingView, ctx: ChartRenderContext
     name: categoryLabel(spec, category),
     value: series?.values[category] ?? 0,
     itemStyle: {
-      color: categoryColor(ctx.theme, category, series),
-      opacity: emphasis === null || emphasis === category ? 1 : DIMMED_OPACITY,
-      // 扇区之间的 2px 表面色间隔。
-      borderColor: ctx.theme.surface,
-      borderWidth: 2,
-      borderRadius: doughnut ? 4 : 0,
+      ...outlinedMark(categoryMarkColors(ctx.theme, category, series), emphasis === null || emphasis === category ? 1 : DIMMED_OPACITY),
+      borderRadius: doughnut ? 3 : 2,
     },
   }))
+  const outer = shareOuterRatio(ctx.plotWidth, ctx.plotHeight)
 
   return {
     ...baseOption(ctx),
@@ -110,7 +128,7 @@ export function buildShareOption(view: ChartReadingView, ctx: ChartRenderContext
       id: `series:${series?.name}`,
       type: 'pie',
       name: series?.name ?? '',
-      radius: doughnut ? ['46%', '64%'] : ['0%', '62%'],
+      radius: doughnut ? [percent(outer - RING_THICKNESS), percent(outer)] : ['0%', percent(outer)],
       center: ['50%', '50%'],
       startAngle: 90,
       // 小份额仍按真实比例绘制；最小角度会放大小份额，甚至让零值出现扇区。
@@ -134,7 +152,7 @@ export function buildShareOption(view: ChartReadingView, ctx: ChartRenderContext
         length: 12,
         length2: 10,
         smooth: true,
-        lineStyle: { color: ctx.theme.axisLine, width: 1 },
+        lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.pointer), width: 1 },
       },
       emphasis: { scale: true, scaleSize: 5, focus: 'self' },
       blur: { itemStyle: { opacity: 0.3 } },

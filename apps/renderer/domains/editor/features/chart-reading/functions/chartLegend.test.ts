@@ -1,18 +1,32 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_CHART_READING_STATE } from '../definitions/chartReadingState'
 import { chartFixture, chartTestTheme } from '../testing/chartTestFixtures'
-import { buildChartLegend, resolveLegendPosition } from './chartLegend'
+import { buildChartLegend, resolveLegendPosition, usesEndLabels } from './chartLegend'
 import { toggleEmphasis, toggleSeriesVisibility } from './chartReadingState'
 import { canTransitionBetween } from './chartTransition'
 import { buildChartDataTable, chartDataTableToTsv } from './chartDataTable'
 
 describe('图例', () => {
-  it('单系列无图例，多系列在底部，饼/环按类目；显式位置优先', () => {
+  it('单系列无图例，多系列柱在底部，饼/环按类目；显式位置优先', () => {
     expect(resolveLegendPosition(chartFixture('bar'))).toBe('none')
-    expect(resolveLegendPosition(chartFixture('line'))).toBe('bottom')
+    expect(resolveLegendPosition(chartFixture('bar', { series: [{ name: 'a', values: [1, 2, 3, 4, 5] }, { name: 'b', values: [2, 3, 4, 5, 6] }] }))).toBe('bottom')
     expect(resolveLegendPosition(chartFixture('pie'))).toBe('bottom')
     expect(resolveLegendPosition(chartFixture('line', { legendPosition: 'right' }))).toBe('right')
     expect(resolveLegendPosition(chartFixture('line', { legendPosition: 'none' }))).toBe('none')
+  })
+
+  it('折线/面积不超过 5 个系列时用行末直标，不再放图例；超过 5 个、显式指定位置或不是折线/面积时回到图例', () => {
+    expect(usesEndLabels(chartFixture('line'))).toBe(true)
+    expect(usesEndLabels(chartFixture('area'))).toBe(true)
+    expect(resolveLegendPosition(chartFixture('line'))).toBe('none')
+
+    const crowded = chartFixture('line', { series: Array.from({ length: 6 }, (_, index) => ({ name: `系列${index + 1}`, values: [1, 2, 3, 4] })) })
+    expect(usesEndLabels(crowded)).toBe(false)
+    expect(resolveLegendPosition(crowded)).toBe('bottom')
+    expect(usesEndLabels(chartFixture('line', { legendPosition: 'bottom' }))).toBe(false)
+    expect(resolveLegendPosition(chartFixture('line', { legendPosition: 'bottom' }))).toBe('bottom')
+    expect(usesEndLabels(chartFixture('bar'))).toBe(false)
+    expect(usesEndLabels(chartFixture('combo'))).toBe(false)
   })
 
   it('条目随阅读状态标记隐藏/突出；颜色按完整规格中的序号，与是否隐藏无关', () => {
@@ -21,10 +35,25 @@ describe('图例', () => {
     let state = toggleSeriesVisibility(spec, DEFAULT_CHART_READING_STATE, '营收')
     state = toggleEmphasis(spec, state, '成本')
     const items = buildChartLegend(spec, state, theme)
-    expect(items.map(item => [item.label, item.hidden, item.emphasized, item.color])).toEqual([
-      ['营收', true, false, theme.palette[0]],
-      ['成本', false, true, theme.palette[1]],
+    expect(items.map(item => [item.label, item.hidden, item.emphasized, item.fill, item.ink])).toEqual([
+      ['营收', true, false, theme.palette[0]?.fill, theme.palette[0]?.ink],
+      ['成本', false, true, theme.palette[1]?.fill, theme.palette[1]?.ink],
     ])
+  })
+
+  it('图例颜色跟随规格选择的色系', () => {
+    const warm = chartTestTheme('light', 'warm')
+    const items = buildChartLegend(chartFixture('line', { palette: 'warm' }), DEFAULT_CHART_READING_STATE, warm)
+    expect(items.map(item => item.fill)).toEqual([warm.palette[0]?.fill, warm.palette[1]?.fill])
+    expect(items[0]?.fill).not.toBe(buildChartLegend(chartFixture('line'), DEFAULT_CHART_READING_STATE, chartTestTheme())[0]?.fill)
+  })
+
+  it('作者显式给的系列色作为图例填充，描线由它派生', () => {
+    const spec = chartFixture('line', { series: [{ name: '营收', values: [1, 2, 3, 4], color: '#336699' }, { name: '成本', values: [1, 2, 3, 4] }] })
+    const items = buildChartLegend(spec, DEFAULT_CHART_READING_STATE, chartTestTheme())
+    expect(items[0]?.fill).toBe('#336699')
+    expect(items[0]?.ink).not.toBe('#336699')
+    expect(items[1]?.fill).toBe(chartTestTheme().palette[1]?.fill)
   })
 
   it('饼/环的条目是类目，只能突出，不能隐藏', () => {

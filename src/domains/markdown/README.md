@@ -77,6 +77,7 @@ normalization 直接接纳 parser-wasm 的 CodeBlock 事件，不在 TypeScript 
 - **保留语言不落地**：`codeBlock.language` 的保存闸门拒绝 `linnya-chart`；人类在编辑器里粘贴无效围栏时由用户显式选择“作为普通代码插入”，以 `json` 保存。
 - **canonical 投影**：`serializeMarkdownChartSpec` 固定键序、两空格缩进、每个系列一行、省略默认值、颜色大写、`-0` 归零；围栏 delimiter 总比正文中的反引号序列更长。
   首次合法输入可被规范化，此后 `canonical Markdown → doc → canonical Markdown` 字节稳定；只改变键序或空白不制造 Pending。
+- **外观字段**：规格只有可选的 `palette`（色系，默认 `verdant`，canonical 形态省略）；图表的样式是 Renderer 的统一外观，不进入规格，也不是 Agent 可选项。
 - **Pending**：接受图表 Pending 时按同一导入链重新准入 `newMarkdown`；图表是原子块，没有行内 diff。
 - **准入上限**：series ≤ 20、categories ≤ 1000、数据点 ≤ 5000、canonical JSON ≤ 128 KiB。发布后不得直接收紧，已存合法文档必须始终可读回。
 - **字符计量**：Markdown 字符数包含图表 JSON，与代码块一致。

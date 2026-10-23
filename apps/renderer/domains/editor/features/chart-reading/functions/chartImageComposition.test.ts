@@ -57,6 +57,28 @@ describe('图片构图', () => {
     expect(withoutHint.svg).not.toContain('右轴')
   })
 
+  it('图例键与界面一致：柱是填充加描线轮廓，折线是描线色短线，散点是圆点；整张图用等宽数字', () => {
+    const palette = theme.palette
+    const compose = (type: Parameters<typeof chartFixture>[0], patch: Record<string, unknown> = {}) => {
+      const spec = chartFixture(type, patch)
+      return composeChartImage({
+        spec, chartSvg, chartWidth: 640, chartHeight: 320, theme,
+        legend: buildChartLegend(spec, DEFAULT_CHART_READING_STATE, theme), measure,
+      }).svg
+    }
+    const bars = compose('bar', { series: [{ name: '甲', values: [1, 2, 3, 4, 5] }, { name: '乙', values: [2, 3, 4, 5, 6] }] })
+    expect(bars).toContain(`width="9" height="9" rx="2" fill="${palette[0]?.fill}" stroke="${palette[0]?.ink}"`)
+    expect(bars).toContain(`fill="${palette[1]?.fill}" stroke="${palette[1]?.ink}"`)
+
+    const lines = compose('line')
+    expect(lines).toContain(`width="14" height="3" rx="1.5" fill="${palette[0]?.ink}"`)
+
+    const dots = compose('scatter', { series: [{ name: '甲', values: [3, 5, 21, 25, 40] }, { name: '乙', values: [1, 2, 3, 4, 5] }] })
+    expect(dots).toContain(`r="3.5" fill="${palette[0]?.fill}" stroke="${palette[0]?.ink}"`)
+
+    expect(bars).toContain('style="font-variant-numeric:tabular-nums"')
+  })
+
   it('没有标题与图例时只有图表本身加内边距', () => {
     const spec = chartFixture('bar', { title: undefined })
     const result = composeChartImage({ spec, chartSvg, chartWidth: 640, chartHeight: 320, theme, legend: [], measure })

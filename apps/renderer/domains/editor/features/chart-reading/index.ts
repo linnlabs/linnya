@@ -20,3 +20,4 @@ export {
 } from './functions/chartDataTable'
 
 export { plotHeightOf } from './functions/chartLayout'
+export { resolveLegendPosition } from './functions/chartLegend'

@@ -8,7 +8,7 @@
  * 默认值只依赖规格本身，不读取主题、语言环境或窗口宽度。
  */
 
-import { MARKDOWN_CHART_FENCE_LANGUAGE } from '../definitions/markdownChartConstants';
+import { MARKDOWN_CHART_DEFAULT_PALETTE, MARKDOWN_CHART_FENCE_LANGUAGE } from '../definitions/markdownChartConstants';
 import type { MarkdownChartSpec } from '../definitions/markdownChartSpec';
 
 type JsonValue =
@@ -25,7 +25,7 @@ const TOP_LEVEL_ORDER = [
   'version', 'chartType', 'title', 'description', 'categories', 'series',
   'barDirection', 'stacking', 'categoryAxis', 'xAxis', 'valueAxis', 'secondaryValueAxis',
   'pointLabels', 'radarScale', 'showDataLabels', 'dataLabelFormat', 'dataLabelContent',
-  'legendPosition', 'size',
+  'legendPosition', 'size', 'palette',
 ] as const;
 const SERIES_ORDER = [
   'name', 'values', 'chartType', 'axis', 'color', 'pointColors', 'lineDash', 'marker',
@@ -50,6 +50,7 @@ const TOP_LEVEL_DEFAULTS: Readonly<Record<string, JsonValue>> = {
   stacking: 'none',
   size: 'medium',
   dataLabelContent: 'value',
+  palette: MARKDOWN_CHART_DEFAULT_PALETTE,
 };
 const SERIES_DEFAULTS: Readonly<Record<string, JsonValue>> = {
   axis: 'primary',

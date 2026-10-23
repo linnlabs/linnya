@@ -5,29 +5,37 @@
  * 规则要点：
  * - 数值轴域来自完整数据；隐藏系列和类目聚焦不改变它。
  * - 百分比堆叠在绘制前按“原始完整类目合计”归一，隐藏系列后剩余份额不补足到 100%；tooltip 保留原值。
- * - 柱/条纤细、数据端 4px 圆角、基线端方正；堆叠段之间用 2px 表面色间隔，而不是描边。
- * - 折线 2px，保留实际观测点，不平滑；标记 8px 并带表面色环；面积只是 10% 的淡色铺底。
+ * - 柱/条纤细、数据端 4px 圆角、基线端方正；填充 + 1px 同色相描线，堆叠段之间靠描线分隔。
+ * - 折线 1.75px，保留实际观测点，不平滑；标记是填充色的圆点加描线环，末点实心；面积是填充色自上而下的渐隐。
+ * - 系列不多的折线/面积在行末直接标出“系列名 + 末值”，不再放图例（见 {@link usesEndLabels}）。
  */
 
 import type { ChartOption } from '../../definitions/chartOption'
 import type { ChartRenderContext } from '../../definitions/chartRender'
 import type { ChartDomains } from '../chartDomains'
+import { usesEndLabels } from '../chartLegend'
 import { formatChartAxisTick, type NiceScale } from '../chartNumbers'
-import { readableTextOn, seriesColor, withAlpha } from '../chartPalette'
+import { markColorsFromFill, readableTextOn, seriesMarkColors, withAlpha } from '../chartPalette'
 import type { ChartReadingView } from '../chartReadingView'
 import { chartObservationKeys } from '../chartTransition'
 import { renderChartTooltip, type ChartTooltipContent } from '../chartTooltip'
+import { MARK_STYLE, areaGradient, endMarker, lineMarker, outlinedMark } from './chartMarkStyle'
 import {
+  INK_ALPHA,
   MAX_BAR_THICKNESS,
   type ChartSeries,
   type ChartSpec,
   axisCaption,
   baseOption,
   categoryLabel,
+  dottedGridLineType,
+  estimateTextWidth,
   formatShare,
   formatSeriesValue,
+  inkTint,
   mutedAxisLabel,
   resolveDataLabelMode,
+  sanitizeRichText,
   seriesOpacity,
   textAxisLabel,
   tooltipFrame,
@@ -44,6 +52,15 @@ export interface ShownCartesianSeries {
 }
 
 const BAR_RADIUS = 4
+const END_LABEL_FONT_SIZE = 11
+const END_LABEL_DISTANCE = 8
+const MIN_END_LABEL_GUTTER = 72
+const MAX_END_LABEL_GUTTER_RATIO = 0.36
+/** 水平方向上绘图区之外占去的宽度：左侧数值轴刻度与内边距约 58px，再加右侧留白；至少按 72px 估算。 */
+const HORIZONTAL_CHROME_BASE = 58
+const MIN_HORIZONTAL_CHROME = 72
+const DEFAULT_RIGHT_MARGIN = 14
+const SECONDARY_RIGHT_MARGIN = 4
 
 export function isCartesianSpec(spec: ChartSpec): boolean {
   return spec.chartType === 'bar' || spec.chartType === 'line' || spec.chartType === 'area' || spec.chartType === 'combo'
@@ -101,6 +118,7 @@ function barDataFor(
   shown: readonly ShownCartesianSeries[],
   item: ShownCartesianSeries,
   totals: readonly number[],
+  ctx: ChartRenderContext,
 ) {
   const { spec } = view
   const horizontal = isHorizontal(spec)
@@ -116,23 +134,47 @@ function barDataFor(
         return raw >= 0 ? ends.positive === item.index : ends.negative === item.index
       })()
     const pointColor = item.series.pointColors?.[category]
+    const pointColors = pointColor ? markColorsFromFill(pointColor, ctx.theme) : null
     return {
       ...(keys ? { id: keys[category] } : {}),
       value: plotted,
       itemStyle: {
         borderRadius: capped ? barCap(horizontal, raw >= 0) : 0,
-        ...(pointColor ? { color: pointColor } : {}),
+        ...(pointColors ? { color: pointColors.fill, borderColor: pointColors.ink } : {}),
       },
     }
   })
 }
 
-function lineDataFor(item: ShownCartesianSeries, view: ChartReadingView, mode: ReturnType<typeof resolveDataLabelMode>) {
+/** 折线某个观测点是否带数值标签。启用行末直标时，末点的数值已在行末标签里，不再重复。 */
+function pointLabelVisible(mode: ReturnType<typeof resolveDataLabelMode>, position: number, last: number, endLabels: boolean): boolean {
+  if (endLabels) return mode === 'all' && position !== last
+  return mode === 'all' || (mode === 'last' && position === last)
+}
+
+function lineDataFor(
+  item: ShownCartesianSeries,
+  view: ChartReadingView,
+  mode: ReturnType<typeof resolveDataLabelMode>,
+  endLabels: boolean,
+  ctx: ChartRenderContext,
+  opacity: number,
+) {
   const lastPosition = view.categoryIndices.length - 1
   const keys = chartObservationKeys(view.spec)
+  const colors = seriesMarkColors(ctx.theme, item.index, item.series)
+  const symbolOn = item.series.marker !== 'none'
   return view.categoryIndices.map((category, position) => {
     const value = valueAt(item.series, category)
-    return { ...(keys ? { id: keys[category] } : {}), value, label: { show: mode === 'all' || mode === 'last' && position === lastPosition } }
+    return {
+      ...(keys ? { id: keys[category] } : {}),
+      value,
+      label: { show: pointLabelVisible(mode, position, lastPosition, endLabels) },
+      // 末点实心：读者的视线落在“现在”。
+      ...(symbolOn && position === lastPosition
+        ? { symbolSize: MARK_STYLE.endMarkerSize, itemStyle: endMarker(colors, ctx.theme.surface, opacity) }
+        : {}),
+    }
   })
 }
 
@@ -155,7 +197,7 @@ function valueAxis(
     type: 'value' as const,
     ...(domain ? { min: domain.min, max: domain.max, interval: domain.interval } : {}),
     position: horizontal ? 'bottom' as const : axis === 'secondary' ? 'right' as const : 'left' as const,
-    splitLine: { show: showGrid, lineStyle: { color: ctx.theme.grid, width: 1, type: 'solid' as const } },
+    splitLine: { show: showGrid, lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.gridDot), width: 1, type: dottedGridLineType() } },
     axisLine: { show: false },
     axisTick: { show: false },
     axisLabel: { ...mutedAxisLabel(ctx), margin: 8, formatter: axisFormatterFor(spec, axis, ctx) },
@@ -167,12 +209,18 @@ function valueAxis(
   }
 }
 
-function categoryAxis(view: ChartReadingView, ctx: ChartRenderContext, horizontal: boolean) {
+/** 每个类目在横向上占的宽度估计。标签宽度据此设定；估大了，相邻标签的框会重叠，ECharts 会隔一个隐藏。 */
+export function categorySlotWidth(plotWidth: number, categoryCount: number, rightMargin: number): number {
+  const chrome = Math.max(MIN_HORIZONTAL_CHROME, HORIZONTAL_CHROME_BASE + rightMargin)
+  return (plotWidth - chrome) / Math.max(1, categoryCount)
+}
+
+function categoryAxis(view: ChartReadingView, ctx: ChartRenderContext, horizontal: boolean, rightMargin: number) {
   const { spec } = view
   const categories = view.categoryIndices.map(index => categoryLabel(spec, index))
   const slot = horizontal
     ? ctx.plotHeight / Math.max(1, categories.length)
-    : (ctx.plotWidth - 72) / Math.max(1, categories.length)
+    : categorySlotWidth(ctx.plotWidth, categories.length, rightMargin)
   const rotate = spec.categoryAxis?.labelRotation
   const crowded = !horizontal && rotate === undefined && slot < 40
   return {
@@ -181,7 +229,7 @@ function categoryAxis(view: ChartReadingView, ctx: ChartRenderContext, horizonta
     inverse: horizontal,
     position: horizontal ? 'left' as const : 'bottom' as const,
     boundaryGap: spec.chartType !== 'area',
-    axisLine: { show: true, lineStyle: { color: ctx.theme.axisLine, width: 1 } },
+    axisLine: { show: true, lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.baseline), width: 1 } },
     axisTick: { show: false },
     splitLine: { show: false },
     axisLabel: {
@@ -206,14 +254,43 @@ function labelOption(view: ChartReadingView, item: ShownCartesianSeries, ctx: Ch
   return {
     show: mode === 'all',
     position: stacked ? 'inside' as const : item.kind === 'bar' && isHorizontal(spec) ? 'right' as const : 'top' as const,
-    color: stacked ? readableTextOn(fill) : ctx.theme.textSecondary,
-    fontSize: 12,
+    color: stacked ? readableTextOn(fill) : ctx.theme.textPrimary,
+    fontSize: 11,
+    fontWeight: 600,
     distance: 6,
     formatter: (params: { dataIndex: number }) => {
       const category = view.categoryIndices[params.dataIndex]
       return category === undefined ? '' : formatSeriesValue(spec, item.series, valueAt(item.series, category), ctx)
     },
   }
+}
+
+/** 行末标签的文字：系列名 + 末值，数值加粗。不可信的系列名先净化，不能被当成富文本样式。 */
+function endLabelOption(view: ChartReadingView, item: ShownCartesianSeries, ctx: ChartRenderContext) {
+  const lastCategory = view.categoryIndices[view.categoryIndices.length - 1]
+  if (lastCategory === undefined) return undefined
+  const value = formatSeriesValue(view.spec, item.series, valueAt(item.series, lastCategory), ctx)
+  return {
+    show: true,
+    distance: END_LABEL_DISTANCE,
+    formatter: `{name|${sanitizeRichText(item.series.name)}}  {value|${sanitizeRichText(value)}}`,
+    rich: {
+      name: { color: ctx.theme.textSecondary, fontSize: END_LABEL_FONT_SIZE },
+      value: { color: ctx.theme.textPrimary, fontSize: END_LABEL_FONT_SIZE, fontWeight: 600 },
+    },
+  }
+}
+
+/** 给行末标签预留的右侧留白：按最长的“系列名 + 末值”估算，并限制在绘图区宽度的一部分内。 */
+function endLabelGutter(view: ChartReadingView, shown: readonly ShownCartesianSeries[], ctx: ChartRenderContext): number {
+  const lastCategory = view.categoryIndices[view.categoryIndices.length - 1]
+  if (lastCategory === undefined) return MIN_END_LABEL_GUTTER
+  const widest = shown.reduce((width, item) => {
+    const value = formatSeriesValue(view.spec, item.series, valueAt(item.series, lastCategory), ctx)
+    return Math.max(width, estimateTextWidth(item.series.name, END_LABEL_FONT_SIZE) + 10 + estimateTextWidth(value, END_LABEL_FONT_SIZE))
+  }, 0)
+  const ceiling = Math.max(MIN_END_LABEL_GUTTER, Math.floor(ctx.plotWidth * MAX_END_LABEL_GUTTER_RATIO))
+  return Math.min(ceiling, Math.max(MIN_END_LABEL_GUTTER, Math.ceil(widest) + END_LABEL_DISTANCE + 12))
 }
 
 /** tooltip 的内容：列出该类目下每个可见系列的正式观测值（不是动画插值，也不是归一化后的绘制值）。 */
@@ -232,7 +309,7 @@ export function buildCartesianTooltipContent(
     const raw = valueAt(series, category)
     const suffix = spec.chartType === 'combo' && axis === 'secondary' ? ` · ${ctx.messages.secondaryAxis}` : ''
     return {
-      key: { color: seriesColor(ctx.theme, index, series), shape: kind === 'bar' ? 'bar' as const : 'line' as const },
+      key: { ...seriesMarkColors(ctx.theme, index, series), shape: kind === 'bar' ? 'bar' as const : 'line' as const },
       label: `${series.name}${suffix}`,
       value: formatSeriesValue(spec, series, raw, ctx),
       ...(stacking === 'percent' && total > 0
@@ -249,13 +326,14 @@ function seriesOption(
   shown: readonly ShownCartesianSeries[],
   ctx: ChartRenderContext,
   totals: readonly number[],
+  endLabels: boolean,
 ) {
   const { spec } = view
-  const color = seriesColor(ctx.theme, item.index, item.series)
+  const colors = seriesMarkColors(ctx.theme, item.index, item.series)
   const opacity = seriesOpacity(view, item.series.name)
   const horizontal = isHorizontal(spec)
   const stacking = stackingOf(spec)
-  const label = labelOption(view, item, ctx, color)
+  const label = labelOption(view, item, ctx, colors.fill)
   const common = {
     id: `series:${item.series.name}`,
     name: item.series.name,
@@ -270,18 +348,12 @@ function seriesOption(
     return {
       ...common,
       type: 'bar' as const,
-      data: barDataFor(view, shown, item, totals),
+      data: barDataFor(view, shown, item, totals, ctx),
       stack: stacking !== 'none' ? 'total' : '',
       barMaxWidth: MAX_BAR_THICKNESS,
       barCategoryGap: '42%',
       barGap: '14%',
-      itemStyle: {
-        color,
-        opacity,
-        // 堆叠段之间的 2px 表面色间隔；它是留白，不是描边。
-        borderColor: ctx.theme.surface,
-        borderWidth: stacking !== 'none' ? 2 : 0,
-      },
+      itemStyle: outlinedMark(colors, opacity),
       label,
       z: 2,
     }
@@ -289,26 +361,30 @@ function seriesOption(
 
   const marker = item.series.marker
   const dash = item.series.lineDash
+  const endLabel = endLabels ? endLabelOption(view, item, ctx) : undefined
   return {
     ...common,
+    // 直标时按标签位置错开，避免相近的行末互相覆盖。
+    ...(endLabel ? { labelLayout: { moveOverlap: 'shiftY' as const } } : {}),
     type: 'line' as const,
-    data: lineDataFor(item, view, resolveDataLabelMode(spec, item.series, view)),
+    data: lineDataFor(item, view, resolveDataLabelMode(spec, item.series, view), endLabels, ctx, opacity),
     smooth: false,
     showSymbol: marker === 'none' ? false : view.categoryIndices.length <= 24,
     symbol: marker === 'square' ? 'rect' : marker && marker !== 'none' ? marker : 'circle',
-    symbolSize: 8,
+    symbolSize: MARK_STYLE.markerSize,
     lineStyle: {
-      color,
-      width: 2,
+      color: colors.ink,
+      width: MARK_STYLE.lineWidth,
       opacity,
       cap: 'round' as const,
       join: 'round' as const,
       type: dash === 'dash' ? 'dashed' as const : dash === 'dot' ? 'dotted' as const : 'solid' as const,
     },
-    // 标记带一圈表面色环：在与线或其他标记交叠处保持可辨。
-    itemStyle: { color, opacity, borderColor: ctx.theme.surface, borderWidth: 2 },
-    areaStyle: { color, opacity: item.kind === 'area' ? opacity === 1 ? 0.1 : 0.03 : 0 },
+    // 标记是填充色的圆点加描线环：在与线或其他标记交叠处保持可辨。
+    itemStyle: lineMarker(colors, opacity),
+    ...(item.kind === 'area' ? { areaStyle: { color: areaGradient(colors.fill, opacity === 1) } } : {}),
     label,
+    ...(endLabel ? { endLabel } : {}),
     z: 3,
   }
 }
@@ -321,12 +397,14 @@ export function buildCartesianOption(view: ChartReadingView, domains: ChartDomai
   const hasSecondary = spec.chartType === 'combo' && spec.secondaryValueAxis !== undefined
   const hasCaption = Boolean(spec.valueAxis?.title || spec.secondaryValueAxis?.title)
   const pureBar = shown.every(item => item.kind === 'bar')
+  const endLabels = usesEndLabels(spec) && shown.length > 0
 
   const valueAxes = [
     valueAxis(spec, 'primary', domains.value, ctx, horizontal),
     ...(hasSecondary ? [valueAxis(spec, 'secondary', domains.secondary, ctx, false)] : []),
   ]
-  const category = categoryAxis(view, ctx, horizontal)
+  const rightMargin = hasSecondary ? SECONDARY_RIGHT_MARGIN : endLabels ? endLabelGutter(view, shown, ctx) : DEFAULT_RIGHT_MARGIN
+  const category = categoryAxis(view, ctx, horizontal, rightMargin)
 
   const tooltip = ctx.intent === 'export'
     ? { show: false }
@@ -335,7 +413,7 @@ export function buildCartesianOption(view: ChartReadingView, domains: ChartDomai
         trigger: 'axis' as const,
         axisPointer: pureBar
           ? { type: 'shadow' as const, shadowStyle: { color: withAlpha(ctx.theme.textPrimary, 0.05) } }
-          : { type: 'line' as const, snap: true, lineStyle: { color: ctx.theme.axisLine, width: 1, type: 'solid' as const } },
+          : { type: 'line' as const, snap: true, lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.pointer), width: 1, type: 'solid' as const } },
         formatter: (params: unknown) => {
           const first: unknown = Array.isArray(params) ? params[0] : params
           const position = typeof first === 'object' && first !== null ? Reflect.get(first, 'dataIndex') : undefined
@@ -348,7 +426,7 @@ export function buildCartesianOption(view: ChartReadingView, domains: ChartDomai
     ...baseOption(ctx),
     grid: {
       left: 4,
-      right: hasSecondary ? 4 : 14,
+      right: rightMargin,
       top: hasCaption && !horizontal ? 34 : 12,
       bottom: spec.categoryAxis?.title || (horizontal && spec.valueAxis?.title) ? 36 : 6,
       // ECharts 6：坐标轴刻度文字计入版面，等价于旧版 containLabel。
@@ -358,6 +436,6 @@ export function buildCartesianOption(view: ChartReadingView, domains: ChartDomai
     xAxis: horizontal ? valueAxes : category,
     yAxis: horizontal ? category : valueAxes,
     tooltip,
-    series: shown.map(item => seriesOption(view, item, shown, ctx, totals)),
+    series: shown.map(item => seriesOption(view, item, shown, ctx, totals, endLabels)),
   }
 }

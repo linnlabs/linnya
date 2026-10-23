@@ -3,8 +3,6 @@ import { admitMarkdownChartSpec, type MarkdownChartSpec } from '@app/schemas'
 import { DEFAULT_CHART_READING_STATE } from '../definitions/chartReadingState'
 import { computeChartDomains } from './chartDomains'
 import { toggleSeriesVisibility } from './chartReadingState'
-import { categoryColor, mixColors, paletteColor, seriesColor, withAlpha } from './chartPalette'
-import { CHART_CATEGORICAL_PALETTE, FALLBACK_CHART_THEME, type ChartThemeTokens } from '../definitions/chartTheme'
 
 function admit(input: Record<string, unknown>): MarkdownChartSpec {
   const result = admitMarkdownChartSpec(input)
@@ -77,40 +75,5 @@ describe('数值轴域', () => {
 
   it('饼/环/雷达没有笛卡尔轴域', () => {
     expect(computeChartDomains(admit({ chartType: 'pie', categories: ['a'], series: [{ name: 's', values: [1] }] }), DEFAULT_CHART_READING_STATE)).toEqual({})
-  })
-})
-
-describe('颜色随实体', () => {
-  const theme: ChartThemeTokens = {
-    ...FALLBACK_CHART_THEME.light,
-    palette: CHART_CATEGORICAL_PALETTE.light,
-  }
-
-  it('按完整规格中的序号取色，显式颜色保持原值', () => {
-    const spec = admit({
-      chartType: 'bar', categories: ['a'],
-      series: [{ name: 'p', values: [1] }, { name: 'q', values: [1], color: '#112233' }, { name: 'r', values: [1] }],
-    })
-    expect(spec.series.map((series, index) => seriesColor(theme, index, series))).toEqual([
-      '#2a78d6', '#112233', '#1baf7a',
-    ])
-  })
-
-  it('第 9 个起使用同序的更浅色调，不生成新色相', () => {
-    expect(paletteColor(theme, 8)).not.toBe(paletteColor(theme, 0))
-    expect(paletteColor(theme, 8)).toBe(mixColors('#2a78d6', '#ffffff', 0.35))
-    expect(paletteColor(theme, 7)).toBe('#e34948')
-  })
-
-  it('逐点色中的 null 沿用按类目序号取得的默认色', () => {
-    const spec = admit({ chartType: 'pie', categories: ['a', 'b'], series: [{ name: 's', values: [1, 2], pointColors: [null, '#abcdef'] }] })
-    const series = spec.series[0]
-    expect(categoryColor(theme, 0, series)).toBe('#2a78d6')
-    expect(categoryColor(theme, 1, series)).toBe('#ABCDEF')
-  })
-
-  it('混色与透明度工具对非十六进制输入保持稳定', () => {
-    expect(mixColors('red', '#ffffff', 0.5)).toBe('red')
-    expect(withAlpha('#336699', 0.1)).toBe('rgba(51, 102, 153, 0.1)')
   })
 })

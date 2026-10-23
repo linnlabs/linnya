@@ -23,6 +23,16 @@ export const MARKDOWN_CHART_TYPES = [
 export type MarkdownChartType = (typeof MARKDOWN_CHART_TYPES)[number];
 
 /**
+ * 色系：同一色系内低饱和、高明度，按槽位顺序取色。名称是稳定合同；具体色值、深浅两套与描线色
+ * 由渲染器按主题决定。省略即默认色系，canonical 投影也会省略它。
+ */
+export const MARKDOWN_CHART_PALETTES = ['verdant', 'warm', 'aqua'] as const;
+
+export type MarkdownChartPalette = (typeof MARKDOWN_CHART_PALETTES)[number];
+
+export const MARKDOWN_CHART_DEFAULT_PALETTE: MarkdownChartPalette = 'verdant';
+
+/**
  * 准入上限。首版发布后不得直接收紧：已存的合法文档必须始终能读回。
  * 超出上限的数据应由研究流程先聚合或拆图，保留口径说明。
  */

@@ -24,7 +24,7 @@
         <span
           class="chart-legend__key"
           :data-shape="item.shape"
-          :style="{ '--chart-legend-color': item.color }"
+          :style="{ '--chart-legend-fill': item.fill, '--chart-legend-ink': item.ink }"
           aria-hidden="true"
         />
         <span class="chart-legend__label">{{ item.label }}</span>

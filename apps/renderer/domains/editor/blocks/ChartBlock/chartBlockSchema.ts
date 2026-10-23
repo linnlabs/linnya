@@ -13,7 +13,7 @@ import {
   MarkdownChartSpecSchema,
   MarkdownChartSpecInvalidError,
 } from '@app/schemas'
-import { plotHeightOf } from '../../features/chart-reading'
+import { plotHeightOf, resolveLegendPosition } from '../../features/chart-reading'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { generateBlockId } from '../../../../shared/utils/idUtils'
 import { CHART_FIGURE_SELECTOR, chartFigureDomSpec, readChartFigure } from './functions/chartFigureHtml'
@@ -89,8 +89,8 @@ export const renderChartBlockText: NonNullable<NodeConfig['renderText']> = ({ no
 export function estimateChartBlockHeight(node: ProseMirrorNode): number {
   const spec = MarkdownChartSpecSchema.parse(node.attrs['spec'])
   const legendItems = spec.chartType === 'pie' || spec.chartType === 'doughnut' ? spec.categories.length : spec.series.length
-  return plotHeightOf(spec) + 48 + (spec.title ? 28 : 0)
+  return plotHeightOf(spec) + 32 + (spec.title ? 28 : 0)
     + (spec.description ? Math.ceil(spec.description.length / 48) * 20 : 0)
-    + (spec.legendPosition === 'none' || spec.legendPosition === undefined && legendItems === 1 ? 0 : Math.ceil(legendItems / 4) * 28)
+    + (resolveLegendPosition(spec) === 'none' ? 0 : Math.ceil(legendItems / 4) * 28)
     + (spec.chartType === 'radar' ? 24 : 0)
 }

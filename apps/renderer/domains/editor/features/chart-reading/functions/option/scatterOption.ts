@@ -2,7 +2,7 @@
  * @file scatterOption.ts
  * @description 散点图：两个数值变量的关系。X/Y 都按真实数值定位，不把 X 当等距类目。
  *
- * 不拟合趋势线、不挪动重叠点；点带表面色环并半透明，重叠处仍可辨。读者聚焦范围只改变视口，
+ * 不拟合趋势线、不挪动重叠点；点是半透明的填充色加描线环，重叠处仍可辨。读者聚焦范围只改变视口，
  * 数值轴域与原值不变。
  */
 
@@ -10,15 +10,19 @@ import type { ChartOption } from '../../definitions/chartOption'
 import type { ChartRenderContext } from '../../definitions/chartRender'
 import type { ChartDomains } from '../chartDomains'
 import { formatChartAxisTick, formatChartDisplayValue, type NiceScale } from '../chartNumbers'
-import { seriesColor } from '../chartPalette'
+import { seriesMarkColors } from '../chartPalette'
 import { chartObservationKeys } from '../chartTransition'
 import type { ChartReadingView } from '../chartReadingView'
 import { renderChartTooltip, type ChartTooltipContent } from '../chartTooltip'
+import { MARK_STYLE, outlinedMark } from './chartMarkStyle'
 import {
+  INK_ALPHA,
   type ChartSeries,
   type ChartSpec,
   axisCaption,
   baseOption,
+  dottedGridLineType,
+  inkTint,
   mutedAxisLabel,
   seriesOpacity,
   tooltipFrame,
@@ -55,16 +59,17 @@ export function buildScatterTooltipContent(
   const y = series.values[point] ?? Number.NaN
   const xFormat = spec.xAxis?.numberFormat
   const yFormat = spec.valueAxis?.numberFormat
+  const colors = seriesMarkColors(ctx.theme, seriesIndex, series)
   return {
     heading: spec.pointLabels?.[point] ?? series.name,
     rows: [
       {
-        key: { color: seriesColor(ctx.theme, seriesIndex, series), shape: 'dot' },
+        key: { ...colors, shape: 'dot' },
         label: spec.xAxis?.title ?? 'X',
         value: formatChartDisplayValue(x, { ...(xFormat ? { numberFormat: xFormat } : {}), locale: ctx.locale }),
       },
       {
-        key: { color: seriesColor(ctx.theme, seriesIndex, series), shape: 'dot' },
+        key: { ...colors, shape: 'dot' },
         label: spec.valueAxis?.title ?? 'Y',
         value: formatChartDisplayValue(y, { ...(yFormat ? { numberFormat: yFormat } : {}), locale: ctx.locale }),
         ...(spec.pointLabels?.[point] ? { detail: series.name } : {}),
@@ -84,8 +89,8 @@ function numericAxis(
     type: 'value' as const,
     ...(domain ? { min: domain.min, max: domain.max, interval: domain.interval } : {}),
     position: placement === 'x' ? 'bottom' as const : 'left' as const,
-    splitLine: { show: authored?.showGridlines ?? placement === 'y', lineStyle: { color: ctx.theme.grid, width: 1, type: 'solid' as const } },
-    axisLine: placement === 'x' ? { show: true, lineStyle: { color: ctx.theme.axisLine, width: 1 } } : { show: false },
+    splitLine: { show: authored?.showGridlines ?? placement === 'y', lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.gridDot), width: 1, type: dottedGridLineType() } },
+    axisLine: placement === 'x' ? { show: true, lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.baseline), width: 1 } } : { show: false },
     axisTick: { show: false },
     axisLabel: {
       ...mutedAxisLabel(ctx),
@@ -106,7 +111,7 @@ export function buildScatterOption(view: ChartReadingView, domains: ChartDomains
   const keys = chartObservationKeys(spec)
 
   const series = shown.map(({ series: item, index }) => {
-    const color = seriesColor(ctx.theme, index, item)
+    const colors = seriesMarkColors(ctx.theme, index, item)
     const opacity = seriesOpacity(view, item.name)
     const marker = item.marker
     return {
@@ -120,7 +125,7 @@ export function buildScatterOption(view: ChartReadingView, domains: ChartDomains
       })),
       symbol: marker === 'square' ? 'rect' : marker && marker !== 'none' ? marker : 'circle',
       symbolSize: symbolSizeFor(spec.categories.length),
-      itemStyle: { color, opacity: 0.85 * opacity, borderColor: ctx.theme.surface, borderWidth: 2 },
+      itemStyle: { ...outlinedMark(colors, 0.9 * opacity), borderWidth: MARK_STYLE.markerRingWidth },
       emphasis: { focus: 'series' as const, scale: 1.5 },
       blur: { itemStyle: { opacity: 0.25 } },
       z: 3,

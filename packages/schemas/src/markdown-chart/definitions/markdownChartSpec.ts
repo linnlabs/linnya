@@ -9,7 +9,7 @@
 
 import { z } from 'zod';
 import { isSupportedChartNumberFormat } from '../../chart-number-format';
-import { MARKDOWN_CHART_LIMITS } from './markdownChartConstants';
+import { MARKDOWN_CHART_LIMITS, MARKDOWN_CHART_PALETTES } from './markdownChartConstants';
 
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -139,6 +139,8 @@ const commonFields = {
   description: singleLineText(MARKDOWN_CHART_LIMITS.maxDescriptionLength).optional(),
   size: z.enum(['small', 'medium', 'large']).optional(),
   legendPosition: z.enum(['top', 'bottom', 'left', 'right', 'none']).optional(),
+  /** 整张图的色系；系列与逐点的显式 color 优先于它。 */
+  palette: z.enum(MARKDOWN_CHART_PALETTES).optional(),
 };
 
 const dataLabelContentValueOnly = z.literal('value').optional();

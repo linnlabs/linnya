@@ -10,7 +10,7 @@ Only the language `linnya-chart` is a chart. `chart`, `echarts`, `json`, `yaml` 
 - Put the chart where the reader needs it, next to the paragraph it supports. Say the unit, period, population, denominator and processing method in that prose; cite sources in the paragraph right after the chart with normal citations. The chart has no separate source field.
 - Write numbers as numbers. Missing data cannot be written as `0` or `null`: leave that category out, or split the chart and say so.
 - Keep estimates, forecasts and scenarios apart from observations: name them as such in the series name or title (for example `2026E (forecast)`).
-- Default look is chosen for you. Set `color` only when a color carries meaning; otherwise leave it out.
+- The look is chosen for you. Leave colors out unless one carries meaning; see [Color](#color).
 
 ## Fields
 
@@ -23,7 +23,8 @@ Unknown fields and fields that do not apply to the chosen `chartType` are reject
 | `series` | all | Required list. Each series has a unique `name` and `values`, one finite number per category. `pie` and `doughnut` take exactly one series; `combo` takes at least two. |
 | `title`, `description` | all | Optional. Title up to 200 characters, description up to 1000. The description is also read out as the accessible description. |
 | `size` | all | `small`, `medium` (default) or `large`: three fixed plot heights. |
-| `legendPosition` | all | `top`, `bottom`, `left`, `right` or `none`. Default: `bottom` for two or more series and for `pie`/`doughnut`, none for a single series. |
+| `legendPosition` | all | `top`, `bottom`, `left`, `right` or `none`. Default: `bottom` for two or more series and for `pie`/`doughnut`, none for a single series; `line` and `area` with up to five series label each line at its end instead of showing a legend. Setting it explicitly brings the legend back. |
+| `palette` | all | `verdant` (greens, default), `warm` or `aqua`: the color family of the whole chart. Colors you set on a series or a point win. |
 | `version` | all | Optional, only `1`. |
 | `barDirection` | `bar` | `vertical` (default) or `horizontal`. Prefer `horizontal` for long labels. |
 | `stacking` | `bar` | `none` (default), `stacked`, or `percent` (shares of each category total). |
@@ -39,6 +40,32 @@ Unknown fields and fields that do not apply to the chosen `chartType` are reject
 Series keys: `name`, `values` always; `color` (`#RRGGBB`, not for `pie`/`doughnut`); `pointColors` (list of `#RRGGBB` or `null`, one per category; `bar`, `pie`, `doughnut`, and `bar` series in `combo`); `lineDash` (`solid`, `dash`, `dot`) for line series; `marker` (`none`, `circle`, `square`, `diamond`, `triangle`) for line and scatter series; `showDataLabels` and `dataLabelFormat` where the chart type has labels. In `combo` each series also needs `chartType` (`bar`, `line` or `area`) and may set `axis` (`primary` default, or `secondary`).
 
 `numberFormat` is `General` or a simple format: `0.0`, `#,##0`, `0.0%` (the value is a ratio, so `0.27` shows `27.0%`), `0.0"unit"`.
+
+## Color
+
+The default look is calm: soft, low-saturation colors that follow the light and dark themes. Series take colors in a fixed order, and a series keeps its color when another one is hidden. Leave colors out unless they carry meaning.
+
+- **Pick a family.** `palette` colors the whole chart: `verdant` (greens, the default), `warm` (brick, apricot, rose, cream) or `aqua` (blues and teals). Choose one to match the tone of the document, and never mix families inside one chart.
+- **Emphasize one thing.** When one series or one bar is the point, color only that one and let the rest recede in a mid gray. Use `color` on a series, or `pointColors` for single bars and slices. A gray such as `#A0A4A8` stays quiet in both light and dark themes.
+- **Custom colors are fills.** `color` and `pointColors` take `#RRGGBB`. Linnya derives a matching outline for each (deeper in light mode, brighter in dark mode), so choose soft mid tones rather than vivid ones. They do not switch with the theme.
+- **Line and area charts label their ends.** With up to five series and no `legendPosition`, each line carries its name and last value at its right end instead of a legend.
+
+### Emphasis example
+
+````markdown
+```linnya-chart
+{
+  "chartType": "bar",
+  "title": "2025 年主要城市新能源汽车销量",
+  "categories": ["上海", "北京", "深圳", "杭州", "广州"],
+  "series": [
+    { "name": "销量", "values": [20.5, 12.4, 15.2, 9.3, 8.1], "pointColors": ["#5B9279", "#A0A4A8", "#A0A4A8", "#A0A4A8", "#A0A4A8"] }
+  ],
+  "barDirection": "horizontal",
+  "valueAxis": { "title": "万辆", "numberFormat": "0.0" }
+}
+```
+````
 
 ## Rules the writer checks
 

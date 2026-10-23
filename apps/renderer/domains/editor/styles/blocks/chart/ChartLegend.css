@@ -86,16 +86,20 @@
   color: var(--color-text-muted);
 }
 
-/* 图例与阅读选项共用同一套标记形状：柱/面积=方块，折线=短线，散点=圆点。 */
+/* 图例与阅读选项共用同一套标记：柱/面积/散点 = 淡填充 + 发丝描线轮廓，折线 = 描线色短线。
+   与图表里的“柔彩”标记一一对应，所以淡色填充在浅底上也能认出形状。 */
 .chart-legend__key,
 .chart-reading-options__key {
   --chart-key-bar: 10px;
   --chart-key-line-length: 14px;
   --chart-key-line-weight: 2px;
   --chart-key-dot: 8px;
+  --chart-key-dash: 3px;
+  --chart-key-dash-gap: 2px;
 
   flex: 0 0 auto;
-  background: var(--chart-legend-color);
+  background: var(--chart-legend-fill);
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--chart-legend-ink);
 }
 
 .chart-legend__key[data-shape='bar'],
@@ -110,6 +114,8 @@
   width: var(--chart-key-line-length);
   height: var(--chart-key-line-weight);
   border-radius: var(--radius-full);
+  background: var(--chart-legend-ink);
+  box-shadow: none;
 }
 
 .chart-legend__key[data-shape='dot'],
@@ -119,8 +125,15 @@
   border-radius: var(--radius-full);
 }
 
-/* 被隐藏的系列：标记变成空心，说明它仍存在、可以再显示。 */
+/* 被隐藏的系列：标记变成空心（折线变成虚线），说明它仍存在、可以再显示。 */
 .chart-legend__item.is-hidden .chart-legend__key {
   background: transparent;
-  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--chart-legend-color);
+}
+
+.chart-legend__item.is-hidden .chart-legend__key[data-shape='line'] {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--chart-legend-ink) 0 var(--chart-key-dash),
+    transparent var(--chart-key-dash) calc(var(--chart-key-dash) + var(--chart-key-dash-gap))
+  );
 }

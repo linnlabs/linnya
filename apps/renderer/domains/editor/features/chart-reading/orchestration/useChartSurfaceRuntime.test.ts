@@ -7,7 +7,12 @@ import { chartFixture, chartTestTheme } from '../testing/chartTestFixtures'
 import { useChartSurfaceRuntime } from './useChartSurfaceRuntime'
 import { useChartReadingStore } from '../store/chartReadingStore'
 
-const controller = vi.hoisted(() => ({ render: vi.fn(async () => {}), dispose: vi.fn(), highlight: vi.fn(), isDisposed: false }))
+const controller = vi.hoisted(() => ({
+  render: vi.fn(async (_request: { theme: { palette: readonly { fill: string; ink: string }[] } }) => {}),
+  dispose: vi.fn(),
+  highlight: vi.fn(),
+  isDisposed: false,
+}))
 vi.mock('./chartInstanceController', () => ({ createChartController: () => controller }))
 vi.mock('../../../ui/useEditorLocalization', async () => {
   const { ref } = await import('vue')
@@ -16,7 +21,7 @@ vi.mock('../../../ui/useEditorLocalization', async () => {
 vi.mock('@/app/notification', () => ({ useNotificationStore: () => ({ show: vi.fn() }) }))
 vi.mock('./readChartTheme', async () => {
   const actual = await vi.importActual<typeof import('./readChartTheme')>('./readChartTheme')
-  return { ...actual, resolveChartTheme: () => chartTestTheme() }
+  return { ...actual, resolveChartTheme: (_host: Element, scheme: 'light' | 'dark' = 'light', palette?: 'verdant' | 'warm' | 'aqua') => chartTestTheme(scheme, palette) }
 })
 
 const cleanups: (() => void)[] = []
@@ -85,4 +90,26 @@ it('同属浅色的主题切换仍重绘；减少动态效果时禁止过渡', a
   expect(controller.render).toHaveBeenLastCalledWith(expect.objectContaining({ transition: false }))
   chart.unmount()
   expect(motionListeners.size).toBe(0)
+})
+
+it('规格的 palette 决定图表主题和图例的色系，改变色系会重绘', async () => {
+  const lastPalette = () => {
+    const calls = controller.render.mock.calls
+    return calls[calls.length - 1]?.[0].theme.palette
+  }
+  const chart = mountChart(chartFixture('line', { palette: 'warm' }))
+  await settle()
+  const warm = chartTestTheme('light', 'warm').palette
+  expect(lastPalette()).toEqual(warm)
+  expect(chart.runtime.legend.value.map(item => item.fill)).toEqual([warm[0]?.fill, warm[1]?.fill])
+
+  chart.spec.value = chartFixture('line', { palette: 'aqua' })
+  await settle()
+  const aqua = chartTestTheme('light', 'aqua').palette
+  expect(lastPalette()).toEqual(aqua)
+  expect(chart.runtime.legend.value.map(item => item.fill)).toEqual([aqua[0]?.fill, aqua[1]?.fill])
+
+  chart.spec.value = chartFixture('line')
+  await settle()
+  expect(lastPalette()).toEqual(chartTestTheme('light').palette)
 })

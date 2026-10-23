@@ -88,10 +88,10 @@ export function useChartSurfaceRuntime(options: UseChartSurfaceRuntimeOptions) {
   }))
 
   function resolveTheme(): ChartThemeTokens {
-    return resolveChartTheme(options.plotElement.value ?? document.body, scheme.value)
+    return resolveChartTheme(options.plotElement.value ?? document.body, scheme.value, options.spec.value.palette)
   }
 
-  const legend = computed(() => buildChartLegend(options.spec.value, state.value, baseChartTheme(scheme.value)))
+  const legend = computed(() => buildChartLegend(options.spec.value, state.value, baseChartTheme(scheme.value, options.spec.value.palette)))
 
   // ---- 阅读状态：规格语义变化时重置，其余只收敛 ----
   watch([semanticKey, options.readingKey], () => {
