@@ -67,6 +67,10 @@ normalization 直接接纳 parser-wasm 的 CodeBlock 事件，不在 TypeScript 
 重新导入 canonical Markdown 必须保持代码正文、语言和相邻块边界，不能在 VFS/read_file 补字修复。
 原围栏字符、长度、info string 的附加元数据不持久化，不承诺源文本逐字 round-trip。
 
+**已知限制：公式块往返。** 当前 `markdownJsonSerializer.ts` 将 `latexBlock` 投影为 `latex` 语言围栏，parser 与物化器却将该围栏视为普通 `codeBlock`。
+因此公式块经 Markdown 投影后被改写并重新导入时，可能变成代码块；未变块的身份对齐可能掩盖此问题。
+该缺口属于公式的导入与投影合同，不能通过把普通 `latex` 代码围栏一律提升为公式块修补，否则会改变源码清单的语义。
+
 ## 图表块（`linnya-chart`）
 
 `chartBlock` 是原子 rootBlock 内容，唯一必填属性 `spec` 由 `@app/schemas` 的 `MarkdownChartSpecSchema` 校验（形状严格、字段间规则一并检查）。
