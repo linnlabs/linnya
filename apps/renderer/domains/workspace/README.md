@@ -61,6 +61,7 @@ apps/renderer/domains/workspace/
 
 ## 重要约定
 
+- Markdown PDF 导出通过 Editor 公开入口 `prepareMarkdownHtmlForPdf` 生成完整静态内容后再交给 Electron；Workspace 只拥有纸张、打印 CSS、保存框与交付。图表不能直接使用 `editor.getHTML()` 中仅用于往返的标题和规格，也不能截取可能被虚拟化卸载的 NodeView；任一图表生成失败时中止导出并提示错误。
 - 工作区同一项目、同一父目录下的未删除节点名必须唯一；历史重名由数据库迁移自动改为 `名称 (1)`、`名称 (2)`。
 - `WorkspaceTreeStore` 只持有响应式状态、同步 action 和 feature 组合；VFS 加载/刷新归属 `tree-loading`，异步节点变更归属 `tree-node-mutations`。树 DTO 投影属于 workspace domain shared，禁止全局 shared 反向依赖 Store 内部类型。
 - 文件树刷新由 Workspace Mutation Bus 驱动；普通 node CRUD 走已注入 publisher 的 `WorkspaceService`，跨项目转移走独立 `node-transfer` feature 并在提交后发布 `workspace.node.transferred`。完整规则见 [Workspace Mutation Bus](../../../../docs/workspace-mutation-bus.md)。

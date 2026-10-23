@@ -10,6 +10,8 @@
 `createChartReadingSessionId` / `disposeChartReadingSession` / `disposeChartReadingBlock`，绘图区尺寸合同 `plotHeightOf`（块估高复用），以及数据表读模型 `buildChartDataTable` / `chartDataTableToTsv`（剪贴板 HTML 复用）。
 ECharts 运行时、主题解析和阅读规则都是内部实现，其他模块不得绕过出口引用。
 
+`renderChartPrintImage` 是文档打印的窄入口：从完整规格生成包含标题、说明、图例和脚注的静态 SVG 图片，固定浅色默认视图；内部复用复制图片的构图与 SSR 渲染，不读取会话状态或已挂载图表。
+
 `ChartSurface` 的 props：`spec`、`readingKey`（`null` 表示状态只在该组件内，用于编辑预览与历史视图）、`active`（是否持有 ECharts 实例）、`transitions`（是否允许更新过渡）；
 工具栏只展示“复制图标 + 右箭头”的复制菜单；阅读视图改变后另提供恢复默认视图。控件高度与其他块的标准图标按钮一致。
 菜单复用 `CustomSelect` 的公开 `classNames.options`，在图表内向左展开，宽度随文案自适应。

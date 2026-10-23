@@ -14,6 +14,7 @@
 - renderer 侧 Markdown 语义运行时：[markdownRuntime](./services/markdownRuntime/README.md)
 - 后端 Markdown 文档领域：[Markdown domain](../../../../src/domains/markdown/README.md)
 - 文档打开、刷新、保存与并发：[document-session](./features/document-session/README.md)
+- Markdown PDF 内容投影：[document-export](./features/document-export/README.md)
 - Revision / Pending 性能链路：[Revision](./features/Revision/README.md)
 - Provider outbound 开发调试面：[ProviderOutboundDebug](./features/ProviderOutboundDebug/README.md)
 

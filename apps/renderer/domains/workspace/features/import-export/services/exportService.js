@@ -218,21 +218,17 @@ export async function exportAsPDF(editor, settings = {}) {
   }
 
   const fileStore = useFileStore();
-  const editorHtml = editor.getHTML();
-  const styles = await getAllAppStyles();
-  // 修改：传递设置给 createHtmlForPdf
-  const completeHtml = createHtmlForPdf(editorHtml, styles, finalSettings); 
-
-  // 生成默认文件名
   const defaultFileName = buildDefaultExportFileName(fileStore, 'pdf');
-
-  console.log(`[ExportService] Exporting as PDF. Default filename: ${defaultFileName}`);
-
-  // 调用新的主进程 API，发送完整的 HTML
-  if (window.electronAPI && typeof window.electronAPI.exportPDF === 'function') {
+  try {
+    // 在异步绘制前固定本次文档；图表生成归 Editor，Workspace 只协调交付。
+    const editorHtml = editor.getHTML();
+    const { prepareMarkdownHtmlForPdf } = await import('@/domains/editor/document-export');
+    const printableHtml = await prepareMarkdownHtmlForPdf(editorHtml);
+    const styles = await getAllAppStyles();
+    const completeHtml = createHtmlForPdf(printableHtml, styles, finalSettings);
     await requestExportPdf(defaultFileName, completeHtml);
-  } else {
-    console.error('[ExportService] electronAPI.exportPDF is not available.');
+  } catch (error) {
+    console.error('[ExportService] PDF preparation or export failed:', error);
     showExportError(resolveCurrentWorkspaceMessage('workspace.export.service.pdfUnavailable'));
   }
 }
@@ -357,6 +353,16 @@ function createHtmlForPdf(editorHtml, styles, settings) {
         /* 移除：这里的左右边距重置无效 
         margin-left: 0 !important;
         padding-left: 0 !important; */
+      }
+      /* 图表已在 Editor 中生成自包含图片；按纸张宽度缩放并保持整图分页。 */
+      .pdf-content-wrapper figure[data-type="chart-block"] {
+        margin: 0;
+        break-inside: avoid;
+      }
+      .pdf-content-wrapper figure[data-type="chart-block"] > img {
+        display: block;
+        max-width: 100%;
+        height: auto;
       }
       /* ++ 新增：覆盖 .root-block 的常规布局，使其在 PDF 中占满可用宽度 ++ */
       .root-block {

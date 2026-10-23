@@ -68,10 +68,15 @@ export interface ParsedChartFigure {
   readonly id: string | null
 }
 
+/** 已识别的图表 figure 只从正式属性读取规格，打印和 HTML 往返共用严格准入。 */
+export function readChartFigureSpec(element: Element): MarkdownChartSpec {
+  const admission = admitMarkdownChartFenceBody(element.getAttribute(SPEC_ATTRIBUTE) ?? '')
+  if (!admission.ok) throw new MarkdownChartSpecInvalidError(admission.diagnostics)
+  return admission.spec
+}
+
 /** 非图表返回 null；图表规格无效则拒绝整次解析，禁止静默丢弃。 */
 export function readChartFigure(element: Element): ParsedChartFigure | null {
   if (!element.matches(CHART_FIGURE_SELECTOR)) return null
-  const admission = admitMarkdownChartFenceBody(element.getAttribute(SPEC_ATTRIBUTE) ?? '')
-  if (!admission.ok) throw new MarkdownChartSpecInvalidError(admission.diagnostics)
-  return { spec: admission.spec, id: element.getAttribute('data-id') }
+  return { spec: readChartFigureSpec(element), id: element.getAttribute('data-id') }
 }
