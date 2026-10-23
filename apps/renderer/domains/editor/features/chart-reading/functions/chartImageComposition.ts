@@ -64,15 +64,15 @@ export function wrapText(text: string, maxWidth: number, fontSize: number, fontW
   return lines
 }
 
-/** 图例键与界面一致：条形/圆点是填充 + 描线轮廓，线键直接用描线色。 */
+/** 图例键与界面一致：条形/圆点是无描边填充，线键直接用描线色。 */
 function legendKey(item: ChartLegendItem, x: number, y: number): string {
   const fill = escapeXml(item.fill)
   const ink = escapeXml(item.ink)
   switch (item.shape) {
     case 'bar':
-      return `<rect x="${x + 0.5}" y="${y - 4.5}" width="9" height="9" rx="2" fill="${fill}" stroke="${ink}" stroke-width="1"/>`
+      return `<rect x="${x + 0.5}" y="${y - 4.5}" width="9" height="9" rx="2" fill="${fill}"/>`
     case 'dot':
-      return `<circle cx="${x + 5}" cy="${y}" r="3.5" fill="${fill}" stroke="${ink}" stroke-width="1"/>`
+      return `<circle cx="${x + 5}" cy="${y}" r="3.5" fill="${fill}"/>`
     default:
       return `<rect x="${x}" y="${y - 1.5}" width="14" height="3" rx="1.5" fill="${ink}"/>`
   }

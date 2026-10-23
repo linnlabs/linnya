@@ -23,10 +23,10 @@ export const MARKDOWN_CHART_TYPES = [
 export type MarkdownChartType = (typeof MARKDOWN_CHART_TYPES)[number];
 
 /**
- * 色系：同一色系内低饱和、高明度，按槽位顺序取色。名称是稳定合同；具体色值、深浅两套与描线色
- * 由渲染器按主题决定。省略即默认色系，canonical 投影也会省略它。
+ * 六套单色阶与三套多色色带，始终沿色带顺序取色。名称是稳定合同；具体色值与主题适配
+ * 由渲染器拥有。省略仍是 verdant，避免改变已有 canonical 文档的默认语义。
  */
-export const MARKDOWN_CHART_PALETTES = ['verdant', 'warm', 'aqua'] as const;
+export const MARKDOWN_CHART_PALETTES = ['verdant', 'warm', 'aqua', 'teal', 'violet', 'mono', 'sea', 'pastel', 'mist'] as const;
 
 export type MarkdownChartPalette = (typeof MARKDOWN_CHART_PALETTES)[number];
 

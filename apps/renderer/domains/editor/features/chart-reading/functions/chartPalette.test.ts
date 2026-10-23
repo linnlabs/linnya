@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { admitMarkdownChartSpec, type MarkdownChartSpec } from '@app/schemas'
-import { CHART_PALETTES, baseChartTheme } from '../definitions/chartTheme'
+import { admitMarkdownChartSpec, MARKDOWN_CHART_PALETTES, type MarkdownChartSpec } from '@app/schemas'
+import { baseChartTheme } from '../definitions/chartTheme'
 import { rgbToOklch } from './chartColorSpace'
 import {
   categoryMarkColors,
@@ -73,86 +73,62 @@ describe('mixColors / readableTextOn', () => {
     expect(readableTextOn('#f2f2f2')).toBe('#0b0b0b')
     expect(readableTextOn('rgb(20, 20, 20)')).toBe('#ffffff')
     expect(readableTextOn('rgb(240, 240, 240)')).toBe('#0b0b0b')
+    expect(readableTextOn('#aac3df')).toBe('#0b0b0b')
   })
 })
 
-describe('deriveInkColor：由填充派生同色相的描线', () => {
-  it('浅色主题：淡填充压深到 L 0.42–0.57，描线与填充同色相', () => {
-    const fill = '#f3eabd'
-    const ink = deriveInkColor(fill, 'light')
-    const derived = oklchOf(ink)
-    expect(derived.l).toBeGreaterThanOrEqual(0.41)
-    expect(derived.l).toBeLessThanOrEqual(0.58)
-    expect(Math.abs(derived.h - oklchOf(fill).h)).toBeLessThan(6)
+describe('细线可读性与原色保留', () => {
+  it('已经清晰的颜色保持原值，不统一压暗或降彩度', () => {
+    expect(deriveInkColor('#336699', 'light')).toBe('#336699')
+    expect(deriveInkColor('#edce83', 'dark')).toBe('#edce83')
   })
 
-  it('浅色主题：已经较深的填充只再深一点，不会变黑', () => {
-    const fill = '#466e4e'
-    const derived = oklchOf(deriveInkColor(fill, 'light'))
-    expect(derived.l).toBeLessThan(oklchOf(fill).l)
-    expect(derived.l).toBeGreaterThanOrEqual(0.28)
+  it('浅底的浅色线变深、深底的深色线变亮；显式填充保持原值', () => {
+    for (const [scheme, fill] of [['light', '#bbd2e2'], ['dark', '#335544']] as const) {
+      const colors = markColorsFromFill(fill, baseChartTheme(scheme))
+      expect(colors.fill).toBe(fill)
+      expect(oklchOf(colors.ink).l > oklchOf(fill).l).toBe(scheme === 'dark')
+      expect(Math.abs(oklchOf(colors.ink).h - oklchOf(fill).h)).toBeLessThan(4)
+    }
+    expect(oklchOf(deriveInkColor('#ffffff', 'light')).l).toBeLessThan(0.8)
+    expect(oklchOf(deriveInkColor('#000000', 'dark')).l).toBeGreaterThan(0.5)
   })
+})
 
-  it('深色主题：描线提亮到 L 0.62–0.84', () => {
-    const derived = oklchOf(deriveInkColor('#365a4f', 'dark'))
-    expect(derived.l).toBeGreaterThanOrEqual(0.61)
-    expect(derived.l).toBeLessThanOrEqual(0.85)
-  })
-
-  it('高饱和的作者色派生出克制的描线：彩度约 0.09 封顶（量化成 8 位色后留 0.005 误差）', () => {
-    for (const scheme of ['light', 'dark'] as const) {
-      expect(oklchOf(deriveInkColor('#ff2d2d', scheme)).c).toBeLessThanOrEqual(0.095)
+describe('完整实体集上的有序取色', () => {
+  it('各色系 2–8 个实体只沿色带递增取色，不交错或改变数据顺序', () => {
+    for (const name of MARKDOWN_CHART_PALETTES) {
+      const theme = baseChartTheme('light', name)
+      for (let count = 2; count <= 8; count += 1) {
+        const positions = Array.from({ length: count }, (_, index) =>
+          theme.palette.indexOf(paletteMarkColors(theme, index, count)))
+        expect(positions.every((slot, index) => slot >= 0 && (index === 0 || slot > (positions[index - 1] ?? -1)))).toBe(true)
+      }
     }
   })
 
-  it('无法解析的颜色原样返回，而不是编造一个描线', () => {
-    expect(deriveInkColor('oklch(0.7 0.1 150)', 'light')).toBe('oklch(0.7 0.1 150)')
+  it('超过八类沿相邻色延展，不循环回第一色；两端仍是色带两端', () => {
+    const theme = baseChartTheme('light', 'mist')
+    expect(paletteMarkColors(theme, 0, 15)).toEqual(theme.palette[0])
+    expect(paletteMarkColors(theme, 14, 15)).toEqual(theme.palette[7])
+    expect(paletteMarkColors(theme, 8, 15)).toEqual(theme.palette[4])
+    const first = theme.palette[0]
+    const second = theme.palette[1]
+    if (!first || !second) throw new Error('Expected palette endpoints')
+    expect(paletteMarkColors(theme, 1, 15).fill).toBe(mixColors(first.fill, second.fill, 0.5))
   })
-})
 
-describe('颜色随实体', () => {
-  const theme = baseChartTheme('light')
-  const palette = CHART_PALETTES.verdant.light
-
-  it('按完整规格中的序号取色；作者显式色被当作填充，保持原值并派生描线', () => {
-    const spec = admit({
-      chartType: 'bar', categories: ['a'],
-      series: [{ name: 'p', values: [1] }, { name: 'q', values: [1], color: '#112233' }, { name: 'r', values: [1] }],
-    })
-    const colors = spec.series.map((series, index) => seriesMarkColors(theme, index, series))
-    expect(colors[0]).toEqual(palette[0])
+  it('显式色覆盖对应实体，不挤占或挪动其他实体的槽位；逐点 null 继承', () => {
+    const theme = baseChartTheme('light', 'pastel')
+    const spec = admit({ chartType: 'bar', categories: ['a'], series: [
+      { name: 'p', values: [1] }, { name: 'q', values: [1], color: '#112233' }, { name: 'r', values: [1] },
+    ] })
+    const colors = spec.series.map((series, index) => seriesMarkColors(theme, index, series, spec.series.length))
+    expect(colors[0]).toEqual(theme.palette[0])
     expect(colors[1]?.fill).toBe('#112233')
-    expect(colors[1]?.ink).toBe(deriveInkColor('#112233', 'light'))
-    expect(colors[2]).toEqual(palette[2])
-  })
-
-  it('第 9 个起使用同序的更浅色调，不生成新色相', () => {
-    const first = paletteMarkColors(theme, 0)
-    const ninth = paletteMarkColors(theme, 8)
-    expect(first).toEqual(palette[0])
-    expect(ninth.fill).toBe(mixColors(palette[0]?.fill ?? '', theme.surface, 0.35))
-    expect(ninth.ink).toBe(mixColors(palette[0]?.ink ?? '', theme.surface, 0.35 * 0.6))
-    expect(ninth).not.toEqual(first)
-    expect(paletteMarkColors(theme, 7)).toEqual(palette[7])
-    // 色调只会越来越浅，直到上限：第 17 个与第 25 个相同。
-    expect(paletteMarkColors(theme, 24)).toEqual(paletteMarkColors(theme, 16))
-  })
-
-  it('逐点色中的 null 沿用按类目序号取得的默认色，显式色作为填充', () => {
-    const spec = admit({ chartType: 'pie', categories: ['a', 'b'], series: [{ name: 's', values: [1, 2], pointColors: [null, '#abcdef'] }] })
-    const series = spec.series[0]
-    expect(categoryMarkColors(theme, 0, series)).toEqual(palette[0])
-    expect(categoryMarkColors(theme, 1, series).fill).toBe('#ABCDEF')
-    expect(categoryMarkColors(theme, 1, undefined)).toEqual(palette[1])
-  })
-
-  it('色系跟随规格的 palette：同一序号在不同色系里取到各自的颜色', () => {
-    const aqua = baseChartTheme('light', 'aqua')
-    expect(paletteMarkColors(aqua, 1)).toEqual(CHART_PALETTES.aqua.light[1])
-    expect(paletteMarkColors(aqua, 1)).not.toEqual(paletteMarkColors(theme, 1))
-  })
-
-  it('markColorsFromFill 按主题方向派生描线', () => {
-    expect(markColorsFromFill('#8aa2c8', baseChartTheme('light')).ink).not.toBe(markColorsFromFill('#8aa2c8', baseChartTheme('dark')).ink)
+    expect(colors[2]).toEqual(theme.palette[7])
+    const parts = admit({ chartType: 'pie', categories: ['a', 'b'], series: [{ name: 's', values: [1, 2], pointColors: ['#abcdef', null] }] })
+    expect(categoryMarkColors(theme, 0, parts.series[0], 2).fill).toBe('#ABCDEF')
+    expect(categoryMarkColors(theme, 1, parts.series[0], 2)).toEqual(theme.palette[7])
   })
 })

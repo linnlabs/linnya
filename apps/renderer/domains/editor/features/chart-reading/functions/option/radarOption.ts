@@ -13,13 +13,13 @@ import { seriesMarkColors } from '../chartPalette'
 import type { ChartReadingView } from '../chartReadingView'
 import { renderChartTooltip, type ChartTooltipContent } from '../chartTooltip'
 import { MARK_STYLE, lineMarker, radarFillAlpha } from './chartMarkStyle'
-import { INK_ALPHA, baseOption, categoryLabel, inkTint, seriesOpacity, tooltipFrame } from './chartOptionShared'
+import { baseOption, categoryLabel, seriesOpacity, tooltipFrame } from './chartOptionShared'
 
 export function buildRadarTooltipContent(view: ChartReadingView, ctx: ChartRenderContext, seriesIndex: number): ChartTooltipContent | null {
   const { spec } = view
   const series = spec.series[seriesIndex]
   if (!series) return null
-  const colors = seriesMarkColors(ctx.theme, seriesIndex, series)
+  const colors = seriesMarkColors(ctx.theme, seriesIndex, series, spec.series.length)
   return {
     heading: series.name,
     rows: view.categoryIndices.map(category => ({
@@ -45,8 +45,8 @@ export function buildRadarOption(view: ChartReadingView, ctx: ChartRenderContext
       center: ['50%', '52%'],
       axisNameGap: 10,
       axisName: { color: ctx.theme.textSecondary, fontSize: 12 },
-      axisLine: { lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.hairline), width: 1 } },
-      splitLine: { lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.hairline), width: 1 } },
+      axisLine: { lineStyle: { color: ctx.theme.gridColor, width: 0.5 } },
+      splitLine: { lineStyle: { color: ctx.theme.gridColor, width: 0.5 } },
       splitArea: { show: false },
       // 量尺是固定且共用的：不在每根轴上重复刻度数字，由图表脚注标明范围。
       axisLabel: { show: false },
@@ -66,7 +66,7 @@ export function buildRadarOption(view: ChartReadingView, ctx: ChartRenderContext
     series: [{
       type: 'radar',
       data: shown.map(({ series, index }) => {
-        const colors = seriesMarkColors(ctx.theme, index, series)
+        const colors = seriesMarkColors(ctx.theme, index, series, spec.series.length)
         const opacity = seriesOpacity(view, series.name)
         return {
           name: series.name,

@@ -86,8 +86,8 @@
   color: var(--color-text-muted);
 }
 
-/* 图例与阅读选项共用同一套标记：柱/面积/散点 = 淡填充 + 发丝描线轮廓，折线 = 描线色短线。
-   与图表里的“柔彩”标记一一对应，所以淡色填充在浅底上也能认出形状。 */
+/* 图例与阅读选项共用同一套标记：柱/面积/散点 = 无描边原色填充，折线 = 描线色短线。
+   与图表中的实体色一致；被隐藏时才用空心标记表示状态。 */
 .chart-legend__key,
 .chart-reading-options__key {
   --chart-key-bar: 10px;
@@ -99,7 +99,7 @@
 
   flex: 0 0 auto;
   background: var(--chart-legend-fill);
-  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--chart-legend-ink);
+  box-shadow: none;
 }
 
 .chart-legend__key[data-shape='bar'],
@@ -128,9 +128,11 @@
 /* 被隐藏的系列：标记变成空心（折线变成虚线），说明它仍存在、可以再显示。 */
 .chart-legend__item.is-hidden .chart-legend__key {
   background: transparent;
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--chart-legend-ink);
 }
 
 .chart-legend__item.is-hidden .chart-legend__key[data-shape='line'] {
+  box-shadow: none;
   background: repeating-linear-gradient(
     90deg,
     var(--chart-legend-ink) 0 var(--chart-key-dash),

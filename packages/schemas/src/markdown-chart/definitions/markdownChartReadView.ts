@@ -33,6 +33,7 @@ export interface MarkdownChartSpecReadView {
   readonly series: readonly MarkdownChartSeriesReadView[]
   readonly barDirection?: 'vertical' | 'horizontal'
   readonly stacking?: 'none' | 'stacked' | 'percent'
+  readonly colorBy?: 'series' | 'category'
   readonly categoryAxis?: Readonly<MarkdownChartCategoryAxis>
   readonly valueAxis?: Readonly<MarkdownChartValueAxis>
   readonly secondaryValueAxis?: Readonly<MarkdownChartValueAxis>

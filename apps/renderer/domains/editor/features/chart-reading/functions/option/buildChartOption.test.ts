@@ -11,7 +11,7 @@ import { buildShareTooltipContent, shareOuterRatio } from './shareOption'
 import { buildScatterTooltipContent } from './scatterOption'
 import { buildRadarTooltipContent } from './radarOption'
 import { deriveChartReadingView } from '../chartReadingView'
-import { deriveInkColor, parseColor, withAlpha } from '../chartPalette'
+import { parseColor } from '../chartPalette'
 
 function option(type: Parameters<typeof chartFixture>[0], patch: Record<string, unknown> = {}, state = DEFAULT_CHART_READING_STATE, ctx = chartTestContext()) {
   return buildChartOption(chartFixture(type, patch), state, ctx)
@@ -78,15 +78,15 @@ describe('浏览器里的主题 token 是 rgb()，不是十六进制', () => {
     expect(labels.every(color => color === '#0b0b0b' || color === '#ffffff')).toBe(true)
   })
 
-  it('点状网格、类目轴基线、折线指示线都是文字色的透明度（rgb() 文字色下同样成立）', () => {
+  it('网格读取中性边界 token，指示线透明度能处理 rgb() 文字色', () => {
     const bar = option('bar', {}, DEFAULT_CHART_READING_STATE, chartTestContext({ theme: browserTheme }))
-    const grid = (bar.yAxis as { splitLine: { lineStyle: { color: string; type: number[] } } }[])[0]?.splitLine.lineStyle
-    expect(grid).toMatchObject({ color: 'rgba(23, 23, 23, 0.3)', type: [1, 4] })
-    expect((bar.xAxis as { axisLine: { lineStyle: { color: string } } }).axisLine.lineStyle.color).toBe('rgba(23, 23, 23, 0.5)')
+    const grid = (bar.yAxis as { splitLine: { lineStyle: { color: string; type: string } } }[])[0]?.splitLine.lineStyle
+    expect(grid).toMatchObject({ color: browserTheme.gridColor, type: 'solid' })
+    expect((bar.xAxis as { axisLine: { lineStyle: { color: string } } }).axisLine.lineStyle.color).toBe(browserTheme.gridColor)
 
     const line = option('line', {}, DEFAULT_CHART_READING_STATE, chartTestContext({ theme: browserTheme }))
     const pointer = (line.tooltip as { axisPointer: { lineStyle: { color: string } } }).axisPointer.lineStyle
-    expect(pointer.color).toBe('rgba(23, 23, 23, 0.3)')
+    expect(pointer.color).toBe('rgba(23, 23, 23, 0.2)')
   })
 })
 
@@ -98,7 +98,7 @@ describe('柱/条', () => {
     expect(category.data).toEqual(['北京', '上海', '广州', '深圳', '杭州'])
     expect((built.xAxis as { position: string }[])[0]).toMatchObject({ type: 'value', position: 'bottom' })
     const series = (built.series as { data: { itemStyle: { borderRadius: number[] } }[] }[])[0]
-    expect(series?.data[0]?.itemStyle.borderRadius).toEqual([0, 4, 4, 0])
+    expect(series?.data[0]?.itemStyle.borderRadius).toEqual([0, 2, 2, 0])
   })
 
   it('柱厚度有上限；单系列且类目不多时显示数值标签，类目多则克制', () => {
@@ -124,26 +124,18 @@ describe('柱/条', () => {
   it('负值的数据端圆角朝下', () => {
     const built = option('bar', { series: [{ name: '净额', values: [3, -2, 5, -1, 4] }], valueAxis: { title: '万辆' } })
     const data = (built.series as { data: { itemStyle: { borderRadius: number[] } }[] }[])[0]?.data
-    expect(data?.[0]?.itemStyle.borderRadius).toEqual([4, 4, 0, 0])
-    expect(data?.[1]?.itemStyle.borderRadius).toEqual([0, 0, 4, 4])
+    expect(data?.[0]?.itemStyle.borderRadius).toEqual([2, 2, 0, 0])
+    expect(data?.[1]?.itemStyle.borderRadius).toEqual([0, 0, 2, 2])
   })
 
-  it('柱是淡填充加 1px 同色相描线；描线色在亮/暗主题里各取各的', () => {
-    for (const scheme of ['light', 'dark'] as const) {
-      const palette = chartTestTheme(scheme).palette
-      const series = option('bar', {}, DEFAULT_CHART_READING_STATE, chartTestContext({ theme: chartTestTheme(scheme) })).series as { itemStyle: Record<string, unknown> }[]
-      expect(series[0]?.itemStyle, scheme).toMatchObject({ color: palette[0]?.fill, borderColor: palette[0]?.ink, borderWidth: 1, opacity: 1 })
-    }
-  })
-
-  it('逐点着色：显式色作为填充、描线由它派生；null 沿用系列色', () => {
+  it('逐点着色：显式色作为填充；null 沿用系列色', () => {
     const built = option('bar', { series: [{ name: '销量', values: [12.4, 20.5, 8.1, 15.2, 9.3], pointColors: ['#336699', null, null, null, null] }] })
     const data = (built.series as { data: { itemStyle: { color?: string; borderColor?: string } }[] }[])[0]?.data
-    expect(data?.[0]?.itemStyle).toMatchObject({ color: '#336699', borderColor: deriveInkColor('#336699', 'light') })
+    expect(data?.[0]?.itemStyle).toMatchObject({ color: '#336699' })
     expect(data?.[1]?.itemStyle.color).toBeUndefined()
   })
 
-  it('堆叠：只有可见堆叠顶端取圆角，段与段之间靠 1px 描线分隔', () => {
+  it('堆叠：只有可见堆叠顶端取圆角，隐藏系列后保留完整分母和色序', () => {
     const spec = {
       stacking: 'stacked',
       categories: ['A', 'B'],
@@ -152,28 +144,32 @@ describe('柱/条', () => {
     const built = option('bar', spec)
     const series = built.series as { stack: string; itemStyle: { borderColor: string; borderWidth: number }; data: { itemStyle: { borderRadius: number | number[] } }[] }[]
     expect(series.map(item => item.stack)).toEqual(['total', 'total'])
-    const palette = chartTestTheme('light').palette
-    expect(series[0]?.itemStyle).toMatchObject({ borderColor: palette[0]?.ink, borderWidth: 1 })
-    expect(series[1]?.itemStyle).toMatchObject({ borderColor: palette[1]?.ink, borderWidth: 1 })
     expect(series[0]?.data[0]?.itemStyle.borderRadius).toBe(0)
-    expect(series[1]?.data[0]?.itemStyle.borderRadius).toEqual([4, 4, 0, 0])
+    expect(series[1]?.data[0]?.itemStyle.borderRadius).toEqual([2, 2, 0, 0])
 
     // 隐藏顶端系列后，圆角移到新的可见顶端。
     const hidden = toggleSeriesVisibility(chartFixture('bar', spec), DEFAULT_CHART_READING_STATE, '二')
     const afterHide = option('bar', spec, hidden).series as typeof series
     expect(afterHide).toHaveLength(1)
-    expect(afterHide[0]?.data[0]?.itemStyle.borderRadius).toEqual([4, 4, 0, 0])
+    expect(afterHide[0]?.data[0]?.itemStyle.borderRadius).toEqual([2, 2, 0, 0])
   })
 
-  it('百分比堆叠：绘制值按完整类目合计归一；隐藏系列后剩余份额不补足到 100%，tooltip 保留原值', () => {
+  it('百分比堆叠：绘制值按完整类目合计归一；隐藏系列后剩余份额不补足到 100%，tooltip 保留原值', async () => {
     const spec = {
       stacking: 'percent',
+      showDataLabels: true,
       categories: ['A', 'B'],
       series: [{ name: '一', values: [1, 2] }, { name: '二', values: [3, 2] }],
     }
     const full = option('bar', spec)
     const plotted = (full.series as { data: { value: number }[] }[]).map(item => item.data.map(point => point.value))
     expect(plotted).toEqual([[0.25, 0.5], [0.75, 0.5]])
+    const echarts = await loadChartRuntime('bar')
+    const chart = echarts.init(null, undefined, { renderer: 'svg', ssr: true, width: 640, height: 320 })
+    try {
+      chart.setOption(full)
+      expect(chart.renderToSVGString()).toContain('25.0%')
+    } finally { chart.dispose() }
 
     const hidden = toggleSeriesVisibility(chartFixture('bar', spec), DEFAULT_CHART_READING_STATE, '二')
     const afterHide = option('bar', spec, hidden)
@@ -195,13 +191,13 @@ describe('柱/条', () => {
     )
   })
 
-  it('颜色随实体：隐藏第一个系列后，第二个系列仍使用色板第二色（填充与描线）', () => {
+  it('颜色随实体：隐藏第一个系列后，第二个系列仍保持原分配色', () => {
     const spec = { stacking: 'stacked', categories: ['A'], series: [{ name: '一', values: [1] }, { name: '二', values: [2] }] }
     const hidden = toggleSeriesVisibility(chartFixture('bar', spec), DEFAULT_CHART_READING_STATE, '一')
     const series = option('bar', spec, hidden).series as { itemStyle: { color: string; borderColor: string } }[]
     expect(series).toHaveLength(1)
-    const second = chartTestTheme('light').palette[1]
-    expect(series[0]?.itemStyle).toMatchObject({ color: second?.fill, borderColor: second?.ink })
+    const second = chartTestTheme('light').palette[7]
+    expect(series[0]?.itemStyle).toMatchObject({ color: second?.fill })
   })
 
   it('色系跟随规格：同一份数据在不同色系里取到各自的颜色', () => {
@@ -222,27 +218,6 @@ describe('柱/条', () => {
 })
 
 describe('折线与面积', () => {
-  it('折线 1.75px 描线色、不平滑；观测点是填充色圆点加描线环，末点实心放大并带表面色光环', () => {
-    const theme = chartTestTheme('light')
-    const series = (option('line').series as {
-      type: string; smooth: boolean; showSymbol: boolean; symbolSize: number
-      lineStyle: { color: string; width: number; cap: string; type: string }
-      itemStyle: { color: string; borderColor: string; borderWidth: number }
-      data: { symbolSize?: number; itemStyle?: { color: string; borderColor: string } }[]
-    }[])
-    expect(series[0]).toMatchObject({ type: 'line', smooth: false, showSymbol: true, symbolSize: 6 })
-    expect(series[0]?.lineStyle).toMatchObject({ color: theme.palette[0]?.ink, width: 1.75, cap: 'round', type: 'solid' })
-    expect(series[0]?.itemStyle).toMatchObject({ color: theme.palette[0]?.fill, borderColor: theme.palette[0]?.ink, borderWidth: 1.5 })
-    expect(series[1]?.lineStyle.type).toBe('dashed')
-
-    const data = series[0]?.data ?? []
-    expect(data.slice(0, -1).every(point => point.symbolSize === undefined)).toBe(true)
-    expect(data[data.length - 1]).toMatchObject({
-      symbolSize: 8,
-      itemStyle: { color: theme.palette[0]?.ink, borderColor: theme.surface },
-    })
-  })
-
   it('观测点很多时不画常驻标记；marker: none 关闭标记', () => {
     const many = option('line', {
       categories: Array.from({ length: 40 }, (_, index) => `${index}`),
@@ -253,25 +228,19 @@ describe('折线与面积', () => {
     expect((none.series as { showSymbol: boolean }[])[0]?.showSymbol).toBe(false)
   })
 
-  it('面积是填充色自上而下渐隐的渐变，轮廓线仍是描线色；折线不带面积；类目轴贴边', () => {
-    const palette = chartTestTheme('light').palette
+  it('面积表达规模、折线不带面积；类目轴贴边', () => {
     const built = option('area')
-    const area = (built.series as { areaStyle: { color: { colorStops: { offset: number; color: string }[] } }; lineStyle: { color: string } }[])[0]
-    expect(area?.areaStyle.color.colorStops).toEqual([
-      { offset: 0, color: withAlpha(palette[0]?.fill ?? '', 0.85) },
-      { offset: 1, color: withAlpha(palette[0]?.fill ?? '', 0.04) },
-    ])
-    expect(area?.lineStyle.color).toBe(palette[0]?.ink)
+    expect(built.series).toEqual(expect.arrayContaining([expect.objectContaining({ areaStyle: expect.objectContaining({ color: expect.any(String) }) })]))
     expect((built.xAxis as { boundaryGap: boolean }).boundaryGap).toBe(false)
     expect((option('line').series as { areaStyle?: unknown }[]).every(item => item.areaStyle === undefined)).toBe(true)
   })
 
-  it('持久突出时，未被突出的面积渐变整体更淡', () => {
+  it('持久突出时，未被突出的面积整体更淡', () => {
     const patch = { series: [{ name: '甲', values: [1, 2, 3, 4] }, { name: '乙', values: [2, 3, 4, 5] }] }
     const spec = chartFixture('area', patch)
     const state = toggleEmphasis(spec, DEFAULT_CHART_READING_STATE, '甲')
-    const series = buildChartOption(spec, state, chartTestContext()).series as { name: string; areaStyle: { color: { colorStops: { color: string }[] } } }[]
-    const topAlpha = (name: string) => parseColor(series.find(item => item.name === name)?.areaStyle.color.colorStops[0]?.color ?? '')?.alpha ?? 0
+    const series = buildChartOption(spec, state, chartTestContext()).series as { name: string; areaStyle: { color: string } }[]
+    const topAlpha = (name: string) => parseColor(series.find(item => item.name === name)?.areaStyle.color ?? '')?.alpha ?? 0
     expect(topAlpha('乙')).toBeLessThan(topAlpha('甲') * 0.5)
   })
 
@@ -367,12 +336,9 @@ describe('组合', () => {
 })
 
 describe('饼与环', () => {
-  it('环形是细环，扇区是淡填充加 1px 描线与小圆角；突出时其余扇区变淡', () => {
-    const palette = chartTestTheme('light').palette
+  it('突出某个环形组成部分时，其余变淡且数值不变', () => {
     const built = option('doughnut', {}, toggleEmphasis(chartFixture('doughnut'), DEFAULT_CHART_READING_STATE, '1'))
     const series = (built.series as { radius: string[]; data: { itemStyle: { opacity: number; borderWidth: number; borderRadius: number; color: string; borderColor: string } }[] }[])[0]
-    expect(series?.radius).toEqual(['56%', '66%'])
-    expect(series?.data[0]?.itemStyle).toMatchObject({ color: palette[0]?.fill, borderColor: palette[0]?.ink, borderWidth: 1, borderRadius: 3 })
     expect(series?.data[1]?.itemStyle.opacity).toBe(1)
     expect(series?.data[0]?.itemStyle.opacity).toBeLessThan(0.5)
   })
@@ -421,12 +387,6 @@ describe('散点', () => {
     })
   })
 
-  it('散点是淡填充圆点加描线环', () => {
-    const palette = chartTestTheme('light').palette
-    const series = option('scatter').series as { itemStyle: Record<string, unknown> }[]
-    expect(series[0]?.itemStyle).toMatchObject({ color: palette[0]?.fill, borderColor: palette[0]?.ink, borderWidth: 1.5, opacity: 0.9 })
-  })
-
   it('聚焦 X 范围只改变视口；单位与原值不变', () => {
     const spec = chartFixture('scatter')
     const state = { ...DEFAULT_CHART_READING_STATE, xRange: { min: 1, max: 5 } }
@@ -452,12 +412,12 @@ describe('雷达', () => {
     type RadarData = { lineStyle: { color: string }; areaStyle: { color: string; opacity: number } }[]
     const two = ((option('radar').series as { data: RadarData }[])[0]?.data ?? [])
     expect(two[0]?.lineStyle.color).toBe(palette[0]?.ink)
-    expect(two[0]?.areaStyle).toMatchObject({ color: palette[0]?.fill, opacity: 0.4 })
+    expect(two[0]?.areaStyle.color).toBe(palette[0]?.fill)
 
     const three = option('radar', { series: [
       { name: '甲', values: [82, 60, 74, 90, 70] }, { name: '乙', values: [65, 86, 78, 55, 80] }, { name: '丙', values: [50, 70, 60, 80, 90] },
     ] })
-    expect(((three.series as { data: RadarData }[])[0]?.data ?? [])[0]?.areaStyle.opacity).toBe(0.28)
+    expect(((three.series as { data: RadarData }[])[0]?.data ?? [])[0]?.areaStyle.opacity).toBeLessThan(two[0]?.areaStyle.opacity ?? 0)
   })
 
   it('隐藏系列后量尺不变；tooltip 列出每个维度的原值', () => {

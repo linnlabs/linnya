@@ -109,9 +109,13 @@ describe('ChartController 生命周期', () => {
 
 it('清除轴标题、堆叠和线型后，真实 ECharts 不残留旧属性', async () => {
   const host = createHost()
+  host.setAttribute('role', 'img')
+  host.setAttribute('aria-label', '柱状图 · 研究对比')
   const controller = createChartController(host)
   await controller.render(input('bar', { stacking: 'stacked', valueAxis: { title: '旧单位' } }))
   expect(host.textContent).toContain('旧单位')
+  // 自动描述曾覆盖宿主标题，并把堆叠的内部维度和 NaN 暴露给读屏用户。
+  expect(host.getAttribute('aria-label')).toBe('柱状图 · 研究对比')
   await controller.render(input('bar'))
   expect(host.textContent).not.toContain('旧单位')
   const { getInstanceByDom } = await import('echarts/core')

@@ -2,7 +2,7 @@
  * @file chartColorSpace.ts
  * @description sRGB 与 OKLCH 的互转（Ottosson 公式），含色域内压缩。
  *
- * 色系用 OKLCH 描述“低饱和、高明度”：明度 L、彩度 C、色相 h 在视觉上近似均匀，调一个量不会牵动另外两个。
+ * OKLCH 将明度 L、彩度 C、色相 h 分开，用于保持色相的细线明度调整；它不负责选择或重排色板。
  * 这里只做数学，不认识图表；描线色的派生规则在 chartPalette.ts。
  */
 

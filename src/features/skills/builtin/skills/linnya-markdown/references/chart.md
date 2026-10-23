@@ -10,7 +10,7 @@ Only the language `linnya-chart` is a chart. `chart`, `echarts`, `json`, `yaml` 
 - Put the chart where the reader needs it, next to the paragraph it supports. Say the unit, period, population, denominator and processing method in that prose; cite sources in the paragraph right after the chart with normal citations. The chart has no separate source field.
 - Write numbers as numbers. Missing data cannot be written as `0` or `null`: leave that category out, or split the chart and say so.
 - Keep estimates, forecasts and scenarios apart from observations: name them as such in the series name or title (for example `2026E (forecast)`).
-- The look is chosen for you. Leave colors out unless one carries meaning; see [Color](#color).
+- Choose the chart form from the comparison, then choose a named palette. Linnya owns the borderless appearance and ordered color assignment; do not write ECharts options. See [Chart forms](#chart-forms) and [Color](#color).
 
 ## Fields
 
@@ -24,10 +24,11 @@ Unknown fields and fields that do not apply to the chosen `chartType` are reject
 | `title`, `description` | all | Optional. Title up to 200 characters, description up to 1000. The description is also read out as the accessible description. |
 | `size` | all | `small`, `medium` (default) or `large`: three fixed plot heights. |
 | `legendPosition` | all | `top`, `bottom`, `left`, `right` or `none`. Default: `bottom` for two or more series and for `pie`/`doughnut`, none for a single series; `line` and `area` with up to five series label each line at its end instead of showing a legend. Setting it explicitly brings the legend back. |
-| `palette` | all | `verdant` (greens, default), `warm` or `aqua`: the color family of the whole chart. Colors you set on a series or a point win. |
+| `palette` | all | A named eight-color palette; see [Color](#color) for the nine choices. Default `verdant`. Explicit series/point colors take precedence. |
 | `version` | all | Optional, only `1`. |
 | `barDirection` | `bar` | `vertical` (default) or `horizontal`. Prefer `horizontal` for long labels. |
-| `stacking` | `bar` | `none` (default), `stacked`, or `percent` (shares of each category total). |
+| `stacking` | `bar` | `none` (default; multiple series form groups), `stacked`, or `percent` (shares of each category total). |
+| `colorBy` | `bar` | `series` (default) or `category`. Category coloring requires one unstacked series and no series-level `color`; optional `pointColors` override individual categories. |
 | `categoryAxis` | `bar`, `line`, `area`, `combo` | `title`, `labelRotation` (-90 to 90). |
 | `valueAxis` | `bar`, `line`, `area`, `scatter` (Y), `combo` | `title`, `min`, `max`, `majorUnit`, `numberFormat`, `showGridlines`. |
 | `xAxis` | `scatter` | Same keys as `valueAxis`, for the X values. |
@@ -41,14 +42,43 @@ Series keys: `name`, `values` always; `color` (`#RRGGBB`, not for `pie`/`doughnu
 
 `numberFormat` is `General` or a simple format: `0.0`, `#,##0`, `0.0%` (the value is a ratio, so `0.27` shows `27.0%`), `0.0"unit"`.
 
+## Chart forms
+
+Choose the form before styling. Do not switch chart types merely to make a report look varied.
+
+| Reading task | Specification choice |
+| --- | --- |
+| Compare several measures within each group | `bar`, multiple series, `stacking: "none"` (or omit). Keep series in the same order in every group. |
+| Compare totals and their additive, non-overlapping parts | `bar`, `stacking: "stacked"`. Parts must share a unit and be additive. |
+| Compare composition across groups | `bar`, `stacking: "percent"`. Write raw counts; Linnya normalizes each full category total. Do not pre-normalize. |
+| Rank categories or accommodate long labels | `bar`, `barDirection: "horizontal"`. Use one series; normally one color is enough. |
+| Distinguish the categories of one measure by color | One unstacked `bar` series with `colorBy: "category"` and a named palette. Do not fake multiple series or fill `pointColors` just to select a palette. |
+| Show a time trend or magnitude | `line` for change; `area` only when the zero baseline and magnitude matter. Never smooth or invent observations. |
+| Show a few mutually exclusive shares of one whole | `pie` / `doughnut`; colors follow category order clockwise from the top. Prefer horizontal bars when there are many parts or close values. |
+| Show association, a comparable profile, or observed-versus-target | `scatter`, `radar`, or `combo`, respectively. State units and comparison limits; prefer one shared value axis in `combo` when units match. |
+
 ## Color
 
-The default look is calm: soft, low-saturation colors that follow the light and dark themes. Series take colors in a fixed order, and a series keeps its color when another one is hidden. Leave colors out unless they carry meaning.
+Choose a palette ID, not a list of invented hex colors. All nine palettes have eight ordered colors. The default remains Linnya green; for several unrelated categories, prefer `pastel` unless the user requests another family.
 
-- **Pick a family.** `palette` colors the whole chart: `verdant` (greens, the default), `warm` (brick, apricot, rose, cream) or `aqua` (blues and teals). Choose one to match the tone of the document, and never mix families inside one chart.
-- **Emphasize one thing.** When one series or one bar is the point, color only that one and let the rest recede in a mid gray. Use `color` on a series, or `pointColors` for single bars and slices. A gray such as `#A0A4A8` stays quiet in both light and dark themes.
-- **Custom colors are fills.** `color` and `pointColors` take `#RRGGBB`. Linnya derives a matching outline for each (deeper in light mode, brighter in dark mode), so choose soft mid tones rather than vivid ones. They do not switch with the theme.
-- **Line and area charts label their ends.** With up to five series and no `legendPosition`, each line carries its name and last value at its right end instead of a legend.
+| Palette | Appearance | Use |
+| --- | --- | --- |
+| `verdant` | Linnya green, deep to pale | General research; a single measure or a coherent sequence. Default. |
+| `teal` | Mint / teal | A cool monochrome alternative. |
+| `aqua` | Lake blue | Quantitative comparisons and trends. |
+| `violet` | Iris purple | A monochrome alternative to green and blue. |
+| `warm` | Bright apricot orange | Warm emphasis; not brick, brown or a red-green mix. |
+| `mono` | Graphite gray | Neutral supporting figures or grayscale output. |
+| `pastel` | Blue → apricot/yellow → peach → pink → purple | Preferred multicolor choice for distinct categories. |
+| `sea` | Green → pale mint → light blue → cyan/deep blue | A restrained cool multicolor sequence. |
+| `mist` | Deep mist blue → pale blue → pale pink → rose | A blue-to-rose multicolor sequence, without alternating blue and pink. |
+
+- **Keep the color sequence.** Linnya uses palette order, selecting an ordered subset when fewer colors are needed; five-category multicolor charts use their core five colors, and eight-category charts use all eight. It never interleaves distant colors for contrast. Do not reshuffle categories to obtain colors, alternate warm/cool slots, or sort by hue. Time, ordinal meaning and the analytical comparison determine data order first.
+- **Keep identities stable.** Grouped and stacked bars color by series; each group repeats the same series order. Pie/doughnut and `colorBy: "category"` bars color by category. Hiding a series or focusing a category range keeps the colors assigned from the complete specification. Across separate charts with the same entities, keep the same palette, entity count and order; if exact shared identity is necessary with different entity sets, use an explicit, consistent color mapping.
+- **Limit what color must do.** Eight colors are not permission to crowd eight lines or slices into every chart. For more than eight color identities, split/facet or aggregate with a stated method. Existing larger charts remain accepted; the renderer interpolates along the same color band rather than cycling back to the first hue. Do not rely on these close colors alone: keep labels, line styles and data tables.
+- **Prefer presets to custom colors.** Only use `color` / `pointColors` for a user-specified brand, a stable cross-chart mapping, or an explicit focus. Custom colors remain fixed across themes. `pointColors` has one entry per category; `null` inherits the series color for ordinary bars, or the ordered category color for category bars and pie/doughnut.
+- **Emphasize one thing.** Color the focal series/bar and use a neutral gray for peers; explain the focus with text. Do not create an arbitrary red-versus-green scheme. Avoid making colors both dark and desaturated, and avoid a rainbow assembled one hex at a time.
+- **Leave rendering to Linnya.** Filled marks and the chart shell have no decorative border; quiet grids, readable labels and whitespace provide structure. Thin strokes receive only the brightness adjustment needed for background contrast; no `style`, `border`, gradients, animation options or raw ECharts configuration belong in the JSON. Up to five line/area series use end labels unless `legendPosition` is explicit.
 
 ### Emphasis example
 
@@ -59,7 +89,7 @@ The default look is calm: soft, low-saturation colors that follow the light and 
   "title": "2025 年主要城市新能源汽车销量",
   "categories": ["上海", "北京", "深圳", "杭州", "广州"],
   "series": [
-    { "name": "销量", "values": [20.5, 12.4, 15.2, 9.3, 8.1], "pointColors": ["#5B9279", "#A0A4A8", "#A0A4A8", "#A0A4A8", "#A0A4A8"] }
+    { "name": "销量", "values": [20.5, 12.4, 15.2, 9.3, 8.1], "pointColors": ["#347B45", "#A0A4A8", "#A0A4A8", "#A0A4A8", "#A0A4A8"] }
   ],
   "barDirection": "horizontal",
   "valueAxis": { "title": "万辆", "numberFormat": "0.0" }
@@ -222,3 +252,47 @@ Each example is already in canonical form.
 }
 ```
 ````
+
+## Common bar variants
+
+### Grouped comparison
+
+````markdown
+```linnya-chart
+{
+  "chartType": "bar",
+  "title": "三类报告的季度交付量",
+  "categories": ["Q1", "Q2", "Q3", "Q4"],
+  "series": [
+    { "name": "研究综述", "values": [18, 24, 30, 36] },
+    { "name": "行业专题", "values": [12, 18, 24, 30] },
+    { "name": "数据简报", "values": [10, 14, 16, 24] }
+  ],
+  "valueAxis": { "title": "篇" },
+  "palette": "pastel"
+}
+```
+````
+
+For additive totals, add `stacking: "stacked"` after `series`. For composition, use `stacking: "percent"` and label the axis as share; keep the same raw counts. With labels enabled, percent-stack labels show shares while the tooltip retains counts and shares. Hiding a series never changes the full denominator.
+
+### Ordered category colors
+
+````markdown
+```linnya-chart
+{
+  "chartType": "bar",
+  "title": "八类证据来源",
+  "categories": ["论文", "报告", "披露", "访谈", "统计", "专利", "新闻", "档案"],
+  "series": [
+    { "name": "证据条数", "values": [28, 21, 15, 12, 9, 7, 5, 3] }
+  ],
+  "barDirection": "horizontal",
+  "colorBy": "category",
+  "valueAxis": { "title": "条" },
+  "palette": "mist"
+}
+```
+````
+
+These numbers demonstrate syntax only. Replace them with obtained or computed research data; never present sample values as findings.

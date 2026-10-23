@@ -91,11 +91,13 @@ export function resolveChartTheme(
     textPrimary: readToken(style, '--color-text-primary', fallback.textPrimary, doc),
     textSecondary: readToken(style, '--color-text-secondary', fallback.textSecondary, doc),
     textMuted: readToken(style, '--color-text-muted', fallback.textMuted, doc),
+    gridColor: readToken(style, '--color-border-light', fallback.gridColor, doc),
     // 提示框反色：深底浅字，随主题取界面里现成的反色 token。
     tooltipBackground: readToken(style, '--color-bg-inverse', fallback.tooltipBackground, doc),
     tooltipText: readToken(style, '--color-text-inverse', fallback.tooltipText, doc),
     fontFamily: sanitizeFontFamily(style.fontFamily || fallback.fontFamily),
     palette: CHART_PALETTES[palette][scheme],
+    paletteCoreIndices: CHART_PALETTES[palette].coreIndices,
   }
 }
 

@@ -8,7 +8,8 @@
 
 import type { MarkdownChartSpecReadView as ChartSpec } from '@app/schemas'
 import type { ChartReadingState } from '../definitions/chartReadingState'
-import { isDefaultReadingState, normalizeReadingState } from './chartReadingState'
+import type { ChartHighlightTarget } from '../definitions/chartRender'
+import { emphasisTargetsCategories, isDefaultReadingState, normalizeReadingState } from './chartReadingState'
 
 export interface ChartReadingView {
   readonly spec: ChartSpec
@@ -33,4 +34,15 @@ export function deriveChartReadingView(spec: ChartSpec, requested: ChartReadingS
     seriesVisible: spec.series.map(series => !state.hiddenSeries.includes(series.name)),
     isDefault: isDefaultReadingState(state),
   }
+}
+
+/** 图例保留完整实体集，临时突出只能指向当前可见项；范围聚焦后必须转换类目下标。 */
+export function resolveChartHighlight(view: ChartReadingView, id: string | null): ChartHighlightTarget | null {
+  if (id === null) return null
+  if (emphasisTargetsCategories(view.spec)) {
+    const index = view.categoryIndices.indexOf(Number(id))
+    return index < 0 ? null : { kind: 'part', index }
+  }
+  const index = view.spec.series.findIndex(series => series.name === id)
+  return view.seriesVisible[index] ? { kind: 'series', name: id } : null
 }

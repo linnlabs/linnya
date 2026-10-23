@@ -3,6 +3,7 @@ import { createApp, defineComponent, h, nextTick, ref, shallowRef } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme'
+import type { MarkdownChartPalette } from '@app/schemas'
 import { chartFixture, chartTestTheme } from '../testing/chartTestFixtures'
 import { useChartSurfaceRuntime } from './useChartSurfaceRuntime'
 import { useChartReadingStore } from '../store/chartReadingStore'
@@ -21,7 +22,7 @@ vi.mock('../../../ui/useEditorLocalization', async () => {
 vi.mock('@/app/notification', () => ({ useNotificationStore: () => ({ show: vi.fn() }) }))
 vi.mock('./readChartTheme', async () => {
   const actual = await vi.importActual<typeof import('./readChartTheme')>('./readChartTheme')
-  return { ...actual, resolveChartTheme: (_host: Element, scheme: 'light' | 'dark' = 'light', palette?: 'verdant' | 'warm' | 'aqua') => chartTestTheme(scheme, palette) }
+  return { ...actual, resolveChartTheme: (_host: Element, scheme: 'light' | 'dark' = 'light', palette?: MarkdownChartPalette) => chartTestTheme(scheme, palette) }
 })
 
 const cleanups: (() => void)[] = []
@@ -101,15 +102,35 @@ it('规格的 palette 决定图表主题和图例的色系，改变色系会重�
   await settle()
   const warm = chartTestTheme('light', 'warm').palette
   expect(lastPalette()).toEqual(warm)
-  expect(chart.runtime.legend.value.map(item => item.fill)).toEqual([warm[0]?.fill, warm[1]?.fill])
+  expect(chart.runtime.legend.value.map(item => item.fill)).toEqual([warm[0]?.fill, warm[7]?.fill])
 
   chart.spec.value = chartFixture('line', { palette: 'aqua' })
   await settle()
   const aqua = chartTestTheme('light', 'aqua').palette
   expect(lastPalette()).toEqual(aqua)
-  expect(chart.runtime.legend.value.map(item => item.fill)).toEqual([aqua[0]?.fill, aqua[1]?.fill])
+  expect(chart.runtime.legend.value.map(item => item.fill)).toEqual([aqua[0]?.fill, aqua[7]?.fill])
 
   chart.spec.value = chartFixture('line')
   await settle()
   expect(lastPalette()).toEqual(chartTestTheme('light').palette)
+})
+
+it('类目聚焦后图例高亮转换成可见位置，隐藏系列不能再被高亮', async () => {
+  const chart = mountChart(chartFixture('bar', { colorBy: 'category' }))
+  await settle()
+  chart.runtime.actions.setCategoryRange({ start: 2, end: 4 })
+  await settle()
+  chart.runtime.actions.highlight('3')
+  expect(controller.highlight).toHaveBeenLastCalledWith({ kind: 'part', index: 1 })
+  chart.runtime.actions.highlight('0')
+  expect(controller.highlight).toHaveBeenLastCalledWith(null)
+
+  chart.spec.value = chartFixture('line')
+  await settle()
+  chart.runtime.actions.highlight('营收')
+  expect(controller.highlight).toHaveBeenLastCalledWith({ kind: 'series', name: '营收' })
+  chart.runtime.actions.toggleSeries('营收')
+  await settle()
+  chart.runtime.actions.highlight('营收')
+  expect(controller.highlight).toHaveBeenLastCalledWith(null)
 })

@@ -37,14 +37,14 @@ describe('图例', () => {
     const items = buildChartLegend(spec, state, theme)
     expect(items.map(item => [item.label, item.hidden, item.emphasized, item.fill, item.ink])).toEqual([
       ['营收', true, false, theme.palette[0]?.fill, theme.palette[0]?.ink],
-      ['成本', false, true, theme.palette[1]?.fill, theme.palette[1]?.ink],
+      ['成本', false, true, theme.palette[7]?.fill, theme.palette[7]?.ink],
     ])
   })
 
   it('图例颜色跟随规格选择的色系', () => {
     const warm = chartTestTheme('light', 'warm')
     const items = buildChartLegend(chartFixture('line', { palette: 'warm' }), DEFAULT_CHART_READING_STATE, warm)
-    expect(items.map(item => item.fill)).toEqual([warm.palette[0]?.fill, warm.palette[1]?.fill])
+    expect(items.map(item => item.fill)).toEqual([warm.palette[0]?.fill, warm.palette[7]?.fill])
     expect(items[0]?.fill).not.toBe(buildChartLegend(chartFixture('line'), DEFAULT_CHART_READING_STATE, chartTestTheme())[0]?.fill)
   })
 
@@ -52,8 +52,8 @@ describe('图例', () => {
     const spec = chartFixture('line', { series: [{ name: '营收', values: [1, 2, 3, 4], color: '#336699' }, { name: '成本', values: [1, 2, 3, 4] }] })
     const items = buildChartLegend(spec, DEFAULT_CHART_READING_STATE, chartTestTheme())
     expect(items[0]?.fill).toBe('#336699')
-    expect(items[0]?.ink).not.toBe('#336699')
-    expect(items[1]?.fill).toBe(chartTestTheme().palette[1]?.fill)
+    expect(items[0]?.ink).toBe('#336699')
+    expect(items[1]?.fill).toBe(chartTestTheme().palette[7]?.fill)
   })
 
   it('饼/环的条目是类目，只能突出，不能隐藏', () => {

@@ -351,3 +351,32 @@ describe('MarkdownChartSpecSchema（持久化节点属性校验）', () => {
     expect(parsed.error.issues.some(issue => issue.path.join('.') === 'series.0.values')).toBe(true);
   });
 });
+
+describe('按类目着色的写入与回读', () => {
+  const input = { chartType: 'bar', categories: ['论文', '报告'], series: [{ name: '来源', values: [38, 27] }] };
+
+  it('新色系与 category 选择能 canonical 往返；默认 series 不污染既有文本', () => {
+    const result = admitMarkdownChartSpec({ ...input, palette: 'mist', colorBy: 'category' });
+    if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
+    const reread = admitMarkdownChartFenceBody(result.canonicalText);
+    expect(reread.ok && reread.spec).toEqual(result.spec);
+    expect(result.spec).toMatchObject({ palette: 'mist', colorBy: 'category' });
+    const explicitDefault = admitMarkdownChartSpec({ ...input, colorBy: 'series' });
+    const implicitDefault = admitMarkdownChartSpec(input);
+    expect(explicitDefault.ok && explicitDefault.canonicalText).toBe(implicitDefault.ok && implicitDefault.canonicalText);
+  });
+
+  it('拒绝分组、堆叠、单系列统一色和非柱图的 category 着色，避免无声忽略作者意图', () => {
+    for (const patch of [
+      { series: [...input.series, { name: '另一类', values: [2, 3] }] },
+      { stacking: 'stacked' },
+      { stacking: 'percent' },
+      { series: [{ name: '来源', values: [38, 27], color: '#336699' }] },
+      { chartType: 'line' },
+    ]) {
+      const result = admitMarkdownChartSpec({ ...input, colorBy: 'category', ...patch });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.diagnostics.some(issue => issue.path === 'colorBy')).toBe(true);
+    }
+  });
+});

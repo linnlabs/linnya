@@ -5,8 +5,8 @@
  * 规则要点：
  * - 数值轴域来自完整数据；隐藏系列和类目聚焦不改变它。
  * - 百分比堆叠在绘制前按“原始完整类目合计”归一，隐藏系列后剩余份额不补足到 100%；tooltip 保留原值。
- * - 柱/条纤细、数据端 4px 圆角、基线端方正；填充 + 1px 同色相描线，堆叠段之间靠描线分隔。
- * - 折线 1.75px，保留实际观测点，不平滑；标记是填充色的圆点加描线环，末点实心；面积是填充色自上而下的渐隐。
+ * - 柱/条纤细、数据端 2px 圆角、基线端方正；原色无描边填充，堆叠段保持连续色序。
+ * - 折线 2px，保留实际观测点，不平滑；标记与线同色；面积以低透明度平铺。
  * - 系列不多的折线/面积在行末直接标出“系列名 + 末值”，不再放图例（见 {@link usesEndLabels}）。
  */
 
@@ -14,21 +14,21 @@ import type { ChartOption } from '../../definitions/chartOption'
 import type { ChartRenderContext } from '../../definitions/chartRender'
 import type { ChartDomains } from '../chartDomains'
 import { usesEndLabels } from '../chartLegend'
-import { formatChartAxisTick, type NiceScale } from '../chartNumbers'
-import { markColorsFromFill, readableTextOn, seriesMarkColors, withAlpha } from '../chartPalette'
+import { formatChartAxisTick, formatChartDisplayValue, type NiceScale } from '../chartNumbers'
+import { categoryMarkColors, markColorsFromFill, readableTextOn, seriesMarkColors, withAlpha } from '../chartPalette'
 import type { ChartReadingView } from '../chartReadingView'
 import { chartObservationKeys } from '../chartTransition'
 import { renderChartTooltip, type ChartTooltipContent } from '../chartTooltip'
-import { MARK_STYLE, areaGradient, endMarker, lineMarker, outlinedMark } from './chartMarkStyle'
+import { MARK_STYLE, areaFill, lineMarker, filledMark } from './chartMarkStyle'
 import {
   INK_ALPHA,
+  DIMMED_OPACITY,
   MAX_BAR_THICKNESS,
   type ChartSeries,
   type ChartSpec,
   axisCaption,
   baseOption,
   categoryLabel,
-  dottedGridLineType,
   estimateTextWidth,
   formatShare,
   formatSeriesValue,
@@ -51,7 +51,7 @@ export interface ShownCartesianSeries {
   readonly axis: 'primary' | 'secondary'
 }
 
-const BAR_RADIUS = 4
+const BAR_RADIUS = 2
 const END_LABEL_FONT_SIZE = 11
 const END_LABEL_DISTANCE = 8
 const MIN_END_LABEL_GUTTER = 72
@@ -134,14 +134,18 @@ function barDataFor(
         return raw >= 0 ? ends.positive === item.index : ends.negative === item.index
       })()
     const pointColor = item.series.pointColors?.[category]
-    const pointColors = pointColor ? markColorsFromFill(pointColor, ctx.theme) : null
+    const byCategory = spec.chartType === 'bar' && spec.colorBy === 'category'
+    const pointColors = byCategory ? categoryMarkColors(ctx.theme, category, item.series, spec.categories.length)
+      : pointColor ? markColorsFromFill(pointColor, ctx.theme) : null
     return {
       ...(keys ? { id: keys[category] } : {}),
       value: plotted,
       itemStyle: {
         borderRadius: capped ? barCap(horizontal, raw >= 0) : 0,
-        ...(pointColors ? { color: pointColors.fill, borderColor: pointColors.ink } : {}),
+        ...(pointColors ? { color: pointColors.fill } : {}),
+        ...(byCategory ? { opacity: view.state.emphasis === null || view.state.emphasis === String(category) ? 1 : DIMMED_OPACITY } : {}),
       },
+      ...(pointColors && stacking !== 'none' ? { label: { color: readableTextOn(pointColors.fill) } } : {}),
     }
   })
 }
@@ -157,23 +161,15 @@ function lineDataFor(
   view: ChartReadingView,
   mode: ReturnType<typeof resolveDataLabelMode>,
   endLabels: boolean,
-  ctx: ChartRenderContext,
-  opacity: number,
 ) {
   const lastPosition = view.categoryIndices.length - 1
   const keys = chartObservationKeys(view.spec)
-  const colors = seriesMarkColors(ctx.theme, item.index, item.series)
-  const symbolOn = item.series.marker !== 'none'
   return view.categoryIndices.map((category, position) => {
     const value = valueAt(item.series, category)
     return {
       ...(keys ? { id: keys[category] } : {}),
       value,
       label: { show: pointLabelVisible(mode, position, lastPosition, endLabels) },
-      // 末点实心：读者的视线落在“现在”。
-      ...(symbolOn && position === lastPosition
-        ? { symbolSize: MARK_STYLE.endMarkerSize, itemStyle: endMarker(colors, ctx.theme.surface, opacity) }
-        : {}),
     }
   })
 }
@@ -197,7 +193,7 @@ function valueAxis(
     type: 'value' as const,
     ...(domain ? { min: domain.min, max: domain.max, interval: domain.interval } : {}),
     position: horizontal ? 'bottom' as const : axis === 'secondary' ? 'right' as const : 'left' as const,
-    splitLine: { show: showGrid, lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.gridDot), width: 1, type: dottedGridLineType() } },
+    splitLine: { show: showGrid, lineStyle: { color: ctx.theme.gridColor, width: 0.5, type: 'solid' as const } },
     axisLine: { show: false },
     axisTick: { show: false },
     axisLabel: { ...mutedAxisLabel(ctx), margin: 8, formatter: axisFormatterFor(spec, axis, ctx) },
@@ -229,7 +225,7 @@ function categoryAxis(view: ChartReadingView, ctx: ChartRenderContext, horizonta
     inverse: horizontal,
     position: horizontal ? 'left' as const : 'bottom' as const,
     boundaryGap: spec.chartType !== 'area',
-    axisLine: { show: true, lineStyle: { color: inkTint(ctx.theme, INK_ALPHA.baseline), width: 1 } },
+    axisLine: { show: true, lineStyle: { color: ctx.theme.gridColor, width: 0.5 } },
     axisTick: { show: false },
     splitLine: { show: false },
     axisLabel: {
@@ -247,7 +243,7 @@ function categoryAxis(view: ChartReadingView, ctx: ChartRenderContext, horizonta
   }
 }
 
-function labelOption(view: ChartReadingView, item: ShownCartesianSeries, ctx: ChartRenderContext, fill: string) {
+function labelOption(view: ChartReadingView, item: ShownCartesianSeries, ctx: ChartRenderContext, fill: string, totals: readonly number[]) {
   const { spec } = view
   const mode = resolveDataLabelMode(spec, item.series, view)
   const stacked = stackingOf(spec) !== 'none'
@@ -256,11 +252,17 @@ function labelOption(view: ChartReadingView, item: ShownCartesianSeries, ctx: Ch
     position: stacked ? 'inside' as const : item.kind === 'bar' && isHorizontal(spec) ? 'right' as const : 'top' as const,
     color: stacked ? readableTextOn(fill) : ctx.theme.textPrimary,
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 400,
     distance: 6,
     formatter: (params: { dataIndex: number }) => {
       const category = view.categoryIndices[params.dataIndex]
-      return category === undefined ? '' : formatSeriesValue(spec, item.series, valueAt(item.series, category), ctx)
+      if (category === undefined) return ''
+      const raw = valueAt(item.series, category)
+      if (stackingOf(spec) === 'percent') {
+        const total = totals[category] ?? 0
+        return formatChartDisplayValue(raw / total, { numberFormat: item.series.dataLabelFormat ?? spec.dataLabelFormat ?? '0.0%', locale: ctx.locale })
+      }
+      return formatSeriesValue(spec, item.series, raw, ctx)
     },
   }
 }
@@ -309,7 +311,14 @@ export function buildCartesianTooltipContent(
     const raw = valueAt(series, category)
     const suffix = spec.chartType === 'combo' && axis === 'secondary' ? ` · ${ctx.messages.secondaryAxis}` : ''
     return {
-      key: { ...seriesMarkColors(ctx.theme, index, series), shape: kind === 'bar' ? 'bar' as const : 'line' as const },
+      key: {
+        ...(spec.chartType === 'bar' && spec.colorBy === 'category'
+          ? categoryMarkColors(ctx.theme, category, series, spec.categories.length)
+          : kind === 'bar' && series.pointColors?.[category]
+            ? markColorsFromFill(series.pointColors[category], ctx.theme)
+            : seriesMarkColors(ctx.theme, index, series, spec.series.length)),
+        shape: kind === 'bar' ? 'bar' as const : 'line' as const,
+      },
       label: `${series.name}${suffix}`,
       value: formatSeriesValue(spec, series, raw, ctx),
       ...(stacking === 'percent' && total > 0
@@ -329,11 +338,11 @@ function seriesOption(
   endLabels: boolean,
 ) {
   const { spec } = view
-  const colors = seriesMarkColors(ctx.theme, item.index, item.series)
-  const opacity = seriesOpacity(view, item.series.name)
+  const colors = seriesMarkColors(ctx.theme, item.index, item.series, view.spec.series.length)
+  const opacity = spec.chartType === 'bar' && spec.colorBy === 'category' ? 1 : seriesOpacity(view, item.series.name)
   const horizontal = isHorizontal(spec)
   const stacking = stackingOf(spec)
-  const label = labelOption(view, item, ctx, colors.fill)
+  const label = labelOption(view, item, ctx, colors.fill, totals)
   const common = {
     id: `series:${item.series.name}`,
     name: item.series.name,
@@ -353,7 +362,7 @@ function seriesOption(
       barMaxWidth: MAX_BAR_THICKNESS,
       barCategoryGap: '42%',
       barGap: '14%',
-      itemStyle: outlinedMark(colors, opacity),
+      itemStyle: filledMark(colors, opacity),
       label,
       z: 2,
     }
@@ -367,7 +376,7 @@ function seriesOption(
     // 直标时按标签位置错开，避免相近的行末互相覆盖。
     ...(endLabel ? { labelLayout: { moveOverlap: 'shiftY' as const } } : {}),
     type: 'line' as const,
-    data: lineDataFor(item, view, resolveDataLabelMode(spec, item.series, view), endLabels, ctx, opacity),
+    data: lineDataFor(item, view, resolveDataLabelMode(spec, item.series, view), endLabels),
     smooth: false,
     showSymbol: marker === 'none' ? false : view.categoryIndices.length <= 24,
     symbol: marker === 'square' ? 'rect' : marker && marker !== 'none' ? marker : 'circle',
@@ -380,9 +389,9 @@ function seriesOption(
       join: 'round' as const,
       type: dash === 'dash' ? 'dashed' as const : dash === 'dot' ? 'dotted' as const : 'solid' as const,
     },
-    // 标记是填充色的圆点加描线环：在与线或其他标记交叠处保持可辨。
+    // 小标记与细线共用可读线色，不叠加轮廓。
     itemStyle: lineMarker(colors, opacity),
-    ...(item.kind === 'area' ? { areaStyle: { color: areaGradient(colors.fill, opacity === 1) } } : {}),
+    ...(item.kind === 'area' ? { areaStyle: { color: areaFill(colors.fill, opacity === 1) } } : {}),
     label,
     ...(endLabel ? { endLabel } : {}),
     z: 3,

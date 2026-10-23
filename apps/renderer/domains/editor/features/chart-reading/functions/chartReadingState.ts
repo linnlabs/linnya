@@ -16,7 +16,7 @@ import {
 
 /** 可按系列隐藏/突出的图表类型；饼与环只能突出，不能隐藏组成部分。 */
 export function supportsSeriesFiltering(spec: ChartSpec): boolean {
-  return spec.chartType !== 'pie' && spec.chartType !== 'doughnut'
+  return !emphasisTargetsCategories(spec)
 }
 
 /** 以类目为横（纵）轴的图表可以聚焦类目范围。 */
@@ -28,9 +28,9 @@ export function supportsValueRange(spec: ChartSpec): boolean {
   return spec.chartType === 'scatter'
 }
 
-/** 饼/环的可突出对象是类目；其余类型是系列。 */
+/** 饼/环与按类目着色的单系列柱图突出类目，其余突出系列。 */
 export function emphasisTargetsCategories(spec: ChartSpec): boolean {
-  return spec.chartType === 'pie' || spec.chartType === 'doughnut'
+  return spec.chartType === 'pie' || spec.chartType === 'doughnut' || (spec.chartType === 'bar' && spec.colorBy === 'category')
 }
 
 export function isDefaultReadingState(state: ChartReadingState): boolean {
@@ -150,6 +150,7 @@ export function readingSemanticKey(spec: ChartSpec): string {
     series: spec.series.map(series => [series.name, series.values, series.chartType ?? null, series.axis ?? 'primary']),
     stacking: spec.stacking ?? 'none',
     barDirection: spec.barDirection ?? 'vertical',
+    colorBy: spec.colorBy ?? 'series',
     value: range(spec.valueAxis),
     secondary: range(spec.secondaryValueAxis),
     x: range(spec.xAxis),

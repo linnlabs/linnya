@@ -87,6 +87,16 @@ function checkAxis(
 
 function checkBar(spec: Extract<MarkdownChartSpec, { chartType: 'bar' }>, report: IssueSink): void {
   checkAxis(spec.valueAxis, ['valueAxis'], report, { includeZero: true });
+  if (spec.colorBy === 'category') {
+    if (spec.series.length !== 1 || (spec.stacking !== undefined && spec.stacking !== 'none')) {
+      report('invalid_combination', ['colorBy'],
+        'colorBy "category" requires one unstacked series. Grouped and stacked bars keep colors by series.');
+    }
+    if (spec.series.some(series => series.color !== undefined)) {
+      report('invalid_combination', ['colorBy'],
+        'colorBy "category" uses the palette per category; remove series.color or use pointColors for explicit category colors.');
+    }
+  }
   if (spec.stacking !== 'percent') return;
 
   if (spec.valueAxis?.min !== undefined || spec.valueAxis?.max !== undefined) {

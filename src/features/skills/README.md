@@ -56,7 +56,7 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 
 资料取得状态、正文支持程度与计算执行分开记录。引用接纳由 [Citation](../../domains/citation/README.md) 拥有，网页取得状态由 [Web](../../tools/web/README.md) 拥有，写入结果由 [Workspace 工具](../../tools/workspace/README.md) 拥有；Skill 不复制校验器或将自述变成通过状态。
 
-图表语法只有一个 owner：`linnya-markdown` 的 [references/chart.md](./builtin/skills/linnya-markdown/references/chart.md)（字段与规则、八种 canonical 示例、回读与修复），由测试对照真实准入与解析器防止漂移。`deep-research` 的 [references/charts.md](./builtin/skills/deep-research/references/charts.md) 只给“画不画、画哪种、怎样不画错”的研究纪律，不复制 schema 或示例；这是行为指引，不是已验证的作图质量保证。
+图表语法只有一个 owner：`linnya-markdown` 的 [references/chart.md](./builtin/skills/linnya-markdown/references/chart.md)（字段与规则、九套色板与顺序取色、八种 canonical 示例及常用柱图变体、回读与修复），由测试对照真实准入与解析器防止漂移。`deep-research` 的 [references/charts.md](./builtin/skills/deep-research/references/charts.md) 只给“画不画、画哪种、怎样选择色系与维护实体色序、怎样不画错”的研究纪律，不复制 schema 或示例；这是行为指引，不是已验证的作图质量保证。
 
 ## 编写与维护
 

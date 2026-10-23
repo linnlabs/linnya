@@ -31,7 +31,7 @@ import {
   toggleEmphasis,
   toggleSeriesVisibility,
 } from '../functions/chartReadingState'
-import { deriveChartReadingView } from '../functions/chartReadingView'
+import { deriveChartReadingView, resolveChartHighlight } from '../functions/chartReadingView'
 import { canTransitionBetween } from '../functions/chartTransition'
 import { useChartReadingStore } from '../store/chartReadingStore'
 import { createChartController, type ChartController } from './chartInstanceController'
@@ -224,10 +224,7 @@ export function useChartSurfaceRuntime(options: UseChartSurfaceRuntimeOptions) {
     reset: () => writeState(resetReadingState()),
     /** 图例悬停/聚焦时的临时突出：不进入阅读状态。 */
     highlight: (id: string | null) => {
-      if (!controller) return
-      if (id === null) controller.highlight(null)
-      else if (emphasisTargetsCategories(options.spec.value)) controller.highlight({ kind: 'part', index: Number(id) })
-      else controller.highlight({ kind: 'series', name: id })
+      controller?.highlight(resolveChartHighlight(view.value, id))
     },
   }
 

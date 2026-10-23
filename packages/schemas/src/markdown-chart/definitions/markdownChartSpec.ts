@@ -154,6 +154,8 @@ const BarChartSpecSchema = z
     series: z.array(BarSeriesSchema).min(1),
     barDirection: z.enum(['vertical', 'horizontal']).optional(),
     stacking: z.enum(['none', 'stacked', 'percent']).optional(),
+    /** 单系列比较可按类目着色；分组/堆叠必须保持系列身份。 */
+    colorBy: z.enum(['series', 'category']).optional(),
     categoryAxis: MarkdownChartCategoryAxisSchema.optional(),
     valueAxis: MarkdownChartValueAxisSchema.optional(),
     ...dataLabelFields,

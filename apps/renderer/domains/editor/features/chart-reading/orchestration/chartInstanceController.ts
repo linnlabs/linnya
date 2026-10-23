@@ -12,7 +12,7 @@
 import type { MarkdownChartSpecReadView } from '@app/schemas'
 import type { EChartsType } from 'echarts/core'
 import type { ChartReadingState } from '../definitions/chartReadingState'
-import type { ChartOptionMessages } from '../definitions/chartRender'
+import type { ChartHighlightTarget, ChartOptionMessages } from '../definitions/chartRender'
 import type { ChartThemeTokens } from '../definitions/chartTheme'
 import { plotHeightOf } from '../functions/chartLayout'
 import { buildChartOption } from '../functions/option/buildChartOption'
@@ -27,10 +27,6 @@ export interface ChartControllerInput {
   /** 本次更新是否播放短过渡。首次渲染、主题/尺寸变化与再次入屏必须为 false。 */
   readonly transition: boolean
 }
-
-export type ChartHighlightTarget =
-  | { readonly kind: 'series'; readonly name: string }
-  | { readonly kind: 'part'; readonly index: number }
 
 export interface ChartController {
   render(input: ChartControllerInput): Promise<void>
@@ -93,6 +89,8 @@ export function createChartController(host: HTMLElement): ChartController {
       instance = echarts.init(host, undefined, { renderer: 'svg', width: size.width, height: size.height })
       liveInstanceCount += 1
     } else {
+      // 筛选可能移除正在悬停的系列，先清掉旧高亮，避免其 blur 状态污染更新后的视图。
+      instance.dispatchAction({ type: 'downplay' })
       instance.resize({ width: size.width, height: size.height, animation: { duration: 0 } })
     }
 

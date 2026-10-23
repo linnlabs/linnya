@@ -17,17 +17,17 @@ import { emphasisTargetsCategories, supportsSeriesFiltering } from './chartReadi
 export type ChartLegendPosition = 'top' | 'bottom' | 'left' | 'right' | 'none'
 
 export interface ChartLegendItem {
-  /** 系列名；饼/环为类目下标的字符串，与阅读状态中的突出键一致。 */
+  /** 系列名；按类目着色时为类目下标的字符串，与阅读状态中的突出键一致。 */
   readonly id: string
   readonly label: string
-  /** 填充与描线：条形/圆点键用填充 + 描线轮廓，线键用描线色。 */
+  /** 条形/圆点键使用无描边填充，线键使用经过可读性调整的线色。 */
   readonly fill: string
   readonly ink: string
   readonly shape: 'bar' | 'line' | 'dot'
   /** 该系列当前被读者隐藏。 */
   readonly hidden: boolean
   readonly emphasized: boolean
-  /** 可被隐藏（饼/环的组成部分只能突出）。 */
+  /** 可被隐藏（按类目着色的组成部分只能突出）。 */
   readonly filterable: boolean
   /** 组合图中位于次轴的系列。 */
   readonly secondaryAxis: boolean
@@ -45,6 +45,8 @@ export function usesEndLabels(spec: ChartSpec): boolean {
 
 export function resolveLegendPosition(spec: ChartSpec): ChartLegendPosition {
   if (spec.legendPosition !== undefined) return spec.legendPosition
+  // 类目已直接标在柱图坐标轴上，默认不重复一份图例；阅读选项仍提供逐类突出。
+  if (spec.chartType === 'bar' && spec.colorBy === 'category') return 'none'
   if (emphasisTargetsCategories(spec)) return 'bottom'
   if (usesEndLabels(spec)) return 'none'
   return spec.series.length >= 2 ? 'bottom' : 'none'
@@ -73,7 +75,7 @@ export function buildChartLegend(spec: ChartSpec, state: ChartReadingState, them
     return spec.categories.map((category, index) => ({
       id: String(index),
       label: String(category),
-      ...categoryMarkColors(theme, index, series),
+      ...categoryMarkColors(theme, index, series, spec.categories.length),
       shape: 'bar',
       hidden: false,
       emphasized: state.emphasis === String(index),
@@ -84,7 +86,7 @@ export function buildChartLegend(spec: ChartSpec, state: ChartReadingState, them
   return spec.series.map((series, index) => ({
     id: series.name,
     label: series.name,
-    ...seriesMarkColors(theme, index, series),
+    ...seriesMarkColors(theme, index, series, spec.series.length),
     shape: keyShape(spec, index),
     hidden: state.hiddenSeries.includes(series.name),
     emphasized: state.emphasis === series.name,

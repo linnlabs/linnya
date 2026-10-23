@@ -78,6 +78,20 @@ describe('linnya-markdown 图表参考页', () => {
     expect(admission.canonicalText).toBe(body);
   });
 
+  it('常用柱图变体示例通过真实准入、canonical 回读与 parser 导入', async () => {
+    const section = reference.slice(reference.indexOf('## Common bar variants'));
+    const bodies = [...section.matchAll(/```linnya-chart\n([\s\S]*?)\n```/g)].map(match => match[1]);
+    expect(bodies).toHaveLength(2);
+    for (const body of bodies) {
+      if (!body) throw new Error('Missing chart example');
+      const admitted = admitMarkdownChartFenceBody(body);
+      if (!admitted.ok) throw new Error(JSON.stringify(admitted.diagnostics));
+      expect(admitted.canonicalText).toBe(body);
+      const imported = await importMarkdownToDocJson(`\`\`\`linnya-chart\n${body}\n\`\`\``);
+      expect(imported.docJson?.content[0]?.content?.[0]?.attrs?.spec).toEqual(admitted.spec);
+    }
+  });
+
   it('上限数字与合同一致', () => {
     expect(reference).toContain(`At most ${MARKDOWN_CHART_LIMITS.maxSeries} series, ${MARKDOWN_CHART_LIMITS.maxCategories} categories, ${MARKDOWN_CHART_LIMITS.maxDataPoints} data points`);
     expect(reference).toContain(`${MARKDOWN_CHART_LIMITS.maxCanonicalBytes / 1024} KiB`);

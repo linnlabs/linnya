@@ -35,7 +35,7 @@ export interface ChartReadingState {
   /** 被隐藏的系列名（系列名在图内唯一）。仅柱/线/面积/组合/散点/雷达使用。 */
   readonly hiddenSeries: readonly string[]
   /**
-   * 持久突出的对象：系列名；饼/环为类目下标的字符串（`"0"`、`"1"`…）。
+   * 持久突出的对象：系列名；饼/环和按类目着色的柱图为完整规格的类目下标字符串（`"0"`、`"1"`…）。
    * 突出只改变视觉权重，不隐藏数据、不改变占比。
    */
   readonly emphasis: string | null

@@ -23,7 +23,7 @@ type JsonRecord = { readonly [key: string]: JsonValue | undefined };
 
 const TOP_LEVEL_ORDER = [
   'version', 'chartType', 'title', 'description', 'categories', 'series',
-  'barDirection', 'stacking', 'categoryAxis', 'xAxis', 'valueAxis', 'secondaryValueAxis',
+  'barDirection', 'stacking', 'colorBy', 'categoryAxis', 'xAxis', 'valueAxis', 'secondaryValueAxis',
   'pointLabels', 'radarScale', 'showDataLabels', 'dataLabelFormat', 'dataLabelContent',
   'legendPosition', 'size', 'palette',
 ] as const;
@@ -48,6 +48,7 @@ const TOP_LEVEL_DEFAULTS: Readonly<Record<string, JsonValue>> = {
   version: 1,
   barDirection: 'vertical',
   stacking: 'none',
+  colorBy: 'series',
   size: 'medium',
   dataLabelContent: 'value',
   palette: MARKDOWN_CHART_DEFAULT_PALETTE,

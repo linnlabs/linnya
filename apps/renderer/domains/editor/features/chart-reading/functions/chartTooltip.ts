@@ -13,7 +13,7 @@ import { withAlpha } from './chartPalette'
 export type ChartTooltipKeyShape = 'bar' | 'line' | 'dot'
 
 export interface ChartTooltipRow {
-  /** 填充与描线：条形/圆点键用填充 + 描线轮廓，线键用描线色。 */
+  /** 与图内实体一致：条形/圆点键用无描边填充，线键用线色。 */
   readonly key: { readonly fill: string; readonly ink: string; readonly shape: ChartTooltipKeyShape }
   readonly label: string
   readonly value: string
@@ -42,7 +42,7 @@ function keyElement(doc: Document, key: ChartTooltipRow['key']): HTMLElement {
   }
   const appearance: Partial<CSSStyleDeclaration> = key.shape === 'line'
     ? { background: key.ink }
-    : { background: key.fill, border: `1px solid ${key.ink}`, boxSizing: 'border-box' }
+    : { background: key.fill }
   Object.assign(element.style, { display: 'inline-block', flex: '0 0 auto' }, shape[key.shape], appearance)
   element.setAttribute('aria-hidden', 'true')
   return element

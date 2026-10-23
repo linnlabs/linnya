@@ -2,8 +2,8 @@
  * @file chartOptionShared.ts
  * @description 各图表类型共用的 option 片段与取值规则。
  *
- * 视觉原则（面向研究文章，而非仪表盘）：数据是唯一响亮的部分。填充淡、描线细，网格与基线是同一个文字色的
- * 不同透明度（所以在任何底色上都协调），标签稀疏，文字永远使用文字色而不是系列色。
+ * 视觉原则（面向研究文章）：数据使用内容色，网格与基线使用界面的弱分隔色；
+ * 填充无描边、线条细，标签按密度显示，文字使用正文色而不是系列色。
  */
 
 import type { MarkdownChartSeriesReadView, MarkdownChartSpecReadView } from '@app/schemas'
@@ -23,16 +23,11 @@ export const DIMMED_OPACITY = 0.28
 /** 条/柱的最大厚度：留白属于画面的一部分，不填满分类槽。 */
 export const MAX_BAR_THICKNESS = 22
 
-/** 辅助线是文字色的透明度：点状网格、类目轴基线、指示线、雷达网格。 */
-export const INK_ALPHA = Object.freeze({ gridDot: 0.3, baseline: 0.5, pointer: 0.3, hairline: 0.12 })
+/** 悬停指示线由文字色弱化；常驻网格和基线另用主题的 gridColor。 */
+export const INK_ALPHA = Object.freeze({ pointer: 0.2 })
 
 export function inkTint(theme: ChartThemeTokens, alpha: number): string {
   return withAlpha(theme.textPrimary, alpha)
-}
-
-/** 点状发丝网格的线型。每次返回新数组：ECharts 的类型要求可变数组。 */
-export function dottedGridLineType(): number[] {
-  return [1, 4]
 }
 
 /** ECharts 富文本把 `{样式|文字}` 当作标记；不可信文本里的花括号换成全角，避免被解释成样式。 */
@@ -61,7 +56,9 @@ export function baseOption(ctx: ChartRenderContext): Pick<
     animationEasingUpdate: 'cubicOut',
     backgroundColor: 'transparent',
     textStyle: { fontFamily: ctx.theme.fontFamily, fontSize: 12, color: ctx.theme.textSecondary },
-    aria: { enabled: true, decal: { show: false } },
+    // ECharts 的自动描述会朗读堆叠后的内部维度和 NaN，并覆盖宿主的图形标题。
+    // 图形的简短可访问名称由 ChartSurface 提供；完整原始值通过“查看数据”表格访问。
+    aria: { enabled: false },
   }
 }
 

@@ -27,14 +27,11 @@ describe('tooltip 渲染', () => {
     expect(light.style.border).toBe('')
   })
 
-  it('图例键：柱与圆点是填充加描线轮廓，折线是描线色短线', () => {
+  it('提示框按图内实体的填充色或线色显示身份键', () => {
     const [bar, line, dot] = keys(renderChartTooltip(content, chartTestTheme()))
     expect(bar?.style.background).toBe('rgb(170, 187, 204)')
-    expect(bar?.style.border).toBe('1px solid rgb(17, 34, 51)')
     expect(line?.style.background).toBe('rgb(51, 68, 85)')
-    expect(line?.style.border).toBe('')
-    expect(dot?.style.borderRadius).toBe('50%')
-    expect(dot?.style.border).toBe('1px solid rgb(85, 68, 51)')
+    expect(dot?.style.background).toBe('rgb(255, 238, 221)')
   })
 
   it('数值用等宽数字并加粗，说明作为第三级文字独立成行', () => {

@@ -24,6 +24,11 @@ export interface ChartOptionMessages {
  */
 export type ChartRenderIntent = 'reading' | 'export'
 
+/** 临时突出目标：part.index 指向当前视图的数据位置，不是完整规格中的类目下标。 */
+export type ChartHighlightTarget =
+  | { readonly kind: 'series'; readonly name: string }
+  | { readonly kind: 'part'; readonly index: number }
+
 export interface ChartRenderContext {
   readonly theme: ChartThemeTokens
   readonly locale: string
