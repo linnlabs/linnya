@@ -1,10 +1,10 @@
+import { createMarkdownDocumentStore } from 'src/app-hosts/linnya/application/markdown-image-assets';
 import { MarkdownRevisionCommitSchema } from '@app/schemas';
 /**
  * @file src/electron-main/ipc/handlers/documents/markdown_document/document-ipc.ts
  * @description 文档读写 IPC 通道处理器（按 node.type 路由）与 MarkdownDocument 专属操作。
  */
 
-import { MarkdownDocumentService } from 'src/domains/markdown';
 import { PendingRevisionApplyService } from 'src/domains/markdown';
 import type { BackendRuntimeOwner } from '../../../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
 import { WorkspaceService } from '../../../../../services/workspace/workspace';
@@ -99,7 +99,7 @@ export function registerMarkdownDocumentHandlers(
       const db = databaseService.getDb();
       const node = new WorkspaceService(db).getNode(request.documentId);
       if (node?.type !== 'document') throw new Error('Markdown document not found');
-      const result = await new PendingRevisionApplyService(new MarkdownDocumentService(db)).commitEditorRevision(request);
+      const result = await new PendingRevisionApplyService(createMarkdownDocumentStore(db)).commitEditorRevision(request);
       workspaceMutationPublisher.publish(createWorkspaceDocumentUpdatedEvent({
         node, mutationKind: 'version', versionNumber: result.versionNumber, source: 'user',
       }));
@@ -136,7 +136,7 @@ export function registerMarkdownDocumentHandlers(
     ) => {
       try {
         const db = databaseService.getDb();
-        const documentService = new MarkdownDocumentService(db);
+        const documentService = createMarkdownDocumentStore(db);
 
         let writtenCount = 0;
         const errors: string[] = [];

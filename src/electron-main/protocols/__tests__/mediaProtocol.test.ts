@@ -10,6 +10,8 @@ type PathManagerModule = typeof import('../../../shared/utils/pathManager');
 const netFetchMock = vi.hoisted(() => vi.fn());
 const protocolHandleMock = vi.hoisted(() => vi.fn());
 const protocolRegisterSchemesAsPrivilegedMock = vi.hoisted(() => vi.fn());
+const readManagedDocumentImageMock = vi.hoisted(() => vi.fn());
+vi.mock('../readManagedDocumentImage', () => ({ readManagedDocumentImage: readManagedDocumentImageMock }));
 
 vi.mock('electron', () => ({
   net: {
@@ -61,6 +63,7 @@ async function readResponseBody(response: Response): Promise<string> {
 beforeEach(async () => {
   vi.resetModules();
   netFetchMock.mockReset();
+  readManagedDocumentImageMock.mockReset();
   protocolHandleMock.mockReset();
   protocolRegisterSchemesAsPrivilegedMock.mockReset();
 
@@ -103,6 +106,22 @@ afterEach(async () => {
 });
 
 describe('media protocol', () => {
+  it('serves verified owned image bytes by asset identity without turning the identity into a file path', async () => {
+    readManagedDocumentImageMock.mockResolvedValue({ bytes: new Uint8Array([1, 2, 3]), mediaType: 'image/png' });
+    const response = await mediaProtocol.handleMediaProtocolRequest(mediaRequest(buildMediaUrl('asset-image', 'asset-id')));
+    expect(readManagedDocumentImageMock).toHaveBeenCalledExactlyOnceWith('asset-id');
+    expect(response.headers.get('content-type')).toBe('image/png');
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+    expect(netFetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed identity and withholds missing or corrupt document assets', async () => {
+    expect((await mediaProtocol.handleMediaProtocolRequest(mediaRequest('media://load/asset-image/!'))).status).toBe(400);
+    expect(readManagedDocumentImageMock).not.toHaveBeenCalled();
+    readManagedDocumentImageMock.mockRejectedValue(new Error('no retained owner or invalid asset'));
+    expect((await mediaProtocol.handleMediaProtocolRequest(mediaRequest(buildMediaUrl('asset-image', 'missing')))).status).toBe(404);
+    expect(netFetchMock).not.toHaveBeenCalled();
+  });
   function conversationGeneratedImagesPath(...segments: string[]): string {
     return path.join(
       pathManager.getConversationWorkDirectoriesPath(),

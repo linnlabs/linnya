@@ -12,6 +12,7 @@ export interface ImageBlock {
   src: string;
   alt: string | null;
   title: string | null;
+  caption: string;
   width: number | null;
   height: number | null;
   alignment: string | null;
@@ -37,6 +38,7 @@ export class ImageBlockService {
     src: string;
     alt?: string;
     title?: string;
+    caption?: string;
     width?: number;
     height?: number;
     alignment?: string;
@@ -46,9 +48,9 @@ export class ImageBlockService {
 
     const stmt = this.db.prepare(`
       INSERT INTO image_blocks (
-        id, document_node_id, asset_id, src, alt, title, 
+        id, document_node_id, asset_id, src, alt, title, caption,
         width, height, alignment, uploaded_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -58,6 +60,7 @@ export class ImageBlockService {
       params.src,
       params.alt || null,
       params.title || null,
+      params.caption ?? '',
       params.width || null,
       params.height || null,
       params.alignment || null,
@@ -100,6 +103,10 @@ export class ImageBlockService {
     if (updates.title !== undefined) {
       fields.push('title = ?');
       values.push(updates.title);
+    }
+    if (updates.caption !== undefined) {
+      fields.push('caption = ?');
+      values.push(updates.caption);
     }
     if (updates.width !== undefined) {
       fields.push('width = ?');

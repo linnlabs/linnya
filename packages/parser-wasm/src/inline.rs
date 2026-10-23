@@ -29,8 +29,32 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
     options.insert(PulldownOptions::ENABLE_MATH); // RESTORED: Confirmed ENABLE_MATH is correct for 0.13.0
 
     let parser = PulldownParser::new_ext(markdown_text, options);
+    let mut image: Option<(String, String, String, usize)> = None;
 
     for event in parser {
+        // 图片标签内容是纯文本。先完整消费 Image，避免 alt 的文本/marks 泄漏到正文。
+        if let Some((src, title, caption, depth)) = image.as_mut() {
+            match event {
+                PulldownEvent::Start(PulldownTag::Image { .. }) => *depth += 1,
+                PulldownEvent::End(pulldown_cmark::TagEnd::Image) => {
+                    if *depth > 0 {
+                        *depth -= 1;
+                    } else {
+                        fragments.push(ContentFragment {
+                            r#type: "image".to_string(), text: None, marks: current_marks.clone(),
+                            attrs: Some(serde_json::json!({ "src": src, "title": title, "caption": caption })),
+                        });
+                        image = None;
+                    }
+                }
+                PulldownEvent::Text(text) | PulldownEvent::Code(text) |
+                PulldownEvent::InlineMath(text) | PulldownEvent::DisplayMath(text) |
+                PulldownEvent::InlineHtml(text) => caption.push_str(&text),
+                PulldownEvent::SoftBreak | PulldownEvent::HardBreak => caption.push('\n'),
+                _ => {}
+            }
+            continue;
+        }
         match event {
             PulldownEvent::Text(text_cow) => {
                 if !text_cow.is_empty() {
@@ -43,6 +67,9 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                 }
             }
             PulldownEvent::Start(tag) => match tag {
+                PulldownTag::Image { dest_url, title, .. } => {
+                    image = Some((dest_url.into_string(), title.into_string(), String::new(), 0));
+                }
                 PulldownTag::Emphasis => current_marks.push(Mark {
                     r#type: "italic".to_string(),
                     attrs: None,
@@ -221,6 +248,7 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
     // 过滤掉无意义的空片段，但保留 inlineLatex
     fragments.retain(|f| {
         f.r#type == "inlineLatex"
+            || f.r#type == "image"
             || f.r#type == "hardBreak"
             || f.text.as_ref().map_or(false, |t| !t.is_empty())
             || (!f.marks.is_empty() && f.text.as_ref().is_some())

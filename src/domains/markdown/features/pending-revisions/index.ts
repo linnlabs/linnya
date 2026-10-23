@@ -13,3 +13,4 @@ export type {
 } from './definitions/pendingRevisionApply';
 
 export { projectMarkdownEditorPendingRevisions } from './functions/projectMarkdownEditorPendingRevisions';
+export { resolvePendingOperation } from './functions/pendingRevisionApplyRules';

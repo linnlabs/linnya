@@ -14,9 +14,10 @@
 import { parseMarkdownToBlocksByStreaming } from '../../../../shared/services/markdownService';
 import { PastePriority } from './PasteRegistry';
 import { TextSelection } from 'prosemirror-state';
-import { isMarkdownChartSpecInvalidError } from '@app/schemas';
+import { isMarkdownChartSpecInvalidError, MarkdownImageInvalidError } from '@app/schemas';
+import { useNotificationStore } from '@/app/notification';
 import { generateBlockId, generateRootBlockId } from '../../../../shared/utils/idUtils';
-import { blockEventsToRootBlockNodes } from '../../services/markdownRuntime';
+import { blockEventsToRootBlockNodes, collectEditorImageSources } from '../../services/markdownRuntime';
 import { confirmInvalidChartPaste } from '../../features/chart-editing';
 import { resolveCurrentEditorMessage } from '../../functions/resolveCurrentEditorMessage';
 
@@ -39,6 +40,7 @@ function containsMarkdownSyntax(text) {
     /~~.+~~/,               // 删除线: ~~text~~
     /`[^`]+`/,              // 行内代码: `code`
     /\[.+\]\(.+\)/,         // 链接: [text](url)
+    /!\[[^\n]*\]\(.+\)/,    // 空题注图片也必须经过图片准入
     /^---$/m,               // 分隔线: ---
   ];
 
@@ -200,13 +202,14 @@ export const plainTextMarkdownHandler = {
       // 整批物化：要么全部落地，要么什么都不改。无效的 linnya-chart 围栏不会被静默降级——
       // 文档保持不变，由用户选择“作为普通代码插入”或取消粘贴。
       let nodes;
+      const imageOptions = { imageSources: collectEditorImageSources(state.doc), copyImages: true };
       try {
-        nodes = blockEventsToRootBlockNodes(blockEvents, schema);
+        nodes = blockEventsToRootBlockNodes(blockEvents, schema, imageOptions);
       } catch (error) {
         if (!isMarkdownChartSpecInvalidError(error)) throw error;
         const decision = await confirmInvalidChartPaste(error, resolveCurrentEditorMessage);
         if (decision === 'cancel' || view.isDestroyed || view.state.doc !== state.doc) return true;
-        nodes = blockEventsToRootBlockNodes(blockEvents, schema, { invalidChartAsCode: true });
+        nodes = blockEventsToRootBlockNodes(blockEvents, schema, { ...imageOptions, invalidChartAsCode: true });
       }
 
       if (nodes.length === 0) {
@@ -305,7 +308,7 @@ export const plainTextMarkdownHandler = {
       // 粘贴后将光标放到插入内容末尾，符合用户预期的继续输入体验
       try {
         tr.setSelection(TextSelection.near(tr.doc.resolve(insertPos)));
-      } catch (e) {
+      } catch {
         // 选区设置失败不影响插入结果
       }
 
@@ -316,6 +319,10 @@ export const plainTextMarkdownHandler = {
 
     } catch (error) {
       console.error('[PlainTextMarkdown] ❌ 处理失败:', error);
+      if (error instanceof MarkdownImageInvalidError) {
+        useNotificationStore().show(error.message, 'error');
+        return true;
+      }
       // 回退：使用默认处理
       return false;
     }

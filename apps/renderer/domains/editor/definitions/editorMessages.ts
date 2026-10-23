@@ -2,6 +2,10 @@ import type { ComputedRef } from 'vue';
 import type { LinnyaLocale, MessageParams } from '@app/localization';
 
 export type EditorMessageKey =
+  | 'editor.figureCaption.edit'
+  | 'editor.figureCaption.description'
+  | 'editor.figureCaption.invalid'
+  | 'editor.figureCaption.conflict'
   | 'editor.common.moreActions'
   | 'editor.common.unavailableInTable'
   | 'editor.common.unknownError'

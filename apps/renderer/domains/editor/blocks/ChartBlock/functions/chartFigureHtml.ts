@@ -51,9 +51,13 @@ export function chartFigureDomSpec(spec: MarkdownChartSpec, options: ChartFigure
   if (options.id) attributes['data-id'] = options.id
 
   const children: DOMOutputSpec[] = []
-  if (spec.title) children.push(['figcaption', spec.title])
-  if (spec.description) children.push(['p', spec.description])
   if (options.table) children.push(tableSpec(options.table))
+  if (spec.title || spec.description) {
+    const caption: DOMOutputSpec[] = []
+    if (spec.title) caption.push(['div', { class: 'figure-caption__title' }, spec.title])
+    if (spec.description) caption.push(['div', { class: 'figure-caption__description' }, spec.description])
+    children.push(['figcaption', { class: 'figure-caption' }, ...caption])
+  }
   return ['figure', attributes, ...children]
 }
 

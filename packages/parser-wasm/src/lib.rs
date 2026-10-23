@@ -12,6 +12,8 @@ mod model;
 mod fenced_code;
 #[cfg(test)]
 mod fenced_code_tests;
+#[cfg(test)]
+mod image_math_tests;
 mod inline;
 mod streaming;
 mod table;
@@ -58,6 +60,20 @@ fn list_item_attributes(marker: &str, blank_before: bool) -> serde_json::Value {
 }
 
 // 间隔只对相邻列表项有效；段落后的首项使用 canonical loose，避免读回后产生伪修订。
+fn promote_standalone_images(events: &mut [BlockEvent]) {
+    for event in events {
+        if event.block_type != BlockType::BaseBlock { continue; }
+        if let Some(fragments) = &event.structured_content {
+            if fragments.len() == 1 && fragments[0].r#type == "image" && fragments[0].marks.is_empty() {
+                event.block_type = BlockType::ImageBlock;
+                event.attrs = fragments[0].attrs.clone();
+                event.structured_content = None;
+                event.raw_content_fallback = None;
+            }
+        }
+    }
+}
+
 fn normalize_list_spacing(events: &mut [BlockEvent], previous_is_list: &mut bool) {
     for event in events {
         if event.block_type == BlockType::HtmlComment { continue; }
@@ -297,6 +313,7 @@ fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
         });
     }
 
+    promote_standalone_images(&mut block_events);
     normalize_list_spacing(&mut block_events, &mut false);
     block_events
 }

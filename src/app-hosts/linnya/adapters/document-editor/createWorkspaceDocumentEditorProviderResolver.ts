@@ -1,7 +1,7 @@
+import { createMarkdownDocumentStore } from '../../application/markdown-image-assets';
 import type Database from 'better-sqlite3';
 import { getDocumentTypeBackendHook } from '@plugin/backend/documentTypeBackendHook';
 import {
-  MarkdownDocumentService,
   MarkdownNormalizationService,
   readMarkdownEditorDocument,
   writeMarkdownEditorDocument,
@@ -75,7 +75,7 @@ function createMarkdownEditorProvider(params: {
   readonly db: Database.Database;
   readonly mutationPublisher: WorkspaceMutationPublisher;
 }): WorkspaceDocumentEditorProvider {
-  const documentStore = new MarkdownDocumentService(params.db);
+  const documentStore = createMarkdownDocumentStore(params.db);
   const normalizer = new MarkdownNormalizationService(params.db, documentStore);
   return {
     displayName: 'Markdown',

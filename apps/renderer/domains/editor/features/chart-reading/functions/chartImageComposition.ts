@@ -34,7 +34,7 @@ export interface ChartImageComposition {
 }
 
 const PADDING = 20
-const TITLE_SIZE = 16
+const TITLE_SIZE = 14
 const BODY_SIZE = 13
 const LINE_GAP = 6
 
@@ -85,17 +85,14 @@ export function composeChartImage(input: ChartImageCompositionInput): ChartImage
   const parts: string[] = []
   let y = PADDING
 
-  const textBlock = (text: string, size: number, weight: number, color: string) => {
-    for (const line of wrapText(text, innerWidth, size, weight, measure)) {
+  const textBlock = (text: string, size: number, weight: number, color: string, centered = false) => {
+    for (const line of wrapText(text, centered ? Math.min(innerWidth, size * 36) : innerWidth, size, weight, measure)) {
       y += size
-      parts.push(`<text x="${PADDING}" y="${y}" font-size="${size}" font-weight="${weight}" fill="${escapeXml(color)}">${escapeXml(line)}</text>`)
+      parts.push(`<text x="${centered ? width / 2 : PADDING}" text-anchor="${centered ? 'middle' : 'start'}" y="${y}" font-size="${size}" font-weight="${weight}" fill="${escapeXml(color)}">${escapeXml(line)}</text>`)
       y += LINE_GAP
     }
   }
 
-  if (spec.title) textBlock(spec.title, TITLE_SIZE, 600, theme.textPrimary)
-  if (spec.description) textBlock(spec.description, BODY_SIZE, 400, theme.textSecondary)
-  if (spec.title || spec.description) y += 6
 
   parts.push(`<g transform="translate(${PADDING} ${y})">${input.chartSvg}</g>`)
   y += input.chartHeight
@@ -124,6 +121,10 @@ export function composeChartImage(input: ChartImageCompositionInput): ChartImage
     y += 6
     textBlock(input.footnote, 12, 400, theme.textMuted)
   }
+
+  if (spec.title || spec.description) y += 8
+  if (spec.title) textBlock(spec.title, TITLE_SIZE, 400, theme.textSecondary, true)
+  if (spec.description) textBlock(spec.description, BODY_SIZE, 400, theme.textMuted, true)
 
   const height = y + PADDING
   const svg = [

@@ -1,4 +1,5 @@
 export { parseMarkdownToBlockEvents } from './parser'
+export { collectEditorImageSources } from './imageSources'
 export {
   blockEventToInlineProjection,
   blockEventsToInlineProjection,

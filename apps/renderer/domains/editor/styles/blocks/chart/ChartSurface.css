@@ -5,7 +5,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  /* 绘图区本身已为坐标标签留白，标题下方只保留紧凑的内容间距。 */
+  /* 绘图区本身已为坐标标签留白，图例、脚注与题注保留紧凑分组间距。 */
   gap: var(--space-1);
   box-sizing: border-box;
   width: 100%;
@@ -26,34 +26,12 @@
   gap: var(--space-3);
 }
 
-/* 没有标题和说明时，操作栏浮在右上角，不占用一整行。 */
+/* 操作栏浮在绘图区右上角，题注独立排在图下。 */
 .chart-surface__header--floating {
   position: absolute;
   top: var(--space-2);
   right: var(--space-2);
   z-index: 2;
-}
-
-.chart-surface__heading {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-0-5);
-  min-width: 0;
-}
-
-.chart-surface__title {
-  margin: 0;
-  color: var(--color-text-primary);
-  font-size: var(--font-size-subtitle);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-subtitle);
-  overflow-wrap: anywhere;
-}
-
-.chart-surface__description {
-  margin: 0;
-  color: var(--color-text-secondary);
-  overflow-wrap: anywhere;
 }
 
 .chart-surface__actions {

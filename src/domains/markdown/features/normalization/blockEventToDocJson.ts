@@ -10,6 +10,8 @@ import {
 } from 'src/shared/utils/idUtils';
 import {
   admitMarkdownAnnotationComment,
+  admitMarkdownImageEvent,
+  readMarkdownImageReference,
   admitMarkdownChartFenceBody,
   isMarkdownChartFenceLanguage,
   isMarkdownEmptyBlockAnnotationAnchorComment,
@@ -247,6 +249,14 @@ export function convertBlockEventsToDocJson(
     if (!event || typeof event.block_type !== 'string') continue;
 
     const blockTypeName = normalizeBlockTypeName(event.block_type);
+    const image = admitMarkdownImageEvent(event);
+    if (image) {
+      rootBlocks.push(buildRootBlock({
+        type: 'imageBlock',
+        attrs: { ...image, id: readMarkdownImageReference(image.src) ?? generateEditorBlockId(), blockType: 'image' },
+      }));
+      continue;
+    }
     const rawFallback = typeof event.raw_content_fallback === 'string'
       ? event.raw_content_fallback
       : null;

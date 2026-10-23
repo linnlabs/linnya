@@ -1,3 +1,4 @@
+import { createMarkdownDocumentStore } from 'src/app-hosts/linnya/application/markdown-image-assets';
 /**
  * @file workspace-maintenance.ts
  * @description Workspace 级后台维护任务（例如清理幽灵块数据）。
@@ -9,7 +10,6 @@
 
 import type { DatabaseService } from '../database';
 import Database from 'better-sqlite3';
-import { MarkdownDocumentService } from 'src/domains/markdown';
 import { MarkdownNormalizationService } from 'src/domains/markdown';
 import { MarkdownOrphanBlockDataCleaner } from 'src/domains/markdown';
 import { Logger } from '../../../shared/logger';
@@ -27,7 +27,7 @@ export async function runWorkspaceMaintenanceOnce(databaseService: DatabaseServi
     const db: Database.Database = databaseService.getDb();
 
     // 构造所需的服务实例（轻量级）
-    const markdownService = new MarkdownDocumentService(db);
+    const markdownService = createMarkdownDocumentStore(db);
     const normalizationService = new MarkdownNormalizationService(db, markdownService);
     const cleaner = new MarkdownOrphanBlockDataCleaner(db, markdownService);
 

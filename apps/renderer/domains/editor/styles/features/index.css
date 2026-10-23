@@ -30,3 +30,4 @@
 @import './revision/RevisionControls.css';
 @import './revision/RevisionOverlayLayer.css';
 @import './revision/BlockChromeHostRevisionToolbar.css';
+@import './figure-caption/FigureCaption.css';

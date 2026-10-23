@@ -55,6 +55,7 @@ export const WorkspaceDocumentReadImageSchema = z.object({
   blockId: DocumentBlockIdSchema,
   locator: NonEmptyStringSchema,
   alt: z.string().optional(),
+  caption: z.string().optional(),
   width: z.number().positive().optional(),
   height: z.number().positive().optional(),
 }).strict().superRefine((image, context) => {

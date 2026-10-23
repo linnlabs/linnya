@@ -1,6 +1,6 @@
 import { sliceTextWindow, type WorkspaceDocumentReadData } from '@app/schemas';
 import type { MarkdownReadDatabase } from '../../../definitions/markdownReadDatabase';
-import { MarkdownImageBlockReader } from '../../block-content';
+import { projectMarkdownDocumentImages } from '../functions/projectMarkdownDocumentImages';
 import type {
   MarkdownDocumentNormalizer,
   MarkdownDocumentReadProjection,
@@ -30,8 +30,8 @@ export async function readMarkdownDocumentView(params: {
   }
 
   const content = params.store.getDocument(params.request.documentId);
-  const images = new MarkdownImageBlockReader(params.readDb)
-    .listForDocument(params.request.documentId);
+  const pendings = params.store.getPendingRevisions(params.request.documentId);
+  const images = projectMarkdownDocumentImages(content, params.request.viewMode === 'preview' ? pendings : []);
   const imagesObservation = buildMarkdownDocumentImagesObservation(images);
   const imageData = images.length > 0 ? { images } : {};
 
@@ -58,7 +58,6 @@ export async function readMarkdownDocumentView(params: {
     };
   }
 
-  const pendings = params.store.getPendingRevisions(params.request.documentId);
   const citationRead = buildMarkdownCitationReadProjection({
     content,
     pendings,

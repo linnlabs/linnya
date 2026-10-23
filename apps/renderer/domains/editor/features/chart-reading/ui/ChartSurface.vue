@@ -7,29 +7,7 @@
     :aria-labelledby="spec.title ? titleId : undefined"
     :aria-describedby="spec.description ? descriptionId : undefined"
   >
-    <header
-      class="chart-surface__header"
-      :class="{ 'chart-surface__header--floating': !hasHeading }"
-    >
-      <div
-        v-if="hasHeading"
-        class="chart-surface__heading"
-      >
-        <p
-          v-if="spec.title"
-          :id="titleId"
-          class="chart-surface__title"
-        >
-          {{ spec.title }}
-        </p>
-        <p
-          v-if="spec.description"
-          :id="descriptionId"
-          class="chart-surface__description"
-        >
-          {{ spec.description }}
-        </p>
-      </div>
+    <header class="chart-surface__header chart-surface__header--floating">
       <div
         class="chart-surface__actions"
         role="toolbar"
@@ -144,6 +122,18 @@
         {{ editorMessage('editor.chart.action.resetView') }}
       </BaseButton>
     </p>
+    <slot
+      name="caption"
+      :title-id="titleId"
+      :description-id="descriptionId"
+    >
+      <FigureCaption
+        :title="spec.title"
+        :description="spec.description"
+        :title-id="titleId"
+        :description-id="descriptionId"
+      />
+    </slot>
   </figure>
 </template>
 
@@ -156,6 +146,7 @@ import { useEditorLocalization } from '../../../ui/useEditorLocalization'
 import { useChartSurfaceRuntime } from '../orchestration/useChartSurfaceRuntime'
 import type { ChartReadingKey } from '../definitions/chartReadingState'
 import ChartLegend from './ChartLegend.vue'
+import { FigureCaption } from '../../figure-caption'
 
 const props = withDefaults(defineProps<{
   spec: MarkdownChartSpec
@@ -189,7 +180,6 @@ const {
   transitions: toRef(props, 'transitions'),
 })
 
-const hasHeading = computed(() => Boolean(props.spec.title || props.spec.description))
 const copyOptions = computed<readonly CustomSelectOption<'image' | 'markdown'>[]>(() => [
   { value: 'image', text: editorMessage('editor.chart.action.copyImage') },
   { value: 'markdown', text: editorMessage('editor.chart.action.copyMarkdown') },

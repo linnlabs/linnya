@@ -1,10 +1,12 @@
-import { Node, mergeAttributes } from '@tiptap/core'
+import { Node } from '@tiptap/core'
 import { Plugin, PluginKey, NodeSelection } from 'prosemirror-state'
 import { generateBlockId } from '../../../../shared/utils/idUtils'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
 import ImageBlockView from './ui/ImageBlockView.vue'
 import { selectInsertedImageNode } from './imageSelection'
 import { resolveCurrentEditorMessage } from '../../functions/resolveCurrentEditorMessage'
+import { estimateImageBlockHeight } from './functions/estimateImageBlockHeight'
+import { remapPastedImageIdentities } from './functions/remapPastedImageIdentities'
 
 /**
  * ImageBlock 扩展
@@ -20,6 +22,10 @@ export const ImageBlock = Node.create({
   defining: true,
   selectable: true,
   draggable: false,
+
+  extendNodeSchema(extension) {
+    return extension.name === 'imageBlock' ? { estimateBlockHeight: estimateImageBlockHeight } : {};
+  },
 
   // 添加选项
   addOptions() {
@@ -73,6 +79,16 @@ export const ImageBlock = Node.create({
         })
       },
       // 图片标题
+      caption: {
+        default: '',
+        parseHTML: element => element.getAttribute('data-caption') || '',
+        renderHTML: attributes => ({ 'data-caption': attributes.caption }),
+      },
+      assetId: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-asset-id'),
+        renderHTML: attributes => attributes.assetId ? { 'data-asset-id': attributes.assetId } : {},
+      },
       title: {
         default: '',
         parseHTML: element => {
@@ -123,20 +139,26 @@ export const ImageBlock = Node.create({
     }
   },
 
+  renderText({ node }) { return node.attrs.caption || node.attrs.alt || ''; },
+
   // 定义节点的HTML结构 - 使用两层DOM结构，类似其他块
-  renderHTML({ HTMLAttributes, node }) {
+  renderHTML({ node }) {
     // 创建外层元素
     const outer = document.createElement('div');
     outer.className = 'image-block-outer';
     outer.setAttribute('data-node-type', 'imageBlockOuter');
 
     // 创建内层元素
-    const inner = document.createElement('div');
+    const inner = document.createElement('figure');
     inner.className = 'image-block editor-block';
     inner.setAttribute('data-node-type', 'imageBlock');
     inner.setAttribute('data-type', 'image-block');
     inner.setAttribute('data-block-id', node.attrs.id);
     inner.setAttribute('data-block-type', node.attrs.blockType);
+    if (node.attrs.uploadedAt != null) inner.setAttribute('data-uploaded-at', node.attrs.uploadedAt);
+    inner.setAttribute('data-caption', node.attrs.caption || '');
+    if (node.attrs.width) inner.style.width = `${node.attrs.width}px`;
+    if (node.attrs.assetId) inner.setAttribute('data-asset-id', node.attrs.assetId);
 
     // 设置对齐方式
     if (node.attrs.alignment) {
@@ -166,6 +188,13 @@ export const ImageBlock = Node.create({
       inner.textContent = resolveCurrentEditorMessage('editor.imageBlock.empty');
     }
 
+    if (node.attrs.caption) {
+      const caption = document.createElement('figcaption');
+      caption.className = 'figure-caption';
+      caption.textContent = node.attrs.caption;
+      inner.appendChild(caption);
+    }
+
     // 组装DOM结构
     outer.appendChild(inner);
 
@@ -178,6 +207,7 @@ export const ImageBlock = Node.create({
   // 从HTML解析节点
   parseHTML() {
     return [
+      { tag: 'figure[data-type="image-block"]', priority: 52 },
       {
         tag: 'div[data-node-type="imageBlock"]',
         priority: 51,
@@ -213,6 +243,8 @@ export const ImageBlock = Node.create({
           src: options.src || '',
           alt: options.alt || '',
           title: options.title || '',
+          caption: options.caption || '',
+          assetId: options.assetId || null,
           width: options.width || null,
           height: options.height || null,
           alignment: options.alignment || 'center'
@@ -243,6 +275,8 @@ export const ImageBlock = Node.create({
             if (options.src !== undefined) newAttrs.src = options.src;
             if (options.alt !== undefined) newAttrs.alt = options.alt;
             if (options.title !== undefined) newAttrs.title = options.title;
+            if (options.caption !== undefined) newAttrs.caption = options.caption;
+            if (options.assetId !== undefined) newAttrs.assetId = options.assetId;
             if (options.width !== undefined) newAttrs.width = options.width;
             if (options.height !== undefined) newAttrs.height = options.height;
             if (options.alignment !== undefined) newAttrs.alignment = options.alignment;
@@ -263,6 +297,7 @@ export const ImageBlock = Node.create({
       new Plugin({
         key: new PluginKey('imageBlockClickHandler'),
         props: {
+          transformPasted: remapPastedImageIdentities,
           handleClickOn: (view, pos, node, nodePos) => {
             if (node.type.name !== this.name) {
               return false;
@@ -288,6 +323,7 @@ export const ImageBlock = Node.create({
   },
 
   addNodeView() {
+    // 原生输入事件由 Tiptap 隔离，不能覆盖其工具栏与拖拽处理。
     return VueNodeViewRenderer(ImageBlockView)
   }
 })

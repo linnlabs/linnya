@@ -1,3 +1,5 @@
+import { createMarkdownDocumentStore } from '../../application/markdown-image-assets';
+import { createMarkdownImageSourceResolver, type MarkdownImageSourceContext } from '../../application/markdown-image-assets';
 import type Database from 'better-sqlite3';
 import type { PluginToolContext } from '@linnya/plugin-host-contract/backend/toolRuntime';
 import {
@@ -5,8 +7,9 @@ import {
   type DocumentTypeBackendHook,
 } from '@plugin/backend/documentTypeBackendHook';
 import {
-  MarkdownDocumentService,
   MarkdownNormalizationService,
+  prepareMarkdownImageInput,
+  collectMarkdownImageSources,
   writeMarkdownDocumentFromText,
   resolveMarkdownEscapeEquivalentText,
   prepareMarkdownFileWrite,
@@ -30,7 +33,7 @@ import { buildPluginRuntimeDisabledMessage } from '../../plugin-registry/pluginR
 
 export function createWorkspaceDocumentFileWriteProviderResolver(params: {
   readonly db: Database.Database;
-  readonly context: PluginToolContext;
+  readonly context: PluginToolContext & MarkdownImageSourceContext;
   readonly mutationPublisher?: WorkspaceMutationPublisher;
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileWriteResult>;
 }): WorkspaceDocumentFileWriteProviderResolver {
@@ -52,11 +55,11 @@ export function createWorkspaceDocumentFileWriteProviderResolver(params: {
 
 function createMarkdownFileWriteProvider(params: {
   readonly db: Database.Database;
-  readonly context: PluginToolContext;
+  readonly context: PluginToolContext & MarkdownImageSourceContext;
   readonly mutationPublisher?: WorkspaceMutationPublisher;
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileWriteResult>;
 }): WorkspaceDocumentFileWriteProvider {
-  const documentStore = new MarkdownDocumentService(params.db);
+  const documentStore = createMarkdownDocumentStore(params.db);
   const normalizer = new MarkdownNormalizationService(params.db, documentStore);
   const workspaceMutation = createSqliteWorkspaceDocumentMutationPort(params.db);
   const captureSnapshot = (documentId: string): MarkdownFileWriteSnapshot => projectMarkdownFileWriteSnapshot({
@@ -104,8 +107,13 @@ function createMarkdownFileWriteProvider(params: {
       await normalize(request.identity.documentId);
       const snapshot = captureSnapshot(request.identity.documentId);
       if (request.expectedSourceKey !== undefined && request.expectedSourceKey !== snapshot.sourceKey) throw new MarkdownFileWriteConflictError();
+      const imageInput = await prepareMarkdownImageInput({
+        markdown: request.content,
+        existing: collectMarkdownImageSources(documentStore.getDocument(request.identity.documentId), documentStore.getPendingRevisions(request.identity.documentId)),
+        resolve: createMarkdownImageSourceResolver(params.context),
+      });
       const prepared = await prepareMarkdownFileWrite({
-        snapshot, targetText: request.content, allocator,
+        snapshot, targetText: imageInput.markdown, allocator,
         resolver: {
           resolveSources: refs => requireCitationSourceResolver(params.context).resolveSources(refs),
           resolveSourcesByUrl: urls => requireCitationSourceResolver(params.context).resolveSourcesByUrl(urls),
@@ -119,6 +127,7 @@ function createMarkdownFileWriteProvider(params: {
         expectedSourceKey: snapshot.sourceKey,
         toolName: request.operation === 'edit' ? 'edit_file' : 'write_file',
         pendingMetaByMarkdown: prepared.pendingMetaByMarkdown,
+        imageSources: imageInput.imageSources,
         annotationAdmission: {
           author: 'AI',
           meta: {
@@ -199,7 +208,7 @@ function buildMarkdownFileWriteObservation(params: {
 function createPluginFileWriteProvider(params: {
   readonly registeredHook: DocumentTypeBackendHook;
   readonly enabledHook: DocumentTypeBackendHook | undefined;
-  readonly context: PluginToolContext;
+  readonly context: PluginToolContext & MarkdownImageSourceContext;
 }): WorkspaceDocumentFileWriteProvider {
   const unavailableMessage = buildPluginFileWriteUnavailableMessage(params.registeredHook);
   return {

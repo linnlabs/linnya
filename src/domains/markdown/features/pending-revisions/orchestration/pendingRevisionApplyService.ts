@@ -1,4 +1,6 @@
 import { createDefaultMarkdownDocument } from '../../document-lifecycle';
+import { hydrateMarkdownDocumentImages } from '../../image-content';
+import { readPendingMarkdownImage, type MarkdownImageAttrs } from '@app/schemas';
 import { prepareEditorRevisionCommit, remainingRevisionMetadata, finalizeResolvedRevisionBaseline, promotePendingInserts } from '../functions/prepareEditorRevisionCommit';
 import type { MarkdownRevisionCommit, MarkdownRevisionSnapshot } from '@app/schemas';
 import { projectMarkdownEditorPendingRevisions } from '../functions/projectMarkdownEditorPendingRevisions';
@@ -157,6 +159,7 @@ export class PendingRevisionApplyService {
         oldRoot,
         listSeparatorBefore: metadata?.listSeparatorBefore,
         citationHydration: extractPendingCitationHydration(metadata, pending.target_block_id),
+        image: readPendingMarkdownImage(metadata),
         citationLinkHydration: extractPendingCitationLinkHydration(metadata, pending.target_block_id),
       });
 
@@ -174,6 +177,7 @@ export class PendingRevisionApplyService {
     oldRoot?: ProseMirrorJsonNode;
     listSeparatorBefore?: unknown;
     citationHydration?: Record<string, CitationNodeHydrationData> | null;
+    image?: MarkdownImageAttrs | null;
     citationLinkHydration?: Record<string, CitationLinkHydrationData> | null;
   }): Promise<MarkdownRootBlockJson> {
     if (!params.markdown.trim()) {
@@ -183,6 +187,7 @@ export class PendingRevisionApplyService {
     const imported = await this.importer(params.markdown);
     let docJson = imported.docJson;
     if (!docJson) throw new Error(`Pending Markdown 解析未返回正文: blockId=${params.preserveId}`);
+    docJson = hydrateMarkdownDocumentImages(docJson, new Map(params.image ? [[params.image.id, params.image]] : []));
 
     if (params.citationHydration || params.citationLinkHydration) {
       docJson = attachCitationNodesToDocJson(

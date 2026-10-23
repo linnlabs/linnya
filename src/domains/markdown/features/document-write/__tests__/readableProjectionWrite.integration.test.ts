@@ -94,4 +94,69 @@ describe('readable Markdown projection create → pending → accept → current
     expect((await write(loose)).edits).toEqual([]);
   });
 
+  it('preserves literal brackets, Unicode formulae and presentation through real pending acceptance', async () => {
+    const { store, normalizer, read, write } = setup();
+    const created = await buildMarkdownDocumentFromText({
+      markdown: '&#91;1\\] 张三的研究。\n\n$$\n\\text{中文研究} + α\n$$\n\n需要修改。',
+      normalizer, resolveCitationSources: async () => [],
+    });
+    store.createDocument('doc', created.content);
+    const initial = store.getDocument('doc');
+    initial.content[2].attrs = { ...initial.content[2].attrs, textColor: 'red', backgroundColor: 'yellow' };
+    const paragraph = initial.content[2].content?.[0];
+    if (!paragraph) throw new Error('Missing paragraph');
+    paragraph.attrs = { ...paragraph.attrs, textAlign: 'center' };
+    store.updateDocument('doc', initial);
+    const current = read()?.text ?? '';
+    expect(current).toContain('中文研究');
+    expect((await write(current)).edits).toEqual([]);
+    await write(current.replace('需要修改', '已经修改'));
+    await new PendingRevisionApplyService(store).commitEditorRevision({
+      documentId: 'doc', expectedVersionNumber: store.getLatestVersion('doc')!.version_number,
+      expectedPending: store.getPendingRevisions('doc').map(({ id, revision }) => ({ id, revision })),
+      baseline: store.getDocument('doc'), decision: { mode: 'accept' },
+    });
+    const final = store.getDocument('doc');
+    expect(final.content[0].content?.[0].type).toBe('baseBlock');
+    expect(final.content[1].content?.[0]).toMatchObject({ type: 'latexBlock', attrs: { latexSource: '\\text{中文研究} + α' } });
+    expect(final.content[2]).toMatchObject({ attrs: { textColor: 'red', backgroundColor: 'yellow' }, content: [{ attrs: { textAlign: 'center' } }] });
+  });
+
+  it('round-trips existing images, snapshots copies and rejects missing or mixed sources atomically', async () => {
+    const { store, read, write } = setup();
+    store.createDocument('doc', { type: 'doc', content: [
+      { type: 'rootBlock', attrs: { id: 'image-root' }, content: [{ type: 'imageBlock', attrs: {
+        id: 'image-one', src: 'media://existing.png', alt: '原始文件.png', width: 600, height: 400, alignment: 'right',
+      } }] },
+      { type: 'rootBlock', attrs: { id: 'text-root' }, content: [{ type: 'baseBlock', attrs: { id: 'text-one' }, content: [{ type: 'text', text: '分隔段落' }] }] },
+    ] });
+    const current = read()?.text ?? '';
+    expect(current).toContain('![](<linnya-image://image-one>)');
+    expect((await write(current)).edits).toEqual([]);
+    await write(current.replace('![]', '![中文题注]'));
+    expect(store.getPendingRevisions('doc')).toHaveLength(1);
+    const accept = () => new PendingRevisionApplyService(store).commitEditorRevision({
+      documentId: 'doc', expectedVersionNumber: store.getLatestVersion('doc')!.version_number,
+      expectedPending: store.getPendingRevisions('doc').map(({ id, revision }) => ({ id, revision })),
+      baseline: store.getDocument('doc'), decision: { mode: 'accept' },
+    });
+    await accept();
+    expect(store.getDocument('doc').content[0].content?.[0]).toMatchObject({ type: 'imageBlock', attrs: {
+      id: 'image-one', caption: '中文题注', src: 'media://existing.png', alt: '原始文件.png', width: 600, height: 400, alignment: 'right',
+    } });
+    await write(`${read()?.text}\n\n![副本](linnya-image://image-one)`);
+    const pending = store.getPendingRevisions('doc')[0];
+    const snapshot = JSON.parse(pending.meta_json ?? '{}');
+    expect(snapshot.image.id).not.toBe('image-one');
+    expect(snapshot.image.src).toBe('media://existing.png');
+    await accept();
+    expect(store.getDocument('doc').content[2].content?.[0].attrs?.caption).toBe('副本');
+    const unchanged = store.getLatestVersion('doc');
+    await expect(write('正文修改\n\n![坏引用](linnya-image://missing)')).rejects.toThrow('MARKDOWN_IMAGE_INVALID');
+    await expect(write('正文 ![混排](linnya-image://image-one)')).rejects.toThrow('MARKDOWN_IMAGE_INVALID');
+    await expect(write('![远程](https://example.com/image.png)')).rejects.toThrow('MARKDOWN_IMAGE_INVALID');
+    expect(store.getLatestVersion('doc')).toEqual(unchanged);
+    expect(store.getPendingRevisions('doc')).toEqual([]);
+  });
+
 });

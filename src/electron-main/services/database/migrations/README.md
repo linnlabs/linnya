@@ -1,7 +1,9 @@
 # Host 数据库基线与迁移
 
 本目录只管理 Linnya Host 在 `workspace.sqlite` 中拥有的 Schema。当前不兼容开发基线是
-v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v67。
+v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v68。
+
+v67→v68 为 image_blocks 增加默认空字符串的 caption；已有 alt/title、尺寸、来源保持不变，旧图片不会自动显示文件名题注。
 
 ## 为什么基线仍是 v61
 

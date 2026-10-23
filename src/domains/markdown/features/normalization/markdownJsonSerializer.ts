@@ -15,6 +15,7 @@
  */
 
 import {
+  serializeMarkdownImage,
   MarkdownAnnotationsSchema,
   MarkdownChartSpecSchema,
   encodeMarkdownChartFence,
@@ -143,7 +144,9 @@ function escapeText(text: string): string {
 }
 
 function escapeBlockStart(text: string): string {
-  return text.replace(/^([ \t]*)(#{1,6})(?=\s|$)/gm, '$1\\$2')
+  // 行首的字面 \[ 不能与 display math opener 冲突；实体在内联解析后仍是普通左括号。
+  return text.replace(/^([ \t]*)\\\[/gm, '$1&#91;')
+    .replace(/^([ \t]*)(#{1,6})(?=\s|$)/gm, '$1\\$2')
     .replace(/^([ \t]*)>/gm, '$1\\>')
     .replace(/^([ \t]*)([-+])(?=\s|$)/gm, '$1\\$2')
     .replace(/^([ \t]*\d+)([.)])(?=\s|$)/gm, '$1\\$2')
@@ -433,7 +436,7 @@ function serializeBlockChild(
 
   if (type === 'latexBlock') {
     const latex = getStringAttr(attrs, 'latexSource') ?? '';
-    return `\`\`\`latex\n${latex}\n\`\`\``.trimEnd();
+    return `$$\n${latex}\n$$`;
   }
 
   if (type === 'chartBlock') {
@@ -470,18 +473,7 @@ function serializeBlockChild(
   }
 
   if (type === 'imageBlock') {
-    const alt = getStringAttr(attrs, 'alt') ?? '图片';
-    const width = getNumberAttr(attrs, 'width');
-    const height = getNumberAttr(attrs, 'height');
-
-    // 与前端导出保持一致：图片导出为占位描述文本（避免 base64/本地路径泄露与不可读）
-    let description = `[图片：${alt}`;
-    if (width || height) {
-      if (width) description += `，宽度${width}px`;
-      if (height) description += `，高度${height}px`;
-    }
-    description += ']';
-    return description;
+    return serializeMarkdownImage(attrs ?? {});
   }
 
   if (type === 'audioBlock') {

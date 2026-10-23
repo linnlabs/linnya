@@ -41,7 +41,7 @@ export function parsePendingMetadata(metaJson: string | null): PendingRevisionMe
 }
 
 export function resolvePendingOperation(
-  revision: PendingRevision,
+  revision: { readonly operation?: PendingRevisionOperation | null },
   metadata: PendingRevisionMetadata | null
 ): PendingRevisionOperation {
   if (revision.operation === 'insert' || revision.operation === 'update' || revision.operation === 'delete') {
@@ -66,11 +66,25 @@ export function mergeRootBlockAttrs(
 ): MarkdownRootBlockJson {
   const oldAttrs = isRecord(oldRoot.attrs) ? oldRoot.attrs : {};
   const newAttrs = isRecord(newRoot.attrs) ? newRoot.attrs : {};
+  const oldContent = oldRoot.content?.[0];
+  const newContent = newRoot.content?.[0];
+  // Markdown 不表达这些呈现属性；正文修改不能用导入器默认值清除用户的块级排版。
+  // 仅同类型块继承呈现，不回填标题级别、列表语义等已经由新正文决定的属性。
+  const presentation = oldContent?.type === newContent?.type && oldContent?.attrs
+    ? Object.fromEntries(['textColor', 'backgroundColor', 'textAlign']
+      .filter(key => Object.prototype.hasOwnProperty.call(oldContent.attrs ?? {}, key))
+      .map(key => [key, oldContent.attrs?.[key]]))
+    : {};
   return {
     ...newRoot,
     // 正文 Pending 不拥有批注。导入器为新 root 补出的 annotations=[] 不能清空
     // 已经由 Annotation 用例接纳的基线批注（file-write 可在同事务中新增批注）。
-    attrs: { ...oldAttrs, ...newAttrs, id: preserveId, annotations: oldAttrs.annotations ?? [] },
+    attrs: {
+      ...oldAttrs, ...newAttrs, id: preserveId, annotations: oldAttrs.annotations ?? [],
+      backgroundColor: oldAttrs.backgroundColor ?? null,
+      textColor: oldAttrs.textColor ?? null,
+    },
+    ...(newContent ? { content: [{ ...newContent, attrs: { ...newContent.attrs, ...presentation } }] } : {}),
   };
 }
 

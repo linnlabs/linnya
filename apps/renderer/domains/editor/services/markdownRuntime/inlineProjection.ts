@@ -1,4 +1,5 @@
 import type { Node as ProseMirrorNode, Schema } from 'prosemirror-model'
+import { admitMarkdownImageEvent, MarkdownImageInvalidError } from '@app/schemas'
 
 import { generateBlockId } from '../../../../shared/utils/idUtils'
 import type { TextSpan } from '../../features/Revision/protocol/revisionTextSpanTypes'
@@ -178,6 +179,10 @@ export function structuredContentToInlineProjection(
         continue
       }
 
+      if (fragment.type === 'image') {
+        throw new MarkdownImageInvalidError('图片不能投影为行内文本，请使用独立图片块。')
+      }
+
       if (fragment.type === 'text') {
         const text = typeof fragment.text === 'string' ? fragment.text : ''
         if (!text) {
@@ -232,6 +237,9 @@ export function structuredContentToInlineProjection(
 }
 
 export function blockEventToInlineProjection(blockEvent: BlockEventLike): MarkdownInlineProjection {
+  if (admitMarkdownImageEvent(blockEvent)) {
+    throw new MarkdownImageInvalidError('图片块不能投影为行内文本。')
+  }
   return structuredContentToInlineProjection(
     Array.isArray(blockEvent?.structured_content)
       ? (blockEvent.structured_content as ContentFragmentLike[])
@@ -253,6 +261,10 @@ export function blockEventsToInlineProjection(
   if (multiBlockMode === 'first-block') {
     const firstEvent = events[0]
     const droppedBlockCount = Math.max(0, events.length - 1)
+    // 即使调用方只取首块，也不能静默丢掉后面的图片。
+    for (const event of events) {
+      if (admitMarkdownImageEvent(event)) throw new MarkdownImageInvalidError('图片块不能投影为行内文本。')
+    }
 
     if (droppedBlockCount > 0) {
       onDroppedBlocks?.({

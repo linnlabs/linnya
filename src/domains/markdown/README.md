@@ -67,9 +67,27 @@ normalization 直接接纳 parser-wasm 的 CodeBlock 事件，不在 TypeScript 
 重新导入 canonical Markdown 必须保持代码正文、语言和相邻块边界，不能在 VFS/read_file 补字修复。
 原围栏字符、长度、info string 的附加元数据不持久化，不承诺源文本逐字 round-trip。
 
-**已知限制：公式块往返。** 当前 `markdownJsonSerializer.ts` 将 `latexBlock` 投影为 `latex` 语言围栏，parser 与物化器却将该围栏视为普通 `codeBlock`。
-因此公式块经 Markdown 投影后被改写并重新导入时，可能变成代码块；未变块的身份对齐可能掩盖此问题。
-该缺口属于公式的导入与投影合同，不能通过把普通 `latex` 代码围栏一律提升为公式块修补，否则会改变源码清单的语义。
+公式块使用独立 `$$` delimiter 往返；`latex` 代码围栏仍是代码。流式公式按 Unicode 字符累积，
+不能把 UTF-8 字节逐个转换为字符。普通段落行首的字面左方括号使用 HTML entity，避免与 `\[` display math opener 冲突。
+
+## 图片与题注
+
+图片是独立的原子 rootBlock，不能隐式扁平化为段落。Linnya 的块图片 Markdown 方言将 `![题注](来源)`
+中的文本映射为 `caption`；CommonMark 原有的 alt 概念仍独立保存在 `alt`，不把文件名自动当作题注。
+caption 为单行纯文本，最多 200 字符。无题注图片使用空标签，不渲染空题注。
+
+当前文档图片投影使用 `linnya-image://<imageBlock.id>`，不输出本机路径或 base64。
+该引用只在当前文档的基线和 Pending 来源快照内有效；接纳时恢复原始 src、尺寸、对齐、alt 与资产身份。
+修改同一图片的题注保持出现位置身份；复制以及删除后重新插入分配新的 imageBlock id，可以复用资产。
+rootBlock id、imageBlock id 与 asset id 分别表示修订目标、图片出现位置与图片字节，不得混用。
+Pending 必须携带自己的完整图片来源快照，不依赖原块之后仍存在。混排图片、未知图片引用及未接纳来源整体拒绝。
+
+新的 Agent 图片只从当前 Conversation 工作目录接纳 PNG、JPEG、WebP，通过 Host 的目录准入和 Asset ingress
+转换为文档资产；不接纳任意路径、远程 URL 或任意 SVG。Markdown domain 只消费已接纳图片合同，
+不读取文件、不直接管理 Asset 账本。历史版本、块历史和 Pending 中仍可达的资产保持文档归属。
+
+题注在编辑器、只读视图和导出中位于图像下方并居中。图表继续使用 `spec.title/description`，
+图片使用 `caption`；不增加编号、交叉引用或第二份图表标题事实。图表 description 保持既有 1000 字符合同。
 
 ## 图表块（`linnya-chart`）
 
@@ -123,6 +141,10 @@ current Markdown 投影按连续 mark 范围输出强调，Citation atom 与相�
 不得覆盖 Annotation 用例的事实。文件写入新增或修改的批注仍通过独立 Annotation 用例提交，
 不会因随后接受该块的正文修订而丢失。
 
+文本写入保留 rootBlock 的 textColor/backgroundColor。同类型内容块只继承已知的
+textColor/backgroundColor/textAlign 呈现属性，不复制与新块类型无关的业务属性。行内颜色仍由 Editor 管理，
+本轮不增加颜色或字体的 Markdown 方言。
+
 每个 `(documentId, rootBlockId)` 最多一条 Pending。已有提议继续编辑时保持 ID 并递增 `revision`；工具把内容改回基线时撤销该提议，新增后删除会同时移除占位块。File-style 写入先对齐未变段落再规划差异，文首插入不改变后面旧块的身份；批注也跟随对齐后的身份。
 
 新增 Pending 的占位 rootBlock 与内部内容块都必须使用 Editor 接受的身份。存储服务为内部块调用既有 `generateEditorBlockId`，纯结构变换接收已分配 ID；不能用 root ID 拼接 `-inner`。否则 Citation 在冷加载时补全参考文献会触发 Editor 身份规范化，使未被用户编辑的占位块也与已存基线不同。Accept 保持严格的同块冲突检查，不忽略 ID 差异。本规则只约束新建占位块，不静默迁移既有异常 ID；旧文档应经正式保存入口同步基线后再处理修订。
@@ -172,3 +194,5 @@ Markdown schema 当前包括：
 这些表通过 `workspace_nodes.id` 获得项目文档身份。外键依赖不代表 Markdown 可以调用 Workspace 内部实现；跨领域业务动作必须通过公共合同、port 或 app-level orchestration 完成。
 
 AudioBlock 已从生产 Renderer/backend schema、创建入口和 Editor 运行时依赖中撤下，但实现源码与专属表暂时保留，供未来独立 Audio domain 设计时研究。保留代码不等于继续支持 `audioBlock` 文档：含该节点的旧 doc JSON 会按严格 schema 拒绝加载，不做兼容或降级。
+
+图片事实与跨领域归属端口见 [image-content](features/image-content/README.md)；资产接管由 Host 编排，不将会话文件读取或资产账本引入 Markdown domain。

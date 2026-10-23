@@ -10,10 +10,10 @@ import { useChartEditingStore } from '../../../features/chart-editing'
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage'
 import { useRevisionStore } from '../../../features/Revision/useRevisionStore'
 
-function editChart(ctx: BlockMenuContext): void {
+function editChart(ctx: BlockMenuContext, target: 'source' | 'caption' = 'source'): void {
   const blockId: unknown = ctx.contentBlockNode.attrs['id']
   if (typeof blockId !== 'string') return
-  useChartEditingStore().request({ editorSessionId: ctx.editor.storage.chartBlock.sessionId, blockId })
+  useChartEditingStore().request({ editorSessionId: ctx.editor.storage.chartBlock.sessionId, blockId, target })
 }
 
 export const chartBlockMenuProvider: BlockMenuProvider = {
@@ -26,11 +26,12 @@ export const chartBlockMenuProvider: BlockMenuProvider = {
     const rootBlockId: unknown = ctx.rootBlockNode.attrs['id']
     if (typeof rootBlockId === 'string' && useRevisionStore(ctx.editor).hasCanonicalPending(rootBlockId)) return []
     return [
+      { id: 'chart-caption', label: resolveCurrentEditorMessage('editor.figureCaption.edit'), action: ctx => editChart(ctx, 'caption') },
       { id: 'separator-chart-1', type: 'separator', label: '' },
       {
         id: 'chart-edit',
         label: resolveCurrentEditorMessage('editor.chart.action.edit'),
-        action: editChart,
+        action: ctx => editChart(ctx),
       },
     ]
   },

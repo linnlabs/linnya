@@ -1,4 +1,6 @@
 import { flattenMarkdownDocumentBlocks } from '../../../shared';
+import { hydrateMarkdownDocumentImages } from '../../image-content';
+import type { MarkdownImageAttrs } from '@app/schemas';
 import {
   attachCitationNodesToDocJson,
   collectMarkdownLinkHrefs,
@@ -22,16 +24,18 @@ export async function buildMarkdownDocumentFromText(params: {
   readonly normalizer: MarkdownTextDocumentBuilder;
   readonly resolveCitationSources: ResolveMarkdownCitationSources;
   readonly resolveCitationSourcesByUrl?: ResolveMarkdownCitationSourcesByUrl;
+  readonly imageSources?: ReadonlyMap<string, MarkdownImageAttrs>;
 }): Promise<{ readonly content: unknown }> {
   const text = params.markdown;
   if (text.trim().length === 0) {
     return { content: getDefaultContent() };
   }
 
-  const normalizedContent = await params.normalizer.buildStructuredDocFromMarkdown(text);
-  if (!normalizedContent) {
+  const imported = await params.normalizer.buildStructuredDocFromMarkdown(text);
+  if (!imported) {
     throw new Error('Markdown 结构化导入失败，write_file 未创建文件。');
   }
+  const normalizedContent = hydrateMarkdownDocumentImages(imported, params.imageSources ?? new Map());
 
   // 与 pending 使用同一块级语法边界。标题、列表等也能中断段落，不能用原始全文
   // 中的另一处反引号决定本块引用是否属于代码。

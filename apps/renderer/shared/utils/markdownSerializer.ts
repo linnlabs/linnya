@@ -2,6 +2,7 @@
 import { MarkdownSerializer, MarkdownSerializerState } from 'prosemirror-markdown'
 import { Mark as ProseMirrorMark, Node as ProsemirrorNode } from 'prosemirror-model'
 import {
+  serializeMarkdownImage,
   MarkdownAnnotationsSchema,
   MarkdownChartSpecSchema,
   encodeMarkdownChartFence,
@@ -329,12 +330,7 @@ const nodes: { [key: string]: NodeSerializer } = {
   imageBlock(state, node) {
     const lineBreakStyle = getLineBreakStyle(state)
 
-    const labels = getMarkdownSerializerLabels(state)
-    const alt = node.attrs.alt || labels.imageAlt
-    const width = node.attrs.width
-    const height = node.attrs.height
-
-    state.write(labels.imageDescription({ alt, width, height }))
+    state.write(serializeMarkdownImage(node.attrs))
 
     if (lineBreakStyle === 'newline') {
       state.write('\\n\\n')
@@ -347,15 +343,15 @@ const nodes: { [key: string]: NodeSerializer } = {
 
     if (lineBreakStyle === 'newline') {
       // "newline" 模式：所有内容都在一行，包括代码块
-      state.write('```latex\\n')
+      state.write('$$\\n')
       state.write((node.attrs.latexSource || '').replace(/\n/g, '\\n')) // 将代码中的换行也转为字面量
-      state.write('\\n```\\n\\n')
+      state.write('\\n$$\\n\\n')
     } else {
       // 标准模式
-      state.write('```latex\n')
+      state.write('$$\n')
       state.text(node.attrs.latexSource || '', false)
       state.ensureNewLine()
-      state.write('```')
+      state.write('$$')
       state.closeBlock(node)
     }
   },

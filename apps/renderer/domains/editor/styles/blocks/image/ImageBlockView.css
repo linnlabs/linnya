@@ -141,3 +141,18 @@
   background-color: color-mix(in srgb, var(--color-white) 20%, transparent);
   transform: translateY(-50%);
 }
+
+.image-block-vue-node-view .image-figure {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  break-inside: avoid;
+}
+.image-block[data-type="image-block"] {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  break-inside: avoid;
+}
+.image-block[data-type="image-block"].align-center { margin-inline: auto; }
+.image-block[data-type="image-block"].align-right { margin-left: auto; }

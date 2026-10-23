@@ -1,0 +1,47 @@
+.figure-caption {
+  margin: var(--space-2) auto 0;
+  max-width: 36em;
+  width: 100%;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-prose);
+  line-height: var(--line-height-prose);
+  font-weight: var(--font-weight-regular);
+}
+.figure-caption__description {
+  margin-top: var(--space-0-5);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+.figure-caption-field__text {
+  margin: 0;
+  user-select: text;
+}
+.figure-caption-field.is-editable .figure-caption-field__text {
+  cursor: text;
+}
+.figure-caption-field.is-editable .figure-caption-field__text:hover {
+  background: var(--color-bg-hover);
+}
+.figure-caption-field__text:focus-visible {
+  outline: var(--border-width-hairline) solid var(--color-focus-ring);
+}
+.figure-caption-field .figure-caption-field__input {
+  text-align: center;
+  font: inherit;
+  color: inherit;
+  border-bottom: var(--border-width-hairline) solid var(--color-border-focus);
+}
+.figure-caption-field__error {
+  color: var(--color-error-text);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+@media print {
+  .figure-caption {
+    break-inside: avoid;
+  }
+}

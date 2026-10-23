@@ -11,7 +11,7 @@ describe('图片构图', () => {
   const chartSvg = '<svg width="640" height="320"><g/></svg>'
   const theme = chartTestTheme('light')
 
-  it('标题、说明、图表、图例与脚注依次排布，并给出稳定尺寸', () => {
+  it('图表、图例、脚注与题注依次排布，并给出稳定尺寸', () => {
     const spec = chartFixture('line', { description: '按季度对比营收与成本。' })
     const result = composeChartImage({
       spec, chartSvg, chartWidth: 640, chartHeight: 320, theme,
@@ -24,8 +24,9 @@ describe('图片构图', () => {
     expect(result.svg).toContain('按季度对比营收与成本。')
     expect(result.svg).toContain(chartSvg)
     expect(result.svg).toContain('同一量尺')
-    // 标题在图表之前，图例在图表之后。
-    expect(result.svg.indexOf('季度营收与成本')).toBeLessThan(result.svg.indexOf(chartSvg))
+    // 图例、脚注和题注均在图表之后，题注包含在复制图片内。
+    expect(result.svg.indexOf('季度营收与成本')).toBeGreaterThan(result.svg.indexOf('同一量尺'))
+    expect(result.svg).toContain('text-anchor="middle"')
     expect(result.svg.indexOf(chartSvg)).toBeLessThan(result.svg.indexOf('>营收<'))
     expect(result.height).toBeGreaterThan(320 + 40)
   })

@@ -89,7 +89,7 @@ export const renderChartBlockText: NonNullable<NodeConfig['renderText']> = ({ no
 export function estimateChartBlockHeight(node: ProseMirrorNode): number {
   const spec = MarkdownChartSpecSchema.parse(node.attrs['spec'])
   const legendItems = spec.chartType === 'pie' || spec.chartType === 'doughnut' ? spec.categories.length : spec.series.length
-  return plotHeightOf(spec) + 32 + (spec.title ? 28 : 0)
+  return plotHeightOf(spec) + 32 + (spec.title ? Math.ceil(spec.title.length / 36) * 22 + 8 : 0)
     + (spec.description ? Math.ceil(spec.description.length / 48) * 20 : 0)
     + (resolveLegendPosition(spec) === 'none' ? 0 : Math.ceil(legendItems / 4) * 28)
     + (spec.chartType === 'radar' ? 24 : 0)

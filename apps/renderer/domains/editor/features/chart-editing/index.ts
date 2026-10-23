@@ -3,7 +3,8 @@
  */
 
 export { default as ChartEditModal } from './ui/ChartEditModal.vue'
-export { useChartEditingStore, type ChartEditRequest, type ChartEditTarget } from './store/chartEditingStore'
+export { useChartEditingStore } from './store/chartEditingStore'
+export type { ChartEditRequest, ChartEditTarget } from './definitions/chartEditingRequest'
 export { buildSampleChartSpec } from './functions/chartSampleSpecs'
 export type { ChartSampleLabels } from './definitions/chartSampleLabels'
 export { readChartSampleLabels } from './functions/chartSampleLabels'

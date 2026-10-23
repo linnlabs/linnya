@@ -37,6 +37,16 @@ const validBody = JSON.stringify({ chartType: 'bar', categories: ['A', 'B'], ser
 describe('processQueue: linnya-chart 围栏', () => {
   beforeEach(() => mocks.show.mockClear());
 
+  it('未接纳图片使当前流式批次明确失败，不能留下默认空图或部分文字', () => {
+    const { editor, createRootBlock, setStreamingState } = createFakeEditor();
+    processQueue(editor, pluginState, [chartEvent('{}', 'json'), {
+      block_type: 'ImageBlock', attrs: { src: 'conversation:/plot.png', caption: '', title: '' },
+    }], {});
+    expect(createRootBlock).not.toHaveBeenCalled();
+    expect(mocks.show).toHaveBeenCalledTimes(1);
+    expect(setStreamingState).toHaveBeenCalledWith(expect.objectContaining({ streamingError: expect.objectContaining({ code: 'MARKDOWN_IMAGE_INVALID' }) }));
+  });
+
   it('合法图表创建 chartBlock，携带准入后的规格，不携带代码语言', () => {
     const { editor, createRootBlock } = createFakeEditor();
 

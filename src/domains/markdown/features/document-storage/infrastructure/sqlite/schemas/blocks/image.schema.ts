@@ -25,6 +25,7 @@ export const IMAGE_BLOCK_SCHEMAS = [
     src TEXT NOT NULL,
     alt TEXT,
     title TEXT,
+    caption TEXT NOT NULL DEFAULT '',
     width INTEGER,
     height INTEGER,
     alignment TEXT DEFAULT 'center',

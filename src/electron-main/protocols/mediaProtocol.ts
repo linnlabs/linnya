@@ -69,6 +69,17 @@ export async function handleMediaProtocolRequest(request: Pick<Request, 'url' | 
   }
 
   const [operation, encodedPath] = pathSegments;
+  if (operation === 'asset-image') {
+    const assetId = decodeBase64Url(encodedPath);
+    if (!assetId) return textResponse('bad request', 400);
+    try {
+      const { readManagedDocumentImage } = await import('./readManagedDocumentImage');
+      const image = await readManagedDocumentImage(assetId);
+      return new Response(Buffer.from(image.bytes), { headers: { 'content-type': image.mediaType } });
+    } catch {
+      return textResponse('not found', 404);
+    }
+  }
   if (!isSupportedOperation(operation)) {
     return textResponse('forbidden', 403);
   }

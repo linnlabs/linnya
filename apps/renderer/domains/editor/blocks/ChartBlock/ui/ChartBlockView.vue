@@ -31,7 +31,41 @@
       :reading-key="readingKey"
       :active="blockActivation.isUiActive.value"
       :transitions="!revision.pending"
-    />
+    >
+      <template #caption="{ titleId, descriptionId }">
+        <FigureCaption
+          v-if="displaySpec.title || displaySpec.description || captionOpening || captionActive"
+          :title-id="titleId"
+          :description-id="descriptionId"
+        >
+          <template #title>
+            <FigureCaptionField
+              ref="titleField"
+              :value="displaySpec.title ?? ''"
+              :version="captionVersion"
+              :editable="editor.isEditable && revision.editable && !editing"
+              :label="editorMessage('editor.figureCaption.edit')"
+              @commit="(value, version) => commitCaption('title', value, version)"
+              @active="setCaptionActive"
+            />
+          </template>
+          <template
+            v-if="displaySpec.description"
+            #description
+          >
+            <FigureCaptionField
+              :value="displaySpec.description"
+              :version="captionVersion"
+              :limit="1000"
+              :editable="editor.isEditable && revision.editable && !editing"
+              :label="editorMessage('editor.figureCaption.description')"
+              @commit="(value, version) => commitCaption('description', value, version)"
+              @active="setCaptionActive"
+            />
+          </template>
+        </FigureCaption>
+      </template>
+    </ChartSurface>
     <p
       v-else-if="revision.showBaselineNote"
       class="chart-block-node-view__note"
@@ -58,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { BaseButton } from '@linnya/renderer-ui'
 import { MarkdownChartSpecSchema, type MarkdownChartSpec } from '@app/schemas'
@@ -70,6 +104,7 @@ import {
 } from '../../../features/RenderVirtualization'
 import { ChartEditModal, useChartEditingStore } from '../../../features/chart-editing'
 import { ChartSurface, type ChartReadingKey } from '../../../features/chart-reading'
+import { FigureCaption, FigureCaptionField, commitFigureCaptionAttributes } from '../../../features/figure-caption'
 import { useChartRevisionView } from '../orchestration/useChartRevisionView'
 
 const props = defineProps(nodeViewProps)
@@ -81,6 +116,28 @@ const editingStore = useChartEditingStore()
 const wrapperRef = ref<{ $el?: HTMLElement } | null>(null)
 const editing = ref(false)
 const editingSample = ref(false)
+const titleField = ref<{ begin: () => Promise<void> } | null>(null)
+const captionOpening = ref(false)
+const captionActive = ref(false)
+const captionVersion = computed(() => JSON.stringify(props.node.attrs))
+function setCaptionActive(active: boolean) {
+  captionActive.value = active
+  captionOpening.value = false
+  setKeepAlive(active || editing.value)
+}
+function commitCaption(field: 'title' | 'description', value: string, version: string) {
+  if (!props.editor.isEditable || !revision.value.editable || version !== captionVersion.value || !spec.value) return
+  const next = { ...spec.value, [field]: value || undefined }
+  const position = props.getPos()
+  if (typeof position !== 'number') return
+  commitFigureCaptionAttributes(props.editor, position, { ...props.node.attrs, spec: MarkdownChartSpecSchema.parse(next) })
+}
+async function openCaption() {
+  if (!props.editor.isEditable || !revision.value.editable || editing.value) return
+  captionOpening.value = true
+  await nextTick()
+  await titleField.value?.begin()
+}
 
 const blockId = computed<string>(() => {
   const id: unknown = props.node.attrs['id']
@@ -155,12 +212,13 @@ watch(
   pending => {
     if (!pending) return
     const request = editingStore.consume({ editorSessionId: readSessionId(), blockId: blockId.value })
-    if (request) openEditor(request.isSample === true)
+    if (request?.target === 'caption') void openCaption()
+    else if (request) openEditor(request.isSample === true)
   },
   { immediate: true },
 )
 
 onBeforeUnmount(() => {
-  if (editing.value) setKeepAlive(false)
+  if (editing.value || captionActive.value) setKeepAlive(false)
 })
 </script>

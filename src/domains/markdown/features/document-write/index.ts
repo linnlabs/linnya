@@ -23,3 +23,4 @@ export { projectMarkdownFileWriteSnapshot } from './functions/projectMarkdownFil
 export { prepareMarkdownFileWrite, projectMarkdownFileEditText } from './orchestration/prepareMarkdownFileWrite';
 export type { MarkdownFileWriteSnapshot } from './definitions/markdownFileWriteSnapshot';
 export { MarkdownFileWriteConflictError } from './definitions/markdownDocumentWrite';
+export { prepareMarkdownImageInput, type ResolveMarkdownImageSource } from './orchestration/prepareMarkdownImageInput';

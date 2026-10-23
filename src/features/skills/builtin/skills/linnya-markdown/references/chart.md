@@ -21,7 +21,7 @@ Unknown fields and fields that do not apply to the chosen `chartType` are reject
 | `chartType` | all | Required: `bar`, `line`, `area`, `pie`, `doughnut`, `scatter`, `radar`, `combo`. |
 | `categories` | all | Required. Labels (text or numbers). For `scatter` these are the numeric X values. For `radar` they are the dimension names: at least 3, all different. |
 | `series` | all | Required list. Each series has a unique `name` and `values`, one finite number per category. `pie` and `doughnut` take exactly one series; `combo` takes at least two. |
-| `title`, `description` | all | Optional. Title up to 200 characters, description up to 1000. The description is also read out as the accessible description. |
+| `title`, `description` | all | Optional. Title up to 200 characters, description up to 1000. Both appear below the figure as a centered caption and description, and participate in the accessible name/description. Use plain text, without manual line breaks or a figure number. |
 | `size` | all | `small`, `medium` (default) or `large`: three fixed plot heights. |
 | `legendPosition` | all | `top`, `bottom`, `left`, `right` or `none`. Default: `bottom` for two or more series and for `pie`/`doughnut`, none for a single series; `line` and `area` with up to five series label each line at its end instead of showing a legend. Setting it explicitly brings the legend back. |
 | `palette` | all | A named eight-color palette; see [Color](#color) for the nine choices. Default `verdant`. Explicit series/point colors take precedence. |

@@ -1030,3 +1030,5 @@ interface ExtensionDependencies {
 - 所有新代码应使用 `@editor` 导入而非直接路径
 - Composables 遵循 Vue 3 组合式 API 最佳实践
 - Editor 模块不直接依赖其他特性模块的类型，保持模块独立性
+
+图片与图表的图下题注由 [figure-caption](features/figure-caption/README.md) 拥有共享显示与草稿交互；各 NodeView 只映射字段、校验块版本及提交属性事务。

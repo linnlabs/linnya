@@ -1,3 +1,4 @@
+import { bindMarkdownDocumentImageOwnership } from 'src/app-hosts/linnya/application/markdown-image-assets';
 import type { CommandApprovalControlEndpointPort } from 'src/domains/commands';
 import { createProviderModelDiscovery } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
 import { createProviderModelDiscoveryUseCase } from 'src/app-hosts/linnya/application/provider-model-discovery';
@@ -523,6 +524,7 @@ export async function configureRoutes(
     const dbService = getDatabaseService();
     logger.info('[诊断] 即将调用 dbService.getDb()');
     const db = dbService.getDb();
+    bindMarkdownDocumentImageOwnership(db);
     const workspaceRoot = getWorkspaceRoot();
     const appDataRoot = getAppDataPath();
     const { storeId: managedImageStoreId } = readManagedImageStoreBinding(db);

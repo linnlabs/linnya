@@ -1,89 +1,139 @@
 <!-- src/renderer/features/ImageBlock/ui/ImageBlockView.vue -->
 <template>
   <node-view-wrapper
+    ref="nodeViewWrapperRef"
     class="image-block-vue-node-view"
     :class="[
       `align-${node.attrs.alignment}`,
       { 'is-selected': selected }
     ]"
-    ref="nodeViewWrapperRef"
   >
-    <div class="image-container">
-      <img
-        v-if="!imageLoadFailed"
-        :src="node.attrs.src"
-        :alt="node.attrs.alt"
-        :title="node.attrs.title"
-        :style="imageStyle"
-        @load="onImageLoad"
-        @error="onImageError"
-        @click.stop.prevent="selectImageBlock"
-        ref="imageElement"
-      />
-      <button
-        v-else
-        type="button"
-        class="image-missing-placeholder"
-        contenteditable="false"
-        @click.stop.prevent="selectImageBlock"
-      >
-        <span class="image-missing-placeholder__icon" aria-hidden="true"></span>
-        <span class="image-missing-placeholder__text">{{ editorMessage('editor.imageBlock.missing') }}</span>
-      </button>
-      <div
-        v-if="blockActivation.isUiActive.value && selected && imageLoaded && !imageLoadFailed"
-        class="resize-handle"
-        @mousedown.prevent.stop="onResizeStart"
-      ></div>
+    <figure
+      class="image-figure"
+      :style="figureStyle"
+    >
+      <div class="image-container">
+        <img
+          v-if="!imageLoadFailed"
+          ref="imageElement"
+          :src="node.attrs.src"
+          :alt="node.attrs.alt"
+          :title="node.attrs.title"
+          :style="imageStyle"
+          @load="onImageLoad"
+          @error="onImageError"
+          @click.stop.prevent="selectImageBlock"
+        >
+        <button
+          v-else
+          type="button"
+          class="image-missing-placeholder"
+          contenteditable="false"
+          @click.stop.prevent="selectImageBlock"
+        >
+          <span
+            class="image-missing-placeholder__icon"
+            aria-hidden="true"
+          />
+          <span class="image-missing-placeholder__text">{{ editorMessage('editor.imageBlock.missing') }}</span>
+        </button>
+        <div
+          v-if="blockActivation.isUiActive.value && selected && imageLoaded && !imageLoadFailed && captionEditable"
+          class="resize-handle"
+          @mousedown.prevent.stop="onResizeStart"
+        />
 
-      <!-- 控件栏：离屏时不挂载，降低渲染成本 -->
-      <div v-if="blockActivation.isUiActive.value && editor.isEditable" class="image-block-controls" contenteditable="false">
-        <!-- 响应式控件：小图显示省略号，大图显示完整控件 -->
-        <template v-if="shouldShowCompactControls">
-          <IconButton variant="overlay" :label="editorMessage('editor.imageBlock.action.more')" @click.stop.prevent="toggleControlsExpanded">
-            <MoreIcon />
-          </IconButton>
-        </template>
-        <template v-else>
-          <IconButton variant="overlay" :label="editorMessage('editor.imageBlock.action.preview')" @click.stop.prevent="openPreviewModal">
-            <ZoomInIcon />
-          </IconButton>
-          <IconButton variant="overlay" :label="editorMessage('editor.imageBlock.action.resize')" @click.stop.prevent="openResizeModal">
-            <ResizeIcon />
-          </IconButton>
-          <!-- 对齐方式按钮组 -->
-          <div class="alignment-group">
+        <!-- 控件栏：离屏时不挂载，降低渲染成本 -->
+        <div
+          v-if="blockActivation.isUiActive.value"
+          class="image-block-controls"
+          contenteditable="false"
+        >
+          <!-- 响应式控件：小图显示省略号，大图显示完整控件 -->
+          <template v-if="shouldShowCompactControls">
             <IconButton
               variant="overlay"
-              :active="node.attrs.alignment === 'left'"
-              :aria-pressed="node.attrs.alignment === 'left'"
-              :label="editorMessage('editor.imageBlock.align.left')"
-              @click.stop.prevent="setAlignment('left')"
+              :label="editorMessage('editor.imageBlock.action.more')"
+              @click.stop.prevent="toggleControlsExpanded"
             >
-              <AlignIcon alignment="left" />
+              <MoreIcon />
+            </IconButton>
+          </template>
+          <template v-else>
+            <IconButton
+              v-if="captionEditable"
+              variant="overlay"
+              :label="editorMessage('editor.figureCaption.edit')"
+              @click.stop.prevent="openCaption"
+            >
+              <EditIcon />
             </IconButton>
             <IconButton
               variant="overlay"
-              :active="node.attrs.alignment === 'center'"
-              :aria-pressed="node.attrs.alignment === 'center'"
-              :label="editorMessage('editor.imageBlock.align.center')"
-              @click.stop.prevent="setAlignment('center')"
+              :label="editorMessage('editor.imageBlock.action.preview')"
+              @click.stop.prevent="openPreviewModal"
             >
-              <AlignIcon alignment="center" />
+              <ZoomInIcon />
             </IconButton>
             <IconButton
+              v-if="captionEditable"
               variant="overlay"
-              :active="node.attrs.alignment === 'right'"
-              :aria-pressed="node.attrs.alignment === 'right'"
-              :label="editorMessage('editor.imageBlock.align.right')"
-              @click.stop.prevent="setAlignment('right')"
+              :label="editorMessage('editor.imageBlock.action.resize')"
+              @click.stop.prevent="openResizeModal"
             >
-              <AlignIcon alignment="right" />
+              <ResizeIcon />
             </IconButton>
-          </div>
-        </template>
+            <!-- 对齐方式按钮组 -->
+            <div
+              v-if="captionEditable"
+              class="alignment-group"
+            >
+              <IconButton
+                variant="overlay"
+                :active="node.attrs.alignment === 'left'"
+                :aria-pressed="node.attrs.alignment === 'left'"
+                :label="editorMessage('editor.imageBlock.align.left')"
+                @click.stop.prevent="setAlignment('left')"
+              >
+                <AlignIcon alignment="left" />
+              </IconButton>
+              <IconButton
+                variant="overlay"
+                :active="node.attrs.alignment === 'center'"
+                :aria-pressed="node.attrs.alignment === 'center'"
+                :label="editorMessage('editor.imageBlock.align.center')"
+                @click.stop.prevent="setAlignment('center')"
+              >
+                <AlignIcon alignment="center" />
+              </IconButton>
+              <IconButton
+                variant="overlay"
+                :active="node.attrs.alignment === 'right'"
+                :aria-pressed="node.attrs.alignment === 'right'"
+                :label="editorMessage('editor.imageBlock.align.right')"
+                @click.stop.prevent="setAlignment('right')"
+              >
+                <AlignIcon alignment="right" />
+              </IconButton>
+            </div>
+          </template>
+        </div>
       </div>
-    </div>
+
+      <FigureCaption v-if="node.attrs.caption || captionOpening || captionActive">
+        <template #title>
+          <FigureCaptionField
+            ref="captionField"
+            :value="node.attrs.caption || ''"
+            :version="captionVersion"
+            :editable="captionEditable"
+            :label="editorMessage('editor.figureCaption.edit')"
+            @commit="commitCaption"
+            @active="onCaptionActive"
+          />
+        </template>
+      </FigureCaption>
+    </figure>
 
     <!-- 尺寸面板仍由编辑器控制；图片预览统一交给 shared 专用组件。 -->
     <Teleport to="body">
@@ -97,7 +147,6 @@
         @confirm="handleResizeConfirm"
         @cancel="closeResizeModal"
       />
-
     </Teleport>
     <ImagePreviewModal
       :is-visible="isPreviewModalOpen"
@@ -112,12 +161,16 @@
 <script setup>
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3';
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick, inject } from 'vue';
+import { imageFigureWidth } from '../functions/imageBlockPresentation';
 import { Selection } from 'prosemirror-state';
 import ImageResizePanel from './ImageResizePanel.vue';
 import { IconButton, ImagePreviewModal } from '@linnya/renderer-ui';
 import { ZoomInIcon } from '@linnya/renderer-ui/icons';
 import { ResizeIcon } from '@linnya/renderer-ui/icons';
 import { AlignIcon } from '@linnya/renderer-ui/icons';
+import { EditIcon } from '@linnya/renderer-ui/icons';
+import { FigureCaption, FigureCaptionField, commitFigureCaptionAttributes } from '../../../features/figure-caption';
+import { useRevisionStore } from '../../../features/Revision/useRevisionStore';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { useCurrentBlockActivation } from '../../../ui/composables/useCurrentBlockActivation';
 import {
@@ -135,6 +188,30 @@ const blockActivation = useCurrentBlockActivation();
 
 const nodeViewWrapperRef = ref(null);
 const imageElement = ref(null);
+const revisionStore = useRevisionStore(props.editor);
+const captionField = ref(null);
+const captionOpening = ref(false);
+const captionActive = ref(false);
+const captionVersion = computed(() => JSON.stringify(props.node.attrs));
+const captionEditable = computed(() => {
+  void props.node;
+  const pos = props.getPos();
+  const rootId = typeof pos === 'number' ? props.editor.state.doc.resolve(pos).parent.attrs.id : null;
+  return props.editor.isEditable && !(rootId && revisionStore.hasCanonicalPending(rootId));
+});
+async function openCaption() {
+  if (!captionEditable.value) return;
+  captionOpening.value = true;
+  await nextTick();
+  await captionField.value?.begin();
+}
+function onCaptionActive(active) { captionActive.value = active; captionOpening.value = false; }
+function commitCaption(caption, version) {
+  if (!captionEditable.value || version !== captionVersion.value) return;
+  const position = props.getPos();
+  if (typeof position !== 'number') return;
+  commitFigureCaptionAttributes(props.editor, position, { ...props.node.attrs, caption });
+}
 const imageLoaded = ref(false);
 const imageLoadFailed = ref(false);
 
@@ -154,6 +231,11 @@ const initialHeight = ref(0);
 const currentWidth = ref(0);
 const naturalImageWidth = ref(0);
 const naturalImageHeight = ref(0);
+const figureStyle = computed(() => {
+  const width = imageFigureWidth({ width: resizing.value ? currentWidth.value : props.node.attrs.width,
+    height: props.node.attrs.height, naturalWidth: naturalImageWidth.value, naturalHeight: naturalImageHeight.value });
+  return width ? { width: `${width}px` } : {};
+});
 
 // 控制弹窗显示的状态
 const isResizeModalOpen = ref(false);
@@ -232,6 +314,7 @@ const selectImageBlock = () => {
 };
 
 const setAlignment = (alignment) => {
+  if (!captionEditable.value) return;
   if (props.node.attrs.alignment !== alignment) {
     props.updateAttributes({ alignment });
   }
@@ -260,6 +343,7 @@ const closeResizeModal = () => {
 };
 
 const handleResizeConfirm = ({ width, height }) => {
+  if (!captionEditable.value) return;
   props.updateAttributes({
     width,
     height,
@@ -291,7 +375,7 @@ const setVirtualizationKeepAlive = (active) => {
 const onResizeStart = (event) => {
   event.preventDefault();
   event.stopPropagation();
-  if (!props.editor.isEditable) return;
+  if (!captionEditable.value) return;
 
   resizing.value = true;
   initialMouseX.value = event.clientX;
@@ -521,7 +605,7 @@ watch(() => props.selected, (isSelected, wasSelected) => {
 });
 
 watch(
-  () => isResizeModalOpen.value || isPreviewModalOpen.value,
+  () => isResizeModalOpen.value || isPreviewModalOpen.value || captionActive.value || resizing.value,
   (hasOpenInteraction) => {
     setVirtualizationKeepAlive(hasOpenInteraction);
   }

@@ -11,6 +11,7 @@
  */
 
 import Database from 'better-sqlite3';
+import { assertMarkdownImagesMaterialized, collectImageAssetIds, getMarkdownImageOwnership } from '../../../image-content';
 import { generateEditorBlockId } from 'src/shared/utils/idUtils';
 import {
   AudioBlockService,
@@ -130,19 +131,26 @@ export class MarkdownDocumentService {
    * 校验和规范化；这样 Renderer、VFS 和后端工具看到的是同一份正式结构。
    */
   saveNewVersion(nodeId: string, contentJson: string, authorId: string | null = null): MarkdownDocumentVersion {
-    const documentContent = validateMarkdownDocJson(parseMarkdownDocJson(JSON.parse(contentJson)));
-    assertMarkdownDocumentBlockIdentities(documentContent);
-    const normalizedContentJson = JSON.stringify(documentContent);
-    const now = Date.now();
-    const saved = this.versionRepository.save({
-      nodeId,
-      contentJson: normalizedContentJson,
-      charCount: countMarkdownTextUnits(documentContent),
-      authorId,
-      createdAt: now,
+    return this.runInTransaction(() => {
+      const documentContent = validateMarkdownDocJson(parseMarkdownDocJson(JSON.parse(contentJson)));
+      assertMarkdownDocumentBlockIdentities(documentContent);
+      assertMarkdownImagesMaterialized(documentContent);
+      if (collectImageAssetIds(documentContent).length && !getMarkdownImageOwnership(this.db)) {
+        throw new Error('Markdown image ownership port is not bound to this database.');
+      }
+      const normalizedContentJson = JSON.stringify(documentContent);
+      const now = Date.now();
+      const saved = this.versionRepository.save({
+        nodeId,
+        contentJson: normalizedContentJson,
+        charCount: countMarkdownTextUnits(documentContent),
+        authorId,
+        createdAt: now,
+      });
+      this.touchWorkspaceNodeUpdatedAt(nodeId, now);
+      this.reconcileImageOwnership(nodeId, collectImageAssetIds(documentContent).length > 0);
+      return saved;
     });
-    this.touchWorkspaceNodeUpdatedAt(nodeId, now);
-    return saved;
   }
 
   // ========== 复杂块管理 ==========
@@ -154,8 +162,11 @@ export class MarkdownDocumentService {
    */
   createDocument(documentNodeId: string, content: unknown): string {
     const contentJson = typeof content === 'string' ? content : JSON.stringify(content);
-    const version = this.saveNewVersion(documentNodeId, contentJson);
-    return version.id;
+    return this.runInTransaction(() => {
+      const version = this.saveNewVersion(documentNodeId, contentJson);
+      this.imageBlockProjection.syncDocumentProjection(documentNodeId, JSON.parse(version.content_json));
+      return version.id;
+    });
   }
 
   /**
@@ -208,6 +219,8 @@ export class MarkdownDocumentService {
         result.removedPending > 0 ||
         result.removedBlockVersions > 0
       ) {
+        // 删除根块可能同时移除只存在于 Pending 的图片，清理后重新核算归属。
+        this.reconcileImageOwnership(documentNodeId);
         console.log(
           `[MarkdownDocumentService] updateDocument: 在保存文档 ${documentNodeId} 时清理了 ` +
             `pending=${result.removedPending}, blockVersions=${result.removedBlockVersions}`
@@ -327,12 +340,13 @@ export class MarkdownDocumentService {
     // 在写入 pending 之前，确保目标块真实存在
     this.assertBlockExists(documentId, blockId);
 
-    return this.pendingRevisionsService.setPendingRevision({
-      documentId,
-      blockId,
-      newMarkdown,
-      source,
-      meta,
+    return this.runInTransaction(() => {
+      if (collectImageAssetIds(meta).length && !getMarkdownImageOwnership(this.db)) {
+        throw new Error('Markdown image ownership port is not bound to this database.');
+      }
+      const pending = this.pendingRevisionsService.setPendingRevision({ documentId, blockId, newMarkdown, source, meta });
+      this.reconcileImageOwnership(documentId, collectImageAssetIds(meta).length > 0);
+      return pending;
     });
   }
 
@@ -412,7 +426,11 @@ export class MarkdownDocumentService {
    * @returns 删除的记录数
    */
   clearPendingRevision(documentId: string, blockId: string): number {
-    return this.pendingRevisionsService.clearPendingRevision(documentId, blockId);
+    return this.runInTransaction(() => {
+      const removed = this.pendingRevisionsService.clearPendingRevision(documentId, blockId);
+      this.reconcileImageOwnership(documentId);
+      return removed;
+    });
   }
 
   /**
@@ -422,7 +440,26 @@ export class MarkdownDocumentService {
    * @returns 删除的记录数
    */
   clearAllPendingRevisions(documentId: string): number {
-    return this.pendingRevisionsService.clearAllPendingRevisions(documentId);
+    return this.runInTransaction(() => {
+      const removed = this.pendingRevisionsService.clearAllPendingRevisions(documentId);
+      this.reconcileImageOwnership(documentId);
+      return removed;
+    });
+  }
+
+  /** 归属变化与正文/Pending 同事务，拒绝后仅释放不再被任何历史快照引用的资产。 */
+  reconcileImageOwnership(documentId: string, hasIncomingAssets = false): void {
+    const port = getMarkdownImageOwnership(this.db);
+    if (!port) return;
+    // 普通文字文档不扫描全部历史 JSON；曾持有受管图片或本次引入图片才需要可达性核算。
+    if (!hasIncomingAssets && !port.hasManagedImages(documentId)) return;
+    const snapshots = this.db.prepare<[string, string, string], { json: string }>(`
+      SELECT content_json AS json FROM document_versions WHERE node_id = ?
+      UNION ALL SELECT content_json AS json FROM markdown_block_versions WHERE document_node_id = ?
+      UNION ALL SELECT meta_json AS json FROM markdown_block_pending_revisions WHERE document_node_id = ? AND meta_json IS NOT NULL
+    `).all(documentId, documentId, documentId);
+    const retained = new Set(snapshots.flatMap(row => collectImageAssetIds(JSON.parse(row.json))));
+    port.reconcile(documentId, [...retained]);
   }
 
 }

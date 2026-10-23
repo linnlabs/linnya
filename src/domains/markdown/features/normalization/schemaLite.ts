@@ -16,6 +16,7 @@ import {
   MARKDOWN_CHART_FENCE_LANGUAGE,
   MarkdownAnnotationsSchema,
   MarkdownChartSpecSchema,
+  MarkdownImageCaptionSchema,
 } from '@app/schemas';
 
 const nodes: Record<string, NodeSpec> = {
@@ -217,6 +218,8 @@ const nodes: Record<string, NodeSpec> = {
       height: { default: null },
       alignment: { default: 'center' },
       uploadedAt: { default: null },
+      caption: { default: '', validate: value => { MarkdownImageCaptionSchema.parse(value); } },
+      assetId: { default: null },
     },
   },
   bibliographyBlock: {

@@ -9,3 +9,5 @@
 分页与纸张宽度仍由 Workspace 的打印 CSS 拥有：图片保持宽高比缩放，图表 figure 避免内部断页。超出单页高度的任意长内容不在此处裁剪或丢弃。
 
 验证入口：`orchestration/prepareMarkdownHtmlForPdf.test.ts`，使用正式 ChartBlock HTML 序列化与真实 ECharts SSR，覆盖八类图表、文本与图例完整性、非法规格和渲染失败。最终 PDF 的清晰度与分页需要真实 Electron 导出后逐页视觉检查。
+
+图表图片中的题注和说明排在绘图区、图例及量尺脚注之后；替换 figure 时去掉原 DOM 题注，避免 PDF 重复。普通图片的 HTML 序列化保留独立 figcaption，空题注不输出占位。

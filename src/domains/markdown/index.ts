@@ -11,6 +11,7 @@ export * from './features/document-editor';
 export * from './features/document-lifecycle';
 export * from './features/document-read';
 export * from './features/document-write';
+export * from './features/image-content';
 export * from './features/normalization';
 export * from './features/pending-revisions';
 export * from './shared';

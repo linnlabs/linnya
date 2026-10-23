@@ -289,3 +289,11 @@ Markdown / TableBlock.attrs
 - [Editor README](../../README.md)
 - [Revision README](../../features/Revision/README.md)
 - [Markdown domain README](../../../../../../src/domains/markdown/README.md)
+
+## 图片准入与物化
+
+共享 `@app/schemas` 图片合同识别独立 `ImageBlock`，混排图片在任何行内投影入口均明确失败。物化必须传入当前文档的 `imageSources` 快照；`conversation:/` 只能在 Host 文件写入流程中完成资产接管。图片不得回退成文本或静默略过。同文档纯文本 Markdown 粘贴使用 `collectEditorImageSources` 和 `copyImages`，为每次出现分配独立身份；非法图片使整次粘贴保持原样并显示错误。
+
+Revision 使用原子图片计划，消费 Pending 自持的来源快照；预览不写持久化正文，不进入文本 diff。损坏的单条快照报告失败，不阻断其他修订。普通代码块和行内公式保持原语义，块公式统一通过 `$$` 往返。
+
+旧 Renderer 流式队列没有 Host 资产接管，收到独立或混排图片时明确拒绝当前批次并报告 `MARKDOWN_IMAGE_INVALID`；此前已提交的流式批次不回滚。Agent 插图使用完整文件写入入口，同文档复制可使用图片粘贴入口。不能把流式批次边界误认为完整文件事务。

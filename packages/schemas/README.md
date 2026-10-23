@@ -486,3 +486,7 @@ Renderer 不再自行补另一套默认值。发现响应中的未知外部数�
 自定义 API 分组刷新响应携带 `added_model_ids`、`removed_model_ids` 与偏好清理待恢复标记。
 空远端快照可以移除全部模型，但不等于删除供应商连接；空分组的编辑/删除响应允许零模型 ID。
 Renderer 以正式删除结果清理本地目录与用途绑定，再重读投影，不能把列表同步失败解释成 Host 未提交。
+
+## Markdown 图片合同
+
+`src/markdown-image.ts` 统一前后端图片准入、文档内引用和 Pending 来源快照。`caption` 为默认空字符串、单行、最多 200 字，与 alt/title 独立。新增来源仅为 Host 已接纳的会话图片，持久化正文不得保留 `conversation:/` 或 `linnya-image://` 临时引用。后者只用于 Markdown 投影与写入协议；完整来源由文档快照恢复。未知引用和混排图片明确拒绝。

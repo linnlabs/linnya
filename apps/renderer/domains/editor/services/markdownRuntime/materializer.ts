@@ -4,6 +4,10 @@ import {
   isMarkdownChartSpecInvalidError,
   isMarkdownEmptyBlockAnnotationAnchorComment,
   MarkdownAnnotationsSchema,
+  admitMarkdownImageEvent,
+  hydrateMarkdownImage,
+  readMarkdownImageReference,
+  type MarkdownImageAttrs,
 } from '@app/schemas'
 
 import {
@@ -181,6 +185,8 @@ function buildInlineNodesFromBlockEvent(
 }
 
 export interface BlockEventMaterializationOptions {
+  readonly imageSources?: ReadonlyMap<string, MarkdownImageAttrs>
+  readonly copyImages?: boolean
   /**
    * 用户在看到诊断后显式选择“作为普通代码插入”：无效的 `linnya-chart` 围栏改存为 `json` 代码块。
    * 默认 false —— 无效专属围栏整体拒绝，不静默降级，也不保留专属语言的普通代码。
@@ -205,6 +211,17 @@ export function blockEventsToDocJson(
 
   for (const [eventIndex, event] of blockEvents.entries()) {
     const typeName = normalizeBlockTypeName(event.block_type)
+    const image = admitMarkdownImageEvent(event)
+    if (image) {
+      const id = readMarkdownImageReference(image.src)
+      const attrs = hydrateMarkdownImage(image, id ? options.imageSources?.get(id) ?? null : null)
+      const imageType = schema.nodes.imageBlock
+      if (!imageType) throw new Error('[MarkdownImport] 当前 Schema 不支持图片')
+      const root = buildRootBlock(imageType.create(options.copyImages ? { ...attrs, id: generateBlockId() } : attrs), schema)
+      if (!root) throw new Error('[MarkdownImport] 无法创建图片根块')
+      rootBlocks.push(root.toJSON())
+      continue
+    }
     const rawFallback =
       typeof event.raw_content_fallback === 'string' ? event.raw_content_fallback : null
 

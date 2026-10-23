@@ -1,3 +1,5 @@
+import { createMarkdownDocumentStore } from '../../application/markdown-image-assets';
+import { createMarkdownImageSourceResolver, type MarkdownImageSourceContext } from '../../application/markdown-image-assets';
 import type Database from 'better-sqlite3';
 import type { PluginToolContext } from '@linnya/plugin-host-contract/backend/toolRuntime';
 import {
@@ -9,8 +11,8 @@ import {
   buildMarkdownDocumentFromText,
   buildMarkdownCitationReadProjection,
   countMarkdownTextCharacters,
-  MarkdownDocumentService,
   MarkdownNormalizationService,
+  prepareMarkdownImageInput,
 } from '../../../../domains/markdown';
 import {
   ensureWorkspaceFileParentFolders,
@@ -34,7 +36,7 @@ import { buildPluginRuntimeDisabledMessage } from '../../plugin-registry/pluginR
 
 export function createWorkspaceDocumentFileCreateProviderResolver(params: {
   readonly db: Database.Database;
-  readonly context: PluginToolContext;
+  readonly context: PluginToolContext & MarkdownImageSourceContext;
   readonly workspaceService: WorkspaceService;
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileCreateResult>;
 }): WorkspaceDocumentFileCreateProviderResolver {
@@ -85,11 +87,11 @@ export function listWorkspaceDocumentFileCreateFormats(): readonly WorkspaceDocu
 
 function createMarkdownFileCreateProvider(params: {
   readonly db: Database.Database;
-  readonly context: PluginToolContext;
+  readonly context: PluginToolContext & MarkdownImageSourceContext;
   readonly workspaceService: WorkspaceService;
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileCreateResult>;
 }): WorkspaceDocumentFileCreateProvider {
-  const documentStore = new MarkdownDocumentService(params.db);
+  const documentStore = createMarkdownDocumentStore(params.db);
   const normalizer = new MarkdownNormalizationService(params.db, documentStore);
   return {
     displayName: 'Markdown',
@@ -97,8 +99,12 @@ function createMarkdownFileCreateProvider(params: {
     disabledMessage: 'Markdown 是永久启用的内建文档类型。',
     create: async request => {
       params.resultCommit?.prepare();
+      const imageInput = await prepareMarkdownImageInput({
+        markdown: request.content, existing: new Map(), resolve: createMarkdownImageSourceResolver(params.context),
+      });
       const built = await buildMarkdownDocumentFromText({
-        markdown: request.content,
+        markdown: imageInput.markdown,
+        imageSources: imageInput.imageSources,
         normalizer,
         resolveCitationSources: refs =>
           requireCitationSourceResolver(params.context).resolveSources(refs),
@@ -152,7 +158,7 @@ function createPluginFileCreateProvider(params: {
   readonly workspaceService: WorkspaceService;
   readonly registeredHook: DocumentTypeBackendHook;
   readonly enabledHook: DocumentTypeBackendHook | undefined;
-  readonly context: PluginToolContext;
+  readonly context: PluginToolContext & MarkdownImageSourceContext;
 }): WorkspaceDocumentFileCreateProvider {
   const unavailableMessage = buildPluginFileCreateUnavailableMessage(params.registeredHook);
   return {

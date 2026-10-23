@@ -5,6 +5,8 @@ interface ImageBlockProjection {
   readonly src: string;
   readonly alt: string | null;
   readonly title: string | null;
+  readonly caption: string;
+  readonly assetId: string | null;
   readonly width: number | null;
   readonly height: number | null;
   readonly alignment: string | null;
@@ -40,6 +42,8 @@ function collectImageBlocks(node: unknown, result: ImageBlockProjection[], fallb
         src,
         alt: readString(node.attrs.alt),
         title: readString(node.attrs.title),
+        caption: readString(node.attrs.caption) ?? '',
+        assetId: readString(node.attrs.assetId),
         width: readNumber(node.attrs.width),
         height: readNumber(node.attrs.height),
         alignment: readString(node.attrs.alignment),
@@ -82,18 +86,21 @@ export class ImageBlockProjectionService {
         src,
         alt,
         title,
+        caption,
         width,
         height,
         alignment,
         uploaded_at,
         created_at,
         updated_at
-      ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         document_node_id = excluded.document_node_id,
         src = excluded.src,
         alt = excluded.alt,
         title = excluded.title,
+        caption = excluded.caption,
+        asset_id = excluded.asset_id,
         width = excluded.width,
         height = excluded.height,
         alignment = excluded.alignment,
@@ -108,9 +115,11 @@ export class ImageBlockProjectionService {
       const result = upsert.run(
         item.id,
         documentNodeId,
+        item.assetId,
         item.src,
         item.alt,
         item.title,
+        item.caption,
         item.width,
         item.height,
         item.alignment,

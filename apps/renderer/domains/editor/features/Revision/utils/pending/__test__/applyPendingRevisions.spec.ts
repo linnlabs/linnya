@@ -45,6 +45,10 @@ vi.mock('../chart', () => ({
   partitionChartPendingRevisions: async (_doc: unknown, revisions: unknown[]) => ({ chartItems: [], others: revisions }),
   applyChartPendingItems: () => [],
 }))
+vi.mock('../imagePendingRevision', () => ({
+  partitionImagePendingRevisions: async (_doc: unknown, revisions: unknown[]) => ({ imageItems: [], others: revisions }),
+  applyImagePendingItems: () => [],
+}))
 
 import { applyPendingRevisionsToEditor } from '../applyPendingRevisions'
 

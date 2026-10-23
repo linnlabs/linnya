@@ -12,6 +12,8 @@ import { planMarkdownBlocks } from '../../normalization';
 import { countMarkdownTextCharacters, serializeMarkdownBlocks, type FlattenedMarkdownBlock } from '../../../shared';
 import { normalizeMarkdownCitationTokenSpelling } from '../../../../citation';
 import { planMarkdownBlockWrites } from '../functions/planMarkdownBlockWrites';
+import { planMarkdownImageWrites } from '../functions/planMarkdownImageWrites';
+import type { MarkdownImageAttrs } from '@app/schemas';
 import { assertMarkdownWriteSourceCurrent } from '../functions/assertMarkdownWriteSourceCurrent';
 import { createMarkdownFileWriteSourceKey } from '../functions/projectMarkdownFileWriteSnapshot';
 import { MarkdownFileWriteConflictError } from '../definitions/markdownDocumentWrite';
@@ -107,6 +109,7 @@ export async function writeMarkdownDocumentFromText(params: {
   readonly expectedSourceKey?: string;
   readonly toolName: 'edit_file' | 'write_file';
   readonly pendingMetaByMarkdown?: ReadonlyMap<string, PendingRevisionMetadata>;
+  readonly imageSources?: ReadonlyMap<string, MarkdownImageAttrs>;
   readonly annotationAdmission: {
     readonly author: string;
     readonly meta: MarkdownAnnotationMeta;
@@ -164,6 +167,9 @@ export async function writeMarkdownDocumentFromText(params: {
     currentBlocks: baseline.baseBlocks,
     annotationComments: alignMarkdownAnnotationComments(steps, baseline.baseBlocks, planned.annotationComments),
   });
+  const imageWrites = planMarkdownImageWrites({
+    target: planned.docJson, baseline: content, pendings, steps, admittedSources: params.imageSources,
+  });
 
   const writeResult = params.documentStore.runInTransaction(() => {
     const annotationMutation = applyMarkdownAnnotationChanges({
@@ -184,10 +190,11 @@ export async function writeMarkdownDocumentFromText(params: {
           markdownService: params.documentStore,
           documentId: params.documentId,
           anchorBlockId,
-          markdown: step.markdown,
+          markdown: imageWrites.get(step.targetIndex)?.markdown ?? step.markdown,
           toolName: params.toolName,
           extraMeta: {
             ...params.pendingMetaByMarkdown?.get(step.markdown),
+            ...(imageWrites.has(step.targetIndex) ? { image: imageWrites.get(step.targetIndex)?.image } : {}),
             listSeparatorBefore: planned.listSeparators[step.targetIndex] ?? null,
           },
         });
@@ -203,11 +210,12 @@ export async function writeMarkdownDocumentFromText(params: {
           markdownService: params.documentStore,
           documentId: params.documentId,
           block,
-          markdown: step.kind === 'delete' ? '' : step.markdown,
+          markdown: step.kind === 'delete' ? '' : imageWrites.get(step.targetIndex)?.markdown ?? step.markdown,
           operation: step.kind,
           toolName: params.toolName,
           extraMeta: step.kind === 'update' ? {
             ...params.pendingMetaByMarkdown?.get(step.markdown),
+            ...(imageWrites.has(step.targetIndex) ? { image: imageWrites.get(step.targetIndex)?.image } : {}),
             listSeparatorBefore: planned.listSeparators[step.targetIndex] ?? null,
           } : undefined,
         });

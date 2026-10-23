@@ -9,15 +9,7 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 
-export interface ChartEditTarget {
-  readonly editorSessionId: string
-  readonly blockId: string
-}
-
-export interface ChartEditRequest extends ChartEditTarget {
-  /** 刚插入的示例图表：面板提示“数据是示例”。 */
-  readonly isSample?: boolean
-}
+import type { ChartEditRequest, ChartEditTarget } from '../definitions/chartEditingRequest'
 
 export const useChartEditingStore = defineStore('editor-chart-editing', () => {
   const pending = shallowRef<ChartEditRequest | null>(null)

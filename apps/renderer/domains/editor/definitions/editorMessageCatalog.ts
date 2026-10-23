@@ -2,6 +2,10 @@ import type { MessageCatalogContribution } from '@app/localization';
 import type { EditorMessageKey } from './editorMessages';
 
 export const EDITOR_MESSAGE_FALLBACKS = {
+  'editor.figureCaption.edit': '编辑题注',
+  'editor.figureCaption.description': '编辑图注说明',
+  'editor.figureCaption.invalid': '请输入不超过 {limit} 字的单行文字。',
+  'editor.figureCaption.conflict': '图块已被修改，请重新打开题注编辑。',
   'editor.common.moreActions': '更多操作',
   'editor.common.unavailableInTable': '表格内不可用',
   'editor.common.unknownError': '未知错误',
@@ -714,6 +718,10 @@ export const EDITOR_MESSAGE_CATALOG: MessageCatalogContribution = {
   catalogs: {
     'zh-CN': EDITOR_MESSAGE_FALLBACKS,
     'en-US': {
+      'editor.figureCaption.edit': 'Edit caption',
+      'editor.figureCaption.description': 'Edit figure note',
+      'editor.figureCaption.invalid': 'Enter one line of at most {limit} characters.',
+      'editor.figureCaption.conflict': 'This figure changed. Reopen the caption to edit it.',
       'editor.common.moreActions': 'More actions',
       'editor.common.unavailableInTable': 'Unavailable in tables',
       'editor.common.unknownError': 'Unknown error',

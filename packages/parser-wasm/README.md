@@ -53,3 +53,7 @@ workspace，`private: true`，不单独发布 npm。
 `attrs.separatorBefore` 记录当前列表项前是否有空行：`tight` 表示单换行，`loose` 表示空行。
 Streaming core 保留已消费前缀的行间隔状态，因此 chunk 切分不会丢掉列表紧凑性。
 这是现有扁平 ListItemBlock 的间隔事实，不新增任意多段落列表容器；无来源属性的旧文档不回填猜测。
+
+## 图片与公式边界
+
+独占段落的 Markdown 图片输出 `ImageBlock`，标签作为 caption；混排图片保留结构化 fragment 供消费端明确拒绝，不能丢弃。解析器只识别语法，来源权限与资产接管属于 Host。`image_math_tests.rs` 覆盖所有 UTF-8 切分边界；公式正文按 Unicode 字符累计，分隔符仍按 ASCII 判断。文字段首 `[` 的 canonical 输出由序列化器编码为 `&#91;`，避免与块公式起始符冲突。

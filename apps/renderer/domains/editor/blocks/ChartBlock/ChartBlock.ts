@@ -81,6 +81,7 @@ export const ChartBlock = Node.create<Record<string, never>, ChartBlockStorage>(
   renderText: renderChartBlockText,
 
   addNodeView() {
+    // 保留 Tiptap 对原生输入框、工具栏和拖拽的事件隔离；题注容器只阻止自己的按键与鼠标事件。
     return VueNodeViewRenderer(ChartBlockView)
   },
 

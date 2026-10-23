@@ -30,6 +30,8 @@ export function formatImageDateTime(
 
 export function getImageFormat(src: string, editorMessage: EditorMessageResolver): string {
   if (!src) return editorMessage('editor.imageBlock.value.unknown');
+  // 资产身份不是文件名，不能把摘要当成扩展名显示。
+  if (src.startsWith('media://load/asset-image/')) return editorMessage('editor.imageBlock.value.unknown');
 
   if (src.startsWith('data:')) {
     const match = src.match(/data:image\/([^;,]+)/);
@@ -56,6 +58,17 @@ export function getImageFormat(src: string, editorMessage: EditorMessageResolver
   };
 
   return formatMap[extension || ''] || extension?.toUpperCase() || editorMessage('editor.imageBlock.value.unknown');
+}
+
+/** 题注跟随图片框；使用期望宽度而非上一次测量值，窄屏缩小后才能恢复。 */
+export function imageFigureWidth(input: {
+  width: number | null; height: number | null; naturalWidth: number; naturalHeight: number;
+}): number | undefined {
+  if (input.width && input.width > 0) return input.width;
+  if (input.height && input.height > 0 && input.naturalHeight > 0) {
+    return input.height * input.naturalWidth / input.naturalHeight;
+  }
+  return input.naturalWidth > 0 ? input.naturalWidth : undefined;
 }
 
 function decodeMediaLocatorPath(src: string): string | null {

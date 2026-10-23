@@ -1,7 +1,7 @@
+import { createMarkdownDocumentStore } from '../../application/markdown-image-assets';
 import type Database from 'better-sqlite3';
 import {
   createMarkdownReadDatabase,
-  MarkdownDocumentService,
   MarkdownNormalizationService,
   readMarkdownDocumentView,
 } from '../../../../domains/markdown';
@@ -14,7 +14,7 @@ import { buildDocumentCitationWindowOutput } from '../../../../features/workspac
 export function createMarkdownDocumentTypeReadProviderResolver(params: {
   readonly db: Database.Database;
 }): WorkspaceDocumentTypeReadProviderResolver {
-  const store = new MarkdownDocumentService(params.db);
+  const store = createMarkdownDocumentStore(params.db);
   const normalizer = new MarkdownNormalizationService(params.db, store);
   const readDb = createMarkdownReadDatabase(params.db);
   return (documentType) => (

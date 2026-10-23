@@ -74,6 +74,7 @@ impl StreamingParserCore {
     pub(crate) fn process_chunk(&mut self, chunk: &str) -> Vec<BlockEvent> {
         self.buffer.push_str(chunk);
         let mut events = self.extract_blocks_from_buffer(false);
+        crate::promote_standalone_images(&mut events);
         crate::normalize_list_spacing(&mut events, &mut self.previous_event_is_list);
         events
     }
@@ -243,6 +244,7 @@ impl StreamingParserCore {
                     .map_or(false, |sc| !sc.is_empty())
         });
 
+        crate::promote_standalone_images(&mut events);
         crate::normalize_list_spacing(&mut events, &mut self.previous_event_is_list);
         events
     }
@@ -707,8 +709,14 @@ impl StreamingParserCore {
                     let mut consumed_in_slice = 0;
                     let mut found_end_marker = false;
 
-                    for (idx, byte) in current_slice.bytes().enumerate() {
-                        if matcher.feed_byte(byte) {
+                    // 结束符只含 ASCII，但公式正文必须按 Unicode 字符累积。
+                    // char_indices 保留字节偏移，避免消费 buffer 时落在 UTF-8 字符中间。
+                    for (idx, character) in current_slice.char_indices() {
+                        let matched = character.is_ascii() && matcher.feed_byte(character as u8);
+                        if !character.is_ascii() {
+                            matcher.reset_after_match();
+                        }
+                        if matched {
                             if matcher.end_marker_len > 0 {
                                 let chars_to_remove = matcher.end_marker_len - 1;
                                 if accumulated_content.len() >= chars_to_remove {
@@ -739,7 +747,7 @@ impl StreamingParserCore {
                             found_end_marker = true;
                             break;
                         } else {
-                            accumulated_content.push(byte as char);
+                            accumulated_content.push(character);
                         }
                     }
 

@@ -23,6 +23,7 @@ import { batchApplyNonInsertPendingRevisions } from './updatePendingRevisionAppl
 import { batchApplyInsertPendingRevisions } from './insertPendingRevisionApplier'
 import { planPendingExecutionBatches } from './pendingBatchPlanner'
 import { applyChartPendingItems, partitionChartPendingRevisions } from './chart'
+import { applyImagePendingItems, partitionImagePendingRevisions } from './imagePendingRevision'
 import { infoRevisionDebug, shouldLogRevisionDebug } from '../revisionDebugLogging'
 
 export interface ApplyPendingRevisionsPerfHooks {
@@ -135,10 +136,11 @@ export async function applyPendingRevisionsToEditor(
   const { chartItems, others } = await measureStageAsync(perfHooks, 'plan', () =>
     partitionChartPendingRevisions(editor.state.doc, parsedRevisions)
   )
-  const batches = measureStage(perfHooks, 'plan', () => planPendingExecutionBatches(others))
+  const images = await partitionImagePendingRevisions(editor.state.doc, others)
+  const batches = measureStage(perfHooks, 'plan', () => planPendingExecutionBatches(images.others))
 
   await measureStageAsync(perfHooks, 'apply', async () => {
-    for (const detail of applyChartPendingItems(editor, chartItems)) {
+    for (const detail of [...applyChartPendingItems(editor, chartItems), ...applyImagePendingItems(editor, images.imageItems)]) {
       result.details.push(detail)
       if (detail.success) {
         result.successIds.push(detail.id)

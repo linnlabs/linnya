@@ -28,7 +28,7 @@ NodeView 保存编辑时用 Tiptap 的 `updateAttributes({ spec })`：一次确�
 `html.ts` 是纯 HTML 合同的公开入口，供剪贴板消费，不加载 Vue NodeView；Revision 读取使用其公开 `useRevisionStore` 门面。
 
 - 节点 HTML：`<figure data-type="chart-block" data-chart-spec="canonical JSON">`，内部粘贴经与 Markdown 导入相同的准入还原；规格无效则拒绝整批解析，文档不变；粘贴入口先提示，由用户明确选择按普通代码插入或取消。
-- 块复制（`ClipboardCopyExtension`）：`text/plain` / `text/markdown` 是 canonical 围栏；`text/html` 是 figure + 标题 + 说明 + 数据表，外部应用至少能拿到数据。
+- 块复制（`ClipboardCopyExtension`）：`text/plain` / `text/markdown` 是 canonical 围栏；`text/html` 是 figure + 数据表 + 图下题注/说明，外部应用至少能拿到数据。
   图表复制菜单另提供“复制为图片”（默认视图 PNG）和“复制为 Markdown”（canonical 围栏）；图片不在同步 copy 事件里生成。
 - 外部 HTML 中带 `language-linnya-chart` 的 `<pre><code>`：合法才成为图表；非法规格必须先经同一个人工决策，不能静默降级。代码块语言入口、HTML 解析和输入规则都不会产生保留语言的 `codeBlock`。
 
@@ -45,3 +45,5 @@ NodeView 保存编辑时用 Tiptap 的 `updateAttributes({ spec })`：一次确�
 ```bash
 pnpm exec vitest run apps/renderer/domains/editor/blocks/ChartBlock
 ```
+
+图表 `title` 与 `description` 是图下题注及说明，使用 [figure-caption](../../features/figure-caption/README.md) 的共享显示和局部草稿。题注只写规格字段，不新增旁挂段落；块菜单可打开空题注，已有题注点击编辑。源码编辑、Pending 对照和历史只读时不可提交，快速连续确认分别形成独立撤销步骤。

@@ -1,3 +1,4 @@
+import { createMarkdownDocumentStore } from '../../application/markdown-image-assets';
 import type Database from 'better-sqlite3';
 import {
   getDocumentTypeBackendHook,
@@ -6,7 +7,6 @@ import {
 import type { DatabaseService } from '../../../../electron-main/services/database';
 import type { WorkspaceService } from '../../../../electron-main/services/workspace/workspace';
 import {
-  MarkdownDocumentService,
   createDefaultMarkdownDocument,
 } from '../../../../domains/markdown';
 import type {
@@ -44,7 +44,7 @@ function createMarkdownLifecycleProvider(params: {
   readonly db: Database.Database;
   readonly workspaceService: WorkspaceService;
 }): WorkspaceDocumentLifecycleProvider {
-  const documentStore = new MarkdownDocumentService(params.db);
+  const documentStore = createMarkdownDocumentStore(params.db);
   return {
     displayName: 'Markdown',
     defaultDocumentName: '未命名文档',

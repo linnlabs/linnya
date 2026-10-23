@@ -1,18 +1,15 @@
 // src/renderer/shared/extensions/markdown/streaming/queueProcessor.js
 // 流式处理器 - 基于 WASM BlockEvent
 
-import { Slice, Fragment } from '@tiptap/pm/model';
+import { Fragment } from '@tiptap/pm/model';
 import { STREAMING_PLUGIN_KEY } from '../StreamingMarkdown';
-import { TextSelection } from 'prosemirror-state';
 import { generateBlockId } from '../../../../../../shared/utils/idUtils';
 import { NodeFinder } from '../../../position/NodeFinder';
-import { PositionUtils } from '../../../position/PositionUtils';
-import { isMarkdownChartSpecInvalidError } from '@app/schemas';
+import { isMarkdownChartSpecInvalidError, admitMarkdownImageEvent, MarkdownImageInvalidError } from '@app/schemas';
 import { useNotificationStore } from '@/app/notification';
 import { admitChartBlockEvent, buildInlineNodesFromStructuredContent, isChartBlockEvent } from '../../../../services/markdownRuntime';
 import { listChartIssues } from '../../../../features/chart-editing';
 import { resolveCurrentEditorMessage } from '../../../../functions/resolveCurrentEditorMessage';
-// PositionUtils 已在 EditorContent.vue 中用于初始化插件状态，这里不再直接需要
 
 // 在文件顶部或合适的位置定义一个常量作为元数据键
 const IS_STREAMING_CONTENT_TRANSACTION = 'isStreamingContentTransaction';
@@ -39,6 +36,12 @@ export function processQueue(editor, pluginState, inputData, options = {}) {
 
     try {
         const eventsToProcess = Array.isArray(inputData) ? inputData : [];
+        // 旧流式入口没有 Host 资产接管；整批先检查，不能创建只有默认属性的空图片。
+        for (const event of eventsToProcess) {
+            if (event && typeof event.block_type === 'string' && admitMarkdownImageEvent(event)) {
+                throw new MarkdownImageInvalidError('流式输入不能接管图片来源，请使用文档文件写入或图片粘贴入口。');
+            }
+        }
         for (const blockEvent of eventsToProcess) {
             if (blockEvent && typeof blockEvent.block_type === 'string') {
                 // +++ 新增过滤逻辑 +++
@@ -72,7 +75,6 @@ export function processQueue(editor, pluginState, inputData, options = {}) {
                 } else {
                     // 插入失败，保持当前 newCurrentInsertPos，避免后续插入位置错误
                 }
-            } else {
             }
         }
         
@@ -110,11 +112,12 @@ export function processQueue(editor, pluginState, inputData, options = {}) {
         }
     } catch (error) {
         console.error('[StreamingMarkdown] 队列处理失败:', error);
+        if (error instanceof MarkdownImageInvalidError) useNotificationStore().show(error.message, 'error');
         editor.commands.setStreamingState?.({
             isActiveStream: false,
             streamingError: {
-                message: resolveCurrentEditorMessage('editor.aiWriting.error.queueProcessingFailed'),
-                code: "queue_processing_error"
+                message: error instanceof MarkdownImageInvalidError ? error.message : resolveCurrentEditorMessage('editor.aiWriting.error.queueProcessingFailed'),
+                code: error instanceof MarkdownImageInvalidError ? error.code : "queue_processing_error"
             },
             currentInsertPos: null,
             initialBlockContext: null,
@@ -139,7 +142,7 @@ function insertBlockEvent(editor, blockEvent, isFirstEventInStream, initialBlock
         return null;
     }
 
-    const { block_type: originalBlockType, raw_content_fallback, language, level: blockLevel, structured_content } = blockEvent;
+    const { block_type: originalBlockType } = blockEvent;
 
     // let tr = editor.state.tr; // 不再需要手动创建事务
     let actualInsertPos;
@@ -272,7 +275,6 @@ function insertNewRootBlock(editor, blockEvent, targetInsertPos) {
     const docSize = editor.state.doc.content.size;
 
     if (targetInsertPos !== null && targetInsertPos >= 0 && targetInsertPos < docSize) {
-        const posUtils = new PositionUtils(editor);
         const $resolvedPos = editor.state.doc.resolve(Math.max(0, targetInsertPos -1)); 
         let refBlockFound = false;
         for (let d = $resolvedPos.depth; d >= 0; d--) {
@@ -302,7 +304,7 @@ function insertNewRootBlock(editor, blockEvent, targetInsertPos) {
             blockAttrs: blockAttrs, 
             contentChildren: contentChildren,
         });
-    } catch (e) {
+    } catch {
         return null;
     }
 
