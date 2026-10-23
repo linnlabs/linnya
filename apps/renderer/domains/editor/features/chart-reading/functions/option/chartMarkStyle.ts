@@ -8,6 +8,9 @@ import { withAlpha } from '../chartPalette'
 
 export const MARK_STYLE = Object.freeze({ lineWidth: 2, markerSize: 5 })
 
+// 阅读悬停只用于查值，不自动放大、高亮或压淡其他数据；显式图例点击由阅读状态单独处理。
+export const HOVER_EMPHASIS = Object.freeze({ disabled: true })
+
 /** 柱、扇区与散点保留色板原色，不叠加深色轮廓。 */
 export function filledMark(colors: ChartMarkColors, opacity: number) {
   return { color: colors.fill, borderWidth: 0, opacity }

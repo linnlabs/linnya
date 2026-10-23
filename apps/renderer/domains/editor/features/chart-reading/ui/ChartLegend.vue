@@ -16,10 +16,6 @@
         :aria-pressed="isPressed(item)"
         :title="describe(item)"
         @click="activate(item)"
-        @mouseenter="emit('hover', item.id)"
-        @mouseleave="emit('hover', null)"
-        @focus="emit('hover', item.id)"
-        @blur="emit('hover', null)"
       >
         <span
           class="chart-legend__key"
@@ -49,7 +45,6 @@ defineProps<{
 const emit = defineEmits<{
   'toggle-series': [id: string]
   'toggle-emphasis': [id: string]
-  hover: [id: string | null]
 }>()
 
 const { editorMessage } = useEditorLocalization()

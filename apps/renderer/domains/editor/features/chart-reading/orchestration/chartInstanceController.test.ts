@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { MARKDOWN_CHART_TYPES } from '@app/schemas'
+import { getInstanceByDom } from 'echarts/core'
 import { DEFAULT_CHART_READING_STATE } from '../definitions/chartReadingState'
 import { chartFixture, chartTestTheme } from '../testing/chartTestFixtures'
 import { createChartController, getLiveChartInstanceCount, type ChartControllerInput } from './chartInstanceController'
@@ -93,18 +95,48 @@ describe('ChartController 生命周期', () => {
     expect(host.textContent).toContain('Q1')
     controller.dispose()
   })
+})
 
-  it('高亮与取消高亮不抛错；释放后调用无副作用', async () => {
-    const host = createHost()
-    const controller = createChartController(host)
-    await controller.render(input('line'))
-    expect(() => {
-      controller.highlight({ kind: 'series', name: '营收' })
-      controller.highlight(null)
-    }).not.toThrow()
+const comparisonSeries = [
+  { name: '甲', values: [3, 4, 5, 6, 7] },
+  { name: '乙', values: [2, 3, 4, 5, 6] },
+]
+const hoverSpecs = [
+  ...MARKDOWN_CHART_TYPES.map(type => chartFixture(type)),
+  chartFixture('bar', { series: comparisonSeries }),
+  chartFixture('bar', { series: comparisonSeries, stacking: 'stacked' }),
+  chartFixture('bar', { series: comparisonSeries, stacking: 'percent', valueAxis: { numberFormat: '0%' } }),
+]
+
+it.each(hoverSpecs)('$chartType 绘图区连续悬停不改变标记状态，查值仍可用', async spec => {
+  const host = createHost()
+  const controller = createChartController(host)
+  try {
+    await controller.render({ ...input(), spec })
+    const chart = getInstanceByDom(host)
+    if (!chart) throw new Error('未创建真实图表实例')
+    const zr = chart.getZr()
+    // 走真实 ECharts 的指针事件链路，验证最终标记状态，而不是只锁定 option 中的开关值。
+    const marks = zr.storage.getDisplayList().filter(element => !element.silent && element.type !== 'tspan' && element.states.emphasis)
+    expect(marks.length).toBeGreaterThan(0)
+    for (const target of marks.slice(0, 3)) {
+      const event = { target, topTarget: target, event: new MouseEvent('mouseover'), offsetX: 80, offsetY: 80 }
+      zr.trigger('mouseover', event)
+      zr.trigger('mousemove', event)
+      await new Promise(resolve => setTimeout(resolve, 30))
+      for (const mark of marks) {
+        expect(mark.currentStates).not.toContain('blur')
+        expect(mark.currentStates).not.toContain('emphasis')
+      }
+      zr.trigger('mouseout', event)
+    }
+    chart.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex: 0 })
+    await new Promise(resolve => setTimeout(resolve, 30))
+    const tooltip = [...document.body.children].find(element => !hosts.some(host => host === element) && element.textContent)
+    expect(tooltip?.textContent).toContain(String(spec.categories[0]))
+  } finally {
     controller.dispose()
-    expect(() => controller.highlight({ kind: 'series', name: '营收' })).not.toThrow()
-  })
+  }
 })
 
 it('清除轴标题、堆叠和线型后，真实 ECharts 不残留旧属性', async () => {

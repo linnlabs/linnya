@@ -19,7 +19,7 @@ import { categoryMarkColors, markColorsFromFill, readableTextOn, seriesMarkColor
 import type { ChartReadingView } from '../chartReadingView'
 import { chartObservationKeys } from '../chartTransition'
 import { renderChartTooltip, type ChartTooltipContent } from '../chartTooltip'
-import { MARK_STYLE, areaFill, lineMarker, filledMark } from './chartMarkStyle'
+import { HOVER_EMPHASIS, MARK_STYLE, areaFill, lineMarker, filledMark } from './chartMarkStyle'
 import {
   INK_ALPHA,
   DIMMED_OPACITY,
@@ -348,8 +348,7 @@ function seriesOption(
     name: item.series.name,
     xAxisIndex: 0,
     yAxisIndex: horizontal || item.axis === 'primary' ? 0 : 1,
-    emphasis: { focus: 'series' as const },
-    blur: { itemStyle: { opacity: 0.3 }, lineStyle: { opacity: 0.3 }, areaStyle: { opacity: 0.04 } },
+    emphasis: HOVER_EMPHASIS,
     labelLayout: { hideOverlap: true },
   }
 

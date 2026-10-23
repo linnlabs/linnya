@@ -11,7 +11,6 @@ import { useChartReadingStore } from '../store/chartReadingStore'
 const controller = vi.hoisted(() => ({
   render: vi.fn(async (_request: { theme: { palette: readonly { fill: string; ink: string }[] } }) => {}),
   dispose: vi.fn(),
-  highlight: vi.fn(),
   isDisposed: false,
 }))
 vi.mock('./chartInstanceController', () => ({ createChartController: () => controller }))
@@ -113,26 +112,6 @@ it('规格的 palette 决定图表主题和图例的色系，改变色系会重�
   chart.spec.value = chartFixture('line')
   await settle()
   expect(lastPalette()).toEqual(chartTestTheme('light').palette)
-})
-
-it('类目聚焦后图例高亮转换成可见位置，隐藏系列不能再被高亮', async () => {
-  const chart = mountChart(chartFixture('bar', { colorBy: 'category' }))
-  await settle()
-  chart.runtime.actions.setCategoryRange({ start: 2, end: 4 })
-  await settle()
-  chart.runtime.actions.highlight('3')
-  expect(controller.highlight).toHaveBeenLastCalledWith({ kind: 'part', index: 1 })
-  chart.runtime.actions.highlight('0')
-  expect(controller.highlight).toHaveBeenLastCalledWith(null)
-
-  chart.spec.value = chartFixture('line')
-  await settle()
-  chart.runtime.actions.highlight('营收')
-  expect(controller.highlight).toHaveBeenLastCalledWith({ kind: 'series', name: '营收' })
-  chart.runtime.actions.toggleSeries('营收')
-  await settle()
-  chart.runtime.actions.highlight('营收')
-  expect(controller.highlight).toHaveBeenLastCalledWith(null)
 })
 
 it('复制 Markdown 使用最新完整规格，筛选不丢数据，围栏可重新准入', async () => {

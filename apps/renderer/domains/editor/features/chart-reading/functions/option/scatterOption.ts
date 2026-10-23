@@ -14,7 +14,7 @@ import { seriesMarkColors } from '../chartPalette'
 import { chartObservationKeys } from '../chartTransition'
 import type { ChartReadingView } from '../chartReadingView'
 import { renderChartTooltip, type ChartTooltipContent } from '../chartTooltip'
-import { filledMark } from './chartMarkStyle'
+import { HOVER_EMPHASIS, filledMark } from './chartMarkStyle'
 import {
   type ChartSeries,
   type ChartSpec,
@@ -123,8 +123,7 @@ export function buildScatterOption(view: ChartReadingView, domains: ChartDomains
       symbol: marker === 'square' ? 'rect' : marker && marker !== 'none' ? marker : 'circle',
       symbolSize: symbolSizeFor(spec.categories.length),
       itemStyle: filledMark(colors, 0.8 * opacity),
-      emphasis: { focus: 'series' as const, scale: 1.5 },
-      blur: { itemStyle: { opacity: 0.25 } },
+      emphasis: HOVER_EMPHASIS,
       z: 3,
     }
   })

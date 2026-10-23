@@ -12,7 +12,7 @@ import { formatPlainNumber } from '../chartNumbers'
 import { seriesMarkColors } from '../chartPalette'
 import type { ChartReadingView } from '../chartReadingView'
 import { renderChartTooltip, type ChartTooltipContent } from '../chartTooltip'
-import { MARK_STYLE, lineMarker, radarFillAlpha } from './chartMarkStyle'
+import { HOVER_EMPHASIS, MARK_STYLE, lineMarker, radarFillAlpha } from './chartMarkStyle'
 import { baseOption, categoryLabel, seriesOpacity, tooltipFrame } from './chartOptionShared'
 
 export function buildRadarTooltipContent(view: ChartReadingView, ctx: ChartRenderContext, seriesIndex: number): ChartTooltipContent | null {
@@ -78,7 +78,7 @@ export function buildRadarOption(view: ChartReadingView, ctx: ChartRenderContext
           itemStyle: lineMarker(colors, opacity),
         }
       }),
-      emphasis: { focus: 'self', lineStyle: { width: 3 } },
+      emphasis: HOVER_EMPHASIS,
     }],
   }
 }

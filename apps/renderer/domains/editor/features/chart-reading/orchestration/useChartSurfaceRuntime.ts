@@ -31,7 +31,7 @@ import {
   toggleEmphasis,
   toggleSeriesVisibility,
 } from '../functions/chartReadingState'
-import { deriveChartReadingView, resolveChartHighlight } from '../functions/chartReadingView'
+import { deriveChartReadingView } from '../functions/chartReadingView'
 import { canTransitionBetween } from '../functions/chartTransition'
 import { useChartReadingStore } from '../store/chartReadingStore'
 import { createChartController, type ChartController } from './chartInstanceController'
@@ -222,10 +222,6 @@ export function useChartSurfaceRuntime(options: UseChartSurfaceRuntimeOptions) {
     setCategoryRange: (range: { start: number; end: number } | null) => writeState(setCategoryRange(options.spec.value, state.value, range)),
     setValueRanges: (ranges: Parameters<typeof setValueRanges>[2]) => writeState(setValueRanges(options.spec.value, state.value, ranges)),
     reset: () => writeState(resetReadingState()),
-    /** 图例悬停/聚焦时的临时突出：不进入阅读状态。 */
-    highlight: (id: string | null) => {
-      controller?.highlight(resolveChartHighlight(view.value, id))
-    },
   }
 
   // ---- 复制为图片：默认视图，不受阅读状态影响；失败单独报告 ----

@@ -46,7 +46,7 @@ const UPDATE_TRANSITION_MS = 450
 
 export function baseOption(ctx: ChartRenderContext): Pick<
   ChartOption,
-  'animation' | 'animationDuration' | 'animationDurationUpdate' | 'animationEasingUpdate' | 'backgroundColor' | 'textStyle' | 'aria'
+  'animation' | 'animationDuration' | 'animationDurationUpdate' | 'animationEasingUpdate' | 'backgroundColor' | 'textStyle' | 'aria' | 'axisPointer'
 > {
   return {
     // 首次渲染、主题/尺寸变化与再次入屏直接呈现最终结果；只有明确的数据更新才播放短过渡。
@@ -54,6 +54,8 @@ export function baseOption(ctx: ChartRenderContext): Pick<
     animationDuration: 0,
     animationDurationUpdate: ctx.transition ? UPDATE_TRANSITION_MS : 0,
     animationEasingUpdate: 'cubicOut',
+    // 坐标提示器会独立发送 highlight；只禁用系列 emphasis 不足以关闭这条路径。
+    axisPointer: { triggerEmphasis: false },
     backgroundColor: 'transparent',
     textStyle: { fontFamily: ctx.theme.fontFamily, fontSize: 12, color: ctx.theme.textSecondary },
     // ECharts 的自动描述会朗读堆叠后的内部维度和 NaN，并覆盖宿主的图形标题。

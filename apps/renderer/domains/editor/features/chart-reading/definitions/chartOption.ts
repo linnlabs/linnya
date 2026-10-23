@@ -15,6 +15,7 @@ import type {
 } from 'echarts/charts'
 import type {
   AriaComponentOption,
+  AxisPointerComponentOption,
   GridComponentOption,
   RadarComponentOption,
   TooltipComponentOption,
@@ -27,6 +28,7 @@ export type ChartOption = ComposeOption<
   | RadarSeriesOption
   | ScatterSeriesOption
   | AriaComponentOption
+  | AxisPointerComponentOption
   | GridComponentOption
   | RadarComponentOption
   | TooltipComponentOption

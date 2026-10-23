@@ -1,6 +1,6 @@
 /**
  * @file chartInstanceController.ts
- * @description 一个 ECharts 实例的生命周期：创建、受控更新、高亮、重绘与释放。
+ * @description 一个 ECharts 实例的生命周期：创建、受控更新、重绘与释放。
  *
  * 设计约束：
  * - 实例只在需要时存在（块可见/预热时创建，离屏释放）；阅读状态由 store 持有，与实例存活无关。
@@ -12,7 +12,7 @@
 import type { MarkdownChartSpecReadView } from '@app/schemas'
 import type { EChartsType } from 'echarts/core'
 import type { ChartReadingState } from '../definitions/chartReadingState'
-import type { ChartHighlightTarget, ChartOptionMessages } from '../definitions/chartRender'
+import type { ChartOptionMessages } from '../definitions/chartRender'
 import type { ChartThemeTokens } from '../definitions/chartTheme'
 import { plotHeightOf } from '../functions/chartLayout'
 import { buildChartOption } from '../functions/option/buildChartOption'
@@ -30,7 +30,6 @@ export interface ChartControllerInput {
 
 export interface ChartController {
   render(input: ChartControllerInput): Promise<void>
-  highlight(target: ChartHighlightTarget | null): void
   dispose(): void
   readonly isDisposed: boolean
 }
@@ -89,8 +88,6 @@ export function createChartController(host: HTMLElement): ChartController {
       instance = echarts.init(host, undefined, { renderer: 'svg', width: size.width, height: size.height })
       liveInstanceCount += 1
     } else {
-      // 筛选可能移除正在悬停的系列，先清掉旧高亮，避免其 blur 状态污染更新后的视图。
-      instance.dispatchAction({ type: 'downplay' })
       instance.resize({ width: size.width, height: size.height, animation: { duration: 0 } })
     }
 
@@ -115,19 +112,6 @@ export function createChartController(host: HTMLElement): ChartController {
 
   return {
     render,
-    highlight(target) {
-      if (!instance) return
-      instance.dispatchAction({ type: 'downplay' })
-      if (target === null) return
-      if (target.kind === 'part') {
-        instance.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex: target.index })
-      } else if (renderedType === 'radar') {
-        // 雷达只有一个系列，每条轮廓是它的一个数据项，数据项名即系列名。
-        instance.dispatchAction({ type: 'highlight', seriesIndex: 0, name: target.name })
-      } else {
-        instance.dispatchAction({ type: 'highlight', seriesName: target.name })
-      }
-    },
     dispose() {
       if (disposed) return
       disposed = true

@@ -14,7 +14,7 @@ import { categoryMarkColors } from '../chartPalette'
 import type { ChartReadingView } from '../chartReadingView'
 import { chartObservationKeys } from '../chartTransition'
 import { renderChartTooltip, type ChartTooltipContent } from '../chartTooltip'
-import { filledMark } from './chartMarkStyle'
+import { HOVER_EMPHASIS, filledMark } from './chartMarkStyle'
 import {
   DIMMED_OPACITY,
   baseOption,
@@ -153,8 +153,7 @@ export function buildShareOption(view: ChartReadingView, ctx: ChartRenderContext
         smooth: false,
         lineStyle: { color: ctx.theme.gridColor, width: 0.5 },
       },
-      emphasis: { scale: true, scaleSize: 5, focus: 'self' },
-      blur: { itemStyle: { opacity: 0.3 } },
+      emphasis: HOVER_EMPHASIS,
     }],
   }
 }

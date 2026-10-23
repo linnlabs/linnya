@@ -86,7 +86,6 @@
         :position="legendBefore"
         @toggle-series="actions.toggleSeries"
         @toggle-emphasis="actions.toggleEmphasis"
-        @hover="actions.highlight"
       />
       <div class="chart-surface__plot-wrap">
         <div
@@ -123,7 +122,6 @@
         :position="legendAfter"
         @toggle-series="actions.toggleSeries"
         @toggle-emphasis="actions.toggleEmphasis"
-        @hover="actions.highlight"
       />
     </div>
 
