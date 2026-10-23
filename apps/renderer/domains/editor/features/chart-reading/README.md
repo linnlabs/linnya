@@ -13,6 +13,7 @@ ECharts 运行时、主题解析和阅读规则都是内部实现，其他模块
 `ChartSurface` 的 props：`spec`、`readingKey`（`null` 表示状态只在该组件内，用于编辑预览与历史视图）、`active`（是否持有 ECharts 实例）、`transitions`（是否允许更新过渡）；
 工具栏只展示“复制图标 + 右箭头”的复制菜单；阅读视图改变后另提供恢复默认视图。控件高度与其他块的标准图标按钮一致。
 菜单复用 `CustomSelect` 的公开 `classNames.options`，在图表内向左展开，宽度随文案自适应。
+复制图标为 18px，辅助箭头沿用文本工具栏的 12px；箭头直接读取触发器的 `aria-expanded`，展开时由右向下旋转，关闭时复原，时长与减少动态效果规则遵循 Renderer UI 设计规范。
 
 ## 分层
 

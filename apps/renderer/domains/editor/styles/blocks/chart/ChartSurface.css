@@ -93,9 +93,21 @@
   gap: var(--space-0-5);
 }
 
-.chart-surface__copy-icons > svg {
+.chart-surface__copy-symbol {
   width: 18px;
   height: 18px;
+}
+
+/* 箭头是辅助展开标记，沿用文本工具栏的 12px 密度；主操作图标保持原尺寸。 */
+.chart-surface__copy-chevron {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  transition: transform var(--duration-medium) var(--ease-standard);
+}
+
+.chart-surface__copy-trigger[aria-expanded='true'] .chart-surface__copy-chevron {
+  transform: rotate(90deg);
 }
 
 /* 使用公开 options 映射：菜单向左展开，宽度随文案自然撑开，不跟随窄图标触发器。 */

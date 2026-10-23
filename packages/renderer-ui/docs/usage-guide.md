@@ -80,6 +80,8 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 选择面板需要向上展开时，传入 `options-motion-direction="up"`；不要覆盖包内私有 transition class。
 
+自定义 `arrow-icon` 插槽时，通过 `classNames.trigger` 映射的触发器及其 `aria-expanded` 驱动辅助箭头的展开态；主操作图标保持静止。箭头尺寸、方向和旋转动效遵循[展开箭头规范](./design.md#101-展开箭头)，面板继续使用组件自带的进入与退出过渡。
+
 菜单宽度受限且选项名称可能很长时，传入 `option-label-overflow="ellipsis"`；若还需要在鼠标停留时阅读完整名称，使用 `option-label-overflow="marquee-on-hover"`。后者只滚动真实溢出的标签，并在 reduced-motion 环境保持静态省略号。默认值是 `visible`，不会改变既有菜单布局。
 
 ### 悬浮提示

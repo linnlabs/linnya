@@ -65,8 +65,11 @@
               class="chart-surface__copy-icons"
               aria-hidden="true"
             >
-              <CopyIcon />
-              <ChevronIcon direction="right" />
+              <CopyIcon class="chart-surface__copy-symbol" />
+              <ChevronIcon
+                class="chart-surface__copy-chevron"
+                direction="right"
+              />
             </span>
           </template>
         </CustomSelect>
