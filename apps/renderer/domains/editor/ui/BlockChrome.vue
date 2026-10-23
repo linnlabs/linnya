@@ -24,6 +24,7 @@
     @dragstart="dragState.onDragStart"
     @dragend="dragState.onDragEnd"
     @contextmenu="dragState.handleDragHandleContextMenu"
+    @menu-open="dragState.handleDragHandleKeyboardOpen"
     @version-click="versionHandleState.handleVersionClick"
     @register-drag-handle="onRegisterDragHandle"
   />
@@ -93,7 +94,10 @@
           class="header-more-menu"
         >
           <template #arrow-icon>
-            <MoreIcon direction="horizontal" class="more-icon" />
+            <MoreIcon
+              direction="horizontal"
+              class="more-icon"
+            />
           </template>
         </CustomSelect>
       </div>
@@ -104,7 +108,10 @@
     后置历史面板：通过 Teleport 渲染到 node-view-content 之后，
     保持 flex 布局（side-by-side）和 DOM 顺序正确
   -->
-  <Teleport v-if="historyMountTarget && blockActivation.renderHistory.value" :to="historyMountTarget">
+  <Teleport
+    v-if="historyMountTarget && blockActivation.renderHistory.value"
+    :to="historyMountTarget"
+  >
     <HistorySideBySide
       v-if="historyState.isInSideBySideMode.value"
       class="root-block-history-panel"

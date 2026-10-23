@@ -33,10 +33,13 @@
       @click="handleVersionClick"
     />
 
-    <!-- 拖拽手柄：始终靠近内容（在内侧） -->
-    <div
+    <!-- 原生按钮让鼠标点击建立正确的焦点来源；不可聚焦的 div 会把上次键盘焦点框带入菜单。 -->
+    <button
       ref="dragHandleEl"
+      type="button"
       class="drag-handle"
+      :aria-label="editorMessage('editor.common.moreActions')"
+      aria-haspopup="menu"
       draggable="true"
       data-drag-handle="true"
       @mousedown="$emit('drag-mousedown', $event)"
@@ -44,11 +47,13 @@
       @dragstart="$emit('dragstart', $event)"
       @dragend="$emit('dragend', $event)"
       @contextmenu="$emit('contextmenu', $event)"
+      @keydown.enter.prevent.stop="$emit('menu-open')"
+      @keydown.space.prevent.stop="$emit('menu-open')"
     >
       <slot name="drag-icon">
         <DragHandleIcon />
       </slot>
-    </div>
+    </button>
   </div>
 </template>
 
@@ -56,6 +61,7 @@
 import { ref, onMounted } from 'vue';
 import { DragHandleIcon } from '@linnya/renderer-ui/icons';
 import BlockVersionHandle from './BlockVersionHandle.vue';
+import { useEditorLocalization } from '../useEditorLocalization';
 
 // ==================== Props ====================
 
@@ -74,6 +80,7 @@ const props = withDefaults(defineProps<Props>(), {
   versionCount: 0,
   latestVersionNumber: 0,
 });
+const { editorMessage } = useEditorLocalization();
 
 // ==================== Emits ====================
 
@@ -83,6 +90,7 @@ const emit = defineEmits<{
   (e: 'dragstart', event: DragEvent): void;
   (e: 'dragend', event: DragEvent): void;
   (e: 'contextmenu', event: MouseEvent): void;
+  (e: 'menu-open'): void;
   (e: 'version-click'): void;
   (e: 'register-drag-handle', el: HTMLElement): void;
 }>();

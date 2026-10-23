@@ -54,6 +54,8 @@ export interface UseBlockDragAndMenuReturn {
   handleDragHandleMouseUp: (event: MouseEvent) => void;
   /** 拖拽柄右键菜单处理 */
   handleDragHandleContextMenu: (event: MouseEvent) => void;
+  /** 原生按钮的 Enter / Space 打开菜单，不模拟鼠标按压或拖拽。 */
+  handleDragHandleKeyboardOpen: () => void;
   /** 拖拽开始处理 */
   onDragStart: (event: DragEvent) => void;
   /** 拖拽结束处理 */
@@ -76,7 +78,6 @@ export function useBlockDragAndMenu(options: UseBlockDragAndMenuOptions): UseBlo
 
   // 拖拽柄点击状态追踪（内部状态，不暴露）
   let isDraggingHandle = false;
-  let dragHandleStartTime = 0;
   let mouseDownPos = { x: 0, y: 0 };
 
   const releaseDragHandleSelection = (): void => {
@@ -129,7 +130,6 @@ export function useBlockDragAndMenu(options: UseBlockDragAndMenuOptions): UseBlo
     beginRootBlockDragHandlePress(event);
 
     isDraggingHandle = false;
-    dragHandleStartTime = Date.now();
     mouseDownPos = { x: event.clientX, y: event.clientY };
 
     // 调用选中逻辑
@@ -309,6 +309,7 @@ export function useBlockDragAndMenu(options: UseBlockDragAndMenuOptions): UseBlo
     handleDragHandleMouseDown,
     handleDragHandleMouseUp,
     handleDragHandleContextMenu,
+    handleDragHandleKeyboardOpen: () => openMenuFromHandle('open'),
     onDragStart,
     onDragEnd,
     setupDropIndicator,

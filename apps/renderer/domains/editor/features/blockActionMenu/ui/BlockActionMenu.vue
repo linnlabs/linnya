@@ -25,6 +25,7 @@
           :manual-mode="true"
           :parent-is-open="isOpen"
           :external-trigger-ref="anchorElement"
+          semantic-role="menu"
           :class-names="selectClassNames"
           variant="default"
           min-width="180px"

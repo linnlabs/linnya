@@ -77,6 +77,8 @@ flowchart LR
 
 ## Surface 边界
 
+块左侧菜单与拖拽共用的入口由 `BlockLeftHandleGroup` 以原生 button 提供。鼠标点击必须建立本次指针焦点，避免菜单自动聚焦时继承此前按键产生的 `focus-visible`；Enter / Space 直接打开菜单，不模拟鼠标按压或拖拽。小文档 BlockChrome 与大文档 Host 都消费同一个组件及键盘事件，菜单关闭后的焦点归还也能落到真实按钮上。
+
 | Surface | Host 负责 | 业务回流 |
 |---------|-----------|----------|
 | `left-handle` | 拖拽柄、菜单入口、历史入口挂载 | 菜单通过 `blockActionMenu/orchestration`；历史通过 `BlockHistory/orchestration` |

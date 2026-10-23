@@ -5,7 +5,8 @@ import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import { Node } from '@tiptap/core';
 import { Editor as VueTiptapEditor } from '@tiptap/vue-3';
-import { computed, effectScope, nextTick, ref, type EffectScope } from 'vue';
+import { computed, createApp, effectScope, h, nextTick, ref, type App, type EffectScope } from 'vue';
+import { createPinia } from 'pinia';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { blockActionMenuService } from '../../features/blockActionMenu/service';
 import {
@@ -15,6 +16,7 @@ import {
 import type { BlockMenuContext, MenuItem } from '../../features/blockActionMenu/types';
 import { PositionUtils } from '../../extensions/position/PositionUtils';
 import { useBlockDragAndMenu } from './useBlockDragAndMenu';
+import BlockLeftHandleGroup from '../components/BlockLeftHandleGroup.vue';
 
 const RootBlock = Node.create({
   name: 'rootBlock',
@@ -40,6 +42,7 @@ const RootBlock = Node.create({
 
 const editors: VueTiptapEditor[] = [];
 const scopes: EffectScope[] = [];
+const mountedHandles: { app: App; host: HTMLElement }[] = [];
 
 function createEditor(): VueTiptapEditor {
   const editor = new VueTiptapEditor({
@@ -95,6 +98,11 @@ afterEach(() => {
   clearAllProviders();
   vi.restoreAllMocks();
 
+  for (const { app, host } of mountedHandles.splice(0)) {
+    app.unmount();
+    host.remove();
+  }
+
   while (scopes.length > 0) {
     scopes.pop()?.stop();
   }
@@ -105,6 +113,49 @@ afterEach(() => {
 });
 
 describe('useBlockDragAndMenu', () => {
+  it.each(['Enter', ' '])('块菜单按钮通过 %s 打开正确的菜单，保持编辑器原选区', async (key) => {
+    registerCommonMenuProvider({
+      name: 'keyboard-menu-provider',
+      getItems: (): MenuItem[] => [{ id: 'duplicate', label: '创建副本' }],
+    });
+    const editor = createEditor();
+    const selection = editor.state.selection;
+    const dragHandleRef = ref<HTMLElement | null>(null);
+    const scope = effectScope();
+    scopes.push(scope);
+    const dragState = scope.run(() => useBlockDragAndMenu({
+      props: { editor, rootBlockId: computed(() => 'block-a') },
+      dragHandleRef,
+      hasAnnotations: computed(() => false),
+      setBlockSelected: vi.fn(),
+    }));
+    if (!dragState) throw new Error('Missing drag state');
+
+    const host = document.createElement('div');
+    document.body.append(host);
+    const app = createApp({
+      render: () => h(BlockLeftHandleGroup, {
+        blockId: 'block-a',
+        hasHistory: false,
+        onRegisterDragHandle: (element: HTMLElement) => { dragHandleRef.value = element; },
+        onMenuOpen: dragState.handleDragHandleKeyboardOpen,
+      }),
+    });
+    app.use(createPinia());
+    app.mount(host);
+    mountedHandles.push({ app, host });
+
+    const handle = requireNode(dragHandleRef.value, 'menu trigger');
+    handle.focus();
+    handle.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(blockActionMenuService.state.isOpen).toBe(true));
+
+    expect(blockActionMenuService.state.anchorElement).toBe(handle);
+    expect(blockActionMenuService.state.context?.rootBlockNode.attrs.id).toBe('block-a');
+    expect(editor.state.selection).toBe(selection);
+    expect(dragState.isDragging.value).toBe(false);
+  });
+
   it('拖拽结束后释放旧 BlockChrome 手柄产生的临时选中态', () => {
     const editor = createEditor();
     const dragHandle = document.createElement('button');

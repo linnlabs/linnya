@@ -48,6 +48,11 @@ body:not([data-suppress-handle-hover]) .root-block-outer:hover .drag-handle {
   opacity: 1; /* 固定: 完全不透明 */
 }
 
+/* 键盘到达真实菜单按钮时必须可见，焦点环由应用基线统一提供。 */
+.drag-handle:focus-visible {
+  opacity: 1;
+}
+
 /* 
  * 更新：为SVG图标容器设置样式 
  * 使其在.drag-handle内居中

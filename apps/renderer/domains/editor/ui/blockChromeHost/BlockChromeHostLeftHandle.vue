@@ -9,6 +9,7 @@
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
     @contextmenu="handleContextMenu"
+    @menu-open="openMenuFromHandle('open')"
     @version-click="handleVersionClick"
     @register-drag-handle="registerDragHandle"
   />
