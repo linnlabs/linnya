@@ -1,5 +1,7 @@
 import { net, protocol } from 'electron';
 import { pathToFileURL } from 'node:url';
+import type { AppServerProcessIdentity } from '../../infra/adapters/app-server-process';
+import { Logger } from '../../shared/logger';
 import {
   assertReadablePath,
   resolveDocImageInputPath,
@@ -14,6 +16,8 @@ const mediaScheme = MEDIA_PROTOCOL_SCHEME;
 const mediaLoadHost = 'load';
 const supportedOperations = new Set<ReadPathOperation>(['image', 'generated-image', 'doc-image', 'audio']);
 let isMediaProtocolHandlerRegistered = false;
+const logger = new Logger('MediaProtocol');
+type MediaBackend = Pick<AppServerProcessIdentity, 'apiPort' | 'rendererSessionToken'>;
 
 function textResponse(message: string, status: number): Response {
   return new Response(message, { status });
@@ -51,7 +55,7 @@ export function registerMediaProtocolSchemeAsPrivileged(): void {
   protocol.registerSchemesAsPrivileged([getMediaProtocolPrivilegedScheme()]);
 }
 
-export async function handleMediaProtocolRequest(request: Pick<Request, 'url' | 'headers'>): Promise<Response> {
+export async function handleMediaProtocolRequest(request: Pick<Request, 'url' | 'headers'>, backend: MediaBackend): Promise<Response> {
   let url: URL;
   try {
     url = new URL(request.url);
@@ -64,7 +68,7 @@ export async function handleMediaProtocolRequest(request: Pick<Request, 'url' | 
   }
 
   const pathSegments = url.pathname.split('/').filter((segment) => segment.length > 0);
-  if (pathSegments.length !== 2) {
+  if (pathSegments.length !== 2 || url.search) {
     return textResponse('not found', 404);
   }
 
@@ -73,11 +77,14 @@ export async function handleMediaProtocolRequest(request: Pick<Request, 'url' | 
     const assetId = decodeBase64Url(encodedPath);
     if (!assetId) return textResponse('bad request', 400);
     try {
-      const { readManagedDocumentImage } = await import('./readManagedDocumentImage');
-      const image = await readManagedDocumentImage(assetId);
-      return new Response(Buffer.from(image.bytes), { headers: { 'content-type': image.mediaType } });
-    } catch {
-      return textResponse('not found', 404);
+      // 数据库与资产归属只属于 App Server。Main 只转发固定端点，不能初始化第二个数据库 owner。
+      return await net.fetch(`http://127.0.0.1:${backend.apiPort}/api/v1/markdown/assets/images/${encodeURIComponent(assetId)}/content`, {
+        headers: { 'x-api-token': backend.rendererSessionToken },
+        redirect: 'error',
+      });
+    } catch (error) {
+      logger.error('文档图片后端请求失败', { assetId, errorName: error instanceof Error ? error.name : typeof error });
+      return textResponse('image backend unavailable', 502);
     }
   }
   if (!isSupportedOperation(operation)) {
@@ -103,11 +110,11 @@ export async function handleMediaProtocolRequest(request: Pick<Request, 'url' | 
   }
 }
 
-export function registerMediaProtocolHandler(): void {
+export function registerMediaProtocolHandler(backend: MediaBackend): void {
   if (isMediaProtocolHandlerRegistered) {
     return;
   }
   isMediaProtocolHandlerRegistered = true;
 
-  protocol.handle(mediaScheme, handleMediaProtocolRequest);
+  protocol.handle(mediaScheme, request => handleMediaProtocolRequest(request, backend));
 }

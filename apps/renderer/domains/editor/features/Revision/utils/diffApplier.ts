@@ -607,20 +607,20 @@ function applyRichDiffSegmentsToTransaction(
     let currentOriginalPos = basePos
 
     for (const segment of segments) {
-      const unitCount = segment.unitCount ?? segment.text.length
+      const documentSize = segment.documentSize ?? segment.text.length
 
       if (segment.type === 'equal') {
         // 相等部分，只移动位置
-        currentOriginalPos += unitCount
+        currentOriginalPos += documentSize
       } else if (segment.type === 'delete') {
         // 删除部分，记录原位置
         positionedSegments.push({
           type: 'delete',
           text: segment.text,
           originalStartPos: currentOriginalPos,
-          originalEndPos: currentOriginalPos + unitCount,
+          originalEndPos: currentOriginalPos + documentSize,
         })
-        currentOriginalPos += unitCount
+        currentOriginalPos += documentSize
       } else {
         // 插入部分，记录插入点、marks 和 citation
         positionedSegments.push({

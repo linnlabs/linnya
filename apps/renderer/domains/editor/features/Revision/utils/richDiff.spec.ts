@@ -22,7 +22,7 @@ describe('richDiff', () => {
 
       const result = computeRichDiff(originalSpans, newSpans)
 
-      expect(result.segments).toEqual([{ type: 'equal', text: 'Hello', unitCount: 5 }])
+      expect(result.segments).toEqual([{ type: 'equal', text: 'Hello', documentSize: 5 }])
       expect(result.stats.insertCount).toBe(0)
       expect(result.stats.deleteCount).toBe(0)
     })
@@ -400,7 +400,7 @@ describe('richDiff', () => {
       const result = computeRichDiffFromText(originalText, newSpans)
 
       expect(result.segments).toEqual([
-        { type: 'insert', text: 'New', unitCount: 3, marks: ['bold'] },
+        { type: 'insert', text: 'New', documentSize: 3, marks: ['bold'] },
       ])
     })
   })
@@ -479,7 +479,6 @@ describe('richDiff', () => {
 
     it('确保坐标映射在长文本中正确', () => {
       const originalText = 'A'.repeat(100)
-      const newText = 'A'.repeat(50) + 'B'.repeat(10) + 'A'.repeat(50)
 
       const originalSpans: TextSpan[] = [{ text: originalText, marks: [] }]
       const newSpans: TextSpan[] = [

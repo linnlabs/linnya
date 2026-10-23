@@ -44,6 +44,7 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
   browser('@linnya/text-measurement-core', 'packages/text-measurement-core/src/index.ts', 'exact'),
   browser('@linnya/citation-domain/conversation-presentation', 'src/domains/citation/conversation-presentation.ts', 'exact'),
   browser('@linnya/citation-domain/markdown-reference', 'src/domains/citation/markdown-reference.ts', 'exact'),
+  browser('@linnya/markdown-domain/editing', 'src/domains/markdown/editing.ts', 'exact'),
   browser('stream-markdown-parser', 'packages/stream-markdown-parser/src/index.ts', 'exact'),
   browser('stream-markdown-parser', 'packages/stream-markdown-parser/src', 'subpath'),
 

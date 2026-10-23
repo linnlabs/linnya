@@ -108,6 +108,10 @@ Agent 的写法、字段表和示例只在内置 Skill `linnya-markdown` 的 `re
 
 ## 行内强调与引用投影
 
+AI 修改正文不会授予颜色创作能力。未改文字上的用户颜色、高亮由
+[edit-preservation](features/edit-preservation/README.md) 在 Pending 预览与接受时统一保留；
+新增或替换的字素使用默认呈现，不从相邻文字推断强调。字号仍由内容角色决定，题注默认比正文小一级。
+
 current Markdown 投影按连续 mark 范围输出强调，Citation atom 与相邻文本共同参与范围计算。
 来源 projector 只返回 atom 的 canonical 正文 token，不吞掉其 marks；范围内的空白与范围外空白分别保留，
 避免 `**正文 [@ref]**` 在接受 pending 后退化成 `**正文 **[@ref]`。

@@ -10,8 +10,6 @@ type PathManagerModule = typeof import('../../../shared/utils/pathManager');
 const netFetchMock = vi.hoisted(() => vi.fn());
 const protocolHandleMock = vi.hoisted(() => vi.fn());
 const protocolRegisterSchemesAsPrivilegedMock = vi.hoisted(() => vi.fn());
-const readManagedDocumentImageMock = vi.hoisted(() => vi.fn());
-vi.mock('../readManagedDocumentImage', () => ({ readManagedDocumentImage: readManagedDocumentImageMock }));
 
 vi.mock('electron', () => ({
   net: {
@@ -44,6 +42,10 @@ function mediaRequest(url: string, headers?: HeadersInit): Pick<Request, 'url' |
   };
 }
 
+function handleRequest(request: Pick<Request, 'url' | 'headers'>): Promise<Response> {
+  return mediaProtocol.handleMediaProtocolRequest(request, { apiPort: 1, rendererSessionToken: 'test-token' });
+}
+
 async function createTempDir(prefix = 'linnya-media-protocol-'): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   tempDirs.push(dir);
@@ -63,7 +65,6 @@ async function readResponseBody(response: Response): Promise<string> {
 beforeEach(async () => {
   vi.resetModules();
   netFetchMock.mockReset();
-  readManagedDocumentImageMock.mockReset();
   protocolHandleMock.mockReset();
   protocolRegisterSchemesAsPrivilegedMock.mockReset();
 
@@ -106,22 +107,6 @@ afterEach(async () => {
 });
 
 describe('media protocol', () => {
-  it('serves verified owned image bytes by asset identity without turning the identity into a file path', async () => {
-    readManagedDocumentImageMock.mockResolvedValue({ bytes: new Uint8Array([1, 2, 3]), mediaType: 'image/png' });
-    const response = await mediaProtocol.handleMediaProtocolRequest(mediaRequest(buildMediaUrl('asset-image', 'asset-id')));
-    expect(readManagedDocumentImageMock).toHaveBeenCalledExactlyOnceWith('asset-id');
-    expect(response.headers.get('content-type')).toBe('image/png');
-    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
-    expect(netFetchMock).not.toHaveBeenCalled();
-  });
-
-  it('rejects malformed identity and withholds missing or corrupt document assets', async () => {
-    expect((await mediaProtocol.handleMediaProtocolRequest(mediaRequest('media://load/asset-image/!'))).status).toBe(400);
-    expect(readManagedDocumentImageMock).not.toHaveBeenCalled();
-    readManagedDocumentImageMock.mockRejectedValue(new Error('no retained owner or invalid asset'));
-    expect((await mediaProtocol.handleMediaProtocolRequest(mediaRequest(buildMediaUrl('asset-image', 'missing')))).status).toBe(404);
-    expect(netFetchMock).not.toHaveBeenCalled();
-  });
   function conversationGeneratedImagesPath(...segments: string[]): string {
     return path.join(
       pathManager.getConversationWorkDirectoriesPath(),
@@ -153,7 +138,7 @@ describe('media protocol', () => {
       Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x01]),
     );
 
-    const response = await mediaProtocol.handleMediaProtocolRequest(mediaRequest(buildMediaUrl('image', imagePath)));
+    const response = await handleRequest(mediaRequest(buildMediaUrl('image', imagePath)));
     const bytes = new Uint8Array(await response.arrayBuffer());
 
     expect(response.status).toBe(200);
@@ -168,7 +153,7 @@ describe('media protocol', () => {
       Buffer.from([1, 2, 3, 4, 5, 6]),
     );
 
-    const response = await mediaProtocol.handleMediaProtocolRequest(
+    const response = await handleRequest(
       mediaRequest(buildMediaUrl('audio', audioPath), { range: 'bytes=0-3' }),
     );
     const bytes = new Uint8Array(await response.arrayBuffer());
@@ -187,10 +172,10 @@ describe('media protocol', () => {
       Buffer.from([1, 2, 3]),
     );
 
-    const absoluteResponse = await mediaProtocol.handleMediaProtocolRequest(
+    const absoluteResponse = await handleRequest(
       mediaRequest(buildMediaUrl('generated-image', generatedImagePath)),
     );
-    const relativeResponse = await mediaProtocol.handleMediaProtocolRequest(
+    const relativeResponse = await handleRequest(
       mediaRequest(buildMediaUrl('generated-image', 'generated.webp')),
     );
 
@@ -204,7 +189,7 @@ describe('media protocol', () => {
       Buffer.from([1, 2, 3]),
     );
 
-    const response = await mediaProtocol.handleMediaProtocolRequest(
+    const response = await handleRequest(
       mediaRequest(buildMediaUrl('generated-image', legacyImagePath)),
     );
 
@@ -217,7 +202,7 @@ describe('media protocol', () => {
       Buffer.from([0x89, 0x50, 0x4e, 0x47]),
     );
 
-    const response = await mediaProtocol.handleMediaProtocolRequest(
+    const response = await handleRequest(
       mediaRequest(buildMediaUrl('doc-image', 'doc-1/image.png')),
     );
     const bytes = new Uint8Array(await response.arrayBuffer());
@@ -232,10 +217,10 @@ describe('media protocol', () => {
       Buffer.from([1]),
     );
 
-    const absoluteResponse = await mediaProtocol.handleMediaProtocolRequest(
+    const absoluteResponse = await handleRequest(
       mediaRequest(buildMediaUrl('doc-image', generatedPath)),
     );
-    const traversalResponse = await mediaProtocol.handleMediaProtocolRequest(
+    const traversalResponse = await handleRequest(
       mediaRequest(buildMediaUrl('doc-image', '../ConversationWorkDirectories/generated.png')),
     );
 
@@ -246,13 +231,13 @@ describe('media protocol', () => {
   it('denies files outside controlled roots unless they were session-granted', async () => {
     const outsidePath = await writeFile(path.join(await createTempDir(), 'selected.png'), Buffer.from([1]));
 
-    const deniedResponse = await mediaProtocol.handleMediaProtocolRequest(
+    const deniedResponse = await handleRequest(
       mediaRequest(buildMediaUrl('image', outsidePath)),
     );
     expect(deniedResponse.status).toBe(403);
 
     await fileReadGrants.issueReadGrant(outsidePath);
-    const grantedResponse = await mediaProtocol.handleMediaProtocolRequest(
+    const grantedResponse = await handleRequest(
       mediaRequest(buildMediaUrl('image', outsidePath)),
     );
     expect(grantedResponse.status).toBe(200);
@@ -261,7 +246,7 @@ describe('media protocol', () => {
   it('returns 404 for missing files without echoing the path', async () => {
     const missingPath = conversationGeneratedImagesPath('missing.png');
 
-    const response = await mediaProtocol.handleMediaProtocolRequest(mediaRequest(buildMediaUrl('image', missingPath)));
+    const response = await handleRequest(mediaRequest(buildMediaUrl('image', missingPath)));
     const body = await readResponseBody(response);
 
     expect(response.status).toBe(404);
@@ -274,7 +259,7 @@ describe('media protocol', () => {
       'not image',
     );
 
-    const response = await mediaProtocol.handleMediaProtocolRequest(mediaRequest(buildMediaUrl('image', textPath)));
+    const response = await handleRequest(mediaRequest(buildMediaUrl('image', textPath)));
     const body = await readResponseBody(response);
 
     expect(response.status).toBe(403);
@@ -282,7 +267,7 @@ describe('media protocol', () => {
   });
 
   it('rejects malformed base64url path segments as bad requests', async () => {
-    const response = await mediaProtocol.handleMediaProtocolRequest(
+    const response = await handleRequest(
       mediaRequest('media://load/image/not%20base64'),
     );
     const body = await readResponseBody(response);
@@ -296,7 +281,7 @@ describe('media protocol', () => {
     const controlledRoot = pathManager.getConversationWorkDirectoriesPath();
     const traversalPath = `${controlledRoot}${path.sep}${path.relative(controlledRoot, outsidePath)}`;
 
-    const response = await mediaProtocol.handleMediaProtocolRequest(
+    const response = await handleRequest(
       mediaRequest(buildMediaUrl('image', traversalPath)),
     );
 
@@ -306,9 +291,9 @@ describe('media protocol', () => {
   it('keeps all failure response bodies free of internal path details', async () => {
     const outsidePath = await writeFile(path.join(await createTempDir(), 'secret.png'), Buffer.from([1]));
     const responses = await Promise.all([
-      mediaProtocol.handleMediaProtocolRequest(mediaRequest(buildMediaUrl('video', outsidePath))),
-      mediaProtocol.handleMediaProtocolRequest(mediaRequest(buildMediaUrl('image', outsidePath))),
-      mediaProtocol.handleMediaProtocolRequest(mediaRequest('media://load/image/%%%')),
+      handleRequest(mediaRequest(buildMediaUrl('video', outsidePath))),
+      handleRequest(mediaRequest(buildMediaUrl('image', outsidePath))),
+      handleRequest(mediaRequest('media://load/image/%%%')),
     ]);
 
     for (const response of responses) {

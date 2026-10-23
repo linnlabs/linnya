@@ -24,6 +24,9 @@
       "@linnya/citation-domain/markdown-reference": [
         "../../src/domains/citation/markdown-reference.ts"
       ],
+      "@linnya/markdown-domain/editing": [
+        "../../src/domains/markdown/editing.ts"
+      ],
       "@linnya/plugin-host-contract": [
         "../../packages/plugin-host-contract/index.ts"
       ],

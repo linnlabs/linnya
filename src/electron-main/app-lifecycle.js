@@ -232,7 +232,6 @@ export function initialize() {
       });
     }
     registerPluginProtocolHandler();
-    registerMediaProtocolHandler();
     // macOS: 主动请求麦克风权限，并设置权限请求处理器
     if (process.platform === 'darwin') {
       try {
@@ -375,6 +374,7 @@ export function initialize() {
         getPort: () => appServerIdentity.apiPort,
         getToken: () => appServerIdentity.rendererSessionToken,
       });
+      registerMediaProtocolHandler(appServerIdentity);
       logger.info('✅ [APP-LIFECYCLE] STEP 2 (END) | IPC gateways registered.');
     } catch(err) {
       logger.error('❌ [APP-LIFECYCLE] STEP 2 (FAILED) | IPC gateway registration failed:', err);

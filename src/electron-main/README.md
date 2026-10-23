@@ -33,6 +33,8 @@ Electron Main 不负责：
 
 Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也不存在同进程 Backend fallback。
 
+文档受管图片的 `media://load/asset-image/` 也遵守此边界：协议在 App Server ready 后注册，通过当前实例认证的固定 HTTP 端点读取图片；资产归属和内容校验留在 Backend。不能在协议里调用数据库单例。详见 [Markdown 图片资产编排](../app-hosts/linnya/application/markdown-image-assets/README.md)。
+
 ## 修改地图
 
 | 要修改什么 | 第一入口 | 边界 |

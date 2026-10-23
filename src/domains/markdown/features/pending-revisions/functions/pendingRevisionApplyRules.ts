@@ -11,6 +11,8 @@ import type {
   MarkdownRootBlockJson,
   PreparedPendingReplacement,
 } from '../definitions/pendingRevisionApply';
+import { parseMarkdownDocJson, workspaceMarkdownSchemaLite } from '../../normalization/runtime';
+import { preserveInlinePresentation } from '../../edit-preservation';
 
 type RootBlockSlot = MarkdownRootBlockJson | ProseMirrorJsonNode | null;
 
@@ -146,9 +148,14 @@ export function applyAcceptedPendingsToDocument(input: {
     if (!replacement) {
       throw new Error(`[PendingRevisionApplyService] 缺少预解析结果: blockId=${pending.target_block_id}`);
     }
+    const restored = preserveInlinePresentation(
+      workspaceMarkdownSchemaLite.nodeFromJSON(root),
+      workspaceMarkdownSchemaLite.nodeFromJSON(replacement.rootBlock),
+    );
+    const restoredDoc = parseMarkdownDocJson({ type: 'doc', content: [restored.toJSON()] });
     slots[position] = mergeRootBlockAttrs(
       root,
-      replacement.rootBlock,
+      { ...replacement.rootBlock, content: restoredDoc.content[0].content },
       pending.target_block_id
     );
   }

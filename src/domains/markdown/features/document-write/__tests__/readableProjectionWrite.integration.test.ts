@@ -1,4 +1,6 @@
 import Database from 'better-sqlite3';
+import { Transform } from 'prosemirror-transform';
+import { parseMarkdownDocJson, workspaceMarkdownSchemaLite, type MarkdownDocJson } from '../../normalization/runtime';
 import { afterEach, describe, expect, it } from 'vitest';
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema';
 import { ASSET_LEDGER_SCHEMAS } from 'src/domains/assets/features/asset-ledger/infrastructure/sqlite/schemas/assetLedger.schema';
@@ -159,4 +161,101 @@ describe('readable Markdown projection create → pending → accept → current
     expect(store.getPendingRevisions('doc')).toEqual([]);
   });
 
+});
+
+function colorText(document: MarkdownDocJson, words: readonly string[]): MarkdownDocJson {
+  const tr = new Transform(workspaceMarkdownSchemaLite.nodeFromJSON(document));
+  tr.doc.descendants((node, position) => {
+    if (!node.isText || !node.text) return;
+    for (const word of words) {
+      const index = node.text.indexOf(word);
+      if (index < 0) continue;
+      for (const [type, color] of [['textColor', 'red_text'], ['textHighlight', 'bright_yellow']]) {
+        tr.addMark(position + index, position + index + word.length, tr.doc.type.schema.marks[type].create({ color }));
+      }
+    }
+  });
+  return parseMarkdownDocJson(tr.doc.toJSON());
+}
+
+function coloredText(document: MarkdownDocJson): string[] {
+  const texts: string[] = [];
+  workspaceMarkdownSchemaLite.nodeFromJSON(document).descendants(node => {
+    if (node.isText && node.marks.some(mark => mark.type.name === 'textColor')) {
+      expect(node.marks.find(mark => mark.type.name === 'textColor')?.attrs.color).toBe('red_text');
+      expect(node.marks.find(mark => mark.type.name === 'textHighlight')?.attrs.color).toBe('bright_yellow');
+      texts.push(node.text ?? '');
+    }
+  });
+  return texts;
+}
+
+it.each([
+  { before: '重点和原句。', after: '重点和改写后的句子。', words: ['重点'], styled: ['重点'] },
+  { before: '重点和原句。', after: '**重点**和原句。', words: ['重点'], styled: ['重点'] },
+  { before: '重点和原句。', after: '`重点`和原句。', words: ['重点'], styled: [] },
+  { before: '重点。', after: '新增重点补充。', words: ['重点'], styled: ['重点'] },
+  { before: '重点。', after: '重中之重。', words: ['重点'], styled: ['重'] },
+  { before: '😀和重点。', after: '😁与重点。', words: ['😀', '重点'], styled: ['重点'] },
+  { before: '👩‍💻与重点。', after: '👩‍🔬和重点。', words: ['👩‍💻', '重点'], styled: ['重点'] },
+  { before: '旧词。', after: '新增。', words: ['旧词'], styled: [] },
+  { before: '| 名称 | 数值 |\n| --- | --- |\n| 重点 | 10 |\n| 次要 | 20 |',
+    after: '| 名称 | 数值 |\n| --- | --- |\n| 新增 | 5 |\n| 重点 | 12 |\n| 次要 | 20 |', words: ['重点'], styled: ['重点'] },
+])('file write → Pending → 接受 → 读回保留原文呈现：$after', async ({ before, after, words, styled }) => {
+  const { store, normalizer, read, write } = setup();
+  const created = await buildMarkdownDocumentFromText({ markdown: before, normalizer, resolveCitationSources: async () => [] });
+  store.createDocument('doc', colorText(parseMarkdownDocJson(created.content), words));
+  const original = store.getDocument('doc');
+  expect((await write(read()?.text ?? '')).edits).toEqual([]);
+  await write(after);
+  // Pending 期间基线没有被偷偷覆盖；多次更新提议始终从当前真实基线恢复样式。
+  expect(store.getDocument('doc')).toEqual(original);
+  const accept = new PendingRevisionApplyService(store);
+  await accept.commitEditorRevision({ documentId: 'doc', expectedVersionNumber: store.getLatestVersion('doc')!.version_number,
+    expectedPending: store.getPendingRevisions('doc').map(({ id, revision }) => ({ id, revision })),
+    baseline: original, decision: { mode: 'accept' } });
+  expect(coloredText(store.getDocument('doc'))).toEqual(styled);
+  expect(store.getPendingRevisions('doc')).toEqual([]);
+  expect((await write(read()?.text ?? '')).edits).toEqual([]);
+});
+
+it('取消、拒绝和继续修改 Pending 不丢失或复活已删除的呈现', async () => {
+  const { store, normalizer, read, write } = setup();
+  const created = await buildMarkdownDocumentFromText({ markdown: '重点和原句。', normalizer, resolveCitationSources: async () => [] });
+  store.createDocument('doc', colorText(parseMarkdownDocJson(created.content), ['重点']));
+  const original = store.getDocument('doc');
+  const current = read()?.text ?? '';
+  await write('重点和改句。');
+  await write(current);
+  expect(store.getPendingRevisions('doc')).toEqual([]);
+  expect(store.getDocument('doc')).toEqual(original);
+  await write('重点和又一次改句。');
+  const apply = new PendingRevisionApplyService(store);
+  const request = () => ({ documentId: 'doc', expectedVersionNumber: store.getLatestVersion('doc')!.version_number,
+    expectedPending: store.getPendingRevisions('doc').map(({ id, revision }) => ({ id, revision })), baseline: store.getDocument('doc') });
+  await apply.commitEditorRevision({ ...request(), decision: { mode: 'reject' } });
+  expect(store.getDocument('doc')).toEqual(original);
+  await write('重点和改句。');
+  await write('普通的新内容。');
+  await apply.commitEditorRevision({ ...request(), decision: { mode: 'accept' } });
+  expect(coloredText(store.getDocument('doc'))).toEqual([]);
+});
+
+it('未变行内公式按语义保留呈现，换掉公式后不迁移颜色，也不把新节点 ID 当作改写', async () => {
+  const { store, normalizer, write } = setup();
+  const created = await buildMarkdownDocumentFromText({ markdown: '$x$ 与原句。', normalizer, resolveCitationSources: async () => [] });
+  const content = parseMarkdownDocJson(created.content);
+  const formula = content.content[0].content?.[0]?.content?.find(node => node.type === 'inlineLatex');
+  if (!formula) throw new Error('Missing formula');
+  formula.marks = [{ type: 'textColor', attrs: { color: 'red_text' } }];
+  store.createDocument('doc', content);
+  const apply = new PendingRevisionApplyService(store);
+  for (const [markdown, preserved] of [['$x$ 与改句。', true], ['$y$ 与再改句。', false]] as const) {
+    await write(markdown);
+    const result = await apply.commitEditorRevision({ documentId: 'doc', expectedVersionNumber: store.getLatestVersion('doc')!.version_number,
+      expectedPending: store.getPendingRevisions('doc').map(({ id, revision }) => ({ id, revision })),
+      baseline: store.getDocument('doc'), decision: { mode: 'accept' } });
+    expect(result.content.content[0].content?.[0]?.content?.find(node => node.type === 'inlineLatex')?.marks?.some(mark => mark.type === 'textColor') ?? false)
+      .toBe(preserved);
+  }
 });

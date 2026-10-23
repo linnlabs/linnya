@@ -22,6 +22,12 @@ Revision 展示 Markdown 数据库中的待处理修改，提供块级、行内�
 
 投影账本保存每个块的原始节点及投影后节点，同时记录表格修订产生的临时历史块。保存从账本还原基线，再提取用户后续编辑；不能只删除 revisionMark，因为表格及块类型转换本身也改变了结构。投影失败保留原始基线，并明确标记失败。
 
+登记账本之前，通过 Markdown 的浏览器安全公开入口 `@linnya/markdown-domain/editing` 恢复未改文字的颜色和高亮，
+与 Backend 接受复用同一规则。它只修改 marks，不改变位置或 Pending 身份；删除片段保留原样，新增／替换字素不推断呈现。
+这不是新的 Markdown 颜色语法。完整边界见 [编辑保真](../../../../../../src/domains/markdown/features/edit-preservation/README.md)。
+
+富文本 diff 的比较单元与编辑器位置必须分开：比较按 Unicode 字符及原子节点，片段的 `documentSize` 按 ProseMirror 规则计量（文字使用 UTF-16 长度，公式／引用等原子节点为 1）。不能拿比较单元数量移动选区或修改范围，否则 emoji 后方的修订会错位。
+
 Markdown 解析和物化继续复用 [markdownRuntime](../../services/markdownRuntime/README.md)。Revision 不维护另一套 Markdown 解释器。全文文件写入的 Pending metadata 可携带 `listSeparatorBefore`，用于恢复列表项之间的紧凑/松散间隔；单块 Markdown 本身不含前一项，解析时不得据此猜成松散列表。单项、批次及插入投影都把该事实传给统一 resolver，接受后的正文由后端同一合同确认。现有表格整块替换与历史视图属于显示策略，不改变数据库事务语义。
 
 ## 图表块的 Pending

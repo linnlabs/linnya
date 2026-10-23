@@ -20,6 +20,23 @@
   margin: 0;
   user-select: text;
 }
+/* 原位编辑沿用内容排版；两态预留相同边框与内边距，避免聚焦改变折行和块高度。 */
+.figure-caption-field__text,
+.figure-caption-field .figure-caption-field__input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--control-height-sm);
+  padding: calc(var(--space-0-5) - var(--border-width-hairline))
+    calc(var(--space-2) - var(--border-width-hairline));
+  border: var(--border-width-hairline) solid transparent;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font: inherit;
+  color: inherit;
+  white-space: pre-wrap;
+  text-wrap: wrap;
+  overflow-wrap: anywhere;
+}
 .figure-caption-field.is-editable .figure-caption-field__text {
   cursor: text;
 }
@@ -30,10 +47,10 @@
   outline: var(--border-width-hairline) solid var(--color-focus-ring);
 }
 .figure-caption-field .figure-caption-field__input {
-  text-align: center;
-  font: inherit;
-  color: inherit;
-  border-bottom: var(--border-width-hairline) solid var(--color-border-focus);
+  /* 使用 Desktop Chromium 的内容尺寸能力；输入与宽度变化都由浏览器排版，不继承表单多行框高度。 */
+  field-sizing: content;
+  /* 阅读态已有悬停底色；替换节点时不能从透明重新淡入，否则会先闪回页面底色。 */
+  transition: border-color var(--duration-micro);
 }
 .figure-caption-field__error {
   color: var(--color-error-text);

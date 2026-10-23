@@ -12,6 +12,7 @@ import {
   type MarkdownImporter,
 } from 'src/domains/markdown';
 import type { MarkdownDocJson, ProseMirrorJsonNode } from 'src/domains/markdown';
+import { PendingRevisionsService } from '../../persistence';
 
 function rootBlock(
   id: string,
@@ -370,9 +371,13 @@ describe('PendingRevisionApplyService', () => {
     const blocks = Array.from({ length: 1000 }, (_, index) =>
       rootBlock(`b${index}`, `old ${index}`)
     );
-    const { markdownService, applyService, documentId } = setup(doc(blocks));
+    const { db, markdownService, applyService, documentId } = setup(doc(blocks));
+    // 本例验证一次性接受真实 SQLite 中的千条 Pending；准备数据不重复执行千次全文块存在校验。
+    // 单条写入仍由其余业务用例覆盖，接受入口和默认超时保持不变。
+    const pendingStore = new PendingRevisionsService(db);
     for (let index = 0; index < 1000; index += 1) {
-      pending(markdownService, documentId, `b${index}`, `new ${index}`, 'update');
+      pendingStore.setPendingRevision({ documentId, blockId: `b${index}`, newMarkdown: `new ${index}`,
+        source: 'tool', meta: { operation: 'update' } });
     }
 
     const result = await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } });

@@ -11,7 +11,6 @@
       ref="input"
       v-model="draft"
       :rows="1"
-      auto-grow
       :bordered="false"
       control-class="figure-caption-field__input"
       :aria-label="label"

@@ -12,7 +12,8 @@ import { mapWorkspacePendingToProjection } from '../functions/projectPendingSnap
 import { findRootBlockPosById } from '../utils/pending/pendingRevisionHelpers';
 import { getFlag } from '../../../ui/services/editorFeatureFlags';
 import { markdownSerializer } from '../../../services/markdownConversion';
-import { markCitationDerivationTransaction } from '../../../core/transactions/editorTransactionMeta';
+import { markCitationDerivationTransaction, markPendingRevisionProjectionTransaction } from '../../../core/transactions/editorTransactionMeta';
+import { restorePendingPresentation } from '../functions/restorePendingPresentation';
 import { pendingListMayAffectCitationDerivation } from '../store/workspacePendingCitation';
 
 /** 装载、显示与用户动作的编排门面；数据库提交能力由文档会话绑定。 */
@@ -52,6 +53,9 @@ export function createRevisionRuntime(editor: Editor): RevisionStore {
         failed = dtos.length;
         console.error('[RevisionProjection] 投影失败，保留数据库快照与原始基线', { blocks: dtos.map(dto => dto.blockId), error });
       }
+      const presentation = editor.state.tr;
+      restorePendingPresentation(presentation, before);
+      if (presentation.docChanged) editor.view.dispatch(markPendingRevisionProjectionTransaction(presentation));
       editor.state.doc.forEach(node => {
         if (typeof node.attrs.id === 'string' && !beforeIds.has(node.attrs.id)) state.projectionOnlyRoots.set(node.attrs.id, node);
       });

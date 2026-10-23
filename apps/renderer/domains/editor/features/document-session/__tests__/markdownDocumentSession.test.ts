@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { stripRevisionProjection } from '../../Revision/functions/revisionProjectionBaseline';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { Node, type JSONContent } from '@tiptap/core';
+import { Mark, Node, type JSONContent } from '@tiptap/core';
 import { Editor } from '@tiptap/vue-3';
 import { loadDocumentJsonAtomically } from '../../../services/editorDocumentStateLoader';
 import { createRenderVirtualizationPlugin, getRenderVirtualizationState, prepareInitialRenderVirtualizationState } from '../../RenderVirtualization/state/renderVirtualizationPlugin';
@@ -23,6 +23,10 @@ vi.mock('../../../services/markdownRuntime/parser', async () => {
   const { parseMarkdownToBlocksInNode } = await import('src/domains/markdown/features/normalization');
   return { parseMarkdownToBlockEvents: parseMarkdownToBlocksInNode };
 });
+const presentationMarks = ['textColor', 'textHighlight'].map(name => Mark.create({ name,
+  addAttributes: () => ({ color: { default: null } }),
+  parseHTML: () => [{ tag: 'span' }], renderHTML: ({ HTMLAttributes }) => ['span', HTMLAttributes, 0] }));
+const Bold = Mark.create({ name: 'bold', parseHTML: () => [{ tag: 'strong' }], renderHTML: () => ['strong', 0] });
 const Root = Node.create({ name: 'rootBlock', group: 'block', content: '(baseBlock|table)',
   addAttributes: () => ({ id: { default: null }, annotations: { default: [] } }),
   parseHTML: () => [{ tag: 'section' }], renderHTML: ({ HTMLAttributes }) => ['section', HTMLAttributes, 0] });
@@ -48,7 +52,7 @@ function snapshot(texts: string[], revisions = pending('suggestion'), versionNum
 }
 const editors: Editor[] = [];
 function createEditor() {
-  const editor = new Editor({ extensions: [Document.extend({ content: 'rootBlock+' }), Root, Base, Text, RevisionMark, ...tableNodes], content: doc(['initial']) });
+  const editor = new Editor({ extensions: [Document.extend({ content: 'rootBlock+' }), Root, Base, Text, Bold, ...presentationMarks, RevisionMark, ...tableNodes], content: doc(['initial']) });
   editors.push(editor); return editor;
 }
 async function open(editor: Editor, data: MarkdownRevisionSnapshot, documentId = 'doc-a') {
@@ -259,4 +263,103 @@ it('刷新和提交复用首开的虚拟化安装策略，大文档不会在新�
   const virtual = getRenderVirtualizationState(editor.state);
   expect(virtual?.enabled).toBe(true);
   expect(virtual?.hydratedSet.size).toBe(8);
+});
+
+function styledSnapshot(markdown: string): MarkdownRevisionSnapshot {
+  const data = snapshot(['重点和原句。'], pending(markdown));
+  const content = doc(['重点和原句。']);
+  const paragraph = content.content?.[0]?.content?.[0];
+  if (!paragraph) throw new Error('Missing fixture paragraph');
+  paragraph.content = [
+    { type: 'text', text: '重点', marks: [
+      { type: 'textColor', attrs: { color: 'red_text' } },
+      { type: 'textHighlight', attrs: { color: 'bright_yellow' } },
+    ] },
+    { type: 'text', text: '和原句。' },
+  ];
+  return { ...data, content };
+}
+
+it('真实 Pending 投影和刷新保留颜色高亮，格式修订不把颜色当作 AI 的删改意图', async () => {
+  const editor = createEditor();
+  const original = styledSnapshot('**重点**和改句。');
+  await open(editor, original);
+  const assertPresentation = () => {
+    const preview = stripRevisionProjection(editor.state.doc.child(0), 'preview');
+    const first = preview?.child(0).child(0);
+    expect(first?.text).toBe('重点');
+    expect(first?.marks.map(mark => mark.type.name)).toEqual(expect.arrayContaining(['bold', 'textColor', 'textHighlight']));
+    expect(first?.marks.find(mark => mark.type.name === 'textColor')?.attrs.color).toBe('red_text');
+    expect(first?.marks.find(mark => mark.type.name === 'textHighlight')?.attrs.color).toBe('bright_yellow');
+    expect(useRevisionStore(editor).readBaseline().toJSON()).toEqual(editor.schema.nodeFromJSON(original.content).toJSON());
+  };
+  assertPresentation();
+  mocks.read.mockResolvedValueOnce({ success: true, data: original });
+  await refreshMarkdownDocumentSession(editor, 'doc-a');
+  assertPresentation();
+});
+
+it.each(['accept', 'reject'] as const)('行内部分 %s 提交与重新投影保留未改文字的颜色高亮', async action => {
+  const editor = createEditor();
+  await open(editor, styledSnapshot('重点和原句。第一处新增。第二处新增。'));
+  let target: { from: number; to: number } | undefined;
+  editor.state.doc.descendants((node, position) => {
+    if (node.isText && node.marks.some(mark => mark.type.name === 'revisionMark' && mark.attrs.changeType === 'insert')) {
+      target = { from: position, to: position + '第一处新增。'.length };
+    }
+  });
+  if (!target) throw new Error('Missing projected insertion');
+  mocks.commit.mockImplementationOnce(async (request: MarkdownRevisionCommit) => ({ success: true, data: {
+    content: request.baseline, versionNumber: 2,
+    pendingRevisions: request.decision?.mode === 'resolve' && request.decision.remainingMarkdown !== null
+      ? pending(request.decision.remainingMarkdown, 1, 2) : [],
+  } }));
+  const revision = useRevisionStore(editor);
+  await (action === 'accept' ? revision.acceptSingleRevision('b0', target.from, target.to)
+    : revision.rejectSingleRevision('b0', target.from, target.to));
+  const baseline = revision.readBaseline();
+  expect(baseline.child(0).child(0).child(0).marks.map(mark => mark.type.name)).toEqual(expect.arrayContaining(['textColor', 'textHighlight']));
+  expect(baseline.textContent).toBe(action === 'accept' ? '重点和原句。第一处新增。' : '重点和原句。');
+  expect(stripRevisionProjection(editor.state.doc.child(0), 'preview')?.child(0).child(0).marks.map(mark => mark.type.name))
+    .toEqual(expect.arrayContaining(['textColor', 'textHighlight']));
+});
+
+it('表格插行与改值后的 Pending 预览保留原单元格标注，历史投影不影响保存基线', async () => {
+  const { importMarkdownToDocJson } = await import('src/domains/markdown/features/normalization');
+  const imported = await importMarkdownToDocJson('| 名称 | 数值 |\n| --- | --- |\n| 重点 | 10 |\n| 次要 | 20 |');
+  const editor = createEditor();
+  const parsed = editor.schema.nodeFromJSON(imported.docJson);
+  const oldRoot = parsed.child(0);
+  const root = oldRoot.type.create({ ...oldRoot.attrs, id: 'b0' }, oldRoot.content);
+  const initial = editor.schema.nodes.doc.create(null, root);
+  const tr = editor.state.tr.replaceWith(0, editor.state.doc.content.size, initial.content);
+  tr.doc.descendants((node, position) => {
+    if (node.text === '重点') {
+      tr.addMark(position, position + node.nodeSize, editor.schema.marks.textColor.create({ color: 'red_text' }));
+      tr.addMark(position, position + node.nodeSize, editor.schema.marks.textHighlight.create({ color: 'bright_yellow' }));
+    }
+  });
+  const baseline = tr.doc;
+  await open(editor, { content: baseline.toJSON(), versionNumber: 1,
+    pendingRevisions: pending('| 名称 | 数值 |\n| --- | --- |\n| 新增 | 5 |\n| 重点 | 12 |\n| 次要 | 20 |') });
+  const revision = useRevisionStore(editor);
+  let styled = '';
+  editor.state.doc.forEach(node => {
+    if (node.attrs.id !== 'b0') return;
+    node.descendants(child => { if (child.marks.some(mark => mark.type.name === 'textColor')) styled += child.text ?? ''; });
+  });
+  expect(styled).toBe('重点');
+  expect(revision.readBaseline().eq(baseline)).toBe(true);
+});
+
+it('跨 Revision 节点的 emoji 仍按完整字素判定，不保留改写后的半个高亮', async () => {
+  const editor = createEditor();
+  const content = doc(['👩‍💻']);
+  const text = content.content?.[0]?.content?.[0]?.content?.[0];
+  if (!text) throw new Error('Missing fixture text');
+  text.marks = [{ type: 'textHighlight', attrs: { color: 'bright_yellow' } }];
+  await open(editor, { content, versionNumber: 1, pendingRevisions: pending('👩‍🔬') });
+  const preview = stripRevisionProjection(editor.state.doc.child(0), 'preview');
+  expect(preview?.textContent).toBe('👩‍🔬');
+  preview?.descendants(node => expect(node.marks.some(mark => mark.type.name === 'textHighlight')).toBe(false));
 });

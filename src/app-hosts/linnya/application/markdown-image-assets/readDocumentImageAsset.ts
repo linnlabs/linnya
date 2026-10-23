@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
-import type { WorkspaceVerifiedImageLoaderPort } from 'src/features/workspace/assets/shared/verified-image';
+import { WorkspaceVerifiedImageError, type WorkspaceVerifiedImageLoaderPort } from 'src/features/workspace/assets/shared/verified-image';
+import { WorkspaceImagePreviewError } from 'src/features/workspace/assets/features/image-preview';
 
 /** Renderer 只能显示已被文档持有的资产；路径解析、真实内容与哈希由既有 loader 验证。 */
 export async function readDocumentImageAsset(input: {
@@ -13,8 +14,13 @@ export async function readDocumentImageAsset(input: {
       { found: number }
     >('SELECT 1 AS found FROM document_asset_links WHERE asset_id = ? LIMIT 1')
     .get(input.assetId);
-  if (!owner) throw new Error('Document image asset has no retained owner.');
-  const [image] = await input.loader.loadImages([{ assetId: input.assetId }]);
-  if (!image) throw new Error('Document image loader returned no image.');
-  return image;
+  if (!owner) throw new WorkspaceImagePreviewError('asset_unavailable');
+  try {
+    const [image] = await input.loader.loadImages([{ assetId: input.assetId }]);
+    if (!image) throw new Error('Document image loader returned no image.');
+    return image;
+  } catch (error) {
+    if (!(error instanceof WorkspaceVerifiedImageError)) throw error;
+    throw new WorkspaceImagePreviewError(error.code === 'unavailable' ? 'asset_unavailable' : 'asset_integrity_failed');
+  }
 }

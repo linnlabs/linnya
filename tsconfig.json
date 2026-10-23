@@ -3,6 +3,7 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
+      "@linnya/markdown-domain/editing": ["src/domains/markdown/editing.ts"],
       "@shared/*": [
         "src/shared/*",
         "apps/renderer/shared/*"

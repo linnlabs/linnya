@@ -6,3 +6,4 @@ export {
   createMarkdownDocumentStore,
   bindMarkdownDocumentImageOwnership,
 } from './createMarkdownDocumentStore';
+export { readDocumentImageAsset } from './readDocumentImageAsset';

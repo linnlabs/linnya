@@ -6,7 +6,7 @@ export {
 } from './importMarkdownToDocJson';
 export { assertMarkdownDocumentBlockIdentities } from './functions/assertMarkdownDocumentBlockIdentities';
 export { parseMarkdownDocJson } from './functions/parseMarkdownDocJson';
-export { validateMarkdownDocJson } from './schemaLite';
+export { validateMarkdownDocJson, workspaceMarkdownSchemaLite } from './schemaLite';
 export {
   attachCitationNodesToDocJson,
   type CitationNodeHydrationData,

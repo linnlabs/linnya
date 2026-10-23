@@ -1,4 +1,4 @@
-import { bindMarkdownDocumentImageOwnership } from 'src/app-hosts/linnya/application/markdown-image-assets';
+import { bindMarkdownDocumentImageOwnership, readDocumentImageAsset } from 'src/app-hosts/linnya/application/markdown-image-assets';
 import type { CommandApprovalControlEndpointPort } from 'src/domains/commands';
 import { createProviderModelDiscovery } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
 import { createProviderModelDiscoveryUseCase } from 'src/app-hosts/linnya/application/provider-model-discovery';
@@ -503,6 +503,7 @@ export async function configureRoutes(
   let historyService: HistoryService | null = null;
   let imageIngress: ConversationImageIngressPort | null = null;
   let imagePreview: WorkspaceImagePreviewPort | null = null;
+  let documentImagePreview: WorkspaceImagePreviewPort | null = null;
   let commandProductionScope: CommandProductionScope | null = null;
   let sandboxProductionScope: SandboxProductionScope | null = null;
   let storageSpaceUseCase: StorageSpaceUseCasePort | null = null;
@@ -544,6 +545,7 @@ export async function configureRoutes(
       maxImagePixels: LINNYA_FLOW_IMAGE_INGRESS_POLICY.maxImagePixels,
     });
     imagePreview = createWorkspaceImagePreview({ verifiedImageLoader });
+    documentImagePreview = { readImage: assetId => readDocumentImageAsset({ db, loader: verifiedImageLoader, assetId }) };
     const llmInputMaterializer = createWorkspaceLlmInputMaterializer({
       profileRegistry: defaultImageInputProcessingProfileRegistry,
       workspaceResolver: createWorkspaceLlmImageResolver({
@@ -897,6 +899,7 @@ export async function configureRoutes(
     flowOrchestrator &&
     imageIngress &&
     imagePreview &&
+    documentImagePreview &&
     commandProductionScope &&
     sandboxProductionScope &&
     storageSpaceUseCase &&
@@ -913,6 +916,7 @@ export async function configureRoutes(
         }),
         conversationImagePreview: createWorkspaceImagePreviewRouter({ imagePreview }),
         workspaceImagePreview: createWorkspaceImagePreviewRouter({ imagePreview }),
+        documentImagePreview: createWorkspaceImagePreviewRouter({ imagePreview: documentImagePreview }),
         clientNotices: createConversationClientNoticeRouter(createSqliteClientNoticeAdmission({
           db,
           project: fact => new SqliteUiProjectionApplier(db).projectClientNotice(fact),
@@ -933,6 +937,7 @@ export async function configureRoutes(
     app.use('/api/v1/conversation', preparedRoutes.attachments);
     app.use('/api/v1/conversation', preparedRoutes.conversationImagePreview);
     app.use('/api/v1/workspace', preparedRoutes.workspaceImagePreview);
+    app.use('/api/v1/markdown', preparedRoutes.documentImagePreview);
     app.use('/api/v1/conversation', preparedRoutes.clientNotices);
     app.use('/api/v1/conversation', preparedRoutes.history);
     app.use('/api/v1/conversation', preparedRoutes.flow);
@@ -1018,6 +1023,7 @@ export function getRouteSummary(
         'DELETE /api/v1/conversation/attachments/images/:draftId',
         'GET /api/v1/conversation/assets/images/:assetId/content',
         'GET /api/v1/workspace/assets/images/:assetId/content',
+        'GET /api/v1/markdown/assets/images/:assetId/content',
         'GET /api/v1/storage-space/overview',
         'DELETE /api/v1/storage-space/conversations/:conversationId/work-directory',
         'POST /api/v1/conversation/next (统一端点，支持 Chat 和 Agent 模式)',

@@ -254,7 +254,7 @@ describe('Markdown image lifecycle through Host providers', () => {
     await fs.writeFile(asset.local_path, 'corrupt bytes');
     await expect(readDocumentImageAsset({ db, loader, assetId })).rejects.toThrow();
     await expect(readDocumentImageAsset({ db, loader, assetId: 'unknown' })).rejects.toThrow(
-      'no retained owner'
+      'asset_unavailable'
     );
   });
 
