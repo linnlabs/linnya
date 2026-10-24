@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   ConversationControlAcceptedReceiptSchema,
   CommandApprovalPendingProjectionV1Schema,
-  ConversationUiMessageSchema,
+  type ConversationUiMessage,
   WorkspaceDocumentCitationSourceSchema,
 } from '@app/schemas';
 import type {
@@ -124,8 +124,8 @@ export const ResearchManifestSchema = z
 export type ResearchManifest = z.infer<typeof ResearchManifestSchema>;
 export type ResearchStage = z.infer<typeof ResearchStageSchema>;
 export type StageId = z.infer<typeof StageIdSchema>;
-export const ToolMessageSchema = ConversationUiMessageSchema.options[2];
-export type ResearchToolMessage = z.infer<typeof ToolMessageSchema>;
+// 消息联合可能增加新成员；按业务判别字段取工具卡，不能依赖数组位置。
+export type ResearchToolMessage = Extract<ConversationUiMessage, { message_type: 'tool_calls' }>;
 
 export interface ResearchWorkflowCliPort extends BenchmarkConversationCliPort {
   status(

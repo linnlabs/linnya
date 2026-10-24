@@ -79,8 +79,8 @@ watch 的观察超时不会停止后端；自然完成验证仍应记录平台�
 
 ### 受控研究 Agent 工程入口
 
-`research_v1` 是前端“研究”与 CLI 共用的主研究 Agent 入口；Default 与正式 Skill
-1.4 不变。主 Agent 持续调查并亲自提交调查记录、初稿和一次修订；通过统一
+`research_v1` 是前端“研究”与 CLI 共用的主研究 Agent 入口；角色与研究 Skill 独立演进，当前内置版本以
+[Skill metadata](../../src/features/skills/builtin/skills/deep-research/SKILL.md) 为准，实验另冻结实际加载正文。主 Agent 持续调查并亲自提交调查记录、初稿和一次修订；通过统一
 `subagent`
 委派有边界的专项调查、可选写前复核，以及两份必需的独立后审。正式提交分别保存为 Workspace
 Markdown；当前委派串行执行。接纳、产物绑定、取消和恢复合同见

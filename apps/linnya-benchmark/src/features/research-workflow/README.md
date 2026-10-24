@@ -67,6 +67,10 @@ Conversation，避免引用别名跨会话漂移；Citation 快照排除展示 i
 / web_read / tool_output_read 和 Shell/Process execution
 observation：搜索摘要、metadata-only、正文、续读范围、失败与未知合同分别保存。深搜子运行的「已读」说明不会变成父运行全文；Shell/Process实际返回单列为命令观察，不能自动认证为外部来源；未返回的下载文件或 child 正文不被自动认定为已取得来源。
 
+工具卡类型按正式消息联合的 `message_type=tool_calls` 提取，不依赖 schema 成员的排列；新增 thought 等消息类型不能改变已有工具交接类型。
+
+文件回执若 `charCount=0`，记作 `file_acquisition`，保留 URL、取得时间、大小、hash 和会话相对路径；它不是网页/PDF 正文。CSV 同时返回解码文本时仍记 `page_content` 并保留文件身份。Shell/Process 的解析观察独立记录，不将仅下载提升为已读。旧实验的原件与 hash 不追溯改写；重算取证深度时应按原始 Web 合同区分文件回执与正文，不能直接沿用旧 `page_content` 标签。
+
 **取得记录不等于可交接资料。** `tool_output_read`
 也可能续读评审、笔记或 Skill，不能因工具名就收入来源包。目前 CLI 消息不携带通用 blob
 producer

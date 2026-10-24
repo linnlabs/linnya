@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { WebAcquiredFileSchema, WebReadResultSchema } from '@app/schemas';
 import {
   ResearchManifestSchema,
   WorkflowStateSchema,
@@ -64,6 +65,86 @@ function command(name = 'shell') {
 }
 afterEach(cleanupFixtures);
 describe('research source handoff provenance', () => {
+  it('hands off downloaded file identity separately from page text and later parse observations', () => {
+    const records = collectSourceRecords(
+      ['pdf', 'xlsx', 'csv', 'html', 'metadata']
+        .map((format, index) => {
+          const url = `https://example.org/source.${format}`;
+          const binary = format === 'pdf' || format === 'xlsx';
+          const file = ['pdf', 'xlsx', 'csv'].includes(format)
+            ? WebAcquiredFileSchema.parse({
+                path: `web-downloads/${'a'.repeat(64)}.${format}`,
+                format,
+                mimeType:
+                  format === 'pdf'
+                    ? 'application/pdf'
+                    : format === 'csv'
+                      ? 'text/csv'
+                      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                byteLength: 128,
+                sha256: 'a'.repeat(64),
+                requestedUrl: url,
+                finalUrl: url,
+                acquiredAt: '2026-01-01T00:00:00.000Z',
+                trust: 'untrusted_external_file',
+              })
+            : undefined;
+          const observation = binary ? '文件已取得，正文未解析' : '本次实际返回的正文或元数据';
+          const result = WebReadResultSchema.parse({
+            observation,
+            data: {
+              url,
+              title: format,
+              charCount: binary || format === 'metadata' ? 0 : observation.length,
+              truncated: false,
+              provider: 'fixture',
+              renderMode: 'http',
+              extractor: binary ? 'file_download' : 'text',
+              renderAttempted: false,
+              escalated: false,
+              ...(format === 'metadata' ? { warnings: ['metadata_only'] } : {}),
+              ...(file ? { file } : {}),
+              citations: {
+                query: url,
+                searchMode: 'web',
+                citations: [
+                  {
+                    sourceType: 'web',
+                  ref: 'AbC234',
+                    index: 1,
+                    url,
+                    docTitle: format,
+                    snippet: observation,
+                  },
+                ],
+              },
+              evidence_store: { bundle_id: `bundle-${index}` },
+              cacheStatus: 'miss',
+            },
+          });
+          return tool('web_read', result.data, result.observation, { url }, index + 1);
+        })
+        .concat(command())
+    );
+    expect(records.map(record => record.kind)).toEqual([
+      'file_acquisition',
+      'file_acquisition',
+      'page_content',
+      'page_content',
+      'metadata_only',
+      'execution_observation',
+    ]);
+    expect(records[0]?.acquiredFile).toMatchObject({ format: 'pdf', sha256: 'a'.repeat(64) });
+    expect(records[1]?.limitation).toContain('不含解析正文');
+    expect(records[2]?.acquiredFile?.format).toBe('csv');
+    const published = renderSourcePacket(records, {
+      prefix: 'workspace:/S',
+      index: 'workspace:/S-index.md',
+    });
+    expect(published.at(-1)?.content).toContain('file_acquisition');
+    expect(published[0]?.content).toContain('不含解析正文');
+    expect(published[0]?.content).toContain('untrusted_external_file');
+  });
   it('preserves review continuations in audit while publishing only bound command windows', async () => {
     const options = await fixture();
     const manifest = ResearchManifestSchema.parse(

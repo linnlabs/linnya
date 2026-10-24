@@ -3,6 +3,7 @@ import {
   WebReadResultSchema,
   WebSearchResultSchema,
   type ConversationUiMessage,
+  type WebAcquiredFile,
 } from '@app/schemas';
 import {
   ShellToolResultDataSchema,
@@ -20,6 +21,7 @@ export interface SourceRecord {
   kind:
     | 'page_content'
     | 'metadata_only'
+    | 'file_acquisition'
     | 'search_snippet'
     | 'read_failure'
     | 'continuation'
@@ -34,6 +36,7 @@ export interface SourceRecord {
   continuationOrigin?: { messageId: string; callId: string; tool: string; blobId: string };
   returnedRange?: { start: number; end: number; total: number };
   ownerTruncated?: boolean;
+  acquiredFile?: WebAcquiredFile;
   outerTruncationObserved: boolean;
   execution?: {
     command?: string;
@@ -107,14 +110,23 @@ export function collectSourceRecords(messages: readonly ConversationUiMessage[])
           : undefined;
     if (read?.success) {
       const data = read.data.data;
+      // 文件身份与正文取得是两个事实；CSV 可同时取得原文件与解码正文。
+      const fileOnly = data.file !== undefined && data.charCount === 0;
       records.push({
         ...common,
-        kind: data.warnings?.includes('metadata_only') ? 'metadata_only' : 'page_content',
+        kind: fileOnly
+          ? 'file_acquisition'
+          : data.warnings?.includes('metadata_only')
+            ? 'metadata_only'
+            : 'page_content',
         url: data.url,
         ref: data.citations.citations[0].ref,
         bundleId: data.evidence_store.bundle_id,
         ownerTruncated: data.truncated,
-        limitation: `正文owner截断=${data.truncated}; warnings=${JSON.stringify(data.warnings ?? [])}; 本记录只证明返回片段，不证明理解或支持结论`,
+        ...(data.file ? { acquiredFile: data.file } : {}),
+        limitation: fileOnly
+          ? '仅取得原文件身份与字节，不含解析正文；后续 Shell/Process 解析按其实际返回另记，不自动升级本记录'
+          : `正文owner截断=${data.truncated}; warnings=${JSON.stringify(data.warnings ?? [])}; 本记录只证明返回片段，不证明理解或支持结论`,
       });
     } else if (search?.success) {
       records.push({
