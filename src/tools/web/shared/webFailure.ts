@@ -54,6 +54,10 @@ export interface WebFailureDetails<TReason extends string = WebFailureKind> {
   /** 本地渲染中脚本/样式表下载失败次数与首个合法 net 错误名。 */
   readonly subresourceFailureCount?: number;
   readonly subresourceError?: string;
+  /** 质量不足时本次已取得正文的字符数。 */
+  readonly extractedChars?: number;
+  /** 质量不足时已取得正文的有界摘录；外部内容，只能在不可信边界内展示，不进入诊断或日志。 */
+  readonly partialContent?: string;
   /** 已实际抽取的外部资源；不得混入安全诊断，展示必须进入不可信边界。 */
   readonly resources?: readonly WebPageResource[];
 }
@@ -96,6 +100,7 @@ export interface WebFailureDiagnostics {
   readonly netErrorCode?: number;
   readonly subresourceFailureCount?: number;
   readonly subresourceError?: string;
+  readonly extractedChars?: number;
 }
 
 /** 与渲染 port 的 net 错误名形状一致；任意错误文字不进入诊断。 */
@@ -167,8 +172,8 @@ export function getWebFailureDiagnostics(error: unknown): WebFailureDiagnostics 
   const subresourceFailureCount = read('subresourceFailureCount');
   const subresourceError = read('subresourceError');
   const numericFacts: { -readonly [K in
-    'retryAfterMs' | 'bodyBytes' | 'maxBodyBytes' | 'declaredBodyBytes']?: number } = {};
-  for (const key of ['retryAfterMs', 'bodyBytes', 'maxBodyBytes', 'declaredBodyBytes'] as const) {
+    'retryAfterMs' | 'bodyBytes' | 'maxBodyBytes' | 'declaredBodyBytes' | 'extractedChars']?: number } = {};
+  for (const key of ['retryAfterMs', 'bodyBytes', 'maxBodyBytes', 'declaredBodyBytes', 'extractedChars'] as const) {
     const value = read(key);
     if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) numericFacts[key] = value;
   }
@@ -314,6 +319,7 @@ export function formatWebFailureDiagnostics(error: unknown): string {
   const fields = [
     diagnostics.failureStage ? `stage=${diagnostics.failureStage}` : '',
     diagnostics.renderFailureKind ? `render=${diagnostics.renderFailureKind}` : '',
+    diagnostics.renderAttempted ? 'render_attempted=true' : '',
     diagnostics.extractionStage ? `extraction=${diagnostics.extractionStage}` : '',
     diagnostics.initialFailureKind ? `initial=${diagnostics.initialFailureKind}` : '',
     diagnostics.previousFailureKind ? `previous=${diagnostics.previousFailureKind}` : '',
@@ -333,6 +339,7 @@ export function formatWebFailureDiagnostics(error: unknown): string {
     diagnostics.bodyBytes !== undefined ? `received_bytes=${diagnostics.bodyBytes}` : '',
     diagnostics.maxBodyBytes !== undefined ? `limit_bytes=${diagnostics.maxBodyBytes}` : '',
     diagnostics.declaredBodyBytes !== undefined ? `declared_length=${diagnostics.declaredBodyBytes}` : '',
+    diagnostics.extractedChars !== undefined ? `extracted_chars=${diagnostics.extractedChars}` : '',
   ].filter(Boolean);
   return fields.length ? `Web diagnostics: ${fields.join(', ')}.` : '';
 }

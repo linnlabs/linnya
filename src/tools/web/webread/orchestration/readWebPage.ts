@@ -36,7 +36,7 @@ import { describeWebFile } from '../file-acquisition/functions/describeWebFile';
 import type { WebFileStore } from '../file-acquisition/definitions/webFileAcquisition';
 import { buildWebReadBlockFeedback } from '../functions/buildWebReadBlockFeedback';
 import { buildWebReadFailureFeedback } from '../functions/buildWebReadFailureFeedback';
-import { formatWebReadRecoveryResources } from '../functions/webReadRecoveryResources';
+import { formatWebReadPartialContent, formatWebReadRecoveryResources } from '../functions/webReadRecoveryResources';
 
 const logger = new Logger('ReadWebPage');
 
@@ -191,6 +191,7 @@ export async function runReadWebPage(
     const recovery = !context.abortSignal?.aborted
       ? buildWebReadFailureFeedback(error, { hostname: allowedUrl.hostname, urlWasObserved }) : '';
     const resources = !context.abortSignal?.aborted ? formatWebReadRecoveryResources(error) : '';
+    const partialContent = !context.abortSignal?.aborted ? formatWebReadPartialContent(error) : '';
     let feedback = '';
     if (
       !context.abortSignal?.aborted &&
@@ -204,11 +205,11 @@ export async function runReadWebPage(
       });
       feedback = buildWebReadBlockFeedback(allowedUrl.hostname, history);
     }
-    if (error instanceof Error && (diagnostic || feedback || recovery || resources)) {
+    if (error instanceof Error && (diagnostic || feedback || recovery || partialContent || resources)) {
       // in-flight 错误可被不同会话共享，模型诊断与会话反馈只在调用侧生成，不修改共享对象。
       throw new WebFailureError(
         error instanceof WebFailureError ? error.kind : getWebFailureKind(error),
-        [error.message, diagnostic, recovery, feedback, resources].filter(Boolean).join('\n'),
+        [error.message, diagnostic, recovery, feedback, partialContent, resources].filter(Boolean).join('\n'),
         {
           status:
             error instanceof WebFailureError

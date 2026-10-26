@@ -57,3 +57,16 @@ export function formatWebReadRecoveryResources(error: unknown): string {
     ...wrapUntrustedWebContent({ token: createBoundaryToken(hash), body }),
   ].join('\n');
 }
+
+/** 质量不足时展示已取得的有界正文；它不是可引用来源，也不进入 Evidence、诊断或日志。 */
+export function formatWebReadPartialContent(error: unknown): string {
+  if (!(error instanceof WebFailureError) || !error.details?.partialContent) return '';
+  if (getWebFailureKind(error) === 'aborted') return '';
+  const body = error.details.partialContent;
+  const total = error.details.extractedChars ?? body.length;
+  const hash = createHash('sha256').update(body).digest('hex');
+  return [
+    `本次读取只取得以下正文（共 ${total} 字${total > body.length ? `，此处展示前 ${body.length} 字` : ''}），可能不完整；它不是可引用来源，不能据此写 [@ref]。`,
+    ...wrapUntrustedWebContent({ token: createBoundaryToken(hash), body }),
+  ].join('\n');
+}

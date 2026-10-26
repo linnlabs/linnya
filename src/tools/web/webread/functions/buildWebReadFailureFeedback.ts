@@ -1,3 +1,4 @@
+import { WEB_READ_QUALITY_SIGNAL_VALUES } from '@app/schemas';
 import { getWebAccessBlockKind, getWebFailureDiagnostics, getWebFailureKind } from '../../shared/webFailure';
 import { getWebFileFormat } from '../file-acquisition/functions/validateWebFile';
 
@@ -60,8 +61,20 @@ export function buildWebReadFailureFeedback(error: unknown, params: {
   if (facts.retryStopReason === 'retry_limit') guidance.push('本次有界重试次数已用尽。');
   if (facts.retryStopReason === 'retry_after_limit') guidance.push('服务器要求的等待超过本次自动重试等待上限，未提前补发请求。');
   if (facts.retryStopReason === 'budget_exhausted') guidance.push('本次剩余时间不足以继续退避重试。');
+  // 质量信号只在页面已取得、但正文不合格时出现；其它失败不能被说成“质量不足”。
+  const qualitySignal = kind === 'managed_disabled' && facts.previousFailureKind === undefined
+    ? WEB_READ_QUALITY_SIGNAL_VALUES.find(signal => signal === facts.escalationReason) : undefined;
+  const rendered = facts.renderAttempted ? '（已尝试本机渲染）' : '';
+  const chars = facts.extractedChars !== undefined ? `${facts.extractedChars} 字` : '很少';
+  if (qualitySignal === 'content_too_short') {
+    guidance.push(`已取得的正文只有 ${chars}${rendered}，可能不完整；短通知也可能就是全文，但附带的摘录不能作为引用来源。可检查页面发现的原件或数据链接，或寻找可取得完整正文的来源。当前未配置第三方增强读取。`);
+  } else if (qualitySignal) {
+    guidance.push(`页面以模板、表格或列表为主，抽取到的正文只有 ${chars}${rendered}，可能遗漏主要内容；可检查页面发现的原件或数据链接，或寻找可取得完整正文的来源。当前未配置第三方增强读取。`);
+  } else if (reason === 'empty_content' && guidance.length === 0) {
+    guidance.push(`页面已取得，但没有可读正文${facts.renderAttempted ? '，本机渲染后仍为空' : ''}；可能是入口或导航页、只含图片，或需要交互。优先检查实际发现的原件或数据链接，再寻找替代来源。`);
+  }
   if (guidance.length === 0 && kind === 'managed_disabled') {
-    guidance.push('本机抽取质量不足，且未配置第三方增强读取；优先检查实际发现的原件/数据链接，再寻找可取得的替代来源，并说明缺失。');
+    guidance.push('本机读取未取得合格正文，且未配置第三方增强读取；优先检查实际发现的原件/数据链接，再寻找可取得的替代来源，并说明缺失。');
   }
   return guidance.join('\n');
 }

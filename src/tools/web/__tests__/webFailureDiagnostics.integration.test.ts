@@ -4,6 +4,8 @@ import { LocalRenderProvider } from '../webread/providers/localRender';
 import { WebPageRenderError } from '../webread/definitions/webPageRenderer';
 import { WebFailureError, getWebFailureDiagnostics } from '../shared/webFailure';
 import { WebHttpError } from '../../../infra/adapters/web-http/webHttpFetch';
+import { createWebReadResult } from '../webread/functions/createWebReadResult';
+import type { WebDocumentWarning } from '../definitions/webDocument';
 
 import { Logger } from '../../../shared/logger';
 import { attachCitationRefAllocator, attachCitationSequence } from '../../../domains/citation';
@@ -17,6 +19,14 @@ function context(): ToolContext {
   attachCitationSequence(value, { offset: 0 });
   attachCitationRefAllocator(value, createCitationRefAllocatorFixture());
   return value;
+}
+
+function pageResult(content: string, renderMode: 'http' | 'js', warnings: WebDocumentWarning[]) {
+  return createWebReadResult({
+    url: 'https://example.com/notice', status: 200, contentType: 'text/html', title: 'Notice',
+    content, contentFormat: 'markdown', extractor: 'readability', renderMode,
+    provider: renderMode === 'http' ? 'local_http' : 'local_render', rawLength: 4_000, latencyMs: 1, warnings,
+  });
 }
 
 describe('网页失败的模型、审计和安全诊断边界', () => {
@@ -203,6 +213,60 @@ describe('网页失败的模型、审计和安全诊断边界', () => {
     expect(error.message).toContain('已收 3.0 MiB，响应声明 17.0 MiB');
     expect(error.message).toContain('Shell 另行下载的副本没有来源身份');
     expect(error.message).not.toContain('本机抽取质量不足');
+  });
+
+  it('正文过短且渲染后仍过短时仍为失败，但报告实际字数、已尝试渲染并在不可信边界内附摘录', async () => {
+    const save = vi.fn(async () => ({ bundleId: '0123456789abcdef' }));
+    const rendered = '完整的短通知正文：2026 年第三季度数据。';
+    const tool = new WebReadTool({
+      provider: { name: 'local_http', read: async () => pageResult('局部通知', 'http', ['content_too_short']) },
+      renderProvider: { name: 'local_render', read: async () => pageResult(rendered, 'js', ['content_too_short']) },
+      managedProvider: null,
+      config: { renderEnabled: true, managedReader: 'none' },
+      evidenceWriter: { save },
+    });
+    const error = await tool.run({ url: 'https://example.com/notice' }, context()).catch((failure: unknown) => failure);
+    expect(error).toBeInstanceOf(WebFailureError);
+    if (!(error instanceof WebFailureError)) throw new Error('missing quality failure');
+    expect(error.message).toContain('[WEB_READ_MANAGED_DISABLED] 本机网页读取未取得合格正文（content_too_short）。');
+    expect(error.message).not.toContain('且未启用第三方增强解析');
+    expect(error.message).toContain('render_attempted=true');
+    expect(error.message).toContain(`extracted_chars=${rendered.length}`);
+    expect(error.message).toContain(`已取得的正文只有 ${rendered.length} 字（已尝试本机渲染）`);
+    expect(error.message).toContain('它不是可引用来源');
+    const boundary = error.message.indexOf('BEGIN_UNTRUSTED_WEB_CONTENT');
+    expect(boundary).toBeGreaterThan(0);
+    expect(error.message.indexOf('完整的短通知正文')).toBeGreaterThan(boundary);
+    expect(JSON.stringify(getWebFailureDiagnostics(error))).not.toContain('短通知');
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('表格或列表为主的页面说明实际字数与可能遗漏，而不是笼统的质量不足', async () => {
+    const table = '| 年份 | 值 |';
+    const tool = new WebReadTool({
+      provider: { name: 'local_http', read: async () => pageResult(table, 'http', ['table_dominant']) },
+      renderProvider: null,
+      managedProvider: null,
+      config: { renderEnabled: false, managedReader: 'none' },
+    });
+    const error = await tool.run({ url: 'https://example.com/table' }, context()).catch((failure: unknown) => failure);
+    if (!(error instanceof Error)) throw new Error('missing table failure');
+    expect(error.message).toContain('（table_list_dominant）');
+    expect(error.message).toContain(`页面以模板、表格或列表为主，抽取到的正文只有 ${table.length} 字`);
+    expect(error.message).not.toContain('render_attempted=true');
+  });
+
+  it('真实空正文说明页面已取得但无可读正文，并区分渲染后仍为空', async () => {
+    const tool = new WebReadTool({
+      provider: { name: 'local_http', read: async () => { throw new WebFailureError('empty_content', 'empty'); } },
+      renderProvider: { name: 'local_render', read: async () => { throw new WebFailureError('empty_content', 'empty'); } },
+      managedProvider: null,
+      config: { renderEnabled: true, managedReader: 'none' },
+    });
+    const error = await tool.run({ url: 'https://example.com/landing' }, context()).catch((failure: unknown) => failure);
+    if (!(error instanceof Error)) throw new Error('missing empty failure');
+    expect(error.message).toContain('页面已取得，但没有可读正文，本机渲染后仍为空');
+    expect(error.message).not.toContain('本次读取只取得以下正文');
   });
 
   it('未知错误只报告发生阶段，不用任意 message 猜根因或作为可信指令', async () => {

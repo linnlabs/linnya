@@ -48,6 +48,27 @@ export interface WebReadLadderDependencies {
   totalTimeoutMs?: number;
 }
 
+/** 质量不足失败时随错误附带的已取得正文上限；只在不可信边界内展示，不进入诊断或日志。 */
+const WEB_READ_PARTIAL_EXCERPT_CHARS = 1_000;
+
+/** 本次本地与渲染结果中正文最长的一份；未取得任何结果时不提供摘录事实。 */
+function describePartialContent(
+  results: readonly (WebReadResult | undefined)[]
+): { extractedChars?: number; partialContent?: string } {
+  const best = results
+    .filter((result): result is WebReadResult => result !== undefined)
+    .reduce<WebReadResult | undefined>(
+      (longest, result) => (!longest || result.content.length > longest.content.length ? result : longest),
+      undefined
+    );
+  if (!best) return {};
+  const content = best.content.trim();
+  return {
+    extractedChars: content.length,
+    ...(content ? { partialContent: content.slice(0, WEB_READ_PARTIAL_EXCERPT_CHARS) } : {}),
+  };
+}
+
 async function readManagedFallback(args: {
   params: WebReadParams;
   initialProvider: WebReadProvider;
@@ -60,6 +81,8 @@ async function readManagedFallback(args: {
   initialFailureStage?: WebExtractionFailureStage;
   previousFailure?: unknown;
   resources?: readonly WebPageResource[];
+  /** 质量不足时本次已取得的本地/渲染结果。 */
+  partialResults?: readonly (WebReadResult | undefined)[];
 }): Promise<WebReadLadderResult> {
   if (
     args.managedProvider === null ||
@@ -75,9 +98,10 @@ async function readManagedFallback(args: {
     const stageSuffix = extractionStage ? `，stage=${extractionStage}` : '';
     throw attachWebReadRecoveryResources(new WebFailureError<WebReadEscalationReason>(
       'managed_disabled',
-      `[WEB_READ_MANAGED_DISABLED] 本机网页读取未完成（${failureReason}${stageSuffix}），且未启用第三方增强解析；尚未取得合格正文。`,
+      `[WEB_READ_MANAGED_DISABLED] 本机网页读取未取得合格正文（${failureReason}${stageSuffix}）。`,
       {
         details: {
+          ...describePartialContent(args.partialResults ?? []),
           escalationReason: args.reason,
           initialFailureKind: args.initialFailureKind,
           previousFailureKind,
@@ -161,6 +185,8 @@ async function readRenderedOrManaged(args: {
   initialFailureKind?: WebFailureKind;
   initialFailureStage?: WebExtractionFailureStage;
   resources?: readonly WebPageResource[];
+  /** 本地读取成功但质量不足时的结果，渲染仍不合格时用于描述已取得正文。 */
+  localResult?: WebReadResult;
 }): Promise<WebReadLadderResult> {
   logger.info('[readWebPageWithLadder] 升级本地渲染', {
     operation: 'read',
@@ -192,6 +218,7 @@ async function readRenderedOrManaged(args: {
       initialFailureStage: args.initialFailureStage,
       previousFailure: error,
       resources: args.resources,
+      partialResults: [args.localResult],
     });
   }
 
@@ -220,6 +247,7 @@ async function readRenderedOrManaged(args: {
     initialFailureKind: args.initialFailureKind,
     initialFailureStage: args.initialFailureStage,
     resources: mergeWebReadRecoveryResources(args.resources, renderedResult.resources),
+    partialResults: [args.localResult, renderedResult],
   });
 }
 
@@ -291,6 +319,7 @@ async function executeReadLadder(
       reason: quality.reason,
       qualityScore: quality.qualityScore,
       resources: readResult.resources,
+      localResult: readResult,
     });
   }
 
@@ -303,6 +332,7 @@ async function executeReadLadder(
     qualityScore: quality.qualityScore,
     renderAttempted: false,
     resources: readResult.resources,
+    partialResults: [readResult],
   });
 }
 
