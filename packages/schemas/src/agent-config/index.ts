@@ -41,7 +41,7 @@ export const PromptKeys = {
   AGENT_DEFAULT: 'agent_default',
   /** 项目初始化 / 项目规划 */
   PROJECT_PLANNING: 'project_planning',
-  // ---- Deep Research ----
+  // ---- 退役 Deep Research beta 身份（历史与恢复保留，不接纳新根运行） ----
   /** Deep Research Leader（研究负责人）：澄清问题、拆解子问题、制定检索计划 */
   DEEP_RESEARCH_LEADER: 'deep_research_leader',
   /** Deep Research Scout（检索员）：多轮检索，产出候选文档/块列表 */
@@ -65,16 +65,16 @@ export const PromptKeys = {
   /** Deep Search Agent：知识库深度搜索 */
   DEEP_SEARCH: 'deep_search',
   DEEP_WEB_SEARCH: 'deep_web_search',
-  /** CLI 研究行为实验入口；不表示已验证的研究质量提升。 */
+  /** 退役 CLI 实验作者身份；保留历史与恢复，不接纳新根运行。 */
   DEEP_RESEARCH_EXPERIMENTAL: 'deep_research_experimental',
-  /** CLI 内部调查复核：在成文前检查解释与缺失观察。 */
+  /** 退役 CLI 调查复核身份：在成文前检查解释与缺失观察。 */
   DEEP_RESEARCH_INVESTIGATION_REVIEW: 'deep_research_investigation_review',
-  /** CLI 内部论证审核：检查成稿推论与解释边界。 */
+  /** 退役 CLI 论证审核身份：检查成稿推论与解释边界。 */
   DEEP_RESEARCH_ARGUMENT_REVIEW: 'deep_research_argument_review',
-  /** CLI 内部数字/来源校对：检查成稿数量关系与原件。 */
+  /** 退役 CLI 数字/来源校对身份：检查成稿数量关系与原件。 */
   DEEP_RESEARCH_SOURCE_REVIEW: 'deep_research_source_review',
 
-  // ---- Host 受控研究职责 v1（不复用实验及历史运行身份） ----
+  // ---- 正式研究专项角色（v1 是持久身份，不是方法或 Skill 版本） ----
   RESEARCH_AUTHOR_V1: 'research_author_v1',
   RESEARCH_INVESTIGATION_REVIEW_V1: 'research_investigation_review_v1',
   RESEARCH_ARGUMENT_REVIEW_V1: 'research_argument_review_v1',

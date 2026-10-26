@@ -44,6 +44,9 @@ export const AGENT_DEFINITION: AgentDefinition = {
   id: PromptKeys.DEEP_RESEARCH_REASONER_2,
   promptKey: PromptKeys.DEEP_RESEARCH_REASONER_2,
   defaultMode: 'agent',
+  // 仅保留历史身份与恢复配置，实验结束后不再接纳新的根任务。
+  newRunUnavailableReason:
+    '此历史研究入口已退役，不再接收新任务。新研究请使用“研究”（research_v1）；已有历史保留，暂停继续仍须通过原运行兼容检查。',
   description: 'Deep Research Reasoner_2 - 收敛综合（Synthesis），产出给 Writer 的写作大纲',
   config: {
     contextPolicy: {

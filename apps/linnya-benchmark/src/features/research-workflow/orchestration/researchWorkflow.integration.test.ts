@@ -29,7 +29,7 @@ describe('research workflow through formal CLI port', () => {
     const manifest = ResearchManifestSchema.parse(
       JSON.parse(await readFile(options.manifestFile, 'utf8'))
     );
-    manifest.stages[0].agentId = 'deep_research_experimental';
+    manifest.stages[0].agentId = 'research_v1';
     await writeFile(options.manifestFile, JSON.stringify(manifest));
     const cli = fakeCli(
       new Map([
@@ -39,7 +39,7 @@ describe('research workflow through formal CLI port', () => {
     );
     await runResearchWorkflow({ ...options, cli });
     expect(cli.send).toHaveBeenCalledWith(
-      expect.objectContaining({ agentId: 'deep_research_experimental' })
+      expect.objectContaining({ agentId: 'research_v1' })
     );
     expect(cli.send).toHaveBeenCalledWith(
       expect.objectContaining({

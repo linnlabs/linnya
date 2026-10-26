@@ -6,6 +6,22 @@
 Agent 与研究父子角色共用正式 deep-research Skill；版本和资源由
 [Skills owner](../../../../features/skills/README.md) 维护。工程闭环不等于已经证明跨题稳定的质量优势。
 
+## 正式名称、版本与维护范围
+
+| 名称 | 含义与维护位置 |
+| --- | --- |
+| Deep Research / 前端“研究” | 正式的研究文章能力；项目会话和 CLI 使用同一入口 |
+| `research_v1` | 已持久化的 Agent 身份与 promptKey；`v1` 不是试验开关，也不是 Skill 版本 |
+| `research_*_v1` | 当前四种专项调查、复核角色身份，由父角色通过普通 subagent 调用 |
+| `deep-research` | 研究方法 Skill 的 slug；方法、写作与图文资源由 Skills owner 维护，独立版本化 |
+| `deep_research_*` | 旧 beta / CLI 实验身份；停止接纳新根运行，仅留历史解析与兼容恢复所需定义 |
+
+产品展示名与持久身份分开。改显示名称不需要迁移旧 run；如确需改 Agent ID，须同时设计会话选择、请求、descriptor 和恢复迁移，不能把旧 key 静默别名到新流程。历史实现参见[退役研究角色](../../agent-registry/agents/deep_research/README.md)。
+
+正式维护的真源是本页、Agent Registry、Skills 和通用工具 owner 文档。已结束的实验不继续作为生产操作指南；正式 benchmark 和业务回归保留，原始研究资料不进入公开源码或构建依赖。源码中的正式入口、实际运行进程加载的版本、Desktop 安装包发布是三个不同事实；发布仍按[构建与验收](../../../../../docs/development/build-and-test.md)执行。
+
+当前研究交付目标是可追溯、深入浅出的研究文章，仍需对关键事实与推论进行核查。完整研究被另一个主 Agent 作为受管子项调用，是新的组合能力：当前公开 subagent 类型仅包含专项角色，不包含完整 `research_v1` 链；不能把已经可用的专项委派当作这项能力已交付。
+
 ## 职责与材料交接
 
 父 Agent 持续负责调查、解释、调查记录、文章初稿和一次修订。专项调查与成文前调查复核按实际缺口选用；父提示要求最终交付前取得同一初稿的论证复核、来源与数字复核。四种专项角色继承父模型，默认不继承父会话历史，最多 800

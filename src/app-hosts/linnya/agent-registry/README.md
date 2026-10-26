@@ -553,23 +553,11 @@ Graph 步，工具白名单限定浅检索、网页读取、续读及资料组�
 交给 Host 持久 admission 事务执行。网页四次，知识库旧行为保持不变。业务来源合同见 Web
 owner，不在注册中心复制。
 
-### CLI 研究行为实验入口
+### 退役的研究实验身份
 
-`deep_research_experimental`
-是已注册的独立场景定义，仅供 CLI 选择，未贡献 Renderer
-Agent 菜单，也未增加通用子 Agent 类型。它复用 Default 的通用提示、工具、模型路由、800步预算与上下文策略，另加研究职责提示和每30步的短研究提醒；方法仍从正式
-`deep-research` Skill加载。Default与正式Skill不因实验而改变，旧Deep Research
-Leader不参与这条流程。
-
-提醒使用现有Linnkit公开合同，瞬态追加到实际请求末条消息，继承其role，不是持久阶段状态或强制门禁。研究Agent没有自动创建独立评审；阶段调度由调用方显式安排，不能宣称已取得自主编排或稳定质量收益。定义由GenericAgentTask按正式接纳边界冻结系统提示，恢复沿用原版本。
-
-### CLI 研究审核职责
-
-三个内部审核定义分别承担成文前调查复核（`deep_research_investigation_review`）、成稿论证审核（`deep_research_argument_review`）和数字/来源校对（`deep_research_source_review`）。它们直接复用 Default 的工具、主模型路由、800节点预算、Skill 暴露和上下文策略，只追加职责提示，不继承实验作者的额外研究提醒，也不贡献 Renderer 菜单或通用
-`subagent_type`。
-
-具体方法继续通过正式 `deep-research`
-Skill 加载。调用方显式给出研究问题、稿件/材料版本、必读资源、网络范围和 Workspace 交付路径；注册不会自动触发独立审核，提示范围也不是权限沙箱。审核意见是可检查的判断，不是评分工具或正确性门禁；没有发现问题不能解释为全文通过。数字/来源职责可以要求检查图表，但只有当前模型实际取得页图时才属于视觉核查；取得失败、仅有文字提取和未核部分须如实保留，定义本身不增加视觉能力或新的 PDF 读取实现。
+旧 beta 五角色与四个 CLI 研究实验定义仅保留历史与恢复兼容，均停止接纳新根任务。
+生产研究使用 `research_v1` 和 `research_*_v1` 专项角色；不要从目录中的旧 prompt 推断当前产品流程。
+保留理由、退出边界和回归入口见[退役研究角色](./agents/deep_research/README.md)。
 
 ### 主研究 Agent 与专项子职责 v1
 
