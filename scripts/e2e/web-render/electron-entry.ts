@@ -2,6 +2,9 @@ import { app } from 'electron';
 import { createServer } from 'node:http';
 import { WebPageRenderWorker } from '../../../src/electron-main/web-render/WebPageRenderWorker';
 import { createElectronWebPageRenderRuntime } from '../../../src/electron-main/web-render/electronWebPageRenderRuntime';
+import { LocalRenderProvider } from '../../../src/tools/web/webread/providers/localRender';
+import { WebFailureError, getWebFailureDiagnostics } from '../../../src/tools/web/shared/webFailure';
+import { buildWebReadFailureFeedback } from '../../../src/tools/web/webread/functions/buildWebReadFailureFeedback';
 
 interface FixtureState {
   popupRequests: number;
@@ -125,9 +128,21 @@ async function run(): Promise<void> {
         </script></body></html>`);
       return;
     }
-    if (route === '/broken-script.js') {
-      // 直接断开连接：模拟脚本下载在传输层失败。
+    if (route === '/broken-script.js' || route === '/broken-data') {
+      // 直接断开连接：模拟脚本或正文数据下载在传输层失败。
       request.socket.destroy();
+      return;
+    }
+    if (route === '/app-broken-data') {
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end(`<!doctype html><html><body><div id="app">Loading</div>
+        <script>window.__boot = 1;</script><script>window.__config = {};</script>
+        <script>
+          fetch('/broken-data').catch(() => {});
+          const request = new XMLHttpRequest();
+          request.open('GET', '/broken-data');
+          request.send();
+        </script></body></html>`);
       return;
     }
     if (route === '/app-broken-script') {
@@ -265,6 +280,18 @@ async function run(): Promise<void> {
       () => ({ kind: 'rendered', subresourceFailures: { count: 0, sampleError: '' } }),
       (error: unknown) => ({ kind: readFailure(error).kind, subresourceFailures: readSubresourceFailures(error) }),
     );
+    // 两种数据 API 都由真实 Chromium 报错；再经生产 Provider 验证模型建议，而非只核对内部计数。
+    const brokenData = await new LocalRenderProvider({ renderer: worker })
+      .read({ url: `${origin}/app-broken-data` }).then(
+        () => null,
+        (error: unknown) => {
+          if (!(error instanceof WebFailureError)) throw error;
+          return error;
+        },
+      );
+    if (!brokenData) throw new Error('断开的数据请求应使空壳读取失败');
+    const dataDiagnostics = getWebFailureDiagnostics(brokenData);
+    const dataFeedback = buildWebReadFailureFeedback(brokenData, { hostname: 'www.web-render.test' });
 
     const result = {
       spaRendered: spa.html.includes('SPA_RENDERED_CONTENT'),
@@ -297,6 +324,15 @@ async function run(): Promise<void> {
         kind: brokenScript.kind,
         failed: brokenScript.subresourceFailures.count >= 1,
         sampleIsNetError: /^net::ERR_[A-Z0-9_]+$/.test(brokenScript.subresourceFailures.sampleError),
+      },
+      brokenData: {
+        kind: brokenData.kind,
+        renderKind: dataDiagnostics.renderFailureKind,
+        failed: (dataDiagnostics.dataRequestFailureCount ?? 0) >= 2,
+        sampleIsNetError: /^net::ERR_[A-Z0-9_]+$/.test(dataDiagnostics.dataRequestError ?? ''),
+        scriptFailuresAbsent: dataDiagnostics.subresourceFailureCount === undefined,
+        suggestsRetry: dataFeedback.includes('可稍后重试'),
+        claimsRetryUseless: dataFeedback.includes('重复读取同一地址通常不会改变结果'),
       },
       popupRequests: state.popupRequests,
       downloadRequests: state.downloadRequests,

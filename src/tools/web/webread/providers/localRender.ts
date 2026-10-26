@@ -62,6 +62,13 @@ function mapRenderError(error: WebPageRenderError): WebFailureError {
               ? { subresourceError: error.subresourceFailures.sampleError } : {}),
           }
         : {}),
+      ...(error.dataRequestFailures
+        ? {
+            dataRequestFailureCount: error.dataRequestFailures.count,
+            ...(error.dataRequestFailures.sampleError
+              ? { dataRequestError: error.dataRequestFailures.sampleError } : {}),
+          }
+        : {}),
     },
   };
   // Chromium 的错误文字可能含页面地址或页面脚本异常，只公开稳定 kind，不转述任意 message。

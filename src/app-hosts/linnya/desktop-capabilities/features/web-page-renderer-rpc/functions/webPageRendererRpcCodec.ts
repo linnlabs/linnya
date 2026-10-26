@@ -50,6 +50,7 @@ export const WebPageRenderRpcResultSchema = z.discriminatedUnion('ok', [
       main_response: WebPageMainResponseRpcSchema.optional(),
       net_error_code: z.number().int().min(-9_999).max(-1).optional(),
       subresource_failures: WebPageSubresourceFailuresRpcSchema.optional(),
+      data_request_failures: WebPageSubresourceFailuresRpcSchema.optional(),
     }).strict(),
   }).strict(),
 ]);

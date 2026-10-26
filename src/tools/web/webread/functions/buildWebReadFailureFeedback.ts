@@ -31,12 +31,16 @@ export function buildWebReadFailureFeedback(error: unknown, params: {
   const subresourceFailures = facts.subresourceFailureCount !== undefined
     ? `页面所需的 ${facts.subresourceFailureCount} 个脚本或样式表下载失败${facts.subresourceError ? `（如 ${facts.subresourceError}）` : ''}`
     : '';
+  const dataRequestFailures = facts.dataRequestFailureCount !== undefined
+    ? `页面有 ${facts.dataRequestFailureCount} 个数据请求（XHR/fetch）传输失败${facts.dataRequestError ? `（如 ${facts.dataRequestError}）` : ''}`
+    : '';
+  const pageRequestFailures = [subresourceFailures, dataRequestFailures].filter(Boolean).join('，');
   const renderNetworkFailure = facts.renderFailureKind === 'load_failed'
     && facts.netErrorCode !== undefined && facts.netErrorCode <= -100;
-  const renderTimedOutWithFailures = facts.renderFailureKind === 'load_timeout' && subresourceFailures !== '';
+  const renderTimedOutWithFailures = facts.renderFailureKind === 'load_timeout' && pageRequestFailures !== '';
   if (facts.renderFailureKind === 'app_shell_not_rendered') {
-    guidance.push(subresourceFailures
-      ? `本机渲染时${subresourceFailures}，前端应用因此可能无法启动；这更像网络或站点暂时问题，不代表页面没有正文。可稍后重试，或查找该页实际提供的原件、导出文件或公开接口链接。`
+    guidance.push(pageRequestFailures
+      ? `本机渲染时${pageRequestFailures}，可能影响正文加载，但无法仅凭这些失败确定正文缺失的原因；不代表页面没有正文。可稍后重试，或查找该页实际提供的原件、导出文件或公开接口链接。`
       : '本机渲染已执行页面脚本，但前端应用在时限内仍未渲染出正文；重复读取同一地址通常不会改变结果。查找该页实际提供的原件、导出文件或公开接口链接。');
   } else if (facts.initialFailureKind === 'js_required' || facts.escalationReason === 'js_required' || reason === 'js_required') {
     guidance.push('静态 HTML 未提供可读正文，可能依赖 JavaScript。数据页常另有 CSV、XLSX 或公开接口；只跟随实际发现的链接，不猜接口地址。');
@@ -47,7 +51,7 @@ export function buildWebReadFailureFeedback(error: unknown, params: {
   if (renderNetworkFailure) {
     guidance.push(`本机渲染加载网页时网络或 TLS 连接失败（net_error=${facts.netErrorCode}）；这通常是站点或本机网络路径的问题，不是页面没有正文。可稍后重试，或寻找其他主机上的副本。`);
   } else if (renderTimedOutWithFailures) {
-    guidance.push(`本机渲染时${subresourceFailures}，页面结构在时限内未就绪；这更像网络或站点暂时问题，可稍后重试，或寻找其他主机上的副本。`);
+    guidance.push(`本机渲染时${pageRequestFailures}，页面结构在时限内未就绪；这更像网络或站点暂时问题，可稍后重试，或寻找其他主机上的副本。`);
   }
   const fileDownload = facts.contentType !== undefined && getWebFileFormat(facts.contentType) !== undefined;
   if (reason === 'timeout' && fileDownload && facts.bodyBytes !== undefined) {

@@ -160,7 +160,28 @@ describe('网页失败的模型、审计和安全诊断边界', () => {
       expected: ['render=load_timeout', '页面所需的 2 个脚本或样式表下载失败，页面结构在时限内未就绪'],
       absent: ['本次为超时、网络或上游暂时失败'],
     },
+    {
+      name: '正文数据请求失败且应用壳未渲染',
+      error: new WebPageRenderError('app_shell_not_rendered', UNSAFE_TEXT, {
+        dataRequestFailures: { count: 2, sampleError: 'net::ERR_EMPTY_RESPONSE' },
+      }),
+      expected: ['data_request_failures=2', 'data_request_error=net::ERR_EMPTY_RESPONSE',
+        '2 个数据请求（XHR/fetch）传输失败', '无法仅凭这些失败确定正文缺失的原因', '可稍后重试'],
+      absent: ['重复读取同一地址通常不会改变结果', '脚本或样式表下载失败', '静态 HTML 未提供可读正文'],
+    },
+    {
+      name: '数据和脚本分别失败且 DOM 未就绪',
+      error: new WebPageRenderError('load_timeout', UNSAFE_TEXT, {
+        subresourceFailures: { count: 1, sampleError: 'net::ERR_SSL_PROTOCOL_ERROR' },
+        dataRequestFailures: { count: 2, sampleError: 'net::ERR_EMPTY_RESPONSE' },
+      }),
+      expected: ['subresource_failures=1', 'data_request_failures=2',
+        '1 个脚本或样式表下载失败', '2 个数据请求（XHR/fetch）传输失败', '可稍后重试'],
+      absent: ['本次为超时、网络或上游暂时失败', '重复读取同一地址通常不会改变结果'],
+    },
   ])('渲染失败的建议按实际原因区分：$name', async ({ error: renderError, expected, absent }) => {
+    const log = vi.spyOn(Logger.prototype, 'error');
+    const save = vi.fn(async () => ({ bundleId: '0123456789abcdef' }));
     const tool = new WebReadTool({
       provider: {
         name: 'local_http',
@@ -171,6 +192,7 @@ describe('网页失败的模型、审计和安全诊断边界', () => {
       renderProvider: new LocalRenderProvider({ renderer: { render: async () => { throw renderError; } } }),
       managedProvider: null,
       config: { renderEnabled: true, managedReader: 'none' },
+      evidenceWriter: { save },
     });
     const error = await tool
       .run({ url: 'https://example.com/render-fixture' }, context())
@@ -179,6 +201,9 @@ describe('网页失败的模型、审计和安全诊断边界', () => {
     for (const text of expected) expect(error.message).toContain(text);
     for (const text of absent) expect(error.message).not.toContain(text);
     expect(error.message).not.toContain(UNSAFE_TEXT);
+    expect(JSON.stringify(log.mock.calls)).not.toContain(UNSAFE_TEXT);
+    expect(save).not.toHaveBeenCalled();
+    log.mockRestore();
   });
 
   it('文件正文下载超时不转交渲染，报告已收/声明字节并说明 Shell 副本不能代替正式取得', async () => {

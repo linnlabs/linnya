@@ -134,6 +134,8 @@ export class WebPageRenderWorker {
   private lastDataActivityAt = 0;
   private subresourceFailureCount = 0;
   private subresourceSampleError: string | undefined;
+  private dataRequestFailureCount = 0;
+  private dataRequestSampleError: string | undefined;
   private cancelActive: ((error: WebPageRenderError) => void) | null = null;
   private disposed = false;
 
@@ -364,16 +366,33 @@ export class WebPageRenderWorker {
       return;
     }
     // 只结算本任务内发出的请求；前一任务被销毁窗口的迟到结束事件不影响计数。
-    if (this.activeDataRequests.delete(event.id)) this.lastDataActivityAt = Date.now();
+    if (!this.activeDataRequests.delete(event.id)) return;
+    this.lastDataActivityAt = Date.now();
+    // 失败也结束在途请求，但不能与成功合并后丢失原因；主动中止只结束计时，不暗示站点故障。
+    if (event.phase !== 'failed' || event.error === 'net::ERR_ABORTED') return;
+    this.dataRequestFailureCount += 1;
+    if (!this.dataRequestSampleError && event.error && WEB_PAGE_NET_ERROR_NAME_PATTERN.test(event.error)) {
+      this.dataRequestSampleError = event.error;
+    }
   }
 
-  private subresourceFailureFacts(): { subresourceFailures?: WebPageSubresourceFailures } {
-    if (this.subresourceFailureCount === 0) return {};
+  private subresourceFailureFacts(): {
+    subresourceFailures?: WebPageSubresourceFailures;
+    dataRequestFailures?: WebPageSubresourceFailures;
+  } {
     return {
-      subresourceFailures: {
-        count: this.subresourceFailureCount,
-        ...(this.subresourceSampleError ? { sampleError: this.subresourceSampleError } : {}),
-      },
+      ...(this.subresourceFailureCount > 0 ? {
+        subresourceFailures: {
+          count: this.subresourceFailureCount,
+          ...(this.subresourceSampleError ? { sampleError: this.subresourceSampleError } : {}),
+        },
+      } : {}),
+      ...(this.dataRequestFailureCount > 0 ? {
+        dataRequestFailures: {
+          count: this.dataRequestFailureCount,
+          ...(this.dataRequestSampleError ? { sampleError: this.dataRequestSampleError } : {}),
+        },
+      } : {}),
     };
   }
 
@@ -383,6 +402,8 @@ export class WebPageRenderWorker {
     this.lastDataActivityAt = Date.now();
     this.subresourceFailureCount = 0;
     this.subresourceSampleError = undefined;
+    this.dataRequestFailureCount = 0;
+    this.dataRequestSampleError = undefined;
   }
 
   private ensureRuntime(): {

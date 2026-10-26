@@ -39,6 +39,7 @@ export function createDesktopWebPageRendererRpcClient(
       if (!result.ok) {
         const { main_response: mainResponse, net_error_code: netErrorCode } = result.error;
         const subresourceFailures = result.error.subresource_failures;
+        const dataRequestFailures = result.error.data_request_failures;
         throw new WebPageRenderError(result.error.kind, result.error.message, {
           ...(mainResponse ? { mainResponse: copyWebPageMainResponse(mainResponse) } : {}),
           ...(netErrorCode !== undefined ? { netErrorCode } : {}),
@@ -47,6 +48,14 @@ export function createDesktopWebPageRendererRpcClient(
                 subresourceFailures: {
                   count: subresourceFailures.count,
                   ...(subresourceFailures.sample_error ? { sampleError: subresourceFailures.sample_error } : {}),
+                },
+              }
+            : {}),
+          ...(dataRequestFailures
+            ? {
+                dataRequestFailures: {
+                  count: dataRequestFailures.count,
+                  ...(dataRequestFailures.sample_error ? { sampleError: dataRequestFailures.sample_error } : {}),
                 },
               }
             : {}),

@@ -86,6 +86,10 @@ try {
     appSettledBlank: { kind: 'app_shell_not_rendered', beforeDeadline: true },
     emptyStatic: { kind: 'rendered', fast: true },
     brokenScript: { kind: 'app_shell_not_rendered', failed: true, sampleIsNetError: true },
+    brokenData: {
+      kind: 'js_required', renderKind: 'app_shell_not_rendered', failed: true,
+      sampleIsNetError: true, scriptFailuresAbsent: true, suggestsRetry: true, claimsRetryUseless: false,
+    },
     popupRequests: 0,
     downloadRequests: 3,
   };

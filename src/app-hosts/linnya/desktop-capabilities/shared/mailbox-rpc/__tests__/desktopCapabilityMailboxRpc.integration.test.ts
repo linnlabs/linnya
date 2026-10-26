@@ -202,6 +202,7 @@ describe('Desktop capability mailbox RPC', () => {
           throw new WebPageRenderError('app_shell_not_rendered', '前端应用未渲染', {
             netErrorCode: -107,
             subresourceFailures: { count: 3, sampleError: 'net::ERR_SSL_PROTOCOL_ERROR' },
+            dataRequestFailures: { count: 2, sampleError: 'net::ERR_EMPTY_RESPONSE' },
           });
         }
         if (url.endsWith('/challenged')) {
@@ -249,6 +250,7 @@ describe('Desktop capability mailbox RPC', () => {
           kind: 'app_shell_not_rendered',
           netErrorCode: -107,
           subresourceFailures: { count: 3, sampleError: 'net::ERR_SSL_PROTOCOL_ERROR' },
+          dataRequestFailures: { count: 2, sampleError: 'net::ERR_EMPTY_RESPONSE' },
         })
       );
       await expect(

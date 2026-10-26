@@ -62,8 +62,8 @@ class FakeRenderSession implements WebPageRenderSession {
     };
   }
 
-  dataRequest(id: number, phase: 'started' | 'completed'): void {
-    this.subresourceObserver?.({ id, category: 'data', phase });
+  dataRequest(id: number, phase: 'started' | 'completed' | 'failed', error?: string): void {
+    this.subresourceObserver?.({ id, category: 'data', phase, ...(error ? { error } : {}) });
   }
 
   scriptFailed(id: number, error: string): void {
@@ -515,4 +515,55 @@ describe('WebPageRenderWorker', () => {
       subresourceFailures: { count: 2, sampleError: 'net::ERR_SSL_PROTOCOL_ERROR' },
     }));
   });
+
+  it.each(['app_shell_not_rendered', 'load_timeout', 'load_failed'] as const)(
+    '%s 保留本任务的数据请求失败，排除取消、成功与迟到事件，下一任务重新计数', async (kind) => {
+      const runtime = new FakeRenderRuntime();
+      const renderWindow = new FakeRenderWindow();
+      renderWindow.loadURLImpl = async (url) => {
+        renderWindow.url = url;
+        runtime.session.respond(url);
+        runtime.session.dataRequest(999, 'failed', 'net::ERR_CONNECTION_CLOSED');
+        runtime.session.dataRequest(10, 'started');
+        runtime.session.dataRequest(10, 'failed', 'net::ERR_EMPTY_RESPONSE');
+        runtime.session.dataRequest(10, 'failed', 'net::ERR_EMPTY_RESPONSE');
+        runtime.session.dataRequest(11, 'started');
+        runtime.session.dataRequest(11, 'failed', 'arbitrary upstream text');
+        runtime.session.dataRequest(12, 'started');
+        runtime.session.dataRequest(12, 'failed', 'net::ERR_ABORTED');
+        runtime.session.dataRequest(13, 'started');
+        runtime.session.dataRequest(13, 'completed');
+        if (kind === 'load_failed') throw Object.assign(new Error('load failed'), { errno: -107 });
+        if (kind === 'load_timeout') await new Promise<void>(() => undefined);
+      };
+      renderWindow.executeImpl = async () => ({ readyState: 'complete', textLength: 0, scriptCount: 5 });
+      runtime.nextWindow = renderWindow;
+      const worker = createWorker(runtime, {
+        loadTimeoutMs: 300, maxSettleDelayMs: 0, renderTimeoutMs: 1_000, totalTimeoutMs: 2_000,
+      });
+      try {
+        await expect(worker.render({ url: 'https://example.com/failed-data' })).rejects.toMatchObject({
+          kind,
+          dataRequestFailures: { count: 2, sampleError: 'net::ERR_EMPTY_RESPONSE' },
+          subresourceFailures: undefined,
+        });
+
+        const nextWindow = new FakeRenderWindow();
+        nextWindow.loadURLImpl = async (url) => {
+          nextWindow.url = url;
+          runtime.session.respond(url);
+          runtime.session.dataRequest(10, 'failed', 'net::ERR_CONNECTION_CLOSED');
+          runtime.session.dataRequest(20, 'started');
+          runtime.session.dataRequest(20, 'failed', 'net::ERR_ABORTED');
+        };
+        nextWindow.executeImpl = renderWindow.executeImpl;
+        runtime.nextWindow = nextWindow;
+        await expect(worker.render({ url: 'https://example.com/next-app' })).rejects.toMatchObject({
+          kind: 'app_shell_not_rendered', dataRequestFailures: undefined, subresourceFailures: undefined,
+        });
+      } finally {
+        await worker.dispose();
+      }
+    },
+  );
 });

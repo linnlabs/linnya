@@ -65,6 +65,16 @@ export function createDesktopWebPageRendererRpcHandlers(input: {
                   },
                 }
               : {}),
+            ...(failure.dataRequestFailures
+              ? {
+                  data_request_failures: {
+                    count: failure.dataRequestFailures.count,
+                    ...(failure.dataRequestFailures.sampleError
+                      ? { sample_error: failure.dataRequestFailures.sampleError }
+                      : {}),
+                  },
+                }
+              : {}),
           },
         });
       }

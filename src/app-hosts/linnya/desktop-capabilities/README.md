@@ -53,4 +53,5 @@ PNG pages 与 PDF bytes 通过同一受管 mailbox 往返，RPC frame 只携带�
 Web Read 的 Chromium fallback 同样由 Desktop Host 拥有隐藏页面与隔离 session。Backend 只取得原
 `WebPageRenderer` port；URL、墙钟上限与渲染结果（含主响应状态与访问挑战判定所需的白名单头）使用严格 DTO，取消沿 RPC signal 传到 BrowserWindow owner。
 最终 DOM 允许达到既有 5 MiB 上限，因此请求与结果统一走私有 mailbox，不进入 1 MiB JSON frame；远程错误会还原为
-原 `WebPageRenderError` kind 与可选主响应、数值 net 错误码及子资源失败计数，网页读取的 policy、timeout 与失败映射不因进程迁移改变。
+原 `WebPageRenderError` kind 与可选主响应、数值 net 错误码及子资源失败计数。脚本/样式表与 XHR/fetch 的失败分别传递，
+只含计数与合法 net 错误名，不传请求地址或响应内容；网页读取的 policy、timeout 与失败映射不因进程迁移改变。

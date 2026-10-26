@@ -54,6 +54,9 @@ export interface WebFailureDetails<TReason extends string = WebFailureKind> {
   /** 本地渲染中脚本/样式表下载失败次数与首个合法 net 错误名。 */
   readonly subresourceFailureCount?: number;
   readonly subresourceError?: string;
+  /** 本次渲染发出的 XHR/fetch 传输失败，与脚本/样式表失败分开统计。 */
+  readonly dataRequestFailureCount?: number;
+  readonly dataRequestError?: string;
   /** 质量不足时本次已取得正文的字符数。 */
   readonly extractedChars?: number;
   /** 质量不足时已取得正文的有界摘录；外部内容，只能在不可信边界内展示，不进入诊断或日志。 */
@@ -100,6 +103,8 @@ export interface WebFailureDiagnostics {
   readonly netErrorCode?: number;
   readonly subresourceFailureCount?: number;
   readonly subresourceError?: string;
+  readonly dataRequestFailureCount?: number;
+  readonly dataRequestError?: string;
   readonly extractedChars?: number;
 }
 
@@ -171,6 +176,8 @@ export function getWebFailureDiagnostics(error: unknown): WebFailureDiagnostics 
   const netErrorCode = read('netErrorCode');
   const subresourceFailureCount = read('subresourceFailureCount');
   const subresourceError = read('subresourceError');
+  const dataRequestFailureCount = read('dataRequestFailureCount');
+  const dataRequestError = read('dataRequestError');
   const numericFacts: { -readonly [K in
     'retryAfterMs' | 'bodyBytes' | 'maxBodyBytes' | 'declaredBodyBytes' | 'extractedChars']?: number } = {};
   for (const key of ['retryAfterMs', 'bodyBytes', 'maxBodyBytes', 'declaredBodyBytes', 'extractedChars'] as const) {
@@ -207,6 +214,10 @@ export function getWebFailureDiagnostics(error: unknown): WebFailureDiagnostics 
       && subresourceFailureCount > 0 ? { subresourceFailureCount } : {}),
     ...(typeof subresourceError === 'string' && NET_ERROR_NAME_PATTERN.test(subresourceError)
       ? { subresourceError } : {}),
+    ...(typeof dataRequestFailureCount === 'number' && Number.isSafeInteger(dataRequestFailureCount)
+      && dataRequestFailureCount > 0 ? { dataRequestFailureCount } : {}),
+    ...(typeof dataRequestError === 'string' && NET_ERROR_NAME_PATTERN.test(dataRequestError)
+      ? { dataRequestError } : {}),
   };
 }
 
@@ -330,6 +341,9 @@ export function formatWebFailureDiagnostics(error: unknown): string {
     diagnostics.subresourceFailureCount !== undefined
       ? `subresource_failures=${diagnostics.subresourceFailureCount}` : '',
     diagnostics.subresourceError ? `subresource_error=${diagnostics.subresourceError}` : '',
+    diagnostics.dataRequestFailureCount !== undefined
+      ? `data_request_failures=${diagnostics.dataRequestFailureCount}` : '',
+    diagnostics.dataRequestError ? `data_request_error=${diagnostics.dataRequestError}` : '',
     diagnostics.rpcCode !== undefined ? `rpc_code=${diagnostics.rpcCode}` : '',
     diagnostics.attempt !== undefined ? `attempt=${diagnostics.attempt}` : '',
     diagnostics.retryCount !== undefined ? `retry_count=${diagnostics.retryCount}` : '',
