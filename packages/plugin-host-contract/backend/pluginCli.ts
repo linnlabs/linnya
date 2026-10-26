@@ -17,6 +17,10 @@ export interface BackendPluginCliAccessPlan {
 export interface BackendPluginCliExecutionContext {
   /** 只有父 Shell 权限门禁通过后才提供；插件必须在 execute 内按自身窄类型读取。 */
   readonly hostContext: unknown;
+  /** 当前 bridge 从已授权父 execution 冻结的会话身份；旧 Host 可能未提供。 */
+  readonly conversationId?: string;
+  /** Host 经 Conversation owner 解析的项目归属；不接受 CLI argv 覆盖。 */
+  readonly projectId?: string;
   readonly signal: AbortSignal;
 }
 

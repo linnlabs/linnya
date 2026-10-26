@@ -19,6 +19,7 @@ Agent shell
 - launcher adapter 只把同一原生 client 复制成 `linnya-<plugin>` facade，并将目录加入冻结 PATH。
 - bridge 只拥有一次性 token、invocation lease、access plan 校验和 abort/draining。
 - 插件拥有 argv parser、领域命令、exit code、stdout/stderr 与产物格式。
+- execute context 的 `conversationId` 来自已授权父 execution 的冻结身份，不读取 argv 或模型自报值。internal-data 权限通过后，App 注入的只读 Conversation 查询解析 `projectId`；对话不是 Workspace 文件节点，插件不能用文件节点查询代替这个归属事实。`hostContext` 仍只在该权限通过后提供；旧 Host 未提供身份/项目时插件应明确说明能力缺失。
 - standalone `entry.command` 是人/CI 的另一个宿主 adapter，不经过本 bridge。
 
 禁止在 bridge 中新增 command reservation、审批记忆、输出存储、Renderer DTO、插件参数分支或第二个

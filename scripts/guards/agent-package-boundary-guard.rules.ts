@@ -54,6 +54,11 @@ type RuntimePluginPackageDefinition = {
 
 const RUNTIME_PLUGIN_PACKAGES: readonly RuntimePluginPackageDefinition[] = [
   {
+    id: 'decision',
+    packagePrefix: 'packages/plugins/decision/src',
+    rulePrefix: 'DECISION-PKG',
+  },
+  {
     id: 'mindmap',
     packagePrefix: MINDMAP_PACKAGE_PREFIX,
     rulePrefix: 'MINDMAP-PKG',

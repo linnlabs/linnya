@@ -1,0 +1,29 @@
+{
+  "name": "@plugin/decision",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "Linnya decision prototype",
+  "linnya": {"development": {"backendLoading": "disk", "backendWatchConfig": "tsup.plugin.config.ts"}},
+  "exports": {
+    "./shared": "./src/shared/index.ts",
+    "./backend": "./src/backend/index.ts"
+  },
+  "scripts": {
+    "build:backend": "tsup --config tsup.plugin.config.ts",
+    "build": "pnpm run build:backend",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts src"
+  },
+  "dependencies": {"@app/schemas": "workspace:*", "zod": "^3.25.76"},
+  "devDependencies": {
+    "@linnlabs/linnkit": "0.38.1",
+    "@linnya/plugin-host-contract": "workspace:*",
+    "@types/node": "^24.0.0",
+    "better-sqlite3": "13.0.3",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.4",
+    "vitest": "^4.1.11"
+  }
+}

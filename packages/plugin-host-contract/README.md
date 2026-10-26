@@ -89,6 +89,8 @@ Host 仅提供 `{ runId, toolCallId }`，与 `conversationId` 分别声明；不
 
 ## 5. Plugin CLI 与 Hidden Worker
 
+Plugin CLI 的 execute context 可包含 `conversationId` 和 `projectId`。前者由已授权父 Shell 的冻结身份提供，后者在 internal-data 权限通过后由 App 查询 Conversation 正式归属；插件不能用 argv 自报项目替代。两字段对旧 Host 可缺省，依赖它们的插件必须明确报告接入缺失。它们是上下文，不扩大 CLI access plan 的权限。
+
 官方内置 backend contribution 可以提供一个 `pluginCli`。它只接收 opaque `argv`、invocation ID 和
 conversation root；prepare 阶段只解析参数并返回 access plan，不得接触 DB、coordinator 或 worker。
 Host 通过权限门禁后才调用 execute，并传入 `hostContext: unknown` 与 `AbortSignal`。插件必须用窄类型守卫

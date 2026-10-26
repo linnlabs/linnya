@@ -188,6 +188,7 @@ function registerCli(cli: BackendPluginCliContribution): BackendPluginCliRegistr
 async function startBridge(input: {
   readonly registration: BackendPluginCliRegistration;
   readonly internalDataContext?: unknown;
+  readonly readConversationProjectId?: (conversationId: string) => Promise<string | null | undefined>;
   readonly diagnostics?: PluginCliBridgeDiagnosticPort;
   readonly createCorrelationId?: () => string;
 }): Promise<PluginCliShellBridgeRuntime> {
@@ -196,6 +197,7 @@ async function startBridge(input: {
       pluginId === input.registration.pluginId ? input.registration : undefined
     ),
     internalDataContext: input.internalDataContext ?? Object.freeze({}),
+    ...(input.readConversationProjectId ? { readConversationProjectId: input.readConversationProjectId } : {}),
     diagnostics: input.diagnostics ?? { recordUnexpectedFailure: () => undefined },
     createToken: () => 'a'.repeat(64),
     createInvocationId: () => 'invocation-1',
@@ -252,7 +254,8 @@ describe('Plugin CLI Shell bridge', () => {
       }),
     });
     const internalDataContext = { databaseService: { kind: 'workspace-db' } };
-    const bridge = await startBridge({ registration, internalDataContext });
+    const readConversationProjectId = vi.fn(async () => 'project-from-conversation');
+    const bridge = await startBridge({ registration, internalDataContext, readConversationProjectId });
     const launch = createLaunch();
     const prepared = createPreparedRuntime(launch);
     const scope = bridge.prepareExecution(launch);
@@ -275,9 +278,12 @@ describe('Plugin CLI Shell bridge', () => {
         ],
       });
     expect(execute).toHaveBeenCalledWith({
+      conversationId: launch.proposal.identity.conversation_id,
+      projectId: 'project-from-conversation',
       hostContext: internalDataContext,
       signal: expect.any(AbortSignal),
     });
+    expect(readConversationProjectId).toHaveBeenCalledExactlyOnceWith(launch.proposal.identity.conversation_id);
 
     prepared.terminal.resolve(createTerminal(launch));
     await runtime.terminal;

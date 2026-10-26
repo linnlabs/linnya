@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { SQLiteEventStore } from 'src/app-hosts/linnya/adapters/persistence/event-store';
 
 import { ToolOutputBlobSourceSchema } from 'src/tools/tool_output';
 import { createToolOutputTextBlobWriter } from 'src/tools/tool_output/orchestration/createToolOutputTextBlobWriter';
@@ -81,8 +82,12 @@ export async function createCommandProductionScope(input: {
   const artifactPort = createFileCommandOutputArtifactPort({
     storageRoot: input.artifactStorageRoot,
   });
+  const conversationFacts = new SQLiteEventStore(input.db);
   const pluginCliBridge = await startPluginCliShellBridgeRuntime({
     resolveCli: input.resolvePluginCli,
+    readConversationProjectId: async conversationId => (
+      (await conversationFacts.getConversationMetadata(conversationId))?.project_id
+    ),
     internalDataContext: Object.freeze({
       databaseService: Object.freeze({
         getDb: () => input.db,

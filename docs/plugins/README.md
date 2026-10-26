@@ -30,6 +30,8 @@ Linnya Core 的静态运行面只有 `platform`。当前产品发行可以随包
 
 ## 架构参考
 
+开发态决策 Agent 原型见[Decision 插件](../../packages/plugins/decision/README.md)：它通过独立 Agent、Skill 与受管 CLI 保存和更新决策记录，仅进入显式源码开发装配，尚未加入默认发行清单。
+
 | 文档 | 说明 |
 | --- | --- |
 | [插件系统架构参考](./architecture.md) | 系统结构、模块职责、数据流、启动时序、状态管理、环境差异、边界约束 |

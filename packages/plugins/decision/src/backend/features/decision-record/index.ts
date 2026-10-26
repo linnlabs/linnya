@@ -1,0 +1,4 @@
+export { projectDecisionRecord, recordDecisionRecommendation, updateDecisionRecord } from './functions/updateDecisionRecord';
+export { validateDecisionModel } from './functions/evaluateDecisionModel';
+export { createDecisionRecordRepository } from './persistence/decisionRecordRepository';
+export { DecisionFailure } from './definitions/decisionFailure';

@@ -214,6 +214,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
     pluginId: string,
   ) => BackendPluginCliRegistration | undefined;
   readonly internalDataContext: unknown;
+  readonly readConversationProjectId?: (conversationId: string) => Promise<string | null | undefined>;
   readonly diagnostics: PluginCliBridgeDiagnosticPort;
   readonly createToken?: () => string;
   readonly createInvocationId?: () => string;
@@ -314,7 +315,14 @@ export async function startPluginCliShellBridgeRuntime(input: {
       }
       signals.signal.throwIfAborted();
       stage = 'execute';
+      const conversationId = lease.launch.proposal.identity.conversation_id;
+      const projectId = access.internalDataAccess === 'required'
+        ? await input.readConversationProjectId?.(conversationId)
+        : undefined;
+      signals.signal.throwIfAborted();
       const result = await preparation.plan.execute({
+        conversationId,
+        ...(projectId ? { projectId } : {}),
         hostContext: access.internalDataAccess === 'required'
           ? input.internalDataContext
           : Object.freeze({}),
