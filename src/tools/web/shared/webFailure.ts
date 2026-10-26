@@ -49,6 +49,11 @@ export interface WebFailureDetails<TReason extends string = WebFailureKind> {
   readonly maxBodyBytes?: number;
   readonly declaredBodyBytes?: number;
   readonly challengeSignal?: WebAccessChallengeSignal;
+  /** 本地渲染主框架加载失败时 Chromium 的数值 net 错误码。 */
+  readonly netErrorCode?: number;
+  /** 本地渲染中脚本/样式表下载失败次数与首个合法 net 错误名。 */
+  readonly subresourceFailureCount?: number;
+  readonly subresourceError?: string;
   /** 已实际抽取的外部资源；不得混入安全诊断，展示必须进入不可信边界。 */
   readonly resources?: readonly WebPageResource[];
 }
@@ -88,7 +93,13 @@ export interface WebFailureDiagnostics {
   readonly maxBodyBytes?: number;
   readonly declaredBodyBytes?: number;
   readonly challengeSignal?: WebAccessChallengeSignal;
+  readonly netErrorCode?: number;
+  readonly subresourceFailureCount?: number;
+  readonly subresourceError?: string;
 }
+
+/** 与渲染 port 的 net 错误名形状一致；任意错误文字不进入诊断。 */
+const NET_ERROR_NAME_PATTERN = /^net::ERR_[A-Z0-9_]{1,64}$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -152,6 +163,9 @@ export function getWebFailureDiagnostics(error: unknown): WebFailureDiagnostics 
   const rpcCode = read('rpcCode');
   const retryStopReason = WEB_RETRY_STOP_REASONS.find(value => value === read('retryStopReason'));
   const challengeSignal = read('challengeSignal');
+  const netErrorCode = read('netErrorCode');
+  const subresourceFailureCount = read('subresourceFailureCount');
+  const subresourceError = read('subresourceError');
   const numericFacts: { -readonly [K in
     'retryAfterMs' | 'bodyBytes' | 'maxBodyBytes' | 'declaredBodyBytes']?: number } = {};
   for (const key of ['retryAfterMs', 'bodyBytes', 'maxBodyBytes', 'declaredBodyBytes'] as const) {
@@ -182,6 +196,12 @@ export function getWebFailureDiagnostics(error: unknown): WebFailureDiagnostics 
     ...numericFacts,
     ...(retryStopReason ? { retryStopReason } : {}),
     ...(isWebAccessChallengeSignal(challengeSignal) ? { challengeSignal } : {}),
+    ...(typeof netErrorCode === 'number' && Number.isSafeInteger(netErrorCode) && netErrorCode < 0
+      ? { netErrorCode } : {}),
+    ...(typeof subresourceFailureCount === 'number' && Number.isSafeInteger(subresourceFailureCount)
+      && subresourceFailureCount > 0 ? { subresourceFailureCount } : {}),
+    ...(typeof subresourceError === 'string' && NET_ERROR_NAME_PATTERN.test(subresourceError)
+      ? { subresourceError } : {}),
   };
 }
 
@@ -300,6 +320,10 @@ export function formatWebFailureDiagnostics(error: unknown): string {
     diagnostics.escalationReason ? `escalation=${diagnostics.escalationReason}` : '',
     diagnostics.status !== undefined ? `HTTP=${diagnostics.status}` : '',
     diagnostics.challengeSignal ? `challenge=${diagnostics.challengeSignal}` : '',
+    diagnostics.netErrorCode !== undefined ? `net_error=${diagnostics.netErrorCode}` : '',
+    diagnostics.subresourceFailureCount !== undefined
+      ? `subresource_failures=${diagnostics.subresourceFailureCount}` : '',
+    diagnostics.subresourceError ? `subresource_error=${diagnostics.subresourceError}` : '',
     diagnostics.rpcCode !== undefined ? `rpc_code=${diagnostics.rpcCode}` : '',
     diagnostics.attempt !== undefined ? `attempt=${diagnostics.attempt}` : '',
     diagnostics.retryCount !== undefined ? `retry_count=${diagnostics.retryCount}` : '',

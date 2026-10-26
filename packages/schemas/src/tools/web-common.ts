@@ -104,6 +104,7 @@ export const WEB_RENDER_FAILURE_KIND_VALUES = [
   'render_failed',
   'access_challenge',
   'app_shell_not_rendered',
+  'load_failed',
 ] as const;
 export const WebRenderFailureKindSchema = z.enum(WEB_RENDER_FAILURE_KIND_VALUES);
 export type WebRenderFailureKind = z.infer<typeof WebRenderFailureKindSchema>;

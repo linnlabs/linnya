@@ -18,7 +18,7 @@ const state = vi.hoisted((): {
     callback: (response: { cancel: boolean }) => void,
   ) => void) | null;
   headersReceived: HeadersReceivedListener | null;
-  dataListeners: Record<string, ((details: { id: number; resourceType: string }) => void) | null>;
+  dataListeners: Record<string, ((details: { id: number; resourceType: string; error?: string }) => void) | null>;
 } => ({ beforeRequest: null, headersReceived: null, dataListeners: {} }));
 
 vi.mock('electron', () => ({
@@ -43,7 +43,7 @@ vi.mock('electron', () => ({
         onCompleted: (_filter: unknown, listener: (details: { id: number; resourceType: string }) => void) => {
           state.dataListeners.completed = listener;
         },
-        onErrorOccurred: (_filter: unknown, listener: (details: { id: number; resourceType: string }) => void) => {
+        onErrorOccurred: (_filter: unknown, listener: (details: { id: number; resourceType: string; error?: string }) => void) => {
           state.dataListeners.errorOccurred = listener;
         },
       },
@@ -161,24 +161,24 @@ describe('主框架响应头观察', () => {
   });
 });
 
-describe('数据请求观察', () => {
-  it('只报告 xhr/fetch 的发出与结束（含失败），其他资源不计入；清理后解除监听', () => {
+describe('子资源观察', () => {
+  it('数据请求报告发出/完成/失败，脚本与样式表报告失败及错误名，其他资源不计入；清理后解除监听', () => {
     const session = createElectronWebPageRenderRuntime().createSession('test');
     const events: unknown[] = [];
-    const cleanup = session.observeDataRequests((event) => events.push(event));
+    const cleanup = session.observeSubresources((event) => events.push(event));
 
     state.dataListeners.sendHeaders?.({ id: 1, resourceType: 'xhr' });
     state.dataListeners.sendHeaders?.({ id: 2, resourceType: 'image' });
-    state.dataListeners.sendHeaders?.({ id: 3, resourceType: 'xhr' });
     state.dataListeners.completed?.({ id: 1, resourceType: 'xhr' });
-    state.dataListeners.errorOccurred?.({ id: 3, resourceType: 'xhr' });
-    state.dataListeners.completed?.({ id: 2, resourceType: 'image' });
+    state.dataListeners.errorOccurred?.({ id: 3, resourceType: 'script', error: 'net::ERR_SSL_PROTOCOL_ERROR' });
+    state.dataListeners.errorOccurred?.({ id: 4, resourceType: 'stylesheet', error: 'net::ERR_CONNECTION_CLOSED' });
+    state.dataListeners.errorOccurred?.({ id: 5, resourceType: 'image', error: 'net::ERR_FAILED' });
 
     expect(events).toEqual([
-      { id: 1, phase: 'started' },
-      { id: 3, phase: 'started' },
-      { id: 1, phase: 'finished' },
-      { id: 3, phase: 'finished' },
+      { id: 1, category: 'data', phase: 'started' },
+      { id: 1, category: 'data', phase: 'completed' },
+      { id: 3, category: 'script_or_style', phase: 'failed', error: 'net::ERR_SSL_PROTOCOL_ERROR' },
+      { id: 4, category: 'script_or_style', phase: 'failed', error: 'net::ERR_CONNECTION_CLOSED' },
     ]);
     cleanup();
     expect(state.dataListeners).toEqual({ sendHeaders: null, completed: null, errorOccurred: null });

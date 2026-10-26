@@ -20,6 +20,15 @@ function readFailure(error: unknown): { kind: string; status?: number; headers?:
   };
 }
 
+function readSubresourceFailures(error: unknown): { count: number; sampleError: string } {
+  const failures: unknown = error && typeof error === 'object' ? Reflect.get(error, 'subresourceFailures') : undefined;
+  if (!failures || typeof failures !== 'object') return { count: 0, sampleError: '' };
+  return {
+    count: Number(Reflect.get(failures, 'count') ?? 0),
+    sampleError: String(Reflect.get(failures, 'sampleError') ?? ''),
+  };
+}
+
 function listen(server: ReturnType<typeof createServer>): Promise<number> {
   return new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
@@ -116,6 +125,18 @@ async function run(): Promise<void> {
         </script></body></html>`);
       return;
     }
+    if (route === '/broken-script.js') {
+      // 直接断开连接：模拟脚本下载在传输层失败。
+      request.socket.destroy();
+      return;
+    }
+    if (route === '/app-broken-script') {
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end(`<!doctype html><html><body><div id="app">Loading</div>
+        <script>window.__boot = 1;</script><script>window.__config = {};</script>
+        <script src="/broken-script.js"></script></body></html>`);
+      return;
+    }
     if (route === '/hanging-load') {
       response.setHeader('Content-Type', 'text/html; charset=utf-8');
       response.end(`<!doctype html><html><body><article>${'HANGING_LOAD_CONTENT '.repeat(20)}</article>
@@ -199,12 +220,14 @@ async function run(): Promise<void> {
       totalTimeoutMs: 3_000,
     });
     let privateNetworkKind = '';
+    let privateNetworkErrorCode: unknown;
     try {
       await restrictedWorker.render({ url: `http://127.0.0.1:${port}/static` });
     } catch (error: unknown) {
       privateNetworkKind = error && typeof error === 'object'
         ? String(Reflect.get(error, 'kind') ?? '')
         : '';
+      privateNetworkErrorCode = error && typeof error === 'object' ? Reflect.get(error, 'netErrorCode') : undefined;
     } finally {
       await restrictedWorker.dispose();
     }
@@ -238,6 +261,10 @@ async function run(): Promise<void> {
     const appHangingData = await timedRender('/app-hanging-data');
     const appSettledBlank = await timedRender('/app-settled-blank');
     const emptyStatic = await timedRender('/empty-static');
+    const brokenScript = await worker.render({ url: `${origin}/app-broken-script` }).then(
+      () => ({ kind: 'rendered', subresourceFailures: { count: 0, sampleError: '' } }),
+      (error: unknown) => ({ kind: readFailure(error).kind, subresourceFailures: readSubresourceFailures(error) }),
+    );
 
     const result = {
       spaRendered: spa.html.includes('SPA_RENDERED_CONTENT'),
@@ -247,6 +274,8 @@ async function run(): Promise<void> {
       crossRedirectKind,
       timeoutKind,
       privateNetworkKind,
+      // 本地 URL/DNS 准入拒绝主框架：Chromium ERR_BLOCKED_BY_CLIENT。
+      privateNetworkErrorCode,
       recoveredAfterBlockedNavigation: recovered.html.includes('static fixture'),
       spaMainStatus: spa.mainResponse.status,
       redirectedMainStatus: redirected.mainResponse.status,
@@ -263,6 +292,12 @@ async function run(): Promise<void> {
       appSettledBlank: { kind: appSettledBlank.kind, beforeDeadline: appSettledBlank.elapsedMs < 2_500 },
       // 没有脚本的真实空页按原快速路径返回，由 Web 抽取判定空正文。
       emptyStatic: { kind: emptyStatic.kind, fast: emptyStatic.elapsedMs < 1_500 },
+      // 脚本在传输层失败的应用壳：报告未渲染并附子资源失败事实。
+      brokenScript: {
+        kind: brokenScript.kind,
+        failed: brokenScript.subresourceFailures.count >= 1,
+        sampleIsNetError: /^net::ERR_[A-Z0-9_]+$/.test(brokenScript.subresourceFailures.sampleError),
+      },
       popupRequests: state.popupRequests,
       downloadRequests: state.downloadRequests,
     };

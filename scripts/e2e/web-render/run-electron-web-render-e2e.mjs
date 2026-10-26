@@ -70,7 +70,8 @@ try {
     sameSiteRedirected: true,
     crossRedirectKind: 'navigation_blocked',
     timeoutKind: 'total_timeout',
-    privateNetworkKind: 'render_failed',
+    privateNetworkKind: 'load_failed',
+    privateNetworkErrorCode: -20,
     recoveredAfterBlockedNavigation: true,
     spaMainStatus: 200,
     redirectedMainStatus: 200,
@@ -84,13 +85,14 @@ try {
     appHangingDataKind: 'app_shell_not_rendered',
     appSettledBlank: { kind: 'app_shell_not_rendered', beforeDeadline: true },
     emptyStatic: { kind: 'rendered', fast: true },
+    brokenScript: { kind: 'app_shell_not_rendered', failed: true, sampleIsNetError: true },
     popupRequests: 0,
     downloadRequests: 3,
   };
   if (JSON.stringify(result) !== JSON.stringify(expected)) {
     throw new Error(`Electron Web Render E2E 结果不符合预期。\nactual=${JSON.stringify(result)}\nexpected=${JSON.stringify(expected)}`);
   }
-  console.log('[electron-web-render-e2e] SPA、导航、弹窗、下载、权限、超时、主响应、访问挑战与就绪边界通过。');
+  console.log('[electron-web-render-e2e] SPA、导航、弹窗、下载、权限、超时、主响应、访问挑战、就绪与加载失败边界通过。');
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
 }

@@ -6,6 +6,7 @@ import {
 import type { WebResponseHeaderLookup } from '../../tools/web/shared/webAccessChallenge';
 import type {
   WebPageRenderResponseDecision,
+  WebPageRenderSubresourceEvent,
   WebPageRenderRuntime,
   WebPageRenderSession,
   WebPageRenderWindow,
@@ -184,22 +185,33 @@ function createSession(
         renderSession.webRequest.onHeadersReceived(responseFilter, null);
       };
     },
-    observeDataRequests: (listener) => {
-      const dataFilter = { urls: ['http://*/*', 'https://*/*'] };
-      // Chromium 把 XMLHttpRequest 与 fetch 都报告为 xhr；图片、脚本、beacon 等不计入数据请求。
-      const handleStarted = (details: { id: number; resourceType: string }): void => {
-        if (details.resourceType === 'xhr') listener({ id: details.id, phase: 'started' });
+    observeSubresources: (listener) => {
+      const subresourceFilter = { urls: ['http://*/*', 'https://*/*'] };
+      const categorize = (resourceType: string): WebPageRenderSubresourceEvent['category'] | undefined => {
+        if (resourceType === 'xhr') return 'data';
+        if (resourceType === 'script' || resourceType === 'stylesheet') return 'script_or_style';
+        return undefined;
       };
-      const handleFinished = (details: { id: number; resourceType: string }): void => {
-        if (details.resourceType === 'xhr') listener({ id: details.id, phase: 'finished' });
+      const emit = (
+        details: { id: number; resourceType: string; error?: string },
+        phase: WebPageRenderSubresourceEvent['phase'],
+      ): void => {
+        const category = categorize(details.resourceType);
+        if (!category) return;
+        listener({
+          id: details.id,
+          category,
+          phase,
+          ...(phase === 'failed' && details.error ? { error: details.error } : {}),
+        });
       };
-      renderSession.webRequest.onSendHeaders(dataFilter, handleStarted);
-      renderSession.webRequest.onCompleted(dataFilter, handleFinished);
-      renderSession.webRequest.onErrorOccurred(dataFilter, handleFinished);
+      renderSession.webRequest.onSendHeaders(subresourceFilter, (details) => emit(details, 'started'));
+      renderSession.webRequest.onCompleted(subresourceFilter, (details) => emit(details, 'completed'));
+      renderSession.webRequest.onErrorOccurred(subresourceFilter, (details) => emit(details, 'failed'));
       return () => {
-        renderSession.webRequest.onSendHeaders(dataFilter, null);
-        renderSession.webRequest.onCompleted(dataFilter, null);
-        renderSession.webRequest.onErrorOccurred(dataFilter, null);
+        renderSession.webRequest.onSendHeaders(subresourceFilter, null);
+        renderSession.webRequest.onCompleted(subresourceFilter, null);
+        renderSession.webRequest.onErrorOccurred(subresourceFilter, null);
       };
     },
   };

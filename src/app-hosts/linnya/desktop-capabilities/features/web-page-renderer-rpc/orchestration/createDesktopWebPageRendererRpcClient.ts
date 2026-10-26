@@ -37,12 +37,20 @@ export function createDesktopWebPageRendererRpcClient(
       }
       const result = WebPageRenderRpcResultSchema.parse(rawResult);
       if (!result.ok) {
-        const mainResponse = result.error.main_response;
-        throw new WebPageRenderError(
-          result.error.kind,
-          result.error.message,
-          mainResponse ? { mainResponse: copyWebPageMainResponse(mainResponse) } : undefined,
-        );
+        const { main_response: mainResponse, net_error_code: netErrorCode } = result.error;
+        const subresourceFailures = result.error.subresource_failures;
+        throw new WebPageRenderError(result.error.kind, result.error.message, {
+          ...(mainResponse ? { mainResponse: copyWebPageMainResponse(mainResponse) } : {}),
+          ...(netErrorCode !== undefined ? { netErrorCode } : {}),
+          ...(subresourceFailures
+            ? {
+                subresourceFailures: {
+                  count: subresourceFailures.count,
+                  ...(subresourceFailures.sample_error ? { sampleError: subresourceFailures.sample_error } : {}),
+                },
+              }
+            : {}),
+        });
       }
       return {
         html: result.value.html,

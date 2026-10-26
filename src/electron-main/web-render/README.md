@@ -30,8 +30,13 @@ IP、localhost 和跨注册域导航拒绝。`about:blank` 只保留窗口初始
 没有应用壳迹象的空白页沿用快速路径返回，由 Web 抽取判定空正文。截止时间沿用既有预算：
 `max(导航开始 + loadTimeoutMs, DOM 就绪 + maxSettleDelayMs)`，整体仍受任务总墙钟约束，不全局延长固定等待。
 
-数据请求只经 session 的 `onSendHeaders/onCompleted/onErrorOccurred` 观察 xhr 类型（Chromium 把 fetch 也归为 xhr），
-按请求 id 只结算本任务发出的请求；不拦截、不读取请求或响应内容。
+子资源只经 session 的 `onSendHeaders/onCompleted/onErrorOccurred` 观察：xhr 类型（Chromium 把 fetch 也归为 xhr）
+按请求 id 只结算本任务发出的数据请求；脚本与样式表只统计下载失败次数并保留首个合法 `net::ERR_*` 错误名，
+窗口销毁或导航中止的 `net::ERR_ABORTED` 不计入，不记录地址。失败事实随 `load_timeout`、`load_failed` 与
+`app_shell_not_rendered` 回传。不拦截、不读取请求或响应内容。
+
+主框架加载被拒绝时以 `load_failed` 结束，并保留 Electron 错误对象上的数值 net 错误码（如 `-107`、`-20`）；
+任意 Chromium 错误文字不跨进程传递。
 
 ## 主响应与访问挑战
 

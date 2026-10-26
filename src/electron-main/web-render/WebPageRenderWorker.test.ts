@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type {
-  WebPageRenderDataRequestEvent,
   WebPageRenderMainFrameResponse,
   WebPageRenderResponseDecision,
   WebPageRenderRuntime,
   WebPageRenderSession,
+  WebPageRenderSubresourceEvent,
   WebPageRenderWindow,
   WebPageRenderWindowOptions,
 } from './definitions/webPageRenderRuntime';
@@ -53,17 +53,21 @@ class FakeRenderSession implements WebPageRenderSession {
     };
   }
 
-  private dataRequestObserver: ((event: WebPageRenderDataRequestEvent) => void) | undefined;
+  private subresourceObserver: ((event: WebPageRenderSubresourceEvent) => void) | undefined;
 
-  observeDataRequests(listener: (event: WebPageRenderDataRequestEvent) => void): () => void {
-    this.dataRequestObserver = listener;
+  observeSubresources(listener: (event: WebPageRenderSubresourceEvent) => void): () => void {
+    this.subresourceObserver = listener;
     return () => {
-      this.dataRequestObserver = undefined;
+      this.subresourceObserver = undefined;
     };
   }
 
-  dataRequest(id: number, phase: WebPageRenderDataRequestEvent['phase']): void {
-    this.dataRequestObserver?.({ id, phase });
+  dataRequest(id: number, phase: 'started' | 'completed'): void {
+    this.subresourceObserver?.({ id, category: 'data', phase });
+  }
+
+  scriptFailed(id: number, error: string): void {
+    this.subresourceObserver?.({ id, category: 'script_or_style', phase: 'failed', error });
   }
 
   /** 模拟 Electron 在正文交给页面前回调主框架响应头；未安装观察者时视为拒绝。 */
@@ -422,7 +426,7 @@ describe('WebPageRenderWorker', () => {
     runtime.nextWindow = renderWindow;
 
     await expect(createWorker(runtime).render({ url: 'https://example.com/blocked' }))
-      .rejects.toEqual(expect.objectContaining({ kind: 'render_failed' }));
+      .rejects.toEqual(expect.objectContaining({ kind: 'load_failed' }));
     expect(renderWindow.executeCount).toBe(0);
   });
 
@@ -435,7 +439,7 @@ describe('WebPageRenderWorker', () => {
       runtime.session.dataRequest(7, 'started');
     };
     renderWindow.executeImpl = async () => {
-      if (renderWindow.executeCount === 4) runtime.session.dataRequest(7, 'finished');
+      if (renderWindow.executeCount === 4) runtime.session.dataRequest(7, 'completed');
       if (renderWindow.executeCount <= 4) return { readyState: 'complete', textLength: 7, scriptCount: 4 };
       if (renderWindow.executeCount <= 7) return { readyState: 'complete', textLength: 900, scriptCount: 4 };
       return '<html><body>data rendered article</body></html>';
@@ -473,5 +477,42 @@ describe('WebPageRenderWorker', () => {
       expect.objectContaining({ kind: 'app_shell_not_rendered' }),
     );
     expect(renderWindow.destroyCount).toBe(1);
+  });
+  it('主框架加载被拒绝时以 load_failed 结束并保留 Chromium 数值错误码', async () => {
+    const runtime = new FakeRenderRuntime();
+    const renderWindow = new FakeRenderWindow();
+    renderWindow.loadURLImpl = async (url) => {
+      renderWindow.url = url;
+      throw Object.assign(new Error(" (-107) loading 'https://example.com/tls'"), { errno: -107, code: '' });
+    };
+    runtime.nextWindow = renderWindow;
+
+    await expect(createWorker(runtime).render({ url: 'https://example.com/tls' })).rejects.toEqual(
+      expect.objectContaining({ kind: 'load_failed', netErrorCode: -107 }),
+    );
+  });
+
+  it('应用壳未渲染时附上脚本/样式表下载失败事实；自身中止和非法错误名不计入样本', async () => {
+    const runtime = new FakeRenderRuntime();
+    const renderWindow = new FakeRenderWindow();
+    renderWindow.loadURLImpl = async (url) => {
+      renderWindow.url = url;
+      runtime.session.respond(url);
+      runtime.session.scriptFailed(1, 'net::ERR_ABORTED');
+      runtime.session.scriptFailed(2, 'injected text');
+      runtime.session.scriptFailed(3, 'net::ERR_SSL_PROTOCOL_ERROR');
+    };
+    renderWindow.executeImpl = async () => ({ readyState: 'complete', textLength: 0, scriptCount: 5 });
+    runtime.nextWindow = renderWindow;
+
+    await expect(createWorker(runtime, {
+      loadTimeoutMs: 300,
+      maxSettleDelayMs: 0,
+      renderTimeoutMs: 1_000,
+      totalTimeoutMs: 2_000,
+    }).render({ url: 'https://example.com/broken-app' })).rejects.toEqual(expect.objectContaining({
+      kind: 'app_shell_not_rendered',
+      subresourceFailures: { count: 2, sampleError: 'net::ERR_SSL_PROTOCOL_ERROR' },
+    }));
   });
 });

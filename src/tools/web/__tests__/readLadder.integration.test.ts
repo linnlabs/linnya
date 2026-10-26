@@ -765,6 +765,30 @@ describe('R2 本地渲染 Provider', () => {
     })).rejects.toMatchObject({ kind: 'policy_denied' });
   });
 
+  it.each([
+    { netErrorCode: -107, kind: 'network_error' },
+    { netErrorCode: -105, kind: 'network_error' },
+    { netErrorCode: -20, kind: 'policy_denied' },
+    { netErrorCode: -3, kind: 'provider_error' },
+    { netErrorCode: undefined, kind: 'provider_error' },
+  ])('主框架加载失败 net_error=$netErrorCode 归类为 $kind 并保留数值错误码', async ({ netErrorCode, kind }) => {
+    const renderer: WebPageRenderer = {
+      async render() {
+        throw new WebPageRenderError('load_failed', 'load failed', netErrorCode === undefined ? undefined : { netErrorCode });
+      },
+    };
+    const error = await new LocalRenderProvider({ renderer }).read({ url: 'https://example.com/page' })
+      .catch((failure: unknown) => failure);
+    expect(error).toMatchObject({
+      kind,
+      details: {
+        failureStage: 'local_render',
+        renderFailureKind: 'load_failed',
+        ...(netErrorCode === undefined ? {} : { netErrorCode }),
+      },
+    });
+  });
+
   it('渲染端停止的访问挑战归类为验证码，保留真实主响应状态与信号', async () => {
     const renderer: WebPageRenderer = {
       async render() {

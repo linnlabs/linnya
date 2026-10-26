@@ -12,17 +12,35 @@ export interface WebPageMainResponse {
   readonly headers: Readonly<Partial<Record<WebAccessChallengeHeaderName, string>>>;
 }
 
+/** Chromium net 错误名的合法形状；只接纳这种 token，任意错误文字不跨进程传递。 */
+export const WEB_PAGE_NET_ERROR_NAME_PATTERN = /^net::ERR_[A-Z0-9_]{1,64}$/;
+
+/** 本次渲染中脚本与样式表的下载失败；只计数并保留首个合法错误名，不记录地址。 */
+export interface WebPageSubresourceFailures {
+  readonly count: number;
+  readonly sampleError?: string;
+}
+
 export class WebPageRenderError extends Error {
   readonly name = 'WebPageRenderError';
   readonly mainResponse?: WebPageMainResponse;
+  /** 主框架加载失败时 Chromium 的数值 net 错误码（如 -107）。 */
+  readonly netErrorCode?: number;
+  readonly subresourceFailures?: WebPageSubresourceFailures;
 
   constructor(
     readonly kind: WebPageRenderFailureKind,
     message: string,
-    options?: { readonly mainResponse?: WebPageMainResponse }
+    options?: {
+      readonly mainResponse?: WebPageMainResponse;
+      readonly netErrorCode?: number;
+      readonly subresourceFailures?: WebPageSubresourceFailures;
+    }
   ) {
     super(message);
     if (options?.mainResponse) this.mainResponse = options.mainResponse;
+    if (options?.netErrorCode !== undefined) this.netErrorCode = options.netErrorCode;
+    if (options?.subresourceFailures) this.subresourceFailures = options.subresourceFailures;
   }
 }
 

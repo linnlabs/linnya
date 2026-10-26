@@ -198,6 +198,12 @@ describe('Desktop capability mailbox RPC', () => {
         if (url.endsWith('/blocked')) {
           throw new WebPageRenderError('navigation_blocked', '拒绝跨站导航');
         }
+        if (url.endsWith('/tls-broken')) {
+          throw new WebPageRenderError('app_shell_not_rendered', '前端应用未渲染', {
+            netErrorCode: -107,
+            subresourceFailures: { count: 3, sampleError: 'net::ERR_SSL_PROTOCOL_ERROR' },
+          });
+        }
         if (url.endsWith('/challenged')) {
           throw new WebPageRenderError('access_challenge', '主文档返回站点访问验证', {
             mainResponse: { status: 202, headers: { 'x-amzn-waf-action': 'challenge' } },
@@ -234,6 +240,17 @@ describe('Desktop capability mailbox RPC', () => {
         finalUrl: 'https://example.com/article/rendered',
         mainResponse: { status: 203, headers: { 'cf-mitigated': 'block' } },
       });
+      await expect(
+        client.render({
+          url: 'https://example.com/tls-broken',
+        })
+      ).rejects.toEqual(
+        expect.objectContaining({
+          kind: 'app_shell_not_rendered',
+          netErrorCode: -107,
+          subresourceFailures: { count: 3, sampleError: 'net::ERR_SSL_PROTOCOL_ERROR' },
+        })
+      );
       await expect(
         client.render({
           url: 'https://example.com/challenged',

@@ -27,19 +27,33 @@ export function buildWebReadFailureFeedback(error: unknown, params: {
   if (reason === 'body_too_large') return '响应超过本次下载/渲染上限，未保存完整文件。max_chars 只控制返回文字量，不能扩大下载额度；可查找较小的正式文件或分页资源。';
   if (reason === 'unsupported_mime') return '该响应类型未被当前读取方式支持，未保存文件；查看已知类型，查找网页文本版或受支持的原件。';
   const guidance: string[] = [];
+  const subresourceFailures = facts.subresourceFailureCount !== undefined
+    ? `页面所需的 ${facts.subresourceFailureCount} 个脚本或样式表下载失败${facts.subresourceError ? `（如 ${facts.subresourceError}）` : ''}`
+    : '';
+  const renderNetworkFailure = facts.renderFailureKind === 'load_failed'
+    && facts.netErrorCode !== undefined && facts.netErrorCode <= -100;
+  const renderTimedOutWithFailures = facts.renderFailureKind === 'load_timeout' && subresourceFailures !== '';
   if (facts.renderFailureKind === 'app_shell_not_rendered') {
-    guidance.push('本机渲染已执行页面脚本，但前端应用在时限内仍未渲染出正文；重复读取同一地址通常不会改变结果。查找该页实际提供的原件、导出文件或公开接口链接。');
+    guidance.push(subresourceFailures
+      ? `本机渲染时${subresourceFailures}，前端应用因此可能无法启动；这更像网络或站点暂时问题，不代表页面没有正文。可稍后重试，或查找该页实际提供的原件、导出文件或公开接口链接。`
+      : '本机渲染已执行页面脚本，但前端应用在时限内仍未渲染出正文；重复读取同一地址通常不会改变结果。查找该页实际提供的原件、导出文件或公开接口链接。');
   } else if (facts.initialFailureKind === 'js_required' || facts.escalationReason === 'js_required' || reason === 'js_required') {
     guidance.push('静态 HTML 未提供可读正文，可能依赖 JavaScript。数据页常另有 CSV、XLSX 或公开接口；只跟随实际发现的链接，不猜接口地址。');
   }
   if (facts.renderFailureKind === 'unavailable' || facts.renderFailureKind === 'render_process_gone') {
     guidance.push('本机渲染能力本次不可用，这不表示网站永久不可读；恢复该能力后可再试。');
   }
+  if (renderNetworkFailure) {
+    guidance.push(`本机渲染加载网页时网络或 TLS 连接失败（net_error=${facts.netErrorCode}）；这通常是站点或本机网络路径的问题，不是页面没有正文。可稍后重试，或寻找其他主机上的副本。`);
+  } else if (renderTimedOutWithFailures) {
+    guidance.push(`本机渲染时${subresourceFailures}，页面结构在时限内未就绪；这更像网络或站点暂时问题，可稍后重试，或寻找其他主机上的副本。`);
+  }
   const fileDownload = facts.contentType !== undefined && getWebFileFormat(facts.contentType) !== undefined;
   if (reason === 'timeout' && fileDownload && facts.bodyBytes !== undefined) {
     const declared = facts.declaredBodyBytes !== undefined ? `，响应声明 ${formatBytes(facts.declaredBodyBytes)}` : '';
     guidance.push(`文件下载在本次时限内未完成：已收 ${formatBytes(facts.bodyBytes)}${declared}，未保存文件。可稍后重试，或查找较小的版本、分卷或网页文本版；Shell 另行下载的副本没有来源身份，不能代替正式取得。`);
-  } else if (reason === 'timeout' || reason === 'network_error' || reason === 'http_5xx' || reason === 'rate_limited') {
+  } else if (!renderNetworkFailure && !renderTimedOutWithFailures
+    && (reason === 'timeout' || reason === 'network_error' || reason === 'http_5xx' || reason === 'rate_limited')) {
     guidance.push('本次为超时、网络或上游暂时失败；可在等待或连接恢复后再试，当前未取得正文。');
   }
   if (facts.retryAfterMs !== undefined) guidance.push(`服务器要求至少等待 ${Math.ceil(facts.retryAfterMs / 1000)} 秒；本工具没有为等待而扩大本次预算。`);

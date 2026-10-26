@@ -30,10 +30,14 @@ export interface WebPageRenderMainFrameResponse {
 
 export type WebPageRenderResponseDecision = 'continue' | 'cancel';
 
-/** 页面发出的 xhr/fetch 请求生命周期；id 在同一 session 内唯一。 */
-export interface WebPageRenderDataRequestEvent {
+/** 页面子资源请求生命周期；id 在同一 session 内唯一。 */
+export interface WebPageRenderSubresourceEvent {
   readonly id: number;
-  readonly phase: 'started' | 'finished';
+  /** data：xhr/fetch（Chromium 把 fetch 也归为 xhr）；script_or_style：脚本与样式表。 */
+  readonly category: 'data' | 'script_or_style';
+  readonly phase: 'started' | 'completed' | 'failed';
+  /** Chromium 报告的 net 错误名，只在 failed 时出现；消费方仍须校验形状。 */
+  readonly error?: string;
 }
 
 export interface WebPageRenderSession {
@@ -43,8 +47,8 @@ export interface WebPageRenderSession {
   observeMainFrameResponses(
     listener: (response: WebPageRenderMainFrameResponse) => WebPageRenderResponseDecision,
   ): () => void;
-  /** 只观察 xhr/fetch 的发出与结束，不拦截也不读取请求内容。 */
-  observeDataRequests(listener: (event: WebPageRenderDataRequestEvent) => void): () => void;
+  /** 只观察数据请求与脚本/样式表的发出、完成和失败，不拦截也不读取请求内容。 */
+  observeSubresources(listener: (event: WebPageRenderSubresourceEvent) => void): () => void;
 }
 
 export interface WebPageRenderRuntime {

@@ -6,6 +6,7 @@ import {
 } from '../../../../../../tools/web/shared/webAccessChallenge';
 import {
   WEB_PAGE_MAIN_RESPONSE_HEADER_MAX_CHARS,
+  WEB_PAGE_NET_ERROR_NAME_PATTERN,
   type WebPageMainResponse,
 } from '../../../../../../tools/web/webread/definitions/webPageRenderer';
 
@@ -20,6 +21,11 @@ const mainResponseHeaderShape = {
 const WebPageMainResponseRpcSchema = z.object({
   status: z.number().int().min(100).max(599),
   headers: z.object(mainResponseHeaderShape).strict(),
+}).strict();
+
+const WebPageSubresourceFailuresRpcSchema = z.object({
+  count: z.number().int().min(1).max(100_000),
+  sample_error: z.string().regex(WEB_PAGE_NET_ERROR_NAME_PATTERN).optional(),
 }).strict();
 
 export const WebPageRenderRpcRequestSchema = z.object({
@@ -42,6 +48,8 @@ export const WebPageRenderRpcResultSchema = z.discriminatedUnion('ok', [
       kind: WebRenderFailureKindSchema,
       message: z.string().min(1).max(2_048),
       main_response: WebPageMainResponseRpcSchema.optional(),
+      net_error_code: z.number().int().min(-9_999).max(-1).optional(),
+      subresource_failures: WebPageSubresourceFailuresRpcSchema.optional(),
     }).strict(),
   }).strict(),
 ]);

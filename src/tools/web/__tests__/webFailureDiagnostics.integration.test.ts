@@ -128,6 +128,49 @@ describe('网页失败的模型、审计和安全诊断边界', () => {
     expect(error.message).not.toContain(UNSAFE_TEXT);
   });
 
+  it.each([
+    {
+      name: '主框架 TLS 失败',
+      error: new WebPageRenderError('load_failed', UNSAFE_TEXT, { netErrorCode: -107 }),
+      expected: ['render=load_failed', 'net_error=-107', '网络或 TLS 连接失败（net_error=-107）'],
+      absent: ['本机抽取质量不足', '渲染能力本次不可用', '本次为超时、网络或上游暂时失败'],
+    },
+    {
+      name: '脚本下载失败导致应用壳未渲染',
+      error: new WebPageRenderError('app_shell_not_rendered', UNSAFE_TEXT, {
+        subresourceFailures: { count: 4, sampleError: 'net::ERR_SSL_PROTOCOL_ERROR' },
+      }),
+      expected: ['subresource_failures=4', 'subresource_error=net::ERR_SSL_PROTOCOL_ERROR',
+        '页面所需的 4 个脚本或样式表下载失败（如 net::ERR_SSL_PROTOCOL_ERROR）', '不代表页面没有正文'],
+      absent: ['重复读取同一地址通常不会改变结果', '静态 HTML 未提供可读正文'],
+    },
+    {
+      name: '子资源失败导致 DOM 未就绪',
+      error: new WebPageRenderError('load_timeout', UNSAFE_TEXT, { subresourceFailures: { count: 2 } }),
+      expected: ['render=load_timeout', '页面所需的 2 个脚本或样式表下载失败，页面结构在时限内未就绪'],
+      absent: ['本次为超时、网络或上游暂时失败'],
+    },
+  ])('渲染失败的建议按实际原因区分：$name', async ({ error: renderError, expected, absent }) => {
+    const tool = new WebReadTool({
+      provider: {
+        name: 'local_http',
+        read: async () => {
+          throw new WebFailureError('js_required', 'JS shell');
+        },
+      },
+      renderProvider: new LocalRenderProvider({ renderer: { render: async () => { throw renderError; } } }),
+      managedProvider: null,
+      config: { renderEnabled: true, managedReader: 'none' },
+    });
+    const error = await tool
+      .run({ url: 'https://example.com/render-fixture' }, context())
+      .catch((failure: unknown) => failure);
+    if (!(error instanceof Error)) throw new Error('missing render failure');
+    for (const text of expected) expect(error.message).toContain(text);
+    for (const text of absent) expect(error.message).not.toContain(text);
+    expect(error.message).not.toContain(UNSAFE_TEXT);
+  });
+
   it('文件正文下载超时不转交渲染，报告已收/声明字节并说明 Shell 副本不能代替正式取得', async () => {
     const render = vi.fn(async () => {
       throw new WebPageRenderError('render_failed', 'must not render files');

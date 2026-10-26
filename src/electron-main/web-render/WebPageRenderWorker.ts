@@ -2,8 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import {
   WEB_PAGE_MAIN_RESPONSE_HEADER_MAX_CHARS,
+  WEB_PAGE_NET_ERROR_NAME_PATTERN,
   WebPageRenderError,
   type WebPageMainResponse,
+  type WebPageSubresourceFailures,
   type WebPageRenderParams,
   type WebPageRenderResult,
 } from '../../tools/web/webread/definitions/webPageRenderer';
@@ -13,11 +15,11 @@ import {
 } from '../../tools/web/shared/webAccessChallenge';
 import { Logger } from '../../shared/logger';
 import type {
-  WebPageRenderDataRequestEvent,
   WebPageRenderMainFrameResponse,
   WebPageRenderResponseDecision,
   WebPageRenderRuntime,
   WebPageRenderSession,
+  WebPageRenderSubresourceEvent,
   WebPageRenderWindow,
 } from './definitions/webPageRenderRuntime';
 import { electronWebPageRenderRuntime } from './electronWebPageRenderRuntime';
@@ -93,6 +95,13 @@ function delay(delayMs: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
+/** Electron loadURL 拒绝时附带的数值 net 错误码；只接纳负整数。 */
+function readNetErrorCode(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  const errno: unknown = Reflect.get(error, 'errno');
+  return typeof errno === 'number' && Number.isSafeInteger(errno) && errno < 0 ? errno : undefined;
+}
+
 function readReadinessSample(value: unknown): RenderReadinessSample | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const objectValue: object = value;
@@ -123,6 +132,8 @@ export class WebPageRenderWorker {
   private readonly activeDataRequests = new Set<number>();
   private sawDataRequest = false;
   private lastDataActivityAt = 0;
+  private subresourceFailureCount = 0;
+  private subresourceSampleError: string | undefined;
   private cancelActive: ((error: WebPageRenderError) => void) | null = null;
   private disposed = false;
 
@@ -162,7 +173,7 @@ export class WebPageRenderWorker {
     this.cancelActive = cancel;
     this.activeTargetUrl = params.url;
     this.activeMainResponse = null;
-    this.resetDataRequests();
+    this.resetSubresourceTracking();
 
     const abort = (): void => cancel(new WebPageRenderError('aborted', '网页渲染已由调用方取消。'));
     params.signal?.addEventListener('abort', abort, { once: true });
@@ -186,7 +197,7 @@ export class WebPageRenderWorker {
       this.cancelActive = null;
       this.activeTargetUrl = null;
       this.activeMainResponse = null;
-      this.resetDataRequests();
+      this.resetSubresourceTracking();
     }
   }
 
@@ -224,12 +235,21 @@ export class WebPageRenderWorker {
       await runWithTimeout(
         raceCancellation(Promise.race([domReady, loading]), cancellation),
         this.loadTimeoutMs,
-        () => new WebPageRenderError('load_timeout', `网页在 ${this.loadTimeoutMs}ms 内未完成 DOM 加载。`),
+        () => new WebPageRenderError(
+          'load_timeout',
+          `网页在 ${this.loadTimeoutMs}ms 内未完成 DOM 加载。`,
+          this.subresourceFailureFacts(),
+        ),
         () => this.destroyWindow(),
       );
     } catch (error: unknown) {
       if (error instanceof WebPageRenderError) throw error;
-      throw new WebPageRenderError('render_failed', `网页加载失败：${toErrorMessage(error)}`);
+      // 主框架加载被拒绝：保留 Chromium 数值错误码，由 Web 区分网络/TLS、策略拦截与渲染能力故障。
+      const netErrorCode = readNetErrorCode(error);
+      throw new WebPageRenderError('load_failed', `网页加载失败：${toErrorMessage(error)}`, {
+        ...(netErrorCode !== undefined ? { netErrorCode } : {}),
+        ...this.subresourceFailureFacts(),
+      });
     } finally {
       removeDomReady();
     }
@@ -242,7 +262,11 @@ export class WebPageRenderWorker {
     });
     if (readiness === 'app_shell_not_rendered') {
       this.destroyWindow();
-      throw new WebPageRenderError('app_shell_not_rendered', '前端应用在渲染时限内未渲染出可见正文。');
+      throw new WebPageRenderError(
+        'app_shell_not_rendered',
+        '前端应用在渲染时限内未渲染出可见正文。',
+        this.subresourceFailureFacts(),
+      );
     }
 
     let rawHtml: unknown;
@@ -322,8 +346,17 @@ export class WebPageRenderWorker {
     }
   }
 
-  private handleDataRequest(event: WebPageRenderDataRequestEvent): void {
+  private handleSubresource(event: WebPageRenderSubresourceEvent): void {
     if (this.activeTargetUrl === null) return;
+    if (event.category === 'script_or_style') {
+      // 窗口销毁或导航中止的 ERR_ABORTED 是本工具自己的动作，不算站点资源失败。
+      if (event.phase !== 'failed' || event.error === 'net::ERR_ABORTED') return;
+      this.subresourceFailureCount += 1;
+      if (!this.subresourceSampleError && event.error && WEB_PAGE_NET_ERROR_NAME_PATTERN.test(event.error)) {
+        this.subresourceSampleError = event.error;
+      }
+      return;
+    }
     if (event.phase === 'started') {
       this.activeDataRequests.add(event.id);
       this.sawDataRequest = true;
@@ -334,10 +367,22 @@ export class WebPageRenderWorker {
     if (this.activeDataRequests.delete(event.id)) this.lastDataActivityAt = Date.now();
   }
 
-  private resetDataRequests(): void {
+  private subresourceFailureFacts(): { subresourceFailures?: WebPageSubresourceFailures } {
+    if (this.subresourceFailureCount === 0) return {};
+    return {
+      subresourceFailures: {
+        count: this.subresourceFailureCount,
+        ...(this.subresourceSampleError ? { sampleError: this.subresourceSampleError } : {}),
+      },
+    };
+  }
+
+  private resetSubresourceTracking(): void {
     this.activeDataRequests.clear();
     this.sawDataRequest = false;
     this.lastDataActivityAt = Date.now();
+    this.subresourceFailureCount = 0;
+    this.subresourceSampleError = undefined;
   }
 
   private ensureRuntime(): {
@@ -350,12 +395,12 @@ export class WebPageRenderWorker {
       const removeResponseObserver = renderSession.observeMainFrameResponses(
         (response) => this.handleMainFrameResponse(response),
       );
-      const removeDataRequestObserver = renderSession.observeDataRequests(
-        (event) => this.handleDataRequest(event),
+      const removeSubresourceObserver = renderSession.observeSubresources(
+        (event) => this.handleSubresource(event),
       );
       this.renderSession = renderSession;
       this.sessionSecurityCleanup = () => {
-        removeDataRequestObserver();
+        removeSubresourceObserver();
         removeResponseObserver();
         removeSecurityGuards();
       };
