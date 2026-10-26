@@ -13,6 +13,7 @@ import {
 } from '../../tools/web/shared/webAccessChallenge';
 import { Logger } from '../../shared/logger';
 import type {
+  WebPageRenderDataRequestEvent,
   WebPageRenderMainFrameResponse,
   WebPageRenderResponseDecision,
   WebPageRenderRuntime,
@@ -21,6 +22,10 @@ import type {
 } from './definitions/webPageRenderRuntime';
 import { electronWebPageRenderRuntime } from './electronWebPageRenderRuntime';
 import { isAllowedRenderNavigation } from './functions/isAllowedRenderNavigation';
+import {
+  assessRenderReadiness,
+  type RenderReadinessSample,
+} from './functions/assessRenderReadiness';
 
 const DEFAULT_LOAD_TIMEOUT_MS = 20_000;
 const DEFAULT_RENDER_TIMEOUT_MS = 5_000;
@@ -28,7 +33,6 @@ const DEFAULT_TOTAL_TIMEOUT_MS = 30_000;
 const DEFAULT_SETTLE_DELAY_MS = 250;
 const DEFAULT_MAX_SETTLE_DELAY_MS = 3_000;
 const READINESS_POLL_INTERVAL_MS = 200;
-const READINESS_STABLE_SAMPLES = 2;
 const DEFAULT_MAX_HTML_BYTES = 5 * 1024 * 1024;
 const READ_OUTER_HTML_SCRIPT = 'document.documentElement.outerHTML';
 const READINESS_SCRIPT = `(() => {
@@ -36,7 +40,7 @@ const READINESS_SCRIPT = `(() => {
   return {
     readyState: document.readyState,
     textLength: body?.innerText?.length ?? 0,
-    htmlLength: document.documentElement?.outerHTML?.length ?? 0,
+    scriptCount: document.scripts.length,
   };
 })()`;
 
@@ -89,15 +93,14 @@ function delay(delayMs: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-function isReadinessSnapshot(value: unknown): value is {
-  readonly readyState: string;
-  readonly textLength: number;
-} {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+function readReadinessSample(value: unknown): RenderReadinessSample | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const objectValue: object = value;
   const readyState = Reflect.get(objectValue, 'readyState');
   const textLength = Reflect.get(objectValue, 'textLength');
-  return typeof readyState === 'string' && typeof textLength === 'number';
+  const scriptCount = Reflect.get(objectValue, 'scriptCount');
+  if (typeof readyState !== 'string' || typeof textLength !== 'number') return null;
+  return { readyState, textLength, scriptCount: typeof scriptCount === 'number' ? scriptCount : 0 };
 }
 
 export class WebPageRenderWorker {
@@ -117,6 +120,9 @@ export class WebPageRenderWorker {
   private windowLifecycle: WindowLifecycle | null = null;
   private activeTargetUrl: string | null = null;
   private activeMainResponse: WebPageMainResponse | null = null;
+  private readonly activeDataRequests = new Set<number>();
+  private sawDataRequest = false;
+  private lastDataActivityAt = 0;
   private cancelActive: ((error: WebPageRenderError) => void) | null = null;
   private disposed = false;
 
@@ -156,6 +162,7 @@ export class WebPageRenderWorker {
     this.cancelActive = cancel;
     this.activeTargetUrl = params.url;
     this.activeMainResponse = null;
+    this.resetDataRequests();
 
     const abort = (): void => cancel(new WebPageRenderError('aborted', '网页渲染已由调用方取消。'));
     params.signal?.addEventListener('abort', abort, { once: true });
@@ -179,6 +186,7 @@ export class WebPageRenderWorker {
       this.cancelActive = null;
       this.activeTargetUrl = null;
       this.activeMainResponse = null;
+      this.resetDataRequests();
     }
   }
 
@@ -199,30 +207,48 @@ export class WebPageRenderWorker {
     const { renderWindow, renderSession } = this.ensureRuntime();
     await raceCancellation(renderSession.clearStorageData(), cancellation);
 
+    const navigationStartedAt = Date.now();
+    this.lastDataActivityAt = navigationStartedAt;
+    let resolveDomReady: (() => void) | undefined;
+    const domReady = new Promise<void>((resolve) => {
+      resolveDomReady = resolve;
+    });
+    // 请求被拒或网络失败时 Chromium 仍会提交错误页并触发 dom-ready；只有观察到主文档响应才算本页就绪。
+    const removeDomReady = renderWindow.onDomReady(() => {
+      if (this.activeMainResponse) resolveDomReady?.();
+    });
+    // load 事件只是信号之一：DOM 就绪后，拖住 load 的子资源或之后的导航中止都交给就绪判断。
+    const loading = renderWindow.loadURL(url);
+    loading.catch(() => undefined);
     try {
       await runWithTimeout(
-        raceCancellation(renderWindow.loadURL(url), cancellation),
+        raceCancellation(Promise.race([domReady, loading]), cancellation),
         this.loadTimeoutMs,
-        () => new WebPageRenderError('load_timeout', `网页在 ${this.loadTimeoutMs}ms 内未完成加载。`),
+        () => new WebPageRenderError('load_timeout', `网页在 ${this.loadTimeoutMs}ms 内未完成 DOM 加载。`),
         () => this.destroyWindow(),
       );
     } catch (error: unknown) {
       if (error instanceof WebPageRenderError) throw error;
       throw new WebPageRenderError('render_failed', `网页加载失败：${toErrorMessage(error)}`);
+    } finally {
+      removeDomReady();
     }
 
-    const renderOperation = (async (): Promise<unknown> => {
-      await this.waitForDocumentReadiness(renderWindow, cancellation);
-      return await raceCancellation(
-        renderWindow.executeJavaScript(READ_OUTER_HTML_SCRIPT),
-        cancellation,
-      );
-    })();
+    const domReadyAt = Date.now();
+    const readiness = await this.waitForRenderReadiness(renderWindow, cancellation, {
+      domReadyAt,
+      // 等待上限沿用既有预算：原先愿意等 load 的时长，且 DOM 就绪后至少保留一个 settle 窗口。
+      deadline: Math.max(navigationStartedAt + this.loadTimeoutMs, domReadyAt + this.maxSettleDelayMs),
+    });
+    if (readiness === 'app_shell_not_rendered') {
+      this.destroyWindow();
+      throw new WebPageRenderError('app_shell_not_rendered', '前端应用在渲染时限内未渲染出可见正文。');
+    }
 
     let rawHtml: unknown;
     try {
       rawHtml = await runWithTimeout(
-        renderOperation,
+        raceCancellation(renderWindow.executeJavaScript(READ_OUTER_HTML_SCRIPT), cancellation),
         this.renderTimeoutMs,
         () => new WebPageRenderError('render_timeout', `网页在 ${this.renderTimeoutMs}ms 内未完成 DOM 提取。`),
         () => this.destroyWindow(),
@@ -256,36 +282,62 @@ export class WebPageRenderWorker {
     return { html: rawHtml, finalUrl, mainResponse };
   }
 
-  private async waitForDocumentReadiness(
+  private async waitForRenderReadiness(
     renderWindow: WebPageRenderWindow,
     cancellation: Promise<never>,
-  ): Promise<void> {
+    timing: { readonly domReadyAt: number; readonly deadline: number },
+  ): Promise<'ready' | 'app_shell_not_rendered'> {
     if (this.settleDelayMs > 0) {
       await raceCancellation(delay(this.settleDelayMs), cancellation);
     }
 
-    const deadline = Date.now() + Math.max(this.settleDelayMs, this.maxSettleDelayMs);
     let previousTextLength: number | undefined;
     let stableSamples = 0;
-    while (Date.now() < deadline) {
-      const snapshot = await raceCancellation(
-        renderWindow.executeJavaScript(READINESS_SCRIPT),
-        cancellation,
+    while (true) {
+      const snapshot = await runWithTimeout(
+        raceCancellation(renderWindow.executeJavaScript(READINESS_SCRIPT), cancellation),
+        this.renderTimeoutMs,
+        () => new WebPageRenderError('render_timeout', `网页在 ${this.renderTimeoutMs}ms 内未响应就绪采样。`),
+        () => this.destroyWindow(),
       );
-      if (!isReadinessSnapshot(snapshot)) return;
+      const sample = readReadinessSample(snapshot);
+      if (!sample) return 'ready';
 
-      if (snapshot.readyState === 'complete' && snapshot.textLength === previousTextLength) {
-        stableSamples += 1;
-      } else {
-        stableSamples = 0;
-      }
-      previousTextLength = snapshot.textLength;
-      if (snapshot.readyState === 'complete' && stableSamples >= READINESS_STABLE_SAMPLES) return;
-
-      const remainingMs = deadline - Date.now();
-      if (remainingMs <= 0) return;
+      stableSamples = sample.textLength === previousTextLength ? stableSamples + 1 : 0;
+      previousTextLength = sample.textLength;
+      const now = Date.now();
+      const decision = assessRenderReadiness({
+        sample,
+        stableSamples,
+        dataRequestsInFlight: this.activeDataRequests.size,
+        sawDataRequest: this.sawDataRequest,
+        dataQuietMs: this.activeDataRequests.size > 0 ? 0 : now - this.lastDataActivityAt,
+        sinceDomReadyMs: now - timing.domReadyAt,
+        maxSettleDelayMs: this.maxSettleDelayMs,
+        deadlineReached: now >= timing.deadline,
+      });
+      if (decision !== 'wait') return decision;
+      const remainingMs = Math.max(0, timing.deadline - now);
       await raceCancellation(delay(Math.min(READINESS_POLL_INTERVAL_MS, remainingMs)), cancellation);
     }
+  }
+
+  private handleDataRequest(event: WebPageRenderDataRequestEvent): void {
+    if (this.activeTargetUrl === null) return;
+    if (event.phase === 'started') {
+      this.activeDataRequests.add(event.id);
+      this.sawDataRequest = true;
+      this.lastDataActivityAt = Date.now();
+      return;
+    }
+    // 只结算本任务内发出的请求；前一任务被销毁窗口的迟到结束事件不影响计数。
+    if (this.activeDataRequests.delete(event.id)) this.lastDataActivityAt = Date.now();
+  }
+
+  private resetDataRequests(): void {
+    this.activeDataRequests.clear();
+    this.sawDataRequest = false;
+    this.lastDataActivityAt = Date.now();
   }
 
   private ensureRuntime(): {
@@ -298,8 +350,12 @@ export class WebPageRenderWorker {
       const removeResponseObserver = renderSession.observeMainFrameResponses(
         (response) => this.handleMainFrameResponse(response),
       );
+      const removeDataRequestObserver = renderSession.observeDataRequests(
+        (event) => this.handleDataRequest(event),
+      );
       this.renderSession = renderSession;
       this.sessionSecurityCleanup = () => {
+        removeDataRequestObserver();
         removeResponseObserver();
         removeSecurityGuards();
       };

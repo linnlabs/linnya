@@ -18,7 +18,8 @@ const state = vi.hoisted((): {
     callback: (response: { cancel: boolean }) => void,
   ) => void) | null;
   headersReceived: HeadersReceivedListener | null;
-} => ({ beforeRequest: null, headersReceived: null }));
+  dataListeners: Record<string, ((details: { id: number; resourceType: string }) => void) | null>;
+} => ({ beforeRequest: null, headersReceived: null, dataListeners: {} }));
 
 vi.mock('electron', () => ({
   BrowserWindow: vi.fn(),
@@ -35,6 +36,15 @@ vi.mock('electron', () => ({
         },
         onHeadersReceived: (_filter: unknown, listener: typeof state.headersReceived) => {
           state.headersReceived = listener;
+        },
+        onSendHeaders: (_filter: unknown, listener: (details: { id: number; resourceType: string }) => void) => {
+          state.dataListeners.sendHeaders = listener;
+        },
+        onCompleted: (_filter: unknown, listener: (details: { id: number; resourceType: string }) => void) => {
+          state.dataListeners.completed = listener;
+        },
+        onErrorOccurred: (_filter: unknown, listener: (details: { id: number; resourceType: string }) => void) => {
+          state.dataListeners.errorOccurred = listener;
         },
       },
     }),
@@ -61,6 +71,7 @@ function receiveHeaders(
 beforeEach(() => {
   state.beforeRequest = null;
   state.headersReceived = null;
+  state.dataListeners = {};
 });
 
 describe('渲染请求 URL/DNS 准入', () => {
@@ -147,5 +158,29 @@ describe('主框架响应头观察', () => {
       resourceType: 'mainFrame',
       statusCode: 200,
     })).toEqual({ cancel: true });
+  });
+});
+
+describe('数据请求观察', () => {
+  it('只报告 xhr/fetch 的发出与结束（含失败），其他资源不计入；清理后解除监听', () => {
+    const session = createElectronWebPageRenderRuntime().createSession('test');
+    const events: unknown[] = [];
+    const cleanup = session.observeDataRequests((event) => events.push(event));
+
+    state.dataListeners.sendHeaders?.({ id: 1, resourceType: 'xhr' });
+    state.dataListeners.sendHeaders?.({ id: 2, resourceType: 'image' });
+    state.dataListeners.sendHeaders?.({ id: 3, resourceType: 'xhr' });
+    state.dataListeners.completed?.({ id: 1, resourceType: 'xhr' });
+    state.dataListeners.errorOccurred?.({ id: 3, resourceType: 'xhr' });
+    state.dataListeners.completed?.({ id: 2, resourceType: 'image' });
+
+    expect(events).toEqual([
+      { id: 1, phase: 'started' },
+      { id: 3, phase: 'started' },
+      { id: 1, phase: 'finished' },
+      { id: 3, phase: 'finished' },
+    ]);
+    cleanup();
+    expect(state.dataListeners).toEqual({ sendHeaders: null, completed: null, errorOccurred: null });
   });
 });

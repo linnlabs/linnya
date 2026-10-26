@@ -385,7 +385,7 @@ PDF、CSV、XLSX 通过同一安全 GET 取得，限额内自动保存到会话�
 
 Firecrawl `/scrape` 可在未来作为新的 BYOK 第三方网页解析 Provider 接入，与秘塔/Jina 同级；它不是零配置免费能力，也不改变 Linnya 默认的本地读取链路。当前不实现 `web_crawl`；若未来重新评估，多页编排仍必须与单页 `/scrape` 分开设计。
 
-Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例外：隐藏窗无 preload，启用 sandbox/contextIsolation/webSecurity、禁用 Node 集成；独立 session 拒绝权限、弹窗、下载、跨注册域导航和内网/回环子请求。每次任务拿到 HTML 后立即销毁远程页面，manager 只复用隔离 session，并限制并发与 idle 生命周期。DOM 提取不再固定等待一个不可解释的时长，而是在最小等待后按 `document.readyState` 与正文长度稳定性轮询，并受渲染阶段上限约束；该能力只返回 HTML/finalUrl 与主框架实际响应的状态码及挑战判定所需头，不暴露浏览器动作或 IPC 桥。主文档响应头命中访问挑战时，在正文交给页面前取消该响应并以 `access_challenge` 结束，挑战脚本不执行；`LocalRenderProvider` 仍按同一 Web 规则复核并归类为 `captcha`，渲染端的停止只是安全动作，不是分类来源。
+Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例外：隐藏窗无 preload，启用 sandbox/contextIsolation/webSecurity、禁用 Node 集成；独立 session 拒绝权限、弹窗、下载、跨注册域导航和内网/回环子请求。每次任务拿到 HTML 后立即销毁远程页面，manager 只复用隔离 session，并限制并发与 idle 生命周期。DOM 提取不再固定等待一个不可解释的时长，也不再以 load 事件为前提：从主框架 DOM 就绪起，按可见正文稳定性、`document.readyState` 与页面 xhr/fetch 是否结束轮询，并受既有加载、渲染阶段与总墙钟上限约束；前端应用壳空白稳定不算就绪，在预算内仍未渲染出正文时报告 `app_shell_not_rendered`，Web 映射为 `js_required` 并在诊断中保留 `render=app_shell_not_rendered`，建议改查该页实际提供的原件、导出文件或接口链接（规则见[本地网页渲染](../../electron-main/web-render/README.md)）；该能力只返回 HTML/finalUrl 与主框架实际响应的状态码及挑战判定所需头，不暴露浏览器动作或 IPC 桥。主文档响应头命中访问挑战时，在正文交给页面前取消该响应并以 `access_challenge` 结束，挑战脚本不执行；`LocalRenderProvider` 仍按同一 Web 规则复核并归类为 `captcha`，渲染端的停止只是安全动作，不是分类来源。
 
 #### 5.5.1 正文抽取器合同与差分验证
 

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type {
+  WebPageRenderDataRequestEvent,
   WebPageRenderMainFrameResponse,
   WebPageRenderResponseDecision,
   WebPageRenderRuntime,
@@ -52,6 +53,19 @@ class FakeRenderSession implements WebPageRenderSession {
     };
   }
 
+  private dataRequestObserver: ((event: WebPageRenderDataRequestEvent) => void) | undefined;
+
+  observeDataRequests(listener: (event: WebPageRenderDataRequestEvent) => void): () => void {
+    this.dataRequestObserver = listener;
+    return () => {
+      this.dataRequestObserver = undefined;
+    };
+  }
+
+  dataRequest(id: number, phase: WebPageRenderDataRequestEvent['phase']): void {
+    this.dataRequestObserver?.({ id, phase });
+  }
+
   /** 模拟 Electron 在正文交给页面前回调主框架响应头；未安装观察者时视为拒绝。 */
   respond(url: string, statusCode = 200, headers: Record<string, string> = {}): WebPageRenderResponseDecision {
     const lookup = new Map(Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]));
@@ -80,6 +94,7 @@ class FakeRenderWindow implements WebPageRenderWindow {
   private closedListener: (() => void) | undefined;
   private goneListener: ((reason: string) => void) | undefined;
   private unresponsiveListener: (() => void) | undefined;
+  private domReadyListener: (() => void) | undefined;
 
   loadURL(url: string): Promise<void> {
     return this.loadURLImpl(url);
@@ -134,6 +149,17 @@ class FakeRenderWindow implements WebPageRenderWindow {
     return () => {
       this.unresponsiveListener = undefined;
     };
+  }
+
+  onDomReady(listener: () => void): () => void {
+    this.domReadyListener = listener;
+    return () => {
+      this.domReadyListener = undefined;
+    };
+  }
+
+  fireDomReady(): void {
+    this.domReadyListener?.();
   }
 
   attemptNavigation(url: string): void {
@@ -360,5 +386,92 @@ describe('WebPageRenderWorker', () => {
 
     await expect(createWorker(runtime).render({ url: 'https://example.com/no-response' }))
       .rejects.toEqual(expect.objectContaining({ kind: 'render_failed' }));
+  });
+  it('DOM 就绪后即可采样，拖住 load 的子资源不再导致整页超时', async () => {
+    const runtime = new FakeRenderRuntime();
+    const renderWindow = new FakeRenderWindow();
+    renderWindow.loadURLImpl = async (url) => {
+      renderWindow.url = url;
+      runtime.session.respond(url);
+      renderWindow.fireDomReady();
+      await new Promise<void>(() => undefined);
+    };
+    renderWindow.executeImpl = async () => (renderWindow.executeCount <= 3
+      ? { readyState: 'interactive', textLength: 600, scriptCount: 0 }
+      : '<html><body>article before load event</body></html>');
+    runtime.nextWindow = renderWindow;
+
+    const result = await createWorker(runtime, {
+      loadTimeoutMs: 1_000,
+      maxSettleDelayMs: 0,
+      renderTimeoutMs: 1_000,
+      totalTimeoutMs: 2_000,
+    }).render({ url: 'https://example.com/hanging-image' });
+
+    expect(result.html).toContain('article before load event');
+  });
+
+  it('错误页触发的 dom-ready 不算就绪：没有主文档响应时仍按加载失败结束', async () => {
+    const runtime = new FakeRenderRuntime();
+    const renderWindow = new FakeRenderWindow();
+    renderWindow.loadURLImpl = async (url) => {
+      renderWindow.url = url;
+      renderWindow.fireDomReady();
+      throw new Error('ERR_BLOCKED_BY_CLIENT');
+    };
+    runtime.nextWindow = renderWindow;
+
+    await expect(createWorker(runtime).render({ url: 'https://example.com/blocked' }))
+      .rejects.toEqual(expect.objectContaining({ kind: 'render_failed' }));
+    expect(renderWindow.executeCount).toBe(0);
+  });
+
+  it('空白应用壳等待数据请求补全正文，而不是在空白稳定时提前提取', async () => {
+    const runtime = new FakeRenderRuntime();
+    const renderWindow = new FakeRenderWindow();
+    renderWindow.loadURLImpl = async (url) => {
+      renderWindow.url = url;
+      runtime.session.respond(url);
+      runtime.session.dataRequest(7, 'started');
+    };
+    renderWindow.executeImpl = async () => {
+      if (renderWindow.executeCount === 4) runtime.session.dataRequest(7, 'finished');
+      if (renderWindow.executeCount <= 4) return { readyState: 'complete', textLength: 7, scriptCount: 4 };
+      if (renderWindow.executeCount <= 7) return { readyState: 'complete', textLength: 900, scriptCount: 4 };
+      return '<html><body>data rendered article</body></html>';
+    };
+    runtime.nextWindow = renderWindow;
+
+    const result = await createWorker(runtime, {
+      loadTimeoutMs: 2_000,
+      maxSettleDelayMs: 0,
+      renderTimeoutMs: 1_000,
+      totalTimeoutMs: 4_000,
+    }).render({ url: 'https://example.com/app' });
+
+    expect(result.html).toContain('data rendered article');
+    expect(renderWindow.executeCount).toBe(8);
+  });
+
+  it('应用壳在既有预算内仍未渲染时报告 app_shell_not_rendered，不提取空壳 DOM', async () => {
+    const runtime = new FakeRenderRuntime();
+    const renderWindow = new FakeRenderWindow();
+    renderWindow.loadURLImpl = async (url) => {
+      renderWindow.url = url;
+      runtime.session.respond(url);
+      runtime.session.dataRequest(9, 'started');
+    };
+    renderWindow.executeImpl = async () => ({ readyState: 'complete', textLength: 0, scriptCount: 5 });
+    runtime.nextWindow = renderWindow;
+
+    await expect(createWorker(runtime, {
+      loadTimeoutMs: 300,
+      maxSettleDelayMs: 0,
+      renderTimeoutMs: 1_000,
+      totalTimeoutMs: 2_000,
+    }).render({ url: 'https://example.com/never' })).rejects.toEqual(
+      expect.objectContaining({ kind: 'app_shell_not_rendered' }),
+    );
+    expect(renderWindow.destroyCount).toBe(1);
   });
 });

@@ -87,6 +87,46 @@ async function run(): Promise<void> {
         </body></html>`);
       return;
     }
+    if (route === '/data-delayed') {
+      setTimeout(() => {
+        response.setHeader('Content-Type', 'application/json');
+        response.end(JSON.stringify({ text: 'DELAYED_XHR_CONTENT' }));
+      }, 1_500);
+      return;
+    }
+    if (route === '/data-empty') {
+      response.setHeader('Content-Type', 'application/json');
+      response.end('{}');
+      return;
+    }
+    if (route === '/data-hang' || route === '/hang-image') {
+      // 故意不结束响应：模拟永不完成的数据请求或拖住 load 事件的子资源。
+      return;
+    }
+    if (route === '/app-delayed' || route === '/app-hanging-data' || route === '/app-settled-blank') {
+      const dataRoute = route === '/app-delayed' ? '/data-delayed'
+        : route === '/app-hanging-data' ? '/data-hang' : '/data-empty';
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end(`<!doctype html><html><body><div id="app">Loading</div>
+        <script>window.__boot = 1;</script><script>window.__config = {};</script>
+        <script>
+          fetch('${dataRoute}').then((reply) => reply.json()).then((data) => {
+            if (data.text) document.querySelector('#app').textContent = data.text.repeat(30);
+          });
+        </script></body></html>`);
+      return;
+    }
+    if (route === '/hanging-load') {
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end(`<!doctype html><html><body><article>${'HANGING_LOAD_CONTENT '.repeat(20)}</article>
+        <img src="/hang-image"></body></html>`);
+      return;
+    }
+    if (route === '/empty-static') {
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end('<!doctype html><html><body></body></html>');
+      return;
+    }
     if (route === '/accepted') {
       response.writeHead(202, { 'Content-Type': 'text/html; charset=utf-8' });
       response.end('<!doctype html><html><body>accepted fixture</body></html>');
@@ -185,6 +225,19 @@ async function run(): Promise<void> {
     // 给已被取消的挑战页留出执行窗口；若脚本或子资源实际运行，这里会观察到请求。
     await new Promise((resolve) => setTimeout(resolve, 300));
     const accepted = await worker.render({ url: `${origin}/accepted` });
+    const timedRender = async (path: string): Promise<{ kind: string; content: boolean; elapsedMs: number }> => {
+      const started = Date.now();
+      const outcome = await worker.render({ url: `${origin}${path}` }).then(
+        (rendered) => ({ kind: 'rendered', content: /DELAYED_XHR_CONTENT|HANGING_LOAD_CONTENT/.test(rendered.html) }),
+        (error: unknown) => ({ kind: readFailure(error).kind, content: false }),
+      );
+      return { ...outcome, elapsedMs: Date.now() - started };
+    };
+    const appDelayed = await timedRender('/app-delayed');
+    const hangingLoad = await timedRender('/hanging-load');
+    const appHangingData = await timedRender('/app-hanging-data');
+    const appSettledBlank = await timedRender('/app-settled-blank');
+    const emptyStatic = await timedRender('/empty-static');
 
     const result = {
       spaRendered: spa.html.includes('SPA_RENDERED_CONTENT'),
@@ -202,6 +255,14 @@ async function run(): Promise<void> {
       challengeExecutionRequests: state.challengeExecutionRequests,
       acceptedRendered: accepted.html.includes('accepted fixture'),
       acceptedMainStatus: accepted.mainResponse.status,
+      // 延迟数据的应用壳要等到正文；拖住 load 的子资源不再使整页失败。
+      appDelayed: { kind: appDelayed.kind, content: appDelayed.content },
+      hangingLoad: { kind: hangingLoad.kind, content: hangingLoad.content },
+      // 数据请求不结束的空壳在预算内报告未渲染；数据已结束仍为空壳则不必等到截止。
+      appHangingDataKind: appHangingData.kind,
+      appSettledBlank: { kind: appSettledBlank.kind, beforeDeadline: appSettledBlank.elapsedMs < 2_500 },
+      // 没有脚本的真实空页按原快速路径返回，由 Web 抽取判定空正文。
+      emptyStatic: { kind: emptyStatic.kind, fast: emptyStatic.elapsedMs < 1_500 },
       popupRequests: state.popupRequests,
       downloadRequests: state.downloadRequests,
     };

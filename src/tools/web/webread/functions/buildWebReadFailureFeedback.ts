@@ -21,7 +21,9 @@ export function buildWebReadFailureFeedback(error: unknown, params: {
   if (reason === 'body_too_large') return '响应超过本次下载/渲染上限，未保存完整文件。max_chars 只控制返回文字量，不能扩大下载额度；可查找较小的正式文件或分页资源。';
   if (reason === 'unsupported_mime') return '该响应类型未被当前读取方式支持，未保存文件；查看已知类型，查找网页文本版或受支持的原件。';
   const guidance: string[] = [];
-  if (facts.initialFailureKind === 'js_required' || facts.escalationReason === 'js_required' || reason === 'js_required') {
+  if (facts.renderFailureKind === 'app_shell_not_rendered') {
+    guidance.push('本机渲染已执行页面脚本，但前端应用在时限内仍未渲染出正文；重复读取同一地址通常不会改变结果。查找该页实际提供的原件、导出文件或公开接口链接。');
+  } else if (facts.initialFailureKind === 'js_required' || facts.escalationReason === 'js_required' || reason === 'js_required') {
     guidance.push('静态 HTML 未提供可读正文，可能依赖 JavaScript。数据页常另有 CSV、XLSX 或公开接口；只跟随实际发现的链接，不猜接口地址。');
   }
   if (facts.renderFailureKind === 'unavailable' || facts.renderFailureKind === 'render_process_gone') {

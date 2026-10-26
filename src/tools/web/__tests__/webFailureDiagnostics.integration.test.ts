@@ -95,6 +95,37 @@ describe('网页失败的模型、审计和安全诊断边界', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('前端应用壳在渲染时限内未出正文时，诊断与建议区分于静态 JS 壳和渲染能力故障', async () => {
+    const tool = new WebReadTool({
+      provider: {
+        name: 'local_http',
+        read: async () => {
+          throw new WebFailureError('js_required', 'JS shell');
+        },
+      },
+      renderProvider: new LocalRenderProvider({
+        renderer: {
+          render: async () => {
+            throw new WebPageRenderError('app_shell_not_rendered', UNSAFE_TEXT);
+          },
+        },
+      }),
+      managedProvider: null,
+      config: { renderEnabled: true, managedReader: 'none' },
+    });
+    const error = await tool
+      .run({ url: 'https://example.com/app-shell-fixture' }, context())
+      .catch((failure: unknown) => failure);
+    expect(error).toBeInstanceOf(WebFailureError);
+    if (!(error instanceof WebFailureError)) throw new Error('missing app shell error');
+    expect(error.kind).toBe('managed_disabled');
+    expect(error.message).toContain('render=app_shell_not_rendered');
+    expect(error.message).toContain('previous=js_required');
+    expect(error.message).toContain('前端应用在时限内仍未渲染出正文');
+    expect(error.message).not.toContain('静态 HTML 未提供可读正文');
+    expect(error.message).not.toContain(UNSAFE_TEXT);
+  });
+
   it('未知错误只报告发生阶段，不用任意 message 猜根因或作为可信指令', async () => {
     const tool = new WebReadTool({
       provider: {

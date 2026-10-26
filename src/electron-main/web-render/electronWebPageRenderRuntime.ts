@@ -53,7 +53,8 @@ function createWindow(options: WebPageRenderWindowOptions): WebPageRenderWindow 
 
   return {
     loadURL: (url) => renderWindow.loadURL(url),
-    executeJavaScript: (script) => webContents.executeJavaScript(script),
+    // webContents.executeJavaScript 会挂起到页面停止加载；主框架执行才能从 DOM 就绪起采样。
+    executeJavaScript: (script) => webContents.mainFrame.executeJavaScript(script),
     getURL: () => webContents.getURL(),
     isDestroyed: () => renderWindow.isDestroyed() || webContents.isDestroyed(),
     destroy: () => renderWindow.destroy(),
@@ -89,6 +90,12 @@ function createWindow(options: WebPageRenderWindowOptions): WebPageRenderWindow 
       renderWindow.on('unresponsive', listener);
       return () => {
         if (!renderWindow.isDestroyed()) renderWindow.off('unresponsive', listener);
+      };
+    },
+    onDomReady: (listener) => {
+      webContents.on('dom-ready', listener);
+      return () => {
+        if (!webContents.isDestroyed()) webContents.off('dom-ready', listener);
       };
     },
   };
@@ -175,6 +182,24 @@ function createSession(
       renderSession.webRequest.onHeadersReceived(responseFilter, handleHeaders);
       return () => {
         renderSession.webRequest.onHeadersReceived(responseFilter, null);
+      };
+    },
+    observeDataRequests: (listener) => {
+      const dataFilter = { urls: ['http://*/*', 'https://*/*'] };
+      // Chromium 把 XMLHttpRequest 与 fetch 都报告为 xhr；图片、脚本、beacon 等不计入数据请求。
+      const handleStarted = (details: { id: number; resourceType: string }): void => {
+        if (details.resourceType === 'xhr') listener({ id: details.id, phase: 'started' });
+      };
+      const handleFinished = (details: { id: number; resourceType: string }): void => {
+        if (details.resourceType === 'xhr') listener({ id: details.id, phase: 'finished' });
+      };
+      renderSession.webRequest.onSendHeaders(dataFilter, handleStarted);
+      renderSession.webRequest.onCompleted(dataFilter, handleFinished);
+      renderSession.webRequest.onErrorOccurred(dataFilter, handleFinished);
+      return () => {
+        renderSession.webRequest.onSendHeaders(dataFilter, null);
+        renderSession.webRequest.onCompleted(dataFilter, null);
+        renderSession.webRequest.onErrorOccurred(dataFilter, null);
       };
     },
   };

@@ -55,6 +55,8 @@ function mapRenderError(error: WebPageRenderError): WebFailureError {
       return new WebFailureError('timeout', '本地网页渲染超时。', options);
     case 'access_challenge':
       return createRenderAccessChallengeError(error.mainResponse);
+    case 'app_shell_not_rendered':
+      return new WebFailureError('js_required', '本地渲染已执行页面脚本，但前端应用在时限内未渲染出正文。', options);
     case 'unavailable':
     case 'render_process_gone':
     case 'render_failed':
