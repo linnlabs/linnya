@@ -1,3 +1,5 @@
+import { skillManagement } from 'src/features/skills';
+import { createSkillManagementRouter } from 'src/features/skills/skillManagement.router';
 import { bindMarkdownDocumentImageOwnership, readDocumentImageAsset } from 'src/app-hosts/linnya/application/markdown-image-assets';
 import type { CommandApprovalControlEndpointPort } from 'src/domains/commands';
 import { createProviderModelDiscovery } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
@@ -298,6 +300,7 @@ export async function configureRoutes(
   logger.info('✅ 健康检查路由已挂载: /health');
 
   // 模型管理路由
+  app.use('/api/v1/skills', createSkillManagementRouter(skillManagement));
   app.use('/api/v1/providers', createProviderCatalogRouter());
   logger.info('✅ Provider Catalog 路由已挂载: /api/v1/providers');
   const configuredModelRemoval = createConfiguredModelRemovalUseCase({

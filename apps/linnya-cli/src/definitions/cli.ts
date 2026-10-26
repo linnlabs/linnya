@@ -69,6 +69,8 @@ export interface ConversationControlConnectionPort {
 export type LinnyaCliInvocation =
   | { readonly kind: 'help' }
   | { readonly kind: 'version' }
+  | { readonly kind: 'skill-write'; readonly name: string; readonly path: string;
+      readonly file: string; readonly create: boolean; readonly pretty: boolean }
   | { readonly kind: 'doctor'; readonly pretty: boolean }
   | {
       readonly kind: 'runtime-start';

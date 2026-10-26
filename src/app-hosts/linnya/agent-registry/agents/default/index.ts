@@ -35,6 +35,7 @@ const DEFAULT_AGENT_TOOLS = [
   'task_write',
   'task_read',
   'skill',
+  'skill_manage',
 
   'ask',
   'generate_image',

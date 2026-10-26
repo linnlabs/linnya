@@ -1,3 +1,4 @@
+import { controlSkills } from './controlSkills';
 import {
   CONVERSATION_CONTROL_SCHEMA_VERSION,
   type ConversationControlCommandRequest,
@@ -253,6 +254,7 @@ export function createConversationControlUseCase(
   const useCase: ConversationControlUseCase = {
     async execute(request: ConversationControlCommandRequest) {
       switch (request.command) {
+        case 'skills': return controlSkills(ports.skills, request.request);
         case 'command_approvals':
           return useCase.commandApprovals(request);
         case 'send':

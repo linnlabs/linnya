@@ -1,6 +1,6 @@
 # Skills
 
-Skill 为已有 Agent 提供按需加载的研究方法、工作流程和文档操作指引。它是版本化资源，不是新的 Agent runtime，也不改变工具白名单、权限或核验状态。
+Skill 为已有 Agent 提供按需加载的研究方法、工作流程和文档操作指引。它是普通文件指引，不是新的 Agent runtime，也不改变工具白名单或核验状态。内置与插件资源随各自发布；用户目录只保存当前内容，不维护历史或回退。
 
 ## 发现、加载与资源
 
@@ -14,7 +14,7 @@ Skill 为已有 Agent 提供按需加载的研究方法、工作流程和文档�
 
 `builtin/index.ts` 先检查项目根的源码目录，再检查 `dist/builtin-skills`、`dist_build/dist/builtin-skills` 与 Electron resources 下的产物。构建由 `scripts/build/copy-files.js` 复制内置资源。新增目录不需要改注册表，也不能把插件 Skill 复制进 builtin 目录。
 
-开发模式 `LINNYA_DEV_MODE=true` 不缓存发现结果；其他模式元数据缓存 5 分钟，`invalidateSkillCache()` 可主动失效。正文和资源在调用时读取。新名称在已有会话上下文中不保证立即可见，验证发现能力应使用新会话。
+开发模式 `LINNYA_DEV_MODE=true` 不缓存发现结果；其他模式内置/插件元数据缓存 5 分钟，用户来源每次重新解析以接纳外部编辑，`invalidateSkillCache()` 可主动失效。正文和资源在调用时读取。新名称在已有会话上下文中不保证立即可见，验证发现能力应使用新会话。
 
 Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `skill` 工具。`agentSkillExposure.ts` 由 `GenericAgentTask` 调用，统一追加目录；不要手改每个 Agent 的系统提示词嵌入 Skill 正文。Agent prompt 点名必需 Skill 时，另声明 `requiredSkills` 并走现有配置校验。
 
@@ -76,3 +76,22 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 现有接入测试：`pnpm exec vitest run src/features/skills/__tests__/agentSkillExposure.test.ts src/features/skills/__tests__/pluginSkillSources.test.ts`。
 
 真实研究调用复用 [Benchmark Runner](../../../apps/linnya-benchmark/README.md) 的 `deep_research_article_v1`，必须指定项目与任务 brief。从工具轨迹确认 Skill 实际激活、所需资源成功读取，并分别核查研究证据、文章解释与交付状态。一次冒烟验证不能证明所有文体的质量增量，比较方法效果仍需同等模型、材料、预算和独立评审。
+
+
+## 用户 Skill 管理
+
+公开入口 `index.ts` 提供当前实例唯一 `skillManagement` 与窄 `SkillManagementPort`。文件实现位于 `adapters/createLocalSkillManagement.ts`，原文编辑规则在 `functions/computeSkillFileEdit.ts`，读取与管理共用 `shared/skillFiles.ts` 的文件准入。只有用户来源可写，不覆盖内置/插件目录。
+
+管理包含安装、整包升级、卸载，以及当前文件的读取、原文替换、完整写入和支持文件删除。安装/升级接收本机绝对来源目录；先验证完整包，升级替换文件集合，旧版多余文件会消失。普通临时文件/目录仅用于完成本次写入，收尾删除；不保存修订、回收站、持久 journal 或恢复历史。需要旧内容时重新安装。
+
+入口文件与资源都拒绝链接/特殊文件、越界相对路径、非法 UTF-8 与超限文本。包最多 50 个支持文件、深度 3 层、每文件 512 KiB、总文本 5 MiB；无效候选单独诊断，不拖垮其他 Agent。直接读取也必须属于同一资源清单。frontmatter 使用运行时 YAML parser，支持块标量与 CRLF，已知字段严格验证，不能把数组当 allowed-tools。
+
+`skill_manage` 是 Default 专用薄工具：调用者身份由 Host 冻结，standard/full_access 可写，read_only 或权限不可用拒绝写入，不新增专用审批/授权 token。已有研究评审配置复用 Default 时显式排除该工具；新内置 `skill-creator` 只向 Default 目录披露，按名读取也校验 caller。用户 Skill 继续遵循既有可见范围。
+
+Renderer 的 `/api/v1/skills` 与外部 CLI 的 `skills` capability 调用同一 owner，分别沿用既有 App API 与本机控制桥鉴权。CLI 的本机来源路径由客户端转为绝对路径，Host 就地读取，不引入上传会话。Agent 以 `skill_manage` 直接写入，避免为普通文件管理扩张 Shell 沙箱根或向它分发全功能 CLI token。
+
+完整写入需带刚读取的 expected_content；省略或 null 仅表示新建文件。原文改变或 edit 无法唯一匹配时报冲突。同步小包替换期间不向事件循环让出控制，应用内读取不会命中目录改名间隙；不宣称与外部编辑器完全串行，也不承诺强杀/断电的整包事务恢复。
+
+新名称进入下一次 run 的目录，当前读取可见已保存文件。当前恢复摘要合同保持严格：更新/卸载任何原 run 可见的 Skill 都可能阻止旧暂停运行继续，不按“是否激活过”缩小影响，也不新增修订固定。
+
+管理验收：`skillManagement.integration.test.ts` 覆盖真实文件与 HTTP，`skillCli.lifecycle.integration.test.ts` 覆盖 CLI 子进程→鉴权/握手→同一文件 owner，SkillManageTool 集成测试覆盖冻结权限与操作生命周期，Renderer Skills feature 测试覆盖冲突保留草稿及来源只读。

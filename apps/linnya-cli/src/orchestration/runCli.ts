@@ -39,6 +39,11 @@ export function linnyaCliUsage(): string {
     '  linnya --help             Show this help (also -h or <command> --help)',
     '  linnya send <message> --project ID [--conversation ID] [--agent ID] [--model ID] [--image-model ID] [--reasoning LEVEL]',
     '    Research: --agent research_v1; optional --research-scope-json JSON for explicit material scope (question, reader, task_type, materials, optional time_range)',
+    '  linnya skills list | read NAME [PATH] | validate DIRECTORY',
+    '  linnya skills install|update NAME --from DIRECTORY',
+    '  linnya skills remove NAME',
+    '  linnya skills edit NAME [PATH] --old TEXT --new TEXT',
+    '  linnya skills write NAME [PATH] --from FILE [--create]',
     '  linnya models',
     '  linnya projects',
     '  linnya list [--limit N] [--cursor CURSOR] [--search TEXT] [--project ID]',
@@ -146,6 +151,23 @@ export async function runCli(
     }
 
     const client = await (options.connection ?? createConversationControlConnection()).connect();
+    if (invocation.kind === 'skill-write') {
+      const content = new TextDecoder('utf-8', { fatal: true }).decode(await readFile(invocation.file));
+      let expected: string | null = null;
+      if (!invocation.create) {
+        const previous = await client.execute({ schema_version: 1, command: 'skills',
+          request: { action: 'read', name: invocation.name, path: invocation.path } });
+        if (previous.command !== 'skills' || previous.result.action !== 'read') {
+          throw new LinnyaCliError('protocol_incompatible', 'Expected skill file content');
+        }
+        expected = previous.result.content;
+      }
+      const response = await client.execute({ schema_version: 1, command: 'skills',
+        request: { action: 'write', name: invocation.name, path: invocation.path,
+          content, expected_content: expected } });
+      io.write(serialize(response, invocation.pretty));
+      return LINNYA_CLI_EXIT.success;
+    }
     if (invocation.kind === 'doctor') {
       io.write(serialize({
         schema_version: 1, ok: true, command: 'doctor',

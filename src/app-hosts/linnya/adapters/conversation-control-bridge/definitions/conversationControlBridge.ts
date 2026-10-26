@@ -11,6 +11,7 @@ export const CONVERSATION_CONTROL_MAX_WATCH_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
 /** 握手只声明本 App 版本真正实现的能力。 */
 export const LINNYA_CONVERSATION_CONTROL_CAPABILITIES = [
+  'skills',
   'send',
   'models',
   'projects',

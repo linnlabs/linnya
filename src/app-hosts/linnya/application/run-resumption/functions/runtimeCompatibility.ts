@@ -1,3 +1,4 @@
+import { PromptKeys } from '@app/schemas';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { SerializableJsonRecord } from '@linnlabs/linnkit/contracts';
@@ -95,7 +96,8 @@ export function captureRuntimeCompatibility(
     ? Object.keys(original.skills)
     : definition.config?.skill?.enabled
       ? getAllSkillMetadata()
-          .filter(skill => !skill.disableModelInvocation && getSkillByName(skill.name))
+          .filter(skill => !skill.disableModelInvocation && getSkillByName(skill.name)
+            && (skill.name !== 'skill-creator' || definition.id === PromptKeys.DEFAULT))
           .map(skill => skill.name)
       : [];
   return {

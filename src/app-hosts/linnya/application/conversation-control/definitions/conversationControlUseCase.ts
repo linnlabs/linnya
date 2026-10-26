@@ -1,3 +1,5 @@
+import type { SkillManagementPort } from 'src/features/skills';
+import type { ConversationControlSkillsResponse } from '@app/schemas';
 import type {
   ConversationControlCommandApprovalsRequest,
   ConversationControlCommandApprovalsResponse,
@@ -202,6 +204,7 @@ export interface ConversationControlToolCatalogPort {
 }
 
 export interface ConversationControlUseCasePorts {
+  readonly skills?: SkillManagementPort;
   readonly flow: ConversationControlFlowPort;
   readonly runs: ConversationControlRunPort;
   readonly executionProgress: ConversationControlExecutionProgressPort;
@@ -221,6 +224,7 @@ export interface ConversationControlUseCase {
   execute(
     request: ConversationControlCommandRequest
   ): Promise<
+    | ConversationControlSkillsResponse
     | ConversationControlCommandApprovalsResponse
     | ConversationControlSendResponse
     | ConversationControlModelsResponse

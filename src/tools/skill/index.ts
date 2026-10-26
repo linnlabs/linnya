@@ -4,7 +4,8 @@
  */
 
 import { SkillTool } from './SkillTool';
+import { SkillManageTool } from './SkillManageTool';
 
-export { SkillTool };
+export { SkillTool, SkillManageTool };
 
-export const skillToolClasses = [SkillTool] as const;
+export const skillToolClasses = [SkillTool, SkillManageTool] as const;

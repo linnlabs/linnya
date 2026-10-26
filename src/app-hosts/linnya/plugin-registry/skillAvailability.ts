@@ -17,7 +17,7 @@ export function ensurePluginSkillAvailabilityRegistered(): void {
   if (registered) return;
   registerSkillAvailabilityRule('linnya-plugin-runtime', (skill) => {
     const pluginId = skill.metadata?.pluginId;
-    if (!pluginId) return true;
+    if (skill.source !== 'plugin' || !pluginId) return true;
     return isPluginRuntimeEnabled(pluginId);
   });
   registered = true;

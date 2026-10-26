@@ -8,6 +8,7 @@ export const CONVERSATION_CONTROL_CONNECTION_FILE_ENV = 'LINNYA_CLI_CONNECTION_F
 export const CONVERSATION_CONTROL_CONNECTION_FILE_NAME = 'conversation-control-v1.json' as const;
 
 export const ConversationControlCapabilitySchema = z.enum([
+  'skills',
   'send',
   'models',
   'projects',

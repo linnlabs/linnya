@@ -9,7 +9,10 @@ export const AGENT_DEFINITION: AgentDefinition = {
   defaultMode: 'agent',
   description: '研究调查复核（内部 CLI）',
   // 分工只改变职责；工具、预算、模型和提醒与通用审核的 Default 底座一致。
-  config: defaultAgent.config,
+  config: {
+    ...defaultAgent.config,
+    availableTools: defaultAgent.config.availableTools.filter(name => name !== 'skill_manage'),
+  },
   task: {
     systemPromptBuilder: () =>
       `${buildDefaultAgentSystemPrompt()}\n${INVESTIGATION_REVIEW_RESPONSIBILITY_PROMPT}`,

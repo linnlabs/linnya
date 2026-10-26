@@ -1,0 +1,35 @@
+.skills-management-note {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  margin: var(--space-3) 0;
+}
+
+.skills-management-actions,
+.skills-management-new-file {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.skills-management-new-file {
+  width: 100%;
+  margin-top: 0;
+}
+
+.skills-management-new-file > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.skills-management-editor {
+  width: 100%;
+}
+
+.skills-management-editor-control {
+  font-family: var(--font-family-mono);
+  min-height: 240px;
+  resize: vertical;
+}

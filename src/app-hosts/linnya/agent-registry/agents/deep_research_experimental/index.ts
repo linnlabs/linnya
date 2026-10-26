@@ -37,6 +37,7 @@ export const AGENT_DEFINITION: AgentDefinition = {
   // 同工具、模型路由、步数与上下文策略：只改变研究职责和短提醒，便于对照。
   config: {
     ...defaultAgent.config,
+    availableTools: defaultAgent.config.availableTools.filter(name => name !== 'skill_manage'),
     // requiredSkills 当前校验插件随包根；内置Skill使用正式catalog，仍须实际激活。
     skill: defaultAgent.config.skill,
     contextPolicy: {

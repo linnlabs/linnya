@@ -17,6 +17,7 @@ export function isSkillExposureEnabled(definition: AgentDefinition | undefined):
 export function appendSkillCatalogSection(params: {
   basePrompt: string;
   enabled: boolean;
+  includeAuthoring?: boolean;
 }): string {
   const { basePrompt, enabled } = params;
   const trimmed = basePrompt.trim();
@@ -31,7 +32,7 @@ export function appendSkillCatalogSection(params: {
     );
   }
 
-  const catalog = buildSkillCatalogXml();
+  const catalog = buildSkillCatalogXml(params.includeAuthoring);
   if (!catalog) {
     return trimmed;
   }

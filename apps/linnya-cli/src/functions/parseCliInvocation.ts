@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { ConversationControlSkillsRequestSchema } from '@app/schemas';
 import {
   CONVERSATION_CONTROL_SCHEMA_VERSION,
   ConversationControlAuditRequestSchema,
@@ -33,6 +35,7 @@ const BOOLEAN_OPTIONS = new Set([
   'approve',
   'skip',
   'omit-args',
+  'create',
 ]);
 
 function usageError(message: string): never {
@@ -147,6 +150,35 @@ function parseJsonOption(tokens: ParsedTokens, name: string): unknown {
 function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocation {
   const pretty = readBoolean(tokens, 'pretty');
   switch (command) {
+    case 'skills': {
+      const [action, name, filePath = 'SKILL.md'] = tokens.positionals;
+      assertAllowedOptions(tokens, action === 'write' ? ['from', 'create']
+        : action === 'install' || action === 'update' ? ['from'] : action === 'edit' ? ['old', 'new'] : []);
+      if (!action) usageError('skills requires list, read, validate, install, update, remove, write or edit');
+      const from = readString(tokens, 'from');
+      if (action === 'write') {
+        if (!name || !from || tokens.positionals.length > 3) usageError('skills write NAME [PATH] --from FILE [--create]');
+        return { kind: 'skill-write', name, path: filePath, file: path.resolve(from),
+          create: readBoolean(tokens, 'create'), pretty };
+      }
+      let request: unknown;
+      if (action === 'list' && tokens.positionals.length === 1) request = { action };
+      else if (action === 'validate' && name && tokens.positionals.length === 2) {
+        request = { action, source_directory: path.resolve(name) };
+      } else if ((action === 'install' || action === 'update') && name && from && tokens.positionals.length === 2) {
+        request = { action, name, source_directory: path.resolve(from) };
+      } else if ((action === 'remove' || action === 'uninstall') && name && tokens.positionals.length === 2) {
+        request = { action: 'remove', name };
+      } else if ((action === 'read' || action === 'delete_file') && name && tokens.positionals.length <= 3) {
+        request = { action, name, path: filePath };
+      } else if (action === 'edit' && name && tokens.positionals.length <= 3) {
+        request = { action, name, path: filePath, old_string: readString(tokens, 'old'),
+          new_string: tokens.options.get('new') };
+      } else usageError('Invalid skills command. Use --help for the supported forms.');
+      return { kind: 'command', pretty, request: ConversationControlSkillsRequestSchema.parse({
+        schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION, command: 'skills', request,
+      }) };
+    }
     case 'runtime': {
       assertAllowedOptions(tokens, ['workspace', 'api-port', 'qdrant-port']);
       if (tokens.positionals.length !== 1 || tokens.positionals[0] !== 'start') {

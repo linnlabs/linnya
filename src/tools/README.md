@@ -598,3 +598,6 @@ Host 文档指向 Linnkit；这不是文档缺链，而是避免通用包持有�
 owner 管理，不进入 Default
 Agent 白名单。深浅搜索使用同一网页列表与正式引用，内部组装仅接受 ref 和短注释，原文摘要由工具回填。边界、持久限额与验收见
 [Web owner](./web/README.md)。
+
+
+`skill_manage` 是 Default 专用的当前用户 Skill 文件入口，规则归 Skills owner；工具只验证参数、Host caller 和冻结的 commandRunPermission。standard/full_access 允许写入，read_only/不可用拒绝；不存在独立版本库或 Shell 审批提升。`skill` 仍负责按需消费指引，新 `skill-creator` 的按名访问也校验实际 caller。

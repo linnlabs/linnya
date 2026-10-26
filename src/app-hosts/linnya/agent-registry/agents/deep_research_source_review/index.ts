@@ -9,7 +9,10 @@ export const AGENT_DEFINITION: AgentDefinition = {
   defaultMode: 'agent',
   description: '研究数字与来源校对（内部 CLI）',
   // 原件取得、执行计算与图片能力都走现有 Default 工具，不旁路 owner。
-  config: defaultAgent.config,
+  config: {
+    ...defaultAgent.config,
+    availableTools: defaultAgent.config.availableTools.filter(name => name !== 'skill_manage'),
+  },
   task: {
     systemPromptBuilder: () =>
       `${buildDefaultAgentSystemPrompt()}\n${SOURCE_REVIEW_RESPONSIBILITY_PROMPT}`,

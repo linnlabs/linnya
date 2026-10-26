@@ -26,7 +26,7 @@ import {
 } from './definitions/conversationControlBridge';
 
 interface CreateConversationControlBridgeRouterOptions {
-  readonly useCase: ConversationControlUseCase;
+  readonly useCase: Pick<ConversationControlUseCase, 'execute'>;
   readonly appInstanceId: string;
   readonly appVersion: string;
   readonly auditAvailable?: boolean;
@@ -42,6 +42,7 @@ function errorStatus(code: ConversationControlErrorCode): number {
     case 'stale_connection':
     case 'protocol_incompatible':
     case 'capability_unavailable':
+    case 'skill_conflict':
     case 'conversation_busy':
     case 'no_active_run':
     case 'run_mismatch':
