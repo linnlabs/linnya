@@ -92,6 +92,12 @@ citation 的 ref、canonical URL 必须唯一，index 必须从当前 execution 
 内部白名单仅含 `search_web`（无深搜参数）、`web_read`、`tool_output_read` 和
 `assemble_web_sources`，不能递归深搜。两种搜索入口复用 `runShallowWebSearch`，不会引入第二套抓取器。
 
+`web_search` 是普通 Agent 的唯一网页搜索入口；`search_web` 只向内部深搜 child 暴露，
+不是供父 Agent 选择的第二个搜索工具。它的严格参数合同不接受 `deep_search`，父子名单在
+模型工具目录和执行准入两处生效。保留这个窄入口是为了从能力边界阻止递归；不能仅隐藏参数、
+仍让内部 child 通过普通 `web_search` 启动另一个深搜。历史审计按真实工具名分别记录，
+分析搜索供应商故障时可合并两者，但仍保留父子角色及深浅层次。
+
 深浅搜索返回同一套 `data.query / resultCount / citations / evidence_store`，父 Agent 可继续
 按 URL 调用 `web_read`。深搜仅追加 `search_strategy / subrun_ids / research`，后者保存简短总结、
 每个 ref 的用途与取得限制、冲突线索及缺口。浅搜独有的 cacheStatus 在深搜不伪造；历史浅搜结果

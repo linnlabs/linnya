@@ -14,7 +14,7 @@
 skill 是一条**资源链路**，不只是 manifest 字段。一个插件 skill 要完整工作，以下环节都要通：
 
 1. discovery：enabled 磁盘插件的 `resources/skills` 与官方 inline 的 `skillResourceRoots` 进入 skill catalog。
-2. 工具消费：`SkillTool` 自持 `activate`、`list_resources`、`read_resource` 三种动作；Skill 资源不经过 VFS 或通用 Resource 工具。
+2. 工具消费：`skill` 自持 `activate`、`list_resources`、`read_resource` 三种 action；资源指引写为 `skill(action="read_resource", skill_name="...", resource_path="...")`，动作名不作为独立工具调用。Skill 资源不经过 VFS 或通用 Resource 工具。
 3. 优先级：同名 skill 按 `builtin > plugin > user` 取。
 4. 启停门禁：插件启停会刷新 skill cache，禁用后 skill 从 catalog 与 `skill` 工具的可读资源范围中收缩。
 5. 打包：artifact zip 与 extraResources 都要包含 skill 资源。

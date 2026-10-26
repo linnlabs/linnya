@@ -13,7 +13,7 @@ import {
   validatePluginAgentRequiredSkills,
   validateSkillExposureConfig,
 } from '../agentSkillExposure';
-import { buildSkillCatalogXml, loadSkillContent, readSkillResource } from '../catalog';
+import { buildSkillCatalogXml, loadSkillContent } from '../catalog';
 import { invalidateSkillCache } from '../discovery';
 import { ensurePluginSkillAvailabilityRegistered } from '../../../app-hosts/linnya/plugin-registry/skillAvailability';
 import {
@@ -25,7 +25,8 @@ import {
   replacePluginSkillSourceRoots,
 } from '../pluginSkillSources';
 import type { AgentDefinition } from '../../../app-hosts/linnya/agent-registry/types';
-import { PromptKeys } from '@app/schemas';
+import { PromptKeys, SkillActivateResultSchema, SkillReadResourceResultSchema } from '@app/schemas';
+import { SkillTool } from '../../../tools/skill/SkillTool';
 
 const tempRoots: string[] = [];
 
@@ -96,7 +97,7 @@ describe('agent skill exposure', () => {
     expect(prompt).toContain('name="linnya-markdown"');
   });
 
-  it('discovers the builtin Linnya Markdown skill; its chart and image resources are readable', () => {
+  it('内置 Markdown Skill 的图表/图片指引可通过 skill action 实际读取', async () => {
     invalidateSkillCache();
 
     expect(buildSkillCatalogXml()).toContain('name="linnya-markdown"');
@@ -105,8 +106,29 @@ describe('agent skill exposure', () => {
     expect(skill.body).toContain('Do not handcraft the canonical JSON');
     expect(skill.body).toContain('references/chart.md');
     expect(skill.resources).toEqual(['references/chart.md', 'references/image.md']);
-    expect(readSkillResource('linnya-markdown', 'references/image.md')).toContain('conversation:/');
-    expect(readSkillResource('linnya-markdown', 'references/chart.md')).toContain('`linnya-chart`');
+    const tool = new SkillTool();
+    const activated = SkillActivateResultSchema.parse(
+      JSON.parse(await tool.run({ action: 'activate', skill_name: skill.name }, {}))
+    );
+    // 从真实激活正文取得可调用指引，防止资源名又被误写成独立工具入口。
+    const resourceCalls = [...activated.observation.matchAll(
+      /skill\(action="read_resource", skill_name="([^"]+)", resource_path="(references\/[^"\n]+)"\)/g
+    )];
+    expect(resourceCalls.map(match => match[2]).sort()).toEqual([...skill.resources].sort());
+    for (const match of resourceCalls) {
+      const result = SkillReadResourceResultSchema.parse(
+        JSON.parse(await tool.run({
+          action: 'read_resource',
+          skill_name: match[1],
+          resource_path: match[2],
+        }, {}))
+      );
+      expect(result.data.skill_name).toBe(skill.name);
+      expect(result.data.resource_path).toBe(match[2]);
+      expect(result.observation).toContain(
+        match[2] === 'references/image.md' ? 'conversation:/' : '`linnya-chart`'
+      );
+    }
   });
 
   it('does not inject skill catalog through additional-context', () => {

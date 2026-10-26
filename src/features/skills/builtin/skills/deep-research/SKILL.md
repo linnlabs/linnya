@@ -4,7 +4,7 @@ description: Research, verify, and write in-depth reports and long-form analysis
 compatibility: Linnya agents with skill, Web, Knowledge, Workspace file tools and Shell. Uses only tools available in the current session.
 metadata:
   author: linnya
-  version: "1.10.1"
+  version: "1.10.2"
 ---
 
 # Deep Research
@@ -17,7 +17,7 @@ metadata:
 
 区分三类任务：开放研究可检索补查；固定材料编辑只能重组、解释和计算给定资料，不联网或用常识补造缺失事实；研究更新先读旧正文、依据与计算，定位受新材料影响的判断，保留未受影响部分。深入研究可以得到解释、不确定或预测，不必给行动建议；决策另需用户的目标、约束、选项与代价。
 
-通过 `skill` 的 `read_resource` 按需读取资源：写作/改稿在调查足以支持成文后、完整初稿前读 [写作资料包入口](references/article-craft.md)，再按索引选择相关文体卡；比较解释、分析立场利益、间接线索、因果、计算或预测，在分析前读 [立场、线索与解释建模](references/modeling.md)；市场规模、竞争、定价或财务驱动量再读 [商业分析](references/business-analysis.md)；使用统计图读 [图表：选图、配色与证据纪律](references/charts.md)，使用照片、作品图或示意图读 [图片：取得、插入与说明](references/images.md)。激活入口不等于读过资源，不完整跑咨询清单。
+用 `skill(action="read_resource", skill_name="deep-research", resource_path="...")` 按需读取下面链接的相对路径：写作/改稿在调查足以支持成文后、完整初稿前读 [写作资料包入口](references/article-craft.md)，再按索引选择相关文体卡；比较解释、分析立场利益、间接线索、因果、计算或预测，在分析前读 [立场、线索与解释建模](references/modeling.md)；市场规模、竞争、定价或财务驱动量再读 [商业分析](references/business-analysis.md)；使用统计图读 [图表：选图、配色与证据纪律](references/charts.md)，使用照片、作品图或示意图读 [图片：取得、插入与说明](references/images.md)。激活入口不等于读过资源，不完整跑咨询清单。
 
 ## 2. 探索现状，再把未知变成查找任务
 

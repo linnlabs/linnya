@@ -41,12 +41,13 @@ export class SkillTool extends BaseTool {
   get description(): string {
     return `Activate a skill or read its resources to get specialized instructions for a task.
 
-# Actions
-- activate: Load a skill's full instructions (SKILL.md body). Use when a task matches a skill from the catalog.
-- read_resource: Read a supporting file from a skill's directory (e.g. reference docs, examples).
-- list_resources: List available resource files in a skill's directory.
+# Actions of the skill tool
+- action="activate": Load a skill's full instructions (SKILL.md body). Use when a task matches a skill from the catalog.
+- action="read_resource": Read a supporting file from a skill's directory (e.g. reference docs, examples).
+- action="list_resources": List available resource files in a skill's directory.
 
-# read_resource Windowing
+# Resource reading
+Call skill(action="read_resource", skill_name="...", resource_path="...") with a relative resource path.
 - offset: 1-based line number. Omit to start at line 1.
 - limit: Maximum number of lines to return. Omit to read to the end.
 

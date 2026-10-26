@@ -370,7 +370,7 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 
 - Agent 协作与运行管理工具最终由 linnkit 还是 Linnya 实现。
 - linnkit 的通用能力发现协议与 Linnya 的 Skill 系统如何衔接。
-- Skill 激活输出已经改为资源相对路径，并由 `skill(list_resources/read_resource)` 自持渐进披露；旧 `skill://` 仅由历史 schema 和 Renderer projector 严格解释，不再进入 live `resource_read`。
+- Skill 激活输出已经改为资源相对路径，并由 `skill` 的 `list_resources` / `read_resource` 动作自持渐进披露；旧 `skill://` 仅由历史 schema 和 Renderer projector 严格解释，不再进入 live `resource_read`。
 - `generate_image` 已停止新建 `project_asset_links`，直接写入当前会话工作区并返回 `conversation:` locator；只有当前聊天模型支持工具结果图片时，才通过 managed image ingress 与 tool-result claim 增加模型输入附件。Slides 已能解析 locator，历史 `text_to_image` 只在 Renderer replay 边界解释。
 - conversation 与 host 图片已经可以通过 `read_file(locator=...)` 回流模型输入；`resource_read(conversation_file://...)` 的公开分支和项目树资源库投影均已删除。旧全局图片不迁移、不回填、不继续授权读取，未知旧关系不恢复为产品投影。
 - Knowledge 已收口为 `knowledge_search` / `knowledge_read`，Web 已收口为 `web_search` / `web_read`；两者的旧 `resource_read` live 分支均已删除，历史事件只在严格 replay 边界中解释。

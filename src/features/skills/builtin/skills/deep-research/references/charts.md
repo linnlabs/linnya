@@ -2,7 +2,7 @@
 
 图表是正文证据的一部分，不是装饰。只有读者需要看清比较、变化、构成或关系，并且数字来自实际取得的材料或已执行的计算时才画图。没有可靠的量化材料就不硬画；只需精确查数或只有三五个数时用表格；纯定性、叙事或作品研究可以完全不用统计图。不设每篇文章的图表数量或类型配额，也不为版面多样去换不适合数据的类型。
 
-图表的语法、字段和写入规则只在内置 Skill `linnya-markdown` 的 `references/chart.md`：先用 `skill` 激活 `linnya-markdown`，再 `read_resource` 读取。这里只回答：画不画、画哪种、怎样不画错。
+图表的语法、字段和写入规则只在内置 Skill `linnya-markdown` 的 `references/chart.md`：先用 `skill` 激活 `linnya-markdown`，再调用 `skill(action="read_resource", skill_name="linnya-markdown", resource_path="references/chart.md")` 读取。这里只回答：画不画、画哪种、怎样不画错。
 
 ## 先说读者要比较什么，再选类型
 

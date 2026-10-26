@@ -8,7 +8,7 @@ describe('SkillTool', () => {
     vi.restoreAllMocks();
   });
 
-  it('read_resource 应按 offset/limit 返回行窗口，避免续读重复返回资源开头', async () => {
+  it('skill 的资源读取动作按 offset/limit 返回行窗口，避免续读重复返回开头', async () => {
     vi.spyOn(skillCatalog, 'readSkillResource').mockReturnValue(
       ['# Reference', '', 'Line 3', 'Line 4', 'Line 5'].join('\n')
     );

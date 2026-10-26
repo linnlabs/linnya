@@ -589,7 +589,7 @@ Graph 步、inherit_parent 模型策略，工具包括普通 Workspace 读写、
 任何前提修正（包括数字和口径变化）都须传播到受影响的计算、比较、开头、标题和结论。父作者修订时还须核对评语指出的证据强度上限：主因、排除性或确定性结论缺乏支持时，同步修改标题、开头、论证和结论，不能只加限定语；有依据的强结论仍可保留，错误降级意见可拒绝，评审新增事实与比较仍需核实。这是父角色的可回退方法指导，不增加强制工作流，也不保证能识别错误模型或避免新增推论错误。
 
 正式 deep-research 的版本与研究、写作资源统一由
-[Skills owner](../../../features/skills/README.md) 维护。requiredSkills 声明依赖和目录，不代替 activate 与资源读取。父角色读取适用资源，并在完整文章构思、写作或仅修订前明确读取 article-craft，再按入口选择写作资料包的适用卡片（当前会话已读不重复）；激活 Skill 不会自动加载资源正文。共有子角色启动提示给出 `skill(action=activate, skill_name=deep-research)` 与 `read_resource` 的明确调用字段，在读取评审对象或核对证据前取得 modeling；论证复核加 article-craft，商业问题按需加 business-analysis。启动指令由模型执行，不是 Host 自动加载或强制门禁。方法必须经真实 skill 返回与后续动作验证，不能由配置推断已遵循。
+[Skills owner](../../../features/skills/README.md) 维护。requiredSkills 声明依赖和目录，不代替 activate 与资源读取。父角色读取适用资源，并在完整文章构思、写作或仅修订前明确读取 article-craft，再按入口选择写作资料包的适用卡片（当前会话已读不重复）；激活 Skill 不会自动加载资源正文。共有子角色启动提示给出 `skill(action=activate, skill_name=deep-research)` 与 `skill(action=read_resource, ...)` 的明确调用字段，在读取评审对象或核对证据前取得 modeling；论证复核加 article-craft，商业问题按需加 business-analysis。启动指令由模型执行，不是 Host 自动加载或强制门禁。方法必须经真实 skill 返回与后续动作验证，不能由配置推断已遵循。
 
 ### 研究方法的维护位置
 
