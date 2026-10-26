@@ -5,6 +5,7 @@ import {
   type LocalHttpFetchDependencies,
   type LocalHttpFetchOptions,
 } from '../../../../infra/adapters/web-fetch/localHttpFetchAdapter';
+import type { WebHttpResponse } from '../../../../infra/adapters/web-http/webHttpFetch';
 import type { WebDocumentWarning } from '../../definitions/webDocument';
 import { WebFailureError, getWebDiagnosticMimeType } from '../../shared/webFailure';
 import { extractArticle } from '../extraction/extractArticle';
@@ -12,6 +13,7 @@ import { createWebReadResult } from '../functions/createWebReadResult';
 import { resolveReadableWebUrl } from '../functions/resolveReadableWebUrl';
 import type { WebReadParams, WebReadProvider, WebReadResult } from './types';
 import { getWebFileFormat, validateWebFile } from '../file-acquisition/functions/validateWebFile';
+import { WEB_FILE_FETCH_TIMEOUT_MS } from '../file-acquisition/definitions/webFileAcquisition';
 
 const HTML_MIME_TYPES = new Set(['text/html', 'application/xhtml+xml']);
 const TEXT_APPLICATION_MIME_TYPES = new Set([
@@ -24,6 +26,12 @@ const TEXT_APPLICATION_MIME_TYPES = new Set([
 
 export interface LocalHttpProviderDependencies extends LocalHttpFetchDependencies {
   fetchOptions?: Omit<LocalHttpFetchOptions, 'signal'>;
+}
+
+/** 2xx 且响应头声明正式文件类型；错误页和重定向不获得文件预算。 */
+function isFileResponse(response: Pick<WebHttpResponse, 'status' | 'headers'>): boolean {
+  return response.status >= 200 && response.status < 300
+    && getWebFileFormat(response.headers.get('content-type') ?? '') !== undefined;
 }
 
 function isDirectTextMime(mimeType: string): boolean {
@@ -43,10 +51,10 @@ export class LocalHttpProvider implements WebReadProvider {
   async read(params: WebReadParams): Promise<WebReadResult> {
     const requestUrl = resolveReadableWebUrl(params.url);
     const fetched = await localHttpFetch(requestUrl, {
-      // 在原 GET 的响应头处选择预算，不先失败再下载；重定向和错误页不扩大正文预算。
-      maxBodyBytes: response => response.status >= 200 && response.status < 300
-        && getWebFileFormat(response.headers.get('content-type') ?? '')
+      // 在原 GET 的响应头处选择预算，不先失败再下载；重定向和错误页不扩大正文预算或时限。
+      maxBodyBytes: response => isFileResponse(response)
         ? WEB_ACQUIRED_FILE_MAX_BYTES : LOCAL_HTTP_MAX_BODY_BYTES,
+      extendTimeoutMs: response => isFileResponse(response) ? WEB_FILE_FETCH_TIMEOUT_MS : undefined,
       ...this.dependencies.fetchOptions,
       signal: params.signal,
       ...(params.revalidation

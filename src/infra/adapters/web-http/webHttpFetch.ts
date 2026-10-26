@@ -104,6 +104,11 @@ export interface WebHttpFetchArgs {
   timeoutMs: number;
   /** 收到响应头后选择预算；类型策略由调用方拥有，流读取仍统一按实际解压字节限额。 */
   maxBodyBytes: number | ((response: Pick<WebHttpResponse, 'status' | 'headers'>) => number);
+  /**
+   * 收到响应头后可把本次请求截止时间延长到“从请求开始计”的给定毫秒数；只延长不缩短。
+   * 用于正式文件取得等需要更长正文下载时间的响应，类型判断由调用方拥有。
+   */
+  extendTimeoutMs?: (response: Pick<WebHttpResponse, 'status' | 'headers'>) => number | undefined;
   /** 本地抓取使用 manual，确保每一跳重定向都重新执行 URL 与 DNS 策略。 */
   redirect?: RequestRedirect;
   /** 允许本地抓取把连接固定到已通过策略校验的 DNS 结果。 */
@@ -190,9 +195,17 @@ export function withWebHttpErrorDiagnostics(
 function createTimeoutAbortSignal(args: {
   parentSignal?: AbortSignal;
   timeoutMs: number;
-}): { signal: AbortSignal; didTimeout: () => boolean; cleanup: () => void } {
+}): {
+  signal: AbortSignal;
+  didTimeout: () => boolean;
+  deadlineMs: () => number;
+  extendTo: (totalMs: number) => void;
+  cleanup: () => void;
+} {
   const controller = new AbortController();
+  const startedAt = Date.now();
   let timedOut = false;
+  let deadline = args.timeoutMs;
 
   const abortFromParent = (): void => {
     controller.abort(args.parentSignal?.reason ?? new Error('aborted'));
@@ -204,14 +217,22 @@ function createTimeoutAbortSignal(args: {
     args.parentSignal?.addEventListener('abort', abortFromParent, { once: true });
   }
 
-  const timer = setTimeout(() => {
+  const schedule = (): ReturnType<typeof setTimeout> => setTimeout(() => {
     timedOut = true;
-    controller.abort(new Error(`Web HTTP request timed out after ${args.timeoutMs}ms`));
-  }, args.timeoutMs);
+    controller.abort(new Error(`Web HTTP request timed out after ${deadline}ms`));
+  }, Math.max(0, startedAt + deadline - Date.now()));
+  let timer = schedule();
 
   return {
     signal: controller.signal,
     didTimeout: () => timedOut,
+    deadlineMs: () => deadline,
+    extendTo: (totalMs) => {
+      if (timedOut || !Number.isFinite(totalMs) || totalMs <= deadline) return;
+      clearTimeout(timer);
+      deadline = totalMs;
+      timer = schedule();
+    },
     cleanup: () => {
       clearTimeout(timer);
       args.parentSignal?.removeEventListener('abort', abortFromParent);
@@ -232,7 +253,18 @@ function toLogUrl(rawUrl: string | URL): string {
   }
 }
 
-async function readBodyWithLimit(body: NodeReadableStream | null, maxBodyBytes: number): Promise<{
+function readDeclaredBodyBytes(headers: WebHttpHeaders): number | undefined {
+  const declaredLength = headers.get('content-length');
+  return declaredLength && /^\d+$/.test(declaredLength) && Number.isSafeInteger(Number(declaredLength))
+    ? Number(declaredLength)
+    : undefined;
+}
+
+async function readBodyWithLimit(
+  body: NodeReadableStream | null,
+  maxBodyBytes: number,
+  progress: { bodyBytes: number },
+): Promise<{
   bodyText: string;
   bodyData: Uint8Array;
   bodyBytes: number;
@@ -255,6 +287,7 @@ async function readBodyWithLimit(body: NodeReadableStream | null, maxBodyBytes: 
       }
 
       bodyBytes += chunk.byteLength;
+      progress.bodyBytes = bodyBytes;
       if (bodyBytes > maxBodyBytes) {
         await reader.cancel('response body exceeded maxBodyBytes');
         throw new WebHttpError(
@@ -288,10 +321,13 @@ export async function webHttpFetch(args: WebHttpFetchArgs): Promise<WebHttpRespo
 
   const startedAt = Date.now();
   const logUrl = toLogUrl(args.url);
-  const { signal, didTimeout, cleanup } = createTimeoutAbortSignal({
+  const { signal, didTimeout, deadlineMs, extendTo, cleanup } = createTimeoutAbortSignal({
     parentSignal: args.signal,
     timeoutMs: args.timeoutMs,
   });
+  // 只记录已收到的响应头事实与已读字节，供正文超时诊断；不保留正文。
+  let responseFacts: { status: number; contentType?: string; declaredBodyBytes?: number } | undefined;
+  const progress = { bodyBytes: 0 };
 
   try {
     const response = await undiciFetch(args.url, {
@@ -302,6 +338,15 @@ export async function webHttpFetch(args: WebHttpFetchArgs): Promise<WebHttpRespo
       redirect: args.redirect,
       dispatcher: args.dispatcher,
     });
+    const declaredBodyBytes = readDeclaredBodyBytes(response.headers);
+    const contentType = response.headers.get('content-type');
+    responseFacts = {
+      status: response.status,
+      ...(contentType ? { contentType } : {}),
+      ...(declaredBodyBytes !== undefined ? { declaredBodyBytes } : {}),
+    };
+    const extendedTimeoutMs = args.extendTimeoutMs?.(response);
+    if (extendedTimeoutMs !== undefined) extendTo(extendedTimeoutMs);
     const maxBodyBytes = typeof args.maxBodyBytes === 'function'
       ? args.maxBodyBytes(response) : args.maxBodyBytes;
     if (!Number.isFinite(maxBodyBytes) || maxBodyBytes <= 0) {
@@ -310,15 +355,12 @@ export async function webHttpFetch(args: WebHttpFetchArgs): Promise<WebHttpRespo
     }
     let body: Awaited<ReturnType<typeof readBodyWithLimit>>;
     try {
-      body = await readBodyWithLimit(response.body, maxBodyBytes);
+      body = await readBodyWithLimit(response.body, maxBodyBytes, progress);
     } catch (error: unknown) {
       if (!(error instanceof WebHttpError)) throw error;
-      const declaredLength = response.headers.get('content-length');
-      const declaredBodyBytes = declaredLength && /^\d+$/.test(declaredLength)
-        && Number.isSafeInteger(Number(declaredLength)) ? Number(declaredLength) : undefined;
       throw new WebHttpError(error.kind, error.message, {
         status: response.status,
-        contentType: response.headers.get('content-type') ?? undefined,
+        contentType: contentType ?? undefined,
         bodyBytes: error.bodyBytes,
         maxBodyBytes: error.maxBodyBytes,
         ...(declaredBodyBytes !== undefined ? { declaredBodyBytes } : {}),
@@ -348,7 +390,19 @@ export async function webHttpFetch(args: WebHttpFetchArgs): Promise<WebHttpRespo
     const normalizedError = (() => {
       if (error instanceof WebHttpError) return error;
       if (didTimeout()) {
-        return new WebHttpError('timeout', `Web HTTP 请求在 ${args.timeoutMs}ms 后超时。`, { cause: error });
+        if (!responseFacts) {
+          return new WebHttpError('timeout', `Web HTTP 请求在 ${deadlineMs()}ms 后超时。`, { cause: error });
+        }
+        // 已收到响应头时保留正文下载进度；非 2xx 的错误正文超时不提升状态码，避免改变终态分类。
+        const successful = responseFacts.status >= 200 && responseFacts.status < 300;
+        return new WebHttpError('timeout', `Web HTTP 正文下载在 ${deadlineMs()}ms 内未完成。`, {
+          cause: error,
+          ...(successful ? { status: responseFacts.status } : {}),
+          ...(responseFacts.contentType ? { contentType: responseFacts.contentType } : {}),
+          bodyBytes: progress.bodyBytes,
+          ...(responseFacts.declaredBodyBytes !== undefined
+            ? { declaredBodyBytes: responseFacts.declaredBodyBytes } : {}),
+        });
       }
       if (args.signal?.aborted) {
         return new WebHttpError('aborted', 'Web HTTP 请求已由调用方取消。', { cause: error });

@@ -59,6 +59,8 @@ export interface LocalHttpFetchOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
   maxBodyBytes?: WebHttpFetchArgs['maxBodyBytes'];
+  /** 收到响应头后把整次抓取截止时间延长到“从本次抓取开始计”的毫秒数，例如正式文件取得。 */
+  extendTimeoutMs?: WebHttpFetchArgs['extendTimeoutMs'];
   maxRedirects?: number;
   validators?: {
     etag?: string;
@@ -264,12 +266,22 @@ export async function localHttpFetch(
       };
       if (options.validators?.etag) headers['If-None-Match'] = options.validators.etag;
       if (options.validators?.lastModified) headers['If-Modified-Since'] = options.validators.lastModified;
+      const attemptOffsetMs = Date.now() - startedAt;
+      const extendTimeoutMs = options.extendTimeoutMs;
       fetchOutcome = await httpFetch({
         url: currentUrl,
         method: 'GET',
         headers,
         signal: options.signal,
-        timeoutMs: Math.max(1, timeoutMs - (Date.now() - startedAt)),
+        timeoutMs: Math.max(1, timeoutMs - attemptOffsetMs),
+        ...(extendTimeoutMs
+          ? {
+              extendTimeoutMs: (response) => {
+                const totalMs = extendTimeoutMs(response);
+                return totalMs === undefined ? undefined : totalMs - attemptOffsetMs;
+              },
+            }
+          : {}),
         maxBodyBytes,
         redirect: 'manual',
         dispatcher,

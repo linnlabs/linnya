@@ -1,4 +1,10 @@
 import { getWebAccessBlockKind, getWebFailureDiagnostics, getWebFailureKind } from '../../shared/webFailure';
+import { getWebFileFormat } from '../file-acquisition/functions/validateWebFile';
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KiB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MiB`;
+}
 
 /** 恢复建议只依据正式失败事实，不能从任意上游文案推断登录、验证码或链接来源。 */
 export function buildWebReadFailureFeedback(error: unknown, params: {
@@ -29,7 +35,11 @@ export function buildWebReadFailureFeedback(error: unknown, params: {
   if (facts.renderFailureKind === 'unavailable' || facts.renderFailureKind === 'render_process_gone') {
     guidance.push('本机渲染能力本次不可用，这不表示网站永久不可读；恢复该能力后可再试。');
   }
-  if (reason === 'timeout' || reason === 'network_error' || reason === 'http_5xx' || reason === 'rate_limited') {
+  const fileDownload = facts.contentType !== undefined && getWebFileFormat(facts.contentType) !== undefined;
+  if (reason === 'timeout' && fileDownload && facts.bodyBytes !== undefined) {
+    const declared = facts.declaredBodyBytes !== undefined ? `，响应声明 ${formatBytes(facts.declaredBodyBytes)}` : '';
+    guidance.push(`文件下载在本次时限内未完成：已收 ${formatBytes(facts.bodyBytes)}${declared}，未保存文件。可稍后重试，或查找较小的版本、分卷或网页文本版；Shell 另行下载的副本没有来源身份，不能代替正式取得。`);
+  } else if (reason === 'timeout' || reason === 'network_error' || reason === 'http_5xx' || reason === 'rate_limited') {
     guidance.push('本次为超时、网络或上游暂时失败；可在等待或连接恢复后再试，当前未取得正文。');
   }
   if (facts.retryAfterMs !== undefined) guidance.push(`服务器要求至少等待 ${Math.ceil(facts.retryAfterMs / 1000)} 秒；本工具没有为等待而扩大本次预算。`);

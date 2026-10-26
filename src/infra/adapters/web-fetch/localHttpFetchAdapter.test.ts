@@ -42,6 +42,17 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
         response.end('<html><body>UPSTREAM_BODY_INJECTION</body></html>');
         return;
       }
+      if (request.url === '/slow-pdf' || request.url === '/slow-html' || request.url === '/stalled-pdf') {
+        const pdf = request.url !== '/slow-html';
+        response.writeHead(200, {
+          'Content-Type': pdf ? 'application/pdf' : 'text/html',
+          'Content-Length': '2048',
+        });
+        response.write(Buffer.alloc(1024, 65));
+        // 正文分两段送达；stalled 只送前半段，模拟慢速或卡住的文件服务器。
+        if (request.url !== '/stalled-pdf') setTimeout(() => response.end(Buffer.alloc(1024, 66)), 500);
+        return;
+      }
       if (request.url === '/accepted-202') {
         response.writeHead(202, { 'Content-Type': 'text/plain' });
         response.end('accepted job status');
@@ -228,6 +239,42 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
     expect(String(error)).toContain(`HTTP ${status}`);
     expect(String(error)).not.toContain('UPSTREAM_');
     expect(requestedPaths.filter(path => path === route)).toHaveLength(1);
+  });
+
+  it('响应头确认为文件后延长整次抓取截止；同样慢的普通网页仍按原预算超时并报告下载进度', async () => {
+    const extendTimeoutMs = (response: { status: number; headers: { get(name: string): string | null } }) =>
+      response.headers.get('content-type') === 'application/pdf' ? 3_000 : undefined;
+    const file = await localHttpFetch(`http://fixture.test:${port}/slow-pdf`, { timeoutMs: 250, extendTimeoutMs }, {
+      resolveHost: resolveFixtureHost,
+    });
+    expect(file).toMatchObject({ status: 200, rawLength: 2048, retryCount: 0 });
+
+    const page = await localHttpFetch(`http://fixture.test:${port}/slow-html`, { timeoutMs: 250, extendTimeoutMs }, {
+      resolveHost: resolveFixtureHost,
+      sleep: async () => undefined,
+    }).catch((caught: unknown) => caught);
+    expect(page).toMatchObject({
+      code: 'timeout',
+      status: 200,
+      contentType: 'text/html',
+      bodyBytes: 1024,
+      declaredBodyBytes: 2048,
+    });
+    expect(String(page)).toContain('正文下载');
+  });
+
+  it('文件正文在延长后的截止前仍未送完时报告已收与声明字节', async () => {
+    const error = await localHttpFetch(`http://fixture.test:${port}/stalled-pdf`, {
+      timeoutMs: 100,
+      extendTimeoutMs: () => 400,
+    }, { resolveHost: resolveFixtureHost, sleep: async () => undefined }).catch((caught: unknown) => caught);
+    expect(error).toMatchObject({
+      code: 'timeout',
+      status: 200,
+      contentType: 'application/pdf',
+      bodyBytes: 1024,
+      declaredBodyBytes: 2048,
+    });
   });
 
   it('没有挑战信号的普通 202 仍按正常响应返回', async () => {

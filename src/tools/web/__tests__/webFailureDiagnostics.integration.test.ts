@@ -3,6 +3,8 @@ import { WebReadTool } from '../webread/WebReadTool';
 import { LocalRenderProvider } from '../webread/providers/localRender';
 import { WebPageRenderError } from '../webread/definitions/webPageRenderer';
 import { WebFailureError, getWebFailureDiagnostics } from '../shared/webFailure';
+import { WebHttpError } from '../../../infra/adapters/web-http/webHttpFetch';
+
 import { Logger } from '../../../shared/logger';
 import { attachCitationRefAllocator, attachCitationSequence } from '../../../domains/citation';
 import { createCitationRefAllocatorFixture } from '../../../domains/citation/testkit/citationRefAllocatorFixture';
@@ -124,6 +126,40 @@ describe('网页失败的模型、审计和安全诊断边界', () => {
     expect(error.message).toContain('前端应用在时限内仍未渲染出正文');
     expect(error.message).not.toContain('静态 HTML 未提供可读正文');
     expect(error.message).not.toContain(UNSAFE_TEXT);
+  });
+
+  it('文件正文下载超时不转交渲染，报告已收/声明字节并说明 Shell 副本不能代替正式取得', async () => {
+    const render = vi.fn(async () => {
+      throw new WebPageRenderError('render_failed', 'must not render files');
+    });
+    const tool = new WebReadTool({
+      provider: {
+        name: 'local_http',
+        read: async () => {
+          throw new WebHttpError('timeout', 'Web HTTP 正文下载在 60000ms 内未完成。', {
+            status: 200,
+            contentType: 'application/pdf',
+            bodyBytes: 3 * 1024 * 1024,
+            declaredBodyBytes: 17 * 1024 * 1024,
+          });
+        },
+      },
+      renderProvider: new LocalRenderProvider({ renderer: { render } }),
+      managedProvider: null,
+      config: { renderEnabled: true, managedReader: 'none' },
+    });
+    const error = await tool
+      .run({ url: 'https://example.com/report.pdf' }, context())
+      .catch((failure: unknown) => failure);
+    expect(render).not.toHaveBeenCalled();
+    expect(error).toBeInstanceOf(WebFailureError);
+    if (!(error instanceof WebFailureError)) throw new Error('missing file timeout error');
+    expect(error.message).toContain('initial=timeout');
+    expect(error.message).toContain('mime=application/pdf');
+    expect(error.message).toContain('received_bytes=3145728');
+    expect(error.message).toContain('已收 3.0 MiB，响应声明 17.0 MiB');
+    expect(error.message).toContain('Shell 另行下载的副本没有来源身份');
+    expect(error.message).not.toContain('本机抽取质量不足');
   });
 
   it('未知错误只报告发生阶段，不用任意 message 猜根因或作为可信指令', async () => {

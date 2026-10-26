@@ -11,6 +11,7 @@ import {
 import type { WebReadEscalationReason, WebReadLadderResult } from '../definitions/readLadder';
 import { DEFAULT_WEB_READ_CONFIG, type WebReadConfig } from '../definitions/webReadConfig';
 import { createWebReadFailure } from '../functions/createWebReadFailure';
+import { getWebFileFormat } from '../file-acquisition/functions/validateWebFile';
 import { assessWebReadQuality } from '../functions/assessWebReadQuality';
 import {
   createLocalRenderWebReadProvider,
@@ -133,6 +134,12 @@ async function readManagedFallback(args: {
   }
 }
 
+/** 已确认来自正式文件响应的失败（如正文下载超时）不交给 Chromium：渲染器读不出文件正文。 */
+function isFileResponseFailure(error: unknown): boolean {
+  const contentType = getWebFailureDiagnostics(error).contentType;
+  return contentType !== undefined && getWebFileFormat(contentType) !== undefined;
+}
+
 function shouldAttemptRender(
   reason: WebReadEscalationReason,
   extractionStage?: WebExtractionFailureStage
@@ -235,7 +242,8 @@ async function executeReadLadder(
     const failureKind = getWebFailureKind(error);
     const initialFailureStage = getWebExtractionFailureStage(error);
     if (!isEscalatableWebFailureKind(failureKind)) throw error;
-    if (renderEnabled && shouldAttemptRender(failureKind, initialFailureStage)) {
+    if (renderEnabled && shouldAttemptRender(failureKind, initialFailureStage)
+      && !isFileResponseFailure(error)) {
       return readRenderedOrManaged({
         params,
         initialProvider,
