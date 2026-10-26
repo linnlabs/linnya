@@ -11,6 +11,7 @@ import {
   type WebFailureKind,
 } from '@app/schemas';
 import type { WebPageResource } from '../definitions/webDocument';
+import { isWebAccessChallengeSignal, type WebAccessChallengeSignal } from './webAccessChallenge';
 
 export type {
   EscalatableWebFailureKind,
@@ -47,6 +48,7 @@ export interface WebFailureDetails<TReason extends string = WebFailureKind> {
   readonly bodyBytes?: number;
   readonly maxBodyBytes?: number;
   readonly declaredBodyBytes?: number;
+  readonly challengeSignal?: WebAccessChallengeSignal;
   /** 已实际抽取的外部资源；不得混入安全诊断，展示必须进入不可信边界。 */
   readonly resources?: readonly WebPageResource[];
 }
@@ -85,6 +87,7 @@ export interface WebFailureDiagnostics {
   readonly bodyBytes?: number;
   readonly maxBodyBytes?: number;
   readonly declaredBodyBytes?: number;
+  readonly challengeSignal?: WebAccessChallengeSignal;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -148,6 +151,7 @@ export function getWebFailureDiagnostics(error: unknown): WebFailureDiagnostics 
   const renderAttempted = read('renderAttempted');
   const rpcCode = read('rpcCode');
   const retryStopReason = WEB_RETRY_STOP_REASONS.find(value => value === read('retryStopReason'));
+  const challengeSignal = read('challengeSignal');
   const numericFacts: { -readonly [K in
     'retryAfterMs' | 'bodyBytes' | 'maxBodyBytes' | 'declaredBodyBytes']?: number } = {};
   for (const key of ['retryAfterMs', 'bodyBytes', 'maxBodyBytes', 'declaredBodyBytes'] as const) {
@@ -177,29 +181,8 @@ export function getWebFailureDiagnostics(error: unknown): WebFailureDiagnostics 
     ...(typeof rpcCode === 'number' && Number.isSafeInteger(rpcCode) ? { rpcCode } : {}),
     ...numericFacts,
     ...(retryStopReason ? { retryStopReason } : {}),
+    ...(isWebAccessChallengeSignal(challengeSignal) ? { challengeSignal } : {}),
   };
-}
-
-const CHALLENGE_MARKERS = [
-  /captcha/i,
-  /verify\s+(?:you|that)\s+you(?:'re| are)\s+human/i,
-  /human\s+verification/i,
-  /access\s+(?:verification|challenge)/i,
-  /challenge-platform/i,
-  /cloudflare/i,
-  /akamai\s+bot/i,
-  /huawei\s*cloud\s*waf/i,
-  /人机验证|安全验证|访问验证|验证码/,
-] as const;
-
-/** 仅凭状态码不足以断定挑战；必须同时出现有限的结构化页面特征。 */
-export function isWebChallengeResponse(
-  status: number | undefined,
-  bodyPreview: string | undefined
-): boolean {
-  if (status === undefined || bodyPreview === undefined) return false;
-  if (status !== 403 && status !== 419 && status !== 429) return false;
-  return CHALLENGE_MARKERS.some(marker => marker.test(bodyPreview));
 }
 
 function hasDnsFailure(error: unknown): boolean {
@@ -288,7 +271,11 @@ export function getWebFailureKind(error: unknown): WebFailureKind {
   if (isRecord(error)) {
     if (error['name'] === 'AbortError') return 'aborted';
     const status = readStatus(error);
-    if (error['challengeDetected'] === true) return 'captcha';
+    // 阶段包装会把 HTTP 状态提升到顶层；已确认的挑战信号必须先于 403/404 状态归类。
+    const details = isRecord(error['details']) ? error['details'] : undefined;
+    if (isWebAccessChallengeSignal(error['challengeSignal'] ?? details?.['challengeSignal'])) {
+      return 'captcha';
+    }
     if (status === 403) return 'http_403';
     if (status === 404) return 'http_404';
     if (hasDnsFailure(error)) return 'dns_error';
@@ -312,6 +299,7 @@ export function formatWebFailureDiagnostics(error: unknown): string {
     diagnostics.previousFailureKind ? `previous=${diagnostics.previousFailureKind}` : '',
     diagnostics.escalationReason ? `escalation=${diagnostics.escalationReason}` : '',
     diagnostics.status !== undefined ? `HTTP=${diagnostics.status}` : '',
+    diagnostics.challengeSignal ? `challenge=${diagnostics.challengeSignal}` : '',
     diagnostics.rpcCode !== undefined ? `rpc_code=${diagnostics.rpcCode}` : '',
     diagnostics.attempt !== undefined ? `attempt=${diagnostics.attempt}` : '',
     diagnostics.retryCount !== undefined ? `retry_count=${diagnostics.retryCount}` : '',

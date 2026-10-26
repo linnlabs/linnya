@@ -9,10 +9,13 @@ import { Logger } from '@shared/logger';
 import {
   getWebFailureDiagnostics,
   getWebFailureKind,
-  isWebChallengeResponse,
   type WebFailureKind,
   type WebRetryStopReason,
 } from '../../../tools/web/shared/webFailure';
+import {
+  detectWebAccessChallenge,
+  type WebAccessChallengeSignal,
+} from '../../../tools/web/shared/webAccessChallenge';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import {
   fetch as undiciFetch,
@@ -42,7 +45,8 @@ export class WebHttpError extends Error {
   readonly status?: number;
   readonly url?: string;
   readonly contentType?: string;
-  readonly challengeDetected?: boolean;
+  /** 已确认的访问挑战信号；只保留判定，不携带挑战页正文。 */
+  readonly challengeSignal?: WebAccessChallengeSignal;
   readonly retryAfterMs?: number;
   readonly redirectCount?: number;
   readonly attempt?: number;
@@ -58,7 +62,7 @@ export class WebHttpError extends Error {
     status?: number;
     url?: string;
     contentType?: string;
-    challengeDetected?: boolean;
+    challengeSignal?: WebAccessChallengeSignal;
     retryAfterMs?: number;
     redirectCount?: number;
     attempt?: number;
@@ -76,7 +80,7 @@ export class WebHttpError extends Error {
     this.status = options?.status;
     this.url = options?.url;
     this.contentType = options?.contentType;
-    this.challengeDetected = options?.challengeDetected;
+    this.challengeSignal = options?.challengeSignal;
     this.retryAfterMs = options?.retryAfterMs;
     this.redirectCount = options?.redirectCount;
     this.attempt = options?.attempt;
@@ -130,14 +134,21 @@ export function createWebUpstreamHttpError(provider: string, response: WebHttpRe
         ? 'http_5xx'
         : 'http_error';
   // 失败正文与 statusText 同样不可信；只在响应边界判定挑战，不把原文挂入异常链。
-  const challengeDetected = isWebChallengeResponse(response.status, response.bodyText.trim().slice(0, 512));
+  // 厂商响应头可出现在 2xx（如 AWS WAF 202）或非 2xx 上，正文标记只补充 403/419/429。
+  const challengeSignal = detectWebAccessChallenge({
+    status: response.status,
+    headers: response.headers,
+    bodyPreview: response.bodyText.trim().slice(0, 512),
+  });
   return new WebHttpError(
     kind,
-    `${provider} 请求失败: HTTP ${response.status}。`,
+    challengeSignal
+      ? `${provider} 收到站点访问验证响应: HTTP ${response.status}。`
+      : `${provider} 请求失败: HTTP ${response.status}。`,
     {
       status: response.status,
       contentType: response.headers.get('content-type')?.trim() || undefined,
-      challengeDetected,
+      ...(challengeSignal ? { challengeSignal } : {}),
       retryAfterMs: parseRetryAfter(response.headers.get('retry-after')),
     },
   );
@@ -161,7 +172,7 @@ export function withWebHttpErrorDiagnostics(
     cause: error.cause,
     status: error.status,
     contentType: error.contentType,
-    challengeDetected: error.challengeDetected,
+    challengeSignal: error.challengeSignal,
     retryAfterMs: error.retryAfterMs,
     rpcCode: error.rpcCode,
     url: error.url,

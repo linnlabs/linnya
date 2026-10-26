@@ -16,6 +16,10 @@ function deferred<T>(): {
   return { promise, resolve: (value) => resolvePromise?.(value) };
 }
 
+function rendered(html: string, finalUrl: string): WebPageRenderResult {
+  return { html, finalUrl, mainResponse: { status: 200, headers: {} } };
+}
+
 async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
@@ -50,10 +54,10 @@ describe('WebPageRenderManager', () => {
     const second = manager.render({ url: 'https://example.com/two' });
 
     await vi.waitFor(() => expect(worker.calls).toHaveLength(1));
-    worker.pending[0]?.resolve({ html: 'one', finalUrl: 'https://example.com/one' });
+    worker.pending[0]?.resolve(rendered('one', 'https://example.com/one'));
     await first;
     await vi.waitFor(() => expect(worker.calls).toHaveLength(2));
-    worker.pending[1]?.resolve({ html: 'two', finalUrl: 'https://example.com/two' });
+    worker.pending[1]?.resolve(rendered('two', 'https://example.com/two'));
     await second;
     await manager.dispose();
   });
@@ -67,7 +71,7 @@ describe('WebPageRenderManager', () => {
     controller.abort();
 
     await expect(queued).rejects.toEqual(expect.objectContaining({ kind: 'aborted' }));
-    worker.pending[0]?.resolve({ html: 'one', finalUrl: 'https://example.com/one' });
+    worker.pending[0]?.resolve(rendered('one', 'https://example.com/one'));
     await first;
     expect(worker.calls).toHaveLength(1);
     await manager.dispose();
@@ -87,7 +91,7 @@ describe('WebPageRenderManager', () => {
     const first = manager.render({ url: 'https://example.com/one' });
     await flushMicrotasks();
     expect(workers[0]?.pending).toHaveLength(1);
-    workers[0]?.pending[0]?.resolve({ html: 'one', finalUrl: 'https://example.com/one' });
+    workers[0]?.pending[0]?.resolve(rendered('one', 'https://example.com/one'));
     await first;
     await vi.advanceTimersByTimeAsync(100);
     expect(workers[0]?.disposeCount).toBe(1);
@@ -96,7 +100,7 @@ describe('WebPageRenderManager', () => {
     await flushMicrotasks();
     expect(workers).toHaveLength(2);
     expect(workers[1]?.pending).toHaveLength(1);
-    workers[1]?.pending[0]?.resolve({ html: 'two', finalUrl: 'https://example.com/two' });
+    workers[1]?.pending[0]?.resolve(rendered('two', 'https://example.com/two'));
     await second;
     await manager.dispose();
   });

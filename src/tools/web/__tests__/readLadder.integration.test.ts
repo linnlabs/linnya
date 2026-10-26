@@ -711,6 +711,7 @@ describe('R2 本地渲染 Provider', () => {
     const renderer: WebPageRenderer = {
       render: vi.fn().mockResolvedValue({
         finalUrl: 'https://example.com/rendered',
+        mainResponse: { status: 203, headers: {} },
         html: `<!doctype html><html><head><title>Rendered Article</title></head><body><article><h1>Rendered Article</h1><p>${'渲染后出现的正文。'.repeat(80)}</p><a href="/data">原始数据</a><pre><code>if ready:\n    value = 83</code></pre></article></body></html>`,
       }),
     };
@@ -720,6 +721,7 @@ describe('R2 本地渲染 Provider', () => {
 
     expect(result).toMatchObject({
       finalUrl: 'https://example.com/rendered',
+      status: 203,
       title: 'Rendered Article',
       renderMode: 'js',
       extractor: 'readability',
@@ -736,6 +738,7 @@ describe('R2 本地渲染 Provider', () => {
     const renderer: WebPageRenderer = {
       render: vi.fn().mockResolvedValue({
         finalUrl: 'https://example.com/semantic-app',
+        mainResponse: { status: 200, headers: {} },
         html: `<!doctype html><html><head><title>Semantic App</title></head><body><main><h1>Rendered Semantic Content</h1><textarea readonly>${'渲染后的可访问正文。'.repeat(100)}</textarea></main></body></html>`,
       }),
     };
@@ -760,5 +763,43 @@ describe('R2 本地渲染 Provider', () => {
     await expect(new LocalRenderProvider({ renderer }).read({
       url: 'https://example.com/spa',
     })).rejects.toMatchObject({ kind: 'policy_denied' });
+  });
+
+  it('渲染端停止的访问挑战归类为验证码，保留真实主响应状态与信号', async () => {
+    const renderer: WebPageRenderer = {
+      async render() {
+        throw new WebPageRenderError('access_challenge', 'challenge', {
+          mainResponse: { status: 405, headers: { 'x-amzn-waf-action': 'captcha' } },
+        });
+      },
+    };
+    const error = await new LocalRenderProvider({ renderer }).read({ url: 'https://example.com/spa' })
+      .catch((failure: unknown) => failure);
+    expect(error).toMatchObject({
+      kind: 'captcha',
+      status: 405,
+      details: {
+        failureStage: 'local_render',
+        renderFailureKind: 'access_challenge',
+        status: 405,
+        challengeSignal: 'aws_waf_captcha',
+      },
+    });
+  });
+
+  it('即使渲染端返回了挑战主响应，Web 仍按响应头判定，不抽取挑战页正文', async () => {
+    const renderer: WebPageRenderer = {
+      render: vi.fn().mockResolvedValue({
+        finalUrl: 'https://example.com/challenged',
+        html: `<html><body><article>${'挑战脚本执行后的正文。'.repeat(80)}</article></body></html>`,
+        mainResponse: { status: 403, headers: { 'cf-mitigated': 'challenge' } },
+      }),
+    };
+    await expect(new LocalRenderProvider({ renderer }).read({ url: 'https://example.com/challenged' }))
+      .rejects.toMatchObject({
+        kind: 'captcha',
+        status: 403,
+        details: { challengeSignal: 'cloudflare_challenge' },
+      });
   });
 });

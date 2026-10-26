@@ -346,7 +346,7 @@ src/tools/web/webread/
 
 - Provider 统一返回 `WebReadResult`：保留原始 URL 与最终 URL，并携带抽取器、渲染模式、正文哈希、质量信号和耗时；未知质量分不填充虚假默认值
 - 搜索 Provider 统一返回 `SearchResult`：在 Provider 边界完成排名、canonical URL 与调用观测映射，工具层只做去重、引用与 Evidence 物化
-- 失败分类统一由 `shared/webFailure.ts` 维护；质量不足不是终态失败，M2 只能依据该文件导出的升级子集和独立质量原因决定是否升级。HTTP 403/419/429 只有同时出现有限的人机验证页面特征时才归类为 `captcha`，不能仅凭状态码猜测挑战。`dns_error` 仍保持终态；本地 GET 对 timeout/network/429/5xx 共享一次、有总预算约束的瞬态重试，挑战页、权限、MIME、策略和 404 不重试，也不自动换托管 Provider
+- 失败分类统一由 `shared/webFailure.ts` 维护；质量不足不是终态失败，M2 只能依据该文件导出的升级子集和独立质量原因决定是否升级。访问挑战由 `shared/webAccessChallenge.ts` 统一判定：厂商公开文档定义的响应头优先，AWS WAF `x-amzn-waf-action: challenge|captcha`（通常分别配 202/405）与 Cloudflare `cf-mitigated: challenge` 在任意状态码上都归类为 `captcha`，头值才是依据，普通 202 和 `cf-mitigated` 其他值不是挑战；HTTP 403/419/429 另外只有同时出现有限的人机验证页面特征时才归类为 `captcha`，不能仅凭状态码猜测挑战，也不按域名特判。2xx 挑战响应不进入正文或文件解析。`dns_error` 仍保持终态；本地 GET 对 timeout/network/429/5xx 共享一次、有总预算约束的瞬态重试，挑战页、权限、MIME、策略和 404 不重试，也不自动换托管 Provider
 - `data` 额外返回 `provider/renderMode/extractor/renderAttempted/escalated/escalationReason/initialFailureKind/initialFailureStage`，用于判断本次读取实际走了哪条路径并回放首跳失败；`renderMode` 可为 `http/js/managed`
 - 有提取器 flags 时同时返回 strict `data.warnings` 和 observation 提示，schema、内部文档与缓存共用枚举。flags 是启发式诊断，表格/列表信号不能直接判为缺失；无 flags 也不证明完整、可信或支持某条结论。内部 qualityScore 不作为给模型的“可信度分数”
 - `web_read` 使用正式 schema 做前置 admission，失败提供 `WEB_READ_ARGUMENTS_INVALID` 与合法 URL 示例；本机阶梯耗尽时披露未取得合格正文，恢复建议按实际失败分类生成。访问墙要求新的访问条件；临时网络/上游失败允许等待后再试；本机渲染不可用不等于站点永久不可读；JS 数据壳提示查实际发现的导出/接口链接，不猜地址
@@ -385,7 +385,7 @@ PDF、CSV、XLSX 通过同一安全 GET 取得，限额内自动保存到会话�
 
 Firecrawl `/scrape` 可在未来作为新的 BYOK 第三方网页解析 Provider 接入，与秘塔/Jina 同级；它不是零配置免费能力，也不改变 Linnya 默认的本地读取链路。当前不实现 `web_crawl`；若未来重新评估，多页编排仍必须与单页 `/scrape` 分开设计。
 
-Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例外：隐藏窗无 preload，启用 sandbox/contextIsolation/webSecurity、禁用 Node 集成；独立 session 拒绝权限、弹窗、下载、跨 hostname 导航和内网/回环子请求。每次任务拿到 HTML 后立即销毁远程页面，manager 只复用隔离 session，并限制并发与 idle 生命周期。DOM 提取不再固定等待一个不可解释的时长，而是在最小等待后按 `document.readyState` 与正文长度稳定性轮询，并受渲染阶段上限约束；该能力只返回 HTML/finalUrl，不暴露浏览器动作或 IPC 桥。
+Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例外：隐藏窗无 preload，启用 sandbox/contextIsolation/webSecurity、禁用 Node 集成；独立 session 拒绝权限、弹窗、下载、跨注册域导航和内网/回环子请求。每次任务拿到 HTML 后立即销毁远程页面，manager 只复用隔离 session，并限制并发与 idle 生命周期。DOM 提取不再固定等待一个不可解释的时长，而是在最小等待后按 `document.readyState` 与正文长度稳定性轮询，并受渲染阶段上限约束；该能力只返回 HTML/finalUrl 与主框架实际响应的状态码及挑战判定所需头，不暴露浏览器动作或 IPC 桥。主文档响应头命中访问挑战时，在正文交给页面前取消该响应并以 `access_challenge` 结束，挑战脚本不执行；`LocalRenderProvider` 仍按同一 Web 规则复核并归类为 `captcha`，渲染端的停止只是安全动作，不是分类来源。
 
 #### 5.5.1 正文抽取器合同与差分验证
 
@@ -449,7 +449,7 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 ### 5.10 失败内容与工具错误码
 
 - HTTP 失败的 `bodyText`、`statusText`，以及供应商 JSON / MCP 错误中的 `message/detail` 都是不可信外部内容，不能拼入工具异常、observation、RuntimeEvent、审计或日志。错误文案由 Web owner 的固定模板与数值状态生成；成功网页正文仍走现有动态不可信边界。
-- 挑战页识别只在 HTTP 响应边界读取有限正文，错误对象仅保留 `challengeDetected` 判定，不携带 `bodyPreview`。重试与读取阶梯复用该判定，不能为删正文而丢失 captcha 分类或改变升级规则。
+- 挑战页识别只在 HTTP 响应边界读取响应头与有限正文，错误对象仅保留 `challengeSignal`（`aws_waf_challenge/aws_waf_captcha/cloudflare_challenge/page_marker`），不携带 `bodyPreview` 或原始头值。重试与读取阶梯复用该判定；阶段包装把 HTTP 状态提升到顶层后，已确认的挑战信号仍先于 403/404 状态归类，不能为删正文或补诊断而丢失 captcha 分类或改变升级规则。诊断以 `challenge=<signal>` 展示信号，恢复建议明确工具不执行或绕过验证。
 - `WebHttpError` 通过既有分类函数暴露只读 `code`，`WebFailureError.code` 通常与 `kind` 一致；唯一例外是 `kind=managed_disabled` 且结构化根因已确定为 `captcha/http_403/login_required`，此时 code 保留该访问拦截根因。读取阶梯与诊断仍保留 `managed_disabled`，不改变升级/重试规则；Host ToolRegistry 只转交通用错误合同，不理解 Web 枚举。运行时的 `errorKind=execution` 与 owner 的 `error_code` 分别保留，不能互相覆盖。
 - 无内容失败不能写成功 Evidence；401 不因错误文案或状态码而自动交给第三方 Reader。错误安全不新增 fallback、审计开关或新的导出协议。
 - 安全诊断统一由 `shared/webFailure.ts` 投影：保留实际执行阶段（search/local_http/local_render/managed_reader/read_ladder）、已知首跳/前跳 kind、抽取阶段、本地渲染具体 kind、HTTP/RPC 数值状态及尝试次数。另保留已知 Retry-After 毫秒值、重试停止原因（非瞬态/次数已用尽/等待超限/预算不足）和超限时实际已收字节、上限及声明 Content-Length。声明长度可能对应压缩传输，不能当完整解压大小。模型收到的持久工具错误附同源诊断；后端日志复用同一投影，不要求 Audit 开启，也不从正文复原字段。`max_chars` 不扩大下载预算。
@@ -460,7 +460,7 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 
 ### 5.11 同主机访问拦截反馈
 
-- `web_read` 确认遇到验证码、HTTP 403 或登录墙时，通过 Host 注入的 `WebReadAccessHistoryPort` 读取当前会话（含 child）已完成的 `web_read` 事实。仅统计请求 URL 的精确 hostname；不合并子域、不从正文或重定向猜域名。
+- `web_read` 确认遇到验证码（含响应头识别的访问挑战）、HTTP 403 或登录墙时，通过 Host 注入的 `WebReadAccessHistoryPort` 读取当前会话（含 child）已完成的 `web_read` 事实。仅统计请求 URL 的精确 hostname；不合并子域、不从正文或重定向猜域名。
 - 提示“已确认访问拦截 N 次、成功返回 N 次”，当前失败计入一次。计数单位是 `(runId, toolCallId)` 的已完成工具调用，不是网络尝试；恢复同一调用不会重复计数。成功返回也不代表取得完整正文。
 - 超时、取消、一般 Provider 错误、抽取失败不算访问拦截。历史 `managed_disabled` 或缺少 error_code 的失败单列为“根因未分类”，不从旧错误文案猜成验证码，也不回填成零次拦截。
 - 反馈建议寻找其他主机的官方副本或可核的替代来源；已有的“搜索同一来源的可读 HTML”引导已移除。没有禁止同主机新页面，没有新增自动重试、域名黑名单或路由变化。
@@ -548,6 +548,7 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 - `src/tools/web/__tests__/webCacheInfrastructure.test.ts`
 - `src/tools/web/__tests__/webCacheBusiness.integration.test.ts`
 - `src/infra/adapters/web-fetch/localHttpFetchAdapter.test.ts`
+- `src/tools/web/shared/webAccessChallenge.test.ts`（厂商挑战响应头与正文标记判定）
 - `apps/renderer/domains/conversation/ui/tools/webread/functions/projectWebReadPresentation.test.ts`（仅历史 Resource Web 事件回放）
 - `scripts/benchmark/web-reliability/statistics.test.ts`
 - `scripts/benchmark/web-reliability/read-evaluation.test.ts`

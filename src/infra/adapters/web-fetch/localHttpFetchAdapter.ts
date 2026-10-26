@@ -24,6 +24,7 @@ import {
   type ResolvedWebHost,
 } from '../../../tools/web/shared/urlPolicy';
 import type { WebRetryStopReason } from '../../../tools/web/shared/webFailure';
+import { detectWebAccessChallengeHeader } from '../../../tools/web/shared/webAccessChallenge';
 
 export const LOCAL_HTTP_TIMEOUT_MS = 12_000;
 export const LOCAL_HTTP_MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -166,7 +167,7 @@ function retryDelayMs(error: WebHttpError, remainingMs: number): number | undefi
 }
 
 function isTransientRetryCandidate(error: WebHttpError): boolean {
-  if (error.challengeDetected) return false;
+  if (error.challengeSignal) return false;
   return error.kind === 'timeout'
     || error.kind === 'network_error'
     || error.kind === 'rate_limited'
@@ -363,7 +364,8 @@ export async function localHttpFetch(
       });
       return result;
     }
-    if (!response.ok) {
+    // 2xx 挑战页（如 AWS WAF 202）不是正文；与非 2xx 同样交给上游错误分类，不进入内容解析。
+    if (!response.ok || detectWebAccessChallengeHeader(response.headers)) {
       const upstreamError = withWebHttpErrorDiagnostics(
         createWebUpstreamHttpError('本地网页抓取', response),
         {

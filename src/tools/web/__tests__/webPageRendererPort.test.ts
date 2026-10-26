@@ -11,12 +11,17 @@ describe('WebPageRenderer port', () => {
       expect.objectContaining({ kind: 'unavailable' }),
     );
     const renderer: WebPageRenderer = {
-      render: async ({ url }) => ({ html: '<html>fixture</html>', finalUrl: url }),
+      render: async ({ url }) => ({
+        html: '<html>fixture</html>',
+        finalUrl: url,
+        mainResponse: { status: 200, headers: {} },
+      }),
     };
     const uninstall = installWebPageRenderer(renderer);
     await expect(getWebPageRenderer().render({ url: 'https://example.com' })).resolves.toEqual({
       html: '<html>fixture</html>',
       finalUrl: 'https://example.com',
+      mainResponse: { status: 200, headers: {} },
     });
     uninstall();
     await expect(getWebPageRenderer().render({ url: 'https://example.com' })).rejects.toEqual(

@@ -98,6 +98,10 @@ describe('Web 访问历史派生与实际读取反馈', () => {
       if (request.url === '/readable') {
         response.writeHead(200, { 'content-type': 'text/plain' });
         response.end('已经取得的公开正文');
+      } else if (request.url === '/aws-challenge') {
+        // AWS WAF Challenge：202 与正式响应头；正文不含任何页面标记，只能由响应头识别。
+        response.writeHead(202, { 'content-type': 'text/html', 'x-amzn-waf-action': 'challenge' });
+        response.end('<html><body><div id="challenge-container"></div>UPSTREAM_UNTRUSTED_TEXT</body></html>');
       } else {
         response.writeHead(403, { 'content-type': 'text/html' });
         response.end('<title>Captcha</title>UPSTREAM_UNTRUSTED_TEXT');
@@ -247,14 +251,50 @@ describe('Web 访问历史派生与实际读取反馈', () => {
       });
       const before = requests;
       await expect(tool.run({ url: `http://blocked.test:${port}/blocked` }, context)).rejects.toMatchObject({
-        kind: 'managed_disabled', code: 'http_403',
-        message: expect.stringMatching(/访问拦截 2 次.*成功返回 1 次.*1 次历史失败/u),
+        // 403 加有限挑战页特征归类为验证码；阶段包装不能把它降为普通 403。
+        kind: 'managed_disabled', code: 'captcha',
+        message: expect.stringMatching(/challenge=page_marker[\s\S]*访问拦截 2 次.*成功返回 1 次.*1 次历史失败/u),
       });
       expect(requests - before).toBe(1);
       const success = WebReadResultSchema.parse(JSON.parse(await tool.run({ url: `http://blocked.test:${port}/readable` }, context)));
       expect(success.observation).toContain('已经取得的公开正文');
       expect(success.observation).not.toContain('UPSTREAM_UNTRUSTED_TEXT');
       expect(requests - before).toBe(2);
+    } finally { db.close(); }
+  });
+
+  it('202 响应头访问挑战计入同主机拦截，诊断给出状态与信号且不进入正文抽取', async () => {
+    const db = openDatabase();
+    try {
+      seedCall(db, { call: 'earlier', code: 'captcha', url: 'https://waf.test/earlier' });
+      const history = createWebReadAccessHistory(() => db, 'conversation-web-history');
+      const context: ToolContext = {
+        conversationId: 'conversation-web-history', turnId: 'turn', runId: RunIdSchema.parse('root'),
+        parentToolCallId: ToolCallIdSchema.parse('challenge'), webReadAccessHistory: history,
+      };
+      attachCitationSequence(context, { offset: 0 });
+      attachCitationRefAllocator(context, createCitationRefAllocatorFixture());
+      const save = vi.fn(async () => ({ bundleId: '0123456789abcdef' }));
+      const tool = new WebReadTool({
+        provider: new LocalHttpProvider({ resolveHost: async url => ({ hostname: url.hostname,
+          addresses: [{ address: '127.0.0.1', family: 4 }] }) }),
+        renderProvider: null, managedProvider: null,
+        config: { renderEnabled: false, managedReader: 'none' },
+        evidenceWriter: { save },
+      });
+      const before = requests;
+      const error = await tool.run({ url: `http://waf.test:${port}/aws-challenge` }, context)
+        .catch((failure: unknown) => failure);
+      expect(error).toMatchObject({ kind: 'managed_disabled', code: 'captcha' });
+      if (!(error instanceof Error)) throw new Error('Expected challenge failure');
+      expect(error.message).toContain('HTTP=202');
+      expect(error.message).toContain('challenge=aws_waf_challenge');
+      expect(error.message).toContain('站点返回了访问验证页面');
+      expect(error.message).toMatch(/访问拦截 2 次.*成功返回 0 次/u);
+      expect(error.message).not.toContain('empty_content');
+      expect(error.message).not.toContain('UPSTREAM_UNTRUSTED_TEXT');
+      expect(requests - before).toBe(1);
+      expect(save).not.toHaveBeenCalled();
     } finally { db.close(); }
   });
 

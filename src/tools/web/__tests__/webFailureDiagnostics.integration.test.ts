@@ -58,6 +58,43 @@ describe('网页失败的模型、审计和安全诊断边界', () => {
     }
   );
 
+  it('渲染路径遇到访问挑战时以验证码收口，诊断带真实主响应与信号且不执行挑战页', async () => {
+    const save = vi.fn(async () => ({ bundleId: '0123456789abcdef' }));
+    const tool = new WebReadTool({
+      provider: {
+        name: 'local_http',
+        read: async () => {
+          throw new WebFailureError('js_required', 'JS shell');
+        },
+      },
+      renderProvider: new LocalRenderProvider({
+        renderer: {
+          render: async () => {
+            throw new WebPageRenderError('access_challenge', UNSAFE_TEXT, {
+              mainResponse: { status: 202, headers: { 'x-amzn-waf-action': 'challenge' } },
+            });
+          },
+        },
+      }),
+      managedProvider: null,
+      config: { renderEnabled: true, managedReader: 'none' },
+      evidenceWriter: { save },
+    });
+    const error = await tool
+      .run({ url: 'https://example.com/challenge-fixture' }, context())
+      .catch((failure: unknown) => failure);
+    expect(error).toBeInstanceOf(WebFailureError);
+    if (!(error instanceof WebFailureError)) throw new Error('missing challenge error');
+    expect(error.kind).toBe('managed_disabled');
+    expect(error.code).toBe('captcha');
+    expect(error.message).toContain('render=access_challenge');
+    expect(error.message).toContain('previous=captcha');
+    expect(error.message).toContain('HTTP=202, challenge=aws_waf_challenge');
+    expect(error.message).toContain('站点返回了访问验证页面');
+    expect(error.message).not.toContain(UNSAFE_TEXT);
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it('未知错误只报告发生阶段，不用任意 message 猜根因或作为可信指令', async () => {
     const tool = new WebReadTool({
       provider: {

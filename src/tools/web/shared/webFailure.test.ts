@@ -6,12 +6,13 @@ import {
   getWebExtractionFailureStage,
   getWebFailureDiagnostics,
   getWebAccessBlockKind,
+  formatWebFailureDiagnostics,
   getWebFailureKind,
   isEscalatableWebFailureKind,
-  isWebChallengeResponse,
   type EscalatableWebFailureKind,
   type WebFailureKind,
 } from './webFailure';
+import { isWebChallengeResponse } from './webAccessChallenge';
 
 describe('Web 终态失败分类与升级子集', () => {
   it('保留既有 kind，并把 HTTP 状态与 DNS 根因映射为具体终态', () => {
@@ -91,8 +92,21 @@ describe('Web 终态失败分类与升级子集', () => {
     expect(isWebChallengeResponse(419, '<title>Human verification</title>')).toBe(true);
     expect(getWebFailureKind(new WebHttpError('http_error', 'challenge', {
       status: 419,
-      challengeDetected: true,
+      challengeSignal: 'page_marker',
     }))).toBe('captcha');
+  });
+
+  it('阶段包装把状态提升到顶层后，已确认挑战仍先于 403 归类并进入诊断', () => {
+    const wrapped = new WebFailureError('captcha', 'challenge', {
+      status: 403,
+      details: { status: 403, challengeSignal: 'cloudflare_challenge', failureStage: 'local_http' },
+    });
+    expect(getWebFailureKind(wrapped)).toBe('captcha');
+    expect(getWebAccessBlockKind(wrapped)).toBe('captcha');
+    expect(getWebFailureKind(new WebFailureError('http_403', 'forbidden', { status: 403 }))).toBe('http_403');
+    expect(getWebFailureDiagnostics(wrapped)).toMatchObject({ challengeSignal: 'cloudflare_challenge' });
+    expect(formatWebFailureDiagnostics(wrapped)).toContain('HTTP=403, challenge=cloudflare_challenge');
+    expect(getWebFailureDiagnostics({ details: { challengeSignal: 'forged_signal' } })).toEqual({});
   });
 
   it('提取结构化失败诊断但不携带响应正文', () => {

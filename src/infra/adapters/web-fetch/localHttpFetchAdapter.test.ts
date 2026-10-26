@@ -28,6 +28,25 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
         response.end('upstream limited');
         return;
       }
+      if (request.url === '/aws-challenge-202' || request.url === '/aws-captcha-405') {
+        const challenge = request.url === '/aws-challenge-202';
+        response.writeHead(challenge ? 202 : 405, {
+          'Content-Type': 'text/html',
+          'x-amzn-waf-action': challenge ? 'challenge' : 'captcha',
+        });
+        response.end('<html><body><div id="challenge-container"></div>UPSTREAM_BODY_INJECTION</body></html>');
+        return;
+      }
+      if (request.url === '/cloudflare-challenge-503') {
+        response.writeHead(503, { 'Content-Type': 'text/html', 'cf-mitigated': 'challenge' });
+        response.end('<html><body>UPSTREAM_BODY_INJECTION</body></html>');
+        return;
+      }
+      if (request.url === '/accepted-202') {
+        response.writeHead(202, { 'Content-Type': 'text/plain' });
+        response.end('accepted job status');
+        return;
+      }
       if (request.url === '/challenge-429') {
         response.writeHead(429, 'UPSTREAM_STATUS_INJECTION', { 'Content-Type': 'text/html' });
         response.end('<html><title>Human verification</title><body>UPSTREAM_BODY_INJECTION</body></html>');
@@ -183,11 +202,39 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
       resolveHost: resolveFixtureHost,
       sleep: async () => undefined,
     }).catch((caught: unknown) => caught);
-    expect(error).toMatchObject({ status: 429, code: 'captcha', challengeDetected: true, retryCount: 0 });
+    expect(error).toMatchObject({ status: 429, code: 'captcha', challengeSignal: 'page_marker', retryCount: 0 });
     expect(getWebFailureKind(error)).toBe('captcha');
     expect(error).not.toHaveProperty('bodyPreview');
     expect(String(error)).not.toContain('UPSTREAM_');
     expect(requestedPaths.filter(path => path === '/challenge-429')).toHaveLength(1);
+  });
+
+  it.each([
+    { route: '/aws-challenge-202', status: 202, signal: 'aws_waf_challenge' },
+    { route: '/aws-captcha-405', status: 405, signal: 'aws_waf_captcha' },
+    { route: '/cloudflare-challenge-503', status: 503, signal: 'cloudflare_challenge' },
+  ])('厂商挑战响应头 $route 归类为验证码，不解析正文也不做瞬态重试', async ({ route, status, signal }) => {
+    const error = await localHttpFetch(`http://fixture.test:${port}${route}`, {}, {
+      resolveHost: resolveFixtureHost,
+      sleep: async () => undefined,
+    }).catch((caught: unknown) => caught);
+    expect(error).toMatchObject({
+      status,
+      code: 'captcha',
+      challengeSignal: signal,
+      retryCount: 0,
+      retryStopReason: 'not_retryable',
+    });
+    expect(String(error)).toContain(`HTTP ${status}`);
+    expect(String(error)).not.toContain('UPSTREAM_');
+    expect(requestedPaths.filter(path => path === route)).toHaveLength(1);
+  });
+
+  it('没有挑战信号的普通 202 仍按正常响应返回', async () => {
+    const result = await localHttpFetch(`http://fixture.test:${port}/accepted-202`, {}, {
+      resolveHost: resolveFixtureHost,
+    });
+    expect(result).toMatchObject({ status: 202, bodyText: 'accepted job status' });
   });
 
   it('真实连接中断后重试一次，持续失败时不超出同一 GET 的预算', async () => {

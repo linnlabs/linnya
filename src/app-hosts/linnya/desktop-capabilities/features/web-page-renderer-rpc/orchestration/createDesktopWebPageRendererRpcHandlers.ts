@@ -12,6 +12,7 @@ import {
 import {
   WebPageRenderRpcRequestSchema,
   WebPageRenderRpcResultSchema,
+  copyWebPageMainResponse,
 } from '../functions/webPageRendererRpcCodec';
 
 export function createDesktopWebPageRendererRpcHandlers(input: {
@@ -32,7 +33,11 @@ export function createDesktopWebPageRendererRpcHandlers(input: {
         });
         return WebPageRenderRpcResultSchema.parse({
           ok: true,
-          value: { html: result.html, final_url: result.finalUrl },
+          value: {
+            html: result.html,
+            final_url: result.finalUrl,
+            main_response: copyWebPageMainResponse(result.mainResponse),
+          },
         });
       } catch (error: unknown) {
         const failure = error instanceof WebPageRenderError
@@ -43,7 +48,13 @@ export function createDesktopWebPageRendererRpcHandlers(input: {
           );
         return WebPageRenderRpcResultSchema.parse({
           ok: false,
-          error: { kind: failure.kind, message: failure.message.slice(0, 2_048) },
+          error: {
+            kind: failure.kind,
+            message: failure.message.slice(0, 2_048),
+            ...(failure.mainResponse
+              ? { main_response: copyWebPageMainResponse(failure.mainResponse) }
+              : {}),
+          },
         });
       }
     },

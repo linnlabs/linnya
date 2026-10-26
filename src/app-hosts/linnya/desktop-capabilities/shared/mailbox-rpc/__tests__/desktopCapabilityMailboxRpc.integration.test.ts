@@ -198,7 +198,16 @@ describe('Desktop capability mailbox RPC', () => {
         if (url.endsWith('/blocked')) {
           throw new WebPageRenderError('navigation_blocked', '拒绝跨站导航');
         }
-        return { html: largeHtml, finalUrl: `${url}/rendered` };
+        if (url.endsWith('/challenged')) {
+          throw new WebPageRenderError('access_challenge', '主文档返回站点访问验证', {
+            mainResponse: { status: 202, headers: { 'x-amzn-waf-action': 'challenge' } },
+          });
+        }
+        return {
+          html: largeHtml,
+          finalUrl: `${url}/rendered`,
+          mainResponse: { status: 203, headers: { 'cf-mitigated': 'block' } },
+        };
       }),
     };
     const pair = createPeerPair(
@@ -223,7 +232,19 @@ describe('Desktop capability mailbox RPC', () => {
       ).resolves.toEqual({
         html: largeHtml,
         finalUrl: 'https://example.com/article/rendered',
+        mainResponse: { status: 203, headers: { 'cf-mitigated': 'block' } },
       });
+      await expect(
+        client.render({
+          url: 'https://example.com/challenged',
+        })
+      ).rejects.toEqual(
+        expect.objectContaining({
+          name: 'WebPageRenderError',
+          kind: 'access_challenge',
+          mainResponse: { status: 202, headers: { 'x-amzn-waf-action': 'challenge' } },
+        })
+      );
       await expect(
         client.render({
           url: 'https://example.com/blocked',

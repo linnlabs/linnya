@@ -2,12 +2,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { assertAllowedWebUrl, resolveAndAssertPublicHost } from '../../tools/web/shared/urlPolicy';
 import { createElectronWebPageRenderRuntime } from './electronWebPageRenderRuntime';
 
+type HeadersReceivedListener = (
+  details: {
+    url: string;
+    resourceType: string;
+    statusCode: number;
+    responseHeaders?: Record<string, string[]>;
+  },
+  callback: (response: { cancel?: boolean }) => void,
+) => void;
+
 const state = vi.hoisted((): {
   beforeRequest: ((
     details: { url: string; resourceType: string },
     callback: (response: { cancel: boolean }) => void,
   ) => void) | null;
-} => ({ beforeRequest: null }));
+  headersReceived: HeadersReceivedListener | null;
+} => ({ beforeRequest: null, headersReceived: null }));
 
 vi.mock('electron', () => ({
   BrowserWindow: vi.fn(),
@@ -22,6 +33,9 @@ vi.mock('electron', () => ({
         onBeforeRequest: (_filter: unknown, listener: typeof state.beforeRequest) => {
           state.beforeRequest = listener;
         },
+        onHeadersReceived: (_filter: unknown, listener: typeof state.headersReceived) => {
+          state.headersReceived = listener;
+        },
       },
     }),
   },
@@ -33,7 +47,21 @@ async function request(url: string, resourceType = 'mainFrame'): Promise<{ cance
   return new Promise(resolve => beforeRequest({ url, resourceType }, resolve));
 }
 
-beforeEach(() => { state.beforeRequest = null; });
+function receiveHeaders(
+  details: Parameters<HeadersReceivedListener>[0],
+): { cancel?: boolean } {
+  const headersReceived = state.headersReceived;
+  if (!headersReceived) throw new Error('Response observer not installed');
+  let response: { cancel?: boolean } | undefined;
+  headersReceived(details, (value) => { response = value; });
+  if (!response) throw new Error('Response observer did not answer synchronously');
+  return response;
+}
+
+beforeEach(() => {
+  state.beforeRequest = null;
+  state.headersReceived = null;
+});
 
 describe('渲染请求 URL/DNS 准入', () => {
   it('每次主框架请求重新准入，既有子资源缓存不能放行 DNS 后来转为私网的同主机', async () => {
@@ -68,5 +96,56 @@ describe('渲染请求 URL/DNS 准入', () => {
     await session.clearStorageData();
     expect(await request('https://example.com/two', 'script')).toEqual({ cancel: false });
     expect(validateRequestUrl).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('主框架响应头观察', () => {
+  it('只把主框架响应交给观察者，头名小写并合并同名多值，按决定取消', () => {
+    const session = createElectronWebPageRenderRuntime().createSession('test');
+    const listener = vi.fn((response: {
+      url: string;
+      statusCode: number;
+      headers: { get(name: string): string | null | undefined };
+    }) => (response.headers.get('x-amzn-waf-action') === 'challenge' ? 'cancel' as const : 'continue' as const));
+    const cleanup = session.observeMainFrameResponses(listener);
+
+    expect(receiveHeaders({
+      url: 'https://example.com/app.js',
+      resourceType: 'script',
+      statusCode: 202,
+      responseHeaders: { 'x-amzn-waf-action': ['challenge'] },
+    })).toEqual({});
+    expect(listener).not.toHaveBeenCalled();
+
+    expect(receiveHeaders({
+      url: 'https://example.com/page',
+      resourceType: 'mainFrame',
+      statusCode: 202,
+      responseHeaders: { 'X-Amzn-Waf-Action': ['challenge'] },
+    })).toEqual({ cancel: true });
+    expect(receiveHeaders({
+      url: 'https://example.com/page',
+      resourceType: 'mainFrame',
+      statusCode: 200,
+      responseHeaders: { Vary: ['Accept'], vary: ['Origin'] },
+    })).toEqual({});
+    const lastResponse = listener.mock.calls[listener.mock.calls.length - 1]?.[0];
+    expect(lastResponse?.statusCode).toBe(200);
+    expect(lastResponse?.headers.get('VARY')).toBe('Accept, Origin');
+
+    cleanup();
+    expect(state.headersReceived).toBeNull();
+  });
+
+  it('观察者异常时拒绝主文档，异常不逃逸到 Electron 网络回调', () => {
+    const session = createElectronWebPageRenderRuntime().createSession('test');
+    session.observeMainFrameResponses(() => {
+      throw new Error('observer failed');
+    });
+    expect(receiveHeaders({
+      url: 'https://example.com/page',
+      resourceType: 'mainFrame',
+      statusCode: 200,
+    })).toEqual({ cancel: true });
   });
 });

@@ -102,6 +102,7 @@ export const WEB_RENDER_FAILURE_KIND_VALUES = [
   'html_too_large',
   'render_process_gone',
   'render_failed',
+  'access_challenge',
 ] as const;
 export const WebRenderFailureKindSchema = z.enum(WEB_RENDER_FAILURE_KIND_VALUES);
 export type WebRenderFailureKind = z.infer<typeof WebRenderFailureKindSchema>;

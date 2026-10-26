@@ -6,6 +6,18 @@ import { createElectronWebPageRenderRuntime } from '../../../src/electron-main/w
 interface FixtureState {
   popupRequests: number;
   downloadRequests: number;
+  challengeExecutionRequests: number;
+}
+
+function readFailure(error: unknown): { kind: string; status?: number; headers?: unknown } {
+  if (!error || typeof error !== 'object') return { kind: '' };
+  const mainResponse: unknown = Reflect.get(error, 'mainResponse');
+  return {
+    kind: String(Reflect.get(error, 'kind') ?? ''),
+    ...(mainResponse && typeof mainResponse === 'object'
+      ? { status: Number(Reflect.get(mainResponse, 'status')), headers: Reflect.get(mainResponse, 'headers') }
+      : {}),
+  };
 }
 
 function listen(server: ReturnType<typeof createServer>): Promise<number> {
@@ -26,7 +38,7 @@ function closeServer(server: ReturnType<typeof createServer>): Promise<void> {
 }
 
 async function run(): Promise<void> {
-  const state: FixtureState = { popupRequests: 0, downloadRequests: 0 };
+  const state: FixtureState = { popupRequests: 0, downloadRequests: 0, challengeExecutionRequests: 0 };
   let port = 0;
   const server = createServer((request, response) => {
     const route = request.url ?? '/';
@@ -57,6 +69,27 @@ async function run(): Promise<void> {
         'Content-Type': 'text/plain',
       });
       response.end('download must be cancelled');
+      return;
+    }
+    if (route === '/challenge-script-executed' || route === '/challenge-subresource') {
+      state.challengeExecutionRequests += 1;
+      response.end('challenge page must not run');
+      return;
+    }
+    if (route === '/aws-challenge' || route === '/cf-challenge') {
+      const aws = route === '/aws-challenge';
+      response.writeHead(aws ? 202 : 403, {
+        'Content-Type': 'text/html; charset=utf-8',
+        ...(aws ? { 'x-amzn-waf-action': 'challenge' } : { 'cf-mitigated': 'challenge' }),
+      });
+      response.end(`<!doctype html><html><body><div id="challenge-container"></div>
+        <img src="/challenge-subresource"><script>fetch('/challenge-script-executed');</script>
+        </body></html>`);
+      return;
+    }
+    if (route === '/accepted') {
+      response.writeHead(202, { 'Content-Type': 'text/html; charset=utf-8' });
+      response.end('<!doctype html><html><body>accepted fixture</body></html>');
       return;
     }
     if (route === '/static') {
@@ -145,6 +178,13 @@ async function run(): Promise<void> {
         : '';
     }
     const recovered = await worker.render({ url: `${origin}/static` });
+    const awsChallenge = await worker.render({ url: `${origin}/aws-challenge` })
+      .then(() => ({ kind: 'rendered' }), readFailure);
+    const cloudflareChallenge = await worker.render({ url: `${origin}/cf-challenge` })
+      .then(() => ({ kind: 'rendered' }), readFailure);
+    // 给已被取消的挑战页留出执行窗口；若脚本或子资源实际运行，这里会观察到请求。
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const accepted = await worker.render({ url: `${origin}/accepted` });
 
     const result = {
       spaRendered: spa.html.includes('SPA_RENDERED_CONTENT'),
@@ -155,6 +195,13 @@ async function run(): Promise<void> {
       timeoutKind,
       privateNetworkKind,
       recoveredAfterBlockedNavigation: recovered.html.includes('static fixture'),
+      spaMainStatus: spa.mainResponse.status,
+      redirectedMainStatus: redirected.mainResponse.status,
+      awsChallenge,
+      cloudflareChallenge,
+      challengeExecutionRequests: state.challengeExecutionRequests,
+      acceptedRendered: accepted.html.includes('accepted fixture'),
+      acceptedMainStatus: accepted.mainResponse.status,
       popupRequests: state.popupRequests,
       downloadRequests: state.downloadRequests,
     };

@@ -1,5 +1,13 @@
-import { WebPageRenderError, type WebPageRenderer } from '../definitions/webPageRenderer';
+import {
+  WebPageRenderError,
+  type WebPageMainResponse,
+  type WebPageRenderer,
+} from '../definitions/webPageRenderer';
 import { WebFailureError } from '../../shared/webFailure';
+import {
+  createWebAccessChallengeHeaderLookup,
+  detectWebAccessChallengeHeader,
+} from '../../shared/webAccessChallenge';
 import { extractArticle } from '../extraction/extractArticle';
 import { createWebReadResult } from '../functions/createWebReadResult';
 import { getWebPageRenderer } from '../ports/webPageRenderer';
@@ -10,6 +18,23 @@ const LOCAL_RENDER_TIMEOUT_MS = 30_000;
 export interface LocalRenderProviderDependencies {
   readonly renderer?: WebPageRenderer;
   readonly timeoutMs?: number;
+}
+
+/** 主响应是否为挑战由 Web 规则最终判定；渲染端停止页面只是安全动作，不作为分类来源。 */
+function createRenderAccessChallengeError(mainResponse: WebPageMainResponse | undefined): WebFailureError {
+  const challengeSignal = mainResponse
+    ? detectWebAccessChallengeHeader(createWebAccessChallengeHeaderLookup(mainResponse.headers))
+    : undefined;
+  const status = mainResponse?.status;
+  return new WebFailureError('captcha', '本地网页渲染遇到站点访问验证，已在页面执行前停止。', {
+    ...(status !== undefined ? { status } : {}),
+    details: {
+      failureStage: 'local_render',
+      renderFailureKind: 'access_challenge',
+      ...(status !== undefined ? { status } : {}),
+      ...(challengeSignal ? { challengeSignal } : {}),
+    },
+  });
 }
 
 function mapRenderError(error: WebPageRenderError): WebFailureError {
@@ -28,6 +53,8 @@ function mapRenderError(error: WebPageRenderError): WebFailureError {
     case 'render_timeout':
     case 'total_timeout':
       return new WebFailureError('timeout', '本地网页渲染超时。', options);
+    case 'access_challenge':
+      return createRenderAccessChallengeError(error.mainResponse);
     case 'unavailable':
     case 'render_process_gone':
     case 'render_failed':
@@ -54,6 +81,12 @@ export class LocalRenderProvider implements WebReadProvider {
       throw error;
     }
 
+    if (detectWebAccessChallengeHeader(
+      createWebAccessChallengeHeaderLookup(rendered.mainResponse.headers),
+    )) {
+      throw createRenderAccessChallengeError(rendered.mainResponse);
+    }
+
     const extracted = extractArticle(rendered.html, { url: rendered.finalUrl });
     if (extracted.accessBarrier) {
       throw new WebFailureError(
@@ -70,8 +103,8 @@ export class LocalRenderProvider implements WebReadProvider {
     return createWebReadResult({
       url: params.url,
       finalUrl: rendered.finalUrl,
-      // Chromium port 当前只返回最终 DOM 和 URL；状态码不参与本地渲染质量决策。
-      status: 200,
+      // 状态码来自主框架实际响应，只作结果事实，不参与本地渲染质量决策。
+      status: rendered.mainResponse.status,
       contentType: 'text/html; charset=utf-8',
       title: extracted.title,
       content: extracted.text,

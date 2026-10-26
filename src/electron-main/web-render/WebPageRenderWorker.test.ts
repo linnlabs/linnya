@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type {
+  WebPageRenderMainFrameResponse,
+  WebPageRenderResponseDecision,
   WebPageRenderRuntime,
   WebPageRenderSession,
   WebPageRenderWindow,
@@ -36,15 +38,41 @@ class FakeRenderSession implements WebPageRenderSession {
       this.guardsRemoved += 1;
     };
   }
+
+  private responseObserver:
+    | ((response: WebPageRenderMainFrameResponse) => WebPageRenderResponseDecision)
+    | undefined;
+
+  observeMainFrameResponses(
+    listener: (response: WebPageRenderMainFrameResponse) => WebPageRenderResponseDecision,
+  ): () => void {
+    this.responseObserver = listener;
+    return () => {
+      this.responseObserver = undefined;
+    };
+  }
+
+  /** 模拟 Electron 在正文交给页面前回调主框架响应头；未安装观察者时视为拒绝。 */
+  respond(url: string, statusCode = 200, headers: Record<string, string> = {}): WebPageRenderResponseDecision {
+    const lookup = new Map(Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]));
+    return this.responseObserver?.({
+      url,
+      statusCode,
+      headers: { get: (name) => lookup.get(name.toLowerCase()) },
+    }) ?? 'cancel';
+  }
 }
 
 class FakeRenderWindow implements WebPageRenderWindow {
   url = '';
   destroyed = false;
   destroyCount = 0;
+  executeCount = 0;
+  session: FakeRenderSession | undefined;
   html: unknown = '<html><body>rendered article</body></html>';
   loadURLImpl: (url: string) => Promise<void> = async (url) => {
     this.url = url;
+    this.session?.respond(url);
   };
   executeImpl: () => Promise<unknown> = async () => this.html;
   private isAllowed: ((url: string) => boolean) | undefined;
@@ -58,6 +86,7 @@ class FakeRenderWindow implements WebPageRenderWindow {
   }
 
   executeJavaScript(): Promise<unknown> {
+    this.executeCount += 1;
     return this.executeImpl();
   }
 
@@ -121,6 +150,7 @@ class FakeRenderRuntime implements WebPageRenderRuntime {
   createWindow(options: WebPageRenderWindowOptions): WebPageRenderWindow {
     this.partitions.push(options.partition);
     const renderWindow = this.nextWindow ?? new FakeRenderWindow();
+    renderWindow.session = this.session;
     this.nextWindow = undefined;
     this.windows.push(renderWindow);
     return renderWindow;
@@ -158,6 +188,7 @@ describe('WebPageRenderWorker', () => {
     expect(result).toEqual({
       html: '<html><body>rendered article</body></html>',
       finalUrl: 'https://example.com/app',
+      mainResponse: { status: 200, headers: {} },
     });
     expect(runtime.session.clearCount).toBe(1);
     expect(runtime.session.guardsInstalled).toBe(1);
@@ -264,5 +295,70 @@ describe('WebPageRenderWorker', () => {
 
     expect(result.html).toContain('stable article');
     expect(responses).toHaveLength(0);
+  });
+  it('回传真实主响应状态与白名单头，不复制其他响应头', async () => {
+    const runtime = new FakeRenderRuntime();
+    const renderWindow = new FakeRenderWindow();
+    renderWindow.loadURLImpl = async (url) => {
+      renderWindow.url = url;
+      expect(runtime.session.respond(url, 203, {
+        'CF-Mitigated': 'block',
+        'Set-Cookie': 'session=secret',
+      })).toBe('continue');
+    };
+    runtime.nextWindow = renderWindow;
+
+    const result = await createWorker(runtime).render({ url: 'https://example.com/accepted' });
+
+    expect(result.mainResponse).toEqual({ status: 203, headers: { 'cf-mitigated': 'block' } });
+    expect(JSON.stringify(result)).not.toContain('secret');
+  });
+
+  it.each<{ status: number; headers: Record<string, string> }>([
+    { status: 202, headers: { 'x-amzn-waf-action': 'challenge' } },
+    { status: 405, headers: { 'X-Amzn-Waf-Action': 'captcha' } },
+    { status: 403, headers: { 'cf-mitigated': 'challenge' } },
+  ])('主文档访问挑战 HTTP $status 在页面执行前取消并以 access_challenge 结束', async ({ status, headers }) => {
+    const runtime = new FakeRenderRuntime();
+    const renderWindow = new FakeRenderWindow();
+    const decisions: WebPageRenderResponseDecision[] = [];
+    renderWindow.loadURLImpl = async (url) => {
+      renderWindow.url = url;
+      decisions.push(runtime.session.respond(url, status, headers));
+      await new Promise<void>(() => undefined);
+    };
+    runtime.nextWindow = renderWindow;
+    const worker = createWorker(runtime);
+
+    const error = await worker.render({ url: 'https://example.com/challenged' })
+      .catch((failure: unknown) => failure);
+
+    expect(decisions).toEqual(['cancel']);
+    expect(error).toEqual(expect.objectContaining({
+      kind: 'access_challenge',
+      mainResponse: {
+        status,
+        headers: Object.fromEntries(Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value])),
+      },
+    }));
+    expect(renderWindow.executeCount).toBe(0);
+    expect(renderWindow.destroyCount).toBe(1);
+    // 任务结束后迟到的主框架响应不能再被放行。
+    expect(runtime.session.respond('https://example.com/late')).toBe('cancel');
+    await expect(worker.render({ url: 'https://example.com/next' })).resolves.toMatchObject({
+      mainResponse: { status: 200 },
+    });
+  });
+
+  it('没有观察到主文档响应时不补造状态码', async () => {
+    const runtime = new FakeRenderRuntime();
+    const renderWindow = new FakeRenderWindow();
+    renderWindow.loadURLImpl = async (url) => {
+      renderWindow.url = url;
+    };
+    runtime.nextWindow = renderWindow;
+
+    await expect(createWorker(runtime).render({ url: 'https://example.com/no-response' }))
+      .rejects.toEqual(expect.objectContaining({ kind: 'render_failed' }));
   });
 });

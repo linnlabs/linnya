@@ -3,7 +3,9 @@ import {
   assertAllowedWebUrl,
   resolveAndAssertPublicHost,
 } from '../../tools/web/shared/urlPolicy';
+import type { WebResponseHeaderLookup } from '../../tools/web/shared/webAccessChallenge';
 import type {
+  WebPageRenderResponseDecision,
   WebPageRenderRuntime,
   WebPageRenderSession,
   WebPageRenderWindow,
@@ -17,6 +19,19 @@ export interface ElectronWebPageRenderRuntimeOptions {
 async function validatePublicWebRequest(rawUrl: string): Promise<void> {
   const url = assertAllowedWebUrl(rawUrl);
   await resolveAndAssertPublicHost(url);
+}
+
+function createResponseHeaderLookup(
+  responseHeaders: Record<string, string[]> | undefined,
+): WebResponseHeaderLookup {
+  const headers = new Map<string, string>();
+  for (const [name, values] of Object.entries(responseHeaders ?? {})) {
+    const key = name.toLowerCase();
+    const previous = headers.get(key);
+    const joined = values.join(', ');
+    headers.set(key, previous === undefined ? joined : `${previous}, ${joined}`);
+  }
+  return { get: (name) => headers.get(name.toLowerCase()) };
 }
 
 function createWindow(options: WebPageRenderWindowOptions): WebPageRenderWindow {
@@ -127,6 +142,39 @@ function createSession(
         renderSession.setPermissionCheckHandler(null);
         renderSession.off('will-download', cancelDownload);
         renderSession.webRequest.onBeforeRequest(requestFilter, null);
+      };
+    },
+    observeMainFrameResponses: (listener) => {
+      const responseFilter = { urls: ['http://*/*', 'https://*/*'] };
+      const handleHeaders = (
+        details: {
+          url: string;
+          resourceType: string;
+          statusCode: number;
+          responseHeaders?: Record<string, string[]>;
+        },
+        callback: (response: { cancel?: boolean }) => void,
+      ): void => {
+        if (details.resourceType !== 'mainFrame') {
+          callback({});
+          return;
+        }
+        let decision: WebPageRenderResponseDecision;
+        try {
+          decision = listener({
+            url: details.url,
+            statusCode: details.statusCode,
+            headers: createResponseHeaderLookup(details.responseHeaders),
+          });
+        } catch {
+          // 判定缺失时拒绝该主文档，不让页面继续执行；异常也不能逃逸到 Electron 网络回调。
+          decision = 'cancel';
+        }
+        callback(decision === 'cancel' ? { cancel: true } : {});
+      };
+      renderSession.webRequest.onHeadersReceived(responseFilter, handleHeaders);
+      return () => {
+        renderSession.webRequest.onHeadersReceived(responseFilter, null);
       };
     },
   };

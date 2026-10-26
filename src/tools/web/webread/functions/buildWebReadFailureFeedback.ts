@@ -12,6 +12,7 @@ export function buildWebReadFailureFeedback(error: unknown, params: {
     ?? (kind === 'managed_disabled'
       ? facts.previousFailureKind ?? facts.initialFailureKind ?? facts.escalationReason : kind);
   if (reason === 'login_required') return '页面明确要求登录。当前读取没有该登录会话；需要具备登录能力的读取路径或可公开取得的原件。';
+  if (facts.challengeSignal) return '站点返回了访问验证页面；本工具不会执行或绕过验证，重复请求也不会改变访问条件。寻找实际可取得的副本，或在具备新的访问条件后再读。';
   if (reason === 'captcha' || reason === 'http_403') return '当前访问被拦截；重复请求不会改变访问条件。寻找实际可取得的副本，或在具备新的访问条件后再读。';
   if (reason === 'http_404' || facts.status === 410) {
     return `${params.urlWasObserved === false ? '此 URL 未在本会话正式来源/资源记录中出现，可能是推测地址或已失效链接；普通正文链接不一定被收录，未命中不等于编造。' : '目标地址不存在或已移除。'}先用 site:${params.hostname} 搜索定位真实页面，不继续按命名规律拼地址。`;

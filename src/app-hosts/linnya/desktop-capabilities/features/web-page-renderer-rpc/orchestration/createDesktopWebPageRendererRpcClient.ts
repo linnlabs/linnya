@@ -8,6 +8,7 @@ import {
 import {
   WebPageRenderRpcRequestSchema,
   WebPageRenderRpcResultSchema,
+  copyWebPageMainResponse,
 } from '../functions/webPageRendererRpcCodec';
 
 /** Backend 继续只依赖 WebPageRenderer；RPC method 与 mailbox 对业务 provider 不可见。 */
@@ -36,11 +37,17 @@ export function createDesktopWebPageRendererRpcClient(
       }
       const result = WebPageRenderRpcResultSchema.parse(rawResult);
       if (!result.ok) {
-        throw new WebPageRenderError(result.error.kind, result.error.message);
+        const mainResponse = result.error.main_response;
+        throw new WebPageRenderError(
+          result.error.kind,
+          result.error.message,
+          mainResponse ? { mainResponse: copyWebPageMainResponse(mainResponse) } : undefined,
+        );
       }
       return {
         html: result.value.html,
         finalUrl: result.value.final_url,
+        mainResponse: copyWebPageMainResponse(result.value.main_response),
       };
     },
   };

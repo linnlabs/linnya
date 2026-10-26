@@ -72,13 +72,20 @@ try {
     timeoutKind: 'total_timeout',
     privateNetworkKind: 'render_failed',
     recoveredAfterBlockedNavigation: true,
+    spaMainStatus: 200,
+    redirectedMainStatus: 200,
+    awsChallenge: { kind: 'access_challenge', status: 202, headers: { 'x-amzn-waf-action': 'challenge' } },
+    cloudflareChallenge: { kind: 'access_challenge', status: 403, headers: { 'cf-mitigated': 'challenge' } },
+    challengeExecutionRequests: 0,
+    acceptedRendered: true,
+    acceptedMainStatus: 202,
     popupRequests: 0,
     downloadRequests: 3,
   };
   if (JSON.stringify(result) !== JSON.stringify(expected)) {
     throw new Error(`Electron Web Render E2E 结果不符合预期。\nactual=${JSON.stringify(result)}\nexpected=${JSON.stringify(expected)}`);
   }
-  console.log('[electron-web-render-e2e] SPA、导航、弹窗、下载、权限与超时边界通过。');
+  console.log('[electron-web-render-e2e] SPA、导航、弹窗、下载、权限、超时、主响应与访问挑战边界通过。');
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
 }

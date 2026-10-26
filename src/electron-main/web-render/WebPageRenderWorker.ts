@@ -1,12 +1,20 @@
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import {
+  WEB_PAGE_MAIN_RESPONSE_HEADER_MAX_CHARS,
   WebPageRenderError,
+  type WebPageMainResponse,
   type WebPageRenderParams,
   type WebPageRenderResult,
 } from '../../tools/web/webread/definitions/webPageRenderer';
+import {
+  detectWebAccessChallengeHeader,
+  pickWebAccessChallengeHeaders,
+} from '../../tools/web/shared/webAccessChallenge';
 import { Logger } from '../../shared/logger';
 import type {
+  WebPageRenderMainFrameResponse,
+  WebPageRenderResponseDecision,
   WebPageRenderRuntime,
   WebPageRenderSession,
   WebPageRenderWindow,
@@ -108,6 +116,7 @@ export class WebPageRenderWorker {
   private sessionSecurityCleanup: (() => void) | null = null;
   private windowLifecycle: WindowLifecycle | null = null;
   private activeTargetUrl: string | null = null;
+  private activeMainResponse: WebPageMainResponse | null = null;
   private cancelActive: ((error: WebPageRenderError) => void) | null = null;
   private disposed = false;
 
@@ -146,6 +155,7 @@ export class WebPageRenderWorker {
     };
     this.cancelActive = cancel;
     this.activeTargetUrl = params.url;
+    this.activeMainResponse = null;
 
     const abort = (): void => cancel(new WebPageRenderError('aborted', '网页渲染已由调用方取消。'));
     params.signal?.addEventListener('abort', abort, { once: true });
@@ -168,6 +178,7 @@ export class WebPageRenderWorker {
       this.destroyWindow();
       this.cancelActive = null;
       this.activeTargetUrl = null;
+      this.activeMainResponse = null;
     }
   }
 
@@ -237,7 +248,12 @@ export class WebPageRenderWorker {
       this.destroyWindow();
       throw new WebPageRenderError('navigation_blocked', `网页渲染拒绝跨站导航到 ${finalUrl}。`);
     }
-    return { html: rawHtml, finalUrl };
+    const mainResponse = this.activeMainResponse;
+    if (!mainResponse) {
+      // 状态码只来自真实主响应；没有观察到时不补造 200。
+      throw new WebPageRenderError('render_failed', '网页渲染没有观察到主文档 HTTP 响应。');
+    }
+    return { html: rawHtml, finalUrl, mainResponse };
   }
 
   private async waitForDocumentReadiness(
@@ -277,8 +293,16 @@ export class WebPageRenderWorker {
     readonly renderSession: WebPageRenderSession;
   } {
     if (!this.renderSession) {
-      this.renderSession = this.runtime.createSession(this.partition);
-      this.sessionSecurityCleanup = this.renderSession.installSecurityGuards();
+      const renderSession = this.runtime.createSession(this.partition);
+      const removeSecurityGuards = renderSession.installSecurityGuards();
+      const removeResponseObserver = renderSession.observeMainFrameResponses(
+        (response) => this.handleMainFrameResponse(response),
+      );
+      this.renderSession = renderSession;
+      this.sessionSecurityCleanup = () => {
+        removeResponseObserver();
+        removeSecurityGuards();
+      };
     }
     if (!this.renderWindow || this.renderWindow.isDestroyed()) {
       const renderWindow = this.runtime.createWindow({ partition: this.partition });
@@ -300,6 +324,34 @@ export class WebPageRenderWorker {
       this.windowLifecycle = { cleanups };
     }
     return { renderWindow: this.renderWindow, renderSession: this.renderSession };
+  }
+
+  /**
+   * 访问挑战由 Web 规则判定，这里只执行“不运行挑战页”的停止动作：响应在正文交给页面前取消，
+   * 本次渲染以 access_challenge 结束并保留主响应事实，不等待、求解或绕过挑战。
+   */
+  private handleMainFrameResponse(
+    response: WebPageRenderMainFrameResponse,
+  ): WebPageRenderResponseDecision {
+    const cancel = this.cancelActive;
+    // 没有进行中的任务时不应有页面请求；拒绝而不是放行未知加载。
+    if (!cancel || this.activeTargetUrl === null) return 'cancel';
+    const mainResponse: WebPageMainResponse = {
+      status: response.statusCode,
+      headers: pickWebAccessChallengeHeaders(response.headers, WEB_PAGE_MAIN_RESPONSE_HEADER_MAX_CHARS),
+    };
+    this.activeMainResponse = mainResponse;
+    if (!detectWebAccessChallengeHeader(response.headers)) return 'continue';
+    // 先让 runtime 同步取消响应，再结束任务并销毁窗口。
+    queueMicrotask(() => {
+      if (this.cancelActive !== cancel) return;
+      cancel(new WebPageRenderError(
+        'access_challenge',
+        `主文档返回站点访问验证（HTTP ${response.statusCode}），已在页面执行前停止渲染。`,
+        { mainResponse },
+      ));
+    });
+    return 'cancel';
   }
 
   private handleNavigationBlocked(blockedUrl: string): void {
