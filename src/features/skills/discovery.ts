@@ -10,6 +10,7 @@
  */
 
 import fs from 'fs';
+import { inspectSkillFiles, readSkillText } from './shared/skillFiles';
 import path from 'path';
 import { getSkillsPath } from '../../shared/utils/pathManager';
 import { getBuiltinSkillsRoot } from './builtin';
@@ -38,7 +39,7 @@ export function discoverSkills(): SkillMetadata[] {
   const now = Date.now();
   const cacheTtlMs = getSkillDiscoveryCacheTtlMs();
   if (cacheTtlMs > 0 && cachedMetadata !== null && (now - cacheTimestamp) < cacheTtlMs) {
-    return cachedMetadata;
+    return mergeUserSkills(cachedMetadata.filter(skill => skill.source !== 'user'));
   }
 
   const result = mergeSkills();
@@ -97,18 +98,15 @@ function mergeSkills(): SkillMetadata[] {
     }
   }
 
-  // 3. 扫描用户 Skill（补充性质，同名则忽略）
-  const userRoot = getSkillsPath();
-  const userSkills = scanDirectory(userRoot, 'user');
-  for (const skill of userSkills) {
-    if (merged.has(skill.name)) {
-      console.warn(`[Skill] 用户 Skill "${skill.name}" 与内置 Skill 同名，已忽略（内置 Skill 不可覆盖）`);
-      continue;
-    }
-    merged.set(skill.name, skill);
-  }
+  return mergeUserSkills(Array.from(merged.values()));
+}
 
-  return Array.from(merged.values());
+function mergeUserSkills(existing: readonly SkillMetadata[]): SkillMetadata[] {
+  const merged = new Map(existing.map(skill => [skill.name, skill]));
+  for (const skill of scanDirectory(getSkillsPath(), 'user')) {
+    if (!merged.has(skill.name)) merged.set(skill.name, skill);
+  }
+  return [...merged.values()];
 }
 
 /**
@@ -145,7 +143,9 @@ function scanDirectory(root: string, source: SkillSource, pluginId?: string): Sk
 
     let raw: string;
     try {
-      raw = fs.readFileSync(skillFilePath, 'utf-8');
+      // 只读入口文件；其余文件只做类型/大小检查，避免目录查询随 Skill 内容体积变慢。
+      inspectSkillFiles(skillDir);
+      raw = readSkillText(skillDir, 'SKILL.md');
     } catch (e) {
       console.warn(`[Skill] 读取 ${skillFilePath} 失败，跳过`, e);
       continue;

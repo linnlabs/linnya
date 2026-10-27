@@ -8,6 +8,9 @@ Settings 是设置壳与 contribution registry，不是所有设置业务的统�
 - 注册各 domain 提供的设置页面；
 - 设置壳自身的外观、会话通用偏好等稳定设置能力。
 
+页面需要将标题和操作按钮放在同一行时，contribution 可声明 `headerMode: 'page'`，由公开 `SettingsPage` 的
+`title` 与 `actions` 插槽绘制唯一页头。其余页面省略该字段，继续使用设置壳的标题；禁止业务 CSS 隐藏壳层标题。
+
 ## 不负责
 
 - 模型注册、模型目录、Provider connection 或用途绑定；这些属于 `model-configuration`；

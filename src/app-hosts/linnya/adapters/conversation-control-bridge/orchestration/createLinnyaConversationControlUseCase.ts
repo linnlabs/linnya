@@ -1,3 +1,4 @@
+import { skillManagement } from 'src/features/skills';
 import type { CommandApprovalControlPort } from 'src/domains/commands';
 import { generateConversationId } from '@linnlabs/linnkit/contracts';
 import { JsonValueSchema } from '@app/schemas';
@@ -96,6 +97,7 @@ export function createLinnyaConversationControlUseCase(
     now: Date.now,
   });
   return createConversationControlUseCase({
+    skills: skillManagement,
     flow: {
       start: request => owners.flow.nextDetached(request),
       respond: request => owners.flow.respondInteractionDetached(request),

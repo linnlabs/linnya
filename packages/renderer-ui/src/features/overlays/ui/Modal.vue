@@ -7,9 +7,20 @@
         :class="{ 'modal-overlay--alert': layer === 'alert' }"
         @click.self="closeOnOverlayClick && close()"
       >
-        <div class="modal-container" :style="containerStyle">
+        <div
+          class="modal-container"
+          :style="containerStyle"
+        >
           <div class="modal-header">
-            <h2>{{ resolvedTitle }}</h2>
+            <div class="modal-heading">
+              <h2>{{ resolvedTitle }}</h2>
+              <div
+                v-if="$slots['title-extra']"
+                class="modal-title-extra"
+              >
+                <slot name="title-extra" />
+              </div>
+            </div>
             <IconButton
               :label="closeLabel"
               size="md"
@@ -23,13 +34,13 @@
             class="modal-content"
             :class="`modal-content--${scrollMode}`"
           >
-            <slot></slot>
+            <slot />
           </div>
           <div
             v-if="$slots.footer"
             class="modal-footer"
           >
-            <slot name="footer"></slot>
+            <slot name="footer" />
           </div>
         </div>
       </div>
@@ -44,6 +55,8 @@ import type { CSSProperties } from 'vue';
 import { CloseIcon } from '../../../icons';
 import { useSharedComponentLocalization } from '../../../localization';
 import type { ModalProps, ModalSlots } from '../definitions/modal';
+
+defineOptions({ name: 'LinnyaModal' });
 
 const props = withDefaults(defineProps<ModalProps>(), {
   isVisible: false,

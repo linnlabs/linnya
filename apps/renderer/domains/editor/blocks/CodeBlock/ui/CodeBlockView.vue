@@ -6,12 +6,13 @@
     class="code-block-outer"
     :data-node-type="'codeBlockOuter'"
     :data-block-id="node.attrs.id"
+    :data-scroll-mode="extension.options.scrollMode"
   >
     <!-- 始终显示的语言名称 -->
     <div class="language-display" contenteditable="false">{{ displayLanguage }}</div>
 
     <!-- 仅激活+悬停时显示的下拉选择器（离屏时不挂载） -->
-    <div v-if="blockActivation.isUiActive.value" class="language-selector-container" contenteditable="false" ref="selectorContainerRef">
+    <div v-if="editor.isEditable && blockActivation.isUiActive.value && extension.options.allowLanguageSelection" class="language-selector-container" contenteditable="false" ref="selectorContainerRef">
       <!-- 现在这是唯一的触发器 - 一个纯粹的视觉元素 -->
       <div
         class="language-selector"

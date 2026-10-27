@@ -136,3 +136,43 @@ describe('projectSkillPresentation', () => {
     ).toEqual({ data: { kind: 'lifecycle' } });
   });
 });
+
+describe('projectSkillPresentation：skill_manage', () => {
+  function manage(overrides: Partial<ToolPresentationProjectorInput>) {
+    return projectSkillPresentation({
+      sourceToolName: 'skill_manage',
+      uiKey: 'skill_manage',
+      args: { action: 'install', name: 'weekly-report', source_directory: '/tmp/weekly-report' },
+      result: undefined,
+      status: 'loading',
+      phase: 'start',
+      ...overrides,
+    });
+  }
+
+  it('运行中只投影动作与目标，不暴露本机目录', () => {
+    expect(manage({}).data).toEqual({ kind: 'manage', action: 'install', skillName: 'weekly-report', path: undefined });
+    expect(JSON.stringify(manage({}))).not.toContain('/tmp');
+  });
+
+  it('参数尚未成形时退回通用生命周期文案', () => {
+    expect(manage({ args: { action: 'install' } }).data).toEqual({ kind: 'lifecycle' });
+  });
+
+  it('编辑类动作带上文件路径，list 没有目标 Skill', () => {
+    expect(manage({
+      args: { action: 'edit', name: 'weekly-report', path: 'SKILL.md', old_string: 'a', new_string: 'b' },
+    }).data).toEqual({ kind: 'manage', action: 'edit', skillName: 'weekly-report', path: 'SKILL.md' });
+    expect(manage({ args: { action: 'list' } }).data).toEqual({ kind: 'manage', action: 'list', skillName: undefined, path: undefined });
+  });
+
+  it('成功结果必须与参数的动作和名称一致', () => {
+    const ok = manage({
+      status: 'success',
+      result: { data: { action: 'install', name: 'weekly-report' }, observation: '{}' },
+    });
+    expect(ok.data).toMatchObject({ kind: 'manage', action: 'install' });
+    expect(() => manage({ status: 'success', result: { data: { action: 'remove', name: 'weekly-report' }, observation: '{}' } })).toThrow();
+    expect(() => manage({ status: 'success', result: { data: { action: 'install', name: 'other' }, observation: '{}' } })).toThrow();
+  });
+});

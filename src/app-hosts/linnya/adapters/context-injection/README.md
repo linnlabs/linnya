@@ -72,7 +72,7 @@ src/app-hosts/linnya/adapters/context-injection/
    - 存在连续可替换历史时的 `contextCompactionCandidate`
    - system prompt 末尾与最新 `history_summary` 末尾的 canonical cache breakpoints
 
-容量规则固定为：prepared model route 的 `context_window_tokens / max_output_tokens` 是基线；注册 Agent 只有显式声明 `contextPolicy.budget.maxTokens / reservedForResponse` 时才能进一步收窄。Host 不按 Provider、模型名或 URL 猜容量，也不把 Linnkit 的 standalone fallback 当作缺失 catalog route 的兼容路径。`outputLimitTokens` 会继续进入 Graph 的 `llmOptions.max_tokens`，成功 attempt 的 `ContextUsageSnapshot` 使用同一组输入/输出预算。
+容量规则固定为：prepared model route 的 `context_window_tokens / max_output_tokens` 是窗口与输出能力上限；注册 Agent 只有显式声明 `contextPolicy.budget.maxTokens / reservedForResponse` 时才能进一步收窄。没有显式输出预留时，输入预算仅保留至少一个输出 token，Graph 在最终 Prompt（含工具 schema）计数后，将实际 `max_tokens` 收窄到剩余窗口与输出能力上限的较小值。成功 attempt 的 `ContextUsageSnapshot` 记录同一实际额度；自动整理与切模也复用该口径。Host 不按 Provider、模型名或 URL 猜容量，也不把 Linnkit 的 standalone fallback 当作缺失 catalog route 的兼容路径。
 
 自动 compaction 在这里仅完成 Host 装配，不在 Context build 内调用 LLM：Context Manager 只产出纯替换计划；Graph 逐条复用普通 reminder 已注入的完整 canonical Prompt，再追加一条瞬态 user-role 消息承载专用 compaction reminder，并以当前已锁定模型、同一工具 schema 顺序和 `tool_choice=none` 执行内部调用。Graph 随后调用 `applyCompaction(...)`，本 adapter 再把固定格式内容交给 Context Manager 校验并重跑同一上下文 pipeline，返回重建候选与 pending `history_summary` draft。最终容量接纳、Host durable-before-fanout 提交、progress end、唯一 publisher fan-out 与失败结算全部仍由 Graph / Flow 拥有。
 

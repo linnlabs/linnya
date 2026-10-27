@@ -31,14 +31,30 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
   padding: var(--space-3) var(--space-5);
   color: var(--color-text-primary);
   border-bottom: none;
 }
 
+.modal-heading {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.modal-title-extra {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
 /* 标题是弹窗的第一层级：主文字色、副标题字阶；不再用比占位符还浅的元信息灰。 */
 .modal-header h2 {
-  flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: var(--font-size-subtitle);
   font-style: normal;
@@ -47,6 +63,7 @@
   color: var(--color-text-primary);
   text-align: left;
   text-transform: none;
+  overflow-wrap: anywhere;
 }
 
 .modal-content {

@@ -57,3 +57,6 @@ pnpm exec vitest run \
 门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期。普通 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`；无 Electron Runtime 的冷启动、并行、owner 竞争、重启和强制终止恢复见 `runtimeHostProcess.e2e.test.ts`。
 
 `projects` 通过注入的 Workspace 查询端口列出未删除项目，只投影 `project_id` 与 `name`。CLI 不读取数据库或物理路径。
+
+
+`skills` 为协议 5 的追加 capability，复用同一鉴权、request/response parse 和错误投影。App composition 注入 Skills 的公开管理 port，Conversation use case 只转发并投影冲突，不拥有目录/文件规则。请求中的 source_directory 是本机绝对路径，不是远程上传或 Host 执行路径；Default Agent 不通过通用控制 token 写入 Skill。

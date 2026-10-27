@@ -1,3 +1,4 @@
+import { SkillManagementSettingsPage } from '@/domains/skills';
 import { defineAsyncComponent } from 'vue';
 import { registerSettingsContribution } from './settingsRegistry';
 import {
@@ -87,6 +88,15 @@ export function ensureCoreSettingsContributionsRegistered(): void {
     group: 'models',
     order: 70,
     component: ModelConfigurationSettingsPage,
+  });
+  registerSettingsContribution({
+    id: 'skills',
+    title: SETTINGS_MESSAGE_FALLBACKS['settings.tabs.skills'],
+    titleMessageKey: 'settings.tabs.skills',
+    group: 'document-types',
+    order: 80,
+    component: SkillManagementSettingsPage,
+    headerMode: 'page',
   });
   registerSettingsContribution({
     id: 'about',

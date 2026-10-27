@@ -517,7 +517,7 @@
     "@app/schemas": "file:./packages/schemas",
     "@chenglou/pretext": "^0.0.5",
     "@discordjs/opus": "^0.10.0",
-    "@linnlabs/linnkit": "0.38.1",
+    "@linnlabs/linnkit": "0.40.0",
     "@linnlabs/linnkit-provider-ai-sdk": "workspace:*",
     "@linnya/provider-catalog": "workspace:*",
     "@linnya/renderer-ui": "workspace:*",
@@ -531,10 +531,13 @@
     "@tiptap/extension-code-block-lowlight": "^3.31.3",
     "@tiptap/extension-document": "^3.31.3",
     "@tiptap/extension-hard-break": "^3.31.3",
+    "@tiptap/extension-image": "3.31.3",
+    "@tiptap/extension-list": "3.31.3",
     "@tiptap/extension-paragraph": "^3.31.3",
     "@tiptap/extension-table": "^3.31.3",
     "@tiptap/extension-text": "^3.31.3",
     "@tiptap/extensions": "^3.31.3",
+    "@tiptap/markdown": "3.31.3",
     "@tiptap/pm": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
     "@tiptap/suggestion": "^3.31.3",
@@ -615,6 +618,7 @@
     "wave-resampler": "^1.0.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "xml2js": "^0.6.2",
+    "yaml": "2.8.3",
     "yauzl": "^3.2.0",
     "yoga-layout": "^3.2.1",
     "zod": "^3.25.76"
@@ -673,8 +677,7 @@
     "vitest": "^4.1.11",
     "vue-eslint-parser": "^10.2.0",
     "vue-tsc": "~3.1.0",
-    "wait-on": "^8.0.3",
-    "yaml": "^2.8.1"
+    "wait-on": "^8.0.3"
   },
   "repository": {
     "type": "git",

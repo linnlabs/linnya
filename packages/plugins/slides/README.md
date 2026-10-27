@@ -89,9 +89,13 @@ packages/plugins/slides/
 Backend 的 deck.js AST/typecheck 使用插件自带的最小 TypeScript
 runtime：compiler 位于 `dist/backend/node_modules/typescript`，标准库只包含
 `lib.es2020.d.ts` 的传递引用闭包。它在第一次源码检查或插桩时加载，不属于 backend
-contribution 注册成本。`build:backend` 同时执行 4 MiB 入口预算、14 MiB
-backend 总预算、依赖图、懒加载和真实 compiler
+contribution 注册成本。`build:backend` 同时执行 2.1 MiB 入口预算、1.6 MiB build Worker 预算、
+13.5 MiB backend 总预算、依赖图、懒加载和真实 compiler
 smoke；metafile 只用于构建验证，不进入 artifact。
+
+图表数字格式的共享纯函数入口 `@app/schemas/chart-number-format` 由 Backend 构建显式内联，
+同时进入 contribution 和 presentation build Worker；不能作为宿主运行时依赖留在制品中。
+Worker artifact smoke 覆盖数字格式准入、非法格式拒绝和原生 PPTX 的格式与数据保留。
 
 栅格 worker 不搜索全局候选目录。开发态 inline
 backend 只绑定当前 workspace 的 Slides package root；磁盘 backend 和 standalone

@@ -65,7 +65,8 @@ import {
 </template>
 ```
 
-页面标题不用自己写 —— 设置壳层的面板头会渲染当前 tab 的标题。**tab 里不要再放一个和 tab 名同名的 `<h3>`。**
+默认页面标题由设置壳层渲染，tab 不再放同名分区标题。需要标题与页面操作同排时，contribution 声明
+`headerMode: 'page'`，并向公开 `SettingsPage` 传入 `title` 和 `actions` 插槽；壳层此时不再重复显示标题。
 
 ---
 
@@ -77,7 +78,9 @@ import {
 
 | prop | 类型 | 说明 |
 |---|---|---|
+| `title` | `string?` | 页面拥有页头时的唯一标题，contribution 需声明 `headerMode: 'page'` |
 | `description` | `string?` | 页面导语，放在第一个分区之前 |
+| slot `actions` | | 与页面标题同排的操作入口 |
 
 ### `SettingsSection`
 

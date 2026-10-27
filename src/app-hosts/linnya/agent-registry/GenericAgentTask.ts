@@ -11,6 +11,7 @@ import type { AgentDefinition } from './types';
 import * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import { appendSkillCatalogSection } from 'src/features/skills/agentSkillExposure';
+import { toolListGrantsSkillAuthoring } from 'src/features/skills/functions/canAuthorSkills';
 import { linnyaFenceRegistry } from 'src/app-hosts/linnya/context/agent/registerLinnyaFences';
 
 export class GenericAgentTask
@@ -33,6 +34,7 @@ export class GenericAgentTask
     const basePrompt = builder ? builder(request) : '';
     return appendSkillCatalogSection({
       basePrompt,
+      includeAuthoring: toolListGrantsSkillAuthoring(this.definition.config?.availableTools),
       enabled: this.definition.config?.skill?.enabled === true,
     });
   }

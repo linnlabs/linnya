@@ -7,6 +7,8 @@ export type ModalLayer = 'base' | 'alert';
 /** Modal 的命名 slot；footer 位于内容滚动区之外。 */
 export interface ModalSlots {
   readonly default?: () => unknown;
+  /** 标题旁的来源或状态信息；标题字阶和关闭入口仍由 Modal 统一拥有。 */
+  readonly 'title-extra'?: () => unknown;
   readonly footer?: () => unknown;
 }
 

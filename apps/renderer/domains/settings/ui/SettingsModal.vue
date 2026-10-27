@@ -77,7 +77,10 @@
           tabindex="0"
           :aria-labelledby="tabButtonId(activeContribution.id)"
         >
-          <h2 class="settings-modal-panel-title">
+          <h2
+            v-if="activeContribution.headerMode !== 'page'"
+            class="settings-modal-panel-title"
+          >
             {{ getTabTitle(activeContribution) }}
           </h2>
           <component

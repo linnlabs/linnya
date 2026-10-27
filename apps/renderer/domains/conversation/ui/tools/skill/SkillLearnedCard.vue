@@ -26,9 +26,21 @@ const props = defineProps<{
 
 const { conversationMessage } = useConversationLocalization();
 
+const MANAGE_KEYS = {
+  list: ['list', 'listing'], read: ['read', 'reading'], validate: ['validate', 'validating'],
+  install: ['install', 'installing'], update: ['update', 'updating'], remove: ['remove', 'removing'],
+  write: ['edit', 'editing'], edit: ['edit', 'editing'], delete_file: ['deleteFile', 'deletingFile'],
+} as const;
+
 const text = computed(() => {
   const data = props.presentation.data;
-  const name = 'skillName' in data ? data.skillName : '';
+  const name = 'skillName' in data ? (data.skillName ?? '') : '';
+
+  if (data.kind === 'manage') {
+    const [done, running] = MANAGE_KEYS[data.action];
+    const key = props.presentation.status === 'loading' ? running : done;
+    return conversationMessage(`conversation.tool.skillManage.${key}`, { name, path: data.path ?? '' });
+  }
 
   if (data.kind === 'resource') {
     if (props.presentation.status === 'loading') {

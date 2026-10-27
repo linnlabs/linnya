@@ -1,0 +1,96 @@
+.markdown-file-editor {
+  background: var(--color-bg-elevated);
+}
+
+.markdown-file-editor-control {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-5) var(--space-6);
+  outline: none;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.markdown-file-editor-control > :first-child {
+  margin-top: 0;
+}
+
+.markdown-file-editor-control > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-file-editor-control :is(p, ul, ol, blockquote, table, .code-block-outer) {
+  margin-block: var(--space-3);
+}
+
+.markdown-file-editor-control :is(h1, h2, h3, h4, h5, h6) {
+  margin-block: var(--space-6) var(--space-3);
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-subtitle);
+}
+
+.markdown-file-editor-control h1 {
+  font-size: var(--font-size-title);
+  line-height: var(--line-height-title);
+}
+
+.markdown-file-editor-control :is(ul, ol) {
+  padding-left: var(--space-6);
+}
+
+.markdown-file-editor-control ul {
+  list-style-type: disc;
+}
+
+.markdown-file-editor-control ol {
+  list-style-type: decimal;
+}
+
+.markdown-file-editor-control li > p {
+  margin-block: var(--space-1);
+}
+
+.markdown-file-editor-control blockquote {
+  padding-left: var(--space-4);
+  margin-left: 0;
+  color: var(--color-text-secondary);
+  border-left: var(--space-0-5) solid var(--color-border-default);
+}
+
+.markdown-file-editor-control a {
+  color: var(--color-accent);
+}
+
+.markdown-file-editor-control img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-file-editor-control table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.markdown-file-editor-control :is(th, td) {
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width-hairline) solid var(--color-border-default);
+}
+
+.markdown-file-editor-control ul[data-type='taskList'] {
+  padding-left: 0;
+  list-style: none;
+}
+
+.markdown-file-editor-control li[data-type='taskItem'] {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.markdown-file-editor-control li[data-type='taskItem'] > div {
+  flex: 1;
+  min-width: 0;
+}

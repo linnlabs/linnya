@@ -1,6 +1,10 @@
 # Markdown Runtime
 
-`apps/renderer/domains/editor/services/markdownRuntime/` 是 renderer 侧统一的 Markdown 语义运行时入口。
+`apps/renderer/domains/editor/services/markdownRuntime/` 是 renderer 侧 Workspace Markdown 的统一语义运行时入口。
+
+本运行时服务 rootBlock 文档、Revision、导入与流式写入。独立文件编辑不持有 Workspace 块身份，
+通过 `text-file.ts` 的标准 Tiptap schema 与官方 Markdown 扩展读写文件正文，边界见
+[Editor README](../../README.md#独立文件编辑)；不能把独立文件的解析结果写入 Workspace 持久化。
 
 它的目标很明确：
 

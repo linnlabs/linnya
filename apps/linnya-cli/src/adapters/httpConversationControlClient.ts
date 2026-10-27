@@ -134,7 +134,7 @@ export async function createHttpConversationControlClient(
           request.command,
         );
       }
-      const isMutation = request.command === 'send' || request.command === 'respond'
+      const isMutation = request.command === 'skills' || request.command === 'send' || request.command === 'respond'
         || request.command === 'resume'
         || request.command === 'stop'
         || (request.command === 'command_approvals' && request.action === 'reply')

@@ -9,21 +9,12 @@
  * - 所有文件系统操作、路径安全校验集中在此，工具层（SkillTool）不直接碰 fs。
  */
 
-import fs from 'fs';
-import path from 'path';
+import { listSkillFiles, readSkillText, readSkillTextLossy } from './shared/skillFiles';
 import type { SkillMetadata, SkillSource } from './types';
 import { discoverSkills } from './discovery';
 import { parseSkillFile } from './frontmatter';
 import { filterAvailableSkills } from './availability';
-
-// ─── 资源操作限制 ───
-
-/** 单个资源文件大小上限（512KB） */
-const MAX_RESOURCE_SIZE_BYTES = 512 * 1024;
-/** 资源列表最大条目数 */
-const MAX_RESOURCE_LIST = 50;
-/** 目录递归最大深度 */
-const MAX_RESOURCE_DEPTH = 3;
+import { SKILL_AUTHORING_SKILL } from './functions/canAuthorSkills';
 
 // ─── Tier 2/3 返回类型 ───
 
@@ -46,10 +37,10 @@ export interface SkillContent {
  *
  * @returns XML 字符串，无可用 Skill 时返回空字符串
  */
-export function buildSkillCatalogXml(): string {
+export function buildSkillCatalogXml(includeAuthoring = false): string {
   const allSkills = filterAvailableSkills(discoverSkills());
 
-  const visibleSkills = allSkills.filter(s => !s.disableModelInvocation);
+  const visibleSkills = allSkills.filter(s => !s.disableModelInvocation && (includeAuthoring || s.name !== SKILL_AUTHORING_SKILL));
 
   if (visibleSkills.length === 0) {
     return '';
@@ -93,13 +84,7 @@ export function getSkillByName(name: string): SkillMetadata | undefined {
 export function loadSkillContent(name: string): SkillContent {
   const skill = requireSkill(name);
 
-  let raw: string;
-  try {
-    raw = fs.readFileSync(skill.location, 'utf-8');
-  } catch (e) {
-    throw new Error(`无法读取 Skill 文件 ${skill.location}: ${e instanceof Error ? e.message : String(e)}`);
-  }
-
+  const raw = readSkillText(skill.directory, 'SKILL.md');
   const parsed = parseSkillFile(raw, skill.location);
   if (!parsed) {
     throw new Error(`Skill 文件解析失败: ${skill.location}`);
@@ -135,25 +120,22 @@ export function listSkillResources(name: string): string[] {
 export function readSkillResource(name: string, resourcePath: string): string {
   const skill = requireSkill(name);
 
-  const baseDir = path.resolve(skill.directory);
-  const resolved = path.resolve(baseDir, resourcePath);
-  // 不能用 startsWith(baseDir) 直接判定，否则 /a/b2 会被 /a/b 误判为同前缀
-  if (resolved !== baseDir && !resolved.startsWith(baseDir + path.sep)) {
-    throw new Error(`资源路径不合法（不允许访问 Skill 目录外的文件）: ${resourcePath}`);
+  if (!scanResourceFiles(skill.directory).includes(resourcePath)) {
+    throw new Error('资源不在 Skill 支持文件清单中');
   }
+  return readSkillText(skill.directory, resourcePath);
+}
 
-  if (!fs.existsSync(resolved)) {
-    throw new Error(`资源文件不存在: ${resourcePath}（skill="${name}"）`);
+/**
+ * 供运行兼容性摘要使用：与 readSkillResource 共用清单与大小准入，但不因非法 UTF-8 抛错。
+ * 合法文本得到与 readSkillResource 完全相同的字符串，已有摘要不变。
+ */
+export function readSkillResourceForDigest(name: string, resourcePath: string): string {
+  const skill = requireSkill(name);
+  if (!scanResourceFiles(skill.directory).includes(resourcePath)) {
+    throw new Error('资源不在 Skill 支持文件清单中');
   }
-
-  const stat = fs.statSync(resolved);
-  if (stat.size > MAX_RESOURCE_SIZE_BYTES) {
-    throw new Error(
-      `资源文件过大（${stat.size} bytes，限制 ${MAX_RESOURCE_SIZE_BYTES} bytes）: ${resourcePath}（skill="${name}"）`
-    );
-  }
-
-  return fs.readFileSync(resolved, 'utf-8');
+  return readSkillTextLossy(skill.directory, resourcePath);
 }
 
 // ─── 内部辅助 ───
@@ -183,34 +165,7 @@ function requireSkill(name: string): SkillMetadata {
  * - 路径统一使用 / 分隔（跨平台一致性）。
  */
 function scanResourceFiles(dir: string): string[] {
-  const results: string[] = [];
-  walkResourceDir(dir, dir, results);
-  return results.slice(0, MAX_RESOURCE_LIST);
-}
-
-function walkResourceDir(baseDir: string, currentDir: string, results: string[], depth = 0): void {
-  if (depth > MAX_RESOURCE_DEPTH || results.length >= MAX_RESOURCE_LIST) return;
-
-  let entries: fs.Dirent[];
-  try {
-    entries = fs.readdirSync(currentDir, { withFileTypes: true });
-  } catch {
-    return;
-  }
-
-  for (const entry of entries) {
-    if (results.length >= MAX_RESOURCE_LIST) break;
-    if (entry.name.startsWith('.')) continue;
-
-    const fullPath = path.join(currentDir, entry.name);
-    const relativePath = path.relative(baseDir, fullPath).split(path.sep).join('/');
-
-    if (entry.isDirectory()) {
-      walkResourceDir(baseDir, fullPath, results, depth + 1);
-    } else if (entry.name !== 'SKILL.md') {
-      results.push(relativePath);
-    }
-  }
+  return listSkillFiles(dir).filter(file => file !== 'SKILL.md');
 }
 
 function escapeXmlAttr(str: string): string {

@@ -1,4 +1,10 @@
-/* CodeBlockView 只承接代码块外层交互控件，代码正文样式仍由 Block.css 统一管理。 */
+/* CodeBlockView 拥有外层控件及滚动委托；代码正文样式仍由 Block.css 统一管理。 */
+.code-block-outer[data-scroll-mode='external'] .code-block pre {
+  width: max-content;
+  min-width: 100%;
+  overflow: visible;
+}
+
 .code-block-outer .code-block-controls {
   position: absolute;
   top: 6px;

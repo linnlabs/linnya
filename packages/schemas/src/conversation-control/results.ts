@@ -1,3 +1,4 @@
+import { ConversationControlSkillsResponseSchema } from './skills';
 import { z } from 'zod';
 import { ConversationControlAuditLlmResponsesSchema } from './llmResponseAudit';
 import { CommandApprovalPendingProjectionV1Schema } from '../commands';
@@ -617,6 +618,7 @@ export const ConversationControlErrorCodeSchema = z.enum([
   'protocol_incompatible',
   'unauthorized',
   'capability_unavailable',
+  'skill_conflict',
   'conversation_busy',
   'no_active_run',
   'run_not_found',
@@ -636,6 +638,7 @@ export const ConversationControlErrorResponseSchema = z
     ok: z.literal(false),
     command: z
       .enum([
+        'skills',
         'send',
         'models',
         'projects',
@@ -662,6 +665,7 @@ export const ConversationControlErrorResponseSchema = z
   .strict();
 
 export const ConversationControlCommandResponseSchema = z.union([
+  ConversationControlSkillsResponseSchema,
   ConversationControlSendResponseSchema,
   ConversationControlModelsResponseSchema,
   ConversationControlProjectsResponseSchema,

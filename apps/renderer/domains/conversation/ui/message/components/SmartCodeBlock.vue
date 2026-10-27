@@ -26,31 +26,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { getLowlight } from '../../../../editor/core/lowlight';
+import { getLowlight } from '@/domains/editor/code-highlighting';
 import { CopyIcon } from '@linnya/renderer-ui/icons';
 import { useConversationLocalization } from '../../useConversationLocalization';
-import typescript from 'highlight.js/lib/languages/typescript';
-import json from 'highlight.js/lib/languages/json';
-import sql from 'highlight.js/lib/languages/sql';
-import java from 'highlight.js/lib/languages/java';
-import cpp from 'highlight.js/lib/languages/cpp';
-import csharp from 'highlight.js/lib/languages/csharp';
-import go from 'highlight.js/lib/languages/go';
-import rust from 'highlight.js/lib/languages/rust';
-import php from 'highlight.js/lib/languages/php';
-import ruby from 'highlight.js/lib/languages/ruby';
-import swift from 'highlight.js/lib/languages/swift';
-import kotlin from 'highlight.js/lib/languages/kotlin';
-import scala from 'highlight.js/lib/languages/scala';
-import yaml from 'highlight.js/lib/languages/yaml';
-import dockerfile from 'highlight.js/lib/languages/dockerfile';
-import powershell from 'highlight.js/lib/languages/powershell';
-import r from 'highlight.js/lib/languages/r';
-import markdown from 'highlight.js/lib/languages/markdown';
-import diff from 'highlight.js/lib/languages/diff';
-import c from 'highlight.js/lib/languages/c';
-import xml from 'highlight.js/lib/languages/xml';
-
 /**
  * 功能 (What): 智能代码块组件，使用项目共享的lowlight配置进行语法高亮
  * 输入 (Input): code - 代码内容，language - 编程语言（可选），isStreaming - 是否正在流式传输（可选）
@@ -71,45 +49,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const { conversationMessage } = useConversationLocalization();
 
-// 使用项目中已配置好的lowlight实例，并扩展更多语言支持
+// 高亮语言由 Editor owner 统一注册，组件挂载不再改变共享语言表。
 const lowlight = getLowlight();
-
-// 扩展注册更多语言，支持与 CodeBlockView 相同的语言列表
-lowlight.register({
-  // TypeScript 相关
-  typescript: typescript,
-  ts: typescript,
-  
-  // 数据格式
-  json: json,
-  yaml: yaml,
-  xml: xml, // xml 已在基础配置中，这里确保可用
-  
-  // 数据库
-  sql: sql,
-  
-  // 编译型语言
-  java: java,
-  c: c,
-  cpp: cpp,
-  csharp: csharp,
-  go: go,
-  rust: rust,
-  swift: swift,
-  kotlin: kotlin,
-  scala: scala,
-  
-  // 脚本语言  
-  php: php,
-  ruby: ruby,
-  r: r,
-  powershell: powershell,
-  
-  // 文档和配置
-  markdown: markdown,
-  dockerfile: dockerfile,
-  diff: diff
-});
 
 /**
  * 功能 (What): 语言别名映射，确保常见的错误语言名称被正确映射

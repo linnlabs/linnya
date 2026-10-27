@@ -13,6 +13,8 @@ export interface SettingsContribution {
   readonly group: SettingsContributionGroup;
   readonly order: number;
   readonly component: Component;
+  /** 页面自带标题与操作区时由页面绘制页头；省略时沿用设置壳的标题。 */
+  readonly headerMode?: 'shell' | 'page';
   readonly isAvailable?: () => boolean;
 }
 

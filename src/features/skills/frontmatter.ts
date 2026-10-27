@@ -10,6 +10,8 @@
  * - 对格式错误采用跳过 + 警告策略。
  */
 
+import { parseDocument } from 'yaml';
+import { z } from 'zod';
 import type { SkillFrontmatter, ParsedSkillFile } from './types';
 
 const FRONTMATTER_DELIMITER = '---';
@@ -53,7 +55,7 @@ export function parseSkillFile(
   const yamlContent = trimmed.slice(afterFirstDelimiter, secondDelimiterIndex).trim();
   const body = trimmed.slice(secondDelimiterIndex + 1 + FRONTMATTER_DELIMITER.length).trim();
 
-  const parsed = parseYamlWithNesting(yamlContent);
+  const parsed = parseFrontmatterYaml(yamlContent);
   if (!parsed) {
     console.warn(`[Skill] ${filePath}: frontmatter 解析失败，跳过`);
     return null;
@@ -118,18 +120,9 @@ export function parseSkillFile(
   const allowedTools = typeof parsed['allowed-tools'] === 'string' ? parsed['allowed-tools'].trim() || undefined : undefined;
 
   // metadata 嵌套字段
-  const rawMetadata = parsed['metadata'];
-  let metadata: Record<string, string> | undefined;
-  if (rawMetadata && typeof rawMetadata === 'object' && !Array.isArray(rawMetadata)) {
-    metadata = {};
-    for (const [k, v] of Object.entries(rawMetadata as Record<string, unknown>)) {
-      metadata[k] = String(v);
-    }
-  }
+  const metadata = parsed['metadata'];
 
-  const disableModelInvocation =
-    parsed['disable-model-invocation'] === 'true' ||
-    parsed['disable-model-invocation'] === true;
+  const disableModelInvocation = parsed['disable-model-invocation']?.trim().toLowerCase() === 'true';
 
   const frontmatter: SkillFrontmatter = {
     name,
@@ -144,90 +137,31 @@ export function parseSkillFile(
   return { frontmatter, body };
 }
 
-// ─── YAML 解析器 ───
+// YAML 用 failsafe schema 解析：所有标量保持原文字符串（`version: 1.0` 不会变成数字 1），
+// 块标量、引号与重复 key 仍由完整 YAML 解析器处理。可选字段格式不对时只忽略该字段，
+// 不让整个 Skill 因为 metadata 或 allowed-tools 的写法而不可用。
+const scalar = z.string();
+const FrontmatterFields = z.object({
+  name: scalar,
+  description: scalar,
+  license: scalar.optional().catch(undefined),
+  compatibility: scalar.optional().catch(undefined),
+  metadata: z.record(scalar).optional().catch(undefined),
+  'allowed-tools': z.union([scalar, z.array(scalar)])
+    .transform(value => (Array.isArray(value) ? value.join(' ') : value))
+    .optional().catch(undefined),
+  'disable-model-invocation': scalar.optional().catch(undefined),
+}).passthrough();
 
-type YamlValue = string | boolean | Record<string, string | boolean>;
-
-/**
- * 支持一层嵌套的轻量 YAML 解析器
- *
- * 中文备注：
- * - 顶层：key: value（字符串/布尔）
- * - 嵌套：key:\n  sub-key: value（用于 metadata 字段）
- * - 不支持数组、多层嵌套等复杂结构（Skill frontmatter 不需要）
- */
-function parseYamlWithNesting(content: string): Record<string, YamlValue> | null {
-  const result: Record<string, YamlValue> = {};
-  const lines = content.split('\n');
-  let currentMapKey: string | null = null;
-  let currentMap: Record<string, string | boolean> = {};
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmedLine = line.trim();
-
-    if (!trimmedLine || trimmedLine.startsWith('#')) continue;
-
-    // 检测是否是缩进行（属于嵌套 map）
-    const isIndented = line.startsWith('  ') || line.startsWith('\t');
-
-    if (isIndented && currentMapKey) {
-      // 解析嵌套 key-value
-      const colonIdx = trimmedLine.indexOf(':');
-      if (colonIdx === -1) continue;
-      const subKey = trimmedLine.slice(0, colonIdx).trim();
-      const subValue = stripQuotes(trimmedLine.slice(colonIdx + 1).trim());
-      if (subKey) {
-        currentMap[subKey] = toBooleanOrString(subValue);
-      }
-      continue;
-    }
-
-    // 非缩进行：如果之前有 map 在构建，先保存
-    if (currentMapKey) {
-      if (Object.keys(currentMap).length > 0) {
-        result[currentMapKey] = currentMap;
-      }
-      currentMapKey = null;
-      currentMap = {};
-    }
-
-    // 顶层 key: value
-    const colonIdx = trimmedLine.indexOf(':');
-    if (colonIdx === -1) continue;
-
-    const key = trimmedLine.slice(0, colonIdx).trim();
-    const rawValue = trimmedLine.slice(colonIdx + 1).trim();
-
-    if (!key) continue;
-
-    if (rawValue === '' || rawValue === undefined) {
-      // 值为空，可能是嵌套 map 的开始（如 metadata:）
-      currentMapKey = key;
-      currentMap = {};
-    } else {
-      result[key] = toBooleanOrString(stripQuotes(rawValue));
-    }
+function parseFrontmatterYaml(content: string): z.infer<typeof FrontmatterFields> | null {
+  const document = parseDocument(content, { uniqueKeys: true, schema: 'failsafe' });
+  if (document.errors.length > 0) return null;
+  try {
+    const raw: unknown = document.toJS({ maxAliasCount: 50 });
+    const parsed = FrontmatterFields.safeParse(raw);
+    return parsed.success ? parsed.data : null;
+  } catch (error: unknown) {
+    console.warn('[Skill] YAML 引用无法解析:', error instanceof Error ? error.message : 'invalid_yaml');
+    return null;
   }
-
-  // 循环结束后保存最后一个 map
-  if (currentMapKey && Object.keys(currentMap).length > 0) {
-    result[currentMapKey] = currentMap;
-  }
-
-  return Object.keys(result).length > 0 ? result : null;
-}
-
-function stripQuotes(value: string): string {
-  if ((value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))) {
-    return value.slice(1, -1);
-  }
-  return value;
-}
-
-function toBooleanOrString(value: string): string | boolean {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return value;
 }

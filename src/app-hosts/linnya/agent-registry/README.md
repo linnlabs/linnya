@@ -597,3 +597,5 @@ Graph 步、inherit_parent 模型策略，工具包括普通 Workspace 读写、
 
 
 协调角色可以使用 `allowedSubagentTypes` 冻结直接委派范围。subagent contribution 可补充 caller 限制、child 自身委派范围与环境继承策略；模型不能传这些授权字段。普通根角色未声明限制时沿用原目录，叶子的工具范围不因此增加。嵌套角色使用自己的 caller 身份和范围，不沿用父授权。
+
+Default 另提供 `skill_manage` 来安装、卸载、升级和编辑当前用户 Skill，内置 `skill-creator` 提供操作与第三方审查指引。该能力由 definition 自己的 `availableTools` 是否包含 `skill_manage` 决定（目录披露、恢复摘要和运行时工具判断共用 `features/skills/functions/canAuthorSkills.ts`）：复用 Default 配置的实验/旧评审角色排除管理工具，因此目录和恢复摘要也不披露 creator。管理不改变研究提示和原用户 Skill 的既有范围；读取/管理合同见 Skills owner。

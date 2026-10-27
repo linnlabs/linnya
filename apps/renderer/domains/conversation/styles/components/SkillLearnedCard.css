@@ -7,7 +7,7 @@
 .skill-learned-card__text {
   display: block;
   font-size: var(--font-size-footnote);
-  line-height: var(--line-height-normal);
+  line-height: var(--line-height-footnote);
   color: var(--color-text-placeholder);
   white-space: nowrap;
   overflow: hidden;

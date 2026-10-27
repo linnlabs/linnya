@@ -1,0 +1,9 @@
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
+import type { SkillManagementState } from '../definitions/skillManagementState';
+
+export const useSkillManagementStore = defineStore('skill-management', () => {
+  const state = ref<SkillManagementState>({ skills: [], loading: true, busy: false, preview: null, detail: null, feedback: null });
+  function apply(update: Partial<SkillManagementState>): void { state.value = { ...state.value, ...update }; }
+  return { state, apply };
+});

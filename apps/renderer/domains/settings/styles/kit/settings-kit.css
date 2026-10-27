@@ -3,6 +3,27 @@
 
 /* --- Page --- */
 
+.settings-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.settings-page-title {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  color: var(--color-text-primary);
+}
+
+.settings-page-actions {
+  flex-shrink: 0;
+}
+
 .settings-page-description {
   margin: 0 0 var(--space-6);
   font-size: var(--font-size-sm);
@@ -17,7 +38,7 @@
  * 这样页面级的操作区 / 反馈条夹在两段之间时，下一段依然与上文分开。
  */
 .settings-section + .settings-section,
-.settings-page > * + .settings-section {
+.settings-page > :not(.settings-page-header) + .settings-section {
   padding-top: 26px;
   margin-top: 26px;
   border-top: 1px solid var(--settings-hairline, var(--color-border-default));

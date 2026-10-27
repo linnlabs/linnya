@@ -530,3 +530,14 @@ capability 时会明确拒绝。
 写入后若构建失败，文档可能保存为 draft；`read_file` 的 `sourceOrigin: draft`
 表示当前草稿源码，而版本 ID/编号仍对应最后成功 revision。这不代表成功构建；请结合 error
 diagnostics 与 build failure 判断，并在修复后重新写入。
+
+
+## 用户 Skill 文件管理
+
+`skills` 是追加能力，沿用协议 5 的扩展 capability 握手；旧 Host 未公告时返回能力不可用。命令通过现有本机控制桥调用 Skills owner，不读取数据库，也不启动另一 Runtime。连接描述选择当前实例，来源目录在 CLI 转为本机绝对路径，由同机 Host 读取，无上传协议。
+
+支持 `skills list`、`skills read NAME [PATH]`、`skills validate DIRECTORY`、`skills install NAME --from DIRECTORY`、`skills update NAME --from DIRECTORY` 和 `skills remove NAME`（也接受 uninstall）。升级会替换完整目录，包括本地改动，不保留历史；需要旧版就卸载后安装指定来源。
+
+直接文件编辑用 `skills edit NAME [PATH] --old TEXT --new TEXT`；原文须唯一匹配。整文件写入用 `skills write NAME [PATH] --from FILE`，CLI 先读当前文件再提交原文条件，外部修改返回冲突（退出码 6）。新支持文件加 `--create`，目标已存在仍拒绝；支持文件删除用 `skills delete_file NAME PATH`。内置/插件来源只可读，不能写入。
+
+错误沿用现有退出码：输入/内容错误 2，连接 3，协议 4，未授权 5，当前文件/目标冲突 6，能力不可用 7，内部失败 8。传输超时不自动重试写入；先检查当前文件。列表与读取返回严格 schema；升级和卸载没有撤销。Agent 的正式写入入口是 Default 专用 skill_manage，它使用冻结权限，不需要取得这个外部控制 CLI 的通用凭据。

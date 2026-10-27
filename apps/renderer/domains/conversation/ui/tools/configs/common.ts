@@ -41,6 +41,7 @@ import { createStaticToolCompactStepProjector } from '../compact-step/functions/
 
 const compactStep = {
   skill: createStaticToolCompactStepProjector('conversation.tool.skill.compact'),
+  skillManage: createStaticToolCompactStepProjector('conversation.tool.skillManage.compact'),
   ask: createStaticToolCompactStepProjector('conversation.tool.askQuestions.compact'),
   image: createStaticToolCompactStepProjector('conversation.tool.imageGeneration.compact'),
   imageRead: createStaticToolCompactStepProjector('conversation.tool.imageRead.title'),
@@ -154,6 +155,18 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
     compactStep: compactStep.skill,
     layout: {
       // 说明：该卡片自身提供灰底与间距，这里只移除外层 tool-card 的阴影/背景
+      hideBorder: true,
+      hideBackground: true,
+      noPadding: true,
+      fullWidth: true,
+    },
+  },
+  'skill_manage': {
+    component: SkillLearnedCard,
+    presentation: projectSkillPresentation,
+    compactStep: compactStep.skillManage,
+    layout: {
+      // 与 skill 一样只留一行轻量结论；失败仍由通用工具错误展示接管。
       hideBorder: true,
       hideBackground: true,
       noPadding: true,

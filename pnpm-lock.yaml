@@ -75,8 +75,8 @@ importers:
         specifier: ^0.10.0
         version: 0.10.0(encoding@0.1.13)
       '@linnlabs/linnkit':
-        specifier: 0.38.1
-        version: 0.38.1(vitest@4.1.11)(zod@3.25.76)
+        specifier: 0.40.0
+        version: 0.40.0(vitest@4.1.11)(zod@3.25.76)
       '@linnlabs/linnkit-provider-ai-sdk':
         specifier: workspace:*
         version: link:packages/linnkit-provider-ai-sdk
@@ -116,6 +116,12 @@ importers:
       '@tiptap/extension-hard-break':
         specifier: ^3.31.3
         version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))
+      '@tiptap/extension-image':
+        specifier: 3.31.3
+        version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))
+      '@tiptap/extension-list':
+        specifier: 3.31.3
+        version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)
       '@tiptap/extension-paragraph':
         specifier: ^3.31.3
         version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))
@@ -127,6 +133,9 @@ importers:
         version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))
       '@tiptap/extensions':
         specifier: ^3.31.3
+        version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)
+      '@tiptap/markdown':
+        specifier: 3.31.3
         version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)
       '@tiptap/pm':
         specifier: 3.31.3
@@ -368,6 +377,9 @@ importers:
       xml2js:
         specifier: ^0.6.2
         version: 0.6.2
+      yaml:
+        specifier: 2.8.3
+        version: 2.8.3
       yauzl:
         specifier: ^3.2.0
         version: 3.4.0
@@ -540,9 +552,6 @@ importers:
       wait-on:
         specifier: ^8.0.3
         version: 8.0.5
-      yaml:
-        specifier: 2.8.3
-        version: 2.8.3
 
   apps/linnya-benchmark:
     dependencies:
@@ -658,8 +667,8 @@ importers:
         version: 4.5.0(ai@7.0.140(zod@3.25.76))(zod@3.25.76)
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.38.1
-        version: 0.38.1(vitest@4.1.11)(zod@3.25.76)
+        specifier: 0.40.0
+        version: 0.40.0(vitest@4.1.11)(zod@3.25.76)
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -687,8 +696,8 @@ importers:
         specifier: workspace:*
         version: link:../schemas
       '@linnlabs/linnkit':
-        specifier: 0.38.1
-        version: 0.38.1(vitest@4.1.11)(zod@3.25.76)
+        specifier: 0.40.0
+        version: 0.40.0(vitest@4.1.11)(zod@3.25.76)
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -710,8 +719,8 @@ importers:
         version: 3.25.76
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.38.1
-        version: 0.38.1(vitest@4.1.11)(zod@3.25.76)
+        specifier: 0.40.0
+        version: 0.40.0(vitest@4.1.11)(zod@3.25.76)
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
@@ -762,8 +771,8 @@ importers:
         version: 11.1.1
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.38.1
-        version: 0.38.1(vitest@4.1.11)(zod@3.25.76)
+        specifier: 0.40.0
+        version: 0.40.0(vitest@4.1.11)(zod@3.25.76)
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
@@ -868,8 +877,8 @@ importers:
         version: 3.25.76
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.38.1
-        version: 0.38.1(vitest@4.1.11)(zod@3.25.76)
+        specifier: 0.40.0
+        version: 0.40.0(vitest@4.1.11)(zod@3.25.76)
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
@@ -1966,8 +1975,8 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@linnlabs/linnkit@0.38.1':
-    resolution: {integrity: sha512-lyexrfgDGEZHond3wNTbRarGz0LPGYSDX/dKzunYBS5YCMBVD+Bg6KKJdf22ua9RXnTGspUNVjAa6Wd4f1544g==}
+  '@linnlabs/linnkit@0.40.0':
+    resolution: {integrity: sha512-EitOJPExNy/coonej8vlfqg5qEKReOPLR7ZG/RUjSQfz7s/ieUXShfCDs98VwEaRnkS6XoZyEybrYBY82yGeaQ==}
     hasBin: true
     peerDependencies:
       vitest: ^2.0.0 || ^3.0.0 || ^4.0.0
@@ -2728,6 +2737,11 @@ packages:
       '@tiptap/core': 3.31.3
       '@tiptap/pm': 3.31.3
 
+  '@tiptap/extension-image@3.31.3':
+    resolution: {integrity: sha512-wWNG9BOtx2Cg4vwxPVGDIJ5DGX+ETkldeoaFJLB1NXUL4OPUiVTf8cHZ+hdYgJWP704BEB7jQgjlpvdi6VigTg==}
+    peerDependencies:
+      '@tiptap/core': 3.31.3
+
   '@tiptap/extension-italic@3.31.3':
     resolution: {integrity: sha512-ibGvdvAPyfxBMUVNRI43eb9h2/Jka1MRG5GtnGqbcCX/2+Y/y0EOfFrPQPkuYphiWQYyu9+FzPKMB/pjuaLuKQ==}
     peerDependencies:
@@ -2788,6 +2802,12 @@ packages:
 
   '@tiptap/extensions@3.31.3':
     resolution: {integrity: sha512-8sJNPGGUe8f3aDojcOW5cfVL7I5NrBbE0UWxG08qoi9Tea6qWbvQJsCR9tsrOapr/DaLr3kpbGZ9s1gEEfcNcA==}
+    peerDependencies:
+      '@tiptap/core': 3.31.3
+      '@tiptap/pm': 3.31.3
+
+  '@tiptap/markdown@3.31.3':
+    resolution: {integrity: sha512-rBbYSxasseUoaBo15C8Yoaqafo7mJJzxwAwV9Z1OpLBvOroW9nQ0EbOdqaSYRw3/d9pP71B/3LNSzKyfyy+dpQ==}
     peerDependencies:
       '@tiptap/core': 3.31.3
       '@tiptap/pm': 3.31.3
@@ -4881,6 +4901,11 @@ packages:
 
   marked@16.4.1:
     resolution: {integrity: sha512-ntROs7RaN3EvWfy3EZi14H4YxmT6A5YvywfhO+0pm+cH/dnSQRmdAmoFIc3B9aiwTehyk7pESH4ofyBY+V5hZg==}
+    engines: {node: '>= 20'}
+    hasBin: true
+
+  marked@17.0.6:
+    resolution: {integrity: sha512-gB0gkNafnonOw0obSTEGZTT86IuhILt2Wfx0mWH/1Au83kybTayroZ/V6nS25mN7u8ASy+5fMhgB3XPNrOZdmA==}
     engines: {node: '>= 20'}
     hasBin: true
 
@@ -7391,7 +7416,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@linnlabs/linnkit@0.38.1(vitest@4.1.11)(zod@3.25.76)':
+  '@linnlabs/linnkit@0.40.0(vitest@4.1.11)(zod@3.25.76)':
     dependencies:
       eventsource-parser: 3.1.0
       tiktoken: 1.0.22
@@ -7947,6 +7972,10 @@ snapshots:
       '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
       '@tiptap/pm': 3.31.3
 
+  '@tiptap/extension-image@3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))':
+    dependencies:
+      '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
+
   '@tiptap/extension-italic@3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))':
     dependencies:
       '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
@@ -7999,6 +8028,12 @@ snapshots:
     dependencies:
       '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
       '@tiptap/pm': 3.31.3
+
+  '@tiptap/markdown@3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)':
+    dependencies:
+      '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
+      '@tiptap/pm': 3.31.3
+      marked: 17.0.6
 
   '@tiptap/pm@3.31.3':
     dependencies:
@@ -10546,6 +10581,8 @@ snapshots:
       uc.micro: 2.1.0
 
   marked@16.4.1: {}
+
+  marked@17.0.6: {}
 
   matcher@3.0.0:
     dependencies:

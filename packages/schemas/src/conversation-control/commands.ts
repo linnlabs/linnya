@@ -1,3 +1,4 @@
+import { ConversationControlSkillsRequestSchema } from './skills';
 import { z } from 'zod';
 import { ConversationControlCommandApprovalsRequestSchema } from './commandApprovals';
 import { JsonValueSchema } from '../json-value';
@@ -217,6 +218,7 @@ export const ConversationControlToolsRequestSchema = z.union([
 
 // messages 自身按 window 判别，因此顶层使用 union；每个分支仍是 strict schema。
 export const ConversationControlCommandRequestSchema = z.union([
+  ConversationControlSkillsRequestSchema,
   ConversationControlSendRequestSchema,
   ConversationControlModelsRequestSchema,
   ConversationControlProjectsRequestSchema,

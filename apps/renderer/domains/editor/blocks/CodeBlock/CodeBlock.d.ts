@@ -4,6 +4,8 @@ import type { Node } from '@tiptap/core';
 export interface CodeBlockOptions {
   lowlight: unknown;
   HTMLAttributes: Record<string, unknown>;
+  allowLanguageSelection: boolean;
+  scrollMode: 'block' | 'external';
   [option: string]: unknown;
 }
 

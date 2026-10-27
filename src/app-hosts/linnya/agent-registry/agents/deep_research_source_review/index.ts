@@ -12,7 +12,10 @@ export const AGENT_DEFINITION: AgentDefinition = {
     '此历史研究入口已退役，不再接收新任务。新研究请使用“研究”（research_v1）；已有历史保留，暂停继续仍须通过原运行兼容检查。',
   description: '研究数字与来源校对（内部 CLI）',
   // 原件取得、执行计算与图片能力都走现有 Default 工具，不旁路 owner。
-  config: defaultAgent.config,
+  config: {
+    ...defaultAgent.config,
+    availableTools: defaultAgent.config.availableTools.filter(name => name !== 'skill_manage'),
+  },
   task: {
     systemPromptBuilder: () =>
       `${buildDefaultAgentSystemPrompt()}\n${SOURCE_REVIEW_RESPONSIBILITY_PROMPT}`,

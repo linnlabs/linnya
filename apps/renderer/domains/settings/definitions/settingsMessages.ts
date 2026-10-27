@@ -37,6 +37,7 @@ export type SettingsMessageKey =
   | 'settings.tabs.webSearch'
   | 'settings.tabs.commandPermission'
   | 'settings.tabs.storageSpace'
+  | 'settings.tabs.skills'
   | 'settings.commandPermission.title'
   | 'settings.commandPermission.loading'
   | 'settings.commandPermission.unavailable'

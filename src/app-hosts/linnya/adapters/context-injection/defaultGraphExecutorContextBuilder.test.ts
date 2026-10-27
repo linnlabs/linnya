@@ -214,9 +214,9 @@ describe('createDefaultGraphExecutorContextBuilder', () => {
     expect(result.promptBudget).toEqual({
       effectiveWindowTokens: 1_000,
       outputLimitTokens: 100,
-      inputBudgetTokens: 900,
+      inputBudgetTokens: 999,
       toolDefinitionTokens: 0,
-      messageBudgetTokens: 900,
+      messageBudgetTokens: 999,
     });
     expect(agentTaskResolver).toHaveBeenCalledWith('default');
   });
@@ -383,9 +383,9 @@ describe('createDefaultGraphExecutorContextBuilder', () => {
     expect(result.promptBudget).toEqual({
       effectiveWindowTokens: 256_000,
       outputLimitTokens: 16_384,
-      inputBudgetTokens: 239_616,
+      inputBudgetTokens: 255_999,
       toolDefinitionTokens: 384,
-      messageBudgetTokens: 239_232,
+      messageBudgetTokens: 255_615,
     });
   });
 
