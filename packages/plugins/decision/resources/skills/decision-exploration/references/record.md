@@ -81,6 +81,18 @@
 `recommendationStatus=current` 仅表示作者将该建议关联到当前输入版本；它不是事实或建议正确性的认证。数据变化后系统只标记待复核，判断是否改选仍由 Agent 与用户完成。只有已声明的计算和检查会自动重算，Shell 脚本输出不会被系统隐式重新执行。
 
 
+## 只读情景试算
+
+`linnya-decision simulate <id> --expected-revision <n> --json '<scenarios>'` 可在临时输入上重算；也可用 `--input relative-file.json`。JSON格式如下，id与inputId对应已有模型：
+
+```json
+{"cases":[{"id":"higher_price","label":"报价提高的假设","inputs":[{"inputId":"price","value":210}]}]}
+```
+
+回执绑定当前revision，含baseline及各case的全部计算/检查。`changes`列出原值与假设值，`references`列出进入哪些算式/检查；`unreferencedInputIds`表示未进入数值模型。情景彼此独立，不把上一情景的值带到下一项。未知/撤回不当作零，来源状态不因假设值而恢复。
+
+这些值没有发生：simulate不保存输入、不修改公式、不增加版本或更新建议。若费用变化应影响总额而改动未被公式引用，先对照原始条件判断模型是否漏项；修正模型用update，再对新revision试算。定性偏好未进入四则式本身合法。单个选项的检查失败后，还需看其他选项全部检查，试算结果不自动决定改选。
+
 ## 受管研究委托
 
 当一个未知需要完整调查而非几次查找时，先用当前 decision revision 准备委托：

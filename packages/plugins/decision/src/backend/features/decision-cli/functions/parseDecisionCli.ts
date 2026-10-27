@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ResearchRunArgsSchema } from '@app/schemas';
-import { DecisionModelSchema, DecisionRecommendationSchema, DecisionUpdateSchema } from '../../../../shared';
+import { DecisionModelSchema, DecisionRecommendationSchema, DecisionUpdateSchema, DecisionScenariosSchema } from '../../../../shared';
 
 export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision create --json '<model>'
@@ -11,6 +11,7 @@ export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision read <decision-id> [--revision <n>]
   linnya-decision update <decision-id> --expected-revision <n> --json '<update>'
   linnya-decision recommend <decision-id> --expected-revision <n> --json '<recommendation>'
+  linnya-decision simulate <decision-id> --expected-revision <n> --json '<scenarios>'
   For larger JSON, replace --json '<...>' with --input relative-file.json.
 Use skill decision-exploration references/record.md for JSON shapes.
 Commands operate only in the current project. read/recommendationStatus=current is not correctness certification.
@@ -51,13 +52,14 @@ export function parseDecisionCli(argv: readonly string[]) {
       revision: rest.length === 3 ? positiveInteger.parse(rest[2]) : undefined,
     } as const;
   }
-  if ((command === 'update' || command === 'recommend') && rest.length === 5
+  if ((command === 'update' || command === 'recommend' || command === 'simulate') && rest.length === 5
     && rest[1] === '--expected-revision' && (rest[3] === '--json' || rest[3] === '--input')) {
     const common = { id: decisionId.parse(rest[0]), expectedRevision: positiveInteger.parse(rest[2]) };
     if (rest[3] === '--input') {
       return { kind: 'file', filePath: z.string().min(1).parse(rest[4]), operation: { kind: command, ...common } } as const;
     }
     const payload = parseJson(z.string().parse(rest[4]));
+    if (command === 'simulate') return { kind: 'simulate', ...common, scenarios: DecisionScenariosSchema.parse(payload) } as const;
     return command === 'update'
       ? { kind: 'update', ...common, update: DecisionUpdateSchema.parse(payload) } as const
       : { kind: 'recommend', ...common, recommendation: DecisionRecommendationSchema.parse(payload) } as const;
@@ -80,6 +82,9 @@ export function parseDecisionFilePayload(
   const { id, expectedRevision } = command.operation;
   if (command.operation.kind === 'research_prepare') {
     return { kind: 'research_prepare', id, expectedRevision, scope: ResearchRunArgsSchema.parse(payload) };
+  }
+  if (command.operation.kind === 'simulate') {
+    return { kind: 'simulate', id, expectedRevision, scenarios: DecisionScenariosSchema.parse(payload) };
   }
   return command.operation.kind === 'update'
     ? { kind: 'update', id, expectedRevision, update: DecisionUpdateSchema.parse(payload) }

@@ -39,7 +39,7 @@ export const decisionPluginCli: BackendPluginCliContribution = {
       plan: {
         access: {
           internalDataAccess: 'required',
-          conversationFiles: command.kind === 'read' || command.kind === 'list' ? 'none' : 'write',
+          conversationFiles: command.kind === 'read' || command.kind === 'list' || command.kind === 'simulate' ? 'none' : 'write',
           externalFiles: 'denied', network: 'denied', guiControl: 'denied', localIpcControl: 'denied',
         },
         async execute(context) {

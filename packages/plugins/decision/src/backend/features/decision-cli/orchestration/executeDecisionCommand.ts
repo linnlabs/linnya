@@ -6,6 +6,7 @@ import { DECISION_CLI_HELP } from '../functions/parseDecisionCli';
 import {
   validateDecisionModel, projectDecisionRecord, recordDecisionRecommendation,
   updateDecisionRecord, createDecisionRecordRepository,
+  simulateDecisionScenarios,
 } from '../../decision-record';
 
 export function executeDecisionCommand(
@@ -32,6 +33,7 @@ export function executeDecisionCommand(
     return projectDecisionRecord(record);
   }
   const current = repository.read(command.id);
+  if (command.kind === 'simulate') return simulateDecisionScenarios(current, command.expectedRevision, command.scenarios);
   const record = command.kind === 'update'
     ? updateDecisionRecord(current, command.update)
     : recordDecisionRecommendation(current, command.recommendation);

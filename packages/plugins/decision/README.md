@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.3.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.4.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -58,3 +58,11 @@ recommend 可选 numericBasis：calculationIds 指向既有计算，boundaries �
 建议当前时引用必须存在且相关；条件更新后保留旧内容，但 recommendationBasis 只给 needs_review 与旧输入版本，不用新模型解释旧引用。历史版本读取重建该历史版数值。qualitative/旧建议没有 numericBasis 时返回 null；这是 schemaVersion=1 的可选加法，不迁移或补造历史内容。未新增表、Host SDK、基础工具或工作流引擎。
 
 业务回归 decisionNumericBasis.integration.test.ts 覆盖预算与出发边界、严格越界、原建议失效和SQLite重开、引用删除/拒绝、未知/撤回与不支持的模型。通过程序回归只证明数值投影合同，不证明 Agent 实际采用了它，更不证明来源、模型或全文建议正确。
+
+## 只读情景试算
+
+simulate接受当前expected revision与若干cases，只允许对已有输入id假设不同的value。每个情景都从同一版模型出发，重新计算全部选项的既有算式和检查，返回基准结果、实际依赖和unreferencedInputIds。未引用是依赖事实，偏好或范围外输入也可以合法不参与数值模型，不能由此直接判业务模型有错。
+
+该操作不调用update/recommend、不增加版本、不改变事实、公式、来源状态或旧建议。假设值不恢复withdrawn输入；需要确认新事实或修正模型时仍须显式update。结果绑定basedOnRevision/inputRevision，不能冒充当前建议或来源认证。用文件传入JSON时沿既有conversationFiles=write的CLI bridge合同读取，未扩大Host权限枚举；实现只读文件并在内存求值。内联simulate声明不访问会话文件。
+
+当前仍不包含一般求解、自动选项排序或模型语义认证。业务回归见decisionScenarios.integration.test.ts，覆盖漏项显露与显式修正、共享条件/边界点、情景隔离、未知/撤回、版本/项目隔离和正式文件bridge；既有记录与建议必须逐字不变。

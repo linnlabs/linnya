@@ -2,3 +2,4 @@ export { projectDecisionRecord, recordDecisionRecommendation, updateDecisionReco
 export { validateDecisionModel } from './functions/evaluateDecisionModel';
 export { createDecisionRecordRepository } from './persistence/decisionRecordRepository';
 export { DecisionFailure } from './definitions/decisionFailure';
+export { simulateDecisionScenarios } from './functions/simulateDecisionScenarios';
