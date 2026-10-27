@@ -5,3 +5,4 @@ export { DecisionFailure } from './definitions/decisionFailure';
 export { simulateDecisionScenarios } from './functions/simulateDecisionScenarios';
 export { compareDecisionRecords } from './functions/compareDecisionRecords';
 export { planDecisionAction, resolveDecisionAction, withdrawDecisionActionReport } from './functions/recordDecisionAction';
+export { checkDecisionOptions } from './functions/checkDecisionOptions';

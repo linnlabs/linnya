@@ -11,6 +11,7 @@
 当前主要覆盖：
 
 - Conversation API DTO。
+- 当前 root 输入的有界引语 DTO（事件身份、原输入文本 hash 与原句）；核对流程归 App Host，不代表事实或授权认证。
 - Conversation CLI 与 App bridge 的版本化 command、response、handshake 和连接描述合同。
 - Conversation UI message、tool message 与稳定身份合同。
 - 内置 Agent prompt key 与配置合同。

@@ -9,6 +9,7 @@ import { executeDecisionCommand } from '../features/decision-cli/orchestration/e
 import { parseDecisionCli } from '../features/decision-cli/functions/parseDecisionCli';
 import { decisionPluginCli } from '../features/decision-cli/orchestration/prepareDecisionCli';
 import { remoteOfferModel, remoteOfferRecommendation } from './fixtures/remoteOffer';
+import { createDecisionRecordRepository } from '../features/decision-record';
 
 const plan: DecisionActionPlan = { label: '询问适用确认', purpose: '补足影响选择的未知', inputIds: ['a_remote'], executor: 'user', estimatedCost: '预计5分钟，0CNY' };
 const result: DecisionActionResolution = { outcome: 'completed', summary: '用户已取得适用确认', origin: '合成用户本轮报告，未独立核验', actualCost: '实际3分钟，0CNY', update: { reason: '问询带回确认', inputs: [{ id: 'a_remote', label: 'A有适用的全远程书面确认', kind: 'fact', value: true, origin: '合成用户报告', status: 'available' }] } };
@@ -26,7 +27,7 @@ describe('action plans and feedback through CLI and SQLite', () => {
   function run(argv: readonly string[], project = 'p') {
     const command = parseDecisionCli(argv);
     if (command.kind === 'file') throw new Error('Use the admitted bridge for files');
-    return executeDecisionCommand(command, db, project);
+    return executeDecisionCommand(command, db, project, { kind: 'agent_report', conversationId: 'synthetic', agentRunId: 'synthetic-run' });
   }
   function read(id: string, revision?: number) {
     const output = run(['read', id, ...(revision ? ['--revision', String(revision)] : [])]);
@@ -50,6 +51,28 @@ describe('action plans and feedback through CLI and SQLite', () => {
   function withdraw(id: string, actionId: string, revision: number, payload: unknown = { reason: '报告对应错了行动', origin: '用户明确更正' }, project = 'p') {
     return run(['action', 'withdraw', id, actionId, '--expected-revision', String(revision), '--json', JSON.stringify(payload)], project);
   }
+
+  it('keeps actual Agent identity separate from origin text, rejects forged provenance, and labels old reports unbound', () => {
+    const record = create(); const action = planned(record.id, 1);
+    const before = read(record.id);
+    expect(() => resolve(record.id, action.id, 2, { ...result, provenance: { kind: 'conversation_input_quote' } })).toThrow();
+    expect(read(record.id)).toEqual(before);
+    const command = parseDecisionCli(['action', 'resolve', record.id, action.id, '--expected-revision', '2', '--json', JSON.stringify(result)]);
+    if (command.kind === 'file') throw new Error('Inline expected');
+    expect(() => executeDecisionCommand(command, db, 'p')).toThrow('Host-supplied provenance');
+    resolve(record.id, action.id, 2);
+    expect(read(record.id).record.actions?.[0]?.result?.provenance).toEqual({ kind: 'agent_report', conversationId: 'synthetic', agentRunId: 'synthetic-run' });
+    const current = read(record.id).record;
+    const legacy = { ...current, revision: 4, actions: current.actions?.map(item => {
+      if (!item.result) throw new Error('Result expected');
+      const oldResult = { ...item.result };
+      delete oldResult.provenance;
+      return { ...item, result: oldResult };
+    }) };
+    createDecisionRecordRepository(db, 'p').append(legacy, 3);
+    expect(read(record.id).actionStates).toMatchObject([{ reportSource: 'unbound', withdrawalSource: null }]);
+    expect(read(record.id, 3).actionStates).toMatchObject([{ reportSource: 'agent_report' }]);
+  });
 
   it('keeps a plan separate from execution, atomically receives its facts, and requires a fresh recommendation', () => {
     const record = create();
@@ -148,7 +171,7 @@ describe('action plans and feedback through CLI and SQLite', () => {
       fs.writeFileSync(path.join(directory, filename), content);
       const prepared = decisionPluginCli.prepare({ argv: [...argv, '--input', filename], conversationRoot: directory, invocationId: filename });
       if (prepared.status !== 'ready') throw new Error('Expected admission');
-      const reply = await prepared.plan.execute({ conversationId: 'synthetic', projectId: 'p', signal: new AbortController().signal, hostContext: { databaseService: { getDb: () => db } } });
+      const reply = await prepared.plan.execute({ conversationId: 'synthetic', agentRunId: 'synthetic-run', projectId: 'p', signal: new AbortController().signal, hostContext: { databaseService: { getDb: () => db } } });
       expect(reply.exitCode).toBe(0);
       expect(fs.readFileSync(path.join(directory, filename), 'utf8')).toBe(content);
       return reply;
@@ -159,7 +182,7 @@ describe('action plans and feedback through CLI and SQLite', () => {
     await fileCommand(['action', 'resolve', record.id, action.id, '--expected-revision', '2'], 'result.json', result);
     expect(read(record.id).record.actions?.[0]?.result?.outcome).toBe('completed');
     await fileCommand(['action', 'withdraw', record.id, action.id, '--expected-revision', '3'], 'withdraw.json', { reason: '用户更正报告', origin: '用户本轮' });
-    expect(read(record.id).actionStates).toEqual([{ id: action.id, state: 'report_withdrawn' }]);
+    expect(read(record.id).actionStates).toMatchObject([{ id: action.id, state: 'report_withdrawn' }]);
   });
 
   it('withdraws a report explicitly without undoing real model facts or erasing the old completion', () => {
@@ -174,9 +197,9 @@ describe('action plans and feedback through CLI and SQLite', () => {
     expect(after.record.revision).toBe(5);
     expect(after.record.inputRevision).toBe(3);
     expect(after.recommendationStatus).toBe('needs_review');
-    expect(after.actionStates).toEqual([{ id: action.id, state: 'report_withdrawn' }]);
+    expect(after.actionStates).toMatchObject([{ id: action.id, state: 'report_withdrawn' }]);
     expect(after.record.actions?.[0]?.result).toMatchObject({ summary: result.summary, actualCost: result.actualCost, withdrawal: { reason: '报告对应错了行动', receivedAtRevision: 5 } });
-    expect(read(record.id, 3).actionStates).toEqual([{ id: action.id, state: 'reported_completed' }]);
+    expect(read(record.id, 3).actionStates).toMatchObject([{ id: action.id, state: 'reported_completed' }]);
     expect(read(record.id, 3).record.actions?.[0]?.result?.withdrawal).toBeUndefined();
     const delta = run(['compare', record.id, '--from', '4', '--to', '5']);
     if (typeof delta !== 'object' || delta === null || !('actionChanges' in delta)) throw new Error('Expected comparison');

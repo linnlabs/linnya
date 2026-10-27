@@ -25,3 +25,4 @@ export type * from './textMeasurement';
 export type * from './textUnitRuntime';
 export type * from './toolRuntime';
 export type * from './workspaceRuntime';
+export type * from './runInputQuote';

@@ -17,3 +17,4 @@
 - `conversation-runtime/`：在 Conversation routes 开放前，按固定顺序提交 Commands 与 Profiled Code Sandbox 两个生产 owner；它不依赖 Electron 或具体进程载体。
 
 - `research/`：主研究 Agent 的单次委派与交付用例，跨文档、引用和统一 child run 完成交接；旧固定调度仅服务已接纳运行恢复；不承载通用工作流产品或第二套运行状态机。
+- `run-input-provenance/`：协调原运行 descriptor 与正式输入事件，匹配当前 root 的有界原句；只提供输入出处，不认证事实、作者解释或执行授权。

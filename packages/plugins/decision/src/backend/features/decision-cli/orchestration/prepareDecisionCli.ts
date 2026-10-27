@@ -1,4 +1,5 @@
 import { createChildRunDeliveryReader, DocumentObservationUnavailableError } from '@plugin/backend/childRunDelivery';
+import { RunInputQuoteError } from '@plugin/backend/runInputQuote';
 import { executeResearchCommand } from '../../decision-research';
 import type { BackendPluginCliContribution } from '@plugin/backend/pluginCli';
 import type { PluginSqliteDatabasePort } from '@plugin/backend/toolRuntime';
@@ -7,6 +8,7 @@ import { DECISION_CLI_HELP, parseDecisionCli, parseDecisionFilePayload } from '.
 import { executeDecisionCommand } from './executeDecisionCommand';
 import { DecisionFailure } from '../../decision-record';
 import { readDecisionInputFile } from '../adapters/readDecisionInputFile';
+import { readReportProvenance } from '../adapters/readReportProvenance';
 
 interface DecisionHostContext {
   readonly databaseService: { getDb(): PluginSqliteDatabasePort };
@@ -39,7 +41,7 @@ export const decisionPluginCli: BackendPluginCliContribution = {
       plan: {
         access: {
           internalDataAccess: 'required',
-          conversationFiles: command.kind === 'read' || command.kind === 'list' || command.kind === 'simulate' || command.kind === 'compare' ? 'none' : 'write',
+          conversationFiles: command.kind === 'read' || command.kind === 'list' || command.kind === 'simulate' || command.kind === 'compare' || command.kind === 'check' ? 'none' : 'write',
           externalFiles: 'denied', network: 'denied', guiControl: 'denied', localIpcControl: 'denied',
         },
         async execute(context) {
@@ -63,7 +65,13 @@ export const decisionPluginCli: BackendPluginCliContribution = {
                 db: database, projectId, conversationId: context.conversationId, runId,
                 reader: await createChildRunDeliveryReader(context), signal: context.signal,
               });
-            } else output = executeDecisionCommand(resolved, database, projectId);
+            } else {
+              const provenance = resolved.kind === 'action_resolve'
+                ? await readReportProvenance(context, resolved.resolution.sourceQuote)
+                : resolved.kind === 'action_withdraw' ? await readReportProvenance(context, resolved.withdrawal.sourceQuote) : undefined;
+              context.signal.throwIfAborted();
+              output = executeDecisionCommand(resolved, database, projectId, provenance);
+            }
             return { exitCode: 0, stdout: `${JSON.stringify(output)}\n`, stderr: '' };
           } catch (error: unknown) {
             if (error instanceof ZodError || error instanceof SyntaxError) {
@@ -71,6 +79,9 @@ export const decisionPluginCli: BackendPluginCliContribution = {
             }
             if (error instanceof DocumentObservationUnavailableError) {
               return { exitCode: 3, stdout: '', stderr: `decision.not_found: ${error.message}\n` };
+            }
+            if (error instanceof RunInputQuoteError) {
+              return { exitCode: 3, stdout: '', stderr: `decision.input_quote_${error.code}: ${error.message}\n` };
             }
             if (!(error instanceof DecisionFailure)) throw error;
             return { exitCode: 3, stdout: '', stderr: `decision.${error.code}: ${error.message}\n` };

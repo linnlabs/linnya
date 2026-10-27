@@ -104,10 +104,12 @@ export const DecisionUpdateSchema = z.object({
 export type DecisionUpdate = z.infer<typeof DecisionUpdateSchema>;
 
 export const DecisionActionResolutionSchema = DecisionActionReportSchema.extend({
+  sourceQuote: z.string().min(1).max(2000).optional(),
   update: DecisionUpdateSchema.optional(),
 }).strict();
 export type DecisionActionResolution = z.infer<typeof DecisionActionResolutionSchema>;
 export const DecisionActionWithdrawalRequestSchema = DecisionActionWithdrawalSchema.extend({
+  sourceQuote: z.string().min(1).max(2000).optional(),
   update: DecisionUpdateSchema.optional(),
 }).strict();
 export type DecisionActionWithdrawalRequest = z.infer<typeof DecisionActionWithdrawalRequestSchema>;

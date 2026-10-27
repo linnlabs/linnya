@@ -15,6 +15,7 @@ import { decisionPluginCli } from '../decision/src/backend/features/decision-cli
 import { createResearchJobRepository } from '../decision/src/backend/features/decision-research/persistence/researchJobRepository';
 import { executeResearchCommand } from '../decision/src/backend/features/decision-research/orchestration/executeResearchCommand';
 import { DecisionRecordSchema } from '../decision/src/shared';
+import { readCurrentRunInputQuote } from 'src/plugin-sdk/backend/runInputQuote';
 import { createChildRunDeliveryReader } from 'src/plugin-sdk/backend/childRunDelivery';
 import { BaseTool, type ToolContext } from 'src/tools/types';
 import { SubagentTool } from 'src/tools/agent_control/subrun/subagent/subagentTool';
@@ -162,6 +163,16 @@ afterEach(async () => {
   rmSync(directory, { recursive: true, force: true });
 });
 describe('decision -> full research -> leaf reviews -> version-bound delivery', () => {
+  it('真实研究叶子的委派输入不能冒充根会话用户原句', async () => {
+    let checked = false;
+    beforeRead = async context => {
+      if (context.callerAgentId !== 'research_source_review_v1') return;
+      await expect(readCurrentRunInputQuote({ hostContext: context, conversationId, projectId, agentRunId: context.runId, signal: new AbortController().signal }, '核对课程')).rejects.toThrow('root run');
+      checked = true;
+    };
+    await open([...prefix(), ...suffix()]); await seed(); await start();
+    expect(checked).toBe(true);
+  });
   it('真实三层树与 TaskState，接回正式文件版本；重复接回无模型调用，后续编辑标记失效', async () => {
     await open([...prefix(), ...suffix()]); await seed(); await start();
     fixture.ai.assertAllTurnsConsumed();
@@ -203,7 +214,7 @@ describe('decision -> full research -> leaf reviews -> version-bound delivery', 
     const action = DecisionRecordSchema.parse(output.record).actions?.[0];
     if (!action) throw new Error('Expected planned action');
     executeDecisionCommand({ kind: 'action_resolve', id: decisionId, actionId: action.id, expectedRevision: 2,
-      resolution: { outcome: 'completed', summary: '用户询问后暂未取得新数据', origin: '合成用户报告', actualCost: '实际3分钟' } }, fixture.db, projectId);
+      resolution: { outcome: 'completed', summary: '用户询问后暂未取得新数据', origin: '合成用户报告', actualCost: '实际3分钟' } }, fixture.db, projectId, { kind: 'agent_report', conversationId, agentRunId: createResearchJobRepository(fixture.db, projectId).read(requestId).runId });
     expect(await view()).toMatchObject({ status: 'needs_review', changedInputs: true, request: { inputRevision: 1 } });
   });
   it('第二评审中断并重开 SQLite 后沿原三层树续跑，首评与 prepare 不重复', async () => {

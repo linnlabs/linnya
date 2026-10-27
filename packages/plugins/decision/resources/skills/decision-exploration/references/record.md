@@ -207,3 +207,12 @@ update有实际模型变化时才提供，沿上述update格式；新发现选�
 可加update显式修正受影响的模型输入，沿相同update格式。撤回不自动删除、修改或回滚模型事实和费用；真实发生的支出仍保留，错误转述的输入则按更正说明修改或标为withdrawn。查看原报告receivedAtRevision及历史模型，核对其当时带入的内容。
 
 read的actionStates分开planned、reported_completed、reported_cancelled和report_withdrawn；完整报告及withdrawal在record.actions，旧版不变。撤回也推进inputRevision、使旧建议needs_review；随后重新判断并recommend。程序只记录提交者的更正，不认证执行或事实。已接过结果的同一action不能再次resolve；确有新行动再显式plan，不用重复提交抹掉原记录。
+
+
+## 报告出处与只读条件复核
+
+结果与更正来自本轮输入时，在resolve/withdraw JSON中加sourceQuote，摘取本轮原句（1–2000字符）。Host仅规范化空白作精确匹配；失败后按当前原话修正。provenance及事件身份由Host生成，载荷不接受自填。无sourceQuote时标为agent_report；origin仍是作者说明。历史缺少出处显示unbound。
+
+conversation_input_quote只表示原句出现在本次接纳的用户角色输入；核对summary与原句的含义、人数、金额和行动对应关系仍由作者完成。它不证明真实执行或人工认证。撤回提供本轮更正原句，原报告及原出处保留。摘录随决策记录保存，不随原会话删除而自动消失。
+
+在明确准备比较/执行的候选上，用linnya-decision check <id> --expected-revision <n> --json '{"optionIds":["a","b"]}'读取同版全部声明条件；也支持--input。返回blocked、undetermined或declared_checks_pass，并列具体检查。失败优先；未知/撤回/无检查不通过。它不改变记录，authorization始终not_evaluated。检查通过仍须判断真实条件、偏好及执行权限；不能把被预算拦下的备选写成可直接执行。

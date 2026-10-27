@@ -93,6 +93,8 @@ export function projectDecisionRecord(record: DecisionRecord) {
       state: action.result?.withdrawal ? 'report_withdrawn' as const
         : action.result ? action.result.outcome === 'completed' ? 'reported_completed' as const : 'reported_cancelled' as const
           : 'planned' as const,
+      reportSource: action.result ? action.result.provenance?.kind ?? 'unbound' : null,
+      withdrawalSource: action.result?.withdrawal ? action.result.withdrawal.provenance?.kind ?? 'unbound' : null,
     })),
     recommendationBasis: projectRecommendationBasis(record, evaluation),
     conditionalAdvice: projectConditionalAdvice(record, evaluation),

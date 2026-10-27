@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.10.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.11.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -123,3 +123,18 @@ action withdraw以当前expected revision接收reason/origin及可选update。�
 read的actionStates从原始记录推导planned/reported_completed/reported_cancelled/report_withdrawn，reported不表示Host执行或核验；原文仍在record.actions。compare沿actionChanges揭示撤回。程序不自动检出错配，不据一份报告撤回就推断所有事实无效，不倒扣真实支出；相关输入须按真实更正显式update。schemaVersion1的新读取器可读旧记录；新增字段写入后不承诺旧版严格schema能读新版，回退插件前须评估数据兼容，不能把无需表迁移当作可无损降级。
 
 业务回归另覆盖报告撤回后的状态/建议失效、旧版原报告保留、当前事实不自动回滚、同版显式撤回输入、无结果/重复/冲突/坏模型/跨项目拒绝及文件bridge；这不证明能自动纠正作者给错的来源或模型。
+
+
+## 行动报告的输入出处
+
+resolve/withdraw可选sourceQuote，通过Host的runInputQuote窄端口核对当前根运行原接纳的用户角色输入。仅空白等价的精确子串命中才写入conversation_input_quote，身份/hash由Host生成；引语失败不追加任何版本。无引语由实际CLI调用身份标为agent_report，不能靠origin自报认证。调用载荷不接受provenance或事件身份。read.actionStates分别显示reportSource/withdrawalSource，旧记录没有出处则为unbound，不回填。
+
+原报告及撤回各保存自己的出处，撤回保留原报告。引语证明的是用户角色输入出现过原句，不证明由人手工输入、执行发生或摘要忠实；前端与外部CLI都可产生该角色输入。仅保存请求的短引语，不复制完整消息。引语随项目记录保存，删除原会话不自动清除该快照，项目删除按原外键生命周期清理。记录含新字段后旧严格读取器未必兼容，回退前须评估。
+
+## 选项条件只读复核
+
+check <id> --expected-revision <n> --json '{"optionIds":["a"]}'复核明确候选的同版全部声明检查。重复/不存在选项、过期版本和跨项目拒绝。任一失败返回blocked；未知、withdrawn或没有检查返回undetermined；全部已知通过为declared_checks_pass。复用条件性建议的全检查汇总，不另建规则引擎。
+
+结果绑定revision/inputRevision，authorization固定not_evaluated。不写事实/建议/版本，不自动执行，不理解正文的隐含候选，不接管Shell或支付审批。通过仅说明声明条件成立，不认证模型完整、来源真实、偏好合理或现实可行。实际执行仍须具体执行owner接入现有权限审批；本轮没有新增执行能力。
+
+业务回归decisionInputQuote.sqlite.integration.test.ts覆盖真实Host与插件链，decisionOptionCheck.integration.test.ts覆盖只读、全部检查、未知与无检查、等号、失败优先、版本/项目隔离和权限语义。

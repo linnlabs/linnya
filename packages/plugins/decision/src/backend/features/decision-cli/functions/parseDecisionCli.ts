@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ResearchRunArgsSchema } from '@app/schemas';
-import { DecisionModelSchema, DecisionRecommendationSchema, DecisionUpdateSchema, DecisionScenariosSchema, DecisionActionPlanSchema, DecisionActionResolutionSchema, DecisionActionWithdrawalRequestSchema } from '../../../../shared';
+import { DecisionModelSchema, DecisionRecommendationSchema, DecisionUpdateSchema, DecisionScenariosSchema, DecisionActionPlanSchema, DecisionActionResolutionSchema, DecisionActionWithdrawalRequestSchema, DecisionOptionCheckSchema } from '../../../../shared';
 
 export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision create --json '<model>'
@@ -13,6 +13,7 @@ export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision update <decision-id> --expected-revision <n> --json '<update>'
   linnya-decision recommend <decision-id> --expected-revision <n> --json '<recommendation>'
   linnya-decision simulate <decision-id> --expected-revision <n> --json '<scenarios>'
+  linnya-decision check <decision-id> --expected-revision <n> --json '<optionIds>'
   linnya-decision action plan <decision-id> --expected-revision <n> --json '<plan>'
   linnya-decision action resolve <decision-id> <action-id> --expected-revision <n> --json '<result with optional update>'
   linnya-decision action withdraw <decision-id> <action-id> --expected-revision <n> --json '<reason, origin and optional update>'
@@ -80,13 +81,14 @@ export function parseDecisionCli(argv: readonly string[]) {
   if (command === 'compare' && rest.length === 5 && rest[1] === '--from' && rest[3] === '--to') {
     return { kind: 'compare', id: decisionId.parse(rest[0]), fromRevision: positiveInteger.parse(rest[2]), toRevision: positiveInteger.parse(rest[4]) } as const;
   }
-  if ((command === 'update' || command === 'recommend' || command === 'simulate') && rest.length === 5
+  if ((command === 'update' || command === 'recommend' || command === 'simulate' || command === 'check') && rest.length === 5
     && rest[1] === '--expected-revision' && (rest[3] === '--json' || rest[3] === '--input')) {
     const common = { id: decisionId.parse(rest[0]), expectedRevision: positiveInteger.parse(rest[2]) };
     if (rest[3] === '--input') {
       return { kind: 'file', filePath: z.string().min(1).parse(rest[4]), operation: { kind: command, ...common } } as const;
     }
     const payload = parseJson(z.string().parse(rest[4]));
+    if (command === 'check') return { kind: 'check', ...common, request: DecisionOptionCheckSchema.parse(payload) } as const;
     if (command === 'simulate') return { kind: 'simulate', ...common, scenarios: DecisionScenariosSchema.parse(payload) } as const;
     return command === 'update'
       ? { kind: 'update', ...common, update: DecisionUpdateSchema.parse(payload) } as const
@@ -108,6 +110,9 @@ export function parseDecisionFilePayload(
     return { kind: 'create', model: DecisionModelSchema.parse(payload) };
   }
   const { id, expectedRevision } = command.operation;
+  if (command.operation.kind === 'check') {
+    return { kind: 'check', id, expectedRevision, request: DecisionOptionCheckSchema.parse(payload) };
+  }
   if (command.operation.kind === 'action_plan') {
     return { kind: 'action_plan', id, expectedRevision, plan: DecisionActionPlanSchema.parse(payload) };
   }

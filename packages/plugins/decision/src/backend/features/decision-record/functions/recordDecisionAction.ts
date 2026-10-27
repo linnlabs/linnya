@@ -1,4 +1,4 @@
-import type { DecisionRecord, DecisionActionPlan, DecisionActionResolution, DecisionActionWithdrawalRequest, DecisionUpdate } from '../../../../shared';
+import type { DecisionRecord, DecisionActionPlan, DecisionActionResolution, DecisionActionWithdrawalRequest, DecisionUpdate, DecisionReportProvenance } from '../../../../shared';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { updateDecisionRecord } from './updateDecisionRecord';
 
@@ -25,11 +25,12 @@ export function planDecisionAction(record: DecisionRecord, id: string, plan: Dec
   };
 }
 
-export function resolveDecisionAction(record: DecisionRecord, actionId: string, resolution: DecisionActionResolution): DecisionRecord {
+export function resolveDecisionAction(record: DecisionRecord, actionId: string, resolution: DecisionActionResolution, provenance: DecisionReportProvenance): DecisionRecord {
   const action = record.actions?.find(item => item.id === actionId);
   if (!action) throw new DecisionFailure('not_found', 'Action not found in this decision.');
   if (action.result) throw new DecisionFailure('invalid_model', 'Action already has a result. Read its saved result instead of completing it again.');
-  const { update, ...report } = resolution;
+  const { update, outcome, summary, origin, actualCost } = resolution;
+  const report = { outcome, summary, origin, actualCost };
   // 结果与条件在同一版一起落库；坏模型先抛错，不能留下“已完成但条件没更新”的半条结果。
   const next = applyFeedback(record, update);
   return {
@@ -39,6 +40,7 @@ export function resolveDecisionAction(record: DecisionRecord, actionId: string, 
       ...item,
       result: {
         ...report,
+        provenance,
         receivedAtRevision: next.revision,
         receivedAgainstInputRevision: record.inputRevision,
         resultingInputRevision: next.inputRevision,
@@ -47,12 +49,13 @@ export function resolveDecisionAction(record: DecisionRecord, actionId: string, 
   };
 }
 
-export function withdrawDecisionActionReport(record: DecisionRecord, actionId: string, withdrawal: DecisionActionWithdrawalRequest): DecisionRecord {
+export function withdrawDecisionActionReport(record: DecisionRecord, actionId: string, withdrawal: DecisionActionWithdrawalRequest, provenance: DecisionReportProvenance): DecisionRecord {
   const action = record.actions?.find(item => item.id === actionId);
   const report = action?.result;
   if (!action || !report) throw new DecisionFailure('not_found', 'No reported result exists for this action.');
   if (report.withdrawal) throw new DecisionFailure('invalid_model', 'Action report is already withdrawn. Read the saved history instead.');
-  const { update, ...reason } = withdrawal;
+  const { update, reason: explanation, origin } = withdrawal;
+  const reason = { reason: explanation, origin };
   const next = applyFeedback(record, update);
   return {
     ...next,
@@ -64,6 +67,7 @@ export function withdrawDecisionActionReport(record: DecisionRecord, actionId: s
         ...report,
         withdrawal: {
           ...reason,
+          provenance,
           receivedAtRevision: next.revision,
           receivedAgainstInputRevision: record.inputRevision,
           resultingInputRevision: next.inputRevision,

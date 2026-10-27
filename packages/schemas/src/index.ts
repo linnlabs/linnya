@@ -126,6 +126,7 @@ export * from './commands';
 export * from './conversation/attachment-ref';
 export * from './conversation/reference-identity';
 export * from './conversation/user-quote';
+export * from './conversation/run-input-quote';
 export * from './conversation/subrun-trace-summary';
 export * from './conversation/message-identity';
 export * from './conversation/visual-turn-identity';
