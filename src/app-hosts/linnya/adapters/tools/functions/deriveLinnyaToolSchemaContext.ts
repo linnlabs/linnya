@@ -11,7 +11,10 @@ export function deriveLinnyaToolSchemaContext(
   const candidate =
     'imageGenerationModelId' in invocation ? invocation.imageGenerationModelId : undefined;
   const caller = 'callerAgentId' in invocation ? invocation.callerAgentId : undefined;
+  const allowed = 'allowedSubagentTypes' in invocation ? invocation.allowedSubagentTypes : undefined;
   return {
+    ...(Array.isArray(allowed) && allowed.every((item: unknown) => typeof item === 'string')
+      ? { allowedSubagentTypes: allowed.filter((item: unknown): item is string => typeof item === 'string') } : {}),
     ...(typeof candidate === 'string' && candidate.trim().length > 0
       ? { imageGenerationModelId: candidate.trim() }
       : {}),

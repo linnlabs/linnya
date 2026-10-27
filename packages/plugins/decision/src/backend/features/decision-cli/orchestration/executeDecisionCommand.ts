@@ -9,7 +9,7 @@ import {
 } from '../../decision-record';
 
 export function executeDecisionCommand(
-  command: InlineDecisionCliCommand,
+  command: Exclude<InlineDecisionCliCommand, { kind: 'research_prepare' | 'research_read' | 'research_receive' | 'research_list' }>,
   database: PluginSqliteDatabasePort,
   projectId: string,
 ) {

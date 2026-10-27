@@ -1,8 +1,12 @@
 import { z } from 'zod';
+import { ResearchRunArgsSchema } from '@app/schemas';
 import { DecisionModelSchema, DecisionRecommendationSchema, DecisionUpdateSchema } from '../../../../shared';
 
 export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision create --json '<model>'
+  linnya-decision research prepare <decision-id> --expected-revision <n> --json '<research scope>'
+  linnya-decision research read|receive <request-id>
+  linnya-decision research list <decision-id>
   linnya-decision list
   linnya-decision read <decision-id> [--revision <n>]
   linnya-decision update <decision-id> --expected-revision <n> --json '<update>'
@@ -18,6 +22,21 @@ const decisionId = z.string().uuid();
 
 export function parseDecisionCli(argv: readonly string[]) {
   const [command, ...rest] = argv;
+  if (command === 'research') {
+    const [operation, id, ...flags] = rest;
+    if ((operation === 'read' || operation === 'receive' || operation === 'list') && flags.length === 0) {
+      if (operation === 'read') return { kind: 'research_read', id: decisionId.parse(id) } as const;
+      if (operation === 'receive') return { kind: 'research_receive', id: decisionId.parse(id) } as const;
+      return { kind: 'research_list', id: decisionId.parse(id) } as const;
+    }
+    if (operation === 'prepare' && flags.length === 4 && flags[0] === '--expected-revision' && (flags[2] === '--json' || flags[2] === '--input')) {
+      const common = { id: decisionId.parse(id), expectedRevision: positiveInteger.parse(flags[1]) };
+      if (flags[2] === '--input') return { kind: 'file', filePath: z.string().min(1).parse(flags[3]), operation: { kind: 'research_prepare', ...common } } as const;
+      return { kind: 'research_prepare', ...common,
+        scope: ResearchRunArgsSchema.parse(parseJson(z.string().parse(flags[3]))) } as const;
+    }
+    throw new Error(`Invalid research arguments.\n${DECISION_CLI_HELP}`);
+  }
   if (command === undefined || command === 'help' || command === '--help') return { kind: 'help' } as const;
   if (command === 'list' && rest.length === 0) return { kind: 'list' } as const;
   if (command === 'create' && rest.length === 2 && rest[0] === '--input') {
@@ -59,6 +78,9 @@ export function parseDecisionFilePayload(
     return { kind: 'create', model: DecisionModelSchema.parse(payload) };
   }
   const { id, expectedRevision } = command.operation;
+  if (command.operation.kind === 'research_prepare') {
+    return { kind: 'research_prepare', id, expectedRevision, scope: ResearchRunArgsSchema.parse(payload) };
+  }
   return command.operation.kind === 'update'
     ? { kind: 'update', id, expectedRevision, update: DecisionUpdateSchema.parse(payload) }
     : { kind: 'recommend', id, expectedRevision, recommendation: DecisionRecommendationSchema.parse(payload) };

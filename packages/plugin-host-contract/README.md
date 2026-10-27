@@ -29,6 +29,7 @@
 - `@linnya/plugin-host-contract/renderer/localization`：插件可见的本地化类型门面；真实 registry、store 与解析运行时由
   [Renderer 本地化](../../apps/renderer/app/localization/README.md)拥有。
 - `@linnya/plugin-host-contract/renderer/executionPresentation`：Host 工具活动指示器的组件合同；插件通过 `@plugin/renderer/executionPresentation` 使用运行实现，可选择扫光、呼吸或静态文字。执行态、动画实现与标题/正文的动画归属均由 Host 持有，插件不复制判断或 keyframes。
+- `backend/childRunDelivery`：供已授权插件 CLI 读取当前会话中正式 subagent 交付、生命周期和当前项目 Markdown 版本观察；只读，不接受自报运行结果，不开放数据库表或任意历史。
 - 包根：仅用于确实同时适用于两端的类型聚合；业务代码优先使用明确子入口。
 
 插件不得 deep import 其它插件、Host 内部实现或本包未导出的文件。`src/plugin-sdk/` 是带行为的 Host facade，不是第二份合同 owner；它必须从本包导入类型。

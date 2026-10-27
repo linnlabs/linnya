@@ -19,13 +19,15 @@ subagent Tool
 - 旧 `delegate` 只允许由 Renderer 历史配置展示，不进入 backend executable registry。
 - `subagent_type` 的可选值来自当前启用插件；共享 schema 只校验 description、prompt 和可选 subagent_type，不复制动态 registry。省略类型时使用 general，显式未知类型拒绝，不能静默改成另一种任务。
 - child 默认不继承父会话历史；`inheritTurns` 只控制历史消息，不控制环境上下文。
-- 通用 child 自动继承父 run admission 时冻结的 `project-context`、当前文档和插件 `current-view` Fence，包括项目文件清单；不自动继承 selection、user quote、附件或泛化 `additional-context`。
+- 默认通用 child 自动继承父 run admission 时冻结的 `project-context`、当前文档和插件 `current-view` Fence，包括项目文件清单；不自动继承 selection、user quote、附件或泛化 `additional-context`。
 - child ToolContext 同时继承父运行已接纳的项目操作能力与 Workspace 身份，因此可以使用同一组文件工具；初始文件清单只是当前轮快照，运行中需要最新状态时调用 `list_files`。
-- child 不注册 `task_write/task_read`，Subagent runner 也不读取或注入父 TaskState；`prompt` 是父 Agent 的委派指令，必须写明子任务目标、约束和预期输出，不需要重复抄写已经自动注入的项目背景。需要材料时在 prompt 中写明正式 Workspace 路径、材料用途和产物路径；通用工具不要求填写额外材料清单，也不替业务绑定版本或改写请求。
+- 普通叶子不注册 `task_write/task_read`，具备该工具的协调角色使用自身 working history；Subagent runner 不读取或注入父 TaskState；`prompt` 是父 Agent 的委派指令，必须写明子任务目标、约束和预期输出，不需要重复抄写已经自动注入的项目背景。需要材料时在 prompt 中写明正式 Workspace 路径、材料用途和产物路径；通用工具不要求填写额外材料清单，也不替业务绑定版本或改写请求。
 - 工具说明要求父 Agent 逐项传递适用的用户限制，包括允许/禁止的来源与操作。继承的全局 command permission 不等于本任务材料白名单；这项提示不宣称新增了运行时权限拦截。
 - `SubagentTypeContribution.inheritTurns` 可以为确实依赖父上下文的角色声明固定继承量；默认仍为 `0`，该值不暴露成模型可修改参数。
 - `maxSteps` 由 child Agent Definition 持有；通用 subagent 工具不复制或覆盖该产品策略。
-- 通用子 Agent 不拥有 `subagent` 工具，禁止递归扩权。
+- 普通叶子不拥有 `subagent`。注册协调角色可声明直接子类型范围；目录和执行均过滤，不允许借父身份递归扩权。
+- `SubagentTypeContribution.allowedCallerAgentIds` 限定可见/可执行调用方，`allowedSubagentTypes` 限定 child 自身的直接委派，`inheritEnvironment=false` 关闭环境 Fence 继承。注册策略不增加模型参数。Agent config 也可限定直接类型，首次冻结取两者交集；恢复使用自身冻结范围。
+- Host 将已解析的 description/prompt/type 作为 delegation 与原合并 query 一起保存，目标 owner 可接纳结构化任务，避免从 description 文本猜出表单。恢复不重新解析新默认值。
 
 ## 结果合同
 

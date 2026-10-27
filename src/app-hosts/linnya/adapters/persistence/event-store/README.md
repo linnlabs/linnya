@@ -141,3 +141,6 @@ ready 缓存也不能证明全部原始事件已重新校验；遇到当前版�
 接纳以 notice UUID 幂等，在同一事务写事实和 UI 投影。排序锚定接纳时最后一个真实 event rowid，而不是相信客户端时钟。重建通过该锚点合并产品提示和 Runtime 投影；原始 Runtime events 仍是运行和上下文的唯一事实源。截断移除相应 UI 行并保留不可见的幂等 tombstone，避免离线客户端补送让已删除历史复活；删除整个 Conversation 同步清理所有 notice（包括 tombstone）。
 
 HTTP 窄入口由 `features/conversation/client-notices` 拥有，只接纳错误类别、操作、可选 HTTP 状态及客户端观察时刻；不接受自由文本、供应商响应、stack、模型配置或客户端声明的运行身份。迁移 v66 仅重建可再生 UI 表以支持此独立 variant，不改写 Runtime facts。
+
+
+`readRunToolDeliveries` 只投影指定 conversation/run/tool 的新式正式工具参数与成功 data，用于 Host 结果接回。它不扫描 observation 或从最终答案补造产物；生命周期判断仍属于 RunRegistry，Workspace 保存版本仍属于文档 owner。消费方业务状态不进入 EventStore。

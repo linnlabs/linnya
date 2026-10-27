@@ -1,3 +1,4 @@
+import * as childRunDelivery from '../../../plugin-sdk/backend/childRunDelivery';
 import Module from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -43,6 +44,7 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/agentRegistry', agentRegistry],
   ['@plugin/backend/blockReferenceRuntime', blockReferenceRuntime],
   ['@plugin/backend/citationSourceRuntime', citationSourceRuntime],
+  ['@plugin/backend/childRunDelivery', childRunDelivery],
   ['@plugin/backend/documentTypeBackendHook', documentTypeBackendHook],
   ['@plugin/backend/documentImageAsset', documentImageAsset],
   ['@plugin/backend/documentHistory', documentHistory],

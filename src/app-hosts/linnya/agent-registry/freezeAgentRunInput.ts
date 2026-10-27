@@ -19,6 +19,9 @@ export function freezeAgentRunInput(request: AgentInvokeRequest): AgentInvokeReq
   return {
     ...request,
     callerAgentId: definition.id,
+    allowedSubagentTypes: definition.config?.allowedSubagentTypes === undefined
+      ? request.allowedSubagentTypes
+      : definition.config.allowedSubagentTypes.filter(type => request.allowedSubagentTypes === undefined || request.allowedSubagentTypes.includes(type)),
     frozenSystemPrompt: systemMessages[0].content,
   };
 }

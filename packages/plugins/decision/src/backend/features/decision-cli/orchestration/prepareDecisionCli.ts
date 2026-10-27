@@ -1,3 +1,5 @@
+import { createChildRunDeliveryReader, DocumentObservationUnavailableError } from '@plugin/backend/childRunDelivery';
+import { executeResearchCommand } from '../../decision-research';
 import type { BackendPluginCliContribution } from '@plugin/backend/pluginCli';
 import type { PluginSqliteDatabasePort } from '@plugin/backend/toolRuntime';
 import { ZodError } from 'zod';
@@ -53,11 +55,22 @@ export const decisionPluginCli: BackendPluginCliContribution = {
               ? parseDecisionFilePayload(command, await readDecisionInputFile(conversationRoot, command.filePath, context.signal))
               : command;
             context.signal.throwIfAborted();
-            const output = executeDecisionCommand(resolved, database, projectId);
+            let output: unknown;
+            if (resolved.kind === 'research_prepare' || resolved.kind === 'research_read' || resolved.kind === 'research_receive' || resolved.kind === 'research_list') {
+              const runId = context.agentRunId;
+              if (typeof runId !== 'string' || !runId) throw new DecisionFailure('invalid_model', 'Managed research requires an active Agent run.');
+              output = await executeResearchCommand(resolved, {
+                db: database, projectId, conversationId: context.conversationId, runId,
+                reader: await createChildRunDeliveryReader(context), signal: context.signal,
+              });
+            } else output = executeDecisionCommand(resolved, database, projectId);
             return { exitCode: 0, stdout: `${JSON.stringify(output)}\n`, stderr: '' };
           } catch (error: unknown) {
             if (error instanceof ZodError || error instanceof SyntaxError) {
               return { exitCode: 2, stdout: '', stderr: `decision.invalid_input: ${error.message}\n` };
+            }
+            if (error instanceof DocumentObservationUnavailableError) {
+              return { exitCode: 3, stdout: '', stderr: `decision.not_found: ${error.message}\n` };
             }
             if (!(error instanceof DecisionFailure)) throw error;
             return { exitCode: 3, stdout: '', stderr: `decision.${error.code}: ${error.message}\n` };

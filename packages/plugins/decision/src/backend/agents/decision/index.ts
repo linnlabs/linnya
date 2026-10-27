@@ -9,9 +9,10 @@ export const decisionAgent: AgentDefinition = {
   description: '决策原型：比较选项、计算取舍，并随条件更新建议',
   config: {
     enableTools: true,
+    allowedSubagentTypes: ['decision_research'],
     availableTools: [
       'list_files', 'read_file', 'grep', 'write_file', 'edit_file',
-      'skill', 'ask', 'shell', 'process', 'tool_output_read',
+      'skill', 'ask', 'shell', 'process', 'tool_output_read', 'subagent',
       'web_search', 'web_read', 'knowledge_search', 'knowledge_read',
     ],
     skill: { enabled: true, requiredSkills: ['decision-exploration'] },

@@ -60,3 +60,6 @@ App Host 内部记录关联号、失败阶段、父 execution identity、plugin/
 至少覆盖 token start 前/terminal 后拒绝、真实 stdout/stderr/exit code、权限在 DB/worker 前拒绝、父 Shell
 取消 invocation 并等待清理、插件 draining，以及真实 native client 到 bridge 的端到端调用。launcher 测试还要
 证明只清理 manifest 管理文件和旧 v1 已知 facade，不递归删除用户文件。
+
+
+插件 CLI execute context 的 `agentRunId` 与 `conversationId` 来自已授权父 Shell 的冻结 identity，`projectId` 由 Conversation owner 查询。它们不从 argv 或客户端 header 接纳。internalDataContext 仍只在原权限门禁通过后提供；新增身份字段不扩大数据库或网络权限。需要关联受管子结果的插件可使用 `@plugin/backend/childRunDelivery` 窄只读端口，而非直接查询 EventStore/RunRegistry 的表。

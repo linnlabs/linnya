@@ -95,7 +95,9 @@ export async function prepareDurableChildInvocation(input: {
       // 项目身份来自父级已接纳的输入，不让模型参数或临时 ToolContext 代填；
       // 不复制父业务 scope，子任务需要由目标角色接纳自己的问题与范围。
       project_metadata: parent.request.project_metadata,
-      fences: params.parentToolContext.childRunContextInjections
+      delegation: params.delegation,
+      allowedSubagentTypes: params.allowedSubagentTypes,
+      fences: params.inheritEnvironment === false ? [] : params.parentToolContext.childRunContextInjections
         ? [...params.parentToolContext.childRunContextInjections]
         : undefined,
     };

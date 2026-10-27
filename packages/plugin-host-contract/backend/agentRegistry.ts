@@ -48,6 +48,8 @@ export interface AgentSkillPolicy {
 }
 
 export interface AgentConfiguration {
+  /** 注册方限定的直接委派类型；undefined 保持既有目录，空数组禁止委派。 */
+  readonly allowedSubagentTypes?: readonly string[];
   readonly availableTools?: readonly string[];
   readonly enableTools?: boolean;
   readonly knowledgeBaseId?: string;
@@ -87,6 +89,12 @@ export interface SubagentTypeContribution {
    * 该策略由注册方拥有，不作为模型可修改的工具参数。
    */
   readonly inheritTurns?: number;
+  /** 注册方限定调用角色；不向其他角色暴露协调入口。 */
+  readonly allowedCallerAgentIds?: readonly string[];
+  /** child 自身的直接委派范围，不继承父级授权。 */
+  readonly allowedSubagentTypes?: readonly string[];
+  /** 显式材料交接可关闭当前视图环境继承；默认保留原行为。 */
+  readonly inheritEnvironment?: boolean;
 }
 
 export declare function buildPrompt(

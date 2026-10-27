@@ -1,12 +1,12 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.1.0，是开发原型，尚未进入默认发行插件清单。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.2.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
 Agent 负责澄清、探索、调查和判断，Skill 提供方法与操作说明。程序保存项目内的版本化条件，计算已声明的四则式和数值约束；条件更新后旧建议标记为待复核。`current` 仅表示建议关联当前输入，不是质量认证。
 
-完整 Deep Research 受管子项、通用工作流引擎、专用文档编辑器和自动对外执行不属于当前实现。原型可用普通 Web/Knowledge 查资料，重要解释通过普通 Markdown 保存。原有研究角色、系统提示词和 deep-research Skill 不受本插件修改。
+完整 Deep Research 可作为受管子项调用。插件注册仅向自身决策角色开放的协调类型，复用正式研究定义、父提示与 Skill；协调子运行只可委派四种研究叶子。通用工作流引擎、专用编辑器和自动对外执行不属于当前实现。正式研究根入口和 deep-research Skill 不变。
 
 ## 修改地图
 
@@ -14,6 +14,7 @@ Agent 负责澄清、探索、调查和判断，Skill 提供方法与操作说�
 - `resources/skills/decision-exploration/`：方法入口与模型可读 CLI 格式。
 - `src/shared/definitions/decisionRecord.ts`：数据合同和纯 JSON 四则表达式。
 - `src/backend/features/decision-record/`：计算、更新规则和持久化。
+- `src/backend/features/decision-research/`：研究委托、输入与观察版本、结果接纳与失效规则。
 - `src/backend/features/decision-cli/`：参数解析与 App bridge adapter。
 
 ## 持久化与操作
@@ -33,3 +34,17 @@ create/update/recommend 支持 `--input` 读取当前会话内的相对 JSON 文
 后端变动需正常重启对应开发实例。插件启停后 Agent、CLI 与 Skill 应随注册能力收缩；卸载不删决策记录。进入正式分发前，还需按插件发布合同完成制品、默认发行配置和安装包验收；Renderer 入口仅在需要专用界面时添加。开发 direct-dir 加载不是已发布。
 
 业务测试覆盖创建、条件更新与重算、建议失效、违反硬约束拒绝、历史与项目隔离、过期版本拒绝、持久重开、偏好更新和来源撤回。真实模型冒烟另验 Skill 实际读取、CLI 实际执行、最终建议与计算是否一致，不以测试通过证明模型判断正确。
+
+
+## 版本绑定的研究子项
+
+CLI `research prepare/read/list/receive` 在当前项目管理委托。prepare 以 expected revision 读取真实决策条件，保留 inputRevision、原会话/run 和显式 scope，观察正式材料版本；待接受修订的材料须先收口。普通 subagent 接纳自己的研究范围，不继承父业务 scope、历史或当前视图材料。
+
+研究结果经 `@plugin/backend/childRunDelivery` 只读端口从原会话/run 的正式 subagent 参数与成功回执接回，按准备时的原始 prompt 精确关联；多次启动不自动选一个。端口由 EventStore、RunRegistry 与 Workspace/VFS owner 协作，插件只读写本插件两张表。CLI 的 agentRunId 来自已授权 Shell 的冻结 identity，不是 argv 或模型自报。
+
+研究完成、两份评审齐备、文档存在、业务适用与正确性分别判断。缺评审/正式产物是 partial；条件或文档观察版变化是 needs_review；取消/暂停从生命周期事实投影。接回不修改 recommendation。版本指准备/接回时观察的 Markdown 保存版本与 current 投影 hash，不认证并发生产时的精确版本、事实或质量。当前只支持有正式版本的 Markdown 材料与产物；其他文档类型须由其 owner 提供版本观察能力后扩展，不能用更新时间冒充。
+
+三层闭环业务回归位于 `packages/plugins/__tests__/decisionResearch.sqlite.integration.test.ts`，使用真实 SQLite、文件工具、TaskState、注册 child 与恢复，替换模型和 Shell transport；完整真实模型验收另记。没有另造研究工具、重试器或工作流引擎。公共 Host 不依赖本插件内部表或实现。
+
+
+这里的有界委派限定调用角色、直接类型、叶子工具与既有单 run 步数，不代表已实现全树统一 token/费用预算。原生短题也可能产生很长评语；是否调用完整研究仍须按问题价值判断。早期接回记录若缺评审文档观察，会返回 unobservedDocuments 并标为 needs_review，不回填或伪造原观察版本。

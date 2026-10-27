@@ -296,3 +296,12 @@ Host 端到端测试必须按事实 owner 取数：run 注册前提交的 `user_
 内部 Agent 可声明 resultToolName，只提取指定成功工具的 data / observation 为正式产物；
 不从终答解析业务 JSON。maxCallsPerParentRun 由持久 admission 事务执行，要求存在 durable
 parent descriptor。额度拒绝在启动前抛出明确类型，由调用 owner 决定是否有公开的降级行为。
+
+
+## 协调子运行与只读结果接回
+
+普通 subagent 仍只有 description、prompt、type。原始 delegation 和注册方直接委派限制进入 Host request descriptor；目标 admission 解释自己的输入。角色身份和允许类型同时用于请求级目录和实际工具执行。关闭环境继承的显式任务不会借用父当前视图材料，项目身份仍来自父已接纳请求。后续委派的环境同样从 child 自身冻结请求传播，恢复不改用调用方的新视图。
+
+`delivery/` 是 Host 的只读结果观察 adapter，组合 EventStore 的正式 subagent 参数/输出、RunRegistry 生命周期和 Workspace/Markdown 的版本投影，通过 SDK 窄 port 提供。它不接纳模型粘贴的工具结果，不输出完整事件历史；读取限定当前会话，文档限定当前项目。Markdown 的 hash 来自 owner 的完整 current 投影，不使用有字符上限的 VFS 返回。
+
+文档版本是观察时版本，不认证生产时没有并发改动，更不认证结论正确。插件自行决定如何绑定自身业务版本；Host 不读写消费方表。SDK facade 延迟装配此 adapter，避免 loader 在初始化所有工具时循环加载 VFS。三层组合回归在 `packages/plugins/__tests__/decisionResearch.sqlite.integration.test.ts`，另与既有取消、恢复、作用域回归共同验收。

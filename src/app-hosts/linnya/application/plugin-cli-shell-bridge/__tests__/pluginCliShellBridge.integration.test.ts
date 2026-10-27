@@ -279,6 +279,7 @@ describe('Plugin CLI Shell bridge', () => {
       });
     expect(execute).toHaveBeenCalledWith({
       conversationId: launch.proposal.identity.conversation_id,
+      agentRunId: launch.proposal.identity.agent_run_id,
       projectId: 'project-from-conversation',
       hostContext: internalDataContext,
       signal: expect.any(AbortSignal),

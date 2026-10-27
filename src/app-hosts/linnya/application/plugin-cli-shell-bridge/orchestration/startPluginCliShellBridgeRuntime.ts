@@ -322,6 +322,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
       signals.signal.throwIfAborted();
       const result = await preparation.plan.execute({
         conversationId,
+        agentRunId: lease.launch.proposal.identity.agent_run_id,
         ...(projectId ? { projectId } : {}),
         hostContext: access.internalDataAccess === 'required'
           ? input.internalDataContext

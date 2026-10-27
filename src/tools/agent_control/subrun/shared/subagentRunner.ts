@@ -27,6 +27,9 @@ export interface RunRegisteredSubagentParams {
   description: string;
   userMessage: string;
   inheritTurns: number;
+  delegation?: { type: string; description: string; prompt: string };
+  allowedSubagentTypes?: readonly string[];
+  inheritEnvironment?: boolean;
   maxSteps?: number;
   /**
    * 显式锁定 child run 使用的模型。
@@ -84,6 +87,9 @@ export async function runRegisteredSubagent(
   const parentToolCallId = requireParentTraceBinding(context);
   const result = await resolveRegisteredChildRunInvoker(context).invoke({
     promptKey: params.promptKey,
+    delegation: params.delegation,
+    allowedSubagentTypes: params.allowedSubagentTypes,
+    inheritEnvironment: params.inheritEnvironment,
     userMessage: params.userMessage,
     parentToolContext: context,
     historyPolicy: {

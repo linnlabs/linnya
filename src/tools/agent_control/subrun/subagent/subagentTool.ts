@@ -7,18 +7,21 @@ import { SubagentArgsSchema, SubagentResultSchema, type SubagentResult } from '@
 import { getRegisteredSubagentTypes } from 'src/app-hosts/linnya/plugin-registry/builtin';
 import type { SubagentTypeContribution } from 'src/app-hosts/linnya/plugin-registry/types';
 
-import { BaseTool, type ToolContext, type ToolParameterSchema } from '../../../types';
+import { BaseTool, type ToolContext, type ToolParameterSchema, type LinnyaToolSchemaContext } from '../../../types';
 import { deriveSubagentStatus } from './functions/deriveSubagentStatus';
 import { extractSubagentArtifactRefs } from './functions/extractSubagentArtifactRefs';
 import { resolveSubagentType } from './functions/resolveSubagentType';
 import { runRegisteredSubagent } from '../shared';
 
-function listSubagentTypes(): SubagentTypeContribution[] {
-  return getRegisteredSubagentTypes();
+function listSubagentTypes(context?: LinnyaToolSchemaContext): SubagentTypeContribution[] {
+  return getRegisteredSubagentTypes().filter(item =>
+    (item.allowedCallerAgentIds === undefined ||
+      (context?.callerAgentId !== undefined && item.allowedCallerAgentIds.includes(context.callerAgentId))) &&
+    (context?.allowedSubagentTypes === undefined || context.allowedSubagentTypes.includes(item.type)));
 }
 
-function buildSubagentTypeLines(): string {
-  return listSubagentTypes()
+function buildSubagentTypeLines(context?: LinnyaToolSchemaContext): string {
+  return listSubagentTypes(context)
     .map(
       item =>
         `- **${item.type}**${item.type === 'general' ? ' (default)' : ''}: ${item.description}`
@@ -26,14 +29,14 @@ function buildSubagentTypeLines(): string {
     .join('\n');
 }
 
-function buildSubagentDescription(): string {
+function buildSubagentDescription(context?: LinnyaToolSchemaContext): string {
   return `Create a specialized subagent to perform a subtask. Choose the right subagent_type for the task:
 
-${buildSubagentTypeLines()}
+${buildSubagentTypeLines(context)}
 
 Important:
 - The subagent runs in an isolated executor (no persistence into the parent timeline).
-- Subagents cannot call subagent recursively.
+- Leaf subagents cannot delegate. Registered coordinators can call only their admitted direct child types.
 - Subagents automatically receive the admitted project/current-view environment, but not the parent conversation history or TaskState. The prompt is the sole task-semantic handoff; include the goal, task-specific inputs, allowed and forbidden sources/actions, and expected output. Pass on all applicable user restrictions; inherited command permissions do not replace task-specific restrictions.
 - Prefer having the subagent return findings in its final answer, then compose the final output yourself.
 - If durable output is needed, ask the subagent to create or edit Workspace files with write_file/edit_file.
@@ -41,8 +44,8 @@ Important:
 `;
 }
 
-function buildSubagentParameters(): ToolParameterSchema {
-  const validSubagentTypes = listSubagentTypes().map(item => item.type);
+function buildSubagentParameters(context?: LinnyaToolSchemaContext): ToolParameterSchema {
+  const validSubagentTypes = listSubagentTypes(context).map(item => item.type);
   return {
     type: 'object',
     additionalProperties: false,
@@ -94,12 +97,12 @@ export class SubagentTool extends BaseTool {
 
   readonly parameters: ToolParameterSchema = buildSubagentParameters();
 
-  getDescriptionForContext(): string {
-    return buildSubagentDescription();
+  getDescriptionForContext(context?: LinnyaToolSchemaContext): string {
+    return buildSubagentDescription(context);
   }
 
-  getParametersForContext(): ToolParameterSchema {
-    return buildSubagentParameters();
+  getParametersForContext(context?: LinnyaToolSchemaContext): ToolParameterSchema {
+    return buildSubagentParameters(context);
   }
 
   protected override validateArguments(args: Record<string, unknown>) {
@@ -128,7 +131,9 @@ export class SubagentTool extends BaseTool {
       throw new Error(validation.error ?? 'subagent: invalid arguments');
     }
     const parsedArgs = SubagentArgsSchema.parse(args);
-    const resolved = resolveSubagentType(parsedArgs.subagent_type, listSubagentTypes());
+    const resolved = resolveSubagentType(parsedArgs.subagent_type, listSubagentTypes(context));
+    const contribution = listSubagentTypes(context).find(item => item.type === resolved.type);
+    if (!contribution) throw new Error("Subagent contribution unavailable");
     const modelId = requireExecutionModelId(context);
 
     /**
@@ -141,6 +146,9 @@ export class SubagentTool extends BaseTool {
       promptKey: resolved.promptKey,
       description: parsedArgs.description,
       userMessage,
+      delegation: { type: resolved.type, description: parsedArgs.description, prompt: parsedArgs.prompt },
+      allowedSubagentTypes: contribution.allowedSubagentTypes,
+      inheritEnvironment: contribution.inheritEnvironment,
       // 默认隔离；确有角色语义需要时，由 subagent_type 注册方显式声明父历史策略。
       inheritTurns: resolved.inheritTurns,
       modelId,

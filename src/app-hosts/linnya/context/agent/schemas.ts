@@ -65,6 +65,8 @@ export const AgentInvokeRequestSchema = z
     frozenSystemPrompt: z.string().optional(),
     researchScope: ResearchRunArgsSchema.optional(),
     callerAgentId: z.string().min(1).optional(),
+    allowedSubagentTypes: z.array(z.string().min(1)).optional(),
+    delegation: z.object({ type: z.string().min(1), description: z.string().min(1), prompt: z.string().min(1) }).strict().optional(),
     currentUserEventId: z
       .string()
       .refine(value => value.trim().length > 0 && value === value.trim(), {

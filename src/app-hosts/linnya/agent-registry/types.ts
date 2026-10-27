@@ -41,6 +41,8 @@ export interface AgentRegistryDependencies {
  * 对应历史上的 agent-config.ts（已迁移到后端 AgentRegistry）中的 AgentConfig 概念
  */
 export interface AgentConfiguration {
+  /** 注册方限定的直接委派类型；undefined 保持既有目录，空数组禁止委派。 */
+  readonly allowedSubagentTypes?: readonly string[];
   /** 子运行仅从该工具取得正式产物；映射到框架的 judgeToolName，不代表评分 Agent。 */
   resultToolName?: string;
   /** Host 持久 child admission 限额；同一父 run、同一 Agent，恢复不重复消耗。 */

@@ -15,4 +15,16 @@ export const decisionMigrations: readonly PluginMigrationDefinition[] = [{
     CREATE INDEX IF NOT EXISTS decision_record_project
       ON decision_record_versions(project_id, decision_id, revision);`);
   },
+}, {
+  version: 2, description: 'Version-bound managed research requests',
+  up(database) {
+    database.exec(`CREATE TABLE decision_research_jobs (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      decision_id TEXT NOT NULL,
+      content_json TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX decision_research_project ON decision_research_jobs(project_id, decision_id);`);
+  },
 }];

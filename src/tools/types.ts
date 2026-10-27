@@ -56,6 +56,7 @@ export interface ToolContext extends ToolExecutionContext {
   webFileStore?: import('./web/webread/file-acquisition/definitions/webFileAcquisition').WebFileStore;
   /** 当前运行实际 Agent 的冻结身份；只由 Host 注入，不从模型参数或 metadata 恢复。 */
   callerAgentId?: string;
+  allowedSubagentTypes?: readonly string[];
   /** Host 为当前 registered child 冻结的执行名单；空数组禁止全部，undefined 不增加限制。 */
   registeredChildAllowedTools?: readonly string[];
   /** 根 Agent 的冻结工具范围；与 child 独立，普通无 Agent 的 API 调用不注入。 */
@@ -146,5 +147,5 @@ export type ToolIdempotencyPolicy = { scope: ToolIdempotencyScope };
  * 避免把完整 Agent 请求或任意 metadata 暴露给工具注册表中的所有工具。
  */
 export type LinnyaToolSchemaContext = Readonly<
-  Pick<ToolContext, 'imageGenerationModelId' | 'callerAgentId'>
+  Pick<ToolContext, 'imageGenerationModelId' | 'callerAgentId' | 'allowedSubagentTypes'>
 >;

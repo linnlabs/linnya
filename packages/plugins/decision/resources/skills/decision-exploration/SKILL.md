@@ -1,7 +1,7 @@
 ---
 name: decision-exploration
 description: Help compare options, discover feasible next actions, and update a decision when goals, constraints or evidence change. Use with the decision prototype's versioned record CLI.
-version: 0.1.0
+version: 0.2.0
 ---
 
 # 决策与探索
@@ -30,4 +30,4 @@ version: 0.1.0
 
 用自然语言给出建议及理由、适用条件、未解问题与下一步。保存重要说明，交付记录 id、revision 和 Workspace 链接，便于后续接续。已有足够信息做当前动作，且继续分析的收益不值得成本时结束这一轮。以后有新条件，再从记录继续。
 
-当前原型支持自主调查与计算，完整 Deep Research 受管子运行仍待接入。确认需要长研究时如实指出该缺口，不把自行启动的独立根运行称为子任务。
+需要完整调查时，先保存当前条件，再按记录资源中的 `research prepare → subagent → research receive` 发起受管研究。把准备回执的 prompt 原样交给 `decision_research`，读取正式文章和原始评审，再决定如何更新建议。条件或材料变化产生 `needs_review`；部分或取消结果保留为过程资料。研究完成、版本接回与建议正确分别判断。

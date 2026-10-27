@@ -36,6 +36,9 @@ type RegisteredChildRunParentContext = childRuns.ChildRunInvokeConfig['parentToo
 export interface RegisteredChildRunRequest
   extends childRuns.ChildRunRequest<RegisteredChildRunParentContext> {
   promptKey: PromptKey;
+  delegation?: { type: string; description: string; prompt: string };
+  allowedSubagentTypes?: readonly string[];
+  inheritEnvironment?: boolean;
 }
 
 export interface RegisteredChildRunResult extends childRuns.ChildRunResult {
@@ -270,6 +273,11 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
     const childParentToolContext = derivePluginAwareToolContext(params.parentToolContext, {
       // 每个 child 使用自己的冻结身份；父级任务准备能力不能被子级或嵌套 worker 借用。
       callerAgentId: durable ? durable.descriptor.request.callerAgentId : agentDefinition.id,
+      allowedSubagentTypes: durable?.descriptor.request.allowedSubagentTypes,
+      // 后续委派继续使用本 child 原来接纳的环境；恢复不能借用调用方的新视图。
+      childRunContextInjections: durable
+        ? durable.descriptor.request.fences
+        : params.inheritEnvironment === false ? [] : params.parentToolContext.childRunContextInjections,
       registeredRootAllowedTools: undefined,
       authorizedHostToolCall: undefined,
       registeredChildAllowedTools:

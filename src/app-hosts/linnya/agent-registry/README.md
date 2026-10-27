@@ -22,7 +22,7 @@ enricher 或重新渲染系统提示；这不承诺冻结外部模型输出或�
 `AgentInvokeRequest`；history 已按隔离与编辑替换规则裁剪。结果随运行 descriptor 冻结，持久化后的历史刷新保留该结果；恢复不重新接纳、不重写原请求。系统提示构建器接收 Host 请求，可以消费已经接纳的产品字段，不能重新推断范围或执行工具。
 
 首次接纳从 definition 冻结
-`callerAgentId`，覆盖请求中的同名值。child 使用自己的身份。工具执行范围由已接纳的 availableTools 与正式 Host 单次入口授权约束；通用 subagent 不另设父角色目录白名单或业务材料交接层。
+`callerAgentId`，覆盖请求中的同名值。child 使用自己的身份。工具执行范围由已接纳的 availableTools 与正式 Host 单次入口授权约束；通用 subagent 按注册方的调用角色与直接子类型策略过滤目录及执行；它不解释领域材料，原始 prompt 由目标角色接纳。
 
 定义可以通过 `hostEntry` 声明一个 Host 强制入口：固定 `toolName`，并由纯函数
 `resolveArgs(request, explicitArgs, history)`
@@ -594,3 +594,6 @@ Graph 步、inherit_parent 模型策略，工具包括普通 Workspace 读写、
 | 反馈核实、修订传播、最终回读       | 父角色；[子角色共同边界](./agents/research_v1/prompt.ts)与各专业 prompt                                                         |
 
 已撤回的阶段请求构建器不再是方法入口。父子只启用预算收尾提醒；具体缺口进入下一次明确委派，不能把自动注入的提醒假设为已经实现。后续实验应区分方法送达、动作执行、论证是否成立及结果是否进入终稿。
+
+
+协调角色可以使用 `allowedSubagentTypes` 冻结直接委派范围。subagent contribution 可补充 caller 限制、child 自身委派范围与环境继承策略；模型不能传这些授权字段。普通根角色未声明限制时沿用原目录，叶子的工具范围不因此增加。嵌套角色使用自己的 caller 身份和范围，不沿用父授权。

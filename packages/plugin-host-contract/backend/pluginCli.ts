@@ -19,6 +19,8 @@ export interface BackendPluginCliExecutionContext {
   readonly hostContext: unknown;
   /** 当前 bridge 从已授权父 execution 冻结的会话身份；旧 Host 可能未提供。 */
   readonly conversationId?: string;
+  /** 已授权父 Shell 所属的实际 Agent run；不接受 argv 或 HTTP header 代填。 */
+  readonly agentRunId?: string;
   /** Host 经 Conversation owner 解析的项目归属；不接受 CLI argv 覆盖。 */
   readonly projectId?: string;
   readonly signal: AbortSignal;

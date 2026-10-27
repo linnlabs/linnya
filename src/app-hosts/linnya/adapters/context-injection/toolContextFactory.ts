@@ -106,6 +106,7 @@ export function createToolContext(options: ToolContextFactoryOptions): ToolConte
     userQuery: options.request.query,
     modelId: options.request.model_id,
     callerAgentId: options.request.callerAgentId,
+    allowedSubagentTypes: options.request.allowedSubagentTypes,
     registeredChildAllowedTools: undefined,
     registeredRootAllowedTools:
       options.request.enableTools === false

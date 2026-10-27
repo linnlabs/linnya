@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
   ResearchRunArgsSchema,
   type HostToolCallRequestData,
@@ -82,8 +83,13 @@ export function admitResearchRequest(
       '新研究任务须从研究 Agent 启动；显式范围请使用 research_scope。旧交接协议的暂停任务请保留已有文档，在新会话重新开始研究。'
     );
   }
+  // 委派参数由通用 subagent 的已解析 prompt 原样冻结；scope 仍由研究 owner 接纳。
+  const scope = request.delegation
+    ? z.object({ request_id: z.string().uuid(), scope: ResearchRunArgsSchema }).strict()
+      .parse(JSON.parse(request.delegation.prompt)).scope
+    : request.researchScope;
   return {
     ...request,
-    researchScope: resolveResearchAdmission(request, request.researchScope, context.history),
+    researchScope: resolveResearchAdmission(request, scope, context.history),
   };
 }
