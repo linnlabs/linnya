@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { isIgnoredGuardPath } from '../guards/agent-package-boundary-guard.rules';
 
 import {
   analyzeLine,
@@ -15,6 +16,14 @@ import {
 } from '../guards/agent-package-boundary-guard';
 
 const repoRoot = path.resolve(__dirname, '../..');
+
+it('excludes only the root development archive, retaining similarly named and production source paths', () => {
+  expect(isIgnoredGuardPath('_dev_data')).toBe(true);
+  expect(isIgnoredGuardPath('_dev_data/benchmark-results/frozen-run/replay.ts')).toBe(true);
+  expect(isIgnoredGuardPath('_dev_data-tools/runtime.ts')).toBe(false);
+  expect(isIgnoredGuardPath('src/features/_dev_data/runtime.ts')).toBe(false);
+  expect(isIgnoredGuardPath('packages/plugins/decision/src/backend/index.ts')).toBe(false);
+});
 
 function ruleIdsFor(file: string, preview: string, options?: AnalyzeImportOptions): string[] {
   return analyzeLine(file, 1, preview, options).map((violation) => violation.ruleId);

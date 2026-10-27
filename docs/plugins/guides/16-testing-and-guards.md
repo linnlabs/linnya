@@ -77,6 +77,7 @@ budget、metafile 依赖类别、初始 contribution 加载、首次延迟 runti
 `guard:agent-boundary`、`guard:plugin-runtime-dist`、`smoke:plugins:official:artifact`，并保留
 `smoke:plugin:<id>:artifact` 作为单插件 artifact 定位入口。包边界守卫扫描完整工作区，
 不再为单个插件保留伪隔离或兼容脚本。
+仓库根 `_dev_data/` 是被忽略的本地运行与实验原件，不进入该扫描；同名子目录与其他源码仍按既有规则检查。公共源码和测试不得依赖这些开发资料。
 
 ## 守卫要随迁移进度收紧
 

@@ -126,7 +126,8 @@ export const IGNORE_DIRS = new Set([
   'temp_tsup',
 ]);
 
-export const IGNORED_RELATIVE_PREFIXES: string[] = [];
+// 本地实验原件不是公共源码；不能让本机复演脚本决定公开仓的包边界门禁结果。
+export const IGNORED_RELATIVE_PREFIXES: string[] = ['_dev_data'];
 
 export const FORBIDDEN_AGENT_DIRS = [
   'packages/linnkit',
@@ -295,7 +296,7 @@ function isTestkitSource(filePath: string): boolean {
 }
 
 export function isIgnoredGuardPath(filePath: string): boolean {
-  return IGNORED_RELATIVE_PREFIXES.some((prefix) => filePath.startsWith(prefix));
+  return IGNORED_RELATIVE_PREFIXES.some((prefix) => filePath === prefix || filePath.startsWith(`${prefix}/`));
 }
 
 function isAgentFile(filePath: string): boolean {
