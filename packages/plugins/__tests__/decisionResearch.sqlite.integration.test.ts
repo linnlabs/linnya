@@ -193,6 +193,19 @@ describe('decision -> full research -> leaf reviews -> version-bound delivery', 
     await open([...prefix(), ...tail]); await seed(); await start();
     expect(await view()).toMatchObject({ status: 'needs_review', changedInputs: true, request: { inputRevision: 1 } });
   });
+  it('只计划行动不使研究失效，实际结果接回后按新依据版本复核，即使算式未变', async () => {
+    await open([...prefix(), ...suffix()]); await seed(); await start();
+    executeDecisionCommand({ kind: 'action_plan', id: decisionId, expectedRevision: 1,
+      plan: { label: '询问课程', purpose: '确认下一步', inputIds: ['end'], executor: 'user', estimatedCost: '预计5分钟' } }, fixture.db, projectId);
+    expect(await view()).toMatchObject({ status: 'received', changedInputs: false });
+    const output = executeDecisionCommand({ kind: 'read', id: decisionId, revision: undefined }, fixture.db, projectId);
+    if (typeof output !== 'object' || output === null || !('record' in output)) throw new Error('Expected decision');
+    const action = DecisionRecordSchema.parse(output.record).actions?.[0];
+    if (!action) throw new Error('Expected planned action');
+    executeDecisionCommand({ kind: 'action_resolve', id: decisionId, actionId: action.id, expectedRevision: 2,
+      resolution: { outcome: 'completed', summary: '用户询问后暂未取得新数据', origin: '合成用户报告', actualCost: '实际3分钟' } }, fixture.db, projectId);
+    expect(await view()).toMatchObject({ status: 'needs_review', changedInputs: true, request: { inputRevision: 1 } });
+  });
   it('第二评审中断并重开 SQLite 后沿原三层树续跑，首评与 prepare 不重复', async () => {
     await open([...prefix(), { throwAfterEvents: new Error('Synthetic source review interruption') }]);
     await seed(); await start();
