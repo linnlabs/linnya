@@ -14,14 +14,26 @@
 
 .skills-browser {
   display: grid;
-  grid-template-columns: 152px minmax(0, 1fr);
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
   align-items: start;
   gap: var(--space-4);
 }
 
 .skills-sidebar {
+  position: relative;
+  min-width: 0;
+  max-height: 460px;
+  overflow: hidden;
+}
+
+.skills-sidebar-viewport {
   max-height: 460px;
   overflow-y: auto;
+}
+
+/* 为共享覆盖式滚动条留出内容间距；viewport 继续由 Scroll 独占管理。 */
+.skills-sidebar-content {
+  padding: var(--space-0-5) var(--space-2) var(--space-0-5) var(--space-0-5);
 }
 
 .skills-sidebar-empty {
@@ -510,7 +522,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .skills-sidebar {
+  .skills-sidebar,
+  .skills-sidebar-viewport {
     max-height: 200px;
   }
 }

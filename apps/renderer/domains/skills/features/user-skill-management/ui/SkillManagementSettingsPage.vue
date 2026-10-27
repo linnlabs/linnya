@@ -43,55 +43,12 @@
         v-else
         class="skills-browser"
       >
-        <nav
-          class="skills-sidebar"
-          :aria-label="message('installed')"
-        >
-          <section
-            v-for="group in groups"
-            :key="group.source"
-            class="skills-group"
-          >
-            <h4 class="skills-group-title">
-              <span>{{ message(groupTitleKeys[group.source]) }}</span>
-              <span>{{ group.skills.length }}</span>
-            </h4>
-            <p
-              v-if="!group.skills.length"
-              class="skills-sidebar-empty"
-            >
-              {{ message('emptyUser') }}
-            </p>
-            <ul
-              v-else
-              class="skills-list"
-            >
-              <li
-                v-for="skill in group.skills"
-                :key="`${skill.source}:${skill.name}`"
-              >
-                <button
-                  type="button"
-                  class="skills-row"
-                  :class="{ 'is-active': detail?.skill.name === skill.name && detail.skill.source === skill.source }"
-                  :aria-current="detail?.skill.name === skill.name && detail.skill.source === skill.source ? 'true' : undefined"
-                  :disabled="state.busy"
-                  :title="skill.error || skill.description"
-                  @click="openSkill(skill)"
-                >
-                  <span class="skills-row-copy">
-                    <span class="skills-row-name">{{ skill.name }}</span>
-                    <span class="skills-row-description">{{ skill.error || skill.description }}</span>
-                  </span>
-                  <span
-                    v-if="!skill.available"
-                    class="skills-row-badge"
-                  >{{ message('unavailable') }}</span>
-                </button>
-              </li>
-            </ul>
-          </section>
-        </nav>
+        <SkillListSidebar
+          :groups="groups"
+          :selected="detail?.skill ?? null"
+          :disabled="state.busy"
+          @select="openSkill"
+        />
         <section
           v-if="detail"
           class="skills-preview-panel"
@@ -141,11 +98,9 @@ import { useSkillManagement } from '../orchestration/useSkillManagement';
 import type { SkillMessageKey } from '../definitions/messages';
 import SkillDetailModal from './SkillDetailModal.vue';
 import SkillPreviewCard from './SkillPreviewCard.vue';
+import SkillListSidebar from './SkillListSidebar.vue';
 
 const { state, groups, detail, editable, message, refresh, openSkill, openEditor, install } = useSkillManagement({ autoRefresh: true });
-const groupTitleKeys: Record<'user' | 'builtin' | 'plugin', SkillMessageKey> = {
-  user: 'groupUser', builtin: 'groupBuiltin', plugin: 'groupPlugin',
-};
 const sourceTagKeys: Record<'user' | 'builtin' | 'plugin', SkillMessageKey> = {
   user: 'tagUser', builtin: 'tagBuiltin', plugin: 'tagPlugin',
 };
