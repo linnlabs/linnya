@@ -27,7 +27,7 @@
         </BaseButton>
       </div>
     </template>
-    <SettingsSection>
+    <div class="skills-management-content">
       <SettingsFeedback
         v-if="!detail"
         :kind="state.feedback?.kind ?? 'info'"
@@ -68,16 +68,21 @@
           />
           <div class="skills-preview-footer">
             <p>{{ preview.skill.error || preview.skill.description }}</p>
+          </div>
+          <p class="skills-preview-meta">
+            <span>SKILL.md · {{ message('fileCount', { count: preview.skill.files.length }) }}</span>
             <span
               class="skills-preview-edit-hint"
               aria-hidden="true"
             >
               {{ message(editable ? 'previewHint' : 'viewFiles') }}
             </span>
-          </div>
-          <p class="skills-preview-meta">
-            <span>SKILL.md · {{ message('fileCount', { count: preview.skill.files.length }) }}</span>
-            <span v-if="!editable">{{ message('readonly') }}</span>
+          </p>
+          <p
+            v-if="!editable"
+            class="skills-preview-readonly"
+          >
+            {{ message('readonly') }}
           </p>
         </section>
         <SettingsState
@@ -86,14 +91,14 @@
           :message="message('selectSkill')"
         />
       </div>
-    </SettingsSection>
+    </div>
     <SkillDetailModal v-if="detail" />
   </SettingsPage>
 </template>
 <script setup lang="ts">
 import { BaseButton, IconButton, SkeletonRows } from '@linnya/renderer-ui';
 import { FolderIcon, RefreshIcon } from '@linnya/renderer-ui/icons';
-import { SettingsPage, SettingsSection, SettingsFeedback, SettingsState } from '@/domains/settings/public';
+import { SettingsPage, SettingsFeedback, SettingsState } from '@/domains/settings/public';
 import { useSkillManagement } from '../orchestration/useSkillManagement';
 import type { SkillMessageKey } from '../definitions/messages';
 import SkillDetailModal from './SkillDetailModal.vue';

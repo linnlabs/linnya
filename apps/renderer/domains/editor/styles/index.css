@@ -9,3 +9,4 @@
 @import './features/index.css';
 @import './blocks/index.css';
 @import '../features/text-file-editing/styles/text-file-editor.css';
+@import '../features/text-file-editing/styles/markdown-file-editor.css';

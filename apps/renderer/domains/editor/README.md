@@ -18,12 +18,12 @@
 - Revision / Pending 性能链路：[Revision](./features/Revision/README.md)
 - Provider outbound 开发调试面：[ProviderOutboundDebug](./features/ProviderOutboundDebug/README.md)
 
-### 独立文本文件编辑
+### 独立文件编辑
 
-Skill 等独立文本文件通过 [`text-file.ts`](./text-file.ts) 消费 `TextFileEditor`，实现位于
+脚本等独立原文文件通过 [`text-file.ts`](./text-file.ts) 消费 `TextFileEditor`，实现位于
 `features/text-file-editing`。该公开入口只提供受控原文、只读状态、可访问名称与内容更新事件；
 复用正式 `blocks/CodeBlock` 的 NodeView、语言标签、语法高亮、复制与缩进能力，不初始化工作区文档会话、
-全局 Editor store、批注或自动保存。独立文件只保留一个 CodeBlock，不分配 Workspace 块身份或修订 mark，
+全局 Editor store、批注或自动保存。原文编辑只保留一个 CodeBlock，不分配 Workspace 块身份或修订 mark，
 Shift+Enter 也不会拆块。语言由文件后缀决定，关闭围栏语言选择菜单；未知后缀明确使用 plaintext。
 YAML、脚本、空白与换行直接作为文本进入节点，不执行 Markdown 导入或序列化；
 各文件的读取、保存、冲突检查和预览仍由消费方的业务 owner 拥有。切换文件由消费方通过文件身份重建组件，
@@ -31,6 +31,15 @@ YAML、脚本、空白与换行直接作为文本进入节点，不执行 Markdo
 
 独立文件的双轴滚动使用 Renderer UI Scroll 的 Linnya 主题与悬停显示策略。CodeBlock 的
 `scrollMode: 'external'` 将滚动委托给文件视口，避免嵌套原生横向滚动条；普通文档围栏仍保持块内滚动。
+
+Markdown 文件通过同一公开入口消费 `MarkdownFileEditor`，直接渲染和编辑，不提供原文 / 预览切换。
+该独立文件使用标准 Tiptap schema 与同版本的官方 `@tiptap/markdown`，支持常用段落、标题、列表、
+任务、链接、表格、图片和正式 CodeBlock；不使用 Workspace 的 rootBlock 持久化模型，也不参与其
+WASM / Revision / 文档会话链路。两种文件编辑器共用 `FileEditorViewport` 的规范双轴滚动。
+YAML 头独立保存；打开、外部刷新和撤销到初始状态均保留原文件字节。实际编辑后 Markdown 正文会
+规范化，沿用原换行风格和末尾换行；v-model 回传不重建文档，保留撤销记录。原生 HTML 块和注释作为
+原文原子节点保留，显示时使用 DOMPurify 净化，不能在编辑相邻正文时丢失，也不执行其中脚本。
+只读状态由消费方根据文件来源控制。该入口不提供 Skill 安装、文件读写或保存冲突处理。
 
 高亮语言统一在 `core/lowlight.ts` 首次初始化时注册。对话代码块通过窄公开入口
 [`code-highlighting.ts`](./code-highlighting.ts) 消费同一实例，不再在组件挂载时修改共享语言表；

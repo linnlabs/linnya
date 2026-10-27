@@ -53,26 +53,17 @@
         <div class="skills-editor-panel">
           <div class="skills-editor-toolbar">
             <span class="skills-editor-path">{{ detail.file }}</span>
-            <SegmentedTabs
-              v-if="isMarkdown"
-              v-model="mode"
-              :aria-label="message('editorMode')"
-              :tabs="modeTabs"
-            />
           </div>
-          <SkillDetailScroll
-            v-if="mode === 'preview' && isMarkdown"
-            class="skills-editor-preview"
-          >
-            <div class="skills-editor-preview-content">
-              <SkillFilePreview
-                :path="detail.file"
-                :content="draft"
-              />
-            </div>
-          </SkillDetailScroll>
+          <MarkdownFileEditor
+            v-if="isMarkdown"
+            :key="`${detail.skill.source}:${detail.skill.name}:${detail.file}`"
+            v-model="draft"
+            class="skills-editor"
+            :readonly="!editable || state.busy || detail.original === null"
+            :label="detail.file"
+          />
           <TextFileEditor
-            v-show="mode !== 'preview' || !isMarkdown"
+            v-else
             :key="`${detail.skill.source}:${detail.skill.name}:${detail.file}`"
             v-model="draft"
             class="skills-editor"
@@ -133,25 +124,19 @@
   </Modal>
 </template>
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { BaseButton, Modal, SegmentedTabs } from '@linnya/renderer-ui';
-import { TextFileEditor, resolveCodeFileLanguage } from '@/domains/editor/text-file';
+import { computed } from 'vue';
+import { BaseButton, Modal } from '@linnya/renderer-ui';
+import { MarkdownFileEditor, TextFileEditor, resolveCodeFileLanguage } from '@/domains/editor/text-file';
 import { useSkillManagement } from '../orchestration/useSkillManagement';
 import type { SkillMessageKey } from '../definitions/messages';
-import SkillFilePreview from './SkillFilePreview.vue';
 import SkillDetailScroll from './SkillDetailScroll.vue';
 
 const { state, detail, fileRows, editable, dirty, draft, message, closeDetail, selectFile, upgrade, remove, save } = useSkillManagement();
 const sourceTagKeys: Record<'user' | 'builtin' | 'plugin', SkillMessageKey> = {
   user: 'tagUser', builtin: 'tagBuiltin', plugin: 'tagPlugin',
 };
-const mode = ref(editable.value ? 'source' : 'preview');
 const isMarkdown = computed(() => /\.(md|markdown)$/i.test(detail.value?.file ?? ''));
 const fileLanguage = computed(() => resolveCodeFileLanguage(detail.value?.file ?? ''));
-const modeTabs = computed(() => [
-  { id: 'source', label: message('source') },
-  { id: 'preview', label: message('preview') },
-]);
 /** 底部状态行：反馈优先；没有反馈时，只读 Skill 说明原因，可编辑 Skill 提示何时生效。 */
 const statusText = computed(() => state.value.feedback?.message
   ?? (editable.value ? (dirty.value ? message('saveHint') : '') : message('readonly')));

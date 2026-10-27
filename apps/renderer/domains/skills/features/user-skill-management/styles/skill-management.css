@@ -9,31 +9,46 @@
 /* --- 浏览：窄侧栏与阅读卡片，不把可编辑原文直接暴露成设置表单。 --- */
 
 .skills-management-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   container-type: inline-size;
+}
+
+.skills-management-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .skills-browser {
   display: grid;
+  flex: 1;
   grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
-  align-items: start;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
   gap: var(--space-4);
 }
 
 .skills-sidebar {
   position: relative;
+  display: flex;
   min-width: 0;
-  max-height: 460px;
+  min-height: 0;
   overflow: hidden;
 }
 
 .skills-sidebar-viewport {
-  max-height: 460px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
 /* 为共享覆盖式滚动条留出内容间距；viewport 继续由 Scroll 独占管理。 */
 .skills-sidebar-content {
-  padding: var(--space-0-5) var(--space-2) var(--space-0-5) 0;
+  padding: var(--space-0-5) var(--space-6) var(--space-0-5) 0;
 }
 
 .skills-sidebar-empty {
@@ -112,11 +127,7 @@
 }
 
 .skills-preview-footer {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-top: var(--space-2-5);
+  margin-top: var(--space-5);
 }
 
 .skills-preview-edit-hint {
@@ -143,7 +154,8 @@
 }
 
 .skills-preview-footer p,
-.skills-preview-meta {
+.skills-preview-meta,
+.skills-preview-readonly {
   margin: 0;
   font-size: var(--font-size-footnote);
   line-height: var(--line-height-footnote);
@@ -157,6 +169,10 @@
   justify-content: space-between;
   gap: var(--space-2);
   margin-top: var(--space-3);
+}
+
+.skills-preview-readonly {
+  margin-top: var(--space-2);
 }
 
 /* 预览只消费原文的投影；排版跟随本页 token，不借用 Conversation 或文档编辑器的内部样式。 */
@@ -486,20 +502,10 @@
   white-space: nowrap;
 }
 
-.skills-editor,
-.skills-editor-preview {
+.skills-editor {
   flex: 1;
   min-height: 0;
   margin: var(--space-3);
-}
-
-.skills-editor-preview {
-  background: var(--color-bg-subtle);
-  border-radius: var(--radius-lg);
-}
-
-.skills-editor-preview-content {
-  padding: var(--space-5) var(--space-6);
 }
 
 .skills-detail-footer {
@@ -537,12 +543,13 @@
 
 @container (max-width: 540px) {
   .skills-browser {
+    flex: none;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 200px auto;
   }
 
-  .skills-sidebar,
-  .skills-sidebar-viewport {
-    max-height: 200px;
+  .skills-sidebar {
+    height: 200px;
   }
 }
 

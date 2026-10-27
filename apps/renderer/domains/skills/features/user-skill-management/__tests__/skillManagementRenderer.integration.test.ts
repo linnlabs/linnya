@@ -28,13 +28,20 @@ function rowButton(name: string): HTMLButtonElement {
 }
 function hasButton(text: string): boolean { return buttons().some(item => item.textContent?.trim() === text); }
 function editor(): HTMLElement {
-  const found = document.body.querySelector<HTMLElement>('.text-file-editor-control'); if (!found) throw new Error('no editor'); return found;
+  const found = document.body.querySelector<HTMLElement>('.markdown-file-editor-control, .text-file-editor-control'); if (!found) throw new Error('no editor'); return found;
 }
-function fileText(): string | null { return editor().querySelector('[data-node-view-content]')?.textContent ?? null; }
+function fileText(): string | null { return editor().querySelector('[data-node-view-content]')?.textContent ?? editor().textContent; }
 function type(value: string) {
-  const field = editor().querySelector('[data-node-view-content]');
-  if (!field) throw new Error('no text file');
-  field.textContent = value;
+  const field = editor();
+  if (field.classList.contains('markdown-file-editor-control')) {
+    const paragraph = document.createElement('p');
+    paragraph.textContent = value;
+    field.replaceChildren(paragraph);
+  } else {
+    const content = field.querySelector('[data-node-view-content]');
+    if (!content) throw new Error('no text file');
+    content.textContent = value;
+  }
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
 }
 
@@ -86,26 +93,28 @@ describe('Skill 设置页', () => {
     expect(container.querySelector('.skills-preview-meta')?.textContent).toContain('SKILL.md');
   });
 
-  it('先展示正文预览，隐藏 YAML 头；点击预览才编辑，切换预览不写入或丢失草稿', async () => {
-    const source = '---\nname: weekly-report\ndescription: 起草团队周报\n---\n# 周报\n\n- 进度\n- 风险\n';
-    backend({ files: { 'weekly-report/SKILL.md': source } }); await mount();
+  it('直接编辑渲染后的 Markdown，没有原文或预览切换，保存时保留 YAML', async () => {
+    const prefix = '---\nname: weekly-report\ndescription: 起草团队周报\n---\n';
+    const source = prefix + '# 周报\n\n- 进度\n- 风险\n';
+    const state = backend({ files: { 'weekly-report/SKILL.md': source } }); await mount();
     expect(container.querySelector('.skills-preview-card h1')?.textContent).toBe('周报');
     expect(container.querySelector('h2')?.textContent).toBe('已安装的 Skill');
     expect(container.querySelector('.settings-page-description')).toBeNull();
     expect(container.querySelector('.skills-preview-card')?.textContent).not.toContain('name:');
     expect(document.body.querySelector('.text-file-editor')).toBeNull();
-    const preview = container.querySelector<HTMLElement>('.skills-preview-card');
-    preview?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await flush();
-    expect(fileText()).toBe(source);
+    container.querySelector<HTMLElement>('.skills-preview-card')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await flush();
+    expect(editor().querySelector('h1')?.textContent).toBe('周报');
+    expect(editor().querySelectorAll('li')).toHaveLength(2);
+    expect(editor().textContent).not.toContain('name:');
+    expect(hasButton('原文') || hasButton('预览')).toBe(false);
     expect(button('保存').disabled).toBe(true);
-    type(source + '\n新增内容'); await flush();
-    button('预览').click(); await flush();
-    expect(document.body.querySelector('.skills-editor-preview')?.textContent).toContain('新增内容');
-    button('原文').click(); await flush();
-    expect(fileText()).toBe(source + '\n新增内容');
+    const paragraph = document.createElement('p'); paragraph.textContent = '新增内容';
+    editor().append(paragraph); await flush();
     expect(writes()).toEqual([]);
-    button('完成').click(); await flush();
-    expect(container.querySelector('.skills-preview-card')?.textContent).not.toContain('新增内容');
+    button('保存').click(); await flush();
+    expect(state.files['weekly-report/SKILL.md']).toBe(prefix + '# 周报\n\n- 进度\n- 风险\n\n新增内容\n');
+    expect(container.querySelector('.skills-preview-card')?.textContent).toContain('新增内容');
+    expect(button('保存').disabled).toBe(true);
   });
 
   it('按来源分组并显示每个 Skill 的描述；没有自己的 Skill 时给出引导', async () => {
@@ -178,11 +187,11 @@ describe('Skill 设置页', () => {
     expect(container.querySelector('.skills-preview-card')?.textContent).toContain('original');
   });
 
-  it('内置 Skill 只读，没有保存、升级、卸载', async () => {
-    backend(); await mount(); rowButton('deep-research').click(); await flush(); container.querySelector<HTMLElement>('.skills-preview-card')?.click(); await flush();
+  it.each(['builtin', 'plugin'] as const)('%s Skill 只读，没有保存、升级、卸载', async source => {
+    backend({ skills: [mine, { ...bundled, source }] }); await mount(); rowButton('deep-research').click(); await flush(); container.querySelector<HTMLElement>('.skills-preview-card')?.click(); await flush();
     expect(editor().getAttribute('contenteditable')).toBe('false');
     expect(hasButton('卸载') || hasButton('保存') || hasButton('从文件夹升级…')).toBe(false);
-    expect(document.body.textContent).toContain('只能查看');
+    expect(document.body.textContent).toContain('内置和插件skill处于只读状态。');
   });
 
   it('从文件夹安装：校验后确认，用文件夹里的名称安装；已存在同名 Skill 时按升级处理', async () => {

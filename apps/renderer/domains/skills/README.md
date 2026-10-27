@@ -5,12 +5,12 @@
 ## 页面与交互
 
 - 页面只保留“已安装的 Skill”页头，刷新和安装按钮与标题同一行；不再额外显示 Skill 标题、导语或分区标题。列表分组标题与页头左对齐。
-- 页面采用左侧选择、右侧预览：列表与预览按约 1:2 分配宽度，列表至少预留 200px，窄容器内改为上下布局。列表按“我的 Skill / 内置 / 插件”分组，每行显示名称和描述；不可用的 Skill 带警示标记，原因写在描述位置。首次进入默认预览第一个 Skill。没有自己的 Skill 时给出对话创建或文件夹安装的引导。
+- 页面采用左侧选择、右侧预览：列表与预览按约 1:2 分配宽度，列表至少预留 200px，高度跟随设置内容区而非卡片高度；条目与覆盖式滚动条之间预留内容间距，窄容器内改为上下布局。列表按“我的 Skill / 内置 / 插件”分组，每行显示名称和描述；不可用的 Skill 带警示标记，原因写在描述位置。首次进入默认预览第一个 Skill。没有自己的 Skill 时给出对话创建或文件夹安装的引导。
 - 左侧列表由 `SkillListSidebar` 拥有呈现和滚动生命周期，使用 Renderer UI Scroll 的 Linnya 主题与悬停显示策略；不再显示系统原生滚动条，也不单独实现滚动条样式。
-- 卡片视觉参考 Linnsy 的记忆设置：浮起表面、发丝描边、宽而轻的阴影，内容在 260–420px 内自然增高，超出后通过 Renderer UI Scroll 滚动。编辑提示在悬停或键盘聚焦时出现，触屏保留可见入口；内边距归内容层所有，不放在滚动组件接管的 viewport 上。
-- 页面卡片始终展示已选 Skill 的 `SKILL.md`，不受弹窗切换、编辑或保存支持文件影响；只有入口文件保存或外部刷新时更新入口内容。点击卡片每次从 `SKILL.md` 打开详情弹窗：左侧文件树（`SKILL.md` 在最前，目录只是分组标题），右侧原文编辑与 Markdown 预览切换。内置与插件 Skill 只读，默认展示预览，没有保存、升级和卸载操作。
-- 弹窗文件树和 Markdown 预览通过 `SkillDetailScroll` 使用规范滚动能力；原文编辑的双轴滚动由 Editor domain 的 `TextFileEditor` 使用同一 Renderer UI Scroll 管理，代码块内部不再生成第二条原生横向滚动条。
-- 原文编辑通过 Editor domain 的窄公开入口 `text-file.ts` 复用已有 CodeBlock，提供按文件后缀确定的高亮、语言标签、复制和缩进；保留 YAML 头、缩进与文件原文，不接入工作区文档会话。预览使用现有 Markdown-it 与 DOMPurify；`SKILL.md` 的 YAML 头只在预览中隐藏，不回写文件。切换预览不销毁编辑实例，保留草稿、选区和撤销记录。
+- 卡片视觉参考 Linnsy 的记忆设置：浮起表面、发丝描边、宽而轻的阴影，内容在 260–420px 内自然增高，超出后通过 Renderer UI Scroll 滚动。卡片下方先留白再以完整卡片宽度展示介绍，编辑提示放在元信息行；编辑提示在悬停或键盘聚焦时出现，触屏保留可见入口；内边距归内容层所有，不放在滚动组件接管的 viewport 上。
+- 页面卡片始终展示已选 Skill 的 `SKILL.md`，不受弹窗切换、编辑或保存支持文件影响；只有入口文件保存或外部刷新时更新入口内容。点击卡片每次从 `SKILL.md` 打开详情弹窗：左侧文件树（`SKILL.md` 在最前，目录只是分组标题），右侧 Markdown 直接以 Tiptap 渲染后的内容呈现与编辑，没有原文 / 预览切换。内置与插件 Skill 使用同一组件的只读状态，没有保存、升级和卸载操作。
+- 弹窗文件树通过 `SkillDetailScroll` 使用规范滚动能力；Markdown 与其他文本文件的双轴滚动由 Editor domain 的文件编辑组件使用同一 Renderer UI Scroll 管理，代码块内部不再生成第二条原生横向滚动条。
+- 文件编辑通过 Editor domain 的窄公开入口 `text-file.ts`：Markdown 使用 `MarkdownFileEditor`，脚本等文件使用 `TextFileEditor`；两者复用正式 CodeBlock 的语言标签、高亮、复制与缩进，不接入工作区文档会话。Markdown 的 YAML 元数据独立保留，不显示为正文；实际编辑后保存规范化的 Markdown 正文，打开与撤销回初始内容不会触发格式改写。卡片仍通过 Markdown-it 与 DOMPurify 投影已保存的入口正文。
 - 安装与升级都先经系统文件夹选择器取得本机目录，再调用 `validate` 读出名称、描述和文件数，用全局确认框展示后才写入。名称取自文件夹里的 `SKILL.md`，不需要手填；已存在同名用户 Skill 时按“替换”确认并升级。升级时文件夹里的名称必须与当前 Skill 一致。
 - 卸载、替换、升级和放弃未保存修改都经全局确认框；危险操作的确认按钮使用危险样式。关闭弹窗回到原文预览，未保存的草稿不进入预览事实。
 - 窗口重新获得焦点时静默刷新列表：外部修改会读入，外部卸载会关闭详情，未保存的编辑不会被覆盖。
@@ -20,6 +20,6 @@
 
 `features/user-skill-management`：`definitions` 拥有状态和中英文文案；`functions` 是分组与文件树的纯规则；`store` 仅同步持有状态；`orchestration` 调用 API、确认并提交动作；`infrastructure` 解析共享 schema、封装文件夹选择器；Vue 只呈现与连接交互。API 失败就近展示：详情打开时显示在弹窗底部，否则显示在列表上方。保存使用读取时的原文防止覆盖外部编辑。
 
-样式从 `styles/index.css` 进入 App 唯一样式装配，只消费语义 token，不覆写共享组件或其他 domain 内部样式；Tiptap 原文控件的样式由 Editor domain 装配，Skills 只拥有外围布局。数据流为 Renderer API → Skills owner，与 Agent/CLI 共用文件操作。`preview` 持有选中 Skill 的入口文件事实；`detail` 仅在弹窗打开时持有当前编辑文件与草稿。两者有独立的读取语义，不再用弹窗当前文件推导卡片内容，也不重复保存弹窗打开标记。
+样式从 `styles/index.css` 进入 App 唯一样式装配，只消费语义 token，不覆写共享组件或其他 domain 内部样式；Tiptap 文件编辑控件的样式由 Editor domain 装配，Skills 只拥有外围布局。数据流为 Renderer API → Skills owner，与 Agent/CLI 共用文件操作。`preview` 持有选中 Skill 的入口文件事实；`detail` 仅在弹窗打开时持有当前编辑文件与草稿。两者有独立的读取语义，不再用弹窗当前文件推导卡片内容，也不重复保存弹窗打开标记。
 
 对话里的 `skill_manage` 一行结论由 conversation 域的 Skill 工具卡呈现，不在本域。
