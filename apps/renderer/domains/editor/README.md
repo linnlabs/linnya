@@ -18,6 +18,15 @@
 - Revision / Pending 性能链路：[Revision](./features/Revision/README.md)
 - Provider outbound 开发调试面：[ProviderOutboundDebug](./features/ProviderOutboundDebug/README.md)
 
+### 独立文本文件编辑
+
+Skill 等独立文本文件通过 [`text-file.ts`](./text-file.ts) 消费 `TextFileEditor`，实现位于
+`features/text-file-editing`。该公开入口只提供受控原文、只读状态、可访问名称与内容更新事件；
+使用项目现有 Tiptap / ProseMirror 的文本节点和撤销能力，不初始化工作区文档会话、全局 Editor store、
+批注或自动保存。YAML、脚本、空白与换行直接作为文本进入节点，不执行 Markdown 导入或序列化；
+各文件的读取、保存、冲突检查和预览仍由消费方的业务 owner 拥有。切换文件由消费方通过文件身份重建组件，
+避免撤销历史串到另一个文件。样式统一从 Editor domain 的样式入口装配。
+
 **设计原则（高信号）**：
 
 - **高内聚、低耦合**：一个能力尽量在同一处闭环（UI / 扩展 / service / store），减少跨目录跳转。

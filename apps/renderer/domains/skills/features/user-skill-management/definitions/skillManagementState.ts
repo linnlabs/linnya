@@ -14,5 +14,7 @@ export interface SkillManagementState {
   loading: boolean;
   busy: boolean;
   detail: SkillDetailState | null;
+  /** 预览与编辑共用文件事实；只有显式进入编辑时才打开弹窗。 */
+  editorOpen: boolean;
   feedback: { kind: 'success' | 'error'; message: string } | null;
 }

@@ -6,6 +6,189 @@
   gap: var(--space-2);
 }
 
+/* --- 浏览：窄侧栏与阅读卡片，不把可编辑原文直接暴露成设置表单。 --- */
+
+.skills-management-page {
+  container-type: inline-size;
+}
+
+.skills-browser {
+  display: grid;
+  grid-template-columns: 188px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.skills-sidebar {
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.skills-sidebar-empty {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  color: var(--color-text-tertiary);
+}
+
+.skills-preview-panel {
+  min-width: 0;
+}
+
+.skills-preview-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.skills-preview-header h4 {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  overflow-wrap: anywhere;
+}
+
+.skills-preview-card {
+  height: 320px;
+  overflow: auto;
+  cursor: pointer;
+  background: var(--color-bg-surface);
+  border: var(--border-width-hairline) solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--duration-micro) var(--ease-standard);
+}
+
+.skills-preview-card:hover:not([aria-disabled='true']) {
+  border-color: var(--color-border-hover);
+}
+
+.skills-preview-card:focus-visible,
+.skills-row:focus-visible,
+.skills-file:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.skills-preview-scroll {
+  padding: var(--space-5);
+}
+
+.skills-preview-footer {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.skills-preview-footer p,
+.skills-preview-meta {
+  margin: 0;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
+}
+
+.skills-preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* 预览只消费原文的投影；排版跟随本页 token，不借用 Conversation 或文档编辑器的内部样式。 */
+.skills-markdown-preview {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.skills-markdown-preview > :first-child {
+  margin-top: 0;
+}
+
+.skills-markdown-preview > :last-child {
+  margin-bottom: 0;
+}
+
+.skills-markdown-preview :is(p, ul, ol, pre, blockquote, table) {
+  margin-block: var(--space-3);
+}
+
+.skills-markdown-preview :is(h1, h2, h3, h4, h5, h6) {
+  margin-block: var(--space-5) var(--space-2);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
+}
+
+.skills-markdown-preview h1 {
+  font-size: var(--font-size-title);
+  line-height: var(--line-height-title);
+}
+
+.skills-markdown-preview :is(ul, ol) {
+  padding-left: var(--space-5);
+}
+
+.skills-markdown-preview ul {
+  list-style: disc;
+}
+
+.skills-markdown-preview ol {
+  list-style: decimal;
+}
+
+.skills-markdown-preview blockquote {
+  margin-inline: 0;
+  padding-left: var(--space-3);
+  color: var(--color-text-secondary);
+  border-left: var(--space-0-5) solid var(--color-border-default);
+}
+
+.skills-markdown-preview :is(code, pre),
+.skills-source-preview {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  white-space: pre-wrap;
+}
+
+.skills-markdown-preview pre {
+  padding: var(--space-3);
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-md);
+}
+
+.skills-source-preview {
+  margin: 0;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.skills-markdown-preview img {
+  max-width: 100%;
+}
+
+.skills-markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.skills-markdown-preview :is(th, td) {
+  padding: var(--space-2);
+  text-align: left;
+  border: var(--border-width-hairline) solid var(--color-border-default);
+}
+
 /* --- 列表 --- */
 
 .skills-group + .skills-group {
@@ -56,6 +239,15 @@
   background-color: var(--color-bg-hover-light);
 }
 
+.skills-row.is-active {
+  background-color: var(--color-bg-active-subtle);
+}
+
+.skills-row:disabled,
+.skills-file:disabled {
+  cursor: default;
+}
+
 .skills-row-copy {
   display: flex;
   flex: 1;
@@ -68,6 +260,7 @@
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-body);
   color: var(--color-text-primary);
+  overflow-wrap: anywhere;
 }
 
 .skills-row-description {
@@ -87,13 +280,6 @@
   color: var(--color-warning-text);
   background-color: var(--color-warning-bg);
   border-radius: var(--radius-sm);
-}
-
-.skills-row-chevron {
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  color: var(--color-text-muted);
 }
 
 /* --- 详情弹窗 --- */
@@ -193,33 +379,42 @@
   border-radius: 50%;
 }
 
-.skills-editor {
+.skills-editor-panel {
   display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
 }
 
-.skills-editor-control {
-  flex: 1;
-  width: 100%;
-  min-height: 0;
-  padding: var(--space-3) var(--space-4);
+.skills-editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: var(--border-width-hairline) solid var(--color-border-light);
+}
+
+.skills-editor-path {
+  min-width: 0;
+  overflow: hidden;
   font-family: var(--font-family-mono);
   font-size: var(--font-size-footnote);
   line-height: var(--line-height-footnote);
-  resize: none;
-  border-radius: 0;
+  color: var(--color-text-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* 无边框文本框悬停、聚焦时会填充 hover 底色，这在整块编辑区上显得突兀；编辑区始终保持页面底色，
-   聚焦由共享控件的强调色边框表达，只读时用凹陷浅底表示不可改。两条规则特异性相同，只读在后。 */
-.skills-editor .skills-editor-control:hover:not(:disabled),
-.skills-editor .skills-editor-control:focus:not(:disabled) {
-  background-color: transparent;
+.skills-editor,
+.skills-editor-preview {
+  flex: 1;
+  min-height: 0;
 }
 
-.skills-editor .skills-editor-control:read-only:not(:disabled) {
-  background-color: var(--color-bg-subtle);
+.skills-editor-preview {
+  overflow: auto;
+  padding: var(--space-5) var(--space-6);
 }
 
 .skills-detail-footer {
@@ -253,4 +448,25 @@
 
 .skills-detail-status.is-success {
   color: var(--color-success-text);
+}
+
+@container (max-width: 540px) {
+  .skills-browser {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .skills-sidebar {
+    max-height: 200px;
+  }
+}
+
+@media (width <= 640px) {
+  .skills-detail-body {
+    grid-template-columns: 128px minmax(0, 1fr);
+  }
+
+  .skills-detail-footer,
+  .skills-detail-actions {
+    flex-wrap: wrap;
+  }
 }

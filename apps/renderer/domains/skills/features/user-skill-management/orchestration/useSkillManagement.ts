@@ -60,7 +60,7 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
     const current = store.state.detail;
     if (!current) return;
     const next = skills.find(skill => skill.name === current.skill.name && skill.source === current.skill.source);
-    if (!next) { store.apply({ detail: null }); return; }
+    if (!next) { store.apply({ detail: null, editorOpen: false }); return; }
     await readFile(next, next.files.includes(current.file) ? current.file : ENTRY_FILE);
   }
 
@@ -71,6 +71,8 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
     try {
       const skills = await loadList();
       if (!dirty.value) await syncDetail(skills);
+      const first = groups.value.flatMap(group => group.skills)[0];
+      if (!store.state.detail && first) await readFile(first, ENTRY_FILE);
     } catch (error: unknown) {
       if (!options.silent || store.state.loading) fail(error);
     } finally {
@@ -79,15 +81,22 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
   }
 
   async function openSkill(skill: ManagedSkill): Promise<void> {
-    if (store.state.busy) return;
+    if (store.state.busy || !await allowDiscard()) return;
     store.apply({ busy: true, feedback: null });
     try { await readFile(skill, ENTRY_FILE); }
     catch (error: unknown) { store.apply({ detail: { skill, file: ENTRY_FILE, original: null, draft: '' } }); fail(error); }
     finally { store.apply({ busy: false }); }
   }
   async function closeDetail(): Promise<void> {
+    if (store.state.busy) return;
     if (!await allowDiscard()) return;
-    store.apply({ detail: null, feedback: null });
+    const current = store.state.detail;
+    store.apply({ editorOpen: false, feedback: null,
+      detail: current ? { ...current, draft: current.original ?? '' } : null });
+  }
+  function openEditor(): void {
+    if (!store.state.detail || store.state.busy) return;
+    store.apply({ editorOpen: true, feedback: null });
   }
   async function selectFile(file: string): Promise<void> {
     const current = store.state.detail;
@@ -103,7 +112,7 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
     try {
       await executeSkillManagement(request);
       const skills = await loadList();
-      if (request.action === 'remove') store.apply({ detail: null });
+      if (request.action === 'remove') store.apply({ detail: null, editorOpen: false });
       else await syncDetail(skills);
       succeed(successText);
     } catch (error: unknown) { fail(error); }
@@ -174,7 +183,7 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
   }
   async function save(): Promise<void> {
     const current = store.state.detail;
-    if (!current || current.original === null || !dirty.value || store.state.busy) return;
+    if (!current || !editable.value || current.original === null || !dirty.value || store.state.busy) return;
     await mutate({ action: 'write', name: current.skill.name, path: current.file,
       content: current.draft, expected_content: current.original }, message('savedSuccess'));
   }
@@ -189,5 +198,5 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
   }
 
   return { state, groups, detail, fileRows, editable, dirty, draft, message,
-    refresh: () => refresh(), openSkill, closeDetail, selectFile, install, upgrade, remove, save };
+    refresh: () => refresh(), openSkill, openEditor, closeDetail, selectFile, install, upgrade, remove, save };
 }
