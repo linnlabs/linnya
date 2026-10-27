@@ -1,6 +1,6 @@
 {
   "id": "slides",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "name": "Slides",
   "description": "用 AI 规划、生成、编辑和检查演示文稿，并让 agents 沿源码协作。",
   "developer": "Linnya",
@@ -10,6 +10,11 @@
     "Slides 作为独立 runtime 插件分发、升级和卸载，主应用只保留通用平台能力。"
   ],
   "releaseNotes": [
+    {
+      "version": "1.1.2",
+      "title": "补齐图表数字格式运行时",
+      "description": "将图表数字格式的校验与格式化依赖内联到后端和构建 Worker，修复独立插件安装时的漏包问题。"
+    },
     {
       "version": "1.1.1",
       "title": "切换 Renderer UI 2.0",

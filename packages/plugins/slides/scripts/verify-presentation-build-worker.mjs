@@ -112,6 +112,12 @@ try {
   ) {
     throw new Error('Slides presentation build worker did not report invalid deck.js source.');
   }
+  // 在真实 Worker 制品中执行数字格式准入，避免开发环境可解析的子入口掩盖漏打包。
+  const chart = {
+    _type: 'Chart', chartType: 'bar', width: 4, height: 2,
+    categories: ['A', 'B'], series: [{ name: 'Sales', labels: ['A', 'B'], values: [1234.5, 6789.25] }],
+    valueAxis: { numberFormat: '#,##0.0' },
+  };
   const compiled = await compileCompose({
     title: 'Artifact layout smoke',
     slides: [{
@@ -126,7 +132,7 @@ try {
       }, {
         _type: 'Table', width: 4,
         headers: ['Method', 'Mean'], rows: [['Exact', '5.1111'], ['Sensitivity', '4.8500']],
-      }],
+      }, chart],
     }],
   });
   if (
@@ -137,12 +143,21 @@ try {
     || compiled.result.input.slides[0].elements[0].content?.[0]?.style?.bold !== true
     || compiled.result.input.slides[0].elements[0].content?.[1]?.formula?.display !== 'inline'
     || !(compiled.result.input.slides[0].elements[1].position.h > 0)
+    || compiled.result.input.slides[0].elements[2].type !== 'chart'
+    || compiled.result.input.slides[0].elements[2].valueAxis?.numberFormat !== '#,##0.0'
   ) {
     throw new Error('Slides presentation build worker did not compile packaged Yoga layout.');
   }
+  const [textElement, tableElement, chartElement] = compiled.result.input.slides[0].elements;
+  // compose 返回 DirectComposeInput；物化接收 DeckSpec，图表数据在后者的 data 字段中。
+  const chartSpec = {
+    type: 'chart', position: chartElement.position, chartType: chartElement.chartType,
+    data: { categories: chartElement.categories, series: chartElement.series },
+    valueAxis: chartElement.valueAxis,
+  };
   const tableMaterialized = await materialize({
     title: compiled.result.input.title,
-    slides: [{ slideNumber: 1, spec: { type: 'structured', elements: compiled.result.input.slides[0].elements } }],
+    slides: [{ slideNumber: 1, spec: { type: 'structured', elements: [textElement, tableElement, chartSpec] } }],
   });
   if (tableMaterialized.type !== 'materialize_result') throw new Error('Packaged table materialization failed.');
   const tableZip = await JSZip.loadAsync(tableMaterialized.buffer);
@@ -153,6 +168,21 @@ try {
       tableValue: tableXml?.includes('5.1111'), richColor: tableXml?.includes('A13456'),
       inlineFormula: /<a14:m(?:\s|>)/u.test(tableXml ?? ''), zeroRow: tableXml?.includes('<a:tr h="0"'),
     })}`);
+  }
+  const chartFile = Object.values(tableZip.files).find(file => /^ppt\/charts\/chart\d+\.xml$/u.test(file.name));
+  const chartXml = await chartFile?.async('text');
+  if (!chartXml?.includes('formatCode="#,##0.0"') || !chartXml.includes('1234.5')) {
+    throw new Error('Packaged chart materialization did not preserve number formatting and data.');
+  }
+  const invalidChart = await compileCompose({
+    title: 'Unsupported chart format smoke',
+    slides: [{ _type: 'Slide', children: [{ ...chart, valueAxis: { numberFormat: '0.0E+00' } }] }],
+  });
+  if (invalidChart.type !== 'compile_compose_result'
+    || invalidChart.result?.ok !== false
+    || invalidChart.result.kind !== 'compose_contract'
+    || !invalidChart.result.message?.includes('numberFormat')) {
+    throw new Error('Packaged chart admission did not reject unsupported number formats.');
   }
   const unsupportedFormula = await materialize({
     title: 'Unsupported formula smoke',
