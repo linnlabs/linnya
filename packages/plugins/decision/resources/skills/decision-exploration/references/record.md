@@ -62,7 +62,7 @@
 
 ## recommendation 格式
 
-必填 `optionIds`、`rationale`、`changeConditions`、`nextAction`、`unresolved`（文字数组）。optionIds 可以包含互相配合的行动，文字解释适用关系；不是必须给所有选项打分。已明确违反声明的数值检查的选项不能作为当前推荐保存；未知检查不等于通过，须在 unresolved 和建议条件中说明。
+必填 `optionIds`、`rationale`、`changeConditions`、`nextAction`、`unresolved`（文字数组）。不使用条件性建议时optionIds至少一项，可以包含互相配合的行动，文字解释适用关系；不是必须给所有选项打分。已明确违反声明的数值检查的选项不能作为当前推荐保存；未知检查不等于通过，须在 unresolved 和建议条件中说明。
 
 ```json
 {"optionIds":["wait"],"rationale":"预算降低后，报价超过硬约束；先使用公开资料","changeConditions":"预算提高或价格下降后重新比较资料的增量价值","nextAction":"核对公开资料能否回答当前问题","unresolved":["补充资料是否真正提供新信息尚未确定"]}
@@ -112,3 +112,25 @@ scope 含 `question`、`reader`、`task_type`（`open`、`fixed` 或 `update`）
 `received` 表示结果已绑定原输入版本并观察了保存稿；还须阅读文章与两份原始评审，判断调查是否解决了真正的未知。没有正式产物或两份已完成评审会报告 `partial`。条件、原材料或已接回稿件变化会报告 `needs_review`；暂停沿原运行继续。取消保留已存文档，重新调查应显式新建委托。重复 receive 复用原接回事实，不自动重跑，也不覆盖新建议。
 
 版本记录是准备/接回时观察到的版本，不能证明并发改动从未发生，也不认证来源或结论正确。读取其他会话已有研究可在同项目下查看已接回记录；尚未接回的运行事实须回原会话处理。
+
+
+## 条件性建议（可选）
+
+需要保留用户要求的假设情景，并在互斥候选间按已明确的偏好取舍时，在recommendation中增加conditionalAdvice。旧理由、改变条件、下一步与未知仍完整保存。假设清单可跨会话读取，read会重算；simulate仍是临时查看，不自动进入清单。
+
+```json
+{
+  "preference":{"inputIds":["prefer_first"],"optionOrder":["first","second"],"reason":"用户明确的条件性偏好"},
+  "cases":[{"id":"changed_price","label":"报价变动的假设","inputs":[{"inputId":"price","value":210}],"nextAction":"依据本情景失败的约束寻找替代安排"}],
+  "whenNonePass":"核对失败约束，调整相应条件或寻找新方案",
+  "whenUndetermined":"先补齐影响选择的信息，再重新比较"
+}
+```
+
+这是字段格式示例，id必须对应当前模型。preference可省略；有偏好时inputIds指向kind=preference的输入，optionOrder须列齐全部互斥候选且不重复。程序不从文字猜顺序；组合行动或没有稳定顺序时保留定性判断。cases可省略，每项沿simulate格式，可附作者nextAction；whenNonePass和whenUndetermined必填。
+
+回执conditionalAdvice把baseline、完整cases、全选项检查状态与outcome分开。检查全true为pass，任一false为fail，未知或无检查为undetermined；有未定则不自动选。状态全确定时，按显式顺序选首个pass（ranked_choice）；没有顺序为selection_required；全部失败为no_option_passes。情景改变偏好依据为preference_needs_review；补信息的行动仍由作者提出。
+
+当前没有选定方案时，带conditionalAdvice可保存optionIds=[]和具体下一步；程序已有ranked_choice时保存选择须一致。不要为表示暂缓而虚构一个满足约束的选项。旧输入版本的分支只显示needs_review。假设不是新事实，程序结果也不认证模型、原文或行动。
+
+recommendationBasis的optionRanges按所有已选边界输入交付全选项范围，不只看单个检查。fixedInputIds引用同一回执record.model.inputs中的固定条件，不依赖交付历史。输入名称和单位取原定义；null上下界表示无限，Inclusive表示等号是否包含。它保留原有数值边界，解释和行动仍须覆盖用户需要的分支。面向用户的说明与record都应能追溯，不能以附表替代纠正相互冲突的文字。

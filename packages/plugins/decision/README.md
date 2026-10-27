@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.4.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.5.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -66,3 +66,16 @@ simulate接受当前expected revision与若干cases，只允许对已有输入id
 该操作不调用update/recommend、不增加版本、不改变事实、公式、来源状态或旧建议。假设值不恢复withdrawn输入；需要确认新事实或修正模型时仍须显式update。结果绑定basedOnRevision/inputRevision，不能冒充当前建议或来源认证。用文件传入JSON时沿既有conversationFiles=write的CLI bridge合同读取，未扩大Host权限枚举；实现只读文件并在内存求值。内联simulate声明不访问会话文件。
 
 当前仍不包含一般求解、自动选项排序或模型语义认证。业务回归见decisionScenarios.integration.test.ts，覆盖漏项显露与显式修正、共享条件/边界点、情景隔离、未知/撤回、版本/项目隔离和正式文件bridge；既有记录与建议必须逐字不变。
+
+
+## 条件性建议与完整分支
+
+recommend可选conditionalAdvice保存假设清单、作者明确的偏好顺序和无方案/未定时的行动。cases沿simulate的id/label/inputs，每项可含作者nextAction；只保存假设值，不改用户事实，不额外保存计算结果。read在同一输入版本重算全部选项的全部检查，返回当前及每个case的结果。旧字段rationale/changeConditions/nextAction/unresolved完整保留，不因程序分区删除解释或未知。
+
+preference的inputIds必须引用kind=preference的已有输入；optionOrder列齐全部互斥候选一次，reason属于作者解释。程序不推断其符合用户原意。全部检查true为pass，任一false为fail；未知或没有检查为undetermined。所有状态确定时才按顺序选择首个pass；没有顺序返回selection_required，不把唯一数值通过等同总体最佳。存在未定返回needs_information；情景修改偏好依据返回preference_needs_review，不套旧顺序。所有候选fail返回no_option_passes及whenNonePass作者行动。
+
+optionIds可在显式conditionalAdvice未选定方案时为空，表示暂不选择；无需为落库虚构选项。当前程序已按顺序选定时，保存的optionIds必须一致，推荐明确失败选项仍被拒绝。行动是建议，不自动联系、购买或执行；whenUndetermined与各case的nextAction均保留作者身份，程序不认证其内容。
+
+recommendationBasis新增optionRanges：对每个选中的input求所有候选全部检查的单变量分区。lower/upper为null分别表示负/正无穷；Inclusive保留等号，rows中的options给出各选项检查状态。固定条件由fixedInputIds引用同一回执record.model.inputs，避免在每个范围重复整套来源文字；原始input名称/单位不另作展示改名；仿射限制同上，不推断整数、非负或跨日边界，不是一般符号求解器或模型语义校验。输入版本变化时整个旧conditionalAdvice与数值依据均只给needs_review，历史版仍重建原结果。
+
+这是schemaVersion1可选加法，无新表/Host接口/基础工具。业务回归decisionConditionalAdvice.integration.test.ts覆盖跨会话项目读取、SQLite重开、7人无可行方案、费用/容量等号与上界、偏好改变、未知/撤回/无检查、顺序与保存选择冲突、历史重算、空选择和五个课程边界的保留。程序结果与自由说明矛盾仍是质量错误，不以current或完整分支作为正确性认证。

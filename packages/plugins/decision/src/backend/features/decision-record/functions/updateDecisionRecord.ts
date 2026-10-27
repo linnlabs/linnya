@@ -7,6 +7,7 @@ import {
 import { evaluateDecisionModel, validateDecisionModel } from './evaluateDecisionModel';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { projectRecommendationBasis, validateRecommendationBasis } from './projectRecommendationBasis';
+import { projectConditionalAdvice } from './projectConditionalAdvice';
 
 export function updateDecisionRecord(record: DecisionRecord, update: DecisionUpdate): DecisionRecord {
   const replacements = new Map(update.inputs?.map(input => [input.id, input]));
@@ -45,16 +46,26 @@ export function recordDecisionRecommendation(
     }
   }
   validateRecommendationBasis(record.model, content);
-  const failed = evaluateDecisionModel(record.model).checks.find(check => (
+  const evaluation = evaluateDecisionModel(record.model);
+  const failed = evaluation.checks.find(check => (
     content.optionIds.includes(check.optionId) && check.passes === false
   ));
   if (failed) throw new DecisionFailure('constraint_failed', `Recommended option violates declared check ${failed.id}: ${failed.label}`);
-  return {
+  const next: DecisionRecord = {
     ...record,
     revision: record.revision + 1,
     reason: 'Recommendation reviewed for current inputs',
     recommendation: { basedOnInputRevision: record.inputRevision, content },
   };
+  const conditional = projectConditionalAdvice(next, evaluation);
+  if (!conditional && content.optionIds.length === 0) {
+    throw new DecisionFailure('invalid_model', 'An empty selection requires explicit conditionalAdvice and a next action.');
+  }
+  if (conditional?.status === 'current' && conditional.baseline.outcome.status === 'ranked_choice'
+    && (content.optionIds.length !== 1 || content.optionIds[0] !== conditional.baseline.outcome.optionIds[0])) {
+    throw new DecisionFailure('constraint_failed', 'Saved selection conflicts with the declared preference order and passing checks.');
+  }
+  return next;
 }
 
 export function projectDecisionRecord(record: DecisionRecord) {
@@ -66,6 +77,7 @@ export function projectDecisionRecord(record: DecisionRecord) {
     evaluation,
     recommendationStatus,
     recommendationBasis: projectRecommendationBasis(record, evaluation),
+    conditionalAdvice: projectConditionalAdvice(record, evaluation),
     notice: 'current means the author associated this recommendation with current inputs; it is not a correctness certification. Only declared arithmetic and checks are evaluated.',
   };
 }

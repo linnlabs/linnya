@@ -1,7 +1,11 @@
 import { z } from 'zod';
+import { DecisionIdSchema, DecisionTextSchema, DecisionInputSchema } from './decisionInput';
+import { DecisionScenarioCaseSchema } from './decisionScenario';
 
-const text = z.string().trim().min(1);
-const id = text.regex(/^[a-zA-Z][a-zA-Z0-9_-]*$/);
+export { DecisionInputSchema } from './decisionInput';
+
+const text = DecisionTextSchema;
+const id = DecisionIdSchema;
 
 /** 只计算显式给出的四则式，不执行模型生成的 JS 或推断缺失输入。 */
 export type DecisionExpression =
@@ -22,16 +26,6 @@ export const DecisionExpressionSchema: z.ZodType<DecisionExpression> = z.lazy(()
     right: DecisionExpressionSchema,
   }).strict(),
 ]));
-
-export const DecisionInputSchema = z.object({
-  id,
-  label: text,
-  kind: z.enum(['fact', 'preference', 'constraint', 'assumption']),
-  value: z.union([z.number().finite(), z.string(), z.boolean(), z.null()]),
-  unit: z.string().optional(),
-  origin: text,
-  status: z.enum(['available', 'withdrawn']),
-}).strict();
 
 export const DecisionOptionSchema = z.object({ id, label: text, description: text }).strict();
 export const DecisionCalculationSchema = z.object({
@@ -59,12 +53,26 @@ export const DecisionModelSchema = z.object({
 }).strict();
 export type DecisionModel = z.infer<typeof DecisionModelSchema>;
 
+export const DecisionConditionalAdviceSchema = z.object({
+  preference: z.object({
+    inputIds: z.array(id).min(1),
+    optionOrder: z.array(id).min(1),
+    reason: text,
+  }).strict().optional(),
+  cases: z.array(DecisionScenarioCaseSchema.extend({ nextAction: text.optional() })).min(1).optional(),
+  whenNonePass: text,
+  whenUndetermined: text,
+}).strict();
+export type DecisionConditionalAdvice = z.infer<typeof DecisionConditionalAdviceSchema>;
+
 export const DecisionRecommendationSchema = z.object({
-  optionIds: z.array(id).min(1),
+  // 空选择只用于显式条件性建议的暂不选择，业务校验不能把它当成漏填。
+  optionIds: z.array(id),
   rationale: text,
   changeConditions: text,
   nextAction: text,
   unresolved: z.array(text),
+  conditionalAdvice: DecisionConditionalAdviceSchema.optional(),
   // 作者只选既有算式与检查；值和边界方向由程序生成，避免再手填一份阈值。
   numericBasis: z.object({
     calculationIds: z.array(id),

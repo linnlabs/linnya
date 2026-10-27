@@ -3,6 +3,7 @@ import type { CheckBoundaryResult } from '../definitions/checkBoundary';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { collectExpressionInputs, evaluateDecisionModel } from './evaluateDecisionModel';
 import { deriveCheckBoundary } from './deriveCheckBoundary';
+import { projectOptionRanges } from './projectOptionRanges';
 
 export function validateRecommendationBasis(model: DecisionModel, content: DecisionRecommendation) {
   for (const id of content.numericBasis?.calculationIds ?? []) {
@@ -49,6 +50,8 @@ export function projectRecommendationBasis(record: DecisionRecord, evaluation: R
       text: item.result.status === 'available' ? `${item.label}：${item.result.value} ${item.unit}`
         : `${item.label}：不可用（${item.result.reason}）。`,
     })),
+    optionRanges: [...new Set(boundaries.map(binding => binding.input.id))]
+      .map(inputId => projectOptionRanges(record.model, inputId)),
     boundaries: boundaries.map(({ check, input }) => {
       const result = deriveCheckBoundary(record.model, check, input.id);
       const otherInputIds = [...new Set([...collectExpressionInputs(check.left), ...collectExpressionInputs(check.right)])]
