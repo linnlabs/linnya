@@ -30,8 +30,8 @@
 }
 
 .chart-block-node-view__revision[data-kind='proposed'] {
-  background: var(--color-success-bg);
-  color: var(--color-success-text);
+  background: var(--editor-revision-insert-bg);
+  color: var(--editor-revision-insert-text);
 }
 
 .chart-block-node-view__revision[data-kind='deleted'] {

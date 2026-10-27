@@ -10,11 +10,12 @@
   text-decoration: none;
 }
 
-/* 插入类型（新增文字） */
+/* 插入类型（新增文字）：颜色取 editor 的修订专用 token，原因见 tokens/theme.css。 */
 .revision-mark--insert {
-  background-color: var(--color-success-bg);
-  color: var(--color-success-text);
+  background-color: var(--editor-revision-insert-bg);
+  color: var(--editor-revision-insert-text);
   text-decoration: underline;
+  text-decoration-color: var(--editor-revision-insert-line);
 }
 
 /* 删除类型（删除文字） */
