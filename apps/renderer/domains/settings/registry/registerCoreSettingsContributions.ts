@@ -96,6 +96,7 @@ export function ensureCoreSettingsContributionsRegistered(): void {
     group: 'document-types',
     order: 80,
     component: SkillManagementSettingsPage,
+    headerMode: 'page',
   });
   registerSettingsContribution({
     id: 'about',

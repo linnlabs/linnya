@@ -2,9 +2,22 @@
   display: flex;
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   background: var(--code-block-bg);
   border-radius: var(--radius-lg);
+}
+
+.text-file-editor-viewport {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.text-file-editor-document {
+  display: flex;
+  min-width: 100%;
+  min-height: 100%;
 }
 
 .text-file-editor-control {

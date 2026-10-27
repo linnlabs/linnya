@@ -15,39 +15,41 @@
         {{ detail.skill.error || detail.skill.description }}
       </p>
       <div class="skills-detail-body">
-        <nav
-          class="skills-files"
-          :aria-label="message('files')"
-        >
-          <template
-            v-for="row in fileRows"
-            :key="`${row.kind}:${row.path}`"
+        <SkillDetailScroll class="skills-files-scroll">
+          <nav
+            class="skills-files"
+            :aria-label="message('files')"
           >
-            <span
-              v-if="row.kind === 'directory'"
-              class="skills-file-directory"
-              :style="{ '--skills-file-depth': row.depth }"
-            >{{ row.label }}</span>
-            <button
-              v-else
-              type="button"
-              class="skills-file"
-              :class="{ 'is-active': row.path === detail.file }"
-              :style="{ '--skills-file-depth': row.depth }"
-              :aria-current="row.path === detail.file ? 'true' : undefined"
-              :disabled="state.busy"
-              @click="selectFile(row.path)"
+            <template
+              v-for="row in fileRows"
+              :key="`${row.kind}:${row.path}`"
             >
-              <span class="skills-file-name">{{ row.label }}</span>
               <span
-                v-if="row.path === detail.file && dirty"
-                class="skills-file-dirty"
-                role="img"
-                :aria-label="message('unsaved')"
-              />
-            </button>
-          </template>
-        </nav>
+                v-if="row.kind === 'directory'"
+                class="skills-file-directory"
+                :style="{ '--skills-file-depth': row.depth }"
+              >{{ row.label }}</span>
+              <button
+                v-else
+                type="button"
+                class="skills-file"
+                :class="{ 'is-active': row.path === detail.file }"
+                :style="{ '--skills-file-depth': row.depth }"
+                :aria-current="row.path === detail.file ? 'true' : undefined"
+                :disabled="state.busy"
+                @click="selectFile(row.path)"
+              >
+                <span class="skills-file-name">{{ row.label }}</span>
+                <span
+                  v-if="row.path === detail.file && dirty"
+                  class="skills-file-dirty"
+                  role="img"
+                  :aria-label="message('unsaved')"
+                />
+              </button>
+            </template>
+          </nav>
+        </SkillDetailScroll>
         <div class="skills-editor-panel">
           <div class="skills-editor-toolbar">
             <span class="skills-editor-path">{{ detail.file }}</span>
@@ -58,15 +60,17 @@
               :tabs="modeTabs"
             />
           </div>
-          <div
+          <SkillDetailScroll
             v-if="mode === 'preview' && isMarkdown"
             class="skills-editor-preview"
           >
-            <SkillFilePreview
-              :path="detail.file"
-              :content="draft"
-            />
-          </div>
+            <div class="skills-editor-preview-content">
+              <SkillFilePreview
+                :path="detail.file"
+                :content="draft"
+              />
+            </div>
+          </SkillDetailScroll>
           <TextFileEditor
             v-show="mode !== 'preview' || !isMarkdown"
             :key="`${detail.skill.source}:${detail.skill.name}:${detail.file}`"
@@ -135,6 +139,7 @@ import { TextFileEditor, resolveCodeFileLanguage } from '@/domains/editor/text-f
 import { useSkillManagement } from '../orchestration/useSkillManagement';
 import type { SkillMessageKey } from '../definitions/messages';
 import SkillFilePreview from './SkillFilePreview.vue';
+import SkillDetailScroll from './SkillDetailScroll.vue';
 
 const { state, detail, fileRows, editable, dirty, draft, message, closeDetail, selectFile, upgrade, remove, save } = useSkillManagement();
 const sourceTagKeys: Record<'user' | 'builtin' | 'plugin', SkillMessageKey> = {

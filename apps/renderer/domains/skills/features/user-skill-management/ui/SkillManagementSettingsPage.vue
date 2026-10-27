@@ -1,35 +1,35 @@
 <template>
   <SettingsPage
     class="skills-management-page"
-    :description="message('description')"
+    :title="message('installed')"
   >
-    <SettingsSection :title="message('installed')">
-      <template #actions>
-        <div class="skills-management-header-actions">
-          <IconButton
-            :label="message('refresh')"
-            size="sm"
-            :disabled="state.busy"
-            @click="refresh"
-          >
-            <RefreshIcon />
-          </IconButton>
-          <BaseButton
-            variant="outline"
-            tone="info"
-            size="sm"
-            :disabled="state.busy"
-            @click="install"
-          >
-            <template #icon>
-              <FolderIcon />
-            </template>
-            {{ message('install') }}
-          </BaseButton>
-        </div>
-      </template>
+    <template #actions>
+      <div class="skills-management-header-actions">
+        <IconButton
+          :label="message('refresh')"
+          size="sm"
+          :disabled="state.busy"
+          @click="refresh"
+        >
+          <RefreshIcon />
+        </IconButton>
+        <BaseButton
+          variant="outline"
+          tone="info"
+          size="sm"
+          :disabled="state.busy"
+          @click="install"
+        >
+          <template #icon>
+            <FolderIcon />
+          </template>
+          {{ message('install') }}
+        </BaseButton>
+      </div>
+    </template>
+    <SettingsSection>
       <SettingsFeedback
-        v-if="!state.editorOpen"
+        v-if="!detail"
         :kind="state.feedback?.kind ?? 'info'"
         :message="state.feedback?.message ?? ''"
       />
@@ -45,29 +45,29 @@
       >
         <SkillListSidebar
           :groups="groups"
-          :selected="detail?.skill ?? null"
+          :selected="preview?.skill ?? null"
           :disabled="state.busy"
           @select="openSkill"
         />
         <section
-          v-if="detail"
+          v-if="preview"
           class="skills-preview-panel"
-          :aria-label="detail.skill.name"
+          :aria-label="preview.skill.name"
         >
           <header class="skills-preview-header">
-            <h4>{{ detail.skill.name }}</h4>
-            <span class="skills-tag">{{ message(sourceTagKeys[detail.skill.source]) }}</span>
+            <h4>{{ preview.skill.name }}</h4>
+            <span class="skills-tag">{{ message(sourceTagKeys[preview.skill.source]) }}</span>
           </header>
           <SkillPreviewCard
-            :path="detail.file"
-            :content="detail.original"
+            path="SKILL.md"
+            :content="preview.content"
             :disabled="state.busy"
             :label="message(editable ? 'editContent' : 'viewContent')"
             :error-message="message('readFailed')"
             @open="openEditor"
           />
           <div class="skills-preview-footer">
-            <p>{{ detail.skill.error || detail.skill.description }}</p>
+            <p>{{ preview.skill.error || preview.skill.description }}</p>
             <span
               class="skills-preview-edit-hint"
               aria-hidden="true"
@@ -76,7 +76,7 @@
             </span>
           </div>
           <p class="skills-preview-meta">
-            <span>{{ detail.file }} · {{ message('fileCount', { count: detail.skill.files.length }) }}</span>
+            <span>SKILL.md · {{ message('fileCount', { count: preview.skill.files.length }) }}</span>
             <span v-if="!editable">{{ message('readonly') }}</span>
           </p>
         </section>
@@ -87,7 +87,7 @@
         />
       </div>
     </SettingsSection>
-    <SkillDetailModal v-if="state.editorOpen && detail" />
+    <SkillDetailModal v-if="detail" />
   </SettingsPage>
 </template>
 <script setup lang="ts">
@@ -100,7 +100,7 @@ import SkillDetailModal from './SkillDetailModal.vue';
 import SkillPreviewCard from './SkillPreviewCard.vue';
 import SkillListSidebar from './SkillListSidebar.vue';
 
-const { state, groups, detail, editable, message, refresh, openSkill, openEditor, install } = useSkillManagement({ autoRefresh: true });
+const { state, groups, preview, detail, editable, message, refresh, openSkill, openEditor, install } = useSkillManagement({ autoRefresh: true });
 const sourceTagKeys: Record<'user' | 'builtin' | 'plugin', SkillMessageKey> = {
   user: 'tagUser', builtin: 'tagBuiltin', plugin: 'tagPlugin',
 };

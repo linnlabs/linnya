@@ -47,6 +47,7 @@ function backend(initial: Partial<Backend> = {}): Backend {
       case 'read': return { action: 'read', name: request.name, path: request.path, source: request.source ?? 'user', content: state.files[`${request.name}/${request.path}`] ?? '' };
       case 'validate': return { action: 'validate', ...(state.validated ?? { name: 'weekly-report', description: '起草团队周报', files: ['SKILL.md'] }) };
       case 'remove': state.skills = state.skills.filter(skill => skill.name !== request.name); return { action: 'remove', name: request.name };
+      case 'write': state.files[`${request.name}/${request.path}`] = request.content; return { action: 'write', name: request.name };
       default: return { action: request.action, name: request.name } as SkillManagementResult;
     }
   });
@@ -64,10 +65,33 @@ async function openMine() { rowButton('weekly-report').click(); await flush(); c
 const writes = () => mocks.execute.mock.calls.map(([request]) => request as SkillManagementRequest).filter(request => request.action !== 'list' && request.action !== 'read' && request.action !== 'validate');
 
 describe('Skill 设置页', () => {
+  it('支持文件的切换、编辑、保存和读取失败都不会改变卡片中的入口文件，重新打开仍从入口开始', async () => {
+    backend(); await mount(); await openMine();
+    const previewText = () => container.querySelector('.skills-preview-card')?.textContent;
+    button('template.md').click(); await flush();
+    expect(fileText()).toBe('template');
+    expect(previewText()).toContain('original');
+    type('updated template'); await flush();
+    button('保存').click(); await flush();
+    expect(fileText()).toBe('updated template');
+    expect(previewText()).toContain('original');
+    expect(previewText()).not.toContain('updated template');
+    button('完成').click(); await flush();
+    container.querySelector<HTMLElement>('.skills-preview-card')?.click(); await flush();
+    expect(fileText()).toBe('original');
+    mocks.execute.mockRejectedValueOnce(new Error('支持文件读取失败'));
+    button('template.md').click(); await flush();
+    expect(document.body.textContent).toContain('支持文件读取失败');
+    expect(previewText()).toContain('original');
+    expect(container.querySelector('.skills-preview-meta')?.textContent).toContain('SKILL.md');
+  });
+
   it('先展示正文预览，隐藏 YAML 头；点击预览才编辑，切换预览不写入或丢失草稿', async () => {
     const source = '---\nname: weekly-report\ndescription: 起草团队周报\n---\n# 周报\n\n- 进度\n- 风险\n';
     backend({ files: { 'weekly-report/SKILL.md': source } }); await mount();
     expect(container.querySelector('.skills-preview-card h1')?.textContent).toBe('周报');
+    expect(container.querySelector('h2')?.textContent).toBe('已安装的 Skill');
+    expect(container.querySelector('.settings-page-description')).toBeNull();
     expect(container.querySelector('.skills-preview-card')?.textContent).not.toContain('name:');
     expect(document.body.querySelector('.text-file-editor')).toBeNull();
     const preview = container.querySelector<HTMLElement>('.skills-preview-card');
@@ -128,6 +152,7 @@ describe('Skill 设置页', () => {
     expect(document.body.textContent).toContain('已保存');
     expect(fileText()).toBe('edited');
     expect(button('保存').disabled).toBe(true);
+    expect(container.querySelector('.skills-preview-card')?.textContent).toContain('edited');
   });
 
   it('切换支持文件读取对应内容；有未保存修改时先确认，取消则留在原文件', async () => {

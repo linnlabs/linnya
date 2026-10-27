@@ -1,12 +1,26 @@
 <template>
-  <EditorContent
-    :editor="editor"
+  <div
+    ref="hostRef"
     class="text-file-editor"
-  />
+    data-overlay-scroll-theme="linnya"
+    data-overlay-scroll-visibility="strict-hover"
+  >
+    <div
+      ref="viewportMountRef"
+      class="text-file-editor-viewport"
+      data-overlayscrollbars-initialize
+    >
+      <EditorContent
+        :editor="editor"
+        class="text-file-editor-document"
+      />
+    </div>
+  </div>
 </template>
 <script setup lang="ts">
-import { onBeforeUnmount, shallowRef, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { EditorContent } from '@tiptap/vue-3';
+import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import { createTextFileEditor, textFileContent } from '../functions/createTextFileEditor';
 
 const props = defineProps<{ modelValue: string; label: string; language?: string; readonly?: boolean }>();
@@ -16,6 +30,14 @@ const editor = shallowRef(createTextFileEditor({
   language: props.language,
   onChange: content => emit('update:modelValue', content),
 }));
+const hostRef = ref<HTMLElement | null>(null);
+const viewportMountRef = ref<HTMLElement | null>(null);
+const viewportRef = ref<HTMLElement | null>(null);
+const scroll = useOverlayScrollViewport({
+  bindings: { hostRef, viewportMountRef, viewportRef },
+  options: { overflow: { x: 'scroll', y: 'scroll' } },
+});
+onMounted(() => scroll.init());
 
 watch(() => props.modelValue, content => {
   if (content !== editor.value.state.doc.textContent) {

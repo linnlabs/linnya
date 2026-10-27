@@ -26,6 +26,7 @@
 
 - `@linnya/plugin-host-contract/backend`：backend contribution 与 Host runtime port。
 - `@linnya/plugin-host-contract/renderer`：renderer contribution 与 UI-side port。
+- `@linnya/plugin-host-contract/renderer/settingsContribution`：设置页注册合同。`headerMode` 默认由壳层显示标题，页面需要自带标题和操作区时显式声明 `page`；导航标题仍由原有 `title` / `titleMessageKey` 决定。
 - `@linnya/plugin-host-contract/renderer/localization`：插件可见的本地化类型门面；真实 registry、store 与解析运行时由
   [Renderer 本地化](../../apps/renderer/app/localization/README.md)拥有。
 - `@linnya/plugin-host-contract/renderer/executionPresentation`：Host 工具活动指示器的组件合同；插件通过 `@plugin/renderer/executionPresentation` 使用运行实现，可选择扫光、呼吸或静态文字。执行态、动画实现与标题/正文的动画归属均由 Host 持有，插件不复制判断或 keyframes。

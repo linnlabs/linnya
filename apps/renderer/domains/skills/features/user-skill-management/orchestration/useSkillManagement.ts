@@ -16,9 +16,10 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
   const message = useSkillMessages();
   const state = computed(() => store.state);
   const groups = computed(() => groupSkills(store.state.skills));
+  const preview = computed(() => store.state.preview);
   const detail = computed(() => store.state.detail);
   const fileRows = computed(() => buildFileTree(store.state.detail?.skill.files ?? []));
-  const editable = computed(() => store.state.detail?.skill.source === 'user');
+  const editable = computed(() => store.state.preview?.skill.source === 'user');
   const dirty = computed(() => {
     const current = store.state.detail;
     return current !== null && current.original !== null && current.draft !== current.original;
@@ -50,18 +51,32 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
     store.apply({ skills: response.skills });
     return response.skills;
   }
-  async function readFile(skill: ManagedSkill, file: string): Promise<void> {
+  async function readContent(skill: ManagedSkill, file: string): Promise<string> {
     const response = await executeSkillManagement({ action: 'read', name: skill.name, path: file, source: skill.source });
     if (response.action !== 'read') throw new Error(message('failed'));
-    store.apply({ detail: { skill, file, original: response.content, draft: response.content } });
+    return response.content;
   }
-  /** 让已打开的详情跟上当前目录：Skill 被外部卸载则关闭，支持文件被移除则回到入口文件。 */
-  async function syncDetail(skills: readonly ManagedSkill[]): Promise<void> {
-    const current = store.state.detail;
+  async function readFile(skill: ManagedSkill, file: string): Promise<void> {
+    const content = await readContent(skill, file);
+    store.apply({ detail: { skill, file, original: content, draft: content } });
+  }
+  async function readPreview(skill: ManagedSkill): Promise<string> {
+    const content = await readContent(skill, ENTRY_FILE);
+    store.apply({ preview: { skill, content } });
+    return content;
+  }
+  /** 预览与弹窗分别同步：卡片始终读入口文件；弹窗才保留当前文件位置。 */
+  async function syncSelection(skills: readonly ManagedSkill[]): Promise<void> {
+    const current = store.state.preview;
     if (!current) return;
     const next = skills.find(skill => skill.name === current.skill.name && skill.source === current.skill.source);
-    if (!next) { store.apply({ detail: null, editorOpen: false }); return; }
-    await readFile(next, next.files.includes(current.file) ? current.file : ENTRY_FILE);
+    if (!next) { store.apply({ preview: null, detail: null }); return; }
+    const content = await readPreview(next);
+    const editing = store.state.detail;
+    if (!editing) return;
+    const file = next.files.includes(editing.file) ? editing.file : ENTRY_FILE;
+    if (file === ENTRY_FILE) store.apply({ detail: { skill: next, file, original: content, draft: content } });
+    else await readFile(next, file);
   }
 
   /** silent：窗口重新获得焦点时的自动刷新，不闪骨架、不打断正在编辑的内容。 */
@@ -70,9 +85,9 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
     if (!options.silent) store.apply({ busy: true });
     try {
       const skills = await loadList();
-      if (!dirty.value) await syncDetail(skills);
+      if (!dirty.value) await syncSelection(skills);
       const first = groups.value.flatMap(group => group.skills)[0];
-      if (!store.state.detail && first) await readFile(first, ENTRY_FILE);
+      if (!store.state.preview && first) await readPreview(first);
     } catch (error: unknown) {
       if (!options.silent || store.state.loading) fail(error);
     } finally {
@@ -82,21 +97,27 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
 
   async function openSkill(skill: ManagedSkill): Promise<void> {
     if (store.state.busy || !await allowDiscard()) return;
-    store.apply({ busy: true, feedback: null });
-    try { await readFile(skill, ENTRY_FILE); }
-    catch (error: unknown) { store.apply({ detail: { skill, file: ENTRY_FILE, original: null, draft: '' } }); fail(error); }
+    store.apply({ busy: true, detail: null, feedback: null });
+    try { await readPreview(skill); }
+    catch (error: unknown) { store.apply({ preview: { skill, content: null } }); fail(error); }
     finally { store.apply({ busy: false }); }
   }
   async function closeDetail(): Promise<void> {
     if (store.state.busy) return;
     if (!await allowDiscard()) return;
-    const current = store.state.detail;
-    store.apply({ editorOpen: false, feedback: null,
-      detail: current ? { ...current, draft: current.original ?? '' } : null });
+    store.apply({ detail: null, feedback: null });
   }
-  function openEditor(): void {
-    if (!store.state.detail || store.state.busy) return;
-    store.apply({ editorOpen: true, feedback: null });
+  async function openEditor(): Promise<void> {
+    const current = store.state.preview;
+    if (!current || store.state.busy) return;
+    store.apply({ busy: true, feedback: null });
+    try {
+      const content = await readPreview(current.skill);
+      store.apply({ detail: { skill: current.skill, file: ENTRY_FILE, original: content, draft: content } });
+    } catch (error: unknown) {
+      store.apply({ preview: { ...current, content: null }, detail: { skill: current.skill, file: ENTRY_FILE, original: null, draft: '' } });
+      fail(error);
+    } finally { store.apply({ busy: false }); }
   }
   async function selectFile(file: string): Promise<void> {
     const current = store.state.detail;
@@ -112,8 +133,8 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
     try {
       await executeSkillManagement(request);
       const skills = await loadList();
-      if (request.action === 'remove') store.apply({ detail: null, editorOpen: false });
-      else await syncDetail(skills);
+      if (request.action === 'remove') store.apply({ preview: null, detail: null });
+      else await syncSelection(skills);
       succeed(successText);
     } catch (error: unknown) { fail(error); }
     finally { store.apply({ busy: false }); }
@@ -197,6 +218,6 @@ export function useSkillManagement(options: { autoRefresh?: boolean } = {}) {
     onBeforeUnmount(() => window.removeEventListener('focus', refreshOnFocus));
   }
 
-  return { state, groups, detail, fileRows, editable, dirty, draft, message,
+  return { state, groups, preview, detail, fileRows, editable, dirty, draft, message,
     refresh: () => refresh(), openSkill, openEditor, closeDetail, selectFile, install, upgrade, remove, save };
 }

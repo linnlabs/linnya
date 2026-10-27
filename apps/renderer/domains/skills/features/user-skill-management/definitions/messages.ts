@@ -1,8 +1,7 @@
 import { registerMessageCatalogs, useLocalization } from '@app/localization';
 
 const zh = {
-  description: 'Skill 是 Agent 按需加载的工作方法。可以在对话里让 Agent 把常用流程做成 Skill，也可以从本机文件夹安装。',
-  installed: '已安装', install: '从文件夹安装…', refresh: '刷新',
+  installed: '已安装的 Skill', install: '从文件夹安装…', refresh: '刷新',
   groupUser: '我的 Skill', groupBuiltin: '内置', groupPlugin: '插件',
   tagUser: '我的 Skill', tagBuiltin: '内置', tagPlugin: '插件',
   emptyUser: '还没有自己的 Skill。可以在对话中让 Agent 把常用流程做成 Skill，或从文件夹安装。',
@@ -32,8 +31,7 @@ const zh = {
   failed: '操作失败，请检查文件内容后重试。',
 };
 const en: Record<keyof typeof zh, string> = {
-  description: 'Skills are working methods the agent loads on demand. Ask the agent to turn a routine into a skill in chat, or install one from a local folder.',
-  installed: 'Installed', install: 'Install from folder…', refresh: 'Refresh',
+  installed: 'Installed skills', install: 'Install from folder…', refresh: 'Refresh',
   groupUser: 'My skills', groupBuiltin: 'Built-in', groupPlugin: 'Plugins',
   tagUser: 'My skill', tagBuiltin: 'Built-in', tagPlugin: 'Plugin',
   emptyUser: 'No skills of your own yet. Ask the agent in chat to turn a routine into a skill, or install one from a folder.',

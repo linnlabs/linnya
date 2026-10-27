@@ -29,6 +29,9 @@ YAML、脚本、空白与换行直接作为文本进入节点，不执行 Markdo
 各文件的读取、保存、冲突检查和预览仍由消费方的业务 owner 拥有。切换文件由消费方通过文件身份重建组件，
 避免撤销历史串到另一个文件。样式统一从 Editor domain 的样式入口装配。
 
+独立文件的双轴滚动使用 Renderer UI Scroll 的 Linnya 主题与悬停显示策略。CodeBlock 的
+`scrollMode: 'external'` 将滚动委托给文件视口，避免嵌套原生横向滚动条；普通文档围栏仍保持块内滚动。
+
 高亮语言统一在 `core/lowlight.ts` 首次初始化时注册。对话代码块通过窄公开入口
 [`code-highlighting.ts`](./code-highlighting.ts) 消费同一实例，不再在组件挂载时修改共享语言表；
 独立文件与文档代码块因此不依赖用户是否曾打开对话页面。

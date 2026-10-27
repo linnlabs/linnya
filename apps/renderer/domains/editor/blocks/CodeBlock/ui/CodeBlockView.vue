@@ -6,6 +6,7 @@
     class="code-block-outer"
     :data-node-type="'codeBlockOuter'"
     :data-block-id="node.attrs.id"
+    :data-scroll-mode="extension.options.scrollMode"
   >
     <!-- 始终显示的语言名称 -->
     <div class="language-display" contenteditable="false">{{ displayLanguage }}</div>

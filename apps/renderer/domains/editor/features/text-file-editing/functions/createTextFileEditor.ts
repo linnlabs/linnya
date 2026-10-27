@@ -32,7 +32,7 @@ export function createTextFileEditor(options: {
   onChange: (content: string) => void;
 }): Editor {
   return new Editor({
-    extensions: [Document.extend({ content: 'codeBlock' }), FileCodeBlock.configure({ lowlight: getLowlight(), allowLanguageSelection: false }), Text, UndoRedo],
+    extensions: [Document.extend({ content: 'codeBlock' }), FileCodeBlock.configure({ lowlight: getLowlight(), allowLanguageSelection: false, scrollMode: 'external' }), Text, UndoRedo],
     content: textFileContent(options.content, options.language),
     editable: !options.readonly,
     enableInputRules: false,
