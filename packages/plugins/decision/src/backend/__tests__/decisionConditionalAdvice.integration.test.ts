@@ -168,6 +168,30 @@ describe('conditional choices through versioned project CLI',()=>{
     expect(()=>save(initial.id,{...recommendation(),numericBasis:undefined},2)).toThrow('Revision conflict');
   });
 
+  it('preserves equality singletons and reports nonlinear parameter ranges as undetermined',()=>{
+    const source=withPreference();
+    source.options=source.options.filter(option=>option.id==='b');
+    source.checks=[{id:'same',optionId:'b',label:'容量恰好等于当前数据',left:input('data'),operator:'eq',right:literal(26)}];
+    const record=create(source);
+    const content:DecisionRecommendation={...recommendation(),numericBasis:{calculationIds:[],boundaries:[{checkId:'same',inputId:'data'}]},
+      conditionalAdvice:{preference:{inputIds:['prefer_a'],optionOrder:['b'],reason:'合成顺序'},whenNonePass:'调整条件',whenUndetermined:'补齐信息'}};
+    save(record.id,content);
+    const view=projection(record.id).recommendationBasis;
+    if(view?.status!=='current') throw new Error('Expected ranges');
+    expect(view.optionRanges[0]?.rows).toMatchObject([
+      {lower:null,upper:26,upperInclusive:false,options:[{status:'fail'}]},
+      {lower:26,upper:26,lowerInclusive:true,upperInclusive:true,options:[{status:'pass'}]},
+      {lower:26,upper:null,lowerInclusive:false,options:[{status:'fail'}]},
+    ]);
+    source.checks=[{id:'nonlinear',optionId:'b',label:'平方约束',left:multiply(input('people'),input('people')),operator:'lte',right:literal(100)}];
+    const nonlinear=create(source);
+    save(nonlinear.id,{...content,numericBasis:{calculationIds:[],boundaries:[{checkId:'nonlinear',inputId:'people'}]}});
+    const other=projection(nonlinear.id).recommendationBasis;
+    if(other?.status!=='current') throw new Error('Expected ranges');
+    expect(other.optionRanges[0]?.rows).toMatchObject([{lower:null,upper:null,options:[{status:'undetermined'}]}]);
+    expect(other.optionRanges[0]?.boundaries[0]?.checks[0]?.result.status).toBe('unavailable');
+  });
+
   it('keeps every selected course boundary and the closed equality points when projecting whole-option ranges',()=>{
     const source:DecisionModel={title:'课程',question:'8次全部准时，2200元/期，已满足时偏好A',
       inputs:[['budget',2200],['departure',1050],['a_tuition',1800],['a_book',200],['a_transport',20],['a_travel',40],['b_tuition',2100],['b_book',0],['b_transport',12]]
