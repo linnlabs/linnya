@@ -367,6 +367,10 @@ Teleport 到 `body` 后的 DOM 顺序。普通业务代码不要自行设置弹�
 `Modal` 只负责跨业务稳定的弹窗骨架：遮罩、标题、关闭入口、视口边界、滚动模式和可选
 footer。表单规则、列表状态、保存流程、错误处理仍属于各自 domain / feature。
 
+标题旁的来源或状态标签通过 `title-extra` 插槽传入，合同见
+[`ModalSlots`](../src/features/overlays/definitions/modal.ts)。该插槽只补充标题信息，不替换标题或关闭按钮；
+不要从业务 CSS 覆写 Modal 内部标题选择器，也不要通过绝对定位把正文标签移到标题行。
+
 ### 滚动模式
 
 `scroll-mode` 只有两个值：

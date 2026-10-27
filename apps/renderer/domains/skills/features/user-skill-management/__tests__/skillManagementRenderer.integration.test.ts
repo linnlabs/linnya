@@ -83,7 +83,7 @@ describe('Skill 设置页', () => {
     expect(fileText()).toBe('updated template');
     expect(previewText()).toContain('original');
     expect(previewText()).not.toContain('updated template');
-    button('完成').click(); await flush();
+    button('关闭').click(); await flush();
     container.querySelector<HTMLElement>('.skills-preview-card')?.click(); await flush();
     expect(fileText()).toBe('original');
     mocks.execute.mockRejectedValueOnce(new Error('支持文件读取失败'));
@@ -107,6 +107,7 @@ describe('Skill 设置页', () => {
     expect(editor().querySelectorAll('li')).toHaveLength(2);
     expect(editor().textContent).not.toContain('name:');
     expect(hasButton('原文') || hasButton('预览')).toBe(false);
+    expect(hasButton('完成') || hasButton('关闭')).toBe(false);
     expect(button('保存').disabled).toBe(true);
     const paragraph = document.createElement('p'); paragraph.textContent = '新增内容';
     editor().append(paragraph); await flush();
@@ -191,7 +192,14 @@ describe('Skill 设置页', () => {
     backend({ skills: [mine, { ...bundled, source }] }); await mount(); rowButton('deep-research').click(); await flush(); container.querySelector<HTMLElement>('.skills-preview-card')?.click(); await flush();
     expect(editor().getAttribute('contenteditable')).toBe('false');
     expect(hasButton('卸载') || hasButton('保存') || hasButton('从文件夹升级…')).toBe(false);
+    const heading = document.body.querySelector('.modal-heading');
+    expect(heading?.querySelector('h2')?.textContent).toBe('deep-research');
+    expect(heading?.querySelector('.skills-tag')?.textContent).toBe(source === 'builtin' ? '内置' : '插件');
+    expect(document.body.querySelector('.skills-detail-summary .skills-tag')).toBeNull();
+    expect(document.body.querySelectorAll('.skills-detail-footer button')).toHaveLength(0);
     expect(document.body.textContent).toContain('内置和插件skill处于只读状态。');
+    button('关闭').click(); await flush();
+    expect(document.body.querySelector('.skills-detail')).toBeNull();
   });
 
   it('从文件夹安装：校验后确认，用文件夹里的名称安装；已存在同名 Skill 时按升级处理', async () => {

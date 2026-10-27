@@ -9,9 +9,11 @@
     :close-on-overlay-click="false"
     @close="closeDetail"
   >
+    <template #title-extra>
+      <span class="skills-tag">{{ message(sourceTagKeys[detail.skill.source]) }}</span>
+    </template>
     <div class="skills-detail">
       <p class="skills-detail-summary">
-        <span class="skills-tag">{{ message(sourceTagKeys[detail.skill.source]) }}</span>
         {{ detail.skill.error || detail.skill.description }}
       </p>
       <div class="skills-detail-body">
@@ -103,21 +105,12 @@
           >
             {{ statusText }}
           </p>
-          <BaseButton
-            variant="secondary"
-            :disabled="state.busy"
-            @click="closeDetail"
-          >
-            {{ message(editable ? 'done' : 'close') }}
-          </BaseButton>
-          <BaseButton
+          <ActionButtons
             v-if="editable"
-            variant="primary"
-            :disabled="state.busy || !dirty"
-            @click="save"
-          >
-            {{ message('save') }}
-          </BaseButton>
+            :primary-action-text="message('save')"
+            :is-primary-action-disabled="state.busy || !dirty"
+            @primary-click="save"
+          />
         </div>
       </div>
     </template>
@@ -125,7 +118,7 @@
 </template>
 <script setup lang="ts">
 import { computed } from 'vue';
-import { BaseButton, Modal } from '@linnya/renderer-ui';
+import { ActionButtons, BaseButton, Modal } from '@linnya/renderer-ui';
 import { MarkdownFileEditor, TextFileEditor, resolveCodeFileLanguage } from '@/domains/editor/text-file';
 import { useSkillManagement } from '../orchestration/useSkillManagement';
 import type { SkillMessageKey } from '../definitions/messages';

@@ -57,6 +57,7 @@ describe('Modal', () => {
         scrollMode: 'internal',
       },
       {
+        'title-extra': () => h('span', { 'data-log-source': 'readonly' }, '只读'),
         default: () => h('div', { class: 'business-log-scroll-owner' }, '日志内容'),
       }
     ));
@@ -64,6 +65,10 @@ describe('Modal', () => {
 
     const content = document.body.querySelector<HTMLElement>('.modal-content');
     const container = document.body.querySelector<HTMLElement>('.modal-container');
+    const heading = document.body.querySelector<HTMLElement>('.modal-heading');
+    expect(heading?.querySelector('h2')?.textContent).toBe('任务日志');
+    expect(heading?.querySelector('[data-log-source]')?.textContent).toBe('只读');
+    expect(document.body.querySelectorAll('.modal-header .modal-close')).toHaveLength(1);
     expect(content?.classList.contains('modal-content--internal')).toBe(true);
     expect(content?.classList.contains('modal-content--content')).toBe(false);
     expect(content?.querySelector('.business-log-scroll-owner')).not.toBeNull();

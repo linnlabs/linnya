@@ -381,7 +381,6 @@
 
 .skills-tag {
   display: inline-block;
-  margin-right: var(--space-2);
   padding: 0 var(--space-1-5);
   font-size: var(--font-size-caption);
   line-height: var(--line-height-caption);
@@ -513,7 +512,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-6);
+  padding: var(--space-2) var(--space-6);
   border-top: var(--border-width-hairline) solid var(--color-border-light);
 }
 

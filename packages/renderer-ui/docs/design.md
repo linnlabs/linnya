@@ -332,6 +332,7 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 ### 9.5 弹窗
 
 - 使用 `Modal`。标题是弹窗的第一层级：`subtitle`（15/22）、semibold、`--color-text-primary`；不要用比正文还浅的灰色做标题。
+- 来源或状态标签放在标题旁，通过 `title-extra` 插槽接入，使用状态徽标的字阶与颜色，不能抢占标题层级。
 - 关闭按钮固定在标题行右侧，28px 圆角方块，静止为 `--color-text-tertiary`，悬停提亮到主文字色并出现 hover 底色；形状不随状态变化。
 - 底部操作区主操作在右、次操作在左，使用 `ActionButtons`；正文过长时由内容区滚动，标题与操作区保持可见。
 - 点击遮罩与 Esc 关闭当前最上层弹窗；含未保存输入的表单弹窗应关闭 `closeOnOverlayClick`，避免误触丢失内容。
