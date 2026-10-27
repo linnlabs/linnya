@@ -24,7 +24,7 @@ import { createDefaultGraphAgentExecutor } from '../graphRuntimeFactory';
 
 const MODEL_ID = 'custom-context-budget-fixture';
 const CONVERSATION_ID = 'conversation-context-budget-fixture';
-const INPUT_BUDGET = 32_768 - 4_096;
+const INPUT_BUDGET = 32_768 - 1;
 // 保留旧模型的低容量设置，避免测试因扩大窗口而掩盖 tokenizer / 工具目录装配回归。
 const model: llm.ModelCatalogEntry = {
   id: MODEL_ID,
@@ -56,15 +56,15 @@ The latest request is awaiting a response.
 A response to the latest request remains pending.
 </context-checkpoint>`;
 
-function createHarness() {
+function createHarness(route = model.inference_route) {
   const registry = new ToolRegistry({ strictInitialization: true });
   const definition = findRegisteredAgentDefinitionByPromptKey('default');
   const availableTools = definition?.config?.availableTools;
   if (!availableTools) throw new Error('默认 Agent 缺少正式工具目录。');
   const modelCatalog: llm.ModelCatalogLike = {
-    getModelById: id => id === MODEL_ID ? model : undefined,
-    getModelsByCapability: () => [model],
-    getModelsByUIVisibility: () => [model],
+    getModelById: id => id === MODEL_ID ? { ...model, inference_route: route } : undefined,
+    getModelsByCapability: () => [{ ...model, inference_route: route }],
+    getModelsByUIVisibility: () => [{ ...model, inference_route: route }],
   };
   const events: telemetry.TelemetryEvent[] = [];
   const committed: HistorySummaryEvent[] = [];
@@ -106,6 +106,7 @@ function createHarness() {
   };
 
   return {
+    toolNames: registry.getAvailableToolNames([...availableTools]),
     events,
     committed,
     published,
@@ -141,7 +142,7 @@ afterEach(() => {
 });
 
 describe('自定义模型的真实工具目录与上下文预算', () => {
-  it('32K 模型携带 18 个工具和当前文档时，连续两个 hi 均未达到历史整理水位', async () => {
+  it('32K 模型携带完整工具目录和当前文档时，连续两个 hi 均未达到历史整理水位', async () => {
     const harness = createHarness();
     const first = await harness.tick([], 'turn-first-hi');
     const second = await harness.tick([
@@ -155,12 +156,29 @@ describe('自定义模型的真实工具目录与上下文预算', () => {
     expect(harness.compactionCall).not.toHaveBeenCalled();
     expect(harness.committed).toEqual([]);
     expect(harness.mainCall).toHaveBeenCalledTimes(2);
-    for (const call of harness.mainCall.mock.calls) expect(call[2].tools).toHaveLength(18);
+    for (const call of harness.mainCall.mock.calls) {
+      expect(call[2].tools?.map(tool => tool.name)).toEqual(harness.toolNames);
+    }
     for (const result of [first, second]) {
       expect(result.decision).toEqual({ kind: 'final_answer', answer: 'hello' });
       expect(result.contextUsage?.input_budget_tokens).toBe(INPUT_BUDGET);
       expect(result.contextUsage?.used_tokens).toBeLessThan(INPUT_BUDGET * 0.8);
     }
+  });
+
+  it('窗口与输出能力均为 1M 时仍可携带工具和文档调用，输出只使用剩余窗口', async () => {
+    const capacity = 1_048_576;
+    const harness = createHarness({ context_window_tokens: capacity, max_output_tokens: capacity });
+    const result = await harness.tick([], 'turn-equal-output-capacity');
+
+    expect(result.decision).toEqual({ kind: 'final_answer', answer: 'hello' });
+    expect(harness.compactionCall).not.toHaveBeenCalled();
+    expect(harness.mainCall).toHaveBeenCalledOnce();
+    const usage = result.contextUsage;
+    if (!usage) throw new Error('成功调用缺少实际 Prompt 预算快照。');
+    expect(usage.input_budget_tokens).toBe(capacity - 1);
+    expect(usage.used_tokens).toBeGreaterThan(0);
+    expect(usage.output_limit_tokens).toBe(capacity - usage.used_tokens);
   });
 
   it('同一装配下长历史达到 80% 水位时仍先整理、提交摘要，再完成主调用', async () => {
@@ -177,7 +195,7 @@ describe('自定义模型的真实工具目录与上下文预算', () => {
           `output-read-${index}`, CONVERSATION_ID, 'turn-read-report', 'read_file', `call-read-${index}`,
           {
             status: 'success',
-            observation: 'The report records verified evidence and completed changes.\n'.repeat(330),
+            observation: 'The report records verified evidence and completed changes.\n'.repeat(400),
             data: null,
           },
           { timestamp: index * 2 + 3 },
@@ -199,7 +217,7 @@ describe('自定义模型的真实工具目录与上下文预算', () => {
     expect(harness.compactionCall.mock.calls[0]?.[2]).toMatchObject({
       tool_choice: 'none', retry_policy: 'none', allow_model_fallback: false,
     });
-    expect(harness.compactionCall.mock.calls[0]?.[2].tools).toHaveLength(18);
+    expect(harness.compactionCall.mock.calls[0]?.[2].tools?.map(tool => tool.name)).toEqual(harness.toolNames);
     expect(harness.committed).toHaveLength(1);
     expect(harness.published).toEqual(harness.committed);
     expect(harness.mainCall).toHaveBeenCalledOnce();

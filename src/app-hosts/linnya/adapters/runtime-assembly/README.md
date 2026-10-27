@@ -59,9 +59,11 @@ Agent 的估算器，必须在该 Agent 的 runtime 装配时显式注入，并�
 context policy 和 prepared model route 决定。
 
 [上下文预算模块回归](./__tests__/customModelContextBudget.integration.test.ts) 使用默认 Agent、
-真实 18 个工具和生产 Context Builder 验证：旧 32K 模型携带当前文档时两次短问候不整理；
+真实完整工具目录和生产 Context Builder 验证：旧 32K 模型携带当前文档时两次短问候不整理；
 完整工具历史使 Prompt 越过 80% 水位后，仍会验收摘要、先提交后发布，再调用主模型。
 只有模型返回与持久化落点使用测试替身，预算、候选选择、重建和工具定义均走正式实现。
+同时覆盖窗口与输出能力均为 1M 的 route：能够正常接纳 Prompt，实际输出额度为最终
+Prompt 占用后的剩余窗口，不把模型的最大输出能力当成固定预留。
 
 ## 自定义工具装配
 
