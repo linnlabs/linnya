@@ -23,13 +23,23 @@ export function useSkillManagement() {
     store.apply({ selected: skill, file, original: response.content, draft: response.content });
   }
   async function refresh(): Promise<void> {
-    store.apply({ loading: true });
+    if (!await allowDiscard()) return;
+    store.apply({ loading: true, busy: true });
     try {
       const response = await executeSkillManagement({ action: 'list' });
       if (response.action !== 'list') throw new Error(message('failed'));
       store.apply({ skills: response.skills });
+      // Agent、CLI 或外部编辑器都能改当前目录，刷新不能保留已经失效的编辑目标。
+      const selected = store.state.selected;
+      const current = selected && response.skills.find(skill => skill.name === selected.name && skill.source === selected.source);
+      if (current) {
+        const file = current.files.includes(store.state.file) ? store.state.file : 'SKILL.md';
+        await readFile(current, file);
+      } else {
+        store.apply({ selected: null, file: 'SKILL.md', original: null, draft: '' });
+      }
     } catch (error: unknown) { fail(error); }
-    finally { store.apply({ loading: false }); }
+    finally { store.apply({ loading: false, busy: false }); }
   }
   function fail(error: unknown): void {
     store.apply({ feedback: { kind: 'error', message: error instanceof Error ? error.message : message('failed') } });

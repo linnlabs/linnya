@@ -49,4 +49,37 @@ describe('Skill settings current-file workflow', () => {
     expect(container.querySelector('textarea')?.readOnly).toBe(true);
     expect([...container.querySelectorAll('button')].some(item => item.textContent?.trim() === '卸载')).toBe(false);
   });
+  it('文件选择器显示当前路径，切换支持文件后读取对应内容', async () => {
+    mocks.execute.mockImplementation(async (request: SkillManagementRequest): Promise<SkillManagementResult> => {
+      if (request.action === 'list') return { action: 'list', skills: [{ ...skill, files: ['SKILL.md', 'references/example.txt'] }] };
+      if (request.action === 'read') return { action: 'read', name: skill.name, path: request.path, source: 'user', content: request.path };
+      throw new Error('unexpected mutation');
+    });
+    await mount(); button('editable-skill').click(); await flush();
+    const picker = container.querySelector<HTMLButtonElement>('button[aria-label="文件"]');
+    if (!picker) throw new Error('missing file picker');
+    expect(picker.textContent).toContain('SKILL.md');
+    picker.click(); await flush();
+    const option = [...container.querySelectorAll<HTMLElement>('[role="option"]')]
+      .find(item => item.textContent?.includes('references/example.txt'));
+    if (!option) throw new Error('missing support file option');
+    option.click(); await flush();
+    expect(mocks.execute).toHaveBeenLastCalledWith({ action: 'read', name: skill.name, path: 'references/example.txt', source: 'user' });
+    expect(picker.textContent).toContain('references/example.txt');
+    expect(container.querySelector('textarea')?.value).toBe('references/example.txt');
+  });
+  it('外部修改后刷新读取当前内容，外部卸载后刷新清除旧编辑目标', async () => {
+    let installed = true; let content = 'original';
+    mocks.execute.mockImplementation(async (request: SkillManagementRequest): Promise<SkillManagementResult> => {
+      if (request.action === 'list') return { action: 'list', skills: installed ? [skill] : [] };
+      if (request.action === 'read') return { action: 'read', name: skill.name, path: request.path, source: 'user', content };
+      throw new Error('unexpected mutation');
+    });
+    await mount(); button('editable-skill').click(); await flush();
+    content = 'edited externally'; button('刷新').click(); await flush();
+    expect(container.querySelector('textarea')?.value).toBe(content);
+    installed = false; button('刷新').click(); await flush();
+    expect(container.querySelector('textarea')).toBeNull();
+    expect(container.textContent).not.toContain('editable-skill');
+  });
 });

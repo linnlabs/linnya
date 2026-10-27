@@ -84,6 +84,7 @@
         <CustomSelect
           :model-value="state.file"
           :options="fileOptions"
+          :trigger-aria-label="message('file')"
           :disabled="state.busy"
           @update:model-value="selectFile"
         />
@@ -165,14 +166,14 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { BaseButton, CustomTextInput, CustomTextarea, CustomSelect, SkeletonRows } from '@linnya/renderer-ui';
+import { BaseButton, CustomTextInput, CustomTextarea, CustomSelect, SkeletonRows, type CustomSelectOption } from '@linnya/renderer-ui';
 import { SettingsPage, SettingsSection, SettingsRow, SettingsActions, SettingsFeedback,
   SettingsState, SettingsList, SettingsListRow } from '@/domains/settings/public';
 import { useSkillManagement } from '../orchestration/useSkillManagement';
 
 const { state, draft, dirty, editable, sourceDirectory, installName, newPath, message,
   refresh, select, install, upgrade, remove, save, createFile, deleteFile } = useSkillManagement();
-const fileOptions = computed(() => (state.value.selected?.files ?? []).map(value => ({ value, label: value })));
+const fileOptions = computed<CustomSelectOption<string>[]>(() => (state.value.selected?.files ?? []).map(value => ({ value, text: value })));
 function selectFile(file: string | number | boolean): void {
   if (state.value.selected) void select(state.value.selected, String(file));
 }
