@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.8.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.9.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -103,3 +103,15 @@ recommend仍是完整的新建议，不自动合并旧分析。若旧建议已�
 原始null保存在记录中，历史保持原样，无schemaVersion迁移或新表。compare.analysisChanges显示两项分析前后是否启用、目标字段是omitted/disabled/provided、case新增/删除/修改，以及计算引用和边界引用的增减。它揭示删除，不认证作者对重建或停用的判断；提交了对象仍视为作者完整替换，不扩展为递归patch/merge引擎。
 
 原0.7及更早的省略写入可已丢失当前分析，0.8不会从历史偷偷补回；需要显式查看历史、按当前事实重建。业务回归decisionAnalysisIntegrity.integration.test.ts覆盖拒绝后版本/内容不变、旧分析仍待复核、首次省略、显式null与历史保留及删除对比。
+
+## 行动计划与结果回流
+
+同一决策记录的可选actions保存有明确目的的计划及一次结果。action plan接收label/purpose/inputIds/executor/estimatedCost，程序分配UUID和basedOnInputRevision；inputIds引用当前输入，可空表示探索新选项。计划只追加revision，不改变inputRevision或模型，不执行、联系、扣费或授予权限。executor是拟执行者，不证明动作已发生。
+
+action resolve明确action id和outcome（completed/cancelled）、summary、origin、actualCost，可带原有update载荷。结果及模型变化在同一版本保存；校验失败或revision冲突不追加任何部分。无update时结果本身也使inputRevision前进，旧建议needs_review，研究委托沿既有版本合同失效。结果保留计划所基于版本、接回前inputRevision和落库版本；迟到结果须对当前expected revision显式接纳，不自动恢复旧条件。已接结果的行动不能再次结算；更正现实事实仍显式更新条件并保留原报告历史。
+
+origin和实际成本是提交者的报告，不是Host实测或认证。estimatedCost与actualCost分别保留，不自动从预算扣除、汇总不同单位或把客户款当收入。成本和预算的计算应明确登记到模型；未发生的试算不作为实际结果。无预先计划的新信息使用update，不补造已执行行动。recommend仍单独重新判断并遵守已有分析的显式替换合同。
+
+read读取当前/历史actions；compare.actionChanges按id显示计划新增与结果变化，只读。schemaVersion1可选加法，不增加表、调度器、执行器或基础工具；业务实现与事务仍属decision-record。update另允许显式修改title/question，使当前问题变化可记录，历史保持原样，不自动根据数值改写标题。
+
+业务回归decisionActionFeedback.integration.test.ts覆盖计划不执行、结果与条件原子保存、失败/重复/旧版本/跨项目拒绝、取消与无模型变化的结果、迟到接纳、SQLite重开、历史标题、compare只读、新选项及旧偏好失效、正式文件bridge。程序只保证关联与版本，实际建议和停止时机仍须独立评价。

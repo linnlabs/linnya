@@ -63,7 +63,7 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 
 ## update 格式
 
-必填 `reason`，并至少给一项 `inputs`、`options`、`calculations` 或 `checks`。inputs 按 id 合并，每项提供完整 input；其他数组整组替换，避免旧约束或算式残留。撤回来源时，把相关 input 的 status 改为 withdrawn，保留其原 value 和 origin 作为历史。
+必填 `reason`，并至少给一项 `title`、`question`、`inputs`、`options`、`calculations` 或 `checks`。inputs 按 id 合并，每项提供完整 input；其他数组整组替换，避免旧约束或算式残留。title/question仅在显式给出时替换，历史保留。撤回来源时，把相关 input 的 status 改为 withdrawn，保留其原 value 和 origin 作为历史。
 
 ```json
 {"reason":"用户降低预算","inputs":[{"id":"budget","label":"预算","kind":"constraint","value":100,"unit":"CNY/次","origin":"用户本轮明确更新","status":"available"}]}
@@ -173,3 +173,25 @@ recommend提交的是新的完整建议。已有conditionalAdvice或numericBasis
 | 分析启停与case/引用增减 | compare回执的analysisChanges |
 
 whenNonePass/whenUndetermined原文在保存字段内；投影仅在相应outcome出现authorAction，不将整份输入字段复制到顶层。比较发现分析遗漏时，从相应历史版本读取原件，按当前事实明确重建；不能仅把旧revision改成当前版号。
+
+## 行动与一次结果
+
+`linnya-decision action plan <id> --expected-revision <n> --input plan.json`保存计划。小JSON可用--json。格式如下，inputIds指向本模型的输入；发现新选项时可为空数组：
+
+```json
+{"label":"核对一个尚未知的条件","purpose":"确定是否值得继续比较","inputIds":[],"executor":"user","estimatedCost":"预计5分钟、0CNY"}
+```
+
+回执record.actions最后一项含程序分配的id、basedOnInputRevision和plan。保存计划不执行或授权行动，不改变事实和inputRevision，预计费用未发生。
+
+`linnya-decision action resolve <id> <action-id> --expected-revision <n> --input result.json`接回一次结果：
+
+```json
+{"outcome":"completed","summary":"用户已核对，暂无新增条件","origin":"用户本轮报告，原件未核","actualCost":"实际3分钟、0CNY"}
+```
+
+update有实际模型变化时才提供，沿上述update格式；新发现选项时完整提交options/checks/calculations及新inputs。没有模型变化则省略update，不能为了接回结果提交空inputs。取消行动使用outcome=cancelled并如实说明实际已耗成本与原因。结果本身也推进inputRevision、使旧建议needs_review，之后单独recommend。计划与结果的成本各保留原文，预算、累计支出和其他资金如何计算仍由作者在模型明确声明，CLI不隐式扣钱或把款项当收入。
+
+当前/历史read在record.actions中返回结果；result有receivedAtRevision、receivedAgainstInputRevision、resultingInputRevision，区分计划依据和实际接纳版本。compare.actionChanges查看新增计划及结果。result记录提交者报告，不是Host证明真的联系或执行；executor不代替用户授权。只允许一份结果，重复resolve拒绝且不增版本。迟到结果须先读当前条件、用当前expected revision接回，不能覆盖最新事实。
+
+无预先计划而新到的信息直接update，保留来源，不虚构一个已完成的行动。收到结果后，重新检查它改变哪些选项、哪些未知仍在，以及继续付出成本是否值得；新建议仍须显式替换已有分析或以null停用。

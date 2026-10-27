@@ -7,6 +7,7 @@ import {
   validateDecisionModel, projectDecisionRecord, recordDecisionRecommendation,
   updateDecisionRecord, createDecisionRecordRepository,
   simulateDecisionScenarios, compareDecisionRecords,
+  planDecisionAction, resolveDecisionAction,
 } from '../../decision-record';
 
 export function executeDecisionCommand(
@@ -37,7 +38,11 @@ export function executeDecisionCommand(
   }
   const current = repository.read(command.id);
   if (command.kind === 'simulate') return simulateDecisionScenarios(current, command.expectedRevision, command.scenarios);
-  const record = command.kind === 'update'
+  const record = command.kind === 'action_plan'
+    ? planDecisionAction(current, randomUUID(), command.plan)
+    : command.kind === 'action_resolve'
+      ? resolveDecisionAction(current, command.actionId, command.resolution)
+      : command.kind === 'update'
     ? updateDecisionRecord(current, command.update)
     : recordDecisionRecommendation(current, command.recommendation);
   repository.append(record, command.expectedRevision);

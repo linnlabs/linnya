@@ -1,7 +1,7 @@
 ---
 name: decision-exploration
 description: Help compare options, discover feasible next actions, and update a decision when goals, constraints or evidence change. Use with the decision prototype's versioned record CLI.
-version: 0.8.0
+version: 0.9.0
 ---
 
 # 决策与探索
@@ -19,6 +19,8 @@ version: 0.8.0
 先核对可行性，再比较值得争取的收益、代价、风险与可逆性。有明确数量关系时声明输入、单位和算式，用 CLI 计算；复杂模型可以用 Shell 脚本，保留输入、脚本和实际输出，并说明哪些部分未进入记录的自动重算。
 
 围绕会改变建议的未知，选择查原件、计算、问用户、安排小试验或设观察点。以实际成本、延迟和用途决定做到多深。新事实可以改变推荐，确认原推荐仍适合当前条件也有价值。
+
+需要后续接回结果的行动，按记录资源用action plan保存计划；收到实际报告后用action resolve接回，再重新判断建议。计划、假设和实际结果分别保留。
 
 证据不足时给出条件性取舍与可验证的下一步。有真实概率和损益依据时再量化，其他问题用具体条件表达。外部材料的引用沿现有 Citation；原始发布、转述、作者假设和已核验是不同状态。
 

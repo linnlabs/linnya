@@ -17,6 +17,8 @@ export function updateDecisionRecord(record: DecisionRecord, update: DecisionUpd
   }
   const model = DecisionModelSchema.parse({
     ...record.model,
+    title: update.title ?? record.model.title,
+    question: update.question ?? record.model.question,
     inputs,
     options: update.options ?? record.model.options,
     calculations: update.calculations ?? record.model.calculations,

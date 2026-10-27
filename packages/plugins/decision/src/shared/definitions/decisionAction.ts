@@ -1,0 +1,31 @@
+import { z } from 'zod';
+import { DecisionIdSchema, DecisionTextSchema } from './decisionInput';
+
+export const DecisionActionPlanSchema = z.object({
+  label: DecisionTextSchema,
+  purpose: DecisionTextSchema,
+  inputIds: z.array(DecisionIdSchema),
+  executor: z.enum(['user', 'agent']),
+  estimatedCost: DecisionTextSchema,
+}).strict();
+export type DecisionActionPlan = z.infer<typeof DecisionActionPlanSchema>;
+
+/** 结果是明确归属的报告，不是 Host 对现实执行或授权的认证。 */
+export const DecisionActionReportSchema = z.object({
+  outcome: z.enum(['completed', 'cancelled']),
+  summary: DecisionTextSchema,
+  origin: DecisionTextSchema,
+  actualCost: DecisionTextSchema,
+}).strict();
+
+export const DecisionActionSchema = z.object({
+  id: z.string().uuid(),
+  basedOnInputRevision: z.number().int().positive(),
+  plan: DecisionActionPlanSchema,
+  result: DecisionActionReportSchema.extend({
+    receivedAtRevision: z.number().int().positive(),
+    receivedAgainstInputRevision: z.number().int().positive(),
+    resultingInputRevision: z.number().int().positive(),
+  }).strict().optional(),
+}).strict();
+export type DecisionAction = z.infer<typeof DecisionActionSchema>;

@@ -97,6 +97,7 @@ export function compareDecisionRecords(before: DecisionRecord, after: DecisionRe
         ),
       },
     },
+    actionChanges: changes(before.actions ?? [], after.actions ?? []),
     recommendations: {
       from: recommendationSummary(before), to: recommendationSummary(after),
       contentChanged: !same(before.recommendation?.content, after.recommendation?.content),

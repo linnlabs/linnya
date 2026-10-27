@@ -4,3 +4,4 @@ export { createDecisionRecordRepository } from './persistence/decisionRecordRepo
 export { DecisionFailure } from './definitions/decisionFailure';
 export { simulateDecisionScenarios } from './functions/simulateDecisionScenarios';
 export { compareDecisionRecords } from './functions/compareDecisionRecords';
+export { planDecisionAction, resolveDecisionAction } from './functions/recordDecisionAction';

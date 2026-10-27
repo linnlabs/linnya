@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DecisionIdSchema, DecisionTextSchema, DecisionInputSchema } from './decisionInput';
 import { DecisionScenarioCaseSchema } from './decisionScenario';
+import { DecisionActionSchema, DecisionActionReportSchema } from './decisionAction';
 
 export { DecisionInputSchema } from './decisionInput';
 
@@ -91,14 +92,21 @@ export type DecisionRecommendation = z.infer<typeof DecisionRecommendationSchema
 /** 条件和建议分开写入，避免更新条件时顺带把旧建议标为已核。 */
 export const DecisionUpdateSchema = z.object({
   reason: text,
+  title: text.optional(),
+  question: text.optional(),
   inputs: z.array(DecisionInputSchema).optional(),
   options: z.array(DecisionOptionSchema).min(1).optional(),
   calculations: z.array(DecisionCalculationSchema).optional(),
   checks: z.array(DecisionCheckSchema).optional(),
 }).strict().refine(value => Object.keys(value).some(key => key !== 'reason'), {
-  message: 'Specify inputs, options, calculations or checks to update.',
+  message: 'Specify title, question, inputs, options, calculations or checks to update.',
 });
 export type DecisionUpdate = z.infer<typeof DecisionUpdateSchema>;
+
+export const DecisionActionResolutionSchema = DecisionActionReportSchema.extend({
+  update: DecisionUpdateSchema.optional(),
+}).strict();
+export type DecisionActionResolution = z.infer<typeof DecisionActionResolutionSchema>;
 
 export const DecisionRecordSchema = z.object({
   schemaVersion: z.literal(1),
@@ -107,6 +115,7 @@ export const DecisionRecordSchema = z.object({
   inputRevision: z.number().int().positive(),
   reason: text,
   model: DecisionModelSchema,
+  actions: z.array(DecisionActionSchema).optional(),
   recommendation: z.object({
     basedOnInputRevision: z.number().int().positive(),
     content: DecisionRecommendationSchema,
