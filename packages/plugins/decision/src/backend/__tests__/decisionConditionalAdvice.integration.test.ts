@@ -165,7 +165,7 @@ describe('conditional choices through versioned project CLI',()=>{
     expect(projection(initial.id).conditionalAdvice).toEqual({status:'needs_review',basedOnInputRevision:1});
     expect(projection(initial.id).recommendationBasis).toEqual({status:'needs_review',basedOnInputRevision:1});
     expect(projection(initial.id,2)).toEqual(historical);
-    expect(()=>save(initial.id,{...recommendation(),numericBasis:undefined},2)).toThrow('Revision conflict');
+    expect(()=>save(initial.id,{...recommendation(),numericBasis:null},2)).toThrow('Revision conflict');
   });
 
   it('preserves equality singletons and reports nonlinear parameter ranges as undetermined',()=>{

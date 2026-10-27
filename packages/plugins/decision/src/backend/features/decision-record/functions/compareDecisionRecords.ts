@@ -37,6 +37,15 @@ function recommendationSummary(record: DecisionRecord): DecisionRecommendationSu
   };
 }
 
+function analysisState(before: unknown, after: unknown) {
+  return {
+    beforeEnabled: before !== undefined && before !== null,
+    afterEnabled: after !== undefined && after !== null,
+    targetDisposition: after === undefined ? 'omitted' as const : after === null ? 'disabled' as const : 'provided' as const,
+    declarationChanged: !same(before, after),
+  };
+}
+
 export function compareDecisionRecords(before: DecisionRecord, after: DecisionRecord) {
   if (before.id !== after.id) throw new DecisionFailure('invalid_model', 'Compare requires two revisions of the same decision.');
   const oldEvaluation = evaluateDecisionModel(before.model);
@@ -70,6 +79,23 @@ export function compareDecisionRecords(before: DecisionRecord, after: DecisionRe
         optionId,
         state: targetOptions.find(option => option.optionId === optionId) ?? { optionId, status: 'removed' as const },
       })),
+    },
+    analysisChanges: {
+      conditionalAdvice: {
+        ...analysisState(before.recommendation?.content.conditionalAdvice, after.recommendation?.content.conditionalAdvice),
+        cases: changes(before.recommendation?.content.conditionalAdvice?.cases ?? [], after.recommendation?.content.conditionalAdvice?.cases ?? []),
+      },
+      numericBasis: {
+        ...analysisState(before.recommendation?.content.numericBasis, after.recommendation?.content.numericBasis),
+        removedCalculationIds: (before.recommendation?.content.numericBasis?.calculationIds ?? [])
+          .filter(id => !after.recommendation?.content.numericBasis?.calculationIds.includes(id)),
+        addedCalculationIds: (after.recommendation?.content.numericBasis?.calculationIds ?? [])
+          .filter(id => !before.recommendation?.content.numericBasis?.calculationIds.includes(id)),
+        boundaries: changes(
+          (before.recommendation?.content.numericBasis?.boundaries ?? []).map(item => ({ id: `${item.checkId}/${item.inputId}`, ...item })),
+          (after.recommendation?.content.numericBasis?.boundaries ?? []).map(item => ({ id: `${item.checkId}/${item.inputId}`, ...item })),
+        ),
+      },
     },
     recommendations: {
       from: recommendationSummary(before), to: recommendationSummary(after),

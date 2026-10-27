@@ -40,6 +40,15 @@ export function recordDecisionRecommendation(
   record: DecisionRecord,
   content: DecisionRecommendation,
 ): DecisionRecord {
+  const previous = record.recommendation?.content;
+  const omitted = (['conditionalAdvice', 'numericBasis'] as const).filter(key => {
+    const existing = previous?.[key];
+    return existing !== undefined && existing !== null && content[key] === undefined;
+  });
+  // 不完整的新建议不能静默删除持久分析；也不能自动拼接可能已经过期的旧分析。
+  if (omitted.length) {
+    throw new DecisionFailure('invalid_model', `Existing analysis omitted: ${omitted.join(', ')}. Provide each explicitly reviewed replacement, or set it to null to disable it intentionally.`);
+  }
   for (const optionId of content.optionIds) {
     if (!record.model.options.some(option => option.id === optionId)) {
       throw new DecisionFailure('invalid_model', `Unknown recommended option: ${optionId}`);

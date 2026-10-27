@@ -156,3 +156,20 @@ linnya-decision compare <id> --from 2 --to 4
 明确提供同一记录的两个revision；可正向、反向或相同版，只读，不增加版本。changes给出输入值/来源状态/口径/偏好等声明变化，以及选项、公式、检查的新增/移除/修改；effects给出前后计算与检查差异。dependencies是两个模型中的输入引用，不表示已发生数值变化或现实因果。旧选择在目标模型中的pass/fail/undetermined/removed仅用于复核，不是自动新建议。
 
 条件变了，先update再read检查旧建议失效；用compare核对变化及受影响检查，完成判断后再recommend。对比不替作者接纳偏好或撤回，也不把未定条件当作已确认失败。原始解释可用read --revision读取。
+
+
+## 完整替换与明确停用分析
+
+recommend提交的是新的完整建议。已有conditionalAdvice或numericBasis时，为对应字段提交重新判断过的对象；确实停止使用则设为null，并在rationale解释原因。省略已有字段会报Existing analysis omitted，记录与revision不变。程序既不静默删除，也不自动复用可能过期的旧分析。首次未启用分析可以省略；对象内部仍按本次提交完整替换，按当前事实组织情景。
+
+输入、保存与求值的路径不同：
+
+| 内容 | 回执位置 |
+| --- | --- |
+| 保存的偏好、情景与作者行动原文 | record.recommendation.content.conditionalAdvice |
+| 保存的计算/边界引用 | record.recommendation.content.numericBasis |
+| 程序当前选择状态 | conditionalAdvice.baseline.outcome |
+| 程序情景选择与逐案作者动作 | conditionalAdvice.cases[].outcome / authorNextAction |
+| 分析启停与case/引用增减 | compare回执的analysisChanges |
+
+whenNonePass/whenUndetermined原文在保存字段内；投影仅在相应outcome出现authorAction，不将整份输入字段复制到顶层。比较发现分析遗漏时，从相应历史版本读取原件，按当前事实明确重建；不能仅把旧revision改成当前版号。

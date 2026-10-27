@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.7.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.8.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -94,3 +94,12 @@ compare <id> --from <revision> --to <revision>读取同项目同记录的两个�
 changes分开列输入（含value/status/origin/kind/unit/label字段变化）、选项、计算声明、检查声明及题目变化；effects分别列计算/检查结果差异。dependencies仅表示引用，来源/名称变更不一定改变算值，不能把引用当作数值影响或现实因果。previousSelectionInTarget可为pass/fail/undetermined/removed，未知或撤回不冒充false；它不是新推荐。
 
 对比沿用record repository的项目隔离与不可变历史，不读取全会话或另一份缓存。CLI准入只读、不访问会话文件、不联网，无新Host接口或基础工具。结果摘要保留来源版本和输入版本；要看完整作者说明，仍读取对应历史版。业务回归覆盖来源元数据不改算值、确认/撤回改变检查、模型/选项删除、两个比较方向及正式bridge拒绝跨项目/缺版本，比较前后行数与内容不变。
+
+
+## 建议替换时的分析完整性
+
+recommend仍是完整的新建议，不自动合并旧分析。若旧建议已含conditionalAdvice或numericBasis，新建议必须为该字段给出明确替换对象，或null表示明确停用；省略会在追加版本前以invalid_model拒绝并列出字段。首次没有分析的建议可省略；输入变化后的旧分析也不自动重新接纳。显式停用仍须满足当前选择的约束校验，空选择仍须有条件性建议与下一步。
+
+原始null保存在记录中，历史保持原样，无schemaVersion迁移或新表。compare.analysisChanges显示两项分析前后是否启用、目标字段是omitted/disabled/provided、case新增/删除/修改，以及计算引用和边界引用的增减。它揭示删除，不认证作者对重建或停用的判断；提交了对象仍视为作者完整替换，不扩展为递归patch/merge引擎。
+
+原0.7及更早的省略写入可已丢失当前分析，0.8不会从历史偷偷补回；需要显式查看历史、按当前事实重建。业务回归decisionAnalysisIntegrity.integration.test.ts覆盖拒绝后版本/内容不变、旧分析仍待复核、首次省略、显式null与历史保留及删除对比。
