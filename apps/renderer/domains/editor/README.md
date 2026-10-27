@@ -22,10 +22,16 @@
 
 Skill 等独立文本文件通过 [`text-file.ts`](./text-file.ts) 消费 `TextFileEditor`，实现位于
 `features/text-file-editing`。该公开入口只提供受控原文、只读状态、可访问名称与内容更新事件；
-使用项目现有 Tiptap / ProseMirror 的文本节点和撤销能力，不初始化工作区文档会话、全局 Editor store、
-批注或自动保存。YAML、脚本、空白与换行直接作为文本进入节点，不执行 Markdown 导入或序列化；
+复用正式 `blocks/CodeBlock` 的 NodeView、语言标签、语法高亮、复制与缩进能力，不初始化工作区文档会话、
+全局 Editor store、批注或自动保存。独立文件只保留一个 CodeBlock，不分配 Workspace 块身份或修订 mark，
+Shift+Enter 也不会拆块。语言由文件后缀决定，关闭围栏语言选择菜单；未知后缀明确使用 plaintext。
+YAML、脚本、空白与换行直接作为文本进入节点，不执行 Markdown 导入或序列化；
 各文件的读取、保存、冲突检查和预览仍由消费方的业务 owner 拥有。切换文件由消费方通过文件身份重建组件，
 避免撤销历史串到另一个文件。样式统一从 Editor domain 的样式入口装配。
+
+高亮语言统一在 `core/lowlight.ts` 首次初始化时注册。对话代码块通过窄公开入口
+[`code-highlighting.ts`](./code-highlighting.ts) 消费同一实例，不再在组件挂载时修改共享语言表；
+独立文件与文档代码块因此不依赖用户是否曾打开对话页面。
 
 **设计原则（高信号）**：
 

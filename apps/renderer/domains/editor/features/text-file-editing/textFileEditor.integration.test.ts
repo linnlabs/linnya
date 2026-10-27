@@ -33,4 +33,14 @@ describe('独立文本文件编辑', () => {
     expect(editor.state.doc.textContent).toBe('---\n\n\n');
     expect(editor.state.doc.childCount).toBe(1);
   });
+
+  it('复用 CodeBlock 的缩进与高亮，Shift+Enter 不把独立文件拆成文档块', () => {
+    editor = createTextFileEditor({ content: 'const title = "周报";', language: 'typescript', label: 'collect.ts', readonly: false, onChange: () => {} });
+    expect(editor.view.dom.querySelector('.hljs-keyword')?.textContent).toBe('const');
+    editor.commands.setTextSelection(1);
+    editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }));
+    expect(editor.state.doc.textContent).toBe('  \nconst title = "周报";');
+    expect(editor.state.doc.childCount).toBe(1);
+  });
 });

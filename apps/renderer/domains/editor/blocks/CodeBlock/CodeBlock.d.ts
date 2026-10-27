@@ -4,6 +4,7 @@ import type { Node } from '@tiptap/core';
 export interface CodeBlockOptions {
   lowlight: unknown;
   HTMLAttributes: Record<string, unknown>;
+  allowLanguageSelection: boolean;
   [option: string]: unknown;
 }
 

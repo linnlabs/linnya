@@ -101,46 +101,26 @@
             <h4>{{ detail.skill.name }}</h4>
             <span class="skills-tag">{{ message(sourceTagKeys[detail.skill.source]) }}</span>
           </header>
-          <div
-            class="skills-preview-card"
-            role="button"
-            :tabindex="state.busy ? -1 : 0"
-            :aria-label="message(editable ? 'editContent' : 'viewContent')"
-            :aria-disabled="state.busy"
-            @click="openEditor"
-            @keydown.enter.self="openEditor"
-            @keydown.space.self.prevent="openEditor"
-          >
-            <div class="skills-preview-scroll">
-              <SkillFilePreview
-                v-if="detail.original !== null"
-                :path="detail.file"
-                :content="detail.original"
-              />
-              <SettingsState
-                v-else
-                kind="error"
-                :message="message('readFailed')"
-              />
-            </div>
-          </div>
+          <SkillPreviewCard
+            :path="detail.file"
+            :content="detail.original"
+            :disabled="state.busy"
+            :label="message(editable ? 'editContent' : 'viewContent')"
+            :error-message="message('readFailed')"
+            @open="openEditor"
+          />
           <div class="skills-preview-footer">
             <p>{{ detail.skill.error || detail.skill.description }}</p>
-            <BaseButton
-              variant="plain"
-              size="sm"
-              :disabled="state.busy"
-              @click="openEditor"
+            <span
+              class="skills-preview-edit-hint"
+              aria-hidden="true"
             >
-              <template #icon>
-                <EditIcon v-if="editable" /><DocumentIcon v-else />
-              </template>
-              {{ message(editable ? 'edit' : 'viewFiles') }}
-            </BaseButton>
+              {{ message(editable ? 'previewHint' : 'viewFiles') }}
+            </span>
           </div>
           <p class="skills-preview-meta">
             <span>{{ detail.file }} · {{ message('fileCount', { count: detail.skill.files.length }) }}</span>
-            <span>{{ message(editable ? 'previewHint' : 'readonly') }}</span>
+            <span v-if="!editable">{{ message('readonly') }}</span>
           </p>
         </section>
         <SettingsState
@@ -155,12 +135,12 @@
 </template>
 <script setup lang="ts">
 import { BaseButton, IconButton, SkeletonRows } from '@linnya/renderer-ui';
-import { DocumentIcon, EditIcon, FolderIcon, RefreshIcon } from '@linnya/renderer-ui/icons';
+import { FolderIcon, RefreshIcon } from '@linnya/renderer-ui/icons';
 import { SettingsPage, SettingsSection, SettingsFeedback, SettingsState } from '@/domains/settings/public';
 import { useSkillManagement } from '../orchestration/useSkillManagement';
 import type { SkillMessageKey } from '../definitions/messages';
 import SkillDetailModal from './SkillDetailModal.vue';
-import SkillFilePreview from './SkillFilePreview.vue';
+import SkillPreviewCard from './SkillPreviewCard.vue';
 
 const { state, groups, detail, editable, message, refresh, openSkill, openEditor, install } = useSkillManagement({ autoRefresh: true });
 const groupTitleKeys: Record<'user' | 'builtin' | 'plugin', SkillMessageKey> = {

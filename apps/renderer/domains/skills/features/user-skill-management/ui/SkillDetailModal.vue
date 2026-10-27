@@ -72,6 +72,7 @@
             :key="`${detail.skill.source}:${detail.skill.name}:${detail.file}`"
             v-model="draft"
             class="skills-editor"
+            :language="fileLanguage"
             :readonly="!editable || state.busy || detail.original === null"
             :label="detail.file"
           />
@@ -130,7 +131,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { BaseButton, Modal, SegmentedTabs } from '@linnya/renderer-ui';
-import { TextFileEditor } from '@/domains/editor/text-file';
+import { TextFileEditor, resolveCodeFileLanguage } from '@/domains/editor/text-file';
 import { useSkillManagement } from '../orchestration/useSkillManagement';
 import type { SkillMessageKey } from '../definitions/messages';
 import SkillFilePreview from './SkillFilePreview.vue';
@@ -141,6 +142,7 @@ const sourceTagKeys: Record<'user' | 'builtin' | 'plugin', SkillMessageKey> = {
 };
 const mode = ref(editable.value ? 'source' : 'preview');
 const isMarkdown = computed(() => /\.(md|markdown)$/i.test(detail.value?.file ?? ''));
+const fileLanguage = computed(() => resolveCodeFileLanguage(detail.value?.file ?? ''));
 const modeTabs = computed(() => [
   { id: 'source', label: message('source') },
   { id: 'preview', label: message('preview') },

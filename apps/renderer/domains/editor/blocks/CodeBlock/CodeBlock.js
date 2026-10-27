@@ -26,6 +26,8 @@ export const CodeBlock = CodeBlockLowlight.extend({
   addOptions() {
     return {
       ...this.parent?.(), // 继承父类的选项 (如 lowlight 实例)
+      // 独立文件的语言来自文件名，不能像文档中的围栏块一样由菜单改写。
+      allowLanguageSelection: true,
       HTMLAttributes: {
         class: 'code-block', // 内层 <pre><code> 元素的 class，父类控制
       },

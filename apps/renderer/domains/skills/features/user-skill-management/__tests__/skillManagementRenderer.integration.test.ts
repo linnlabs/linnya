@@ -30,8 +30,9 @@ function hasButton(text: string): boolean { return buttons().some(item => item.t
 function editor(): HTMLElement {
   const found = document.body.querySelector<HTMLElement>('.text-file-editor-control'); if (!found) throw new Error('no editor'); return found;
 }
+function fileText(): string | null { return editor().querySelector('[data-node-view-content]')?.textContent ?? null; }
 function type(value: string) {
-  const field = editor().querySelector('pre');
+  const field = editor().querySelector('[data-node-view-content]');
   if (!field) throw new Error('no text file');
   field.textContent = value;
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
@@ -59,7 +60,7 @@ afterEach(() => { app?.unmount(); app = undefined; container.remove(); document.
 async function mount() {
   app = createApp({ render: () => h(SkillManagementSettingsPage) }); app.use(createPinia()); app.mount(container); await flush();
 }
-async function openMine() { rowButton('weekly-report').click(); await flush(); button('编辑').click(); await flush(); }
+async function openMine() { rowButton('weekly-report').click(); await flush(); container.querySelector<HTMLElement>('.skills-preview-card')?.click(); await flush(); }
 const writes = () => mocks.execute.mock.calls.map(([request]) => request as SkillManagementRequest).filter(request => request.action !== 'list' && request.action !== 'read' && request.action !== 'validate');
 
 describe('Skill 设置页', () => {
@@ -71,13 +72,13 @@ describe('Skill 设置页', () => {
     expect(document.body.querySelector('.text-file-editor')).toBeNull();
     const preview = container.querySelector<HTMLElement>('.skills-preview-card');
     preview?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await flush();
-    expect(editor().textContent).toBe(source);
+    expect(fileText()).toBe(source);
     expect(button('保存').disabled).toBe(true);
     type(source + '\n新增内容'); await flush();
     button('预览').click(); await flush();
     expect(document.body.querySelector('.skills-editor-preview')?.textContent).toContain('新增内容');
     button('原文').click(); await flush();
-    expect(editor().textContent).toBe(source + '\n新增内容');
+    expect(fileText()).toBe(source + '\n新增内容');
     expect(writes()).toEqual([]);
     button('完成').click(); await flush();
     expect(container.querySelector('.skills-preview-card')?.textContent).not.toContain('新增内容');
@@ -110,7 +111,7 @@ describe('Skill 设置页', () => {
     });
     button('保存').click(); await flush();
     expect(writes()).toEqual([{ action: 'write', name: 'weekly-report', path: 'SKILL.md', content: 'edited', expected_content: 'original' }]);
-    expect(editor().textContent).toBe('edited');
+    expect(fileText()).toBe('edited');
     expect(document.body.textContent).toContain('file changed externally');
   });
 
@@ -125,7 +126,7 @@ describe('Skill 设置页', () => {
     });
     button('保存').click(); await flush();
     expect(document.body.textContent).toContain('已保存');
-    expect(editor().textContent).toBe('edited');
+    expect(fileText()).toBe('edited');
     expect(button('保存').disabled).toBe(true);
   });
 
@@ -134,10 +135,10 @@ describe('Skill 设置页', () => {
     type('dirty'); await flush();
     mocks.confirm.mockResolvedValueOnce(false);
     button('template.md').click(); await flush();
-    expect(editor().textContent).toBe('dirty');
+    expect(fileText()).toBe('dirty');
     mocks.confirm.mockResolvedValueOnce(true);
     button('template.md').click(); await flush();
-    expect(editor().textContent).toBe('template');
+    expect(fileText()).toBe('template');
   });
 
   it('关闭有未保存修改的详情需要确认', async () => {
@@ -153,7 +154,7 @@ describe('Skill 设置页', () => {
   });
 
   it('内置 Skill 只读，没有保存、升级、卸载', async () => {
-    backend(); await mount(); rowButton('deep-research').click(); await flush(); button('查看文件').click(); await flush();
+    backend(); await mount(); rowButton('deep-research').click(); await flush(); container.querySelector<HTMLElement>('.skills-preview-card')?.click(); await flush();
     expect(editor().getAttribute('contenteditable')).toBe('false');
     expect(hasButton('卸载') || hasButton('保存') || hasButton('从文件夹升级…')).toBe(false);
     expect(document.body.textContent).toContain('只能查看');
@@ -223,11 +224,11 @@ describe('Skill 设置页', () => {
     const state = backend(); await mount(); await openMine();
     state.files['weekly-report/SKILL.md'] = 'edited externally';
     window.dispatchEvent(new Event('focus')); await flush();
-    expect(editor().textContent).toBe('edited externally');
+    expect(fileText()).toBe('edited externally');
     type('my draft'); await flush();
     state.files['weekly-report/SKILL.md'] = 'changed again';
     window.dispatchEvent(new Event('focus')); await flush();
-    expect(editor().textContent).toBe('my draft');
+    expect(fileText()).toBe('my draft');
     state.skills = [bundled]; type('edited externally'); await flush();
     window.dispatchEvent(new Event('focus')); await flush();
     expect(document.body.querySelector('.text-file-editor')).toBeNull();

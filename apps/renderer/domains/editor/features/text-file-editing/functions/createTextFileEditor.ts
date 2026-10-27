@@ -1,40 +1,39 @@
-import { Node, type JSONContent } from '@tiptap/core';
+import type { JSONContent } from '@tiptap/core';
 import { Editor } from '@tiptap/vue-3';
 import Document from '@tiptap/extension-document';
 import Text from '@tiptap/extension-text';
 import { UndoRedo } from '@tiptap/extensions';
+import { CodeBlock } from '../../../blocks/CodeBlock';
+import { getLowlight } from '../../../core/lowlight';
 
-/** Skill/YAML/脚本必须保留原文，不能经过工作区 Markdown 导入、序列化或保存链。 */
-const TextFile = Node.create({
-  name: 'textFile',
-  content: 'text*',
+/** 复用正式 CodeBlock 的 NodeView、高亮和复制；文件不是 Workspace 块，不分配块身份或修订 mark。 */
+const FileCodeBlock = CodeBlock.extend({
   marks: '',
-  code: true,
-  whitespace: 'pre',
-  parseHTML: () => [{ tag: 'pre', preserveWhitespace: 'full' }],
-  renderHTML: () => ['pre', { class: 'text-file-editor-content' }, 0],
+  addAttributes: () => ({ language: { default: 'plaintext' } }),
   addKeyboardShortcuts() {
     const newline = () => this.editor.commands.command(({ tr }) => {
       tr.insertText('\n');
       return true;
     });
-    return { Enter: newline, 'Shift-Enter': newline };
+    // 独立文件始终保持一个 CodeBlock；Shift+Enter 不能触发工作区的拆块/退出流程。
+    return { ...this.parent?.(), Enter: newline, 'Shift-Enter': newline };
   },
 });
 
-export function textFileContent(text: string): JSONContent {
-  return { type: 'doc', content: [{ type: 'textFile', content: text ? [{ type: 'text', text }] : [] }] };
+export function textFileContent(text: string, language = 'plaintext'): JSONContent {
+  return { type: 'doc', content: [{ type: 'codeBlock', attrs: { language }, content: text ? [{ type: 'text', text }] : [] }] };
 }
 
 export function createTextFileEditor(options: {
   content: string;
   label: string;
   readonly: boolean;
+  language?: string;
   onChange: (content: string) => void;
 }): Editor {
   return new Editor({
-    extensions: [Document.extend({ content: 'textFile' }), TextFile, Text, UndoRedo],
-    content: textFileContent(options.content),
+    extensions: [Document.extend({ content: 'codeBlock' }), FileCodeBlock.configure({ lowlight: getLowlight(), allowLanguageSelection: false }), Text, UndoRedo],
+    content: textFileContent(options.content, options.language),
     editable: !options.readonly,
     enableInputRules: false,
     enablePasteRules: false,

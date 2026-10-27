@@ -11,7 +11,7 @@
     <div class="language-display" contenteditable="false">{{ displayLanguage }}</div>
 
     <!-- 仅激活+悬停时显示的下拉选择器（离屏时不挂载） -->
-    <div v-if="blockActivation.isUiActive.value" class="language-selector-container" contenteditable="false" ref="selectorContainerRef">
+    <div v-if="blockActivation.isUiActive.value && extension.options.allowLanguageSelection" class="language-selector-container" contenteditable="false" ref="selectorContainerRef">
       <!-- 现在这是唯一的触发器 - 一个纯粹的视觉元素 -->
       <div
         class="language-selector"
