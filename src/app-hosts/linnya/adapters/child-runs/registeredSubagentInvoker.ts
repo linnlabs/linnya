@@ -23,6 +23,7 @@ import { getLogger } from 'src/shared/logger';
 
 const logger = getLogger('RegisteredChildRunInvoker');
 import {
+  ChildRequestAdmissionRejectedError,
   prepareDurableChildInvocation,
   stableChildSubrunId,
   type DurableChildRuntime,
@@ -246,6 +247,8 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
             maxSteps,
             seedHistory: seedHistoryEvents,
           }).catch(error => {
+            // 首次业务拒绝尚未创建 child，父 Agent 可以修改请求；不能伪装成 checkpoint 损坏。
+            if (error instanceof ChildRequestAdmissionRejectedError) throw error;
             // 恢复输入/能力校验失败不是 child 已执行失败，不能让父工具提交失败终态后绕过它。
             throw new graph.RunRecoveryBlockedError(
               `Child recovery admission failed: ${error instanceof Error ? error.message : String(error)}`
@@ -254,6 +257,9 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
         : undefined;
     if (agentDefinition.config?.maxCallsPerParentRun !== undefined && !durable) {
       throw new Error('Bounded child run requires durable admission');
+    }
+    if (agentDefinition.requestAdmission && !durable) {
+      throw new Error('Child request admission requires durable parent inputs');
     }
     // 恢复沿用原 request；嵌套 child 必须覆盖父名单，不能把作者的能力当作网页 worker 的能力。
     const allowedTools = durable

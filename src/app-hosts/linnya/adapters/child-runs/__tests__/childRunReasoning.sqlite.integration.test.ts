@@ -3,9 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RunIdSchema, ToolCallIdSchema, runIdFromSubrunId } from '@linnlabs/linnkit/contracts';
-import { execution, telemetry } from '@linnlabs/linnkit/runtime-kernel';
+import { execution, graph, telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import type { ScriptedLlmTurn } from '@linnlabs/linnkit/testkit';
 import { modelCatalog, type ModelConfig } from 'src/domains/model-catalog';
+import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import { RunDescriptorSchema } from '../../../application/run-resumption';
 import { captureRuntimeCompatibility } from '../../../application/run-resumption/functions/runtimeCompatibility';
@@ -68,10 +69,10 @@ async function open(turns: ScriptedLlmTurn[]) {
 }
 type Fixture = Awaited<ReturnType<typeof open>>;
 
-async function seedParent(fixture: Fixture) {
+async function seedParent(fixture: Fixture, projectId?: string) {
   const definition = findRegisteredAgentDefinitionByPromptKey('default');
   if (!definition) throw new Error('Missing parent definition');
-  await fixture.eventStore.ensureConversation(conversationId, [], undefined, 'agent');
+  await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
   const descriptor = RunDescriptorSchema.parse({
     schemaVersion: 1,
     runId: parentRunId,
@@ -85,6 +86,7 @@ async function seedParent(fixture: Fixture) {
       model_id: parentModelId,
       reasoning_effort: 'low',
       frozenSystemPrompt: 'Frozen parent',
+      ...(projectId ? { project_metadata: { id: projectId, name: 'Synthetic child inputs' } } : {}),
     },
     historyEventIds: [],
     incomingEventIds: [],
@@ -124,15 +126,20 @@ async function seedParent(fixture: Fixture) {
   }
 }
 
-function invoker(fixture: Fixture, fixed = false) {
-  const definition = findRegisteredAgentDefinitionByPromptKey('research_author_v1');
+function invoker(fixture: Fixture, options: {
+  fixed?: boolean;
+  promptKey?: string;
+  requestAdmission?: AgentDefinition['requestAdmission'];
+} = {}) {
+  const definition = findRegisteredAgentDefinitionByPromptKey(options.promptKey ?? 'research_author_v1');
   if (!definition) throw new Error('Missing registered child definition');
   const childDefinition: AgentDefinition = {
     ...definition,
+    ...(options.requestAdmission ? { requestAdmission: options.requestAdmission } : {}),
     config: {
       ...definition.config,
       availableTools: [],
-      modelPolicy: fixed ? { kind: 'fixed', modelId: fixedModelId } : { kind: 'inherit_parent' },
+      modelPolicy: options.fixed ? { kind: 'fixed', modelId: fixedModelId } : { kind: 'inherit_parent' },
     },
   };
   return createRegisteredChildRunInvoker({
@@ -152,9 +159,9 @@ function invoker(fixture: Fixture, fixed = false) {
     }),
   });
 }
-function request() {
+function request(promptKey = 'research_author_v1') {
   return {
-    promptKey: 'research_author_v1',
+    promptKey,
     userMessage: 'Explain the supplied evidence.',
     parentToolContext: {
       conversationId,
@@ -171,7 +178,7 @@ describe('durable child reasoning inheritance', () => {
   it.each([false, true])('固定异模型=%s：实际 LLM 请求区分父 low 与模型默认 high', async fixed => {
     const fixture = await open([{ contentChunks: ['Evidence explained.'] }]);
     await seedParent(fixture);
-    await expect(invoker(fixture, fixed).invoke(request())).resolves.toMatchObject({
+    await expect(invoker(fixture, { fixed }).invoke(request())).resolves.toMatchObject({
       success: true,
     });
     const descriptor = await fixture.runtime.runDescriptors?.load(childRunId);
@@ -221,3 +228,83 @@ function fixtureEffort(fixture: Fixture) {
   expect(fixture.ai.getCalls()).toHaveLength(1);
   return fixture.ai.getCalls()[0]?.options.reasoning_effort;
 }
+
+describe('durable child request admission', () => {
+  // 这里只用正式研究定义检验接纳与冻结，不注册新的公开研究子类型，也不冒充完整文章链。
+  it('有项目的研究 child 首次接纳 scope，再把同一范围交给实际 LLM', async () => {
+    const fixture = await open([{ contentChunks: ['Controlled research result.'] }]);
+    const projectId = new WorkspaceService(fixture.db).createProject('Synthetic child inputs');
+    await seedParent(fixture, projectId);
+    await expect(invoker(fixture, { promptKey: 'research_v1' }).invoke(request('research_v1')))
+      .resolves.toMatchObject({ success: true });
+
+    const descriptor = await fixture.runtime.runDescriptors?.load(childRunId);
+    expect(descriptor?.request).toMatchObject({
+      project_metadata: { id: projectId },
+      researchScope: {
+        question: 'Explain the supplied evidence.',
+        task_type: 'open',
+        materials: [],
+      },
+    });
+    const system = fixture.ai.getCalls()[0]?.messages.find(message => message.role === 'system');
+    expect(system?.content).toEqual(expect.stringContaining('"task_type": "open"'));
+    expect(system?.content).toEqual(expect.stringContaining('Explain the supplied evidence.'));
+    fixture.ai.assertAllTurnsConsumed();
+  });
+
+  it('缺项目的研究 child 在启动和付费推理之前明确拒绝', async () => {
+    const fixture = await open([]);
+    await seedParent(fixture);
+    const outcome = invoker(fixture, { promptKey: 'research_v1' }).invoke(request('research_v1'));
+    await expect(outcome).rejects.toMatchObject({
+      code: 'CHILD_REQUEST_ADMISSION_REJECTED',
+      cause: expect.objectContaining({ code: 'RESEARCH_PROJECT_REQUIRED' }),
+    });
+    await expect(outcome).rejects.not.toBeInstanceOf(graph.RunRecoveryBlockedError);
+    expect(await fixture.runtime.supervisor.peek(childRunId)).toBeFalsy();
+    expect(await fixture.runtime.runDescriptors?.load(childRunId)).toBeNull();
+    expect(fixture.ai.getCalls()).toHaveLength(0);
+  });
+
+  it('缺少持久父输入时，不允许跳过角色接纳降级启动 child', async () => {
+    const fixture = await open([]);
+    await expect(invoker(fixture, { promptKey: 'research_v1' }).invoke(request('research_v1')))
+      .rejects.toThrow('Child request admission requires durable parent inputs');
+    expect(await fixture.runtime.supervisor.peek(childRunId)).toBeFalsy();
+    expect(fixture.ai.getCalls()).toHaveLength(0);
+  });
+
+  it('研究 child 中断并重开 SQLite：保留原范围、不重新接纳；完成后重取结果不再次推理', async () => {
+    const definition = findRegisteredAgentDefinitionByPromptKey('research_v1');
+    const admit = definition?.requestAdmission;
+    if (!admit) throw new Error('Missing research admission');
+    const admission = vi.fn(admit);
+    const first = await open([{ throwAfterEvents: new Error('Synthetic research interruption') }]);
+    const projectId = new WorkspaceService(first.db).createProject('Synthetic child inputs');
+    await seedParent(first, projectId);
+    await expect(invoker(first, { promptKey: 'research_v1', requestAdmission: admission })
+      .invoke(request('research_v1'))).rejects.toMatchObject({ code: 'RUN_RECOVERY_BLOCKED' });
+    expect(admission).toHaveBeenCalledTimes(1);
+    const original = await first.runtime.runDescriptors?.load(childRunId);
+    expect(original?.request.researchScope?.task_type).toBe('open');
+    expect(await first.runtime.supervisor.peek(childRunId)).toMatchObject({ status: 'paused' });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    first.close();
+    closers.pop();
+    resetAgentRuntimeSingletonsForTest();
+
+    const resumed = await open([{ contentChunks: ['Recovered controlled research result.'] }]);
+    // 配置内容不变，只让首次接纳函数拒绝，证明恢复不偷偷重走该入口。
+    const noReadmission = vi.fn((): never => { throw new Error('Unexpected readmission'); });
+    const invoke = invoker(resumed, { promptKey: 'research_v1', requestAdmission: noReadmission });
+    await expect(invoke.invoke(request('research_v1'))).resolves.toMatchObject({ success: true });
+    expect(noReadmission).not.toHaveBeenCalled();
+    expect((await resumed.runtime.runDescriptors?.load(childRunId))?.request).toEqual(original?.request);
+    expect(resumed.ai.getCalls()).toHaveLength(1);
+    await expect(invoke.invoke(request('research_v1'))).resolves.toMatchObject({ success: true });
+    expect(resumed.ai.getCalls()).toHaveLength(1);
+    expect((await resumed.runtime.supervisor.list({ parentRunId })).runs).toHaveLength(1);
+    resumed.ai.assertAllTurnsConsumed();
+  });
+});

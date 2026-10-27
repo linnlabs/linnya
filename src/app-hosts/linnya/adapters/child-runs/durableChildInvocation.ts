@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
-import { generateTurnId, type RunId } from '@linnlabs/linnkit/contracts';
+import { generateTurnId, type RunId, type RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { graph, type childRuns } from '@linnlabs/linnkit/runtime-kernel';
 import type { RegisteredChildRunRequest } from './registeredSubagentInvoker';
 import type { AgentDefinition } from '../../agent-registry/types';
 import { freezeAgentRunInput } from '../../agent-registry/freezeAgentRunInput';
+import type { AgentInvokeRequest } from '../../context/agent/contracts';
 import { createDefaultModelResolver } from '../runtime-assembly/graphRuntimeFactory';
 import { runnableDefinitionToAgentSpec } from '../runtime/agentDefinitionToAgentSpec';
 import { RunDescriptorSchema, type RunDescriptor } from '../../application/run-resumption';
@@ -17,6 +18,18 @@ export type DurableChildRuntime = Pick<
   LinnyaAgentRuntimeScope,
   'runDescriptors' | 'recoveryCheckpointer' | 'supervisor' | 'toolResults'
 >;
+
+/** 新任务缺少业务输入不是旧任务恢复损坏，应交回父 Agent 修正，不进入反复恢复。 */
+export class ChildRequestAdmissionRejectedError extends Error {
+  readonly code = 'CHILD_REQUEST_ADMISSION_REJECTED';
+  readonly cause: unknown;
+
+  constructor(cause: unknown) {
+    super(`Child request rejected: ${cause instanceof Error ? cause.message : String(cause)}`);
+    this.cause = cause;
+    this.name = 'ChildRequestAdmissionRejectedError';
+  }
+}
 
 export function stableChildSubrunId(parentRunId: string, parentToolCallId: string): string {
   return `subrun-${createHash('sha256')
@@ -36,7 +49,7 @@ export async function prepareDurableChildInvocation(input: {
   parentToolCallId: string;
   modelId?: string;
   maxSteps?: number;
-  seedHistory: readonly { id: string }[];
+  seedHistory: readonly RuntimeEvent[];
 }) {
   const { runtime, params, parent } = input;
   const descriptors = runtime.runDescriptors;
@@ -65,7 +78,7 @@ export async function prepareDurableChildInvocation(input: {
       input.modelId ??
       input.agentConfig.modelPolicy?.modelId ??
       createDefaultModelResolver().resolveModelId();
-    const request = freezeAgentRunInput({
+    const candidate: AgentInvokeRequest = {
       query: params.userMessage,
       promptKey: params.promptKey,
       modelId,
@@ -79,10 +92,24 @@ export async function prepareDurableChildInvocation(input: {
       availableTools: input.agentConfig.availableTools
         ? [...input.agentConfig.availableTools]
         : undefined,
+      // 项目身份来自父级已接纳的输入，不让模型参数或临时 ToolContext 代填；
+      // 不复制父业务 scope，子任务需要由目标角色接纳自己的问题与范围。
+      project_metadata: parent.request.project_metadata,
       fences: params.parentToolContext.childRunContextInjections
         ? [...params.parentToolContext.childRunContextInjections]
         : undefined,
-    });
+    };
+    // 子运行和根运行都须先执行目标角色的首次接纳，再冻结真实系统提示。
+    // 已存在 descriptor 的恢复分支不重走此处，避免新默认值覆盖旧范围。
+    let admitted = candidate;
+    try {
+      if (input.agentDefinition.requestAdmission) {
+        admitted = input.agentDefinition.requestAdmission(candidate, { history: input.seedHistory });
+      }
+    } catch (cause) {
+      throw new ChildRequestAdmissionRejectedError(cause);
+    }
+    const request = freezeAgentRunInput(admitted);
     descriptor = RunDescriptorSchema.parse({
       schemaVersion: 1,
       runId: input.runId,

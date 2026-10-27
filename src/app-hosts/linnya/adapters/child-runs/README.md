@@ -7,6 +7,15 @@ Layer: `host-adapter/child-runs`
 
 ## 持久运行合同
 
+目标 definition 的 `requestAdmission` 在新持久 child 首次启动时执行，先物化业务输入，
+再冻结系统提示和 descriptor。项目元信息取自父 descriptor 的已接纳请求，历史只传角色
+已经获准继承的 seed history；不隐式复制父角色的业务 scope、选区或附件。缺少持久父输入的
+调用不能跳过此接纳启动。恢复和已完成结果复用只读原 child 请求，不重新接纳。
+首次业务输入被拒以 `CHILD_REQUEST_ADMISSION_REJECTED` 交回调用方，保留原 cause，且不注册
+child、不调用模型；它不是旧 checkpoint 的恢复中断，不能让同一坏请求反复进入恢复。
+这项通用接纳能力不等于完整研究已开放为子类型：范围交接、协调角色的有界委派以及产物版本
+接纳仍须由相应产品 owner 单独实现和验证。
+
 恢复 Host 使用父 run + tool call + batch slot 确定 child identity；显式 subrun ID 必须与该父调用
 匹配，不能跨调用复用。首次启动先保存原 child 描述，再进入图；继续使用原 child request、turn、
 权限和 checkpoint，不读取新的默认值。已完成 child 的 yielded checkpoint 保留至根 run 结算，
@@ -251,6 +260,7 @@ parent `subrun_trace` 始终是 `ephemeral` 实时展示协议，不进入通用
 改默认 child-run 装配时，至少补或复跑：
 
 - `src/app-hosts/linnya/adapters/child-runs/__tests__/registeredSubagentInvoker.test.ts`
+- `src/app-hosts/linnya/adapters/child-runs/__tests__/childRunReasoning.sqlite.integration.test.ts`（首次接纳、项目、范围冻结、重开与完成结果复用）
 - `src/app-hosts/linnya/adapters/child-runs/__tests__/childRuntimeScopeIsolation.integration.test.ts`
 - `src/app-hosts/linnya/adapters/child-runs/__tests__/childRunCancellation.sqlite.integration.test.ts`
 - 其中必须包含 SQLite-backed `RunSupervisor + LinnyaEventStoreAdapter + EventStoreAuditPort` 路径，避免测试只走 MemoryEventStore 而漏掉真实 run lifecycle 问题

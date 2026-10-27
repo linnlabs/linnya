@@ -18,7 +18,7 @@ catalog），交给 Host 的运行描述保存。Generic task 消费
 enricher 或重新渲染系统提示；这不承诺冻结外部模型输出或任意 Workspace 内容。
 
 定义可以通过 `requestAdmission(request, { history, hostToolCall })`
-接纳业务请求。它是纯函数，只在新根运行开始时校验并物化 Host
+接纳业务请求。它是纯函数，在新根运行或持久 registered child 首次启动时校验并物化 Host
 `AgentInvokeRequest`；history 已按隔离与编辑替换规则裁剪。结果随运行 descriptor 冻结，持久化后的历史刷新保留该结果；恢复不重新接纳、不重写原请求。系统提示构建器接收 Host 请求，可以消费已经接纳的产品字段，不能重新推断范围或执行工具。
 
 首次接纳从 definition 冻结
