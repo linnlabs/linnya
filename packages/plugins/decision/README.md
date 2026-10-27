@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.2.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.3.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -48,3 +48,13 @@ CLI `research prepare/read/list/receive` 在当前项目管理委托。prepare �
 
 
 这里的有界委派限定调用角色、直接类型、叶子工具与既有单 run 步数，不代表已实现全树统一 token/费用预算。原生短题也可能产生很长评语；是否调用完整研究仍须按问题价值判断。早期接回记录若缺评审文档观察，会返回 unobservedDocuments 并标为 needs_review，不回填或伪造原观察版本。
+
+## 建议中的程序数值依据
+
+recommend 可选 numericBasis：calculationIds 指向既有计算，boundaries 的每项只有 checkId/inputId。程序使用同版模型生成 recommendationBasis（含数值、单位、固定的其他输入、可行关系与严格越界关系）；不接收第二份阈值。原始 rationale/changeConditions 仍是作者文字，与该数值投影分开，未被程序认证。
+
+单变量边界只对仿射表达式求解（加减、乘常数、除非零常数）。变量乘变量、变量分母、其他输入未知或撤回时返回不可用及原因；抵消后无关则只报告该检查是否成立，不捏造阈值。目标输入为未知数值时可解条件边界，目标撤回或非数值时不可用。连续数值关系不自动推断整数、日期格式或其他现实取值域。单位和原始模型仍由作者声明。
+
+建议当前时引用必须存在且相关；条件更新后保留旧内容，但 recommendationBasis 只给 needs_review 与旧输入版本，不用新模型解释旧引用。历史版本读取重建该历史版数值。qualitative/旧建议没有 numericBasis 时返回 null；这是 schemaVersion=1 的可选加法，不迁移或补造历史内容。未新增表、Host SDK、基础工具或工作流引擎。
+
+业务回归 decisionNumericBasis.integration.test.ts 覆盖预算与出发边界、严格越界、原建议失效和SQLite重开、引用删除/拒绝、未知/撤回与不支持的模型。通过程序回归只证明数值投影合同，不证明 Agent 实际采用了它，更不证明来源、模型或全文建议正确。

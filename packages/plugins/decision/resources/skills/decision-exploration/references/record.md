@@ -68,6 +68,16 @@
 {"optionIds":["wait"],"rationale":"预算降低后，报价超过硬约束；先使用公开资料","changeConditions":"预算提高或价格下降后重新比较资料的增量价值","nextAction":"核对公开资料能否回答当前问题","unresolved":["补充资料是否真正提供新信息尚未确定"]}
 ```
 
+有数值依据时，可增加 `numericBasis`，只选择本模型已有的计算和数值检查：
+
+```json
+{"optionIds":["buy"],"rationale":"在预算内取得补充资料","changeConditions":"预算或资料价值改变后重新比较","nextAction":"确认资料内容","unresolved":["是否提供新增信息"],"numericBasis":{"calculationIds":["remaining"],"boundaries":[{"checkId":"affordable","inputId":"price"}]}}
+```
+
+回执的 `recommendationBasis` 分开给出程序计算的余额与价格边界，含等号与越界方向；`fixedInputs` 是其他条件固定在本版的值。交付可引用其中的 `text`，不需自己再反推一遍门槛。它只回答某个已有检查何时失效，是否改选还要结合偏好和其他条件。定性问题省略 numericBasis。
+
+仿射式可解单变量关系，变量相乘/变量分母明确不可用；其他输入未知、撤回、除零时不猜阈值。关系在连续数值上成立，不自动推断整次数或格式化时间；时刻需要在 input.label 中保留基准。模型、单位、费用范围与自由解释仍需核对。输入更新后的旧建议只显示 needs_review，原数值在对应历史版本读取。
+
 `recommendationStatus=current` 仅表示作者将该建议关联到当前输入版本；它不是事实或建议正确性的认证。数据变化后系统只标记待复核，判断是否改选仍由 Agent 与用户完成。只有已声明的计算和检查会自动重算，Shell 脚本输出不会被系统隐式重新执行。
 
 

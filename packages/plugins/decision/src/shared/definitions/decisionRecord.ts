@@ -65,6 +65,11 @@ export const DecisionRecommendationSchema = z.object({
   changeConditions: text,
   nextAction: text,
   unresolved: z.array(text),
+  // 作者只选既有算式与检查；值和边界方向由程序生成，避免再手填一份阈值。
+  numericBasis: z.object({
+    calculationIds: z.array(id),
+    boundaries: z.array(z.object({ checkId: id, inputId: id }).strict()),
+  }).strict().optional(),
 }).strict();
 export type DecisionRecommendation = z.infer<typeof DecisionRecommendationSchema>;
 

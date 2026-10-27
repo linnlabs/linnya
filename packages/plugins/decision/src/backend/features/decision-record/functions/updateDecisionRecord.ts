@@ -6,6 +6,7 @@ import {
 } from '../../../../shared';
 import { evaluateDecisionModel, validateDecisionModel } from './evaluateDecisionModel';
 import { DecisionFailure } from '../definitions/decisionFailure';
+import { projectRecommendationBasis, validateRecommendationBasis } from './projectRecommendationBasis';
 
 export function updateDecisionRecord(record: DecisionRecord, update: DecisionUpdate): DecisionRecord {
   const replacements = new Map(update.inputs?.map(input => [input.id, input]));
@@ -43,6 +44,7 @@ export function recordDecisionRecommendation(
       throw new DecisionFailure('invalid_model', `Unknown recommended option: ${optionId}`);
     }
   }
+  validateRecommendationBasis(record.model, content);
   const failed = evaluateDecisionModel(record.model).checks.find(check => (
     content.optionIds.includes(check.optionId) && check.passes === false
   ));
@@ -58,10 +60,12 @@ export function recordDecisionRecommendation(
 export function projectDecisionRecord(record: DecisionRecord) {
   const recommendationStatus = record.recommendation === null ? 'missing'
     : record.recommendation.basedOnInputRevision === record.inputRevision ? 'current' : 'needs_review';
+  const evaluation = evaluateDecisionModel(record.model);
   return {
     record,
-    evaluation: evaluateDecisionModel(record.model),
+    evaluation,
     recommendationStatus,
+    recommendationBasis: projectRecommendationBasis(record, evaluation),
     notice: 'current means the author associated this recommendation with current inputs; it is not a correctness certification. Only declared arithmetic and checks are evaluated.',
   };
 }
