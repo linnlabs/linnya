@@ -2,84 +2,209 @@
 import { createApp, h, nextTick, type App } from 'vue';
 import { createPinia } from 'pinia';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import type { SkillManagementRequest, SkillManagementResult } from '@app/schemas';
+import type { ManagedSkill, SkillManagementRequest, SkillManagementResult } from '@app/schemas';
 
-const mocks = vi.hoisted(() => ({ execute: vi.fn(), confirm: vi.fn() }));
+const mocks = vi.hoisted(() => ({ execute: vi.fn(), confirm: vi.fn(), pick: vi.fn() }));
 vi.mock('../infrastructure/skillManagementGateway', () => ({ executeSkillManagement: mocks.execute }));
+vi.mock('../infrastructure/skillFolderPicker', () => ({ pickSkillFolder: mocks.pick }));
 vi.mock('@shared/composables/confirmDialog', () => ({ confirm: mocks.confirm }));
 import SkillManagementSettingsPage from '../ui/SkillManagementSettingsPage.vue';
 
 let app: App | undefined; let container: HTMLDivElement;
-const skill = { name: 'editable-skill', description: 'test', source: 'user' as const, available: true, files: ['SKILL.md'] };
+const mine: ManagedSkill = { name: 'weekly-report', description: '起草团队周报', source: 'user', available: true, files: ['SKILL.md', 'references/template.md'] };
+const bundled: ManagedSkill = { name: 'deep-research', description: 'Research and write', source: 'builtin', available: true, files: ['SKILL.md'] };
+
 async function flush() { for (let i = 0; i < 8; i++) { await Promise.resolve(); await nextTick(); } }
+function buttons(): HTMLButtonElement[] { return [...document.body.querySelectorAll('button')]; }
 function button(text: string): HTMLButtonElement {
-  const found = [...container.querySelectorAll('button')].find(item => item.textContent?.trim().startsWith(text));
+  const found = buttons().find(item => (item.textContent?.trim() || item.getAttribute('aria-label')) === text);
   if (!found) throw new Error(`missing button: ${text}`); return found;
 }
+function rowButton(name: string): HTMLButtonElement {
+  const found = document.body.querySelector<HTMLButtonElement>('.skills-row .skills-row-name')
+    ? [...document.body.querySelectorAll<HTMLButtonElement>('.skills-row')].find(item => item.querySelector('.skills-row-name')?.textContent === name)
+    : undefined;
+  if (!found) throw new Error(`missing row: ${name}`); return found;
+}
+function hasButton(text: string): boolean { return buttons().some(item => item.textContent?.trim() === text); }
+function editor(): HTMLTextAreaElement {
+  const found = document.body.querySelector('textarea'); if (!found) throw new Error('no editor'); return found;
+}
+function type(value: string) { const field = editor(); field.value = value; field.dispatchEvent(new Event('input', { bubbles: true })); }
+
+interface Backend { skills: ManagedSkill[]; files: Record<string, string>; validated?: { name: string; description: string; files: string[] } }
+function backend(initial: Partial<Backend> = {}): Backend {
+  const state: Backend = { skills: [mine, bundled], files: { 'weekly-report/SKILL.md': 'original', 'weekly-report/references/template.md': 'template' }, ...initial };
+  mocks.execute.mockImplementation(async (request: SkillManagementRequest): Promise<SkillManagementResult> => {
+    switch (request.action) {
+      case 'list': return { action: 'list', skills: state.skills };
+      case 'read': return { action: 'read', name: request.name, path: request.path, source: request.source ?? 'user', content: state.files[`${request.name}/${request.path}`] ?? '' };
+      case 'validate': return { action: 'validate', ...(state.validated ?? { name: 'weekly-report', description: '起草团队周报', files: ['SKILL.md'] }) };
+      case 'remove': state.skills = state.skills.filter(skill => skill.name !== request.name); return { action: 'remove', name: request.name };
+      default: return { action: request.action, name: request.name } as SkillManagementResult;
+    }
+  });
+  return state;
+}
 beforeEach(() => {
-  mocks.execute.mockReset(); mocks.confirm.mockReset(); mocks.confirm.mockResolvedValue(true);
+  mocks.execute.mockReset(); mocks.confirm.mockReset(); mocks.pick.mockReset(); mocks.confirm.mockResolvedValue(true);
   container = document.createElement('div'); document.body.append(container);
 });
-afterEach(() => { app?.unmount(); app = undefined; container.remove(); });
+afterEach(() => { app?.unmount(); app = undefined; container.remove(); document.body.innerHTML = ''; });
 async function mount() {
   app = createApp({ render: () => h(SkillManagementSettingsPage) }); app.use(createPinia()); app.mount(container); await flush();
 }
+async function openMine() { rowButton('weekly-report').click(); await flush(); }
+const writes = () => mocks.execute.mock.calls.map(([request]) => request as SkillManagementRequest).filter(request => request.action !== 'list' && request.action !== 'read' && request.action !== 'validate');
 
-describe('Skill settings current-file workflow', () => {
-  it('选择当前文件、保存原文条件；冲突保留编辑，取消卸载不删除', async () => {
-    mocks.execute.mockImplementation(async (request: SkillManagementRequest): Promise<SkillManagementResult> => {
-      if (request.action === 'list') return { action: 'list', skills: [skill] };
-      if (request.action === 'read') return { action: 'read', name: skill.name, path: 'SKILL.md', source: 'user', content: 'original' };
-      throw new Error('file changed externally');
-    });
-    await mount(); button('editable-skill').click(); await flush();
-    const editor = container.querySelector('textarea'); if (!editor) throw new Error('no editor');
-    editor.value = 'edited'; editor.dispatchEvent(new Event('input', { bubbles: true })); await flush();
-    button('保存文件').click(); await flush();
-    expect(mocks.execute).toHaveBeenCalledWith({ action: 'write', name: skill.name, path: 'SKILL.md', content: 'edited', expected_content: 'original' });
-    expect(editor.value).toBe('edited'); expect(container.textContent).toContain('file changed externally');
-    mocks.confirm.mockResolvedValue(false); button('卸载').click(); await flush();
-    expect(mocks.execute.mock.calls.filter(([request]) => request.action === 'remove')).toHaveLength(0);
+describe('Skill 设置页', () => {
+  it('按来源分组并显示每个 Skill 的描述；没有自己的 Skill 时给出引导', async () => {
+    backend({ skills: [bundled] }); await mount();
+    expect(container.textContent).toContain('我的 Skill');
+    expect(container.textContent).toContain('还没有自己的 Skill');
+    expect(container.textContent).toContain('deep-research');
+    expect(container.textContent).toContain('Research and write');
   });
-  it('内置来源只查看，不能保存/升级/卸载', async () => {
-    mocks.execute.mockImplementation(async (request: SkillManagementRequest): Promise<SkillManagementResult> => request.action === 'list'
-      ? { action: 'list', skills: [{ ...skill, source: 'builtin' }] }
-      : { action: 'read', name: skill.name, path: 'SKILL.md', source: 'builtin', content: 'bundled' });
-    await mount(); button('editable-skill').click(); await flush();
-    expect(container.querySelector('textarea')?.readOnly).toBe(true);
-    expect([...container.querySelectorAll('button')].some(item => item.textContent?.trim() === '卸载')).toBe(false);
+
+  it('不可用的 Skill 把原因放在描述位置并带标记', async () => {
+    backend({ skills: [{ ...mine, available: false, error: 'SKILL.md 格式无效' }] }); await mount();
+    expect(container.textContent).toContain('SKILL.md 格式无效');
+    expect(container.textContent).toContain('不可用');
   });
-  it('文件选择器显示当前路径，切换支持文件后读取对应内容', async () => {
-    mocks.execute.mockImplementation(async (request: SkillManagementRequest): Promise<SkillManagementResult> => {
-      if (request.action === 'list') return { action: 'list', skills: [{ ...skill, files: ['SKILL.md', 'references/example.txt'] }] };
-      if (request.action === 'read') return { action: 'read', name: skill.name, path: request.path, source: 'user', content: request.path };
-      throw new Error('unexpected mutation');
+
+  it('打开详情后编辑并保存；冲突时保留编辑并在弹窗底部显示原因', async () => {
+    backend(); await mount(); await openMine();
+    expect(document.body.textContent).toContain('references');
+    type('edited');
+    await flush();
+    mocks.execute.mockImplementationOnce(async () => ({ action: 'list', skills: [mine, bundled] }));
+    mocks.execute.mockRejectedValueOnce(new Error('file changed externally'));
+    mocks.execute.mockImplementation(async (request: SkillManagementRequest) => {
+      if (request.action === 'write') throw new Error('file changed externally');
+      return { action: 'list', skills: [mine, bundled] };
     });
-    await mount(); button('editable-skill').click(); await flush();
-    const picker = container.querySelector<HTMLButtonElement>('button[aria-label="文件"]');
-    if (!picker) throw new Error('missing file picker');
-    expect(picker.textContent).toContain('SKILL.md');
-    picker.click(); await flush();
-    const option = [...container.querySelectorAll<HTMLElement>('[role="option"]')]
-      .find(item => item.textContent?.includes('references/example.txt'));
-    if (!option) throw new Error('missing support file option');
-    option.click(); await flush();
-    expect(mocks.execute).toHaveBeenLastCalledWith({ action: 'read', name: skill.name, path: 'references/example.txt', source: 'user' });
-    expect(picker.textContent).toContain('references/example.txt');
-    expect(container.querySelector('textarea')?.value).toBe('references/example.txt');
+    button('保存').click(); await flush();
+    expect(writes()).toEqual([{ action: 'write', name: 'weekly-report', path: 'SKILL.md', content: 'edited', expected_content: 'original' }]);
+    expect(editor().value).toBe('edited');
+    expect(document.body.textContent).toContain('file changed externally');
   });
-  it('外部修改后刷新读取当前内容，外部卸载后刷新清除旧编辑目标', async () => {
-    let installed = true; let content = 'original';
+
+  it('保存成功后重新读取当前文件并提示结果', async () => {
+    const state = backend(); await mount(); await openMine();
+    type('edited'); await flush();
     mocks.execute.mockImplementation(async (request: SkillManagementRequest): Promise<SkillManagementResult> => {
-      if (request.action === 'list') return { action: 'list', skills: installed ? [skill] : [] };
-      if (request.action === 'read') return { action: 'read', name: skill.name, path: request.path, source: 'user', content };
-      throw new Error('unexpected mutation');
+      if (request.action === 'write') { state.files['weekly-report/SKILL.md'] = request.content; return { action: 'write', name: request.name }; }
+      if (request.action === 'list') return { action: 'list', skills: state.skills };
+      if (request.action === 'read') return { action: 'read', name: request.name, path: request.path, source: 'user', content: state.files['weekly-report/SKILL.md'] ?? '' };
+      throw new Error('unexpected');
     });
-    await mount(); button('editable-skill').click(); await flush();
-    content = 'edited externally'; button('刷新').click(); await flush();
-    expect(container.querySelector('textarea')?.value).toBe(content);
-    installed = false; button('刷新').click(); await flush();
-    expect(container.querySelector('textarea')).toBeNull();
-    expect(container.textContent).not.toContain('editable-skill');
+    button('保存').click(); await flush();
+    expect(document.body.textContent).toContain('已保存');
+    expect(editor().value).toBe('edited');
+    expect(button('保存').disabled).toBe(true);
+  });
+
+  it('切换支持文件读取对应内容；有未保存修改时先确认，取消则留在原文件', async () => {
+    backend(); await mount(); await openMine();
+    type('dirty'); await flush();
+    mocks.confirm.mockResolvedValueOnce(false);
+    button('template.md').click(); await flush();
+    expect(editor().value).toBe('dirty');
+    mocks.confirm.mockResolvedValueOnce(true);
+    button('template.md').click(); await flush();
+    expect(editor().value).toBe('template');
+  });
+
+  it('关闭有未保存修改的详情需要确认', async () => {
+    backend(); await mount(); await openMine();
+    type('dirty'); await flush();
+    mocks.confirm.mockResolvedValueOnce(false);
+    button('关闭').click(); await flush();
+    expect(document.body.querySelector('textarea')).not.toBeNull();
+    mocks.confirm.mockResolvedValueOnce(true);
+    button('关闭').click(); await flush();
+    expect(document.body.querySelector('textarea')).toBeNull();
+  });
+
+  it('内置 Skill 只读，没有保存、升级、卸载', async () => {
+    backend(); await mount(); rowButton('deep-research').click(); await flush();
+    expect(editor().readOnly).toBe(true);
+    expect(hasButton('卸载') || hasButton('保存') || hasButton('从文件夹升级…')).toBe(false);
+    expect(document.body.textContent).toContain('只能查看');
+  });
+
+  it('从文件夹安装：校验后确认，用文件夹里的名称安装；已存在同名 Skill 时按升级处理', async () => {
+    const state = backend({ skills: [bundled], validated: { name: 'pdf-tables', description: '抽取 PDF 表格', files: ['SKILL.md', 'a.md'] } });
+    mocks.pick.mockResolvedValue({ status: 'selected', path: '/Users/me/pdf-tables' });
+    await mount(); button('从文件夹安装…').click(); await flush();
+    expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({
+      title: '安装 Skill', sections: [{ title: 'pdf-tables · 2 个文件', items: ['抽取 PDF 表格', '/Users/me/pdf-tables'] }],
+    }));
+    expect(writes()).toEqual([{ action: 'install', name: 'pdf-tables', source_directory: '/Users/me/pdf-tables' }]);
+    expect(container.textContent).toContain('已安装 Skill「pdf-tables」');
+
+    state.skills = [bundled, { ...mine, name: 'pdf-tables' }];
+    button('刷新').click(); await flush();
+    mocks.execute.mockClear(); mocks.confirm.mockClear();
+    button('从文件夹安装…').click(); await flush();
+    expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: '替换已有 Skill', isDangerousAction: true }));
+    expect(writes()).toEqual([{ action: 'update', name: 'pdf-tables', source_directory: '/Users/me/pdf-tables' }]);
+  });
+
+  it('取消文件夹选择或取消确认都不写入；校验失败显示原因', async () => {
+    backend(); await mount();
+    mocks.pick.mockResolvedValueOnce({ status: 'canceled' });
+    button('从文件夹安装…').click(); await flush();
+    mocks.pick.mockResolvedValueOnce({ status: 'selected', path: '/x' }); mocks.confirm.mockResolvedValueOnce(false);
+    button('从文件夹安装…').click(); await flush();
+    expect(writes()).toEqual([]);
+    mocks.pick.mockResolvedValueOnce({ status: 'selected', path: '/bad' });
+    mocks.execute.mockImplementation(async (request: SkillManagementRequest) => {
+      if (request.action === 'validate') throw new Error('SKILL.md 格式无效');
+      return { action: 'list', skills: [mine] };
+    });
+    button('从文件夹安装…').click(); await flush();
+    expect(container.textContent).toContain('SKILL.md 格式无效');
+    mocks.pick.mockResolvedValueOnce({ status: 'unavailable' });
+    button('从文件夹安装…').click(); await flush();
+    expect(container.textContent).toContain('无法打开文件夹选择器');
+  });
+
+  it('升级：文件夹里的名称与当前 Skill 不一致时拒绝，一致时确认后替换', async () => {
+    const state = backend(); await mount(); await openMine();
+    mocks.pick.mockResolvedValue({ status: 'selected', path: '/Users/me/other' });
+    state.validated = { name: 'other-skill', description: 'x', files: ['SKILL.md'] };
+    button('从文件夹升级…').click(); await flush();
+    expect(document.body.textContent).toContain('「other-skill」，与当前 Skill「weekly-report」不一致');
+    expect(writes()).toEqual([]);
+    state.validated = { name: 'weekly-report', description: '起草团队周报', files: ['SKILL.md'] };
+    button('从文件夹升级…').click(); await flush();
+    expect(writes()).toEqual([{ action: 'update', name: 'weekly-report', source_directory: '/Users/me/other' }]);
+  });
+
+  it('卸载需要确认；确认后关闭详情并从列表移除', async () => {
+    backend(); await mount(); await openMine();
+    mocks.confirm.mockResolvedValueOnce(false);
+    button('卸载').click(); await flush();
+    expect(writes()).toEqual([]);
+    button('卸载').click(); await flush();
+    expect(writes()).toEqual([{ action: 'remove', name: 'weekly-report' }]);
+    expect(document.body.querySelector('textarea')).toBeNull();
+    expect([...container.querySelectorAll('.skills-row-name')].map(item => item.textContent)).toEqual(['deep-research']);
+  });
+
+  it('窗口重新获得焦点时静默刷新：外部修改会读入，未保存的编辑不被覆盖，外部卸载会关闭详情', async () => {
+    const state = backend(); await mount(); await openMine();
+    state.files['weekly-report/SKILL.md'] = 'edited externally';
+    window.dispatchEvent(new Event('focus')); await flush();
+    expect(editor().value).toBe('edited externally');
+    type('my draft'); await flush();
+    state.files['weekly-report/SKILL.md'] = 'changed again';
+    window.dispatchEvent(new Event('focus')); await flush();
+    expect(editor().value).toBe('my draft');
+    state.skills = [bundled]; type('edited externally'); await flush();
+    window.dispatchEvent(new Event('focus')); await flush();
+    expect(document.body.querySelector('textarea')).toBeNull();
+    expect([...container.querySelectorAll('.skills-row-name')].map(item => item.textContent)).toEqual(['deep-research']);
   });
 });

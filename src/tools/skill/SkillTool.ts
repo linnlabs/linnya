@@ -10,7 +10,6 @@
 
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '../types';
 import {
-  PromptKeys,
   SkillActivateResultSchema,
   SkillArgsSchema,
   SkillListResourcesResultSchema,
@@ -24,6 +23,7 @@ import {
   type SkillContent,
 } from '../../features/skills/catalog';
 import { sliceSkillResourceWindow } from '../../features/skills/functions/sliceSkillResourceWindow';
+import { SKILL_AUTHORING_SKILL, contextGrantsSkillAuthoring } from '../../features/skills/functions/canAuthorSkills';
 
 // ─── 工具定义 ───
 
@@ -96,8 +96,8 @@ Call skill(action="read_resource", skill_name="...", resource_path="...") with a
   async run(rawArgs: Record<string, unknown>, context: ToolContext): Promise<string> {
     const args = SkillArgsSchema.parse(rawArgs);
     const skillName = args.skill_name;
-    if (skillName === 'skill-creator' && context.callerAgentId !== PromptKeys.DEFAULT) {
-      throw new Error('此 Skill 仅向 Default Agent 开放');
+    if (skillName === SKILL_AUTHORING_SKILL && !contextGrantsSkillAuthoring(context)) {
+      throw new Error('此 Skill 仅向可维护 Skill 的 Agent 开放');
     }
 
     switch (args.action) {

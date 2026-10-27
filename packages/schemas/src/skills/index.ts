@@ -32,7 +32,8 @@ export const SkillManagementResultSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list'), skills: z.array(ManagedSkillSchema) }).strict(),
   z.object({ action: z.literal('read'), name: z.string(), path: z.string(), content: z.string(),
     source: z.enum(['builtin', 'plugin', 'user']) }).strict(),
-  z.object({ action: z.literal('validate'), name: z.string(), files: z.array(z.string()) }).strict(),
+  z.object({ action: z.literal('validate'), name: z.string(), description: z.string(),
+    files: z.array(z.string()) }).strict(),
   ...(['install', 'update', 'remove', 'write', 'edit', 'delete_file'] as const).map(action =>
     z.object({ action: z.literal(action), name: z.string() }).strict()),
 ]);

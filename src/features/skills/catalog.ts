@@ -9,11 +9,12 @@
  * - 所有文件系统操作、路径安全校验集中在此，工具层（SkillTool）不直接碰 fs。
  */
 
-import { listSkillFiles, readSkillText } from './shared/skillFiles';
+import { listSkillFiles, readSkillText, readSkillTextLossy } from './shared/skillFiles';
 import type { SkillMetadata, SkillSource } from './types';
 import { discoverSkills } from './discovery';
 import { parseSkillFile } from './frontmatter';
 import { filterAvailableSkills } from './availability';
+import { SKILL_AUTHORING_SKILL } from './functions/canAuthorSkills';
 
 // ─── Tier 2/3 返回类型 ───
 
@@ -39,7 +40,7 @@ export interface SkillContent {
 export function buildSkillCatalogXml(includeAuthoring = false): string {
   const allSkills = filterAvailableSkills(discoverSkills());
 
-  const visibleSkills = allSkills.filter(s => !s.disableModelInvocation && (includeAuthoring || s.name !== 'skill-creator'));
+  const visibleSkills = allSkills.filter(s => !s.disableModelInvocation && (includeAuthoring || s.name !== SKILL_AUTHORING_SKILL));
 
   if (visibleSkills.length === 0) {
     return '';
@@ -123,6 +124,18 @@ export function readSkillResource(name: string, resourcePath: string): string {
     throw new Error('资源不在 Skill 支持文件清单中');
   }
   return readSkillText(skill.directory, resourcePath);
+}
+
+/**
+ * 供运行兼容性摘要使用：与 readSkillResource 共用清单与大小准入，但不因非法 UTF-8 抛错。
+ * 合法文本得到与 readSkillResource 完全相同的字符串，已有摘要不变。
+ */
+export function readSkillResourceForDigest(name: string, resourcePath: string): string {
+  const skill = requireSkill(name);
+  if (!scanResourceFiles(skill.directory).includes(resourcePath)) {
+    throw new Error('资源不在 Skill 支持文件清单中');
+  }
+  return readSkillTextLossy(skill.directory, resourcePath);
 }
 
 // ─── 内部辅助 ───

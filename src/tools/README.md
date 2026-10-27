@@ -600,4 +600,4 @@ Agent 白名单。深浅搜索使用同一网页列表与正式引用，内部�
 [Web owner](./web/README.md)。
 
 
-`skill_manage` 是 Default 专用的当前用户 Skill 文件入口，规则归 Skills owner；工具只验证参数、Host caller 和冻结的 commandRunPermission。standard/full_access 允许写入，read_only/不可用拒绝；不存在独立版本库或 Shell 审批提升。`skill` 仍负责按需消费指引，新 `skill-creator` 的按名访问也校验实际 caller。
+`skill_manage` 是当前用户 Skill 文件入口，规则归 Skills owner；工具只验证参数、Host 冻结的工具名单和 commandRunPermission。能力由 Agent 定义的 `availableTools` 是否包含 `skill_manage` 决定，不按 Agent 身份硬编码；根运行读取根名单，子运行读取自己的名单。standard/full_access 允许写入，read_only/不可用拒绝；用户关闭内部数据访问时读取也一并拒绝。不存在独立版本库或 Shell 审批提升。`skill` 仍负责按需消费指引，`skill-creator` 的按名访问使用同一判断。

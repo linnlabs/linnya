@@ -45,7 +45,29 @@ export function createLocalSkillManagement(dependencies: SkillManagementDependen
     }
     return { name: parsed.frontmatter.name, description: parsed.frontmatter.description, files, contents };
   }
+  /** 列表只需要描述与文件清单：读取入口文件，其余文件只做类型和大小检查。 */
+  function describeUserSkill(directory: string, expectedName: string) {
+    const files = listSkillFiles(directory);
+    const parsed = parseSkillFile(readSkillText(directory, 'SKILL.md'), 'SKILL.md', expectedName);
+    if (!parsed) invalid('SKILL.md 格式无效，请检查 name、description 和 YAML');
+    return { description: parsed.frontmatter.description, files };
+  }
+  /** 上一次替换被强杀时可能留下临时目录：旧版本已被挪走则放回，否则清掉。 */
+  function recoverInterrupted(): void {
+    const directory = root();
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const full = path.join(directory, entry.name);
+      const displaced = /^\.replace-(.+)-[0-9a-f-]{36}$/u.exec(entry.name);
+      if (displaced?.[1] && !fs.existsSync(path.join(directory, displaced[1]))) {
+        fs.renameSync(full, path.join(directory, displaced[1]));
+      } else if (displaced || entry.name.startsWith('.install-')) {
+        fs.rmSync(full, { recursive: true, force: true });
+      }
+    }
+  }
   function list(): ManagedSkill[] {
+    recoverInterrupted();
     const catalog = dependencies.catalog();
     const entries: ManagedSkill[] = catalog.filter(skill => skill.source !== 'user').map(skill => ({
       name: skill.name, description: skill.description, source: skill.source,
@@ -54,7 +76,7 @@ export function createLocalSkillManagement(dependencies: SkillManagementDependen
     for (const entry of fs.readdirSync(root(), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       if (entry.name.startsWith('.')) continue;
       try {
-        const skill = packageFiles(userDirectory(entry.name), entry.name);
+        const skill = describeUserSkill(userDirectory(entry.name), entry.name);
         const shadowed = catalog.some(item => item.name === entry.name && item.source !== 'user');
         entries.push({ name: entry.name, description: skill.description, source: 'user', files: skill.files,
           available: !shadowed, ...(shadowed ? { error: '同名内置或插件 Skill 优先；请重命名用户 Skill' } : {}) });
@@ -90,8 +112,9 @@ export function createLocalSkillManagement(dependencies: SkillManagementDependen
       throw new SkillManagementError('conflict', '不能覆盖同名内置或插件 Skill，请更换名称');
     }
     if (!exists && fs.readdirSync(root()).filter(name => !name.startsWith('.')).length >= 100) invalid('最多安装 100 个用户 Skill');
+    recoverInterrupted();
     const staging = path.join(root(), `.install-${randomUUID()}`);
-    const displaced = path.join(root(), `.replace-${randomUUID()}`);
+    const displaced = path.join(root(), `.replace-${request.name}-${randomUUID()}`);
     fs.mkdirSync(staging);
     try {
       for (const file of validated.contents) {
@@ -126,7 +149,8 @@ export function createLocalSkillManagement(dependencies: SkillManagementDependen
       }
       case 'validate': {
         const validated = packageFiles(request.source_directory);
-        return { action: 'validate', name: validated.name, files: validated.files };
+        return { action: 'validate', name: validated.name, description: validated.description,
+          files: validated.files };
       }
       case 'install': case 'update': replacePackage(request); break;
       case 'remove': fs.rmSync(userDirectory(request.name), { recursive: true }); break;

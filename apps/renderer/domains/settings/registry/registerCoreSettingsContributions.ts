@@ -90,7 +90,11 @@ export function ensureCoreSettingsContributionsRegistered(): void {
     component: ModelConfigurationSettingsPage,
   });
   registerSettingsContribution({
-    id: 'skills', title: 'Skills', group: 'document-types', order: 80,
+    id: 'skills',
+    title: SETTINGS_MESSAGE_FALLBACKS['settings.tabs.skills'],
+    titleMessageKey: 'settings.tabs.skills',
+    group: 'document-types',
+    order: 80,
     component: SkillManagementSettingsPage,
   });
   registerSettingsContribution({

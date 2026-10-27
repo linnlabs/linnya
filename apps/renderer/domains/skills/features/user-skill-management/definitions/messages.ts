@@ -1,49 +1,71 @@
 import { registerMessageCatalogs, useLocalization } from '@app/localization';
 
 const zh = {
-  description: '安装和维护可复用的工作方法。用户 Skill 可直接编辑；内置与插件 Skill 随产品更新。',
-  installed: '已安装', install: '安装 Skill', source: '本机来源目录', name: 'Skill 名称',
-  sourceHint: '选择已下载或编写好的文件夹，其中须包含 SKILL.md。',
-  nameHint: '名称须与 SKILL.md 的 name 一致，使用小写字母、数字和单连字符。',
-  refresh: '刷新', empty: '还没有 Skill。', unavailable: '不可用',
-  builtin: '内置', plugin: '插件', user: '用户', file: '文件',
-  save: '保存文件', upgrade: '从目录升级', remove: '卸载',
-  upgradeHint: '升级会替换当前文件集合，包括本地修改。请填写上方来源目录。',
-  readonly: '此 Skill 随产品或插件发布，仅可查看。',
-  lifecycle: '改动会影响后续运行；此前暂停的运行可能因内容改变而无法继续。',
-  removeTitle: '卸载 Skill', removeMessage: '将永久删除此用户 Skill 的当前文件。需要旧内容时请重新安装。',
-  upgradeTitle: '替换当前 Skill', upgradeMessage: '将用来源目录完整替换当前 Skill，包括尚未导出的本地编辑。',
-  discardTitle: '放弃未保存的编辑', discardMessage: '切换后将丢弃当前未保存的内容。',
-  success: '操作完成。', failed: '操作失败，请检查文件内容或目录后重试。',
-  newFile: '新建支持文件', filePath: '相对文件路径', create: '新建', deleteFile: '删除文件',
-  deleteTitle: '删除支持文件', deleteMessage: '将永久删除当前支持文件。',
+  description: 'Skill 是 Agent 按需加载的工作方法。可以在对话里让 Agent 把常用流程做成 Skill，也可以从本机文件夹安装。',
+  installed: '已安装', install: '从文件夹安装…', refresh: '刷新',
+  groupUser: '我的 Skill', groupBuiltin: '内置', groupPlugin: '插件',
+  tagUser: '我的 Skill', tagBuiltin: '内置', tagPlugin: '插件',
+  emptyUser: '还没有自己的 Skill。可以在对话中让 Agent 把常用流程做成 Skill，或从文件夹安装。',
+  unavailable: '不可用',
+  chooseFolder: '选择包含 SKILL.md 的文件夹', pickerUnavailable: '当前环境无法打开文件夹选择器。',
+  sourceTitle: '{name} · {count} 个文件',
+  installTitle: '安装 Skill', installConfirm: '安装',
+  installMessage: '安装后，Agent 会在合适的任务里自动使用它。只安装你信任来源的 Skill。',
+  replaceTitle: '替换已有 Skill', replaceConfirm: '替换',
+  replaceMessage: 'Skill「{name}」已经安装。继续会用这个文件夹完整替换当前内容，包括你在本地做的修改。',
+  upgrade: '从文件夹升级…', upgradeTitle: '升级 Skill', upgradeConfirm: '升级',
+  upgradeMessage: '将用这个文件夹完整替换当前内容，包括你在本地做的修改，且无法撤销。',
+  upgradeMismatch: '这个文件夹里的 Skill 名称是「{found}」，与当前 Skill「{name}」不一致。',
+  remove: '卸载', removeTitle: '卸载 Skill「{name}」', removeConfirm: '卸载',
+  removeMessage: '将永久删除这个 Skill 的全部文件。需要时可以重新安装。',
+  save: '保存', saveHint: '保存后从下一次对话生效', readonly: '内置和插件 Skill 随产品更新，只能查看。',
+  files: '文件', unsaved: '未保存',
+  discardTitle: '放弃未保存的修改', discardConfirm: '放弃修改', keepEditing: '继续编辑',
+  discardMessage: '关闭或切换后，当前未保存的内容会丢失。',
+  cancel: '取消',
+  installedSuccess: '已安装 Skill「{name}」。', upgradedSuccess: '已升级 Skill「{name}」。',
+  removedSuccess: '已卸载 Skill「{name}」。', savedSuccess: '已保存。',
+  failed: '操作失败，请检查文件内容后重试。',
 };
 const en: Record<keyof typeof zh, string> = {
-  description: 'Install reusable workflows. User skills are editable files; bundled and plugin skills update with their source.',
-  installed: 'Installed', install: 'Install skill', source: 'Local source directory', name: 'Skill name',
-  sourceHint: 'Use a downloaded or authored folder containing SKILL.md.',
-  nameHint: 'Match the SKILL.md name: lowercase letters, digits and single hyphens.',
-  refresh: 'Refresh', empty: 'No skills installed.', unavailable: 'Unavailable',
-  builtin: 'Built-in', plugin: 'Plugin', user: 'User', file: 'File',
-  save: 'Save file', upgrade: 'Upgrade from directory', remove: 'Uninstall',
-  upgradeHint: 'Upgrade replaces all current files, including local edits. Enter the source directory above.',
-  readonly: 'This skill is distributed with the product or a plugin and is read-only.',
-  lifecycle: 'Changes affect future runs. Older paused runs may no longer resume after their skill content changes.',
-  removeTitle: 'Uninstall skill', removeMessage: 'Permanently delete the current user skill files. Reinstall the source if needed.',
-  upgradeTitle: 'Replace current skill', upgradeMessage: 'Replace the entire skill with the source directory, including local edits.',
-  discardTitle: 'Discard unsaved edits', discardMessage: 'Switching will discard the current unsaved text.',
-  success: 'Operation completed.', failed: 'Operation failed. Check the files or directory and try again.',
-  newFile: 'New supporting file', filePath: 'Relative file path', create: 'Create', deleteFile: 'Delete file',
-  deleteTitle: 'Delete supporting file', deleteMessage: 'Permanently delete the current supporting file.',
+  description: 'Skills are working methods the agent loads on demand. Ask the agent to turn a routine into a skill in chat, or install one from a local folder.',
+  installed: 'Installed', install: 'Install from folder…', refresh: 'Refresh',
+  groupUser: 'My skills', groupBuiltin: 'Built-in', groupPlugin: 'Plugins',
+  tagUser: 'My skill', tagBuiltin: 'Built-in', tagPlugin: 'Plugin',
+  emptyUser: 'No skills of your own yet. Ask the agent in chat to turn a routine into a skill, or install one from a folder.',
+  unavailable: 'Unavailable',
+  chooseFolder: 'Choose a folder that contains SKILL.md', pickerUnavailable: 'The folder picker is not available here.',
+  sourceTitle: '{name} · {count} files',
+  installTitle: 'Install skill', installConfirm: 'Install',
+  installMessage: 'After installing, the agent uses it automatically when a task fits. Only install skills from sources you trust.',
+  replaceTitle: 'Replace existing skill', replaceConfirm: 'Replace',
+  replaceMessage: 'Skill "{name}" is already installed. Continuing replaces its current content with this folder, including your local edits.',
+  upgrade: 'Upgrade from folder…', upgradeTitle: 'Upgrade skill', upgradeConfirm: 'Upgrade',
+  upgradeMessage: 'The current content, including your local edits, will be replaced by this folder. This cannot be undone.',
+  upgradeMismatch: 'The skill in this folder is named "{found}", which does not match the current skill "{name}".',
+  remove: 'Uninstall', removeTitle: 'Uninstall skill "{name}"', removeConfirm: 'Uninstall',
+  removeMessage: 'All files of this skill will be deleted permanently. You can install it again later.',
+  save: 'Save', saveHint: 'Takes effect from the next conversation', readonly: 'Built-in and plugin skills update with the product and are view-only.',
+  files: 'Files', unsaved: 'Unsaved',
+  discardTitle: 'Discard unsaved changes', discardConfirm: 'Discard changes', keepEditing: 'Keep editing',
+  discardMessage: 'Unsaved content is lost when you close or switch.',
+  cancel: 'Cancel',
+  installedSuccess: 'Installed skill "{name}".', upgradedSuccess: 'Upgraded skill "{name}".',
+  removedSuccess: 'Uninstalled skill "{name}".', savedSuccess: 'Saved.',
+  failed: 'The operation failed. Check the file content and try again.',
 };
+
+export type SkillMessageKey = keyof typeof zh;
+export type SkillMessageResolver = (key: SkillMessageKey, params?: Record<string, string | number>) => string;
+
 let registered = false;
-export function useSkillMessages() {
+export function useSkillMessages(): SkillMessageResolver {
   if (!registered) {
-    const entries = (values: Record<keyof typeof zh, string>) => Object.fromEntries(
+    const entries = (values: Record<SkillMessageKey, string>) => Object.fromEntries(
       Object.entries(values).map(([key, value]) => [`skills.${key}`, value]));
     registerMessageCatalogs({ owner: 'skills', catalogs: { 'zh-CN': entries(zh), 'en-US': entries(en) } });
     registered = true;
   }
   const { message } = useLocalization();
-  return (key: keyof typeof zh) => message(`skills.${key}`, zh[key]);
+  return (key, params) => message(`skills.${key}`, zh[key], params);
 }

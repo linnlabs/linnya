@@ -14,7 +14,7 @@ Skill 为已有 Agent 提供按需加载的研究方法、工作流程和文档�
 
 `builtin/index.ts` 先检查项目根的源码目录，再检查 `dist/builtin-skills`、`dist_build/dist/builtin-skills` 与 Electron resources 下的产物。构建由 `scripts/build/copy-files.js` 复制内置资源。新增目录不需要改注册表，也不能把插件 Skill 复制进 builtin 目录。
 
-开发模式 `LINNYA_DEV_MODE=true` 不缓存发现结果；其他模式内置/插件元数据缓存 5 分钟，用户来源每次重新解析以接纳外部编辑，`invalidateSkillCache()` 可主动失效。正文和资源在调用时读取。新名称在已有会话上下文中不保证立即可见，验证发现能力应使用新会话。
+开发模式 `LINNYA_DEV_MODE=true` 不缓存发现结果；其他模式内置/插件元数据缓存 5 分钟，用户来源每次重新解析以接纳外部编辑，`invalidateSkillCache()` 可主动失效。目录查询对支持文件只做 readdir/lstat 检查（类型、数量、深度、单文件大小，见 `inspectSkillFiles`），不读取内容，代价与 Skill 体积无关；只有入口文件会被读取和解析。运行兼容性摘要对支持文件使用宽松解码（`readSkillTextLossy`，合法 UTF-8 与严格解码逐字符一致，既有摘要不变），非法字节的支持文件不会让新运行无法接纳。正文和资源在调用时读取。新名称在已有会话上下文中不保证立即可见，验证发现能力应使用新会话。
 
 Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `skill` 工具。`agentSkillExposure.ts` 由 `GenericAgentTask` 调用，统一追加目录；不要手改每个 Agent 的系统提示词嵌入 Skill 正文。Agent prompt 点名必需 Skill 时，另声明 `requiredSkills` 并走现有配置校验。
 
@@ -64,7 +64,7 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 
 ## 编写与维护
 
-- `SKILL.md` 的 YAML 必须有 `name`、`description`。名称须与目录名一致，为 1—64 字符的小写字母、数字、单连字符；不能以连字符开头或结尾。解析以 `frontmatter.ts` 和 `types.ts` 为准。
+- `SKILL.md` 的 YAML 必须有 `name`、`description`。其余字段宽松加载：YAML 以 failsafe schema 解析，所有标量保持原文（`version: 1.0` 不会变成数字），`allowed-tools` 可写成空格分隔字符串或列表，格式不对的可选字段只被忽略，不会让整个 Skill 失效。名称须与目录名一致，为 1—64 字符的小写字母、数字、单连字符；不能以连字符开头或结尾。解析以 `frontmatter.ts` 和 `types.ts` 为准。
 - 描述写清触发任务；正文只放改变行动的指引。相关条件细节用 `references/`，不把所有资源默认塞进上下文。
 - `allowed-tools` 当前只解析保存，不执行权限变更；`disable-model-invocation` 只影响目录披露，不是访问控制。不要声明未实现的 fork 或脚本执行协议。
 - 资源相对路径限制在 Skill 目录，读取上限 512 KB；资源枚举最多 50 个、深度最多 3 层。保持资源精简，超限行为以 `catalog.ts` 为准。
@@ -84,14 +84,14 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 
 管理包含安装、整包升级、卸载，以及当前文件的读取、原文替换、完整写入和支持文件删除。安装/升级接收本机绝对来源目录；先验证完整包，升级替换文件集合，旧版多余文件会消失。普通临时文件/目录仅用于完成本次写入，收尾删除；不保存修订、回收站、持久 journal 或恢复历史。需要旧内容时重新安装。
 
-入口文件与资源都拒绝链接/特殊文件、越界相对路径、非法 UTF-8 与超限文本。包最多 50 个支持文件、深度 3 层、每文件 512 KiB、总文本 5 MiB；无效候选单独诊断，不拖垮其他 Agent。直接读取也必须属于同一资源清单。frontmatter 使用运行时 YAML parser，支持块标量与 CRLF，已知字段严格验证，不能把数组当 allowed-tools。
+入口文件与资源都拒绝链接/特殊文件、越界相对路径与超限文本；入口文件须是合法 UTF-8，支持文件在目录发现阶段只检查类型与大小，读取时才拒绝非法 UTF-8。包最多 50 个支持文件、深度 3 层、每文件 512 KiB、总文本 5 MiB；无效候选单独诊断，不拖垮其他 Agent。直接读取也必须属于同一资源清单。frontmatter 使用运行时 YAML parser，支持块标量与 CRLF，已知字段严格验证，不能把数组当 allowed-tools。
 
-`skill_manage` 是 Default 专用薄工具：调用者身份由 Host 冻结，standard/full_access 可写，read_only 或权限不可用拒绝写入，不新增专用审批/授权 token。已有研究评审配置复用 Default 时显式排除该工具；新内置 `skill-creator` 只向 Default 目录披露，按名读取也校验 caller。用户 Skill 继续遵循既有可见范围。
+`skill_manage` 是薄工具：能力来自 Agent 定义的工具名单（`functions/canAuthorSkills.ts`），不按 Agent 身份硬编码；standard/full_access 可写，read_only 或权限不可用拒绝写入，用户关闭内部数据访问时读取也拒绝，不新增专用审批/授权 token。已有研究评审配置复用 Default 时显式排除该工具；内置 `skill-creator` 只向持有该工具的 Agent 披露，按名读取使用同一判断。用户 Skill 继续遵循既有可见范围。
 
 Renderer 的 `/api/v1/skills` 与外部 CLI 的 `skills` capability 调用同一 owner，分别沿用既有 App API 与本机控制桥鉴权。CLI 的本机来源路径由客户端转为绝对路径，Host 就地读取，不引入上传会话。Agent 以 `skill_manage` 直接写入，避免为普通文件管理扩张 Shell 沙箱根或向它分发全功能 CLI token。
 
-完整写入需带刚读取的 expected_content；省略或 null 仅表示新建文件。原文改变或 edit 无法唯一匹配时报冲突。同步小包替换期间不向事件循环让出控制，应用内读取不会命中目录改名间隙；不宣称与外部编辑器完全串行，也不承诺强杀/断电的整包事务恢复。
+完整写入需带刚读取的 expected_content；省略或 null 仅表示新建文件。原文改变或 edit 无法唯一匹配时报冲突。同步小包替换期间不向事件循环让出控制，应用内读取不会命中目录改名间隙；不宣称与外部编辑器完全串行，也不承诺强杀/断电的整包事务恢复。整包升级把旧目录暂存为 `.replace-<name>-<uuid>`；若上次替换被强杀，下一次列表或安装会先清理：新版本未落位时把旧版本放回，否则删除残留的 `.install-*` 与 `.replace-*` 临时目录。
 
 新名称进入下一次 run 的目录，当前读取可见已保存文件。当前恢复摘要合同保持严格：更新/卸载任何原 run 可见的 Skill 都可能阻止旧暂停运行继续，不按“是否激活过”缩小影响，也不新增修订固定。
 
-管理验收：`skillManagement.integration.test.ts` 覆盖真实文件与 HTTP，`skillCli.lifecycle.integration.test.ts` 覆盖 CLI 子进程→鉴权/握手→同一文件 owner，SkillManageTool 集成测试覆盖冻结权限与操作生命周期，Renderer Skills feature 测试覆盖冲突保留草稿及来源只读。
+管理验收：`skillManagement.integration.test.ts` 覆盖真实文件与 HTTP，`skillCli.lifecycle.integration.test.ts` 覆盖 CLI 子进程→鉴权/握手→同一文件 owner，SkillManageTool 集成测试覆盖冻结权限与操作生命周期，Renderer Skills feature 测试覆盖列表分组、详情编辑与冲突保留草稿、内置只读、文件夹安装/升级/卸载的确认流程，以及窗口重新获得焦点时的静默刷新。

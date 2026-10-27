@@ -11,10 +11,14 @@ vi.mock('../../../shared/utils/pathManager', () => ({ getSkillsPath: () => path.
 import { SkillManageTool } from '../SkillManageTool';
 import { discoverSkills, invalidateSkillCache } from '../../../features/skills/discovery';
 
-function context(level: 'read_only' | 'standard' | 'full_access', agent = PromptKeys.DEFAULT): ToolContext {
-  return { callerAgentId: agent, commandRunPermission: { status: 'available', snapshot: CommandRunPermissionSnapshotV1Schema.parse({
+function context(
+  level: 'read_only' | 'standard' | 'full_access',
+  options: { tools?: readonly string[]; internal?: 'allowed' | 'denied' } = {},
+): ToolContext {
+  return { callerAgentId: PromptKeys.DEFAULT,
+    registeredRootAllowedTools: options.tools ?? ['skill', 'skill_manage'], commandRunPermission: { status: 'available', snapshot: CommandRunPermissionSnapshotV1Schema.parse({
     protocol_version: 1, kind: 'command_run_permission_snapshot', root_agent_run_id: 'skill-test-run',
-    settings_revision: 0, captured_at_ms: 1, permission_level: level, internal_data_access: 'allowed',
+    settings_revision: 0, captured_at_ms: 1, permission_level: level, internal_data_access: options.internal ?? 'allowed',
     gui_control: 'denied', local_ipc_control: 'denied', process_lifecycle: 'terminate_with_run',
   }) } };
 }
@@ -51,12 +55,20 @@ describe('Agent skill write permissions and lifecycle', () => {
     expect(catalog.find(skill => skill.name === 'good-skill')?.description).toBe('Changed outside the app');
     expect(catalog.some(skill => skill.name === 'broken-skill')).toBe(false);
   });
-  it('read_only、缺失冻结权限及非 Default 不能写入', async () => {
+  it('read_only、缺失冻结权限及没有 skill_manage 的 Agent 不能写入', async () => {
     const tool = new SkillManageTool();
     const request = { action: 'remove', name: 'anything' };
     await expect(tool.run(request, context('read_only'))).rejects.toThrow('只读');
-    await expect(tool.run(request, { callerAgentId: PromptKeys.DEFAULT })).rejects.toThrow('权限不可用');
-    await expect(tool.run(request, { callerAgentId: 'research_v1' })).rejects.toThrow('Default');
+    await expect(tool.run(request, { callerAgentId: PromptKeys.DEFAULT, registeredRootAllowedTools: ['skill_manage'] })).rejects.toThrow('权限不可用');
+    await expect(tool.run(request, context('standard', { tools: ['skill'] }))).rejects.toThrow('不能管理');
+    await expect(tool.run(request, { callerAgentId: 'research_v1' })).rejects.toThrow('不能管理');
+    expect(fs.existsSync(path.join(fixture.root, 'user'))).toBe(false);
+  });
+  it('关闭内部数据访问后，读取与写入都被拒绝', async () => {
+    const tool = new SkillManageTool();
+    const closed = context('full_access', { internal: 'denied' });
+    await expect(tool.run({ action: 'list' }, closed)).rejects.toThrow('内部数据访问');
+    await expect(tool.run({ action: 'remove', name: 'anything' }, closed)).rejects.toThrow('内部数据访问');
     expect(fs.existsSync(path.join(fixture.root, 'user'))).toBe(false);
   });
 });

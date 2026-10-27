@@ -1,6 +1,9 @@
+import { z } from 'zod';
 import {
   HistoricalResourceReadArgsSchema,
   SkillArgsSchema,
+  SkillManagementRequestSchema,
+  SkillManagementResultSchema,
   HistoricalSkillResourceReadResultSchema,
   SkillResultSchema,
 } from '@app/schemas';
@@ -48,9 +51,45 @@ function assertSkillResultMatchesArgs(
   }
 }
 
+const SkillManageToolResultSchema = z.object({
+  data: SkillManagementResultSchema,
+  observation: z.string(),
+}).strict();
+
+function projectManageData(
+  request: ReturnType<typeof SkillManagementRequestSchema.parse>
+): Extract<SkillPresentationData, { kind: 'manage' }> {
+  return {
+    kind: 'manage',
+    action: request.action,
+    skillName: 'name' in request ? request.name : undefined,
+    path: 'path' in request ? request.path : undefined,
+  };
+}
+
+function projectSkillManagePresentation(
+  input: ToolPresentationProjectorInput
+): ToolPresentationProjection<SkillPresentationData> {
+  if (input.status !== 'success') {
+    // 生命周期阶段参数可能还不完整：能解析就显示具体动作，否则退回通用的“正在处理”。
+    const lifecycle = SkillManagementRequestSchema.safeParse(input.args);
+    return { data: lifecycle.success ? projectManageData(lifecycle.data) : { kind: 'lifecycle' } };
+  }
+  const request = SkillManagementRequestSchema.parse(input.args);
+  const result = SkillManageToolResultSchema.parse(input.result);
+  if (result.data.action !== request.action || ('name' in request && 'name' in result.data && result.data.name !== request.name)) {
+    throw new Error('Skill manage result does not match its tool arguments.');
+  }
+  return { data: projectManageData(request) };
+}
+
 export function projectSkillPresentation(
   input: ToolPresentationProjectorInput
 ): ToolPresentationProjection<SkillPresentationData> {
+  if (input.sourceToolName === 'skill_manage' && input.uiKey === 'skill_manage') {
+    return projectSkillManagePresentation(input);
+  }
+
   if (input.sourceToolName === 'skill' && input.uiKey === 'skill') {
     if (input.status !== 'success') {
       const lifecycleArgs = SkillArgsSchema.safeParse(input.args);

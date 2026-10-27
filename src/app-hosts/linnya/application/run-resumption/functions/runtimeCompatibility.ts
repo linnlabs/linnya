@@ -1,4 +1,3 @@
-import { PromptKeys } from '@app/schemas';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { SerializableJsonRecord } from '@linnlabs/linnkit/contracts';
@@ -9,8 +8,12 @@ import {
   getAllSkillMetadata,
   getSkillByName,
   loadSkillContent,
-  readSkillResource,
+  readSkillResourceForDigest,
 } from 'src/features/skills/catalog';
+import {
+  SKILL_AUTHORING_SKILL,
+  toolListGrantsSkillAuthoring,
+} from 'src/features/skills/functions/canAuthorSkills';
 import { findRegisteredAgentDefinitionByPromptKey } from '../../../agent-registry/agentDefinitionResolver';
 import { getRegisteredBackendPluginVersions } from '../../../plugin-registry/builtin';
 import type { RunDescriptor } from '../definitions/runDescriptor';
@@ -74,7 +77,7 @@ function readSkillRevision(name: string): string {
         resources: content.resources
           .slice()
           .sort()
-          .map(path => [path, readSkillResource(name, path)]),
+          .map(path => [path, readSkillResourceForDigest(name, path)]),
       })
     )
     .digest('hex');
@@ -97,7 +100,8 @@ export function captureRuntimeCompatibility(
     : definition.config?.skill?.enabled
       ? getAllSkillMetadata()
           .filter(skill => !skill.disableModelInvocation && getSkillByName(skill.name)
-            && (skill.name !== 'skill-creator' || definition.id === PromptKeys.DEFAULT))
+            && (skill.name !== SKILL_AUTHORING_SKILL
+              || toolListGrantsSkillAuthoring(definition.config?.availableTools)))
           .map(skill => skill.name)
       : [];
   return {

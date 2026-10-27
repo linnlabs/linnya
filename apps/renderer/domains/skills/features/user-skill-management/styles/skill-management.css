@@ -1,35 +1,256 @@
-.skills-management-note {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  margin: var(--space-3) 0;
-}
+/* Skill 设置页：列表行、分组标题与详情弹窗。控件视觉来自 @linnya/renderer-ui，这里只表达版式。 */
 
-.skills-management-actions,
-.skills-management-new-file {
+.skills-management-header-actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: var(--space-2);
-  margin-top: var(--space-3);
 }
 
-.skills-management-new-file {
+/* --- 列表 --- */
+
+.skills-group + .skills-group {
+  margin-top: var(--space-5);
+}
+
+.skills-group-title {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 var(--space-1-5);
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-footnote);
+  color: var(--color-text-tertiary);
+}
+
+.skills-group-title > :last-child {
+  font-weight: var(--font-weight-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+.skills-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skills-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   width: 100%;
-  margin-top: 0;
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  transition: background-color var(--duration-micro) var(--ease-standard);
 }
 
-.skills-management-new-file > :first-child {
+.skills-row:hover {
+  background-color: var(--color-bg-hover-light);
+}
+
+.skills-row-copy {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-width: 0;
 }
 
-.skills-management-editor {
-  width: 100%;
+.skills-row-name {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  color: var(--color-text-primary);
 }
 
-.skills-management-editor-control {
+.skills-row-description {
+  overflow: hidden;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  color: var(--color-text-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skills-row-badge {
+  flex-shrink: 0;
+  padding: 0 var(--space-1-5);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  color: var(--color-warning-text);
+  background-color: var(--color-warning-bg);
+  border-radius: var(--radius-sm);
+}
+
+.skills-row-chevron {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-muted);
+}
+
+/* --- 详情弹窗 --- */
+
+.skills-detail {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.skills-detail-summary {
+  margin: 0;
+  padding: 0 var(--space-6) var(--space-3);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+}
+
+.skills-tag {
+  display: inline-block;
+  margin-right: var(--space-2);
+  padding: 0 var(--space-1-5);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.skills-detail-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 188px minmax(0, 1fr);
+  min-height: 0;
+  border-top: var(--border-width-hairline) solid var(--color-border-light);
+}
+
+.skills-files {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  overflow-y: auto;
+  padding: var(--space-2);
+  border-right: var(--border-width-hairline) solid var(--color-border-light);
+}
+
+.skills-file-directory {
+  padding: var(--space-2) var(--space-2) var(--space-0-5);
+  padding-left: calc(var(--space-2) + var(--skills-file-depth, 0) * var(--space-3));
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-muted);
+}
+
+.skills-file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2);
+  padding-left: calc(var(--space-2) + var(--skills-file-depth, 0) * var(--space-3));
+  font: inherit;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-micro) var(--ease-standard);
+}
+
+.skills-file:hover {
+  background-color: var(--color-bg-hover-light);
+}
+
+.skills-file.is-active {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-active-subtle);
+}
+
+.skills-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skills-file-dirty {
+  flex-shrink: 0;
+  width: var(--space-1-5);
+  height: var(--space-1-5);
+  background-color: var(--color-accent);
+  border-radius: 50%;
+}
+
+.skills-editor {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.skills-editor-control {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  padding: var(--space-3) var(--space-4);
   font-family: var(--font-family-mono);
-  min-height: 240px;
-  resize: vertical;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  resize: none;
+  border-radius: 0;
+}
+
+/* 无边框文本框悬停、聚焦时会填充 hover 底色，这在整块编辑区上显得突兀；编辑区始终保持页面底色，
+   聚焦由共享控件的强调色边框表达，只读时用凹陷浅底表示不可改。两条规则特异性相同，只读在后。 */
+.skills-editor .skills-editor-control:hover:not(:disabled),
+.skills-editor .skills-editor-control:focus:not(:disabled) {
+  background-color: transparent;
+}
+
+.skills-editor .skills-editor-control:read-only:not(:disabled) {
+  background-color: var(--color-bg-subtle);
+}
+
+.skills-detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border-top: var(--border-width-hairline) solid var(--color-border-light);
+}
+
+.skills-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.skills-detail-status {
+  margin: 0;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  color: var(--color-text-tertiary);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.skills-detail-status.is-error {
+  color: var(--color-error-text);
+}
+
+.skills-detail-status.is-success {
+  color: var(--color-success-text);
 }

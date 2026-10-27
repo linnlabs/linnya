@@ -608,4 +608,4 @@ Graph 步、inherit_parent 模型策略，工具包括普通 Workspace 读写、
 已撤回的阶段请求构建器不再是方法入口。父子只启用预算收尾提醒；具体缺口进入下一次明确委派，不能把自动注入的提醒假设为已经实现。后续实验应区分方法送达、动作执行、论证是否成立及结果是否进入终稿。
 
 
-Default 另提供 `skill_manage` 来安装、卸载、升级和编辑当前用户 Skill，内置 `skill-creator` 提供操作与第三方审查指引。该能力按实际 definition/caller 身份接纳，不从共享 config 推断：复用 Default 配置的实验/旧评审角色排除管理工具，目录和恢复摘要也不披露 creator。管理不改变研究提示和原用户 Skill 的既有范围；读取/管理合同见 Skills owner。
+Default 另提供 `skill_manage` 来安装、卸载、升级和编辑当前用户 Skill，内置 `skill-creator` 提供操作与第三方审查指引。该能力由 definition 自己的 `availableTools` 是否包含 `skill_manage` 决定（目录披露、恢复摘要和运行时工具判断共用 `features/skills/functions/canAuthorSkills.ts`）：复用 Default 配置的实验/旧评审角色排除管理工具，因此目录和恢复摘要也不披露 creator。管理不改变研究提示和原用户 Skill 的既有范围；读取/管理合同见 Skills owner。

@@ -120,17 +120,9 @@ export function parseSkillFile(
   const allowedTools = typeof parsed['allowed-tools'] === 'string' ? parsed['allowed-tools'].trim() || undefined : undefined;
 
   // metadata 嵌套字段
-  const rawMetadata = parsed['metadata'];
-  let metadata: Record<string, string> | undefined;
-  if (rawMetadata && typeof rawMetadata === 'object' && !Array.isArray(rawMetadata)) {
-    metadata = {};
-    for (const [k, v] of Object.entries(rawMetadata)) {
-      metadata[k] = String(v);
-    }
-  }
+  const metadata = parsed['metadata'];
 
-  const disableModelInvocation =
-    parsed['disable-model-invocation'] === true;
+  const disableModelInvocation = parsed['disable-model-invocation']?.trim().toLowerCase() === 'true';
 
   const frontmatter: SkillFrontmatter = {
     name,
@@ -145,15 +137,24 @@ export function parseSkillFile(
   return { frontmatter, body };
 }
 
-// YAML 必须完整解析块标量、引号与重复 key；外部值先验证类型再使用。
+// YAML 用 failsafe schema 解析：所有标量保持原文字符串（`version: 1.0` 不会变成数字 1），
+// 块标量、引号与重复 key 仍由完整 YAML 解析器处理。可选字段格式不对时只忽略该字段，
+// 不让整个 Skill 因为 metadata 或 allowed-tools 的写法而不可用。
+const scalar = z.string();
 const FrontmatterFields = z.object({
-  name: z.string(), description: z.string(), license: z.string().optional(),
-  compatibility: z.string().optional(), metadata: z.record(z.string()).optional(),
-  'allowed-tools': z.string().optional(), 'disable-model-invocation': z.boolean().optional(),
+  name: scalar,
+  description: scalar,
+  license: scalar.optional().catch(undefined),
+  compatibility: scalar.optional().catch(undefined),
+  metadata: z.record(scalar).optional().catch(undefined),
+  'allowed-tools': z.union([scalar, z.array(scalar)])
+    .transform(value => (Array.isArray(value) ? value.join(' ') : value))
+    .optional().catch(undefined),
+  'disable-model-invocation': scalar.optional().catch(undefined),
 }).passthrough();
 
 function parseFrontmatterYaml(content: string): z.infer<typeof FrontmatterFields> | null {
-  const document = parseDocument(content, { uniqueKeys: true });
+  const document = parseDocument(content, { uniqueKeys: true, schema: 'failsafe' });
   if (document.errors.length > 0) return null;
   try {
     const raw: unknown = document.toJS({ maxAliasCount: 50 });

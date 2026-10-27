@@ -1,10 +1,11 @@
-import { SkillManagementRequestSchema, PromptKeys } from '@app/schemas';
+import { SkillManagementRequestSchema } from '@app/schemas';
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '../types';
 import { skillManagement } from '../../features/skills';
+import { SKILL_AUTHORING_TOOL, contextGrantsSkillAuthoring } from '../../features/skills/functions/canAuthorSkills';
 
 /** 工具只接纳调用身份、冻结权限和参数；文件规则由 Skills owner 唯一拥有。 */
 export class SkillManageTool extends BaseTool {
-  readonly name = 'skill_manage';
+  readonly name = SKILL_AUTHORING_TOOL;
   readonly description = `Install, update, uninstall, read or directly edit current user Skill files.
 Use only when the user asks to create, install or maintain a reusable skill. First activate skill-creator.
 - list: inspect installed skills and files (builtin/plugin are read-only).
@@ -36,10 +37,14 @@ New skills enter the next run's catalog. Changing/removing a skill can prevent o
     return parsed.success ? { success: true } : { success: false, error: parsed.error.message };
   }
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
-    if (context.callerAgentId !== PromptKeys.DEFAULT) throw new Error('Skill 管理仅向 Default Agent 开放');
+    if (!contextGrantsSkillAuthoring(context)) throw new Error('当前 Agent 不能管理 Skill');
     const request = SkillManagementRequestSchema.parse(args);
+    const permission = context.commandRunPermission;
+    // Skill 目录属于 Linnya 内部数据：用户在设置里关闭内部数据访问时，读取也一并拒绝。
+    if (permission?.status === 'available' && permission.snapshot.internal_data_access === 'denied') {
+      throw new Error('当前运行已关闭内部数据访问，不能读取或管理 Skill；请在设置中开启后开始新运行');
+    }
     if (!['list', 'read', 'validate'].includes(request.action)) {
-      const permission = context.commandRunPermission;
       if (permission?.status !== 'available' || permission.snapshot.permission_level === 'read_only') {
         throw new Error('当前运行是只读或权限不可用；请在设置中选择标准/完全访问后开始新运行');
       }

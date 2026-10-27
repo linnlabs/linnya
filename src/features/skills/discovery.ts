@@ -10,7 +10,7 @@
  */
 
 import fs from 'fs';
-import { listSkillFiles, readSkillText } from './shared/skillFiles';
+import { inspectSkillFiles, readSkillText } from './shared/skillFiles';
 import path from 'path';
 import { getSkillsPath } from '../../shared/utils/pathManager';
 import { getBuiltinSkillsRoot } from './builtin';
@@ -143,8 +143,9 @@ function scanDirectory(root: string, source: SkillSource, pluginId?: string): Sk
 
     let raw: string;
     try {
+      // 只读入口文件；其余文件只做类型/大小检查，避免目录查询随 Skill 内容体积变慢。
+      inspectSkillFiles(skillDir);
       raw = readSkillText(skillDir, 'SKILL.md');
-      for (const file of listSkillFiles(skillDir)) readSkillText(skillDir, file);
     } catch (e) {
       console.warn(`[Skill] 读取 ${skillFilePath} 失败，跳过`, e);
       continue;
