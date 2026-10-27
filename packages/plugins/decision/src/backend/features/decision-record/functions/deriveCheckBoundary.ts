@@ -1,6 +1,7 @@
 import type { DecisionExpression, DecisionModel } from '../../../../shared';
 import type { AffineResult, CheckBoundaryResult } from '../definitions/checkBoundary';
-import { evaluateExpression } from './evaluateDecisionModel';
+import { evaluateExpression } from './evaluateDecisionExpression';
+import { evaluateDecisionCheck } from './evaluateDecisionCheck';
 
 /** 只解一个输入的仿射边界；不拿几个采样点猜测一般模型的可行区间。 */
 function affine(expression: DecisionExpression, inputId: string, model: DecisionModel): AffineResult {
@@ -49,6 +50,12 @@ export function deriveCheckBoundary(
   const input = model.inputs.find(item => item.id === inputId);
   if (!input || input.status === 'withdrawn' || (input.value !== null && typeof input.value !== 'number')) {
     return { status: 'unavailable', reason: `Input ${inputId} is missing, withdrawn or non-numeric.` };
+  }
+  if (check.operator === 'is') {
+    if (check.inputId === inputId) return { status: 'unavailable', reason: 'A discrete condition has no numeric affine boundary.' };
+    const result = evaluateDecisionCheck(check, model);
+    if (result.left.status === 'unavailable') return result.left;
+    return { status: 'independent', passes: result.left.value === check.value };
   }
   const difference = affine({ op: 'subtract', left: check.left, right: check.right }, inputId, model);
   if (difference.status === 'unavailable') return difference;

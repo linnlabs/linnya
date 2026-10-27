@@ -34,14 +34,21 @@ export const DecisionCalculationSchema = z.object({
   unit: text,
   expression: DecisionExpressionSchema,
 }).strict();
-export const DecisionCheckSchema = z.object({
-  id,
-  optionId: id,
-  label: text,
-  left: DecisionExpressionSchema,
-  operator: z.enum(['lte', 'gte', 'eq']),
-  right: DecisionExpressionSchema,
-}).strict();
+export const DecisionCheckSchema = z.union([
+  z.object({
+    id, optionId: id, label: text,
+    left: DecisionExpressionSchema,
+    operator: z.enum(['lte', 'gte', 'eq']),
+    right: DecisionExpressionSchema,
+  }).strict(),
+  z.object({
+    id, optionId: id, label: text,
+    operator: z.literal('is'),
+    inputId: id,
+    value: z.union([z.boolean(), z.string().min(1)]),
+  }).strict(),
+]);
+export type DecisionCheck = z.infer<typeof DecisionCheckSchema>;
 
 export const DecisionModelSchema = z.object({
   title: text,

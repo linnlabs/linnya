@@ -1,7 +1,8 @@
 import type { DecisionRecord, DecisionRecommendation, DecisionModel } from '../../../../shared';
 import type { CheckBoundaryResult } from '../definitions/checkBoundary';
 import { DecisionFailure } from '../definitions/decisionFailure';
-import { collectExpressionInputs, evaluateDecisionModel } from './evaluateDecisionModel';
+import { evaluateDecisionModel } from './evaluateDecisionModel';
+import { collectCheckInputs } from './evaluateDecisionCheck';
 import { deriveCheckBoundary } from './deriveCheckBoundary';
 import { projectOptionRanges } from './projectOptionRanges';
 
@@ -14,7 +15,7 @@ export function validateRecommendationBasis(model: DecisionModel, content: Decis
   const boundaries = (content.numericBasis?.boundaries ?? []).map(binding => {
     const check = model.checks.find(item => item.id === binding.checkId);
     const input = model.inputs.find(item => item.id === binding.inputId);
-    const inputIds = check ? [...collectExpressionInputs(check.left), ...collectExpressionInputs(check.right)] : [];
+    const inputIds = check ? collectCheckInputs(check) : [];
     if (!check || !input || !inputIds.includes(input.id)) {
       throw new DecisionFailure('invalid_model', `Unknown or unrelated check/input: ${binding.checkId}/${binding.inputId}`);
     }
@@ -54,7 +55,7 @@ export function projectRecommendationBasis(record: DecisionRecord, evaluation: R
       .map(inputId => projectOptionRanges(record.model, inputId)),
     boundaries: boundaries.map(({ check, input }) => {
       const result = deriveCheckBoundary(record.model, check, input.id);
-      const otherInputIds = [...new Set([...collectExpressionInputs(check.left), ...collectExpressionInputs(check.right)])]
+      const otherInputIds = collectCheckInputs(check)
         .filter(id => id !== input.id);
       return {
         checkId: check.id, inputId: input.id, label: check.label, inputLabel: input.label, unit: input.unit, result,

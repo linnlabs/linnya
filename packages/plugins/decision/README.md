@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.5.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.6.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -79,3 +79,9 @@ optionIds可在显式conditionalAdvice未选定方案时为空，表示暂不选
 recommendationBasis新增optionRanges：对每个选中的input求所有候选全部检查的单变量分区。lower/upper为null分别表示负/正无穷；Inclusive保留等号，rows中的options给出各选项检查状态。固定条件由fixedInputIds引用同一回执record.model.inputs，避免在每个范围重复整套来源文字；原始input名称/单位不另作展示改名；仿射限制同上，不推断整数、非负或跨日边界，不是一般符号求解器或模型语义校验。输入版本变化时整个旧conditionalAdvice与数值依据均只给needs_review，历史版仍重建原结果。
 
 这是schemaVersion1可选加法，无新表/Host接口/基础工具。业务回归decisionConditionalAdvice.integration.test.ts覆盖跨会话项目读取、SQLite重开、7人无可行方案、费用/容量等号与上界、偏好改变、未知/撤回/无检查、顺序与保存选择冲突、历史重算、空选择和五个课程边界的保留。程序结果与自由说明矛盾仍是质量错误，不以current或完整分支作为正确性认证。
+
+## 离散硬条件
+
+checks除原数值left/operator/right外，支持operator=is、inputId、value（boolean或string）三字段的精确匹配。它用于已明确的书面确认、工作方式等条件；不解释自然语言，不做字符串/数字/布尔强转。已知false与未知null/withdrawn分开，类型错配返回不可用及原因。四则表达式仍只计算数字。
+
+离散条件参与同一选项的全部检查、情景依赖和条件性建议；不相关的离散失败也会限制所有数值范围。离散变量自身没有仿射数值边界，返回不可用；不伪造0/1阈值。旧数值载荷和输出shape保留，检查左右值扩展为数字/布尔/文字。该功能不证明作者把用户条件登记正确。

@@ -1,6 +1,7 @@
 import type { DecisionRecord, DecisionScenarios } from '../../../../shared';
 import { DecisionFailure } from '../definitions/decisionFailure';
-import { collectExpressionInputs, evaluateDecisionModel } from './evaluateDecisionModel';
+import { evaluateDecisionModel } from './evaluateDecisionModel';
+import { collectCheckInputs } from './evaluateDecisionCheck';
 
 /** 一批假设都从同一冻结记录出发；不调用update，不增加版本或改变建议状态。 */
 export function simulateDecisionScenarios(record: DecisionRecord, expectedRevision: number, scenarios: DecisionScenarios) {
@@ -14,7 +15,7 @@ export function simulateDecisionScenarios(record: DecisionRecord, expectedRevisi
     inputId: input.id,
     calculationIds: baseline.calculations.filter(item => item.inputIds.includes(input.id)).map(item => item.id),
     checkIds: record.model.checks.filter(item => (
-      [...collectExpressionInputs(item.left), ...collectExpressionInputs(item.right)].includes(input.id)
+      collectCheckInputs(item).includes(input.id)
     )).map(item => item.id),
   }));
   return {
