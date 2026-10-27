@@ -47,6 +47,9 @@ describe('action plans and feedback through CLI and SQLite', () => {
   function resolve(id: string, actionId: string, revision: number, value = result) {
     return run(['action', 'resolve', id, actionId, '--expected-revision', String(revision), '--json', JSON.stringify(value)]);
   }
+  function withdraw(id: string, actionId: string, revision: number, payload: unknown = { reason: '报告对应错了行动', origin: '用户明确更正' }, project = 'p') {
+    return run(['action', 'withdraw', id, actionId, '--expected-revision', String(revision), '--json', JSON.stringify(payload)], project);
+  }
 
   it('keeps a plan separate from execution, atomically receives its facts, and requires a fresh recommendation', () => {
     const record = create();
@@ -155,5 +158,64 @@ describe('action plans and feedback through CLI and SQLite', () => {
     if (!action) throw new Error('Expected action');
     await fileCommand(['action', 'resolve', record.id, action.id, '--expected-revision', '2'], 'result.json', result);
     expect(read(record.id).record.actions?.[0]?.result?.outcome).toBe('completed');
+    await fileCommand(['action', 'withdraw', record.id, action.id, '--expected-revision', '3'], 'withdraw.json', { reason: '用户更正报告', origin: '用户本轮' });
+    expect(read(record.id).actionStates).toEqual([{ id: action.id, state: 'report_withdrawn' }]);
+  });
+
+  it('withdraws a report explicitly without undoing real model facts or erasing the old completion', () => {
+    const record = create();
+    const action = planned(record.id, 1);
+    resolve(record.id, action.id, 2);
+    run(['recommend', record.id, '--expected-revision', '3', '--json', JSON.stringify(remoteOfferRecommendation(['a']))]);
+    const before = read(record.id);
+    withdraw(record.id, action.id, 4);
+    const after = read(record.id);
+    expect(after.record.model).toEqual(before.record.model);
+    expect(after.record.revision).toBe(5);
+    expect(after.record.inputRevision).toBe(3);
+    expect(after.recommendationStatus).toBe('needs_review');
+    expect(after.actionStates).toEqual([{ id: action.id, state: 'report_withdrawn' }]);
+    expect(after.record.actions?.[0]?.result).toMatchObject({ summary: result.summary, actualCost: result.actualCost, withdrawal: { reason: '报告对应错了行动', receivedAtRevision: 5 } });
+    expect(read(record.id, 3).actionStates).toEqual([{ id: action.id, state: 'reported_completed' }]);
+    expect(read(record.id, 3).record.actions?.[0]?.result?.withdrawal).toBeUndefined();
+    const delta = run(['compare', record.id, '--from', '4', '--to', '5']);
+    if (typeof delta !== 'object' || delta === null || !('actionChanges' in delta)) throw new Error('Expected comparison');
+    expect(delta.actionChanges.changed[0]?.after.result?.withdrawal?.origin).toBe('用户明确更正');
+  });
+
+  it('rejects withdrawal without a report, repeat reception, invalid corrections, stale versions and other projects atomically', () => {
+    const record = create();
+    const action = planned(record.id, 1);
+    const rows = () => db.prepare('SELECT * FROM decision_record_versions').all();
+    const plannedRows = rows();
+    expect(() => withdraw(record.id, action.id, 2)).toThrow('No reported result');
+    expect(rows()).toEqual(plannedRows);
+    resolve(record.id, action.id, 2);
+    const before = rows();
+    expect(() => withdraw(record.id, action.id, 3, { reason: '坏模型', origin: '用户', update: { reason: '不合法引用', checks: [{ id: 'bad', optionId: 'none', label: '缺项', operator: 'is', inputId: 'a_remote', value: true }] } })).toThrow();
+    expect(rows()).toEqual(before);
+    expect(() => withdraw(record.id, action.id, 2)).toThrow('Revision conflict');
+    expect(() => withdraw(record.id, action.id, 3, undefined, 'other')).toThrow('not found');
+    expect(rows()).toEqual(before);
+    withdraw(record.id, action.id, 3);
+    const after = rows();
+    expect(() => withdraw(record.id, action.id, 4)).toThrow('already withdrawn');
+    expect(() => resolve(record.id, action.id, 4)).toThrow('already has a result');
+    expect(rows()).toEqual(after);
+  });
+
+  it('withdraws a source report and explicitly corrects only the affected facts in the same saved version', () => {
+    const record = create();
+    const action = planned(record.id, 1);
+    resolve(record.id, action.id, 2);
+    const remote = read(record.id).record.model.inputs.find(input => input.id === 'a_remote');
+    if (!remote) throw new Error('Expected input');
+    withdraw(record.id, action.id, 3, { reason: '确认不适用', origin: '用户更正', update: { reason: '撤回这份确认依据', inputs: [{ ...remote, status: 'withdrawn' }] } });
+    const after = read(record.id);
+    expect(after.record.revision).toBe(4);
+    expect(after.record.model.inputs.find(input => input.id === 'a_remote')).toMatchObject({ value: true, status: 'withdrawn' });
+    expect(after.evaluation.checks.find(check => check.id === 'a_remote')?.passes).toBeNull();
+    expect(after.record.actions?.[0]?.result?.withdrawal).toMatchObject({ receivedAtRevision: 4, resultingInputRevision: 3 });
+    expect(read(record.id, 3).evaluation.checks.find(check => check.id === 'a_remote')?.passes).toBe(true);
   });
 });

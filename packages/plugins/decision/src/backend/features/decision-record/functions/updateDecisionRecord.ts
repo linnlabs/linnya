@@ -87,6 +87,13 @@ export function projectDecisionRecord(record: DecisionRecord) {
     record,
     evaluation,
     recommendationStatus,
+    // 状态由历史报告推导，撤回后仍保留原文；reported不冒充宿主已经执行或核验。
+    actionStates: (record.actions ?? []).map(action => ({
+      id: action.id,
+      state: action.result?.withdrawal ? 'report_withdrawn' as const
+        : action.result ? action.result.outcome === 'completed' ? 'reported_completed' as const : 'reported_cancelled' as const
+          : 'planned' as const,
+    })),
     recommendationBasis: projectRecommendationBasis(record, evaluation),
     conditionalAdvice: projectConditionalAdvice(record, evaluation),
     notice: 'current means the author associated this recommendation with current inputs; it is not a correctness certification. Only declared arithmetic and checks are evaluated.',

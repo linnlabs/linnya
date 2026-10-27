@@ -195,3 +195,15 @@ update有实际模型变化时才提供，沿上述update格式；新发现选�
 当前/历史read在record.actions中返回结果；result有receivedAtRevision、receivedAgainstInputRevision、resultingInputRevision，区分计划依据和实际接纳版本。compare.actionChanges查看新增计划及结果。result记录提交者报告，不是Host证明真的联系或执行；executor不代替用户授权。只允许一份结果，重复resolve拒绝且不增版本。迟到结果须先读当前条件、用当前expected revision接回，不能覆盖最新事实。
 
 无预先计划而新到的信息直接update，保留来源，不虚构一个已完成的行动。收到结果后，重新检查它改变哪些选项、哪些未知仍在，以及继续付出成本是否值得；新建议仍须显式替换已有分析或以null停用。
+
+## 更正错误的行动结果报告
+
+`linnya-decision action withdraw <id> <action-id> --expected-revision <n> --input withdrawal.json`用于明确撤回错配或不再可信的一份报告：
+
+```json
+{"reason":"这份结果对应的是另一项行动，原归属不成立","origin":"用户本轮明确更正"}
+```
+
+可加update显式修正受影响的模型输入，沿相同update格式。撤回不自动删除、修改或回滚模型事实和费用；真实发生的支出仍保留，错误转述的输入则按更正说明修改或标为withdrawn。查看原报告receivedAtRevision及历史模型，核对其当时带入的内容。
+
+read的actionStates分开planned、reported_completed、reported_cancelled和report_withdrawn；完整报告及withdrawal在record.actions，旧版不变。撤回也推进inputRevision、使旧建议needs_review；随后重新判断并recommend。程序只记录提交者的更正，不认证执行或事实。已接过结果的同一action不能再次resolve；确有新行动再显式plan，不用重复提交抹掉原记录。

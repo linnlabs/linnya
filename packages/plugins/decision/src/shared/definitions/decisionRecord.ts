@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { DecisionIdSchema, DecisionTextSchema, DecisionInputSchema } from './decisionInput';
 import { DecisionScenarioCaseSchema } from './decisionScenario';
-import { DecisionActionSchema, DecisionActionReportSchema } from './decisionAction';
+import { DecisionActionSchema, DecisionActionReportSchema, DecisionActionWithdrawalSchema } from './decisionAction';
 
 export { DecisionInputSchema } from './decisionInput';
 
@@ -107,6 +107,10 @@ export const DecisionActionResolutionSchema = DecisionActionReportSchema.extend(
   update: DecisionUpdateSchema.optional(),
 }).strict();
 export type DecisionActionResolution = z.infer<typeof DecisionActionResolutionSchema>;
+export const DecisionActionWithdrawalRequestSchema = DecisionActionWithdrawalSchema.extend({
+  update: DecisionUpdateSchema.optional(),
+}).strict();
+export type DecisionActionWithdrawalRequest = z.infer<typeof DecisionActionWithdrawalRequestSchema>;
 
 export const DecisionRecordSchema = z.object({
   schemaVersion: z.literal(1),

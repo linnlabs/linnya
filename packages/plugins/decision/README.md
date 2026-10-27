@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.9.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.10.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -115,3 +115,11 @@ origin和实际成本是提交者的报告，不是Host实测或认证。estimat
 read读取当前/历史actions；compare.actionChanges按id显示计划新增与结果变化，只读。schemaVersion1可选加法，不增加表、调度器、执行器或基础工具；业务实现与事务仍属decision-record。update另允许显式修改title/question，使当前问题变化可记录，历史保持原样，不自动根据数值改写标题。
 
 业务回归decisionActionFeedback.integration.test.ts覆盖计划不执行、结果与条件原子保存、失败/重复/旧版本/跨项目拒绝、取消与无模型变化的结果、迟到接纳、SQLite重开、历史标题、compare只读、新选项及旧偏好失效、正式文件bridge。程序只保证关联与版本，实际建议和停止时机仍须独立评价。
+
+## 错误行动报告的明确撤回
+
+action withdraw以当前expected revision接收reason/origin及可选update。它仅为已有、未撤回的报告增加withdrawal，保存撤回来源与版本，不覆盖原summary、成本或历史。没有结果、重复撤回或再次resolve已接过结果的action均拒绝；新行动显式新建。撤回与显式模型修正在同一版原子保存，旧建议待复核。
+
+read的actionStates从原始记录推导planned/reported_completed/reported_cancelled/report_withdrawn，reported不表示Host执行或核验；原文仍在record.actions。compare沿actionChanges揭示撤回。程序不自动检出错配，不据一份报告撤回就推断所有事实无效，不倒扣真实支出；相关输入须按真实更正显式update。schemaVersion1的新读取器可读旧记录；新增字段写入后不承诺旧版严格schema能读新版，回退插件前须评估数据兼容，不能把无需表迁移当作可无损降级。
+
+业务回归另覆盖报告撤回后的状态/建议失效、旧版原报告保留、当前事实不自动回滚、同版显式撤回输入、无结果/重复/冲突/坏模型/跨项目拒绝及文件bridge；这不证明能自动纠正作者给错的来源或模型。

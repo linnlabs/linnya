@@ -18,6 +18,11 @@ export const DecisionActionReportSchema = z.object({
   actualCost: DecisionTextSchema,
 }).strict();
 
+export const DecisionActionWithdrawalSchema = z.object({
+  reason: DecisionTextSchema,
+  origin: DecisionTextSchema,
+}).strict();
+
 export const DecisionActionSchema = z.object({
   id: z.string().uuid(),
   basedOnInputRevision: z.number().int().positive(),
@@ -26,6 +31,11 @@ export const DecisionActionSchema = z.object({
     receivedAtRevision: z.number().int().positive(),
     receivedAgainstInputRevision: z.number().int().positive(),
     resultingInputRevision: z.number().int().positive(),
+    withdrawal: DecisionActionWithdrawalSchema.extend({
+      receivedAtRevision: z.number().int().positive(),
+      receivedAgainstInputRevision: z.number().int().positive(),
+      resultingInputRevision: z.number().int().positive(),
+    }).strict().optional(),
   }).strict().optional(),
 }).strict();
 export type DecisionAction = z.infer<typeof DecisionActionSchema>;

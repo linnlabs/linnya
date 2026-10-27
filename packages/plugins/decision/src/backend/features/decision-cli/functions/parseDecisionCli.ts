@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ResearchRunArgsSchema } from '@app/schemas';
-import { DecisionModelSchema, DecisionRecommendationSchema, DecisionUpdateSchema, DecisionScenariosSchema, DecisionActionPlanSchema, DecisionActionResolutionSchema } from '../../../../shared';
+import { DecisionModelSchema, DecisionRecommendationSchema, DecisionUpdateSchema, DecisionScenariosSchema, DecisionActionPlanSchema, DecisionActionResolutionSchema, DecisionActionWithdrawalRequestSchema } from '../../../../shared';
 
 export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision create --json '<model>'
@@ -15,6 +15,7 @@ export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision simulate <decision-id> --expected-revision <n> --json '<scenarios>'
   linnya-decision action plan <decision-id> --expected-revision <n> --json '<plan>'
   linnya-decision action resolve <decision-id> <action-id> --expected-revision <n> --json '<result with optional update>'
+  linnya-decision action withdraw <decision-id> <action-id> --expected-revision <n> --json '<reason, origin and optional update>'
   For larger JSON, replace --json '<...>' with --input relative-file.json.
 Use skill decision-exploration references/record.md for JSON shapes.
 Commands operate only in the current project. read/recommendationStatus=current is not correctness certification.
@@ -28,21 +29,24 @@ export function parseDecisionCli(argv: readonly string[]) {
   const [command, ...rest] = argv;
   if (command === 'action') {
     const [operation, id, ...tail] = rest;
-    const actionId = operation === 'resolve' ? decisionId.parse(tail[0]) : undefined;
-    const flags = operation === 'resolve' ? tail.slice(1) : tail;
-    if ((operation !== 'plan' && operation !== 'resolve') || flags.length !== 4
+    const hasActionId = operation === 'resolve' || operation === 'withdraw';
+    const actionId = hasActionId ? decisionId.parse(tail[0]) : undefined;
+    const flags = hasActionId ? tail.slice(1) : tail;
+    if ((operation !== 'plan' && operation !== 'resolve' && operation !== 'withdraw') || flags.length !== 4
       || flags[0] !== '--expected-revision' || (flags[2] !== '--json' && flags[2] !== '--input')) {
       throw new Error(`Invalid action arguments.\n${DECISION_CLI_HELP}`);
     }
     const common = { id: decisionId.parse(id), expectedRevision: positiveInteger.parse(flags[1]) };
     const parsedOperation = operation === 'plan'
       ? { kind: 'action_plan', ...common } as const
-      : { kind: 'action_resolve', ...common, actionId: decisionId.parse(actionId) } as const;
+      : operation === 'resolve' ? { kind: 'action_resolve', ...common, actionId: decisionId.parse(actionId) } as const
+        : { kind: 'action_withdraw', ...common, actionId: decisionId.parse(actionId) } as const;
     if (flags[2] === '--input') return { kind: 'file', filePath: z.string().min(1).parse(flags[3]), operation: parsedOperation } as const;
     const payload = parseJson(z.string().parse(flags[3]));
     return parsedOperation.kind === 'action_plan'
       ? { ...parsedOperation, plan: DecisionActionPlanSchema.parse(payload) }
-      : { ...parsedOperation, resolution: DecisionActionResolutionSchema.parse(payload) };
+      : parsedOperation.kind === 'action_resolve' ? { ...parsedOperation, resolution: DecisionActionResolutionSchema.parse(payload) }
+        : { ...parsedOperation, withdrawal: DecisionActionWithdrawalRequestSchema.parse(payload) };
   }
   if (command === 'research') {
     const [operation, id, ...flags] = rest;
@@ -109,6 +113,9 @@ export function parseDecisionFilePayload(
   }
   if (command.operation.kind === 'action_resolve') {
     return { kind: 'action_resolve', id, expectedRevision, actionId: command.operation.actionId, resolution: DecisionActionResolutionSchema.parse(payload) };
+  }
+  if (command.operation.kind === 'action_withdraw') {
+    return { kind: 'action_withdraw', id, expectedRevision, actionId: command.operation.actionId, withdrawal: DecisionActionWithdrawalRequestSchema.parse(payload) };
   }
   if (command.operation.kind === 'research_prepare') {
     return { kind: 'research_prepare', id, expectedRevision, scope: ResearchRunArgsSchema.parse(payload) };

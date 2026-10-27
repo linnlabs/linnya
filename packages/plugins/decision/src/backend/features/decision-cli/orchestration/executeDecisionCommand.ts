@@ -7,7 +7,7 @@ import {
   validateDecisionModel, projectDecisionRecord, recordDecisionRecommendation,
   updateDecisionRecord, createDecisionRecordRepository,
   simulateDecisionScenarios, compareDecisionRecords,
-  planDecisionAction, resolveDecisionAction,
+  planDecisionAction, resolveDecisionAction, withdrawDecisionActionReport,
 } from '../../decision-record';
 
 export function executeDecisionCommand(
@@ -40,6 +40,8 @@ export function executeDecisionCommand(
   if (command.kind === 'simulate') return simulateDecisionScenarios(current, command.expectedRevision, command.scenarios);
   const record = command.kind === 'action_plan'
     ? planDecisionAction(current, randomUUID(), command.plan)
+    : command.kind === 'action_withdraw'
+      ? withdrawDecisionActionReport(current, command.actionId, command.withdrawal)
     : command.kind === 'action_resolve'
       ? resolveDecisionAction(current, command.actionId, command.resolution)
       : command.kind === 'update'
