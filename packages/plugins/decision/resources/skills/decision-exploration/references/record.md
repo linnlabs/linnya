@@ -10,6 +10,7 @@
 | `linnya-decision create --json '<model>'` | 建立条件与选项，返回 id 和 revision=1 |
 | `linnya-decision read <id>` | 读取当前版、重算结果和建议状态 |
 | `linnya-decision read <id> --revision 1` | 读取指定历史版本 |
+| `linnya-decision compare <id> --from <revision> --to <revision>` | 对比两个保存版本的声明、结果及旧选择状态 |
 | `linnya-decision update <id> --expected-revision <n> --json '<update>'` | 更新条件；生成新版，旧建议进入待复核 |
 | `linnya-decision recommend <id> --expected-revision <n> --json '<recommendation>'` | 记录对当前条件重新判断后的建议 |
 
@@ -144,3 +145,14 @@ scope 含 `question`、`reader`、`task_type`（`open`、`fixed` 或 `update`）
 当前没有选定方案时，带conditionalAdvice可保存optionIds=[]和具体下一步；程序已有ranked_choice时保存选择须一致。不要为表示暂缓而虚构一个满足约束的选项。旧输入版本的分支只显示needs_review。假设不是新事实，程序结果也不认证模型、原文或行动。
 
 recommendationBasis的optionRanges按所有已选边界输入交付全选项范围，不只看单个检查。fixedInputIds引用同一回执record.model.inputs中的固定条件，不依赖交付历史。输入名称和单位取原定义；null上下界表示无限，Inclusive表示等号是否包含。它保留原有数值边界，解释和行动仍须覆盖用户需要的分支。面向用户的说明与record都应能追溯，不能以附表替代纠正相互冲突的文字。
+
+
+## 对比两个保存版本
+
+```bash
+linnya-decision compare <id> --from 2 --to 4
+```
+
+明确提供同一记录的两个revision；可正向、反向或相同版，只读，不增加版本。changes给出输入值/来源状态/口径/偏好等声明变化，以及选项、公式、检查的新增/移除/修改；effects给出前后计算与检查差异。dependencies是两个模型中的输入引用，不表示已发生数值变化或现实因果。旧选择在目标模型中的pass/fail/undetermined/removed仅用于复核，不是自动新建议。
+
+条件变了，先update再read检查旧建议失效；用compare核对变化及受影响检查，完成判断后再recommend。对比不替作者接纳偏好或撤回，也不把未定条件当作已确认失败。原始解释可用read --revision读取。

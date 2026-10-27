@@ -3,20 +3,9 @@ import { DecisionFailure } from '../definitions/decisionFailure';
 import type { ConditionalOptionState, ConditionalOutcome } from '../definitions/conditionalAdvice';
 import type { evaluateDecisionModel } from './evaluateDecisionModel';
 import { simulateDecisionScenarios } from './simulateDecisionScenarios';
+import { summarizeOptionChecks } from './summarizeOptionChecks';
 
 type Evaluation = ReturnType<typeof evaluateDecisionModel>;
-
-function summarizeOptions(model: DecisionModel, evaluation: Evaluation): ConditionalOptionState[] {
-  return model.options.map(option => {
-    const checks = evaluation.checks.filter(check => check.optionId === option.id);
-    const failedCheckIds = checks.filter(check => check.passes === false).map(check => check.id);
-    const unknownCheckIds = checks.filter(check => check.passes === null).map(check => check.id);
-    return {
-      optionId: option.id, failedCheckIds, unknownCheckIds,
-      status: failedCheckIds.length ? 'fail' : checks.length === 0 || unknownCheckIds.length ? 'undetermined' : 'pass',
-    };
-  });
-}
 
 function resolveOutcome(
   options: readonly ConditionalOptionState[],
@@ -66,14 +55,14 @@ export function projectConditionalAdvice(record: DecisionRecord, evaluation: Eva
   validateConditionalAdvice(record.model, advice);
   const preferenceInputs = record.model.inputs.filter(input => advice.preference?.inputIds.includes(input.id));
   const preferenceReady = preferenceInputs.every(input => input.status === 'available' && input.value !== null);
-  const currentOptions = summarizeOptions(record.model, evaluation);
+  const currentOptions = summarizeOptionChecks(record.model, evaluation);
   const simulation = advice.cases ? simulateDecisionScenarios(record, record.revision, { cases: advice.cases }) : null;
   return {
     status: 'current' as const, basedOnRevision: record.revision, basedOnInputRevision,
     preference: advice.preference ? { ...advice.preference, inputs: preferenceInputs, origin: 'author_declared' as const } : null,
     baseline: { evaluation, options: currentOptions, outcome: resolveOutcome(currentOptions, advice, preferenceReady, false) },
     cases: simulation?.cases.map(scenario => {
-      const options = summarizeOptions(record.model, scenario.evaluation);
+      const options = summarizeOptionChecks(record.model, scenario.evaluation);
       const preferenceChanged = scenario.changes.some(change => advice.preference?.inputIds.includes(change.inputId) && change.from !== change.to);
       return {
         ...scenario, options,

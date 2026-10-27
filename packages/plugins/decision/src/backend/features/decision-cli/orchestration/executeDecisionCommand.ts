@@ -6,7 +6,7 @@ import { DECISION_CLI_HELP } from '../functions/parseDecisionCli';
 import {
   validateDecisionModel, projectDecisionRecord, recordDecisionRecommendation,
   updateDecisionRecord, createDecisionRecordRepository,
-  simulateDecisionScenarios,
+  simulateDecisionScenarios, compareDecisionRecords,
 } from '../../decision-record';
 
 export function executeDecisionCommand(
@@ -23,6 +23,9 @@ export function executeDecisionCommand(
     }));
   }
   if (command.kind === 'read') return projectDecisionRecord(repository.read(command.id, command.revision));
+  if (command.kind === 'compare') {
+    return compareDecisionRecords(repository.read(command.id, command.fromRevision), repository.read(command.id, command.toRevision));
+  }
   if (command.kind === 'create') {
     validateDecisionModel(command.model);
     const record: DecisionRecord = {

@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.6.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.7.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -65,7 +65,7 @@ simulate接受当前expected revision与若干cases，只允许对已有输入id
 
 该操作不调用update/recommend、不增加版本、不改变事实、公式、来源状态或旧建议。假设值不恢复withdrawn输入；需要确认新事实或修正模型时仍须显式update。结果绑定basedOnRevision/inputRevision，不能冒充当前建议或来源认证。用文件传入JSON时沿既有conversationFiles=write的CLI bridge合同读取，未扩大Host权限枚举；实现只读文件并在内存求值。内联simulate声明不访问会话文件。
 
-当前仍不包含一般求解、自动选项排序或模型语义认证。业务回归见decisionScenarios.integration.test.ts，覆盖漏项显露与显式修正、共享条件/边界点、情景隔离、未知/撤回、版本/项目隔离和正式文件bridge；既有记录与建议必须逐字不变。
+simulate不做一般求解、偏好推断或模型语义认证；条件性建议仅采用作者显式给出的顺序。业务回归见decisionScenarios.integration.test.ts，覆盖漏项显露与显式修正、共享条件/边界点、情景隔离、未知/撤回、版本/项目隔离和正式文件bridge；既有记录与建议必须逐字不变。
 
 
 ## 条件性建议与完整分支
@@ -85,3 +85,12 @@ recommendationBasis新增optionRanges：对每个选中的input求所有候选�
 checks除原数值left/operator/right外，支持operator=is、inputId、value（boolean或string）三字段的精确匹配。它用于已明确的书面确认、工作方式等条件；不解释自然语言，不做字符串/数字/布尔强转。已知false与未知null/withdrawn分开，类型错配返回不可用及原因。四则表达式仍只计算数字。
 
 离散条件参与同一选项的全部检查、情景依赖和条件性建议；不相关的离散失败也会限制所有数值范围。离散变量自身没有仿射数值边界，返回不可用；不伪造0/1阈值。旧数值载荷和输出shape保留，检查左右值扩展为数字/布尔/文字。该功能不证明作者把用户条件登记正确。
+
+
+## 保存版本的只读影响对比
+
+compare <id> --from <revision> --to <revision>读取同项目同记录的两个明确版本，返回声明变化、前后结果差异、变更输入在两个模型的引用关系，以及原选择在目标模型下的检查状态。支持正向、反向或相同版本；不猜latest，不写数据、接纳旧建议或自动推荐。
+
+changes分开列输入（含value/status/origin/kind/unit/label字段变化）、选项、计算声明、检查声明及题目变化；effects分别列计算/检查结果差异。dependencies仅表示引用，来源/名称变更不一定改变算值，不能把引用当作数值影响或现实因果。previousSelectionInTarget可为pass/fail/undetermined/removed，未知或撤回不冒充false；它不是新推荐。
+
+对比沿用record repository的项目隔离与不可变历史，不读取全会话或另一份缓存。CLI准入只读、不访问会话文件、不联网，无新Host接口或基础工具。结果摘要保留来源版本和输入版本；要看完整作者说明，仍读取对应历史版。业务回归覆盖来源元数据不改算值、确认/撤回改变检查、模型/选项删除、两个比较方向及正式bridge拒绝跨项目/缺版本，比较前后行数与内容不变。

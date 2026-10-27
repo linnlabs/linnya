@@ -9,6 +9,7 @@ export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision research list <decision-id>
   linnya-decision list
   linnya-decision read <decision-id> [--revision <n>]
+  linnya-decision compare <decision-id> --from <revision> --to <revision>
   linnya-decision update <decision-id> --expected-revision <n> --json '<update>'
   linnya-decision recommend <decision-id> --expected-revision <n> --json '<recommendation>'
   linnya-decision simulate <decision-id> --expected-revision <n> --json '<scenarios>'
@@ -51,6 +52,9 @@ export function parseDecisionCli(argv: readonly string[]) {
       kind: 'read', id: decisionId.parse(rest[0]),
       revision: rest.length === 3 ? positiveInteger.parse(rest[2]) : undefined,
     } as const;
+  }
+  if (command === 'compare' && rest.length === 5 && rest[1] === '--from' && rest[3] === '--to') {
+    return { kind: 'compare', id: decisionId.parse(rest[0]), fromRevision: positiveInteger.parse(rest[2]), toRevision: positiveInteger.parse(rest[4]) } as const;
   }
   if ((command === 'update' || command === 'recommend' || command === 'simulate') && rest.length === 5
     && rest[1] === '--expected-revision' && (rest[3] === '--json' || rest[3] === '--input')) {
