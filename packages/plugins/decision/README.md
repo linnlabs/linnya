@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.18.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.17.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -199,6 +199,6 @@ check默认由CLI投影为overall、options的状态及失败／未知check id�
 
 业务回归decisionScenarioText.integration.test.ts通过真实CLI／SQLite核对拒绝不半写、一次修正、合法比较、数值词法、历史可读与两种check回执。程序拦住规则命中不证明作者能修正，运行后仍须核对最终情景、行动与聊天是否一致。
 
-## 派生门槛的操作资源试用
+## 分析门槛与硬约束
 
-当前开发版仅在Decision自己的记录资源补充派生门槛操作：复用已有计算，缺少才显式update追加calculation，check成功后再解释，并用numericBasis引用。经济分析值与用户硬约束分开，checks仍参与可行性判断，不为求数值擅自增加底线。CLI、求值和保存合同未变；这是资源试用，不是强制数值审查或已证明的准确性收益。
+checks参与选项可行性与条件性选择；仅为说明经济门槛而求值时，使用已有计算，必要时显式追加calculation，不把分析标准静默变成用户底线。CLI只执行显式算式，不核验名称、单位、现金时序或建议的语义。新增计算沿正常update使旧建议待复核。

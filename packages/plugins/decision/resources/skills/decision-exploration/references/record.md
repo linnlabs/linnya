@@ -96,10 +96,6 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 
 建议的changeConditions填写偏好、许可、证据等补充定性变化；已登记数值条件由numericBasis生成recommendationBasis.changeConditions，交付使用这份程序文字。rationale和nextAction仍由作者判断，不受程序语义认证。未登记的门槛本次不会自动新增。
 
-### 把要解释的门槛交给程序
-
-建议需要一个当前预览尚未表达的数值门槛时，先查看已有计算能否表达它；需要新算式就用update追加calculation，保留原有计算，再用当前revision运行check，收到实际算值后才写建议和行动。numericBasis.calculationIds引用用于解释的计算。标签和单位写清适用对象、范围及条件，零差额等经济判断用calculation表达；只有用户明确的底线才进入checks，因为checks会改变选项是否通过。程序执行已登记算式，不证明所建门槛的含义正确。
-
 recommend在保存前只核对每个conditionalAdvice.cases的label与nextAction：仅明确单位“当天00:00起分钟”的变动输入或算值，若仍写基线数而未写情景数，将以decision.scenario_text_mismatch拒绝，列出情景id和两组值。按该情景重算并改正后再提交；旧建议和版本不会半保存。匹配限该时刻的普通整数分钟值和HH:MM；小数和指数整体略过，同时写前后值可作比较。金额、人数、普通耗时等暂不拦截。该检查不覆盖其他建议字段、行动、最终答复或说明稿，也不认证数字含义。
 
 ## 程序报告原件
