@@ -1,7 +1,7 @@
 ---
 name: decision-exploration
 description: Help compare options, discover feasible next actions, and update a decision when goals, constraints or evidence change. Use with the decision prototype's versioned record CLI.
-version: 0.17.0
+version: 0.19.0
 ---
 
 # 决策与探索
@@ -20,7 +20,7 @@ version: 0.17.0
 
 围绕会改变建议的未知，选择查原件、计算、问用户、安排小试验或设观察点。以实际成本、延迟和用途决定做到多深。新事实可以改变推荐，确认原推荐仍适合当前条件也有价值。
 
-需要后续接回结果的行动，按记录资源用action plan保存计划；部分反馈用action progress接回，行动继续开放；范围完成或明确停止时再用action resolve。活动计划标为needs_review时，用action review提交完整的新计划并说明复核理由。计划、分段报告与最终结果分别保留，再重新判断建议。建议依据已有行动时，在actionBasis列出相关actionIds，让程序观察当时的行动状态；行动改变后，重新判断下一步并保存建议。
+需要后续接回结果的行动，按[行动与反馈](./references/actions.md)用action plan保存计划；部分反馈用action progress接回，行动继续开放；范围完成或明确停止时再用action resolve。活动计划标为needs_review时，用action review提交完整的新计划并说明复核理由。计划、分段报告与最终结果分别保留，再重新判断建议。建议依据已有行动时，在actionBasis列出相关actionIds，让程序观察当时的行动状态；行动改变后，重新判断下一步并保存建议。
 
 证据不足时给出条件性取舍与可验证的下一步。有真实概率和损益依据时再量化，其他问题用具体条件表达。外部材料的引用沿现有 Citation；原始发布、转述、作者假设和已核验是不同状态。
 
@@ -34,4 +34,4 @@ version: 0.17.0
 
 需要直接交付程序算值时，用记录资源中的export生成会话报告，读取并链接原件。报告保留该版输入、公式、算值和边界；作者判断单列。它是固定版本快照，条件变化后重新生成，重要的长期说明另存Workspace。
 
-需要完整调查时，先保存当前条件，再按记录资源中的 `research prepare → subagent → research receive` 发起受管研究。把准备回执的 prompt 原样交给 `decision_research`，读取正式文章和原始评审，再决定如何更新建议。条件或材料变化产生 `needs_review`；部分或取消结果保留为过程资料。研究完成、版本接回与建议正确分别判断。
+需要完整调查时，先保存当前条件，再按[研究委托](./references/research.md)中的 `research prepare → subagent → research receive` 发起受管研究。把准备回执的 prompt 原样交给 `decision_research`，读取正式文章和原始评审，再决定如何更新建议。条件或材料变化产生 `needs_review`；部分或取消结果保留为过程资料。研究完成、版本接回与建议正确分别判断。
