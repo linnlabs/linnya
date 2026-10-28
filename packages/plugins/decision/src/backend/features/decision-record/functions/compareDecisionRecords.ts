@@ -5,6 +5,7 @@ import { evaluateDecisionModel } from './evaluateDecisionModel';
 import { collectExpressionInputs } from './evaluateDecisionExpression';
 import { collectCheckInputs } from './evaluateDecisionCheck';
 import { summarizeOptionChecks } from './summarizeOptionChecks';
+import { projectDecisionActions } from './projectDecisionActions';
 
 function same(before: unknown, after: unknown): boolean { return JSON.stringify(before) === JSON.stringify(after); }
 
@@ -98,6 +99,7 @@ export function compareDecisionRecords(before: DecisionRecord, after: DecisionRe
       },
     },
     actionChanges: changes(before.actions ?? [], after.actions ?? []),
+    actionStateChanges: changes(projectDecisionActions(before), projectDecisionActions(after)),
     recommendations: {
       from: recommendationSummary(before), to: recommendationSummary(after),
       contentChanged: !same(before.recommendation?.content, after.recommendation?.content),

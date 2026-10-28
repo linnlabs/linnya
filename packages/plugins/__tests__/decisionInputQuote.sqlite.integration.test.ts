@@ -48,10 +48,13 @@ function record(revision?: number) {
   if (typeof output !== 'object' || output === null || !('record' in output)) throw new Error('Expected record');
   return DecisionRecordSchema.parse(output.record);
 }
-async function report(context: ToolContext, kind: 'resolve' | 'withdraw', quote: string, expected: number) {
+async function report(context: ToolContext, kind: 'resolve' | 'withdraw' | 'progress' | 'review', quote: string, expected: number, reportId?: string) {
   const payload = kind === 'resolve'
     ? { outcome: 'completed', summary: '一人表达意向，没有补款', origin: '用户角色输入', actualCost: '3分钟', sourceQuote: quote }
-    : { reason: '误读对方意向', origin: '本轮更正', sourceQuote: quote };
+    : kind === 'progress' ? { summary: '仅第一位的部分观察', origin: '用户角色输入', actualCost: '3分钟', sourceQuote: quote }
+      : kind === 'review' ? { reason: '依据本轮输入复核', origin: '用户角色输入', sourceQuote: quote,
+        plan: { label: '继续询问', purpose: '原100元转述已撤回，继续核对未知', inputIds: [], executor: 'user', estimatedCost: '3分钟' } }
+        : { reason: '误读对方意向', origin: '本轮更正', sourceQuote: quote, ...(reportId ? { reportId } : {}) };
   const prepared = decisionPluginCli.prepare({ argv: ['action', kind, decisionId, actionId, '--expected-revision', String(expected), '--json', JSON.stringify(payload)], conversationRoot: directory, invocationId: 'report' });
   if (prepared.status !== 'ready') throw new Error('Expected plan');
   return prepared.plan.execute(identity(context));
@@ -122,4 +125,30 @@ it('reopens a paused run and binds the original admitted input; persisted proof 
   await fixture.flow.continueRun(resumed.run_id, { conversation_id: conversationId, expected_execution_id: resumed.execution_id, expected_updated_at: resumed.pause.updated_at }, () => {});
   fixture.ai.assertAllTurnsConsumed();
   expect(record().actions?.[0]?.result?.provenance).toMatchObject({ kind: 'conversation_input_quote', input: before });
+});
+
+it('binds progress, its targeted withdrawal and a complete plan review to three distinct admitted inputs', async () => {
+  await open([toolTurn, { contentChunks: ['部分进度'] },
+    { toolCalls: [{ id: 'withdraw-progress', name: 'shell', argumentsJson: '{}' }] }, { contentChunks: ['已撤回'] },
+    { toolCalls: [{ id: 'review-plan', name: 'shell', argumentsJson: '{}' }] }, { contentChunks: ['已确认计划'] }]); await seed();
+  operation = async context => {
+    const before = record();
+    expect((await report(context, 'progress', '三位均支付全款', 2)).exitCode).toBe(3); expect(record()).toEqual(before);
+    expect((await report(context, 'progress', '我只问了第一位。', 2)).exitCode).toBe(0);
+  };
+  await start(original);
+  const first = record().actions?.[0]?.progressReports?.[0]; if (!first) throw new Error('Expected progress');
+  expect(record().actions?.[0]?.result).toBeUndefined();
+  const correction = '第一位没有表示愿补到100元，撤回上次转述。';
+  operation = async context => { expect((await report(context, 'withdraw', correction, 3, first.id)).exitCode).toBe(0); };
+  await start(correction);
+  const afterWithdrawal = record();
+  const confirmation = '我仍要继续问清三位真实意愿，按未知价格重新确认计划，不执行。';
+  operation = async context => { expect((await report(context, 'review', confirmation, 4)).exitCode).toBe(0); };
+  await start(confirmation); fixture.ai.assertAllTurnsConsumed();
+  expect(record().actions?.[0]?.progressReports).toEqual(afterWithdrawal.actions?.[0]?.progressReports);
+  expect(record().actions?.[0]?.progressReports?.[0]?.provenance).toEqual(first.provenance);
+  expect(record().actions?.[0]?.progressReports?.[0]?.withdrawal?.provenance).toMatchObject({ kind: 'conversation_input_quote', input: { quote: correction } });
+  expect(record().actions?.[0]?.reviews?.[0]?.provenance).toMatchObject({ kind: 'conversation_input_quote', input: { quote: confirmation } });
+  expect(record().inputRevision).toBe(3); expect(record(3).actions?.[0]?.progressReports?.[0]).toEqual(first);
 });

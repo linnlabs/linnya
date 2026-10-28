@@ -9,6 +9,7 @@ import {
   simulateDecisionScenarios, compareDecisionRecords,
   planDecisionAction, resolveDecisionAction, withdrawDecisionActionReport,
   checkDecisionOptions, DecisionFailure,
+  recordDecisionProgress, reviewDecisionAction,
 } from '../../decision-record';
 
 export function executeDecisionCommand(
@@ -43,6 +44,10 @@ export function executeDecisionCommand(
   if (command.kind === 'check') return checkDecisionOptions(current, command.expectedRevision, command.request);
   const record = command.kind === 'action_plan'
     ? planDecisionAction(current, randomUUID(), command.plan)
+    : command.kind === 'action_progress'
+      ? recordDecisionProgress(current, command.actionId, randomUUID(), command.progress, requireProvenance(reportProvenance))
+    : command.kind === 'action_review'
+      ? reviewDecisionAction(current, command.actionId, command.review, requireProvenance(reportProvenance))
     : command.kind === 'action_withdraw'
       ? withdrawDecisionActionReport(current, command.actionId, command.withdrawal, requireProvenance(reportProvenance))
     : command.kind === 'action_resolve'

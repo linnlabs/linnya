@@ -213,7 +213,14 @@ describe('decision -> full research -> leaf reviews -> version-bound delivery', 
     if (typeof output !== 'object' || output === null || !('record' in output)) throw new Error('Expected decision');
     const action = DecisionRecordSchema.parse(output.record).actions?.[0];
     if (!action) throw new Error('Expected planned action');
-    executeDecisionCommand({ kind: 'action_resolve', id: decisionId, actionId: action.id, expectedRevision: 2,
+    const provenance = { kind: 'agent_report', conversationId, agentRunId: createResearchJobRepository(fixture.db, projectId).read(requestId).runId } as const;
+    executeDecisionCommand({ kind: 'action_progress', id: decisionId, actionId: action.id, expectedRevision: 2,
+      progress: { summary: '仅完成部分问询', origin: '合成用户报告', actualCost: '本次2分钟' } }, fixture.db, projectId, provenance);
+    expect(await view()).toMatchObject({ status: 'needs_review', changedInputs: true });
+    executeDecisionCommand({ kind: 'action_review', id: decisionId, actionId: action.id, expectedRevision: 3,
+      review: { plan: action.plan, reason: '只复核计划不认证旧研究', origin: '作者' } }, fixture.db, projectId, provenance);
+    expect(await view()).toMatchObject({ status: 'needs_review', changedInputs: true });
+    executeDecisionCommand({ kind: 'action_resolve', id: decisionId, actionId: action.id, expectedRevision: 4,
       resolution: { outcome: 'completed', summary: '用户询问后暂未取得新数据', origin: '合成用户报告', actualCost: '实际3分钟' } }, fixture.db, projectId, { kind: 'agent_report', conversationId, agentRunId: createResearchJobRepository(fixture.db, projectId).read(requestId).runId });
     expect(await view()).toMatchObject({ status: 'needs_review', changedInputs: true, request: { inputRevision: 1 } });
   });

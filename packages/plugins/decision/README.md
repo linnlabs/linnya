@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.11.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.12.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -106,9 +106,9 @@ recommend仍是完整的新建议，不自动合并旧分析。若旧建议已�
 
 ## 行动计划与结果回流
 
-同一决策记录的可选actions保存有明确目的的计划及一次结果。action plan接收label/purpose/inputIds/executor/estimatedCost，程序分配UUID和basedOnInputRevision；inputIds引用当前输入，可空表示探索新选项。计划只追加revision，不改变inputRevision或模型，不执行、联系、扣费或授予权限。executor是拟执行者，不证明动作已发生。
+同一决策记录的可选actions保存有明确目的的计划、分段进度及一次最终结果。action plan接收label/purpose/inputIds/executor/estimatedCost，程序分配UUID和basedOnInputRevision；inputIds引用当前输入，可空表示探索新选项。计划只追加revision，不改变inputRevision或模型，不执行、联系、扣费或授予权限。executor是拟执行者，不证明动作已发生。
 
-action resolve明确action id和outcome（completed/cancelled）、summary、origin、actualCost，可带原有update载荷。结果及模型变化在同一版本保存；校验失败或revision冲突不追加任何部分。无update时结果本身也使inputRevision前进，旧建议needs_review，研究委托沿既有版本合同失效。结果保留计划所基于版本、接回前inputRevision和落库版本；迟到结果须对当前expected revision显式接纳，不自动恢复旧条件。已接结果的行动不能再次结算；更正现实事实仍显式更新条件并保留原报告历史。
+action resolve用于终结行动，明确action id和outcome（completed/cancelled）、summary、origin、actualCost，可带原有update载荷。结果及模型变化在同一版本保存；校验失败或revision冲突不追加任何部分。无update时结果本身也使inputRevision前进，旧建议needs_review，研究委托沿既有版本合同失效。结果保留计划所基于版本、接回前inputRevision和落库版本；迟到结果须对当前expected revision显式接纳，不自动恢复旧条件。已接结果的行动不能再次结算；更正现实事实仍显式更新条件并保留原报告历史。
 
 origin和实际成本是提交者的报告，不是Host实测或认证。estimatedCost与actualCost分别保留，不自动从预算扣除、汇总不同单位或把客户款当收入。成本和预算的计算应明确登记到模型；未发生的试算不作为实际结果。无预先计划的新信息使用update，不补造已执行行动。recommend仍单独重新判断并遵守已有分析的显式替换合同。
 
@@ -138,3 +138,16 @@ check <id> --expected-revision <n> --json '{"optionIds":["a"]}'复核明确候�
 结果绑定revision/inputRevision，authorization固定not_evaluated。不写事实/建议/版本，不自动执行，不理解正文的隐含候选，不接管Shell或支付审批。通过仅说明声明条件成立，不认证模型完整、来源真实、偏好合理或现实可行。实际执行仍须具体执行owner接入现有权限审批；本轮没有新增执行能力。
 
 业务回归decisionInputQuote.sqlite.integration.test.ts覆盖真实Host与插件链，decisionOptionCheck.integration.test.ts覆盖只读、全部检查、未知与无检查、等号、失败优先、版本/项目隔离和权限语义。
+
+
+## 分段进度与活动计划复核（0.12）
+
+progress接收summary/origin/actualCost及可选sourceQuote/update，追加有程序id的progressReports，不生成result、不关闭行动。每条报告保存basedOnPlanRevision及接纳前后输入版本，可多次接回；成本是各次原文，不自动累加文字或重复扣款。resolve仍是一次completed/cancelled最终报告，分别用于完成范围/明确停止。已final的行动不再progress/review；撤回final不自动重开。
+
+withdraw可选reportId指向本行动某条progress，省略仍指final。单条撤回保留原报告、成本、出处与独立withdrawal，其他报告不变；所有progress都撤回时显示progress_withdrawn，不冒充从未有过观察。报告及显式模型修正在同一版本提交，失败不半写。迟到的实际观察即使计划过期仍可接纳，不因此授权后续执行。
+
+read.actionStates分开state与planStatus/continuation。无final且有有效进度为reported_in_progress；活动计划最后确认的inputRevision不同于当前，或引用缺失/withdrawn输入，planStatus=needs_review、continuation=review_required。这里采用决策级输入版本，原因是purpose可能依赖未声明在inputIds中的条件；不能从引用列表证明其他变化不影响行动。增计划/保存建议等不改输入版本的操作不使计划过期。每次观察后须明确复核，不自动给本行动续准。
+
+review接收完整plan/reason/origin及可选sourceQuote，追加reviews，保存本版输入身份与出处；只增record revision，不改inputRevision、事实或旧报告。原plan是第1版，reviews逐次构成后续planRevision；新报告保存其依据的planRevision，旧result缺此字段不补造。compare.actionStateChanges另列派生状态变化，包括原始action不变、仅输入变化导致的计划失效；actionChanges仍只比较保存声明。actionStates.plan是实际最新计划，record.actions.plan仍为原始计划，reviews保留各次完整版本。新计划/复核禁止引用withdrawn或缺失输入，未知null可作为调查对象。程序不理解purpose是否仍写错，current不等于批准或正确性认证。
+
+终态planStatus/continuation为closed，不对历史已经完成的行动施加未来接续要求。业务回归decisionActionProgress.integration.test.ts覆盖多段进展、明确复核、定向撤回、输入版本、过期与坏模型的原子拒绝、取消/终结、SQLite重开、文件bridge；真实Host组合另验证progress/撤回/review的三份原输入出处。旧0.11失败原件不迁移改判，SchemaVersion1可选字段的新读取器兼容旧数据，旧版严格读取器回退另行评估。

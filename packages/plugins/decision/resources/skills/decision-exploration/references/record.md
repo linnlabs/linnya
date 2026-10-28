@@ -174,7 +174,7 @@ recommend提交的是新的完整建议。已有conditionalAdvice或numericBasis
 
 whenNonePass/whenUndetermined原文在保存字段内；投影仅在相应outcome出现authorAction，不将整份输入字段复制到顶层。比较发现分析遗漏时，从相应历史版本读取原件，按当前事实明确重建；不能仅把旧revision改成当前版号。
 
-## 行动与一次结果
+## 行动计划与最终结果
 
 `linnya-decision action plan <id> --expected-revision <n> --input plan.json`保存计划。小JSON可用--json。格式如下，inputIds指向本模型的输入；发现新选项时可为空数组：
 
@@ -184,7 +184,7 @@ whenNonePass/whenUndetermined原文在保存字段内；投影仅在相应outcom
 
 回执record.actions最后一项含程序分配的id、basedOnInputRevision和plan。保存计划不执行或授权行动，不改变事实和inputRevision，预计费用未发生。
 
-`linnya-decision action resolve <id> <action-id> --expected-revision <n> --input result.json`接回一次结果：
+`linnya-decision action resolve <id> <action-id> --expected-revision <n> --input result.json`接回范围完成/明确停止的一次最终结果；部分进度见下节：
 
 ```json
 {"outcome":"completed","summary":"用户已核对，暂无新增条件","origin":"用户本轮报告，原件未核","actualCost":"实际3分钟、0CNY"}
@@ -216,3 +216,28 @@ read的actionStates分开planned、reported_completed、reported_cancelled和rep
 conversation_input_quote只表示原句出现在本次接纳的用户角色输入；核对summary与原句的含义、人数、金额和行动对应关系仍由作者完成。它不证明真实执行或人工认证。撤回提供本轮更正原句，原报告及原出处保留。摘录随决策记录保存，不随原会话删除而自动消失。
 
 在明确准备比较/执行的候选上，用linnya-decision check <id> --expected-revision <n> --json '{"optionIds":["a","b"]}'读取同版全部声明条件；也支持--input。返回blocked、undetermined或declared_checks_pass，并列具体检查。失败优先；未知/撤回/无检查不通过。它不改变记录，authorization始终not_evaluated。检查通过仍须判断真实条件、偏好及执行权限；不能把被预算拦下的备选写成可直接执行。
+
+
+## 部分进度与计划重新确认
+
+部分执行用action progress，不把整项计划结为完成：
+
+```bash
+linnya-decision action progress <decision-id> <action-id> --expected-revision <n> --input progress.json
+```
+
+progress.json必填summary、origin、actualCost，可选sourceQuote、update，沿原格式；没有outcome。回执record.actions[].progressReports新增程序分配的id，basedOnPlanRevision指向当时计划。各次actualCost分别写“本次”的真实成本，程序不把文字自动累加。收到进度也推进inputRevision，使旧建议与活动计划待复核；真实成本保留，未发生部分仍未完成。
+
+更正某条部分报告时，在action withdraw载荷加reportId；省略reportId仍指最终result。撤回不抹掉原报告/原句、不自动撤销其他观察或扣回成本；相关错误输入显式update。所有进度撤回为progress_withdrawn，行动未因此完成。
+
+读取actionStates时，看state、planStatus、continuation三个字段。reported_in_progress表示收到有效部分报告；needs_review/review_required表示原计划不能直接作为当前可接续计划。输入版本变化均需复核，原因是计划文字可能依赖inputIds以外的条件；增加计划或保存建议本身不导致失效。实际已发生的迟到反馈仍可接回。
+
+重新确认用action review，提交完整的新计划：
+
+```json
+{"reason":"按当前条件重新核对行动范围和依据","origin":"作者复核或本轮用户输入","plan":{"label":"继续核对未知","purpose":"旧转述已撤回，按未知信息重新核对","inputIds":[],"executor":"user","estimatedCost":"预计5分钟、0元"}}
+```
+
+命令为linnya-decision action review <decision-id> <action-id> --expected-revision <n> --input review.json，可选sourceQuote。inputIds引用当前存在且未withdrawn的输入，未知null可保留；purpose和范围按实际条件重写。回执actionStates.plan为最新计划，planRevision增加、planStatus=current/continuation=open；原plan及各次reviews仍保留，新报告会绑定实际计划版。review不改用户事实/inputRevision，不恢复旧建议，不认证内容或执行权限。
+
+全部范围确实结束后才resolve(completed)；决定放弃未完成部分用resolve(cancelled)并如实保留已花成本。最终报告存在后行动closed，撤回该报告也不自动重开，后续新行动另建。程序不理解自然语言范围是否实际完成，最终说明仍须忠于报告。

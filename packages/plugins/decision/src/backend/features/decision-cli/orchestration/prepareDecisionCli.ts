@@ -68,7 +68,9 @@ export const decisionPluginCli: BackendPluginCliContribution = {
             } else {
               const provenance = resolved.kind === 'action_resolve'
                 ? await readReportProvenance(context, resolved.resolution.sourceQuote)
-                : resolved.kind === 'action_withdraw' ? await readReportProvenance(context, resolved.withdrawal.sourceQuote) : undefined;
+                : resolved.kind === 'action_withdraw' ? await readReportProvenance(context, resolved.withdrawal.sourceQuote)
+                  : resolved.kind === 'action_progress' ? await readReportProvenance(context, resolved.progress.sourceQuote)
+                    : resolved.kind === 'action_review' ? await readReportProvenance(context, resolved.review.sourceQuote) : undefined;
               context.signal.throwIfAborted();
               output = executeDecisionCommand(resolved, database, projectId, provenance);
             }

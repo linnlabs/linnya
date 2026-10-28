@@ -1,7 +1,7 @@
 ---
 name: decision-exploration
 description: Help compare options, discover feasible next actions, and update a decision when goals, constraints or evidence change. Use with the decision prototype's versioned record CLI.
-version: 0.11.0
+version: 0.12.0
 ---
 
 # 决策与探索
@@ -20,7 +20,7 @@ version: 0.11.0
 
 围绕会改变建议的未知，选择查原件、计算、问用户、安排小试验或设观察点。以实际成本、延迟和用途决定做到多深。新事实可以改变推荐，确认原推荐仍适合当前条件也有价值。
 
-需要后续接回结果的行动，按记录资源用action plan保存计划；收到实际报告后用action resolve接回，再重新判断建议。计划、假设和实际结果分别保留。
+需要后续接回结果的行动，按记录资源用action plan保存计划；部分反馈用action progress接回，行动继续开放；范围完成或明确停止时再用action resolve。活动计划标为needs_review时，用action review提交完整的新计划并说明复核理由。计划、分段报告与最终结果分别保留，再重新判断建议。
 
 证据不足时给出条件性取舍与可验证的下一步。有真实概率和损益依据时再量化，其他问题用具体条件表达。外部材料的引用沿现有 Citation；原始发布、转述、作者假设和已核验是不同状态。
 

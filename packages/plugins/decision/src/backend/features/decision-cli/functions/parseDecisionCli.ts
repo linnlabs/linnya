@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ResearchRunArgsSchema } from '@app/schemas';
-import { DecisionModelSchema, DecisionRecommendationSchema, DecisionUpdateSchema, DecisionScenariosSchema, DecisionActionPlanSchema, DecisionActionResolutionSchema, DecisionActionWithdrawalRequestSchema, DecisionOptionCheckSchema } from '../../../../shared';
+import { DecisionModelSchema, DecisionRecommendationSchema, DecisionUpdateSchema, DecisionScenariosSchema, DecisionActionPlanSchema, DecisionActionResolutionSchema, DecisionActionWithdrawalRequestSchema, DecisionOptionCheckSchema, DecisionActionProgressSchema, DecisionActionReviewRequestSchema } from '../../../../shared';
+import { parseDecisionActionCli } from './parseDecisionActionCli';
 
 export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision create --json '<model>'
@@ -15,8 +16,10 @@ export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision simulate <decision-id> --expected-revision <n> --json '<scenarios>'
   linnya-decision check <decision-id> --expected-revision <n> --json '<optionIds>'
   linnya-decision action plan <decision-id> --expected-revision <n> --json '<plan>'
+  linnya-decision action progress <decision-id> <action-id> --expected-revision <n> --json '<summary, origin, actualCost; optional sourceQuote/update>'
+  linnya-decision action review <decision-id> <action-id> --expected-revision <n> --json '<reason, origin, full plan; optional sourceQuote>'
   linnya-decision action resolve <decision-id> <action-id> --expected-revision <n> --json '<result with optional update>'
-  linnya-decision action withdraw <decision-id> <action-id> --expected-revision <n> --json '<reason, origin and optional update>'
+  linnya-decision action withdraw <decision-id> <action-id> --expected-revision <n> --json '<reason, origin; optional reportId/sourceQuote/update>'
   For larger JSON, replace --json '<...>' with --input relative-file.json.
 Use skill decision-exploration references/record.md for JSON shapes.
 Commands operate only in the current project. read/recommendationStatus=current is not correctness certification.
@@ -28,27 +31,7 @@ const decisionId = z.string().uuid();
 
 export function parseDecisionCli(argv: readonly string[]) {
   const [command, ...rest] = argv;
-  if (command === 'action') {
-    const [operation, id, ...tail] = rest;
-    const hasActionId = operation === 'resolve' || operation === 'withdraw';
-    const actionId = hasActionId ? decisionId.parse(tail[0]) : undefined;
-    const flags = hasActionId ? tail.slice(1) : tail;
-    if ((operation !== 'plan' && operation !== 'resolve' && operation !== 'withdraw') || flags.length !== 4
-      || flags[0] !== '--expected-revision' || (flags[2] !== '--json' && flags[2] !== '--input')) {
-      throw new Error(`Invalid action arguments.\n${DECISION_CLI_HELP}`);
-    }
-    const common = { id: decisionId.parse(id), expectedRevision: positiveInteger.parse(flags[1]) };
-    const parsedOperation = operation === 'plan'
-      ? { kind: 'action_plan', ...common } as const
-      : operation === 'resolve' ? { kind: 'action_resolve', ...common, actionId: decisionId.parse(actionId) } as const
-        : { kind: 'action_withdraw', ...common, actionId: decisionId.parse(actionId) } as const;
-    if (flags[2] === '--input') return { kind: 'file', filePath: z.string().min(1).parse(flags[3]), operation: parsedOperation } as const;
-    const payload = parseJson(z.string().parse(flags[3]));
-    return parsedOperation.kind === 'action_plan'
-      ? { ...parsedOperation, plan: DecisionActionPlanSchema.parse(payload) }
-      : parsedOperation.kind === 'action_resolve' ? { ...parsedOperation, resolution: DecisionActionResolutionSchema.parse(payload) }
-        : { ...parsedOperation, withdrawal: DecisionActionWithdrawalRequestSchema.parse(payload) };
-  }
+  if (command === 'action') return parseDecisionActionCli(rest);
   if (command === 'research') {
     const [operation, id, ...flags] = rest;
     if ((operation === 'read' || operation === 'receive' || operation === 'list') && flags.length === 0) {
@@ -115,6 +98,12 @@ export function parseDecisionFilePayload(
   }
   if (command.operation.kind === 'action_plan') {
     return { kind: 'action_plan', id, expectedRevision, plan: DecisionActionPlanSchema.parse(payload) };
+  }
+  if (command.operation.kind === 'action_progress') {
+    return { kind: 'action_progress', id, expectedRevision, actionId: command.operation.actionId, progress: DecisionActionProgressSchema.parse(payload) };
+  }
+  if (command.operation.kind === 'action_review') {
+    return { kind: 'action_review', id, expectedRevision, actionId: command.operation.actionId, review: DecisionActionReviewRequestSchema.parse(payload) };
   }
   if (command.operation.kind === 'action_resolve') {
     return { kind: 'action_resolve', id, expectedRevision, actionId: command.operation.actionId, resolution: DecisionActionResolutionSchema.parse(payload) };

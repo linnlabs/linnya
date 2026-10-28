@@ -8,6 +8,7 @@ import { evaluateDecisionModel, validateDecisionModel } from './evaluateDecision
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { projectRecommendationBasis, validateRecommendationBasis } from './projectRecommendationBasis';
 import { projectConditionalAdvice } from './projectConditionalAdvice';
+import { projectDecisionActions } from './projectDecisionActions';
 
 export function updateDecisionRecord(record: DecisionRecord, update: DecisionUpdate): DecisionRecord {
   const replacements = new Map(update.inputs?.map(input => [input.id, input]));
@@ -87,15 +88,7 @@ export function projectDecisionRecord(record: DecisionRecord) {
     record,
     evaluation,
     recommendationStatus,
-    // 状态由历史报告推导，撤回后仍保留原文；reported不冒充宿主已经执行或核验。
-    actionStates: (record.actions ?? []).map(action => ({
-      id: action.id,
-      state: action.result?.withdrawal ? 'report_withdrawn' as const
-        : action.result ? action.result.outcome === 'completed' ? 'reported_completed' as const : 'reported_cancelled' as const
-          : 'planned' as const,
-      reportSource: action.result ? action.result.provenance?.kind ?? 'unbound' : null,
-      withdrawalSource: action.result?.withdrawal ? action.result.withdrawal.provenance?.kind ?? 'unbound' : null,
-    })),
+    actionStates: projectDecisionActions(record),
     recommendationBasis: projectRecommendationBasis(record, evaluation),
     conditionalAdvice: projectConditionalAdvice(record, evaluation),
     notice: 'current means the author associated this recommendation with current inputs; it is not a correctness certification. Only declared arithmetic and checks are evaluated.',
