@@ -57,7 +57,7 @@ export async function resolveSandboxEvaluatorRuntime(input: {
     runtimeDirectory,
     platform: input.platform,
     architecture: input.architecture,
-    verifyPreparedExecutableHash: !input.packaged,
+    verifyPreparedExecutableIntegrity: !input.packaged,
   });
   const entryStat = await stat(entryPath);
   if (!entryStat.isFile() || entryStat.size <= 0) {

@@ -30,7 +30,7 @@ describe('Headless Node runtime', () => {
       runtimeDirectory,
       platform: 'darwin',
       architecture: 'arm64',
-      verifyPreparedExecutableHash: true,
+      verifyPreparedExecutableIntegrity: true,
     })).resolves.toEqual({
       nodeVersion: catalog.nodeVersion,
       manifestPath: path.join(runtimeDirectory, 'runtime-manifest.json'),
@@ -47,8 +47,43 @@ describe('Headless Node runtime', () => {
       runtimeDirectory,
       platform: 'darwin',
       architecture: 'arm64',
-      verifyPreparedExecutableHash: true,
+      verifyPreparedExecutableIntegrity: true,
     })).rejects.toThrow(/size|hash/u);
+  });
+
+  it('准备产物即使大小未变，内容被替换仍因 hash 不匹配而拒绝', async () => {
+    const runtimeDirectory = await createRuntimeFixture();
+    await writeFile(path.join(runtimeDirectory, 'bin/node'), 'HEADLESS-NODE-RUNTIME');
+
+    await expect(resolveHeadlessNodeRuntime({
+      catalog: parseHeadlessNodeRuntimeCatalog(catalogSource),
+      runtimeDirectory,
+      platform: 'darwin',
+      architecture: 'arm64',
+      verifyPreparedExecutableIntegrity: true,
+    })).rejects.toThrow('开发产物 hash 不匹配');
+  });
+
+  it('打包产物不套用签名前的 size/hash，仍要求完整 manifest 和非空 executable', async () => {
+    const runtimeDirectory = await createRuntimeFixture();
+    const executablePath = path.join(runtimeDirectory, 'bin/node');
+    const input = {
+      catalog: parseHeadlessNodeRuntimeCatalog(catalogSource),
+      runtimeDirectory,
+      platform: 'darwin',
+      architecture: 'arm64',
+      verifyPreparedExecutableIntegrity: false,
+    } satisfies Parameters<typeof resolveHeadlessNodeRuntime>[0];
+
+    // 签名会改变 bytes；该测试不模拟签名可信性，真实签名门禁由 packaged E2E 验证。
+    await writeFile(executablePath, 'resigned headless node runtime');
+    await expect(resolveHeadlessNodeRuntime(input)).resolves.toMatchObject({ executablePath });
+
+    await writeFile(executablePath, '');
+    await expect(resolveHeadlessNodeRuntime(input)).rejects.toThrow('不是非空普通文件');
+    await writeFile(executablePath, 'resigned headless node runtime');
+    await writeFile(path.join(runtimeDirectory, 'runtime-manifest.json'), '{}');
+    await expect(resolveHeadlessNodeRuntime(input)).rejects.toThrow('manifest 无效');
   });
 
   it('拒绝 catalog 未登记的平台/架构，而不是猜测同类 runtime', async () => {
@@ -59,7 +94,7 @@ describe('Headless Node runtime', () => {
       runtimeDirectory,
       platform: 'linux',
       architecture: 'x64',
-      verifyPreparedExecutableHash: true,
+      verifyPreparedExecutableIntegrity: true,
     })).rejects.toThrow('不支持 linux/x64');
   });
 });

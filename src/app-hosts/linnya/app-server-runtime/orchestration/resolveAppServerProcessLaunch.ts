@@ -44,7 +44,7 @@ export async function resolveAppServerProcessLaunch(input: {
     runtimeDirectory,
     platform: input.backendFacts.platform,
     architecture: input.backendFacts.architecture,
-    verifyPreparedExecutableHash: !input.backendFacts.packaged,
+    verifyPreparedExecutableIntegrity: !input.backendFacts.packaged,
   });
   const localProcessPlatformRuntime = resolveLocalProcessPlatformRuntime({
     platform: input.backendFacts.platform,
