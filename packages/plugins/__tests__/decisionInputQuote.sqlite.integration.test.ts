@@ -9,7 +9,7 @@ import { BaseTool, type ToolContext } from 'src/tools/types';
 import { readCurrentRunInputQuote } from 'src/plugin-sdk/backend/runInputQuote';
 import { createDurableFlowHarness, installRecoveryModelFixture } from 'src/app-hosts/linnya/adapters/flow/__test-helpers__/createDurableFlowHarness';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
-import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
+import { createProjectLifecycle } from 'src/domains/projects';
 import { decisionPluginCli } from '../decision/src/backend/features/decision-cli/orchestration/prepareDecisionCli';
 import { executeDecisionCommand } from '../decision/src/backend/features/decision-cli/orchestration/executeDecisionCommand';
 import { decisionMigrations } from '../decision/src/backend/features/decision-record/persistence/migrations';
@@ -68,7 +68,7 @@ afterEach(async () => {
   fixture?.close(); resetAgentRuntimeSingletonsForTest(); rmSync(directory, { recursive: true, force: true });
 });
 async function seed() {
-  projectId = new WorkspaceService(fixture.db).createProject('Source quote scope');
+  projectId = createProjectLifecycle(fixture.db).create({ name: 'Source quote scope' });
   await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
   for (const migration of decisionMigrations) migration.up(fixture.db);
   const output = executeDecisionCommand({ kind: 'create', model: remoteOfferModel() }, fixture.db, projectId);

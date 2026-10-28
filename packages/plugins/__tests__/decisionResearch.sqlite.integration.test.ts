@@ -28,6 +28,7 @@ import { ensureBuiltinBackendPluginsRegistered } from 'src/app-hosts/linnya/plug
 import { setPluginRuntimeStateForTests, clearPluginRuntimeStateForTests } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import { createDurableFlowHarness, installRecoveryModelFixture } from 'src/app-hosts/linnya/adapters/flow/__test-helpers__/createDurableFlowHarness';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
+import { createProjectLifecycle } from 'src/domains/projects';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 
 let directory: string;
@@ -121,8 +122,7 @@ async function open(turns: ScriptedLlmTurn[]) {
 }
 async function seed() {
   writeFileSync(join(directory, 'scope.json'), JSON.stringify(scope));
-  const workspace = new WorkspaceService(fixture.db);
-  projectId = workspace.createProject('Managed decision research');
+  projectId = createProjectLifecycle(fixture.db).create({ name: 'Managed decision research' });
   await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
   for (const migration of decisionMigrations) migration.up(fixture.db);
   const record = executeDecisionCommand({ kind: 'create', model: {
