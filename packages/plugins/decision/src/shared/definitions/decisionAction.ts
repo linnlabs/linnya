@@ -62,12 +62,14 @@ export const DecisionActionSchema = z.object({
   }).strict()).optional(),
   progressReports: z.array(DecisionActionProgressContentSchema.extend({
     id: z.string().uuid(), basedOnPlanRevision: z.number().int().positive(),
+    receivedAgainstPlanRevision: z.number().int().positive(),
     provenance: DecisionReportProvenanceSchema, ...receivedVersions,
     withdrawal: savedWithdrawal.optional(),
   }).strict()).optional(),
   result: DecisionActionReportSchema.extend({
     provenance: DecisionReportProvenanceSchema.optional(),
     basedOnPlanRevision: z.number().int().positive().optional(),
+    receivedAgainstPlanRevision: z.number().int().positive().optional(),
     ...receivedVersions,
     withdrawal: savedWithdrawal.optional(),
   }).strict().optional(),

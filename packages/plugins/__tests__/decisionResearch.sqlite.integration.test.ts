@@ -215,13 +215,13 @@ describe('decision -> full research -> leaf reviews -> version-bound delivery', 
     if (!action) throw new Error('Expected planned action');
     const provenance = { kind: 'agent_report', conversationId, agentRunId: createResearchJobRepository(fixture.db, projectId).read(requestId).runId } as const;
     executeDecisionCommand({ kind: 'action_progress', id: decisionId, actionId: action.id, expectedRevision: 2,
-      progress: { summary: '仅完成部分问询', origin: '合成用户报告', actualCost: '本次2分钟' } }, fixture.db, projectId, provenance);
+      progress: { planRevision: 1, summary: '仅完成部分问询', origin: '合成用户报告', actualCost: '本次2分钟' } }, fixture.db, projectId, provenance);
     expect(await view()).toMatchObject({ status: 'needs_review', changedInputs: true });
     executeDecisionCommand({ kind: 'action_review', id: decisionId, actionId: action.id, expectedRevision: 3,
       review: { plan: action.plan, reason: '只复核计划不认证旧研究', origin: '作者' } }, fixture.db, projectId, provenance);
     expect(await view()).toMatchObject({ status: 'needs_review', changedInputs: true });
     executeDecisionCommand({ kind: 'action_resolve', id: decisionId, actionId: action.id, expectedRevision: 4,
-      resolution: { outcome: 'completed', summary: '用户询问后暂未取得新数据', origin: '合成用户报告', actualCost: '实际3分钟' } }, fixture.db, projectId, { kind: 'agent_report', conversationId, agentRunId: createResearchJobRepository(fixture.db, projectId).read(requestId).runId });
+      resolution: { planRevision: 2, outcome: 'completed', summary: '用户询问后暂未取得新数据', origin: '合成用户报告', actualCost: '实际3分钟' } }, fixture.db, projectId, { kind: 'agent_report', conversationId, agentRunId: createResearchJobRepository(fixture.db, projectId).read(requestId).runId });
     expect(await view()).toMatchObject({ status: 'needs_review', changedInputs: true, request: { inputRevision: 1 } });
   });
   it('第二评审中断并重开 SQLite 后沿原三层树续跑，首评与 prepare 不重复', async () => {

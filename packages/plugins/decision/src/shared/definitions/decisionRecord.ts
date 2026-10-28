@@ -104,6 +104,7 @@ export const DecisionUpdateSchema = z.object({
 export type DecisionUpdate = z.infer<typeof DecisionUpdateSchema>;
 
 export const DecisionActionResolutionSchema = DecisionActionReportSchema.extend({
+  planRevision: z.number().int().positive().optional(),
   sourceQuote: z.string().min(1).max(2000).optional(),
   update: DecisionUpdateSchema.optional(),
 }).strict();
@@ -116,6 +117,7 @@ export const DecisionActionWithdrawalRequestSchema = DecisionActionWithdrawalSch
 export type DecisionActionWithdrawalRequest = z.infer<typeof DecisionActionWithdrawalRequestSchema>;
 
 export const DecisionActionProgressSchema = DecisionActionProgressContentSchema.extend({
+  planRevision: z.number().int().positive(),
   sourceQuote: z.string().min(1).max(2000).optional(),
   update: DecisionUpdateSchema.optional(),
 }).strict();

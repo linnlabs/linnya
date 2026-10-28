@@ -13,7 +13,7 @@ import { remoteOfferModel, remoteOfferRecommendation } from './fixtures/remoteOf
 let db: Database.Database; let directory: string; let id: string; let actionId: string;
 const plan: DecisionActionPlan = { label: '分两次核对两处安排', purpose: '问清适用条件，不把一处确认推广至全部', inputIds: ['a_remote'], executor: 'user', estimatedCost: '预计6分钟，0元' };
 const provenance = { kind: 'agent_report', conversationId: 'synthetic', agentRunId: 'synthetic-run' } as const;
-const progress = { summary: '已询问第一处，第二处尚未问', origin: '合成用户报告', actualCost: '本次3分钟、0元' };
+const progress = { planRevision: 1, summary: '已询问第一处，第二处尚未问', origin: '合成用户报告', actualCost: '本次3分钟、0元' };
 function run(argv: string[], project = 'p') {
   const cmd = parseDecisionCli(argv); if (cmd.kind === 'file') throw new Error('Inline expected');
   return executeDecisionCommand(cmd, db, project, provenance);
@@ -54,7 +54,7 @@ it('reports partial progress repeatedly without completing scope, rebinds only b
   expect(read().record.model).toEqual(model); expect(read().record.recommendation).toEqual(advice);
   expect(read().record.inputRevision).toBe(2);
   expect(read().actionStates).toMatchObject([{ planStatus: 'current', continuation: 'open', planRevision: 2 }]);
-  action('progress', { ...progress, summary: '第二处已联系，仍等待书面回复', actualCost: '本次2分钟、0元' });
+  action('progress', { ...progress, planRevision: 2, summary: '第二处已联系，仍等待书面回复', actualCost: '本次2分钟、0元' });
   db.close(); db = new Database(join(directory, 'state.sqlite'));
   expect(read().record.actions?.[0]?.progressReports).toHaveLength(2);
   expect(read().record.actions?.[0]?.progressReports?.map(r => r.basedOnPlanRevision)).toEqual([1, 2]);
@@ -89,7 +89,7 @@ it('withdraws a specific report, not other observations or costs, without reopen
   expect(saved.record.actions?.[0]?.progressReports?.[0]).toMatchObject({ ...first, withdrawal: { reason: '撤回错误转述，3分钟真实发生' } });
   expect(saved.record.actions?.[0]?.progressReports?.[1]).toEqual(reports?.[1]);
   expect(saved.actionStates).toMatchObject([{ state: 'reported_in_progress', activeProgressReportIds: [reports?.[1]?.id], planStatus: 'needs_review' }]);
-  review(); action('resolve', { outcome: 'completed', summary: '两处已全部核对', origin: '用户报告', actualCost: '本次2分钟、0元' });
+  review(); action('resolve', { planRevision: 2, outcome: 'completed', summary: '两处已全部核对', origin: '用户报告', actualCost: '本次2分钟、0元' });
   saved = read(); expect(saved.record.actions?.[0]?.result?.basedOnPlanRevision).toBe(2);
   expect(saved.actionStates).toMatchObject([{ state: 'reported_completed', planStatus: 'closed', continuation: 'closed' }]);
   const closed = rows(); expect(() => action('progress', progress)).toThrow('closed'); expect(() => review()).toThrow('closed'); expect(rows()).toEqual(closed);
@@ -104,9 +104,26 @@ it('keeps a fully withdrawn progress history visible, allows late facts, and dis
   expect(read().actionStates).toMatchObject([{ state: 'progress_withdrawn', continuation: 'review_required' }]);
   // 待复核阻止把计划视为可接续，不阻止记录后来实际收到的事实。
   action('progress', { ...progress, summary: '后来实际取得的新观察' });
-  action('resolve', { outcome: 'cancelled', summary: '明确停止余下范围，已花时间保留', origin: '用户决定', actualCost: '本次0分钟、0元' });
+  action('resolve', { planRevision: 1, outcome: 'cancelled', summary: '明确停止余下范围，已花时间保留', origin: '用户决定', actualCost: '本次0分钟、0元' });
   expect(read().actionStates).toMatchObject([{ state: 'reported_cancelled', continuation: 'closed' }]);
   expect(read().record.actions?.[0]?.progressReports).toHaveLength(2);
+});
+
+it('binds late reports to the explicitly observed historical plan and prevents old-scope completion from closing a revised scope', () => {
+  review({ ...plan, label: '改为核对B处', purpose: '现在只核对B，不把旧A观察算作B的完成', inputIds: ['b_remote'] });
+  action('progress', { ...progress, summary: '昨天依计划1问过A，今天才接回，B尚未问' });
+  const saved = read(); const report = saved.record.actions?.[0]?.progressReports?.[0];
+  expect(report).toMatchObject({ basedOnPlanRevision: 1, receivedAgainstPlanRevision: 2 });
+  expect(saved.record.actions?.[0]?.result).toBeUndefined();
+  const before = rows();
+  expect(() => action('progress', { ...progress, planRevision: 3 })).toThrow('Unknown planRevision');
+  expect(() => action('resolve', { outcome: 'completed', summary: 'A已经问完', origin: '用户', actualCost: '本次0元' })).toThrow('explicit planRevision');
+  expect(() => action('resolve', { planRevision: 1, outcome: 'completed', summary: 'A已经问完', origin: '用户', actualCost: '本次0元' })).toThrow('prior plan');
+  expect(rows()).toEqual(before);
+  review({ ...plan, label: '继续当前B范围', purpose: 'A观察没有完成B，保留B待办', inputIds: ['b_remote'] });
+  action('resolve', { planRevision: 3, outcome: 'completed', summary: 'B也已问完', origin: '用户', actualCost: '本次3分钟' });
+  expect(read().record.actions?.[0]?.result).toMatchObject({ basedOnPlanRevision: 3, receivedAgainstPlanRevision: 3 });
+  expect(read().record.actions?.[0]?.progressReports?.[0]).toEqual(report);
 });
 
 it('rejects bad models, forged identity, missing/duplicate reports, stale versions and cross-project calls atomically', () => {

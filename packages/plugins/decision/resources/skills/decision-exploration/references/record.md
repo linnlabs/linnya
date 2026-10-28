@@ -226,7 +226,7 @@ conversation_input_quote只表示原句出现在本次接纳的用户角色输�
 linnya-decision action progress <decision-id> <action-id> --expected-revision <n> --input progress.json
 ```
 
-progress.json必填summary、origin、actualCost，可选sourceQuote、update，沿原格式；没有outcome。回执record.actions[].progressReports新增程序分配的id，basedOnPlanRevision指向当时计划。各次actualCost分别写“本次”的真实成本，程序不把文字自动累加。收到进度也推进inputRevision，使旧建议与活动计划待复核；真实成本保留，未发生部分仍未完成。
+progress.json必填planRevision、summary、origin、actualCost，可选sourceQuote、update，沿原格式；没有outcome。回执record.actions[].progressReports新增程序分配的id，basedOnPlanRevision指向你明确给出的实际依据计划版，receivedAgainstPlanRevision另记接纳时的最新版。迟到事实可引用同一行动历史版，程序核对版本存在，不把最新版冒充实际依据。各次actualCost分别写“本次”的真实成本，程序不把文字自动累加。收到进度也推进inputRevision，使旧建议与活动计划待复核；真实成本保留，未发生部分仍未完成。
 
 更正某条部分报告时，在action withdraw载荷加reportId；省略reportId仍指最终result。撤回不抹掉原报告/原句、不自动撤销其他观察或扣回成本；相关错误输入显式update。所有进度撤回为progress_withdrawn，行动未因此完成。
 
@@ -240,4 +240,4 @@ progress.json必填summary、origin、actualCost，可选sourceQuote、update，
 
 命令为linnya-decision action review <decision-id> <action-id> --expected-revision <n> --input review.json，可选sourceQuote。inputIds引用当前存在且未withdrawn的输入，未知null可保留；purpose和范围按实际条件重写。回执actionStates.plan为最新计划，planRevision增加、planStatus=current/continuation=open；原plan及各次reviews仍保留，新报告会绑定实际计划版。review不改用户事实/inputRevision，不恢复旧建议，不认证内容或执行权限。
 
-全部范围确实结束后才resolve(completed)；决定放弃未完成部分用resolve(cancelled)并如实保留已花成本。最终报告存在后行动closed，撤回该报告也不自动重开，后续新行动另建。程序不理解自然语言范围是否实际完成，最终说明仍须忠于报告。
+有progress/reviews的行动，resolve载荷也须明确planRevision且等于当前计划版。旧范围完成不能关闭新范围，迟到事实先progress；历史plain action可省略，但实际依据保持未观察。全部当前范围确实结束后才resolve(completed)；决定放弃未完成部分用resolve(cancelled)并如实保留已花成本。最终报告存在后行动closed，撤回该报告也不自动重开，后续新行动另建。程序不理解自然语言范围是否实际完成，最终说明仍须忠于报告。

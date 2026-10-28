@@ -3,6 +3,7 @@ import { DecisionFailure } from '../definitions/decisionFailure';
 import { applyDecisionFeedback } from './applyDecisionFeedback';
 import { validateDecisionActionPlan } from './validateDecisionActionPlan';
 import { currentDecisionActionPlan } from './projectDecisionActions';
+import { validateReportedPlanRevision } from './validateReportedPlanRevision';
 
 export function planDecisionAction(record: DecisionRecord, id: string, plan: DecisionActionPlan): DecisionRecord {
   validateDecisionActionPlan(record, plan);
@@ -18,6 +19,14 @@ export function resolveDecisionAction(record: DecisionRecord, actionId: string, 
   const action = record.actions?.find(item => item.id === actionId);
   if (!action) throw new DecisionFailure('not_found', 'Action not found in this decision.');
   if (action.result) throw new DecisionFailure('invalid_model', 'Action already has a result. Read its saved result instead of completing it again.');
+  const currentPlanRevision = currentDecisionActionPlan(action).planRevision;
+  if ((action.progressReports?.length || action.reviews?.length) && resolution.planRevision === undefined) {
+    throw new DecisionFailure('invalid_model', 'Final resolution after progress/review requires explicit planRevision for the scope being closed.');
+  }
+  if (resolution.planRevision !== undefined) {
+    validateReportedPlanRevision(action, resolution.planRevision);
+    if (resolution.planRevision !== currentPlanRevision) throw new DecisionFailure('invalid_model', 'A prior plan cannot close the current plan. Receive late prior-plan facts with action progress instead.');
+  }
   const { update, outcome, summary, origin, actualCost } = resolution;
   const report = { outcome, summary, origin, actualCost };
   // 结果与条件在同一版一起落库；坏模型先抛错，不能留下“已完成但条件没更新”的半条结果。
@@ -30,7 +39,8 @@ export function resolveDecisionAction(record: DecisionRecord, actionId: string, 
       result: {
         ...report,
         provenance,
-        basedOnPlanRevision: currentDecisionActionPlan(item).planRevision,
+        ...(resolution.planRevision === undefined ? {} : { basedOnPlanRevision: resolution.planRevision }),
+        receivedAgainstPlanRevision: currentPlanRevision,
         receivedAtRevision: next.revision,
         receivedAgainstInputRevision: record.inputRevision,
         resultingInputRevision: next.inputRevision,

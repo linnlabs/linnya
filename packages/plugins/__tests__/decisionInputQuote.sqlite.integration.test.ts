@@ -51,7 +51,7 @@ function record(revision?: number) {
 async function report(context: ToolContext, kind: 'resolve' | 'withdraw' | 'progress' | 'review', quote: string, expected: number, reportId?: string) {
   const payload = kind === 'resolve'
     ? { outcome: 'completed', summary: '一人表达意向，没有补款', origin: '用户角色输入', actualCost: '3分钟', sourceQuote: quote }
-    : kind === 'progress' ? { summary: '仅第一位的部分观察', origin: '用户角色输入', actualCost: '3分钟', sourceQuote: quote }
+    : kind === 'progress' ? { planRevision: 1, summary: '仅第一位的部分观察', origin: '用户角色输入', actualCost: '3分钟', sourceQuote: quote }
       : kind === 'review' ? { reason: '依据本轮输入复核', origin: '用户角色输入', sourceQuote: quote,
         plan: { label: '继续询问', purpose: '原100元转述已撤回，继续核对未知', inputIds: [], executor: 'user', estimatedCost: '3分钟' } }
         : { reason: '误读对方意向', origin: '本轮更正', sourceQuote: quote, ...(reportId ? { reportId } : {}) };

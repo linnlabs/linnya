@@ -3,18 +3,21 @@ import { DecisionFailure } from '../definitions/decisionFailure';
 import { applyDecisionFeedback } from './applyDecisionFeedback';
 import { currentDecisionActionPlan } from './projectDecisionActions';
 import { validateDecisionActionPlan } from './validateDecisionActionPlan';
+import { validateReportedPlanRevision } from './validateReportedPlanRevision';
 
 export function recordDecisionProgress(record: DecisionRecord, actionId: string, reportId: string, progress: DecisionActionProgress, provenance: DecisionReportProvenance): DecisionRecord {
   const action = record.actions?.find(item => item.id === actionId);
   if (!action) throw new DecisionFailure('not_found', 'Action not found in this decision.');
   if (action.result) throw new DecisionFailure('invalid_model', 'Action is closed. A withdrawn final report does not reopen it; plan a new action explicitly.');
+  validateReportedPlanRevision(action, progress.planRevision);
   const next = applyDecisionFeedback(record, progress.update);
   return {
     ...next, reason: `Action progress reported: ${progress.summary}`,
     actions: (record.actions ?? []).map(item => item.id !== actionId ? item : {
       ...item, progressReports: [...(item.progressReports ?? []), {
         id: reportId, summary: progress.summary, origin: progress.origin, actualCost: progress.actualCost,
-        provenance, basedOnPlanRevision: currentDecisionActionPlan(item).planRevision,
+        provenance, basedOnPlanRevision: progress.planRevision,
+        receivedAgainstPlanRevision: currentDecisionActionPlan(item).planRevision,
         receivedAtRevision: next.revision, receivedAgainstInputRevision: record.inputRevision, resultingInputRevision: next.inputRevision,
       }],
     }),

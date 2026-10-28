@@ -16,7 +16,7 @@ export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision simulate <decision-id> --expected-revision <n> --json '<scenarios>'
   linnya-decision check <decision-id> --expected-revision <n> --json '<optionIds>'
   linnya-decision action plan <decision-id> --expected-revision <n> --json '<plan>'
-  linnya-decision action progress <decision-id> <action-id> --expected-revision <n> --json '<summary, origin, actualCost; optional sourceQuote/update>'
+  linnya-decision action progress <decision-id> <action-id> --expected-revision <n> --json '<planRevision, summary, origin, actualCost; optional sourceQuote/update>'
   linnya-decision action review <decision-id> <action-id> --expected-revision <n> --json '<reason, origin, full plan; optional sourceQuote>'
   linnya-decision action resolve <decision-id> <action-id> --expected-revision <n> --json '<result with optional update>'
   linnya-decision action withdraw <decision-id> <action-id> --expected-revision <n> --json '<reason, origin; optional reportId/sourceQuote/update>'
