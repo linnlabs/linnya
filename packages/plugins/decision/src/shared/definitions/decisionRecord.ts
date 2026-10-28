@@ -86,6 +86,8 @@ export const DecisionRecommendationSchema = z.object({
     calculationIds: z.array(id),
     boundaries: z.array(z.object({ checkId: id, inputId: id }).strict()),
   }).strict().nullable().optional(),
+  // 只声明相关行动；观察指纹由程序在保存建议时生成，调用者不能自报。
+  actionBasis: z.object({ actionIds: z.array(z.string().uuid()).min(1) }).strict().nullable().optional(),
 }).strict();
 export type DecisionRecommendation = z.infer<typeof DecisionRecommendationSchema>;
 
@@ -133,6 +135,9 @@ export const DecisionRecordSchema = z.object({
   actions: z.array(DecisionActionSchema).optional(),
   recommendation: z.object({
     basedOnInputRevision: z.number().int().positive(),
+    actionObservations: z.array(z.object({
+      actionId: z.string().uuid(), fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    }).strict()).optional(),
     content: DecisionRecommendationSchema,
   }).strict().nullable(),
 }).strict();

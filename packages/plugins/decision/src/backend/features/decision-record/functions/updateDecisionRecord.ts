@@ -9,6 +9,7 @@ import { DecisionFailure } from '../definitions/decisionFailure';
 import { projectRecommendationBasis, validateRecommendationBasis } from './projectRecommendationBasis';
 import { projectConditionalAdvice } from './projectConditionalAdvice';
 import { projectDecisionActions } from './projectDecisionActions';
+import { observeRecommendationActions, projectRecommendationContext } from './projectRecommendationContext';
 
 export function updateDecisionRecord(record: DecisionRecord, update: DecisionUpdate): DecisionRecord {
   const replacements = new Map(update.inputs?.map(input => [input.id, input]));
@@ -44,7 +45,7 @@ export function recordDecisionRecommendation(
   content: DecisionRecommendation,
 ): DecisionRecord {
   const previous = record.recommendation?.content;
-  const omitted = (['conditionalAdvice', 'numericBasis'] as const).filter(key => {
+  const omitted = (['conditionalAdvice', 'numericBasis', 'actionBasis'] as const).filter(key => {
     const existing = previous?.[key];
     return existing !== undefined && existing !== null && content[key] === undefined;
   });
@@ -67,7 +68,8 @@ export function recordDecisionRecommendation(
     ...record,
     revision: record.revision + 1,
     reason: 'Recommendation reviewed for current inputs',
-    recommendation: { basedOnInputRevision: record.inputRevision, content },
+    recommendation: { basedOnInputRevision: record.inputRevision, content,
+      actionObservations: observeRecommendationActions(record, content) },
   };
   const conditional = projectConditionalAdvice(next, evaluation);
   if (!conditional && content.optionIds.length === 0) {
@@ -81,16 +83,16 @@ export function recordDecisionRecommendation(
 }
 
 export function projectDecisionRecord(record: DecisionRecord) {
-  const recommendationStatus = record.recommendation === null ? 'missing'
-    : record.recommendation.basedOnInputRevision === record.inputRevision ? 'current' : 'needs_review';
+  const recommendationContext = projectRecommendationContext(record);
   const evaluation = evaluateDecisionModel(record.model);
   return {
     record,
     evaluation,
-    recommendationStatus,
+    recommendationStatus: recommendationContext.status,
+    recommendationContext,
     actionStates: projectDecisionActions(record),
     recommendationBasis: projectRecommendationBasis(record, evaluation),
     conditionalAdvice: projectConditionalAdvice(record, evaluation),
-    notice: 'current means the author associated this recommendation with current inputs; it is not a correctness certification. Only declared arithmetic and checks are evaluated.',
+    notice: 'current means the recommendation matches current inputs and any explicitly observed actions; actionBasis=not_observed means no action context was observed. It does not certify the text, correctness or authorization. Only declared arithmetic and checks are evaluated.',
   };
 }

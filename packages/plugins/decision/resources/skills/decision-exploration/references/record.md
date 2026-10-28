@@ -89,7 +89,9 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 
 仿射式可解单变量关系，变量相乘/变量分母明确不可用；其他输入未知、撤回、除零时不猜阈值。关系在连续数值上成立，不自动推断整次数或格式化时间；时刻需要在 input.label 中保留基准。模型、单位、费用范围与自由解释仍需核对。输入更新后的旧建议只显示 needs_review，原数值在对应历史版本读取。
 
-`recommendationStatus=current` 仅表示作者将该建议关联到当前输入版本；它不是事实或建议正确性的认证。数据变化后系统只标记待复核，判断是否改选仍由 Agent 与用户完成。只有已声明的计算和检查会自动重算，Shell 脚本输出不会被系统隐式重新执行。
+建议依据已保存行动时增加 `actionBasis: {"actionIds":["实际action的UUID"]}`。程序生成观察指纹，调用者只提供相关id。read.recommendationContext分开显示inputStatus和actionBasis；相关行动被review、接回报告或撤回后，旧建议needs_review，之后重新recommend。新增无关行动不会触发，程序不改写旧nextAction。
+
+`recommendationStatus=current` 表示当前输入版本与显式行动观察相符；actionBasis=not_observed表示未观察行动，不代表行动已同步。旧建议不补造观察。它不是事实或建议正确性的认证。数据变化后系统只标记待复核，判断是否改选仍由 Agent 与用户完成。只有已声明的计算和检查会自动重算，Shell 脚本输出不会被系统隐式重新执行。
 
 
 ## 只读情景试算
@@ -160,7 +162,7 @@ linnya-decision compare <id> --from 2 --to 4
 
 ## 完整替换与明确停用分析
 
-recommend提交的是新的完整建议。已有conditionalAdvice或numericBasis时，为对应字段提交重新判断过的对象；确实停止使用则设为null，并在rationale解释原因。省略已有字段会报Existing analysis omitted，记录与revision不变。程序既不静默删除，也不自动复用可能过期的旧分析。首次未启用分析可以省略；对象内部仍按本次提交完整替换，按当前事实组织情景。
+recommend提交的是新的完整建议。已有conditionalAdvice、numericBasis或actionBasis时，为对应字段提交重新判断过的对象；确实停止使用则设为null，并在rationale解释原因。省略已有字段会报Existing analysis omitted，记录与revision不变。程序既不静默删除，也不自动复用可能过期的旧分析。首次未启用分析可以省略；对象内部仍按本次提交完整替换，按当前事实组织情景。
 
 输入、保存与求值的路径不同：
 

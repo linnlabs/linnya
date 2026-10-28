@@ -5,6 +5,7 @@ import { evaluateDecisionModel } from './evaluateDecisionModel';
 import { collectCheckInputs } from './evaluateDecisionCheck';
 import { deriveCheckBoundary } from './deriveCheckBoundary';
 import { projectOptionRanges } from './projectOptionRanges';
+import { projectRecommendationContext } from './projectRecommendationContext';
 
 export function validateRecommendationBasis(model: DecisionModel, content: DecisionRecommendation) {
   for (const id of content.numericBasis?.calculationIds ?? []) {
@@ -40,7 +41,7 @@ export function projectRecommendationBasis(record: DecisionRecord, evaluation: R
   if (!recommendation?.content.numericBasis) return null;
   const basedOnInputRevision = recommendation.basedOnInputRevision;
   // 旧引用可能已被删除；不在新模型上重解旧建议，历史值由历史版本读取。
-  if (basedOnInputRevision !== record.inputRevision) return { status: 'needs_review', basedOnInputRevision } as const;
+  if (projectRecommendationContext(record).status !== 'current') return { status: 'needs_review', basedOnInputRevision } as const;
   const { boundaries } = validateRecommendationBasis(record.model, recommendation.content);
   const { calculationIds } = recommendation.content.numericBasis;
   return {

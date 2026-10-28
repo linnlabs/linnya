@@ -4,6 +4,7 @@ import type { ConditionalOptionState, ConditionalOutcome } from '../definitions/
 import type { evaluateDecisionModel } from './evaluateDecisionModel';
 import { simulateDecisionScenarios } from './simulateDecisionScenarios';
 import { summarizeOptionChecks } from './summarizeOptionChecks';
+import { projectRecommendationContext } from './projectRecommendationContext';
 
 type Evaluation = ReturnType<typeof evaluateDecisionModel>;
 
@@ -51,7 +52,7 @@ export function projectConditionalAdvice(record: DecisionRecord, evaluation: Eva
   const advice = recommendation?.content.conditionalAdvice;
   if (!recommendation || !advice) return null;
   const basedOnInputRevision = recommendation.basedOnInputRevision;
-  if (basedOnInputRevision !== record.inputRevision) return { status: 'needs_review', basedOnInputRevision } as const;
+  if (projectRecommendationContext(record).status !== 'current') return { status: 'needs_review', basedOnInputRevision } as const;
   validateConditionalAdvice(record.model, advice);
   const preferenceInputs = record.model.inputs.filter(input => advice.preference?.inputIds.includes(input.id));
   const preferenceReady = preferenceInputs.every(input => input.status === 'available' && input.value !== null);

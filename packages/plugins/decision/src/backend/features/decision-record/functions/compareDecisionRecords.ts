@@ -6,6 +6,7 @@ import { collectExpressionInputs } from './evaluateDecisionExpression';
 import { collectCheckInputs } from './evaluateDecisionCheck';
 import { summarizeOptionChecks } from './summarizeOptionChecks';
 import { projectDecisionActions } from './projectDecisionActions';
+import { projectRecommendationContext } from './projectRecommendationContext';
 
 function same(before: unknown, after: unknown): boolean { return JSON.stringify(before) === JSON.stringify(after); }
 
@@ -32,7 +33,7 @@ function references(record: DecisionRecord, inputId: string) {
 function recommendationSummary(record: DecisionRecord): DecisionRecommendationSummary {
   const saved = record.recommendation;
   return {
-    status: saved === null ? 'missing' : saved.basedOnInputRevision === record.inputRevision ? 'current' : 'needs_review',
+    status: projectRecommendationContext(record).status,
     basedOnInputRevision: saved?.basedOnInputRevision ?? null,
     optionIds: saved?.content.optionIds ?? [],
   };
@@ -82,6 +83,7 @@ export function compareDecisionRecords(before: DecisionRecord, after: DecisionRe
       })),
     },
     analysisChanges: {
+      actionBasis: analysisState(before.recommendation?.content.actionBasis, after.recommendation?.content.actionBasis),
       conditionalAdvice: {
         ...analysisState(before.recommendation?.content.conditionalAdvice, after.recommendation?.content.conditionalAdvice),
         cases: changes(before.recommendation?.content.conditionalAdvice?.cases ?? [], after.recommendation?.content.conditionalAdvice?.cases ?? []),
@@ -102,6 +104,7 @@ export function compareDecisionRecords(before: DecisionRecord, after: DecisionRe
     actionStateChanges: changes(projectDecisionActions(before), projectDecisionActions(after)),
     recommendations: {
       from: recommendationSummary(before), to: recommendationSummary(after),
+      actionBasis: { from: projectRecommendationContext(before).actionBasis, to: projectRecommendationContext(after).actionBasis },
       contentChanged: !same(before.recommendation?.content, after.recommendation?.content),
     },
     notice: '只读比较两个明确保存版本。dependencies表示引用关系，effects分别列算值/检查变化；元数据变化不等于数值效应。旧选择在目标模型的检查状态不是新推荐，不证明来源、模型含义、因果归因或总体最优。',

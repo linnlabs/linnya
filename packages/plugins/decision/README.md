@@ -1,10 +1,10 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.12.0，是开发原型，尚未进入默认发行插件清单。它需要本轮新增 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.13.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
-Agent 负责澄清、探索、调查和判断，Skill 提供方法与操作说明。程序保存项目内的版本化条件，计算已声明的四则式和数值约束；条件更新后旧建议标记为待复核。`current` 仅表示建议关联当前输入，不是质量认证。
+Agent 负责澄清、探索、调查和判断，Skill 提供方法与操作说明。程序保存项目内的版本化条件，计算已声明的四则式和数值约束；条件或显式观察的行动改变后，旧建议标记为待复核。`current` 仅表示输入和显式行动依据版本相符，不是质量认证。
 
 完整 Deep Research 可作为受管子项调用。插件注册仅向自身决策角色开放的协调类型，复用正式研究定义、父提示与 Skill；协调子运行只可委派四种研究叶子。通用工作流引擎、专用编辑器和自动对外执行不属于当前实现。正式研究根入口和 deep-research Skill 不变。
 
@@ -151,3 +151,11 @@ read.actionStates分开state与planStatus/continuation。无final且有有效进
 review接收完整plan/reason/origin及可选sourceQuote，追加reviews，保存本版输入身份与出处；只增record revision，不改inputRevision、事实或旧报告。原plan是第1版，reviews逐次构成后续planRevision；progress的实际planRevision必须显式引用本行动已有历史版，接纳时最新版另存，避免迟到报告错绑。多阶段行动的resolve必须显式引用当前planRevision才能关闭当前范围；旧范围事实用progress接回。旧plain action的resolve仍可省略，但实际basedOnPlanRevision保持未观察，不用最新版补造。旧result缺此字段不补造。compare.actionStateChanges另列派生状态变化，包括原始action不变、仅输入变化导致的计划失效；actionChanges仍只比较保存声明。actionStates.plan是实际最新计划，record.actions.plan仍为原始计划，reviews保留各次完整版本。新计划/复核禁止引用withdrawn或缺失输入，未知null可作为调查对象。程序不理解purpose是否仍写错，current不等于批准或正确性认证。
 
 终态planStatus/continuation为closed，不对历史已经完成的行动施加未来接续要求。业务回归decisionActionProgress.integration.test.ts覆盖多段进展、明确复核、定向撤回、输入版本、过期与坏模型的原子拒绝、取消/终结、SQLite重开、文件bridge；真实Host组合另验证progress/撤回/review的三份原输入出处。旧0.11失败原件不迁移改判，SchemaVersion1可选字段的新读取器兼容旧数据，旧版严格读取器回退另行评估。
+
+## 建议的显式行动依据（0.13）
+
+recommend可选actionBasis.actionIds，须为本记录内不重复、至少一项的行动id。程序从当前保存声明生成actionObservations指纹，载荷不接受自报指纹或观察身份。输入版本不同或任一已观察行动改变，recommendationStatus均为needs_review；只修改计划的review也会触发，新增无关行动不会。read、list、compare、recommendationBasis和conditionalAdvice共用projectRecommendationContext，避免分析与建议状态分裂。程序保留旧建议文字，不自动根据行动重写下一步。
+
+read.recommendationContext分别返回inputStatus、actionBasis状态及相关行动当前投影；没有显式依据的旧建议显示not_observed，不回填。首次可省略，启用后须完整替换或显式null停用，沿既有分析替换合同；compare.analysisChanges揭示启停。输入未变且未观察行动的旧建议仍可为current，但不能理解为已检查行动文字。观察某行动不保证nextAction忠实描述它，也不证明计划current等于授权；可把仍待复核的行动作为“下一步先重规划”的依据。
+
+schemaVersion1可选加法，无新表或新工具。decisionRecommendationActions.integration.test.ts覆盖计划复核导致建议失效、无关行动、持久重开、旧版未观察、明确停用、文件bridge、历史/比较只读及非法载荷原子拒绝。资金的单位、含义、订金处理和费用范围仍由作者建模；程序不把支出上限当现金余额，不自动计算收入或累计文字成本。
