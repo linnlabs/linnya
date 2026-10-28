@@ -25,8 +25,8 @@ function create(model: DecisionModel) {
   return output;
 }
 function check(id: string, revision: number, optionIds = ['b']) {
-  const output = run(['check', id, '--expected-revision', String(revision), '--json', JSON.stringify({ optionIds })]);
-  if (typeof output !== 'object' || output === null || !('kind' in output) || output.kind !== 'option_check') throw new Error('Expected check preview');
+  const output = run(['check', id, '--expected-revision', String(revision), '--json', JSON.stringify({ optionIds }), '--full']);
+  if (typeof output !== 'object' || output === null || !('kind' in output) || (output.kind !== 'option_check' || !('numericPreview' in output))) throw new Error('Expected check preview');
   return output;
 }
 function read(id: string, revision?: number) {
@@ -110,7 +110,7 @@ it('keeps unknown and withdrawn values unavailable and does not turn discrete or
 it('delivers money boundary and point values through the real bridge before a recommendation exists, even when the current option fails', async () => {
   const model = refundableOrderModel(); model.inputs = model.inputs.map(item => item.id === 'extra_fees' ? { ...item, value: 600 } : item);
   const { record } = create(model);
-  const prepared = decisionPluginCli.prepare({ argv: ['check', record.id, '--expected-revision', '1', '--json', '{"optionIds":["proceed","wait"]}'], conversationRoot: '/unused', invocationId: 'prewrite' });
+  const prepared = decisionPluginCli.prepare({ argv: ['check', record.id, '--expected-revision', '1', '--json', '{"optionIds":["proceed","wait"]}', '--full'], conversationRoot: '/unused', invocationId: 'prewrite' });
   if (prepared.status !== 'ready') throw new Error('Expected admitted check'); expect(prepared.plan.access.conversationFiles).toBe('none');
   const before = db.prepare('SELECT * FROM decision_record_versions').all();
   const reply = await prepared.plan.execute({ conversationId: 'c', agentRunId: 'r', projectId: 'p', hostContext: { databaseService: { getDb: () => db } }, signal: new AbortController().signal });

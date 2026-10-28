@@ -3,6 +3,7 @@ import type { PluginSqliteDatabasePort } from '@plugin/backend/toolRuntime';
 import type { DecisionRecord, DecisionReportProvenance } from '../../../../shared';
 import type { InlineDecisionCliCommand } from '../functions/parseDecisionCli';
 import { DECISION_CLI_HELP } from '../functions/parseDecisionCli';
+import { projectDecisionCheckOutput } from '../functions/projectDecisionCheckOutput';
 import {
   validateDecisionModel, projectDecisionRecord, recordDecisionRecommendation,
   updateDecisionRecord, createDecisionRecordRepository,
@@ -45,7 +46,7 @@ export function executeDecisionCommand(
     return renderDecisionReport(current, command.expectedRevision);
   }
   if (command.kind === 'simulate') return simulateDecisionScenarios(current, command.expectedRevision, command.scenarios);
-  if (command.kind === 'check') return checkDecisionOptions(current, command.expectedRevision, command.request);
+  if (command.kind === 'check') return projectDecisionCheckOutput(checkDecisionOptions(current, command.expectedRevision, command.request), command.full);
   const record = command.kind === 'action_plan'
     ? planDecisionAction(current, randomUUID(), command.plan)
     : command.kind === 'action_progress'

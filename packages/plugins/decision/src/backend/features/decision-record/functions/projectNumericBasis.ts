@@ -6,6 +6,7 @@ import { collectExpressionInputs, evaluateExpression } from './evaluateDecisionE
 import { collectCheckInputs } from './evaluateDecisionCheck';
 import { deriveCheckBoundary } from './deriveCheckBoundary';
 import { projectOptionRanges } from './projectOptionRanges';
+import { formatDecisionQuantity } from './formatDecisionQuantity';
 
 export function validateNumericBasis(model: DecisionModel, basis: DecisionNumericBasis) {
   for (const id of basis.calculationIds) {
@@ -32,7 +33,7 @@ function boundaryText(label: string, inputLabel: string, unit: string | undefine
   }
   const symbol = result.operator === 'lte' ? '≤' : result.operator === 'gte' ? '≥' : '=';
   const inverse = result.operator === 'lte' ? '>' : result.operator === 'gte' ? '<' : '≠';
-  const quantity = `${result.value}${unit ? ` ${unit}` : ''}`;
+  const quantity = formatDecisionQuantity(result.value, unit);
   return `保持“${label}”成立：${inputLabel} ${symbol} ${quantity}；${inputLabel} ${inverse} ${quantity}时该项检查不成立（其他输入固定）。`;
 }
 
@@ -50,7 +51,7 @@ function projectBoundaryPoint(model: DecisionModel, inputId: string, value: numb
       if (!inputIds.includes(inputId)) return [];
       const result = evaluateExpression(calculation.expression, pointModel);
       return [{ id: calculation.id, label: calculation.label, unit: calculation.unit, inputIds, result,
-        text: result.status === 'available' ? `${calculation.label}：${result.value} ${calculation.unit}`
+        text: result.status === 'available' ? `${calculation.label}：${formatDecisionQuantity(result.value, calculation.unit)}`
           : `${calculation.label}：不可用（${result.reason}）。` }];
     }),
   };
@@ -63,7 +64,7 @@ export function projectNumericBasis(model: DecisionModel, basis: DecisionNumeric
     const result = deriveCheckBoundary(model, check, input.id);
     const otherInputIds = collectCheckInputs(check).filter(id => id !== input.id);
     const atBoundary = result.status === 'available' ? projectBoundaryPoint(model, input.id, result.value) : null;
-    const pointText = atBoundary ? `取${input.label} = ${atBoundary.value}${input.unit ? ` ${input.unit}` : ''}时，${atBoundary.calculations.length
+    const pointText = atBoundary ? `取${input.label} = ${formatDecisionQuantity(atBoundary.value, input.unit)}时，${atBoundary.calculations.length
       ? atBoundary.calculations.map(calculation => calculation.text).join('；') : '没有引用此输入的已登记计算'}（仅该点，其他输入固定）。` : '';
     return {
       checkId: check.id, inputId: input.id, label: check.label, inputLabel: input.label, unit: input.unit, result,
@@ -76,7 +77,7 @@ export function projectNumericBasis(model: DecisionModel, basis: DecisionNumeric
     changeConditions: boundaries.map(boundary => boundary.text),
     calculations: evaluation.calculations.filter(item => basis.calculationIds.includes(item.id)).map(item => ({
       ...item,
-      text: item.result.status === 'available' ? `${item.label}：${item.result.value} ${item.unit}`
+      text: item.result.status === 'available' ? `${item.label}：${formatDecisionQuantity(item.result.value, item.unit)}`
         : `${item.label}：不可用（${item.result.reason}）。`,
     })),
     boundaries,

@@ -10,6 +10,7 @@ import { projectRecommendationBasis, validateRecommendationBasis } from './proje
 import { projectConditionalAdvice } from './projectConditionalAdvice';
 import { projectDecisionActions } from './projectDecisionActions';
 import { observeRecommendationActions, projectRecommendationContext } from './projectRecommendationContext';
+import { validateScenarioTextNumbers } from './validateScenarioTextNumbers';
 
 export function updateDecisionRecord(record: DecisionRecord, update: DecisionUpdate): DecisionRecord {
   const replacements = new Map(update.inputs?.map(input => [input.id, input]));
@@ -72,6 +73,10 @@ export function recordDecisionRecommendation(
       actionObservations: observeRecommendationActions(record, content) },
   };
   const conditional = projectConditionalAdvice(next, evaluation);
+  // 只在写入时拦截；历史read/export继续可读，不能因新规则封死旧失败样本。
+  if (conditional?.status === 'current' && content.conditionalAdvice) {
+    validateScenarioTextNumbers(content.conditionalAdvice, { baseline: evaluation, cases: conditional.cases });
+  }
   if (!conditional && content.optionIds.length === 0) {
     throw new DecisionFailure('invalid_model', 'An empty selection requires explicit conditionalAdvice and a next action.');
   }

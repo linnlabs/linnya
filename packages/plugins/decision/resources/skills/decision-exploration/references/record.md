@@ -92,9 +92,11 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 
 建立或更新记录后，先运行 `linnya-decision check <id> --expected-revision <n> --json '{"optionIds":["本轮选项id"]}'`，收到成功回执后再写建议JSON、行动计划或复核计划的文字。check不需要建议草稿、不保存版本；即使还没有建议或旧建议已待复核，也会预览当前模型。
 
-先读numericPreview.changeConditions：每句把边界和该点相关算值放在一起，再看calculations核对基线。numericBasis给出本次预览使用的既有引用，可以按本轮需要选择后提交recommend。numericPreview.inputs是固定输入的来源，预览不是现实事实变化或执行授权。
+先读默认回执的changeConditions（边界与同点算值），再读calculations算值文字数组核对基线。numericBasis给出既有引用，按本轮需要选择后提交recommend。需要numericPreview、输入、完整检查或optionRanges时，在check命令最后加--full；不要把默认calculations文字当作result对象。已声明的当天时刻会同时给出分钟数和HH:MM，普通耗时保持原单位。预览不是现实事实变化或执行授权。
 
 建议的changeConditions填写偏好、许可、证据等补充定性变化；已登记数值条件由numericBasis生成recommendationBasis.changeConditions，交付使用这份程序文字。rationale和nextAction仍由作者判断，不受程序语义认证。未登记的门槛本次不会自动新增。
+
+recommend在保存前只核对每个conditionalAdvice.cases的label与nextAction：仅明确单位“当天00:00起分钟”的变动输入或算值，若仍写基线数而未写情景数，将以decision.scenario_text_mismatch拒绝，列出情景id和两组值。按该情景重算并改正后再提交；旧建议和版本不会半保存。匹配限该时刻的普通整数分钟值和HH:MM；小数和指数整体略过，同时写前后值可作比较。金额、人数、普通耗时等暂不拦截。该检查不覆盖其他建议字段、行动、最终答复或说明稿，也不认证数字含义。
 
 ## 程序报告原件
 

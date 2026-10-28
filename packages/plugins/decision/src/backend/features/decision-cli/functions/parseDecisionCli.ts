@@ -15,7 +15,7 @@ export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision update <decision-id> --expected-revision <n> --json '<update>'
   linnya-decision recommend <decision-id> --expected-revision <n> --json '<recommendation>'
   linnya-decision simulate <decision-id> --expected-revision <n> --json '<scenarios>'
-  linnya-decision check <decision-id> --expected-revision <n> --json '<optionIds>' (read-only numeric preview)
+  linnya-decision check <decision-id> --expected-revision <n> --json '<optionIds>' [--full] (compact read-only preview; --full for structure)
   linnya-decision action plan <decision-id> --expected-revision <n> --json '<plan>'
   linnya-decision action progress <decision-id> <action-id> --expected-revision <n> --json '<planRevision, summary, origin, actualCost; optional sourceQuote/update>'
   linnya-decision action review <decision-id> <action-id> --expected-revision <n> --json '<reason, origin, full plan; optional sourceQuote>'
@@ -31,7 +31,9 @@ const positiveInteger = z.coerce.number().int().positive();
 const decisionId = z.string().uuid();
 
 export function parseDecisionCli(argv: readonly string[]) {
-  const [command, ...rest] = argv;
+  const [command, ...suppliedRest] = argv;
+  const full = command === 'check' && suppliedRest[suppliedRest.length - 1] === '--full';
+  const rest = full ? suppliedRest.slice(0, -1) : suppliedRest;
   if (command === 'action') return parseDecisionActionCli(rest);
   if (command === 'research') {
     const [operation, id, ...flags] = rest;
@@ -72,10 +74,11 @@ export function parseDecisionCli(argv: readonly string[]) {
     && rest[1] === '--expected-revision' && (rest[3] === '--json' || rest[3] === '--input')) {
     const common = { id: decisionId.parse(rest[0]), expectedRevision: positiveInteger.parse(rest[2]) };
     if (rest[3] === '--input') {
+      if (command === 'check') return { kind: 'file', filePath: z.string().min(1).parse(rest[4]), operation: { kind: 'check', ...common, full } } as const;
       return { kind: 'file', filePath: z.string().min(1).parse(rest[4]), operation: { kind: command, ...common } } as const;
     }
     const payload = parseJson(z.string().parse(rest[4]));
-    if (command === 'check') return { kind: 'check', ...common, request: DecisionOptionCheckSchema.parse(payload) } as const;
+    if (command === 'check') return { kind: 'check', ...common, full, request: DecisionOptionCheckSchema.parse(payload) } as const;
     if (command === 'simulate') return { kind: 'simulate', ...common, scenarios: DecisionScenariosSchema.parse(payload) } as const;
     return command === 'update'
       ? { kind: 'update', ...common, update: DecisionUpdateSchema.parse(payload) } as const
@@ -98,7 +101,7 @@ export function parseDecisionFilePayload(
   }
   const { id, expectedRevision } = command.operation;
   if (command.operation.kind === 'check') {
-    return { kind: 'check', id, expectedRevision, request: DecisionOptionCheckSchema.parse(payload) };
+    return { kind: 'check', id, expectedRevision, full: command.operation.full, request: DecisionOptionCheckSchema.parse(payload) };
   }
   if (command.operation.kind === 'action_plan') {
     return { kind: 'action_plan', id, expectedRevision, plan: DecisionActionPlanSchema.parse(payload) };
