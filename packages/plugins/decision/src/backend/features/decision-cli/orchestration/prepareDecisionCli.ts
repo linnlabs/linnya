@@ -9,6 +9,7 @@ import { executeDecisionCommand } from './executeDecisionCommand';
 import { DecisionFailure } from '../../decision-record';
 import { readDecisionInputFile } from '../adapters/readDecisionInputFile';
 import { readReportProvenance } from '../adapters/readReportProvenance';
+import { writeDecisionReport } from '../adapters/writeDecisionReport';
 
 interface DecisionHostContext {
   readonly databaseService: { getDb(): PluginSqliteDatabasePort };
@@ -72,7 +73,9 @@ export const decisionPluginCli: BackendPluginCliContribution = {
                   : resolved.kind === 'action_progress' ? await readReportProvenance(context, resolved.progress.sourceQuote)
                     : resolved.kind === 'action_review' ? await readReportProvenance(context, resolved.review.sourceQuote) : undefined;
               context.signal.throwIfAborted();
-              output = executeDecisionCommand(resolved, database, projectId, provenance);
+              const result = executeDecisionCommand(resolved, database, projectId, provenance);
+              output = typeof result === 'object' && result !== null && 'kind' in result && result.kind === 'decision_report'
+                ? await writeDecisionReport(conversationRoot, result, context.signal) : result;
             }
             return { exitCode: 0, stdout: `${JSON.stringify(output)}\n`, stderr: '' };
           } catch (error: unknown) {

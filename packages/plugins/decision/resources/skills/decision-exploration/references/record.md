@@ -10,6 +10,7 @@
 | `linnya-decision create --json '<model>'` | 建立条件与选项，返回 id 和 revision=1 |
 | `linnya-decision read <id>` | 读取当前版、重算结果和建议状态 |
 | `linnya-decision read <id> --revision 1` | 读取指定历史版本 |
+| `linnya-decision export <id> --expected-revision <n>` | 导出该当前版的程序报告到会话文件，记录不变 |
 | `linnya-decision compare <id> --from <revision> --to <revision>` | 对比两个保存版本的声明、结果及旧选择状态 |
 | `linnya-decision update <id> --expected-revision <n> --json '<update>'` | 更新条件；生成新版，旧建议进入待复核 |
 | `linnya-decision recommend <id> --expected-revision <n> --json '<recommendation>'` | 记录对当前条件重新判断后的建议 |
@@ -86,6 +87,14 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 ```
 
 回执的 `recommendationBasis` 分开给出程序计算的余额与价格边界，含等号与越界方向；`fixedInputs` 是其他条件固定在本版的值。交付可引用其中的 `text`，不需自己再反推一遍门槛。它只回答某个已有检查何时失效，是否改选还要结合偏好和其他条件。定性问题省略 numericBasis。
+
+## 程序报告原件
+
+执行 `linnya-decision export <id> --expected-revision <n>` 时，Shell使用`requires_write_access: true`，因为它会写当前会话文件。成功回执的artifact包含conversation locator、UTF-8字节sha256和bytes，以及源decision/revision/inputRevision。用read_file读取该locator并在交付中直接链接；原件由程序生成，无需再次抄数。每次导出新文件，旧文件保留，记录和建议均不变。
+
+报告分开列登记输入（含来源说明/状态）、所有计算及公式、全部声明检查、当前建议所选程序边界、行动状态，以及未经语义认证的作者原文。输入名称和单位仍属声明；算式正确不证明模型或建议正确。旧建议待复核时，旧边界不在新输入上重建。导出不自动改写错误的作者原文。
+
+这是生成时的固定快照，后来条件变化后用read查看当前状态，再重新导出。文件属于当前会话，会随会话生命周期处理；它不是Workspace文档，也没有自动成为长期跨会话档案。重要说明另用普通文件工具保存，并依回执说明是否有待用户确认修订。hash可核对原件字节，不是不可篡改或事实认证。
 
 仿射式可解单变量关系，变量相乘/变量分母明确不可用；其他输入未知、撤回、除零时不猜阈值。关系在连续数值上成立，不自动推断整次数或格式化时间；时刻需要在 input.label 中保留基准。模型、单位、费用范围与自由解释仍需核对。输入更新后的旧建议只显示 needs_review，原数值在对应历史版本读取。
 

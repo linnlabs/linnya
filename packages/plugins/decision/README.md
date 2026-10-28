@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.13.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.14.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -161,3 +161,11 @@ recommend可选actionBasis.actionIds，须为本记录内不重复、至少一�
 read.recommendationContext分别返回inputStatus、actionBasis状态及相关行动当前投影；没有显式依据的旧建议显示not_observed，不回填。首次可省略，启用后须完整替换或显式null停用，沿既有分析替换合同；compare.analysisChanges揭示启停。输入未变且未观察行动的旧建议仍可为current，但不能理解为已检查行动文字。观察某行动不保证nextAction忠实描述它，也不证明计划current等于授权；可把仍待复核的行动作为“下一步先重规划”的依据。
 
 schemaVersion1可选加法，无新表或新工具。decisionRecommendationActions.integration.test.ts覆盖计划复核导致建议失效、无关行动、持久重开、旧版未观察、明确停用、文件bridge、历史/比较只读及非法载荷原子拒绝。资金的单位、含义、订金处理和费用范围仍由作者建模；程序不把支出上限当现金余额，不自动计算收入或累计文字成本。
+
+## 程序计算报告（0.14）
+
+export <id> --expected-revision <n>从当前项目读取明确当前版，由decision-record的renderDecisionReport复用求值/投影生成确定的Markdown。报告包含输入及其声明出处、全部公式/算值/检查、当前建议选定的数值边界、当前行动投影和单独标识的作者建议原文。旧建议待复核时不按新输入重建旧边界；报告不会替作者修正错误建议或认证模型语义，作者文字按数据转义，不能冒充程序章节。
+
+CLI adapter沿conversationFiles=write权限，使用标准库在Host给定会话目录内创建独占报告目录，直接写UTF-8原件并返回conversation locator、sha256、字节数和源版本。每次导出新文件，旧产物不覆盖；取消/写失败不交付成功回执，记录逐字不变。调用不接受输出路径、项目覆盖或第二份数值，不新增工具/SDK/表。实现地图为decision-record/functions/renderDecisionReport与decision-cli/adapters/writeDecisionReport，Core和Linnkit不持有报告业务。
+
+报告是生成时快照，之后的输入/行动变化不回写旧文件；当前状态仍read后按需重新导出。会话文件不等于Workspace或长期跨会话档案，重要说明仍由普通文件工具保存并区分待确认修订；hash只校验原件字节，Shell仍可修改文件，不能宣称不可篡改或已核事实。完整条件情景和逐次历史仍通过read/compare读取。decisionReport.integration.test.ts覆盖实际CLI/SQLite/文件写入、字节hash与重复导出、未知/撤回/过期建议、行动失效、版本/项目隔离、取消和输出失败及作者文字边界。

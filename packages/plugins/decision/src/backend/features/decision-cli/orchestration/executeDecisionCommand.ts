@@ -10,6 +10,7 @@ import {
   planDecisionAction, resolveDecisionAction, withdrawDecisionActionReport,
   checkDecisionOptions, DecisionFailure,
   recordDecisionProgress, reviewDecisionAction,
+  renderDecisionReport,
 } from '../../decision-record';
 
 export function executeDecisionCommand(
@@ -40,6 +41,10 @@ export function executeDecisionCommand(
     return projectDecisionRecord(record);
   }
   const current = repository.read(command.id);
+  if (command.kind === 'export') {
+    if (current.revision !== command.expectedRevision) throw new DecisionFailure('revision_conflict', `Revision conflict: expected ${command.expectedRevision}, current ${current.revision}. Read the current record before exporting.`);
+    return renderDecisionReport(current);
+  }
   if (command.kind === 'simulate') return simulateDecisionScenarios(current, command.expectedRevision, command.scenarios);
   if (command.kind === 'check') return checkDecisionOptions(current, command.expectedRevision, command.request);
   const record = command.kind === 'action_plan'

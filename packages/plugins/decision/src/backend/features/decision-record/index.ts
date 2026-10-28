@@ -7,3 +7,5 @@ export { compareDecisionRecords } from './functions/compareDecisionRecords';
 export { planDecisionAction, resolveDecisionAction, withdrawDecisionActionReport } from './functions/recordDecisionAction';
 export { checkDecisionOptions } from './functions/checkDecisionOptions';
 export { recordDecisionProgress, reviewDecisionAction } from './functions/recordDecisionProgress';
+export { renderDecisionReport } from './functions/renderDecisionReport';
+export type { DecisionReport } from './definitions/decisionReport';
