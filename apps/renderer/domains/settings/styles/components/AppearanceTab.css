@@ -5,6 +5,17 @@
  * 选中时在卡片外紧贴加一圈 2px 强调色，不留间隙。
  */
 
+/*
+ * 分区只有一行、标题已经说明用途时，不再重复写一条同义的行标签：
+ * 说明文字直接作为这一行的主文案，用正文字号与次要文字色。
+ */
+.appearance-row-lead .settings-row-description {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
 .appearance-theme-selector {
   display: grid;
   /* 固定 80px 宽的小卡片，四个选项始终一行；整组随 SettingsRow 的 end 控件列靠右对齐。 */

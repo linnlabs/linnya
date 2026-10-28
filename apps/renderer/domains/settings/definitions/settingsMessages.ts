@@ -172,7 +172,6 @@ export type SettingsMessageKey =
   | 'settings.appearance.fontSmoothing.label'
   | 'settings.appearance.fontSmoothing.description'
   | 'settings.appearance.language.title'
-  | 'settings.appearance.language.label'
   | 'settings.appearance.language.selectTitle'
   | 'settings.appearance.language.description'
   | 'settings.appearance.language.zhCN'

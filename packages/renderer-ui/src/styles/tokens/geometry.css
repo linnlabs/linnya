@@ -87,6 +87,19 @@
     opacity var(--duration-micro) var(--ease-standard),
     transform var(--duration-micro) var(--ease-standard);
 
+  /*
+   * 对话框（Modal）：遮罩与弹窗本体分开动。遮罩只淡底色；弹窗从“略小、略靠下”缓出到位，
+   * 进入用 medium + enter，离开更短更轻（micro + standard），只是让开。
+   * 组件在 enter-from 与 leave-to 都取 --modal-hidden，在 enter-active / leave-active 取 --modal-transition-*。
+   */
+  --modal-hidden: scale(0.97) translateY(8px);
+  --modal-transition-enter:
+    opacity var(--duration-medium) var(--ease-enter),
+    transform var(--duration-medium) var(--ease-enter);
+  --modal-transition-leave:
+    opacity var(--duration-micro) var(--ease-standard),
+    transform var(--duration-micro) var(--ease-standard);
+
   /* 实心按钮按下时的缩放；幅度只有 2.5%，让“按到了”可感知而不改变布局。 */
   --motion-press-scale: 0.975;
 

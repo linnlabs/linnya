@@ -2,7 +2,7 @@
   <SettingsPage>
     <SettingsSection :title="settingsMessage('settings.appearance.theme.title')">
       <SettingsRow
-        :label="settingsMessage('settings.appearance.theme.label')"
+        class="appearance-row-lead"
         :description="settingsMessage('settings.appearance.theme.description')"
         control="end"
         align="center"
@@ -47,8 +47,10 @@
 
     <SettingsSection :title="settingsMessage('settings.appearance.language.title')">
       <SettingsRow
-        :label="settingsMessage('settings.appearance.language.label')"
-        :hint="settingsMessage('settings.appearance.language.description')"
+        class="appearance-row-lead"
+        :description="settingsMessage('settings.appearance.language.description')"
+        control="end"
+        align="center"
       >
         <CustomSelect
           v-model="languageValue"
