@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.19.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.17.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -202,7 +202,3 @@ check默认由CLI投影为overall、options的状态及失败／未知check id�
 ## 分析门槛与硬约束
 
 checks参与选项可行性与条件性选择；仅为说明经济门槛而求值时，使用已有计算，必要时显式追加calculation，不把分析标准静默变成用户底线。CLI只执行显式算式，不核验名称、单位、现金时序或建议的语义。新增计算沿正常update使旧建议待复核。
-
-## 按操作读取的Skill资源
-
-Skill首次操作读取references/record.md中的基础模型、更新、建议、check和export。需要假设分支或版本对比时读取scenarios.md；计划、进度、复核及结果接回读取actions.md；完整研究委托读取research.md。入口与基础页使用相对链接路由，原有格式和业务边界完整保留，不要求每次全量加载。资源拆分只改变读取组织，不改变CLI或赋予正确性认证。
