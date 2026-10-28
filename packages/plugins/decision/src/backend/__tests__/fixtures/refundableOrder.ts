@@ -12,9 +12,9 @@ export function refundableOrderModel(): DecisionModel {
   return {
     title: '合成小批订单核对', question: '是否值得继续核对成本与付款条件？',
     inputs: [
-      { id: 'c1_total', label: '客户1总成交意向，含订金', kind: 'fact', value: 100, unit: 'CNY/本批', origin: '合成用户表态，未付款未成交', status: 'available' },
-      { id: 'c2_total', label: '客户2总成交意向，含订金', kind: 'fact', value: 90, unit: 'CNY/本批', origin: '合成用户表态，未付款未成交', status: 'available' },
-      { id: 'c3_total', label: '客户3总成交意向，含订金', kind: 'fact', value: 120, unit: 'CNY/本批', origin: '合成用户表态，未付款未成交', status: 'available' },
+      { id: 'c1_total', label: '客户1总成交意向，含订金', kind: 'fact', value: 100, unit: 'CNY/本批', origin: '合成用户表态，余款未付、未成交', status: 'available' },
+      { id: 'c2_total', label: '客户2总成交意向，含订金', kind: 'fact', value: 90, unit: 'CNY/本批', origin: '合成用户表态，余款未付、未成交', status: 'available' },
+      { id: 'c3_total', label: '客户3总成交意向，含订金', kind: 'fact', value: 120, unit: 'CNY/本批', origin: '合成用户表态，余款未付、未成交', status: 'available' },
       { id: 'held_deposits', label: '已持可退订金总额', kind: 'fact', value: 150, unit: 'CNY/本批', origin: '合成用户，三位各50，须留作退款', status: 'available' },
       { id: 'refund_before_collection', label: '假设先退再全额收取的退款额', kind: 'assumption', value: 0, unit: 'CNY/本批', origin: '默认假设抵扣订金；先退再收情景为150，尚未发生', status: 'available' },
       { id: 'spent', label: '此前试验已支出', kind: 'fact', value: 180, unit: 'CNY/全程', origin: '合成用户报告的沉没支出', status: 'available' },
