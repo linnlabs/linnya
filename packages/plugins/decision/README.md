@@ -142,7 +142,7 @@ check <id> --expected-revision <n> --json '{"optionIds":["a"]}'复核明确候�
 
 ## 分段进度与活动计划复核（0.12）
 
-progress接收显式planRevision及summary/origin/actualCost、可选sourceQuote/update，追加有程序id的progressReports，不生成result、不关闭行动。每条报告保存显式basedOnPlanRevision、接纳时receivedAgainstPlanRevision及前后输入版本，可多次接回；成本是各次原文，不自动累加文字或重复扣款。resolve仍是一次completed/cancelled最终报告，分别用于完成范围/明确停止。已final的行动不再progress/review；撤回final不自动重开。
+progress接收显式planRevision及summary/origin/actualCost、可选sourceQuote/update，追加有程序id的progressReports，不生成result、不关闭行动。每条报告保存显式basedOnPlanRevision、接纳时receivedAgainstPlanRevision及前后输入版本，可多次接回；版本存在由程序校验，是否真正按该版行动仍是报告者陈述。成本是各次原文，不自动累加文字或重复扣款。resolve仍是一次completed/cancelled最终报告，分别用于完成范围/明确停止。已final的行动不再progress/review；撤回final不自动重开。
 
 withdraw可选reportId指向本行动某条progress，省略仍指final。单条撤回保留原报告、成本、出处与独立withdrawal，其他报告不变；所有progress都撤回时显示progress_withdrawn，不冒充从未有过观察。报告及显式模型修正在同一版本提交，失败不半写。迟到的实际观察即使计划过期仍可接纳，不因此授权后续执行。
 
