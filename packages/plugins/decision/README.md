@@ -27,6 +27,8 @@ Agent 负责澄清、探索、调查和判断，Skill 提供方法与操作说�
 
 create/update/recommend 支持 `--input` 读取当前会话内的相对 JSON 文件，文件读取在权限校验后进行并核对真实路径归属。小载荷也可用 `--json`；现有通用 bridge 的单参数 4096 字符限制不变，不能将大型条件拆成多次版本更新当作默认用法。
 
+决策记录与说明稿属于不同owner。Workspace Markdown是数据库文档；工具成功保存的修订可能仍待用户确认，不等于已接受正文。插件revision只保证本插件记录，不代表说明稿同步成功或用户已确认，交付须依文件工具的实际回执说明。
+
 ## 开发与验收
 
 从仓库根运行 `pnpm --dir packages/plugins/decision run typecheck`、`test` 和 `build:backend`。源码 Desktop 的开发发现读取本包 `linnya.development.backendLoading=disk`，通过既有 direct-dir loader 装入构建产物；Skill 由平台从本包资源发现，requiredSkills 仅保证依赖存在，实际激活要检查轨迹。
