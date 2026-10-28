@@ -9,6 +9,8 @@ import {
   SANDBOX_MAILBOX_REQUEST_MAX_BYTES,
   SANDBOX_MAILBOX_RESULT_MAX_BYTES,
   SandboxMailboxProtocolError,
+  parseSandboxRequestMailboxEnvelope,
+  parseSandboxResultMailboxEnvelope,
 } from '../definitions/sandboxMailboxProtocol.js';
 import {
   publishSandboxRequestMailbox,
@@ -112,6 +114,41 @@ describe('Sandbox mailbox file protocol', () => {
       publishSandboxRequestMailbox({ runDirectory, runToken: RUN_TOKEN, request })
     ).rejects.toMatchObject({ code: 'mailbox_envelope_too_large' });
     expect(await readdir(runDirectory)).toEqual([]);
+  });
+
+  it('校验并复制嵌套 globals、结果和 capability payload，不共享调用方的可变对象', () => {
+    const shared = { text: ['original'], size: 12 };
+    const request = { ...createRequest(), globals: { first: shared, second: shared } };
+    const parsedRequest = parseSandboxRequestMailboxEnvelope({
+      protocol_version: 1, kind: 'sandbox_request', run_token: RUN_TOKEN, request,
+    });
+    expect(parsedRequest.request.globals).toEqual(request.globals);
+    expect(parsedRequest.request.globals.first).not.toBe(shared);
+    expect(parsedRequest.request.globals.first).not.toBe(parsedRequest.request.globals.second);
+
+    const result = { ...createResult(), value: { nodes: [shared] }, capabilityCalls: [{ name: 'host.compose', payload: shared }] };
+    const parsed = parseSandboxResultMailboxEnvelope({
+      protocol_version: 1, kind: 'sandbox_result', run_token: RUN_TOKEN, result,
+    });
+    shared.text[0] = 'changed';
+    expect(parsed.result.value).toEqual({ nodes: [{ text: ['original'], size: 12 }] });
+    expect(parsed.result.capabilityCalls[0]?.payload).toEqual({ text: ['original'], size: 12 });
+  });
+
+  it('嵌套非 JSON 值仍以安全协议错误拒绝，不转换、丢弃或回显输入', () => {
+    for (const invalid of [NaN, Infinity, undefined, 1n, new Date(), () => 'PRIVATE_PAYLOAD']) {
+      try {
+        parseSandboxResultMailboxEnvelope({
+          protocol_version: 1, kind: 'sandbox_result', run_token: RUN_TOKEN,
+          result: { ...createResult(), value: { nested: [invalid] } },
+        });
+        expect.fail('Invalid mailbox result was accepted');
+      } catch (error) {
+        expect(error).toBeInstanceOf(SandboxMailboxProtocolError);
+        expect(error).toMatchObject({ code: 'invalid_result_envelope' });
+        expect(String(error)).not.toContain('PRIVATE_PAYLOAD');
+      }
+    }
   });
 
   it('result 使用独立 4 MiB 预算且超限时同样不发布 partial 文件', async () => {

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 import type { SandboxRunnerRequest } from '../../../definitions/sandboxRunner.js';
-import type { SandboxJsonValue } from '../../../types.js';
 import type { SandboxRunnerEvaluationResult } from '../../../runner-evaluation/definitions/sandboxRunnerEvaluation.js';
 import { SandboxHeapLimitMbSchema } from './sandboxRuntimeLimits.js';
+import { SandboxMailboxJsonValueSchema } from './sandboxMailboxJsonValue.js';
 
 export const SANDBOX_MAILBOX_PROTOCOL_VERSION = 1;
 export const SANDBOX_MAILBOX_REQUEST_FILE_NAME = 'request.json';
@@ -13,17 +13,6 @@ export const SANDBOX_MAILBOX_RESULT_MAX_BYTES = 4 * 1024 * 1024;
 
 const SandboxRunTokenSchema = z.string().regex(/^[a-f0-9]{32}$/u);
 
-// 结果要经过 Evaluator、Utility 和 Host 严格重读；递归节点共用 schema，不能逐节点重建。
-const SandboxJsonValueSchema: z.ZodType<SandboxJsonValue> = z.lazy(() => SandboxJsonValueUnionSchema);
-const SandboxJsonValueUnionSchema = z.union([
-  z.string(),
-  z.number().finite(),
-  z.boolean(),
-  z.null(),
-  z.array(SandboxJsonValueSchema),
-  z.record(SandboxJsonValueSchema),
-]);
-
 const PositiveSafeIntegerSchema = z.number().int().positive().safe();
 const NonNegativeFiniteNumberSchema = z.number().nonnegative().finite();
 
@@ -32,7 +21,7 @@ const SandboxRunnerRequestSchema = z.object({
   profileId: z.string().min(1),
   language: z.enum(['javascript', 'typescript']),
   source: z.string(),
-  globals: z.record(SandboxJsonValueSchema),
+  globals: z.record(SandboxMailboxJsonValueSchema),
   bindings: z.array(z.object({
     kind: z.literal('capability'),
     globalName: z.string().min(1),
@@ -61,13 +50,13 @@ const SandboxRunnerRequestSchema = z.object({
     conversationId: z.string().optional(),
     turnId: z.string().optional(),
     parentToolCallId: z.string().optional(),
-    metadata: z.record(SandboxJsonValueSchema).optional(),
+    metadata: z.record(SandboxMailboxJsonValueSchema).optional(),
   }).strict().optional(),
 }).strict();
 
 const SandboxRunnerEvaluationResultSchema = z.object({
   success: z.boolean(),
-  value: SandboxJsonValueSchema.optional(),
+  value: SandboxMailboxJsonValueSchema.optional(),
   logs: z.array(z.string()),
   error: z.object({
     type: z.enum([
@@ -88,7 +77,7 @@ const SandboxRunnerEvaluationResultSchema = z.object({
   elapsedMs: NonNegativeFiniteNumberSchema,
   capabilityCalls: z.array(z.object({
     name: z.string().min(1),
-    payload: SandboxJsonValueSchema.optional(),
+    payload: SandboxMailboxJsonValueSchema.optional(),
   }).strict()),
   deniedActions: z.array(z.string()),
 }).strict();
