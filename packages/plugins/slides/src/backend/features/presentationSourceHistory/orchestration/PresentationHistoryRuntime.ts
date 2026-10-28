@@ -7,6 +7,7 @@ import { PresentationRevisionScope, type PresentationRevisionAsset } from './Pre
 import { planPresentationSourceCompaction } from '../functions/planPresentationSourceCompaction';
 import { reconstructPresentationSources } from '../functions/presentationSourceRevisionCodec';
 import { PresentationSourceConsistencyError } from '../definitions/presentationSourceRevision';
+import { PRESENTATION_HISTORY_MAINTENANCE_IDLE_MS } from '../definitions/presentationHistoryMaintenance';
 
 export interface PresentationHistoryRuntimeDependencies {
   readonly history: PresentationHistoryRepository;
@@ -20,7 +21,9 @@ export interface PresentationHistoryRuntimeDependencies {
 }
 
 export class PresentationHistoryRuntime {
-  private readonly maintenance = new Set<string>();
+  private readonly scheduledMaintenance = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly activeMaintenance = new Set<Promise<void>>();
+  private stopped = false;
   constructor(private readonly deps: PresentationHistoryRuntimeDependencies) {}
 
   list(documentId: string): DocumentVersionSummary[] { return this.deps.history.list(documentId); }
@@ -57,10 +60,28 @@ export class PresentationHistoryRuntime {
   }
 
   requestMaintenance(documentId: string): void {
-    if (this.maintenance.has(documentId)) return;
-    this.maintenance.add(documentId);
-    void this.compact(documentId).catch(error => this.deps.reportFailure(documentId, error))
-      .finally(() => this.maintenance.delete(documentId));
+    // 停用期间可能仍有已接纳提交的 continuation；后台维护不能重新获得已释放的生命周期。
+    if (this.stopped) return;
+    const previous = this.scheduledMaintenance.get(documentId);
+    if (previous) clearTimeout(previous);
+    // scope.run 的微任务不是后台空闲任务：同步重链可能抢在提交回执的 continuation 前执行。
+    // 文档静默一段时间后再进入同一作用域，合并连续保存，也不改变资产释放的互斥边界。
+    const timer = setTimeout(() => {
+      this.scheduledMaintenance.delete(documentId);
+      const task = this.compact(documentId).catch(error => this.deps.reportFailure(documentId, error));
+      this.activeMaintenance.add(task);
+      void task.finally(() => this.activeMaintenance.delete(task));
+    }, PRESENTATION_HISTORY_MAINTENANCE_IDLE_MS);
+    timer.unref();
+    this.scheduledMaintenance.set(documentId, timer);
+  }
+
+  /** 插件停止时先取消尚未开始的维护，再等正在持锁的维护完成，随后才允许关闭 worker/数据库。 */
+  async dispose(): Promise<void> {
+    this.stopped = true;
+    for (const timer of this.scheduledMaintenance.values()) clearTimeout(timer);
+    this.scheduledMaintenance.clear();
+    await Promise.all(this.activeMaintenance);
   }
 
   compact(documentId: string): Promise<void> {

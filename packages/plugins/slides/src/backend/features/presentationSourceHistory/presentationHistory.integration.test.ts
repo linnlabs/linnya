@@ -11,6 +11,7 @@ import { PRESENTATION_HISTORY_SCHEMAS } from './definitions/presentationHistoryS
 import { PresentationHistoryRepository } from './infrastructure/PresentationHistoryRepository';
 import { PresentationRevisionScope } from './orchestration/PresentationRevisionScope';
 import { PresentationHistoryRuntime } from './orchestration/PresentationHistoryRuntime';
+import { PRESENTATION_HISTORY_MAINTENANCE_IDLE_MS } from './definitions/presentationHistoryMaintenance';
 
 describe('Slides history retention transactions', () => {
   let db: Database.Database;
@@ -48,6 +49,7 @@ describe('Slides history retention transactions', () => {
     for (let i = 1; i <= 20; i++) await append(i);
   });
   afterEach(async () => {
+    await runtime.dispose();
     await new Promise<void>(resolve => setTimeout(resolve, 0));
     db.close();
   });
@@ -65,6 +67,48 @@ describe('Slides history retention transactions', () => {
     });
   }
   const bindings = () => db.prepare<[], { asset_id: string }>('SELECT asset_id FROM presentation_image_bindings ORDER BY asset_id').all().map(row => row.asset_id);
+
+  it('提交回执先返回；静默后合并维护连续提交，停用取消尚未开始的维护', async () => {
+    vi.useFakeTimers();
+    const compact = vi.spyOn(history, 'compact');
+    try {
+      const receipt = await scope.run('doc', async () => { runtime.requestMaintenance('doc'); return 'committed'; });
+      expect(receipt).toBe('committed');
+      expect(compact).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(PRESENTATION_HISTORY_MAINTENANCE_IDLE_MS / 2);
+      runtime.requestMaintenance('doc');
+      await vi.advanceTimersByTimeAsync(PRESENTATION_HISTORY_MAINTENANCE_IDLE_MS / 2);
+      expect(compact).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(PRESENTATION_HISTORY_MAINTENANCE_IDLE_MS / 2);
+      expect(compact).toHaveBeenCalledTimes(1);
+      expect(history.list('doc')[0]?.order).toBe(20);
+      runtime.requestMaintenance('doc');
+      await runtime.dispose();
+      runtime.requestMaintenance('doc');
+      await vi.advanceTimersByTimeAsync(PRESENTATION_HISTORY_MAINTENANCE_IDLE_MS);
+      expect(compact).toHaveBeenCalledTimes(1);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('停用等待已经持锁的历史维护完成，再允许资源关闭', async () => {
+    vi.useFakeTimers();
+    let release!: (value: DeckSpec) => void;
+    const compiling = new Promise<DeckSpec>(resolve => { release = resolve; });
+    db.prepare('DELETE FROM presentation_revision_contexts').run();
+    compile.mockReturnValueOnce(compiling);
+    try {
+      runtime.requestMaintenance('doc');
+      await vi.advanceTimersByTimeAsync(PRESENTATION_HISTORY_MAINTENANCE_IDLE_MS);
+      expect(compile).toHaveBeenCalledTimes(1);
+      let stopped = false;
+      const stopping = runtime.dispose().then(() => { stopped = true; });
+      await Promise.resolve();
+      expect(stopped).toBe(false);
+      release(deck);
+      await stopping;
+      expect(stopped).toBe(true);
+    } finally { release(deck); vi.useRealTimers(); }
+  });
 
   it('全链校验、稀疏重链、资产解绑后，所有保留版本仍可重放和继续提交', async () => {
     await runtime.compact('doc');
