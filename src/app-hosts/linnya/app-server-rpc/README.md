@@ -1,5 +1,9 @@
 # App Server RPC
 
+JSON payload 在此边界按实际类型一次遍历校验，不再递归尝试六个 Zod union 分支，也不复制已由 JSON reader 独占的完整文档树。
+有限数值、普通对象/数组、循环引用及非 JSON 类型仍执行准入；业务 handler 继续使用各自严格 DTO。
+writer 发出前和 reader 接纳时都保留 frame 校验，不能为性能跳过协议校验。
+
 这是 App Server 与 Electron Desktop Host 之间的双向 request/response 数据面，不复用 lifecycle stdout 或
 bootstrap pipe。正式 child 使用 fd 4 向 Main 写帧、fd 5 从 Main 读帧；Main 的方向相反。
 

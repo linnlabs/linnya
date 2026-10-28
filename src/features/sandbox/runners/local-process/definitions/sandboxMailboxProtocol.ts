@@ -13,14 +13,16 @@ export const SANDBOX_MAILBOX_RESULT_MAX_BYTES = 4 * 1024 * 1024;
 
 const SandboxRunTokenSchema = z.string().regex(/^[a-f0-9]{32}$/u);
 
-const SandboxJsonValueSchema: z.ZodType<SandboxJsonValue> = z.lazy(() => z.union([
+// 结果要经过 Evaluator、Utility 和 Host 严格重读；递归节点共用 schema，不能逐节点重建。
+const SandboxJsonValueSchema: z.ZodType<SandboxJsonValue> = z.lazy(() => SandboxJsonValueUnionSchema);
+const SandboxJsonValueUnionSchema = z.union([
   z.string(),
   z.number().finite(),
   z.boolean(),
   z.null(),
   z.array(SandboxJsonValueSchema),
   z.record(SandboxJsonValueSchema),
-]));
+]);
 
 const PositiveSafeIntegerSchema = z.number().int().positive().safe();
 const NonNegativeFiniteNumberSchema = z.number().nonnegative().finite();

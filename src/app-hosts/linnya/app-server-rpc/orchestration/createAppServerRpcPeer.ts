@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { Readable, Writable } from 'node:stream';
 
-import { JsonValueSchema, type JsonValue } from '@app/schemas';
+import type { JsonValue } from '@app/schemas';
+import { AppServerRpcJsonValueSchema } from '../functions/appServerRpcJsonValue';
 
 import {
   APP_SERVER_RPC_DEFAULT_TIMEOUT_MS,
@@ -139,7 +140,7 @@ export function createAppServerRpcPeer(input: {
         kind: 'response',
         request_id: frame.request_id,
         ok: true,
-        result: JsonValueSchema.parse(result),
+        result: AppServerRpcJsonValueSchema.parse(result),
       }, 'urgent');
     }, async (error: unknown) => {
       if (activeInbound.get(frame.request_id) !== active) return;
@@ -231,7 +232,7 @@ export function createAppServerRpcPeer(input: {
     }
     try {
       options.signal?.throwIfAborted();
-      JsonValueSchema.parse(payload);
+      AppServerRpcJsonValueSchema.parse(payload);
     } catch (error: unknown) {
       return Promise.reject(toError(error));
     }

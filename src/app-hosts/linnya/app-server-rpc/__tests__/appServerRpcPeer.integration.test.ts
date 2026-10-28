@@ -13,6 +13,22 @@ import {
 import { createAppServerRpcWriter } from '../functions/createAppServerRpcWriter';
 
 describe('App Server RPC peer', () => {
+  it('完整嵌套文档往返不改变数据，非法 JSON 请求失败后仍可读取下一份文档', async () => {
+    const pair = createPeerPair(new Map(), new Map([['backend.echo', echoHandler]]));
+    const document = { revision: 2, pages: Array.from({ length: 16 }, (_, page) => ({
+      page, nodes: Array.from({ length: 24 }, (_, node) => ({
+        id: `${page}:${node}`, kind: 'text', box: { x: node, y: page, width: 1.2, height: 0.4 },
+        runs: [{ text: '文档正文', fontSize: 18, visible: true, source: null }],
+      })),
+    })) };
+    try {
+      await expect(pair.desktop.request('backend.echo', document)).resolves.toEqual(document);
+      await expect(pair.desktop.request('backend.echo', { invalid: Number.NaN })).rejects.toThrow('finite JSON');
+      await expect(pair.desktop.request('backend.echo', { valid: [false, null, 0, ''] }))
+        .resolves.toEqual({ valid: [false, null, 0, ''] });
+    } finally { pair.dispose(); }
+  });
+
   it('只调用双向注册方法，未知方法稳定失败且不破坏后续请求', async () => {
     const pair = createPeerPair(
       new Map([['desktop.echo', echoHandler]]),

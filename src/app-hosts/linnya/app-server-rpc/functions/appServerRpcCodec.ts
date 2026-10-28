@@ -1,5 +1,5 @@
-import { JsonValueSchema } from '@app/schemas';
 import { z } from 'zod';
+import { AppServerRpcJsonValueSchema } from './appServerRpcJsonValue';
 
 import {
   APP_SERVER_RPC_MAX_FRAME_BYTES,
@@ -16,14 +16,14 @@ const AppServerRpcFrameSchema = z.union([
     kind: z.literal('request'),
     request_id: IdentifierSchema,
     method: MethodSchema,
-    payload: JsonValueSchema,
+    payload: AppServerRpcJsonValueSchema,
   }).strict(),
   z.object({
     schema_version: z.literal(APP_SERVER_RPC_SCHEMA_VERSION),
     kind: z.literal('response'),
     request_id: IdentifierSchema,
     ok: z.literal(true),
-    result: JsonValueSchema,
+    result: AppServerRpcJsonValueSchema,
   }).strict(),
   z.object({
     schema_version: z.literal(APP_SERVER_RPC_SCHEMA_VERSION),
