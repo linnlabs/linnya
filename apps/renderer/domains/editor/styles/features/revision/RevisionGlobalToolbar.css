@@ -1,13 +1,13 @@
 .revision-global-toolbar {
-  position: fixed;
-  left: calc(var(--sidebar-deltaX, 0px) / 2);
+  /* 挂载到当前文档的非滚动视口，分栏移动和缩放直接由布局保持居中。 */
+  position: absolute;
+  left: 0;
   bottom: 24px;
   z-index: 1200;
   display: flex;
   justify-content: center;
   width: 100%;
   pointer-events: none;
-  transition: left var(--duration-long) var(--ease-standard);
 }
 
 /* 这里用全宽 flex 居中，避免 left: 50% + translateX(-50%) 在奇数宽度时造成 0.5px 模糊。 */
@@ -121,9 +121,4 @@
 .revision-global-toolbar-fade-leave-to {
   opacity: 0;
   transform: translate(0, 16px);
-}
-
-/* 分割线拖拽期间必须直接跟随布局变量，避免底部工具栏跟随滞后。 */
-body.panel-resizing .revision-global-toolbar {
-  transition: none !important;
 }

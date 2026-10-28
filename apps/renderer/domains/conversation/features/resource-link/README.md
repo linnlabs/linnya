@@ -12,6 +12,9 @@ Workspace 的 authored label 只在解析中使用，ready 后展示 owner 真�
 Host 没有业务标题，展示 authored title 和 locator 后缀。组件不永久缓存 missing；目标移动、改名或删除后，
 重新挂载会按旧 path 得到明确失效状态。
 
+物理文件标题末尾若已包含 locator 的同一后缀，拆分到统一的后缀展示槽并保留大小写；没有 authored title
+时，basename 也按相同规则拆分，确保后缀样式不取决于 Markdown 链接文本的写法。
+
 业务测试覆盖 href 编码边界、标题投影、Workspace 显式导航身份和物理文件 reveal DTO。真实 preload、IPC、
 Electron shell 与 Workspace 打开链由 `pnpm run test:conversation-resource-link:electron` 验证。
 

@@ -56,6 +56,7 @@ export type { RichDiffSegment, RichDiffResult } from './utils/richDiff'
 export type { PendingRevisionDTO as WorkspacePendingRevisionDTO } from '../../../../shared/ipc/workspaceGateway'
 
 // UI 组件
+export { REVISION_TOOLBAR_OVERLAY_TARGET_KEY } from './definitions/revisionToolbarOverlay'
 export { default as RevisionToolbar } from './ui/RevisionToolbar.vue'
 export { default as RevisionMarkPopup } from './ui/RevisionMarkPopup.vue'
 export { default as RevisionIndicator } from './ui/RevisionIndicator.vue'

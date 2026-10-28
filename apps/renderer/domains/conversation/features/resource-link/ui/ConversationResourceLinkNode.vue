@@ -86,8 +86,7 @@ const displayTitle = computed(() => {
   const resolved = target.value;
   if (resolved?.state === 'ready' && resolved.kind === 'workspace') return resolved.title;
   return physicalPresentation.value?.title
-    || props.authoredTitle.trim()
-    || conversationMessage('conversation.resourceLink.genericTitle');
+    ?? (props.authoredTitle.trim() || conversationMessage('conversation.resourceLink.genericTitle'));
 });
 const displaySuffix = computed(() => physicalPresentation.value?.suffix ?? null);
 const iconComponent = computed<Component>(() => {
