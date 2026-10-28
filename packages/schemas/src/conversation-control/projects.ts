@@ -16,6 +16,14 @@ export const ConversationControlProjectsRequestSchema = z.discriminatedUnion('ac
   z.object({ ...RequestFields, action: z.literal('list') }).strict(),
   z.object({ ...RequestFields, action: z.literal('get'), project_id: ProjectIdSchema }).strict(),
   z
+    .object({
+      ...RequestFields,
+      action: z.literal('delete'),
+      project_id: ProjectIdSchema,
+      confirm: z.literal(true),
+    })
+    .strict(),
+  z
     .object({ ...RequestFields, action: z.literal('create'), input: ProjectCreateInputSchema })
     .strict(),
   z
@@ -36,6 +44,9 @@ export const ConversationControlProjectSchema = ProjectRecordSchema.omit({
 
 const ResponseFields = { ...RequestFields, ok: z.literal(true) };
 export const ConversationControlProjectsResponseSchema = z.discriminatedUnion('action', [
+  z
+    .object({ ...ResponseFields, action: z.literal('delete'), project_id: ProjectIdSchema })
+    .strict(),
   z
     .object({
       ...ResponseFields,

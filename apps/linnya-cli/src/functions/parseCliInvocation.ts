@@ -36,6 +36,7 @@ const BOOLEAN_OPTIONS = new Set([
   'skip',
   'omit-args',
   'create',
+  'yes',
 ]);
 
 function usageError(message: string): never {
@@ -238,7 +239,7 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
     case 'projects': {
       const [action = 'list', identity] = tokens.positionals;
       assertAllowedOptions(tokens, action === 'create' ? ['description']
-        : action === 'update' ? ['name', 'description'] : []);
+        : action === 'update' ? ['name', 'description'] : action === 'delete' ? ['yes'] : []);
       const base = { schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION, command: 'projects', action };
       // 描述允许显式空字符串以清空；名称交由共享合同 trim 后验证，不能把空名称当作未提供。
       const description = tokens.options.get('description');
@@ -247,11 +248,14 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
       if (action === 'list' && tokens.positionals.length <= 1) input = base;
       else if (action === 'get' && tokens.positionals.length === 2) {
         input = { ...base, project_id: identity?.trim() };
+      } else if (action === 'delete' && tokens.positionals.length === 2) {
+        if (!readBoolean(tokens, 'yes')) usageError('projects delete requires --yes; only empty ordinary projects can be deleted');
+        input = { ...base, project_id: identity?.trim(), confirm: true };
       } else if (action === 'create' && tokens.positionals.length === 2) {
         input = { ...base, input: { name: identity, description } };
       } else if (action === 'update' && tokens.positionals.length === 2) {
         input = { ...base, project_id: identity?.trim(), updates: { name, description } };
-      } else usageError('projects requires list, get ID, create NAME [--description TEXT], or update ID [--name NAME] [--description TEXT]');
+      } else usageError('projects requires list, get ID, create NAME [--description TEXT], update ID [--name NAME] [--description TEXT], or delete ID --yes');
       const request = ConversationControlProjectsRequestSchema.parse(input);
       return { kind: 'command', request, pretty };
     }

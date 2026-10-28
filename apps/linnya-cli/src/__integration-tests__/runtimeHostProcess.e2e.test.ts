@@ -144,6 +144,13 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     // 空数据工作区通过正式 CLI 创建项目，然后用返回身份发起会话。
     const empty = await runCli(['projects', 'list'], environment);
     expect(parseJson(empty.stdout)).toMatchObject({ action: 'list', projects: [] });
+    const temporary = await runCli(['projects', 'create', 'Temporary'], environment);
+    const temporaryProject = ConversationControlProjectsResponseSchema.parse(parseJson(temporary.stdout));
+    if (temporaryProject.action !== 'create') throw new Error('Expected project creation');
+    const temporaryId = temporaryProject.project.project_id;
+    const deleted = await runCli(['projects', 'delete', temporaryId, '--yes'], environment);
+    expect(deleted.code, deleted.stderr).toBe(0);
+    expect(parseJson(deleted.stdout)).toMatchObject({ action: 'delete', project_id: temporaryId });
     const created = await runCli(['projects', 'create', 'CLI Runtime E2E', '--description', 'Runtime check'], environment);
     expect(created.code, created.stderr).toBe(0);
     const creation = ConversationControlProjectsResponseSchema.parse(parseJson(created.stdout));
@@ -165,6 +172,9 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     const receiptA = readReceipt(sendA);
     const receiptB = readReceipt(sendB);
     expect(receiptA.conversation_id).not.toBe(receiptB.conversation_id);
+    const blockedDelete = await runCli(['projects', 'delete', projectId, '--yes'], environment);
+    expect(blockedDelete.code, blockedDelete.stderr).toBe(6);
+    expect(parseJson(blockedDelete.stderr)).toMatchObject({ error: { code: 'project_not_empty' } });
 
     const [statusA, statusB] = await Promise.all([
       runCli([
@@ -197,6 +207,9 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     expect(isProcessAlive(first.ready.runtime.pid)).toBe(false);
 
     const restarted = await startRuntime({ workspace, environment });
+    const removedProject = await runCli(['projects', 'get', temporaryId], environment);
+    expect(removedProject.code).toBe(6);
+    expect(parseJson(removedProject.stderr)).toMatchObject({ error: { code: 'project_not_found' } });
     const savedProject = await runCli(['projects', 'get', projectId], environment);
     expect(savedProject.code, savedProject.stderr).toBe(0);
     expect(parseJson(savedProject.stdout)).toMatchObject({ project: {

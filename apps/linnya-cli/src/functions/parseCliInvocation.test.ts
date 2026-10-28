@@ -8,6 +8,8 @@ describe('parseCliInvocation', () => {
       .toMatchObject({ request: { action: 'create', input: { name: '研究', description: '保留原文空格 ' } } });
     expect(parseCliInvocation(['projects', 'get', 'project-1']))
       .toMatchObject({ request: { action: 'get', project_id: 'project-1' } });
+    expect(parseCliInvocation(['projects', 'delete', 'project-1', '--yes']))
+      .toMatchObject({ request: { action: 'delete', project_id: 'project-1', confirm: true } });
     for (const args of [ ['--description='], ['--description', ''] ]) {
       expect(parseCliInvocation(['projects', 'update', 'project-1', ...args]))
         .toMatchObject({ request: { action: 'update', updates: { description: '' } } });
@@ -16,6 +18,7 @@ describe('parseCliInvocation', () => {
       ['get'], ['get', ' '], ['get', 'p', 'extra'], ['list', '--name', 'x'],
       ['create', ' '], ['create', 'name', '--project', 'p'], ['update', 'p'],
       ['update', 'p', '--name', ' ', '--description', 'keep'], ['delete', 'p'],
+      ['delete', 'p', '--force'], ['delete', 'p', '--yes', 'extra'], ['get', 'p', '--yes'],
     ]) expect(() => parseCliInvocation(['projects', ...args])).toThrow();
   });
   it('显式研究范围只进入新版研究，不能变成任意 Host 工具请求', () => {

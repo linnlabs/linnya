@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ProjectCreatedEventSchema, ProjectUpdatedEventSchema } from './project-mutation-events';
+import { ProjectCreatedEventSchema, ProjectUpdatedEventSchema, ProjectDeletedEventSchema } from './project-mutation-events';
 
 export const WORKSPACE_MUTATION_CHANNEL = 'workspace:mutation';
 
@@ -91,6 +91,7 @@ export const WorkspaceMutationEventSchema = z.discriminatedUnion('type', [
   // 复用现有 app-level 传输；Project 事件合同仍由自己的业务定义拥有。
   ProjectCreatedEventSchema,
   ProjectUpdatedEventSchema,
+  ProjectDeletedEventSchema,
   WorkspaceNodeCreatedEventSchema,
   WorkspaceNodeRenamedEventSchema,
   WorkspaceNodeMovedEventSchema,

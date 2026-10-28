@@ -135,7 +135,7 @@ export async function createHttpConversationControlClient(
         );
       }
       const isMutation = request.command === 'skills' || request.command === 'send' || request.command === 'respond'
-        || (request.command === 'projects' && (request.action === 'create' || request.action === 'update'))
+        || (request.command === 'projects' && (request.action === 'create' || request.action === 'update' || request.action === 'delete'))
         || request.command === 'resume'
         || request.command === 'stop'
         || (request.command === 'command_approvals' && request.action === 'reply')

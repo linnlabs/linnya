@@ -20,7 +20,7 @@ Project 是一套数据工作区内的业务组织单位。项目拥有名称、
 
 ## 写入通知
 
-`project-mutation-events.ts` 拥有跨端的 `project.created / project.updated` 事实合同。
+`project-mutation-events.ts` 拥有跨端的 `project.created / project.updated / project.deleted` 事实合同。
 当前 Host 将 Project lifecycle 作为独立事务入口：创建或更新事务完成后，才调用显式注入的
 `ProjectMutationPublisher`；失败写入不发通知，`ensureDefault` 仅在实际插入时发布创建事件。
 带通知的生命周期调用不能包在另一个尚未提交的事务中；若未来需要跨域原子流程，应由该流程持有提交与发布边界。
@@ -31,8 +31,22 @@ Desktop IPC 与 CLI composition 均注入同一个 `BackendRendererIntegrationPo
 
 ## 删除边界
 
-当前普通项目删除仍是物理删除：文档节点按现有外键级联删除，Conversation 按自身外键解除项目关联，知识库仅删除项目绑定。该入口不负责停止运行、删除会话工作目录或清理所有资产字节。涉及这些 owner 的完整删除流程应进入 App Host 的跨域编排；不能把项目记录删除宣称为完整清理，也不能在新增 Project CLI 时直接推导出完整删除能力。
+CLI 只使用 `deleteEmpty`：默认项目拒绝，普通项目只能在一个同步事务中删除自身记录。
+SQLite 的 `total_changes()` 差值包含外键级联和 trigger 写入；若差值不是 1，则抛出
+`ProjectNotEmptyError` 并回滚整个事务。因此软删除历史、Conversation 的 SET NULL、项目资源、
+知识库/待办以及未加载插件的关联都不会被隐式清掉。普通 statement.changes 不包含这些影响，不能代替。
+[SQLite 合同](https://sqlite.org/c3ref/total_changes.html) 是该实现的依据；事务中不运行异步步骤或发布通知。
+`NO ACTION` 外键冲突映射为非空；`RESTRICT` 与其他拒绝删除的 trigger 映射为 `ProjectDeleteBlockedError`，
+不解析错误消息猜业务类别。只有提交后发布 `project.deleted`。
+
+这依赖 DatabaseService 已启用的外键约束。Core 与插件的项目归属必须通过真实 FK 表达；
+日志和可重建索引不定义业务归属，不能用 JSON 中的偶然 project_id 代替正式关系。
+本实现不遍历其他 domain 的表或加载停用插件；不新增各 owner 可能漏注册的全局检查器。
+代价是拒绝非空项目时会在事务中执行并回滚关联写入，成本随关联数据量增长。
+需要面向大项目的删除预览时，应另加各 owner 的只读影响报告，不把预览当成最终提交许可。
+
+`delete` 是 Desktop 保留的历史物理删除入口：文档节点按现有外键级联删除，Conversation 按自身外键解除项目关联，知识库仅删除项目绑定。该入口不负责停止运行、删除会话工作目录或清理所有资产字节。涉及这些 owner 的完整删除流程应进入 App Host 的跨域编排；不能把项目记录删除宣称为完整清理，也不能在新增 Project CLI 时直接推导出完整删除能力。
 
 ## 验证
 
-从仓库根运行 `pnpm exec vitest run src/domains/projects src/features/workspace/node-transfer src/electron-main/ipc/handlers/projects`，覆盖项目生命周期、文档归属与 Desktop 合同。项目代码不依赖 Electron 或 Renderer。
+从仓库根运行 `pnpm exec vitest run src/domains/projects src/features/workspace/node-transfer src/electron-main/ipc/handlers/projects src/app-hosts/linnya/adapters/conversation-control-bridge/__tests__`，覆盖项目生命周期、文档归属与 Desktop 合同。项目代码不依赖 Electron 或 Renderer。

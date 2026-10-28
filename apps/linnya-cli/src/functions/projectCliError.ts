@@ -38,6 +38,8 @@ export function exitCodeForError(code: ConversationControlErrorCode): number {
     case 'protocol_incompatible': return LINNYA_CLI_EXIT.protocol;
     case 'unauthorized': return LINNYA_CLI_EXIT.unauthorized;
     case 'skill_conflict':
+    case 'project_not_empty':
+    case 'project_delete_blocked':
     case 'project_name_conflict':
     case 'project_not_found':
     case 'conversation_busy':

@@ -67,7 +67,8 @@ Conversation Control 协议 4 的 `audit.llm_responses` 是既有审计的安全
 严格响应字段与握手版本一起升级，旧版本客户端不得用宽松解析绕过兼容性检查。
 
 Project 管理的 wire 合同位于 `src/conversation-control/projects.ts`，复用 `project.ts` 的输入规则。
-Protocol 6 要求每个请求和响应都有 `list / get / create / update` action；旧的无 action 形态不再接纳。
+Protocol 7 要求每个请求和响应都有 `list / get / create / update / delete` action；旧的无 action 形态不再接纳。
+删除要求 `confirm=true`，成功返回 `project_id`；非空与默认项目保护是 Project owner 的规则。
 列表仍返回 ID 与名称，详情投影只将 `id` 改为 `project_id` 并移除内部 `deleted_at`；不暴露物理 Workspace。
 项目事实事件由独立的 `project-mutation-events.ts` 定义，再组合进既有 mutation transport union，
 不能因此把 Project 生命周期所有权放回 Workspace 文档树。
@@ -98,7 +99,7 @@ Protocol 6 要求每个请求和响应都有 `list / get / create / update` acti
 | `src/citation.ts` | KB/Web 等引用来源、引用元数据与上下文 DTO |
 | `src/plugins/` | 插件 manifest、能力声明、发布产物和商店共享合同 |
 | `src/project.ts` | Project 记录、输入与 Desktop 响应合同；不包含物理 Workspace 根或界面导航状态 |
-| `src/project-mutation-events.ts` | Project 创建与更新事实；不携带导航指令 |
+| `src/project-mutation-events.ts` | Project 创建、更新与删除事实；不携带导航指令 |
 | `src/workspace-mutation-events.ts` | Workspace 节点与文档事件，组合 Project 事件供同一传输链路使用 |
 | `src/commands/` | Shell command identity、owner binding 与 process control 的严格版本化 DTO |
 | `src/model-inference/` | language、embedding、reranking 的严格 typed route |
@@ -337,7 +338,7 @@ shape 回放存量卡片，但这些 schema 不得重新用于注册 Agent execu
 Conversation CLI 的 `audit.workspace_documents` 只交换诊断严重度计数、调用身份与截断数，
 独立合同位于 `src/conversation-control/workspaceDocumentAudit.ts`。诊断 code/message/target
 没有安全文本保证，均不进入导出；工具保存成功、诊断结果和内容质量不得合成一个成功布尔值。
-该必填响应变化始于wire protocol 2；protocol 3起同时要求status/watch的`command_approvals`，当前protocol为6。旧CLI通过明确版本拒绝后升级，不能宽松双读。
+该必填响应变化始于wire protocol 2；protocol 3起同时要求status/watch的`command_approvals`，当前protocol为7。旧CLI通过明确版本拒绝后升级，不能宽松双读。
 
 `grep` 新 producer 的 `truncated` 表示搜索范围或匹配输出不完整，不只是命中条数达到上限。索引的 `truncated_files` 必须包含缓存复用后的前缀覆盖事实；零命中仍有可能未搜全。字段形状不变，历史响应 reader 不追溯拒绝旧的矛盾结果。完整性由 Workspace VFS producer 与真实 SQLite 业务测试保证，不由 schema 猜测未保存的历史覆盖范围。
 

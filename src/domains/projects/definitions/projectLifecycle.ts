@@ -11,5 +11,7 @@ export interface ProjectLifecyclePort {
   get(projectId: string): ProjectRecord;
   list(): ProjectRecord[];
   update(projectId: string, input: ProjectUpdateInput): void;
+  /** 只允许删除无持久关联的普通项目；任何级联影响均回滚。 */
+  deleteEmpty(projectId: string): void;
   delete(projectId: string): void;
 }
