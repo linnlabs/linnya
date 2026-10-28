@@ -1,4 +1,5 @@
 import type { SkillManagementPort } from 'src/features/skills';
+import type { ProjectLifecyclePort } from 'src/domains/projects';
 import type { ConversationControlSkillsResponse } from '@app/schemas';
 import type {
   ConversationControlCommandApprovalsRequest,
@@ -209,7 +210,7 @@ export interface ConversationControlUseCasePorts {
   readonly runs: ConversationControlRunPort;
   readonly executionProgress: ConversationControlExecutionProgressPort;
   readonly models: ConversationControlModelCatalogPort;
-  readonly projects: { list(): ConversationControlProjectsResponse['projects'] };
+  readonly projects: Pick<ProjectLifecyclePort, 'list' | 'get' | 'create' | 'update'>;
   readonly history: ConversationControlHistoryPort;
   readonly tools: ConversationControlToolCatalogPort;
   readonly audit: ExecutionAuditExportUseCase;

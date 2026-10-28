@@ -31,7 +31,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
     const descriptor = ConversationControlConnectionDescriptorSchema.parse(
       JSON.parse(await fs.readFile(bridge.connectionFile, 'utf8')),
     );
-    await fs.writeFile(bridge.connectionFile, JSON.stringify({ ...descriptor, protocol_version: 1 }), { mode: 0o600 });
+    await fs.writeFile(bridge.connectionFile, JSON.stringify({ ...descriptor, protocol_version: 5 }), { mode: 0o600 });
     const result = await runCliProcess(['audit', 'conversation-1'], bridge.connectionFile);
     expect(result.exitCode).toBe(4);
     expect(JSON.parse(result.stderr)).toMatchObject({ error: { code: 'protocol_incompatible' } });
@@ -134,16 +134,34 @@ describe('linnya CLI real process -> scripted bridge', () => {
   it('真实子进程列举可用于写入的项目 ID', async () => {
     const bridge = await createScriptedBridge(request => {
       if (request.command !== 'projects') throw new Error('expected projects command');
-      return { schema_version: 1, ok: true, command: 'projects',
+      return { schema_version: 1, ok: true, command: 'projects', action: 'list',
         projects: [{ project_id: 'project-1', name: '演示文稿' }] };
     });
     const result = await runCliProcess(['projects'], bridge.connectionFile);
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe('');
     expect(JSON.parse(result.stdout)).toMatchObject({
-      command: 'projects', projects: [{ project_id: 'project-1', name: '演示文稿' }],
+      command: 'projects', action: 'list', projects: [{ project_id: 'project-1', name: '演示文稿' }],
     });
-    expect(bridge.receivedCommands).toEqual([{ schema_version: 1, command: 'projects' }]);
+    expect(bridge.receivedCommands).toEqual([{ schema_version: 1, command: 'projects', action: 'list' }]);
+  });
+
+  it('项目写入丢失响应不自动重试，避免重复创建', async () => {
+    const bridge = await createScriptedBridge((_request, response) => { response.destroy(); });
+    const result = await runCliProcess(['projects', 'create', 'Research'], bridge.connectionFile);
+    expect(result.exitCode).toBe(3);
+    expect(JSON.parse(result.stderr)).toMatchObject({ error: { code: 'stale_connection' } });
+    expect(bridge.receivedCommands).toHaveLength(1);
+  });
+
+  it('项目子动作响应不匹配时拒绝成功输出', async () => {
+    const bridge = await createScriptedBridge(() => ({
+      schema_version: 1, ok: true, command: 'projects', action: 'list', projects: [],
+    }));
+    const result = await runCliProcess(['projects', 'create', 'Research'], bridge.connectionFile);
+    expect(result.exitCode).toBe(4);
+    expect(JSON.parse(result.stderr)).toMatchObject({ error: { code: 'protocol_incompatible' } });
+    expect(bridge.receivedCommands).toHaveLength(1);
   });
 
   it('真实子进程查询当前 App 的可调用模型', async () => {

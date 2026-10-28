@@ -1,4 +1,5 @@
 import { ConversationControlSkillsResponseSchema } from './skills';
+import { ConversationControlProjectsResponseSchema } from './projects';
 import { z } from 'zod';
 import { ConversationControlAuditLlmResponsesSchema } from './llmResponseAudit';
 import { CommandApprovalPendingProjectionV1Schema } from '../commands';
@@ -82,18 +83,6 @@ export const ConversationControlModelsResponseSchema = z
     image_generation: z.array(ConversationControlModelSummarySchema),
   })
   .strict();
-
-export const ConversationControlProjectsResponseSchema = z
-  .object({
-    ...SuccessBaseFields,
-    command: z.literal('projects'),
-    projects: z.array(z.object({ project_id: OpaqueIdSchema, name: z.string() }).strict()),
-  })
-  .strict();
-
-export type ConversationControlProjectsResponse = z.infer<
-  typeof ConversationControlProjectsResponseSchema
->;
 
 export const ConversationControlListResponseSchema = z
   .object({
@@ -619,6 +608,8 @@ export const ConversationControlErrorCodeSchema = z.enum([
   'unauthorized',
   'capability_unavailable',
   'skill_conflict',
+  'project_name_conflict',
+  'project_not_found',
   'conversation_busy',
   'no_active_run',
   'run_not_found',

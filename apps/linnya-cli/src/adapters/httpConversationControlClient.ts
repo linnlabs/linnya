@@ -79,7 +79,7 @@ async function postJson(
     throw new LinnyaCliError(
       controller.signal.aborted ? 'transport_failure' : 'stale_connection',
       controller.signal.aborted
-        ? `Linnya ${command ?? 'handshake'} response timed out after ${timeoutMs}ms; the App may still be processing it. Check the exact run before retrying a mutation.`
+        ? `Linnya ${command ?? 'handshake'} response timed out after ${timeoutMs}ms; the App may still be processing it. Read the current state before retrying a mutation.`
         : 'Cannot reach the Linnya App conversation-control bridge. Check that the App is running; use linnya doctor to verify the connection.',
       true,
       command,
@@ -135,6 +135,7 @@ export async function createHttpConversationControlClient(
         );
       }
       const isMutation = request.command === 'skills' || request.command === 'send' || request.command === 'respond'
+        || (request.command === 'projects' && (request.action === 'create' || request.action === 'update'))
         || request.command === 'resume'
         || request.command === 'stop'
         || (request.command === 'command_approvals' && request.action === 'reply')
@@ -155,6 +156,11 @@ export async function createHttpConversationControlClient(
       if (parsed.data.command !== request.command) {
         throw new LinnyaCliError('protocol_incompatible',
           `Expected ${request.command} response, received ${parsed.data.command}`, false, request.command);
+      }
+      if (request.command === 'projects' && parsed.data.command === 'projects'
+        && parsed.data.action !== request.action) {
+        throw new LinnyaCliError('protocol_incompatible',
+          `Expected projects ${request.action} response, received ${parsed.data.action}`, false, request.command);
       }
       if (!result.response.ok) {
         throw new LinnyaCliError(

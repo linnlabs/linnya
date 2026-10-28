@@ -4,7 +4,7 @@ Project 是一套数据工作区内的业务组织单位。项目拥有名称、
 
 ## 公开入口与所有权
 
-调用方只从 `index.ts` 导入 `createProjectLifecycle`、`ProjectLifecyclePort`、项目错误和身份查询。Desktop Project IPC 与 CLI 的现有项目查询共同使用此入口。`WorkspaceService` 只处理项目文档树，不再提供项目 CRUD。
+调用方只从 `index.ts` 导入 `createProjectLifecycle`、`ProjectLifecyclePort`、`ProjectMutationPublisher`、项目错误和身份查询。Desktop Project IPC 与 CLI 的项目查询、创建和修改共同使用此入口。`WorkspaceService` 只处理项目文档树，不再提供项目 CRUD。
 
 跨端记录与输入的唯一合同在 `packages/schemas/src/project.ts`。`features/lifecycle/definitions` 定义持久化行，`functions` 持有项目规则与投影，`persistence` 拥有项目 SQL，`orchestration` 组织输入准入、事务和持久化步骤。
 
@@ -17,6 +17,17 @@ Project 是一套数据工作区内的业务组织单位。项目拥有名称、
 - 默认项目由 `system_role = default` 识别，改名不改变其身份；普通创建不接受系统角色。
 - 默认项目不可删除；`can_delete` 只表示系统角色允许删除，不表示已完成关联数据或运行活动预检。
 - 创建时清理历史同名软删除行与插入新行在同一事务中完成。
+
+## 写入通知
+
+`project-mutation-events.ts` 拥有跨端的 `project.created / project.updated` 事实合同。
+当前 Host 将 Project lifecycle 作为独立事务入口：创建或更新事务完成后，才调用显式注入的
+`ProjectMutationPublisher`；失败写入不发通知，`ensureDefault` 仅在实际插入时发布创建事件。
+带通知的生命周期调用不能包在另一个尚未提交的事务中；若未来需要跨域原子流程，应由该流程持有提交与发布边界。
+
+Desktop IPC 与 CLI composition 均注入同一个 `BackendRendererIntegrationPort` 发布能力，
+复用 [Workspace Mutation Bus](../../../docs/workspace-mutation-bus.md) 的传输。Project 不查询 Workspace registry，
+事件也不携带导航指令。Renderer 只重读项目列表，不能按当前项目过滤其他项目的创建或改名。
 
 ## 删除边界
 

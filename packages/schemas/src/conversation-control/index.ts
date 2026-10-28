@@ -4,3 +4,4 @@ export * from './results';
 export * from './commandApprovals';
 
 export * from './skills';
+export * from './projects';

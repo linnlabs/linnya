@@ -141,21 +141,22 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
       app: { version: '0.0.38' },
     });
 
-    // 临时 Workspace 没有 Renderer 初始化项目；显式准备夹具，不改生产默认项目策略。
-    const projectId = 'cli-runtime-e2e';
-    const database = new Database(path.join(workspace, 'workspace', 'workspace.sqlite'), { fileMustExist: true });
-    try {
-      database.prepare(
-        'INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)',
-      ).run(projectId, 'CLI Runtime E2E', Date.now(), Date.now());
-    } finally {
-      database.close();
-    }
+    // 空数据工作区通过正式 CLI 创建项目，然后用返回身份发起会话。
+    const empty = await runCli(['projects', 'list'], environment);
+    expect(parseJson(empty.stdout)).toMatchObject({ action: 'list', projects: [] });
+    const created = await runCli(['projects', 'create', 'CLI Runtime E2E', '--description', 'Runtime check'], environment);
+    expect(created.code, created.stderr).toBe(0);
+    const creation = ConversationControlProjectsResponseSchema.parse(parseJson(created.stdout));
+    if (creation.action !== 'create') throw new Error('Expected project creation');
+    const projectId = creation.project.project_id;
+    const updated = await runCli(['projects', 'update', projectId, '--description='], environment);
+    expect(updated.code, updated.stderr).toBe(0);
+    expect(parseJson(updated.stdout)).toMatchObject({ action: 'update', project: { project_id: projectId, description: '' } });
     const projects = await runCli(['projects'], environment);
     expect(projects.code).toBe(0);
-    expect(ConversationControlProjectsResponseSchema.parse(
-      parseJson(projects.stdout),
-    ).projects).toContainEqual({ project_id: projectId, name: 'CLI Runtime E2E' });
+    const listing = ConversationControlProjectsResponseSchema.parse(parseJson(projects.stdout));
+    if (listing.action !== 'list') throw new Error('Expected project list');
+    expect(listing.projects).toContainEqual({ project_id: projectId, name: 'CLI Runtime E2E' });
 
     const [sendA, sendB] = await Promise.all([
       runCli(['send', 'parallel-a', '--project', projectId, '--agent', 'default', '--model', 'mock-debug-chat'], environment),
@@ -196,6 +197,11 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     expect(isProcessAlive(first.ready.runtime.pid)).toBe(false);
 
     const restarted = await startRuntime({ workspace, environment });
+    const savedProject = await runCli(['projects', 'get', projectId], environment);
+    expect(savedProject.code, savedProject.stderr).toBe(0);
+    expect(parseJson(savedProject.stdout)).toMatchObject({ project: {
+      project_id: projectId, name: 'CLI Runtime E2E', description: '',
+    } });
     const history = await runCli(['list', '--project', projectId, '--limit', '10'], environment);
     expect(history.code).toBe(0);
     const conversationIds = readConversationIds(history.stdout);

@@ -12,24 +12,11 @@ import { defineStore } from 'pinia';
 import { projectGateway } from '@/shared/ipc/projectGateway';
 import { ref, computed } from 'vue';
 import type { Ref, ComputedRef } from 'vue';
-import type { ProjectRecord } from '@app/schemas';
+import { toProject } from '../shared/projectRecord';
 import { useNavigationScope } from '@/app/navigation';
 import type { Project } from '../definitions/project';
 import { resolveCurrentWorkspaceMessage } from '../functions/resolveCurrentWorkspaceMessage';
 import { WorkspaceOperationError } from '../definitions/workspaceOperationError';
-
-function toProject(dto: ProjectRecord): Project {
-  return {
-    id: dto.id,
-    name: dto.name,
-    description: dto.description,
-    icon: dto.icon,
-    systemRole: dto.system_role,
-    canDelete: dto.can_delete,
-    createdAt: dto.created_at,
-    updatedAt: dto.updated_at,
-  };
-}
 
 export const useWorkspaceProjectsStore = defineStore('workspace-projects', () => {
   // ==========================================================================
@@ -62,6 +49,10 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
   // ==========================================================================
   // Actions
   // ==========================================================================
+
+  function replaceProjects(next: Project[]): void {
+    projects.value = next;
+  }
 
   /**
    * 加载所有项目列表，如果为空则自动创建默认项目
@@ -215,6 +206,7 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
 
     // Actions
     loadProjects,
+    replaceProjects,
     updateProject,
     deleteProject,
     setActiveProject,

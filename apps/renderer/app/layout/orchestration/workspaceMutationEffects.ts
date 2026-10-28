@@ -9,6 +9,7 @@ import type {
 } from '@app/schemas';
 import type { WorkspaceMutationEffectsPort } from '@/shared/ports/workspaceMutationEffectsPort';
 import { useNavigationScope } from '@/app/navigation';
+import { refreshProjectCatalog } from '@/domains/workspace/features/project-catalog';
 import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
 import { notifyRendererDocumentMutationHandlers } from '@plugin/renderer/documentMutationPort';
 import { applyPendingRevisionsToOpenMarkdownDocument } from './shared/markdownPendingRevisionRefresh';
@@ -107,6 +108,11 @@ export function createWorkspaceMutationEffects(): WorkspaceMutationEffectsPort {
   return {
     async handleWorkspaceMutation(event: WorkspaceMutationEvent) {
       switch (event.type) {
+        case 'project.created':
+        case 'project.updated':
+          // 项目目录跨当前导航 scope 展示，其他项目的创建或改名也必须被看见。
+          await refreshProjectCatalog();
+          return;
         case 'workspace.node.created':
           await handleNodeCreated(event);
           return;

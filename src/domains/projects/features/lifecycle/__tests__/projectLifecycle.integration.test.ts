@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import type { ProjectMutationEvent } from '@app/schemas';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -75,7 +76,13 @@ describe('Project lifecycle', () => {
   it('creates default project with stable system role and non-delete capability', () => {
     const db = new Database(':memory:');
     createProjectsSchema(db);
-    const service = createProjectLifecycle(db);
+    const events: ProjectMutationEvent[] = [];
+    const service = createProjectLifecycle(db, { publish: event => {
+      // 观察者收到通知时，项目事务已经结束，正式查询可见新记录。
+      expect(db.inTransaction).toBe(false);
+      expect(createProjectLifecycle(db).get(event.projectId)).toBeDefined();
+      events.push(event);
+    } });
 
     const projectId = service.ensureDefault();
     const project = service.list().find(item => item.id === projectId);
@@ -87,6 +94,8 @@ describe('Project lifecycle', () => {
     });
 
     expect(service.ensureDefault()).toBe(projectId);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ type: 'project.created', projectId });
 
     db.close();
   });

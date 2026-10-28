@@ -52,6 +52,9 @@ describe('Backend Renderer integration RPC', () => {
       nodeType: 'markdown',
       mutationKind: 'pending',
     });
+    client.publishWorkspaceMutation({
+      type: 'project.created', mutationId: 'project-mutation', projectId: 'another-project',
+    });
     client.publishPluginRendererPush({
       pluginId: 'slides',
       channel: 'slides:export-progress',
@@ -79,7 +82,10 @@ describe('Backend Renderer integration RPC', () => {
       message: '合并中',
       timestamp: 456,
     });
-    expect(port.publishWorkspaceMutation).toHaveBeenCalledOnce();
+    expect(port.publishWorkspaceMutation).toHaveBeenCalledTimes(2);
+    expect(port.publishWorkspaceMutation).toHaveBeenCalledWith({
+      type: 'project.created', mutationId: 'project-mutation', projectId: 'another-project',
+    });
     expect(port.publishPluginRendererPush).toHaveBeenCalledOnce();
     expect(port.publishTodosChanged).toHaveBeenCalledWith('project-1');
     expect(failures).toEqual([]);

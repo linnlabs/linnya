@@ -202,3 +202,4 @@ export * from './markdown-image';
 
 export * from './skills';
 export * from './project';
+export * from './project-mutation-events';

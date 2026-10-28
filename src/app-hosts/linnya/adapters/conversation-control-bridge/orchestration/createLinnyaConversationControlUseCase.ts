@@ -26,7 +26,7 @@ import {
 
 interface LinnyaConversationControlUseCaseOwners {
   readonly commandApprovals: CommandApprovalControlPort;
-  readonly projects: Pick<ProjectLifecyclePort, 'list'>;
+  readonly projects: Pick<ProjectLifecyclePort, 'list' | 'get' | 'create' | 'update'>;
   readonly flow: Pick<
     FlowOrchestrator,
     'nextDetached' | 'respondInteractionDetached' | 'continueRunDetached' | 'cancelRun'
@@ -110,11 +110,7 @@ export function createLinnyaConversationControlUseCase(
       findByConversation: conversationId => owners.runs.findByConversation(conversationId, { includeChildren: true }),
     },
     commandApprovals: owners.commandApprovals,
-    projects: {
-      list: () => owners.projects.list().map(project => ({
-        project_id: project.id, name: project.name,
-      })),
-    },
+    projects: owners.projects,
     models: {
       list() {
         const context = modelAvailabilityContext();

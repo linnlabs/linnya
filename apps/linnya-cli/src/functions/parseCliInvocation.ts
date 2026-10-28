@@ -66,7 +66,7 @@ function parseTokens(argv: readonly string[]): ParsedTokens {
 
     if (equals >= 0) {
       const value = raw.slice(equals + 1);
-      if (BOOLEAN_OPTIONS.has(name) || value.length === 0) {
+      if (BOOLEAN_OPTIONS.has(name) || (value.length === 0 && name !== 'description')) {
         usageError(`Option --${name} does not accept this value`);
       }
       options.set(name, value);
@@ -236,12 +236,23 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
       return { kind: 'command', request, pretty };
     }
     case 'projects': {
-      assertAllowedOptions(tokens, []);
-      if (tokens.positionals.length > 0) usageError('projects does not accept positional arguments');
-      const request = ConversationControlProjectsRequestSchema.parse({
-        schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
-        command: 'projects',
-      });
+      const [action = 'list', identity] = tokens.positionals;
+      assertAllowedOptions(tokens, action === 'create' ? ['description']
+        : action === 'update' ? ['name', 'description'] : []);
+      const base = { schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION, command: 'projects', action };
+      // 描述允许显式空字符串以清空；名称交由共享合同 trim 后验证，不能把空名称当作未提供。
+      const description = tokens.options.get('description');
+      const name = tokens.options.get('name');
+      let input: unknown;
+      if (action === 'list' && tokens.positionals.length <= 1) input = base;
+      else if (action === 'get' && tokens.positionals.length === 2) {
+        input = { ...base, project_id: identity?.trim() };
+      } else if (action === 'create' && tokens.positionals.length === 2) {
+        input = { ...base, input: { name: identity, description } };
+      } else if (action === 'update' && tokens.positionals.length === 2) {
+        input = { ...base, project_id: identity?.trim(), updates: { name, description } };
+      } else usageError('projects requires list, get ID, create NAME [--description TEXT], or update ID [--name NAME] [--description TEXT]');
+      const request = ConversationControlProjectsRequestSchema.parse(input);
       return { kind: 'command', request, pretty };
     }
     case 'models': {
