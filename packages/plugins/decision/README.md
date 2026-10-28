@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.14.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.15.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -169,3 +169,10 @@ export <id> --expected-revision <n>从当前项目读取明确当前版，由dec
 CLI adapter沿conversationFiles=write权限，使用标准库在Host给定会话目录内创建独占报告目录，直接写UTF-8原件并返回conversation locator、sha256、字节数和源版本。每次导出新文件，旧产物不覆盖；取消/写失败不交付成功回执，记录逐字不变。调用不接受输出路径、项目覆盖或第二份数值，不新增工具/SDK/表。实现地图为decision-record/functions/renderDecisionReport与decision-cli/adapters/writeDecisionReport，Core和Linnkit不持有报告业务。
 
 报告是生成时快照，之后的输入/行动变化不回写旧文件；当前状态仍read后按需重新导出。会话文件不等于Workspace或长期跨会话档案，重要说明仍由普通文件工具保存并区分待确认修订；hash只校验原件字节，Shell仍可修改文件，不能宣称不可篡改或已核事实。完整条件情景和逐次历史仍通过read/compare读取。decisionReport.integration.test.ts覆盖实际CLI/SQLite/文件写入、字节hash与重复导出、未知/撤回/过期建议、行动失效、版本/项目隔离、取消和输出失败及作者文字边界。
+
+
+## 边界点算值与交付附注（0.15）
+
+recommendationBasis.boundaries每个可用边界附atBoundary：只把目标输入置于边界值，其他输入保持同版原值，重算所有显式引用该输入的已登记计算，保留id、名称、单位、依赖及不可用原因。固定输入由fixedInputIds指向同回执record.model.inputs；未登记的推导不由程序补造。未知目标可求边界时仅在该假设点赋值，撤回或无法求边界时atBoundary为null；旧建议待复核仍不在新模型上重建。该投影不保存情景、不改记录或输入版本，边界点算值不代表整个区间。export复用同一投影展示点值。
+
+export成功回执的artifact.markdownLink直接使用本次实际locator；deliveryNote由程序生成记录id、revision、inputRevision及原件链接，供作者粘贴交付。文件字节/hash合同不变；链接指当前会话的固定快照，不因此成为跨会话地址或长期档案。程序附注不自动注入聊天，作者是否采用仍须另验。实现均属Decision插件，无Host/Linnkit或基础工具变化。

@@ -47,6 +47,11 @@ it('exports exact arithmetic, formula definitions and separate unverified author
   expect(calculations).toMatch(/net\\_future\\_customer\\_flow[^\n]+\| 160 \|/);
   expect(calculations).toMatch(/total\\_spending[^\n]+\| 1080 \|/);
   expect(output.markdown).toContain('全部附加费 ≤ 520 CNY/本批');
+  const boundaries = output.markdown.split('## 当前建议引用的程序边界')[1]?.split('## 当前行动')[0];
+  expect(boundaries).toContain('全部附加费 = 520 CNY/本批');
+  expect(boundaries).toContain('假设全部成交后的增量差额，未含其他遗漏项：-510 CNY/本批');
+  expect(boundaries).toContain('含既往试验及假设采购的全程支出：1000 CNY/全程');
+  expect(calculations).toMatch(/incremental\\_gap[^\n]+\| -590 \|/);
   expect(output.markdown).toContain('| 1080 | 1000 | 不成立');
   expect(output.markdown).toContain('## 作者保存的建议原文（未经语义认证）'); expect(output.markdown).toContain('作者误称300+附加费≤520');
   expect(report(record.id, 2)).toEqual(output); expect(rows()).toEqual(before);
@@ -85,11 +90,14 @@ it('writes byte-verifiable conversation artifacts through the admitted bridge wi
   const record = create(refundableOrderModel()); const before = rows();
   const prepared = decisionPluginCli.prepare({ argv: ['export', record.id, '--expected-revision', '1'], conversationRoot: directory, invocationId: 'report' });
   if (prepared.status !== 'ready') throw new Error('Expected ready'); expect(prepared.plan.access.conversationFiles).toBe('write');
-  const receipt = z.object({ decisionId: z.string(), revision: z.number(), artifact: z.object({ locator: z.string(), sha256: z.string(), bytes: z.number() }) });
+  const receipt = z.object({ decisionId: z.string(), revision: z.number(), artifact: z.object({ locator: z.string(), sha256: z.string(), bytes: z.number(), markdownLink: z.string() }), deliveryNote: z.string() });
   const context = { projectId: 'p', conversationId: 'report-test', agentRunId: 'report-test-run', hostContext: { databaseService: { getDb: () => db } }, signal: new AbortController().signal };
   const first = await prepared.plan.execute(context); expect(first.exitCode).toBe(0); const one = receipt.parse(JSON.parse(first.stdout));
   const second = await prepared.plan.execute(context); expect(second.exitCode).toBe(0); const two = receipt.parse(JSON.parse(second.stdout));
   expect(one.artifact.locator).toMatch(/^conversation:\/decision-report-[^/]+\/report\.md$/); expect(one.artifact.locator).not.toBe(two.artifact.locator);
+  expect(one.artifact.markdownLink).toBe(`[程序报告原件](${one.artifact.locator})`);
+  expect(one.deliveryNote).toBe(`记录 ${record.id} · revision 1 · inputRevision 1\n原件：${one.artifact.markdownLink}`);
+  expect(two.deliveryNote).toContain(two.artifact.markdownLink); expect(two.deliveryNote).not.toContain(one.artifact.locator);
   const bytes = readFileSync(join(directory, one.artifact.locator.slice('conversation:/'.length)));
   expect(bytes.toString('utf8')).toBe(report(record.id, 1).markdown); expect(one.artifact.bytes).toBe(bytes.byteLength);
   expect(one.artifact.sha256).toBe(createHash('sha256').update(bytes).digest('hex')); expect(one.artifact.sha256).toBe(two.artifact.sha256);

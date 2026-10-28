@@ -171,6 +171,7 @@ describe('recommendation numerical basis through CLI and persistent versions', (
     const { record } = create(model);
     const result = recommend(record.id, 1, advice('plan', [], model.checks.map(check => ({ checkId: check.id, inputId: 'income' }))));
     if (result.recommendationBasis?.status !== 'current') throw new Error('Expected current basis');
+    expect(result.recommendationBasis.boundaries.slice(2).every(item => item.atBoundary === null)).toBe(true);
     expect(result.recommendationBasis.boundaries.map(item => item.result)).toEqual([
       { status: 'available', operator: 'gte', value: 30 },
       { status: 'available', operator: 'eq', value: 30 },
@@ -203,4 +204,49 @@ describe('recommendation numerical basis through CLI and persistent versions', (
     if (saved.recommendationBasis?.status !== 'current') throw new Error('Expected a program basis');
     expect(saved.recommendationBasis.boundaries[0]?.result).toEqual({ status: 'available', operator: 'lte', value: 2104 });
   });
+  it('pairs the departure boundary with all dependent calculations at that point without changing baseline or history', () => {
+    const model = courseModel();
+    const times = new Map([['departure', 510], ['a_commute', 20], ['a_start', 540], ['b_commute', 45], ['b_start', 570]]);
+    model.inputs = model.inputs.map(item => ({ ...item, label: item.label.replace('18:00为0', '当天00:00起'), value: times.get(item.id) ?? item.value }));
+    model.inputs.push({ id: 'padding', label: '额外准备时间', kind: 'fact', value: null, origin: '尚未核清', status: 'available', unit: '分钟' });
+    model.calculations.push(
+      { id: 'b_arrival', label: 'B到场时刻', unit: '分钟', expression: add(input('departure'), input('b_commute')) },
+      { id: 'uncertain_arrival', label: '含未核准备的到场', unit: '分钟', expression: add(add(input('departure'), input('b_commute')), input('padding')) },
+    );
+    const { record } = create(model);
+    const view = recommend(record.id, 1, advice('B', ['b_buffer'], [{ checkId: 'b_time', inputId: 'departure' }]));
+    if (view.recommendationBasis?.status !== 'current') throw new Error('Expected current basis');
+    const point = view.recommendationBasis.boundaries[0]?.atBoundary;
+    expect(point).toMatchObject({ inputId: 'departure', value: 525 });
+    expect(point?.calculations.map(item => item.id)).toEqual(['a_buffer', 'b_buffer', 'b_arrival', 'uncertain_arrival']);
+    expect(point?.calculations.find(item => item.id === 'b_arrival')?.result).toEqual({ status: 'available', value: 570 });
+    expect(point?.calculations.find(item => item.id === 'b_buffer')?.result).toEqual({ status: 'available', value: 0 });
+    expect(point?.calculations.find(item => item.id === 'uncertain_arrival')?.result.status).toBe('unavailable');
+    expect(point?.fixedInputIds).toContain('padding'); expect(point?.fixedInputIds).not.toContain('departure');
+    expect(view.evaluation.calculations.find(item => item.id === 'b_arrival')?.result).toEqual({ status: 'available', value: 555 });
+    expect(view.record.model).toEqual(model); expect(view.record.revision).toBe(2);
+    const before = db.prepare('SELECT * FROM decision_record_versions').all();
+    db.close(); db = new Database(path.join(directory, 'state.sqlite'));
+    expect(command(['read', record.id])).toEqual(view);
+    expect(command(['read', record.id, '--revision', '2'])).toEqual(view);
+    expect(db.prepare('SELECT * FROM decision_record_versions').all()).toEqual(before);
+  });
+
+  it('solves an unknown target only in the boundary point and never revives a withdrawn target', () => {
+    const model = courseModel();
+    model.inputs = model.inputs.map(item => item.id === 'departure' ? { ...item, value: null } : item);
+    const { record } = create(model);
+    const view = recommend(record.id, 1, advice('B', ['b_buffer'], [{ checkId: 'b_time', inputId: 'departure' }]));
+    if (view.recommendationBasis?.status !== 'current') throw new Error('Expected current basis');
+    expect(view.recommendationBasis.boundaries[0]?.atBoundary?.calculations.find(item => item.id === 'b_buffer')?.result).toEqual({ status: 'available', value: 0 });
+    expect(view.evaluation.calculations.find(item => item.id === 'b_buffer')?.result.status).toBe('unavailable');
+    const departure = model.inputs.find(item => item.id === 'departure');
+    if (!departure) throw new Error('Fixture missing departure');
+    update(record.id, 2, { inputs: [{ ...departure, status: 'withdrawn' }] });
+    const changed = recommend(record.id, 3, advice('B', [], [{ checkId: 'b_time', inputId: 'departure' }]));
+    if (changed.recommendationBasis?.status !== 'current') throw new Error('Expected current basis');
+    expect(changed.recommendationBasis.boundaries[0]?.atBoundary).toBeNull();
+    expect(changed.recommendationBasis.boundaries[0]?.result.status).toBe('unavailable');
+  });
+
 });

@@ -65,7 +65,13 @@ export function renderDecisionReport(record: DecisionRecord, expectedRevision: n
       : basis.status === 'needs_review' ? '旧建议待复核，不在本版输入上重建旧建议的数值依据；原值请读对应历史版。'
         : [
           `依据 inputRevision ${basis.basedOnInputRevision}；保持其余输入在本版取值。`,
-          ...basis.boundaries.map(boundary => `- ${text(boundary.checkId)} / ${text(boundary.inputId)}：${text(boundary.text)}`),
+          ...basis.boundaries.flatMap(boundary => [
+            `- ${text(boundary.checkId)} / ${text(boundary.inputId)}：${text(boundary.text)}`,
+            ...(boundary.atBoundary ? [
+              `  边界点（仅此点，其余输入不变）：${text(boundary.inputLabel)} = ${boundary.atBoundary.value}${boundary.unit ? ` ${text(boundary.unit)}` : ''}。`,
+              ...boundary.atBoundary.calculations.map(calculation => `  - ${text(calculation.id)}：${text(calculation.text)}`),
+            ] : []),
+          ]),
         ].join('\n'),
     '## 当前行动（保存声明与报告状态）',
     projected.actionStates.length ? table(['行动id', '计划版', '计划内容（作者声明）', '预计成本', '报告状态', '计划状态 / 接续'], projected.actionStates.map(action => [

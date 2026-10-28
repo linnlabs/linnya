@@ -1,6 +1,6 @@
 {
   "id": "decision",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "name": "决策原型",
   "description": "比较选项、记录依据，并在条件变化后更新计算与建议。",
   "developer": "Linnya",

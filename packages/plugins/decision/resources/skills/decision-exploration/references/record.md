@@ -86,11 +86,11 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 {"optionIds":["buy"],"rationale":"在预算内取得补充资料","changeConditions":"预算或资料价值改变后重新比较","nextAction":"确认资料内容","unresolved":["是否提供新增信息"],"numericBasis":{"calculationIds":["remaining"],"boundaries":[{"checkId":"affordable","inputId":"price"}]}}
 ```
 
-回执的 `recommendationBasis` 分开给出程序计算的余额与价格边界，含等号与越界方向；`fixedInputs` 是其他条件固定在本版的值。交付可引用其中的 `text`，不需自己再反推一遍门槛。它只回答某个已有检查何时失效，是否改选还要结合偏好和其他条件。定性问题省略 numericBasis。
+回执的 `recommendationBasis` 分开给出程序计算的余额与价格边界，含等号与越界方向；`fixedInputs` 是其他条件固定在本版的值。每个可用边界的 `atBoundary` 把目标输入置于边界点，其余输入保持本版值，并给出所有引用该输入的已登记计算（含名称、单位与不可用原因）；`fixedInputIds` 指向同回执record.model.inputs里的固定输入。它仅表示该点，不是整个区间的固定算值，也不改事实或版本。交付可引用其中的 `text`，不需自己再反推一遍门槛。它只回答某个已有检查何时失效，是否改选还要结合偏好和其他条件。定性问题省略 numericBasis。
 
 ## 程序报告原件
 
-执行 `linnya-decision export <id> --expected-revision <n>` 时，Shell使用`requires_write_access: true`，因为它会写当前会话文件。成功回执的artifact包含conversation locator、UTF-8字节sha256和bytes，以及源decision/revision/inputRevision。用read_file读取该locator并在交付中直接链接；原件由程序生成，无需再次抄数。每次导出新文件，旧文件保留，记录和建议均不变。
+执行 `linnya-decision export <id> --expected-revision <n>` 时，Shell使用`requires_write_access: true`，因为它会写当前会话文件。成功回执的artifact包含conversation locator、UTF-8字节sha256和bytes，以及源decision/revision/inputRevision。artifact.markdownLink是本次原件的可粘贴Markdown链接；deliveryNote是程序生成的记录id、revision、inputRevision和链接附注。用read_file读取该locator，交付时粘贴deliveryNote；原件由程序生成，无需再次抄数。每次导出新文件，旧文件保留，记录和建议均不变。
 
 报告分开列登记输入（含来源说明/状态）、所有计算及公式、全部声明检查、当前建议所选程序边界、行动状态，以及未经语义认证的作者原文。输入名称和单位仍属声明；算式正确不证明模型或建议正确。旧建议待复核时，旧边界不在新输入上重建。导出不自动改写错误的作者原文。
 

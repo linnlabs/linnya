@@ -2,6 +2,7 @@ import type { DecisionRecord, DecisionRecommendation, DecisionModel } from '../.
 import type { CheckBoundaryResult } from '../definitions/checkBoundary';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { evaluateDecisionModel } from './evaluateDecisionModel';
+import { collectExpressionInputs, evaluateExpression } from './evaluateDecisionExpression';
 import { collectCheckInputs } from './evaluateDecisionCheck';
 import { deriveCheckBoundary } from './deriveCheckBoundary';
 import { projectOptionRanges } from './projectOptionRanges';
@@ -36,6 +37,26 @@ function boundaryText(label: string, inputLabel: string, unit: string | undefine
   return `保持“${label}”成立：${inputLabel} ${symbol} ${quantity}；${inputLabel} ${inverse} ${quantity}时该项检查不成立（其他输入固定）。`;
 }
 
+/** 同一个边界点重算全部相关算式，避免把基线算值和边界输入拼成一个情景。 */
+function projectBoundaryPoint(model: DecisionModel, inputId: string, value: number) {
+  const pointModel: DecisionModel = {
+    ...model,
+    inputs: model.inputs.map(input => input.id === inputId ? { ...input, value } : input),
+  };
+  return {
+    inputId, value,
+    fixedInputIds: model.inputs.filter(input => input.id !== inputId).map(input => input.id),
+    calculations: model.calculations.flatMap(calculation => {
+      const inputIds = collectExpressionInputs(calculation.expression);
+      if (!inputIds.includes(inputId)) return [];
+      const result = evaluateExpression(calculation.expression, pointModel);
+      return [{ id: calculation.id, label: calculation.label, unit: calculation.unit, inputIds, result,
+        text: result.status === 'available' ? `${calculation.label}：${result.value} ${calculation.unit}`
+          : `${calculation.label}：不可用（${result.reason}）。` }];
+    }),
+  };
+}
+
 export function projectRecommendationBasis(record: DecisionRecord, evaluation: ReturnType<typeof evaluateDecisionModel>) {
   const recommendation = record.recommendation;
   if (!recommendation?.content.numericBasis) return null;
@@ -61,6 +82,7 @@ export function projectRecommendationBasis(record: DecisionRecord, evaluation: R
       return {
         checkId: check.id, inputId: input.id, label: check.label, inputLabel: input.label, unit: input.unit, result,
         fixedInputs: record.model.inputs.filter(item => otherInputIds.includes(item.id)),
+        atBoundary: result.status === 'available' ? projectBoundaryPoint(record.model, input.id, result.value) : null,
         text: boundaryText(check.label, input.label, input.unit, result),
       };
     }),
