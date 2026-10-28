@@ -1,8 +1,8 @@
-import type { WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
+import type { NavigationScope } from '@/app/navigation';
 import {
-  areWorkspaceScopesEqual,
-  useWorkspaceScopeStore,
-} from '../../../../shared/stores/workspaceScopeStore';
+  areNavigationScopesEqual,
+  useNavigationScope,
+} from '@/app/navigation';
 import { useConversationTitleFeature } from '../../features/conversation-title';
 import { useInteractiveRunStore } from '../../features/interactive-run';
 import { useMessageWindowStore } from '../../message-window/store/messageWindowStore';
@@ -17,7 +17,7 @@ import { useHistoryLoaderStore } from '../store/historyLoaderStore';
  */
 export function prepareConversationDeletionCommit(input: {
   readonly conversationId: string;
-  readonly scope: WorkspaceScope;
+  readonly scope: NavigationScope;
 }): () => void {
   const { conversationId, scope } = input;
   const assistantStore = useAssistantStore();
@@ -27,7 +27,7 @@ export function prepareConversationDeletionCommit(input: {
   const interactiveRunStore = useInteractiveRunStore();
   const messageWindowStore = useMessageWindowStore();
   const titleFeature = useConversationTitleFeature();
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
   return () => {
     const isActiveAtCommit = conversationState.activeConversationId === conversationId;
     titleFeature.discardConversation(conversationId);
@@ -60,14 +60,14 @@ export function prepareConversationDeletionCommit(input: {
     if (conversationState.conversations.some(conversation => conversation.id === conversationId)) {
       conversationState.deleteConversation(conversationId);
     }
-    if (workspaceScopeStore.getLastActiveConversation(scope) === conversationId) {
-      workspaceScopeStore.forgetLastActiveConversation(scope);
+    if (navigationScope.getLastActiveConversation(scope) === conversationId) {
+      navigationScope.forgetLastActiveConversation(scope);
     }
     if (
       isActiveAtCommit
-      && areWorkspaceScopesEqual(workspaceScopeStore.currentScope, scope)
+      && areNavigationScopesEqual(navigationScope.currentScope, scope)
     ) {
-      workspaceScopeStore.startDraft(scope);
+      navigationScope.startDraft(scope);
       assistantStore.clearError();
     }
   };

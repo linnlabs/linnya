@@ -19,7 +19,7 @@
 
 import { continueWithToolOutput } from '../assistantService';
 import { useAssistantStore } from '../../store/assistantStore';
-import { useWorkspaceScopeStore } from '../../../../shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import type {
   Conversation,
   InteractiveToolSubmissionMetadata,
@@ -53,7 +53,7 @@ interface ToolCallInfo {
 export function useToolingFlowOrchestrator() {
   // 获取依赖的Store和服务
   const assistantStore = useAssistantStore();
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
   const interactiveRunStore = useInteractiveRunStore();
 
   // 🔥 移除：findLastToolCallByName 猜测函数
@@ -132,9 +132,9 @@ export function useToolingFlowOrchestrator() {
         options.observation,
         options.data,
         {
-          projectId: workspaceScopeStore.currentProjectId ?? undefined,
+          projectId: navigationScope.currentProjectId ?? undefined,
           projectMetadata: (() => {
-            const pid = workspaceScopeStore.currentProjectId;
+            const pid = navigationScope.currentProjectId;
             return typeof pid === 'string' && pid.trim().length > 0 ? { id: pid } : undefined;
           })(),
         },

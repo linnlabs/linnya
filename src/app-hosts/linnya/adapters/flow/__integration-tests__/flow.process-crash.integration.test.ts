@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,7 +14,6 @@ import {
   clearPluginRuntimeStateForTests,
 } from '../../../plugin-registry/pluginRuntimeState';
 import { WriteFileTool } from 'src/tools/workspace/write_file/WriteFileTool';
-import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 
 const conversationId = 'durable-conversation';
 let directory: string;
@@ -52,7 +52,7 @@ async function paused(fixture: Awaited<ReturnType<typeof open>>) {
 describe('real process crash recovery with Audit off', () => {
   it('SIGKILL 后启动重建原运行，受管写入不重复且无需用户消息', async () => {
     const initial = await open([]);
-    const projectId = new WorkspaceService(initial.db).createProject('Recovery');
+    const projectId = createProjectLifecycle(initial.db).create({ name: 'Recovery' });
     await initial.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
     initial.close();
     closeFixtures.pop();

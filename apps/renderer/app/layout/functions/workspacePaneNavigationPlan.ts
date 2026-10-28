@@ -14,9 +14,9 @@ export interface WorkspacePaneNavigationPlan {
  */
 export function resolveDocumentNavigationPlan(
   state: LayoutState,
-  isSameWorkspaceScope: boolean,
+  isSameNavigationScope: boolean,
 ): WorkspacePaneNavigationPlan {
-  if (!isSameWorkspaceScope) {
+  if (!isSameNavigationScope) {
     return {
       placement: 'main-pane',
       closeSecondaryPane: true,
@@ -43,9 +43,9 @@ export function resolveDocumentNavigationPlan(
  */
 export function resolveConversationNavigationPlan(
   state: LayoutState,
-  isSameWorkspaceScope: boolean,
+  isSameNavigationScope: boolean,
 ): WorkspacePaneNavigationPlan {
-  if (!isSameWorkspaceScope) {
+  if (!isSameNavigationScope) {
     return {
       placement: 'main-pane',
       closeSecondaryPane: true,

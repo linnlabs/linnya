@@ -1,6 +1,6 @@
 import type { ConversationClientNoticeCommand } from '@app/schemas';
 import { getRendererPersistStorage } from '@/shared/persistence/rendererPersistStorage';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useClientNoticeStore } from '../store/clientNoticeStore';
 import { createClientNoticeOutbox } from './clientNoticeOutbox';
 import { sendClientNotice } from './clientNoticeApi';
@@ -22,7 +22,7 @@ export function getConversationClientNotices() {
 }
 
 export function currentClientNoticeDraftKey(): string {
-  const scope = useWorkspaceScopeStore();
+  const scope = useNavigationScope();
   // 草稿拥有正式的 workspace scope 和创建时刻；换项目或新建草稿不能吞并旧错误。
   return `${scope.currentScopeKey}:${scope.currentDraft?.createdAt ?? 'active'}`;
 }

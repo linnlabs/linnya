@@ -88,7 +88,7 @@ vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({
   }),
 }));
 
-import { useWorkspaceScopeStore, type WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
+import { useNavigationScope, type NavigationScope } from '@/app/navigation';
 import { createWorkspaceNavigation } from '../../../../app/layout/orchestration/workspaceNavigation';
 import { useConversationTitleCandidateStore } from '../../features/conversation-title/store/conversationTitleCandidateStore';
 import { useInteractiveRunStore } from '../../features/interactive-run';
@@ -128,13 +128,13 @@ function createDeferredPromise<T>(): DeferredPromise<T> {
   };
 }
 
-const assistantScope: WorkspaceScope = { kind: 'linnya-assistant' };
+const assistantScope: NavigationScope = { kind: 'linnya-assistant' };
 
 function seedConversation(
   conversationId: string,
   options: { readonly active: boolean },
 ): AbortController {
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
   const conversationState = useConversationState();
   const assistantStore = useAssistantStore();
   const historyListStore = useHistoryListStore();
@@ -159,7 +159,7 @@ function seedConversation(
   titleCandidateStore.registerCandidate(conversationId);
 
   if (options.active) {
-    workspaceScopeStore.materializeCurrentDraft(conversationId);
+    navigationScope.materializeCurrentDraft(conversationId);
     assistantStore.setSelectedConversation(conversationId);
     useMessageWindowStore().setPreparing(conversationId);
   }
@@ -237,8 +237,8 @@ describe('deleteConversationFromHistory', () => {
     expect(useInteractiveRunStore().snapshotFor('conversation-active')).toBeUndefined();
     expect(runController.signal.aborted).toBe(true);
     expect(useConversationTitleCandidateStore().getCandidate('conversation-active')).toBeNull();
-    expect(useWorkspaceScopeStore().isCurrentScopeDraft).toBe(true);
-    expect(useWorkspaceScopeStore().getLastActiveConversation(assistantScope)).toBeNull();
+    expect(useNavigationScope().isCurrentScopeDraft).toBe(true);
+    expect(useNavigationScope().getLastActiveConversation(assistantScope)).toBeNull();
   });
 
   it('后端失败时不清任何事实，结束 pending 后允许用户重试', async () => {
@@ -329,7 +329,7 @@ describe('deleteConversationFromHistory', () => {
     expect(useMessageWindowStore().conversationId).toBe('conversation-visible');
     expect(useProjectionStore().messageProjectionStates.has('conversation-visible')).toBe(true);
     expect(useInteractiveRunStore().snapshotFor('conversation-visible')).toBeDefined();
-    expect(useWorkspaceScopeStore().isCurrentScopeDraft).toBe(false);
+    expect(useNavigationScope().isCurrentScopeDraft).toBe(false);
     expect(useConversationState().conversations.map(conversation => conversation.id)).toEqual([
       'conversation-visible',
     ]);
@@ -355,7 +355,7 @@ describe('deleteConversationFromHistory', () => {
     assistantStore.setSelectedConversation('conversation-next');
     messageWindowStore.clear();
     messageWindowStore.setPreparing('conversation-next');
-    useWorkspaceScopeStore().rememberLastActiveConversation(assistantScope, 'conversation-next');
+    useNavigationScope().rememberLastActiveConversation(assistantScope, 'conversation-next');
 
     deferredDelete.resolve(true);
     await deletion;
@@ -363,8 +363,8 @@ describe('deleteConversationFromHistory', () => {
     expect(conversationState.activeConversationId).toBe('conversation-next');
     expect(assistantStore.selectedConversationId).toBe('conversation-next');
     expect(messageWindowStore.conversationId).toBe('conversation-next');
-    expect(useWorkspaceScopeStore().isCurrentScopeDraft).toBe(false);
-    expect(useWorkspaceScopeStore().getLastActiveConversation(assistantScope)).toBe('conversation-next');
+    expect(useNavigationScope().isCurrentScopeDraft).toBe(false);
+    expect(useNavigationScope().getLastActiveConversation(assistantScope)).toBe('conversation-next');
   });
 
   it('等待删除期间切换工作区，成功提交不得撤销用户较新的导航', async () => {
@@ -376,9 +376,9 @@ describe('deleteConversationFromHistory', () => {
       scope: assistantScope,
     });
 
-    const workspaceScopeStore = useWorkspaceScopeStore();
-    workspaceScopeStore.enterProject('project-newer-navigation');
-    expect(workspaceScopeStore.currentScope).toEqual({
+    const navigationScope = useNavigationScope();
+    navigationScope.enterProject('project-newer-navigation');
+    expect(navigationScope.currentScope).toEqual({
       kind: 'project',
       projectId: 'project-newer-navigation',
     });
@@ -386,7 +386,7 @@ describe('deleteConversationFromHistory', () => {
     deferredDelete.resolve(true);
     await deletion;
 
-    expect(workspaceScopeStore.currentScope).toEqual({
+    expect(navigationScope.currentScope).toEqual({
       kind: 'project',
       projectId: 'project-newer-navigation',
     });
@@ -454,7 +454,7 @@ describe('deleteConversationFromHistory', () => {
     deferredMetadata.resolve(null);
     await opening;
 
-    expect(useWorkspaceScopeStore().getLastActiveConversation(assistantScope)).toBeNull();
+    expect(useNavigationScope().getLastActiveConversation(assistantScope)).toBeNull();
     expect(useConversationState().conversations.some(
       conversation => conversation.id === conversationId,
     )).toBe(false);

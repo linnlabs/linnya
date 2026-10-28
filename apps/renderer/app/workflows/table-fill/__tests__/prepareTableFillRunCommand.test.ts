@@ -62,7 +62,7 @@ describe('prepareTableFillRunCommand', () => {
 
     const result = await prepareTableFillRunCommand({
       assistantStore: store,
-      workspaceScopeStore: store,
+      navigationScope: store,
       signal: new AbortController().signal,
       createRunId: () => 'run-1',
       createMessageId: () => 'message-1',
@@ -87,7 +87,7 @@ describe('prepareTableFillRunCommand', () => {
 
     const result = await prepareTableFillRunCommand({
       assistantStore: store,
-      workspaceScopeStore: store,
+      navigationScope: store,
       signal: new AbortController().signal,
       createRunId: () => 'run-1',
       createMessageId: () => 'message-1',
@@ -116,7 +116,7 @@ describe('prepareTableFillRunCommand', () => {
 
     const result = await prepareTableFillRunCommand({
       assistantStore: store,
-      workspaceScopeStore: store,
+      navigationScope: store,
       signal: new AbortController().signal,
       createRunId: () => 'run-1',
       createMessageId: () => 'message-1',
@@ -135,7 +135,7 @@ describe('prepareTableFillRunCommand', () => {
 
     await expect(prepareTableFillRunCommand({
       assistantStore: store,
-      workspaceScopeStore: store,
+      navigationScope: store,
       signal: controller.signal,
     })).resolves.toEqual({ ok: false, reason: 'cancelled' });
     expect(store.activeMessages).toHaveLength(0);

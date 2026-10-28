@@ -7,7 +7,7 @@ import type {
   ConversationEmptyComposerPlacement,
   ConversationSurfaceVariant,
 } from '@/domains/conversation/definitions/conversationPresentation';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import WorkspaceConversationSurface from './WorkspaceConversationSurface.vue';
 
 const projectsStoreState = vi.hoisted(() => ({
@@ -130,7 +130,7 @@ describe('WorkspaceConversationSurface assembly', () => {
       presentation: 'side-pane',
       isActive: false,
     });
-    const scopeStore = useWorkspaceScopeStore();
+    const scopeStore = useNavigationScope();
     scopeStore.enterProject('project-1');
     await nextTick();
 

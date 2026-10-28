@@ -1,25 +1,16 @@
+import { PROJECT_SCHEMAS } from '../../../../../domains/projects';
+
 /**
  * @file core.schema.ts
- * @description 定义工作区的核心结构：项目和工作区节点树。
+ * @description 装配项目文档树所需 DDL；项目表的唯一定义由 Project domain 提供。
  * 
  * 这两个表是整个应用数据组织的基础：
- * - projects: 顶层容器，类似于 IDE 的"项目"概念
+ * - projects: 数据工作区内的业务组织单位，不代表目录或数据库
  * - workspace_nodes: 统一的文件/文件夹树，支持多种内容类型
  */
 
 export const CORE_SCHEMAS = [
-  // 项目表 (顶层容器)
-  `CREATE TABLE IF NOT EXISTS projects (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    description TEXT,
-    icon TEXT,
-    system_role TEXT,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    metadata_json TEXT,
-    deleted_at INTEGER
-  )`,
+  ...PROJECT_SCHEMAS,
 
   // 统一的工作区节点表 (项目中的导航树)
   `CREATE TABLE IF NOT EXISTS workspace_nodes (
@@ -42,9 +33,6 @@ export const CORE_SCHEMAS = [
   )`,
 
   // 索引优化
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_active_system_role_unique
-    ON projects(system_role)
-    WHERE deleted_at IS NULL AND system_role IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS idx_workspace_nodes_project ON workspace_nodes(project_id, deleted_at)`,
   `CREATE INDEX IF NOT EXISTS idx_workspace_nodes_parent ON workspace_nodes(parent_id, deleted_at)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_workspace_nodes_active_sibling_name_unique

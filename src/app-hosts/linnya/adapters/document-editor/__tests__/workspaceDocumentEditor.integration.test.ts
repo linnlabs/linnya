@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import type { WorkspaceMutationEvent } from '@app/schemas';
@@ -96,7 +97,7 @@ describe('Workspace document Editor provider integration', () => {
     try {
       const events: WorkspaceMutationEvent[] = [];
       const workspaceService = new WorkspaceService(db);
-      const projectId = workspaceService.createProject('Editor 集成测试');
+      const projectId = createProjectLifecycle(db).create({ name: 'Editor 集成测试' });
       const documentId = workspaceService.createDocument(
         projectId,
         '正文.md',
@@ -160,7 +161,7 @@ describe('Workspace document Editor provider integration', () => {
     const db = createDb();
     try {
       const workspaceService = new WorkspaceService(db);
-      const projectId = workspaceService.createProject('未知类型测试');
+      const projectId = createProjectLifecycle(db).create({ name: '未知类型测试' });
       const documentId = workspaceService.createDocument(
         projectId,
         '未知文档',

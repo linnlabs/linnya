@@ -1,7 +1,7 @@
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { conversationImageAttachmentApi } from './conversationImageAttachmentApi';
 import { createConversationImageAttachmentDraftController } from './conversationImageAttachmentDraftController';
-import { bindConversationImageDraftsToWorkspaceScope } from './bindConversationImageDraftsToWorkspaceScope';
+import { bindConversationImageDraftsToNavigationScope } from './bindConversationImageDraftsToNavigationScope';
 import { useConversationImageAttachmentDraftStore } from '../store/conversationImageAttachmentDraftStore';
 
 let productionController: ReturnType<typeof createConversationImageAttachmentDraftController> | null = null;
@@ -24,6 +24,6 @@ export function useConversationImageAttachmentDrafts() {
       createClientId: () => globalThis.crypto.randomUUID(),
   });
   productionController = controller;
-  bindConversationImageDraftsToWorkspaceScope(controller, useWorkspaceScopeStore());
+  bindConversationImageDraftsToNavigationScope(controller, useNavigationScope());
   return { store, controller };
 }

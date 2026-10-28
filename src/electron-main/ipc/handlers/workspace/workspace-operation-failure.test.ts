@@ -1,10 +1,9 @@
+import { DefaultProjectDeleteBlockedError, ProjectNameConflictError } from 'src/domains/projects';
 import { describe, expect, it } from 'vitest';
 import {
-  WorkspaceDefaultProjectDeleteBlockedError,
   WorkspaceNodeMoveCycleError,
   WorkspaceNodeNotFoundError,
   WorkspaceNodeTransferSameProjectError,
-  WorkspaceProjectNameConflictError,
   WorkspaceSiblingNameConflictError,
 } from '../../../../features/workspace/definitions/workspaceErrors';
 import { createWorkspaceOperationFailure } from './workspace-operation-failure';
@@ -12,7 +11,7 @@ import { createWorkspaceOperationFailure } from './workspace-operation-failure';
 describe('createWorkspaceOperationFailure', () => {
   it('maps project name conflicts to a structured workspace message', () => {
     const result = createWorkspaceOperationFailure(
-      new WorkspaceProjectNameConflictError('Demo'),
+      new ProjectNameConflictError('Demo'),
       'workspace.project.operation.createFailed',
     );
 
@@ -44,7 +43,7 @@ describe('createWorkspaceOperationFailure', () => {
     ).userMessage?.key).toBe('workspace.sidebar.node.notFound');
 
     expect(createWorkspaceOperationFailure(
-      new WorkspaceDefaultProjectDeleteBlockedError('project-1'),
+      new DefaultProjectDeleteBlockedError('project-1'),
       'workspace.project.operation.deleteFailed',
     ).userMessage?.key).toBe('workspace.project.operation.defaultProjectDeleteBlocked');
   });

@@ -10,7 +10,7 @@
  */
 
 import { syncConversationMetadataToHistory } from './syncConversationMetadataToHistory';
-import type { WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
+import type { NavigationScope } from '@/app/navigation';
 
 export interface ScheduleSyncConversationToHistoryOptions {
   /** 首次延迟（ms），给后端写入 conversations 元数据留余量 */
@@ -20,7 +20,7 @@ export interface ScheduleSyncConversationToHistoryOptions {
   /** 每次重试间隔（ms） */
   retryIntervalMs?: number;
   /** 当前对话所属 scope，用于后端 metadata 暂时缺 project_id 时保持前端归属稳定 */
-  scope?: WorkspaceScope;
+  scope?: NavigationScope;
   /** 历史列表展示用时间锚点，当前以用户发送时间为准 */
   lastEventAtOverride?: number;
   /**

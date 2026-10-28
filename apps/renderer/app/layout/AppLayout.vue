@@ -128,7 +128,7 @@ import {
   useFontSmoothingManager,
   useSidebarAnimationEvents,
   useCssVariables,
-  useStartupWorkspaceScope,
+  useStartupNavigationScope,
   useSidebarSelectionVisibility,
 } from './composables';
 import { getDocumentTypeByActiveType } from '@/app/plugins/registry';
@@ -177,7 +177,7 @@ const notificationReservedTrailingWidth = computed(() => {
 useGlobalKeyboardShortcuts();
 useThemeManager();
 useFontSmoothingManager();
-useStartupWorkspaceScope();
+useStartupNavigationScope();
 useSidebarSelectionVisibility();
 const { emitSidebarTransitionEnd } = useSidebarAnimationEvents();
 const { contentAreaStyle } = useCssVariables();

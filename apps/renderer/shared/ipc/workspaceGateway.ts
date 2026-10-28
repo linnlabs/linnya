@@ -39,20 +39,6 @@ export interface RecentDocumentDTO {
   type: string;
 }
 
-export type WorkspaceProjectSystemRole = 'default';
-
-export interface WorkspaceProjectDTO {
-  id: string;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  system_role: WorkspaceProjectSystemRole | null;
-  created_at: number;
-  updated_at: number;
-  deleted_at: number | null;
-  can_delete: boolean;
-}
-
 export interface WorkspaceNodeDTO {
   id: string;
   inode?: string;
@@ -133,13 +119,6 @@ export type { OperationResult } from '@app/schemas';
  * 命名与 src/electron-main/ipc/handlers/workspace-ipc.ts 中的 handle 名称对应
  */
 export interface IWorkspaceGateway {
-  // 项目管理
-  'create-project'(args: { name: string; description?: string }): Promise<OperationResult<{ projectId: string }>>;
-  'ensure-default-project'(): Promise<OperationResult<{ projectId: string }>>;
-  'list-projects'(): Promise<OperationResult<{ projects: WorkspaceProjectDTO[] }>>;
-  'update-project'(args: { projectId: string; name?: string; description?: string }): Promise<OperationResult<void>>;
-  'delete-project'(args: { projectId: string }): Promise<OperationResult<void>>;
-
   // 节点管理 (文件树)
   'list-nodes'(args: { projectId: string; parentId?: string | null }): Promise<OperationResult<WorkspaceNodeDTO[]>>;
   'list-vfs-nodes'(args: {
@@ -226,24 +205,6 @@ class WorkspaceGatewayImpl implements IWorkspaceGateway {
     }
   }
 
-  // 项目管理
-  'create-project'(args: { name: string; description?: string }): Promise<OperationResult<{ projectId: string }>> {
-    return this.invoke('create-project', args);
-  }
-  'ensure-default-project'(): Promise<OperationResult<{ projectId: string }>> {
-    return this.invoke('ensure-default-project');
-  }
-  'list-projects'(): Promise<OperationResult<{ projects: WorkspaceProjectDTO[] }>> {
-    return this.invoke('list-projects');
-  }
-  'update-project'(args: { projectId: string; name?: string; description?: string }): Promise<OperationResult<void>> {
-    return this.invoke('update-project', args);
-  }
-  'delete-project'(args: { projectId: string }): Promise<OperationResult<void>> {
-    return this.invoke('delete-project', args);
-  }
-
-  // 节点管理
   'list-nodes'(args: { projectId: string; parentId?: string | null }): Promise<OperationResult<WorkspaceNodeDTO[]>> {
     return this.invoke('list-nodes', args);
   }

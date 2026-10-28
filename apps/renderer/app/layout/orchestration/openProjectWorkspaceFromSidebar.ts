@@ -3,10 +3,10 @@ import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeSt
 import { startDraftConversation } from '@/domains/conversation/services/orchestration/startDraftConversation';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import {
-  areWorkspaceScopesEqual,
-  useWorkspaceScopeStore,
-  type ProjectWorkspaceScope,
-} from '@/shared/stores/workspaceScopeStore';
+  areNavigationScopesEqual,
+  useNavigationScope,
+  type ProjectNavigationScope,
+} from '@/app/navigation';
 
 /**
  * 从侧边栏进入项目工作区。
@@ -16,10 +16,10 @@ import {
  * 从而保留上一个项目的 activeDocument。
  */
 export async function openProjectWorkspaceFromSidebar(projectId: string): Promise<void> {
-  const workspaceScopeStore = useWorkspaceScopeStore();
-  const targetScope: ProjectWorkspaceScope = { kind: 'project', projectId };
-  const isSameProjectScope = areWorkspaceScopesEqual(
-    workspaceScopeStore.currentScope,
+  const navigationScope = useNavigationScope();
+  const targetScope: ProjectNavigationScope = { kind: 'project', projectId };
+  const isSameProjectScope = areNavigationScopesEqual(
+    navigationScope.currentScope,
     targetScope,
   );
 

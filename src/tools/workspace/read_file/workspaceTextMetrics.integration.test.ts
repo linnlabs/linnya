@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   WorkspaceEditFileResultSchema,
@@ -31,7 +32,7 @@ beforeEach(() => {
   context = {
     databaseService: database,
     workspaceService,
-    workspaceProjectId: workspaceService.createProject('Text metric lifecycle'),
+    workspaceProjectId: createProjectLifecycle(database.getDb()).create({ name: 'Text metric lifecycle' }),
     conversationId: 'text-metric-conversation',
   };
   attachCitationSourceResolver(context, {

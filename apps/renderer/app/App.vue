@@ -41,7 +41,7 @@ import { useWorkspaceVfsRuntimeContextSync } from './layout/composables/useWorks
 import { useWorkspaceMutationSubscription } from './layout/composables/useWorkspaceMutationSubscription';
 import { ensureBuiltinRendererPluginsRegistered } from './plugins/builtin';
 import { useEnabledPluginsStore } from './plugins/enabledPluginsStore';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useActiveDocumentPluginAvailabilityGuard } from './plugins/useActiveDocumentPluginAvailabilityGuard';
 import {
   getRuntimeRendererPluginLoaderDiagnostics,
@@ -79,7 +79,7 @@ const unsubscribePluginChanges = enabledPluginsStore.subscribeToBackendChanges({
     });
     await loadRuntimeRendererPlugins();
     await syncFileManagerHandlers(enabledPluginsStore.enabledPluginIds);
-    const currentProjectId = useWorkspaceScopeStore().currentProjectId;
+    const currentProjectId = useNavigationScope().currentProjectId;
     if (layoutStore.state.sidebarMode === 'files' && currentProjectId) {
       await workspaceNodeDeletion.ensureProjectPageSelection(currentProjectId);
     }
@@ -147,7 +147,7 @@ onMounted(async () => {
       loader: getRuntimeRendererPluginLoaderDiagnostics(),
     });
     await syncFileManagerHandlers(enabledPluginsStore.enabledPluginIds);
-    const currentProjectId = useWorkspaceScopeStore().currentProjectId;
+    const currentProjectId = useNavigationScope().currentProjectId;
     if (layoutStore.state.sidebarMode === 'files' && currentProjectId) {
       await workspaceNodeDeletion.ensureProjectPageSelection(currentProjectId);
     }

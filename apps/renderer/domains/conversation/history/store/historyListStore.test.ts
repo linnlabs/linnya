@@ -22,7 +22,7 @@ vi.mock('../services/historyApiService', () => ({
   },
 }));
 
-import { useWorkspaceScopeStore } from '../../../../shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import type { ConversationListResponse } from '../services/historyApiService';
 import { useHistoryListStore } from './historyListStore';
 
@@ -37,7 +37,7 @@ describe('historyListStore scope loading', () => {
   });
 
   it('Linnya 助手 scope 加载无项目历史', async () => {
-    const scopeStore = useWorkspaceScopeStore();
+    const scopeStore = useNavigationScope();
     const listStore = useHistoryListStore();
     scopeStore.startDraft({ kind: 'linnya-assistant' });
 
@@ -49,7 +49,7 @@ describe('historyListStore scope loading', () => {
   });
 
   it('项目 scope 加载对应项目历史', async () => {
-    const scopeStore = useWorkspaceScopeStore();
+    const scopeStore = useNavigationScope();
     const listStore = useHistoryListStore();
     scopeStore.startDraft({ kind: 'project', projectId: 'project-1' });
 

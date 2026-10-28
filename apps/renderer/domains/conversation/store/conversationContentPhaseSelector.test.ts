@@ -9,16 +9,16 @@ import type { WindowMessageRow } from '../message-window/definitions/messageWind
 import type { BaseMessage } from '../types';
 import { createTestAnswerMessage } from '../testing/functions/createConversationTestMessage';
 
-vi.mock('@/shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({
     currentScope: { kind: 'linnya-assistant' },
     currentProjectId: null,
     rememberLastActiveConversation: vi.fn(),
   }),
 }));
 
-vi.mock('../../../shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({
     currentScope: { kind: 'linnya-assistant' },
     currentProjectId: null,
     rememberLastActiveConversation: vi.fn(),

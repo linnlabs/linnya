@@ -14,8 +14,8 @@ vi.mock('../features/interactive-run/orchestration/interactiveRunApi', () => ({
   fetchActiveForegroundRun: vi.fn(),
 }));
 
-vi.mock('../../../shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({
     currentScope: { kind: 'linnya-assistant' },
     currentProjectId: null,
     rememberLastActiveConversation: vi.fn(),

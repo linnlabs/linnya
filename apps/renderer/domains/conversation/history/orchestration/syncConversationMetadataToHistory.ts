@@ -1,12 +1,12 @@
 import { useHistoryListStore } from '../store/historyListStore';
 import { historyApiService, type ConversationListItem } from '../services/historyApiService';
-import type { WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
+import type { NavigationScope } from '@/app/navigation';
 
 export interface SyncConversationMetadataToHistoryOptions {
   initialDelayMs?: number;
   maxAttempts?: number;
   retryIntervalMs?: number;
-  scope?: WorkspaceScope;
+  scope?: NavigationScope;
   minimumLastEventAt?: number;
   lastEventAtOverride?: number;
   optimisticTouch?: boolean;
@@ -60,7 +60,7 @@ function clampMetadataLastEventAt(
 
 function applyScopeToMetadata(
   metadata: ConversationListItem,
-  scope: WorkspaceScope | undefined,
+  scope: NavigationScope | undefined,
 ): ConversationListItem {
   if (!scope) return metadata;
 

@@ -91,6 +91,7 @@ Conversation Control 协议 4 的 `audit.llm_responses` 是既有审计的安全
 | `src/document-view.ts` | 文档元数据、块引用、文本视图和窗口裁剪合同 |
 | `src/citation.ts` | KB/Web 等引用来源、引用元数据与上下文 DTO |
 | `src/plugins/` | 插件 manifest、能力声明、发布产物和商店共享合同 |
+| `src/project.ts` | Project 记录、输入与 Desktop 响应合同；不包含物理 Workspace 根或界面导航状态 |
 | `src/workspace-mutation-events.ts` | Workspace 节点与文档变更事件 |
 | `src/commands/` | Shell command identity、owner binding 与 process control 的严格版本化 DTO |
 | `src/model-inference/` | language、embedding、reranking 的严格 typed route |

@@ -5,7 +5,7 @@ import type {
   StartConversationSubrunsRequest,
 } from '@plugin/renderer/conversationSubrunInvocationPort';
 import { generateMessageId } from '@shared/utils/idUtils';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { ensureHistoryWindowTailForBottom } from '@/domains/conversation/history';
 import { invokeAssistant } from '@/domains/conversation/services/assistantService';
@@ -126,13 +126,13 @@ export function createConversationSubrunInvocationPort(): RendererConversationSu
       });
       const runId = generateMessageId();
       const controller = new AbortController();
-      const workspaceScopeStore = useWorkspaceScopeStore();
+      const navigationScope = useNavigationScope();
 
       const prepared = prepareConversationSubrunRunCommand({
         runId,
         userInputExtension: request.messageExtension,
         assistantStore,
-        workspaceScopeStore,
+        navigationScope,
         signal: controller.signal,
         resolveMissingConversationMessage: () => resolveCurrentConversationMessage(
           'conversation.flow.subrun.noConversation',
@@ -157,7 +157,7 @@ export function createConversationSubrunInvocationPort(): RendererConversationSu
           orchestrateCommittedConversationTitle({
             event,
             wasNewConversation: prepared.run.wasNewConversation,
-            scope: workspaceScopeStore.currentScope,
+            scope: navigationScope.currentScope,
             onHistorySynced: () => assistantStore.setSelectedConversation(
               prepared.run.conversationId,
             ),

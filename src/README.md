@@ -49,6 +49,8 @@ HTTP request
 - 持久化：`src/app-hosts/linnya/adapters/persistence/event-store/README.md`
 - 通用 Runtime：[独立 Linnkit 仓的 `src/runtime-kernel/README.md`](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/README.md)
 
+Project 的记录、校验和生命周期由 [`domains/projects`](./domains/projects/README.md) 拥有；[`features/workspace`](./features/workspace/README.md) 拥有项目文档树与 VFS。数据工作区物理根属于 runtime-paths，三个边界不能因历史 workspace 前缀合并。
+
 ## 3. 事实、存储与 UI read model
 
 `RoutedRuntimeEvent` 是 Agent 执行事实。Linnya Host 将同一事实经 EventBus 分发给持久化和实时传输，不能分别生产“实时版本”和“落盘版本”。

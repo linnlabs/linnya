@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -5,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceEditFileResultSchema, WorkspaceWriteFileResultSchema } from '@app/schemas';
 import { MarkdownDocumentService } from 'src/domains/markdown';
 import type { ScriptedToolCall } from '@linnlabs/linnkit/testkit';
-import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import { readTail } from '../../persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import type { ConversationRealtimeEvent } from '../flow.schemas';
@@ -66,7 +66,7 @@ describe('file edit feedback through durable Flow and the next model request', (
     let documentId: string | undefined;
     const live: ConversationRealtimeEvent[] = [];
     const conversationId = 'normalized-edit-feedback';
-    const projectId = new WorkspaceService(fixture.db).createProject('Normalized edit feedback');
+    const projectId = createProjectLifecycle(fixture.db).create({ name: 'Normalized edit feedback' });
     await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
     await fixture.flow.next({
       conversation_id: conversationId,
@@ -164,7 +164,7 @@ describe('file edit feedback through durable Flow and the next model request', (
       { contentChunks: ['编辑已执行，最后两项原文未命中。'] },
     ]);
     const conversationId = `file-edit-batch-${count}`;
-    const projectId = new WorkspaceService(fixture.db).createProject('Batch feedback');
+    const projectId = createProjectLifecycle(fixture.db).create({ name: 'Batch feedback' });
     await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
     const live: ConversationRealtimeEvent[] = [];
     await fixture.flow.next(
@@ -280,7 +280,7 @@ describe('file edit feedback through durable Flow and the next model request', (
       { contentChunks: ['已完成并回读。'] },
     ]);
     const conversationId = 'file-edit-feedback';
-    const projectId = new WorkspaceService(fixture.db).createProject('Edit feedback');
+    const projectId = createProjectLifecycle(fixture.db).create({ name: 'Edit feedback' });
     await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
     await fixture.flow.next(
       {

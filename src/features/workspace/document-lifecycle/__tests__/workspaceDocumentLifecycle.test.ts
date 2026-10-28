@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { createProjectLifecycle } from 'src/domains/projects';
 import { describe, expect, it } from 'vitest';
 import type { WorkspaceMutationEvent } from '@app/schemas';
 import { DatabaseService } from '../../../../electron-main/services/database';
@@ -81,7 +82,7 @@ async function flushMutationQueue(): Promise<void> {
 }
 
 function createProject(db: Database.Database, name = '测试项目'): string {
-  return new WorkspaceService(db).createProject(name);
+  return createProjectLifecycle(db).create({ name });
 }
 
 function countActiveNodesByName(db: Database.Database, name: string): number {

@@ -29,6 +29,7 @@ export interface WorkspaceVfsNode {
   readonly id: string;
   readonly inode: string;
   readonly path: string;
+  /** 节点的项目归属；不能用 Runtime workspaceRoot 或界面导航身份代替。 */
   readonly project_id: string | null;
   readonly parent_id: string | null;
   readonly type: WorkspaceVfsNodeType;

@@ -1,6 +1,6 @@
 import { onUnmounted, ref, watch } from 'vue';
 import type { ConversationAttachmentRef } from '@app/schemas';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import type { ConversationImagePreviewItem } from '../definitions/conversationImagePreview';
 import { conversationImagePreviewApi } from './conversationImagePreviewApi';
 import { createConversationImagePreviewController } from './conversationImagePreviewController';
@@ -22,7 +22,7 @@ export function useConversationImagePreviews(
     () => controller.setAttachments(readAttachments()),
     { immediate: true },
   );
-  const stopScopeWatch = useWorkspaceScopeStore().onScopeWillChange(() => controller.dispose());
+  const stopScopeWatch = useNavigationScope().onScopeWillChange(() => controller.dispose());
 
   onUnmounted(() => {
     stopAttachmentWatch();

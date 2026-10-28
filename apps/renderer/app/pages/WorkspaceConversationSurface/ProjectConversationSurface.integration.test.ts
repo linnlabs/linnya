@@ -11,8 +11,8 @@ const dependencies = vi.hoisted(() => ({
   openProjectOverview: vi.fn(),
 }));
 
-vi.mock('@/shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({
     currentProjectId: 'project-1',
   }),
 }));

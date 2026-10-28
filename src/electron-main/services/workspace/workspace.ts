@@ -2,7 +2,7 @@
  * @file workspace.ts
  * @description WorkspaceService - Electron 与插件调用方的 Workspace 兼容门面。
  *
- * 节点结构能力保留在门面内；项目生命周期、文档活动和项目统计委托给独立 feature。
+ * 本门面只处理项目文档树、文档活动和文档统计；项目生命周期由 domains/projects 独立拥有。
  * 它不读取文档内部内容，节点职责包括：
  * - 创建、重命名、移动、删除节点
  * - 列出目录内容
@@ -36,28 +36,11 @@ import {
   listRecentWorkspaceDocuments,
   notifyWorkspaceDocumentOpened,
 } from '../../../features/workspace/document-activity/orchestration/workspaceDocumentActivity';
-import type { WorkspaceProject } from '../../../features/workspace/project-lifecycle/definitions/workspaceProject';
-import {
-  createWorkspaceProject,
-  deleteWorkspaceProject,
-  ensureDefaultWorkspaceProject,
-  listWorkspaceProjects,
-  updateWorkspaceProject,
-} from '../../../features/workspace/project-lifecycle/orchestration/workspaceProjectLifecycle';
 import type { ProjectCharStats } from '../../../features/workspace/project-stats/definitions/workspaceProjectStats';
 import { readWorkspaceProjectCharStats } from '../../../features/workspace/project-stats/orchestration/readWorkspaceProjectCharStats';
 
 export type { WorkspaceNode } from '../../../features/workspace/definitions/workspaceNode';
 export type { RecentDocumentInfo } from '../../../features/workspace/document-activity/definitions/workspaceDocumentActivity';
-export {
-  DEFAULT_PROJECT_DESCRIPTION,
-  DEFAULT_PROJECT_NAME,
-  DEFAULT_PROJECT_SYSTEM_ROLE,
-} from '../../../features/workspace/project-lifecycle/definitions/workspaceProject';
-export type {
-  ProjectSystemRole,
-  WorkspaceProject,
-} from '../../../features/workspace/project-lifecycle/definitions/workspaceProject';
 export type { ProjectCharStats } from '../../../features/workspace/project-stats/definitions/workspaceProjectStats';
 
 export interface WorkspaceServiceOptions {
@@ -420,38 +403,6 @@ export class WorkspaceService {
   }
 
   /**
-   * 创建普通用户项目
-   */
-  createProject(name: string, description?: string): string {
-    return createWorkspaceProject({ db: this.db, name, description });
-  }
-
-  /**
-   * 确保默认项目存在。
-   *
-   * 中文说明：
-   * - 默认项目是系统项目，身份由 projects.system_role 表达，不再依赖中文名称；
-   * - 这个入口只给启动/空库初始化使用，普通创建项目不能伪造 system_role。
-   */
-  ensureDefaultProject(): string {
-    return ensureDefaultWorkspaceProject(this.db);
-  }
-
-  /**
-   * 更新项目信息
-   */
-  updateProject(projectId: string, updates: { name?: string; description?: string }): void {
-    updateWorkspaceProject({ db: this.db, projectId, updates });
-  }
-
-  /**
-   * 获取所有未删除的项目
-   */
-  getAllProjects(): WorkspaceProject[] {
-    return listWorkspaceProjects(this.db);
-  }
-
-  /**
    * 创建文件夹（便捷方法）
    */
   createFolder(projectId: string, name: string, parentId: string | null = null): string {
@@ -482,15 +433,4 @@ export class WorkspaceService {
     return node.id;
   }
 
-  /**
-   * 永久删除普通项目及其所有子节点
-   * 
-   * 实现说明：
-   * - 直接从 projects 表中删除记录
-   * - 依赖外键 ON DELETE CASCADE 自动删除 workspace_nodes 及其关联的文档等数据
-   * - 使用事务确保原子性
-   */
-  deleteProject(projectId: string): void {
-    deleteWorkspaceProject({ db: this.db, projectId });
-  }
 }

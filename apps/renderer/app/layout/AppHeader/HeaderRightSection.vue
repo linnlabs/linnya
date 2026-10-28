@@ -347,7 +347,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type CSSProperties } from 'vue';
 import { useUIStore } from '@/shared/stores/ui';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useFileStore } from '@/shared/stores/file';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { useSidebarLayoutWidth } from '@/app/layout/composables/useSidebarLayoutWidth';
@@ -397,7 +397,7 @@ const layoutStore = useLayoutStore();
 const assistantStore = useAssistantStore();
 const subrunDetailScope = useSubrunDetailSurfaceScope();
 const navigation = getWorkspaceNavigationPort();
-const workspaceScopeStore = useWorkspaceScopeStore();
+const navigationScope = useNavigationScope();
 const projectsStore = useWorkspaceProjectsStore();
 const { sidebarOccupiedWidth } = useSidebarLayoutWidth();
 const {
@@ -418,7 +418,7 @@ const { message: historyMessage } = useHistoryMessages();
 const pluginDocumentActionMenu = useDocumentActionMenu(activeDocumentType);
 watch([activeDocumentId, historyPreviewComponent], () => { showDocumentHistory.value = false; showDocMenu.value = false; });
 const canShowProjectConversationHistory = computed(() => {
-  return scene.value.kind === 'workspace' && workspaceScopeStore.currentProjectId !== null;
+  return scene.value.kind === 'workspace' && navigationScope.currentProjectId !== null;
 });
 const isWorkspaceRightPaneVisible = computed(() => {
   return workspacePaneGeometry.value.rightPaneOccupiedWidth > 0;
@@ -552,7 +552,7 @@ const conversationBreadcrumbSegments = computed(() => {
 
 const setupBreadcrumbSegments = computed(() => {
   if (scene.value.kind !== 'project-setup') return [];
-  const projectId = workspaceScopeStore.currentProjectId;
+  const projectId = navigationScope.currentProjectId;
   const project = projectsStore.projects.find((p) => p.id === projectId);
   const name = project?.name || projectsStore.activeProject?.name || layoutMessage('layout.header.untitledProject');
   return [layoutMessage('layout.header.projectSetup'), name];
@@ -698,17 +698,17 @@ const handleOpenProjectHistory = () => {
 const handleStartNewConversation = () => {
   activeHeaderTool.value = null;
   showHistoryDropdown.value = false;
-  startDraftConversation(workspaceScopeStore.currentScope);
+  startDraftConversation(navigationScope.currentScope);
 };
 
 const handleViewAllHistory = async () => {
   showHistoryDropdown.value = false;
   activeHeaderTool.value = null;
 
-  const projectId = workspaceScopeStore.currentProjectId;
+  const projectId = navigationScope.currentProjectId;
   try {
     await revealSidebarConversationHistory(
-      projectId ? { kind: 'project', projectId } : workspaceScopeStore.currentScope,
+      projectId ? { kind: 'project', projectId } : navigationScope.currentScope,
     );
   } catch (error) {
     console.warn('[HeaderRightSection] 跳转左侧历史对话已取消：', error);

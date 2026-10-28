@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
-import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
@@ -106,7 +106,7 @@ async function continueRoot(fixture: Fixture) {
   return root;
 }
 async function project(fixture: Fixture) {
-  const projectId = new WorkspaceService(fixture.db).createProject('Synthetic research');
+  const projectId = createProjectLifecycle(fixture.db).create({ name: 'Synthetic research' });
   await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
   return projectId;
 }

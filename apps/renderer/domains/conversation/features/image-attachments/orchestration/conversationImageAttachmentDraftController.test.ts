@@ -8,7 +8,7 @@ import { createConversationImageDraftSubmissionSnapshot } from '../functions/con
 import { useConversationImageAttachmentDraftStore } from '../store/conversationImageAttachmentDraftStore';
 import type { ConversationImageAttachmentApiPort } from './conversationImageAttachmentApi';
 import { createConversationImageAttachmentDraftController } from './conversationImageAttachmentDraftController';
-import { bindConversationImageDraftsToWorkspaceScope } from './bindConversationImageDraftsToWorkspaceScope';
+import { bindConversationImageDraftsToNavigationScope } from './bindConversationImageDraftsToNavigationScope';
 
 interface Deferred<T> {
   readonly promise: Promise<T>;
@@ -215,7 +215,7 @@ describe('conversation image attachment draft controller', () => {
   it('workspace scopeWillChange 会立即清理 feature 草稿并回收晚到响应，解绑后不再响应', async () => {
     const harness = createHarness();
     const handlers = new Set<() => void>();
-    const unbind = bindConversationImageDraftsToWorkspaceScope(harness.controller, {
+    const unbind = bindConversationImageDraftsToNavigationScope(harness.controller, {
       onScopeWillChange(handler) {
         handlers.add(handler);
         return () => handlers.delete(handler);

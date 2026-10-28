@@ -33,8 +33,8 @@ vi.mock('@/shared/ipc/workspaceGateway', () => ({
   },
 }));
 
-vi.mock('@/shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({ currentProjectId: null }),
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({ currentProjectId: null }),
 }));
 
 vi.mock('@/domains/workspace/store', () => ({

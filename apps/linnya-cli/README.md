@@ -20,6 +20,8 @@ Server 实现。两种入口都不让 CLI 直读 SQLite，也不创建每 Agent 
 `research_run`。该参数仅映射研究入口，不开放任意工具；显式范围使用新会话，拒绝未绑定的历史/附件/编辑器上下文。普通入口交接可见历史和片段，但不把它们视为版本绑定的全文。材料范围通过研究系统提示和具体子任务请求传递，不是文件或网络权限沙箱；新研究不再使用专用提交/完成工具。流程与限制见
 [Research 用例](../../src/app-hosts/linnya/application/research/README.md)。
 
+Workspace 是整套数据的运行边界，可包含多个 Project。`runtime start --workspace` 接受物理数据根；普通命令先通过连接描述选中 Backend，再用 `--project` 选择项目。`workspace:/` 是指定项目内的文档路径，不是宿主目录。正式定义见[产品模型](../../docs/product-model-overview.md#20-workspaceproject-与导航上下文)。
+
 ## 1. 运行前提
 
 - 仓库开发使用项目声明的 Node.js 24；App

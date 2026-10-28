@@ -201,3 +201,4 @@ export * from './tools/complete-research';
 export * from './markdown-image';
 
 export * from './skills';
+export * from './project';

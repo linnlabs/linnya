@@ -1,3 +1,4 @@
+import { DefaultProjectDeleteBlockedError, ProjectNameConflictError, ProjectNotFoundError } from 'src/domains/projects';
 import {
   createOperationFailure,
   createUserFacingMessage,
@@ -5,7 +6,6 @@ import {
   type UserFacingMessageParams,
 } from '@app/schemas';
 import {
-  WorkspaceDefaultProjectDeleteBlockedError,
   WorkspaceDocumentLifecycleProviderMissingError,
   WorkspaceFolderDuplicateUnsupportedError,
   WorkspaceNodeMissingProjectError,
@@ -16,8 +16,6 @@ import {
   WorkspaceNodeParentProjectMismatchError,
   WorkspaceNodeSubtreeProjectMismatchError,
   WorkspaceNodeTransferSameProjectError,
-  WorkspaceProjectNameConflictError,
-  WorkspaceProjectNotFoundError,
   WorkspaceSiblingNameConflictError,
   WorkspaceSourceDocumentMissingError,
 } from '../../../../features/workspace/definitions/workspaceErrors';
@@ -58,17 +56,17 @@ export function createWorkspaceOperationFailure(
   error: unknown,
   fallbackKey: WorkspaceOperationFallbackKey,
 ): OperationFailure {
-  if (error instanceof WorkspaceProjectNameConflictError) {
+  if (error instanceof ProjectNameConflictError) {
     return failure(error, 'workspace.project.operation.duplicateName', {
       projectName: error.projectName,
     });
   }
 
-  if (error instanceof WorkspaceProjectNotFoundError) {
+  if (error instanceof ProjectNotFoundError) {
     return failure(error, 'workspace.project.operation.projectNotFound');
   }
 
-  if (error instanceof WorkspaceDefaultProjectDeleteBlockedError) {
+  if (error instanceof DefaultProjectDeleteBlockedError) {
     return failure(error, 'workspace.project.operation.defaultProjectDeleteBlocked');
   }
 

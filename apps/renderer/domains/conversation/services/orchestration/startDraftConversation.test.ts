@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
+import type { NavigationScope } from '@/app/navigation';
 import { startDraftConversation } from './startDraftConversation';
 
 const stores = vi.hoisted(() => ({
@@ -11,8 +11,8 @@ const stores = vi.hoisted(() => ({
   conversationSelection: {
     clear: vi.fn(),
   },
-  workspaceScope: {
-    currentScope: { kind: 'linnya-assistant' } as WorkspaceScope,
+  navigationScope: {
+    currentScope: { kind: 'linnya-assistant' } as NavigationScope,
     startDraft: vi.fn(),
   },
 }));
@@ -25,22 +25,22 @@ vi.mock('../../history/store/conversationSelectionStore', () => ({
   useConversationSelectionStore: () => stores.conversationSelection,
 }));
 
-vi.mock('../../../../shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => stores.workspaceScope,
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => stores.navigationScope,
 }));
 
 describe('startDraftConversation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    stores.workspaceScope.currentScope = { kind: 'linnya-assistant' };
+    stores.navigationScope.currentScope = { kind: 'linnya-assistant' };
   });
 
   it('开启新草稿时结束目标 scope 的旧会话选中状态', () => {
-    const scope: WorkspaceScope = { kind: 'project', projectId: 'project-1' };
+    const scope: NavigationScope = { kind: 'project', projectId: 'project-1' };
 
     startDraftConversation(scope);
 
-    expect(stores.workspaceScope.startDraft).toHaveBeenCalledWith(scope);
+    expect(stores.navigationScope.startDraft).toHaveBeenCalledWith(scope);
     expect(stores.conversationSelection.clear).toHaveBeenCalledWith(scope);
     expect(stores.assistant.setSelectedConversation).toHaveBeenCalledWith(null);
     expect(stores.assistant.clearActiveConversation).toHaveBeenCalledOnce();

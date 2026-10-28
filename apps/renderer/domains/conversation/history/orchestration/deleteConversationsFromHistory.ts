@@ -1,9 +1,9 @@
-import type { WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
+import type { NavigationScope } from '@/app/navigation';
 import { deleteConversationFromHistory } from './deleteConversationFromHistory';
 
 export interface DeleteConversationsFromHistoryInput {
   readonly conversationIds: readonly string[];
-  readonly scope: WorkspaceScope;
+  readonly scope: NavigationScope;
 }
 
 export interface DeleteConversationsFromHistoryResult {

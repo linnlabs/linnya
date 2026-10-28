@@ -52,7 +52,7 @@ import { watch, onMounted, onUnmounted, computed } from 'vue'
 import { DraggablePanel } from '@linnya/renderer-ui'
 import { useCitationPanelStore } from '../store/useCitationPanelStore'
 import { useUIStore } from '@/shared/stores/ui'
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore'
+import { useNavigationScope } from '@/app/navigation'
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway'
 import { knowledgeBaseService } from '@/domains/knowledgebase/services/knowledgeBaseService'
 import { convertKbResultToCitationAttrs } from '../adapters/knowledgeBaseCitationAdapter'
@@ -67,7 +67,7 @@ import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEd
 
 const store = useCitationPanelStore()
 const uiStore = useUIStore()
-const workspaceScopeStore = useWorkspaceScopeStore()
+const navigationScope = useNavigationScope()
 const { editorMessage } = useEditorLocalization()
 
 const editor = computed(() => uiStore.getEditor())
@@ -75,7 +75,7 @@ const editor = computed(() => uiStore.getEditor())
 // ============ 初始化：加载当前项目关联的 KB 列表 ============
 
 async function loadProjectKbs() {
-  const projectId = workspaceScopeStore.currentProjectId
+  const projectId = navigationScope.currentProjectId
   if (!projectId) {
     console.warn('[CitationPanel] 无法获取当前项目 ID，KB 列表为空')
     store.setAvailableKbs([])

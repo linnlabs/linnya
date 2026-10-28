@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { EventEmitter, once } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PluginToolContext } from '@linnya/plugin-host-contract/backend/toolRuntime';
@@ -83,7 +84,7 @@ beforeEach(async () => {
   database.initialize();
   const db = database.getDb();
   const workspaceService = new WorkspaceService(db);
-  const projectId = workspaceService.createProject('Citation snapshot CAS');
+  const projectId = createProjectLifecycle(db).create({ name: 'Citation snapshot CAS' });
   documents = new MarkdownDocumentService(db);
   await new SQLiteEventStore(db).ensureConversation(conversationId, [], undefined, 'agent');
   context = { conversationId };

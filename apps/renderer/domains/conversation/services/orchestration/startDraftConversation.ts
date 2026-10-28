@@ -1,6 +1,6 @@
 import { useAssistantStore } from '../../store/assistantStore';
 import { useConversationSelectionStore } from '../../history/store/conversationSelectionStore';
-import { useWorkspaceScopeStore, type WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
+import { useNavigationScope, type NavigationScope } from '@/app/navigation';
 
 /**
  * 开启当前 scope 下的空白草稿对话。
@@ -11,13 +11,13 @@ import { useWorkspaceScopeStore, type WorkspaceScope } from '../../../../shared/
  * - 这里集中结束旧会话的活动态和侧边栏选择态，避免同一个会话身份残留两套不一致的高亮状态；
  * - Header/Sidebar 只触发该编排，不各自写清理逻辑。
  */
-export function startDraftConversation(scope?: WorkspaceScope): void {
+export function startDraftConversation(scope?: NavigationScope): void {
   const assistantStore = useAssistantStore();
   const conversationSelectionStore = useConversationSelectionStore();
-  const workspaceScopeStore = useWorkspaceScopeStore();
-  const targetScope = scope ?? workspaceScopeStore.currentScope;
+  const navigationScope = useNavigationScope();
+  const targetScope = scope ?? navigationScope.currentScope;
 
-  workspaceScopeStore.startDraft(targetScope);
+  navigationScope.startDraft(targetScope);
   conversationSelectionStore.clear(targetScope);
   assistantStore.setSelectedConversation(null);
   assistantStore.clearActiveConversation();

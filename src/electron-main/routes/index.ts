@@ -193,7 +193,7 @@ import { createLocalManagedStorageInventoryPort } from 'src/infra/adapters/stora
 import { createStorageSpaceRouter } from 'src/features/storage-space/storageSpace.router';
 import { CONVERSATION_CONTROL_BRIDGE_PATH } from '@app/schemas';
 import type { ConversationControlUseCase } from 'src/app-hosts/linnya/application/conversation-control';
-import { WorkspaceService } from '../services/workspace/workspace';
+import { createProjectLifecycle } from 'src/domains/projects';
 import {
   selectRunRecoveryRetention,
   releaseTerminalRunRecovery,
@@ -839,7 +839,7 @@ export async function configureRoutes(
     historyService = initializedHistoryService;
     conversationControlUseCase = createLinnyaConversationControlUseCase({
       commandApprovals: dependencies.commandApprovalControl,
-      workspace: new WorkspaceService(db),
+      projects: createProjectLifecycle(db),
       flow: initializedFlowOrchestrator,
       runs: agentRuntime.supervisor,
       executionProgress: checkpointer,

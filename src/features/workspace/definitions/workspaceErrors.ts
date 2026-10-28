@@ -1,24 +1,3 @@
-export class WorkspaceProjectNameConflictError extends Error {
-  constructor(readonly projectName: string) {
-    super(`Project name already exists: ${projectName}`);
-    this.name = 'WorkspaceProjectNameConflictError';
-  }
-}
-
-export class WorkspaceProjectNotFoundError extends Error {
-  constructor(readonly projectId: string) {
-    super(`Workspace project not found: ${projectId}`);
-    this.name = 'WorkspaceProjectNotFoundError';
-  }
-}
-
-export class WorkspaceDefaultProjectDeleteBlockedError extends Error {
-  constructor(readonly projectId: string) {
-    super(`Default workspace project cannot be deleted: ${projectId}`);
-    this.name = 'WorkspaceDefaultProjectDeleteBlockedError';
-  }
-}
-
 export class WorkspaceSiblingNameConflictError extends Error {
   constructor(
     readonly nodeName: string,

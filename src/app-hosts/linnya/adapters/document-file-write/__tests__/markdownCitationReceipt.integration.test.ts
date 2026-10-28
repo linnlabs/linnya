@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import type { PluginToolContext } from '@linnya/plugin-host-contract/backend/toolRuntime';
@@ -27,7 +28,7 @@ describe('Markdown citation receipt through Host providers', () => {
       for (const sql of [...CORE_SCHEMAS, ...ASSET_LEDGER_SCHEMAS, ...MARKDOWN_DOCUMENT_SCHEMAS,
         ...PENDING_REVISION_SCHEMAS, ...BLOCK_HISTORY_SCHEMAS, ...IMAGE_BLOCK_SCHEMAS]) db.exec(sql);
       const workspaceService = new WorkspaceService(db);
-      const projectId = workspaceService.createProject('Citation receipt');
+      const projectId = createProjectLifecycle(db).create({ name: 'Citation receipt' });
       const context: PluginToolContext = { conversationId: 'receipt-test' };
       attachCitationRefAllocator(context, createCitationRefAllocatorFixture());
       attachCitationSourceResolver(context, {

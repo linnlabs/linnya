@@ -17,7 +17,7 @@
 
 import { ref, type Ref } from 'vue';
 import { defineStore } from 'pinia';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { generateConversationId } from '@shared/utils/idUtils';
 import { resolveCurrentConversationMessage } from '../functions/resolveCurrentConversationMessage';
 import type { Conversation } from '../types';
@@ -95,7 +95,7 @@ export const useConversationState = defineStore('conversationState', () => {
   const historyLoadingConversationId = ref<string | null>(null);
 
   /** 当前 workspace scope 是对话归属的唯一来源。 */
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
 
   // ===============================
   // 内部辅助方法
@@ -124,7 +124,7 @@ export const useConversationState = defineStore('conversationState', () => {
   const createNewConversation = (projectId?: string | null): string => {
     const resolvedProjectId =
       projectId === undefined
-        ? workspaceScopeStore.currentProjectId ?? undefined
+        ? navigationScope.currentProjectId ?? undefined
         : projectId ?? undefined;
     
     const newConversation: Conversation = {

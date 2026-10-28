@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store/WorkspaceProjectsStore';
 import LinnyaAssistantChatSurface from '@/domains/conversation/ui/LinnyaAssistantChatSurface.vue';
 import type {
@@ -39,10 +39,10 @@ const props = withDefaults(defineProps<{
   isActive: true,
 });
 
-const workspaceScopeStore = useWorkspaceScopeStore();
+const navigationScope = useNavigationScope();
 const projectsStore = useWorkspaceProjectsStore();
 
-const currentScope = computed(() => workspaceScopeStore.currentScope);
+const currentScope = computed(() => navigationScope.currentScope);
 // 主区和右侧必须共享消息列与 AiAssistantInput 的完整规格；位置不能映射成视觉密度。
 const conversationVariant: ConversationSurfaceVariant = 'regular';
 const emptyComposerPlacement = computed<ConversationEmptyComposerPlacement>(() => (

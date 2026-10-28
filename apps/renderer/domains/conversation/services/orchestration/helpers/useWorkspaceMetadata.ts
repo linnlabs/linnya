@@ -10,7 +10,7 @@
 import { useAssistantStore } from '../../../store/assistantStore';
 import { useFileStore } from '../../../../../shared/stores/file';
 import { useConversationState } from '../../../store/conversationState';
-import { useWorkspaceScopeStore } from '../../../../../shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { getWorkspaceContextPort } from '../../../../../shared/ports/workspaceContextPort';
 import { resolveConversationProjectId } from '../../../functions/resolveConversationProjectId';
 import type { ProjectFileSummary, SendMessageOptions } from '../../../types';
@@ -41,7 +41,7 @@ export interface WorkspaceMetadataPayload {
  */
 export function useWorkspaceMetadata() {
   const assistantStore = useAssistantStore();
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
   const fileStore = useFileStore();
   const conversationState = useConversationState();
 
@@ -107,7 +107,7 @@ export function useWorkspaceMetadata() {
     // 2. 解析 projectId
     // 中文说明：Linnya 助手是明确的无项目 scope，不能再从 activeProjectId 偷偷回退，
     // 否则“上次项目”会污染助手对话的落库归属和上下文。
-    const scope = workspaceScopeStore.currentScope;
+    const scope = navigationScope.currentScope;
     const resolvedProjectId = scope.kind === 'project'
       ? (
           resolveConversationProjectId(scope.projectId, conversationMeta) ??

@@ -9,16 +9,16 @@
  */
 
 import { defineStore } from 'pinia';
+import { projectGateway } from '@/shared/ipc/projectGateway';
 import { ref, computed } from 'vue';
 import type { Ref, ComputedRef } from 'vue';
-import type { WorkspaceProjectDTO } from '../../../shared/ipc/workspaceGateway';
-import { workspaceGateway } from '../../../shared/ipc/workspaceGateway';
-import { useWorkspaceScopeStore } from '../../../shared/stores/workspaceScopeStore';
+import type { ProjectRecord } from '@app/schemas';
+import { useNavigationScope } from '@/app/navigation';
 import type { Project } from '../definitions/project';
 import { resolveCurrentWorkspaceMessage } from '../functions/resolveCurrentWorkspaceMessage';
 import { WorkspaceOperationError } from '../definitions/workspaceOperationError';
 
-function toProject(dto: WorkspaceProjectDTO): Project {
+function toProject(dto: ProjectRecord): Project {
   return {
     id: dto.id,
     name: dto.name,
@@ -47,7 +47,7 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
 
   /** 错误信息 */
   const error: Ref<string | null> = ref(null);
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
 
   // ==========================================================================
   // Computed
@@ -70,7 +70,7 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
     isLoading.value = true;
     error.value = null;
     try {
-      const result = await workspaceGateway['list-projects']();
+      const result = await projectGateway.list();
       if (result.success) {
         projects.value = result.data.projects.map(toProject);
 
@@ -79,7 +79,7 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
           console.log('[WorkspaceProjectsStore] 没有项目，创建默认项目...');
           await createDefaultProject();
           // 重新加载项目列表
-          const reloadResult = await workspaceGateway['list-projects']();
+          const reloadResult = await projectGateway.list();
           if (reloadResult.success) {
             projects.value = reloadResult.data.projects.map(toProject);
           }
@@ -101,7 +101,7 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
    */
   async function createDefaultProject(): Promise<string> {
     try {
-      const result = await workspaceGateway['ensure-default-project']();
+      const result = await projectGateway.ensureDefault();
       if (!result.success) {
         throw new WorkspaceOperationError(result);
       }
@@ -121,7 +121,7 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
     updates: { name?: string; description?: string }
   ): Promise<void> {
     try {
-      const result = await workspaceGateway['update-project']({
+      const result = await projectGateway.update({
         projectId,
         name: updates.name,
         description: updates.description
@@ -152,7 +152,7 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
    */
   async function deleteProject(projectId: string): Promise<void> {
     try {
-      const result = await workspaceGateway['delete-project']({ projectId });
+      const result = await projectGateway.delete(projectId);
       
       if (result.success) {
         // 从本地列表中移除
@@ -176,14 +176,14 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
    */
   function setActiveProject(projectId: string): void {
     markActiveProject(projectId);
-    workspaceScopeStore.enterProject(projectId);
+    navigationScope.enterProject(projectId);
   }
 
   /**
    * 仅更新项目列表领域的当前项目投影。
    *
    * 中文说明：
-   * - 当前 workspace scope 的权威来源是 workspaceScopeStore；
+   * - 当前导航上下文的权威来源是 navigationScope；
    * - 这里保留 activeProjectId 只是为了项目列表、文件树等 workspace UI 快速读取，
    *   禁止反向当作全局 scope 使用。
    */
@@ -196,7 +196,7 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
    */
   function showProjectList(): void {
     clearActiveProject();
-    workspaceScopeStore.enterLinnyaAssistant();
+    navigationScope.enterLinnyaAssistant();
   }
 
   function clearActiveProject(): void {

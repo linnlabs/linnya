@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -224,7 +225,7 @@ describe('file pagination and archived continuation through the actual next mode
         { toolCalls: [first] },
         ...continuations,
       ]);
-      const projectId = new WorkspaceService(fixture.db).createProject('Read continuation');
+      const projectId = createProjectLifecycle(fixture.db).create({ name: 'Read continuation' });
       await seedCitedDocument(fixture, projectId);
       const reader = toolRegistry.getTool('read_file');
       if (!reader) throw new Error('Missing actual reader');
@@ -308,7 +309,7 @@ describe('file pagination and archived continuation through the actual next mode
       { toolCalls: calls },
       { contentChunks: ['需要从当前返回复制正确的 blob 和字符 cursor。'] },
     ]);
-    const projectId = new WorkspaceService(fixture.db).createProject('Read admission');
+    const projectId = createProjectLifecycle(fixture.db).create({ name: 'Read admission' });
     const conversationId = 'read-admission';
     await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
     await fixture.flow.next(

@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,7 +7,6 @@ import { RunIdSchema, ToolCallIdSchema, runIdFromSubrunId } from '@linnlabs/linn
 import { execution, graph, telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import type { ScriptedLlmTurn } from '@linnlabs/linnkit/testkit';
 import { modelCatalog, type ModelConfig } from 'src/domains/model-catalog';
-import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import { RunDescriptorSchema } from '../../../application/run-resumption';
 import { captureRuntimeCompatibility } from '../../../application/run-resumption/functions/runtimeCompatibility';
@@ -233,7 +233,7 @@ describe('durable child request admission', () => {
   // 这里只用正式研究定义检验接纳与冻结，不注册新的公开研究子类型，也不冒充完整文章链。
   it('有项目的研究 child 首次接纳 scope，再把同一范围交给实际 LLM', async () => {
     const fixture = await open([{ contentChunks: ['Controlled research result.'] }]);
-    const projectId = new WorkspaceService(fixture.db).createProject('Synthetic child inputs');
+    const projectId = createProjectLifecycle(fixture.db).create({ name: 'Synthetic child inputs' });
     await seedParent(fixture, projectId);
     await expect(invoker(fixture, { promptKey: 'research_v1' }).invoke(request('research_v1')))
       .resolves.toMatchObject({ success: true });
@@ -281,7 +281,7 @@ describe('durable child request admission', () => {
     if (!admit) throw new Error('Missing research admission');
     const admission = vi.fn(admit);
     const first = await open([{ throwAfterEvents: new Error('Synthetic research interruption') }]);
-    const projectId = new WorkspaceService(first.db).createProject('Synthetic child inputs');
+    const projectId = createProjectLifecycle(first.db).create({ name: 'Synthetic child inputs' });
     await seedParent(first, projectId);
     await expect(invoker(first, { promptKey: 'research_v1', requestAdmission: admission })
       .invoke(request('research_v1'))).rejects.toMatchObject({ code: 'RUN_RECOVERY_BLOCKED' });

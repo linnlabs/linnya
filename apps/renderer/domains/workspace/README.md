@@ -1,3 +1,5 @@
+本域拥有项目列表、项目文档树及相关 UI。Project 生命周期由 Backend 的 [Project domain](../../../../src/domains/projects/README.md) 负责，项目 IPC 使用独立 `projectGateway`；导航上下文通过 [app/navigation](../../app/navigation/README.md) 公开入口访问。历史 workspace 目录名不表示整个物理数据工作区的所有权。
+
 apps/renderer/domains/workspace/
 ├── README.md
 ├── features/

@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -80,7 +81,7 @@ async function close(fixture: Fixture) {
   resetAgentRuntimeSingletonsForTest();
 }
 async function seed(fixture: Fixture) {
-  const projectId = new WorkspaceService(fixture.db).createProject('Lead acceptance');
+  const projectId = createProjectLifecycle(fixture.db).create({ name: 'Lead acceptance' });
   await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
   // 夹具也经通用 Workspace 写入，不再借用已撤回的研究提交/回执 owner。
   const writer = toolRegistry.getTool('write_file');

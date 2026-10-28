@@ -1,5 +1,5 @@
 import { getConversationClientNotices } from '../../features/client-notices';
-import type { WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
+import type { NavigationScope } from '@/app/navigation';
 import { historyApiService } from '../services/historyApiService';
 import { useConversationDeletionStore } from '../store/conversationDeletionStore';
 import { useHistoryListStore } from '../store/historyListStore';
@@ -7,7 +7,7 @@ import { prepareConversationDeletionCommit } from './commitConversationDeletion'
 
 export interface DeleteConversationFromHistoryInput {
   readonly conversationId: string;
-  readonly scope: WorkspaceScope;
+  readonly scope: NavigationScope;
 }
 
 const inFlightDeletions = new Map<string, Promise<void>>();

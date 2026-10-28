@@ -42,9 +42,9 @@ import {
 import { useWorkspaceMetadata } from './helpers';
 import { useConversationState } from '../../store/conversationState';
 import {
-  useWorkspaceScopeStore,
-  type WorkspaceScope,
-} from '../../../../shared/stores/workspaceScopeStore';
+  useNavigationScope,
+  type NavigationScope,
+} from '@/app/navigation';
 import { getWorkspaceContextPort } from '../../../../shared/ports/workspaceContextPort';
 import {
   ensureMaterializedConversation,
@@ -107,7 +107,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
   const { buildWorkspaceMetadata, syncMetadataToConversation } = useWorkspaceMetadata();
   const conversationState = useConversationState();
   const interactiveRunStore = useInteractiveRunStore();
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
 
   /**
    * ✅ Phase 1 解耦：工作区元数据统一从 useWorkspaceMetadata 获取
@@ -180,13 +180,13 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     }
 
     // 1. 首次发送时才把当前空白草稿正式创建为会话，避免空历史污染。
-    const conversation = ensureMaterializedConversation(assistantStore, workspaceScopeStore);
+    const conversation = ensureMaterializedConversation(assistantStore, navigationScope);
     if (!conversation) {
       console.error('[ChatFlowOrchestrator] sendChatMessage: No active conversation found.');
       return false;
     }
     const { projectId, projectMetadata, documentMetadata, projectFileList } = buildWorkspaceMetadata();
-    if (workspaceScopeStore.currentScope.kind === 'project' && !projectId) {
+    if (navigationScope.currentScope.kind === 'project' && !projectId) {
       const message = resolveCurrentConversationMessage('conversation.flow.missingProjectForSend');
       console.error(`[ChatFlowOrchestrator] ${message}`);
       captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'validation', operation: 'validate', reason_code: 'missing_project' });
@@ -196,10 +196,10 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     if (conversation?.id) {
       syncMetadataToConversation(conversation.id, { projectId, projectMetadata, documentMetadata, projectFileList });
     }
-    console.log(`[ChatFlowOrchestrator] sendChatMessage got projectId from workspaceScope: ${projectId}`);
+    console.log(`[ChatFlowOrchestrator] sendChatMessage got projectId from navigationScope: ${projectId}`);
     const conversationId = conversation.id;
-    const sendScope: WorkspaceScope = workspaceScopeStore.currentScope.kind === 'project'
-      ? { kind: 'project', projectId: workspaceScopeStore.currentScope.projectId }
+    const sendScope: NavigationScope = navigationScope.currentScope.kind === 'project'
+      ? { kind: 'project', projectId: navigationScope.currentScope.projectId }
       : { kind: 'linnya-assistant' };
     console.log(`[ChatFlowOrchestrator] sendChatMessage - Active conversation ID: ${conversationId}`);
 
@@ -432,7 +432,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
       title?: string;
     };
     projectFileList?: ProjectFileSummary[];
-    historySyncScope?: WorkspaceScope;
+    historySyncScope?: NavigationScope;
     resolveHistoryLastEventAtOverride?: () => number | undefined;
     draftAttachments?: ConversationImageDraftSubmissionSnapshot['attachments'];
     attachmentSelection?: ConversationAttachmentSelection;

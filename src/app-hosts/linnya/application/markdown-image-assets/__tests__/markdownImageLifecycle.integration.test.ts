@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import Database from 'better-sqlite3';
 import sharp from 'sharp';
 import { promises as fs } from 'node:fs';
@@ -56,7 +57,7 @@ describe('Markdown image lifecycle through Host providers', () => {
     ])
       db.exec(statement);
     workspace = new WorkspaceService(db);
-    projectId = workspace.createProject('Image lifecycle');
+    projectId = createProjectLifecycle(db).create({ name: 'Image lifecycle' });
     storeId = randomUUID();
     context = {
       conversationId: 'conversation',

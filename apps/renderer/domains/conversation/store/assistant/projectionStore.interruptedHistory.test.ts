@@ -15,8 +15,8 @@ import {
 import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 import { projectMessageCitationDependencies } from '../../features/citation-presentation';
 
-vi.mock('../../../../shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({
     currentProjectId: null,
   }),
 }));

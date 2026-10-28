@@ -87,7 +87,7 @@
 
 <script setup lang="ts">
 import { useUIStore } from '@/shared/stores/ui';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { SettingsModal } from '@/domains/settings';
 import { ExportSettingsModal } from '@/domains/workspace/features/import-export';
@@ -113,7 +113,7 @@ import {
 const uiStore = useUIStore();
 const citationStore = useCitationPanelStore();
 const projectOverviewModalStore = useProjectOverviewModalStore();
-const workspaceScopeStore = useWorkspaceScopeStore();
+const navigationScope = useNavigationScope();
 const navigation = getWorkspaceNavigationPort();
 /**
  * 中文说明：
@@ -183,7 +183,7 @@ async function resolveKbIdForDocId(docId: string): Promise<string | null> {
   }
 
   // 2) 老数据：尝试从“当前项目关联的 KB 列表”里反查 docId 所属 kbId
-  const projectId = workspaceScopeStore.currentProjectId;
+  const projectId = navigationScope.currentProjectId;
   let candidateKbIds: string[] = [];
 
   if (typeof projectId === 'string' && projectId.trim().length > 0) {

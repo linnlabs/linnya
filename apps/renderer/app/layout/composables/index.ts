@@ -7,7 +7,7 @@ export { useThemeManager } from './useThemeManager';
 export { useFontSmoothingManager } from './useFontSmoothingManager';
 export { useSidebarAnimationEvents } from './useSidebarAnimationEvents';
 export { useCssVariables } from './useCssVariables';
-export { useStartupWorkspaceScope } from './useStartupWorkspaceScope';
+export { useStartupNavigationScope } from './useStartupNavigationScope';
 export { useSidebarLayoutWidth } from './useSidebarLayoutWidth';
 export { useSidebarResize } from './useSidebarResize';
 export { useSidebarSelectionVisibility } from './useSidebarSelectionVisibility';

@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createToolOutputEvent } from '@linnlabs/linnkit/contracts';
 import { WorkspaceReadFileResultSchema, WorkspaceWriteFileResultSchema } from '@app/schemas';
@@ -47,7 +48,7 @@ beforeEach(() => {
   const workspaceService = new WorkspaceService(database.getDb());
   context = {
     databaseService: database, workspaceService,
-    workspaceProjectId: workspaceService.createProject('Citation read lifecycle'),
+    workspaceProjectId: createProjectLifecycle(database.getDb()).create({ name: 'Citation read lifecycle' }),
     conversationId: 'original-conversation',
   };
   bindReadContext(context);

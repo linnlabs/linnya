@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createToolOutputEvent } from '@linnlabs/linnkit/contracts';
 import {
@@ -128,7 +129,7 @@ beforeEach(async () => {
   database.initialize();
   workspace = new WorkspaceService(database.getDb());
   documents = new MarkdownDocumentService(database.getDb());
-  projectId = workspace.createProject('Citation metadata lifecycle');
+  projectId = createProjectLifecycle(database.getDb()).create({ name: 'Citation metadata lifecycle' });
   originalContext = contextFor('original-conversation');
   // 只在构造原始持久化文档时提供完整来源；所有被测迁移都从正式 read_file 结果重新接纳。
   attachCitationSourceResolver(originalContext, {

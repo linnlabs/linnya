@@ -1,14 +1,14 @@
 import { onMounted } from 'vue';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store/WorkspaceProjectsStore';
 import { startDraftConversation } from '@/domains/conversation/services/orchestration/startDraftConversation';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 
 function findStartupProjectId(
   lastProjectId: string | null,
-  projects: { id: string }[],
+  projects: { id: string }[]
 ): string | null {
-  if (lastProjectId && projects.some((project) => project.id === lastProjectId)) {
+  if (lastProjectId && projects.some(project => project.id === lastProjectId)) {
     return lastProjectId;
   }
 
@@ -23,8 +23,8 @@ function findStartupProjectId(
  * - 历史会话只在用户从历史列表显式选择时加载；
  * - 如果上次项目不存在，则落到第一个可用项目；项目列表加载失败时才回到 Linnya 助手。
  */
-export function useStartupWorkspaceScope(): void {
-  const workspaceScopeStore = useWorkspaceScopeStore();
+export function useStartupNavigationScope(): void {
+  const navigationScope = useNavigationScope();
   const projectsStore = useWorkspaceProjectsStore();
   const navigation = getWorkspaceNavigationPort();
 
@@ -32,8 +32,8 @@ export function useStartupWorkspaceScope(): void {
     await projectsStore.loadProjects();
 
     const startupProjectId = findStartupProjectId(
-      workspaceScopeStore.currentProjectId,
-      projectsStore.projects,
+      navigationScope.currentProjectId,
+      projectsStore.projects
     );
 
     if (startupProjectId) {

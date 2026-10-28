@@ -9,8 +9,8 @@ import {
 import { useConversationState } from '../conversationState';
 import { useProjectionStore } from './projectionStore';
 
-vi.mock('../../../../shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({ currentProjectId: null }),
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({ currentProjectId: null }),
 }));
 
 function createCommittedEvent(
