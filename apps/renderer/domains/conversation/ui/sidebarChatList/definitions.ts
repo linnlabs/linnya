@@ -1,10 +1,10 @@
-import type { WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
+import type { NavigationScope } from '@/app/navigation';
 import type { ConversationListItem } from '../../history/services/historyApiService';
 
 export type SidebarChatListSurface = 'outer-list' | 'project-panel';
 
 export interface SidebarChatListProps {
-  scope: WorkspaceScope;
+  scope: NavigationScope;
   limit?: number;
   variant?: 'sidebar' | 'dropdown';
   surface?: SidebarChatListSurface;

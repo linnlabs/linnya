@@ -11,9 +11,9 @@
 
 import type { WorkspaceNodeTransferRequest } from '@app/schemas';
 
-// +++ 从 workspaceGateway.ts 复制过来的类型定义 +++
-export type CreateProjectArgs = { name: string; description?: string };
-export type UpdateProjectArgs = { projectId: string; name?: string; description?: string };
+// Project 输入复用跨端合同；其余历史通道类型由对应网关逐步收口。
+export type CreateProjectArgs = import('@app/schemas').ProjectCreateInput;
+export type UpdateProjectArgs = import('@app/schemas').ProjectUpdateRequest;
 export type DeleteProjectArgs = { projectId: string };
 export type ListNodesArgs = { projectId: string; parentId?: string | null };
 export type ListVfsNodesArgs = {

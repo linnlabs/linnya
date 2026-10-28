@@ -6,8 +6,8 @@ import { useConversationState } from './conversationState';
 let currentProjectIdMock: string | null = null;
 let currentConversationMessage = '新对话';
 
-vi.mock('@/shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({
     get currentProjectId() {
       return currentProjectIdMock;
     },

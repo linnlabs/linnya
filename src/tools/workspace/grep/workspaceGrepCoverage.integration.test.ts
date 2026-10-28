@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { WorkspaceGrepResultSchema, WorkspaceWriteFileResultSchema } from '@app/schemas';
 import { DatabaseService } from 'src/electron-main/services/database';
@@ -19,7 +20,7 @@ const grep = new GrepTool();
 beforeEach(() => {
   database = new DatabaseService(':memory:');
   database.initialize();
-  projectId = new WorkspaceService(database.getDb()).createProject('Grep coverage');
+  projectId = createProjectLifecycle(database.getDb()).create({ name: 'Grep coverage' });
 });
 
 afterEach(() => database.close());

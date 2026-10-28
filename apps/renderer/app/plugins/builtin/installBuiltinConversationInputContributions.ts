@@ -8,7 +8,7 @@ import {
   createTableFillConversationInputExtension,
   useTableFillWorkflow,
 } from '@/app/workflows/table-fill';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import { useWorkspaceTreeStore } from '@/domains/workspace/store';
 import { getDocumentTypeByNodeType } from '@/app/plugins/registry';
@@ -26,7 +26,7 @@ import {
  * 插件 SDK 化仍需单独约束运行期加载与编辑器 schema 生命周期；在此之前由 app 层装配内置贡献。
  */
 export function installBuiltinConversationInputContributions(): void {
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
   const workspaceTreeStore = useWorkspaceTreeStore();
   const { t } = useLocalization();
 
@@ -49,7 +49,7 @@ export function installBuiltinConversationInputContributions(): void {
   });
 
   registerConversationReferenceProvider(createWorkspaceDocumentReferenceProvider({
-    getCurrentProjectId: () => workspaceScopeStore.currentProjectId,
+    getCurrentProjectId: () => navigationScope.currentProjectId,
     getLoadedProjectTree: () => ({
       projectId: workspaceTreeStore.loadedProjectId,
       nodes: workspaceTreeStore.projectTree,

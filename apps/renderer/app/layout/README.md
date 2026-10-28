@@ -5,12 +5,14 @@
 本目录的核心目标：
 
 - 顶层场景只有一个权威来源；
-- workspace scope 和 layout state 分离；
+- navigation scope 和 layout state 分离；
 - 文档打开、保存、关闭有统一编排；
 - 左中右三栏几何可预测、可测试；
 - domain 通过 port 表达意图，不反向依赖 app/layout；
 - conversation 需要读取当前 workspace 上下文时，只能通过 `shared/ports/workspaceContextPort.ts`，不能直接读取 workspace store 或 file-manager；
 - 折叠/展开只影响布局可见性，不销毁文档 runtime。
+
+导航上下文通过 [`app/navigation`](../navigation/README.md) 的公开入口读取与切换，内部状态属于 `app/store`。这里的 Workspace stage、pane 与导航端口是应用界面名称，不代表 Runtime 数据工作区。
 
 ## 当前目录
 
@@ -35,7 +37,7 @@ app/layout/
 │   ├── useSidebarLayoutWidth.ts
 │   ├── useSidebarResize.ts
 │   ├── useSidebarSelectionVisibility.ts
-│   ├── useStartupWorkspaceScope.ts
+│   ├── useStartupNavigationScope.ts
 │   ├── useThemeManager.ts
 │   ├── useWorkspacePaneGeometry.ts
 │   ├── useWorkspaceStageMeasurement.ts
@@ -115,9 +117,9 @@ app/layout/
 
 `layoutStore` 的 action 应保持同步、简单。涉及保存、关闭、打开、等待 surface ready 的流程必须放在 `orchestration/`。
 
-### `workspaceScopeStore`
+### `navigationScope`
 
-当前项目、Linnya 助手 scope、草稿对话、最近活跃会话属于 `apps/renderer/shared/stores/workspaceScopeStore.ts`。layout 层只在编排中读取或更新 scope，不能把 scope mirror 到 `layoutStore`。
+当前项目、Linnya 助手 scope、草稿对话、最近活跃会话属于 `apps/renderer/app/navigation/index.ts`。layout 层只在编排中读取或更新 scope，不能把 scope mirror 到 `layoutStore`。
 
 ### `uiStore`
 
@@ -146,7 +148,7 @@ app/layout/
 - 关闭文档；
 - 取消旧文档打开 intent。
 
-侧边栏项目入口通过 `orchestration/openProjectWorkspaceFromSidebar.ts` 组织“导航提交 → 项目领域投影 → 新草稿 → 文件树加载”。跨项目时禁止在调用 `workspaceNavigation.openWorkspace` 前直接改写 `workspaceScopeStore`，否则导航会误判为同一 scope，并把上一个项目的活动文档带入新项目。
+侧边栏项目入口通过 `orchestration/openProjectWorkspaceFromSidebar.ts` 组织“导航提交 → 项目领域投影 → 新草稿 → 文件树加载”。跨项目时禁止在调用 `workspaceNavigation.openWorkspace` 前直接改写 `navigationScope`，否则导航会误判为同一 scope，并把上一个项目的活动文档带入新项目。
 
 domain 内部需要导航时，调用 `apps/renderer/shared/ports/workspaceNavigationPort.ts`。domain 不能 import `app/layout`，也不能直接调用 `layoutStore`。
 
@@ -160,13 +162,13 @@ domain 内部需要导航时，调用 `apps/renderer/shared/ports/workspaceNavig
 
 conversation domain 只能通过 `workspaceContextPort` 获取这些信息，避免在对话编排、页面上下文和 API 网关里散落 workspace store/file-manager 依赖。
 
-内置 renderer plugin ports 中的 `@plugin/renderer/aiInvocationPort` host 实现是可插拔业务域调用平台 conversation 的 app-level 入口。它负责把 conversation store、workspaceScopeStore 和 chatFlowOrchestrator 的内部协作投影成插件 SDK 的窄能力：
+内置 renderer plugin ports 中的 `@plugin/renderer/aiInvocationPort` host 实现是可插拔业务域调用平台 conversation 的 app-level 入口。它负责把 conversation store、navigationScope 和 chatFlowOrchestrator 的内部协作投影成插件 SDK 的窄能力：
 
 - 为指定 workflow materialize / 选择一个 AI 会话；
 - 在指定会话里发送带 `fences` / `userQuote` 的消息；
 - 把业务域错误展示到平台对话错误面板。
 
-slides/mindmap 这类可安装插件应在自己的包内生产业务引用和 AI 上下文，再通过 `@plugin/renderer/aiInvocationPort` 交给 conversation。插件/domain 不能直接 import conversation store、workspaceScopeStore 或 chatFlowOrchestrator。
+slides/mindmap 这类可安装插件应在自己的包内生产业务引用和 AI 上下文，再通过 `@plugin/renderer/aiInvocationPort` 交给 conversation。插件不能直接 import Host 的 conversation store、navigationScope 或 chatFlowOrchestrator。Host 内部 domain 可以通过 `app/navigation` 公开合同读取导航状态和操作草稿；涉及文档与布局的导航仍走 `workspaceNavigationPort`。
 
 `orchestration/workspaceReferenceContent.ts` 是 workspace `[#ref]` 引用解析所需内容的 app-level 读取入口。conversation domain 可以计算和展示引用，但不能直接通过 `workspaceGateway` 读取 Markdown 文档内容；需要候选根块 ID 时，只能通过 `workspaceReferenceContentPort` 获取。
 
@@ -212,8 +214,8 @@ Workspace Mutation Bus 的完整契约、发布规则和插件接入规范见 [W
 - Sheet：先由 file-manager handler 准备 pending open context，再挂 `SheetCanvas`；
 - 每次打开文档都有 AbortController，旧 intent 不能继续写入新 surface；
 - 折叠右 pane 只改变 `visible/occupied`，不关闭文档；
-- 同一 workspace scope 内遵循“点哪哪出/换”：主区是对话时点击文档会打开/切换右侧文档 pane；主区是文档时点击对话会打开/切换右侧对话 pane；点击与主区同类内容只切主区，不影响右 pane；
-- 跨 workspace scope 点击对话或文档时，必须关闭当前右 pane，避免一个工作台同时展示两个项目的上下文；
+- 同一 navigation scope 内遵循“点哪哪出/换”：主区是对话时点击文档会打开/切换右侧文档 pane；主区是文档时点击对话会打开/切换右侧对话 pane；点击与主区同类内容只切主区，不影响右 pane；
+- 跨 navigation scope 点击对话或文档时，必须关闭当前右 pane，避免一个工作台同时展示两个项目的上下文；
 - 关闭文档、切换文档、离开 workspace 才允许保存、deactivate、销毁 runtime。
 
 ## 三栏几何

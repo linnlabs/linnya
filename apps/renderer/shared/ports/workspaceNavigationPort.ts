@@ -1,6 +1,7 @@
-export type WorkspaceNavigationScope =
-  | { kind: 'project'; projectId: string }
-  | { kind: 'linnya-assistant' };
+import type { NavigationScope } from '@/app/navigation';
+
+/** 已发布的导航端口名称；scope 的唯一内部定义是 NavigationScope。 */
+export type WorkspaceNavigationScope = NavigationScope;
 
 // 中文说明：打开文档的 activeDocumentType 来自 renderer documentType registry。
 export type WorkspaceNavigationDocumentType = string;

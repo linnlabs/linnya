@@ -22,7 +22,7 @@ export interface PrepareConversationSubrunRunCommandOptions {
   readonly runId: string;
   readonly userInputExtension?: ConversationMessageExtension;
   readonly assistantStore: ConversationSubrunRunAssistantStore;
-  readonly workspaceScopeStore: ConversationSubrunRunScope;
+  readonly navigationScope: ConversationSubrunRunScope;
   readonly signal: AbortSignal;
   readonly resolveMissingConversationMessage: () => string;
   readonly resolveMissingProjectMessage: () => string;
@@ -44,7 +44,7 @@ export function prepareConversationSubrunRunCommand(
 ): PrepareConversationSubrunRunCommandResult {
   if (options.signal.aborted) return { ok: false, reason: 'cancelled' };
 
-  if (!options.assistantStore.activeConversation && !options.workspaceScopeStore.currentProjectId) {
+  if (!options.assistantStore.activeConversation && !options.navigationScope.currentProjectId) {
     return {
       ok: false,
       reason: 'project-missing',
@@ -54,7 +54,7 @@ export function prepareConversationSubrunRunCommand(
 
   const conversation = ensureMaterializedConversation(
     options.assistantStore,
-    options.workspaceScopeStore,
+    options.navigationScope,
   );
   if (!conversation) {
     return {
@@ -65,7 +65,7 @@ export function prepareConversationSubrunRunCommand(
   }
 
   const projectId = resolveConversationProjectId(
-    options.workspaceScopeStore.currentProjectId,
+    options.navigationScope.currentProjectId,
     readConversationMetadata(conversation),
   );
   if (!projectId) {

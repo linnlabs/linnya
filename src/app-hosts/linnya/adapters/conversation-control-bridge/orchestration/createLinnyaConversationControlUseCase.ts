@@ -1,3 +1,4 @@
+import type { ProjectLifecyclePort } from 'src/domains/projects';
 import { skillManagement } from 'src/features/skills';
 import type { CommandApprovalControlPort } from 'src/domains/commands';
 import { generateConversationId } from '@linnlabs/linnkit/contracts';
@@ -25,7 +26,7 @@ import {
 
 interface LinnyaConversationControlUseCaseOwners {
   readonly commandApprovals: CommandApprovalControlPort;
-  readonly workspace: { getAllProjects(): readonly { id: string; name: string }[] };
+  readonly projects: Pick<ProjectLifecyclePort, 'list'>;
   readonly flow: Pick<
     FlowOrchestrator,
     'nextDetached' | 'respondInteractionDetached' | 'continueRunDetached' | 'cancelRun'
@@ -110,7 +111,7 @@ export function createLinnyaConversationControlUseCase(
     },
     commandApprovals: owners.commandApprovals,
     projects: {
-      list: () => owners.workspace.getAllProjects().map(project => ({
+      list: () => owners.projects.list().map(project => ({
         project_id: project.id, name: project.name,
       })),
     },

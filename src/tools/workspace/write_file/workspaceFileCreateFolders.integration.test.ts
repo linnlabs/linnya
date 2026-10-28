@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { ToolNode, type EngineState } from '@linnlabs/linnkit/runtime-kernel';
 import { RunIdSchema, ToolCallIdSchema, routeRuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { createToolRuntimeHarness } from 'src/app-hosts/linnya/testkit/agent-harness/toolRegistryHarness';
@@ -35,7 +36,7 @@ beforeEach(() => {
   events = [];
   const publisher = { publish: (event: WorkspaceMutationEvent) => events.push(event) };
   workspace = new WorkspaceService(database.getDb(), { mutationPublisher: publisher });
-  projectId = workspace.createProject('Automatic folders');
+  projectId = createProjectLifecycle(database.getDb()).create({ name: 'Automatic folders' });
   context = {
     databaseService: database,
     workspaceProjectId: projectId,
@@ -179,7 +180,7 @@ describe('write_file creates project parent folders', () => {
 
   it('部分父路径存在时只列新增层，不跨项目复用同名目录', async () => {
     const existing = workspace.createFolder(projectId, 'research');
-    const otherProject = workspace.createProject('Other');
+    const otherProject = createProjectLifecycle(database.getDb()).create({ name: 'Other' });
     workspace.createFolder(otherProject, 'research');
     const result = await create('workspace:/research/new/final.md');
     expect(result.data.created_folders?.map(folder => folder.locator)).toEqual([

@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -88,7 +89,7 @@ describe('citation write feedback through durable Flow', () => {
     ], [new AcquiredWebSource()]);
     const conversationId = 'citation-write-feedback';
     const workspace = new WorkspaceService(fixture.db);
-    const projectId = workspace.createProject('Citation write feedback');
+    const projectId = createProjectLifecycle(fixture.db).create({ name: 'Citation write feedback' });
     await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
     const store = new MarkdownDocumentService(fixture.db);
     const live: ConversationRealtimeEvent[] = [];

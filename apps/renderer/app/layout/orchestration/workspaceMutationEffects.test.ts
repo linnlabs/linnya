@@ -22,8 +22,8 @@ const mocks = vi.hoisted(() => ({
   handleWorkspaceNodeTransferredMutation: vi.fn(async () => undefined),
 }));
 
-vi.mock('@/shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({ currentProjectId: mocks.currentProjectId }),
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({ currentProjectId: mocks.currentProjectId }),
 }));
 
 vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({

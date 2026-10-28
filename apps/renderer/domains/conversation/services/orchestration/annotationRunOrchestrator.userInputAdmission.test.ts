@@ -64,8 +64,8 @@ vi.mock('../../features/annotation-run/store/annotationRunExecutionStore', () =>
   useAnnotationRunExecutionStore: () => harness.annotationExecutionState,
 }));
 
-vi.mock('../../../../shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({
     currentProjectId: 'project-1',
     currentScope: { kind: 'project', projectId: 'project-1' },
   }),

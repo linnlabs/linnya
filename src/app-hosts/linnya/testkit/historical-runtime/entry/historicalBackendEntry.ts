@@ -5,7 +5,7 @@ import { runLinnyaAppServerProcess as runBackend } from '../../../app-server-run
 import { createHeadlessAppServerBackendComposition } from '../../../app-server-runtime/orchestration/createHeadlessAppServerBackendComposition';
 import { FrozenCorpusSchema, digest } from '../definitions/historicalCorpus';
 import { createHistoricalToolEnvironment } from '../orchestration/createHistoricalToolEnvironment';
-import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
+import { createProjectLifecycle } from 'src/domains/projects';
 
 const configSchema = z
   .object({
@@ -96,14 +96,8 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
         conversationExecutionRuntimeFactory: {
           async create(dependencies) {
             // 实验新 Workspace 的唯一项目通过正式 owner 建立；不写 SQL、不借用用户项目。
-            new WorkspaceService(dependencies.db).createProject(
-              'Historical research',
-              'Isolated corpus experiment'
-            );
-            new WorkspaceService(dependencies.db).createProject(
-              'Runtime verification',
-              'Synthetic document checks; excluded from the research project'
-            );
+            createProjectLifecycle(dependencies.db).create({ name: 'Historical research', description: 'Isolated corpus experiment' });
+            createProjectLifecycle(dependencies.db).create({ name: 'Runtime verification', description: 'Synthetic document checks; excluded from the research project' });
             return composition.backendHostDependencies.conversationExecutionRuntimeFactory.create(
               dependencies
             );

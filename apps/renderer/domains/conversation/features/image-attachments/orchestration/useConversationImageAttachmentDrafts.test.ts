@@ -2,8 +2,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { describe, expect, it, vi } from 'vitest';
 import { useConversationImageAttachmentDrafts } from './useConversationImageAttachmentDrafts';
 
-vi.mock('@/shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({
     onScopeWillChange: vi.fn(() => () => undefined),
   }),
 }));

@@ -1,9 +1,9 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { graph } from '@linnlabs/linnkit/runtime-kernel';
-import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import * as agentDefinitions from '../../../agent-registry/agentDefinitionResolver';
 import { clearRegisteredAgentTaskCache } from '../../../agent-registry/agentTaskResolver';
@@ -69,7 +69,7 @@ describe('root run tool execution scope', () => {
         },
         { contentChunks: ['The write was not authorized.'] },
       ]);
-      const projectId = new WorkspaceService(fixture.db).createProject('Synthetic read-only root');
+      const projectId = createProjectLifecycle(fixture.db).create({ name: 'Synthetic read-only root' });
       const conversationId = 'root-tool-scope';
       await fixture.flow.next(
         {
@@ -116,7 +116,7 @@ describe('root run tool execution scope', () => {
       },
       { contentChunks: ['Only the Host write was authorized.'] },
     ]);
-    const projectId = new WorkspaceService(fixture.db).createProject('Host single-call scope');
+    const projectId = createProjectLifecycle(fixture.db).create({ name: 'Host single-call scope' });
     const conversationId = 'root-host-tool-scope';
     await fixture.flow.next(
       {
@@ -162,7 +162,7 @@ describe('root run tool execution scope', () => {
   it('Host 只读入口中断后恢复原 call，空模型名单不阻断明确接纳的执行', async () => {
     restrictRoot([]);
     fixture = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), []);
-    const projectId = new WorkspaceService(fixture.db).createProject('Host recovery scope');
+    const projectId = createProjectLifecycle(fixture.db).create({ name: 'Host recovery scope' });
     const conversationId = 'root-host-tool-resume';
     const tool = toolRegistry.getTool('list_files');
     if (!tool) throw new Error('Workspace list tool is unavailable');

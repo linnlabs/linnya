@@ -19,7 +19,7 @@ import { registerRendererConversationSubrunInvocationPort } from '@plugin/render
 import { registerRendererInteractiveToolPort } from '@plugin/renderer/interactiveTool';
 import { registerRendererReferenceRuntimePort } from '@plugin/renderer/referenceRuntime';
 import { registerWorkspaceRuntimePort } from '@plugin/renderer/workspaceRuntime';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useFileStore } from '@/shared/stores/file';
 import { useNotificationStore } from '@/app/notification';
 import { confirm } from '@/shared/composables/confirmDialog';
@@ -61,7 +61,7 @@ function reportMissingProject(request: RendererAiHistoryIsolatedRunRequest): voi
 
 async function ensureConversation(request: RendererEnsureAiConversationRequest) {
   const assistantStore = useAssistantStore();
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
   const enabledPluginsStore = useEnabledPluginsStore();
   const agentChoices = listConversationAgentChoices(enabledPluginsStore.enabledPluginIds);
   const agentChoice = request.agentChoiceId
@@ -77,7 +77,7 @@ async function ensureConversation(request: RendererEnsureAiConversationRequest) 
 
   const conversation = await applyConversationAgentChoice({
     assistantStore,
-    scopeStore: workspaceScopeStore,
+    scopeStore: navigationScope,
     agentChoiceId: agentChoice?.id ?? null,
     choices: agentChoices,
   });
@@ -108,10 +108,10 @@ function reportError(message: string): void {
 }
 
 async function startHistoryIsolatedRun(request: RendererAiHistoryIsolatedRunRequest): Promise<void> {
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
   const assistantStore = useAssistantStore();
 
-  ensureMaterializedConversation(assistantStore, workspaceScopeStore);
+  ensureMaterializedConversation(assistantStore, navigationScope);
 
   const conversation = assistantStore.activeConversation;
   if (!conversation) {
@@ -119,7 +119,7 @@ async function startHistoryIsolatedRun(request: RendererAiHistoryIsolatedRunRequ
     return;
   }
 
-  const projectId = workspaceScopeStore.currentProjectId;
+  const projectId = navigationScope.currentProjectId;
   if (!projectId) {
     reportMissingProject(request);
     return;
@@ -136,7 +136,7 @@ async function startHistoryIsolatedRun(request: RendererAiHistoryIsolatedRunRequ
       orchestrateCommittedConversationTitle({
         event,
         wasNewConversation,
-        scope: workspaceScopeStore.currentScope,
+        scope: navigationScope.currentScope,
         onHistorySynced: () => assistantStore.setSelectedConversation(conversation.id),
       });
     },
@@ -224,7 +224,7 @@ async function startHistoryIsolatedRun(request: RendererAiHistoryIsolatedRunRequ
 
 function installWorkspaceRuntimePort(): void {
   registerWorkspaceRuntimePort({
-    getCurrentProjectId: () => useWorkspaceScopeStore().currentProjectId,
+    getCurrentProjectId: () => useNavigationScope().currentProjectId,
     getActiveFileSession,
     markActiveFileDirty,
     isActiveFileDirty: () => useFileStore().isDirty,

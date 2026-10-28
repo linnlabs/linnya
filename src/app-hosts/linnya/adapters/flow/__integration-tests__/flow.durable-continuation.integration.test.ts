@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { readTail } from '../../persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -340,7 +341,7 @@ describe('durable root Flow continuation, production Audit off', () => {
         ],
         [new WriteFileTool()]
       );
-      const projectId = new WorkspaceService(first.db).createProject('Recovery');
+      const projectId = createProjectLifecycle(first.db).create({ name: 'Recovery' });
       await first.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
       if (operation === 'update') {
         const id = new WorkspaceService(first.db).createDocument(
@@ -444,7 +445,7 @@ describe('durable root Flow continuation, production Audit off', () => {
       ],
       [new WriteFileTool()]
     );
-    const projectId = new WorkspaceService(fixture.db).createProject('Recovery');
+    const projectId = createProjectLifecycle(fixture.db).create({ name: 'Recovery' });
     fixture.db.exec(`CREATE TRIGGER reject_receipt BEFORE UPDATE OF result ON agent_tool_results
       BEGIN SELECT RAISE(ABORT, 'receipt unavailable'); END;`);
     await fixture.flow.next(

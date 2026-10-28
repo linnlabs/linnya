@@ -46,8 +46,8 @@ vi.mock('../../../../shared/stores/ui', () => ({
   }),
 }));
 
-vi.mock('../../../../shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({
     currentScope: { kind: 'linnya-assistant' },
     currentProjectId: null,
     rememberLastActiveConversation: vi.fn(),

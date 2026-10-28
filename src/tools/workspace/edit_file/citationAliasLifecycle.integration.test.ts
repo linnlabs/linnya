@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { createToolOutputEvent, type RuntimeEvent } from '@linnlabs/linnkit/contracts';
@@ -47,7 +48,7 @@ async function createFixture(mode: FixtureMode = 'legacy', repeated = false) {
   const db = database.getDb();
   const workspace = new WorkspaceService(db);
   const documents = new MarkdownDocumentService(db);
-  const projectId = workspace.createProject('Citation alias lifecycle');
+  const projectId = createProjectLifecycle(db).create({ name: 'Citation alias lifecycle' });
   const events = new SQLiteEventStore(db);
   await events.ensureConversation('original', [], projectId, 'agent');
   await events.ensureConversation('current', [], projectId, 'agent');

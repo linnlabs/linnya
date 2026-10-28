@@ -1,8 +1,8 @@
 import { currentClientNoticeDraftKey, getConversationClientNotices } from '../../features/client-notices';
 import type { BaseMessage, Conversation } from '../../types';
 import {
-  type WorkspaceScope,
-} from '../../../../shared/stores/workspaceScopeStore';
+  type NavigationScope,
+} from '@/app/navigation';
 import { hasRenderableConversationMessages } from '../../functions/renderableConversationMessage';
 import { useConversationTitleFeature } from '../../features/conversation-title';
 
@@ -12,11 +12,11 @@ export interface ConversationMaterializationAssistantStore {
 }
 
 export interface ConversationMaterializationScopeStore {
-  currentScope: WorkspaceScope;
+  currentScope: NavigationScope;
   materializeCurrentDraft: (conversationId: string) => void;
 }
 
-function resolveProjectIdFromScope(scope: WorkspaceScope): string | null {
+function resolveProjectIdFromScope(scope: NavigationScope): string | null {
   return scope.kind === 'project' ? scope.projectId : null;
 }
 

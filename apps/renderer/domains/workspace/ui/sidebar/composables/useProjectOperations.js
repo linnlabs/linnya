@@ -2,6 +2,7 @@
  * @file useProjectOperations.js
  * @description 项目创建和管理操作逻辑
  */
+import { projectGateway } from '@/shared/ipc/projectGateway';
 
 import { ref } from 'vue';
 import { projectKbLinksGateway } from '../../../../../shared/ipc/projectKbLinksGateway';
@@ -10,7 +11,7 @@ import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
 import { resolveWorkspaceOperationFailure } from '@/domains/workspace/functions/resolveWorkspaceOperationFailure';
 import { getWorkspaceOperationFailure } from '@/domains/workspace/definitions/workspaceOperationError';
 
-export function useProjectOperations(workspaceStore, notificationStore, workspaceGateway, treeStore, options = {}) {
+export function useProjectOperations(workspaceStore, notificationStore, treeStore, options = {}) {
   const navigation = getWorkspaceNavigationPort();
   const { createProjectPlanningConversation } = options;
   const { workspaceMessage } = useWorkspaceLocalization();
@@ -101,7 +102,7 @@ export function useProjectOperations(workspaceStore, notificationStore, workspac
         return;
       }
 
-      const result = await workspaceGateway['create-project']({ 
+      const result = await projectGateway.create({
         name: trimmedName,
         description: description || undefined
       });
@@ -241,7 +242,7 @@ export function useProjectOperations(workspaceStore, notificationStore, workspac
       }
 
       // 1. 立即创建真实项目
-      const result = await workspaceGateway['create-project']({ 
+      const result = await projectGateway.create({
         name: trimmedName,
         description: description || undefined
       });

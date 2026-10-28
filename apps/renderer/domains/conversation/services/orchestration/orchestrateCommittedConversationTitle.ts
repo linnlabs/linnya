@@ -1,12 +1,12 @@
 import type { ConversationUserInputCommittedEvent } from '@app/schemas';
-import type { WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
+import type { NavigationScope } from '@/app/navigation';
 import { useConversationTitleFeature } from '../../features/conversation-title';
 import { scheduleSyncConversationToHistory } from '../../history/orchestration/scheduleSyncConversationToHistory';
 
 export interface OrchestrateCommittedConversationTitleInput {
   readonly event: ConversationUserInputCommittedEvent;
   readonly wasNewConversation: boolean;
-  readonly scope: WorkspaceScope;
+  readonly scope: NavigationScope;
   readonly onHistorySynced?: () => void;
 }
 

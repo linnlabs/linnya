@@ -8,7 +8,7 @@
 
 import { defineStore, storeToRefs } from 'pinia';
 import { ref, computed, watch } from 'vue';
-import { useWorkspaceScopeStore } from '../../../shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { resolveRunExecutionActivity } from '../shared/execution-presentation/functions/resolveExecutionActivity';
 import { useExecutionState } from './executionState';
 import { useConversationState } from './conversationState';
@@ -151,7 +151,7 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
   // ===============================
   // 核心依赖
   // ===============================
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
   const selectedConversationId = ref<string | null>(null);
   const isTimelineCollapsed = ref(true);
 
@@ -174,8 +174,8 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
       resetTimelineCollapsed();
 
       if (newActiveConvId) {
-        workspaceScopeStore.rememberLastActiveConversation(
-          workspaceScopeStore.currentScope,
+        navigationScope.rememberLastActiveConversation(
+          navigationScope.currentScope,
           newActiveConvId
         );
       }

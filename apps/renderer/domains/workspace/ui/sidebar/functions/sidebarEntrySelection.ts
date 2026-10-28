@@ -1,15 +1,15 @@
-import type { WorkspaceScope } from '@/shared/stores/workspaceScopeStore';
+import type { NavigationScope } from '@/app/navigation';
 
 export type SidebarSceneKind = 'workspace' | 'knowledge-base' | 'plugin-store' | 'project-setup';
 
 interface AssistantSelectionInput {
   activeScene: SidebarSceneKind;
-  currentScope: WorkspaceScope;
+  currentScope: NavigationScope;
 }
 
 interface ProjectSelectionInput {
   activeScene: SidebarSceneKind;
-  currentScope: WorkspaceScope;
+  currentScope: NavigationScope;
   projectId: string;
 }
 

@@ -279,7 +279,7 @@ pnpm run guard:tsc-baseline
 
 - 写路径是否走了已注入 publisher 的 `WorkspaceService`？
 - 是否在事务回滚或状态不匹配后被重查过滤？
-- `projectId` 是否匹配当前 `workspaceScopeStore.currentProjectId`？
+- `projectId` 是否匹配当前 `NavigationScope.currentProjectId`？
 
 当前插件文档不刷新：
 

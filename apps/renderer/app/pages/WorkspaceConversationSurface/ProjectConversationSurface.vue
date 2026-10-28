@@ -38,7 +38,7 @@
 
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useWorkspaceProjectsStore, useWorkspaceTreeStore } from '@/domains/workspace/store';
 import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase/index.js';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
@@ -65,7 +65,7 @@ const props = withDefaults(defineProps<{
   showHomeActions: true,
 });
 
-const workspaceScopeStore = useWorkspaceScopeStore();
+const navigationScope = useNavigationScope();
 const projectsStore = useWorkspaceProjectsStore();
 const treeStore = useWorkspaceTreeStore();
 const kbStore = useKnowledgeBaseStore();
@@ -79,7 +79,7 @@ interface ProjectSuggestionChip {
   readonly prompt: string;
 }
 
-const projectId = computed(() => workspaceScopeStore.currentProjectId);
+const projectId = computed(() => navigationScope.currentProjectId);
 const currentProject = computed(() => {
   return projectsStore.projects.find((project) => project.id === projectId.value);
 });

@@ -154,8 +154,8 @@ vi.mock('../../store/conversationState', () => ({
   useConversationState: () => harness.conversationState,
 }));
 
-vi.mock('../../../../shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({
     currentScope: { kind: 'project', projectId: 'project-1' },
     currentProjectId: 'project-1',
   }),

@@ -1,3 +1,5 @@
+import { registerProjectHandlers } from 'src/electron-main/ipc/handlers/projects/project-ipc';
+import { createProjectLifecycle } from 'src/domains/projects';
 import type { BackendRuntimeOwner } from '../../../backend-runtime/orchestration/backendRuntimeOwner';
 import { registerWorkspaceHandlers } from 'src/electron-main/ipc/handlers/workspace/workspace-ipc';
 import { registerAgentsHandlers } from 'src/electron-main/ipc/handlers/workspace/agents-ipc';
@@ -45,6 +47,9 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   readonly fileReveal: DesktopFileRevealPort;
 }): Promise<void> {
   const ipc = createBackendRendererIpcStyleRegistrar(input.registry);
+  const database = input.runtimeOwner.getServices().databaseService;
+  if (!database) throw new Error('DatabaseService unavailable for project handlers');
+  registerProjectHandlers(() => createProjectLifecycle(database.getDb()), ipc);
   registerWorkspaceHandlers(input.runtimeOwner, ipc);
   registerDocumentHistoryRequests(input.runtimeOwner, input.registry);
   registerAgentsHandlers(input.runtimeOwner, ipc);

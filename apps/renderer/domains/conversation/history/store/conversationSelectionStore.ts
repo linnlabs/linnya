@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
-import type { WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
-import { getWorkspaceScopeKey } from '../../../../shared/stores/workspaceScopeStore';
+import type { NavigationScope } from '@/app/navigation';
+import { getNavigationScopeKey } from '@/app/navigation';
 import type { ConversationBatchSelectionState } from '../definitions/conversationSelection';
 
 function emptySelection(): ConversationBatchSelectionState {
@@ -10,25 +10,25 @@ function emptySelection(): ConversationBatchSelectionState {
 export const useConversationSelectionStore = defineStore('conversation-selection', {
   state: () => ({ selections: {} as Record<string, ConversationBatchSelectionState> }),
   getters: {
-    batchSelectedConversationIds: (state) => (scope: WorkspaceScope): readonly string[] => (
-      state.selections[getWorkspaceScopeKey(scope)]?.selectedIds ?? []
+    batchSelectedConversationIds: (state) => (scope: NavigationScope): readonly string[] => (
+      state.selections[getNavigationScopeKey(scope)]?.selectedIds ?? []
     ),
   },
   actions: {
-    readSelection(scope: WorkspaceScope): ConversationBatchSelectionState {
-      return this.selections[getWorkspaceScopeKey(scope)] ?? emptySelection();
+    readSelection(scope: NavigationScope): ConversationBatchSelectionState {
+      return this.selections[getNavigationScopeKey(scope)] ?? emptySelection();
     },
-    replaceSelection(scope: WorkspaceScope, selection: ConversationBatchSelectionState): void {
-      this.selections[getWorkspaceScopeKey(scope)] = selection;
+    replaceSelection(scope: NavigationScope, selection: ConversationBatchSelectionState): void {
+      this.selections[getNavigationScopeKey(scope)] = selection;
     },
-    remove(scope: WorkspaceScope, conversationId: string): void {
+    remove(scope: NavigationScope, conversationId: string): void {
       const selection = this.readSelection(scope);
       this.replaceSelection(scope, {
         selectedIds: selection.selectedIds.filter(id => id !== conversationId),
         anchorId: selection.anchorId === conversationId ? null : selection.anchorId,
       });
     },
-    clear(scope: WorkspaceScope): void {
+    clear(scope: NavigationScope): void {
       this.replaceSelection(scope, emptySelection());
     },
   },

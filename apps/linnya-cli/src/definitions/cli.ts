@@ -46,6 +46,7 @@ export interface LinnyaCliRuntimeIdentity {
 
 export interface LinnyaCliRuntimeLauncherPort {
   run(input: {
+    /** 整套数据工作区的物理目录。Project 管理只操作已连接 Backend 内的项目记录。 */
     readonly workspaceDirectory?: string;
     readonly apiPort: number;
     readonly qdrantPort: number;

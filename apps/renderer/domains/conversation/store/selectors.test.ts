@@ -16,8 +16,8 @@ import {
   createTestUserMessage,
 } from '../testing/functions/createConversationTestMessage';
 
-vi.mock('@/shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({
     currentProjectId: null,
   }),
 }));

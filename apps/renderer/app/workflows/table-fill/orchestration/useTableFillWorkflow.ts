@@ -2,7 +2,7 @@ import { generateMessageId } from '@shared/utils/idUtils';
 import { getCurrentScope, onScopeDispose } from 'vue';
 import { useUIStore } from '@/shared/stores/ui';
 import { readEffectiveModelPurposeBinding } from '@/domains/model-configuration';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { registerContributedAssistantRunCancellation } from '@/domains/conversation/ports/contributedAssistantRunCancellationPort';
 import { createConversationUserInputAdmission } from '@/domains/conversation/features/user-input-admission';
@@ -49,7 +49,7 @@ export function useTableFillWorkflow(): TableFillWorkflow {
   const uiStore = useUIStore();
   const assistantStore = useAssistantStore();
   const tableAiModeStore = useTableAiModeStore();
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
 
   const cancel = (): void => {
     const controller = tableAiModeStore.session?.execution.controller;
@@ -96,7 +96,7 @@ export function useTableFillWorkflow(): TableFillWorkflow {
           prepareRunCommand: ({ signal }) => prepareTableFillRunCommand({
             signal,
             assistantStore,
-            workspaceScopeStore,
+            navigationScope,
           }),
           createUserInputAdmission: ({ run }) => (
             createConversationUserInputAdmission({
@@ -110,7 +110,7 @@ export function useTableFillWorkflow(): TableFillWorkflow {
                 orchestrateCommittedConversationTitle({
                   event,
                   wasNewConversation: run.wasNewConversation,
-                  scope: workspaceScopeStore.currentScope,
+                  scope: navigationScope.currentScope,
                   onHistorySynced: () => assistantStore.setSelectedConversation(run.conversationId),
                 });
               },

@@ -1,4 +1,4 @@
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { watch } from 'vue';
 import { useConversationState } from '../../../store/conversationState';
 import { conversationImageAttachmentApi } from './conversationImageAttachmentApi';
@@ -22,7 +22,7 @@ export function useConversationImageEditSession() {
       },
       createClientId: () => globalThis.crypto.randomUUID(),
     });
-    stopScopeWatch = useWorkspaceScopeStore().onScopeWillChange(() => productionController?.cancel());
+    stopScopeWatch = useNavigationScope().onScopeWillChange(() => productionController?.cancel());
     stopConversationWatch = watch(
       () => conversationState.activeConversationId,
       (nextConversationId, previousConversationId) => {

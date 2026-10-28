@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { ProjectNotFoundError } from 'src/domains/projects';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { WorkspaceMutationEvent } from '@app/schemas';
 import type { WorkspaceMutationPublisher } from '../../definitions/workspaceMutationPublisher';
@@ -194,7 +195,7 @@ describe('workspace node cross-project transfer', () => {
       db: database,
       nodeId: 'folder-1',
       targetProjectId: 'missing-project',
-    })).toThrow('project not found');
+    })).toThrow(ProjectNotFoundError);
     expect(() => inspectWorkspaceNodeTransfer({
       db: database,
       nodeId: 'folder-1',

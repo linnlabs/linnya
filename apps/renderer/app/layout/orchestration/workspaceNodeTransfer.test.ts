@@ -36,8 +36,8 @@ vi.mock('@/app/layout/store/layoutStore', () => ({
   useLayoutStore: () => ({ state: { activeDocument: mocks.activeDocument } }),
 }));
 
-vi.mock('@/shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => ({ currentProjectId: mocks.currentProjectId }),
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => ({ currentProjectId: mocks.currentProjectId }),
 }));
 
 vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({

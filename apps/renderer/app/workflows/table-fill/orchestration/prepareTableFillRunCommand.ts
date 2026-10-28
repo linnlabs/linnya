@@ -9,7 +9,7 @@ import { resolveCurrentTableFillMessage } from '../functions/resolveCurrentTable
 
 interface PrepareTableFillRunCommandOptions {
   assistantStore: ConversationSubrunRunAssistantStore;
-  workspaceScopeStore: ConversationSubrunRunScope;
+  navigationScope: ConversationSubrunRunScope;
   signal: AbortSignal;
   createRunId?: () => string;
   createMessageId?: () => string;
@@ -22,7 +22,7 @@ export async function prepareTableFillRunCommand(
   return prepareConversationSubrunRunCommand({
     runId: options.createRunId?.() ?? generateMessageId(),
     assistantStore: options.assistantStore,
-    workspaceScopeStore: options.workspaceScopeStore,
+    navigationScope: options.navigationScope,
     signal: options.signal,
     createMessageId: options.createMessageId,
     resolveMissingConversationMessage: () => resolveCurrentTableFillMessage(

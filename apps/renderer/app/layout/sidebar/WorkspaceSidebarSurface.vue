@@ -157,7 +157,7 @@ import { useNotificationStore } from '@/app/notification';
 import { saveDeactivateThen } from '@/domains/workspace/services/file-manager/index';
 import { useLocalizedCreatableDocumentTypes } from '@/app/plugins/ui/useDocumentTypePresentation';
 import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
-import { getWorkspaceScopeKey, useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { getNavigationScopeKey, useNavigationScope } from '@/app/navigation';
 import { useSidebarConversationHistoryRevealStore } from '@/app/layout/store/sidebarConversationHistoryRevealStore';
 import { startDraftConversation } from '@/domains/conversation/services/orchestration/startDraftConversation';
 import { useProjectOverviewModalStore } from '@/domains/workspace/features/project-overview/store/projectOverviewModalStore';
@@ -228,7 +228,7 @@ const uiStore = useUIStore();
 const fileStore = useFileStore();
 const notificationStore = useNotificationStore();
 const enabledPluginsStore = useEnabledPluginsStore();
-const workspaceScopeStore = useWorkspaceScopeStore();
+const navigationScope = useNavigationScope();
 const sidebarHistoryRevealStore = useSidebarConversationHistoryRevealStore();
 const projectOverviewModalStore = useProjectOverviewModalStore();
 const { workspaceMessage } = useWorkspaceLocalization();
@@ -279,7 +279,7 @@ const {
   handleAiCreateProject,
   initializeExistingProjectWithAi,
   deleteProject,
-} = useProjectOperations(projectsStore, notificationStore, workspaceGateway, treeStore, {
+} = useProjectOperations(projectsStore, notificationStore, treeStore, {
   createProjectPlanningConversation,
 });
 
@@ -335,7 +335,7 @@ const { contextMenu, handleContextMenuRequest, handleMenuSelect } = useContextMe
 provide('workspaceHandleMenuSelect', (payload) => handleMenuSelect(payload));
 
 const sidebarMode = computed(() => props.sidebarMode);
-const currentScope = computed(() => workspaceScopeStore.currentScope);
+const currentScope = computed(() => navigationScope.currentScope);
 const effectiveSidebarNav = computed(() => {
   if (props.sidebarNav === 'project' && currentScope.value.kind === 'project') {
     return 'project';
@@ -426,7 +426,7 @@ const isProjectExpanded = (projectId) => {
 };
 
 const getConversationRevealPulseKey = (scope) => {
-  return revealPulseScopeKey.value === getWorkspaceScopeKey(scope) ? revealPulseKey.value : 0;
+  return revealPulseScopeKey.value === getNavigationScopeKey(scope) ? revealPulseKey.value : 0;
 };
 
 const ensureSidebarOverlayScroll = async () => {
@@ -623,7 +623,7 @@ watch(
   async (request) => {
     if (!request) return;
 
-    const scopeKey = getWorkspaceScopeKey(request.scope);
+    const scopeKey = getNavigationScopeKey(request.scope);
     revealPulseScopeKey.value = scopeKey;
     revealPulseKey.value += 1;
 

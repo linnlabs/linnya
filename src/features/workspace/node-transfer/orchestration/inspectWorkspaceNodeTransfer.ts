@@ -1,3 +1,4 @@
+import { assertProjectExists } from 'src/domains/projects';
 import type Database from 'better-sqlite3';
 import type { WorkspaceNodeTransferResult } from '@app/schemas';
 import {
@@ -5,7 +6,6 @@ import {
   WorkspaceNodeNotFoundError,
   WorkspaceNodeSubtreeProjectMismatchError,
   WorkspaceNodeTransferSameProjectError,
-  WorkspaceProjectNotFoundError,
   WorkspaceSiblingNameConflictError,
 } from '../../definitions/workspaceErrors';
 
@@ -16,13 +16,6 @@ interface TransferNodeRow {
   readonly type: string;
   readonly name: string;
   readonly deleted_at: number | null;
-}
-
-function assertProjectExists(db: Database.Database, projectId: string): void {
-  const project = db.prepare(`
-    SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL LIMIT 1
-  `).get(projectId) as { id: string } | undefined;
-  if (!project) throw new WorkspaceProjectNotFoundError(projectId);
 }
 
 function readTransferSubtree(db: Database.Database, nodeId: string): TransferNodeRow[] {

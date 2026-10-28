@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { WorkspaceScope } from '@/shared/stores/workspaceScopeStore';
+import type { NavigationScope } from '@/app/navigation';
 
 const mocks = vi.hoisted(() => ({
-  currentScope: { kind: 'project', projectId: 'project-old' } as WorkspaceScope,
+  currentScope: { kind: 'project', projectId: 'project-old' } as NavigationScope,
   calls: [] as string[],
   openWorkspace: vi.fn(),
   markActiveProject: vi.fn(),
@@ -10,13 +10,13 @@ const mocks = vi.hoisted(() => ({
   ensureProjectTreeLoaded: vi.fn(),
 }));
 
-vi.mock('@/shared/stores/workspaceScopeStore', () => ({
-  areWorkspaceScopesEqual: (left: WorkspaceScope, right: WorkspaceScope) => (
+vi.mock('@/app/navigation', () => ({
+  areNavigationScopesEqual: (left: NavigationScope, right: NavigationScope) => (
     left.kind === right.kind
     && (left.kind !== 'project' || right.kind !== 'project' || left.projectId === right.projectId)
   ),
-  useWorkspaceScopeStore: () => ({
-    get currentScope(): WorkspaceScope {
+  useNavigationScope: () => ({
+    get currentScope(): NavigationScope {
       return mocks.currentScope;
     },
   }),
@@ -50,7 +50,7 @@ describe('openProjectWorkspaceFromSidebar', () => {
   beforeEach(() => {
     mocks.currentScope = { kind: 'project', projectId: 'project-old' };
     mocks.calls = [];
-    mocks.openWorkspace.mockReset().mockImplementation(async (scope: WorkspaceScope) => {
+    mocks.openWorkspace.mockReset().mockImplementation(async (scope: NavigationScope) => {
       const sourceScope = mocks.currentScope.kind === 'project'
         ? mocks.currentScope.projectId
         : 'assistant';

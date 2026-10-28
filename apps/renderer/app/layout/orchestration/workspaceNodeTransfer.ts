@@ -9,7 +9,7 @@ import {
 } from '@/shared/ports/workspaceNodeTransferPort';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
 import { WorkspaceOperationError } from '@/domains/workspace/definitions/workspaceOperationError';
 import {
@@ -72,7 +72,7 @@ export async function handleWorkspaceNodeTransferredMutation(
 ): Promise<void> {
   if (localTransferRootIds.delete(event.nodeId)) return;
 
-  const currentProjectId = useWorkspaceScopeStore().currentProjectId;
+  const currentProjectId = useNavigationScope().currentProjectId;
   if (currentProjectId === event.targetProjectId) {
     await useWorkspaceTreeStore().reloadActiveProjectTree();
     return;

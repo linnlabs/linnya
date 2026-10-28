@@ -147,14 +147,14 @@ import type { WorkspaceMessageResolver } from '@/domains/workspace/definitions/w
 
 type WorkspaceSidebarNav = 'list' | 'project';
 type WorkspaceSidebarMode = 'chat' | 'files';
-type WorkspaceScope =
+type NavigationScope =
   | { kind: 'linnya-assistant' }
   | { kind: 'project'; projectId: string };
 
 defineProps<{
   sidebarNav: WorkspaceSidebarNav;
   sidebarMode: WorkspaceSidebarMode;
-  currentScope: WorkspaceScope;
+  currentScope: NavigationScope;
   projects: Project[];
   isWorkspaceScene: boolean;
   projectChatSearchQuery: string;
@@ -167,7 +167,7 @@ defineProps<{
   isProjectSetupView: boolean;
   isProjectFilesPanelVisible: boolean;
   isProjectExpanded: (projectId: string) => boolean;
-  getConversationRevealPulseKey: (scope: WorkspaceScope) => number;
+  getConversationRevealPulseKey: (scope: NavigationScope) => number;
   workspaceMessage: WorkspaceMessageResolver;
 }>();
 

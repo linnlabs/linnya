@@ -28,7 +28,7 @@
 - **本地化地基注册**：[`app/localization`](../app/localization/README.md) 注册各模块 catalog，并通过窄 port 向 shared 基础控件提供默认文案解析能力
 - **关键 store 预热**：
   - `shared/stores/ui`：纯 UI 偏好、弹窗等非导航状态
-  - `shared/stores/workspaceScopeStore`：当前项目 / Linnya 助手 scope 与草稿对话状态
+  - `app/navigation`：当前项目 / Linnya 助手 scope 与草稿对话状态
   - `domains/model-configuration/features/model-catalog`：模型目录 lifecycle 与预加载
   - `domains/knowledgebase/stores/knowledgeBase`：知识库列表预加载
   - `app/update/store/updateStore`：更新弹窗 IPC 监听（含 renderer-ready 握手）
@@ -102,19 +102,19 @@
 当前架构没有引入 Vue Router，而是由 app/layout 提供一套**明确的场景与导航编排**：
 
 - **场景状态源**：`apps/renderer/app/layout/store/layoutStore.ts` 中的 `scene`
-- **业务 scope 权威**：`apps/renderer/shared/stores/workspaceScopeStore.ts`
+- **业务 scope 权威**：`apps/renderer/app/navigation/index.ts`
 - **顶层分发**：`apps/renderer/app/App.vue` 按 `scene` 异步渲染 `WorkspaceStage / KnowledgeBasePage / ProjectSetupPage / PluginStorePage`
 - **唯一导航入口**：`apps/renderer/app/layout/orchestration/workspaceNavigation.ts`
 - **跨 domain 调用入口**：`apps/renderer/shared/ports/workspaceNavigationPort.ts`
 - **文档 surface ready 契约**：`apps/renderer/shared/ports/documentSurfaceRuntimePort.ts`
 - **平台 Markdown 富文本实例契约**：`apps/renderer/shared/ports/markdownDocumentEditorRuntimePort.ts`
 
-这套设计的目标是：顶层场景切换、workspace scope、文档 runtime 生命周期各自只有一个权威来源。domain 内部如果需要“打开文档 / 进入知识库 / 切换工作台”，只能通过 `workspaceNavigationPort` 表达意图，不能直接 import app/layout 或操作 layout store。
+这套设计的目标是：顶层场景切换、navigation scope、文档 runtime 生命周期各自只有一个权威来源。domain 内部如果需要“打开文档 / 进入知识库 / 切换工作台”，只能通过 `workspaceNavigationPort` 表达意图，不能直接 import app/layout 或操作 layout store。
 
 核心边界：
 
 - `layoutStore` 只保存 scene、pane placement、宽度、activeDocument 等布局/几何状态；
-- `workspaceScopeStore` 只保存当前项目或 Linnya 助手 scope、草稿对话、最近活跃会话；
+- `navigationScope` 只保存当前项目或 Linnya 助手 scope、草稿对话、最近活跃会话；
 - `uiStore` 不再保存导航状态；
 - `workspaceNavigation` 负责保存旧文档、停用 file-manager session、等待 DocumentSurface ready、激活新文档 runtime；
 - 通用 DocumentSurface ready 不认识 Tiptap；Markdown file handler 通过独立 Markdown editor port 等待具体实例；
@@ -162,7 +162,7 @@
 - 对话居中工作台：`apps/renderer/app/pages/ChatCentricPage/`
 - 领域内部某个 CTA：调用 `getWorkspaceNavigationPort()` 暴露的窄命令
 
-如果切换涉及项目作用域，必须通过 `workspaceScopeStore` 的公开 action 或 `workspaceNavigation` 编排更新。禁止新增 project scope store 或让 domain 直接写 layout state。
+如果切换涉及项目作用域，必须通过 `navigationScope` 的公开 action 或 `workspaceNavigation` 编排更新。禁止新增 project scope store 或让 domain 直接写 layout state。
 
 ---
 

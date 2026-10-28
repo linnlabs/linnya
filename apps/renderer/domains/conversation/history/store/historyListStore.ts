@@ -14,18 +14,18 @@ import { historyApiService } from '../services/historyApiService';
 import type { ConversationListItem } from '../services/historyApiService';
 import { sortSidebarConversations } from '../../functions/sidebarConversationListSort';
 import {
-  getWorkspaceScopeKey,
-  useWorkspaceScopeStore,
-  type WorkspaceScope,
-} from '../../../../shared/stores/workspaceScopeStore';
+  getNavigationScopeKey,
+  useNavigationScope,
+  type NavigationScope,
+} from '@/app/navigation';
 
-function cloneScope(scope: WorkspaceScope): WorkspaceScope {
+function cloneScope(scope: NavigationScope): NavigationScope {
   return scope.kind === 'project'
     ? { kind: 'project', projectId: scope.projectId }
     : { kind: 'linnya-assistant' };
 }
 
-const getScopeKey = (scope: WorkspaceScope) => getWorkspaceScopeKey(scope);
+const getScopeKey = (scope: NavigationScope) => getNavigationScopeKey(scope);
 
 interface ScopeCacheSnapshot {
   conversations: ConversationListItem[];
@@ -48,7 +48,7 @@ interface LoadScopeListOptions {
 }
 
 let scopeListenersRegistered = false;
-let lastSubscribedScope: WorkspaceScope | null = null;
+let lastSubscribedScope: NavigationScope | null = null;
 
 function createEmptySnapshot(): ScopeCacheSnapshot {
   return {
@@ -63,13 +63,13 @@ function createEmptySnapshot(): ScopeCacheSnapshot {
   };
 }
 
-function getScopeForConversation(conversation: ConversationListItem): WorkspaceScope {
+function getScopeForConversation(conversation: ConversationListItem): NavigationScope {
   return typeof conversation.project_id === 'string' && conversation.project_id.trim().length > 0
     ? { kind: 'project', projectId: conversation.project_id }
     : { kind: 'linnya-assistant' };
 }
 
-function isConversationInScope(conversation: ConversationListItem, scope: WorkspaceScope): boolean {
+function isConversationInScope(conversation: ConversationListItem, scope: NavigationScope): boolean {
   return scope.kind === 'project'
     ? conversation.project_id === scope.projectId
     : !conversation.project_id;
@@ -101,7 +101,7 @@ export const useHistoryListStore = defineStore('historyList', {
     
     // 最后刷新时间
     lastRefreshTime: 0,
-    // 作用域缓存（按 WorkspaceScope 存储最近一次成功加载的快照）
+    // 作用域缓存（按 NavigationScope 存储最近一次成功加载的快照）
     scopeCache: {} as Record<string, ScopeCacheSnapshot>,
 
     // 后端已确认删除的身份；阻止删除前发出的列表请求或迟到同步在本次运行期复活旧事实。
@@ -109,30 +109,30 @@ export const useHistoryListStore = defineStore('historyList', {
   }),
 
   getters: {
-    getConversationsByScope: (state) => (scope: WorkspaceScope): ConversationListItem[] => {
+    getConversationsByScope: (state) => (scope: NavigationScope): ConversationListItem[] => {
       return state.scopeCache[getScopeKey(scope)]?.conversations ?? [];
     },
 
-    isLoadingByScope: (state) => (scope: WorkspaceScope): boolean => {
+    isLoadingByScope: (state) => (scope: NavigationScope): boolean => {
       return state.scopeCache[getScopeKey(scope)]?.isLoading ?? false;
     },
 
-    errorByScope: (state) => (scope: WorkspaceScope): string | null => {
+    errorByScope: (state) => (scope: NavigationScope): string | null => {
       return state.scopeCache[getScopeKey(scope)]?.error ?? null;
     },
 
-    hasLoadedScope: (state) => (scope: WorkspaceScope): boolean => {
+    hasLoadedScope: (state) => (scope: NavigationScope): boolean => {
       const snapshot = state.scopeCache[getScopeKey(scope)];
       return !!snapshot && (snapshot.lastRefreshTime > 0 || snapshot.conversations.length > 0);
     },
 
-    isScopeComplete: (state) => (scope: WorkspaceScope): boolean => {
+    isScopeComplete: (state) => (scope: NavigationScope): boolean => {
       return state.scopeCache[getScopeKey(scope)]?.isComplete ?? false;
     },
   },
 
   actions: {
-    ensureScopeSnapshot(scope: WorkspaceScope): ScopeCacheSnapshot {
+    ensureScopeSnapshot(scope: NavigationScope): ScopeCacheSnapshot {
       const key = getScopeKey(scope);
       const existing = this.scopeCache[key];
       if (existing) return existing;
@@ -147,10 +147,10 @@ export const useHistoryListStore = defineStore('historyList', {
       return this.scopeCache[key];
     },
 
-    syncCurrentScopeFromSnapshot(scope?: WorkspaceScope) {
-      const workspaceScope = useWorkspaceScopeStore();
-      const targetScope = scope ? cloneScope(scope) : workspaceScope.currentScope;
-      if (getScopeKey(targetScope) !== workspaceScope.currentScopeKey) return;
+    syncCurrentScopeFromSnapshot(scope?: NavigationScope) {
+      const navigationScope = useNavigationScope();
+      const targetScope = scope ? cloneScope(scope) : navigationScope.currentScope;
+      if (getScopeKey(targetScope) !== navigationScope.currentScopeKey) return;
 
       const snapshot = this.ensureScopeSnapshot(targetScope);
       this.conversations = cloneConversations(snapshot.conversations);
@@ -162,9 +162,9 @@ export const useHistoryListStore = defineStore('historyList', {
       this.error = snapshot.error;
     },
 
-    persistScopeSnapshot(scope?: WorkspaceScope) {
-      const workspaceScope = useWorkspaceScopeStore();
-      const key = getScopeKey(scope ? cloneScope(scope) : workspaceScope.currentScope);
+    persistScopeSnapshot(scope?: NavigationScope) {
+      const navigationScope = useNavigationScope();
+      const key = getScopeKey(scope ? cloneScope(scope) : navigationScope.currentScope);
       this.scopeCache[key] = {
         conversations: cloneConversations(this.conversations),
         nextCursor: this.nextCursor,
@@ -177,9 +177,9 @@ export const useHistoryListStore = defineStore('historyList', {
       };
     },
 
-    restoreScopeSnapshot(scope?: WorkspaceScope) {
-      const workspaceScope = useWorkspaceScopeStore();
-      const key = getScopeKey(scope ? cloneScope(scope) : workspaceScope.currentScope);
+    restoreScopeSnapshot(scope?: NavigationScope) {
+      const navigationScope = useNavigationScope();
+      const key = getScopeKey(scope ? cloneScope(scope) : navigationScope.currentScope);
       const snapshot = this.scopeCache[key];
       if (snapshot) {
         this.conversations = cloneConversations(snapshot.conversations);
@@ -203,10 +203,10 @@ export const useHistoryListStore = defineStore('historyList', {
 
     ensureScopeSubscription() {
       if (scopeListenersRegistered) return;
-      const workspaceScope = useWorkspaceScopeStore();
-      lastSubscribedScope = cloneScope(workspaceScope.currentScope);
+      const navigationScope = useNavigationScope();
+      lastSubscribedScope = cloneScope(navigationScope.currentScope);
 
-      workspaceScope.onScopeDidChange(({ scope }) => {
+      navigationScope.onScopeDidChange(({ scope }) => {
         const previousScope = lastSubscribedScope;
         const nextScope = cloneScope(scope);
         if (previousScope && getScopeKey(previousScope) === getScopeKey(nextScope)) {
@@ -222,7 +222,7 @@ export const useHistoryListStore = defineStore('historyList', {
       });
 
       if (this.conversations.length === 0 && !this.isLoading) {
-        this.restoreScopeSnapshot(workspaceScope.currentScope);
+        this.restoreScopeSnapshot(navigationScope.currentScope);
       }
 
       scopeListenersRegistered = true;
@@ -235,8 +235,8 @@ export const useHistoryListStore = defineStore('historyList', {
      */
     async loadList(refresh = false) {
       this.ensureScopeSubscription();
-      const workspaceScope = useWorkspaceScopeStore();
-      await this.loadScopeList(workspaceScope.currentScope, {
+      const navigationScope = useNavigationScope();
+      await this.loadScopeList(navigationScope.currentScope, {
         refresh,
         limit: 30,
         loadAll: false,
@@ -244,7 +244,7 @@ export const useHistoryListStore = defineStore('historyList', {
       });
     },
 
-    async loadScopeList(scope: WorkspaceScope, options?: LoadScopeListOptions) {
+    async loadScopeList(scope: NavigationScope, options?: LoadScopeListOptions) {
       this.ensureScopeSubscription();
       const targetScope = cloneScope(scope);
       const snapshot = this.ensureScopeSnapshot(targetScope);
@@ -353,7 +353,7 @@ export const useHistoryListStore = defineStore('historyList', {
           )),
         );
         snapshot.lastRefreshTime = Date.now();
-        if (key === useWorkspaceScopeStore().currentScopeKey) {
+        if (key === useNavigationScope().currentScopeKey) {
           this.syncCurrentScopeFromSnapshot();
         }
       });
@@ -398,7 +398,7 @@ export const useHistoryListStore = defineStore('historyList', {
       this.syncCurrentScopeFromSnapshot(targetScope);
     },
 
-    upsertConversationForScope(scope: WorkspaceScope, conversation: ConversationListItem) {
+    upsertConversationForScope(scope: NavigationScope, conversation: ConversationListItem) {
       this.ensureScopeSubscription();
       if (!isConversationInScope(conversation, scope)) {
         this.removeConversation(conversation.conversation_id);

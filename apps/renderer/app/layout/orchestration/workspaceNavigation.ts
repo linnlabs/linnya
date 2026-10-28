@@ -7,10 +7,10 @@ import {
 } from '@/app/layout/functions/workspacePaneNavigationPlan';
 import { computeWorkspacePanePlacementSwapPreferredWidth } from '@/app/layout/functions/workspacePaneGeometry';
 import {
-  areWorkspaceScopesEqual,
-  useWorkspaceScopeStore,
-  type WorkspaceScope,
-} from '@/shared/stores/workspaceScopeStore';
+  areNavigationScopesEqual,
+  useNavigationScope,
+  type NavigationScope,
+} from '@/app/navigation';
 import { useFileStore } from '@/shared/stores/file';
 import type {
   WorkspaceDocumentNavigationRequest,
@@ -147,7 +147,7 @@ function getRequiredDocumentRuntimeLoader(
   return loader;
 }
 
-function cloneWorkspaceScope(scope: WorkspaceScope): WorkspaceScope {
+function cloneNavigationScope(scope: NavigationScope): NavigationScope {
   return scope.kind === 'project'
     ? { kind: 'project', projectId: scope.projectId }
     : { kind: 'linnya-assistant' };
@@ -160,24 +160,24 @@ function resolveDocumentProjectId(request: WorkspaceDocumentNavigationRequest): 
   const node = treeStore.findNodeById(request.documentId);
   if (node?.projectId) return node.projectId;
 
-  const workspaceScopeStore = useWorkspaceScopeStore();
-  if (workspaceScopeStore.currentProjectId) return workspaceScopeStore.currentProjectId;
+  const navigationScope = useNavigationScope();
+  if (navigationScope.currentProjectId) return navigationScope.currentProjectId;
 
   throw new Error('[workspaceNavigation] projectId is required when opening a workspace document');
 }
 
-function setWorkspaceScope(scope: WorkspaceNavigationScope): void {
-  const workspaceScopeStore = useWorkspaceScopeStore();
+function setNavigationScope(scope: WorkspaceNavigationScope): void {
+  const navigationScope = useNavigationScope();
   if (scope.kind === 'project') {
-    workspaceScopeStore.enterProject(scope.projectId);
+    navigationScope.enterProject(scope.projectId);
     return;
   }
-  workspaceScopeStore.enterLinnyaAssistant();
+  navigationScope.enterLinnyaAssistant();
 }
 
 function setWorkspaceView(scope: WorkspaceNavigationScope): void {
   useProjectOverviewModalStore().close();
-  setWorkspaceScope(scope);
+  setNavigationScope(scope);
 }
 
 /**
@@ -218,8 +218,8 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
   return {
     async openWorkspace(scope) {
       const layoutStore = useLayoutStore();
-      const workspaceScopeStore = useWorkspaceScopeStore();
-      const isSameScope = areWorkspaceScopesEqual(workspaceScopeStore.currentScope, scope);
+      const navigationScope = useNavigationScope();
+      const isSameScope = areNavigationScopesEqual(navigationScope.currentScope, scope);
       const isAlreadyInWorkspace = layoutStore.state.scene.kind === 'workspace';
 
       if (isSameScope && isAlreadyInWorkspace) {
@@ -273,9 +273,9 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
     async openProjectSetup(projectId) {
       await leaveDocumentRuntimeThen(() => {
         const layoutStore = useLayoutStore();
-        const workspaceScopeStore = useWorkspaceScopeStore();
+        const navigationScope = useNavigationScope();
         useProjectOverviewModalStore().close();
-        workspaceScopeStore.enterProject(projectId);
+        navigationScope.enterProject(projectId);
         layoutStore.openBypassView({ type: 'project-setup', projectId });
       });
     },
@@ -322,7 +322,7 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
       const layoutStore = useLayoutStore();
       const intent = beginDocumentOpenIntent();
       useProjectOverviewModalStore().close();
-      setWorkspaceScope({ kind: 'project', projectId });
+      setNavigationScope({ kind: 'project', projectId });
       await saveCurrentSessionBeforeReplacingSurface(null);
       if (!isCurrentDocumentOpenIntent(intent)) return;
       layoutStore.openDocument({
@@ -360,12 +360,12 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
 
     async openConversation(request) {
       const layoutStore = useLayoutStore();
-      const workspaceScopeStore = useWorkspaceScopeStore();
+      const navigationScope = useNavigationScope();
       const historyLoaderStore = useHistoryLoaderStore();
-      const previousScope = cloneWorkspaceScope(workspaceScopeStore.currentScope);
+      const previousScope = cloneNavigationScope(navigationScope.currentScope);
       const plan = resolveConversationNavigationPlan(
         layoutStore.state,
-        areWorkspaceScopesEqual(previousScope, request.scope),
+        areNavigationScopesEqual(previousScope, request.scope),
       );
       const initialConversation = request.initialConversation
         ? {
@@ -416,7 +416,7 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
        * 只有真正提交的世代才能更新持久的最近对话，否则会把已删除身份重新写回。
        */
       if (loadResult.status === 'committed') {
-        workspaceScopeStore.rememberLastActiveConversation(request.scope, request.conversationId);
+        navigationScope.rememberLastActiveConversation(request.scope, request.conversationId);
       }
     },
 
@@ -429,12 +429,12 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
       const intent = beginDocumentOpenIntent();
 
       const layoutStore = useLayoutStore();
-      const workspaceScopeStore = useWorkspaceScopeStore();
-      const previousScope = cloneWorkspaceScope(workspaceScopeStore.currentScope);
+      const navigationScope = useNavigationScope();
+      const previousScope = cloneNavigationScope(navigationScope.currentScope);
       const scope: WorkspaceNavigationScope = { kind: 'project', projectId };
       const plan = resolveDocumentNavigationPlan(
         layoutStore.state,
-        areWorkspaceScopesEqual(previousScope, scope),
+        areNavigationScopesEqual(previousScope, scope),
       );
       setWorkspaceView(scope);
 

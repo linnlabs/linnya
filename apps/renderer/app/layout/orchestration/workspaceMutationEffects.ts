@@ -8,7 +8,7 @@ import type {
   WorkspaceNodeTransferredEvent,
 } from '@app/schemas';
 import type { WorkspaceMutationEffectsPort } from '@/shared/ports/workspaceMutationEffectsPort';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
 import { notifyRendererDocumentMutationHandlers } from '@plugin/renderer/documentMutationPort';
 import { applyPendingRevisionsToOpenMarkdownDocument } from './shared/markdownPendingRevisionRefresh';
@@ -33,7 +33,7 @@ function markDocumentMutationHandled(mutationId: string): boolean {
 
 function isCurrentProjectMutation(projectId: string | null): boolean {
   if (!projectId) return false;
-  return useWorkspaceScopeStore().currentProjectId === projectId;
+  return useNavigationScope().currentProjectId === projectId;
 }
 
 async function refreshParentOrRoot(parentId: string | null): Promise<void> {

@@ -1,3 +1,4 @@
+import { createProjectLifecycle } from 'src/domains/projects';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@shared/utils/pathManager', () => {
@@ -75,7 +76,6 @@ import * as subagentRunner from 'src/tools/agent_control/subrun/shared';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import type { CanonicalInferenceMessage } from '@linnlabs/linnkit/ports';
 import { createDurableFlowHarness, installRecoveryModelFixture } from '../__test-helpers__/createDurableFlowHarness';
-import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 
 class HostOnlyProbeTool extends BaseTool {
   readonly name = 'host_only_probe';
@@ -421,7 +421,7 @@ describe('Flow host forced-tool integration', () => {
       historyRepository: durableFlow.history,
       runtimePersistence: durableFlow.runtime,
     };
-    const projectId = new WorkspaceService(durableFlow.db).createProject('Host forced batch');
+    const projectId = createProjectLifecycle(durableFlow.db).create({ name: 'Host forced batch' });
 
     await flow.orchestrator.next({
       conversation_id: conversationId,

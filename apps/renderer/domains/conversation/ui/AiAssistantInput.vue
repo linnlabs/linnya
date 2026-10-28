@@ -147,7 +147,7 @@ import {
   useModelPickerReadModel,
   useModelPurposeBindings,
 } from '@/domains/model-configuration';
-import { useWorkspaceScopeStore } from '../../../shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useConversationAgentChoices } from '@/app/plugins/composables';
 import { useLocalization } from '@/app/localization';
 import { resolveConversationAgentChoiceTextPresentation } from '@/app/plugins/functions/pluginContributionPresentation';
@@ -223,7 +223,7 @@ const modelCatalog = useModelCatalogReadModel();
 const modelPicker = useModelPickerReadModel();
 const modelBindings = useModelPurposeBindings();
 const uiStore = useUIStore();
-const workspaceScopeStore = useWorkspaceScopeStore();
+const navigationScope = useNavigationScope();
 const { conversationMessage } = useConversationLocalization();
 const { t } = useLocalization();
 const contextWindowUsage = useContextWindowUsagePresentation({
@@ -584,7 +584,7 @@ const handleAgentChoiceChange = async (agentChoiceId: ConversationAgentChoiceId 
   try {
     await applyConversationAgentChoice({
       assistantStore,
-      scopeStore: workspaceScopeStore,
+      scopeStore: navigationScope,
       agentChoiceId,
       choices: enabledConversationAgentChoices.value,
     });

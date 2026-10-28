@@ -9,7 +9,7 @@
  *   后端会把该会话落为 `project_id = null`（或缺失），从而在“当前项目作用域”的历史列表中不可见。
  *
  * 设计原则：
- * - 优先使用 workspaceScope 的 currentProjectId（单一事实来源）；
+ * - 优先使用 navigationScope 的 currentProjectId（单一事实来源）；
  * - 仅在 scope 不可用时，才从会话 metadata 中回退读取 `projectId` / `project_id`；
  * - 严格类型：不使用 any 类型断言。
  */

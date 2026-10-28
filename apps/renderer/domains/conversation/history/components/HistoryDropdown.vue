@@ -35,7 +35,7 @@
 import { computed, nextTick, onMounted, ref, watch, type Component, type CSSProperties } from 'vue';
 import { useHistoryListStore } from '../store/historyListStore';
 import { useAssistantStore } from '../../store/assistantStore';
-import { useWorkspaceScopeStore } from '@shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { getWorkspaceNavigationPort } from '@shared/ports/workspaceNavigationPort';
 import type { ConversationListItem } from '../services/historyApiService';
 import { HistoryIcon } from '@linnya/renderer-ui/icons';
@@ -71,7 +71,7 @@ interface HistoryDropdownOption {
 
 const listStore = useHistoryListStore();
 const assistantStore = useAssistantStore();
-const workspaceScopeStore = useWorkspaceScopeStore();
+const navigationScope = useNavigationScope();
 const { conversationMessage } = useConversationLocalization();
 const dropdownWrapperRef = ref<HTMLElement | null>(null);
 const dropdownStyle = ref<CSSProperties>({});
@@ -158,7 +158,7 @@ const calculatePosition = (): void => {
 
 const ensureListLoaded = (): void => {
   if (conversations.value.length > 0 || isLoading.value) return;
-  void listStore.loadScopeList(workspaceScopeStore.currentScope, {
+  void listStore.loadScopeList(navigationScope.currentScope, {
     refresh: true,
     limit: 5,
   });
@@ -188,7 +188,7 @@ const handleSelectValue = (value: HistoryDropdownValue | null): void => {
   emit('close');
   void getWorkspaceNavigationPort().openConversation({
     conversationId: conversation.conversation_id,
-    scope: workspaceScopeStore.currentScope,
+    scope: navigationScope.currentScope,
     initialConversation: {
       title: conversation.title,
       createdAt: conversation.created_at,

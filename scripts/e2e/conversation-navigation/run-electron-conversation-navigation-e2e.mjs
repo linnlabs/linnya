@@ -719,17 +719,17 @@ async function readNavigationState(cdp) {
       { useAssistantStore },
       { useMessageWindowStore },
       { useHistoryLoaderStore },
-      { useWorkspaceScopeStore },
+      { useNavigationScope },
     ] = await Promise.all([
       import('/apps/renderer/domains/conversation/store/assistantStore.ts'),
       import('/apps/renderer/domains/conversation/message-window/store/messageWindowStore.ts'),
       import('/apps/renderer/domains/conversation/history/store/historyLoaderStore.ts'),
-      import('/apps/renderer/shared/stores/workspaceScopeStore.ts'),
+      import('/apps/renderer/app/navigation/index.ts'),
     ]);
     const assistantStore = useAssistantStore();
     const messageWindowStore = useMessageWindowStore();
     const historyLoaderStore = useHistoryLoaderStore();
-    const workspaceScopeStore = useWorkspaceScopeStore();
+    const navigationScope = useNavigationScope();
     const renderedMessageIds = Array.from(
       document.querySelectorAll('[data-conversation-message-id]'),
       element => element.getAttribute('data-conversation-message-id'),
@@ -738,7 +738,7 @@ async function readNavigationState(cdp) {
       (messageId, index) => renderedMessageIds.indexOf(messageId) !== index,
     );
     return {
-      scope: workspaceScopeStore.currentScope,
+      scope: navigationScope.currentScope,
       activeConversationId: assistantStore.activeConversationId,
       messageWindowConversationId: messageWindowStore.conversationId,
       messageWindowStatus: messageWindowStore.status,

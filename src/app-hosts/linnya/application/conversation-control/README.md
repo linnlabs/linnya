@@ -74,4 +74,4 @@ pnpm exec vitest run \
 
 CLI 使用方法和端到端测试分层见 `apps/linnya-cli/README.md`。
 
-`projects` 通过注入的 Workspace 查询端口列出未删除项目，只投影 `project_id` 与 `name`。CLI 不读取数据库或物理路径。
+`projects` 通过注入的 Project 查询端口列出未删除项目，组合根从 `domains/projects` 公开入口装配，只投影 `project_id` 与 `name`。CLI 不读取数据库或物理路径。

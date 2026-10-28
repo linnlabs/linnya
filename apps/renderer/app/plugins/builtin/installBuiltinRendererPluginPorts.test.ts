@@ -175,8 +175,8 @@ vi.mock('@/domains/conversation/history/services/historyApiService', () => ({
   },
 }));
 
-vi.mock('@/shared/stores/workspaceScopeStore', () => ({
-  useWorkspaceScopeStore: () => scopeHarness.store,
+vi.mock('@/app/navigation', () => ({
+  useNavigationScope: () => scopeHarness.store,
 }));
 
 vi.mock('@/domains/conversation/services/orchestration/chatFlowOrchestrator', () => ({

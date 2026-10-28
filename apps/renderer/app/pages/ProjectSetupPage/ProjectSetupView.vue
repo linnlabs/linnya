@@ -77,7 +77,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { useExecutionState } from '@/domains/conversation/store/executionState';
 import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
@@ -92,7 +92,7 @@ import { PROJECT_PLANNING_PROMPT_KEY } from '@app/schemas';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
 
 // Stores
-const workspaceScopeStore = useWorkspaceScopeStore();
+const navigationScope = useNavigationScope();
 const assistantStore = useAssistantStore();
 const executionState = useExecutionState();
 const workspaceTreeStore = useWorkspaceTreeStore();
@@ -109,7 +109,7 @@ const hasSentWelcomeMessage = ref(false);
 
 // 计算属性：项目名称
 const projectName = computed(() => {
-  const projectId = workspaceScopeStore.currentProjectId;
+  const projectId = navigationScope.currentProjectId;
   if (!projectId) return '';
   const project = workspaceProjectsStore.projects.find(p => p.id === projectId);
   return project?.name || '';
@@ -117,7 +117,7 @@ const projectName = computed(() => {
 
 // 计算属性：项目描述
 const projectDescription = computed(() => {
-  const projectId = workspaceScopeStore.currentProjectId;
+  const projectId = navigationScope.currentProjectId;
   if (!projectId) return '';
   const project = workspaceProjectsStore.projects.find(p => p.id === projectId);
   const desc = (project?.description ?? '').trim();
@@ -208,7 +208,7 @@ const handleSkip = () => {
 };
 
 function exitProjectSetupToWorkspace(): void {
-  const projectId = workspaceScopeStore.currentProjectId;
+  const projectId = navigationScope.currentProjectId;
   if (!projectId) {
     throw new Error(layoutMessage('layout.projectSetup.missingCurrentProject'));
   }
@@ -247,7 +247,7 @@ const ensureWelcomeMessage = async () => {
 每一轮对话请集中在一小组问题上，等待我回答后再继续提问。`;
 
   try {
-    const projectId = workspaceScopeStore.currentProjectId || undefined;
+    const projectId = navigationScope.currentProjectId || undefined;
 
     const ok = await chatFlowOrchestrator.sendChatMessage({ text: initialPrompt }, {
       promptKey: PROJECT_PLANNING_PROMPT_KEY,

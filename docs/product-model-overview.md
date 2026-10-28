@@ -15,7 +15,7 @@
 
 从用户价值看，Linnya 要让用户与 Agent 围绕真实工作对象持续完成工作，把材料、上下文、过程和成果积累为可以继续使用的资产。文档数据库是支撑这种工作的产品模型；价值需要由具体任务的完成质量、使用成本和后续复用来检验。
 
-所有文档类型存在同一个逻辑数据库里，按项目组织；数据库通过 VFS 映射成一棵虚拟路径树；Agent 在一个真实的会话工作区里工作，并通过一组恒定的通用工具操作虚拟树、会话文件和宿主命令。文档类型可以无限扩展，基础工具面不变。插件通过 VFS 文本投影、CLI 和 Skill 接入 Agent；Agent 必须经通用 `shell` / `process` 调用插件 CLI，不为插件领域命令增加新的模型工具。推荐把适合文本表达的插件文档类型做成“代码即文档”。
+所有文档类型存在同一个逻辑数据库里，按项目组织；数据库通过 VFS 映射成一棵虚拟路径树；Agent 在一个真实的会话工作目录里工作，并通过一组恒定的通用工具操作虚拟树、会话文件和宿主命令。文档类型可以无限扩展，基础工具面不变。插件通过 VFS 文本投影、CLI 和 Skill 接入 Agent；Agent 必须经通用 `shell` / `process` 调用插件 CLI，不为插件领域命令增加新的模型工具。推荐把适合文本表达的插件文档类型做成“代码即文档”。
 
 ### 0.1 公开历史
 
@@ -63,7 +63,7 @@
 |---|---|---|
 | **内核层** | linnkit：语义无关的 Agent 执行内核 | 独立开源包，与业务解耦 |
 | **工具层** | 模型可见的基础工具面与正交扩展能力 | **基础面恒定**，这是本文最重要的约束 |
-| **存储层** | 逻辑数据库 / 会话工作区 / 外部源 | 结构稳定，实例无限增长 |
+| **存储层** | 逻辑数据库 / 会话工作目录 / 外部源 | 结构稳定，实例无限增长 |
 | **接入层** | 插件 contribution：文档类型、VFS 投影、CLI、Skill、富文档交互界面 | **按真实工作需要扩展** |
 
 核心张力只有一句话：**接入层可以持续扩展，基础工具面保持不变。**
@@ -74,7 +74,7 @@
 
 ## 2. 存储模型
 
-从 Agent 的产品心智看，数据落在三类位置：**逻辑数据库**、**会话工作区**和**外部源**。三者的身份、寻址和权限边界不能被抹平；但项目文档与会话文件可以在明确的路径规则下共用 `read_file` 这个阅读动作。
+从 Agent 的产品心智看，数据落在三类位置：**逻辑数据库**、**会话工作目录**和**外部源**。三者的身份、寻址和权限边界不能被抹平；但项目文档与会话文件可以在明确的路径规则下共用 `read_file` 这个阅读动作。
 
 ```mermaid
 flowchart LR
@@ -82,7 +82,7 @@ flowchart LR
     VFS --> Project["项目文档空间"]
     Project --> Database["统一逻辑数据库"]
 
-    Agent -->|"read_file"| Workdir["会话工作区"]
+    Agent -->|"read_file"| Workdir["会话工作目录"]
     Workdir -->|"文本或图片输入"| Agent
 
     Agent -->|"knowledge_search / knowledge_read"| Knowledge["Knowledge 空间"]
@@ -99,6 +99,26 @@ flowchart LR
     Agent -->|"skill"| Skills["Skill 能力包"]
     Agent -->|"web_search / web_read"| Web["Web"]
 ```
+
+### 2.0 Workspace、Project 与导航上下文
+
+这些概念必须在产品、代码和命令中保持同一含义：
+
+| 概念 | 定义与身份 | 代码 owner |
+|---|---|---|
+| **数据工作区 / Workspace** | 当前 Backend 使用的一套持久化数据边界，以启动时冻结的物理根定位；可包含多个项目 | [RuntimePathRoots](../src/shared/runtime-paths/README.md)、[唯一运行 owner](../src/app-hosts/linnya/backend-runtime/features/workspace-ownership/README.md) |
+| **项目 / Project** | 工作区内组织文档、关联会话及知识库的业务单位，身份是 `project_id` | [Project domain](../src/domains/projects/README.md) |
+| **项目文档树 / Project document tree** | 项目中的节点及其 VFS 地址；节点 ID 是稳定身份，路径是当前地址 | [文档树与 VFS](../src/features/workspace/README.md) |
+| **会话工作目录 / Conversation work directory** | 每个会话的真实目录，保存过程文件并作为 Shell 默认 cwd | [conversation-files](../src/domains/conversation-files/README.md) |
+| **导航上下文 / Navigation scope** | Renderer 当前查看的项目或 Assistant，以及该上下文的会话草稿 | [应用导航](../apps/renderer/app/navigation/README.md) |
+
+一个数据工作区可以包含多个项目。创建、重命名和切换项目不创建数据库、不启动 Backend、不改变数据工作区；项目删除也不等于删除整个工作区。数据工作区不是账号或团队权限边界，AppData 与凭据有各自的持久化位置，不能把 Workspace root 当成全部应用数据目录。
+
+代码中的 `workspaceRoot` / `workspaceDirectory` 只表达物理数据根；`projectId` / `project_id` 表达项目身份；`NavigationScope` 表达界面上下文；会话目录使用 `workDirectory` / `cwd`。新增代码不得用一个含糊的 `workspace` 参数同时承载这些含义。
+
+`workspace_nodes`、`workspace:/`、现有 `workspace:*` IPC 地址和导航的 `workspace-scope` 持久化键是已有合同，保留原名。它们不使 Project 与 Workspace 成为同一实体：文档 locator 必须在明确项目上下文中解析，IPC 项目请求由 Project owner 接纳。旧的 `WorkspaceService` 只处理文档树，项目生命周期从独立公开入口调用。
+
+CLI 的 `runtime start --workspace <path>` 选择整套数据；普通控制命令通过连接描述选择运行中的 Backend；`--project <id>` 再选择其中的项目。不能根据当前窗口、进程 cwd 或文件存在性猜测另一层身份。
 
 ### 2.1 逻辑数据库 —— 统一的数据底座
 
@@ -128,13 +148,13 @@ VFS 只负责路径空间、节点映射和能力调度，不拥有业务数据�
 
 VFS 可以在实现层增加只读视图，但 `.linnya`、`systemView` 或某种固定的文档内部路径结构不是产品模型的前提。是否需要这些视图，应由真实工作流证明，而不是要求每种插件预先实现。
 
-### 2.3 会话工作区 —— Agent 的真实工作目录
+### 2.3 会话工作目录 —— Agent 的真实工作目录
 
 每个对话有一个稳定的本地目录。同一对话的 Agent 可以共享其中的过程文件；进程可以结束，文件可以在会话生命周期内保留。
 
-Agent 执行 Shell 时默认以这个目录为工作区，并向 Linnya 传递相对路径。中间脚本、下载数据、CLI 渲染结果和临时转换文件都应默认落在这里，不污染项目文档树。
+Agent 执行 Shell 时默认以这个目录为 cwd，并向 Linnya 传递相对路径。中间脚本、下载数据、CLI 渲染结果和临时转换文件都应默认落在这里，不污染项目文档树。
 
-Shell 是**受权限控制的宿主命令能力**，不是严格的 conversation-only 沙箱。它可以在权限和审批允许的范围内访问显式宿主路径；会话工作区是默认工作目录和过程文件归宿，不是虚假的操作系统安全边界。`process` 负责同一宿主命令模型下的长进程生命周期。
+Shell 是**受权限控制的宿主命令能力**，不是严格的 conversation-only 沙箱。它可以在权限和审批允许的范围内访问显式宿主路径；会话工作目录是默认工作目录和过程文件归宿，不是虚假的操作系统安全边界。`process` 负责同一宿主命令模型下的长进程生命周期。
 
 三类 locator 的事实源不同，但都属于 `read_file` 的阅读范围：
 
@@ -154,13 +174,13 @@ Shell 是**受权限控制的宿主命令能力**，不是严格的 conversation
 
 ### 2.4 产物边界
 
-Linnya 不引入“中间产物库”。用户可见内容有两种稳定归宿：项目文档和对话产物；过程文件仍留在会话工作区。
+Linnya 不引入“中间产物库”。用户可见内容有两种稳定归宿：项目文档和对话产物；过程文件仍留在会话工作目录。
 
 | 东西 | 归宿 | 是否是文档节点 |
 |---|---|---|
 | Markdown、Slides、Sheet、MindMap 及未来文档类型 | 逻辑数据库 → 项目树 | 是 |
 | AI 生成图片、图表、分析结果 | 对话事件流 | 否 |
-| 中间脚本、临时数据、渲染缓存 | 会话工作区 | 否 |
+| 中间脚本、临时数据、渲染缓存 | 会话工作目录 | 否 |
 | 用户明确要求的导出文件 | 获准的操作系统路径 | 否 |
 
 对话产物和过程文件通过 `conversation:/...` locator 交给 Agent。它是跨工具阅读合同；Shell 和进程内部仍使用普通相对/绝对 OS 路径。Agent 可以通过 Shell 裁剪、转换、复制文件，也可以把 locator 交给理解该合同的插件。locator 本身只声明身份；`read_file` 的图片结果会把已校验像素作为模型附件送入当前回合，`generate_image` 则只在本次聊天模型和 route 支持工具结果图片时附加同一生成图。非视觉模型仍能完成生成并获得文字与 locator。
@@ -288,7 +308,7 @@ Skill 是能力包，不是项目文档。它的 `SKILL.md` 和附带资源属�
 
 Skill 的完整渐进披露都由 `skill` 工具负责：激活时读取 `SKILL.md`，需要时列出资源，再按资源相对路径读取内容。这样 Skill 的来源、激活状态、目录边界和资源权限都归同一个领域管理，也可以直接删除 `skill://` → `resource_read` 这条重复链路。
 
-`read_file` 读取项目 VFS 文档投影和会话工作区文件；Knowledge、Web 和 Skill 资源仍分别通过各自的领域工具读取。它们都能返回文本，不代表它们拥有相同的身份、权限和分页合同。
+`read_file` 读取项目 VFS 文档投影和会话工作目录文件；Knowledge、Web 和 Skill 资源仍分别通过各自的领域工具读取。它们都能返回文本，不代表它们拥有相同的身份、权限和分页合同。
 
 ### 4.4 插件 CLI 与宿主复用边界
 
@@ -298,7 +318,7 @@ Agent 通过通用 `shell` / `process` 调用 `linnya-<plugin-id>` 形式的插�
 
 插件 CLI 如果需要复用当前 App 已拥有的数据库、coordinator 或受管 worker，可以由一个短生命周期的轻量 CLI client 连接当前 App 的受限桥接。这个 client 仍是同一次 Shell execution 管理的操作系统子进程；桥接不是 Agent 工具，不建立第二套 proposal、审批、owner、process handle 或审计，也不能把 CLI 参数提升为 Host 业务字段。Shell 取消、对话删除和 App 退出必须同时等待子进程与桥接调用完成清理。
 
-CLI 产生的过程文件默认落在会话工作区里，不直接写项目文档账本。CLI 如果需要修改数据库文档，应调用插件自己拥有的正式文档接口，不能绕过文档类型的写入规则。
+CLI 产生的过程文件默认落在会话工作目录里，不直接写项目文档账本。CLI 如果需要修改数据库文档，应调用插件自己拥有的正式文档接口，不能绕过文档类型的写入规则。
 
 面向人、开发脚本或 CI 的独立 command mode 可以显式启动自身所需的运行时；Agent 路径不得在桥接不可用时隐式 fallback 到第二个 Electron。两种入口应复用同一套 parser 和领域 orchestration，不复制 CLI 语义。
 
@@ -356,7 +376,7 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 6. **8 个基础工具恒定** —— 新增或启停文档类型插件，不新增必需的 Agent 工具名。
 7. **读取边界清楚** —— 文件 locator 只统一文件阅读动作；Knowledge、Web、Skill 和运行时 blob 仍保留所属领域的身份、权限和分页合同，不恢复万能 URI 资源读取器。
 8. **宿主不复制插件语义** —— 通用 host 只负责注册、调度、权限与审计，不硬编码具体插件的业务分支或 CLI 参数。
-9. **过程与产物分开** —— 会话工作区文件不会隐式进入项目树；对话产物不会自动变成文档节点。
+9. **过程与产物分开** —— 会话工作目录文件不会隐式进入项目树；对话产物不会自动变成文档节点。
 10. **Subagent 是协作机制** —— 专用 Agent 和专用工具可以优化工作流，但不能成为插件能力的唯一通路。
 11. **Workspace locator 是当前地址，inode 是稳定身份** —— 重命名、同项目移动和跨项目转移不改变 node/inode 身份，但会改变项目作用域与 path；历史 locator 允许失效，不能跨项目猜测。成功结果同时发布 locator 与 inode 时，下一次命令只能选择一个权威身份。新建节点尚无 inode，只能用 locator；禁止虚构 inode，也禁止 inode 失败后偷偷改按 locator 执行。
 12. **TaskState 是 Conversation 状态** —— 它由当前 Conversation 的正式工具事件派生，主 Agent 是唯一读写者；不属于项目 VFS、SharedMemory、conversation instance 或跨对话任务面板。父子 Agent 只通过 `subagent(prompt)` 交接当前子任务，Subagent 系统不读取或注入 TaskState。
@@ -371,7 +391,7 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 - Agent 协作与运行管理工具最终由 linnkit 还是 Linnya 实现。
 - linnkit 的通用能力发现协议与 Linnya 的 Skill 系统如何衔接。
 - Skill 激活输出已经改为资源相对路径，并由 `skill` 的 `list_resources` / `read_resource` 动作自持渐进披露；旧 `skill://` 仅由历史 schema 和 Renderer projector 严格解释，不再进入 live `resource_read`。
-- `generate_image` 已停止新建 `project_asset_links`，直接写入当前会话工作区并返回 `conversation:` locator；只有当前聊天模型支持工具结果图片时，才通过 managed image ingress 与 tool-result claim 增加模型输入附件。Slides 已能解析 locator，历史 `text_to_image` 只在 Renderer replay 边界解释。
+- `generate_image` 已停止新建 `project_asset_links`，直接写入当前会话工作目录并返回 `conversation:` locator；只有当前聊天模型支持工具结果图片时，才通过 managed image ingress 与 tool-result claim 增加模型输入附件。Slides 已能解析 locator，历史 `text_to_image` 只在 Renderer replay 边界解释。
 - conversation 与 host 图片已经可以通过 `read_file(locator=...)` 回流模型输入；`resource_read(conversation_file://...)` 的公开分支和项目树资源库投影均已删除。旧全局图片不迁移、不回填、不继续授权读取，未知旧关系不恢复为产品投影。
 - Knowledge 已收口为 `knowledge_search` / `knowledge_read`，Web 已收口为 `web_search` / `web_read`；两者的旧 `resource_read` live 分支均已删除，历史事件只在严格 replay 边界中解释。
 - 当前专用工具中，哪些应迁移到 CLI，哪些能证明自己是高价值加速器。
@@ -404,7 +424,7 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 | SharedMemory 退役 | `docs/shared-memory-canonical-identity-refactor.md` |
 | TaskState | `src/domains/task-state/README.md` |
 | Agent Control / Subagent | `src/tools/agent_control/README.md` |
-| 数据库架构 | `docs/workspace-db-architecture.md` |
+| 数据库架构 | [Project 与文档树边界](../src/features/workspace/README.md) |
 | 插件体系 | `docs/plugins/architecture.md` + `docs/plugins/guides/` |
 | 命令执行 | `src/domains/commands/README.md` |
 | ToolOutput 领域 | `src/tools/tool_output/README.md` |

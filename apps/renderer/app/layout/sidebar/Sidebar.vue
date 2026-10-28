@@ -43,7 +43,7 @@ import { SIDEBAR_WIDTH_LIMITS, useUIStore } from '@/shared/stores/ui';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { getWorkspaceNodeDeletionPort } from '@/shared/ports/workspaceNodeDeletionPort';
-import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 
 // App 组合面
 import WorkspaceSidebarSurface from '@/app/layout/sidebar/WorkspaceSidebarSurface.vue';
@@ -57,7 +57,7 @@ const uiStore = useUIStore();
 const layoutStore = useLayoutStore();
 const navigation = getWorkspaceNavigationPort();
 const nodeDeletion = getWorkspaceNodeDeletionPort();
-const workspaceScopeStore = useWorkspaceScopeStore();
+const navigationScope = useNavigationScope();
 const { layoutMessage } = useLayoutLocalization();
 
 const { startResize, resizeTo, cleanup: cleanupResize } = useSidebarResize({
@@ -111,7 +111,7 @@ const handleSetSidebarNav = (nav: 'list' | 'project') => {
 
 const handleSetSidebarMode = (mode: 'chat' | 'files') => {
   layoutStore.setSidebarMode(mode);
-  const projectId = workspaceScopeStore.currentProjectId;
+  const projectId = navigationScope.currentProjectId;
   if (mode === 'files' && projectId) {
     void nodeDeletion.ensureProjectPageSelection(projectId).catch((error: unknown) => {
       console.warn('[Sidebar] 打开项目文件页失败：', error);

@@ -34,7 +34,7 @@
 - `KnowledgeBasePage` 与 `ProjectSetupPage`：旁路全屏视图。
 
 顶层场景由 `app/layout/store/layoutStore.ts` 中的 `scene` 表达；当前项目、Linnya 助手、草稿对话和历史会话由
-`shared/stores/workspaceScopeStore.ts` 作为唯一 scope 权威表达。Page 层只做场景装配，不保存第二份导航状态。
+`app/navigation/index.ts` 作为唯一 scope 权威表达。Page 层只做场景装配，不保存第二份导航状态。
 
 右 pane 的开合是外框裁剪式抽屉：frame 动画占位宽度，内部 Document / Conversation surface
 始终保持最终内容宽度。Conversation 只能在收起动画结束后释放活动渲染实例，避免展开期间

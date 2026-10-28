@@ -8,7 +8,7 @@ export interface RuntimePathRoots {
   readonly developmentRoot: string;
   /** 不随 Workspace 迁移的应用私有数据根。 */
   readonly appDataRoot: string;
-  /** 当前 Workspace 数据根，已经包含启动时的显式覆盖。 */
+  /** 整套数据工作区的物理根，可包含多个 Project；不是项目 ID、VFS path 或会话 cwd。 */
   readonly workspaceRoot: string;
   /** Workspace 根是否来自用户或环境显式覆盖。 */
   readonly workspaceRootIsCustom: boolean;

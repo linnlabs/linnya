@@ -14,7 +14,7 @@ import { captureConversationClientNotice, clientTransportNotice } from '../../fe
 import { invokeAssistant, type InvokeAssistantParams } from '../assistantService';
 import { generateConversationId, generateMessageId } from '@shared/utils/idUtils';
 import { useAssistantStore } from '../../store/assistantStore';
-import { useWorkspaceScopeStore } from '../../../../shared/stores/workspaceScopeStore';
+import { useNavigationScope } from '@/app/navigation';
 import { useWorkspaceMetadata } from './helpers';
 import { requestSaveBeforeAssistantInvoke } from './helpers/requestSaveBeforeAssistantInvoke';
 import {
@@ -44,7 +44,7 @@ type AnnotationRunScope =
 export function useAnnotationRunOrchestrator() {
   const assistantStore = useAssistantStore();
   const annotationExecutionState = useAnnotationRunExecutionStore();
-  const workspaceScopeStore = useWorkspaceScopeStore();
+  const navigationScope = useNavigationScope();
   const { buildWorkspaceMetadata } = useWorkspaceMetadata();
 
   /** 准备请求身份；此阶段禁止创建正式用户消息。 */
@@ -60,7 +60,7 @@ export function useAnnotationRunOrchestrator() {
       };
     }
 
-    const conversation = ensureMaterializedConversation(assistantStore, workspaceScopeStore);
+    const conversation = ensureMaterializedConversation(assistantStore, navigationScope);
     if (!conversation) {
       throw new Error('[AnnotationRunOrchestrator] No active conversation available');
     }
@@ -138,7 +138,7 @@ export function useAnnotationRunOrchestrator() {
             orchestrateCommittedConversationTitle({
               event,
               wasNewConversation: runInfo.wasNewConversation,
-              scope: workspaceScopeStore.currentScope,
+              scope: navigationScope.currentScope,
               onHistorySynced: () => assistantStore.setSelectedConversation(conversationId),
             });
           },
