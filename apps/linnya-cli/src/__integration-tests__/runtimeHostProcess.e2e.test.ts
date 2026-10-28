@@ -174,7 +174,10 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     expect(receiptA.conversation_id).not.toBe(receiptB.conversation_id);
     const blockedDelete = await runCli(['projects', 'delete', projectId, '--yes'], environment);
     expect(blockedDelete.code, blockedDelete.stderr).toBe(6);
-    expect(parseJson(blockedDelete.stderr)).toMatchObject({ error: { code: 'project_not_empty' } });
+    expect(parseJson(blockedDelete.stderr)).toMatchObject({ error: {
+      code: 'project_not_empty',
+      message: expect.stringContaining('Ask the user to delete this project manually in the Linnya desktop app.'),
+    } });
 
     const [statusA, statusB] = await Promise.all([
       runCli([

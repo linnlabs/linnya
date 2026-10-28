@@ -14,9 +14,7 @@ export class ProjectNotFoundError extends Error {
 
 export class ProjectNotEmptyError extends Error {
   constructor(readonly projectId: string) {
-    super(
-      `Project is not empty: ${projectId}. Linked content must be handled by its owner before deletion.`
-    );
+    super(`Project is not empty: ${projectId}`);
     this.name = 'ProjectNotEmptyError';
   }
 }

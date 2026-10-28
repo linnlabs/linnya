@@ -58,9 +58,9 @@ pnpm exec vitest run \
 门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期。`projectCliProcess.integration.test.ts` 使用真实 CLI 子进程、HTTP router 和 SQLite 验证项目写入、失败边界与持久化；不放入独立 CLI 包，以保持其与 Backend 的编译边界。普通 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`；无 Electron Runtime 的冷启动、并行、owner 竞争、重启和强制终止恢复见 `runtimeHostProcess.e2e.test.ts`。
 
 `projects` 的 `list / get / create / update / delete` 委托 `domains/projects` 公开生命周期端口，
-不复制项目规则或读取 SQL。列表返回 `project_id / name`；其余动作返回安全项目详情，
+不复制项目规则或读取 SQL。列表返回 `project_id / name`；`get / create / update` 返回安全项目详情，
 不包含软删除字段和物理路径。重名与不存在分别投影为 `project_name_conflict / project_not_found`，
-HTTP 状态为 409 / 404，CLI 均退出 6。Project owner 提交后发布变更通知，界面只刷新项目列表，不切换导航。
+HTTP 状态为 409 / 404，CLI 均退出 6。Project owner 提交后发布变更通知，创建和修改只刷新项目列表，不切换导航。
 `delete` 要求 `confirm=true`，只委托 `deleteEmpty`；非空为 `project_not_empty`，受保护或数据库限制为 `project_delete_blocked`（HTTP 409 / CLI 6）。
 成功只返回删除的 `project_id`，通知当前 Desktop 退出失效项目。系统角色设置、完整删除和 Workspace 管理不开放。
 
