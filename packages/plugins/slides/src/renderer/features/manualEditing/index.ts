@@ -60,3 +60,5 @@ export {
   type ManualEditPresentationTraceDeps,
 } from './orchestration/ManualEditPresentationTrace';
 export type { ManualEditPresentationTracePort } from './definitions/manualEditPresentationTrace';
+
+export type { ManualEditQueueSnapshot } from './definitions/manualEditQueuePorts';

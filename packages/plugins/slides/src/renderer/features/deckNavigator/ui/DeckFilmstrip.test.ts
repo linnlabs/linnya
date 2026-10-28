@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { installTestPresentation } from '../../documentRuntime/testing/installTestPresentation';
 
 import { createApp, h, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,7 +10,6 @@ import type {
 } from '@linnya/renderer-ui/scroll';
 import DeckNavigatorBar from './DeckNavigatorBar.vue';
 import { provideManualEditSubmission } from '../../manualEditing';
-import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import DeckFilmstrip from './DeckFilmstrip.vue';
 import { useSlidesStore } from '../../../store/slidesStore';
 
@@ -65,7 +65,7 @@ async function flushDomUpdates(): Promise<void> {
 }
 
 function seedDeck(slideCount: number, slideSize = { width: 10, height: 5.625 }): void {
-  useSlidesStore().deckPreview = {
+  installTestPresentation({ preview: {
     nodeId: 'deck-1',
     versionNumber: 1,
     title: 'Deck',
@@ -77,7 +77,7 @@ function seedDeck(slideCount: number, slideSize = { width: 10, height: 5.625 }):
     })),
     theme: { colors: {}, fonts: { major: 'sans-serif', minor: 'sans-serif' } },
     warnings: [],
-  };
+  } });
 }
 
 describe('DeckFilmstrip', () => {
@@ -158,14 +158,14 @@ describe('DeckFilmstrip', () => {
   it('opens the thumbnail menu and submits duplicate/delete for the right-clicked page', async () => {
     seedDeck(3);
     const slides = useSlidesStore();
-    slides.currentDeckId = 'deck-1';
-    slides.documentBuildState = { state: 'ready', presentationId: 'deck-1', versionId: 'v1', versionNumber: 1, sourceHash: 'a'.repeat(64) };
-    useSlidesRenderStore().renderModel = {
+    installTestPresentation({ documentId: 'deck-1' });
+    installTestPresentation({ buildState: { state: 'ready', presentationId: 'deck-1', versionId: 'v1', versionNumber: 1, sourceHash: 'a'.repeat(64) } });
+    installTestPresentation({ renderModel: {
       presentationId: 'deck-1', version: 1, title: 'Deck', sourceKind: 'generated',
       slideSize: { width: 10, height: 5.625, unit: 'in' },
       slides: [0, 1, 2].map(index => ({ slideId: `slide-${index + 1}`, index, layoutKey: 'freeform', elements: [], background: { paint: { type: 'none' } } })),
       capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true },
-    };
+    } });
     const enqueue = vi.fn(() => ({ clientOperationId: 'operation', settled: Promise.resolve({ status: 'cancelled' as const }) }));
     const app = createApp({ setup() {
       provideManualEditSubmission({ enqueue, flush: async () => {}, refreshPresentation: async () => {} });

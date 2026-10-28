@@ -11,7 +11,7 @@ import { useSlidesStore } from '../../src/renderer/store/slidesStore';
 import { useSlidesRenderStore } from '../../src/renderer/store/slidesRenderStore';
 import { useSlidesUiStore } from '../../src/renderer/store/slidesUiStore';
 import SlideStage from '../../src/renderer/ui/preview/SlideStage.vue';
-import type { SlideRenderModel, ShapeRenderNode, TextRenderNode } from '../../src/renderer/types/render';
+import type { PresentationRenderModel, SlideRenderModel, ShapeRenderNode, TextRenderNode } from '../../src/renderer/types/render';
 import '../../src/renderer/features/textEditing/ui/InlineTextEditor.css';
 import '../../src/renderer/ui/preview/SlideStage.css';
 
@@ -72,7 +72,7 @@ export function mountShapeTextEditingSmoke() {
       versionNumber: version, sourceHash: 'a'.repeat(64) };
   }
   function present(version: number) {
-    render.renderModel = {
+    const renderModel: PresentationRenderModel = {
       presentationId: 'interaction-fixture', title: 'Editing interaction', version, sourceKind: 'generated',
       slideSize: { width: 6.5, height: 3.5, unit: 'in' },
       capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true },
@@ -103,16 +103,17 @@ export function mountShapeTextEditingSmoke() {
           : { ...node, ...finalized, authoringEdit };
       }) }],
     };
+    slides.installSnapshot({ snapshotId: `fixture-${version}`, buildState: buildState(version), preview: null, renderModel }, 0);
   }
-  slides.currentDeckId = 'interaction-fixture';
-  slides.documentBuildState = buildState(1);
+  slides.beginDocument('interaction-fixture');
   present(1);
   const app = createApp({ setup() {
     provideManualEditSubmission(useManualEditQueue({
       readSnapshot: () => ({ documentId: slides.currentDeckId, presentationError: render.renderError, buildState: slides.documentBuildState, renderVersion: render.renderModel?.version ?? null }),
       createCommandId: () => crypto.randomUUID(), message: key => key,
       submit: command => new Promise(resolve => commands.push({ command, resolve })),
-      refreshDocument: async (_id, revision) => { slides.documentBuildState = buildState(revision ?? savedRevision); },
+      // 测试驱动器显式调用 present 控制完整快照到达，刷新不伪造部分已加载状态。
+      refreshDocument: async () => {},
     }));
     manual.setEnabled(true);
     ui.setZoom(1);

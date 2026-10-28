@@ -1,6 +1,6 @@
+import { installTestPresentation } from '../../documentRuntime/testing/installTestPresentation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { useSlidesStore } from '../../../store/slidesStore';
 import { useSlidesElementAiEditWorkflow } from './useSlidesElementAiEditWorkflow';
 import type { PptSourceSlicesOutput } from '../../../types/api';
 import type { SlidesElementAiEditSubmitPayload } from '../definitions/elementAiEditTypes';
@@ -16,9 +16,6 @@ vi.mock('../../../services/slidesApi', () => ({
   },
 }));
 
-vi.mock('../../../services/slidesRenderApi', () => ({
-  slidesRenderApi: {},
-}));
 
 vi.mock('@plugin/renderer/aiInvocationPort', () => ({
   requireRendererAiInvocationPort: () => ({
@@ -74,8 +71,7 @@ describe('useSlidesElementAiEditWorkflow', () => {
     vi.clearAllMocks();
     ensureConversationMock.mockResolvedValue({ conversationId: 'conversation-1' });
 
-    const slidesStore = useSlidesStore();
-    slidesStore.currentDeckId = 'deck-1';
+    installTestPresentation({ documentId: 'deck-1' });
   });
 
   it('materializes a PPT conversation, reads exact source slices, and sends slides_agent context', async () => {

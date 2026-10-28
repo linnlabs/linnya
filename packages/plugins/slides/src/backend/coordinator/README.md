@@ -119,3 +119,7 @@ PptCoordinator.history.restore（versionId + expectedCurrentVersionId）
 - shared coordinator：`packages/plugins/slides/src/backend/coordinator/sharedPptCoordinator.test.ts`
 - image ownership：`packages/plugins/slides/src/backend/features/presentationImageOwnership/**/*.test.ts`
 - IPC 调用 coordinator：`packages/plugins/slides/src/backend/ipc/*.test.ts`
+
+## Renderer 一致快照
+
+`readViewSnapshot` 委托 `PresentationQueryRuntime`，后者从 persistence 的单条 current/draft 关联查询捕获源码、DeckSpec、修订和状态，再派生 preview 与 RenderModel。source-span 恢复只消费捕获源码，两个派生结果使用同一次 resolution。分页和内容缓存属于 [presentationViewSnapshot](../features/presentationViewSnapshot/README.md)，不能通过分别读取三个 latest 查询拼装视图。截图、检查和导出保留其既有公开快照入口。

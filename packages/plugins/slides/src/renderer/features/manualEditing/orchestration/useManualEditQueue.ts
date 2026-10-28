@@ -80,6 +80,11 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
     store.setQueue(remaining);
     store.setSubmission({ phase: 'submitting', entry, commandId });
     logSlidesVerbose('ManualEditQueue', 'dispatch', { documentId: snapshot.documentId, commandId, clientOperationIds: entry.clientOperationIds });
+    let finishPresentation = ports.preparePresentation?.(entry.intent.operation, snapshot);
+    function finish(revision: number | null): void {
+      finishPresentation?.(revision);
+      finishPresentation = undefined;
+    }
     try {
       const result = await submitManualEdit({ ...snapshot, documentId: snapshot.documentId, operation: entry.intent.operation }, {
         createCommandId: () => commandId, submit: ports.submit, trace: ports.trace,
@@ -87,8 +92,10 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
       if (requestEpoch !== epoch) return;
       if (result.status === 'committed') {
         store.setSubmission({ phase: 'awaiting_frame', entry, commandId, revision: result.revision });
+        finish(result.revision);
         await refreshPresentation();
       } else {
+        finish(null);
         fail(entry, commandId, readManualEditErrorMessage(result, ports.message)
           ?? ports.message('slides.manualEditing.error.saveFailed'));
         if (result.status === 'conflict') {
@@ -103,6 +110,7 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
         fail(entry, commandId, error instanceof Error ? error.message : ports.message('slides.manualEditing.error.saveFailed'));
       }
     } finally {
+      finish(null);
       if (requestEpoch === epoch) {
         processing = false;
         void processQueue();

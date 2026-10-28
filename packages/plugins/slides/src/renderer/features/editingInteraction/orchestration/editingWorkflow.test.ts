@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { createPinia, setActivePinia, storeToRefs } from 'pinia';
-import { effectScope, nextTick, ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+import { effectScope, nextTick, ref, computed } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SlidesManualEditCommand, SlidesManualEditCommandResult } from '@plugin/slides/shared/authoringEditing';
 import { useManualEditQueue, useSlidesManualEditingStore } from '../../manualEditing';
@@ -29,7 +29,8 @@ const other = { ...target, elementId: 'other', authoringRef: { ...target.authori
 const scopes: ReturnType<typeof effectScope>[] = [];
 
 function createWorkflow() {
-  const { currentDeckId: documentId } = storeToRefs(useSlidesStore());
+  const slides = useSlidesStore();
+  const documentId = computed({ get: () => slides.currentDeckId, set: value => slides.beginDocument(value) });
   documentId.value = 'deck';
   const revision = ref(1);
   const commands: { command: SlidesManualEditCommand; resolve: (value: SlidesManualEditCommandResult) => void }[] = [];

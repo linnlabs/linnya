@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { installTestPresentation } from '../../documentRuntime/testing/installTestPresentation';
 import { createPinia, setActivePinia } from 'pinia';
 import { effectScope, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -15,16 +16,16 @@ vi.mock('@plugin/renderer/workspaceRuntime', () => ({
 
 const scopes: ReturnType<typeof effectScope>[] = [];
 
-function installRevision(version: number, slideCount: number): void {
+function installRevision(version: number, slideCount: number, selectedIndex?: number): void {
   const slidesStore = useSlidesStore();
-  slidesStore.documentBuildState = {
+  installTestPresentation({ buildState: {
     state: 'ready', presentationId: 'deck', versionId: `v${version}`, versionNumber: version, sourceHash: 'a'.repeat(64),
-  };
-  slidesStore.deckPreview = {
+  } });
+  installTestPresentation({ preview: {
     nodeId: 'deck', versionNumber: version, title: 'Deck', slideSize: { width: 10, height: 5.625 },
     slides: Array.from({ length: slideCount }, (_, index) => ({ slideId: `s${index}`, number: index + 1, elements: [] })),
     theme: { colors: {}, fonts: { major: 'Arial', minor: 'Arial' } }, warnings: [],
-  };
+  } });
   const model: PresentationRenderModel = {
     presentationId: 'deck', title: 'Deck', version, sourceKind: 'generated',
     slideSize: { width: 10, height: 5.625, unit: 'in' },
@@ -33,12 +34,15 @@ function installRevision(version: number, slideCount: number): void {
     })),
     capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true },
   };
-  useSlidesRenderStore().renderModel = model;
+  installTestPresentation({ renderModel: model });
+  const installed = slidesStore.state.installed;
+  if (!installed) throw new Error('Missing fixture snapshot');
+  slidesStore.installSnapshot(installed, Math.min(selectedIndex ?? slidesStore.currentSlideIndex, slideCount - 1));
 }
 
 function createFixture() {
   const slidesStore = useSlidesStore();
-  slidesStore.currentDeckId = 'deck';
+  installTestPresentation({ documentId: 'deck' });
   installRevision(4, 3);
   slidesStore.setCurrentSlide(1);
   const commands: { command: SlidesManualEditCommand; resolve: (value: SlidesManualEditCommandResult) => void }[] = [];
@@ -46,7 +50,12 @@ function createFixture() {
     commands.push({ command, resolve });
   }));
   const refreshDocument = vi.fn(async (_id: string, version?: number) => {
-    if (version !== undefined) installRevision(version, 4);
+    if (version === undefined) return;
+    const active = useSlidesManualEditingStore().submission;
+    const operation = active.phase === 'awaiting_frame' ? active.entry.intent.operation : null;
+    const target = operation && 'index' in operation ? operation.index + (operation.op === 'duplicate_slide' ? 1 : 0) : undefined;
+    // 此 port 代表 documentRuntime 已完成的原子安装；控制器不再自己补选页。
+    installRevision(version, 4, target);
   });
   const scope = effectScope();
   scopes.push(scope);
@@ -72,7 +81,7 @@ describe('blank slide insertion + real submission queue', () => {
   beforeEach(() => setActivePinia(createPinia()));
   afterEach(() => { for (const scope of scopes.splice(0)) scope.stop(); });
 
-  it('submits after the current slide against the visible revision and selects the committed page before waiting for its frame', async () => {
+  it('submits against the visible revision and respects the selection installed by documentRuntime', async () => {
     const f = createFixture();
     expect(f.controller.availability.value).toEqual({ available: true, index: 2 });
 

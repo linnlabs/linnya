@@ -4,6 +4,7 @@ export interface ActiveDeckRefreshRequest {
 }
 
 export interface ActiveDeckRefreshCoordinatorPorts {
+  readonly readDocumentEpoch: () => number;
   readonly isActiveDocument: (documentId: string) => boolean;
   readonly hasLoadedRevision: (documentId: string, expectedVersion: number) => boolean;
   readonly readDocument: (documentId: string) => Promise<void>;
@@ -20,15 +21,16 @@ export interface ActiveDeckRefreshCoordinator {
 export function createActiveDeckRefreshCoordinator(
   ports: ActiveDeckRefreshCoordinatorPorts,
 ): ActiveDeckRefreshCoordinator {
-  let activeRefresh: { readonly documentId: string; readonly promise: Promise<void> } | null = null;
+  let activeRefresh: { readonly documentId: string; readonly epoch: number; readonly promise: Promise<void> } | null = null;
 
   async function refresh(request: ActiveDeckRefreshRequest): Promise<void> {
     if (!ports.isActiveDocument(request.documentId) || isLoaded(request)) return;
 
+    const epoch = ports.readDocumentEpoch();
     const running = activeRefresh;
-    if (running?.documentId === request.documentId) {
+    if (running?.documentId === request.documentId && running.epoch === epoch) {
       await running.promise;
-      if (!ports.isActiveDocument(request.documentId) || isLoaded(request)) return;
+      if (ports.readDocumentEpoch() !== epoch || !ports.isActiveDocument(request.documentId) || isLoaded(request)) return;
       if (request.expectedVersion === undefined) return;
 
       // 已加入的请求可能早于目标 revision；多个等待者继续合并到同一个补读。
@@ -40,7 +42,7 @@ export function createActiveDeckRefreshCoordinator(
 
     if (!ports.isActiveDocument(request.documentId) || isLoaded(request)) return;
     const promise = ports.readDocument(request.documentId);
-    activeRefresh = { documentId: request.documentId, promise };
+    activeRefresh = { documentId: request.documentId, epoch, promise };
     try {
       await promise;
     } finally {

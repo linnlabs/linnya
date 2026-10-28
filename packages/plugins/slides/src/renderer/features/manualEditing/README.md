@@ -74,6 +74,10 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 
 ## Performance trace
 
+`Slides/Ipc` records the snapshot read duration, batch count, received block count and retained cache size when verbose diagnostics are enabled.
+The `refresh_completed` boundary now covers installation of the complete revision snapshot, including navigation and RenderModel.
+`refreshToFrameMs` covers subsequent resource preparation and frame presentation; compare timings with older traces using the old deck/preview boundary accordingly.
+
 Each accepted command uses its UUID as the Renderer/Backend correlation ID. When
 `localStorage['linnya.slides.debug']` is set to `verbose`, the Renderer emits structured
 `Slides/ManualEditTrace` events for request start, retry, response, refresh completion and the first
@@ -91,3 +95,5 @@ Text-content intents carry a typed visual preview alongside style operations, re
 ## Complete visual projection
 
 [editingPreview](../editingPreview/README.md) owns paint and layout projection. Canvas, selection, hit testing and editor re-entry consume the same complete nodes. The queue only owns ordered intents and revision settlement; manualEditing no longer owns a partial run-style projection or a Shape-only old-line repositioner. A text-size operation updates layout and box together when exact local facts are available. Flow/intrinsic author layout and missing measurements retain the complete prior frame until formal compilation. A weak cache shares the synchronous result without adding a second store or asynchronous callback lifecycle.
+
+The page supplies `preparePresentation` for structure selection. One logical command prepares once across transport retries and confirms/cancels at its final outcome; the queue does not implement selection rules. See [documentRuntime](../documentRuntime/README.md).

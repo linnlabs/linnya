@@ -34,6 +34,7 @@ import { useSlidesEditingInteractionStore } from '../features/editingInteraction
 import { refreshSlidesDocumentPresentation } from './orchestration/refreshSlidesDocumentPresentation';
 import { useSlidesDocumentSave } from './orchestration/useSlidesDocumentSave';
 import { slidesApi } from '../services/slidesApi';
+import { prepareSlidesPresentation } from './orchestration/prepareSlidesPresentation';
 import { useSlideThumbnails } from '../features/deckNavigator';
 
 defineProps<{
@@ -49,7 +50,6 @@ const slidesRenderStore = useSlidesRenderStore();
 const {
   currentDeckId,
   hasOpenDeck,
-  deckPreview,
   documentBuildState,
 } = storeToRefs(slidesStore);
 const slidesUiStore = useSlidesUiStore();
@@ -64,6 +64,7 @@ const manualEditSubmission = useManualEditQueue({
     presentationError: slidesRenderStore.renderError }),
   createCommandId: () => crypto.randomUUID(),
   submit: command => slidesApi.submitManualEdit(command),
+  preparePresentation: prepareSlidesPresentation,
   refreshDocument: refreshSlidesDocumentPresentation,
   message: manualEditingMessage,
   trace: manualEditPresentationTrace,
@@ -79,23 +80,6 @@ watch(currentDeckId, () => {
   presentationExportStore.$reset();
   editingInteractionStore.$reset();
   manualEditPresentationTrace.clear();
-  slidesRenderStore.clearRenderModel();
 }, { immediate: true });
 
-let requestedRevision: string | null = null;
-watch([currentDeckId, documentBuildState, deckPreview], ([nodeId, buildState]) => {
-  if (!nodeId || buildState?.state !== 'ready' || buildState.presentationId !== nodeId) {
-    requestedRevision = null;
-    slidesRenderStore.clearRenderModel();
-    return;
-  }
-  const revision = `${nodeId}:${buildState.versionId}`;
-  if (requestedRevision === revision && slidesRenderStore.renderError === null) return;
-  requestedRevision = revision;
-  // ready 说明对应 DeckSpec 已落盘，不必再等待另一个 preview 事件。
-  // 首次 preview 若在挂载前到达，也不能吞掉后续第一次保存的刷新。
-  void slidesRenderStore.loadRenderModel(nodeId, {
-    keepExisting: slidesRenderStore.renderModel?.presentationId === nodeId,
-  });
-}, { immediate: true });
 </script>

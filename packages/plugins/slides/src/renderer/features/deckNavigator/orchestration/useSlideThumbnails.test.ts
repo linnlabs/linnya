@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
+import { installTestPresentation } from '../../documentRuntime/testing/installTestPresentation';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { effectScope, nextTick } from 'vue';
 import type { PresentationRenderModel } from '../../../types/render';
 import type { SlideRasterRequest } from '../../../../shared/slideRasterization';
-import { useSlidesStore } from '../../../store/slidesStore';
-import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import { useSlidesThumbnailStore } from '../store/slidesThumbnailStore';
 import { useSlideThumbnails } from './useSlideThumbnails';
 
@@ -45,13 +44,13 @@ beforeEach(() => {
 afterEach(() => { scope.stop(); jobs.clear(); });
 
 it('挂载读取现有模型，修订不重画，平铺请求升级分辨率，卸载释放位图', async () => {
-  const slides = useSlidesStore(), render = useSlidesRenderStore(), thumbnails = useSlidesThumbnailStore();
-  slides.currentDeckId = 'deck'; render.renderModel = model();
+  const thumbnails = useSlidesThumbnailStore();
+  installTestPresentation({ documentId: 'deck' }); installTestPresentation({ renderModel: model() });
   scope.run(useSlideThumbnails);
   await renderScheduled();
   expect(thumbnails.cachedCount).toBe(1);
   const small = thumbnails.getThumbnail('s1');
-  render.renderModel = model('deck', 2); await renderScheduled();
+  installTestPresentation({ renderModel: model('deck', 2) }); await renderScheduled();
   expect(raster).toHaveBeenCalledTimes(1);
   thumbnails.requestRasterWidth(320); await renderScheduled();
   expect(raster.mock.calls[1]?.[0].profile.viewportWidthPx).toBe(320);
@@ -64,18 +63,18 @@ it('挂载读取现有模型，修订不重画，平铺请求升级分辨率，�
 });
 
 it('切换文档同步清空展示，不会把仍保留的旧模型重新排队', async () => {
-  const slides = useSlidesStore(), render = useSlidesRenderStore(), thumbnails = useSlidesThumbnailStore();
-  slides.currentDeckId = 'deck'; render.renderModel = model();
+  const thumbnails = useSlidesThumbnailStore();
+  installTestPresentation({ documentId: 'deck' }); installTestPresentation({ renderModel: model() });
   scope.run(useSlideThumbnails); await renderScheduled();
   const old = thumbnails.getThumbnail('s1');
-  slides.currentDeckId = 'other';
+  installTestPresentation({ documentId: 'other' });
   expect(thumbnails.cachedCount).toBe(0);
   expect(old?.close).toHaveBeenCalledTimes(1);
   thumbnails.requestRasterWidth(320); await renderScheduled();
   expect(raster).toHaveBeenCalledTimes(1);
-  render.renderModel = model('other'); await renderScheduled();
+  installTestPresentation({ renderModel: model('other') }); await renderScheduled();
   expect(raster).toHaveBeenCalledTimes(2);
   expect(thumbnails.getThumbnail('s1')).not.toBe(old);
-  render.renderModel = null; await nextTick();
+  installTestPresentation({ renderModel: null }); await nextTick();
   expect(thumbnails.cachedCount).toBe(0);
 });

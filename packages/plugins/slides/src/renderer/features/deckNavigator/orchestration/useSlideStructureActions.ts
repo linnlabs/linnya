@@ -1,4 +1,4 @@
-import { computed, watch, type ComputedRef } from 'vue';
+import { computed, type ComputedRef } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useSlidesStore } from '../../../store/slidesStore';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
@@ -7,7 +7,7 @@ import {
   type ManualEditSubmissionPort,
 } from '../../manualEditing';
 import type { BlankSlideInsertionAvailability } from '../definitions/deckNavigatorTypes';
-import { resolveBlankSlideInsertion, resolveSlideStructureSelection } from '../functions/blankSlideInsertion';
+import { resolveBlankSlideInsertion } from '../functions/blankSlideInsertion';
 
 export interface SlideStructureActions {
   readonly availability: ComputedRef<BlankSlideInsertionAvailability>;
@@ -44,23 +44,12 @@ export function useSlideStructureActions(
       || (active.phase !== 'idle' && 'index' in active.entry.intent.operation);
   });
 
-  // 新修订已经落盘且模型到达时直接切到目标页，避免先重绘旧页再切空白页的两次等待。
-  watch([renderModel, () => manualEditingStore.submission], ([model, active]) => {
-    if (active.phase !== 'awaiting_frame' || !model || model.presentationId !== currentDeckId.value
-      || model.version !== active.revision || !('index' in active.entry.intent.operation)) return;
-    slidesStore.setCurrentSlide(resolveSlideStructureSelection(active.entry.intent.operation, model.slides.length));
-  });
-
   const canDelete = computed(() => availability.value.available && !pending.value && (renderModel.value?.slides.length ?? 0) > 1);
 
   async function submitStructure(op: 'insert_blank_slide' | 'duplicate_slide' | 'delete_slide', index: number): Promise<void> {
     if (!availability.value.available || pending.value || (op === 'delete_slide' && !canDelete.value)) return;
-    const documentId = currentDeckId.value;
     const ticket = submission.enqueue({ operation: { op, index } });
-    const settlement = await ticket.settled;
-    if (settlement.status === 'presented' && currentDeckId.value === documentId) {
-      slidesStore.setCurrentSlide(resolveSlideStructureSelection({ op, index }, renderModel.value?.slides.length ?? 1));
-    }
+    await ticket.settled;
   }
 
   async function insertAfterCurrentSlide(): Promise<void> {

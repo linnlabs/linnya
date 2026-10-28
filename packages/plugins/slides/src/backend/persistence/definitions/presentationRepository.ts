@@ -1,4 +1,5 @@
 import type { DeckSpec, TemplateSpec, TemplateSummary } from '@plugin/slides/shared';
+import type { SlidesDocumentBuildState } from '@plugin/slides/shared/documentSource';
 import type { DocumentVersionSummary } from '@app/schemas';
 import type { PresentationBuildFailureCode } from '../../features/presentationBuildFailure';
 import type { PresentationRevisionStorageKind } from '../../features/presentationSourceHistory/index.js';
@@ -96,6 +97,12 @@ export interface PresentationRenderSourceRecord {
   readonly deckSource: string;
   readonly deckSpec: DeckSpec;
   readonly title: string;
+}
+
+/** 一次 SQLite 读取捕获界面事实，不携带 PPTX BLOB。 */
+export interface PresentationViewSourceRecord extends PresentationRenderSourceRecord {
+  readonly buildState: SlidesDocumentBuildState;
+  readonly draftSourceHash?: string;
 }
 
 export interface PresentationRevisionRecord {
@@ -234,6 +241,7 @@ export interface PresentationTemplateRecord {
 
 /** current 文稿读模型的窄查询端口；query runtime 不依赖 mutation/history/template 能力。 */
 export interface PresentationDocumentQueryPort {
+  getPresentationViewSource(nodeId: string): Promise<PresentationViewSourceRecord | null>;
   getPresentation(nodeId: string): Promise<PresentationDocumentRecord | null>;
   getPresentationIdentity(nodeId: string): Promise<PresentationDocumentIdentity | null>;
   getPresentationPreviewSource(nodeId: string): Promise<PresentationPreviewSourceRecord | null>;

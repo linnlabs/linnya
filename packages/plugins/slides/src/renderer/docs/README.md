@@ -53,13 +53,12 @@ src/renderer/
 主预览链路：
 
 ```text
-SlidesPage / SlidesView
-  -> documentRuntime 加载当前 documentId
-  -> slidesStore.loadDeck(documentId)
-  -> slidesApi.getDocumentBuildState(documentId)
-       -> ready：并行进入 DeckPreview / RenderModel 主链
-       -> draft：展示“PPT 编译失败”，不请求 preview/render-model
-  -> SlideStage / SlideGridView / DeckNavigatorBar / build status 消费 store selector
+Host file session / SlidesView
+  -> documentRuntime.loadDeck / refreshDeck
+  -> slides:view-snapshot（同一修订的头、页序与缺失内容/定位块）
+  -> 同一 snapshot 的全部批次拼装、校验
+  -> 同步安装 build state + 导航 + RenderModel + 选择
+  -> SlideStage / SlideGridView / DeckNavigatorBar 消费 selector
 ```
 
 当前打开的 Slides 收到 `workspace.document.updated(version)` 后，复用同一条读取链路刷新当前
@@ -129,7 +128,7 @@ SlideStage authoring-capability target click / drag / text double-click
   -> manualEditing 提交队列（SlidesView 只装配端口），按操作身份返回 ticket
   -> slides:manual-edit(revisionId + revision + sourceHash + operation)
   -> backend 改写 compose.manualEdits 并完整编译/物化
-  -> revision 原子提交后 refreshDeck / RenderModel 原子替换
+  -> revision 原子提交后 documentRuntime 刷新并安装一致快照
   -> matching RenderModel + 当前页完整视觉资源原子呈现后结算 ticket／撤下 pending visual
      （回执不改变当前输入和焦点）
 ```
@@ -174,7 +173,8 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 | `slides:preview` | 获取 `DeckPreview` |
 | `slides:build-state` | 查询源码是 `ready` 还是 unresolved `draft`，并返回当前 revision ID、序号和 source hash 快照 |
 | `slides:manual-edit` | 基于精确 revision/source 快照提交有限人工编辑与新建空白幻灯片 |
-| `slides:render-model` | 获取 `PresentationRenderModel` |
+| `slides:view-snapshot` | Renderer 统一读取同一修订的视图，按页增量并支持分批 |
+| `slides:render-model` | 保留完整模型查询合同；Renderer 主链使用一致快照 |
 | `slides:inspect` | 获取 `PresentationInfo` |
 | `slides:source-slices` | 获取源码切片 |
 | `slides:export` | 生成 PPTX、图片 ZIP 或 PDF，并提交到 Host 一次性保存目标；不返回 artifact bytes |

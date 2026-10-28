@@ -1,3 +1,5 @@
+import { PresentationViewSnapshotRuntime } from '../features/presentationViewSnapshot';
+import type { ViewReadRequest, ViewReadResponse, ViewHeader } from '@plugin/slides/shared/presentationViewSnapshot';
 import type {
   DeckSpec,
   DeckPreview,
@@ -60,6 +62,33 @@ export interface PresentationQueryRuntimeDeps {
  * - sourceSpan 恢复属于 render-model 查询能力，也收在这里，防止 coordinator 继续膨胀。
  */
 export class PresentationQueryRuntime {
+  private readonly viewSnapshots = new PresentationViewSnapshotRuntime(nodeId => this.captureView(nodeId));
+
+  readViewSnapshot(request: ViewReadRequest): Promise<ViewReadResponse> {
+    return this.viewSnapshots.read(request);
+  }
+
+  private async captureView(nodeId: string) {
+    const source = await this.deps.presentationRepo.getPresentationViewSource(nodeId);
+    if (!source) throw new Error(`Presentation not found: ${nodeId}`);
+    const { buildState, draftSourceHash } = source;
+    if (buildState.state === 'draft') {
+      return { header: { buildState, draftSourceHash, preview: null, render: null }, renderModel: null };
+    }
+    const version = toSlidesEngineRenderModelSnapshot(source);
+    const resolution = await this.resolveRenderModelDeckSpec(nodeId, version);
+    const resolved = { ...source, deckSpec: resolution.deckSpec };
+    const [preview, renderModel] = await Promise.all([
+      this.deps.engine.buildPreview({ nodeId, version: toSlidesEnginePreviewSnapshot(resolved),
+        context: this.createEngineContext('buildPreview', { nodeId, versionId: version.id }) }),
+      this.buildRenderModel(nodeId, { ...version, deckSpec: resolution.deckSpec }, resolution.canEditSourceSelection),
+    ]);
+    const render = { presentationId: renderModel.presentationId, title: renderModel.title, version: renderModel.version,
+      sourceKind: renderModel.sourceKind, slideSize: renderModel.slideSize, capabilities: renderModel.capabilities };
+    const header: ViewHeader = { buildState, preview, render };
+    return { header, renderModel };
+  }
+
   constructor(private readonly deps: PresentationQueryRuntimeDeps) {}
 
   async inspect(nodeId: string): Promise<PresentationInfo> {

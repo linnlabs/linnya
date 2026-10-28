@@ -1,4 +1,5 @@
 import type { JsonValue } from '@app/schemas';
+import { isBackendRendererJsonValue } from './backendRendererJsonValue';
 
 const MAX_VALUE_DEPTH = 128;
 const MAX_VALUE_NODES = 200_000;
@@ -24,10 +25,11 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Electron structured clone 中的现有参数先进入显式 tagged value，再进入 JSON RPC。
- * tag 包住每个节点，用户对象即使含有 `kind` 字段也不会与协议元数据冲突。
+ * 纯 JSON 参数使用单个 envelope；含扩展值的参数保持逐节点 tagged 合同。
+ * 用户对象位于 envelope 内，即使含有 kind 字段也不会与协议元数据冲突。
  */
 export function encodeBackendRendererRequestValue(value: unknown): JsonValue {
+  if (isBackendRendererJsonValue(value)) return { kind: 'json', value };
   return encodeValue(value, 0, { nodes: 0 }, new Set<object>());
 }
 
@@ -96,6 +98,10 @@ function decodeValue(value: JsonValue, depth: number, budget: EncodingBudget): u
     throw new Error('Backend Renderer request wire value 缺少合法 kind');
   }
   switch (value.kind) {
+    case 'json':
+      requireExactKeys(value, ['kind', 'value']);
+      if (!isBackendRendererJsonValue(value.value)) throw invalidWireValue('json');
+      return value.value;
     case 'null':
       requireExactKeys(value, ['kind']);
       return null;

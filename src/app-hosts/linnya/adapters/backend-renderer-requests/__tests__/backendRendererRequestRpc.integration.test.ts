@@ -45,6 +45,18 @@ describe('Backend Renderer request RPC', () => {
     pair.dispose();
   });
 
+  it('纯 JSON 的大对象走一次外部 JSON 传输，保留用户 kind 字段并清理 mailbox', async () => {
+    temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'linnya-renderer-json-'));
+    const payload = { kind: 'json', value: Array.from({ length: 12_000 }, (_, index) => ({
+      id: `item-${index}`, text: '内容'.repeat(20), geometry: { x: index, y: 0, w: 1, h: 1 },
+    })) };
+    const pair = createPair(temporaryRoot, registry => { registry.handle('document:read', () => payload); });
+    try {
+      await expect(pair.gateway.invoke('document:read', [])).resolves.toEqual(payload);
+      expect(await readdir(temporaryRoot)).toEqual([]);
+    } finally { pair.dispose(); }
+  });
+
   it('50 MiB Slides 模板走外部二进制 mailbox，RPC frame 保持有界并清理精确目录', async () => {
     temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'linnya-renderer-mailbox-'));
     const pair = createPair(temporaryRoot, registry => {

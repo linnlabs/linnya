@@ -1,3 +1,4 @@
+import type { ViewReadRequest, ViewReadResponse } from '@plugin/slides/shared/presentationViewSnapshot';
 /**
  * PptCoordinator
  *
@@ -308,6 +309,10 @@ export class PptCoordinator {
   /** 查询源码是否已有同版本可渲染物化；draft 是正常业务状态，不通过异常表达。 */
   async getDocumentBuildState(nodeId: string): Promise<SlidesDocumentBuildState> {
     return this.queryRuntime.getDocumentBuildState(nodeId);
+  }
+
+  readViewSnapshot(request: ViewReadRequest): Promise<ViewReadResponse> {
+    return this.queryRuntime.readViewSnapshot(request);
   }
 
   /** 获取完整渲染模型（Konva 渲染层消费） */

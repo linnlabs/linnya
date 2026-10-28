@@ -15,6 +15,7 @@ import {
   PresentationManualEditCommandConflictError,
 } from './definitions/presentationRepository';
 import { PRESENTATION_MANUAL_EDIT_SCHEMAS } from '../features/presentationManualEditing';
+import { PresentationDraftRepository } from './repositories/PresentationDraftRepository';
 import { PresentationRepository } from './repositories/PresentationRepository';
 import { PRESENTATION_DOCUMENT_SCHEMAS } from './schemas/presentation.schema';
 
@@ -177,6 +178,31 @@ describe('PresentationRepository current materialization and source revisions', 
     expect(db.prepare(
       'SELECT layout FROM presentation_documents WHERE node_id = ?',
     ).pluck().get('deck-custom')).toBe('custom:5143500x9144000');
+  });
+
+  it('视图读取捕获同一 current 与有效 draft，不把旧基线草稿带入新修订', async () => {
+    insertWorkspaceNode(db, 'deck-view');
+    await repo.createPresentation('deck-view', makeDeckSpec('Revision 1'), {
+      pptxBuffer: Buffer.from('pptx'), deckSource: SOURCE_V1, origin: 'codegen',
+    });
+    const base = await repo.getPresentation('deck-view');
+    if (!base) throw new Error('Missing fixture document');
+    const drafts = new PresentationDraftRepository(db);
+    drafts.upsert('deck-view', 'broken source', base, 'Invalid source', 'slides.codegen.compose_contract');
+    const captured = await repo.getPresentationViewSource('deck-view');
+    expect(captured).toMatchObject({ currentRevisionId: base.currentRevisionId, deckSource: SOURCE_V1,
+      buildState: { state: 'draft', versionId: base.currentRevisionId, sourceHash: base.sourceHash,
+        draftStatus: { baseVersionId: base.currentRevisionId, errorSummary: 'Invalid source' } } });
+    expect(captured?.draftSourceHash).not.toBe(base.sourceHash);
+    const next = await repo.commitPresentation('deck-view', makeDeckSpec('Revision 2'), {
+      baseRevisionId: base.currentRevisionId, baseRevision: 1, deckSource: SOURCE_V1 + '\n// next',
+      pptxBuffer: Buffer.from('pptx-2'), origin: 'codegen',
+    });
+    expect(captured?.buildState.state).toBe('draft');
+    expect(captured?.currentRevision).toBe(1);
+    const current = await repo.getPresentationViewSource('deck-view');
+    expect(current?.buildState).toMatchObject({ state: 'ready', versionId: next.revisionId, versionNumber: 2 });
+    expect(current?.draftSourceHash).toBeUndefined();
   });
 
   it('提交只覆盖一行 current，并追加可精确重建的轻量源码 revision', async () => {

@@ -2,9 +2,15 @@
   <div class="deck-viewer">
     <div class="deck-viewer-body">
       <!-- 主区域：单页舞台或全稿平铺 -->
-      <div ref="stageHostRef" class="deck-viewer-stage">
+      <div
+        ref="stageHostRef"
+        class="deck-viewer-stage"
+      >
         <!-- loading 期间不保留上一份文稿的状态页或舞台 DOM。 -->
-        <div v-if="showLoading" class="stage-loading-spacer" />
+        <div
+          v-if="showLoading"
+          class="stage-loading-spacer"
+        />
         <SlidesStatusState
           v-else-if="documentBuildState?.state === 'draft'"
           title="PPT 编译失败"
@@ -58,11 +64,16 @@
             v-if="manualEditingStore.pendingPresentationRevision !== null"
             class="manual-edit-error__retry"
             @click="manualEditSubmission.refreshPresentation"
-          >{{ manualEditingMessage('slides.manualEditing.refreshPresentation') }}</button>
+          >
+            {{ manualEditingMessage('slides.manualEditing.refreshPresentation') }}
+          </button>
         </div>
 
         <!-- 右下角缩放控件只更新自身数值，不参与文稿内容切换；平铺视图没有舞台可缩放。 -->
-        <div v-if="deckPreview && deckViewMode === 'slide'" class="stage-zoom-slider">
+        <div
+          v-if="deckPreview && deckViewMode === 'slide'"
+          class="stage-zoom-slider"
+        >
           <button
             class="stage-zoom-slider__btn"
             :disabled="zoomPercent <= ZOOM_PERCENT_MIN"
@@ -141,6 +152,7 @@
 </template>
 
 <script setup lang="ts">
+import { useSlidesDocumentRuntime } from '../../features/documentRuntime';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { CustomSlider } from '@linnya/renderer-ui';
@@ -336,7 +348,7 @@ const sourceSelectionButtonTitle = computed(() =>
 
 function reload() {
   if (currentDeckId.value) {
-    slidesStore.loadDeck(currentDeckId.value);
+    void useSlidesDocumentRuntime().loadDeck(currentDeckId.value);
   }
 }
 

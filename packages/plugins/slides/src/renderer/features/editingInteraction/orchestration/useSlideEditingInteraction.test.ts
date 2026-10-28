@@ -1,5 +1,5 @@
-import { prepareTextLayout, layoutPreparedText } from '@plugin/slides/shared/textLayout';
 // @vitest-environment jsdom
+import { prepareTextLayout, layoutPreparedText } from '@plugin/slides/shared/textLayout';
 
 import { createPinia, setActivePinia } from 'pinia';
 import { ref } from 'vue';

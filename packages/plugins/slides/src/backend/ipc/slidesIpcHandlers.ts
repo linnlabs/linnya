@@ -1,3 +1,4 @@
+import { ViewReadRequestSchema, type ViewReadRequest, type ViewReadResponse } from '@plugin/slides/shared/presentationViewSnapshot';
 import type {
   DeckPreview,
   PresentationInfo,
@@ -33,6 +34,7 @@ export interface SlidesSourceSlicesForAiEditInput {
 }
 
 export interface SlidesIpcCoordinatorPort {
+  readViewSnapshot(request: ViewReadRequest): Promise<ViewReadResponse>;
   readonly history?: { preview(documentId: string, versionId: string): Promise<PresentationRenderModel> };
   readSourceSlicesForAiEdit(input: SlidesSourceSlicesForAiEditInput): Promise<SlidesSourceSlicesOutput>;
   inspect(nodeId: string): Promise<PresentationInfo>;
@@ -130,6 +132,9 @@ export function registerSlidesIpcHandlersForCoordinatorProvider(
     const { nodeId } = parseSlidesNodePayload(payload, 'slides:render-model');
     return readCoordinator().getRenderModel(nodeId);
   });
+
+  registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:view-snapshot', payload =>
+    readCoordinator().readViewSnapshot(ViewReadRequestSchema.parse(payload)));
 
   registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:manual-edit', async (payload) => {
     return readCoordinator().submitManualEdit(parseSlidesManualEditPayload(payload));

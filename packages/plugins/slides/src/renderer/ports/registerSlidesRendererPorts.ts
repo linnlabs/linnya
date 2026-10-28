@@ -1,3 +1,4 @@
+import { useSlidesDocumentRuntime } from '../features/documentRuntime';
 /**
  * @file registerSlidesRendererPorts.ts
  * @description 注册 Slides 渲染端对 host 暴露的窄能力。
@@ -175,7 +176,7 @@ export function registerSlidesRendererPorts(): void {
       if (event.mutationKind !== 'version') return;
       const slidesStore = useSlidesStore();
       if (slidesStore.currentDeckId !== event.documentId) return;
-      await slidesStore.refreshDeck(event.documentId, event.versionNumber);
+      await useSlidesDocumentRuntime().refreshDeck(event.documentId, event.versionNumber);
     },
   });
 
