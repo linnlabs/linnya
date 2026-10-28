@@ -31,7 +31,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
     const descriptor = ConversationControlConnectionDescriptorSchema.parse(
       JSON.parse(await fs.readFile(bridge.connectionFile, 'utf8')),
     );
-    await fs.writeFile(bridge.connectionFile, JSON.stringify({ ...descriptor, protocol_version: 5 }), { mode: 0o600 });
+    await fs.writeFile(bridge.connectionFile, JSON.stringify({ ...descriptor, protocol_version: 6 }), { mode: 0o600 });
     const result = await runCliProcess(['audit', 'conversation-1'], bridge.connectionFile);
     expect(result.exitCode).toBe(4);
     expect(JSON.parse(result.stderr)).toMatchObject({ error: { code: 'protocol_incompatible' } });
@@ -146,9 +146,9 @@ describe('linnya CLI real process -> scripted bridge', () => {
     expect(bridge.receivedCommands).toEqual([{ schema_version: 1, command: 'projects', action: 'list' }]);
   });
 
-  it('项目写入丢失响应不自动重试，避免重复创建', async () => {
+  it.each([['create', 'Research'], ['delete', 'project-1', '--yes']])('项目写入丢失响应不自动重试：%j', async (...args) => {
     const bridge = await createScriptedBridge((_request, response) => { response.destroy(); });
-    const result = await runCliProcess(['projects', 'create', 'Research'], bridge.connectionFile);
+    const result = await runCliProcess(['projects', ...args], bridge.connectionFile);
     expect(result.exitCode).toBe(3);
     expect(JSON.parse(result.stderr)).toMatchObject({ error: { code: 'stale_connection' } });
     expect(bridge.receivedCommands).toHaveLength(1);

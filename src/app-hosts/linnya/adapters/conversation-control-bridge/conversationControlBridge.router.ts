@@ -44,6 +44,8 @@ function errorStatus(code: ConversationControlErrorCode): number {
     case 'protocol_incompatible':
     case 'capability_unavailable':
     case 'skill_conflict':
+    case 'project_not_empty':
+    case 'project_delete_blocked':
     case 'project_name_conflict':
     case 'conversation_busy':
     case 'no_active_run':

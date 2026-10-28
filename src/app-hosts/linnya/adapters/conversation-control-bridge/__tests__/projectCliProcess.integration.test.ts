@@ -29,6 +29,7 @@ describe('Project CLI process → real HTTP bridge → Project SQLite', () => {
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'linnya-project-cli-'));
     db = new Database(join(root, 'projects.sqlite'));
+    db.pragma('foreign_keys = ON');
     PROJECT_SCHEMAS.forEach(sql => db.exec(sql));
     events = [];
     const app = express();
@@ -169,5 +170,30 @@ describe('Project CLI process → real HTTP bridge → Project SQLite', () => {
     expect(events).toEqual(initialEvents);
     expect(createProjectLifecycle(db).get(id).name).toBe('First');
     expect(createProjectLifecycle(db).list()).toHaveLength(2);
+  }, 20_000);
+
+  it('删除要求明确确认，只删除空普通项目；关联内容和默认项目保持原样', async () => {
+    const creation = await execute('create', 'Temporary');
+    if (creation.action !== 'create') throw new Error('Expected creation');
+    const id = creation.project.project_id;
+    const unconfirmed = await runCliProcess(['projects', 'delete', id], connectionFile);
+    expect(unconfirmed.exitCode).toBe(2);
+    expect(createProjectLifecycle(db).get(id).name).toBe('Temporary');
+    db.exec('CREATE TABLE plugin_records (project_id TEXT REFERENCES projects(id) ON DELETE CASCADE)');
+    db.prepare('INSERT INTO plugin_records VALUES (?)').run(id);
+    const blocked = await runCliProcess(['projects', 'delete', id, '--yes'], connectionFile);
+    expect(blocked.exitCode).toBe(6);
+    expect(JSON.parse(blocked.stderr)).toMatchObject({ error: { code: 'project_not_empty' } });
+    expect(db.prepare('SELECT project_id FROM plugin_records').get()).toEqual({ project_id: id });
+    db.prepare('DELETE FROM plugin_records WHERE project_id = ?').run(id);
+    const defaultId = createProjectLifecycle(db).ensureDefault();
+    const defaultDelete = await runCliProcess(['projects', 'delete', defaultId, '--yes'], connectionFile);
+    expect(defaultDelete.exitCode).toBe(6);
+    expect(JSON.parse(defaultDelete.stderr)).toMatchObject({ error: { code: 'project_delete_blocked' } });
+    expect(await execute('delete', id, '--yes')).toMatchObject({ action: 'delete', project_id: id });
+    const repeated = await runCliProcess(['projects', 'delete', id, '--yes'], connectionFile);
+    expect(repeated.exitCode).toBe(6);
+    expect(JSON.parse(repeated.stderr)).toMatchObject({ error: { code: 'project_not_found' } });
+    expect(events.map(event => event.type)).toEqual(['project.created', 'project.deleted']);
   }, 20_000);
 });

@@ -9,6 +9,8 @@ export type { ProjectMutationPublisher } from './definitions/projectMutationPubl
 export {
   ProjectNameConflictError,
   ProjectNotFoundError,
+  ProjectNotEmptyError,
+  ProjectDeleteBlockedError,
   DefaultProjectDeleteBlockedError,
 } from './definitions/projectErrors';
 export type {

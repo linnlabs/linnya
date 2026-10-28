@@ -201,6 +201,7 @@ Shell 审批与 `respond --approve` 无关。控制协议自 3 起要求明确�
 | `projects get <project-id>`        | 查询项目详情 | 无 |
 | `projects create <name>`           | 创建普通项目 | `--description` |
 | `projects update <project-id>`     | 修改项目名称或描述 | `--name`、`--description` |
+| `projects delete <project-id>`     | 删除无持久关联的普通项目 | 必填 `--yes` |
 | `doctor`                           | 只读核验 CLI 与运行中 App 的连接、身份和能力                      | `--pretty`                                                                                             |
 | `list`                             | 查询已有会话                                                      | `--limit`、`--cursor`、`--search`、`--project`                                                         |
 | `messages <conversation-id>`       | 按会话查询 durable 消息窗口                                       | `--limit`、`--before`、`--after`                                                                       |
@@ -331,7 +332,7 @@ CLI 的 `web_search` 只允许普通搜索，`deep_search=true` 明确拒绝，�
 保存带引用的 Markdown 同样沿用该会话；只能引用工具实际返回的 `[@ref]`，不能自造来源编号。
 这里只记录 Linnya 工具执行与产物，不会自动导入外部 Agent 的推理、模型 token 或评审记录。
 
-工具命令自 wire protocol 5 起统一为 `tools`，当前项目管理合同使用 protocol 6。
+工具命令自 wire protocol 5 起统一为 `tools`，当前项目管理合同使用 protocol 7。
 CLI 与 Host 都要升级并重启 Host；旧协议会明确拒绝，不做双协议猜测。
 
 外部 Agent 的 Skill 安装由该产品管理。可将内置 `deep-research` 及其 `references/` 原样复制到
@@ -542,16 +543,30 @@ diagnostics 与 build failure 判断，并在修复后重新写入。
 
 查询详情、创建和修改返回 `project`，含 `project_id`、名称、描述、图标、系统角色、`can_delete` 和时间戳，
 不含数据库路径或软删除字段。创建不能指定系统角色；`can_delete` 沿用项目角色规则，
-不代表 CLI 提供删除能力。本期没有项目删除、Workspace 创建/切换或隐式当前项目设置。
+不代表项目没有关联内容。CLI 不提供 Workspace 创建/切换或隐式当前项目设置。
 
 写入成功后通知 Desktop 刷新项目列表；当前导航、草稿和文档保持原状。重名返回
 `project_name_conflict`，不存在返回 `project_not_found`，两者退出码均为 6；非法参数退出码为 2。
 项目写入失败或响应丢失不会自动重试：先用 `projects list/get` 检查实际状态，再决定下一次操作。
 
-此合同将 wire protocol 升到 6：请求和响应都必须带 `action`，裸命令只在 CLI 参数层转为 `list`。
+当前 wire protocol 为 7：请求和响应都必须带 `action`，裸命令只在 CLI 参数层转为 `list`。
+协议 7 新增确认后的空项目删除与对应错误；协议 6 的项目读写形态保持不变。
 CLI 与 Host 必须同步升级，已有 Host 需要重启；不接受旧的无 action 请求，也不回退双协议。
 真实链路测试位于 `src/app-hosts/linnya/adapters/conversation-control-bridge/__tests__/projectCliProcess.integration.test.ts`；
-Runtime E2E 另验证空库创建项目后发送消息、重启读取项目与历史。
+Runtime E2E 另验证空项目删除、有会话项目拒绝删除、重启后的项目与历史一致性。
+
+`projects delete <project-id> --yes` 只删除无持久关联的普通项目。没有确认标志时在连接 Host 前拒绝；
+命令没有 `--force`，不自动停止运行、不删除会话、文档或资产。系统默认项目禁止删除。
+文件夹、软删除文档/待办、会话、知识库绑定、历史项目资产和已停用插件的持久关联均视为非空。
+这些记录必须先通过各自 owner 的正式生命周期处理；仅把文档移入回收状态不会让项目变空。
+
+删除成功返回 `action=delete` 与 `project_id`，随后查询该 ID 返回 `project_not_found`。
+非空返回 `project_not_empty`；默认项目或持久化规则限制返回 `project_delete_blocked`，均退出 6。
+响应丢失不自动重试，先 `projects get` 判断是否已完成。删除当前 Desktop 项目时回到 Assistant，
+清理失效项目树；删除另一项目不切换当前导航。删除最后一个普通项目的通知刷新不会创建默认项目。
+
+安全删除的事务与插件关联约束见 [Project domain](../../src/domains/projects/README.md#删除边界)。
+Desktop 的历史删除入口仍保留原有级联语义，未把它伪装成完整跨域清理；CLI 不调用该入口。
 
 
 

@@ -59,7 +59,7 @@ export async function createScriptedBridge(
         await readJsonRequest(request);
         sendJson(response, 200, {
           schema_version: 1,
-          protocol_version: 6,
+          protocol_version: 7,
           app_instance_id: 'app-process-test',
           app_version: '0.0.38',
           capabilities,
@@ -99,7 +99,7 @@ export async function createScriptedBridge(
   temporaryRoots.push(temporaryRoot);
   const connectionFile = path.join(temporaryRoot, 'connection.json');
   const descriptor = ConversationControlConnectionDescriptorSchema.parse({
-    protocol_version: 6,
+    protocol_version: 7,
     app_instance_id: 'app-process-test',
     pid: process.pid,
     host: '127.0.0.1',

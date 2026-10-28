@@ -10,7 +10,7 @@ Workspace Mutation Bus 是 linnya 的工作区事实变更通知机制。它不�
 
 Workspace Mutation Bus 负责：
 
-- Project 创建与修改后的项目列表刷新；
+- Project 创建、修改与空项目删除后的项目列表刷新；
 - workspace node 结构变更：创建、重命名、同项目移动、跨项目转移、删除；
 - Markdown 文档 pending revision 或正式 version 变化；
 - 插件文档正式 version 变化，如 Slides / MindMap / Sheet；
@@ -74,6 +74,7 @@ Project 事实从独立 `project-mutation-events.ts` 组合进来，不依赖 Wo
 |---|---|---|
 | `project.created` | 创建项目，包括实际插入默认项目 | 整个项目列表刷新 |
 | `project.updated` | 项目名称或描述修改 | 整个项目列表刷新 |
+| `project.deleted` | 空项目删除已提交 | 刷新项目列表；当前失效项目回到 Assistant |
 | `workspace.node.created` | 新建 workspace node | 文件树刷新、New 标记 |
 | `workspace.node.renamed` | node 改名 | 文件树局部刷新 |
 | `workspace.node.moved` | node 移动 | 文件树 old/new parent 刷新 |
@@ -107,7 +108,7 @@ IPC 与插件后端的历史入口目前仍由 `workspaceMutationPublisherRegist
 `createProjectLifecycle` 的创建、更新和实际默认项目插入负责发布事实。当前 Desktop IPC 与 CLI
 均以独立事务调用生命周期，事务完成后才通知，失败不通知；组合根显式注入窄 `ProjectMutationPublisher`。
 不查询 Workspace registry，不将带通知的调用嵌入外层未提交事务。若未来引入跨域原子流程，
-须由该流程统一持有提交与发布边界。删除的跨域清理与通知不属于本期项目 CLI 范围。
+须由该流程统一持有提交与发布边界。`deleteEmpty` 仅在无关联影响的删除提交后发布 `project.deleted`，失败回滚不发通知。完整跨域清理仍不属于项目 CLI。
 
 ### Node 结构事件
 
@@ -192,6 +193,7 @@ renderer 订阅：
 
 具体行为：
 
+- `project.deleted`：调用 app-level `projectDeletion`，只读刷新列表；当前导航若仍指向已删除项目，走正式导航返回 Assistant，清理该项目树与最近会话选择；其他项目不切换；
 - `project.created / project.updated`：调用 `features/project-catalog` 只读刷新；不创建默认项目，不切换导航或重置草稿；
 - `node.created`：`markNodeAsNew`，有 parent 时刷新 parent children，否则刷新项目树；
 - `node.renamed`：刷新 parent 或项目树；

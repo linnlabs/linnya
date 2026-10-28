@@ -375,6 +375,7 @@ function fixture(
       get: () => { throw new Error('Project details are covered by project CLI integration'); },
       create: () => { throw new Error('Project creation is covered by project CLI integration'); },
       update: () => { throw new Error('Project updates are covered by project CLI integration'); },
+      deleteEmpty: () => { throw new Error('Project deletion is covered by project CLI integration'); },
     },
     models: {
       list() {

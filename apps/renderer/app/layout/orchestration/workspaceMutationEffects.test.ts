@@ -4,6 +4,7 @@ import { createWorkspaceMutationEffects } from './workspaceMutationEffects';
 
 const mocks = vi.hoisted(() => ({
   refreshProjectCatalog: vi.fn(async () => undefined),
+  handleProjectDeleted: vi.fn(async () => undefined),
   currentProjectId: 'project-1',
   notifyDocumentMutationHandlers: vi.fn(async () => undefined),
   applyMarkdownPending: vi.fn(async () => undefined),
@@ -26,6 +27,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/domains/workspace/features/project-catalog', () => ({
   refreshProjectCatalog: mocks.refreshProjectCatalog,
 }));
+vi.mock('./projectDeletion', () => ({ handleProjectDeleted: mocks.handleProjectDeleted }));
 
 vi.mock('@/app/navigation', () => ({
   useNavigationScope: () => ({ currentProjectId: mocks.currentProjectId }),
@@ -76,8 +78,15 @@ function documentUpdatedEvent(overrides: Partial<WorkspaceMutationEvent> = {}): 
 }
 
 describe('workspaceMutationEffects document mutations', () => {
+  it('项目删除事件交给应用级导航清理流程', async () => {
+    await createWorkspaceMutationEffects().handleWorkspaceMutation({
+      type: 'project.deleted', mutationId: 'deleted-project', projectId: 'project-1',
+    });
+    expect(mocks.handleProjectDeleted).toHaveBeenCalledWith('project-1');
+  });
   beforeEach(() => {
     mocks.refreshProjectCatalog.mockClear();
+    mocks.handleProjectDeleted.mockClear();
     mocks.currentProjectId = 'project-1';
     mocks.reloadActiveProjectTree.mockClear();
     mocks.loadNodeChildren.mockClear();

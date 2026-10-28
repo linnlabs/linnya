@@ -26,7 +26,7 @@ import {
 
 interface LinnyaConversationControlUseCaseOwners {
   readonly commandApprovals: CommandApprovalControlPort;
-  readonly projects: Pick<ProjectLifecyclePort, 'list' | 'get' | 'create' | 'update'>;
+  readonly projects: Pick<ProjectLifecyclePort, 'list' | 'get' | 'create' | 'update' | 'deleteEmpty'>;
   readonly flow: Pick<
     FlowOrchestrator,
     'nextDetached' | 'respondInteractionDetached' | 'continueRunDetached' | 'cancelRun'

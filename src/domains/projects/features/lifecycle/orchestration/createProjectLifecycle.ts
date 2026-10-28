@@ -13,6 +13,7 @@ import {
   type ProjectLifecyclePort,
 } from '../../../definitions/projectLifecycle';
 import { toProjectRecord } from '../functions/projectRecord';
+import { deleteEmptyProjectRecord } from '../persistence/deleteEmptyProjectRecord';
 import { assertProjectDeletable, assertProjectNameAvailable } from '../functions/projectRules';
 import {
   readProject,
@@ -79,6 +80,13 @@ export function createProjectLifecycle(db: Database.Database, publisher?: Projec
         });
       })();
       publisher?.publish({ type: 'project.updated', mutationId: uuidv4(), projectId });
+    },
+    deleteEmpty(projectId) {
+      db.transaction(() => {
+        assertProjectDeletable(toProjectRecord(readProject(db, projectId)));
+        deleteEmptyProjectRecord(db, projectId);
+      })();
+      publisher?.publish({ type: 'project.deleted', mutationId: uuidv4(), projectId });
     },
     delete(projectId) {
       db.transaction(() => {

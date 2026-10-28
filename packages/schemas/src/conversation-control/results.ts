@@ -610,6 +610,8 @@ export const ConversationControlErrorCodeSchema = z.enum([
   'skill_conflict',
   'project_name_conflict',
   'project_not_found',
+  'project_not_empty',
+  'project_delete_blocked',
   'conversation_busy',
   'no_active_run',
   'run_not_found',

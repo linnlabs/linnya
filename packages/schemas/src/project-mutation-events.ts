@@ -18,8 +18,15 @@ export const ProjectUpdatedEventSchema = z
     type: z.literal('project.updated'),
   })
   .strict();
+export const ProjectDeletedEventSchema = z
+  .object({
+    ...ProjectMutationFields,
+    type: z.literal('project.deleted'),
+  })
+  .strict();
 export const ProjectMutationEventSchema = z.discriminatedUnion('type', [
   ProjectCreatedEventSchema,
   ProjectUpdatedEventSchema,
+  ProjectDeletedEventSchema,
 ]);
 export type ProjectMutationEvent = z.infer<typeof ProjectMutationEventSchema>;

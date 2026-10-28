@@ -16,6 +16,7 @@ import { applyPendingRevisionsToOpenMarkdownDocument } from './shared/markdownPe
 import { resolveCurrentOpenDocument } from './resolveCurrentOpenDocument';
 import { handleWorkspaceNodeDeletedMutation } from './workspaceNodeDeletion';
 import { handleWorkspaceNodeTransferredMutation } from './workspaceNodeTransfer';
+import { handleProjectDeleted } from './projectDeletion';
 
 const handledDocumentMutationIds = new Set<string>();
 const MAX_HANDLED_DOCUMENT_MUTATION_IDS = 512;
@@ -108,6 +109,9 @@ export function createWorkspaceMutationEffects(): WorkspaceMutationEffectsPort {
   return {
     async handleWorkspaceMutation(event: WorkspaceMutationEvent) {
       switch (event.type) {
+        case 'project.deleted':
+          await handleProjectDeleted(event.projectId);
+          return;
         case 'project.created':
         case 'project.updated':
           // 项目目录跨当前导航 scope 展示，其他项目的创建或改名也必须被看见。

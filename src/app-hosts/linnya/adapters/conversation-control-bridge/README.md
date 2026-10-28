@@ -17,7 +17,7 @@ POST /api/v1/conversation-control/commands
 
 能力公告允许未来新增合法标识符，消费者忽略不认识的能力；命令 union 和响应 schema 仍然封闭且严格。改变既有协议语义必须升级 protocol，不能借能力扩展绕过合同校验。
 
-当前 wire protocol 为 6：`projects` 请求与响应必须带 `action`，增加项目详情、创建和修改。
+当前 wire protocol 为 7：`projects` 请求与响应必须带 `action`，新增带显式确认的空项目删除；项目详情、创建和修改形态保持不变。
 工具命令自协议 5 起统一为 `tools`，临时 Web 访问动作和 allowlist 保持不变。
 已有 audit 的 `llm_responses`、status/watch 的 `command_approvals` 与精确查询/回复合同保持不变。
 连接描述与 handshake 一致校验版本，旧 CLI 须明确升级；URL 和连接文件名中的 v1 仍是稳定发现地址。
@@ -57,11 +57,12 @@ pnpm exec vitest run \
 
 门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期。`projectCliProcess.integration.test.ts` 使用真实 CLI 子进程、HTTP router 和 SQLite 验证项目写入、失败边界与持久化；不放入独立 CLI 包，以保持其与 Backend 的编译边界。普通 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`；无 Electron Runtime 的冷启动、并行、owner 竞争、重启和强制终止恢复见 `runtimeHostProcess.e2e.test.ts`。
 
-`projects` 的 `list / get / create / update` 委托 `domains/projects` 公开生命周期端口，
+`projects` 的 `list / get / create / update / delete` 委托 `domains/projects` 公开生命周期端口，
 不复制项目规则或读取 SQL。列表返回 `project_id / name`；其余动作返回安全项目详情，
 不包含软删除字段和物理路径。重名与不存在分别投影为 `project_name_conflict / project_not_found`，
 HTTP 状态为 409 / 404，CLI 均退出 6。Project owner 提交后发布变更通知，界面只刷新项目列表，不切换导航。
-当前不暴露删除、系统角色设置或 Workspace 管理。
+`delete` 要求 `confirm=true`，只委托 `deleteEmpty`；非空为 `project_not_empty`，受保护或数据库限制为 `project_delete_blocked`（HTTP 409 / CLI 6）。
+成功只返回删除的 `project_id`，通知当前 Desktop 退出失效项目。系统角色设置、完整删除和 Workspace 管理不开放。
 
 
 `skills` 为当前协议的追加 capability，复用同一鉴权、request/response parse 和错误投影。App composition 注入 Skills 的公开管理 port，Conversation use case 只转发并投影冲突，不拥有目录/文件规则。请求中的 source_directory 是本机绝对路径，不是远程上传或 Host 执行路径；Default Agent 不通过通用控制 token 写入 Skill。

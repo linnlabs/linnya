@@ -210,7 +210,7 @@ export interface ConversationControlUseCasePorts {
   readonly runs: ConversationControlRunPort;
   readonly executionProgress: ConversationControlExecutionProgressPort;
   readonly models: ConversationControlModelCatalogPort;
-  readonly projects: Pick<ProjectLifecyclePort, 'list' | 'get' | 'create' | 'update'>;
+  readonly projects: Pick<ProjectLifecyclePort, 'list' | 'get' | 'create' | 'update' | 'deleteEmpty'>;
   readonly history: ConversationControlHistoryPort;
   readonly tools: ConversationControlToolCatalogPort;
   readonly audit: ExecutionAuditExportUseCase;
