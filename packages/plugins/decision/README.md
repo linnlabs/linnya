@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.17.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.18.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -198,3 +198,7 @@ recommend追加版本前，对conditionalAdvice.cases逐个合并label和nextAct
 check默认由CLI投影为overall、options的状态及失败／未知check id、changeConditions、calculations文字数组和numericBasis；保留记录／输入版本、只读／非授权身份和notice。命令末尾--full交付完整结构，含numericPreview的数值对象、输入及optionRanges。--json与--input两路共用同一执行和输出投影，不增加求值、状态或基础工具。
 
 业务回归decisionScenarioText.integration.test.ts通过真实CLI／SQLite核对拒绝不半写、一次修正、合法比较、数值词法、历史可读与两种check回执。程序拦住规则命中不证明作者能修正，运行后仍须核对最终情景、行动与聊天是否一致。
+
+## 派生门槛的操作资源试用
+
+当前开发版仅在Decision自己的记录资源补充派生门槛操作：复用已有计算，缺少才显式update追加calculation，check成功后再解释，并用numericBasis引用。经济分析值与用户硬约束分开，checks仍参与可行性判断，不为求数值擅自增加底线。CLI、求值和保存合同未变；这是资源试用，不是强制数值审查或已证明的准确性收益。
