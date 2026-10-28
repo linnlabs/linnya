@@ -42,8 +42,7 @@ export function executeDecisionCommand(
   }
   const current = repository.read(command.id);
   if (command.kind === 'export') {
-    if (current.revision !== command.expectedRevision) throw new DecisionFailure('revision_conflict', `Revision conflict: expected ${command.expectedRevision}, current ${current.revision}. Read the current record before exporting.`);
-    return renderDecisionReport(current);
+    return renderDecisionReport(current, command.expectedRevision);
   }
   if (command.kind === 'simulate') return simulateDecisionScenarios(current, command.expectedRevision, command.scenarios);
   if (command.kind === 'check') return checkDecisionOptions(current, command.expectedRevision, command.request);

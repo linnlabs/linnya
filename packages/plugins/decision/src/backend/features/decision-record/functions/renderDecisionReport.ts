@@ -4,6 +4,7 @@ import type { CheckValueResult } from '../definitions/decisionEvaluation';
 import { projectDecisionRecord } from './updateDecisionRecord';
 import { evaluateExpression } from './evaluateDecisionExpression';
 import { evaluateDecisionCheck } from './evaluateDecisionCheck';
+import { DecisionFailure } from '../definitions/decisionFailure';
 
 /** 声明文字只能作为数据出现，不能借换行、表格或HTML冒充程序章节。 */
 function text(value: string): string {
@@ -31,7 +32,8 @@ function table(headers: readonly string[], rows: readonly (readonly string[])[])
 }
 
 /** 同一保存版生成确定的原件；只复用既有求值，不从作者文字猜公式或修正其判断。 */
-export function renderDecisionReport(record: DecisionRecord): DecisionReport {
+export function renderDecisionReport(record: DecisionRecord, expectedRevision: number): DecisionReport {
+  if (record.revision !== expectedRevision) throw new DecisionFailure('revision_conflict', `Revision conflict: expected ${expectedRevision}, current ${record.revision}. Read the current record before exporting.`);
   const projected = projectDecisionRecord(record);
   const { recommendationBasis: basis } = projected;
   const saved = record.recommendation;
