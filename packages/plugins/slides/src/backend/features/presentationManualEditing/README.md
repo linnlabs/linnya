@@ -1,6 +1,6 @@
 # Presentation manual editing
 
-This feature owns deterministic user edits for generated `deck.js` documents. Object edits rewrite only the machine-owned `compose.manualEdits` literal; inserting a blank slide adds one top-level slide declaration and its entry in `compose.slides`. The feature orchestrates candidate compilation and revision commit for both. It does not mutate DeckSpec, PPTX or Renderer state as a second source of truth.
+This feature owns deterministic user edits for generated `deck.js` documents. Object edits rewrite only the machine-owned `compose.manualEdits` literal; inserting a blank slide adds one top-level slide declaration and its entry in `compose.slides`. Copying/deleting a slide rewrites its source block and the static page list, and copies/removes its manual values. The feature orchestrates candidate compilation or proven-equivalent projection and revision commit. It does not mutate DeckSpec, PPTX or Renderer state as a second source of truth.
 
 Current source rules:
 
@@ -17,7 +17,16 @@ Blank slide insertion (`insert_blank_slide`, `index` = 0-based position in the e
 - the page that will follow the new one must be declared by exactly one top-level `const|let|var x = createSlide(...)`. The new declaration is placed immediately before that statement (or before the statement that evaluates the slides array when appending), after the previous statement's line, so trailing comments stay on their line and the next page keeps its leading comment. Source paging (`SlideMarkerIndex`) therefore stays aligned with compose order;
 - names are `blankSlideN` / `blank-slide-N` with the lowest N whose text does not already appear anywhere in the source; once written they are ordinary stable author identities;
 - the background is the current revision's normalized `theme.colors.background`, or `#FFFFFF` (the default for an undeclared background) when the theme declares none;
-- the candidate always goes through the full compiler, and existing `manualEdits` records are untouched because they are keyed by `slideKey`, not position.
+- with an inline page array and no spread/computed compose properties, adding the independent empty factory call leaves existing author objects unchanged. `projectBlankSlideInsertion` reuses their compiled geometry, inserts the empty page, and rebases source spans, diagnostic labels and layout page identities. It skips sandbox startup and whole-deck layout while using the same atomic commit, draft guard, command receipt and deferred PPTX path;
+- a named array may be read by other author statements, and a declaration inserted in the middle of a source line cannot be rebased with line-only spans. These cases continue through the full compiler;
+- existing `manualEdits` records are untouched because they are keyed by `slideKey`, not position. Integration tests compare projected DeckSpec against a real full compile at the beginning, middle and end, including nested Frames, rich text, existing manual values and shared helper source spans.
+
+Slide copy/deletion (`duplicate_slide` / `delete_slide`, exact-revision 0-based `index`):
+
+- the static list must match top-level declaration order. Page configs and slide keys must be explicit literals; dynamic identity/spreads are rejected rather than silently omitting manual values from the copy. A page block ends before the next page declaration or the statement evaluating the page array; adjacent leading comments are retained;
+- copying inserts immediately after the original, creates a fresh `copied-slide-N` identity, and scopes copied page-local declarations in a block to avoid name collisions. The original page variable is bound to the new page inside that block; no object alias or clipboard state connects the two pages;
+- copying preserves that page's current manual values under the new identity. Deletion removes its corresponding manual records. A presentation retains at least one page;
+- both operations use the full compiler. Source blocks with cross-page variable dependencies may be rejected if removing a page would break another page; compilation failure never commits partial source or changes the current document. Dynamic page lists must be changed through the source workflow.
 
 Repository integration adds two commit invariants for this feature:
 

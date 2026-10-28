@@ -1,3 +1,6 @@
+import type { ManualEditDeckProjection } from '../definitions/manualEditDeckProjection.js';
+import { projectBlankSlideInsertion } from '../functions/projectBlankSlideInsertion.js';
+import { rewriteSlideStructureInDeckSource } from '../functions/rewriteSlideStructureInDeckSource.js';
 import { prepareManualEditSourceOperation } from '../functions/prepareManualEditSourceOperation.js';
 import type {
   SlidesManualEditCommand,
@@ -23,7 +26,6 @@ import { createManualEditPayloadDigest } from '../functions/createManualEditPayl
 import {
   projectManualTranslationToDeckSpec,
   SlidesManualEditDeckProjectionError,
-  type ManualTranslationDeckProjection,
 } from '../functions/projectManualTranslationToDeckSpec.js';
 import {
   SlidesManualEditSourceError,
@@ -53,7 +55,7 @@ export interface PresentationManualEditingRuntimeDeps {
   readonly trace?: PresentationManualEditTracePort;
 }
 
-/** 人工编辑（对象值与页面插入）的唯一写入口：验证快照，选择可证明等价的计算路径，再由 repository 原子提交。 */
+/** 人工编辑（对象值与页面结构）的唯一写入口：验证快照，选择可证明等价的计算路径，再由 repository 原子提交。 */
 export class PresentationManualEditingRuntime {
   constructor(private readonly deps: PresentationManualEditingRuntimeDeps) {}
 
@@ -111,15 +113,21 @@ export class PresentationManualEditingRuntime {
     this.recordTrace(command, 'snapshot_validated');
 
     let source: string;
-    let projection: ManualTranslationDeckProjection;
+    let projection: ManualEditDeckProjection;
     try {
       if (command.operation.op === 'insert_blank_slide') {
-        // 页面结构改写作者源码而非 manualEdits，只能交给完整编译器验证。
-        source = insertBlankSlideIntoDeckSource(current.deckSource, {
+        const backgroundColor = resolveInsertedSlideBackgroundColor(current.deckSpec.theme);
+        const insertion = insertBlankSlideIntoDeckSource(current.deckSource, {
           index: command.operation.index,
           slideCount: current.deckSpec.slides.length,
-          backgroundColor: resolveInsertedSlideBackgroundColor(current.deckSpec.theme),
-        }).source;
+          backgroundColor,
+        });
+        source = insertion.source;
+        projection = projectBlankSlideInsertion(current.deckSpec, insertion, command.operation.index, backgroundColor);
+      } else if ('index' in command.operation) {
+        source = rewriteSlideStructureInDeckSource(current.deckSource, {
+          ...command.operation, slideCount: current.deckSpec.slides.length,
+        });
         projection = { kind: 'requires_full_compile' };
       } else {
         const sourceOperation = prepareManualEditSourceOperation(current.deckSpec, command.operation);
@@ -136,7 +144,9 @@ export class PresentationManualEditingRuntime {
       }
       throw error;
     }
-    const path = projection.kind === 'projected' ? 'projected_translation' : 'full_compile';
+    const path = projection.kind === 'projected'
+      ? command.operation.op === 'insert_blank_slide' ? 'projected_slide_insertion' : 'projected_translation'
+      : 'full_compile';
     this.recordTrace(command, 'source_rewritten', { path });
 
     try {

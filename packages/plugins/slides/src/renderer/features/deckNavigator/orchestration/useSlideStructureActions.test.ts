@@ -7,7 +7,7 @@ import type { PresentationRenderModel } from '../../../types/render';
 import { useManualEditQueue, useSlidesManualEditingStore } from '../../manualEditing';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import { useSlidesStore } from '../../../store/slidesStore';
-import { useBlankSlideInsertion } from './useBlankSlideInsertion';
+import { useSlideStructureActions } from './useSlideStructureActions';
 
 vi.mock('@plugin/renderer/workspaceRuntime', () => ({
   notifyWorkspaceDocumentOpened: vi.fn(),
@@ -60,7 +60,7 @@ function createFixture() {
         presentationError: null,
       }),
     });
-    return useBlankSlideInsertion(queue);
+    return useSlideStructureActions(queue);
   });
   if (!controller) throw new Error('Fixture scope failed');
   return { controller, commands, submit, refreshDocument, slidesStore, manualStore: useSlidesManualEditingStore() };
@@ -72,7 +72,7 @@ describe('blank slide insertion + real submission queue', () => {
   beforeEach(() => setActivePinia(createPinia()));
   afterEach(() => { for (const scope of scopes.splice(0)) scope.stop(); });
 
-  it('submits after the current slide against the visible revision and selects it once presented', async () => {
+  it('submits after the current slide against the visible revision and selects the committed page before waiting for its frame', async () => {
     const f = createFixture();
     expect(f.controller.availability.value).toEqual({ available: true, index: 2 });
 
@@ -94,7 +94,8 @@ describe('blank slide insertion + real submission queue', () => {
     pending.resolve({ status: 'committed', commandId: pending.command.commandId, documentId: 'deck', revisionId: 'v5', revision: 5 });
     await flush();
     expect(f.refreshDocument).toHaveBeenCalledWith('deck', 5);
-    expect(f.slidesStore.currentSlideIndex).toBe(1);
+    expect(f.slidesStore.currentSlideIndex).toBe(2);
+    expect(f.controller.pending.value).toBe(true);
 
     f.manualStore.recordPresentedRevision(5);
     await inserted;
@@ -118,4 +119,35 @@ describe('blank slide insertion + real submission queue', () => {
     expect(f.manualStore.errorMessage).toContain('当前页面结构无法从界面直接插入空白页');
     expect(f.controller.pending.value).toBe(false);
   });
+  it('duplicates beside the selected page and blocks other page operations until presentation', async () => {
+    const f = createFixture();
+    const copied = f.controller.duplicateSlide(1);
+    await flush();
+    expect(f.commands[0]?.command.operation).toEqual({ op: 'duplicate_slide', index: 1 });
+    await f.controller.deleteSlide(0);
+    await f.controller.insertAfterCurrentSlide();
+    expect(f.commands).toHaveLength(1);
+    const pending = f.commands[0];
+    pending.resolve({ status: 'committed', commandId: pending.command.commandId, documentId: 'deck', revisionId: 'v5', revision: 5 });
+    await flush(); f.manualStore.recordPresentedRevision(5); await copied;
+    expect(f.slidesStore.currentSlideIndex).toBe(2);
+  });
+
+  it('deleting the last selected page selects its predecessor and keeps one page minimum', async () => {
+    const f = createFixture();
+    f.slidesStore.setCurrentSlide(2);
+    f.refreshDocument.mockImplementation(async () => { installRevision(5, 2); });
+    const deleted = f.controller.deleteSlide(2);
+    await flush();
+    const pending = f.commands[0];
+    expect(pending.command.operation).toEqual({ op: 'delete_slide', index: 2 });
+    pending.resolve({ status: 'committed', commandId: pending.command.commandId, documentId: 'deck', revisionId: 'v5', revision: 5 });
+    await flush(); f.manualStore.recordPresentedRevision(5); await deleted;
+    expect(f.slidesStore.currentSlideIndex).toBe(1);
+    installRevision(6, 1);
+    expect(f.controller.canDelete.value).toBe(false);
+    await f.controller.deleteSlide(0);
+    expect(f.commands).toHaveLength(1);
+  });
+
 });

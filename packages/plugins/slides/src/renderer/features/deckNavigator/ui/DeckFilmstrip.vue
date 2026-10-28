@@ -38,6 +38,7 @@
               :aria-current="item.index === currentSlideIndex ? 'true' : undefined"
               :aria-label="deckNavigatorMessage('slides.navigator.slide.label', { number: item.index + 1 })"
               @click="selectSlide(item.index)"
+              @contextmenu.prevent.stop="emit('slideContextMenu', $event, item.index)"
             >
               <SlideThumbnail
                 :width="thumbnailSize.width"
@@ -63,7 +64,7 @@ import { storeToRefs } from 'pinia';
 import { useVirtualList } from '@vueuse/core';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import { useSlidesStore } from '../../../store/slidesStore';
-import { useSlidesThumbnailStore } from '../../../store/slidesThumbnailStore';
+import { useSlidesThumbnailStore } from '../store/slidesThumbnailStore';
 import {
   FILMSTRIP_ITEM_GAP_PX,
   resolveFilmstripItemWidthPx,
@@ -75,6 +76,8 @@ import { useDeckNavigatorLocalization } from './useDeckNavigatorLocalization';
 import SlideThumbnail from './SlideThumbnail.vue';
 
 /** 视口左右留白；滚动定位与它保持一致，当前页不会贴边。 */
+const emit = defineEmits<{ slideContextMenu: [event: MouseEvent, index: number] }>();
+
 const VIEWPORT_INSET_PX = 16;
 const ENTRANCE_STAGGER_SECONDS = 0.04;
 

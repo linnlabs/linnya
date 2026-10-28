@@ -34,6 +34,7 @@ import { useSlidesEditingInteractionStore } from '../features/editingInteraction
 import { refreshSlidesDocumentPresentation } from './orchestration/refreshSlidesDocumentPresentation';
 import { useSlidesDocumentSave } from './orchestration/useSlidesDocumentSave';
 import { slidesApi } from '../services/slidesApi';
+import { useSlideThumbnails } from '../features/deckNavigator';
 
 defineProps<{
   sourceEditBusy?: boolean;
@@ -69,6 +70,7 @@ const manualEditSubmission = useManualEditQueue({
 });
 provideManualEditSubmission(manualEditSubmission);
 useSlidesDocumentSave(manualEditSubmission);
+useSlideThumbnails();
 
 /** 文档身份重置交互；渲染刷新只由正式 revision 驱动，与页面挂载先后无关。 */
 watch(currentDeckId, () => {

@@ -14,7 +14,7 @@ export function createManualEditPayloadDigest(command: SlidesManualEditCommand):
 }
 
 function serializeOperation(operation: SlidesManualEditCommand['operation']): object {
-  if (operation.op === 'insert_blank_slide') {
+  if ('index' in operation) {
     return { op: operation.op, index: operation.index };
   }
   const target = {

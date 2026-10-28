@@ -9,6 +9,9 @@ import type { PresentationRenderModel } from '../types/render';
 const getRenderModelMock = vi.hoisted(() => vi.fn());
 const submitManualEditMock = vi.hoisted(() => vi.fn());
 
+// 本组验证文档/修订生命周期；真实离屏栅格与调度由导航 feature 和 Chromium smoke 验证。
+vi.mock('../features/deckNavigator', () => ({ useSlideThumbnails: vi.fn() }));
+
 vi.mock('@plugin/renderer/workspaceRuntime', () => ({
   getActiveFileSession: () => ({ documentId: 'deck-1', type: 'presentation' }),
   markActiveFileDirty: vi.fn(),

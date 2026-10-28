@@ -46,7 +46,7 @@ function mergeAdjacentIntents(
 
 /** 页面结构写入各自是独立用户动作，不与对象值合并。 */
 function readObjectOperation(operation: SlidesManualEditCommandOperation): SlidesManualEditOperation | null {
-  return operation.op === 'insert_blank_slide' ? null : operation;
+  return 'target' in operation ? operation : null;
 }
 
 function targetsMatch(

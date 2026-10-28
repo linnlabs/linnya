@@ -74,7 +74,9 @@ export interface SlidesManualSlideInsertOperation {
 
 export type SlidesManualEditCommandOperation =
   | SlidesManualEditOperation
-  | SlidesManualSlideInsertOperation;
+  | SlidesManualSlideInsertOperation
+  | { readonly op: 'duplicate_slide'; readonly index: number }
+  | { readonly op: 'delete_slide'; readonly index: number };
 
 export interface SlidesManualEditCommand {
   readonly commandId: string;

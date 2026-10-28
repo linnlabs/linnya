@@ -16,10 +16,15 @@ async function run(): Promise<void> {
     assertManualVisualFrames(result, 5);
     await writeFile(path.resolve(__dirname, 'editing-preview-trace.json'), JSON.stringify(result, null, 2));
     console.log('Slides live Vue/Konva transition pixels and atomic font frames passed; trace saved.');
+    if (process.argv.includes('--thumbnails-only')) {
+      await verifyThumbnails(window);
+      return;
+    }
     await verifyPropertyInteraction(window);
     await verifyShapeTextEditing(window);
     await verifySelectionToolbar(window);
     await verifyRichTextEditing(window);
+    await verifyThumbnails(window);
     const fixtureFile = process.argv[2];
     if (fixtureFile) {
       const sequence: unknown = JSON.parse(await readFile(fixtureFile, 'utf8'));
@@ -31,6 +36,12 @@ async function run(): Promise<void> {
       console.log('Supplied paint sequence passed:', JSON.stringify(fixtureResult));
     }
   } finally { window.destroy(); }
+}
+
+async function verifyThumbnails(window: BrowserWindow): Promise<void> {
+  const thumbnails: unknown = await window.webContents.executeJavaScript('window.verifyIncrementalThumbnails()');
+  await writeFile(path.resolve(__dirname, 'thumbnail-incremental-trace.json'), JSON.stringify(thumbnails, null, 2));
+  console.log('Slides incremental thumbnails passed:', JSON.stringify(thumbnails));
 }
 
 /** 用 Chromium 的真实指针输入验证 pointer capture、连续拖拽和 Escape，避免模拟掉手势生命周期。 */

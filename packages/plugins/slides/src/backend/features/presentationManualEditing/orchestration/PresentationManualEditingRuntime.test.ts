@@ -146,7 +146,7 @@ describe('PresentationManualEditingRuntime', () => {
     ]);
   });
 
-  it('插入空白页改写页面结构、沿用主题背景，并走完整编译与同一回执', async () => {
+  it('插入空白页改写页面结构、沿用主题背景，跳过整稿编译但保留同一回执', async () => {
     const document = makeDocument();
     const { runtime, buildFromSource, buildFromProjectedDeckSpec } = makeRuntime({
       document: { ...document, deckSpec: { ...DECK_SPEC, theme: { colors: { background: '#0B0B0F' } } } },
@@ -154,14 +154,14 @@ describe('PresentationManualEditingRuntime', () => {
     const command: SlidesManualEditCommand = { ...COMMAND, operation: { op: 'insert_blank_slide', index: 1 } };
 
     await expect(runtime.submit(command)).resolves.toMatchObject({ status: 'committed', revision: 2 });
-    expect(buildFromProjectedDeckSpec).not.toHaveBeenCalled();
-    expect(buildFromSource).toHaveBeenCalledWith(expect.objectContaining({
+    expect(buildFromSource).not.toHaveBeenCalled();
+    expect(buildFromProjectedDeckSpec).toHaveBeenCalledWith(expect.objectContaining({
       expectedBase: COMMAND.expectedBase,
       expectedDraftState: 'absent',
       manualEditReceipt: { commandId: 'command-1', payloadDigest: createManualEditPayloadDigest(command) },
       origin: 'edit',
     }));
-    const source = buildFromSource.mock.calls[0][0].source;
+    const source = buildFromProjectedDeckSpec.mock.calls[0][0].source;
     expect(source).toContain('const blankSlide1 = createSlide({ slideKey: "blank-slide-1", background: { color: "#0B0B0F" } });');
     expect(source).toContain('slides: [slide, blankSlide1]');
     expect(createManualEditPayloadDigest(command))

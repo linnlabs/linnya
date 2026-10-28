@@ -3,7 +3,7 @@
 本 feature 是 Slides Renderer 的单一离屏栅格入口。它消费 shared `SlideRasterRequest`，复用 `konvaPreview`
 builders 与 `renderVisualResources` 已解码的图片/图表，输出 canvas、ImageBitmap 或 PNG bytes。
 
-`functions/createKonvaRasterCanvas.ts` 只组装 Konva 实例，所有视觉字段仍由 `konvaPreview` builders 翻译。`orchestration/renderSlideRaster.ts` 只编排资源预载、canvas 构建和格式导出。缩略图 store、hidden worker 与后续 CLI adapter 都必须从本 feature 进入，禁止复制节点 switch 或尺寸计算。
+`functions/createKonvaRasterCanvas.ts` 只组装 Konva 实例，所有视觉字段仍由 `konvaPreview` builders 翻译。`orchestration/renderSlideRaster.ts` 只编排资源预载、canvas 构建和格式导出。deckNavigator 缩略图流程、hidden worker 与后续 CLI adapter 都必须从本 feature 进入，禁止复制节点 switch 或尺寸计算。
 
 renderer 内 thumbnail raster 与主舞台共用图片、图表注册表，避免重复 decode / ECharts 栅格化；hidden worker
 运行在隔离上下文，使用同一 feature 代码但持有自己的注册表实例。raster 使用严格失败模式，图片或图表任一

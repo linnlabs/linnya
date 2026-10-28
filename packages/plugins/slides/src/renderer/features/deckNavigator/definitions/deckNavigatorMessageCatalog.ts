@@ -1,6 +1,9 @@
 import type { MessageCatalogContribution, MessageParams } from '@app/localization';
 
 export type DeckNavigatorMessageKey =
+  | 'slides.navigator.duplicateSlide'
+  | 'slides.navigator.deleteSlide'
+  | 'slides.navigator.slideMenu'
   | 'slides.navigator.toolbar.label'
   | 'slides.navigator.insertBlankSlide'
   | 'slides.navigator.insertBlankSlide.inserting'
@@ -20,6 +23,9 @@ export type DeckNavigatorMessageResolver = (
 ) => string;
 
 export const DECK_NAVIGATOR_MESSAGE_FALLBACKS = {
+  'slides.navigator.duplicateSlide': '复制幻灯片',
+  'slides.navigator.deleteSlide': '删除幻灯片',
+  'slides.navigator.slideMenu': '幻灯片操作',
   'slides.navigator.toolbar.label': '幻灯片导航',
   'slides.navigator.insertBlankSlide': '新建空白幻灯片',
   'slides.navigator.insertBlankSlide.inserting': '正在新建幻灯片…',
@@ -35,6 +41,9 @@ export const DECK_NAVIGATOR_MESSAGE_FALLBACKS = {
 } as const satisfies Readonly<Record<DeckNavigatorMessageKey, string>>;
 
 const DECK_NAVIGATOR_EN_US_MESSAGES = {
+  'slides.navigator.duplicateSlide': 'Duplicate slide',
+  'slides.navigator.deleteSlide': 'Delete slide',
+  'slides.navigator.slideMenu': 'Slide actions',
   'slides.navigator.toolbar.label': 'Slide navigation',
   'slides.navigator.insertBlankSlide': 'New blank slide',
   'slides.navigator.insertBlankSlide.inserting': 'Adding slide…',

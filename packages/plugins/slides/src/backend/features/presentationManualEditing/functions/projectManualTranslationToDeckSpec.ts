@@ -8,9 +8,7 @@ import type {
   StructuredElement,
 } from '@plugin/slides/shared';
 
-export type ManualTranslationDeckProjection =
-  | { readonly kind: 'projected'; readonly deckSpec: DeckSpec }
-  | { readonly kind: 'requires_full_compile' };
+import type { ManualEditDeckProjection } from '../definitions/manualEditDeckProjection.js';
 
 export class SlidesManualEditDeckProjectionError extends Error {
   readonly code = 'operation_invalid';
@@ -28,7 +26,7 @@ export class SlidesManualEditDeckProjectionError extends Error {
 export function projectManualTranslationToDeckSpec(
   deckSpec: DeckSpec,
   operation: SlidesManualEditOperation,
-): ManualTranslationDeckProjection {
+): ManualEditDeckProjection {
   if (operation.op !== 'translate_by') {
     return { kind: 'requires_full_compile' };
   }

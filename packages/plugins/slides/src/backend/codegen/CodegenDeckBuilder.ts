@@ -172,7 +172,7 @@ export class CodegenDeckBuilder {
 
   /**
    * 只接受上层已经证明与当前作者源码等价的 DeckSpec 投影。
-   * 当前用途是顶层原子元素的 post-layout translate_by；仍走正式 PPTX 与 CAS 提交。
+   * 用于顶层原子元素的 post-layout translate_by 与已证明等价的空白页插入；仍走 CAS 与延迟 PPTX 提交。
    */
   async commitManualEditFromProjectedDeckSpec(
     input: CodegenProjectedDeckBuildInput,

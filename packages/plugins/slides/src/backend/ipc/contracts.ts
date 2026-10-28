@@ -206,13 +206,13 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
       sourceHash,
     },
   };
-  if (payload.operation.op === 'insert_blank_slide') {
+  if (payload.operation.op === 'insert_blank_slide' || payload.operation.op === 'duplicate_slide' || payload.operation.op === 'delete_slide') {
     assertOnlyKeys(payload.operation, ['op', 'index'], 'operation');
     const index = payload.operation.index;
     if (typeof index !== 'number' || !Number.isSafeInteger(index) || index < 0) {
       throw new Error('operation.index must be a non-negative safe integer.');
     }
-    return { ...base, operation: { op: 'insert_blank_slide', index } };
+    return { ...base, operation: { op: payload.operation.op, index } };
   }
   if (!isRecord(payload.operation.target)) throw new Error('operation.target must be an object.');
   assertOnlyKeys(payload.operation.target, ['slideKey', 'editKey'], 'operation.target');

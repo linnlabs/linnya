@@ -25,3 +25,11 @@ export function resolveBlankSlideInsertion(input: {
   const slideCount = renderModel.slides.length;
   return { available: true, index: Math.min(Math.max(input.currentSlideIndex + 1, 0), slideCount) };
 }
+
+/** 页面结构提交后优先显示新页；删除末页时选择前一页。 */
+export function resolveSlideStructureSelection(
+  operation: { readonly op: 'insert_blank_slide' | 'duplicate_slide' | 'delete_slide'; readonly index: number },
+  slideCount: number,
+): number {
+  return Math.min(operation.index + (operation.op === 'duplicate_slide' ? 1 : 0), slideCount - 1);
+}

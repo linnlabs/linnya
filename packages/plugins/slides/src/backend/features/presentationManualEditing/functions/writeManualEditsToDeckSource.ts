@@ -43,6 +43,25 @@ export function writeManualEditsToDeckSource(
   options: { readonly maxSourceBytes?: number } = {},
 ): WriteManualEditsToDeckSourceResult {
   validateOperation(operation);
+  return transformManualEdits(source, current => applyOperation(current, operation), options);
+}
+
+/** 复制保留页面当前人工值，删除清理对应记录；其他页的作者值保持不变。 */
+export function rewriteSlideManualEdits(source: string, slideKey: string, copiedSlideKey?: string): string {
+  return transformManualEdits(source, current => {
+    const slide = current.slides.find(entry => entry.slideKey === slideKey);
+    if (!slide) return current;
+    return { version: 2, slides: copiedSlideKey
+      ? [...current.slides, { ...slide, slideKey: copiedSlideKey }]
+      : current.slides.filter(entry => entry.slideKey !== slideKey) };
+  }).source;
+}
+
+function transformManualEdits(
+  source: string,
+  transform: (current: SlidesManualEdits) => SlidesManualEdits,
+  options: { readonly maxSourceBytes?: number } = {},
+): WriteManualEditsToDeckSourceResult {
   const typescript = getSlidesTypeScriptRuntime();
   const sourceFile = typescript.createSourceFile(
     'deck.js',
@@ -85,7 +104,8 @@ export function writeManualEditsToDeckSource(
     current = parsed.value;
   }
 
-  const next = applyOperation(current, operation);
+  const next = transform(current);
+  if (next === current) return { source, manualEdits: current };
   const nextSource = manualProperty && typescript.isPropertyAssignment(manualProperty)
     ? replaceManualEditsInitializer(source, sourceFile, manualProperty, next)
     : insertManualEditsProperty(source, sourceFile, composeObject, next);

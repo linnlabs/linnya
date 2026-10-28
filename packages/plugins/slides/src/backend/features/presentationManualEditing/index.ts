@@ -4,12 +4,12 @@ export {
   type SlidesManualEditSourceErrorCode,
   type WriteManualEditsToDeckSourceResult,
 } from './functions/writeManualEditsToDeckSource.js';
+export type { ManualEditDeckProjection } from './definitions/manualEditDeckProjection.js';
 export { PRESENTATION_MANUAL_EDIT_SCHEMAS } from './definitions/presentationManualEditSchema.js';
 export { createManualEditPayloadDigest } from './functions/createManualEditPayloadDigest.js';
 export {
   projectManualTranslationToDeckSpec,
   SlidesManualEditDeckProjectionError,
-  type ManualTranslationDeckProjection,
 } from './functions/projectManualTranslationToDeckSpec.js';
 export {
   PresentationManualEditingRuntime,

@@ -84,7 +84,7 @@ SlideRasterRequest
        -> hidden worker PNG bytes
 ```
 
-缩略图 store 只选择 thumbnail profile 和管理 `ImageBitmap` 生命周期。页面比例、物理像素尺寸、节点分发和 PNG 编码不属于 store。
+[deckNavigator](../features/deckNavigator/README.md) 按画面内容增量缓存缩略图；其 orchestration 选择 thumbnail profile、空闲调度和管理 `ImageBitmap` 生命周期，feature store 只保存展示状态。页面比例、物理像素尺寸、节点分发和 PNG 编码属于 raster 合同与实现。
 底部列表固定缩略图高度、宽度与虚拟列表条目宽度共同从当前文稿 `slideSize` 派生；平铺视图的卡片高度同样按
 `slideSize` 计算，并通过 `requestRasterWidth` 请求更宽的同一份位图。固定 16:9 比例只能作为尚未取得
 RenderModel 时的默认值，不能成为 preset 或自定义画布的第二套几何事实。

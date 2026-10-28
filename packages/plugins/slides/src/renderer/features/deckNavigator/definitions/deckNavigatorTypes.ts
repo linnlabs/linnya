@@ -29,3 +29,10 @@ export type SlideNavigationKey =
 export type BlankSlideInsertionAvailability =
   | { readonly available: true; readonly index: number }
   | { readonly available: false; readonly reason: 'build_not_ready' | 'source_not_generated' | 'version_not_ready' };
+
+/** 打开菜单时捕获浏览器坐标与触发按钮，不能跨异步保留 event.currentTarget。 */
+export interface SlideContextMenuAnchor {
+  readonly x: number;
+  readonly y: number;
+  readonly trigger: HTMLElement;
+}
