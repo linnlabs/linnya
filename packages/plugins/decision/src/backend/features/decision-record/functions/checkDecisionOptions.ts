@@ -1,7 +1,9 @@
-import type { DecisionRecord, DecisionOptionCheck } from '../../../../shared';
+import type { DecisionRecord, DecisionOptionCheck, DecisionNumericBasis } from '../../../../shared';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { evaluateDecisionModel } from './evaluateDecisionModel';
 import { summarizeOptionChecks } from './summarizeOptionChecks';
+import { collectCheckInputs } from './evaluateDecisionCheck';
+import { projectNumericBasis } from './projectNumericBasis';
 
 /** 复核显式候选的同版声明条件，不推断执行意图或替代平台审批。 */
 export function checkDecisionOptions(record: DecisionRecord, expectedRevision: number, request: DecisionOptionCheck) {
@@ -16,12 +18,28 @@ export function checkDecisionOptions(record: DecisionRecord, expectedRevision: n
     if (!summary) throw new DecisionFailure('invalid_model', `Unknown option: ${id}`);
     return { ...summary, checks: evaluation.checks.filter(check => check.optionId === id) };
   });
+  // 只依据调用者选中的既有检查建立预览引用；不新增经济门槛或推断偏好。
+  const numericBasis: DecisionNumericBasis = {
+    calculationIds: record.model.calculations.map(calculation => calculation.id),
+    boundaries: record.model.checks.filter(check => request.optionIds.includes(check.optionId) && check.operator !== 'is')
+      .flatMap(check => {
+        const inputIds = collectCheckInputs(check);
+        return record.model.inputs.filter(input => inputIds.includes(input.id) && (typeof input.value === 'number' || input.value === null))
+          .map(input => ({ checkId: check.id, inputId: input.id }));
+      }),
+  };
   return {
     kind: 'option_check' as const, decisionId: record.id,
     basedOnRevision: record.revision, basedOnInputRevision: record.inputRevision,
     persisted: false, authorization: 'not_evaluated' as const,
     overall: options.some(option => option.status === 'fail') ? 'blocked' as const
       : options.some(option => option.status === 'undetermined') ? 'undetermined' as const : 'declared_checks_pass' as const,
+    numericBasis,
+    numericPreview: {
+      basedOnRevision: record.revision, basedOnInputRevision: record.inputRevision,
+      ...projectNumericBasis(record.model, numericBasis, evaluation),
+      inputs: record.model.inputs,
+    },
     options,
     notice: 'Only declared checks were evaluated. Passing does not establish source truth, real-world feasibility, preference or execution authorization.',
   };

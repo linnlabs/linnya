@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.15.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.16.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -176,3 +176,12 @@ CLI adapter沿conversationFiles=write权限，使用标准库在Host给定会话
 recommendationBasis.boundaries每个可用边界附atBoundary：只把目标输入置于边界值，其他输入保持同版原值，重算所有显式引用该输入的已登记计算，保留id、名称、单位、依赖及不可用原因。固定输入由fixedInputIds指向同回执record.model.inputs；未登记的推导不由程序补造。未知目标可求边界时仅在该假设点赋值，撤回或无法求边界时atBoundary为null；旧建议待复核仍不在新模型上重建。该投影不保存情景、不改记录或输入版本，边界点算值不代表整个区间。export复用同一投影展示点值。
 
 export成功回执的artifact.markdownLink直接使用本次实际locator；deliveryNote由程序生成记录id、revision、inputRevision及原件链接，供作者粘贴交付。文件字节/hash合同不变；链接指当前会话的固定快照，不因此成为跨会话地址或长期档案。程序附注不自动注入聊天，作者是否采用仍须另验。实现均属Decision插件，无Host/Linnkit或基础工具变化。
+
+
+## 写前数值预览（0.16）
+
+check沿原optionIds入参只读预览当前模型，不要求先写recommend草稿。回执的numericBasis列出全部已有计算及所选选项数值检查的数值／未知输入引用；不新增检查、门槛或偏好。numericPreview含输入版本、当前算值、边界与同点计算及固定inputs；当前无建议或旧建议needs_review也可取得，不保存或接纳建议。离散检查仍按原规则复核，不转成数值边界。
+
+纯projectNumericBasis由check和recommendationBasis共同使用；boundary.text把边界和同点算值合成完整文字，changeConditions由numericBasis引用派生。作者content.changeConditions保留为补充条件原文，操作说明要求写定性变化；不覆盖历史作者文字或另存派生数值副本。预览不证明作者已读、遵循或没有在其他字段重复数字，实际写前取得须查工具交付与调用参数的时序。程序没有解析或认证自由文字。
+
+该插件只能处理经自身CLI接纳的载荷，不读取最终聊天答复或write_file/edit_file的Workspace正文；任何CLI载荷核对都不能宣称覆盖交付全文。未新增Host/Linnkit接口或Agent工具。

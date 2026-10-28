@@ -65,13 +65,7 @@ export function renderDecisionReport(record: DecisionRecord, expectedRevision: n
       : basis.status === 'needs_review' ? '旧建议待复核，不在本版输入上重建旧建议的数值依据；原值请读对应历史版。'
         : [
           `依据 inputRevision ${basis.basedOnInputRevision}；保持其余输入在本版取值。`,
-          ...basis.boundaries.flatMap(boundary => [
-            `- ${text(boundary.checkId)} / ${text(boundary.inputId)}：${text(boundary.text)}`,
-            ...(boundary.atBoundary ? [
-              `  边界点（仅此点，其余输入不变）：${text(boundary.inputLabel)} = ${boundary.atBoundary.value}${boundary.unit ? ` ${text(boundary.unit)}` : ''}。`,
-              ...boundary.atBoundary.calculations.map(calculation => `  - ${text(calculation.id)}：${text(calculation.text)}`),
-            ] : []),
-          ]),
+          ...basis.boundaries.map(boundary => `- ${text(boundary.checkId)} / ${text(boundary.inputId)}：${text(boundary.text)}`),
         ].join('\n'),
     '## 当前行动（保存声明与报告状态）',
     projected.actionStates.length ? table(['行动id', '计划版', '计划内容（作者声明）', '预计成本', '报告状态', '计划状态 / 接续'], projected.actionStates.map(action => [
@@ -83,7 +77,7 @@ export function renderDecisionReport(record: DecisionRecord, expectedRevision: n
     `生成时建议状态：${projected.recommendationStatus}；行动依据：${projected.recommendationContext.actionBasis.status}。current仅表示版本相符。`,
     saved ? [
       `原建议依据 inputRevision ${saved.basedOnInputRevision}，选项id：${text(saved.content.optionIds.join(', ') || '暂未选择')}。`,
-      `理由：${text(saved.content.rationale)}`, `改变条件：${text(saved.content.changeConditions)}`, `下一步：${text(saved.content.nextAction)}`,
+      `理由：${text(saved.content.rationale)}`, `补充变化条件（作者原文）：${text(saved.content.changeConditions)}`, `下一步：${text(saved.content.nextAction)}`,
       '未解问题：', ...saved.content.unresolved.map(item => `- ${text(item)}`),
       '以上为保存的作者原文，可能与程序结果矛盾；导出不自动修正或重新认证建议。',
     ].join('\n\n') : '尚未保存建议。',

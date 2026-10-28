@@ -86,7 +86,15 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 {"optionIds":["buy"],"rationale":"在预算内取得补充资料","changeConditions":"预算或资料价值改变后重新比较","nextAction":"确认资料内容","unresolved":["是否提供新增信息"],"numericBasis":{"calculationIds":["remaining"],"boundaries":[{"checkId":"affordable","inputId":"price"}]}}
 ```
 
-回执的 `recommendationBasis` 分开给出程序计算的余额与价格边界，含等号与越界方向；`fixedInputs` 是其他条件固定在本版的值。每个可用边界的 `atBoundary` 把目标输入置于边界点，其余输入保持本版值，并给出所有引用该输入的已登记计算（含名称、单位与不可用原因）；`fixedInputIds` 指向同回执record.model.inputs里的固定输入。它仅表示该点，不是整个区间的固定算值，也不改事实或版本。交付可引用其中的 `text`，不需自己再反推一遍门槛。它只回答某个已有检查何时失效，是否改选还要结合偏好和其他条件。定性问题省略 numericBasis。
+回执的 `recommendationBasis` 分开给出程序计算的余额与价格边界，含等号与越界方向；`fixedInputs` 是其他条件固定在本版的值。每个boundary.text已合并该边界与同一点的相关算值，避免将基线与边界拼接；recommendationBasis.changeConditions由这些程序文字生成。每个可用边界的 `atBoundary` 把目标输入置于边界点，其余输入保持本版值，并给出所有引用该输入的已登记计算（含名称、单位与不可用原因）；`fixedInputIds` 指向同回执record.model.inputs里的固定输入。它仅表示该点，不是整个区间的固定算值，也不改事实或版本。交付可引用其中的 `text`，不需自己再反推一遍门槛。它只回答某个已有检查何时失效，是否改选还要结合偏好和其他条件。定性问题省略 numericBasis。
+
+## 写建议和行动文字之前取得数值
+
+建立或更新记录后，先运行 `linnya-decision check <id> --expected-revision <n> --json '{"optionIds":["本轮选项id"]}'`，收到成功回执后再写建议JSON、行动计划或复核计划的文字。check不需要建议草稿、不保存版本；即使还没有建议或旧建议已待复核，也会预览当前模型。
+
+先读numericPreview.changeConditions：每句把边界和该点相关算值放在一起，再看calculations核对基线。numericBasis给出本次预览使用的既有引用，可以按本轮需要选择后提交recommend。numericPreview.inputs是固定输入的来源，预览不是现实事实变化或执行授权。
+
+建议的changeConditions填写偏好、许可、证据等补充定性变化；已登记数值条件由numericBasis生成recommendationBasis.changeConditions，交付使用这份程序文字。rationale和nextAction仍由作者判断，不受程序语义认证。未登记的门槛本次不会自动新增。
 
 ## 程序报告原件
 

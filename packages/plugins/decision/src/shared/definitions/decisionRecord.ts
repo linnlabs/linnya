@@ -73,6 +73,12 @@ export const DecisionConditionalAdviceSchema = z.object({
 }).strict();
 export type DecisionConditionalAdvice = z.infer<typeof DecisionConditionalAdviceSchema>;
 
+export const DecisionNumericBasisSchema = z.object({
+  calculationIds: z.array(id),
+  boundaries: z.array(z.object({ checkId: id, inputId: id }).strict()),
+}).strict();
+export type DecisionNumericBasis = z.infer<typeof DecisionNumericBasisSchema>;
+
 export const DecisionRecommendationSchema = z.object({
   // 空选择只用于显式条件性建议的暂不选择，业务校验不能把它当成漏填。
   optionIds: z.array(id),
@@ -82,10 +88,7 @@ export const DecisionRecommendationSchema = z.object({
   unresolved: z.array(text),
   conditionalAdvice: DecisionConditionalAdviceSchema.nullable().optional(),
   // 作者只选既有算式与检查；值和边界方向由程序生成，避免再手填一份阈值。
-  numericBasis: z.object({
-    calculationIds: z.array(id),
-    boundaries: z.array(z.object({ checkId: id, inputId: id }).strict()),
-  }).strict().nullable().optional(),
+  numericBasis: DecisionNumericBasisSchema.nullable().optional(),
   // 只声明相关行动；观察指纹由程序在保存建议时生成，调用者不能自报。
   actionBasis: z.object({ actionIds: z.array(z.string().uuid()).min(1) }).strict().nullable().optional(),
 }).strict();
