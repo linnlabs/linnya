@@ -4,7 +4,7 @@
     type="button"
     class="conversation-image-attachment-picker"
     :disabled="disabled"
-    :title="title"
+    :data-linnya-tooltip="title"
     :aria-label="title"
     @click="openPicker"
   >

@@ -58,6 +58,8 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'resolveHoverTooltipPosition',
     'resolveIconButtonElement',
     'resolveAlertDialogDangerousAction',
+    'useHoverTooltipService',
+    'useImagePreviewSource',
   ]),
   entry('icons', '@linnya/renderer-ui/icons', './icons', 'packages/renderer-ui/src/icons/index.ts', 'icons.js', [
     'AddCircleIcon',

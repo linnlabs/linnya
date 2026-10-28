@@ -31,7 +31,7 @@
   background-color: transparent;
   backdrop-filter: blur(7px) saturate(0.72);
   -webkit-backdrop-filter: blur(7px) saturate(0.72);
-  animation: ai-assistant-input-model-setup-veil-in var(--duration-long) cubic-bezier(0.22, 0.7, 0.3, 1) both;
+  animation: ai-assistant-input-model-setup-veil-in var(--duration-long) var(--ease-enter) both;
   transition:
     backdrop-filter var(--duration-long) var(--ease-standard),
     -webkit-backdrop-filter var(--duration-long) var(--ease-standard);
@@ -95,7 +95,7 @@
 }
 
 .ai-assistant-input__model-setup-border-flow-beam + .ai-assistant-input__model-setup-border-flow-beam {
-  animation-delay: -12s;
+  animation-delay: -12s; /* scale-exempt: 两道光束错开半个周期的相位，不是动效时长 */
 }
 
 .ai-assistant-input__model-setup-content {
@@ -109,7 +109,7 @@
   font-weight: var(--font-weight-medium);
   letter-spacing: 0.01em;
   white-space: nowrap;
-  animation: ai-assistant-input-model-setup-content-in 0.4s cubic-bezier(0.2, 0.8, 0.24, 1) 60ms both;
+  animation: ai-assistant-input-model-setup-content-in var(--duration-long) var(--ease-enter) 60ms both; /* scale-exempt: 文字比遮罩晚 60ms 出现的错峰延迟，不是动效时长 */
 }
 
 .ai-assistant-input__model-setup-dot {

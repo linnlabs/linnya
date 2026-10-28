@@ -81,7 +81,7 @@
               :disabled="isInputControlsDisabled"
               @click.stop="clearAgentChoice"
               :aria-label="conversationMessage('conversation.input.agentChoice.closeCurrent')"
-              :title="conversationMessage('conversation.input.agentChoice.close')"
+              :data-linnya-tooltip="conversationMessage('conversation.input.agentChoice.close')"
             >
               <component
                 :is="activeAgentChoiceIconComponent"
@@ -139,7 +139,7 @@
         :class="['send-button', { disabled: isPrimaryActionDisabled }]"
         :disabled="isPrimaryActionDisabled"
         :aria-label="conversationMessage(`conversation.input.action.${primaryAction}`)"
-        :title="conversationMessage(`conversation.input.action.${primaryAction}`)"
+        :data-linnya-tooltip="conversationMessage(`conversation.input.action.${primaryAction}`)"
         @click="handleSubmit"
       >
         <span

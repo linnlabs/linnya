@@ -52,13 +52,22 @@
   text-align: left;
 }
 
-.latex-panel-fade-enter-active,
-.latex-panel-fade-leave-active {
-  transition: opacity var(--duration-medium) var(--ease-enter), transform var(--duration-medium) var(--ease-enter);
+.latex-panel-fade-enter-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-enter);
 }
 
-.latex-panel-fade-enter-from,
+.latex-panel-fade-leave-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-leave);
+}
+
+.latex-panel-fade-enter-from {
+  opacity: 0;
+  transform: var(--popup-enter-down);
+}
+
 .latex-panel-fade-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: var(--popup-leave);
 }

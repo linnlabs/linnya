@@ -154,23 +154,22 @@
   padding: var(--space-1) var(--space-2-5) var(--space-2-5);
 }
 
-.draggable-panel.panel-fade-enter-active,
+.draggable-panel.panel-fade-enter-active {
+  transform-origin: top center;
+  transition: var(--popup-transition-enter);
+}
+
 .draggable-panel.panel-fade-leave-active {
-  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
+  transform-origin: top center;
+  transition: var(--popup-transition-leave);
 }
 
 .draggable-panel.panel-fade-enter-from {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: var(--popup-enter-down);
 }
 
 .draggable-panel.panel-fade-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
-}
-
-.draggable-panel.panel-fade-enter-to,
-.draggable-panel.panel-fade-leave-from {
-  opacity: 1;
-  transform: translateY(0);
+  transform: var(--popup-leave);
 }

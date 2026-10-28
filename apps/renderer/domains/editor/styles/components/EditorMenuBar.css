@@ -137,18 +137,25 @@
   white-space: pre-wrap;
 }
 
-/* ++ 新增：下拉菜单过渡动画 ++ */
-.menu-fade-enter-active,
-.menu-fade-leave-active {
-  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
+.menu-fade-enter-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-enter);
 }
 
-.menu-fade-enter-from,
+.menu-fade-leave-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-leave);
+}
+
+.menu-fade-enter-from {
+  opacity: 0;
+  transform: var(--popup-enter-down);
+}
+
 .menu-fade-leave-to {
   opacity: 0;
-  transform: translateY(-5px);
+  transform: var(--popup-leave);
 }
-
 
 /* 下拉菜单分隔线 */
 .dropdown-divider {
@@ -167,6 +174,7 @@
 .menu-icon {
   font-weight: var(--font-weight-semibold); /* B */
 }
+
 .menu-icon i {
   font-style: italic; /* I */
 }

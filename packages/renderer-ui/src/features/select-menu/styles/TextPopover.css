@@ -61,23 +61,42 @@
   background-color: var(--color-bg-hover);
 }
 
-.text-popover .popover-panel.popover-fade-enter-active,
+.text-popover .popover-panel.popover-fade-enter-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-enter);
+}
+
 .text-popover .popover-panel.popover-fade-leave-active {
-  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
+  transform-origin: top left;
+  transition: var(--popup-transition-leave);
 }
 
 .text-popover .popover-panel.popover-fade-enter-from {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: var(--popup-enter-down);
 }
 
 .text-popover .popover-panel.popover-fade-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
+  transform: var(--popup-leave);
 }
 
-.text-popover .popover-panel.popover-fade-enter-to,
-.text-popover .popover-panel.popover-fade-leave-from {
-  opacity: 1;
-  transform: translateY(0);
+/* 面板按实际落点（data-placement）从贴近触发点的一侧缩放出来。 */
+.text-popover .popover-panel[data-placement='top'].popover-fade-enter-active,
+.text-popover .popover-panel[data-placement='top'].popover-fade-leave-active {
+  transform-origin: bottom left;
+}
+
+.text-popover .popover-panel[data-placement='top'].popover-fade-enter-from {
+  transform: var(--popup-enter-up);
+}
+
+.text-popover .popover-panel[data-placement='left'].popover-fade-enter-active,
+.text-popover .popover-panel[data-placement='left'].popover-fade-leave-active {
+  transform-origin: top right;
+}
+
+.text-popover .popover-panel[data-placement='right'].popover-fade-enter-active,
+.text-popover .popover-panel[data-placement='right'].popover-fade-leave-active {
+  transform-origin: top left;
 }

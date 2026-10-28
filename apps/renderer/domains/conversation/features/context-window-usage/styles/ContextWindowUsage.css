@@ -79,13 +79,22 @@
   visibility: visible;
 }
 
-.context-window-usage-panel-fade-enter-active,
-.context-window-usage-panel-fade-leave-active {
-  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
+.context-window-usage-panel-fade-enter-active {
+  transform-origin: bottom right;
+  transition: var(--popup-transition-enter);
 }
 
-.context-window-usage-panel-fade-enter-from,
+.context-window-usage-panel-fade-leave-active {
+  transform-origin: bottom right;
+  transition: var(--popup-transition-leave);
+}
+
+.context-window-usage-panel-fade-enter-from {
+  opacity: 0;
+  transform: var(--popup-enter-up);
+}
+
 .context-window-usage-panel-fade-leave-to {
   opacity: 0;
-  transform: translateY(4px);
+  transform: var(--popup-leave);
 }

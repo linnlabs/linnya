@@ -2,6 +2,19 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 2.8.0 - 2026-10-28
+
+- 小浮层改为从触发边缩放出来：新增 `--popup-enter-down` / `--popup-enter-up`（`scale(0.96)` 加 4px 位移）、`--popup-leave`（`scale(0.98)`）与 `--popup-transition-enter`（`--duration-short` + `--ease-enter`）/ `--popup-transition-leave`（`--duration-micro` + `--ease-standard`）；`DropdownPanel`、`TextPopover`、`SimpleDatePicker`、`TimePicker`、`DraggablePanel` 及业务里 20 余处写死 `translateY(-8px)` 的菜单、下拉与引用卡片迁到这组 token，并按落点写 `transform-origin`。进入 150ms、离开 100ms；类名与 DOM 结构不变。
+- 悬停提示统一由一个共享服务绘制：`IconButton` 不再使用原生 `title`，`label` 通过 `data-linnya-tooltip` 交给服务；`HoverTooltip` 保留 props 与对外行为入口，但不再用 `Teleport` 渲染每个气泡，改为同一个全局气泡。首次悬停等待 500ms、相邻控件之间与刚消失 300ms 内无延迟、键盘 `focus-visible` 立即出现；点击或 Esc 收起，放不下时自动翻到另一侧。`HoverTooltipWindowFocusPort` 与输入来源状态机不变。`IconButton` 的 `:tooltip="false"` 与自带 `title` 的用法保持可用。
+- `ImagePreviewModal` 新增可选 `sourceElement`，并新增 `useImagePreviewSource()`（在点击处记录缩略图）：传入后用 View Transitions 让大图从缩略图展开、关闭时缩回；没有缩略图、缩略图已离开屏幕、浏览器不支持或减少动态效果时退回淡入。关闭过程中大图保持到过渡结束（不再随调用方清空 `src` 而提前消失）；去掉大图上不必要的 `loading="lazy"`。runtime catalog 同步新导出。
+- `SegmentedTabs` 的下划线改为单根指示器在页签之间滑动（`--duration-medium` + `--ease-standard`），首次位置直接落定；页签自身不再画下划线。
+- `BaseButton` 的 `primary` 与 `tint` 新增按压反馈：按下缩到 `--motion-press-scale`（0.975），松手缓出回位；其它 variant 不变。
+- 游离的缓动收口到 token：侧栏历史脉冲、大纲侧栏高度补间、输入框“配置模型”入场、时间线进出改用 `--ease-*` 与 `--duration-*`；删除一处注释掉的 `ease-in-out`。
+- `IconButton` 新增 `tooltipText`（提示文字，默认同 `label`，用于附加快捷键）；任何元素可通过 `data-linnya-tooltip`（及 `-placement`、`-offset`）获得同一套提示；新增导出 `useHoverTooltipService`，Host 在应用根组件调用即可，`IconButton`、`HoverTooltip`、`ToolbarButton`、`SecretInput`、`SimpleDatePicker`、`ScrollToBottomButton` 挂载时也会各自持有它。`ToolbarButton`、`SecretInput`、`SimpleDatePicker`、`ScrollToBottomButton` 的原生 `title` 改为共享提示，`aria-label` 不变。
+- 删除只在重复“减少动态效果下 `transition: none`”的三处样式（`DropdownPanel`、`CustomSlider` 滑块、`ToolbarButton`）：时长 token 已使这些过渡立即完成，单独关闭过渡反而让结束事件不再触发。
+- 动效刻度存量清零：剩下的 3 处有意延迟（跑马灯起始、入场错峰、光束相位）改为带原因的 `scale-exempt`。
+- 设计规范新增 7.4“浮层、提示与细节反馈”与细节清单两条，并补充 JS 动画取 token、减少动态效果与错峰延迟的规则、当前限制。
+
 ## 2.7.0 - 2026-10-27
 
 - `Modal` 新增可选的 `title-extra` 插槽，用于标题旁的来源或状态标签；标题字阶、间距、长标题换行与关闭入口仍由共享组件拥有。

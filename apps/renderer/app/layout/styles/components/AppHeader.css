@@ -297,19 +297,24 @@
   z-index: var(--linnya-ui-layer-popover);
 }
 
-.app-header-menu-fade-enter-active,
+.app-header-menu-fade-enter-active {
+  transform-origin: top right;
+  transition: var(--popup-transition-enter);
+}
+
 .app-header-menu-fade-leave-active {
-  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
+  transform-origin: top right;
+  transition: var(--popup-transition-leave);
 }
 
 .app-header-menu-fade-enter-from {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: var(--popup-enter-down);
 }
 
 .app-header-menu-fade-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
+  transform: var(--popup-leave);
 }
 
 .app-header-right .windows-controls {

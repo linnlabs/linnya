@@ -6,7 +6,9 @@ export { default as ScrollToBottomButton } from './ui/ScrollToBottomButton.vue';
 export { default as Skeleton } from './ui/Skeleton.vue';
 export { default as SkeletonBlock } from './ui/SkeletonBlock.vue';
 export { default as SkeletonRows } from './ui/SkeletonRows.vue';
+export { hoverTooltipAttributes } from './functions/hoverTooltipAttributes';
 export { resolveHoverTooltipPosition } from './functions/hoverTooltipInteraction';
+export { useHoverTooltipService } from './vue/useHoverTooltipService';
 export { HOVER_TOOLTIP_WINDOW_FOCUS_PORT_KEY } from './ports/hoverTooltipWindowFocusPort';
 export type {
   HoverTooltipPlacement,

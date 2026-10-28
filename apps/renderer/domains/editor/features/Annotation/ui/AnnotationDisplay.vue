@@ -35,7 +35,7 @@
           <button
             class="icon-button ai-icon"
             @click="$emit('ai-action')"
-            :title="editorMessage('editor.annotation.action.ai')"
+            :data-linnya-tooltip="editorMessage('editor.annotation.action.ai')"
             :aria-label="editorMessage('editor.annotation.action.ai')"
           >
             <AiIcon />
@@ -46,7 +46,7 @@
             v-if="panel.state !== AnnotationState.RESOLVED" 
             class="icon-button edit-icon" 
             @click="$emit('edit')" 
-            :title="editorMessage('editor.annotation.action.edit')"
+            :data-linnya-tooltip="editorMessage('editor.annotation.action.edit')"
             :aria-label="editorMessage('editor.annotation.action.edit')"
           >
             <EditIcon />
@@ -57,7 +57,7 @@
             class="icon-button resolve-icon" 
             :class="{'is-resolved': panel.state === AnnotationState.RESOLVED}"
             @click="panel.state === AnnotationState.RESOLVED ? $emit('reopen') : $emit('resolve')"
-            :title="panel.state === AnnotationState.RESOLVED
+            :data-linnya-tooltip="panel.state === AnnotationState.RESOLVED
               ? editorMessage('editor.annotation.action.reopen')
               : editorMessage('editor.annotation.action.resolve')"
             :aria-label="panel.state === AnnotationState.RESOLVED
@@ -71,7 +71,7 @@
           <button 
             class="icon-button delete-icon" 
             @click="$emit('delete')"
-            :title="editorMessage('editor.annotation.action.delete')"
+            :data-linnya-tooltip="editorMessage('editor.annotation.action.delete')"
             :aria-label="editorMessage('editor.annotation.action.delete')"
           >
             <NoIcon />

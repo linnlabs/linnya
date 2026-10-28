@@ -1,22 +1,22 @@
-.editor-citation-popover-enter-active,
-.editor-citation-popover-leave-active {
-  /*
-   * 只做轻量过渡：pinned 模式下关闭更频繁，
-   * 120ms 左右可以避免操作后动画拖沓。
-   */
-  transition: opacity var(--duration-micro) var(--ease-standard), transform var(--duration-micro) var(--ease-standard);
+/* pinned 模式下关闭更频繁；离开用更短的 --popup-transition-leave，避免操作后动画拖沓。 */
+.editor-citation-popover-enter-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-enter);
 }
 
-.editor-citation-popover-enter-from,
+.editor-citation-popover-leave-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-leave);
+}
+
+.editor-citation-popover-enter-from {
+  opacity: 0;
+  transform: var(--popup-enter-down);
+}
+
 .editor-citation-popover-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
-}
-
-.editor-citation-popover-enter-to,
-.editor-citation-popover-leave-from {
-  opacity: 1;
-  transform: translateY(0);
+  transform: var(--popup-leave);
 }
 
 .editor-citation-popover {

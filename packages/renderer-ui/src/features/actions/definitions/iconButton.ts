@@ -21,7 +21,7 @@ export type IconButtonTone = 'neutral' | 'danger';
 export type IconButtonType = 'button' | 'submit' | 'reset';
 
 export interface IconButtonProps {
-  /** 可访问名称，必填；默认同时作为原生提示。 */
+  /** 可访问名称，必填；默认同时作为悬停提示（共享提示服务绘制，不使用原生 title）。 */
   readonly label: string;
   readonly size?: IconButtonSize;
   readonly variant?: IconButtonVariant;
@@ -32,8 +32,10 @@ export interface IconButtonProps {
    */
   readonly active?: boolean;
   readonly disabled?: boolean;
-  /** 外层已有 HoverTooltip 等自定义提示时关闭原生 title，避免出现两个提示。 */
+  /** 外层已有 HoverTooltip 等自定义提示时关闭自身提示，避免出现两个提示。 */
   readonly tooltip?: boolean;
+  /** 悬停提示文字，默认同 label；需要附加快捷键等内容时在这里写完整文案（label 仍是可访问名称）。 */
+  readonly tooltipText?: string;
   readonly type?: IconButtonType;
 }
 

@@ -5,7 +5,7 @@
       v-if="show"
       @click="handleClick"
       class="scroll-to-bottom-btn"
-      :title="resolvedTitle"
+      :data-linnya-tooltip="resolvedTitle"
       :aria-label="resolvedTitle"
     >
       <svg class="scroll-to-bottom-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -20,6 +20,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useSharedComponentLocalization } from '@linnya/renderer-ui/localization';
+import { useHoverTooltipService } from '../vue/useHoverTooltipService';
 
 /**
  * 功能 (What): 通用的滚动到底部按钮组件
@@ -42,6 +43,7 @@ const emit = defineEmits<{
   (e: 'click'): void;
 }>();
 const { sharedComponentMessage } = useSharedComponentLocalization();
+useHoverTooltipService();
 
 const resolvedTitle = computed(() => (
   props.title || sharedComponentMessage('shared.scrollToBottom.title')

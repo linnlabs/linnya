@@ -2,7 +2,6 @@
 # 格式：count<TAB>rule<TAB>file。只允许数量减少；新增值必须使用 Renderer UI token。
 5	SCALE-06-z-index	apps/renderer/app/layout/styles/components/AppHeader.css
 1	SCALE-05-spacing	apps/renderer/app/layout/styles/components/SidebarConversationList.css
-1	SCALE-08-easing	apps/renderer/app/layout/styles/components/SidebarConversationList.css
 1	SCALE-06-z-index	apps/renderer/app/layout/styles/components/SidebarProjectGroup.css
 1	SCALE-06-z-index	apps/renderer/app/layout/styles/components/SidebarShell.css
 1	SCALE-06-z-index	apps/renderer/app/layout/styles/editor-shell.css
@@ -15,8 +14,6 @@
 3	SCALE-03-line-height	apps/renderer/domains/conversation/styles/components/AgentTodoCard.css
 1	SCALE-04-radius	apps/renderer/domains/conversation/styles/components/AgentTodoCard.css
 1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/AiAssistantInput.css
-2	SCALE-07-duration	apps/renderer/domains/conversation/styles/components/AiAssistantInput.css
-2	SCALE-08-easing	apps/renderer/domains/conversation/styles/components/AiAssistantInput.css
 4	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/AiAssistantInputFooter.css
 1	SCALE-06-z-index	apps/renderer/domains/conversation/styles/components/AiAssistantInputFooter.css
 2	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/ConversationChatSurface.css
@@ -107,7 +104,6 @@
 1	SCALE-05-spacing	packages/renderer-ui/src/features/floating-panels/styles/DraggablePanel.css
 1	SCALE-06-z-index	packages/renderer-ui/src/features/floating-panels/styles/DraggablePanel.css
 2	SCALE-05-spacing	packages/renderer-ui/src/features/select-menu/styles/CustomSelect.css
-1	SCALE-07-duration	packages/renderer-ui/src/features/select-menu/styles/CustomSelect.css
 1	SCALE-03-line-height	packages/renderer-ui/src/features/text-entry/styles/CustomTextField.css
 3	SCALE-05-spacing	packages/renderer-ui/src/features/text-entry/styles/CustomTextField.css
 1	COLOR-01-base-palette	packages/renderer-ui/src/styles/icons.css

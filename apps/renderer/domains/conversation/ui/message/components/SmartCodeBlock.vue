@@ -10,7 +10,7 @@
         class="copy-button"
         type="button"
         @click="copyCode"
-        :title="conversationMessage('conversation.code.copy')"
+        :data-linnya-tooltip="conversationMessage('conversation.code.copy')"
         :aria-label="conversationMessage('conversation.code.copy')"
       >
         <CopyIcon />

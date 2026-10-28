@@ -302,13 +302,19 @@ function updateTrackHeight() {
 }
 
 const TIMELINE_VISUAL_ANIMATION_DURATION_MS = 240;
-const TIMELINE_VISUAL_ANIMATION_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
+// 缓动取自设计 token，保持与 CSS 过渡一致；token 不可读时退回同值的字面量。
+const TIMELINE_VISUAL_ANIMATION_EASING_FALLBACK = 'cubic-bezier(0.2, 0, 0, 1)';
 let visualAnimation: Animation | null = null;
 
 function readPixelVariable(element: HTMLElement, propertyName: string, fallback: number): number {
   const rawValue = getComputedStyle(element).getPropertyValue(propertyName).trim();
   const parsedValue = Number.parseFloat(rawValue);
   return Number.isFinite(parsedValue) ? Math.max(0, parsedValue) : fallback;
+}
+
+function readEasingVariable(element: HTMLElement, propertyName: string, fallback: string): string {
+  const rawValue = getComputedStyle(element).getPropertyValue(propertyName).trim();
+  return rawValue === '' ? fallback : rawValue;
 }
 
 function readCurrentTranslateX(element: HTMLElement): number {
@@ -376,7 +382,7 @@ function applyTimelineVisualState(collapsed: boolean, animate: boolean): void {
     ],
     {
       duration: TIMELINE_VISUAL_ANIMATION_DURATION_MS,
-      easing: TIMELINE_VISUAL_ANIMATION_EASING,
+      easing: readEasingVariable(element, '--ease-standard', TIMELINE_VISUAL_ANIMATION_EASING_FALLBACK),
     },
   );
 

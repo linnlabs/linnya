@@ -3,7 +3,8 @@
     :class="['toolbar-button', { 'is-disabled': disabled }]" 
     @click="handleClick"
     :disabled="disabled"
-    :title="title"
+    :data-linnya-tooltip="title"
+    :aria-label="title"
   >
     <slot></slot>
   </button>

@@ -33,9 +33,8 @@
             <IconButton
               :label="editorMessage('editor.findReplace.previous')"
               size="md"
-              :tooltip="false"
               class="find-replace-nav-btn"
-              :title="`${editorMessage('editor.findReplace.previous')} (Shift+Enter)`"
+              :tooltip-text="`${editorMessage('editor.findReplace.previous')} (Shift+Enter)`"
               :disabled="!hasMatches"
               @click="handlePrev"
             >
@@ -47,9 +46,8 @@
             <IconButton
               :label="editorMessage('editor.findReplace.next')"
               size="md"
-              :tooltip="false"
               class="find-replace-nav-btn"
-              :title="`${editorMessage('editor.findReplace.next')} (Enter)`"
+              :tooltip-text="`${editorMessage('editor.findReplace.next')} (Enter)`"
               :disabled="!hasMatches"
               @click="handleNext"
             >

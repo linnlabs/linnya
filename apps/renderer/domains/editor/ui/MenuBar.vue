@@ -41,12 +41,14 @@
       </div>
       <button @click="editor.chain().focus().toggleBold().run()" 
               :class="{ 'is-active': editor.isActive('bold') }"
-              :title="editorMessage('editor.menu.bold')">
+              :data-linnya-tooltip="editorMessage('editor.menu.bold')"
+              :aria-label="editorMessage('editor.menu.bold')">
         <BoldIcon />
       </button>
       <button @click="editor.chain().focus().toggleItalic().run()" 
               :class="{ 'is-active': editor.isActive('italic') }"
-              :title="editorMessage('editor.menu.italic')">
+              :data-linnya-tooltip="editorMessage('editor.menu.italic')"
+              :aria-label="editorMessage('editor.menu.italic')">
         <ItalicIcon />
       </button>
       
@@ -56,7 +58,8 @@
       <button @click="toggleListItem('bullet')" 
               :class="{ 'is-active': editor.isActive('listItemBlock', { listType: 'bullet' }) }"
               :disabled="isInTable"
-              :title="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.bulletList')">
+              :data-linnya-tooltip="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.bulletList')"
+              :aria-label="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.bulletList')">
         <ListItemIcon />
       </button>
       <button @click="toggleListItem('ordered')" 
@@ -69,14 +72,15 @@
       <button @click="toggleQuoteBlock()" 
               :class="{ 'is-active': editor.isActive('quoteBlock') }"
               :disabled="isInTable"
-              :title="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.quoteBlock')">
+              :data-linnya-tooltip="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.quoteBlock')"
+              :aria-label="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.quoteBlock')">
         <QuoteIcon />
       </button>
       
       <span class="divider"></span>
 
       <!-- Group 4: Insertions -->
-      <button @click="insertImage" :title="editorMessage('editor.menu.insertImage')">
+      <button @click="insertImage" :data-linnya-tooltip="editorMessage('editor.menu.insertImage')" :aria-label="editorMessage('editor.menu.insertImage')">
         <ImageIcon />
       </button>
       <div class="table-button-container">
@@ -84,7 +88,8 @@
           ref="tableButtonRef" 
           @click="toggleTableSizeSelector" 
           :disabled="isInTable"
-          :title="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.insertTable')">
+          :data-linnya-tooltip="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.insertTable')"
+          :aria-label="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.insertTable')">
           <TableIcon />
         </button>
         <Teleport to="body">
@@ -108,7 +113,8 @@
       <button
         v-if="isDevelopment"
         @click="uiStore.toggleDebugPanel()"
-        :title="editorMessage('editor.menu.debug')"
+        :data-linnya-tooltip="editorMessage('editor.menu.debug')"
+        :aria-label="editorMessage('editor.menu.debug')"
       >
         <WrenchIcon />
       </button>

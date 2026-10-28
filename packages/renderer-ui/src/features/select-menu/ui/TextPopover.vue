@@ -25,6 +25,7 @@
         v-if="computedIsOpen" 
         ref="popoverRef"
         class="popover-panel"
+        :data-placement="resolvedPlacement"
         :style="popoverPosition"
         @mouseenter="handlePanelMouseEnter"
         @mouseleave="handlePanelMouseLeave"
@@ -103,6 +104,10 @@ const { sharedComponentMessage } = useSharedComponentLocalization();
 // Refs
 const containerRef = ref<HTMLElement | null>(null);
 const popoverRef = ref<HTMLElement | null>(null);
+// 面板实际落在触发点的哪一侧；进出动画据此选择缩放原点（auto 在首次定位前先按“下方”处理）。
+const resolvedPlacement = ref<'top' | 'bottom' | 'left' | 'right'>(
+  props.placement === 'auto' ? 'bottom' : props.placement,
+);
 const internalIsOpen = ref(false);
 let closeTimer: number | null = null;
 let delayedListenerTimer: number | null = null;
@@ -249,10 +254,12 @@ const calculatePosition = () => {
     if (spaceBelow >= popoverRect.height || spaceBelow >= spaceAbove) {
       top = triggerRect.bottom + 8;
       left = triggerRect.left;
+      resolvedPlacement.value = 'bottom';
     } else {
       // 显示在上方
       top = triggerRect.top - popoverRect.height - 8;
       left = triggerRect.left;
+      resolvedPlacement.value = 'top';
     }
     
     // 确保不超出右边界

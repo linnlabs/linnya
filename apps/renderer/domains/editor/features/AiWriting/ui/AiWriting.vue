@@ -26,14 +26,16 @@
             <button
               class="ai-writing-button ai-writing-cancel-button"
               @click="handleCancel"
-              :title="editorMessage('editor.aiWriting.cancel')"
+              :data-linnya-tooltip="editorMessage('editor.aiWriting.cancel')"
+              :aria-label="editorMessage('editor.aiWriting.cancel')"
             >
               <CloseIcon />
             </button>
             <button
               class="ai-writing-button ai-writing-submit-button"
               @click="handleSubmit"
-              :title="editorMessage('editor.aiWriting.submit')"
+              :data-linnya-tooltip="editorMessage('editor.aiWriting.submit')"
+              :aria-label="editorMessage('editor.aiWriting.submit')"
               :disabled="!inputText.trim()"
             >
               <EnterLeftIcon />

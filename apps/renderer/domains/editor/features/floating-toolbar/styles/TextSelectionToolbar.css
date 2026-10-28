@@ -5,23 +5,24 @@
   width: 220px;
 }
 
-/* 标题列表仍由 CustomSelect 拥有；这里只保留其旧外层的过渡。 */
-.text-selection-toolbar .heading-menu-fade-enter-active,
-.text-selection-toolbar .heading-menu-fade-leave-active {
-  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
+.text-selection-toolbar .heading-menu-fade-enter-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-enter);
 }
+
+.text-selection-toolbar .heading-menu-fade-leave-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-leave);
+}
+
 .text-selection-toolbar .heading-menu-fade-enter-from {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: var(--popup-enter-down);
 }
+
 .text-selection-toolbar .heading-menu-fade-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
-}
-.text-selection-toolbar .heading-menu-fade-enter-to,
-.text-selection-toolbar .heading-menu-fade-leave-from {
-  opacity: 1;
-  transform: translateY(0);
+  transform: var(--popup-leave);
 }
 
 .text-selection-toolbar .format-buttons {

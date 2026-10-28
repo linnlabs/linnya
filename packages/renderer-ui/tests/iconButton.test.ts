@@ -28,19 +28,28 @@ afterEach(() => {
 });
 
 describe('IconButton', () => {
-  it('label 同时作为可访问名称与原生提示，默认 type=button', () => {
+  it('label 同时作为可访问名称与悬停提示（共享提示服务），默认 type=button', () => {
     const button = mountIconButton({ label: '关闭' });
 
     expect(button.type).toBe('button');
     expect(button.getAttribute('aria-label')).toBe('关闭');
-    expect(button.title).toBe('关闭');
+    expect(button.getAttribute('data-linnya-tooltip')).toBe('关闭');
+    expect(button.hasAttribute('title')).toBe(false);
     expect(button.querySelector('[data-icon="close"]')).not.toBeNull();
   });
 
-  it('外层已有自定义提示时可以关闭原生 title', () => {
+  it('tooltipText 只改悬停提示，可访问名称仍是 label', () => {
+    const button = mountIconButton({ label: '上一个', tooltipText: '上一个 (Shift+Enter)' });
+
+    expect(button.getAttribute('aria-label')).toBe('上一个');
+    expect(button.getAttribute('data-linnya-tooltip')).toBe('上一个 (Shift+Enter)');
+  });
+
+  it('外层已有自定义提示时可以关闭自身提示', () => {
     const button = mountIconButton({ label: '设置', tooltip: false });
 
     expect(button.getAttribute('aria-label')).toBe('设置');
+    expect(button.hasAttribute('data-linnya-tooltip')).toBe(false);
     expect(button.hasAttribute('title')).toBe(false);
   });
 

@@ -12,7 +12,7 @@
           'is-unavailable': !available,
           'is-historical': available?.isHistoricalModel,
         }"
-        :title="triggerAriaLabel"
+        :data-linnya-tooltip="triggerAriaLabel"
         :aria-label="triggerAriaLabel"
         aria-haspopup="dialog"
         :aria-expanded="isOpen"

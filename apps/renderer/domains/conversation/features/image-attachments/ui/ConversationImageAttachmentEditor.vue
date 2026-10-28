@@ -1,15 +1,15 @@
 <template>
   <section v-if="store.order.length > 0" class="conversation-image-edit" :aria-label="conversationMessage('conversation.userMessage.image.edit')">
     <article v-for="(item, index) in store.order" :key="itemKey(item)" class="conversation-image-edit__item">
-      <button type="button" class="conversation-image-edit__preview" :disabled="!previewUrl(item)" @click="openPreview(item)">
+      <button type="button" class="conversation-image-edit__preview" :disabled="!previewUrl(item)" @click="rememberSource($event); openPreview(item)">
         <img v-if="previewUrl(item)" :src="previewUrl(item)" :alt="itemName(item)">
         <span v-else>{{ conversationMessage('conversation.userMessage.image.loading') }}</span>
       </button>
       <div class="conversation-image-edit__actions">
-        <button v-if="isFailedDraft(item)" type="button" :disabled="disabled" :title="conversationMessage('conversation.input.image.retry')" @click="retryDraft(item)"><RefreshIcon /></button>
-        <button type="button" :disabled="disabled || index === 0" :title="conversationMessage('conversation.userMessage.image.moveLeft')" @click="controller.move(item, -1)"><ChevronIcon direction="left" /></button>
-        <button type="button" :disabled="disabled || index === store.order.length - 1" :title="conversationMessage('conversation.userMessage.image.moveRight')" @click="controller.move(item, 1)"><ChevronIcon direction="right" /></button>
-        <button type="button" :disabled="disabled" :title="conversationMessage('conversation.input.image.removeNamed', { name: itemName(item) })" @click="controller.remove(item)"><CloseIcon /></button>
+        <button v-if="isFailedDraft(item)" type="button" :disabled="disabled" :data-linnya-tooltip="conversationMessage('conversation.input.image.retry')" :aria-label="conversationMessage('conversation.input.image.retry')" @click="retryDraft(item)"><RefreshIcon /></button>
+        <button type="button" :disabled="disabled || index === 0" :data-linnya-tooltip="conversationMessage('conversation.userMessage.image.moveLeft')" :aria-label="conversationMessage('conversation.userMessage.image.moveLeft')" @click="controller.move(item, -1)"><ChevronIcon direction="left" /></button>
+        <button type="button" :disabled="disabled || index === store.order.length - 1" :data-linnya-tooltip="conversationMessage('conversation.userMessage.image.moveRight')" :aria-label="conversationMessage('conversation.userMessage.image.moveRight')" @click="controller.move(item, 1)"><ChevronIcon direction="right" /></button>
+        <button type="button" :disabled="disabled" :data-linnya-tooltip="conversationMessage('conversation.input.image.removeNamed', { name: itemName(item) })" :aria-label="conversationMessage('conversation.input.image.removeNamed', { name: itemName(item) })" @click="controller.remove(item)"><CloseIcon /></button>
       </div>
     </article>
   </section>
@@ -25,13 +25,14 @@
     :is-visible="selectedUrl !== null"
     :src="selectedUrl ?? ''"
     :alt="selectedName"
+    :source-element="previewSource"
     @close="selectedKey = null"
   />
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { ImagePreviewModal } from '@linnya/renderer-ui';
+import { ImagePreviewModal, useImagePreviewSource } from '@linnya/renderer-ui';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { RefreshIcon } from '@linnya/renderer-ui/icons';
@@ -53,6 +54,7 @@ const { items: existingPreviews } = useConversationImagePreviews(() => (
   })
 ));
 const selectedKey = ref<string | null>(null);
+const { sourceElement: previewSource, rememberSource } = useImagePreviewSource();
 
 function itemKey(item: ConversationImageEditOrderItem): string {
   return item.source === 'existing' ? `existing:${item.attachmentId}` : `draft:${item.clientId}`;

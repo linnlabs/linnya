@@ -580,7 +580,7 @@ const batchEndCheck = async () => {
   const aside = asideRef.value;
 
   aside.style.height = currentStartHeight + 'px';
-  aside.style.transition = 'height .25s ease';
+  aside.style.transition = 'height var(--duration-long) var(--ease-standard)';
 
   requestAnimationFrame(() => {
     aside.style.height = pendingEndHeight + 'px';
@@ -601,7 +601,7 @@ const batchEndCheck = async () => {
   releaseTimeoutId = setTimeout(() => {
     aside.removeEventListener('transitionend', transitionEndHandler);
     releaseAfterAnimation(); 
-  }, 300); // 稍长于动画时间
+  }, 400); // 稍长于动画时间（--duration-long）
 };
 
 /* 绑定到 <transition-group> 的钩子函数 */

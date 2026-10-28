@@ -44,6 +44,3 @@
   border-radius: var(--radius-full);
   transform: translateX(-50%);
 }
-@media (prefers-reduced-motion: reduce) {
-  .linnya-toolbar-button { transition: none; }
-}

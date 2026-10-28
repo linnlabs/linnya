@@ -31,7 +31,7 @@
           <button 
             class="icon-button ai-icon" 
             @click="triggerAiAndConfirm"
-            :title="editorMessage('editor.annotation.action.aiAndCreate')"
+            :data-linnya-tooltip="editorMessage('editor.annotation.action.aiAndCreate')"
             :aria-label="editorMessage('editor.annotation.action.aiAndCreate')"
           >
             <AiIcon />
@@ -41,7 +41,7 @@
           <button 
             class="icon-button cancel-icon" 
             @click="onCancel('button')"
-            :title="editorMessage('editor.annotation.action.cancelCreate')"
+            :data-linnya-tooltip="editorMessage('editor.annotation.action.cancelCreate')"
             :aria-label="editorMessage('editor.annotation.action.cancelCreate')"
           >
             <NoIcon />
@@ -52,7 +52,7 @@
             class="icon-button save-icon" 
             @click="onSave('button')"
             :disabled="!panel.content.trim()"
-            :title="editorMessage('editor.annotation.action.create')"
+            :data-linnya-tooltip="editorMessage('editor.annotation.action.create')"
             :aria-label="editorMessage('editor.annotation.action.create')"
           >
             <OkIcon />

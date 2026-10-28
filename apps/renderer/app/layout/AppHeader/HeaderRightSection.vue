@@ -321,21 +321,24 @@
       <button
         class="control-button minimize-button"
         @click="handleWindowAction('minimize')"
-        :title="layoutMessage('layout.header.window.minimize')"
+        :data-linnya-tooltip="layoutMessage('layout.header.window.minimize')"
+        :aria-label="layoutMessage('layout.header.window.minimize')"
       >
         <WindowActionIcon action="minimize" />
       </button>
       <button
         class="control-button maximize-button"
         @click="handleWindowAction('maximize')"
-        :title="layoutMessage('layout.header.window.maximizeRestore')"
+        :data-linnya-tooltip="layoutMessage('layout.header.window.maximizeRestore')"
+        :aria-label="layoutMessage('layout.header.window.maximizeRestore')"
       >
         <WindowActionIcon action="maximize" :isMaximized="isWindowMaximized" />
       </button>
       <button
         class="control-button close-button"
         @click="handleWindowAction('close')"
-        :title="layoutMessage('layout.header.panel.close')"
+        :data-linnya-tooltip="layoutMessage('layout.header.panel.close')"
+        :aria-label="layoutMessage('layout.header.panel.close')"
       >
         <CloseIcon />
       </button>

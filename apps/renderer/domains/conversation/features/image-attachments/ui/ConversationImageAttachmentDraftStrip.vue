@@ -18,7 +18,7 @@
           type="button"
           class="conversation-image-draft-item__preview"
           :aria-label="conversationMessage('conversation.input.image.preview')"
-          @click="previewItem = item"
+          @click="rememberSource($event); previewItem = item"
         >
           <img :src="item.previewUrl" :alt="item.fileName">
           <span
@@ -67,13 +67,14 @@
     :is-visible="previewItem !== null"
     :src="previewItem?.previewUrl ?? ''"
     :alt="previewItem?.fileName ?? ''"
+    :source-element="previewSource"
     @close="previewItem = null"
   />
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { ImagePreviewModal } from '@linnya/renderer-ui';
+import { ImagePreviewModal, useImagePreviewSource } from '@linnya/renderer-ui';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import { RefreshIcon } from '@linnya/renderer-ui/icons';
 import type { ConversationImageDraftItem } from '../definitions/conversationImageAttachmentDraft';
@@ -93,4 +94,5 @@ const emit = defineEmits<{
 
 const { conversationMessage } = useConversationLocalization();
 const previewItem = ref<ConversationImageDraftItem | null>(null);
+const { sourceElement: previewSource, rememberSource } = useImagePreviewSource();
 </script>

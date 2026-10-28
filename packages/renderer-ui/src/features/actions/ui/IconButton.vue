@@ -6,7 +6,7 @@
     :disabled="disabled"
     :class="classes"
     :aria-label="label"
-    :title="tooltip ? label : undefined"
+    v-bind="tooltipAttributes"
   >
     <slot />
   </button>
@@ -14,6 +14,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { hoverTooltipAttributes, useHoverTooltipService } from '../../feedback';
 import type { IconButtonProps, IconButtonSlots } from '../definitions/iconButton';
 
 const props = withDefaults(defineProps<IconButtonProps>(), {
@@ -27,6 +28,9 @@ const props = withDefaults(defineProps<IconButtonProps>(), {
 });
 
 defineSlots<IconButtonSlots>();
+// 提示由共享的提示服务绘制（首次悬停有延迟，相邻按钮之间无延迟），不再使用原生 title。
+useHoverTooltipService();
+const tooltipAttributes = computed(() => hoverTooltipAttributes(props.tooltip ? props.tooltipText ?? props.label : undefined));
 const buttonRef = ref<HTMLButtonElement | null>(null);
 defineExpose({ element: buttonRef });
 

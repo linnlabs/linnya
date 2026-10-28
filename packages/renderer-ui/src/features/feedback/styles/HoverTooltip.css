@@ -2,7 +2,10 @@
   display: inline-flex;
 }
 
+/* 全局唯一的提示气泡，由共享提示服务创建并定位；出现时从贴近触发点的一侧轻微位移淡入。 */
 .hover-tooltip {
+  --hover-tooltip-shift: calc(var(--space-1) * -1);
+
   position: fixed;
   z-index: var(--linnya-ui-layer-tooltip);
   padding: var(--space-1) var(--space-2);
@@ -11,17 +14,29 @@
   color: var(--color-white);
   white-space: nowrap;
   pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
   background-color: color-mix(in srgb, var(--color-black) 92%, transparent);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-floating-panel);
+  transform: translateY(var(--hover-tooltip-shift));
+  transition:
+    opacity var(--duration-micro) var(--ease-standard),
+    transform var(--duration-micro) var(--ease-standard),
+    visibility 0s linear var(--duration-micro);
 }
 
-.hover-tooltip.tooltip-fade-enter-active,
-.hover-tooltip.tooltip-fade-leave-active {
-  transition: opacity var(--duration-micro) var(--ease-standard);
+.hover-tooltip[data-placement='top'] {
+  --hover-tooltip-shift: var(--space-1);
 }
 
-.hover-tooltip.tooltip-fade-enter-from,
-.hover-tooltip.tooltip-fade-leave-to {
-  opacity: 0;
+/* 已在显示时从一个目标换到另一个目标，保持 is-open，不重播出现动画。 */
+.hover-tooltip.is-open {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--duration-micro) var(--ease-enter),
+    transform var(--duration-micro) var(--ease-enter),
+    visibility 0s;
 }
