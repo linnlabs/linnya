@@ -36,6 +36,10 @@ describe('Empty project deletion preserves every linked owner', () => {
       "INSERT INTO workspace_nodes (id, project_id, type, name, created_at, updated_at) VALUES ('node', ?, 'folder', 'Folder', 1, 1)",
     ],
     [
+      '普通文档',
+      "INSERT INTO workspace_nodes (id, project_id, type, name, created_at, updated_at) VALUES ('node', ?, 'document', 'Document', 1, 1)",
+    ],
+    [
       '软删除文档',
       "INSERT INTO workspace_nodes (id, project_id, type, name, created_at, updated_at, deleted_at) VALUES ('node', ?, 'document', 'History', 1, 1, 2)",
     ],

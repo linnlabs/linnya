@@ -158,7 +158,6 @@ describe('Project CLI process → real HTTP bridge → Project SQLite', () => {
     for (const command of [
       { action: 'create', input: { name: 'Injected', system_role: 'default' } },
       { action: 'update', project_id: id, updates: {} },
-      { action: 'delete', project_id: id },
     ]) {
       const result = await fetch(commandUrl, {
         method: 'POST',
@@ -176,24 +175,59 @@ describe('Project CLI process → real HTTP bridge → Project SQLite', () => {
     const creation = await execute('create', 'Temporary');
     if (creation.action !== 'create') throw new Error('Expected creation');
     const id = creation.project.project_id;
-    const unconfirmed = await runCliProcess(['projects', 'delete', id], connectionFile);
-    expect(unconfirmed.exitCode).toBe(2);
+    const creationEvents = [...events];
+    for (const flags of [[], ['--yes', '--force']]) {
+      const refused = await runCliProcess(['projects', 'delete', id, ...flags], connectionFile);
+      expect(refused.exitCode).toBe(2);
+    }
+    // 绕过 CLI 直接请求后端也必须明确确认；非法确认不能产生写入或删除通知。
+    for (const confirmation of [{}, { confirm: false }]) {
+      const refused = await fetch(commandUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', [CONVERSATION_CONTROL_TOKEN_HEADER]: token },
+        body: JSON.stringify({
+          schema_version: 1, command: 'projects', action: 'delete', project_id: id, ...confirmation,
+        }),
+      });
+      expect(refused.status).toBe(400);
+    }
     expect(createProjectLifecycle(db).get(id).name).toBe('Temporary');
-    db.exec('CREATE TABLE plugin_records (project_id TEXT REFERENCES projects(id) ON DELETE CASCADE)');
-    db.prepare('INSERT INTO plugin_records VALUES (?)').run(id);
-    const blocked = await runCliProcess(['projects', 'delete', id, '--yes'], connectionFile);
-    expect(blocked.exitCode).toBe(6);
-    expect(JSON.parse(blocked.stderr)).toMatchObject({ error: { code: 'project_not_empty' } });
-    expect(db.prepare('SELECT project_id FROM plugin_records').get()).toEqual({ project_id: id });
-    db.prepare('DELETE FROM plugin_records WHERE project_id = ?').run(id);
+    expect(events).toEqual(creationEvents);
+    // 两种真实外键规则都必须阻止 CLI 删除，并明确交给用户在前端处理。
+    for (const [rule, errorCode] of [
+      ['CASCADE', 'project_not_empty'],
+      ['RESTRICT', 'project_delete_blocked'],
+    ]) {
+      const used = await execute('create', `Linked ${rule}`);
+      if (used.action !== 'create') throw new Error('Expected creation');
+      const usedId = used.project.project_id;
+      db.exec(`CREATE TABLE plugin_records_${rule} (project_id TEXT REFERENCES projects(id) ON DELETE ${rule})`);
+      db.prepare(`INSERT INTO plugin_records_${rule} VALUES (?)`).run(usedId);
+      const before = db.serialize();
+      const blocked = await runCliProcess(['projects', 'delete', usedId, '--yes'], connectionFile);
+      expect(blocked.exitCode).toBe(6);
+      expect(JSON.parse(blocked.stderr)).toMatchObject({ error: {
+        code: errorCode,
+        message: expect.stringContaining('Ask the user to delete this project manually in the Linnya desktop app.'),
+      } });
+      expect(db.serialize()).toEqual(before);
+    }
     const defaultId = createProjectLifecycle(db).ensureDefault();
+    const beforeDefaultDelete = db.serialize();
     const defaultDelete = await runCliProcess(['projects', 'delete', defaultId, '--yes'], connectionFile);
     expect(defaultDelete.exitCode).toBe(6);
-    expect(JSON.parse(defaultDelete.stderr)).toMatchObject({ error: { code: 'project_delete_blocked' } });
+    expect(JSON.parse(defaultDelete.stderr)).toMatchObject({ error: {
+      code: 'project_delete_blocked',
+      message: expect.stringContaining('Default project cannot be deleted'),
+    } });
+    expect(db.serialize()).toEqual(beforeDefaultDelete);
+    expect(events.every(event => event.type === 'project.created')).toBe(true);
     expect(await execute('delete', id, '--yes')).toMatchObject({ action: 'delete', project_id: id });
     const repeated = await runCliProcess(['projects', 'delete', id, '--yes'], connectionFile);
     expect(repeated.exitCode).toBe(6);
     expect(JSON.parse(repeated.stderr)).toMatchObject({ error: { code: 'project_not_found' } });
-    expect(events.map(event => event.type)).toEqual(['project.created', 'project.deleted']);
+    expect(events.map(event => event.type)).toEqual([
+      'project.created', 'project.created', 'project.created', 'project.deleted',
+    ]);
   }, 20_000);
 });

@@ -8,10 +8,14 @@ import {
   ProjectNotFoundError,
   ProjectNotEmptyError,
   ProjectDeleteBlockedError,
+  DefaultProjectDeleteBlockedError,
   type ProjectLifecyclePort,
 } from 'src/domains/projects';
 import { ConversationControlError } from '../definitions/conversationControlError';
 import { projectControlRecord } from '../functions/projectControlRecord';
+
+const MANUAL_PROJECT_DELETION_HINT =
+  'Ask the user to delete this project manually in the Linnya desktop app.';
 
 /** 外部控制动作只委托项目 owner，不复制重名、默认项目或持久化规则。 */
 export function controlProjects(
@@ -61,10 +65,19 @@ export function controlProjects(
     }
   } catch (error: unknown) {
     if (error instanceof ProjectNotEmptyError) {
-      throw new ConversationControlError('project_not_empty', error.message);
+      // CLI 的下一步是交给用户操作前端，不能引导 Agent 先清空内容再绕过空项目限制。
+      throw new ConversationControlError(
+        'project_not_empty',
+        `${error.message}. Only empty ordinary projects can be deleted through the CLI. ${MANUAL_PROJECT_DELETION_HINT}`
+      );
     }
     if (error instanceof ProjectDeleteBlockedError) {
-      throw new ConversationControlError('project_delete_blocked', error.message);
+      throw new ConversationControlError(
+        'project_delete_blocked',
+        error instanceof DefaultProjectDeleteBlockedError
+          ? error.message
+          : `${error.message}. ${MANUAL_PROJECT_DELETION_HINT}`
+      );
     }
     if (error instanceof ProjectNameConflictError) {
       throw new ConversationControlError('project_name_conflict', error.message);
