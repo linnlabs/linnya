@@ -369,7 +369,13 @@ function fixture(
         return latestExecutionSteps;
       },
     },
-    projects: { list: () => [{ project_id: 'project-1', name: 'Slides' }] },
+    projects: {
+      list: () => [{ id: 'project-1', name: 'Slides', description: null, icon: null,
+        system_role: null, can_delete: true, created_at: 1, updated_at: 1, deleted_at: null }],
+      get: () => { throw new Error('Project details are covered by project CLI integration'); },
+      create: () => { throw new Error('Project creation is covered by project CLI integration'); },
+      update: () => { throw new Error('Project updates are covered by project CLI integration'); },
+    },
     models: {
       list() {
         return {
@@ -614,11 +620,12 @@ describe('conversation-control use case', () => {
     expect(test.startRequests).toHaveLength(4);
   });
 
-  it('projects 通过 Workspace 端口返回可用于工具调用的 ID', async () => {
-    expect(await fixture().useCase.execute({ schema_version: 1, command: 'projects' })).toEqual({
+  it('projects 通过 Project 端口返回可用于工具调用的 ID', async () => {
+    expect(await fixture().useCase.execute({ schema_version: 1, command: 'projects', action: 'list' })).toEqual({
       schema_version: 1,
       ok: true,
       command: 'projects',
+      action: 'list',
       projects: [{ project_id: 'project-1', name: 'Slides' }],
     });
   });

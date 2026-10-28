@@ -11,6 +11,7 @@
 | `ConversationControlFlowPort` | 接纳新运行、精确恢复 settled pause、提交 HITL 响应、执行终止与完成屏障 |
 | `ConversationControlRunPort` | 查询 canonical run registry |
 | `ConversationControlExecutionProgressPort` | 读取 Graph 已持久化的当前节点与逻辑 run 累计预算；终态 checkpoint 清理后可从生命周期 telemetry 读取最近一次 execution 步数 |
+| `projects`（`ProjectLifecyclePort` 的 list/get/create/update 子集） | 查询与修改项目；不含删除、默认项目初始化和数据库连接 |
 | `ConversationControlModelCatalogPort` | 查询安全模型投影，并按统一运行可用性规则校验显式 Chat/图片模型 |
 | `ConversationControlHistoryPort` | 会话列表、消息窗口、指定 run 最终回答、会话 Agent 选择 |
 | `ConversationControlToolCatalogPort` | 读取当前获准 CLI 工具的正式描述与参数 schema |
@@ -55,7 +56,7 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 
 `command_approvals`的list要求明确conversation/run，返回该run及后代的真实pending；reply要求请求实际`agent_run_id`、request ID和明确choice。审批owner同步校验作用域和允许选项，并与Renderer/TTY竞争唯一接纳点。`accepted`只确认回复被接纳，授权持久化与进程终态须继续观察原运行；不创建新Flow、user message或execution。
 
-`status.run.command_approvals`为必填数组，来自同一owner并按root子树筛选；保留真实run生命周期，不能把等待命令审批伪装为已有HITL。无审批返回空数组，端点不可用明确报错；`processing`不是待回复。当前控制面使用 wire protocol 5，旧CLI必须升级，不用宽松解析吞掉新增字段。
+`status.run.command_approvals`为必填数组，来自同一owner并按root子树筛选；保留真实run生命周期，不能把等待命令审批伪装为已有HITL。无审批返回空数组，端点不可用明确报错；`processing`不是待回复。当前控制面使用 wire protocol 6，旧CLI必须升级，不用宽松解析吞掉新增字段。
 
 ## 并发与已知边界
 
@@ -74,4 +75,8 @@ pnpm exec vitest run \
 
 CLI 使用方法和端到端测试分层见 `apps/linnya-cli/README.md`。
 
-`projects` 通过注入的 Project 查询端口列出未删除项目，组合根从 `domains/projects` 公开入口装配，只投影 `project_id` 与 `name`。CLI 不读取数据库或物理路径。
+`projects` 的 `list / get / create / update` 委托 `domains/projects` 公开生命周期端口，
+不复制项目规则或读取 SQL。列表返回 `project_id / name`；其余动作返回安全项目详情，
+不包含软删除字段和物理路径。重名与不存在分别投影为 `project_name_conflict / project_not_found`，
+HTTP 状态为 409 / 404，CLI 均退出 6。Project owner 提交后发布变更通知，界面只刷新项目列表，不切换导航。
+当前不暴露删除、系统角色设置或 Workspace 管理。

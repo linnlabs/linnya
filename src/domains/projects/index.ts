@@ -5,6 +5,7 @@ export {
   DEFAULT_PROJECT_DESCRIPTION,
 } from './definitions/projectLifecycle';
 export type { ProjectLifecyclePort } from './definitions/projectLifecycle';
+export type { ProjectMutationPublisher } from './definitions/projectMutationPublisher';
 export {
   ProjectNameConflictError,
   ProjectNotFoundError,

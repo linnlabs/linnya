@@ -3,6 +3,7 @@
 apps/renderer/domains/workspace/
 ├── README.md
 ├── features/
+│   ├── project-catalog/                      # 项目事实通知后的只读列表刷新
 │   ├── import-export/
 │   ├── todo/
 │   ├── tree-loading/                          # VFS 树加载、展开恢复与刷新编排
@@ -17,6 +18,7 @@ apps/renderer/domains/workspace/
 ├── definitions/
 │   └── workspaceTree.ts                       # Renderer 树节点与 VFS runtime context
 ├── shared/
+│   ├── projectRecord.ts                       # 启动加载与通知刷新共用的项目 DTO 投影
 │   ├── workspaceTreeState.ts                  # DTO 投影、协调与树查询
 │   └── workspaceTreeExpansionState.ts         # 项目级展开状态持久化
 ├── services/

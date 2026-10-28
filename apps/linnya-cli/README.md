@@ -94,10 +94,9 @@ approval，并只接受 Host 声明的选择；stdout 仍只保留机器可读 J
 `--project`，缺失时在连接 Host 前以 `invalid_request`
 拒绝。前端目前没有无项目会话入口，CLI 不应创建用户无法定位的会话。Slides
 Agent 同样遵守此规则。请先取得真实项目 ID，并用它替换下方的
-`<project-id>`；CLI 不会根据当前前端页面猜测项目，避免把文件写入错误项目。若
-`projects`
-返回空列表，先通过 Desktop 创建项目；当前 CLI 没有项目创建命令，全新空 Workspace 的 Runtime 不能直接
-`send`。
+`<project-id>`；CLI 不会根据当前前端页面猜测项目。用 `projects list` 查询已有项目；空库可直接用
+`projects create "演示文稿"` 创建，再将响应中的 `project.project_id` 传给 `send --project`。
+创建项目只写入连接到的 Host 当前 Workspace，不创建另一套数据库或切换 Desktop 导航。
 
 先查询当前 App 已经物化的模型。Chat 列表中的 `model_config_id` 可传给
 `--model`，图片生成列表中的同名字段可传给 `--image-model`；`model_name`
@@ -198,7 +197,10 @@ Shell 审批与 `respond --approve` 无关。控制协议自 3 起要求明确�
 | `runtime start`                    | 不启动 Electron，前台监督当前 Workspace 的唯一 App Server Backend | `--workspace`、`--api-port`、`--qdrant-port`                                                           |
 | `send <message>`                   | 新建会话并发送消息；或向空闲的已有会话发送下一条消息              | `--project`（必填）、`--conversation`、`--agent`、`--model`、`--image-model`、`--reasoning`            |
 | `models`                           | 查询可用于 `--model` 与 `--image-model` 的本地模型配置            | 无                                                                                                     |
-| `projects`                         | 查询 Workspace 项目 ID 与名称                                     | 无                                                                                                     |
+| `projects [list]`                  | 查询当前 Workspace 的项目 ID 与名称 | 无 |
+| `projects get <project-id>`        | 查询项目详情 | 无 |
+| `projects create <name>`           | 创建普通项目 | `--description` |
+| `projects update <project-id>`     | 修改项目名称或描述 | `--name`、`--description` |
 | `doctor`                           | 只读核验 CLI 与运行中 App 的连接、身份和能力                      | `--pretty`                                                                                             |
 | `list`                             | 查询已有会话                                                      | `--limit`、`--cursor`、`--search`、`--project`                                                         |
 | `messages <conversation-id>`       | 按会话查询 durable 消息窗口                                       | `--limit`、`--before`、`--after`                                                                       |
@@ -329,8 +331,8 @@ CLI 的 `web_search` 只允许普通搜索，`deep_search=true` 明确拒绝，�
 保存带引用的 Markdown 同样沿用该会话；只能引用工具实际返回的 `[@ref]`，不能自造来源编号。
 这里只记录 Linnya 工具执行与产物，不会自动导入外部 Agent 的推理、模型 token 或评审记录。
 
-此变更使用 wire protocol 5（工具命令统一为 `tools`）。CLI 与 Host 都要升级并重启 Host；
-旧 protocol 4 会明确拒绝，不做双协议猜测。
+工具命令自 wire protocol 5 起统一为 `tools`，当前项目管理合同使用 protocol 6。
+CLI 与 Host 都要升级并重启 Host；旧协议会明确拒绝，不做双协议猜测。
 
 外部 Agent 的 Skill 安装由该产品管理。可将内置 `deep-research` 及其 `references/` 原样复制到
 外部产品支持的 Skill 目录，记录版本和文件哈希。资源读取和调用 Linnya CLI 的适配写在任务指令中，
@@ -451,7 +453,7 @@ contract，也不借此调整全局工具权限。
 | `3` | App 未运行、连接描述过期或本地传输失败          |
 | `4` | CLI 与 App 协议不兼容                           |
 | `5` | 未授权                                          |
-| `6` | 运行状态冲突，例如 busy、run/interaction 不匹配 |
+| `6` | 目标或状态冲突，例如项目重名、不存在、busy、run/interaction 不匹配 |
 | `7` | 当前 App 版本未提供请求的能力                   |
 | `8` | Host 或 CLI 内部错误                            |
 
@@ -492,6 +494,7 @@ pnpm test:linnya-runtime:e2e
 | schema 合同             | 非法字段与组合被拒，状态、回执和错误 wire 保持 strict                                                                                            |
 | parser / orchestration  | 命令映射、JSON 响应、退出码、watch 去重与停止条件正确                                                                                            |
 | CLI 进程集成            | 真实 Node 子进程连接脚本化 HTTP bridge，验证 stdout/stderr、JSONL 和稳定退出码                                                                   |
+| Project bridge 集成 | 真实 CLI → HTTP router → Project SQLite，覆盖空库读取、创建、修改、重名/不存在、写入事件与重开数据库 |
 | Runtime 进程 E2E        | 构建后的 CLI → 固定 Node App Server → 临时 SQLite/Qdrant，验证无 Electron 冷启动、不同 Agent 并行、唯一 Workspace owner、正常/异常退出与历史重启 |
 | Host use case 集成      | send durable acceptance、busy、HITL resume、stop settlement、run 精确结果读取                                                                    |
 | ApiServer / bridge 集成 | token 双向隔离、loopback、描述文件权限和生命周期、稳定 HTTP 错误                                                                                 |
@@ -521,22 +524,40 @@ contract，再通过 bridge 暴露，最后接入命令；不能从 CLI 直接�
 Workspace 五件套的参数、locator 与 pending revision 语义见
 [`src/tools/workspace/README.md`](../../src/tools/workspace/README.md)。
 
-### 项目发现
-
-先运行 `pnpm --silent linnya:cli projects`，从响应的 `projects[].project_id`
-选择 `tools call --project` 或 `send --project`
-的目标。命令复用当前 App 的 Workspace
-owner，仅返回未删除项目的 ID 和名称；旧 App 未声明 `projects`
-capability 时会明确拒绝。
-
 写入后若构建失败，文档可能保存为 draft；`read_file` 的 `sourceOrigin: draft`
 表示当前草稿源码，而版本 ID/编号仍对应最后成功 revision。这不代表成功构建；请结合 error
 diagnostics 与 build failure 判断，并在修复后重新写入。
 
+### 项目管理
+
+先运行 `pnpm --silent linnya:cli projects`，从响应的 `projects[].project_id`
+选择 `tools call --project` 或 `send --project`
+的目标。裸 `projects` 等价于 `projects list`，空库返回空列表，不隐式创建默认项目。
+生命周期由 Backend 的 [Project domain](../../src/domains/projects/README.md) 负责，CLI 不直接访问数据库。
+
+`projects create <name> [--description TEXT]` 创建普通项目；`projects get <project-id>` 查询详情；
+`projects update <project-id> [--name NAME] [--description TEXT]` 修改名称或描述。
+名称去除首尾空白后必须非空，按现有数据库规则精确匹配重名。更新至少提供一个字段；
+省略描述表示不修改，`--description=""` 或 `--description ''` 表示清空描述。
+
+查询详情、创建和修改返回 `project`，含 `project_id`、名称、描述、图标、系统角色、`can_delete` 和时间戳，
+不含数据库路径或软删除字段。创建不能指定系统角色；`can_delete` 沿用项目角色规则，
+不代表 CLI 提供删除能力。本期没有项目删除、Workspace 创建/切换或隐式当前项目设置。
+
+写入成功后通知 Desktop 刷新项目列表；当前导航、草稿和文档保持原状。重名返回
+`project_name_conflict`，不存在返回 `project_not_found`，两者退出码均为 6；非法参数退出码为 2。
+项目写入失败或响应丢失不会自动重试：先用 `projects list/get` 检查实际状态，再决定下一次操作。
+
+此合同将 wire protocol 升到 6：请求和响应都必须带 `action`，裸命令只在 CLI 参数层转为 `list`。
+CLI 与 Host 必须同步升级，已有 Host 需要重启；不接受旧的无 action 请求，也不回退双协议。
+真实链路测试位于 `src/app-hosts/linnya/adapters/conversation-control-bridge/__tests__/projectCliProcess.integration.test.ts`；
+Runtime E2E 另验证空库创建项目后发送消息、重启读取项目与历史。
+
+
 
 ## 用户 Skill 文件管理
 
-`skills` 是追加能力，沿用协议 5 的扩展 capability 握手；旧 Host 未公告时返回能力不可用。命令通过现有本机控制桥调用 Skills owner，不读取数据库，也不启动另一 Runtime。连接描述选择当前实例，来源目录在 CLI 转为本机绝对路径，由同机 Host 读取，无上传协议。
+`skills` 是追加能力，沿用当前协议的扩展 capability 握手；旧 Host 未公告时返回能力不可用。命令通过现有本机控制桥调用 Skills owner，不读取数据库，也不启动另一 Runtime。连接描述选择当前实例，来源目录在 CLI 转为本机绝对路径，由同机 Host 读取，无上传协议。
 
 支持 `skills list`、`skills read NAME [PATH]`、`skills validate DIRECTORY`、`skills install NAME --from DIRECTORY`、`skills update NAME --from DIRECTORY` 和 `skills remove NAME`（也接受 uninstall）。升级会替换完整目录，包括本地改动，不保留历史；需要旧版就卸载后安装指定来源。
 

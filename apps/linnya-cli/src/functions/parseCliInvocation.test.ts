@@ -2,6 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { parseCliInvocation } from './parseCliInvocation';
 
 describe('parseCliInvocation', () => {
+  it('项目动作要求明确身份，允许清空描述但不允许空名称或空更新', () => {
+    expect(parseCliInvocation(['projects'])).toEqual(parseCliInvocation(['projects', 'list']));
+    expect(parseCliInvocation(['projects', 'create', ' 研究 ', '--description', '保留原文空格 ']))
+      .toMatchObject({ request: { action: 'create', input: { name: '研究', description: '保留原文空格 ' } } });
+    expect(parseCliInvocation(['projects', 'get', 'project-1']))
+      .toMatchObject({ request: { action: 'get', project_id: 'project-1' } });
+    for (const args of [ ['--description='], ['--description', ''] ]) {
+      expect(parseCliInvocation(['projects', 'update', 'project-1', ...args]))
+        .toMatchObject({ request: { action: 'update', updates: { description: '' } } });
+    }
+    for (const args of [
+      ['get'], ['get', ' '], ['get', 'p', 'extra'], ['list', '--name', 'x'],
+      ['create', ' '], ['create', 'name', '--project', 'p'], ['update', 'p'],
+      ['update', 'p', '--name', ' ', '--description', 'keep'], ['delete', 'p'],
+    ]) expect(() => parseCliInvocation(['projects', ...args])).toThrow();
+  });
   it('显式研究范围只进入新版研究，不能变成任意 Host 工具请求', () => {
     const scope = JSON.stringify({ question: 'Explain the sample.', reader: 'General reader', task_type: 'fixed', materials: ['workspace:/source.md'] });
     const base = ['send', '只用原件，不超过一千字。', '--project', 'project-1'];

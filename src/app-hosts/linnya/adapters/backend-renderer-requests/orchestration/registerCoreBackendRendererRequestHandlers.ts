@@ -49,7 +49,9 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   const ipc = createBackendRendererIpcStyleRegistrar(input.registry);
   const database = input.runtimeOwner.getServices().databaseService;
   if (!database) throw new Error('DatabaseService unavailable for project handlers');
-  registerProjectHandlers(() => createProjectLifecycle(database.getDb()), ipc);
+  registerProjectHandlers(() => createProjectLifecycle(database.getDb(), {
+    publish: event => input.rendererIntegration.publishWorkspaceMutation(event),
+  }), ipc);
   registerWorkspaceHandlers(input.runtimeOwner, ipc);
   registerDocumentHistoryRequests(input.runtimeOwner, input.registry);
   registerAgentsHandlers(input.runtimeOwner, ipc);

@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import type { ProjectMutationPublisher } from '../../../definitions/projectMutationPublisher';
 import { v4 as uuidv4 } from 'uuid';
 import {
   ProjectCreateInputSchema,
@@ -24,7 +25,7 @@ import {
 } from '../persistence/projectRecords';
 
 /** 绑定当前 Backend 的数据库；Project 不解析路径，也不创建新的数据库连接。 */
-export function createProjectLifecycle(db: Database.Database): ProjectLifecyclePort {
+export function createProjectLifecycle(db: Database.Database, publisher?: ProjectMutationPublisher): ProjectLifecyclePort {
   const insert = db.transaction(
     (name: string, description: string | undefined, systemRole: ProjectSystemRole | null) => {
       const existing = readProjectByName(db, name);
@@ -50,12 +51,17 @@ export function createProjectLifecycle(db: Database.Database): ProjectLifecycleP
   return {
     create(input) {
       const parsed = ProjectCreateInputSchema.parse(input);
-      return insert(parsed.name, parsed.description, null);
+      const projectId = insert(parsed.name, parsed.description, null);
+      // 当前 Host 的独立项目命令在事务返回后发布，失败写入不会触发界面刷新。
+      publisher?.publish({ type: 'project.created', mutationId: uuidv4(), projectId });
+      return projectId;
     },
     ensureDefault() {
       const row = readDefaultProject(db);
       if (row) return row.id;
-      return insert(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_DESCRIPTION, DEFAULT_PROJECT_SYSTEM_ROLE);
+      const projectId = insert(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_DESCRIPTION, DEFAULT_PROJECT_SYSTEM_ROLE);
+      publisher?.publish({ type: 'project.created', mutationId: uuidv4(), projectId });
+      return projectId;
     },
     get: projectId => toProjectRecord(readProject(db, projectId)),
     list: () => readProjects(db).map(toProjectRecord),
@@ -72,6 +78,7 @@ export function createProjectLifecycle(db: Database.Database): ProjectLifecycleP
           updated_at: Date.now(),
         });
       })();
+      publisher?.publish({ type: 'project.updated', mutationId: uuidv4(), projectId });
     },
     delete(projectId) {
       db.transaction(() => {

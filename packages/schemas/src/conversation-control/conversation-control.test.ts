@@ -225,7 +225,7 @@ describe('conversation-control wire contract', () => {
 
   it('连接描述只允许 loopback 和固定长度 session token', () => {
     const base = {
-      protocol_version: 5,
+      protocol_version: 6,
       app_instance_id: 'app-1',
       pid: 123,
       host: '127.0.0.1',

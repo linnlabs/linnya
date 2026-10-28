@@ -1,4 +1,5 @@
 import { ConversationControlSkillsRequestSchema } from './skills';
+import { ConversationControlProjectsRequestSchema } from './projects';
 import { z } from 'zod';
 import { ConversationControlCommandApprovalsRequestSchema } from './commandApprovals';
 import { JsonValueSchema } from '../json-value';
@@ -49,13 +50,6 @@ export const ConversationControlModelsRequestSchema = z
     command: z.literal('models'),
   })
   .strict();
-
-export const ConversationControlProjectsRequestSchema = z.object({
-  ...CommandBaseFields,
-  command: z.literal('projects'),
-}).strict();
-
-export type ConversationControlProjectsRequest = z.infer<typeof ConversationControlProjectsRequestSchema>;
 
 const MessagesRequestBaseFields = {
   ...CommandBaseFields,

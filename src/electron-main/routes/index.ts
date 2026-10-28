@@ -839,7 +839,9 @@ export async function configureRoutes(
     historyService = initializedHistoryService;
     conversationControlUseCase = createLinnyaConversationControlUseCase({
       commandApprovals: dependencies.commandApprovalControl,
-      projects: createProjectLifecycle(db),
+      projects: createProjectLifecycle(db, {
+        publish: event => dependencies.rendererIntegration.publishWorkspaceMutation(event),
+      }),
       flow: initializedFlowOrchestrator,
       runs: agentRuntime.supervisor,
       executionProgress: checkpointer,

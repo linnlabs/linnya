@@ -37,12 +37,14 @@ function errorStatus(code: ConversationControlErrorCode): number {
   switch (code) {
     case 'invalid_request': return 400;
     case 'unauthorized': return 401;
-    case 'run_not_found': return 404;
+    case 'run_not_found':
+    case 'project_not_found': return 404;
     case 'app_not_running':
     case 'stale_connection':
     case 'protocol_incompatible':
     case 'capability_unavailable':
     case 'skill_conflict':
+    case 'project_name_conflict':
     case 'conversation_busy':
     case 'no_active_run':
     case 'run_mismatch':

@@ -3,6 +3,7 @@ import type { WorkspaceMutationEvent } from '@app/schemas';
 import { createWorkspaceMutationEffects } from './workspaceMutationEffects';
 
 const mocks = vi.hoisted(() => ({
+  refreshProjectCatalog: vi.fn(async () => undefined),
   currentProjectId: 'project-1',
   notifyDocumentMutationHandlers: vi.fn(async () => undefined),
   applyMarkdownPending: vi.fn(async () => undefined),
@@ -20,6 +21,10 @@ const mocks = vi.hoisted(() => ({
   findNodeById: vi.fn(() => null),
   handleWorkspaceNodeDeletedMutation: vi.fn(async () => undefined),
   handleWorkspaceNodeTransferredMutation: vi.fn(async () => undefined),
+}));
+
+vi.mock('@/domains/workspace/features/project-catalog', () => ({
+  refreshProjectCatalog: mocks.refreshProjectCatalog,
 }));
 
 vi.mock('@/app/navigation', () => ({
@@ -72,6 +77,7 @@ function documentUpdatedEvent(overrides: Partial<WorkspaceMutationEvent> = {}): 
 
 describe('workspaceMutationEffects document mutations', () => {
   beforeEach(() => {
+    mocks.refreshProjectCatalog.mockClear();
     mocks.currentProjectId = 'project-1';
     mocks.reloadActiveProjectTree.mockClear();
     mocks.loadNodeChildren.mockClear();
@@ -91,6 +97,15 @@ describe('workspaceMutationEffects document mutations', () => {
       activeDocumentType: 'slides',
       nodeType: 'presentation',
     });
+  });
+
+  it('刷新其他项目的创建与修改，不受当前导航项目过滤，也不重载文档树', async () => {
+    const effects = createWorkspaceMutationEffects();
+    await effects.handleWorkspaceMutation({ type: 'project.created', mutationId: 'project-create', projectId: 'other-project' });
+    await effects.handleWorkspaceMutation({ type: 'project.updated', mutationId: 'project-update', projectId: 'other-project' });
+    expect(mocks.refreshProjectCatalog).toHaveBeenCalledTimes(2);
+    expect(mocks.reloadActiveProjectTree).not.toHaveBeenCalled();
+    expect(mocks.notifyDocumentMutationHandlers).not.toHaveBeenCalled();
   });
 
   it('dispatches matching plugin document version updates to renderer handlers', async () => {

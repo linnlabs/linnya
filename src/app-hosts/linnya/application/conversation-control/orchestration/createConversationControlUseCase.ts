@@ -1,4 +1,5 @@
 import { controlSkills } from './controlSkills';
+import { controlProjects } from './controlProjects';
 import {
   CONVERSATION_CONTROL_SCHEMA_VERSION,
   type ConversationControlCommandRequest,
@@ -338,13 +339,8 @@ export function createConversationControlUseCase(
       };
     },
 
-    async projects() {
-      return {
-        schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
-        ok: true,
-        command: 'projects',
-        projects: ports.projects.list(),
-      };
+    async projects(request) {
+      return controlProjects(ports.projects, request);
     },
 
     async models(_request: ConversationControlModelsRequest) {
