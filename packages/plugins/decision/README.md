@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.21.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.21.1，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -191,9 +191,9 @@ check沿原optionIds入参只读预览当前模型，不要求先写recommend草
 
 0.17.1删除了模型可见操作资源中的情景校验范围段落，也误删了作者资源唯一的“当天00:00起分钟”单位声明；程序规则和拒绝诊断虽未变，作者可见合同已经不完整。因此该版本的约定单位零覆盖不能当成作者主动回避或不遵循的证据。它不代表拒绝后修正能力或总体准确性已提升。
 
-recommend追加版本前，对conditionalAdvice.cases逐个合并label和nextAction。仅对单位明确为“当天00:00起分钟”、相对基线变化的可用输入／已登记算值，若文字只出现该项基线值、没有本情景值，以scenario_text_mismatch拒绝（CLI exit 3），列情景id、输入或计算id、基线与本情景程序值；一次列出命中项，版本与建议不变。read／历史／export不再运行此检查，旧失败样本仍可读取。未知／撤回／不可用结果不生成伪值。
+recommend追加版本前，对conditionalAdvice.cases逐个合并label和nextAction。当前仅对quantityType=day_clock、相对基线变化的可用输入／已登记算值，若文字只出现该项基线值、没有本情景值，以scenario_text_mismatch拒绝（CLI exit 3），列情景id、输入或计算id、基线与本情景程序值；一次列出命中项，版本与建议不变。0.17原先依据精确单位“当天00:00起分钟”，0.20已由显式量类型替代，迁移见下节。read／历史／export不再运行此检查，旧失败样本仍可读取。未知／撤回／不可用结果不生成伪值。
 
-只比较已声明当天时刻的安全整数分钟值，同时认原分钟数和HH:MM；小数／指数整体略过，不截断。金额、人数、普通分钟耗时和缺单位的值均不硬拦；暂不依据文字猜数值对象。程序数值文字和报告的该单位值复用formatDecisionClock／formatDecisionQuantity显示时刻，不给非整数或跨日值猜HH:MM。数值字段和持久schema不变。
+只比较已声明当天时刻的安全整数分钟值，同时认原分钟数和HH:MM；小数／指数整体略过，不截断。金额、人数和普通分钟耗时均不硬拦，unit是否填写不决定覆盖；暂不依据文字猜数值对象。程序数值文字和报告复用formatDecisionClock／formatDecisionQuantity按量类型显示时刻，不给非整数或跨日值猜HH:MM。0.17未改数值字段和持久schema；0.20的量类型迁移另见下节。
 
 该规则不能区分同值的不同对象、否定句或真实的前后比较；同时出现两值便允许保存，没有相关数字也不强迫补写。它不是情景语义认证。只覆盖上述情景两字段，不检查rationale、changeConditions、顶层nextAction、行动plan/review、最终聊天或Workspace稿。
 
@@ -220,3 +220,9 @@ model.cashFlows可选，update可完整替换或用[]清除。每张时间表绑
 read/模拟的evaluation、check（含精简回执）、export均投影最低余额/缺口/期末及逐节点余额。该投影与原有checks分开，不偷偷把分析标准变成用户底线，也不自动阻断recommend或执行付款。条件更新/时间表变更仍按既有inputRevision使建议待复核，compare显式列cashFlows变化。新功能无新表、Host接口或基础工具。
 
 业务回归覆盖首付250可付但尾款前缺225、未来440不提前计入、余额恰为0、未知期初及非法引用不半写。模型声明的现金可动用性与付款完整性仍须实际评价。
+
+## 执行止损时点（0.21.1）
+
+复用numericBasis.boundaries的checkId/inputId合同：实际出发或上车时点为day_clock输入，未知时保留null；耗时为duration，检查明确到达截止。check先投影边界及同点算值，recommend保存引用，read/export从相应保存版生成时刻文字。没有新增执行时刻字段、命令、工具或第二份手填阈值。
+
+例如明确声明上车＋最慢45分钟≤13:40，程序给最晚上车12:55、同点到场13:40；13:05上车则检查失败。该输入或关系未登记时，程序不会从行动原文补猜。条件更新后旧建议仍待复核，历史版保留旧时点；自由行动文字、发现信息的时间与过去方案是否还能执行不在此数值合同内。decisionExecutionTiming.integration.test.ts覆盖从CLI预览到建议/导出、等号、越界、条件变化和历史保留的业务链。

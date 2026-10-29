@@ -95,6 +95,8 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 
 先读默认回执的changeConditions（边界与同点算值），再读calculations算值文字数组核对基线。numericBasis给出既有引用，按本轮需要选择后提交recommend。需要numericPreview、输入、完整检查或optionRanges时，在check命令最后加--full；不要把默认calculations文字当作result对象。已声明的当天时刻会同时给出分钟数和HH:MM，普通耗时保持原单位。预览不是现实事实变化或执行授权。
 
+执行止损时点也沿这条路径：把实际出发、上车等时刻登记为day_clock输入（尚未发生用null），将相关耗时登记为duration，建立与到达截止的检查。check求该时刻的边界及同点到达值；建议的numericBasis只保存checkId/inputId引用，交付采用程序text中的时刻。现实安排变化后更新模型并重新取得边界。
+
 建议的changeConditions填写偏好、许可、证据等补充定性变化；已登记数值条件由numericBasis生成recommendationBasis.changeConditions，交付使用这份程序文字。rationale和nextAction仍由作者判断，不受程序语义认证。未登记的门槛本次不会自动新增。
 
 ## 程序报告原件
