@@ -1,7 +1,7 @@
 ---
 name: decision-exploration
 description: Help compare options, discover feasible next actions, and update a decision when goals, constraints or evidence change. Use with the decision prototype's versioned record CLI.
-version: 0.21.1
+version: 0.22.0
 ---
 
 # 决策与探索

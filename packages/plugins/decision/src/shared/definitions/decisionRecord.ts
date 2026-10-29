@@ -117,7 +117,7 @@ export const DecisionActionProgressSchema = DecisionActionProgressContentSchema.
 export type DecisionActionProgress = z.infer<typeof DecisionActionProgressSchema>;
 
 export const DecisionRecordSchema = z.object({
-  schemaVersion: z.literal(2),
+  schemaVersion: z.literal(3),
   id: z.string().uuid(),
   revision: z.number().int().positive(),
   inputRevision: z.number().int().positive(),

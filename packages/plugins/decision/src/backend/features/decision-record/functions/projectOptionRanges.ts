@@ -3,6 +3,7 @@ import type { CheckBoundaryResult } from '../definitions/checkBoundary';
 import type { NumericRegion, OptionState, OptionRangeRow, OptionBoundaries, OptionCheckStatus } from '../definitions/optionRange';
 import { deriveCheckBoundary } from './deriveCheckBoundary';
 import { DecisionFailure } from '../definitions/decisionFailure';
+import { partitionNumericRegions } from './partitionNumericRegions';
 
 function containsRegion(bound: Extract<CheckBoundaryResult, { status: 'available' }>, region: NumericRegion): boolean {
   if (bound.operator === 'lte') return region.upper !== null && region.upper <= bound.value;
@@ -35,14 +36,7 @@ export function projectOptionRanges(model: DecisionModel, inputId: string) {
   const endpoints = [...new Set(boundaries.flatMap(option => option.checks.flatMap(check => (
     check.result.status === 'available' ? [check.result.value] : []
   ))))].sort((a, b) => a - b);
-  const atoms: NumericRegion[] = [];
-  let previous: number | null = null;
-  for (const endpoint of endpoints) {
-    atoms.push({ lower: previous, upper: endpoint, lowerInclusive: false, upperInclusive: false });
-    atoms.push({ lower: endpoint, upper: endpoint, lowerInclusive: true, upperInclusive: true });
-    previous = endpoint;
-  }
-  atoms.push({ lower: previous, upper: null, lowerInclusive: false, upperInclusive: false });
+  const atoms = partitionNumericRegions(endpoints);
   const rows: OptionRangeRow[] = [];
   for (const atom of atoms) {
     const options: OptionState[] = boundaries.map(option => ({ optionId: option.optionId, status: optionStatus(option, atom) }));

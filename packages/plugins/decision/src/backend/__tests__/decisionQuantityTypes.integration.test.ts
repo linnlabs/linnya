@@ -29,7 +29,7 @@ it('migrates every stored revision without changing advice, revision identities 
       calculations: model.calculations.map(({ quantityType: _type, ...item }) => item),
     }, recommendation: null };
     for (const revision of [1, 2]) db.prepare('INSERT INTO decision_record_versions VALUES (?, ?, ?, ?, ?)').run(id, 'p', revision, JSON.stringify({ ...old, revision }), 7);
-    for (const migration of decisionMigrations.filter(item => item.version === 3)) migration.up(db);
+    for (const migration of decisionMigrations.filter(item => item.version >= 3)) migration.up(db);
     const run = (argv: string[]) => {
       const command = parseDecisionCli(argv);
       if (command.kind === 'file') throw new Error('Inline expected');

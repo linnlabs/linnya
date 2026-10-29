@@ -1,6 +1,6 @@
 {
   "name": "@plugin/decision",
-  "version": "0.21.1",
+  "version": "0.22.0",
   "private": true,
   "type": "module",
   "license": "Apache-2.0",

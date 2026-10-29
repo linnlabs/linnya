@@ -42,4 +42,19 @@ export const decisionMigrations: readonly PluginMigrationDefinition[] = [{
         FROM json_each(content_json, '$.model.calculations'))))
       WHERE json_extract(content_json, '$.schemaVersion') = 1;`);
   },
+}, {
+  version: 4, description: 'Explicit unknown dates on historical cash-flow entries',
+  up(database) {
+    // 旧数组仅表达先后，没有日历事实。迁移保留未知，不能把索引冒充日期，
+    // 也不能改变原建议、版本和已导出原件；Host在插件迁移事务内执行此UPDATE。
+    database.exec(`UPDATE decision_record_versions SET content_json = json_set(
+      CASE WHEN json_type(content_json, '$.model.cashFlows') = 'array' THEN
+        json_set(content_json, '$.model.cashFlows', json((
+          SELECT json_group_array(json_set(flow.value, '$.timeAnchor', NULL,
+            '$.entries', json((SELECT json_group_array(json_set(entry.value, '$.at', NULL))
+              FROM json_each(flow.value, '$.entries') entry))))
+          FROM json_each(content_json, '$.model.cashFlows') flow
+        ))) ELSE content_json END, '$.schemaVersion', 3)
+      WHERE json_extract(content_json, '$.schemaVersion') = 2;`);
+  },
 }];

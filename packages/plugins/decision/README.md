@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.21.1，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.22.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -209,17 +209,17 @@ checks参与选项可行性与条件性选择；仅为说明经济门槛而求�
 
 输入和算值必须声明quantityType，封闭为day_clock/duration/money/other。为使未知量同样有明确合同，所有输入均填写此字段：非数值填other，未知数值用null并声明预期类型。day_clock固定表示当天00:00起分钟，unit只用于展示；HH:MM格式化及情景守卫仅看quantityType，不猜名称或自由单位。量类型仍是作者声明，不构成量纲运算或模型语义认证。
 
-记录schemaVersion=2。插件migration3以单条原子UPDATE迁移所有历史JSON：旧单位精确为当天00:00起分钟的输入/算值映射day_clock，其他映射other，不把min猜成时刻、不把CNY猜成已核现金。revision/inputRevision、原始值/来源/建议/行动保持原样，既有导出文件不重写；持久JSON字节改变，旧版严格读取器不能直接回退读取。部署或回退前按正式数据库备份/迁移流程处理，不在repository加双读fallback。新create/update的缺失或非法类型由同一schema拒绝，文件和内联两路一致。
+0.20引入记录schemaVersion=2（当前schema3见0.22节）。插件migration3以单条原子UPDATE迁移所有历史JSON：旧单位精确为当天00:00起分钟的输入/算值映射day_clock，其他映射other，不把min猜成时刻、不把CNY猜成已核现金。revision/inputRevision、原始值/来源/建议/行动保持原样，既有导出文件不重写；持久JSON字节改变，旧版严格读取器不能直接回退读取。部署或回退前按正式数据库备份/迁移流程处理，不在repository加双读fallback。新create/update的缺失或非法类型由同一schema拒绝，文件和内联两路一致。
 
 对应业务回归覆盖历史读取、元数据迁移、缺字段拒绝不写入、单位与类型分离以及时刻情景原子拒绝。公开Host组合测试仅同步插件输入夹具，不改变Host实现。
 
 ## 按顺序的现金投影（0.21）
 
-model.cashFlows可选，update可完整替换或用[]清除。每张时间表绑定一个明确选项及unit，openingBalance和每笔amount使用同一四则式合同，entries顺序就是声明的资金发生顺序；inflow/outflow分开、金额非负。程序在各节点更新余额，最低点含期初；期初/必要金额未知或撤回返回needs_information，不置零；除零等算式错误返回unavailable。跨单位换算、退款准备是否已包含、节点是否真实发生仍属建模与取证，不认证声明的量纲。
+model.cashFlows可选，update可完整替换或用[]清除。每张时间表绑定一个明确选项及unit，openingBalance和每笔amount使用同一四则式合同，0.21按entries声明顺序投影，当前0.22改按显式时点排序（见下节）；inflow/outflow分开、金额非负。程序在各节点更新余额，最低点含期初；期初/必要金额未知或撤回返回needs_information，不置零；除零等算式错误返回unavailable。跨单位换算、退款准备是否已包含、节点是否真实发生仍属建模与取证，不认证声明的量纲。
 
 read/模拟的evaluation、check（含精简回执）、export均投影最低余额/缺口/期末及逐节点余额。该投影与原有checks分开，不偷偷把分析标准变成用户底线，也不自动阻断recommend或执行付款。条件更新/时间表变更仍按既有inputRevision使建议待复核，compare显式列cashFlows变化。新功能无新表、Host接口或基础工具。
 
-现金表不自动推导各期金额与合同总价的联动关系。单变量边界固定其他输入；若总价不变，单独降低首款的边界不代表尾款会同时保持不变。总额关系需要参与可行性时，由模型显式登记相应检查，而不是从节点名称或作者说明推断。
+总价不变的分期模型以“总价−首款”作为尾款表达式，避免另存独立尾款。全额资金检查使用首款＋该尾款，改变首款不改变总额；例如505仍大于可用280时，首款边界为无关且不通过，不输出伪≤25。程序不从节点名称猜联动关系，作者需要如实声明这个表达式。
 
 业务回归覆盖首付250可付但尾款前缺225、未来440不提前计入、余额恰为0、未知期初及非法引用不半写。模型声明的现金可动用性与付款完整性仍须实际评价。
 
@@ -228,3 +228,15 @@ read/模拟的evaluation、check（含精简回执）、export均投影最低余
 复用numericBasis.boundaries的checkId/inputId合同：实际出发或上车时点为day_clock输入，未知时保留null；耗时为duration，检查明确到达截止。check先投影边界及同点算值，recommend保存引用，read/export从相应保存版生成时刻文字。没有新增执行时刻字段、命令、工具或第二份手填阈值。
 
 例如明确声明上车＋最慢45分钟≤13:40，程序给最晚上车12:55、同点到场13:40；13:05上车则检查失败。该输入或关系未登记时，程序不会从行动原文补猜。条件更新后旧建议仍待复核，历史版保留旧时点；自由行动文字、发现信息的时间与过去方案是否还能执行不在此数值合同内。decisionExecutionTiming.integration.test.ts覆盖从CLI预览到建议/导出、等号、越界、条件变化和历史保留的业务链。
+
+## 付款日期与缺口门槛（0.22）
+
+cashFlows的timeAnchor为同表时点锚点，entries.at是相对锚点的天数表达式；两者必填，未知为null，时点输入引用须为duration。结果统一为天，允许负数和小数，输入单位换算仍由表达式声明。期初是全部登记节点之前的可动用现金，不把锚点之前的节点自动解释成已发生。
+
+程序按日期排序，同日先流出后流入，同方向同日沿声明顺序。必要时点或金额未知返回needs_information，不用旧数组次序填日期。timingThresholds针对时点表达式的每个单变量，复用仿射求解、全部节点相遇点分区和同一余额函数，交付缺口为零的范围；点与开区间分开，保留严格等号语义。例如到期第7天、客户同日回款仍先付后收，缺口可能要求到期日>7。
+
+非线性日期、其他必要输入未知、时点变量同时改变金额或期初时给出明确不可用/需要信息原因，不做采样外推。投影只改变该时点并固定其他输入，零缺口不等于通过生产顺序、总价或其他检查，更不证明回款承诺。当前求值、模拟、check及export共用投影，不新增命令、工具、Host接口或工作流。
+
+schemaVersion=3，插件migration4把schema2历史付款表的timeAnchor与全部at设为null，不猜过去日期；无付款表只升envelope。原始值、出处、金额、建议、行动、revision/inputRevision及导出原件不变，旧严格插件不能直接降级读取。canonical开发库迁移前先正常停止准确Main及Backend，复制数据库和存在的WAL/SHM文件，记录字节数/hash并验证副本；无损压缩备份须验证解压hash。迁移演练先在副本进行。
+
+本变更不提升应用开发数据epoch：它只升级插件owned表内有明确迁移的记录JSON，不改变App envelope、Host SQLite基线或目录布局。decisionCashFlowDates.integration.test.ts覆盖排序、同日付款、严格门槛、未知日期、条件更新/历史、迁移保留以及非法载荷原子拒绝；原cash-flow业务回归另覆盖尾款联动的伪边界。

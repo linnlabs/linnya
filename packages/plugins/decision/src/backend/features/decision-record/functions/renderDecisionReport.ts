@@ -66,12 +66,13 @@ export function renderDecisionReport(record: DecisionRecord, expectedRevision: n
       '## 程序付款时间表',
       ...projected.evaluation.cashFlows.flatMap(flow => [
         text(flow.text),
-        table(['顺序', '节点（作者声明）', '方向', '金额', '节点后可动用余额'], flow.entries.map((entry, index) => [
-          String(index + 1), text(entry.label), entry.direction,
+        table(['顺序', '节点（作者声明）', '相对锚点的天数', '方向', '金额', '节点后可动用余额'], flow.entries.map((entry, index) => [
+          String(index + 1), text(entry.label), result(entry.time), entry.direction,
           result(entry.result), flow.status === 'available' ? String(flow.balances[index].balance) : '未知/不可用',
         ])),
+        ...flow.timingThresholds.map(threshold => text(threshold.text)),
       ]),
-      '表内顺序、金额范围与期初可动用现金由作者声明；流入不等于现实已到账，最低余额不等于利润。',
+      '锚点、时点、金额范围与期初可动用现金由作者声明；程序按天数排序、同日先付后收。缺口门槛不等于满足所有合同，流入不等于现实已到账，最低余额不等于利润。',
     ] : []),
     '## 当前建议引用的程序边界',
     basis === null ? '未声明 numericBasis。'

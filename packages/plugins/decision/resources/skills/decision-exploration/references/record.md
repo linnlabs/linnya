@@ -65,7 +65,7 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 
 ## update 格式
 
-必填 `reason`，并至少给一项 `title`、`question`、`inputs`、`options`、`calculations` 或 `checks`。inputs 按 id 合并，每项提供完整 input；其他数组整组替换，避免旧约束或算式残留。title/question仅在显式给出时替换，历史保留。撤回来源时，把相关 input 的 status 改为 withdrawn，保留其原 value 和 origin 作为历史。
+必填 `reason`，并至少给一项 `title`、`question`、`inputs`、`options`、`calculations`、`checks` 或 `cashFlows`。inputs 按 id 合并，每项提供完整 input；其他数组整组替换，避免旧约束或算式残留。title/question仅在显式给出时替换，历史保留。撤回来源时，把相关 input 的 status 改为 withdrawn，保留其原 value 和 origin 作为历史。
 
 ```json
 {"reason":"用户降低预算","inputs":[{"id":"budget","label":"预算","kind":"constraint","value":100,"quantityType":"money","unit":"CNY/次","origin":"用户本轮明确更新","status":"available"}]}
@@ -266,10 +266,14 @@ progress.json必填planRevision、summary、origin、actualCost，可选sourceQu
 
 ## 付款时间表
 
-比较资金能否撑到回款时，在model中登记cashFlows（update同名字段完整替换，[]停用）。每张表含id、label、optionId、unit、openingBalance表达式和有顺序的entries；每笔含id、label、direction（inflow/outflow）和amount表达式。金额用非负数，方向由direction给出；只能引用已有input或四则式。期初登记可动用现金；受限/可退资金先按事实扣留，已经含在银行余额中的订金不再额外相加。
+比较资金能否撑到回款时，在model中登记cashFlows（update同名字段完整替换，[]停用）。每张表含id、label、optionId、unit、timeAnchor、openingBalance表达式和entries；每笔含id、label、direction（inflow/outflow）、amount表达式和at时点表达式。金额非负，方向由direction给出。timeAnchor明确同一锚点，如交货日；at统一表示离锚点的天数，可为负，引用的输入声明quantityType=duration。其他时长单位在表达式里显式换算成天。锚点或时点未知填null，或引用值为null的duration输入，先保留需要信息。
+
+期初登记所有节点之前的可动用现金；受限/可退资金按事实扣留，已经含在银行余额中的订金不再额外相加。分期尾款写为总价减首款：调整首款时尾款随之变化，而总价保持原合同金额。
 
 ```json
-{"cashFlows":[{"id":"purchase_cash","label":"回款前付款","optionId":"buy","unit":"CNY","openingBalance":{"input":"available_cash"},"entries":[{"id":"supplier_first","label":"开工付款","direction":"outflow","amount":{"input":"first_payment"}},{"id":"supplier_rest","label":"发货前付尾款","direction":"outflow","amount":{"input":"remaining_payment"}},{"id":"customer_collection","label":"交货后才收到的余款（仍待成交）","direction":"inflow","amount":{"input":"customer_remaining"}}]}]}
+{"cashFlows":[{"id":"purchase_cash","label":"付款与回款","optionId":"buy","unit":"CNY","timeAnchor":"交货日","openingBalance":{"input":"available_cash"},"entries":[{"id":"supplier_first","label":"开工付款","direction":"outflow","amount":{"input":"first_payment"},"at":{"input":"first_payment_day"}},{"id":"supplier_rest","label":"发货前付尾款","direction":"outflow","amount":{"op":"subtract","left":{"input":"total_price"},"right":{"input":"first_payment"}},"at":{"input":"final_payment_day"}},{"id":"customer_collection","label":"客户余款（仍待成交）","direction":"inflow","amount":{"input":"customer_remaining"},"at":{"input":"collection_day"}}]}]}
 ```
 
-check默认回执、read的evaluation.cashFlows与export原件均给最低余额、资金缺口、期末余额及逐节点余额。期初或必要金额未知时返回needs_information，不以0代替。按最低点判断付款全程：首笔后为正、期末为正都不能抹掉中途缺口。节点次序和unit是声明，不认证未来会收款、口径完整或利润；这里只投影时间表，不自动增加硬检查或替作者决定下单。
+这些id都须指向本模型已登记的输入；三个day输入用duration/天，未知用null。程序按求得的时点排序，同一天先付后收，不按数组位置或节点名称猜日期。check默认回执、read的evaluation.cashFlows与export原件给最低余额、缺口、期末和逐节点余额。必要金额或时点未知返回needs_information；首笔或期末为正都不能抹掉中途缺口。
+
+每张表的timingThresholds逐个固定其他输入，给只改变一个时点后缺口为零的范围。若同日付款先于收款，门槛会是严格晚于回款日；回款日自身未知时继续需要信息。它只求已声明仿射日期，日期同时改变金额的模型明确不可用。这是现金缺口的条件，不代替其他生产/发货检查、用户许可或实际到账；日期与期初口径仍需如实登记。

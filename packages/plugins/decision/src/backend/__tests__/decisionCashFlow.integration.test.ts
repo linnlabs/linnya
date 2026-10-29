@@ -8,16 +8,19 @@ import { executeDecisionCommand } from '../features/decision-cli/orchestration/e
 function purchaseModel(): DecisionModel {
   return {
     title: '供应商付款时序', question: '首付可付是否等于全程资金落实？',
-    inputs: [['bank', 400], ['reserve', 120], ['upfront', 250], ['balance', 255], ['collection', 440]].map(([id, value]) => ({
+    inputs: [['bank', 400], ['reserve', 120], ['upfront', 250], ['total', 505], ['collection', 440]].map(([id, value]) => ({
       id: String(id), label: String(id), value: Number(value), quantityType: 'money', unit: 'CNY', kind: 'fact', origin: '合成已知事实', status: 'available',
     })),
-    options: [{ id: 'buy', label: '采购', description: '仅用于模拟付款顺序' }], calculations: [], checks: [],
-    cashFlows: [{ id: 'order', label: '回款前须付清供应商', optionId: 'buy', unit: 'CNY',
+    options: [{ id: 'buy', label: '采购', description: '仅用于模拟付款顺序' }], calculations: [],
+    checks: [{ id: 'cash_covered', optionId: 'buy', label: '全额资金覆盖', operator: 'lte',
+      left: { op: 'add', left: { input: 'upfront' }, right: { op: 'subtract', left: { input: 'total' }, right: { input: 'upfront' } } },
+      right: { op: 'subtract', left: { input: 'bank' }, right: { input: 'reserve' } } }],
+    cashFlows: [{ timeAnchor: '交货日', id: 'order', label: '回款前须付清供应商', optionId: 'buy', unit: 'CNY',
       openingBalance: { op: 'subtract', left: { input: 'bank' }, right: { input: 'reserve' } },
       entries: [
-        { id: 'first', label: '先付开工', direction: 'outflow', amount: { input: 'upfront' } },
-        { id: 'final', label: '发货前尾款', direction: 'outflow', amount: { input: 'balance' } },
-        { id: 'collect', label: '交货7天后余款，假设全部成交', direction: 'inflow', amount: { input: 'collection' } },
+        { at: { literal: -5 }, id: 'first', label: '先付开工', direction: 'outflow', amount: { input: 'upfront' } },
+        { at: { literal: -1 }, id: 'final', label: '发货前尾款', direction: 'outflow', amount: { op: 'subtract', left: { input: 'total' }, right: { input: 'upfront' } } },
+        { at: { literal: 7 }, id: 'collect', label: '交货7天后余款，假设全部成交', direction: 'inflow', amount: { input: 'collection' } },
       ],
     }],
   };
@@ -36,6 +39,8 @@ it('distinguishes an affordable first payment from a later shortfall and preserv
       balances: [{ entryId: 'first', balance: 30 }, { entryId: 'final', balance: -225 }, { entryId: 'collect', balance: 215 }] });
     const preview = run(['check', record.id, '--expected-revision', '1', '--json', '{"optionIds":["buy"]}']);
     expect(preview).toMatchObject({ cashFlows: [{ minimumBalance: -225 }], persisted: false });
+    // B2反馈反例：尾款由总价推出后，改变首款不改变505总额，不能再输出伪≤25。
+    expect(preview).toMatchObject({ changeConditions: expect.arrayContaining([expect.stringContaining('此检查与upfront无关，检查不成立')]) });
     const report = run(['export', record.id, '--expected-revision', '1']);
     expect(JSON.stringify(report)).toContain('资金缺口 225');
     const bank = record.model.inputs.find(input => input.id === 'bank'); if (!bank) throw new Error('fixture');
