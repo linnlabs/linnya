@@ -2,6 +2,8 @@
 
 import { createApp, defineComponent, h, nextTick, type PropType } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { clearLocalizationRegistryForTest, registerMessageCatalogs } from '@app/localization';
+import { CONVERSATION_MESSAGE_CATALOG } from '../definitions/conversationMessageCatalog';
 import { captureConversationClientNotice, useClientNoticeStore } from '../features/client-notices';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConversationContentPhase } from '../functions/conversationContentPhase';
@@ -88,7 +90,6 @@ vi.mock('./components/ConversationEmptyState.vue', () => ({
   }),
 }));
 
-vi.mock('@app/localization', () => ({ useLocalization: () => ({ currentLocale: { value: 'zh-CN' }, message: (_key: string, fallback: string) => fallback }) }));
 vi.mock('../features/client-notices/orchestration/clientNoticeApi', () => ({ sendClientNotice: vi.fn(async () => { throw new Error('offline'); }) }));
 
 function mountSurface(props: {
@@ -113,6 +114,7 @@ describe('ConversationChatSurface content assembly', () => {
   beforeEach(() => {
     surfaceState.phase = 'draft';
     localStorage.clear();
+    registerMessageCatalogs(CONVERSATION_MESSAGE_CATALOG);
     vi.stubGlobal('ResizeObserver', class {
       observe = vi.fn();
       disconnect = vi.fn();
@@ -121,6 +123,7 @@ describe('ConversationChatSurface content assembly', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    clearLocalizationRegistryForTest();
     document.body.innerHTML = '';
   });
 
@@ -132,8 +135,7 @@ describe('ConversationChatSurface content assembly', () => {
       captureConversationClientNotice(null, { error_kind: 'http', operation: 'send', http_status: 401 });
       await nextTick();
       expect(container.querySelectorAll('.client-notice')).toHaveLength(1);
-      expect(container.textContent).toContain('HTTP 401');
-      expect(container.textContent).toContain('尚未同步');
+      expect(container.querySelector('.client-notice')?.textContent?.trim()).toBe('发送消息失败，请求未获授权。');
       expect(container.querySelector('.conversation-host-stub')).toBeNull();
       expect(useClientNoticeStore().entries[0]?.conversationId).toBeNull();
       expect(useClientNoticeStore().entries[0]?.command).not.toHaveProperty('run_id');

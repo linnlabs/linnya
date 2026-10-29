@@ -76,7 +76,7 @@ describe('ExecutionNoticeMessage lifecycle', () => {
     });
     await nextTick();
     expect(mount.querySelector('.execution-progress-text--shimmer')).toBeNull();
-    expect(mount.textContent).toContain('上次重试尚未结算');
+    expect(mount.textContent).toContain('上次重试结果未确认');
     control.synchronizeSnapshot('conversation', {
       conversationId: 'conversation',
       runId: 'run',

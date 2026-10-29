@@ -4,14 +4,6 @@
     role="status"
   >
     {{ text }}
-    <span
-      v-if="message.localDelivery === 'pending'"
-      class="client-notice-sync"
-    > · {{ conversationMessage('conversation.clientNotice.pending') }}</span>
-    <span
-      v-else
-      class="client-notice-sync"
-    > · {{ conversationMessage('conversation.clientNotice.reported') }}</span>
   </div>
 </template>
 <script setup lang="ts">
