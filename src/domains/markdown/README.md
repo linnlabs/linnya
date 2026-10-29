@@ -197,6 +197,12 @@ Markdown schema 当前包括：
 
 这些表通过 `workspace_nodes.id` 获得项目文档身份。外键依赖不代表 Markdown 可以调用 Workspace 内部实现；跨领域业务动作必须通过公共合同、port 或 app-level orchestration 完成。
 
+Pending 与块历史按 `target_block_id` 挂在 rootBlock 上。`updateDocument` 保存正文时，在同一事务内删除指向已不存在块的这两类卫星行。
+App Server 启动维护只复查仍挂有卫星行的文档（`MarkdownOrphanBlockDataCleaner.listDocumentsWithBlockSatelliteData`），
+不读取其余正文，并在每篇之间让出事件循环，避免维护期间阻塞 HTTP 与 CLI 握手；只在实际删除或读取失败时逐篇记录日志。
+读取失败的旧格式文档单篇记为失败，其卫星数据保持不动。启动维护不做全库占位规范化：已存正文读取时先经过严格 schema 校验，
+`rawMarkdownSource` 不是合法属性，这类旧占位文档按上文“旧格式不做兼容或降级”拒绝加载。
+
 AudioBlock 已从生产 Renderer/backend schema、创建入口和 Editor 运行时依赖中撤下，但实现源码与专属表暂时保留，供未来独立 Audio domain 设计时研究。保留代码不等于继续支持 `audioBlock` 文档：含该节点的旧 doc JSON 会按严格 schema 拒绝加载，不做兼容或降级。
 
 图片事实与跨领域归属端口见 [image-content](features/image-content/README.md)；资产接管由 Host 编排，不将会话文件读取或资产账本引入 Markdown domain。

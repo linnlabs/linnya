@@ -35,11 +35,28 @@ export class MarkdownOrphanBlockDataCleaner {
   ) {}
 
   /**
+   * 列出挂有 pending revisions 或块历史的文档。
+   *
+   * 幽灵数据只可能存在于这两张卫星表中：没有卫星行的文档无需读取正文即可确认干净。
+   * 两张表都有以 document_node_id 开头的索引，这里只做索引去重，不读取任何正文。
+   */
+  listDocumentsWithBlockSatelliteData(): string[] {
+    return this.db
+      .prepare<[], { document_node_id: string }>(`
+        SELECT document_node_id FROM markdown_block_pending_revisions
+        UNION
+        SELECT document_node_id FROM markdown_block_versions
+      `)
+      .all()
+      .map(row => row.document_node_id);
+  }
+
+  /**
    * 清理指定文档下所有“无对应块实体”的卫星数据：
    * - pending revisions（markdown_block_pending_revisions）
    * - markdown_block_versions（块级历史版本）
    *
-   * 返回每一类被删除的记录数量，便于日志与测试。
+   * 返回每一类被删除的记录数量；是否记录日志由调用方按实际删除决定。
    */
   cleanupDocumentOrphans(documentNodeId: string): OrphanCleanupResult {
     const doc = this.markdownService.getDocument(documentNodeId);
@@ -75,11 +92,6 @@ export class MarkdownOrphanBlockDataCleaner {
         removedBlockVersions += result.changes ?? 0;
       }
     }
-
-    console.log(
-      `[MarkdownOrphanBlockDataCleaner] cleanupDocumentOrphans: documentId=${documentNodeId}, ` +
-        `pending=${removedPending}, blockVersions=${removedBlockVersions}`
-    );
 
     return {
       removedPending,
