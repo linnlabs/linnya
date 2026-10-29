@@ -47,11 +47,9 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   function setHistory(value: SlidesManualEditHistoryStatus | null): void { history.value = value; historyError.value = false; }
   function setHistoryError(value: boolean): void { historyError.value = value; }
 
+  /** 文稿当前能否手动写入；选区独立于它，只读时仍可选中对象交给 AI。 */
   function setEnabled(value: boolean): void {
     enabled.value = value;
-    if (!value) {
-      clearSelection();
-    }
   }
 
   function selectTarget(

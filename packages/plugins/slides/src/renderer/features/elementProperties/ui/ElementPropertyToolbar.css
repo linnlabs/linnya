@@ -204,3 +204,10 @@
   color: var(--color-error);
   font-size: var(--font-size-xs);
 }
+
+/* AI 入口位于浮条最前面，用品牌标志和强调色与属性按钮区分。 */
+.slides-element-property-toolbar .slides-element-property-toolbar__ai {
+  gap: var(--space-1);
+  color: var(--color-accent-text);
+  font-weight: var(--font-weight-semibold);
+}

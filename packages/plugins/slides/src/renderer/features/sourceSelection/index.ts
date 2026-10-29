@@ -10,6 +10,7 @@ export {
   collectSourceSelectableElements,
   findSourceElementAtPoint,
   findSourceElementsByIds,
+  findSourceElementsForSelection,
 } from './functions/renderNodeSourceSelection';
 export {
   normalizeSourceSelectionIds,

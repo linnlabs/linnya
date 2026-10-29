@@ -7,6 +7,7 @@ export type ElementPropertyMessageKey =
   | 'slides.elementProperties.alignment'
   | 'slides.elementProperties.mixed'
   | 'slides.elementProperties.label'
+  | 'slides.elementProperties.askAi'
   | 'slides.elementProperties.size'
   | 'slides.elementProperties.deleteElement'
   | 'slides.elementProperties.sizeHint'
@@ -44,6 +45,7 @@ export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
   'slides.elementProperties.alignment': '切换文字对齐',
   'slides.elementProperties.mixed': '混合',
   'slides.elementProperties.label': '元素属性',
+  'slides.elementProperties.askAi': '让 AI 修改（⌘K）',
   'slides.elementProperties.size': '尺寸',
   'slides.elementProperties.deleteElement': '删除元素',
   'slides.elementProperties.sizeHint': '拖动右侧、底部或右下角手柄调整尺寸 · 英寸',
@@ -77,6 +79,7 @@ const ELEMENT_PROPERTY_EN_US_MESSAGES = {
   'slides.elementProperties.alignment': 'Change text alignment',
   'slides.elementProperties.mixed': 'Mixed',
   'slides.elementProperties.label': 'Element properties',
+  'slides.elementProperties.askAi': 'Ask AI to edit (⌘K)',
   'slides.elementProperties.size': 'Size',
   'slides.elementProperties.deleteElement': 'Delete element',
   'slides.elementProperties.sizeHint': 'Drag the right, bottom or bottom-right handle · inches',

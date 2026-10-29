@@ -63,7 +63,14 @@ export async function verifyCanvasSelection(window: BrowserWindow): Promise<void
     window.webContents.sendInputEvent({ type: 'mouseUp', ...shiftEnd, button: 'left', clickCount: 1, modifiers: ['shift'] });
     await settle();
     await evaluate('window.canvasSmoke.assertAxisLockedTranslation(2); window.canvasSmoke.assertSelection(["badge"])');
-    console.log('Slides native canvas: Shift selection, marquee cancel, group drag cancel, one-commit keyboard repeats, gutter deselection and Shift axis-locked drag passed');
+    // 没有模式：选中的对象直接从浮条或 ⌘K 交给 AI，Esc 收起输入框并回到画布。
+    await evaluate('window.canvasSmoke.controlPoint(\'[data-property="ai"]\'); window.canvasSmoke.assertAiPrompt(false)');
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'K', modifiers: [process.platform === 'darwin' ? 'meta' : 'control'] });
+    await settle();
+    await evaluate('window.canvasSmoke.assertAiPrompt(true)');
+    await escape();
+    await evaluate('window.canvasSmoke.assertAiPrompt(false); window.canvasSmoke.assertSelection(["badge"])');
+    console.log('Slides native canvas: Shift selection, marquee cancel, group drag cancel, one-commit keyboard repeats, gutter deselection, Shift axis-locked drag and AI entry passed');
   } finally { await evaluate('window.canvasSmoke.dispose()'); }
   await evaluate('window.canvasSmoke = window.mountShapeTextEditingSmoke(true); void 0');
   async function commandClick(selector: string) {

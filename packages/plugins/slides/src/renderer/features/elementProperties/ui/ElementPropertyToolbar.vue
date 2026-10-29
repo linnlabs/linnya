@@ -19,6 +19,17 @@
         @mousedown="preserveCanvasFocus"
         @keydown="handleToolbarKeydown"
       >
+        <ToolbarGroup v-if="ai">
+          <ToolbarButton
+            class="slides-element-property-toolbar__ai"
+            data-property="ai"
+            :label="message('slides.elementProperties.askAi')"
+            @click="emit('ai')"
+          >
+            <LinnyaIcon class="slides-element-property-toolbar__icon" />
+            <span>AI</span>
+          </ToolbarButton>
+        </ToolbarGroup>
         <ToolbarGroup v-if="canEditTextStyle">
           <div class="slides-element-property-toolbar__font">
             <CustomNumberInput
@@ -228,7 +239,7 @@
 <script setup lang="ts">
 import { computed, ref, toRef, useId, type CSSProperties } from 'vue';
 import { BaseDropdown, CustomSelect, DropdownPanel, type DropdownActions, CustomNumberInput, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from '@linnya/renderer-ui';
-import { BoldIcon, ItalicIcon, UnderlineIcon, AlignIcon, ChevronIcon, DeleteIcon, ResizeIcon } from '@linnya/renderer-ui/icons';
+import { BoldIcon, ItalicIcon, UnderlineIcon, AlignIcon, ChevronIcon, DeleteIcon, ResizeIcon, LinnyaIcon } from '@linnya/renderer-ui/icons';
 import { SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
 import type { ManualEditableTarget } from '../../manualEditing';
 import { preserveCanvasFocus } from '../../editingInteraction';
@@ -245,8 +256,12 @@ const props = defineProps<{
   anchor: ElementPropertyAnchor;
   busy?: boolean;
   textSelection?: SlidesTextSelectionStyle;
+  /** 选中对象可以交给 AI 时显示入口。 */
+  ai?: boolean;
+  /** 文稿暂时不能手动写入：只保留 AI 入口。 */
+  readonly?: boolean;
 }>();
-const emit = defineEmits<{ submit: [operation: ElementPropertyOperation]; 'delete-selected': []; 'text-style': [patch: SlidesTextStylePatch] }>();
+const emit = defineEmits<{ submit: [operation: ElementPropertyOperation]; 'delete-selected': []; 'text-style': [patch: SlidesTextStylePatch]; ai: [] }>();
 const { elementPropertyMessage: message } = useElementPropertyLocalization();
 const toolbar = ref<InstanceType<typeof FloatingToolbar> | null>(null);
 const dropdown = ref<DropdownActions | null>(null);
@@ -275,10 +290,10 @@ function cycleAlignment(): void {
   const current = props.target.textEditing?.textAlign;
   submitTextStyle({ align: current === 'left' ? 'center' : current === 'center' ? 'right' : 'left' });
 }
-const canEditTextStyle = computed(() => props.textSelection !== undefined || props.target.capabilities.includes('set_text_style'));
-const canEditFill = computed(() => props.textSelection === undefined && props.target.capabilities.includes('set_fill_color'));
-const canEditSize = computed(() => props.textSelection === undefined && props.target.capabilities.includes('set_visual_size'));
-const canDelete = computed(() => props.textSelection === undefined && props.target.capabilities.includes('delete'));
+const canEditTextStyle = computed(() => !props.readonly && (props.textSelection !== undefined || props.target.capabilities.includes('set_text_style')));
+const canEditFill = computed(() => !props.readonly && props.textSelection === undefined && props.target.capabilities.includes('set_fill_color'));
+const canEditSize = computed(() => !props.readonly && props.textSelection === undefined && props.target.capabilities.includes('set_visual_size'));
+const canDelete = computed(() => !props.readonly && props.textSelection === undefined && props.target.capabilities.includes('delete'));
 const currentTextColor = computed(() => textStyle.value?.color ?? null);
 const currentFillColor = computed(() => props.target.fill?.kind === 'solid' ? props.target.fill.color : null);
 const popoverDirection = computed(() => popoverPosition.value && position.value && popoverPosition.value.top < position.value.top ? 'up' : 'down');

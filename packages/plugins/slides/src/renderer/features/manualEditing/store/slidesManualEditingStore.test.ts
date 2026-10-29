@@ -32,7 +32,10 @@ describe('slidesManualEditingStore', () => {
     expect(store.selectedTarget).toEqual(target);
     expect(store.translationPreview).toMatchObject({ dx: 0.2, dy: -0.1 });
 
+    // 文稿暂时不能手动写入时，选区仍可交给 AI。
     store.setEnabled(false);
+    expect(store.selectedTarget).toEqual(target);
+    store.clearSelection();
     expect(store.selectedTarget).toBeNull();
     expect(store.translationPreview).toBeNull();
   });

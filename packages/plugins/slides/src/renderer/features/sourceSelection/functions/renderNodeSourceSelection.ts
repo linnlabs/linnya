@@ -65,6 +65,22 @@ export function findSourceElementsByIds(
   );
 }
 
+/**
+ * 画布选中的作者对象交给 AI 时的源码目标：优先对象自身的源码位置；
+ * Frame 这类本身不带定位的对象，退回到它实际绘制的成员。
+ */
+export function findSourceElementsForSelection(
+  nodes: readonly RenderNode[],
+  selection: readonly { readonly elementId: string; readonly translationElementIds: readonly string[] }[],
+): SourceSelectableElement[] {
+  const byId = new Map(collectSourceSelectableElements(nodes).map(element => [element.elementId, element]));
+  const found = selection.flatMap(target => {
+    const own = byId.get(target.elementId);
+    return own ? [own] : target.translationElementIds.flatMap(id => byId.get(id) ?? []);
+  });
+  return [...new Map(found.map(element => [element.elementId, element])).values()];
+}
+
 function buildSelectableElement(
   geometry: RenderNodeSelectionGeometry<SourceTrackedRenderNode>,
 ): SourceSelectableElement {

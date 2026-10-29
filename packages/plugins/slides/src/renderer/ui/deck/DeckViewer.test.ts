@@ -137,7 +137,7 @@ describe('DeckViewer document transition', () => {
     app.unmount();
   });
 
-  it('只在 ready revision 与作者对象就绪时开启有限编辑模式', async () => {
+  it('没有编辑模式开关：ready 的生成文稿自动可手动编辑，刷新自己的修订时不闪成只读', async () => {
     const slidesStore = useSlidesStore();
     const manualStore = useSlidesManualEditingStore();
     installTestPresentation({ documentId: 'deck-1' });
@@ -189,12 +189,9 @@ describe('DeckViewer document transition', () => {
     app.mount(host);
     await nextTick();
 
-    const button = host.querySelector<HTMLButtonElement>('.stage-zoom-slider__edit-btn');
-    expect(button?.disabled).toBe(false);
-    button?.click();
-    await nextTick();
+    expect(host.querySelector('.stage-zoom-slider__edit-btn')).toBeNull();
+    expect(host.querySelector('.stage-zoom-slider__select-btn')).toBeNull();
     expect(manualStore.enabled).toBe(true);
-    expect(button?.getAttribute('aria-pressed')).toBe('true');
 
     installTestPresentation({ buildState: {
       ...slidesStore.documentBuildState,
@@ -204,7 +201,12 @@ describe('DeckViewer document transition', () => {
     } });
     await nextTick();
     expect(manualStore.enabled).toBe(true);
-    expect(button?.disabled).toBe(true);
+
+    const generated = slidesStore.renderModel;
+    if (!generated) throw new Error('Render model fixture missing');
+    installTestPresentation({ renderModel: { ...generated, version: 3, sourceKind: 'imported' } });
+    await nextTick();
+    expect(manualStore.enabled).toBe(false);
 
     app.unmount();
   });

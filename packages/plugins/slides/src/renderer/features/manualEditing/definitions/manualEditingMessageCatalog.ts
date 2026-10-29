@@ -1,11 +1,6 @@
 import type { MessageCatalogContribution, MessageParams } from '@app/localization';
 
 export type ManualEditingMessageKey =
-  | 'slides.manualEditing.toggle.label'
-  | 'slides.manualEditing.toggle.enable'
-  | 'slides.manualEditing.toggle.disable'
-  | 'slides.manualEditing.toggle.saving'
-  | 'slides.manualEditing.toggle.unavailable'
   | 'slides.manualEditing.text.ariaLabel'
   | 'slides.manualEditing.text.cancel'
   | 'slides.manualEditing.text.save'
@@ -36,11 +31,6 @@ export type ManualEditingMessageResolver = (
 ) => string;
 
 export const MANUAL_EDITING_MESSAGE_FALLBACKS = {
-  'slides.manualEditing.toggle.label': '有限编辑',
-  'slides.manualEditing.toggle.enable': '移动元素；双击纯文本进行编辑',
-  'slides.manualEditing.toggle.disable': '关闭有限编辑',
-  'slides.manualEditing.toggle.saving': '正在保存人工编辑',
-  'slides.manualEditing.toggle.unavailable': '当前页面没有可人工编辑的作者对象',
   'slides.manualEditing.error.compositionUnfinished': '请先确认当前输入法文字，再保存或离开文稿。',
   'slides.manualEditing.text.ariaLabel': '编辑文本框内容',
   'slides.manualEditing.text.cancel': '取消',
@@ -67,11 +57,6 @@ export const MANUAL_EDITING_MESSAGE_FALLBACKS = {
 } as const satisfies Readonly<Record<ManualEditingMessageKey, string>>;
 
 const MANUAL_EDITING_EN_US_MESSAGES = {
-  'slides.manualEditing.toggle.label': 'Limited editing',
-  'slides.manualEditing.toggle.enable': 'Move elements; double-click plain text to edit',
-  'slides.manualEditing.toggle.disable': 'Exit limited editing',
-  'slides.manualEditing.toggle.saving': 'Saving manual edit',
-  'slides.manualEditing.toggle.unavailable': 'This slide has no manually editable author objects',
   'slides.manualEditing.error.compositionUnfinished': 'Confirm the current text composition before saving or leaving the presentation.',
   'slides.manualEditing.text.ariaLabel': 'Edit text box content',
   'slides.manualEditing.text.cancel': 'Cancel',

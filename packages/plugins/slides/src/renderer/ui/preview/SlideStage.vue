@@ -62,8 +62,8 @@
               :slide-size="konvaRenderInput.slideSize"
               :raster-scale="konvaRasterScale"
               :selected-targets="selectedSourceTargets"
-              :hovered-target="hoveredSourceTarget"
-              :marquee-rect="manualEditingEnabled ? manualMarqueeRect : sourceMarqueeRect"
+              :hovered-target="manualHoveredTarget ? null : hoveredSourceTarget"
+              :marquee-rect="manualMarqueeRect ?? sourceMarqueeRect"
               :preview-translations="manualPreviewTranslations"
               :manual-selected-targets="manualPresentedSelectedTargets"
               :snap-guides="manualSnapGuides"
@@ -73,12 +73,12 @@
             />
           </div>
           <SourceSelectionPromptPopover
-            v-if="renderState.shouldShowSourcePrompt && !manualEditingEnabled"
-            :targets="selectedSourceTargets"
+            v-if="showAiPrompt"
+            :targets="aiTargets"
             :position="sourcePromptPosition"
             :disabled="sourceEditBusy"
             @submit="handleSourceEditSubmit"
-            @cancel="resetSourceSelection"
+            @cancel="closeAiPrompt"
           />
         </div>
         <!-- 原位 DOM 输入负责浏览器文本编辑能力；同一元素的 Canvas 文字在会话期间隐藏。 -->
@@ -111,7 +111,7 @@
           @commit-shortcut="handleTextEditorSubmitShortcut"
         />
         <ManualResizeHandles
-          v-if="manualPresentedSelectedTarget && canManualSelect && !textEditorTarget && canResizeManualTarget(manualPresentedSelectedTarget)"
+          v-if="manualPresentedSelectedTarget && canManualMutate && !textEditorTarget && canResizeManualTarget(manualPresentedSelectedTarget)"
           :key="manualPresentedSelectedTarget.elementId"
           :target="manualPresentedSelectedTarget"
           :slide-left="currentLayout.slideLeft"
@@ -137,13 +137,16 @@
       />
     </div>
     <ElementPropertyToolbar
-      v-if="manualPropertyTarget && manualPropertyAnchor && showElementPropertyControls && !textEditorTarget && !manualTranslationPreview && !manualResizePreview"
+      v-if="manualPropertyTarget && manualPropertyAnchor && showElementPropertyControls && !showAiPrompt && !textEditorTarget && !manualTranslationPreview && !manualResizePreview"
       :key="`${manualPropertyTarget.authoringRef.slideKey}/${manualPropertyTarget.authoringRef.editKey}`"
       :target="manualPropertyTarget"
       :anchor="manualPropertyAnchor"
-      :busy="!canManualSelect"
+      :busy="!canManualMutate"
+      :readonly="!canManualMutate"
+      :ai="canAskAi"
       @submit="submitManualVisualOperation"
       @delete-selected="deleteManualSelectedTarget"
+      @ai="openAiPrompt"
     />
   </div>
 </template>
@@ -152,12 +155,12 @@
 import { collectEditingPreviewGeometries } from '../../features/editingPreview';
 import { ref, shallowRef, computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useSlidesUiStore } from '../../store/slidesUiStore';
 import { useSlideStageViewport } from '../../features/stageZoom';
 import { useSlidesStore } from '../../store/slidesStore';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import {
   SourceSelectionPromptPopover,
+  findSourceElementsForSelection,
   resolveSourceSelectionPromptPosition,
   type SourceSelectionEditSubmitPayload,
   useSlideSourceSelectionInteraction,
@@ -202,14 +205,10 @@ const emit = defineEmits<{
 }>();
 
 const slidesStore = useSlidesStore();
-const uiStore = useSlidesUiStore();
 const renderStore = useSlidesRenderStore();
 const manualEditingStore = useSlidesManualEditingStore();
 const { manualEditingMessage } = useManualEditingLocalization();
 const { slidesPreviewMessage } = useSlidesPreviewLocalization();
-const {
-  sourceSelectionModeEnabled,
-} = storeToRefs(uiStore);
 const { currentSlideRender, renderModel } = storeToRefs(renderStore);
 const {
   enabled: manualEditingEnabled,
@@ -241,7 +240,6 @@ const renderState = computed(() =>
     visualResourcePreparationFailed: visualResourcePreparationFailed.value,
     currentSlideKonvaCompatible: currentSlideKonvaCompatible.value,
     hasRenderSlideSize: renderSlideSize.value !== null,
-    sourceSelectionModeEnabled: sourceSelectionModeEnabled.value,
     canEditSourceSelection: renderModel.value?.capabilities.canEditSourceSelection === true,
   }),
 );
@@ -277,17 +275,17 @@ const canvasShellRef = ref<globalThis.HTMLElement | null>(null);
 const konvaWrapperRef = ref<globalThis.HTMLElement | null>(null);
 const canSelectSourceElements = computed(() => (
   renderState.value.canSelectSourceElements
-  && !manualEditingEnabled.value
   && !preparingSlideVisuals.value
   && displayedSlideId.value === activeSlideId.value
 ));
 
+// 不再有编辑模式：生成文稿的当前画面始终可选；能否手动写入由文稿状态决定。
 const canManualSelect = computed(() => (
-  manualEditingEnabled.value
-  && renderModel.value?.sourceKind === 'generated'
+  renderModel.value?.sourceKind === 'generated'
   && displayedSlide.value !== null
   && displayedSlideId.value === activeSlideId.value
 ));
+const canManualMutate = computed(() => manualEditingEnabled.value && canManualSelect.value);
 
 const {
   selectedSourceTargets,
@@ -300,6 +298,7 @@ const {
   handleSourcePointerLeave,
   resetSourceSelection,
   reconcileSourceSelection,
+  hasSourceTargetAt,
 } = useSlideSourceSelectionInteraction({
   canSelectSourceElements,
   currentSlideRender: displayedSlide,
@@ -334,6 +333,7 @@ const {
   handlePointerCancel: handleManualPointerCancel,
   handlePointerLeave: handleManualPointerLeave,
   handleDoubleClick: handleManualDoubleClick,
+  hasTargetAt: hasManualTargetAt,
   submitVisualOperation: submitManualVisualOperation,
   submitTextEdit,
   handleTextCompositionStart,
@@ -345,6 +345,7 @@ const {
   resetInteraction: resetManualInteraction,
 } = useSlideEditingInteraction({
   canSelect: canManualSelect,
+  canMutate: canManualMutate,
   currentSlide: displayedSlide,
   renderScale,
   slideSize: actualSlideSize,
@@ -403,50 +404,89 @@ const manualPropertyAnchor = useElementPropertyAnchor({
   geometryRevision: stageOverlayGeometryRevision,
 });
 
+/**
+ * 一套选择：作者对象走手动编辑交互；指针下没有作者对象、但有带源码定位的元素时，
+ * 这次点击交给 AI 选择。两种选区互斥，后续指针事件跟随本次按下的归属。
+ */
+let pointerOwner: 'manual' | 'source' = 'manual';
+
 function handleStageBlankPointerDown(event: PointerEvent): void {
   if (event.button !== 0) return;
   // 留白与页内背景共用交接语义；只监听容器自身，避免工具条和拖拽事件误清选区。
-  if (manualEditingEnabled.value) handleManualPointerDown(event, true);
-  else resetSourceSelection();
+  pointerOwner = 'manual';
+  resetSourceSelection();
+  handleManualPointerDown(event, true);
   if (!textEditorTarget.value) scrollHostRef.value?.focus({ preventScroll: true });
 }
 
 function handleStagePointerDown(event: PointerEvent): void {
-  if (manualEditingEnabled.value) handleManualPointerDown(event);
-  else handleSourcePointerDown(event);
+  if (!hasManualTargetAt(event) && hasSourceTargetAt(event)) {
+    pointerOwner = 'source';
+    manualEditingStore.clearSelection();
+    handleSourcePointerDown(event);
+  } else {
+    pointerOwner = 'manual';
+    resetSourceSelection();
+    handleManualPointerDown(event);
+  }
   if (!textEditorTarget.value) scrollHostRef.value?.focus({ preventScroll: true });
 }
 
 function handleStagePointerMove(event: PointerEvent): void {
-  if (manualEditingEnabled.value) handleManualPointerMove(event);
-  else handleSourcePointerMove(event);
+  // 两个交互都只认自己按下的 pointer；没有手势时各自只更新悬停。
+  handleManualPointerMove(event);
+  handleSourcePointerMove(event);
 }
 
 function handleStagePointerUp(event: PointerEvent): void {
-  if (manualEditingEnabled.value) handleManualPointerUp(event);
-  else handleSourcePointerUp(event);
+  if (pointerOwner === 'source') handleSourcePointerUp(event);
+  else handleManualPointerUp(event);
 }
 
 function handleStagePointerCancel(event: PointerEvent): void {
-  if (manualEditingEnabled.value) handleManualPointerCancel(event);
-  else handleSourcePointerCancel(event);
+  if (pointerOwner === 'source') handleSourcePointerCancel(event);
+  else handleManualPointerCancel(event);
 }
 
 function handleStagePointerLeave(): void {
-  if (manualEditingEnabled.value) handleManualPointerLeave();
-  else handleSourcePointerLeave();
+  handleManualPointerLeave();
+  handleSourcePointerLeave();
 }
 
 function handleStageDoubleClick(event: MouseEvent): void {
-  if (manualEditingEnabled.value) handleManualDoubleClick(event);
+  handleManualDoubleClick(event);
 }
+
+/** 交给 AI 的源码目标：作者对象选区优先，否则是只带源码定位的元素选区。 */
+const aiTargets = computed(() => manualSelectedTargets.value.length > 0
+  ? findSourceElementsForSelection(displayedSlide.value?.elements ?? [], manualSelectedTargets.value)
+  : selectedSourceTargets.value);
+const canAskAi = computed(() => canSelectSourceElements.value && aiTargets.value.length > 0);
+const aiPromptOpen = ref(false);
+// 只带源码定位的元素没有属性可改，选中即展开 AI 输入；作者对象由浮条入口或 ⌘K 展开。
+const showAiPrompt = computed(() => canAskAi.value
+  && (aiPromptOpen.value || (manualSelectedTargets.value.length === 0 && selectedSourceTargets.value.length > 0)));
+
+function openAiPrompt(): void {
+  if (!canAskAi.value) return;
+  submitTextEdit();
+  aiPromptOpen.value = true;
+}
+
+function closeAiPrompt(): void {
+  aiPromptOpen.value = false;
+  resetSourceSelection();
+  scrollHostRef.value?.focus({ preventScroll: true });
+}
+
+watch(() => aiTargets.value.map(target => target.elementId).join('\0'), () => { aiPromptOpen.value = false; });
 
 const sourcePromptPosition = computed(() => {
   stageOverlayGeometryRevision.value;
   const slideRect = canvasShellRef.value?.getBoundingClientRect();
 
   return resolveSourceSelectionPromptPosition({
-    targets: selectedSourceTargets.value,
+    targets: aiTargets.value,
     renderScale: renderScale.value,
     slideSize: actualSlideSize.value,
     ...(slideRect
@@ -469,7 +509,7 @@ function handleSourceEditSubmit(instruction: string): void {
   if (
     preparingSlideVisuals.value
     || slideRender?.slideId !== activeSlideId.value
-    || selectedSourceTargets.value.length === 0
+    || aiTargets.value.length === 0
   ) {
     return;
   }
@@ -477,15 +517,16 @@ function handleSourceEditSubmit(instruction: string): void {
   emit('sourceEditSubmit', {
     instruction,
     slideNumber: slideRender.index + 1,
-    targets: selectedSourceTargets.value,
+    targets: aiTargets.value,
   });
+  aiPromptOpen.value = false;
 }
 
 const konvaWrapperStyle = computed(() => {
   const safeRasterScale = konvaRasterScale.value > 0 ? konvaRasterScale.value : 1;
   const wrapperScale = renderScale.value / safeRasterScale;
-  const sourceSelectionCursor = manualEditingEnabled.value
-    ? resolveManualEditingCursor(canManualSelect.value ? manualHoveredTarget.value : null)
+  const sourceSelectionCursor = manualHoveredTarget.value
+    ? canManualMutate.value ? resolveManualEditingCursor(manualHoveredTarget.value) : 'pointer'
     : hoveredSourceTarget.value ? 'pointer' : 'default';
 
   return {
@@ -501,7 +542,18 @@ const konvaWrapperStyle = computed(() => {
 /** 表单/文本拥有自己的按键；有对象选区时方向键先交给编辑会话。 */
 function handleKeydown(event: KeyboardEvent): void {
   if (!ownsCanvasKeyboard(event)) return;
-  if (manualEditingEnabled.value && handleManualKeydown(event)) {
+  if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k' && canAskAi.value) {
+    event.preventDefault();
+    event.stopPropagation();
+    openAiPrompt();
+    return;
+  }
+  if (event.key === 'Escape' && showAiPrompt.value) {
+    event.preventDefault();
+    closeAiPrompt();
+    return;
+  }
+  if (handleManualKeydown(event)) {
     event.preventDefault();
     event.stopPropagation();
     return;
@@ -551,8 +603,5 @@ watch(
   },
 );
 
-watch(manualEditingEnabled, enabled => {
-  if (!enabled) resetManualInteraction();
-});
 
 </script>

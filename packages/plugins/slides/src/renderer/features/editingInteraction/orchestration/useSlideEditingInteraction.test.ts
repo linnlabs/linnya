@@ -98,7 +98,7 @@ function click(wrapper: HTMLElement, pointerId: number, clientX: number, clientY
 function createInteraction(
   submitOperation: ReturnType<typeof vi.fn>,
   currentSlide: SlideRenderModel = slide,
-  gates: { readonly canSelect?: boolean; readonly canMutate?: boolean } = {},
+  gates: { readonly canSelect?: boolean; readonly canMutate?: boolean; readonly writable?: boolean } = {},
 ) {
   const wrapper = document.createElement('div');
   wrapper.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 960, height: 540 });
@@ -109,6 +109,7 @@ function createInteraction(
   const canMutate = ref(gates.canMutate ?? true);
   const interaction = useSlideEditingInteraction({
     canSelect,
+    canMutate: ref(gates.writable ?? true),
     currentSlide: ref(currentSlide),
     renderScale: ref(1),
     slideSize: ref({ width: 10, height: 5.625 }),
@@ -669,6 +670,22 @@ describe('useSlideEditingInteraction', () => {
     expect(interaction.selectedTarget.value?.authoringRef.editKey).toBe('headline');
     expect(interaction.textEditorTarget.value?.elementId).toBe('authoring-overview-headline');
     expect(interaction.textSelectAll.value).toBe(true);
+  });
+
+  it('still selects for AI while the deck cannot be written, but never moves, deletes or opens text input', () => {
+    const submitOperation = vi.fn();
+    const { interaction, wrapper } = createInteraction(submitOperation, slide, { writable: false });
+    click(wrapper, 1, 144, 144);
+    expect(interaction.selectedTarget.value?.authoringRef.editKey).toBe('headline');
+    pointer(wrapper, 'pointerdown', 2, 144, 144);
+    pointer(wrapper, 'pointermove', 2, 240, 144);
+    pointer(wrapper, 'pointerup', 2, 240, 144);
+    expect(interaction.handleKeydown(new KeyboardEvent('keydown', { key: 'ArrowRight' }))).toBe(false);
+    expect(interaction.handleKeydown(new KeyboardEvent('keydown', { key: 'Delete' }))).toBe(false);
+    wrapper.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: 144, clientY: 144 }));
+    expect(submitOperation).not.toHaveBeenCalled();
+    expect(interaction.textEditorTarget.value).toBeNull();
+    expect(interaction.selectedTarget.value?.authoringRef.editKey).toBe('headline');
   });
 });
 

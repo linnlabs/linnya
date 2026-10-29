@@ -126,17 +126,6 @@
   pointer-events: none;
 }
 
-.deck-viewer .stage-zoom-slider__edit-btn--active,
-.deck-viewer .stage-zoom-slider__select-btn--active {
-  background-color: var(--color-accent-bg);
-  color: var(--color-accent);
-}
-
-.deck-viewer .stage-zoom-slider__edit-btn--active:hover,
-.deck-viewer .stage-zoom-slider__select-btn--active:hover {
-  background-color: var(--color-accent-bg-hover);
-}
-
 .deck-viewer .stage-manual-edit-error {
   position: absolute;
   left: 50%;

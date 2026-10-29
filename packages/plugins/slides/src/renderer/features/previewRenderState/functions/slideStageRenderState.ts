@@ -7,7 +7,6 @@ export interface SlideStageRenderStateInput {
   visualResourcePreparationFailed: boolean;
   currentSlideKonvaCompatible: boolean;
   hasRenderSlideSize: boolean;
-  sourceSelectionModeEnabled: boolean;
   canEditSourceSelection: boolean;
 }
 
@@ -16,8 +15,8 @@ export interface SlideStageRenderState {
   shouldRenderKonva: boolean;
   renderMode: SlideStageRenderMode;
   hasRenderableSlide: boolean;
+  /** 画面可选且文稿带源码定位时，选中的对象可以直接交给 AI；不再需要单独的选择模式。 */
   canSelectSourceElements: boolean;
-  shouldShowSourcePrompt: boolean;
 }
 
 /**
@@ -33,10 +32,7 @@ export function resolveSlideStageRenderState(
     && input.currentSlideKonvaCompatible;
   const shouldRenderKonva = shouldUseKonva && input.hasRenderSlideSize;
   const renderMode = resolveRenderMode(input, shouldRenderKonva);
-  const canSelectSourceElements =
-    input.sourceSelectionModeEnabled
-    && shouldRenderKonva
-    && input.canEditSourceSelection;
+  const canSelectSourceElements = shouldRenderKonva && input.canEditSourceSelection;
 
   return {
     shouldUseKonva,
@@ -44,7 +40,6 @@ export function resolveSlideStageRenderState(
     renderMode,
     hasRenderableSlide: renderMode === 'konva',
     canSelectSourceElements,
-    shouldShowSourcePrompt: canSelectSourceElements,
   };
 }
 

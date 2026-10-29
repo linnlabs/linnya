@@ -10,6 +10,7 @@ import type {
 import {
   collectSourceElementsInRect,
   findSourceElementAtPoint,
+  findSourceElementsForSelection,
 } from './renderNodeSourceSelection';
 import { resolveSourceSelectionAvailability } from './sourceSelectionAvailability';
 import {
@@ -283,5 +284,21 @@ describe('sourceSelection state functions', () => {
       marqueeElementIds: ['b', 'c', 'c'],
       additive: true,
     })).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('findSourceElementsForSelection', () => {
+  it('sends a selected object by its own source span, and a Frame without one by the members it paints', () => {
+    const nodes = [
+      shape('frame-bg', box({ x: 0, y: 0, w: 4, h: 2 }), 1),
+      text('frame-label', box({ x: 0.2, y: 0.2, w: 2, h: 0.5 }), 2, SPAN_1),
+      shape('badge', box({ x: 5, y: 0, w: 2, h: 1 }), 3, SPAN_2),
+    ];
+    const targets = findSourceElementsForSelection(nodes, [
+      { elementId: 'frame', translationElementIds: ['frame-bg', 'frame-label'] },
+      { elementId: 'badge', translationElementIds: ['badge'] },
+      { elementId: 'frame-label', translationElementIds: ['frame-label'] },
+    ]);
+    expect(targets.map(target => [target.elementId, target.sourceSpan])).toEqual([['frame-label', SPAN_1], ['badge', SPAN_2]]);
   });
 });

@@ -26,7 +26,7 @@ export function mountShapeTextEditingSmoke(withCommands = false) {
   const initialSlide: SlideRenderModel = {
     slideId: 'shape-text', index: 0, layoutKey: 'freeform', background: { paint: { type: 'solid', color: '#FFFFFF' } },
     elements: [{
-      id: 'badge', kind: 'shape', zIndex: 0,
+      id: 'badge', kind: 'shape', zIndex: 0, sourceSpan: { startLine: 3, endLine: 3 },
       box: { x: 0.5, y: 0.5, w: 2.5, h: 1, unit: 'in' },
       geometry: { type: 'preset', name: 'rect' }, fill: { type: 'solid', color: '#2563EB' },
       authoringRef: { slideKey: 'overview', editKey: 'badge', targetKind: 'shape' },
@@ -77,7 +77,7 @@ export function mountShapeTextEditingSmoke(withCommands = false) {
     const renderModel: PresentationRenderModel = {
       presentationId: 'interaction-fixture', title: 'Editing interaction', version, sourceKind: 'generated',
       slideSize: { width: 6.5, height: 3.5, unit: 'in' },
-      capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true },
+      capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true, canEditSourceSelection: true },
       slides: [{ ...slide, elements: slide.elements.map(node => {
         const text = node.kind === 'shape' ? node.innerText : node;
         if (!text || !node.authoringEdit) throw new Error('Invalid text fixture');
@@ -321,6 +321,10 @@ export function mountShapeTextEditingSmoke(withCommands = false) {
       const operation = commands[commands.length - 1]?.command.operation;
       if (operation?.op !== 'batch' || operation.operations.length !== 2
         || operation.operations.some(op => op.op !== 'translate_by' || Math.abs(op.delta.dx - dx) > 1e-8 || op.delta.dy !== 0)) throw new Error('Keyboard repeats must become one exact group translation');
+    },
+    assertAiPrompt(open: boolean) {
+      const prompt = document.querySelector('.source-selection-prompt');
+      if ((prompt !== null) !== open) throw new Error(`AI prompt should be ${open ? 'open' : 'closed'}`);
     },
     assertCanvasFocused() {
       if (document.activeElement !== host.querySelector('.slide-stage')) throw new Error(`Canvas lost focus to ${document.activeElement?.tagName ?? 'nothing'}`);

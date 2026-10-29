@@ -78,3 +78,5 @@ Content and style previews are replayed in queue order by `manualEditing/project
 
 
 Text 工具条增加粗体、斜体、下划线和整框左/中/右对齐。非空文本选区使用输入会话局部样式；整框动作进入原有命令队列，每次点击保留独立撤销边界。mixed 状态不以首字样式代替整个选区；显式 false 可以取消源码已有强调。Text 宽度、同级图层和多选排列由 editingCommands 拥有，本浮条不扩张为通用属性面板。
+
+浮条最前面是 AI 入口（`ai` prop，`ai` 事件）：选中对象能映射到源码目标时显示，由 `SlideStage` 展开 AI 输入框。`readonly` 表示文稿暂时不能手动写入，此时只保留 AI 入口，其余属性组不渲染。

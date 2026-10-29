@@ -218,6 +218,13 @@ export function useSlideSourceSelectionInteraction(options: SlideSourceSelection
     sourceSelectionStore.setHoveredElementId(target?.elementId ?? null);
   }
 
+  /** 指针下是否有带源码定位的元素；画布据此决定这次点击是否交给 AI 选择。 */
+  function hasSourceTargetAt(event: globalThis.PointerEvent): boolean {
+    const point = options.canSelectSourceElements.value ? resolvePointerPoint(event) : null;
+    const slideRender = options.currentSlideRender.value;
+    return point !== null && slideRender !== null && findSourceElementAtPoint(slideRender.elements, point) !== null;
+  }
+
   function releasePointerCapture(event: globalThis.PointerEvent): void {
     const target = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     if (target?.hasPointerCapture(event.pointerId)) {
@@ -252,5 +259,6 @@ export function useSlideSourceSelectionInteraction(options: SlideSourceSelection
     handleSourcePointerLeave,
     resetSourceSelection,
     reconcileSourceSelection,
+    hasSourceTargetAt,
   };
 }

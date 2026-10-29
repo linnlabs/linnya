@@ -56,6 +56,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
   const marqueeRect = shallowRef<RenderNodeSelectionRect | null>(null);
   const snapGuides = shallowRef<readonly CanvasSnapGuide[]>([]);
   let pointerSession: CanvasPointerGesture | null = null;
+  const canMutate = () => options.canMutate?.value ?? true;
 
   function presentedTargets(): readonly ManualEditableTarget[] {
     return collectPresentedManualTargets(options.currentSlide.value?.elements ?? [], readHitProjection());
@@ -115,7 +116,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     pointerSession = { ...base, kind: 'translate', targets, path, clickTarget, clickMode, bounds,
       peers: presented.filter(target => !ids.has(target.elementId)
         && !target.translationElementIds.some(id => ids.has(id))).map(target => target.bounds),
-      canTranslate: targets.every(target => target.capabilities.includes('translate')) };
+      canTranslate: canMutate() && targets.every(target => target.capabilities.includes('translate')) };
   }
 
   /** 单选保留完整命中路径以便逐层深入；多选只保留共同祖先，后续点击停在成员所在层。 */
@@ -186,7 +187,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
   }
 
   function handleDoubleClick(event: MouseEvent): void {
-    if (!options.canSelect.value) return;
+    if (!options.canSelect.value || !canMutate()) return;
     const point = readPoint(event);
     const slide = options.currentSlide.value;
     if (!point || !slide) return;
@@ -214,7 +215,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
   }
 
   function deleteSelectedTarget(): boolean {
-    if (textEditing.target.value || !options.canSelect.value || selectedTargets.value.length === 0) return false;
+    if (textEditing.target.value || !options.canSelect.value || !canMutate() || selectedTargets.value.length === 0) return false;
     const operations = selectedTargets.value.map(createManualDeleteOperation);
     if (operations.some(operation => operation === null)) return false;
     const valid = operations.filter(operation => operation !== null);
@@ -257,7 +258,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     selectMany(normalizeManualSelection(found));
     const slide = options.currentSlide.value;
     const only = found.length === 1 ? found[0] : undefined;
-    if (!request.editText || !only?.textEditing || !slide) return;
+    if (!request.editText || !only?.textEditing || !slide || !canMutate()) return;
     const editorTarget = createPresentedTextEditingTarget(slide.elements, only, readHitProjection());
     if (editorTarget) textEditing.open(editorTarget, undefined, { selectAll: true });
   }
@@ -314,6 +315,8 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     const target = targets[0];
     if (!target) return false;
     const delta = readCanvasNudge(event);
+    // 只读时选区仍在，方向键交还翻页，Delete 不生效。
+    if (!canMutate() && (delta || event.key === 'Delete' || event.key === 'Backspace')) return false;
     if (delta) {
       // 选中但不可平移的对象仍拥有方向键，不能意外跳页。
       if (!targets.every(entry => entry.capabilities.includes('translate')) || pointerSession) return true;
@@ -359,6 +362,13 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     ).target;
   }
 
+  /** 指针下是否有作者对象；没有时画布可把这次点击交给只带源码定位的 AI 选择。 */
+  function hasTargetAt(event: Pick<MouseEvent, 'clientX' | 'clientY'>): boolean {
+    const point = readPoint(event);
+    const slide = options.currentSlide.value;
+    return point !== null && slide !== null && findManualEditableTargetPathAtPoint(slide.elements, point, readHitProjection()).length > 0;
+  }
+
   function readPoint(event: Pick<MouseEvent, 'clientX' | 'clientY'>): SourceSelectionPoint | null {
     const wrapper = options.wrapperRef.value;
     if (!wrapper) return null;
@@ -396,6 +406,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     handlePointerCancel,
     handlePointerLeave,
     handleDoubleClick,
+    hasTargetAt,
     submitVisualOperation,
     deleteSelectedTarget,
     submitTextEdit: textEditing.requestCommit,
