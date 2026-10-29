@@ -316,7 +316,7 @@ Workspace 工具不要只测单工具参数校验，至少应覆盖这些真实�
   - ref 解析：
     - `src/domains/markdown/features/annotations/functions/resolveMarkdownAnnotationTarget.ts`
   - 创建侧：
-    - `src/domains/markdown/features/normalization/functions/markdownPlaceholder.ts`
+    - `src/domains/markdown/features/normalization/functions/defaultMarkdownDocument.ts`
   - 全文写入：
     - `src/domains/markdown/features/document-write/orchestration/writeMarkdownDocumentFromText.ts`
     - `src/domains/markdown/features/document-write/orchestration/buildMarkdownDocumentFromText.ts`

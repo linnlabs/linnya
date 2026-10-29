@@ -1,4 +1,3 @@
-export { extractRawMarkdownSource, isRawMarkdownPlaceholder } from './placeholderDetection';
 export {
   importMarkdownToDocJson,
   type MarkdownBlockParser,

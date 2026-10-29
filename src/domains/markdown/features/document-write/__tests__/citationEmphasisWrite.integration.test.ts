@@ -7,11 +7,11 @@ import { PENDING_REVISION_SCHEMAS } from '../../document-storage/infrastructure/
 import { BLOCK_HISTORY_SCHEMAS } from '../../document-storage/infrastructure/sqlite/schemas/blocks/block-history.schema';
 import { IMAGE_BLOCK_SCHEMAS } from '../../document-storage/infrastructure/sqlite/schemas/blocks/image.schema';
 import { MarkdownDocumentService } from '../../document-storage';
-import { MarkdownNormalizationService, attachCitationNodesToDocJson, importMarkdownToDocJson, type MarkdownDocJson } from '../../normalization';
+import { attachCitationNodesToDocJson, importMarkdownToDocJson, type MarkdownDocJson } from '../../normalization';
 import { PendingRevisionApplyService } from '../../pending-revisions';
 import { readMarkdownVfsContent } from '../../document-read';
 import { createMarkdownReadDatabase } from '../../../infrastructure/sqlite/markdownReadDatabaseAdapter';
-import { buildMarkdownDocumentFromText } from '../orchestration/buildMarkdownDocumentFromText';
+import { buildMarkdownDocumentFromText, markdownTextDocumentBuilder } from '../orchestration/buildMarkdownDocumentFromText';
 import { buildMarkdownPendingCitationMetadata } from '../orchestration/buildMarkdownPendingCitationMetadata';
 import { writeMarkdownDocumentFromText } from '../orchestration/writeMarkdownDocumentFromText';
 import type { CitationSource } from '../../../../citation';
@@ -36,7 +36,7 @@ function setup() {
   ]) db.exec(sql);
   db.prepare("INSERT INTO workspace_nodes (id, project_id, parent_id, type, name, created_at, updated_at) VALUES ('doc', NULL, NULL, 'document', 'test', 1, 1)").run();
   const store = new MarkdownDocumentService(db);
-  const normalizer = new MarkdownNormalizationService(db, store);
+  const normalizer = markdownTextDocumentBuilder;
   const read = () => readMarkdownVfsContent({ db: createMarkdownReadDatabase(db), documentId: 'doc' });
   const write = async (targetText: string) => writeMarkdownDocumentFromText({
     documentStore: store, documentId: 'doc', targetText, toolName: 'write_file',

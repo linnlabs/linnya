@@ -241,7 +241,7 @@ export function scheduleStartupMaintenanceOnce(
       logger.warn(`日志维护执行失败: ${e instanceof Error ? e.message : String(e)}`);
     }
 
-    // 1) Workspace 清理（SQLite 内部，轻量）
+    // 1) Workspace 清理（SQLite 内部；只复查挂有卫星数据的 Markdown 文档，逐篇让出事件循环）
     try {
       await runWorkspaceMaintenanceOnce(deps.databaseService);
     } catch (e) {

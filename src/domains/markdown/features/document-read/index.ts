@@ -18,7 +18,6 @@ export { readMarkdownVfsContent } from './orchestration/readMarkdownVfsContent';
 export type { MarkdownVfsContent } from './definitions/markdownVfsContent';
 export { readMarkdownDocumentView } from './orchestration/readMarkdownDocumentView';
 export type {
-  MarkdownDocumentNormalizer,
   MarkdownDocumentReadProjection,
   MarkdownDocumentReadRequest,
   MarkdownDocumentReadStore,

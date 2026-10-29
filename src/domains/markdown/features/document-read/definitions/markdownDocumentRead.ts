@@ -21,13 +21,6 @@ export interface MarkdownDocumentReadStore {
   ) => readonly MarkdownPendingRevisionLike[];
 }
 
-export interface MarkdownDocumentNormalizer {
-  readonly normalizeDocumentIfNeeded: (documentId: string) => Promise<{
-    readonly status: 'normalized' | 'already_normalized' | 'failed';
-    readonly reason?: string;
-  }>;
-}
-
 export interface MarkdownDocumentReadProjection {
   readonly data: WorkspaceDocumentReadData;
   /** DocumentView 或 outline 正文；Workspace 在其后插入 wire Citation appendix。 */

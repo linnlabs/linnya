@@ -2,7 +2,6 @@ import { sliceTextWindow, type WorkspaceDocumentReadData } from '@app/schemas';
 import type { MarkdownReadDatabase } from '../../../definitions/markdownReadDatabase';
 import { projectMarkdownDocumentImages } from '../functions/projectMarkdownDocumentImages';
 import type {
-  MarkdownDocumentNormalizer,
   MarkdownDocumentReadProjection,
   MarkdownDocumentReadRequest,
   MarkdownDocumentReadStore,
@@ -18,17 +17,8 @@ export async function readMarkdownDocumentView(params: {
   readonly request: MarkdownDocumentReadRequest;
   readonly readDb: MarkdownReadDatabase;
   readonly store: MarkdownDocumentReadStore;
-  readonly normalizer: MarkdownDocumentNormalizer;
 }): Promise<MarkdownDocumentReadProjection> {
-  const normalization = await params.normalizer.normalizeDocumentIfNeeded(
-    params.request.documentId,
-  );
-  if (normalization.status === 'failed') {
-    throw new Error(
-      `Markdown 文档后端规范化失败，无法安全读取块结构：${normalization.reason ?? '未知原因'}`,
-    );
-  }
-
+  // 正文只经严格 schema 读取一次；不合法的旧格式在这里直接拒绝，不做读取前转换。
   const content = params.store.getDocument(params.request.documentId);
   const pendings = params.store.getPendingRevisions(params.request.documentId);
   const images = projectMarkdownDocumentImages(content, params.request.viewMode === 'preview' ? pendings : []);

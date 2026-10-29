@@ -7,7 +7,6 @@ import {
   type DocumentTypeBackendHook,
 } from '@plugin/backend/documentTypeBackendHook';
 import {
-  MarkdownNormalizationService,
   prepareMarkdownImageInput,
   collectMarkdownImageSources,
   writeMarkdownDocumentFromText,
@@ -60,17 +59,12 @@ function createMarkdownFileWriteProvider(params: {
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileWriteResult>;
 }): WorkspaceDocumentFileWriteProvider {
   const documentStore = createMarkdownDocumentStore(params.db);
-  const normalizer = new MarkdownNormalizationService(params.db, documentStore);
   const workspaceMutation = createSqliteWorkspaceDocumentMutationPort(params.db);
   const captureSnapshot = (documentId: string): MarkdownFileWriteSnapshot => projectMarkdownFileWriteSnapshot({
     content: documentStore.getDocument(documentId),
     pendings: documentStore.getPendingRevisions(documentId),
     versionNumber: documentStore.getLatestVersion(documentId)?.version_number ?? null,
   });
-  const normalize = async (documentId: string): Promise<void> => {
-    const result = await normalizer.normalizeDocumentIfNeeded(documentId);
-    if (result.status === 'failed') throw new Error(`文档仍处于未规范化状态，无法安全写入 pending revision：${result.reason ?? '未知原因'}`);
-  };
   // 无引用文档不要求引用运行端口；按需调用仍须经过正式Host绑定，不能构造本地替代分配器。
   const allocator: CitationRefAllocatorPort = { allocate: anchors =>
     requireCitationRefAllocator(params.context).allocate(anchors) };
@@ -80,7 +74,6 @@ function createMarkdownFileWriteProvider(params: {
     disabledMessage: 'Markdown 是永久启用的内建文档类型。',
     resolveEquivalentEditText: resolveMarkdownEscapeEquivalentText,
     prepareEdit: async request => {
-      await normalize(request.identity.documentId);
       const snapshot = captureSnapshot(request.identity.documentId);
       if (snapshot.currentText !== request.currentText) throw new MarkdownFileWriteConflictError();
       return { text: await projectMarkdownFileEditText(snapshot, allocator), sourceKey: snapshot.sourceKey };
@@ -104,7 +97,6 @@ function createMarkdownFileWriteProvider(params: {
           deletedAnnotationCount: write.deletedAnnotationIds.length,
         }),
       });
-      await normalize(request.identity.documentId);
       const snapshot = captureSnapshot(request.identity.documentId);
       if (request.expectedSourceKey !== undefined && request.expectedSourceKey !== snapshot.sourceKey) throw new MarkdownFileWriteConflictError();
       const imageInput = await prepareMarkdownImageInput({

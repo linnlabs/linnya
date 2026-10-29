@@ -1,4 +1,3 @@
-export { extractRawMarkdownSource, isRawMarkdownPlaceholder } from './placeholderDetection';
 export {
   importMarkdownToDocJson,
   type MarkdownBlockParser,
@@ -32,7 +31,7 @@ export {
 } from './markdownJsonSerializer';
 export { assertMarkdownDocumentBlockIdentities } from './functions/assertMarkdownDocumentBlockIdentities';
 export { parseMarkdownDocJson } from './functions/parseMarkdownDocJson';
-export { buildRawMarkdownPlaceholder, getDefaultContent } from './functions/markdownPlaceholder';
+export { getDefaultContent } from './functions/defaultMarkdownDocument';
 export {
   attachCitationNodesToDocJson,
   buildCitationNodeAttrs,
@@ -50,9 +49,3 @@ export type {
   WasmContentFragmentLike,
   WasmMarkLike,
 } from './types';
-export {
-  MarkdownNormalizationService,
-  type MarkdownImporter as MarkdownNormalizationImporter,
-  type MarkdownNormalizationBatchResult,
-  type MarkdownNormalizationResult,
-} from './orchestration/markdownNormalizationService';

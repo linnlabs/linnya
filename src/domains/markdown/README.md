@@ -56,6 +56,9 @@ Citation 窗口只接收实际取得的正文，不包含截断提示。正文�
 
 `MarkdownDocumentService.saveNewVersion()` 是正文版本进入 SQLite 前的强制闸门：先执行完整 schema 校验和规范化，再保存规范化后的 JSON；`readMarkdownVfsContent()` 和 `getDocument()` 读回时也重复校验。块历史快照通过 `validateBlockHistoryContentJson()` 使用同一 schema，并要求快照的 `rootBlock.id` 与目标块一致；BlockHistory 的查询路径也会重新校验已存快照。旧格式不做兼容或降级。
 
+编辑器读取、DocumentView 与 file-style 写入准备都只经 `getDocument()` 严格读取一次，不做读取前的占位规范化。
+早期把原文存进 `baseBlock.attrs.rawMarkdownSource` 的占位正文不是合法属性，按旧格式拒绝加载；新建文档始终先编译为结构化 JSON 再提交。
+
 Markdown 导入结果必须经过这份校验。pending 单块和文档级 Accept/Reject 在事务内合并完成后，也必须先校验最终完整 `docJson`，再保存版本并清理 pending；校验失败时正文和 pending 均保持不变。新增可持久化语义时，必须同时更新 schema、序列化/物化能力和生产 Editor conformance fixture，禁止让调用方自行猜测或静默降级。
 
 ## 围栏代码导入与导出
@@ -196,6 +199,11 @@ Markdown schema 当前包括：
 - `markdown_block_pending_revisions`
 
 这些表通过 `workspace_nodes.id` 获得项目文档身份。外键依赖不代表 Markdown 可以调用 Workspace 内部实现；跨领域业务动作必须通过公共合同、port 或 app-level orchestration 完成。
+
+Pending 与块历史按 `target_block_id` 挂在 rootBlock 上。`updateDocument` 保存正文时，在同一事务内删除指向已不存在块的这两类卫星行。
+App Server 启动维护只复查仍挂有卫星行的文档（`MarkdownOrphanBlockDataCleaner.listDocumentsWithBlockSatelliteData`），
+不读取其余正文，并在每篇之间让出事件循环，避免维护期间阻塞 HTTP 与 CLI 握手；只在实际删除或读取失败时逐篇记录日志。
+读取失败的旧格式文档单篇记为失败，其卫星数据保持不动。
 
 AudioBlock 已从生产 Renderer/backend schema、创建入口和 Editor 运行时依赖中撤下，但实现源码与专属表暂时保留，供未来独立 Audio domain 设计时研究。保留代码不等于继续支持 `audioBlock` 文档：含该节点的旧 doc JSON 会按严格 schema 拒绝加载，不做兼容或降级。
 

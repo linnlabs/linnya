@@ -42,32 +42,17 @@ function getContent(node: ProseMirrorNode | null): unknown[] {
   return Array.isArray(node?.content) ? node.content : [];
 }
 
-function readRawMarkdownSource(root: ProseMirrorNode | null): string | null {
-  for (const child of getContent(root)) {
-    const node = asNode(child);
-    if (!node || node.type !== 'baseBlock') continue;
-    const raw = getAttrs(node)['rawMarkdownSource'];
-    if (typeof raw === 'string' && raw.trim().length > 0) {
-      return raw;
-    }
-  }
-  return null;
-}
-
 function extractMarkdownFromRootBlock(
   root: ProseMirrorNode | null,
   projectInlineText?: MarkdownInlineTextProjector,
   projectInlineNode?: MarkdownInlineNodeProjector,
   includeAnnotations?: boolean,
 ): string {
-  return (
-    readRawMarkdownSource(root) ??
-    serializeRootBlockToMarkdown(root, {
-      projectInlineText,
-      projectInlineNode,
-      includeAnnotations,
-    })
-  );
+  return serializeRootBlockToMarkdown(root, {
+    projectInlineText,
+    projectInlineNode,
+    includeAnnotations,
+  });
 }
 
 export function flattenMarkdownDocumentBlocks(

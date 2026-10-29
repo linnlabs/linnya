@@ -15,6 +15,7 @@ export {
 export { buildMarkdownPendingCitationMetadata } from './orchestration/buildMarkdownPendingCitationMetadata';
 export {
   buildMarkdownDocumentFromText,
+  markdownTextDocumentBuilder,
   type MarkdownTextDocumentBuilder,
 } from './orchestration/buildMarkdownDocumentFromText';
 
