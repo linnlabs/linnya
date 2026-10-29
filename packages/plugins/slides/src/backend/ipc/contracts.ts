@@ -222,7 +222,8 @@ function readManualEditOperation(operation: Record<string, unknown>): SlidesManu
   }
   if (operation.op === 'move_slide') {
     assertOnlyKeys(operation, ['op', 'index', 'toIndex'], 'operation');
-    const index = operation.index; const toIndex = operation.toIndex;
+    const index = operation.index;
+    const toIndex = operation.toIndex;
     if (typeof index !== 'number' || typeof toIndex !== 'number' || !Number.isSafeInteger(index) || !Number.isSafeInteger(toIndex) || index < 0 || toIndex < 0) throw new Error('页面顺序无效。');
     return { op: 'move_slide', index, toIndex };
   }

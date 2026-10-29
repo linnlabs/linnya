@@ -10,7 +10,6 @@
     >
       <component
         :is="item.icon"
-       
       />
     </ToolbarButton>
     <ToolbarButton

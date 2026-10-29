@@ -6,6 +6,14 @@
     aria-hidden="true"
     focusable="false"
   >
-    <rect x="4.5" y="6.5" width="15" height="11" rx="1.5" fill="none" stroke="currentColor" />
+    <rect
+      x="4.5"
+      y="6.5"
+      width="15"
+      height="11"
+      rx="1.5"
+      fill="none"
+      stroke="currentColor"
+    />
   </svg>
 </template>

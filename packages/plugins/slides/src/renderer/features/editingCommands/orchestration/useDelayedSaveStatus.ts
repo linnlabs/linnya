@@ -20,7 +20,10 @@ export function useDelayedSaveStatus(status: Readonly<Ref<EditingCommandMessageK
       clear();
       shown.value = next;
     } else if (timer === null && shown.value !== 'slides.editingCommands.saving') {
-      timer = setTimeout(() => { timer = null; if (BUSY_STATUSES.has(status.value)) shown.value = 'slides.editingCommands.saving'; }, SAVE_STATUS_DELAY_MS);
+      timer = setTimeout(() => {
+        timer = null;
+        if (BUSY_STATUSES.has(status.value)) shown.value = 'slides.editingCommands.saving';
+      }, SAVE_STATUS_DELAY_MS);
     }
   });
   onScopeDispose(clear);

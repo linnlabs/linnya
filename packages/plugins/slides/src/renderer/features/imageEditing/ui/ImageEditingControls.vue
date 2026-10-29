@@ -48,7 +48,8 @@ const input = ref<HTMLInputElement | null>(null);
 const { target, fit, busy, message, setFit, replaceFile } = useImageEditing();
 function replaceImage(event: Event): void {
   if (!(event.target instanceof HTMLInputElement)) return;
-  const file = event.target.files?.[0]; event.target.value = '';
+  const file = event.target.files?.[0];
+  event.target.value = '';
   if (file) void replaceFile(file);
 }
 </script>

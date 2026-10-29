@@ -1,6 +1,6 @@
-import { changeManualLayer } from '../functions/changeManualLayer';
-import { moveSlideInDeckSource } from '../functions/moveSlideInDeckSource';
-import { insertObjectsAtSlide } from '../functions/insertObjectsAtSlide';
+import { changeManualLayer } from '../functions/changeManualLayer.js';
+import { moveSlideInDeckSource } from '../functions/moveSlideInDeckSource.js';
+import { insertObjectsAtSlide } from '../functions/insertObjectsAtSlide.js';
 import { ManualEditHistoryStore } from '../store/manualEditHistoryStore.js';
 import { advanceManualEditHistory, manualEditHistoryFocus, manualEditHistoryStatus, manualEditHistoryTarget, reconcileManualEditHistory } from '../functions/manualEditHistory.js';
 import { describeManualEditHistoryFocus } from '../functions/describeManualEditHistoryFocus.js';

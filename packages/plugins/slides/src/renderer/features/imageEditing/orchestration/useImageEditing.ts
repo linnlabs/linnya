@@ -8,7 +8,9 @@ import { importSlideImage } from './importSlideImage';
 import { IMAGE_EDITING_MESSAGES, type ImageEditingMessageKey } from '../definitions/imageEditingMessages';
 
 export function useImageEditing() {
-  const slides = useSlidesStore(); const manual = useSlidesManualEditingStore(); const submission = useManualEditSubmission();
+  const slides = useSlidesStore();
+  const manual = useSlidesManualEditingStore();
+  const submission = useManualEditSubmission();
   const busy = ref(false);
   const render = useSlidesRenderStore();
   const target = computed(() => manual.selectedTargets.length === 1 ? manual.selectedTarget : null);
@@ -31,13 +33,17 @@ export function useImageEditing() {
     busy.value = true;
     try {
       await submission.flush();
-      const documentId = slides.currentDeckId; const revision = manual.history?.revisionId ?? slides.documentBuildState?.versionId;
+      const documentId = slides.currentDeckId;
+      const revision = manual.history?.revisionId ?? slides.documentBuildState?.versionId;
       if (!documentId) return;
       const image = await importSlideImage(documentId, file);
       if (slides.currentDeckId !== documentId || (manual.history?.revisionId ?? slides.documentBuildState?.versionId) !== revision) throw new Error(message('changed'));
       await submission.enqueue({ operation: { op: 'set_image', targetKind: 'image', target: selected.authoringRef, assetId: image.assetId } }).settled;
-    } catch (error) { manual.setNotice(error instanceof Error ? error.message : message('failed')); }
-    finally { busy.value = false; }
+    } catch (error) {
+      manual.setNotice(error instanceof Error ? error.message : message('failed'));
+    } finally {
+      busy.value = false;
+    }
   }
   return { target, fit: currentFit, busy, message, setFit, replaceFile };
 }

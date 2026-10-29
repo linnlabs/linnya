@@ -165,7 +165,8 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     event.preventDefault();
     if (session.captureElement?.hasPointerCapture(session.pointerId)) session.captureElement.releasePointerCapture(session.pointerId);
     pointerSession = null;
-    marqueeRect.value = null; snapGuides.value = [];
+    marqueeRect.value = null;
+    snapGuides.value = [];
     if (session.kind === 'marquee') return;
     const preview = translationPreview.value;
     if (!session.dragged) {
@@ -179,7 +180,8 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
 
   function handlePointerCancel(event: PointerEvent): void {
     if (!pointerSession || pointerSession.pointerId !== event.pointerId) return;
-    cancelPointerGesture(); hoveredTarget.value = null;
+    cancelPointerGesture();
+    hoveredTarget.value = null;
   }
 
   function handlePointerLeave(): void {
@@ -224,7 +226,8 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
       return preview ? [preview] : [];
     });
     options.submitIntent({ operation: valid.length === 1 ? valid[0] : { op: 'batch', operations: valid }, visualPreviews: previews });
-    hoveredTarget.value = null; store.clearSelection();
+    hoveredTarget.value = null;
+    store.clearSelection();
     return true;
   }
 
@@ -291,7 +294,8 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     }
     if (session.kind === 'marquee') store.selectTargets(session.baseline);
     pointerSession = null;
-    marqueeRect.value = null; snapGuides.value = [];
+    marqueeRect.value = null;
+    snapGuides.value = [];
     store.setTranslationPreview(null);
     return true;
   }

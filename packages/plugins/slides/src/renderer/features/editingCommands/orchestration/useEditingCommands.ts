@@ -45,7 +45,10 @@ export function useEditingCommands() {
       if (settlement.status !== 'presented' || !settlement.focus) return;
       // 让用户看见被撤销的修改：先跳到恢复后的页，换页清空选区之后再请求重新选中。
       const index = Math.min(settlement.focus.slideIndex, slides.slideCount - 1);
-      if (index >= 0 && index !== slides.currentSlideIndex) { slides.setCurrentSlide(index); await nextTick(); }
+      if (index >= 0 && index !== slides.currentSlideIndex) {
+        slides.setCurrentSlide(index);
+        await nextTick();
+      }
       if (settlement.focus.targets.length > 0) manual.requestReveal({ targets: settlement.focus.targets });
     } catch (error) {
       // 写入失败已由队列记录；这里只补充未写入的原因，不能伪造一次保存失败。
@@ -73,7 +76,8 @@ export function useEditingCommands() {
     const key = event.key.toLowerCase();
     const action = key === 'z' ? (event.shiftKey ? 'redo' : 'undo') : key === 'y' && !event.shiftKey ? 'redo' : null;
     if (!action) return;
-    event.preventDefault(); event.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
     if (!event.repeat && (action === 'undo' ? canUndo.value : canRedo.value)) void runHistory(action);
   }
   return { setLayer, canUndo, canRedo, saveStatus, runHistory, handleHistoryShortcut, arrange };

@@ -11,8 +11,12 @@ const PASTE_OFFSET = 0.2;
 
 /** 同稿会话剪贴板保存完整作者值；粘贴每次生成新身份，切稿即清空。 */
 export function useElementClipboard() {
-  const slides = useSlidesStore(); const manual = useSlidesManualEditingStore(); const clipboard = useSlidesElementClipboardStore();
-  const submission = useManualEditSubmission(); const text = useTextInputSession(submission); const busy = ref(false);
+  const slides = useSlidesStore();
+  const manual = useSlidesManualEditingStore();
+  const clipboard = useSlidesElementClipboardStore();
+  const submission = useManualEditSubmission();
+  const text = useTextInputSession(submission);
+  const busy = ref(false);
   watch(() => slides.currentDeckId, () => clipboard.write(null));
   const canCopy = computed(() => manual.enabled && !busy.value && manual.selectedTargets.length > 0
     && manual.selectedTargets.every(target => target.capabilities.includes('copy')));
@@ -25,13 +29,18 @@ export function useElementClipboard() {
     busy.value = true;
     try {
       await submission.flush();
-      const documentId = slides.currentDeckId; const state = slides.documentBuildState;
+      const documentId = slides.currentDeckId;
+      const state = slides.documentBuildState;
       if (!documentId || state?.state !== 'ready') return null;
       // flush 等待保存，正式画面可能仍在刷新；复制应读取已提交的作者值。
       const objects = await slidesApi.copyObjects(documentId, manual.history?.revisionId ?? state.versionId, targets);
       return slides.currentDeckId === documentId ? { documentId, objects } : null;
-    } catch (error) { if (error instanceof Error) manual.setNotice(error.message); return null; }
-    finally { busy.value = false; }
+    } catch (error) {
+      if (error instanceof Error) manual.setNotice(error.message);
+      return null;
+    } finally {
+      busy.value = false;
+    }
   }
   async function copy(): Promise<boolean> {
     const content = await readSelection();
@@ -42,7 +51,8 @@ export function useElementClipboard() {
     if (text.requestCommit() === 'blocked') return null;
     const objects = content.objects.map(object => ({ ...object, editKey: `inserted-${crypto.randomUUID()}`,
       box: { ...object.box, x: object.box.x + PASTE_OFFSET, y: object.box.y + PASTE_OFFSET } }));
-    const documentId = slides.currentDeckId; const index = slides.currentSlideIndex;
+    const documentId = slides.currentDeckId;
+    const index = slides.currentSlideIndex;
     const previousSelection = manual.selectedTargets.map(target => target.elementId).join('\0');
     const ticket = submission.enqueue({ operation: { op: 'insert_objects', index, objects } });
     void ticket.settled.then(result => {
@@ -68,7 +78,8 @@ export function useElementClipboard() {
     if (!manual.enabled || !ownsDocumentShortcut(event) || !(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
     const key = event.key.toLowerCase();
     if (!['c', 'v', 'd'].includes(key)) return;
-    event.preventDefault(); event.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
     if (event.repeat) return;
     if (key === 'c') void copy(); else if (key === 'v') paste(); else void duplicate();
   }

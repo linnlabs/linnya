@@ -44,8 +44,14 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   const pendingPresentationRevision = computed(() => submission.value.phase === 'awaiting_frame'
     ? submission.value.revision : null);
 
-  function setHistory(value: SlidesManualEditHistoryStatus | null): void { history.value = value; historyError.value = false; }
-  function setHistoryError(value: boolean): void { historyError.value = value; }
+  function setHistory(value: SlidesManualEditHistoryStatus | null): void {
+    history.value = value;
+    historyError.value = false;
+  }
+
+  function setHistoryError(value: boolean): void {
+    historyError.value = value;
+  }
 
   /** 文稿当前能否手动写入；选区独立于它，只读时仍可选中对象交给 AI。 */
   function setEnabled(value: boolean): void {

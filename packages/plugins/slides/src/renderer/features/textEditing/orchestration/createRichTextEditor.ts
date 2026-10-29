@@ -69,7 +69,8 @@ export function createRichTextEditor(options: {
         if (field && !view.state.selection.empty) {
           const style = selectedTextStyle(view.state, resolveTextEditingStyleBase(options.target()));
           view.dispatch(closeHistory(patchSelectedTextStyle(view.state, { [field]: style[field] !== true })));
-          event.preventDefault(); return true;
+          event.preventDefault();
+          return true;
         }
       }
       if (event.key === 'Escape') { options.escape(event); return true; }

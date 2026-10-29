@@ -6,6 +6,22 @@
     aria-hidden="true"
     focusable="false"
   >
-    <rect x="8" y="8" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".14" stroke="currentColor" /><path d="M5 15.5V6.5A1.5 1.5 0 0 1 6.5 5h9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-dasharray="2 2" />
+    <rect
+      x="8"
+      y="8"
+      width="11"
+      height="11"
+      rx="1.5"
+      fill="currentColor"
+      fill-opacity=".14"
+      stroke="currentColor"
+    />
+    <path
+      d="M5 15.5V6.5A1.5 1.5 0 0 1 6.5 5h9"
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-dasharray="2 2"
+    />
   </svg>
 </template>

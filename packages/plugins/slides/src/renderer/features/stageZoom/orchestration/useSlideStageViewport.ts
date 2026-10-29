@@ -11,11 +11,11 @@ import type { SlideStageViewportOptions } from '../definitions/slideStageViewpor
 
 /** 滚动、fit、锚点缩放与光栅清晰度共用一个生命周期，编辑手势只消费坐标事实。 */
 export function useSlideStageViewport(options: SlideStageViewportOptions) {
-const uiStore = useSlidesUiStore();
-const { zoomLevel, zoomMode, fitZoomLevel, isFitZoom } = storeToRefs(uiStore);
-const scrollHostRef = ref<HTMLElement | null>(null);
-const scrollViewportMountRef = ref<HTMLElement | null>(null);
-const scrollViewportRef = ref<HTMLElement | null>(null);
+  const uiStore = useSlidesUiStore();
+  const { zoomLevel, zoomMode, fitZoomLevel, isFitZoom } = storeToRefs(uiStore);
+  const scrollHostRef = ref<HTMLElement | null>(null);
+  const scrollViewportMountRef = ref<HTMLElement | null>(null);
+  const scrollViewportRef = ref<HTMLElement | null>(null);
   const viewportWidth = ref(800);
   const viewportHeight = ref(600);
   const fitScale = ref(1);
@@ -374,7 +374,7 @@ const scrollViewportRef = ref<HTMLElement | null>(null);
       });
     },
   );
-return { scrollHostRef, scrollViewportMountRef, viewportMeasured, stageOverlayGeometryRevision,
-  actualSlideSize, logicalSlideSize, currentLayout, scrollContentStyle, canvasShellStyle,
-  renderScale, konvaRasterScale, handleWheel };
+  return { scrollHostRef, scrollViewportMountRef, viewportMeasured, stageOverlayGeometryRevision,
+    actualSlideSize, logicalSlideSize, currentLayout, scrollContentStyle, canvasShellStyle,
+    renderScale, konvaRasterScale, handleWheel };
 }

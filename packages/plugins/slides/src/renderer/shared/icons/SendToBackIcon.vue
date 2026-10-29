@@ -6,6 +6,24 @@
     aria-hidden="true"
     focusable="false"
   >
-    <rect x="5" y="5" width="11" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-dasharray="2 2" /><rect x="8" y="8" width="11" height="11" rx="1.5" fill="none" stroke="currentColor" />
+    <rect
+      x="5"
+      y="5"
+      width="11"
+      height="11"
+      rx="1.5"
+      fill="none"
+      stroke="currentColor"
+      stroke-dasharray="2 2"
+    />
+    <rect
+      x="8"
+      y="8"
+      width="11"
+      height="11"
+      rx="1.5"
+      fill="none"
+      stroke="currentColor"
+    />
   </svg>
 </template>

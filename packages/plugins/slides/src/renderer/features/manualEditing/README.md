@@ -108,4 +108,6 @@ The page supplies `preparePresentation` for structure selection. One logical com
 
 Editing command UI is owned by [editingCommands](../editingCommands/README.md), insertion by [elementInsertion](../elementInsertion/README.md), copy by [elementClipboard](../elementClipboard/README.md), and image changes by [imageEditing](../imageEditing/README.md). See [the user interaction contract](../../docs/editing-experience.md).
 
+## Text width handles
+
 Text boxes expose only width handles (`ManualTextWidthHandles`, `resolveManualTextWidth`): the right handle submits `set_text_width`; the left handle submits one batch of `translate_by` plus `set_text_width` so the right edge stays put. Widths and shifts are on the compiler grid; while dragging, a dashed ghost with the width label replaces the property toolbar, and the real reflow arrives with the committed revision.

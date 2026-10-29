@@ -76,9 +76,12 @@ Selecting the whole Text keeps font size, text color and deletion available afte
 
 Content and style previews are replayed in queue order by `manualEditing/projectTextEditingValues`, shared with input re-entry and passive draft presentation. A later full rich value therefore supersedes earlier whole styles while preserving unrelated marks. Native smoke covers local → whole → local with the first save held pending, each intervening revision installation and re-entry; save/reopen/export coverage verifies the same order against real compilation and SQLite.
 
+## Text emphasis and alignment
 
-Text 工具条增加粗体、斜体、下划线和整框左/中/右对齐。非空文本选区使用输入会话局部样式；整框动作进入原有命令队列，每次点击保留独立撤销边界。mixed 状态不以首字样式代替整个选区；显式 false 可以取消源码已有强调。Text 宽度、同级图层和多选排列由 editingCommands 拥有，本浮条不扩张为通用属性面板。
+The Text toolbar adds bold, italic, underline and a left/center/right alignment menu. A non-empty text selection applies local styles through the input session; whole-box actions go through the normal command queue, and each click keeps its own undo step. A mixed state is never replaced by the first character's style, and an explicit `false` can remove emphasis authored in source.
 
-浮条最前面是 AI 入口（`ai` prop，`ai` 事件）：选中对象能映射到源码目标时显示，由 `SlideStage` 展开 AI 输入框。`readonly` 表示文稿暂时不能手动写入，此时只保留 AI 入口，其余属性组不渲染。
+## AI entry, object groups and multi-selection
 
-单选浮条在属性组之后提供对象专属分组（`object` 插槽，图片的替换与适应开关由 imageEditing 填入）、“排列”（对齐到页面与同级图层，不可移动的方向禁用）和“更多”（复制、创建副本）。文字对齐是下拉菜单。多选时 `selectionCount > 1`，`target` 是选区外框（能力取成员交集），浮条换成对象数、六个对齐、两个分布、更多与删除。菜单项由 `functions/elementPropertyMenus.ts` 生成，动作通过事件交给 `SlideStage`，本 feature 不直接写队列。`anchor.reservedTop` 是舞台顶部命令条占用的高度，浮条不落进这片区域。
+The first group is the AI entry (`ai` prop, `ai` event). It appears when the selection maps to source targets; `SlideStage` opens the AI prompt. `readonly` means the deck cannot be written by hand right now, so only the AI entry is rendered.
+
+After the property groups, a single selection gets an object-specific group (the `object` slot, filled by imageEditing with replace and the fit switch), an Arrange menu (align to slide and sibling paint order, with no-op directions disabled) and a More menu (copy, duplicate). Menu items come from `functions/elementPropertyMenus.ts`; actions leave as events for `SlideStage`, and this feature never writes the queue directly. With `selectionCount > 1`, `target` is the selection bounds with the intersection of member capabilities, and the toolbar shows the object count, six alignments, two distributions, More and Delete. `anchor.reservedTop` is the height of the stage command bar; the toolbar never lands inside it.

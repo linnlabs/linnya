@@ -8,7 +8,8 @@ export async function importSlideImage(documentId: string, file: File): Promise<
     reader.readAsDataURL(file);
   });
   const bitmap = await createImageBitmap(file);
-  const width = bitmap.width; const height = bitmap.height;
+  const width = bitmap.width;
+  const height = bitmap.height;
   bitmap.close();
   const assetId = await slidesApi.importImage(documentId, dataUri.slice(dataUri.indexOf(',') + 1));
   return { assetId, width, height };

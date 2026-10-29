@@ -6,6 +6,12 @@
     aria-hidden="true"
     focusable="false"
   >
-    <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" />
+    <circle
+      cx="12"
+      cy="12"
+      r="7"
+      fill="none"
+      stroke="currentColor"
+    />
   </svg>
 </template>

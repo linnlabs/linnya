@@ -27,6 +27,8 @@ export const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
  */
 export const LAYOUT_TYPES_SOURCES = [
   path.join(REPO_ROOT, 'packages', 'plugins', 'slides', 'src', 'shared', 'authoringEditing', 'definitions', 'editableText.ts'),
+  // compose.manualEdits.additions 保存编辑器插入的对象；不展开会被生成为 unknown，AI 看不到结构，沙箱也不检查。
+  path.join(REPO_ROOT, 'packages', 'plugins', 'slides', 'src', 'shared', 'authoringEditing', 'definitions', 'insertedObject.ts'),
   path.join(
     REPO_ROOT,
     'packages',

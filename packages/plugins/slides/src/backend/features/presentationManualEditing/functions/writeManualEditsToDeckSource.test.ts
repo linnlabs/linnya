@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { typecheckCodegenSource } from '../../../sandbox/codegenTypecheck/typecheckCodegenSource';
 import {
+  insertObjectsInDeckSource,
   SlidesManualEditSourceError,
   writeManualEditsToDeckSource,
 } from './writeManualEditsToDeckSource';
@@ -186,6 +187,27 @@ describe('writeManualEditsToDeckSource', () => {
       color: '#123456',
       content: 'Final',
     });
+  });
+
+  it('删除编辑器插入的对象时直接移除，不留已删除标记，deck.js 不随编辑次数增长', () => {
+    const box = { x: 1, y: 1, w: 2, h: 1 };
+    const inserted = insertObjectsInDeckSource(BASE_SOURCE, 'overview', [
+      { kind: 'shape', editKey: 'note', geometry: 'rect', fill: '#336699', content: '', box },
+      { kind: 'shape', editKey: 'badge', geometry: 'ellipse', fill: '#336699', content: '', box },
+    ]);
+    const moved = writeManualEditsToDeckSource(inserted, {
+      op: 'translate_by', target: { slideKey: 'overview', editKey: 'note' }, targetKind: 'shape', delta: { dx: 0.5, dy: 0 },
+    });
+    const removed = writeManualEditsToDeckSource(moved.source, {
+      op: 'delete_target', target: { slideKey: 'overview', editKey: 'note' }, targetKind: 'shape',
+    });
+    expect(removed.manualEdits.slides).toEqual([{ slideKey: 'overview', targets: [], additions: [expect.objectContaining({ editKey: 'badge' })] }]);
+    expect(removed.source).not.toContain('"note"');
+    const empty = writeManualEditsToDeckSource(removed.source, {
+      op: 'delete_target', target: { slideKey: 'overview', editKey: 'badge' }, targetKind: 'shape',
+    });
+    expect(empty.manualEdits.slides).toEqual([]);
+    expect(empty.source.length).toBeLessThan(inserted.length);
   });
 
   it('删除任意作者目标时清除过去人工值并保留目标类型', () => {

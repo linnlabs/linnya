@@ -6,6 +6,19 @@
     aria-hidden="true"
     focusable="false"
   >
-    <path d="M5 4.5h14M5 19.5h14" stroke="currentColor" stroke-linecap="round" /><rect x="8" y="10" width="8" height="4" rx="1" fill="none" stroke="currentColor" />
+    <path
+      d="M5 4.5h14M5 19.5h14"
+      stroke="currentColor"
+      stroke-linecap="round"
+    />
+    <rect
+      x="8"
+      y="10"
+      width="8"
+      height="4"
+      rx="1"
+      fill="none"
+      stroke="currentColor"
+    />
   </svg>
 </template>

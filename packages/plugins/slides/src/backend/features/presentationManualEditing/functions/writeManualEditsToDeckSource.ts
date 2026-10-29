@@ -156,6 +156,9 @@ function applyOperation(
   const slide = slideIndex === -1
     ? { slideKey: operation.target.slideKey, targets: [] }
     : current.slides[slideIndex];
+  if (operation.op === 'delete_target' && slide.additions?.some(object => object.editKey === operation.target.editKey)) {
+    return replaceSlide(current, slideIndex, removeInsertedObject(slide, operation.target.editKey));
+  }
   const targetIndex = slide.targets.findIndex(target => target.editKey === operation.target.editKey);
   const existing = targetIndex === -1 ? undefined : slide.targets[targetIndex];
   const target = applyTargetOperation(existing, operation);
@@ -167,6 +170,24 @@ function applyOperation(
     ? [...current.slides, nextSlide]
     : current.slides.map((entry, index) => index === slideIndex ? nextSlide : entry);
   return { version: 2, slides };
+}
+
+/**
+ * 编辑器插入的对象只存在于 additions；删除时连同它的人工值和绘制顺序一起移除，
+ * 不留“已删除”标记，避免 deck.js 随编辑次数增长。撤销由修订恢复负责，不依赖标记。
+ */
+function removeInsertedObject(slide: SlidesManualSlideEdits, editKey: string): SlidesManualSlideEdits | null {
+  const additions = (slide.additions ?? []).filter(object => object.editKey !== editKey);
+  const targets = slide.targets.filter(target => target.editKey !== editKey);
+  const paintOrder = (slide.paintOrder ?? []).filter(key => key !== editKey);
+  if (additions.length === 0 && targets.length === 0 && paintOrder.length === 0) return null;
+  return { slideKey: slide.slideKey, targets, ...(additions.length > 0 ? { additions } : {}), ...(paintOrder.length > 0 ? { paintOrder } : {}) };
+}
+
+function replaceSlide(current: SlidesManualEdits, slideIndex: number, slide: SlidesManualSlideEdits | null): SlidesManualEdits {
+  return { version: 2, slides: slide === null
+    ? current.slides.filter((_, index) => index !== slideIndex)
+    : current.slides.map((entry, index) => index === slideIndex ? slide : entry) };
 }
 
 function applyTargetOperation(

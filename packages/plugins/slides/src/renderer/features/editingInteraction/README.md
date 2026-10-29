@@ -39,16 +39,24 @@
 - `smoke:preview-transitions` 在 Electron 原生输入下挂载完整生产 SlideStage 和同一提交队列，只替换 IPC／文稿读取端口。检查普通 Text／Shape 的 Enter 和命令身份、双击 Shape、外部点击、Ctrl+Enter、Escape、IME 事件、等待中再次编辑、旧回执不夺焦点、失败恢复及 Stage 正式帧结算；另验证待保存文字在 resize 过程中实时更新尺寸／垂直对齐，Escape 取消拉伸并恢复；保留原有属性和 resize 冒烟。
 - 这些合成文稿测试不替代默认用户文稿的保存、重新打开、历史或导出验收。
 
+## 诊断日志
+
 启用 `localStorage['linnya.slides.debug'] = 'verbose'` 后，`EditingInteraction` 记录 text_open、text_handoff、text_settled；`ManualEditQueue` 记录 clientOperationIds 到 commandId 的绑定及结算。与既有 ManualEditTrace 串联，不记录用户文字或源码。
 
+## 富文本草稿
 
 独立 Text 的 draft／baseline／无焦点 presentation 持有源码同型的字符串或文字 run 数组；Shape 仍保持字符串。范围格式修改只更新这一会话草稿，不单独入队、不用字符串覆盖带样式正文。结束会话经既有 set_text_content 命令一次写入完整值；基线比较覆盖正文与局部样式，失败草稿、同目标重入和旧回执结算沿用原有身份规则。工具条失焦与数字 change 的先后由 textEditing 的焦点区域协调，不引入第二套保存状态。
 
 正文 intent 同时携带完整值的类型化预览，与整框样式按队列原顺序投影。pending presentation 读取统一作者值和几何；重入会话使用这一已经投影的草稿，不能再回到 store 中未包含后续整框格式的原始 draft。失败草稿仍保留自己的完整值用于恢复，旧回执按操作身份结算，输入中的正文不随后台帧刷新被重置。
 
+## 键盘与可编辑状态
+
 画布方向键在有选区时按幻灯片坐标微移 1 CSS px（Shift 为 10 px），不受 zoom 影响；长按重复在 keyup/失焦/选择交接时合为一次命令。Escape 先取消当前拖动或键盘微移，再取消选区。没有对象选区时上下方向键翻页，PageUp/PageDown 显式翻页。文本、输入法、菜单、表单和按钮保留自身按键。画布没有编辑模式：可选性只取决于当前画面是否为生成文稿的正式帧；`canMutate` 为 false 时仍可选中（供 AI 使用），但不平移、不删除、不进入文字输入，方向键交还翻页。空白页同样可编辑。
 
+## 多选、框选与吸附
 
 Shift 点击切换成员；空白处拖动只选完全框住的对象（外层没框全时，其中被框住的子对象入选），Shift 框选追加。框选取消恢复按下前的集合。多选拖动/微移/删除提交单个 batch，祖先与后代不同时入选。对齐线比较页边、页中心和未选对象的边/中心，阈值为 6 个屏幕像素；`snapCanvasTranslation` 同时给出线的范围（对齐页面贯穿整页，对齐对象只连接两者），画成品红实线；Shift 锁定主轴，Alt 临时跳过吸附。显示的最终 delta 就是提交值。
+
+## 原生画布冒烟
 
 `canvasSelectionSmoke` 使用原生 Chromium 指针与键盘，覆盖 Shift 多选、框选/群组拖动取消、连续 12 次方向键只产生一次原子命令和外围留白取消。其 IPC 受控；实际源码/SQLite/撤销/资源保留由后端集成场景验证。

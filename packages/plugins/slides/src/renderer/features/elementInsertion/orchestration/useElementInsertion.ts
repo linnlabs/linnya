@@ -49,13 +49,17 @@ export function useElementInsertion() {
       if (!documentId || !size) return;
       const image = await importSlideImage(documentId, file);
       const scale = Math.min(size.width * 0.6 / image.width, size.height * 0.6 / image.height);
-      const w = image.width * scale; const h = image.height * scale;
+      const w = image.width * scale;
+      const h = image.height * scale;
       const assetId = image.assetId;
       if (slides.currentDeckId !== documentId || (manual.history?.revisionId ?? slides.documentBuildState?.versionId) !== revision || slides.currentSlideIndex !== index) throw new Error(message('slides.insert.changed'));
       await insert([{ kind: 'image', editKey: `inserted-${crypto.randomUUID()}`, assetId, fit: 'contain', alt: file.name,
         box: { x: (size.width - w) / 2, y: (size.height - h) / 2, w, h } }], index);
-    } catch (error) { manual.setNotice(error instanceof Error ? error.message : message('slides.insert.failed')); }
-    finally { busy.value = false; }
+    } catch (error) {
+      manual.setNotice(error instanceof Error ? error.message : message('slides.insert.failed'));
+    } finally {
+      busy.value = false;
+    }
   }
   return { available, busy, message, insertSimple, insertImage };
 }

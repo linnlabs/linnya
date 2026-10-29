@@ -1,4 +1,4 @@
-import { readInsertedObjectLocations } from './readInsertedObjectLocations';
+import { readInsertedObjectLocations } from './readInsertedObjectLocations.js';
 import type ts from 'typescript';
 
 import {

@@ -6,6 +6,12 @@
     aria-hidden="true"
     focusable="false"
   >
-    <path d="M15 7.5 18.5 11 15 14.5M18 11H9.75a4.25 4.25 0 0 0 0 8.5H12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
+    <path
+      d="M15 7.5 18.5 11 15 14.5M18 11H9.75a4.25 4.25 0 0 0 0 8.5H12"
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
   </svg>
 </template>

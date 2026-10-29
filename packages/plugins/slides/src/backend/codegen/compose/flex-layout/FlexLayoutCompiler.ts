@@ -1,5 +1,5 @@
-import { orderManualPaint } from './ManualPaintOrder';
-import { appendInsertedObjects } from './InsertedObjectProjection';
+import { orderManualPaint } from './ManualPaintOrder.js';
+import { appendInsertedObjects } from './InsertedObjectProjection.js';
 /**
  * FlexLayoutCompiler — Flex 布局树 → DirectComposeInput
  *

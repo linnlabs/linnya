@@ -14,9 +14,6 @@
 //   - Sandbox typecheck:  pptComposeProfile.typecheck.ts feeds this file to
 //                         the TypeScript compiler API for codegen-source mode.
 
-// ─── External dependency stubs (replaced with `unknown` for sandbox isolation) ──
-type SlidesInsertedObject = unknown;
-
 // ─── Layout types (extracted from flexComposeContract.ts) ───────────────────
 
 interface AbsolutePositionBox {
@@ -892,6 +889,18 @@ type SlidesAuthorTextStyle = LayoutTextStyleInput;
 
 /** 与 Text.content 相同的作者值；公式不属于本期手动编辑合同。 */
 type SlidesEditableTextContent = string | LayoutPlainTextRun[];
+
+type SlidesInsertedObject = SlidesInsertedObjectBase & (
+  | { readonly kind: 'text'; readonly content: SlidesEditableTextContent; readonly style: SlidesAuthorTextStyle }
+  | { readonly kind: 'shape'; readonly geometry: 'rect' | 'ellipse'; readonly fill: string; readonly content: SlidesEditableTextContent }
+  | { readonly kind: 'image'; readonly assetId: string; readonly fit: 'contain' | 'cover'; readonly alt: string }
+);
+
+interface SlidesInsertedObjectBase {
+  readonly editKey: string;
+  /** 新对象使用独立绝对定位，不改变原有 Flex 作者树。单位 inches。 */
+  readonly box: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
+}
 
 type SlidesManualAtomicEdit =
   | SlidesManualShapeEdit
