@@ -23,7 +23,10 @@ export function textAlignmentMenu(message: Message): CustomSelectOption<ElementP
   }));
 }
 
-/** 排列：对齐到页面（单选）或选区外框（多选），以及同级图层；已在最顶层／最底层时禁用对应动作。 */
+/**
+ * 排列：对齐到页面放进标准二级子菜单，顶层只留图层四项，菜单在窗格里放得下、不必滚动。
+ * 已在最顶层／最底层时禁用对应的图层动作。
+ */
 export function arrangeMenu(message: Message, layer: ElementLayerAvailability | null): CustomSelectOption<ElementPropertyMenuValue>[] {
   const align: CustomSelectOption<ElementPropertyMenuValue>[] = [
     { value: 'arrange:left', label: message('slides.elementProperties.arrange.left'), iconComponent: AlignObjectsLeftIcon },
@@ -33,10 +36,13 @@ export function arrangeMenu(message: Message, layer: ElementLayerAvailability | 
     { value: 'arrange:middle', label: message('slides.elementProperties.arrange.middle'), iconComponent: AlignObjectsMiddleIcon },
     { value: 'arrange:bottom', label: message('slides.elementProperties.arrange.bottom'), iconComponent: AlignObjectsBottomIcon },
   ];
-  if (!layer) return [{ isGroup: true, label: message('slides.elementProperties.arrange.toPage') }, ...align];
+  const toPage: CustomSelectOption<ElementPropertyMenuValue> = {
+    label: message('slides.elementProperties.arrange.toPage'), iconComponent: AlignObjectsCenterIcon, children: align,
+  };
+  if (!layer) return [toPage];
   return [
-    { isGroup: true, label: message('slides.elementProperties.arrange.toPage') }, ...align, { isSeparator: true },
-    { isGroup: true, label: message('slides.elementProperties.layer') },
+    toPage,
+    { isSeparator: true },
     { value: 'layer:front', label: message('slides.elementProperties.layer.front'), iconComponent: BringToFrontIcon, disabled: !layer.front },
     { value: 'layer:forward', label: message('slides.elementProperties.layer.forward'), disabled: !layer.forward },
     { value: 'layer:backward', label: message('slides.elementProperties.layer.backward'), disabled: !layer.backward },

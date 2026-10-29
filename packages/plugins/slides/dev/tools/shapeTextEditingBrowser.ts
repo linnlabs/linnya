@@ -185,7 +185,8 @@ export function mountShapeTextEditingSmoke(withCommands = false) {
       }
     },
     async assertFontMenu(selected: number | null) {
-      const menu = host.querySelector('.slides-element-font-menu');
+      // 列表菜单 Teleport 到 body；仍按舞台视口约束，所以下面继续检查不越出 pane。
+      const menu = document.querySelector('.slides-element-font-menu');
       const list = menu?.querySelector<HTMLElement>('[role="listbox"]');
       if (!menu || !list) throw new Error('Font size list did not open');
       await Promise.allSettled(list.getAnimations().map(animation => animation.finished));
@@ -197,12 +198,35 @@ export function mountShapeTextEditingSmoke(withCommands = false) {
       if (rect.left < bounds.left || rect.right > bounds.right || rect.top < bounds.top || rect.bottom > bounds.bottom) throw new Error('Font list escaped the pane');
     },
     fontOptionPoint(value: number) {
-      const option = Array.from(host.querySelectorAll<HTMLElement>('.slides-element-font-menu [role="option"]'))
+      const option = Array.from(document.querySelectorAll<HTMLElement>('.slides-element-font-menu [role="option"]'))
         .find(element => element.textContent?.trim() === String(value));
       if (!option) throw new Error(`Missing font size option ${value}`);
       option.scrollIntoView({ block: 'nearest' });
       const rect = option.getBoundingClientRect();
       return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+    },
+    async arrangeParentPoint() {
+      const menu = document.querySelector<HTMLElement>('.slides-element-property-menu');
+      const row = menu?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+      if (!menu || !row) throw new Error('Arrange menu has no align-to-slide submenu');
+      // 与真实指针一致：主菜单入场结束后才移到父项。
+      await Promise.allSettled(menu.getAnimations().map(animation => animation.finished));
+      const box = row.getBoundingClientRect();
+      return { x: Math.round(box.left + 24), y: Math.round(box.top + box.height / 2) };
+    },
+    async assertArrangeSubmenu() {
+      // 子菜单以窗口为界：贴着父项、完整可见，不能被舞台的 contain/overflow 平移或裁切。
+      const trigger = host.querySelector<HTMLElement>('[data-property="arrange"]');
+      const menu = document.querySelector<HTMLElement>('.slides-element-property-menu');
+      const row = menu?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+      const submenu = document.querySelector<HTMLElement>('.select-submenu');
+      if (!trigger || !menu || !row || !submenu || getComputedStyle(submenu).visibility !== 'visible') throw new Error('Arrange submenu did not open');
+      await Promise.allSettled(submenu.getAnimations().map(animation => animation.finished));
+      const t = trigger.getBoundingClientRect(), m = menu.getBoundingClientRect(), r = row.getBoundingClientRect(), s = submenu.getBoundingClientRect();
+      if (Math.abs(m.left - t.left) > 1 || m.top < t.bottom) throw new Error(`Arrange menu is not anchored to its trigger: ${JSON.stringify({ t, m })}`);
+      if (s.top > r.top + 1 || s.bottom < r.bottom - 1 || (s.left < m.right && s.right > m.left)) throw new Error(`Arrange submenu is detached from its row: ${JSON.stringify({ r, s })}`);
+      if (s.top < 0 || s.left < 0 || s.bottom > window.innerHeight || s.right > window.innerWidth) throw new Error('Arrange submenu was clipped by the window');
+      if (submenu.querySelectorAll('[role="menuitem"]').length !== 6) throw new Error('Arrange submenu lost alignment actions');
     },
     assertFontFocus() {
       if (document.activeElement !== host.querySelector('[data-property="fontSize"]')) throw new Error('Font list did not return focus to its trigger');
@@ -266,6 +290,7 @@ export function mountShapeTextEditingSmoke(withCommands = false) {
       const panel = host.querySelector('.slides-element-property-popover');
       if (panel instanceof HTMLElement && !panel.inert) throw new Error('Closed property popup still accepts interaction');
       if (host.querySelector('.slides-element-property-toolbar [aria-expanded="true"]')) throw new Error('Property trigger still expanded');
+      if (document.querySelector('.slides-element-property-menu-host, .slides-element-font-menu')) throw new Error('Closed property menu is still mounted');
     },
     assertGeometryUnchanged() {
       if (ui.zoomLevel !== 1 || host.querySelector('.slide-stage')?.getBoundingClientRect().height !== 420) throw new Error('Toolbar changed the viewport/zoom');

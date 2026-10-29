@@ -3,6 +3,7 @@
     ref="dropdown"
     :manual-mode="true"
     :is-open="openPopover !== null"
+    :external-content-ref="fontMenu"
     class="slides-element-property-controls"
     @close="close()"
   >
@@ -220,43 +221,49 @@
       </FloatingToolbar>
     </template>
     <template #content>
-      <div
-        v-if="openPopover !== null && LIST_POPOVERS.has(openPopover) && position !== null"
-        ref="fontMenu"
-        class="slides-element-font-menu"
-        :style="popoverStyle"
-        @pointerdown.stop
-        @keydown.stop
-        @keydown.esc.stop.prevent="close(true)"
-      >
-        <!-- 整个工具条都属于内部点击，避免旧列表关闭刚打开的相邻属性；焦点归还由外层 BaseDropdown 负责。 -->
-        <CustomSelect
-          v-if="openPopover === 'fontSize'"
-          :model-value="textStyle?.fontSizePt ?? undefined"
-          :options="ELEMENT_FONT_SIZE_OPTIONS"
-          manual-mode
-          :external-trigger-ref="toolbar?.element ?? null"
-          :trigger-aria-label="message('slides.elementProperties.fontSize')"
-          :options-motion-direction="popoverDirection"
-          :options-max-height="`${Math.min(240, popoverPosition?.maxHeight ?? anchor.viewport.height - 16)}px`"
-          :class-names="{ options: 'slides-element-font-menu__options' }"
-          @update:model-value="selectFontSize"
-          @close="close()"
-        />
-        <CustomSelect
-          v-else
-          :model-value="openPopover === 'alignment' ? `text-align:${currentTextAlign}` : null"
-          :options="menuOptions"
-          manual-mode
-          semantic-role="menu"
-          :external-trigger-ref="toolbar?.element ?? null"
-          :trigger-aria-label="menuLabel"
-          :options-motion-direction="popoverDirection"
-          :class-names="{ options: 'slides-element-font-menu__options slides-element-property-menu' }"
-          @update:model-value="selectMenuItem"
-          @close="close()"
-        />
-      </div>
+      <!-- manual 子菜单以 fixed 原位渲染；舞台的 contain/overflow 会让它错位并被裁切，因此列表整包移到 body。 -->
+      <Teleport to="body">
+        <div
+          v-if="openPopover !== null && LIST_POPOVERS.has(openPopover) && position !== null"
+          ref="fontMenu"
+          :class="openPopover === 'fontSize' ? 'slides-element-font-menu' : 'slides-element-property-menu-host'"
+          :style="menuStyle"
+          @pointerdown.stop
+          @keydown.stop
+          @keydown.esc.stop.prevent="close(true)"
+        >
+          <!-- 整个工具条都属于内部点击，避免旧列表关闭刚打开的相邻属性；焦点归还由外层 BaseDropdown 负责。 -->
+          <CustomSelect
+            v-if="openPopover === 'fontSize'"
+            :model-value="textStyle?.fontSizePt ?? undefined"
+            :options="ELEMENT_FONT_SIZE_OPTIONS"
+            manual-mode
+            :external-trigger-ref="toolbar?.element ?? null"
+            :trigger-aria-label="message('slides.elementProperties.fontSize')"
+            :options-motion-direction="popoverDirection"
+            :options-max-height="`${Math.min(240, popoverPosition?.maxHeight ?? anchor.viewport.height - 16)}px`"
+            :class-names="{ options: 'slides-element-font-menu__options' }"
+            @update:model-value="selectFontSize"
+            @close="close()"
+          />
+          <CustomSelect
+            v-else
+            :model-value="openPopover === 'alignment' ? `text-align:${currentTextAlign}` : null"
+            :options="menuOptions"
+            manual-mode
+            :parent-is-open="true"
+            semantic-role="menu"
+            :external-trigger-ref="toolbar?.element ?? null"
+            :trigger-aria-label="menuLabel"
+            :options-motion-direction="popoverDirection"
+            min-width="160px"
+            :options-max-height="popoverPosition ? `${popoverPosition.maxHeight}px` : undefined"
+            :class-names="{ options: 'slides-element-property-menu' }"
+            @update:model-value="selectMenuItem"
+            @close="close()"
+          />
+        </div>
+      </Teleport>
       <DropdownPanel
         :id="popoverId"
         ref="popover"
@@ -380,7 +387,7 @@ const fontMenu = ref<HTMLDivElement | null>(null);
 const colorOverlay = ref<HTMLDivElement | null>(null);
 const colorControl = ref<InstanceType<typeof ElementColorControl> | null>(null);
 const popoverId = useId();
-const { position, popoverPosition, openPopover, toggle, close, handleToolbarKeydown } = useElementPropertyToolbar({
+const { position, popoverPosition, menuPosition, openPopover, toggle, close, handleToolbarKeydown } = useElementPropertyToolbar({
   deleteSelected: () => emit('delete-selected'),
   dropdown,
   anchor: toRef(props, 'anchor'),
@@ -429,6 +436,11 @@ const popoverStyle = computed<CSSProperties>(() => ({
   visibility: popoverPosition.value ? 'visible' : 'hidden',
   maxWidth: `${props.anchor.viewport.width - 16}px`, maxHeight: `${popoverPosition.value?.maxHeight ?? props.anchor.viewport.height - 16}px`,
 }));
+const menuStyle = computed<CSSProperties>(() => ({
+  ...popoverStyle.value,
+  left: `${menuPosition.value?.left ?? 0}px`, top: `${menuPosition.value?.top ?? 0}px`,
+  visibility: menuPosition.value ? 'visible' : 'hidden',
+}));
 function selectColor(color: string): void {
   if (openPopover.value === 'text') submitTextColor(color);
   else if (openPopover.value === 'fill') submitFillColor(color);
@@ -443,4 +455,6 @@ function dismissPopover(): void {
   // 悬停展开不搬走主面板焦点，但 Escape 仍须先关闭最内层草稿。
   if (!colorControl.value?.dismissCustom()) close(true);
 }
+/** 列表菜单已移到 body；文字编辑会话据此把菜单内的指针与焦点视为工具条内部。 */
+defineExpose({ menuElement: fontMenu });
 </script>

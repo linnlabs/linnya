@@ -36,7 +36,7 @@ import type { InlineTextSelection } from '../definitions/richTextEditor';
 import PlainInlineTextEditor from './PlainInlineTextEditor.vue';
 const RichInlineTextEditor = defineAsyncComponent(() => import('./RichInlineTextEditor.vue'));
 const props = defineProps<{ target: TextEditingTarget; modelValue: SlidesEditableTextContent; slideLeft: number; slideTop: number;
-  renderScale: number; label: string; toolbarElement?: HTMLElement | null; selectAll?: boolean }>();
+  renderScale: number; label: string; toolbarElements?: readonly (HTMLElement | null)[]; selectAll?: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [value: SlidesEditableTextContent]; commit: []; 'composition-start': []; 'composition-end': [];
   escape: [event: KeyboardEvent]; 'commit-shortcut': [event: KeyboardEvent]; selection: [selection: InlineTextSelection | null] }>();
 const richEditor = ref<InstanceType<typeof RichInlineTextEditor> | null>(null);

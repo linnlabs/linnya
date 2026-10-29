@@ -348,6 +348,10 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
     await window.webContents.insertText(value);
     await settle();
   }
+  async function hover(expression: string) {
+    window.webContents.sendInputEvent({ type: 'mouseMove', ...(await point(expression)) });
+    await settle();
+  }
   async function key(keyCode: string) {
     window.webContents.sendInputEvent({ type: 'keyDown', keyCode });
     // Enter 激活原生 button 依赖 keypress；Electron 原始 keyDown 不会自动补 char 事件。
@@ -365,6 +369,12 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
   await key('Escape');
   await click('window.shapeTextEditingSmoke.point("badge")');
   await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge"); window.shapeTextEditingSmoke.assertGeometryUnchanged()');
+  // 舞台下方空间不足以放下两级菜单；子菜单必须越过舞台裁切，贴着父项完整显示。
+  await click(control('[data-property="arrange"]'));
+  await hover('window.shapeTextEditingSmoke.arrangeParentPoint()');
+  await evaluate('window.shapeTextEditingSmoke.assertArrangeSubmenu()');
+  await key('Escape');
+  await evaluate('window.shapeTextEditingSmoke.assertPopupClosed()');
   await click(control('[data-property="fill"]'));
   await evaluate('window.shapeTextEditingSmoke.assertPanelMotion(); window.shapeTextEditingSmoke.settlePanelMotion()');
   await click(control('[title="#16A34A"]'));

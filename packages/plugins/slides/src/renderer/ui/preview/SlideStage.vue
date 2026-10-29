@@ -98,7 +98,7 @@
           :key="textSessionId ?? undefined"
           v-model="textDraft"
           :select-all="textSelectAll"
-          :toolbar-element="textToolbarHost"
+          :toolbar-elements="[textToolbarHost, textPropertyToolbar?.menuElement ?? null]"
           :target="textEditorTarget"
           :slide-left="currentLayout.slideLeft"
           :slide-top="currentLayout.slideTop"
@@ -141,6 +141,7 @@
       @pointerdown.stop
     >
       <ElementPropertyToolbar
+        ref="textPropertyToolbar"
         :key="textSessionId ?? undefined"
         :target="manualSelectedTarget"
         :anchor="inlineTextAnchor"
@@ -393,6 +394,7 @@ const {
 
 const inlineTextEditor = ref<InstanceType<typeof InlineTextEditor> | null>(null);
 const textToolbarHost = ref<HTMLElement | null>(null);
+const textPropertyToolbar = ref<InstanceType<typeof ElementPropertyToolbar> | null>(null);
 const inlineTextSelection = shallowRef<InlineTextSelection | null>(null);
 const inlineTextAnchor = computed(() => {
   const selection = inlineTextSelection.value;

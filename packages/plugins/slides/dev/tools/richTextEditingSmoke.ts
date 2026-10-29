@@ -50,9 +50,13 @@ export async function verifyRichTextEditing(window: BrowserWindow): Promise<void
   for (const property of ['bold', 'italic', 'underline']) await click(control(`[data-property="${property}"]`));
   await assert('s.draft[1].style.bold && s.draft[1].style.italic && s.draft[1].style.underline && s.commands.length === 0');
   await writeFile(path.resolve(__dirname, 'rich-text-selection.png'), (await window.webContents.capturePage()).toPNG());
+  // 字号列表移到 body 后仍属于本次编辑：指针和焦点进入列表都不能提交或退出编辑。
+  await click(control('[data-property="fontSize"]'));
+  await click('window.shapeTextEditingSmoke.fontOptionPoint(36)');
+  await assert('s.phase === "editing" && s.commands.length === 0 && s.draft[1].style.fontSize === 36 && s.draft[1].style.bold');
   // 点击别的对象一次即可提交完整 runs 并选中 B；再次进入 pending 文本也应保留局部样式。
   await click('window.shapeTextEditingSmoke.point("second")');
-  await assert('s.phase === "idle" && s.selected === "second" && s.commands.length === 1 && s.commands[0].content[1].style.fontSize === 28');
+  await assert('s.phase === "idle" && s.selected === "second" && s.commands.length === 1 && s.commands[0].content[1].style.fontSize === 36');
   await click('window.shapeTextEditingSmoke.point("standalone")');
   await assert('s.font === "" && s.hasDelete');
   await click(control('.slides-element-property-toolbar__font input'));

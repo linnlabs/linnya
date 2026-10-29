@@ -53,12 +53,20 @@
 @media (prefers-reduced-motion: reduce) {
   .slides-element-property-toolbar__font-chevron { transition: none; }
 }
+/* 列表菜单 Teleport 到 body，使用窗口坐标与 portal 菜单层级（见 useElementPropertyToolbar.menuPosition）。 */
 .slides-element-font-menu {
-  position: absolute;
-  z-index: var(--linnya-ui-layer-floating-panel);
+  position: fixed;
+  z-index: var(--linnya-ui-layer-portal-menu);
   width: 84px;
 }
 .slides-element-font-menu__options { box-sizing: border-box; }
+/* 动作菜单按内容定宽（不小于 160px），左边与触发按钮对齐。 */
+.slides-element-property-menu-host {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-portal-menu);
+  width: max-content;
+}
+.slides-element-property-menu { box-sizing: border-box; }
 .slides-element-property-controls { display: contents; }
 .slides-element-color-overlay {
   position: absolute;
