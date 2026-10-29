@@ -96,8 +96,6 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 
 建议的changeConditions填写偏好、许可、证据等补充定性变化；已登记数值条件由numericBasis生成recommendationBasis.changeConditions，交付使用这份程序文字。rationale和nextAction仍由作者判断，不受程序语义认证。未登记的门槛本次不会自动新增。
 
-recommend在保存前只核对每个conditionalAdvice.cases的label与nextAction：仅明确单位“当天00:00起分钟”的变动输入或算值，若仍写基线数而未写情景数，将以decision.scenario_text_mismatch拒绝，列出情景id和两组值。按该情景重算并改正后再提交；旧建议和版本不会半保存。匹配限该时刻的普通整数分钟值和HH:MM；小数和指数整体略过，同时写前后值可作比较。金额、人数、普通耗时等暂不拦截。该检查不覆盖其他建议字段、行动、最终答复或说明稿，也不认证数字含义。
-
 ## 程序报告原件
 
 执行 `linnya-decision export <id> --expected-revision <n>` 时，Shell使用`requires_write_access: true`，因为它会写当前会话文件。成功回执的artifact包含conversation locator、UTF-8字节sha256和bytes，以及源decision/revision/inputRevision。artifact.markdownLink是本次原件的可粘贴Markdown链接；deliveryNote是程序生成的记录id、revision、inputRevision和链接附注。用read_file读取该locator，交付时粘贴deliveryNote；原件由程序生成，无需再次抄数。每次导出新文件，旧文件保留，记录和建议均不变。
