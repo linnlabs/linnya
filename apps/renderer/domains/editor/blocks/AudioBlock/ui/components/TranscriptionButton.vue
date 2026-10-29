@@ -4,7 +4,8 @@
     :class="`transcription-state-${transcriptionState}`"
     @click="$emit('click')"
     :disabled="isDisabled"
-    :title="buttonTitle"
+    :data-linnya-tooltip="buttonTitle"
+    :aria-label="buttonTitle"
   >
     <div class="audio-transcription-icon-wrapper">
       <RippleLoadingIcon v-if="transcriptionState === 'loading'" />

@@ -71,7 +71,7 @@
             <IconButton
               variant="overlay"
               :label="editorMessage('editor.imageBlock.action.preview')"
-              @click.stop.prevent="openPreviewModal"
+              @click.stop.prevent="openPreviewModal($event)"
             >
               <ZoomInIcon />
             </IconButton>
@@ -152,6 +152,7 @@
       :is-visible="isPreviewModalOpen"
       :src="node.attrs.src"
       :alt="node.attrs.alt || editorMessage('editor.imageBlock.action.preview')"
+      :source-element="previewSource"
       @close="closePreviewModal"
       @error="closePreviewModal"
     />
@@ -164,7 +165,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick, inject } fr
 import { imageFigureWidth } from '../functions/imageBlockPresentation';
 import { Selection } from 'prosemirror-state';
 import ImageResizePanel from './ImageResizePanel.vue';
-import { IconButton, ImagePreviewModal } from '@linnya/renderer-ui';
+import { IconButton, ImagePreviewModal, useImagePreviewSource } from '@linnya/renderer-ui';
 import { ZoomInIcon } from '@linnya/renderer-ui/icons';
 import { ResizeIcon } from '@linnya/renderer-ui/icons';
 import { AlignIcon } from '@linnya/renderer-ui/icons';
@@ -240,6 +241,7 @@ const figureStyle = computed(() => {
 // 控制弹窗显示的状态
 const isResizeModalOpen = ref(false);
 const isPreviewModalOpen = ref(false);
+const { sourceElement: previewSource, rememberSource } = useImagePreviewSource();
 const resizePanelPosition = ref({ top: 0, left: 0 });
 
 // 响应式控件逻辑
@@ -352,8 +354,9 @@ const handleResizeConfirm = ({ width, height }) => {
   closeResizeModal();
 };
 
-const openPreviewModal = () => {
+const openPreviewModal = (event) => {
   if (imageLoadFailed.value) return;
+  rememberSource(event, '.image-container');
   isPreviewModalOpen.value = true;
 };
 

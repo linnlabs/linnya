@@ -5,6 +5,7 @@
         v-if="visible"
         ref="popoverRef"
         class="citation-popover"
+        :data-placement="arrowPosition === 'bottom' ? 'top' : 'bottom'"
         :style="popoverStyle"
         @mouseenter="handleMouseEnter"
         @mouseleave="handleMouseLeave"

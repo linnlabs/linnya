@@ -5,7 +5,8 @@
         <button
           class="toolbar-button"
           @click="insertTimestamp"
-          :title="editorMessage('editor.audioBlock.action.insertTimestamp')"
+          :data-linnya-tooltip="editorMessage('editor.audioBlock.action.insertTimestamp')"
+          :aria-label="editorMessage('editor.audioBlock.action.insertTimestamp')"
         >
           <TimeIcon />
         </button>
@@ -14,7 +15,8 @@
           class="toolbar-button" 
           @click="editor?.chain().focus().toggleBold().run()"
           :class="{ 'is-active': editor?.isActive('bold') }"
-          :title="editorMessage('editor.audioBlock.action.bold')"
+          :data-linnya-tooltip="editorMessage('editor.audioBlock.action.bold')"
+          :aria-label="editorMessage('editor.audioBlock.action.bold')"
         >
           <BoldIcon />
         </button>
@@ -22,7 +24,8 @@
           class="toolbar-button" 
           @click="editor?.chain().focus().toggleItalic().run()"
           :class="{ 'is-active': editor?.isActive('italic') }"
-          :title="editorMessage('editor.audioBlock.action.italic')"
+          :data-linnya-tooltip="editorMessage('editor.audioBlock.action.italic')"
+          :aria-label="editorMessage('editor.audioBlock.action.italic')"
         >
           <ItalicIcon />
         </button>
@@ -30,7 +33,8 @@
           class="toolbar-button" 
           @click="editor?.chain().focus().toggleBulletList().run()"
           :class="{ 'is-active': editor?.isActive('bulletList') }"
-          :title="editorMessage('editor.audioBlock.action.bulletList')"
+          :data-linnya-tooltip="editorMessage('editor.audioBlock.action.bulletList')"
+          :aria-label="editorMessage('editor.audioBlock.action.bulletList')"
         >
           <ListItemIcon />
         </button>
@@ -38,7 +42,8 @@
           class="toolbar-button" 
           @click="editor?.chain().focus().toggleHeading({ level: 2 }).run()"
           :class="{ 'is-active': editor?.isActive('heading', { level: 2 }) }"
-          :title="editorMessage('editor.audioBlock.action.heading')"
+          :data-linnya-tooltip="editorMessage('editor.audioBlock.action.heading')"
+          :aria-label="editorMessage('editor.audioBlock.action.heading')"
         >
           <HeadingIcon />
         </button>

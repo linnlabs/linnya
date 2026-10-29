@@ -22,10 +22,13 @@
         v-if="item.status === 'ready'"
         type="button"
         class="conversation-image-gallery__preview"
-        :title="conversationMessage('conversation.userMessage.image.previewNamed', {
+        :data-linnya-tooltip="conversationMessage('conversation.userMessage.image.previewNamed', {
           name: attachmentName(item),
         })"
-        @click="selectedAttachmentId = item.attachment.id"
+        :aria-label="conversationMessage('conversation.userMessage.image.previewNamed', {
+          name: attachmentName(item),
+        })"
+        @click="rememberSource($event); selectedAttachmentId = item.attachment.id"
       >
         <img :src="item.objectUrl" :alt="attachmentName(item)">
       </button>
@@ -51,6 +54,7 @@
     :is-visible="selectedItem !== null"
     :src="selectedItem?.objectUrl ?? ''"
     :alt="selectedItem ? attachmentName(selectedItem) : ''"
+    :source-element="previewSource"
     @close="selectedAttachmentId = null"
   />
 </template>
@@ -58,7 +62,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { ConversationAttachmentRef } from '@app/schemas';
-import { ImagePreviewModal } from '@linnya/renderer-ui';
+import { ImagePreviewModal, useImagePreviewSource } from '@linnya/renderer-ui';
 import { RefreshIcon } from '@linnya/renderer-ui/icons';
 import type { ConversationImagePreviewItem } from '../definitions/conversationImagePreview';
 import { resolveImageAttachmentErrorMessage } from '../functions/resolveImageAttachmentErrorMessage';
@@ -81,6 +85,7 @@ const { conversationMessage } = useConversationLocalization();
 const { items, retry } = useConversationImagePreviews(() => props.attachments);
 const isResultMode = computed(() => props.displayMode !== 'thumbnail');
 const selectedAttachmentId = ref<string | null>(null);
+const { sourceElement: previewSource, rememberSource } = useImagePreviewSource();
 const selectedItem = computed(() => {
   const item = items.value.find(candidate => candidate.attachment.id === selectedAttachmentId.value);
   return item?.status === 'ready' ? item : null;

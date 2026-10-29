@@ -17,7 +17,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 ## 公开入口
 
-- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useImagePreviewSource`、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -161,7 +161,7 @@ feature 拥有。
 
 `BaseButton`（自 2.6.0）是所有按钮的唯一视觉 owner：八种语义 variant（primary、secondary、ghost、plain、danger、soft、tint、outline）、作用于 outline 与 plain 的 accent / info / neutral / danger tone、与 `--control-height-sm/md/lg` 对应的三档尺寸、胶囊形与占满宽度。组件只拥有展示、原生禁用与焦点环，不理解保存、提交或加载等业务状态；调用方通过 `disabled` 和文案投影进行中的状态。图标通过 `icon` 插槽放入 14px 槽位并对辅助技术隐藏，按钮文字或 `aria-label` 是可访问名称。普通属性、`aria-*`、`data-*`、`class`、`style` 与事件都落在唯一的原生 `button`；业务只能定制外围位置与宽度，不覆盖 `.linnya-ui-button*` 内部选择器。
 
-`IconButton`（自 2.6.0）是纯图标按钮的视觉 owner：xs / sm / md / lg 四档外框与图标尺寸、ghost / subtle / overlay 三种底色、neutral / danger tone 与强调色浅底的 `active` 态。`label` 必填并同时作为 `aria-label` 与原生提示；模板 ref 通过暴露的 `element` 取得原生按钮供浮层定位，函数式 ref 使用 `resolveIconButtonElement`。会 hover / 选中的行可把 `--linnya-ui-icon-button-hover-bg` 设为 `var(--linnya-ui-icon-button-hover-bg-raised)` 让按钮再高一层，除此之外业务不覆盖 `.linnya-ui-icon-button*` 内部选择器。编辑器格式工具条继续使用 `ToolbarButton`。
+`IconButton`（自 2.6.0）是纯图标按钮的视觉 owner：xs / sm / md / lg 四档外框与图标尺寸、ghost / subtle / overlay 三种底色、neutral / danger tone 与强调色浅底的 `active` 态。`label` 必填并同时作为 `aria-label` 与悬停提示（共享提示服务绘制，自 2.8.0 起不再使用原生 `title`；需要附加快捷键时传 `tooltipText`）；模板 ref 通过暴露的 `element` 取得原生按钮供浮层定位，函数式 ref 使用 `resolveIconButtonElement`。会 hover / 选中的行可把 `--linnya-ui-icon-button-hover-bg` 设为 `var(--linnya-ui-icon-button-hover-bg-raised)` 让按钮再高一层，除此之外业务不覆盖 `.linnya-ui-icon-button*` 内部选择器。编辑器格式工具条继续使用 `ToolbarButton`。
 
 `ActionButtons` 由两个 `BaseButton` 组成，保留原有 props、事件与插槽；主操作 default / danger / accent 分别对应 primary / danger / soft，次操作 filled / ghost / plain 对应 secondary / ghost / plain，并在组内保证 80px 最小宽度。选择哪种层级、怎样组合见[设计规范](./docs/design.md#92-按钮)。目前消费者包括知识库页面与设置、项目知识库关联、设置页（存储空间、内存诊断、添加模型）、文档历史、编辑器面板（公式、图片尺寸、引用、查找替换、块历史、Review）、对话卡片、命令输入对话框、项目列表空态、包内 `TimePicker`，以及全部 `ActionButtons` 使用方。
 
@@ -212,7 +212,7 @@ workspace/runtime 的产品逻辑 namespace，不是 GitHub 或 npm 身份声明
 
 Alert 与 portal menu 保持同层是现有行为，仍由同层 DOM 顺序决定，不表示已经建立统一弹层栈。迁移期间禁止借 token 重排前后关系；完整 Esc/focus/stack manager 属于独立交互演进。
 
-`Modal` 只拥有通用遮罩、标题、关闭入口、视口尺寸约束、`content|internal` 滚动模式和可选 footer；业务表单与流程继续归调用方。自 2.7.0 起，可通过 `title-extra` 插槽在标题旁放来源或状态标签，标题本身的字阶和长标题换行仍由 Modal 拥有。`AlertDialog` 保持现有确认/取消/关闭事件投影，并支持结构化 section 和风险文案；危险样式优先由 `isDangerousAction` 明确声明，当前仍保留既有中英文文案推断以确保迁移等价。`ImagePreviewModal` 的 `classNames` 只向 overlay 和 image 节点注入业务命名空间 class，不把内部 selector 变成公共 CSS API。
+`Modal` 只拥有通用遮罩、标题、关闭入口、视口尺寸约束、`content|internal` 滚动模式和可选 footer；业务表单与流程继续归调用方。自 2.8.0 起进出场由遮罩淡底色与弹窗本体缩放（`--modal-*` token）组成，正文滚动时不加分隔线。自 2.7.0 起，可通过 `title-extra` 插槽在标题旁放来源或状态标签，标题本身的字阶和长标题换行仍由 Modal 拥有。`AlertDialog` 保持现有确认/取消/关闭事件投影，并支持结构化 section 和风险文案；危险样式优先由 `isDangerousAction` 明确声明，当前仍保留既有中英文文案推断以确保迁移等价。`ImagePreviewModal` 的 `classNames` 只向 overlay 和 image 节点注入业务命名空间 class，不把内部 selector 变成公共 CSS API。自 2.8.0 起可传入 `sourceElement`（缩略图或包着缩略图的按钮，调用方用 `useImagePreviewSource()` 在点击处记录），大图从缩略图展开、关闭时缩回；不传或不满足条件（缩略图离屏、浏览器不支持、减少动态效果）时保持淡入淡出。
 
 当前 Modal 没有 focus trap、统一 Esc stack 或关闭后焦点恢复，AlertDialog 也保留迁移前的键盘监听时机。它们是已登记的交互/可访问性欠账，不得在纯 owner 迁移中用临时判断改写；后续必须单独设计、决策和验收。
 
@@ -236,7 +236,7 @@ Alert 与 portal menu 保持同层是现有行为，仍由同层 DOM 顺序决�
 
 ## 悬浮提示
 
-`HoverTooltip` 只承载简短、不可交互的说明。真实指针移动到触发器时显示；键盘导航形成 `focus-visible` 时显示；触摸移动不显示。窗口失焦会清除当前提示和输入来源，重新激活窗口本身不会恢复旧提示，必须等待下一次真实指针或键盘输入。上下放置、8px 默认间距、水平视口约束、Teleport、过渡、DOM class 与 tooltip 4000 层级均保持迁移前结果。
+`HoverTooltip` 与 `IconButton` 的 `label` 只承载简短、不可交互的说明，二者由同一个共享提示服务绘制：服务在 `document.body` 下维护一个全局气泡（`.hover-tooltip`，tooltip 4000 层级），按事件委托服务带 `data-linnya-tooltip` 的元素，不给触发器包额外元素。真实指针移动到触发器时显示（首次等待 500ms，在相邻控件之间或提示刚消失 300ms 内无延迟）；键盘导航形成 `focus-visible` 时立即显示；触摸移动不显示；点击触发器或按 Esc 收起。窗口失焦会清除当前提示和输入来源，重新激活窗口本身不会恢复旧提示，必须等待下一次真实指针或键盘输入。默认放在触发器下方、8px 间距、水平视口约束，下方放不下而上方放得下时自动翻到上方；`IconButton` 不再使用原生 `title`。任何元素加上 `data-linnya-tooltip="文字"`（可选 `data-linnya-tooltip-placement`、`data-linnya-tooltip-offset`）即可获得同一套提示，Host 在应用根组件调用 `useHoverTooltipService()` 启动服务；自己写样式的图标按钮用这个属性替代 `title`，并同时提供 `aria-label`。
 
 包内只监听标准 browser 事件，不读取 Electron preload。Electron Host 在 app composition 中通过 `HOVER_TOOLTIP_WINDOW_FOCUS_PORT_KEY` 提供 `HoverTooltipWindowFocusPort`；Host 组件树中的插件自然继承该 port，无需也不得自行接触 Electron。独立 browser consumer 未注入时直接使用 browser-only 语义。该端口只传递窗口焦点事实，不得扩展为 Host UI 状态或权限入口。
 

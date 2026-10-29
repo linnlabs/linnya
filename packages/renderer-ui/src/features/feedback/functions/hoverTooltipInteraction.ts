@@ -1,3 +1,7 @@
+import {
+  HOVER_TOOLTIP_OPEN_DELAY_MS,
+  HOVER_TOOLTIP_WARM_WINDOW_MS,
+} from '../definitions/hoverTooltip';
 import type {
   HoverTooltipInteractionEvent,
   HoverTooltipInteractionState,
@@ -52,4 +56,34 @@ export function resolveHoverTooltipPosition(
       ? triggerRect.top - tooltipRect.height - offset
       : triggerRect.bottom + offset,
   };
+}
+
+export interface HoverTooltipOpenDelayInput {
+  /** 当前是否已有提示在显示（从一个目标移到另一个目标）。 */
+  readonly visible: boolean;
+  readonly lastHiddenAt: number;
+  readonly now: number;
+  readonly viaKeyboard: boolean;
+}
+
+/** 键盘聚焦、已在显示、或刚刚消失不久时立即出现；否则等待 HOVER_TOOLTIP_OPEN_DELAY_MS。 */
+export function resolveHoverTooltipOpenDelay(input: HoverTooltipOpenDelayInput): number {
+  if (input.visible || input.viaKeyboard) return 0;
+  if (input.now - input.lastHiddenAt < HOVER_TOOLTIP_WARM_WINDOW_MS) return 0;
+  return HOVER_TOOLTIP_OPEN_DELAY_MS;
+}
+
+/** 首选一侧放不下而另一侧放得下时翻到另一侧；两侧都放不下保持首选。 */
+export function resolveHoverTooltipPlacement(
+  triggerRect: Pick<HoverTooltipRectangle, 'top' | 'bottom'>,
+  tooltipHeight: number,
+  viewportHeight: number,
+  preferred: HoverTooltipPlacement,
+  offset: number,
+  viewportPadding = 8,
+): HoverTooltipPlacement {
+  const fitsBelow = triggerRect.bottom + offset + tooltipHeight <= viewportHeight - viewportPadding;
+  const fitsAbove = triggerRect.top - offset - tooltipHeight >= viewportPadding;
+  if (preferred === 'bottom') return fitsBelow || !fitsAbove ? 'bottom' : 'top';
+  return fitsAbove || !fitsBelow ? 'top' : 'bottom';
 }

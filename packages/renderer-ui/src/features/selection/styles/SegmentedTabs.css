@@ -1,5 +1,10 @@
 /* Renderer UI selection feature：保留迁移前 selector 与 computed style。 */
 .segmented-tabs {
+  /* 指示器的位置与宽度由组件量出后以内联样式覆盖；这里是量出之前的默认值。 */
+  --segmented-tabs-indicator-x: 0px;
+  --segmented-tabs-indicator-width: 0;
+
+  position: relative;
   display: flex;
   min-width: 0;
   flex-direction: row;
@@ -19,9 +24,7 @@
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-tight);
   cursor: pointer;
-  transition:
-    border-color var(--duration-medium) var(--ease-standard),
-    color var(--duration-medium) var(--ease-standard);
+  transition: color var(--duration-medium) var(--ease-standard);
 }
 
 .segmented-tabs__button:hover:not(:disabled) {
@@ -29,8 +32,26 @@
 }
 
 .segmented-tabs__button.is-active {
-  border-bottom-color: var(--color-accent);
   color: var(--color-accent);
+}
+
+/* 单根指示器：1px 宽的线按激活页签的宽度 scaleX、按位置 translateX；位置由组件量出后写入两个变量。 */
+.segmented-tabs__indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  height: 2px;
+  background: var(--color-accent);
+  transform: translateX(var(--segmented-tabs-indicator-x)) scaleX(var(--segmented-tabs-indicator-width));
+  transform-origin: 0 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented-tabs.is-indicator-ready .segmented-tabs__indicator {
+  opacity: 1;
+  transition: transform var(--duration-medium) var(--ease-standard);
 }
 
 .segmented-tabs__button:focus-visible {

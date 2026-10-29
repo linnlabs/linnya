@@ -56,7 +56,7 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 | 标签/实体 chip | `@linnya/renderer-ui` 的 `TagChip` | 支持图标、关闭按钮、可选颜色和明确节点的 `classNames`。 |
 | 模态框 | `@linnya/renderer-ui` 的 `Modal` | 标准居中弹窗，支持明确的滚动职责、固定 footer、尺寸和关闭行为配置。 |
 | 确认/提醒对话框 | `@linnya/renderer-ui` 的 `AlertDialog` | 基于 `Modal` 和 `ActionButtons` 的通用确认框。 |
-| 图片预览 | `@linnya/renderer-ui` 的 `ImagePreviewModal` | 全屏图片预览；业务占位内容走 slot，节点样式扩展走 `classNames`。 |
+| 图片预览 | `@linnya/renderer-ui` 的 `ImagePreviewModal` | 全屏图片预览；业务占位内容走 slot，节点样式扩展走 `classNames`；传入 `sourceElement`（用 `useImagePreviewSource()` 在点击处记录缩略图）时从缩略图展开。 |
 | 可拖拽面板 | `@linnya/renderer-ui` 的 `DraggablePanel` | 编辑器/画布内浮层，支持拖拽和可选 resize；业务内部节点样式通过 `classNames` 扩展。 |
 | 悬浮提示 | `@linnya/renderer-ui` 的 `HoverTooltip` | 简短说明，不用于承载复杂交互；插件直接依赖 package，不接触 Electron adapter。 |
 | 通知条 | `@linnya/renderer-ui` 的 `NotificationBar` | 纯展示组件；Host 全局状态、计时与 CharacterCount 避让由 `app/notification` 负责。 |
@@ -86,7 +86,7 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 ### 悬浮提示
 
-`HoverTooltip` 区分指针与键盘两种真实交互来源：指针移动到触发器上时显示，键盘导航形成 `focus-visible` 焦点时显示。窗口失焦会关闭现有提示；重新激活窗口本身不会恢复旧提示，必须等待新的指针移动或键盘导航，避免 Chromium 恢复历史焦点时误弹出。组件与浏览器状态机现由 package 拥有；Linnya Host 在 app-level orchestration 中把主进程 `BrowserWindow` 广播适配为 `HoverTooltipWindowFocusPort`，package 和插件都不读取 `window.electronAPI`。运行在 Host 组件树中的插件自然继承该 port；独立 browser consumer 未注入时使用同语义 DOM 事件。
+`HoverTooltip` 与 `IconButton` 共用一个提示服务，区分指针与键盘两种真实交互来源：指针移动到触发器上时显示（首次等待 500ms，相邻控件之间无延迟），键盘导航形成 `focus-visible` 焦点时立即显示。窗口失焦会关闭现有提示；重新激活窗口本身不会恢复旧提示，必须等待新的指针移动或键盘导航，避免 Chromium 恢复历史焦点时误弹出。组件与浏览器状态机现由 package 拥有；Linnya Host 在 app-level orchestration 中把主进程 `BrowserWindow` 广播适配为 `HoverTooltipWindowFocusPort`，package 和插件都不读取 `window.electronAPI`。运行在 Host 组件树中的插件自然继承该 port；独立 browser consumer 未注入时使用同语义 DOM 事件。
 
 ### 通知
 
@@ -151,7 +151,8 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 - `size`：xs / sm / md / lg，外框 20 / 24 / 28 / 32px，图标 14 / 18 / 18 / 20px；默认 sm。选择规则见[设计规范](./design.md#93-图标按钮)。
 - `variant`：ghost（默认，透明底）/ subtle（静止浅底，用于与输入框并排的添加操作）/ overlay（叠在图片等内容上，白色图标，底条由容器提供）；`tone="danger"` 悬停显示错误色。
 - `active` 只表达视觉上的选中 / 展开，语义由调用方补 `aria-pressed` 或 `aria-expanded`。
-- `label` 同时是 `aria-label` 与原生 `title`；外层已有自定义提示时传 `:tooltip="false"`。
+- `label` 同时是 `aria-label` 与悬停提示（共享提示服务绘制，不再使用原生 `title`）；外层已有自定义提示时传 `:tooltip="false"`，需要附加快捷键等内容时传 `tooltip-text`（`label` 仍是可访问名称）。
+- 自己写样式的图标按钮不用 `IconButton` 时，用 `data-linnya-tooltip="文字"` 替代原生 `title`，并同时提供 `aria-label`。
 - 模板 ref 拿到的是组件实例，原生按钮在 `element` 上；函数式 ref 用 `resolveIconButtonElement(el)` 取出。
 - 按钮放在会 hover / 选中的行里时，在行的操作容器上设置 `--linnya-ui-icon-button-hover-bg: var(--linnya-ui-icon-button-hover-bg-raised)`；不要覆盖 `.linnya-ui-icon-button*` 内部选择器。
 

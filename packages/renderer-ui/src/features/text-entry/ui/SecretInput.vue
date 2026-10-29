@@ -19,7 +19,7 @@
       type="button"
       :disabled="disabled"
       :aria-label="visibilityLabel"
-      :title="visibilityLabel"
+      :data-linnya-tooltip="visibilityLabel"
       @click="toggleVisibility"
     >
       <SecretVisibilityIcon :visible="visible" />
@@ -31,6 +31,7 @@
 import { computed, normalizeClass, normalizeStyle, ref, useAttrs } from 'vue';
 import { SecretVisibilityIcon } from '@linnya/renderer-ui/icons';
 import { useSharedComponentLocalization } from '@linnya/renderer-ui/localization';
+import { useHoverTooltipService } from '../../feedback';
 
 defineOptions({
   inheritAttrs: false,
@@ -62,6 +63,7 @@ const attrs = useAttrs();
 const inputRef = ref<HTMLInputElement | null>(null);
 const visible = ref(false);
 const { sharedComponentMessage } = useSharedComponentLocalization();
+useHoverTooltipService();
 
 const rootClass = computed(() => normalizeClass(attrs.class));
 const rootStyle = computed(() => normalizeStyle(attrs.style));

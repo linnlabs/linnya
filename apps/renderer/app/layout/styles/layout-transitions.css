@@ -4,7 +4,6 @@
  * 包含：
  * - 侧边栏滑入/滑出动画
  * - AI 助手面板动画
- * - 模态框淡入/淡出动画
  * - 内容区域过渡
  */
 
@@ -21,18 +20,6 @@
 .sidebar-fade-leave-to {
   opacity: 0;
   transform: translateX(-100%); /* 从左侧滑入/滑出 */
-}
-
-/* === 模态框过渡动画 === */
-
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity var(--duration-medium);
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
 }
 
 /* === 内容区域过渡 === */

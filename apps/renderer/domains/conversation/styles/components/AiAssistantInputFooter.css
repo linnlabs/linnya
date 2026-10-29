@@ -136,20 +136,24 @@
   /* 由 JS 动态写入 top/left */
 }
 
-/* 菜单过渡动画：对齐 HEAD~2 */
-.ai-assistant-input-action-menu-fade-enter-active,
+.ai-assistant-input-action-menu-fade-enter-active {
+  transform-origin: bottom left;
+  transition: var(--popup-transition-enter);
+}
+
 .ai-assistant-input-action-menu-fade-leave-active {
-  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
+  transform-origin: bottom left;
+  transition: var(--popup-transition-leave);
 }
 
 .ai-assistant-input-action-menu-fade-enter-from {
   opacity: 0;
-  transform: translateY(8px);
+  transform: var(--popup-enter-up);
 }
 
 .ai-assistant-input-action-menu-fade-leave-to {
   opacity: 0;
-  transform: translateY(4px);
+  transform: var(--popup-leave);
 }
 
 /* 主菜单为多分组能力入口，需要稳定宽度承载标题与图标。 */

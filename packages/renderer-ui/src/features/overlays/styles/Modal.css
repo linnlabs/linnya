@@ -113,12 +113,33 @@
   background: transparent;
 }
 
-.modal-overlay.app-modal-fade-enter-active,
+/*
+ * 进出场：遮罩只淡它自己的底色，弹窗本体另走缩放（见 geometry.css 的 --modal-*）。
+ * 遮罩根节点必须保留一条真实的 transition：Vue 的 <Transition> 只读根节点的过渡时长来决定何时移除节点。
+ */
+.modal-overlay.app-modal-fade-enter-active {
+  transition: background-color var(--duration-medium) var(--ease-standard);
+}
+
 .modal-overlay.app-modal-fade-leave-active {
-  transition: opacity var(--duration-medium);
+  transition: background-color var(--duration-short) var(--ease-standard);
 }
 
 .modal-overlay.app-modal-fade-enter-from,
 .modal-overlay.app-modal-fade-leave-to {
+  background-color: transparent;
+}
+
+.app-modal-fade-enter-active .modal-container {
+  transition: var(--modal-transition-enter);
+}
+
+.app-modal-fade-leave-active .modal-container {
+  transition: var(--modal-transition-leave);
+}
+
+.app-modal-fade-enter-from .modal-container,
+.app-modal-fade-leave-to .modal-container {
   opacity: 0;
+  transform: var(--modal-hidden);
 }

@@ -112,8 +112,3 @@
   background: var(--color-border-default);
   box-shadow: none;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .linnya-ui-slider::-webkit-slider-thumb { transition: none; }
-  .linnya-ui-slider::-moz-range-thumb { transition: none; }
-}

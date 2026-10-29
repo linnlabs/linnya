@@ -9,12 +9,10 @@
  * 3. 圆角与编辑器整体容器配合
  */
 
-
 /* 
  * 菜单栏内部容器
  * 作用：限制菜单栏内容宽度，与内容区保持一致
  */
-
 
 /* 
  * 表格尺寸选择器包装器
@@ -34,27 +32,22 @@
   display: inline-block;
 }
 
-/* 
- * 表格尺寸选择器过渡动画
- * 作用：平滑的进入/退出效果
- */
-.table-selector-fade-enter-active,
+.table-selector-fade-enter-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-enter);
+}
+
 .table-selector-fade-leave-active {
-  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
+  transform-origin: top left;
+  transition: var(--popup-transition-leave);
 }
 
 .table-selector-fade-enter-from {
   opacity: 0;
-  transform: translateY(-8px) scale(0.95);
+  transform: var(--popup-enter-down);
 }
 
 .table-selector-fade-leave-to {
   opacity: 0;
-  transform: translateY(-4px) scale(0.98);
-}
-
-.table-selector-fade-enter-to,
-.table-selector-fade-leave-from {
-  opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: var(--popup-leave);
 }

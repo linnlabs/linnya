@@ -102,15 +102,22 @@
   background-color: var(--color-bg-hover);
 }
 
-.ai-writing-fade-enter-active,
-.ai-writing-fade-leave-active {
-  transition:
-    opacity var(--duration-short) var(--ease-enter),
-    transform var(--duration-short) var(--ease-enter);
+.ai-writing-fade-enter-active {
+  transform-origin: top center;
+  transition: var(--popup-transition-enter);
 }
 
-.ai-writing-fade-enter-from,
+.ai-writing-fade-leave-active {
+  transform-origin: top center;
+  transition: var(--popup-transition-leave);
+}
+
+.ai-writing-fade-enter-from {
+  opacity: 0;
+  transform: var(--popup-enter-down);
+}
+
 .ai-writing-fade-leave-to {
   opacity: 0;
-  transform: translateY(-10px) scale(0.98);
+  transform: var(--popup-leave);
 }

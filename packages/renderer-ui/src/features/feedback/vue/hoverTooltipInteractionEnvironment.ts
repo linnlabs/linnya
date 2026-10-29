@@ -1,4 +1,4 @@
-import { inject, onBeforeUnmount, onMounted, readonly, shallowRef } from 'vue';
+import { readonly, shallowRef } from 'vue';
 import type {
   HoverTooltipInteractionEvent,
   HoverTooltipInputModality,
@@ -8,10 +8,7 @@ import {
   isHoverTooltipModifierOnlyKey,
   reduceHoverTooltipInteractionState,
 } from '../functions/hoverTooltipInteraction';
-import {
-  HOVER_TOOLTIP_WINDOW_FOCUS_PORT_KEY,
-  type HoverTooltipWindowFocusPort,
-} from '../ports/hoverTooltipWindowFocusPort';
+import type { HoverTooltipWindowFocusPort } from '../ports/hoverTooltipWindowFocusPort';
 
 const isWindowActive = shallowRef(INITIAL_HOVER_TOOLTIP_INTERACTION_STATE.isWindowActive);
 const inputModality = shallowRef<HoverTooltipInputModality>(
@@ -71,21 +68,24 @@ function detachWindowListeners(): void {
   removeNativeWindowFocusListener = null;
 }
 
-export function useHoverTooltipInteractionEnvironment() {
-  const windowFocusPort = inject(HOVER_TOOLTIP_WINDOW_FOCUS_PORT_KEY, null);
+/** 只读的输入来源与窗口活动状态；由 acquireHoverTooltipInteractionEnvironment 的持有者驱动。 */
+export const hoverTooltipInteractionEnvironment = {
+  inputModality: readonly(inputModality),
+  isWindowActive: readonly(isWindowActive),
+};
 
-  onMounted(() => {
-    consumerCount += 1;
-    if (consumerCount === 1) attachWindowListeners(windowFocusPort);
-  });
+/** 多个持有者共享一组 browser / native listener，最后一个释放时才卸载。 */
+export function acquireHoverTooltipInteractionEnvironment(
+  windowFocusPort: HoverTooltipWindowFocusPort | null,
+): () => void {
+  consumerCount += 1;
+  if (consumerCount === 1) attachWindowListeners(windowFocusPort);
 
-  onBeforeUnmount(() => {
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
     consumerCount -= 1;
     if (consumerCount === 0) detachWindowListeners();
-  });
-
-  return {
-    inputModality: readonly(inputModality),
-    isWindowActive: readonly(isWindowActive),
   };
 }

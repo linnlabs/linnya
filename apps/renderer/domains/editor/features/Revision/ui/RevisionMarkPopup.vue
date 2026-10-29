@@ -20,14 +20,16 @@
       <button
         class="popup-btn accept"
         @click="handleAccept"
-        :title="acceptTitle"
+        :data-linnya-tooltip="acceptTitle"
+        :aria-label="acceptTitle"
       >
         <CheckIcon class="popup-icon" />
       </button>
       <button
         class="popup-btn reject"
         @click="handleReject"
-        :title="rejectTitle"
+        :data-linnya-tooltip="rejectTitle"
+        :aria-label="rejectTitle"
       >
         <CloseIcon class="popup-icon" />
       </button>

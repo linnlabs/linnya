@@ -51,7 +51,7 @@
   animation:
     sidebar-conversation-history-reveal-pulse
     calc(var(--duration-long) + var(--duration-long) + var(--duration-long))
-    ease-in-out
+    var(--ease-standard)
     both;
 }
 

@@ -45,6 +45,7 @@ export {
   SkeletonBlock,
   SkeletonRows,
   resolveHoverTooltipPosition,
+  useHoverTooltipService,
 } from './features/feedback';
 export type {
   HoverTooltipPlacement,
@@ -93,6 +94,7 @@ export {
   RENDERER_UI_OVERLAY_LAYER_VALUES,
   rendererUiOverlayLayer,
   resolveAlertDialogDangerousAction,
+  useImagePreviewSource,
 } from './features/overlays';
 export type {
   AlertDialogProps,

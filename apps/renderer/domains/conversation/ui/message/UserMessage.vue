@@ -126,7 +126,8 @@
               class="edit-button cancel"
               :disabled="isEditSubmitting"
               @click="cancelEdit"
-              :title="conversationMessage('conversation.userMessage.action.cancel')"
+              :data-linnya-tooltip="conversationMessage('conversation.userMessage.action.cancel')"
+              :aria-label="conversationMessage('conversation.userMessage.action.cancel')"
             >
               <CloseIcon />
             </button>
@@ -134,7 +135,8 @@
               class="edit-button save"
               :disabled="isEditSubmitting"
               @click="saveEdit"
-              :title="conversationMessage('conversation.userMessage.action.save')"
+              :data-linnya-tooltip="conversationMessage('conversation.userMessage.action.save')"
+              :aria-label="conversationMessage('conversation.userMessage.action.save')"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="9 10 4 15 9 20"></polyline>

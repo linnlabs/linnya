@@ -20,7 +20,7 @@
           class="project-nav-tab"
           :class="{ 'is-selected': sidebarMode === 'chat' }"
           type="button"
-          :title="layoutMessage('layout.sidebar.project.chat')"
+          :data-linnya-tooltip="layoutMessage('layout.sidebar.project.chat')"
           :aria-label="layoutMessage('layout.sidebar.project.chat')"
           @click="$emit('set-mode', 'chat')"
         >
@@ -30,7 +30,7 @@
           class="project-nav-tab"
           :class="{ 'is-selected': sidebarMode === 'files' }"
           type="button"
-          :title="layoutMessage('layout.sidebar.project.files')"
+          :data-linnya-tooltip="layoutMessage('layout.sidebar.project.files')"
           :aria-label="layoutMessage('layout.sidebar.project.files')"
           @click="$emit('set-mode', 'files')"
         >

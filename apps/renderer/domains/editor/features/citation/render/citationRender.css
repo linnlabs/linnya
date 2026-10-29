@@ -28,7 +28,6 @@
    * 移除基础样式的 transition，避免“选中态 -> 默认态”时因背景色渐变而产生“闪烁为 hover 色”的视觉残影。
    * transition 现在只加在 :hover 中，确保进入 hover 是柔和的，而退出状态是干脆的。
    */
-  /* transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out; */
 }
 
 .citation-mark:hover {

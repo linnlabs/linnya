@@ -2,6 +2,7 @@ export { default as AlertDialog } from './ui/AlertDialog.vue';
 export { default as ImagePreviewModal } from './ui/ImagePreviewModal.vue';
 export { default as Modal } from './ui/Modal.vue';
 export { resolveAlertDialogDangerousAction } from './functions/resolveAlertDialogDangerousAction';
+export { useImagePreviewSource } from './vue/useImagePreviewSource';
 export {
   RENDERER_UI_OVERLAY_LAYER_TOKENS,
   RENDERER_UI_OVERLAY_LAYER_VALUES,

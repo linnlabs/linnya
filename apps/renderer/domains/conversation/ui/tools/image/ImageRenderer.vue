@@ -39,7 +39,7 @@
           <OkIcon v-if="copiedImageUrl === singleImageEntry.url" />
           <CopyIcon v-else />
         </IconButton>
-        <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.preview')" @click="openPreviewModal(singleImageEntry.url)">
+        <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.preview')" @click="openPreviewModal(singleImageEntry.url, $event)">
           <ZoomInIcon />
         </IconButton>
         <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.download')" @click="downloadImage(singleImageEntry.url, singleImageEntry.fileName)">
@@ -77,7 +77,7 @@
             <OkIcon v-if="copiedImageUrl === imageEntry.url" />
             <CopyIcon v-else />
           </IconButton>
-          <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.preview')" @click="openPreviewModal(imageEntry.url)">
+          <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.preview')" @click="openPreviewModal(imageEntry.url, $event)">
             <ZoomInIcon />
           </IconButton>
           <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.download')" @click="downloadImage(imageEntry.url, imageEntry.fileName)">
@@ -108,6 +108,7 @@
       :is-visible="isPreviewModalOpen"
       :src="previewImageUrl"
       :alt="conversationMessage('conversation.tool.image.preview')"
+      :source-element="previewSource"
       @close="closePreviewModal"
     />
   </div>
@@ -116,7 +117,7 @@
 <script setup lang="ts">
 import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed, ref, onBeforeUnmount } from 'vue';
-import { IconButton, ImagePreviewModal } from '@linnya/renderer-ui';
+import { IconButton, ImagePreviewModal, useImagePreviewSource } from '@linnya/renderer-ui';
 import type { ImageGenerationPresentationImage } from './definitions/imageGenerationPresentation';
 import { ZoomInIcon } from '@linnya/renderer-ui/icons';
 import { CopyIcon } from '@linnya/renderer-ui/icons';
@@ -150,6 +151,7 @@ interface ImageEntry {
 }
 
 // 全屏预览相关状态
+const { sourceElement: previewSource, rememberSource } = useImagePreviewSource();
 const isPreviewModalOpen = ref(false);
 const previewImageUrl = ref<string>('');
 
@@ -278,7 +280,8 @@ const onImageError = (event: Event) => {
 };
 
 // 全屏预览图片
-const openPreviewModal = (imageUrl: string) => {
+const openPreviewModal = (imageUrl: string, event: Event) => {
+  rememberSource(event, '.image-container');
   previewImageUrl.value = imageUrl;
   isPreviewModalOpen.value = true;
 };

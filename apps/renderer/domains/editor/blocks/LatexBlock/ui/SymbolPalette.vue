@@ -40,7 +40,8 @@
           v-for="symbol in category.symbols"
           :key="symbol.display"
           class="symbol-button"
-          :title="symbol.insert"
+          :data-linnya-tooltip="symbol.insert"
+          :aria-label="symbol.insert"
           @click="handleSymbolClick(symbol)"
         >
           <KatexRenderer :latex="symbol.preview || symbol.insert" />

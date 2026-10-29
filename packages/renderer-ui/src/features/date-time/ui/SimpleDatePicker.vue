@@ -6,7 +6,7 @@
       class="sdp-input"
       :class="classNames?.trigger"
       :aria-label="displayValue"
-      :title="displayValue"
+      :data-linnya-tooltip="displayValue"
       @click="toggleOpen"
     >
       <CalendarIcon />
@@ -108,6 +108,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { CalendarIcon } from '../../../icons';
 import { useSharedComponentLocalization } from '../../../localization';
+import { useHoverTooltipService } from '../../feedback';
 import type {
   DatePickerCalendarCell,
   DatePickerPanelPlacement,
@@ -129,6 +130,7 @@ const isOpen = ref(false);
 const viewMode = ref<DatePickerViewMode>('date');
 const panelPlacement = ref<DatePickerPanelPlacement>('bottom');
 const { sharedComponentMessage } = useSharedComponentLocalization();
+useHoverTooltipService();
 const PANEL_GAP = 4;
 // 打开动画首帧发生在面板真实 DOM 可测量之前；用稳定估值先选方向，避免先按 bottom 动画再跳到 top。
 const DATE_PANEL_ESTIMATED_HEIGHT = 220;

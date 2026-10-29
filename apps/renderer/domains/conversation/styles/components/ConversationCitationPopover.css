@@ -231,15 +231,32 @@
   text-align: center;
 }
 
-.citation-popover-fade-enter-active,
-.citation-popover-fade-leave-active {
-  transition:
-    opacity var(--duration-short) var(--ease-standard),
-    transform var(--duration-short) var(--ease-standard);
+.citation-popover-fade-enter-active {
+  transform-origin: bottom center;
+  transition: var(--popup-transition-enter);
 }
 
-.citation-popover-fade-enter-from,
+.citation-popover-fade-leave-active {
+  transform-origin: bottom center;
+  transition: var(--popup-transition-leave);
+}
+
+.citation-popover-fade-enter-from {
+  opacity: 0;
+  transform: var(--popup-enter-up);
+}
+
 .citation-popover-fade-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
+  transform: var(--popup-leave);
+}
+
+/* 弹窗翻到触发点下方时，改为从上沿向下展开。 */
+[data-placement='bottom'].citation-popover-fade-enter-active,
+[data-placement='bottom'].citation-popover-fade-leave-active {
+  transform-origin: top center;
+}
+
+[data-placement='bottom'].citation-popover-fade-enter-from {
+  transform: var(--popup-enter-down);
 }

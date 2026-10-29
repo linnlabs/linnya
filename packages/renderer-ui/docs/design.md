@@ -202,11 +202,13 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 | `--radius-sm` | 4 | 标签、内联代码、复选框、紧凑图标按钮 |
 | `--radius-md` | 6 | 按钮、输入框、菜单项等标准控件 |
 | `--radius-lg` | 8 | 卡片、工具卡、菜单、弹出层与对话框 |
-| `--radius-xl` | 12 | 大面板、对话输入框 |
+| `--radius-xl` | 12 | 大面板 |
 | `--radius-2xl` | 16 | 空态首屏等大尺寸输入容器 |
 | `--radius-full` | — | 胶囊、圆形头像和按钮 |
 
 嵌套时内层圆角等于外层圆角减去两者间距（最小取 `--radius-xs`），让内外轮廓同心。纯圆形元素可以直接写 `border-radius: 50%`。
+
+**对话输入框外壳用连续曲率圆角（squircle），不走这张刻度表。** 主输入框与 Subrun 只读面板共用的 `conversation-footer-surface` 取 `corner-shape: squircle`（超椭圆 `|x|⁴ + |y|⁴ = 1`，直边到弧线的过渡处曲率连续）。同样的半径下 squircle 切得更少、看起来更方，所以半径取与旧圆弧轮廓等价的 1.75 倍：28px 对应旧的 16px，紧凑 21px 对应 12px，与旧圆弧的最大偏差约 0.3px（Electron 里逐像素对比过）。要点：`corner-shape` 不继承，凡写 `border-radius: inherit` 或用这个半径变量的子元素（未配置模型的玻璃遮罩与流光蒙版、引用预览、附件区）都要同时写 `corner-shape`，否则角上会漏出一圈形状错位的原表面；`offset-path` 只认圆弧，流光路径用 `--conversation-footer-surface-outline-radius`（半径 ÷ 1.75）。
 
 - 胶囊形元素（滚动条滑块、徽标、开关轨道、计数标签）一律用 `--radius-full`，不要写“约等于半高”的数值（10px、5px），否则高度一变轮廓就不再是胶囊。
 - 进度条、引用线、拖放指示线这类 2–3px 的细条用 `--radius-xs`。
@@ -232,7 +234,7 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 
 `--delay-reveal`（200ms）不是动效时长，而是加载占位的出现延迟：短于它的加载不显示任何占位。减少动态效果时它保持不变，四个时长 token 归零，`--duration-loop` 的循环动画由组件直接停用。
 
-元素越大、移动距离越远，时长越长；离开通常比进入短一档。
+元素越大、移动距离越远，时长越长；离开通常比进入短一档（浮层的具体做法见 7.4）。
 
 ### 7.2 缓动
 
@@ -242,6 +244,8 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 | `--ease-enter` | 元素进入视图：快速出现，减速落定 |
 | `--ease-exit` | 元素离开视图：加速收走 |
 
+JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 `--ease-*` / `--duration-*`（`getComputedStyle(el).getPropertyValue('--ease-standard')`），不在脚本里另写曲线字面量。
+
 进度条、旋转加载等匀速运动使用 `linear`；流式文字的淡入也使用 `linear`（可见的渐变长度等于名义时长，先快后慢的曲线会让同样的时长看起来短得多）。不要使用 CSS 默认的 `ease` 或临时写的 `cubic-bezier`。
 
 ### 7.3 规则
@@ -249,10 +253,48 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 - 优先只动画 `opacity` 与 `transform`；需要动画高度时使用 grid `0fr → 1fr` 等不触发逐帧布局的方式。
 - `transition` 只列出状态变化时真正改变的属性，不写 `transition: all`：`all` 会让布局、字号和主题切换时的颜色一起被动画，切换主题时界面会出现不同步的渐变。
 - 动效必须可以被打断：快速重复触发时从当前状态继续，而不是跳回起点。
-- 延迟不是时长：防抖延迟（引用标记悬停的 60ms）、跑马灯的起始延迟不套时长 token；与淡出同步的 `visibility` 延迟则写成同一个 `--duration-*`，保证两者一起被“减少动态效果”归零。
+- 延迟不是时长：防抖延迟（引用标记悬停的 60ms）、跑马灯的起始延迟、入场动画里文字比遮罩晚出现的错峰延迟、两道循环光束的相位差不套时长 token，在声明后写 `/* scale-exempt: 原因 */`；与淡出同步的 `visibility` 延迟则写成同一个 `--duration-*`，保证两者一起被“减少动态效果”归零。
 - 循环动画（`infinite`：旋转、脉冲、微光、跑马灯）的周期由动画本身决定，不套时长刻度，也不要求使用 `--ease-*`。
-- 用户开启“减少动态效果”时，四个时长 token 会被置为接近 0，经由 token 的过渡自动立即完成。直接写在关键帧里的循环动画（如加载指示）必须自行提供 `prefers-reduced-motion` 规则：装饰性的微光、脉冲、光标闪烁在该偏好下停用；表示“正在进行”的旋转指示可以保留。一次性的进入动画使用 `--duration-*` 与 `--ease-enter`，减少动态效果时随 token 立即完成。
+- 用户开启“减少动态效果”时，四个时长 token 会被置为接近 0，经由 token 的过渡自动立即完成；因此用 token 写的过渡不要再单独写 `@media (prefers-reduced-motion) { transition: none }`，那只会让结束事件不再触发。直接写在关键帧里的循环动画（如加载指示）必须自行提供 `prefers-reduced-motion` 规则：装饰性的微光、脉冲、光标闪烁在该偏好下停用；表示“正在进行”的旋转指示可以保留。一次性的进入动画使用 `--duration-*` 与 `--ease-enter`，减少动态效果时随 token 立即完成。
 - `--transition-fast` / `--transition-normal` / `--transition-slow` 是 2.x 旧别名，分别指向 micro、medium、long；仓内新代码使用 `--duration-*`。
+
+### 7.4 浮层、提示与细节反馈
+
+这一节记录“元素从哪里来、到哪里去”的约定；时长与曲线仍只用上面的 token。
+
+**小浮层从触发边缩放出来。** 菜单、下拉、日期面板、引用卡片不再整块平移，而是以触发点所在的边为 `transform-origin` 缩放：
+
+| token | 值 | 用途 |
+| --- | --- | --- |
+| `--popup-enter-down` / `--popup-enter-up` | `scale(0.96)` 加 4px 位移 | 面板在触发点下方 / 上方展开时的起始状态 |
+| `--popup-leave` | `scale(0.98)` | 离开的终点：更轻，只是让开 |
+| `--popup-transition-enter` | `--duration-short` + `--ease-enter` | 进入：减速落定 |
+| `--popup-transition-leave` | `--duration-micro` + `--ease-standard` | 离开：比进入短一档，不换成会拖泥带水的加速曲线 |
+
+组件在 `enter-active` / `leave-active` 取两个 transition token，在 `enter-from` / `leave-to` 取上面的 transform，并写上 `transform-origin`：向下展开取 `top`（靠右对齐的取 `top right`），向上展开取 `bottom`。落点会变的浮层（`TextPopover`、引用卡片、日期面板翻转到上方）用 `data-placement` 或 `is-placement-*` 切换原点与起始状态。不要再写 `translateY(-8px)` 这种与来源无关的平移；树的展开、列表行进出这类“内容顺着流向进入”的过渡不属于浮层，不套用；下拉里的二级菜单与父菜单同时存在，保留 100ms 的侧向位移，不缩放；通知条、错误横幅和侧栏滑入各有自己的方向与时长，也不套用。
+
+**对话框的遮罩与本体分开动。** `Modal`（含基于它的 `AlertDialog`）进入时遮罩只淡底色（`--duration-medium` + `--ease-standard`），弹窗本体从 `--modal-hidden`（`scale(0.97)` 加下移 8px）缓出到位（`--modal-transition-enter`：`--duration-medium` + `--ease-enter`）；离开时遮罩 `--duration-short`，本体回到同一状态（`--modal-transition-leave`：`--duration-micro` + `--ease-standard`），比进入更快更轻。缩放以弹窗中心为原点，幅度只有 3%：1× 下读作“干净地出现”而不是弹跳。遮罩根节点必须保留一条真实的 `transition`，Vue 的 `<Transition>` 只读根节点的过渡时长来决定何时移除节点；不要把遮罩改回整体 `opacity`，那会让弹窗本体跟着一起淡掉而无法单独运动。对话框正文滚动时标题与操作区之间**不加**分隔线：这是有意的设计，不要补。应用层的设置面板不经过 `Modal`，在 `SettingsModal.css` 里按同一套 `--modal-*` token 写了等价规则（遮罩多淡一层 `backdrop-filter` 模糊，避免模糊在第 0 帧突然出现）；新增自带遮罩的对话框壳层时照此办理，不要退回整体 `opacity`。
+
+**提示由一个共享服务绘制。** `IconButton` 的 `label` 与 `HoverTooltip` 走同一套规则，不再使用原生 `title`（出现慢、样式不可控、无法与相邻切换配合）：
+
+- 首次悬停等待 500ms 才出现，避免鼠标扫过时满屏闪烁；键盘 `focus-visible` 聚焦立即出现。
+- 已有提示在显示、或提示刚消失 300ms 内再悬停相邻控件，立即出现；已在显示时从一个目标换到另一个目标只换字与位置，不重播出现动画。
+- 指针离开后保留 90ms 再收起，让“移到相邻按钮”不先消失再出现；点击触发器或按 Esc 立即收起，指针离开前不再弹出。
+- 放不下时自动翻到另一侧。出现时从贴近触发点的一侧位移 4px 并淡入（`--duration-micro` + `--ease-enter`）。
+
+采用方式：
+
+- `IconButton` 的 `label` 自动成为提示；需要附加快捷键等内容时传 `tooltip-text`（如“上一个 (Shift+Enter)”），`label` 仍是可访问名称。
+- 自己写样式的图标按钮（编辑器工具条、批注面板按钮、窗口控制）保留原生 `<button>`，把原来的 `:title="…"` 换成 `:data-linnya-tooltip="…"`，同时必须有 `aria-label`（`title` 原本兼任可访问名称，去掉后要补上）。可选的 `data-linnya-tooltip-placement`（`top` / `bottom`）与 `data-linnya-tooltip-offset` 调整落点。
+- 提示服务由应用根组件调用 `useHoverTooltipService()` 启动；`IconButton`、`HoverTooltip`、`ToolbarButton` 等包内组件挂载时也会各自持有它，所以 Host 之外的使用方不需要额外接入。
+- 原生 `title` 仍保留给：截断文字的完整内容、链接的目标地址、带文字按钮的补充说明、色板的颜色名、`CustomSelect` 长选项的完整文字。它们要么本来就是“文字的另一个版本”，要么不属于一排并列的图标控件，不必走共享服务。
+- 不要再给图标按钮写原生 `title`，也不要让同一个按钮同时有两层提示。
+
+**图片预览从缩略图展开。** `ImagePreviewModal` 接收可选的 `sourceElement`（缩略图或包着缩略图的按钮；用 `useImagePreviewSource()` 在点击处记录），用 View Transitions 把缩略图连续放大到中间（`--duration-long` + `--ease-standard`），关闭时缩回。缩略图与大图宽高比不同，两张快照都用 `object-fit: cover` 铺满过渡框，避免拉伸。没有缩略图、缩略图已离开屏幕、浏览器不支持或开启“减少动态效果”时退回淡入淡出。
+
+**页签的指示器只有一根。** `SegmentedTabs` 的下划线在页签之间滑动（`--duration-medium` + `--ease-standard`），而不是每个页签各画一条再交叉淡入淡出；位置由组件按激活页签的实际排版量出，字体、数量或语言变化时重新量。首次位置直接落定，不从 0 滑入。
+
+**实心按钮有按压反馈。** `primary` 与 `tint` 按下时缩到 `--motion-press-scale`（0.975，`--duration-micro` + `--ease-standard`），松手由 `--ease-enter` 缓出回位（`--duration-short`）。幅度只有 2.5%，不改变布局；其它 variant、图标按钮、列表行与开关不加，避免“什么都在动”。弹簧曲线（`linear()`）在这个幅度下与缓出回位几乎无法区分，不引入。
 
 ## 8. 交互状态
 
@@ -304,6 +346,8 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 5. 文字使用动词或动宾短语（“新建知识库”“插入引用”），不使用“确定 / OK”这类不说明结果的词，危险操作写明对象。
 6. 正在提交时禁用按钮并把文字改为进行时（“发送中…”），不要只换成转圈图标。
 
+`primary` 与 `tint` 按下时有 2.5% 的收缩反馈（见 7.4），其它 variant 没有。
+
 调用方只能通过 props、插槽和根节点的 `class` / 布局 `style` 定制外围位置与宽度，不能覆盖 `.linnya-ui-button*` 内部选择器改颜色或尺寸；缺少真实需要的层级时扩展 `BaseButton` 的语义 variant。
 
 ### 9.3 图标按钮
@@ -320,7 +364,7 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 - 静止为 `--color-text-tertiary`，悬停提亮到主文字色并出现 hover 底色；选中或展开（`active`）用强调色浅底，与 `ToolbarButton` 一致；禁用为占位文字色。
 - `variant="subtle"` 静止即有浅底，只用于表单里与输入框并排、需要被看见的添加操作；`variant="overlay"` 只用于叠在图片、视频等内容上的按钮（白色图标，悬停半透明白底，颜色不随主题）；其余一律 `ghost`。overlay 的半透明深色底条与模糊由容器提供，不进组件。
 - `tone="danger"` 静止保持中性、悬停显示错误色，用于行内删除与移除；不可撤销的删除仍需确认。
-- `label` 必填，同时作为可访问名称与原生提示；外层已有 `HoverTooltip` 时传 `:tooltip="false"`，提示需要附加快捷键时可自行提供 `title`。
+- `label` 必填，同时作为可访问名称与悬停提示（共享提示服务绘制，规则见 7.4）；外层已有 `HoverTooltip` 时传 `:tooltip="false"`，提示需要附加快捷键时传 `tooltip-text`。
 - 图标尺寸由 `size` 决定，业务不再给图标写宽高；需要锚定浮层时通过组件暴露的 `element`（或 `resolveIconButtonElement`）取得原生按钮。
 - **什么时候不用 `IconButton`**：形状或状态本身就是设计的一部分时保留自己的样式，不要为了统一抹掉它。例如批注面板里按语义着色的圆形按钮（AI、编辑、解决、删除各有色调和悬停放大）、紧贴输入框的分段按钮（密码显隐）、缩略图角上带边框的操作小块、窗口控制与分段页签、带多种状态色的转写按钮。编辑器与思维导图的格式工具条用 `ToolbarButton`。
 - 按钮所在的行已经处于 hover 或选中底色时，在行的操作容器上把 `--linnya-ui-icon-button-hover-bg` 设为 `var(--linnya-ui-icon-button-hover-bg-raised)`：它在三套主题里都与行底色保持约 6 的 L\* 差，第二层悬停一眼可见。其它已有底色的容器（如代码块）可以设为更高一档的 hover 语义 token。这是唯一允许调用方调整的视觉入口。
@@ -405,7 +449,7 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 | `COLOR-02-raw-color-literal` | 十六进制、`rgb()` / `rgba()`、`hsl()` 等色彩字面量（含自定义属性定义）；纯黑、纯白及其透明度的遮罩与投影、`url(#id)` 不计。内容色板与 token owner 文件在扫描外，外观设置的主题预览插画 `theme-preview.css` 是唯一按文件列出的例外 |
 | `MOTION-01-transition-all` | `transition` / `transition-property` 中的 `all` |
 
-**有意的例外。** 开发期诊断与试验页面（`LlmRequestDebugPanel`、虚拟列表试验页、`debug.css`）不扫描。其它不在刻度上的有意取值，在声明后写 `/* scale-exempt: 原因 */`，该声明不计数；目前用于图标字形的 `font-size`（取色样本、空态图标、关闭 ×）、根字号和防抖延迟。原因必须写明白，评审时按原因判断是否成立，不要用它压计数。
+**有意的例外。** 开发期诊断与试验页面（`LlmRequestDebugPanel`、虚拟列表试验页、`debug.css`）不扫描。其它不在刻度上的有意取值，在声明后写 `/* scale-exempt: 原因 */`，该声明不计数；目前用于图标字形的 `font-size`（取色样本、空态图标、关闭 ×）、根字号，以及防抖、错峰、起始与相位延迟。原因必须写明白，评审时按原因判断是否成立，不要用它压计数。
 
 每个文件每条规则的数量记录在 `.baseline/renderer-style-scale.txt`，只允许减少：新增写死值会让 `pnpm run lint:style` 失败；减少后运行 `pnpm run guard:renderer-style-scale:update` 收紧基线。自定义属性的定义不在统计范围内，局部变量如果表达刻度值，应从 token 派生。
 
@@ -421,7 +465,8 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 - 部分业务 CSS 仍带有不在刻度上的值，由刻度棘轮和代码评审逐步收敛；基础色阶引用只剩第 2.6 节列出的有意例外。2026-10-17 的存量约 200 处，主要是三类：
   - 奇数内边距与间距（约 90 处，见第 4 节）：每处都在补偿边框或凑固定高度，要随组件迁到控件高度 token 时一起改，不批量吸附。
   - z-index（54 处）：局部堆叠的 10、20 等需要先给局部容器 `isolation: isolate` 再收敛到 0–9；1300、1200、1100 等跨 owner 的值需要先画出真实叠放顺序，再给现值命名新层级。
-  - 登场动画的自定义缓动与 0.4s 时长（`AiAssistantInput` 的模型配置遮罩）：需要在真实页面里看节奏后再换成 `--ease-enter`。
+- 动效刻度（`SCALE-07`、`SCALE-08`、`MOTION-01`）的存量已清零。仍在扫描之外的是 Slides 插件里约 20 处裸 `ease`（随 `linnya-slides` 分支处理）。
+- 提示还有三类没有迁到共享服务：带文字的按钮、色板与 `CustomSelect` 长选项的原生 `title`（见 7.4），以及知识库的 `tab-navigation`（另一套页签实现，没有滑动指示器）。
 - 文本对比度可以用应用内逐页扫描复核：遍历可见文本节点，按有效背景计算对比度并汇总低于 4.5:1（大字 3:1）的组合。2026-10-16 在浅色、暗色、moon-blue 三套主题的项目首页、对话、知识库、插件商店、设置各页和文档编辑页上扫描后，除装饰性的面包屑分隔符外没有低于要求的文字。
 - 按下态（active）只持续很短时间，outline info tone 按下时文字对比度约 3.8～4:1，未计入第 2.7 节的要求。
 
@@ -439,3 +484,5 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 8. **文字对比度逐页复核。** 三套主题都扫一遍，低于 4.5:1（大字 3:1）的组合要有记录（第 14 节）。
 9. **有意的例外要写原因。** 守卫的 `scale-exempt` 标注必须说明为什么这个值在刻度之外（第 12 节）。
 10. **图标按钮必须有名字。** `IconButton` 的 `label` 必填；纯图标的原生 `<button>` 至少要有 `aria-label`。
+11. **浮层从触发边长出来。** 新浮层用 `--popup-*` token，并按触发点写 `transform-origin`；不要再写与来源无关的整块平移（第 7.4 节）。
+12. **悬停提示走共享服务。** 图标按钮的名称就是提示文字；不要再给按钮写原生 `title`，也不要为同一个按钮叠两层提示（第 7.4 节）。

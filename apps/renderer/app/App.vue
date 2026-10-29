@@ -1,5 +1,6 @@
 <script setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted } from 'vue';
+import { useHoverTooltipService } from '@linnya/renderer-ui';
 
 // 布局组件
 import AppLayout from './layout/AppLayout.vue';
@@ -52,6 +53,8 @@ import { registerConversationResourceLinkPort } from '@/domains/conversation/fea
 import { createConversationResourceLinkPort } from './workflows/conversation-resource-link/orchestration/createConversationResourceLinkPort';
 
 const layoutStore = useLayoutStore();
+// 整个应用共享一个悬停提示服务：任何带 data-linnya-tooltip 的元素（含图标按钮、编辑器工具条）都由它绘制。
+useHoverTooltipService();
 let disposeWindowCloseRequest = () => {};
 ensureBuiltinRendererPluginsRegistered();
 const enabledPluginsStore = useEnabledPluginsStore();

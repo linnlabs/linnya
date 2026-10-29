@@ -119,23 +119,22 @@
   padding: var(--space-1-5) var(--space-3) var(--space-2-5);
 }
 
-.time-root .time-fade-enter-active,
+.time-root .time-fade-enter-active {
+  transform-origin: top right;
+  transition: var(--popup-transition-enter);
+}
+
 .time-root .time-fade-leave-active {
-  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
+  transform-origin: top right;
+  transition: var(--popup-transition-leave);
 }
 
 .time-root .time-fade-enter-from {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: var(--popup-enter-down);
 }
 
 .time-root .time-fade-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
-}
-
-.time-root .time-fade-enter-to,
-.time-root .time-fade-leave-from {
-  opacity: 1;
-  transform: translateY(0);
+  transform: var(--popup-leave);
 }

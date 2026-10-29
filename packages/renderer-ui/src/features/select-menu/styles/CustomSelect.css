@@ -223,7 +223,7 @@
     overflow: visible;
     text-overflow: clip;
     animation: linnya-ui-select-menu-option-label-scroll
-      var(--linnya-ui-select-menu-label-scroll-duration) linear 300ms forwards;
+      var(--linnya-ui-select-menu-label-scroll-duration) linear 300ms forwards; /* scale-exempt: 悬停后开始滚动的起始延迟，不是动效时长 */
     will-change: transform;
   }
 }
