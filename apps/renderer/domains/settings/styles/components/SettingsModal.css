@@ -206,6 +206,42 @@
   background-color: var(--scrollbar-thumb-hover-color);
 }
 
+/*
+ * 进出场：与 renderer-ui 的 Modal 同一套动效（--modal-* token）——遮罩只淡底色和模糊，设置面板本体另走缩放。
+ * 遮罩根节点必须保留一条真实的 transition：Vue 的 <Transition> 只读根节点的过渡时长来决定何时移除节点。
+ */
+.settings-modal-overlay.settings-modal-fade-enter-active {
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    backdrop-filter var(--duration-medium) var(--ease-standard);
+}
+
+.settings-modal-overlay.settings-modal-fade-leave-active {
+  transition:
+    background-color var(--duration-short) var(--ease-standard),
+    backdrop-filter var(--duration-short) var(--ease-standard);
+}
+
+.settings-modal-overlay.settings-modal-fade-enter-from,
+.settings-modal-overlay.settings-modal-fade-leave-to {
+  background-color: transparent;
+  backdrop-filter: blur(0);
+}
+
+.settings-modal-fade-enter-active .settings-modal-container {
+  transition: var(--modal-transition-enter);
+}
+
+.settings-modal-fade-leave-active .settings-modal-container {
+  transition: var(--modal-transition-leave);
+}
+
+.settings-modal-fade-enter-from .settings-modal-container,
+.settings-modal-fade-leave-to .settings-modal-container {
+  opacity: 0;
+  transform: var(--modal-hidden);
+}
+
 /* --- 响应式 --- */
 
 @media (width <= 1000px) {

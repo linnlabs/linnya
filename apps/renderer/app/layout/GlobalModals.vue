@@ -9,7 +9,7 @@
 <template>
   <Teleport to="body">
     <!-- 设置模态框 -->
-    <Transition name="modal-fade">
+    <Transition name="settings-modal-fade">
       <SettingsModal v-if="uiStore.settingsModalVisible" />
     </Transition>
     

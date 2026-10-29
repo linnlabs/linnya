@@ -271,7 +271,7 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 
 组件在 `enter-active` / `leave-active` 取两个 transition token，在 `enter-from` / `leave-to` 取上面的 transform，并写上 `transform-origin`：向下展开取 `top`（靠右对齐的取 `top right`），向上展开取 `bottom`。落点会变的浮层（`TextPopover`、引用卡片、日期面板翻转到上方）用 `data-placement` 或 `is-placement-*` 切换原点与起始状态。不要再写 `translateY(-8px)` 这种与来源无关的平移；树的展开、列表行进出这类“内容顺着流向进入”的过渡不属于浮层，不套用；下拉里的二级菜单与父菜单同时存在，保留 100ms 的侧向位移，不缩放；通知条、错误横幅和侧栏滑入各有自己的方向与时长，也不套用。
 
-**对话框的遮罩与本体分开动。** `Modal`（含基于它的 `AlertDialog`）进入时遮罩只淡底色（`--duration-medium` + `--ease-standard`），弹窗本体从 `--modal-hidden`（`scale(0.97)` 加下移 8px）缓出到位（`--modal-transition-enter`：`--duration-medium` + `--ease-enter`）；离开时遮罩 `--duration-short`，本体回到同一状态（`--modal-transition-leave`：`--duration-micro` + `--ease-standard`），比进入更快更轻。缩放以弹窗中心为原点，幅度只有 3%：1× 下读作“干净地出现”而不是弹跳。遮罩根节点必须保留一条真实的 `transition`，Vue 的 `<Transition>` 只读根节点的过渡时长来决定何时移除节点；不要把遮罩改回整体 `opacity`，那会让弹窗本体跟着一起淡掉而无法单独运动。对话框正文滚动时标题与操作区之间**不加**分隔线：这是有意的设计，不要补。
+**对话框的遮罩与本体分开动。** `Modal`（含基于它的 `AlertDialog`）进入时遮罩只淡底色（`--duration-medium` + `--ease-standard`），弹窗本体从 `--modal-hidden`（`scale(0.97)` 加下移 8px）缓出到位（`--modal-transition-enter`：`--duration-medium` + `--ease-enter`）；离开时遮罩 `--duration-short`，本体回到同一状态（`--modal-transition-leave`：`--duration-micro` + `--ease-standard`），比进入更快更轻。缩放以弹窗中心为原点，幅度只有 3%：1× 下读作“干净地出现”而不是弹跳。遮罩根节点必须保留一条真实的 `transition`，Vue 的 `<Transition>` 只读根节点的过渡时长来决定何时移除节点；不要把遮罩改回整体 `opacity`，那会让弹窗本体跟着一起淡掉而无法单独运动。对话框正文滚动时标题与操作区之间**不加**分隔线：这是有意的设计，不要补。应用层的设置面板不经过 `Modal`，在 `SettingsModal.css` 里按同一套 `--modal-*` token 写了等价规则（遮罩多淡一层 `backdrop-filter` 模糊，避免模糊在第 0 帧突然出现）；新增自带遮罩的对话框壳层时照此办理，不要退回整体 `opacity`。
 
 **提示由一个共享服务绘制。** `IconButton` 的 `label` 与 `HoverTooltip` 走同一套规则，不再使用原生 `title`（出现慢、样式不可控、无法与相邻切换配合）：
 
