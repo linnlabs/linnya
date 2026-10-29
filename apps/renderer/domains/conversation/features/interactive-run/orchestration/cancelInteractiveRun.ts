@@ -1,4 +1,3 @@
-import { captureConversationClientNotice } from '../../client-notices';
 import { useInteractiveRunStore } from '../store/interactiveRunStore';
 import { reconcileInteractiveRunCommandFailure } from './reconcileInteractiveRunCommandFailure';
 import { reconcileTerminalConversationView } from '../../../services/orchestration/reconcileTerminalConversationView';
@@ -46,7 +45,7 @@ export async function cancelInteractiveRun(
     const reconciliationError = new Error(
       `Run ${runId} settled as ${settlement.terminal_status}, but durable conversation reconciliation failed: ${reason}`,
     );
-    captureConversationClientNotice(conversationId, { error_kind: 'projection', operation: 'load' });
+    // 窗口读取失败由 message-window 持有当前提示；不再把它复制为永久对话消息。
     store.recordCommandError(conversationId, reconciliationError.message);
     throw reconciliationError;
   }

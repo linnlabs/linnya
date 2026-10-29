@@ -7,6 +7,7 @@
     <slot name="overlay" />
 
     <main ref="mainRef" class="conversation-chat-main">
+      <MessageWindowError :conversation-id="assistantStore.activeConversationId ?? assistantStore.selectedConversationId" />
       <template v-if="!shouldMountHost">
         <ClientNoticeMessage
           v-for="notice in localNotices"
@@ -85,6 +86,7 @@ import ConversationHost from './ConversationHost.vue';
 import ConversationEmptyState from './components/ConversationEmptyState.vue';
 import { useClientNoticePresentation } from '../features/client-notices';
 import ClientNoticeMessage from '../features/client-notices/ui/ClientNoticeMessage.vue';
+import MessageWindowError from '../message-window/ui/MessageWindowError.vue';
 
 const props = withDefaults(defineProps<{
   emptyHeading: string;

@@ -10,8 +10,8 @@
 import { computed } from 'vue';
 import { useConversationLocalization } from '../../../ui/useConversationLocalization';
 import type { ClientNoticeMessage } from '../definitions/clientNotice';
-import { clientNoticeText } from '../functions/clientNoticePresentation';
+import { conversationOperationFailureText } from '../../error-surface';
 const props = defineProps<{ message: ClientNoticeMessage }>();
 const { conversationMessage } = useConversationLocalization();
-const text = computed(() => clientNoticeText(props.message.metadata, conversationMessage));
+const text = computed(() => conversationOperationFailureText(props.message.metadata, conversationMessage));
 </script>

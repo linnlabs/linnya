@@ -10,4 +10,6 @@
 
 OpenCode Go 的缺失会话标识由 Host 产品分类器读取结构化错误类型后投影为 `llm.opencode_session_required`；Renderer 只按该稳定码提示更新客户端，不解析上游正文或把普通 HTTP 400 猜成接入错误。
 
-未取得 Runtime fact 的错误由 interactive-run、annotation execution 等原 owner 分类后交给 [client-notices](../client-notices/README.md) 保存安全的产品事实，并通过同一历史窗口呈现。没有 Conversation 或 Host 离线时先持久保留本地条目，投递状态留在 outbox 内；面向用户只呈现失败操作、已知原因和操作指引，不展示内部来源或记录同步标签。不伪造运行身份、不进入模型上下文。运行控制仍由原 owner 负责。
+需要长期保留且未取得 Runtime fact 的错误由 interactive-run、annotation execution 等原 owner 分类后交给 [client-notices](../client-notices/README.md) 保存安全的产品事实，并通过同一历史窗口呈现。没有 Conversation 或 Host 离线时先持久保留本地条目，投递状态留在 outbox 内；面向用户只呈现失败操作、已知原因和操作指引，不展示内部来源或记录同步标签。不伪造运行身份、不进入模型上下文。运行控制仍由原 owner 负责。
+
+`conversationOperationFailureText` 只接收操作与安全原因，供持久 client notice 和当前窗口读取错误复用。message-window 独占读取错误生命周期，Surface 在空态和已有正文两种布局中使用同一出口；成功读取或开始新请求后消失，切换对话后不显示前一条对话的错误。不为当前加载状态创建通知身份或持久消息。

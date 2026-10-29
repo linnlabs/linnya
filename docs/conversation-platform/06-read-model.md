@@ -61,6 +61,8 @@ live 槽为空只说明本次运行还没投影过东西，不说明会话是新
 
 `functions/uiMessagesDtoGuards.ts` + `mapUiMessageDto.ts` 是 reload 侧的校验边界，必须 `parse`（[INV-17](./00-invariants.md#inv-17--strict-schema-必须在真实边界执行)）。非法 row 显式失败，不做 shape guessing。
 
+读取失败由 window store 持有当前安全分类，Surface 独立于 Host 挂载状态显示；成功接纳或新请求开始时清除。API 保留请求、HTTP、JSON 与合同校验阶段，loader 记录窗口及请求上下文。不得把加载失败写成永久 client notice；历史旧 `operation=load` 行保留内部读取与游标语义，但不参与消息显示或空态判断。
+
 ### 2.3 工具 reload presentation admission
 
 `mapUiMessageDto.ts` 在完成 `ConversationToolMessageMetadataSchema` 校验后、构造 `WindowMessageRow` 前调用同一个 `toolPresentationProjectionPort`。因此非法工具 payload 在异步加载边界失败一次，不会进入 Pinia，也不会在 selector 或组件更新时反复抛出。

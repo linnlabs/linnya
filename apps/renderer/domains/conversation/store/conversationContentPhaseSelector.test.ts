@@ -8,6 +8,10 @@ import { useMessageWindowStore } from '../message-window/store/messageWindowStor
 import type { WindowMessageRow } from '../message-window/definitions/messageWindow';
 import type { BaseMessage } from '../types';
 import { createTestAnswerMessage } from '../testing/functions/createConversationTestMessage';
+import { ConversationUiMessageSchema, conversationMessageIdFromClientNoticeId } from '@app/schemas';
+import { mapUiMessageDtoToWindowRow } from '../message-window/functions/mapUiMessageDto';
+import { projectConversationVisualRows } from '../ui/conversationView/logic/projectConversationVisualRows';
+import { localClientNoticeMessages } from '../features/client-notices/functions/clientNoticePresentation';
 
 vi.mock('@/app/navigation', () => ({
   useNavigationScope: () => ({
@@ -98,6 +102,33 @@ describe('useConversationContentPhaseSelector', () => {
       autoActivate: true,
     });
   }
+
+  it('旧加载故障保留内部行和游标，但不再显示为正文或使空对话进入 populated 状态', () => {
+    activateConversation();
+    const noticeId = '3bc05782-a8f4-400b-8a87-ded268962652';
+    const command = {
+      notice_id: noticeId, observed_at: 10, operation: 'load', error_kind: 'unknown',
+    } as const;
+    const dto = ConversationUiMessageSchema.parse({
+      message_id: conversationMessageIdFromClientNoticeId(noticeId), conversation_id: 'conv-window-phase',
+      turn_id: null, run_id: null, role: 'system', message_type: 'client_notice', timestamp: 10, sort_seq: 1,
+      content: null, merge_key: null, presentation: null, payload: { ...command, origin: 'client' },
+    });
+    const windowStore = useMessageWindowStore();
+    windowStore.replaceWithSnapshot({
+      conversationId: 'conv-window-phase', rows: [mapUiMessageDtoToWindowRow(dto, 1)],
+      latestContextUsage: null, revision: 1, hasMoreBefore: true, hasMoreAfter: false, prevCursor: 1,
+    });
+    expect(windowStore.rows).toHaveLength(1);
+    expect(windowStore.prevCursor).toBe(1);
+    expect(useConversationContentPhaseSelector().value).toBe('ready-empty');
+    const messages = windowStore.rows.map(row => row.message);
+    expect(projectConversationVisualRows(messages)).toHaveLength(0);
+    expect(projectConversationVisualRows([...messages, createMessage()])).toHaveLength(1);
+    expect(localClientNoticeMessages([{
+      command, conversationId: 'conv-window-phase', draftKey: 'draft', acceptedAt: null,
+    }], 'conv-window-phase', 'draft', [])).toHaveLength(0);
+  });
 
   it.each(['before', 'after'] as const)(
     '%s 背景分页期间保留 ready 相位，不整窗切到历史加载态',

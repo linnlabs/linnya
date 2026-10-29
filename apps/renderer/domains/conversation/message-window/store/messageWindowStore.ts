@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { markRaw } from 'vue';
 import type {
+  MessageWindowFailure,
   MessageWindowLoadMode,
   MessageWindowSnapshot,
   MessageWindowState,
@@ -282,7 +283,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.detachedRefreshGeneration = transportGeneration;
     },
 
-    setError(conversationId: string, error: string): void {
+    setError(conversationId: string, error: MessageWindowFailure): void {
       assertWindowConversationOwnership(this.conversationId, conversationId, 'setError');
       this.conversationId = conversationId;
       this.status = 'error';

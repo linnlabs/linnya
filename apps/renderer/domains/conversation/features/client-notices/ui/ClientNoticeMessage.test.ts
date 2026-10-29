@@ -22,9 +22,9 @@ it.each<{
   en: string;
 }>([
   {
-    failure: { error_kind: 'unknown', operation: 'load' },
-    zh: '加载对话失败，请稍后重试。',
-    en: 'Could not load the conversation. Try again later.',
+    failure: { error_kind: 'unknown', operation: 'send' },
+    zh: '发送消息失败，请稍后重试。',
+    en: 'Could not send the message. Try again later.',
   },
   {
     failure: { error_kind: 'http', operation: 'send', http_status: 401 },
@@ -37,9 +37,9 @@ it.each<{
     en: 'Could not send the message. Too many requests. Try again later.',
   },
   {
-    failure: { error_kind: 'http', operation: 'load', http_status: 504 },
-    zh: '加载对话失败，请求超时，请稍后重试。',
-    en: 'Could not load the conversation. The request timed out. Try again later.',
+    failure: { error_kind: 'http', operation: 'send', http_status: 504 },
+    zh: '发送消息失败，请求超时，请稍后重试。',
+    en: 'Could not send the message. The request timed out. Try again later.',
   },
   {
     failure: { error_kind: 'connection', operation: 'continue' },

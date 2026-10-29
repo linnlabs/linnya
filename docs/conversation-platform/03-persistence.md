@@ -201,4 +201,6 @@ committed Runtime fact → SQLite UI row → live SSE → reload DTO
 
 ## 客户端提示的持久边界
 
-运行/模型上下文的事实源仍是 `events`。没有 run identity 的客户端失败另以 Conversation 产品事实 `conversation_client_notices` 接纳；它不是 RuntimeEvent，不改变运行生命周期，也不进入模型上下文。只有公共 DTO 的 `client_notice` variant 使用空 run/turn，其他消息身份约束保持不变。正式接纳、幂等、锚点排序、截断 tombstone 和窗口重建见 EventStore owner README；Host 离线时本地 outbox 保留 pending 状态，错误正文不展示记录自身的同步状态，展示规则见 [client-notices](../../apps/renderer/domains/conversation/features/client-notices/README.md)。
+运行/模型上下文的事实源仍是 `events`。需要长期保留且没有 run identity 的客户端失败另以 Conversation 产品事实 `conversation_client_notices` 接纳；它不是 RuntimeEvent，不改变运行生命周期，也不进入模型上下文。只有公共 DTO 的 `client_notice` variant 使用空 run/turn，其他消息身份约束保持不变。正式接纳、幂等、锚点排序、截断 tombstone 和窗口重建见 EventStore owner README；Host 离线时本地 outbox 保留 pending 状态，错误正文不展示记录自身的同步状态，展示规则见 [client-notices](../../apps/renderer/domains/conversation/features/client-notices/README.md)。
+
+历史窗口读取错误是当前客户端状态，不创建 `conversation_client_notices`。旧版本已接纳的 `operation=load` 记录不删除、不改变排序，但 Renderer 不再将其作为对话正文或可见内容。恢复成功后当前提示消失，诊断保留在日志。

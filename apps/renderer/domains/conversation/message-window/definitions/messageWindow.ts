@@ -7,6 +7,12 @@ export const WINDOW_MAX_ROWS = CONVERSATION_UI_WINDOW_MAX_ROWS;
 
 export type MessageWindowLoadMode = 'tail' | 'before' | 'after' | 'around';
 
+/** 只描述当前读取失败；成功接纳或开始新请求时清除，不进入对话历史。 */
+export interface MessageWindowFailure {
+  readonly error_kind: 'connection' | 'http' | 'projection' | 'unknown';
+  readonly http_status?: number;
+}
+
 export type MessageWindowStatus =
   | 'idle'
   | 'loading'
@@ -51,7 +57,7 @@ export interface MessageWindowStateSnapshot {
   readonly nextCursor?: number;
   readonly revision: number | null;
   readonly loadingMode: MessageWindowLoadMode | null;
-  readonly error: string | null;
+  readonly error: MessageWindowFailure | null;
 }
 
 export interface MessageWindowState {
@@ -67,7 +73,7 @@ export interface MessageWindowState {
   loadingMode: MessageWindowLoadMode | null;
   /** 仅成功 detached refresh 接纳时记录，用于同代次的工具读模型交接。 */
   detachedRefreshGeneration: number | null;
-  error: string | null;
+  error: MessageWindowFailure | null;
 }
 
 export interface MergeWindowAndLiveResult {

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { seedBottomReturnHistory, runBottomReturnScenario } from './bottom-return-scenario.mjs';
+import { runHistoryLoadFailureScenario } from './history-load-failure-scenario.mjs';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -1527,6 +1528,18 @@ async function run() {
       () => evaluate(cdp, `document.querySelectorAll('.chat-list-item').length >= 2`),
       '两条历史会话进入侧栏',
     );
+
+    if (scenario === 'history-load-failure') {
+      if (sourceDatabasePath) throw new Error('读取失败门禁使用隔离 fixture，不接受外部数据库快照');
+      await runHistoryLoadFailureScenario({
+        cdp, evaluate, waitFor, clickConversation, rendererErrors, assertRendererHealthy, openNodeDatabase,
+      });
+      console.log('[conversation-navigation-e2e] 加载失败、恢复消失、旧故障隐藏及无新增持久通知通过。');
+      await evaluate(cdp, "window.electronAPI.windowAction('close')");
+      cdp.close();
+      assert.equal(await waitForProcessExit(electronProcess, 10_000), true, '读取失败场景未正常退出 Desktop');
+      return;
+    }
 
     if (scenario === 'bottom-return') {
       await runBottomReturnScenario({ cdp, evaluate, waitFor });

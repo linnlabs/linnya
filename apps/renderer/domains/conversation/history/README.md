@@ -29,6 +29,12 @@ projection runtime 的常驻只发生在 store。它不要求 `ConversationHost`
 
 `loadConversation` 必须返回明确的 `committed / stale / failed` 结果；导航只有收到 `committed` 才能持久化最近对话。删除或更新的导航世代取得控制权后，旧请求即使正常返回也不得再写导航状态。
 
+## 窗口读取失败
+
+读取失败保存在 `messageWindowStore.error` 的有限分类中，由 Surface 显示当前操作提示。重试开始、成功接纳、切换或清理窗口时清除；错误不写入 client notice/outbox，不随历史重载再次显示。旧的 load notice 保留内部事实与排序，但不参与可见消息投影和空态判断。
+
+API 保留 request、HTTP、JSON 解码和响应合同校验阶段；loader 记录 conversation、加载方向、请求代次、revision、保留行数与失败阶段。HTTP 状态和安全的响应外形用于诊断，不把响应正文或消息内容写入此日志。异步投影/窗口接纳异常仍明确失败，不能跳过非法行或用重试掩盖错误。
+
 ## 侧边栏选择语义
 
 - `activeConversationId` 表示当前打开的会话，是普通点击和键盘打开的唯一单选事实源。
@@ -56,6 +62,8 @@ projection runtime 的常驻只发生在 store。它不要求 `ConversationHost`
 - 禁止把严格投影失败降级成跳过事件。失败通过 conversation-scoped client notice 进入消息列表，但不得因此停止 history loading 收敛或污染 Vue 组件树。
 
 ## 回归门禁
+
+当前读取失败的真实 Electron 回归使用 `LINNYA_CONVERSATION_E2E_SCENARIO=history-load-failure node scripts/e2e/conversation-navigation/run-electron-conversation-navigation-e2e.mjs`。隔离数据库中保存旧 load notice，并在网络边界注入断连；验证初次读取失败只有一个当前提示、恢复后自动消失、旧记录保留但不显示、数据库不新增加载错误。
 
 至少覆盖以下业务时序：conversation A 收到 answer chunk，用户切到 B，再切回 A；A 的 final seal 无论在后台还是 loading buffer 中到达，都必须命中原 answer state，最终消息完整封口，且页面仍可继续切换。
 
