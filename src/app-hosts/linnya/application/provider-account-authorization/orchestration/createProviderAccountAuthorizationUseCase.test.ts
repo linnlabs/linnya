@@ -12,7 +12,7 @@ import type {
 import { createProviderAccountAuthorizationUseCase } from './createProviderAccountAuthorizationUseCase';
 
 describe('Provider account authorization use case', () => {
-  it('先建立固定 loopback，再打开 ChatGPT，并把 token 只交给账号 registry', async () => {
+  it.each([false, true])('授权落盘后保持已连接并正常收尾，模型同步失败=%s', async synchronizationFails => {
     let storedAccount: ProviderAccount | undefined;
     let storedCredential: ProviderAccountOAuthCredential | undefined;
     const putOAuthCredential = vi.fn<ProviderAccountRegistry['putOAuthCredential']>(
@@ -53,6 +53,9 @@ describe('Provider account authorization use case', () => {
     };
     const browser: ExternalAuthorizationBrowserPort = { open: vi.fn(async () => undefined) };
     const synchronizeConnectedProviderModels = vi.fn(async () => undefined);
+    if (synchronizationFails) {
+      synchronizeConnectedProviderModels.mockRejectedValue(new Error('model discovery failed'));
+    }
     const cancelAndWait = vi.fn(async (): Promise<void> => {});
     const synchronizeAccountModels = vi.fn();
     const removeAccountModels = vi.fn();
@@ -78,11 +81,17 @@ describe('Provider account authorization use case', () => {
     });
 
     expect(useCase.getChatGptStatus().status).toBe('disconnected');
-    await expect(useCase.authorizeChatGpt()).resolves.toEqual({
-      account_id: 'chatgpt-subscription',
-      provider_connection_definition_id: 'openai-chatgpt-subscription',
-      status: 'connected',
-    });
+    if (synchronizationFails) {
+      await expect(useCase.authorizeChatGpt()).rejects.toMatchObject({
+        code: 'provider_account.model_synchronization_failed',
+      });
+    } else {
+      await expect(useCase.authorizeChatGpt()).resolves.toEqual({
+        account_id: 'chatgpt-subscription',
+        provider_connection_definition_id: 'openai-chatgpt-subscription',
+        status: 'connected',
+      });
+    }
     expect(loopback.listen).toHaveBeenCalledOnce();
     expect(browser.open).toHaveBeenCalledWith(
       expect.stringMatching(/^https:\/\/auth\.openai\.com/)

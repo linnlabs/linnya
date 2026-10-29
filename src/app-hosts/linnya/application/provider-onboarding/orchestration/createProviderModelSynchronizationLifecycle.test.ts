@@ -28,7 +28,7 @@ describe('账号模型后台同步生命周期', () => {
     const fetchStarted: AbortSignal[] = [];
     const discovery = createChatGptAccountModelDiscovery({
       credentials: { resolve: async () => ({ access_token: 'fixture', request_headers: {} }) },
-      clientVersion: '0.0.0',
+      applicationVersion: '0.0.0',
       fetchImplementation: async (_url, init) => new Promise<Response>((_resolve, reject) => {
         const signal = init?.signal;
         if (!signal) throw new Error('目录请求必须携带取消信号');

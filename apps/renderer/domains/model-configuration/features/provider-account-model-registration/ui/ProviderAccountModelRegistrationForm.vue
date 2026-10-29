@@ -50,6 +50,7 @@ import {
 } from '@/domains/settings/public';
 import { useProviderCatalogReadModel } from '../../provider-catalog';
 import { ProviderAccountAuthorizationError } from '../definitions/providerAccountAuthorizationError';
+import { authorizeProviderAccount } from '../orchestration/authorizeProviderAccount';
 import { resolveProviderAccountAuthorizationOperations } from '../registry/providerAccountAuthorizationRegistry';
 
 type AccountStatus = 'loading' | 'connected' | 'disconnected';
@@ -94,8 +95,9 @@ async function authorize(): Promise<void> {
     const operations = resolveProviderAccountAuthorizationOperations(
       props.providerConnectionDefinitionId
     );
-    const result = await operations.authorize();
+    const result = await authorizeProviderAccount(operations);
     accountStatus.value = result.status;
+    if (result.modelSynchronizationFailure) setFailure(result.modelSynchronizationFailure);
     await props.refreshModelCatalog();
   } catch (error: unknown) {
     setFailure(error);

@@ -27,8 +27,10 @@ function closeServer(server: Server): Promise<void> {
 }
 
 function callbackPage(success: boolean): string {
-  const title = success ? '授权完成' : '授权失败';
-  const detail = success ? '可以关闭此页面并返回 Linnya。' : '请返回 Linnya 后重新尝试。';
+  const title = success ? '正在完成登录' : '授权失败';
+  const detail = success
+    ? '请返回 Linnya 查看登录和模型同步结果，可以关闭此页面。'
+    : '请返回 Linnya 后重新尝试。';
   return `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>${title}</title><body><main><h1>${title}</h1><p>${detail}</p></main></body></html>`;
 }
 

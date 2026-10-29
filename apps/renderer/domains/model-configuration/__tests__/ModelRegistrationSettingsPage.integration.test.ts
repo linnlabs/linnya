@@ -4,6 +4,7 @@ import { createApp, nextTick, type App } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useUIStore } from '@/shared/stores/ui';
 import { useModelPickerStore } from '../features/model-picker/store/modelPickerStore';
+import { ProviderAccountAuthorizationError } from '../features/provider-account-model-registration/definitions/providerAccountAuthorizationError';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -545,13 +546,70 @@ describe('ModelRegistrationSettingsPage', () => {
     );
     if (!connectButton) throw new Error('ChatGPT sign-in button not found');
     connectButton.click();
-    await flushUi();
-
+    await vi.waitFor(() => {
+      expect(accountForm.textContent).toContain('settings.addModel.account.connected');
+      expect(mocks.loadModels).toHaveBeenCalledOnce();
+      expect(mocks.loadModelPicker).toHaveBeenCalledOnce();
+    });
     expect(mocks.authorizeChatGpt).toHaveBeenCalledOnce();
-    expect(accountForm.textContent).toContain('settings.addModel.account.connected');
     expect(accountForm.textContent).not.toContain('settings.addModel.modelName.label');
-    expect(mocks.loadModels).toHaveBeenCalledOnce();
-    expect(mocks.loadModelPicker).toHaveBeenCalledOnce();
+  });
+
+  it('授权已落盘但模型同步失败时，更新登录状态、刷新目录并保留同步错误', async () => {
+    const message = 'ChatGPT 已授权，但本地模型同步失败';
+    mocks.authorizeChatGpt.mockRejectedValue(
+      new ProviderAccountAuthorizationError(
+        'provider_account.model_synchronization_failed',
+        message
+      )
+    );
+    app = createApp(ModelRegistrationSettingsPage);
+    app.use(createPinia());
+    app.mount(container);
+    await flushUi();
+    await selectQuickOption(container, 'OpenAI');
+    await selectConnection(container, 'ChatGPT 订阅');
+    mocks.getChatGptStatus.mockResolvedValue({
+      account_id: 'chatgpt-subscription',
+      provider_connection_definition_id: 'openai-chatgpt-subscription',
+      status: 'connected',
+    });
+    const accountForm = container.querySelector('[data-registration-kind="provider-account"]');
+    const button = accountForm?.querySelector<HTMLButtonElement>('.linnya-ui-button--primary');
+    if (!button) throw new Error('ChatGPT sign-in button not found');
+    button.click();
+
+    await vi.waitFor(() => {
+      expect(accountForm?.textContent).toContain('settings.addModel.account.connected');
+      expect(accountForm?.textContent).toContain(message);
+      expect(mocks.loadModels).toHaveBeenCalledOnce();
+      expect(mocks.loadModelPicker).toHaveBeenCalledOnce();
+    });
+    expect(mocks.getChatGptStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it('凭据交换失败时保留未登录状态和错误，不触发模型刷新', async () => {
+    const message = 'ChatGPT 授权凭据交换失败，请重新登录';
+    mocks.authorizeChatGpt.mockRejectedValue(
+      new ProviderAccountAuthorizationError('provider_account.token_exchange_failed', message)
+    );
+    app = createApp(ModelRegistrationSettingsPage);
+    app.use(createPinia());
+    app.mount(container);
+    await flushUi();
+    await selectQuickOption(container, 'OpenAI');
+    await selectConnection(container, 'ChatGPT 订阅');
+    const accountForm = container.querySelector('[data-registration-kind="provider-account"]');
+    const button = accountForm?.querySelector<HTMLButtonElement>('.linnya-ui-button--primary');
+    if (!button) throw new Error('ChatGPT sign-in button not found');
+    button.click();
+
+    await vi.waitFor(() => expect(accountForm?.textContent).toContain(message));
+    expect(accountForm?.textContent).not.toContain('settings.addModel.account.connected');
+    expect(button.disabled).toBe(false);
+    expect(mocks.getChatGptStatus).toHaveBeenCalledOnce();
+    expect(mocks.loadModels).not.toHaveBeenCalled();
+    expect(mocks.loadModelPicker).not.toHaveBeenCalled();
   });
 
   it('切换 Provider 时只显示对应字段，并使用各自的容量来源', async () => {

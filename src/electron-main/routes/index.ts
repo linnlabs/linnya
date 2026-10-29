@@ -312,7 +312,7 @@ export async function configureRoutes(
   const chatGptAccountModels = createChatGptAccountModelDiscovery({
     credentials: providerAccountRequestCredentialResolver,
     fetchImplementation: fetch,
-    clientVersion: dependencies.backendBootstrap.applicationVersion,
+    applicationVersion: dependencies.backendBootstrap.applicationVersion,
   });
   const discoveredProviderModels = createProviderModelDiscoveryUseCase({
     catalog: providerCatalog,

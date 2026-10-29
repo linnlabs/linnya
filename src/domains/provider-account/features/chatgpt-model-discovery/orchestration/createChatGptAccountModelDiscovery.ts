@@ -8,7 +8,7 @@ import { readChatGptModelCatalogResponse } from '../functions/readChatGptModelCa
 export interface ChatGptAccountModelDiscoveryDependencies {
   readonly credentials: ProviderAccountRequestCredentialResolver;
   readonly fetchImplementation: typeof fetch;
-  readonly clientVersion: string;
+  readonly applicationVersion: string;
 }
 
 export function createChatGptAccountModelDiscovery(
@@ -21,13 +21,13 @@ export function createChatGptAccountModelDiscovery(
       // 凭据刷新由账号 resolver 共享；目录取消等待其收口，不打断其他推理消费者。
       signal?.throwIfAborted();
       const url = new URL(CHATGPT_MODEL_CATALOG_CONFIG.endpoint_url);
-      url.searchParams.set('client_version', dependencies.clientVersion);
+      url.searchParams.set('client_version', CHATGPT_MODEL_CATALOG_CONFIG.compatibility_version);
       const response = await dependencies.fetchImplementation(url, {
         method: 'GET',
         headers: {
           accept: 'application/json',
           authorization: `Bearer ${credential.access_token}`,
-          'user-agent': `linnya/${dependencies.clientVersion}`,
+          'user-agent': `linnya/${dependencies.applicationVersion}`,
           ...credential.request_headers,
         },
         signal: AbortSignal.any([

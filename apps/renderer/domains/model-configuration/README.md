@@ -225,6 +225,10 @@ token、refresh token、account claim、Codex backend 或 Responses route。表�
 退出登录只删除本机授权凭据，不静默删除 ConfiguredProvider、模型、用途绑定或快捷选择偏好；重新登录后相同 account
 identity 可以恢复请求。模型目录、授权状态和模型配置继续由三个独立 owner 管理，Renderer 不保存“已登录”镜像到 Pinia 或 localStorage。
 
+授权返回 `model_synchronization_failed` 表示凭据已经落盘。feature 编排必须重新读取 Host 账号状态，
+接纳真实连接状态并刷新模型目录与 picker，同时保留模型同步错误；不能把同步失败显示成尚未登录。
+凭据交换、保存等授权阶段失败继续显示原错误，不推断连接成功。
+
 ### Model catalog
 
 目录以 `GET /api/v1/models` 为唯一事实源。主进程 `models-updated`

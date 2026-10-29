@@ -34,6 +34,11 @@ Catalog 的职责不同：目录描述模型和推理端点，账号描述 OAuth
 本 domain 还拥有“使用账号短期凭据读取该账号可见模型”的窄能力，但不保存第二份模型目录。ChatGPT 在授权后请求官方
 `GET /backend-api/codex/models?client_version=...`，只投影 picker 可见模型、窗口、有效输入比例和输入模态；响应正文、模型指令和 token 均不进入日志或 Renderer。
 
+这里的 `client_version` 是 Codex 目录兼容版本，由 `chatgpt-model-discovery/definitions` 独立维护；
+Linnya 的产品版本只进入 `User-Agent`，不能用于上游模型可见性筛选。当前兼容基线为 `0.165.0`，
+已验证目录解析与可见模型投影；后续调整须复验目录合同，不读取本机 Codex 安装版本，也不依赖 Codex SDK。
+空目录仍明确失败，不能用本地静态模型填充或删除账号原有模型。
+
 授权成功后的模型目录落地不属于本 domain。App-level 授权 workflow 在凭据安全落盘后调用 Provider
 Onboarding 的窄同步端口；同步从上述账户目录注册新模型，原位刷新已存在模型的名称、容量和能力，并通过统一 durable 删除用例退出当前账号已不可见的历史模型，幂等复用同一 ConfiguredProvider、InferenceEndpoint 与 account
 reference。仍可解密的已有凭据在本地启动恢复完成后沿同一用例后台补同步，远端目录不属于 App Server ready 的前置条件；因此进程中断、上游容量变化或历史静态目录数据都无需用户重新登录、也无需手动删除重加；
@@ -60,3 +65,4 @@ ChatGPT loopback 是一次性 HTTP 能力：回调页必须声明
 `Connection: close`，workflow 关闭监听时必须同时终止既有连接，不能等待浏览器自行释放 keep-alive
 socket。凭据落盘成功后，回调服务器清理不得把授权成功响应永久阻塞；授权阶段日志只记录流程节点和稳定错误码，禁止记录 authorization
 code、state、PKCE verifier 或 token。
+浏览器回调页只确认授权回调已收到，最终账号连接和模型同步结果在 Linnya 中展示。
