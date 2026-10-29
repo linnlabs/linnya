@@ -29,11 +29,11 @@ it('recomputes declared checks without saving facts/advice, distinguishes unknow
   expect(check(['a', 'b'])).toMatchObject({ overall: 'undetermined', authorization: 'not_evaluated', persisted: false,
     options: [{ optionId: 'a', status: 'undetermined', unknownCheckIds: ['a_remote'] }, { optionId: 'b', status: 'pass' }] });
   expect(rows()).toEqual(before);
-  run(['update', id, '--expected-revision', '1', '--json', JSON.stringify({ reason: '收紧底线', inputs: [{ id: 'minimum', label: '最低结余', kind: 'constraint', value: 18000, origin: '用户', status: 'available' }] })]);
+  run(['update', id, '--expected-revision', '1', '--json', JSON.stringify({ reason: '收紧底线', inputs: [{ quantityType: 'other', id: 'minimum', label: '最低结余', kind: 'constraint', value: 18000, origin: '用户', status: 'available' }] })]);
   expect(check(['a', 'b'], 2)).toMatchObject({ overall: 'blocked', options: [{ optionId: 'a', status: 'undetermined' }, { optionId: 'b', status: 'fail', failedCheckIds: ['b_budget'] }] });
-  run(['update', id, '--expected-revision', '2', '--json', JSON.stringify({ reason: '确认远程', inputs: [{ id: 'a_remote', label: '远程', kind: 'fact', value: true, origin: '用户', status: 'available' }] })]);
+  run(['update', id, '--expected-revision', '2', '--json', JSON.stringify({ reason: '确认远程', inputs: [{ quantityType: 'other', id: 'a_remote', label: '远程', kind: 'fact', value: true, origin: '用户', status: 'available' }] })]);
   expect(check(['a'], 3)).toMatchObject({ overall: 'declared_checks_pass', authorization: 'not_evaluated' });
-  run(['update', id, '--expected-revision', '3', '--json', JSON.stringify({ reason: '撤回确认', inputs: [{ id: 'a_remote', label: '远程', kind: 'fact', value: true, origin: '用户撤回', status: 'withdrawn' }] })]);
+  run(['update', id, '--expected-revision', '3', '--json', JSON.stringify({ reason: '撤回确认', inputs: [{ quantityType: 'other', id: 'a_remote', label: '远程', kind: 'fact', value: true, origin: '用户撤回', status: 'withdrawn' }] })]);
   expect(check(['a'], 4)).toMatchObject({ overall: 'undetermined' });
   run(['update', id, '--expected-revision', '4', '--json', JSON.stringify({ reason: '无适用检查', checks: [] })]);
   expect(check(['a'], 5)).toMatchObject({ overall: 'undetermined' });

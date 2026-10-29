@@ -127,7 +127,7 @@ async function seed() {
   for (const migration of decisionMigrations) migration.up(fixture.db);
   const record = executeDecisionCommand({ kind: 'create', model: {
     title: '课程选择', question: '选一门可赶到的课',
-    inputs: [{ id: 'end', label: '下班时间', kind: 'fact', value: '18:00', origin: '用户', status: 'available' }],
+    inputs: [{ quantityType: 'other', id: 'end', label: '下班时间', kind: 'fact', value: '18:00', origin: '用户', status: 'available' }],
     options: [{ id: 'A', label: '课程A', description: '40分钟' }, { id: 'B', label: '课程B', description: '10分钟' }], calculations: [], checks: [],
   } }, fixture.db, projectId);
   if (typeof record !== 'object' || record === null || !('record' in record)) throw new Error('Missing decision');
@@ -200,7 +200,7 @@ describe('decision -> full research -> leaf reviews -> version-bound delivery', 
     const tail = suffix();
     const checkpoint = tail[0]; if (!checkpoint) throw new Error('Missing review turn');
     checkpoint.assertCall = () => { executeDecisionCommand({ kind: 'update', id: decisionId, expectedRevision: 1,
-      update: { reason: '用户撤回下班时间', inputs: [{ id: 'end', label: '下班时间', kind: 'fact', value: null, origin: '用户撤回', status: 'withdrawn' }] } }, fixture.db, projectId); };
+      update: { reason: '用户撤回下班时间', inputs: [{ quantityType: 'other', id: 'end', label: '下班时间', kind: 'fact', value: null, origin: '用户撤回', status: 'withdrawn' }] } }, fixture.db, projectId); };
     await open([...prefix(), ...tail]); await seed(); await start();
     expect(await view()).toMatchObject({ status: 'needs_review', changedInputs: true, request: { inputRevision: 1 } });
   });

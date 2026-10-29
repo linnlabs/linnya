@@ -12,7 +12,7 @@ import { remoteOfferModel, remoteOfferRecommendation } from './fixtures/remoteOf
 import { createDecisionRecordRepository } from '../features/decision-record';
 
 const plan: DecisionActionPlan = { label: '询问适用确认', purpose: '补足影响选择的未知', inputIds: ['a_remote'], executor: 'user', estimatedCost: '预计5分钟，0CNY' };
-const result: DecisionActionResolution = { outcome: 'completed', summary: '用户已取得适用确认', origin: '合成用户本轮报告，未独立核验', actualCost: '实际3分钟，0CNY', update: { reason: '问询带回确认', inputs: [{ id: 'a_remote', label: 'A有适用的全远程书面确认', kind: 'fact', value: true, origin: '合成用户报告', status: 'available' }] } };
+const result: DecisionActionResolution = { outcome: 'completed', summary: '用户已取得适用确认', origin: '合成用户本轮报告，未独立核验', actualCost: '实际3分钟，0CNY', update: { reason: '问询带回确认', inputs: [{ quantityType: 'other', id: 'a_remote', label: 'A有适用的全远程书面确认', kind: 'fact', value: true, origin: '合成用户报告', status: 'available' }] } };
 
 describe('action plans and feedback through CLI and SQLite', () => {
   let db: Database.Database;

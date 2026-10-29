@@ -1,4 +1,4 @@
-import type { DecisionConditionalAdvice } from '../../../../shared';
+import type { DecisionConditionalAdvice, DecisionQuantityType } from '../../../../shared';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import type { simulateDecisionScenarios } from './simulateDecisionScenarios';
 import { formatDecisionClock, formatDecisionQuantity } from './formatDecisionQuantity';
@@ -29,27 +29,27 @@ export function validateScenarioTextNumbers(advice: DecisionConditionalAdvice, s
     const authorCase = advice.cases?.find(item => item.id === scenario.id);
     if (!authorCase) throw new Error(`Missing author scenario: ${scenario.id}`);
     const mentioned = textNumbers(`${authorCase.label}\n${authorCase.nextAction ?? ''}`);
-    const contains = (value: number, unit: string | undefined) => {
-      const clock = formatDecisionClock(value, unit);
+    const contains = (value: number, quantityType: DecisionQuantityType) => {
+      const clock = formatDecisionClock(value, quantityType);
       return mentioned.integers.has(Math.abs(value)) || (clock !== null && mentioned.clocks.has(clock));
     };
-    const compare = (kind: string, id: string, baseline: number, actual: number, unit?: string) => {
-      if (unit !== '当天00:00起分钟') return;
+    const compare = (kind: string, id: string, baseline: number, actual: number, unit: string | undefined, quantityType: DecisionQuantityType) => {
+      if (quantityType !== 'day_clock') return;
       // 不截断小数、不认证符号；绝对值相同时该规则没有分辨力。
       if (!Number.isSafeInteger(baseline) || !Number.isSafeInteger(actual) || Math.abs(baseline) === Math.abs(actual)) return;
-      if (contains(baseline, unit) && !contains(actual, unit)) {
-        conflicts.push(`scenario ${scenario.id}, ${kind} ${id}: wrote baseline ${formatDecisionQuantity(baseline, unit)}; scenario program value ${formatDecisionQuantity(actual, unit)}`);
+      if (contains(baseline, quantityType) && !contains(actual, quantityType)) {
+        conflicts.push(`scenario ${scenario.id}, ${kind} ${id}: wrote baseline ${formatDecisionQuantity(baseline, unit, quantityType)}; scenario program value ${formatDecisionQuantity(actual, unit, quantityType)}`);
       }
     };
     for (const change of scenario.changes) {
       if (change.status === 'available' && typeof change.from === 'number' && typeof change.to === 'number') {
-        compare('input', change.inputId, change.from, change.to, change.unit);
+        compare('input', change.inputId, change.from, change.to, change.unit, change.quantityType);
       }
     }
     for (const calculation of scenario.evaluation.calculations) {
       const baseline = simulation.baseline.calculations.find(item => item.id === calculation.id);
       if (baseline?.result.status === 'available' && calculation.result.status === 'available') {
-        compare('calculation', calculation.id, baseline.result.value, calculation.result.value, calculation.unit);
+        compare('calculation', calculation.id, baseline.result.value, calculation.result.value, calculation.unit, calculation.quantityType);
       }
     }
   }

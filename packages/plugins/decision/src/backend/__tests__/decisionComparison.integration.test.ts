@@ -14,7 +14,7 @@ describe('read-only version impact through project CLI',()=>{
  function run(argv:readonly string[],project='p'){const command=parseDecisionCli(argv);if(command.kind==='file')throw new Error('Inline fixture');return executeDecisionCommand(command,db,project);}
  function create(){const result=run(['create','--json',JSON.stringify(remoteOfferModel())]);if(typeof result!=='object'||result===null||!('record' in result))throw new Error('Record expected');return DecisionRecordSchema.parse(result.record);}
  function compare(id:string,from:number,to:number){const result=run(['compare',id,'--from',String(from),'--to',String(to)]);if(typeof result!=='object'||result===null||!('kind' in result)||result.kind!=='comparison')throw new Error('Comparison expected');return result;}
- const confirmation=(value:boolean,status:'available'|'withdrawn'='available',origin='测试书面依据')=>({id:'a_remote',label:'A有适用的全远程书面确认',kind:'fact',value,origin,status});
+ const confirmation=(value:boolean,status:'available'|'withdrawn'='available',origin='测试书面依据')=>({ quantityType: 'other',id:'a_remote',label:'A有适用的全远程书面确认',kind:'fact',value,origin,status});
  function update(id:string,revision:number,inputs:unknown[]){run(['update',id,'--expected-revision',String(revision),'--json',JSON.stringify({reason:'更新条件',inputs})]);}
  function recommend(id:string,revision:number,selected:string[]){run(['recommend',id,'--expected-revision',String(revision),'--json',JSON.stringify(remoteOfferRecommendation(selected))]);}
 

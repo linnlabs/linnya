@@ -22,19 +22,19 @@ function travelModel(): DecisionModel {
   return {
     title: '合成旅行测试', question: '在预算内选择合适方案',
     inputs: [
-      { id: 'budget', label: '预算', kind: 'constraint', value: 4000, unit: 'CNY/次', origin: '测试给定', status: 'available' },
-      { id: 'days', label: '住宿天数', kind: 'fact', value: 4, unit: '天', origin: '测试给定', status: 'available' },
-      { id: 'comfort', label: '舒适方案每日费用', kind: 'fact', value: 700, unit: 'CNY/天', origin: '测试报价', status: 'available' },
-      { id: 'simple', label: '经济方案每日费用', kind: 'fact', value: 450, unit: 'CNY/天', origin: '测试报价', status: 'available' },
-      { id: 'priority', label: '偏好', kind: 'preference', value: '预算允许时优先舒适', origin: '用户明确给定', status: 'available' },
+      { quantityType: 'money', id: 'budget', label: '预算', kind: 'constraint', value: 4000, unit: 'CNY/次', origin: '测试给定', status: 'available' },
+      { quantityType: 'duration', id: 'days', label: '住宿天数', kind: 'fact', value: 4, unit: '天', origin: '测试给定', status: 'available' },
+      { quantityType: 'money', id: 'comfort', label: '舒适方案每日费用', kind: 'fact', value: 700, unit: 'CNY/天', origin: '测试报价', status: 'available' },
+      { quantityType: 'money', id: 'simple', label: '经济方案每日费用', kind: 'fact', value: 450, unit: 'CNY/天', origin: '测试报价', status: 'available' },
+      { quantityType: 'other', id: 'priority', label: '偏好', kind: 'preference', value: '预算允许时优先舒适', origin: '用户明确给定', status: 'available' },
     ],
     options: [
       { id: 'A', label: '舒适', description: '中心位置住宿' },
       { id: 'B', label: '经济', description: '较远位置住宿' },
     ],
     calculations: [
-      { id: 'aCost', label: '舒适总费用', unit: 'CNY/次', expression: cost('comfort') },
-      { id: 'bCost', label: '经济总费用', unit: 'CNY/次', expression: cost('simple') },
+      { quantityType: 'money', id: 'aCost', label: '舒适总费用', unit: 'CNY/次', expression: cost('comfort') },
+      { quantityType: 'money', id: 'bCost', label: '经济总费用', unit: 'CNY/次', expression: cost('simple') },
     ],
     checks: ['comfort', 'simple'].map((daily, index) => ({
       id: index === 0 ? 'aBudget' : 'bBudget', optionId: index === 0 ? 'A' : 'B',
@@ -130,7 +130,7 @@ describe('decision prototype lifecycle through CLI and SQLite', () => {
     expect(() => run(args)).toThrow('No decision conditions changed');
     const stale = ['recommend', first.record.id, '--expected-revision', '1', '--json', JSON.stringify(recommendation('A'))];
     expect(() => run(stale)).toThrow('Revision conflict');
-    const invalid = { ...travelModel(), calculations: [{ id: 'bad', label: 'bad', unit: 'CNY', expression: input('absent') }] };
+    const invalid = { ...travelModel(), calculations: [{ quantityType: 'money', id: 'bad', label: 'bad', unit: 'CNY', expression: input('absent') }] };
     expect(() => run(['create', '--json', JSON.stringify(invalid)])).toThrow('Unknown input');
     expect(viewSchema.parse(run(['read', first.record.id])).record.revision).toBe(2);
   });
@@ -169,7 +169,7 @@ describe('decision prototype lifecycle through CLI and SQLite', () => {
     const model = travelModel();
     const qualitative = { ...model, calculations: [], checks: [] };
     expect(viewSchema.parse(run(['create', '--json', JSON.stringify(qualitative)])).evaluation.calculations).toEqual([]);
-    const divideByZero = { ...model, calculations: [{ id: 'ratio', label: 'ratio', unit: 'ratio', expression: { op: 'divide', left: input('budget'), right: literal(0) } }] };
+    const divideByZero = { ...model, calculations: [{ quantityType: 'other', id: 'ratio', label: 'ratio', unit: 'ratio', expression: { op: 'divide', left: input('budget'), right: literal(0) } }] };
     expect(viewSchema.parse(run(['create', '--json', JSON.stringify(divideByZero)])).evaluation.calculations[0]?.result.status).toBe('unavailable');
   });
 

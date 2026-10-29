@@ -7,13 +7,13 @@ export function remoteOfferModel(): DecisionModel {
   return {
     title: '合成offer取舍', question: '结余与书面远程条件均满足时优先A',
     inputs: [
-      ...[['a_income',30000],['a_cost',12000],['b_income',26000],['b_cost',9000],['minimum',16000]].map(([id,value])=>({id:String(id),label:String(id),kind:'fact' as const,value:Number(value),unit:'CNY/月',origin:'合成用户给定',status:'available' as const})),
-      {id:'a_remote',label:'A有适用的全远程书面确认',kind:'fact',value:null,origin:'用户表示尚未确定',status:'available'},
-      {id:'b_remote',label:'B有适用的全远程书面确认',kind:'fact',value:true,origin:'用户明确确认',status:'available'},
-      {id:'preference',label:'均满足时偏好A',kind:'preference',value:'A_then_B',origin:'用户明确偏好',status:'available'},
+      ...[['a_income',30000],['a_cost',12000],['b_income',26000],['b_cost',9000],['minimum',16000]].map(([id,value])=>({ quantityType: 'money',id:String(id),label:String(id),kind:'fact' as const,value:Number(value),unit:'CNY/月',origin:'合成用户给定',status:'available' as const})),
+      { quantityType: 'other',id:'a_remote',label:'A有适用的全远程书面确认',kind:'fact',value:null,origin:'用户表示尚未确定',status:'available'},
+      { quantityType: 'other',id:'b_remote',label:'B有适用的全远程书面确认',kind:'fact',value:true,origin:'用户明确确认',status:'available'},
+      { quantityType: 'other',id:'preference',label:'均满足时偏好A',kind:'preference',value:'A_then_B',origin:'用户明确偏好',status:'available'},
     ],
     options:[{id:'a',label:'A',description:'30000收入，12000固定支出'},{id:'b',label:'B',description:'26000收入，9000固定支出'}],
-    calculations:['a','b'].map(id=>({id:`${id}_surplus`,label:`${id}结余`,unit:'CNY/月',expression:surplus(id)})),
+    calculations:['a','b'].map(id=>({ quantityType: 'money',id:`${id}_surplus`,label:`${id}结余`,unit:'CNY/月',expression:surplus(id)})),
     checks:['a','b'].flatMap(optionId=>[
       {id:`${optionId}_budget`,optionId,label:'月结余底线',operator:'gte' as const,left:surplus(optionId),right:input('minimum')},
       {id:`${optionId}_remote`,optionId,label:'全远程书面确认',operator:'is' as const,inputId:`${optionId}_remote`,value:true},

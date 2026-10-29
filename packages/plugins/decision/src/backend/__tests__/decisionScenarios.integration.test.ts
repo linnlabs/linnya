@@ -19,10 +19,10 @@ function model(): DecisionModel {
     inputs: [
       ['budget', 2200], ['a_cost', 2160], ['b_base', 2196], ['b_book', 0],
       ['departure', 1050], ['a_travel', 40], ['b_travel', 25], ['a_start', 1110], ['b_start', 1125],
-    ].map(([id, value]) => ({ id: String(id), label: String(id), kind: 'fact', value: Number(value), origin: '合成夹具', status: 'available' })),
+    ].map(([id, value]) => ({ quantityType: 'other', id: String(id), label: String(id), kind: 'fact', value: Number(value), origin: '合成夹具', status: 'available' })),
     options: [{ id: 'A', label: 'A', description: '条件满足时偏好A' }, { id: 'B', label: 'B', description: '备选B' }],
     // 模仿实际失败：b_book登记了但未接入公式，试算应揭露它而不是自动补公式。
-    calculations: [{ id: 'b_total', label: 'B总价', unit: 'CNY/期', expression: input('b_base') }],
+    calculations: [{ quantityType: 'money', id: 'b_total', label: 'B总价', unit: 'CNY/期', expression: input('b_base') }],
     checks: [
       { id: 'a_budget', optionId: 'A', label: 'A预算', left: input('a_cost'), operator: 'lte', right: input('budget') },
       { id: 'b_budget', optionId: 'B', label: 'B预算', left: input('b_base'), operator: 'lte', right: input('budget') },
@@ -102,7 +102,7 @@ describe('read-only counterfactuals through project CLI and SQLite', () => {
 
   it('preserves unknown, withdrawn and qualitative inputs without inventing a zero or a numeric effect', () => {
     const source = model();
-    source.inputs.push({ id: 'preference', label: '偏好', kind: 'preference', value: 'A', status: 'available', origin: '用户明确偏好' });
+    source.inputs.push({ quantityType: 'other', id: 'preference', label: '偏好', kind: 'preference', value: 'A', status: 'available', origin: '用户明确偏好' });
     source.inputs = source.inputs.map(item => item.id === 'b_base' ? { ...item, status: 'withdrawn' } : item);
     const record = create(source);
     const result = simulate(record.id, 1, [scenario('unknown_budget', 'budget', null), scenario('withdrawn', 'b_base', 10), scenario('new_preference', 'preference', 'B')]);

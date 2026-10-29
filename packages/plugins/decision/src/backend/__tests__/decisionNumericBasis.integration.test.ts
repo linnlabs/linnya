@@ -31,11 +31,11 @@ function courseModel(): DecisionModel {
   ] as const;
   return {
     title: '合成课程边界', question: '预算与准时约束下比较两门课',
-    inputs: numbers.map(([id, label, value, unit]) => ({ id, label, value, unit, kind: 'fact', origin: '合成业务夹具', status: 'available' })),
+    inputs: numbers.map(([id, label, value, unit]) => ({ quantityType: 'other', id, label, value, unit, kind: 'fact', origin: '合成业务夹具', status: 'available' })),
     options: [{ id: 'A', label: 'A', description: '内容偏好A' }, { id: 'B', label: 'B', description: '另一课程' }],
     calculations: ['a', 'b'].flatMap(prefix => [
-      { id: `${prefix}_cost`, label: `${prefix}一期总费用`, unit: 'CNY/期', expression: cost(prefix) },
-      { id: `${prefix}_buffer`, label: `${prefix}开课减到场的余量`, unit: '分钟', expression: subtract(input(`${prefix}_start`), add(input('departure'), input(`${prefix}_commute`))) },
+      { quantityType: 'money', id: `${prefix}_cost`, label: `${prefix}一期总费用`, unit: 'CNY/期', expression: cost(prefix) },
+      { quantityType: 'duration', id: `${prefix}_buffer`, label: `${prefix}开课减到场的余量`, unit: '分钟', expression: subtract(input(`${prefix}_start`), add(input('departure'), input(`${prefix}_commute`))) },
     ]),
     checks: ['a', 'b'].flatMap(prefix => [
       { id: `${prefix}_budget`, optionId: prefix.toUpperCase(), label: `${prefix}费用不超预算`, left: cost(prefix), operator: 'lte', right: input('budget') },
@@ -158,7 +158,7 @@ describe('recommendation numerical basis through CLI and persistent versions', (
   it('handles reverse inequality, equality and cancellation, and refuses nonlinear estimates', () => {
     const model: DecisionModel = {
       title: '合成融资约束', question: '收入覆盖支出并保留已知约束',
-      inputs: [{ id: 'income', label: '收入', kind: 'assumption', value: 30, unit: 'CNY', status: 'available', origin: '合成假设' }],
+      inputs: [{ quantityType: 'money', id: 'income', label: '收入', kind: 'assumption', value: 30, unit: 'CNY', status: 'available', origin: '合成假设' }],
       options: [{ id: 'plan', label: '计划', description: '合成计划' }], calculations: [],
       checks: [
         { id: 'surplus', optionId: 'plan', label: '结余非负', left: subtract(literal(50), input('income')), operator: 'lte', right: literal(20) },
@@ -208,10 +208,10 @@ describe('recommendation numerical basis through CLI and persistent versions', (
     const model = courseModel();
     const times = new Map([['departure', 510], ['a_commute', 20], ['a_start', 540], ['b_commute', 45], ['b_start', 570]]);
     model.inputs = model.inputs.map(item => ({ ...item, label: item.label.replace('18:00为0', '当天00:00起'), value: times.get(item.id) ?? item.value }));
-    model.inputs.push({ id: 'padding', label: '额外准备时间', kind: 'fact', value: null, origin: '尚未核清', status: 'available', unit: '分钟' });
+    model.inputs.push({ quantityType: 'duration', id: 'padding', label: '额外准备时间', kind: 'fact', value: null, origin: '尚未核清', status: 'available', unit: '分钟' });
     model.calculations.push(
-      { id: 'b_arrival', label: 'B到场时刻', unit: '分钟', expression: add(input('departure'), input('b_commute')) },
-      { id: 'uncertain_arrival', label: '含未核准备的到场', unit: '分钟', expression: add(add(input('departure'), input('b_commute')), input('padding')) },
+      { quantityType: 'duration', id: 'b_arrival', label: 'B到场时刻', unit: '分钟', expression: add(input('departure'), input('b_commute')) },
+      { quantityType: 'duration', id: 'uncertain_arrival', label: '含未核准备的到场', unit: '分钟', expression: add(add(input('departure'), input('b_commute')), input('padding')) },
     );
     const { record } = create(model);
     const view = recommend(record.id, 1, advice('B', ['b_buffer'], [{ checkId: 'b_time', inputId: 'departure' }]));

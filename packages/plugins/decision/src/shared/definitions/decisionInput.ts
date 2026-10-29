@@ -2,6 +2,9 @@ import { z } from 'zod';
 
 export const DecisionIdSchema = z.string().trim().min(1).regex(/^[a-zA-Z][a-zA-Z0-9_-]*$/);
 export const DecisionTextSchema = z.string().trim().min(1);
+/** 量的含义独立于展示单位；当天时刻固定为从00:00起的分钟，不从自由文字猜。 */
+export const DecisionQuantityTypeSchema = z.enum(['day_clock', 'duration', 'money', 'other']);
+export type DecisionQuantityType = z.infer<typeof DecisionQuantityTypeSchema>;
 
 /** 输入身份由记录和假设共用；假设只能换值，不能恢复已撤回的来源。 */
 export const DecisionInputSchema = z.object({
@@ -9,6 +12,8 @@ export const DecisionInputSchema = z.object({
   label: DecisionTextSchema,
   kind: z.enum(['fact', 'preference', 'constraint', 'assumption']),
   value: z.union([z.number().finite(), z.string(), z.boolean(), z.null()]),
+  // 非数值输入填other，未知数值按预期含义填写，不能靠null绕过声明。
+  quantityType: DecisionQuantityTypeSchema,
   unit: z.string().optional(),
   origin: DecisionTextSchema,
   status: z.enum(['available', 'withdrawn']),

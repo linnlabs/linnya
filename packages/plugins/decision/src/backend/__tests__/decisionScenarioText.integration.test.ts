@@ -28,11 +28,11 @@ function create(model?: DecisionModel) {
   const source: DecisionModel = model ?? {
     title: '合成到场情景', question: '变更出发点后仍须匹配同点到场',
     inputs: [
-      { id: 'start', label: '出发时刻', kind: 'fact', value: 510, unit: '当天00:00起分钟', origin: '合成输入', status: 'available' },
-      { id: 'travel', label: '路程', kind: 'fact', value: 45, unit: '分钟', origin: '合成输入', status: 'available' },
+      { quantityType: 'day_clock', id: 'start', label: '出发时刻', kind: 'fact', value: 510, unit: '当天00:00起分钟', origin: '合成输入', status: 'available' },
+      { quantityType: 'duration', id: 'travel', label: '路程', kind: 'fact', value: 45, unit: '分钟', origin: '合成输入', status: 'available' },
     ],
     options: [{ id: 'b', label: 'B', description: '合成现场' }],
-    calculations: [{ id: 'arrival', label: 'B到场', unit: '当天00:00起分钟', expression: { op: 'add', left: { input: 'start' }, right: { input: 'travel' } } }],
+    calculations: [{ quantityType: 'day_clock', id: 'arrival', label: 'B到场', unit: '当天00:00起分钟', expression: { op: 'add', left: { input: 'start' }, right: { input: 'travel' } } }],
     checks: [{ id: 'time', optionId: 'b', label: '准时', left: { op: 'add', left: { input: 'start' }, right: { input: 'travel' } }, operator: 'lte', right: { literal: 570 } }],
   };
   const output = run(['create', '--json', JSON.stringify(source)]);
@@ -86,7 +86,7 @@ it('leaves amounts, counts and durations outside the clock-only guard, without c
   const base = create();
   for (const unit of ['CNY', '人', '分钟', undefined]) {
     const model: DecisionModel = { ...base.model,
-      inputs: [{ id: 'start', label: '登记值', kind: 'fact', value: 6, unit, origin: '合成', status: 'available' }],
+      inputs: [{ quantityType: 'other', id: 'start', label: '登记值', kind: 'fact', value: 6, unit, origin: '合成', status: 'available' }],
       calculations: [], checks: [] };
     const record = create(model);
     const content = { ...advice('情景为7', '建议调整回6', 7), rationale: '其他字段1000未核', changeConditions: '其他条件1000未核', nextAction: '顶层1000不在覆盖范围' };
@@ -98,7 +98,7 @@ it('leaves amounts, counts and durations outside the clock-only guard, without c
 it('does not reject a legitimate decimal or scientific example by taking integers from inside its token', () => {
   const base = create();
   for (const baseline of [0, 6, 555]) {
-    const record = create({ ...base.model, inputs: [{ id: 'start', label: '登记时刻', kind: 'fact', value: baseline, unit: '当天00:00起分钟', origin: '合成', status: 'available' }], calculations: [], checks: [] });
+    const record = create({ ...base.model, inputs: [{ quantityType: 'day_clock', id: 'start', label: '登记时刻', kind: 'fact', value: baseline, unit: '当天00:00起分钟', origin: '合成', status: 'available' }], calculations: [], checks: [] });
     run(['recommend', record.id, '--expected-revision', '1', '--json', JSON.stringify(advice('比例说明', '小数.6、-.6、6.01和指数6e-3、1e-555不代表本情景数量', 8))]);
     expect(createDecisionRecordRepository(db, 'p').read(record.id).revision).toBe(2);
   }

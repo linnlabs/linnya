@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { DecisionIdSchema, DecisionTextSchema, DecisionInputSchema } from './decisionInput';
+import { DecisionIdSchema, DecisionTextSchema, DecisionInputSchema, DecisionQuantityTypeSchema } from './decisionInput';
 import { DecisionScenarioCaseSchema } from './decisionScenario';
 import { DecisionActionSchema, DecisionActionReportSchema, DecisionActionWithdrawalSchema, DecisionActionProgressContentSchema } from './decisionAction';
 
-export { DecisionInputSchema } from './decisionInput';
+export { DecisionInputSchema, DecisionQuantityTypeSchema } from './decisionInput';
+export type { DecisionQuantityType } from './decisionInput';
 
 const text = DecisionTextSchema;
 const id = DecisionIdSchema;
@@ -33,6 +34,7 @@ export const DecisionCalculationSchema = z.object({
   id,
   label: text,
   unit: text,
+  quantityType: DecisionQuantityTypeSchema,
   expression: DecisionExpressionSchema,
 }).strict();
 export const DecisionCheckSchema = z.union([
@@ -129,7 +131,7 @@ export const DecisionActionProgressSchema = DecisionActionProgressContentSchema.
 export type DecisionActionProgress = z.infer<typeof DecisionActionProgressSchema>;
 
 export const DecisionRecordSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   id: z.string().uuid(),
   revision: z.number().int().positive(),
   inputRevision: z.number().int().positive(),

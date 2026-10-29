@@ -56,7 +56,7 @@ export function compareDecisionRecords(before: DecisionRecord, after: DecisionRe
   const changedInputIds = [...new Set([
     ...inputChanges.added.map(item => item.id), ...inputChanges.removed.map(item => item.id), ...inputChanges.changed.map(item => item.id),
   ])];
-  const inputFields = ['value', 'status', 'origin', 'kind', 'unit', 'label'] as const;
+  const inputFields = ['value', 'status', 'origin', 'kind', 'unit', 'quantityType', 'label'] as const;
   const targetOptions = summarizeOptionChecks(after.model, newEvaluation);
   return {
     kind: 'comparison' as const, decisionId: before.id,

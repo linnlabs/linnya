@@ -59,7 +59,7 @@ it('exports exact arithmetic, formula definitions and separate unverified author
 
 it('keeps unknown and withdrawn conditions unavailable and does not display stale recommendation boundaries as current', () => {
   const model = remoteOfferModel(); model.inputs = model.inputs.map(input => input.id === 'b_income' ? { ...input, status: 'withdrawn' } : input);
-  model.inputs.push({ id: 'text_false', label: '文字回复', kind: 'fact', value: 'false', origin: '原文字串', status: 'available' }, { id: 'bool_false', label: '布尔拒绝', kind: 'fact', value: false, origin: '明确布尔值', status: 'available' });
+  model.inputs.push({ quantityType: 'other', id: 'text_false', label: '文字回复', kind: 'fact', value: 'false', origin: '原文字串', status: 'available' }, { quantityType: 'other', id: 'bool_false', label: '布尔拒绝', kind: 'fact', value: false, origin: '明确布尔值', status: 'available' });
   const record = create(model);
   // 仅保存解释，不以已失败或未知的候选冒充自动选择。
   const advice = remoteOfferRecommendation([]); recommend(record.id, 1, advice);

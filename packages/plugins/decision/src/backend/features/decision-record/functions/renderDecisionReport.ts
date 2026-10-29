@@ -1,4 +1,4 @@
-import type { DecisionExpression, DecisionRecord } from '../../../../shared';
+import type { DecisionExpression, DecisionRecord, DecisionQuantityType } from '../../../../shared';
 import type { DecisionReport } from '../definitions/decisionReport';
 import type { CheckValueResult } from '../definitions/decisionEvaluation';
 import { projectDecisionRecord } from './updateDecisionRecord';
@@ -19,13 +19,13 @@ function expression(value: DecisionExpression): string {
   return `(${expression(value.left)} ${symbol} ${expression(value.right)})`;
 }
 
-function result(value: CheckValueResult, unit?: string): string {
-  return value.status === 'available' ? scalar(value.value, unit) : `不可用：${text(value.reason)}`;
+function result(value: CheckValueResult, quantityType: DecisionQuantityType = 'other'): string {
+  return value.status === 'available' ? scalar(value.value, quantityType) : `不可用：${text(value.reason)}`;
 }
 
-function scalar(value: string | number | boolean, unit?: string): string {
+function scalar(value: string | number | boolean, quantityType: DecisionQuantityType = 'other'): string {
   // 离散检查不强转类型，报告同样保留字符串引号，避免把"false"显示成布尔false。
-  const clock = typeof value === 'number' ? formatDecisionClock(value, unit) : null;
+  const clock = typeof value === 'number' ? formatDecisionClock(value, quantityType) : null;
   return text(typeof value === 'string' ? JSON.stringify(value) : `${value}${clock ? `（${clock}）` : ''}`);
 }
 
@@ -46,12 +46,12 @@ export function renderDecisionReport(record: DecisionRecord, expectedRevision: n
     '这是生成时版本的固定快照，不随以后条件变化更新。当前状态用 linnya-decision read 查看。程序计算已声明算式和检查；名称、单位、来源说明、模型语义和建议均未被认证。本报告不授予执行权限。完整情景与历史仍从记录读取。',
     '## 已登记输入（用户或作者声明）',
     table(['id', '名称', '值', '单位', '类型', '来源状态', '出处说明'], record.model.inputs.map(input => [
-      text(input.id), text(input.label), input.value === null ? '未知（null）' : scalar(input.value, input.unit === '当天00:00起分钟' ? input.unit : undefined), text(input.unit ?? '未声明'),
+      text(input.id), text(input.label), input.value === null ? '未知（null）' : scalar(input.value, input.quantityType), text(input.unit ?? '未声明'),
       input.kind, input.status, text(input.origin),
     ])),
     '## 程序执行的算式',
     table(['id', '名称（作者声明）', '公式（输入id）', '算值', '单位（作者声明）'], record.model.calculations.map(calculation => [
-      text(calculation.id), text(calculation.label), text(expression(calculation.expression)), result(evaluateExpression(calculation.expression, record.model), calculation.unit === '当天00:00起分钟' ? calculation.unit : undefined), text(calculation.unit),
+      text(calculation.id), text(calculation.label), text(expression(calculation.expression)), result(evaluateExpression(calculation.expression, record.model), calculation.quantityType), text(calculation.unit),
     ])),
     '## 全部声明检查',
     table(['id / 选项', '检查名称（作者声明）', '声明关系', '实际左值', '实际右值', '结果'], record.model.checks.map(check => {

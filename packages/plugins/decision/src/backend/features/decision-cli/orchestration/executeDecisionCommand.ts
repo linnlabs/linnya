@@ -35,7 +35,7 @@ export function executeDecisionCommand(
   if (command.kind === 'create') {
     validateDecisionModel(command.model);
     const record: DecisionRecord = {
-      schemaVersion: 1, id: randomUUID(), revision: 1, inputRevision: 1,
+      schemaVersion: 2, id: randomUUID(), revision: 1, inputRevision: 1,
       reason: 'Initial decision conditions', model: command.model, recommendation: null,
     };
     repository.append(record, 0);

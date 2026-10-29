@@ -27,10 +27,10 @@ describe('mixed numeric and discrete constraints through the project CLI',()=>{
  });
 
  it('accepts confirmed preference, invalidates the old choice on withdrawal and preserves the original value in history',()=>{
-  const record=create();run(['update',record.id,'--expected-revision','1','--json',JSON.stringify({reason:'取得书面确认',inputs:[{id:'a_remote',label:'A有适用全远程确认',kind:'fact',value:true,origin:'新书面依据',status:'available'}]})]);
+  const record=create();run(['update',record.id,'--expected-revision','1','--json',JSON.stringify({reason:'取得书面确认',inputs:[{ quantityType: 'other',id:'a_remote',label:'A有适用全远程确认',kind:'fact',value:true,origin:'新书面依据',status:'available'}]})]);
   save(record.id,2,['a']);
   expect(read(record.id).conditionalAdvice).toMatchObject({baseline:{outcome:{status:'ranked_choice',optionIds:['a']}}});
-  run(['update',record.id,'--expected-revision','3','--json',JSON.stringify({reason:'确认依据撤回',inputs:[{id:'a_remote',label:'A有适用全远程确认',kind:'fact',value:true,origin:'已撤回的书面依据',status:'withdrawn'}]})]);
+  run(['update',record.id,'--expected-revision','3','--json',JSON.stringify({reason:'确认依据撤回',inputs:[{ quantityType: 'other',id:'a_remote',label:'A有适用全远程确认',kind:'fact',value:true,origin:'已撤回的书面依据',status:'withdrawn'}]})]);
   expect(read(record.id).conditionalAdvice).toEqual({status:'needs_review',basedOnInputRevision:2});
   save(record.id,4);
   const current=read(record.id);expect(current.conditionalAdvice).toMatchObject({baseline:{outcome:{status:'needs_information'}}});

@@ -23,9 +23,10 @@
 
 必填 `title`、`question`、`inputs`、`options`、`calculations`、`checks`。没有适用的量化模型时，后两项用空数组，靠解释与调查进行比较。
 
-- 每个 input：`id`、`label`、`kind`（`fact|preference|constraint|assumption`）、`value`（数字、文字、布尔值或 null）、`origin`、`status`（`available|withdrawn`）；`unit` 可选。origin 写明是用户给定、作者假设或材料定位，CLI 不会核实其真实性。
+- 每个 input：`id`、`label`、`kind`（`fact|preference|constraint|assumption`）、`value`（数字、文字、布尔值或 null）、`origin`、`status`（`available|withdrawn`）；`quantityType` 必填，`unit` 可选。origin 写明是用户给定、作者假设或材料定位，CLI 不会核实其真实性。
 - 每个 option：`id`、`label`、`description`。
-- 每个 calculation：`id`、`label`、`unit`、`expression`。
+- 每个 calculation：`id`、`label`、`quantityType`、`unit`、`expression`。
+- `quantityType`只取`day_clock`（当天00:00起分钟）、`duration`（时长）、`money`（金额）、`other`（其他）。文字/布尔填other；未知数值用null并填写预期类型。展示单位不决定量类型；新建和更新缺字段会被拒绝。
 - 每个 check：`id`、`optionId`、`label`、`left`、`operator`（`lte|gte|eq`）、`right`。仅表达已声明的数值硬约束，不能代表所有现实可行性。
 - 这些 id 用字母开头的英文标识，后接字母、数字、下划线或连字符。同类 id 唯一。
 
@@ -38,14 +39,14 @@
   "title":"资料采购",
   "question":"是否购买补充资料？",
   "inputs":[
-    {"id":"budget","label":"预算","kind":"constraint","value":200,"unit":"CNY/次","origin":"虚构用户给定","status":"available"},
-    {"id":"price","label":"购买价格","kind":"fact","value":150,"unit":"CNY/次","origin":"虚构报价，未核验","status":"available"}
+    {"id":"budget","label":"预算","kind":"constraint","value":200,"quantityType":"money","unit":"CNY/次","origin":"虚构用户给定","status":"available"},
+    {"id":"price","label":"购买价格","kind":"fact","value":150,"quantityType":"money","unit":"CNY/次","origin":"虚构报价，未核验","status":"available"}
   ],
   "options":[
     {"id":"buy","label":"购买","description":"购买资料后再分析"},
     {"id":"wait","label":"暂缓","description":"先使用已取得的公开资料"}
   ],
-  "calculations":[{"id":"remaining","label":"购买后余额","unit":"CNY/次","expression":{"op":"subtract","left":{"input":"budget"},"right":{"input":"price"}}}],
+  "calculations":[{"id":"remaining","label":"购买后余额","quantityType":"money","unit":"CNY/次","expression":{"op":"subtract","left":{"input":"budget"},"right":{"input":"price"}}}],
   "checks":[{"id":"affordable","optionId":"buy","label":"购买不超过预算","left":{"input":"price"},"operator":"lte","right":{"input":"budget"}}]
 }
 ```
@@ -67,7 +68,7 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 必填 `reason`，并至少给一项 `title`、`question`、`inputs`、`options`、`calculations` 或 `checks`。inputs 按 id 合并，每项提供完整 input；其他数组整组替换，避免旧约束或算式残留。title/question仅在显式给出时替换，历史保留。撤回来源时，把相关 input 的 status 改为 withdrawn，保留其原 value 和 origin 作为历史。
 
 ```json
-{"reason":"用户降低预算","inputs":[{"id":"budget","label":"预算","kind":"constraint","value":100,"unit":"CNY/次","origin":"用户本轮明确更新","status":"available"}]}
+{"reason":"用户降低预算","inputs":[{"id":"budget","label":"预算","kind":"constraint","value":100,"quantityType":"money","unit":"CNY/次","origin":"用户本轮明确更新","status":"available"}]}
 ```
 
 更新回执会重算、列出检查结果，并将旧建议标为 needs_review。相同条件重复提交会被拒绝，不凭空增加版本。revision 冲突时先读取当前版，结合最新条件处理，不能直接把旧提交的数字改成新版号重试。

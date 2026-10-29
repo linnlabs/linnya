@@ -1,4 +1,4 @@
-import type { DecisionModel, DecisionNumericBasis } from '../../../../shared';
+import type { DecisionModel, DecisionNumericBasis, DecisionQuantityType } from '../../../../shared';
 import type { CheckBoundaryResult } from '../definitions/checkBoundary';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { evaluateDecisionModel } from './evaluateDecisionModel';
@@ -26,14 +26,14 @@ export function validateNumericBasis(model: DecisionModel, basis: DecisionNumeri
   return { boundaries };
 }
 
-function boundaryText(label: string, inputLabel: string, unit: string | undefined, result: CheckBoundaryResult): string {
+function boundaryText(label: string, inputLabel: string, unit: string | undefined, quantityType: DecisionQuantityType, result: CheckBoundaryResult): string {
   if (result.status === 'unavailable') return `${label}：边界不可用（${result.reason}）。`;
   if (result.status === 'independent') {
     return `${label}：在其他输入固定时，此检查与${inputLabel}无关，检查${result.passes ? '成立' : '不成立'}。`;
   }
   const symbol = result.operator === 'lte' ? '≤' : result.operator === 'gte' ? '≥' : '=';
   const inverse = result.operator === 'lte' ? '>' : result.operator === 'gte' ? '<' : '≠';
-  const quantity = formatDecisionQuantity(result.value, unit);
+  const quantity = formatDecisionQuantity(result.value, unit, quantityType);
   return `保持“${label}”成立：${inputLabel} ${symbol} ${quantity}；${inputLabel} ${inverse} ${quantity}时该项检查不成立（其他输入固定）。`;
 }
 
@@ -50,8 +50,8 @@ function projectBoundaryPoint(model: DecisionModel, inputId: string, value: numb
       const inputIds = collectExpressionInputs(calculation.expression);
       if (!inputIds.includes(inputId)) return [];
       const result = evaluateExpression(calculation.expression, pointModel);
-      return [{ id: calculation.id, label: calculation.label, unit: calculation.unit, inputIds, result,
-        text: result.status === 'available' ? `${calculation.label}：${formatDecisionQuantity(result.value, calculation.unit)}`
+      return [{ id: calculation.id, label: calculation.label, unit: calculation.unit, quantityType: calculation.quantityType, inputIds, result,
+        text: result.status === 'available' ? `${calculation.label}：${formatDecisionQuantity(result.value, calculation.unit, calculation.quantityType)}`
           : `${calculation.label}：不可用（${result.reason}）。` }];
     }),
   };
@@ -64,12 +64,12 @@ export function projectNumericBasis(model: DecisionModel, basis: DecisionNumeric
     const result = deriveCheckBoundary(model, check, input.id);
     const otherInputIds = collectCheckInputs(check).filter(id => id !== input.id);
     const atBoundary = result.status === 'available' ? projectBoundaryPoint(model, input.id, result.value) : null;
-    const pointText = atBoundary ? `取${input.label} = ${formatDecisionQuantity(atBoundary.value, input.unit)}时，${atBoundary.calculations.length
+    const pointText = atBoundary ? `取${input.label} = ${formatDecisionQuantity(atBoundary.value, input.unit, input.quantityType)}时，${atBoundary.calculations.length
       ? atBoundary.calculations.map(calculation => calculation.text).join('；') : '没有引用此输入的已登记计算'}（仅该点，其他输入固定）。` : '';
     return {
-      checkId: check.id, inputId: input.id, label: check.label, inputLabel: input.label, unit: input.unit, result,
+      checkId: check.id, inputId: input.id, label: check.label, inputLabel: input.label, unit: input.unit, quantityType: input.quantityType, result,
       fixedInputs: model.inputs.filter(item => otherInputIds.includes(item.id)), atBoundary,
-      text: `${boundaryText(check.label, input.label, input.unit, result)}${pointText ? ` ${pointText}` : ''}`,
+      text: `${boundaryText(check.label, input.label, input.unit, input.quantityType, result)}${pointText ? ` ${pointText}` : ''}`,
     };
   });
   return {
@@ -77,7 +77,7 @@ export function projectNumericBasis(model: DecisionModel, basis: DecisionNumeric
     changeConditions: boundaries.map(boundary => boundary.text),
     calculations: evaluation.calculations.filter(item => basis.calculationIds.includes(item.id)).map(item => ({
       ...item,
-      text: item.result.status === 'available' ? `${item.label}：${formatDecisionQuantity(item.result.value, item.unit)}`
+      text: item.result.status === 'available' ? `${item.label}：${formatDecisionQuantity(item.result.value, item.unit, item.quantityType)}`
         : `${item.label}：不可用（${item.result.reason}）。`,
     })),
     boundaries,

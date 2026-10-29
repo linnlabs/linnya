@@ -20,9 +20,9 @@ function software(): DecisionModel {
   return {
     title: '合成套餐', question: '每月预算与容量均满足时偏好A',
     inputs: [['people',6,'人'],['data',26,'GB'],['budget',300,'CNY/月'],['a_capacity',20,'GB'],['b_capacity',30,'GB'],['a_fee',0,'CNY/月'],['b_fee',0,'CNY/月']]
-      .map(([id,value,unit]) => ({ id:String(id),label:String(id),kind:'fact',value:Number(value),unit:String(unit),origin:'合成用户条件',status:'available' })),
+      .map(([id,value,unit]) => ({ quantityType: 'other', id:String(id),label:String(id),kind:'fact',value:Number(value),unit:String(unit),origin:'合成用户条件',status:'available' })),
     options: [{id:'a',label:'A',description:'120+28/人，20GB'},{id:'b',label:'B',description:'198+16/人，30GB'}],
-    calculations: totals.map((expression,index)=>({id:index===0?'a_total':'b_total',label:index===0?'A月费':'B月费',unit:'CNY/月',expression})),
+    calculations: totals.map((expression,index)=>({ quantityType: 'money',id:index===0?'a_total':'b_total',label:index===0?'A月费':'B月费',unit:'CNY/月',expression})),
     checks: ['a','b'].flatMap((optionId,index)=>{
       const expression=totals[index];
       if(!expression) throw new Error('Missing test expression');
@@ -34,7 +34,7 @@ function software(): DecisionModel {
   };
 }
 function withPreference(source = software()): DecisionModel {
-  return {...source,inputs:[...source.inputs,{id:'prefer_a',label:'两者满足时偏好A',kind:'preference',value:true,status:'available',origin:'用户明确偏好'}]};
+  return {...source,inputs:[...source.inputs,{ quantityType: 'other',id:'prefer_a',label:'两者满足时偏好A',kind:'preference',value:true,status:'available',origin:'用户明确偏好'}]};
 }
 function recommendation(): DecisionRecommendation {
   return {
@@ -160,7 +160,7 @@ describe('conditional choices through versioned project CLI',()=>{
   it('marks old branches for review without interpreting deleted inputs and reconstructs historical results exactly',()=>{
     const initial=create(); save(initial.id);
     const historical=projection(initial.id);
-    const update={reason:'用户改变偏好和模型',inputs:[{id:'prefer_a',label:'改为偏好B',kind:'preference',value:false,status:'available',origin:'用户本轮更新'}],checks:[]};
+    const update={reason:'用户改变偏好和模型',inputs:[{ quantityType: 'other',id:'prefer_a',label:'改为偏好B',kind:'preference',value:false,status:'available',origin:'用户本轮更新'}],checks:[]};
     run(['update',initial.id,'--expected-revision','2','--json',JSON.stringify(update)]);
     expect(projection(initial.id).conditionalAdvice).toEqual({status:'needs_review',basedOnInputRevision:1});
     expect(projection(initial.id).recommendationBasis).toEqual({status:'needs_review',basedOnInputRevision:1});
@@ -195,7 +195,7 @@ describe('conditional choices through versioned project CLI',()=>{
   it('keeps every selected course boundary and the closed equality points when projecting whole-option ranges',()=>{
     const source:DecisionModel={title:'课程',question:'8次全部准时，2200元/期，已满足时偏好A',
       inputs:[['budget',2200],['departure',1050],['a_tuition',1800],['a_book',200],['a_transport',20],['a_travel',40],['b_tuition',2100],['b_book',0],['b_transport',12]]
-        .map(([id,value])=>({id:String(id),label:String(id),kind:'fact',value:Number(value),origin:'合成用户',status:'available'})),
+        .map(([id,value])=>({ quantityType: 'other',id:String(id),label:String(id),kind:'fact',value:Number(value),origin:'合成用户',status:'available'})),
       options:[{id:'a',label:'A',description:'18:30开课'},{id:'b',label:'B',description:'18:45开课'}],calculations:[],checks:[]};
     const aTotal=add(add(input('a_tuition'),input('a_book')),multiply(literal(8),input('a_transport')));
     const bTotal=add(add(input('b_tuition'),input('b_book')),multiply(literal(8),input('b_transport')));

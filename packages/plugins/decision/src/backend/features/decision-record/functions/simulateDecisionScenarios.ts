@@ -31,7 +31,7 @@ export function simulateDecisionScenarios(record: DecisionRecord, expectedRevisi
       const changes = scenario.inputs.map(change => {
         const input = record.model.inputs.find(item => item.id === change.inputId);
         if (!input) throw new DecisionFailure('invalid_model', `Unknown scenario input: ${change.inputId}`);
-        return { inputId: input.id, label: input.label, unit: input.unit, status: input.status, from: input.value, to: change.value };
+        return { inputId: input.id, label: input.label, unit: input.unit, quantityType: input.quantityType, status: input.status, from: input.value, to: change.value };
       });
       const replacements = new Map(scenario.inputs.map(item => [item.inputId, item]));
       const model = {

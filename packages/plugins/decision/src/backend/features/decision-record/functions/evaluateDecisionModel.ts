@@ -35,6 +35,7 @@ export function evaluateDecisionModel(model: DecisionModel) {
       id: item.id,
       label: item.label,
       unit: item.unit,
+      quantityType: item.quantityType,
       inputIds: collectExpressionInputs(item.expression),
       result: evaluateExpression(item.expression, model),
     })),

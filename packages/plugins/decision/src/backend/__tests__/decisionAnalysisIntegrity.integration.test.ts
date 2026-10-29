@@ -17,7 +17,7 @@ describe('explicit replacement of persisted decision analysis',()=>{
 
  it('rejects omitted analyses after a condition update without inheriting the old plan or appending any recommendation',()=>{
   const r=create();save(r.id,1,remoteOfferRecommendation());
-  run(['update',r.id,'--expected-revision','2','--json',JSON.stringify({reason:'取得确认',inputs:[{id:'a_remote',label:'A书面确认',kind:'fact',value:true,origin:'新事实',status:'available'}]})]);
+  run(['update',r.id,'--expected-revision','2','--json',JSON.stringify({reason:'取得确认',inputs:[{ quantityType: 'other',id:'a_remote',label:'A书面确认',kind:'fact',value:true,origin:'新事实',status:'available'}]})]);
   const rows=db.prepare('SELECT * FROM decision_record_versions').all();const content=remoteOfferRecommendation(['a']);
   for(const partial of [{...content,conditionalAdvice:undefined},{...content,numericBasis:undefined},{...content,conditionalAdvice:undefined,numericBasis:undefined}]) {
    expect(()=>save(r.id,3,partial)).toThrow('Existing analysis omitted');
