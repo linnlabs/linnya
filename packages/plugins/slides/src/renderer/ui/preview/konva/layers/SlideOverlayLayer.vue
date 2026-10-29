@@ -19,9 +19,16 @@
         :config="line.config"
       />
       <v-line
-        v-if="manualSelectionLineConfig"
+        v-for="line in manualSelectionLineConfigs"
+        :key="line.key"
         :__use-strict-mode="true"
-        :config="manualSelectionLineConfig"
+        :config="line.config"
+      />
+      <v-line
+        v-for="(guide, index) in snapGuideConfigs"
+        :key="`guide-${index}`"
+        :__use-strict-mode="true"
+        :config="guide"
       />
       <v-line
         v-if="marqueeLineConfig"
@@ -62,7 +69,9 @@ const props = defineProps<{
   selectedTargets: readonly SourceSelectableElement[];
   hoveredTarget: SourceSelectableElement | null;
   marqueeRect: SourceSelectionRect | null;
-  manualSelectedTarget?: ManualEditableTarget | null;
+  manualSelectedTargets?: readonly ManualEditableTarget[];
+  snapGuides?: readonly { readonly axis: 'x' | 'y'; readonly position: number }[];
+  slideSize: { readonly width: number; readonly height: number };
 }>();
 
 /** overlay 层默认不监听事件，按需在子组件内开启 */
@@ -117,18 +126,18 @@ const marqueeLineConfig = computed(() => {
   };
 });
 
-const manualSelectionLineConfig = computed(() => {
-  const target = props.manualSelectedTarget;
-  if (!target) return null;
-  return {
-    points: toPxPoints(target.polygon),
-    closed: true,
-    stroke: SLIDES_RENDER_COLORS.manualEditingStroke,
-    strokeWidth: strokeWidth.value,
-    fill: SLIDES_RENDER_COLORS.manualEditingFill,
-    listening: false,
-  };
-});
+const manualSelectionLineConfigs = computed(() => (props.manualSelectedTargets ?? []).map(target => ({
+  key: target.elementId, config: { points: toPxPoints(target.polygon), closed: true,
+    stroke: SLIDES_RENDER_COLORS.manualEditingStroke, strokeWidth: strokeWidth.value,
+    fill: SLIDES_RENDER_COLORS.manualEditingFill, listening: false },
+})));
+const snapGuideConfigs = computed(() => (props.snapGuides ?? []).map(guide => ({
+  points: guide.axis === 'x'
+    ? [guide.position * INCHES_TO_PX, 0, guide.position * INCHES_TO_PX, props.slideSize.height * INCHES_TO_PX]
+    : [0, guide.position * INCHES_TO_PX, props.slideSize.width * INCHES_TO_PX, guide.position * INCHES_TO_PX],
+  stroke: SLIDES_RENDER_COLORS.manualEditingStroke, strokeWidth: strokeWidth.value,
+  dash: [4, 4], listening: false,
+})));
 
 function toPxPoints(points: readonly SourceSelectionPoint[]): number[] {
   return points.flatMap((point) => [

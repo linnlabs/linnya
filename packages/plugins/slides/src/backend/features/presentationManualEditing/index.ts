@@ -21,3 +21,8 @@ export type {
   PresentationManualEditTraceEvent,
   PresentationManualEditTracePort,
 } from './definitions/presentationManualEditTrace.js';
+
+export { ManualEditHistoryStore } from './store/manualEditHistoryStore.js';
+export { retainedManualEditHistoryVersions } from './functions/manualEditHistory.js';
+
+export { copyManualObjects } from './functions/copyManualObjects';

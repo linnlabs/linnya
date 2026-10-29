@@ -1,5 +1,6 @@
+import { readInsertedObjects, type SlidesInsertedObject } from '@plugin/slides/shared/authoringEditing';
 import type { SlidesManualEditSourceOperation } from '../definitions/manualEditSourceOperation.js';
-import { patchWholeTextContent, isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
+import { SLIDES_TEXT_STYLE_FIELDS, readSlidesTextStylePatch, patchWholeTextContent, isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import type ts from 'typescript';
 import {
   isSlidesAuthoringKey,
@@ -44,6 +45,14 @@ export function writeManualEditsToDeckSource(
 ): WriteManualEditsToDeckSourceResult {
   validateOperation(operation);
   return transformManualEdits(source, current => applyOperation(current, operation), options);
+}
+
+/** 一次解析、一次源码写入；批次中任一非法目标都不能产生部分结果。 */
+export function writeManualEditBatchToDeckSource(
+  source: string, operations: readonly SlidesManualEditSourceOperation[],
+): WriteManualEditsToDeckSourceResult {
+  for (const operation of operations) validateOperation(operation);
+  return transformManualEdits(source, current => operations.reduce(applyOperation, current));
 }
 
 /** 复制保留页面当前人工值，删除清理对应记录；其他页的作者值保持不变。 */
@@ -153,7 +162,7 @@ function applyOperation(
   const targets = targetIndex === -1
     ? [...slide.targets, target]
     : slide.targets.map((entry, index) => index === targetIndex ? target : entry);
-  const nextSlide: SlidesManualSlideEdits = { slideKey: slide.slideKey, targets };
+  const nextSlide: SlidesManualSlideEdits = { ...slide, targets };
   const slides = slideIndex === -1
     ? [...current.slides, nextSlide]
     : current.slides.map((entry, index) => index === slideIndex ? nextSlide : entry);
@@ -172,6 +181,10 @@ function applyTargetOperation(
     return { kind: targetKind, editKey: operation.target.editKey, deleted: true };
   }
   if (existing?.deleted === true) throw deletedTargetError(operation);
+
+  if (operation.op === 'set_text_width') return { ...(existing?.kind === 'text' ? existing : {}), kind: 'text', editKey: operation.target.editKey, width: operation.width };
+  if (operation.op === 'set_image') return { ...(existing?.kind === 'image' ? existing : {}), kind: 'image', editKey: operation.target.editKey,
+    ...(operation.assetId !== undefined ? { assetId: operation.assetId } : {}), ...(operation.fit !== undefined ? { fit: operation.fit } : {}) };
 
   if (operation.op === 'set_text_content' && operation.targetKind === 'shape') {
     const shape = existing?.kind === 'shape' ? existing : undefined;
@@ -194,6 +207,10 @@ function applyTargetOperation(
           ...(Array.isArray(operation.content) ? { content: patchWholeTextContent(operation.content, operation) } : {}),
           ...(operation.fontSizePt !== undefined ? { fontSizePt: operation.fontSizePt } : {}),
           ...(operation.color !== undefined ? { color: operation.color } : {}),
+          ...(operation.bold !== undefined ? { bold: operation.bold } : {}),
+          ...(operation.italic !== undefined ? { italic: operation.italic } : {}),
+          ...(operation.underline !== undefined ? { underline: operation.underline } : {}),
+          ...(operation.align !== undefined ? { align: operation.align } : {}),
         };
   }
 
@@ -313,22 +330,23 @@ function validateOperation(operation: SlidesManualEditSourceOperation): void {
     throw new SlidesManualEditSourceError('operation_invalid', '人工编辑目标包含无效的作者 key。');
   }
   switch (operation.op) {
+    case 'set_text_width':
+      if (!Number.isFinite(operation.width) || operation.width <= 0) throw new SlidesManualEditSourceError('operation_invalid', '文字宽度必须为正数。');
+      return;
+    case 'set_image':
+      if ((!operation.assetId && !operation.fit) || (operation.fit !== undefined && operation.fit !== 'contain' && operation.fit !== 'cover')) throw new SlidesManualEditSourceError('operation_invalid', '图片修改无效。');
+      return;
     case 'set_text_content':
       if (!isEditableTextContent(operation.content) || (operation.targetKind === 'shape' && typeof operation.content !== 'string')) {
         throw new SlidesManualEditSourceError('operation_invalid', '文本人工值必须符合作者正文合同。');
       }
       return;
-    case 'set_text_style':
-      if (operation.fontSizePt === undefined && operation.color === undefined) {
-        throw new SlidesManualEditSourceError('operation_invalid', '文本样式操作至少需要一个值。');
-      }
-      if (operation.fontSizePt !== undefined && !isFontSize(operation.fontSizePt)) {
-        throw new SlidesManualEditSourceError('operation_invalid', '文本字号必须是 1–400 pt 内的有限数字。');
-      }
-      if (operation.color !== undefined && !isHexColor(operation.color)) {
-        throw new SlidesManualEditSourceError('operation_invalid', '文本颜色必须是 #RRGGBB。');
-      }
+    case 'set_text_style': {
+      const patch = readSlidesTextStylePatch(operation);
+      if ('error' in patch) throw new SlidesManualEditSourceError('operation_invalid', patch.error);
+      if (!SLIDES_TEXT_STYLE_FIELDS.some(key => operation[key] !== undefined)) throw new SlidesManualEditSourceError('operation_invalid', '文本样式操作至少需要一个值。');
       return;
+    }
     case 'set_fill_color':
       if (!isHexColor(operation.color)) {
         throw new SlidesManualEditSourceError('operation_invalid', '填充颜色必须是 #RRGGBB。');
@@ -357,9 +375,7 @@ function validateOperation(operation: SlidesManualEditSourceOperation): void {
   }
 }
 
-function isFontSize(value: number): boolean {
-  return Number.isFinite(value) && value >= 1 && value <= 400;
-}
+
 
 function isPositiveFiniteNumber(value: number): boolean {
   return Number.isFinite(value) && value > 0;
@@ -495,4 +511,26 @@ function notLiteralError(): SlidesManualEditSourceError {
     'manual_edits_not_literal',
     'compose.manualEdits 必须直接写成 JSON 字面量对象。',
   );
+}
+
+/** 创建值与既有人工值放在同一源码 literal；编译器负责验证与原作者 key 的冲突。 */
+export function insertObjectsInDeckSource(source: string, slideKey: string, objects: readonly SlidesInsertedObject[]): string {
+  const parsed = readInsertedObjects(objects);
+  if (!isSlidesAuthoringKey(slideKey) || 'error' in parsed || objects.length === 0) {
+    throw new SlidesManualEditSourceError('operation_invalid', '新增对象或页面身份无效。');
+  }
+  return transformManualEdits(source, current => {
+    const existing = current.slides.find(slide => slide.slideKey === slideKey);
+    const slide: SlidesManualSlideEdits = { ...existing, slideKey, targets: existing?.targets ?? [], additions: [...(existing?.additions ?? []), ...parsed.value] };
+    return { version: 2, slides: existing ? current.slides.map(entry => entry.slideKey === slideKey ? slide : entry) : [...current.slides, slide] };
+  }).source;
+}
+
+export function writePaintOrderToDeckSource(source: string, slideKey: string, peerKeys: readonly string[]): string {
+  return transformManualEdits(source, current => {
+    const existing = current.slides.find(slide => slide.slideKey === slideKey);
+    const slide: SlidesManualSlideEdits = { ...existing, slideKey, targets: existing?.targets ?? [],
+      paintOrder: [...(existing?.paintOrder ?? []).filter(key => !peerKeys.includes(key)), ...peerKeys] };
+    return { version: 2, slides: existing ? current.slides.map(entry => entry.slideKey === slideKey ? slide : entry) : [...current.slides, slide] };
+  }).source;
 }

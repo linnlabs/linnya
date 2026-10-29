@@ -52,3 +52,6 @@
 - `../../shared/thumbnailGeometry.test.ts`：列表比例与尺寸。
 - `orchestration/createSlideThumbnailRenderer.test.ts`、`useSlideThumbnails.test.ts`：插入/复制/删除/重排渲染次数、内容失效、跨修订进行中任务、切换文档、共享位图释放与分辨率升级。
 - `../../../../dev/tools/thumbnailIncrementalBrowser.ts`（`pnpm --dir packages/plugins/slides run smoke:preview-transitions --thumbnails-only`）：30 页、540 个形状的真实 Chromium/Konva 增量栅格，检查 `SlideThumbnail` 像素与独立重绘一致，并输出全量参考耗时、增量渲染页数与耗时；结果保存到 `dist/dev/thumbnail-incremental-trace.json`。不传参数时同时运行完整预览交互 smoke。
+
+
+缩略图支持原生拖动重排，菜单提供“前移/后移”的可点击替代入口。`move_slide` 与新建/复制/删除共用人工编辑队列及精确修订；页序动作和历史恢复呈现前互斥。drag index 在文稿或 revision 改变时失效。静态 compose 列表定义显示顺序，源声明定义源码块归属，两者不再要求一致；重排后的源码选择/复制/删除仍使用对应所有权。

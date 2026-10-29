@@ -124,9 +124,15 @@ function applyPreLayoutManualEdits(
       }
       return {
         ...node,
+        ...(edit.width !== undefined ? { width: edit.width, w: edit.width,
+          ...(typeof node.position === 'object' ? { position: { ...node.position, w: edit.width } } : {}) } : {}),
         ...(edit.content !== undefined ? { content: edit.content } : {}),
         ...(edit.fontSizePt !== undefined ? { fontSize: edit.fontSizePt } : {}),
         ...(edit.color !== undefined ? { color: edit.color } : {}),
+        ...(edit.bold !== undefined ? { bold: edit.bold, fontWeight: edit.bold ? 'bold' : 'normal' } : {}),
+        ...(edit.italic !== undefined ? { italic: edit.italic, fontStyle: edit.italic ? 'italic' : 'normal' } : {}),
+        ...(edit.underline !== undefined ? { underline: edit.underline, textDecoration: edit.underline ? 'underline' : 'none' } : {}),
+        ...(edit.align !== undefined ? { textAlign: edit.align } : {}),
       };
     }
     case 'Shape': {
@@ -142,9 +148,9 @@ function applyPreLayoutManualEdits(
         ...(edit.content !== undefined ? { content: edit.content } : {}),
       };
     }
+    case 'Image': return edit?.kind === 'image' ? { ...node, ...(edit.assetId ? { src: { kind: 'document_asset', assetId: edit.assetId } } : {}), ...(edit.fit ? { fitMode: edit.fit } : {}) } : node;
     case 'Chart':
     case 'Table':
-    case 'Image':
     case 'SvgGraphic':
     case 'Formula':
     case 'Spacer':
@@ -175,12 +181,12 @@ export function resolveManualTargetKind(node: LayoutNode): SlidesManualTargetKin
       return 'text';
     case 'Shape':
       return 'shape';
+    case 'Image':
+      return 'image';
     case 'Chart':
       return 'chart';
     case 'Table':
       return 'table';
-    case 'Image':
-      return 'image';
     case 'SvgGraphic':
       return 'svgGraphic';
     case 'Formula':

@@ -45,6 +45,10 @@ export async function verifyRichTextEditing(window: BrowserWindow): Promise<void
   await assert('s.draft[1].style.fontSize === undefined && s.draft[1].style.color === "#DC2626"');
   await key('z', ['meta', 'shift']);
   await assert('s.draft[1].style.fontSize === 28');
+  await key('a', ['meta']); await key('Right');
+  for (let i = 0; i < 4; i++) await key('Left', ['shift']);
+  for (const property of ['bold', 'italic', 'underline']) await click(control(`[data-property="${property}"]`));
+  await assert('s.draft[1].style.bold && s.draft[1].style.italic && s.draft[1].style.underline && s.commands.length === 0');
   await writeFile(path.resolve(__dirname, 'rich-text-selection.png'), (await window.webContents.capturePage()).toPNG());
   // 点击别的对象一次即可提交完整 runs 并选中 B；再次进入 pending 文本也应保留局部样式。
   await click('window.shapeTextEditingSmoke.point("second")');
@@ -80,8 +84,13 @@ export async function verifyRichTextEditing(window: BrowserWindow): Promise<void
   await settle();
   await evaluate('window.shapeTextEditingSmoke.present()');
   await settle();
-  await assert('s.commands.length === 3 && s.commands[2].op === "set_text_content" && s.font === ""');
+  await assert('s.commands.length === 3 && s.commands[2].op === "set_text_style" && s.font === ""');
   await evaluate('window.shapeTextEditingSmoke.resolve(2, true)');
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.present()');
+  await settle();
+  await assert('s.commands.length === 4 && s.commands[3].op === "set_text_content" && s.font === ""');
+  await evaluate('window.shapeTextEditingSmoke.resolve(3, true)');
   await settle();
   await evaluate('window.shapeTextEditingSmoke.present()');
   await settle();
@@ -91,12 +100,12 @@ export async function verifyRichTextEditing(window: BrowserWindow): Promise<void
   await evaluate('window.shapeTextEditingSmoke.richComposition("compositionstart")');
   await window.webContents.insertText('中文');
   await key('Enter', ['control']);
-  await assert('s.phase === "editing" && s.commands.length === 3');
+  await assert('s.phase === "editing" && s.commands.length === 4');
   await evaluate('window.shapeTextEditingSmoke.richComposition("compositionend")');
   await settle();
   await key('Enter');
   await key('Enter', ['control']);
-  await assert('s.phase === "idle" && s.commands.length === 4');
+  await assert('s.phase === "idle" && s.commands.length === 5');
   await evaluate('window.shapeTextEditingSmoke.dispose()');
   console.log('Slides rich text: native range, color/font, mixed values, pending re-entry, source revision re-entry, undo/redo, IME and Enter passed');
 }

@@ -1,0 +1,16 @@
+.slides-editing-command-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  flex-shrink: 0;
+}
+.slides-editing-command-bar__status {
+  margin-left: auto;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}

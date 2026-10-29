@@ -28,8 +28,8 @@ import { CustomSelect, rendererUiOverlayLayer, type CustomSelectOption } from '@
 import type { SlideContextMenuAnchor } from '../definitions/deckNavigatorTypes';
 import { useDeckNavigatorLocalization } from './useDeckNavigatorLocalization';
 
-const props = defineProps<{ anchor: SlideContextMenuAnchor; disabled: boolean; canDelete: boolean }>();
-const emit = defineEmits<{ duplicate: []; delete: []; close: [] }>();
+const props = defineProps<{ anchor: SlideContextMenuAnchor; disabled: boolean; canDelete: boolean; canMoveEarlier?: boolean; canMoveLater?: boolean }>();
+const emit = defineEmits<{ duplicate: []; delete: []; moveEarlier: []; moveLater: []; close: [] }>();
 const { deckNavigatorMessage } = useDeckNavigatorLocalization();
 const panel = ref<HTMLElement | null>(null);
 const x = ref(props.anchor.x);
@@ -37,10 +37,14 @@ const y = ref(props.anchor.y);
 const position = computed(() => ({ position: 'fixed' as const, left: `${x.value}px`, top: `${y.value}px`, zIndex: rendererUiOverlayLayer('portalMenu') }));
 const options = computed<CustomSelectOption<string>[]>(() => [
   { value: 'duplicate', label: deckNavigatorMessage('slides.navigator.duplicateSlide'), disabled: props.disabled },
+  { value: 'earlier', label: deckNavigatorMessage('slides.navigator.moveEarlier'), disabled: props.disabled || !props.canMoveEarlier },
+  { value: 'later', label: deckNavigatorMessage('slides.navigator.moveLater'), disabled: props.disabled || !props.canMoveLater },
   { value: 'delete', label: deckNavigatorMessage('slides.navigator.deleteSlide'), disabled: props.disabled || !props.canDelete, variant: 'danger' },
 ]);
 function selectAction(value: string | null): void {
   if (props.disabled) return;
+  if (value === 'earlier' && props.canMoveEarlier) emit('moveEarlier');
+  if (value === 'later' && props.canMoveLater) emit('moveLater');
   if (value === 'duplicate') emit('duplicate');
   if (value === 'delete' && props.canDelete) emit('delete');
 }

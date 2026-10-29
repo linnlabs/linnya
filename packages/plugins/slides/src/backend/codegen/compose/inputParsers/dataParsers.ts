@@ -322,6 +322,7 @@ export function parseImageSourceInput(
       return isNonEmptyString(value.path)
         ? { source: { kind, path: value.path.trim() } }
         : { error: 'local_path source requires path.' };
+    case 'document_asset':
     case 'generated_asset':
       return isNonEmptyString(value.assetId)
         ? { source: { kind, assetId: value.assetId.trim() } }

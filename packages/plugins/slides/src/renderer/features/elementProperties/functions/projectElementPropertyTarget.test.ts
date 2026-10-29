@@ -41,9 +41,9 @@ describe('effective element property values', () => {
     const whole = projectElementPropertyTarget(target, [contentPreview, wholePreview]).textEditing;
     const local = projectElementPropertyTarget(target, [contentPreview, wholePreview, localPreview]).textEditing;
     if (!mixed || !whole || !local) throw new Error('Missing text properties');
-    expect(wholeTextStyle(mixed.content, mixed)).toEqual({ fontSizePt: null, color: null });
-    expect(wholeTextStyle(whole.content, whole)).toEqual({ fontSizePt: 32, color: '#2563EB' });
-    expect(wholeTextStyle(local.content, local)).toEqual({ fontSizePt: null, color: '#2563EB' });
+    expect(wholeTextStyle(mixed.content, mixed)).toMatchObject({ fontSizePt: null, color: null });
+    expect(wholeTextStyle(whole.content, whole)).toMatchObject({ fontSizePt: 32, color: '#2563EB' });
+    expect(wholeTextStyle(local.content, local)).toMatchObject({ fontSizePt: null, color: '#2563EB' });
     expect(local.content).toEqual(localPreview.operation.op === 'set_text_content' ? localPreview.operation.content : undefined);
     expect(projectElementPropertyTarget(target, []).capabilities).toContain('set_text_style');
   });

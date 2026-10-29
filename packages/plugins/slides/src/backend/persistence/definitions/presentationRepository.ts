@@ -34,7 +34,7 @@ interface PresentationCommitBaseOptions {
     readonly payloadDigest: string;
   };
   /** 人工编辑只提交语义 revision；artifact 在导出或旧 PPTX inspect 时按需物化。 */
-  readonly revisionContext?: 'inherit_base';
+  readonly revisionContext?: 'inherit_base' | { readonly versionId: string };
 }
 
 export type PresentationCommitOptions = PresentationCommitBaseOptions & (

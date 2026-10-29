@@ -1,5 +1,5 @@
 import type { ManualEditableTarget } from '../../manualEditing';
-import { SLIDES_MANUAL_FONT_SIZE_PT } from '@plugin/slides/shared/authoringEditing';
+import { SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextStylePatch, SLIDES_TEXT_STYLE_FIELDS } from '@plugin/slides/shared/authoringEditing';
 import type { ElementPropertyOperation } from '../definitions/elementPropertyTypes';
 
 export function resolveVisualSizeAfterDimensionChange(
@@ -28,10 +28,10 @@ export function resolveVisualSizeAfterDimensionChange(
 
 export function createTextStyleOperation(
   target: ManualEditableTarget,
-  value: { readonly fontSizePt?: number; readonly color?: string },
+  value: SlidesTextStylePatch,
 ): ElementPropertyOperation | null {
   if (target.targetKind !== 'text' || !target.capabilities.includes('set_text_style')) return null;
-  if (value.fontSizePt === undefined && value.color === undefined) return null;
+  if (!SLIDES_TEXT_STYLE_FIELDS.some(key => value[key] !== undefined)) return null;
   if (
     value.fontSizePt !== undefined
     && (!Number.isFinite(value.fontSizePt) || value.fontSizePt < SLIDES_MANUAL_FONT_SIZE_PT.min || value.fontSizePt > SLIDES_MANUAL_FONT_SIZE_PT.max)

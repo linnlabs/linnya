@@ -1,3 +1,4 @@
+import editingCommandStylesheet from './features/editingCommands/ui/SlideEditingCommandBar.css?url';
 import type {
   RendererPluginContribution,
 } from '@plugin/renderer/pluginContribution';
@@ -60,6 +61,7 @@ const SlidesPage = defineAsyncComponent(async () => {
 });
 
 const slidesStylesheets = [
+  editingCommandStylesheet,
   inlineTextEditorStylesheet,
   manualResizeStylesheet,
   elementPropertyStylesheet,

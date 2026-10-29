@@ -303,8 +303,8 @@ export class PresentationRepository implements PresentationRepositoryPort {
       }
 
       this.commitWorkspaceProjection(nodeId, normalizedSource, now);
-      if (options.revisionContext === 'inherit_base') {
-        this.options.inheritRevisionContext?.(options.baseRevisionId, revisionId);
+      if (options.revisionContext) {
+        this.options.inheritRevisionContext?.(options.revisionContext === 'inherit_base' ? options.baseRevisionId : options.revisionContext.versionId, revisionId);
       } else {
         this.options.recordRevisionContext?.(nodeId, revisionId);
       }

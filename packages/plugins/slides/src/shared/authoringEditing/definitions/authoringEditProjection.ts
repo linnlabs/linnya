@@ -6,7 +6,9 @@ export type SlidesAuthoringEditCapability =
   | 'set_text_style'
   | 'set_fill_color'
   | 'set_visual_size'
-  | 'delete';
+  | 'delete'
+  /** 可无损复制为同稿插入对象；只投影给顶层对象。 */
+  | 'copy';
 
 /** 文本编辑事实来自作者输入，不能根据排版后的字体 run 反推。 */
 export type SlidesAuthoringTextEditProjection =

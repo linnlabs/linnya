@@ -6,12 +6,18 @@
     tabindex="0"
     data-overlay-scroll-theme="linnya"
     @keydown="handleKeydown"
+    @keyup="handleManualKeyup"
+    @focusout="finishKeyboardGesture"
+    @pointermove="handleStagePointerMove"
+    @pointerup="handleStagePointerUp"
+    @pointercancel="handleStagePointerCancel"
   >
     <div
       ref="scrollViewportMountRef"
       class="slide-stage-scroll-viewport"
       data-overlayscrollbars-initialize
       @wheel="handleWheel"
+      @pointerdown.self="handleStageBlankPointerDown"
     >
       <div
         v-if="renderState.renderMode === 'loading'"
@@ -32,6 +38,7 @@
         v-else
         class="slide-stage-scroll-content"
         :style="scrollContentStyle"
+        @pointerdown.self="handleStageBlankPointerDown"
       >
         <div
           ref="canvasShellRef"
@@ -45,9 +52,6 @@
             class="stage-canvas-wrapper"
             :style="konvaWrapperStyle"
             @pointerdown="handleStagePointerDown"
-            @pointermove="handleStagePointerMove"
-            @pointerup="handleStagePointerUp"
-            @pointercancel="handleStagePointerCancel"
             @pointerleave="handleStagePointerLeave"
             @dblclick="handleStageDoubleClick"
           >
@@ -59,9 +63,10 @@
               :raster-scale="konvaRasterScale"
               :selected-targets="selectedSourceTargets"
               :hovered-target="hoveredSourceTarget"
-              :marquee-rect="sourceMarqueeRect"
+              :marquee-rect="manualEditingEnabled ? manualMarqueeRect : sourceMarqueeRect"
               :preview-translations="manualPreviewTranslations"
-              :manual-selected-target="manualPresentedSelectedTarget"
+              :manual-selected-targets="manualPresentedSelectedTargets"
+              :snap-guides="manualSnapGuides"
               :manual-visual-previews="manualVisualPreviews"
               :hidden-text-element-ids="hiddenTextElementIds"
             />
@@ -143,25 +148,10 @@
 
 <script setup lang="ts">
 import { collectEditingPreviewGeometries } from '../../features/editingPreview';
-import { ref, shallowRef, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, shallowRef, computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
-import {
-  DEFAULT_SLIDE_SIZE,
-  INCHES_TO_PX,
-  KONVA_RASTER_SETTLE_DELAY_MS,
-  SLIDE_STAGE_SCROLL_GUTTER,
-  ZOOM_MAX,
-  ZOOM_MIN,
-  ZOOM_WHEEL_SENSITIVITY,
-} from '../../shared/constants';
-import { computeFitScale } from '../../shared/slideScale';
-import {
-  computeAnchoredScrollPosition,
-  computeInitialScrollableStageScroll,
-  computeScrollableStageLayout,
-} from '../../shared/stageViewport';
-import { computeWheelZoomLevel } from '../../shared/zoomBehavior';
+import { useSlideStageViewport } from '../../features/stageZoom';
 import { useSlidesStore } from '../../store/slidesStore';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import {
@@ -171,21 +161,14 @@ import {
   useSlideSourceSelectionInteraction,
 } from '../../features/sourceSelection';
 import KonvaSlideStage from './konva/KonvaSlideStage.vue';
-import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import SlidesStatusState from '../shared/SlidesStatusState.vue';
 import {
   resolveSlideStageRenderState,
   useSlidesPreviewLocalization,
 } from '../../features/previewRenderState';
-import {
-  clampKonvaRasterScale,
-  isKonvaNodeSupported,
-  resolveKonvaMaxRasterScale,
-  useKonvaRasterScale,
-} from '../../features/konvaPreview';
+import { isKonvaNodeSupported } from '../../features/konvaPreview';
 import { useReadySlideVisualResources } from '../../features/renderVisualResources';
 import {
-  collectManualEditableTargets,
   collectManualTranslationPreviews,
   collectManualVisualPreviews,
   mergeManualTranslationPreviews,
@@ -194,12 +177,11 @@ import {
   manualEditPresentationTrace,
   ManualResizeHandles,
   canResizeManualTarget,
-  shouldHandleManualDeleteShortcut,
   useManualEditSubmission,
   useSlidesManualEditingStore,
   useManualEditingLocalization,
 } from '../../features/manualEditing';
-import { useSlideEditingInteraction } from '../../features/editingInteraction';
+import { ownsCanvasKeyboard, useSlideEditingInteraction } from '../../features/editingInteraction';
 import { InlineTextEditor, TextDraftPreview, type InlineTextSelection } from '../../features/textEditing';
 import {
   ElementPropertyToolbar,
@@ -224,10 +206,6 @@ const manualEditingStore = useSlidesManualEditingStore();
 const { manualEditingMessage } = useManualEditingLocalization();
 const { slidesPreviewMessage } = useSlidesPreviewLocalization();
 const {
-  zoomLevel,
-  zoomMode,
-  fitZoomLevel,
-  isFitZoom,
   sourceSelectionModeEnabled,
 } = storeToRefs(uiStore);
 const { currentSlideRender, renderModel } = storeToRefs(renderStore);
@@ -282,58 +260,17 @@ const konvaRenderInput = computed(() => {
 
 const activeSlideId = computed(() => currentSlideRender.value?.slideId ?? null);
 const displayedSlideId = computed(() => displayedSlide.value?.slideId ?? null);
-const scrollHostRef = ref<globalThis.HTMLElement | null>(null);
-const scrollViewportMountRef = ref<globalThis.HTMLElement | null>(null);
-const scrollViewportRef = ref<globalThis.HTMLElement | null>(null);
+const {
+  scrollHostRef, scrollViewportMountRef, viewportMeasured, stageOverlayGeometryRevision,
+  actualSlideSize, logicalSlideSize, currentLayout, scrollContentStyle, canvasShellStyle,
+  renderScale, konvaRasterScale, handleWheel,
+} = useSlideStageViewport({
+  slideSize: renderSlideSize, activeSlideId, displayedSlideId,
+  hasRenderableSlide: computed(() => renderState.value.hasRenderableSlide),
+  shouldUseKonva: computed(() => renderState.value.shouldUseKonva),
+});
 const canvasShellRef = ref<globalThis.HTMLElement | null>(null);
 const konvaWrapperRef = ref<globalThis.HTMLElement | null>(null);
-const viewportWidth = ref(800);
-const viewportHeight = ref(600);
-const fitScale = ref(1);
-const stageOverlayGeometryRevision = ref(0);
-
-/** 首次 viewport 测量完成后置 true，在此之前隐藏内容防止 fitScale=1 的首帧闪烁 */
-const viewportMeasured = ref(false);
-let pendingZoomAnchor: { x: number; y: number } | null = null;
-let zoomCommitRafId: number | null = null;
-let latestZoomCommitId = 0;
-let stageOverlayGeometryRafId: number | null = null;
-let stageOverlayScrollViewport: HTMLElement | null = null;
-
-const KONVA_WRAPPER_CURSOR = 'default';
-const KONVA_WRAPPER_TOUCH_ACTION = 'none';
-
-const {
-  init: initOverlayScroll,
-  update: updateOverlayScroll,
-  scheduleUpdate: scheduleOverlayScrollUpdate,
-  destroy: destroyOverlayScroll,
-  getViewport,
-  getInstance: getOverlayScrollInstance,
-} = useOverlayScrollViewport({
-  bindings: {
-    hostRef: scrollHostRef,
-    viewportMountRef: scrollViewportMountRef,
-    viewportRef: scrollViewportRef,
-  },
-  options: {
-    overflow: {
-      x: 'scroll',
-      y: 'scroll',
-    },
-  },
-});
-
-const logicalSlideSize = computed(() => {
-  const slideSize = renderSlideSize.value ?? DEFAULT_SLIDE_SIZE;
-  return {
-    width: slideSize.width * INCHES_TO_PX,
-    height: slideSize.height * INCHES_TO_PX,
-  };
-});
-
-const actualSlideSize = computed(() => renderSlideSize.value ?? DEFAULT_SLIDE_SIZE);
-
 const canSelectSourceElements = computed(() => (
   renderState.value.canSelectSourceElements
   && !manualEditingEnabled.value
@@ -346,77 +283,7 @@ const canManualSelect = computed(() => (
   && renderModel.value?.sourceKind === 'generated'
   && displayedSlide.value !== null
   && displayedSlideId.value === activeSlideId.value
-  && collectManualEditableTargets(displayedSlide.value.elements).length > 0
 ));
-
-function updateViewport(force = false) {
-  const element = scrollHostRef.value;
-  if (!element) return;
-
-  const rect = element.getBoundingClientRect();
-  if (!force && rect.width === viewportWidth.value && rect.height === viewportHeight.value) {
-    return;
-  }
-
-  viewportWidth.value = rect.width;
-  viewportHeight.value = rect.height;
-  scheduleStageOverlayGeometryUpdate();
-  const nextFitScale = computeFitScale(rect.width, rect.height, actualSlideSize.value);
-  fitScale.value = nextFitScale;
-  if (isFitZoom.value) {
-    uiStore.syncFitZoomLevel(fitScale.value);
-  }
-}
-
-function scheduleViewportUpdate(force = false) {
-  updateViewport(force);
-}
-
-const resizeObserver = new globalThis.ResizeObserver(() => {
-  scheduleViewportUpdate();
-});
-
-onMounted(() => {
-  window.addEventListener('resize', scheduleStageOverlayGeometryUpdate);
-  if (scrollHostRef.value) {
-    resizeObserver.observe(scrollHostRef.value);
-  }
-  updateViewport(true);
-  viewportMeasured.value = true;
-  void ensureStageOverlay().then(async (viewport) => {
-    if (!viewport || !renderState.value.hasRenderableSlide) return;
-    await resetViewportScroll();
-  });
-});
-
-onBeforeUnmount(() => {
-  resizeObserver.disconnect();
-  if (zoomCommitRafId !== null) {
-    window.cancelAnimationFrame(zoomCommitRafId);
-    zoomCommitRafId = null;
-  }
-  if (stageOverlayGeometryRafId !== null) {
-    window.cancelAnimationFrame(stageOverlayGeometryRafId);
-    stageOverlayGeometryRafId = null;
-  }
-  bindStageOverlayScrollViewport(null);
-  window.removeEventListener('resize', scheduleStageOverlayGeometryUpdate);
-  disposeKonvaRasterScale();
-  latestZoomCommitId = 0;
-  destroyOverlayScroll();
-});
-
-watch(actualSlideSize, () => {
-  scheduleViewportUpdate(true);
-});
-
-watch(isFitZoom, (fitMode) => {
-  if (fitMode) {
-    uiStore.syncFitZoomLevel(fitScale.value);
-  }
-});
-
-const renderScale = computed(() => (isFitZoom.value ? fitScale.value : zoomLevel.value));
 
 const {
   selectedSourceTargets,
@@ -440,9 +307,12 @@ const {
 const manualResizePreview = shallowRef<ManualEditingVisualPreview | null>(null);
 const {
   selectedTarget: manualSelectedTarget,
+  selectedTargets: manualSelectedTargets,
+  marqueeRect: manualMarqueeRect,
+  snapGuides: manualSnapGuides,
   translationPreview: manualTranslationPreview,
-  pendingTranslation: manualPendingTranslation,
-  pendingVisual: manualPendingVisual,
+  pendingTranslations: manualPendingTranslations,
+  pendingVisuals: manualPendingVisuals,
   queuedIntents: manualQueuedIntents,
   hoveredTarget: manualHoveredTarget,
   textEditorTarget,
@@ -450,6 +320,9 @@ const {
   textSessionId,
   textPresentations,
   hiddenTextElementIds,
+  handleKeydown: handleManualKeydown,
+  handleKeyup: handleManualKeyup,
+  finishKeyboardGesture,
   handlePointerDown: handleManualPointerDown,
   handlePointerMove: handleManualPointerMove,
   handlePointerUp: handleManualPointerUp,
@@ -490,29 +363,25 @@ const inlineTextAnchor = computed(() => {
 
 const manualTranslationPreviews = computed(() => collectManualTranslationPreviews(
   manualTranslationPreview.value,
-  manualPendingTranslation.value,
+  manualPendingTranslations.value,
   manualQueuedIntents.value,
 ));
 const manualPreviewTranslations = computed(() => {
   return mergeManualTranslationPreviews(manualTranslationPreviews.value);
 });
 const manualVisualPreviews = computed(() => collectManualVisualPreviews(
-  manualPendingVisual.value,
+  manualPendingVisuals.value,
   manualQueuedIntents.value,
   manualResizePreview.value,
 ));
-const manualPresentedSelectedTarget = computed(() => {
-  const target = manualSelectedTarget.value;
-  return target
-    ? projectManualEditableTargetSelection(
-        target,
-        manualPreviewTranslations.value,
-        collectEditingPreviewGeometries(displayedSlide.value?.elements ?? [], manualVisualPreviews.value),
-      )
-    : null;
+const manualPresentedSelectedTargets = computed(() => {
+  const geometries = collectEditingPreviewGeometries(displayedSlide.value?.elements ?? [], manualVisualPreviews.value);
+  return manualSelectedTargets.value.map(target => projectManualEditableTargetSelection(target, manualPreviewTranslations.value, geometries));
 });
+const manualPresentedSelectedTarget = computed(() => manualPresentedSelectedTargets.value.length === 1
+  ? manualPresentedSelectedTargets.value[0] : null);
 const showElementPropertyControls = computed(() => (
-  manualSelectedTarget.value
+  manualSelectedTargets.value.length === 1 && manualSelectedTarget.value
     ? hasElementPropertyControls(manualSelectedTarget.value)
     : false
 ));
@@ -528,6 +397,14 @@ const manualPropertyAnchor = useElementPropertyAnchor({
   renderScale,
   geometryRevision: stageOverlayGeometryRevision,
 });
+
+function handleStageBlankPointerDown(event: PointerEvent): void {
+  if (event.button !== 0) return;
+  // 留白与页内背景共用交接语义；只监听容器自身，避免工具条和拖拽事件误清选区。
+  if (manualEditingEnabled.value) handleManualPointerDown(event, true);
+  else resetSourceSelection();
+  if (!textEditorTarget.value) scrollHostRef.value?.focus({ preventScroll: true });
+}
 
 function handleStagePointerDown(event: PointerEvent): void {
   if (manualEditingEnabled.value) handleManualPointerDown(event);
@@ -599,50 +476,12 @@ function handleSourceEditSubmit(instruction: string): void {
   });
 }
 
-const currentLayout = computed(() =>
-  computeScrollableStageLayout({
-    viewportWidth: viewportWidth.value,
-    viewportHeight: viewportHeight.value,
-    slideWidth: logicalSlideSize.value.width,
-    slideHeight: logicalSlideSize.value.height,
-    scale: renderScale.value,
-    gutter: SLIDE_STAGE_SCROLL_GUTTER,
-  }),
-);
-
-const scrollContentStyle = computed(() => ({
-  width: `${currentLayout.value.contentWidth}px`,
-  height: `${currentLayout.value.contentHeight}px`,
-}));
-
-const canvasShellStyle = computed(() => ({
-  left: `${currentLayout.value.slideLeft}px`,
-  top: `${currentLayout.value.slideTop}px`,
-  width: `${currentLayout.value.scaledSlideWidth}px`,
-  height: `${currentLayout.value.scaledSlideHeight}px`,
-}));
-
-const KONVA_MAX_RASTER_SCALE = resolveKonvaMaxRasterScale(
-  typeof window !== 'undefined' ? window.devicePixelRatio : undefined,
-);
-
-const {
-  konvaRasterScale,
-  commitKonvaRasterScale,
-  scheduleKonvaRasterScaleCommit,
-  cancelKonvaRasterCommit,
-  disposeKonvaRasterScale,
-} = useKonvaRasterScale({
-  maxRasterScale: KONVA_MAX_RASTER_SCALE,
-  settleDelayMs: KONVA_RASTER_SETTLE_DELAY_MS,
-});
-
 const konvaWrapperStyle = computed(() => {
   const safeRasterScale = konvaRasterScale.value > 0 ? konvaRasterScale.value : 1;
   const wrapperScale = renderScale.value / safeRasterScale;
   const sourceSelectionCursor = manualEditingEnabled.value
     ? resolveManualEditingCursor(canManualSelect.value ? manualHoveredTarget.value : null)
-    : hoveredSourceTarget.value ? 'pointer' : KONVA_WRAPPER_CURSOR;
+    : hoveredSourceTarget.value ? 'pointer' : 'default';
 
   return {
     width: `${logicalSlideSize.value.width * safeRasterScale}px`,
@@ -650,168 +489,32 @@ const konvaWrapperStyle = computed(() => {
     transform: Math.abs(wrapperScale - 1) <= Number.EPSILON ? 'none' : `scale(${wrapperScale})`,
     transformOrigin: 'top left',
     cursor: sourceSelectionCursor,
-    touchAction: KONVA_WRAPPER_TOUCH_ACTION,
+    touchAction: 'none',
   };
 });
 
-function resolveViewportCenter(viewport: HTMLElement) {
-  return {
-    x: viewport.clientWidth / 2,
-    y: viewport.clientHeight / 2,
-  };
-}
-
-async function ensureStageOverlay(): Promise<HTMLElement | null> {
-  await nextTick();
-  if (getOverlayScrollInstance()) {
-    const viewport = getViewport();
-    bindStageOverlayScrollViewport(viewport);
-    return viewport;
-  }
-  const viewport = initOverlayScroll();
-  bindStageOverlayScrollViewport(viewport);
-  return viewport;
-}
-
-function bindStageOverlayScrollViewport(viewport: HTMLElement | null): void {
-  if (stageOverlayScrollViewport === viewport) {
+/** 表单/文本拥有自己的按键；有对象选区时方向键先交给编辑会话。 */
+function handleKeydown(event: KeyboardEvent): void {
+  if (!ownsCanvasKeyboard(event)) return;
+  if (manualEditingEnabled.value && handleManualKeydown(event)) {
+    event.preventDefault();
+    event.stopPropagation();
     return;
   }
-  stageOverlayScrollViewport?.removeEventListener('scroll', scheduleStageOverlayGeometryUpdate);
-  stageOverlayScrollViewport = viewport;
-  stageOverlayScrollViewport?.addEventListener(
-    'scroll',
-    scheduleStageOverlayGeometryUpdate,
-    { passive: true },
-  );
-}
-
-function scheduleStageOverlayGeometryUpdate(): void {
-  if (stageOverlayGeometryRafId !== null) {
-    return;
-  }
-  stageOverlayGeometryRafId = window.requestAnimationFrame(() => {
-    stageOverlayGeometryRafId = null;
-    stageOverlayGeometryRevision.value += 1;
-  });
-}
-
-async function resetViewportScroll(): Promise<void> {
-  const viewport = await ensureStageOverlay();
-  if (!viewport) return;
-
-  const initialScroll = computeInitialScrollableStageScroll({
-    viewportWidth: viewportWidth.value,
-    viewportHeight: viewportHeight.value,
-    layout: currentLayout.value,
-  });
-  viewport.scrollLeft = initialScroll.scrollLeft;
-  viewport.scrollTop = initialScroll.scrollTop;
-  updateOverlayScroll();
-}
-
-/** 上下方向键切换幻灯片（需先点击舞台使其获得焦点） */
-function handleKeydown(e: globalThis.KeyboardEvent) {
-  if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
-  if (
-    manualEditingEnabled.value
-    && shouldHandleManualDeleteShortcut(e)
-    && deleteManualSelectedTarget()
-  ) {
-    e.preventDefault();
-    e.stopPropagation();
-    return;
-  }
-  if (e.key === 'ArrowUp') {
-    e.preventDefault();
+  if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+  if (event.key === 'ArrowUp' || event.key === 'PageUp') {
+    event.preventDefault();
     slidesStore.prevSlide();
-  } else if (e.key === 'ArrowDown') {
-    e.preventDefault();
+  } else if (event.key === 'ArrowDown' || event.key === 'PageDown') {
+    event.preventDefault();
     slidesStore.nextSlide();
   }
 }
 
-function handleWheel(e: globalThis.WheelEvent) {
-  if (!e.ctrlKey && !e.metaKey) return;
-  e.preventDefault();
-  const viewport = getViewport();
-  if (viewport) {
-    const rect = viewport.getBoundingClientRect();
-    pendingZoomAnchor = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-  }
-  const currentZoom = zoomMode.value === 'fit' ? fitZoomLevel.value : zoomLevel.value;
-  const nextZoom = computeWheelZoomLevel({
-    currentZoom,
-    deltaY: e.deltaY,
-    minZoom: ZOOM_MIN,
-    maxZoom: ZOOM_MAX,
-    sensitivity: ZOOM_WHEEL_SENSITIVITY,
-  });
-  if (nextZoom !== currentZoom) {
-    uiStore.setZoom(nextZoom, 'manual');
-  }
-}
-
-watch(
-  () => [renderState.value.shouldUseKonva, renderScale.value] as const,
-  ([nextShouldUseKonva, nextScale], previous) => {
-    const prevShouldUseKonva = previous?.[0] ?? false;
-
-    if (!nextShouldUseKonva) {
-      commitKonvaRasterScale(nextScale);
-      return;
-    }
-    if (!prevShouldUseKonva) {
-      commitKonvaRasterScale(nextScale);
-      return;
-    }
-
-    const clampedNextScale = clampKonvaRasterScale(nextScale, KONVA_MAX_RASTER_SCALE);
-    if (Math.abs(konvaRasterScale.value - clampedNextScale) <= Number.EPSILON) {
-      cancelKonvaRasterCommit();
-      return;
-    }
-
-    scheduleKonvaRasterScaleCommit(nextScale);
-  },
-  { immediate: true },
-);
-
-watch(
-  () => [
-    currentLayout.value.contentWidth,
-    currentLayout.value.contentHeight,
-    currentLayout.value.slideLeft,
-    currentLayout.value.slideTop,
-    renderState.value.shouldUseKonva,
-    displayedSlideId.value,
-  ],
-  async () => {
-    await ensureStageOverlay();
-    scheduleOverlayScrollUpdate();
-  },
-  { flush: 'post', immediate: true },
-);
-
-watch(
-  () => activeSlideId.value,
-  async () => {
-    resetSourceSelection();
-    resetManualInteraction();
-    latestZoomCommitId += 1;
-    commitKonvaRasterScale(renderScale.value);
-    if (zoomCommitRafId !== null) {
-      window.cancelAnimationFrame(zoomCommitRafId);
-      zoomCommitRafId = null;
-    }
-    pendingZoomAnchor = null;
-    await resetViewportScroll();
-  },
-  { flush: 'post' },
-);
+watch(activeSlideId, () => {
+  resetSourceSelection();
+  resetManualInteraction();
+}, { flush: 'post' });
 
 watch(canSelectSourceElements, (enabled) => {
   if (!enabled) {
@@ -847,75 +550,4 @@ watch(manualEditingEnabled, enabled => {
   if (!enabled) resetManualInteraction();
 });
 
-watch(
-  () => [zoomMode.value, renderScale.value] as const,
-  async ([nextMode, nextScale], [prevMode, prevScale]) => {
-    if (nextMode === 'fit') {
-      latestZoomCommitId += 1;
-      if (zoomCommitRafId !== null) {
-        window.cancelAnimationFrame(zoomCommitRafId);
-        zoomCommitRafId = null;
-      }
-      pendingZoomAnchor = null;
-      if (prevMode !== 'fit') {
-        await resetViewportScroll();
-      }
-      return;
-    }
-
-    if (nextScale === prevScale) {
-      return;
-    }
-
-    const viewport = getViewport();
-    if (!viewport) {
-      pendingZoomAnchor = null;
-      return;
-    }
-
-    const anchor = pendingZoomAnchor ?? resolveViewportCenter(viewport);
-    const prevScrollLeft = viewport.scrollLeft;
-    const prevScrollTop = viewport.scrollTop;
-    const prevLayout = computeScrollableStageLayout({
-      viewportWidth: viewportWidth.value,
-      viewportHeight: viewportHeight.value,
-      slideWidth: logicalSlideSize.value.width,
-      slideHeight: logicalSlideSize.value.height,
-      scale: prevScale,
-      gutter: SLIDE_STAGE_SCROLL_GUTTER,
-    });
-    pendingZoomAnchor = null;
-    const commitId = ++latestZoomCommitId;
-
-    if (zoomCommitRafId !== null) {
-      window.cancelAnimationFrame(zoomCommitRafId);
-    }
-
-    zoomCommitRafId = window.requestAnimationFrame(() => {
-      zoomCommitRafId = null;
-      void nextTick().then(async () => {
-        if (commitId !== latestZoomCommitId) {
-          return;
-        }
-
-        const resolvedViewport = await ensureStageOverlay();
-        if (!resolvedViewport) return;
-
-        const nextScroll = computeAnchoredScrollPosition({
-          anchorViewportX: anchor.x,
-          anchorViewportY: anchor.y,
-          viewportWidth: viewportWidth.value,
-          viewportHeight: viewportHeight.value,
-          prevScrollLeft,
-          prevScrollTop,
-          prevLayout,
-          nextLayout: currentLayout.value,
-        });
-        resolvedViewport.scrollLeft = nextScroll.scrollLeft;
-        resolvedViewport.scrollTop = nextScroll.scrollTop;
-        scheduleOverlayScrollUpdate();
-      });
-    });
-  },
-);
 </script>

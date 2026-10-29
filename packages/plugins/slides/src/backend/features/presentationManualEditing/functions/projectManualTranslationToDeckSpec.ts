@@ -1,4 +1,5 @@
 import { collectManualAuthoringTargets } from './collectManualAuthoringTargets.js';
+import { isManualTranslationOnGrid, roundToManualTranslationGrid } from '@plugin/slides/shared/authoringEditing';
 import type {
   DeckSpec,
   FreeformElement,
@@ -27,7 +28,8 @@ export function projectManualTranslationToDeckSpec(
   deckSpec: DeckSpec,
   operation: SlidesManualEditOperation,
 ): ManualEditDeckProjection {
-  if (operation.op !== 'translate_by') {
+  // 编译器坐标量化为 1e-4 inch；非整格 delta 不能在已舍入快照上累加，否则重复微移会漂移。
+  if (operation.op !== 'translate_by' || !isManualTranslationOnGrid(operation.delta)) {
     return { kind: 'requires_full_compile' };
   }
 
@@ -125,5 +127,6 @@ function translateBox<T extends { readonly x: number; readonly y: number }>(
   box: T,
   delta: { readonly dx: number; readonly dy: number },
 ): T {
-  return { ...box, x: box.x + delta.dx, y: box.y + delta.dy };
+  // 快照与 delta 都在格点上；按编译器同一规则取整，消除二进制浮点残差。
+  return { ...box, x: roundToManualTranslationGrid(box.x + delta.dx), y: roundToManualTranslationGrid(box.y + delta.dy) };
 }

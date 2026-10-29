@@ -1,10 +1,12 @@
-import { isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
+import { readInsertedObjects } from '@plugin/slides/shared/authoringEditing';
+import { readSlidesTextStylePatch, SLIDES_TEXT_STYLE_FIELDS, isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import {
   SLIDES_TEMPLATE_IMPORT_MAX_BYTES,
   type SlideSourceSpan,
   SLIDES_AUTHORING_KEY_PATTERN,
-  SLIDES_MANUAL_FONT_SIZE_PT,
   type SlidesManualEditCommand,
+  type SlidesManualEditCommandOperation,
+  type SlidesManualEditOperation,
   type SlidesManualTargetKind,
   type SlidesIpcChannel,
   type SlidesSourceSliceTargetInput,
@@ -206,129 +208,156 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
       sourceHash,
     },
   };
-  if (payload.operation.op === 'insert_blank_slide' || payload.operation.op === 'duplicate_slide' || payload.operation.op === 'delete_slide') {
-    assertOnlyKeys(payload.operation, ['op', 'index'], 'operation');
-    const index = payload.operation.index;
-    if (typeof index !== 'number' || !Number.isSafeInteger(index) || index < 0) {
-      throw new Error('operation.index must be a non-negative safe integer.');
-    }
-    return { ...base, operation: { op: payload.operation.op, index } };
+  return { ...base, operation: readManualEditOperation(payload.operation) };
+}
+
+function readManualEditOperation(operation: Record<string, unknown>): SlidesManualEditCommandOperation {
+  if (operation.op === 'set_layer') {
+    assertOnlyKeys(operation, ['op', 'target', 'direction'], 'operation');
+    if (!isRecord(operation.target)) throw new Error('图层目标无效。');
+    assertOnlyKeys(operation.target, ['slideKey', 'editKey'], 'operation.target');
+    const direction = operation.direction;
+    if (direction !== 'front' && direction !== 'back' && direction !== 'forward' && direction !== 'backward') throw new Error('图层顺序无效。');
+    return { op: 'set_layer', target: { slideKey: readAuthoringKey(operation.target.slideKey, 'slideKey'), editKey: readAuthoringKey(operation.target.editKey, 'editKey') }, direction };
   }
-  if (!isRecord(payload.operation.target)) throw new Error('operation.target must be an object.');
-  assertOnlyKeys(payload.operation.target, ['slideKey', 'editKey'], 'operation.target');
+  if (operation.op === 'move_slide') {
+    assertOnlyKeys(operation, ['op', 'index', 'toIndex'], 'operation');
+    const index = operation.index; const toIndex = operation.toIndex;
+    if (typeof index !== 'number' || typeof toIndex !== 'number' || !Number.isSafeInteger(index) || !Number.isSafeInteger(toIndex) || index < 0 || toIndex < 0) throw new Error('页面顺序无效。');
+    return { op: 'move_slide', index, toIndex };
+  }
+  if (operation.op === 'insert_objects') {
+    assertOnlyKeys(operation, ['op', 'index', 'objects'], 'operation');
+    const parsed = readInsertedObjects(operation.objects);
+    if ('error' in parsed) throw new Error(parsed.error);
+    if (parsed.value.length === 0) throw new Error('至少需要一个新增对象。');
+    const index = operation.index;
+    if (typeof index !== 'number' || !Number.isSafeInteger(index) || index < 0) throw new Error('新增对象的页面位置无效。');
+    return { op: 'insert_objects', index, objects: parsed.value };
+  }
+  if (operation.op === 'insert_blank_slide' || operation.op === 'duplicate_slide' || operation.op === 'delete_slide') {
+    assertOnlyKeys(operation, ['op', 'index'], 'operation');
+    const index = operation.index;
+    if (typeof index !== 'number' || !Number.isSafeInteger(index) || index < 0) throw new Error('operation.index must be a non-negative safe integer.');
+    return { op: operation.op, index };
+  }
+  if (operation.op === 'undo' || operation.op === 'redo') {
+    assertOnlyKeys(operation, ['op'], 'operation');
+    return { op: operation.op };
+  }
+  if (operation.op === 'batch') {
+    assertOnlyKeys(operation, ['op', 'operations'], 'operation');
+    if (!Array.isArray(operation.operations) || operation.operations.length === 0 || operation.operations.length > 1000) {
+      throw new Error('A batch must contain 1..1000 object operations.');
+    }
+    return { op: 'batch', operations: operation.operations.map(item => {
+      if (!isRecord(item)) throw new Error('A batch entry must be an object operation.');
+      return readManualObjectOperation(item);
+    }) };
+  }
+  return readManualObjectOperation(operation);
+}
+
+function readManualObjectOperation(operation: Record<string, unknown>): SlidesManualEditOperation {
+  if (!isRecord(operation.target)) throw new Error('operation.target must be an object.');
+  assertOnlyKeys(operation.target, ['slideKey', 'editKey'], 'operation.target');
   const target = {
-    slideKey: readAuthoringKey(payload.operation.target.slideKey, 'operation.target.slideKey'),
-    editKey: readAuthoringKey(payload.operation.target.editKey, 'operation.target.editKey'),
+    slideKey: readAuthoringKey(operation.target.slideKey, 'operation.target.slideKey'),
+    editKey: readAuthoringKey(operation.target.editKey, 'operation.target.editKey'),
   };
 
-  if (payload.operation.op === 'set_text_content') {
-    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'content'], 'operation');
-    if (payload.operation.targetKind !== 'text' && payload.operation.targetKind !== 'shape') {
+  if (operation.op === 'set_text_width') {
+    assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'width'], 'operation');
+    const width = readFiniteNumber(operation.width, 'operation.width');
+    if (operation.targetKind !== 'text' || width <= 0) throw new Error('文字宽度无效。');
+    return { op: 'set_text_width', target, targetKind: 'text', width };
+  }
+  if (operation.op === 'set_image') {
+    assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'assetId', 'fit'], 'operation');
+    const assetId = operation.assetId === undefined ? undefined : readNonEmptyString(operation.assetId, 'operation.assetId');
+    const fit = operation.fit;
+    if (operation.targetKind !== 'image' || (fit !== undefined && fit !== 'contain' && fit !== 'cover') || (!assetId && !fit)) throw new Error('图片修改无效。');
+    return { op: 'set_image', target, targetKind: 'image', ...(assetId ? { assetId } : {}), ...(fit ? { fit } : {}) };
+  }
+  if (operation.op === 'set_text_content') {
+    assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'content'], 'operation');
+    if (operation.targetKind !== 'text' && operation.targetKind !== 'shape') {
       throw new Error('operation.targetKind must be text or shape.');
     }
-    if (!isEditableTextContent(payload.operation.content)) throw new Error('operation.content must be text or text runs.');
-    if (payload.operation.targetKind === 'shape') {
-      if (typeof payload.operation.content !== 'string') throw new Error('Shape content must be a string.');
-      return { ...base, operation: { op: 'set_text_content', target, targetKind: 'shape', content: payload.operation.content } };
+    if (!isEditableTextContent(operation.content)) throw new Error('operation.content must be text or text runs.');
+    if (operation.targetKind === 'shape') {
+      if (typeof operation.content !== 'string') throw new Error('Shape content must be a string.');
+      return { op: 'set_text_content', target, targetKind: 'shape', content: operation.content };
     }
-    return {
-      ...base,
-      operation: { op: 'set_text_content', target, targetKind: payload.operation.targetKind, content: payload.operation.content },
-    };
+    return { op: 'set_text_content', target, targetKind: operation.targetKind, content: operation.content };
   }
-  if (payload.operation.op === 'set_translation') {
-    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'translation'], 'operation');
-    if (!isRecord(payload.operation.translation)) {
+  if (operation.op === 'set_translation') {
+    assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'translation'], 'operation');
+    if (!isRecord(operation.translation)) {
       throw new Error('operation.translation must be an object.');
     }
-    assertOnlyKeys(payload.operation.translation, ['dx', 'dy'], 'operation.translation');
+    assertOnlyKeys(operation.translation, ['dx', 'dy'], 'operation.translation');
     return {
-      ...base,
-      operation: {
         op: 'set_translation',
         target,
-        targetKind: readManualTargetKind(payload.operation.targetKind),
+        targetKind: readManualTargetKind(operation.targetKind),
         translation: {
-          dx: readFiniteNumber(payload.operation.translation.dx, 'operation.translation.dx'),
-          dy: readFiniteNumber(payload.operation.translation.dy, 'operation.translation.dy'),
+          dx: readFiniteNumber(operation.translation.dx, 'operation.translation.dx'),
+          dy: readFiniteNumber(operation.translation.dy, 'operation.translation.dy'),
         },
-      },
     };
   }
-  if (payload.operation.op === 'translate_by') {
-    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'delta'], 'operation');
-    if (!isRecord(payload.operation.delta)) {
+  if (operation.op === 'translate_by') {
+    assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'delta'], 'operation');
+    if (!isRecord(operation.delta)) {
       throw new Error('operation.delta must be an object.');
     }
-    assertOnlyKeys(payload.operation.delta, ['dx', 'dy'], 'operation.delta');
+    assertOnlyKeys(operation.delta, ['dx', 'dy'], 'operation.delta');
     return {
-      ...base,
-      operation: {
         op: 'translate_by',
         target,
-        targetKind: readManualTargetKind(payload.operation.targetKind),
+        targetKind: readManualTargetKind(operation.targetKind),
         delta: {
-          dx: readFiniteNumber(payload.operation.delta.dx, 'operation.delta.dx'),
-          dy: readFiniteNumber(payload.operation.delta.dy, 'operation.delta.dy'),
+          dx: readFiniteNumber(operation.delta.dx, 'operation.delta.dx'),
+          dy: readFiniteNumber(operation.delta.dy, 'operation.delta.dy'),
         },
-      },
     };
   }
-  if (payload.operation.op === 'set_text_style') {
-    assertOnlyKeys(payload.operation, ['op', 'target', 'fontSizePt', 'color'], 'operation');
-    const fontSizePt = payload.operation.fontSizePt === undefined
-      ? undefined
-      : readFiniteNumber(payload.operation.fontSizePt, 'operation.fontSizePt');
-    if (fontSizePt !== undefined && (fontSizePt < SLIDES_MANUAL_FONT_SIZE_PT.min || fontSizePt > SLIDES_MANUAL_FONT_SIZE_PT.max)) {
-      throw new Error(`operation.fontSizePt must be between ${SLIDES_MANUAL_FONT_SIZE_PT.min} and ${SLIDES_MANUAL_FONT_SIZE_PT.max}.`);
-    }
-    const color = payload.operation.color === undefined
-      ? undefined
-      : readHexColor(payload.operation.color, 'operation.color');
-    if (fontSizePt === undefined && color === undefined) {
-      throw new Error('operation must include fontSizePt or color.');
-    }
-    return {
-      ...base,
-      operation: {
-        op: 'set_text_style',
-        target,
-        ...(fontSizePt !== undefined ? { fontSizePt } : {}),
-        ...(color !== undefined ? { color } : {}),
-      },
-    };
+  if (operation.op === 'set_text_style') {
+    assertOnlyKeys(operation, ['op', 'target', ...SLIDES_TEXT_STYLE_FIELDS], 'operation');
+    const patch = readSlidesTextStylePatch(operation);
+    if ('error' in patch) throw new Error(patch.error);
+    if (Object.keys(patch.value).length === 0) throw new Error('文本样式操作至少需要一个值。');
+    return { op: 'set_text_style', target, ...patch.value };
   }
-  if (payload.operation.op === 'set_fill_color') {
-    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'color'], 'operation');
-    const targetKind = readManualTargetKind(payload.operation.targetKind);
+  if (operation.op === 'set_fill_color') {
+    assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'color'], 'operation');
+    const targetKind = readManualTargetKind(operation.targetKind);
     if (targetKind !== 'frame' && targetKind !== 'shape') {
       throw new Error('operation.targetKind must be frame or shape.');
     }
     return {
-      ...base,
-      operation: {
         op: 'set_fill_color',
         target,
         targetKind,
-        color: readHexColor(payload.operation.color, 'operation.color'),
-      },
+        color: readHexColor(operation.color, 'operation.color'),
     };
   }
-  if (payload.operation.op === 'set_visual_size') {
-    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'visualSize', 'translationDelta'], 'operation');
-    const targetKind = readManualTargetKind(payload.operation.targetKind);
+  if (operation.op === 'set_visual_size') {
+    assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'visualSize', 'translationDelta'], 'operation');
+    const targetKind = readManualTargetKind(operation.targetKind);
     if (targetKind !== 'shape' && targetKind !== 'image') {
       throw new Error('operation.targetKind must be shape or image.');
     }
-    if (!isRecord(payload.operation.visualSize)) {
+    if (!isRecord(operation.visualSize)) {
       throw new Error('operation.visualSize must be an object.');
     }
-    assertOnlyKeys(payload.operation.visualSize, ['width', 'height'], 'operation.visualSize');
-    const width = readFiniteNumber(payload.operation.visualSize.width, 'operation.visualSize.width');
-    const height = readFiniteNumber(payload.operation.visualSize.height, 'operation.visualSize.height');
+    assertOnlyKeys(operation.visualSize, ['width', 'height'], 'operation.visualSize');
+    const width = readFiniteNumber(operation.visualSize.width, 'operation.visualSize.width');
+    const height = readFiniteNumber(operation.visualSize.height, 'operation.visualSize.height');
     let translationDelta: { dx: number; dy: number } | undefined;
-    if (payload.operation.translationDelta !== undefined) {
-      const delta = payload.operation.translationDelta;
+    if (operation.translationDelta !== undefined) {
+      const delta = operation.translationDelta;
       if (!isRecord(delta)) throw new Error('operation.translationDelta must be an object.');
       assertOnlyKeys(delta, ['dx', 'dy'], 'operation.translationDelta');
       translationDelta = {
@@ -339,15 +368,12 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
     if (width <= 0 || height <= 0) {
       throw new Error('operation.visualSize width and height must be positive.');
     }
-    return {
-      ...base,
-      operation: { op: 'set_visual_size', target, targetKind, visualSize: { width, height }, ...(translationDelta ? { translationDelta } : {}) },
-    };
+    return { op: 'set_visual_size', target, targetKind, visualSize: { width, height }, ...(translationDelta ? { translationDelta } : {}) };
   }
-  if (payload.operation.op === 'delete_target') {
-    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind'], 'operation');
-    const targetKind = readManualTargetKind(payload.operation.targetKind);
-    return { ...base, operation: { op: 'delete_target', target, targetKind } };
+  if (operation.op === 'delete_target') {
+    assertOnlyKeys(operation, ['op', 'target', 'targetKind'], 'operation');
+    const targetKind = readManualTargetKind(operation.targetKind);
+    return { op: 'delete_target', target, targetKind };
   }
   throw new Error('operation.op is invalid.');
 }

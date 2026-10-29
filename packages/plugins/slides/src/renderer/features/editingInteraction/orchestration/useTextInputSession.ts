@@ -43,8 +43,8 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
     const operation: Extract<SlidesManualEditOperation, { op: 'set_text_content' }> = session.target.targetKind === 'shape'
       ? shapeTextOperation(session.target, session.draft)
       : { op: 'set_text_content', targetKind: 'text', target: session.target.authoringRef, content: session.draft };
-    const ticket = submission.enqueue({ operation, visualPreview: { elementId: session.target.elementId,
-      affectedElementIds: [session.target.elementId], operation } });
+    const ticket = submission.enqueue({ operation, visualPreviews: [{ elementId: session.target.elementId,
+      affectedElementIds: [session.target.elementId], operation }] });
     store.setTextDrafts([
       ...store.textDrafts.filter(entry => entry.target.elementId !== session.target.elementId),
       { sessionId: session.sessionId, clientOperationId: ticket.clientOperationId,

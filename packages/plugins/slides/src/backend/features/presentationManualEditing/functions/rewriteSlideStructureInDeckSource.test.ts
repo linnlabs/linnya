@@ -31,11 +31,16 @@ describe('page source lifecycle', () => {
     expect(copiedAgain).toContain('slides: [copiedSlide1, copiedSlide2, second]');
   });
 
-  it('supports a named slide list and refuses the last-page deletion or a mismatched order', () => {
+  it('supports named lists, reordered pages, and retains at least one page', () => {
     const named = source.replace("compose({ title: 'Demo', slides: [first, second],", "const pages = [first, second];\ncompose({ title: 'Demo', slides: pages,");
     expect(typecheckCodegenSource(rewriteSlideStructureInDeckSource(named, { op: 'duplicate_slide', index: 1, slideCount: 2 })).ok).toBe(true);
     expect(() => rewriteSlideStructureInDeckSource('const a = createSlide();\ncompose({title:"X",slides:[a]});', { op: 'delete_slide', index: 0, slideCount: 1 })).toThrow('至少需要保留');
-    expect(() => rewriteSlideStructureInDeckSource(source.replace('slides: [first, second]', 'slides: [second, first]'), { op: 'delete_slide', index: 0, slideCount: 2 })).toThrow('顺序');
+    const reordered = source.replace('slides: [first, second]', 'slides: [second, first]');
+    expect(SlideMarkerIndex.build(reordered).sliceSlide(1)).toContain('const second');
+    const deleted = rewriteSlideStructureInDeckSource(reordered, { op: 'delete_slide', index: 0, slideCount: 2 });
+    expect(deleted).toContain('slides: [first]');
+    expect(deleted).not.toContain('const second');
+    expect(typecheckCodegenSource(deleted).ok).toBe(true);
   });
   it('rejects dynamic slide identities instead of silently dropping manual values from a copy', () => {
     expect(() => rewriteSlideStructureInDeckSource(source.replace("slideKey: 'first'", "slideKey: ['first'].join('')"), { op: 'duplicate_slide', index: 0, slideCount: 2 })).toThrow('slideKey');

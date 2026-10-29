@@ -27,7 +27,7 @@ describe('ManualEditPresentationTrace', () => {
       commandId: COMMAND.commandId,
       documentId: COMMAND.documentId,
       revisionId: 'revision-2',
-      revision: 2,
+      revision: 2, history: { revisionId: 'revision-2', undoDepth: 1, redoDepth: 0 },
     });
     time = 30;
     trace.recordRefreshCompleted(COMMAND.commandId);
@@ -57,7 +57,7 @@ describe('ManualEditPresentationTrace', () => {
       commandId: COMMAND.commandId,
       documentId: COMMAND.documentId,
       revisionId: 'revision-2',
-      revision: 2,
+      revision: 2, history: { revisionId: 'revision-2', undoDepth: 1, redoDepth: 0 },
     });
     time = 30;
     trace.recordRefreshCompleted(COMMAND.commandId);

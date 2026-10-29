@@ -15,6 +15,7 @@ export interface SlideStructureActions {
   readonly pending: ComputedRef<boolean>;
   readonly insertAfterCurrentSlide: () => Promise<void>;
   readonly duplicateSlide: (index: number) => Promise<void>;
+  readonly moveSlide: (index: number, toIndex: number) => Promise<void>;
   readonly deleteSlide: (index: number) => Promise<void>;
   readonly canDelete: ComputedRef<boolean>;
 }
@@ -38,11 +39,7 @@ export function useSlideStructureActions(
     currentSlideIndex: currentSlideIndex.value,
   }));
 
-  const pending = computed(() => {
-    const active = manualEditingStore.submission;
-    return manualEditingStore.queue.some(entry => 'index' in entry.intent.operation)
-      || (active.phase !== 'idle' && 'index' in active.entry.intent.operation);
-  });
+  const pending = computed(() => manualEditingStore.pendingPageOperation);
 
   const canDelete = computed(() => availability.value.available && !pending.value && (renderModel.value?.slides.length ?? 0) > 1);
 
@@ -59,6 +56,10 @@ export function useSlideStructureActions(
 
   return {
     availability, pending, canDelete, insertAfterCurrentSlide,
+    moveSlide: async (index, toIndex) => {
+      if (!availability.value.available || pending.value || index === toIndex || toIndex < 0 || toIndex >= (renderModel.value?.slides.length ?? 0)) return;
+      await submission.enqueue({ operation: { op: 'move_slide', index, toIndex } }).settled;
+    },
     duplicateSlide: (index: number) => submitStructure('duplicate_slide', index),
     deleteSlide: (index: number) => submitStructure('delete_slide', index),
   };

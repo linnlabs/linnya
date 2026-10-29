@@ -125,6 +125,7 @@ describe('PresentationManualEditingRuntime', () => {
       documentId: 'deck-1',
       revisionId: 'revision-2',
       revision: 2,
+      history: { revisionId: 'revision-2', undoDepth: 1, redoDepth: 0 },
     });
     expect(buildFromSource).toHaveBeenCalledWith(expect.objectContaining({
       nodeId: 'deck-1',

@@ -16,7 +16,7 @@ describe('author text selection editing', () => {
     expect(edited).toEqual([content[0], { text: '30%', style: { ...content[1].style, fontSize: 28, color: '#E11D48' } },
       { text: '\n中文🙂', style: content[1].style }]);
     expect(isEditableTextContent(edited)).toBe(true);
-    expect(selectedTextStyle(state, { fontSizePt: 14, color: '#000000' })).toEqual({ fontSizePt: 28, color: '#E11D48' });
+    expect(selectedTextStyle(state, { fontSizePt: 14, color: '#000000' })).toEqual({ fontSizePt: 28, color: '#E11D48', bold: false, italic: true, underline: false });
     undo(state, tr => { state = state.apply(tr); });
     expect(documentToTextContent(state.doc)).toEqual(content);
     redo(state, tr => { state = state.apply(tr); });
@@ -27,7 +27,7 @@ describe('author text selection editing', () => {
     const doc = textContentToDocument(content);
     const state = EditorState.create({ doc, selection: TextSelection.create(doc, 1, doc.content.size - 1) });
     expect(documentToTextContent(doc)).toEqual(content);
-    expect(selectedTextStyle(state, { fontSizePt: 14, color: '#000000' })).toEqual({ fontSizePt: null, color: null });
+    expect(selectedTextStyle(state, { fontSizePt: 14, color: '#000000' })).toEqual({ fontSizePt: null, color: null, bold: false, italic: false, underline: false });
     expect(documentToTextContent(textContentToDocument(''))).toBe('');
   });
 });

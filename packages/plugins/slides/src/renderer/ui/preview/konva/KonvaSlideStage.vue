@@ -31,7 +31,9 @@
         :selected-targets="props.selectedTargets"
         :hovered-target="props.hoveredTarget"
         :marquee-rect="props.marqueeRect"
-        :manual-selected-target="props.manualSelectedTarget"
+        :manual-selected-targets="props.manualSelectedTargets"
+        :snap-guides="props.snapGuides"
+        :slide-size="props.slideSize"
       />
     </v-stage>
   </div>
@@ -71,7 +73,8 @@ const props = defineProps<{
   hoveredTarget: SourceSelectableElement | null;
   marqueeRect: SourceSelectionRect | null;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
-  manualSelectedTarget?: ManualEditableTarget | null;
+  manualSelectedTargets?: readonly ManualEditableTarget[];
+  snapGuides?: readonly { readonly axis: 'x' | 'y'; readonly position: number }[];
   hiddenTextElementIds?: ReadonlySet<string>;
   manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();

@@ -1,3 +1,4 @@
+import { resolveTextEditingStyleBase } from '../../textEditing';
 import { wholeTextStyle, SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
 import { computed, ref, watch, type Ref } from 'vue';
 import type { NumberInputValue } from '@linnya/renderer-ui';
@@ -14,7 +15,7 @@ export function useElementPropertyFields(options: {
   readonly submitTextSelection?: (patch: SlidesTextStylePatch) => void;
 }) {
   const textStyle = computed(() => options.textSelection?.value ?? (options.target.value.textEditing
-    ? wholeTextStyle(options.target.value.textEditing.content, options.target.value.textEditing) : undefined));
+    ? wholeTextStyle(options.target.value.textEditing.content, resolveTextEditingStyleBase(options.target.value.textEditing)) : undefined));
   const fontSize = ref<NumberInputValue>(14);
   const width = ref<NumberInputValue>(1);
   const height = ref<NumberInputValue>(1);
@@ -57,12 +58,14 @@ export function useElementPropertyFields(options: {
     // 同步恢复 DOM，避免 Escape 后 blur 的原生 change 重新提交已取消的值。
     if (event.target instanceof HTMLInputElement) event.target.value = String(baseline(field));
   }
+  function submitTextStyle(patch: SlidesTextStylePatch): void {
+    if (options.textSelection?.value) { if (!options.busy.value) options.submitTextSelection?.(patch); }
+    else submit(createTextStyleOperation(options.target.value, patch));
+  }
   return {
+    submitTextStyle,
     textStyle, fontSize, width, height, commitNumber, cancelNumber,
-    submitTextColor: (color: string) => {
-      if (options.textSelection?.value) { if (!options.busy.value) options.submitTextSelection?.({ color }); }
-      else submit(createTextStyleOperation(options.target.value, { color }));
-    },
+    submitTextColor: (color: string) => submitTextStyle({ color }),
     submitFillColor: (color: string) => submit(createFillColorOperation(options.target.value, color)),
   };
 }

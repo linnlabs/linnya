@@ -390,6 +390,11 @@ export function createPresentationImageSourceResolver(
         );
       }
       const presentationId = requireDocumentId(context);
+      if (source.kind === 'document_asset') {
+        const asset = await readBoundImage({ bindingReader: dependencies.bindingRepository, documentImageAssets: dependencies.documentImageAssets }, { presentationId, sourceIdentity: `document_asset:${source.assetId}` });
+        if (!asset) failImageResolution('slides.asset.local_source_unavailable', 'The inserted image is no longer owned by this document.');
+        return toDataUriRef(asset);
+      }
       if (source.kind === 'data_uri') {
         return resolveDataUri(presentationId, source.dataUri);
       }
@@ -450,6 +455,7 @@ export function createReadOnlyPresentationImageSourceResolver(
         );
       }
       const presentationId = requireDocumentId(context);
+      if (source.kind === 'document_asset') return requireBoundImage(presentationId, `document_asset:${source.assetId}`);
       if (source.kind === 'data_uri') {
         const candidate = decodeImageDataUri(source.dataUri);
         const bound = await readBoundImage(dependencies, {

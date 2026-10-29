@@ -15,7 +15,7 @@
 
 `planPresentationSourceCompaction` 单次重放原链，校验所有源码（包括待删除版本），只保存保留点的新载荷。
 最旧保留点变成 checkpoint，后续点相对上一个实际保留点编码。源码 hash 和版本身份保持不变。
-计划不执行 SQL，不处理图片，不发布文档更新。调用方必须先合并 current 和 draft base 等必保依赖。
+计划不执行 SQL，不处理图片，不发布文档更新。调用方必须先合并 current、draft base 和会话 Undo/Redo 提供的 requiredVersions 等必保依赖。
 所有版本都继续保留时，重放与 hash 校验照常执行，直接复用原链及其 checkpoint/patch 编码，不重新计算整条链的 diff。
 这类维护不能因为没有版本可删除，反而挤占刚保存后的预览读取。
 
@@ -56,3 +56,10 @@ draft base 必保；存在失败草稿时仍可压缩源码，但暂停资产释
 
 参见 [后端总览](../../README.md)、[Core 历史规则](../../../../../../../src/domains/document-history/README.md)、
 [文档类型合同](../../../../../../../docs/plugins/guides/05-document-types.md)。
+
+
+## 人工编辑撤销与保存预算
+
+人工编辑的 `commitDeferredRestore` 在既有文稿作用域内恢复历史源码和历史主题，创建新的 edit revision；事务继承所恢复版本的精确资产引用，不运行 PPTX assembler。它不重新进入同一作用域，避免串行队列自等待。正式历史面板恢复仍保留原有语义。
+
+源码差异压缩的搜索预算为 10ms；到时 diff 算法产生更粗但仍精确可恢复的替换记录，再按体积决定 patch/checkpoint。定期 checkpoint 和累计体积已达阈值时直接保存全文，不先计算无用 diff。该预算限制压缩搜索，不是整个提交的硬超时，不会丢弃用户修改。重建继续校验 base/source hash。

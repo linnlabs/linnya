@@ -1,6 +1,8 @@
 import type { MessageCatalogContribution, MessageParams } from '@app/localization';
 
 export type DeckNavigatorMessageKey =
+  | 'slides.navigator.moveEarlier'
+  | 'slides.navigator.moveLater'
   | 'slides.navigator.duplicateSlide'
   | 'slides.navigator.deleteSlide'
   | 'slides.navigator.slideMenu'
@@ -23,6 +25,8 @@ export type DeckNavigatorMessageResolver = (
 ) => string;
 
 export const DECK_NAVIGATOR_MESSAGE_FALLBACKS = {
+  'slides.navigator.moveEarlier': '向前移动',
+  'slides.navigator.moveLater': '向后移动',
   'slides.navigator.duplicateSlide': '复制幻灯片',
   'slides.navigator.deleteSlide': '删除幻灯片',
   'slides.navigator.slideMenu': '幻灯片操作',
@@ -41,6 +45,8 @@ export const DECK_NAVIGATOR_MESSAGE_FALLBACKS = {
 } as const satisfies Readonly<Record<DeckNavigatorMessageKey, string>>;
 
 const DECK_NAVIGATOR_EN_US_MESSAGES = {
+  'slides.navigator.moveEarlier': 'Move earlier',
+  'slides.navigator.moveLater': 'Move later',
   'slides.navigator.duplicateSlide': 'Duplicate slide',
   'slides.navigator.deleteSlide': 'Delete slide',
   'slides.navigator.slideMenu': 'Slide actions',

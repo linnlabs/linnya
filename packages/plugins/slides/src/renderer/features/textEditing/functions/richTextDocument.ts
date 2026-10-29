@@ -1,6 +1,6 @@
 import { Schema, type Node as ProseMirrorNode, type Mark } from '@tiptap/pm/model';
 import type { TextStyle } from '@plugin/slides/shared/deckSpec';
-import { authorTextStylePatch, isAuthorTextStyle, type SlidesEditableTextContent, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
+import { authorTextStylePatch, isAuthorTextStyle, type SlidesEditableTextContent, type SlidesTextSelectionStyle, type SlidesTextStylePatch, type SlidesTextStyleBase, wholeTextStyle } from '@plugin/slides/shared/authoringEditing';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 
 /** 单段 + 显式换行与 Text.content 一一对应；不引入标题、列表或 HTML 持久化模型。 */
@@ -68,14 +68,10 @@ export function patchSelectedTextStyle(state: EditorState, patch: SlidesTextStyl
   });
   return tr;
 }
-export function selectedTextStyle(state: EditorState, base: { fontSizePt: number; color: string }): SlidesTextSelectionStyle {
-  const sizes = new Set<number>();
-  const colors = new Set<string>();
+export function selectedTextStyle(state: EditorState, base: SlidesTextStyleBase): SlidesTextSelectionStyle {
+  const runs: { text: string; style: TextStyle }[] = [];
   state.doc.nodesBetween(state.selection.from, state.selection.to, node => {
-    if (!node.isInline) return;
-    const style = readAuthorStyle(node.marks.find(mark => mark.type.name === 'authorStyle'));
-    sizes.add(style.fontSize ?? base.fontSizePt);
-    colors.add((style.color ?? base.color).toUpperCase());
+    if (node.isInline) runs.push({ text: node.text ?? '\n', style: readAuthorStyle(node.marks.find(mark => mark.type.name === 'authorStyle')) });
   });
-  return { fontSizePt: sizes.size === 1 ? [...sizes][0] : null, color: colors.size === 1 ? [...colors][0] : null };
+  return wholeTextStyle(runs, base);
 }

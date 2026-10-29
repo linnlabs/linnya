@@ -100,7 +100,7 @@ describe('blank slide insertion + real submission queue', () => {
 
     const pending = f.commands[0];
     if (!pending) throw new Error('Missing insert command');
-    pending.resolve({ status: 'committed', commandId: pending.command.commandId, documentId: 'deck', revisionId: 'v5', revision: 5 });
+    pending.resolve({ status: 'committed', commandId: pending.command.commandId, documentId: 'deck', revisionId: 'v5', revision: 5, history: { revisionId: 'v5', undoDepth: 1, redoDepth: 0 } });
     await flush();
     expect(f.refreshDocument).toHaveBeenCalledWith('deck', 5);
     expect(f.slidesStore.currentSlideIndex).toBe(2);
@@ -137,7 +137,7 @@ describe('blank slide insertion + real submission queue', () => {
     await f.controller.insertAfterCurrentSlide();
     expect(f.commands).toHaveLength(1);
     const pending = f.commands[0];
-    pending.resolve({ status: 'committed', commandId: pending.command.commandId, documentId: 'deck', revisionId: 'v5', revision: 5 });
+    pending.resolve({ status: 'committed', commandId: pending.command.commandId, documentId: 'deck', revisionId: 'v5', revision: 5, history: { revisionId: 'v5', undoDepth: 1, redoDepth: 0 } });
     await flush(); f.manualStore.recordPresentedRevision(5); await copied;
     expect(f.slidesStore.currentSlideIndex).toBe(2);
   });
@@ -150,7 +150,7 @@ describe('blank slide insertion + real submission queue', () => {
     await flush();
     const pending = f.commands[0];
     expect(pending.command.operation).toEqual({ op: 'delete_slide', index: 2 });
-    pending.resolve({ status: 'committed', commandId: pending.command.commandId, documentId: 'deck', revisionId: 'v5', revision: 5 });
+    pending.resolve({ status: 'committed', commandId: pending.command.commandId, documentId: 'deck', revisionId: 'v5', revision: 5, history: { revisionId: 'v5', undoDepth: 1, redoDepth: 0 } });
     await flush(); f.manualStore.recordPresentedRevision(5); await deleted;
     expect(f.slidesStore.currentSlideIndex).toBe(1);
     installRevision(6, 1);

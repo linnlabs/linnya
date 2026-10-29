@@ -6,7 +6,7 @@ export type ManualEditingUnavailableReason =
   | 'build_not_ready'
   | 'source_not_generated'
   | 'version_not_ready'
-  | 'no_editable_targets';
+  | 'no_current_slide';
 
 export type ManualEditingAvailability =
   | { readonly available: true; readonly editableTargetCount: number }
@@ -33,7 +33,7 @@ export function resolveManualEditingAvailability(input: {
   const editableTargetCount = input.currentSlide
     ? collectManualEditableTargets(input.currentSlide.elements).length
     : 0;
-  return editableTargetCount > 0
+  return input.currentSlide !== null
     ? { available: true, editableTargetCount }
-    : { available: false, editableTargetCount: 0, reason: 'no_editable_targets' };
+    : { available: false, editableTargetCount: 0, reason: 'no_current_slide' };
 }

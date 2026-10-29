@@ -54,4 +54,11 @@ describe('manual editing availability', () => {
       currentSlide: model.slides[0],
     })).toEqual({ available: true, editableTargetCount: 1 });
   });
+  it('keeps a generated blank slide editable without requiring an existing target', () => {
+    expect(resolveManualEditingAvailability({
+      buildState: { state: 'ready', presentationId: 'deck-1', versionId: 'revision-3', versionNumber: 3, sourceHash: 'a'.repeat(64) },
+      renderModel: model, currentSlide: { ...model.slides[0], elements: [] },
+    })).toEqual({ available: true, editableTargetCount: 0 });
+  });
+
 });

@@ -1,4 +1,4 @@
-import { isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
+import { isEditableTextContent, readCopyableAuthoringValue } from '@plugin/slides/shared/authoringEditing';
 import type {
   FreeformElement,
   SlidesAuthoringEditCapability,
@@ -228,6 +228,7 @@ function mapFreeformElement(
   transform: FreeformTransform,
   defaults: RenderDefaultsContext,
   svgAssets: ReadonlyMap<string, SvgGraphicResolvedAsset>,
+  nested = false,
 ): RenderNode[] {
   if (element.type === 'group') {
     return [mapFreeformGroup(slideNumber, element, zIndex, transform, defaults, svgAssets)];
@@ -244,7 +245,7 @@ function mapFreeformElement(
     element._sourceSpan,
     element._layoutConstraintEvidence,
     element._authoringRef,
-    buildAuthoringEditProjection(element, defaults),
+    buildAuthoringEditProjection(element, defaults, nested),
     element._authoringAncestorRefs,
   );
 
@@ -341,6 +342,7 @@ function mapFreeformGroup(
         groupTransform,
         defaults,
         svgAssets,
+        true,
       ),
     ),
   };
@@ -350,10 +352,13 @@ function mapFreeformGroup(
 function buildAuthoringEditProjection(
   element: StructuredElement | FreeformElement,
   defaults: RenderDefaultsContext,
+  nested = false,
 ): SlidesAuthoringEditProjection | undefined {
   const authoringRef = element._authoringRef;
   if (!authoringRef) return undefined;
   const capabilities: SlidesAuthoringEditCapability[] = ['translate', 'delete'];
+  // 与复制接口同一判定：组内对象和带复杂样式的对象不能独立复制。
+  if (!nested && authoringRef.targetKind !== 'frame' && readCopyableAuthoringValue(element)) capabilities.push('copy');
   switch (authoringRef.targetKind) {
     case 'frame':
       capabilities.push('set_fill_color');

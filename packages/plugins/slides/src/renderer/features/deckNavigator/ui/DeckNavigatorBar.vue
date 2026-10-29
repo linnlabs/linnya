@@ -66,6 +66,8 @@
 
     <DeckFilmstrip
       v-if="deckViewMode === 'slide' && !filmstripCollapsed"
+      :reorder-enabled="availability.available && !pending"
+      @move-slide="moveSlide"
       @slide-context-menu="openSlideMenu"
     />
     <SlideContextMenu
@@ -73,6 +75,10 @@
       :anchor="contextMenu.anchor"
       :disabled="!availability.available || pending"
       :can-delete="canDelete"
+      :can-move-earlier="contextMenu.index > 0"
+      :can-move-later="contextMenu.index < (slidesStore.deckPreview?.slides.length ?? 0) - 1"
+      @move-earlier="runSlideAction('earlier')"
+      @move-later="runSlideAction('later')"
       @duplicate="runSlideAction('duplicate')"
       @delete="runSlideAction('delete')"
       @close="contextMenu = null"
@@ -98,7 +104,7 @@ import SlideGridViewIcon from './icons/SlideGridViewIcon.vue';
 const uiStore = useSlidesUiStore();
 const { deckViewMode, filmstripCollapsed } = storeToRefs(uiStore);
 const { deckNavigatorMessage } = useDeckNavigatorLocalization();
-const { availability, pending, canDelete, duplicateSlide, deleteSlide, insertAfterCurrentSlide } = useSlideStructureActions(useManualEditSubmission());
+const { availability, pending, canDelete, moveSlide, duplicateSlide, deleteSlide, insertAfterCurrentSlide } = useSlideStructureActions(useManualEditSubmission());
 
 const slidesStore = useSlidesStore();
 const contextMenu = ref<{ anchor: SlideContextMenuAnchor; index: number } | null>(null);
@@ -113,10 +119,12 @@ function openSlideMenu(event: MouseEvent, index: number): void {
     trigger,
   } };
 }
-function runSlideAction(action: 'duplicate' | 'delete'): void {
+function runSlideAction(action: 'duplicate' | 'delete' | 'earlier' | 'later'): void {
   const index = contextMenu.value?.index;
   contextMenu.value = null;
-  if (index !== undefined) void (action === 'duplicate' ? duplicateSlide(index) : deleteSlide(index));
+  if (index === undefined) return;
+  if (action === 'earlier' || action === 'later') void moveSlide(index, index + (action === 'earlier' ? -1 : 1));
+  else void (action === 'duplicate' ? duplicateSlide(index) : deleteSlide(index));
 }
 // 菜单索引只属于打开时的修订；刷新或切换视图后不再使用旧位置。
 watch(() => [slidesStore.currentDeckId, slidesStore.documentBuildState, deckViewMode.value], () => { contextMenu.value = null; });

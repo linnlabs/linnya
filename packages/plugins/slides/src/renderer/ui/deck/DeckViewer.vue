@@ -1,5 +1,9 @@
 <template>
-  <div class="deck-viewer">
+  <div
+    class="deck-viewer"
+    @keydown="handleHistoryShortcut($event); handleClipboardShortcut($event)"
+  >
+    <SlideEditingCommandBar v-if="manualEditingEnabled && deckPreview" />
     <div class="deck-viewer-body">
       <!-- 主区域：单页舞台或全稿平铺 -->
       <div
@@ -66,6 +70,19 @@
             @click="manualEditSubmission.refreshPresentation"
           >
             {{ manualEditingMessage('slides.manualEditing.refreshPresentation') }}
+          </button>
+        </div>
+        <div
+          v-else-if="manualEditNotice"
+          class="stage-manual-edit-error"
+          role="status"
+        >
+          {{ manualEditNotice }}
+          <button
+            class="manual-edit-error__retry"
+            @click="manualEditingStore.setNotice(null)"
+          >
+            {{ manualEditingMessage('slides.manualEditing.notice.dismiss') }}
           </button>
         </div>
 
@@ -152,6 +169,9 @@
 </template>
 
 <script setup lang="ts">
+import { useElementClipboard } from '../../features/elementClipboard';
+import { SlideEditingCommandBar, useEditingCommands } from '../../features/editingCommands';
+
 import { useSlidesDocumentRuntime } from '../../features/documentRuntime';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
@@ -208,6 +228,8 @@ const slidesStore = useSlidesStore();
 const slidesUiStore = useSlidesUiStore();
 const slidesRenderStore = useSlidesRenderStore();
 const manualEditingStore = useSlidesManualEditingStore();
+const { handleClipboardShortcut } = useElementClipboard();
+const { handleHistoryShortcut } = useEditingCommands();
 const manualEditSubmission = useManualEditSubmission();
 const { manualEditingMessage } = useManualEditingLocalization();
 const { slidesPreviewMessage } = useSlidesPreviewLocalization();
@@ -231,6 +253,7 @@ const {
   enabled: manualEditingEnabled,
   submitting: manualEditingSubmitting,
   errorMessage: manualEditError,
+  notice: manualEditNotice,
 } = storeToRefs(manualEditingStore);
 const {
   renderLoading,

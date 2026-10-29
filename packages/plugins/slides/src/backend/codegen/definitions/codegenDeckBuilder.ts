@@ -1,5 +1,5 @@
 import type { DeckSpec } from '@plugin/slides/shared';
-import type { SlidesEngineExecutionAdapter } from '@plugin/slides/backend-engine-core';
+import type { ImageSourceResolverPort, SlidesEngineExecutionAdapter } from '@plugin/slides/backend-engine-core';
 import type { SandboxExecutionRequest, SandboxExecutionResult } from '@plugin/backend/sandboxRuntime';
 import type { PresentationCommitOptions, PresentationRepositoryPort } from '../../persistence/index.js';
 import type { PresentationSvgGraphicOwnerPort } from '../../features/presentationSvgGraphicOwnership/index.js';
@@ -20,6 +20,7 @@ export interface CodegenWorkspacePresentationPort {
 }
 
 export interface CodegenDeckBuilderDeps {
+  readonly imageSourceResolver?: ImageSourceResolverPort;
   /** 记录实际注入源码的主题；输出 DeckSpec.theme 可能被这次源码修改，不能用来重放输入。 */
   recordSourceTheme?: (theme: DeckSpec['theme']) => void;
   presentationRepo: Pick<

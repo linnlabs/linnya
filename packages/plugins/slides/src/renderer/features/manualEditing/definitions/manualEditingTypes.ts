@@ -58,6 +58,6 @@ export type { EditingVisualOperation as ManualEditingVisualOperation, EditingVis
  */
 export interface ManualEditIntent {
   readonly operation: SlidesManualEditCommandOperation;
-  readonly translationPreview?: ManualEditingTranslationPreview;
-  readonly visualPreview?: ManualEditingVisualPreview;
+  readonly translationPreviews?: readonly ManualEditingTranslationPreview[];
+  readonly visualPreviews?: readonly ManualEditingVisualPreview[];
 }

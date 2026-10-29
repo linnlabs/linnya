@@ -1,3 +1,4 @@
+import type { SlidesInsertedObject, SlidesAuthoringEditRef } from '@plugin/slides/shared/authoringEditing';
 /**
  * Slides API 服务
  *
@@ -16,6 +17,7 @@ import {
 } from '@plugin/slides/shared/ipc';
 import type {
   SlidesManualEditCommand,
+  SlidesManualEditHistoryStatus,
   SlidesManualEditCommandResult,
 } from '@plugin/slides/shared/authoringEditing';
 import type {
@@ -86,9 +88,19 @@ function readPresentationExportResult(value: unknown): PresentationExportResult 
 }
 
 export const slidesApi = {
+  copyObjects(documentId: string, revisionId: string, targets: readonly SlidesAuthoringEditRef[]): Promise<readonly SlidesInsertedObject[]> {
+    return invokeSlidesIpc(SLIDES_IPC.copyObjects, { documentId, revisionId, targets });
+  },
+  importImage(documentId: string, base64: string): Promise<string> {
+    return invokeSlidesIpc(SLIDES_IPC.importImage, { documentId, base64 });
+  },
   /** 引用目录可查询未打开的文稿摘要；正式画布加载使用 documentRuntime 的一致快照。 */
   async getDeckPreview(nodeId: string): Promise<DeckPreview> {
     return invokeSlidesIpc<DeckPreview>(SLIDES_IPC.preview, { nodeId });
+  },
+
+  async readManualEditHistory(nodeId: string): Promise<SlidesManualEditHistoryStatus> {
+    return invokeSlidesIpc<SlidesManualEditHistoryStatus>(SLIDES_IPC.manualEditHistory, { nodeId });
   },
 
   /** 基于当前 revision 快照提交一次文本或位置人工编辑。 */

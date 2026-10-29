@@ -1,4 +1,5 @@
 import { verifyRichTextEditing } from './richTextEditingSmoke';
+import { verifyCanvasSelection } from './canvasSelectionSmoke';
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -24,6 +25,7 @@ async function run(): Promise<void> {
     await verifyShapeTextEditing(window);
     await verifySelectionToolbar(window);
     await verifyRichTextEditing(window);
+    await verifyCanvasSelection(window);
     await verifyThumbnails(window);
     const fixtureFile = process.argv[2];
     if (fixtureFile) {
@@ -241,6 +243,10 @@ async function verifyShapeTextEditing(window: BrowserWindow): Promise<void> {
     window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers });
     await settle();
   }
+  await click('badge');
+  await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge")');
+  await click('gutter');
+  await evaluate('window.shapeTextEditingSmoke.assertSelectionCleared()');
   await click('badge', true);
   await evaluate('window.shapeTextEditingSmoke.assertEditing()');
   await enter();
@@ -288,7 +294,10 @@ async function verifyShapeTextEditing(window: BrowserWindow): Promise<void> {
   // 输入交接后立刻拉伸：无焦点文字也必须实时跟随，并在取消时回到原位置。
   await click('badge', true);
   await evaluate('window.shapeTextEditingSmoke.setInput("Pending resize")');
-  await enter(true);
+  // 留白结束输入并取消选择；随后仍可选中／缩放待保存对象，不取消队列中的正文。
+  await click('gutter');
+  await evaluate('window.shapeTextEditingSmoke.assertSelectionCleared()');
+  await click('badge');
   const resize = await evaluate('window.shapeTextEditingSmoke.resizePoint()');
   if (typeof resize !== 'object' || resize === null || !('x' in resize) || !('y' in resize)
     || typeof resize.x !== 'number' || typeof resize.y !== 'number') throw new Error('Invalid resize position');

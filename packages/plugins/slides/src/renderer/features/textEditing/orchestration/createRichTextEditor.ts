@@ -1,3 +1,4 @@
+import { resolveTextEditingStyleBase } from '../functions/resolveTextEditingStyleBase';
 import { EditorState, TextSelection, type Transaction } from '@tiptap/pm/state';
 import { EditorView, Decoration, DecorationSet } from '@tiptap/pm/view';
 import { keymap } from '@tiptap/pm/keymap';
@@ -59,6 +60,15 @@ export function createRichTextEditor(options: {
     },
     handleKeyDown(_view, event) {
       if (event.isComposing || view.composing) return false;
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
+        const key = event.key.toLowerCase();
+        const field = key === 'b' ? 'bold' : key === 'i' ? 'italic' : key === 'u' ? 'underline' : null;
+        if (field && !view.state.selection.empty) {
+          const style = selectedTextStyle(view.state, resolveTextEditingStyleBase(options.target()));
+          view.dispatch(closeHistory(patchSelectedTextStyle(view.state, { [field]: style[field] !== true })));
+          event.preventDefault(); return true;
+        }
+      }
       if (event.key === 'Escape') { options.escape(event); return true; }
       if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { options.commit(event); return true; }
       return false;
@@ -80,7 +90,7 @@ export function createRichTextEditor(options: {
     const range = document.createRange();
     range.setStart(start.node, start.offset); range.setEnd(end.node, end.offset);
     const rect = range.getBoundingClientRect();
-    options.selection({ style: selectedTextStyle(view.state, options.target()), rect: {
+    options.selection({ style: selectedTextStyle(view.state, resolveTextEditingStyleBase(options.target())), rect: {
       left: rect.left, top: rect.top, width: rect.width, height: rect.height,
     } });
   }

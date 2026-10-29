@@ -180,14 +180,14 @@ describe('DeckFilmstrip', () => {
     await flushDomUpdates();
     expect(slides.currentSlideIndex).toBe(1);
     const items = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
-    expect(items.map(item => item.textContent?.trim())).toEqual(['复制幻灯片', '删除幻灯片']);
+    expect(items.map(item => item.textContent?.trim())).toEqual(['复制幻灯片', '向前移动', '向后移动', '删除幻灯片']);
     items[0]?.click();
     await flushDomUpdates();
     expect(enqueue).toHaveBeenLastCalledWith({ operation: { op: 'duplicate_slide', index: 1 } });
     expect(document.querySelector('[role="menu"]')).toBeNull();
     target.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
     await flushDomUpdates();
-    document.querySelectorAll<HTMLElement>('[role="menuitem"]')[1]?.click();
+    document.querySelectorAll<HTMLElement>('[role="menuitem"]')[3]?.click();
     await flushDomUpdates();
     expect(enqueue).toHaveBeenLastCalledWith({ operation: { op: 'delete_slide', index: 1 } });
     app.unmount();

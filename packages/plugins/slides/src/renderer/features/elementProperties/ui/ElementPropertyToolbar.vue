@@ -16,6 +16,7 @@
         role="group"
         :aria-label="message('slides.elementProperties.label')"
         @pointerdown.stop
+        @mousedown="preserveCanvasFocus"
         @keydown="handleToolbarKeydown"
       >
         <ToolbarGroup v-if="canEditTextStyle">
@@ -54,6 +55,33 @@
               />
             </ToolbarButton>
           </div>
+          <ToolbarButton
+            v-for="style in emphasisStyles"
+            :key="style.field"
+            :data-property="style.field"
+            :label="message(style.label)"
+            :active="textStyle?.[style.field] === true"
+            :aria-pressed="textStyle?.[style.field] === null ? 'mixed' : textStyle?.[style.field] === true"
+            :disabled="busy"
+            @click="submitTextStyle({ [style.field]: textStyle?.[style.field] !== true })"
+          >
+            <component
+              :is="style.icon"
+              class="slides-element-property-toolbar__icon"
+            />
+          </ToolbarButton>
+          <ToolbarButton
+            v-if="!textSelection"
+            data-property="alignment"
+            :label="message('slides.elementProperties.alignment')"
+            :disabled="busy"
+            @click="cycleAlignment"
+          >
+            <AlignIcon
+              class="slides-element-property-toolbar__icon"
+              :alignment="target.textEditing?.textAlign === 'center' ? 'center' : target.textEditing?.textAlign === 'right' ? 'right' : 'left'"
+            />
+          </ToolbarButton>
           <ToolbarColorButton
             kind="text"
             data-property="text"
@@ -200,9 +228,10 @@
 <script setup lang="ts">
 import { computed, ref, toRef, useId, type CSSProperties } from 'vue';
 import { BaseDropdown, CustomSelect, DropdownPanel, type DropdownActions, CustomNumberInput, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from '@linnya/renderer-ui';
-import { ChevronIcon, DeleteIcon, ResizeIcon } from '@linnya/renderer-ui/icons';
+import { BoldIcon, ItalicIcon, UnderlineIcon, AlignIcon, ChevronIcon, DeleteIcon, ResizeIcon } from '@linnya/renderer-ui/icons';
 import { SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
 import type { ManualEditableTarget } from '../../manualEditing';
+import { preserveCanvasFocus } from '../../editingInteraction';
 import type { ElementPropertyAnchor } from '../definitions/elementPropertyToolbar';
 import type { ElementPropertyOperation } from '../definitions/elementPropertyTypes';
 import { ELEMENT_FONT_SIZE_OPTIONS } from '../definitions/fontSizeOptions';
@@ -233,10 +262,19 @@ const { position, popoverPosition, openPopover, toggle, close, handleToolbarKeyd
   toolbarElement: computed(() => toolbar.value?.element ?? null), popoverElement: computed(() => fontMenu.value ?? popover.value?.element ?? null),
   auxiliaryElement: colorOverlay,
 });
-const { textStyle, fontSize, width, height, commitNumber, cancelNumber, submitTextColor, submitFillColor } = useElementPropertyFields({
+const { textStyle, fontSize, width, height, commitNumber, cancelNumber, submitTextColor, submitFillColor, submitTextStyle } = useElementPropertyFields({
   textSelection: toRef(props, 'textSelection'), submitTextSelection: patch => emit('text-style', patch),
   target: toRef(props, 'target'), busy: computed(() => props.busy === true), submit: operation => emit('submit', operation),
 });
+const emphasisStyles = [
+  { field: 'bold', label: 'slides.elementProperties.bold', icon: BoldIcon },
+  { field: 'italic', label: 'slides.elementProperties.italic', icon: ItalicIcon },
+  { field: 'underline', label: 'slides.elementProperties.underline', icon: UnderlineIcon },
+] as const;
+function cycleAlignment(): void {
+  const current = props.target.textEditing?.textAlign;
+  submitTextStyle({ align: current === 'left' ? 'center' : current === 'center' ? 'right' : 'left' });
+}
 const canEditTextStyle = computed(() => props.textSelection !== undefined || props.target.capabilities.includes('set_text_style'));
 const canEditFill = computed(() => props.textSelection === undefined && props.target.capabilities.includes('set_fill_color'));
 const canEditSize = computed(() => props.textSelection === undefined && props.target.capabilities.includes('set_visual_size'));

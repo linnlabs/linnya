@@ -37,7 +37,8 @@ function isCapability(value: unknown): value is SlidesAuthoringEditCapability {
     || value === 'set_text_style'
     || value === 'set_fill_color'
     || value === 'set_visual_size'
-    || value === 'delete';
+    || value === 'delete'
+    || value === 'copy';
 }
 
 function isTextProjection(value: unknown): value is SlidesAuthoringTextEditProjection {

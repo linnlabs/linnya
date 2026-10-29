@@ -1,11 +1,12 @@
 import type {
   DeckSpec,
   SlidesManualEditCommand,
+  SlidesManualEditHistoryStatus,
   SlidesManualEditCommandResult,
   SlidesSourceSliceTargetInput,
   SlidesSourceSlicesOutput,
 } from '@plugin/slides/shared';
-import type { SlidesEngineExecutionAdapter } from '@plugin/slides/backend-engine-core';
+import type { ImageSourceResolverPort, SlidesEngineExecutionAdapter } from '@plugin/slides/backend-engine-core';
 import { executeSandboxProfile } from '@plugin/backend/sandboxRuntime';
 import { CodegenDeckBuilder } from '../codegen/CodegenDeckBuilder';
 import { CodegenPresentationService } from '../codegen/CodegenPresentationService';
@@ -21,7 +22,7 @@ import type {
   CodegenManualEditCommitResult,
   CodegenProjectedDeckBuildInput,
 } from '../codegen/definitions/codegenDeckBuilder';
-import type { PresentationRevisionScope } from '../features/presentationSourceHistory';
+import type { PresentationRevisionScope, PresentationHistoryRuntime } from '../features/presentationSourceHistory';
 import type {
   GeneratePresentationOptions,
   GeneratePresentationResult,
@@ -33,6 +34,7 @@ import type { PresentationSvgGraphicOwnerPort } from '../features/presentationSv
 import type { PresentationBuildExecutionPort } from '../features/presentationBuildExecution';
 import {
   PresentationManualEditingRuntime,
+  type ManualEditHistoryStore,
   type PresentationManualEditTracePort,
 } from '../features/presentationManualEditing';
 
@@ -51,6 +53,9 @@ export interface CodegenDeckBuilderPort {
 export type CodegenDeckBuilderFactory = () => CodegenDeckBuilderPort;
 
 export interface PresentationCodegenRuntimeDeps {
+  readonly imageSourceResolver?: ImageSourceResolverPort;
+  readonly historyStore?: ManualEditHistoryStore;
+  readonly restoreRevision?: PresentationHistoryRuntime['commitDeferredRestore'];
   readonly revisionScope?: PresentationRevisionScope;
   readonly presentationRepo: PresentationRepositoryPort;
   readonly workspaceService?: WorkspacePresentationPort;
@@ -116,19 +121,24 @@ export class PresentationCodegenRuntime {
     return this.codegenDeckBuilder;
   }
 
-  async submitManualEdit(
-    command: SlidesManualEditCommand,
-  ): Promise<SlidesManualEditCommandResult> {
+  submitManualEdit(command: SlidesManualEditCommand): Promise<SlidesManualEditCommandResult> {
+    return this.getManualEditingRuntime().submit(command);
+  }
+
+  readManualEditHistory(documentId: string): Promise<SlidesManualEditHistoryStatus> {
+    return this.getManualEditingRuntime().readHistoryStatus(documentId);
+  }
+
+  private getManualEditingRuntime(): PresentationManualEditingRuntime {
     if (!this.manualEditingRuntime) {
       this.manualEditingRuntime = new PresentationManualEditingRuntime({
-        presentationRepo: this.deps.presentationRepo,
-        ...(this.deps.draftRepo ? { draftRepo: this.deps.draftRepo } : {}),
-        builder: this.getRawDeckBuilder(),
-        ...(this.deps.manualEditTrace ? { trace: this.deps.manualEditTrace } : {}),
-        ...(this.deps.revisionScope ? { revisionScope: this.deps.revisionScope } : {}),
+        presentationRepo: this.deps.presentationRepo, builder: this.getRawDeckBuilder(),
+        draftRepo: this.deps.draftRepo, trace: this.deps.manualEditTrace,
+        revisionScope: this.deps.revisionScope, historyStore: this.deps.historyStore,
+        restoreRevision: this.deps.restoreRevision,
       });
     }
-    return this.manualEditingRuntime.submit(command);
+    return this.manualEditingRuntime;
   }
 
   async readSourceSlicesForAiEdit(input: {
@@ -162,6 +172,7 @@ export class PresentationCodegenRuntime {
 
   private createCodegenDeckBuilder(): CodegenDeckBuilderPort {
     return new CodegenDeckBuilder({
+      imageSourceResolver: this.deps.imageSourceResolver,
       recordSourceTheme: theme => this.deps.revisionScope?.recordSourceTheme(theme),
       presentationRepo: this.deps.presentationRepo,
       engine: this.deps.engine,

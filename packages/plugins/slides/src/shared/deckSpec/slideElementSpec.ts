@@ -71,6 +71,7 @@ export type ImageSourceRef =
   | { kind: 'data_uri'; dataUri: string }
   | { kind: 'local_path'; path: string }
   | { kind: 'generated_asset'; assetId: string }
+  | { kind: 'document_asset'; assetId: string }
   | BrushArtworkSourceRef;
 
 export type ResolvedImageAsset =

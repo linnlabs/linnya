@@ -11,7 +11,7 @@ export interface PresentationManualEditTraceEvent {
   readonly commandId: string;
   readonly documentId: string;
   readonly stage: PresentationManualEditBackendStage;
-  readonly path?: 'projected_translation' | 'projected_slide_insertion' | 'full_compile';
+  readonly path?: 'history_restore' | 'projected_translation' | 'projected_slide_insertion' | 'full_compile';
   readonly outcome?:
     | 'committed'
     | 'conflict'

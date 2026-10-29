@@ -14,6 +14,11 @@ export function createManualEditPayloadDigest(command: SlidesManualEditCommand):
 }
 
 function serializeOperation(operation: SlidesManualEditCommand['operation']): object {
+  if (operation.op === 'insert_objects') return canonicalValue(operation);
+  if (operation.op === 'undo' || operation.op === 'redo') return { op: operation.op };
+  if (operation.op === 'batch') return { op: operation.op, operations: operation.operations.map(serializeOperation) };
+  if (operation.op === 'set_layer') return { op: operation.op, slideKey: operation.target.slideKey, editKey: operation.target.editKey, direction: operation.direction };
+  if (operation.op === 'move_slide') return { op: operation.op, index: operation.index, toIndex: operation.toIndex };
   if ('index' in operation) {
     return { op: operation.op, index: operation.index };
   }
@@ -22,6 +27,8 @@ function serializeOperation(operation: SlidesManualEditCommand['operation']): ob
     editKey: operation.target.editKey,
   };
   switch (operation.op) {
+    case 'set_text_width': return { op: operation.op, ...target, width: operation.width };
+    case 'set_image': return { op: operation.op, ...target, assetId: operation.assetId, fit: operation.fit };
     case 'set_text_content':
       return { op: operation.op, ...target, targetKind: operation.targetKind, content: serializeTextContent(operation.content) };
     case 'set_text_style':
@@ -30,6 +37,7 @@ function serializeOperation(operation: SlidesManualEditCommand['operation']): ob
         ...target,
         fontSizePt: operation.fontSizePt,
         color: operation.color,
+        bold: operation.bold, italic: operation.italic, underline: operation.underline, align: operation.align,
       };
     case 'set_translation':
       return {
@@ -74,4 +82,9 @@ function serializeTextContent(content: Extract<SlidesManualEditCommand['operatio
     align: run.style.align, valign: run.style.valign, letterSpacing: run.style.letterSpacing,
     lineSpacing: run.style.lineSpacing ? { kind: run.style.lineSpacing.kind, value: run.style.lineSpacing.value } : undefined,
   } } : {}) }));
+}
+
+function canonicalValue(value: object): object {
+  if (Array.isArray(value)) return value.map(entry => entry !== null && typeof entry === 'object' ? canonicalValue(entry) : entry);
+  return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, entry]) => [key, entry !== null && typeof entry === 'object' ? canonicalValue(entry) : entry]));
 }

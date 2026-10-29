@@ -10,6 +10,7 @@ export type {
 } from './definitions/manualEditingTypes';
 export {
   collectManualEditableTargets,
+  collectPresentedManualTargets,
   createPresentedTextEditingTarget,
   type ManualEditingHitProjection,
   findManualEditableTargetAtPoint,
@@ -17,7 +18,6 @@ export {
   findManualEditableTargetPathByElementId,
 } from './functions/manualEditableTargets';
 export { resolveManualClickSelection } from './functions/resolveManualClickSelection';
-export { appendManualEditIntent } from './functions/appendManualEditIntent';
 export {
   createManualVisualPreview,
   projectManualEditableTargetSelection,
@@ -62,3 +62,5 @@ export {
 export type { ManualEditPresentationTracePort } from './definitions/manualEditPresentationTrace';
 
 export type { ManualEditQueueSnapshot } from './definitions/manualEditQueuePorts';
+
+export { normalizeManualSelection, toggleManualSelection, collectManualMarqueeSelection, manualSelectionBounds, manualSelectionContext } from './functions/manualSelectionSet';

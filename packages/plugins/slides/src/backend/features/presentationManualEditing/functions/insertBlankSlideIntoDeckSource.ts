@@ -112,7 +112,9 @@ export function insertBlankSlideIntoDeckSource(
   const declarationOffset = createDeclarationInsertion(sourceFile, anchor, declaration).offset;
   const line = sourceFile.getLineAndCharacterOfPosition(declarationOffset).line;
   const prefix = source.slice(sourceFile.getPositionOfLineAndCharacter(line, 0), declarationOffset);
-  const canProject = slideList.evaluatingStatement === compose.statement
+  const orderedDeclarations = slideList.elements.map(element => findSlideDeclarationStatement(typescript, sourceFile, element.text));
+  const declarationsFollowDisplay = orderedDeclarations.every((entry, index) => index === 0 || entry.pos > orderedDeclarations[index - 1].pos);
+  const canProject = declarationsFollowDisplay && slideList.evaluatingStatement === compose.statement
     && compose.input.properties.every(property => !typescript.isSpreadAssignment(property)
       && property.name !== undefined && !typescript.isComputedPropertyName(property.name))
     && (source[declarationOffset] === '\n' || prefix.trim().length === 0);

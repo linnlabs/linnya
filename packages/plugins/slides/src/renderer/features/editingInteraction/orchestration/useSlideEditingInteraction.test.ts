@@ -2,7 +2,7 @@
 import { prepareTextLayout, layoutPreparedText } from '@plugin/slides/shared/textLayout';
 
 import { createPinia, setActivePinia } from 'pinia';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SlideRenderModel } from '../../../types/render';
 import { useSlidesManualEditingStore, type ManualEditIntent, type ManualEditQueueEntry } from '../../manualEditing';
@@ -69,6 +69,32 @@ const siblingSlide: SlideRenderModel = {
   ],
 };
 
+const tripleSlide: SlideRenderModel = {
+  ...siblingSlide,
+  elements: [
+    ...siblingSlide.elements,
+    {
+      ...slide.elements[0],
+      id: 'authoring-overview-card1Note',
+      box: { x: 1.4, y: 2.2, w: 2, h: 0.5, unit: 'in' },
+      zIndex: 4,
+      authoringRef: { slideKey: 'overview', editKey: 'card1Note', targetKind: 'text' },
+      authoringAncestorRefs: [{
+        slideKey: 'overview', editKey: 'card1', targetKind: 'frame',
+      }],
+    },
+  ],
+};
+
+function pointer(wrapper: HTMLElement, type: string, pointerId: number, clientX: number, clientY: number, shiftKey = false): void {
+  wrapper.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, pointerId, clientX, clientY, shiftKey }));
+}
+
+function click(wrapper: HTMLElement, pointerId: number, clientX: number, clientY: number, shiftKey = false): void {
+  pointer(wrapper, 'pointerdown', pointerId, clientX, clientY, shiftKey);
+  pointer(wrapper, 'pointerup', pointerId, clientX, clientY, shiftKey);
+}
+
 function createInteraction(
   submitOperation: ReturnType<typeof vi.fn>,
   currentSlide: SlideRenderModel = slide,
@@ -109,6 +135,42 @@ function createInteraction(
 describe('useSlideEditingInteraction', () => {
   beforeEach(() => setActivePinia(createPinia()));
 
+  it('groups repeated keyboard nudges into one source command and cancels a live gesture with Escape', () => {
+    const submit = vi.fn();
+    const { interaction, wrapper } = createInteraction(submit);
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, clientX: 144, clientY: 144 }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, pointerId: 1, clientX: 144, clientY: 144 }));
+    for (let repeat = 0; repeat < 12; repeat++) {
+      expect(interaction.handleKeydown(new KeyboardEvent('keydown', { key: 'ArrowRight', repeat: repeat > 0 }))).toBe(true);
+    }
+    expect(submit).not.toHaveBeenCalled();
+    expect(interaction.translationPreview.value?.dx).toBeCloseTo(12 / 96);
+    interaction.handleKeyup(new KeyboardEvent('keyup', { key: 'ArrowRight' }));
+    expect(submit).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ operation: expect.objectContaining({
+      op: 'translate_by', delta: { dx: 12 / 96, dy: 0 },
+    }) }));
+    interaction.handleKeydown(new KeyboardEvent('keydown', { key: 'ArrowDown', shiftKey: true }));
+    expect(interaction.translationPreview.value?.dy).toBeCloseTo(10 / 96);
+    interaction.handleKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(interaction.selectedTarget.value).not.toBeNull();
+    expect(interaction.translationPreview.value).toBeNull();
+    interaction.handleKeyup(new KeyboardEvent('keyup', { key: 'ArrowDown' }));
+    expect(submit).toHaveBeenCalledTimes(1);
+    interaction.handleKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(interaction.selectedTarget.value).toBeNull();
+  });
+
+  it('leaves rich text, form controls and IME keys to their owning surface', () => {
+    const { interaction, wrapper } = createInteraction(vi.fn());
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, clientX: 144, clientY: 144 }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, pointerId: 1, clientX: 144, clientY: 144 }));
+    const input = document.createElement('div'); input.contentEditable = 'true'; input.setAttribute('contenteditable', 'true');
+    input.addEventListener('keydown', event => expect(interaction.handleKeydown(event)).toBe(false));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    expect(interaction.handleKeydown(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true }))).toBe(false);
+    expect(interaction.selectedTarget.value).not.toBeNull();
+  });
+
   it('double-clicks shape content through the same session and submits the shape identity', () => {
     const submit = vi.fn();
     const shapeSlide: SlideRenderModel = { ...slide, elements: [{
@@ -131,12 +193,12 @@ describe('useSlideEditingInteraction', () => {
     enqueuePreview({ operation: {
       op: 'set_visual_size', targetKind: 'shape', target: { slideKey: 'overview', editKey: 'badge' },
       visualSize: { width: 4, height: 2 },
-    }, visualPreview: {
+    }, visualPreviews: [{
       elementId: 'badge', affectedElementIds: ['badge'], operation: {
         op: 'set_visual_size', targetKind: 'shape', target: { slideKey: 'overview', editKey: 'badge' },
         visualSize: { width: 4, height: 2 },
       },
-    } });
+    }] });
     wrapper.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: 144, clientY: 144 }));
     expect(interaction.textEditorTarget.value).toMatchObject({ elementId: 'badge', targetKind: 'shape', content: 'Old', width: 4, height: 2 });
     expect(interaction.textEditorTarget.value?.verticalOffset).toBeCloseTo((2 - text.layout!.contentHeightInches) / 2);
@@ -193,7 +255,7 @@ describe('useSlideEditingInteraction', () => {
 
     const store = useSlidesManualEditingStore();
     expect(store.translationPreview).toBeNull();
-    expect(store.pendingTranslation).toEqual({
+    expect(store.pendingTranslations[0]).toEqual({
       elementId: 'authoring-overview-headline',
       affectedElementIds: ['authoring-overview-headline'],
       dx: 1,
@@ -206,12 +268,12 @@ describe('useSlideEditingInteraction', () => {
         targetKind: 'text',
         delta: { dx: 1, dy: 0.5 },
       },
-      translationPreview: {
+      translationPreviews: [{
         elementId: 'authoring-overview-headline',
         affectedElementIds: ['authoring-overview-headline'],
         dx: 1,
         dy: 0.5,
-      },
+      }],
     });
   });
 
@@ -329,7 +391,7 @@ describe('useSlideEditingInteraction', () => {
         targetKind: 'frame',
       }),
     }));
-    expect(interaction.pendingTranslation.value?.affectedElementIds).toEqual([
+    expect(interaction.pendingTranslations.value[0]?.affectedElementIds).toEqual([
       'authoring-overview-card1',
       'authoring-overview-card1Label',
     ]);
@@ -440,7 +502,7 @@ describe('useSlideEditingInteraction', () => {
       targetKind: 'frame',
       color: '#2563EB',
     });
-    expect(interaction.pendingVisual.value).toMatchObject({
+    expect(interaction.pendingVisuals.value[0]).toMatchObject({
       elementId: 'authoring-overview-card1',
       operation: { op: 'set_fill_color', color: '#2563EB' },
     });
@@ -455,7 +517,7 @@ describe('useSlideEditingInteraction', () => {
       targetKind: 'frame',
     });
     expect(interaction.selectedTarget.value).toBeNull();
-    expect(interaction.pendingVisual.value?.affectedElementIds).toEqual([
+    expect(interaction.pendingVisuals.value[0]?.affectedElementIds).toEqual([
       'authoring-overview-card1',
       'authoring-overview-card1Label',
     ]);
@@ -478,7 +540,7 @@ describe('useSlideEditingInteraction', () => {
         target: { slideKey: 'overview', editKey: 'headline' },
         targetKind: 'text',
       },
-      visualPreview: {
+      visualPreviews: [{
         elementId: 'authoring-overview-headline',
         affectedElementIds: ['authoring-overview-headline'],
         operation: {
@@ -486,10 +548,10 @@ describe('useSlideEditingInteraction', () => {
           target: { slideKey: 'overview', editKey: 'headline' },
           targetKind: 'text',
         },
-      },
+      }],
     });
     expect(interaction.selectedTarget.value).toBeNull();
-    expect(interaction.pendingVisual.value?.affectedElementIds).toEqual([
+    expect(interaction.pendingVisuals.value[0]?.affectedElementIds).toEqual([
       'authoring-overview-headline',
     ]);
   });
@@ -529,11 +591,75 @@ describe('useSlideEditingInteraction', () => {
       color: '#DC2626',
     });
 
-    expect(interaction.pendingVisual.value?.operation).toMatchObject({ color: '#2563EB' });
+    expect(interaction.pendingVisuals.value[0]?.operation).toMatchObject({ color: '#2563EB' });
     expect(interaction.queuedIntents.value).toHaveLength(1);
-    expect(interaction.queuedIntents.value[0]?.visualPreview?.operation).toMatchObject({
+    expect(interaction.queuedIntents.value[0]?.visualPreviews?.[0]?.operation).toMatchObject({
       color: '#DC2626',
     });
+  });
+
+  it('keeps Shift-added Frame children at their level and drags them instead of the Frame', () => {
+    const submitOperation = vi.fn();
+    const { interaction, wrapper } = createInteraction(submitOperation, tripleSlide);
+    click(wrapper, 1, 144, 144); click(wrapper, 2, 144, 144);
+    click(wrapper, 3, 384, 144, true);
+    click(wrapper, 4, 144, 230, true);
+    expect(interaction.selectedTargets.value.map(target => target.authoringRef.editKey))
+      .toEqual(['card1Label', 'card1Value', 'card1Note']);
+
+    pointer(wrapper, 'pointerdown', 5, 144, 144);
+    pointer(wrapper, 'pointermove', 5, 192, 144);
+    pointer(wrapper, 'pointerup', 5, 192, 144);
+    expect(submitOperation).toHaveBeenLastCalledWith(expect.objectContaining({ operation: expect.objectContaining({
+      op: 'batch',
+      operations: ['card1Label', 'card1Value', 'card1Note'].map(editKey => expect.objectContaining({
+        op: 'translate_by', target: { slideKey: 'overview', editKey },
+      })),
+    }) }));
+    expect(interaction.selectedTargets.value).toHaveLength(3);
+  });
+
+  it('starts an axis-locked drag with Shift and toggles membership only on a click', () => {
+    const submitOperation = vi.fn();
+    const { interaction, wrapper } = createInteraction(submitOperation, siblingSlide);
+    click(wrapper, 1, 144, 144); click(wrapper, 2, 144, 144);
+
+    pointer(wrapper, 'pointerdown', 3, 144, 144, true);
+    pointer(wrapper, 'pointermove', 3, 240, 150, true);
+    pointer(wrapper, 'pointerup', 3, 240, 150, true);
+    expect(submitOperation).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ operation: expect.objectContaining({
+      op: 'translate_by', target: { slideKey: 'overview', editKey: 'card1Label' }, delta: { dx: 1, dy: 0 },
+    }) }));
+    expect(interaction.selectedTarget.value?.authoringRef.editKey).toBe('card1Label');
+
+    click(wrapper, 4, 384, 144, true);
+    expect(interaction.selectedTargets.value).toHaveLength(2);
+    // 挂起的拖动预览已把 Label 右移 1in。
+    click(wrapper, 5, 240, 144, true);
+    expect(interaction.selectedTargets.value.map(target => target.authoringRef.editKey)).toEqual(['card1Value']);
+  });
+
+  it('reselects the authoring targets an undo asks to reveal, at their own level', async () => {
+    const { interaction } = createInteraction(vi.fn(), tripleSlide);
+    useSlidesManualEditingStore().requestReveal([
+      { slideKey: 'overview', editKey: 'card1Label' }, { slideKey: 'overview', editKey: 'card1Note' }, { slideKey: 'overview', editKey: 'gone' },
+    ]);
+    await nextTick();
+    expect(interaction.selectedTargets.value.map(target => target.authoringRef.editKey)).toEqual(['card1Label', 'card1Note']);
+    expect(interaction.selectionPath.value.map(target => target.authoringRef.editKey)).toEqual(['card1']);
+    expect(useSlidesManualEditingStore().revealRequest).toBeNull();
+  });
+
+  it('submits drags on the compiler coordinate grid so the backend can project them', () => {
+    const submitOperation = vi.fn();
+    const { wrapper } = createInteraction(submitOperation);
+    click(wrapper, 1, 144, 144);
+    pointer(wrapper, 'pointerdown', 2, 144, 144);
+    pointer(wrapper, 'pointermove', 2, 151, 144);
+    pointer(wrapper, 'pointerup', 2, 151, 144);
+    expect(submitOperation).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      operation: expect.objectContaining({ op: 'translate_by', delta: { dx: 0.0729, dy: 0 } }),
+    }));
   });
 });
 

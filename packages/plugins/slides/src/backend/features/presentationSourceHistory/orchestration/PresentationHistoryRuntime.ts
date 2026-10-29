@@ -1,6 +1,6 @@
 import { DocumentHistoryError, planDocumentVersionRetention } from '@plugin/backend/documentHistory';
 import type { DocumentVersionRestoreRequest, DocumentVersionSummary } from '@app/schemas';
-import type { DeckSpec, PresentationRenderModel } from '@plugin/slides/shared';
+import type { SlidesManualEditExpectedBase, DeckSpec, PresentationRenderModel } from '@plugin/slides/shared';
 import { PresentationStaleBaseError, type PresentationRepositoryPort } from '../../../persistence';
 import { PresentationHistoryRepository } from '../infrastructure/PresentationHistoryRepository';
 import { PresentationRevisionScope, type PresentationRevisionAsset } from './PresentationRevisionScope';
@@ -17,6 +17,7 @@ export interface PresentationHistoryRuntimeDependencies {
   readonly render: (documentId: string, version: DocumentVersionSummary, deck: DeckSpec) => Promise<PresentationRenderModel>;
   readonly assemble: (documentId: string, deck: DeckSpec) => Promise<Buffer>;
   readonly release: (documentId: string, assetIds: readonly string[]) => void;
+  readonly requiredVersions?: (documentId: string, currentRevisionId: string) => readonly string[];
   readonly reportFailure: (documentId: string, error: unknown) => void;
 }
 
@@ -59,6 +60,22 @@ export class PresentationHistoryRuntime {
     });
   }
 
+  /** 已持有 revision scope 的人工撤销复用历史源码/主题，但不等待 PPTX，也不倒退 current 指针。 */
+  async commitDeferredRestore(input: {
+    documentId: string; versionId: string; expectedBase: SlidesManualEditExpectedBase;
+    receipt: { commandId: string; payloadDigest: string };
+  }): Promise<{ versionId: string; versionNumber: number; deckSpec: DeckSpec }> {
+    const version = this.requireVersion(input.documentId, input.versionId);
+    const source = await this.readSource(input.documentId, version.order);
+    const deckSpec = await this.deps.compile({ nodeId: input.documentId, source, ...this.deps.history.readContext(version.versionId) });
+    const result = await this.deps.documents.commitPresentation(input.documentId, deckSpec, {
+      deferPptx: true, deckSource: source, baseRevisionId: input.expectedBase.revisionId,
+      baseRevision: input.expectedBase.revision, expectedDraftState: 'absent', origin: 'edit',
+      revisionContext: { versionId: version.versionId }, manualEditReceipt: input.receipt,
+    });
+    return { versionId: result.revisionId, versionNumber: result.revision, deckSpec };
+  }
+
   requestMaintenance(documentId: string): void {
     // 停用期间可能仍有已接纳提交的 continuation；后台维护不能重新获得已释放的生命周期。
     if (this.stopped) return;
@@ -90,6 +107,8 @@ export class PresentationHistoryRuntime {
       if (snapshot.versions.length === 0) return;
       const keep = new Set(planDocumentVersionRetention(snapshot.versions).keepVersionIds);
       if (snapshot.draftBaseId) keep.add(snapshot.draftBaseId);
+      const current = snapshot.versions.find(version => version.isCurrent);
+      if (current) for (const id of this.deps.requiredVersions?.(documentId, current.versionId) ?? []) keep.add(id);
       const plan = planPresentationSourceCompaction(snapshot.sources, [...keep]);
       const backfill = new Map<string, { sourceTheme: DeckSpec['theme']; assets: readonly PresentationRevisionAsset[] }>();
       // 老版本只有源码：只读重建保留点，全部成功后才允许重链和释放资产。

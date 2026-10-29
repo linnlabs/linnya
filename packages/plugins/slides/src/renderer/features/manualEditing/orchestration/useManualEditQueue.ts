@@ -61,7 +61,8 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
     const state = store.submission;
     if (state.phase === 'awaiting_frame' && store.presentedRevision !== null
       && store.presentedRevision >= state.revision) {
-      settle(state.entry, { status: 'presented', commandId: state.commandId, revision: state.revision });
+      settle(state.entry, { status: 'presented', commandId: state.commandId, revision: state.revision,
+        ...(state.focus ? { focus: state.focus } : {}) });
       store.setSubmission({ phase: 'idle' });
       store.setError(null);
     }
@@ -91,7 +92,9 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
       });
       if (requestEpoch !== epoch) return;
       if (result.status === 'committed') {
-        store.setSubmission({ phase: 'awaiting_frame', entry, commandId, revision: result.revision });
+        store.setHistory(result.history);
+        store.setSubmission({ phase: 'awaiting_frame', entry, commandId, revision: result.revision,
+          ...(result.focus ? { focus: result.focus } : {}) });
         finish(result.revision);
         await refreshPresentation();
       } else {
@@ -129,8 +132,9 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
     }
     const settled = new Promise<ManualEditSettlement>(resolve => receipts.set(clientOperationId, resolve));
     store.setQueue(appendManualEditQueueEntry(store.queue, { intent, clientOperationIds: [clientOperationId] }));
-    // 后续输入不能抹掉“已保存但未刷新”的恢复入口。
+    // 后续输入不能抹掉“已保存但未刷新”的恢复入口；上一次操作提示随新动作失效。
     if (store.submission.phase !== 'awaiting_frame') store.setError(null);
+    store.setNotice(null);
     void processQueue();
     return { clientOperationId, settled };
   }

@@ -199,8 +199,8 @@ describe('manual editable targets', () => {
     });
     const projection = {
       transientTranslation: null,
-      pendingTranslation: null,
-      pendingVisual: null,
+      pendingTranslations: [],
+      pendingVisuals: [],
       queuedIntents: [],
     };
 
@@ -230,13 +230,13 @@ describe('manual editable targets', () => {
     const node = textNode();
     const projection = {
       transientTranslation: null,
-      pendingTranslation: {
+      pendingTranslations: [{
         elementId: node.id,
         affectedElementIds: [node.id],
         dx: 4,
         dy: 1,
-      },
-      pendingVisual: null,
+      }],
+      pendingVisuals: [],
       queuedIntents: [],
     };
 
@@ -269,12 +269,12 @@ describe('manual editable targets', () => {
     };
     const projection = {
       transientTranslation: null,
-      pendingTranslation: null,
-      pendingVisual: {
+      pendingTranslations: [],
+      pendingVisuals: [{
         elementId: frame.id,
         affectedElementIds: [frame.id, child.id],
         operation,
-      },
+      }],
       queuedIntents: [],
     };
 

@@ -27,10 +27,8 @@ export function rewriteSlideStructureInDeckSource(
   const declaration = statement.declarationList.declarations[0];
   if (!declaration?.initializer || !ts.isCallExpression(declaration.initializer)) throw invalid('页面声明无效。');
   const start = statement.getStart(sourceFile);
-  const nextStatement = declarations[input.index + 1] ?? list.evaluatingStatement;
-  if (declarations.some((entry, index) => index > 0 && entry.pos <= declarations[index - 1].pos)) {
-    throw invalid('源码页面声明顺序与页面列表不一致，请让 AI 整理源码后重试。');
-  }
+  const sourceOrder = [...declarations].sort((a, b) => a.pos - b.pos);
+  const nextStatement = sourceOrder[sourceOrder.indexOf(statement) + 1] ?? list.evaluatingStatement;
   const nextStart = nextStatement.getStart(sourceFile);
   const previous = sourceFile.statements[sourceFile.statements.indexOf(nextStatement) - 1];
   if (!previous) throw invalid('页面边界无效。');

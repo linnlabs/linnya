@@ -75,3 +75,6 @@ Stage anchors this scope to the native text selection in pane coordinates. `text
 Selecting the whole Text keeps font size, text color and deletion available after a local edit makes it rich. `wholeTextStyle` derives effective values from the visible original runs plus their inherited baseline: a mixed size shows the same localized Mixed hint, and mixed colors select no palette cell. This derived summary does not change toolbar scope or replace the concrete input baseline. Whole-text controls still emit `set_text_style`; range controls still edit the active full-value draft.
 
 Content and style previews are replayed in queue order by `manualEditing/projectTextEditingValues`, shared with input re-entry and passive draft presentation. A later full rich value therefore supersedes earlier whole styles while preserving unrelated marks. Native smoke covers local → whole → local with the first save held pending, each intervening revision installation and re-entry; save/reopen/export coverage verifies the same order against real compilation and SQLite.
+
+
+Text 工具条增加粗体、斜体、下划线和整框左/中/右对齐。非空文本选区使用输入会话局部样式；整框动作进入原有命令队列，每次点击保留独立撤销边界。mixed 状态不以首字样式代替整个选区；显式 false 可以取消源码已有强调。Text 宽度、同级图层和多选排列由 editingCommands 拥有，本浮条不扩张为通用属性面板。

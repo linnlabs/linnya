@@ -1,6 +1,10 @@
 import type { MessageCatalogContribution, MessageParams } from '@app/localization';
 
 export type ElementPropertyMessageKey =
+  | 'slides.elementProperties.bold'
+  | 'slides.elementProperties.italic'
+  | 'slides.elementProperties.underline'
+  | 'slides.elementProperties.alignment'
   | 'slides.elementProperties.mixed'
   | 'slides.elementProperties.label'
   | 'slides.elementProperties.size'
@@ -34,6 +38,10 @@ export type ElementPropertyMessageResolver = (
 ) => string;
 
 export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
+  'slides.elementProperties.bold': '加粗',
+  'slides.elementProperties.italic': '斜体',
+  'slides.elementProperties.underline': '下划线',
+  'slides.elementProperties.alignment': '切换文字对齐',
   'slides.elementProperties.mixed': '混合',
   'slides.elementProperties.label': '元素属性',
   'slides.elementProperties.size': '尺寸',
@@ -63,6 +71,10 @@ export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
 } as const satisfies Readonly<Record<ElementPropertyMessageKey, string>>;
 
 const ELEMENT_PROPERTY_EN_US_MESSAGES = {
+  'slides.elementProperties.bold': 'Bold',
+  'slides.elementProperties.italic': 'Italic',
+  'slides.elementProperties.underline': 'Underline',
+  'slides.elementProperties.alignment': 'Change text alignment',
   'slides.elementProperties.mixed': 'Mixed',
   'slides.elementProperties.label': 'Element properties',
   'slides.elementProperties.size': 'Size',

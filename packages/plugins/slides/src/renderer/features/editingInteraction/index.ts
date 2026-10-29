@@ -3,3 +3,4 @@ export { useSlidesEditingInteractionStore } from './store/slidesEditingInteracti
 export type { TextInputSession, TextDraftPresentation } from './definitions/editingInteractionTypes';
 
 export { useTextInputSession } from './orchestration/useTextInputSession';
+export { ownsCanvasKeyboard, ownsDocumentShortcut, preserveCanvasFocus } from './functions/canvasKeyboard';

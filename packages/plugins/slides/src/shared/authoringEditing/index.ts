@@ -10,6 +10,8 @@ export type {
 } from './definitions/authoringEditProjection';
 export type {
   SlidesManualEditCommand,
+  SlidesManualEditHistoryStatus,
+  SlidesManualEditHistoryFocus,
   SlidesManualEditCommandOperation,
   SlidesManualEditCommandResult,
   SlidesManualEditBuildFailureResult,
@@ -54,5 +56,14 @@ export { parseSlidesManualEdits } from './functions/manualEditsCodec';
 export type { SlidesManualEditsParseResult } from './functions/manualEditsCodec';
 
 export { authorTextStylePatch, patchWholeTextContent, wholeTextStyle } from './functions/editableTextStyle';
-export type { SlidesEditableTextContent, SlidesAuthorTextStyle, SlidesTextStylePatch, SlidesTextSelectionStyle } from './definitions/editableText';
+export type { SlidesEditableTextContent, SlidesAuthorTextStyle, SlidesTextStylePatch, SlidesTextSelectionStyle, SlidesTextStyleBase } from './definitions/editableText';
 export { isEditableTextContent, isEditableTextRun, isAuthorTextStyle, editableTextString, editableTextEqual } from './functions/editableText';
+
+export { SLIDES_TEXT_STYLE_FIELDS } from './definitions/editableText';
+export { readSlidesTextStylePatch } from './functions/readSlidesTextStylePatch';
+
+export type { SlidesInsertedObject } from './definitions/insertedObject';
+export { readInsertedObjects } from './functions/readInsertedObjects';
+export { readCopyableAuthoringValue } from './functions/readCopyableAuthoringValue';
+export { isManualTranslationOnGrid, quantizeManualTranslation, roundToManualTranslationGrid } from './functions/manualTranslationGrid';
+export type { SlidesCopyableAuthoringValue } from './functions/readCopyableAuthoringValue';

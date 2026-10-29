@@ -57,7 +57,7 @@ function createWorkflow() {
     const item = commands[index];
     if (!item) throw new Error(`Missing command ${index}`);
     item.resolve({ status: 'committed', commandId: item.command.commandId,
-      documentId: item.command.documentId, revisionId: `v${version}`, revision: version });
+      documentId: item.command.documentId, revisionId: `v${version}`, revision: version, history: { revisionId: `v${version}`, undoDepth: version - 1, redoDepth: 0 } });
   }
   function reject(index: number): void {
     const item = commands[index];
@@ -94,18 +94,20 @@ describe('editing interaction + real submission queue', () => {
     expect(w.commands[1]?.command.expectedBase.revision).toBe(2);
   });
 
-  it('serializes queued edits, including coalesced receipts, against the newly displayed revision', async () => {
+  it('serializes queued edits, preserving each completed action for undo, against the newly displayed revision', async () => {
     const w = createWorkflow();
     w.text.open(target); w.text.draft.value = 'A'; w.text.requestCommit();
     w.text.open(other); w.text.draft.value = 'B'; w.text.requestCommit();
     w.text.open(other); w.text.draft.value = 'B2'; w.text.requestCommit();
-    expect(w.store.queue).toHaveLength(1);
-    expect(w.store.queue[0]?.clientOperationIds).toHaveLength(2);
+    expect(w.store.queue).toHaveLength(2);
+    expect(w.store.queue[0]?.clientOperationIds).toHaveLength(1);
     w.commit(0, 2); await flush();
     expect(w.commands).toHaveLength(1);
     w.store.recordPresentedRevision(2); await flush();
-    expect(w.commands[1]?.command).toMatchObject({ expectedBase: { revision: 2 }, operation: { content: 'B2' } });
+    expect(w.commands[1]?.command).toMatchObject({ expectedBase: { revision: 2 }, operation: { content: 'B' } });
     w.commit(1, 3); await flush(); w.store.recordPresentedRevision(3); await flush();
+    expect(w.commands[2]?.command).toMatchObject({ expectedBase: { revision: 3 }, operation: { content: 'B2' } });
+    w.commit(2, 4); await flush(); w.store.recordPresentedRevision(4); await flush();
     expect(w.drafts.textDrafts).toEqual([]);
   });
 
@@ -192,6 +194,17 @@ describe('editing interaction + real submission queue', () => {
     const saving = expect(w.queue.flush()).rejects.toThrow('Cannot rewrite source');
     w.reject(0); await saving;
     expect(w.drafts.textDrafts[0]?.status).toBe('failed');
+  });
+
+  it('未写入的操作提示不进入保存屏障，也不禁用撤销门控；下一次动作清除提示', async () => {
+    const w = createWorkflow();
+    w.store.setNotice('当前对象不能独立复制');
+    await expect(w.queue.flush()).resolves.toBeUndefined();
+    await expect(slidesFileHandler.save?.({ reason: 'view-switch', session: { documentId: 'deck', type: slidesFileHandler.type } }))
+      .resolves.not.toBe(false);
+    expect(w.store.errorMessage).toBeNull();
+    w.queue.enqueue({ operation: { op: 'set_text_content', target: target.authoringRef, targetKind: 'shape', content: 'Next' } });
+    expect(w.store.notice).toBeNull();
   });
 
   it('rejects admission explicitly when the document has closed, without leaving a pending ticket', async () => {

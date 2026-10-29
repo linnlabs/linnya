@@ -32,12 +32,12 @@ it('uses a preloaded complete snapshot and dispatches the next edit only after t
   read.mockResolvedValueOnce(candidate(1)).mockResolvedValueOnce(candidate(2)).mockResolvedValueOnce(candidate(3));
   let confirm!: (value: unknown) => void;
   submit.mockImplementationOnce(() => new Promise(resolve => { confirm = resolve; }))
-    .mockImplementationOnce(async command => ({ status: 'committed', commandId: command.commandId, documentId: 'deck', revisionId: 'v3', revision: 3 }));
+    .mockImplementationOnce(async command => ({ status: 'committed', commandId: command.commandId, documentId: 'deck', revisionId: 'v3', revision: 3, history: { revisionId: 'v3', undoDepth: 1, redoDepth: 0 } }));
   await useSlidesDocumentRuntime().loadDeck('deck');
   const host = mount(); host.querySelector('button')?.click(); host.querySelector('button')?.click(); await flush();
   expect(submit).toHaveBeenCalledTimes(1);
   const first = submit.mock.calls[0][0];
-  confirm({ status: 'committed', commandId: first.commandId, documentId: 'deck', revisionId: 'v2', revision: 2 });
+  confirm({ status: 'committed', commandId: first.commandId, documentId: 'deck', revisionId: 'v2', revision: 2, history: { revisionId: 'v2', undoDepth: 1, redoDepth: 0 } });
   await flush();
   expect(useSlidesStore().renderModel?.version).toBe(2); expect(submit).toHaveBeenCalledTimes(1);
   useSlidesManualEditingStore().recordPresentedRevision(2); await flush();
@@ -46,7 +46,7 @@ it('uses a preloaded complete snapshot and dispatches the next edit only after t
 
 it('keeps a committed operation and the old complete view when refreshing fails, then reads without resubmitting', async () => {
   read.mockResolvedValueOnce(candidate(1)).mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(candidate(2));
-  submit.mockImplementation(async command => ({ status: 'committed', commandId: command.commandId, documentId: 'deck', revisionId: 'v2', revision: 2 }));
+  submit.mockImplementation(async command => ({ status: 'committed', commandId: command.commandId, documentId: 'deck', revisionId: 'v2', revision: 2, history: { revisionId: 'v2', undoDepth: 1, redoDepth: 0 } }));
   await useSlidesDocumentRuntime().loadDeck('deck'); const host = mount(); host.querySelector('button')?.click(); await flush();
   const manual = useSlidesManualEditingStore();
   expect(manual.submission.phase).toBe('awaiting_frame'); expect(manual.errorMessage).toBeTruthy();
@@ -68,6 +68,6 @@ it('keeps one structure selection intent across a lost response and its idempote
   expect(submit).toHaveBeenCalledTimes(2);
   expect(submit.mock.calls[0][0].commandId).toBe(submit.mock.calls[1][0].commandId);
   const command = submit.mock.calls[1][0];
-  confirm({ status: 'committed', commandId: command.commandId, documentId: 'deck', revisionId: 'v2', revision: 2 });
+  confirm({ status: 'committed', commandId: command.commandId, documentId: 'deck', revisionId: 'v2', revision: 2, history: { revisionId: 'v2', undoDepth: 1, redoDepth: 0 } });
   await flush(); expect(useSlidesStore().renderModel?.version).toBe(2); expect(useSlidesStore().currentSlideIndex).toBe(1);
 });

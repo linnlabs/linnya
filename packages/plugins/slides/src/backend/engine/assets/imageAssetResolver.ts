@@ -21,6 +21,7 @@ export function resolveImageSourceRef(input: ImageSourceInput): ImageSourceRef {
       };
     case 'local_path':
       return { kind: 'local_path', path: requireNonEmptyString(input.path, 'local_path.path') };
+    case 'document_asset': return { kind: 'document_asset', assetId: requireNonEmptyString(input.assetId, 'document_asset.assetId') };
     case 'generated_asset':
       return {
         kind: 'generated_asset',
@@ -48,6 +49,7 @@ export function resolveImageAsset(input: ImageSourceInput): ResolvedImageAsset {
         );
       }
       return { kind: 'local_file', path: sourceRef.path };
+    case 'document_asset':
     case 'generated_asset':
     case 'brush_artwork':
       throw new Error(
