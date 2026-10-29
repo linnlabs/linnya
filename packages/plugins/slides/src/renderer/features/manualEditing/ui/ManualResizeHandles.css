@@ -18,7 +18,7 @@
   content: '';
   position: absolute;
   inset: 5px;
-  border: 1.5px solid var(--slides-resize-color);
+  border: 1px solid var(--slides-resize-color);
   border-radius: var(--radius-full);
   background: var(--color-bg-elevated);
   transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease;
@@ -45,7 +45,7 @@
 .slides-manual-text-width-ghost {
   position: absolute;
   box-sizing: border-box;
-  border: 1.5px dashed var(--color-accent, #2563eb);
+  border: 1px dashed var(--slides-resize-color);
   pointer-events: none;
 }
 

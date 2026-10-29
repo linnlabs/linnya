@@ -70,11 +70,9 @@ export const SLIDES_RENDER_COLORS = {
   imagePlaceholderStroke: '#DDDDDD',
   textFallbackFill: '#333333',
   tableBorderStroke: '#D1D5DB',
-  sourceSelectionStroke: '#347B45',
-  sourceSelectionHoverFill: 'rgba(52, 123, 69, 0.05)',
-  sourceSelectionMarqueeFill: 'rgba(52, 123, 69, 0.08)',
-  manualEditingStroke: '#2563EB',
-  manualEditingFill: 'rgba(37, 99, 235, 0.06)',
-  /** 吸附参考线；与选框蓝色区分。 */
+  /** 画布上唯一的选择色：选中、悬停、框选、手柄和占位框都用它，标准见 shared/selectionOutline.ts。 */
+  selectionStroke: '#347B45',
+  selectionMarqueeFill: 'rgba(52, 123, 69, 0.06)',
+  /** 吸附参考线；与选择色区分。 */
   manualSnapGuide: '#E8467C',
 } as const;

@@ -72,7 +72,7 @@ export function manualResizeHandleStyle(
   const cursors = ['ew-resize', 'nwse-resize', 'ns-resize', 'nesw-resize'];
   return {
     // DOM 手柄沿用 Canvas 选框的颜色合同，避免一组选框出现两种强调色。
-    '--slides-resize-color': SLIDES_RENDER_COLORS.manualEditingStroke,
+    '--slides-resize-color': SLIDES_RENDER_COLORS.selectionStroke,
     '--slides-resize-x': `${viewport.slideLeft + point.x * INCHES_TO_PX * viewport.renderScale}px`,
     '--slides-resize-y': `${viewport.slideTop + point.y * INCHES_TO_PX * viewport.renderScale}px`,
     '--slides-resize-cursor': cursors[((Math.round(angle / 45) % 4) + 4) % 4] ?? 'nwse-resize',

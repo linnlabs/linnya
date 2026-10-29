@@ -6,7 +6,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  /* 画布选框拥有唯一蓝色边界，DOM 输入不能再叠加第二层焦点框。 */
+  /* 画布选框拥有唯一的选择色边界，DOM 输入不能再叠加第二层焦点框。 */
   outline: none;
   box-shadow: none;
   resize: none;

@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, shallowRef } from 'vue';
 import type { SlidesManualEditCommandOperation } from '@plugin/slides/shared/authoringEditing';
-import { INCHES_TO_PX } from '../../../shared/constants';
+import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../shared/constants';
 import type { ManualEditableTarget } from '../definitions/manualEditingTypes';
 import { manualResizeHandleStyle } from '../functions/manualResize';
 import { resolveManualTextWidth, type ManualTextWidthHandle, type ManualTextWidthResult } from '../functions/manualTextWidth';
@@ -39,6 +39,7 @@ const { manualEditingMessage: message } = useManualEditingLocalization();
 const result = shallowRef<ManualTextWidthResult | null>(null);
 const ghost = computed(() => result.value?.bounds ?? null);
 const ghostStyle = computed(() => ghost.value ? {
+  '--slides-resize-color': SLIDES_RENDER_COLORS.selectionStroke,
   left: `${props.slideLeft + ghost.value.x * INCHES_TO_PX * props.renderScale}px`,
   top: `${props.slideTop + ghost.value.y * INCHES_TO_PX * props.renderScale}px`,
   width: `${ghost.value.w * INCHES_TO_PX * props.renderScale}px`,

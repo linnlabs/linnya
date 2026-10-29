@@ -63,6 +63,7 @@
               :raster-scale="konvaRasterScale"
               :selected-targets="selectedSourceTargets"
               :hovered-target="manualHoveredTarget ? null : hoveredSourceTarget"
+              :manual-hovered-target="canManualSelect && !manualTranslationPreview ? manualHoveredTarget : null"
               :marquee-rect="manualMarqueeRect ?? sourceMarqueeRect"
               :preview-translations="manualPreviewTranslations"
               :manual-selected-targets="manualPresentedSelectedTargets"
