@@ -261,3 +261,13 @@ progress.json必填planRevision、summary、origin、actualCost，可选sourceQu
 命令为linnya-decision action review <decision-id> <action-id> --expected-revision <n> --input review.json，可选sourceQuote。inputIds引用当前存在且未withdrawn的输入，未知null可保留；purpose和范围按实际条件重写。回执actionStates.plan为最新计划，planRevision增加、planStatus=current/continuation=open；原plan及各次reviews仍保留，新报告会绑定实际计划版。review不改用户事实/inputRevision，不恢复旧建议，不认证内容或执行权限。
 
 有progress/reviews的行动，resolve载荷也须明确planRevision且等于当前计划版。旧范围完成不能关闭新范围，迟到事实先progress；历史plain action可省略，但实际依据保持未观察。全部当前范围确实结束后才resolve(completed)；决定放弃未完成部分用resolve(cancelled)并如实保留已花成本。最终报告存在后行动closed，撤回该报告也不自动重开，后续新行动另建。程序不理解自然语言范围是否实际完成，最终说明仍须忠于报告。
+
+## 付款时间表
+
+比较资金能否撑到回款时，在model中登记cashFlows（update同名字段完整替换，[]停用）。每张表含id、label、optionId、unit、openingBalance表达式和有顺序的entries；每笔含id、label、direction（inflow/outflow）和amount表达式。金额用非负数，方向由direction给出；只能引用已有input或四则式。期初登记可动用现金；受限/可退资金先按事实扣留，已经含在银行余额中的订金不再额外相加。
+
+```json
+{"cashFlows":[{"id":"purchase_cash","label":"回款前付款","optionId":"buy","unit":"CNY","openingBalance":{"input":"available_cash"},"entries":[{"id":"supplier_first","label":"开工付款","direction":"outflow","amount":{"input":"first_payment"}},{"id":"supplier_rest","label":"发货前付尾款","direction":"outflow","amount":{"input":"remaining_payment"}},{"id":"customer_collection","label":"交货后才收到的余款（仍待成交）","direction":"inflow","amount":{"input":"customer_remaining"}}]}]}
+```
+
+check默认回执、read的evaluation.cashFlows与export原件均给最低余额、资金缺口、期末余额及逐节点余额。期初或必要金额未知时返回needs_information，不以0代替。按最低点判断付款全程：首笔后为正、期末为正都不能抹掉中途缺口。节点次序和unit是声明，不认证未来会收款、口径完整或利润；这里只投影时间表，不自动增加硬检查或替作者决定下单。

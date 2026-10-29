@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.20.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.21.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -212,3 +212,11 @@ checks参与选项可行性与条件性选择；仅为说明经济门槛而求�
 记录schemaVersion=2。插件migration3以单条原子UPDATE迁移所有历史JSON：旧单位精确为当天00:00起分钟的输入/算值映射day_clock，其他映射other，不把min猜成时刻、不把CNY猜成已核现金。revision/inputRevision、原始值/来源/建议/行动保持原样，既有导出文件不重写；持久JSON字节改变，旧版严格读取器不能直接回退读取。部署或回退前按正式数据库备份/迁移流程处理，不在repository加双读fallback。新create/update的缺失或非法类型由同一schema拒绝，文件和内联两路一致。
 
 对应业务回归覆盖历史读取、元数据迁移、缺字段拒绝不写入、单位与类型分离以及时刻情景原子拒绝。公开Host组合测试仅同步插件输入夹具，不改变Host实现。
+
+## 按顺序的现金投影（0.21）
+
+model.cashFlows可选，update可完整替换或用[]清除。每张时间表绑定一个明确选项及unit，openingBalance和每笔amount使用同一四则式合同，entries顺序就是声明的资金发生顺序；inflow/outflow分开、金额非负。程序在各节点更新余额，最低点含期初；期初/必要金额未知或撤回返回needs_information，不置零；除零等算式错误返回unavailable。跨单位换算、退款准备是否已包含、节点是否真实发生仍属建模与取证，不认证声明的量纲。
+
+read/模拟的evaluation、check（含精简回执）、export均投影最低余额/缺口/期末及逐节点余额。该投影与原有checks分开，不偷偷把分析标准变成用户底线，也不自动阻断recommend或执行付款。条件更新/时间表变更仍按既有inputRevision使建议待复核，compare显式列cashFlows变化。新功能无新表、Host接口或基础工具。
+
+业务回归覆盖首付250可付但尾款前缺225、未来440不提前计入、余额恰为0、未知期初及非法引用不半写。模型声明的现金可动用性与付款完整性仍须实际评价。

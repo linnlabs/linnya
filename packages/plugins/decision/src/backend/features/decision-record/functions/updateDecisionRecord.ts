@@ -26,6 +26,7 @@ export function updateDecisionRecord(record: DecisionRecord, update: DecisionUpd
     options: update.options ?? record.model.options,
     calculations: update.calculations ?? record.model.calculations,
     checks: update.checks ?? record.model.checks,
+    ...(update.cashFlows === undefined ? {} : { cashFlows: update.cashFlows }),
   });
   validateDecisionModel(model);
   if (JSON.stringify(model) === JSON.stringify(record.model)) {

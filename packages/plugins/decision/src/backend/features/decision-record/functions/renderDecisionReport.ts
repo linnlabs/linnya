@@ -62,6 +62,17 @@ export function renderDecisionReport(record: DecisionRecord, expectedRevision: n
         evaluated.passes === null ? '未定' : evaluated.passes ? '成立' : '不成立'];
     })),
     '检查成立只表示该项声明关系成立，不等于方案整体可行、值得选择或已获授权。',
+    ...(projected.evaluation.cashFlows?.length ? [
+      '## 程序付款时间表',
+      ...projected.evaluation.cashFlows.flatMap(flow => [
+        text(flow.text),
+        table(['顺序', '节点（作者声明）', '方向', '金额', '节点后可动用余额'], flow.entries.map((entry, index) => [
+          String(index + 1), text(entry.label), entry.direction,
+          result(entry.result), flow.status === 'available' ? String(flow.balances[index].balance) : '未知/不可用',
+        ])),
+      ]),
+      '表内顺序、金额范围与期初可动用现金由作者声明；流入不等于现实已到账，最低余额不等于利润。',
+    ] : []),
     '## 当前建议引用的程序边界',
     basis === null ? '未声明 numericBasis。'
       : basis.status === 'needs_review' ? '旧建议待复核，不在本版输入上重建旧建议的数值依据；原值请读对应历史版。'

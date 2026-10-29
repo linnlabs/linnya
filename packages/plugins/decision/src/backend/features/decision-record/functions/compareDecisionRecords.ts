@@ -71,6 +71,7 @@ export function compareDecisionRecords(before: DecisionRecord, after: DecisionRe
       options: changes(before.model.options, after.model.options),
       calculations: changes(before.model.calculations, after.model.calculations),
       checks: changes(before.model.checks, after.model.checks),
+      cashFlows: changes(before.model.cashFlows ?? [], after.model.cashFlows ?? []),
     },
     effects: {
       calculations: changes(oldEvaluation.calculations, newEvaluation.calculations),

@@ -39,6 +39,7 @@ export function checkDecisionOptions(record: DecisionRecord, expectedRevision: n
       basedOnRevision: record.revision, basedOnInputRevision: record.inputRevision,
       ...projectNumericBasis(record.model, numericBasis, evaluation),
       inputs: record.model.inputs,
+      ...(evaluation.cashFlows ? { cashFlows: evaluation.cashFlows.filter(flow => request.optionIds.includes(flow.optionId)) } : {}),
     },
     options,
     notice: 'Only declared checks were evaluated. Passing does not establish source truth, real-world feasibility, preference or execution authorization.',

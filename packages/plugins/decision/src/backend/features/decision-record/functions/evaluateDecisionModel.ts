@@ -2,6 +2,7 @@ import type { DecisionExpression, DecisionModel } from '../../../../shared';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { collectExpressionInputs, evaluateExpression } from './evaluateDecisionExpression';
 import { collectCheckInputs, evaluateDecisionCheck } from './evaluateDecisionCheck';
+import { validateDecisionCashFlows, evaluateDecisionCashFlows } from './evaluateDecisionCashFlow';
 
 export function validateDecisionModel(model: DecisionModel): void {
   for (const [kind, items] of [
@@ -20,6 +21,7 @@ export function validateDecisionModel(model: DecisionModel): void {
       if (!inputs.has(input)) throw new DecisionFailure('invalid_model', `Unknown input: ${input}`);
     }
   }
+  validateDecisionCashFlows(model);
 }
 
 function validateReferences(expression: DecisionExpression, inputs: ReadonlySet<string>): void {
@@ -31,6 +33,7 @@ function validateReferences(expression: DecisionExpression, inputs: ReadonlySet<
 export function evaluateDecisionModel(model: DecisionModel) {
   validateDecisionModel(model);
   return {
+    ...(model.cashFlows ? { cashFlows: evaluateDecisionCashFlows(model) } : {}),
     calculations: model.calculations.map(item => ({
       id: item.id,
       label: item.label,

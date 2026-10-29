@@ -13,6 +13,7 @@ export function projectDecisionCheckOutput(result: ReturnType<typeof checkDecisi
     changeConditions: result.numericPreview.changeConditions,
     calculations: result.numericPreview.calculations.map(calculation => calculation.text),
     numericBasis: result.numericBasis,
+    ...(result.numericPreview.cashFlows ? { cashFlows: result.numericPreview.cashFlows } : {}),
     notice: result.notice,
   };
 }

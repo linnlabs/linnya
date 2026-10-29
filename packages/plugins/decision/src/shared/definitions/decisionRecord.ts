@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { DecisionIdSchema, DecisionTextSchema, DecisionInputSchema, DecisionQuantityTypeSchema } from './decisionInput';
+import { DecisionExpressionSchema } from './decisionExpression';
+import { DecisionCashFlowSchema } from './decisionCashFlow';
+export { DecisionExpressionSchema } from './decisionExpression';
+export type { DecisionExpression } from './decisionExpression';
 import { DecisionScenarioCaseSchema } from './decisionScenario';
 import { DecisionActionSchema, DecisionActionReportSchema, DecisionActionWithdrawalSchema, DecisionActionProgressContentSchema } from './decisionAction';
 
@@ -8,26 +12,6 @@ export type { DecisionQuantityType } from './decisionInput';
 
 const text = DecisionTextSchema;
 const id = DecisionIdSchema;
-
-/** 只计算显式给出的四则式，不执行模型生成的 JS 或推断缺失输入。 */
-export type DecisionExpression =
-  | { readonly input: string }
-  | { readonly literal: number }
-  | {
-      readonly op: 'add' | 'subtract' | 'multiply' | 'divide';
-      readonly left: DecisionExpression;
-      readonly right: DecisionExpression;
-    };
-
-export const DecisionExpressionSchema: z.ZodType<DecisionExpression> = z.lazy(() => z.union([
-  z.object({ input: id }).strict(),
-  z.object({ literal: z.number().finite() }).strict(),
-  z.object({
-    op: z.enum(['add', 'subtract', 'multiply', 'divide']),
-    left: DecisionExpressionSchema,
-    right: DecisionExpressionSchema,
-  }).strict(),
-]));
 
 export const DecisionOptionSchema = z.object({ id, label: text, description: text }).strict();
 export const DecisionCalculationSchema = z.object({
@@ -60,6 +44,7 @@ export const DecisionModelSchema = z.object({
   options: z.array(DecisionOptionSchema).min(1),
   calculations: z.array(DecisionCalculationSchema),
   checks: z.array(DecisionCheckSchema),
+  cashFlows: z.array(DecisionCashFlowSchema).optional(),
 }).strict();
 export type DecisionModel = z.infer<typeof DecisionModelSchema>;
 
@@ -105,8 +90,9 @@ export const DecisionUpdateSchema = z.object({
   options: z.array(DecisionOptionSchema).min(1).optional(),
   calculations: z.array(DecisionCalculationSchema).optional(),
   checks: z.array(DecisionCheckSchema).optional(),
+  cashFlows: z.array(DecisionCashFlowSchema).optional(),
 }).strict().refine(value => Object.keys(value).some(key => key !== 'reason'), {
-  message: 'Specify title, question, inputs, options, calculations or checks to update.',
+  message: 'Specify title, question, inputs, options, calculations checks or cashFlows to update.',
 });
 export type DecisionUpdate = z.infer<typeof DecisionUpdateSchema>;
 
