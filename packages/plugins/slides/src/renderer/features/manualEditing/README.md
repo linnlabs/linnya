@@ -102,7 +102,7 @@ The page supplies `preparePresentation` for structure selection. One logical com
 
 `selectedTargets` is canonical; `selectedTarget` is the last selected item, derived for single-object controls. Selection normalization excludes an author's descendants when its Frame is selected. `translationPreviews` and `visualPreviews` are ordered arrays, so batch actions share the same geometry, hit testing and rollback as single-object edits.
 
-`batch` contains 1–1000 independent object operations, becomes one source write and one semantic revision, and fails atomically. Selection, marquee and guide state never enter history. The backend's history status is authoritative; Renderer only holds revision ID and undo/redo depth. `flush()` means saved, while a ticket's `presented` means the complete resource frame is visible. Saving, refreshing and failed states are distinct.
+`batch` contains 1–1000 object operations applied in order (the same target may appear more than once, e.g. the left text-width handle sends a move and a width change), becomes one source write and one semantic revision, and fails atomically. Selection, marquee and guide state never enter history. The backend's history status is authoritative; Renderer only holds revision ID and undo/redo depth. `flush()` means saved, while a ticket's `presented` means the complete resource frame is visible. Saving, refreshing and failed states are distinct.
 
 `pendingPageOperation` covers page-index commands and history restoration until frame settlement. Insertion/paste and navigator actions use it to avoid applying stale displayed page indexes. A document switch clears session clipboard/selection; external source or AI revisions reset the backend editing history stack.
 

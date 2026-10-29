@@ -3,12 +3,17 @@ import type { SlidesManualEditSourceOperation } from '../definitions/manualEditS
 import { prepareManualEditSourceOperation } from './prepareManualEditSourceOperation.js';
 import { SlidesManualEditSourceError } from './writeManualEditsToDeckSource.js';
 
-/** 批量操作以同一修订为基线；每个作者对象只出现一次，父子不能重复移动或删除。 */
+/**
+ * 批量操作以同一修订为基线，按顺序写入：同一对象可以连续修改多项（例如左侧宽度手柄的平移加改宽），
+ * 后一步建立在前一步之上。只拒绝两种无法成立的组合：删除之后再修改同一对象，以及父子同时入批（会重复移动或删除）。
+ */
 export function prepareManualEditBatch(deck: DeckSpec, operations: readonly SlidesManualEditOperation[]): readonly SlidesManualEditSourceOperation[] {
   const identities = new Set<string>();
+  const deleted = new Set<string>();
   for (const operation of operations) {
     const key = `${operation.target.slideKey}/${operation.target.editKey}`;
-    if (identities.has(key)) throw new SlidesManualEditSourceError('operation_invalid', '一个批次不能重复修改同一作者目标。');
+    if (deleted.has(key)) throw new SlidesManualEditSourceError('operation_invalid', '同一批次里已删除的对象不能再修改。');
+    if (operation.op === 'delete_target') deleted.add(key);
     identities.add(key);
   }
   if (identities.size === 0) throw new SlidesManualEditSourceError('operation_invalid', '批量编辑不能为空。');

@@ -157,6 +157,26 @@ slide${i}.add(shape${i});`).join('\n') + `\ncompose({ title: '30 page editing', 
     const span = title?._sourceSpan;
     if (!span) throw new Error('Missing new object source location');
     expect(edited.deckSource.split('\n').slice(span.startLine - 1, span.endLine).join('\n')).toContain('"editKey": "new-title"');
+    // 左侧宽度手柄：同一对象在一个批次里先平移再改宽，按顺序生效，一次撤销。
+    const newTitle = { slideKey: 'blank-slide-1', editKey: 'new-title' };
+    await submit({ op: 'batch', operations: [
+      { op: 'translate_by', target: newTitle, targetKind: 'text', delta: { dx: 1, dy: 0 } },
+      { op: 'set_text_width', target: newTitle, targetKind: 'text', width: 2 },
+    ] });
+    const widened = (await current()).deckSpec.slides[0].spec.elements.find(element => element._authoringRef?.editKey === 'new-title');
+    expect(widened?.position).toMatchObject({ x: (title?.position.x ?? 0) + 1, w: 2 });
+    const afterWiden = await current();
+    const deleteThenEdit = await runtime.submit({ commandId: crypto.randomUUID(), documentId: 'deck',
+      expectedBase: { revisionId: afterWiden.currentRevisionId, revision: afterWiden.currentRevision, sourceHash: afterWiden.sourceHash },
+      operation: { op: 'batch', operations: [
+        { op: 'delete_target', target: newTitle, targetKind: 'text' },
+        { op: 'translate_by', target: newTitle, targetKind: 'text', delta: { dx: 1, dy: 0 } },
+      ] } });
+    expect(deleteThenEdit).toMatchObject({ status: 'validation_failed', message: '同一批次里已删除的对象不能再修改。' });
+    await submit({ op: 'undo' });
+    expect((await current()).deckSpec.slides[0].spec.elements.find(element => element._authoringRef?.editKey === 'new-title')?.position)
+      .toEqual(title?.position);
+    await submit({ op: 'redo' });
     const objects = copyManualObjects(edited.deckSpec, [{ slideKey: 'blank-slide-1', editKey: 'new-title' }]);
     await submit({ op: 'insert_objects', index: 0, objects });
     const beforeLayer = await current();

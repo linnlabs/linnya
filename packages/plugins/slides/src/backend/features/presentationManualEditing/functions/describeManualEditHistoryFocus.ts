@@ -31,7 +31,8 @@ function describeTargets(deck: DeckSpec, targets: readonly SlidesAuthoringEditRe
   const slideKey = targets[0]?.slideKey;
   const slideIndex = deck.slides.findIndex(slide => collectRefs(slide.spec.elements).some(ref => ref.slideKey === slideKey));
   if (slideIndex < 0) return undefined;
-  const refs = targets.map(target => ({ slideKey: target.slideKey, editKey: target.editKey }));
+  // 同一对象可在一个批次里修改多项，焦点只记一次。
+  const refs = [...new Map(targets.map(target => [`${target.slideKey}/${target.editKey}`, { slideKey: target.slideKey, editKey: target.editKey }])).values()];
   return { beforeSlideIndex: slideIndex, afterSlideIndex: slideIndex, targets: refs };
 }
 
