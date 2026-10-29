@@ -3,7 +3,7 @@
 }
 
 .ai-assistant-input--compact {
-  --conversation-footer-surface-radius: 12px;
+  --conversation-footer-surface-radius: 21px;
 }
 
 .ai-assistant-input .input-wrapper {
@@ -27,6 +27,7 @@
   cursor: pointer;
   border: 0;
   border-radius: inherit;
+  corner-shape: inherit;
   overflow: visible;
   background-color: transparent;
   backdrop-filter: blur(7px) saturate(0.72);
@@ -45,6 +46,7 @@
   content: '';
   pointer-events: none;
   border-radius: inherit;
+  corner-shape: inherit;
   background-color: color-mix(in srgb, var(--conversation-footer-surface-bg) 64%, transparent);
 }
 
@@ -67,6 +69,7 @@
   box-sizing: border-box;
   padding: 1.25px;
   border-radius: inherit;
+  corner-shape: inherit;
   pointer-events: none;
   mask:
     linear-gradient(var(--color-black), var(--color-black)) content-box,
@@ -80,8 +83,8 @@
   top: 0;
   left: 0;
   z-index: 1;
-  /* track 覆盖原边框，路径落在 1.25px 蒙版环的中心。 */
-  offset-path: inset(0.625px round calc(var(--conversation-footer-surface-radius) - 0.625px)) border-box;
+  /* track 覆盖原边框，路径落在 1.25px 蒙版环的中心。offset-path 只认圆弧，所以取与 squircle 轮廓等价的圆弧半径。 */
+  offset-path: inset(0.625px round calc(var(--conversation-footer-surface-outline-radius) - 0.625px)) border-box;
   offset-distance: 0%;
   offset-anchor: center;
   offset-rotate: auto;
@@ -232,6 +235,7 @@
   padding: var(--space-3) var(--space-4) 0;
   overflow: hidden; /* 确保编辑器内容不溢出 */
   border-radius: var(--ai-assistant-input-radius) var(--ai-assistant-input-radius) 0 0;
+  corner-shape: var(--conversation-footer-surface-corner-shape);
 }
 
 /* Accessory 成为首个可见区块时，由它承接上圆角，后续区块不重复声明顶部边界。 */

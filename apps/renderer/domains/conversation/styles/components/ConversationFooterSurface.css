@@ -1,10 +1,19 @@
 /*
  * 主 composer 与 Subrun 只读面板共享同一悬浮表面。
  * 这里只定义外壳；输入焦点、附件和业务按钮仍由各自 feature 负责。
+ *
+ * 外壳用 squircle（连续曲率圆角，corner-shape）。同样的半径下 squircle 比圆弧切得少、看起来更方，
+ * 28px 的 squircle 与 16px 圆弧的轮廓最大偏差约 0.3px（紧凑 21px 对应 12px），所以保持原有的视觉体量，
+ * 只把转角换成连续曲率。corner-shape 不继承：凡是写 border-radius: inherit 或用这个半径变量的子元素，
+ * 都要同时写 corner-shape（inherit，或取 --conversation-footer-surface-corner-shape），否则角上会出现形状错位。
+ * --conversation-footer-surface-outline-radius 是与 squircle 轮廓等价的圆弧半径，
+ * 给只认圆弧的 offset-path（未配置模型的流光）使用。
  */
 .conversation-footer-shell {
   --conversation-footer-surface-bg: var(--color-bg-elevated);
-  --conversation-footer-surface-radius: 16px;
+  --conversation-footer-surface-radius: 28px;
+  --conversation-footer-surface-corner-shape: squircle;
+  --conversation-footer-surface-outline-radius: calc(var(--conversation-footer-surface-radius) / 1.75);
 
   border-top: none;
   padding: 0 var(--space-4) var(--space-4);
@@ -16,6 +25,7 @@
   overflow: visible;
   border: 0.5px solid color-mix(in srgb, var(--color-text-primary) 15%, transparent);
   border-radius: var(--conversation-footer-surface-radius);
+  corner-shape: var(--conversation-footer-surface-corner-shape);
   background-color: var(--conversation-footer-surface-bg);
   box-shadow: var(--shadow-sm);
   transition: border-color var(--duration-medium) var(--ease-standard);

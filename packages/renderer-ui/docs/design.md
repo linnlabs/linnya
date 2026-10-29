@@ -202,11 +202,13 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 | `--radius-sm` | 4 | 标签、内联代码、复选框、紧凑图标按钮 |
 | `--radius-md` | 6 | 按钮、输入框、菜单项等标准控件 |
 | `--radius-lg` | 8 | 卡片、工具卡、菜单、弹出层与对话框 |
-| `--radius-xl` | 12 | 大面板、对话输入框 |
+| `--radius-xl` | 12 | 大面板 |
 | `--radius-2xl` | 16 | 空态首屏等大尺寸输入容器 |
 | `--radius-full` | — | 胶囊、圆形头像和按钮 |
 
 嵌套时内层圆角等于外层圆角减去两者间距（最小取 `--radius-xs`），让内外轮廓同心。纯圆形元素可以直接写 `border-radius: 50%`。
+
+**对话输入框外壳用连续曲率圆角（squircle），不走这张刻度表。** 主输入框与 Subrun 只读面板共用的 `conversation-footer-surface` 取 `corner-shape: squircle`（超椭圆 `|x|⁴ + |y|⁴ = 1`，直边到弧线的过渡处曲率连续）。同样的半径下 squircle 切得更少、看起来更方，所以半径取与旧圆弧轮廓等价的 1.75 倍：28px 对应旧的 16px，紧凑 21px 对应 12px，与旧圆弧的最大偏差约 0.3px（Electron 里逐像素对比过）。要点：`corner-shape` 不继承，凡写 `border-radius: inherit` 或用这个半径变量的子元素（未配置模型的玻璃遮罩与流光蒙版、引用预览、附件区）都要同时写 `corner-shape`，否则角上会漏出一圈形状错位的原表面；`offset-path` 只认圆弧，流光路径用 `--conversation-footer-surface-outline-radius`（半径 ÷ 1.75）。
 
 - 胶囊形元素（滚动条滑块、徽标、开关轨道、计数标签）一律用 `--radius-full`，不要写“约等于半高”的数值（10px、5px），否则高度一变轮廓就不再是胶囊。
 - 进度条、引用线、拖放指示线这类 2–3px 的细条用 `--radius-xs`。

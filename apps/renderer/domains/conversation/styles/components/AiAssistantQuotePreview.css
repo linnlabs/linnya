@@ -5,6 +5,7 @@
    * 不单独绘制背景，直接透出输入框 surface，避免覆盖 0.5px 圆角边框的抗锯齿区域。
    */
   border-radius: var(--ai-assistant-input-radius) var(--ai-assistant-input-radius) 0 0;
+  corner-shape: var(--conversation-footer-surface-corner-shape);
   background: transparent;
 }
 

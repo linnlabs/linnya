@@ -159,7 +159,7 @@
 }
 
 .conversation-chat-surface--compact .conversation-footer-shell {
-  --conversation-footer-surface-radius: 12px;
+  --conversation-footer-surface-radius: 21px;
 
   padding: 0 var(--space-2) var(--space-2-5);
 }
