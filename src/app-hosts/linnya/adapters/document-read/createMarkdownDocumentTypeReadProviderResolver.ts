@@ -15,7 +15,7 @@ export function createMarkdownDocumentTypeReadProviderResolver(params: {
   readonly db: Database.Database;
 }): WorkspaceDocumentTypeReadProviderResolver {
   const store = createMarkdownDocumentStore(params.db);
-  const normalizer = new MarkdownNormalizationService(params.db, store);
+  const normalizer = new MarkdownNormalizationService(store);
   const readDb = createMarkdownReadDatabase(params.db);
   return (documentType) => (
     documentType === 'document' || documentType === 'markdown'

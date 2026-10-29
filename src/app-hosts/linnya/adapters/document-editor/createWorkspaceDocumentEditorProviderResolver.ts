@@ -76,7 +76,7 @@ function createMarkdownEditorProvider(params: {
   readonly mutationPublisher: WorkspaceMutationPublisher;
 }): WorkspaceDocumentEditorProvider {
   const documentStore = createMarkdownDocumentStore(params.db);
-  const normalizer = new MarkdownNormalizationService(params.db, documentStore);
+  const normalizer = new MarkdownNormalizationService(documentStore);
   return {
     displayName: 'Markdown',
     enabled: true,

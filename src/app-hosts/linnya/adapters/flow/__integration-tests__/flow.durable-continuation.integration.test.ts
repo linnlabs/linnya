@@ -353,7 +353,7 @@ describe('durable root Flow continuation, production Audit off', () => {
         const documents = new MarkdownDocumentService(first.db);
         const initial = await buildMarkdownDocumentFromText({
           markdown: 'Existing document',
-          normalizer: new MarkdownNormalizationService(first.db, documents),
+          normalizer: new MarkdownNormalizationService(documents),
           resolveCitationSources: async () => [],
         });
         documents.createDocument(id, initial.content);
@@ -385,7 +385,7 @@ describe('durable root Flow continuation, production Audit off', () => {
       const documents = new MarkdownDocumentService(first.db);
       const userContent = await buildMarkdownDocumentFromText({
         markdown: 'User later content',
-        normalizer: new MarkdownNormalizationService(first.db, documents),
+        normalizer: new MarkdownNormalizationService(documents),
         resolveCitationSources: async () => [],
       });
       const userVersion = documents.updateDocument(node.id, userContent.content);

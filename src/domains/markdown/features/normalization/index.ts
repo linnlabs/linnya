@@ -53,6 +53,5 @@ export type {
 export {
   MarkdownNormalizationService,
   type MarkdownImporter as MarkdownNormalizationImporter,
-  type MarkdownNormalizationBatchResult,
   type MarkdownNormalizationResult,
 } from './orchestration/markdownNormalizationService';

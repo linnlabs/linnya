@@ -1,4 +1,3 @@
-import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 
 import { extractRawMarkdownSource, type MarkdownDocJson, type MarkdownImportResult } from 'src/domains/markdown';
@@ -60,11 +59,6 @@ describe('MarkdownNormalizationService', () => {
   }
 
   it('normalizes placeholder document and clears orphan pending revisions', async () => {
-    const fakeDb = {
-      prepare: () => ({
-        all: () => [{ id: 'doc-1' }]
-      })
-    };
     const markdownService = new FakeMarkdownDocumentService();
     const documentId = 'doc-1';
     const placeholder = buildRawMarkdownPlaceholder('# 标题\n\n原始段落');
@@ -91,7 +85,6 @@ describe('MarkdownNormalizationService', () => {
       blockEvents: []
     });
     const service = new MarkdownNormalizationService(
-      fakeDb as unknown as Database.Database,
       markdownService as unknown as MarkdownDocumentService,
       importer
     );
@@ -103,43 +96,5 @@ describe('MarkdownNormalizationService', () => {
     const latestDoc = markdownService.getDocument(documentId);
     expect(extractRawMarkdownSource(latestDoc)).toBeNull();
     expect(markdownService.getPendingRevisions(documentId)).toHaveLength(0);
-  });
-
-  it('batch normalization only counts placeholder documents as normalized', async () => {
-    const fakeDb = {
-      prepare: () => ({
-        all: () => [{ id: 'doc-placeholder' }, { id: 'doc-normalized' }]
-      })
-    };
-    const markdownService = new FakeMarkdownDocumentService();
-
-    const placeholderDocumentId = 'doc-placeholder';
-    markdownService.createDocument(
-      placeholderDocumentId,
-      buildRawMarkdownPlaceholder('批量规范化')
-    );
-
-    const normalizedDocumentId = 'doc-normalized';
-    markdownService.createDocument(
-      normalizedDocumentId,
-      buildNormalizedDoc('已是结构化文档')
-    );
-
-    const importer = async (): Promise<MarkdownImportResult> => ({
-      docJson: buildNormalizedDoc('批量规范化后的正文'),
-      blockEvents: []
-    });
-    const service = new MarkdownNormalizationService(
-      fakeDb as unknown as Database.Database,
-      markdownService as unknown as MarkdownDocumentService,
-      importer
-    );
-
-    const stats = await service.normalizeAllPendingPlaceholders();
-
-    expect(stats.scanned).toBe(2);
-    expect(stats.normalized).toBe(1);
-    expect(stats.skipped).toBe(1);
-    expect(stats.failed).toBe(0);
   });
 });

@@ -36,7 +36,7 @@ function setup() {
   ]) db.exec(sql);
   db.prepare("INSERT INTO workspace_nodes (id, project_id, parent_id, type, name, created_at, updated_at) VALUES ('doc', NULL, NULL, 'document', 'test', 1, 1)").run();
   const store = new MarkdownDocumentService(db);
-  const normalizer = new MarkdownNormalizationService(db, store);
+  const normalizer = new MarkdownNormalizationService(store);
   const read = () => readMarkdownVfsContent({ db: createMarkdownReadDatabase(db), documentId: 'doc' });
   const write = async (targetText: string) => writeMarkdownDocumentFromText({
     documentStore: store, documentId: 'doc', targetText, toolName: 'write_file',

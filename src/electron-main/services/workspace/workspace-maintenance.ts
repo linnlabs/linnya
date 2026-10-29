@@ -10,7 +10,6 @@ import { createMarkdownDocumentStore } from 'src/app-hosts/linnya/application/ma
 
 import type { DatabaseService } from '../database';
 import Database from 'better-sqlite3';
-import { MarkdownNormalizationService } from 'src/domains/markdown';
 import { MarkdownOrphanBlockDataCleaner } from 'src/domains/markdown';
 import { Logger } from '../../../shared/logger';
 
@@ -28,7 +27,6 @@ export async function runWorkspaceMaintenanceOnce(databaseService: DatabaseServi
 
     // 构造所需的服务实例（轻量级）
     const markdownService = createMarkdownDocumentStore(db);
-    const normalizationService = new MarkdownNormalizationService(db, markdownService);
     const cleaner = new MarkdownOrphanBlockDataCleaner(db, markdownService);
 
     logger.info('🧹 启动维护：开始执行幽灵块数据清理任务...');
@@ -74,12 +72,6 @@ export async function runWorkspaceMaintenanceOnce(databaseService: DatabaseServi
     logger.info(
       `✅ 启动维护：幽灵块清理完成. docs=${docs.length}, failed=${failedDocs}, ` +
         `removed(pending=${totalRemovedPending}, blockVersions=${totalRemovedBlockVersions})`
-    );
-
-    // 3.5) 占位 Markdown 文档规范化
-    const normalizationStats = await normalizationService.normalizeAllPendingPlaceholders();
-    logger.info(
-      `✅ 启动维护：Markdown 占位文档规范化完成. scanned=${normalizationStats.scanned}, normalized=${normalizationStats.normalized}, skipped=${normalizationStats.skipped}, failed=${normalizationStats.failed}`
     );
 
   } catch (error) {

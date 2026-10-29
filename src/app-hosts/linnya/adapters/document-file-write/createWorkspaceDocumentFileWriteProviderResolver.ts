@@ -60,7 +60,7 @@ function createMarkdownFileWriteProvider(params: {
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileWriteResult>;
 }): WorkspaceDocumentFileWriteProvider {
   const documentStore = createMarkdownDocumentStore(params.db);
-  const normalizer = new MarkdownNormalizationService(params.db, documentStore);
+  const normalizer = new MarkdownNormalizationService(documentStore);
   const workspaceMutation = createSqliteWorkspaceDocumentMutationPort(params.db);
   const captureSnapshot = (documentId: string): MarkdownFileWriteSnapshot => projectMarkdownFileWriteSnapshot({
     content: documentStore.getDocument(documentId),
