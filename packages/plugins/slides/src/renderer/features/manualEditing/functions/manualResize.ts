@@ -9,11 +9,15 @@ export function canResizeManualTarget(
     && target.capabilities.includes('set_visual_size');
 }
 
-/** 固定对侧锚点，尺寸与锚点补偿一起提交。旋转对象先将屏幕位移投影到局部坐标轴。 */
+/**
+ * 固定对侧锚点，尺寸与锚点补偿一起提交。旋转对象先将屏幕位移投影到局部坐标轴。
+ * 图片始终等比；形状按住 Shift（`keepAspect`）时等比，与常见演示软件一致。
+ */
 export function resolveManualResize(
   start: ManualResizeStart,
   clientX: number,
   clientY: number,
+  keepAspect = false,
 ): Extract<ManualEditingVisualOperation, { op: 'set_visual_size' }> | null {
   const target = start.target;
   if (!canResizeManualTarget(target)) return null;
@@ -29,7 +33,7 @@ export function resolveManualResize(
   const [horizontal, vertical] = MANUAL_RESIZE_DIRECTIONS[start.handle];
   let nextWidth = horizontal === 0 ? width : Math.max(0.05, width + horizontal * localX);
   let nextHeight = vertical === 0 ? height : Math.max(0.05, height + vertical * localY);
-  if (target.targetKind === 'image') {
+  if (target.targetKind === 'image' || keepAspect) {
     // 角点沿原对角线连续缩放；边中点以对边中点为锚，另一轴对称变化。
     const scale = vertical === 0 ? nextWidth / width
       : horizontal === 0 ? nextHeight / height

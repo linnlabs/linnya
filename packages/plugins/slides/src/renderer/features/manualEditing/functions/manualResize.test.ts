@@ -44,6 +44,16 @@ describe('manual resize gestures', () => {
     }
   });
 
+  it('keeps shape ratio only while Shift is held, on corners and edges alike', () => {
+    const corner = { target, handle: 'bottom-right' as const, clientX: 0, clientY: 0, renderScale: 1 };
+    expect(resolveManualResize(corner, 96, 0)?.visualSize).toEqual({ width: 3, height: 1 });
+    for (const handle of ['right', 'bottom', 'bottom-right', 'top-left'] as const) {
+      const size = resolveManualResize({ ...corner, handle }, 96, 96, true)?.visualSize;
+      expect(size).toBeDefined();
+      expect(size && size.width / size.height).toBeCloseTo(2);
+    }
+  });
+
   it('does not create edits for clicks, unchanged dimensions or unsupported targets', () => {
     const start = { target, handle: 'right' as const, clientX: 0, clientY: 0, renderScale: 1 };
     expect(resolveManualResize(start, 0, 96)).toBeNull();

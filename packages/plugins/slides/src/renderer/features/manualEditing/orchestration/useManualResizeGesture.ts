@@ -13,6 +13,8 @@ export function useManualResizeGesture(options: {
 }) {
   let session: { start: ManualResizeStart; pointerId: number; element: HTMLElement } | null = null;
   let operation: ReturnType<typeof resolveManualResize> = null;
+  /** 最近一次指针位置；只按下或松开 Shift 时也用它重算，不必再动鼠标。 */
+  let pointer = { clientX: 0, clientY: 0, keepAspect: false };
   function clear(): void {
     const previous = session;
     session = null;
@@ -33,14 +35,25 @@ export function useManualResizeGesture(options: {
       pointerId: event.pointerId, element: event.currentTarget,
     };
     operation = null;
+    pointer = { clientX: event.clientX, clientY: event.clientY, keepAspect: event.shiftKey };
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus({ preventScroll: true });
+  }
+  function update(): void {
+    if (!session) return;
+    operation = resolveManualResize(session.start, pointer.clientX, pointer.clientY, pointer.keepAspect);
+    options.preview(operation ? createManualVisualPreview(session.start.target, operation) : null);
   }
   function move(event: PointerEvent): void {
     if (!session || session.pointerId !== event.pointerId) return;
     if (!operation && Math.hypot(event.clientX - session.start.clientX, event.clientY - session.start.clientY) < 3) return;
-    operation = resolveManualResize(session.start, event.clientX, event.clientY);
-    options.preview(operation ? createManualVisualPreview(session.start.target, operation) : null);
+    pointer = { clientX: event.clientX, clientY: event.clientY, keepAspect: event.shiftKey };
+    update();
+  }
+  function modifier(event: KeyboardEvent): void {
+    if (!session || event.key !== 'Shift' || event.shiftKey === pointer.keepAspect) return;
+    pointer = { ...pointer, keepAspect: event.shiftKey };
+    if (operation) update();
   }
   function up(event: PointerEvent): void {
     if (!session || session.pointerId !== event.pointerId) return;
@@ -51,5 +64,5 @@ export function useManualResizeGesture(options: {
     cancel();
   }
   onBeforeUnmount(clear);
-  return { down, move, up, cancel };
+  return { down, move, up, cancel, modifier };
 }

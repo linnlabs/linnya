@@ -141,8 +141,12 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
     await settle();
     return position;
   }
-  async function move(position: { x: number; y: number }) {
-    window.webContents.sendInputEvent({ type: 'mouseMove', ...position, modifiers: ['leftbuttondown'] });
+  async function move(position: { x: number; y: number }, shift = false) {
+    window.webContents.sendInputEvent({ type: 'mouseMove', ...position, modifiers: shift ? ['leftbuttondown', 'shift'] : ['leftbuttondown'] });
+    await settle();
+  }
+  async function shift(type: 'keyDown' | 'keyUp') {
+    window.webContents.sendInputEvent({ type, keyCode: 'Shift', modifiers: type === 'keyDown' ? ['shift'] : [] });
     await settle();
   }
   async function up(position: { x: number; y: number }) {
@@ -171,6 +175,22 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
   await evaluate('window.manualPropertySmoke.assertResize(3.5, 1.5, 2, false)');
   const click = await down('bottom-right');
   await up(click);
+  await evaluate('window.manualPropertySmoke.assertResize(3.5, 1.5, 2, false)');
+  // Shift 等比：拖动中按下 Shift 不动鼠标也立即按原比例重算，松开恢复自由缩放；带 Shift 的移动同样等比。Escape 不提交。
+  const ratioStart = await down('bottom-right');
+  const free = { x: ratioStart.x + 96, y: ratioStart.y };
+  await move(free);
+  await evaluate('window.manualPropertySmoke.assertResize(4.5, 1.5, 2, true)');
+  await shift('keyDown');
+  await evaluate('window.manualPropertySmoke.assertResizeRatio(3.5 / 1.5)');
+  await shift('keyUp');
+  await evaluate('window.manualPropertySmoke.assertResize(4.5, 1.5, 2, true)');
+  await move({ x: free.x, y: free.y + 24 }, true);
+  await evaluate('window.manualPropertySmoke.assertResizeRatio(3.5 / 1.5)');
+  window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+  window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+  await settle();
+  await up(free);
   await evaluate('window.manualPropertySmoke.assertResize(3.5, 1.5, 2, false)');
   // 五个新增入口连续操作，不等待编译；内容、选框与对侧锚点必须一起更新。
   let width = 3.5; let height = 1.5; let x = 0.5; let y = 0.5; let commits = 2;

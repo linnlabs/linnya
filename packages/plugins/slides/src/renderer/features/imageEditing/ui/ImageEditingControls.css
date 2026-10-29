@@ -1,36 +1,5 @@
-/* 图片分组：替换 + 两段式适应开关，当前值一眼可见。 */
+/* 图片分组：只有替换；不做适应开关，见 README。 */
 .slides-image-editing__icon {
   width: 16px;
   height: 16px;
-}
-
-.slides-image-editing__fit {
-  display: inline-flex;
-  padding: 2px;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-bg-subtle);
-}
-
-.slides-image-editing__fit-option {
-  height: 24px;
-  padding: 0 var(--space-2);
-  border: none;
-  border-radius: 4px;
-  background: none;
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-size: var(--font-size-footnote);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.slides-image-editing__fit-option--active {
-  background-color: var(--color-bg-default);
-  color: var(--color-text-primary);
-  box-shadow: 0 0 0 0.5px var(--color-border-default), 0 1px 2px var(--shadow-color-xs);
-}
-
-.slides-image-editing__fit-option:disabled {
-  opacity: 0.55;
-  cursor: default;
 }
