@@ -43,6 +43,13 @@ export interface ManualEditingSelectionFragment {
 
 export type ManualEditableTargetPath = readonly ManualEditableTarget[];
 
+/** 编辑呈现后要在当前页选中的对象；插入对象所在页可能还没有其他作者对象，slideKey 可省略。 */
+export interface ManualEditRevealRequest {
+  readonly targets: readonly { readonly slideKey?: string; readonly editKey: string }[];
+  /** 只选中一个文字对象时直接进入输入并全选内容，用于新插入的文字框。 */
+  readonly editText?: boolean;
+}
+
 export interface ManualEditingTranslationPreview {
   readonly elementId: string;
   readonly affectedElementIds: readonly string[];

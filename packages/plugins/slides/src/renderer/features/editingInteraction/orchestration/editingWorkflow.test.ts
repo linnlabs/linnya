@@ -255,7 +255,7 @@ describe('editing interaction + real submission queue', () => {
     expect(w.drafts.textDrafts[0]).toMatchObject({ content: '中文', status: 'failed' });
   });
 
-  it('respects IME confirmation and Escape while completing a blur requested during composition', () => {
+  it('respects IME confirmation, and Escape keeps the typed text while ending input', () => {
     const w = createWorkflow();
     w.text.open(target); w.text.beginComposition(); w.text.draft.value = '中文';
     w.text.handleCommitShortcut(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, isComposing: true }));
@@ -263,8 +263,11 @@ describe('editing interaction + real submission queue', () => {
     expect(w.text.requestCommit()).toBe('blocked');
     w.text.endComposition();
     expect(w.commands[0]?.command.operation).toMatchObject({ content: '中文' });
-    w.text.open(other); w.text.draft.value = 'Unsubmitted';
+    w.text.open(other); w.text.draft.value = 'Kept on Escape';
+    w.text.handleEscape(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true }));
+    expect(w.text.target.value?.elementId).toBe('other');
     w.text.handleEscape(new KeyboardEvent('keydown', { key: 'Escape' }));
-    expect(w.text.target.value).toBeNull(); expect(w.commands).toHaveLength(1);
+    expect(w.text.target.value).toBeNull();
+    expect(w.store.queue[0]?.intent.operation).toMatchObject({ content: 'Kept on Escape' });
   });
 });

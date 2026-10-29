@@ -207,6 +207,21 @@ describe('authoring identity projection', () => {
     expect(copyable.sort()).toEqual(['headline', 'inner', 'plain']);
   });
 
+  it('插入的文字框宽度固定、高度随内容增长，插入高度只作下限', () => {
+    const input = deck([slide('overview', [shape('badge')])]);
+    const box = { x: 1, y: 1, w: 2, h: 0.5 };
+    input.manualEdits = { version: 2, slides: [{ slideKey: 'overview', targets: [], additions: [
+      { kind: 'text', editKey: 'short', box, content: 'Hi', style: { fontSize: 18 } },
+      { kind: 'text', editKey: 'long', box, content: 'A much longer sentence that has to wrap across several lines in a narrow box', style: { fontSize: 18 } },
+    ] }] };
+    const compiled = compileFlexInput(input);
+    if (!compiled.input) throw new Error(compiled.error ?? 'Expected compiled additions.');
+    const position = (editKey: string) => compiled.input?.slides[0].elements.find(element => element._authoringRef?.editKey === editKey)?.position;
+    expect(position('short')).toMatchObject({ x: 1, y: 1, w: 2, h: 0.5 });
+    expect(position('long')?.w).toBe(2);
+    expect(position('long')?.h).toBeGreaterThan(0.5);
+  });
+
   it('拒绝没有 slideKey 的孤立 editKey', () => {
     const result = compileFlexInput(deck([slide(undefined, [shape('headline')])]));
     expect(result.error).toContain('需要所属 Slide 声明 slideKey');

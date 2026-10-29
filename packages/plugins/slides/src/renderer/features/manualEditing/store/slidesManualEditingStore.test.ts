@@ -38,3 +38,18 @@ describe('slidesManualEditingStore', () => {
   });
 
 });
+
+describe('pending insertions', () => {
+  it('exposes boxes of queued and active insertions until they are presented', () => {
+    setActivePinia(createPinia());
+    const store = useSlidesManualEditingStore();
+    const object = { kind: 'shape' as const, editKey: 'new', geometry: 'rect' as const, fill: '#2563EB', content: '', box: { x: 1, y: 1, w: 2, h: 1 } };
+    const entry = { intent: { operation: { op: 'insert_objects' as const, index: 2, objects: [object] } }, clientOperationIds: ['a'] as [string] };
+    store.setQueue([entry]);
+    expect(store.pendingInsertions).toEqual([{ slideIndex: 2, editKey: 'new', box: object.box }]);
+    store.setQueue([]); store.setSubmission({ phase: 'awaiting_frame', entry, commandId: 'a', revision: 3 });
+    expect(store.pendingInsertions).toHaveLength(1);
+    store.setSubmission({ phase: 'idle' });
+    expect(store.pendingInsertions).toEqual([]);
+  });
+});

@@ -4,10 +4,11 @@ import { useLocalization } from '@app/localization';
 import { useSlidesStore } from '../../../store/slidesStore';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import { importSlideImage } from '../../imageEditing';
-import { useManualEditSubmission, useSlidesManualEditingStore, collectPresentedManualTargets } from '../../manualEditing';
+import { useManualEditSubmission, useSlidesManualEditingStore } from '../../manualEditing';
 import { useTextInputSession } from '../../editingInteraction';
 import { INSERTION_MESSAGES } from '../definitions/insertionMessages';
 import { createInsertedObject } from '../functions/createInsertedObject';
+import { resolveInsertionPalette } from '../functions/resolveInsertionPalette';
 
 export function useElementInsertion() {
   const slides = useSlidesStore();
@@ -24,16 +25,16 @@ export function useElementInsertion() {
     const documentId = slides.currentDeckId;
     const previousSelection = manual.selectedTargets.map(target => target.elementId).join('\0');
     const result = await submission.enqueue({ operation: { op: 'insert_objects', index, objects } }).settled;
-    if (result.status !== 'presented' || slides.currentDeckId !== documentId || slides.currentSlideIndex !== index || manual.selectedTargets.map(target => target.elementId).join('\0') !== previousSelection || !render.currentSlideRender) return;
-    const keys = new Set(objects.map(object => object.editKey));
-    const targets = collectPresentedManualTargets(render.currentSlideRender.elements, { transientTranslation: null, pendingTranslations: [], pendingVisuals: [], queuedIntents: [] })
-      .filter(target => keys.has(target.authoringRef.editKey));
-    manual.selectTargets(targets, targets);
+    // 等待期间用户已改选、换页或换稿时，不抢走他们的选区。
+    if (result.status !== 'presented' || slides.currentDeckId !== documentId || slides.currentSlideIndex !== index || manual.selectedTargets.map(target => target.elementId).join('\0') !== previousSelection) return;
+    const [only] = objects;
+    manual.requestReveal({ targets: objects.map(object => ({ editKey: object.editKey })), editText: objects.length === 1 && only?.kind === 'text' });
   }
   function insertSimple(kind: 'text' | 'rect' | 'ellipse'): void {
     const size = render.renderModel?.slideSize;
     if (!available.value || !size || text.requestCommit() === 'blocked') return;
-    void insert([createInsertedObject(kind, size, message('slides.insert.placeholder'), `inserted-${crypto.randomUUID()}`)]);
+    const palette = resolveInsertionPalette(slides.deckPreview?.theme.colors, render.currentSlideRender?.background);
+    void insert([createInsertedObject(kind, size, message('slides.insert.placeholder'), `inserted-${crypto.randomUUID()}`, palette)]);
   }
   async function insertImage(file: File): Promise<void> {
     if (!available.value || text.requestCommit() === 'blocked') return;

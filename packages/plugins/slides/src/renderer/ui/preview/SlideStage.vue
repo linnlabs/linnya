@@ -67,6 +67,7 @@
               :preview-translations="manualPreviewTranslations"
               :manual-selected-targets="manualPresentedSelectedTargets"
               :snap-guides="manualSnapGuides"
+              :pending-insertions="manualPendingInsertions"
               :manual-visual-previews="manualVisualPreviews"
               :hidden-text-element-ids="hiddenTextElementIds"
             />
@@ -95,6 +96,7 @@
           ref="inlineTextEditor"
           :key="textSessionId ?? undefined"
           v-model="textDraft"
+          :select-all="textSelectAll"
           :toolbar-element="textToolbarHost"
           :target="textEditorTarget"
           :slide-left="currentLayout.slideLeft"
@@ -213,6 +215,8 @@ const {
   enabled: manualEditingEnabled,
 } = storeToRefs(manualEditingStore);
 const allRenderSlides = computed(() => renderModel.value?.slides ?? []);
+const manualPendingInsertions = computed(() => manualEditingEnabled.value
+  ? manualEditingStore.pendingInsertions.filter(entry => entry.slideIndex === currentSlideRender.value?.index) : []);
 const {
   displayedSlide,
   imageResources,
@@ -318,6 +322,7 @@ const {
   textEditorTarget,
   textDraft,
   textSessionId,
+  textSelectAll,
   textPresentations,
   hiddenTextElementIds,
   handleKeydown: handleManualKeydown,

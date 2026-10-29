@@ -16,6 +16,7 @@ export function createRichTextEditor(options: {
   readonly content: SlidesEditableTextContent;
   readonly target: () => TextEditingTarget;
   readonly label: string;
+  readonly selectAll?: boolean;
   readonly update: (content: SlidesEditableTextContent) => void;
   readonly selection: (selection: InlineTextSelection | null) => void;
   readonly compositionStart: () => void;
@@ -29,7 +30,9 @@ export function createRichTextEditor(options: {
     return true;
   };
   const view = new EditorView(options.element, {
-    state: EditorState.create({ doc, selection: TextSelection.atEnd(doc), plugins: [history(), keymap({
+    // 全选落在首尾文本块内，输入替换时沿用首个 run 的样式。
+    state: EditorState.create({ doc, selection: options.selectAll
+      ? TextSelection.between(TextSelection.atStart(doc).$from, TextSelection.atEnd(doc).$to) : TextSelection.atEnd(doc), plugins: [history(), keymap({
       Enter: breakLine, 'Shift-Enter': breakLine, 'Mod-z': undo, 'Mod-Shift-z': redo, 'Mod-y': redo,
     }), keymap(baseKeymap)] }),
     attributes: { class: 'slides-rich-text-surface', role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label },

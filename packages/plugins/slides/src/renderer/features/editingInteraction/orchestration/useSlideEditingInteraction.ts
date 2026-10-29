@@ -246,14 +246,20 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     hoveredTarget.value = null;
   }
 
-  /** 撤销/重做呈现后，按作者身份在当前页重新选中仍存在的对象。 */
+  /** 撤销、插入或粘贴呈现后，按作者身份在当前页选中仍存在的对象；新文字框直接进入输入。 */
   function revealRequestedTargets(): void {
     const request = store.revealRequest;
     if (!request) return;
     store.requestReveal(null);
-    const found = presentedTargets().filter(target => request.some(ref => ref.slideKey === target.authoringRef.slideKey
-      && ref.editKey === target.authoringRef.editKey));
-    if (found.length > 0) selectMany(normalizeManualSelection(found));
+    const found = presentedTargets().filter(target => request.targets.some(ref => ref.editKey === target.authoringRef.editKey
+      && (ref.slideKey === undefined || ref.slideKey === target.authoringRef.slideKey)));
+    if (found.length === 0) return;
+    selectMany(normalizeManualSelection(found));
+    const slide = options.currentSlide.value;
+    const only = found.length === 1 ? found[0] : undefined;
+    if (!request.editText || !only?.textEditing || !slide) return;
+    const editorTarget = createPresentedTextEditingTarget(slide.elements, only, readHitProjection());
+    if (editorTarget) textEditing.open(editorTarget, undefined, { selectAll: true });
   }
   watch(() => store.revealRequest, revealRequestedTargets, { flush: 'post' });
 
@@ -377,6 +383,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     textEditorTarget: textEditing.target,
     textDraft: textEditing.draft,
     textSessionId: textEditing.sessionId,
+    textSelectAll: textEditing.selectAll,
     textPresentations,
     hiddenTextElementIds,
     marqueeRect, snapGuides,

@@ -9,7 +9,8 @@ export function appendInsertedObjects(slide: LayoutSlideNode, additions: readonl
 function toLayoutNode(object: SlidesInsertedObject): LayoutNode {
   const base = { editKey: object.editKey, position: { ...object.box } };
   switch (object.kind) {
-    case 'text': return { ...base, _type: 'Text', content: typeof object.content === 'string' ? [{ text: object.content, style: object.style }] : object.content.map(run => ({ ...run, style: { ...object.style, ...run.style } })),
+    // 文字框宽度固定、高度随内容增长；插入时的高度只作为最小高度。
+    case 'text': return { editKey: object.editKey, x: object.box.x, y: object.box.y, width: object.box.w, minHeight: object.box.h, _type: 'Text', content: typeof object.content === 'string' ? [{ text: object.content, style: object.style }] : object.content.map(run => ({ ...run, style: { ...object.style, ...run.style } })),
       fontSize: object.style.fontSize, fontFamily: object.style.fontFamily, color: object.style.color,
       fontWeight: object.style.bold ? 'bold' : 'normal', fontStyle: object.style.italic ? 'italic' : 'normal',
       textDecoration: object.style.underline ? 'underline' : 'none', textAlign: object.style.align,

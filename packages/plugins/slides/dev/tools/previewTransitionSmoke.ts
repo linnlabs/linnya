@@ -272,13 +272,19 @@ async function verifyShapeTextEditing(window: BrowserWindow): Promise<void> {
   await evaluate('window.shapeTextEditingSmoke.assertInput("新会话草稿"); window.shapeTextEditingSmoke.assertSubmitted(2); window.shapeTextEditingSmoke.resolve(1, false)');
   await settle();
   await evaluate('window.shapeTextEditingSmoke.assertInput("新会话草稿"); window.shapeTextEditingSmoke.assertFailedDraft("B pending")');
+  // Esc 结束输入并保留文字：新会话草稿照常提交，失败草稿仍可重新打开重试。
   window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
   window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
   await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertSubmitted(3)');
   await click('second', true);
   await evaluate('window.shapeTextEditingSmoke.assertInput("B pending")');
   await enter(true);
-  await evaluate('window.shapeTextEditingSmoke.assertSubmitted(3); window.shapeTextEditingSmoke.resolve(2, true)');
+  await evaluate('window.shapeTextEditingSmoke.resolve(2, true)');
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.present()');
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertSubmitted(4); window.shapeTextEditingSmoke.resolve(3, true)');
   await settle();
   await evaluate('window.shapeTextEditingSmoke.present()');
   await settle();
@@ -288,7 +294,7 @@ async function verifyShapeTextEditing(window: BrowserWindow): Promise<void> {
   await enter();
   await evaluate('window.shapeTextEditingSmoke.assertInput("Plain text\\n")');
   await enter(true);
-  await evaluate('window.shapeTextEditingSmoke.assertTextCommand(3, "Plain text\\n"); window.shapeTextEditingSmoke.resolve(3, true)');
+  await evaluate('window.shapeTextEditingSmoke.assertTextCommand(4, "Plain text\\n"); window.shapeTextEditingSmoke.resolve(4, true)');
   await settle(); await evaluate('window.shapeTextEditingSmoke.present()'); await settle();
   await evaluate('window.shapeTextEditingSmoke.assertSettled()');
   // 输入交接后立刻拉伸：无焦点文字也必须实时跟随，并在取消时回到原位置。

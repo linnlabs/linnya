@@ -1,9 +1,10 @@
-import type { SlidesAuthoringEditRef, SlidesManualEditHistoryStatus } from '@plugin/slides/shared/authoringEditing';
+import type { SlidesManualEditHistoryStatus } from '@plugin/slides/shared/authoringEditing';
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
 import type {
   ManualEditableTarget,
   ManualEditingTranslationPreview,
+  ManualEditRevealRequest,
 } from '../definitions/manualEditingTypes';
 import type { ManualEditQueueEntry, ManualEditSubmissionState } from '../definitions/manualEditQueue';
 import { ownsManualPageOrder } from '../functions/manualEditPageOrder';
@@ -16,8 +17,8 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   const selectedTarget = computed(() => selectedTargets.value[selectedTargets.value.length - 1] ?? null);
   const selectionPath = shallowRef<readonly ManualEditableTarget[]>([]);
   const translationPreview = shallowRef<ManualEditingTranslationPreview | null>(null);
-  /** 撤销/重做呈现后要在当前页重新选中的作者对象；由画布交互解析成目标后清空。 */
-  const revealRequest = shallowRef<readonly SlidesAuthoringEditRef[] | null>(null);
+  /** 撤销、插入或粘贴呈现后要在当前页选中的作者对象；由画布交互解析成目标后清空。 */
+  const revealRequest = shallowRef<ManualEditRevealRequest | null>(null);
   const queue = shallowRef<readonly ManualEditQueueEntry[]>([]);
   const submission = shallowRef<ManualEditSubmissionState>({ phase: 'idle' });
   const presentedRevision = ref<number | null>(null);
@@ -31,6 +32,13 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   const pendingPageOperation = computed(() => queue.value.some(entry => ownsManualPageOrder(entry.intent.operation))
     || (activeIntent.value !== null && ownsManualPageOrder(activeIntent.value.operation)));
   const pendingTranslations = computed(() => activeIntent.value?.translationPreviews ?? []);
+  /** 已排队或提交中、尚未呈现的插入对象外框；画布先画占位，正式帧到达后由真实对象取代。 */
+  const pendingInsertions = computed(() => [...activeIntent.value ? [activeIntent.value] : [], ...queuedIntents.value]
+    .flatMap(({ operation }) => {
+      if (operation.op !== 'insert_objects') return [];
+      const slideIndex = operation.index;
+      return operation.objects.map(object => ({ slideIndex, editKey: object.editKey, box: object.box }));
+    }));
   const pendingVisuals = computed(() => activeIntent.value?.visualPreviews ?? []);
   const submitting = computed(() => submission.value.phase === 'submitting');
   const pendingPresentationRevision = computed(() => submission.value.phase === 'awaiting_frame'
@@ -68,8 +76,8 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     selectionPath.value = path;
   }
 
-  function requestReveal(targets: readonly SlidesAuthoringEditRef[] | null): void {
-    revealRequest.value = targets;
+  function requestReveal(request: ManualEditRevealRequest | null): void {
+    revealRequest.value = request;
   }
 
   function setTranslationPreview(preview: ManualEditingTranslationPreview | null): void {
@@ -124,6 +132,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     revealRequest,
     requestReveal,
     pendingTranslations,
+    pendingInsertions,
     pendingVisuals,
     queuedIntents,
     pendingPageOperation,

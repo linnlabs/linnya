@@ -33,6 +33,7 @@
         :marquee-rect="props.marqueeRect"
         :manual-selected-targets="props.manualSelectedTargets"
         :snap-guides="props.snapGuides"
+        :pending-insertions="props.pendingInsertions"
         :slide-size="props.slideSize"
       />
     </v-stage>
@@ -75,6 +76,7 @@ const props = defineProps<{
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
   manualSelectedTargets?: readonly ManualEditableTarget[];
   snapGuides?: readonly { readonly axis: 'x' | 'y'; readonly position: number }[];
+  pendingInsertions?: readonly { readonly editKey: string; readonly box: { readonly x: number; readonly y: number; readonly w: number; readonly h: number } }[];
   hiddenTextElementIds?: ReadonlySet<string>;
   manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();

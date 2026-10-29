@@ -14,7 +14,7 @@
 - `InlineTextEditor` 按目标选择富文本或纯文本视图。独立 Text 的编辑代码与 ProseMirror 被拆为异步 chunk；普通预览及只读 CLI 不加载该编辑依赖。
 - 非空文字选区输出 viewport 坐标及当前字号／颜色，混合值为 null。Stage 转为 pane 坐标，使用 elementProperties 的同一个工具条、下拉列表和颜色组件，只显示文字操作。光标状态不弹工具条。
 - 编辑器和当前工具条组成一个焦点区域。点击字号、色板、子菜单不结束会话；编辑器失焦后仍用同一 PM selection 显示选中范围。点击外部先交接工具条数字的 change，再提交完整正文，最后让画布处理该次选择。焦点回执不能重开或覆盖输入会话。
-- 选区格式事务进入本地撤销历史；Cmd/Ctrl+Z、Shift+Cmd/Ctrl+Z 可撤销／重做。Ctrl/Cmd+Enter 提交整个会话，Escape 丢弃未交接草稿。输入法期间不提交；compositionend 在 PM 的正式 DOM observer 接纳最终 mutation 后通知上层。
+- 选区格式事务进入本地撤销历史；Cmd/Ctrl+Z、Shift+Cmd/Ctrl+Z 可撤销／重做。Ctrl/Cmd+Enter 提交整个会话，Escape 同样结束输入并交接草稿。新插入的文字框以全选打开，直接输入即替换占位文字。输入法期间不提交；compositionend 在 PM 的正式 DOM observer 接纳最终 mutation 后通知上层。
 - Shape textarea 保留已验收的 Enter、IME、blur 和提交行为；本期不开放 Shape 分段样式。
 - `TextDraftPreview` 按同样的作者 run 样式显示待保存／失败正文，不接受焦点或指针。正式帧安装后撤下；重入读取最新草稿。唯一蓝色外边框仍由 Canvas 选框拥有。
 - Shape 缩放预览复用 shared/textLayout 的正式测量事实同步重排，与输入视图的临时 DOM 排版职责独立。

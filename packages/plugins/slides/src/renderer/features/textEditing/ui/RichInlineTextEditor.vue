@@ -14,7 +14,7 @@ import type { InlineTextSelection } from '../definitions/richTextEditor';
 import { createInlineTextEditorStyle } from '../functions/createInlineTextEditorStyle';
 import { createRichTextEditor } from '../orchestration/createRichTextEditor';
 const props = defineProps<{ target: TextEditingTarget; modelValue: SlidesEditableTextContent; slideLeft: number; slideTop: number;
-  renderScale: number; label: string; toolbarElement?: HTMLElement | null }>();
+  renderScale: number; label: string; toolbarElement?: HTMLElement | null; selectAll?: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [value: SlidesEditableTextContent]; commit: []; 'composition-start': []; 'composition-end': [];
   escape: [event: KeyboardEvent]; 'commit-shortcut': [event: KeyboardEvent]; selection: [selection: InlineTextSelection | null] }>();
 const host = ref<HTMLElement | null>(null);
@@ -34,7 +34,7 @@ function outsideFocus(event: FocusEvent): void { if (!owns(event.target)) emit('
 function refresh(): void { editor?.refresh(); }
 onMounted(() => {
   if (!host.value) return;
-  editor = createRichTextEditor({ element: host.value, content: props.modelValue, target: () => props.target, label: props.label,
+  editor = createRichTextEditor({ element: host.value, content: props.modelValue, target: () => props.target, label: props.label, selectAll: props.selectAll,
     update: value => emit('update:modelValue', value), selection: value => emit('selection', value),
     compositionStart: () => emit('composition-start'), compositionEnd: () => emit('composition-end'),
     escape: event => emit('escape', event), commit: event => emit('commit-shortcut', event) });

@@ -14,6 +14,8 @@ export type TextInputSession =
       readonly baseline: SlidesEditableTextContent;
       readonly composing: boolean;
       readonly finishRequested: boolean;
+      /** 新插入的文字框以全选打开，直接输入即替换占位文字。 */
+      readonly selectAll?: boolean;
     };
 
 /** 已交接队列的文字只保留显示/恢复草稿，不再持有输入焦点。 */

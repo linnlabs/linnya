@@ -7,6 +7,7 @@ export type {
   ManualEditingTranslationPreview,
   ManualEditingVisualOperation,
   ManualEditingVisualPreview,
+  ManualEditRevealRequest,
 } from './definitions/manualEditingTypes';
 export {
   collectManualEditableTargets,

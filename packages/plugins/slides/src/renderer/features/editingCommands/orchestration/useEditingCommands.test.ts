@@ -40,7 +40,7 @@ describe('useEditingCommands history', () => {
     settle({ status: 'presented', commandId: 'undo', revision: 3, focus: { slideIndex: 2, targets } });
     await running;
     expect(slides.currentSlideIndex).toBe(2);
-    expect(manual.revealRequest).toEqual(targets);
+    expect(manual.revealRequest).toEqual({ targets });
     unmount();
   });
 });

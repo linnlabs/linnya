@@ -641,9 +641,9 @@ describe('useSlideEditingInteraction', () => {
 
   it('reselects the authoring targets an undo asks to reveal, at their own level', async () => {
     const { interaction } = createInteraction(vi.fn(), tripleSlide);
-    useSlidesManualEditingStore().requestReveal([
+    useSlidesManualEditingStore().requestReveal({ targets: [
       { slideKey: 'overview', editKey: 'card1Label' }, { slideKey: 'overview', editKey: 'card1Note' }, { slideKey: 'overview', editKey: 'gone' },
-    ]);
+    ] });
     await nextTick();
     expect(interaction.selectedTargets.value.map(target => target.authoringRef.editKey)).toEqual(['card1Label', 'card1Note']);
     expect(interaction.selectionPath.value.map(target => target.authoringRef.editKey)).toEqual(['card1']);
@@ -660,6 +660,15 @@ describe('useSlideEditingInteraction', () => {
     expect(submitOperation).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
       operation: expect.objectContaining({ op: 'translate_by', delta: { dx: 0.0729, dy: 0 } }),
     }));
+  });
+
+  it('opens a newly inserted text box for input with its placeholder selected', async () => {
+    const { interaction } = createInteraction(vi.fn());
+    useSlidesManualEditingStore().requestReveal({ targets: [{ editKey: 'headline' }], editText: true });
+    await nextTick();
+    expect(interaction.selectedTarget.value?.authoringRef.editKey).toBe('headline');
+    expect(interaction.textEditorTarget.value?.elementId).toBe('authoring-overview-headline');
+    expect(interaction.textSelectAll.value).toBe(true);
   });
 });
 
