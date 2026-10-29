@@ -21,8 +21,8 @@ import { WriteFileTool } from 'src/tools/workspace/write_file/WriteFileTool';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import {
   MarkdownDocumentService,
-  MarkdownNormalizationService,
   buildMarkdownDocumentFromText,
+  markdownTextDocumentBuilder,
 } from 'src/domains/markdown';
 import { BaseTool, type ToolContext } from 'src/tools/types';
 import { AskTool } from 'src/tools/agent_control/ask/AskTool';
@@ -353,7 +353,7 @@ describe('durable root Flow continuation, production Audit off', () => {
         const documents = new MarkdownDocumentService(first.db);
         const initial = await buildMarkdownDocumentFromText({
           markdown: 'Existing document',
-          normalizer: new MarkdownNormalizationService(documents),
+          normalizer: markdownTextDocumentBuilder,
           resolveCitationSources: async () => [],
         });
         documents.createDocument(id, initial.content);
@@ -385,7 +385,7 @@ describe('durable root Flow continuation, production Audit off', () => {
       const documents = new MarkdownDocumentService(first.db);
       const userContent = await buildMarkdownDocumentFromText({
         markdown: 'User later content',
-        normalizer: new MarkdownNormalizationService(documents),
+        normalizer: markdownTextDocumentBuilder,
         resolveCitationSources: async () => [],
       });
       const userVersion = documents.updateDocument(node.id, userContent.content);

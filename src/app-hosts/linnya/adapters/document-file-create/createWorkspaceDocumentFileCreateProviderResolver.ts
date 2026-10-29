@@ -11,7 +11,7 @@ import {
   buildMarkdownDocumentFromText,
   buildMarkdownCitationReadProjection,
   countMarkdownTextCharacters,
-  MarkdownNormalizationService,
+  markdownTextDocumentBuilder,
   prepareMarkdownImageInput,
 } from '../../../../domains/markdown';
 import {
@@ -92,7 +92,6 @@ function createMarkdownFileCreateProvider(params: {
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileCreateResult>;
 }): WorkspaceDocumentFileCreateProvider {
   const documentStore = createMarkdownDocumentStore(params.db);
-  const normalizer = new MarkdownNormalizationService(documentStore);
   return {
     displayName: 'Markdown',
     enabled: true,
@@ -105,7 +104,7 @@ function createMarkdownFileCreateProvider(params: {
       const built = await buildMarkdownDocumentFromText({
         markdown: imageInput.markdown,
         imageSources: imageInput.imageSources,
-        normalizer,
+        normalizer: markdownTextDocumentBuilder,
         resolveCitationSources: refs =>
           requireCitationSourceResolver(params.context).resolveSources(refs),
         resolveCitationSourcesByUrl: urls =>

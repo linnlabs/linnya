@@ -900,7 +900,7 @@ if (docJson) {
 ```
 
 **已有消费场景：**
-- `editorService.js` 的"首开迁移"（rawMarkdownSource 占位块 → 完整块结构 JSON）
+- 当前没有生产消费方。旧的"首开迁移"（`rawMarkdownSource` 占位块 → 完整块结构 JSON）已经删除：后端新建文档时直接提交结构化 JSON，已存正文只按严格 schema 读取。
 
 ### 导出方向（Tiptap → Markdown）
 

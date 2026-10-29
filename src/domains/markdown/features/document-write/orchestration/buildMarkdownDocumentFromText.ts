@@ -5,6 +5,7 @@ import {
   attachCitationNodesToDocJson,
   collectMarkdownLinkHrefs,
   getDefaultContent,
+  importMarkdownToDocJson,
   type MarkdownDocJson,
 } from '../../normalization';
 import {
@@ -17,6 +18,11 @@ import {
 export interface MarkdownTextDocumentBuilder {
   readonly buildStructuredDocFromMarkdown: (markdown: string) => Promise<MarkdownDocJson | null>;
 }
+
+/** 正式导入链：经 parser-wasm 把 Markdown 编译成通过严格 schema 的 doc JSON。 */
+export const markdownTextDocumentBuilder: MarkdownTextDocumentBuilder = {
+  buildStructuredDocFromMarkdown: async markdown => (await importMarkdownToDocJson(markdown)).docJson,
+};
 
 /** 把外部 Markdown 文本编译成带稳定 Block/Citation 身份的正式文档结构。 */
 export async function buildMarkdownDocumentFromText(params: {

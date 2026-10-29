@@ -8,7 +8,7 @@ import { AUDIO_BLOCK_SCHEMAS } from 'src/domains/markdown/features/document-stor
 import { BLOCK_HISTORY_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/block-history.schema';
 import { IMAGE_BLOCK_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/image.schema';
 import { PENDING_REVISION_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/pending-revision.schema';
-import { MarkdownDocumentService } from 'src/domains/markdown';
+import { MarkdownDocumentService, readMarkdownEditorDocument } from 'src/domains/markdown';
 
 function setup(): {
   readonly db: Database.Database;
@@ -155,6 +155,31 @@ describe('MarkdownDocumentService', () => {
       content: [{ type: 'paragraph', content: [] }],
     }))).toThrow('未知 node "paragraph"');
     expect(service.getLatestVersion(documentId)).toBeNull();
+  });
+
+  it('读回时同样严格校验：旧 rawMarkdownSource 占位正文按旧格式拒绝，读取不做转换', async () => {
+    const { db, service, documentId } = setup();
+    // 现行保存入口拒绝占位属性；早期遗留的版本行只能直接写入。
+    db.prepare(`
+      INSERT INTO document_versions (id, node_id, version_number, content_json, char_count, created_at)
+      VALUES ('legacy-placeholder', ?, 1, ?, 0, 1)
+    `).run(documentId, JSON.stringify({
+      type: 'doc',
+      content: [{
+        type: 'rootBlock',
+        attrs: { id: 'root-legacy01' },
+        content: [{
+          type: 'baseBlock',
+          attrs: { id: 'block-legacy01', blockType: 'base', rawMarkdownSource: '# 标题' },
+          content: [],
+        }],
+      }],
+    }));
+
+    expect(() => service.getDocument(documentId)).toThrow('未知属性 "rawMarkdownSource"');
+    await expect(readMarkdownEditorDocument({ documentId, documentStore: service }))
+      .rejects.toThrow('未知属性 "rawMarkdownSource"');
+    expect(service.getLatestVersion(documentId)?.version_number).toBe(1);
   });
 
   it('保存 Tiptap v3 表格单元格的 align 属性', () => {

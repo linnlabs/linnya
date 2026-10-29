@@ -2,7 +2,6 @@ import { createMarkdownDocumentStore } from '../../application/markdown-image-as
 import type Database from 'better-sqlite3';
 import {
   createMarkdownReadDatabase,
-  MarkdownNormalizationService,
   readMarkdownDocumentView,
 } from '../../../../domains/markdown';
 import type {
@@ -15,7 +14,6 @@ export function createMarkdownDocumentTypeReadProviderResolver(params: {
   readonly db: Database.Database;
 }): WorkspaceDocumentTypeReadProviderResolver {
   const store = createMarkdownDocumentStore(params.db);
-  const normalizer = new MarkdownNormalizationService(store);
   const readDb = createMarkdownReadDatabase(params.db);
   return (documentType) => (
     documentType === 'document' || documentType === 'markdown'
@@ -28,7 +26,6 @@ export function createMarkdownDocumentTypeReadProviderResolver(params: {
               request,
               readDb,
               store,
-              normalizer,
             });
             const citationWindow = projection.citationWindow
               ? buildDocumentCitationWindowOutput(projection.citationWindow)
