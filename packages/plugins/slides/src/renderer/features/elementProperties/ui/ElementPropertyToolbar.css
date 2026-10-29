@@ -211,3 +211,17 @@
   color: var(--color-accent-text);
   font-weight: var(--font-weight-semibold);
 }
+
+.slides-element-property-toolbar .slides-element-property-toolbar__caret {
+  width: 12px;
+  height: 12px;
+  margin-left: calc(var(--space-1) * -1);
+  color: var(--color-text-tertiary);
+}
+
+.slides-element-property-toolbar .slides-element-property-toolbar__count {
+  padding: 0 var(--space-1);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  white-space: nowrap;
+}

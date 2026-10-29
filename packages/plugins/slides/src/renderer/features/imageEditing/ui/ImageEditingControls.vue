@@ -3,20 +3,32 @@
     <ToolbarButton
       :label="message('replaceImage')"
       :disabled="busy"
+      data-property="replace-image"
       @click="input?.click()"
     >
-      {{ message('replaceImage') }}
+      <ImageIcon class="slides-image-editing__icon" />
+      <span>{{ message('replace') }}</span>
     </ToolbarButton>
-    <CustomSelect
-      :model-value="null"
-      :options="fitOptions"
-      :placeholder="message('imageFit')"
-      :disabled="busy"
-      variant="minimal"
-      :bordered="false"
-      :trigger-aria-label="message('imageFit')"
-      @update:model-value="setFit"
-    />
+    <div
+      class="slides-image-editing__fit"
+      role="radiogroup"
+      :aria-label="message('imageFit')"
+    >
+      <button
+        v-for="value in FITS"
+        :key="value"
+        type="button"
+        role="radio"
+        class="slides-image-editing__fit-option"
+        :class="{ 'slides-image-editing__fit-option--active': fit === value }"
+        :aria-checked="fit === value"
+        :disabled="busy"
+        :data-fit="value"
+        @click="setFit(value)"
+      >
+        {{ message(value) }}
+      </button>
+    </div>
     <input
       ref="input"
       type="file"
@@ -27,12 +39,13 @@
   </ToolbarGroup>
 </template>
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { ToolbarButton, ToolbarGroup, CustomSelect } from '@linnya/renderer-ui';
+import { ref } from 'vue';
+import { ToolbarButton, ToolbarGroup } from '@linnya/renderer-ui';
+import { ImageIcon } from '@linnya/renderer-ui/icons';
 import { useImageEditing } from '../orchestration/useImageEditing';
+const FITS = ['contain', 'cover'] as const;
 const input = ref<HTMLInputElement | null>(null);
-const { target, busy, message, setFit, replaceFile } = useImageEditing();
-const fitOptions = computed(() => [{ value: 'contain', label: message('contain') }, { value: 'cover', label: message('cover') }]);
+const { target, fit, busy, message, setFit, replaceFile } = useImageEditing();
 function replaceImage(event: Event): void {
   if (!(event.target instanceof HTMLInputElement)) return;
   const file = event.target.files?.[0]; event.target.value = '';

@@ -1,14 +1,17 @@
 <template>
   <ToolbarGroup :aria-label="message('slides.insert.label')">
     <ToolbarButton
-      v-for="kind in kinds"
-      :key="kind"
-      :label="message(`slides.insert.${kind}`)"
+      v-for="item in kinds"
+      :key="item.kind"
+      :label="message(`slides.insert.${item.kind}`)"
       :disabled="!available"
-      :data-insert="kind"
-      @click="insertSimple(kind)"
+      :data-insert="item.kind"
+      @click="insertSimple(item.kind)"
     >
-      {{ message(`slides.insert.${kind}`) }}
+      <component
+        :is="item.icon"
+       
+      />
     </ToolbarButton>
     <ToolbarButton
       :label="message('slides.insert.image')"
@@ -16,7 +19,7 @@
       data-insert="image"
       @click="input?.click()"
     >
-      {{ message('slides.insert.image') }}
+      <ImageIcon />
     </ToolbarButton>
     <input
       ref="input"
@@ -30,8 +33,14 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { ToolbarGroup, ToolbarButton } from '@linnya/renderer-ui';
+import { ImageIcon } from '@linnya/renderer-ui/icons';
+import { EllipseIcon, InsertTextIcon, RectangleIcon } from '../../../shared/icons';
 import { useElementInsertion } from '../orchestration/useElementInsertion';
-const kinds = ['text', 'rect', 'ellipse'] as const;
+const kinds = [
+  { kind: 'text', icon: InsertTextIcon },
+  { kind: 'rect', icon: RectangleIcon },
+  { kind: 'ellipse', icon: EllipseIcon },
+] as const;
 const input = ref<HTMLInputElement | null>(null);
 const { available, message, insertSimple, insertImage } = useElementInsertion();
 function onFile(event: Event): void {
@@ -41,3 +50,4 @@ function onFile(event: Event): void {
   if (file) void insertImage(file);
 }
 </script>
+

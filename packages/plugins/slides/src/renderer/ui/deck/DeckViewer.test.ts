@@ -61,6 +61,8 @@ vi.mock('@linnya/renderer-ui/icons', () => ({
   ChevronIcon: { template: '<span />' },
   EditIcon: { template: '<span />' },
   MinusIcon: { template: '<span />' },
+  OkIcon: { template: '<span />' },
+  ImageIcon: { template: '<span />' },
   SelectObjectIcon: { template: '<span />' },
 }));
 

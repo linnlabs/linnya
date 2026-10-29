@@ -1,0 +1,11 @@
+<!-- 排列：临时图标，线宽与 renderer-ui 线性图标一致；正式图标按 Fluent UI 改版后替换。 -->
+<template>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <rect x="4.5" y="4.5" width="10" height="8" rx="1.5" fill="none" stroke="currentColor" /><rect x="9.5" y="11.5" width="10" height="8" rx="1.5" fill="currentColor" fill-opacity=".14" stroke="currentColor" />
+  </svg>
+</template>

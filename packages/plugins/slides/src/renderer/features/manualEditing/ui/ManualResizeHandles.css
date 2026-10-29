@@ -35,3 +35,30 @@
 @media (prefers-reduced-motion: reduce) {
   .slides-manual-resize-handle::after { transition: none; }
 }
+
+/* 文字框宽度手柄：左右竖条，提示只能横向拖动。 */
+.slides-manual-resize-handle--bar::after {
+  inset: 2px 6px;
+  border-radius: 3px;
+}
+
+.slides-manual-text-width-ghost {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px dashed var(--color-accent, #2563eb);
+  pointer-events: none;
+}
+
+.slides-manual-text-width-ghost__label {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--color-text-primary);
+  color: var(--color-bg-default);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}

@@ -1,16 +1,45 @@
+/* 舞台顶部居中的文稿命令条：与右下缩放条同一套表面，不进入布局，幻灯片位置不随它变化。 */
 .slides-editing-command-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 10;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-md);
-  background: var(--color-bg-surface);
+  gap: var(--space-1);
+  padding: 4px;
+  border-radius: 10px;
+  background-color: var(--color-bg-default);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 6%, transparent),
+    0 1px 3px var(--shadow-color-xs),
+    0 8px 24px -4px var(--shadow-color-md);
   color: var(--color-text-primary);
-  flex-shrink: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
+
+/* 插入按钮来自 elementInsertion，图标尺寸由所在命令条统一。 */
+.slides-editing-command-bar .linnya-toolbar-button svg {
+  width: 16px;
+  height: 16px;
+}
+
 .slides-editing-command-bar__status {
-  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-1-5) 0 var(--space-1);
   color: var(--color-text-tertiary);
   font-size: var(--font-size-xs);
-  white-space: nowrap;
+}
+
+.slides-editing-command-bar__status-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-success);
+}
+
+.slides-editing-command-bar__status--failed {
+  color: var(--color-error);
 }

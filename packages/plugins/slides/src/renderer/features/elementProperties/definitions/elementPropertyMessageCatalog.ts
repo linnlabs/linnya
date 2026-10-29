@@ -8,6 +8,30 @@ export type ElementPropertyMessageKey =
   | 'slides.elementProperties.mixed'
   | 'slides.elementProperties.label'
   | 'slides.elementProperties.askAi'
+  | 'slides.elementProperties.textAlign.left'
+  | 'slides.elementProperties.textAlign.center'
+  | 'slides.elementProperties.textAlign.right'
+  | 'slides.elementProperties.arrange'
+  | 'slides.elementProperties.arrange.toPage'
+  | 'slides.elementProperties.arrange.toSelection'
+  | 'slides.elementProperties.arrange.left'
+  | 'slides.elementProperties.arrange.center'
+  | 'slides.elementProperties.arrange.right'
+  | 'slides.elementProperties.arrange.top'
+  | 'slides.elementProperties.arrange.middle'
+  | 'slides.elementProperties.arrange.bottom'
+  | 'slides.elementProperties.arrange.distributeX'
+  | 'slides.elementProperties.arrange.distributeY'
+  | 'slides.elementProperties.layer'
+  | 'slides.elementProperties.layer.front'
+  | 'slides.elementProperties.layer.forward'
+  | 'slides.elementProperties.layer.backward'
+  | 'slides.elementProperties.layer.back'
+  | 'slides.elementProperties.more'
+  | 'slides.elementProperties.copy'
+  | 'slides.elementProperties.duplicate'
+  | 'slides.elementProperties.copyUnavailable'
+  | 'slides.elementProperties.selectionCount'
   | 'slides.elementProperties.size'
   | 'slides.elementProperties.deleteElement'
   | 'slides.elementProperties.sizeHint'
@@ -46,6 +70,30 @@ export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
   'slides.elementProperties.mixed': '混合',
   'slides.elementProperties.label': '元素属性',
   'slides.elementProperties.askAi': '让 AI 修改（⌘K）',
+  'slides.elementProperties.textAlign.left': '文字左对齐',
+  'slides.elementProperties.textAlign.center': '文字居中',
+  'slides.elementProperties.textAlign.right': '文字右对齐',
+  'slides.elementProperties.arrange': '排列',
+  'slides.elementProperties.arrange.toPage': '对齐到页面',
+  'slides.elementProperties.arrange.toSelection': '对齐选中的对象',
+  'slides.elementProperties.arrange.left': '左对齐',
+  'slides.elementProperties.arrange.center': '水平居中',
+  'slides.elementProperties.arrange.right': '右对齐',
+  'slides.elementProperties.arrange.top': '顶端对齐',
+  'slides.elementProperties.arrange.middle': '垂直居中',
+  'slides.elementProperties.arrange.bottom': '底端对齐',
+  'slides.elementProperties.arrange.distributeX': '水平等距分布',
+  'slides.elementProperties.arrange.distributeY': '垂直等距分布',
+  'slides.elementProperties.layer': '图层',
+  'slides.elementProperties.layer.front': '置于顶层',
+  'slides.elementProperties.layer.forward': '上移一层',
+  'slides.elementProperties.layer.backward': '下移一层',
+  'slides.elementProperties.layer.back': '置于底层',
+  'slides.elementProperties.more': '更多',
+  'slides.elementProperties.copy': '复制',
+  'slides.elementProperties.duplicate': '创建副本',
+  'slides.elementProperties.copyUnavailable': '带复杂样式或位于组内的对象请复制整页',
+  'slides.elementProperties.selectionCount': '{count} 个对象',
   'slides.elementProperties.size': '尺寸',
   'slides.elementProperties.deleteElement': '删除元素',
   'slides.elementProperties.sizeHint': '拖动右侧、底部或右下角手柄调整尺寸 · 英寸',
@@ -80,6 +128,30 @@ const ELEMENT_PROPERTY_EN_US_MESSAGES = {
   'slides.elementProperties.mixed': 'Mixed',
   'slides.elementProperties.label': 'Element properties',
   'slides.elementProperties.askAi': 'Ask AI to edit (⌘K)',
+  'slides.elementProperties.textAlign.left': 'Align text left',
+  'slides.elementProperties.textAlign.center': 'Center text',
+  'slides.elementProperties.textAlign.right': 'Align text right',
+  'slides.elementProperties.arrange': 'Arrange',
+  'slides.elementProperties.arrange.toPage': 'Align to slide',
+  'slides.elementProperties.arrange.toSelection': 'Align selection',
+  'slides.elementProperties.arrange.left': 'Align left',
+  'slides.elementProperties.arrange.center': 'Align center',
+  'slides.elementProperties.arrange.right': 'Align right',
+  'slides.elementProperties.arrange.top': 'Align top',
+  'slides.elementProperties.arrange.middle': 'Align middle',
+  'slides.elementProperties.arrange.bottom': 'Align bottom',
+  'slides.elementProperties.arrange.distributeX': 'Distribute horizontally',
+  'slides.elementProperties.arrange.distributeY': 'Distribute vertically',
+  'slides.elementProperties.layer': 'Layer',
+  'slides.elementProperties.layer.front': 'Bring to front',
+  'slides.elementProperties.layer.forward': 'Bring forward',
+  'slides.elementProperties.layer.backward': 'Send backward',
+  'slides.elementProperties.layer.back': 'Send to back',
+  'slides.elementProperties.more': 'More',
+  'slides.elementProperties.copy': 'Copy',
+  'slides.elementProperties.duplicate': 'Duplicate',
+  'slides.elementProperties.copyUnavailable': 'Copy the slide to keep complex or grouped objects intact',
+  'slides.elementProperties.selectionCount': '{count} objects',
   'slides.elementProperties.size': 'Size',
   'slides.elementProperties.deleteElement': 'Delete element',
   'slides.elementProperties.sizeHint': 'Drag the right, bottom or bottom-right handle · inches',

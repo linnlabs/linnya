@@ -32,16 +32,21 @@
             <button
               type="button"
               class="deck-filmstrip__item"
-              :class="{ 'deck-filmstrip__item--current': item.index === currentSlideIndex }"
+              :class="{
+                'deck-filmstrip__item--current': item.index === currentSlideIndex,
+                'deck-filmstrip__item--dragging': item.index === draggedIndex,
+                'deck-filmstrip__item--drop-before': item.index === dropIndex && draggedIndex !== null && draggedIndex > item.index,
+                'deck-filmstrip__item--drop-after': item.index === dropIndex && draggedIndex !== null && draggedIndex < item.index,
+              }"
               :data-slide-index="item.index"
               :tabindex="item.index === currentSlideIndex ? 0 : -1"
               :aria-current="item.index === currentSlideIndex ? 'true' : undefined"
               :aria-label="deckNavigatorMessage('slides.navigator.slide.label', { number: item.index + 1 })"
               :draggable="reorderEnabled"
               @dragstart="startDrag($event, item.index)"
-              @dragover="allowDrop($event)"
+              @dragover="allowDrop($event, item.index)"
               @drop="dropSlide($event, item.index)"
-              @dragend="draggedIndex = null"
+              @dragend="endDrag"
               @click="selectSlide(item.index)"
               @contextmenu.prevent.stop="emit('slideContextMenu', $event, item.index)"
             >
@@ -84,20 +89,29 @@ import SlideThumbnail from './SlideThumbnail.vue';
 const props = defineProps<{ reorderEnabled?: boolean }>();
 const emit = defineEmits<{ slideContextMenu: [event: MouseEvent, index: number]; moveSlide: [index: number, toIndex: number] }>();
 const draggedIndex = ref<number | null>(null);
+/** 拖到哪一页上：放下后被拖的页占据这个位置，插入线画在它被挤开的一侧。 */
+const dropIndex = ref<number | null>(null);
 function startDrag(event: DragEvent, index: number): void {
   if (!props.reorderEnabled || !event.dataTransfer) return;
   draggedIndex.value = index;
   event.dataTransfer.effectAllowed = 'move';
   event.dataTransfer.setData('application/x-linnya-slide', String(index));
 }
-function allowDrop(event: DragEvent): void {
-  if (props.reorderEnabled && draggedIndex.value !== null) { event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'; }
+function allowDrop(event: DragEvent, index: number): void {
+  if (!props.reorderEnabled || draggedIndex.value === null) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  dropIndex.value = index === draggedIndex.value ? null : index;
+}
+function endDrag(): void {
+  draggedIndex.value = null;
+  dropIndex.value = null;
 }
 function dropSlide(event: DragEvent, index: number): void {
   if (!props.reorderEnabled || draggedIndex.value === null) return;
   event.preventDefault();
-  emit('moveSlide', draggedIndex.value, index);
-  draggedIndex.value = null;
+  if (draggedIndex.value !== index) emit('moveSlide', draggedIndex.value, index);
+  endDrag();
 }
 
 const VIEWPORT_INSET_PX = 16;
@@ -105,7 +119,7 @@ const ENTRANCE_STAGGER_SECONDS = 0.04;
 
 const slidesStore = useSlidesStore();
 const thumbnailStore = useSlidesThumbnailStore();
-watch(() => [slidesStore.currentDeckId, slidesStore.documentBuildState], () => { draggedIndex.value = null; });
+watch(() => [slidesStore.currentDeckId, slidesStore.documentBuildState], endDrag);
 const { deckPreview, currentSlideIndex } = storeToRefs(slidesStore);
 const { deckNavigatorMessage } = useDeckNavigatorLocalization();
 

@@ -43,6 +43,12 @@ export const INSPECTOR_DEFAULT_WIDTH = 280;
 export const SLIDE_STAGE_SCROLL_GUTTER = 48;
 
 /**
+ * 适应窗口时的留白（px）。上下各留出顶部命令条与右下缩放条的高度，
+ * 浮动工具不遮挡幻灯片，且是否可编辑都算出同一个缩放。
+ */
+export const SLIDE_STAGE_FIT_PADDING = { x: 32, y: 56 } as const;
+
+/**
  * Slides 渲染默认色契约。
  *
  * 中文说明：
@@ -69,4 +75,6 @@ export const SLIDES_RENDER_COLORS = {
   sourceSelectionMarqueeFill: 'rgba(52, 123, 69, 0.08)',
   manualEditingStroke: '#2563EB',
   manualEditingFill: 'rgba(37, 99, 235, 0.06)',
+  /** 吸附参考线；与选框蓝色区分。 */
+  manualSnapGuide: '#E8467C',
 } as const;

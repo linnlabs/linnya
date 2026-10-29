@@ -15,7 +15,7 @@ export function resolveElementPropertyToolbarPosition(
   const center = (Math.max(0, selection.left) + Math.min(viewport.width, right)) / 2;
   const above = selection.top - surface.height - 12;
   const below = bottom + 12;
-  const top = above >= EDGE_GAP ? above
+  const top = above >= Math.max(EDGE_GAP, anchor.reservedTop ?? 0) ? above
     : below + surface.height <= viewport.height - EDGE_GAP ? below
       : EDGE_GAP;
   return {

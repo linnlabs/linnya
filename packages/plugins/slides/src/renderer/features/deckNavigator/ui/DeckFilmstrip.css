@@ -110,3 +110,30 @@
     animation: none;
   }
 }
+
+/* 拖动重排：原位置变淡，落点在被挤开的一侧画强调色插入线。 */
+.deck-filmstrip .deck-filmstrip__item--dragging {
+  opacity: 0.4;
+}
+
+.deck-filmstrip .deck-filmstrip__item--drop-before::before,
+.deck-filmstrip .deck-filmstrip__item--drop-after::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 3px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+  content: '';
+  pointer-events: none;
+}
+
+.deck-filmstrip .deck-filmstrip__item--drop-before::before {
+  /* 居中落在 12px 缩略图间距里。 */
+  left: -7.5px;
+}
+
+.deck-filmstrip .deck-filmstrip__item--drop-after::before {
+  right: -7.5px;
+}

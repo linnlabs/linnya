@@ -2,7 +2,7 @@
 
 Slides renderer 是演示文稿前端 contribution，负责文档 surface、预览舞台、缩略图、工具卡片、导出入口、模板 UI、前端状态和 renderer 侧 IPC 调用。
 
-文档 surface 自上而下是编辑命令栏、主区域与底部导航（命令栏在文稿可手动编辑时显示；没有编辑模式开关）：主区域显示单页舞台或全稿平铺，右下角浮动工具条提供缩放与百分比菜单；底部导航由 [deckNavigator](../features/deckNavigator/README.md) 拥有，包含新建空白幻灯片、视图切换与横向幻灯片列表。百分比菜单见 [stageZoom](../features/stageZoom/README.md)。
+文档 surface 自上而下是主区域与底部导航；文稿可手动编辑时，舞台顶部居中浮着文稿命令条（不进入布局，没有编辑模式开关）：主区域显示单页舞台或全稿平铺，右下角浮动工具条提供缩放与百分比菜单；底部导航由 [deckNavigator](../features/deckNavigator/README.md) 拥有，包含新建空白幻灯片、视图切换与横向幻灯片列表。百分比菜单见 [stageZoom](../features/stageZoom/README.md)。
 
 renderer 是后端 `PresentationRenderModel`、`DeckPreview` 和 shared 合同的消费层，不是第二套 PPT 布局求解器。视觉或布局不一致时，优先回查 shared 合同、后端 render-model mapper、compiler 或 engine solver，再修改 renderer 映射。
 

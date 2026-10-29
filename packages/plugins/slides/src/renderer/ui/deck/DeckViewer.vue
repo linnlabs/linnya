@@ -3,7 +3,6 @@
     class="deck-viewer"
     @keydown="handleHistoryShortcut($event); handleClipboardShortcut($event)"
   >
-    <SlideEditingCommandBar v-if="manualEditingEnabled && deckPreview" />
     <div class="deck-viewer-body">
       <!-- 主区域：单页舞台或全稿平铺 -->
       <div
@@ -86,6 +85,9 @@
           </button>
         </div>
 
+        <!-- 顶部居中的文稿命令条浮在舞台上，不进入布局；幻灯片位置不随它出现或消失。 -->
+        <SlideEditingCommandBar v-if="manualEditingEnabled && deckPreview && deckViewMode === 'slide'" />
+
         <!-- 右下角缩放控件只更新自身数值，不参与文稿内容切换；平铺视图没有舞台可缩放。 -->
         <div
           v-if="deckPreview && deckViewMode === 'slide'"
@@ -166,6 +168,7 @@ import SlidesStatusState from '../shared/SlidesStatusState.vue';
 import { SlidesDraftFailureLog } from '../../features/documentBuildFailure';
 import {
   INSPECTOR_DEFAULT_WIDTH,
+  SLIDE_STAGE_FIT_PADDING,
   ZOOM_MIN,
   ZOOM_MAX,
   ZOOM_STEP,
@@ -294,6 +297,8 @@ const resolvedZoomLevel = computed(() => {
         stageViewportWidth.value,
         stageViewportHeight.value,
         deckPreview.value.slideSize,
+        'contain',
+        SLIDE_STAGE_FIT_PADDING,
       ),
     );
   }

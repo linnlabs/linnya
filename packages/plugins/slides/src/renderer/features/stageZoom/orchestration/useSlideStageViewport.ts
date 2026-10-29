@@ -2,7 +2,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import { useSlidesUiStore } from '../../../store/slidesUiStore';
-import { DEFAULT_SLIDE_SIZE, INCHES_TO_PX, KONVA_RASTER_SETTLE_DELAY_MS, SLIDE_STAGE_SCROLL_GUTTER, ZOOM_MAX, ZOOM_MIN, ZOOM_WHEEL_SENSITIVITY } from '../../../shared/constants';
+import { DEFAULT_SLIDE_SIZE, INCHES_TO_PX, KONVA_RASTER_SETTLE_DELAY_MS, SLIDE_STAGE_FIT_PADDING, SLIDE_STAGE_SCROLL_GUTTER, ZOOM_MAX, ZOOM_MIN, ZOOM_WHEEL_SENSITIVITY } from '../../../shared/constants';
 import { computeFitScale } from '../../../shared/slideScale';
 import { computeAnchoredScrollPosition, computeInitialScrollableStageScroll, computeScrollableStageLayout } from '../../../shared/stageViewport';
 import { computeWheelZoomLevel } from '../../../shared/zoomBehavior';
@@ -72,7 +72,7 @@ const scrollViewportRef = ref<HTMLElement | null>(null);
     viewportWidth.value = rect.width;
     viewportHeight.value = rect.height;
     scheduleStageOverlayGeometryUpdate();
-    const nextFitScale = computeFitScale(rect.width, rect.height, actualSlideSize.value);
+    const nextFitScale = computeFitScale(rect.width, rect.height, actualSlideSize.value, 'contain', SLIDE_STAGE_FIT_PADDING);
     fitScale.value = nextFitScale;
     if (isFitZoom.value) {
       uiStore.syncFitZoomLevel(fitScale.value);

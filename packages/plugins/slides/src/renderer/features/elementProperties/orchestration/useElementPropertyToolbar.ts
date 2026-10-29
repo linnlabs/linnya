@@ -31,8 +31,8 @@ export function useElementPropertyToolbar(options: {
     options.dropdown.value?.open(event);
     openPopover.value = kind;
     await nextTick();
-    // 字号列表由共享 CustomSelect 将焦点交给当前选项；表单面板才聚焦容器。
-    if (kind !== 'fontSize') options.popoverElement.value?.focus({ preventScroll: true });
+    // 字号与菜单列表由共享 CustomSelect 将焦点交给当前选项；表单面板才聚焦容器。
+    if (kind === 'text' || kind === 'fill' || kind === 'size') options.popoverElement.value?.focus({ preventScroll: true });
   }
   function handoffNumberInput(event: PointerEvent): void {
     const target = event.target;

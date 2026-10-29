@@ -30,6 +30,41 @@
             <span>AI</span>
           </ToolbarButton>
         </ToolbarGroup>
+        <template v-if="multiple">
+          <ToolbarGroup>
+            <span class="slides-element-property-toolbar__count">{{ message('slides.elementProperties.selectionCount', { count: selectionCount ?? 1 }) }}</span>
+          </ToolbarGroup>
+          <ToolbarGroup v-if="!readonly && arrangeable">
+            <ToolbarButton
+              v-for="item in SELECTION_ALIGNMENTS"
+              :key="item.action"
+              :data-arrange="item.action"
+              :label="message(`slides.elementProperties.arrange.${item.action}`)"
+              :disabled="busy"
+              @click="emit('arrange', item.action)"
+            >
+              <component
+                :is="item.icon"
+                class="slides-element-property-toolbar__icon"
+              />
+            </ToolbarButton>
+          </ToolbarGroup>
+          <ToolbarGroup v-if="!readonly && arrangeable">
+            <ToolbarButton
+              v-for="item in SELECTION_DISTRIBUTIONS"
+              :key="item.action"
+              :data-arrange="item.action"
+              :label="message(`slides.elementProperties.arrange.${item.action}`)"
+              :disabled="busy || (selectionCount ?? 1) < 3"
+              @click="emit('arrange', item.action)"
+            >
+              <component
+                :is="item.icon"
+                class="slides-element-property-toolbar__icon"
+              />
+            </ToolbarButton>
+          </ToolbarGroup>
+        </template>
         <ToolbarGroup v-if="canEditTextStyle">
           <div class="slides-element-property-toolbar__font">
             <CustomNumberInput
@@ -85,12 +120,19 @@
             v-if="!textSelection"
             data-property="alignment"
             :label="message('slides.elementProperties.alignment')"
+            :active="openPopover === 'alignment'"
+            :aria-expanded="openPopover === 'alignment'"
+            aria-haspopup="menu"
             :disabled="busy"
-            @click="cycleAlignment"
+            @click="toggle('alignment', $event)"
           >
             <AlignIcon
               class="slides-element-property-toolbar__icon"
-              :alignment="target.textEditing?.textAlign === 'center' ? 'center' : target.textEditing?.textAlign === 'right' ? 'right' : 'left'"
+              :alignment="currentTextAlign"
+            />
+            <ChevronIcon
+              direction="down"
+              class="slides-element-property-toolbar__caret"
             />
           </ToolbarButton>
           <ToolbarColorButton
@@ -131,6 +173,38 @@
             <ResizeIcon class="slides-element-property-toolbar__icon" />
           </ToolbarButton>
         </ToolbarGroup>
+        <slot
+          v-if="!multiple && !readonly"
+          name="object"
+        />
+        <ToolbarGroup v-if="!readonly && (showArrange || !multiple)">
+          <ToolbarButton
+            v-if="showArrange"
+            data-property="arrange"
+            :label="message('slides.elementProperties.arrange')"
+            :active="openPopover === 'arrange'"
+            :aria-expanded="openPopover === 'arrange'"
+            aria-haspopup="menu"
+            :disabled="busy"
+            @click="toggle('arrange', $event)"
+          >
+            <ArrangeIcon class="slides-element-property-toolbar__icon" />
+          </ToolbarButton>
+          <ToolbarButton
+            data-property="more"
+            :label="message('slides.elementProperties.more')"
+            :active="openPopover === 'more'"
+            :aria-expanded="openPopover === 'more'"
+            aria-haspopup="menu"
+            :disabled="busy"
+            @click="toggle('more', $event)"
+          >
+            <MoreIcon
+              direction="horizontal"
+              class="slides-element-property-toolbar__icon"
+            />
+          </ToolbarButton>
+        </ToolbarGroup>
         <ToolbarGroup v-if="canDelete">
           <ToolbarButton
             type="button"
@@ -147,7 +221,7 @@
     </template>
     <template #content>
       <div
-        v-if="openPopover === 'fontSize' && position !== null"
+        v-if="openPopover !== null && LIST_POPOVERS.has(openPopover) && position !== null"
         ref="fontMenu"
         class="slides-element-font-menu"
         :style="popoverStyle"
@@ -157,6 +231,7 @@
       >
         <!-- 整个工具条都属于内部点击，避免旧列表关闭刚打开的相邻属性；焦点归还由外层 BaseDropdown 负责。 -->
         <CustomSelect
+          v-if="openPopover === 'fontSize'"
           :model-value="textStyle?.fontSizePt ?? undefined"
           :options="ELEMENT_FONT_SIZE_OPTIONS"
           manual-mode
@@ -168,11 +243,24 @@
           @update:model-value="selectFontSize"
           @close="close()"
         />
+        <CustomSelect
+          v-else
+          :model-value="openPopover === 'alignment' ? `text-align:${currentTextAlign}` : null"
+          :options="menuOptions"
+          manual-mode
+          semantic-role="menu"
+          :external-trigger-ref="toolbar?.element ?? null"
+          :trigger-aria-label="menuLabel"
+          :options-motion-direction="popoverDirection"
+          :class-names="{ options: 'slides-element-font-menu__options slides-element-property-menu' }"
+          @update:model-value="selectMenuItem"
+          @close="close()"
+        />
       </div>
       <DropdownPanel
         :id="popoverId"
         ref="popover"
-        :show="openPopover !== null && openPopover !== 'fontSize' && position !== null"
+        :show="openPopover !== null && !LIST_POPOVERS.has(openPopover) && position !== null"
         :direction="popoverDirection"
         class="slides-element-property-popover"
         :style="popoverStyle"
@@ -239,12 +327,17 @@
 <script setup lang="ts">
 import { computed, ref, toRef, useId, type CSSProperties } from 'vue';
 import { BaseDropdown, CustomSelect, DropdownPanel, type DropdownActions, CustomNumberInput, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from '@linnya/renderer-ui';
-import { BoldIcon, ItalicIcon, UnderlineIcon, AlignIcon, ChevronIcon, DeleteIcon, ResizeIcon, LinnyaIcon } from '@linnya/renderer-ui/icons';
+import { BoldIcon, ItalicIcon, UnderlineIcon, AlignIcon, ChevronIcon, DeleteIcon, ResizeIcon, LinnyaIcon, MoreIcon } from '@linnya/renderer-ui/icons';
+import {
+  AlignObjectsBottomIcon, AlignObjectsCenterIcon, AlignObjectsLeftIcon, AlignObjectsMiddleIcon, AlignObjectsRightIcon, AlignObjectsTopIcon,
+  ArrangeIcon, DistributeHorizontalIcon, DistributeVerticalIcon,
+} from '../../../shared/icons';
+import { arrangeMenu, moreMenu, textAlignmentMenu } from '../functions/elementPropertyMenus';
 import { SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
 import type { ManualEditableTarget } from '../../manualEditing';
 import { preserveCanvasFocus } from '../../editingInteraction';
 import type { ElementPropertyAnchor } from '../definitions/elementPropertyToolbar';
-import type { ElementPropertyOperation } from '../definitions/elementPropertyTypes';
+import type { ElementArrangement, ElementLayerAvailability, ElementLayerDirection, ElementPropertyMenuValue, ElementPropertyOperation } from '../definitions/elementPropertyTypes';
 import { ELEMENT_FONT_SIZE_OPTIONS } from '../definitions/fontSizeOptions';
 import { useElementPropertyFields } from '../orchestration/useElementPropertyFields';
 import { useElementPropertyToolbar } from '../orchestration/useElementPropertyToolbar';
@@ -260,8 +353,25 @@ const props = defineProps<{
   ai?: boolean;
   /** 文稿暂时不能手动写入：只保留 AI 入口。 */
   readonly?: boolean;
+  /** 多选时 target 是选区外框，浮条换成选区对齐、分布、更多与删除。 */
+  selectionCount?: number;
+  /** 所有选中对象都能移动时才提供排列。 */
+  arrangeable?: boolean;
+  /** 单选时的同级图层可用方向；null 表示不提供图层动作。 */
+  layer?: ElementLayerAvailability | null;
+  canCopy?: boolean;
 }>();
-const emit = defineEmits<{ submit: [operation: ElementPropertyOperation]; 'delete-selected': []; 'text-style': [patch: SlidesTextStylePatch]; ai: [] }>();
+const emit = defineEmits<{ submit: [operation: ElementPropertyOperation]; 'delete-selected': []; 'text-style': [patch: SlidesTextStylePatch]; ai: [];
+  arrange: [action: ElementArrangement]; layer: [direction: ElementLayerDirection]; copy: []; duplicate: [] }>();
+defineSlots<{ object?(): unknown }>();
+const SELECTION_ALIGNMENTS = [
+  { action: 'left', icon: AlignObjectsLeftIcon }, { action: 'center', icon: AlignObjectsCenterIcon }, { action: 'right', icon: AlignObjectsRightIcon },
+  { action: 'top', icon: AlignObjectsTopIcon }, { action: 'middle', icon: AlignObjectsMiddleIcon }, { action: 'bottom', icon: AlignObjectsBottomIcon },
+] as const;
+const SELECTION_DISTRIBUTIONS = [
+  { action: 'distributeX', icon: DistributeHorizontalIcon }, { action: 'distributeY', icon: DistributeVerticalIcon },
+] as const;
+const LIST_POPOVERS: ReadonlySet<string> = new Set(['fontSize', 'alignment', 'arrange', 'more']);
 const { elementPropertyMessage: message } = useElementPropertyLocalization();
 const toolbar = ref<InstanceType<typeof FloatingToolbar> | null>(null);
 const dropdown = ref<DropdownActions | null>(null);
@@ -286,13 +396,30 @@ const emphasisStyles = [
   { field: 'italic', label: 'slides.elementProperties.italic', icon: ItalicIcon },
   { field: 'underline', label: 'slides.elementProperties.underline', icon: UnderlineIcon },
 ] as const;
-function cycleAlignment(): void {
-  const current = props.target.textEditing?.textAlign;
-  submitTextStyle({ align: current === 'left' ? 'center' : current === 'center' ? 'right' : 'left' });
+const multiple = computed(() => (props.selectionCount ?? 1) > 1);
+const currentTextAlign = computed(() => props.target.textEditing?.textAlign === 'center' ? 'center'
+  : props.target.textEditing?.textAlign === 'right' ? 'right' : 'left');
+const canEditTextStyle = computed(() => !props.readonly && !multiple.value && (props.textSelection !== undefined || props.target.capabilities.includes('set_text_style')));
+const canEditFill = computed(() => !props.readonly && !multiple.value && props.textSelection === undefined && props.target.capabilities.includes('set_fill_color'));
+const canEditSize = computed(() => !props.readonly && !multiple.value && props.textSelection === undefined && props.target.capabilities.includes('set_visual_size'));
+const showArrange = computed(() => props.textSelection === undefined && !multiple.value && props.arrangeable === true);
+const menuOptions = computed(() => openPopover.value === 'alignment' ? textAlignmentMenu(message)
+  : openPopover.value === 'arrange' ? arrangeMenu(message, props.layer ?? null)
+    : moreMenu(message, props.canCopy === true));
+const menuLabel = computed(() => message(openPopover.value === 'alignment' ? 'slides.elementProperties.alignment'
+  : openPopover.value === 'arrange' ? 'slides.elementProperties.arrange' : 'slides.elementProperties.more'));
+function selectMenuItem(value: ElementPropertyMenuValue): void {
+  close(true);
+  if (value === 'copy') { emit('copy'); return; }
+  if (value === 'duplicate') { emit('duplicate'); return; }
+  const [kind, detail] = value.split(':');
+  if (kind === 'text-align' && (detail === 'left' || detail === 'center' || detail === 'right')) submitTextStyle({ align: detail });
+  else if (kind === 'layer' && (detail === 'front' || detail === 'forward' || detail === 'backward' || detail === 'back')) emit('layer', detail);
+  else if (kind === 'arrange' && isArrangement(detail)) emit('arrange', detail);
 }
-const canEditTextStyle = computed(() => !props.readonly && (props.textSelection !== undefined || props.target.capabilities.includes('set_text_style')));
-const canEditFill = computed(() => !props.readonly && props.textSelection === undefined && props.target.capabilities.includes('set_fill_color'));
-const canEditSize = computed(() => !props.readonly && props.textSelection === undefined && props.target.capabilities.includes('set_visual_size'));
+function isArrangement(value: string | undefined): value is ElementArrangement {
+  return SELECTION_ALIGNMENTS.some(item => item.action === value) || SELECTION_DISTRIBUTIONS.some(item => item.action === value);
+}
 const canDelete = computed(() => !props.readonly && props.textSelection === undefined && props.target.capabilities.includes('delete'));
 const currentTextColor = computed(() => textStyle.value?.color ?? null);
 const currentFillColor = computed(() => props.target.fill?.kind === 'solid' ? props.target.fill.color : null);

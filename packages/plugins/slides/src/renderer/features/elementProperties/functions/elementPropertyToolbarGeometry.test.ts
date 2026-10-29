@@ -14,6 +14,13 @@ describe('选区属性工具条的可见边界', () => {
     expect(resolveElementPropertyToolbarPosition({ selection: topSelection, viewport }, surface)?.top).toBeGreaterThan(topSelection.height);
   });
 
+  it('上方落进顶部命令条区域时翻到选区下方', () => {
+    const selection = { left: 120, top: 90, width: 200, height: 80 };
+    expect((resolveElementPropertyToolbarPosition({ selection, viewport }, surface)?.top ?? 0)).toBeLessThan(selection.top);
+    expect(resolveElementPropertyToolbarPosition({ selection, viewport, reservedTop: 56 }, surface)?.top)
+      .toBeGreaterThan(selection.top + selection.height);
+  });
+
   it('超大父框和越界子元素的并集保持工具条可触达；完全离开视口才隐藏', () => {
     for (const selection of [
       { left: -200, top: -100, width: 1000, height: 600 },

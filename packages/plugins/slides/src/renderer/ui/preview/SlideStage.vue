@@ -121,6 +121,17 @@
           @submit="submitManualVisualOperation"
           @finish="scrollHostRef?.focus({ preventScroll: true })"
         />
+        <ManualTextWidthHandles
+          v-if="manualPresentedSelectedTarget && canManualMutate && !textEditorTarget && canResizeTextWidth(manualPresentedSelectedTarget)"
+          :key="`width:${manualPresentedSelectedTarget.elementId}`"
+          :target="manualPresentedSelectedTarget"
+          :slide-left="currentLayout.slideLeft"
+          :slide-top="currentLayout.slideTop"
+          :render-scale="renderScale"
+          @dragging="textWidthDragging = $event"
+          @submit="submitTextWidth"
+          @finish="scrollHostRef?.focus({ preventScroll: true })"
+        />
       </div>
     </div>
     <div
@@ -137,17 +148,29 @@
       />
     </div>
     <ElementPropertyToolbar
-      v-if="manualPropertyTarget && manualPropertyAnchor && showElementPropertyControls && !showAiPrompt && !textEditorTarget && !manualTranslationPreview && !manualResizePreview"
-      :key="`${manualPropertyTarget.authoringRef.slideKey}/${manualPropertyTarget.authoringRef.editKey}`"
-      :target="manualPropertyTarget"
+      v-if="manualToolbarTarget && manualPropertyAnchor && showElementPropertyControls && !showAiPrompt && !textEditorTarget && !manualTranslationPreview && !manualResizePreview && !textWidthDragging"
+      :key="manualToolbarKey"
+      :target="manualToolbarTarget"
       :anchor="manualPropertyAnchor"
       :busy="!canManualMutate"
       :readonly="!canManualMutate"
       :ai="canAskAi"
+      :selection-count="manualSelectedTargets.length"
+      :arrangeable="manualSelectedTargets.every(target => target.capabilities.includes('translate'))"
+      :layer="manualLayerAvailability"
+      :can-copy="canCopySelection"
       @submit="submitManualVisualOperation"
       @delete-selected="deleteManualSelectedTarget"
       @ai="openAiPrompt"
-    />
+      @arrange="arrangeSelection"
+      @layer="setSelectionLayer"
+      @copy="copySelection"
+      @duplicate="duplicateSelection"
+    >
+      <template #object>
+        <ImageEditingControls />
+      </template>
+    </ElementPropertyToolbar>
   </div>
 </template>
 
@@ -181,7 +204,9 @@ import {
   resolveManualEditingCursor,
   manualEditPresentationTrace,
   ManualResizeHandles,
+  ManualTextWidthHandles,
   canResizeManualTarget,
+  canResizeTextWidth,
   useManualEditSubmission,
   useSlidesManualEditingStore,
   useManualEditingLocalization,
@@ -195,6 +220,11 @@ import {
   projectElementPropertyTarget,
 } from '../../features/elementProperties';
 import type { ManualEditingVisualPreview } from '../../features/manualEditing';
+import type { SlidesManualEditCommandOperation } from '@plugin/slides/shared/authoringEditing';
+import { manualSelectionBounds } from '../../features/manualEditing';
+import { resolveLayerAvailability, useEditingCommands } from '../../features/editingCommands';
+import { useElementClipboard } from '../../features/elementClipboard';
+import { ImageEditingControls } from '../../features/imageEditing';
 
 const props = defineProps<{
   sourceEditBusy?: boolean;
@@ -308,6 +338,11 @@ const {
 });
 
 const manualResizePreview = shallowRef<ManualEditingVisualPreview | null>(null);
+const textWidthDragging = ref(false);
+const manualSubmission = useManualEditSubmission();
+function submitTextWidth(operation: SlidesManualEditCommandOperation): void {
+  manualSubmission.enqueue({ operation });
+}
 const {
   selectedTarget: manualSelectedTarget,
   selectedTargets: manualSelectedTargets,
@@ -351,7 +386,7 @@ const {
   slideSize: actualSlideSize,
   wrapperRef: konvaWrapperRef,
   visualPreview: manualResizePreview,
-  submitIntent: useManualEditSubmission().enqueue,
+  submitIntent: manualSubmission.enqueue,
   focusCanvas: () => scrollHostRef.value?.focus({ preventScroll: true }),
 });
 
@@ -386,18 +421,37 @@ const manualPresentedSelectedTargets = computed(() => {
 });
 const manualPresentedSelectedTarget = computed(() => manualPresentedSelectedTargets.value.length === 1
   ? manualPresentedSelectedTargets.value[0] : null);
-const showElementPropertyControls = computed(() => (
-  manualSelectedTargets.value.length === 1 && manualSelectedTarget.value
-    ? hasElementPropertyControls(manualSelectedTarget.value)
-    : false
-));
+const showElementPropertyControls = computed(() => manualSelectedTargets.value.length > 1
+  || (manualSelectedTarget.value !== null && (hasElementPropertyControls(manualSelectedTarget.value) || canAskAi.value)));
 const manualPropertyTarget = computed(() => manualSelectedTarget.value
   ? projectElementPropertyTarget(manualSelectedTarget.value, manualVisualPreviews.value,
       textPresentations.value.find(draft => draft.target.elementId === manualSelectedTarget.value?.elementId)?.content)
   : null);
 
+/** 多选时浮条跟随选区外框；能力取所有成员的交集，删除等动作只在全部可用时出现。 */
+const manualAnchorTarget = computed(() => {
+  const targets = manualPresentedSelectedTargets.value;
+  const first = targets[0];
+  if (targets.length <= 1 || !first) return manualPresentedSelectedTarget.value;
+  const bounds = manualSelectionBounds(targets);
+  return bounds ? { ...first, bounds,
+    capabilities: first.capabilities.filter(capability => targets.every(target => target.capabilities.includes(capability))) } : null;
+});
+const manualToolbarTarget = computed(() => manualSelectedTargets.value.length > 1 ? manualAnchorTarget.value : manualPropertyTarget.value);
+const manualToolbarKey = computed(() => manualSelectedTargets.value.length > 1
+  ? `selection:${manualSelectedTargets.value.map(target => target.elementId).join('|')}`
+  : `${manualPropertyTarget.value?.authoringRef.slideKey}/${manualPropertyTarget.value?.authoringRef.editKey}`);
+const manualLayerAvailability = computed(() => manualSelectedTargets.value.length === 1 && manualSelectedTarget.value
+  ? resolveLayerAvailability(displayedSlide.value?.elements ?? [], manualSelectedTarget.value) : null);
+const { arrange: arrangeSelection, setLayer: setSelectionLayer } = useEditingCommands();
+const { canCopy: canCopySelection, copy: copyElementSelection, duplicate: duplicateElementSelection } = useElementClipboard();
+function copySelection(): void { void copyElementSelection(); }
+function duplicateSelection(): void { void duplicateElementSelection(); }
+
 const manualPropertyAnchor = useElementPropertyAnchor({
-  target: manualPresentedSelectedTarget,
+  target: manualAnchorTarget,
+  // 文稿可编辑时舞台顶部常驻命令条（top 12px + 36px 高），浮条翻到对象下方避让。
+  reservedTop: computed(() => manualEditingEnabled.value ? 56 : 0),
   slideElement: canvasShellRef,
   viewportElement: scrollHostRef,
   renderScale,

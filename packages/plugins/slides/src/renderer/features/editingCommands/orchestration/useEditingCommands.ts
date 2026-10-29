@@ -1,9 +1,8 @@
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import { useSlidesStore } from '../../../store/slidesStore';
 import { arrangeSelection } from '../functions/arrangeSelection';
-import { SELECTION_ARRANGEMENTS } from '../definitions/selectionArrangement';
-import type { NumberInputValue } from '@linnya/renderer-ui';
-import { computed, nextTick, ref, watch } from 'vue';
+import type { SelectionArrangement } from '../definitions/selectionArrangement';
+import { computed, nextTick } from 'vue';
 import { editableTextEqual } from '@plugin/slides/shared/authoringEditing';
 import { collectPresentedManualTargets, useManualEditSubmission, useSlidesManualEditingStore, useManualEditingLocalization } from '../../manualEditing';
 import { ownsDocumentShortcut, useSlidesEditingInteractionStore, useTextInputSession } from '../../editingInteraction';
@@ -18,15 +17,6 @@ export function useEditingCommands() {
   const submission = useManualEditSubmission();
   const text = useTextInputSession(submission);
   const { manualEditingMessage } = useManualEditingLocalization();
-  const singleText = computed(() => manual.selectedTargets.length === 1 && manual.selectedTarget?.targetKind === 'text' ? manual.selectedTarget : null);
-  const textWidth = ref<NumberInputValue>(1);
-  watch(singleText, value => { textWidth.value = value?.bounds.w ?? 1; }, { immediate: true });
-  function setTextWidth(): void {
-    const target = singleText.value; const width = Number(textWidth.value);
-    if (!target || !Number.isFinite(width) || width <= 0 || width === target.bounds.w) { textWidth.value = target?.bounds.w ?? 1; return; }
-    if (text.requestCommit() === 'blocked') return;
-    submission.enqueue({ operation: { op: 'set_text_width', target: target.authoringRef, targetKind: 'text', width } });
-  }
   const hasDraft = computed(() => editing.textSession.phase === 'editing'
     && !editableTextEqual(editing.textSession.draft, editing.textSession.baseline));
   const pending = computed(() => manual.submission.phase === 'submitting' || manual.queue.length > 0);
@@ -62,16 +52,15 @@ export function useEditingCommands() {
       if (!manual.errorMessage) manual.setNotice(error instanceof Error ? error.message : manualEditingMessage('slides.manualEditing.error.saveFailed'));
     }
   }
-  function setLayer(direction: string): void {
+  function setLayer(direction: 'front' | 'back' | 'forward' | 'backward'): void {
     const target = manual.selectedTargets.length === 1 ? manual.selectedTarget : null;
     if (!target || text.requestCommit() === 'blocked') return;
-    if (direction === 'front' || direction === 'back' || direction === 'forward' || direction === 'backward') submission.enqueue({ operation: { op: 'set_layer', target: target.authoringRef, direction } });
+    submission.enqueue({ operation: { op: 'set_layer', target: target.authoringRef, direction } });
   }
-  function arrange(value: string): void {
-    const action = SELECTION_ARRANGEMENTS.find(entry => entry === value);
+  function arrange(action: SelectionArrangement): void {
     const slide = render.currentSlideRender;
     const size = render.renderModel?.slideSize;
-    if (!action || !slide || !size || text.requestCommit() === 'blocked') return;
+    if (!slide || !size || text.requestCommit() === 'blocked') return;
     const targets = collectPresentedManualTargets(slide.elements, {
       transientTranslation: manual.translationPreview, pendingTranslations: manual.pendingTranslations,
       pendingVisuals: manual.pendingVisuals, queuedIntents: manual.queuedIntents,
@@ -87,5 +76,5 @@ export function useEditingCommands() {
     event.preventDefault(); event.stopPropagation();
     if (!event.repeat && (action === 'undo' ? canUndo.value : canRedo.value)) void runHistory(action);
   }
-  return { setLayer, singleText, textWidth, setTextWidth, canUndo, canRedo, saveStatus, runHistory, handleHistoryShortcut, arrange, selectedCount: computed(() => manual.selectedTargets.length) };
+  return { setLayer, canUndo, canRedo, saveStatus, runHistory, handleHistoryShortcut, arrange };
 }

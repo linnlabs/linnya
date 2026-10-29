@@ -17,4 +17,5 @@ export type CanvasPointerGesture =
       readonly clickMode: 'select' | 'toggle' | 'keep';
       readonly bounds: RenderNodeSelectionRect; readonly peers: readonly RenderNodeSelectionRect[];
       readonly canTranslate: boolean });
-export interface CanvasSnapGuide { readonly axis: 'x' | 'y'; readonly position: number }
+/** position 是对齐线所在坐标；from/to 是线沿另一轴的范围（页面对齐贯穿整页）。单位 inches。 */
+export interface CanvasSnapGuide { readonly axis: 'x' | 'y'; readonly position: number; readonly from: number; readonly to: number }

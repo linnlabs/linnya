@@ -13,6 +13,7 @@ export type ManualEditingMessageKey =
   | 'slides.manualEditing.resize.left'
   | 'slides.manualEditing.resize.right'
   | 'slides.manualEditing.resize.bottom'
+  | 'slides.manualEditing.resize.textWidth'
   | 'slides.manualEditing.error.snapshotUnavailable'
   | 'slides.manualEditing.error.draftPresent'
   | 'slides.manualEditing.error.commandReused'
@@ -44,6 +45,7 @@ export const MANUAL_EDITING_MESSAGE_FALLBACKS = {
   'slides.manualEditing.resize.left': '从左侧调整大小',
   'slides.manualEditing.resize.right': '调整宽度',
   'slides.manualEditing.resize.bottom': '调整高度',
+  'slides.manualEditing.resize.textWidth': '拖动调整文字框宽度',
   'slides.manualEditing.error.snapshotUnavailable': '页面版本正在更新，请稍后再试。',
   'slides.manualEditing.error.draftPresent': 'AI 编辑产生了待修复草稿，已刷新当前文稿。',
   'slides.manualEditing.error.commandReused': '编辑请求身份发生冲突，请重新操作。',
@@ -70,6 +72,7 @@ const MANUAL_EDITING_EN_US_MESSAGES = {
   'slides.manualEditing.resize.left': 'Resize from left',
   'slides.manualEditing.resize.right': 'Resize width',
   'slides.manualEditing.resize.bottom': 'Resize height',
+  'slides.manualEditing.resize.textWidth': 'Drag to change the text box width',
   'slides.manualEditing.error.snapshotUnavailable': 'The slide version is updating. Try again shortly.',
   'slides.manualEditing.error.draftPresent': 'An AI edit has an unresolved draft. The presentation was refreshed.',
   'slides.manualEditing.error.commandReused': 'The edit request identity conflicted. Please try the edit again.',

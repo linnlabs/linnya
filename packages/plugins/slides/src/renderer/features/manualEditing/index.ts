@@ -55,6 +55,8 @@ export type { ManualEditQueuePorts } from './definitions/manualEditQueuePorts';
 export { useManualEditingLocalization } from './ui/useManualEditingLocalization';
 export { default as ManualResizeHandles } from './ui/ManualResizeHandles.vue';
 export { canResizeManualTarget } from './functions/manualResize';
+export { default as ManualTextWidthHandles } from './ui/ManualTextWidthHandles.vue';
+export { canResizeTextWidth, resolveManualTextWidth } from './functions/manualTextWidth';
 export {
   ManualEditPresentationTrace,
   manualEditPresentationTrace,

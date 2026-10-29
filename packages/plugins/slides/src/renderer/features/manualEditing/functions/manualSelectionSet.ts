@@ -1,6 +1,5 @@
 import type { ManualEditableTarget } from '../definitions/manualEditingTypes';
 import type { RenderNodeSelectionRect } from '../../renderNodeSelection';
-import { rectsIntersect } from '../../renderNodeSelection';
 
 /** 作者父级和其后代只能选一个；优先保留外层，避免同一渲染成员被移动两次。 */
 export function normalizeManualSelection(targets: readonly ManualEditableTarget[]): readonly ManualEditableTarget[] {
@@ -13,8 +12,17 @@ export function toggleManualSelection(current: readonly ManualEditableTarget[], 
     ? current.filter(entry => entry.elementId !== target.elementId)
     : normalizeManualSelection([...current, target]);
 }
+/**
+ * 框选只收完全框住的对象；外层卡片没框全时，框住的子对象各自入选。
+ * 框住整张卡片时外层优先，避免卡片和子对象同时移动。
+ */
 export function collectManualMarqueeSelection(targets: readonly ManualEditableTarget[], rect: RenderNodeSelectionRect, baseline: readonly ManualEditableTarget[]): readonly ManualEditableTarget[] {
-  return normalizeManualSelection([...baseline, ...targets.filter(target => rectsIntersect(target.bounds, rect))]);
+  return normalizeManualSelection([...baseline, ...targets.filter(target => rectContains(rect, target.bounds))]);
+}
+function rectContains(outer: RenderNodeSelectionRect, inner: RenderNodeSelectionRect): boolean {
+  const epsilon = 1e-6;
+  return inner.x >= outer.x - epsilon && inner.y >= outer.y - epsilon
+    && inner.x + inner.w <= outer.x + outer.w + epsilon && inner.y + inner.h <= outer.y + outer.h + epsilon;
 }
 /** 多选的层级上下文：成员路径的共同祖先，不含成员自身；后续点击据此停在同一层。 */
 export function manualSelectionContext(paths: readonly (readonly ManualEditableTarget[])[]): readonly ManualEditableTarget[] {

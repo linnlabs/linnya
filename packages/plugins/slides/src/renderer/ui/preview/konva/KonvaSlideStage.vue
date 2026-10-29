@@ -75,7 +75,7 @@ const props = defineProps<{
   marqueeRect: SourceSelectionRect | null;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
   manualSelectedTargets?: readonly ManualEditableTarget[];
-  snapGuides?: readonly { readonly axis: 'x' | 'y'; readonly position: number }[];
+  snapGuides?: readonly { readonly axis: 'x' | 'y'; readonly position: number; readonly from: number; readonly to: number }[];
   pendingInsertions?: readonly { readonly editKey: string; readonly box: { readonly x: number; readonly y: number; readonly w: number; readonly h: number } }[];
   hiddenTextElementIds?: ReadonlySet<string>;
   manualVisualPreviews?: readonly ManualEditingVisualPreview[];

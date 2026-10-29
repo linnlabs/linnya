@@ -10,10 +10,11 @@ function target(id: string, x: number, w: number, parent?: string): ManualEditab
     bounds: { x, y: 1, w, h: 1 }, polygon: [{ x, y: 1 }, { x: x + w, y: 1 }, { x: x + w, y: 2 }, { x, y: 2 }], translationElementIds: [id] };
 }
 describe('选择、对齐和吸附的作者几何', () => {
-  it('框选包含父子时只移动父级，追加选择保留已有不相交对象', () => {
+  it('父子同时入选时只移动父级；框选只收完全框住的对象，追加选择保留已有对象', () => {
     const parent = target('group', 1, 4); const child = target('child', 2, 1, 'group'); const other = target('other', 8, 1);
     expect(normalizeManualSelection([child, parent, parent])).toEqual([parent]);
-    expect(collectManualMarqueeSelection([parent, child], { x: 1, y: 1, w: 3, h: 2 }, [other])).toEqual([other, parent]);
+    expect(collectManualMarqueeSelection([parent, child], { x: 1, y: 1, w: 3, h: 2 }, [other])).toEqual([other, child]);
+    expect(collectManualMarqueeSelection([parent, child], { x: 1, y: 1, w: 4, h: 2 }, [other])).toEqual([other, parent]);
   });
   it('多选右对齐一次批量提交；单选中心对齐到页面', () => {
     const intent = arrangeSelection([target('a', 1, 2), target('b', 4, 1), target('c', 8, 2)], 'right', { width: 12, height: 6 });

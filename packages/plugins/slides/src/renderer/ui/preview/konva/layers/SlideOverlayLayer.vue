@@ -76,7 +76,7 @@ const props = defineProps<{
   hoveredTarget: SourceSelectableElement | null;
   marqueeRect: SourceSelectionRect | null;
   manualSelectedTargets?: readonly ManualEditableTarget[];
-  snapGuides?: readonly { readonly axis: 'x' | 'y'; readonly position: number }[];
+  snapGuides?: readonly { readonly axis: 'x' | 'y'; readonly position: number; readonly from: number; readonly to: number }[];
   pendingInsertions?: readonly { readonly editKey: string; readonly box: SourceSelectionRect }[];
   slideSize: { readonly width: number; readonly height: number };
 }>();
@@ -133,17 +133,31 @@ const marqueeLineConfig = computed(() => {
   };
 });
 
-const manualSelectionLineConfigs = computed(() => (props.manualSelectedTargets ?? []).map(target => ({
-  key: target.elementId, config: { points: toPxPoints(target.polygon), closed: true,
-    stroke: SLIDES_RENDER_COLORS.manualEditingStroke, strokeWidth: strokeWidth.value,
-    fill: SLIDES_RENDER_COLORS.manualEditingFill, listening: false },
-})));
+// 多选时成员框变淡，再画一个选区外框；浮条与对齐都以这个外框为准。
+const manualSelectionLineConfigs = computed(() => {
+  const targets = props.manualSelectedTargets ?? [];
+  const multiple = targets.length > 1;
+  const members = targets.map(target => ({
+    key: target.elementId, config: { points: toPxPoints(target.polygon), closed: true,
+      stroke: SLIDES_RENDER_COLORS.manualEditingStroke, strokeWidth: strokeWidth.value,
+      opacity: multiple ? 0.5 : 1, fill: SLIDES_RENDER_COLORS.manualEditingFill, listening: false },
+  }));
+  if (!multiple) return members;
+  const left = Math.min(...targets.map(target => target.bounds.x));
+  const top = Math.min(...targets.map(target => target.bounds.y));
+  const right = Math.max(...targets.map(target => target.bounds.x + target.bounds.w));
+  const bottom = Math.max(...targets.map(target => target.bounds.y + target.bounds.h));
+  return [...members, { key: 'selection-bounds', config: {
+    points: toPxPoints(rectToPolygon({ x: left, y: top, w: right - left, h: bottom - top })), closed: true,
+    stroke: SLIDES_RENDER_COLORS.manualEditingStroke, strokeWidth: strokeWidth.value, listening: false,
+  } }];
+});
+// 吸附线用独立的品红实线，与蓝色选框区分；范围由吸附结果给出（对齐对象时只连接两者）。
 const snapGuideConfigs = computed(() => (props.snapGuides ?? []).map(guide => ({
   points: guide.axis === 'x'
-    ? [guide.position * INCHES_TO_PX, 0, guide.position * INCHES_TO_PX, props.slideSize.height * INCHES_TO_PX]
-    : [0, guide.position * INCHES_TO_PX, props.slideSize.width * INCHES_TO_PX, guide.position * INCHES_TO_PX],
-  stroke: SLIDES_RENDER_COLORS.manualEditingStroke, strokeWidth: strokeWidth.value,
-  dash: [4, 4], listening: false,
+    ? [guide.position * INCHES_TO_PX, guide.from * INCHES_TO_PX, guide.position * INCHES_TO_PX, guide.to * INCHES_TO_PX]
+    : [guide.from * INCHES_TO_PX, guide.position * INCHES_TO_PX, guide.to * INCHES_TO_PX, guide.position * INCHES_TO_PX],
+  stroke: SLIDES_RENDER_COLORS.manualSnapGuide, strokeWidth: strokeWidth.value, listening: false,
 })));
 
 // 插入/粘贴还在保存时先画出落点，正式对象呈现后占位自然消失。
