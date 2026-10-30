@@ -7,16 +7,12 @@ import { app } from 'electron';
 import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/adapters/local-process-runtime/production-runtime';
 import { ConversationToolMessagePayloadSchema } from '@app/schemas';
 import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
-import {
-  createDefaultGraphExecutor,
-  LlmCaller,
-} from '@linnlabs/linnkit/runtime-kernel';
+import { LlmCaller } from '@linnlabs/linnkit/runtime-kernel';
 
 import type { KnowledgeBaseService } from '../../../../../src/features/knowledge-base/application/knowledgeBaseService';
 import { DatabaseService } from '../../../../../src/electron-main/services/database';
 import { bootstrapAgentRuntimeSingletons } from '../../../../../src/electron-main/services/agentRuntimeSingletons';
 import { SQLiteEventStore } from '../../../../../src/app-hosts/linnya/adapters/persistence/event-store';
-import { SqliteCheckpointer } from '../../../../../src/app-hosts/linnya/adapters/persistence/checkpointer/sqlite.implementation';
 import { HistoryRepository } from '../../../../../src/features/conversation/history/history.repository';
 import {
   HistoryHandlerService,
@@ -43,13 +39,9 @@ import {
   projectCommandAgentRuntimes,
   resolveCommandRuntimeFacts,
 } from '../../../../../src/electron-main/commands/production-runtime';
-import { createDefaultLlmNode } from '../../../../../src/app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
-import { createScriptedChatModelCatalog } from '../../../../../src/app-hosts/linnya/testkit/agent-harness/modelCatalogHarness';
-import {
-  defaultObservationPreviewPort,
-  defaultToolRuntimePort,
-} from '../../../../../src/app-hosts/linnya/adapters/tools/defaultPorts';
-import { createToolModelInputCapabilityValidator } from '../../../../../src/app-hosts/linnya/adapters/tools/modelInputCapabilityValidator';
+import { installProductionE2eModelCatalog } from '../../harness/installProductionE2eModelCatalog';
+import { createProductionE2eGraphRuntime } from '../../harness/createProductionE2eGraphRuntime';
+import { defaultToolRuntimePort } from '../../../../../src/app-hosts/linnya/adapters/tools/defaultPorts';
 import { createLinnyaChildRunInvoker } from '../../../../../src/app-hosts/linnya/adapters/child-runs/childRunInvokerFactory';
 import { createRegisteredChildRunInvoker } from '../../../../../src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
 import {
@@ -187,6 +179,8 @@ export async function runProductionAgentPtyScenario(input: {
   const cliIdentityPath = path.join(workDirectory, 'pty-cli-identity.json');
 
   const commandScope = await createElectronCommandProductionScope({
+    // 此场景只验证宿主命令，不注册插件 CLI。
+    resolvePluginCli: () => undefined,
     db,
     conversationAdmission: lifecycle.workDirectoryAdmission,
     approvalHost: createCommandApprovalHost(),
@@ -223,23 +217,20 @@ export async function runProductionAgentPtyScenario(input: {
     expectedSize: EXPECTED_SIZE,
     observationReadyPath: input.observationReadyPath,
   });
-  const modelCatalog = createScriptedChatModelCatalog(MODEL_ID);
+  const modelCatalog = installProductionE2eModelCatalog(MODEL_ID);
   const llmCaller = new LlmCaller({
     inferencePort,
     modelCatalog,
   });
-  const executor = createDefaultGraphExecutor({
-    llmNode: createDefaultLlmNode({ llmCaller, modelCatalog }),
-    toolRuntime: defaultToolRuntimePort,
-    observationPreview: defaultObservationPreviewPort,
-    checkpointer: new SqliteCheckpointer(db),
-    // 状态机最多 24 条工具调用：固定八条，四个观察阶段各最多四次 wait。
-    // Graph 还包含持久化与路由节点；这个宽预算只允许完整生产节点跑完，
-    // 真正场景边界由确定性模型的工具数、分阶段 wait 和 unexpected phase 断言负责。
-    maxSteps: 256,
-    modelInputCapabilityValidator: createToolModelInputCapabilityValidator(),
-  });
   const { runtime: agentRuntime } = await bootstrapAgentRuntimeSingletons({ db, eventStore });
+  const { executor, recovery } = createProductionE2eGraphRuntime({
+    runtime: agentRuntime,
+    llmCaller,
+    modelCatalog,
+    // 状态机最多 24 条工具调用；Graph 还包含持久化与路由节点。
+    // 场景边界由确定性模型的工具数、分阶段 wait 和 unexpected phase 断言负责。
+    maxSteps: 256,
+  });
   const commandRuntimes = projectCommandAgentRuntimes(commandScope);
   const childRunInvoker = createLinnyaChildRunInvoker({
     telemetryPort: telemetry.noopTelemetry,
@@ -266,6 +257,9 @@ export async function runProductionAgentPtyScenario(input: {
     ),
   });
   const runner = new AgentRunnerService(executor, unavailableKnowledgeBase, databaseService, {
+    recovery,
+    // 场景没有 Renderer，Workspace 展示通知显式不连接 UI。
+    workspaceMutationPublisher: { publish: () => undefined },
     costCollector: agentRuntime.costCollector,
     registeredChildRunInvoker,
     commandPermissionSettings: createProductionE2eCommandPermissionSettings(

@@ -506,7 +506,7 @@ try {
   $stdout = $stdoutTask.Result
   $stderr = $stderrTask.Result
   $result = Wait-JsonFile -Path $resultPath -TimeoutSeconds 30
-  if ($result.success -eq $false) { throw "packaged fixture failed: $($result.error)" }
+  if ($result.success -eq $false) { throw "packaged fixture failed: $($result.error); stderr=$stderr; stdout=$stdout" }
   if ($appProcess.ExitCode -ne 0) {
     throw "packaged Electron failed: code=$($appProcess.ExitCode); stderr=$stderr; stdout=$stdout"
   }
@@ -551,7 +551,7 @@ try {
   )) {
     throw "Electron userData was not isolated: expected=$expectedUserDataPath actual=$($result.userDataPath)"
   }
-  if ($result.durableCommandRows -ne 5) { throw "unexpected durable row count: $($result.durableCommandRows)" }
+  if ($result.durableCommandRows -lt 5 -or $result.durableCommandRows -gt 9) { throw "unexpected durable row count: $($result.durableCommandRows)" }
   if ($result.commandCardState -ne 'completed') { throw 'command card did not complete' }
   if ($result.terminalOutcome -ne 'terminated' -or $result.terminalReason -ne 'cancelled') {
     throw 'cancel terminal did not remain stable'

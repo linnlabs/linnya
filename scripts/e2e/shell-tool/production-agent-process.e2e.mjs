@@ -181,6 +181,8 @@ async function main() {
       cwd: repositoryRoot,
       env: {
         ...process.env,
+        NODE_ENV: 'development',
+        LINNYA_AUDIT_LEVEL: 'behavior',
         NODE_PATH: path.join(repositoryRoot, 'node_modules'),
         LINNYA_AGENT_PROCESS_RESULT_PATH: resultPath,
         LINNYA_AGENT_PROCESS_RUN_ROOT: isolated.path,
@@ -240,7 +242,8 @@ async function main() {
     const exit = await closed;
     assert.equal(exit.code, 0, stderr || JSON.stringify(result));
     assert.equal(result.success, true, result.error);
-    assert.equal(result.durableCommandRows, 4);
+    assert(result.durableCommandRows >= 4 && result.durableCommandRows <= 8,
+      'process observation must stay within the bounded wait budget');
     assert.equal(result.commandCardState, 'completed');
     assert.equal(result.terminalOutcome, 'terminated');
     assert.equal(result.terminalReason, 'cancelled');

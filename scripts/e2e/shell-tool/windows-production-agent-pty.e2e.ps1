@@ -403,7 +403,7 @@ try {
   $stdout = $stdoutTask.Result
   $stderr = $stderrTask.Result
   $result = Wait-JsonFile -Path $resultPath -TimeoutSeconds 30
-  if ($result.success -eq $false) { throw "packaged fixture failed: $($result.error)" }
+  if ($result.success -eq $false) { throw "packaged fixture failed: $($result.error); stderr=$stderr; stdout=$stdout" }
   if ($appProcess.ExitCode -ne 0) {
     throw "packaged Electron failed: code=$($appProcess.ExitCode); stderr=$stderr; stdout=$stdout"
   }

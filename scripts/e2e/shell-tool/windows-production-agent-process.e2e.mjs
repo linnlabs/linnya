@@ -7,6 +7,7 @@ import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 
 import { createIsolatedRunRoot } from './harness/isolatedRunRoot.mjs';
+import { resolveWindowsSharpBinary } from './harness/resolveWindowsSharpBinary.mjs';
 import {
   bindElectronVersion,
   expectedElectronVersion,
@@ -166,6 +167,10 @@ async function createBuildProject(isolatedRoot) {
     ),
     path.join(projectDirectory, 'yogaRuntimeLoader.cjs')
   );
+  await copyFile(
+    path.join(repositoryRoot, 'src/features/text-measurement/infrastructure/system/harfbuzzRuntimeLoader.cjs'),
+    path.join(projectDirectory, 'harfbuzzRuntimeLoader.cjs')
+  );
   await mkdir(path.join(projectDirectory, 'command-fixtures'), { recursive: true });
   await copyFile(
     path.join(fixtureDirectory, 'production-agent-process-tree.ps1'),
@@ -196,7 +201,7 @@ async function createBuildProject(isolatedRoot) {
   const sqliteRoot = path.join(projectDirectory, 'node_modules/better-sqlite3');
   await assertWindowsX64Pe(path.join(sqliteRoot, 'prebuilds/win32-x64.node'));
   await assertWindowsX64Pe(
-    path.join(projectDirectory, 'node_modules/@img/sharp-win32-x64/lib/sharp-win32-x64.node')
+    await resolveWindowsSharpBinary(projectDirectory)
   );
   return projectDirectory;
 }
@@ -248,10 +253,7 @@ async function inspectPackage(outputDirectory) {
   );
   await assertWindowsX64Pe(sqliteBinaryPath);
   await assertWindowsX64Pe(
-    path.join(
-      resourcesPath,
-      'app.asar.unpacked/node_modules/@img/sharp-win32-x64/lib/sharp-win32-x64.node'
-    )
+    await resolveWindowsSharpBinary(path.join(resourcesPath, 'app.asar.unpacked'))
   );
   for (const filePath of [
     path.join(resourcesPath, 'command-runtime/windows/x64/linnyaCommandProcessOwner.node'),

@@ -29,6 +29,7 @@ import {
   createMacOsShellEnvironmentSnapshot,
 } from '../../../../../src/infra/adapters/command-runtime/environment';
 import { createCollectingCommandExecutionAuditPort } from '../../functions/createCollectingCommandExecutionAuditPort';
+import { installProductionE2eRuntimePathRoots } from '../../harness/installProductionE2eRuntimePathRoots';
 
 interface CorpusCase {
   readonly id: string;
@@ -230,6 +231,7 @@ export async function runCurrentHostCliCorpusScenario(input: {
 
   const appDataRoot = path.join(input.runRoot, 'app data 中文');
   const artifactRoot = path.join(appDataRoot, 'ConversationArtifacts', 'v1');
+  installProductionE2eRuntimePathRoots({ runRoot: input.runRoot, appDataRoot });
   await fsp.mkdir(appDataRoot, { recursive: true });
   const databaseService = new DatabaseService(path.join(input.runRoot, 'workspace.sqlite'));
   databaseService.initialize({ lifecycleBootstrap: bootstrapBuiltinPluginLifecycle });
@@ -268,7 +270,9 @@ export async function runCurrentHostCliCorpusScenario(input: {
       `login environment did not restore ${command}`,
     );
   }
-  const commandScope = createElectronCommandProductionScope({
+  const commandScope = await createElectronCommandProductionScope({
+    // 此场景只验证宿主命令，不注册插件 CLI。
+    resolvePluginCli: () => undefined,
     db,
     conversationAdmission: lifecycle.workDirectoryAdmission,
     approvalHost: createCommandApprovalHost(),

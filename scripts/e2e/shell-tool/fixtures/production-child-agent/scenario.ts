@@ -15,10 +15,7 @@ import { app } from 'electron';
 import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/adapters/local-process-runtime/production-runtime';
 import express from 'express';
 import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
-import {
-  createDefaultGraphExecutor,
-  LlmCaller,
-} from '@linnlabs/linnkit/runtime-kernel';
+import { LlmCaller } from '@linnlabs/linnkit/runtime-kernel';
 
 import type { KnowledgeBaseService } from '../../../../../src/features/knowledge-base/application/knowledgeBaseService';
 import { HistoryRepository } from '../../../../../src/features/conversation/history/history.repository';
@@ -27,7 +24,6 @@ import { createHistoryRouter } from '../../../../../src/features/conversation/hi
 import { DatabaseService } from '../../../../../src/electron-main/services/database';
 import { bootstrapAgentRuntimeSingletons } from '../../../../../src/electron-main/services/agentRuntimeSingletons';
 import { SQLiteEventStore } from '../../../../../src/app-hosts/linnya/adapters/persistence/event-store';
-import { SqliteCheckpointer } from '../../../../../src/app-hosts/linnya/adapters/persistence/checkpointer/sqlite.implementation';
 import {
   HistoryHandlerService,
   createFlowHistoryAccessPort,
@@ -48,13 +44,9 @@ import {
   projectCommandAgentRuntimes,
   resolveCommandRuntimeFacts,
 } from '../../../../../src/electron-main/commands/production-runtime';
-import { createDefaultLlmNode } from '../../../../../src/app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
-import { createScriptedChatModelCatalog } from '../../../../../src/app-hosts/linnya/testkit/agent-harness/modelCatalogHarness';
-import {
-  defaultObservationPreviewPort,
-  defaultToolRuntimePort,
-} from '../../../../../src/app-hosts/linnya/adapters/tools/defaultPorts';
-import { createToolModelInputCapabilityValidator } from '../../../../../src/app-hosts/linnya/adapters/tools/modelInputCapabilityValidator';
+import { installProductionE2eModelCatalog } from '../../harness/installProductionE2eModelCatalog';
+import { createProductionE2eGraphRuntime } from '../../harness/createProductionE2eGraphRuntime';
+import { defaultToolRuntimePort } from '../../../../../src/app-hosts/linnya/adapters/tools/defaultPorts';
 import { createLinnyaChildRunInvoker } from '../../../../../src/app-hosts/linnya/adapters/child-runs/childRunInvokerFactory';
 import { createRegisteredChildRunInvoker } from '../../../../../src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
 import {
@@ -233,6 +225,8 @@ export async function runProductionChildAgentScenario(input: {
   const eventStore = new SQLiteEventStore(db);
   const lifecycle = createConversationRouteLifecycle({ db, eventStore, storageRoot: appDataRoot });
   const commandScope = await createElectronCommandProductionScope({
+    // 此场景只验证宿主命令，不注册插件 CLI。
+    resolvePluginCli: () => undefined,
     db,
     conversationAdmission: lifecycle.workDirectoryAdmission,
     approvalHost: createCommandApprovalHost(),
@@ -268,20 +262,18 @@ export async function runProductionChildAgentScenario(input: {
     overlapObservedPath: input.overlapObservedPath,
     rootReadyPath: input.rootReadyPath,
   });
-  const modelCatalog = createScriptedChatModelCatalog(MODEL_ID);
+  const modelCatalog = installProductionE2eModelCatalog(MODEL_ID);
   const llmCaller = new LlmCaller({
     inferencePort,
     modelCatalog,
   });
-  const executor = createDefaultGraphExecutor({
-    llmNode: createDefaultLlmNode({ llmCaller, modelCatalog }),
-    toolRuntime: defaultToolRuntimePort,
-    observationPreview: defaultObservationPreviewPort,
-    checkpointer: new SqliteCheckpointer(db),
-    maxSteps: 20,
-    modelInputCapabilityValidator: createToolModelInputCapabilityValidator(),
-  });
   const { runtime: agentRuntime } = await bootstrapAgentRuntimeSingletons({ db, eventStore });
+  const { executor, recovery } = createProductionE2eGraphRuntime({
+    runtime: agentRuntime,
+    llmCaller,
+    modelCatalog,
+    maxSteps: 20,
+  });
   const commandRuntimes = projectCommandAgentRuntimes(commandScope);
   const childRunInvoker = createLinnyaChildRunInvoker({
     telemetryPort: telemetry.noopTelemetry,
@@ -308,6 +300,9 @@ export async function runProductionChildAgentScenario(input: {
     ),
   });
   const runner = new AgentRunnerService(executor, unavailableKnowledgeBase, databaseService, {
+    recovery,
+    // 场景没有 Renderer，Workspace 展示通知显式不连接 UI。
+    workspaceMutationPublisher: { publish: () => undefined },
     costCollector: agentRuntime.costCollector,
     registeredChildRunInvoker,
     commandPermissionSettings: createProductionE2eCommandPermissionSettings(

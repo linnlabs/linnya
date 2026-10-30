@@ -18,6 +18,7 @@
       "main.cjs",
       "commands/commandRunnerUtilityProcess.cjs",
       "yogaRuntimeLoader.cjs",
+      "harfbuzzRuntimeLoader.cjs",
       "node_modules/**/*",
       "package.json"
     ],
@@ -41,7 +42,7 @@
     }
   },
   "dependencies": {
-    "better-sqlite3": "12.4.1",
+    "better-sqlite3": "13.0.3",
     "bindings": "1.5.0",
     "file-uri-to-path": "2.0.0",
     "sharp": "0.35.5",

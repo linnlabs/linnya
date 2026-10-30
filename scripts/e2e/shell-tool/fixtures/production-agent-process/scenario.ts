@@ -7,17 +7,13 @@ import { app } from 'electron';
 import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/adapters/local-process-runtime/production-runtime';
 import { ConversationToolMessagePayloadSchema } from '@app/schemas';
 import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
-import {
-  createDefaultGraphExecutor,
-  LlmCaller,
-} from '@linnlabs/linnkit/runtime-kernel';
+import { LlmCaller } from '@linnlabs/linnkit/runtime-kernel';
 
 import type { KnowledgeBaseService } from '../../../../../src/features/knowledge-base/application/knowledgeBaseService';
 import { DatabaseService } from '../../../../../src/electron-main/services/database';
 import { bootstrapAgentRuntimeSingletons } from '../../../../../src/electron-main/services/agentRuntimeSingletons';
 import { createEventStoreCommandExecutionAuditPort } from '../../../../../src/app-hosts/linnya/adapters/persistence/command-execution-audit';
 import { SQLiteEventStore } from '../../../../../src/app-hosts/linnya/adapters/persistence/event-store';
-import { SqliteCheckpointer } from '../../../../../src/app-hosts/linnya/adapters/persistence/checkpointer/sqlite.implementation';
 import { HistoryRepository } from '../../../../../src/features/conversation/history/history.repository';
 import { HistoryHandlerService, createFlowHistoryAccessPort } from '../../../../../src/app-hosts/linnya/adapters/flow/flow.history-handler.service';
 import {
@@ -40,13 +36,9 @@ import {
   projectCommandAgentRuntimes,
   resolveCommandRuntimeFacts,
 } from '../../../../../src/electron-main/commands/production-runtime';
-import { createDefaultLlmNode } from '../../../../../src/app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
-import { createScriptedChatModelCatalog } from '../../../../../src/app-hosts/linnya/testkit/agent-harness/modelCatalogHarness';
-import {
-  defaultObservationPreviewPort,
-  defaultToolRuntimePort,
-} from '../../../../../src/app-hosts/linnya/adapters/tools/defaultPorts';
-import { createToolModelInputCapabilityValidator } from '../../../../../src/app-hosts/linnya/adapters/tools/modelInputCapabilityValidator';
+import { installProductionE2eModelCatalog } from '../../harness/installProductionE2eModelCatalog';
+import { createProductionE2eGraphRuntime } from '../../harness/createProductionE2eGraphRuntime';
+import { defaultToolRuntimePort } from '../../../../../src/app-hosts/linnya/adapters/tools/defaultPorts';
 import { createLinnyaChildRunInvoker } from '../../../../../src/app-hosts/linnya/adapters/child-runs/childRunInvokerFactory';
 import { createRegisteredChildRunInvoker } from '../../../../../src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
 import {
@@ -63,7 +55,7 @@ import { bootstrapBuiltinPluginLifecycle } from '../../../../../src/app-hosts/li
 import { projectCommandExecutionWindowForValidation } from '../../../../../apps/renderer/app/fixtures/functions/projectCommandExecutionWindowForValidation';
 import { isRecord } from '../../../../../apps/renderer/domains/conversation/utils/typeGuards';
 import {
-  AGENT_PROCESS_TOOL_CALL_IDS,
+  AGENT_PROCESS_SHELL_TOOL_CALL_ID,
   createDeterministicAgentProcessInferencePort,
 } from './deterministicInferencePort';
 
@@ -153,7 +145,9 @@ export async function runProductionAgentProcessScenario(input: {
   const db = databaseService.getDb();
   setPluginRuntimeDatabase(db);
   const eventStore = new SQLiteEventStore(db);
-  const { runtime: agentRuntime } = await bootstrapAgentRuntimeSingletons({ db, eventStore });
+  const { runtime: agentRuntime } = await bootstrapAgentRuntimeSingletons({
+    db, eventStore, packaged: app.isPackaged,
+  });
   const lifecycle = createConversationLifecycleApplicationScope({
     cleanupJobs: new SqliteConversationDirectoryCleanupJobPort(db),
     directories: createLocalConversationDirectoryPort({ storageRoot: appDataRoot }),
@@ -172,11 +166,14 @@ export async function runProductionAgentProcessScenario(input: {
   }), 'utf8');
   await fsp.rename(pendingHandshakePath, input.workDirectoryHandshakePath);
   const commandScope = await createElectronCommandProductionScope({
+    // 此场景只验证宿主命令，不注册插件 CLI。
+    resolvePluginCli: () => undefined,
     db,
     conversationAdmission: lifecycle.workDirectoryAdmission,
     approvalHost: createCommandApprovalHost(),
     commandExecutionAudit: createEventStoreCommandExecutionAuditPort({
       auditPort: agentRuntime.auditPort,
+      runs: agentRuntime.supervisor,
     }),
     runtimeFacts: resolveCommandRuntimeFacts({
       platform: process.platform,
@@ -202,18 +199,17 @@ export async function runProductionAgentProcessScenario(input: {
     ),
   });
   const inferencePort = createDeterministicAgentProcessInferencePort(input);
-  const modelCatalog = createScriptedChatModelCatalog(MODEL_ID);
+  const modelCatalog = installProductionE2eModelCatalog(MODEL_ID);
   const llmCaller = new LlmCaller({
     inferencePort,
     modelCatalog,
   });
-  const executor = createDefaultGraphExecutor({
-    llmNode: createDefaultLlmNode({ llmCaller, modelCatalog }),
-    toolRuntime: defaultToolRuntimePort,
-    observationPreview: defaultObservationPreviewPort,
-    checkpointer: new SqliteCheckpointer(db),
-    maxSteps: 12,
-    modelInputCapabilityValidator: createToolModelInputCapabilityValidator(),
+  const { executor, recovery } = createProductionE2eGraphRuntime({
+    runtime: agentRuntime,
+    llmCaller,
+    modelCatalog,
+    // 正式持久化节点和最多四次分块输出续读都计入图步数；模型仍严格限制工具调用数。
+    maxSteps: 48,
   });
   const commandRuntimes = projectCommandAgentRuntimes(commandScope);
   const childRunInvoker = createLinnyaChildRunInvoker({
@@ -241,6 +237,9 @@ export async function runProductionAgentProcessScenario(input: {
     ),
   });
   const runner = new AgentRunnerService(executor, unavailableKnowledgeBase, databaseService, {
+    recovery,
+    // 场景没有 Renderer，Workspace 展示通知显式不连接 UI。
+    workspaceMutationPublisher: { publish: () => undefined },
     costCollector: agentRuntime.costCollector,
     registeredChildRunInvoker,
     commandPermissionSettings: createProductionE2eCommandPermissionSettings(
@@ -290,28 +289,16 @@ export async function runProductionAgentProcessScenario(input: {
       message.message_type === 'tool_calls'
       && (message.payload?.tool_name === 'shell' || message.payload?.tool_name === 'process')
     ));
-    assert.equal(
-      commandMessages.length,
-      input.replayTerminalHandle ? 5 : 4,
-      'shell/two waits/cancel and optional terminal replay must each persist one durable row',
-    );
+    const expectedToolCallIds = inferencePort.toolCallIds();
+    assert.equal(commandMessages.length, expectedToolCallIds.length,
+      'each bounded process action must persist one durable row');
     const payloads = commandMessages.map(message => (
       ConversationToolMessagePayloadSchema.parse(message.payload)
     ));
-    const expectedToolCallIds = [
-      AGENT_PROCESS_TOOL_CALL_IDS.shell,
-      AGENT_PROCESS_TOOL_CALL_IDS.wait,
-      AGENT_PROCESS_TOOL_CALL_IDS.quietWait,
-      AGENT_PROCESS_TOOL_CALL_IDS.cancel,
-      ...(input.replayTerminalHandle ? [AGENT_PROCESS_TOOL_CALL_IDS.terminalReplay] : []),
-    ];
     assert.deepEqual(payloads.map(payload => payload.tool_call_id), expectedToolCallIds);
     assert.deepEqual(payloads.map(payload => payload.tool_name), [
       'shell',
-      'process',
-      'process',
-      'process',
-      ...(input.replayTerminalHandle ? ['process'] : []),
+      ...expectedToolCallIds.slice(1).map(() => 'process'),
     ]);
     assert(payloads.every(payload => payload.status === 'success' && payload.phase === 'complete'));
     const inputActionTypes = new Set(['write', 'submit', 'eof', 'resize']);
@@ -378,7 +365,7 @@ export async function runProductionAgentProcessScenario(input: {
       const manifest = parseCommandOutputArtifactManifest(raw);
       if (
         manifest.owner.identity.conversation_id === CONVERSATION_ID
-        && manifest.owner.identity.origin_tool_call_id === AGENT_PROCESS_TOOL_CALL_IDS.shell
+        && manifest.owner.identity.origin_tool_call_id === AGENT_PROCESS_SHELL_TOOL_CALL_ID
       ) matchingArtifacts.push({ filePath, manifest });
     }
     assert.equal(matchingArtifacts.length, 1);
@@ -404,12 +391,19 @@ export async function runProductionAgentProcessScenario(input: {
     const commandAuditActions = commandAuditEvents.map(event => (
       event.type === 'audit_envelope' ? event.envelope.action : ''
     ));
-    assert(commandAuditActions.includes('command.process.action'));
-    assert.equal(
-      commandAuditActions.filter(action => action === 'command.execution.terminal').length,
-      1,
-      'one command execution must publish one terminal audit fact',
-    );
+    if (app.isPackaged) {
+      // 发行包关闭开发诊断；命令恢复依赖正式执行事务，不依赖诊断 audit_envelope。
+      assert.equal(agentRuntime.auditEnabled, false);
+      assert.deepEqual(commandAuditActions, []);
+    } else {
+      assert.equal(agentRuntime.auditEnabled, true, 'development fixture must enable behavior audit');
+      assert(commandAuditActions.includes('command.process.action'));
+      assert.equal(
+        commandAuditActions.filter(action => action === 'command.execution.terminal').length,
+        1,
+        'one command execution must publish one terminal audit fact',
+      );
+    }
     for (const event of commandAuditEvents) {
       assert.equal(event.lane, 'auxiliary');
       assert.equal(event.visibility, 'none');

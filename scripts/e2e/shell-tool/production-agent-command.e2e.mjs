@@ -122,6 +122,8 @@ async function main() {
       cwd: repositoryRoot,
       env: {
         ...process.env,
+        NODE_ENV: 'development',
+        LINNYA_AUDIT_LEVEL: 'behavior',
         NODE_PATH: path.join(repositoryRoot, 'node_modules'),
         LINNYA_AGENT_COMMAND_RESULT_PATH: resultPath,
         LINNYA_AGENT_COMMAND_RUN_ROOT: isolated.path,

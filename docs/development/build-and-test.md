@@ -139,6 +139,14 @@ pnpm run build:main
 
 具体重建流程见[跨平台开发](./cross-platform.md)，ABI 与运行时验证合同见[原生模块 ABI 与测试](./native-modules.md)。
 
+Shell 的 packaged Agent E2E 在独立进程中同时安装 scripted 推理目录与 Host 模型目录，
+让持久化 Run 准入读取真实模型事实；夹具账号投影只驻留内存，不访问用户凭据。
+Graph 与 AgentRunner 通过 `createProductionE2eGraphRuntime` 绑定同一执行事务，
+先持久化工具执行意图，再提交结果 receipt；不能把非持久化 Graph 与可恢复 Run 混装。
+Windows 夹具应与产品同步 SQLite N-API 版本，并随包携带后端需要的 HarfBuzz loader。
+Sharp 的公开入口可能是 JavaScript loader；PE 架构校验通过共享
+`scripts/e2e/shell-tool/harness/resolveWindowsSharpBinary.mjs` 定位包内原生制品，不能把入口脚本当作 DLL。
+
 ## 6. 凭据与网络
 
 开发、测试和公共 CI 不应依赖维护者 token、私有 registry 或相邻私有仓。Provider 凭据只放在 Git 忽略的本地配置或用户运行时配置中；禁止写入 fixture、日志、命令行示例和构建产物。

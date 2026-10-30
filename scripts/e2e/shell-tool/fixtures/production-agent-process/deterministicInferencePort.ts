@@ -15,17 +15,23 @@ import {
   toolCallEvents,
 } from '../../harness/deterministicInferenceEvents';
 
-const SHELL_TOOL_CALL_ID = 'call-agent-process-shell';
+export const AGENT_PROCESS_SHELL_TOOL_CALL_ID = 'call-agent-process-shell';
+const SHELL_TOOL_CALL_ID = AGENT_PROCESS_SHELL_TOOL_CALL_ID;
 const WAIT_TOOL_CALL_ID = 'call-agent-process-wait';
 const QUIET_WAIT_TOOL_CALL_ID = 'call-agent-process-quiet-wait';
 const CANCEL_TOOL_CALL_ID = 'call-agent-process-cancel';
 const TERMINAL_REPLAY_TOOL_CALL_ID = 'call-agent-process-terminal-replay';
+const MAX_ADDITIONAL_OBSERVATION_WAITS = 4;
 
 function requireOutputBody(observation: string): string {
   const marker = '\n\noutput:\n';
   const markerIndex = observation.indexOf(marker);
   assert.notEqual(markerIndex, -1, 'command model observation must contain an output body');
-  return observation.slice(markerIndex + marker.length);
+  const boundary = observation.slice(markerIndex + marker.length).match(
+    /\n<<<BEGIN_UNTRUSTED_COMMAND_OUTPUT_([a-f0-9]+)>>>\n([\s\S]*)\n<<<END_UNTRUSTED_COMMAND_OUTPUT_\1>>>$/u,
+  );
+  assert(boundary, 'command output must retain its matched untrusted-content boundary');
+  return boundary[2];
 }
 
 async function waitForExternalObservation(filePath: string): Promise<void> {
@@ -51,15 +57,19 @@ export function createDeterministicAgentProcessInferencePort(input: {
   readonly expectedInteractionStdin: string;
   readonly observationReadyPath: string;
   readonly replayTerminalHandle: boolean;
-}): CanonicalInferencePort & { assertComplete(): void } {
+}): CanonicalInferencePort & { assertComplete(): void; toolCallIds(): readonly string[] } {
   let callCount = 0;
   let shellOutput = '';
+  let additionalObservationWaits = 0;
+  let lastObservationCallId = WAIT_TOOL_CALL_ID;
+  const observationCallIds = [WAIT_TOOL_CALL_ID];
 
   return {
     async *stream(request) {
       callCount += 1;
+      const phaseCallCount = callCount - additionalObservationWaits;
       yield startInferenceEvent(request);
-      if (callCount === 1) {
+      if (phaseCallCount === 1) {
         yield* toolCallEvents({
           id: SHELL_TOOL_CALL_ID,
           name: 'shell',
@@ -72,7 +82,7 @@ export function createDeterministicAgentProcessInferencePort(input: {
         return;
       }
 
-      if (callCount === 2) {
+      if (phaseCallCount === 2) {
         const shellMessage = requireToolMessageText(request.messages, SHELL_TOOL_CALL_ID);
         const shell = ShellAgentModelControlV1Schema.parse(
           parseCommandToolModelControlLine(shellMessage),
@@ -103,8 +113,8 @@ export function createDeterministicAgentProcessInferencePort(input: {
         return;
       }
 
-      if (callCount === 3) {
-        const waitMessage = requireToolMessageText(request.messages, WAIT_TOOL_CALL_ID);
+      if (phaseCallCount === 3) {
+        const waitMessage = requireToolMessageText(request.messages, lastObservationCallId);
         const waited = ProcessAgentModelControlV1Schema.parse(
           parseCommandToolModelControlLine(waitMessage),
         );
@@ -115,18 +125,28 @@ export function createDeterministicAgentProcessInferencePort(input: {
         );
         if (waited.status !== 'running') throw new Error('process wait must remain running');
         const waitOutput = requireOutputBody(waitMessage);
-        assert(
-          `${shellOutput}\n${waitOutput}`.includes(input.expectedTick),
-          `shell/wait did not publish the expected tick marker: ${waitMessage}`,
-        );
-        assert(
-          `${shellOutput}\n${waitOutput}`.includes(input.expectedInteractionPrompt),
-          `prompt-like output was not observed as ordinary command text: ${waitMessage}`,
-        );
-        assert(
-          `${shellOutput}\n${waitOutput}`.includes(input.expectedInteractionStdin),
-          `ordinary pipe child did not observe stdin EOF: ${waitMessage}`,
-        );
+        shellOutput += `\n${waitOutput}`;
+        // Pipe 的 write 与读取 chunk 没有一一对应关系；EOF 标记可能晚于 prompt 到达。
+        // 通过正式 wait 消费后续输出，不能要求首个返回块已经包含全部业务标记。
+        const observedAllMarkers = [
+          input.expectedTick, input.expectedInteractionPrompt, input.expectedInteractionStdin,
+        ].every(marker => shellOutput.includes(marker));
+        if (!observedAllMarkers) {
+          assert(additionalObservationWaits < MAX_ADDITIONAL_OBSERVATION_WAITS,
+            `pipe observation markers did not arrive: ${shellOutput}`);
+          additionalObservationWaits += 1;
+          lastObservationCallId = `${WAIT_TOOL_CALL_ID}-${additionalObservationWaits}`;
+          observationCallIds.push(lastObservationCallId);
+          yield* toolCallEvents({
+            id: lastObservationCallId,
+            name: 'process',
+            arguments: {
+              process_handle: waited.process_handle,
+              action: { type: 'wait', cursor: waited.next_cursor, wait_timeout_ms: 2_000 },
+            },
+          });
+          return;
+        }
         yield* toolCallEvents({
           id: QUIET_WAIT_TOOL_CALL_ID,
           name: 'process',
@@ -142,7 +162,7 @@ export function createDeterministicAgentProcessInferencePort(input: {
         return;
       }
 
-      if (callCount === 4) {
+      if (phaseCallCount === 4) {
         const quietWaitMessage = requireToolMessageText(request.messages, QUIET_WAIT_TOOL_CALL_ID);
         const quietWait = ProcessAgentModelControlV1Schema.parse(
           parseCommandToolModelControlLine(quietWaitMessage),
@@ -170,7 +190,7 @@ export function createDeterministicAgentProcessInferencePort(input: {
         return;
       }
 
-      if (callCount === 5) {
+      if (phaseCallCount === 5) {
         const cancelled = ProcessAgentModelControlV1Schema.parse(
           parseCommandToolModelControlLine(
             requireToolMessageText(request.messages, CANCEL_TOOL_CALL_ID),
@@ -186,7 +206,7 @@ export function createDeterministicAgentProcessInferencePort(input: {
         if (input.replayTerminalHandle) {
           const waited = ProcessAgentModelControlV1Schema.parse(
             parseCommandToolModelControlLine(
-              requireToolMessageText(request.messages, WAIT_TOOL_CALL_ID),
+              requireToolMessageText(request.messages, lastObservationCallId),
             ),
           );
           if (waited.status !== 'running') {
@@ -209,7 +229,7 @@ export function createDeterministicAgentProcessInferencePort(input: {
         return;
       }
 
-      if (callCount === 6 && input.replayTerminalHandle) {
+      if (phaseCallCount === 6 && input.replayTerminalHandle) {
         const replayed = ProcessAgentModelControlV1Schema.parse(
           parseCommandToolModelControlLine(
             requireToolMessageText(request.messages, TERMINAL_REPLAY_TOOL_CALL_ID),
@@ -234,17 +254,13 @@ export function createDeterministicAgentProcessInferencePort(input: {
     assertComplete(): void {
       assert.equal(
         callCount,
-        input.replayTerminalHandle ? 6 : 5,
+        (input.replayTerminalHandle ? 6 : 5) + additionalObservationWaits,
         'graph must consume all long-process model turns',
       );
     },
+    toolCallIds: () => [
+      SHELL_TOOL_CALL_ID, ...observationCallIds, QUIET_WAIT_TOOL_CALL_ID, CANCEL_TOOL_CALL_ID,
+      ...(input.replayTerminalHandle ? [TERMINAL_REPLAY_TOOL_CALL_ID] : []),
+    ],
   };
 }
-
-export const AGENT_PROCESS_TOOL_CALL_IDS = Object.freeze({
-  shell: SHELL_TOOL_CALL_ID,
-  wait: WAIT_TOOL_CALL_ID,
-  quietWait: QUIET_WAIT_TOOL_CALL_ID,
-  cancel: CANCEL_TOOL_CALL_ID,
-  terminalReplay: TERMINAL_REPLAY_TOOL_CALL_ID,
-});

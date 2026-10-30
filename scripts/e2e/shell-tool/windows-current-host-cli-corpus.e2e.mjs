@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { copyFile, cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
@@ -106,6 +106,10 @@ async function createProject(root) {
       'packages/plugins/slides/src/backend/codegen/compose/flex-layout/yogaRuntimeLoader.cjs'
     ),
     path.join(project, 'yogaRuntimeLoader.cjs')
+  );
+  await copyFile(
+    path.join(repositoryRoot, 'src/features/text-measurement/infrastructure/system/harfbuzzRuntimeLoader.cjs'),
+    path.join(project, 'harfbuzzRuntimeLoader.cjs')
   );
   await mkdir(path.join(project, 'host-cli-fixtures'));
   await Promise.all(
