@@ -6,6 +6,11 @@ import {
   createSourceDistributionIdentity,
 } from '../../../shared/distribution-identity';
 
+// 这里验证 Cloud 服务开放后的接入逻辑；服务当前是否开放由 isLinnyaCloudClientEnabled 自己的测试负责。
+vi.mock('../features/cloud-catalog/functions/isLinnyaCloudClientEnabled', () => ({
+  isLinnyaCloudClientEnabled: (identity: { readonly kind: string }) => identity.kind === 'official',
+}));
+
 const { credentialStoreMock, credentialRollbackMock, fetchCloudModelsMock, persisterMock } =
   vi.hoisted(() => {
     const credentialRollbackMock = vi.fn(async (_credentialId: string) => {});

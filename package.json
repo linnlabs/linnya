@@ -414,6 +414,13 @@
       ],
       "extraResources": [
         {
+          "from": "desktop-distribution",
+          "to": ".",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
           "from": "../extraResources/headless-node-runtime/win32/x64",
           "to": "headless-node-runtime/win32/x64"
         },
@@ -474,6 +481,13 @@
       "entitlementsInherit": "build/entitlements.mac.plist",
       "forceCodeSigning": true,
       "extraResources": [
+        {
+          "from": "desktop-distribution",
+          "to": ".",
+          "filter": [
+            "**/*"
+          ]
+        },
         {
           "from": "../extraResources/headless-node-runtime/darwin/arm64",
           "to": "headless-node-runtime/darwin/arm64"

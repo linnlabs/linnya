@@ -98,6 +98,13 @@ describe('production native artifact contract', () => {
 });
 
 describe('electron-builder production command contract', () => {
+  it('显式传入更新地址时覆盖发布配置，未传入时不改动', () => {
+    const base = { platform: 'darwin', architecture: 'arm64', adHocMacSigning: true };
+    expect(buildElectronBuilderArguments(base).join(' ')).not.toContain('publish.url');
+    expect(buildElectronBuilderArguments({ ...base, updateFeedUrl: 'https://example.com/feed' }))
+      .toContain('--config.publish.url=https://example.com/feed');
+  });
+
   it('Windows 正式入口在构建前冻结 release 与精确发布者', () => {
     expect(resolveWindowsReleaseCommandRuntimeEnvironment({
       LINNYA_WINDOWS_EXPECTED_PUBLISHER_IDENTITY: 'CN=Linnya Release',

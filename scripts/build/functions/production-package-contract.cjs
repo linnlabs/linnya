@@ -235,6 +235,7 @@ function buildElectronBuilderArguments({
   architecture,
   adHocMacSigning,
   macSigningIdentity,
+  updateFeedUrl,
 }) {
   if (!SUPPORTED_PACKAGE_BUILD_TARGETS.has(`${platform}:${architecture}`)) {
     throw new Error(`Unsupported Electron package target: ${platform}/${architecture}`);
@@ -263,6 +264,7 @@ function buildElectronBuilderArguments({
     }
     argumentsList.push(`--config.mac.identity=${macSigningIdentity}`);
   }
+  if (updateFeedUrl) argumentsList.push(`--config.publish.url=${updateFeedUrl}`);
   return argumentsList;
 }
 

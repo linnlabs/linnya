@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ModelConfig } from 'src/domains/model-catalog';
 import { createOfficialDistributionIdentity } from 'src/shared/distribution-identity';
 import { createDefaultInferenceCredentialResolver } from './createDefaultInferenceCredentialResolver';
+
+// 这里验证 Cloud 服务开放后的接入逻辑；服务当前是否开放由 isLinnyaCloudClientEnabled 自己的测试负责。
+vi.mock('src/domains/model-catalog/features/cloud-catalog/functions/isLinnyaCloudClientEnabled', () => ({
+  isLinnyaCloudClientEnabled: (identity: { readonly kind: string }) => identity.kind === 'official',
+}));
 
 function model(id: string, credentialReference: ModelConfig['credential_reference']): ModelConfig {
   return {

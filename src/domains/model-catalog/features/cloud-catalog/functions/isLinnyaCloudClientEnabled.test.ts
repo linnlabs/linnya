@@ -13,10 +13,10 @@ describe('isLinnyaCloudClientEnabled', () => {
     expect(isLinnyaCloudClientEnabled(createCommunityDistributionIdentity())).toBe(false);
   });
 
-  it('只有官方发行保留 Cloud 客户端接入边界', () => {
+  it('Cloud 模型服务开放前，官方发行同样不连接', () => {
     expect(isLinnyaCloudClientEnabled(createOfficialDistributionIdentity({
       releaseChannel: 'stable',
       releaseKeyId: 'fixture',
-    }))).toBe(true);
+    }))).toBe(false);
   });
 });

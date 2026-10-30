@@ -21,6 +21,18 @@ const {
 } = require('./functions/production-package-contract.cjs');
 
 const rootDir = path.resolve(__dirname, '..', '..');
+
+function resolveDistributionManifestPath(environment) {
+  const manifestPath = environment.LINNYA_DESKTOP_DISTRIBUTION_MANIFEST;
+  if (!manifestPath) return undefined;
+  const envelope = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const payload = JSON.parse(Buffer.from(envelope.payload, 'base64').toString('utf8'));
+  const version = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8')).version;
+  if (payload.application_version !== version) {
+    throw new Error(`发行清单版本 ${payload.application_version} 与应用版本 ${version} 不一致`);
+  }
+  return manifestPath;
+}
 const distBuildDir = path.join(rootDir, 'dist_build');
 /**
  * 镜像策略（基于已验证的根因）：
@@ -55,13 +67,16 @@ const formalMacSigningIdentity = isMac && !disableMacTimestamp
 // 发布配置先于清理和编译冻结，避免缺证书或非法模式在长构建末尾才失败。
 let buildArguments;
 let commandRuntimeBuildEnvironment;
+let distributionManifestPath;
 try {
   buildArguments = buildElectronBuilderArguments({
     platform: isMac ? 'darwin' : 'win32',
     architecture: isMac ? 'arm64' : 'x64',
     adHocMacSigning: disableMacTimestamp,
     macSigningIdentity: formalMacSigningIdentity,
+    updateFeedUrl: process.env.LINNYA_UPDATE_FEED_URL || undefined,
   });
+  distributionManifestPath = resolveDistributionManifestPath(process.env);
   commandRuntimeBuildEnvironment = isWin
     ? resolveWindowsReleaseCommandRuntimeEnvironment(process.env)
     : Object.freeze({});
@@ -321,6 +336,14 @@ exec(
 /**
  * 步骤 8: 运行 electron-builder 打包
  */
+// 发行清单必须在签名前进入 Resources；未提供时目录为空，产物按 community 运行。
+const distributionManifestDir = path.join(distBuildDir, 'desktop-distribution');
+fs.mkdirSync(distributionManifestDir, { recursive: true });
+if (distributionManifestPath) {
+  fs.copyFileSync(distributionManifestPath, path.join(distributionManifestDir, 'desktop-distribution.json'));
+  console.log('🔏 已写入发行清单，产物可被识别为官方发行');
+}
+
 console.log('\n📦 步骤 8/8: 运行 electron-builder 打包...');
 console.log('⏳ 这可能需要几分钟时间...');
 
