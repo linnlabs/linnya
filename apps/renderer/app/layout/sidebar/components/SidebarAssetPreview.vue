@@ -40,9 +40,10 @@
           <button
             class="asset-preview-close"
             :title="layoutMessage('layout.sidebar.assetPreview.close')"
+            :aria-label="layoutMessage('layout.sidebar.assetPreview.close')"
             @click="$emit('close-text')"
           >
-            ×
+            <CloseIcon class="asset-preview-close-icon" />
           </button>
         </div>
         <div class="asset-preview-body asset-text-preview-body">
@@ -72,6 +73,7 @@
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
 import type { WorkspaceAssetImagePreviewState } from '@/domains/workspace/features/asset-image-preview';
 import { ImagePreviewModal } from '@linnya/renderer-ui';
+import { CloseIcon } from '@linnya/renderer-ui/icons';
 
 export interface TextPreviewState {
   visible: boolean;

@@ -109,10 +109,11 @@
           v-if="option.rightIconComponent"
           class="option-right-icon"
         />
-        <span
+        <ChevronIcon
           v-if="showSubmenuState && option.children?.length"
+          direction="right"
           :class="['option-arrow', classNames.optionArrow]"
-        >›</span>
+        />
       </component>
       <span
         v-if="option.disabledReason"
@@ -133,6 +134,7 @@ import type {
 import { CustomNumberInput } from '../../number-entry';
 import type { NumberInputValue } from '../../number-entry';
 import { resolveOptionLabelMarquee } from '../functions/resolveOptionLabelMarquee';
+import { ChevronIcon } from '../../../icons';
 
 interface CustomSelectOptionListProps {
   options: readonly CustomSelectOption<Value>[];

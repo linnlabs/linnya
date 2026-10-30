@@ -136,25 +136,14 @@
       />
 
       <button
-        :class="['send-button', { disabled: isPrimaryActionDisabled }]"
+        :class="['send-button', { disabled: isPrimaryActionDisabled, 'is-running': primaryAction !== 'send' }]"
         :disabled="isPrimaryActionDisabled"
         :aria-label="conversationMessage(`conversation.input.action.${primaryAction}`)"
         :data-linnya-tooltip="conversationMessage(`conversation.input.action.${primaryAction}`)"
         @click="handleSubmit"
       >
-        <span
-          v-if="primaryAction === 'pause' || primaryAction === 'resume'"
-          class="run-control-icon"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-            <path v-if="primaryAction === 'resume'" d="M7 4v16l13-8z" />
-            <path v-else d="M6 4h4v16H6zm8 0h4v16h-4z" />
-          </svg>
-        </span>
-        <!-- 默认发送图标 -->
-        <span v-else class="send-icon">
-          <EnterIcon class="enter-left-icon" />
-        </span>
+        <!-- 发送 / 暂停 / 继续共用一个图标，状态切换时由图标自己完成形变 -->
+        <RunControlIcon :action="primaryAction" class="send-button__icon" />
       </button>
     </div>
   </div>
@@ -167,7 +156,7 @@ import { CustomSelect, IconButton } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
-import { EnterIcon } from '@linnya/renderer-ui/icons';
+import { RunControlIcon } from '@linnya/renderer-ui/icons';
 import { ImageIcon } from '@linnya/renderer-ui/icons';
 import ContextWindowUsageDropdown from '../../features/context-window-usage/ui/ContextWindowUsageDropdown.vue';
 import { useConversationAgentChoices } from '@/app/plugins/composables';

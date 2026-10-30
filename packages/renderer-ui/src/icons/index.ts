@@ -73,6 +73,7 @@ export { default as RectangleIcon } from './ui/RectangleIcon.vue';
 export { default as RedoIcon } from './ui/RedoIcon.vue';
 export { default as RefreshIcon } from './ui/RefreshIcon.vue';
 export { default as ResizeIcon } from './ui/ResizeIcon.vue';
+export { default as RunControlIcon } from './ui/RunControlIcon.vue';
 export { default as SaveAsIcon } from './ui/SaveAsIcon.vue';
 export { default as SaveIcon } from './ui/SaveIcon.vue';
 export { default as SearchIcon } from './ui/SearchIcon.vue';

@@ -44,9 +44,8 @@
   position: absolute;
   top: 8px;
   right: 8px;
+  display: flex;
   padding: var(--space-1);
-  font-size: 16px; /* scale-exempt: 关闭图标字形尺寸 */
-  line-height: 1;
   color: var(--color-text-tertiary);
   cursor: pointer;
   appearance: none;
@@ -54,6 +53,11 @@
   border: none;
   border-radius: var(--radius-sm);
   transition: background-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard);
+}
+
+.text-popover .popover-close-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .text-popover .popover-close-btn:hover {
