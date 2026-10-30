@@ -41,7 +41,7 @@ describe('model purpose resolution', () => {
     const models: ModelCatalogItem[] = [
       {
         id: 'reasoner',
-        catalog_source: 'default',
+        catalog_source: 'user',
         capabilities: ['chat'],
         ui_visibility: ['chat'],
         reasoning: { supported_efforts: ['low', 'high'], default_effort: 'high' },
@@ -51,6 +51,14 @@ describe('model purpose resolution', () => {
 
     expect(resolvePrimaryModelId(resolutionContext)).toBe('reasoner');
     expect(resolvePrimaryReasoningEffort(resolutionContext)).toBe('high');
+  });
+
+  it('默认目录里的开发模型不会成为隐式主模型', () => {
+    const models: ModelCatalogItem[] = [
+      { id: 'mock-debug-chat', catalog_source: 'default', capabilities: ['chat'], ui_visibility: ['chat1'] },
+    ];
+
+    expect(resolvePrimaryModelId(context(models))).toBeNull();
   });
 
   it('云目录确认后才把已消失的云选择切到当前 purpose default', () => {

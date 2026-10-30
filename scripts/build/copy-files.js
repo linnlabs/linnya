@@ -130,9 +130,17 @@ async function copyFiles() {
                 }
             }
 
+            // mock 模型只服务源码开发与测试；安装包不预置任何模型，由用户自行配置。
+            modelsConfig.models = (modelsConfig.models ?? []).filter(
+                model => !String(model.inference_route?.base_url ?? '').startsWith('mock://'),
+            );
+            if (modelsConfig.models.length > 0) {
+                throw new Error(`安装包不应预置模型：${modelsConfig.models.map(model => model.id).join(', ')}`);
+            }
+
             await fs.ensureDir(modelsDestDir);
             await fs.writeJson(modelsDestPath, modelsConfig, { spaces: 2 });
-            console.log(`Successfully wrote credential-free default_models.json to ${modelsDestPath}.`);
+            console.log(`Successfully wrote empty default_models.json to ${modelsDestPath}.`);
 
         } catch (error) {
             console.error('Error processing default_models.json:', error);

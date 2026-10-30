@@ -44,9 +44,11 @@ function resolveAvailableSelection(
 }
 
 export function resolvePrimaryModelId(context: ModelPurposeResolutionContext): string | null {
-  const defaultId = firstModelId(context.models, model => model.id === 'default-deepseek-reasoner')
-    ?? firstModelId(context.models, model => modelHasVisibility(model, 'chat'))
-    ?? firstModelId(context.models, model => modelHasCapability(model, 'chat'));
+  // 默认目录只有开发用 mock，不能成为隐式主模型；用户配置过模型才有默认。
+  const configured = context.models.filter(model => model.catalog_source !== 'default');
+  const defaultId = firstModelId(configured, model => model.id === 'default-deepseek-reasoner')
+    ?? firstModelId(configured, model => modelHasVisibility(model, 'chat'))
+    ?? firstModelId(configured, model => modelHasCapability(model, 'chat'));
   return resolveAvailableSelection(context, context.selections.primaryModelId, defaultId);
 }
 

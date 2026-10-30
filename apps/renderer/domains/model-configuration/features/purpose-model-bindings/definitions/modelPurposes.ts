@@ -30,12 +30,10 @@ export const AUXILIARY_MODEL_PURPOSE_REGISTRY = [
   {
     purposeKey: PromptKeys.AUTOCOMPLETE,
     defaultStrategy: ModelPurposeDefaultStrategy.FIXED_MODEL,
-    defaultModelId: 'cloud-deepseek-v4-flash',
   },
   {
     purposeKey: PromptKeys.TRANSLATION,
     defaultStrategy: ModelPurposeDefaultStrategy.FIXED_MODEL,
-    defaultModelId: 'cloud-deepseek-v4-flash',
   },
   {
     purposeKey: PromptKeys.AUDIO_SUMMARY,
@@ -56,7 +54,6 @@ export const AUXILIARY_MODEL_PURPOSE_REGISTRY = [
   {
     purposeKey: PromptKeys.CONVERSATION_TITLE,
     defaultStrategy: ModelPurposeDefaultStrategy.FIXED_MODEL,
-    defaultModelId: 'cloud-deepseek-v4-flash',
   },
   {
     purposeKey: PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION,
