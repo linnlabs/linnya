@@ -45,6 +45,7 @@ interface TextSnapshotRow {
 
 interface PendingRevisionRow {
   readonly id: string;
+  readonly revision: number;
   readonly document_node_id: string;
   readonly target_block_id: string;
   readonly new_markdown: string;
@@ -282,7 +283,7 @@ function markdownDocFromBlocks(blocks: readonly { readonly id: string; readonly 
       attrs: { id: block.id },
       content: [
         {
-          type: 'paragraphBlock',
+          type: 'baseBlock',
           content: block.text.length > 0 ? [{ type: 'text', text: block.text }] : [],
         },
       ],
@@ -512,6 +513,7 @@ describe('readWorkspaceVfsNode / searchWorkspaceVfsNodes', () => {
     db.pendingRevisions.push(
       {
         id: 'pending-1',
+        revision: 1,
         document_node_id: 'doc-1',
         target_block_id: 'block-1',
         new_markdown: '# 当前标题',
@@ -523,6 +525,7 @@ describe('readWorkspaceVfsNode / searchWorkspaceVfsNodes', () => {
       },
       {
         id: 'pending-2',
+        revision: 1,
         document_node_id: 'doc-1',
         target_block_id: 'block-2',
         new_markdown: '',
@@ -534,6 +537,7 @@ describe('readWorkspaceVfsNode / searchWorkspaceVfsNodes', () => {
       },
       {
         id: 'pending-3',
+        revision: 1,
         document_node_id: 'doc-1',
         target_block_id: 'block-3',
         new_markdown: '新插入的 pending 段落',

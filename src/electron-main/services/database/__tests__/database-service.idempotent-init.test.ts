@@ -225,6 +225,7 @@ describe('DatabaseService.initialize() — createTables-always invariants', () =
     const old = bootstrap.getDb();
     old.exec(`
       ALTER TABLE markdown_block_pending_revisions DROP COLUMN revision;
+      ALTER TABLE image_blocks DROP COLUMN caption;
       ALTER TABLE subrun_trace_runs ADD COLUMN child_run_id TEXT;
       INSERT INTO conversations (
         conversation_id,

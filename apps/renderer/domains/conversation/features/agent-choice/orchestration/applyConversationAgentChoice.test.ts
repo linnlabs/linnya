@@ -1,3 +1,4 @@
+import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ConversationSelectedAgentIdSchema,
@@ -97,6 +98,7 @@ function createDeferred<T>(): {
 
 describe('applyConversationAgentChoice', () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     conversationTitleFeature.registerAutomaticCandidate.mockClear();
     projectScope.materializeCurrentDraft.mockClear();
   });

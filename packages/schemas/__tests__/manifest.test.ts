@@ -18,7 +18,7 @@ describe('PluginManifestSchema', () => {
       dependsOn: ['platform'],
       compat: {
         minApp: '0.0.36',
-        rendererUi: '^2.0.0',
+        rendererUi: '^3.0.0',
       },
       ownedFileTypes: [{
         nodeType: 'mindmap',

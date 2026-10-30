@@ -437,7 +437,7 @@ describe('ToolRegistry.executeTool', () => {
     );
 
     expect(result.success).toBe(false);
-    expect(result.error).toMatch(/Additional properties not allowed: extra/i);
+    expect(result.error).toMatch(/Additional properties not allowed: "extra"/i);
   });
 
   it('工具抛出 AbortError 时应保持中断语义向上抛出', async () => {

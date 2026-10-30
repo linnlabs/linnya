@@ -20,6 +20,7 @@ const schema = new Schema({
       group: 'block',
       atom: true,
       attrs: {
+        id: { default: null },
         alt: { default: null },
         width: { default: null },
         height: { default: null },
@@ -40,13 +41,13 @@ describe('markdownSerializer', () => {
   it('uses language-neutral default labels when no domain labels are provided', () => {
     const doc = schema.nodes.doc.create(null, [
       schema.nodes.bibliographyBlock.create(),
-      schema.nodes.imageBlock.create({ width: 320 }),
+      schema.nodes.imageBlock.create({ id: 'image-1', width: 320 }),
     ]);
 
     const markdown = createMarkdownSerializer().serialize(doc);
 
     expect(markdown).toContain('## References');
-    expect(markdown).toContain('[Image: Image, width 320px]');
+    expect(markdown).toContain('![](<linnya-image://image-1>)');
     expect(markdown).not.toMatch(/[\u4e00-\u9fff]/u);
   });
 

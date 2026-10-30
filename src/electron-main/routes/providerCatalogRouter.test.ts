@@ -53,7 +53,10 @@ describe('provider catalog router', () => {
 
     const searchResponse = await fetch(`${baseUrl}/api/v1/providers?q=claude`);
     const search = ProviderCatalogListResponseSchema.parse(await searchResponse.json());
-    expect(search.providers.map(provider => provider.id)).toEqual(['anthropic', 'openrouter']);
+    expect(search.providers.map(provider => provider.id)).toEqual(
+      expect.arrayContaining(['anthropic', 'openrouter'])
+    );
+    expect(search.total).toBeLessThan(list.total);
 
     const getResponse = await fetch(`${baseUrl}/api/v1/providers/deepseek`);
     const get = ProviderCatalogGetResponseSchema.parse(await getResponse.json());

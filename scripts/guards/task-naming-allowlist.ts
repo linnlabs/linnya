@@ -136,7 +136,9 @@ export const TASK_NAMING_ALLOWANCES: readonly TaskNamingAllowance[] = [
         'apps/renderer/domains/model-configuration/features/model-catalog/functions/modelCatalogProjection.ts',
         'apps/renderer/domains/model-configuration/features/model-catalog/functions/modelCatalogProjection.test.ts',
         'scripts/cloud-model-kv-v2-migration/functions/buildMigrationPlan.ts',
-        'scripts/cloud-model-kv-v2-migration/functions/cloudModelKvV2Migration.test.ts'
+        'scripts/cloud-model-kv-v2-migration/functions/cloudModelKvV2Migration.test.ts',
+        'apps/renderer/domains/conversation/features/model-selection/orchestration/useConversationModelSelection.integration.test.ts',
+        'docs/conversation-platform/10-subruns.md'
       )(occurrence),
   },
   {

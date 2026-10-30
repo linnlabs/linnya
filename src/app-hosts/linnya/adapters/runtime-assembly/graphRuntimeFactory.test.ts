@@ -309,7 +309,7 @@ describe('graphRuntimeFactory tokenizer wiring', () => {
     expect(result.tokenEstimate?.finalTokens).toBe(expectedTokens);
     expect(expectedTokens).toBeLessThan(roughTokens);
     expect(result.promptBudget).toMatchObject({
-      inputBudgetTokens: 28_672,
+      inputBudgetTokens: 32_767,
       outputLimitTokens: 4_096,
     });
   });
@@ -403,13 +403,14 @@ describe('graphRuntimeFactory tokenizer wiring', () => {
     expect(result.contextUsage).toMatchObject({
       basis: 'last_completed_llm_prompt',
       budget_model_id: 'route-budget-model',
-      input_budget_tokens: 239_616,
+      input_budget_tokens: 255_999,
       output_limit_tokens: 16_384,
     });
+    // 输入预算不再预留完整输出；实际请求的输入与输出上限合计仍不能超过窗口。
     expect(
-      (result.contextUsage?.input_budget_tokens ?? 0)
+      (result.contextUsage?.used_tokens ?? 0)
       + (result.contextUsage?.output_limit_tokens ?? 0),
-    ).toBe(256_000);
+    ).toBeLessThanOrEqual(256_000);
   });
 
   it('应把同一个图片 estimator 注入 Context Manager，并把预算证据透传到 graph tick 输入边界', async () => {

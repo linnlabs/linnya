@@ -1,3 +1,4 @@
+import { createPinia, setActivePinia } from 'pinia';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ConversationSelectedAgentIdSchema, PromptKeys } from '@app/schemas';
 import { requireRendererAiInvocationPort } from '@plugin/renderer/aiInvocationPort';
@@ -257,6 +258,7 @@ vi.mock('@shared/utils/idUtils', () => ({
 
 describe('installBuiltinRendererPluginPorts AI invocation port', () => {
   beforeEach(async () => {
+    setActivePinia(createPinia());
     clearRendererComposerCommandPortForTest();
     clearRendererConversationSubrunInvocationPortForTest();
     clearRendererPluginRegistryForTest();

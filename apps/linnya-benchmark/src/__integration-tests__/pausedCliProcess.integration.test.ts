@@ -32,7 +32,7 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
         let result: unknown;
         if (request.url?.endsWith('/handshake')) {
           result = {
-            schema_version: 1, protocol_version: 4,
+            schema_version: 1, protocol_version: 7,
             app_instance_id: 'app-benchmark-pause', app_version: '0.0.38',
             capabilities: ['send', 'status', 'messages'],
             limits: { max_request_bytes: 1_048_576, max_message_chars: 200_000,
@@ -90,7 +90,7 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
       if (!address || typeof address === 'string') throw new Error('Missing bridge address');
       const connectionFile = path.join(temporaryRoot, 'connection.json');
       await writeFile(connectionFile, JSON.stringify(ConversationControlConnectionDescriptorSchema.parse({
-        protocol_version: 4, app_instance_id: 'app-benchmark-pause', pid: process.pid,
+        protocol_version: 7, app_instance_id: 'app-benchmark-pause', pid: process.pid,
         host: '127.0.0.1', port: address.port, session_token: token,
         created_at: Date.now(), updated_at: Date.now(),
       })), { mode: 0o600 });

@@ -42,7 +42,7 @@ describe('markdownBlockPlanner', () => {
       '- two',
       '  - nested',
       '| a | b |\n| --- | --- |\n| 1 | 2 |',
-      '```latex\nE = mc^2\n```'
+      '$$\nE = mc^2\n$$'
     ]);
   });
 
@@ -199,7 +199,7 @@ describe('markdownBlockPlanner', () => {
       '* 列表项',
       '```ts\nconst x = 1\n```',
       '| a | b |\n| --- | --- |\n| 1 | 2 |',
-      '```latex\nE = mc^2\n```',
+      '$$\nE = mc^2\n$$',
       '> 引用'
     ];
 

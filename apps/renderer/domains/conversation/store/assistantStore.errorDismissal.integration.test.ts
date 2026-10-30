@@ -120,7 +120,7 @@ describe('assistantStore error dismissal', () => {
 
     expect(result.success).toBe(true);
     expect(assistantStore.error).toBe(
-      '模型服务返回 429，可能是额度已用尽或请求过于频繁。请稍后重试，或切换模型。',
+      '模型额度不足或请求过于频繁，请检查额度或稍后重试。',
     );
   });
 

@@ -7,6 +7,8 @@ import { WorkspaceService } from '../../../../electron-main/services/workspace/w
 import { CORE_SCHEMAS } from '../../infrastructure/sqlite/schemas/core.schema';
 import { WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS } from '../../infrastructure/sqlite/schemas/node-text-snapshot.schema';
 import { MARKDOWN_DOCUMENT_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/document.schema';
+import { IMAGE_BLOCK_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/image.schema';
+import { ASSET_LEDGER_SCHEMAS } from 'src/domains/assets/features/asset-ledger/infrastructure/sqlite/schemas/assetLedger.schema';
 import { MarkdownDocumentService } from 'src/domains/markdown';
 import { createWorkspaceDocument } from '../orchestration/createWorkspaceDocument';
 import { duplicateWorkspaceDocument } from '../orchestration/duplicateWorkspaceDocument';
@@ -35,8 +37,8 @@ function createDb(schemaSet: SchemaSet): Database.Database {
   db.pragma('foreign_keys = ON');
   const statements =
     schemaSet === 'core'
-      ? CORE_SCHEMAS
-      : [...CORE_SCHEMAS, ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS, ...MARKDOWN_DOCUMENT_SCHEMAS];
+      ? [...CORE_SCHEMAS, ...ASSET_LEDGER_SCHEMAS]
+      : [...CORE_SCHEMAS, ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS, ...ASSET_LEDGER_SCHEMAS, ...MARKDOWN_DOCUMENT_SCHEMAS, ...IMAGE_BLOCK_SCHEMAS];
 
   for (const statement of statements) {
     db.exec(statement);

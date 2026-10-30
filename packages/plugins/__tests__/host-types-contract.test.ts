@@ -55,7 +55,9 @@ describe('plugin host contract type source', () => {
   it.each(pluginIds)('does not revive %s SDK mirror host-types', (pluginId) => {
     const allowedHostTypes = pluginId === 'sheet'
       ? ['host-types/renderer/sheetEngine.d.ts', 'host-types/rendererEnv.d.ts']
-      : ['host-types/rendererEnv.d.ts'];
+      : pluginId === 'decision'
+        ? []
+        : ['host-types/rendererEnv.d.ts'];
 
     expect(hostTypesFiles(pluginId)).toEqual(allowedHostTypes);
   });

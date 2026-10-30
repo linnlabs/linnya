@@ -54,15 +54,21 @@ function setupMarkdownDb(documentId: string): {
   };
 }
 
+/** 读取链总会绑定 Markdown 图片归属，空库也必须具备归属表。 */
+function createEmptyDocumentDb(): Database.Database {
+  const db = new Database(':memory:');
+  db.pragma('foreign_keys = ON');
+  for (const statement of [...CORE_SCHEMAS, ...ASSET_LEDGER_SCHEMAS]) {
+    db.exec(statement);
+  }
+  return db;
+}
+
 function setupWorkspaceDb(): {
   readonly db: Database.Database;
   readonly workspaceService: WorkspaceService;
 } {
-  const db = new Database(':memory:');
-  db.pragma('foreign_keys = ON');
-  for (const statement of CORE_SCHEMAS) {
-    db.exec(statement);
-  }
+  const db = createEmptyDocumentDb();
   db.prepare(`
     INSERT INTO projects (id, name, description, icon, system_role, created_at, updated_at)
     VALUES ('project-1', '测试项目', NULL, NULL, NULL, 1, 1)
@@ -91,7 +97,7 @@ describe('workspaceDocumentReadAdapter', () => {
   it('传入文档名称而非 document_id 时，应报 document_id 格式无效', async () => {
     const ctx: ToolContext = {
       databaseService: {
-        getDb: () => ({}) as never,
+        getDb: () => createEmptyDocumentDb(),
       } as unknown as ToolContext['databaseService'],
       workspaceService: {
         getNode: () => null,
@@ -106,7 +112,7 @@ describe('workspaceDocumentReadAdapter', () => {
   it('传入合法 UUID 但库中不存在时，应返回 Document not found', async () => {
     const ctx: ToolContext = {
       databaseService: {
-        getDb: () => ({}) as never,
+        getDb: () => createEmptyDocumentDb(),
       } as unknown as ToolContext['databaseService'],
       workspaceService: {
         getNode: () => null,
@@ -184,7 +190,7 @@ describe('workspaceDocumentReadAdapter', () => {
 
     const ctx: ToolContext = {
       databaseService: {
-        getDb: () => ({}) as never,
+        getDb: () => createEmptyDocumentDb(),
       } as unknown as ToolContext['databaseService'],
       workspaceService: {
         getNode: () => ({
@@ -367,14 +373,14 @@ describe('workspaceDocumentReadAdapter', () => {
     expect(parsed.data.images).toEqual([
       {
         blockId: 'image-1',
-        locator: 'media://load/doc-image/ZG9jLTEvaW1hZ2UucG5n',
+        locator: 'linnya-image://image-1',
         alt: '图示',
         width: 640,
         height: 360,
       },
     ]);
     expect(parsed.observation).toContain('工具尚未读取图片像素');
-    expect(parsed.observation).toContain('locator="media://load/doc-image/ZG9jLTEvaW1hZ2UucG5n"');
+    expect(parsed.observation).toContain('locator="linnya-image://image-1"');
   });
 
   it('读取 Markdown DocumentView 时正文、来源附录与结构化 citation facts 来自同一窗口', async () => {

@@ -113,7 +113,7 @@ describe('conversationService - HTTP 非 2xx 错误收敛', () => {
     expect(failure?.source).toBe('client');
     if (!failure || failure.source !== 'client') throw new Error('expected client transport error');
     expect(failure.kind).toBe('http');
-    expect(failure.error.message).toContain('限流');
+    expect(failure.error.message).toContain('请求过于频繁');
     expect(failure.errorCode).toBe('HTTP_429');
     expect(failure.retryable).toBe(true);
     const details = failure.details;

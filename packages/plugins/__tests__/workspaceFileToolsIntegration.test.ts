@@ -517,6 +517,7 @@ function createMindMapFileToolFixture(): {
   for (const statement of [
     ...CORE_SCHEMAS,
     ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS,
+    ...ASSET_LEDGER_SCHEMAS,
     ...MARKDOWN_DOCUMENT_SCHEMAS,
     ...MINDMAP_DOCUMENT_SCHEMAS,
   ]) {

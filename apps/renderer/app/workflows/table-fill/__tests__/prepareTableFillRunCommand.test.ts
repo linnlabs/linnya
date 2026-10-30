@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BaseMessage, Conversation } from '@/domains/conversation/types';
 import { prepareTableFillRunCommand } from '../orchestration/prepareTableFillRunCommand';
 
@@ -57,6 +58,10 @@ function createStore(activeConversation: Conversation | null = createConversatio
 }
 
 describe('prepareTableFillRunCommand', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
   it('只准备 command identity，不在 durable ack 前创建用户消息', async () => {
     const store = createStore();
 

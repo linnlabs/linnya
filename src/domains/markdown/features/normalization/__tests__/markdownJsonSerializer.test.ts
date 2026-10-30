@@ -29,7 +29,7 @@ describe('serializeRootBlockToMarkdown inline projection', () => {
           { type: 'text', text: 'important', marks: [{ type: 'bold' }] },
         ])
       )
-    ).toBe('\\[1\\] **important**');
+    ).toBe('&#91;1\\] **important**');
   });
 
   it('通过结构化 inline node projector 输出 canonical token，不读取派生编号', () => {
