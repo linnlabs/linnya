@@ -94,6 +94,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'DocumentIcon',
     'DocumentPdfIcon',
     'DocumentPersonIcon',
+    'DocumentTextIcon',
     'DocumentTxtIcon',
     'DownloadIcon',
     'DragHandleIcon',

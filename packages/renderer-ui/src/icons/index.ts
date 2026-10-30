@@ -30,6 +30,7 @@ export { default as DocumentErrorIcon } from './ui/DocumentErrorIcon.vue';
 export { default as DocumentIcon } from './ui/DocumentIcon.vue';
 export { default as DocumentPdfIcon } from './ui/DocumentPdfIcon.vue';
 export { default as DocumentPersonIcon } from './ui/DocumentPersonIcon.vue';
+export { default as DocumentTextIcon } from './ui/DocumentTextIcon.vue';
 export { default as DocumentTxtIcon } from './ui/DocumentTxtIcon.vue';
 export { default as DownloadIcon } from './ui/DownloadIcon.vue';
 export { default as DragHandleIcon } from './ui/DragHandleIcon.vue';

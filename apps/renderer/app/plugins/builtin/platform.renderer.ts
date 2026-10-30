@@ -1,7 +1,7 @@
 import type { RendererPluginContribution } from '../types';
 import { ConversationAgentIds } from '@app/schemas';
 import MarkdownDocumentSurface from './surfaces/MarkdownDocumentSurface.vue';
-import { DocumentIcon } from '@linnya/renderer-ui/icons';
+import { DocumentTextIcon } from '@linnya/renderer-ui/icons';
 import { MicroscopeIcon } from '@linnya/renderer-ui/icons';
 import { markdownHandler } from '@/domains/workspace/services/file-manager/handlers/markdown';
 import { commonToolConfigs } from '@/domains/conversation/ui/tools/configs/common';
@@ -49,7 +49,7 @@ export const platformRendererPlugin: RendererPluginContribution = {
         key: 'plugins.contribution.documentType.document.defaultName',
         fallback: 'Untitled document',
       },
-      iconComponent: DocumentIcon,
+      iconComponent: DocumentTextIcon,
       iconClass: 'file-icon',
       createPriority: 10,
       canAddToKnowledgeBase: true,
