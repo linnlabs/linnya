@@ -301,3 +301,10 @@ mark 与复杂度预算；Renderer adapter 逐 layer 重置状态并解释局部
 - SVG Graphic fallback / PPTX 回读：`features/presentationSvgGraphicFallback/**/*.test.ts`、
   `engine/svgGraphic/pptx/svgGraphicPptxRoundtrip.test.ts`
 - 插件全量：`pnpm run test:plugin:slides`
+
+
+Workspace 节点归属、活动身份和更新时间通过 Host `workspaceDocumentProjection` 获取/写入，插件 SQL 只操作自己的表。当前 revision、Workspace 更新时间和 VFS 文本快照共享事务。旧数据回填通过 Host 快照端口只补缺失项；表间外键仍声明引用关系，不授予跨域写入权限。
+
+## 日志
+
+运行时事件使用 `slides.<area>.<event>`。App Server 使用 Host Logger；人工编辑阶段与性能记录为 debug，失败保留 warn/error。纯 engine 只接收可选诊断端口，不建立 noop logger；生产协调器注入 Host Logger。构建 Worker 不加载 Host 装配，故将结构化 `slides.build.compose_failed` 写入宿主收集的 stderr；隔离的 Electron preload 只能使用宿主捕获的 console warning。standalone CLI 的 stdout 留给命令结果，诊断写 stderr。

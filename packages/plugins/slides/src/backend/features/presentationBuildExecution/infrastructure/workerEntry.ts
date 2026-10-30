@@ -1,3 +1,4 @@
+import { inspect } from 'node:util';
 import { parentPort } from 'node:worker_threads';
 import { MathFormulaError } from '@plugin/slides/shared';
 
@@ -42,9 +43,7 @@ async function handleBuildRequest(message: unknown): Promise<void> {
           result: await compilePresentationComposePayload(request.payload, {
             recordRuntimeFailure(failure) {
               // 原异常只留在 Worker 所属 App Server 的内部 stderr，不进入 response DTO。
-              console.error('[slides-build-execution] compose runtime failed', {
-                execution: 'worker', requestId, ...failure,
-              });
+              process.stderr.write(`${JSON.stringify({ event: 'slides.build.compose_failed', execution: 'worker', requestId, ...failure, error: inspect(failure.error) })}\n`);
             },
           }),
         }));

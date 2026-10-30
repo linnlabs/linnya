@@ -15,7 +15,7 @@ export function createPresentationManualEditTraceLogger(
       const timestamp = now();
       const start = startedAt.get(event.commandId) ?? timestamp;
       if (event.stage === 'request_received') startedAt.set(event.commandId, timestamp);
-      logger.info('slides_manual_edit.backend_trace', {
+      logger.debug('slides.manual_edit.trace', {
         ...event,
         timestamp,
         elapsedMs: timestamp - start,

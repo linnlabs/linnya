@@ -1,3 +1,4 @@
+import { isRecord } from '../../valueRecord';
 import type { SlidesInsertedObject } from '../definitions/insertedObject';
 import { isSlidesAuthoringKey } from './authoringIdentity';
 import { isEditableTextContent, isAuthorTextStyle } from './editableText';
@@ -31,6 +32,5 @@ export function readInsertedObjects(value: unknown): { value: readonly SlidesIns
   }
   return { value: result };
 }
-function isRecord(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 function only(value: Record<string, unknown>, keys: readonly string[]): boolean { return Object.keys(value).every(key => keys.includes(key)); }
 function finite(value: unknown): value is number { return typeof value === 'number' && Number.isFinite(value); }

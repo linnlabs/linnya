@@ -452,7 +452,7 @@ export class CodegenDeckBuilder {
         failBuild(error.code, error.message);
       }
       const referenceId = randomUUID();
-      this.deps.failureLogger?.error('[materialization] PPTX assembly failed', {
+      this.deps.failureLogger?.error('slides.materialization.failed', {
         referenceId,
         code: 'slides.materialization.pptx_failed',
         presentationId: scope.nodeId ?? null,

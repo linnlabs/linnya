@@ -1,3 +1,4 @@
+import { isRecord } from '../valueRecord';
 export type SlideLayoutPreset = '16x9' | '16x10' | '4x3';
 
 export interface CustomSlideLayout {
@@ -139,8 +140,4 @@ function normalizeDimension(
 
 function layoutErrorMessage(): string {
   return 'layout 必须是 16x9 / 16x10 / 4x3 或 { width, height, unit: "in" }。';
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

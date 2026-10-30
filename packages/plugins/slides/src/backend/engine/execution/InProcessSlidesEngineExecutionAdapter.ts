@@ -23,22 +23,17 @@ export interface InProcessSlidesEngineExecutionAdapterDeps {
   readonly logger?: SlidesEngineLogger;
 }
 
-const noopLogger: SlidesEngineLogger = {
-  info() {},
-  warn() {},
-};
-
 export class InProcessSlidesEngineExecutionAdapter implements SlidesEngineExecutionAdapter {
   private readonly deckAssembler: DeckAssemblerPort;
   private readonly pptxReader: PptxReaderPort;
   private readonly presentationQueries: SlidesPresentationQueryPort;
-  private readonly logger: SlidesEngineLogger;
+  private readonly logger: SlidesEngineLogger | undefined;
 
   constructor(deps: InProcessSlidesEngineExecutionAdapterDeps) {
     this.deckAssembler = deps.deckAssembler;
     this.pptxReader = deps.pptxReader;
     this.presentationQueries = deps.presentationQueries;
-    this.logger = deps.logger ?? noopLogger;
+    this.logger = deps.logger;
   }
 
   async assembleDeck(request: SlidesEngineAssembleDeckRequest): Promise<Buffer> {
@@ -109,7 +104,7 @@ export class InProcessSlidesEngineExecutionAdapter implements SlidesEngineExecut
     operation: () => Promise<T>
   ): Promise<T> {
     const startedAt = Date.now();
-    this.logger.info('slides_engine.operation.start', {
+    this.logger?.debug('slides.engine.started', {
       operation: context.operation,
       jobId: context.jobId,
       traceId: context.traceId,
@@ -120,7 +115,7 @@ export class InProcessSlidesEngineExecutionAdapter implements SlidesEngineExecut
 
     try {
       const result = await operation();
-      this.logger.info('slides_engine.operation.success', {
+      this.logger?.debug('slides.engine.completed', {
         operation: context.operation,
         jobId: context.jobId,
         traceId: context.traceId,
@@ -128,7 +123,7 @@ export class InProcessSlidesEngineExecutionAdapter implements SlidesEngineExecut
       });
       return result;
     } catch (error) {
-      this.logger.warn('slides_engine.operation.failed', {
+      this.logger?.warn('slides.engine.failed', {
         operation: context.operation,
         jobId: context.jobId,
         traceId: context.traceId,

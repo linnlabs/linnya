@@ -1,3 +1,4 @@
+import { isRecord } from '@plugin/slides/shared/valueRecord';
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '@plugin/backend/toolRuntime';
 import type { StructuredToolResult } from '@plugin/backend/toolRuntime';
 import {
@@ -7,9 +8,6 @@ import {
   type PptPlanData,
 } from '@plugin/slides/shared/pptPlanToolContract';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value != null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function describeValueType(value: unknown): string {
   if (Array.isArray(value)) return 'array';

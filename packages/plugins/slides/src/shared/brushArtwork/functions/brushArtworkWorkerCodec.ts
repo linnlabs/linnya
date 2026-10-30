@@ -1,3 +1,4 @@
+import { isRecord } from '../../valueRecord';
 import {
   SLIDES_BRUSH_WORKER_ID,
   SLIDES_BRUSH_WORKER_PROTOCOL_VERSION,
@@ -114,9 +115,6 @@ function readRequestId(value: unknown): string {
   return value;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   const allowed = new Set(keys);

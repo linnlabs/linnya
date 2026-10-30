@@ -1,3 +1,5 @@
+import { PresentationRevisionScope } from '../features/presentationSourceHistory';
+import { PresentationDraftRepository } from '../persistence';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -62,7 +64,7 @@ it('界面新建空白页经真实编译、SQLite 保存与重开后，页序、
     const initialThumbnailKeys = thumbnailKeys(initialDeck);
     await repository.createPresentation('deck', initialDeck, { deckSource: source, pptxBuffer: await materialize(initialDeck), origin: 'codegen' });
     const compile = vi.spyOn(builder, 'commitManualEditFromSource');
-    const backend = new PresentationManualEditingRuntime({ presentationRepo: repository, builder });
+    const backend = new PresentationManualEditingRuntime({ revisionScope: new PresentationRevisionScope(), draftRepo: new PresentationDraftRepository(db), presentationRepo: repository, builder });
     setActivePinia(createPinia());
     const presentedRevision = shallowRef<number | null>(null);
     const snapshot = shallowRef<ManualEditQueueSnapshot>({ documentId: 'deck', presentationError: null, buildState: null, renderVersion: null });
@@ -120,7 +122,7 @@ it('界面新建空白页经真实编译、SQLite 保存与重开后，页序、
       sandbox: new SandboxService(profiles, createSandboxEvaluatorTestRunner()),
       engine: { assembleDeck: materialize }, buildExecution: createInProcessPresentationBuildExecution(),
     });
-    const edits = new PresentationManualEditingRuntime({ presentationRepo: reopened, builder: reopenedBuilder });
+    const edits = new PresentationManualEditingRuntime({ revisionScope: new PresentationRevisionScope(), draftRepo: new PresentationDraftRepository(db), presentationRepo: reopened, builder: reopenedBuilder });
     async function edit(operation: import('@plugin/slides/shared').SlidesManualEditCommand['operation']) {
       const current = await reopened.getPresentation('deck');
       if (!current) throw new Error('Missing current document');

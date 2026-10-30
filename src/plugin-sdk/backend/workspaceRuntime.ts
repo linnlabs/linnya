@@ -134,6 +134,7 @@ export {
 } from 'src/shared/logger';
 export {
   saveWorkspaceNodeTextSnapshot,
+  hasWorkspaceNodeTextSnapshot,
 } from 'src/features/workspace/infrastructure/sqlite/node-text-snapshot/nodeTextSnapshot.service';
 
 const workspaceServiceContractCheck: _WorkspaceServiceMatchesPluginPort = true;

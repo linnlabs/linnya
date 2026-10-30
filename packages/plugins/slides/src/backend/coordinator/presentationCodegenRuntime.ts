@@ -56,10 +56,10 @@ export interface PresentationCodegenRuntimeDeps {
   readonly imageSourceResolver?: ImageSourceResolverPort;
   readonly historyStore?: ManualEditHistoryStore;
   readonly restoreRevision?: PresentationHistoryRuntime['commitDeferredRestore'];
-  readonly revisionScope?: PresentationRevisionScope;
+  readonly revisionScope: PresentationRevisionScope;
   readonly presentationRepo: PresentationRepositoryPort;
   readonly workspaceService?: WorkspacePresentationPort;
-  readonly draftRepo?: PresentationDraftRepositoryPort;
+  readonly draftRepo: PresentationDraftRepositoryPort;
   readonly engine: SlidesEngineExecutionAdapter;
   readonly codegenDeckBuilderFactory?: CodegenDeckBuilderFactory;
   readonly failureLogger?: CodegenDeckBuilderFailureLogger;
@@ -104,7 +104,7 @@ export class PresentationCodegenRuntime {
     if (!this.codegenDeckBuilder) {
       const builder = this.getRawDeckBuilder();
       const scope = this.deps.revisionScope;
-      this.codegenDeckBuilder = scope ? {
+      this.codegenDeckBuilder = {
         buildNewPresentation: input => scope.run(`create:${crypto.randomUUID()}`, () => builder.buildNewPresentation(input)),
         buildFromSource: input => scope.run(input.nodeId, () => builder.buildFromSource(input)),
         commitManualEditFromSource: input => scope.run(
@@ -116,7 +116,7 @@ export class PresentationCodegenRuntime {
           () => builder.commitManualEditFromProjectedDeckSpec(input),
         ),
         buildDeckSpecFromSource: input => scope.run(input.nodeId, () => builder.buildDeckSpecFromSource(input)),
-      } : builder;
+      };
     }
     return this.codegenDeckBuilder;
   }
@@ -132,7 +132,7 @@ export class PresentationCodegenRuntime {
   private getManualEditingRuntime(): PresentationManualEditingRuntime {
     if (!this.manualEditingRuntime) {
       this.manualEditingRuntime = new PresentationManualEditingRuntime({
-        presentationRepo: this.deps.presentationRepo, builder: this.getRawDeckBuilder(),
+        presentationRepo: this.deps.presentationRepo, builder: this.getDeckBuilder(),
         draftRepo: this.deps.draftRepo, trace: this.deps.manualEditTrace,
         revisionScope: this.deps.revisionScope, historyStore: this.deps.historyStore,
         restoreRevision: this.deps.restoreRevision,
@@ -173,7 +173,7 @@ export class PresentationCodegenRuntime {
   private createCodegenDeckBuilder(): CodegenDeckBuilderPort {
     return new CodegenDeckBuilder({
       imageSourceResolver: this.deps.imageSourceResolver,
-      recordSourceTheme: theme => this.deps.revisionScope?.recordSourceTheme(theme),
+      recordSourceTheme: theme => this.deps.revisionScope.recordSourceTheme(theme),
       presentationRepo: this.deps.presentationRepo,
       engine: this.deps.engine,
       sandbox: {

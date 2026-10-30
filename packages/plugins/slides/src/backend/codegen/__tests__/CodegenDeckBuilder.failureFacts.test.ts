@@ -103,7 +103,7 @@ describe('CodegenDeckBuilder structured failure facts', () => {
       },
     });
     expect(failureLogger.error).toHaveBeenCalledWith(
-      '[materialization] PPTX assembly failed',
+      'slides.materialization.failed',
       expect.objectContaining({
         referenceId: expect.stringMatching(/^[0-9a-f-]{36}$/),
         presentationId: 'deck-1',

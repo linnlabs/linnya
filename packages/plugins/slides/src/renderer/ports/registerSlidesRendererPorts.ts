@@ -60,7 +60,7 @@ import { registerMessageCatalogs } from '@app/localization';
 import { SLIDES_TOOL_CARD_MESSAGE_CATALOG } from '../tool-cards/definitions/slidesToolCardMessageCatalog';
 import { SLIDES_PREVIEW_MESSAGE_CATALOG } from '../features/previewRenderState/definitions/slidesPreviewMessageCatalog';
 import { SLIDES_HISTORY_MESSAGES } from '../features/presentationHistory/definitions/historyMessages';
-import { MANUAL_EDITING_MESSAGE_CATALOG } from '../features/manualEditing/definitions/manualEditingMessageCatalog';
+import { MANUAL_EDITING_MESSAGE_CATALOG } from '../features/manualEditing/ui';
 import { EDITING_COMMAND_MESSAGE_CATALOG } from '../features/editingCommands';
 import { ELEMENT_PROPERTY_MESSAGE_CATALOG } from '../features/elementProperties';
 import { DECK_NAVIGATOR_MESSAGE_CATALOG } from '../features/deckNavigator/definitions/deckNavigatorMessageCatalog';

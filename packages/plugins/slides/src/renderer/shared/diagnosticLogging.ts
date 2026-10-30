@@ -24,11 +24,7 @@ export function logSlidesVerbose(
     return;
   }
 
-  if (details) {
-    console.info(`[Slides/${scope}] ${message}`, details);
-    return;
-  }
-  console.info(`[Slides/${scope}] ${message}`);
+  console.debug(`slides.${diagnosticArea(scope)}.trace`, { message, ...details });
 }
 
 export function warnSlides(
@@ -36,9 +32,9 @@ export function warnSlides(
   message: string,
   details?: Record<string, unknown>,
 ): void {
-  if (details) {
-    console.warn(`[Slides/${scope}] ${message}`, details);
-    return;
-  }
-  console.warn(`[Slides/${scope}] ${message}`);
+  console.warn(`slides.${diagnosticArea(scope)}.warning`, { message, ...details });
+}
+
+function diagnosticArea(scope: string): string {
+  return scope.replace(/([a-z])([A-Z])/gu, '$1_$2').toLowerCase();
 }

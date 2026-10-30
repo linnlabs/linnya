@@ -154,7 +154,7 @@ function createRegistration() {
         packageRoot: '/plugin',
         rootSource: 'explicit',
       },
-      recordDiagnostic: () => {},
+      logger: { debug: () => {}, warn: () => {} },
     }),
   }];
 }

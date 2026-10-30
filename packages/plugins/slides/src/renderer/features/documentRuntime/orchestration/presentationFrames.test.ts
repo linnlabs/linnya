@@ -13,7 +13,9 @@ it('accepts only the complete current page of the active document revision', () 
   const old = { documentId: 'deck', revision: 1, slide: store.currentSlide };
   runtime.reportPresentedFrame(old);
   expect(runtime.presentedRevision.value).toBe(1);
+  runtime.reportPresentationFailure(old, 'Old page failed');
   store.installSnapshot(makePresentationView('deck', 2), 0);
+  expect(store.presentationError).toBeNull();
   runtime.reportPresentedFrame(old);
   expect(runtime.presentedRevision.value).toBeNull();
   const current = { documentId: 'deck', revision: 2, slide: store.currentSlide };

@@ -1,3 +1,4 @@
+import { PresentationDraftRepository } from '../persistence';
 import { SlideMarkerIndex } from '@plugin/slides/shared';
 import { copyManualObjects } from '../features/presentationManualEditing';
 import { writeFileSync } from 'node:fs';
@@ -75,7 +76,7 @@ it('30 页连续编辑、批量与源码撤销在历史压缩后仍保持一致'
     reportFailure: (_documentId, error) => { throw error; },
   });
   const paths: (string | undefined)[] = [];
-  const runtime = new PresentationManualEditingRuntime({ presentationRepo: repo, builder, revisionScope: scope,
+  const runtime = new PresentationManualEditingRuntime({ draftRepo: new PresentationDraftRepository(db), presentationRepo: repo, builder, revisionScope: scope,
     historyStore, restoreRevision: input => history.commitDeferredRestore(input),
     trace: { record: event => { if (event.stage === 'source_rewritten') paths.push(event.path); } } });
   const source = Array.from({ length: 30 }, (_, i) => `const slide${i} = createSlide({ slideKey: 'page${i}' });

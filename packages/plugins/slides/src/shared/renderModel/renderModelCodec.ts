@@ -1,3 +1,4 @@
+import { isRecord } from '../valueRecord';
 import { layoutReplaySchema } from '../generatedLayoutReplay';
 import type {
   RenderChartAxis,
@@ -990,9 +991,6 @@ function isRenderBox(value: unknown): boolean {
     && value.unit === 'in';
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   const allowed = new Set(keys);

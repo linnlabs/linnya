@@ -128,3 +128,5 @@ The root implementation barrel is removed. `slidesManualSelectionStore` owns sel
 `slidesManualSubmissionStore` owns history, queue, submission outcomes and notices. Writable availability is computed from
 the single installed document snapshot; no component writes an enabled flag. Presentation receipts belong to documentRuntime.
 Stage pointer routing, AI prompt and toolbar visibility are composed under `page/orchestration`.
+
+依赖方向：textEditing 与 editingPreview 提供无状态底层能力；manualEditing 的 selection/submission/preview 提供稳定入口；editingInteraction 消费它们；属性、剪贴板与命令消费交互和提交端口。跨 feature 不导入内部文件，页面层装配生命周期，不能重新引入双向依赖。

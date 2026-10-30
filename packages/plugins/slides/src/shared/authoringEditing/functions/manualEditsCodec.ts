@@ -1,3 +1,4 @@
+import { isRecord } from '../../valueRecord';
 import { readInsertedObjects } from './readInsertedObjects';
 import { readSlidesTextStylePatch } from './readSlidesTextStylePatch';
 import { SLIDES_TEXT_STYLE_FIELDS } from '../definitions/editableText';
@@ -310,9 +311,6 @@ function isTargetKind(value: unknown): value is SlidesManualTargetKind {
   return typeof value === 'string' && TARGET_KINDS.some(kind => kind === value);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value != null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function hasOnlyKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
   return Object.keys(value).every(key => allowed.includes(key));

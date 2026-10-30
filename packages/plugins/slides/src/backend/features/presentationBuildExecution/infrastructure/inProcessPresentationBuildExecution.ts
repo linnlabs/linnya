@@ -1,3 +1,4 @@
+import { Logger } from '@plugin/backend/workspaceRuntime';
 import { typecheckCodegenSource } from '../../../sandbox/codegenTypecheck';
 import type {
   PresentationBuildExecutionPort,
@@ -9,7 +10,7 @@ import { materializePresentationPptx } from '../functions/materializePresentatio
 export function createInProcessPresentationBuildExecution(
   diagnostics: PresentationComposeDiagnosticsPort = {
     recordRuntimeFailure(failure) {
-      console.error('[slides-build-execution] compose runtime failed', { execution: 'in-process', ...failure });
+      new Logger('SlidesBuild').error('slides.build.compose_failed', { execution: 'in-process', ...failure });
     },
   },
 ): PresentationBuildExecutionPort {

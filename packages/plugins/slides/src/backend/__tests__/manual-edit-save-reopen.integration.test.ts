@@ -1,3 +1,5 @@
+import { PresentationRevisionScope } from '../features/presentationSourceHistory';
+import { PresentationDraftRepository } from '../persistence';
 import { EditorState, TextSelection } from '@tiptap/pm/state';
 import { textContentToDocument, documentToTextContent, patchSelectedTextStyle } from '../../renderer/features/textEditing/functions/richTextDocument';
 import { DOMParser } from '@xmldom/xmldom';
@@ -62,7 +64,7 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
       sandbox: new SandboxService(profiles, createSandboxEvaluatorTestRunner()),
       engine: { assembleDeck: materialize }, buildExecution: createInProcessPresentationBuildExecution(),
     });
-    const backend = new PresentationManualEditingRuntime({ presentationRepo: repository, builder });
+    const backend = new PresentationManualEditingRuntime({ revisionScope: new PresentationRevisionScope(), draftRepo: new PresentationDraftRepository(db), presentationRepo: repository, builder });
     setActivePinia(createPinia());
     const presentedRevision = shallowRef<number | null>(null);
     const snapshot = shallowRef<ManualEditQueueSnapshot>({ documentId: 'deck', presentationError: null, buildState: null, renderVersion: null });

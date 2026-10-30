@@ -132,3 +132,9 @@ shared/
 Paint 的 `direction` 与 `angle` 二选一，接纳时统一为 OOXML 角度（0° 向右、顺时针）；非正方形按 scaled 坐标映射。径向 center/radius 分别按宽、高归一化，预览必须保留双轴半径。详见 [视觉 Paint 合同](../../docs/visual-paint-contract.md)。
 
 - [presentationViewSnapshot](./presentationViewSnapshot/README.md)：一致修订视图、页内容/定位拆分与增量传输合同。
+
+## IPC 命令准入
+
+`ipcCommands` 是浏览器安全的 Zod 命令入口；Renderer 与 Backend 使用同一 schema 和中文参数错误转换，复用 authoringEditing 的作者值 codec，不复制作者 key、富文本或插入对象规则。图片限制为 20 MB，模板限制为 50 MB，二者均接纳结构化克隆的二进制。来源定位、对象编辑、复制、历史查询和模板导入不再在 handler 内定义第二套 schema。
+
+`valueRecord` 只持有排除 null/数组的基础对象守卫，供 codec 复用；字段白名单、作者值、版本和业务错误仍留在对应 owner，不汇总成万能 parser。

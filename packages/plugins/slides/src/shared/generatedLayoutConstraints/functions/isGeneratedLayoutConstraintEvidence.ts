@@ -1,3 +1,4 @@
+import { isRecord } from '../../valueRecord';
 import type {
   GeneratedLayoutBox,
   GeneratedLayoutConstraintEvidence,
@@ -133,9 +134,6 @@ function isPositionMode(value: unknown): value is 'flow' | 'absolute' {
   return value === 'flow' || value === 'absolute';
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   const allowed = new Set(keys);

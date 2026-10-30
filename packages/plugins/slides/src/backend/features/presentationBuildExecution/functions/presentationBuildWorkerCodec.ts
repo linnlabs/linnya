@@ -1,3 +1,4 @@
+import { isRecord } from '@plugin/slides/shared/valueRecord';
 import type { TypecheckResult } from '../../../sandbox/codegenTypecheck';
 import type { SandboxJsonObject } from '@plugin/backend/sandboxRuntime';
 import { isMathFormulaErrorCode } from '@plugin/slides/shared';
@@ -37,9 +38,6 @@ const TYPECHECK_DIAGNOSTIC_CATEGORIES = new Set([
   'suggestion',
 ]);
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function requireProtocolVersion(value: Record<string, unknown>): void {
   if (value.protocolVersion !== PRESENTATION_BUILD_WORKER_PROTOCOL_VERSION) {

@@ -1,3 +1,4 @@
+import { Logger } from '@plugin/backend/workspaceRuntime';
 import { PresentationViewSnapshotRuntime } from '../features/presentationViewSnapshot';
 import type { ViewReadRequest, ViewReadResponse, ViewHeader } from '@plugin/slides/shared/presentationViewSnapshot';
 import type {
@@ -301,7 +302,7 @@ export class PresentationQueryRuntime {
         canEditSourceSelection: deckSpecHasSourceSpan(deckSpec),
       };
     } catch (error) {
-      console.warn('[ai-ppt] failed to recover source spans for render model', {
+      new Logger('SlidesQuery').warn('slides.query.source_spans_failed', {
         nodeId,
         versionId: version.id,
         error,

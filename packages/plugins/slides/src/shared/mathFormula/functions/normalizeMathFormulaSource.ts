@@ -1,3 +1,4 @@
+import { isRecord } from '../../valueRecord';
 import {
   MATH_FORMULA_PROFILE_VERSION,
   type MathFormulaAlign,
@@ -105,9 +106,6 @@ function normalizeHexColor(value: string): string | null {
   return /^#[0-9A-F]{6}$/.test(normalized) ? normalized : null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function isSourceSpan(value: unknown): boolean {
   return isRecord(value)

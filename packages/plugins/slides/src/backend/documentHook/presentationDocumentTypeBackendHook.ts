@@ -1,3 +1,4 @@
+import { listWorkspaceDocumentIds } from '@plugin/backend/workspaceDocumentProjection';
 import { sliceTextWindow } from '@app/schemas/document-view';
 import type {
   DocumentTypeBackendCreateResult,
@@ -328,20 +329,13 @@ export function createPresentationDocumentTypeBackendHook(
       return readPresentationVfsContent(params);
     },
     readProjectCharCount(params): number {
-      const row = params.db
-        .prepare(
-          `
-        SELECT COALESCE(SUM(LENGTH(p.deck_source)), 0) AS total
-        FROM presentation_documents p
-        INNER JOIN workspace_nodes wn
-          ON wn.id = p.node_id
-        WHERE
-          wn.project_id = ?
-          AND wn.deleted_at IS NULL
-          AND wn.type = ?
-      `
-        )
-        .get(params.projectId, SLIDES_DOCUMENT_TYPE);
+      const nodeIds = listWorkspaceDocumentIds(params.db, { projectId: params.projectId, nodeType: SLIDES_DOCUMENT_TYPE });
+      if (nodeIds.length === 0) return 0;
+      // Workspace 只返回节点身份；插件自行统计自己拥有的正文。
+      const row = params.db.prepare(`
+        SELECT COALESCE(SUM(LENGTH(deck_source)), 0) AS total
+        FROM presentation_documents WHERE node_id IN (SELECT value FROM json_each(?))
+      `).get(JSON.stringify(nodeIds));
       if (row === undefined) return 0;
       if (!isSlidesProjectCharCountRow(row)) {
         throw new Error(`Slides 项目字符统计结构异常：${params.projectId}`);

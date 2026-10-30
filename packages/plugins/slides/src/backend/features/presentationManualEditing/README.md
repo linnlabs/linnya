@@ -45,14 +45,14 @@ The Renderer reaches this flow only through `slides:manual-edit`. The backend pa
 
 ## End-to-end trace
 
-The command UUID is also the cross-process trace identity. Production backend wiring emits
-`slides_manual_edit.backend_trace` for request admission before revision-scope acquisition, scope acquisition, snapshot validation, source rewrite,
+The command UUID is also the cross-process trace identity. Production backend wiring emits at debug level
+`slides.manual_edit.trace` for request admission before revision-scope acquisition, scope acquisition, snapshot validation, source rewrite,
 selected build path, sandbox/layout start and completion, asset readiness, persistence start, semantic commit and terminal rejection. Events contain IDs, operation, stage, path (`projected_edit`, `projected_slide_insertion`, `full_compile` or `history_restore`),
 revision, document size counters and elapsed milliseconds; they never contain edited text or deck source.
 
 The Renderer feature owns the user-visible half of the trace. With Slides verbose diagnostics enabled
 (`localStorage['linnya.slides.debug'] = 'verbose'`), `ManualEditTrace` records queue admission, request start, an
-idempotent transport retry, IPC response, revision-targeted refresh completion and the first animation
+explicitly retryable-error retry, IPC response, revision-targeted refresh completion and the first animation
 frame after the complete slide resource frame is installed. The terminal event reports
 `queueWaitMs`, `dispatchToResponseMs`, `inputToResponseMs`, `responseToRefreshMs`, `refreshToFrameMs` and `inputToFrameMs`; input starts when the intent enters the queue. `RenderVisualResources` separately records resource-frame readiness, and `ImageImport` records file-read and asset-adoption duration. A negative
 intermediate duration is retained when push delivery presents the revision before the IPC/refresh
@@ -86,3 +86,6 @@ Translation projection is restricted to deltas on the compiler's 1e-4-inch geome
 The real compiler + SQLite integration fixture `backend/__tests__/manual-edit-history.integration.test.ts` covers 30 pages, atomic batch rollback, idempotency, 50 retained undo steps, exact nudges, source location, copy/reorder/delete, image replacement/deletion/undo and ownership denial. Setting `SLIDES_EDITING_BENCHMARK_OUTPUT` writes operation/sandbox/layout timings; this is an in-process test sandbox and excludes production IPC/render latency. Native interaction coverage remains in `smoke:preview-transitions`.
 
 `projectManualEditToDeckSpec.integration.test.ts` compares consecutive size/fill/Frame projections with fresh source compilation for both structured and freeform output, including rotated shapes with text, images, auto-height text, nested Frames and layout evidence. Off-grid anchors and undecorated Frames remain on the full compiler path.
+
+
+修订作用域与 draft repository 是人工编辑必需依赖，不能缺省绕过串行化和草稿冲突检查。操作分派使用穷尽 switch，新增命令必须选择明确的源码写入/编译路径。对象复制和图片接管由 `PresentationObjectTransferRuntime` 拥有，协调器只转发。IPC 输入由 shared/ipcCommands 的 Zod schema 接纳，图片和模板都传二进制；临时图片 data URI 仅留在 Renderer 预览，不跨 IPC。

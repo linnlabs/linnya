@@ -60,6 +60,8 @@ draft base 必保；存在失败草稿时仍可压缩源码，但暂停资产释
 
 ## 人工编辑撤销与保存预算
 
-人工编辑的 `commitDeferredRestore` 在既有文稿作用域内恢复历史源码和历史主题，创建新的 edit revision；事务继承所恢复版本的精确资产引用，不运行 PPTX assembler。它不重新进入同一作用域，避免串行队列自等待。正式历史面板恢复仍保留原有语义。
+人工编辑的 `commitDeferredRestore` 在既有文稿作用域内恢复历史源码和历史主题，创建新的 edit revision；事务继承所恢复版本的精确资产引用，不运行 PPTX assembler。同一异步调用链可重新进入文稿作用域并复用资产与主题；独立调用继续排队。作用域退出会撤销持有标记，防止继承 AsyncLocalStorage 的延迟维护误认为仍持锁。正式历史面板恢复仍保留原有语义。
 
 源码差异压缩的搜索预算为 10ms；到时 diff 算法产生更粗但仍精确可恢复的替换记录，再按体积决定 patch/checkpoint。定期 checkpoint 和累计体积已达阈值时直接保存全文，不先计算无用 diff。该预算限制压缩搜索，不是整个提交的硬超时，不会丢弃用户修改。重建继续校验 base/source hash。
+
+`PresentationRevisionScope` 是文稿写入口的必需依赖；人工编辑和普通源码写入都使用带作用域的 builder，不向调用方暴露 raw builder 的避锁约定。

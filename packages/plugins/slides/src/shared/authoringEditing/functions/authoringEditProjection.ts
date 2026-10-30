@@ -1,3 +1,4 @@
+import { isRecord } from '../../valueRecord';
 import { isEditableTextContent, isAuthorTextStyle } from './editableText';
 import type {
   SlidesAuthoringEditCapability,
@@ -71,9 +72,6 @@ function isHexColor(value: unknown): value is string {
   return typeof value === 'string' && /^#[0-9A-Fa-f]{6}$/u.test(value);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function hasOnlyKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
   const allowedKeys = new Set(allowed);

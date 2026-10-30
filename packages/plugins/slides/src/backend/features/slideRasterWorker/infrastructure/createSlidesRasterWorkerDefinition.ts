@@ -1,3 +1,4 @@
+import type { PluginLoggerPort } from '@plugin/backend/workspaceRuntime';
 import type { HiddenWorkerDefinition } from '@plugin/backend/hiddenWorkerRuntime';
 import path from 'node:path';
 import {
@@ -19,23 +20,18 @@ import { resolveSlidesRasterWorkerPaths } from '../functions/resolveSlidesRaster
 
 export interface CreateSlidesRasterWorkerDefinitionOptions {
   runtime?: SlidesRasterWorkerRuntimeLocation;
-  recordDiagnostic?: (message: string) => void;
+  logger: Pick<PluginLoggerPort, 'debug' | 'warn'>;
 }
 
 export function createSlidesRasterWorkerDefinition(
-  options: CreateSlidesRasterWorkerDefinitionOptions = {},
+  options: CreateSlidesRasterWorkerDefinitionOptions,
 ): HiddenWorkerDefinition {
   const runtime = options.runtime ?? resolveDefaultRuntimeLocation();
   const paths = resolveSlidesRasterWorkerPaths({ runtime });
-  const recordDiagnostic = options.recordDiagnostic ?? ((message: string) => console.info(message));
-  recordDiagnostic(
-    '[slides-raster-worker] registration'
-    + ` mode=${runtime.mode}`
-    + ` rootSource=${runtime.rootSource}`
-    + ` protocol=${SLIDES_RASTER_WORKER_PROTOCOL_VERSION}`
-    + ' html=dist/raster-worker/worker.html'
-    + ' preload=dist/backend/raster-worker-preload.cjs',
-  );
+  options.logger.debug('slides.raster.registered', {
+    mode: runtime.mode, rootSource: runtime.rootSource, protocol: SLIDES_RASTER_WORKER_PROTOCOL_VERSION,
+    html: 'dist/raster-worker/worker.html', preload: 'dist/backend/raster-worker-preload.cjs',
+  });
 
   return {
     id: SLIDES_RASTER_WORKER_ID,
@@ -57,10 +53,7 @@ export function createSlidesRasterWorkerDefinition(
           payload: createSlideRasterWorkerRequestPayload(request),
         };
       } catch (error) {
-        recordDiagnostic(
-          '[slides-raster-worker] stage=backend-admission outcome=rejected'
-          + ` reason=${readErrorMessage(error)}`,
-        );
+        options.logger.warn('slides.raster.request_rejected', { reason: readErrorMessage(error) });
         throw error;
       }
     },
@@ -72,7 +65,7 @@ export function createSlidesRasterWorkerDefinition(
           response: response.result,
         };
       } catch (error) {
-        recordDiagnostic('[slides-raster-worker] stage=response-admission outcome=rejected');
+        options.logger.warn('slides.raster.response_rejected');
         throw error;
       }
     },
@@ -80,7 +73,7 @@ export function createSlidesRasterWorkerDefinition(
       try {
         parseSlideRasterWorkerReadyPayload(payload);
       } catch (error) {
-        recordDiagnostic('[slides-raster-worker] stage=ready-admission outcome=rejected');
+        options.logger.warn('slides.raster.ready_rejected');
         throw error;
       }
     },

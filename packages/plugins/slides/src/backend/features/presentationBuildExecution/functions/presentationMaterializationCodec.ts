@@ -1,3 +1,4 @@
+import { isRecord } from '@plugin/slides/shared/valueRecord';
 import type {
   DeckSpec,
   FreeformElement,
@@ -376,9 +377,6 @@ function isBox(value: unknown): boolean {
     && isFiniteNumber(value.h) && value.h >= 0;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function isBoundedIdentity(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= 256;

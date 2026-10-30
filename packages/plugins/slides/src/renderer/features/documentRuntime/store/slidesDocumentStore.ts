@@ -32,11 +32,15 @@ export const useSlidesStore = defineStore('slides', () => {
       selectedIndex: 0, selectionEpoch: state.value.selectionEpoch + 1, loading: documentId !== null, error: null };
   }
   function installSnapshot(installed: InstalledPresentationView, selectedIndex: number): void {
+    if (installed.renderModel?.version !== renderModel.value?.version || selectedIndex !== currentSlideIndex.value) {
+      presentationError.value = null;
+    }
     state.value = { ...state.value, installed, selectedIndex, loading: false, error: null };
   }
   function setReadError(error: string | null): void { state.value = { ...state.value, loading: false, error }; }
   function setCurrentSlide(index: number): void {
     if (index < 0 || index >= slideCount.value) return;
+    if (index !== currentSlideIndex.value) presentationError.value = null;
     state.value = { ...state.value, selectedIndex: index, selectionEpoch: state.value.selectionEpoch + 1 };
   }
   function prevSlide(): void { setCurrentSlide(currentSlideIndex.value - 1); }

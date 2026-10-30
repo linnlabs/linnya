@@ -60,20 +60,22 @@ export class PresentationHistoryRuntime {
     });
   }
 
-  /** 已持有 revision scope 的人工撤销复用历史源码/主题，但不等待 PPTX，也不倒退 current 指针。 */
+  /** 人工撤销通过可重入 revision scope 复用历史源码/主题，但不等待 PPTX，也不倒退 current 指针。 */
   async commitDeferredRestore(input: {
     documentId: string; versionId: string; expectedBase: SlidesManualEditExpectedBase;
     receipt: { commandId: string; payloadDigest: string };
   }): Promise<{ versionId: string; versionNumber: number; deckSpec: DeckSpec }> {
-    const version = this.requireVersion(input.documentId, input.versionId);
-    const source = await this.readSource(input.documentId, version.order);
-    const deckSpec = await this.deps.compile({ nodeId: input.documentId, source, ...this.deps.history.readContext(version.versionId) });
-    const result = await this.deps.documents.commitPresentation(input.documentId, deckSpec, {
-      deferPptx: true, deckSource: source, baseRevisionId: input.expectedBase.revisionId,
-      baseRevision: input.expectedBase.revision, expectedDraftState: 'absent', origin: 'edit',
-      revisionContext: { versionId: version.versionId }, manualEditReceipt: input.receipt,
+    return this.deps.scope.run(input.documentId, async () => {
+      const version = this.requireVersion(input.documentId, input.versionId);
+      const source = await this.readSource(input.documentId, version.order);
+      const deckSpec = await this.deps.compile({ nodeId: input.documentId, source, ...this.deps.history.readContext(version.versionId) });
+      const result = await this.deps.documents.commitPresentation(input.documentId, deckSpec, {
+        deferPptx: true, deckSource: source, baseRevisionId: input.expectedBase.revisionId,
+        baseRevision: input.expectedBase.revision, expectedDraftState: 'absent', origin: 'edit',
+        revisionContext: { versionId: version.versionId }, manualEditReceipt: input.receipt,
     });
     return { versionId: result.revisionId, versionNumber: result.revision, deckSpec };
+    });
   }
 
   requestMaintenance(documentId: string): void {

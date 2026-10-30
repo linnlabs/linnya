@@ -27,6 +27,7 @@ const hostBackendAliases = [
   'toolRuntime',
   'workspaceRuntime',
   'workspaceDatabasePath',
+  'workspaceDocumentProjection',
 ].map(
   moduleName =>
     `--alias:@plugin/backend/${moduleName}=../../../src/plugin-sdk/backend/${moduleName}.ts`

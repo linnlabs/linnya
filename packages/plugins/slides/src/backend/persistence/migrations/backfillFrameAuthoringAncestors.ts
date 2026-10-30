@@ -1,3 +1,4 @@
+import { isRecord } from '@plugin/slides/shared/valueRecord';
 import {
   isSlidesAuthoringObjectRef,
   type SlidesAuthoringObjectRef,
@@ -59,8 +60,4 @@ function readLegacyElementProjection(value: unknown): LegacyElementProjection | 
 
 function isLayoutAncestor(ancestorNodeId: string, descendantNodeId: string): boolean {
   return descendantNodeId.startsWith(`${ancestorNodeId}.`);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

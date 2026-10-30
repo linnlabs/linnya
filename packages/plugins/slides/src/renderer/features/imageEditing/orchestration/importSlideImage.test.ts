@@ -14,6 +14,8 @@ it('一次读入并接管，使用后端确认的尺寸，同时保留只供当�
   const imported = await importSlideImage('deck', file);
   expect(imported).toEqual({ assetId: 'owned-image', width: 640, height: 480,
     previewSource: 'data:image/png;base64,aW1hZ2UgYnl0ZXM=' });
-  expect(slidesApi.importImage).toHaveBeenCalledExactlyOnceWith('deck', 'aW1hZ2UgYnl0ZXM=');
+  expect(slidesApi.importImage).toHaveBeenCalledExactlyOnceWith('deck', expect.any(ArrayBuffer));
+  const bytes = vi.mocked(slidesApi.importImage).mock.calls[0][1];
+  expect(new TextDecoder().decode(bytes)).toBe('image bytes');
   expect(decode).not.toHaveBeenCalled();
 });

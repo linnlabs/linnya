@@ -35,7 +35,7 @@ describe('createSlidesRasterWorkerDefinition', () => {
         packageRoot: '/plugin',
         rootSource: 'explicit',
       },
-      recordDiagnostic: (message) => diagnostics.push(message),
+      logger: { debug: message => diagnostics.push(message), warn: message => diagnostics.push(message) },
     });
     const request = createRequest();
     const encoded = definition.createRequestPayload(request);
@@ -67,8 +67,8 @@ describe('createSlidesRasterWorkerDefinition', () => {
     expect(() => definition.createRequestPayload({ requestId: 'request-1' }))
       .toThrow('Invalid slide raster request');
     expect(diagnostics).toEqual([
-      `[slides-raster-worker] registration mode=artifact-runtime rootSource=explicit protocol=${SLIDES_RASTER_WORKER_PROTOCOL_VERSION} html=dist/raster-worker/worker.html preload=dist/backend/raster-worker-preload.cjs`,
-      '[slides-raster-worker] stage=backend-admission outcome=rejected reason=Invalid slide raster request slide (request.slide)',
+      'slides.raster.registered',
+      'slides.raster.request_rejected',
     ]);
     expect(diagnostics.join('\n')).not.toContain('/plugin');
   });

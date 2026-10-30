@@ -135,7 +135,7 @@ export function createPptCoordinator(
     }, { assetContext: { documentId } }),
     assemble: (documentId, deck) => historicalAssembler.assemble(deck, { assetContext: { documentId } }),
     release: (documentId, assetIds) => releaseDocumentAssetOwnership({ database: db, documentId, assetIds }),
-    reportFailure: (documentId, error) => codegenFailureLogger.error('slides_history.maintenance.failed', { documentId, error: error instanceof Error ? error.message : String(error) }),
+    reportFailure: (documentId, error) => codegenFailureLogger.error('slides.history.maintenance_failed', { documentId, error: error instanceof Error ? error.message : String(error) }),
   });
 
   return new PptCoordinator(

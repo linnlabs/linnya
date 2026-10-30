@@ -21,7 +21,7 @@ export function createPresentationBuildDeckAssembler(input: {
   return Object.freeze({
     async assemble(deckSpec: DeckSpec, options?: DeckAssembleOptions) {
       const startedAt = Date.now();
-      input.logger?.info('slides_materialization.prepare.start', {
+      input.logger?.debug('slides.materialization.prepare_started', {
         title: deckSpec.title,
         slideCount: deckSpec.slides.length,
       });
@@ -40,7 +40,7 @@ export function createPresentationBuildDeckAssembler(input: {
             : {}),
         },
       );
-      input.logger?.info('slides_materialization.prepare.success', {
+      input.logger?.debug('slides.materialization.prepare_completed', {
         title: deckSpec.title,
         slideCount: deckSpec.slides.length,
         svgAssetCount: materialization.svgAssets.length,

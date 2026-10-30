@@ -4,9 +4,9 @@ import { createPresentationManualEditTraceLogger } from './createPresentationMan
 describe('createPresentationManualEditTraceLogger', () => {
   it('以 commandId 关联 backend 阶段并在终态释放计时状态', () => {
     let now = 100;
-    const info = vi.fn();
+    const debug = vi.fn();
     const trace = createPresentationManualEditTraceLogger(
-      { debug: vi.fn(), info, warn: vi.fn(), error: vi.fn() },
+      { debug, info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       () => now,
     );
     trace.record({ commandId: 'command-1', documentId: 'deck-1', stage: 'request_received' });
@@ -26,7 +26,7 @@ describe('createPresentationManualEditTraceLogger', () => {
       revision: 2,
     });
 
-    expect(info).toHaveBeenLastCalledWith('slides_manual_edit.backend_trace', expect.objectContaining({
+    expect(debug).toHaveBeenLastCalledWith('slides.manual_edit.trace', expect.objectContaining({
       commandId: 'command-1',
       elapsedMs: 40,
       revision: 2,

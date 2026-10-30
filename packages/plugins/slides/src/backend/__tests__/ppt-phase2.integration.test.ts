@@ -1,3 +1,5 @@
+import { PresentationDraftRepository } from '../persistence';
+import { PresentationRevisionScope } from '../features/presentationSourceHistory';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
@@ -81,8 +83,8 @@ function createStack(db: Database.Database) {
       },
     },
     undefined,
-    undefined,
-    { buildExecution: createInProcessPresentationBuildExecution() },
+    new PresentationDraftRepository(db),
+    { revisionScope: new PresentationRevisionScope(), buildExecution: createInProcessPresentationBuildExecution() },
   );
   return { coordinator, deckAssembler, repository, templateManager };
 }

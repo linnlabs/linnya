@@ -1,11 +1,9 @@
+import { isRecord } from '@plugin/slides/shared/valueRecord';
 import fs from 'node:fs';
 import path from 'node:path';
 
 const SLIDES_PACKAGE_NAME = '@plugin/slides';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
 
 function readPackageName(directory: string): string | null {
   try {

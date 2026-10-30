@@ -1,3 +1,4 @@
+import { PresentationRevisionScope } from '../features/presentationSourceHistory';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PptCoordinator } from '@plugin/slides/backend-coordinator';
@@ -150,7 +151,7 @@ describe('PptCoordinator', () => {
       workspaceService,
       undefined,
       draftRepo,
-      { buildExecution: createInProcessPresentationBuildExecution() },
+      { revisionScope: new PresentationRevisionScope(), buildExecution: createInProcessPresentationBuildExecution() },
     );
   });
 
@@ -307,6 +308,7 @@ describe('PptCoordinator', () => {
       undefined,
       draftRepo,
       {
+        revisionScope: new PresentationRevisionScope(),
         codegenDeckBuilderFactory: codegenBuilderFactory,
         buildExecution: createInProcessPresentationBuildExecution(),
       },
