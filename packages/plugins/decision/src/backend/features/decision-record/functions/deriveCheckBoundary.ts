@@ -1,10 +1,11 @@
-import type { DecisionModel } from '../../../../shared';
+import { paymentConservationFailure } from './compileDecisionPayments';
+import type { ComputedDecisionModel, ComputedDecisionCheck } from '../definitions/computedDecisionModel';
 import type { CheckBoundaryResult } from '../definitions/checkBoundary';
 import { deriveAffineExpression } from './deriveAffineExpression';
 import { collectCheckInputs, evaluateDecisionCheck } from './evaluateDecisionCheck';
 export function deriveCheckBoundary(
-  model: DecisionModel,
-  check: DecisionModel['checks'][number],
+  model: ComputedDecisionModel,
+  check: ComputedDecisionCheck,
   inputId: string,
 ): CheckBoundaryResult {
   const input = model.inputs.find(item => item.id === inputId);
@@ -32,6 +33,8 @@ export function deriveCheckBoundary(
   }
   const threshold = -constant / coefficient;
   if (!Number.isFinite(threshold)) return { status: 'unavailable', reason: 'Non-finite boundary calculation.' };
+  const failure = paymentConservationFailure({ ...model, inputs: model.inputs.map(item => item.id === inputId ? { ...item, value: threshold } : item) });
+  if (failure) return { status: 'unavailable', reason: failure };
   const operator = coefficient > 0 || check.operator === 'eq' ? check.operator
     : check.operator === 'lte' ? 'gte' : 'lte';
   return { status: 'available', operator, value: threshold === 0 ? 0 : threshold };

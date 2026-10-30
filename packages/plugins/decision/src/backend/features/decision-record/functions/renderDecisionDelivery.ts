@@ -102,7 +102,7 @@ export function renderDecisionDelivery(record: DecisionRecord, expectedRevision:
     ...delivery.cashFlows.map(flow => `- ${text(flow.text)}`),
     '## 什么会改变建议',
     ...(delivery.numericBasis?.status === 'current' ? delivery.numericBasis.boundaries.map(boundary => `- ${text(boundary.text)}`) : []),
-    ...delivery.cashFlows.flatMap(flow => flow.timingThresholds.map(threshold => `- ${text(threshold.text)}`)),
+    ...delivery.cashFlows.flatMap(flow => [...flow.releaseConditions, ...flow.timingThresholds.map(threshold => threshold.text)].map(condition => `- ${text(condition)}`)),
     ...(conditional?.status === 'current' && conditional.cases.length ? conditional.cases.flatMap(scenario => [
       `### ${text(scenario.label)}`,
       `假设变动：${scenario.changes.map(change => `${text(change.label)}：${change.from === null ? '未知' : scalar(change.from, change.quantityType)} → ${change.to === null ? '未知' : scalar(change.to, change.quantityType)} ${text(change.unit ?? '')}`).join('；')}。`,

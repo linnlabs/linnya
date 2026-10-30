@@ -3,7 +3,7 @@ import type { AffineResult } from '../definitions/checkBoundary';
 import { evaluateExpression } from './evaluateDecisionExpression';
 
 /** 只解一个输入的仿射边界；不拿几个采样点猜测一般模型的可行区间。 */
-export function deriveAffineExpression(expression: DecisionExpression, inputId: string, model: DecisionModel): AffineResult {
+export function deriveAffineExpression(expression: DecisionExpression, inputId: string, model: Pick<DecisionModel, 'inputs'>): AffineResult {
   if ('input' in expression && expression.input === inputId) {
     return { status: 'available', coefficient: 1, constant: 0 };
   }

@@ -1,3 +1,4 @@
+import { compileDecisionPayments } from './compileDecisionPayments';
 import type { DecisionRecord, DecisionScenarios } from '../../../../shared';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { evaluateDecisionModel } from './evaluateDecisionModel';
@@ -11,11 +12,12 @@ export function simulateDecisionScenarios(record: DecisionRecord, expectedRevisi
   const caseIds = scenarios.cases.map(item => item.id);
   if (new Set(caseIds).size !== caseIds.length) throw new DecisionFailure('invalid_model', 'Duplicate scenario id.');
   const baseline = evaluateDecisionModel(record.model);
+  const computed = compileDecisionPayments(record.model);
   const references = record.model.inputs.map(input => ({
     inputId: input.id,
     calculationIds: baseline.calculations.filter(item => item.inputIds.includes(input.id)).map(item => item.id),
-    checkIds: record.model.checks.filter(item => (
-      collectCheckInputs(item, record.model).includes(input.id)
+    checkIds: computed.checks.filter(item => (
+      collectCheckInputs(item, computed).includes(input.id)
     )).map(item => item.id),
   }));
   return {

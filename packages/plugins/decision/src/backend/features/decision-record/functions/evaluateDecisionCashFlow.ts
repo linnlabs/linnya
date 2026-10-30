@@ -1,11 +1,12 @@
-import type { DecisionModel } from '../../../../shared';
+import { projectCashFundingConditions } from './projectCashFundingConditions';
+import type { ComputedDecisionModel } from '../definitions/computedDecisionModel';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { cashFlowExpressions } from './cashFlowExpressions';
 import { collectExpressionInputs } from './evaluateDecisionExpression';
 import { evaluateCashFlow } from './evaluateCashFlow';
 import { projectCashFlowTiming } from './projectCashFlowTiming';
 
-export function validateDecisionCashFlows(model: DecisionModel): void {
+export function validateDecisionCashFlows(model: ComputedDecisionModel): void {
   const ids = model.cashFlows?.map(flow => flow.id) ?? [];
   if (new Set(ids).size !== ids.length) throw new DecisionFailure('invalid_model', 'Duplicate cash flow id.');
   for (const flow of model.cashFlows ?? []) {
@@ -29,6 +30,9 @@ export function validateDecisionCashFlows(model: DecisionModel): void {
 }
 
 /** 当前余额与日期门槛共用已声明模型，时间假设不写回事实。 */
-export function evaluateDecisionCashFlows(model: DecisionModel) {
-  return (model.cashFlows ?? []).map(flow => ({ ...evaluateCashFlow(model, flow), timingThresholds: projectCashFlowTiming(model, flow) }));
+export function evaluateDecisionCashFlows(model: ComputedDecisionModel) {
+  return model.cashFlows.map(flow => {
+    const result = evaluateCashFlow(model, flow);
+    return { ...result, releaseConditions: projectCashFundingConditions(model, flow, result), timingThresholds: projectCashFlowTiming(model, flow) };
+  });
 }

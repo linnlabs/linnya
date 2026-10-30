@@ -71,4 +71,20 @@ export const decisionMigrations: readonly PluginMigrationDefinition[] = [{
         ))) ELSE content_json END, '$.schemaVersion', 4)
       WHERE json_extract(content_json, '$.schemaVersion') = 3;`);
   },
+}, {
+  version: 6, description: 'Payment obligations replace authored cash tables; preserve historical declarations',
+  up(database) {
+    // 没有登记过责任的旧选项不能被推断成无责任；逐版保留原模型JSON，旧导出不变。
+    database.exec(`UPDATE decision_record_versions SET content_json = json_set(content_json,
+      '$.schemaVersion', 5,
+      '$.legacyPaymentModelJson', printf('%s', json_extract(content_json, '$.model')),
+      '$.model', json_remove(json_set(json_extract(content_json, '$.model'),
+        '$.obligations', json('[]'),
+        '$.options', json((SELECT json_group_array(json_set(value, '$.obligationIds', NULL))
+          FROM json_each(content_json, '$.model.options'))),
+        '$.checks', json((SELECT json_group_array(json(value))
+          FROM json_each(content_json, '$.model.checks')
+          WHERE json_extract(value, '$.operator') != 'cash_flow_funded'))), '$.cashFlows'))
+      WHERE json_extract(content_json, '$.schemaVersion') = 4;`);
+  },
 }];

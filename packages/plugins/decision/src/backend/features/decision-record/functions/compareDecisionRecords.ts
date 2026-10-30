@@ -1,3 +1,4 @@
+import { compileDecisionPayments } from './compileDecisionPayments';
 import type { DecisionRecord } from '../../../../shared';
 import type { DecisionItemChanges, DecisionRecommendationSummary } from '../definitions/decisionComparison';
 import { DecisionFailure } from '../definitions/decisionFailure';
@@ -25,9 +26,10 @@ function changes<T extends { readonly id: string }>(before: readonly T[], after:
 }
 
 function references(record: DecisionRecord, inputId: string) {
+  const computed = compileDecisionPayments(record.model);
   return {
     calculationIds: record.model.calculations.filter(item => collectExpressionInputs(item.expression).includes(inputId)).map(item => item.id),
-    checkIds: record.model.checks.filter(item => collectCheckInputs(item, record.model).includes(inputId)).map(item => item.id),
+    checkIds: computed.checks.filter(item => collectCheckInputs(item, computed).includes(inputId)).map(item => item.id),
   };
 }
 function recommendationSummary(record: DecisionRecord): DecisionRecommendationSummary {
@@ -71,7 +73,8 @@ export function compareDecisionRecords(before: DecisionRecord, after: DecisionRe
       options: changes(before.model.options, after.model.options),
       calculations: changes(before.model.calculations, after.model.calculations),
       checks: changes(before.model.checks, after.model.checks),
-      cashFlows: changes(before.model.cashFlows ?? [], after.model.cashFlows ?? []),
+      obligations: changes(before.model.obligations, after.model.obligations),
+      funds: same(before.model.funds, after.model.funds) ? null : { before: before.model.funds, after: after.model.funds },
     },
     effects: {
       calculations: changes(oldEvaluation.calculations, newEvaluation.calculations),

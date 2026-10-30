@@ -1,3 +1,4 @@
+import { compileDecisionPayments } from './compileDecisionPayments';
 import type { DecisionRecord, DecisionOptionCheck, DecisionNumericBasis } from '../../../../shared';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { evaluateDecisionModel } from './evaluateDecisionModel';
@@ -19,11 +20,12 @@ export function checkDecisionOptions(record: DecisionRecord, expectedRevision: n
     return { ...summary, checks: evaluation.checks.filter(check => check.optionId === id) };
   });
   // 只依据调用者选中的既有检查建立预览引用；不新增经济门槛或推断偏好。
+  const computed = compileDecisionPayments(record.model);
   const numericBasis: DecisionNumericBasis = {
     calculationIds: record.model.calculations.map(calculation => calculation.id),
-    boundaries: record.model.checks.filter(check => request.optionIds.includes(check.optionId) && check.operator !== 'is' && check.operator !== 'cash_flow_funded')
+    boundaries: record.model.checks.filter(check => request.optionIds.includes(check.optionId) && check.operator !== 'is')
       .flatMap(check => {
-        const inputIds = collectCheckInputs(check, record.model);
+        const inputIds = collectCheckInputs(check, computed);
         return record.model.inputs.filter(input => inputIds.includes(input.id) && (typeof input.value === 'number' || input.value === null))
           .map(input => ({ checkId: check.id, inputId: input.id }));
       }),

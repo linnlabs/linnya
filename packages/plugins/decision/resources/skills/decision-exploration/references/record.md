@@ -22,10 +22,10 @@
 
 ## model 格式
 
-必填 `title`、`question`、`inputs`、`options`、`calculations`、`checks`。没有适用的量化模型时，后两项用空数组，靠解释与调查进行比较。
+必填 `title`、`question`、`inputs`、`options`、`calculations`、`checks`、`obligations`。没有适用的量化模型时，没有内容的列表用空数组，靠解释与调查进行比较。
 
 - 每个 input：`id`、`label`、`kind`（`fact|preference|constraint|assumption`）、`value`（数字、文字、布尔值或 null）、`origin`、`status`（`available|withdrawn`）；`quantityType` 必填，`unit` 可选。origin 写明是用户给定、作者假设或材料定位，CLI 不会核实其真实性。
-- 每个 option：`id`、`label`、`description`。
+- 每个 option：`id`、`label`、`description`、`obligationIds`（本选项会产生的收付款责任 id；没有则填 `[]`）。
 - 每个 calculation：`id`、`label`、`quantityType`、`unit`、`expression`。
 - `quantityType`只取`day_clock`（当天00:00起分钟）、`duration`（时长）、`money`（金额）、`other`（其他）。文字/布尔填other；未知数值用null并填写预期类型。展示单位不决定量类型；新建和更新缺字段会被拒绝。
 - 每个 check：`id`、`optionId`、`label`、`left`、`operator`（`lte|gte|eq`）、`right`。仅表达已声明的数值硬约束，不能代表所有现实可行性。
@@ -33,22 +33,32 @@
 
 表达式支持 `{"input":"inputId"}`、`{"literal":10}`，或 `{"op":"add|subtract|multiply|divide","left":表达式,"right":表达式}`。只能引用 input，复合计算用嵌套表达式；由 Host 实际执行四则运算，不使用 eval。输入未知、非数值、被撤回或除零时结果为 unavailable，不当作零。
 
-下面是虚构的资料采购例，只展示格式，不是推荐的决策模板或真实报价：
+收付款责任在 `obligations` 登记，每份含 `id`、`label`、`direction`、`total` 总额表达式、`installments` 已列分期，以及 `final` 最后一期。每个已列分期填 `id/label/amount/at`，amount是固定的非负金额；final只填 `id/label/at`，最后一期金额由总额减已列分期计算。一次付清用空installments。未知总额引用值为null的输入；未知日期填null，或引用值为null的duration输入。
+
+引用责任时同时登记 `funds`：所有节点之前的 `bank` 银行余额、`reserve` 隔离准备两个表达式、`unit` 和 `timeAnchor`。每期at表示距同一锚点的天数，引用输入须为duration，其他时间单位在表达式中换算成天。direction用outflow支付、inflow实际入账；release_reserve在明确时点解禁准备，pay_reserve实际支付对应准备并同时扣银行和准备。银行已包含的到账不再列一次流入。总额、分期及客户回款分别照已知事实登记，日期尚未确认就留未知。
+
+程序给引用责任的选项自动生成逐节点资金检查，与作者的其他检查共同决定状态；同日先付后收，隔离准备不能动用。资金不足给出实际到账需求和最晚付款节点；缺日期或金额返回需要信息。check/read里的cashFlows为程序投影，不能直接写入。情景改变总额输入或时点输入，分期金额保持固定、尾款自动联动；重新约定分期须update责任。资金条件不通过时，simulate核对新条件，再把需要保留的假设写进conditionalAdvice。
+
+下面是虚构的资料采购例，只展示格式：
 
 ```json
 {
   "title":"资料采购",
   "question":"是否购买补充资料？",
   "inputs":[
-    {"id":"budget","label":"预算","kind":"constraint","value":200,"quantityType":"money","unit":"CNY/次","origin":"虚构用户给定","status":"available"},
-    {"id":"price","label":"购买价格","kind":"fact","value":150,"quantityType":"money","unit":"CNY/次","origin":"虚构报价，未核验","status":"available"}
+    {"id":"bank","label":"银行余额","kind":"fact","value":200,"quantityType":"money","unit":"CNY","origin":"虚构用户给定","status":"available"},
+    {"id":"reserve","label":"已隔离准备","kind":"fact","value":80,"quantityType":"money","unit":"CNY","origin":"虚构用户给定","status":"available"},
+    {"id":"price","label":"合同总价","kind":"fact","value":150,"quantityType":"money","unit":"CNY","origin":"虚构报价","status":"available"},
+    {"id":"due","label":"尾款日","kind":"fact","value":null,"quantityType":"duration","unit":"天","origin":"尚未确认","status":"available"}
   ],
   "options":[
-    {"id":"buy","label":"购买","description":"购买资料后再分析"},
-    {"id":"wait","label":"暂缓","description":"先使用已取得的公开资料"}
+    {"id":"buy","label":"购买","description":"购买资料后再分析","obligationIds":["purchase"]},
+    {"id":"wait","label":"暂缓","description":"先使用公开资料","obligationIds":[]}
   ],
-  "calculations":[{"id":"remaining","label":"购买后余额","quantityType":"money","unit":"CNY/次","expression":{"op":"subtract","left":{"input":"budget"},"right":{"input":"price"}}}],
-  "checks":[{"id":"affordable","optionId":"buy","label":"购买不超过预算","left":{"input":"price"},"operator":"lte","right":{"input":"budget"}}]
+  "funds":{"bank":{"input":"bank"},"reserve":{"input":"reserve"},"unit":"CNY","timeAnchor":"下单日"},
+  "obligations":[{"id":"purchase","label":"资料合同","direction":"outflow","total":{"input":"price"},"installments":[{"id":"first","label":"下单款","amount":40,"at":{"literal":0}}],"final":{"id":"rest","label":"交付尾款","at":{"input":"due"}}}],
+  "calculations":[],
+  "checks":[]
 }
 ```
 
@@ -66,10 +76,10 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 
 ## update 格式
 
-必填 `reason`，并至少给一项 `title`、`question`、`inputs`、`options`、`calculations`、`checks` 或 `cashFlows`。inputs 按 id 合并，每项提供完整 input；其他数组整组替换，避免旧约束或算式残留。title/question仅在显式给出时替换，历史保留。撤回来源时，把相关 input 的 status 改为 withdrawn，保留其原 value 和 origin 作为历史。
+必填 `reason`，并至少给一项 `title`、`question`、`inputs`、`options`、`calculations`、`checks`、`obligations` 或 `funds`。inputs 按 id 合并，每项提供完整 input；其他数组整组替换，避免旧约束或算式残留。title/question仅在显式给出时替换，历史保留。撤回来源时，把相关 input 的 status 改为 withdrawn，保留其原 value 和 origin 作为历史。
 
 ```json
-{"reason":"用户降低预算","inputs":[{"id":"budget","label":"预算","kind":"constraint","value":100,"quantityType":"money","unit":"CNY/次","origin":"用户本轮明确更新","status":"available"}]}
+{"reason":"更新银行余额","inputs":[{"id":"bank","label":"银行余额","kind":"fact","value":100,"quantityType":"money","unit":"CNY","origin":"用户本轮明确更新","status":"available"}]}
 ```
 
 更新回执会重算、列出检查结果，并将旧建议标为 needs_review。相同条件重复提交会被拒绝，不凭空增加版本。revision 冲突时先读取当前版，结合最新条件处理，不能直接把旧提交的数字改成新版号重试。
@@ -79,16 +89,12 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 必填 `optionIds`、`rationale`、`changeConditions`、`nextAction`、`unresolved`（文字数组）。不使用条件性建议时optionIds至少一项，可以包含互相配合的行动，文字解释适用关系；不是必须给所有选项打分。已明确违反声明的数值检查的选项不能作为当前推荐保存；未知检查不等于通过，须在 unresolved 和建议条件中说明。
 
 ```json
-{"optionIds":["wait"],"rationale":"预算降低后，报价超过硬约束；先使用公开资料","changeConditions":"预算提高或价格下降后重新比较资料的增量价值","nextAction":"核对公开资料能否回答当前问题","unresolved":["补充资料是否真正提供新信息尚未确定"]}
+{"optionIds":["wait"],"rationale":"已知银行余额扣除准备不足以付清，尾款日期待确认；先使用公开资料","changeConditions":"资金或付款条件变化后重算","nextAction":"核对公开资料能否回答当前问题","unresolved":["补充资料是否真正提供新信息尚未确定"]}
 ```
 
-有数值依据时，可增加 `numericBasis`，只选择本模型已有的计算和数值检查：
+有数值依据时，可增加 `numericBasis`，从下述check回执选择已有的calculationIds与boundaries。每条boundary只填checkId和inputId；没有手写计算或数值检查的模型可省略，自动资金条件仍会进入交付。
 
-```json
-{"optionIds":["buy"],"rationale":"在预算内取得补充资料","changeConditions":"预算或资料价值改变后重新比较","nextAction":"确认资料内容","unresolved":["是否提供新增信息"],"numericBasis":{"calculationIds":["remaining"],"boundaries":[{"checkId":"affordable","inputId":"price"}]}}
-```
-
-回执的 `recommendationBasis` 分开给出程序计算的余额与价格边界，含等号与越界方向；`fixedInputs` 是其他条件固定在本版的值。每个boundary.text已合并该边界与同一点的相关算值，避免将基线与边界拼接；recommendationBasis.changeConditions由这些程序文字生成。每个可用边界的 `atBoundary` 把目标输入置于边界点，其余输入保持本版值，并给出所有引用该输入的已登记计算（含名称、单位与不可用原因）；`fixedInputIds` 指向同回执record.model.inputs里的固定输入。它仅表示该点，不是整个区间的固定算值，也不改事实或版本。交付可引用其中的 `text`，不需自己再反推一遍门槛。它只回答某个已有检查何时失效，是否改选还要结合偏好和其他条件。定性问题省略 numericBasis。
+回执的 `recommendationBasis` 分开给出所选计算与数值边界，含等号与越界方向；`fixedInputs` 是其他条件固定在本版的值。每个boundary.text已合并该边界与同一点的相关算值，避免将基线与边界拼接；recommendationBasis.changeConditions由这些程序文字生成。每个可用边界的 `atBoundary` 把目标输入置于边界点，其余输入保持本版值，并给出所有引用该输入的已登记计算（含名称、单位与不可用原因）；`fixedInputIds` 指向同回执record.model.inputs里的固定输入。它仅表示该点，不是整个区间的固定算值，也不改事实或版本。交付可引用其中的 `text`，不需自己再反推一遍门槛。它只回答某个已有检查何时失效，是否改选还要结合偏好和其他条件。定性问题省略 numericBasis。
 
 ## 写建议和行动文字之前取得数值
 
@@ -264,28 +270,6 @@ progress.json必填planRevision、summary、origin、actualCost，可选sourceQu
 命令为linnya-decision action review <decision-id> <action-id> --expected-revision <n> --input review.json，可选sourceQuote。inputIds引用当前存在且未withdrawn的输入，未知null可保留；purpose和范围按实际条件重写。回执actionStates.plan为最新计划，planRevision增加、planStatus=current/continuation=open；原plan及各次reviews仍保留，新报告会绑定实际计划版。review不改用户事实/inputRevision，不恢复旧建议，不认证内容或执行权限。
 
 有progress/reviews的行动，resolve载荷也须明确planRevision且等于当前计划版。旧范围完成不能关闭新范围，迟到事实先progress；历史plain action可省略，但实际依据保持未观察。全部当前范围确实结束后才resolve(completed)；决定放弃未完成部分用resolve(cancelled)并如实保留已花成本。最终报告存在后行动closed，撤回该报告也不自动重开，后续新行动另建。程序不理解自然语言范围是否实际完成，最终说明仍须忠于报告。
-
-## 付款时间表
-
-比较资金能否撑到回款时，在model中登记cashFlows（update同名字段完整替换，[]停用）。每张表含id、label、optionId、unit、timeAnchor、opening（bank、reserve两个表达式）和entries；每笔含id、label、direction（inflow/outflow/release_reserve/pay_reserve）、amount表达式和at时点表达式。金额非负，方向由direction给出。timeAnchor明确同一锚点，如交货日；at统一表示离锚点的天数，可为负，引用的输入声明quantityType=duration。其他时长单位在表达式里显式换算成天。锚点或时点未知填null，或引用值为null的duration输入，先保留需要信息。
-
-期初分别登记所有节点之前的银行余额bank和隔离准备reserve，程序相减得到可动用额。银行余额包含已收订金；reserve登记仍须隔离的部分。解禁准备使用带时点的release_reserve节点，只减少准备；实际支付该准备对应的义务使用pay_reserve，同时减少银行与准备。普通支出用outflow，实际入账用inflow。旧表的opening.unclassified保留原式，重新明确银行与准备后才求值。分期尾款写为总价减首款：调整首款时尾款随之变化，而总价保持原合同金额。
-
-```json
-{"cashFlows":[{"id":"purchase_cash","label":"付款与回款","optionId":"buy","unit":"CNY","timeAnchor":"交货日","opening":{"bank":{"input":"bank_balance"},"reserve":{"input":"refund_reserve"}},"entries":[{"id":"supplier_first","label":"开工付款","direction":"outflow","amount":{"input":"first_payment"},"at":{"input":"first_payment_day"}},{"id":"supplier_rest","label":"发货前付尾款","direction":"outflow","amount":{"op":"subtract","left":{"input":"total_price"},"right":{"input":"first_payment"}},"at":{"input":"final_payment_day"}},{"id":"customer_collection","label":"客户余款（仍待成交）","direction":"inflow","amount":{"input":"customer_remaining"},"at":{"input":"collection_day"}}]}]}
-```
-
-这些id都须指向本模型已登记的输入；三个day输入用duration/天，未知用null。程序按求得的时点排序，同一天先支付、后入账、最后解禁准备。check默认回执、read的evaluation.cashFlows与export原件给最低余额、缺口、期末和逐节点余额。必要金额或时点未知返回needs_information；首笔或期末为正都不能抹掉中途缺口。
-
-每张表的timingThresholds逐个固定其他输入，给只改变一个时点后缺口为零的范围。若同日付款先于收款，门槛会是严格晚于回款日；回款日自身未知时继续需要信息。它只求已声明仿射日期，日期同时改变金额的模型明确不可用。这是现金缺口的条件，不代替其他生产/发货检查、用户许可或实际到账；日期与期初口径仍需如实登记。
-
-把无资金缺口作为选项成立条件时，增加同选项检查：
-
-```json
-{"id":"funded","optionId":"buy","label":"每个付款时点资金到位","operator":"cash_flow_funded","cashFlowId":"purchase_cash"}
-```
-
-它与其他检查一起决定选项状态：最低可动用额为负则失败，金额或日期未知则未定。conditionalAdvice里的日期、金额、准备变化会重算该表和检查；cashFlowId须属于同一选项。普通数值边界不求整个时序检查的金额门槛，付款日期范围看timingThresholds，其他条件用simulate和登记情景查看。
 
 ## 当前版本交付
 

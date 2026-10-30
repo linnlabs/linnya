@@ -19,7 +19,7 @@ const cost = (daily: string): DecisionExpression => ({
 });
 
 function travelModel(): DecisionModel {
-  return {
+  return { obligations: [],
     title: '合成旅行测试', question: '在预算内选择合适方案',
     inputs: [
       { quantityType: 'money', id: 'budget', label: '预算', kind: 'constraint', value: 4000, unit: 'CNY/次', origin: '测试给定', status: 'available' },
@@ -29,8 +29,8 @@ function travelModel(): DecisionModel {
       { quantityType: 'other', id: 'priority', label: '偏好', kind: 'preference', value: '预算允许时优先舒适', origin: '用户明确给定', status: 'available' },
     ],
     options: [
-      { id: 'A', label: '舒适', description: '中心位置住宿' },
-      { id: 'B', label: '经济', description: '较远位置住宿' },
+      { obligationIds: [], id: 'A', label: '舒适', description: '中心位置住宿' },
+      { obligationIds: [], id: 'B', label: '经济', description: '较远位置住宿' },
     ],
     calculations: [
       { quantityType: 'money', id: 'aCost', label: '舒适总费用', unit: 'CNY/次', expression: cost('comfort') },

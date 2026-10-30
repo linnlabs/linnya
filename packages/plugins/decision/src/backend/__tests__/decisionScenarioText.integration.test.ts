@@ -25,13 +25,13 @@ function run(argv: string[]) {
   return executeDecisionCommand(command, db, 'p');
 }
 function create(model?: DecisionModel) {
-  const source: DecisionModel = model ?? {
+  const source: DecisionModel = model ?? { obligations: [],
     title: '合成到场情景', question: '变更出发点后仍须匹配同点到场',
     inputs: [
       { quantityType: 'day_clock', id: 'start', label: '出发时刻', kind: 'fact', value: 510, unit: '当天00:00起分钟', origin: '合成输入', status: 'available' },
       { quantityType: 'duration', id: 'travel', label: '路程', kind: 'fact', value: 45, unit: '分钟', origin: '合成输入', status: 'available' },
     ],
-    options: [{ id: 'b', label: 'B', description: '合成现场' }],
+    options: [{ obligationIds: [], id: 'b', label: 'B', description: '合成现场' }],
     calculations: [{ quantityType: 'day_clock', id: 'arrival', label: 'B到场', unit: '当天00:00起分钟', expression: { op: 'add', left: { input: 'start' }, right: { input: 'travel' } } }],
     checks: [{ id: 'time', optionId: 'b', label: '准时', left: { op: 'add', left: { input: 'start' }, right: { input: 'travel' } }, operator: 'lte', right: { literal: 570 } }],
   };

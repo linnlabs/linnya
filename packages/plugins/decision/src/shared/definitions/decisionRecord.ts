@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { DecisionIdSchema, DecisionTextSchema, DecisionInputSchema, DecisionQuantityTypeSchema } from './decisionInput';
 import { DecisionExpressionSchema } from './decisionExpression';
-import { DecisionCashFlowSchema } from './decisionCashFlow';
+import { DecisionObligationSchema, DecisionFundsSchema } from './decisionPayments';
 export { DecisionExpressionSchema } from './decisionExpression';
 export type { DecisionExpression } from './decisionExpression';
 import { DecisionScenarioCaseSchema } from './decisionScenario';
@@ -13,7 +13,7 @@ export type { DecisionQuantityType } from './decisionInput';
 const text = DecisionTextSchema;
 const id = DecisionIdSchema;
 
-export const DecisionOptionSchema = z.object({ id, label: text, description: text }).strict();
+export const DecisionOptionSchema = z.object({ id, label: text, description: text, obligationIds: z.array(id) }).strict();
 export const DecisionCalculationSchema = z.object({
   id,
   label: text,
@@ -34,9 +34,6 @@ export const DecisionCheckSchema = z.union([
     inputId: id,
     value: z.union([z.boolean(), z.string().min(1)]),
   }).strict(),
-  z.object({ id, optionId: id, label: text,
-    operator: z.literal('cash_flow_funded'), cashFlowId: id,
-  }).strict(),
 ]);
 export type DecisionCheck = z.infer<typeof DecisionCheckSchema>;
 
@@ -47,9 +44,14 @@ export const DecisionModelSchema = z.object({
   options: z.array(DecisionOptionSchema).min(1),
   calculations: z.array(DecisionCalculationSchema),
   checks: z.array(DecisionCheckSchema),
-  cashFlows: z.array(DecisionCashFlowSchema).optional(),
+  obligations: z.array(DecisionObligationSchema),
+  funds: DecisionFundsSchema.optional(),
 }).strict();
-export type DecisionModel = z.infer<typeof DecisionModelSchema>;
+// null只由迁移写入：尚未复核旧选项的责任，不等价于作者确认没有付款。
+const DecisionStoredModelSchema = DecisionModelSchema.extend({
+  options: z.array(DecisionOptionSchema.extend({ obligationIds: z.array(id).nullable() })).min(1),
+});
+export type DecisionModel = z.infer<typeof DecisionStoredModelSchema>;
 
 export const DecisionConditionalAdviceSchema = z.object({
   preference: z.object({
@@ -93,9 +95,10 @@ export const DecisionUpdateSchema = z.object({
   options: z.array(DecisionOptionSchema).min(1).optional(),
   calculations: z.array(DecisionCalculationSchema).optional(),
   checks: z.array(DecisionCheckSchema).optional(),
-  cashFlows: z.array(DecisionCashFlowSchema).optional(),
+  obligations: z.array(DecisionObligationSchema).optional(),
+  funds: DecisionFundsSchema.optional(),
 }).strict().refine(value => Object.keys(value).some(key => key !== 'reason'), {
-  message: 'Specify title, question, inputs, options, calculations checks or cashFlows to update.',
+  message: 'Specify title, question, inputs, options, calculations, checks, obligations or funds to update.',
 });
 export type DecisionUpdate = z.infer<typeof DecisionUpdateSchema>;
 
@@ -120,12 +123,13 @@ export const DecisionActionProgressSchema = DecisionActionProgressContentSchema.
 export type DecisionActionProgress = z.infer<typeof DecisionActionProgressSchema>;
 
 export const DecisionRecordSchema = z.object({
-  schemaVersion: z.literal(4),
+  schemaVersion: z.literal(5),
   id: z.string().uuid(),
   revision: z.number().int().positive(),
   inputRevision: z.number().int().positive(),
   reason: text,
-  model: DecisionModelSchema,
+  model: DecisionStoredModelSchema,
+  legacyPaymentModelJson: z.string().optional(),
   actions: z.array(DecisionActionSchema).optional(),
   recommendation: z.object({
     basedOnInputRevision: z.number().int().positive(),

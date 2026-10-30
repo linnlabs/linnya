@@ -13,7 +13,7 @@ export function collectExpressionInputs(expression: DecisionExpression): readonl
 
 export function evaluateExpression(
   expression: DecisionExpression,
-  model: DecisionModel,
+  model: Pick<DecisionModel, 'inputs'>,
 ): ExpressionResult {
   if ('literal' in expression) return { status: 'available', value: expression.literal };
   if ('input' in expression) {

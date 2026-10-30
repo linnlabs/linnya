@@ -26,7 +26,8 @@ export function updateDecisionRecord(record: DecisionRecord, update: DecisionUpd
     options: update.options ?? record.model.options,
     calculations: update.calculations ?? record.model.calculations,
     checks: update.checks ?? record.model.checks,
-    ...(update.cashFlows === undefined ? {} : { cashFlows: update.cashFlows }),
+    obligations: update.obligations ?? record.model.obligations,
+    ...(update.funds === undefined ? {} : { funds: update.funds }),
   });
   validateDecisionModel(model);
   if (JSON.stringify(model) === JSON.stringify(record.model)) {
@@ -46,6 +47,7 @@ export function recordDecisionRecommendation(
   record: DecisionRecord,
   content: DecisionRecommendation,
 ): DecisionRecord {
+  if (record.model.options.some(option => option.obligationIds === null)) throw new DecisionFailure('invalid_model', 'Historical options require reviewed obligationIds before a new recommendation.');
   const previous = record.recommendation?.content;
   const omitted = (['conditionalAdvice', 'numericBasis', 'actionBasis'] as const).filter(key => {
     const existing = previous?.[key];

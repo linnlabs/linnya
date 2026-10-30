@@ -17,11 +17,11 @@ const scenario = (id: string, inputId: string, value: number | boolean | null, n
 function software(): DecisionModel {
   const totals = [add(add(literal(120), multiply(literal(28), input('people'))), input('a_fee')),
     add(add(literal(198), multiply(literal(16), input('people'))), input('b_fee'))];
-  return {
+  return { obligations: [],
     title: '合成套餐', question: '每月预算与容量均满足时偏好A',
     inputs: [['people',6,'人'],['data',26,'GB'],['budget',300,'CNY/月'],['a_capacity',20,'GB'],['b_capacity',30,'GB'],['a_fee',0,'CNY/月'],['b_fee',0,'CNY/月']]
       .map(([id,value,unit]) => ({ quantityType: 'other', id:String(id),label:String(id),kind:'fact',value:Number(value),unit:String(unit),origin:'合成用户条件',status:'available' })),
-    options: [{id:'a',label:'A',description:'120+28/人，20GB'},{id:'b',label:'B',description:'198+16/人，30GB'}],
+    options: [{ obligationIds: [],id:'a',label:'A',description:'120+28/人，20GB'},{ obligationIds: [],id:'b',label:'B',description:'198+16/人，30GB'}],
     calculations: totals.map((expression,index)=>({ quantityType: 'money',id:index===0?'a_total':'b_total',label:index===0?'A月费':'B月费',unit:'CNY/月',expression})),
     checks: ['a','b'].flatMap((optionId,index)=>{
       const expression=totals[index];
@@ -193,10 +193,10 @@ describe('conditional choices through versioned project CLI',()=>{
   });
 
   it('keeps every selected course boundary and the closed equality points when projecting whole-option ranges',()=>{
-    const source:DecisionModel={title:'课程',question:'8次全部准时，2200元/期，已满足时偏好A',
+    const source:DecisionModel={ obligations: [],title:'课程',question:'8次全部准时，2200元/期，已满足时偏好A',
       inputs:[['budget',2200],['departure',1050],['a_tuition',1800],['a_book',200],['a_transport',20],['a_travel',40],['b_tuition',2100],['b_book',0],['b_transport',12]]
         .map(([id,value])=>({ quantityType: 'other',id:String(id),label:String(id),kind:'fact',value:Number(value),origin:'合成用户',status:'available'})),
-      options:[{id:'a',label:'A',description:'18:30开课'},{id:'b',label:'B',description:'18:45开课'}],calculations:[],checks:[]};
+      options:[{ obligationIds: [],id:'a',label:'A',description:'18:30开课'},{ obligationIds: [],id:'b',label:'B',description:'18:45开课'}],calculations:[],checks:[]};
     const aTotal=add(add(input('a_tuition'),input('a_book')),multiply(literal(8),input('a_transport')));
     const bTotal=add(add(input('b_tuition'),input('b_book')),multiply(literal(8),input('b_transport')));
     source.checks=[{id:'a_budget',optionId:'a',label:'A预算',left:aTotal,operator:'lte',right:input('budget')},

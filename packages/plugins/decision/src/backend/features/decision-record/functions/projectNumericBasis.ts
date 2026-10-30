@@ -1,3 +1,4 @@
+import { compileDecisionPayments } from './compileDecisionPayments';
 import type { DecisionModel, DecisionNumericBasis, DecisionQuantityType } from '../../../../shared';
 import type { CheckBoundaryResult } from '../definitions/checkBoundary';
 import { DecisionFailure } from '../definitions/decisionFailure';
@@ -17,7 +18,7 @@ export function validateNumericBasis(model: DecisionModel, basis: DecisionNumeri
   const boundaries = (basis.boundaries).map(binding => {
     const check = model.checks.find(item => item.id === binding.checkId);
     const input = model.inputs.find(item => item.id === binding.inputId);
-    const inputIds = check ? collectCheckInputs(check, model) : [];
+    const inputIds = check ? collectCheckInputs(check, compileDecisionPayments(model)) : [];
     if (!check || !input || !inputIds.includes(input.id)) {
       throw new DecisionFailure('invalid_model', `Unknown or unrelated check/input: ${binding.checkId}/${binding.inputId}`);
     }
@@ -60,9 +61,10 @@ function projectBoundaryPoint(model: DecisionModel, inputId: string, value: numb
 /** 不依赖建议状态的同版数值投影，供写前check与保存后建议共同使用。 */
 export function projectNumericBasis(model: DecisionModel, basis: DecisionNumericBasis, evaluation: ReturnType<typeof evaluateDecisionModel>) {
   const bindings = validateNumericBasis(model, basis).boundaries;
+  const computed = compileDecisionPayments(model);
   const boundaries = bindings.map(({ check, input }) => {
-    const result = deriveCheckBoundary(model, check, input.id);
-    const otherInputIds = collectCheckInputs(check, model).filter(id => id !== input.id);
+    const result = deriveCheckBoundary(computed, check, input.id);
+    const otherInputIds = collectCheckInputs(check, computed).filter(id => id !== input.id);
     const atBoundary = result.status === 'available' ? projectBoundaryPoint(model, input.id, result.value) : null;
     const pointText = atBoundary ? `取${input.label} = ${formatDecisionQuantity(atBoundary.value, input.unit, input.quantityType)}时，${atBoundary.calculations.length
       ? atBoundary.calculations.map(calculation => calculation.text).join('；') : '没有引用此输入的已登记计算'}（仅该点，其他输入固定）。` : '';

@@ -1,3 +1,4 @@
+import { compileDecisionPayments } from './compileDecisionPayments';
 import type { DecisionExpression, DecisionRecord } from '../../../../shared';
 import { cashFlowDirectionLabel } from '../definitions/cashFlowEvaluation';
 import type { DecisionReport } from '../definitions/decisionReport';
@@ -16,6 +17,7 @@ function expression(value: DecisionExpression): string {
 
 /** 同一保存版生成确定的原件；只复用既有求值，不从作者文字猜公式或修正其判断。 */
 export function renderDecisionReport(record: DecisionRecord, expectedRevision: number): DecisionReport {
+  const computed = compileDecisionPayments(record.model);
   if (record.revision !== expectedRevision) throw new DecisionFailure('revision_conflict', `Revision conflict: expected ${expectedRevision}, current ${record.revision}. Read the current record before exporting.`);
   const projected = projectDecisionRecord(record);
   const { recommendationBasis: basis } = projected;
@@ -35,8 +37,8 @@ export function renderDecisionReport(record: DecisionRecord, expectedRevision: n
       text(calculation.id), text(calculation.label), text(expression(calculation.expression)), result(evaluateExpression(calculation.expression, record.model), calculation.quantityType), text(calculation.unit),
     ])),
     '## 全部声明检查',
-    table(['id / 选项', '检查名称（作者声明）', '声明关系', '实际左值', '实际右值', '结果'], record.model.checks.map(check => {
-      const evaluated = evaluateDecisionCheck(check, record.model);
+    table(['id / 选项', '检查名称（作者声明）', '声明关系', '实际左值', '实际右值', '结果'], computed.checks.map(check => {
+      const evaluated = evaluateDecisionCheck(check, computed);
       const relation = check.operator === 'cash_flow_funded' ? `${text(check.cashFlowId)} 的资金缺口 = 0` : check.operator === 'is' ? `${text(check.inputId)} = ${scalar(check.value)}`
         : text(`${expression(check.left)} ${check.operator === 'lte' ? '≤' : check.operator === 'gte' ? '≥' : '='} ${expression(check.right)}`);
       return [text(`${check.id} / ${check.optionId}`), text(check.label), relation, result(evaluated.left), result(evaluated.right),
@@ -53,6 +55,7 @@ export function renderDecisionReport(record: DecisionRecord, expectedRevision: n
           flow.status === 'available' ? String(flow.balances[index].reserve) : '未知/不可用',
           flow.status === 'available' ? String(flow.balances[index].balance) : '未知/不可用',
         ])),
+        ...flow.releaseConditions.map(text),
         ...flow.timingThresholds.map(threshold => text(threshold.text)),
       ]),
       '锚点、时点、银行余额、隔离准备与节点金额由作者声明；程序按天数排序、同日先付后收。',

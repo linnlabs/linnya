@@ -5,13 +5,13 @@ import { decisionMigrations } from '../features/decision-record/persistence/migr
 import { parseDecisionCli } from '../features/decision-cli/functions/parseDecisionCli';
 import { executeDecisionCommand } from '../features/decision-cli/orchestration/executeDecisionCommand';
 
-const model: DecisionModel = {
+const model: DecisionModel = { obligations: [],
   title: '时刻类型回归', question: '同一时刻类型不依赖单位文字',
   inputs: [
     { id: 'start', label: '出发', quantityType: 'day_clock', value: 510, unit: 'min', kind: 'fact', origin: '合成事实', status: 'available' },
     { id: 'travel', label: '耗时', quantityType: 'duration', value: 45, unit: '分钟', kind: 'fact', origin: '合成事实', status: 'available' },
   ],
-  options: [{ id: 'b', label: 'B', description: '到场' }],
+  options: [{ obligationIds: [], id: 'b', label: 'B', description: '到场' }],
   calculations: [{ id: 'arrival', label: '到场', quantityType: 'day_clock', unit: 'min', expression: { op: 'add', left: { input: 'start' }, right: { input: 'travel' } } }],
   checks: [],
 };
@@ -22,8 +22,7 @@ it('migrates every stored revision without changing advice, revision identities 
     db.exec("CREATE TABLE projects(id TEXT PRIMARY KEY); INSERT INTO projects VALUES ('p');");
     for (const migration of decisionMigrations.filter(item => item.version < 3)) migration.up(db);
     const id = '562ef923-394b-4bcb-9b6e-589f1b07de99';
-    const { quantityType: _clock, ...oldClock } = model.inputs[0];
-    const { quantityType: _duration, ...oldDuration } = model.inputs[1];
+    const [oldClock, oldDuration] = model.inputs.map(({ quantityType: _type, ...input }) => input);
     const old = { schemaVersion: 1, id, revision: 1, inputRevision: 1, reason: '原始记录', model: {
       ...model, inputs: [{ ...oldClock, unit: '当天00:00起分钟' }, oldDuration],
       calculations: model.calculations.map(({ quantityType: _type, ...item }) => item),
@@ -45,7 +44,7 @@ it('migrates every stored revision without changing advice, revision identities 
       expect(record.model.inputs[0].value).toBe(510); expect(record.recommendation).toBeNull();
     }
     expect(db.prepare('SELECT revision, created_at FROM decision_record_versions ORDER BY revision').all()).toEqual([{ revision: 1, created_at: 7 }, { revision: 2, created_at: 7 }]);
-    const { quantityType: _missing, ...missingType } = model.inputs[0];
+    const [missingType] = model.inputs.map(({ quantityType: _type, ...input }) => input);
     expect(() => run(['create', '--json', JSON.stringify({ ...model, inputs: [missingType] })])).toThrow('quantityType');
     expect(db.prepare('SELECT COUNT(*) AS n FROM decision_record_versions').get()).toEqual({ n: 2 });
   } finally { db.close(); }

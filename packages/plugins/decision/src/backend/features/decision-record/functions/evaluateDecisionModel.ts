@@ -1,3 +1,4 @@
+import { compileDecisionPayments } from './compileDecisionPayments';
 import type { DecisionExpression, DecisionModel } from '../../../../shared';
 import { DecisionFailure } from '../definitions/decisionFailure';
 import { collectExpressionInputs, evaluateExpression } from './evaluateDecisionExpression';
@@ -12,19 +13,20 @@ export function validateDecisionModel(model: DecisionModel): void {
     const ids = items.map(item => item.id);
     if (new Set(ids).size !== ids.length) throw new DecisionFailure('invalid_model', `Duplicate ${kind} id.`);
   }
+  const computed = compileDecisionPayments(model);
   const inputs = new Set(model.inputs.map(input => input.id));
   const options = new Set(model.options.map(option => option.id));
   for (const item of model.calculations) validateReferences(item.expression, inputs);
-  for (const item of model.checks) {
+  for (const item of computed.checks) {
     if (!options.has(item.optionId)) throw new DecisionFailure('invalid_model', `Unknown option: ${item.optionId}`);
-    if (item.operator === 'cash_flow_funded' && !model.cashFlows?.some(flow => flow.id === item.cashFlowId && flow.optionId === item.optionId)) {
+    if (item.operator === 'cash_flow_funded' && !computed.cashFlows?.some(flow => flow.id === item.cashFlowId && flow.optionId === item.optionId)) {
       throw new DecisionFailure('invalid_model', `Cash flow check ${item.id} must reference a cash flow of the same option.`);
     }
-    for (const input of collectCheckInputs(item, model)) {
+    for (const input of collectCheckInputs(item, computed)) {
       if (!inputs.has(input)) throw new DecisionFailure('invalid_model', `Unknown input: ${input}`);
     }
   }
-  validateDecisionCashFlows(model);
+  validateDecisionCashFlows(computed);
 }
 
 function validateReferences(expression: DecisionExpression, inputs: ReadonlySet<string>): void {
@@ -35,8 +37,9 @@ function validateReferences(expression: DecisionExpression, inputs: ReadonlySet<
 
 export function evaluateDecisionModel(model: DecisionModel) {
   validateDecisionModel(model);
+  const computed = compileDecisionPayments(model);
   return {
-    ...(model.cashFlows ? { cashFlows: evaluateDecisionCashFlows(model) } : {}),
+    cashFlows: evaluateDecisionCashFlows(computed),
     calculations: model.calculations.map(item => ({
       id: item.id,
       label: item.label,
@@ -45,6 +48,12 @@ export function evaluateDecisionModel(model: DecisionModel) {
       inputIds: collectExpressionInputs(item.expression),
       result: evaluateExpression(item.expression, model),
     })),
-    checks: model.checks.map(item => evaluateDecisionCheck(item, model)),
+    checks: [...computed.checks.map(item => evaluateDecisionCheck(item, computed)),
+      ...model.options.filter(option => option.obligationIds === null).map(option => ({
+        id: `payment-review:${option.id}`, optionId: option.id, label: '旧选项收付款责任待复核',
+        left: { status: 'unavailable' as const, reason: '请登记责任引用；确认没有责任时填[]。' },
+        right: { status: 'available' as const, value: 0 }, passes: null,
+      })),
+    ],
   };
 }

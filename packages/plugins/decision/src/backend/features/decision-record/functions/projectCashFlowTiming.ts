@@ -1,4 +1,5 @@
-import type { DecisionModel, DecisionCashFlow } from '../../../../shared';
+import type { ComputedDecisionModel } from '../definitions/computedDecisionModel';
+import type { DecisionCashFlow } from '../../../../shared';
 import { cashFlowDirectionOrder } from '../definitions/cashFlowEvaluation';
 import { cashFlowAmountExpressions } from './cashFlowExpressions';
 import type { AffineCashFlowNode } from '../definitions/cashFlowEvaluation';
@@ -30,7 +31,7 @@ function rangeText(label: string, region: NumericRegion): string {
     region.upper === null ? '' : `${label} ${region.upperInclusive ? '≤' : '<'} ${region.upper}天`].filter(Boolean).join(' 且 ');
 }
 
-function projectInputTiming(model: DecisionModel, flow: DecisionCashFlow, inputId: string) {
+function projectInputTiming(model: ComputedDecisionModel, flow: DecisionCashFlow, inputId: string) {
   const input = model.inputs.find(item => item.id === inputId);
   const common = { inputId, label: input?.label ?? inputId, timeAnchor: flow.timeAnchor,
     fixedInputIds: model.inputs.filter(item => item.id !== inputId).map(item => item.id) };
@@ -83,7 +84,7 @@ function projectInputTiming(model: DecisionModel, flow: DecisionCashFlow, inputI
     text: `${flow.label}：${zeroShortfallRanges.length ? `${zeroShortfallRanges.map(region => rangeText(common.label, region)).join(' 或 ')}时现金缺口为零` : `只改变${common.label}不能消除现金缺口`}（相对“${flow.timeAnchor}”，其他输入固定，同日先付后收）。` };
 }
 
-export function projectCashFlowTiming(model: DecisionModel, flow: DecisionCashFlow) {
+export function projectCashFlowTiming(model: ComputedDecisionModel, flow: DecisionCashFlow) {
   const ids = [...new Set(flow.entries.flatMap(entry => entry.at === null ? [] : collectExpressionInputs(entry.at)))];
   return ids.map(id => projectInputTiming(model, flow, id));
 }

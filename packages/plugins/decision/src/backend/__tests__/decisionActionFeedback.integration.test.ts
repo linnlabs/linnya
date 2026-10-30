@@ -155,7 +155,7 @@ describe('action plans and feedback through CLI and SQLite', () => {
     const record = create();
     run(['recommend', record.id, '--expected-revision', '1', '--json', JSON.stringify(remoteOfferRecommendation())]);
     const action = planned(record.id, 2, { ...plan, label: '寻找替代安排', inputIds: [] });
-    resolve(record.id, action.id, 3, { ...result, update: { reason: '发现新安排', options: [...record.model.options, { id: 'c', label: 'C', description: '新取得安排，仍需比较' }] } });
+    resolve(record.id, action.id, 3, { ...result, update: { reason: '发现新安排', options: [...record.model.options, { obligationIds: [], id: 'c', label: 'C', description: '新取得安排，仍需比较' }] } });
     const saved = read(record.id);
     expect(saved.record.model.options.map(option => option.id)).toEqual(['a', 'b', 'c']);
     expect(saved.record.actions?.[0]?.result?.summary).toBe(result.summary);

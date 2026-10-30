@@ -128,7 +128,7 @@ async function seed() {
   const record = executeDecisionCommand({ kind: 'create', model: {
     title: '课程选择', question: '选一门可赶到的课',
     inputs: [{ quantityType: 'other', id: 'end', label: '下班时间', kind: 'fact', value: '18:00', origin: '用户', status: 'available' }],
-    options: [{ id: 'A', label: '课程A', description: '40分钟' }, { id: 'B', label: '课程B', description: '10分钟' }], calculations: [], checks: [],
+    options: [{ id: 'A', label: '课程A', description: '40分钟', obligationIds: [] }, { id: 'B', label: '课程B', description: '10分钟', obligationIds: [] }], calculations: [], checks: [], obligations: [],
   } }, fixture.db, projectId);
   if (typeof record !== 'object' || record === null || !('record' in record)) throw new Error('Missing decision');
   decisionId = DecisionRecordSchema.parse(record.record).id;

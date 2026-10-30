@@ -1,3 +1,4 @@
+import { compileDecisionPayments } from './compileDecisionPayments';
 import type { DecisionModel } from '../../../../shared';
 import type { CheckBoundaryResult } from '../definitions/checkBoundary';
 import type { NumericRegion, OptionState, OptionRangeRow, OptionBoundaries, OptionCheckStatus } from '../definitions/optionRange';
@@ -27,10 +28,11 @@ function optionStatus(option: OptionBoundaries, region: NumericRegion): OptionCh
 export function projectOptionRanges(model: DecisionModel, inputId: string) {
   const input = model.inputs.find(item => item.id === inputId);
   if (!input) throw new DecisionFailure('invalid_model', `Unknown range input: ${inputId}`);
+  const computed = compileDecisionPayments(model);
   const boundaries: OptionBoundaries[] = model.options.map(option => ({
     optionId: option.id,
-    checks: model.checks.filter(check => check.optionId === option.id).map(check => ({
-      checkId: check.id, result: deriveCheckBoundary(model, check, inputId),
+    checks: computed.checks.filter(check => check.optionId === option.id).map(check => ({
+      checkId: check.id, result: deriveCheckBoundary(computed, check, inputId),
     })),
   }));
   const endpoints = [...new Set(boundaries.flatMap(option => option.checks.flatMap(check => (

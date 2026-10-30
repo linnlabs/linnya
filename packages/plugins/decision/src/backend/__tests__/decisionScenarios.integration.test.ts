@@ -14,13 +14,13 @@ import { simulateDecisionScenarios } from '../features/decision-record/functions
 const input = (id: string): DecisionExpression => ({ input: id });
 const add = (left: DecisionExpression, right: DecisionExpression): DecisionExpression => ({ op: 'add', left, right });
 function model(): DecisionModel {
-  return {
+  return { obligations: [],
     title: '假想课程', question: '预算与到场约束下选课',
     inputs: [
       ['budget', 2200], ['a_cost', 2160], ['b_base', 2196], ['b_book', 0],
       ['departure', 1050], ['a_travel', 40], ['b_travel', 25], ['a_start', 1110], ['b_start', 1125],
     ].map(([id, value]) => ({ quantityType: 'other', id: String(id), label: String(id), kind: 'fact', value: Number(value), origin: '合成夹具', status: 'available' })),
-    options: [{ id: 'A', label: 'A', description: '条件满足时偏好A' }, { id: 'B', label: 'B', description: '备选B' }],
+    options: [{ obligationIds: [], id: 'A', label: 'A', description: '条件满足时偏好A' }, { obligationIds: [], id: 'B', label: 'B', description: '备选B' }],
     // 模仿实际失败：b_book登记了但未接入公式，试算应揭露它而不是自动补公式。
     calculations: [{ quantityType: 'money', id: 'b_total', label: 'B总价', unit: 'CNY/期', expression: input('b_base') }],
     checks: [

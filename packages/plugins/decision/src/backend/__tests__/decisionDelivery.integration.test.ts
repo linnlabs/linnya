@@ -69,9 +69,9 @@ it('writes a linked, byte-exact CLI preview but CLI output never requests termin
   await expect(prepared.plan.execute({ ...context, signal: stop.signal })).rejects.toThrow('cancelled'); expect(readdirSync(root)).toEqual(files);
 });
 it('keeps independent time scenarios and the inclusive endpoint in program delivery', () => {
-  const model: DecisionModel = { title: '到场条件', question: '两个出发时刻各何时到场？',
+  const model: DecisionModel = { obligations: [], title: '到场条件', question: '两个出发时刻各何时到场？',
     inputs: [{ id: 'start', label: '出发', value: 510, quantityType: 'day_clock', unit: '当天00:00起分钟', kind: 'fact', status: 'available', origin: '合成' }],
-    options: [{ id: 'b', label: 'B', description: '路程45分钟' }],
+    options: [{ obligationIds: [], id: 'b', label: 'B', description: '路程45分钟' }],
     calculations: [{ id: 'arrival', label: 'B到场', unit: '当天00:00起分钟', quantityType: 'day_clock', expression: { op: 'add', left: { input: 'start' }, right: { literal: 45 } } }],
     checks: [{ id: 'on_time', optionId: 'b', label: '09:30前到场', left: { op: 'add', left: { input: 'start' }, right: { literal: 45 } }, operator: 'lte', right: { literal: 570 } }],
   };

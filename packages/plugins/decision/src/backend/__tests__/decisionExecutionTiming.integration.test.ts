@@ -20,14 +20,14 @@ it('delivers an execution cutoff from the declared check, keeps equality and inv
       if (typeof value !== 'object' || value === null || !('record' in value)) throw new Error('Record projection expected');
       return projectDecisionRecord(DecisionRecordSchema.parse(value.record));
     };
-    const model: DecisionModel = {
+    const model: DecisionModel = { obligations: [],
       title: '最晚上车时点', question: '最慢45分钟行程能否在13:40前到场？',
       inputs: [
         { id: 'board', label: '坐上出租车时刻', value: null, quantityType: 'day_clock', unit: '分钟', kind: 'assumption', status: 'available', origin: '尚未发生的上车时点' },
         { id: 'travel', label: '最慢行程', value: 45, quantityType: 'duration', unit: '分钟', kind: 'fact', status: 'available', origin: '合成已知事实' },
         { id: 'deadline', label: '到场截止', value: 820, quantityType: 'day_clock', unit: '分钟', kind: 'constraint', status: 'available', origin: '合成用户要求' },
       ],
-      options: [{ id: 'taxi', label: '出租车', description: '仅分析，不执行叫车' }],
+      options: [{ obligationIds: [], id: 'taxi', label: '出租车', description: '仅分析，不执行叫车' }],
       calculations: [{ id: 'arrival', label: '最慢到场时刻', quantityType: 'day_clock', unit: '分钟', expression: { op: 'add', left: { input: 'board' }, right: { input: 'travel' } } }],
       checks: [{ id: 'on_time', optionId: 'taxi', label: '最慢行程不晚于到场截止', left: { op: 'add', left: { input: 'board' }, right: { input: 'travel' } }, operator: 'lte', right: { input: 'deadline' } }],
     };

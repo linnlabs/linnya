@@ -1,11 +1,13 @@
-import type { DecisionModel, DecisionCashFlow } from '../../../../shared';
+import { projectOpeningPaymentCoverage } from './projectOpeningPaymentCoverage';
+import type { ComputedDecisionModel } from '../definitions/computedDecisionModel';
+import type { DecisionCashFlow } from '../../../../shared';
 import { evaluateExpression } from './evaluateDecisionExpression';
 import { cashFlowInputIds } from './cashFlowExpressions';
 import { cashFlowDirectionOrder } from '../definitions/cashFlowEvaluation';
 import { calculateCashFlowBalances } from './calculateCashFlowBalances';
 
 /** 只投影一张表，供当前求值及时间边界共用；不会递归重算其他边界。 */
-export function evaluateCashFlow(model: DecisionModel, flow: DecisionCashFlow) {
+export function evaluateCashFlow(model: ComputedDecisionModel, flow: DecisionCashFlow) {
   const unclassified = 'unclassified' in flow.opening;
   const unknown = { status: 'unavailable' as const, reason: '期初未区分银行余额与隔离准备。' };
   const openingBank = 'bank' in flow.opening ? evaluateExpression(flow.opening.bank, model) : unknown;
@@ -21,11 +23,14 @@ export function evaluateCashFlow(model: DecisionModel, flow: DecisionCashFlow) {
   });
   const missingTimingIds = flow.entries.filter(entry => entry.at === null).map(entry => entry.id);
   const needsInformation = unclassified || flow.timeAnchor === null || missingTimingIds.length > 0 || missingInputIds.length > 0;
-  const common = { id: flow.id, label: flow.label, optionId: flow.optionId, unit: flow.unit, timeAnchor: flow.timeAnchor,
+  const openingCoverage = projectOpeningPaymentCoverage(model, flow);
+  const common = { openingCoverage, id: flow.id, label: flow.label, optionId: flow.optionId, unit: flow.unit, timeAnchor: flow.timeAnchor,
     inputIds, openingBank, openingReserve, entries };
   const unresolved = { ...common, status: needsInformation ? 'needs_information' as const : 'unavailable' as const,
     missingInputIds, missingTimingIds, minimumBalance: null, endingBalance: null, shortfall: null,
-    text: `${flow.label}：${needsInformation ? `需要信息（${[...(unclassified ? ['期初银行余额与隔离准备'] : []), ...(flow.timeAnchor === null ? ['时间锚点'] : []), ...missingTimingIds, ...missingInputIds].join(', ')}）` : '金额或时点算式不可用'}；未将未知当零或按原数组猜日期。` };
+    text: `${flow.label}：${needsInformation ? `需要信息（${[...(unclassified ? ['期初银行余额与隔离准备'] : []), ...(flow.timeAnchor === null ? ['时间锚点'] : []), ...missingTimingIds.map(id => `${flow.entries.find(entry => entry.id === id)?.label ?? id}的日期`), ...missingInputIds.map(id => model.inputs.find(input => input.id === id)?.label ?? id)].join(', ')}）` : '金额或时点算式不可用'}；未将未知当零或按原数组猜日期。` };
+  if (entries.some(entry => entry.result.status === 'available' && entry.result.value < 0)) return { ...unresolved, status: 'unavailable' as const, text: `${flow.label}：总额小于已列分期，派生尾款为负，不能按此模型放行。` };
+  if (needsInformation && openingCoverage) return { ...unresolved, text: `${unresolved.text} ${openingCoverage.text}` };
   if (needsInformation || openingBank.status === 'unavailable' || openingReserve.status === 'unavailable') return unresolved;
   const resolved: (typeof entries[number] & { amountValue: number; day: number })[] = [];
   for (const entry of entries) {

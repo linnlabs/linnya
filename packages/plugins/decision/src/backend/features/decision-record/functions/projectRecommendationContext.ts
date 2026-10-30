@@ -23,7 +23,7 @@ export function observeRecommendationActions(record: DecisionRecord, content: De
 export function projectRecommendationContext(record: DecisionRecord) {
   const saved = record.recommendation;
   const inputStatus = !saved ? 'missing' as const
-    : saved.basedOnInputRevision === record.inputRevision ? 'current' as const : 'needs_review' as const;
+    : saved.basedOnInputRevision === record.inputRevision && record.model.options.every(option => option.obligationIds !== null) ? 'current' as const : 'needs_review' as const;
   const basis = saved?.content.actionBasis;
   if (!basis) return { status: inputStatus, inputStatus, actionBasis: { status: 'not_observed' as const } };
   const states = projectDecisionActions(record);

@@ -9,7 +9,7 @@ export function refundableOrderModel(): DecisionModel {
   const orderTotal = sum(sum(input('c1_total'), input('c2_total')), input('c3_total'));
   const futureCollection = sum(difference(orderTotal, input('held_deposits')), input('refund_before_collection'));
   const budgetUse = sum(sum(input('spent'), input('supplier_quote')), input('extra_fees'));
-  return {
+  return { obligations: [],
     title: '合成小批订单核对', question: '是否值得继续核对成本与付款条件？',
     inputs: [
       { quantityType: 'money', id: 'c1_total', label: '客户1总成交意向，含订金', kind: 'fact', value: 100, unit: 'CNY/本批', origin: '合成用户表态，余款未付、未成交', status: 'available' },
@@ -22,7 +22,7 @@ export function refundableOrderModel(): DecisionModel {
       { quantityType: 'money', id: 'supplier_quote', label: '供应商报价，未下单未付', kind: 'fact', value: 300, unit: 'CNY/本批', origin: '合成报价，附加费未知', status: 'available' },
       { quantityType: 'money', id: 'extra_fees', label: '全部附加费', kind: 'fact', value: null, unit: 'CNY/本批', origin: '运费税费范围尚未核明', status: 'available' },
     ],
-    options: [{ id: 'proceed', label: '条件核清后再考虑下单', description: '预算检查只是可行条件之一，不是授权' }, { id: 'wait', label: '暂缓承诺', description: '核对成本和付款安排，不自动放弃' }],
+    options: [{ obligationIds: [], id: 'proceed', label: '条件核清后再考虑下单', description: '预算检查只是可行条件之一，不是授权' }, { obligationIds: [], id: 'wait', label: '暂缓承诺', description: '核对成本和付款安排，不自动放弃' }],
     calculations: [
       { quantityType: 'money', id: 'intended_total', label: '总成交意向，非已实现收入', unit: 'CNY/本批', expression: orderTotal },
       { quantityType: 'money', id: 'future_collection', label: '假设交易完成可再收取，非已收现金', unit: 'CNY/本批', expression: futureCollection },

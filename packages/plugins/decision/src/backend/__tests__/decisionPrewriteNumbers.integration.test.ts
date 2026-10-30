@@ -35,7 +35,7 @@ function read(id: string, revision?: number) {
   return output;
 }
 function timeModel(): DecisionModel {
-  return {
+  return { obligations: [],
     title: '合成讲座时间', question: '先取得边界和同点算值再写计划',
     inputs: [
       { quantityType: 'day_clock', id: 'start', label: '出发时刻', kind: 'fact', value: 510, unit: '当天00:00起分钟', origin: '合成输入', status: 'available' },
@@ -43,7 +43,7 @@ function timeModel(): DecisionModel {
       { quantityType: 'day_clock', id: 'event', label: '开场时刻', kind: 'fact', value: 570, unit: '当天00:00起分钟', origin: '合成输入', status: 'available' },
       { quantityType: 'other', id: 'access', label: '入场许可', kind: 'fact', value: true, origin: '合成输入', status: 'available' },
     ],
-    options: [{ id: 'b', label: 'B讲座', description: '合成现场讲座' }],
+    options: [{ obligationIds: [], id: 'b', label: 'B讲座', description: '合成现场讲座' }],
     calculations: [{ quantityType: 'day_clock', id: 'arrival', label: 'B到场时刻', unit: '当天00:00起分钟', expression: { op: 'add', left: { input: 'start' }, right: { input: 'travel' } } }],
     checks: [
       { id: 'on_time', optionId: 'b', label: '准时到场', left: { op: 'add', left: { input: 'start' }, right: { input: 'travel' } }, operator: 'lte', right: { input: 'event' } },

@@ -29,10 +29,10 @@ function courseModel(): DecisionModel {
     ['b_tuition', 'B学费', 2100, 'CNY/期'], ['b_materials', 'B教材', 0, 'CNY/期'],
     ['b_transport', 'B单次去程费用', 12, 'CNY/次'], ['b_commute', 'B去程用时', 25, '分钟'], ['b_start', 'B开课（18:00为0）', 45, '分钟'],
   ] as const;
-  return {
+  return { obligations: [],
     title: '合成课程边界', question: '预算与准时约束下比较两门课',
     inputs: numbers.map(([id, label, value, unit]) => ({ quantityType: 'other', id, label, value, unit, kind: 'fact', origin: '合成业务夹具', status: 'available' })),
-    options: [{ id: 'A', label: 'A', description: '内容偏好A' }, { id: 'B', label: 'B', description: '另一课程' }],
+    options: [{ obligationIds: [], id: 'A', label: 'A', description: '内容偏好A' }, { obligationIds: [], id: 'B', label: 'B', description: '另一课程' }],
     calculations: ['a', 'b'].flatMap(prefix => [
       { quantityType: 'money', id: `${prefix}_cost`, label: `${prefix}一期总费用`, unit: 'CNY/期', expression: cost(prefix) },
       { quantityType: 'duration', id: `${prefix}_buffer`, label: `${prefix}开课减到场的余量`, unit: '分钟', expression: subtract(input(`${prefix}_start`), add(input('departure'), input(`${prefix}_commute`))) },
@@ -156,10 +156,10 @@ describe('recommendation numerical basis through CLI and persistent versions', (
   });
 
   it('handles reverse inequality, equality and cancellation, and refuses nonlinear estimates', () => {
-    const model: DecisionModel = {
+    const model: DecisionModel = { obligations: [],
       title: '合成融资约束', question: '收入覆盖支出并保留已知约束',
       inputs: [{ quantityType: 'money', id: 'income', label: '收入', kind: 'assumption', value: 30, unit: 'CNY', status: 'available', origin: '合成假设' }],
-      options: [{ id: 'plan', label: '计划', description: '合成计划' }], calculations: [],
+      options: [{ obligationIds: [], id: 'plan', label: '计划', description: '合成计划' }], calculations: [],
       checks: [
         { id: 'surplus', optionId: 'plan', label: '结余非负', left: subtract(literal(50), input('income')), operator: 'lte', right: literal(20) },
         { id: 'exact', optionId: 'plan', label: '金额一致', left: input('income'), operator: 'eq', right: literal(30) },
