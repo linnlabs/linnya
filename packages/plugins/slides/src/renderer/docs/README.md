@@ -2,7 +2,7 @@
 
 Slides renderer 是演示文稿前端 contribution，负责文档 surface、预览舞台、缩略图、工具卡片、导出入口、模板 UI、前端状态和 renderer 侧 IPC 调用。
 
-文档 surface 自上而下是主区域与底部导航：主区域显示单页舞台或全稿平铺，右下角浮动工具条提供缩放、百分比菜单与编辑模式开关；底部导航由 [deckNavigator](../features/deckNavigator/README.md) 拥有，包含新建空白幻灯片、视图切换与横向幻灯片列表。百分比菜单见 [stageZoom](../features/stageZoom/README.md)。
+文档 surface 自上而下是主区域与底部导航；文稿可手动编辑时，舞台顶部居中浮着文稿命令条（不进入布局，没有编辑模式开关）：主区域显示单页舞台或全稿平铺，右下角浮动工具条提供缩放与百分比菜单；底部导航由 [deckNavigator](../features/deckNavigator/README.md) 拥有，包含新建空白幻灯片、视图切换与横向幻灯片列表。百分比菜单见 [stageZoom](../features/stageZoom/README.md)。
 
 renderer 是后端 `PresentationRenderModel`、`DeckPreview` 和 shared 合同的消费层，不是第二套 PPT 布局求解器。视觉或布局不一致时，优先回查 shared 合同、后端 render-model mapper、compiler 或 engine solver，再修改 renderer 映射。
 
@@ -24,6 +24,10 @@ src/renderer/
 │   ├── documentRuntime/             # surface 挂载后的 deck 加载、定位和生命周期编排
 │   ├── deckNavigator/               # 底部横向列表、平铺视图、视图切换与新建空白幻灯片
 │   ├── elementAiEdit/               # source-backed 元素 AI 编辑编排
+│   ├── editingCommands/              # 历史、保存状态、对齐/分布/图层命令
+│   ├── elementInsertion/             # 文字、基础形状与图片插入
+│   ├── elementClipboard/             # 同稿作者值复制/粘贴/重复
+│   ├── imageEditing/                 # 文稿图片接管、替换、fit
 │   ├── editingInteraction/           # 选择／输入会话、IME、焦点交接与失败文字恢复
 │   ├── textEditing/                  # 原位 textarea 和无焦点文字预览
 │   ├── manualEditing/                # 作者目标、视觉投影、CAS 队列与独立回执
@@ -53,13 +57,12 @@ src/renderer/
 主预览链路：
 
 ```text
-SlidesPage / SlidesView
-  -> documentRuntime 加载当前 documentId
-  -> slidesStore.loadDeck(documentId)
-  -> slidesApi.getDocumentBuildState(documentId)
-       -> ready：并行进入 DeckPreview / RenderModel 主链
-       -> draft：展示“PPT 编译失败”，不请求 preview/render-model
-  -> SlideStage / SlideGridView / DeckNavigatorBar / build status 消费 store selector
+Host file session / SlidesView
+  -> documentRuntime.loadDeck / refreshDeck
+  -> slides:view-snapshot（同一修订的头、页序与缺失内容/定位块）
+  -> 同一 snapshot 的全部批次拼装、校验
+  -> 同步安装 build state + 导航 + RenderModel + 选择
+  -> SlideStage / SlideGridView / DeckNavigatorBar 消费 selector
 ```
 
 当前打开的 Slides 收到 `workspace.document.updated(version)` 后，复用同一条读取链路刷新当前
@@ -84,7 +87,7 @@ SlideRasterRequest
        -> hidden worker PNG bytes
 ```
 
-缩略图 store 只选择 thumbnail profile 和管理 `ImageBitmap` 生命周期。页面比例、物理像素尺寸、节点分发和 PNG 编码不属于 store。
+[deckNavigator](../features/deckNavigator/README.md) 按画面内容增量缓存缩略图；其 orchestration 选择 thumbnail profile、空闲调度和管理 `ImageBitmap` 生命周期，feature store 只保存展示状态。页面比例、物理像素尺寸、节点分发和 PNG 编码属于 raster 合同与实现。
 底部列表固定缩略图高度、宽度与虚拟列表条目宽度共同从当前文稿 `slideSize` 派生；平铺视图的卡片高度同样按
 `slideSize` 计算，并通过 `requestRasterWidth` 请求更宽的同一份位图。固定 16:9 比例只能作为尚未取得
 RenderModel 时的默认值，不能成为 preset 或自定义画布的第二套几何事实。
@@ -128,13 +131,13 @@ SlideStage authoring-capability target click / drag / text double-click
   -> editingInteraction 同步结束当前输入／切换选择，保留无焦点文字预览
   -> manualEditing 提交队列（SlidesView 只装配端口），按操作身份返回 ticket
   -> slides:manual-edit(revisionId + revision + sourceHash + operation)
-  -> backend 改写 compose.manualEdits 并完整编译/物化
-  -> revision 原子提交后 refreshDeck / RenderModel 原子替换
+  -> backend 改写 compose.manualEdits，经正式编译或已证明等价的投影提交语义修订（PPTX 按需物化）
+  -> revision 原子提交后 documentRuntime 刷新并安装一致快照
   -> matching RenderModel + 当前页完整视觉资源原子呈现后结算 ticket／撤下 pending visual
      （回执不改变当前输入和焦点）
 ```
 
-当前开放作者对象移动与删除、作者字符串文本完整替换及字号／颜色、Frame／Shape 纯色和 Shape／Image 有限视觉尺寸。是否可改字由 backend 投影的 `authoringEdit` 决定，不能从 RenderModel 的段落或字体 run 数量反推；所以多行字符串和因字体解析拆分的中英混排仍可编辑，富文本与内联公式 run 保持文本只读。图片源、表格内容和图表数据需要各自的完整值编辑器后再开放。Flex Frame 虽在 RenderModel 中摊平，Renderer 只消费 compiler 投影的正式作者祖先：父级选择、移动、删除和选框都使用同一成员关系；父选框包含移出背景范围的可见后代，但实际命中仍只认对象几何，不把成员之间的空白变成热区。页面背景不进入作者目标集合，空白处保持默认光标并在点击时清空选择；只有真实可移动对象显示移动光标。详细边界见 [`../features/manualEditing/README.md`](../features/manualEditing/README.md)。
+当前开放作者对象移动与删除、独立 Text 的字符串／纯文字富文本完整替换及整框／选区字号和颜色、Shape 字符串内文替换、Frame／Shape 纯色和 Shape／Image 有限视觉尺寸。是否可改字由 backend 投影的 `authoringEdit` 决定，不能从 RenderModel 的段落或字体 run 数量反推；多行字符串和因字体解析拆分的中英混排仍可编辑，含内联公式的正文保持文本只读。图片源、表格内容和图表数据需要各自的完整值编辑器后再开放。Flex Frame 虽在 RenderModel 中摊平，Renderer 只消费 compiler 投影的正式作者祖先：父级选择、移动、删除和选框都使用同一成员关系；父选框包含移出背景范围的可见后代，但实际命中仍只认对象几何，不把成员之间的空白变成热区。页面背景不进入作者目标集合，页内背景和舞台外围留白在主键点击时清空选择；只有真实可移动对象显示移动光标。详细边界见 [`../features/manualEditing/README.md`](../features/manualEditing/README.md)。
 
 导出链路只有 Host 文档“更多”菜单一个真实入口，当前开放两个选项并分别打开独立弹窗：
 
@@ -173,8 +176,12 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 |---|---|
 | `slides:preview` | 获取 `DeckPreview` |
 | `slides:build-state` | 查询源码是 `ready` 还是 unresolved `draft`，并返回当前 revision ID、序号和 source hash 快照 |
-| `slides:manual-edit` | 基于精确 revision/source 快照提交有限人工编辑与新建空白幻灯片 |
-| `slides:render-model` | 获取 `PresentationRenderModel` |
+| `slides:manual-edit` | 精确修订的对象/批量/页面命令与撤销重做 |
+| `slides:manual-edit-history` | 当前后台会话的撤销/重做深度 |
+| `slides:import-image` | 将文件字节接管为当前文稿拥有的图片 ID |
+| `slides:copy-objects` | 只读取得精确修订的可复制作者值 |
+| `slides:view-snapshot` | Renderer 统一读取同一修订的视图，按页增量并支持分批 |
+| `slides:render-model` | 保留完整模型查询合同；Renderer 主链使用一致快照 |
 | `slides:inspect` | 获取 `PresentationInfo` |
 | `slides:source-slices` | 获取源码切片 |
 | `slides:export` | 生成 PPTX、图片 ZIP 或 PDF，并提交到 Host 一次性保存目标；不返回 artifact bytes |
@@ -221,3 +228,5 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 保真回归使用 `smoke:raster-worker`：真实 Electron 像素覆盖 8 个线性渐变角度与 2:1 椭圆径向渐变。主预览和离屏渲染共用形状 scene renderer；命中画布单独写 Konva identity 色，不能复用视觉渐变。图表图例色、绘图区色和线宽从 RenderModel 读取。
 
 切页保真需同时验证资源原子提交与持久 Konva 节点属性同步。主预览所有绑定使用严格 config；`smoke:preview-transitions` 覆盖真实 Vue 更新后的像素，并挂载生产 `KonvaSlideStage` 验证人工位移进入内容层，不可只用新建 stage 的离屏截图代替。详见 [Konva Preview](../features/konvaPreview/README.md#持久画布的属性同步)。
+
+基础编辑行为与当前边界见[网页编辑体验](./editing-experience.md)。

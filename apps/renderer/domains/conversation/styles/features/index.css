@@ -5,4 +5,5 @@
 @import './image-attachments/ConversationImageAttachmentFixture.css';
 @import './command-approval/CommandApprovalPanel.css';
 @import './client-notices/ClientNoticeMessage.css';
+@import './message-window/MessageWindowError.css';
 @import './ConversationStreamText.css';

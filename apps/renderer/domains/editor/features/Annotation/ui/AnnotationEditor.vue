@@ -28,7 +28,7 @@
             :data-linnya-tooltip="editorMessage('editor.annotation.action.aiAndSave')"
             :aria-label="editorMessage('editor.annotation.action.aiAndSave')"
           >
-            <AiIcon />
+            <LinnyaIcon />
           </button>
           
           <!-- 取消按钮 -->
@@ -49,7 +49,7 @@
             :data-linnya-tooltip="editorMessage('editor.annotation.action.save')"
             :aria-label="editorMessage('editor.annotation.action.save')"
           >
-            <OkIcon />
+            <CheckmarkIcon />
           </button>
         </div>
       </div>
@@ -70,8 +70,8 @@
 
 <script setup>
 import { ref, watchEffect, onMounted, nextTick } from 'vue'
-import { AiIcon } from '@linnya/renderer-ui/icons';
-import { OkIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaIcon } from '@linnya/renderer-ui/icons';
+import { CheckmarkIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon as NoIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
 

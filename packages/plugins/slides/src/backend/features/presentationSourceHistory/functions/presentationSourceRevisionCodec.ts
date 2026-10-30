@@ -11,6 +11,9 @@ import { hashPresentationSource } from './presentationSourceHash.js';
 export { hashPresentationSource } from './presentationSourceHash.js';
 
 const diffMatchPatch = new DiffMatchPatch();
+// 历史压缩不能阻塞编辑：到时算法返回精确的较粗 diff，体积不划算时仍保存 checkpoint。
+// 页面复制/删除会改变多段重复源码，默认 1 秒预算曾让一次保存停顿 500–750 ms。
+diffMatchPatch.Diff_Timeout = 0.01;
 
 export function normalizePresentationSource(source: string): string {
   return source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -33,11 +36,13 @@ export function buildPresentationSourceRevision(
 
   const parentSource = normalizePresentationSource(input.parentSource);
   const baseSourceHash = hashPresentationSource(parentSource);
+  const sourceBytes = Buffer.byteLength(source, 'utf8');
+  if (input.revision % PRESENTATION_SOURCE_CHECKPOINT_INTERVAL === 0 || input.accumulatedPatchBytes >= sourceBytes) {
+    return buildCheckpoint(source, sourceHash, baseSourceHash);
+  }
   const patchText = diffMatchPatch.patch_toText(diffMatchPatch.patch_make(parentSource, source));
   const patchBytes = Buffer.byteLength(patchText, 'utf8');
-  const sourceBytes = Buffer.byteLength(source, 'utf8');
-  const shouldCheckpoint = input.revision % PRESENTATION_SOURCE_CHECKPOINT_INTERVAL === 0
-    || patchBytes >= sourceBytes
+  const shouldCheckpoint = patchBytes >= sourceBytes
     || input.accumulatedPatchBytes + patchBytes >= sourceBytes;
 
   if (shouldCheckpoint) {

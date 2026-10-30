@@ -58,6 +58,29 @@ describe('Sandbox evaluator runtime resolver', () => {
     })).rejects.toThrow(/size|hash/u);
   });
 
+  it('打包态使用重签后的专用 Node，仍将 evaluator 定位到包内资源', async () => {
+    const fixture = await createRuntimeFixture();
+    const executablePath = path.join(
+      fixture.resourcesPath,
+      'headless-node-runtime/darwin/arm64/bin/node',
+    );
+    await writeFile(executablePath, 'resigned headless node runtime');
+
+    const runtime = await resolveSandboxEvaluatorRuntime({
+      packaged: true,
+      resourcesPath: fixture.resourcesPath,
+      mainBundleDirectory: fixture.mainBundleDirectory,
+      platform: 'darwin',
+      architecture: 'arm64',
+    });
+
+    expect(runtime.launch).toEqual({
+      executablePath,
+      entryPath: path.join(fixture.resourcesPath, 'sandbox-runtime/evaluator/sandboxEvaluatorProcess.cjs'),
+      environment: {},
+    });
+  });
+
   it('正式包缺 evaluator bundle 时 fail-closed，即使 Node manifest 合法也不安装 runner', async () => {
     const fixture = await createRuntimeFixture({ publishPackagedEvaluator: false });
 

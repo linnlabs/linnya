@@ -1,13 +1,41 @@
 <!--
  * packages/renderer-ui/src/icons/ui/SaveAsIcon.vue
- * "另存为"图标组件
+ * “另存为”图标组件。
 -->
 <template>
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-    <path d="M4,6.25c0-1.24,1.01-2.25,2.25-2.25h9.43c.6,0,1.17.24,1.59.66l1.82,1.82c.42.42.66.99.66,1.59v3.35c-.36-.18-.74-.33-1.12-.44v-2.91c0-.3-.12-.58-.33-.8l-1.82-1.82c-.21-.21-.5-.33-.8-.33h-.43v2.81c0,.93-.76,1.69-1.69,1.69h-4.5c-.93,0-1.69-.76-1.69-1.69v-2.81h-1.12c-.62,0-1.12.5-1.12,1.12v11.25c0,.62.5,1.12,1.12,1.12v-5.06c0-.93.76-1.69,1.69-1.69h5.44c-.45.32-.86.7-1.21,1.12h-4.23c-.31,0-.56.25-.56.56v5.06h3.61c.11.39.26.77.44,1.12h-5.17c-1.24,0-2.25-1.01-2.25-2.25V6.25ZM8.5,5.12v2.81c0,.31.25.56.56.56h4.5c.31,0,.56-.25.56-.56v-2.81h-5.62ZM22,16.94c0,2.8-2.27,5.06-5.06,5.06s-5.06-2.27-5.06-5.06,2.27-5.06,5.06-5.06,5.06,2.27,5.06,5.06ZM19.58,17.34h0c.1-.11.16-.25.16-.39h0c0-.15-.06-.3-.16-.4l-2.25-2.25c-.22-.22-.58-.22-.8,0-.22.22-.22.58,0,.8h0l1.29,1.29h-3.14c-.31,0-.56.25-.56.56s.25.56.56.56h3.14l-1.29,1.29c-.22.22-.22.58,0,.8s.58.22.8,0l2.25-2.25h0Z" fill="currentColor" stroke-width="0"/>
+  <svg
+    class="linnya-ui-icon"
+    data-icon="save-as"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <defs>
+      <mask :id="`${uid}-cut`" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+        <rect width="24" height="24" fill="white" stroke="none"/>
+        <circle cx="16.5" cy="16.5" r="5.5" fill="black" stroke="none"/>
+      </mask>
+      <mask :id="`${uid}-badge`" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+        <rect width="24" height="24" fill="white" stroke="none"/>
+        <path stroke="black" d="M14.5 16.5h4M16.5 14.5l2 2-2 2"/>
+      </mask>
+    </defs>
+    <g :mask="`url(#${uid}-cut)`">
+      <path d="M7 5.5L15.39 5.5A1.5 1.5 0 0 1 16.45 5.94L18.06 7.55A1.5 1.5 0 0 1 18.5 8.61L18.5 17A1.5 1.5 0 0 1 17 18.5L7 18.5A1.5 1.5 0 0 1 5.5 17L5.5 7A1.5 1.5 0 0 1 7 5.5z"/>
+      <path d="M8.5 5.5v3a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-3M7.5 18.5v-5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v5"/>
+    </g>
+    <circle cx="16.5" cy="16.5" r="4.5" fill="currentColor" stroke="none" :mask="`url(#${uid}-badge)`"/>
   </svg>
 </template>
 
 <script setup lang="ts">
-// 另存为图标组件
-</script> 
+import { useId } from 'vue';
+
+const uid = useId();
+</script>

@@ -50,7 +50,7 @@ export function createClientNoticeOutbox(ports: ClientNoticeOutboxPorts) {
     const work = (async () => {
       for (const entry of ports.read().filter(value => value.conversationId === conversationId)) {
         const command = ConversationClientNoticeCommandSchema.parse(entry.command);
-        // 网络断开或接纳结果未知时保留原 identity。错误由 UI 显示为 pending，不能再产生 notice 循环。
+        // 网络断开或接纳结果未知时保留原 identity 和 pending 状态，不能再产生 notice 循环。
         const receipt = ConversationClientNoticeReceiptSchema.parse(await ports.send(conversationId, command));
         if (receipt.conversation_id !== conversationId || receipt.notice.notice_id !== command.notice_id) {
           throw new Error('Client notice acknowledgement identity mismatch');

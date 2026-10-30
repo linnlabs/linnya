@@ -30,17 +30,18 @@ function toLogicalSize(slideSize: SlideSize) {
  * @param containerWidth  容器可用宽度
  * @param containerHeight 容器可用高度
  * @param mode            适应模式，默认 contain（保持宽高比完全可见）
- * @param padding         容器内边距（px），默认 32
+ * @param padding         容器内边距（px），默认 32；可分别给出水平与垂直留白
  */
 export function computeFitScale(
   containerWidth: number,
   containerHeight: number,
   slideSize: SlideSize = DEFAULT_SLIDE_SIZE,
   mode: FitMode = 'contain',
-  padding = 32,
+  padding: number | { readonly x: number; readonly y: number } = 32,
 ): number {
-  const availableW = Math.max(containerWidth - padding * 2, 1);
-  const availableH = Math.max(containerHeight - padding * 2, 1);
+  const { x, y } = typeof padding === 'number' ? { x: padding, y: padding } : padding;
+  const availableW = Math.max(containerWidth - x * 2, 1);
+  const availableH = Math.max(containerHeight - y * 2, 1);
   const logicalSize = toLogicalSize(slideSize);
 
   const scaleW = availableW / logicalSize.width;

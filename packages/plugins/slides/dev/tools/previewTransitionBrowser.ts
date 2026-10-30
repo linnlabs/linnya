@@ -1,4 +1,5 @@
 import { verifyFontPreviewFrames } from './fontPreviewBrowser';
+import { verifyIncrementalThumbnails } from './thumbnailIncrementalBrowser';
 import { mountShapeTextEditingSmoke } from './shapeTextEditingBrowser';
 import { normalizePaint } from '../../src/shared/visual/paint';
 import { mountManualPropertySmoke } from './manualPropertyBrowser';
@@ -32,6 +33,7 @@ const sequence: RenderFill[] = [solid, gradient, solid, radial, solid, { type: '
 
 declare global {
   interface Window {
+    verifyIncrementalThumbnails: typeof verifyIncrementalThumbnails;
     previewTransitionSmoke: Promise<{
       frames: number;
       manualTranslationFrames: number;
@@ -313,3 +315,4 @@ window.previewTransitionSmoke = (async () => ({
 window.mountManualPropertySmoke = mountManualPropertySmoke;
 
 window.mountShapeTextEditingSmoke = mountShapeTextEditingSmoke;
+window.verifyIncrementalThumbnails = verifyIncrementalThumbnails;

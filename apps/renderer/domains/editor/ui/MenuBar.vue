@@ -60,7 +60,7 @@
               :disabled="isInTable"
               :data-linnya-tooltip="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.bulletList')"
               :aria-label="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.bulletList')">
-        <ListItemIcon />
+        <BulletListIcon />
       </button>
       <button @click="toggleListItem('ordered')" 
               :class="{ 'is-active': editor.isActive('listItemBlock', { listType: 'ordered' }) }"
@@ -144,7 +144,7 @@ import { useUIStore } from '../../../shared/stores/ui'; // 导入UI Store
 import { useNotificationStore } from '@/app/notification'; // 导入 Notification Store
 import { ImageIcon } from '@linnya/renderer-ui/icons';
 import { TableIcon } from '@linnya/renderer-ui/icons';
-import { ListItemIcon } from '@linnya/renderer-ui/icons';
+import { BulletListIcon } from '@linnya/renderer-ui/icons';
 import { QuoteIcon } from '@linnya/renderer-ui/icons';
 import { BoldIcon } from '@linnya/renderer-ui/icons';
 import { ItalicIcon } from '@linnya/renderer-ui/icons';

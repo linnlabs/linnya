@@ -13,6 +13,7 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
   const target = computed(() => store.textSession.phase === 'editing' ? store.textSession.target : null);
   const sessionId = computed(() => store.textSession.phase === 'editing' ? store.textSession.sessionId : null);
   const composing = computed(() => store.textSession.phase === 'editing' && store.textSession.composing);
+  const selectAll = computed(() => store.textSession.phase === 'editing' && store.textSession.selectAll === true);
   const draft = computed({
     get: () => store.textSession.phase === 'editing' ? store.textSession.draft : '',
     set: (value: SlidesEditableTextContent) => {
@@ -21,10 +22,11 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
     },
   });
 
-  function open(next: TextEditingTarget, presentedDraft?: TextDraftPresentation): void {
+  function open(next: TextEditingTarget, presentedDraft?: TextDraftPresentation, options: { readonly selectAll?: boolean } = {}): void {
     if (requestCommit() === 'blocked') return;
     const previous = presentedDraft ?? store.textDrafts.find(entry => entry.target.elementId === next.elementId);
-    const session = openTextInputSession(next, previous, crypto.randomUUID());
+    const opened = openTextInputSession(next, previous, crypto.randomUUID());
+    const session = options.selectAll && opened.phase === 'editing' ? { ...opened, selectAll: true } : opened;
     store.setTextSession(session);
     if (session.phase === 'editing') logSlidesVerbose('EditingInteraction', 'text_open', { sessionId: session.sessionId, elementId: next.elementId });
   }
@@ -43,8 +45,8 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
     const operation: Extract<SlidesManualEditOperation, { op: 'set_text_content' }> = session.target.targetKind === 'shape'
       ? shapeTextOperation(session.target, session.draft)
       : { op: 'set_text_content', targetKind: 'text', target: session.target.authoringRef, content: session.draft };
-    const ticket = submission.enqueue({ operation, visualPreview: { elementId: session.target.elementId,
-      affectedElementIds: [session.target.elementId], operation } });
+    const ticket = submission.enqueue({ operation, visualPreviews: [{ elementId: session.target.elementId,
+      affectedElementIds: [session.target.elementId], operation }] });
     store.setTextDrafts([
       ...store.textDrafts.filter(entry => entry.target.elementId !== session.target.elementId),
       { sessionId: session.sessionId, clientOperationId: ticket.clientOperationId,
@@ -71,7 +73,8 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
   }
   function handleEscape(event: KeyboardEvent): void {
     if (event.isComposing || composing.value) return;
-    event.preventDefault(); event.stopPropagation(); cancel();
+    // 与 PowerPoint、Keynote 一致：Esc 结束输入并保留文字，回退交给文稿撤销。
+    event.preventDefault(); event.stopPropagation(); requestCommit();
   }
   function handleCommitShortcut(event: KeyboardEvent): void {
     if (event.isComposing || composing.value) return;
@@ -87,7 +90,7 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
     }
     store.setTextSession({ ...session, target: next });
   }
-  return { target, sessionId, draft, composing, open, requestCommit, cancel, beginComposition, endComposition,
+  return { target, sessionId, draft, composing, selectAll, open, requestCommit, cancel, beginComposition, endComposition,
     handleEscape, handleCommitShortcut, reconcileTarget };
 }
 

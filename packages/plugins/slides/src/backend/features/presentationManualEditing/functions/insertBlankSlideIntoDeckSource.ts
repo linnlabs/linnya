@@ -11,7 +11,8 @@ export type SlidesSlideInsertionSourceErrorCode =
   | 'slides_not_static'
   | 'slide_declaration_invalid'
   | 'insert_index_invalid'
-  | 'source_too_large';
+  | 'source_too_large'
+  | 'slide_structure_invalid';
 
 export class SlidesSlideInsertionSourceError extends Error {
   constructor(
@@ -37,6 +38,9 @@ export interface InsertBlankSlideIntoDeckSourceResult {
   readonly source: string;
   readonly slideKey: string;
   readonly variableName: string;
+  /** 内联页数组不会被其他作者语句读取；只有这种结构可以投影已有编译结果。 */
+  readonly canProject: boolean;
+  readonly lineShifts: readonly { readonly fromLine: number; readonly count: number }[];
 }
 
 interface SourceInsertion {
@@ -98,7 +102,23 @@ export function insertBlankSlideIntoDeckSource(
       `插入页面后的 deck.js 超过 ${maxSourceBytes} bytes 源码上限。`,
     );
   }
-  return { source: nextSource, slideKey, variableName };
+  const lineShifts = insertions.map(insertion => {
+    const location = sourceFile.getLineAndCharacterOfPosition(insertion.offset);
+    const lineStart = sourceFile.getPositionOfLineAndCharacter(location.line, 0);
+    const atLineStart = source.slice(lineStart, insertion.offset).trim().length === 0;
+    return { fromLine: location.line + (atLineStart ? 1 : 2), count: insertion.text.split('\n').length - 1 };
+  });
+  // 同一行中间插入声明无法只用行号无损重映射 sourceSpan，交回正式编译器。
+  const declarationOffset = createDeclarationInsertion(sourceFile, anchor, declaration).offset;
+  const line = sourceFile.getLineAndCharacterOfPosition(declarationOffset).line;
+  const prefix = source.slice(sourceFile.getPositionOfLineAndCharacter(line, 0), declarationOffset);
+  const orderedDeclarations = slideList.elements.map(element => findSlideDeclarationStatement(typescript, sourceFile, element.text));
+  const declarationsFollowDisplay = orderedDeclarations.every((entry, index) => index === 0 || entry.pos > orderedDeclarations[index - 1].pos);
+  const canProject = declarationsFollowDisplay && slideList.evaluatingStatement === compose.statement
+    && compose.input.properties.every(property => !typescript.isSpreadAssignment(property)
+      && property.name !== undefined && !typescript.isComputedPropertyName(property.name))
+    && (source[declarationOffset] === '\n' || prefix.trim().length === 0);
+  return { source: nextSource, slideKey, variableName, canProject, lineShifts };
 }
 
 interface ComposeStatement {
@@ -321,4 +341,15 @@ function notStaticError(detail: string): SlidesSlideInsertionSourceError {
     'slides_not_static',
     `${detail}当前页面结构无法从界面直接插入空白页，请让 AI 修改源码。`,
   );
+}
+
+/** 页面增删复制共用同一静态源码合同，避免各写入口重新猜测页面边界。 */
+export function readSlideSourceStructure(source: string, slideCount: number) {
+  const typescript = getSlidesTypeScriptRuntime();
+  const sourceFile = typescript.createSourceFile('deck.js', source, typescript.ScriptTarget.Latest, true, typescript.ScriptKind.JS);
+  const compose = readComposeStatement(typescript, sourceFile);
+  const list = readStaticSlideList(typescript, sourceFile, compose);
+  if (list.elements.length !== slideCount) throw notStaticError('页面列表与当前修订不一致。');
+  const declarations = list.elements.map(element => findSlideDeclarationStatement(typescript, sourceFile, element.text));
+  return { typescript, sourceFile, compose, list, declarations };
 }

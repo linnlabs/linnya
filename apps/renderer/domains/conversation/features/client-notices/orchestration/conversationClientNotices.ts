@@ -44,7 +44,7 @@ export async function synchronizeConversationClientNotices(conversationId: strin
     await getConversationClientNotices().synchronize(conversationId);
     return true;
   } catch {
-    // outbox 保留并由消息标明尚未同步；不把网络错误再次记录成错误，避免无限增长。
+    // outbox 保留尚未同步的状态；不把网络错误再次记录成错误，避免无限增长。
     return false;
   }
 }

@@ -76,7 +76,7 @@ releaseAfterTreeEmpty() → Promise<OwnedProcessResourceReleaseResult>
 入口：[macOS README](./macos/README.md)。核心是 PGID/process group 和系统策略：
 
 - root wrapper 创建独立进程组；
-- owner pipe 用于结束整组；
+- owner pipe 用于结束整组；自然退出且组内只剩 watchdog 时由 owner 直接解除，不等待宽限期；
 - TERM 后观察组是否为空，必要时 KILL；
 - `ESRCH` 可表示目标已消失，`EPERM` 不能静默当成功；
 - SRT/Seatbelt 失败时返回 `sandbox_denied`/`sandbox_unavailable`，不裸跑。

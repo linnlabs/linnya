@@ -1,5 +1,6 @@
+import { readInsertedObjects, type SlidesInsertedObject } from '@plugin/slides/shared/authoringEditing';
 import type { SlidesManualEditSourceOperation } from '../definitions/manualEditSourceOperation.js';
-import { patchWholeTextContent, isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
+import { SLIDES_TEXT_STYLE_FIELDS, readSlidesTextStylePatch, patchWholeTextContent, isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import type ts from 'typescript';
 import {
   isSlidesAuthoringKey,
@@ -43,6 +44,33 @@ export function writeManualEditsToDeckSource(
   options: { readonly maxSourceBytes?: number } = {},
 ): WriteManualEditsToDeckSourceResult {
   validateOperation(operation);
+  return transformManualEdits(source, current => applyOperation(current, operation), options);
+}
+
+/** 一次解析、一次源码写入；批次中任一非法目标都不能产生部分结果。 */
+export function writeManualEditBatchToDeckSource(
+  source: string, operations: readonly SlidesManualEditSourceOperation[],
+): WriteManualEditsToDeckSourceResult {
+  for (const operation of operations) validateOperation(operation);
+  return transformManualEdits(source, current => operations.reduce(applyOperation, current));
+}
+
+/** 复制保留页面当前人工值，删除清理对应记录；其他页的作者值保持不变。 */
+export function rewriteSlideManualEdits(source: string, slideKey: string, copiedSlideKey?: string): string {
+  return transformManualEdits(source, current => {
+    const slide = current.slides.find(entry => entry.slideKey === slideKey);
+    if (!slide) return current;
+    return { version: 2, slides: copiedSlideKey
+      ? [...current.slides, { ...slide, slideKey: copiedSlideKey }]
+      : current.slides.filter(entry => entry.slideKey !== slideKey) };
+  }).source;
+}
+
+function transformManualEdits(
+  source: string,
+  transform: (current: SlidesManualEdits) => SlidesManualEdits,
+  options: { readonly maxSourceBytes?: number } = {},
+): WriteManualEditsToDeckSourceResult {
   const typescript = getSlidesTypeScriptRuntime();
   const sourceFile = typescript.createSourceFile(
     'deck.js',
@@ -85,7 +113,8 @@ export function writeManualEditsToDeckSource(
     current = parsed.value;
   }
 
-  const next = applyOperation(current, operation);
+  const next = transform(current);
+  if (next === current) return { source, manualEdits: current };
   const nextSource = manualProperty && typescript.isPropertyAssignment(manualProperty)
     ? replaceManualEditsInitializer(source, sourceFile, manualProperty, next)
     : insertManualEditsProperty(source, sourceFile, composeObject, next);
@@ -127,17 +156,38 @@ function applyOperation(
   const slide = slideIndex === -1
     ? { slideKey: operation.target.slideKey, targets: [] }
     : current.slides[slideIndex];
+  if (operation.op === 'delete_target' && slide.additions?.some(object => object.editKey === operation.target.editKey)) {
+    return replaceSlide(current, slideIndex, removeInsertedObject(slide, operation.target.editKey));
+  }
   const targetIndex = slide.targets.findIndex(target => target.editKey === operation.target.editKey);
   const existing = targetIndex === -1 ? undefined : slide.targets[targetIndex];
   const target = applyTargetOperation(existing, operation);
   const targets = targetIndex === -1
     ? [...slide.targets, target]
     : slide.targets.map((entry, index) => index === targetIndex ? target : entry);
-  const nextSlide: SlidesManualSlideEdits = { slideKey: slide.slideKey, targets };
+  const nextSlide: SlidesManualSlideEdits = { ...slide, targets };
   const slides = slideIndex === -1
     ? [...current.slides, nextSlide]
     : current.slides.map((entry, index) => index === slideIndex ? nextSlide : entry);
   return { version: 2, slides };
+}
+
+/**
+ * 编辑器插入的对象只存在于 additions；删除时连同它的人工值和绘制顺序一起移除，
+ * 不留“已删除”标记，避免 deck.js 随编辑次数增长。撤销由修订恢复负责，不依赖标记。
+ */
+function removeInsertedObject(slide: SlidesManualSlideEdits, editKey: string): SlidesManualSlideEdits | null {
+  const additions = (slide.additions ?? []).filter(object => object.editKey !== editKey);
+  const targets = slide.targets.filter(target => target.editKey !== editKey);
+  const paintOrder = (slide.paintOrder ?? []).filter(key => key !== editKey);
+  if (additions.length === 0 && targets.length === 0 && paintOrder.length === 0) return null;
+  return { slideKey: slide.slideKey, targets, ...(additions.length > 0 ? { additions } : {}), ...(paintOrder.length > 0 ? { paintOrder } : {}) };
+}
+
+function replaceSlide(current: SlidesManualEdits, slideIndex: number, slide: SlidesManualSlideEdits | null): SlidesManualEdits {
+  return { version: 2, slides: slide === null
+    ? current.slides.filter((_, index) => index !== slideIndex)
+    : current.slides.map((entry, index) => index === slideIndex ? slide : entry) };
 }
 
 function applyTargetOperation(
@@ -152,6 +202,10 @@ function applyTargetOperation(
     return { kind: targetKind, editKey: operation.target.editKey, deleted: true };
   }
   if (existing?.deleted === true) throw deletedTargetError(operation);
+
+  if (operation.op === 'set_text_width') return { ...(existing?.kind === 'text' ? existing : {}), kind: 'text', editKey: operation.target.editKey, width: operation.width };
+  if (operation.op === 'set_image') return { ...(existing?.kind === 'image' ? existing : {}), kind: 'image', editKey: operation.target.editKey,
+    ...(operation.assetId !== undefined ? { assetId: operation.assetId } : {}), ...(operation.fit !== undefined ? { fit: operation.fit } : {}) };
 
   if (operation.op === 'set_text_content' && operation.targetKind === 'shape') {
     const shape = existing?.kind === 'shape' ? existing : undefined;
@@ -174,6 +228,10 @@ function applyTargetOperation(
           ...(Array.isArray(operation.content) ? { content: patchWholeTextContent(operation.content, operation) } : {}),
           ...(operation.fontSizePt !== undefined ? { fontSizePt: operation.fontSizePt } : {}),
           ...(operation.color !== undefined ? { color: operation.color } : {}),
+          ...(operation.bold !== undefined ? { bold: operation.bold } : {}),
+          ...(operation.italic !== undefined ? { italic: operation.italic } : {}),
+          ...(operation.underline !== undefined ? { underline: operation.underline } : {}),
+          ...(operation.align !== undefined ? { align: operation.align } : {}),
         };
   }
 
@@ -293,22 +351,23 @@ function validateOperation(operation: SlidesManualEditSourceOperation): void {
     throw new SlidesManualEditSourceError('operation_invalid', '人工编辑目标包含无效的作者 key。');
   }
   switch (operation.op) {
+    case 'set_text_width':
+      if (!Number.isFinite(operation.width) || operation.width <= 0) throw new SlidesManualEditSourceError('operation_invalid', '文字宽度必须为正数。');
+      return;
+    case 'set_image':
+      if ((!operation.assetId && !operation.fit) || (operation.fit !== undefined && operation.fit !== 'contain' && operation.fit !== 'cover')) throw new SlidesManualEditSourceError('operation_invalid', '图片修改无效。');
+      return;
     case 'set_text_content':
       if (!isEditableTextContent(operation.content) || (operation.targetKind === 'shape' && typeof operation.content !== 'string')) {
         throw new SlidesManualEditSourceError('operation_invalid', '文本人工值必须符合作者正文合同。');
       }
       return;
-    case 'set_text_style':
-      if (operation.fontSizePt === undefined && operation.color === undefined) {
-        throw new SlidesManualEditSourceError('operation_invalid', '文本样式操作至少需要一个值。');
-      }
-      if (operation.fontSizePt !== undefined && !isFontSize(operation.fontSizePt)) {
-        throw new SlidesManualEditSourceError('operation_invalid', '文本字号必须是 1–400 pt 内的有限数字。');
-      }
-      if (operation.color !== undefined && !isHexColor(operation.color)) {
-        throw new SlidesManualEditSourceError('operation_invalid', '文本颜色必须是 #RRGGBB。');
-      }
+    case 'set_text_style': {
+      const patch = readSlidesTextStylePatch(operation);
+      if ('error' in patch) throw new SlidesManualEditSourceError('operation_invalid', patch.error);
+      if (!SLIDES_TEXT_STYLE_FIELDS.some(key => operation[key] !== undefined)) throw new SlidesManualEditSourceError('operation_invalid', '文本样式操作至少需要一个值。');
       return;
+    }
     case 'set_fill_color':
       if (!isHexColor(operation.color)) {
         throw new SlidesManualEditSourceError('operation_invalid', '填充颜色必须是 #RRGGBB。');
@@ -337,9 +396,7 @@ function validateOperation(operation: SlidesManualEditSourceOperation): void {
   }
 }
 
-function isFontSize(value: number): boolean {
-  return Number.isFinite(value) && value >= 1 && value <= 400;
-}
+
 
 function isPositiveFiniteNumber(value: number): boolean {
   return Number.isFinite(value) && value > 0;
@@ -475,4 +532,26 @@ function notLiteralError(): SlidesManualEditSourceError {
     'manual_edits_not_literal',
     'compose.manualEdits 必须直接写成 JSON 字面量对象。',
   );
+}
+
+/** 创建值与既有人工值放在同一源码 literal；编译器负责验证与原作者 key 的冲突。 */
+export function insertObjectsInDeckSource(source: string, slideKey: string, objects: readonly SlidesInsertedObject[]): string {
+  const parsed = readInsertedObjects(objects);
+  if (!isSlidesAuthoringKey(slideKey) || 'error' in parsed || objects.length === 0) {
+    throw new SlidesManualEditSourceError('operation_invalid', '新增对象或页面身份无效。');
+  }
+  return transformManualEdits(source, current => {
+    const existing = current.slides.find(slide => slide.slideKey === slideKey);
+    const slide: SlidesManualSlideEdits = { ...existing, slideKey, targets: existing?.targets ?? [], additions: [...(existing?.additions ?? []), ...parsed.value] };
+    return { version: 2, slides: existing ? current.slides.map(entry => entry.slideKey === slideKey ? slide : entry) : [...current.slides, slide] };
+  }).source;
+}
+
+export function writePaintOrderToDeckSource(source: string, slideKey: string, peerKeys: readonly string[]): string {
+  return transformManualEdits(source, current => {
+    const existing = current.slides.find(slide => slide.slideKey === slideKey);
+    const slide: SlidesManualSlideEdits = { ...existing, slideKey, targets: existing?.targets ?? [],
+      paintOrder: [...(existing?.paintOrder ?? []).filter(key => !peerKeys.includes(key)), ...peerKeys] };
+    return { version: 2, slides: existing ? current.slides.map(entry => entry.slideKey === slideKey ? slide : entry) : [...current.slides, slide] };
+  }).source;
 }

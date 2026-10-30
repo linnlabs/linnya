@@ -28,6 +28,7 @@ const props = defineProps<{
   slideTop: number;
   renderScale: number;
   label: string;
+  selectAll?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -53,7 +54,8 @@ watch(
     const input = inputRef.value;
     if (!input) return;
     input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
+    if (props.selectAll) input.select();
+    else input.setSelectionRange(input.value.length, input.value.length);
   },
   { immediate: true },
 );

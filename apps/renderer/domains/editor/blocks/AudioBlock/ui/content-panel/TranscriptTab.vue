@@ -19,7 +19,7 @@
             ref="translateButtonRef"
             :disabled="isTranslating"
           >
-            <RippleLoadingIcon v-if="isTranslating" class="loading-icon" />
+            <LinnyaLoadingIcon v-if="isTranslating" class="loading-icon" />
             <TranslateIcon v-else />
             <span>{{ translateButtonText }}</span>
           </button>
@@ -78,7 +78,7 @@ import { useFindReplaceStore } from '../../../../features/FindReplace/store/useF
 import { CopyIcon } from '@linnya/renderer-ui/icons';
 import { TranslateIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect } from '@linnya/renderer-ui';
-import { RippleLoadingIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization'
 import { 
   TranscriptDocument, 

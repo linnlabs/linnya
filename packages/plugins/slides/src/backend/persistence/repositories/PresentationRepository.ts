@@ -1,3 +1,4 @@
+import { readPresentationViewSource } from '../functions/readPresentationViewSource';
 import type { Database } from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
 import { SLIDES_PLUGIN_ID } from '@plugin/slides/shared/pluginMeta';
@@ -25,6 +26,7 @@ import {
   type PresentationCommitResult,
   type PresentationCreateOptions,
   type PresentationDocumentIdentity,
+  type PresentationViewSourceRecord,
   type PresentationDocumentRecord,
   type PresentationPreviewSourceRecord,
   type PresentationPptxArtifactSourceRecord,
@@ -301,8 +303,8 @@ export class PresentationRepository implements PresentationRepositoryPort {
       }
 
       this.commitWorkspaceProjection(nodeId, normalizedSource, now);
-      if (options.revisionContext === 'inherit_base') {
-        this.options.inheritRevisionContext?.(options.baseRevisionId, revisionId);
+      if (options.revisionContext) {
+        this.options.inheritRevisionContext?.(options.revisionContext === 'inherit_base' ? options.baseRevisionId : options.revisionContext.versionId, revisionId);
       } else {
         this.options.recordRevisionContext?.(nodeId, revisionId);
       }
@@ -377,6 +379,10 @@ export class PresentationRepository implements PresentationRepositoryPort {
     return row === undefined
       ? null
       : mapPresentationRenderSourceRow(readPresentationRenderSourceRow(row));
+  }
+
+  async getPresentationViewSource(nodeId: string): Promise<PresentationViewSourceRecord | null> {
+    return readPresentationViewSource(this.db, nodeId);
   }
 
   async getPresentationPptxArtifactSource(

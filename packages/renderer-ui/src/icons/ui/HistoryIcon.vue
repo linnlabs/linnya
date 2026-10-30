@@ -1,11 +1,23 @@
-<!-- packages/renderer-ui/src/icons/ui/HistoryIcon.vue -->
-<!-- 该文件是"历史记录"操作的SVG图标组件 -->
+<!--
+ * packages/renderer-ui/src/icons/ui/HistoryIcon.vue
+ * “历史”图标组件。
+-->
 <template>
-  <svg class="shared-icon shared-icon--full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path d="M5.5,4h.09c.2.05.36.21.4.41v.09s0,2.21,0,2.21c2.92-3.31,7.98-3.63,11.29-.71,3.31,2.92,3.63,7.98.71,11.29-2.92,3.31-7.98,3.63-11.29.71-1.34-1.18-2.25-2.78-2.58-4.54-.11-.65-.15-1.32-.13-1.98.02-.28.27-.48.54-.45.26.02.45.24.46.5-.02.59.02,1.17.11,1.76.7,3.8,4.36,6.31,8.16,5.61,3.8-.7,6.31-4.36,5.61-8.16-.7-3.8-4.36-6.31-8.16-5.61-1.81.34-3.41,1.37-4.47,2.88h3.24s.09,0,.09,0c.27.05.45.31.4.58-.04.21-.2.37-.4.4h-.09s-4,0-4,0h-.09c-.2-.05-.36-.21-.4-.41v-.09s0-4,0-4v-.09c.05-.2.21-.36.41-.4,0,0,.09,0,.09,0ZM11.5,8h.09c.2.05.36.21.4.41v.09s0,4,0,4h2.09c.27.06.45.32.4.59-.04.21-.2.37-.4.4h-.09s-2.5,0-2.5,0h-.09c-.2-.05-.36-.21-.4-.41v-.09s0-4.5,0-4.5v-.09c.05-.2.21-.36.41-.4,0,0,.09,0,.09,0Z" fill="currentColor" stroke-width="0"/>
+  <svg
+    class="shared-icon shared-icon--full linnya-ui-icon"
+    data-icon="history"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path d="M4.52 11.5A7.5 7.5 0 1 0 5.66 8"/>
+    <path d="M5.5 4.5v4h4"/>
+    <path d="M11.5 8.5v4h3"/>
   </svg>
 </template>
-
-<script setup lang="ts">
-// 历史记录图标
-</script>

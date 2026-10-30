@@ -26,8 +26,8 @@ import { collectEditingPreviewGeometries } from '../../editingPreview';
 
 export interface ManualEditingHitProjection {
   readonly transientTranslation: ManualEditingTranslationPreview | null;
-  readonly pendingTranslation: ManualEditingTranslationPreview | null;
-  readonly pendingVisual: ManualEditingVisualPreview | null;
+  readonly pendingTranslations: readonly ManualEditingTranslationPreview[];
+  readonly pendingVisuals: readonly ManualEditingVisualPreview[];
   readonly transientVisual?: ManualEditingVisualPreview | null;
   readonly queuedIntents: readonly ManualEditIntent[];
 }
@@ -37,15 +37,24 @@ export function collectManualEditableTargets(nodes: readonly RenderNode[]): Manu
     .map(geometry => buildManualEditableTarget(nodes, geometry));
 }
 
+/** 多选、框选与吸附统一消费已经呈现的几何，不读取过期的正式位置。 */
+export function collectPresentedManualTargets(nodes: readonly RenderNode[], projection: ManualEditingHitProjection): readonly ManualEditableTarget[] {
+  const visuals = collectManualVisualPreviews(projection.pendingVisuals, projection.queuedIntents, projection.transientVisual);
+  const translations = mergeManualTranslationPreviews(collectManualTranslationPreviews(projection.transientTranslation, projection.pendingTranslations, projection.queuedIntents));
+  const geometries = collectEditingPreviewGeometries(nodes, visuals);
+  return collectManualEditableTargets(nodes).filter(target => geometries.has(target.elementId))
+    .map(target => projectManualEditableTargetSelection(target, translations, geometries));
+}
+
 /** 原位输入也消费当前可见几何，避免刚拉伸/移动后双击时输入框回到旧位置。 */
 export function createPresentedTextEditingTarget(
   nodes: readonly RenderNode[],
   target: ManualEditableTarget,
   projection: ManualEditingHitProjection,
 ) {
-  const visuals = collectManualVisualPreviews(projection.pendingVisual, projection.queuedIntents, projection.transientVisual);
+  const visuals = collectManualVisualPreviews(projection.pendingVisuals, projection.queuedIntents, projection.transientVisual);
   const translations = mergeManualTranslationPreviews(collectManualTranslationPreviews(
-    projection.transientTranslation, projection.pendingTranslation, projection.queuedIntents,
+    projection.transientTranslation, projection.pendingTranslations, projection.queuedIntents,
   ));
   const geometries = collectEditingPreviewGeometries(nodes, visuals);
   const geometry = geometries.get(target.elementId);
@@ -92,11 +101,11 @@ function findProjectedTargetPathAtPoint(
   const targets = collectManualEditableTargets(nodes);
   const translations = mergeManualTranslationPreviews(collectManualTranslationPreviews(
     projection.transientTranslation,
-    projection.pendingTranslation,
+    projection.pendingTranslations,
     projection.queuedIntents,
   ));
   const visuals = collectManualVisualPreviews(
-    projection.pendingVisual,
+    projection.pendingVisuals,
     projection.queuedIntents,
     projection.transientVisual,
   );

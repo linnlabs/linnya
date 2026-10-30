@@ -1,33 +1,40 @@
+<!--
+ * packages/renderer-ui/src/icons/ui/WindowActionIcon.vue
+ * “窗口按钮”图标组件。
+-->
 <template>
-  <!-- 最小化图标 -->
-  <svg class="shared-icon shared-icon--em" v-if="action === 'minimize'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-    <path d="M5.5,11.5h13c.28,0,.5.22.5.5h0c0,.28-.22.5-.5.5H5.5c-.28,0-.5-.22-.5-.5h0c0-.28.22-.5.5-.5Z" fill="currentColor" stroke-width="0"/>
+  <svg
+    class="shared-icon shared-icon--em linnya-ui-icon"
+    data-icon="window-action"
+    :data-state="props.action === 'minimize' ? 'minimize' : props.isMaximized ? 'restore' : 'maximize'"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <defs>
+      <mask :id="`${uid}-front`" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+        <rect width="24" height="24" fill="white" stroke="none"/>
+        <rect x="3" y="6" width="15" height="15" rx="3.5" fill="black" stroke="none"/>
+      </mask>
+    </defs>
+    <path v-if="(props.action === 'minimize' ? 'minimize' : props.isMaximized ? 'restore' : 'maximize') === 'minimize'" d="M5.5 12h13"/>
+    <rect v-if="(props.action === 'minimize' ? 'minimize' : props.isMaximized ? 'restore' : 'maximize') === 'maximize'" x="5.5" y="5.5" width="13" height="13" rx="1.5"/>
+    <g v-if="(props.action === 'minimize' ? 'minimize' : props.isMaximized ? 'restore' : 'maximize') === 'restore'">
+      <path :mask="`url(#${uid}-front)`" stroke-linecap="butt" d="M7.5 8V6.5a2 2 0 0 1 2-2H16a3.5 3.5 0 0 1 3.5 3.5v6.5a2 2 0 0 1-2 2H16"/>
+      <rect x="4.5" y="7.5" width="12" height="12" rx="2"/>
+    </g>
   </svg>
-
-  <!-- 最大化/恢复图标 -->
-  <template v-else-if="action === 'maximize'">
-    <!-- 最大化图标 -->
-    <svg class="shared-icon shared-icon--em" v-if="!isMaximized" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-      <path d="M5,7c0-1.1.9-2,2-2h10c1.1,0,2,.9,2,2v10c0,1.1-.9,2-2,2H7c-1.1,0-2-.9-2-2V7ZM7,6c-.55,0-1,.45-1,1v10c0,.55.45,1,1,1h10c.55,0,1-.45,1-1V7c0-.55-.45-1-1-1H7Z" fill="currentColor" stroke-width="0"/>
-    </svg>
-    
-    <!-- 恢复图标 -->
-    <svg class="shared-icon shared-icon--em" v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-      <path d="M8.09,6h-1.03c.24-1.16,1.26-2,2.45-2h6.5c2.21,0,4,1.79,4,4v6.5c0,1.19-.84,2.21-2,2.45v-1.03c.6-.21,1-.78,1-1.41v-6.5c0-1.66-1.34-3-3-3h-6.5c-.64,0-1.2.4-1.41,1ZM6.5,7c-1.38,0-2.5,1.12-2.5,2.5v8c0,1.38,1.12,2.5,2.5,2.5h8c1.38,0,2.5-1.12,2.5-2.5v-8c0-1.38-1.12-2.5-2.5-2.5H6.5ZM5,9.5c0-.83.67-1.5,1.5-1.5h8c.83,0,1.5.67,1.5,1.5v8c0,.83-.67,1.5-1.5,1.5H6.5c-.83,0-1.5-.67-1.5-1.5v-8Z" fill="currentColor" stroke-width="0"/>
-    </svg>
-  </template>
 </template>
 
 <script setup lang="ts">
-defineProps({
-  action: {
-    type: String,
-    required: true,
-    validator: (value: string) => ['minimize', 'maximize'].includes(value)
-  },
-  isMaximized: {
-    type: Boolean,
-    default: false
-  }
-});
+import { useId } from 'vue';
+
+const props = withDefaults(defineProps<{ readonly action: 'minimize' | 'maximize'; isMaximized?: boolean }>(), { isMaximized: false });
+const uid = useId();
 </script>

@@ -20,6 +20,17 @@ function buildChain(count: number): PresentationStoredSourceRevision[] {
 }
 
 describe('Slides 稀疏历史重链', () => {
+  it('全部版本都保留时复用已验证的链和编码，仍拒绝中间版本损坏', () => {
+    const chain = buildChain(30);
+    const keep = chain.map(revision => revision.revisionId);
+    const plan = planPresentationSourceCompaction(chain, keep);
+    expect(plan.removedRevisionIds).toEqual([]);
+    for (const [index, revision] of plan.retained.entries()) expect(revision).toBe(chain[index]);
+    expect(reconstructPresentationSource(plan.retained)).toContain('版本 30');
+    const corrupt = chain.map(revision => revision.revision === 3 ? { ...revision, sourceHash: 'corrupt' } : revision);
+    expect(() => planPresentationSourceCompaction(corrupt, keep)).toThrow('source hash');
+  });
+
   it.each([1, 2, 10, 30, 100])('%i 个真实 checkpoint/patch 重链后每个保留源码和身份不变', count => {
     const original = buildChain(count);
     const keep = original.filter(row => row.revision % 7 === 0 || row.revision === count);

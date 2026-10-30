@@ -243,7 +243,7 @@ async function inspectPreparedHeadlessNodeRuntime({ catalog, target, targetDirec
       runtimeDirectory: targetDirectory,
       platform: target.platform,
       architecture: target.architecture,
-      verifyPreparedExecutableHash: true,
+      verifyPreparedExecutableIntegrity: true,
     });
   } catch (error) {
     // 权限或 I/O 错误不应触发替换；缺失、过期或损坏的制品才由准备链重建。

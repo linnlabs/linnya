@@ -16,7 +16,7 @@
           v-show="isHeaderHovered"
           @click="$emit('create-folder')"
         >
-          <NewFolderIcon />
+          <FolderAddIcon />
         </IconButton>
 
         <!-- 新建文件下拉菜单：文档 / 思维导图 / 表格 / 演示文稿 -->
@@ -28,7 +28,7 @@
             ref="newFileButton"
             @click="toggleCreateMenu"
           >
-            <NewFileIcon />
+            <DocumentAddIcon />
           </IconButton>
         </div>
 
@@ -162,7 +162,7 @@
                 @primary-click="$emit('ai-init-project')"
               >
                 <template #primary-content>
-                  <AiIcon class="button-icon" />
+                  <LinnyaIcon class="button-icon" />
                   <span>{{ workspaceMessage('workspace.sidebar.fileTree.aiInit') }}</span>
                 </template>
               </ActionButtons>
@@ -186,11 +186,11 @@
 import { provide, ref, computed } from 'vue';
 import TreeItem from './TreeItem.vue';
 import { ActionButtons, IconButton } from '@linnya/renderer-ui';
-import { NewFolderIcon } from '@linnya/renderer-ui/icons';
-import { NewFileIcon } from '@linnya/renderer-ui/icons';
+import { FolderAddIcon } from '@linnya/renderer-ui/icons';
+import { DocumentAddIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect } from '@linnya/renderer-ui';
-import { AiIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaIcon } from '@linnya/renderer-ui/icons';
 import BatchExportMarkdownModal from '../../../features/import-export/ui/export/BatchExportMarkdownModal.vue';
 import { batchExportProjectAsMarkdown } from '../../../features/import-export/services/batchExportService';
 import { useWorkspaceTreeStore } from '../../../store/index.js';

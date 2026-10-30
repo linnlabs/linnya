@@ -14,27 +14,31 @@ import type { InlineTextSelection } from '../definitions/richTextEditor';
 import { createInlineTextEditorStyle } from '../functions/createInlineTextEditorStyle';
 import { createRichTextEditor } from '../orchestration/createRichTextEditor';
 const props = defineProps<{ target: TextEditingTarget; modelValue: SlidesEditableTextContent; slideLeft: number; slideTop: number;
-  renderScale: number; label: string; toolbarElement?: HTMLElement | null }>();
+  renderScale: number; label: string; toolbarElements?: readonly (HTMLElement | null)[]; selectAll?: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [value: SlidesEditableTextContent]; commit: []; 'composition-start': []; 'composition-end': [];
   escape: [event: KeyboardEvent]; 'commit-shortcut': [event: KeyboardEvent]; selection: [selection: InlineTextSelection | null] }>();
 const host = ref<HTMLElement | null>(null);
 const editorStyle = computed(() => createInlineTextEditorStyle(props.target, props));
 let editor: ReturnType<typeof createRichTextEditor> | undefined;
+/** 工具条及其移到 body 的列表菜单都属于本次编辑会话。 */
+function inToolbar(node: Node): boolean {
+  return props.toolbarElements?.some(element => element?.contains(node) === true) === true;
+}
 function owns(target: EventTarget | null): boolean {
-  return target instanceof Node && (host.value?.contains(target) === true || props.toolbarElement?.contains(target) === true);
+  return target instanceof Node && (host.value?.contains(target) === true || inToolbar(target));
 }
 function outsidePointer(event: PointerEvent): void {
   if (owns(event.target)) return;
   // 数字字段的 change 必须先应用到原选区，再把本次完整正文交给保存队列。
   const active = document.activeElement;
-  if (active instanceof HTMLElement && props.toolbarElement?.contains(active)) active.blur();
+  if (active instanceof HTMLElement && inToolbar(active)) active.blur();
   emit('commit');
 }
 function outsideFocus(event: FocusEvent): void { if (!owns(event.target)) emit('commit'); }
 function refresh(): void { editor?.refresh(); }
 onMounted(() => {
   if (!host.value) return;
-  editor = createRichTextEditor({ element: host.value, content: props.modelValue, target: () => props.target, label: props.label,
+  editor = createRichTextEditor({ element: host.value, content: props.modelValue, target: () => props.target, label: props.label, selectAll: props.selectAll,
     update: value => emit('update:modelValue', value), selection: value => emit('selection', value),
     compositionStart: () => emit('composition-start'), compositionEnd: () => emit('composition-end'),
     escape: event => emit('escape', event), commit: event => emit('commit-shortcut', event) });

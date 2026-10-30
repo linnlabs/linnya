@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
+import { installTestPresentation } from '../../documentRuntime/testing/installTestPresentation';
 
-import { createApp, nextTick } from 'vue';
+import { createApp, h, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import type {
   OverlayScrollViewportController,
   UseOverlayScrollViewportParams,
 } from '@linnya/renderer-ui/scroll';
+import DeckNavigatorBar from './DeckNavigatorBar.vue';
+import { provideManualEditSubmission } from '../../manualEditing';
 import DeckFilmstrip from './DeckFilmstrip.vue';
 import { useSlidesStore } from '../../../store/slidesStore';
 
@@ -14,6 +17,8 @@ interface OverlayCall {
   params: UseOverlayScrollViewportParams;
   controller: OverlayScrollViewportController;
 }
+
+vi.mock('../store/slidesThumbnailStore', () => ({ useSlidesThumbnailStore: () => ({ getThumbnail: () => null }) }));
 
 const overlayMockState = vi.hoisted(() => ({ calls: [] as OverlayCall[] }));
 
@@ -60,7 +65,7 @@ async function flushDomUpdates(): Promise<void> {
 }
 
 function seedDeck(slideCount: number, slideSize = { width: 10, height: 5.625 }): void {
-  useSlidesStore().deckPreview = {
+  installTestPresentation({ preview: {
     nodeId: 'deck-1',
     versionNumber: 1,
     title: 'Deck',
@@ -72,7 +77,7 @@ function seedDeck(slideCount: number, slideSize = { width: 10, height: 5.625 }):
     })),
     theme: { colors: {}, fonts: { major: 'sans-serif', minor: 'sans-serif' } },
     warnings: [],
-  };
+  } });
 }
 
 describe('DeckFilmstrip', () => {
@@ -150,4 +155,42 @@ describe('DeckFilmstrip', () => {
 
     app.unmount();
   });
+  it('opens the thumbnail menu and submits duplicate/delete for the right-clicked page', async () => {
+    seedDeck(3);
+    const slides = useSlidesStore();
+    installTestPresentation({ documentId: 'deck-1' });
+    installTestPresentation({ buildState: { state: 'ready', presentationId: 'deck-1', versionId: 'v1', versionNumber: 1, sourceHash: 'a'.repeat(64) } });
+    installTestPresentation({ renderModel: {
+      presentationId: 'deck-1', version: 1, title: 'Deck', sourceKind: 'generated',
+      slideSize: { width: 10, height: 5.625, unit: 'in' },
+      slides: [0, 1, 2].map(index => ({ slideId: `slide-${index + 1}`, index, layoutKey: 'freeform', elements: [], background: { paint: { type: 'none' } } })),
+      capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true },
+    } });
+    const enqueue = vi.fn(() => ({ clientOperationId: 'operation', settled: Promise.resolve({ status: 'cancelled' as const }) }));
+    const app = createApp({ setup() {
+      provideManualEditSubmission({ enqueue, flush: async () => {}, refreshPresentation: async () => {} });
+      return () => h(DeckNavigatorBar);
+    } });
+    const container = document.createElement('div'); document.body.appendChild(container);
+    app.mount(container);
+    await flushDomUpdates();
+    const target = container.querySelector<HTMLButtonElement>('[data-slide-index="1"]');
+    if (!target) throw new Error('Missing second thumbnail');
+    target.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 120, clientY: 500 }));
+    await flushDomUpdates();
+    expect(slides.currentSlideIndex).toBe(1);
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    expect(items.map(item => item.textContent?.trim())).toEqual(['复制幻灯片', '向前移动', '向后移动', '删除幻灯片']);
+    items[0]?.click();
+    await flushDomUpdates();
+    expect(enqueue).toHaveBeenLastCalledWith({ operation: { op: 'duplicate_slide', index: 1 } });
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    target.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    await flushDomUpdates();
+    document.querySelectorAll<HTMLElement>('[role="menuitem"]')[3]?.click();
+    await flushDomUpdates();
+    expect(enqueue).toHaveBeenLastCalledWith({ operation: { op: 'delete_slide', index: 1 } });
+    app.unmount();
+  });
+
 });

@@ -4,8 +4,3 @@
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
 }
-
-.client-notice .client-notice-sync {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-}

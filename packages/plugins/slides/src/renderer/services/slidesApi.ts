@@ -1,11 +1,13 @@
+import type { SlidesInsertedObject, SlidesAuthoringEditRef } from '@plugin/slides/shared/authoringEditing';
 /**
  * Slides API 服务
  *
- * 与后端 Slides 插件 IPC 通信的唯一出口。
+ * 人工编辑、导出和工具查询的 IPC 出口；一致快照读取由 documentRuntime 拥有。
  */
 
 import { invokeRendererPluginIpc } from '@plugin/renderer/pluginIpcClient';
 import { onRendererPluginPush } from '@plugin/renderer/pluginPushClient';
+import { logSlidesVerbose } from '../shared/diagnosticLogging';
 import {
   SLIDES_IPC,
   SLIDES_PLUGIN_ID,
@@ -15,6 +17,7 @@ import {
 } from '@plugin/slides/shared/ipc';
 import type {
   SlidesManualEditCommand,
+  SlidesManualEditHistoryStatus,
   SlidesManualEditCommandResult,
 } from '@plugin/slides/shared/authoringEditing';
 import type {
@@ -26,7 +29,6 @@ import { parsePresentationImageExportProgress } from '@plugin/slides/shared/pres
 import type {
   DeckPreview,
   PresentationInfo,
-  SlidesDocumentBuildState,
   PptSourceSliceTargetInput,
   PptSourceSlicesOutput,
   TemplateSummary,
@@ -51,7 +53,13 @@ function unwrapSlidesIpcResult<T>(
 }
 
 async function invokeSlidesIpc<T>(channel: SlidesIpcChannel, payload: unknown): Promise<T> {
+  const startedAt = performance.now();
   const result = await invokeRendererPluginIpc<T>(SLIDES_PLUGIN_ID, channel, payload);
+  logSlidesVerbose('Ipc', 'request completed', {
+    channel,
+    elapsedMs: performance.now() - startedAt,
+    success: result.success,
+  });
   return unwrapSlidesIpcResult(result, channel);
 }
 
@@ -80,14 +88,19 @@ function readPresentationExportResult(value: unknown): PresentationExportResult 
 }
 
 export const slidesApi = {
-  /** 获取 Deck 预览数据 */
+  copyObjects(documentId: string, revisionId: string, targets: readonly SlidesAuthoringEditRef[]): Promise<readonly SlidesInsertedObject[]> {
+    return invokeSlidesIpc(SLIDES_IPC.copyObjects, { documentId, revisionId, targets });
+  },
+  importImage(documentId: string, base64: string): Promise<string> {
+    return invokeSlidesIpc(SLIDES_IPC.importImage, { documentId, base64 });
+  },
+  /** 引用目录可查询未打开的文稿摘要；正式画布加载使用 documentRuntime 的一致快照。 */
   async getDeckPreview(nodeId: string): Promise<DeckPreview> {
     return invokeSlidesIpc<DeckPreview>(SLIDES_IPC.preview, { nodeId });
   },
 
-  /** 获取源码与可渲染物化之间的正式状态。 */
-  async getDocumentBuildState(nodeId: string): Promise<SlidesDocumentBuildState> {
-    return invokeSlidesIpc<SlidesDocumentBuildState>(SLIDES_IPC.buildState, { nodeId });
+  async readManualEditHistory(nodeId: string): Promise<SlidesManualEditHistoryStatus> {
+    return invokeSlidesIpc<SlidesManualEditHistoryStatus>(SLIDES_IPC.manualEditHistory, { nodeId });
   },
 
   /** 基于当前 revision 快照提交一次文本或位置人工编辑。 */

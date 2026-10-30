@@ -7,9 +7,11 @@ export type {
   ManualEditingTranslationPreview,
   ManualEditingVisualOperation,
   ManualEditingVisualPreview,
+  ManualEditRevealRequest,
 } from './definitions/manualEditingTypes';
 export {
   collectManualEditableTargets,
+  collectPresentedManualTargets,
   createPresentedTextEditingTarget,
   type ManualEditingHitProjection,
   findManualEditableTargetAtPoint,
@@ -17,7 +19,6 @@ export {
   findManualEditableTargetPathByElementId,
 } from './functions/manualEditableTargets';
 export { resolveManualClickSelection } from './functions/resolveManualClickSelection';
-export { appendManualEditIntent } from './functions/appendManualEditIntent';
 export {
   createManualVisualPreview,
   projectManualEditableTargetSelection,
@@ -54,9 +55,15 @@ export type { ManualEditQueuePorts } from './definitions/manualEditQueuePorts';
 export { useManualEditingLocalization } from './ui/useManualEditingLocalization';
 export { default as ManualResizeHandles } from './ui/ManualResizeHandles.vue';
 export { canResizeManualTarget } from './functions/manualResize';
+export { default as ManualTextWidthHandles } from './ui/ManualTextWidthHandles.vue';
+export { canResizeTextWidth, resolveManualTextWidth } from './functions/manualTextWidth';
 export {
   ManualEditPresentationTrace,
   manualEditPresentationTrace,
   type ManualEditPresentationTraceDeps,
 } from './orchestration/ManualEditPresentationTrace';
 export type { ManualEditPresentationTracePort } from './definitions/manualEditPresentationTrace';
+
+export type { ManualEditQueueSnapshot } from './definitions/manualEditQueuePorts';
+
+export { normalizeManualSelection, toggleManualSelection, collectManualMarqueeSelection, manualSelectionBounds, manualSelectionContext } from './functions/manualSelectionSet';

@@ -1,3 +1,6 @@
+import { IMAGE_EDITING_MESSAGE_CATALOG } from '../features/imageEditing';
+import { INSERTION_MESSAGE_CATALOG } from '../features/elementInsertion';
+import { useSlidesDocumentRuntime } from '../features/documentRuntime';
 /**
  * @file registerSlidesRendererPorts.ts
  * @description 注册 Slides 渲染端对 host 暴露的窄能力。
@@ -56,6 +59,7 @@ import { SLIDES_TOOL_CARD_MESSAGE_CATALOG } from '../tool-cards/definitions/slid
 import { SLIDES_PREVIEW_MESSAGE_CATALOG } from '../features/previewRenderState/definitions/slidesPreviewMessageCatalog';
 import { SLIDES_HISTORY_MESSAGES } from '../features/presentationHistory/definitions/historyMessages';
 import { MANUAL_EDITING_MESSAGE_CATALOG } from '../features/manualEditing/definitions/manualEditingMessageCatalog';
+import { EDITING_COMMAND_MESSAGE_CATALOG } from '../features/editingCommands';
 import { ELEMENT_PROPERTY_MESSAGE_CATALOG } from '../features/elementProperties';
 import { DECK_NAVIGATOR_MESSAGE_CATALOG } from '../features/deckNavigator/definitions/deckNavigatorMessageCatalog';
 import { STAGE_ZOOM_MESSAGE_CATALOG } from '../features/stageZoom/definitions/stageZoomMessageCatalog';
@@ -95,6 +99,9 @@ export function registerSlidesRendererPorts(): void {
   registerMessageCatalogs(SLIDES_PREVIEW_MESSAGE_CATALOG);
   registerMessageCatalogs(SLIDES_HISTORY_MESSAGES);
   registerMessageCatalogs(MANUAL_EDITING_MESSAGE_CATALOG);
+  registerMessageCatalogs(EDITING_COMMAND_MESSAGE_CATALOG);
+  registerMessageCatalogs(INSERTION_MESSAGE_CATALOG);
+  registerMessageCatalogs(IMAGE_EDITING_MESSAGE_CATALOG);
   registerMessageCatalogs(ELEMENT_PROPERTY_MESSAGE_CATALOG);
   registerMessageCatalogs(DECK_NAVIGATOR_MESSAGE_CATALOG);
   registerMessageCatalogs(STAGE_ZOOM_MESSAGE_CATALOG);
@@ -175,7 +182,7 @@ export function registerSlidesRendererPorts(): void {
       if (event.mutationKind !== 'version') return;
       const slidesStore = useSlidesStore();
       if (slidesStore.currentDeckId !== event.documentId) return;
-      await slidesStore.refreshDeck(event.documentId, event.versionNumber);
+      await useSlidesDocumentRuntime().refreshDeck(event.documentId, event.versionNumber);
     },
   });
 

@@ -33,10 +33,12 @@ export function projectPhysicalResourceLinkPresentation(input: {
   const fileName = fileNameFromParsedLocator(input.parsed);
   const title = input.authoredTitle.trim() || fileName;
   const suffix = fileSuffix(fileName);
-  return {
-    title,
-    suffix: suffix && !title.toLocaleLowerCase().endsWith(suffix.toLocaleLowerCase())
-      ? suffix
-      : null,
-  };
+  // 已写入标题的后缀也拆到同一展示槽，避免字号取决于模型是否省略后缀；保留原有大小写。
+  if (suffix && title.toLocaleLowerCase().endsWith(suffix.toLocaleLowerCase())) {
+    return {
+      title: title.slice(0, -suffix.length),
+      suffix: title.slice(-suffix.length),
+    };
+  }
+  return { title, suffix };
 }

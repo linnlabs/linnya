@@ -11,12 +11,14 @@ import { useSlidesStore } from '../../src/renderer/store/slidesStore';
 import { useSlidesRenderStore } from '../../src/renderer/store/slidesRenderStore';
 import { useSlidesUiStore } from '../../src/renderer/store/slidesUiStore';
 import SlideStage from '../../src/renderer/ui/preview/SlideStage.vue';
-import type { SlideRenderModel, ShapeRenderNode, TextRenderNode } from '../../src/renderer/types/render';
+import type { PresentationRenderModel, SlideRenderModel, ShapeRenderNode, TextRenderNode } from '../../src/renderer/types/render';
 import '../../src/renderer/features/textEditing/ui/InlineTextEditor.css';
 import '../../src/renderer/ui/preview/SlideStage.css';
+import SlideEditingCommandBar from '../../src/renderer/features/editingCommands/ui/SlideEditingCommandBar.vue';
+import '../../src/renderer/features/editingCommands/ui/SlideEditingCommandBar.css';
 
 /** 完整生产 Stage + 输入/选择/提交队列。只替换 IPC 与文稿读取，不模拟交互或结算。 */
-export function mountShapeTextEditingSmoke() {
+export function mountShapeTextEditingSmoke(withCommands = false) {
   const host = document.createElement('div');
   host.style.cssText = 'position:relative;width:720px;height:420px';
   document.body.append(host);
@@ -24,7 +26,7 @@ export function mountShapeTextEditingSmoke() {
   const initialSlide: SlideRenderModel = {
     slideId: 'shape-text', index: 0, layoutKey: 'freeform', background: { paint: { type: 'solid', color: '#FFFFFF' } },
     elements: [{
-      id: 'badge', kind: 'shape', zIndex: 0,
+      id: 'badge', kind: 'shape', zIndex: 0, sourceSpan: { startLine: 3, endLine: 3 },
       box: { x: 0.5, y: 0.5, w: 2.5, h: 1, unit: 'in' },
       geometry: { type: 'preset', name: 'rect' }, fill: { type: 'solid', color: '#2563EB' },
       authoringRef: { slideKey: 'overview', editKey: 'badge', targetKind: 'shape' },
@@ -72,10 +74,10 @@ export function mountShapeTextEditingSmoke() {
       versionNumber: version, sourceHash: 'a'.repeat(64) };
   }
   function present(version: number) {
-    render.renderModel = {
+    const renderModel: PresentationRenderModel = {
       presentationId: 'interaction-fixture', title: 'Editing interaction', version, sourceKind: 'generated',
       slideSize: { width: 6.5, height: 3.5, unit: 'in' },
-      capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true },
+      capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true, canEditSourceSelection: true },
       slides: [{ ...slide, elements: slide.elements.map(node => {
         const text = node.kind === 'shape' ? node.innerText : node;
         if (!text || !node.authoringEdit) throw new Error('Invalid text fixture');
@@ -103,20 +105,22 @@ export function mountShapeTextEditingSmoke() {
           : { ...node, ...finalized, authoringEdit };
       }) }],
     };
+    slides.installSnapshot({ snapshotId: `fixture-${version}`, buildState: buildState(version), preview: null, renderModel }, 0);
   }
-  slides.currentDeckId = 'interaction-fixture';
-  slides.documentBuildState = buildState(1);
+  slides.beginDocument('interaction-fixture');
   present(1);
   const app = createApp({ setup() {
     provideManualEditSubmission(useManualEditQueue({
       readSnapshot: () => ({ documentId: slides.currentDeckId, presentationError: render.renderError, buildState: slides.documentBuildState, renderVersion: render.renderModel?.version ?? null }),
       createCommandId: () => crypto.randomUUID(), message: key => key,
       submit: command => new Promise(resolve => commands.push({ command, resolve })),
-      refreshDocument: async (_id, revision) => { slides.documentBuildState = buildState(revision ?? savedRevision); },
+      // 测试驱动器显式调用 present 控制完整快照到达，刷新不伪造部分已加载状态。
+      refreshDocument: async () => {},
     }));
     manual.setEnabled(true);
+    manual.setHistory({ revisionId: 'v1', undoDepth: 0, redoDepth: 0 });
     ui.setZoom(1);
-    return () => h(SlideStage);
+    return () => withCommands ? h('div', { style: 'display:flex;flex-direction:column;height:100%;' }, [h(SlideEditingCommandBar), h('div', { style: 'flex:1;min-height:0;position:relative;' }, [h(SlideStage)])]) : h(SlideStage);
   } });
   app.use(pinia); app.use(VueKonva); app.mount(host);
 
@@ -140,6 +144,10 @@ export function mountShapeTextEditingSmoke() {
   return {
     async ready() { await nextTick(); await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); },
     point(which = 'badge', offsetX = 0, offsetY = 0) {
+      if (which === 'gutter') {
+        const bounds = host.getBoundingClientRect();
+        return { x: Math.round(bounds.left + 12), y: Math.round(bounds.top + bounds.height / 2) };
+      }
       // 使用真实画布坐标点击对象，工具条不参与画布 fit 或命中。
       const wrapper = host.querySelector('.stage-canvas-wrapper');
       if (!wrapper) throw new Error('Stage canvas missing');
@@ -170,14 +178,15 @@ export function mountShapeTextEditingSmoke() {
     assertFontSize(value: number) {
       const input = host.querySelector<HTMLInputElement>('.slides-element-property-toolbar__font input');
       const fontIntents = manual.queuedIntents.filter(intent => intent.operation.op === 'set_text_style' && intent.operation.target.editKey === 'standalone');
-      const operation = fontIntents[0]?.operation;
+      const operation = fontIntents[fontIntents.length - 1]?.operation;
       if (!input || Number(input.value) !== value || !input.checkValidity()
-        || fontIntents.length !== 1 || operation?.op !== 'set_text_style' || operation.fontSizePt !== value) {
+        || operation?.op !== 'set_text_style' || operation.fontSizePt !== value) {
         throw new Error(`Font size input/queue mismatch: expected ${value}, got ${input?.value}/${JSON.stringify(fontIntents)}; focus=${document.activeElement?.outerHTML}`);
       }
     },
     async assertFontMenu(selected: number | null) {
-      const menu = host.querySelector('.slides-element-font-menu');
+      // 列表菜单 Teleport 到 body；仍按舞台视口约束，所以下面继续检查不越出 pane。
+      const menu = document.querySelector('.slides-element-font-menu');
       const list = menu?.querySelector<HTMLElement>('[role="listbox"]');
       if (!menu || !list) throw new Error('Font size list did not open');
       await Promise.allSettled(list.getAnimations().map(animation => animation.finished));
@@ -189,12 +198,35 @@ export function mountShapeTextEditingSmoke() {
       if (rect.left < bounds.left || rect.right > bounds.right || rect.top < bounds.top || rect.bottom > bounds.bottom) throw new Error('Font list escaped the pane');
     },
     fontOptionPoint(value: number) {
-      const option = Array.from(host.querySelectorAll<HTMLElement>('.slides-element-font-menu [role="option"]'))
+      const option = Array.from(document.querySelectorAll<HTMLElement>('.slides-element-font-menu [role="option"]'))
         .find(element => element.textContent?.trim() === String(value));
       if (!option) throw new Error(`Missing font size option ${value}`);
       option.scrollIntoView({ block: 'nearest' });
       const rect = option.getBoundingClientRect();
       return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+    },
+    async arrangeParentPoint() {
+      const menu = document.querySelector<HTMLElement>('.slides-element-property-menu');
+      const row = menu?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+      if (!menu || !row) throw new Error('Arrange menu has no align-to-slide submenu');
+      // 与真实指针一致：主菜单入场结束后才移到父项。
+      await Promise.allSettled(menu.getAnimations().map(animation => animation.finished));
+      const box = row.getBoundingClientRect();
+      return { x: Math.round(box.left + 24), y: Math.round(box.top + box.height / 2) };
+    },
+    async assertArrangeSubmenu() {
+      // 子菜单以窗口为界：贴着父项、完整可见，不能被舞台的 contain/overflow 平移或裁切。
+      const trigger = host.querySelector<HTMLElement>('[data-property="arrange"]');
+      const menu = document.querySelector<HTMLElement>('.slides-element-property-menu');
+      const row = menu?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+      const submenu = document.querySelector<HTMLElement>('.select-submenu');
+      if (!trigger || !menu || !row || !submenu || getComputedStyle(submenu).visibility !== 'visible') throw new Error('Arrange submenu did not open');
+      await Promise.allSettled(submenu.getAnimations().map(animation => animation.finished));
+      const t = trigger.getBoundingClientRect(), m = menu.getBoundingClientRect(), r = row.getBoundingClientRect(), s = submenu.getBoundingClientRect();
+      if (Math.abs(m.left - t.left) > 1 || m.top < t.bottom) throw new Error(`Arrange menu is not anchored to its trigger: ${JSON.stringify({ t, m })}`);
+      if (s.top > r.top + 1 || s.bottom < r.bottom - 1 || (s.left < m.right && s.right > m.left)) throw new Error(`Arrange submenu is detached from its row: ${JSON.stringify({ r, s })}`);
+      if (s.top < 0 || s.left < 0 || s.bottom > window.innerHeight || s.right > window.innerWidth) throw new Error('Arrange submenu was clipped by the window');
+      if (submenu.querySelectorAll('[role="menuitem"]').length !== 6) throw new Error('Arrange submenu lost alignment actions');
     },
     assertFontFocus() {
       if (document.activeElement !== host.querySelector('[data-property="fontSize"]')) throw new Error('Font list did not return focus to its trigger');
@@ -206,7 +238,8 @@ export function mountShapeTextEditingSmoke() {
       if (!intents.some(op => op.op === 'set_visual_size' && op.target.editKey === 'badge' && op.visualSize.width === 3)) throw new Error('Blur lost A size or sent it to B');
       if (intents.some(op => op.op === 'set_visual_size' && op.target.editKey === 'second')) throw new Error('A size was written to B');
       if (!intents.some(op => op.op === 'set_fill_color' && op.target.editKey === 'second' && op.color === '#DC2626')) throw new Error('B fill was blocked while saving A');
-      if (!intents.some(op => op.op === 'set_text_style' && op.target.editKey === 'standalone' && op.fontSizePt === 24 && op.color === '#9333EA')) throw new Error('Text style edits were lost or duplicated');
+      if (!intents.some(op => op.op === 'set_text_style' && op.target.editKey === 'standalone' && op.fontSizePt === 24)
+        || !intents.some(op => op.op === 'set_text_style' && op.target.editKey === 'standalone' && op.color === '#9333EA')) throw new Error('Text style edits were lost');
     },
     assertDeleted(id: string) {
       if (manual.selectedTarget || host.querySelector('.slides-element-property-toolbar')) throw new Error('Delete did not clear the selection toolbar');
@@ -257,6 +290,7 @@ export function mountShapeTextEditingSmoke() {
       const panel = host.querySelector('.slides-element-property-popover');
       if (panel instanceof HTMLElement && !panel.inert) throw new Error('Closed property popup still accepts interaction');
       if (host.querySelector('.slides-element-property-toolbar [aria-expanded="true"]')) throw new Error('Property trigger still expanded');
+      if (document.querySelector('.slides-element-property-menu-host, .slides-element-font-menu')) throw new Error('Closed property menu is still mounted');
     },
     assertGeometryUnchanged() {
       if (ui.zoomLevel !== 1 || host.querySelector('.slide-stage')?.getBoundingClientRect().height !== 420) throw new Error('Toolbar changed the viewport/zoom');
@@ -296,6 +330,43 @@ export function mountShapeTextEditingSmoke() {
       const previews = host.querySelectorAll('.slides-inline-text-editor--preview');
       if (!previews.length || [...previews].some(node => getComputedStyle(node).pointerEvents !== 'none')) throw new Error('Missing passive text preview');
     },
+    assertSelectionCleared() {
+      if (manual.selectedTarget || host.querySelector('.slides-element-property-toolbar')
+        || host.querySelector('textarea, .slides-rich-text-surface')) {
+        throw new Error('Stage gutter did not clear selection and finish inline editing');
+      }
+    },
+    assertSelection(ids: readonly string[]) {
+      const actual = manual.selectedTargets.map(target => target.elementId).sort();
+      if (JSON.stringify(actual) !== JSON.stringify([...ids].sort())) throw new Error(`Selection mismatch ${JSON.stringify(actual)}`);
+    },
+    assertCanvasCommands(count: number, dx?: number) {
+      if (commands.length !== count || manual.queue.length !== 0) throw new Error(`Unexpected canvas commands ${commands.length}/${manual.queue.length}`);
+      if (dx === undefined) return;
+      const operation = commands[commands.length - 1]?.command.operation;
+      if (operation?.op !== 'batch' || operation.operations.length !== 2
+        || operation.operations.some(op => op.op !== 'translate_by' || Math.abs(op.delta.dx - dx) > 1e-8 || op.delta.dy !== 0)) throw new Error('Keyboard repeats must become one exact group translation');
+    },
+    assertAiPrompt(open: boolean) {
+      const prompt = document.querySelector('.source-selection-prompt');
+      if ((prompt !== null) !== open) throw new Error(`AI prompt should be ${open ? 'open' : 'closed'}`);
+    },
+    assertCanvasFocused() {
+      if (document.activeElement !== host.querySelector('.slide-stage')) throw new Error(`Canvas lost focus to ${document.activeElement?.tagName ?? 'nothing'}`);
+    },
+    assertAxisLockedTranslation(count: number) {
+      const operation = commands[count - 1]?.command.operation;
+      if (commands.length !== count || operation?.op !== 'translate_by' || operation.delta.dy !== 0 || operation.delta.dx <= 0) {
+        throw new Error(`Shift drag must lock to one axis: ${JSON.stringify(operation)}`);
+      }
+    },
+    assertEditingCommand(index: number, op: string) {
+      if (commands.length !== index + 1 || commands[index]?.command.operation.op !== op) throw new Error(`Wrong editing command ${JSON.stringify(commands.map(item => item.command.operation))}`);
+      if (op === 'insert_objects') {
+        const insert = host.querySelector('[data-insert="text"]');
+        if (!(insert instanceof HTMLButtonElement) || !insert.disabled) throw new Error('Insertion must wait for page-index settlement');
+      }
+    },
     assertSubmitted(count = 1) {
       if (commands.length !== count) throw new Error(`Expected ${count} commands, got ${commands.length}`);
       const operation = commands[0]?.command.operation;
@@ -310,7 +381,7 @@ export function mountShapeTextEditingSmoke() {
         if (operation.op === 'set_text_style') content.set(operation.target.editKey,
           patchWholeTextContent(content.get(operation.target.editKey) ?? '', operation));
         savedRevision += 1;
-        item.resolve({ status: 'committed', commandId: item.command.commandId, documentId: item.command.documentId, revisionId: `v${savedRevision}`, revision: savedRevision });
+        item.resolve({ status: 'committed', commandId: item.command.commandId, documentId: item.command.documentId, revisionId: `v${savedRevision}`, revision: savedRevision, history: { revisionId: `v${savedRevision}`, undoDepth: savedRevision - 1, redoDepth: 0 } });
       } else item.resolve({ status: 'validation_failed', commandId: item.command.commandId, documentId: item.command.documentId, code: 'operation_invalid', message: 'Fixture compile failure' });
     },
     present() { present(savedRevision); },

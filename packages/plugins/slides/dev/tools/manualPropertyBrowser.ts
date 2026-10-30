@@ -236,10 +236,20 @@ export function mountManualPropertySmoke() {
       assert(Boolean(transient.value) === dragging, 'Resize gesture preview did not settle');
       if (!dragging) assert(document.activeElement === host, 'Resize did not return keyboard focus to canvas');
     },
+    assertResizeRatio(ratio: number) {
+      const node = stage.getLayers()[1]?.findOne<Konva.Rect>('Rect');
+      const size = properties.value.visualSize;
+      if (!node || !size) throw new Error('Shift resize preview is missing');
+      assert(Math.abs(node.width() / node.height() - ratio) < 1e-6 && node.width() > 3.5 * 96, 'Shift resize did not keep the shape ratio');
+      assert(Math.abs(size.width * 96 - node.width()) < 1e-6 && Math.abs(size.height * 96 - node.height()) < 1e-6, 'Property resize differs from canvas');
+      assert(Boolean(transient.value), 'Shift resize preview ended early');
+    },
     assertResizePosition(x: number, y: number) {
       const node = stage.getLayers()[1]?.findOne<Konva.Rect>('Rect');
       const group = node?.getParent();
-      assert(!!group && Math.abs(group.x() - x * 96) < 0.01 && Math.abs(group.y() - y * 96) < 0.01,
+      // Shape 围绕中心旋转，group.x/y 是中心；局部原点才是画布实际绘制的左上角。
+      const origin = group?.getTransform().point({ x: 0, y: 0 });
+      assert(!!origin && Math.abs(origin.x - x * 96) < 0.01 && Math.abs(origin.y - y * 96) < 0.01,
         'Canvas resize position differs from anchor');
       assert(Math.abs(presented.value.bounds.x - x) < 0.01 && Math.abs(presented.value.bounds.y - y) < 0.01,
         'Selection position differs from resized canvas');

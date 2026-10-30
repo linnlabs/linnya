@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue';
 import { z } from 'zod';
-import type { ToolUiConfig, ToolPresentationProjectorInput, ToolCompactStepProjectorInput } from '@plugin/renderer/toolUi';
+import type { ToolUiConfig, ToolPresentationProjectorInput, ToolCompactStepProjectorInput } from '@linnya/plugin-host-contract/renderer/toolUi';
 
 const savedIdentity = z.object({ kind: z.literal('decision_delivery_export'), decisionId: z.string().uuid(), revision: z.number().int().positive() });
 

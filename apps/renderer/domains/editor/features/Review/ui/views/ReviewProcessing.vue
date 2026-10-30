@@ -1,7 +1,7 @@
 <template>
   <div class="review-section processing-view review-processing-view">
     <div class="processing-content">
-      <RippleLoadingIcon class="loading-icon" />
+      <LinnyaLoadingIcon class="loading-icon" />
       <h3>{{ editorMessage('editor.review.processing.title') }}</h3>
 
       <!-- 角色标签 + 进度文字 -->
@@ -24,7 +24,7 @@
 import { computed } from 'vue';
 import { useReviewStore } from '../../store/reviewStore';
 import { LinnyaIcon } from '@linnya/renderer-ui/icons';
-import { RippleLoadingIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';
 import { readReviewProgressPresentation } from '../../functions/reviewProgressPresentation';
 

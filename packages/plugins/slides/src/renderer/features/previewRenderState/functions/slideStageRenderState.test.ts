@@ -12,7 +12,6 @@ function makeInput(overrides: Partial<SlideStageRenderStateInput> = {}): SlideSt
     visualResourcePreparationFailed: false,
     currentSlideKonvaCompatible: true,
     hasRenderSlideSize: true,
-    sourceSelectionModeEnabled: false,
     canEditSourceSelection: true,
     ...overrides,
   };
@@ -20,29 +19,20 @@ function makeInput(overrides: Partial<SlideStageRenderStateInput> = {}): SlideSt
 
 describe('resolveSlideStageRenderState', () => {
   it('renders with Konva when render-model has a compatible current slide', () => {
-    const state = resolveSlideStageRenderState(makeInput({
-      sourceSelectionModeEnabled: false,
-    }));
+    const state = resolveSlideStageRenderState(makeInput());
 
     expect(state.renderMode).toBe('konva');
     expect(state.shouldRenderKonva).toBe(true);
-    expect(state.canSelectSourceElements).toBe(false);
   });
 
-  it('enables source selection without changing the render mode', () => {
-    const state = resolveSlideStageRenderState(makeInput({
-      sourceSelectionModeEnabled: true,
-    }));
-
-    expect(state.renderMode).toBe('konva');
-    expect(state.canSelectSourceElements).toBe(true);
-    expect(state.shouldShowSourcePrompt).toBe(true);
+  it('lets the rendered slide be selected for AI without a separate mode, only when the deck has source locations', () => {
+    expect(resolveSlideStageRenderState(makeInput()).canSelectSourceElements).toBe(true);
+    expect(resolveSlideStageRenderState(makeInput({ canEditSourceSelection: false })).canSelectSourceElements).toBe(false);
   });
 
   it('reports a render error instead of using a second renderer when Konva cannot render the current slide', () => {
     const state = resolveSlideStageRenderState(makeInput({
       hasRenderSlideSize: false,
-      sourceSelectionModeEnabled: true,
     }));
 
     expect(state.renderMode).toBe('error');

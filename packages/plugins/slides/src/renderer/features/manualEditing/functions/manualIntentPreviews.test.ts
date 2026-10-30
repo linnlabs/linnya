@@ -29,9 +29,9 @@ describe('manual intent previews', () => {
         targetKind: 'text',
         delta: { dx: child.dx, dy: child.dy },
       },
-      translationPreview: child,
+      translationPreviews: [child],
     }];
-    const previews = collectManualTranslationPreviews(null, parent, queued);
+    const previews = collectManualTranslationPreviews(null, [parent], queued);
     expect(mergeManualTranslationPreviews(previews).get('child')).toMatchObject({
       dx: 1.25,
       dy: 0,
@@ -62,7 +62,7 @@ describe('manual intent previews', () => {
         color: '#DC2626',
       },
     };
-    expect(collectManualVisualPreviews(first, [{ operation: second.operation, visualPreview: second }]))
+    expect(collectManualVisualPreviews([first], [{ operation: second.operation, visualPreviews: [second] }]))
       .toEqual([first, second]);
   });
 });

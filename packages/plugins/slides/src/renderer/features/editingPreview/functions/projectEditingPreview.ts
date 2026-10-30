@@ -61,10 +61,14 @@ function projectEditingPreviewOperation(
     ...node,
     paragraphs: node.paragraphs.map(paragraph => ({
       ...paragraph,
+      ...(textStyleOperation.align !== undefined ? { align: textStyleOperation.align } : {}),
       runs: paragraph.runs.map(run => (
         'text' in run
           ? {
               ...run,
+              ...(textStyleOperation.bold !== undefined ? { fontWeight: textStyleOperation.bold ? 'bold' : 'normal', resolvedFontWeight: undefined, resolvedFontFamily: undefined } : {}),
+              ...(textStyleOperation.italic !== undefined ? { fontStyle: textStyleOperation.italic ? 'italic' : 'normal', resolvedFontStyle: undefined, resolvedFontFamily: undefined } : {}),
+              ...(textStyleOperation.underline !== undefined ? { underline: textStyleOperation.underline } : {}),
               ...(textStyleOperation.fontSizePt !== undefined
                 ? { fontSize: textStyleOperation.fontSizePt }
                 : {}),
@@ -76,7 +80,8 @@ function projectEditingPreviewOperation(
       )),
     })),
   };
-  if (textStyleOperation.fontSizePt === undefined) return styled;
+  if (textStyleOperation.fontSizePt === undefined && textStyleOperation.bold === undefined
+    && textStyleOperation.italic === undefined && textStyleOperation.align === undefined) return styled;
   if (!canRelayoutTextBox(node) || !node.preparedTextLayout) return node;
   return deriveTextPreview({ ...styled, box: node.preparedTextLayout.inputBox }) ?? node;
 }

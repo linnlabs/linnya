@@ -15,6 +15,8 @@
     @pointercancel.stop="gesture.cancel"
     @lostpointercapture="gesture.cancel"
     @keydown.esc.stop.prevent="gesture.cancel"
+    @keydown="gesture.modifier"
+    @keyup="gesture.modifier"
   />
 </template>
 <script setup lang="ts">

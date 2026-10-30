@@ -1,6 +1,18 @@
+import { changeManualLayer } from '../functions/changeManualLayer.js';
+import { moveSlideInDeckSource } from '../functions/moveSlideInDeckSource.js';
+import { insertObjectsAtSlide } from '../functions/insertObjectsAtSlide.js';
+import { ManualEditHistoryStore } from '../store/manualEditHistoryStore.js';
+import { advanceManualEditHistory, manualEditHistoryFocus, manualEditHistoryStatus, manualEditHistoryTarget, reconcileManualEditHistory } from '../functions/manualEditHistory.js';
+import { describeManualEditHistoryFocus } from '../functions/describeManualEditHistoryFocus.js';
+import { relocateInsertedObjectSpans } from '../functions/relocateInsertedObjectSpans.js';
+import type { ManualEditDeckProjection } from '../definitions/manualEditDeckProjection.js';
+import { projectBlankSlideInsertion } from '../functions/projectBlankSlideInsertion.js';
+import { rewriteSlideStructureInDeckSource } from '../functions/rewriteSlideStructureInDeckSource.js';
+import { prepareManualEditBatch } from '../functions/prepareManualEditBatch.js';
 import { prepareManualEditSourceOperation } from '../functions/prepareManualEditSourceOperation.js';
 import type {
   SlidesManualEditCommand,
+  SlidesManualEditHistoryStatus,
   SlidesManualEditCommandResult,
 } from '@plugin/slides/shared';
 import type {
@@ -17,17 +29,17 @@ import {
   type PresentationRepositoryPort,
 } from '../../../persistence/index.js';
 import { PresentationBuildFailureError } from '../../presentationBuildFailure/index.js';
-import type { PresentationRevisionScope } from '../../presentationSourceHistory/index.js';
+import type { PresentationRevisionScope, PresentationHistoryRuntime } from '../../presentationSourceHistory/index.js';
 import type { PresentationManualEditTracePort } from '../definitions/presentationManualEditTrace.js';
 import { createManualEditPayloadDigest } from '../functions/createManualEditPayloadDigest.js';
 import {
   projectManualTranslationToDeckSpec,
   SlidesManualEditDeckProjectionError,
-  type ManualTranslationDeckProjection,
 } from '../functions/projectManualTranslationToDeckSpec.js';
 import {
   SlidesManualEditSourceError,
   writeManualEditsToDeckSource,
+  writeManualEditBatchToDeckSource,
 } from '../functions/writeManualEditsToDeckSource.js';
 import {
   insertBlankSlideIntoDeckSource,
@@ -40,6 +52,8 @@ export interface PresentationManualEditingRuntimeDeps {
     PresentationRepositoryPort,
     'getPresentation' | 'getManualEditReceipt'
   >;
+  readonly historyStore?: ManualEditHistoryStore;
+  readonly restoreRevision?: PresentationHistoryRuntime['commitDeferredRestore'];
   readonly draftRepo?: Pick<PresentationDraftRepositoryPort, 'has'>;
   readonly builder: {
     commitManualEditFromSource(
@@ -53,9 +67,26 @@ export interface PresentationManualEditingRuntimeDeps {
   readonly trace?: PresentationManualEditTracePort;
 }
 
-/** 人工编辑（对象值与页面插入）的唯一写入口：验证快照，选择可证明等价的计算路径，再由 repository 原子提交。 */
+/** 人工编辑（对象值与页面结构）的唯一写入口：验证快照，选择可证明等价的计算路径，再由 repository 原子提交。 */
 export class PresentationManualEditingRuntime {
-  constructor(private readonly deps: PresentationManualEditingRuntimeDeps) {}
+  private readonly history: ManualEditHistoryStore;
+  constructor(private readonly deps: PresentationManualEditingRuntimeDeps) {
+    this.history = deps.historyStore ?? new ManualEditHistoryStore();
+  }
+
+  readHistoryStatus(documentId: string): Promise<SlidesManualEditHistoryStatus> {
+    return this.deps.revisionScope
+      ? this.deps.revisionScope.run(documentId, () => this.readHistoryStatusInScope(documentId))
+      : this.readHistoryStatusInScope(documentId);
+  }
+
+  private async readHistoryStatusInScope(documentId: string): Promise<SlidesManualEditHistoryStatus> {
+    const current = await this.deps.presentationRepo.getPresentation(documentId);
+    if (!current) throw new Error('演示文稿不存在。');
+    const state = reconcileManualEditHistory(this.history.read(documentId), current.currentRevisionId);
+    this.history.write(documentId, state);
+    return manualEditHistoryStatus(state);
+  }
 
   submit(command: SlidesManualEditCommand): Promise<SlidesManualEditCommandResult> {
     const run = async (): Promise<SlidesManualEditCommandResult> => {
@@ -91,6 +122,7 @@ export class PresentationManualEditingRuntime {
         documentId: command.documentId,
         revisionId: receipt.revisionId,
         revision: receipt.revision,
+        history: await this.readHistoryStatusInScope(command.documentId),
       };
     }
 
@@ -109,22 +141,51 @@ export class PresentationManualEditingRuntime {
       return this.conflict(command, 'draft_present');
     }
     this.recordTrace(command, 'snapshot_validated');
+    const historyState = reconcileManualEditHistory(this.history.read(command.documentId), current.currentRevisionId);
+    this.history.write(command.documentId, historyState);
 
-    let source: string;
-    let projection: ManualTranslationDeckProjection;
+    let source = current.deckSource;
+    let projection: ManualEditDeckProjection = { kind: 'requires_full_compile' };
+    let restoreVersion: string | undefined;
     try {
-      if (command.operation.op === 'insert_blank_slide') {
-        // 页面结构改写作者源码而非 manualEdits，只能交给完整编译器验证。
-        source = insertBlankSlideIntoDeckSource(current.deckSource, {
+      if (command.operation.op === 'undo' || command.operation.op === 'redo') {
+        restoreVersion = manualEditHistoryTarget(historyState, command.operation.op);
+        if (!restoreVersion || !this.deps.restoreRevision) return this.validationFailure(command, 'history_empty', '当前没有可撤销或重做的编辑。');
+      } else if (command.operation.op === 'set_layer') {
+        source = changeManualLayer(current.deckSource, current.deckSpec, command.operation.target, command.operation.direction);
+      } else if (command.operation.op === 'insert_objects') {
+        source = insertObjectsAtSlide(current.deckSource, current.deckSpec.slides.length, command.operation.index, command.operation.objects);
+      } else if (command.operation.op === 'insert_blank_slide') {
+        const backgroundColor = resolveInsertedSlideBackgroundColor(current.deckSpec.theme);
+        const insertion = insertBlankSlideIntoDeckSource(current.deckSource, {
           index: command.operation.index,
           slideCount: current.deckSpec.slides.length,
-          backgroundColor: resolveInsertedSlideBackgroundColor(current.deckSpec.theme),
-        }).source;
+          backgroundColor,
+        });
+        source = insertion.source;
+        projection = projectBlankSlideInsertion(current.deckSpec, insertion, command.operation.index, backgroundColor);
+      } else if (command.operation.op === 'batch') {
+        const operations = prepareManualEditBatch(current.deckSpec, command.operation.operations);
+        const written = writeManualEditBatchToDeckSource(current.deckSource, operations);
+        source = written.source;
+        projection = { kind: 'projected', deckSpec: current.deckSpec };
+        for (const operation of command.operation.operations) {
+          if (projection.kind !== 'projected') break;
+          projection = projectManualTranslationToDeckSpec(projection.deckSpec, operation);
+        }
+        projection = relocateProjectedInsertions(projection, written);
+      } else if (command.operation.op === 'move_slide') {
+        source = moveSlideInDeckSource(current.deckSource, current.deckSpec.slides.length, command.operation.index, command.operation.toIndex);
+      } else if ('index' in command.operation) {
+        source = rewriteSlideStructureInDeckSource(current.deckSource, {
+          ...command.operation, slideCount: current.deckSpec.slides.length,
+        });
         projection = { kind: 'requires_full_compile' };
       } else {
         const sourceOperation = prepareManualEditSourceOperation(current.deckSpec, command.operation);
-        source = writeManualEditsToDeckSource(current.deckSource, sourceOperation).source;
-        projection = projectManualTranslationToDeckSpec(current.deckSpec, command.operation);
+        const written = writeManualEditsToDeckSource(current.deckSource, sourceOperation);
+        source = written.source;
+        projection = relocateProjectedInsertions(projectManualTranslationToDeckSpec(current.deckSpec, command.operation), written);
       }
     } catch (error) {
       if (
@@ -136,7 +197,9 @@ export class PresentationManualEditingRuntime {
       }
       throw error;
     }
-    const path = projection.kind === 'projected' ? 'projected_translation' : 'full_compile';
+    const path = restoreVersion ? 'history_restore' : projection.kind === 'projected'
+      ? command.operation.op === 'insert_blank_slide' ? 'projected_slide_insertion' : 'projected_translation'
+      : 'full_compile';
     this.recordTrace(command, 'source_rewritten', { path });
 
     try {
@@ -152,7 +215,10 @@ export class PresentationManualEditingRuntime {
         origin: 'edit',
       };
       this.recordTrace(command, 'semantic_build_started', { path });
-      const result = projection.kind === 'projected'
+      const result = restoreVersion && this.deps.restoreRevision
+        ? await this.deps.restoreRevision({ documentId: command.documentId, versionId: restoreVersion,
+            expectedBase: command.expectedBase, receipt: { commandId: command.commandId, payloadDigest } })
+        : projection.kind === 'projected'
         ? await this.deps.builder.commitManualEditFromProjectedDeckSpec({
             ...buildInput,
             deckSpec: projection.deckSpec,
@@ -163,12 +229,15 @@ export class PresentationManualEditingRuntime {
         outcome: 'committed',
         revision: result.versionNumber,
       });
+      const historyAction = command.operation.op === 'undo' || command.operation.op === 'redo' ? command.operation.op : 'edit';
+      const focus = historyAction === 'edit' ? undefined : manualEditHistoryFocus(historyState, historyAction);
+      const nextHistory = advanceManualEditHistory(historyState, result.versionId, historyAction,
+        historyAction === 'edit' ? describeManualEditHistoryFocus(current.deckSpec, command.operation) : undefined);
+      this.history.write(command.documentId, nextHistory);
       return {
-        status: 'committed',
-        commandId: command.commandId,
-        documentId: command.documentId,
-        revisionId: result.versionId,
-        revision: result.versionNumber,
+        status: 'committed', commandId: command.commandId, documentId: command.documentId,
+        revisionId: result.versionId, revision: result.versionNumber, history: manualEditHistoryStatus(nextHistory),
+        ...(focus ? { focus } : {}),
       };
     } catch (error) {
       if (error instanceof PresentationStaleBaseError || error instanceof PresentationStaleSourceError) {
@@ -237,4 +306,13 @@ export class PresentationManualEditingRuntime {
       ...details,
     });
   }
+}
+
+/** 插入对象 literal 的行号随人工值序列化移动；投影快照需按新源码同步它们的定位。 */
+function relocateProjectedInsertions(
+  projection: ManualEditDeckProjection,
+  written: { readonly source: string; readonly manualEdits: { readonly slides: readonly { readonly additions?: readonly unknown[] }[] } },
+): ManualEditDeckProjection {
+  if (projection.kind !== 'projected' || !written.manualEdits.slides.some(slide => slide.additions?.length)) return projection;
+  return { kind: 'projected', deckSpec: relocateInsertedObjectSpans(projection.deckSpec, written.source) };
 }

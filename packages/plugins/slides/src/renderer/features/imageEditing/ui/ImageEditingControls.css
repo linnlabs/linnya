@@ -1,0 +1,5 @@
+/* 图片分组：只有替换；不做适应开关，见 README。 */
+.slides-image-editing__icon {
+  width: 16px;
+  height: 16px;
+}

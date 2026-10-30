@@ -15,7 +15,7 @@ theme/token/scroll 均由 package 唯一拥有；Editor 选区业务和 Citation
 
 ### Linnya 品牌图标
 
-既有 `LinnyaIcon` 从 `/icons` 入口消费。默认 `compact` 稿适用于小尺寸；32px 及以上使用
+`LinnyaIcon` 从 `/icons` 入口消费。默认 `compact` 稿适用于小尺寸；32px 及以上使用
 `variant="display"`。颜色跟随 `currentColor`，包样式提供默认品牌色，调用方可在图标根节点的 class
 上设置颜色。图标自身没有背景或交互；初始对话页只显示图形，外围布局由页面 owner 负责。
 

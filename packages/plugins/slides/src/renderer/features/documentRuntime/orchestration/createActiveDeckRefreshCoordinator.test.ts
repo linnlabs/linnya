@@ -23,6 +23,7 @@ describe('createActiveDeckRefreshCoordinator', () => {
       loadedVersion = 2;
     });
     const coordinator = createActiveDeckRefreshCoordinator({
+      readDocumentEpoch: () => 0,
       isActiveDocument: documentId => documentId === 'deck-1',
       hasLoadedRevision: (_, version) => loadedVersion >= version,
       readDocument,
@@ -42,6 +43,7 @@ describe('createActiveDeckRefreshCoordinator', () => {
     const deferred = createDeferred();
     const readDocument = vi.fn(() => deferred.promise);
     const coordinator = createActiveDeckRefreshCoordinator({
+      readDocumentEpoch: () => 0,
       isActiveDocument: documentId => documentId === activeDocumentId,
       hasLoadedRevision: () => false,
       readDocument,
@@ -64,6 +66,7 @@ describe('createActiveDeckRefreshCoordinator', () => {
         loadedVersion = 2;
       });
     const coordinator = createActiveDeckRefreshCoordinator({
+      readDocumentEpoch: () => 0,
       isActiveDocument: () => true,
       hasLoadedRevision: (_, version) => loadedVersion >= version,
       readDocument,

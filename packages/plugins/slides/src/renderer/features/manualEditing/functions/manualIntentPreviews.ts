@@ -5,13 +5,13 @@ import type {
 } from '../definitions/manualEditingTypes';
 
 export function collectManualVisualPreviews(
-  pending: ManualEditingVisualPreview | null,
+  pending: readonly ManualEditingVisualPreview[],
   queuedIntents: readonly ManualEditIntent[],
   transient?: ManualEditingVisualPreview | null,
 ): readonly ManualEditingVisualPreview[] {
   return [
-    ...(pending ? [pending] : []),
-    ...queuedIntents.flatMap(intent => intent.visualPreview ? [intent.visualPreview] : []),
+    ...pending,
+    ...queuedIntents.flatMap(intent => intent.visualPreviews ?? []),
     ...(transient ? [transient] : []),
   ];
 }
@@ -37,14 +37,14 @@ export function mergeManualTranslationPreviews(
 
 export function collectManualTranslationPreviews(
   transient: ManualEditingTranslationPreview | null,
-  pending: ManualEditingTranslationPreview | null,
+  pending: readonly ManualEditingTranslationPreview[],
   queuedIntents: readonly ManualEditIntent[],
 ): readonly ManualEditingTranslationPreview[] {
   return [
     ...(transient ? [transient] : []),
-    ...(pending ? [pending] : []),
+    ...pending,
     ...queuedIntents.flatMap(intent => (
-      intent.translationPreview ? [intent.translationPreview] : []
+      intent.translationPreviews ?? []
     )),
   ];
 }

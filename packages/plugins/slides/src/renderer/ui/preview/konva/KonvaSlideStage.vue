@@ -30,8 +30,12 @@
         :transform="contentTransform"
         :selected-targets="props.selectedTargets"
         :hovered-target="props.hoveredTarget"
+        :manual-hovered-target="props.manualHoveredTarget"
         :marquee-rect="props.marqueeRect"
-        :manual-selected-target="props.manualSelectedTarget"
+        :manual-selected-targets="props.manualSelectedTargets"
+        :snap-guides="props.snapGuides"
+        :pending-insertions="props.pendingInsertions"
+        :slide-size="props.slideSize"
       />
     </v-stage>
   </div>
@@ -71,7 +75,10 @@ const props = defineProps<{
   hoveredTarget: SourceSelectableElement | null;
   marqueeRect: SourceSelectionRect | null;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
-  manualSelectedTarget?: ManualEditableTarget | null;
+  manualSelectedTargets?: readonly ManualEditableTarget[];
+  manualHoveredTarget?: { readonly elementId: string; readonly polygon: readonly { readonly x: number; readonly y: number }[] } | null;
+  snapGuides?: readonly { readonly axis: 'x' | 'y'; readonly position: number; readonly from: number; readonly to: number }[];
+  pendingInsertions?: readonly { readonly editKey: string; readonly box: { readonly x: number; readonly y: number; readonly w: number; readonly h: number } }[];
   hiddenTextElementIds?: ReadonlySet<string>;
   manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();

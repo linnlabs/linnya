@@ -13,3 +13,5 @@ export type {
 export { default as TextDraftPreview } from './ui/TextDraftPreview.vue';
 
 export type { InlineTextSelection } from './definitions/richTextEditor';
+
+export { resolveTextEditingStyleBase } from './functions/resolveTextEditingStyleBase';

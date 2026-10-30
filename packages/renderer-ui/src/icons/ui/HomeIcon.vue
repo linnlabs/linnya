@@ -1,11 +1,21 @@
-<!-- packages/renderer-ui/src/icons/ui/HomeIcon.vue -->
-<!-- 首页图标组件 -->
+<!--
+ * packages/renderer-ui/src/icons/ui/HomeIcon.vue
+ * “首页”图标组件。
+-->
 <template>
-  <svg class="shared-icon shared-icon--full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path d="M11,4.89c.57-.51,1.43-.51,2.01,0l5.5,4.94c.32.28.5.69.5,1.11v7.06c0,.83-.67,1.5-1.5,1.5h-2.5c-.83,0-1.5-.67-1.5-1.5v-3.5c0-.28-.22-.5-.5-.5h-2c-.28,0-.5.22-.5.5v3.5c0,.83-.67,1.5-1.5,1.5h-2.5c-.83,0-1.5-.67-1.5-1.5v-7.06c0-.43.18-.83.5-1.11l5.5-4.94ZM12.33,5.63c-.19-.17-.48-.17-.67,0l-5.5,4.94c-.11.09-.17.23-.17.37v7.06c0,.28.22.5.5.5h2.5c.28,0,.5-.22.5-.5v-3.5c0-.83.67-1.5,1.5-1.5h2c.83,0,1.5.67,1.5,1.5v3.5c0,.28.22.5.5.5h2.5c.28,0,.5-.22.5-.5v-7.06c0-.14-.06-.28-.17-.37,0,0-5.5-4.94-5.5-4.94Z" fill="currentColor"/>
+  <svg
+    class="shared-icon shared-icon--full linnya-ui-icon"
+    data-icon="home"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path d="M12.68 5.26l5.49 4.93a1 1 0 0 1 .33.74V18a1 1 0 0 1-1 1H15a1 1 0 0 1-1-1v-3.5a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1V18a1 1 0 0 1-1 1H6.5a1 1 0 0 1-1-1v-7.05a1 1 0 0 1 .33-.75l5.51-4.94a1 1 0 0 1 1.34 0z"/>
   </svg>
 </template>
-
-<script setup lang="ts">
-// 首页图标
-</script>

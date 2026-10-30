@@ -31,11 +31,12 @@ Linnya Slides 先把 PPT 抽象成一门专用的场景图 DSL，再用 JavaScri
 - 版本历史、源码压缩与图片生命周期：[backend/features/presentationSourceHistory](./src/backend/features/presentationSourceHistory/README.md)
 - generated deck 人工编辑源码与原子提交：[backend/features/presentationManualEditing](./src/backend/features/presentationManualEditing/README.md)
 - 前端预览与栅格渲染：[renderer](./src/renderer/docs/README.md)
+- 一致修订快照与按页增量传输：[视图合同](./src/shared/presentationViewSnapshot/README.md)、[后端](./src/backend/features/presentationViewSnapshot/README.md)、[前端](./src/renderer/features/documentRuntime/README.md)
 - 编辑交互会话与失败草稿恢复：[renderer/features/editingInteraction](./src/renderer/features/editingInteraction/README.md)
 - 选区属性工具条与颜色草稿：[renderer/features/elementProperties](./src/renderer/features/elementProperties/README.md)
 - 完整编辑预览与排版交接：[renderer/features/editingPreview](./src/renderer/features/editingPreview/README.md)
 - 前端有限人工编辑：[renderer/features/manualEditing](./src/renderer/features/manualEditing/README.md)
-- 底部幻灯片导航、平铺视图与新建空白幻灯片：[renderer/features/deckNavigator](./src/renderer/features/deckNavigator/README.md)
+- 底部幻灯片导航、平铺视图、新建与右键复制／删除幻灯片：[renderer/features/deckNavigator](./src/renderer/features/deckNavigator/README.md)
 - PPTX 编译、解析与质量检查：[backend/engine](./src/backend/engine/README.md)
 
 ## Agent 工作流
@@ -278,6 +279,13 @@ host 不复制 presentation 字段。
 - **图表无法跨渲染器完全保真。** Linnya 前端使用 ECharts，PowerPoint 使用自己的图表渲染器，两者的字体、间距和标签布局无法保证完全一致。因此，[Slides 导出 UI 合同](./src/renderer/features/presentationExport/README.md)提供“将图表转换为图片”设置。该设置默认关闭：需要视觉一致时主动开启，需要继续编辑图表时保留默认的 PowerPoint 原生图表。
 - **Brush 视觉资产暂不支持透明底。** 当前 pinned p5.brush standalone 合成器会把最终画布写成不透明。首版只支持显式纯色背景的整区资产；需要透出下层内容时改用 Shape 或受控 SVG。后续若上游提供稳定 alpha 合同，可在不改写现有不透明 intent 的前提下扩展。
 - **PDF 导出暂不开放。** 已实现的栅格 PDF 不含可选择、搜索和复制的文字对象，因此不再挂载产品入口。真正的语义/矢量 PDF 仍需完成独立的可行性与 ROI 验证。
-- **前端人工编辑是有限能力。** 带稳定作者身份的新 generated deck 可移动或删除已有作者对象；Flex Frame 可按正式作者层级整体选择、移动和删除。作者值仍为字符串的文本支持原位完整替换、字号和颜色，多行及字体拆分的多个渲染 run 不改变这一能力；Frame／Shape 支持纯色，Shape／Image 支持有限视觉尺寸。富文本、内联公式文本、图片源、表格内容、图表数据、新建、复制、编组和 reparent 仍保持只读；旧文稿需先由 Agent 补齐 `slideKey/editKey` 才能出现编辑入口。
+- **前端人工编辑保留明确边界。** 支持下述基础网页编辑闭环；含公式正文、表格/图表内容、复杂对象独立复制、编组、reparent 和自由裁剪焦点尚未开放。页面结构操作受静态源码约束，旧对象需具有 `slideKey/editKey` 才能编辑。完整行为、保存语义及限制见[网页编辑体验](./src/renderer/docs/editing-experience.md)。
 
-有限编辑的正常切换／关闭和导出共用 [documentRuntime 保存屏障](src/renderer/features/documentRuntime/README.md)：原位输入先交给串行写队列，所有修改落盘后才允许离开或读取导出 snapshot。画布即时预览不代表已保存；正式 revision 驱动渲染刷新，不依赖页面和预览的挂载先后。
+手动编辑的离开、关闭和导出共用 [documentRuntime 保存屏障](src/renderer/features/documentRuntime/README.md)：原位输入先交给串行写队列，所有修改落盘后才允许离开或读取导出 snapshot。画布即时预览不代表已保存；正式 revision 驱动渲染刷新，不依赖页面和预览的挂载先后。
+
+
+## 基础网页编辑
+
+画布没有单独的编辑模式：ready 的生成文稿打开即可选中、修改或交给 AI。现支持空白页创作、Shift 多选/框选、键盘微移、吸附、对齐/分布、粗斜体/下划线/文字对齐、文字宽度、基础对象插入、同稿复制/重复、图片替换/适应、同级绘制层序、页面拖动重排，以及最多 50 步的会话撤销/重做。所有写入仍进入 deck.js 和统一修订链；PPTX 延迟到导出物化。
+
+操作、焦点/保存语义、复制和动态源码限制、模块 owner 及验证入口统一见[网页编辑体验](./src/renderer/docs/editing-experience.md)。复杂对象列表/锁定、表格和图表内容、自由裁剪焦点等仍作为独立能力演进。

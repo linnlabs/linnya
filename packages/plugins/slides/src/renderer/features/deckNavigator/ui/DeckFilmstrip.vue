@@ -32,12 +32,23 @@
             <button
               type="button"
               class="deck-filmstrip__item"
-              :class="{ 'deck-filmstrip__item--current': item.index === currentSlideIndex }"
+              :class="{
+                'deck-filmstrip__item--current': item.index === currentSlideIndex,
+                'deck-filmstrip__item--dragging': item.index === draggedIndex,
+                'deck-filmstrip__item--drop-before': item.index === dropIndex && draggedIndex !== null && draggedIndex > item.index,
+                'deck-filmstrip__item--drop-after': item.index === dropIndex && draggedIndex !== null && draggedIndex < item.index,
+              }"
               :data-slide-index="item.index"
               :tabindex="item.index === currentSlideIndex ? 0 : -1"
               :aria-current="item.index === currentSlideIndex ? 'true' : undefined"
               :aria-label="deckNavigatorMessage('slides.navigator.slide.label', { number: item.index + 1 })"
+              :draggable="reorderEnabled"
+              @dragstart="startDrag($event, item.index)"
+              @dragover="allowDrop($event, item.index)"
+              @drop="dropSlide($event, item.index)"
+              @dragend="endDrag"
               @click="selectSlide(item.index)"
+              @contextmenu.prevent.stop="emit('slideContextMenu', $event, item.index)"
             >
               <SlideThumbnail
                 :width="thumbnailSize.width"
@@ -63,7 +74,7 @@ import { storeToRefs } from 'pinia';
 import { useVirtualList } from '@vueuse/core';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import { useSlidesStore } from '../../../store/slidesStore';
-import { useSlidesThumbnailStore } from '../../../store/slidesThumbnailStore';
+import { useSlidesThumbnailStore } from '../store/slidesThumbnailStore';
 import {
   FILMSTRIP_ITEM_GAP_PX,
   resolveFilmstripItemWidthPx,
@@ -75,11 +86,40 @@ import { useDeckNavigatorLocalization } from './useDeckNavigatorLocalization';
 import SlideThumbnail from './SlideThumbnail.vue';
 
 /** 视口左右留白；滚动定位与它保持一致，当前页不会贴边。 */
+const props = defineProps<{ reorderEnabled?: boolean }>();
+const emit = defineEmits<{ slideContextMenu: [event: MouseEvent, index: number]; moveSlide: [index: number, toIndex: number] }>();
+const draggedIndex = ref<number | null>(null);
+/** 拖到哪一页上：放下后被拖的页占据这个位置，插入线画在它被挤开的一侧。 */
+const dropIndex = ref<number | null>(null);
+function startDrag(event: DragEvent, index: number): void {
+  if (!props.reorderEnabled || !event.dataTransfer) return;
+  draggedIndex.value = index;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('application/x-linnya-slide', String(index));
+}
+function allowDrop(event: DragEvent, index: number): void {
+  if (!props.reorderEnabled || draggedIndex.value === null) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  dropIndex.value = index === draggedIndex.value ? null : index;
+}
+function endDrag(): void {
+  draggedIndex.value = null;
+  dropIndex.value = null;
+}
+function dropSlide(event: DragEvent, index: number): void {
+  if (!props.reorderEnabled || draggedIndex.value === null) return;
+  event.preventDefault();
+  if (draggedIndex.value !== index) emit('moveSlide', draggedIndex.value, index);
+  endDrag();
+}
+
 const VIEWPORT_INSET_PX = 16;
 const ENTRANCE_STAGGER_SECONDS = 0.04;
 
 const slidesStore = useSlidesStore();
 const thumbnailStore = useSlidesThumbnailStore();
+watch(() => [slidesStore.currentDeckId, slidesStore.documentBuildState], endDrag);
 const { deckPreview, currentSlideIndex } = storeToRefs(slidesStore);
 const { deckNavigatorMessage } = useDeckNavigatorLocalization();
 

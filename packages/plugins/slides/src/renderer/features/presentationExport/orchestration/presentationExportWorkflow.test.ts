@@ -1,3 +1,4 @@
+import { installTestPresentation } from '../../documentRuntime/testing/installTestPresentation';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import type {
@@ -7,7 +8,6 @@ import type {
 import { registerSlidesDocumentSaveParticipant } from '../../documentRuntime';
 import { runPresentationExport } from './presentationExportWorkflow';
 import { usePresentationExportStore } from '../store/presentationExportStore';
-import { useSlidesStore } from '../../../store/slidesStore';
 
 const requestTargetMock = vi.hoisted(() => vi.fn());
 const exportPresentationMock = vi.hoisted(() => vi.fn());
@@ -36,7 +36,7 @@ describe('runPresentationExport', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
-    useSlidesStore().currentDeckId = 'deck-1';
+    installTestPresentation({ documentId: 'deck-1' });
   });
 
   it('保存位置取消后不调用 backend，并保留当前独立弹窗', async () => {

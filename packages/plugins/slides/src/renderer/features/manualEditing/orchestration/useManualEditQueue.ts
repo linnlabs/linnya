@@ -61,7 +61,8 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
     const state = store.submission;
     if (state.phase === 'awaiting_frame' && store.presentedRevision !== null
       && store.presentedRevision >= state.revision) {
-      settle(state.entry, { status: 'presented', commandId: state.commandId, revision: state.revision });
+      settle(state.entry, { status: 'presented', commandId: state.commandId, revision: state.revision,
+        ...(state.focus ? { focus: state.focus } : {}) });
       store.setSubmission({ phase: 'idle' });
       store.setError(null);
     }
@@ -80,15 +81,24 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
     store.setQueue(remaining);
     store.setSubmission({ phase: 'submitting', entry, commandId });
     logSlidesVerbose('ManualEditQueue', 'dispatch', { documentId: snapshot.documentId, commandId, clientOperationIds: entry.clientOperationIds });
+    let finishPresentation = ports.preparePresentation?.(entry.intent.operation, snapshot);
+    function finish(revision: number | null): void {
+      finishPresentation?.(revision);
+      finishPresentation = undefined;
+    }
     try {
       const result = await submitManualEdit({ ...snapshot, documentId: snapshot.documentId, operation: entry.intent.operation }, {
         createCommandId: () => commandId, submit: ports.submit, trace: ports.trace,
       });
       if (requestEpoch !== epoch) return;
       if (result.status === 'committed') {
-        store.setSubmission({ phase: 'awaiting_frame', entry, commandId, revision: result.revision });
+        store.setHistory(result.history);
+        store.setSubmission({ phase: 'awaiting_frame', entry, commandId, revision: result.revision,
+          ...(result.focus ? { focus: result.focus } : {}) });
+        finish(result.revision);
         await refreshPresentation();
       } else {
+        finish(null);
         fail(entry, commandId, readManualEditErrorMessage(result, ports.message)
           ?? ports.message('slides.manualEditing.error.saveFailed'));
         if (result.status === 'conflict') {
@@ -103,6 +113,7 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
         fail(entry, commandId, error instanceof Error ? error.message : ports.message('slides.manualEditing.error.saveFailed'));
       }
     } finally {
+      finish(null);
       if (requestEpoch === epoch) {
         processing = false;
         void processQueue();
@@ -121,8 +132,9 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
     }
     const settled = new Promise<ManualEditSettlement>(resolve => receipts.set(clientOperationId, resolve));
     store.setQueue(appendManualEditQueueEntry(store.queue, { intent, clientOperationIds: [clientOperationId] }));
-    // 后续输入不能抹掉“已保存但未刷新”的恢复入口。
+    // 后续输入不能抹掉“已保存但未刷新”的恢复入口；上一次操作提示随新动作失效。
     if (store.submission.phase !== 'awaiting_frame') store.setError(null);
+    store.setNotice(null);
     void processQueue();
     return { clientOperationId, settled };
   }

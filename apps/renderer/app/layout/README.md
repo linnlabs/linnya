@@ -279,6 +279,9 @@ WorkspaceStage 外层 shell 只负责传递可用高度，Markdown Document Surf
 文末留白属于 shell 布局，不写入文档空块，也不计入最后一个 RootBlock 的高度缓存。
 验收需在工作台嵌套结构中检查长文档滚到底、短文档、窄 pane 和末尾光标定位。
 
+Markdown Surface 在滚动 shell 外提供文档局部视口，并通过 Revision 的公开挂载点合同承接文档级
+修订工具栏。工具栏以该视口居中、固定在底部，不跟随正文滚动，也不依赖侧边栏宽度推算分栏位置。
+
 ## Pane 显隐契约
 
 `mounted`、`visible`、`occupied` 是三件不同的事：

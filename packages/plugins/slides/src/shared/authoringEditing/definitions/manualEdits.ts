@@ -1,3 +1,4 @@
+import type { SlidesInsertedObject } from './insertedObject';
 import type { SlidesEditableTextContent } from './editableText';
 export interface SlidesManualTranslation {
   /** 相对未应用人工位移的布局结果，单位 inches。 */
@@ -28,11 +29,16 @@ export interface SlidesManualEditBase {
 }
 
 export interface SlidesManualTextEdit extends SlidesManualEditBase {
+  readonly width?: number;
   readonly kind: 'text';
   /** 与作者 Text.content 同源的完整值；不接受公式。 */
   readonly content?: SlidesEditableTextContent;
   readonly fontSizePt?: number;
   readonly color?: string;
+  readonly bold?: boolean;
+  readonly italic?: boolean;
+  readonly underline?: boolean;
+  readonly align?: 'left' | 'center' | 'right';
 }
 
 export interface SlidesManualFrameEdit extends SlidesManualEditBase {
@@ -49,6 +55,8 @@ export interface SlidesManualShapeEdit extends SlidesManualEditBase {
 }
 
 export interface SlidesManualImageEdit extends SlidesManualEditBase {
+  readonly assetId?: string;
+  readonly fit?: 'contain' | 'cover';
   readonly kind: 'image';
   readonly visualSize?: SlidesManualVisualSize;
 }
@@ -92,6 +100,9 @@ export type SlidesManualTargetEdit =
 export interface SlidesManualSlideEdits {
   readonly slideKey: string;
   readonly targets: readonly SlidesManualTargetEdit[];
+  readonly additions?: readonly SlidesInsertedObject[];
+  /** 只改变同级对象绘制顺序，不参与 Yoga 或作者父子关系。 */
+  readonly paintOrder?: readonly string[];
 }
 
 /** deck.js 中唯一的人工值块；字段表示当前有效值，不是操作日志。 */

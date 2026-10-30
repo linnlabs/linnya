@@ -128,7 +128,7 @@ import { DocumentIcon } from '@linnya/renderer-ui/icons';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { ImageIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
-import { UnsupportedDocumentIcon } from '@linnya/renderer-ui/icons';
+import { DocumentErrorIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect, IconButton } from '@linnya/renderer-ui';
 import { useTreeItemDragDrop } from '../composables/useTreeItemDragDrop.js';
 import { getNodeMenuOptions } from '../composables/useContextMenu.js';
@@ -214,7 +214,7 @@ const isUnsupportedDocumentNode = computed(() => (
 const nodeIconComponent = computed(() => {
   if (props.node.type === 'folder') return FolderIcon;
   if (props.node.type === 'asset_image') return ImageIcon;
-  if (isUnsupportedDocumentNode.value) return UnsupportedDocumentIcon;
+  if (isUnsupportedDocumentNode.value) return DocumentErrorIcon;
   return displayDocumentType.value?.iconComponent ?? DocumentIcon;
 });
 const nodeIconClass = computed(() => {

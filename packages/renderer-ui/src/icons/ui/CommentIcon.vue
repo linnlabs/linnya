@@ -1,29 +1,23 @@
 <!--
  * packages/renderer-ui/src/icons/ui/CommentIcon.vue
- * (原 HaveCommentIcon.vue)
- * “有评论”图标组件
+ * “批注”图标组件。
 -->
 <template>
   <svg
+    class="linnya-ui-icon"
+    data-icon="comment"
+    data-state="lines"
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
   >
-    <g>
-      <path
-        d="M12.72,11.69h-5.12c-.26,0-.47.21-.47.47s.21.47.47.47h5.12c.26,0,.47-.21.47-.47s-.21-.47-.47-.47Z"
-        fill="currentColor"
-        stroke-width="0"
-      />
-      <path
-        d="M16.32,8.17H7.6c-.26,0-.47.21-.47.47s.21.47.47.47h8.72c.26,0,.47-.21.47-.47s-.21-.47-.47-.47Z"
-        fill="currentColor"
-        stroke-width="0"
-      />
-    </g>
-    <path
-      d="M12.48,15.34h4.92c.9,0,1.6-.71,1.6-1.57v-6.71c0-.85-.7-1.57-1.6-1.57H6.6c-.9,0-1.6.71-1.6,1.57v6.71c0,.85.7,1.57,1.6,1.57h1.6v3.16h0s4.28-3.16,4.28-3.16h0ZM8.8,19.3c-.44.33-1.07.24-1.4-.2-.13-.17-.2-.38-.2-.59v-2.17h-.6c-1.44,0-2.6-1.15-2.6-2.57v-6.71c0-1.42,1.16-2.57,2.6-2.57h10.8c1.44,0,2.6,1.15,2.6,2.57v6.71c0,1.42-1.16,2.57-2.6,2.57h-4.59l-4.01,2.96h0Z"
-      fill="currentColor"
-      stroke-width="0"
-    />
+    <path d="M11.5 15.5h6a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-11a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h1v3z"/>
+    <path d="M7.5 8.5h9M7.5 12.5h5"/>
   </svg>
-</template> 
+</template>

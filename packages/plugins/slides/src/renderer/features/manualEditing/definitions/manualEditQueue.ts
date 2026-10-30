@@ -1,6 +1,7 @@
+import type { SlidesManualEditHistoryFocus } from '@plugin/slides/shared/authoringEditing';
 import type { ManualEditIntent } from './manualEditingTypes';
 
-/** 多个连续绝对修改可以共用一次编译，但每个调用方都必须收到自己的结果。 */
+/** 一条队列记录对应一个已完成的用户动作及其回执。 */
 export interface ManualEditQueueEntry {
   readonly intent: ManualEditIntent;
   readonly clientOperationIds: readonly [string, ...string[]];
@@ -9,10 +10,11 @@ export interface ManualEditQueueEntry {
 export type ManualEditSubmissionState =
   | { readonly phase: 'idle' }
   | { readonly phase: 'submitting'; readonly entry: ManualEditQueueEntry; readonly commandId: string }
-  | { readonly phase: 'awaiting_frame'; readonly entry: ManualEditQueueEntry; readonly commandId: string; readonly revision: number };
+  | { readonly phase: 'awaiting_frame'; readonly entry: ManualEditQueueEntry; readonly commandId: string; readonly revision: number;
+      readonly focus?: SlidesManualEditHistoryFocus };
 
 export type ManualEditSettlement =
-  | { readonly status: 'presented'; readonly commandId: string; readonly revision: number }
+  | { readonly status: 'presented'; readonly commandId: string; readonly revision: number; readonly focus?: SlidesManualEditHistoryFocus }
   | { readonly status: 'failed'; readonly commandId: string; readonly message: string }
   | { readonly status: 'blocked'; readonly dependencyCommandId: string; readonly message: string }
   | { readonly status: 'cancelled' };

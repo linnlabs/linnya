@@ -28,7 +28,7 @@
   ],
   "compat": {
     "minApp": "0.0.38",
-    "rendererUi": "^2.0.0"
+    "rendererUi": "^3.0.0"
   },
   "ownedTables": [
     "decision_record_versions",

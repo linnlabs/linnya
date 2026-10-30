@@ -1,13 +1,22 @@
 <!--
  * packages/renderer-ui/src/icons/ui/SaveIcon.vue
- * "保存"图标组件
+ * “保存”图标组件。
 -->
 <template>
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-    <path d="M4,6.44c0-1.35,1.09-2.44,2.44-2.44h8.86c.77,0,1.5.3,2.04.85l1.81,1.81c.54.54.85,1.28.85,2.04v8.86c0,1.35-1.09,2.44-2.44,2.44H6.44c-1.35,0-2.44-1.09-2.44-2.44V6.44ZM6.44,5.33c-.61,0-1.11.5-1.11,1.11v11.11c0,.61.5,1.11,1.11,1.11h.22v-4.67c0-1.1.9-2,2-2h6.67c1.1,0,2,.9,2,2v4.67h.22c.61,0,1.11-.5,1.11-1.11v-8.86c0-.41-.16-.81-.46-1.1l-1.81-1.81c-.23-.23-.53-.38-.85-.44v2.42c0,1.1-.9,2-2,2h-4c-1.1,0-2-.9-2-2v-2.44h-1.11ZM16,18.67v-4.67c0-.37-.3-.67-.67-.67h-6.67c-.37,0-.67.3-.67.67v4.67h8ZM8.89,5.33v2.44c0,.37.3.67.67.67h4c.37,0,.67-.3.67-.67h0v-2.44h-5.33Z" fill="currentColor" stroke-width="0"/>
+  <svg
+    class="linnya-ui-icon"
+    data-icon="save"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path d="M7 5.5L15.39 5.5A1.5 1.5 0 0 1 16.45 5.94L18.06 7.55A1.5 1.5 0 0 1 18.5 8.61L18.5 17A1.5 1.5 0 0 1 17 18.5L7 18.5A1.5 1.5 0 0 1 5.5 17L5.5 7A1.5 1.5 0 0 1 7 5.5z"/>
+    <path d="M8.5 5.5v3a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-3M7.5 18.5v-5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v5"/>
   </svg>
 </template>
-
-<script setup lang="ts">
-// 保存图标组件
-</script> 

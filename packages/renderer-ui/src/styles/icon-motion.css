@@ -1,0 +1,209 @@
+/*
+ * Linnya 界面图标动效。
+ *
+ * 只给少数需要表达“状态变了”或“正在进行”的图标。时长和缓动只引用 renderer-ui 的 motion token；
+ * 减少动态效果时 token 归零，状态切换立即完成，循环动画在下方停用。
+ * 选择器只依赖根节点的 data-icon / data-state 和母版里的 data-part。
+ */
+
+/* 方向箭头：方向变化时旋转过渡 */
+.linnya-ui-icon[data-icon="chevron"] [data-part="arrow"] {
+  transform-origin: 12px 12px;
+  transition: transform var(--duration-short) var(--ease-standard);
+}
+
+/* 复制：两张纸淡出，对勾从左到右描画出现 */
+.linnya-ui-icon[data-icon="copy"] [data-part="sheets"] {
+  transform-origin: 12px 12px;
+  transition:
+    opacity var(--duration-short) var(--ease-standard),
+    transform var(--duration-short) var(--ease-standard);
+}
+
+.linnya-ui-icon[data-icon="copy"] [data-part="check"] {
+  opacity: 0;
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 1.05;
+  transition:
+    opacity var(--duration-short) var(--ease-standard),
+    stroke-dashoffset 0s linear var(--duration-short);
+}
+
+.linnya-ui-icon[data-icon="copy"][data-state="copied"] [data-part="sheets"] {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.linnya-ui-icon[data-icon="copy"][data-state="copied"] [data-part="check"] {
+  opacity: 1;
+  stroke-dashoffset: 0;
+  transition:
+    opacity 0s linear var(--duration-micro),
+    stroke-dashoffset var(--duration-medium) var(--ease-enter) var(--duration-micro);
+}
+
+/* 显示 / 隐藏：斜线与遮罩间隙同步描画 */
+.linnya-ui-icon[data-icon="eye"] [data-part="slash"],
+.linnya-ui-icon[data-icon="eye"] [data-part="gap"] {
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--duration-medium) var(--ease-standard);
+}
+
+.linnya-ui-icon[data-icon="eye"][data-state="visible"] [data-part="slash"],
+.linnya-ui-icon[data-icon="eye"][data-state="visible"] [data-part="gap"] {
+  stroke-dashoffset: 1.05;
+}
+
+/* 播放 / 暂停：外圈不动，三角与竖线互相替换。离场用 micro + exit 让开，进场用 medium + enter 落定 */
+.linnya-ui-icon[data-icon="play-pause"] :is([data-part="play"], [data-part="pause"]) {
+  transform-origin: 12px 12px;
+  transition:
+    opacity var(--duration-medium) var(--ease-enter) var(--duration-micro),
+    transform var(--duration-medium) var(--ease-enter) var(--duration-micro);
+}
+
+.linnya-ui-icon[data-icon="play-pause"][data-state="paused"] [data-part="pause"],
+.linnya-ui-icon[data-icon="play-pause"][data-state="playing"] [data-part="play"] {
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity var(--duration-micro) var(--ease-exit),
+    transform var(--duration-micro) var(--ease-exit);
+}
+
+/* 刷新进行中、加载中：匀速旋转 */
+@keyframes linnya-ui-icon-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.linnya-ui-icon[data-icon="refresh"] [data-part="spinner"],
+.linnya-ui-icon[data-icon="loading"] [data-part="spinner"] {
+  transform-origin: 12px 12px;
+}
+
+.linnya-ui-icon[data-icon="refresh"][data-state="spinning"] [data-part="spinner"],
+.linnya-ui-icon[data-icon="loading"] [data-part="spinner"] {
+  animation: linnya-ui-icon-spin var(--duration-loop) linear infinite;
+}
+
+/*
+ * AI 进行中：Linnya 标识按活动选动态，几何不变形。
+ * 三层叠放：ghost 是 30% 不透明度的浅色完整标识，plant 是可分部件的实色标识，flow 是被渐变亮带遮罩的实色标识。
+ * 光流只把浅色加深到实色，任何一处都不比浅色底更浅；生成不用浅色底。没加载本样式表时三层叠成一枚完整实色标识。
+ */
+.linnya-ui-icon[data-icon="linnya-loading"] [data-part="ghost"] {
+  opacity: 0.3;
+}
+
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="thinking"] :is([data-part="ghost"], [data-part="flow"]),
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="generating"] :is([data-part="ghost"], [data-part="flow"]),
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="processing"] [data-part="plant"] {
+  display: none;
+}
+
+/* 思考：整株绕茎底随风轻摆，叶片绕交汇点慢半拍。向右多、向左少，叶尖不出画布 */
+@keyframes linnya-ui-icon-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(3deg); }
+}
+
+@keyframes linnya-ui-icon-sway-left {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(3deg); }
+}
+
+@keyframes linnya-ui-icon-sway-right {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(5deg); }
+}
+
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="thinking"] [data-part="plant"] {
+  transform-origin: 10.63px 23.58px;
+  animation: linnya-ui-icon-sway calc(var(--duration-loop) * 2) ease-in-out infinite;
+}
+
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="thinking"] [data-part="leaf-left"] {
+  transform-origin: 12.11px 13.41px;
+  animation: linnya-ui-icon-sway-left calc(var(--duration-loop) * 2) ease-in-out calc(var(--duration-loop) * -1.75) infinite;
+}
+
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="thinking"] [data-part="leaf-right"] {
+  transform-origin: 13.03px 13.18px;
+  animation: linnya-ui-icon-sway-right calc(var(--duration-loop) * 2) ease-in-out calc(var(--duration-loop) * -1.8) infinite;
+}
+
+/*
+ * 生成：不带浅色底，凭空长出。茎沿中心线从茎底向上描出，左叶、右叶从交汇点依次舒展；
+ * 长成后按同样的顺序一节一节匀速淡出：右叶刚长满茎就开始变淡，右叶还没淡尽茎已重新长出。
+ * 每节的出现、停留、淡出都在同一条关键帧里，节与节之间不靠两条动画对齐，接缝处不会闪。
+ * 生长用 standard 缓动：enter 起步太快，茎会在一瞬间冒出半截，看起来像闪了一下。
+ */
+@keyframes linnya-ui-icon-grow-stem {
+  0% { stroke-dashoffset: 1.15; opacity: 1; animation-timing-function: var(--ease-standard); }
+  26% { stroke-dashoffset: 0; opacity: 1; }
+  44% { stroke-dashoffset: 0; opacity: 1; }
+  66%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@keyframes linnya-ui-icon-grow-left {
+  0%, 16% { transform: scale(0); opacity: 1; animation-timing-function: var(--ease-standard); }
+  38% { transform: scale(1); opacity: 1; }
+  56% { transform: scale(1); opacity: 1; }
+  78%, 100% { transform: scale(1); opacity: 0; }
+}
+
+/* 右叶的淡出跨过循环接缝，和下一轮茎的生长重叠；淡尽后先在不可见时缩回，再等下一次舒展 */
+@keyframes linnya-ui-icon-grow-right {
+  0% { transform: scale(1); opacity: 0.22; }
+  8% { transform: scale(1); opacity: 0; }
+  9% { transform: scale(0); opacity: 0; }
+  10%, 26% { transform: scale(0); opacity: 1; animation-timing-function: var(--ease-standard); }
+  50% { transform: scale(1); opacity: 1; }
+  72% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.22; }
+}
+
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="generating"] [data-part="stem-reveal"] {
+  stroke-dasharray: 1 2;
+  animation: linnya-ui-icon-grow-stem calc(var(--duration-loop) * 2) linear infinite;
+}
+
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="generating"] [data-part="leaf-left"] {
+  transform-origin: 12.11px 13.41px;
+  animation: linnya-ui-icon-grow-left calc(var(--duration-loop) * 2) linear infinite;
+}
+
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="generating"] [data-part="leaf-right"] {
+  transform-origin: 13.03px 13.18px;
+  animation: linnya-ui-icon-grow-right calc(var(--duration-loop) * 2) linear infinite;
+}
+
+/* 处理：浅色标识不动，一道渐变亮带从茎底沿叶片向上流过，把颜色加深到实色 */
+@keyframes linnya-ui-icon-flow {
+  from { transform: translateY(24px); }
+  to { transform: translateY(-14px); }
+}
+
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="processing"] [data-part="band"] {
+  animation: linnya-ui-icon-flow var(--duration-loop) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 各图标的动画规则选择器更具体，这里用 !important 统一压住 */
+  .linnya-ui-icon [data-part] {
+    animation: none !important;
+  }
+
+  /* AI 进行中停在完整的实色标识 */
+  .linnya-ui-icon[data-icon="linnya-loading"] [data-part="ghost"] {
+    display: inline !important;
+    opacity: 1;
+  }
+
+  .linnya-ui-icon[data-icon="linnya-loading"] :is([data-part="plant"], [data-part="flow"]) {
+    display: none;
+  }
+}

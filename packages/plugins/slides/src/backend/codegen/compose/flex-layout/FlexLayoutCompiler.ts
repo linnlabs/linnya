@@ -1,3 +1,5 @@
+import { orderManualPaint } from './ManualPaintOrder.js';
+import { appendInsertedObjects } from './InsertedObjectProjection.js';
 /**
  * FlexLayoutCompiler — Flex 布局树 → DirectComposeInput
  *
@@ -186,12 +188,13 @@ export function compileSlide(
   slideNumber = 1,
   manualEdits?: SlidesManualSlideEdits,
 ): DirectSlideInput {
+  slideNode = appendInsertedObjects(slideNode, manualEdits?.additions);
   validateSlideAuthoringIdentity(slideNode, slideNumber);
   const projection = prepareSlideManualEditProjection(slideNode, manualEdits);
-  const layoutResult = translateManualLayoutResult(
+  const layoutResult = orderManualPaint(translateManualLayoutResult(
     computeSlideLayout(projection.slideNode, slideWidth, slideHeight),
     projection.editsByKey,
-  );
+  ), manualEdits?.paintOrder ?? []);
   const elements: DirectElementInput[] = [];
   collectElements(layoutResult, elements, {
     slideNumber,

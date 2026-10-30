@@ -15,6 +15,24 @@ import {
 } from './index';
 
 describe('slides backend IPC contracts', () => {
+  it('批量、新对象和图片修改严格接纳作者值，拒绝嵌套事务或任意属性', () => {
+    const base = { commandId: 'c8356051-a487-4cd3-863f-47db0079f991', documentId: 'deck',
+      expectedBase: { revisionId: 'v1', revision: 1, sourceHash: 'a'.repeat(64) } };
+    const target = { slideKey: 'page', editKey: 'title' };
+    const move = { op: 'translate_by', target, targetKind: 'text', delta: { dx: 1 / 96, dy: 0 } };
+    const parse = (operation: unknown) => parseSlidesManualEditPayload({ ...base, operation }).operation;
+    expect(parse({ op: 'batch', operations: [move] })).toEqual({ op: 'batch', operations: [move] });
+    expect(() => parse({ op: 'batch', operations: [{ op: 'undo' }] })).toThrow();
+    expect(() => parse({ op: 'batch', operations: [{ op: 'batch', operations: [move] }] })).toThrow();
+    expect(() => parse({ op: 'batch', operations: [] })).toThrow();
+    expect(parse({ op: 'set_image', target, targetKind: 'image', assetId: 'owned-image', fit: 'cover' })).toMatchObject({ assetId: 'owned-image' });
+    expect(() => parse({ op: 'set_image', target, targetKind: 'image', src: 'https://example.com/image.png' })).toThrow();
+    const object = { kind: 'text', editKey: 'new-title', content: [{ text: 'Title', style: { bold: true } }], style: { fontSize: 24 }, box: { x: 1, y: 1, w: 3, h: 1 } };
+    expect(parse({ op: 'insert_objects', index: 0, objects: [object] })).toMatchObject({ objects: [object] });
+    expect(() => parse({ op: 'insert_objects', index: 0, objects: [object, object] })).toThrow();
+    expect(() => parse({ op: 'insert_objects', index: 0, objects: [{ ...object, html: '<b>Title</b>' }] })).toThrow();
+    expect(() => parse({ op: 'set_text_width', target, targetKind: 'text', width: 0 })).toThrow();
+  });
   it('re-exports package-owned Slides IPC identity', () => {
     expect(SLIDES_PLUGIN_ID).toBe(PACKAGE_SLIDES_PLUGIN_ID);
     expect(SLIDES_IPC).toBe(PACKAGE_SLIDES_IPC);
@@ -167,8 +185,12 @@ describe('slides backend IPC contracts', () => {
       },
     })).toMatchObject({ operation: { op: 'delete_target', targetKind: 'image' } });
 
-    const insertOperation = { op: 'insert_blank_slide', index: 2 };
-    expect(parseSlidesManualEditPayload({ ...payload, operation: insertOperation }).operation).toEqual(insertOperation);
+    for (const op of ['insert_blank_slide', 'duplicate_slide', 'delete_slide']) {
+      const operation = { op, index: 2 };
+      expect(parseSlidesManualEditPayload({ ...payload, operation }).operation).toEqual(operation);
+      expect(() => parseSlidesManualEditPayload({ ...payload, operation: { op, index: -1 } })).toThrow();
+      expect(() => parseSlidesManualEditPayload({ ...payload, operation: { op, index: 0, target: payload.operation.target } })).toThrow();
+    }
     for (const operation of [
       { op: 'insert_blank_slide', index: -1 },
       { op: 'insert_blank_slide', index: 1.5 },

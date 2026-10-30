@@ -10,7 +10,7 @@ import type {
 
 vi.mock('@linnya/renderer-ui/icons', () => ({
   CloseIcon: { template: '<span class="mock-close-icon" />' },
-  EnterLeftIcon: { template: '<span class="mock-enter-left-icon" />' },
+  EnterIcon: { template: '<span class="mock-enter-left-icon" />' },
   LinnyaIcon: { template: '<span class="mock-linnya-icon" />' },
 }));
 

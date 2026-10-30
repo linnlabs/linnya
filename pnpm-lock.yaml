@@ -727,6 +727,9 @@ importers:
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
+      '@linnya/renderer-ui':
+        specifier: workspace:*
+        version: link:../../renderer-ui
       '@types/node':
         specifier: ^24.0.0
         version: 24.9.1

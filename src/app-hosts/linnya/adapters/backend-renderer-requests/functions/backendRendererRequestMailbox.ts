@@ -3,6 +3,7 @@ import path from 'node:path';
 import { TextDecoder } from 'node:util';
 
 import type { JsonValue } from '@app/schemas';
+import { isBackendRendererJsonValue } from './backendRendererJsonValue';
 
 import {
   BACKEND_RENDERER_REQUEST_EXTERNAL_LEAF_MIN_BYTES,
@@ -171,6 +172,13 @@ export async function readBackendRendererResponseMailbox(input: {
 }
 
 async function encodeMailboxValue(value: unknown, context: MailboxContext): Promise<JsonValue> {
+  if (isBackendRendererJsonValue(value)) {
+    const json = JSON.stringify(value);
+    const bytes = Buffer.byteLength(json, 'utf8');
+    if (bytes < BACKEND_RENDERER_REQUEST_EXTERNAL_LEAF_MIN_BYTES) return { kind: 'json', value };
+    const fileName = await publishExternalFile(context, 'json', json, bytes);
+    return { kind: 'external_json', file_name: fileName, byte_length: bytes };
+  }
   if (typeof value === 'string'
     && Buffer.byteLength(value, 'utf8') >= BACKEND_RENDERER_REQUEST_EXTERNAL_LEAF_MIN_BYTES) {
     const bytes = Buffer.byteLength(value, 'utf8');
@@ -211,11 +219,11 @@ async function decodeMailboxValue(
   if (!isJsonRecord(value) || typeof value.kind !== 'string') {
     return decodeBackendRendererRequestValue(value);
   }
-  if (value.kind === 'external_string' || value.kind === 'external_bytes') {
+  if (value.kind === 'external_string' || value.kind === 'external_bytes' || value.kind === 'external_json') {
     const expectedKeys = ['kind', 'file_name', 'byte_length'];
     requireExactKeys(value, expectedKeys);
     if (typeof value.file_name !== 'string'
-      || !new RegExp(`^${expectedPrefix}-[0-9]{4}\\.(?:txt|bin)$`, 'u').test(value.file_name)
+      || !new RegExp(`^${expectedPrefix}-[0-9]{4}\\.(?:txt|bin|json)$`, 'u').test(value.file_name)
       || typeof value.byte_length !== 'number'
       || !Number.isSafeInteger(value.byte_length)
       || value.byte_length < 0
@@ -227,6 +235,11 @@ async function decodeMailboxValue(
       value.byte_length,
     );
     if (value.kind === 'external_bytes') return Uint8Array.from(bytes);
+    if (value.kind === 'external_json') {
+      const parsed: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+      if (!isBackendRendererJsonValue(parsed)) throw new Error('Backend Renderer mailbox JSON 不合法');
+      return parsed;
+    }
     try {
       return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } catch {
@@ -260,7 +273,7 @@ async function decodeMailboxValue(
 
 async function publishExternalFile(
   context: MailboxContext,
-  extension: 'txt' | 'bin',
+  extension: 'txt' | 'bin' | 'json',
   data: string | Uint8Array,
   byteLength: number,
 ): Promise<string> {

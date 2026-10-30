@@ -36,7 +36,7 @@
           <div class="card-main">
             <div class="card-title-row">
               <span class="card-icon-inline">
-                <KnowledgeBaseIcon class="kb-icon" />
+                <LibraryIcon class="kb-icon" />
               </span>
               <h3 class="card-title">{{ kb.name }}</h3>
               <span v-if="kb.id === 'default'" class="default-badge">
@@ -116,7 +116,7 @@
 import { computed, ref, onMounted, watch } from 'vue';
 import { useKnowledgeBaseStore } from '../../stores/knowledgeBase';
 import { useKnowledgeGraphProgressStore } from '../../stores/knowledgeGraphProgressStore';
-import { KnowledgeBaseIcon } from '@linnya/renderer-ui/icons';
+import { LibraryIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { UploadIcon } from '@linnya/renderer-ui/icons';
 import { BaseButton, PageSectionHeader } from '@linnya/renderer-ui';

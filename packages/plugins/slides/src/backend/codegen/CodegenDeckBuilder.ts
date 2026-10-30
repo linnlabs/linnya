@@ -1,3 +1,4 @@
+import { resolveImageSources } from '../engine/assets/imageSourceResolver';
 import { materializeIntrinsicTextBoxes } from '../engine/text/materializeIntrinsicTextBoxes';
 import { randomUUID } from 'node:crypto';
 import { MathFormulaError, SlideMarkerIndex, type DeckSpec } from '@plugin/slides/shared';
@@ -167,19 +168,21 @@ export class CodegenDeckBuilder {
     const { source, current, expectedBase } = await this.readExistingBuildBase(input);
     const compiled = await this.compileAuthoringInputFromSource(source, current.deckSpec.theme);
     const deckSpec = await this.buildOwnedDeckSpec(compiled, { documentId: input.nodeId });
-    return this.commitDeferredDeckSpec(input, source, expectedBase, deckSpec);
+    // 完整编译可能新增/删除资源：只读已接管或接管新来源，记录精确可达集合，不运行 PPTX assembler。
+    if (this.deps.imageSourceResolver) await resolveImageSources(structuredClone(deckSpec), this.deps.imageSourceResolver, { documentId: input.nodeId });
+    return this.commitDeferredDeckSpec(input, source, expectedBase, deckSpec, false);
   }
 
   /**
    * 只接受上层已经证明与当前作者源码等价的 DeckSpec 投影。
-   * 当前用途是顶层原子元素的 post-layout translate_by；仍走正式 PPTX 与 CAS 提交。
+   * 用于顶层原子元素的 post-layout translate_by 与已证明等价的空白页插入；仍走 CAS 与延迟 PPTX 提交。
    */
   async commitManualEditFromProjectedDeckSpec(
     input: CodegenProjectedDeckBuildInput,
   ): Promise<CodegenManualEditCommitResult> {
     const { source, current, expectedBase } = await this.readExistingBuildBase(input);
     this.deps.recordSourceTheme?.(current.deckSpec.theme);
-    return this.commitDeferredDeckSpec(input, source, expectedBase, input.deckSpec);
+    return this.commitDeferredDeckSpec(input, source, expectedBase, input.deckSpec, true);
   }
 
   async buildDeckSpecFromSource(input: CodegenDeckBuildInput): Promise<DeckSpec> {
@@ -357,6 +360,7 @@ export class CodegenDeckBuilder {
     source: string,
     expectedBase: CodegenDeckExpectedBase,
     deckSpec: DeckSpec,
+    inheritContext: boolean,
   ): Promise<CodegenManualEditCommitResult> {
     try {
       const version = await this.deps.presentationRepo.commitPresentation(input.nodeId, deckSpec, {
@@ -365,7 +369,7 @@ export class CodegenDeckBuilder {
         baseRevisionId: expectedBase.revisionId,
         baseRevision: expectedBase.revision,
         origin: 'edit',
-        revisionContext: 'inherit_base',
+        ...(inheritContext ? { revisionContext: 'inherit_base' as const } : {}),
         ...(input.expectedDraftState ? { expectedDraftState: input.expectedDraftState } : {}),
         ...(input.manualEditReceipt ? { manualEditReceipt: input.manualEditReceipt } : {}),
       });

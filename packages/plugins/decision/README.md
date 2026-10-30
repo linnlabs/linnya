@@ -2,6 +2,8 @@
 
 本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.23.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
+工具卡的纯类型合同来自 `@linnya/plugin-host-contract/renderer/toolUi`；Renderer UI 的 peer range 与 manifest 同为 `^3.0.0`，开发时使用 `workspace:*`。本插件跟随同批 Host 装配验证，兼容声明不代表已进入正式发行。
+
 ## 能力与边界
 
 Agent 负责澄清、探索、调查和判断，Skill 提供方法与操作说明。程序保存项目内的版本化条件，计算已声明的四则式和数值约束；条件或显式观察的行动改变后，旧建议标记为待复核。`current` 仅表示输入和显式行动依据版本相符，不是质量认证。

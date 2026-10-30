@@ -78,7 +78,7 @@ describe('Slides manual edits codec', () => {
       slides: [{ slideKey: 'overview', targets: [
         { kind: 'text', editKey: 'headline', fontSizePt: 0 },
       ] }],
-    })).toEqual({ error: 'manualEdits.slides[0].targets[0].fontSizePt 必须是 1–400 pt 内的有限数字。' });
+    })).toEqual({ error: 'manualEdits.slides[0].targets[0]: 文本字号必须是 1–400 pt 内的有限数字。' });
 
     expect(parseSlidesManualEdits({
       version: 2,

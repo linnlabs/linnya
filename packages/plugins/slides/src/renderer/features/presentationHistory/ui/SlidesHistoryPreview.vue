@@ -24,7 +24,7 @@
           :aria-label="message('slides.history.previous')"
           @click="selectPage(state.pageIndex - 1)"
         >
-          <ChevronRightIcon class="slides-history-previous-icon" />
+          <ChevronIcon direction="left" />
         </button>
         <span aria-live="polite">{{ state.pageIndex + 1 }} / {{ pageCount }}</span>
         <button
@@ -33,7 +33,7 @@
           :aria-label="message('slides.history.next')"
           @click="selectPage(state.pageIndex + 1)"
         >
-          <ChevronRightIcon />
+          <ChevronIcon direction="right" />
         </button>
       </nav>
     </div>
@@ -41,7 +41,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
-import { ChevronRightIcon } from '@linnya/renderer-ui/icons';
+import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { invokeRendererPluginIpc } from '@plugin/renderer/pluginIpcClient';
 import { SLIDES_IPC, SLIDES_PLUGIN_ID } from '@plugin/slides/shared/ipc';
 import type { PresentationRenderModel } from '@plugin/slides/shared/renderModel';

@@ -6,6 +6,7 @@ import {
 import { useAssistantStore } from './assistantStore';
 import { useConversationState } from './conversationState';
 import { useMessageWindowStore } from '../message-window/store/messageWindowStore';
+import { isRenderableConversationMessage } from '../functions/renderableConversationMessage';
 
 interface ConversationContentPhaseSelectorOptions {
   isHistoryReplayLoading?: ComputedRef<boolean>;
@@ -46,7 +47,7 @@ export function useConversationContentPhaseSelector(
         || messageWindowStore.isBackgroundPaging
         || messageWindowStore.isNavigationLoading
       )
-      && messageWindowStore.rows.length > 0
+      && messageWindowStore.rows.some(row => isRenderableConversationMessage(row.message))
     )
   ));
   const hasRenderableItems = options.hasRenderableItems ?? hasRenderableSourceMessages;

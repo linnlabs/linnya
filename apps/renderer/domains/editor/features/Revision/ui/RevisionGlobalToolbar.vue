@@ -8,84 +8,95 @@
 -->
 
 <template>
-  <transition name="revision-global-toolbar-fade">
-    <div
-      v-if="visible"
-      class="revision-global-toolbar"
-    >
-      <div class="revision-global-toolbar__inner">
-        <!-- 文本说明与统计 -->
-        <div class="revision-global-toolbar__summary">
-          <span class="summary-title">{{ editorMessage('editor.revision.global.pendingTitle') }}</span>
-          <span class="summary-counts">
-            <span
-              v-if="pendingCount > 0"
-              class="summary-blocks"
-            >
-              {{ formatRevisionBlockCount(pendingCount, editorMessage) }}
+  <Teleport
+    v-if="overlayTarget"
+    :to="overlayTarget"
+  >
+    <transition name="revision-global-toolbar-fade">
+      <div
+        v-if="visible"
+        class="revision-global-toolbar"
+      >
+        <div class="revision-global-toolbar__inner">
+          <!-- 文本说明与统计 -->
+          <div class="revision-global-toolbar__summary">
+            <span class="summary-title">{{ editorMessage('editor.revision.global.pendingTitle') }}</span>
+            <span class="summary-counts">
+              <span
+                v-if="pendingCount > 0"
+                class="summary-blocks"
+              >
+                {{ formatRevisionBlockCount(pendingCount, editorMessage) }}
+              </span>
+              <span
+                v-if="insertCount > 0"
+                class="summary-insert"
+              >
+                +{{ insertCount }}
+              </span>
+              <span
+                v-if="insertCount > 0 && deleteCount > 0"
+                class="summary-separator"
+              >
+                /
+              </span>
+              <span
+                v-if="deleteCount > 0"
+                class="summary-delete"
+              >
+                -{{ deleteCount }}
+              </span>
             </span>
             <span
-              v-if="insertCount > 0"
-              class="summary-insert"
+              v-if="projectionDeferred"
+              class="summary-warning"
             >
-              +{{ insertCount }}
+              {{ editorMessage('editor.revision.global.projectionDeferred') }}
             </span>
             <span
-              v-if="insertCount > 0 && deleteCount > 0"
-              class="summary-separator"
+              v-if="projectionFailed"
+              class="summary-warning"
             >
-              /
+              {{ editorMessage('editor.revision.global.projectionFailed') }}
             </span>
-            <span
-              v-if="deleteCount > 0"
-              class="summary-delete"
-            >
-              -{{ deleteCount }}
-            </span>
-          </span>
-          <span
-            v-if="projectionDeferred"
-            class="summary-warning"
-          >
-            {{ editorMessage('editor.revision.global.projectionDeferred') }}
-          </span>
-          <span
-            v-if="projectionFailed"
-            class="summary-warning"
-          >
-            {{ editorMessage('editor.revision.global.projectionFailed') }}
-          </span>
-        </div>
+          </div>
 
-        <!-- 操作按钮 -->
-        <div class="revision-global-toolbar__actions">
-          <button
-            class="toolbar-btn reject-btn"
-            type="button"
-            :disabled="busy"
-            @click="handleRejectAll"
-          >
-            {{ editorMessage('editor.revision.action.rejectAll') }}
-          </button>
-          <button
-            class="toolbar-btn accept-btn"
-            type="button"
-            :disabled="busy"
-            @click="handleAcceptAll"
-          >
-            {{ editorMessage('editor.revision.action.acceptAll') }}
-          </button>
+          <!-- 操作按钮 -->
+          <div class="revision-global-toolbar__actions">
+            <button
+              class="toolbar-btn reject-btn"
+              type="button"
+              :disabled="busy"
+              @click="handleRejectAll"
+            >
+              {{ editorMessage('editor.revision.action.rejectAll') }}
+            </button>
+            <button
+              class="toolbar-btn accept-btn"
+              type="button"
+              :disabled="busy"
+              @click="handleAcceptAll"
+            >
+              {{ editorMessage('editor.revision.action.acceptAll') }}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  </transition>
+    </transition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
+import { inject } from 'vue'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
+import { REVISION_TOOLBAR_OVERLAY_TARGET_KEY } from '../definitions/revisionToolbarOverlay'
 import { formatRevisionBlockCount } from '../functions/revisionPresentation'
 
 const { editorMessage } = useEditorLocalization()
+const overlayTarget = inject(REVISION_TOOLBAR_OVERLAY_TARGET_KEY)
+if (!overlayTarget) {
+  throw new Error('文档级修订工具栏缺少文档宿主挂载点')
+}
 
 /**
  * 文档级修订工具栏 Props

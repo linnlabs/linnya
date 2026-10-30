@@ -52,7 +52,6 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
   const showLayoutWarnings = ref(false);
 
   /** 是否进入源码元素选择模式；只有用户显式打开后，舞台点击才会被 source selection 接管 */
-  const sourceSelectionModeEnabled = ref(false);
 
   // ─── Computed ───
 
@@ -143,14 +142,6 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
     showLayoutWarnings.value = !showLayoutWarnings.value;
   }
 
-  function setSourceSelectionModeEnabled(enabled: boolean) {
-    sourceSelectionModeEnabled.value = enabled;
-  }
-
-  function toggleSourceSelectionMode() {
-    sourceSelectionModeEnabled.value = !sourceSelectionModeEnabled.value;
-  }
-
   function $reset() {
     deckViewMode.value = 'slide';
     filmstripCollapsed.value = false;
@@ -164,7 +155,6 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
      */
     selectedElementId.value = null;
     showLayoutWarnings.value = false;
-    sourceSelectionModeEnabled.value = false;
   }
 
   return {
@@ -178,7 +168,6 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
     zoomMode,
     selectedElementId,
     showLayoutWarnings,
-    sourceSelectionModeEnabled,
     // Computed
     zoomPercentText,
     isFitZoom,
@@ -195,8 +184,6 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
     zoomToFit,
     selectElement,
     toggleLayoutWarnings,
-    setSourceSelectionModeEnabled,
-    toggleSourceSelectionMode,
     $reset,
   };
 });

@@ -2,6 +2,8 @@
 
 import { createApp, defineComponent, h, nextTick, type PropType } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { clearLocalizationRegistryForTest, registerMessageCatalogs } from '@app/localization';
+import { CONVERSATION_MESSAGE_CATALOG } from '../definitions/conversationMessageCatalog';
 import { captureConversationClientNotice, useClientNoticeStore } from '../features/client-notices';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConversationContentPhase } from '../functions/conversationContentPhase';
@@ -10,9 +12,11 @@ import type {
   ConversationSurfaceVariant,
 } from '../definitions/conversationPresentation';
 import ConversationChatSurface from './ConversationChatSurface.vue';
+import { useMessageWindowStore } from '../message-window/store/messageWindowStore';
 
 const surfaceState = vi.hoisted(() => ({
   phase: 'draft' as ConversationContentPhase,
+  conversationId: null as string | null,
 }));
 
 vi.mock('../store/conversationContentPhaseSelector', () => ({
@@ -26,7 +30,8 @@ vi.mock('../store/conversationContentPhaseSelector', () => ({
 vi.mock('../store/assistantStore', () => ({
   useAssistantStore: () => ({
     isTimelineCollapsed: false,
-    activeConversationId: null,
+    get activeConversationId() { return surfaceState.conversationId; },
+    get selectedConversationId() { return surfaceState.conversationId; },
     activeMessages: [],
     error: null,
     clearError: vi.fn(),
@@ -88,7 +93,6 @@ vi.mock('./components/ConversationEmptyState.vue', () => ({
   }),
 }));
 
-vi.mock('@app/localization', () => ({ useLocalization: () => ({ currentLocale: { value: 'zh-CN' }, message: (_key: string, fallback: string) => fallback }) }));
 vi.mock('../features/client-notices/orchestration/clientNoticeApi', () => ({ sendClientNotice: vi.fn(async () => { throw new Error('offline'); }) }));
 
 function mountSurface(props: {
@@ -112,7 +116,9 @@ function mountSurface(props: {
 describe('ConversationChatSurface content assembly', () => {
   beforeEach(() => {
     surfaceState.phase = 'draft';
+    surfaceState.conversationId = null;
     localStorage.clear();
+    registerMessageCatalogs(CONVERSATION_MESSAGE_CATALOG);
     vi.stubGlobal('ResizeObserver', class {
       observe = vi.fn();
       disconnect = vi.fn();
@@ -121,6 +127,7 @@ describe('ConversationChatSurface content assembly', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    clearLocalizationRegistryForTest();
     document.body.innerHTML = '';
   });
 
@@ -132,12 +139,33 @@ describe('ConversationChatSurface content assembly', () => {
       captureConversationClientNotice(null, { error_kind: 'http', operation: 'send', http_status: 401 });
       await nextTick();
       expect(container.querySelectorAll('.client-notice')).toHaveLength(1);
-      expect(container.textContent).toContain('HTTP 401');
-      expect(container.textContent).toContain('尚未同步');
+      expect(container.querySelector('.client-notice')?.textContent?.trim()).toBe('发送消息失败，请求未获授权。');
       expect(container.querySelector('.conversation-host-stub')).toBeNull();
       expect(useClientNoticeStore().entries[0]?.conversationId).toBeNull();
       expect(useClientNoticeStore().entries[0]?.command).not.toHaveProperty('run_id');
       expect(localStorage.getItem('conversation-client-notices-v1')).toContain('401');
+      app.unmount();
+    },
+  );
+
+  it.each<ConversationContentPhase>(['ready-empty', 'ready'])(
+    '%s displays current load failure outside history and removes it after recovery',
+    async phase => {
+      surfaceState.phase = phase;
+      surfaceState.conversationId = 'conversation-load';
+      const { app, container } = mountSurface();
+      const windowStore = useMessageWindowStore();
+      windowStore.setError('conversation-load', { error_kind: 'http', http_status: 504 });
+      await nextTick();
+      expect(container.querySelectorAll('.message-window-error')).toHaveLength(1);
+      expect(container.querySelector('.message-window-error')?.textContent?.trim()).toBe('加载对话失败，请求超时，请稍后重试。');
+      expect(useClientNoticeStore().entries).toHaveLength(0);
+      windowStore.replaceWithSnapshot({
+        conversationId: 'conversation-load', rows: [], latestContextUsage: null,
+        revision: 1, hasMoreBefore: false, hasMoreAfter: false,
+      });
+      await nextTick();
+      expect(container.querySelector('.message-window-error')).toBeNull();
       app.unmount();
     },
   );

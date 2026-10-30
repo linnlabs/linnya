@@ -24,6 +24,11 @@ prepared → ready → started → result_committed → terminal → close → t
 
 每个 run 有独立目录、token、generation 和 Utility。`result_committed` 只证明结果文件完整提交；Utility/Evaluator 退出、stdout drain、tree empty 和 resource release 仍要分别结算。
 
+mailbox 的外层请求/结果继续使用严格 schema；内部 JSON 值按实际类型一次遍历完成校验与深拷贝，
+保留有限数、普通对象、数组和可选字段的准入，拒绝嵌套非 JSON 值。不同字段引用同一输入对象时，
+仍生成独立副本。结果在 Evaluator、Utility 和 Host 分别严格重读；不能让递归 union 为每个值构造
+无关分支的错误，否则重复校验会被误判为源码执行或冷进程的耗时。此优化不改变进程隔离或 mailbox 协议。
+
 Evaluator launch snapshot 只包含经过 composition root 验证的绝对 `executablePath`、绝对
 `entryPath` 和固定环境。`buildSandboxEvaluatorInvocationArgv()` 只追加 Node heap flag、协议版本、
 run token 和 heap 上限；source、globals 和 capability payload 只能经 mailbox 传递。这里不解析

@@ -1,4 +1,5 @@
 import { verifyRichTextEditing } from './richTextEditingSmoke';
+import { verifyCanvasSelection } from './canvasSelectionSmoke';
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -16,10 +17,16 @@ async function run(): Promise<void> {
     assertManualVisualFrames(result, 5);
     await writeFile(path.resolve(__dirname, 'editing-preview-trace.json'), JSON.stringify(result, null, 2));
     console.log('Slides live Vue/Konva transition pixels and atomic font frames passed; trace saved.');
+    if (process.argv.includes('--thumbnails-only')) {
+      await verifyThumbnails(window);
+      return;
+    }
     await verifyPropertyInteraction(window);
     await verifyShapeTextEditing(window);
     await verifySelectionToolbar(window);
     await verifyRichTextEditing(window);
+    await verifyCanvasSelection(window);
+    await verifyThumbnails(window);
     const fixtureFile = process.argv[2];
     if (fixtureFile) {
       const sequence: unknown = JSON.parse(await readFile(fixtureFile, 'utf8'));
@@ -31,6 +38,12 @@ async function run(): Promise<void> {
       console.log('Supplied paint sequence passed:', JSON.stringify(fixtureResult));
     }
   } finally { window.destroy(); }
+}
+
+async function verifyThumbnails(window: BrowserWindow): Promise<void> {
+  const thumbnails: unknown = await window.webContents.executeJavaScript('window.verifyIncrementalThumbnails()');
+  await writeFile(path.resolve(__dirname, 'thumbnail-incremental-trace.json'), JSON.stringify(thumbnails, null, 2));
+  console.log('Slides incremental thumbnails passed:', JSON.stringify(thumbnails));
 }
 
 /** 用 Chromium 的真实指针输入验证 pointer capture、连续拖拽和 Escape，避免模拟掉手势生命周期。 */
@@ -128,8 +141,12 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
     await settle();
     return position;
   }
-  async function move(position: { x: number; y: number }) {
-    window.webContents.sendInputEvent({ type: 'mouseMove', ...position, modifiers: ['leftbuttondown'] });
+  async function move(position: { x: number; y: number }, shift = false) {
+    window.webContents.sendInputEvent({ type: 'mouseMove', ...position, modifiers: shift ? ['leftbuttondown', 'shift'] : ['leftbuttondown'] });
+    await settle();
+  }
+  async function shift(type: 'keyDown' | 'keyUp') {
+    window.webContents.sendInputEvent({ type, keyCode: 'Shift', modifiers: type === 'keyDown' ? ['shift'] : [] });
     await settle();
   }
   async function up(position: { x: number; y: number }) {
@@ -158,6 +175,22 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
   await evaluate('window.manualPropertySmoke.assertResize(3.5, 1.5, 2, false)');
   const click = await down('bottom-right');
   await up(click);
+  await evaluate('window.manualPropertySmoke.assertResize(3.5, 1.5, 2, false)');
+  // Shift 等比：拖动中按下 Shift 不动鼠标也立即按原比例重算，松开恢复自由缩放；带 Shift 的移动同样等比。Escape 不提交。
+  const ratioStart = await down('bottom-right');
+  const free = { x: ratioStart.x + 96, y: ratioStart.y };
+  await move(free);
+  await evaluate('window.manualPropertySmoke.assertResize(4.5, 1.5, 2, true)');
+  await shift('keyDown');
+  await evaluate('window.manualPropertySmoke.assertResizeRatio(3.5 / 1.5)');
+  await shift('keyUp');
+  await evaluate('window.manualPropertySmoke.assertResize(4.5, 1.5, 2, true)');
+  await move({ x: free.x, y: free.y + 24 }, true);
+  await evaluate('window.manualPropertySmoke.assertResizeRatio(3.5 / 1.5)');
+  window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+  window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+  await settle();
+  await up(free);
   await evaluate('window.manualPropertySmoke.assertResize(3.5, 1.5, 2, false)');
   // 五个新增入口连续操作，不等待编译；内容、选框与对侧锚点必须一起更新。
   let width = 3.5; let height = 1.5; let x = 0.5; let y = 0.5; let commits = 2;
@@ -230,6 +263,10 @@ async function verifyShapeTextEditing(window: BrowserWindow): Promise<void> {
     window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers });
     await settle();
   }
+  await click('badge');
+  await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge")');
+  await click('gutter');
+  await evaluate('window.shapeTextEditingSmoke.assertSelectionCleared()');
   await click('badge', true);
   await evaluate('window.shapeTextEditingSmoke.assertEditing()');
   await enter();
@@ -255,13 +292,19 @@ async function verifyShapeTextEditing(window: BrowserWindow): Promise<void> {
   await evaluate('window.shapeTextEditingSmoke.assertInput("新会话草稿"); window.shapeTextEditingSmoke.assertSubmitted(2); window.shapeTextEditingSmoke.resolve(1, false)');
   await settle();
   await evaluate('window.shapeTextEditingSmoke.assertInput("新会话草稿"); window.shapeTextEditingSmoke.assertFailedDraft("B pending")');
+  // Esc 结束输入并保留文字：新会话草稿照常提交，失败草稿仍可重新打开重试。
   window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
   window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
   await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertSubmitted(3)');
   await click('second', true);
   await evaluate('window.shapeTextEditingSmoke.assertInput("B pending")');
   await enter(true);
-  await evaluate('window.shapeTextEditingSmoke.assertSubmitted(3); window.shapeTextEditingSmoke.resolve(2, true)');
+  await evaluate('window.shapeTextEditingSmoke.resolve(2, true)');
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.present()');
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertSubmitted(4); window.shapeTextEditingSmoke.resolve(3, true)');
   await settle();
   await evaluate('window.shapeTextEditingSmoke.present()');
   await settle();
@@ -271,13 +314,16 @@ async function verifyShapeTextEditing(window: BrowserWindow): Promise<void> {
   await enter();
   await evaluate('window.shapeTextEditingSmoke.assertInput("Plain text\\n")');
   await enter(true);
-  await evaluate('window.shapeTextEditingSmoke.assertTextCommand(3, "Plain text\\n"); window.shapeTextEditingSmoke.resolve(3, true)');
+  await evaluate('window.shapeTextEditingSmoke.assertTextCommand(4, "Plain text\\n"); window.shapeTextEditingSmoke.resolve(4, true)');
   await settle(); await evaluate('window.shapeTextEditingSmoke.present()'); await settle();
   await evaluate('window.shapeTextEditingSmoke.assertSettled()');
   // 输入交接后立刻拉伸：无焦点文字也必须实时跟随，并在取消时回到原位置。
   await click('badge', true);
   await evaluate('window.shapeTextEditingSmoke.setInput("Pending resize")');
-  await enter(true);
+  // 留白结束输入并取消选择；随后仍可选中／缩放待保存对象，不取消队列中的正文。
+  await click('gutter');
+  await evaluate('window.shapeTextEditingSmoke.assertSelectionCleared()');
+  await click('badge');
   const resize = await evaluate('window.shapeTextEditingSmoke.resizePoint()');
   if (typeof resize !== 'object' || resize === null || !('x' in resize) || !('y' in resize)
     || typeof resize.x !== 'number' || typeof resize.y !== 'number') throw new Error('Invalid resize position');
@@ -322,6 +368,10 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
     await window.webContents.insertText(value);
     await settle();
   }
+  async function hover(expression: string) {
+    window.webContents.sendInputEvent({ type: 'mouseMove', ...(await point(expression)) });
+    await settle();
+  }
   async function key(keyCode: string) {
     window.webContents.sendInputEvent({ type: 'keyDown', keyCode });
     // Enter 激活原生 button 依赖 keypress；Electron 原始 keyDown 不会自动补 char 事件。
@@ -339,6 +389,12 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
   await key('Escape');
   await click('window.shapeTextEditingSmoke.point("badge")');
   await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge"); window.shapeTextEditingSmoke.assertGeometryUnchanged()');
+  // 舞台下方空间不足以放下两级菜单；子菜单必须越过舞台裁切，贴着父项完整显示。
+  await click(control('[data-property="arrange"]'));
+  await hover('window.shapeTextEditingSmoke.arrangeParentPoint()');
+  await evaluate('window.shapeTextEditingSmoke.assertArrangeSubmenu()');
+  await key('Escape');
+  await evaluate('window.shapeTextEditingSmoke.assertPopupClosed()');
   await click(control('[data-property="fill"]'));
   await evaluate('window.shapeTextEditingSmoke.assertPanelMotion(); window.shapeTextEditingSmoke.settlePanelMotion()');
   await click(control('[title="#16A34A"]'));

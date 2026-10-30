@@ -97,6 +97,10 @@ const templateSummary: TemplateSummary = {
 
 function makeCoordinator(): SlidesIpcCoordinatorPort {
   return {
+    readViewSnapshot: vi.fn(async () => { throw new Error('Snapshot read is outside this handler fixture'); }),
+    importImage: vi.fn(async () => 'owned-image'),
+    copyObjects: vi.fn(async () => []),
+    readManualEditHistory: vi.fn(async () => ({ revisionId: 'version-1', undoDepth: 0, redoDepth: 0 })),
     readSourceSlicesForAiEdit: vi.fn(async () => sourceSlices),
     inspect: vi.fn(async () => presentationInfo),
     getPreview: vi.fn(async () => preview),
@@ -113,7 +117,7 @@ function makeCoordinator(): SlidesIpcCoordinatorPort {
       commandId: command.commandId,
       documentId: command.documentId,
       revisionId: 'version-2',
-      revision: 2,
+      revision: 2, history: { revisionId: 'version-2', undoDepth: 1, redoDepth: 0 },
     })),
     listTemplates: vi.fn(async () => [templateSummary]),
     importTemplate: vi.fn(async () => template),
@@ -235,7 +239,7 @@ describe('slides IPC handlers', () => {
         commandId: command.commandId,
         documentId: 'presentation-1',
         revisionId: 'version-2',
-        revision: 2,
+        revision: 2, history: { revisionId: 'version-2', undoDepth: 1, redoDepth: 0 },
       },
     });
     expect(coordinator.submitManualEdit).toHaveBeenCalledWith(command);

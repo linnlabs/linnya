@@ -59,9 +59,6 @@
   width: 16px;
   height: 16px;
 }
-.slides-history-previous-icon {
-  transform: rotate(180deg);
-}
 .slides-history-navigation button:disabled {
   opacity: 0.4;
   cursor: default;

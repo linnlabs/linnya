@@ -1,10 +1,22 @@
 <!--
  * packages/renderer-ui/src/icons/ui/SidebarIcon.vue
- * "侧边栏切换"图标组件
+ * “侧边栏”图标组件。
 -->
 <template>
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-    <path fill="currentColor" d="M7.93,7.42c0-.28-.23-.5-.5-.5s-.5.23-.5.5v9.15c0,.28.23.5.5.5s.5-.23.5-.5V7.42Z"/>
-    <path fill="currentColor" d="M21,6.12c0-1.72-1.4-3.12-3.12-3.12H6.12c-1.72,0-3.12,1.4-3.12,3.12v11.77c0,1.72,1.4,3.12,3.12,3.12h11.77c1.72,0,3.12-1.4,3.12-3.12V6.12ZM20,17.88c0,1.16-.95,2.11-2.11,2.11H6.12c-1.16,0-2.11-.95-2.11-2.11V6.12c0-1.16.95-2.11,2.11-2.11h11.77c1.16,0,2.11.95,2.11,2.11v11.77Z"/>
+  <svg
+    class="linnya-ui-icon"
+    data-icon="sidebar"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <rect x="5.5" y="5.5" width="13" height="13" rx="2"/>
+    <path d="M8.5 8.5v7"/>
   </svg>
-</template> 
+</template>

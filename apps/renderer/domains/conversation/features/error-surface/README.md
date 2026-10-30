@@ -6,6 +6,10 @@
 
 错误文案继续由 `services/errorNormalizer.ts` 统一解释，保留认证、额度与模型兼容等既有指引。`interactive-run` 持有暂停/继续状态，通知不建立第二套控制状态。Runtime error 的 notice identity 只用来避免同一运行错误同时出现在本地诊断与已投影的消息中。
 
+错误正文只说明已知原因与下一步操作，HTTP 编号留在错误详情。未知的重试结果直接说明“结果未确认”，不展示内部结算术语；额度恢复时间没有事实依据时不得承诺“明天恢复”。中英文 catalog 保持同样的含义。
+
 OpenCode Go 的缺失会话标识由 Host 产品分类器读取结构化错误类型后投影为 `llm.opencode_session_required`；Renderer 只按该稳定码提示更新客户端，不解析上游正文或把普通 HTTP 400 猜成接入错误。
 
-未取得 Runtime fact 的错误由 interactive-run、annotation execution 等原 owner 分类后交给 [client-notices](../client-notices/README.md) 保存安全的产品事实，并通过同一历史窗口呈现。没有 Conversation 或 Host 离线时先持久保留本地条目、明确尚未同步；不伪造运行身份、不进入模型上下文。运行控制仍由原 owner 负责。
+需要长期保留且未取得 Runtime fact 的错误由 interactive-run、annotation execution 等原 owner 分类后交给 [client-notices](../client-notices/README.md) 保存安全的产品事实，并通过同一历史窗口呈现。没有 Conversation 或 Host 离线时先持久保留本地条目，投递状态留在 outbox 内；面向用户只呈现失败操作、已知原因和操作指引，不展示内部来源或记录同步标签。不伪造运行身份、不进入模型上下文。运行控制仍由原 owner 负责。
+
+`conversationOperationFailureText` 只接收操作与安全原因，供持久 client notice 和当前窗口读取错误复用。message-window 独占读取错误生命周期，Surface 在空态和已有正文两种布局中使用同一出口；成功读取或开始新请求后消失，切换对话后不显示前一条对话的错误。不为当前加载状态创建通知身份或持久消息。

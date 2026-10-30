@@ -133,7 +133,7 @@ chunk/thought/subrun 的 50 ms 高频合并名单。投影器只按 Host 提供�
 
 显示内容只使用安全错误码、已有产品归一化文案及明确允许的模型兼容信息；Provider 原始响应、堆栈和任意 details 不进入 UI read model。运行控制仍由 `interactive-run` 的权威快照决定，通知的颜色或重试次数不能自行决定发送、暂停或继续按钮。
 
-历史 window 只重放 read model，不模拟 realtime reader。CLI 启动的运行可在刷新后通过正式历史看到错误；跨进程实时订阅仍属独立能力。接纳前和传输/投影等缺少 Runtime fact 的诊断必须显式区分来源，不能伪造 run 或宣称尚未成功持久的消息已经保存。
+历史 window 只重放 read model，不模拟 realtime reader。CLI 启动的运行可在刷新后通过正式历史看到错误；跨进程实时订阅仍属独立能力。接纳前和传输/投影等缺少 Runtime fact 的诊断必须通过独立消息类型与 metadata 区分来源，不能伪造 run 或宣称尚未成功持久的消息已经保存；来源与记录同步状态不追加到用户错误正文，展示规则见 [client-notices](../../apps/renderer/domains/conversation/features/client-notices/README.md)。
 
 ---
 

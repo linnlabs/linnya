@@ -36,7 +36,7 @@
           :label="copiedImageUrl === singleImageEntry.url ? conversationMessage('conversation.tool.image.copied') : conversationMessage('conversation.tool.image.copy')"
           @click="copyImage(singleImageEntry.url)"
         >
-          <OkIcon v-if="copiedImageUrl === singleImageEntry.url" />
+          <CheckmarkIcon v-if="copiedImageUrl === singleImageEntry.url" />
           <CopyIcon v-else />
         </IconButton>
         <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.preview')" @click="openPreviewModal(singleImageEntry.url, $event)">
@@ -74,7 +74,7 @@
             :label="copiedImageUrl === imageEntry.url ? conversationMessage('conversation.tool.image.copied') : conversationMessage('conversation.tool.image.copy')"
             @click="copyImage(imageEntry.url)"
           >
-            <OkIcon v-if="copiedImageUrl === imageEntry.url" />
+            <CheckmarkIcon v-if="copiedImageUrl === imageEntry.url" />
             <CopyIcon v-else />
           </IconButton>
           <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.preview')" @click="openPreviewModal(imageEntry.url, $event)">
@@ -122,7 +122,7 @@ import type { ImageGenerationPresentationImage } from './definitions/imageGenera
 import { ZoomInIcon } from '@linnya/renderer-ui/icons';
 import { CopyIcon } from '@linnya/renderer-ui/icons';
 import { DownloadIcon } from '@linnya/renderer-ui/icons';
-import { OkIcon } from '@linnya/renderer-ui/icons';
+import { CheckmarkIcon } from '@linnya/renderer-ui/icons';
 import { useConversationLocalization } from '../../useConversationLocalization';
 import {
   publishConversationPerf,

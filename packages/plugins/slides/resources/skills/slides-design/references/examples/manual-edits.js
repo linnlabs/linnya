@@ -51,6 +51,16 @@ compose({
         { kind: "chart", editKey: "revenue_chart", translation: { dx: 0.2, dy: 0 } },
         { kind: "shape", editKey: "obsolete_badge", deleted: true },
       ],
+      // 用户在编辑器里插入的对象：改稿时原样保留。
+      additions: [
+        {
+          kind: "text",
+          editKey: "inserted-note",
+          box: { x: 7.2, y: 4.6, w: 2.4, h: 0.5 },
+          content: "Source: Q2 report",
+          style: { fontSize: 12, color: "#475569" },
+        },
+      ],
     }],
   },
 });

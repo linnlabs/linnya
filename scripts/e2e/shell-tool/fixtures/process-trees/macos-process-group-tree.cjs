@@ -55,7 +55,11 @@ function stopCurrentRole(exitCode = 0) {
 if (mode === 'ignore-term' && role === 'grandchild') {
   process.on('SIGTERM', () => {});
 } else {
-  process.on('SIGTERM', () => stopCurrentRole());
+  process.on('SIGTERM', () => {
+    // 收树测试据此区分“整组 TERM 后退出”与“宽限期满被 KILL”。
+    writeFileSync(path.join(runRoot, `${role}.terminated`), 'SIGTERM', 'utf8');
+    stopCurrentRole();
+  });
 }
 
 if (!nextRole) {

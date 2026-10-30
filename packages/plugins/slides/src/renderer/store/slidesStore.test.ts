@@ -1,204 +1,86 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import type { DeckPreview } from '../types/api';
+import { useSlidesStore } from './slidesStore';
+import { useSlidesDocumentRuntime } from '../features/documentRuntime/orchestration/useSlidesDocumentRuntime';
+import { makePresentationView } from '../../shared/presentationViewSnapshot/testing/viewFixture';
 
-const getDeckPreviewMock = vi.fn();
-const getDocumentBuildStateMock = vi.fn();
-const notifyDocumentOpenedMock = vi.fn(async () => ({ success: true }));
-
-interface Deferred<T> {
-  readonly promise: Promise<T>;
-  readonly resolve: (value: T) => void;
+const read = vi.hoisted(() => vi.fn());
+vi.mock('../features/documentRuntime/orchestration/readPresentationView', () => ({ readPresentationView: read }));
+vi.mock('@plugin/renderer/workspaceRuntime', () => ({ notifyWorkspaceDocumentOpened: vi.fn(async () => ({ success: true })) }));
+function candidate(id = 'deck', revision = 1, count = 3) {
+  return { installed: makePresentationView(id, revision, count), blocks: new Map(), pages: new Map() };
 }
+function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 
-function createDeferred<T>(): Deferred<T> {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>(promiseResolve => {
-    resolve = promiseResolve;
-  });
-  return { promise, resolve };
-}
-
-vi.mock('../services/slidesApi', () => ({
-  slidesApi: {
-    getDeckPreview: getDeckPreviewMock,
-    getDocumentBuildState: getDocumentBuildStateMock,
-  },
-}));
-
-vi.mock('@plugin/renderer/workspaceRuntime', () => ({
-  notifyWorkspaceDocumentOpened: notifyDocumentOpenedMock,
-}));
-
-function makeDeckPreview(nodeId: string, versionNumber: number, slideCount: number): DeckPreview {
-  return {
-    nodeId,
-    versionNumber,
-    title: `Deck ${nodeId}`,
-    slideSize: { width: 10, height: 5.625 },
-    slides: Array.from({ length: slideCount }, (_, index) => ({
-      slideId: `${nodeId}-s${index + 1}`,
-      number: index + 1,
-      layoutName: 'structured',
-      elements: [],
-    })),
-    theme: {
-      colors: {},
-      fonts: { major: 'Arial', minor: 'Arial' },
-    },
-    warnings: [],
-  };
-}
-
-describe('slidesStore', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia());
-    getDeckPreviewMock.mockReset();
-    getDocumentBuildStateMock.mockReset();
-    notifyDocumentOpenedMock.mockClear();
-    getDocumentBuildStateMock.mockImplementation(async (nodeId: string) => ({
-      state: 'ready',
-      presentationId: nodeId,
-      versionId: 'version-1',
-      versionNumber: 1,
-      sourceHash: 'a'.repeat(64),
-    }));
-  });
-
-  it('refreshDeck preserves the current slide index while updating preview data', async () => {
-    getDeckPreviewMock
-      .mockResolvedValueOnce(makeDeckPreview('deck-1', 1, 3))
-      .mockResolvedValueOnce(makeDeckPreview('deck-1', 2, 3));
-
-    const { useSlidesStore } = await import('./slidesStore');
-    const store = useSlidesStore();
-
-    await store.loadDeck('deck-1');
+describe('document snapshot installation', () => {
+  beforeEach(() => { setActivePinia(createPinia()); read.mockReset(); });
+  it('installs navigation and model together, preserving the latest user selection during refresh', async () => {
+    const next = deferred<ReturnType<typeof candidate>>();
+    read.mockResolvedValueOnce(candidate()).mockReturnValueOnce(next.promise);
+    const runtime = useSlidesDocumentRuntime(); const store = useSlidesStore();
+    await runtime.loadDeck('deck');
+    const refresh = runtime.refreshDeck('deck', 2);
     store.setCurrentSlide(2);
-
-    await store.refreshDeck('deck-1');
-
-    expect(store.currentDeckId).toBe('deck-1');
-    expect(store.currentSlideIndex).toBe(2);
-    expect(store.deckPreview?.versionNumber).toBe(2);
-    expect(notifyDocumentOpenedMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('静默刷新失败向保存队列传播，保留可见文稿并允许重试', async () => {
-    getDeckPreviewMock.mockResolvedValue(makeDeckPreview('deck-1', 1, 2));
-    const { useSlidesStore } = await import('./slidesStore');
-    const store = useSlidesStore();
-    await store.loadDeck('deck-1');
-    getDocumentBuildStateMock.mockRejectedValueOnce(new Error('Read failed'));
-    await expect(store.refreshDeck('deck-1', 2)).rejects.toThrow('Read failed');
-    expect(store.deckPreview?.nodeId).toBe('deck-1');
-    expect(store.deckError).toBeNull();
-    await expect(store.refreshDeck('deck-1')).resolves.toBeUndefined();
-  });
-
-  it('openDeckAtSlide loads the deck and lands on the requested slide', async () => {
-    getDeckPreviewMock.mockResolvedValueOnce(makeDeckPreview('deck-2', 1, 4));
-
-    const { useSlidesStore } = await import('./slidesStore');
-    const store = useSlidesStore();
-
-    await store.openDeckAtSlide('deck-2', 3);
-
-    expect(store.currentDeckId).toBe('deck-2');
-    expect(store.currentSlideIndex).toBe(2);
+    expect(store.renderModel?.version).toBe(1);
     expect(store.deckPreview?.versionNumber).toBe(1);
-    expect(notifyDocumentOpenedMock).toHaveBeenCalledTimes(1);
+    next.resolve(candidate('deck', 2)); await refresh;
+    expect(store.renderModel?.version).toBe(2);
+    expect(store.deckPreview?.versionNumber).toBe(2);
+    expect(store.documentBuildState?.versionNumber).toBe(2);
+    expect(store.currentSlideIndex).toBe(2);
   });
-
-  it('coalesces mutation and command refreshes for the same committed revision', async () => {
-    const nextBuildState = createDeferred<{
-      state: 'ready'; presentationId: string; versionId: string;
-      versionNumber: number; sourceHash: string;
-    }>();
-    getDeckPreviewMock
-      .mockResolvedValueOnce(makeDeckPreview('deck-1', 1, 2))
-      .mockResolvedValueOnce(makeDeckPreview('deck-1', 2, 2));
-
-    const { useSlidesStore } = await import('./slidesStore');
-    const store = useSlidesStore();
-    await store.loadDeck('deck-1');
-    getDocumentBuildStateMock.mockReturnValueOnce(nextBuildState.promise);
-
-    const commandRefresh = store.refreshDeck('deck-1', 2);
-    const mutationRefresh = store.refreshDeck('deck-1', 2);
-    nextBuildState.resolve({
-      state: 'ready', presentationId: 'deck-1', versionId: 'version-2',
-      versionNumber: 2, sourceHash: 'b'.repeat(64),
-    });
-    await Promise.all([commandRefresh, mutationRefresh]);
-
-    expect(getDocumentBuildStateMock).toHaveBeenCalledTimes(2);
-    expect(getDeckPreviewMock).toHaveBeenCalledTimes(2);
-    await store.refreshDeck('deck-1', 2);
-    expect(getDocumentBuildStateMock).toHaveBeenCalledTimes(2);
+  it('keeps the complete view after refresh failure and retries only the read', async () => {
+    read.mockResolvedValueOnce(candidate()).mockRejectedValueOnce(new Error('Read failed')).mockResolvedValueOnce(candidate('deck', 2));
+    const runtime = useSlidesDocumentRuntime(); const store = useSlidesStore();
+    await runtime.loadDeck('deck');
+    await expect(runtime.refreshDeck('deck', 2)).rejects.toThrow('Read failed');
+    expect(store.renderModel?.version).toBe(1); expect(store.deckError).toBeNull();
+    await runtime.refreshDeck('deck', 2); expect(store.renderModel?.version).toBe(2);
   });
-
-  it('never lets a stale refresh reactivate or overwrite a newly opened deck', async () => {
-    const staleBuildState = createDeferred<{
-      state: 'ready'; presentationId: string; versionId: string;
-      versionNumber: number; sourceHash: string;
-    }>();
-    getDocumentBuildStateMock
-      .mockResolvedValueOnce({
-        state: 'ready', presentationId: 'deck-a', versionId: 'version-1',
-        versionNumber: 1, sourceHash: 'a'.repeat(64),
-      })
-      .mockReturnValueOnce(staleBuildState.promise)
-      .mockResolvedValueOnce({
-        state: 'ready', presentationId: 'deck-b', versionId: 'version-1',
-        versionNumber: 1, sourceHash: 'b'.repeat(64),
-      });
-    getDeckPreviewMock
-      .mockResolvedValueOnce(makeDeckPreview('deck-a', 1, 2))
-      .mockResolvedValueOnce(makeDeckPreview('deck-b', 1, 3));
-
-    const { useSlidesStore } = await import('./slidesStore');
-    const store = useSlidesStore();
-    await store.loadDeck('deck-a');
-    const staleRefresh = store.refreshDeck('deck-a', 2);
-    await store.loadDeck('deck-b');
-    staleBuildState.resolve({
-      state: 'ready', presentationId: 'deck-a', versionId: 'version-2',
-      versionNumber: 2, sourceHash: 'c'.repeat(64),
-    });
-    await staleRefresh;
-
-    expect(store.currentDeckId).toBe('deck-b');
-    expect(store.deckPreview?.nodeId).toBe('deck-b');
-    expect(store.documentBuildState?.presentationId).toBe('deck-b');
-    await store.refreshDeck('deck-a', 2);
-    expect(getDocumentBuildStateMock).toHaveBeenCalledTimes(3);
+  it('coalesces version events with command refreshes after a complete revision is installed', async () => {
+    const next = deferred<ReturnType<typeof candidate>>();
+    read.mockResolvedValueOnce(candidate()).mockReturnValueOnce(next.promise);
+    const runtime = useSlidesDocumentRuntime(); await runtime.loadDeck('deck');
+    const first = runtime.refreshDeck('deck', 2); const second = runtime.refreshDeck('deck', 2);
+    next.resolve(candidate('deck', 2)); await Promise.all([first, second]);
+    await runtime.refreshDeck('deck', 2); expect(read).toHaveBeenCalledTimes(2);
   });
-
-  it('把未解决 draft 作为已打开但不可预览的文档状态', async () => {
-    getDocumentBuildStateMock.mockResolvedValueOnce({
-      state: 'draft',
-      presentationId: 'deck-draft',
-      versionId: 'version-1',
-      versionNumber: 1,
-      draftStatus: {
-        baseVersionId: 'version-1',
-        baseVersionNumber: 1,
-        errorKind: 'slides.codegen.typecheck',
-        errorSummary: 'TS8006 at line 1',
-        updatedAt: 100,
-      },
-    });
-    const { useSlidesStore } = await import('./slidesStore');
-    const store = useSlidesStore();
-
-    await store.loadDeck('deck-draft');
-
-    expect(store.currentDeckId).toBe('deck-draft');
-    expect(store.documentBuildState?.state).toBe('draft');
-    expect(store.deckPreview).toBeNull();
-    expect(store.deckError).toBeNull();
-    expect(getDeckPreviewMock).not.toHaveBeenCalled();
-    expect(notifyDocumentOpenedMock).toHaveBeenCalledWith({ documentId: 'deck-draft' });
+  it('does not let an old A response overwrite a later A visit', async () => {
+    const old = deferred<ReturnType<typeof candidate>>();
+    read.mockResolvedValueOnce(candidate('a')).mockReturnValueOnce(old.promise)
+      .mockResolvedValueOnce(candidate('b')).mockResolvedValueOnce(candidate('a', 3));
+    const runtime = useSlidesDocumentRuntime(); const store = useSlidesStore();
+    await runtime.loadDeck('a'); const pending = runtime.refreshDeck('a', 2);
+    await runtime.loadDeck('b'); await runtime.loadDeck('a');
+    old.resolve(candidate('a', 2)); await pending;
+    expect(store.documentBuildState?.versionNumber).toBe(3);
+  });
+  it('opens at the requested page and accepts a draft update on the same compiled base', async () => {
+    const ready = candidate(); const draft = candidate();
+    draft.installed = { ...draft.installed, preview: null, renderModel: null,
+      buildState: { ...ready.installed.buildState, state: 'draft', draftStatus: {
+        baseVersionId: 'v1', baseVersionNumber: 1, updatedAt: 1, errorSummary: 'Invalid source' } } };
+    read.mockResolvedValueOnce(ready).mockResolvedValueOnce(draft);
+    const runtime = useSlidesDocumentRuntime(); const store = useSlidesStore();
+    await runtime.openDeckAtSlide('deck', 3); expect(store.currentSlideIndex).toBe(2);
+    await runtime.refreshDeck('deck'); expect(store.documentBuildState?.state).toBe('draft');
+    expect(store.renderModel).toBeNull(); expect(store.deckPreview).toBeNull();
+  });
+  it('waits for command ownership when an event arrives before the receipt, then selects the new page in the installation', async () => {
+    read.mockResolvedValueOnce(candidate()).mockResolvedValueOnce(candidate('deck', 2, 4));
+    const runtime = useSlidesDocumentRuntime(); const store = useSlidesStore(); await runtime.loadDeck('deck');
+    const confirm = runtime.prepareStructureSelection(3, 1);
+    const refresh = runtime.refreshDeck('deck', 2);
+    await Promise.resolve(); expect(store.renderModel?.version).toBe(1);
+    confirm(2);
+    await refresh; expect(store.currentSlideIndex).toBe(3); expect(store.renderModel?.version).toBe(2);
+  });
+  it('does not override an explicit page choice made while a structure command is saving', async () => {
+    read.mockResolvedValueOnce(candidate()).mockResolvedValueOnce(candidate('deck', 2, 4));
+    const runtime = useSlidesDocumentRuntime(); const store = useSlidesStore(); await runtime.loadDeck('deck');
+    const confirm = runtime.prepareStructureSelection(3, 1); const refresh = runtime.refreshDeck('deck', 2);
+    store.setCurrentSlide(1);
+    confirm(2);
+    await refresh; expect(store.currentSlideIndex).toBe(1);
   });
 });

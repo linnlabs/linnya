@@ -1,4 +1,4 @@
-import { captureConversationClientNotice, getConversationClientNotices } from '../../features/client-notices';
+import { getConversationClientNotices } from '../../features/client-notices';
 import type { MessageWindowApiPort } from '../definitions/messageWindowApi';
 import type { MessageWindowSnapshot } from '../definitions/messageWindow';
 import type { UiMessagesWindowDto, UiMessagesWindowReadyDto } from '../definitions/uiMessagesDto';
@@ -9,6 +9,8 @@ import { useMessageWindowStore } from '../store/messageWindowStore';
 import type { MessageWindowLoadMode } from '../definitions/messageWindow';
 import type { BaseMessage } from '../../types';
 import { admitWindowAndLiveMessages } from '../functions/windowLiveMessageAdmission';
+import { describeMessageWindowFailure } from '../functions/describeMessageWindowFailure';
+import { publishConversationPerf } from '../../shared/observability/conversationPerf';
 
 type MessageWindowStore = ReturnType<typeof useMessageWindowStore>;
 
@@ -67,6 +69,33 @@ function isCurrentWindowRequest(token: MessageWindowRequestToken): boolean {
     && token.store.loadingMode === token.mode;
 }
 
+function recordWindowFailure(request: MessageWindowRequestToken, error: unknown): void {
+  const { failure, diagnostics } = describeMessageWindowFailure(error);
+  const { store, conversationId, mode, generation } = request;
+  console.error('[MessageWindowLoader] Window load failed', {
+    conversationId,
+    mode,
+    generation,
+    revision: store.revision,
+    retainedRowCount: store.rows.length,
+    ...diagnostics,
+  });
+  publishConversationPerf({
+    kind: 'history-load',
+    phase: 'window-error',
+    conversationId,
+    details: {
+      mode,
+      generation,
+      revision: store.revision,
+      stage: diagnostics.stage,
+      errorName: diagnostics.errorName,
+      httpStatus: diagnostics.httpStatus ?? null,
+    },
+  });
+  store.setError(conversationId, failure);
+}
+
 export async function refreshCurrentWindow(
   conversationId: string,
   deps: MessageWindowLoaderDeps,
@@ -115,8 +144,7 @@ export async function loadTail(
   } catch (error) {
     options.signal?.throwIfAborted();
     if (isCurrentWindowRequest(request)) {
-      captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
-      store.setError(conversationId, readErrorMessage(error));
+      recordWindowFailure(request, error);
     }
     throw error;
   } finally {
@@ -154,8 +182,7 @@ export async function loadBefore(
   } catch (error) {
     options.signal?.throwIfAborted();
     if (isCurrentWindowRequest(request)) {
-      captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
-      store.setError(conversationId, readErrorMessage(error));
+      recordWindowFailure(request, error);
     }
     throw error;
   } finally {
@@ -193,8 +220,7 @@ export async function loadAfter(
   } catch (error) {
     options.signal?.throwIfAborted();
     if (isCurrentWindowRequest(request)) {
-      captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
-      store.setError(conversationId, readErrorMessage(error));
+      recordWindowFailure(request, error);
     }
     throw error;
   } finally {
@@ -225,8 +251,7 @@ export async function loadAround(
   } catch (error) {
     options.signal?.throwIfAborted();
     if (isCurrentWindowRequest(request)) {
-      captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
-      store.setError(conversationId, readErrorMessage(error));
+      recordWindowFailure(request, error);
     }
     throw error;
   } finally {
@@ -266,8 +291,4 @@ function applyWindowResponse(
 function buildSnapshot(dto: UiMessagesWindowReadyDto): MessageWindowSnapshot {
   const rows = mapUiMessagesWindowDtoToRows(dto);
   return createMessageWindowSnapshot(dto, rows);
-}
-
-function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'unknown_error';
 }

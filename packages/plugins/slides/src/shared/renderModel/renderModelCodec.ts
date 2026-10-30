@@ -217,7 +217,8 @@ function isAuthoringEditBinding(authoringRef: unknown, authoringEdit: unknown): 
         && authoringEdit.fill !== undefined
         && capabilities.has('set_fill_color')
         && capabilities.has('delete')
-        && !capabilities.has('set_visual_size');
+        && !capabilities.has('set_visual_size')
+        && !capabilities.has('copy');
     case 'shape':
       return authoringEdit.fill !== undefined
         && capabilities.has('set_fill_color')

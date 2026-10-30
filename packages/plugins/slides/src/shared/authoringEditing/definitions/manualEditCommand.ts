@@ -1,4 +1,5 @@
-import type { SlidesEditableTextContent } from './editableText';
+import type { SlidesInsertedObject } from './insertedObject';
+import type { SlidesEditableTextContent, SlidesTextStylePatch } from './editableText';
 import type { SlidesAuthoringEditRef } from './authoringIdentity';
 import type {
   SlidesManualTargetKind,
@@ -13,6 +14,8 @@ export interface SlidesManualEditExpectedBase {
 }
 
 export type SlidesManualEditOperation =
+  | { readonly op: 'set_text_width'; readonly target: SlidesAuthoringEditRef; readonly targetKind: 'text'; readonly width: number }
+  | { readonly op: 'set_image'; readonly target: SlidesAuthoringEditRef; readonly targetKind: 'image'; readonly assetId?: string; readonly fit?: 'contain' | 'cover' }
   | {
       readonly op: 'set_text_content';
       readonly targetKind: 'text';
@@ -37,12 +40,7 @@ export type SlidesManualEditOperation =
       readonly targetKind: SlidesManualTargetKind;
       readonly delta: SlidesManualTranslation;
     }
-  | {
-      readonly op: 'set_text_style';
-      readonly target: SlidesAuthoringEditRef;
-      readonly fontSizePt?: number;
-      readonly color?: string;
-    }
+  | (SlidesTextStylePatch & { readonly op: 'set_text_style'; readonly target: SlidesAuthoringEditRef })
   | {
       readonly op: 'set_fill_color';
       readonly target: SlidesAuthoringEditRef;
@@ -74,7 +72,15 @@ export interface SlidesManualSlideInsertOperation {
 
 export type SlidesManualEditCommandOperation =
   | SlidesManualEditOperation
-  | SlidesManualSlideInsertOperation;
+  | { readonly op: 'insert_objects'; readonly index: number; readonly objects: readonly SlidesInsertedObject[] }
+  | { readonly op: 'set_layer'; readonly target: SlidesAuthoringEditRef; readonly direction: 'front' | 'back' | 'forward' | 'backward' }
+  | { readonly op: 'undo' }
+  | { readonly op: 'redo' }
+  | { readonly op: 'batch'; readonly operations: readonly SlidesManualEditOperation[] }
+  | SlidesManualSlideInsertOperation
+  | { readonly op: 'duplicate_slide'; readonly index: number }
+  | { readonly op: 'delete_slide'; readonly index: number }
+  | { readonly op: 'move_slide'; readonly index: number; readonly toIndex: number };
 
 export interface SlidesManualEditCommand {
   readonly commandId: string;
@@ -83,12 +89,27 @@ export interface SlidesManualEditCommand {
   readonly operation: SlidesManualEditCommandOperation;
 }
 
+export interface SlidesManualEditHistoryStatus {
+  readonly revisionId: string;
+  readonly undoDepth: number;
+  readonly redoDepth: number;
+}
+
+/** 撤销或重做后应呈现的位置：页序号属于恢复后的文稿，对象可能已不存在。 */
+export interface SlidesManualEditHistoryFocus {
+  readonly slideIndex: number;
+  readonly targets: readonly SlidesAuthoringEditRef[];
+}
+
 export interface SlidesManualEditCommitResult {
   readonly status: 'committed';
   readonly commandId: string;
   readonly documentId: string;
   readonly revisionId: string;
   readonly revision: number;
+  readonly history: SlidesManualEditHistoryStatus;
+  /** 只在 undo/redo 时返回，让 Renderer 跳到被恢复的页并重新选中对象。 */
+  readonly focus?: SlidesManualEditHistoryFocus;
 }
 
 export type SlidesManualEditConflictReason =

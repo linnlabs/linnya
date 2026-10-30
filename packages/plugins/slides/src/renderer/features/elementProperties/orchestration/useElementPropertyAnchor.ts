@@ -9,6 +9,8 @@ export function useElementPropertyAnchor(options: {
   readonly viewportElement: Readonly<Ref<HTMLElement | null>>;
   readonly renderScale: Readonly<Ref<number>>;
   readonly geometryRevision: Readonly<Ref<number>>;
+  /** 顶部常驻命令条占用的高度（px）。 */
+  readonly reservedTop?: Readonly<Ref<number>>;
 }) {
   const anchor = shallowRef<ElementPropertyAnchor | null>(null);
   // DOM 完成滚动／zoom 更新后才读位置；锚点与选框消费同一派生 bounds。
@@ -21,7 +23,9 @@ export function useElementPropertyAnchor(options: {
     if (!target || !slide || !viewport) { anchor.value = null; return; }
     const slideRect = slide.getBoundingClientRect();
     const viewportRect = viewport.getBoundingClientRect();
+    const reservedTop = options.reservedTop?.value ?? 0;
     anchor.value = {
+      ...(reservedTop > 0 ? { reservedTop } : {}),
       selection: {
         left: slideRect.left - viewportRect.left + target.bounds.x * scale,
         top: slideRect.top - viewportRect.top + target.bounds.y * scale,

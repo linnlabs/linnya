@@ -107,6 +107,40 @@ describe('ConversationResourceLinkNode', () => {
     expect(open).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    { kind: 'conversation', locator: 'conversation:/report.md' },
+    { kind: 'file', locator: 'file:///tmp/report.md' },
+  ])('$kind 文件的不同标题写法使用同一后缀展示且均可打开', async ({ kind, locator }) => {
+    const target = ConversationFileLinkResolutionSchema.parse({
+      state: 'ready',
+      kind,
+      locator,
+      file_name: 'report.md',
+    });
+    if (target.state !== 'ready' || target.kind === 'workspace') {
+      throw new Error('测试目标不是已就绪的 Conversation 或本机文件');
+    }
+    const open = vi.fn<ConversationResourceLinkPort['open']>();
+    registerConversationResourceLinkPort({ resolve: async () => target, open });
+
+    const hosts = ['程序报告原件', '讲座参会选择-条件建议.md', '.md'].map(authoredTitle => (
+      mountNode({ href: locator, authoredTitle })
+    ));
+    await settleResolution();
+
+    const titles = ['程序报告原件', '讲座参会选择-条件建议', ''];
+    for (const [index, host] of hosts.entries()) {
+      expect(host.querySelector('.conversation-resource-link__title')?.textContent).toBe(titles[index]);
+      expect(host.querySelector('.conversation-resource-link__suffix')?.textContent).toBe('.md');
+      expect(host.textContent).toBe(`${titles[index]}.md`);
+      expect(host.querySelector('a')?.getAttribute('href')).toBe(locator);
+      host.querySelector('a')?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    }
+    await nextTick();
+    expect(open).toHaveBeenCalledTimes(hosts.length);
+    expect(open).toHaveBeenCalledWith({ conversationId: 'conversation-a', target });
+  });
+
   it('非法 file locator 显示明确不可用状态且不请求 owner', async () => {
     const resolve = vi.fn<ConversationResourceLinkPort['resolve']>();
     registerConversationResourceLinkPort({ resolve, open: vi.fn() });

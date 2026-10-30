@@ -1,12 +1,13 @@
 import { DocumentHistoryError, planDocumentVersionRetention } from '@plugin/backend/documentHistory';
 import type { DocumentVersionRestoreRequest, DocumentVersionSummary } from '@app/schemas';
-import type { DeckSpec, PresentationRenderModel } from '@plugin/slides/shared';
+import type { SlidesManualEditExpectedBase, DeckSpec, PresentationRenderModel } from '@plugin/slides/shared';
 import { PresentationStaleBaseError, type PresentationRepositoryPort } from '../../../persistence';
 import { PresentationHistoryRepository } from '../infrastructure/PresentationHistoryRepository';
 import { PresentationRevisionScope, type PresentationRevisionAsset } from './PresentationRevisionScope';
 import { planPresentationSourceCompaction } from '../functions/planPresentationSourceCompaction';
 import { reconstructPresentationSources } from '../functions/presentationSourceRevisionCodec';
 import { PresentationSourceConsistencyError } from '../definitions/presentationSourceRevision';
+import { PRESENTATION_HISTORY_MAINTENANCE_IDLE_MS } from '../definitions/presentationHistoryMaintenance';
 
 export interface PresentationHistoryRuntimeDependencies {
   readonly history: PresentationHistoryRepository;
@@ -16,11 +17,14 @@ export interface PresentationHistoryRuntimeDependencies {
   readonly render: (documentId: string, version: DocumentVersionSummary, deck: DeckSpec) => Promise<PresentationRenderModel>;
   readonly assemble: (documentId: string, deck: DeckSpec) => Promise<Buffer>;
   readonly release: (documentId: string, assetIds: readonly string[]) => void;
+  readonly requiredVersions?: (documentId: string, currentRevisionId: string) => readonly string[];
   readonly reportFailure: (documentId: string, error: unknown) => void;
 }
 
 export class PresentationHistoryRuntime {
-  private readonly maintenance = new Set<string>();
+  private readonly scheduledMaintenance = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly activeMaintenance = new Set<Promise<void>>();
+  private stopped = false;
   constructor(private readonly deps: PresentationHistoryRuntimeDependencies) {}
 
   list(documentId: string): DocumentVersionSummary[] { return this.deps.history.list(documentId); }
@@ -56,11 +60,45 @@ export class PresentationHistoryRuntime {
     });
   }
 
+  /** 已持有 revision scope 的人工撤销复用历史源码/主题，但不等待 PPTX，也不倒退 current 指针。 */
+  async commitDeferredRestore(input: {
+    documentId: string; versionId: string; expectedBase: SlidesManualEditExpectedBase;
+    receipt: { commandId: string; payloadDigest: string };
+  }): Promise<{ versionId: string; versionNumber: number; deckSpec: DeckSpec }> {
+    const version = this.requireVersion(input.documentId, input.versionId);
+    const source = await this.readSource(input.documentId, version.order);
+    const deckSpec = await this.deps.compile({ nodeId: input.documentId, source, ...this.deps.history.readContext(version.versionId) });
+    const result = await this.deps.documents.commitPresentation(input.documentId, deckSpec, {
+      deferPptx: true, deckSource: source, baseRevisionId: input.expectedBase.revisionId,
+      baseRevision: input.expectedBase.revision, expectedDraftState: 'absent', origin: 'edit',
+      revisionContext: { versionId: version.versionId }, manualEditReceipt: input.receipt,
+    });
+    return { versionId: result.revisionId, versionNumber: result.revision, deckSpec };
+  }
+
   requestMaintenance(documentId: string): void {
-    if (this.maintenance.has(documentId)) return;
-    this.maintenance.add(documentId);
-    void this.compact(documentId).catch(error => this.deps.reportFailure(documentId, error))
-      .finally(() => this.maintenance.delete(documentId));
+    // 停用期间可能仍有已接纳提交的 continuation；后台维护不能重新获得已释放的生命周期。
+    if (this.stopped) return;
+    const previous = this.scheduledMaintenance.get(documentId);
+    if (previous) clearTimeout(previous);
+    // scope.run 的微任务不是后台空闲任务：同步重链可能抢在提交回执的 continuation 前执行。
+    // 文档静默一段时间后再进入同一作用域，合并连续保存，也不改变资产释放的互斥边界。
+    const timer = setTimeout(() => {
+      this.scheduledMaintenance.delete(documentId);
+      const task = this.compact(documentId).catch(error => this.deps.reportFailure(documentId, error));
+      this.activeMaintenance.add(task);
+      void task.finally(() => this.activeMaintenance.delete(task));
+    }, PRESENTATION_HISTORY_MAINTENANCE_IDLE_MS);
+    timer.unref();
+    this.scheduledMaintenance.set(documentId, timer);
+  }
+
+  /** 插件停止时先取消尚未开始的维护，再等正在持锁的维护完成，随后才允许关闭 worker/数据库。 */
+  async dispose(): Promise<void> {
+    this.stopped = true;
+    for (const timer of this.scheduledMaintenance.values()) clearTimeout(timer);
+    this.scheduledMaintenance.clear();
+    await Promise.all(this.activeMaintenance);
   }
 
   compact(documentId: string): Promise<void> {
@@ -69,6 +107,8 @@ export class PresentationHistoryRuntime {
       if (snapshot.versions.length === 0) return;
       const keep = new Set(planDocumentVersionRetention(snapshot.versions).keepVersionIds);
       if (snapshot.draftBaseId) keep.add(snapshot.draftBaseId);
+      const current = snapshot.versions.find(version => version.isCurrent);
+      if (current) for (const id of this.deps.requiredVersions?.(documentId, current.versionId) ?? []) keep.add(id);
       const plan = planPresentationSourceCompaction(snapshot.sources, [...keep]);
       const backfill = new Map<string, { sourceTheme: DeckSpec['theme']; assets: readonly PresentationRevisionAsset[] }>();
       // 老版本只有源码：只读重建保留点，全部成功后才允许重链和释放资产。

@@ -153,7 +153,7 @@
         </span>
         <!-- 默认发送图标 -->
         <span v-else class="send-icon">
-          <EnterLeftIcon class="enter-left-icon" />
+          <EnterIcon class="enter-left-icon" />
         </span>
       </button>
     </div>
@@ -167,7 +167,7 @@ import { CustomSelect, IconButton } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
-import { EnterLeftIcon } from '@linnya/renderer-ui/icons';
+import { EnterIcon } from '@linnya/renderer-ui/icons';
 import { ImageIcon } from '@linnya/renderer-ui/icons';
 import ContextWindowUsageDropdown from '../../features/context-window-usage/ui/ContextWindowUsageDropdown.vue';
 import { useConversationAgentChoices } from '@/app/plugins/composables';

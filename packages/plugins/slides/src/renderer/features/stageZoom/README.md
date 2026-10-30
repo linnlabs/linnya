@@ -8,3 +8,7 @@
 - 平铺视图没有舞台，整条缩放工具条隐藏。
 
 `functions/stageZoomMenu.test.ts` 覆盖选项构造与动作解析；`../../ui/deck/DeckViewer.test.ts` 通过真实菜单点击验证档位与适应窗口写回 UI store。
+
+## 舞台视口
+
+`useSlideStageViewport` 拥有实际 viewport 测量、滚动容器生命周期、fit/手动缩放锚点、光栅清晰度与 overlay 几何更新。它只接收页尺寸、活动/显示页身份和可渲染事实；不读取选区或提交编辑。SlideStage 负责将它的坐标结果连接到画布与编辑浮层。

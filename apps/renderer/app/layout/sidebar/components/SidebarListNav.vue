@@ -24,7 +24,7 @@
       type="button"
       @click="$emit('knowledge-base-click')"
     >
-      <KnowledgeBaseIcon class="nav-icon" />
+      <LibraryIcon class="nav-icon" />
       <span class="nav-label">{{ layoutMessage('layout.sidebar.nav.knowledgeBase') }}</span>
     </button>
 
@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { KnowledgeBaseIcon } from '@linnya/renderer-ui/icons';
+import { LibraryIcon } from '@linnya/renderer-ui/icons';
 import { AppsIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { AddCircleIcon } from '@linnya/renderer-ui/icons';

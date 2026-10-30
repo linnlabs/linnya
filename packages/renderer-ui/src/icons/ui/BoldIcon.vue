@@ -1,9 +1,21 @@
 <!--
  * packages/renderer-ui/src/icons/ui/BoldIcon.vue
- * "加粗"图标组件
+ * “加粗”图标组件。
 -->
 <template>
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-    <path d="M7.38,5.43c.24-.24.58-.38.92-.38h3.81c2.29,0,4.02,1.9,4.02,4.02,0,.84-.27,1.65-.75,2.33.94.72,1.62,1.84,1.62,3.31,0,2.7-2.35,4.24-4.24,4.24h-4.45c-.72,0-1.3-.58-1.3-1.3V6.35c0-.35.13-.68.38-.92h0ZM9.61,10.48h2.5c.78,0,1.41-.66,1.41-1.41s-.62-1.41-1.41-1.41h-2.5v2.82ZM9.61,13.09v3.26h3.15c.76,0,1.63-.66,1.63-1.63s-.85-1.63-1.63-1.63h-3.15Z" fill="currentColor" stroke-width="0"/>
+  <svg
+    class="linnya-ui-icon"
+    data-icon="bold"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path fill="currentColor" stroke="none" d="M7.5 6.25C7.5 5.56 8.06 5 8.75 5h3.5a4 4 0 0 1 3.17 6.44c0.9 0.7 1.58 1.8 1.58 3.31A4.23 4.23 0 0 1 12.75 19h-4c-0.69 0 -1.25 -0.56 -1.25 -1.25zM10 13v3.5h2.75c0.81 0 1.75 -0.62 1.75 -1.75S13.56 13 12.75 13zm0 -2.5h2.25a1.5 1.5 0 1 0 0 -3H10z"/>
   </svg>
-</template> 
+</template>

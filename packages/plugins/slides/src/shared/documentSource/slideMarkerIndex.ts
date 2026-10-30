@@ -1,3 +1,4 @@
+import { readStaticSlideOrder } from './readStaticSlideOrder';
 import { parse } from 'acorn';
 
 export interface SlideSourceRange {
@@ -117,17 +118,19 @@ function buildRangesFromCreateSlideAst(source: string, lines: string[]): SlideSo
   visit(sourceFile);
 
   const uniqueStartLines = [...new Set(startLines)].sort((left, right) => left - right);
+  const displayOrder = readStaticSlideOrder(sourceFile);
+  const hasStaticOrder = displayOrder?.length === uniqueStartLines.length && uniqueStartLines.every(line => displayOrder.includes(line));
   return uniqueStartLines.map((startLine, index): SlideSourceRange => {
     const nextStartLine = uniqueStartLines[index + 1];
     const endLine = nextStartLine ? nextStartLine - 1 : lines.length;
     return {
-      slideNumber: index + 1,
+      slideNumber: hasStaticOrder && displayOrder ? displayOrder.indexOf(startLine) + 1 : index + 1,
       startLine,
       endLine,
       contentStartLine: startLine,
       contentEndLine: endLine,
     };
-  });
+  }).sort((a, b) => a.slideNumber - b.slideNumber);
 }
 
 function isCreateSlideCall(node: Record<string, unknown>): boolean {

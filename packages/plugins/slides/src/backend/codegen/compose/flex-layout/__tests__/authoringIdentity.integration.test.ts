@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import { RenderModelMapper } from '../../../../engine/parser/RenderModelMapper';
 import { materializePresentationPptx } from '../../../../features/presentationBuildExecution';
+import { copyManualObjects } from '../../../../features/presentationManualEditing';
 import {
   buildDeckSpecFromDirectInput,
   readCompiledDirectComposeInput,
@@ -85,7 +86,7 @@ describe('authoring identity projection', () => {
       id: 'authoring-overview-hero_art',
       authoringRef: { slideKey: 'overview', editKey: 'hero_art', targetKind: 'shape' },
       authoringEdit: {
-        capabilities: ['translate', 'delete', 'set_fill_color', 'set_visual_size'],
+        capabilities: ['translate', 'delete', 'copy', 'set_fill_color', 'set_visual_size'],
         fill: { kind: 'solid', color: '#224466' },
       },
     });
@@ -113,7 +114,7 @@ describe('authoring identity projection', () => {
       fill: { type: 'solid', color: '#445566' },
       authoringRef: { slideKey: 'overview', editKey: 'badge', targetKind: 'shape' },
       authoringEdit: {
-        capabilities: ['translate', 'delete', 'set_fill_color', 'set_visual_size', 'set_text_content'],
+        capabilities: ['translate', 'delete', 'copy', 'set_fill_color', 'set_visual_size', 'set_text_content'],
         text: { kind: 'plain_text', content: 'After' },
       },
       innerText: { paragraphs: [{ runs: [expect.objectContaining({ text: 'After' })] }] },
@@ -172,18 +173,53 @@ describe('authoring identity projection', () => {
       expect.objectContaining({
         authoringRef: expect.objectContaining({ editKey: 'headline' }),
         authoringEdit: {
-          capabilities: ['translate', 'delete', 'set_text_content', 'set_text_style'],
+          capabilities: ['translate', 'delete', 'copy', 'set_text_content', 'set_text_style'],
           text: { kind: 'plain_text', content: '增长 2026\n下一行' },
         },
       }),
       expect.objectContaining({
         authoringRef: expect.objectContaining({ editKey: 'rich_copy' }),
         authoringEdit: {
-          capabilities: ['translate', 'delete', 'set_text_content', 'set_text_style'],
+          capabilities: ['translate', 'delete', 'copy', 'set_text_content', 'set_text_style'],
           text: { kind: 'rich_text', content: [{ text: 'Rich ', style: { bold: true } }, { text: 'copy' }], baseStyle: expect.objectContaining({ fontFamily: 'Calibri' }) },
         },
       }),
     ]));
+  });
+
+  it('只给能无损复制的对象投影 copy，与复制接口同一判定', () => {
+    const compiled = compileFlexInput(deck([slide('overview', [
+      shape('plain'), { ...shape('rounded'), borderRadius: 0.2 }, frame('card', [shape('inner')]), text('headline', 'Copy me'),
+    ])]));
+    if (!compiled.input) throw new Error(compiled.error ?? 'Expected compiled Flex input.');
+    const admitted = readCompiledDirectComposeInput(structuredClone(compiled.input));
+    if (!admitted.input) throw new Error(admitted.error ?? 'Expected admitted compiled input.');
+    const deckSpec = buildDeckSpecFromDirectInput(admitted.input);
+    const model = new RenderModelMapper().fromGeneratedDeck('presentation-1', 1, deckSpec.title, deckSpec, { width: 13.333, height: 7.5 });
+    const copyable = model.slides[0].elements.flatMap(node => {
+      const ref = node.authoringRef;
+      if (!ref) return [];
+      const projected = node.authoringEdit?.capabilities.includes('copy') ?? false;
+      const accepted = (() => { try { copyManualObjects(deckSpec, [ref]); return true; } catch { return false; } })();
+      expect(accepted, ref.editKey).toBe(projected);
+      return projected ? [ref.editKey] : [];
+    });
+    expect(copyable.sort()).toEqual(['headline', 'inner', 'plain']);
+  });
+
+  it('插入的文字框宽度固定、高度随内容增长，插入高度只作下限', () => {
+    const input = deck([slide('overview', [shape('badge')])]);
+    const box = { x: 1, y: 1, w: 2, h: 0.5 };
+    input.manualEdits = { version: 2, slides: [{ slideKey: 'overview', targets: [], additions: [
+      { kind: 'text', editKey: 'short', box, content: 'Hi', style: { fontSize: 18 } },
+      { kind: 'text', editKey: 'long', box, content: 'A much longer sentence that has to wrap across several lines in a narrow box', style: { fontSize: 18 } },
+    ] }] };
+    const compiled = compileFlexInput(input);
+    if (!compiled.input) throw new Error(compiled.error ?? 'Expected compiled additions.');
+    const position = (editKey: string) => compiled.input?.slides[0].elements.find(element => element._authoringRef?.editKey === editKey)?.position;
+    expect(position('short')).toMatchObject({ x: 1, y: 1, w: 2, h: 0.5 });
+    expect(position('long')?.w).toBe(2);
+    expect(position('long')?.h).toBeGreaterThan(0.5);
   });
 
   it('拒绝没有 slideKey 的孤立 editKey', () => {

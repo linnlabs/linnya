@@ -37,7 +37,7 @@
         :class="{ 'is-visible': trailingStatus.visible }"
         aria-hidden="true"
       >
-        <RippleLoadingIcon />
+        <LinnyaLoadingIcon activity="thinking" />
       </div>
     </div>
   </section>
@@ -65,7 +65,7 @@ import { resolveConversationRowTailLayout } from '../functions/resolveConversati
 import Message from '../../Message.vue';
 import ConversationWorkDurationHint from '../../components/ConversationWorkDurationHint.vue';
 import ConversationVisualRowActions from './ConversationVisualRowActions.vue';
-import { RippleLoadingIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
 
 const props = withDefaults(defineProps<{
   item: ConversationVisualRowModel;

@@ -10,6 +10,7 @@ import {
 } from '../features/presentationBuildExecution/orchestration/sharedPresentationBuildExecution';
 
 let sharedPptCoordinators = new WeakMap<Database, PptCoordinator>();
+const activePptCoordinators = new Set<PptCoordinator>();
 let isSharedPptCoordinatorRuntimeActive = false;
 let sharedBrushArtworkGenerator: BrushArtworkGeneratorPort | undefined;
 
@@ -24,6 +25,8 @@ export function activateSharedPptCoordinatorRuntime(options?: {
 export async function deactivateSharedPptCoordinatorRuntime(): Promise<void> {
   isSharedPptCoordinatorRuntimeActive = false;
   sharedBrushArtworkGenerator = undefined;
+  await Promise.all([...activePptCoordinators].map(coordinator => coordinator.history?.dispose()));
+  activePptCoordinators.clear();
   sharedPptCoordinators = new WeakMap<Database, PptCoordinator>();
   await deactivateSharedPresentationBuildExecution();
 }
@@ -60,5 +63,6 @@ export function getSharedPptCoordinator(
     buildExecution: getSharedPresentationBuildExecution(),
   });
   sharedPptCoordinators.set(db, coordinator);
+  activePptCoordinators.add(coordinator);
   return coordinator;
 }

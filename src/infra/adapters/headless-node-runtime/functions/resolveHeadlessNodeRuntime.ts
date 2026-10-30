@@ -19,8 +19,8 @@ export async function resolveHeadlessNodeRuntime(input: {
   readonly runtimeDirectory: string;
   readonly platform: NodeJS.Platform;
   readonly architecture: string;
-  /** 正式包的可执行文件经过签名，bytes 会变化；其完整性由 afterSign/平台签名门禁负责。 */
-  readonly verifyPreparedExecutableHash: boolean;
+  /** 校验准备阶段的 size/hash；正式包重签后的完整性由 afterSign/平台签名门禁负责。 */
+  readonly verifyPreparedExecutableIntegrity: boolean;
 }): Promise<ResolvedHeadlessNodeRuntime> {
   if (!path.isAbsolute(input.runtimeDirectory)) {
     throw new Error('Headless Node runtime directory 必须是绝对路径');
@@ -60,10 +60,11 @@ export async function resolveHeadlessNodeRuntime(input: {
   if (target.platform === 'darwin' && (executableStat.mode & 0o111) === 0) {
     throw new Error('Headless Node runtime executable 缺少执行权限');
   }
-  if (executableStat.size !== manifest.preparedExecutableSizeBytes) {
-    throw new Error('Headless Node runtime executable size 与 manifest 不一致');
-  }
-  if (input.verifyPreparedExecutableHash) {
+  // prepared_executable 记录签名前的事实；重签可改变大小与 hash，二者必须使用相同的阶段边界。
+  if (input.verifyPreparedExecutableIntegrity) {
+    if (executableStat.size !== manifest.preparedExecutableSizeBytes) {
+      throw new Error('Headless Node runtime executable size 与 manifest 不一致');
+    }
     const executableSha256 = createHash('sha256')
       .update(await readFile(executablePath))
       .digest('hex');

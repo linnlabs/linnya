@@ -1,3 +1,6 @@
+import { copyManualObjects } from '../features/presentationManualEditing';
+import type { SlidesInsertedObject } from '@plugin/slides/shared/authoringEditing';
+import type { ViewReadRequest, ViewReadResponse } from '@plugin/slides/shared/presentationViewSnapshot';
 /**
  * PptCoordinator
  *
@@ -7,6 +10,7 @@
 import type {
   PresentationInspectionRequest,
   SlidesManualEditCommand,
+  SlidesManualEditHistoryStatus,
   SlidesManualEditCommandResult,
   SlidesDocumentBuildState,
   SlidesSourceSliceTargetInput,
@@ -64,7 +68,7 @@ import {
   type PresentationExportRuntimePorts,
 } from '../features/presentationExport';
 import { PresentationPageRasterizationRuntime } from '../features/presentationPageRasterization';
-import type { PresentationManualEditTracePort } from '../features/presentationManualEditing';
+import type { ManualEditHistoryStore, PresentationManualEditTracePort } from '../features/presentationManualEditing';
 import { PresentationPptxArtifactRuntime } from '../features/presentationPptxArtifact';
 import type {
   PresentationExportRequest,
@@ -81,6 +85,8 @@ function isConversationAwareImageSourceResolver(
 }
 
 export interface PptCoordinatorRuntimeOptions {
+  readonly importImage?: (documentId: string, bytes: Uint8Array) => Promise<string>;
+  readonly manualEditHistoryStore?: ManualEditHistoryStore;
   readonly history?: PresentationHistoryRuntime;
   readonly revisionScope?: PresentationRevisionScope;
   readonly engineAdapter?: SlidesEngineExecutionAdapter;
@@ -93,6 +99,16 @@ export interface PptCoordinatorRuntimeOptions {
 }
 
 export class PptCoordinator {
+  private readonly imageImporter: PptCoordinatorRuntimeOptions['importImage'];
+  async copyObjects(input: { documentId: string; revisionId: string; targets: readonly { slideKey: string; editKey: string }[] }): Promise<readonly SlidesInsertedObject[]> {
+    const current = await this.presentationRepo.getPresentation(input.documentId);
+    if (!current || current.currentRevisionId !== input.revisionId) throw new Error('文稿已变化，请重新复制。');
+    return copyManualObjects(current.deckSpec, input.targets);
+  }
+  async importImage(documentId: string, bytes: Uint8Array): Promise<string> {
+    if (!this.imageImporter) throw new Error('图片导入暂不可用。');
+    return this.imageImporter(documentId, bytes);
+  }
   readonly history?: PresentationHistoryRuntime;
   private readonly engine: SlidesEngineExecutionAdapter;
   private readonly codegenRuntime: PresentationCodegenRuntime;
@@ -112,6 +128,7 @@ export class PptCoordinator {
     private readonly draftRepo: PresentationDraftRepositoryPort | undefined,
     runtimeOptions: PptCoordinatorRuntimeOptions
   ) {
+    this.imageImporter = runtimeOptions.importImage;
     this.history = runtimeOptions.history;
     this.svgGraphicRuntime = runtimeOptions.svgGraphicRuntime;
     const presentationQueries = new PptPresentationQueryService(
@@ -128,9 +145,12 @@ export class PptCoordinator {
       });
     this.codegenRuntime = new PresentationCodegenRuntime({
       revisionScope: runtimeOptions.revisionScope,
+      historyStore: runtimeOptions.manualEditHistoryStore,
+      restoreRevision: runtimeOptions.history?.commitDeferredRestore.bind(runtimeOptions.history),
       presentationRepo: this.presentationRepo,
       ...(this.workspaceService ? { workspaceService: this.workspaceService } : {}),
       ...(this.draftRepo ? { draftRepo: this.draftRepo } : {}),
+      imageSourceResolver,
       engine: this.engine,
       ...(runtimeOptions.codegenDeckBuilderFactory
         ? { codegenDeckBuilderFactory: runtimeOptions.codegenDeckBuilderFactory }
@@ -310,6 +330,10 @@ export class PptCoordinator {
     return this.queryRuntime.getDocumentBuildState(nodeId);
   }
 
+  readViewSnapshot(request: ViewReadRequest): Promise<ViewReadResponse> {
+    return this.queryRuntime.readViewSnapshot(request);
+  }
+
   /** 获取完整渲染模型（Konva 渲染层消费） */
   async getRenderModel(nodeId: string): Promise<PresentationRenderModel> {
     return this.queryRuntime.getRenderModel(nodeId);
@@ -348,6 +372,10 @@ export class PptCoordinator {
   }
 
   /** 提交一次基于明确 revision 快照的有限人工编辑。 */
+  readManualEditHistory(documentId: string): Promise<SlidesManualEditHistoryStatus> {
+    return this.codegenRuntime.readManualEditHistory(documentId);
+  }
+
   async submitManualEdit(
     command: SlidesManualEditCommand,
   ): Promise<SlidesManualEditCommandResult> {

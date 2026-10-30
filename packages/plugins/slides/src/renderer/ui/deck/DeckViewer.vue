@@ -1,10 +1,19 @@
 <template>
-  <div class="deck-viewer">
+  <div
+    class="deck-viewer"
+    @keydown="handleHistoryShortcut($event); handleClipboardShortcut($event)"
+  >
     <div class="deck-viewer-body">
       <!-- 主区域：单页舞台或全稿平铺 -->
-      <div ref="stageHostRef" class="deck-viewer-stage">
+      <div
+        ref="stageHostRef"
+        class="deck-viewer-stage"
+      >
         <!-- loading 期间不保留上一份文稿的状态页或舞台 DOM。 -->
-        <div v-if="showLoading" class="stage-loading-spacer" />
+        <div
+          v-if="showLoading"
+          class="stage-loading-spacer"
+        />
         <SlidesStatusState
           v-else-if="documentBuildState?.state === 'draft'"
           title="PPT 编译失败"
@@ -58,18 +67,39 @@
             v-if="manualEditingStore.pendingPresentationRevision !== null"
             class="manual-edit-error__retry"
             @click="manualEditSubmission.refreshPresentation"
-          >{{ manualEditingMessage('slides.manualEditing.refreshPresentation') }}</button>
+          >
+            {{ manualEditingMessage('slides.manualEditing.refreshPresentation') }}
+          </button>
+        </div>
+        <div
+          v-else-if="manualEditNotice"
+          class="stage-manual-edit-error"
+          role="status"
+        >
+          {{ manualEditNotice }}
+          <button
+            class="manual-edit-error__retry"
+            @click="manualEditingStore.setNotice(null)"
+          >
+            {{ manualEditingMessage('slides.manualEditing.notice.dismiss') }}
+          </button>
         </div>
 
+        <!-- 顶部居中的文稿命令条浮在舞台上，不进入布局；幻灯片位置不随它出现或消失。 -->
+        <SlideEditingCommandBar v-if="manualEditingEnabled && deckPreview && deckViewMode === 'slide'" />
+
         <!-- 右下角缩放控件只更新自身数值，不参与文稿内容切换；平铺视图没有舞台可缩放。 -->
-        <div v-if="deckPreview && deckViewMode === 'slide'" class="stage-zoom-slider">
+        <div
+          v-if="deckPreview && deckViewMode === 'slide'"
+          class="stage-zoom-slider"
+        >
           <button
             class="stage-zoom-slider__btn"
             :disabled="zoomPercent <= ZOOM_PERCENT_MIN"
             aria-label="缩小"
             @click="adjustZoom(-ZOOM_PERCENT_STEP)"
           >
-            <MinusIcon class="stage-zoom-slider__icon" />
+            <SubtractIcon class="stage-zoom-slider__icon" />
           </button>
           <CustomSlider
             class="stage-zoom-slider__input"
@@ -94,28 +124,6 @@
             :zoom-mode="zoomMode"
             @action="applyZoomMenuAction"
           />
-          <button
-            class="stage-zoom-slider__btn stage-zoom-slider__edit-btn"
-            :class="{ 'stage-zoom-slider__edit-btn--active': manualEditingEnabled }"
-            :disabled="!canUseManualEditing || manualEditingSubmitting"
-            :aria-pressed="manualEditingEnabled"
-            :aria-label="manualEditingMessage('slides.manualEditing.toggle.label')"
-            :title="manualEditingButtonTitle"
-            @click="toggleManualEditing"
-          >
-            <EditIcon class="stage-zoom-slider__icon" />
-          </button>
-          <button
-            class="stage-zoom-slider__btn stage-zoom-slider__select-btn"
-            :class="{ 'stage-zoom-slider__select-btn--active': sourceSelectionModeEnabled }"
-            :disabled="!canUseSourceSelectionMode"
-            :aria-pressed="sourceSelectionModeEnabled"
-            aria-label="选择 PPT 元素"
-            :title="sourceSelectionButtonTitle"
-            @click="toggleSourceSelectionMode"
-          >
-            <SelectObjectIcon class="stage-zoom-slider__icon" />
-          </button>
         </div>
       </div>
 
@@ -141,6 +149,10 @@
 </template>
 
 <script setup lang="ts">
+import { useElementClipboard } from '../../features/elementClipboard';
+import { SlideEditingCommandBar, useEditingCommands } from '../../features/editingCommands';
+
+import { useSlidesDocumentRuntime } from '../../features/documentRuntime';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { CustomSlider } from '@linnya/renderer-ui';
@@ -149,26 +161,21 @@ import { useSlidesUiStore } from '../../store/slidesUiStore';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import {
   AddIcon,
-  EditIcon,
-  MinusIcon,
-  SelectObjectIcon,
+  SubtractIcon,
 } from '@linnya/renderer-ui/icons';
 import SlideStage from '../preview/SlideStage.vue';
 import SlidesStatusState from '../shared/SlidesStatusState.vue';
 import { SlidesDraftFailureLog } from '../../features/documentBuildFailure';
 import {
   INSPECTOR_DEFAULT_WIDTH,
+  SLIDE_STAGE_FIT_PADDING,
   ZOOM_MIN,
   ZOOM_MAX,
   ZOOM_STEP,
   ZOOM_SLIDER_STEP,
 } from '../../shared/constants';
 import { computeFitScale } from '../../shared/slideScale';
-import {
-  resolveSourceSelectionAvailability,
-  type SourceSelectionEditSubmitPayload,
-} from '../../features/sourceSelection';
-import { isKonvaNodeSupported } from '../../features/konvaPreview';
+import type { SourceSelectionEditSubmitPayload } from '../../features/sourceSelection';
 import { useSlidesPreviewLocalization } from '../../features/previewRenderState';
 import { DeckNavigatorBar, SlideGridView } from '../../features/deckNavigator';
 import { StageZoomMenu, type StageZoomMenuAction } from '../../features/stageZoom';
@@ -196,6 +203,8 @@ const slidesStore = useSlidesStore();
 const slidesUiStore = useSlidesUiStore();
 const slidesRenderStore = useSlidesRenderStore();
 const manualEditingStore = useSlidesManualEditingStore();
+const { handleClipboardShortcut } = useElementClipboard();
+const { handleHistoryShortcut } = useEditingCommands();
 const manualEditSubmission = useManualEditSubmission();
 const { manualEditingMessage } = useManualEditingLocalization();
 const { slidesPreviewMessage } = useSlidesPreviewLocalization();
@@ -213,12 +222,11 @@ const {
   zoomLevel,
   zoomMode,
   fitZoomLevel,
-  sourceSelectionModeEnabled,
 } = storeToRefs(slidesUiStore);
 const {
   enabled: manualEditingEnabled,
-  submitting: manualEditingSubmitting,
   errorMessage: manualEditError,
+  notice: manualEditNotice,
 } = storeToRefs(manualEditingStore);
 const {
   renderLoading,
@@ -289,6 +297,8 @@ const resolvedZoomLevel = computed(() => {
         stageViewportWidth.value,
         stageViewportHeight.value,
         deckPreview.value.slideSize,
+        'contain',
+        SLIDE_STAGE_FIT_PADDING,
       ),
     );
   }
@@ -300,43 +310,15 @@ const zoomPercent = computed(() => {
   return Math.round(resolvedZoomLevel.value * 100);
 });
 
-const currentSlideKonvaCompatible = computed(() =>
-  currentSlideRender.value !== null
-  && currentSlideRender.value.elements.every(isKonvaNodeSupported),
-);
-
-const sourceSelectionAvailability = computed(() =>
-  resolveSourceSelectionAvailability({
-    renderModel: renderModel.value,
-    currentSlideRender: currentSlideRender.value,
-    currentSlideKonvaCompatible: currentSlideKonvaCompatible.value,
-  }),
-);
-
-const canUseSourceSelectionMode = computed(() => sourceSelectionAvailability.value.canEnableMode);
-
 const manualEditingAvailability = computed(() => resolveManualEditingAvailability({
   buildState: documentBuildState.value,
   renderModel: renderModel.value,
   currentSlide: currentSlideRender.value,
 }));
-const canUseManualEditing = computed(() => manualEditingAvailability.value.available);
-const manualEditingButtonTitle = computed(() => {
-  if (manualEditingSubmitting.value) return manualEditingMessage('slides.manualEditing.toggle.saving');
-  if (manualEditingEnabled.value) return manualEditingMessage('slides.manualEditing.toggle.disable');
-  if (canUseManualEditing.value) return manualEditingMessage('slides.manualEditing.toggle.enable');
-  return manualEditingMessage('slides.manualEditing.toggle.unavailable');
-});
-
-const sourceSelectionButtonTitle = computed(() =>
-  canUseSourceSelectionMode.value
-    ? (sourceSelectionModeEnabled.value ? '关闭元素选择模式' : '打开元素选择模式')
-    : sourceSelectionAvailability.value.label,
-);
 
 function reload() {
   if (currentDeckId.value) {
-    slidesStore.loadDeck(currentDeckId.value);
+    void useSlidesDocumentRuntime().loadDeck(currentDeckId.value);
   }
 }
 
@@ -357,34 +339,12 @@ function applyZoomMenuAction(action: StageZoomMenuAction) {
   setZoomPercent(action.percent);
 }
 
-function toggleSourceSelectionMode() {
-  if (!canUseSourceSelectionMode.value) {
-    return;
-  }
-  manualEditingStore.setEnabled(false);
-  slidesUiStore.toggleSourceSelectionMode();
-}
-
-function toggleManualEditing() {
-  if (!canUseManualEditing.value || manualEditingSubmitting.value) return;
-  slidesUiStore.setSourceSelectionModeEnabled(false);
-  manualEditingStore.setEnabled(!manualEditingEnabled.value);
-}
-
-watch(canUseSourceSelectionMode, (enabled) => {
-  if (!enabled && sourceSelectionModeEnabled.value) {
-    slidesUiStore.setSourceSelectionModeEnabled(false);
-  }
-});
-watch(canUseManualEditing, (available) => {
-  const availability = manualEditingAvailability.value;
-  if (
-    !available
-    && manualEditingEnabled.value
-    && !availability.available
-    && availability.reason !== 'version_not_ready'
-  ) {
-    manualEditingStore.setEnabled(false);
-  }
-});
+/**
+ * 没有编辑模式：文稿就绪即可手动修改。自己刚提交的修订正在刷新画面时（version_not_ready）
+ * 保持可写，避免每次保存都让命令栏和浮条闪成只读。
+ */
+watch(manualEditingAvailability, availability => {
+  if (availability.available) manualEditingStore.setEnabled(true);
+  else if (availability.reason !== 'version_not_ready') manualEditingStore.setEnabled(false);
+}, { immediate: true });
 </script>

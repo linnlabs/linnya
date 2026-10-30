@@ -1,16 +1,22 @@
 <!--
  * packages/renderer-ui/src/icons/ui/TableIcon.vue
- * “插入表格”图标组件
+ * “表格”图标组件。
 -->
 <template>
   <svg
+    class="linnya-ui-icon"
+    data-icon="table"
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
   >
-    <path
-      d="M19,7.41c0-1.33-1.08-2.41-2.41-2.41H7.41c-1.33,0-2.41,1.08-2.41,2.41v9.17c0,1.33,1.08,2.41,2.41,2.41h9.17c1.33,0,2.41-1.08,2.41-2.41V7.41ZM9.39,18.16h-1.97c-.87,0-1.57-.71-1.57-1.57v-1.97h3.54v3.55ZM9.39,13.77h-3.54v-3.54h3.54v3.54ZM9.39,9.39h-3.54v-1.97c0-.87.71-1.57,1.57-1.57h1.97v3.54ZM13.77,18.16h-3.55v-3.55h3.55v3.55ZM13.77,13.77h-3.55v-3.54h3.55v3.54ZM13.77,9.39h-3.55v-3.54h3.55v3.54ZM18.16,16.59c0,.87-.71,1.57-1.57,1.57h-1.97v-3.55h3.54v1.97ZM18.16,13.77h-3.54v-3.54h3.54v3.54ZM18.16,9.39h-3.54v-3.54h1.97c.87,0,1.57.71,1.57,1.57v1.97Z"
-      fill="currentColor"
-      stroke-width="0"
-    />
+    <rect x="5.5" y="5.5" width="13" height="13" rx="2"/>
+    <path d="M9.5 5.5v13M14.5 5.5v13M5.5 9.5h13M5.5 14.5h13"/>
   </svg>
-</template> 
+</template>

@@ -1,3 +1,4 @@
+import { readInsertedObjectLocations } from './readInsertedObjectLocations.js';
 import type ts from 'typescript';
 
 import {
@@ -55,10 +56,11 @@ export function instrumentDeckSourceForLayoutTrace(source: string): string {
           { position: end, text: `, { startLine: ${startLine}, endLine: ${endLine} })` }
         );
       } else if (functionName === 'compose' && node.arguments.length === 1) {
+        const locations = readInsertedObjectLocations(typescript, sourceFile, node.arguments[0]);
         edits.push(
           { position: node.getStart(sourceFile), text: '__withComposeTrace(' },
           { position: node.expression.getEnd(), text: ',' },
-          { position: node.getEnd(), text: ')' }
+          { position: node.getEnd(), text: Object.keys(locations).length ? `, ${JSON.stringify(locations)})` : ')' }
         );
       }
     }

@@ -7,6 +7,7 @@ import type {
 } from '../definitions/aiSdkThirdPartyNotice';
 import {
   CRAFT_AGENTS_OAUTH_NOTICE,
+  FLUENT_SYSTEM_ICONS_NOTICE,
   MODELS_DEV_CATALOG_NOTICE,
 } from '../definitions/sourceDependencyBom';
 
@@ -217,6 +218,9 @@ export function validateAiSdkThirdPartyNotice(
         CRAFT_AGENTS_OAUTH_NOTICE.title,
         CRAFT_AGENTS_OAUTH_NOTICE.source,
         'Copyright 2026 Craft Docs Ltd.',
+        FLUENT_SYSTEM_ICONS_NOTICE.title,
+        FLUENT_SYSTEM_ICONS_NOTICE.source,
+        'Copyright (c) 2020 Microsoft Corporation',
       ].filter(fragment => !notice.includes(fragment));
       if (missingFragments.length > 0) {
         problems.push({

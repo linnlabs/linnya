@@ -8,7 +8,7 @@
           :data-linnya-tooltip="editorMessage('editor.audioBlock.action.insertTimestamp')"
           :aria-label="editorMessage('editor.audioBlock.action.insertTimestamp')"
         >
-          <TimeIcon />
+          <ClockIcon />
         </button>
         <span class="divider"></span>
         <button 
@@ -36,7 +36,7 @@
           :data-linnya-tooltip="editorMessage('editor.audioBlock.action.bulletList')"
           :aria-label="editorMessage('editor.audioBlock.action.bulletList')"
         >
-          <ListItemIcon />
+          <BulletListIcon />
         </button>
         <button 
           class="toolbar-button" 
@@ -75,9 +75,9 @@ import { useAudioContentStore, useAudioEditorsStore } from '../../store/index.js
 import { TimestampNode } from './TimestampExtension.js';
 import { BoldIcon } from '@linnya/renderer-ui/icons';
 import { ItalicIcon } from '@linnya/renderer-ui/icons';
-import { ListItemIcon } from '@linnya/renderer-ui/icons';
+import { BulletListIcon } from '@linnya/renderer-ui/icons';
 import { HeadingIcon } from '@linnya/renderer-ui/icons';
-import { TimeIcon } from '@linnya/renderer-ui/icons';
+import { ClockIcon } from '@linnya/renderer-ui/icons';
 import { marked } from 'marked';
 import { SubEditorFindReplaceExtension } from './SubEditorFindReplaceExtension.js';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';

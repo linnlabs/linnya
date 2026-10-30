@@ -7,3 +7,5 @@ export {
 
 export { slidesFileHandler } from './fileHandler';
 export { registerSlidesDocumentSaveParticipant, saveSlidesDocument } from './ports/documentSaveParticipant';
+
+export { useSlidesDocumentRuntime } from './orchestration/useSlidesDocumentRuntime';

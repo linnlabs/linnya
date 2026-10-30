@@ -113,8 +113,7 @@
   transform: scale(1.05);
 }
 
-.audio-player-container .play-icon,
-.audio-player-container .pause-icon {
+.audio-player-container .play-pause-icon {
   display: flex;
   align-items: center;
   justify-content: center;

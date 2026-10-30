@@ -45,7 +45,7 @@
             title="发送给 AI"
             aria-label="发送给 AI"
           >
-            <EnterLeftIcon class="source-selection-prompt__icon" />
+            <EnterIcon class="source-selection-prompt__icon" />
           </button>
         </span>
       </form>
@@ -58,7 +58,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { applyTextareaAutoResize } from '@linnya/renderer-ui';
 import {
   CloseIcon,
-  EnterLeftIcon,
+  EnterIcon,
   LinnyaIcon,
 } from '@linnya/renderer-ui/icons';
 import type {

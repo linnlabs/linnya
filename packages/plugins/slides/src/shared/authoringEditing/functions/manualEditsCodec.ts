@@ -1,3 +1,6 @@
+import { readInsertedObjects } from './readInsertedObjects';
+import { readSlidesTextStylePatch } from './readSlidesTextStylePatch';
+import { SLIDES_TEXT_STYLE_FIELDS } from '../definitions/editableText';
 import { isEditableTextContent } from './editableText';
 import type {
   SlidesManualEdits,
@@ -8,7 +11,6 @@ import type {
   SlidesManualVisualSize,
 } from '../definitions/manualEdits';
 import { isSlidesAuthoringKey } from './authoringIdentity';
-import { SLIDES_MANUAL_FONT_SIZE_PT } from '../definitions/textStyleLimits';
 
 export type SlidesManualEditsParseResult =
   | { readonly value: SlidesManualEdits }
@@ -54,8 +56,8 @@ function parseSlideEdits(
   version: 1 | 2,
 ): { readonly value: SlidesManualSlideEdits } | { readonly error: string } {
   const path = `manualEdits.slides[${slideIndex}]`;
-  if (!isRecord(value) || !hasOnlyKeys(value, ['slideKey', 'targets'])) {
-    return { error: `${path} 必须是只含 slideKey / targets 的对象。` };
+  if (!isRecord(value) || !hasOnlyKeys(value, ['slideKey', 'targets', 'additions', 'paintOrder'])) {
+    return { error: `${path} 必须是只含 slideKey / targets / additions 的对象。` };
   }
   if (!isSlidesAuthoringKey(value.slideKey)) {
     return { error: `${path}.slideKey 不是有效的作者 key。` };
@@ -73,7 +75,11 @@ function parseSlideEdits(
     editKeys.add(parsed.value.editKey);
     targets.push(parsed.value);
   }
-  return { value: { slideKey: value.slideKey, targets } };
+  const order = value.paintOrder;
+  if (order !== undefined && (!Array.isArray(order) || !order.every(isSlidesAuthoringKey) || new Set(order).size !== order.length)) return { error: `${path}.paintOrder 必须是唯一作者 key 数组。` };
+  const additions = value.additions === undefined ? undefined : readInsertedObjects(value.additions);
+  if (additions && 'error' in additions) return additions;
+  return { value: { slideKey: value.slideKey, targets, ...(Array.isArray(order) && order.every(isSlidesAuthoringKey) ? { paintOrder: order } : {}), ...(additions ? { additions: additions.value } : {}) } };
 }
 
 function parseTargetEdit(
@@ -100,24 +106,20 @@ function parseTargetEdit(
   if (value.deleted !== undefined) return { error: `${path}.deleted 只能是 true。` };
 
   if (value.kind === 'text') {
-    if (!hasOnlyKeys(value, ['kind', 'editKey', 'content', 'fontSizePt', 'color', 'translation'])) {
+    if (!hasOnlyKeys(value, ['kind', 'editKey', 'content', 'width', ...SLIDES_TEXT_STYLE_FIELDS, 'translation'])) {
       return { error: `${path} 含有 text 人工编辑不支持的字段。` };
     }
     if (value.content !== undefined && !isEditableTextContent(value.content)) {
       return { error: `${path}.content 必须是字符串或文字 run 数组。` };
     }
-    if (value.fontSizePt !== undefined && !isFontSize(value.fontSizePt)) {
-      return { error: `${path}.fontSizePt 必须是 ${SLIDES_MANUAL_FONT_SIZE_PT.min}–${SLIDES_MANUAL_FONT_SIZE_PT.max} pt 内的有限数字。` };
-    }
-    if (value.color !== undefined && !isHexColor(value.color)) {
-      return { error: `${path}.color 必须是 #RRGGBB。` };
-    }
+    if (value.width !== undefined && (!isPositiveFiniteNumber(value.width))) return { error: `${path}.width 必须是正数。` };
+    const patch = readSlidesTextStylePatch(value);
+    if ('error' in patch) return { error: `${path}: ${patch.error}` };
     const translation = parseOptionalTranslation(value.translation, `${path}.translation`);
     if ('error' in translation) return translation;
     if (
-      value.content === undefined
-      && value.fontSizePt === undefined
-      && value.color === undefined
+      value.content === undefined && value.width === undefined
+      && Object.keys(patch.value).length === 0
       && translation.value === undefined
     ) {
       return { error: `${path} 至少需要一个文本人工值。` };
@@ -127,8 +129,8 @@ function parseTargetEdit(
         kind: 'text',
         editKey: value.editKey,
         content: value.content,
-        fontSizePt: value.fontSizePt,
-        color: value.color,
+        ...patch.value,
+        ...(value.width !== undefined ? { width: value.width } : {}),
         translation: translation.value,
       },
     };
@@ -186,19 +188,23 @@ function parseTargetEdit(
   }
 
   if (value.kind === 'image') {
-    if (!hasOnlyKeys(value, ['kind', 'editKey', 'translation', 'visualSize'])) {
+    if (!hasOnlyKeys(value, ['kind', 'editKey', 'translation', 'visualSize', 'assetId', 'fit'])) {
       return { error: `${path} 含有 image 人工编辑不支持的字段。` };
     }
+    if (value.assetId !== undefined && (typeof value.assetId !== 'string' || !value.assetId)) return { error: `${path}.assetId 无效。` };
+    if (value.fit !== undefined && value.fit !== 'contain' && value.fit !== 'cover') return { error: `${path}.fit 无效。` };
     const translation = parseOptionalTranslation(value.translation, `${path}.translation`);
     if ('error' in translation) return translation;
     const visualSize = parseOptionalVisualSize(value.visualSize, `${path}.visualSize`);
     if ('error' in visualSize) return visualSize;
-    if (translation.value === undefined && visualSize.value === undefined) {
+    if (translation.value === undefined && visualSize.value === undefined && value.assetId === undefined && value.fit === undefined) {
       return { error: `${path} 至少需要 translation 或 visualSize。` };
     }
     return {
       value: {
         kind: 'image',
+        ...(typeof value.assetId === 'string' ? { assetId: value.assetId } : {}),
+        ...(value.fit === 'contain' || value.fit === 'cover' ? { fit: value.fit } : {}),
         editKey: value.editKey,
         translation: translation.value,
         visualSize: visualSize.value,
@@ -290,10 +296,7 @@ function parseOptionalVisualSize(
   return { value: { width: value.width, height: value.height } };
 }
 
-function isFontSize(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value)
-    && value >= SLIDES_MANUAL_FONT_SIZE_PT.min && value <= SLIDES_MANUAL_FONT_SIZE_PT.max;
-}
+
 
 function isPositiveFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;

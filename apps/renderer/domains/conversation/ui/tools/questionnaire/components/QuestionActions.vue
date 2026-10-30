@@ -16,7 +16,7 @@
       <!-- 已完成状态显示 -->
       <div v-if="isCompleted" class="completion-status">
         <div v-if="questionnaireStatus.type === 'submitted'" class="status-submitted">
-          <OkIcon class="status-icon" />
+          <CheckmarkIcon class="status-icon" />
           <span class="status-text">{{ conversationMessage('conversation.tool.askQuestions.submitted') }}</span>
           <span v-if="questionnaireStatus.timestamp" class="status-time">
             {{ formatTime(questionnaireStatus.timestamp) }}
@@ -47,7 +47,7 @@
 
 <script setup lang="ts">
 import { ActionButtons } from '@linnya/renderer-ui';
-import { OkIcon } from '@linnya/renderer-ui/icons';
+import { CheckmarkIcon } from '@linnya/renderer-ui/icons';
 import type { QuestionnaireStatus } from '../definitions/questionnaire';
 import type { ConversationMessageResolver } from '../../../../definitions/conversationMessages';
 import { useConversationLocalization } from '../../../useConversationLocalization';

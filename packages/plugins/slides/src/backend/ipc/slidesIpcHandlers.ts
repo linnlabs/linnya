@@ -1,3 +1,5 @@
+import type { SlidesInsertedObject } from '@plugin/slides/shared/authoringEditing';
+import { ViewReadRequestSchema, type ViewReadRequest, type ViewReadResponse } from '@plugin/slides/shared/presentationViewSnapshot';
 import type {
   DeckPreview,
   PresentationInfo,
@@ -10,6 +12,7 @@ import type {
   PresentationExportRequest,
   PresentationExportResult,
   SlidesManualEditCommand,
+  SlidesManualEditHistoryStatus,
   SlidesManualEditCommandResult,
 } from '@plugin/slides/shared';
 import { z } from 'zod';
@@ -33,6 +36,9 @@ export interface SlidesSourceSlicesForAiEditInput {
 }
 
 export interface SlidesIpcCoordinatorPort {
+  copyObjects(input: { documentId: string; revisionId: string; targets: readonly { slideKey: string; editKey: string }[] }): Promise<readonly SlidesInsertedObject[]>;
+  importImage(documentId: string, bytes: Uint8Array): Promise<string>;
+  readViewSnapshot(request: ViewReadRequest): Promise<ViewReadResponse>;
   readonly history?: { preview(documentId: string, versionId: string): Promise<PresentationRenderModel> };
   readSourceSlicesForAiEdit(input: SlidesSourceSlicesForAiEditInput): Promise<SlidesSourceSlicesOutput>;
   inspect(nodeId: string): Promise<PresentationInfo>;
@@ -42,6 +48,7 @@ export interface SlidesIpcCoordinatorPort {
   listTemplates(): Promise<TemplateSummary[]>;
   importTemplate(buffer: Buffer, name: string, description?: string): Promise<TemplateSpec>;
   exportPresentation(request: PresentationExportRequest): Promise<PresentationExportResult>;
+  readManualEditHistory(documentId: string): Promise<SlidesManualEditHistoryStatus>;
   submitManualEdit(command: SlidesManualEditCommand): Promise<SlidesManualEditCommandResult>;
 }
 
@@ -129,6 +136,27 @@ export function registerSlidesIpcHandlersForCoordinatorProvider(
   registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:render-model', async (payload) => {
     const { nodeId } = parseSlidesNodePayload(payload, 'slides:render-model');
     return readCoordinator().getRenderModel(nodeId);
+  });
+
+  registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:view-snapshot', payload =>
+    readCoordinator().readViewSnapshot(ViewReadRequestSchema.parse(payload)));
+
+  registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:copy-objects', payload => {
+    const key = z.string().regex(/^[A-Za-z][A-Za-z0-9_-]{0,63}$/u);
+    const input = z.object({ documentId: z.string().min(1), revisionId: z.string().min(1), targets: z.array(z.object({ slideKey: key, editKey: key }).strict()).min(1).max(1000) }).strict().parse(payload);
+    return readCoordinator().copyObjects(input);
+  });
+
+  registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:import-image', async payload => {
+    const input = z.object({ documentId: z.string().min(1), base64: z.string().min(4).max(28 * 1024 * 1024).regex(/^[A-Za-z0-9+/]+=*$/u) }).strict().parse(payload);
+    const bytes = Buffer.from(input.base64, 'base64');
+    if (bytes.toString('base64') !== input.base64) throw new Error('图片数据不是有效的 base64。');
+    return readCoordinator().importImage(input.documentId, bytes);
+  });
+
+  registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:manual-edit-history', payload => {
+    const { nodeId } = parseSlidesNodePayload(payload, 'slides:manual-edit-history');
+    return readCoordinator().readManualEditHistory(nodeId);
   });
 
   registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:manual-edit', async (payload) => {

@@ -25,6 +25,8 @@ export function isBlankFinalAnswerMessage(message: BaseMessage): boolean {
 }
 
 export function isHiddenConversationMessage(message: BaseMessage): boolean {
+  // 旧版本把读取失败存成永久消息；读取状态由当前 window 拥有，不能把旧故障当作本次失败。
+  if (message.type === 'client_notice' && message.metadata.operation === 'load') return true;
   if (readUiPresentation(message) === 'hidden') return true;
   return false;
 }

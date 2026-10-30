@@ -466,6 +466,7 @@ type LayoutImageSourceRef =
   | { kind: 'data_uri'; dataUri: string }
   | { kind: 'local_path'; path: string }
   | { kind: 'generated_asset'; assetId: string }
+  | { kind: 'document_asset'; assetId: string }
   | BrushArtworkSourceRef;
 
 interface LayoutImageVisualShadowInput {
@@ -573,6 +574,8 @@ interface LayoutSlideConfig extends FlexProps, ContainerDecoration {
 }
 
 interface LayoutSlideNode extends LayoutSlideConfig, LayoutSourceMetadata {
+  /** sandbox 插桩生成的新增作者 literal 定位，不属于手写配置。 */
+  readonly _insertedObjectLocations?: Readonly<Record<string, { startLine: number; endLine: number }>>;
   readonly _type: 'Slide';
   readonly children: readonly LayoutNode[];
 }
@@ -887,6 +890,18 @@ type SlidesAuthorTextStyle = LayoutTextStyleInput;
 /** 与 Text.content 相同的作者值；公式不属于本期手动编辑合同。 */
 type SlidesEditableTextContent = string | LayoutPlainTextRun[];
 
+type SlidesInsertedObject = SlidesInsertedObjectBase & (
+  | { readonly kind: 'text'; readonly content: SlidesEditableTextContent; readonly style: SlidesAuthorTextStyle }
+  | { readonly kind: 'shape'; readonly geometry: 'rect' | 'ellipse'; readonly fill: string; readonly content: SlidesEditableTextContent }
+  | { readonly kind: 'image'; readonly assetId: string; readonly fit: 'contain' | 'cover'; readonly alt: string }
+);
+
+interface SlidesInsertedObjectBase {
+  readonly editKey: string;
+  /** 新对象使用独立绝对定位，不改变原有 Flex 作者树。单位 inches。 */
+  readonly box: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
+}
+
 type SlidesManualAtomicEdit =
   | SlidesManualShapeEdit
   | SlidesManualImageEdit
@@ -930,6 +945,8 @@ interface SlidesManualFrameEdit extends SlidesManualEditBase {
 }
 
 interface SlidesManualImageEdit extends SlidesManualEditBase {
+  readonly assetId?: string;
+  readonly fit?: 'contain' | 'cover';
   readonly kind: 'image';
   readonly visualSize?: SlidesManualVisualSize;
 }
@@ -945,6 +962,9 @@ interface SlidesManualShapeEdit extends SlidesManualEditBase {
 interface SlidesManualSlideEdits {
   readonly slideKey: string;
   readonly targets: readonly SlidesManualTargetEdit[];
+  readonly additions?: readonly SlidesInsertedObject[];
+  /** 只改变同级对象绘制顺序，不参与 Yoga 或作者父子关系。 */
+  readonly paintOrder?: readonly string[];
 }
 
 type SlidesManualTargetEdit =
@@ -964,11 +984,16 @@ type SlidesManualTargetKind =
   | 'formula';
 
 interface SlidesManualTextEdit extends SlidesManualEditBase {
+  readonly width?: number;
   readonly kind: 'text';
   /** 与作者 Text.content 同源的完整值；不接受公式。 */
   readonly content?: SlidesEditableTextContent;
   readonly fontSizePt?: number;
   readonly color?: string;
+  readonly bold?: boolean;
+  readonly italic?: boolean;
+  readonly underline?: boolean;
+  readonly align?: 'left' | 'center' | 'right';
 }
 
 interface SlidesManualTranslation {
@@ -1018,11 +1043,26 @@ interface SlidesTextSelectionStyle {
   /** null 表示选区内混合样式，不能用首字冒充整个选区。 */
   readonly fontSizePt: number | null;
   readonly color: string | null;
+  readonly bold: boolean | null;
+  readonly italic: boolean | null;
+  readonly underline: boolean | null;
+}
+
+interface SlidesTextStyleBase {
+  readonly fontSizePt: number;
+  readonly color: string;
+  readonly bold?: boolean;
+  readonly italic?: boolean;
+  readonly underline?: boolean;
 }
 
 interface SlidesTextStylePatch {
   readonly fontSizePt?: number;
   readonly color?: string;
+  readonly bold?: boolean;
+  readonly italic?: boolean;
+  readonly underline?: boolean;
+  readonly align?: 'left' | 'center' | 'right';
 }
 
 type SvgGraphicAccessibility =

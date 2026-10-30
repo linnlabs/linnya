@@ -26,7 +26,7 @@ describe('submitManualEdit', () => {
       commandId: command.commandId,
       documentId: command.documentId,
       revisionId: 'revision-4',
-      revision: 4,
+      revision: 4, history: { revisionId: 'revision-4', undoDepth: 1, redoDepth: 0 },
     }));
     const trace = {
       begin: vi.fn(),
@@ -93,7 +93,7 @@ describe('submitManualEdit', () => {
         commandId: command.commandId,
         documentId: command.documentId,
         revisionId: 'revision-4',
-        revision: 4,
+        revision: 4, history: { revisionId: 'revision-4', undoDepth: 1, redoDepth: 0 },
       }));
 
     await expect(submitManualEdit(input, {

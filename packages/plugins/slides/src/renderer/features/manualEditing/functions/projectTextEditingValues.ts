@@ -12,6 +12,10 @@ export function projectTextEditingValues(target: TextEditingTarget, previews: re
     return { ...current, content: patchWholeTextContent(current.content, operation),
       baseStyle: { ...current.baseStyle, ...authorTextStylePatch(operation) },
       ...(operation.fontSizePt !== undefined ? { fontSizePt: operation.fontSizePt } : {}),
-      ...(operation.color !== undefined ? { color: operation.color } : {}) };
+      ...(operation.color !== undefined ? { color: operation.color } : {}),
+      ...(operation.bold !== undefined ? { fontWeight: operation.bold ? 'bold' : 'normal' } : {}),
+      ...(operation.italic !== undefined ? { fontStyle: operation.italic ? 'italic' : 'normal' } : {}),
+      ...(operation.underline !== undefined ? { textDecoration: operation.underline ? 'underline' : undefined } : {}),
+      ...(operation.align !== undefined ? { textAlign: operation.align } : {}) };
   }, target);
 }

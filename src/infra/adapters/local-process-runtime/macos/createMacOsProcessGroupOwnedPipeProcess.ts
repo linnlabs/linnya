@@ -11,6 +11,7 @@ import type {
   OwnedProcessTreeStopResult,
 } from '../../../../shared/process-runtime';
 import {
+  listMacOsProcessGroupMembers,
   signalMacOsProcessGroupIfAlive,
   waitForMacOsProcessGroupEmpty,
 } from './functions/ownedMacOsProcessGroup';
@@ -37,7 +38,7 @@ fi
   fi
 } &
 exec 3<&-
-print -nu4 -- R
+print -nu4 -- "R$!"
 exec 4>&-
 if ! IFS= read -r owner_ready <&5 || [[ "$owner_ready" != G ]]; then
   exit 125
@@ -146,27 +147,33 @@ async function waitForOwnedChildSpawn(child: ChildProcess): Promise<number> {
   return spawned.promise;
 }
 
+/** wrapper 一次写出 `R<watchdog pid>` 后关闭 ready fd；只有完整帧才证明 watchdog 已建立。 */
 async function waitForOwnedWrapperReady(input: {
   readonly child: ChildProcess;
   readonly readyPipe: Readable;
   readonly rootExit: Promise<OwnedProcessRootExit>;
-}): Promise<void> {
-  const ready = deferred<void>();
+}): Promise<number> {
+  const ready = deferred<number>();
   let readyObserved = false;
   const failBeforeReady = (error: Error): void => {
     if (!readyObserved) ready.reject(error);
   };
-  input.readyPipe.once('data', (bytes: Buffer) => {
-    if (bytes.byteLength !== 1 || bytes[0] !== 0x52) {
+  const frameChunks: Buffer[] = [];
+  input.readyPipe.on('data', (bytes: Buffer) => frameChunks.push(bytes));
+  input.readyPipe.once('error', error => failBeforeReady(error));
+  input.readyPipe.once('end', () => {
+    if (frameChunks.length === 0) {
+      failBeforeReady(new Error('macOS process owner closed before readiness'));
+      return;
+    }
+    const frame = /^R([1-9][0-9]*)$/u.exec(Buffer.concat(frameChunks).toString('latin1'));
+    const watchdogPid = frame ? Number(frame[1]) : Number.NaN;
+    if (!Number.isSafeInteger(watchdogPid)) {
       failBeforeReady(new Error('macOS process owner returned an invalid readiness frame'));
       return;
     }
     readyObserved = true;
-    ready.resolve();
-  });
-  input.readyPipe.once('error', error => failBeforeReady(error));
-  input.readyPipe.once('end', () => {
-    failBeforeReady(new Error('macOS process owner closed before readiness'));
+    ready.resolve(watchdogPid);
   });
   input.child.once('error', error => failBeforeReady(error));
   void input.rootExit.then((exit) => {
@@ -175,8 +182,7 @@ async function waitForOwnedWrapperReady(input: {
         + `signal=${exit.signal ?? 'none'}`,
     ));
   });
-  await ready.promise;
-  input.readyPipe.resume();
+  return ready.promise;
 }
 
 async function openOwnedWrapperStartGate(startGate: Writable): Promise<void> {
@@ -188,6 +194,7 @@ async function openOwnedWrapperStartGate(startGate: Writable): Promise<void> {
 
 function createOwnedProcess(input: {
   readonly processGroupId: number;
+  readonly watchdogPid: number;
   readonly stdout: Readable;
   readonly stderr: Readable;
   readonly ownerPipe: Writable;
@@ -197,18 +204,30 @@ function createOwnedProcess(input: {
 }): OwnedPipeProcess {
   let stopPromise: Promise<OwnedProcessTreeStopResult> | undefined;
   let releasePromise: Promise<OwnedProcessResourceReleaseResult> | undefined;
+  let rootExited = false;
   const treeEmpty = deferred<OwnedProcessTreeStopResult>();
   input.ownerPipe.on('error', () => {
     // stop 会用进程组事实判断最终结果；管道错误本身不能替代 tree-empty 证明。
   });
 
+  async function isOnlyWatchdogLeft(): Promise<boolean> {
+    if (!rootExited) return false;
+    const members = await listMacOsProcessGroupMembers(input.processGroupId);
+    return members !== null && members.every(pid => pid === input.watchdogPid);
+  }
+
   function stopAndWaitForTreeEmpty(): Promise<OwnedProcessTreeStopResult> {
     if (stopPromise) return stopPromise;
     stopPromise = (async () => {
       try {
-        // 私有管道是 utility 与进程组的内核级生命线。正常停止和 utility 崩溃
-        // 都形成 EOF，让同组 watchdog 执行同一条 TERM -> KILL 路径。
-        input.ownerPipe.end();
+        // 私有管道是 utility 与进程组的内核级生命线：EOF 让同组 watchdog 执行
+        // TERM -> 宽限 -> KILL，utility 崩溃也走这条路径。根进程已自然退出且组内只剩
+        // watchdog 时没有需要停止的后代，owner 回应一行让它直接退出，不空等宽限期。
+        if (await isOnlyWatchdogLeft()) {
+          input.ownerPipe.end('\n');
+        } else {
+          input.ownerPipe.end();
+        }
         if (await waitForMacOsProcessGroupEmpty(
           input.processGroupId,
           WATCHDOG_TREE_DEADLINE_MS,
@@ -270,7 +289,10 @@ function createOwnedProcess(input: {
   if (input.abortSignal?.aborted) stopAfterAbort();
 
   // 根进程退出不代表后台后代已经结束；自然退出也必须进入同一条幂等收树链。
-  void input.rootExit.then(() => stopAndWaitForTreeEmpty());
+  void input.rootExit.then(() => {
+    rootExited = true;
+    void stopAndWaitForTreeEmpty();
+  });
 
   return Object.freeze({
     stdout: input.stdout,
@@ -331,6 +353,7 @@ export const createMacOsProcessGroupOwnedPipeProcess: LaunchOwnedPipeProcess = a
     timeoutMessage,
   );
   let ownedProcess: OwnedPipeProcess | undefined;
+  let watchdogPid: number | undefined;
   try {
     processGroupId = await waitForStartupStage(
       spawnedProcessGroup,
@@ -340,7 +363,7 @@ export const createMacOsProcessGroupOwnedPipeProcess: LaunchOwnedPipeProcess = a
     // 只有 spawn 已被观察后才校验 fd，确保任何缺失资源都能按已冻结 PGID 回滚。
     pipes = requirePipeResources(child);
     throwIfLaunchAborted(options);
-    await waitForStartupStage(
+    watchdogPid = await waitForStartupStage(
       waitForOwnedWrapperReady({
         child,
         readyPipe: pipes.readyPipe,
@@ -418,8 +441,12 @@ export const createMacOsProcessGroupOwnedPipeProcess: LaunchOwnedPipeProcess = a
   if (!pipes) {
     throw new Error('macOS process owner pipes are unavailable after readiness');
   }
+  if (watchdogPid === undefined) {
+    throw new Error('macOS process owner watchdog is unavailable after readiness');
+  }
   ownedProcess = createOwnedProcess({
     processGroupId,
+    watchdogPid,
     ...pipes,
     ...root,
     abortSignal: options.abortSignal,

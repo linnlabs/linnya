@@ -8,6 +8,9 @@
 
 本包的目标是让跨进程、跨端和跨插件的数据边界具备同一个事实来源，而不是承载业务流程或运行时内核。
 
+`JsonValueSchema` 的 `lazy` 只负责递归引用，所有 JSON 节点共用同一个 union schema。
+不能在 lazy getter 中重新构造分支；文档 RPC 会多次验证嵌套数据，逐节点构造 schema 会造成主线程长任务。
+
 当前主要覆盖：
 
 - Conversation API DTO。

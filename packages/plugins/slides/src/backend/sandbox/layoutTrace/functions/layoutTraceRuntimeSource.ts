@@ -28,7 +28,12 @@ function __withLoc(node, sourceSpan) {
   return node;
 }
 
-function __withComposeTrace(composeFn, input) {
+function __withComposeTrace(composeFn, input, insertedLocations) {
+  if (insertedLocations && input && Array.isArray(input.slides)) {
+    input.slides.forEach(function(slide) {
+      if (Object.prototype.hasOwnProperty.call(insertedLocations, slide.slideKey)) slide._insertedObjectLocations = insertedLocations[slide.slideKey];
+    });
+  }
   __layoutTraceRoots = input && Array.isArray(input.slides) ? input.slides.slice() : [];
   return composeFn(input);
 }

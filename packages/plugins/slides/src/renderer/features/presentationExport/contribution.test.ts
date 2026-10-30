@@ -1,13 +1,13 @@
+import { installTestPresentation } from '../documentRuntime/testing/installTestPresentation';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { slidesDocumentActionMenu } from './contribution';
 import { usePresentationExportStore } from './store/presentationExportStore';
-import { useSlidesStore } from '../../store/slidesStore';
 
 describe('slidesDocumentActionMenu', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
-    useSlidesStore().currentDeckId = 'deck-1';
+    installTestPresentation({ documentId: 'deck-1' });
   });
 
   it('只开放 PPTX 与图片导出，PDF 在语义导出方案验收前保持关闭', () => {

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { installTestPresentation } from '../../features/documentRuntime/testing/installTestPresentation';
 
 import { createApp, h, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -59,12 +60,25 @@ vi.mock('@linnya/renderer-ui/icons', () => ({
   AddIcon: { template: '<span />' },
   ChevronIcon: { template: '<span />' },
   EditIcon: { template: '<span />' },
-  MinusIcon: { template: '<span />' },
+  SubtractIcon: { template: '<span />' },
+  CheckmarkIcon: { template: '<span />' },
+  ImageIcon: { template: '<span />' },
   SelectObjectIcon: { template: '<span />' },
+  UndoIcon: { template: '<span />' },
+  RedoIcon: { template: '<span />' },
+  PasteIcon: { template: '<span />' },
+  TextIcon: { template: '<span />' },
+  RectangleIcon: { template: '<span />' },
+  EllipseIcon: { template: '<span />' },
+  AlignObjectsIcon: { template: '<span />' },
+  DistributeIcon: { template: '<span />' },
+  ArrangeIcon: { template: '<span />' },
+  BringToFrontIcon: { template: '<span />' },
+  SendToBackIcon: { template: '<span />' },
+  DuplicateIcon: { template: '<span />' },
 }));
 
 import DeckViewer from './DeckViewer.vue';
-import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import { useSlidesStore } from '../../store/slidesStore';
 import { useSlidesManualEditingStore, provideManualEditSubmission } from '../../features/manualEditing';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
@@ -84,10 +98,8 @@ describe('DeckViewer document transition', () => {
   });
 
   it('进入另一份文稿的首次加载时立即撤下旧错误页和缩略图', async () => {
-    const slidesStore = useSlidesStore();
-    const renderStore = useSlidesRenderStore();
-    slidesStore.currentDeckId = 'deck-old';
-    slidesStore.deckPreview = {
+    installTestPresentation({ documentId: 'deck-old' });
+    installTestPresentation({ preview: {
       nodeId: 'deck-old',
       versionNumber: 1,
       title: 'Old deck',
@@ -98,8 +110,8 @@ describe('DeckViewer document transition', () => {
         fonts: { major: 'Arial', minor: 'Arial' },
       },
       warnings: [],
-    };
-    renderStore.renderError = 'old render failure';
+    } });
+    installTestPresentation({ error: 'old render failure' });
 
     const host = document.createElement('div');
     document.body.append(host);
@@ -127,9 +139,8 @@ describe('DeckViewer document transition', () => {
     await nextTick();
     expect(zoom.valueAsNumber).toBe(200);
 
-    slidesStore.deckPreview = null;
-    slidesStore.deckLoading = true;
-    renderStore.clearRenderModel();
+    installTestPresentation({ preview: null });
+    installTestPresentation({ loading: true });
     await nextTick();
 
     expect(host.querySelector('.slides-status-state-stub')).toBeNull();
@@ -140,26 +151,25 @@ describe('DeckViewer document transition', () => {
     app.unmount();
   });
 
-  it('只在 ready revision 与作者对象就绪时开启有限编辑模式', async () => {
+  it('没有编辑模式开关：ready 的生成文稿自动可手动编辑，刷新自己的修订时不闪成只读', async () => {
     const slidesStore = useSlidesStore();
-    const renderStore = useSlidesRenderStore();
     const manualStore = useSlidesManualEditingStore();
-    slidesStore.currentDeckId = 'deck-1';
-    slidesStore.documentBuildState = {
+    installTestPresentation({ documentId: 'deck-1' });
+    installTestPresentation({ buildState: {
       state: 'ready',
       presentationId: 'deck-1',
       versionId: 'revision-2',
       versionNumber: 2,
       sourceHash: 'a'.repeat(64),
-    };
-    slidesStore.deckPreview = {
+    } });
+    installTestPresentation({ preview: {
       nodeId: 'deck-1', versionNumber: 2, title: 'Deck',
       slideSize: { width: 10, height: 5.625 },
       slides: [{ slideId: 'slide-1', number: 1, elements: [] }],
       theme: { colors: {}, fonts: { major: 'Arial', minor: 'Arial' } },
       warnings: [],
-    };
-    renderStore.renderModel = {
+    } });
+    installTestPresentation({ renderModel: {
       presentationId: 'deck-1', title: 'Deck', version: 2, sourceKind: 'generated',
       slideSize: { width: 10, height: 5.625, unit: 'in' },
       slides: [{
@@ -178,7 +188,7 @@ describe('DeckViewer document transition', () => {
         hasSemanticRender: true, hasReferencePreview: false,
         hasHitTest: true, hasSelection: true,
       },
-    };
+    } });
 
     const host = document.createElement('div');
     document.body.append(host);
@@ -193,37 +203,38 @@ describe('DeckViewer document transition', () => {
     app.mount(host);
     await nextTick();
 
-    const button = host.querySelector<HTMLButtonElement>('.stage-zoom-slider__edit-btn');
-    expect(button?.disabled).toBe(false);
-    button?.click();
-    await nextTick();
+    expect(host.querySelector('.stage-zoom-slider__edit-btn')).toBeNull();
+    expect(host.querySelector('.stage-zoom-slider__select-btn')).toBeNull();
     expect(manualStore.enabled).toBe(true);
-    expect(button?.getAttribute('aria-pressed')).toBe('true');
 
-    slidesStore.documentBuildState = {
+    installTestPresentation({ buildState: {
       ...slidesStore.documentBuildState,
       state: 'ready',
       versionId: 'revision-3',
       versionNumber: 3,
-    };
+    } });
     await nextTick();
     expect(manualStore.enabled).toBe(true);
-    expect(button?.disabled).toBe(true);
+
+    const generated = slidesStore.renderModel;
+    if (!generated) throw new Error('Render model fixture missing');
+    installTestPresentation({ renderModel: { ...generated, version: 3, sourceKind: 'imported' } });
+    await nextTick();
+    expect(manualStore.enabled).toBe(false);
 
     app.unmount();
   });
 
   it('平铺视图替换舞台并隐藏舞台工具条；百分比菜单切换适应窗口与固定档位', async () => {
-    const slidesStore = useSlidesStore();
     const uiStore = useSlidesUiStore();
-    slidesStore.currentDeckId = 'deck-1';
-    slidesStore.deckPreview = {
+    installTestPresentation({ documentId: 'deck-1' });
+    installTestPresentation({ preview: {
       nodeId: 'deck-1', versionNumber: 1, title: 'Deck',
       slideSize: { width: 10, height: 5.625 },
       slides: [{ slideId: 'slide-1', number: 1, elements: [] }],
       theme: { colors: {}, fonts: { major: 'Arial', minor: 'Arial' } },
       warnings: [],
-    };
+    } });
 
     const host = document.createElement('div');
     document.body.append(host);

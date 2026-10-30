@@ -262,6 +262,8 @@ export type {
   SlidesAuthoringObjectRef,
   SlidesAuthoringTextEditProjection,
   SlidesManualEditCommand,
+  SlidesManualEditHistoryStatus,
+  SlidesManualEditHistoryFocus,
   SlidesManualEditCommandOperation,
   SlidesManualEditCommandResult,
   SlidesManualEditBuildFailureResult,

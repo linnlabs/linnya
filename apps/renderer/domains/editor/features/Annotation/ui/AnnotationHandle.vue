@@ -18,9 +18,9 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
 import { AnnotationState } from '../commands/AnnoStateCommands';
-import { AddCommentIcon } from '@linnya/renderer-ui/icons';
+import { CommentAddIcon } from '@linnya/renderer-ui/icons';
 import { CommentIcon } from '@linnya/renderer-ui/icons';
-import { SolvedCommentIcon } from '@linnya/renderer-ui/icons';
+import { CommentCheckmarkIcon } from '@linnya/renderer-ui/icons';
 
 interface AnnotationHandleItem {
   readonly state?: string | null;
@@ -60,9 +60,9 @@ const status = computed(() => {
 const currentIcon = computed(() => {
   switch (status.value) {
     case 'none':
-      return AddCommentIcon;
+      return CommentAddIcon;
     case 'resolved':
-      return SolvedCommentIcon;
+      return CommentCheckmarkIcon;
     case 'active':
     default:
       return CommentIcon;

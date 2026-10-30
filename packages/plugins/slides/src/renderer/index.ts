@@ -1,3 +1,4 @@
+import editingCommandStylesheet from './features/editingCommands/ui/SlideEditingCommandBar.css?url';
 import type {
   RendererPluginContribution,
 } from '@plugin/renderer/pluginContribution';
@@ -37,6 +38,7 @@ import pptPlanApprovalCardStylesheet from './tool-cards/styles/PptPlanApprovalCa
 import slidesShellStylesheet from './styles/index.css?url';
 import slidesHistoryStylesheet from './features/presentationHistory/ui/SlidesHistoryPreview.css?url';
 import elementPropertyStylesheet from './features/elementProperties/ui/ElementPropertyToolbar.css?url';
+import imageEditingStylesheet from './features/imageEditing/ui/ImageEditingControls.css?url';
 import manualResizeStylesheet from './features/manualEditing/ui/ManualResizeHandles.css?url';
 import inlineTextEditorStylesheet from './features/textEditing/ui/InlineTextEditor.css?url';
 
@@ -60,9 +62,11 @@ const SlidesPage = defineAsyncComponent(async () => {
 });
 
 const slidesStylesheets = [
+  editingCommandStylesheet,
   inlineTextEditorStylesheet,
   manualResizeStylesheet,
   elementPropertyStylesheet,
+  imageEditingStylesheet,
   slidesHistoryStylesheet,
   slidesShellStylesheet,
   slidesDraftFailureLogStylesheet,

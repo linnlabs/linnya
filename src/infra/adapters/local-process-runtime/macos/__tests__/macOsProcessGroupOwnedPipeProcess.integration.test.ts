@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -11,6 +12,8 @@ const fixturePath = path.resolve(
   globalThis.process.cwd(),
   'scripts/e2e/shell-tool/fixtures/process-trees/macos-process-group-tree.cjs',
 );
+// EOF 路径的 watchdog 先 sleep 0.4 秒才 KILL 自己；解除路径必须明显早于这个下限。
+const RELEASED_WATCHDOG_TREE_EMPTY_MS = 300;
 const roots: string[] = [];
 
 afterEach(async () => {
@@ -58,12 +61,36 @@ describe.skipIf(globalThis.process.platform !== 'darwin')(
       await expect(ownedProcess.treeEmpty).resolves.toMatchObject({
         status: 'succeeded',
       });
+      // 仍有后代时 watchdog 不能被提前解除：后代收到的是整组 TERM，而不是宽限期后的兜底 KILL。
+      for (const role of ['child', 'grandchild']) {
+        await expect(fsp.readFile(path.join(runRoot, `${role}.terminated`), 'utf8')).resolves.toBe('SIGTERM');
+      }
       await expect(ownedProcess.rootClose).resolves.toBeUndefined();
       await expect(Promise.all([stdout, stderr])).resolves.toEqual([
         expect.any(Buffer),
         expect.any(Buffer),
       ]);
       await expect(ownedProcess.release()).resolves.toEqual({ status: 'succeeded' });
+      await expect(ownedProcess.release()).resolves.toEqual({ status: 'succeeded' });
+    });
+
+    it('根进程自然退出且组内只剩 watchdog 时立即确认 tree empty，不等待宽限期', async () => {
+      const runRoot = await createRunRoot();
+      const ownedProcess = await createMacOsProcessGroupOwnedPipeProcess({
+        executablePath: globalThis.process.execPath,
+        argv: ['-e', 'process.stdout.write("done")'],
+        cwd: runRoot,
+        environment: readHostEnvironment(),
+      });
+      const stdout = collect(ownedProcess.stdout);
+      const stderr = collect(ownedProcess.stderr);
+
+      await expect(ownedProcess.rootExit).resolves.toMatchObject({ exitCode: 0, signal: null });
+      const rootExitedAt = performance.now();
+      await expect(ownedProcess.treeEmpty).resolves.toEqual({ status: 'succeeded' });
+      expect(performance.now() - rootExitedAt).toBeLessThan(RELEASED_WATCHDOG_TREE_EMPTY_MS);
+      await expect(stdout).resolves.toEqual(Buffer.from('done'));
+      await stderr;
       await expect(ownedProcess.release()).resolves.toEqual({ status: 'succeeded' });
     });
 

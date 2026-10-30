@@ -50,7 +50,7 @@ import { PptCoordinator } from './PptCoordinator';
 import type { PluginConversationFilePathResolverPort } from '@linnya/plugin-host-contract/backend/workspaceRuntime';
 import type { PresentationBuildExecutionPort } from '../features/presentationBuildExecution';
 import { createPresentationBuildDeckAssembler } from '../features/presentationBuildExecution/orchestration/createPresentationBuildDeckAssembler';
-import { createPresentationManualEditTraceLogger } from '../features/presentationManualEditing';
+import { ManualEditHistoryStore, retainedManualEditHistoryVersions, createPresentationManualEditTraceLogger } from '../features/presentationManualEditing';
 
 export function createPptCoordinator(
   db: Database,
@@ -70,6 +70,7 @@ export function createPptCoordinator(
   );
   const workspaceService = createWorkspaceService(db);
   const revisionScope = new PresentationRevisionScope();
+  const manualEditHistoryStore = new ManualEditHistoryStore();
   const historyRepository = new PresentationHistoryRepository(db);
   let history: PresentationHistoryRuntime;
   const presentationRepo = new PresentationRepository(db, {
@@ -125,6 +126,7 @@ export function createPptCoordinator(
   });
   const historicalQueries = new PptPresentationQueryService(pptxReader, historicalImages, historicalSvgReader);
   history = new PresentationHistoryRuntime({
+    requiredVersions: (documentId, currentRevisionId) => retainedManualEditHistoryVersions(manualEditHistoryStore.read(documentId), currentRevisionId),
     history: historyRepository, documents: presentationRepo, scope: revisionScope,
     compile: input => historicalBuilder.buildHistoricalDeckSpec(input),
     render: (documentId, version, deckSpec) => historicalQueries.getRenderModel(documentId, {
@@ -161,7 +163,14 @@ export function createPptCoordinator(
     imageSourceResolver,
     presentationDraftRepo,
     {
+      importImage: (documentId, bytes) => revisionScope.run(documentId, async () => {
+        if (!await presentationRepo.getPresentation(documentId)) throw new Error('演示文稿不存在。');
+        const asset = await imageAssets.adoptImageBytes({ documentId, bytes, usageHint: 'slides:image' });
+        imageBindings.bind({ presentationId: documentId, sourceIdentity: `document_asset:${asset.assetId}`, assetId: asset.assetId });
+        return asset.assetId;
+      }),
       codegenFailureLogger,
+      manualEditHistoryStore,
       revisionScope,
       history,
       svgGraphicRuntime,
