@@ -11,6 +11,7 @@ import type {
   OwnedProcessResourceReleaseResult,
 } from '../../../../shared/process-runtime';
 import { createMacOsProcessGroupOwnedPipeProcess } from '../../local-process-runtime/macos';
+import { createMacOsCommandTemporaryEnvironment } from './functions/createMacOsCommandTemporaryEnvironment';
 import { createMacOsCommandFilesystemPolicy } from './functions/createMacOsCommandFilesystemPolicy';
 import { serializePosixCommandArgv } from './functions/serializePosixCommandArgv';
 
@@ -148,7 +149,11 @@ export async function createMacOsSandboxedOwnedPipeCommandProcess(
       );
     }
     descriptor = await SandboxManager.wrapWithSandboxArgv(
-      serializePosixCommandArgv(launch.executablePath, launch.argv),
+      serializePosixCommandArgv(
+        launch.executablePath,
+        launch.argv,
+        await createMacOsCommandTemporaryEnvironment(launch),
+      ),
       '/bin/zsh',
       { filesystem: createMacOsCommandFilesystemPolicy(launch) },
       options.abortSignal,

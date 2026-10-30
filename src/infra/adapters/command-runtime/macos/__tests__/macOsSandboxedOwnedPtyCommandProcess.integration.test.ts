@@ -170,6 +170,29 @@ describe.skipIf(globalThis.process.platform !== 'darwin')(
       }
     });
 
+    it('标准档 PTY 的 here document 使用对话目录内的临时位置', async () => {
+      const { cwd, adjacent } = await createRunRoot();
+      const owned = await createMacOsSandboxedOwnedPtyCommandProcess({
+        executablePath: '/bin/zsh',
+        argv: ['-c', "cat <<'EOF'\nheredoc-body\nEOF"],
+        cwd: adjacent,
+        conversationRoot: cwd,
+        environment: readHostEnvironment(),
+        permissionLevel: 'standard',
+        terminalSize: { columns: 80, rows: 24 },
+      });
+      const transcript = observeTranscript(owned.terminal).complete;
+      const rootExit = await owned.rootExit;
+      await expect(owned.treeEmpty).resolves.toEqual({ status: 'succeeded' });
+      const bytes = await transcript;
+      await expect(owned.release()).resolves.toEqual({ status: 'succeeded' });
+
+      expect(rootExit.exitCode).toBe(0);
+      expect(bytes.toString('utf8')).toContain('heredoc-body');
+      await expect(fsp.readdir(path.join(cwd, '.linnya-tmp'))).resolves.toEqual([]);
+      await expect(fsp.readdir(adjacent)).resolves.toEqual([]);
+    });
+
     it('只读和标准档允许真实 raw mode，但不扩大各自文件写入边界', async () => {
       const { cwd, adjacent } = await createRunRoot();
       const scenarios = [

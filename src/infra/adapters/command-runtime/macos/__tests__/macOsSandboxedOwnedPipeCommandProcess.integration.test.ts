@@ -82,6 +82,34 @@ async function runNode(input: {
   };
 }
 
+async function runShell(input: {
+  readonly shell: string;
+  readonly conversationRoot: string;
+  readonly cwd?: string;
+  readonly permissionLevel: CommandPermissionLevel;
+  readonly command: string;
+}): Promise<{ readonly exitCode: number | null; readonly stdout: string; readonly stderr: string }> {
+  const ownedProcess = await createMacOsSandboxedOwnedPipeCommandProcess({
+    executablePath: input.shell,
+    argv: ['-c', input.command],
+    cwd: input.cwd ?? input.conversationRoot,
+    conversationRoot: input.conversationRoot,
+    environment: readHostEnvironment(),
+    permissionLevel: input.permissionLevel,
+  });
+  const stdout = collect(ownedProcess.stdout);
+  const stderr = collect(ownedProcess.stderr);
+  const rootExit = await ownedProcess.rootExit;
+  await expect(ownedProcess.stopAndWaitForTreeEmpty()).resolves.toEqual({ status: 'succeeded' });
+  const [stdoutBytes, stderrBytes] = await Promise.all([stdout, stderr]);
+  await expect(ownedProcess.release()).resolves.toEqual({ status: 'succeeded' });
+  return {
+    exitCode: rootExit.exitCode,
+    stdout: stdoutBytes.toString('utf8'),
+    stderr: stderrBytes.toString('utf8'),
+  };
+}
+
 describe.skipIf(globalThis.process.platform !== 'darwin')(
   'macOS sandboxed process-group owned pipe process',
   () => {
@@ -150,6 +178,88 @@ describe.skipIf(globalThis.process.platform !== 'darwin')(
         ...fullAccessFiles.map(file => fsp.readFile(file, 'utf8')),
         fsp.readFile(standardFromExternalCwdFiles[1], 'utf8'),
       ])).resolves.toEqual(['written', 'written', 'written', 'written']);
+    });
+
+    it('标准模式下 zsh 的 here document 可用，且不留下临时文件', async () => {
+      const { cwd, adjacent } = await createRunRoot();
+      const result = await runShell({
+        shell: '/bin/zsh',
+        conversationRoot: cwd,
+        cwd: adjacent,
+        permissionLevel: 'standard',
+        command: "cat <<'EOF'\nheredoc-body\nEOF",
+      });
+
+      expect(result).toMatchObject({ exitCode: 0, stdout: 'heredoc-body\n', stderr: '' });
+      await expect(fsp.readdir(cwd)).resolves.toEqual(['.linnya-tmp']);
+      await expect(fsp.readdir(path.join(cwd, '.linnya-tmp'))).resolves.toEqual([]);
+      await expect(fsp.readdir(adjacent)).resolves.toEqual([]);
+    });
+
+    it.each(['/bin/bash', '/bin/sh'])('标准模式下 %s 3.2 的 here document 只在 cwd 可写时可用，不为它放宽边界', async (shell) => {
+      const { cwd, adjacent } = await createRunRoot();
+      const inRoot = await runShell({
+        shell,
+        conversationRoot: cwd,
+        permissionLevel: 'standard',
+        command: "cat <<'EOF'\nheredoc-body\nEOF",
+      });
+      const fromAdjacent = await runShell({
+        shell,
+        conversationRoot: cwd,
+        cwd: adjacent,
+        permissionLevel: 'standard',
+        command: "cat <<'EOF'\nheredoc-body\nEOF",
+      });
+
+      expect(inRoot).toMatchObject({ exitCode: 0, stdout: 'heredoc-body\n', stderr: '' });
+      expect(fromAdjacent).toMatchObject({ exitCode: 1, stdout: '' });
+      expect(fromAdjacent.stderr).toContain('cannot create temp file for here document');
+      await expect(fsp.readdir(adjacent)).resolves.toEqual([]);
+    });
+
+    it('标准模式的临时目录落在对话目录内，其他位置仍不可写，冻结环境不变', async () => {
+      const { cwd, adjacent } = await createRunRoot();
+      const environment = { ...readHostEnvironment(), LINNYA_FROZEN_ENV_SAMPLE: 'kept' };
+      const outside = path.join(adjacent, 'outside.txt');
+      const result = await runNode({
+        cwd: adjacent,
+        conversationRoot: cwd,
+        permissionLevel: 'standard',
+        environment,
+        script: `
+          const fs = require('node:fs');
+          const os = require('node:os');
+          const path = require('node:path');
+          const inside = path.join(os.tmpdir(), 'inside.txt');
+          fs.writeFileSync(inside, 'x');
+          let outside = 'written';
+          try { fs.writeFileSync(process.argv[1], 'x'); } catch { outside = 'denied'; }
+          let systemTmp = 'written';
+          try { fs.writeFileSync('/tmp/linnya-sandbox-probe-' + process.pid, 'x'); } catch { systemTmp = 'denied'; }
+          process.stdout.write(JSON.stringify({ inside, outside, systemTmp, kept: process.env.LINNYA_FROZEN_ENV_SAMPLE }));
+        `,
+        argv: [outside],
+      });
+
+      expect(result.exitCode).toBe(0);
+      const realRoot = await fsp.realpath(cwd);
+      const outcome = JSON.parse(result.stdout) as { inside: string; outside: string; systemTmp: string; kept: string };
+      expect(await fsp.realpath(outcome.inside)).toBe(path.join(realRoot, '.linnya-tmp', 'inside.txt'));
+      expect(outcome).toMatchObject({ outside: 'denied', systemTmp: 'denied', kept: 'kept' });
+    });
+
+    it('只读模式不创建临时目录，也不改变写入边界', async () => {
+      const { cwd } = await createRunRoot();
+      const result = await runShell({
+        shell: '/bin/zsh',
+        conversationRoot: cwd,
+        permissionLevel: 'read_only',
+        command: "cat <<'EOF'\nheredoc-body\nEOF",
+      });
+
+      expect(result.exitCode).not.toBe(0);
+      await expect(fsp.readdir(cwd)).resolves.toEqual([]);
     });
 
     it('保留冻结环境，并在标准模式保持本地网络开放', async () => {

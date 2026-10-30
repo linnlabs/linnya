@@ -24,6 +24,7 @@ import type {
   OwnedPtyCommandProcessLaunch,
 } from '../runner/definitions/ownedPtyCommandProcess';
 import { OwnedPtyCommandProcessStartupCleanupError } from '../runner/definitions/ownedPtyCommandProcess';
+import { createMacOsCommandTemporaryEnvironment } from './functions/createMacOsCommandTemporaryEnvironment';
 import { createMacOsCommandFilesystemPolicy } from './functions/createMacOsCommandFilesystemPolicy';
 import {
   signalMacOsProcessGroupIfAlive,
@@ -223,7 +224,11 @@ async function prepareInvocation(
     );
   }
   const descriptor = await SandboxManager.wrapWithSandboxArgv(
-    serializePosixCommandArgv(launch.executablePath, launch.argv),
+    serializePosixCommandArgv(
+      launch.executablePath,
+      launch.argv,
+      await createMacOsCommandTemporaryEnvironment(launch),
+    ),
     '/bin/zsh',
     {
       filesystem: createMacOsCommandFilesystemPolicy(launch),

@@ -152,6 +152,8 @@ accepting → draining → complete
 
 environment adapter 生成 immutable snapshot：Shell semantics、version、executable、编码、PATH 选择、继承变量和平台 invocation profile。launch adapter 不在运行中重新探测环境。
 
+macOS 标准档只能写对话目录，因此 sandbox 内的命令把 `TMPDIR`、`TMPPREFIX` 指向对话目录下的 `.linnya-tmp/`，让 zsh here document、`mktemp` 等临时写入落在已允许的根内。其他冻结变量不变，写入边界不放宽。系统自带 bash 3.2（`/bin/bash`、`/bin/sh`）的 here document 不读 `TMPDIR`，只在 cwd 位于对话目录内时可用，从其他目录启动仍会失败；只读档不提供临时目录，here document 同样失败。
+
 审计只保存允许的稳定摘要，不保存秘密值。Shell 路径不能由 Agent 传入，Plugin CLI 的 host module resolver 也不能被这个 runtime 复用成任意 package loader。
 
 ## 12. 失败分类

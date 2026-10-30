@@ -12,6 +12,11 @@ function quotePosixArgument(argument: string): string {
 export function serializePosixCommandArgv(
   executablePath: string,
   argv: readonly string[],
+  // SRT 用 env 前缀覆盖 TMPDIR，覆盖项必须在其后的 Shell 文本里导出才会生效。
+  environmentOverrides: Readonly<Record<string, string>> = {},
 ): string {
-  return ['exec', executablePath, ...argv].map(quotePosixArgument).join(' ');
+  const exports = Object.entries(environmentOverrides).map(
+    ([name, value]) => `export ${name}=${quotePosixArgument(value)}; `,
+  );
+  return `${exports.join('')}${['exec', executablePath, ...argv].map(quotePosixArgument).join(' ')}`;
 }
