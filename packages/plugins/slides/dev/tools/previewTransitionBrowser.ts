@@ -15,10 +15,7 @@ import type {
   ShapeRenderNode,
   SlideRenderModel,
 } from '../../src/renderer/types/render';
-import type {
-  ManualEditingTranslationPreview,
-  ManualEditingVisualPreview,
-} from '../../src/renderer/features/manualEditing';
+import type { ManualEditingTranslationPreview, ManualEditingVisualPreview } from '../../src/renderer/features/manualEditing/preview';
 
 const size = { width: 320, height: 180 };
 const transform = { x: 0, y: 0, scaleX: 1, scaleY: 1 };

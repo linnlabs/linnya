@@ -1,0 +1,10 @@
+export { projectTextEditingValues } from './functions/projectTextEditingValues';
+export type { ManualEditingTranslationPreview } from './definitions/manualEditingTypes';
+export type { ManualEditingVisualOperation } from './definitions/manualEditingTypes';
+export type { ManualEditingVisualPreview } from './definitions/manualEditingTypes';
+export { createManualVisualPreview } from './functions/manualVisualPreview';
+export { projectManualEditableTargetSelection } from './functions/manualVisualPreview';
+export { collectManualTranslationPreviews } from './functions/manualIntentPreviews';
+export { collectManualVisualPreviews } from './functions/manualIntentPreviews';
+export { mergeManualTranslationPreviews } from './functions/manualIntentPreviews';
+export { resolveManualTargetTranslation } from './functions/manualIntentPreviews';

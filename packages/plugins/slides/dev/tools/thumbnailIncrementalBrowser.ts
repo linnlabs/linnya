@@ -30,7 +30,7 @@ function model(slides: SlideRenderModel[]): PresentationRenderModel {
 }
 
 export async function verifyIncrementalThumbnails() {
-  let snapshot: SlideThumbnailSnapshot = { cache: new Map(), generating: false };
+  let snapshot: SlideThumbnailSnapshot = { cache: new Map(), readySlides: new Map(), failedSlideIds: [], generating: false };
   let settled: (() => void) | null = null;
   let rasterCount = 0;
   let rasterMs = 0;

@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { installTestPresentation } from '../../documentRuntime/testing/installTestPresentation';
 import { createPinia, setActivePinia } from 'pinia';
-import { effectScope, nextTick } from 'vue';
+import { effectScope, nextTick, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SlidesManualEditCommand, SlidesManualEditCommandResult } from '@plugin/slides/shared/authoringEditing';
 import type { PresentationRenderModel } from '../../../types/render';
-import { useManualEditQueue, useSlidesManualEditingStore } from '../../manualEditing';
+import { useManualEditQueue, useSlidesManualSubmissionStore } from '../../manualEditing/submission';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import { useSlidesStore } from '../../documentRuntime';
 import { useSlideStructureActions } from './useSlideStructureActions';
@@ -41,6 +41,7 @@ function installRevision(version: number, slideCount: number, selectedIndex?: nu
 }
 
 function createFixture() {
+  const presentedRevision = ref<number | null>(null);
   const slidesStore = useSlidesStore();
   installTestPresentation({ documentId: 'deck' });
   installRevision(4, 3);
@@ -51,7 +52,7 @@ function createFixture() {
   }));
   const refreshDocument = vi.fn(async (_id: string, version?: number) => {
     if (version === undefined) return;
-    const active = useSlidesManualEditingStore().submission;
+    const active = useSlidesManualSubmissionStore().submission;
     const operation = active.phase === 'awaiting_frame' ? active.entry.intent.operation : null;
     const target = operation && 'index' in operation ? operation.index + (operation.op === 'duplicate_slide' ? 1 : 0) : undefined;
     // 此 port 代表 documentRuntime 已完成的原子安装；控制器不再自己补选页。
@@ -61,6 +62,7 @@ function createFixture() {
   scopes.push(scope);
   const controller = scope.run(() => {
     const queue = useManualEditQueue({
+      readPresentedRevision: () => presentedRevision.value,
       createCommandId: () => crypto.randomUUID(), submit, refreshDocument, message: key => key,
       readSnapshot: () => ({
         documentId: slidesStore.currentDeckId,
@@ -72,7 +74,7 @@ function createFixture() {
     return useSlideStructureActions(queue);
   });
   if (!controller) throw new Error('Fixture scope failed');
-  return { controller, commands, submit, refreshDocument, slidesStore, manualStore: useSlidesManualEditingStore() };
+  return { present: (revision: number) => { presentedRevision.value = revision; }, controller, commands, submit, refreshDocument, slidesStore, manualStore: useSlidesManualSubmissionStore() };
 }
 
 async function flush() { await Promise.resolve(); await nextTick(); await Promise.resolve(); await nextTick(); }
@@ -106,7 +108,7 @@ describe('blank slide insertion + real submission queue', () => {
     expect(f.slidesStore.currentSlideIndex).toBe(2);
     expect(f.controller.pending.value).toBe(true);
 
-    f.manualStore.recordPresentedRevision(5);
+    f.present(5);
     await inserted;
     expect(f.slidesStore.currentSlideIndex).toBe(2);
     expect(f.controller.pending.value).toBe(false);
@@ -138,7 +140,7 @@ describe('blank slide insertion + real submission queue', () => {
     expect(f.commands).toHaveLength(1);
     const pending = f.commands[0];
     pending.resolve({ status: 'committed', commandId: pending.command.commandId, documentId: 'deck', revisionId: 'v5', revision: 5, history: { revisionId: 'v5', undoDepth: 1, redoDepth: 0 } });
-    await flush(); f.manualStore.recordPresentedRevision(5); await copied;
+    await flush(); f.present(5); await copied;
     expect(f.slidesStore.currentSlideIndex).toBe(2);
   });
 
@@ -151,7 +153,7 @@ describe('blank slide insertion + real submission queue', () => {
     const pending = f.commands[0];
     expect(pending.command.operation).toEqual({ op: 'delete_slide', index: 2 });
     pending.resolve({ status: 'committed', commandId: pending.command.commandId, documentId: 'deck', revisionId: 'v5', revision: 5, history: { revisionId: 'v5', undoDepth: 1, redoDepth: 0 } });
-    await flush(); f.manualStore.recordPresentedRevision(5); await deleted;
+    await flush(); f.present(5); await deleted;
     expect(f.slidesStore.currentSlideIndex).toBe(1);
     installRevision(6, 1);
     expect(f.controller.canDelete.value).toBe(false);

@@ -84,11 +84,8 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
 
   /** 同步 fit 模式下的缩放显示值，不污染手动缩放状态 */
   function syncFitZoomLevel(level: number) {
-    const nextLevel = Math.max(ZOOM_MIN, Math.min(level, ZOOM_MAX));
-    if (Math.round(nextLevel * 100) === Math.round(fitZoomLevel.value * 100)) {
-      return;
-    }
-    fitZoomLevel.value = nextLevel;
+    // fit 可小于手动缩放下限；显示和实际舞台必须使用同一个精确值。
+    fitZoomLevel.value = level;
   }
 
   /** 切回 fit 模式 */

@@ -6,7 +6,6 @@
     <div class="deck-viewer-body">
       <!-- 主区域：单页舞台或全稿平铺 -->
       <div
-        ref="stageHostRef"
         class="deck-viewer-stage"
       >
         <!-- loading 期间不保留上一份文稿的状态页或舞台 DOM。 -->
@@ -109,7 +108,7 @@ import { useElementClipboard } from '../../features/elementClipboard';
 import { SlideEditingCommandBar, useEditingCommands } from '../../features/editingCommands';
 
 import { useSlidesDocumentRuntime } from '../../features/documentRuntime';
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useSlidesStore } from '../../features/documentRuntime';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
@@ -117,21 +116,12 @@ import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import SlideStage from '../preview/SlideStage.vue';
 import SlidesStatusState from '../shared/SlidesStatusState.vue';
 import { SlidesDraftFailureLog } from '../../features/documentBuildFailure';
-import {
-  SLIDE_STAGE_FIT_PADDING,
-  ZOOM_MIN,
-  ZOOM_MAX,
-} from '../../shared/constants';
-import { computeFitScale } from '../../shared/slideScale';
 import type { SourceSelectionEditSubmitPayload } from '../../features/sourceSelection';
 import { DeckNavigatorBar, SlideGridView } from '../../features/deckNavigator';
 import { StageZoomControls, clampStageZoomPercent, type StageZoomMenuAction } from '../../features/stageZoom';
-import {
-  resolveManualEditingAvailability,
-  useManualEditingLocalization,
-  useSlidesManualEditingStore,
-  useManualEditSubmission,
-} from '../../features/manualEditing';
+import { useManualEditingLocalization } from '../../features/manualEditing/ui';
+import { useSlidesManualSubmissionStore, useManualEditSubmission } from '../../features/manualEditing/submission';
+import { useManualEditingEnabled } from '../../features/manualEditing/selection';
 
 defineProps<{
   sourceEditBusy?: boolean;
@@ -145,7 +135,8 @@ const emit = defineEmits<{
 const slidesStore = useSlidesStore();
 const slidesUiStore = useSlidesUiStore();
 const slidesRenderStore = useSlidesRenderStore();
-const manualEditingStore = useSlidesManualEditingStore();
+const manualEditingStore = useSlidesManualSubmissionStore();
+const manualEditingEnabled = useManualEditingEnabled();
 const { handleClipboardShortcut } = useElementClipboard();
 const { handleHistoryShortcut } = useEditingCommands();
 const manualEditSubmission = useManualEditSubmission();
@@ -165,14 +156,12 @@ const {
   fitZoomLevel,
 } = storeToRefs(slidesUiStore);
 const {
-  enabled: manualEditingEnabled,
   errorMessage: manualEditError,
   notice: manualEditNotice,
 } = storeToRefs(manualEditingStore);
 const {
   renderLoading,
   renderModel,
-  currentSlideRender,
 } = storeToRefs(slidesRenderStore);
 
 /**
@@ -190,71 +179,11 @@ const draftFailureLog = computed(() => {
   return documentBuildState.value.draftStatus.errorSummary?.trim() ?? '';
 });
 
-const stageHostRef = ref<globalThis.HTMLElement | null>(null);
-const stageViewportWidth = ref(0);
-const stageViewportHeight = ref(0);
-
-function clampZoomLevel(level: number): number {
-  return Math.max(ZOOM_MIN, Math.min(level, ZOOM_MAX));
-}
-
-/**
- * 在父层提前测量舞台容器，避免等待 SlideStage 挂载后才回填 fitZoomLevel，
- * 导致底栏缩放百分比先闪成 100% 再跳到真实值。
- */
-function syncStageViewport(): void {
-  const element = stageHostRef.value;
-  if (!element) return;
-
-  const rect = element.getBoundingClientRect();
-  stageViewportWidth.value = rect.width;
-  stageViewportHeight.value = rect.height;
-}
-
-const stageResizeObserver = new globalThis.ResizeObserver(() => {
-  syncStageViewport();
-});
-
-onMounted(() => {
-  syncStageViewport();
-  if (stageHostRef.value) {
-    stageResizeObserver.observe(stageHostRef.value);
-  }
-});
-
-onBeforeUnmount(() => {
-  stageResizeObserver.disconnect();
-});
-
-const resolvedZoomLevel = computed(() => {
-  if (zoomMode.value !== 'fit') {
-    return clampZoomLevel(zoomLevel.value);
-  }
-
-  if (deckPreview.value && stageViewportWidth.value > 0 && stageViewportHeight.value > 0) {
-    return clampZoomLevel(
-      computeFitScale(
-        stageViewportWidth.value,
-        stageViewportHeight.value,
-        deckPreview.value.slideSize,
-        'contain',
-        SLIDE_STAGE_FIT_PADDING,
-      ),
-    );
-  }
-
-  return clampZoomLevel(fitZoomLevel.value);
-});
+const resolvedZoomLevel = computed(() => zoomMode.value === 'fit' ? fitZoomLevel.value : zoomLevel.value);
 
 const zoomPercent = computed(() => {
   return Math.round(resolvedZoomLevel.value * 100);
 });
-
-const manualEditingAvailability = computed(() => resolveManualEditingAvailability({
-  buildState: documentBuildState.value,
-  renderModel: renderModel.value,
-  currentSlide: currentSlideRender.value,
-}));
 
 function reload() {
   if (currentDeckId.value) {
@@ -274,12 +203,4 @@ function applyZoomMenuAction(action: StageZoomMenuAction) {
   setZoomPercent(action.percent);
 }
 
-/**
- * 没有编辑模式：文稿就绪即可手动修改。自己刚提交的修订正在刷新画面时（version_not_ready）
- * 保持可写，避免每次保存都让命令栏和浮条闪成只读。
- */
-watch(manualEditingAvailability, availability => {
-  if (availability.available) manualEditingStore.setEnabled(true);
-  else if (availability.reason !== 'version_not_ready') manualEditingStore.setEnabled(false);
-}, { immediate: true });
 </script>

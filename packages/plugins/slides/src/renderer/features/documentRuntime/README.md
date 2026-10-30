@@ -16,7 +16,7 @@ The client retains only blocks and page objects referenced by the installed docu
 
 The page workflow supplies `preparePresentation` to the generic manual queue. It prepares one selection intent for a logical structure command, shared by idempotent transport retries; success confirms its revision and failure cancels it. If a version event arrives before the receipt, the candidate waits for ownership confirmation before installation. Target index and new page list enter the same synchronous state update. A later explicit user selection takes precedence; older numeric targets never apply to a newer revision.
 
-`deckNavigator` only submits operations and awaits tickets. It has no watcher or post-settlement selection repair. The queue still settles against the complete resource frame reported by SlideStage; installing data alone does not complete presentation.
+`deckNavigator` only submits operations and awaits tickets. It has no watcher or post-settlement selection repair. The runtime validates view frame reports against the active document, revision and current page. The queue reads the runtime presented revision through a port. Single-page rendering waits for images/charts; grid rendering waits for the current page thumbnail. Installing data alone does not complete presentation.
 
 ## Save boundary
 
@@ -25,3 +25,7 @@ The page workflow supplies `preparePresentation` to the generic manual queue. It
 The barrier commits an active text session, drains every admitted command, and captures text typed during the wait. Background auto-save defers while a text session owns input and returns false so Host keeps dirty; it never ends typing or IME. Explicit save/navigation/export finishes input. Unconfirmed IME input and failed text drafts reject saving. Host then keeps the document open; export keeps its dialog and reports the failure. The last backend committed result is sufficient for durable save even when its pixels have not appeared. Intermediate queued commands still require their exact revision/frame before dispatch. App termination/crash and development hot reload are not draft persistence guarantees.
 
 Silent document-read errors propagate to the queue while retaining the existing preview. Snapshot read errors propagate to the queue. The installed complete view remains available, and retry reads the snapshot without resubmitting the committed command.
+
+Navigation count/current page derive from RenderModel. DeckPreview remains a summary projection for context and export;
+it does not define navigation bounds. `usePresentedFrame` owns animation-frame scheduling and cancellation on view disposal.
+Presentation resource failures are reported separately from snapshot read failures and unblock the queue with a refresh error.

@@ -2,7 +2,8 @@ import type { EditingPreviewProjector } from '../../editingPreview';
 import type { SlidesEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import type { Ref } from 'vue';
 import type { SlideRenderModel } from '../../../types/render';
-import type { ManualEditSubmissionPort, ManualEditingVisualPreview } from '../../manualEditing';
+import type { ManualEditSubmissionPort } from '../../manualEditing/submission';
+import type { ManualEditingVisualPreview } from '../../manualEditing/preview';
 import type { TextEditingTarget } from '../../textEditing';
 
 export type TextInputSession =

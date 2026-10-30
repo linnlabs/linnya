@@ -5,7 +5,7 @@ import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { SlidesIpcError } from '@plugin/slides/shared/ipc';
 import SlidesView from './SlidesView.vue';
 import { useSlidesStore } from '../features/documentRuntime';
-import { useSlidesManualEditingStore, useManualEditSubmission } from '../features/manualEditing';
+import { useSlidesManualSubmissionStore, useManualEditSubmission } from '../features/manualEditing/submission';
 import { useSlidesDocumentRuntime } from '../features/documentRuntime';
 import { makePresentationView } from '../../shared/presentationViewSnapshot/testing/viewFixture';
 const read = vi.hoisted(() => vi.fn());
@@ -41,7 +41,7 @@ it('uses a preloaded complete snapshot and dispatches the next edit only after t
   confirm({ status: 'committed', commandId: first.commandId, documentId: 'deck', revisionId: 'v2', revision: 2, history: { revisionId: 'v2', undoDepth: 1, redoDepth: 0 } });
   await flush();
   expect(useSlidesStore().renderModel?.version).toBe(2); expect(submit).toHaveBeenCalledTimes(1);
-  useSlidesManualEditingStore().recordPresentedRevision(2); await flush();
+  presentFrame(2); await flush();
   expect(submit).toHaveBeenCalledTimes(2); expect(submit.mock.calls[1][0].expectedBase.revision).toBe(2);
 });
 
@@ -49,10 +49,10 @@ it('keeps a committed operation and the old complete view when refreshing fails,
   read.mockResolvedValueOnce(candidate(1)).mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(candidate(2));
   submit.mockImplementation(async command => ({ status: 'committed', commandId: command.commandId, documentId: 'deck', revisionId: 'v2', revision: 2, history: { revisionId: 'v2', undoDepth: 1, redoDepth: 0 } }));
   await useSlidesDocumentRuntime().loadDeck('deck'); const host = mount(); host.querySelector('button')?.click(); await flush();
-  const manual = useSlidesManualEditingStore();
+  const manual = useSlidesManualSubmissionStore();
   expect(manual.submission.phase).toBe('awaiting_frame'); expect(manual.errorMessage).toBeTruthy();
   expect(useSlidesStore().renderModel?.version).toBe(1);
-  await useSlidesDocumentRuntime().refreshDeck('deck', 2); manual.recordPresentedRevision(2); await flush();
+  await useSlidesDocumentRuntime().refreshDeck('deck', 2); presentFrame(2); await flush();
   expect(manual.submission.phase).toBe('idle'); expect(submit).toHaveBeenCalledTimes(1);
 });
 
@@ -72,3 +72,8 @@ it('keeps one structure selection intent across an explicitly retryable failure'
   confirm({ status: 'committed', commandId: command.commandId, documentId: 'deck', revisionId: 'v2', revision: 2, history: { revisionId: 'v2', undoDepth: 1, redoDepth: 0 } });
   await flush(); expect(useSlidesStore().renderModel?.version).toBe(2); expect(useSlidesStore().currentSlideIndex).toBe(1);
 });
+
+function presentFrame(revision: number): void {
+  const slides = useSlidesStore();
+  useSlidesDocumentRuntime().reportPresentedFrame({ documentId: 'deck', revision, slide: slides.currentSlide });
+}

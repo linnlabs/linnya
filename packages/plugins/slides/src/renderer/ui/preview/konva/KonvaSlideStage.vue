@@ -67,11 +67,8 @@ import SlideContentLayer from './layers/SlideContentLayer.vue';
 import PendingInsertionLayer from './layers/PendingInsertionLayer.vue';
 import type { EditingInsertionPreview } from '../../../features/editingPreview';
 import SlideOverlayLayer from './layers/SlideOverlayLayer.vue';
-import type {
-  ManualEditableTarget,
-  ManualEditingTranslationPreview,
-  ManualEditingVisualPreview,
-} from '../../../features/manualEditing';
+import type { ManualEditableTarget } from '../../../features/manualEditing/selection';
+import type { ManualEditingTranslationPreview, ManualEditingVisualPreview } from '../../../features/manualEditing/preview';
 
 const props = defineProps<{
   slideRender: SlideRenderModel;

@@ -64,16 +64,16 @@
 </template>
 
 <script setup lang="ts">
+import { useSlideThumbnailResources } from '../orchestration/useSlideThumbnailResources';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useVirtualList } from '@vueuse/core';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
-import { useSlidesStore } from '../../documentRuntime';
+import { useSlidesStore, usePresentedFrame, useSlidesDocumentRuntime } from '../../documentRuntime';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import { useSlidesThumbnailStore } from '../store/slidesThumbnailStore';
 import { useSlidesUiStore } from '../../../store/slidesUiStore';
-import { manualEditPresentationTrace, useSlidesManualEditingStore } from '../../manualEditing';
 import { useSlidesPreviewLocalization } from '../../previewRenderState';
 import {
   resolveSlideGridLayout,
@@ -91,17 +91,17 @@ const GRID_PADDING_TOP_PX = 28;
 const slidesStore = useSlidesStore();
 const uiStore = useSlidesUiStore();
 const thumbnailStore = useSlidesThumbnailStore();
-const manualEditingStore = useSlidesManualEditingStore();
-const { deckPreview, currentSlideIndex, currentDeckId } = storeToRefs(slidesStore);
+const thumbnailResources = useSlideThumbnailResources();
+const { currentSlideIndex } = storeToRefs(slidesStore);
 const { renderModel } = storeToRefs(useSlidesRenderStore());
 const { deckNavigatorMessage } = useDeckNavigatorLocalization();
 const { slidesPreviewMessage } = useSlidesPreviewLocalization();
 
-const slides = computed(() => deckPreview.value?.slides ?? []);
+const slides = computed(() => renderModel.value?.slides ?? []);
 const viewportWidth = ref(0);
 const layout = computed(() => resolveSlideGridLayout({
   viewportWidth: viewportWidth.value,
-  slideSize: deckPreview.value?.slideSize,
+  slideSize: renderModel.value?.slideSize,
   slideCount: slides.value.length,
 }));
 const rows = computed(() => layout.value.rows);
@@ -153,7 +153,7 @@ function handleViewportScroll(): void {
 
 function readBitmap(slideIndex: number): ImageBitmap | null {
   const slide = slides.value[slideIndex];
-  return slide ? thumbnailStore.getThumbnail(slide.slideId) : null;
+  return slide ? thumbnailResources.getThumbnail(slide.slideId) : null;
 }
 
 function revealSlide(index: number, behavior: ScrollBehavior): void {
@@ -231,19 +231,17 @@ watch(
 
 watch(currentSlideIndex, index => revealSlide(index, 'smooth'), { flush: 'post' });
 
-/**
- * 平铺视图替代单页舞台成为可见画面：当前文稿的 RenderModel 修订一旦装入，
- * 新页格位即已呈现，人工编辑队列据此结算（缩略图位图随后异步替换占位）。
- */
-watch(
-  () => [renderModel.value?.presentationId, renderModel.value?.version] as const,
-  ([presentationId, version]) => {
-    if (!presentationId || version === undefined || presentationId !== currentDeckId.value) return;
-    manualEditingStore.recordPresentedRevision(version);
-    window.requestAnimationFrame(() => {
-      manualEditPresentationTrace.recordPresented(presentationId, version);
-    });
-  },
-  { immediate: true },
-);
+// 当前页的真实缩略图准备完成才上报；其他页仍按空闲调度生成。
+usePresentedFrame(computed(() => {
+  const model = renderModel.value;
+  const slide = slidesStore.currentSlide;
+  if (!model || (slide && thumbnailResources.readySlides.value.get(slide.slideId) !== slide)) return null;
+  return { documentId: model.presentationId, revision: model.version, slide };
+}));
+watch(() => [thumbnailStore.failedSlideIds, slidesStore.currentSlide] as const, ([failed, slide]) => {
+  const model = renderModel.value;
+  if (model && slide && failed.includes(slide.slideId)) useSlidesDocumentRuntime().reportPresentationFailure({
+    documentId: model.presentationId, revision: model.version, slide,
+  }, slidesPreviewMessage('slides.preview.error.presentationRendering'));
+});
 </script>

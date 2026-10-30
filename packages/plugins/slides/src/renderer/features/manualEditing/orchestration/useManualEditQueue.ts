@@ -6,12 +6,12 @@ import type { ManualEditQueuePorts } from '../definitions/manualEditQueuePorts';
 import { appendManualEditQueueEntry } from '../functions/appendManualEditQueueEntry';
 import { canAdmitManualEdit, isManualEditSnapshotReady } from '../functions/manualEditQueueReadiness';
 import { readManualEditErrorMessage, describeManualEditQueueFailure } from '../functions/manualEditOutcomeMessage';
-import { useSlidesManualEditingStore } from '../store/slidesManualEditingStore';
+import { useSlidesManualSubmissionStore } from '../store/slidesManualSubmissionStore';
 import { submitManualEdit } from './submitManualEdit';
 
 /** 页面提供存储/IPC 端口；队列负责串行精确版本写入，绝不拥有焦点或输入会话。 */
 export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmissionPort {
-  const store = useSlidesManualEditingStore();
+  const store = useSlidesManualSubmissionStore();
   const receipts = new Map<string, (result: ManualEditSettlement) => void>();
   let epoch = 0;
   let processing = false;
@@ -60,8 +60,9 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
 
   async function processQueue(): Promise<void> {
     const state = store.submission;
-    if (state.phase === 'awaiting_frame' && store.presentedRevision !== null
-      && store.presentedRevision >= state.revision) {
+    const presentedRevision = ports.readPresentedRevision();
+    if (state.phase === 'awaiting_frame' && presentedRevision !== null
+      && presentedRevision >= state.revision) {
       settle(state.entry, { status: 'presented', commandId: state.commandId, revision: state.revision,
         ...(state.focus ? { focus: state.focus } : {}) });
       store.setSubmission({ phase: 'idle' });
@@ -174,7 +175,7 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
   }
 
   watch(() => ports.readSnapshot().documentId, reset, { flush: 'sync', immediate: true });
-  watch(() => [ports.readSnapshot(), store.presentedRevision, store.submission, store.queue], () => { void processQueue(); });
+  watch(() => [ports.readSnapshot(), ports.readPresentedRevision(), store.submission, store.queue], () => { void processQueue(); });
   onScopeDispose(reset);
   return { enqueue, refreshPresentation, flush };
 }

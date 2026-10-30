@@ -2,7 +2,7 @@ import { resolveTextEditingStyleBase } from '../../textEditing';
 import { wholeTextStyle, SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
 import { computed, ref, watch, type Ref } from 'vue';
 import type { NumberInputValue } from '@linnya/renderer-ui';
-import type { ManualEditableTarget } from '../../manualEditing';
+import type { ManualEditableTarget } from '../../manualEditing/selection';
 import type { ElementPropertyOperation } from '../definitions/elementPropertyTypes';
 import type { ElementPropertyNumberField } from '../definitions/elementPropertyToolbar';
 import { createFillColorOperation, createTextStyleOperation, createVisualSizeOperation, resolveVisualSizeAfterDimensionChange } from '../functions/elementPropertyOperations';

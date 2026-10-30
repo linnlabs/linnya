@@ -1,27 +1,14 @@
 import type { SlidesManualEditHistoryStatus } from '@plugin/slides/shared/authoringEditing';
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
-import type {
-  ManualEditableTarget,
-  ManualEditingTranslationPreview,
-  ManualEditRevealRequest,
-} from '../definitions/manualEditingTypes';
 import type { ManualEditQueueEntry, ManualEditSubmissionState } from '../definitions/manualEditQueue';
 import { ownsManualPageOrder } from '../functions/manualEditPageOrder';
 
-export const useSlidesManualEditingStore = defineStore('slides-manual-editing', () => {
+export const useSlidesManualSubmissionStore = defineStore('slides-manual-submission', () => {
   const history = shallowRef<SlidesManualEditHistoryStatus | null>(null);
   const historyError = ref(false);
-  const enabled = ref(false);
-  const selectedTargets = shallowRef<readonly ManualEditableTarget[]>([]);
-  const selectedTarget = computed(() => selectedTargets.value[selectedTargets.value.length - 1] ?? null);
-  const selectionPath = shallowRef<readonly ManualEditableTarget[]>([]);
-  const translationPreview = shallowRef<ManualEditingTranslationPreview | null>(null);
-  /** 撤销、插入或粘贴呈现后要在当前页选中的作者对象；由画布交互解析成目标后清空。 */
-  const revealRequest = shallowRef<ManualEditRevealRequest | null>(null);
   const queue = shallowRef<readonly ManualEditQueueEntry[]>([]);
   const submission = shallowRef<ManualEditSubmissionState>({ phase: 'idle' });
-  const presentedRevision = ref<number | null>(null);
   /** 写入失败：参与保存屏障与撤销门控，只由提交队列设置。 */
   const errorMessage = ref<string | null>(null);
   /** 未发生写入的操作提示，例如不可复制或图片过大；不能阻塞保存、切换和撤销。 */
@@ -55,41 +42,6 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     historyError.value = value;
   }
 
-  /** 文稿当前能否手动写入；选区独立于它，只读时仍可选中对象交给 AI。 */
-  function setEnabled(value: boolean): void {
-    enabled.value = value;
-  }
-
-  function selectTarget(
-    target: ManualEditableTarget | null,
-    path: readonly ManualEditableTarget[] = target ? [target] : [],
-  ): void {
-    selectedTargets.value = target ? [target] : [];
-    selectionPath.value = target ? path : [];
-    translationPreview.value = null;
-  }
-
-  function reconcileSelectedTarget(
-    target: ManualEditableTarget | null,
-    path: readonly ManualEditableTarget[] = target ? [target] : [],
-  ): void {
-    selectedTargets.value = target ? [target] : [];
-    selectionPath.value = target ? path : [];
-  }
-
-  function selectTargets(targets: readonly ManualEditableTarget[], path: readonly ManualEditableTarget[] = []): void {
-    selectedTargets.value = targets;
-    selectionPath.value = path;
-  }
-
-  function requestReveal(request: ManualEditRevealRequest | null): void {
-    revealRequest.value = request;
-  }
-
-  function setTranslationPreview(preview: ManualEditingTranslationPreview | null): void {
-    translationPreview.value = preview;
-  }
-
   function setQueue(entries: readonly ManualEditQueueEntry[]): void {
     queue.value = entries;
   }
@@ -106,37 +58,16 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     notice.value = message;
   }
 
-  /** 只记录画面事实；回执结算与后续提交由 queue orchestration 负责。 */
-  function recordPresentedRevision(revision: number): void {
-    presentedRevision.value = revision;
-  }
-
-  function clearSelection(): void {
-    selectedTargets.value = [];
-    selectionPath.value = [];
-    translationPreview.value = null;
-  }
-
   function $reset(): void {
     setHistory(null);
-    enabled.value = false;
     submission.value = { phase: 'idle' };
     queue.value = [];
-    presentedRevision.value = null;
     errorMessage.value = null;
     notice.value = null;
-    revealRequest.value = null;
-    clearSelection();
   }
 
   return {
     history, historyError, setHistory, setHistoryError,
-    enabled,
-    selectedTarget, selectedTargets, selectTargets,
-    selectionPath,
-    translationPreview,
-    revealRequest,
-    requestReveal,
     pendingTranslations,
     pendingInsertions,
     pendingVisuals,
@@ -145,20 +76,13 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     queue,
     submission,
     pendingPresentationRevision,
-    presentedRevision,
     submitting,
     errorMessage,
     notice,
-    setEnabled,
-    selectTarget,
-    reconcileSelectedTarget,
-    setTranslationPreview,
     setQueue,
     setSubmission,
     setError,
     setNotice,
-    recordPresentedRevision,
-    clearSelection,
     $reset,
   };
 });

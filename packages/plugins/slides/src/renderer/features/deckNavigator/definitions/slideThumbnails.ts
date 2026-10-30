@@ -10,6 +10,8 @@ export interface SlideThumbnailSource {
 export interface SlideThumbnailSnapshot {
   readonly cache: ReadonlyMap<string, ImageBitmap>;
   readonly generating: boolean;
+  readonly readySlides: ReadonlyMap<string, SlideRenderModel>;
+  readonly failedSlideIds: readonly string[];
 }
 
 export interface SlideThumbnailEntry {

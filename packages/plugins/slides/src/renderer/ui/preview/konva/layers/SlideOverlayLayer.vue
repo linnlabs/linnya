@@ -60,9 +60,7 @@ import type {
 } from '../../../../features/sourceSelection';
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../../shared/constants';
 import { createSelectionOutlineGrid, SELECTION_OUTLINE_SOFT_OPACITY } from '../../../../shared/selectionOutline';
-import type {
-  ManualEditableTarget,
-} from '../../../../features/manualEditing';
+import type { ManualEditableTarget } from '../../../../features/manualEditing/selection';
 
 interface OverlayLineEntry {
   key: string;

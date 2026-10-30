@@ -1,3 +1,5 @@
+import { computed } from 'vue';
+import type { PresentationFrame } from '../definitions/documentPresentation';
 import type { PendingStructureSelection } from '../definitions/documentPresentation';
 import { resolvePresentationSelection, resolveRequestedSlideIndex } from '../functions/presentationSelection';
 import type { SlideRenderModel } from '@plugin/slides/shared/renderModel';
@@ -15,6 +17,23 @@ export function useSlidesDocumentRuntime() {
   return runtime;
 }
 function createRuntime(store: ReturnType<typeof useSlidesStore>) {
+  const presentedRevision = computed(() => {
+    const frame = store.presentedFrame;
+    return frame?.epoch === store.state.epoch && frame.revision === store.renderModel?.version && frame.slideId === (store.currentSlide?.slideId ?? null)
+      ? frame.revision : null;
+  });
+  function ownsFrame(frame: PresentationFrame): boolean {
+    return frame.documentId === store.currentDeckId && frame.revision === store.renderModel?.version
+      && frame.slide === store.currentSlide;
+  }
+  function reportPresentedFrame(frame: PresentationFrame): void {
+    if (!ownsFrame(frame)) return;
+    store.setPresentedFrame({ epoch: store.state.epoch, revision: frame.revision, slideId: frame.slide?.slideId ?? null });
+    store.setPresentationError(null);
+  }
+  function reportPresentationFailure(frame: PresentationFrame, message: string): void {
+    if (ownsFrame(frame)) store.setPresentationError(message);
+  }
   let pages = new Map<string, SlideRenderModel>();
   let blocks = new Map<string, ViewJsonRecord>();
   let pendingSelection: PendingStructureSelection | null = null;
@@ -80,5 +99,5 @@ function createRuntime(store: ReturnType<typeof useSlidesStore>) {
   function closeDeck(): void {
     store.$reset(); blocks.clear(); pages.clear(); pendingSelection = null;
   }
-  return { loadDeck, refreshDeck, openDeckAtSlide, prepareStructureSelection, closeDeck };
+  return { presentedRevision, reportPresentedFrame, reportPresentationFailure, loadDeck, refreshDeck, openDeckAtSlide, prepareStructureSelection, closeDeck };
 }

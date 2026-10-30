@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ManualEditableTarget } from '../../manualEditing';
+import type { ManualEditableTarget } from '../../manualEditing/selection';
 import { hasElementPropertyControls } from './hasElementPropertyControls';
 
 function createTarget(

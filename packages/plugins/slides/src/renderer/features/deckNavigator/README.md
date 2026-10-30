@@ -18,7 +18,7 @@
 
 “+”不新建 IPC 或第二套写队列。`useSlideStructureActions` 把 `{ op: 'insert_blank_slide', index }` 交给 [manualEditing](../manualEditing/README.md) 的串行队列，复用精确 revision/sourceHash CAS、draft 保护、命令回执幂等、失败提示与画面结算。index 是当前可见修订内的 0-based 位置，只在该快照内解释。复制／删除分别提交 `duplicate_slide`／`delete_slide`，也使用同一队列。常见内联页面列表的空白页插入在 Backend 复用已有编译结果，复杂源码结构仍完整编译；不提前伪造已保存的页面。Backend 的源码改写与主题背景规则见 [presentationManualEditing](../../../backend/features/presentationManualEditing/README.md)。
 
-平铺视图打开时单页舞台已卸载，不能再由 `SlideStage` 报告“当前页完整帧已呈现”。平铺视图是此时的可见画面：当前文稿的 RenderModel 修订装入后即记录 presented revision，新页格位立即出现（位图随后替换占位），队列据此结算。
+平铺视图等待当前页缩略图完成后，通过 documentRuntime 上报完整帧；其余页后台继续生成。空文稿没有缩略图，空页列表本身即可上报。
 
 ## 缩略图位图
 
@@ -56,3 +56,6 @@
 
 
 缩略图支持原生拖动重排，菜单提供“前移/后移”的可点击替代入口。`move_slide` 与新建/复制/删除共用人工编辑队列及精确修订；页序动作和历史恢复呈现前互斥。drag index 在文稿或 revision 改变时失效。静态 compose 列表定义显示顺序，源声明定义源码块归属，两者不再要求一致；重排后的源码选择/复制/删除仍使用对应所有权。
+
+ImageBitmap 由 `useSlideThumbnailResources` 的会话资源注册表提供，位图释放仍归缩略图 renderer。
+Pinia 只保留数量、生成状态、失败页和请求宽度。导航列表和当前页边界直接派生自 RenderModel。

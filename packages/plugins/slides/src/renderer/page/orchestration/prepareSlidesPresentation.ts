@@ -1,6 +1,6 @@
 import { resolveSlideStructureTargetIndex } from '../../features/deckNavigator/structureSelection';
 import type { SlidesManualEditCommandOperation } from '@plugin/slides/shared/authoringEditing';
-import type { ManualEditQueueSnapshot } from '../../features/manualEditing';
+import type { ManualEditQueueSnapshot } from '../../features/manualEditing/submission';
 import { useSlidesDocumentRuntime } from '../../features/documentRuntime';
 
 /** 页面工作流连接队列和选页：重试期间保留同一意图，终态只确认一次。 */

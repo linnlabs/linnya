@@ -1,3 +1,6 @@
+import { createElementClipboard, provideElementClipboard } from '../../features/elementClipboard';
+import { createEditingCommands, provideEditingCommands } from '../../features/editingCommands';
+import type { ManualEditSubmissionPort } from '../../features/manualEditing/submission';
 // @vitest-environment jsdom
 import { installTestPresentation } from '../../features/documentRuntime/testing/installTestPresentation';
 
@@ -80,7 +83,8 @@ vi.mock('@linnya/renderer-ui/icons', () => ({
 
 import DeckViewer from './DeckViewer.vue';
 import { useSlidesStore } from '../../features/documentRuntime';
-import { useSlidesManualEditingStore, provideManualEditSubmission } from '../../features/manualEditing';
+import { useManualEditingEnabled } from '../../features/manualEditing/selection';
+import { provideManualEditSubmission } from '../../features/manualEditing/submission';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
 
 describe('DeckViewer document transition', () => {
@@ -116,7 +120,7 @@ describe('DeckViewer document transition', () => {
     const host = document.createElement('div');
     document.body.append(host);
     const app = createApp({ setup() {
-      provideManualEditSubmission({
+      provideEditingPorts({
         flush: async () => {},
         enqueue: () => { throw new Error('Stubbed Stage must not submit an edit'); },
         refreshPresentation: async () => undefined,
@@ -151,9 +155,9 @@ describe('DeckViewer document transition', () => {
     app.unmount();
   });
 
-  it('没有编辑模式开关：ready 的生成文稿自动可手动编辑，刷新自己的修订时不闪成只读', async () => {
+  it('没有编辑模式开关：ready 的生成文稿自动可手动编辑，写入权限从一致快照派生', async () => {
     const slidesStore = useSlidesStore();
-    const manualStore = useSlidesManualEditingStore();
+    const enabled = useManualEditingEnabled();
     installTestPresentation({ documentId: 'deck-1' });
     installTestPresentation({ buildState: {
       state: 'ready',
@@ -193,7 +197,7 @@ describe('DeckViewer document transition', () => {
     const host = document.createElement('div');
     document.body.append(host);
     const app = createApp({ setup() {
-      provideManualEditSubmission({
+      provideEditingPorts({
         flush: async () => {},
         enqueue: () => { throw new Error('Stubbed Stage must not submit an edit'); },
         refreshPresentation: async () => undefined,
@@ -203,7 +207,7 @@ describe('DeckViewer document transition', () => {
     app.mount(host);
     await nextTick();
 
-    expect(manualStore.enabled).toBe(true);
+    expect(enabled.value).toBe(true);
 
     installTestPresentation({ buildState: {
       ...slidesStore.documentBuildState,
@@ -212,13 +216,13 @@ describe('DeckViewer document transition', () => {
       versionNumber: 3,
     } });
     await nextTick();
-    expect(manualStore.enabled).toBe(true);
+    expect(enabled.value).toBe(false);
 
     const generated = slidesStore.renderModel;
     if (!generated) throw new Error('Render model fixture missing');
     installTestPresentation({ renderModel: { ...generated, version: 3, sourceKind: 'imported' } });
     await nextTick();
-    expect(manualStore.enabled).toBe(false);
+    expect(enabled.value).toBe(false);
 
     app.unmount();
   });
@@ -237,7 +241,7 @@ describe('DeckViewer document transition', () => {
     const host = document.createElement('div');
     document.body.append(host);
     const app = createApp({ setup() {
-      provideManualEditSubmission({
+      provideEditingPorts({
         flush: async () => {},
         enqueue: () => { throw new Error('Stubbed Stage must not submit an edit'); },
         refreshPresentation: async () => undefined,
@@ -285,3 +289,9 @@ describe('DeckViewer document transition', () => {
     app.unmount();
   });
 });
+
+function provideEditingPorts(port: ManualEditSubmissionPort): void {
+  provideManualEditSubmission(port);
+  provideElementClipboard(createElementClipboard(port));
+  provideEditingCommands(createEditingCommands(port));
+}

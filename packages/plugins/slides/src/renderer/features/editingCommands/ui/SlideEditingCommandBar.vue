@@ -56,7 +56,7 @@ import { ToolbarButton, ToolbarGroup } from '@linnya/renderer-ui';
 import { CheckmarkIcon, PasteIcon, RedoIcon, UndoIcon } from '@linnya/renderer-ui/icons';
 import { useLocalization } from '@app/localization';
 import { EDITING_COMMAND_MESSAGES, type EditingCommandMessageKey } from '../definitions/editingCommandMessages';
-import { useEditingCommands } from '../orchestration/useEditingCommands';
+import { useEditingCommands } from '../ports/editingCommands';
 import { useDelayedSaveStatus } from '../orchestration/useDelayedSaveStatus';
 const { canPaste, paste } = useElementClipboard();
 const { canUndo, canRedo, saveStatus, runHistory } = useEditingCommands();

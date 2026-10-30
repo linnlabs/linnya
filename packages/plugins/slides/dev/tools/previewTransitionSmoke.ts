@@ -479,7 +479,9 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
   await click('window.shapeTextEditingSmoke.point("badge")');
   await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge")');
   await click(control('[data-property="fill"]'));
-  await click(control('.slides-element-color__custom'));
+  // 下拉仍在平移动画中时，按钮测得的位置并不是鼠标落下时的位置。
+  await evaluate('window.shapeTextEditingSmoke.settlePanelMotion()');
+  await hover(control('.slides-element-color__custom'));
   await evaluate('window.shapeTextEditingSmoke.settlePanelMotion()');
   await evaluate('window.shapeTextEditingSmoke.assertPopupPlacement(); window.shapeTextEditingSmoke.assertCustomPlacement()');
   await settle();

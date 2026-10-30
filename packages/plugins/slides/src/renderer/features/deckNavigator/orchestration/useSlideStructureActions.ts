@@ -2,10 +2,7 @@ import { computed, type ComputedRef } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useSlidesStore } from '../../documentRuntime';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
-import {
-  useSlidesManualEditingStore,
-  type ManualEditSubmissionPort,
-} from '../../manualEditing';
+import { useSlidesManualSubmissionStore, type ManualEditSubmissionPort } from '../../manualEditing/submission';
 import type { BlankSlideInsertionAvailability } from '../definitions/deckNavigatorTypes';
 import { resolveBlankSlideInsertion } from '../functions/blankSlideInsertion';
 
@@ -30,7 +27,7 @@ export function useSlideStructureActions(
   const slidesStore = useSlidesStore();
   const { currentDeckId, documentBuildState, currentSlideIndex } = storeToRefs(slidesStore);
   const { renderModel } = storeToRefs(useSlidesRenderStore());
-  const manualEditingStore = useSlidesManualEditingStore();
+  const manualEditingStore = useSlidesManualSubmissionStore();
 
   const availability = computed(() => resolveBlankSlideInsertion({
     documentId: currentDeckId.value,

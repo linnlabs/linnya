@@ -1,3 +1,4 @@
+import { useSlideThumbnailResources } from './useSlideThumbnailResources';
 import { describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import type { PresentationRenderModel, RenderNode, SlideRenderModel } from '../../../types/render';
@@ -34,7 +35,7 @@ function harness() {
   const render = vi.fn<(_request: SlideRasterRequest, _signal: AbortSignal) => Promise<ImageBitmap>>()
     .mockImplementation(async () => bitmap());
   const reportFailure = vi.fn();
-  const runtime = createSlideThumbnailRenderer({ render, publish: store.applySnapshot, reportFailure,
+  const runtime = createSlideThumbnailRenderer({ render, publish: useSlideThumbnailResources().applySnapshot, reportFailure,
     schedule: job => { jobs.add(job); return () => jobs.delete(job); },
   });
   function update(pages: SlideRenderModel[], width = 128) {
@@ -56,19 +57,19 @@ describe('incremental thumbnail lifecycle', () => {
     h.update([a, b]);
     expect(h.render).not.toHaveBeenCalled(); // 画布更新后才开始后台工作。
     await h.drain();
-    const aBitmap = h.store.getThumbnail('s1'), bBitmap = h.store.getThumbnail('s2');
+    const aBitmap = useSlideThumbnailResources().getThumbnail('s1'), bBitmap = useSlideThumbnailResources().getThumbnail('s2');
     h.update([a, blank, b]);
-    expect(h.store.getThumbnail('s3')).toBe(bBitmap);
-    expect(h.store.getThumbnail('s2')).toBeNull(); // 不能把原来的第二页误认为空白页。
+    expect(useSlideThumbnailResources().getThumbnail('s3')).toBe(bBitmap);
+    expect(useSlideThumbnailResources().getThumbnail('s2')).toBeNull(); // 不能把原来的第二页误认为空白页。
     await h.drain();
     expect(h.render).toHaveBeenCalledTimes(3);
     h.update([a, a, blank, b]);
     await h.drain();
-    expect(h.store.getThumbnail('s2')).toBe(aBitmap);
+    expect(useSlideThumbnailResources().getThumbnail('s2')).toBe(aBitmap);
     expect(h.render).toHaveBeenCalledTimes(3);
     h.update([b, a]);
-    expect(h.store.getThumbnail('s1')).toBe(bBitmap);
-    expect(h.store.getThumbnail('s2')).toBe(aBitmap);
+    expect(useSlideThumbnailResources().getThumbnail('s1')).toBe(bBitmap);
+    expect(useSlideThumbnailResources().getThumbnail('s2')).toBe(aBitmap);
     expect(aBitmap?.close).not.toHaveBeenCalled();
     await h.drain();
     expect(h.render).toHaveBeenCalledTimes(3);
@@ -81,14 +82,14 @@ describe('incremental thumbnail lifecycle', () => {
     const h = harness();
     const a = page('#FF0000');
     h.update([a, a]); await h.drain();
-    const original = h.store.getThumbnail('s1');
-    const cache = h.store.cache;
+    const original = useSlideThumbnailResources().getThumbnail('s1');
+    const cache = useSlideThumbnailResources().cache.value;
     h.update([structuredClone(a), structuredClone(a)]);
-    expect(h.store.cache).toBe(cache);
+    expect(useSlideThumbnailResources().cache.value).toBe(cache);
     h.update([a, page('#0000FF')]); await h.drain();
     expect(h.render).toHaveBeenCalledTimes(2);
-    expect(h.store.getThumbnail('s1')).toBe(original);
-    expect(h.store.getThumbnail('s2')).not.toBe(original);
+    expect(useSlideThumbnailResources().getThumbnail('s1')).toBe(original);
+    expect(useSlideThumbnailResources().getThumbnail('s2')).not.toBe(original);
     expect(original?.close).not.toHaveBeenCalled();
     h.runtime.clear();
   });
@@ -104,8 +105,8 @@ describe('incremental thumbnail lifecycle', () => {
     h.update([b, a, b]);
     expect(signal?.aborted).toBe(false);
     const ready = bitmap(); pending.resolve(ready); await Promise.resolve();
-    expect(h.store.getThumbnail('s1')).toBe(ready);
-    expect(h.store.getThumbnail('s3')).toBe(ready);
+    expect(useSlideThumbnailResources().getThumbnail('s1')).toBe(ready);
+    expect(useSlideThumbnailResources().getThumbnail('s3')).toBe(ready);
     await h.drain();
     expect(h.render).toHaveBeenCalledTimes(2);
     h.runtime.clear();
@@ -120,11 +121,11 @@ describe('incremental thumbnail lifecycle', () => {
     const oldSignal = h.render.mock.calls[0]?.[1];
     h.runtime.clear();
     h.update([a]); await h.drain();
-    const current = h.store.getThumbnail('s1');
+    const current = useSlideThumbnailResources().getThumbnail('s1');
     const late = bitmap(); pending.resolve(late); await Promise.resolve();
     expect(oldSignal?.aborted).toBe(true);
     expect(late.close).toHaveBeenCalledTimes(1);
-    expect(h.store.getThumbnail('s1')).toBe(current);
+    expect(useSlideThumbnailResources().getThumbnail('s1')).toBe(current);
     expect(h.store.generating).toBe(false);
     h.runtime.clear();
   });
@@ -133,17 +134,17 @@ describe('incremental thumbnail lifecycle', () => {
     const h = harness();
     const pages = [page('#FF0000')];
     h.update(pages); await h.drain();
-    const small = h.store.getThumbnail('s1');
+    const small = useSlideThumbnailResources().getThumbnail('s1');
     h.update(pages, 320);
-    expect(h.store.getThumbnail('s1')).toBe(small);
+    expect(useSlideThumbnailResources().getThumbnail('s1')).toBe(small);
     await h.drain();
     expect(h.render.mock.calls[1]?.[0].profile.viewportWidthPx).toBe(320);
     expect(small?.close).toHaveBeenCalledTimes(1);
-    const large = h.store.getThumbnail('s1');
+    const large = useSlideThumbnailResources().getThumbnail('s1');
     h.update(pages); h.update([structuredClone(pages[0])]); h.update(pages, 320);
     await h.drain();
     expect(h.render).toHaveBeenCalledTimes(2);
-    expect(h.store.getThumbnail('s1')).toBe(large);
+    expect(useSlideThumbnailResources().getThumbnail('s1')).toBe(large);
     h.runtime.clear();
   });
 

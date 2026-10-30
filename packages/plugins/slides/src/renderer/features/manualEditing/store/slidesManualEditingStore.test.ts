@@ -1,6 +1,7 @@
+import { useSlidesManualSelectionStore } from './slidesManualSelectionStore';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { useSlidesManualEditingStore } from './slidesManualEditingStore';
+import { useSlidesManualSubmissionStore } from './slidesManualSubmissionStore';
 
 const target = {
   elementId: 'authoring-overview-headline',
@@ -20,24 +21,24 @@ describe('slidesManualEditingStore', () => {
   beforeEach(() => setActivePinia(createPinia()));
 
   it('keeps transient selection and drag preview inside the feature', () => {
-    const store = useSlidesManualEditingStore();
-    store.setEnabled(true);
-    store.selectTarget(target);
-    store.setTranslationPreview({
+    const store = useSlidesManualSubmissionStore();
+  const storeSelection = useSlidesManualSelectionStore();
+    storeSelection.selectTarget(target);
+    storeSelection.setTranslationPreview({
       elementId: target.elementId,
       affectedElementIds: target.translationElementIds,
       dx: 0.2,
       dy: -0.1,
     });
-    expect(store.selectedTarget).toEqual(target);
-    expect(store.translationPreview).toMatchObject({ dx: 0.2, dy: -0.1 });
+    expect(storeSelection.selectedTarget).toEqual(target);
+    expect(storeSelection.translationPreview).toMatchObject({ dx: 0.2, dy: -0.1 });
 
     // 文稿暂时不能手动写入时，选区仍可交给 AI。
-    store.setEnabled(false);
-    expect(store.selectedTarget).toEqual(target);
-    store.clearSelection();
-    expect(store.selectedTarget).toBeNull();
-    expect(store.translationPreview).toBeNull();
+    store.$reset();
+    expect(storeSelection.selectedTarget).toEqual(target);
+    storeSelection.clearSelection();
+    expect(storeSelection.selectedTarget).toBeNull();
+    expect(storeSelection.translationPreview).toBeNull();
   });
 
 });
@@ -45,7 +46,7 @@ describe('slidesManualEditingStore', () => {
 describe('pending insertions', () => {
   it('exposes boxes of queued and active insertions until they are presented', () => {
     setActivePinia(createPinia());
-    const store = useSlidesManualEditingStore();
+    const store = useSlidesManualSubmissionStore();
     const object = { kind: 'shape' as const, editKey: 'new', geometry: 'rect' as const, fill: '#2563EB', content: '', box: { x: 1, y: 1, w: 2, h: 1 } };
     const entry = { intent: { operation: { op: 'insert_objects' as const, index: 2, objects: [object] } }, clientOperationIds: ['a'] as [string] };
     store.setQueue([entry]);

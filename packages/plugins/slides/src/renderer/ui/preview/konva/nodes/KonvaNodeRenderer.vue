@@ -67,7 +67,7 @@ import {
   useEditingPreviewProjector,
   type EditingVisualPreview,
 } from '../../../../features/editingPreview';
-import type { ManualEditingTranslationPreview } from '../../../../features/manualEditing';
+import type { ManualEditingTranslationPreview } from '../../../../features/manualEditing/preview';
 
 const props = defineProps<{
   node: RenderNode;

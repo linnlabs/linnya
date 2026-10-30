@@ -10,7 +10,7 @@ import { SandboxProfileRegistry } from 'src/features/sandbox/SandboxProfileRegis
 import { SandboxService } from 'src/features/sandbox/SandboxService';
 import { createSandboxEvaluatorTestRunner } from 'src/features/sandbox/testing/createSandboxEvaluatorTestRunner';
 import { SlideMarkerIndex, type DeckSpec } from '@plugin/slides/shared';
-import { useManualEditQueue, useSlidesManualEditingStore } from '../../renderer/features/manualEditing';
+import { useManualEditQueue } from '../../renderer/features/manualEditing/submission';
 import type { ManualEditQueueSnapshot } from '../../renderer/features/manualEditing/definitions/manualEditQueuePorts';
 import { PresentationRepository } from '../persistence/repositories/PresentationRepository';
 import { PRESENTATION_DOCUMENT_SCHEMAS } from '../persistence/schemas/presentation.schema';
@@ -64,17 +64,17 @@ it('界面新建空白页经真实编译、SQLite 保存与重开后，页序、
     const compile = vi.spyOn(builder, 'commitManualEditFromSource');
     const backend = new PresentationManualEditingRuntime({ presentationRepo: repository, builder });
     setActivePinia(createPinia());
-    const store = useSlidesManualEditingStore();
+    const presentedRevision = shallowRef<number | null>(null);
     const snapshot = shallowRef<ManualEditQueueSnapshot>({ documentId: 'deck', presentationError: null, buildState: null, renderVersion: null });
     async function refresh() {
       const saved = await repository.getPresentation('deck');
       if (!saved) throw new Error('Missing saved presentation');
       snapshot.value = { documentId: 'deck', presentationError: null, renderVersion: saved.currentRevision, buildState: { state: 'ready',
         presentationId: 'deck', versionId: saved.currentRevisionId, versionNumber: saved.currentRevision, sourceHash: saved.sourceHash } };
-      store.recordPresentedRevision(saved.currentRevision);
+      presentedRevision.value = saved.currentRevision;
     }
     await refresh();
-    const queue = scope.run(() => useManualEditQueue({ readSnapshot: () => snapshot.value,
+    const queue = scope.run(() => useManualEditQueue({ readPresentedRevision: () => presentedRevision.value, readSnapshot: () => snapshot.value,
       createCommandId: () => crypto.randomUUID(), message: key => key, refreshDocument: refresh,
       submit: command => backend.submit(command),
     }));

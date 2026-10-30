@@ -99,7 +99,7 @@ import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { AddIcon, ChevronIcon } from '@linnya/renderer-ui/icons';
 import { useSlidesUiStore } from '../../../store/slidesUiStore';
-import { useManualEditSubmission } from '../../manualEditing';
+import { useManualEditSubmission } from '../../manualEditing/submission';
 import { useSlideStructureActions } from '../orchestration/useSlideStructureActions';
 import { useDeckNavigatorLocalization } from './useDeckNavigatorLocalization';
 import { useSlidesStore } from '../../documentRuntime';

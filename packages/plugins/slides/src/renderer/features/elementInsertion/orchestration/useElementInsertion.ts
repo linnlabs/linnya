@@ -1,10 +1,12 @@
+import { useManualEditingEnabled } from '../../manualEditing/selection';
+import { useSlidesManualSelectionStore } from '../../manualEditing/selection';
 import { computed, ref } from 'vue';
 import type { SlidesInsertedObject } from '@plugin/slides/shared/authoringEditing';
 import { useLocalization } from '@app/localization';
 import { useSlidesStore } from '../../documentRuntime';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import { importSlideImage } from '../../imageEditing';
-import { useManualEditSubmission, useSlidesManualEditingStore } from '../../manualEditing';
+import { useManualEditSubmission, useSlidesManualSubmissionStore } from '../../manualEditing/submission';
 import { useTextInputSession } from '../../editingInteraction';
 import { INSERTION_MESSAGES } from '../definitions/insertionMessages';
 import { createInsertedObject } from '../functions/createInsertedObject';
@@ -13,22 +15,24 @@ import { resolveInsertionPalette } from '../functions/resolveInsertionPalette';
 export function useElementInsertion() {
   const slides = useSlidesStore();
   const render = useSlidesRenderStore();
-  const manual = useSlidesManualEditingStore();
+  const manual = useSlidesManualSubmissionStore();
+  const editingEnabled = useManualEditingEnabled();
+  const manualSelection = useSlidesManualSelectionStore();
   const submission = useManualEditSubmission();
   const text = useTextInputSession(submission);
   const busy = ref(false);
   const { message: translate } = useLocalization();
   const message = (key: keyof typeof INSERTION_MESSAGES) => translate(key, INSERTION_MESSAGES[key]);
-  const available = computed(() => manual.enabled && !manual.pendingPageOperation && slides.documentBuildState?.state === 'ready' && !!render.currentSlideRender && !busy.value);
+  const available = computed(() => editingEnabled.value && !manual.pendingPageOperation && slides.documentBuildState?.state === 'ready' && !!render.currentSlideRender && !busy.value);
 
   async function insert(objects: readonly SlidesInsertedObject[], index = slides.currentSlideIndex, insertionImageSources?: ReadonlyMap<string, string>): Promise<void> {
     const documentId = slides.currentDeckId;
-    const previousSelection = manual.selectedTargets.map(target => target.elementId).join('\0');
+    const previousSelection = manualSelection.selectedTargets.map(target => target.elementId).join('\0');
     const result = await submission.enqueue({ operation: { op: 'insert_objects', index, objects }, ...(insertionImageSources ? { insertionImageSources } : {}) }).settled;
     // 等待期间用户已改选、换页或换稿时，不抢走他们的选区。
-    if (result.status !== 'presented' || slides.currentDeckId !== documentId || slides.currentSlideIndex !== index || manual.selectedTargets.map(target => target.elementId).join('\0') !== previousSelection) return;
+    if (result.status !== 'presented' || slides.currentDeckId !== documentId || slides.currentSlideIndex !== index || manualSelection.selectedTargets.map(target => target.elementId).join('\0') !== previousSelection) return;
     const [only] = objects;
-    manual.requestReveal({ targets: objects.map(object => ({ editKey: object.editKey })), editText: objects.length === 1 && only?.kind === 'text' });
+    manualSelection.requestReveal({ targets: objects.map(object => ({ editKey: object.editKey })), editText: objects.length === 1 && only?.kind === 'text' });
   }
   function insertSimple(kind: 'text' | 'rect' | 'ellipse'): void {
     const size = render.renderModel?.slideSize;

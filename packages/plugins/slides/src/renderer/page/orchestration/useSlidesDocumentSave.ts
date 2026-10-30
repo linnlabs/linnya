@@ -2,14 +2,15 @@ import { onScopeDispose, watch } from 'vue';
 import { getActiveFileSession, markActiveFileDirty } from '@plugin/renderer/workspaceRuntime';
 import { registerSlidesDocumentSaveParticipant } from '../../features/documentRuntime';
 import { useTextInputSession, useSlidesEditingInteractionStore } from '../../features/editingInteraction';
-import { useSlidesManualEditingStore, useManualEditingLocalization, type ManualEditSubmissionPort } from '../../features/manualEditing';
+import { useSlidesManualSubmissionStore, type ManualEditSubmissionPort } from '../../features/manualEditing/submission';
+import { useManualEditingLocalization } from '../../features/manualEditing/ui';
 import { useSlidesStore } from '../../features/documentRuntime';
 
 /** 页面组合根连接输入、写队列和文档生命周期；各 feature 不反向依赖对方。 */
 export function useSlidesDocumentSave(submission: ManualEditSubmissionPort): void {
   const slides = useSlidesStore();
   const editing = useSlidesEditingInteractionStore();
-  const manual = useSlidesManualEditingStore();
+  const manual = useSlidesManualSubmissionStore();
   const text = useTextInputSession(submission);
   const { manualEditingMessage: message } = useManualEditingLocalization();
   onScopeDispose(registerSlidesDocumentSaveParticipant({

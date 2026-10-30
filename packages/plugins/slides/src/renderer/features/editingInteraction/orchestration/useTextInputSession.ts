@@ -1,7 +1,7 @@
 import { editableTextEqual, type SlidesEditableTextContent, type SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 import { logSlidesVerbose } from '../../../shared/diagnosticLogging';
 import { computed } from 'vue';
-import type { ManualEditSubmissionPort } from '../../manualEditing';
+import type { ManualEditSubmissionPort } from '../../manualEditing/submission';
 import type { TextEditingTarget } from '../../textEditing';
 import type { TextDraftPresentation } from '../definitions/editingInteractionTypes';
 import { openTextInputSession, settleTextDraft } from '../functions/textInputTransitions';

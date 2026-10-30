@@ -18,7 +18,6 @@ export function useSlideStageViewport(options: SlideStageViewportOptions) {
   const scrollViewportRef = ref<HTMLElement | null>(null);
   const viewportWidth = ref(800);
   const viewportHeight = ref(600);
-  const fitScale = ref(1);
   const stageOverlayGeometryRevision = ref(0);
 
   /** 首次 viewport 测量完成后置 true，在此之前隐藏内容防止 fitScale=1 的首帧闪烁 */
@@ -73,10 +72,7 @@ export function useSlideStageViewport(options: SlideStageViewportOptions) {
     viewportHeight.value = rect.height;
     scheduleStageOverlayGeometryUpdate();
     const nextFitScale = computeFitScale(rect.width, rect.height, actualSlideSize.value, 'contain', SLIDE_STAGE_FIT_PADDING);
-    fitScale.value = nextFitScale;
-    if (isFitZoom.value) {
-      uiStore.syncFitZoomLevel(fitScale.value);
-    }
+    uiStore.syncFitZoomLevel(nextFitScale);
   }
 
   function scheduleViewportUpdate(force = false) {
@@ -121,13 +117,7 @@ export function useSlideStageViewport(options: SlideStageViewportOptions) {
     scheduleViewportUpdate(true);
   });
 
-  watch(isFitZoom, (fitMode) => {
-    if (fitMode) {
-      uiStore.syncFitZoomLevel(fitScale.value);
-    }
-  });
-
-  const renderScale = computed(() => (isFitZoom.value ? fitScale.value : zoomLevel.value));
+  const renderScale = computed(() => (isFitZoom.value ? fitZoomLevel.value : zoomLevel.value));
 
   const currentLayout = computed(() =>
     computeScrollableStageLayout({

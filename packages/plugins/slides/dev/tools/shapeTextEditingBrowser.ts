@@ -1,3 +1,7 @@
+import { useSlidesManualSelectionStore } from '../../src/renderer/features/manualEditing/selection';
+import { useSlidesDocumentRuntime } from '../../src/renderer/features/documentRuntime';
+import { createElementClipboard, provideElementClipboard } from '../../src/renderer/features/elementClipboard';
+import { createEditingCommands, provideEditingCommands } from '../../src/renderer/features/editingCommands';
 import { preparePreviewFixture } from './preparedPreviewFixture';
 import { projectIndependentTextWidth } from '../../src/shared/generatedLayoutConstraints';
 import { isSlideRenderModel } from '../../src/shared/renderModel';
@@ -7,9 +11,9 @@ import { createPinia } from 'pinia';
 import VueKonva from 'vue-konva';
 import Konva from 'konva';
 import { patchWholeTextContent, editableTextString, type SlidesEditableTextContent, type SlidesAuthoringEditProjection, type SlidesManualEditCommand, type SlidesManualEditCommandResult } from '../../src/shared/authoringEditing';
-import { useManualEditQueue, provideManualEditSubmission, useSlidesManualEditingStore } from '../../src/renderer/features/manualEditing';
+import { useManualEditQueue, provideManualEditSubmission, useSlidesManualSubmissionStore } from '../../src/renderer/features/manualEditing/submission';
 import { useSlidesEditingInteractionStore } from '../../src/renderer/features/editingInteraction';
-import { useSlidesStore } from '../../src/renderer/store/slidesStore';
+import { useSlidesStore } from '../../src/renderer/features/documentRuntime';
 import { useSlidesRenderStore } from '../../src/renderer/store/slidesRenderStore';
 import { useSlidesUiStore } from '../../src/renderer/store/slidesUiStore';
 import SlideStage from '../../src/renderer/ui/preview/SlideStage.vue';
@@ -84,7 +88,8 @@ export function mountShapeTextEditingSmoke(withCommands = false, textWidthMode?:
   const pinia = createPinia();
   const slides = useSlidesStore(pinia);
   const render = useSlidesRenderStore(pinia);
-  const manual = useSlidesManualEditingStore(pinia);
+  const manual = useSlidesManualSubmissionStore(pinia);
+  const selection = useSlidesManualSelectionStore(pinia);
   const interaction = useSlidesEditingInteractionStore(pinia);
   const ui = useSlidesUiStore(pinia);
   const content = new Map<string, SlidesEditableTextContent>([['badge', 'Shape text'], ['second', 'Second shape'], ['standalone', 'Plain text']]);
@@ -135,14 +140,17 @@ export function mountShapeTextEditingSmoke(withCommands = false, textWidthMode?:
   slides.beginDocument('interaction-fixture');
   present(1);
   const app = createApp({ setup() {
-    provideManualEditSubmission(useManualEditQueue({
+    const submission = useManualEditQueue({
+      readPresentedRevision: () => useSlidesDocumentRuntime().presentedRevision.value,
       readSnapshot: () => ({ documentId: slides.currentDeckId, presentationError: render.renderError, buildState: slides.documentBuildState, renderVersion: render.renderModel?.version ?? null }),
       createCommandId: () => crypto.randomUUID(), message: key => key,
       submit: command => new Promise(resolve => commands.push({ command, resolve })),
       // 测试驱动器显式调用 present 控制完整快照到达，刷新不伪造部分已加载状态。
       refreshDocument: async () => {},
-    }));
-    manual.setEnabled(true);
+    });
+    provideManualEditSubmission(submission);
+    provideElementClipboard(createElementClipboard(submission));
+    provideEditingCommands(createEditingCommands(submission));
     manual.setHistory({ revisionId: 'v1', undoDepth: 0, redoDepth: 0 });
     ui.setZoom(1);
     return () => withCommands ? h('div', { style: 'display:flex;flex-direction:column;height:100%;' }, [h(SlideEditingCommandBar), h('div', { style: 'flex:1;min-height:0;position:relative;' }, [h(SlideStage)])]) : h(SlideStage);
@@ -183,7 +191,10 @@ export function mountShapeTextEditingSmoke(withCommands = false, textWidthMode?:
       const element = host.querySelector<HTMLElement>(selector);
       if (!element || getComputedStyle(element).visibility === 'hidden') throw new Error(`Missing visible control: ${selector}`);
       const box = element.getBoundingClientRect();
-      return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) };
+      const point = { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) };
+      const hit = document.elementFromPoint(point.x, point.y);
+      if (!hit || !element.contains(hit)) throw new Error(`Control is occluded: ${selector} ${JSON.stringify(point)} hit=${hit?.outerHTML.slice(0, 350)}`);
+      return point;
     },
     textWidthSnapshot() {
       const stage = Konva.stages.find(candidate => !before.has(candidate));
@@ -212,7 +223,7 @@ export function mountShapeTextEditingSmoke(withCommands = false, textWidthMode?:
     assertToolbar(id: string, visible = true) {
       const toolbar = host.querySelector<HTMLElement>('.slides-element-property-toolbar');
       const showing = toolbar !== null && getComputedStyle(toolbar).visibility === 'visible';
-      if (manual.selectedTarget?.elementId !== id || showing !== visible) throw new Error(`Toolbar owner/visibility mismatch: ${manual.selectedTarget?.elementId}/${showing}`);
+      if (selection.selectedTarget?.elementId !== id || showing !== visible) throw new Error(`Toolbar owner/visibility mismatch: ${selection.selectedTarget?.elementId}/${showing}`);
       if (toolbar && showing) {
         const box = toolbar.getBoundingClientRect();
         const bounds = host.getBoundingClientRect();
@@ -291,7 +302,7 @@ export function mountShapeTextEditingSmoke(withCommands = false, textWidthMode?:
         || !intents.some(op => op.op === 'set_text_style' && op.target.editKey === 'standalone' && op.color === '#9333EA')) throw new Error('Text style edits were lost');
     },
     assertDeleted(id: string) {
-      if (manual.selectedTarget || host.querySelector('.slides-element-property-toolbar')) throw new Error('Delete did not clear the selection toolbar');
+      if (selection.selectedTarget || host.querySelector('.slides-element-property-toolbar')) throw new Error('Delete did not clear the selection toolbar');
       if (manual.queuedIntents.filter(intent => intent.operation.op === 'delete_target' && intent.operation.target.editKey === id).length !== 1) throw new Error('Delete action was blocked or duplicated');
     },
     assertPopupPlacement() {
@@ -324,7 +335,7 @@ export function mountShapeTextEditingSmoke(withCommands = false, textWidthMode?:
       // Vue 清理 CSS transition class 时可能取消 Animation 对象；验收真实终态，不把清理当作交互失败。
       await Promise.allSettled(panel.getAnimations().map(animation => animation.finished));
       if (!(panel instanceof HTMLElement) || panel.inert || getComputedStyle(panel).opacity !== '1') {
-        throw new Error('Dropdown did not settle into a visible interactive panel');
+        throw new Error(`Dropdown did not settle: ${JSON.stringify({ connected: panel.isConnected, inert: panel instanceof HTMLElement && panel.inert, opacity: getComputedStyle(panel).opacity, html: panel.outerHTML.slice(0, 700), expanded: [...host.querySelectorAll('[aria-expanded=true]')].map(node => node.outerHTML.slice(0, 200)) })}`);
       }
     },
     async settleDismissal() {
@@ -375,18 +386,18 @@ export function mountShapeTextEditingSmoke(withCommands = false, textWidthMode?:
       await nextTick();
     },
     assertSelected(id: string) {
-      if (manual.selectedTarget?.elementId !== id || host.querySelector('textarea')) throw new Error(`Outside selection blocked: ${manual.selectedTarget?.elementId}`);
+      if (selection.selectedTarget?.elementId !== id || host.querySelector('textarea')) throw new Error(`Outside selection blocked: ${selection.selectedTarget?.elementId}`);
       const previews = host.querySelectorAll('.slides-inline-text-editor--preview');
       if (!previews.length || [...previews].some(node => getComputedStyle(node).pointerEvents !== 'none')) throw new Error('Missing passive text preview');
     },
     assertSelectionCleared() {
-      if (manual.selectedTarget || host.querySelector('.slides-element-property-toolbar')
+      if (selection.selectedTarget || host.querySelector('.slides-element-property-toolbar')
         || host.querySelector('textarea, .slides-rich-text-surface')) {
         throw new Error('Stage gutter did not clear selection and finish inline editing');
       }
     },
     assertSelection(ids: readonly string[]) {
-      const actual = manual.selectedTargets.map(target => target.elementId).sort();
+      const actual = selection.selectedTargets.map(target => target.elementId).sort();
       if (JSON.stringify(actual) !== JSON.stringify([...ids].sort())) throw new Error(`Selection mismatch ${JSON.stringify(actual)}`);
     },
     assertCanvasCommands(count: number, dx?: number) {
@@ -476,7 +487,7 @@ export function mountShapeTextEditingSmoke(withCommands = false, textWidthMode?:
     richSnapshot() {
       const session = interaction.textSession;
       return { phase: session.phase, draft: session.phase === 'editing' ? session.draft : null,
-        commands: commands.map(item => item.command.operation), selected: manual.selectedTarget?.elementId,
+        commands: commands.map(item => item.command.operation), selected: selection.selectedTarget?.elementId,
         font: host.querySelector<HTMLInputElement>('.slides-element-property-toolbar__font input')?.value,
         hasDelete: !!host.querySelector('[data-property="delete"]'),
         focusedRich: document.activeElement?.classList.contains('slides-rich-text-surface') === true };

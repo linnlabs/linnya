@@ -1,5 +1,6 @@
 import { quantizeManualTranslation, type SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
-import { manualSelectionBounds, type ManualEditableTarget, type ManualEditIntent } from '../../manualEditing';
+import { manualSelectionBounds, type ManualEditableTarget } from '../../manualEditing/selection';
+import { type ManualEditIntent } from '../../manualEditing/submission';
 import type { SelectionArrangement } from '../definitions/selectionArrangement';
 
 /** 多选按选区边界对齐，单选按页边界；等距分布固定两端，以真实可见外框计算间距。 */

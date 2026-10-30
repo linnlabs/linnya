@@ -1,20 +1,26 @@
+import { useManualEditingEnabled } from '../../manualEditing/selection';
+import { useSlidesManualSelectionStore } from '../../manualEditing/selection';
+import type { ManualEditSubmissionPort } from '../../manualEditing/submission';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import { useSlidesStore } from '../../documentRuntime';
 import { arrangeSelection } from '../functions/arrangeSelection';
 import type { SelectionArrangement } from '../definitions/selectionArrangement';
 import { computed, nextTick } from 'vue';
 import { editableTextEqual } from '@plugin/slides/shared/authoringEditing';
-import { collectPresentedManualTargets, useManualEditSubmission, useSlidesManualEditingStore, useManualEditingLocalization } from '../../manualEditing';
+import { collectPresentedManualTargets } from '../../manualEditing/selection';
+import { useSlidesManualSubmissionStore } from '../../manualEditing/submission';
+import { useManualEditingLocalization } from '../../manualEditing/ui';
 import { ownsDocumentShortcut, useSlidesEditingInteractionStore, useTextInputSession } from '../../editingInteraction';
 import type { EditingCommandMessageKey } from '../definitions/editingCommandMessages';
 
 /** 文档动作先交接输入，随后进入唯一串行队列；不创建第二套保存或撤销模型。 */
-export function useEditingCommands() {
+export function createEditingCommands(submission: ManualEditSubmissionPort) {
   const render = useSlidesRenderStore();
   const slides = useSlidesStore();
-  const manual = useSlidesManualEditingStore();
+  const manual = useSlidesManualSubmissionStore();
+  const editingEnabled = useManualEditingEnabled();
+  const manualSelection = useSlidesManualSelectionStore();
   const editing = useSlidesEditingInteractionStore();
-  const submission = useManualEditSubmission();
   const text = useTextInputSession(submission);
   const { manualEditingMessage } = useManualEditingLocalization();
   const hasDraft = computed(() => editing.textSession.phase === 'editing'
@@ -26,7 +32,7 @@ export function useEditingCommands() {
   const canRedo = computed(() => !hasFailure.value && !hasDraft.value && !pending.value && (manual.history?.redoDepth ?? 0) > 0);
   const saveStatus = computed<EditingCommandMessageKey>(() => {
     if (hasFailure.value) return 'slides.editingCommands.failed';
-    if (hasDraft.value || manual.translationPreview !== null) return 'slides.editingCommands.editing';
+    if (hasDraft.value || manualSelection.translationPreview !== null) return 'slides.editingCommands.editing';
     if (pending.value) return 'slides.editingCommands.saving';
     if (manual.pendingPresentationRevision !== null) return 'slides.editingCommands.refreshing';
     if (manual.historyError) return 'slides.editingCommands.historyUnavailable';
@@ -40,7 +46,7 @@ export function useEditingCommands() {
     try {
       await submission.flush();
       if ((action === 'undo' ? manual.history?.undoDepth : manual.history?.redoDepth) === 0 || !manual.history) return;
-      manual.clearSelection();
+      manualSelection.clearSelection();
       const settlement = await submission.enqueue({ operation: { op: action } }).settled;
       if (settlement.status !== 'presented' || !settlement.focus) return;
       // 让用户看见被撤销的修改：先跳到恢复后的页，换页清空选区之后再请求重新选中。
@@ -49,14 +55,14 @@ export function useEditingCommands() {
         slides.setCurrentSlide(index);
         await nextTick();
       }
-      if (settlement.focus.targets.length > 0) manual.requestReveal({ targets: settlement.focus.targets });
+      if (settlement.focus.targets.length > 0) manualSelection.requestReveal({ targets: settlement.focus.targets });
     } catch (error) {
       // 写入失败已由队列记录；这里只补充未写入的原因，不能伪造一次保存失败。
       if (!manual.errorMessage) manual.setNotice(error instanceof Error ? error.message : manualEditingMessage('slides.manualEditing.error.saveFailed'));
     }
   }
   function setLayer(direction: 'front' | 'back' | 'forward' | 'backward'): void {
-    const target = manual.selectedTargets.length === 1 ? manual.selectedTarget : null;
+    const target = manualSelection.selectedTargets.length === 1 ? manualSelection.selectedTarget : null;
     if (!target || text.requestCommit() === 'blocked') return;
     submission.enqueue({ operation: { op: 'set_layer', target: target.authoringRef, direction } });
   }
@@ -65,14 +71,14 @@ export function useEditingCommands() {
     const size = render.renderModel?.slideSize;
     if (!slide || !size || text.requestCommit() === 'blocked') return;
     const targets = collectPresentedManualTargets(slide.elements, {
-      transientTranslation: manual.translationPreview, pendingTranslations: manual.pendingTranslations,
+      transientTranslation: manualSelection.translationPreview, pendingTranslations: manual.pendingTranslations,
       pendingVisuals: manual.pendingVisuals, queuedIntents: manual.queuedIntents,
-    }).filter(target => manual.selectedTargets.some(selected => selected.elementId === target.elementId));
+    }).filter(target => manualSelection.selectedTargets.some(selected => selected.elementId === target.elementId));
     const intent = arrangeSelection(targets, action, size);
     if (intent) submission.enqueue(intent);
   }
   function handleHistoryShortcut(event: KeyboardEvent): void {
-    if (!manual.enabled || !ownsDocumentShortcut(event) || !(event.metaKey || event.ctrlKey) || event.altKey) return;
+    if (!editingEnabled.value || !ownsDocumentShortcut(event) || !(event.metaKey || event.ctrlKey) || event.altKey) return;
     const key = event.key.toLowerCase();
     const action = key === 'z' ? (event.shiftKey ? 'redo' : 'undo') : key === 'y' && !event.shiftKey ? 'redo' : null;
     if (!action) return;
