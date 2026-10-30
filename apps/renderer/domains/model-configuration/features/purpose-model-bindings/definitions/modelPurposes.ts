@@ -61,7 +61,6 @@ export const AUXILIARY_MODEL_PURPOSE_REGISTRY = [
   {
     purposeKey: PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION,
     defaultStrategy: ModelPurposeDefaultStrategy.FIXED_MODEL,
-    defaultModelId: 'gemini-3-flash-preview',
   },
 ] as const satisfies readonly AuxiliaryModelPurposeDefinition[];
 

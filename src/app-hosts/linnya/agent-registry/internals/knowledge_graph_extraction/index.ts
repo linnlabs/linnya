@@ -20,9 +20,9 @@ export {
 
 export type KnowledgeGraphExtractionModelPolicy = {
   /**
-   * 主抽取模型 ID。
+   * 主抽取模型 ID。没有功能默认时为 null，由用户在设置里选择。
    */
-  primaryModelId: string;
+  primaryModelId: string | null;
 
   /**
    * 当 payload.retry=true 时，每个模型最多尝试次数（批次级）。
@@ -40,12 +40,11 @@ export type KnowledgeGraphExtractionModelPolicy = {
 /**
  * 获取知识图谱抽取重试与兜底策略。
  *
- * 注意：用户上传快照优先；没有上传快照的入口才使用这里的功能默认/硬编码兜底。
+ * 注意：用户上传快照优先；没有上传快照的入口才使用这里的功能默认，没有默认时不抽取。
  */
 export function getKnowledgeGraphExtractionModelPolicy(): KnowledgeGraphExtractionModelPolicy {
   return {
-    primaryModelId: defaultModelCatalog.getFunctionalDefaultModelId(PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION)
-      ?? 'gemini-3-flash-preview',
+    primaryModelId: defaultModelCatalog.getFunctionalDefaultModelId(PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION) ?? null,
     maxAttemptsPerModelWhenRetryEnabled: 3,
     maxDocAutoRetryAttempts: 3,
   };
@@ -80,6 +79,7 @@ export function resolveKnowledgeGraphExtractionModelId(args: {
   const { modelCatalog } = args;
 
   const policy = getKnowledgeGraphExtractionModelPolicy();
+  if (!policy.primaryModelId) return null;
   const forced = modelCatalog.getModel(policy.primaryModelId);
   if (forced && forced.enabled !== false) return forced.id;
   return null;

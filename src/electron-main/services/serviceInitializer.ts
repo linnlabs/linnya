@@ -221,7 +221,6 @@ export class ServiceInitializer {
 
     const apiKeyEnvVars = [
       'OPENAI_API_KEY',
-      'FEIAI_GEMINI_API_KEY',
       'DEEPSEEK_API_KEY',
       'FEIAI_DOUBAO_API_KEY',
       'SILICONFLOW_EMBEDDING_API_KEY',

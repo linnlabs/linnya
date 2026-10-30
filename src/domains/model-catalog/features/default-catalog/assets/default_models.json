@@ -220,33 +220,6 @@
       "description": "System model: PaddleOCR-VL-1.6 async OCR job API. Submits documents to /api/v2/ocr/jobs, polls job status, then reads jsonl markdown output."
     },
     {
-      "id": "gemini-3-flash-preview",
-      "model_name": "gemini-3-flash-preview",
-      "catalog_source": "default",
-      "credential_reference": { "kind": "environment_variable", "environment_variable": "FEIAI_GEMINI_API_KEY" },
-      "inference_route": {
-        "api_surface": "openai_chat_completions",
-        "capability_id": "ai-sdk:openai-chat",
-        "endpoint_id": "feiai",
-        "endpoint_model_id": "gemini-3-flash-preview",
-        "base_url": "https://feiai.chat/v1",
-        "auth_profile": "bearer",
-        "context_window_tokens": 1048576,
-        "max_output_tokens": 65536,
-        "input_support": { "user_image": false, "tool_result_image": false },
-        "usage": { "response_usage": "provider_reported_optional" },
-        "continuation": { "tool_replay": "required" }
-      },
-      "capabilities": ["chat"],
-      "ui_visibility": ["chat"],
-      "display_name": "Gemini 3 Flash Preview",
-      "description": "System Default: Gemini 3 Flash Preview for knowledge graph extraction and lightweight chat tasks.",
-      "reasoning": {
-        "supported_efforts": ["off", "low", "medium", "high"],
-        "default_effort": "medium"
-      }
-    },
-    {
       "id": "whisper-1-feiai",
       "model_name": "whisper-1",
       "catalog_source": "default",

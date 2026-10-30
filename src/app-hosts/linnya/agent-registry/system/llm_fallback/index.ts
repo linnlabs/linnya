@@ -17,9 +17,7 @@ import { CLOUD_DEEPSEEK_REASONER_MODEL_ID } from 'src/domains/model-catalog';
  * - 这里只是“优先级名单”，最终是否可用仍由调用侧检查 enabled/api_key/provider 等。
  */
 export const LLM_FALLBACK_CHAT_MODEL_PREFERRED_ORDER: readonly string[] = [
-  // 优先：非 openrouter 的 Gemini（如果配置了 key）
-  'gemini-3-pro-preview',
-  // 其次：系统默认的 GPT
+  // 优先：系统默认的 GPT
   'gpt-5.2',
   // 再其次：常见直连/国内可用模型
   'deepseek-chat',
