@@ -21,9 +21,9 @@ export function checkDecisionOptions(record: DecisionRecord, expectedRevision: n
   // 只依据调用者选中的既有检查建立预览引用；不新增经济门槛或推断偏好。
   const numericBasis: DecisionNumericBasis = {
     calculationIds: record.model.calculations.map(calculation => calculation.id),
-    boundaries: record.model.checks.filter(check => request.optionIds.includes(check.optionId) && check.operator !== 'is')
+    boundaries: record.model.checks.filter(check => request.optionIds.includes(check.optionId) && check.operator !== 'is' && check.operator !== 'cash_flow_funded')
       .flatMap(check => {
-        const inputIds = collectCheckInputs(check);
+        const inputIds = collectCheckInputs(check, record.model);
         return record.model.inputs.filter(input => inputIds.includes(input.id) && (typeof input.value === 'number' || input.value === null))
           .map(input => ({ checkId: check.id, inputId: input.id }));
       }),

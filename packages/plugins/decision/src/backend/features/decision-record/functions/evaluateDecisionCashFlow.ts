@@ -1,5 +1,6 @@
 import type { DecisionModel } from '../../../../shared';
 import { DecisionFailure } from '../definitions/decisionFailure';
+import { cashFlowExpressions } from './cashFlowExpressions';
 import { collectExpressionInputs } from './evaluateDecisionExpression';
 import { evaluateCashFlow } from './evaluateCashFlow';
 import { projectCashFlowTiming } from './projectCashFlowTiming';
@@ -10,7 +11,7 @@ export function validateDecisionCashFlows(model: DecisionModel): void {
   for (const flow of model.cashFlows ?? []) {
     if (!model.options.some(option => option.id === flow.optionId)) throw new DecisionFailure('invalid_model', `Unknown cash flow option: ${flow.optionId}`);
     if (new Set(flow.entries.map(entry => entry.id)).size !== flow.entries.length) throw new DecisionFailure('invalid_model', `Duplicate payment entry in ${flow.id}`);
-    for (const expression of [flow.openingBalance, ...flow.entries.flatMap(entry => entry.at === null ? [entry.amount] : [entry.amount, entry.at])]) {
+    for (const expression of cashFlowExpressions(flow)) {
       for (const id of collectExpressionInputs(expression)) {
         const input = model.inputs.find(input => input.id === id);
         if (!input) throw new DecisionFailure('invalid_model', `Cash flow ${flow.id}: unknown input ${id}.`);

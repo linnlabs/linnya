@@ -1,8 +1,14 @@
 import type { DecisionCheck, DecisionModel } from '../../../../shared';
 import type { CheckValueResult, DecisionCheckEvaluation } from '../definitions/decisionEvaluation';
 import { collectExpressionInputs, evaluateExpression } from './evaluateDecisionExpression';
+import { cashFlowInputIds } from './cashFlowExpressions';
+import { evaluateCashFlow } from './evaluateCashFlow';
 
-export function collectCheckInputs(check: DecisionCheck): readonly string[] {
+export function collectCheckInputs(check: DecisionCheck, model: DecisionModel): readonly string[] {
+  if (check.operator === 'cash_flow_funded') {
+    const flow = model.cashFlows?.find(item => item.id === check.cashFlowId);
+    return flow ? cashFlowInputIds(flow) : [];
+  }
   return check.operator === 'is' ? [check.inputId]
     : [...new Set([...collectExpressionInputs(check.left), ...collectExpressionInputs(check.right)])];
 }
@@ -21,6 +27,15 @@ function readDiscreteValue(check: Extract<DecisionCheck, { operator: 'is' }>, mo
 }
 
 export function evaluateDecisionCheck(check: DecisionCheck, model: DecisionModel): DecisionCheckEvaluation {
+  if (check.operator === 'cash_flow_funded') {
+    const flow = model.cashFlows?.find(item => item.id === check.cashFlowId);
+    const evaluated = flow ? evaluateCashFlow(model, flow) : null;
+    const left: CheckValueResult = evaluated?.status === 'available'
+      ? { status: 'available', value: evaluated.shortfall }
+      : { status: 'unavailable', reason: evaluated?.text ?? '付款表不存在。' };
+    return { id: check.id, optionId: check.optionId, label: check.label, left,
+      right: { status: 'available', value: 0 }, passes: left.status === 'available' ? left.value === 0 : null };
+  }
   if (check.operator === 'is') {
     const left = readDiscreteValue(check, model);
     return { id: check.id, optionId: check.optionId, label: check.label, left,

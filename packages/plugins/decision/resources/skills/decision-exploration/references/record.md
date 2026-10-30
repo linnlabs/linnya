@@ -98,7 +98,7 @@ is的value为boolean或string，对应input须有相同类型的已知值。已�
 
 执行止损时点也沿这条路径：把实际出发、上车等时刻登记为day_clock输入（尚未发生用null），将相关耗时登记为duration，建立与到达截止的检查。check求该时刻的边界及同点到达值；建议的numericBasis只保存checkId/inputId引用，交付采用程序text中的时刻。现实安排变化后更新模型并重新取得边界。
 
-建议的changeConditions填写偏好、许可、证据等补充定性变化；已登记数值条件由numericBasis生成recommendationBasis.changeConditions，交付使用这份程序文字。rationale和nextAction仍由作者判断，不受程序语义认证。未登记的门槛本次不会自动新增。
+把会改变选择的条件登记成conditionalAdvice.cases，变动输入后由程序重算。交付中的变化条件来自numericBasis、付款日期门槛和这些情景；changeConditions保存补充文字，留在完整原件。rationale和nextAction仍由作者判断，不受程序语义认证。未登记的门槛本次不会自动新增。
 
 ## 程序报告原件
 
@@ -267,20 +267,28 @@ progress.json必填planRevision、summary、origin、actualCost，可选sourceQu
 
 ## 付款时间表
 
-比较资金能否撑到回款时，在model中登记cashFlows（update同名字段完整替换，[]停用）。每张表含id、label、optionId、unit、timeAnchor、openingBalance表达式和entries；每笔含id、label、direction（inflow/outflow）、amount表达式和at时点表达式。金额非负，方向由direction给出。timeAnchor明确同一锚点，如交货日；at统一表示离锚点的天数，可为负，引用的输入声明quantityType=duration。其他时长单位在表达式里显式换算成天。锚点或时点未知填null，或引用值为null的duration输入，先保留需要信息。
+比较资金能否撑到回款时，在model中登记cashFlows（update同名字段完整替换，[]停用）。每张表含id、label、optionId、unit、timeAnchor、opening（bank、reserve两个表达式）和entries；每笔含id、label、direction（inflow/outflow/release_reserve/pay_reserve）、amount表达式和at时点表达式。金额非负，方向由direction给出。timeAnchor明确同一锚点，如交货日；at统一表示离锚点的天数，可为负，引用的输入声明quantityType=duration。其他时长单位在表达式里显式换算成天。锚点或时点未知填null，或引用值为null的duration输入，先保留需要信息。
 
-期初登记所有节点之前的可动用现金；受限/可退资金按事实扣留，已经含在银行余额中的订金不再额外相加。分期尾款写为总价减首款：调整首款时尾款随之变化，而总价保持原合同金额。
+期初分别登记所有节点之前的银行余额bank和隔离准备reserve，程序相减得到可动用额。银行余额包含已收订金；reserve登记仍须隔离的部分。解禁准备使用带时点的release_reserve节点，只减少准备；实际支付该准备对应的义务使用pay_reserve，同时减少银行与准备。普通支出用outflow，实际入账用inflow。旧表的opening.unclassified保留原式，重新明确银行与准备后才求值。分期尾款写为总价减首款：调整首款时尾款随之变化，而总价保持原合同金额。
 
 ```json
-{"cashFlows":[{"id":"purchase_cash","label":"付款与回款","optionId":"buy","unit":"CNY","timeAnchor":"交货日","openingBalance":{"input":"available_cash"},"entries":[{"id":"supplier_first","label":"开工付款","direction":"outflow","amount":{"input":"first_payment"},"at":{"input":"first_payment_day"}},{"id":"supplier_rest","label":"发货前付尾款","direction":"outflow","amount":{"op":"subtract","left":{"input":"total_price"},"right":{"input":"first_payment"}},"at":{"input":"final_payment_day"}},{"id":"customer_collection","label":"客户余款（仍待成交）","direction":"inflow","amount":{"input":"customer_remaining"},"at":{"input":"collection_day"}}]}]}
+{"cashFlows":[{"id":"purchase_cash","label":"付款与回款","optionId":"buy","unit":"CNY","timeAnchor":"交货日","opening":{"bank":{"input":"bank_balance"},"reserve":{"input":"refund_reserve"}},"entries":[{"id":"supplier_first","label":"开工付款","direction":"outflow","amount":{"input":"first_payment"},"at":{"input":"first_payment_day"}},{"id":"supplier_rest","label":"发货前付尾款","direction":"outflow","amount":{"op":"subtract","left":{"input":"total_price"},"right":{"input":"first_payment"}},"at":{"input":"final_payment_day"}},{"id":"customer_collection","label":"客户余款（仍待成交）","direction":"inflow","amount":{"input":"customer_remaining"},"at":{"input":"collection_day"}}]}]}
 ```
 
-这些id都须指向本模型已登记的输入；三个day输入用duration/天，未知用null。程序按求得的时点排序，同一天先付后收，不按数组位置或节点名称猜日期。check默认回执、read的evaluation.cashFlows与export原件给最低余额、缺口、期末和逐节点余额。必要金额或时点未知返回needs_information；首笔或期末为正都不能抹掉中途缺口。
+这些id都须指向本模型已登记的输入；三个day输入用duration/天，未知用null。程序按求得的时点排序，同一天先支付、后入账、最后解禁准备。check默认回执、read的evaluation.cashFlows与export原件给最低余额、缺口、期末和逐节点余额。必要金额或时点未知返回needs_information；首笔或期末为正都不能抹掉中途缺口。
 
 每张表的timingThresholds逐个固定其他输入，给只改变一个时点后缺口为零的范围。若同日付款先于收款，门槛会是严格晚于回款日；回款日自身未知时继续需要信息。它只求已声明仿射日期，日期同时改变金额的模型明确不可用。这是现金缺口的条件，不代替其他生产/发货检查、用户许可或实际到账；日期与期初口径仍需如实登记。
 
+把无资金缺口作为选项成立条件时，增加同选项检查：
+
+```json
+{"id":"funded","optionId":"buy","label":"每个付款时点资金到位","operator":"cash_flow_funded","cashFlowId":"purchase_cash"}
+```
+
+它与其他检查一起决定选项状态：最低可动用额为负则失败，金额或日期未知则未定。conditionalAdvice里的日期、金额、准备变化会重算该表和检查；cashFlowId须属于同一选项。普通数值边界不求整个时序检查的金额门槛，付款日期范围看timingThresholds，其他条件用simulate和登记情景查看。
+
 ## 当前版本交付
 
-保存当前建议后，调用 `decision_finish`，只传 `decisionId` 与 `expectedRevision`。它保存本版交付原件并直接结束本轮，最终答复含程序算值、检查、条件分支、作者原文与原件链接。继续前先完成需要保存的说明或行动记录；这个工具不替你修改记录，也不执行下单等外部行动。版本过期或建议待复核时，先 read、重新判断并 recommend，再收口。
+保存当前建议后，调用 `decision_finish`，只传 `decisionId` 与 `expectedRevision`。它同时保存本版简明交付delivery.md和完整原件report.md，并直接结束本轮。答复先给选项名称、作者理由与下一步，再列程序算值和重算情景；检查、输入、付款表和自由补充条件在链接原件中。回执artifact指摘要、originalArtifact指完整原件，各有字节hash；deliveryNote链接完整原件。继续前先完成需要保存的说明或行动记录；这个工具不替你修改记录，也不执行下单等外部行动。版本过期或建议待复核时，先 read、重新判断并 recommend，再收口。
 
 如需先查看交付内容，`linnya-decision delivery <id> --expected-revision <n>` 使用 Shell 的写权限生成会话文件，按回执 locator 读取。CLI 预览不结束运行；旧 export 仍是完整审计报告。

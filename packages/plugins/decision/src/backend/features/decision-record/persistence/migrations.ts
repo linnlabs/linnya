@@ -57,4 +57,18 @@ export const decisionMigrations: readonly PluginMigrationDefinition[] = [{
         ))) ELSE content_json END, '$.schemaVersion', 3)
       WHERE json_extract(content_json, '$.schemaVersion') = 2;`);
   },
+}, {
+  version: 5, description: 'Separate bank balance and segregated reserves without guessing historical cash',
+  up(database) {
+    // 旧期初有时是银行余额，有时已经扣过准备，不能根据变量名补分类。
+    // 原式留在unclassified供重新建模；历史建议、版本及导出字节均不重写。
+    database.exec(`UPDATE decision_record_versions SET content_json = json_set(
+      CASE WHEN json_type(content_json, '$.model.cashFlows') = 'array' THEN
+        json_set(content_json, '$.model.cashFlows', json((
+          SELECT json_group_array(json_remove(json_set(flow.value, '$.opening',
+            json_object('unclassified', json_extract(flow.value, '$.openingBalance'))), '$.openingBalance'))
+          FROM json_each(content_json, '$.model.cashFlows') flow
+        ))) ELSE content_json END, '$.schemaVersion', 4)
+      WHERE json_extract(content_json, '$.schemaVersion') = 3;`);
+  },
 }];

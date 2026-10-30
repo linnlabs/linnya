@@ -16,7 +16,7 @@ function purchaseModel(): DecisionModel {
       left: { op: 'add', left: { input: 'upfront' }, right: { op: 'subtract', left: { input: 'total' }, right: { input: 'upfront' } } },
       right: { op: 'subtract', left: { input: 'bank' }, right: { input: 'reserve' } } }],
     cashFlows: [{ timeAnchor: '交货日', id: 'order', label: '回款前须付清供应商', optionId: 'buy', unit: 'CNY',
-      openingBalance: { op: 'subtract', left: { input: 'bank' }, right: { input: 'reserve' } },
+      opening: { bank: { input: 'bank' }, reserve: { input: 'reserve' } },
       entries: [
         { at: { literal: -5 }, id: 'first', label: '先付开工', direction: 'outflow', amount: { input: 'upfront' } },
         { at: { literal: -1 }, id: 'final', label: '发货前尾款', direction: 'outflow', amount: { op: 'subtract', left: { input: 'total' }, right: { input: 'upfront' } } },
@@ -62,7 +62,7 @@ it('returns needs_information for unknown opening cash and rejects malformed sch
     if (typeof created !== 'object' || created === null || !('evaluation' in created) || !('record' in created)) throw new Error('record');
     expect(created.evaluation.cashFlows?.[0]).toMatchObject({ status: 'needs_information', missingInputIds: ['bank'], minimumBalance: null, shortfall: null });
     const record = DecisionRecordSchema.parse(created.record);
-    expect(() => run(['update', record.id, '--expected-revision', '1', '--json', JSON.stringify({ reason: '坏引用', cashFlows: [{ ...model.cashFlows?.[0], openingBalance: { input: 'missing' } }] })])).toThrow('unknown input');
+    expect(() => run(['update', record.id, '--expected-revision', '1', '--json', JSON.stringify({ reason: '坏引用', cashFlows: [{ ...model.cashFlows?.[0], opening: { bank: { input: 'missing' }, reserve: { literal: 0 } } }] })])).toThrow('unknown input');
     expect(db.prepare('SELECT COUNT(*) AS n FROM decision_record_versions').get()).toEqual({ n: 1 });
   } finally { db.close(); }
 });

@@ -27,7 +27,7 @@ function changes<T extends { readonly id: string }>(before: readonly T[], after:
 function references(record: DecisionRecord, inputId: string) {
   return {
     calculationIds: record.model.calculations.filter(item => collectExpressionInputs(item.expression).includes(inputId)).map(item => item.id),
-    checkIds: record.model.checks.filter(item => collectCheckInputs(item).includes(inputId)).map(item => item.id),
+    checkIds: record.model.checks.filter(item => collectCheckInputs(item, record.model).includes(inputId)).map(item => item.id),
   };
 }
 function recommendationSummary(record: DecisionRecord): DecisionRecommendationSummary {

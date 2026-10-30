@@ -17,7 +17,7 @@ export function validateNumericBasis(model: DecisionModel, basis: DecisionNumeri
   const boundaries = (basis.boundaries).map(binding => {
     const check = model.checks.find(item => item.id === binding.checkId);
     const input = model.inputs.find(item => item.id === binding.inputId);
-    const inputIds = check ? collectCheckInputs(check) : [];
+    const inputIds = check ? collectCheckInputs(check, model) : [];
     if (!check || !input || !inputIds.includes(input.id)) {
       throw new DecisionFailure('invalid_model', `Unknown or unrelated check/input: ${binding.checkId}/${binding.inputId}`);
     }
@@ -62,7 +62,7 @@ export function projectNumericBasis(model: DecisionModel, basis: DecisionNumeric
   const bindings = validateNumericBasis(model, basis).boundaries;
   const boundaries = bindings.map(({ check, input }) => {
     const result = deriveCheckBoundary(model, check, input.id);
-    const otherInputIds = collectCheckInputs(check).filter(id => id !== input.id);
+    const otherInputIds = collectCheckInputs(check, model).filter(id => id !== input.id);
     const atBoundary = result.status === 'available' ? projectBoundaryPoint(model, input.id, result.value) : null;
     const pointText = atBoundary ? `取${input.label} = ${formatDecisionQuantity(atBoundary.value, input.unit, input.quantityType)}时，${atBoundary.calculations.length
       ? atBoundary.calculations.map(calculation => calculation.text).join('；') : '没有引用此输入的已登记计算'}（仅该点，其他输入固定）。` : '';

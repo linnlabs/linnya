@@ -212,13 +212,13 @@ checks参与选项可行性与条件性选择；仅为说明经济门槛而求�
 
 输入和算值必须声明quantityType，封闭为day_clock/duration/money/other。为使未知量同样有明确合同，所有输入均填写此字段：非数值填other，未知数值用null并声明预期类型。day_clock固定表示当天00:00起分钟，unit只用于展示；HH:MM格式化及情景守卫仅看quantityType，不猜名称或自由单位。量类型仍是作者声明，不构成量纲运算或模型语义认证。
 
-0.20引入记录schemaVersion=2（当前schema3见0.22节）。插件migration3以单条原子UPDATE迁移所有历史JSON：旧单位精确为当天00:00起分钟的输入/算值映射day_clock，其他映射other，不把min猜成时刻、不把CNY猜成已核现金。revision/inputRevision、原始值/来源/建议/行动保持原样，既有导出文件不重写；持久JSON字节改变，旧版严格读取器不能直接回退读取。部署或回退前按正式数据库备份/迁移流程处理，不在repository加双读fallback。新create/update的缺失或非法类型由同一schema拒绝，文件和内联两路一致。
+0.20引入记录schemaVersion=2（当前schema4见0.24节）。插件migration3以单条原子UPDATE迁移所有历史JSON：旧单位精确为当天00:00起分钟的输入/算值映射day_clock，其他映射other，不把min猜成时刻、不把CNY猜成已核现金。revision/inputRevision、原始值/来源/建议/行动保持原样，既有导出文件不重写；持久JSON字节改变，旧版严格读取器不能直接回退读取。部署或回退前按正式数据库备份/迁移流程处理，不在repository加双读fallback。新create/update的缺失或非法类型由同一schema拒绝，文件和内联两路一致。
 
 对应业务回归覆盖历史读取、元数据迁移、缺字段拒绝不写入、单位与类型分离以及时刻情景原子拒绝。公开Host组合测试仅同步插件输入夹具，不改变Host实现。
 
 ## 按顺序的现金投影（0.21）
 
-model.cashFlows可选，update可完整替换或用[]清除。每张时间表绑定一个明确选项及unit，openingBalance和每笔amount使用同一四则式合同，0.21按entries声明顺序投影，当前0.22改按显式时点排序（见下节）；inflow/outflow分开、金额非负。程序在各节点更新余额，最低点含期初；期初/必要金额未知或撤回返回needs_information，不置零；除零等算式错误返回unavailable。跨单位换算、退款准备是否已包含、节点是否真实发生仍属建模与取证，不认证声明的量纲。
+model.cashFlows可选，update可完整替换或用[]清除。每张时间表绑定一个明确选项及unit，openingBalance和每笔amount使用同一四则式合同，0.21按entries声明顺序投影，0.22改按显式时点排序（见下节），0.24将期初拆为银行余额与隔离准备（见0.24节）；inflow/outflow分开、金额非负。程序在各节点更新余额，最低点含期初；期初/必要金额未知或撤回返回needs_information，不置零；除零等算式错误返回unavailable。跨单位换算、退款准备是否已包含、节点是否真实发生仍属建模与取证，不认证声明的量纲。
 
 read/模拟的evaluation、check（含精简回执）、export均投影最低余额/缺口/期末及逐节点余额。该投影与原有checks分开，不偷偷把分析标准变成用户底线，也不自动阻断recommend或执行付款。条件更新/时间表变更仍按既有inputRevision使建议待复核，compare显式列cashFlows变化。新功能无新表、Host接口或基础工具。
 
@@ -258,3 +258,15 @@ schemaVersion=3，插件migration4把schema2历史付款表的timeAnchor与全�
 代码归属：decision-record 的投影与 artifact adapter 是 CLI 与收口共同使用的公开能力；decision-delivery 是窄运行适配器；toolManifest 集中注册名和角色名单。Renderer 只为 live/history 提供完整/紧凑标题，正文由正式 final_answer 显示。无新表、schema 或 migration；仍为 schema3/migration4。
 
 业务回归包括缺口225/实际到账后0、书面承诺不改变现金、未知日期、严格延期端点、失效/权限/取消、原件字节一致，以及生产 Graph/Flow/SQLite 中一次工具输出直接完成且不再调用模型。文件路径 transport 在组合测试中替换，原生验收另核真实 capability。首次新建/显示工具需正常重启当前实例；开发构建不等于发布。模型仍可能不用收口入口而自由结束，观察时必须单独计数，不能声称有全局强制交付门禁。
+
+## 资金栏目、情景与简明交付（0.24）
+
+付款表 `opening` 明确登记 `bank` 银行余额与 `reserve` 隔离准备两个表达式；可动用由程序相减。节点方向包括实际入账 `inflow`、普通支付 `outflow`、准备解禁 `release_reserve`、支付对应隔离义务 `pay_reserve`。后两者均须日期：解禁只减少准备，支付同一义务同时减少银行和准备，不凭空增加现金或重复扣减可动用资金。未得到金额/日期仍需信息，准备负数属模型不可用。同日先支付，后入账，最后解禁；不同记录不共用账户或自动汇总。
+
+选项检查可声明 `operator=cash_flow_funded` 与同选项的 `cashFlowId`：逐节点可动用最低余额不小于零才通过；模型/时点不可用为未定。它与其他检查共同决定选项状态，所有情景重算同一资金表。现金时序不是单一仿射不等式，不能冒充普通数值边界；日期范围仍由付款表既有门槛输出。只求资金，不推断合同取消、收入承诺的真实性或下单权限。
+
+schema4 / migration5 把旧 `openingBalance` 保存为 `opening.unclassified`，不猜它是银行还是可动用；补齐 bank/reserve 前整张表需要信息。历史表达式、节点日期、建议与版本保持，未分类不是旧计算兼容分支。新建表应使用明确两列，未知值在相应输入留 null。迁移前沿0.22冷备规则，先副本演练再改 canonical 库。
+
+finish/delivery 的短文先给选项 label、作者理由和下一步，再给程序关键数字与变化条件。完整检查、输入、付款表、作者自由条件在同版 `report.md` 原件；摘要 `delivery.md` 含该原件的正式链接。两份均有独立 hash/bytes，任一写失败或取消都清理本次独占目录，不发布半份交付。旧 export 保留原接口。
+
+“什么会改变建议”仅取程序边界、付款日期门槛与已登记重算情景；自由 changeConditions 仍保存并出现在完整原件。作者仍须把要比较的条件写进 conditionalAdvice；程序不从自然语言猜情景。理由与下一步仍为保存的作者判断，可能有语义错误。程序说明合成一句，不能据排版改变声称质量认证或原生收益。

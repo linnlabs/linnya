@@ -1,6 +1,9 @@
+import { cashFlowDirectionLabel } from '../definitions/cashFlowEvaluation';
 import type { DecisionRecord } from '../../../../shared';
 import { projectDecisionDelivery, type DecisionDelivery } from './projectDecisionDelivery';
 import { decisionMarkdownText as text, decisionMarkdownResult as result, decisionMarkdownScalar as scalar, decisionMarkdownTable as table } from '../shared/decisionMarkdown';
+
+const deliveryNotice = '程序复算已登记模型；输入、作者判断、履约与执行授权仍需另行确认。';
 
 const optionStatus = { pass: '已登记条件满足', fail: '已登记条件未满足', undetermined: '需要信息或补齐检查' } as const;
 const outcomeStatus = {
@@ -13,13 +16,11 @@ function calculationRows(calculations: DecisionDelivery['calculations']) {
 }
 
 /** 程序结果和作者判断分区交付，数字、条件分支不再经过一次自由转述。 */
-export function renderDecisionDelivery(record: DecisionRecord, expectedRevision: number) {
-  const delivery = projectDecisionDelivery(record, expectedRevision);
+function renderDetails(delivery: DecisionDelivery): string {
   const conditional = delivery.conditionalAdvice;
   const sections = [
     `# ${text(delivery.title)}`,
     `记录 ${delivery.decisionId} · revision ${delivery.revision} · inputRevision ${delivery.inputRevision}`,
-    '以下结果对应此保存版本。程序执行已登记的算式和检查，不认证模型完整性、输入事实或执行授权。',
     '## 当前条件与算值',
     ...delivery.options.map(option => [
       `### ${text(option.label)}：${optionStatus[option.status]}`,
@@ -36,13 +37,14 @@ export function renderDecisionDelivery(record: DecisionRecord, expectedRevision:
       '## 付款时序',
       ...delivery.cashFlows.flatMap(flow => [
         text(flow.text),
-        table(['节点', '距声明锚点的天数', '方向', '金额', '节点后余额'], flow.entries.map((entry, index) => [
-          text(entry.label), result(entry.time), entry.direction === 'inflow' ? '流入' : '流出', result(entry.result),
+        table(['节点', '距声明锚点的天数', '方向', '金额', '银行余额', '隔离准备', '可动用余额'], flow.entries.map((entry, index) => [
+          text(entry.label), result(entry.time), cashFlowDirectionLabel[entry.direction], result(entry.result),
+          flow.status === 'available' ? String(flow.balances[index].bank) : '未定',
+          flow.status === 'available' ? String(flow.balances[index].reserve) : '未定',
           flow.status === 'available' ? String(flow.balances[index].balance) : '未定',
         ])),
         ...flow.timingThresholds.map(threshold => text(threshold.text)),
       ]),
-      '期初可用资金、日期和流入成立的前提均来自登记模型；未来流入不代表当前已到账，余额为正也不替代其他检查。',
     ] : []),
     ...(delivery.numericBasis?.status === 'current' && delivery.numericBasis.boundaries.length ? [
       '## 数值变化条件', ...delivery.numericBasis.boundaries.map(boundary => `- ${text(boundary.text)}`),
@@ -57,7 +59,6 @@ export function renderDecisionDelivery(record: DecisionRecord, expectedRevision:
         ...(scenario.evaluation.calculations.length ? [table(['计算id', '含义（声明）', '本情景程序值', '单位'], calculationRows(scenario.evaluation.calculations))] : []),
         ...((scenario.evaluation.cashFlows ?? []).map(flow => text(flow.text))),
       ]),
-      '情景是条件假设，没有修改当前事实；一项通过不表示所有未登记责任均已覆盖。',
     ] : []),
     '## 输入身份与未知',
     table(['输入', '值', '单位', '依据类型', '状态', '出处（声明）'], delivery.inputs.map(input => [
@@ -69,10 +70,8 @@ export function renderDecisionDelivery(record: DecisionRecord, expectedRevision:
       table(['行动', '计划版本', '内容（作者声明）', '状态', '计划状态'], delivery.actions.map(action => [
         text(action.plan.label), String(action.planRevision), text(action.plan.purpose), action.state, action.planStatus,
       ])),
-      '行动状态是已登记报告，不等于程序亲自确认已执行。',
     ] : []),
     '## 作者判断原文',
-    '以下是作者保存的解释、条件和下一步，程序未核验其含义；它们不改变上面的计算结果，也不授予执行权限。',
     `作者选择：${delivery.author.optionIds.map(text).join('、') || '暂未选择'}。`,
     `理由：${text(delivery.author.rationale)}`,
     `补充变化条件：${text(delivery.author.changeConditions)}`,
@@ -83,5 +82,39 @@ export function renderDecisionDelivery(record: DecisionRecord, expectedRevision:
     ] : []),
     ...(delivery.author.unresolved.length ? ['未解问题：', ...delivery.author.unresolved.map(item => `- ${text(item)}`)] : []),
   ];
-  return { ...delivery, markdown: `${sections.join('\n\n')}\n` };
+  return `${sections.join('\n\n')}\n\n${deliveryNotice}\n`;
+}
+
+
+/** 摘要与完整原件来自同一投影；保留作者原句，不用程序另猜一份建议。 */
+export function renderDecisionDelivery(record: DecisionRecord, expectedRevision: number) {
+  const delivery = projectDecisionDelivery(record, expectedRevision);
+  const labels = (ids: readonly string[]) => delivery.options.filter(item => ids.includes(item.optionId)).map(item => text(item.label)).join('、');
+  const conditional = delivery.conditionalAdvice;
+  const sections = [
+    `# ${text(delivery.title)}`,
+    `**当前建议：${labels(delivery.author.optionIds) || '暂未选择'}。**`,
+    `理由（作者判断）：${text(delivery.author.rationale)}`,
+    `下一步（作者建议）：${text(delivery.author.nextAction)}`,
+    '## 关键数字与当前检查',
+    ...delivery.options.map(option => `- ${text(option.label)}：${optionStatus[option.status]}。`),
+    ...delivery.calculations.map(item => `- ${text(item.label)}：${result(item.result, item.quantityType)} ${text(item.unit)}。`),
+    ...delivery.cashFlows.map(flow => `- ${text(flow.text)}`),
+    '## 什么会改变建议',
+    ...(delivery.numericBasis?.status === 'current' ? delivery.numericBasis.boundaries.map(boundary => `- ${text(boundary.text)}`) : []),
+    ...delivery.cashFlows.flatMap(flow => flow.timingThresholds.map(threshold => `- ${text(threshold.text)}`)),
+    ...(conditional?.status === 'current' && conditional.cases.length ? conditional.cases.flatMap(scenario => [
+      `### ${text(scenario.label)}`,
+      `假设变动：${scenario.changes.map(change => `${text(change.label)}：${change.from === null ? '未知' : scalar(change.from, change.quantityType)} → ${change.to === null ? '未知' : scalar(change.to, change.quantityType)} ${text(change.unit ?? '')}`).join('；')}。`,
+      `程序分支：${outcomeStatus[scenario.outcome.status]}${scenario.outcome.optionIds.length ? `（${labels(scenario.outcome.optionIds)}）` : ''}。`,
+      ...scenario.options.map(option => `- ${labels([option.optionId])}：${optionStatus[option.status]}。`),
+      ...scenario.evaluation.calculations.map(item => `- ${text(item.label)}：${result(item.result, item.quantityType)} ${text(item.unit)}。`),
+      ...(scenario.evaluation.cashFlows ?? []).map(flow => `- ${text(flow.text)}`),
+      `下一步（作者建议）：${text(scenario.authorNextAction ?? ('authorAction' in scenario.outcome ? scenario.outcome.authorAction : '未声明'))}`,
+    ]) : ['本记录尚未登记条件情景。']),
+    ...(delivery.author.unresolved.length ? ['## 仍待确认', ...delivery.author.unresolved.map(item => `- ${text(item)}`)] : []),
+    deliveryNotice,
+  ];
+  // 原件保存检查、输入、情景变更与作者自由条件，短交付不再把自由条件冒充算值。
+  return { ...delivery, markdown: `${sections.join('\n\n')}\n`, originalMarkdown: renderDetails(delivery) };
 }

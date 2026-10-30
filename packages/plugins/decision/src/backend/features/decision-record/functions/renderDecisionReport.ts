@@ -1,4 +1,5 @@
 import type { DecisionExpression, DecisionRecord } from '../../../../shared';
+import { cashFlowDirectionLabel } from '../definitions/cashFlowEvaluation';
 import type { DecisionReport } from '../definitions/decisionReport';
 import { projectDecisionRecord } from './updateDecisionRecord';
 import { evaluateExpression } from './evaluateDecisionExpression';
@@ -36,7 +37,7 @@ export function renderDecisionReport(record: DecisionRecord, expectedRevision: n
     '## 全部声明检查',
     table(['id / 选项', '检查名称（作者声明）', '声明关系', '实际左值', '实际右值', '结果'], record.model.checks.map(check => {
       const evaluated = evaluateDecisionCheck(check, record.model);
-      const relation = check.operator === 'is' ? `${text(check.inputId)} = ${scalar(check.value)}`
+      const relation = check.operator === 'cash_flow_funded' ? `${text(check.cashFlowId)} 的资金缺口 = 0` : check.operator === 'is' ? `${text(check.inputId)} = ${scalar(check.value)}`
         : text(`${expression(check.left)} ${check.operator === 'lte' ? '≤' : check.operator === 'gte' ? '≥' : '='} ${expression(check.right)}`);
       return [text(`${check.id} / ${check.optionId}`), text(check.label), relation, result(evaluated.left), result(evaluated.right),
         evaluated.passes === null ? '未定' : evaluated.passes ? '成立' : '不成立'];
@@ -46,9 +47,11 @@ export function renderDecisionReport(record: DecisionRecord, expectedRevision: n
       '## 程序付款时间表',
       ...projected.evaluation.cashFlows.flatMap(flow => [
         text(flow.text),
-        table(['顺序', '节点（作者声明）', '相对锚点的天数', '方向', '金额', '节点后可动用余额'], flow.entries.map((entry, index) => [
-          String(index + 1), text(entry.label), result(entry.time), entry.direction,
-          result(entry.result), flow.status === 'available' ? String(flow.balances[index].balance) : '未知/不可用',
+        table(['顺序', '节点（作者声明）', '相对锚点的天数', '方向', '金额', '节点后银行余额', '隔离准备', '可动用余额'], flow.entries.map((entry, index) => [
+          String(index + 1), text(entry.label), result(entry.time), cashFlowDirectionLabel[entry.direction],
+          result(entry.result), flow.status === 'available' ? String(flow.balances[index].bank) : '未知/不可用',
+          flow.status === 'available' ? String(flow.balances[index].reserve) : '未知/不可用',
+          flow.status === 'available' ? String(flow.balances[index].balance) : '未知/不可用',
         ])),
         ...flow.timingThresholds.map(threshold => text(threshold.text)),
       ]),

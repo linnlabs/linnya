@@ -6,9 +6,13 @@ import { DecisionExpressionSchema } from './decisionExpression';
 export const DecisionCashFlowSchema = z.object({
   id, label: text, optionId: id, unit: text,
   timeAnchor: text.nullable(),
-  openingBalance: DecisionExpressionSchema,
+  // 未分类只保留历史原式供追溯；求值不会把它猜成银行或可用余额。
+  opening: z.union([
+    z.object({ bank: DecisionExpressionSchema, reserve: DecisionExpressionSchema }).strict(),
+    z.object({ unclassified: DecisionExpressionSchema }).strict(),
+  ]),
   entries: z.array(z.object({
-    id, label: text, direction: z.enum(['inflow', 'outflow']), amount: DecisionExpressionSchema,
+    id, label: text, direction: z.enum(['inflow', 'outflow', 'release_reserve', 'pay_reserve']), amount: DecisionExpressionSchema,
     at: DecisionExpressionSchema.nullable(),
   }).strict()).min(1),
 }).strict();

@@ -34,6 +34,9 @@ export const DecisionCheckSchema = z.union([
     inputId: id,
     value: z.union([z.boolean(), z.string().min(1)]),
   }).strict(),
+  z.object({ id, optionId: id, label: text,
+    operator: z.literal('cash_flow_funded'), cashFlowId: id,
+  }).strict(),
 ]);
 export type DecisionCheck = z.infer<typeof DecisionCheckSchema>;
 
@@ -117,7 +120,7 @@ export const DecisionActionProgressSchema = DecisionActionProgressContentSchema.
 export type DecisionActionProgress = z.infer<typeof DecisionActionProgressSchema>;
 
 export const DecisionRecordSchema = z.object({
-  schemaVersion: z.literal(3),
+  schemaVersion: z.literal(4),
   id: z.string().uuid(),
   revision: z.number().int().positive(),
   inputRevision: z.number().int().positive(),

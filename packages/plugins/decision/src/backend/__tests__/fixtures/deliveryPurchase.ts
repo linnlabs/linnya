@@ -20,7 +20,7 @@ export function deliveryPurchaseModel(funded = false): DecisionModel {
       { id: 'gap', label: '回款前差额（负数为缺口）', expression: subtract(available, ref('total')), quantityType: 'money', unit: 'CNY' },
     ],
     checks: [{ id: 'cash', label: '回款前总付款资金', optionId: 'order', left: available, operator: 'gte', right: ref('total') }],
-    cashFlows: [{ id: 'flow', label: '回款前付款', optionId: 'order', unit: 'CNY', timeAnchor: '交货日', openingBalance: available, entries: [
+    cashFlows: [{ id: 'flow', label: '回款前付款', optionId: 'order', unit: 'CNY', timeAnchor: '交货日', opening: { bank: ref('bank'), reserve: ref('reserve') }, entries: [
       { id: 'collect', label: '未来客户回款', direction: 'inflow', amount: ref('collection'), at: ref('received') },
       { id: 'rest', label: '总价减首款', direction: 'outflow', amount: subtract(ref('total'), ref('first')), at: ref('due') },
       { id: 'first', label: '开工首款', direction: 'outflow', amount: ref('first'), at: { literal: -5 } },

@@ -17,7 +17,10 @@ export function validateDecisionModel(model: DecisionModel): void {
   for (const item of model.calculations) validateReferences(item.expression, inputs);
   for (const item of model.checks) {
     if (!options.has(item.optionId)) throw new DecisionFailure('invalid_model', `Unknown option: ${item.optionId}`);
-    for (const input of collectCheckInputs(item)) {
+    if (item.operator === 'cash_flow_funded' && !model.cashFlows?.some(flow => flow.id === item.cashFlowId && flow.optionId === item.optionId)) {
+      throw new DecisionFailure('invalid_model', `Cash flow check ${item.id} must reference a cash flow of the same option.`);
+    }
+    for (const input of collectCheckInputs(item, model)) {
       if (!inputs.has(input)) throw new DecisionFailure('invalid_model', `Unknown input: ${input}`);
     }
   }

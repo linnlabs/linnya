@@ -16,7 +16,7 @@ function model(): DecisionModel {
       { id: 'received', label: '客户实际回款日', value: 7, quantityType: 'duration', unit: '天', kind: 'assumption', status: 'available', origin: '第7天最早回款反事实，不是到账承诺' },
     ],
     options: [{ id: 'order', label: '订单', description: '桌面推演' }], calculations: [], checks: [],
-    cashFlows: [{ id: 'flow', label: '回款前资金', optionId: 'order', unit: 'CNY', timeAnchor: '交货日', openingBalance: { input: 'cash' },
+    cashFlows: [{ id: 'flow', label: '回款前资金', optionId: 'order', unit: 'CNY', timeAnchor: '交货日', opening: { bank: { input: 'cash' }, reserve: { literal: 0 } },
       // 故意把收款放在数组前面，验证实际排序而不是碰巧沿用声明顺序。
       entries: [
         { id: 'collect', label: '客户回款', direction: 'inflow', amount: { input: 'collection' }, at: { input: 'received' } },
@@ -105,16 +105,17 @@ it('migrates historical undated flows to explicit unknowns without changing thei
     db.exec("CREATE TABLE projects(id TEXT PRIMARY KEY); INSERT INTO projects VALUES ('p');");
     for (const migration of decisionMigrations.filter(item => item.version < 4)) migration.up(db);
     const proposed = model();
-    const oldModel = { ...proposed, cashFlows: proposed.cashFlows?.map(({ timeAnchor: _anchor, ...flow }) => ({ ...flow, entries: flow.entries.map(({ at: _at, ...entry }) => entry) })) };
+    const oldModel = { ...proposed, cashFlows: proposed.cashFlows?.map(({ timeAnchor: _anchor, opening: _opening, ...flow }) => ({ ...flow, openingBalance: { input: 'cash' }, entries: flow.entries.map(({ at: _at, ...entry }) => entry) })) };
     const id = '40be6192-0938-44cf-9180-47edb2dd3910';
     const advice = { basedOnInputRevision: 1, content: { optionIds: ['order'], rationale: '旧作者文字原样保留', changeConditions: '旧变化条件', nextAction: '旧计划', unresolved: [] } };
     for (const revision of [1, 2]) db.prepare('INSERT INTO decision_record_versions VALUES(?,?,?,?,?)').run(id, 'p', revision, JSON.stringify({ schemaVersion: 2, id, revision, inputRevision: 1, reason: '旧版', model: oldModel, recommendation: advice }), 15);
-    for (const migration of decisionMigrations.filter(item => item.version === 4)) migration.up(db);
+    for (const migration of decisionMigrations.filter(item => item.version >= 4)) migration.up(db);
     const parsed = parseDecisionCli(['read', id]); if (parsed.kind !== 'read') throw new Error('Read');
     const read = executeDecisionCommand(parsed, db, 'p');
     if (typeof read !== 'object' || read === null || !('record' in read) || !('evaluation' in read)) throw new Error('Read');
     const migrated = DecisionRecordSchema.parse(read.record);
-    expect(migrated.schemaVersion).toBe(3); expect(migrated.revision).toBe(2); expect(migrated.inputRevision).toBe(1); expect(migrated.recommendation).toEqual(advice);
+    expect(migrated.schemaVersion).toBe(4); expect(migrated.revision).toBe(2); expect(migrated.inputRevision).toBe(1); expect(migrated.recommendation).toEqual(advice);
+    expect(migrated.model.cashFlows?.[0].opening).toEqual({ unclassified: { input: 'cash' } });
     expect(migrated.model.cashFlows?.[0].timeAnchor).toBeNull(); expect(migrated.model.cashFlows?.[0].entries.every(entry => entry.at === null)).toBe(true);
     expect(read.evaluation.cashFlows?.[0]).toMatchObject({ status: 'needs_information', shortfall: null });
     expect(migrated.model.cashFlows?.[0].entries.map(({ at: _at, ...entry }) => entry)).toEqual(oldModel.cashFlows?.[0].entries);

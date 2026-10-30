@@ -1,7 +1,7 @@
 ---
 name: decision-exploration
 description: Help compare options, discover feasible next actions, and update a decision when goals, constraints or evidence change. Use with the decision prototype's versioned record CLI.
-version: 0.23.0
+version: 0.24.0
 ---
 
 # 决策与探索
@@ -30,7 +30,7 @@ version: 0.23.0
 
 ## 交付与停止
 
-将建议理由、适用条件、未解问题与下一步保存到当前记录。完成后调用 decision_finish，只传记录 ID 和当前 expectedRevision：程序生成本版算值、条件和原件链接，直接作为最终答复结束这一轮。重要的长期说明另存 Workspace。已有足够信息做当前动作，且继续分析的收益不值得成本时结束这一轮。以后有新条件，再从记录继续。
+将建议理由、适用条件、未解问题与下一步保存到当前记录。完成后调用 decision_finish，只传记录 ID 和当前 expectedRevision：程序先给当前选择、理由与下一步，再给本版算值、重算情景和完整原件链接，直接作为最终答复结束这一轮。重要的长期说明另存 Workspace。已有足够信息做当前动作，且继续分析的收益不值得成本时结束这一轮。以后有新条件，再从记录继续。
 
 需要交付前查看程序摘要时，用记录资源中的 delivery 生成会话原件并读取；export 仍提供完整审计报告。两者都只生成文件，最终收口使用 decision_finish。程序区与保存的作者判断分开展示；条件变化后先更新记录和建议，再交付新版本。
 

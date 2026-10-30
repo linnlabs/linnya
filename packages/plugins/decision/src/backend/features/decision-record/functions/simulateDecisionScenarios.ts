@@ -15,7 +15,7 @@ export function simulateDecisionScenarios(record: DecisionRecord, expectedRevisi
     inputId: input.id,
     calculationIds: baseline.calculations.filter(item => item.inputIds.includes(input.id)).map(item => item.id),
     checkIds: record.model.checks.filter(item => (
-      collectCheckInputs(item).includes(input.id)
+      collectCheckInputs(item, record.model).includes(input.id)
     )).map(item => item.id),
   }));
   return {
