@@ -137,6 +137,7 @@ export function useSlideStageViewport(options: SlideStageViewportOptions) {
       slideHeight: logicalSlideSize.value.height,
       scale: renderScale.value,
       gutter: SLIDE_STAGE_SCROLL_GUTTER,
+      verticalInsets: SLIDE_STAGE_FIT_PADDING,
     }),
   );
 
@@ -339,6 +340,7 @@ export function useSlideStageViewport(options: SlideStageViewportOptions) {
         slideHeight: logicalSlideSize.value.height,
         scale: prevScale,
         gutter: SLIDE_STAGE_SCROLL_GUTTER,
+        verticalInsets: SLIDE_STAGE_FIT_PADDING,
       });
       pendingZoomAnchor = null;
       const commitId = ++latestZoomCommitId;

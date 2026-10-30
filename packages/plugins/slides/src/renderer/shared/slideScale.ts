@@ -12,6 +12,18 @@ import {
 /** 适应模式 */
 export type FitMode = 'contain' | 'width' | 'height';
 
+/** 适应留白：统一值、水平/垂直对称，或上下不同的垂直留白。 */
+export type FitPadding =
+  | number
+  | { readonly x: number; readonly y: number }
+  | { readonly x: number; readonly top: number; readonly bottom: number };
+
+export function resolveFitPadding(padding: FitPadding): { x: number; top: number; bottom: number } {
+  if (typeof padding === 'number') return { x: padding, top: padding, bottom: padding };
+  if ('y' in padding) return { x: padding.x, top: padding.y, bottom: padding.y };
+  return { x: padding.x, top: padding.top, bottom: padding.bottom };
+}
+
 export interface SlideSize {
   width: number;
   height: number;
@@ -30,18 +42,18 @@ function toLogicalSize(slideSize: SlideSize) {
  * @param containerWidth  容器可用宽度
  * @param containerHeight 容器可用高度
  * @param mode            适应模式，默认 contain（保持宽高比完全可见）
- * @param padding         容器内边距（px），默认 32；可分别给出水平与垂直留白
+ * @param padding         容器内边距（px），默认 32；可分别给出水平与上下留白
  */
 export function computeFitScale(
   containerWidth: number,
   containerHeight: number,
   slideSize: SlideSize = DEFAULT_SLIDE_SIZE,
   mode: FitMode = 'contain',
-  padding: number | { readonly x: number; readonly y: number } = 32,
+  padding: FitPadding = 32,
 ): number {
-  const { x, y } = typeof padding === 'number' ? { x: padding, y: padding } : padding;
+  const { x, top, bottom } = resolveFitPadding(padding);
   const availableW = Math.max(containerWidth - x * 2, 1);
-  const availableH = Math.max(containerHeight - y * 2, 1);
+  const availableH = Math.max(containerHeight - top - bottom, 1);
   const logicalSize = toLogicalSize(slideSize);
 
   const scaleW = availableW / logicalSize.width;
