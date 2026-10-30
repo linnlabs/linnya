@@ -1,7 +1,11 @@
 import { createApp, h, nextTick, ref } from 'vue';
 import type { App } from 'vue';
 import { CustomSelect, ColorPickerPanel } from '../../src';
-import type { CustomSelectOption } from '../../src';
+import type {
+  CustomSelectOption,
+  CustomSelectOptionLabelOverflow,
+  CustomSelectVariant,
+} from '../../src';
 import '../../src/styles/styles.css';
 
 interface MenuCase {
@@ -11,6 +15,8 @@ interface MenuCase {
   y?: number;
   theme?: string;
   selectedIndex?: number;
+  variant?: CustomSelectVariant;
+  optionLabelOverflow?: CustomSelectOptionLabelOverflow;
 }
 
 let app: App | null = null;
@@ -32,6 +38,8 @@ async function mount({
   y = 40,
   theme = 'light',
   selectedIndex,
+  variant = 'default',
+  optionLabelOverflow = 'visible',
 }: MenuCase) {
   app?.unmount();
   await settle();
@@ -71,6 +79,21 @@ async function mount({
       ],
     },
     { text: 'Color', isColorPicker: true, children: [{ value: 'color' }] },
+    {
+      text: 'Provider',
+      children: [
+        { text: 'Plain model', value: 'model-plain' },
+        {
+          text: 'Reasoning model',
+          value: 'model-reasoning',
+          allowDirectSelect: true,
+          children: [
+            { isGroup: true, label: 'Reasoning' },
+            { text: 'High', value: 'model-reasoning-high' },
+          ],
+        },
+      ],
+    },
   ];
   app = createApp({
     setup() {
@@ -87,6 +110,8 @@ async function mount({
                   parentIsOpen: open.value,
                   semanticRole: 'menu',
                   usePortalToBody: !manual,
+                  variant,
+                  optionLabelOverflow,
                   'onUpdate:modelValue': (value: string) => selections.push(value),
                   onClose: () => {
                     open.value = false;
@@ -154,7 +179,24 @@ function snapshot() {
   };
 }
 
-const fixture = { mount, settle, snapshot };
+function submenuRows() {
+  return [...document.querySelectorAll<HTMLElement>('.custom-select__submenu .select-option')].map(
+    row => {
+      const width = (selector: string) => row.querySelector(selector)?.getBoundingClientRect().width;
+      return {
+        text: row.textContent?.trim(),
+        rowWidth: row.getBoundingClientRect().width,
+        rowHeight: row.getBoundingClientRect().height,
+        labelWidth: width('.option-label'),
+        labelTextWidth: row.querySelector('.linnya-ui-select-menu-option-label-text')?.scrollWidth,
+        arrowWidth: width('.option-arrow'),
+        arrowHeight: row.querySelector('.option-arrow')?.getBoundingClientRect().height,
+      };
+    }
+  );
+}
+
+const fixture = { mount, settle, snapshot, submenuRows };
 declare global {
   interface Window {
     menuFixture: typeof fixture;

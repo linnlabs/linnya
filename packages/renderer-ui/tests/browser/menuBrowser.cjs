@@ -90,7 +90,7 @@ async function run() {
       document.querySelector('.custom-select__options .select-option:nth-of-type(2)').dispatchEvent(new MouseEvent('mouseenter'));
     })()`);
     await settle();
-    assert.equal((await snapshot()).activeText, 'Long list›');
+    assert.equal((await snapshot()).activeText, 'Long list');
     assert(
       await evaluate(
         "document.querySelector('.custom-select__submenu').textContent.includes('Short child')"
@@ -184,6 +184,27 @@ async function run() {
     await settle();
     assert.equal((await snapshot()).colorSelections, 1);
     assert.equal((await snapshot()).panels.length, 1);
+
+    // 子菜单父项的箭头必须与主菜单同尺寸；箭头失控会把模型名挤没（Provider → 模型 → 思考强度）。
+    await mount({
+      manual,
+      variant: 'minimal',
+      optionLabelOverflow: 'marquee-on-hover',
+    });
+    await hover('.custom-select__options .select-option:nth-of-type(5)');
+    await settle();
+    const [plainRow, parentRow] = await evaluate('window.menuFixture.submenuRows()');
+    if (process.env.LINNYA_MENU_BROWSER_SUBMENU_SCREENSHOT) {
+      await writeFile(
+        process.env.LINNYA_MENU_BROWSER_SUBMENU_SCREENSHOT,
+        (await window.webContents.capturePage()).toPNG()
+      );
+    }
+    assert.equal(parentRow.text, 'Reasoning model');
+    assert.equal(parentRow.arrowWidth, 12, JSON.stringify(parentRow));
+    assert.equal(parentRow.arrowHeight, 12, JSON.stringify(parentRow));
+    assert.equal(parentRow.rowHeight, plainRow.rowHeight, JSON.stringify(parentRow));
+    assert(parentRow.labelWidth >= parentRow.labelTextWidth - 1, JSON.stringify(parentRow));
   }
   window.setContentSize(260, 240);
   await mount({ manual: true, x: 20, y: 20 });
