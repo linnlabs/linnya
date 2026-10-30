@@ -26,7 +26,7 @@
   "dependencies": {
     "@app/schemas": "workspace:*",
     "vue": "^3.5.44",
-    "zod": "^3.25.76"
+    "zod": "^4.6.6"
   },
   "peerDependencies": {
     "@linnya/renderer-ui": "^3.0.0"
