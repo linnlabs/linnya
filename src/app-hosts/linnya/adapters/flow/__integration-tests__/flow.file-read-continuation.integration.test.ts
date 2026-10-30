@@ -209,7 +209,7 @@ describe('file pagination and archived continuation through the actual next mode
               return;
             }
             deliveredSourceWindows.push(joined);
-            const sourceNext = /下一页：read_file\((\{.+\})\)\]$/.exec(joined)?.[1];
+            const sourceNext = /下一页：read_file\((\{.+\})\)\]$/m.exec(joined)?.[1];
             if (sourceNext) {
               turn.toolCalls = [
                 toolCall(`source-${index + 1}`, 'read_file', JSON.parse(sourceNext)),

@@ -7,6 +7,24 @@ import {
 import { projectMarkdownCitationTokens } from '../projectMarkdownCitationTokens';
 
 describe('Markdown citation token protocol', () => {
+  it('段落行首引用经 serializer 写成实体左括号后仍是引用', () => {
+    expect(
+      parseMarkdownCitationTokens('&#91;@ABC234\\] 后文 [@ABC235]').map(token => ({
+        raw: token.raw,
+        refs: token.refs,
+      }))
+    ).toEqual([
+      { raw: '&#91;@ABC234\\]', refs: ['ABC234'] },
+      { raw: '[@ABC235]', refs: ['ABC235'] },
+    ]);
+    expect(
+      projectMarkdownCitationTokens({
+        markdown: '&#91;@ABC234\\] 后文',
+        resolveRef: ref => `[@${ref === 'ABC234' ? 'XYZ234' : ref}]`,
+      })
+    ).toBe('[@XYZ234] 后文');
+  });
+
   it('按正文顺序解析单条、聚合与模型转义写法', () => {
     const markdown = 'A [@ABC234] B [@ABC235; @ABC236] C \\[@ABC237\\]';
 

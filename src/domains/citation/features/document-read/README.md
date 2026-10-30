@@ -24,7 +24,7 @@ canonical 快照，不能使用 read_file 的会话别名或预算后的 appendi
 - UI 可见的 `[1]`、author-date label 和用户手写文本都不能反推 ref。
 
 Pending Revision 仍以 Markdown 保存，因此 Citation domain 同时拥有窄小的 Markdown citation token
-协议：只接纳正式 Base58 字符集的 6 位 ref，支持单条、聚合和模型转义写法，并跳过 fenced code 与
+协议：只接纳正式 Base58 字符集的 6 位 ref，支持单条、聚合、模型转义写法和 serializer 为段落行首写出的 `&#91;@ref\]`，并跳过 fenced code 与
 inline code 中的示例。Workspace 写入 hydration 与 pending 阅读必须复用该 parser，禁止再定义
 `\w{6}` 正则或从任意 observation 抽取 ref。
 

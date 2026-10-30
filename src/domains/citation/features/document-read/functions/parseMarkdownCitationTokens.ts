@@ -1,7 +1,8 @@
 import type { MarkdownCitationToken } from '../definitions/markdownCitationToken';
 import { isCanonicalCitationRef } from '../../reference/functions/citationRef';
 
-const CITATION_GROUP_PATTERN = /\\?\[@([^\]]+?)\\?\]/g;
+// 段落行首的字面左括号由 serializer 写成 &#91;（避开 display math），同样是引用的开括号。
+const CITATION_GROUP_PATTERN = /(?:\\?\[|&#91;)@([^\]]+?)\\?\]/g;
 
 interface TextRange {
   readonly start: number;
