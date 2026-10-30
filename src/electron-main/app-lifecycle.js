@@ -234,8 +234,11 @@ export function initialize() {
         const status = systemPreferences.getMediaAccessStatus('microphone');
         logger.info(`[Main Process] 当前麦克风权限: ${status}`);
         if (status !== 'granted') {
-          const granted = await systemPreferences.askForMediaAccess('microphone');
-          logger.info(`[Main Process] askForMediaAccess 返回: ${granted}`);
+          // 系统弹窗可能一直无人处理，不能挡住 App Server 启动。
+          void systemPreferences.askForMediaAccess('microphone').then(
+            granted => logger.info(`[Main Process] askForMediaAccess 返回: ${granted}`),
+            e => logger.warn('[Main Process] 请求麦克风权限时出错: ' + (e && e.message)),
+          );
         }
       } catch (e) {
         logger.warn('[Main Process] 请求麦克风权限时出错: ' + (e && e.message));
