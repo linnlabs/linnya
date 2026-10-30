@@ -66,12 +66,6 @@
   text-align: center;
 }
 
-.editor-menu-bar button .ordered-list-label {
-  font-size: var(--font-size-footnote);
-  font-weight: var(--font-weight-semibold);
-  line-height: 1;
-}
-
 .editor-menu-bar button .llm-debug-label {
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);

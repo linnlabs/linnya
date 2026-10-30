@@ -64,6 +64,7 @@ export { default as MicrophoneIcon } from './ui/MicrophoneIcon.vue';
 export { default as MicroscopeIcon } from './ui/MicroscopeIcon.vue';
 export { default as MoreIcon } from './ui/MoreIcon.vue';
 export { default as MoveIcon } from './ui/MoveIcon.vue';
+export { default as NumberedListIcon } from './ui/NumberedListIcon.vue';
 export { default as PasteIcon } from './ui/PasteIcon.vue';
 export { default as PinIcon } from './ui/PinIcon.vue';
 export { default as PlayPauseIcon } from './ui/PlayPauseIcon.vue';

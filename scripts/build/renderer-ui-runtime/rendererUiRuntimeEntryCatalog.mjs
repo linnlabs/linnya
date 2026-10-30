@@ -128,6 +128,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'MicroscopeIcon',
     'MoreIcon',
     'MoveIcon',
+    'NumberedListIcon',
     'PasteIcon',
     'PinIcon',
     'PlayPauseIcon',
