@@ -1,5 +1,6 @@
-import { copyManualObjects } from '../features/presentationManualEditing';
-import type { SlidesInsertedObject } from '@plugin/slides/shared/authoringEditing';
+import { Logger } from '@plugin/backend/workspaceRuntime';
+import { PresentationObjectTransferRuntime } from '../features/presentationManualEditing';
+import type { SlidesInsertedObject, SlidesImportedImage } from '@plugin/slides/shared/authoringEditing';
 import type { ViewReadRequest, ViewReadResponse } from '@plugin/slides/shared/presentationViewSnapshot';
 /**
  * PptCoordinator
@@ -85,10 +86,10 @@ function isConversationAwareImageSourceResolver(
 }
 
 export interface PptCoordinatorRuntimeOptions {
-  readonly importImage?: (documentId: string, bytes: Uint8Array) => Promise<string>;
+  readonly importImage?: (documentId: string, bytes: Uint8Array) => Promise<SlidesImportedImage>;
   readonly manualEditHistoryStore?: ManualEditHistoryStore;
   readonly history?: PresentationHistoryRuntime;
-  readonly revisionScope?: PresentationRevisionScope;
+  readonly revisionScope: PresentationRevisionScope;
   readonly engineAdapter?: SlidesEngineExecutionAdapter;
   readonly codegenDeckBuilderFactory?: CodegenDeckBuilderFactory;
   readonly codegenFailureLogger?: CodegenDeckBuilderFailureLogger;
@@ -99,16 +100,7 @@ export interface PptCoordinatorRuntimeOptions {
 }
 
 export class PptCoordinator {
-  private readonly imageImporter: PptCoordinatorRuntimeOptions['importImage'];
-  async copyObjects(input: { documentId: string; revisionId: string; targets: readonly { slideKey: string; editKey: string }[] }): Promise<readonly SlidesInsertedObject[]> {
-    const current = await this.presentationRepo.getPresentation(input.documentId);
-    if (!current || current.currentRevisionId !== input.revisionId) throw new Error('文稿已变化，请重新复制。');
-    return copyManualObjects(current.deckSpec, input.targets);
-  }
-  async importImage(documentId: string, bytes: Uint8Array): Promise<string> {
-    if (!this.imageImporter) throw new Error('图片导入暂不可用。');
-    return this.imageImporter(documentId, bytes);
-  }
+  private readonly objectTransfer: PresentationObjectTransferRuntime;
   readonly history?: PresentationHistoryRuntime;
   private readonly engine: SlidesEngineExecutionAdapter;
   private readonly codegenRuntime: PresentationCodegenRuntime;
@@ -125,10 +117,10 @@ export class PptCoordinator {
     private readonly presentationRepo: PresentationRepositoryPort,
     private readonly workspaceService: WorkspacePresentationPort | undefined,
     private readonly imageSourceResolver: ImageSourceResolverPort | undefined,
-    private readonly draftRepo: PresentationDraftRepositoryPort | undefined,
+    private readonly draftRepo: PresentationDraftRepositoryPort,
     runtimeOptions: PptCoordinatorRuntimeOptions
   ) {
-    this.imageImporter = runtimeOptions.importImage;
+    this.objectTransfer = new PresentationObjectTransferRuntime(presentationRepo, runtimeOptions.importImage);
     this.history = runtimeOptions.history;
     this.svgGraphicRuntime = runtimeOptions.svgGraphicRuntime;
     const presentationQueries = new PptPresentationQueryService(
@@ -142,6 +134,7 @@ export class PptCoordinator {
         deckAssembler,
         pptxReader,
         presentationQueries,
+        logger: new Logger('SlidesEngine'),
       });
     this.codegenRuntime = new PresentationCodegenRuntime({
       revisionScope: runtimeOptions.revisionScope,
@@ -149,7 +142,7 @@ export class PptCoordinator {
       restoreRevision: runtimeOptions.history?.commitDeferredRestore.bind(runtimeOptions.history),
       presentationRepo: this.presentationRepo,
       ...(this.workspaceService ? { workspaceService: this.workspaceService } : {}),
-      ...(this.draftRepo ? { draftRepo: this.draftRepo } : {}),
+      draftRepo: this.draftRepo,
       imageSourceResolver,
       engine: this.engine,
       ...(runtimeOptions.codegenDeckBuilderFactory
@@ -187,7 +180,7 @@ export class PptCoordinator {
     this.queryRuntime = new PresentationQueryRuntime({
       presentationRepo: this.presentationRepo,
       ...(this.workspaceService ? { workspaceService: this.workspaceService } : {}),
-      ...(this.draftRepo ? { draftRepo: this.draftRepo } : {}),
+      draftRepo: this.draftRepo,
       engine: this.engine,
       getCodegenDeckBuilder: () => this.codegenRuntime.getDeckBuilder(),
       pptxArtifacts,
@@ -369,6 +362,14 @@ export class PptCoordinator {
     targets: SlidesSourceSliceTargetInput[];
   }): Promise<SlidesSourceSlicesOutput> {
     return this.codegenRuntime.readSourceSlicesForAiEdit(input);
+  }
+
+  copyObjects(input: { documentId: string; revisionId: string; targets: readonly { slideKey: string; editKey: string }[] }): Promise<readonly SlidesInsertedObject[]> {
+    return this.objectTransfer.copyObjects(input);
+  }
+
+  importImage(documentId: string, bytes: Uint8Array): Promise<SlidesImportedImage> {
+    return this.objectTransfer.importImage(documentId, bytes);
   }
 
   /** 提交一次基于明确 revision 快照的有限人工编辑。 */

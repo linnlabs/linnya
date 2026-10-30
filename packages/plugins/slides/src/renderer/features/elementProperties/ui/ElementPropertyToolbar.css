@@ -135,7 +135,8 @@
 .slides-element-color__caption {
   flex: 1;
 }
-.slides-element-color__chevron {
+.slides-element-color__chevron,
+.slides-element-color__check {
   width: 14px;
   height: 14px;
 }

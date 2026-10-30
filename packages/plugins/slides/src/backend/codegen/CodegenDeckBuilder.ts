@@ -161,21 +161,22 @@ export class CodegenDeckBuilder {
     };
   }
 
-  /** 人工文本编辑完成源码验证与 DeckSpec 编译后，只提交语义 revision。 */
+  /** 人工编辑完成源码验证与 DeckSpec 编译后，只提交语义 revision。 */
   async commitManualEditFromSource(
     input: CodegenDeckBuildInput,
   ): Promise<CodegenManualEditCommitResult> {
     const { source, current, expectedBase } = await this.readExistingBuildBase(input);
-    const compiled = await this.compileAuthoringInputFromSource(source, current.deckSpec.theme);
+    const compiled = await this.compileAuthoringInputFromSource(source, current.deckSpec.theme, input.onProgress);
     const deckSpec = await this.buildOwnedDeckSpec(compiled, { documentId: input.nodeId });
     // 完整编译可能新增/删除资源：只读已接管或接管新来源，记录精确可达集合，不运行 PPTX assembler。
     if (this.deps.imageSourceResolver) await resolveImageSources(structuredClone(deckSpec), this.deps.imageSourceResolver, { documentId: input.nodeId });
+    input.onProgress?.('assets_completed');
     return this.commitDeferredDeckSpec(input, source, expectedBase, deckSpec, false);
   }
 
   /**
    * 只接受上层已经证明与当前作者源码等价的 DeckSpec 投影。
-   * 用于顶层原子元素的 post-layout translate_by 与已证明等价的空白页插入；仍走 CAS 与延迟 PPTX 提交。
+   * 投影资格由人工编辑 feature 判断；builder 统一保留 CAS、资源继承与延迟 PPTX 提交。
    */
   async commitManualEditFromProjectedDeckSpec(
     input: CodegenProjectedDeckBuildInput,
@@ -215,7 +216,8 @@ export class CodegenDeckBuilder {
 
   private async compileAuthoringInputFromSource(
     source: string,
-    currentTheme?: DeckSpec['theme']
+    currentTheme?: DeckSpec['theme'],
+    onProgress?: CodegenDeckBuildInput['onProgress'],
   ): Promise<CompiledDeckSource> {
     this.deps.recordSourceTheme?.(currentTheme);
     let markerIndex: SlideMarkerIndex;
@@ -224,7 +226,9 @@ export class CodegenDeckBuilder {
     } catch (error) {
       failBuild('slides.codegen.compose_contract', safeSourceFailureSummary(error));
     }
+    onProgress?.('sandbox_started');
     const sandboxResult = await this.executeSource(source, currentTheme);
+    onProgress?.('sandbox_completed');
     const rawPayload = readPptComposeRawPayload(sandboxResult.value);
     if (!rawPayload) {
       failBuild(
@@ -233,7 +237,9 @@ export class CodegenDeckBuilder {
       );
     }
 
+    onProgress?.('layout_started');
     const compiled = await this.compileComposeInput(rawPayload.rawPayload);
+    onProgress?.('layout_completed');
     const diagnostics = mergeCodegenDiagnostics(
       validateLayoutTrace(rawPayload.layoutTrace, markerIndex.listSlides()),
       mapParseWarningsToCodegenDiagnostics(compiled.parseWarnings)
@@ -362,6 +368,7 @@ export class CodegenDeckBuilder {
     deckSpec: DeckSpec,
     inheritContext: boolean,
   ): Promise<CodegenManualEditCommitResult> {
+    input.onProgress?.('persistence_started');
     try {
       const version = await this.deps.presentationRepo.commitPresentation(input.nodeId, deckSpec, {
         deferPptx: true,
@@ -445,7 +452,7 @@ export class CodegenDeckBuilder {
         failBuild(error.code, error.message);
       }
       const referenceId = randomUUID();
-      this.deps.failureLogger?.error('[materialization] PPTX assembly failed', {
+      this.deps.failureLogger?.error('slides.materialization.failed', {
         referenceId,
         code: 'slides.materialization.pptx_failed',
         presentationId: scope.nodeId ?? null,

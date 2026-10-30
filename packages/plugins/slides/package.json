@@ -35,6 +35,7 @@
     "./renderer": "./src/renderer/index.ts"
   },
   "scripts": {
+    "lint": "eslint src",
     "build": "pnpm run build:renderer && pnpm run build:raster-worker && pnpm run build:brush-worker && pnpm run build:backend && pnpm run build:cli",
     "build:backend": "tsup --config tsup.plugin.config.ts",
     "build:raster-preload": "node ../../../scripts/build/run-esbuild.mjs src/backend/features/slideRasterWorker/infrastructure/preload.ts --bundle --platform=node --outfile=dist/backend/raster-worker-preload.cjs --format=cjs --external:electron --tsconfig=tsconfig.json",
@@ -57,7 +58,7 @@
     "watch:brush-preload": "pnpm run build:brush-preload --sourcemap=inline --watch",
     "watch:raster-worker": "vite build --config vite.raster-worker.config.mts --watch",
     "watch:brush-worker": "vite build --config vite.brush-worker.config.mts --watch",
-    "smoke:preview-transitions": "vue-tsc --noEmit -p dev/tsconfig.preview-transitions.json && vite build --config vite.preview-smoke.config.mts && node ../../../scripts/build/run-esbuild.mjs dev/tools/previewTransitionSmoke.ts --bundle --platform=node --outfile=dist/dev/preview-transition-smoke.cjs --format=cjs --external:electron --tsconfig=tsconfig.json && electron dist/dev/preview-transition-smoke.cjs"
+    "smoke:preview-transitions": "pnpm --dir ../../.. exec tsx packages/plugins/slides/dev/tools/generateFlowWidthFixture.ts && vue-tsc --noEmit -p dev/tsconfig.preview-transitions.json && vite build --config vite.preview-smoke.config.mts && node ../../../scripts/build/run-esbuild.mjs dev/tools/previewTransitionSmoke.ts --bundle --platform=node --outfile=dist/dev/preview-transition-smoke.cjs --format=cjs --external:electron --tsconfig=tsconfig.json && electron dist/dev/preview-transition-smoke.cjs"
   },
   "dependencies": {
     "@app/schemas": "workspace:*",

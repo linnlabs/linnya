@@ -30,6 +30,7 @@ import * as sandboxRuntime from '../../../plugin-sdk/backend/sandboxRuntime';
 import * as textMeasurement from '../../../plugin-sdk/backend/textMeasurement';
 import * as textUnitRuntime from '../../../plugin-sdk/backend/textUnitRuntime';
 import * as toolRuntime from '../../../plugin-sdk/backend/toolRuntime';
+import * as workspaceDocumentProjection from '../../../plugin-sdk/backend/workspaceDocumentProjection';
 import * as workspaceRuntime from '../../../plugin-sdk/backend/workspaceRuntime';
 import * as workspaceDatabasePath from '../../../plugin-sdk/backend/workspaceDatabasePath';
 
@@ -69,6 +70,7 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/textUnitRuntime', textUnitRuntime],
   ['@plugin/backend/toolRuntime', toolRuntime],
   ['@plugin/backend/workspaceRuntime', workspaceRuntime],
+  ['@plugin/backend/workspaceDocumentProjection', workspaceDocumentProjection],
   ['@plugin/backend/workspaceDatabasePath', workspaceDatabasePath],
 ]);
 

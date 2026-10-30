@@ -98,7 +98,7 @@ const templateSummary: TemplateSummary = {
 function makeCoordinator(): SlidesIpcCoordinatorPort {
   return {
     readViewSnapshot: vi.fn(async () => { throw new Error('Snapshot read is outside this handler fixture'); }),
-    importImage: vi.fn(async () => 'owned-image'),
+    importImage: vi.fn(async () => ({ assetId: 'owned-image', width: 640, height: 480 })),
     copyObjects: vi.fn(async () => []),
     readManualEditHistory: vi.fn(async () => ({ revisionId: 'version-1', undoDepth: 0, redoDepth: 0 })),
     readSourceSlicesForAiEdit: vi.fn(async () => sourceSlices),
@@ -180,9 +180,25 @@ describe('slides IPC handlers', () => {
       targets: [],
     })).resolves.toEqual({
       success: false,
-      error: 'targets must contain valid source slice targets.',
+      error: '请求参数无效：targets',
+      code: 'validation',
+      retryable: false,
     });
     expect(coordinator.readSourceSlicesForAiEdit).not.toHaveBeenCalled();
+  });
+
+  it('adopts exact binary image bytes once and rejects the retired base64 payload before adoption', async () => {
+    const coordinator = makeCoordinator();
+    registerSlidesIpcHandlersForCoordinator(coordinator, registerBackendPluginIpcHandler);
+    const bytes = Uint8Array.from([10, 20, 30]);
+    await expect(invokeRegisteredHandler('slides:import-image', {
+      documentId: 'presentation-1', bytes: bytes.buffer,
+    })).resolves.toMatchObject({ success: true, data: { assetId: 'owned-image' } });
+    expect(coordinator.importImage).toHaveBeenCalledExactlyOnceWith('presentation-1', bytes);
+    await expect(invokeRegisteredHandler('slides:import-image', {
+      documentId: 'presentation-1', base64: 'ChQe',
+    })).resolves.toMatchObject({ success: false, code: 'validation', retryable: false });
+    expect(coordinator.importImage).toHaveBeenCalledTimes(1);
   });
 
   it('returns unresolved draft as build-state data instead of an IPC failure', async () => {

@@ -1,3 +1,4 @@
+import { isRecord } from '../../valueRecord';
 import {
   BRUSH_ARTWORK_BRUSHES,
   BRUSH_ARTWORK_FIELDS,
@@ -515,9 +516,6 @@ function assertKeys(value: Record<string, unknown>, keys: readonly string[], fie
   if (!hasOnlyKeys(value, keys)) throw new Error(`Brush artwork ${field} contains unsupported fields.`);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   const allowed = new Set(keys);

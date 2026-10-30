@@ -67,3 +67,5 @@ export { readInsertedObjects } from './functions/readInsertedObjects';
 export { readCopyableAuthoringValue } from './functions/readCopyableAuthoringValue';
 export { isManualTranslationOnGrid, quantizeManualTranslation, roundToManualTranslationGrid } from './functions/manualTranslationGrid';
 export type { SlidesCopyableAuthoringValue } from './functions/readCopyableAuthoringValue';
+
+export { SlidesImportedImageSchema, type SlidesImportedImage } from './definitions/importedImage';

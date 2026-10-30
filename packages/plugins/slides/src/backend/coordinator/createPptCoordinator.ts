@@ -135,7 +135,7 @@ export function createPptCoordinator(
     }, { assetContext: { documentId } }),
     assemble: (documentId, deck) => historicalAssembler.assemble(deck, { assetContext: { documentId } }),
     release: (documentId, assetIds) => releaseDocumentAssetOwnership({ database: db, documentId, assetIds }),
-    reportFailure: (documentId, error) => codegenFailureLogger.error('slides_history.maintenance.failed', { documentId, error: error instanceof Error ? error.message : String(error) }),
+    reportFailure: (documentId, error) => codegenFailureLogger.error('slides.history.maintenance_failed', { documentId, error: error instanceof Error ? error.message : String(error) }),
   });
 
   return new PptCoordinator(
@@ -167,7 +167,7 @@ export function createPptCoordinator(
         if (!await presentationRepo.getPresentation(documentId)) throw new Error('演示文稿不存在。');
         const asset = await imageAssets.adoptImageBytes({ documentId, bytes, usageHint: 'slides:image' });
         imageBindings.bind({ presentationId: documentId, sourceIdentity: `document_asset:${asset.assetId}`, assetId: asset.assetId });
-        return asset.assetId;
+        return { assetId: asset.assetId, width: asset.width, height: asset.height };
       }),
       codegenFailureLogger,
       manualEditHistoryStore,

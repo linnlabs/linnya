@@ -77,6 +77,7 @@ jobs:
           pnpm run test:renderer-ui-package-gate
           pnpm --filter @linnya/plugin-host-contract typecheck
           pnpm --filter @plugin/mindmap typecheck
+          pnpm --filter @plugin/slides lint
           pnpm --filter @plugin/slides typecheck
           pnpm run test:workspace-plugins
 

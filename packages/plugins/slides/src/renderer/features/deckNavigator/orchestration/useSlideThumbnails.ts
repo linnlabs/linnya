@@ -1,6 +1,7 @@
+import { useSlideThumbnailResources } from './useSlideThumbnailResources';
 import { onScopeDispose, watch } from 'vue';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { resolveFilmstripThumbnailSize } from '../../../shared/thumbnailGeometry';
 import { logSlidesVerbose, warnSlides } from '../../../shared/diagnosticLogging';
 import { renderSlideRasterToImageBitmap } from '../../slideRasterization';
@@ -26,7 +27,7 @@ export function useSlideThumbnails(): void {
       return bitmap;
     },
     schedule: scheduleThumbnailWork,
-    publish: thumbnails.applySnapshot,
+    publish: useSlideThumbnailResources().applySnapshot,
     reportFailure: (slideId, error) => warnSlides('Thumbnail', 'Page raster failed', { slideId, error }),
   });
 
@@ -51,7 +52,7 @@ export function useSlideThumbnails(): void {
     }
     sources = createSlideThumbnailSources(model);
     reconcile();
-  }, { immediate: true });
+  }, { immediate: true, flush: 'sync' });
   watch(() => thumbnails.requestedRasterWidth, reconcile);
   watch(() => render.renderModel?.slides[slides.currentSlideIndex]?.slideId ?? null,
     renderer.prioritize, { immediate: true });

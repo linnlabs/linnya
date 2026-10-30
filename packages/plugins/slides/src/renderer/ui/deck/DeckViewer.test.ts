@@ -1,3 +1,6 @@
+import { createElementClipboard, provideElementClipboard } from '../../features/elementClipboard';
+import { createEditingCommands, provideEditingCommands } from '../../features/editingCommands';
+import type { ManualEditSubmissionPort } from '../../features/manualEditing/submission';
 // @vitest-environment jsdom
 import { installTestPresentation } from '../../features/documentRuntime/testing/installTestPresentation';
 
@@ -8,7 +11,7 @@ import { createPinia, setActivePinia } from 'pinia';
 vi.mock('../../features/deckNavigator', () => ({
   DeckNavigatorBar: {
     name: 'DeckNavigatorBarStub',
-    template: '<div class="deck-navigator-stub" />',
+    template: '<div class="deck-navigator-stub"><slot name="view-controls" /></div>',
   },
   SlideGridView: {
     name: 'SlideGridViewStub',
@@ -79,8 +82,9 @@ vi.mock('@linnya/renderer-ui/icons', () => ({
 }));
 
 import DeckViewer from './DeckViewer.vue';
-import { useSlidesStore } from '../../store/slidesStore';
-import { useSlidesManualEditingStore, provideManualEditSubmission } from '../../features/manualEditing';
+import { useSlidesStore } from '../../features/documentRuntime';
+import { useManualEditingEnabled } from '../../features/manualEditing/selection';
+import { provideManualEditSubmission } from '../../features/manualEditing/submission';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
 
 describe('DeckViewer document transition', () => {
@@ -116,7 +120,7 @@ describe('DeckViewer document transition', () => {
     const host = document.createElement('div');
     document.body.append(host);
     const app = createApp({ setup() {
-      provideManualEditSubmission({
+      provideEditingPorts({
         flush: async () => {},
         enqueue: () => { throw new Error('Stubbed Stage must not submit an edit'); },
         refreshPresentation: async () => undefined,
@@ -151,9 +155,9 @@ describe('DeckViewer document transition', () => {
     app.unmount();
   });
 
-  it('没有编辑模式开关：ready 的生成文稿自动可手动编辑，刷新自己的修订时不闪成只读', async () => {
+  it('没有编辑模式开关：ready 的生成文稿自动可手动编辑，写入权限从一致快照派生', async () => {
     const slidesStore = useSlidesStore();
-    const manualStore = useSlidesManualEditingStore();
+    const enabled = useManualEditingEnabled();
     installTestPresentation({ documentId: 'deck-1' });
     installTestPresentation({ buildState: {
       state: 'ready',
@@ -193,7 +197,7 @@ describe('DeckViewer document transition', () => {
     const host = document.createElement('div');
     document.body.append(host);
     const app = createApp({ setup() {
-      provideManualEditSubmission({
+      provideEditingPorts({
         flush: async () => {},
         enqueue: () => { throw new Error('Stubbed Stage must not submit an edit'); },
         refreshPresentation: async () => undefined,
@@ -203,9 +207,7 @@ describe('DeckViewer document transition', () => {
     app.mount(host);
     await nextTick();
 
-    expect(host.querySelector('.stage-zoom-slider__edit-btn')).toBeNull();
-    expect(host.querySelector('.stage-zoom-slider__select-btn')).toBeNull();
-    expect(manualStore.enabled).toBe(true);
+    expect(enabled.value).toBe(true);
 
     installTestPresentation({ buildState: {
       ...slidesStore.documentBuildState,
@@ -214,18 +216,18 @@ describe('DeckViewer document transition', () => {
       versionNumber: 3,
     } });
     await nextTick();
-    expect(manualStore.enabled).toBe(true);
+    expect(enabled.value).toBe(false);
 
     const generated = slidesStore.renderModel;
     if (!generated) throw new Error('Render model fixture missing');
     installTestPresentation({ renderModel: { ...generated, version: 3, sourceKind: 'imported' } });
     await nextTick();
-    expect(manualStore.enabled).toBe(false);
+    expect(enabled.value).toBe(false);
 
     app.unmount();
   });
 
-  it('平铺视图替换舞台并隐藏舞台工具条；百分比菜单切换适应窗口与固定档位', async () => {
+  it('平铺视图替换舞台并撤下底栏缩放组；百分比菜单切换适应窗口与固定档位', async () => {
     const uiStore = useSlidesUiStore();
     installTestPresentation({ documentId: 'deck-1' });
     installTestPresentation({ preview: {
@@ -239,7 +241,7 @@ describe('DeckViewer document transition', () => {
     const host = document.createElement('div');
     document.body.append(host);
     const app = createApp({ setup() {
-      provideManualEditSubmission({
+      provideEditingPorts({
         flush: async () => {},
         enqueue: () => { throw new Error('Stubbed Stage must not submit an edit'); },
         refreshPresentation: async () => undefined,
@@ -262,6 +264,15 @@ describe('DeckViewer document transition', () => {
     expect(uiStore.zoomLevel).toBe(1.5);
     expect(host.querySelector('.stage-zoom-menu__panel')).toBeNull();
 
+    // 加减按钮按 5% 步进，并在上限处禁用。
+    const zoomIn = host.querySelector<HTMLButtonElement>('.stage-zoom-controls__button--in');
+    zoomIn?.click();
+    await nextTick();
+    expect(uiStore.zoomLevel).toBeCloseTo(1.55);
+    uiStore.setZoom(3, 'manual');
+    await nextTick();
+    expect(zoomIn?.disabled).toBe(true);
+
     trigger.click();
     await nextTick();
     option('适应窗口')?.click();
@@ -272,9 +283,15 @@ describe('DeckViewer document transition', () => {
     await nextTick();
     expect(host.querySelector('.slide-grid-stub')).not.toBeNull();
     expect(host.querySelector('.slide-stage-stub')).toBeNull();
-    expect(host.querySelector('.stage-zoom-slider')).toBeNull();
+    expect(host.querySelector('.stage-zoom-controls')).toBeNull();
     expect(host.querySelector('.deck-navigator-stub')).not.toBeNull();
 
     app.unmount();
   });
 });
+
+function provideEditingPorts(port: ManualEditSubmissionPort): void {
+  provideManualEditSubmission(port);
+  provideElementClipboard(createElementClipboard(port));
+  provideEditingCommands(createEditingCommands(port));
+}

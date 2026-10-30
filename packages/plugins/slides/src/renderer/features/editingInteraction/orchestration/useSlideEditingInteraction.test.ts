@@ -1,3 +1,4 @@
+import { useSlidesManualSelectionStore } from '../../manualEditing/selection';
 // @vitest-environment jsdom
 import { prepareTextLayout, layoutPreparedText } from '@plugin/slides/shared/textLayout';
 
@@ -5,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { nextTick, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SlideRenderModel } from '../../../types/render';
-import { useSlidesManualEditingStore, type ManualEditIntent, type ManualEditQueueEntry } from '../../manualEditing';
+import { useSlidesManualSubmissionStore, type ManualEditIntent, type ManualEditQueueEntry } from '../../manualEditing/submission';
 import { useSlideEditingInteraction } from './useSlideEditingInteraction';
 
 const slide: SlideRenderModel = {
@@ -116,7 +117,7 @@ function createInteraction(
     wrapperRef: ref(wrapper),
     submitIntent: intent => {
       submitOperation(intent);
-      const store = useSlidesManualEditingStore();
+      const store = useSlidesManualSubmissionStore();
       const clientOperationId = crypto.randomUUID();
       const entry: ManualEditQueueEntry = { intent, clientOperationIds: [clientOperationId] };
       if (canMutate.value && store.submission.phase === 'idle') {
@@ -254,8 +255,8 @@ describe('useSlideEditingInteraction', () => {
       bubbles: true, pointerId: 7, clientX: 240, clientY: 192,
     }));
 
-    const store = useSlidesManualEditingStore();
-    expect(store.translationPreview).toBeNull();
+    const store = useSlidesManualSubmissionStore();
+    expect(useSlidesManualSelectionStore().translationPreview).toBeNull();
     expect(store.pendingTranslations[0]).toEqual({
       elementId: 'authoring-overview-headline',
       affectedElementIds: ['authoring-overview-headline'],
@@ -368,7 +369,7 @@ describe('useSlideEditingInteraction', () => {
       bubbles: true, button: 0, pointerId: 3, clientX: 288, clientY: 144,
     }));
 
-    expect(useSlidesManualEditingStore().submitting).toBe(true);
+    expect(useSlidesManualSubmissionStore().submitting).toBe(true);
     expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-card1Value');
   });
 
@@ -511,7 +512,7 @@ describe('useSlideEditingInteraction', () => {
       operation: expect.objectContaining({ op: 'set_fill_color' }),
     }));
 
-    useSlidesManualEditingStore().setSubmission({ phase: 'idle' });
+    useSlidesManualSubmissionStore().setSubmission({ phase: 'idle' });
     interaction.submitVisualOperation({
       op: 'delete_target',
       target: { slideKey: 'overview', editKey: 'card1' },
@@ -642,13 +643,13 @@ describe('useSlideEditingInteraction', () => {
 
   it('reselects the authoring targets an undo asks to reveal, at their own level', async () => {
     const { interaction } = createInteraction(vi.fn(), tripleSlide);
-    useSlidesManualEditingStore().requestReveal({ targets: [
+    useSlidesManualSelectionStore().requestReveal({ targets: [
       { slideKey: 'overview', editKey: 'card1Label' }, { slideKey: 'overview', editKey: 'card1Note' }, { slideKey: 'overview', editKey: 'gone' },
     ] });
     await nextTick();
     expect(interaction.selectedTargets.value.map(target => target.authoringRef.editKey)).toEqual(['card1Label', 'card1Note']);
     expect(interaction.selectionPath.value.map(target => target.authoringRef.editKey)).toEqual(['card1']);
-    expect(useSlidesManualEditingStore().revealRequest).toBeNull();
+    expect(useSlidesManualSelectionStore().revealRequest).toBeNull();
   });
 
   it('submits drags on the compiler coordinate grid so the backend can project them', () => {
@@ -665,7 +666,7 @@ describe('useSlideEditingInteraction', () => {
 
   it('opens a newly inserted text box for input with its placeholder selected', async () => {
     const { interaction } = createInteraction(vi.fn());
-    useSlidesManualEditingStore().requestReveal({ targets: [{ editKey: 'headline' }], editText: true });
+    useSlidesManualSelectionStore().requestReveal({ targets: [{ editKey: 'headline' }], editText: true });
     await nextTick();
     expect(interaction.selectedTarget.value?.authoringRef.editKey).toBe('headline');
     expect(interaction.textEditorTarget.value?.elementId).toBe('authoring-overview-headline');
@@ -690,6 +691,6 @@ describe('useSlideEditingInteraction', () => {
 });
 
 function enqueuePreview(intent: ManualEditIntent): void {
-  const store = useSlidesManualEditingStore();
+  const store = useSlidesManualSubmissionStore();
   store.setQueue([...store.queue, { intent, clientOperationIds: ['preview-fixture'] }]);
 }

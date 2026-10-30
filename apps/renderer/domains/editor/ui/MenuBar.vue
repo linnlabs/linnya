@@ -65,9 +65,9 @@
       <button @click="toggleListItem('ordered')" 
               :class="{ 'is-active': editor.isActive('listItemBlock', { listType: 'ordered' }) }"
               :disabled="isInTable"
-              :title="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.orderedList')">
-        <!-- 这里不额外引入新 icon：用 “1.” 作为最直观的视觉提示 -->
-        <span class="ordered-list-label">1.</span>
+              :data-linnya-tooltip="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.orderedList')"
+              :aria-label="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.orderedList')">
+        <NumberedListIcon />
       </button>
       <button @click="toggleQuoteBlock()" 
               :class="{ 'is-active': editor.isActive('quoteBlock') }"
@@ -144,7 +144,7 @@ import { useUIStore } from '../../../shared/stores/ui'; // 导入UI Store
 import { useNotificationStore } from '@/app/notification'; // 导入 Notification Store
 import { ImageIcon } from '@linnya/renderer-ui/icons';
 import { TableIcon } from '@linnya/renderer-ui/icons';
-import { BulletListIcon } from '@linnya/renderer-ui/icons';
+import { BulletListIcon, NumberedListIcon } from '@linnya/renderer-ui/icons';
 import { QuoteIcon } from '@linnya/renderer-ui/icons';
 import { BoldIcon } from '@linnya/renderer-ui/icons';
 import { ItalicIcon } from '@linnya/renderer-ui/icons';

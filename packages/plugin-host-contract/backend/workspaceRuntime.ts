@@ -173,3 +173,6 @@ export declare function resolveWorkspaceVfsNodeForPluginTool(
   contextValue: unknown,
   input: PluginToolVfsNodeResolveInput,
 ): Promise<PluginToolVfsNodeResolveResult>;
+
+/** 迁移回填只补缺失快照，读取与保存均在 migration transaction 内。 */
+export declare function hasWorkspaceNodeTextSnapshot(db: PluginSqliteDatabaseLike, nodeId: string): boolean;

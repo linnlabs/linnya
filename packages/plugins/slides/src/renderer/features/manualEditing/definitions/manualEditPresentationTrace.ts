@@ -4,6 +4,8 @@ import type {
 } from '@plugin/slides/shared/authoringEditing';
 
 export interface ManualEditPresentationTracePort {
+  recordQueued(clientOperationId: string): void;
+  recordQueueSettled(clientOperationIds: readonly string[]): void;
   begin(command: SlidesManualEditCommand): void;
   recordTransportRetry(commandId: string): void;
   recordResponse(result: SlidesManualEditCommandResult): void;

@@ -39,10 +39,10 @@
         :style="{ '--slides-custom-color': color ?? 'transparent' }"
       />
       <span class="slides-element-color__caption">{{ message('slides.elementProperties.customColor') }}</span>
-      <span
+      <CheckmarkIcon
         v-if="isCustom"
-        aria-hidden="true"
-      >✓</span>
+        class="slides-element-color__check"
+      />
       <ChevronIcon direction="right" class="slides-element-color__chevron" />
     </button>
     <!-- 留在本实例 BaseDropdown 的 DOM 内，既逃离色板滚动裁剪，也保持外部点击/焦点归属。 -->
@@ -176,7 +176,7 @@
 <script setup lang="ts">
 import { computed, ref, toRef, useId } from 'vue';
 import { ActionButtons, ColorPickerPanel, CustomNumberInput, CustomSlider, CustomTextInput, DropdownPanel, SegmentedTabs, type FloatingToolbarPosition } from '@linnya/renderer-ui';
-import { ChevronIcon } from '@linnya/renderer-ui/icons';
+import { CheckmarkIcon, ChevronIcon } from '@linnya/renderer-ui/icons';
 import { ELEMENT_PROPERTY_COLOR_OPTIONS } from '../definitions/elementPropertyPalette';
 import { colorPlaneValue, isValidRgbChannel } from '../functions/customColor';
 import { useCustomColorDraft } from '../orchestration/useCustomColorDraft';

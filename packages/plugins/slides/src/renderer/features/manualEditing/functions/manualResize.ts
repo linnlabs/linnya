@@ -1,3 +1,4 @@
+import { quantizeManualTranslation } from '@plugin/slides/shared/authoringEditing';
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../shared/constants';
 import type { ManualEditableTarget, ManualEditingVisualOperation } from '../definitions/manualEditingTypes';
 import { MANUAL_RESIZE_DIRECTIONS, type ManualResizeHandle, type ManualResizeStart } from '../definitions/manualResize';
@@ -47,10 +48,11 @@ export function resolveManualResize(
   const halfHeightDelta = (nextHeight - height) / 2;
   const shiftX = halfWidthDelta * horizontal;
   const shiftY = halfHeightDelta * vertical;
-  const translationDelta = {
+  // 与普通移动使用相同的编译精度，避免在已舍入坐标上反复累加非整格锚点补偿。
+  const translationDelta = quantizeManualTranslation({
     dx: shiftX * (right.x - origin.x) / width + shiftY * (bottom.x - origin.x) / height - halfWidthDelta,
     dy: shiftX * (right.y - origin.y) / width + shiftY * (bottom.y - origin.y) / height - halfHeightDelta,
-  };
+  });
   if (Math.abs(nextWidth - width) < 1e-9 && Math.abs(nextHeight - height) < 1e-9) return null;
   return {
     op: 'set_visual_size', target: target.authoringRef, targetKind: target.targetKind,

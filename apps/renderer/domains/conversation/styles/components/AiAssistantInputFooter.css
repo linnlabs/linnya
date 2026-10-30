@@ -399,7 +399,7 @@
   background-color: var(--color-bg-inverse);
   color: var(--color-text-inverse);
   cursor: pointer;
-  transition: none;
+  transition: background-color var(--duration-short) var(--ease-standard);
   padding: 0;
   margin: 0;
   flex-shrink: 0;
@@ -421,22 +421,16 @@
   cursor: not-allowed;
 }
 
-.ai-assistant-input-footer .send-button:has(.run-control-icon) {
+.ai-assistant-input-footer .send-button.is-running {
   background-color: var(--color-bg-inverse-hover);
 }
 
-.ai-assistant-input-footer .send-button:has(.run-control-icon):hover {
+.ai-assistant-input-footer .send-button.is-running:hover {
   background-color: var(--color-bg-inverse-hover);
 }
 
-.ai-assistant-input-footer .send-icon,
-.ai-assistant-input-footer .run-control-icon {
-  font-size: var(--font-size-footnote);
-  line-height: 1;
-}
-
-/* 发送按钮中的回车图标尺寸与旧图标保持一致 */
-.ai-assistant-input-footer .enter-left-icon {
+/* 发送按钮里的运行控制图标：回车箭头保持旧尺寸，暂停 / 继续与它同一尺寸 */
+.ai-assistant-input-footer .send-button__icon {
   width: 13px;
   height: 13px;
   display: block;

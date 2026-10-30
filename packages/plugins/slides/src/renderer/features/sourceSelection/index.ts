@@ -11,6 +11,7 @@ export {
   findSourceElementAtPoint,
   findSourceElementsByIds,
   findSourceElementsForSelection,
+  selectSourceTargets,
 } from './functions/renderNodeSourceSelection';
 export {
   normalizeSourceSelectionIds,

@@ -5,6 +5,11 @@ export interface ScrollableStageLayoutInput {
   slideHeight: number;
   scale: number;
   gutter: number;
+  /**
+   * 未溢出时的上下留白。幻灯片在留白之间的区域居中；放不下时贴近该位置但不越出视口。
+   * 省略时在整个视口居中。
+   */
+  verticalInsets?: { readonly top: number; readonly bottom: number };
 }
 
 export interface ScrollableStageLayout {
@@ -60,11 +65,18 @@ export function computeScrollableStageLayout(input: ScrollableStageLayoutInput):
     ? scaledSlideHeight + input.gutter * 2
     : input.viewportHeight;
 
+  const insetShift = input.verticalInsets
+    ? (input.verticalInsets.top - input.verticalInsets.bottom) / 2
+    : 0;
+  const slideTop = heightOverflow
+    ? (contentHeight - scaledSlideHeight) / 2
+    : clamp((contentHeight - scaledSlideHeight) / 2 + insetShift, 0, contentHeight - scaledSlideHeight);
+
   return {
     contentWidth,
     contentHeight,
     slideLeft: (contentWidth - scaledSlideWidth) / 2,
-    slideTop: (contentHeight - scaledSlideHeight) / 2,
+    slideTop,
     slideWidth: input.slideWidth,
     slideHeight: input.slideHeight,
     scaledSlideWidth,

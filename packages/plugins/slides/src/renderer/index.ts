@@ -27,6 +27,7 @@ import deckNavigatorBarStylesheet from './features/deckNavigator/ui/DeckNavigato
 import deckFilmstripStylesheet from './features/deckNavigator/ui/DeckFilmstrip.css?url';
 import slideGridViewStylesheet from './features/deckNavigator/ui/SlideGridView.css?url';
 import slideThumbnailStylesheet from './features/deckNavigator/ui/SlideThumbnail.css?url';
+import stageZoomControlsStylesheet from './features/stageZoom/ui/StageZoomControls.css?url';
 import stageZoomMenuStylesheet from './features/stageZoom/ui/StageZoomMenu.css?url';
 import slideStageStylesheet from './ui/preview/SlideStage.css?url';
 import slidesStatusStateStylesheet from './ui/shared/SlidesStatusState.css?url';
@@ -78,6 +79,7 @@ const slidesStylesheets = [
   deckFilmstripStylesheet,
   slideGridViewStylesheet,
   slideThumbnailStylesheet,
+  stageZoomControlsStylesheet,
   stageZoomMenuStylesheet,
   slideStageStylesheet,
   slidesStatusStateStylesheet,

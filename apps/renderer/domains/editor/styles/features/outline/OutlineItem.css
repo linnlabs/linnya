@@ -70,9 +70,9 @@
 }
 
 .editor-outline-item .chevron-icon {
-  width: 10px;
-  height: 10px;
-  stroke-width: 2.5;
+  /* 辅助展开箭头按设计规范 10.1 取 12px，线宽由图标自身决定 */
+  width: 12px;
+  height: 12px;
   transition: transform var(--duration-medium) var(--ease-standard);
 }
 

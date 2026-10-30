@@ -1,3 +1,4 @@
+import type { LayoutReplay } from '../generatedLayoutReplay';
 /**
  * Slides 页面视觉元素合同。
  *
@@ -272,6 +273,7 @@ export type StructuredSvgGraphicElement = SvgGraphicElementSpec & {
 };
 
 export interface StructuredSlideSpec {
+  layoutReplay?: LayoutReplay;
   type: 'structured';
   background?: {
     /** 当前统一背景填充合同。 */
@@ -368,6 +370,7 @@ export type FreeformElement =
   | FreeformGroupElement;
 
 export interface FreeformSlideSpec {
+  layoutReplay?: LayoutReplay;
   type: 'freeform';
   background?: {
     /** 当前统一背景填充合同。 */

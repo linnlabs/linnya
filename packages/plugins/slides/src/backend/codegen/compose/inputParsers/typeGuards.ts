@@ -1,11 +1,9 @@
+export { isRecord } from '@plugin/slides/shared/valueRecord';
 /**
  * 通用类型守卫与基础解析工具。
  * 所有 tool input 解析器的最底层依赖，不依赖任何同级模块。
  */
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return value != null && typeof value === 'object' && !Array.isArray(value);
-}
 
 export function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;

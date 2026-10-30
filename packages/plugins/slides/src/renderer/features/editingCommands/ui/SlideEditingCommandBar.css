@@ -1,4 +1,4 @@
-/* 舞台顶部居中的文稿命令条：与右下缩放条同一套表面，不进入布局，幻灯片位置不随它变化。 */
+/* 舞台顶部居中的文稿命令条：浮动表面，不进入布局，幻灯片位置不随它变化。下沿 48px 与 SLIDE_STAGE_COMMAND_BAR_BOTTOM 一致。 */
 .slides-editing-command-bar {
   position: absolute;
   top: 12px;

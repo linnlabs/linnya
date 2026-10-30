@@ -14,22 +14,21 @@
 </template>
 
 <script setup lang="ts">
+import { useSlidesDocumentRuntime } from '../features/documentRuntime';
 import { watch } from 'vue';
+import { createElementClipboard, provideElementClipboard } from '../features/elementClipboard';
+import { createEditingCommands, provideEditingCommands } from '../features/editingCommands';
 import { storeToRefs } from 'pinia';
 import DeckViewer from '../ui/deck/DeckViewer.vue';
 import SlidesStatusState from '../ui/shared/SlidesStatusState.vue';
 import { useSlidesRenderStore } from '../store/slidesRenderStore';
-import { useSlidesSessionStore } from '../store/slidesSessionStore';
-import { useSlidesStore } from '../store/slidesStore';
+import { useSlidesStore } from '../features/documentRuntime';
 import { useSlidesUiStore } from '../store/slidesUiStore';
 import type { SourceSelectionEditSubmitPayload } from '../features/sourceSelection';
 import { usePresentationExportStore } from '../features/presentationExport';
-import {
-  manualEditPresentationTrace,
-  useManualEditQueue,
-  provideManualEditSubmission,
-  useManualEditingLocalization,
-} from '../features/manualEditing';
+import { manualEditPresentationTrace, useManualEditQueue, provideManualEditSubmission } from '../features/manualEditing/submission';
+import { useSlidesManualSelectionStore } from '../features/manualEditing/selection';
+import { useManualEditingLocalization } from '../features/manualEditing/ui';
 import { useSlidesEditingInteractionStore } from '../features/editingInteraction';
 import { refreshSlidesDocumentPresentation } from './orchestration/refreshSlidesDocumentPresentation';
 import { useSlidesEditingHistoryStatus } from './orchestration/useSlidesEditingHistoryStatus';
@@ -54,15 +53,19 @@ const {
   documentBuildState,
 } = storeToRefs(slidesStore);
 const slidesUiStore = useSlidesUiStore();
-const slidesSessionStore = useSlidesSessionStore();
 const presentationExportStore = usePresentationExportStore();
 const editingInteractionStore = useSlidesEditingInteractionStore();
 const { manualEditingMessage } = useManualEditingLocalization();
 
+const documentRuntime = useSlidesDocumentRuntime();
+watch(documentRuntime.presentedRevision, revision => {
+  if (revision !== null && currentDeckId.value) manualEditPresentationTrace.recordPresented(currentDeckId.value, revision);
+});
 const manualEditSubmission = useManualEditQueue({
+  readPresentedRevision: () => documentRuntime.presentedRevision.value,
   readSnapshot: () => ({ documentId: currentDeckId.value, buildState: documentBuildState.value,
     renderVersion: slidesRenderStore.renderModel?.version ?? null,
-    presentationError: slidesRenderStore.renderError }),
+    presentationError: slidesStore.presentationError ?? slidesRenderStore.renderError }),
   createCommandId: () => crypto.randomUUID(),
   submit: command => slidesApi.submitManualEdit(command),
   preparePresentation: prepareSlidesPresentation,
@@ -71,6 +74,8 @@ const manualEditSubmission = useManualEditQueue({
   trace: manualEditPresentationTrace,
 });
 provideManualEditSubmission(manualEditSubmission);
+provideElementClipboard(createElementClipboard(manualEditSubmission));
+provideEditingCommands(createEditingCommands(manualEditSubmission));
 useSlidesDocumentSave(manualEditSubmission);
 useSlidesEditingHistoryStatus();
 useSlideThumbnails();
@@ -78,7 +83,7 @@ useSlideThumbnails();
 /** 文档身份重置交互；渲染刷新只由正式 revision 驱动，与页面挂载先后无关。 */
 watch(currentDeckId, () => {
   slidesUiStore.$reset();
-  slidesSessionStore.$reset();
+  useSlidesManualSelectionStore().$reset();
   presentationExportStore.$reset();
   editingInteractionStore.$reset();
   manualEditPresentationTrace.clear();

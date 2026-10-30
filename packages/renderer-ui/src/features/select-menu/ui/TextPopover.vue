@@ -45,7 +45,7 @@
           :title="closeLabel"
           :aria-label="closeLabel"
         >
-          ✕
+          <CloseIcon class="popover-close-icon" />
         </button>
       </div>
     </transition>
@@ -60,6 +60,7 @@ import type {
   TextPopoverPlacement,
   TextPopoverTriggerMode,
 } from '../definitions/selectMenu';
+import { CloseIcon } from '../../../icons';
 import { useSharedComponentLocalization } from '../../../localization';
 
 interface TextPopoverProps {

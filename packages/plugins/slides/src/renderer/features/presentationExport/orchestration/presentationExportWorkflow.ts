@@ -2,7 +2,7 @@ import { requestExportArtifactTarget } from '@plugin/renderer/exportArtifact';
 import { showWorkspaceNotification } from '@plugin/renderer/workspaceRuntime';
 import { saveSlidesDocument } from '../../documentRuntime';
 import { slidesApi } from '../../../services/slidesApi';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import type { PresentationExportUiFormat } from '../definitions/presentationExportUi';
 import {
   buildPresentationExportRequest,

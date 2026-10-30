@@ -1,3 +1,4 @@
+import { isRecord } from '@plugin/slides/shared/valueRecord';
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '@plugin/backend/toolRuntime';
 import type { StructuredToolResult } from '@plugin/backend/toolRuntime';
 import {
@@ -11,9 +12,6 @@ interface PptExportData {
   sizeBytes: number;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value != null && typeof value === 'object' && !Array.isArray(value);
-}
 
 export class PptExportTool extends BaseTool {
   readonly name = 'ppt_export';

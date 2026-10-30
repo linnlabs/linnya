@@ -13,6 +13,7 @@ export interface ManualEditQueueSnapshot {
 export interface ManualEditQueuePorts extends SubmitManualEditPorts {
   /** 一次逻辑提交只准备一次呈现意图；传输重试共用它，终态后确认或撤销。 */
   readonly preparePresentation?: (operation: SlidesManualEditCommandOperation, snapshot: ManualEditQueueSnapshot) => (revision: number | null) => void;
+  readonly readPresentedRevision: () => number | null;
   readonly readSnapshot: () => ManualEditQueueSnapshot;
   readonly refreshDocument: (documentId: string, expectedVersion?: number) => Promise<void>;
   readonly message: ManualEditingMessageResolver;

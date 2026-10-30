@@ -1,13 +1,12 @@
 /**
  * Slides UI 状态
  *
- * 纯 UI 层状态：视图模式、页面条收起、缩放级别、选中元素、overlay 开关等。
+ * 纯 UI 层状态：视图模式、页面条收起、缩放级别。
  * 不涉及领域事实数据，也不涉及异步流程。
  */
 
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { InspectorTab } from '../types/preview';
 import {
   ZOOM_DEFAULT,
   ZOOM_MIN,
@@ -30,12 +29,6 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
   /** 单页视图下底部页面条是否收起 */
   const filmstripCollapsed = ref(false);
 
-  /** 右侧 inspector 面板当前 tab */
-  const inspectorTab = ref<InspectorTab>('overview');
-
-  /** 右侧 inspector 面板是否可见 */
-  const inspectorVisible = ref(false);
-
   /** 画布缩放级别（1 = 100%） */
   const zoomLevel = ref(ZOOM_DEFAULT);
 
@@ -44,22 +37,6 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
 
   /** 当前缩放来源：自适应 fit 或用户手动缩放 */
   const zoomMode = ref<ZoomMode>('fit');
-
-  /** 当前选中的元素 ID */
-  const selectedElementId = ref<string | null>(null);
-
-  /** 是否显示布局警告 overlay */
-  const showLayoutWarnings = ref(false);
-
-  /** 是否进入源码元素选择模式；只有用户显式打开后，舞台点击才会被 source selection 接管 */
-
-  // ─── Computed ───
-
-  /** 缩放百分比显示文本 */
-  const zoomPercentText = computed(() => {
-    const displayedZoom = zoomMode.value === 'fit' ? fitZoomLevel.value : zoomLevel.value;
-    return `${Math.round(displayedZoom * 100)}%`;
-  });
 
   /** 当前是否处于 fit 模式 */
   const isFitZoom = computed(() => zoomMode.value === 'fit');
@@ -76,17 +53,6 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
 
   function toggleFilmstrip() {
     filmstripCollapsed.value = !filmstripCollapsed.value;
-  }
-
-  function setInspectorTab(tab: InspectorTab) {
-    inspectorTab.value = tab;
-    if (!inspectorVisible.value) {
-      inspectorVisible.value = true;
-    }
-  }
-
-  function toggleInspector() {
-    inspectorVisible.value = !inspectorVisible.value;
   }
 
   function zoomIn() {
@@ -116,17 +82,10 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
     zoomLevel.value = Math.max(ZOOM_MIN, Math.min(level, ZOOM_MAX));
   }
 
-  function resetZoom() {
-    zoomMode.value = 'fit';
-  }
-
   /** 同步 fit 模式下的缩放显示值，不污染手动缩放状态 */
   function syncFitZoomLevel(level: number) {
-    const nextLevel = Math.max(ZOOM_MIN, Math.min(level, ZOOM_MAX));
-    if (Math.round(nextLevel * 100) === Math.round(fitZoomLevel.value * 100)) {
-      return;
-    }
-    fitZoomLevel.value = nextLevel;
+    // fit 可小于手动缩放下限；显示和实际舞台必须使用同一个精确值。
+    fitZoomLevel.value = level;
   }
 
   /** 切回 fit 模式 */
@@ -134,56 +93,34 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
     zoomMode.value = 'fit';
   }
 
-  function selectElement(elementId: string | null) {
-    selectedElementId.value = elementId;
-  }
-
-  function toggleLayoutWarnings() {
-    showLayoutWarnings.value = !showLayoutWarnings.value;
-  }
-
   function $reset() {
     deckViewMode.value = 'slide';
     filmstripCollapsed.value = false;
-    inspectorTab.value = 'overview';
-    inspectorVisible.value = false;
     zoomMode.value = 'fit';
     zoomLevel.value = ZOOM_DEFAULT;
     /**
      * fitZoomLevel 是当前舞台视口推导值，不是 deck 私有状态。
      * deck 切换时保留上一帧结果，避免缩放栏短暂回落到 100% 再被新舞台回填。
      */
-    selectedElementId.value = null;
-    showLayoutWarnings.value = false;
   }
 
   return {
     // State
     deckViewMode,
     filmstripCollapsed,
-    inspectorTab,
-    inspectorVisible,
     zoomLevel,
     fitZoomLevel,
     zoomMode,
-    selectedElementId,
-    showLayoutWarnings,
     // Computed
-    zoomPercentText,
     isFitZoom,
     // Actions
     setDeckViewMode,
     toggleFilmstrip,
-    setInspectorTab,
-    toggleInspector,
     zoomIn,
     zoomOut,
     setZoom,
-    resetZoom,
     syncFitZoomLevel,
     zoomToFit,
-    selectElement,
-    toggleLayoutWarnings,
     $reset,
   };
 });

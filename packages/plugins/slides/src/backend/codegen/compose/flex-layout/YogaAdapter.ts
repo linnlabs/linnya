@@ -19,6 +19,9 @@
  */
 
 import type { Config as YogaConfig, Node as YogaNode, Yoga as YogaModule } from 'yoga-layout/load';
+import type { LayoutReplay } from '@plugin/slides/shared/generatedLayoutReplay';
+import { readYogaReplayStyle } from './YogaReplayStyle';
+import { readLayoutReplayMeasurement } from './LayoutReplayProjection';
 import { readYogaRuntimeLoader } from './YogaRuntimeLoaderResolver.js';
 
 const yogaRuntimeLoader = readYogaRuntimeLoader();
@@ -79,6 +82,7 @@ export interface ComputedBox {
 
 /** 布局计算结果：每个 LayoutNode 的绝对坐标 */
 export interface LayoutResult {
+  replay?: Omit<LayoutReplay['nodes'][number], 'id' | 'parent'>;
   /** 该节点对应的原始 LayoutNode */
   node: LayoutNode;
   /** 计算后的绝对坐标 (inches)，相对于 Slide 左上角 */
@@ -114,7 +118,7 @@ export function computeSlideLayout(
   try {
     const rootYoga = createYogaNode(yoga, config, slideNode, slideWidth, slideHeight, true);
     rootYoga.calculateLayout(toPt(slideWidth), toPt(slideHeight), yoga.DIRECTION_LTR);
-    const result = collectResults(slideNode, rootYoga, 0, 0);
+    const result = collectResults(slideNode, rootYoga, 0, 0, yoga, 0);
     rootYoga.freeRecursive();
     return result;
   } finally {
@@ -336,6 +340,8 @@ function collectResults(
   yogaNode: YogaNode,
   parentAbsX: number,
   parentAbsY: number,
+  yoga: YogaModule,
+  order: number,
 ): LayoutResult {
   const relX = toIn(yogaNode.getComputedLeft());
   const relY = toIn(yogaNode.getComputedTop());
@@ -350,13 +356,14 @@ function collectResults(
   if (isContainerNode(node)) {
     for (let i = 0; i < node.children.length; i++) {
       const childYoga = yogaNode.getChild(i);
-      children.push(collectResults(node.children[i], childYoga, absX, absY));
+      children.push(collectResults(node.children[i], childYoga, absX, absY, yoga, i));
     }
   }
 
   return {
     node,
     box: { x: absX, y: absY, w, h },
+    replay: { order, style: readYogaReplayStyle(yogaNode, yoga), measurement: readLayoutReplayMeasurement(node) },
     children,
   };
 }

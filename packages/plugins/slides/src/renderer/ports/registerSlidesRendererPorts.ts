@@ -1,3 +1,5 @@
+import { watch } from 'vue';
+import { useSlidesManualSelectionStore } from '../features/manualEditing/selection';
 import { IMAGE_EDITING_MESSAGE_CATALOG } from '../features/imageEditing';
 import { INSERTION_MESSAGE_CATALOG } from '../features/elementInsertion';
 import { useSlidesDocumentRuntime } from '../features/documentRuntime';
@@ -44,9 +46,9 @@ import {
   buildSlidesPageContextSummary,
 } from '../features/pageContext';
 import type { SlidesDeckPageContextInput } from '../features/pageContext';
-import { useSlidesStore } from '../store/slidesStore';
-import { useSlidesUiStore } from '../store/slidesUiStore';
-import { useSlidesSourceSelectionStore } from '../features/sourceSelection';
+import { useSlidesStore } from '../features/documentRuntime';
+import { useSlidesRenderStore } from '../store/slidesRenderStore';
+import { selectSourceTargets, useSlidesSourceSelectionStore } from '../features/sourceSelection';
 import {
   listSlidesReferenceIds,
   resolveSlidesReferenceFocusTarget,
@@ -58,7 +60,7 @@ import { registerMessageCatalogs } from '@app/localization';
 import { SLIDES_TOOL_CARD_MESSAGE_CATALOG } from '../tool-cards/definitions/slidesToolCardMessageCatalog';
 import { SLIDES_PREVIEW_MESSAGE_CATALOG } from '../features/previewRenderState/definitions/slidesPreviewMessageCatalog';
 import { SLIDES_HISTORY_MESSAGES } from '../features/presentationHistory/definitions/historyMessages';
-import { MANUAL_EDITING_MESSAGE_CATALOG } from '../features/manualEditing/definitions/manualEditingMessageCatalog';
+import { MANUAL_EDITING_MESSAGE_CATALOG } from '../features/manualEditing/ui';
 import { EDITING_COMMAND_MESSAGE_CATALOG } from '../features/editingCommands';
 import { ELEMENT_PROPERTY_MESSAGE_CATALOG } from '../features/elementProperties';
 import { DECK_NAVIGATOR_MESSAGE_CATALOG } from '../features/deckNavigator/definitions/deckNavigatorMessageCatalog';
@@ -79,10 +81,13 @@ function buildSlidesDocumentInfo() {
 
 function buildSlidesSelection() {
   const sourceSelectionStore = useSlidesSourceSelectionStore();
-  const uiStore = useSlidesUiStore();
+  const manualStoreSelection = useSlidesManualSelectionStore();
   return buildSlidesPageContextSelection({
-    sourceSelectedElementIds: sourceSelectionStore.selectedElementIds,
-    selectedElementId: uiStore.selectedElementId,
+    selectedElementIds: selectSourceTargets({
+      nodes: useSlidesRenderStore().currentSlideRender?.elements ?? [],
+      manualTargets: manualStoreSelection.selectedTargets,
+      sourceElementIds: sourceSelectionStore.selectedElementIds,
+    }).map(target => target.elementId),
   });
 }
 
@@ -141,15 +146,14 @@ export function registerSlidesRendererPorts(): void {
       });
     },
     async waitForDocumentReady(documentId: string, timeoutMs: number) {
-      const startedAt = Date.now();
-      while (Date.now() - startedAt < timeoutMs) {
-        const store = useSlidesStore();
-        if (store.currentDeckId === documentId && store.deckPreview !== null) {
-          return true;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
-      return false;
+      const store = useSlidesStore();
+      const ready = () => store.currentDeckId === documentId && store.deckPreview !== null;
+      if (ready()) return true;
+      return new Promise<boolean>(resolve => {
+        const finish = (result: boolean) => { stop(); clearTimeout(timer); resolve(result); };
+        const stop = watch(ready, value => { if (value) finish(true); }, { flush: 'sync' });
+        const timer = setTimeout(() => finish(false), timeoutMs);
+      });
     },
     async focusReference({ documentId, referenceId }): Promise<DocumentReferenceFocusResult> {
       const slidesStore = useSlidesStore();
@@ -166,7 +170,8 @@ export function registerSlidesRendererPorts(): void {
         return { status: 'reference-not-found' };
       }
 
-      useSlidesUiStore().selectElement(null);
+      useSlidesManualSelectionStore().clearSelection();
+      useSlidesSourceSelectionStore().clearSelection();
       if (target.kind === 'slide') {
         slidesStore.setCurrentSlide(target.slideIndex);
       }

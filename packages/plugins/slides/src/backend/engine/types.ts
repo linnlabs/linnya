@@ -159,7 +159,7 @@ export interface SvgGraphicAssetResolverPort {
 }
 
 export interface SlidesEngineLogger {
-  info(message: string, details?: Readonly<Record<string, unknown>>): void;
+  debug(message: string, details?: Readonly<Record<string, unknown>>): void;
   warn(message: string, details?: Readonly<Record<string, unknown>>): void;
 }
 

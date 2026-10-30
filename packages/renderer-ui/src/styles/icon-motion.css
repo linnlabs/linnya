@@ -72,6 +72,32 @@
     transform var(--duration-micro) var(--ease-exit);
 }
 
+/*
+ * 发送 / 暂停 / 继续：发送 ↔ 运行中交叉缩放，暂停 ↔ 继续由两条竖线形变成三角。
+ * 回到发送时控制图形先淡出，形状等它看不见后才复位，所以不会在中途闪出暂停。
+ */
+.linnya-ui-icon[data-icon="run-control"] :is([data-part="send"], [data-part="control"]) {
+  transform-origin: 12px 12px;
+  transition:
+    opacity var(--duration-medium) var(--ease-enter) var(--duration-micro),
+    transform var(--duration-medium) var(--ease-enter) var(--duration-micro),
+    d var(--duration-medium) var(--ease-standard);
+}
+
+.linnya-ui-icon[data-icon="run-control"][data-state="resume"] [data-part="control"] {
+  d: path("M7.75 4.65L13.78 8.33L13.78 15.67L7.75 19.35Z M13.78 8.33L19.8 12L19.8 12L13.78 15.67Z");
+}
+
+.linnya-ui-icon[data-icon="run-control"]:not([data-state="send"]) [data-part="send"],
+.linnya-ui-icon[data-icon="run-control"][data-state="send"] [data-part="control"] {
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity var(--duration-micro) var(--ease-exit),
+    transform var(--duration-micro) var(--ease-exit),
+    d 0s linear var(--duration-micro);
+}
+
 /* 刷新进行中、加载中：匀速旋转 */
 @keyframes linnya-ui-icon-spin {
   to {

@@ -1,4 +1,4 @@
-import type { ManualEditSettlement } from '../../manualEditing';
+import type { ManualEditSettlement } from '../../manualEditing/submission';
 import type { TextEditingTarget } from '../../textEditing';
 import type { TextDraftPresentation, TextInputSession } from '../definitions/editingInteractionTypes';
 

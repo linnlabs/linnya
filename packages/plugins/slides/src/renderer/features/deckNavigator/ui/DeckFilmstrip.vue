@@ -53,7 +53,7 @@
               <SlideThumbnail
                 :width="thumbnailSize.width"
                 :height="thumbnailSize.height"
-                :bitmap="thumbnailStore.getThumbnail(item.data.slideId)"
+                :bitmap="thumbnailResources.getThumbnail(item.data.slideId)"
               />
               <span
                 class="deck-filmstrip__number"
@@ -68,12 +68,13 @@
 </template>
 
 <script setup lang="ts">
+import { useSlideThumbnailResources } from '../orchestration/useSlideThumbnailResources';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useVirtualList } from '@vueuse/core';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { useSlidesThumbnailStore } from '../store/slidesThumbnailStore';
 import {
   FILMSTRIP_ITEM_GAP_PX,
@@ -119,12 +120,13 @@ const ENTRANCE_STAGGER_SECONDS = 0.04;
 
 const slidesStore = useSlidesStore();
 const thumbnailStore = useSlidesThumbnailStore();
+const thumbnailResources = useSlideThumbnailResources();
 watch(() => [slidesStore.currentDeckId, slidesStore.documentBuildState], endDrag);
-const { deckPreview, currentSlideIndex } = storeToRefs(slidesStore);
+const { renderModel, currentSlideIndex } = storeToRefs(slidesStore);
 const { deckNavigatorMessage } = useDeckNavigatorLocalization();
 
-const slides = computed(() => deckPreview.value?.slides ?? []);
-const slideSize = computed(() => deckPreview.value?.slideSize);
+const slides = computed(() => renderModel.value?.slides ?? []);
+const slideSize = computed(() => renderModel.value?.slideSize);
 const thumbnailSize = computed(() => resolveFilmstripThumbnailSize(slideSize.value));
 const itemWidth = computed(() => resolveFilmstripItemWidthPx(slideSize.value));
 

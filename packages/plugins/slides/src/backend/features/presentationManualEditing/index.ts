@@ -8,9 +8,9 @@ export type { ManualEditDeckProjection } from './definitions/manualEditDeckProje
 export { PRESENTATION_MANUAL_EDIT_SCHEMAS } from './definitions/presentationManualEditSchema.js';
 export { createManualEditPayloadDigest } from './functions/createManualEditPayloadDigest.js';
 export {
-  projectManualTranslationToDeckSpec,
+  projectManualEditToDeckSpec,
   SlidesManualEditDeckProjectionError,
-} from './functions/projectManualTranslationToDeckSpec.js';
+} from './functions/projectManualEditToDeckSpec.js';
 export {
   PresentationManualEditingRuntime,
   type PresentationManualEditingRuntimeDeps,
@@ -26,3 +26,5 @@ export { ManualEditHistoryStore } from './store/manualEditHistoryStore.js';
 export { retainedManualEditHistoryVersions } from './functions/manualEditHistory.js';
 
 export { copyManualObjects } from './functions/copyManualObjects.js';
+
+export { PresentationObjectTransferRuntime } from './orchestration/PresentationObjectTransferRuntime';

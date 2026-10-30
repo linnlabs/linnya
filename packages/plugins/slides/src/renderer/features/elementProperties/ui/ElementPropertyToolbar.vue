@@ -340,7 +340,7 @@ import {
 } from '@linnya/renderer-ui/icons';
 import { arrangeMenu, moreMenu, textAlignmentMenu } from '../functions/elementPropertyMenus';
 import { SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
-import type { ManualEditableTarget } from '../../manualEditing';
+import type { ManualEditableTarget } from '../../manualEditing/selection';
 import { preserveCanvasFocus } from '../../editingInteraction';
 import type { ElementPropertyAnchor } from '../definitions/elementPropertyToolbar';
 import type { ElementArrangement, ElementLayerAvailability, ElementLayerDirection, ElementPropertyMenuValue, ElementPropertyOperation } from '../definitions/elementPropertyTypes';

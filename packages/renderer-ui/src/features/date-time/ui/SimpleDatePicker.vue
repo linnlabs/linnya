@@ -24,9 +24,10 @@
         <button
           type="button"
           class="sdp-nav-btn"
+          :aria-label="sharedComponentMessage('shared.simpleDatePicker.previous')"
           @click="goPrev"
         >
-          ‹
+          <ChevronIcon direction="left" class="sdp-nav-icon" />
         </button>
 
         <div class="sdp-month-label">
@@ -44,9 +45,10 @@
         <button
           type="button"
           class="sdp-nav-btn"
+          :aria-label="sharedComponentMessage('shared.simpleDatePicker.next')"
           @click="goNext"
         >
-          ›
+          <ChevronIcon direction="right" class="sdp-nav-icon" />
         </button>
       </div>
 
@@ -106,7 +108,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { CalendarIcon } from '../../../icons';
+import { CalendarIcon, ChevronIcon } from '../../../icons';
 import { useSharedComponentLocalization } from '../../../localization';
 import { useHoverTooltipService } from '../../feedback';
 import type {

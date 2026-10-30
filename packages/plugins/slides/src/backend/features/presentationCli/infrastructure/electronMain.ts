@@ -124,6 +124,7 @@ async function main(): Promise<number> {
     if (invocation.command.kind === 'render') {
       await hiddenWorkerRuntime.registerHiddenWorker(
         rasterWorkerModule.createSlidesRasterWorkerDefinition({
+          logger: { debug: recordRasterDiagnostic, warn: recordRasterDiagnostic },
           runtime: {
             mode: 'artifact-runtime',
             packageRoot: path.resolve(__dirname, '../..'),
@@ -204,4 +205,8 @@ function redirectOperationalLogsToStderr(): void {
   console.log = write;
   console.info = write;
   console.debug = write;
+}
+
+function recordRasterDiagnostic(event: string, details?: unknown): void {
+  process.stderr.write(`${JSON.stringify({ event, details })}\n`);
 }

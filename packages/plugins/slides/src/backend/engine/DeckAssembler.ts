@@ -33,11 +33,6 @@ import {
   createFormulaPptxPatchPlan,
 } from './mathFormula/pptx/formulaPptxPlan';
 
-const defaultLogger: SlidesEngineLogger = {
-  info() {},
-  warn() {},
-};
-
 export class DeckAssembler {
   private readonly sanitizer = new PptxPackageSanitizer();
 
@@ -45,7 +40,7 @@ export class DeckAssembler {
     private readonly structuredCompiler: StructuredCompilerPort,
     private readonly freeformCompiler: FreeformCompilerPort,
     private readonly imageSourceResolver?: ImageSourceResolverPort,
-    private readonly logger: SlidesEngineLogger = defaultLogger,
+    private readonly logger?: SlidesEngineLogger,
     private readonly svgGraphicAssetResolver?: SvgGraphicAssetResolverPort,
     private readonly svgGraphicFallbackRasterizer?: SvgGraphicFallbackRasterizerPort,
   ) {}
@@ -100,7 +95,7 @@ export class DeckAssembler {
     ).length;
     const freeformSlideCount = materializedDeckSpec.slides.length - structuredSlideCount;
 
-    this.logger.info('[assemble] Starting deck assembly', {
+    this.logger?.debug('slides.assembly.started', {
       title: materializedDeckSpec.title,
       slideCount: materializedDeckSpec.slides.length,
       layout: materializedDeckSpec.layout ?? '16x9',
@@ -110,12 +105,12 @@ export class DeckAssembler {
     });
 
     if (!hasFreeform && !hasSvgGraphic) {
-      this.logger.info('[assemble] Using structured compiler fast path', {
+      this.logger?.debug('slides.assembly.structured_started', {
         title: materializedDeckSpec.title,
         slideCount: materializedDeckSpec.slides.length,
       });
       const buffer = await this.structuredCompiler.compileDeck(materializedDeckSpec);
-      this.logger.info('[assemble] Structured compiler completed', {
+      this.logger?.debug('slides.assembly.structured_completed', {
         title: materializedDeckSpec.title,
         bufferBytes: buffer.length,
       });
@@ -154,7 +149,7 @@ export class DeckAssembler {
       }
     }
 
-    this.logger.info('[assemble] Starting pptx.write() export for mixed/freeform deck', {
+    this.logger?.debug('slides.assembly.write_started', {
       title: materializedDeckSpec.title,
       slideCount: materializedDeckSpec.slides.length,
       structuredSlideCount,
@@ -162,7 +157,7 @@ export class DeckAssembler {
     });
     const result = await pptx.write({ outputType: 'nodebuffer' });
     const rawBuffer = Buffer.isBuffer(result) ? result : Buffer.from(result as ArrayBuffer);
-    this.logger.info('[assemble] pptx.write() resolved', {
+    this.logger?.debug('slides.assembly.write_completed', {
       title: materializedDeckSpec.title,
       resultType: Buffer.isBuffer(result)
         ? 'Buffer'
@@ -180,7 +175,7 @@ export class DeckAssembler {
       formulaPlan,
       chartPlan,
     });
-    this.logger.info('[assemble] Sanitized PPTX buffer ready', {
+    this.logger?.debug('slides.assembly.completed', {
       title: materializedDeckSpec.title,
       sanitizedBufferBytes: sanitizedBuffer.length,
     });

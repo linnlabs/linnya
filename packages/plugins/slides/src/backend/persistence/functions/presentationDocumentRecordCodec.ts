@@ -1,3 +1,4 @@
+import { isRecord } from '@plugin/slides/shared/valueRecord';
 import type { DeckSpec } from '@plugin/slides/shared/deckSpec';
 import {
   normalizeDeckSpecLineSpacingInput,
@@ -254,9 +255,6 @@ function isDeckSpec(value: unknown): value is DeckSpec {
     ));
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isFiniteInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value);

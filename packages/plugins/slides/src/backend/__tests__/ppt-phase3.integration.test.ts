@@ -1,3 +1,5 @@
+import { PresentationDraftRepository } from '../persistence';
+import { PresentationRevisionScope } from '../features/presentationSourceHistory';
 import Database from 'better-sqlite3';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -74,7 +76,7 @@ function createStack(db: Database.Database) {
     },
     undefined,
     draftRepository,
-    { buildExecution: createInProcessPresentationBuildExecution() },
+    { revisionScope: new PresentationRevisionScope(), buildExecution: createInProcessPresentationBuildExecution() },
   );
   return { coordinator, draftRepository, pptxReader, repository };
 }

@@ -18,6 +18,14 @@
       </button>
 
       <div class="deck-navigator__trailing">
+        <!-- 宿主放入的视图控件（如舞台缩放）排在视图切换左侧，用细线分组。 -->
+        <template v-if="$slots['view-controls']">
+          <slot name="view-controls" />
+          <span
+            class="deck-navigator__divider"
+            aria-hidden="true"
+          />
+        </template>
         <div
           class="deck-navigator__views"
           role="group"
@@ -91,10 +99,10 @@ import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { AddIcon, ChevronIcon } from '@linnya/renderer-ui/icons';
 import { useSlidesUiStore } from '../../../store/slidesUiStore';
-import { useManualEditSubmission } from '../../manualEditing';
+import { useManualEditSubmission } from '../../manualEditing/submission';
 import { useSlideStructureActions } from '../orchestration/useSlideStructureActions';
 import { useDeckNavigatorLocalization } from './useDeckNavigatorLocalization';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import type { SlideContextMenuAnchor } from '../definitions/deckNavigatorTypes';
 import SlideContextMenu from './SlideContextMenu.vue';
 import DeckFilmstrip from './DeckFilmstrip.vue';

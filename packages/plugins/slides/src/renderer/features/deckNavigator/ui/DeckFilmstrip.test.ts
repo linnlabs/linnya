@@ -9,16 +9,16 @@ import type {
   UseOverlayScrollViewportParams,
 } from '@linnya/renderer-ui/scroll';
 import DeckNavigatorBar from './DeckNavigatorBar.vue';
-import { provideManualEditSubmission } from '../../manualEditing';
+import { provideManualEditSubmission } from '../../manualEditing/submission';
 import DeckFilmstrip from './DeckFilmstrip.vue';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 
 interface OverlayCall {
   params: UseOverlayScrollViewportParams;
   controller: OverlayScrollViewportController;
 }
 
-vi.mock('../store/slidesThumbnailStore', () => ({ useSlidesThumbnailStore: () => ({ getThumbnail: () => null }) }));
+vi.mock('../orchestration/useSlideThumbnailResources', () => ({ useSlideThumbnailResources: () => ({ getThumbnail: () => null }) }));
 
 const overlayMockState = vi.hoisted(() => ({ calls: [] as OverlayCall[] }));
 
@@ -77,6 +77,13 @@ function seedDeck(slideCount: number, slideSize = { width: 10, height: 5.625 }):
     })),
     theme: { colors: {}, fonts: { major: 'sans-serif', minor: 'sans-serif' } },
     warnings: [],
+  } });
+  installTestPresentation({ renderModel: {
+    presentationId: 'deck-1', title: 'Deck', version: 1, sourceKind: 'generated',
+    slideSize: { ...slideSize, unit: 'in' },
+    slides: Array.from({ length: slideCount }, (_, index) => ({ slideId: `slide-${index + 1}`, index,
+      layoutKey: 'freeform', background: { paint: { type: 'none' } }, elements: [] })),
+    capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true },
   } });
 }
 

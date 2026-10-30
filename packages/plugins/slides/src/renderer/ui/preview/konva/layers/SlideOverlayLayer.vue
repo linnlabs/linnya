@@ -52,6 +52,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { EditingInsertionPreview } from '../../../../features/editingPreview';
 import type {
   SourceSelectableElement,
   SourceSelectionPoint,
@@ -59,9 +60,7 @@ import type {
 } from '../../../../features/sourceSelection';
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../../shared/constants';
 import { createSelectionOutlineGrid, SELECTION_OUTLINE_SOFT_OPACITY } from '../../../../shared/selectionOutline';
-import type {
-  ManualEditableTarget,
-} from '../../../../features/manualEditing';
+import type { ManualEditableTarget } from '../../../../features/manualEditing/selection';
 
 interface OverlayLineEntry {
   key: string;
@@ -86,7 +85,7 @@ const props = defineProps<{
   marqueeRect: SourceSelectionRect | null;
   manualSelectedTargets?: readonly ManualEditableTarget[];
   snapGuides?: readonly { readonly axis: 'x' | 'y'; readonly position: number; readonly from: number; readonly to: number }[];
-  pendingInsertions?: readonly { readonly editKey: string; readonly box: SourceSelectionRect }[];
+  pendingInsertions?: readonly EditingInsertionPreview[];
   slideSize: { readonly width: number; readonly height: number };
 }>();
 
@@ -155,7 +154,7 @@ const snapGuideConfigs = computed(() => (props.snapGuides ?? []).map(guide => {
 
 // 插入/粘贴还在保存时先画出落点（虚线），正式对象呈现后占位自然消失。
 const pendingInsertionConfigs = computed<OverlayLineEntry[]>(() => (props.pendingInsertions ?? [])
-  .map(({ editKey, box }) => ({ key: editKey, config: outline(rectToPolygon(box), 'dashed') })));
+  .map(({ object }) => ({ key: object.editKey, config: outline(rectToPolygon(object.box), 'dashed') })));
 
 function toPxPoints(points: readonly SourceSelectionPoint[]): number[] {
   const { snap } = grid.value;

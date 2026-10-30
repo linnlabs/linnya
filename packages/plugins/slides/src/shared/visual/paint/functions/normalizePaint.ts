@@ -1,3 +1,4 @@
+import { isRecord } from '../../../valueRecord';
 import {
   failure,
   normalizeFillColor,
@@ -25,9 +26,6 @@ const DIRECTION_ANGLES = new Map<string, number>([
 const DEFAULT_RADIAL_CENTER: NormalizedPaintPoint = { x: 0.5, y: 0.5 };
 const DEFAULT_RADIAL_RADIUS: NormalizedPaintRadius = { x: 0.5, y: 0.5 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

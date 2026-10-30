@@ -1,3 +1,4 @@
+import { isRecord } from './valueRecord';
 import type { ShapeGeometrySpec } from './shapeGeometry';
 import type { BrushArtworkIntent, BrushArtworkSourceRef } from './brushArtwork';
 import type { SlideLayout } from './deckSpec/slideSize';
@@ -561,9 +562,6 @@ export function isLeafNode(node: LayoutNode): node is LayoutLeafNode {
   return !isContainerNode(node);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value != null && typeof value === 'object' && !Array.isArray(value);
-}
 
 /**
  * 判断原始 compose 输入是否为布局树格式。

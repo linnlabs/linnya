@@ -134,3 +134,9 @@ Renderer 插件通过 `@plugin/renderer/exportArtifact` 请求系统保存框，
 禁止 `any`、不安全断言、shape guessing、随机身份、index key 和无业务含义的 fallback。
 
 文本测量端口的 `fontUnits` 是可选的只读字体单位事实，供客户端在相同 shaping 输入下准确投影字号；不携带字体路径、宿主对象或可写文档状态。没有该事实的 provider 不承诺跨字号复用，调用方不能自行从最终宽度推算。
+
+## Workspace 文档投影端口
+
+`backend/workspaceDocumentProjection` 提供活动节点归属查询、按项目/类型列出节点身份，以及文档更新时间写入。Workspace 拥有节点事实，插件只用这些身份查询自有正文表。调用方传入当前连接，更新时间写入加入插件现有事务，不自行提交或提前广播事件。该门面没有 App runtime 依赖，standalone CLI 可直接使用。
+
+`workspaceRuntime.hasWorkspaceNodeTextSnapshot` 与既有保存端口供迁移在同一事务内补齐缺失快照；插件不能直接读写 Host 快照表，也不能用回填覆盖已有快照。没有新增持久化字段或版本迁移。

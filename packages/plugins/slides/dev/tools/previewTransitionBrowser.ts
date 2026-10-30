@@ -1,3 +1,4 @@
+import { verifyInsertionPreviewFrames } from './insertionPreviewBrowser';
 import { verifyFontPreviewFrames } from './fontPreviewBrowser';
 import { verifyIncrementalThumbnails } from './thumbnailIncrementalBrowser';
 import { mountShapeTextEditingSmoke } from './shapeTextEditingBrowser';
@@ -14,10 +15,7 @@ import type {
   ShapeRenderNode,
   SlideRenderModel,
 } from '../../src/renderer/types/render';
-import type {
-  ManualEditingTranslationPreview,
-  ManualEditingVisualPreview,
-} from '../../src/renderer/features/manualEditing';
+import type { ManualEditingTranslationPreview, ManualEditingVisualPreview } from '../../src/renderer/features/manualEditing/preview';
 
 const size = { width: 320, height: 180 };
 const transform = { x: 0, y: 0, scaleX: 1, scaleY: 1 };
@@ -311,6 +309,7 @@ window.previewTransitionSmoke = (async () => ({
   ...await verifyManualTranslation(),
   ...await verifyManualVisual(),
   ...await verifyFontPreviewFrames(),
+  ...await verifyInsertionPreviewFrames(),
 }))();
 window.mountManualPropertySmoke = mountManualPropertySmoke;
 

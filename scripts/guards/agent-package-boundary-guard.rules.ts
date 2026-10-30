@@ -99,7 +99,7 @@ const SLIDES_LEGACY_HOST_RUNTIME_FILES = new Set([
 ]);
 const LEGACY_WORKSPACE_VFS_NODE_ACCESS_POLICY_SOURCE =
   'src/app-hosts/linnya/plugin-registry/workspaceVfsNodeAccessPolicy';
-const PLUGIN_SDK_BACKEND_WORKSPACE_RUNTIME_SOURCE = 'src/plugin-sdk/backend/workspaceRuntime';
+const PLUGIN_SDK_BACKEND_WORKSPACE_RUNTIME_SOURCES = new Set(['src/plugin-sdk/backend/workspaceRuntime', 'src/plugin-sdk/backend/workspaceDocumentProjection']);
 const PLUGIN_SDK_BACKEND_PLUGIN_CONTRIBUTION_SOURCE = 'src/plugin-sdk/backend/pluginContribution';
 const HOST_PLUGIN_REGISTRY_TYPES_SOURCE = 'src/app-hosts/linnya/plugin-registry/types';
 const PLUGIN_SDK_RENDERER_PLUGIN_CONTRIBUTION_SOURCE = 'src/plugin-sdk/renderer/pluginContribution';
@@ -1159,10 +1159,10 @@ function analyzePluginWorkspaceRuntimeMindmapAccessRule(
   const normalizedImportPath = stripKnownExtension(normalizeFilePath(importPath));
   const normalizedFilePath = stripKnownExtension(normalizeFilePath(file));
   const importsWorkspaceRuntime =
-    normalizedImportPath === '@plugin/backend/workspaceRuntime'
-    || normalizedImportPath === PLUGIN_SDK_BACKEND_WORKSPACE_RUNTIME_SOURCE
-    || resolvedImportPath === PLUGIN_SDK_BACKEND_WORKSPACE_RUNTIME_SOURCE;
-  const isWorkspaceRuntimeSdkFile = normalizedFilePath === PLUGIN_SDK_BACKEND_WORKSPACE_RUNTIME_SOURCE;
+    (normalizedImportPath === '@plugin/backend/workspaceRuntime' || normalizedImportPath === '@plugin/backend/workspaceDocumentProjection')
+    || PLUGIN_SDK_BACKEND_WORKSPACE_RUNTIME_SOURCES.has(normalizedImportPath)
+    || PLUGIN_SDK_BACKEND_WORKSPACE_RUNTIME_SOURCES.has(resolvedImportPath ?? '');
+  const isWorkspaceRuntimeSdkFile = PLUGIN_SDK_BACKEND_WORKSPACE_RUNTIME_SOURCES.has(normalizedFilePath);
   if (!importsWorkspaceRuntime && !isWorkspaceRuntimeSdkFile) {
     return [];
   }

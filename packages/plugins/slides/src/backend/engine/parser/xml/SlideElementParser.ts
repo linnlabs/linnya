@@ -25,7 +25,6 @@ import {
   getAttr,
   getElementByLocalName,
   getElementByTag,
-  getTextContent,
 } from './XmlNode.js';
 import {
   buildGroupTransform,

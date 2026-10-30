@@ -51,7 +51,7 @@
   box-shadow: 0 0 0 2px var(--color-border-focus);
 }
 
-/* 工具条贴在舞台底部，菜单向上展开并与百分比按钮居中对齐。 */
+/* 缩放组位于底部导航栏，菜单向上展开到舞台区域，并与百分比按钮居中对齐。 */
 .stage-zoom-menu .stage-zoom-menu__panel {
   position: absolute;
   bottom: calc(100% + 10px);

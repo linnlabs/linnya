@@ -1,4 +1,21 @@
-import type { SlidesInsertedObject, SlidesAuthoringEditRef } from '@plugin/slides/shared/authoringEditing';
+import { isRecord } from '@plugin/slides/shared/valueRecord';
+import { parseSlidesCommand } from '@plugin/slides/shared/ipcCommands';
+import {
+  SlidesManualEditCommandSchema,
+  SlidesCopyObjectsSchema,
+  SlidesImportImageSchema,
+  SlidesSourceSlicesSchema,
+  SlidesTemplateImportSchema,
+  SlidesNodePayloadSchema,
+} from '@plugin/slides/shared/ipcCommands';
+import {
+  SlidesImportedImageSchema,
+  type SlidesImportedImage,
+} from '@plugin/slides/shared/authoringEditing';
+import type {
+  SlidesInsertedObject,
+  SlidesAuthoringEditRef,
+} from '@plugin/slides/shared/authoringEditing';
 /**
  * Slides API 服务
  *
@@ -10,6 +27,7 @@ import { onRendererPluginPush } from '@plugin/renderer/pluginPushClient';
 import { logSlidesVerbose } from '../shared/diagnosticLogging';
 import {
   SLIDES_IPC,
+  SlidesIpcError,
   SLIDES_PLUGIN_ID,
   SLIDES_PUSH_EVENTS,
   type OperationResult,
@@ -35,16 +53,10 @@ import type {
   TemplateSpec,
 } from '../types/api';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
 
-function unwrapSlidesIpcResult<T>(
-  result: OperationResult<T>,
-  channel: SlidesIpcChannel,
-): T {
+function unwrapSlidesIpcResult<T>(result: OperationResult<T>, channel: SlidesIpcChannel): T {
   if (!result.success) {
-    throw new Error(result.error);
+    throw new SlidesIpcError(result.error, result.code ?? 'transport', result.retryable === true);
   }
   if (result.data === undefined) {
     throw new Error(`[slidesApi] ${channel} returned no data.`);
@@ -67,11 +79,7 @@ function readPresentationExportResult(value: unknown): PresentationExportResult 
   if (!isRecord(value)) {
     throw new Error('[slidesApi] slides:export returned invalid data.');
   }
-  if (
-    value.format !== 'pptx'
-    && value.format !== 'images'
-    && value.format !== 'pdf'
-  ) {
+  if (value.format !== 'pptx' && value.format !== 'images' && value.format !== 'pdf') {
     throw new Error('[slidesApi] slides:export returned invalid format.');
   }
   if (typeof value.fileName !== 'string' || value.fileName.length === 0) {
@@ -88,31 +96,53 @@ function readPresentationExportResult(value: unknown): PresentationExportResult 
 }
 
 export const slidesApi = {
-  copyObjects(documentId: string, revisionId: string, targets: readonly SlidesAuthoringEditRef[]): Promise<readonly SlidesInsertedObject[]> {
-    return invokeSlidesIpc(SLIDES_IPC.copyObjects, { documentId, revisionId, targets });
+  copyObjects(
+    documentId: string,
+    revisionId: string,
+    targets: readonly SlidesAuthoringEditRef[]
+  ): Promise<readonly SlidesInsertedObject[]> {
+    return invokeSlidesIpc(
+      SLIDES_IPC.copyObjects,
+      parseSlidesCommand(SlidesCopyObjectsSchema, { documentId, revisionId, targets })
+    );
   },
-  importImage(documentId: string, base64: string): Promise<string> {
-    return invokeSlidesIpc(SLIDES_IPC.importImage, { documentId, base64 });
+  async importImage(documentId: string, bytes: ArrayBuffer): Promise<SlidesImportedImage> {
+    return SlidesImportedImageSchema.parse(
+      await invokeSlidesIpc<unknown>(
+        SLIDES_IPC.importImage,
+        parseSlidesCommand(SlidesImportImageSchema, { documentId, bytes })
+      )
+    );
   },
   /** 引用目录可查询未打开的文稿摘要；正式画布加载使用 documentRuntime 的一致快照。 */
   async getDeckPreview(nodeId: string): Promise<DeckPreview> {
-    return invokeSlidesIpc<DeckPreview>(SLIDES_IPC.preview, { nodeId });
+    return invokeSlidesIpc<DeckPreview>(
+      SLIDES_IPC.preview,
+      parseSlidesCommand(SlidesNodePayloadSchema, { nodeId })
+    );
   },
 
   async readManualEditHistory(nodeId: string): Promise<SlidesManualEditHistoryStatus> {
-    return invokeSlidesIpc<SlidesManualEditHistoryStatus>(SLIDES_IPC.manualEditHistory, { nodeId });
+    return invokeSlidesIpc<SlidesManualEditHistoryStatus>(
+      SLIDES_IPC.manualEditHistory,
+      parseSlidesCommand(SlidesNodePayloadSchema, { nodeId })
+    );
   },
 
   /** 基于当前 revision 快照提交一次文本或位置人工编辑。 */
-  async submitManualEdit(
-    command: SlidesManualEditCommand,
-  ): Promise<SlidesManualEditCommandResult> {
-    return invokeSlidesIpc<SlidesManualEditCommandResult>(SLIDES_IPC.manualEdit, command);
+  async submitManualEdit(command: SlidesManualEditCommand): Promise<SlidesManualEditCommandResult> {
+    return invokeSlidesIpc<SlidesManualEditCommandResult>(
+      SLIDES_IPC.manualEdit,
+      parseSlidesCommand(SlidesManualEditCommandSchema, command)
+    );
   },
 
   /** 解析 PPTX 结构（inspect） */
   async inspect(nodeId: string): Promise<PresentationInfo> {
-    return invokeSlidesIpc<PresentationInfo>(SLIDES_IPC.inspect, { nodeId });
+    return invokeSlidesIpc<PresentationInfo>(
+      SLIDES_IPC.inspect,
+      parseSlidesCommand(SlidesNodePayloadSchema, { nodeId })
+    );
   },
 
   async readSourceSlicesForAiEdit(input: {
@@ -120,29 +150,22 @@ export const slidesApi = {
     conversationId: string;
     targets: PptSourceSliceTargetInput[];
   }): Promise<PptSourceSlicesOutput> {
-    return invokeSlidesIpc<PptSourceSlicesOutput>(SLIDES_IPC.sourceSlices, {
-      nodeId: input.nodeId,
-      conversationId: input.conversationId,
-      targets: input.targets,
-    });
-  },
-
-  /** Backend 直接把 artifact 写入 Host target；renderer 不再接收完整 bytes。 */
-  async exportPresentation(
-    request: PresentationExportRequest,
-  ): Promise<PresentationExportResult> {
-    return readPresentationExportResult(
-      await invokeSlidesIpc<unknown>(SLIDES_IPC.export, request),
+    return invokeSlidesIpc<PptSourceSlicesOutput>(
+      SLIDES_IPC.sourceSlices,
+      parseSlidesCommand(SlidesSourceSlicesSchema, input)
     );
   },
 
+  /** Backend 直接把 artifact 写入 Host target；renderer 不再接收完整 bytes。 */
+  async exportPresentation(request: PresentationExportRequest): Promise<PresentationExportResult> {
+    return readPresentationExportResult(await invokeSlidesIpc<unknown>(SLIDES_IPC.export, request));
+  },
+
   onPresentationImageExportProgress(
-    callback: (progress: PresentationImageExportProgress) => void,
+    callback: (progress: PresentationImageExportProgress) => void
   ): () => void {
-    return onRendererPluginPush(
-      SLIDES_PLUGIN_ID,
-      SLIDES_PUSH_EVENTS.imageExportProgress,
-      payload => callback(parsePresentationImageExportProgress(payload)),
+    return onRendererPluginPush(SLIDES_PLUGIN_ID, SLIDES_PUSH_EVENTS.imageExportProgress, payload =>
+      callback(parsePresentationImageExportProgress(payload))
     );
   },
 
@@ -152,16 +175,15 @@ export const slidesApi = {
   },
 
   /** 导入模板（通过 plugin IPC 传输 ArrayBuffer） */
-  async importTemplate(
-    file: File,
-    name: string,
-    description?: string,
-  ): Promise<TemplateSpec> {
-    return invokeSlidesIpc<TemplateSpec>(SLIDES_IPC.templateImport, {
-      fileName: file.name,
-      name,
-      ...(description ? { description } : {}),
-      buffer: await file.arrayBuffer(),
-    });
+  async importTemplate(file: File, name: string, description?: string): Promise<TemplateSpec> {
+    return invokeSlidesIpc<TemplateSpec>(
+      SLIDES_IPC.templateImport,
+      parseSlidesCommand(SlidesTemplateImportSchema, {
+        fileName: file.name,
+        name,
+        ...(description ? { description } : {}),
+        buffer: await file.arrayBuffer(),
+      })
+    );
   },
 };

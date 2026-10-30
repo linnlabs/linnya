@@ -5,7 +5,6 @@ import {
 } from '../definitions/contract';
 import type {
   RenderInlineLineSlice,
-  RenderLineSlice,
   RenderTextLine,
   FontMetricsProvider,
   RunAdvanceProvider,

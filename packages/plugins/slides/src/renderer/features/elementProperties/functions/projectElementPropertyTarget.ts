@@ -1,5 +1,6 @@
 import type { SlidesEditableTextContent } from '@plugin/slides/shared/authoringEditing';
-import { projectTextEditingValues, type ManualEditableTarget, type ManualEditingVisualPreview } from '../../manualEditing';
+import { projectTextEditingValues, type ManualEditingVisualPreview } from '../../manualEditing/preview';
+import { type ManualEditableTarget } from '../../manualEditing/selection';
 
 /** 面板与 Canvas 使用同一队列的有效值；失败撤销队列后自然回到正式值。 */
 export function projectElementPropertyTarget(

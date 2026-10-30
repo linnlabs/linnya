@@ -20,11 +20,17 @@ export function createSlideThumbnailRenderer(ports: SlideThumbnailRendererPorts)
 
   function publish(): void {
     const cache = new Map<string, ImageBitmap>();
+    const readySlides = new Map<string, SlideThumbnailSource['slide']>();
+    const failedSlideIds: string[] = [];
     for (const source of sources) {
       const bitmap = entries.get(source.contentKey)?.bitmap;
-      if (bitmap) cache.set(source.slide.slideId, bitmap);
+      if (bitmap) {
+        cache.set(source.slide.slideId, bitmap);
+        readySlides.set(source.slide.slideId, source.slide);
+      }
+      if (entries.get(source.contentKey)?.failed) failedSlideIds.push(source.slide.slideId);
     }
-    ports.publish({ cache, generating: activeJob !== null || [...entries.values()].some(needsRender) });
+    ports.publish({ cache, readySlides, failedSlideIds, generating: activeJob !== null || [...entries.values()].some(needsRender) });
   }
 
   function scheduleNext(): void {

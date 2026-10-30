@@ -31,3 +31,7 @@ Workspace VFS 是项目节点树的路径投影和文档类型能力调度层。
 - 新文档类型通过公开 document type hook 提供投影，VFS 不硬编码插件私有格式。
 
 业务验证入口：`src/tools/workspace/grep/workspaceGrepCoverage.integration.test.ts`（真实 SQLite、正式 VFS/工具结果、当前写入投影、缓存及迁移）与 `node-transfer/__tests__/workspaceNodeTransfer.test.ts`（事务内跨项目失效）。
+
+## 插件文档投影
+
+插件通过 `workspaceDocumentProjection` 的窄 SDK 读取活动节点身份和 project 归属，在自己的表中统计或读取正文。节点更新时间仍由 Workspace 的 SQLite adapter 写入，并加入调用方已有事务；VFS 文本快照通过 node-text-snapshot 公开读写能力同步。禁止插件跨域 JOIN 或直接更新节点表。

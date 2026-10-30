@@ -24,12 +24,8 @@ export function buildSlidesPageContextDocument(
 export function buildSlidesPageContextSelection(
   input: SlidesSelectionPageContextInput,
 ): SlidesPageContextSelection | undefined {
-  if (input.sourceSelectedElementIds.length > 0) {
-    return { selectedElementIds: [...input.sourceSelectedElementIds] };
-  }
-
-  return input.selectedElementId
-    ? { selectedElementIds: [input.selectedElementId] }
+  return input.selectedElementIds.length > 0
+    ? { selectedElementIds: [...input.selectedElementIds] }
     : undefined;
 }
 

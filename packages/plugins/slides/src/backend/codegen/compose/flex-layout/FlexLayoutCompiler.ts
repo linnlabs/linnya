@@ -1,4 +1,5 @@
 import { orderManualPaint } from './ManualPaintOrder.js';
+import { buildLayoutReplay } from './LayoutReplayProjection';
 import { appendInsertedObjects } from './InsertedObjectProjection.js';
 /**
  * FlexLayoutCompiler — Flex 布局树 → DirectComposeInput
@@ -207,6 +208,7 @@ export function compileSlide(
     background: normalizeSlideBackground(slideNode.background),
     elements,
     notes: slideNode.notes,
+    layoutReplay: buildLayoutReplay(layoutResult, slideNumber),
   };
 }
 

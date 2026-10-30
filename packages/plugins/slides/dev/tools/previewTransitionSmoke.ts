@@ -1,5 +1,6 @@
 import { verifyRichTextEditing } from './richTextEditingSmoke';
 import { verifyCanvasSelection } from './canvasSelectionSmoke';
+import { verifyTextWidth } from './textWidthSmoke';
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -17,12 +18,17 @@ async function run(): Promise<void> {
     assertManualVisualFrames(result, 5);
     await writeFile(path.resolve(__dirname, 'editing-preview-trace.json'), JSON.stringify(result, null, 2));
     console.log('Slides live Vue/Konva transition pixels and atomic font frames passed; trace saved.');
+    if (process.argv.includes('--text-width-only')) {
+      await verifyTextWidth(window);
+      return;
+    }
     if (process.argv.includes('--thumbnails-only')) {
       await verifyThumbnails(window);
       return;
     }
     await verifyPropertyInteraction(window);
     await verifyShapeTextEditing(window);
+    await verifyTextWidth(window);
     await verifySelectionToolbar(window);
     await verifyRichTextEditing(window);
     await verifyCanvasSelection(window);
@@ -93,7 +99,7 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
   window.webContents.sendInputEvent({ type: 'mouseMove', ...customRow });
   await settle(); await settleColorMotion();
   await evaluate('window.manualPropertySmoke.assertSubmenu(true, "palette")');
-  window.webContents.sendInputEvent({ type: 'mouseMove', ...await colorPoint('[role="tab"]:last-child') });
+  window.webContents.sendInputEvent({ type: 'mouseMove', ...await colorPoint('button[role="tab"]:last-of-type') });
   // 必须跨过实际 200ms 悬停关闭周期，才能证明进入子菜单确实取消了关闭计时。
   await evaluate('new Promise(resolve => setTimeout(resolve, 240))');
   await evaluate('window.manualPropertySmoke.assertSubmenu(true, "palette")');
@@ -108,15 +114,15 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
   await settleColorMotion();
   await evaluate('window.manualPropertySmoke.assertSubmenu(true, "submenu")');
   // 真实指针穿过菜单间隙进入表单，点击模式/输入框不能被外部点击处理器关闭。
-  await colorClick('[role="tab"]:last-child');
+  await colorClick('button[role="tab"]:last-of-type');
   await colorInput('red', '256');
   await evaluate('window.manualPropertySmoke.assertColorDraft("#2563EB", false)');
   await colorInput('red', '64');
   await colorInput('green', '128');
   await colorInput('blue', '192');
   await evaluate('window.manualPropertySmoke.assertColorDraft("#4080C0", true)');
-  await colorClick('[role="tab"]:first-child');
-  await colorClick('[role="tab"]:last-child');
+  await colorClick('button[role="tab"]:first-of-type');
+  await colorClick('button[role="tab"]:last-of-type');
   await evaluate('window.manualPropertySmoke.assertColorDraft("#4080C0", true)');
   await colorClick('.linnya-ui-button--secondary');
   await evaluate('window.manualPropertySmoke.assertSubmenu(false, "row")');
@@ -473,7 +479,9 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
   await click('window.shapeTextEditingSmoke.point("badge")');
   await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge")');
   await click(control('[data-property="fill"]'));
-  await click(control('.slides-element-color__custom'));
+  // 下拉仍在平移动画中时，按钮测得的位置并不是鼠标落下时的位置。
+  await evaluate('window.shapeTextEditingSmoke.settlePanelMotion()');
+  await hover(control('.slides-element-color__custom'));
   await evaluate('window.shapeTextEditingSmoke.settlePanelMotion()');
   await evaluate('window.shapeTextEditingSmoke.assertPopupPlacement(); window.shapeTextEditingSmoke.assertCustomPlacement()');
   await settle();

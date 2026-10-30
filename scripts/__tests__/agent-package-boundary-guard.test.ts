@@ -1316,6 +1316,14 @@ describe('PLUGIN-GUARD-01-no-legacy-vfs-policy-import', () => {
 });
 
 describe('PLUGIN-GUARD-02-no-plugin-specific-runtime-access-in-workspace-runtime', () => {
+  it('keeps the document projection facade generic and permits its public node queries', () => {
+    expect(ruleIdsFor('packages/plugins/slides/src/backend/index.ts',
+      "import { readWorkspaceDocumentMetadata } from '@plugin/backend/workspaceDocumentProjection';")).toEqual([]);
+    expect(ruleIdsFor('src/plugin-sdk/backend/workspaceDocumentProjection.ts',
+      "export { assertMindmapPluginRuntimeEnabled } from 'src/app-hosts/linnya/plugin-registry/mindmapPluginAccess';"))
+      .toContain('PLUGIN-GUARD-02-no-plugin-specific-runtime-access-in-workspace-runtime');
+  });
+
   it('forbids consuming plugin-specific runtime gates through workspaceRuntime', () => {
     expect(
       ruleIdsFor(

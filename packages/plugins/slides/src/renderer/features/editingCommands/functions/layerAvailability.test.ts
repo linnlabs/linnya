@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RenderNode } from '../../../types/render';
-import type { ManualEditableTarget } from '../../manualEditing';
+import type { ManualEditableTarget } from '../../manualEditing/selection';
 import { resolveLayerAvailability } from './layerAvailability';
 
 function node(editKey: string, ancestors: readonly string[] = []): RenderNode {

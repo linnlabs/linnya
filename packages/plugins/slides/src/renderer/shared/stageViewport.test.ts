@@ -4,6 +4,8 @@ import {
   computeInitialScrollableStageScroll,
   computeScrollableStageLayout,
 } from './stageViewport';
+import { SLIDE_STAGE_COMMAND_BAR_BOTTOM, SLIDE_STAGE_FIT_GAP, SLIDE_STAGE_FIT_PADDING } from './constants';
+import { computeFitScale } from './slideScale';
 
 describe('computeScrollableStageLayout', () => {
   it('keeps a fixed gutter when the scaled slide exceeds the viewport', () => {
@@ -72,6 +74,41 @@ describe('computeScrollableStageLayout', () => {
     expect(layout.contentHeight).toBe(760);
     expect(layout.slideLeft).toBe(48);
     expect(layout.slideTop).toBe(56);
+  });
+
+  it('适应窗口时幻灯片到顶部命令条与到底部导航的间距相同', () => {
+    const padding = SLIDE_STAGE_FIT_PADDING;
+    const viewport = { width: 1200, height: 700 };
+    const scale = computeFitScale(viewport.width, viewport.height, { width: 10, height: 5.625 }, 'contain', padding);
+    const layout = computeScrollableStageLayout({
+      viewportWidth: viewport.width,
+      viewportHeight: viewport.height,
+      slideWidth: 960,
+      slideHeight: 540,
+      scale,
+      gutter: 48,
+      verticalInsets: padding,
+    });
+
+    const gapBelowCommandBar = layout.slideTop - SLIDE_STAGE_COMMAND_BAR_BOTTOM;
+    const gapAboveNavigator = viewport.height - layout.slideTop - layout.scaledSlideHeight;
+    expect(gapBelowCommandBar).toBeCloseTo(SLIDE_STAGE_FIT_GAP);
+    expect(gapAboveNavigator).toBeCloseTo(SLIDE_STAGE_FIT_GAP);
+  });
+
+  it('上下留白放不下时贴近留白位置但不越出视口', () => {
+    const layout = computeScrollableStageLayout({
+      viewportWidth: 1200,
+      viewportHeight: 700,
+      slideWidth: 960,
+      slideHeight: 540,
+      scale: 1.27,
+      gutter: 48,
+      verticalInsets: { top: 80, bottom: 32 },
+    });
+
+    expect(layout.contentHeight).toBe(700);
+    expect(layout.slideTop + layout.scaledSlideHeight).toBeCloseTo(700);
   });
 });
 

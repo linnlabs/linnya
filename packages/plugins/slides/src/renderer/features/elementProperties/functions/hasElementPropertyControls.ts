@@ -1,4 +1,4 @@
-import type { ManualEditableTarget } from '../../manualEditing';
+import type { ManualEditableTarget } from '../../manualEditing/selection';
 
 const PROPERTY_CAPABILITIES = new Set<ManualEditableTarget['capabilities'][number]>([
   'set_text_style',

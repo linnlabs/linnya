@@ -129,8 +129,9 @@
           :slide-left="currentLayout.slideLeft"
           :slide-top="currentLayout.slideTop"
           :render-scale="renderScale"
+          @preview="manualResizePreview = $event"
           @dragging="textWidthDragging = $event"
-          @submit="submitTextWidth"
+          @submit="manualSubmission.enqueue"
           @finish="scrollHostRef?.focus({ preventScroll: true })"
         />
       </div>
@@ -150,7 +151,7 @@
       />
     </div>
     <ElementPropertyToolbar
-      v-if="manualToolbarTarget && manualPropertyAnchor && showElementPropertyControls && !showAiPrompt && !textEditorTarget && !manualTranslationPreview && !manualResizePreview && !textWidthDragging"
+      v-if="manualToolbarTarget && manualPropertyAnchor && showObjectToolbar"
       :key="manualToolbarKey"
       :target="manualToolbarTarget"
       :anchor="manualPropertyAnchor"
@@ -177,16 +178,18 @@
 </template>
 
 <script setup lang="ts">
-import { collectEditingPreviewGeometries } from '../../features/editingPreview';
+import { useStagePointerRouting } from '../../page/orchestration/useStagePointerRouting';
+import { useStageAiPrompt } from '../../page/orchestration/useStageAiPrompt';
+import { useStageToolbarVisibility } from '../../page/orchestration/useStageToolbarVisibility';
+import { useSlidesManualSelectionStore } from '../../features/manualEditing/selection';
+import { collectEditingPreviewGeometries, useSlideEditingPreview } from '../../features/editingPreview';
 import { ref, shallowRef, computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useSlideStageViewport } from '../../features/stageZoom';
-import { useSlidesStore } from '../../store/slidesStore';
+import { useSlidesStore, useSlidesDocumentRuntime, usePresentedFrame } from '../../features/documentRuntime';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import {
   SourceSelectionPromptPopover,
-  findSourceElementsForSelection,
-  resolveSourceSelectionPromptPosition,
   type SourceSelectionEditSubmitPayload,
   useSlideSourceSelectionInteraction,
 } from '../../features/sourceSelection';
@@ -198,21 +201,10 @@ import {
 } from '../../features/previewRenderState';
 import { isKonvaNodeSupported } from '../../features/konvaPreview';
 import { useReadySlideVisualResources } from '../../features/renderVisualResources';
-import {
-  collectManualTranslationPreviews,
-  collectManualVisualPreviews,
-  mergeManualTranslationPreviews,
-  projectManualEditableTargetSelection,
-  resolveManualEditingCursor,
-  manualEditPresentationTrace,
-  ManualResizeHandles,
-  ManualTextWidthHandles,
-  canResizeManualTarget,
-  canResizeTextWidth,
-  useManualEditSubmission,
-  useSlidesManualEditingStore,
-  useManualEditingLocalization,
-} from '../../features/manualEditing';
+import { collectManualTranslationPreviews, collectManualVisualPreviews, mergeManualTranslationPreviews, projectManualEditableTargetSelection } from '../../features/manualEditing/preview';
+import { resolveManualEditingCursor, canResizeManualTarget, canResizeTextWidth, useManualEditingEnabled } from '../../features/manualEditing/selection';
+import { ManualResizeHandles, ManualTextWidthHandles, useManualEditingLocalization } from '../../features/manualEditing/ui';
+import { useManualEditSubmission, useSlidesManualSubmissionStore } from '../../features/manualEditing/submission';
 import { ownsCanvasKeyboard, useSlideEditingInteraction } from '../../features/editingInteraction';
 import { InlineTextEditor, TextDraftPreview, type InlineTextSelection } from '../../features/textEditing';
 import {
@@ -221,12 +213,12 @@ import {
   hasElementPropertyControls,
   projectElementPropertyTarget,
 } from '../../features/elementProperties';
-import type { ManualEditingVisualPreview } from '../../features/manualEditing';
-import type { SlidesManualEditCommandOperation } from '@plugin/slides/shared/authoringEditing';
-import { manualSelectionBounds } from '../../features/manualEditing';
+import type { ManualEditingVisualPreview } from '../../features/manualEditing/preview';
+import { manualSelectionBounds } from '../../features/manualEditing/selection';
 import { resolveLayerAvailability, useEditingCommands } from '../../features/editingCommands';
 import { useElementClipboard } from '../../features/elementClipboard';
 import { ImageEditingControls } from '../../features/imageEditing';
+import { unpresentedInsertions } from '../../features/editingPreview';
 
 const props = defineProps<{
   sourceEditBusy?: boolean;
@@ -238,16 +230,13 @@ const emit = defineEmits<{
 
 const slidesStore = useSlidesStore();
 const renderStore = useSlidesRenderStore();
-const manualEditingStore = useSlidesManualEditingStore();
+const manualEditingStore = useSlidesManualSubmissionStore();
+const manualEditingEnabled = useManualEditingEnabled();
+  const manualEditingStoreSelection = useSlidesManualSelectionStore();
 const { manualEditingMessage } = useManualEditingLocalization();
 const { slidesPreviewMessage } = useSlidesPreviewLocalization();
 const { currentSlideRender, renderModel } = storeToRefs(renderStore);
-const {
-  enabled: manualEditingEnabled,
-} = storeToRefs(manualEditingStore);
 const allRenderSlides = computed(() => renderModel.value?.slides ?? []);
-const manualPendingInsertions = computed(() => manualEditingEnabled.value
-  ? manualEditingStore.pendingInsertions.filter(entry => entry.slideIndex === currentSlideRender.value?.index) : []);
 const {
   displayedSlide,
   imageResources,
@@ -258,6 +247,10 @@ const {
   targetSlide: currentSlideRender,
   allSlides: allRenderSlides,
 });
+const manualPendingInsertions = computed(() => manualEditingEnabled.value && displayedSlide.value
+  && displayedSlide.value.index === currentSlideRender.value?.index
+  ? unpresentedInsertions(manualEditingStore.pendingInsertions.filter(entry => entry.slideIndex === displayedSlide.value?.index), displayedSlide.value) : []);
+
 
 const renderSlideSize = computed(() => renderModel.value?.slideSize ?? null);
 const currentSlideKonvaCompatible = computed(() =>
@@ -340,11 +333,9 @@ const {
 });
 
 const manualResizePreview = shallowRef<ManualEditingVisualPreview | null>(null);
+const projectEditingPreview = useSlideEditingPreview(displayedSlide);
 const textWidthDragging = ref(false);
 const manualSubmission = useManualEditSubmission();
-function submitTextWidth(operation: SlidesManualEditCommandOperation): void {
-  manualSubmission.enqueue({ operation });
-}
 const {
   selectedTarget: manualSelectedTarget,
   selectedTargets: manualSelectedTargets,
@@ -388,6 +379,7 @@ const {
   slideSize: actualSlideSize,
   wrapperRef: konvaWrapperRef,
   visualPreview: manualResizePreview,
+  projectPreview: projectEditingPreview,
   submitIntent: manualSubmission.enqueue,
   focusCanvas: () => scrollHostRef.value?.focus({ preventScroll: true }),
 });
@@ -419,7 +411,7 @@ const manualVisualPreviews = computed(() => collectManualVisualPreviews(
   manualResizePreview.value,
 ));
 const manualPresentedSelectedTargets = computed(() => {
-  const geometries = collectEditingPreviewGeometries(displayedSlide.value?.elements ?? [], manualVisualPreviews.value);
+  const geometries = collectEditingPreviewGeometries(displayedSlide.value?.elements ?? [], manualVisualPreviews.value, projectEditingPreview);
   return manualSelectedTargets.value.map(target => projectManualEditableTargetSelection(target, manualPreviewTranslations.value, geometries));
 });
 const manualPresentedSelectedTarget = computed(() => manualPresentedSelectedTargets.value.length === 1
@@ -461,123 +453,26 @@ const manualPropertyAnchor = useElementPropertyAnchor({
   geometryRevision: stageOverlayGeometryRevision,
 });
 
-/**
- * 一套选择：作者对象走手动编辑交互；指针下没有作者对象、但有带源码定位的元素时，
- * 这次点击交给 AI 选择。两种选区互斥，后续指针事件跟随本次按下的归属。
- */
-let pointerOwner: 'manual' | 'source' = 'manual';
-
-function handleStageBlankPointerDown(event: PointerEvent): void {
-  if (event.button !== 0) return;
-  // 留白与页内背景共用交接语义；只监听容器自身，避免工具条和拖拽事件误清选区。
-  pointerOwner = 'manual';
-  resetSourceSelection();
-  handleManualPointerDown(event, true);
-  if (!textEditorTarget.value) scrollHostRef.value?.focus({ preventScroll: true });
-}
-
-function handleStagePointerDown(event: PointerEvent): void {
-  if (!hasManualTargetAt(event) && hasSourceTargetAt(event)) {
-    pointerOwner = 'source';
-    manualEditingStore.clearSelection();
-    handleSourcePointerDown(event);
-  } else {
-    pointerOwner = 'manual';
-    resetSourceSelection();
-    handleManualPointerDown(event);
-  }
-  if (!textEditorTarget.value) scrollHostRef.value?.focus({ preventScroll: true });
-}
-
-function handleStagePointerMove(event: PointerEvent): void {
-  // 两个交互都只认自己按下的 pointer；没有手势时各自只更新悬停。
-  handleManualPointerMove(event);
-  handleSourcePointerMove(event);
-}
-
-function handleStagePointerUp(event: PointerEvent): void {
-  if (pointerOwner === 'source') handleSourcePointerUp(event);
-  else handleManualPointerUp(event);
-}
-
-function handleStagePointerCancel(event: PointerEvent): void {
-  if (pointerOwner === 'source') handleSourcePointerCancel(event);
-  else handleManualPointerCancel(event);
-}
-
-function handleStagePointerLeave(): void {
-  handleManualPointerLeave();
-  handleSourcePointerLeave();
-}
-
-function handleStageDoubleClick(event: MouseEvent): void {
-  handleManualDoubleClick(event);
-}
-
-/** 交给 AI 的源码目标：作者对象选区优先，否则是只带源码定位的元素选区。 */
-const aiTargets = computed(() => manualSelectedTargets.value.length > 0
-  ? findSourceElementsForSelection(displayedSlide.value?.elements ?? [], manualSelectedTargets.value)
-  : selectedSourceTargets.value);
-const canAskAi = computed(() => canSelectSourceElements.value && aiTargets.value.length > 0);
-const aiPromptOpen = ref(false);
-// 只带源码定位的元素没有属性可改，选中即展开 AI 输入；作者对象由浮条入口或 ⌘K 展开。
-const showAiPrompt = computed(() => canAskAi.value
-  && (aiPromptOpen.value || (manualSelectedTargets.value.length === 0 && selectedSourceTargets.value.length > 0)));
-
-function openAiPrompt(): void {
-  if (!canAskAi.value) return;
-  submitTextEdit();
-  aiPromptOpen.value = true;
-}
-
-function closeAiPrompt(): void {
-  aiPromptOpen.value = false;
-  resetSourceSelection();
-  scrollHostRef.value?.focus({ preventScroll: true });
-}
-
-watch(() => aiTargets.value.map(target => target.elementId).join('\0'), () => { aiPromptOpen.value = false; });
-
-const sourcePromptPosition = computed(() => {
-  stageOverlayGeometryRevision.value;
-  const slideRect = canvasShellRef.value?.getBoundingClientRect();
-
-  return resolveSourceSelectionPromptPosition({
-    targets: aiTargets.value,
-    renderScale: renderScale.value,
-    slideSize: actualSlideSize.value,
-    ...(slideRect
-      ? {
-          slideViewportRect: {
-            left: slideRect.left,
-            top: slideRect.top,
-          },
-          viewportSize: {
-            width: window.innerWidth,
-            height: window.innerHeight,
-          },
-        }
-      : {}),
-  });
+const { handleStageBlankPointerDown, handleStagePointerDown, handleStagePointerMove, handleStagePointerUp, handleStagePointerCancel, handleStagePointerLeave, handleStageDoubleClick } = useStagePointerRouting({
+  hasManualTargetAt, hasSourceTargetAt, handleManualPointerDown, handleSourcePointerDown, handleManualPointerMove, handleSourcePointerMove, handleManualPointerUp, handleSourcePointerUp, handleManualPointerCancel, handleSourcePointerCancel, handleManualPointerLeave, handleSourcePointerLeave, handleManualDoubleClick,
+  clearManualSelection: manualEditingStoreSelection.clearSelection,
+  clearSourceSelection: resetSourceSelection,
+  focusCanvas: () => { if (!textEditorTarget.value) scrollHostRef.value?.focus({ preventScroll: true }); },
 });
 
-function handleSourceEditSubmit(instruction: string): void {
-  const slideRender = displayedSlide.value;
-  if (
-    preparingSlideVisuals.value
-    || slideRender?.slideId !== activeSlideId.value
-    || aiTargets.value.length === 0
-  ) {
-    return;
-  }
+const { aiTargets, canAskAi, showAiPrompt, openAiPrompt, closeAiPrompt, sourcePromptPosition, handleSourceEditSubmit } = useStageAiPrompt({
+  manualSelectedTargets, displayedSlide, selectedSourceTargets, canSelectSourceElements, stageOverlayGeometryRevision, canvasShellRef, renderScale, actualSlideSize, preparingSlideVisuals, activeSlideId,
+  finishText: submitTextEdit,
+  clearSourceSelection: resetSourceSelection,
+  focusCanvas: () => scrollHostRef.value?.focus({ preventScroll: true }),
+  submit: payload => emit('sourceEditSubmit', payload),
+});
 
-  emit('sourceEditSubmit', {
-    instruction,
-    slideNumber: slideRender.index + 1,
-    targets: aiTargets.value,
-  });
-  aiPromptOpen.value = false;
-}
+const showObjectToolbar = useStageToolbarVisibility(() => ({
+  hasControls: showElementPropertyControls.value, aiPromptOpen: showAiPrompt.value,
+  editingText: textEditorTarget.value !== null, translating: manualTranslationPreview.value !== null,
+  resizing: manualResizePreview.value !== null, resizingText: textWidthDragging.value,
+}));
 
 const konvaWrapperStyle = computed(() => {
   const safeRasterScale = konvaRasterScale.value > 0 ? konvaRasterScale.value : 1;
@@ -643,22 +538,25 @@ watch(
     renderModel.value?.presentationId,
     renderModel.value?.version,
   ] as const,
-  ([displayed, target, presentationId, version]) => {
+  ([displayed, target]) => {
     // RenderModel 到达后仍需等待当前页图片/图表形成完整帧；同一对象引用表示该帧已提交。
     if (!displayed || displayed !== target) return;
-    if (version !== undefined) {
-      manualEditingStore.recordPresentedRevision(version);
-      if (presentationId) {
-        // watcher 表示完整资源帧已提交；再跨一个 rAF 才是浏览器可绘制边界。
-        window.requestAnimationFrame(() => {
-          manualEditPresentationTrace.recordPresented(presentationId, version);
-        });
-      }
-    }
     reconcileSourceSelection();
     reconcileManualSelection();
   },
 );
+
+usePresentedFrame(computed(() => {
+  const model = renderModel.value;
+  return model && displayedSlide.value === currentSlideRender.value
+    ? { documentId: model.presentationId, revision: model.version, slide: displayedSlide.value } : null;
+}));
+watch(visualResourcePreparationFailed, failed => {
+  const model = renderModel.value;
+  if (failed && model) useSlidesDocumentRuntime().reportPresentationFailure({
+    documentId: model.presentationId, revision: model.version, slide: currentSlideRender.value,
+  }, slidesPreviewMessage('slides.preview.error.presentationRendering'));
+});
 
 
 </script>

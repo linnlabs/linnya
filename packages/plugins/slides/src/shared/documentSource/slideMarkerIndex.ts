@@ -1,3 +1,4 @@
+import { isRecord } from '../valueRecord';
 import { readStaticSlideOrder } from './readStaticSlideOrder';
 import { parse } from 'acorn';
 
@@ -147,9 +148,6 @@ function readStartLine(node: Record<string, unknown>): number | null {
   return typeof node.loc.start.line === 'number' ? node.loc.start.line : null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function normalizeLineEndings(source: string): string {
   return source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');

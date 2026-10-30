@@ -71,6 +71,27 @@ describe('editing preview and finalized layout handoff', () => {
     }
   });
 
+  it('keeps width, opposite anchor, wrapping and later font changes coherent until the confirmed frame', () => {
+    const source = input();
+    const baseline = finalize(structuredClone(source));
+    const width: EditingVisualPreview = { elementId: 'text', affectedElementIds: ['text'],
+      operation: { op: 'set_text_width', targetKind: 'text', target: { slideKey: 's', editKey: 't' }, width: 1 },
+      translationDelta: { dx: 1, dy: 0 } };
+    const wider: EditingVisualPreview = { ...width, operation: { ...width.operation, op: 'set_text_width', targetKind: 'text', width: 3 }, translationDelta: { dx: -2, dy: 0 } };
+    for (const previews of [[width], [width, style(24)], [width, style(24), wider]]) {
+      const preview = projectEditingPreviewNode(baseline, previews);
+      const finalInput = resized(structuredClone(source), previews.length > 1 ? 24 : 14);
+      finalInput.box = { ...finalInput.box, x: previews.length === 3 ? 0 : 2, w: previews.length === 3 ? 3 : 1 };
+      const confirmed = finalize(finalInput);
+      if (preview.kind !== 'text') throw new Error('Missing width preview');
+      expect(preview.layout).toEqual(confirmed.layout);
+      expect(preview.box).toEqual(confirmed.box);
+      expect(collectEditingPreviewGeometries([baseline], previews).get('text')?.polygon)
+        .toEqual(collectEditingPreviewGeometries([confirmed], []).get('text')?.polygon);
+    }
+    expect(projectEditingPreviewNode(baseline, [])).toBe(baseline);
+  });
+
   it('retains the complete previous frame when an author layout subtree must be recomputed', () => {
     const baseline = finalize(input());
     baseline.layoutConstraintEvidence = { layoutNodeId: 'layout', positionMode: 'flow',

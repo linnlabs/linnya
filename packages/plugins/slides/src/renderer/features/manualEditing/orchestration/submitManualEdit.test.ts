@@ -1,3 +1,4 @@
+import { SlidesIpcError } from '@plugin/slides/shared/ipc';
 import { describe, expect, it, vi } from 'vitest';
 import { submitManualEdit } from './submitManualEdit';
 
@@ -85,9 +86,9 @@ describe('submitManualEdit', () => {
     });
   });
 
-  it('retries an ambiguous transport failure with the same idempotent command', async () => {
+  it('retries an explicitly retryable failure with the same idempotent command', async () => {
     const submit = vi.fn()
-      .mockRejectedValueOnce(new Error('connection reset'))
+      .mockRejectedValueOnce(new SlidesIpcError('temporarily busy', 'busy', true))
       .mockImplementationOnce(async command => ({
         status: 'committed' as const,
         commandId: command.commandId,
@@ -103,4 +104,16 @@ describe('submitManualEdit', () => {
     expect(submit).toHaveBeenCalledTimes(2);
     expect(submit.mock.calls[0]?.[0]).toEqual(submit.mock.calls[1]?.[0]);
   });
+  it.each([
+    new Error('invoke failed'),
+    new SlidesIpcError('invalid command', 'validation', false),
+    new SlidesIpcError('database unavailable', 'internal', false),
+  ])('does not repeat a non-retryable failure: %s', async error => {
+    const submit = vi.fn().mockRejectedValue(error);
+    await expect(submitManualEdit(input, {
+      createCommandId: () => 'c8356051-a487-4cd3-863f-47db0079f991', submit,
+    })).rejects.toBe(error);
+    expect(submit).toHaveBeenCalledTimes(1);
+  });
+
 });

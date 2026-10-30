@@ -1,3 +1,4 @@
+import { isRecord } from '@plugin/slides/shared/valueRecord';
 import type {
   DocumentTypeBackendReadParams,
   DocumentTypeBackendReadResult,
@@ -31,9 +32,6 @@ interface CurrentPresentationSource {
   readonly draft: PresentationDraftRow | null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';

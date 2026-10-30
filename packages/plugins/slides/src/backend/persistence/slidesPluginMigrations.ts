@@ -1,3 +1,5 @@
+import { isRecord } from '@plugin/slides/shared/valueRecord';
+import { hasWorkspaceNodeTextSnapshot, saveWorkspaceNodeTextSnapshot } from '@plugin/backend/workspaceRuntime';
 import { createHash } from 'node:crypto';
 import type {
   PluginMigrationDatabase,
@@ -110,9 +112,6 @@ interface LegacyTemplateRow {
   readonly usage_count: number | null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
 
 function isNullableString(value: unknown): value is string | null {
   return typeof value === 'string' || value === null;
@@ -421,7 +420,6 @@ function migrateCurrentPresentationSchema(db: PluginMigrationDatabase): void {
 
 function backfillWorkspaceSnapshots(db: PluginMigrationDatabase): void {
   if (
-    !tableExists(db, 'workspace_node_text_snapshots') ||
     !tableExists(db, 'presentation_versions')
   ) {
     return;
@@ -435,20 +433,8 @@ function backfillWorkspaceSnapshots(db: PluginMigrationDatabase): void {
       SELECT node_id, MAX(version_number) AS version_number
       FROM presentation_versions GROUP BY node_id
     ) latest ON latest.node_id = v.node_id AND latest.version_number = v.version_number
-    WHERE NOT EXISTS (
-      SELECT 1 FROM workspace_node_text_snapshots s WHERE s.node_id = v.node_id
-    )
   `
   );
-  const run = db.prepare(`
-    INSERT INTO workspace_node_text_snapshots
-      (node_id, content_type, text, source_plugin_id, source_node_type, updated_at)
-    VALUES (?, 'text/plain', ?, ?, ?, ?)
-    ON CONFLICT(node_id) DO NOTHING
-  `).run;
-  if (!run) {
-    throw new Error('Slides v2 缺少快照写入能力。');
-  }
   for (const row of rows) {
     if (
       !isRecord(row) ||
@@ -467,7 +453,10 @@ function backfillWorkspaceSnapshots(db: PluginMigrationDatabase): void {
         text = row.deck_spec_json;
       }
     }
-    run(row.node_id, text, SLIDES_PLUGIN_ID, PRESENTATION_NODE_TYPE, row.updated_at);
+    if (!hasWorkspaceNodeTextSnapshot(db, row.node_id)) {
+      saveWorkspaceNodeTextSnapshot({ db, nodeId: row.node_id, text, contentType: 'text/plain',
+        sourcePluginId: SLIDES_PLUGIN_ID, sourceNodeType: PRESENTATION_NODE_TYPE, updatedAt: row.updated_at });
+    }
   }
 }
 

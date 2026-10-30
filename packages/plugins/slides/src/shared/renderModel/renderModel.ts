@@ -1,3 +1,4 @@
+import type { LayoutReplay } from '../generatedLayoutReplay';
 import type { PreparedTextLayout } from '../textLayout/definitions/preparedTextLayout';
 /**
  * PresentationRenderModel — Slides 插件前后端共享的渲染协议
@@ -75,6 +76,7 @@ export interface RenderCapabilities {
 // ─── 单页模型 ──────────────────────────────────────────────────────────────
 
 export interface SlideRenderModel {
+  layoutReplay?: LayoutReplay;
   slideId: string;
   index: number;
   layoutKey: string;

@@ -1,0 +1,34 @@
+import { beforeEach, expect, it } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { useSlidesStore } from '../store/slidesDocumentStore';
+import { useSlidesDocumentRuntime } from './useSlidesDocumentRuntime';
+import { makePresentationView } from '../../../../shared/presentationViewSnapshot/testing/viewFixture';
+
+beforeEach(() => setActivePinia(createPinia()));
+it('accepts only the complete current page of the active document revision', () => {
+  const store = useSlidesStore();
+  const runtime = useSlidesDocumentRuntime();
+  store.beginDocument('deck');
+  store.installSnapshot(makePresentationView('deck', 1), 0);
+  const old = { documentId: 'deck', revision: 1, slide: store.currentSlide };
+  runtime.reportPresentedFrame(old);
+  expect(runtime.presentedRevision.value).toBe(1);
+  runtime.reportPresentationFailure(old, 'Old page failed');
+  store.installSnapshot(makePresentationView('deck', 2), 0);
+  expect(store.presentationError).toBeNull();
+  runtime.reportPresentedFrame(old);
+  expect(runtime.presentedRevision.value).toBeNull();
+  const current = { documentId: 'deck', revision: 2, slide: store.currentSlide };
+  runtime.reportPresentationFailure(current, 'Image failed');
+  expect(store.presentationError).toBe('Image failed');
+  runtime.reportPresentedFrame(current);
+  expect(runtime.presentedRevision.value).toBe(2);
+  expect(store.presentationError).toBeNull();
+  store.setCurrentSlide(1);
+  expect(runtime.presentedRevision.value).toBeNull();
+  runtime.reportPresentedFrame(current);
+  expect(runtime.presentedRevision.value).toBeNull();
+  store.beginDocument('other');
+  runtime.reportPresentedFrame(current);
+  expect(runtime.presentedRevision.value).toBeNull();
+});

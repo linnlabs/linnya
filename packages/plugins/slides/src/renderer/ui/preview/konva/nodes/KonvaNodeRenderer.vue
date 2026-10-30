@@ -64,10 +64,10 @@ import KonvaTableNode from './KonvaTableNode.vue';
 import KonvaTextNode from './KonvaTextNode.vue';
 import { INCHES_TO_PX } from '../../../../shared/constants';
 import {
-  projectEditingPreviewNode,
+  useEditingPreviewProjector,
   type EditingVisualPreview,
 } from '../../../../features/editingPreview';
-import type { ManualEditingTranslationPreview } from '../../../../features/manualEditing';
+import type { ManualEditingTranslationPreview } from '../../../../features/manualEditing/preview';
 
 const props = defineProps<{
   node: RenderNode;
@@ -78,7 +78,8 @@ const props = defineProps<{
   manualVisualPreviews?: readonly EditingVisualPreview[];
 }>();
 
-const renderNode = computed(() => projectEditingPreviewNode(
+const projectPreview = useEditingPreviewProjector();
+const renderNode = computed(() => projectPreview(
   props.node,
   props.manualVisualPreviews ?? [],
 ));

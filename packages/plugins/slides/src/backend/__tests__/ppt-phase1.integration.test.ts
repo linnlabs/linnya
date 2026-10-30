@@ -1,3 +1,5 @@
+import { PresentationDraftRepository } from '../persistence';
+import { PresentationRevisionScope } from '../features/presentationSourceHistory';
 import Database from 'better-sqlite3';
 import JSZip from 'jszip';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -95,8 +97,8 @@ describe('Phase 1 end-to-end chain', () => {
         },
       },
       undefined,
-      undefined,
-      { buildExecution: createInProcessPresentationBuildExecution() },
+      new PresentationDraftRepository(db),
+      { revisionScope: new PresentationRevisionScope(), buildExecution: createInProcessPresentationBuildExecution() },
     );
 
     const created = await coordinator.getCodegenPresentationService().write(
@@ -161,8 +163,8 @@ describe('Phase 1 end-to-end chain', () => {
         },
       },
       undefined,
-      undefined,
-      { buildExecution: createInProcessPresentationBuildExecution() },
+      new PresentationDraftRepository(db),
+      { revisionScope: new PresentationRevisionScope(), buildExecution: createInProcessPresentationBuildExecution() },
     );
 
     const result = await coordinator.createEmptyPresentation({

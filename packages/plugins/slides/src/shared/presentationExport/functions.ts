@@ -1,3 +1,4 @@
+import { isRecord } from '../valueRecord';
 import {
   PRESENTATION_EXPORT_IMAGE_WIDTHS,
   type PresentationExportFormat,
@@ -6,9 +7,6 @@ import {
   type PresentationExportRequest,
 } from './definitions';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function readNonEmptyString(record: Readonly<Record<string, unknown>>, field: string): string {
   const value = record[field];

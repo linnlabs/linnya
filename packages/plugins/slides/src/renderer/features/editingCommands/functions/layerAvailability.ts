@@ -1,5 +1,5 @@
 import type { RenderNode } from '../../../types/render';
-import type { ManualEditableTarget } from '../../manualEditing';
+import type { ManualEditableTarget } from '../../manualEditing/selection';
 
 /**
  * 与后端 changeManualLayer 同一规则：同一页、同一作者祖先链的对象按文稿顺序排列。

@@ -1,3 +1,5 @@
+import { isRecord } from '@plugin/slides/shared/valueRecord';
+import { readWorkspaceDocumentMetadata, touchWorkspaceDocument } from '@plugin/backend/workspaceDocumentProjection';
 import { readPresentationViewSource } from '../functions/readPresentationViewSource';
 import type { Database } from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
@@ -632,14 +634,7 @@ export class PresentationRepository implements PresentationRepositoryPort {
   }
 
   private commitWorkspaceProjection(nodeId: string, deckSource: string, updatedAt: number): void {
-    const result = this.db.prepare(`
-      UPDATE workspace_nodes
-      SET updated_at = ?
-      WHERE id = ? AND deleted_at IS NULL
-    `).run(updatedAt, nodeId);
-    if (result.changes !== 1) {
-      throw new Error(`Presentation workspace node not found: ${nodeId}`);
-    }
+    touchWorkspaceDocument(this.db, nodeId, updatedAt);
 
     // 快照与 current/revision 同事务提交，插件禁用后的 VFS 读取不会落后于当前文稿。
     saveWorkspaceNodeTextSnapshot({
@@ -678,18 +673,8 @@ export class PresentationRepository implements PresentationRepositoryPort {
   }
 
   private readWorkspaceProjectRow(nodeId: string): WorkspaceProjectRow | null {
-    const row = this.db.prepare(`
-      SELECT project_id
-      FROM workspace_nodes
-      WHERE id = ? AND deleted_at IS NULL
-    `).get(nodeId);
-    if (row === undefined) {
-      return null;
-    }
-    if (!isRecord(row) || (row.project_id !== null && typeof row.project_id !== 'string')) {
-      throw new Error(`Presentation workspace project row is invalid: ${nodeId}`);
-    }
-    return { project_id: row.project_id };
+    const metadata = readWorkspaceDocumentMetadata(this.db, nodeId);
+    return metadata ? { project_id: metadata.projectId } : null;
   }
 
   private mapTemplateRow(row: TemplateRow): PresentationTemplateRecord {
@@ -838,9 +823,6 @@ function readTemplateSummaryRow(value: unknown): TemplateSummaryRow {
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isFiniteInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value);

@@ -25,10 +25,7 @@ import type { SlideImageResourceMap } from '../../../../features/renderImageReso
 import type { SlideChartResourceMap } from '../../../../features/renderChartResources';
 import KonvaNodeRenderer from '../nodes/KonvaNodeRenderer.vue';
 import { sortNodesByZIndex } from '../../../../features/konvaPreview';
-import type {
-  ManualEditingTranslationPreview,
-  ManualEditingVisualPreview,
-} from '../../../../features/manualEditing';
+import type { ManualEditingTranslationPreview, ManualEditingVisualPreview } from '../../../../features/manualEditing/preview';
 
 const props = defineProps<{
   elements: RenderNode[];

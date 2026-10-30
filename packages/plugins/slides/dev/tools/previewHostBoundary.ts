@@ -8,3 +8,9 @@ export function onRendererPluginPush(): never {
 export function notifyWorkspaceDocumentOpened(): never {
   throw new Error('Preview smoke unexpectedly opened a Workspace document');
 }
+export function showWorkspaceNotification(): never {
+  throw new Error('Preview smoke unexpectedly displayed a Workspace notification');
+}
+export function throwIfFileSessionOpenCancelled(): never {
+  throw new Error('Preview smoke unexpectedly entered a Host file session');
+}

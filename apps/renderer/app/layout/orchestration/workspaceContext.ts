@@ -16,11 +16,12 @@ import type {
   WorkspaceProjectFileSummary,
   WorkspaceProjectSummary,
 } from '@/shared/ports/workspaceContextPort';
-import { getDocumentTypeByNodeType } from '@/app/plugins/registry';
+import { getDocumentTypeByNodeType, getDocumentTypeByFileSessionType } from '@/app/plugins/registry';
 import { resolveWorkspaceNodeDisplayName } from '@/domains/workspace/functions/resolveWorkspaceNodeDisplayName';
 
 function mapSessionType(type: string): WorkspaceContextDocumentType {
-  return type.trim() || 'unknown';
+  // File manager 使用插件 session type；对外上下文统一使用文档 nodeType。
+  return getDocumentTypeByFileSessionType(type)?.nodeType ?? (type.trim() || 'unknown');
 }
 
 function mapNodeType(type: WorkspaceNode['type']): WorkspaceContextDocumentType {

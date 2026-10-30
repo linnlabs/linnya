@@ -14,6 +14,8 @@
   justify-content: space-between;
   height: 36px;
   padding: 0 10px 0 12px;
+  /* 插槽里的控件按工具栏宽度收起次要部分。 */
+  container-type: inline-size;
 }
 
 .deck-navigator .deck-navigator__trailing {
@@ -68,6 +70,13 @@
 .deck-navigator .deck-navigator__insert--pending:disabled {
   opacity: 1;
   animation: deck-navigator-pending 1.1s ease-in-out infinite;
+}
+
+.deck-navigator .deck-navigator__divider {
+  width: 0.5px;
+  height: 16px;
+  margin: 0 2px;
+  background: var(--color-border-default);
 }
 
 /* 分段视图开关：浅色凹槽 + 抬起的当前项。 */

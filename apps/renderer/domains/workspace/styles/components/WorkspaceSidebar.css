@@ -739,8 +739,14 @@
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  font-size: 20px; /* scale-exempt: 关闭图标字形尺寸 */
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-preview-close-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .asset-preview-close:hover {

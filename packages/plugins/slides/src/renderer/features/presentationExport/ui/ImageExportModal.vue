@@ -50,7 +50,7 @@ import {
   isPresentationExportImageWidth,
   type PresentationExportImageWidth,
 } from '@plugin/slides/shared/presentationExport';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import {
   resolvePresentationExportPixelSize,
   resolvePresentationImageExportProgressPercent,

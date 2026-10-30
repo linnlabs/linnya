@@ -22,9 +22,10 @@ import {
   mergeManualTranslationPreviews,
 } from './manualIntentPreviews';
 import { projectManualEditableTargetSelection } from './manualVisualPreview';
-import { collectEditingPreviewGeometries } from '../../editingPreview';
+import { collectEditingPreviewGeometries, type EditingPreviewProjector } from '../../editingPreview';
 
 export interface ManualEditingHitProjection {
+  readonly projectPreview?: EditingPreviewProjector;
   readonly transientTranslation: ManualEditingTranslationPreview | null;
   readonly pendingTranslations: readonly ManualEditingTranslationPreview[];
   readonly pendingVisuals: readonly ManualEditingVisualPreview[];
@@ -41,7 +42,7 @@ export function collectManualEditableTargets(nodes: readonly RenderNode[]): Manu
 export function collectPresentedManualTargets(nodes: readonly RenderNode[], projection: ManualEditingHitProjection): readonly ManualEditableTarget[] {
   const visuals = collectManualVisualPreviews(projection.pendingVisuals, projection.queuedIntents, projection.transientVisual);
   const translations = mergeManualTranslationPreviews(collectManualTranslationPreviews(projection.transientTranslation, projection.pendingTranslations, projection.queuedIntents));
-  const geometries = collectEditingPreviewGeometries(nodes, visuals);
+  const geometries = collectEditingPreviewGeometries(nodes, visuals, projection.projectPreview);
   return collectManualEditableTargets(nodes).filter(target => geometries.has(target.elementId))
     .map(target => projectManualEditableTargetSelection(target, translations, geometries));
 }
@@ -56,7 +57,7 @@ export function createPresentedTextEditingTarget(
   const translations = mergeManualTranslationPreviews(collectManualTranslationPreviews(
     projection.transientTranslation, projection.pendingTranslations, projection.queuedIntents,
   ));
-  const geometries = collectEditingPreviewGeometries(nodes, visuals);
+  const geometries = collectEditingPreviewGeometries(nodes, visuals, projection.projectPreview);
   const geometry = geometries.get(target.elementId);
   if (!geometry) return null;
   const presented = projectManualEditableTargetSelection(target, translations, geometries);
@@ -109,7 +110,7 @@ function findProjectedTargetPathAtPoint(
     projection.queuedIntents,
     projection.transientVisual,
   );
-  const geometries = collectEditingPreviewGeometries(nodes, visuals);
+  const geometries = collectEditingPreviewGeometries(nodes, visuals, projection.projectPreview);
   for (let index = targets.length - 1; index >= 0; index -= 1) {
     const target = targets[index];
     if (!target || !geometries.has(target.elementId)) continue;

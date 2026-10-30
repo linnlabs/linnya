@@ -1,4 +1,4 @@
-import type { ManualEditableTarget } from '../../manualEditing';
+import type { ManualEditableTarget } from '../../manualEditing/selection';
 import type { RenderNodeSelectionPoint, RenderNodeSelectionRect } from '../../renderNodeSelection';
 
 interface PointerGestureBase {

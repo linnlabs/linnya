@@ -1,3 +1,4 @@
+import { PresentationDraftRepository } from '../persistence';
 import { SlideMarkerIndex } from '@plugin/slides/shared';
 import { copyManualObjects } from '../features/presentationManualEditing';
 import { writeFileSync } from 'node:fs';
@@ -75,7 +76,7 @@ it('30 页连续编辑、批量与源码撤销在历史压缩后仍保持一致'
     reportFailure: (_documentId, error) => { throw error; },
   });
   const paths: (string | undefined)[] = [];
-  const runtime = new PresentationManualEditingRuntime({ presentationRepo: repo, builder, revisionScope: scope,
+  const runtime = new PresentationManualEditingRuntime({ draftRepo: new PresentationDraftRepository(db), presentationRepo: repo, builder, revisionScope: scope,
     historyStore, restoreRevision: input => history.commitDeferredRestore(input),
     trace: { record: event => { if (event.stage === 'source_rewritten') paths.push(event.path); } } });
   const source = Array.from({ length: 30 }, (_, i) => `const slide${i} = createSlide({ slideKey: 'page${i}' });
@@ -143,7 +144,7 @@ slide${i}.add(shape${i});`).join('\n') + `\ncompose({ title: '30 page editing', 
     // 插入、改样式、宽度、层序和重排走正式编译；源码定位必须仍指向新增作者 literal。
     await submit({ op: 'insert_blank_slide', index: 0 });
     await submit({ op: 'insert_objects', index: 0, objects: [
-      { kind: 'text', editKey: 'new-title', box: { x: 1, y: 1, w: 4, h: 1 }, content: 'New title', style: { fontSize: 28, bold: true, color: '#113355' } },
+      { kind: 'text', editKey: 'new-title', heightMode: 'content', box: { x: 1, y: 1, w: 4, h: 1 }, content: 'New title', style: { fontSize: 28, bold: true, color: '#113355' } },
       { kind: 'shape', editKey: 'new-shape', box: { x: 1, y: 2, w: 2, h: 1 }, geometry: 'rect', fill: '#336699', content: '' },
     ] });
     await submit({ op: 'set_text_style', target: { slideKey: 'blank-slide-1', editKey: 'new-title' }, bold: false, italic: true, underline: true, align: 'right' });
@@ -151,12 +152,14 @@ slide${i}.add(shape${i});`).join('\n') + `\ncompose({ title: '30 page editing', 
     const edited = await current();
     const title = edited.deckSpec.slides[0].spec.elements.find(element => element._authoringRef?.editKey === 'new-title');
     expect(title?.position.w).toBe(3);
+    expect(title?.position.h).toBeLessThan(1);
     expect(title?.style).toMatchObject({ italic: true, underline: true, align: 'right' });
     expect(title?.style?.bold).not.toBe(true);
     expect(title?._sourceSpan).toBeDefined();
     const span = title?._sourceSpan;
     if (!span) throw new Error('Missing new object source location');
     expect(edited.deckSource.split('\n').slice(span.startLine - 1, span.endLine).join('\n')).toContain('"editKey": "new-title"');
+    expect(edited.deckSource).toContain('"heightMode": "content"');
     // 左侧宽度手柄：同一对象在一个批次里先平移再改宽，按顺序生效，一次撤销。
     const newTitle = { slideKey: 'blank-slide-1', editKey: 'new-title' };
     await submit({ op: 'batch', operations: [
@@ -190,7 +193,7 @@ slide${i}.add(shape${i});`).join('\n') + `\ncompose({ title: '30 page editing', 
       { op: 'translate_by', targetKind: 'shape', target: { slideKey: 'page3', editKey: 'badge' }, delta: { dx: 0.25, dy: 0 } },
       { op: 'translate_by', targetKind: 'text', target: { slideKey: 'page3', editKey: 'title' }, delta: { dx: 0.25, dy: 0 } },
     ] });
-    expect(paths.slice(-2)).toEqual(['projected_translation', 'projected_translation']);
+    expect(paths.slice(-2)).toEqual(['projected_edit', 'projected_edit']);
     const projected = await current();
     expect(await scope.run('deck', () => builder.buildDeckSpecFromSource({ nodeId: 'deck', source: projected.deckSource }))).toEqual(projected.deckSpec);
     await submit({ op: 'move_slide', index: 0, toIndex: 10 });

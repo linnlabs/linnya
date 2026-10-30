@@ -36,17 +36,24 @@ export const THUMBNAIL_PIXEL_RATIO = typeof window !== 'undefined'
   ? Math.min(window.devicePixelRatio ?? 2, 2)
   : 2;
 
-/** Inspector 面板默认宽度 */
-export const INSPECTOR_DEFAULT_WIDTH = 280;
-
 /** PPT 舞台滚动边界留白（px） */
 export const SLIDE_STAGE_SCROLL_GUTTER = 48;
 
+/** 舞台顶部浮动命令条的下沿（top 12px + 条高 36px）。 */
+export const SLIDE_STAGE_COMMAND_BAR_BOTTOM = 48;
+
+/** 适应窗口时幻灯片与命令条、底部导航和左右边缘之间统一的可见间距（px）。 */
+export const SLIDE_STAGE_FIT_GAP = 32;
+
 /**
- * 适应窗口时的留白（px）。上下各留出顶部命令条与右下缩放条的高度，
- * 浮动工具不遮挡幻灯片，且是否可编辑都算出同一个缩放。
+ * 适应窗口时的留白（px）。顶部额外让出命令条，使幻灯片到命令条与到底部导航的距离相同；
+ * 是否可编辑都按同一留白计算，命令条出现或消失时幻灯片不移动、缩放不变。
  */
-export const SLIDE_STAGE_FIT_PADDING = { x: 32, y: 56 } as const;
+export const SLIDE_STAGE_FIT_PADDING = {
+  x: SLIDE_STAGE_FIT_GAP,
+  top: SLIDE_STAGE_COMMAND_BAR_BOTTOM + SLIDE_STAGE_FIT_GAP,
+  bottom: SLIDE_STAGE_FIT_GAP,
+} as const;
 
 /**
  * Slides 渲染默认色契约。

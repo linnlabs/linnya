@@ -1,8 +1,6 @@
 import type { RenderNode } from '../../../types/render';
-import {
-  collectManualEditableTargets, collectManualVisualPreviews, createPresentedTextEditingTarget,
-  type ManualEditingHitProjection,
-} from '../../manualEditing';
+import { collectManualEditableTargets, createPresentedTextEditingTarget, type ManualEditingHitProjection } from '../../manualEditing/selection';
+import { collectManualVisualPreviews } from '../../manualEditing/preview';
 import type { TextDraftPresentation } from '../definitions/editingInteractionTypes';
 
 /** 待保存文字的几何也来自统一的视觉投影，移动/拉伸期间不能留在旧位置。 */

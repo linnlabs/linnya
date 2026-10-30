@@ -116,3 +116,5 @@ Linux 下 Electron CLI 的 presentation 命令需要 `DISPLAY` 或 `WAYLAND_DISP
 开发启动器 `pnpm --silent slides:cli -- ...` 按源码、构建配置、lockfile、Node/平台身份与构建产物内容校验缓存；连续调用且输入和产物未变化时不重建。成功构建日志不进入 JSON 输出，失败时日志写 stderr。缓存仅属于开发态启动器，正式 standalone entry 不执行源码构建。
 
 所有命令默认输出紧凑 JSON；`--format pretty` 用两空格缩进。Inspect report v9 的最终文本布局 evidence 保留 `advanceSource`；启发式测量的溢出风险为 medium-confidence P1，真实字体测量维持 high-confidence P0。finding 的 `action` 继续由 inspection 的统一处置目录提供，不修改 strict finding 本体。
+
+Standalone 的文稿与 draft 投影仍由插件查询；Workspace 活动节点的 project 归属通过 `workspaceDocumentProjection` 窄端口读取，两者共用 SQLite 读事务。该入口不加载完整 workspaceRuntime，日志接收方由 Electron command 组合根注入，避免跨域 SQL 和无关 App 依赖进入 CLI bundle。

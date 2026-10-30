@@ -1,6 +1,9 @@
+import { useManualEditingEnabled } from '../../manualEditing/selection';
+import { useSlidesManualSelectionStore } from '../../manualEditing/selection';
+import type { ManualEditSubmissionPort } from '../../manualEditing/submission';
 import { computed, ref, watch } from 'vue';
-import { useSlidesStore } from '../../../store/slidesStore';
-import { useManualEditSubmission, useSlidesManualEditingStore } from '../../manualEditing';
+import { useSlidesStore } from '../../documentRuntime';
+import { useSlidesManualSubmissionStore } from '../../manualEditing/submission';
 import { ownsDocumentShortcut, useTextInputSession } from '../../editingInteraction';
 import { slidesApi } from '../../../services/slidesApi';
 import { useSlidesElementClipboardStore } from '../store/slidesElementClipboardStore';
@@ -10,22 +13,23 @@ import type { SlidesInsertedObject } from '@plugin/slides/shared/authoringEditin
 const PASTE_OFFSET = 0.2;
 
 /** 同稿会话剪贴板保存完整作者值；粘贴每次生成新身份，切稿即清空。 */
-export function useElementClipboard() {
+export function createElementClipboard(submission: ManualEditSubmissionPort) {
   const slides = useSlidesStore();
-  const manual = useSlidesManualEditingStore();
+  const manual = useSlidesManualSubmissionStore();
+  const editingEnabled = useManualEditingEnabled();
+  const manualSelection = useSlidesManualSelectionStore();
   const clipboard = useSlidesElementClipboardStore();
-  const submission = useManualEditSubmission();
   const text = useTextInputSession(submission);
   const busy = ref(false);
   watch(() => slides.currentDeckId, () => clipboard.write(null));
-  const canCopy = computed(() => manual.enabled && !busy.value && manual.selectedTargets.length > 0
-    && manual.selectedTargets.every(target => target.capabilities.includes('copy')));
-  const canInsert = computed(() => manual.enabled && !busy.value && !manual.pendingPageOperation && slides.documentBuildState?.state === 'ready');
+  const canCopy = computed(() => editingEnabled.value && !busy.value && manualSelection.selectedTargets.length > 0
+    && manualSelection.selectedTargets.every(target => target.capabilities.includes('copy')));
+  const canInsert = computed(() => editingEnabled.value && !busy.value && !manual.pendingPageOperation && slides.documentBuildState?.state === 'ready');
   const canPaste = computed(() => canInsert.value && clipboard.content?.documentId === slides.currentDeckId);
   /** 读取已提交的作者值；复制写入剪贴板，重复直接粘贴，不覆盖用户已复制的内容。 */
   async function readSelection(): Promise<SlideClipboardContent | null> {
     if (!canCopy.value || text.requestCommit() === 'blocked') return null;
-    const targets = manual.selectedTargets.map(target => target.authoringRef);
+    const targets = manualSelection.selectedTargets.map(target => target.authoringRef);
     busy.value = true;
     try {
       await submission.flush();
@@ -53,13 +57,13 @@ export function useElementClipboard() {
       box: { ...object.box, x: object.box.x + PASTE_OFFSET, y: object.box.y + PASTE_OFFSET } }));
     const documentId = slides.currentDeckId;
     const index = slides.currentSlideIndex;
-    const previousSelection = manual.selectedTargets.map(target => target.elementId).join('\0');
+    const previousSelection = manualSelection.selectedTargets.map(target => target.elementId).join('\0');
     const ticket = submission.enqueue({ operation: { op: 'insert_objects', index, objects } });
     void ticket.settled.then(result => {
       // 与插入一致：呈现后选中副本，便于继续拖动；等待期间用户已改选或换页则不打扰。
       if (result.status !== 'presented' || slides.currentDeckId !== documentId || slides.currentSlideIndex !== index
-        || manual.selectedTargets.map(target => target.elementId).join('\0') !== previousSelection) return;
-      manual.requestReveal({ targets: objects.map(object => ({ editKey: object.editKey })) });
+        || manualSelection.selectedTargets.map(target => target.elementId).join('\0') !== previousSelection) return;
+      manualSelection.requestReveal({ targets: objects.map(object => ({ editKey: object.editKey })) });
     });
     return objects;
   }
@@ -75,7 +79,7 @@ export function useElementClipboard() {
     if (content && canInsert.value) pasteContent(content);
   }
   function handleClipboardShortcut(event: KeyboardEvent): void {
-    if (!manual.enabled || !ownsDocumentShortcut(event) || !(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
+    if (!editingEnabled.value || !ownsDocumentShortcut(event) || !(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
     const key = event.key.toLowerCase();
     if (!['c', 'v', 'd'].includes(key)) return;
     event.preventDefault();

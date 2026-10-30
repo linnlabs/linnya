@@ -93,6 +93,11 @@
   transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
 }
 
+.sdp-root .sdp-nav-icon {
+  width: 14px;
+  height: 14px;
+}
+
 .sdp-root .sdp-nav-btn:hover {
   color: var(--color-text-secondary);
   background-color: var(--color-bg-hover);

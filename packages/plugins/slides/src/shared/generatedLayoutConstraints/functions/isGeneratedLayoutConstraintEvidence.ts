@@ -1,3 +1,4 @@
+import { isRecord } from '../../valueRecord';
 import type {
   GeneratedLayoutBox,
   GeneratedLayoutConstraintEvidence,
@@ -17,6 +18,7 @@ export function isGeneratedLayoutConstraintEvidence(
   return isRecord(value)
     && hasOnlyKeys(value, [
       'intrinsicTextAdvanceSource',
+      'textHeightMeasurement',
       'allowedBleedInches',
       'layoutNodeId',
       'positionMode',
@@ -27,6 +29,12 @@ export function isGeneratedLayoutConstraintEvidence(
       'parentConstraint',
       'clipSemantics',
     ])
+    && (value.textHeightMeasurement === undefined || (isRecord(value.textHeightMeasurement)
+      && hasOnlyKeys(value.textHeightMeasurement, ['source', 'fontSizePt', 'lineSpacingMultiple', 'letterSpacingPt'])
+      && value.textHeightMeasurement.source === 'heuristic'
+      && isFiniteNumber(value.textHeightMeasurement.fontSizePt) && value.textHeightMeasurement.fontSizePt > 0
+      && isFiniteNumber(value.textHeightMeasurement.lineSpacingMultiple) && value.textHeightMeasurement.lineSpacingMultiple > 0
+      && (value.textHeightMeasurement.letterSpacingPt === undefined || isFiniteNumber(value.textHeightMeasurement.letterSpacingPt))))
     && (value.intrinsicTextAdvanceSource === undefined
       || value.intrinsicTextAdvanceSource === 'harfbuzz' || value.intrinsicTextAdvanceSource === 'pretext'
       || value.intrinsicTextAdvanceSource === 'heuristic' || value.intrinsicTextAdvanceSource === 'mixed')
@@ -126,9 +134,6 @@ function isPositionMode(value: unknown): value is 'flow' | 'absolute' {
   return value === 'flow' || value === 'absolute';
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   const allowed = new Set(keys);

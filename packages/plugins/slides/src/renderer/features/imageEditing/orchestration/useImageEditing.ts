@@ -1,16 +1,18 @@
+import { useSlidesManualSelectionStore } from '../../manualEditing/selection';
 import { computed, ref } from 'vue';
 import { useLocalization } from '@app/localization';
-import { useSlidesStore } from '../../../store/slidesStore';
-import { useManualEditSubmission, useSlidesManualEditingStore } from '../../manualEditing';
+import { useSlidesStore } from '../../documentRuntime';
+import { useManualEditSubmission, useSlidesManualSubmissionStore } from '../../manualEditing/submission';
 import { importSlideImage } from './importSlideImage';
 import { IMAGE_EDITING_MESSAGES, type ImageEditingMessageKey } from '../definitions/imageEditingMessages';
 
 export function useImageEditing() {
   const slides = useSlidesStore();
-  const manual = useSlidesManualEditingStore();
+  const manual = useSlidesManualSubmissionStore();
+  const manualSelection = useSlidesManualSelectionStore();
   const submission = useManualEditSubmission();
   const busy = ref(false);
-  const target = computed(() => manual.selectedTargets.length === 1 ? manual.selectedTarget : null);
+  const target = computed(() => manualSelection.selectedTargets.length === 1 ? manualSelection.selectedTarget : null);
   const { message: translate } = useLocalization();
   const message = (key: ImageEditingMessageKey) => translate(`slides.imageEditing.${key}`, IMAGE_EDITING_MESSAGES[key]);
   async function replaceFile(file: File): Promise<void> {

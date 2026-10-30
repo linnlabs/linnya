@@ -3,10 +3,10 @@ import { createPinia, setActivePinia } from 'pinia';
 import { effectScope, nextTick, ref, computed } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SlidesManualEditCommand, SlidesManualEditCommandResult } from '@plugin/slides/shared/authoringEditing';
-import { useManualEditQueue, useSlidesManualEditingStore } from '../../manualEditing';
+import { useManualEditQueue, useSlidesManualSubmissionStore } from '../../manualEditing/submission';
 import type { TextEditingTarget } from '../../textEditing';
 import { useSlidesEditingInteractionStore } from '../store/slidesEditingInteractionStore';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { useSlidesDocumentSave } from '../../../page/orchestration/useSlidesDocumentSave';
 import { slidesFileHandler } from '../../documentRuntime';
 import { useTextInputSession } from './useTextInputSession';
@@ -33,6 +33,7 @@ function createWorkflow() {
   const documentId = computed({ get: () => slides.currentDeckId, set: value => slides.beginDocument(value) });
   documentId.value = 'deck';
   const revision = ref(1);
+  const presentedRevision = ref<number | null>(null);
   const commands: { command: SlidesManualEditCommand; resolve: (value: SlidesManualEditCommandResult) => void }[] = [];
   const submit = vi.fn((command: SlidesManualEditCommand) => new Promise<SlidesManualEditCommandResult>(resolve => {
     commands.push({ command, resolve });
@@ -44,13 +45,14 @@ function createWorkflow() {
   scopes.push(scope);
   const workflow = scope.run(() => {
     const queue = useManualEditQueue({
+      readPresentedRevision: () => presentedRevision.value,
       createCommandId: () => crypto.randomUUID(), submit, refreshDocument: refresh, message: key => key,
       readSnapshot: () => ({ documentId: documentId.value, presentationError: null, renderVersion: revision.value,
         buildState: documentId.value === null ? null : { state: 'ready', presentationId: documentId.value,
           versionId: `v${revision.value}`, versionNumber: revision.value, sourceHash: 'a'.repeat(64) } }),
     });
     useSlidesDocumentSave(queue);
-    return { queue, text: useTextInputSession(queue), store: useSlidesManualEditingStore(), drafts: useSlidesEditingInteractionStore() };
+    return { queue, text: useTextInputSession(queue), store: useSlidesManualSubmissionStore(), drafts: useSlidesEditingInteractionStore() };
   });
   if (!workflow) throw new Error('Fixture scope failed');
   function commit(index: number, version: number): void {
@@ -65,7 +67,7 @@ function createWorkflow() {
     item.resolve({ status: 'validation_failed', commandId: item.command.commandId,
       documentId: item.command.documentId, code: 'operation_invalid', message: 'Cannot rewrite source' });
   }
-  return { ...workflow, commands, submit, refresh, documentId, revision, commit, reject };
+  return { presentedRevision, present: (revision: number) => { presentedRevision.value = revision; }, ...workflow, commands, submit, refresh, documentId, revision, commit, reject };
 }
 
 async function flush() { await Promise.resolve(); await nextTick(); await Promise.resolve(); await nextTick(); }
@@ -86,7 +88,7 @@ describe('editing interaction + real submission queue', () => {
     w.text.draft.value = 'Second draft';
     w.commit(0, 2); await flush();
     expect(w.drafts.textDrafts).toHaveLength(1);
-    w.store.recordPresentedRevision(2); await flush();
+    w.present(2); await flush();
     expect(w.drafts.textDrafts).toHaveLength(0);
     expect(w.text.sessionId.value).toBe(nextSessionId);
     expect(w.text.draft.value).toBe('Second draft');
@@ -103,11 +105,11 @@ describe('editing interaction + real submission queue', () => {
     expect(w.store.queue[0]?.clientOperationIds).toHaveLength(1);
     w.commit(0, 2); await flush();
     expect(w.commands).toHaveLength(1);
-    w.store.recordPresentedRevision(2); await flush();
+    w.present(2); await flush();
     expect(w.commands[1]?.command).toMatchObject({ expectedBase: { revision: 2 }, operation: { content: 'B' } });
-    w.commit(1, 3); await flush(); w.store.recordPresentedRevision(3); await flush();
+    w.commit(1, 3); await flush(); w.present(3); await flush();
     expect(w.commands[2]?.command).toMatchObject({ expectedBase: { revision: 3 }, operation: { content: 'B2' } });
-    w.commit(2, 4); await flush(); w.store.recordPresentedRevision(4); await flush();
+    w.commit(2, 4); await flush(); w.present(4); await flush();
     expect(w.drafts.textDrafts).toEqual([]);
   });
 
@@ -140,7 +142,7 @@ describe('editing interaction + real submission queue', () => {
     expect(w.store.errorMessage).toContain('presentationRefreshFailed');
     w.text.open(other);
     await w.queue.refreshPresentation();
-    w.store.recordPresentedRevision(2); await flush();
+    w.present(2); await flush();
     expect(w.commands).toHaveLength(2);
     expect(w.commands[1]?.command.operation).toMatchObject({ content: 'Another pending edit' });
     expect(w.drafts.textDrafts).toHaveLength(1);
@@ -150,7 +152,7 @@ describe('editing interaction + real submission queue', () => {
   it('settles a frame-before-response race and synchronous rejection without waiting for a boolean edge', async () => {
     const w = createWorkflow();
     w.text.open(target); w.text.draft.value = 'Saved'; w.text.requestCommit();
-    w.store.recordPresentedRevision(2); w.commit(0, 2); await flush();
+    w.present(2); w.commit(0, 2); await flush();
     expect(w.drafts.textDrafts).toEqual([]);
     w.submit.mockImplementationOnce(command => Promise.resolve({ status: 'validation_failed',
       commandId: command.commandId, documentId: command.documentId, code: 'operation_invalid', message: 'Rejected immediately' }));
@@ -169,7 +171,7 @@ describe('editing interaction + real submission queue', () => {
     w.commit(0, 2); await flush();
     expect(w.store.submission.phase).toBe('submitting');
     expect(w.refresh).not.toHaveBeenCalled();
-    w.commit(1, 2); await flush(); w.store.recordPresentedRevision(2); await flush();
+    w.commit(1, 2); await flush(); w.present(2); await flush();
     await expect(second.settled).resolves.toMatchObject({ status: 'presented', commandId: w.commands[1]?.command.commandId });
   });
 
@@ -181,11 +183,11 @@ describe('editing interaction + real submission queue', () => {
     const saving = w.queue.flush().then(() => { saved = true; });
     w.commit(0, 2); await flush();
     expect(saved).toBe(false);
-    w.store.recordPresentedRevision(2); await flush();
+    w.present(2); await flush();
     expect(w.commands).toHaveLength(2);
     w.commit(1, 3); await saving;
     expect(saved).toBe(true);
-    expect(w.store.presentedRevision).toBe(2);
+    expect(w.presentedRevision.value).toBe(2);
   });
 
   it('保存屏障传播失败，禁止把未提交队列当成已保存', async () => {
@@ -224,7 +226,7 @@ describe('editing interaction + real submission queue', () => {
     // 等待期间继续输入另一段，也必须进入离开前的保存屏障。
     w.text.open(other); w.text.draft.value = 'Typed while saving';
     w.commit(0, 2); await flush();
-    w.store.recordPresentedRevision(2); await flush();
+    w.present(2); await flush();
     expect(w.commands[1]?.command.operation).toMatchObject({ content: 'Typed while saving' });
     w.commit(1, 3);
     await expect(saving).resolves.toBe(true);

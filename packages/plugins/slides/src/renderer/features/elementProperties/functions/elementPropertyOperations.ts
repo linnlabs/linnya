@@ -1,4 +1,4 @@
-import type { ManualEditableTarget } from '../../manualEditing';
+import type { ManualEditableTarget } from '../../manualEditing/selection';
 import { SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextStylePatch, SLIDES_TEXT_STYLE_FIELDS } from '@plugin/slides/shared/authoringEditing';
 import type { ElementPropertyOperation } from '../definitions/elementPropertyTypes';
 

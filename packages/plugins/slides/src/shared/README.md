@@ -48,6 +48,7 @@ shared/
 | 插件与 IPC 合同 | `pluginMeta.ts`、`ipc.ts` | 插件 id、文档类型、文件扩展名、owned tables、IPC channel 名称 |
 | 文档来源与源码定位 | `documentSource/` | presentation 来源、deck.js source span、slide marker 行号索引 |
 | Generated 布局事实 | `generatedLayoutConstraints/` | 声明约束、Yoga 最终盒、比例与 computed 父容器身份；不是 authoring API |
+| Generated 布局重排 | [`generatedLayoutReplay/`](generatedLayoutReplay/README.md) | 编译后的页面布局输入与严格准入；不执行作者源码 |
 | DeckSpec 与 patch 合同 | `deckSpec/` | 生成结果、导入稿 patch、元素、尺寸、图片引用和语义角色 |
 | 作者编辑合同 | `authoringEditing/` | `slideKey + editKey` 稳定身份、严格校验与后续人工编辑命令 |
 | 视觉与主题合同 | `visual/` | 颜色规范化、主题与 chart palette |
@@ -131,3 +132,9 @@ shared/
 Paint 的 `direction` 与 `angle` 二选一，接纳时统一为 OOXML 角度（0° 向右、顺时针）；非正方形按 scaled 坐标映射。径向 center/radius 分别按宽、高归一化，预览必须保留双轴半径。详见 [视觉 Paint 合同](../../docs/visual-paint-contract.md)。
 
 - [presentationViewSnapshot](./presentationViewSnapshot/README.md)：一致修订视图、页内容/定位拆分与增量传输合同。
+
+## IPC 命令准入
+
+`ipcCommands` 是浏览器安全的 Zod 命令入口；Renderer 与 Backend 使用同一 schema 和中文参数错误转换，复用 authoringEditing 的作者值 codec，不复制作者 key、富文本或插入对象规则。图片限制为 20 MB，模板限制为 50 MB，二者均接纳结构化克隆的二进制。来源定位、对象编辑、复制、历史查询和模板导入不再在 handler 内定义第二套 schema。
+
+`valueRecord` 只持有排除 null/数组的基础对象守卫，供 codec 复用；字段白名单、作者值、版本和业务错误仍留在对应 owner，不汇总成万能 parser。

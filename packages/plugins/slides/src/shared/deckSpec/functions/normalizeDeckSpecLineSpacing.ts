@@ -1,3 +1,4 @@
+import { isRecord } from '../../valueRecord';
 import { parseTextLineSpacingInput } from '../../textLayout/definitions/lineSpacing';
 
 /**
@@ -29,8 +30,3 @@ export function normalizeDeckSpecLineSpacingInput(value: unknown): unknown {
   }
   return normalized;
 }
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-

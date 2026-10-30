@@ -113,6 +113,7 @@ async function run(): Promise<void> {
     ? path.resolve(requestedPackageRoot)
     : path.resolve(__dirname, '../..');
   await registerHiddenWorker(createSlidesRasterWorkerDefinition({
+    logger: { debug: console.debug, warn: console.warn },
     runtime: {
       mode: requestedPackageRoot ? 'artifact-runtime' : 'source-development',
       packageRoot,

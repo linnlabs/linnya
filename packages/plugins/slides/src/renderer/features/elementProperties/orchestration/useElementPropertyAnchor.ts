@@ -1,5 +1,5 @@
 import { shallowRef, watchPostEffect, type Ref } from 'vue';
-import type { ManualEditableTarget } from '../../manualEditing';
+import type { ManualEditableTarget } from '../../manualEditing/selection';
 import { INCHES_TO_PX } from '../../../shared/constants';
 import type { ElementPropertyAnchor } from '../definitions/elementPropertyToolbar';
 

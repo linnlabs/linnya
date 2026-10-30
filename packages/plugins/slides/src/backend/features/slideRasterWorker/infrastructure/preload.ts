@@ -47,9 +47,7 @@ ipcRenderer.on(SLIDES_RASTER_WORKER_REQUEST_CHANNEL, async (_event, payload: unk
     request = parseSlideRasterWorkerRequestPayload(payload).request;
   } catch {
     console.warn(
-      '[slides-raster-worker]'
-      + ` stage=preload-admission protocol=${SLIDES_RASTER_WORKER_PROTOCOL_VERSION}`
-      + ' outcome=rejected',
+      'slides.raster.request_rejected', { protocol: SLIDES_RASTER_WORKER_PROTOCOL_VERSION },
     );
     if (fallbackRequestId) {
       sendResult(createSlideRasterFailure(
@@ -77,9 +75,7 @@ ipcRenderer.on(SLIDES_RASTER_WORKER_REQUEST_CHANNEL, async (_event, payload: unk
   } catch {
     if (!cancelledRequestIds.has(request.requestId)) {
       console.warn(
-        '[slides-raster-worker]'
-        + ` stage=renderer-callback protocol=${SLIDES_RASTER_WORKER_PROTOCOL_VERSION}`
-        + ' outcome=failed',
+        'slides.raster.callback_failed', { protocol: SLIDES_RASTER_WORKER_PROTOCOL_VERSION },
       );
       sendResult(createSlideRasterFailure(
         request.requestId,

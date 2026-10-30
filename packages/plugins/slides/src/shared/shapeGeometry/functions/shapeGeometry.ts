@@ -1,3 +1,4 @@
+import { isRecord } from '../../valueRecord';
 import {
   DEFAULT_SHAPE_GEOMETRY,
   MAX_SHAPE_PATH_COMMANDS,
@@ -470,9 +471,6 @@ function polygonArea(points: readonly ShapePoint[]): number {
   return twiceArea / 2;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function format(value: number): string {
   return String(round6(value));

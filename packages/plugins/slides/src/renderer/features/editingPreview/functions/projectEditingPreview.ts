@@ -1,3 +1,4 @@
+import { projectIndependentTextWidth } from '@plugin/slides/shared/generatedLayoutConstraints';
 import { resizeShapeTextInput } from '@plugin/slides/shared/textLayout';
 import type { RenderNode, TextRenderNode } from '../../../types/render';
 import type { EditingVisualPreview } from '../definitions/editingPreviewTypes';
@@ -47,6 +48,19 @@ function projectEditingPreviewOperation(
         h: preview.operation.visualSize.height,
       },
     };
+  }
+  if (preview.operation.op === 'set_text_width') {
+    if (node.kind !== 'text' || !node.preparedTextLayout) return node;
+    const base = node.preparedTextLayout.inputBox;
+    const projected = node.layoutConstraintEvidence
+      ? projectIndependentTextWidth(node.layoutConstraintEvidence, preview.operation.width, node.authoringEdit?.text?.content)
+      : { ...base, w: preview.operation.width };
+    if (!projected) return node;
+    const box = { ...base, w: projected.w, h: projected.h,
+      x: base.x + (preview.translationDelta?.dx ?? 0), y: base.y + (preview.translationDelta?.dy ?? 0) };
+    // 下一轮字号/宽度从这一轮作者盒继续计算，不能退回最初的宽度或已增高后的可见盒。
+    return deriveTextPreview({ ...node, box, wrap: 'word',
+      preparedTextLayout: { ...node.preparedTextLayout, inputBox: box } }) ?? node;
   }
   if (preview.operation.op === 'set_fill_color') {
     if (node.kind !== 'shape') return node;

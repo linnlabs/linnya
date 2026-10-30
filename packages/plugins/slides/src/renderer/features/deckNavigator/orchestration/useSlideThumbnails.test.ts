@@ -1,3 +1,4 @@
+import { useSlideThumbnailResources } from './useSlideThumbnailResources';
 // @vitest-environment jsdom
 import { installTestPresentation } from '../../documentRuntime/testing/installTestPresentation';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -49,13 +50,13 @@ it('挂载读取现有模型，修订不重画，平铺请求升级分辨率，�
   scope.run(useSlideThumbnails);
   await renderScheduled();
   expect(thumbnails.cachedCount).toBe(1);
-  const small = thumbnails.getThumbnail('s1');
+  const small = useSlideThumbnailResources().getThumbnail('s1');
   installTestPresentation({ renderModel: model('deck', 2) }); await renderScheduled();
   expect(raster).toHaveBeenCalledTimes(1);
   thumbnails.requestRasterWidth(320); await renderScheduled();
   expect(raster.mock.calls[1]?.[0].profile.viewportWidthPx).toBe(320);
   expect(small?.close).toHaveBeenCalledTimes(1);
-  const large = thumbnails.getThumbnail('s1');
+  const large = useSlideThumbnailResources().getThumbnail('s1');
   scope.stop();
   expect(large?.close).toHaveBeenCalledTimes(1);
   expect(thumbnails.cachedCount).toBe(0);
@@ -66,7 +67,7 @@ it('切换文档同步清空展示，不会把仍保留的旧模型重新排队'
   const thumbnails = useSlidesThumbnailStore();
   installTestPresentation({ documentId: 'deck' }); installTestPresentation({ renderModel: model() });
   scope.run(useSlideThumbnails); await renderScheduled();
-  const old = thumbnails.getThumbnail('s1');
+  const old = useSlideThumbnailResources().getThumbnail('s1');
   installTestPresentation({ documentId: 'other' });
   expect(thumbnails.cachedCount).toBe(0);
   expect(old?.close).toHaveBeenCalledTimes(1);
@@ -74,7 +75,7 @@ it('切换文档同步清空展示，不会把仍保留的旧模型重新排队'
   expect(raster).toHaveBeenCalledTimes(1);
   installTestPresentation({ renderModel: model('other') }); await renderScheduled();
   expect(raster).toHaveBeenCalledTimes(2);
-  expect(thumbnails.getThumbnail('s1')).not.toBe(old);
+  expect(useSlideThumbnailResources().getThumbnail('s1')).not.toBe(old);
   installTestPresentation({ renderModel: null }); await nextTick();
   expect(thumbnails.cachedCount).toBe(0);
 });

@@ -1,3 +1,4 @@
+import { useSlidesManualSelectionStore } from '../../manualEditing/selection';
 import { computed, shallowRef, watch } from 'vue';
 import { rectFromPoints, type RenderNodeSelectionRect } from '../../renderNodeSelection';
 import type { CanvasPointerGesture, CanvasSnapGuide } from '../definitions/canvasGesture';
@@ -9,20 +10,9 @@ import {
   resolveSlidePointerPoint,
   type SourceSelectionPoint,
 } from '../../sourceSelection';
-import {
-  type ManualEditableTarget,
-  collectPresentedManualTargets, normalizeManualSelection, toggleManualSelection, collectManualMarqueeSelection, manualSelectionBounds,
-  manualSelectionContext,
-  type ManualEditingVisualOperation,
-  createPresentedTextEditingTarget,
-  findManualEditableTargetPathAtPoint,
-  findManualEditableTargetPathByElementId,
-  type ManualEditingHitProjection,
-  useSlidesManualEditingStore,
-  createManualVisualPreview,
-  resolveManualClickSelection,
-  createManualDeleteOperation,
-} from '../../manualEditing';
+import { type ManualEditableTarget, collectPresentedManualTargets, normalizeManualSelection, toggleManualSelection, collectManualMarqueeSelection, manualSelectionBounds, manualSelectionContext, createPresentedTextEditingTarget, findManualEditableTargetPathAtPoint, findManualEditableTargetPathByElementId, type ManualEditingHitProjection, resolveManualClickSelection, createManualDeleteOperation } from '../../manualEditing/selection';
+import { type ManualEditingVisualOperation, createManualVisualPreview } from '../../manualEditing/preview';
+import { useSlidesManualSubmissionStore } from '../../manualEditing/submission';
 import { useTextInputSession } from './useTextInputSession';
 import { useSlidesEditingInteractionStore } from '../store/slidesEditingInteractionStore';
 import { projectTextDraftPresentations } from '../functions/projectTextDraftPresentations';
@@ -32,12 +22,10 @@ import type { SlideEditingInteractionOptions } from '../definitions/editingInter
 const DRAG_THRESHOLD_PX = 3;
 
 export function useSlideEditingInteraction(options: SlideEditingInteractionOptions) {
-  const store = useSlidesManualEditingStore();
+  const store = useSlidesManualSubmissionStore();
+  const storeSelection = useSlidesManualSelectionStore();
+  const { selectedTarget, selectedTargets, selectionPath, translationPreview } = storeToRefs(storeSelection);
   const {
-    selectedTarget,
-    selectedTargets,
-    selectionPath,
-    translationPreview,
     pendingTranslations,
     pendingVisuals,
     queuedIntents,
@@ -73,14 +61,14 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     hoveredTarget.value = selection.target;
     const composing = textEditing.composing.value;
     textEditing.requestCommit();
-    if (composing) { store.selectTarget(selection.target, path); return; }
+    if (composing) { storeSelection.selectTarget(selection.target, path); return; }
     event.preventDefault();
     const base = { pointerId: event.pointerId,
       captureElement: event.currentTarget instanceof HTMLElement ? event.currentTarget : null,
       anchor: point, screenX: event.clientX, screenY: event.clientY, dragged: false };
     if (!selection.target || !selection.clickTarget) {
       const baseline = selectedTargets.value;
-      if (!event.shiftKey) store.clearSelection();
+      if (!event.shiftKey) storeSelection.clearSelection();
       capturePointer(event);
       pointerSession = { ...base, kind: 'marquee', additive: event.shiftKey, baseline };
       return;
@@ -96,7 +84,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
       beginTranslate(event, base, path, target, alreadySelected ? 'toggle' : 'keep');
       return;
     }
-    if (!alreadySelected) store.selectTarget(selection.target, path);
+    if (!alreadySelected) storeSelection.selectTarget(selection.target, path);
     beginTranslate(event, base, path, member ?? selection.clickTarget, 'select');
   }
 
@@ -123,7 +111,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
   function selectMany(targets: readonly ManualEditableTarget[]): void {
     const elements = options.currentSlide.value?.elements ?? [];
     const paths = targets.map(target => findManualEditableTargetPathByElementId(elements, target.elementId));
-    store.selectTargets(targets, targets.length === 1 ? paths[0] ?? [] : manualSelectionContext(paths));
+    storeSelection.selectTargets(targets, targets.length === 1 ? paths[0] ?? [] : manualSelectionContext(paths));
   }
 
   function handlePointerMove(event: PointerEvent): void {
@@ -137,7 +125,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     session.dragged = true;
     if (session.kind === 'marquee') {
       marqueeRect.value = rectFromPoints(session.anchor, point);
-      store.selectTargets(collectManualMarqueeSelection(presentedTargets(), marqueeRect.value, session.additive ? session.baseline : []));
+      storeSelection.selectTargets(collectManualMarqueeSelection(presentedTargets(), marqueeRect.value, session.additive ? session.baseline : []));
       return;
     }
     if (!session.canTranslate) return;
@@ -145,7 +133,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
       slideSize: options.slideSize.value, renderScale: options.renderScale.value,
       delta: { dx: point.x - session.anchor.x, dy: point.y - session.anchor.y }, disabled: event.altKey, axisLock: event.shiftKey });
     snapGuides.value = snapped.guides;
-    store.setTranslationPreview({ elementId: session.targets[0].elementId,
+    storeSelection.setTranslationPreview({ elementId: session.targets[0].elementId,
       affectedElementIds: session.targets.flatMap(target => target.translationElementIds), ...snapped.delta });
   }
 
@@ -170,11 +158,11 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     if (session.kind === 'marquee') return;
     const preview = translationPreview.value;
     if (!session.dragged) {
-      if (session.clickMode === 'select') store.selectTarget(session.clickTarget, session.path);
+      if (session.clickMode === 'select') storeSelection.selectTarget(session.clickTarget, session.path);
       else if (session.clickMode === 'toggle') selectMany(toggleManualSelection(selectedTargets.value, session.clickTarget));
       return;
     }
-    store.setTranslationPreview(null);
+    storeSelection.setTranslationPreview(null);
     if (session.canTranslate && preview) submitTranslation(session.targets, preview);
   }
 
@@ -199,7 +187,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     const editorTarget = createPresentedTextEditingTarget(slide.elements, target, readHitProjection());
     if (!editorTarget) return;
     event.preventDefault();
-    store.selectTarget(target, path);
+    storeSelection.selectTarget(target, path);
     textEditing.open(editorTarget, textPresentations.value.find(draft => draft.target.elementId === target.elementId));
   }
 
@@ -211,7 +199,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     options.submitIntent({ operation, visualPreviews: [preview] });
     if (operation.op === 'delete_target') {
       hoveredTarget.value = null;
-      store.clearSelection();
+      storeSelection.clearSelection();
     }
     return true;
   }
@@ -227,7 +215,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     });
     options.submitIntent({ operation: valid.length === 1 ? valid[0] : { op: 'batch', operations: valid }, visualPreviews: previews });
     hoveredTarget.value = null;
-    store.clearSelection();
+    storeSelection.clearSelection();
     return true;
   }
 
@@ -252,9 +240,9 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
 
   /** 撤销、插入或粘贴呈现后，按作者身份在当前页选中仍存在的对象；新文字框直接进入输入。 */
   function revealRequestedTargets(): void {
-    const request = store.revealRequest;
+    const request = storeSelection.revealRequest;
     if (!request) return;
-    store.requestReveal(null);
+    storeSelection.requestReveal(null);
     const found = presentedTargets().filter(target => request.targets.some(ref => ref.editKey === target.authoringRef.editKey
       && (ref.slideKey === undefined || ref.slideKey === target.authoringRef.slideKey)));
     if (found.length === 0) return;
@@ -265,13 +253,13 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     const editorTarget = createPresentedTextEditingTarget(slide.elements, only, readHitProjection());
     if (editorTarget) textEditing.open(editorTarget, undefined, { selectAll: true });
   }
-  watch(() => store.revealRequest, revealRequestedTargets, { flush: 'post' });
+  watch(() => storeSelection.revealRequest, revealRequestedTargets, { flush: 'post' });
 
   function resetInteraction(): void {
     finishKeyboardGesture();
     cancelPointerGesture();
     hoveredTarget.value = null;
-    store.clearSelection();
+    storeSelection.clearSelection();
     textEditing.requestCommit();
   }
 
@@ -282,7 +270,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     const targets = keyboardTargets;
     const preview = translationPreview.value;
     keyboardTargets = [];
-    store.setTranslationPreview(null);
+    storeSelection.setTranslationPreview(null);
     if (preview) submitTranslation(targets, preview);
   }
 
@@ -292,11 +280,11 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     if (session.captureElement?.hasPointerCapture(session.pointerId)) {
       session.captureElement.releasePointerCapture(session.pointerId);
     }
-    if (session.kind === 'marquee') store.selectTargets(session.baseline);
+    if (session.kind === 'marquee') storeSelection.selectTargets(session.baseline);
     pointerSession = null;
     marqueeRect.value = null;
     snapGuides.value = [];
-    store.setTranslationPreview(null);
+    storeSelection.setTranslationPreview(null);
     return true;
   }
 
@@ -306,13 +294,13 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     if (event.key === 'Escape') {
       if (keyboardTargets.length > 0) {
         keyboardTargets = [];
-        store.setTranslationPreview(null);
-      } else if (!cancelPointerGesture()) store.clearSelection();
+        storeSelection.setTranslationPreview(null);
+      } else if (!cancelPointerGesture()) storeSelection.clearSelection();
       return true;
     }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
       finishKeyboardGesture();
-      store.selectTargets(normalizeManualSelection(presentedTargets()));
+      storeSelection.selectTargets(normalizeManualSelection(presentedTargets()));
       return true;
     }
     const targets = selectedTargets.value;
@@ -326,7 +314,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
       if (!targets.every(entry => entry.capabilities.includes('translate')) || pointerSession) return true;
       keyboardTargets = targets;
       const previous = translationPreview.value;
-      store.setTranslationPreview({ elementId: target.elementId, affectedElementIds: targets.flatMap(entry => entry.translationElementIds),
+      storeSelection.setTranslationPreview({ elementId: target.elementId, affectedElementIds: targets.flatMap(entry => entry.translationElementIds),
         dx: (previous?.dx ?? 0) + delta.dx, dy: (previous?.dy ?? 0) + delta.dy });
       return true;
     }
@@ -343,6 +331,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
 
   function readHitProjection(): ManualEditingHitProjection {
     return {
+      projectPreview: options.projectPreview,
       transientTranslation: translationPreview.value,
       pendingTranslations: pendingTranslations.value,
       pendingVisuals: pendingVisuals.value,

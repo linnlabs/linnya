@@ -1,6 +1,6 @@
 import { defineStore, storeToRefs } from 'pinia';
 import { computed } from 'vue';
-import { useSlidesStore } from './slidesStore';
+import { useSlidesStore } from '../features/documentRuntime';
 
 /** 渲染消费者的只读投影；不再独立请求或持有另一份模型。 */
 export const useSlidesRenderStore = defineStore('slides-render', () => {

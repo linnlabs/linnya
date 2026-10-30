@@ -1,3 +1,4 @@
+/// <reference lib="es2022.intl" />
 import {
   isKinsokuLineEndForbidden,
   isKinsokuLineStartForbidden,
@@ -12,15 +13,6 @@ export interface TextCluster {
   isWhitespace: boolean;
   /** OOXML a:br / run 内换行，宽度为 0 且必须立即结束当前行。 */
   isForcedBreak: boolean;
-}
-
-declare global {
-  namespace Intl {
-    class Segmenter {
-      constructor(locales?: string | string[], options?: { granularity?: 'grapheme' | 'word' | 'sentence' });
-      segment(input: string): Iterable<{ segment: string }>;
-    }
-  }
 }
 
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });

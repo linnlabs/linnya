@@ -1,3 +1,4 @@
+import { Logger } from '@plugin/backend/workspaceRuntime';
 import type { PluginBackendContribution } from '@plugin/backend/pluginContribution';
 import {
   SLIDES_IPC_CHANNELS,
@@ -104,7 +105,7 @@ export const slidesBackendPlugin = {
   }],
   sandboxProfiles: [pptComposeProfile],
   hiddenWorkers: [
-    createSlidesRasterWorkerDefinition(),
+    createSlidesRasterWorkerDefinition({ logger: new Logger('SlidesRaster') }),
     createBrushArtworkWorkerDefinition(),
   ],
   pluginCli: slidesPluginCli,

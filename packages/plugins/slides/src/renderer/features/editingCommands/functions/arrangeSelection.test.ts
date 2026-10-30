@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { ManualEditableTarget } from '../../manualEditing';
-import { normalizeManualSelection, collectManualMarqueeSelection } from '../../manualEditing';
+import type { ManualEditableTarget } from '../../manualEditing/selection';
+import { normalizeManualSelection, collectManualMarqueeSelection } from '../../manualEditing/selection';
 import { arrangeSelection } from './arrangeSelection';
 import { snapCanvasTranslation } from '../../editingInteraction/functions/snapCanvasTranslation';
 

@@ -1,3 +1,4 @@
+import { PresentationRevisionScope } from '../../presentationSourceHistory';
 import { describe, expect, it, vi } from 'vitest';
 import type { DeckSpec, FreeformElement, SlidesManualEditCommand } from '@plugin/slides/shared';
 import type { PresentationDocumentRecord } from '../../../persistence/index.js';
@@ -101,6 +102,7 @@ function makeRuntime(options: {
     };
   });
   const runtime = new PresentationManualEditingRuntime({
+    revisionScope: new PresentationRevisionScope(),
     presentationRepo: {
       getPresentation: vi.fn(async () => options.document === undefined ? makeDocument() : options.document),
       getManualEditReceipt: vi.fn(async () => options.receipt ?? null),
@@ -140,6 +142,7 @@ describe('PresentationManualEditingRuntime', () => {
     expect(buildFromSource.mock.calls[0][0].source).toContain('content": "Updated"');
     expect(traceRecord.mock.calls.map(([event]) => event.stage)).toEqual([
       'request_received',
+      'scope_acquired',
       'snapshot_validated',
       'source_rewritten',
       'semantic_build_started',

@@ -10,6 +10,7 @@ interface ActiveTrace {
   readonly documentId: string;
   readonly operation: SlidesManualEditCommand['operation']['op'];
   readonly startedAt: number;
+  readonly dispatchedAt: number;
   retryCount: number;
   responseAt?: number;
   refreshAt?: number;
@@ -29,21 +30,33 @@ export interface ManualEditPresentationTraceDeps {
 
 /** Renderer 本地单调时钟覆盖 input -> IPC -> refresh -> 完整帧呈现，commandId 与 backend trace 关联。 */
 export class ManualEditPresentationTrace implements ManualEditPresentationTracePort {
+  private readonly queued = new Map<string, number>();
   private readonly active = new Map<string, ActiveTrace>();
   private readonly presented = new Map<string, PresentedFrame>();
 
   constructor(private readonly deps: ManualEditPresentationTraceDeps) {}
 
+  recordQueued(clientOperationId: string): void {
+    this.queued.set(clientOperationId, this.deps.now());
+    this.deps.log('input_queued', { clientOperationId });
+  }
+
+  recordQueueSettled(clientOperationIds: readonly string[]): void {
+    for (const id of clientOperationIds) this.queued.delete(id);
+  }
+
   begin(command: SlidesManualEditCommand): void {
+    const dispatchedAt = this.deps.now();
     const trace: ActiveTrace = {
       commandId: command.commandId,
       documentId: command.documentId,
       operation: command.operation.op,
-      startedAt: this.deps.now(),
+      startedAt: this.queued.get(command.commandId) ?? dispatchedAt,
+      dispatchedAt,
       retryCount: 0,
     };
     this.active.set(command.commandId, trace);
-    this.emit('request_started', trace);
+    this.emit('request_started', trace, { queueWaitMs: dispatchedAt - trace.startedAt });
   }
 
   recordTransportRetry(commandId: string): void {
@@ -97,6 +110,7 @@ export class ManualEditPresentationTrace implements ManualEditPresentationTraceP
   }
 
   clear(): void {
+    this.queued.clear();
     this.active.clear();
     this.presented.clear();
   }
@@ -110,6 +124,8 @@ export class ManualEditPresentationTrace implements ManualEditPresentationTraceP
     ) return;
     this.emit('frame_presented', trace, {
       revision: trace.revision,
+      queueWaitMs: trace.dispatchedAt - trace.startedAt,
+      dispatchToResponseMs: trace.responseAt - trace.dispatchedAt,
       inputToResponseMs: trace.responseAt - trace.startedAt,
       responseToRefreshMs: trace.refreshAt - trace.responseAt,
       refreshToFrameMs: trace.presentedAt - trace.refreshAt,

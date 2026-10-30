@@ -1,6 +1,7 @@
 import { wholeTextStyle } from '@plugin/slides/shared/authoringEditing';
 import { describe, expect, it } from 'vitest';
-import type { ManualEditableTarget, ManualEditingVisualPreview } from '../../manualEditing';
+import type { ManualEditableTarget } from '../../manualEditing/selection';
+import type { ManualEditingVisualPreview } from '../../manualEditing/preview';
 import { projectElementPropertyTarget } from './projectElementPropertyTarget';
 
 describe('effective element property values', () => {

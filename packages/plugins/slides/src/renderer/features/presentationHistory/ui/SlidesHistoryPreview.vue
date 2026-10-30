@@ -40,6 +40,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { SlidesHistoryPreviewSchema, parseSlidesCommand } from '@plugin/slides/shared/ipcCommands';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { invokeRendererPluginIpc } from '@plugin/renderer/pluginIpcClient';
@@ -74,10 +75,10 @@ const controller = createHistoryPreviewController({
     const response = await invokeRendererPluginIpc<PresentationRenderModel>(
       SLIDES_PLUGIN_ID,
       SLIDES_IPC.historyPreview,
-      {
+      parseSlidesCommand(SlidesHistoryPreviewSchema, {
         documentId: props.documentId,
         versionId: props.versionId,
-      }
+      })
     );
     if (!response.success) throw new Error(response.error);
     if (!response.data) throw new Error('Empty historical render model');

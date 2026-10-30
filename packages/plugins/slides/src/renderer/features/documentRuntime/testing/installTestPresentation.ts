@@ -1,5 +1,5 @@
 import type { DeckPreview, SlidesDocumentBuildState, PresentationRenderModel } from '@plugin/slides/shared';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '..';
 
 /** UI fixture 经同步 action 安装；不再给只读 selector 赋值。生产读取仍必须通过 wire 校验。 */
 export function installTestPresentation(input: {

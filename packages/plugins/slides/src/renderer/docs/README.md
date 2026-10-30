@@ -2,7 +2,7 @@
 
 Slides renderer 是演示文稿前端 contribution，负责文档 surface、预览舞台、缩略图、工具卡片、导出入口、模板 UI、前端状态和 renderer 侧 IPC 调用。
 
-文档 surface 自上而下是主区域与底部导航；文稿可手动编辑时，舞台顶部居中浮着文稿命令条（不进入布局，没有编辑模式开关）：主区域显示单页舞台或全稿平铺，右下角浮动工具条提供缩放与百分比菜单；底部导航由 [deckNavigator](../features/deckNavigator/README.md) 拥有，包含新建空白幻灯片、视图切换与横向幻灯片列表。百分比菜单见 [stageZoom](../features/stageZoom/README.md)。
+文档 surface 自上而下是主区域与底部导航；文稿可手动编辑时，舞台顶部居中浮着文稿命令条（不进入布局，没有编辑模式开关）：主区域显示单页舞台或全稿平铺；底部导航由 [deckNavigator](../features/deckNavigator/README.md) 拥有，包含新建空白幻灯片、视图切换与横向幻灯片列表。单页视图下，缩放控件与百分比菜单位于底栏视图切换左侧，见 [stageZoom](../features/stageZoom/README.md)。
 
 renderer 是后端 `PresentationRenderModel`、`DeckPreview` 和 shared 合同的消费层，不是第二套 PPT 布局求解器。视觉或布局不一致时，优先回查 shared 合同、后端 render-model mapper、compiler 或 engine solver，再修改 renderer 映射。
 
@@ -45,7 +45,7 @@ src/renderer/
 │   ├── stageZoom/                   # 舞台百分比菜单：适应窗口与常用缩放档位
 ├── services/                        # slidesApi 与 mapper 等 renderer 技术入口
 ├── shared/                          # renderer 内稳定复用的纯规则
-├── store/                           # deck、render model、thumbnail、session、UI 状态
+├── store/                           # deck、render model、thumbnail、UI 状态
 ├── styles/                          # renderer 样式入口
 ├── tool-cards/                      # conversation tool card UI
 ├── types/                           # renderer 内部类型
@@ -230,3 +230,10 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 切页保真需同时验证资源原子提交与持久 Konva 节点属性同步。主预览所有绑定使用严格 config；`smoke:preview-transitions` 覆盖真实 Vue 更新后的像素，并挂载生产 `KonvaSlideStage` 验证人工位移进入内容层，不可只用新建 stage 的离屏截图代替。详见 [Konva Preview](../features/konvaPreview/README.md#持久画布的属性同步)。
 
 基础编辑行为与当前边界见[网页编辑体验](./editing-experience.md)。
+
+## 当前实例边界
+
+当前 Host 同一时刻只挂载一个活动 Slides surface；Pinia 状态按该活动文稿重置。
+分屏同时打开多个 Slides 尚不受支持，接入前必须把文稿、交互、资源和提交状态按 surface 实例隔离。
+页面上下文与舞台 AI 输入共用 `sourceSelection.selectSourceTargets`，作者选区优先，Frame 使用其可定位成员；
+Host 的 Workspace 上下文先通过文档注册表把 file session type 转成 node type，再寻找 provider。
