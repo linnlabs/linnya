@@ -7,7 +7,7 @@ payload 投影为共享 `DistributionIdentity`。
 源码运行不读取清单，恒为 `source`；打包后缺少清单、未知 key、签名失败、版本不符或
 格式非法都稳定降为 `community`。只有验签成功才能成为 `official`。受信 key ring 只有公钥，
 签发由受保护的发布环境完成；构建时通过 `LINNYA_DESKTOP_DISTRIBUTION_MANIFEST` 传入已签名
-清单，未传入的本地和社区打包不会启用官方服务。
+清单。生产构建在编译前复用同一 verifier、公钥与版本合同验签，显式传入的非法清单会直接中止打包；未传入的本地和社区打包不会启用官方服务。
 
 发行清单不包含 secret。公开 key 可以提交，私钥只能由受保护发布环境持有。平台代码
 签名、公证和 Authenticode 仍由打包流程负责；本目录不执行签名，也不把客户端身份当作

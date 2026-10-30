@@ -206,6 +206,8 @@ async function main() {
       '--dir',
       '--win',
       '--x64',
+      '--publish',
+      'never',
       `--config.directories.output=${outputDirectory}`,
     ], {
       env: { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: 'false' },
@@ -267,7 +269,7 @@ async function main() {
       assert.equal(summary.normalOutput, 'packaged-native-runtime-ok');
       assert.equal(summary.repairedOutput, 'packaged-native-runtime-ok');
       assert.equal(summary.directoryUnlockedAfterExit, true);
-      assert.equal(summary.developmentAfterSignVerified, true);
+      assert.equal(summary.unsignedReleaseAfterSignVerified, true);
       console.log(JSON.stringify({
         success: true,
         electron: summary.electron,
@@ -275,7 +277,7 @@ async function main() {
         artifactSize: summary.artifactSize,
         artifactSha256: summary.artifactSha256,
         failures: summary.failures,
-        developmentAfterSignVerified: summary.developmentAfterSignVerified,
+        unsignedReleaseAfterSignVerified: summary.unsignedReleaseAfterSignVerified,
         directoryUnlockedAfterExit: summary.directoryUnlockedAfterExit,
       }));
     } finally {

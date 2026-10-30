@@ -38,7 +38,7 @@
     ],
     "win": {
       "target": "dir",
-      "signAndEditExecutable": false
+      "signExecutable": false
     }
   }
 }

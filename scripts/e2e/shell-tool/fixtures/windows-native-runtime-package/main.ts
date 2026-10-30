@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 
 import { app } from 'electron';
+import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/adapters/local-process-runtime/production-runtime';
 
 import {
   WINDOWS_OWNED_PIPE_NATIVE_ARTIFACT_FILE_NAME,
@@ -44,12 +45,28 @@ function readAll(stream: Readable): Promise<Buffer> {
   });
 }
 
+// 用真实已打包 App 的 Authenticode 状态装配，不能用 development 旁路正式入口。
+const platformRuntime = resolveLocalProcessPlatformRuntime({
+  platform: process.platform,
+  architecture: process.arch,
+  applicationVersion: app.getVersion(),
+  applicationExecutablePath: process.execPath,
+  resourcesPath: process.resourcesPath,
+  packaged: app.isPackaged,
+  hostEnvironment: Object.fromEntries(Object.entries(process.env).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined,
+  )),
+});
+
 function createLoaderOptions(manifestPath: string): WindowsOwnedPipeNativeBindingLoaderOptions {
+  if (platformRuntime.platform !== 'win32' || platformRuntime.trust.kind !== 'release_unsigned') {
+    throw new Error('Packaged fixture must resolve the unsigned release trust from its executable');
+  }
   return {
     manifestPath,
     expectedRuntimeVersion: LINNYA_EXPECTED_WINDOWS_NATIVE_RUNTIME_VERSION,
     expectedApplicationVersion: app.getVersion(),
-    trust: { kind: 'development' },
+    trust: platformRuntime.trust,
   };
 }
 
@@ -211,6 +228,12 @@ async function runSuite(): Promise<unknown> {
     manifest => ({ ...manifest, runtime_version: '0.0.9' }),
   ));
 
+  const developmentDirectory = await copyRuntime(runtimeDirectory, 'development-artifact');
+  const developmentCode = await expectLoadError(await writeManifest(
+    developmentDirectory,
+    manifest => ({ ...manifest, signature_evidence: { kind: 'development_unsigned' } }),
+  ));
+
   const repairedDirectory = await copyRuntime(runtimeDirectory, 'repaired');
   const repaired = await runRealCommand(path.join(
     repairedDirectory,
@@ -231,6 +254,7 @@ async function runSuite(): Promise<unknown> {
     normal,
     repaired,
     failures: {
+      developmentCode,
       missingCurrentArtifact: missingCode,
       changedByte: changedByteCode,
       wrongArchitecture: wrongArchitectureCode,

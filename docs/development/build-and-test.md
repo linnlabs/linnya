@@ -111,8 +111,8 @@ pnpm run build:main
 源码运行、社区安装包和官方发行是三个不同身份。普通 `build:electron*` 或 ad-hoc
 签名产物没有 Linnya 发行清单，运行时按 `community` 处理，不连接官方更新和 Cloud。
 `official` 必须由受保护环境生成发行 payload、使用受信 Ed25519 私钥签名并与平台代码
-签名共同进入发布证据；普通环境变量、`NODE_ENV=production` 和 `app.isPackaged` 都不能
-提升发行身份。公开 key ring 位于 `src/electron-main/distribution/registry/`，只含公钥。
+签名策略共同进入发布证据（Windows 可显式选择[正式未签名模式](../../src/infra/adapters/local-process-runtime/windows/README.md#7-打包和发布风险)）；普通环境变量、`NODE_ENV=production` 和 `app.isPackaged` 都不能
+提升发行身份。生产打包显式使用 `--publish never`，上传由独立发布步骤负责。公开 key ring 位于 `src/electron-main/distribution/registry/`，只含公钥。
 
 ## 5. 原生模块与跨平台边界
 

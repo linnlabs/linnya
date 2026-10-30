@@ -20,7 +20,7 @@ async function main() {
   await hook({
     electronPlatformName: 'win32',
     appOutDir,
-    packager: { appInfo: { version: manifest.application_version } },
+    packager: { appInfo: { version: manifest.application_version, productFilename: path.basename(process.execPath, ".exe") } },
   });
   process.stdout.write(`${JSON.stringify({ success: true })}\n`);
 }

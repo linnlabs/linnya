@@ -256,6 +256,7 @@ async function writeJsonAtomically(filePath, value) {
 function readBuildTrust(environment) {
   const mode = environment[BUILD_TRUST_ENV_NAME];
   if (mode === 'development') return Object.freeze({ kind: 'development' });
+  if (mode === 'release_unsigned') return Object.freeze({ kind: 'release_unsigned' });
   if (mode === 'release') {
     const expectedPublisherIdentity = environment[EXPECTED_PUBLISHER_ENV_NAME];
     if (!expectedPublisherIdentity) {
@@ -266,7 +267,7 @@ function readBuildTrust(environment) {
     return Object.freeze({ kind: 'release', expectedPublisherIdentity });
   }
   throw new Error(
-    `${BUILD_TRUST_ENV_NAME} must be explicitly set to development or release`,
+    `${BUILD_TRUST_ENV_NAME} must be explicitly set to development or release or release_unsigned`,
   );
 }
 
@@ -315,13 +316,13 @@ async function finalizeRuntimeDirectory(
   );
   const authenticode = await authenticodeInspector(runtime.artifactPath);
 
-  if (buildTrust.kind === 'development') {
+  if (buildTrust.kind !== 'release') {
     if (
       authenticode.status !== 'NotSigned'
       || authenticode.publisher_identity !== null
     ) {
       throw new Error(
-        'Development Windows command runtime must remain unsigned: '
+        'Unsigned Windows command runtime must remain unsigned: '
           + `status=${authenticode.status} publisher=${String(authenticode.publisher_identity)}`,
       );
     }
@@ -333,8 +334,15 @@ async function finalizeRuntimeDirectory(
       || runtime.manifest.artifact.sha256 !== artifactHash
     ) {
       throw new Error(
-        'Development Windows command runtime changed after its manifest was generated',
+        'Unsigned Windows command runtime changed after its manifest was generated',
       );
+    }
+    if (buildTrust.kind === 'release_unsigned') {
+      // 独立的正式未签名证据，避免把开发产物直接当成可发布产物。
+      await writeJsonAtomically(runtime.manifestPath, {
+        ...runtime.manifest,
+        signature_evidence: { kind: 'release_unsigned' },
+      });
     }
     return;
   }
@@ -609,6 +617,17 @@ function createAfterSignRuntimeAssetsHook({
       'version',
       'electron-builder application version',
     );
+    if (buildTrust.kind === 'release_unsigned') {
+      const productFilename = readRequiredString(
+        context.packager?.appInfo, 'productFilename', 'electron-builder product filename',
+      );
+      const applicationSignature = await authenticodeInspector(
+        path.join(context.appOutDir, `${productFilename}.exe`),
+      );
+      if (applicationSignature.status !== 'NotSigned' || applicationSignature.publisher_identity !== null) {
+        throw new Error('Unsigned Windows release application must have Authenticode status NotSigned');
+      }
+    }
     await assertPackagedWindowsVcRuntime(
       context.appOutDir,
       windowsVcRuntimeAuthenticodeInspector,

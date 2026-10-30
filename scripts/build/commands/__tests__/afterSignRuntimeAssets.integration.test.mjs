@@ -108,7 +108,7 @@ async function createPackagedRuntime(artifactBytes = Buffer.from('unsigned-runti
     context: {
       electronPlatformName: 'win32',
       appOutDir,
-      packager: { appInfo: { version: '0.0.38' } },
+      packager: { appInfo: { version: '0.0.38', productFilename: 'Linnya' } },
     },
   };
 }
@@ -274,6 +274,35 @@ describe('Windows command runtime afterSign trust contract', () => {
     await expect(unsignedHook(changedRuntime.context)).rejects.toThrow(
       'changed after its manifest was generated',
     );
+  });
+
+  it('正式未签名构建验真 App、原生组件和第三方签名后才写发布证据', async () => {
+    const createHook = (signatureOverrides = {}, thirdPartyInspector = validVcRuntimeInspector) => (
+      createAfterSignRuntimeAssetsHook({
+        hostPlatform: 'win32',
+        environment: { LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST: 'release_unsigned' },
+        authenticodeInspector: async () => ({
+          status: 'NotSigned', status_message: 'Not signed', publisher_identity: null,
+          ...signatureOverrides,
+        }),
+        windowsVcRuntimeAuthenticodeInspector: thirdPartyInspector,
+      })
+    );
+    const runtime = await createPackagedRuntime();
+    await createHook()(runtime.context);
+    expect(JSON.parse(await fsp.readFile(runtime.manifestPath, 'utf8')).signature_evidence)
+      .toEqual({ kind: 'release_unsigned' });
+
+    const invalid = await createPackagedRuntime();
+    await expect(createHook({ status: 'HashMismatch' })(invalid.context))
+      .rejects.toThrow('must have Authenticode status NotSigned');
+    await expect(createHook({}, async () => ({
+      status: 'NotSigned', publisher_identity: null,
+    }))(invalid.context)).rejects.toThrow('invalid Microsoft signature');
+    await fsp.appendFile(invalid.artifactPath, '-changed');
+    await expect(createHook()(invalid.context)).rejects.toThrow('changed after its manifest');
+    expect(JSON.parse(await fsp.readFile(invalid.manifestPath, 'utf8')).signature_evidence)
+      .toEqual({ kind: 'development_unsigned' });
   });
 
   it('发布构建必须显式提供精确发布者，不能因配置缺失降级', async () => {

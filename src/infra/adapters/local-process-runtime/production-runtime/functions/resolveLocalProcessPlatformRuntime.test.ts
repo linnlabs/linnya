@@ -15,7 +15,7 @@ describe('resolveLocalProcessPlatformRuntime', () => {
     })).toEqual({ schema_version: 1, platform: 'darwin' });
   });
 
-  it('Windows 正式包只接受 App 签名发布者，开发包不冒充正式信任', () => {
+  it('Windows 正式包按 App 签名状态选择信任，检查失败不降级', () => {
     const base = {
       platform: 'win32' as const,
       architecture: 'x64' as const,
@@ -24,21 +24,26 @@ describe('resolveLocalProcessPlatformRuntime', () => {
       resourcesPath: 'C:\\Linnya\\resources',
       hostEnvironment: { SystemRoot: 'C:\\Windows' },
     };
-    const missingPublisher = { readAuthenticodePublisher: vi.fn(() => undefined) };
+    const missingPublisher = { readAuthenticodeSignature: vi.fn(() => undefined) };
     expect(() => resolveLocalProcessPlatformRuntime({
       ...base,
       packaged: true,
-      publisherProbe: missingPublisher,
-    })).toThrow('requires a valid signed application publisher');
+      signatureProbe: missingPublisher,
+    })).toThrow('requires a valid signature or explicit NotSigned status');
 
     const release = resolveLocalProcessPlatformRuntime({
       ...base,
       packaged: true,
-      publisherProbe: { readAuthenticodePublisher: vi.fn(() => 'CN=Linnya') },
+      signatureProbe: { readAuthenticodeSignature: vi.fn(() => ({ status: 'Valid' as const, publisher: 'CN=Linnya' })) },
     });
     expect(release).toMatchObject({
       trust: { kind: 'release', expected_publisher_identity: 'CN=Linnya' },
     });
+    expect(resolveLocalProcessPlatformRuntime({
+      ...base,
+      packaged: true,
+      signatureProbe: { readAuthenticodeSignature: vi.fn(() => ({ status: 'NotSigned' as const, publisher: null })) },
+    })).toMatchObject({ trust: { kind: 'release_unsigned' } });
     expect(resolveLocalProcessPlatformRuntime({
       ...base,
       packaged: false,

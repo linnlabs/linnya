@@ -34,7 +34,7 @@ function Stop-ValidationProcessTree {
   & $taskkillPath /PID $Process.Id /T /F | Out-Null
 }
 
-function Invoke-DevelopmentAfterSign {
+function Invoke-UnsignedReleaseAfterSign {
   param(
     [string]$AppPath,
     [string]$AppOutDir
@@ -53,7 +53,7 @@ function Invoke-DevelopmentAfterSign {
   $startInfo.RedirectStandardOutput = $true
   $startInfo.RedirectStandardError = $true
   $startInfo.EnvironmentVariables['ELECTRON_RUN_AS_NODE'] = '1'
-  $startInfo.EnvironmentVariables['LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST'] = 'development'
+  $startInfo.EnvironmentVariables['LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST'] = 'release_unsigned'
   $hookProcess = [Diagnostics.Process]::Start($startInfo)
   if ($null -eq $hookProcess) { throw 'afterSign validation process did not start' }
   try {
@@ -61,15 +61,15 @@ function Invoke-DevelopmentAfterSign {
     $stderrTask = $hookProcess.StandardError.ReadToEndAsync()
     if (-not $hookProcess.WaitForExit(30000)) {
       Stop-ValidationProcessTree -Process $hookProcess
-      throw 'development afterSign validation timed out'
+      throw 'unsigned release afterSign validation timed out'
     }
     $stdout = $stdoutTask.Result
     $stderr = $stderrTask.Result
     if ($hookProcess.ExitCode -ne 0) {
-      throw "development afterSign failed: exit=$($hookProcess.ExitCode) stderr=$stderr stdout=$stdout"
+      throw "unsigned release afterSign failed: exit=$($hookProcess.ExitCode) stderr=$stderr stdout=$stdout"
     }
     $result = $stdout.Trim() | ConvertFrom-Json
-    if (-not $result.success) { throw 'development afterSign did not publish success' }
+    if (-not $result.success) { throw 'unsigned release afterSign did not publish success' }
   } finally {
     Stop-ValidationProcessTree -Process $hookProcess
     $hookProcess.Dispose()
@@ -93,7 +93,7 @@ try {
   if (-not (Test-Path -LiteralPath $appPath -PathType Leaf)) {
     throw "packaged executable does not exist: $appPath"
   }
-  Invoke-DevelopmentAfterSign -AppPath $appPath -AppOutDir (Split-Path -Parent $appPath)
+  Invoke-UnsignedReleaseAfterSign -AppPath $appPath -AppOutDir (Split-Path -Parent $appPath)
   $startInfo = New-Object Diagnostics.ProcessStartInfo
   $startInfo.FileName = $appPath
   $startInfo.WorkingDirectory = Split-Path -Parent $appPath
@@ -124,6 +124,7 @@ try {
   }
   $result = Get-Content -Raw -LiteralPath $resultPath | ConvertFrom-Json
   if (-not $result.success -or -not $result.packaged) { throw 'suite identity mismatch' }
+  if ($result.failures.developmentCode -ne 'runtime_signature_unverified') { throw 'release loader accepted a development manifest' }
   if ($result.normal.output -ne 'packaged-native-runtime-ok' -or $result.normal.exitCode -ne 0) {
     throw 'normal native command failed'
   }
@@ -155,7 +156,7 @@ try {
     normalOutput = $result.normal.output
     repairedOutput = $result.repaired.output
     failures = $result.failures
-    developmentAfterSignVerified = $true
+    unsignedReleaseAfterSignVerified = $true
     directoryUnlockedAfterExit = $true
   }
   $completed = $true

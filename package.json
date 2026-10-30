@@ -1,6 +1,6 @@
 {
   "name": "linnya",
-  "version": "0.0.38",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "An agent-centered document database and extensible desktop workspace.",
@@ -56,7 +56,7 @@
       "undici@6": "6.29.1",
       "undici@7": "7.30.1",
       "uuid@10": "11.1.1",
-      "vite": "6.4.4",
+      "vite": "6.4.5",
       "ws@8": "8.21.3",
       "yaml": "2.8.3",
       "zod@4": "4.6.6"
@@ -349,7 +349,7 @@
     "copyright": "Copyright © 2024–present BCAutumn and Linnya contributors",
     "publish": {
       "provider": "generic",
-      "url": "https://download.linnyai.com/updates"
+      "url": "https://download.linnya.com/desktop/stable"
     },
     "releaseInfo": {
       "releaseNotesFile": "release-notes.md"
@@ -692,7 +692,7 @@
     "tsx": "^4.20.3",
     "typescript": "^5.5.4",
     "v8-compile-cache": "^2.4.0",
-    "vite": "^6.4.4",
+    "vite": "^6.4.5",
     "vite-plugin-top-level-await": "^1.5.0",
     "vite-plugin-wasm": "^3.4.1",
     "vitest": "^4.1.12",

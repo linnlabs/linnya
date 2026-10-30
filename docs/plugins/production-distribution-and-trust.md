@@ -58,9 +58,10 @@ Desktop 才能请求 Linnya 官方插件远端服务；`source` 与 `community` 
 
 任何失败都必须保留原 active version，不能让半安装 artifact 进入执行目录。Catalog 未完成发布方签名以前，现有 `latest.json` 与 SHA512 链路只能视为完整性机制，不能描述成完整的官方身份验证。
 
-当前公共实现已先落地 Desktop 发行身份门禁，可信 Desktop key ring 仍为空。因此源码运行
-和本地 ad-hoc 包不会访问官方插件源；正式发行 key 与验签 catalog 建立前，也不存在可用的
-official 远程安装产品面。
+当前公共实现已落地 Desktop 发行身份门禁，可信 Desktop key ring 已配置发行公钥；源码运行
+和没有有效发行清单的本地 ad-hoc 包不会访问官方插件源。远程安装当前仍消费未签名的
+`latest.json` 与 SHA512，尚未实现上述 catalog 来源证明。有效 Desktop 清单只能证明宿主身份，
+不能补足这一缺口；正式开放远程安装前，必须完成 catalog 验签，或明确关闭该远程产品面。
 
 ## 第三方插件
 

@@ -3,7 +3,7 @@ import * as fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   WINDOWS_OWNED_PIPE_NATIVE_ARTIFACT_FILE_NAME,
@@ -405,6 +405,32 @@ describe('Windows owned-pipe native runtime manifest loader', () => {
     );
     await expect(verifiedLoader.load()).resolves.toBeDefined();
     expect(loadedPaths).toHaveLength(1);
+  });
+
+  it('正式未签名模式只接纳自身发布证据，仍拒绝版本与 hash 漂移', async () => {
+    const nativeLoad = vi.fn(() => createNativeModule());
+    const load = (manifestPath: string) => createWindowsOwnedPipeNativeBindingLoader({
+      ...createLoaderOptions(manifestPath, nativeLoad),
+      trust: { kind: 'release_unsigned' },
+    }).load();
+    const development = await writeFixture();
+    await expectLoadError(() => load(development.manifestPath), 'runtime_signature_unverified');
+    const manifest = { ...createManifest(), signature_evidence: { kind: 'release_unsigned' } };
+    const mismatch = await writeFixture({ ...manifest, application_version: '0.0.0' });
+    await expectLoadError(() => load(mismatch.manifestPath), 'runtime_mismatch');
+    const changed = await writeFixture(manifest);
+    await fsp.writeFile(changed.artifactPath, Buffer.alloc(ARTIFACT_BYTES.byteLength));
+    await expectLoadError(() => load(changed.manifestPath), 'artifact_hash_mismatch');
+    expect(nativeLoad).not.toHaveBeenCalled();
+
+    const release = await writeFixture(manifest);
+    await load(release.manifestPath);
+    expect(nativeLoad).toHaveBeenCalledTimes(1);
+    const signedLoader = createWindowsOwnedPipeNativeBindingLoader({
+      ...createLoaderOptions(release.manifestPath, nativeLoad),
+      trust: { kind: 'release', expectedPublisherIdentity: PUBLISHER_IDENTITY },
+    });
+    await expectLoadError(() => signedLoader.load(), 'runtime_signature_unverified');
   });
 
   it('缺失、非普通文件、大小、hash 和相邻目录身份任一异常都不加载 native', async () => {

@@ -19,7 +19,7 @@ Job 只解决进程归属和清理，不解决文件访问权限。Windows 的�
 正式启动顺序：
 
 1. 读取固定 native runtime manifest；
-2. 检查绝对路径、存在性、架构、版本、文件 hash 和 publisher；
+2. 检查绝对路径、存在性、架构、版本、文件 hash 和发行模式；签名模式还必须匹配 App publisher；
 3. 加载 native binding；
 4. 创建 Job 和 process/thread/pipe handle；
 5. 在用户 Shell 执行前完成归属；
@@ -62,8 +62,10 @@ PTY 使用现有 Rust native owner 的 Pseudoconsole + Job List 组合。Utility
 
 - app-local VC Runtime 必须部署到全部 native 运行位置；
 - NSIS 使用 per-user 安装，不能假设管理员权限；
-- release publisher 必须由构建入口显式声明，不能依赖 ambient env 猜测；
-- unsigned development artifact 不能被正式 loader 接受；
+- 默认正式构建要求 Authenticode，release publisher 必须由构建入口显式声明；
+- 经发行决策选择未签名包时，构建入口显式设置 `LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST=release_unsigned`。builder 保留图标/版本编辑并关闭应用签名；afterSign 确认 App 和 native addon 的状态确为 `NotSigned`、文件未漂移，再生成 `release_unsigned` 证据；
+- 运行时从 App 的真实 Authenticode 状态选择模式，损坏签名或检查失败直接拒绝。未签名正式 loader 只接受 `release_unsigned`，已签名 loader 仍要求精确 publisher；两者均拒绝开发清单，均保留架构、版本、大小和 SHA-256 校验；
+- 未签名模式不能提供 Authenticode 的发布者认证，Windows 会显示未验证发布者提示；哈希校验只能发现文件和清单不一致。Desktop 的 official 身份仍由独立 Ed25519 发行清单决定，不能由该模式提升；
 - Sandbox evaluator 的随包 `node.exe` 必须通过固定 catalog/manifest 与 Authenticode 门禁，
   并继续由 native owner 以 `CREATE_NO_WINDOW` 创建、在用户代码前加入 Job；不得回退系统 Node
   或 Electron GUI executable；

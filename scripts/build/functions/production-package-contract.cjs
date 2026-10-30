@@ -39,6 +39,18 @@ function assertSupportedNativeTarget(platform, architecture) {
 function resolveWindowsReleaseCommandRuntimeEnvironment(environment) {
   const expectedPublisherIdentity =
     environment[WINDOWS_EXPECTED_PUBLISHER_IDENTITY_ENV_NAME];
+  const mode = environment[WINDOWS_COMMAND_RUNTIME_BUILD_TRUST_ENV_NAME] ?? 'release';
+  if (mode === 'release_unsigned') {
+    if (expectedPublisherIdentity) {
+      throw new Error('Unsigned Windows release cannot declare an Authenticode publisher');
+    }
+    return Object.freeze({
+      [WINDOWS_COMMAND_RUNTIME_BUILD_TRUST_ENV_NAME]: 'release_unsigned',
+    });
+  }
+  if (mode !== 'release') {
+    throw new Error('Windows production builds require release or release_unsigned trust');
+  }
   if (
     typeof expectedPublisherIdentity !== 'string'
     || expectedPublisherIdentity.trim().length === 0
@@ -236,6 +248,7 @@ function buildElectronBuilderArguments({
   adHocMacSigning,
   macSigningIdentity,
   updateFeedUrl,
+  windowsUnsignedRelease = false,
 }) {
   if (!SUPPORTED_PACKAGE_BUILD_TARGETS.has(`${platform}:${architecture}`)) {
     throw new Error(`Unsupported Electron package target: ${platform}/${architecture}`);
@@ -247,10 +260,18 @@ function buildElectronBuilderArguments({
     'dist_build',
     platform === 'darwin' ? '--mac' : '--win',
     `--${architecture}`,
+    // 构建和上传是独立动作；CI/tag 环境也不能让 builder 自动发布。
+    '--publish',
+    'never',
     // 原生模块已由生产脚本按 Electron 目标准备并验真；再次 rebuild 会修改冻结后的
     // 发布树，还会让 node-pre-gyp 重新依赖外网。
     '--config.npmRebuild=false',
   ];
+  if (windowsUnsignedRelease) {
+    if (platform !== 'win32') throw new Error('Unsigned Windows release requires a Windows target');
+    // 保留图标和版本资源编辑，只关闭 Linnya 的 Authenticode 签名；afterSign 仍执行验真。
+    argumentsList.push('--config.win.signExecutable=false');
+  }
   if (adHocMacSigning) {
     if (platform !== 'darwin') {
       throw new Error('Ad-hoc macOS signing can only be used for a macOS build');

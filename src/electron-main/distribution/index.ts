@@ -11,4 +11,5 @@ export {
   LINNYA_DESKTOP_APPLICATION_ID,
 } from './definitions/desktopDistributionManifest';
 export { verifyDesktopDistributionManifest } from './functions/verifyDesktopDistributionManifest';
+export { trustedDesktopDistributionKeys } from './registry/trustedDesktopDistributionKeys';
 export { resolveElectronDistributionIdentity } from './orchestration/resolveElectronDistributionIdentity';

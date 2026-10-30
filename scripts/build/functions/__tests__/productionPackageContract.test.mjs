@@ -122,6 +122,22 @@ describe('electron-builder production command contract', () => {
     }
   });
 
+  it('正式未签名构建必须显式选择，不接受开发模式或矛盾的发布者配置', () => {
+    const environment = { LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST: 'release_unsigned' };
+    expect(resolveWindowsReleaseCommandRuntimeEnvironment(environment)).toEqual(environment);
+    expect(() => resolveWindowsReleaseCommandRuntimeEnvironment({
+      ...environment, LINNYA_WINDOWS_EXPECTED_PUBLISHER_IDENTITY: 'CN=Linnya',
+    })).toThrow('cannot declare an Authenticode publisher');
+    expect(() => resolveWindowsReleaseCommandRuntimeEnvironment({
+      LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST: 'development',
+    })).toThrow('require release or release_unsigned');
+    const args = buildElectronBuilderArguments({
+      platform: 'win32', architecture: 'x64', windowsUnsignedRelease: true,
+    });
+    expect(args).toContain('--config.win.signExecutable=false');
+    expect(args.slice(args.indexOf('--publish'), args.indexOf('--publish') + 2)).toEqual(['--publish', 'never']);
+  });
+
   it('macOS ad-hoc 构建显式使用 identity=- 和合法的无时间戳配置', () => {
     const argumentsList = buildElectronBuilderArguments({
       platform: 'darwin',

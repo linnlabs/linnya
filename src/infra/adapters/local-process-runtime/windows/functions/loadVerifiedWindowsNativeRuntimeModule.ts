@@ -19,6 +19,7 @@ export interface WindowsNativeRuntimeFacts {
 
 export type WindowsNativeRuntimeTrust =
   | { readonly kind: 'development' }
+  | { readonly kind: 'release_unsigned' }
   | {
     readonly kind: 'release';
     readonly expectedPublisherIdentity: string;
@@ -141,6 +142,15 @@ async function loadNativeModule(
     throw new WindowsNativeRuntimeLoadError(
       'runtime_mismatch',
       'Windows local process runtime does not match the active application runtime',
+    );
+  }
+  if (
+    options.trust.kind === 'release_unsigned'
+    && manifest.signature_evidence.kind !== 'release_unsigned'
+  ) {
+    throw new WindowsNativeRuntimeLoadError(
+      'runtime_signature_unverified',
+      'Windows local process runtime was not finalized for an unsigned release',
     );
   }
   if (

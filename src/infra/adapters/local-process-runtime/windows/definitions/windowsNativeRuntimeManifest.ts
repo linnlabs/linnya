@@ -11,6 +11,7 @@ const WindowsNativeSignatureEvidenceSchema = z.discriminatedUnion(
     z.object({
       kind: z.literal('development_unsigned'),
     }).strict(),
+    z.object({ kind: z.literal('release_unsigned') }).strict(),
     z.object({
       kind: z.literal('authenticode_build_verified'),
       publisher_identity: z.string().min(1),

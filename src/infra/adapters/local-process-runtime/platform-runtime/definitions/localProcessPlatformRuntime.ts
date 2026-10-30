@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 const LocalProcessWindowsRuntimeTrustSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('development') }).strict(),
+  z.object({ kind: z.literal('release_unsigned') }).strict(),
   z.object({
     kind: z.literal('release'),
     expected_publisher_identity: z.string().min(1),

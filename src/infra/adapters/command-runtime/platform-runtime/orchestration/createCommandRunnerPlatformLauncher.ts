@@ -201,12 +201,12 @@ export function createCommandRunnerPlatformLauncher(
     manifestPath: runtime.manifest_path,
     expectedRuntimeVersion: runtime.expected_runtime_version,
     expectedApplicationVersion: runtime.expected_application_version,
-    trust: runtime.trust.kind === 'development'
-      ? { kind: 'development' }
-      : {
+    trust: runtime.trust.kind === 'release'
+      ? {
           kind: 'release',
           expectedPublisherIdentity: runtime.trust.expected_publisher_identity,
-        },
+        }
+      : runtime.trust,
   };
   const pipeLoader = createWindowsOwnedPipeNativeBindingLoader(loaderOptions);
   const ptyLoader = createWindowsOwnedPtyNativeBindingLoader(loaderOptions);

@@ -25,12 +25,11 @@ const rootDir = path.resolve(__dirname, '..', '..');
 function resolveDistributionManifestPath(environment) {
   const manifestPath = environment.LINNYA_DESKTOP_DISTRIBUTION_MANIFEST;
   if (!manifestPath) return undefined;
-  const envelope = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  const payload = JSON.parse(Buffer.from(envelope.payload, 'base64').toString('utf8'));
-  const version = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8')).version;
-  if (payload.application_version !== version) {
-    throw new Error(`发行清单版本 ${payload.application_version} 与应用版本 ${version} 不一致`);
-  }
+  // 使用与安装态相同的 verifier 和 key ring，避免打完才发现发行身份降为 community。
+  execFileSync(process.execPath, [
+    '--import', 'tsx', 'scripts/release/orchestration/verifyDesktopDistribution.ts',
+    path.resolve(manifestPath),
+  ], { cwd: rootDir, stdio: 'inherit' });
   return manifestPath;
 }
 const distBuildDir = path.join(rootDir, 'dist_build');
@@ -75,6 +74,8 @@ try {
     adHocMacSigning: disableMacTimestamp,
     macSigningIdentity: formalMacSigningIdentity,
     updateFeedUrl: process.env.LINNYA_UPDATE_FEED_URL || undefined,
+    windowsUnsignedRelease: isWin
+      && process.env.LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST === 'release_unsigned',
   });
   distributionManifestPath = resolveDistributionManifestPath(process.env);
   commandRuntimeBuildEnvironment = isWin

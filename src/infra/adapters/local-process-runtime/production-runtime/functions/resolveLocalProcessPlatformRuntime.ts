@@ -5,18 +5,15 @@ import {
   parseLocalProcessPlatformRuntime,
   type LocalProcessPlatformRuntime,
 } from '../../platform-runtime';
+import {
+  WindowsApplicationSignatureSchema,
+  type WindowsApplicationSignatureProbePort,
+} from '../definitions/windowsApplicationSignature';
 
 const WINDOWS_LOCAL_PROCESS_RUNTIME_VERSION = '0.1.0';
 
-export interface WindowsApplicationPublisherProbePort {
-  readAuthenticodePublisher(input: {
-    readonly executablePath: string;
-    readonly environment: Readonly<Record<string, string>>;
-  }): string | undefined;
-}
-
-const nodeWindowsApplicationPublisherProbe: WindowsApplicationPublisherProbePort = Object.freeze({
-  readAuthenticodePublisher(input: {
+const nodeWindowsApplicationSignatureProbe: WindowsApplicationSignatureProbePort = Object.freeze({
+  readAuthenticodeSignature(input: {
     readonly executablePath: string;
     readonly environment: Readonly<Record<string, string>>;
   }) {
@@ -45,8 +42,8 @@ const nodeWindowsApplicationPublisherProbe: WindowsApplicationPublisherProbePort
       "$securityModule = Join-Path $PSHOME 'Modules\\Microsoft.PowerShell.Security\\Microsoft.PowerShell.Security.psd1'",
       'Import-Module -Name $securityModule -Force -ErrorAction Stop',
       `$signature = Microsoft.PowerShell.Security\\Get-AuthenticodeSignature -LiteralPath $env:${inspectionPathKey}`,
-      "if ([string]$signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) { exit 2 }",
-      '[string]$signature.SignerCertificate.Subject',
+      '$publisher = if ($null -eq $signature.SignerCertificate) { $null } else { [string]$signature.SignerCertificate.Subject }',
+      '@{ status = [string]$signature.Status; publisher = $publisher } | ConvertTo-Json -Compress',
     ].join('\n');
     const result = spawnSync(powershellPath, [
       '-NoLogo',
@@ -61,8 +58,8 @@ const nodeWindowsApplicationPublisherProbe: WindowsApplicationPublisherProbePort
       windowsHide: true,
     });
     if (result.status !== 0) return undefined;
-    const publisher = result.stdout.trim();
-    return publisher || undefined;
+    const signature = WindowsApplicationSignatureSchema.safeParse(JSON.parse(result.stdout));
+    return signature.success ? signature.data : undefined;
   },
 });
 
@@ -78,7 +75,7 @@ export function resolveLocalProcessPlatformRuntime(input: {
   readonly resourcesPath: string;
   readonly packaged: boolean;
   readonly hostEnvironment: Readonly<Record<string, string>>;
-  readonly publisherProbe?: WindowsApplicationPublisherProbePort;
+  readonly signatureProbe?: WindowsApplicationSignatureProbePort;
 }): LocalProcessPlatformRuntime {
   if (input.platform === 'darwin') {
     return parseLocalProcessPlatformRuntime({ schema_version: 1, platform: 'darwin' });
@@ -112,16 +109,21 @@ export function resolveLocalProcessPlatformRuntime(input: {
 function resolveReleaseTrust(input: {
   readonly applicationExecutablePath: string;
   readonly hostEnvironment: Readonly<Record<string, string>>;
-  readonly publisherProbe?: WindowsApplicationPublisherProbePort;
-}): { readonly kind: 'release'; readonly expected_publisher_identity: string } {
+  readonly signatureProbe?: WindowsApplicationSignatureProbePort;
+}): { readonly kind: 'release'; readonly expected_publisher_identity: string }
+  | { readonly kind: 'release_unsigned' } {
   // expected publisher 必须来自已签名 App 自身，而不是同目录可改 manifest 或普通环境变量。
-  const publisher = (input.publisherProbe ?? nodeWindowsApplicationPublisherProbe)
-    .readAuthenticodePublisher({
+  const signature = (input.signatureProbe ?? nodeWindowsApplicationSignatureProbe)
+    .readAuthenticodeSignature({
       executablePath: input.applicationExecutablePath,
       environment: input.hostEnvironment,
     });
-  if (!publisher) {
-    throw new Error('Packaged Windows local process runtime requires a valid signed application publisher');
+  if (!signature) {
+    throw new Error('Packaged Windows local process runtime requires a valid signature or explicit NotSigned status');
   }
-  return { kind: 'release', expected_publisher_identity: publisher };
+  if (signature.status === 'NotSigned') {
+    // loader 仍必须匹配发布管线的 release_unsigned 证据并复核全部字节；不能接受开发清单。
+    return { kind: 'release_unsigned' };
+  }
+  return { kind: 'release', expected_publisher_identity: signature.publisher };
 }
