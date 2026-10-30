@@ -121,7 +121,10 @@ export async function registerPluginsHandlers(input: {
       const states = getService().listStates(listRegisteredBackendPluginMetas());
       return {
         success: true,
-        data: buildPluginStoreList(states),
+        data: {
+          items: buildPluginStoreList(states),
+          remoteServiceEnabled: isOfficialPluginRemoteServiceEnabled(input.distributionIdentity),
+        },
       };
     } catch (error) {
       logger.error('[plugins:store-list] failed:', error);
@@ -239,7 +242,7 @@ export async function registerPluginsHandlers(input: {
   input.ipc.handle('plugins:checkRemoteUpdate', async (_event, rawPluginId: unknown) => {
     try {
       if (!isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
-        throw new Error('当前 Desktop 发行身份不允许连接 Linnya 官方插件更新服务');
+        throw new Error('当前版本暂不提供插件远程安装和更新，请使用随包插件');
       }
       const pluginId = parsePluginId(rawPluginId, 'plugins:checkRemoteUpdate');
       const service = getService();
@@ -271,7 +274,7 @@ export async function registerPluginsHandlers(input: {
   input.ipc.handle('plugins:installFromRemote', async (_event, rawPluginId: unknown) => {
     try {
       if (!isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
-        throw new Error('当前 Desktop 发行身份不允许连接 Linnya 官方插件下载服务');
+        throw new Error('当前版本暂不提供插件远程安装和更新，请使用随包插件');
       }
       const pluginId = parsePluginId(rawPluginId, 'plugins:installFromRemote');
       return await runPluginLifecycleOperationSerially({
@@ -316,6 +319,10 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:uninstall', async (_event, rawPluginId: unknown) => {
     try {
+      // 远程恢复不可用时不提供卸载，避免留下无法从界面重新安装的插件；仍可停用。
+      if (!isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
+        throw new Error('当前版本仅提供随包插件，请使用停用而非卸载');
+      }
       const pluginId = parsePluginId(rawPluginId, 'plugins:uninstall');
       return await runPluginLifecycleOperationSerially({
         pluginId,

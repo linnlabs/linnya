@@ -3,6 +3,7 @@ import type { MessageParams } from '@app/localization';
 export type PluginStoreMessageKey =
   | 'pluginStore.title'
   | 'pluginStore.subtitle'
+  | 'pluginStore.remoteUnavailable'
   | 'pluginStore.tabs.ariaLabel'
   | 'pluginStore.tabs.installed'
   | 'pluginStore.tabs.market'

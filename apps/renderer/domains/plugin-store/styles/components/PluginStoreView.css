@@ -64,6 +64,13 @@
   line-height: var(--line-height-normal);
 }
 
+.plugin-store-availability {
+  margin: var(--space-3) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-normal);
+}
+
 .plugin-store-placeholder {
   display: grid;
   min-height: 180px;

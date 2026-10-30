@@ -8,6 +8,11 @@
 
 ## 页面结构
 
+当前发行仅提供随包插件。`plugins:store-list` 返回 `PluginStoreListData`，包含 `items`
+和 Host 计算的 `remoteServiceEnabled`；它是服务能力投影，不是插件 manifest 字段。
+远程服务关闭时，Renderer 保留介绍与启停，隐藏远程安装和卸载入口，打开详情不触发
+远程更新检查。Backend 同样在网络或卸载动作前拒绝，不能只依赖按钮隐藏。
+
 ### 列表页
 
 列表页用于快速识别和管理插件，字段必须来自 `PluginStoreListItem.meta`：

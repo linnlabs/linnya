@@ -11,17 +11,20 @@ packaged 产品只允许两类来源：
 | 来源 | 身份依据 | packaged 行为 |
 | --- | --- | --- |
 | `bundled-official` | 受保护产品装配清单锁定的不可变 artifact | 允许 |
-| `catalog-official` | 发布方签名 catalog 锁定的版本、摘要和兼容范围 | 允许 |
+| `catalog-official` | 发布方签名 catalog 锁定的版本、摘要和兼容范围 | 验签链路完成后开放；当前关闭 |
 | `development-direct` | 开发者显式指定的本地目录 | 拒绝 |
 | `third-party-signed` | 未来第三方信任模型 | 当前拒绝 |
 | `unknown` | 没有可信来源证明 | 拒绝 |
 
 开发态可以从 workspace 或显式目录直载插件。这项能力只服务开发、测试和受控 artifact smoke，不能通过普通环境变量带入 packaged 生产模式。
 
-Desktop 发行身份和插件 artifact 来源是两层不同证明：只有验签通过的 `official`
-Desktop 才能请求 Linnya 官方插件远端服务；`source` 与 `community` 仍可运行本地插件，
-但远程检查与安装在发出网络请求前失败关闭。即使 Desktop 是 `official`，下载到的插件
-也仍须单独通过本文件定义的 catalog/artifact 信任链，不能继承 Desktop 身份。
+Desktop 发行身份和插件 artifact 来源是两层不同证明。当前产品仅提供随包插件，所有
+发行身份（包括 `official`）的远程检查与安装都在发出网络请求前拒绝；服务状态由 Host
+随商店列表投影，界面不显示安装入口，也不自动检查更新。远程恢复不可用期间不提供
+卸载入口，已有随包插件仍可启停、查看介绍和使用。
+
+未来开放服务必须同时满足产品开关与 `official` Desktop 身份；下载插件仍须单独通过
+本文件定义的 catalog/artifact 信任链，不能继承 Desktop 身份。开发态本地插件能力不变。
 
 ## 不变量
 
@@ -58,10 +61,10 @@ Desktop 才能请求 Linnya 官方插件远端服务；`source` 与 `community` 
 
 任何失败都必须保留原 active version，不能让半安装 artifact 进入执行目录。Catalog 未完成发布方签名以前，现有 `latest.json` 与 SHA512 链路只能视为完整性机制，不能描述成完整的官方身份验证。
 
-当前公共实现已落地 Desktop 发行身份门禁，可信 Desktop key ring 已配置发行公钥；源码运行
-和没有有效发行清单的本地 ad-hoc 包不会访问官方插件源。远程安装当前仍消费未签名的
-`latest.json` 与 SHA512，尚未实现上述 catalog 来源证明。有效 Desktop 清单只能证明宿主身份，
-不能补足这一缺口；正式开放远程安装前，必须完成 catalog 验签，或明确关闭该远程产品面。
+当前公共实现已落地 Desktop 发行身份门禁，可信 Desktop key ring 已配置发行公钥。
+底层远程安装实现仍消费未签名的 `latest.json` 与 SHA512，尚未实现上述 catalog 来源证明，
+因此产品层通过 `isOfficialPluginRemoteServiceEnabled` 明确关闭该服务，不接受环境变量覆盖。
+重新开放前必须完成 catalog 验签及安装回执准入，不能只翻转开关。当前插件下载域名保持不变。
 
 ## 第三方插件
 

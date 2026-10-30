@@ -52,9 +52,9 @@ describe('pluginStorePresentation', () => {
 
     expect(isRequiredPlugin(item)).toBe(true);
     expect(canTogglePlugin(item)).toBe(false);
-    expect(canUninstallPlugin(item)).toBe(false);
-    expect(canInstallPluginFromRemote(item)).toBe(false);
-    expect(canCheckPluginUpdateFromRemote(item)).toBe(false);
+    expect(canUninstallPlugin(item, true)).toBe(false);
+    expect(canInstallPluginFromRemote(item, true)).toBe(false);
+    expect(canCheckPluginUpdateFromRemote(item, true)).toBe(false);
     expect(getPluginToggleDisabledReason(item, pluginStoreMessage)).toBe('核心能力不可禁用');
   });
 
@@ -66,9 +66,9 @@ describe('pluginStorePresentation', () => {
     });
 
     expect(canTogglePlugin(item)).toBe(false);
-    expect(canUninstallPlugin(item)).toBe(false);
-    expect(canInstallPluginFromRemote(item)).toBe(true);
-    expect(canCheckPluginUpdateFromRemote(item)).toBe(false);
+    expect(canUninstallPlugin(item, true)).toBe(false);
+    expect(canInstallPluginFromRemote(item, true)).toBe(true);
+    expect(canCheckPluginUpdateFromRemote(item, true)).toBe(false);
     expect(getPluginToggleDisabledReason(item, pluginStoreMessage)).toBe('插件目录不存在');
   });
 
@@ -76,9 +76,9 @@ describe('pluginStorePresentation', () => {
     const item = createPluginItem({ id: 'mindmap', state: 'disabled' });
 
     expect(canTogglePlugin(item)).toBe(true);
-    expect(canUninstallPlugin(item)).toBe(true);
-    expect(canInstallPluginFromRemote(item)).toBe(false);
-    expect(canCheckPluginUpdateFromRemote(item)).toBe(true);
+    expect(canUninstallPlugin(item, true)).toBe(true);
+    expect(canInstallPluginFromRemote(item, true)).toBe(false);
+    expect(canCheckPluginUpdateFromRemote(item, true)).toBe(true);
     expect(getPluginToggleDisabledReason(item, pluginStoreMessage)).toBeNull();
   });
 
@@ -86,9 +86,9 @@ describe('pluginStorePresentation', () => {
     const item = createPluginItem({ id: 'mindmap', state: 'enabled' });
 
     expect(canTogglePlugin(item)).toBe(true);
-    expect(canUninstallPlugin(item)).toBe(true);
-    expect(canInstallPluginFromRemote(item)).toBe(false);
-    expect(canCheckPluginUpdateFromRemote(item)).toBe(true);
+    expect(canUninstallPlugin(item, true)).toBe(true);
+    expect(canInstallPluginFromRemote(item, true)).toBe(false);
+    expect(canCheckPluginUpdateFromRemote(item, true)).toBe(true);
     expect(getPluginToggleDisabledReason(item, pluginStoreMessage)).toBeNull();
   });
 });

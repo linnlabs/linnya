@@ -24,6 +24,10 @@
         </template>
       </PageSectionHeader>
 
+      <p v-if="!remoteServiceEnabled" class="plugin-store-availability" role="status">
+        {{ pluginStoreMessage('pluginStore.remoteUnavailable') }}
+      </p>
+
       <section v-if="storeItemsError" class="plugin-store-alert" role="alert">
         {{ storeItemsErrorMessage }}
       </section>
@@ -131,7 +135,7 @@
               </button>
             </div>
 
-            <div v-if="canUninstallPlugin(selectedDetail)" class="plugin-store-detail-danger-zone">
+            <div v-if="canUninstallPlugin(selectedDetail, remoteServiceEnabled)" class="plugin-store-detail-danger-zone">
               <ActionButtons
                 class="plugin-store-uninstall-action"
                 :primary-button-attributes="{ class: 'plugin-store-uninstall-button' }"
@@ -257,7 +261,7 @@
 
           <div class="plugin-store-card-actions" @click.stop @keydown.stop>
               <Switch
-                v-if="!canInstallPluginFromRemote(item)"
+                v-if="!canInstallPluginFromRemote(item, remoteServiceEnabled)"
                 :model-value="item.state === 'enabled'"
                 :disabled="!canTogglePlugin(item) || isPluginBusy(item.meta.id)"
                 :ariaLabel="pluginToggleAriaLabel(item.meta.name)"
@@ -265,7 +269,7 @@
               />
 
             <ActionButtons
-              v-if="canInstallPluginFromRemote(item)"
+              v-if="canInstallPluginFromRemote(item, remoteServiceEnabled)"
               class="plugin-store-install-actions"
               :primary-action-text="pluginStoreMessage('pluginStore.action.install')"
               :primary-button-attributes="{ class: 'plugin-store-install-button' }"
@@ -354,7 +358,7 @@ const pluginsStore = useEnabledPluginsStore();
 const notificationStore = useNotificationStore();
 const documentTypes = useDocumentTypes();
 const { pluginStoreMessage } = usePluginStoreLocalization();
-const { storeItems, isStoreItemsLoading, storeItemsError, storeDetailsByPluginId } =
+const { storeItems, isStoreItemsLoading, storeItemsError, storeDetailsByPluginId, remoteServiceEnabled } =
   storeToRefs(pluginsStore);
 
 const busyPluginIds = ref<ReadonlySet<PluginId>>(new Set());
@@ -493,7 +497,7 @@ function isPluginBusy(pluginId: PluginId): boolean {
 }
 
 function canInstallSelectedPlugin(detail: PluginStoreDetail | null): boolean {
-  return detail !== null && canInstallPluginFromRemote(detail);
+  return detail !== null && canInstallPluginFromRemote(detail, remoteServiceEnabled.value);
 }
 
 function canToggleSelectedPlugin(detail: PluginStoreDetail | null): boolean {
@@ -684,7 +688,7 @@ async function runRemotePluginInstall(
 }
 
 async function handleRemoteInstall(item: PluginStoreListItem): Promise<void> {
-  if (!canInstallPluginFromRemote(item)) {
+  if (!canInstallPluginFromRemote(item, remoteServiceEnabled.value)) {
     return;
   }
 
@@ -698,7 +702,7 @@ async function checkPluginUpdateFromCard(
   item: PluginStoreListItem,
   options: { readonly silentFailure: boolean } = { silentFailure: false }
 ): Promise<void> {
-  if (!canCheckPluginUpdateFromRemote(item) || isPluginBusy(item.meta.id)) {
+  if (!canCheckPluginUpdateFromRemote(item, remoteServiceEnabled.value) || isPluginBusy(item.meta.id)) {
     return;
   }
 
@@ -740,7 +744,7 @@ async function checkPluginUpdateFromCard(
 }
 
 async function handlePluginUninstall(item: PluginStoreListItem): Promise<void> {
-  if (!canUninstallPlugin(item) || isPluginBusy(item.meta.id)) {
+  if (!canUninstallPlugin(item, remoteServiceEnabled.value) || isPluginBusy(item.meta.id)) {
     return;
   }
   const confirmed = await confirm({

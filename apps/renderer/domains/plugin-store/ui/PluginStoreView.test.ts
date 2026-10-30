@@ -175,6 +175,7 @@ function toStateView(item: PluginStoreListItem): PluginStateView {
 }
 
 interface PluginStoreTestApiOptions {
+  readonly remoteServiceEnabled?: boolean;
   readonly runtimeStates?: readonly PluginStateView[];
 }
 
@@ -187,7 +188,7 @@ function createTestApi(
     plugins: {
       storeList: vi.fn<() => Promise<unknown>>(async () => ({
         success: true,
-        data: [...storeItems],
+        data: { items: [...storeItems], remoteServiceEnabled: options.remoteServiceEnabled ?? true },
       })),
       getDetail: vi.fn<(pluginId: string) => Promise<unknown>>(async pluginId => {
         if (pluginId === 'mindmap') {
@@ -343,6 +344,38 @@ afterEach(() => {
 });
 
 describe('PluginStoreView', () => {
+  it('远程服务关闭时可查看和启停随包插件，不检查更新或提供卸载与安装', async () => {
+    const api = createTestApi([mindmapDisabledItem, { ...slidesEnabledItem, state: 'missing' }], {
+      remoteServiceEnabled: false,
+    });
+    const mounted = mountPluginStore(api);
+    await flushVueWork();
+
+    const toggle = readSwitchInputs(findPluginCard(mounted.host, 'mindmap'))[0];
+    expect(toggle?.disabled).toBe(false);
+    toggle?.click();
+    await flushVueWork();
+    expect(api.plugins.setEnabled).toHaveBeenCalledWith('mindmap', true);
+
+    findPluginCard(mounted.host, 'mindmap').click();
+    await flushVueWork();
+    expect(api.plugins.getDetail).toHaveBeenCalledWith('mindmap');
+    expect(api.plugins.checkRemoteUpdate).not.toHaveBeenCalled();
+    expect(mounted.host.querySelector('.plugin-store-uninstall-button')).toBeNull();
+    expect(mounted.host.textContent).toContain('远程安装和更新暂未开放');
+
+    findButtonByText(mounted.host, '插件').click();
+    await flushVueWork();
+    const marketplaceTab = readButtons(mounted.host).find(button => button.textContent?.includes('插件市场'));
+    if (!marketplaceTab) throw new Error('marketplace tab not found');
+    marketplaceTab.click();
+    await flushVueWork();
+    expect(findPluginCard(mounted.host, 'slides')).toBeDefined();
+    expect(mounted.host.querySelector('.plugin-store-install-button')).toBeNull();
+    expect(api.plugins.installFromRemote).not.toHaveBeenCalled();
+    expect(api.plugins.uninstall).not.toHaveBeenCalled();
+  });
+
   it('只渲染可管理插件，不展示内部 platform 基座', async () => {
     const api = createTestApi([mindmapDisabledItem]);
     const mounted = mountPluginStore(api);

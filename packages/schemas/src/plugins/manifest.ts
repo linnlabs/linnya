@@ -70,6 +70,12 @@ export interface PluginStateView {
 
 export interface PluginStoreListItem extends PluginStateView {}
 
+/** 商店展示由 Host 投影当前服务开放状态，Renderer 不自行推断发行权限。 */
+export interface PluginStoreListData {
+  items: PluginStoreListItem[];
+  remoteServiceEnabled: boolean;
+}
+
 export interface PluginStoreDetail extends PluginStoreListItem {
   /** 插件包在当前来源中的本地体积，用于插件详情页展示。 */
   sizeBytes?: number;

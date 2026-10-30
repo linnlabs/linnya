@@ -7,6 +7,7 @@ import type {
   PluginStoreDetail,
   PluginStateView,
   PluginStoreListItem,
+  PluginStoreListData,
 } from '@app/schemas';
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
@@ -29,7 +30,7 @@ interface PluginDiagnosticsIpcSuccess {
 
 interface PluginStoreListIpcSuccess {
   success: true;
-  data: PluginStoreListItem[];
+  data: PluginStoreListData;
 }
 
 interface PluginStoreDetailIpcSuccess {
@@ -262,11 +263,15 @@ function parsePluginStoreListResult(result: unknown): PluginStoreListIpcResult {
     };
   }
 
-  if (!Array.isArray(record.data) || !record.data.every(isPluginStoreListItem)) {
+  const data = record.data;
+  if (!isRecord(data)
+    || typeof data.remoteServiceEnabled !== 'boolean'
+    || !Array.isArray(data.items)
+    || !data.items.every(isPluginStoreListItem)) {
     return { success: false, error: createPluginRuntimeError('pluginStoreListSchemaInvalid') };
   }
 
-  return { success: true, data: record.data };
+  return { success: true, data: { items: data.items, remoteServiceEnabled: data.remoteServiceEnabled } };
 }
 
 function parsePluginStoreDetailResult(result: unknown): PluginStoreDetailIpcResult {
@@ -393,6 +398,7 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
   const error = ref<PluginRuntimeUserError | null>(null);
   const isStoreItemsLoading = ref(false);
   const hasLoadedStoreItems = ref(false);
+  const remoteServiceEnabled = ref(false);
   const storeItemsError = ref<PluginRuntimeUserError | null>(null);
   const storeDetailsByPluginId = ref<Record<PluginId, PluginStoreDetail>>({});
   const storeDetailError = ref<PluginRuntimeUserError | null>(null);
@@ -492,11 +498,12 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
         throwPluginRuntimeError(result.error);
       }
       if (!hasLoaded.value) {
-        states.value = result.data;
+        states.value = result.data.items;
         hasLoaded.value = true;
         error.value = null;
       }
       hasLoadedStoreItems.value = true;
+      remoteServiceEnabled.value = result.data.remoteServiceEnabled;
       storeItemsError.value = null;
     } catch (caught) {
       storeItemsError.value = readPluginStoreError(caught);
@@ -627,6 +634,7 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
   }
 
   return {
+    remoteServiceEnabled,
     states,
     isLoading,
     hasLoaded,

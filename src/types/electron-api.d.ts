@@ -29,7 +29,7 @@ import type {
   PluginRemoteInstallResult,
   PluginRemoteUpdateCheckResult,
   PluginStoreDetail,
-  PluginStoreListItem,
+  PluginStoreListData,
   UserFacingMessage,
   WorkspaceMutationEvent,
 } from '@app/schemas';
@@ -287,7 +287,7 @@ declare global {
       // Plugin state
       plugins: {
         list: () => Promise<{ success: true; data: PluginStateView[] } | { success: false; error?: string }>;
-        storeList: () => Promise<{ success: true; data: PluginStoreListItem[] } | { success: false; error?: string }>;
+        storeList: () => Promise<{ success: true; data: PluginStoreListData } | { success: false; error?: string }>;
         getDetail: (pluginId: string) => Promise<{ success: true; data: PluginStoreDetail } | { success: false; error?: string }>;
         diagnostics: () => Promise<{ success: true; data: readonly PluginDiagnosticView[] } | { success: false; error?: string }>;
         rendererEntries: () => Promise<unknown>;
