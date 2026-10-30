@@ -89,17 +89,5 @@ export const AskToolInputSchema = z.object({
       });
     }
     questionIds.add(question.id);
-
-    if (
-      question.type === 'multi'
-      && question.maxSelect !== undefined
-      && question.maxSelect > question.options.length
-    ) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['questions', index, 'maxSelect'],
-        message: 'maxSelect cannot exceed the number of options',
-      });
-    }
   });
 });

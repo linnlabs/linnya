@@ -150,4 +150,87 @@ describe('ask live contract', () => {
       resumeStrategy: 'continue',
     });
   });
+
+  it('必填选择题总有其他入口，选填题仍按声明', async () => {
+    const output = await new AskTool().run(
+      {
+        questions: [
+          {
+            id: 'required_single',
+            type: 'single',
+            required: true,
+            allowOther: false,
+            question: '单程多久',
+            options: [{ id: 'short', label: '一小时内' }],
+          },
+          {
+            id: 'required_multi',
+            type: 'multi',
+            required: true,
+            question: '身体情况',
+            options: [
+              { id: 'early', label: '能早起' },
+              { id: 'walk', label: '能久走' },
+            ],
+          },
+          {
+            id: 'optional_single',
+            type: 'single',
+            question: '优先什么',
+            options: [{ id: 'calm', label: '从容' }],
+          },
+        ],
+      },
+      {}
+    );
+    const result = AskResultSchema.parse(JSON.parse(output));
+
+    expect(result.data.questions.map(question => question.allowOther)).toEqual([true, true, false]);
+  });
+
+  it('多选上限不小于实际选项数时取消上限，不让问卷失败', async () => {
+    const output = await new AskTool().run(
+      {
+        questions: [
+          {
+            id: 'over_limit',
+            type: 'multi',
+            question: '选择受众',
+            options: [
+              { id: 'management', label: '管理层' },
+              { id: 'employees', label: '员工' },
+            ],
+            maxSelect: 5,
+          },
+          {
+            id: 'limit_after_other_filtered',
+            type: 'multi',
+            question: '选择渠道',
+            options: [
+              { id: 'mail', label: '邮件' },
+              { id: 'chat', label: '聊天' },
+              { id: 'other', label: '其他' },
+            ],
+            maxSelect: 3,
+          },
+          {
+            id: 'real_limit',
+            type: 'multi',
+            question: '选择两项',
+            options: [
+              { id: 'a', label: 'A' },
+              { id: 'b', label: 'B' },
+              { id: 'c', label: 'C' },
+            ],
+            maxSelect: 2,
+          },
+        ],
+      },
+      {}
+    );
+    const result = AskResultSchema.parse(JSON.parse(output));
+
+    expect(result.data.questions.map(question => question.maxSelect)).toEqual([undefined, undefined, 2]);
+    expect(result.data.questions[1]).toMatchObject({ allowOther: true });
+  });
 });

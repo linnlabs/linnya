@@ -122,7 +122,7 @@ const MULTI_QUESTION_PROPERTY: ToolParameterProperty = {
       type: 'integer',
       minimum: ASK_TOOL_MIN_MULTI_SELECTIONS,
       maximum: ASK_TOOL_MAX_OPTIONS,
-      description: 'Optional selection limit from 2 to 7, not exceeding the option count.',
+      description: 'Optional selection limit from 2 to 7. A limit that is not below the option count is dropped.',
     },
   },
   required: ['id', 'type', 'question', 'options'],
@@ -169,7 +169,7 @@ export class AskTool extends BaseTool {
 - Choose the appropriate question type (single/multi/text) based on the situation.
 - Set required=true for important questions.
 - Provide clear question descriptions and option labels.
-- For single/multi-choice questions, set allowOther=true to automatically add an "Other" option for custom user input.
+- For optional single/multi-choice questions, set allowOther=true to automatically add an "Other" option for custom user input. Required choice questions always get it.
 `;
 
   /** 提供给模型的 JSON Schema；正式 admission 由 AskToolInputSchema 承担。 */
@@ -307,12 +307,20 @@ export class AskTool extends BaseTool {
         type: q.type,
         question: q.question,
         options: filteredOptions,
-        allowOther: q.allowOther === true || wasOtherFiltered,
+        // 必填题必须能如实作答：列出的选项都不符合时，用户不能被迫选错或只能整表跳过。
+        allowOther: q.allowOther === true || wasOtherFiltered || q.required === true,
         required: q.required ?? false,
       };
 
       return q.type === 'multi'
-        ? { ...choiceQuestion, type: 'multi', maxSelect: q.maxSelect }
+        ? {
+            ...choiceQuestion,
+            type: 'multi',
+            // 上限不小于选项数时没有约束，不值得让模型为此重发一次问卷。
+            maxSelect: q.maxSelect !== undefined && q.maxSelect < filteredOptions.length
+              ? q.maxSelect
+              : undefined,
+          }
         : { ...choiceQuestion, type: 'single' };
     });
   }
