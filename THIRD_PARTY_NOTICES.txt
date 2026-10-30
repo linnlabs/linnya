@@ -29,7 +29,7 @@ PACKAGES
 - @ai-sdk/togetherai@3.0.69 — Apache-2.0 — https://github.com/vercel/ai — sha512-4NzNrHCFWlLTO6qd1EtMeGMmHJQGXCPIpsDcOkaYNE/n/6F+Vj0/wQXOaZ+vY65HwiN8Wvl4Et3ktrmsGHvRuw==
 - @ai-sdk/xai@5.0.21 — Apache-2.0 — https://github.com/vercel/ai — sha512-aJIkbaXBW2AqSprShXLDEqDqiJf8AvsHlVx0tZaD407iM3MvNTjvxtx2VTL1WObwi3XbOUNhsSU37ci2RzlHmg==
 - @ai-sdk/zai@3.0.30 — Apache-2.0 — https://github.com/vercel/ai — sha512-0tdkcRZUVBEH9HqeK3ZzEB4FZbWdMf2GxKjYNkwS4johUsZbXBDaeXy5VNGrWrAmcKX0Avn3D6wNZqrLan9sBQ==
-- @anthropic-ai/sandbox-runtime@0.0.67 — Apache-2.0 — https://github.com/anthropic-experimental/sandbox-runtime — sha512-4doSyr6KNdc/4zARMXYEawhFu3z6bPQjgKRq3lKp6dbgEYVMv39oaLJ28QsDc7TmLvrLqzHW+VzD2LAXxvnw8A==
+- @anthropic-ai/sandbox-runtime@0.0.81 — Apache-2.0 — https://github.com/anthropics/sandbox-runtime — sha512-bjHDu87gjIR7+Oxy9jPiK3v8CvSELCzfpXa3fjqfSKdvlZET2iF51xcXILWPayTpowB3xtZeQVf2JR916nVW/w==
 - @asamuzakjp/css-color@4.1.1 — MIT — https://github.com/asamuzaK/cssColor — sha512-B0Hv6G3gWGMn0xKJ0txEi/jM5iFpT3MfDxmhZFb4W047GvytCf1DHQ1D69W3zHI4yWe2aTZAA0JnbMZ7Xc8DuQ==
 - @asamuzakjp/dom-selector@6.7.6 — MIT — https://github.com/asamuzaK/domSelector — sha512-hBaJER6A9MpdG3WgdlOolHmbOYvSk46y7IQN/1+iqiCuUu6iWdQrs9DGKF8ocqsEqWujWf/V7b7vaDgiUmIvUg==
 - @asamuzakjp/nwsapi@2.3.9 — MIT — https://github.com/dperini/nwsapi — sha512-n8GuYSrI9bF7FFZ/SjhwevlHc8xaVlb/7HmHelnc/PZXBD2ZR49NnN9sMMuDdEGPeeRQ5d0hqlSlEpgCX3Wl0Q==
@@ -565,6 +565,7 @@ PACKAGES
 - yauzl@3.4.0 — MIT — https://github.com/thejoshwolfe/yauzl — sha512-jIH9yLR9wqr0wOS0TpBvo/g/2UgZH5qePVbjgRliiF0BYvOZyaBknKsF+x9Iht0O6sqgnB93rCICdOZFecJuDw==
 - yoga-layout@3.2.1 — MIT — https://github.com/facebook/yoga — sha512-0LPOt3AxKqMdFBZA3HBAt/t/8vIKq7VaQYbuA8WxCgung+p9TVyKRYdpvCb80HcdTN2NkbIKbhNwKUfm3tQywQ==
 - zod@3.25.76 — MIT — https://github.com/colinhacks/zod — sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==
+- zod@4.6.7 — MIT — https://github.com/colinhacks/zod — sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==
 - zrender@6.1.0 — BSD-3-Clause — https://github.com/ecomfe/zrender — sha512-oEGMDB6pOP2S6OwRR4PdVv610zrjnA3Bh+JnSG12fYJlBKjtNAoEb5fSUoCOOINlH96I2fU38/A2UpRKs67xYQ==
 
 PACKAGES WITH MANIFEST-ONLY LICENSE EVIDENCE
@@ -3784,7 +3785,7 @@ IN THE SOFTWARE.
 """
 
 ----- LICENSE 1210bc93eb85dd786c33192d5bcb7153a93922fa99fbc1512af6a7199cb41080 -----
-Applies to: @anthropic-ai/sandbox-runtime@0.0.67
+Applies to: @anthropic-ai/sandbox-runtime@0.0.81
 Installed file names: LICENSE
 
 Apache License
@@ -5496,7 +5497,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ----- LICENSE 3f1189b28e3866e0d979968d466b78f813f76827cfdca1fbb124cc0a5c8841f8 -----
-Applies to: zod@3.25.76
+Applies to: zod@3.25.76, zod@4.6.7
 Installed file names: LICENSE
 
 MIT License

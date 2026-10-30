@@ -25,7 +25,8 @@ const sandboxPackage = JSON.parse(await readFile(
   path.join(repositoryRoot, 'node_modules/@anthropic-ai/sandbox-runtime/package.json'),
   'utf8',
 ));
-assert.equal(sandboxPackage.version, '0.0.67');
+const repositoryManifest = JSON.parse(await readFile(path.join(repositoryRoot, 'package.json'), 'utf8'));
+assert.equal(sandboxPackage.version, repositoryManifest.dependencies['@anthropic-ai/sandbox-runtime']);
 const hostFixturePath = path.join(
   repositoryRoot,
   'scripts/e2e/shell-tool/fixtures/process-trees/macos-owned-process-host.ts',

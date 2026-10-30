@@ -59,13 +59,17 @@
       "vite": "6.4.5",
       "ws@8": "8.21.3",
       "yaml": "2.8.3",
-      "zod@4": "4.6.6",
-      "node-forge": "1.4.2"
+      "zod@4": "4.6.7",
+      "node-forge": "1.4.2",
+      "@anthropic-ai/sandbox-runtime>zod": "4.6.7"
     }
   },
   "overrides": {
     "tar@6": "7.5.22",
-    "node-forge": "1.4.2"
+    "node-forge": "1.4.2",
+    "@anthropic-ai/sandbox-runtime": {
+      "zod": "4.6.7"
+    }
   },
   "scripts": {
     "sync:provider-catalog": "pnpm --filter @linnya/provider-catalog sync",
@@ -536,7 +540,7 @@
   "dependencies": {
     "@ai-sdk/cohere": "4.0.60",
     "@ai-sdk/openai-compatible": "3.0.68",
-    "@anthropic-ai/sandbox-runtime": "0.0.67",
+    "@anthropic-ai/sandbox-runtime": "0.0.81",
     "@app/schemas": "file:./packages/schemas",
     "@chenglou/pretext": "^0.0.5",
     "@discordjs/opus": "^0.10.0",

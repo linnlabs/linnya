@@ -233,7 +233,7 @@ function createRealRunnerPort(): CommandRunnerProcessPort {
   return createNodeCommandRunnerProcessPort({
     runnerPath,
     nodeExecutablePath: process.execPath,
-    // SRT 0.0.67 会用 PATH 验证固定的 /bin/zsh；这是 utility 自身依赖，
+    // SRT 会用 PATH 验证固定的 /bin/zsh；这是 utility 自身依赖，
     // 与随后交给 Agent 命令的冻结 environment 是两条独立通道。
     helperEnvironment: process.platform === 'darwin'
       ? { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' }

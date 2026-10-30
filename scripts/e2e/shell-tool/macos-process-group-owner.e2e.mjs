@@ -28,12 +28,14 @@ if (process.platform !== 'darwin') {
   throw new Error('macOS process-group owner E2E can only run on macOS');
 }
 if (!srtModulePath || !path.isAbsolute(srtModulePath)) {
-  throw new Error('LINNYA_SRT_MODULE_PATH must point to SRT 0.0.67 dist/index.js');
+  throw new Error('LINNYA_SRT_MODULE_PATH must point to the pinned SRT dist/index.js');
 }
 
 const srtPackageRoot = path.dirname(path.dirname(srtModulePath));
 const srtPackage = JSON.parse(await readFile(path.join(srtPackageRoot, 'package.json'), 'utf8'));
-assert.equal(srtPackage.version, '0.0.67');
+const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+const repositoryManifest = JSON.parse(await readFile(path.join(repositoryRoot, 'package.json'), 'utf8'));
+assert.equal(srtPackage.version, repositoryManifest.dependencies['@anthropic-ai/sandbox-runtime']);
 const { SandboxManager } = await import(pathToFileURL(srtModulePath).href);
 await SandboxManager.initialize({
   network: {
