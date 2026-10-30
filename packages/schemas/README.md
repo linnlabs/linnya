@@ -426,6 +426,16 @@ P1 兼容脚手架已在 P4 删除；固定三项、环境开关、conversation 
 
 ## 11. 导入与公开出口
 
+本包使用 Zod 4，并与 Host、CLI 和插件的 schema 依赖保持同一主版本。JSON record 显式声明
+字符串 key；递归 JSON schema 同时声明输入和输出类型，不能用 `unknown` 丢失调用方的输入合同。
+允许缺省的外部字段必须显式标记 `optional`，不能再依赖 `z.unknown()` 的旧隐式可选行为。
+对外错误继续由各 owner 投影为稳定错误码和字段路径，不直接暴露 Zod 内部 issue 结构；嵌套 union
+的分支路径需要补回外层路径。只有本地诊断需要区分缺失与类型错误时才启用 `reportInput`，不得将
+原始 issue 写入日志或 wire 响应。
+
+被独立 esbuild 制品内联的 schema 使用 `import * as z from 'zod'`，让构建器能裁剪未使用的
+Zod API 与语言资源；通过重导出的 `{ z }` namespace 导入会扩大该制品的依赖图。
+
 应用代码优先从包根 `@app/schemas` 导入公共合同；需要限制依赖面的仓外消费者应使用 `package.json#exports`
 声明的窄子入口。Cloud 当前只消费 `@app/schemas/model-inference` 与
 `@app/schemas/document-ocr`，不得改为内部源码路径或从包根随意扩大依赖面。

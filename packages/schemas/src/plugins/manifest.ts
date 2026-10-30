@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { isValidRendererUiCompatibilityRange } from './renderer-ui-compatibility';
 
@@ -68,7 +68,7 @@ export interface PluginStateView {
   reason?: string;
 }
 
-export interface PluginStoreListItem extends PluginStateView {}
+export type PluginStoreListItem = PluginStateView;
 
 /** 商店展示由 Host 投影当前服务开放状态，Renderer 不自行推断发行权限。 */
 export interface PluginStoreListData {

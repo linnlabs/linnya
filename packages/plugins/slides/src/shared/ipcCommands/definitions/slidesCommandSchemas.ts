@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import { SLIDES_TEMPLATE_IMPORT_MAX_BYTES } from '../../ipc';
 import {
   SLIDES_AUTHORING_KEY_PATTERN,
@@ -68,7 +68,6 @@ const style = z
 
 export const SlidesManualObjectOperationSchema: z.ZodType<
   SlidesManualEditOperation,
-  z.ZodTypeDef,
   unknown
 > = z.union([
   z
@@ -133,7 +132,6 @@ export const SlidesManualObjectOperationSchema: z.ZodType<
 
 export const SlidesManualEditCommandSchema: z.ZodType<
   SlidesManualEditCommand,
-  z.ZodTypeDef,
   unknown
 > = z
   .object({

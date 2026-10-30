@@ -15,8 +15,8 @@ export const UserQuoteItemSchema = z.object({
   uri: z.string().optional(),
   text: z.string(),
   label: z.string().optional(),
-  source: z.record(JsonValueSchema).optional(),
-  metadata: z.record(JsonValueSchema).optional(),
+  source: z.record(z.string(), JsonValueSchema).optional(),
+  metadata: z.record(z.string(), JsonValueSchema).optional(),
 }).strict();
 
 /** `user_input.metadata.user_quote` 的唯一 wire schema。 */

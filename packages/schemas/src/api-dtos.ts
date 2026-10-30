@@ -231,8 +231,8 @@ const DocumentMetadata = z.object({
 const ContextFenceInjection = z.object({
   kind: z.string(),
   content: z.string(),
-  attrs: z.record(z.unknown()).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  attrs: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
@@ -242,7 +242,7 @@ const ContextFenceInjection = z.object({
  */
 export const HostToolCallRequest = z.object({
   tool_name: z.string().trim().min(1),
-  args: z.record(JsonValueSchema),
+  args: z.record(z.string(), JsonValueSchema),
   completion_mode: z.enum(['continue_to_llm', 'yield_after_batch']).optional(),
 });
 
@@ -791,7 +791,7 @@ export const KnowledgeBaseSearchResponse = z.object({
       /** 相似度分数 */
       score: z.number(),
       /** 元数据 */
-      metadata: z.record(z.any()).optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
     })
   ),
   /** 查询统计 */

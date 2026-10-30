@@ -63,7 +63,7 @@ PACKAGES
 - @jridgewell/resolve-uri@3.1.2 — MIT — https://github.com/jridgewell/resolve-uri — sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==
 - @jridgewell/sourcemap-codec@1.5.5 — MIT — https://github.com/jridgewell/sourcemaps — sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==
 - @jridgewell/trace-mapping@0.3.31 — MIT — https://github.com/jridgewell/sourcemaps — sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==
-- @linnlabs/linnkit@0.40.0 — MIT — https://github.com/linnlabs/linnkit — sha512-EitOJPExNy/coonej8vlfqg5qEKReOPLR7ZG/RUjSQfz7s/ieUXShfCDs98VwEaRnkS6XoZyEybrYBY82yGeaQ==
+- @linnlabs/linnkit@0.41.0 — MIT — https://github.com/linnlabs/linnkit — sha512-HD5t0alqFsGfvFBR0Hv8R/unxGGdMqjM7tGMxlleT3qsDw4zvJL4crr1nmQhr0kGC3V2CUJqBBV+HI0eh8+oGw==
 - @mixmark-io/domino@2.2.0 — BSD-2-Clause — https://github.com/mixmark-io/domino — sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==
 - @mozilla/readability@0.6.0 — Apache-2.0 — https://github.com/mozilla/readability — sha512-juG5VWh4qAivzTAeMzvY9xs9HY5rAcr2E4I7tiSSCokRFi7XIZCAu92ZkSTsIj1OPceCifL3cpfteP3pDT9/QQ==
 - @napi-rs/canvas@1.0.8 — MIT — https://github.com/Brooooooklyn/canvas — sha512-/SaLcvlqGWdm0HSCWMgHu7cjJiQXfP8/mOY+6dUyV9flQz7sPBBZ+ed2zYtoukojPmxOaL7bm+d/G4GeWWoN7g==
@@ -564,7 +564,6 @@ PACKAGES
 - yaml@2.8.3 — ISC — https://github.com/eemeli/yaml — sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==
 - yauzl@3.4.0 — MIT — https://github.com/thejoshwolfe/yauzl — sha512-jIH9yLR9wqr0wOS0TpBvo/g/2UgZH5qePVbjgRliiF0BYvOZyaBknKsF+x9Iht0O6sqgnB93rCICdOZFecJuDw==
 - yoga-layout@3.2.1 — MIT — https://github.com/facebook/yoga — sha512-0LPOt3AxKqMdFBZA3HBAt/t/8vIKq7VaQYbuA8WxCgung+p9TVyKRYdpvCb80HcdTN2NkbIKbhNwKUfm3tQywQ==
-- zod@3.25.76 — MIT — https://github.com/colinhacks/zod — sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==
 - zod@4.6.7 — MIT — https://github.com/colinhacks/zod — sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==
 - zrender@6.1.0 — BSD-3-Clause — https://github.com/ecomfe/zrender — sha512-oEGMDB6pOP2S6OwRR4PdVv610zrjnA3Bh+JnSG12fYJlBKjtNAoEb5fSUoCOOINlH96I2fU38/A2UpRKs67xYQ==
 
@@ -5497,7 +5496,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ----- LICENSE 3f1189b28e3866e0d979968d466b78f813f76827cfdca1fbb124cc0a5c8841f8 -----
-Applies to: zod@3.25.76, zod@4.6.7
+Applies to: zod@4.6.7
 Installed file names: LICENSE
 
 MIT License
@@ -10669,7 +10668,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ----- LICENSE 8c31548fa2c52289476712b65d26bd5c5e229ca68df683cecda4975311aab232 -----
-Applies to: @linnlabs/linnkit@0.40.0
+Applies to: @linnlabs/linnkit@0.41.0
 Installed file names: LICENSE
 
 MIT License

@@ -48,7 +48,7 @@ export type ConversationInteractionResponseToolMetadata = z.infer<
 
 const ConversationSubrunTraceSummarySchema = z.object({
   subrun_ids: z.array(z.string().trim().min(1)),
-  event_counts: z.record(z.number().int().nonnegative()),
+  event_counts: z.record(z.string(), z.number().int().nonnegative()),
 }).strict();
 
 /**
@@ -177,7 +177,7 @@ export const ConversationToolMessageMetadataSchema = z.object({
   run_id: z.string().trim().min(1),
   execution_id: z.string().trim().min(1).optional(),
   merge_key: z.string().trim().min(1).optional(),
-  subrunTrace: z.record(z.unknown()).optional(),
+  subrunTrace: z.record(z.string(), z.unknown()).optional(),
   subrunTraceVersion: z.number().int().nonnegative().optional(),
 }).strict().superRefine(requireCompletedAt);
 

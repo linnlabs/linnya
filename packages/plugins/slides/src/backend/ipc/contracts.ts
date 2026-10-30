@@ -1,5 +1,5 @@
 import { parseSlidesCommand } from '@plugin/slides/shared/ipcCommands';
-import { z } from 'zod';
+import * as z from 'zod';
 import {
   SlidesNodePayloadSchema,
   SlidesManualEditCommandSchema,

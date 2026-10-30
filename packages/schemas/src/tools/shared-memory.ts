@@ -65,12 +65,10 @@ export const HistoricalSharedMemoryResourceListResultSchema = z.object({
 
 export const HistoricalSharedMemoryWriteArgsSchema = z.object({
   doc_name: z.string({
-    required_error: '[sharedmemory_write] doc_name 不能为空',
-    invalid_type_error: '[sharedmemory_write] doc_name 不能为空',
+    error: '[sharedmemory_write] doc_name 不能为空',
   }).trim().min(1, '[sharedmemory_write] doc_name 不能为空'),
   content: z.string({
-    required_error: '[sharedmemory_write] content 不能为空',
-    invalid_type_error: '[sharedmemory_write] content 不能为空',
+    error: '[sharedmemory_write] content 不能为空',
   }).min(1, '[sharedmemory_write] content 不能为空'),
   action: z.enum(['write', 'append']).default('write'),
   expected_version: NonNegativeIntegerSchema.optional(),

@@ -146,7 +146,7 @@ const FrontmatterFields = z.object({
   description: scalar,
   license: scalar.optional().catch(undefined),
   compatibility: scalar.optional().catch(undefined),
-  metadata: z.record(scalar).optional().catch(undefined),
+  metadata: z.record(z.string(), scalar).optional().catch(undefined),
   'allowed-tools': z.union([scalar, z.array(scalar)])
     .transform(value => (Array.isArray(value) ? value.join(' ') : value))
     .optional().catch(undefined),

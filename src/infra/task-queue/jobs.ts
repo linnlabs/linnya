@@ -40,7 +40,7 @@ export const IngestionJobPayloadSchema = z.object({
    * Worker 环境变量透传。
    * 目前 ingestion.worker 使用 QDRANT_URL 与 LINNYA_DEV_MODE，避免 worker 内部硬编码 app-host 配置。
    */
-  envVars: z.record(z.string()).optional(),
+  envVars: z.record(z.string(), z.string()).optional(),
 });
 
 /**
@@ -76,7 +76,7 @@ export const GraphExtractionJobPayloadSchema = z.object({
    * Worker 环境变量透传（可选）
    * - 与 ingestion.worker 的 envVars 约定保持一致
    */
-  envVars: z.record(z.string()).optional(),
+  envVars: z.record(z.string(), z.string()).optional(),
 
   /**
    * 抽取上限（可选，避免单 chunk 输出过大）
@@ -136,7 +136,7 @@ export const GraphIndexingJobPayloadSchema = z.object({
    * Worker 环境变量透传（可选）
    * - 与 ingestion/graph-extraction 的 envVars 约定保持一致
    */
-  envVars: z.record(z.string()).optional(),
+  envVars: z.record(z.string(), z.string()).optional(),
 });
 
 export type GraphIndexingJobPayloadInput = z.input<typeof GraphIndexingJobPayloadSchema>;
@@ -158,7 +158,7 @@ export const CollectionMaintenanceJobPayloadSchema = z.object({
   retry: z.boolean().default(true),
   
   // 针对不同操作类型的特定参数
-  params: z.record(z.any()).optional(),
+  params: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
@@ -185,7 +185,7 @@ export const SearchJobPayloadSchema = z.object({
   
   // 搜索选项
   useHybridSearch: z.boolean().default(true),
-  filters: z.record(z.any()).optional(),
+  filters: z.record(z.string(), z.unknown()).optional(),
   
   // 任务控制标志
   priority: z.number().int().min(1).max(10).default(8), // 搜索通常优先级较高
@@ -236,7 +236,7 @@ export class JobPayloadValidationError extends Error {
  * @returns 验证通过的类型化负载
  * @throws JobPayloadValidationError 如果验证失败
  */
-export function validateJobPayload<TSchema extends z.ZodTypeAny>(
+export function validateJobPayload<TSchema extends z.ZodType>(
   schema: TSchema,
   payload: unknown
 ): z.output<TSchema> {
@@ -245,8 +245,8 @@ export function validateJobPayload<TSchema extends z.ZodTypeAny>(
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new JobPayloadValidationError(
-        `任务负载验证失败: ${error.errors.map(e => e.message).join(', ')}`,
-        error.errors
+        `任务负载验证失败: ${error.issues.map(e => e.message).join(', ')}`,
+        error.issues
       );
     }
     throw error;

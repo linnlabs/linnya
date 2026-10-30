@@ -261,7 +261,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
 });
 
 function parseObject(text: string): Record<string, unknown> {
-  return z.record(z.unknown()).parse(parseJson(text));
+  return z.record(z.string(), z.unknown()).parse(parseJson(text));
 }
 
 async function startApprovalModelFixture(): Promise<{

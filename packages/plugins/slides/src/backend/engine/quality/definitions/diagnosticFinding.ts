@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import {
   ColorContrastEvidenceSchema,
   ColorPaletteEvidenceSchema,
@@ -82,7 +82,7 @@ const FINDING_EVIDENCE_SCHEMA_BY_CODE = {
   data_page_missing_source: ContentPresenceEvidenceSchema.extend({ expectedContent: z.literal('source_annotation') }),
   paragraph_text_too_long: TextPatternEvidenceSchema.extend({ pattern: z.literal('long_body') }),
   title_ends_with_question: TextPatternEvidenceSchema.extend({ pattern: z.literal('question_title') }),
-} as const satisfies Record<DiagnosticCode, z.ZodTypeAny>;
+} as const satisfies Record<DiagnosticCode, z.ZodType>;
 
 export type DiagnosticEvidenceFor<C extends DiagnosticCode> = z.infer<
   (typeof FINDING_EVIDENCE_SCHEMA_BY_CODE)[C]

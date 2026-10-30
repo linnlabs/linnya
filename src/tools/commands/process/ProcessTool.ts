@@ -194,7 +194,7 @@ function protocolViolationResult(
 function parseArgumentsOrProtocolViolation(
   args: Record<string, unknown>,
 ): ParsedProcessRequest {
-  const parsed = ProcessToolArgumentsV1Schema.safeParse(args);
+  const parsed = ProcessToolArgumentsV1Schema.safeParse(args, { reportInput: true });
   if (parsed.success) return { kind: 'arguments', arguments: parsed.data };
   const message = processProtocolViolationMessage(args, parsed.error);
 
@@ -248,7 +248,7 @@ For poll/wait, copy next_cursor from the latest result for the same process; do 
     success: boolean;
     error?: string;
   } {
-    const parsed = ProcessToolArgumentsV1Schema.safeParse(args);
+    const parsed = ProcessToolArgumentsV1Schema.safeParse(args, { reportInput: true });
     return parsed.success
       ? { success: true }
       : { success: false, error: processProtocolViolationMessage(args, parsed.error) };

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import type { ChartSeries, LayoutChartControls, LayoutChartStyle, StructuredElement } from '@plugin/slides/shared';
 import { isSupportedChartNumberFormat } from '@app/schemas/chart-number-format';
 

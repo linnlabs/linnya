@@ -18,9 +18,9 @@ export const SUBRUN_BATCH_TOOL_NAME = 'subrun_batch';
 const SUBRUN_BATCH_MAX_CONCURRENCY = 3;
 const SUBRUN_BATCH_INHERIT_TURNS = 0;
 
-function formatContractIssues(error: { issues: readonly { path: readonly (string | number)[]; message: string }[] }): string {
+function formatContractIssues(error: { issues: readonly { path: readonly PropertyKey[]; message: string }[] }): string {
   return error.issues
-    .map((issue) => `${issue.path.join('.') || 'args'}: ${issue.message}`)
+    .map((issue) => `${issue.path.map(String).join('.') || 'args'}: ${issue.message}`)
     .join('; ');
 }
 

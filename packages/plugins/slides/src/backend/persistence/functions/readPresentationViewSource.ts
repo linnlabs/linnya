@@ -1,5 +1,5 @@
 import type { Database } from 'better-sqlite3';
-import { z } from 'zod';
+import * as z from 'zod';
 import type { PresentationViewSourceRecord } from '../definitions/presentationRepository';
 import { mapPresentationRenderSourceRow, readPresentationRenderSourceRow } from './presentationDocumentRecordCodec';
 

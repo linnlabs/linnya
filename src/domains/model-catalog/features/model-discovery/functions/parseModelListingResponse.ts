@@ -16,25 +16,26 @@ function positiveInteger(value: unknown): number | undefined {
   return undefined;
 }
 
+// 兼容 API 可以省略容量与模态资料；Zod 4 需要显式声明这些字段可缺失。
 const ListingEntrySchema = z.object({
   id: z.string().trim().min(1).optional(),
   name: z.string().nullish(),
   display_name: z.string().nullish(),
   displayName: z.string().nullish(),
-  context_length: z.unknown(),
-  context_window: z.unknown(),
-  contextWindow: z.unknown(),
-  max_input_tokens: z.unknown(),
-  max_tokens: z.unknown(),
-  max_output_tokens: z.unknown(),
-  maxOutputTokens: z.unknown(),
-  limit: z.object({ context: z.unknown(), output: z.unknown() }).nullish(),
+  context_length: z.unknown().optional(),
+  context_window: z.unknown().optional(),
+  contextWindow: z.unknown().optional(),
+  max_input_tokens: z.unknown().optional(),
+  max_tokens: z.unknown().optional(),
+  max_output_tokens: z.unknown().optional(),
+  maxOutputTokens: z.unknown().optional(),
+  limit: z.object({ context: z.unknown().optional(), output: z.unknown().optional() }).nullish(),
   top_provider: z
-    .object({ max_completion_tokens: z.unknown(), context_length: z.unknown() })
+    .object({ max_completion_tokens: z.unknown().optional(), context_length: z.unknown().optional() })
     .nullish(),
-  supports_image_input: z.unknown(),
-  multimodal: z.unknown(),
-  architecture: z.object({ modality: z.unknown() }).nullish(),
+  supports_image_input: z.unknown().optional(),
+  multimodal: z.unknown().optional(),
+  architecture: z.object({ modality: z.unknown().optional() }).nullish(),
 });
 const IdentifiedEntrySchema = ListingEntrySchema.extend({ id: z.string().trim().min(1) });
 
@@ -46,7 +47,7 @@ const ListingSchema = z.union([
   z.object({ data: z.array(IdentifiedEntrySchema) }).transform(body => body.data),
   z.object({ models: z.array(IdentifiedEntrySchema) }).transform(body => body.models),
   z
-    .object({ models: z.record(ListingEntrySchema) })
+    .object({ models: z.record(z.string(), ListingEntrySchema) })
     .transform(body =>
       Object.entries(body.models).map(([id, entry]) => ({ ...entry, id: entry.id ?? id }))
     ),

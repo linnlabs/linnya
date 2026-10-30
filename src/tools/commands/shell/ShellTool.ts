@@ -118,7 +118,7 @@ cleanup; prefer the current directory unless the user requests another permitted
     success: boolean;
     error?: string;
   } {
-    const parsed = ShellToolArgumentsV1Schema.safeParse(args);
+    const parsed = ShellToolArgumentsV1Schema.safeParse(args, { reportInput: true });
     return parsed.success
       ? { success: true }
       : { success: false, error: shellProtocolViolationMessage(parsed.error) };

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 /** 图片接管返回已校验的资产身份和像素尺寸，不传回字节或宿主路径。 */
 export const SlidesImportedImageSchema = z.object({

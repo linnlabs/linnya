@@ -103,7 +103,7 @@ describe('ask live contract', () => {
         },
         {}
       )
-    ).rejects.toThrow(/questions\[0\]\.maxSelect: Number must be greater than or equal to 2/);
+    ).rejects.toThrow(/questions\[0\]\.maxSelect: Too small: expected number to be >=2/);
   });
 
   it('单选、多选和文本题通过同一 live 合同创建问卷', async () => {

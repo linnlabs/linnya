@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import { WorkspaceFileLocatorSchema } from '../file-locator';
 
 export const RESEARCH_AGENT_ID = 'research_v1';

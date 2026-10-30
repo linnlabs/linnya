@@ -81,7 +81,7 @@ export type CommandResolvedShellV1 = z.infer<typeof CommandResolvedShellV1Schema
  */
 export const CommandLaunchEnvironmentV1Schema = z.object({
   revision: NonEmptyLaunchStringSchema,
-  entries: z.record(z.string().refine(
+  entries: z.record(z.string(), z.string().refine(
     value => !value.includes('\0'),
     'command environment values must not contain NUL',
   )).superRefine((entries, context) => {

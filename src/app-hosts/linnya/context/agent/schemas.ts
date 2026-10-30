@@ -55,8 +55,8 @@ const DocumentMetadataSchema = z.object({
 const FenceInjectionSchema = z.object({
   kind: z.string(),
   content: z.string(),
-  attrs: z.record(z.unknown()).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  attrs: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const AgentInvokeRequestSchema = z

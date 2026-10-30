@@ -21,14 +21,14 @@ function looksLikeJsonArrayString(value: unknown): boolean {
   return trimmed.startsWith('[') && trimmed.endsWith(']');
 }
 
-function formatIssuePath(path: readonly (string | number)[]): string {
+function formatIssuePath(path: readonly PropertyKey[]): string {
   if (path.length === 0) return 'arguments';
   return path.reduce<string>((result, segment) => {
     return typeof segment === 'number'
       ? `${result}[${segment}]`
       : result.length === 0
-        ? segment
-        : `${result}.${segment}`;
+        ? String(segment)
+        : `${result}.${String(segment)}`;
   }, '');
 }
 

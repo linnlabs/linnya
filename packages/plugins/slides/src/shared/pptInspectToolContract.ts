@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 const NonEmptyTextSchema = z.string().trim().min(1);
 const PositiveIntegerSchema = z.number().int().positive();

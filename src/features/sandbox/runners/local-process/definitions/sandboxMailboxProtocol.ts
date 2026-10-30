@@ -21,7 +21,7 @@ const SandboxRunnerRequestSchema = z.object({
   profileId: z.string().min(1),
   language: z.enum(['javascript', 'typescript']),
   source: z.string(),
-  globals: z.record(SandboxMailboxJsonValueSchema),
+  globals: z.record(z.string(), SandboxMailboxJsonValueSchema),
   bindings: z.array(z.object({
     kind: z.literal('capability'),
     globalName: z.string().min(1),
@@ -50,7 +50,7 @@ const SandboxRunnerRequestSchema = z.object({
     conversationId: z.string().optional(),
     turnId: z.string().optional(),
     parentToolCallId: z.string().optional(),
-    metadata: z.record(SandboxMailboxJsonValueSchema).optional(),
+    metadata: z.record(z.string(), SandboxMailboxJsonValueSchema).optional(),
   }).strict().optional(),
 }).strict();
 

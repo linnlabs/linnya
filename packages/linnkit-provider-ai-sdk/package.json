@@ -36,7 +36,7 @@
     "pack-smoke": "pnpm run build && node scripts/verifyPackedRuntime.mjs"
   },
   "peerDependencies": {
-    "@linnlabs/linnkit": "^0.38.0"
+    "@linnlabs/linnkit": "^0.41.0"
   },
   "dependencies": {
     "@ai-sdk/alibaba": "2.0.66",
@@ -62,12 +62,12 @@
     "ai-sdk-ollama": "4.5.0"
   },
   "devDependencies": {
-    "@linnlabs/linnkit": "0.40.0",
+    "@linnlabs/linnkit": "0.41.0",
     "@types/node": "^24.3.0",
     "tsup": "^8.0.0",
     "tsx": "^4.20.3",
     "typescript": "^5.5.4",
     "vitest": "^4.1.12",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   }
 }

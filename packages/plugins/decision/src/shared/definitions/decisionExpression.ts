@@ -12,7 +12,7 @@ export type DecisionExpression =
       readonly right: DecisionExpression;
     };
 
-export const DecisionExpressionSchema: z.ZodType<DecisionExpression> = z.lazy(() => z.union([
+export const DecisionExpressionSchema: z.ZodType<DecisionExpression, DecisionExpression> = z.lazy(() => z.union([
   z.object({ input: id }).strict(),
   z.object({ literal: z.number().finite() }).strict(),
   z.object({

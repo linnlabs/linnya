@@ -59,9 +59,10 @@ function readCustomDiagnosticCode(issue: ZodIssue): MarkdownChartDiagnosticCode 
 }
 
 function describeZodIssue(issue: ZodIssue, input: unknown): MarkdownChartDiagnostic[] {
-  const path = issue.path;
+  // Zod 的通用路径包含 symbol；图表的 JSON 诊断只对外输出字符串/数组下标。
+  const path = issue.path.map(segment => typeof segment === 'number' ? segment : String(segment));
 
-  if (issue.code === 'invalid_union_discriminator') {
+  if (issue.code === 'invalid_union' && issue.discriminator === 'chartType') {
     return [diagnostic('invalid_chart_type', path,
       `chartType must be one of: ${MARKDOWN_CHART_TYPES.join(', ')}.`)];
   }
@@ -78,8 +79,8 @@ function describeZodIssue(issue: ZodIssue, input: unknown): MarkdownChartDiagnos
       : `unknown field "${key}"; remove it.`));
   }
 
-  if (issue.code === 'invalid_literal' && path[path.length - 1] === 'version') {
-    return [diagnostic('unsupported_version', path, `version must be 1 (or omitted); got ${JSON.stringify(issue.received)}.`)];
+  if (issue.code === 'invalid_value' && path[path.length - 1] === 'version') {
+    return [diagnostic('unsupported_version', path, `version must be 1 (or omitted); got ${JSON.stringify(issue.input)}.`)];
   }
 
   if (issue.code === 'invalid_union') {
@@ -89,7 +90,7 @@ function describeZodIssue(issue: ZodIssue, input: unknown): MarkdownChartDiagnos
   const custom = readCustomDiagnosticCode(issue);
   if (custom) return [diagnostic(custom, path, issue.message)];
 
-  const required = issue.code === 'invalid_type' && issue.received === 'undefined';
+  const required = issue.code === 'invalid_type' && issue.input === undefined;
   return [diagnostic('invalid_shape', path, required ? 'is required.' : issue.message)];
 }
 
@@ -108,7 +109,8 @@ export function admitMarkdownChartSpec(input: unknown): MarkdownChartAdmissionRe
     return { ok: false, diagnostics: [diagnostic('not_an_object', [], 'the chart spec must be a JSON object.')] };
   }
 
-  const parsed = MarkdownChartSpecShapeSchema.safeParse(input);
+  // 仅在本地投影诊断时读取原值，以区分缺失与类型错误；不返回原始 Zod issue。
+  const parsed = MarkdownChartSpecShapeSchema.safeParse(input, { reportInput: true });
   if (!parsed.success) {
     return {
       ok: false,

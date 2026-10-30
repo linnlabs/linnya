@@ -122,10 +122,10 @@ export const QuestionnaireDataSchema = z.object({
 export type QuestionnaireData = z.infer<typeof QuestionnaireDataSchema>;
 
 export const QuestionnaireAnswersSchema = z.object({
-  answers: z.record(z.string()),
-  multiAnswers: z.record(z.array(z.string())),
-  textAnswers: z.record(z.string()),
-  otherAnswers: z.record(z.string()),
+  answers: z.record(z.string(), z.string()),
+  multiAnswers: z.record(z.string(), z.array(z.string())),
+  textAnswers: z.record(z.string(), z.string()),
+  otherAnswers: z.record(z.string(), z.string()),
 }).strict();
 export type QuestionnaireAnswers = z.infer<typeof QuestionnaireAnswersSchema>;
 

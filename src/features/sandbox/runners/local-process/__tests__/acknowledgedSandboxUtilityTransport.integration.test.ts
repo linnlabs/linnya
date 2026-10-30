@@ -10,7 +10,7 @@ import {
 } from '../definitions/sandboxUtilityTransport.js';
 import { createAcknowledgedSandboxUtilityTransport } from '../functions/createAcknowledgedSandboxUtilityTransport.js';
 
-const GENERATION = '12345678-1234-1234-1234-123456789abc';
+const GENERATION = '12345678-1234-4234-8234-123456789abc';
 const RUN_TOKEN = '0'.repeat(32);
 
 describe('acknowledged sandbox utility transport', () => {

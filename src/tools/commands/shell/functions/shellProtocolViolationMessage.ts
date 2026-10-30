@@ -7,11 +7,11 @@ import {
 import type { ZodError, ZodIssue } from 'zod';
 
 function formatIssue(issue: ZodIssue): string[] {
-  const field = issue.path.join('.') || 'shell';
+  const field = issue.path.map(String).join('.') || 'shell';
   if (issue.code === 'unrecognized_keys') {
     return issue.keys.map(key => `${key}：不允许的字段`);
   }
-  if (issue.code === 'invalid_type' && issue.received === 'undefined') {
+  if (issue.code === 'invalid_type' && issue.input === undefined) {
     return [`${field}：缺少必需字段`];
   }
   return [`${field}：${issue.message}`];

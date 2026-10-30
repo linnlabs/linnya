@@ -5,7 +5,7 @@ interface WorkspaceFileArgumentSchema {
         readonly success: false;
         readonly error: {
           readonly issues: readonly {
-            readonly path: readonly (string | number)[];
+            readonly path: readonly PropertyKey[];
             readonly message: string;
           }[];
         };
@@ -25,7 +25,7 @@ export function validateWorkspaceFileToolArguments(input: {
     return { success: true };
   }
   const details = parsed.error.issues
-    .map(issue => `${issue.path.length > 0 ? issue.path.join('.') : 'arguments'}: ${issue.message}`)
+    .map(issue => `${issue.path.length > 0 ? issue.path.map(String).join('.') : 'arguments'}: ${issue.message}`)
     .join('; ');
   return {
     success: false,

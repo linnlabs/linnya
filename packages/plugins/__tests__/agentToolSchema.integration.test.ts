@@ -34,7 +34,7 @@ const route: AiSdkInferenceRoute = {
   base_url: 'https://fixture.invalid/v1',
 };
 const WireRequestSchema = z.object({
-  tools: z.array(z.object({ name: z.string(), input_schema: z.record(z.unknown()) })),
+  tools: z.array(z.object({ name: z.string(), input_schema: z.record(z.string(), z.unknown()) })),
   tool_choice: z.object({ type: z.string() }),
 });
 

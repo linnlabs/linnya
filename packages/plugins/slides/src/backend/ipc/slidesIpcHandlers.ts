@@ -29,7 +29,7 @@ import type {
   SlidesManualEditHistoryStatus,
   SlidesManualEditCommandResult,
 } from '@plugin/slides/shared';
-import { z } from 'zod';
+import * as z from 'zod';
 import {
   parseSlidesNodePayload,
   parseSlidesManualEditPayload,

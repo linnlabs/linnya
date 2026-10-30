@@ -183,7 +183,7 @@ export const ConversationControlToolsCallRequestSchema = z.object({
   ...ToolsRequestBaseFields,
   action: z.literal('call'),
   tool_name: ConversationControlToolNameSchema,
-  args: z.record(JsonValueSchema),
+  args: z.record(z.string(), JsonValueSchema),
   conversation_id: OpaqueIdSchema.optional(),
   project_id: OpaqueIdSchema.optional(),
 }).strict().superRefine((request, ctx) => {

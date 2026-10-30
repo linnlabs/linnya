@@ -388,7 +388,7 @@ describe('ToolRegistry.executeTool', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('[WRITE_FILE_ARGUMENTS_INVALID]');
-    expect(result.error).toContain('content: Required');
+    expect(result.error).toContain('content: Invalid input: expected string, received undefined');
   });
 
   it('对另一个缺失 required 参数的工具调用也应直接失败', async () => {
@@ -396,7 +396,7 @@ describe('ToolRegistry.executeTool', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('[EDIT_FILE_ARGUMENTS_INVALID]');
-    expect(result.error).toContain('old_string: Required');
+    expect(result.error).toContain('old_string: Invalid input: expected string, received undefined');
   });
 
   it('当参数是 JSON 编码的数组字符串且 schema 期望 array 时，应先归一化再执行工具', async () => {

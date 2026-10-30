@@ -2,6 +2,9 @@
 
 ## 0.1.0
 
+- 接入正式 Linnkit 0.41.0 与 Zod 4 合同；peer 最低兼容系列改为 0.41，
+  packed CJS/ESM 与 Provider 两轮工具闭环仍由独立产物验收。
+
 - 将产品失败classifier从共享capability构造依赖移到单次invocation；Host逐次绑定规则，
   避免同一codec并发服务不同连接时串用产品错误语义。删除旧构造字段，不保留双入口；
   SDK仍不持有Host产品身份，trace诊断计数与零SDK重试保持不变。

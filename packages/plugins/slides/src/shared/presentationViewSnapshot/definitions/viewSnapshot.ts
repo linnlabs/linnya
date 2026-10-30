@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import type { JsonValue } from '@app/schemas';
 import type { DeckPreview } from '../../deckPreview';
 import type { SlidesDocumentBuildState } from '../../documentSource';
@@ -28,7 +28,7 @@ const PreviewSchema: z.ZodType<DeckPreview> = z.object({
   slides: z.array(z.object({ slideId: z.string(), number: z.number().finite().int(), layoutName: z.string().optional(),
     elements: z.array(z.object({ elementId: z.string(), type: z.enum(['text', 'chart', 'table', 'image', 'svgGraphic', 'formula', 'shape', 'group', 'other']),
       text: z.string().optional(), position: box.optional(), chartType: z.string().optional(), imageRef: asset.optional() })) })),
-  theme: z.object({ colors: z.record(z.string()), fonts: z.object({ major: z.string(), minor: z.string() }) }),
+  theme: z.object({ colors: z.record(z.string(), z.string()), fonts: z.object({ major: z.string(), minor: z.string() }) }),
   warnings: z.array(z.object({ slideNumber: z.number().finite(), elementId: z.string().optional(),
     code: z.enum(['unsupported_element', 'parse_error', 'missing_asset', 'fidelity_fallback']), message: z.string() })),
 });

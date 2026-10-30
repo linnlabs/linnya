@@ -1,10 +1,11 @@
 /** ask 协议错误的模型可读格式化。 */
 import { z, type ZodIssue } from 'zod';
 
-function formatIssuePath(path: readonly (string | number)[]): string {
+function formatIssuePath(path: readonly PropertyKey[]): string {
   return path.reduce<string>((formatted, segment) => {
     if (typeof segment === 'number') return `${formatted}[${segment}]`;
-    return formatted.length === 0 ? segment : `${formatted}.${segment}`;
+    const key = String(segment);
+    return formatted.length === 0 ? key : `${formatted}.${key}`;
   }, '');
 }
 

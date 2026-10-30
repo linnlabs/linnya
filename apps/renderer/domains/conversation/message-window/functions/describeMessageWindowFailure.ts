@@ -35,7 +35,7 @@ export function describeMessageWindowFailure(error: unknown): {
       errorName: error instanceof Error ? error.name : typeof error,
       // Schema issue 只记录字段路径和类别，不记录 received 值、消息正文或工具响应。
       ...(error instanceof ZodError ? {
-        schemaIssues: error.issues.map(issue => ({ code: issue.code, path: issue.path })),
+        schemaIssues: error.issues.map(issue => ({ code: issue.code, path: issue.path.map(segment => typeof segment === 'number' ? segment : String(segment)) })),
       } : {}),
     },
   };

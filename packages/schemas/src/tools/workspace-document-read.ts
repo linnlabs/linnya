@@ -114,7 +114,7 @@ const WorkspaceDocumentReadCommonDataSchema = z.object({
   totalTextLength: z.number().int().nonnegative(),
   presentation: WorkspaceDocumentReadPresentationSchema,
   images: z.array(WorkspaceDocumentReadImageSchema).optional(),
-  details: z.record(z.unknown()).optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 
 function requireMatchingTruncationCursor(

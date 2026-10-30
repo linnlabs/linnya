@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import { RESEARCH_AGENT_ID } from '../tools/research-run';
 
 /**

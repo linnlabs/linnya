@@ -19,23 +19,27 @@ function selectActionExample(action: unknown): object {
 
 function relevantIssues(issues: readonly ZodIssue[]): readonly ZodIssue[] {
   return issues.flatMap(issue => {
-    if (issue.code !== 'invalid_union') return [issue];
-    const branches = issue.unionErrors.map(error => relevantIssues(error.issues));
+    if (issue.code !== 'invalid_union' || issue.discriminator !== undefined) return [issue];
+    // Zod 4 的 union 分支路径相对当前 union，先补回 action 等外层定位。
+    const branches = issue.errors.map(branch => relevantIssues(branch.map(child => ({
+      ...child,
+      path: [...issue.path, ...child.path],
+    }))));
     // 正式合同有观察/控制与 PTY 两组判别联合。已匹配 type 的分支才解释字段错误，
     // 否则另一组的“不支持此 type”会把正确动作反而说成无效动作。
     const matched = branches.filter(branch =>
-      !branch.some(candidate => candidate.code === 'invalid_union_discriminator'),
+      !branch.some(candidate => candidate.code === 'invalid_union' && candidate.discriminator !== undefined),
     );
     return (matched.length > 0 ? matched : branches).flat();
   });
 }
 
 function formatIssue(issue: ZodIssue): string[] {
-  const field = issue.path.join('.') || 'process';
+  const field = issue.path.map(String).join('.') || 'process';
   if (issue.code === 'unrecognized_keys') {
     return issue.keys.map(key => `${field === 'process' ? '' : `${field}.`}${key}：不允许的字段`);
   }
-  if (issue.code === 'invalid_type' && issue.received === 'undefined') {
+  if (issue.code === 'invalid_type' && issue.input === undefined) {
     return [`${field}：缺少必需字段`];
   }
   if (issue.code === 'invalid_type' && issue.expected === 'object') {

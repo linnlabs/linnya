@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 export const CONVERSATION_IMAGE_MAX_ATTACHMENTS = 100;
 export const CONVERSATION_IMAGE_MAX_BYTES = 10 * 1024 * 1024;

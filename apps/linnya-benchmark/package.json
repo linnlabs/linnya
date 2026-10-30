@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@app/schemas": "workspace:*",
-    "zod": "^3.22.4"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

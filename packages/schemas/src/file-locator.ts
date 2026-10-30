@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 const WINDOWS_DRIVE_PATH = /^[A-Za-z]:[\\/]/u;
 const WINDOWS_UNC_PATH = /^\\\\([^\\/]+)[\\/]([^\\/]+)(.*)$/u;

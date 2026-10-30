@@ -14,10 +14,10 @@ import {
 import { CommandPermissionSettingsError } from '../definitions/commandPermissionSettings';
 
 function formatValidationIssues(error: {
-  readonly issues: ReadonlyArray<{ readonly path: ReadonlyArray<string | number>; readonly message: string }>;
+  readonly issues: ReadonlyArray<{ readonly path: ReadonlyArray<PropertyKey>; readonly message: string }>;
 }): string {
   return error.issues
-    .map(issue => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
+    .map(issue => `${issue.path.map(String).join('.') || '<root>'}: ${issue.message}`)
     .join('; ');
 }
 

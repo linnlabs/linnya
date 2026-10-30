@@ -31,7 +31,7 @@ interface LinnyaCliProcessAdapterOptions {
   readonly environment?: NodeJS.ProcessEnv;
 }
 
-function parseJson<Output, Input>(text: string, schema: ZodType<Output, z.ZodTypeDef, Input>): Output {
+function parseJson<Output, Input>(text: string, schema: ZodType<Output, Input>): Output {
   let decoded: unknown;
   try {
     decoded = JSON.parse(text);
@@ -125,7 +125,7 @@ export function createLinnyaCliProcessAdapter(
   }
 
   async function executeSingle<Output, Input>(
-    args: readonly string[], schema: ZodType<Output, z.ZodTypeDef, Input>
+    args: readonly string[], schema: ZodType<Output, Input>
   ): Promise<Output> {
     const result = await execute(args);
     if (result.exitCode !== 0) throwProcessFailure(result);

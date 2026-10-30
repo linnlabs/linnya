@@ -65,13 +65,13 @@ describe('PptInspectToolArgsSchema', () => {
   it.each([
     [{}, '必须且只能提供一个'],
     [{ presentation_id: 'deck-1', inode: 'inode-1' }, '必须且只能提供一个'],
-    [{ presentation_id: '' }, 'at least 1 character'],
+    [{ presentation_id: '' }, 'expected string to have >=1 characters'],
     [{ presentation_id: 'deck-1', endSlide: 2 }, '只能与 slideNumber 同时提供'],
     [{ presentation_id: 'deck-1', slideNumber: 3, endSlide: 2 }, '不能小于 slideNumber'],
     [{ presentation_id: 'deck-1', diagnose: true }, 'Unrecognized key'],
     [{ presentation_id: 'deck-1', legacy: true }, 'Unrecognized key'],
     [{ presentation_id: 'deck-1', focus: [{ startLine: 8, endLine: 7 }] }, '不能小于 startLine'],
-    [{ presentation_id: 'deck-1', focus: Array.from({ length: 5 }, () => ({ startLine: 1, endLine: 1 })) }, 'at most 4'],
+    [{ presentation_id: 'deck-1', focus: Array.from({ length: 5 }, () => ({ startLine: 1, endLine: 1 })) }, 'expected array to have <=4 items'],
   ])('拒绝无效调用 %#', (input, message) => {
     const parsed = PptInspectToolArgsSchema.safeParse(input);
     expect(parsed.success).toBe(false);

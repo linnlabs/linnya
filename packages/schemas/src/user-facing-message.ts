@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const UserFacingMessageParamValueSchema = z.union([z.string(), z.number()]);
-export const UserFacingMessageParamsSchema = z.record(UserFacingMessageParamValueSchema);
+export const UserFacingMessageParamsSchema = z.record(z.string(), UserFacingMessageParamValueSchema);
 
 export const UserFacingMessageSchema = z.object({
   key: z.string().min(1),

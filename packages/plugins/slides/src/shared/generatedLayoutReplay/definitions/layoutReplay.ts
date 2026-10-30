@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 const finite = z.number().finite();
 const length = z.union([finite, z.literal('auto'), z.string().regex(/^-?\d+(?:\.\d+)?%$/)]);

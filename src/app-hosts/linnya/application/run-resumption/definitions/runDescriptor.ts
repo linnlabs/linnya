@@ -49,7 +49,7 @@ export const RunDescriptorSchema = z
         traceId: z.string().min(1),
         parentId: RunIdSchema.optional(),
         rootRunId: RunIdSchema.optional(),
-        tags: z.record(z.union([z.string(), z.number(), z.boolean()])),
+        tags: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
       })
       .strict(),
     toolContextPatch: SerializableJsonRecord,
@@ -60,9 +60,9 @@ export const RunDescriptorSchema = z
         hostVersion: z.string().min(1),
         frameworkVersion: z.string().min(1),
         agentConfiguration: SerializableJsonRecord,
-        models: z.record(SerializableJsonRecord),
+        models: z.record(z.string(), SerializableJsonRecord),
         plugins: z.array(z.object({ id: z.string().min(1), version: z.string().min(1) }).strict()),
-        skills: z.record(z.string().regex(/^[a-f0-9]{64}$/)),
+        skills: z.record(z.string(), z.string().regex(/^[a-f0-9]{64}$/)),
       })
       .strict(),
   })

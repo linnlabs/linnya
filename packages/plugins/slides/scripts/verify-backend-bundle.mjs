@@ -16,7 +16,7 @@ import {
 } from './build/copyYogaRuntime.mjs';
 
 // App Server 入口只负责编排、查询与持久化；PPTX 生成依赖属于 build Worker。
-// 2.1 MiB 为当前 1.83 MiB 入口保留约 15% 漂移空间，同时阻止整套物化栈回流。
+// Zod 4 使用可裁剪的直接 namespace import 后入口约 2.04 MiB；保持原上限，阻止整套物化栈回流。
 const MAX_BACKEND_ENTRY_BYTES = 2.1 * 1024 * 1024;
 // TypeScript/Yoga、PptxGenJS/JSZip 与原生公式装配均归同一 build Worker；1.6 MiB
 // 只保留小幅依赖漂移空间，防止 parser、Host SDK 或完整 backend 被意外卷入。

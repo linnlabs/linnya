@@ -20,7 +20,7 @@ const DeepSeekMetadata = z.object({
 const OllamaTag = z.object({ name: NonEmptyString });
 const OllamaDetails = z.object({
   capabilities: z.array(NonEmptyString),
-  model_info: z.record(z.unknown()),
+  model_info: z.record(z.string(), z.unknown()),
 });
 
 function unavailable(id: string, displayName: string, reason: string): ProviderDiscoveredModel {
