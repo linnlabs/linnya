@@ -46,11 +46,30 @@ export async function createFilePluginCredentialRuntimePort(input: {
     return run;
   };
 
+  // 钥匙串授权未完成时启动不等待；授权后在下一次读取时补上。
+  const recoverUnavailable = async (): Promise<void> => {
+    for (const id of Array.from(unavailable)) {
+      const [pluginId, key] = id.split('\u0000');
+      const ciphertext = ciphertexts.get(pluginId)?.get(key);
+      if (ciphertext === undefined) continue;
+      try {
+        const plaintext = await input.credentialProtection.decrypt(ciphertext);
+        if (ciphertexts.get(pluginId)?.get(key) !== ciphertext) continue;
+        if (plaintext.trim().length > 0) setValue(values, pluginId, key, plaintext);
+        unavailable.delete(id);
+      } catch {
+        // 仍不可用，保持原状态。
+      }
+    }
+  };
+
   return {
     async read(pluginId, key) {
+      await recoverUnavailable();
       return values.get(pluginId)?.get(key);
     },
     async listStatus(pluginId, keys) {
+      await recoverUnavailable();
       const pluginValues = values.get(pluginId);
       return keys.map(key => ({
         key,

@@ -50,6 +50,34 @@ export class EndpointCredentialStore {
     }
   }
 
+  /** 钥匙串授权未完成的记录在授权后补上；返回本次是否有记录恢复、是否还有记录在等待。 */
+  async retryTemporarilyUnavailable(): Promise<{ recovered: boolean; pending: boolean }> {
+    const waiting = new Map(
+      Array.from(this.credentials).filter(
+        ([id]) => this.credentialStatuses.get(id) === 'temporarily_unavailable'
+      )
+    );
+    if (waiting.size === 0) return { recovered: false, pending: false };
+    const decrypted = await this.decryptCredentials(waiting);
+    let recovered = false;
+    for (const [id, original] of waiting) {
+      // 解密期间用户可能已替换或删除这条凭据，以当前记录为准。
+      if (this.credentials.get(id) !== original) continue;
+      const status = decrypted.statuses.get(id);
+      if (status) this.credentialStatuses.set(id, status);
+      const plaintext = decrypted.plaintext.get(id);
+      if (plaintext === undefined) continue;
+      this.plaintextCredentials.set(id, plaintext);
+      this.credentials.set(id, decrypted.credentials.get(id) ?? original);
+      recovered = true;
+    }
+    if (decrypted.migrated) await this.write(this.credentials);
+    return {
+      recovered,
+      pending: Array.from(this.credentialStatuses.values()).includes('temporarily_unavailable'),
+    };
+  }
+
   has(credentialId: string): boolean {
     return this.credentialStatuses.get(credentialId) === 'available';
   }

@@ -12,6 +12,7 @@ vi.mock('src/shared/utils/pathManager', () => ({
 }));
 
 import type { ProviderAccountCredentialCodec } from '../../../definitions/providerAccount';
+import { CredentialProtectionError } from 'src/shared/credential-protection';
 import { FileProviderAccountRegistry } from './fileProviderAccountRegistry';
 
 const codec: ProviderAccountCredentialCodec = {
@@ -33,6 +34,44 @@ describe('Provider account 加密持久化', () => {
 
   afterEach(async () => {
     await fs.rm(temporaryRoot, { recursive: true, force: true });
+  });
+
+  it('钥匙串授权完成前保留账号，授权后补上凭据', async () => {
+    const seed = new FileProviderAccountRegistry();
+    seed.installCredentialCodec(codec);
+    await seed.initialize();
+    await seed.putOAuthCredential(
+      {
+        id: 'chatgpt-subscription',
+        provider_connection_definition_id: 'openai-chatgpt-subscription',
+        auth_method: 'oauth_pkce',
+      },
+      {
+        access_token: 'access-secret',
+        refresh_token: 'refresh-secret',
+        id_token: 'id-secret',
+        expires_at: 1_800_000_000_000,
+        account_id: 'account-1',
+        email: 'user@example.com',
+      }
+    );
+
+    let granted = false;
+    const registry = new FileProviderAccountRegistry();
+    registry.installCredentialCodec({
+      ...codec,
+      decrypt: async ciphertext => {
+        if (!granted) throw new CredentialProtectionError('temporarily_unavailable');
+        return codec.decrypt(ciphertext);
+      },
+    });
+    await registry.initialize();
+    expect(registry.list()).toHaveLength(1);
+    expect(registry.hasCredential('chatgpt-subscription')).toBe(false);
+
+    granted = true;
+    await expect(registry.retryTemporarilyUnavailable()).resolves.toEqual({ recovered: true, pending: false });
+    expect(registry.hasCredential('chatgpt-subscription')).toBe(true);
   });
 
   it('账号元数据可见、OAuth 凭据只写密文并可跨启动解析', async () => {

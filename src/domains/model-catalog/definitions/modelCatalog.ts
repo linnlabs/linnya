@@ -255,6 +255,8 @@ export interface ModelCatalog {
 
   /** 不解密，只报告当前进程能否解析该模型的凭据引用。 */
   hasCredential(modelId: string): boolean;
+  /** 钥匙串授权完成后补上此前暂时不可用的凭据。 */
+  retryUnavailableCredentials(): Promise<{ recovered: boolean; pending: boolean }>;
 
   /** 返回本机凭据的可用性及受控的系统安全存储错误分类。 */
   getCredentialStatus(modelId: string): EndpointCredentialStatus | 'missing';

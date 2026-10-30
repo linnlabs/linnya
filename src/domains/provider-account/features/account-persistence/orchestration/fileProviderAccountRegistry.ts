@@ -57,6 +57,34 @@ export class FileProviderAccountRegistry implements ProviderAccountRegistry {
     }
   }
 
+  /** 钥匙串授权未完成的账号在授权后补上；返回本次是否有账号恢复、是否还有账号在等待。 */
+  async retryTemporarilyUnavailable(): Promise<{ recovered: boolean; pending: boolean }> {
+    const waiting = new Map(
+      Array.from(this.accounts).filter(
+        ([id]) => this.credentialStatuses.get(id) === 'temporarily_unavailable'
+      )
+    );
+    if (waiting.size === 0) return { recovered: false, pending: false };
+    const decrypted = await this.decryptCredentials(waiting);
+    let recovered = false;
+    for (const [id, original] of waiting) {
+      // 解密期间账号可能已被更新或删除，以当前记录为准。
+      if (this.accounts.get(id) !== original) continue;
+      const status = decrypted.statuses.get(id);
+      if (status) this.credentialStatuses.set(id, status);
+      const credential = decrypted.plaintext.get(id);
+      if (!credential) continue;
+      this.plaintextCredentials.set(id, credential);
+      this.accounts.set(id, decrypted.accounts.get(id) ?? original);
+      recovered = true;
+    }
+    if (decrypted.migrated) await this.write(this.accounts);
+    return {
+      recovered,
+      pending: Array.from(this.credentialStatuses.values()).includes('temporarily_unavailable'),
+    };
+  }
+
   list(): readonly ProviderAccount[] {
     return Array.from(this.accounts.values(), account => this.toAccount(account));
   }

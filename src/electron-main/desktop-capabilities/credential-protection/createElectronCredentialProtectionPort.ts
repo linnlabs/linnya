@@ -8,6 +8,7 @@ import {
   isSystemCredentialCiphertext,
 } from '../../../infra/adapters/credential-protection/system-keyring';
 import { CredentialProtectionError } from '../../../shared/credential-protection';
+import { boundDesktopCredentialProtection } from './boundDesktopCredentialProtection';
 
 /** Desktop 首次建立共用系统密钥，并把旧 safeStorage 密文逐项重包为 CLI 可读格式。 */
 export function createElectronCredentialProtectionPort(input: {
@@ -33,7 +34,7 @@ export function createElectronCredentialProtectionPort(input: {
     }
   };
 
-  return Object.freeze({
+  return boundDesktopCredentialProtection({
     encrypt: (plaintext: string) => systemProtection.encrypt(plaintext),
     async decrypt(ciphertext: string) {
       return isSystemCredentialCiphertext(ciphertext)

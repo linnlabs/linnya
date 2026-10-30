@@ -12,6 +12,7 @@ vi.mock('src/shared/utils/pathManager', () => ({
 }));
 
 import type { EndpointCredentialCodec } from '../../../definitions/inferenceEndpoint';
+import { CredentialProtectionError } from 'src/shared/credential-protection';
 import { EndpointCredentialStore } from './endpointCredentialStore';
 
 const codec: EndpointCredentialCodec = {
@@ -33,6 +34,33 @@ describe('endpoint credential 持久化', () => {
 
   afterEach(async () => {
     await fs.rm(temporaryRoot, { recursive: true, force: true });
+  });
+
+  it('钥匙串授权完成前先启动，授权后补上凭据，期间不覆盖密文', async () => {
+    const seed = new EndpointCredentialStore();
+    seed.installCodec(codec);
+    await seed.initialize();
+    await seed.put('inference-endpoint:fixture', 'plain-secret');
+    const persisted = await fs.readFile(pathState.credentialFilePath, 'utf8');
+
+    let granted = false;
+    const store = new EndpointCredentialStore();
+    store.installCodec({
+      encrypt: codec.encrypt,
+      decrypt: async ciphertext => {
+        if (!granted) throw new CredentialProtectionError('temporarily_unavailable');
+        return codec.decrypt(ciphertext);
+      },
+    });
+    await store.initialize();
+    expect(store.getStatus('inference-endpoint:fixture')).toBe('temporarily_unavailable');
+    await expect(store.retryTemporarilyUnavailable()).resolves.toEqual({ recovered: false, pending: true });
+
+    granted = true;
+    await expect(store.retryTemporarilyUnavailable()).resolves.toEqual({ recovered: true, pending: false });
+    expect(store.resolve('inference-endpoint:fixture')).toBe('plain-secret');
+    await expect(store.retryTemporarilyUnavailable()).resolves.toEqual({ recovered: false, pending: false });
+    expect(await fs.readFile(pathState.credentialFilePath, 'utf8')).toBe(persisted);
   });
 
   it('只写入密文，并可由新 Store 实例跨启动解密', async () => {

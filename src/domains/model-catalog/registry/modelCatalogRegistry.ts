@@ -184,6 +184,10 @@ export class ModelCatalogRegistry implements ModelCatalog {
       : model.credential_reference;
   }
 
+  retryUnavailableCredentials(): Promise<{ recovered: boolean; pending: boolean }> {
+    return endpointCredentialStore.retryTemporarilyUnavailable();
+  }
+
   hasCredential(modelId: string): boolean {
     const model = this.models.get(modelId);
     if (!model) return false;

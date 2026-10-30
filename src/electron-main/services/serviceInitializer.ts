@@ -100,6 +100,8 @@ export interface ServiceInitializationConfig {
 /**
  * 服务初始化器类
  */
+const CREDENTIAL_RECOVERY_INTERVAL_MS = 5_000;
+
 export class ServiceInitializer {
   private serviceRegistry: ServiceRegistry;
   private qdrantUrl: string | null = null;
@@ -280,7 +282,43 @@ export class ServiceInitializer {
     //   首次成功的事件可能在此之前就已经 emit（彼时无监听器，自然丢弃，无副作用）；
     // - 渲染进程在 main.js 启动时会主动 fetchModels 一次，所以"丢失首次事件"无害；
     // - 真正需要广播的是后台重试链路里成功的那一次——监听器一定能收到。
-    return getBackendRendererIntegrationPort().connectModelCatalogUpdates();
+    const disconnectUpdates = await getBackendRendererIntegrationPort().connectModelCatalogUpdates();
+    const stopCredentialRecovery = this.startCredentialRecovery();
+    return () => {
+      stopCredentialRecovery();
+      disconnectUpdates();
+    };
+  }
+
+  /** 启动不等钥匙串授权；用户授权后在后台补上凭据，并让 Renderer 重新读取目录。 */
+  private startCredentialRecovery(): () => void {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let stopped = false;
+    const tick = async (): Promise<void> => {
+      const [accounts, endpoints] = await Promise.all([
+        providerAccountRegistry.retryTemporarilyUnavailable(),
+        modelCatalog.retryUnavailableCredentials(),
+      ]);
+      if (stopped) return;
+      if (accounts.recovered || endpoints.recovered) {
+        getBackendRendererIntegrationPort().publishModelsChanged();
+      }
+      if (accounts.pending || endpoints.pending) schedule();
+    };
+    const schedule = (): void => {
+      timer = setTimeout(() => {
+        void tick().catch((error: unknown) => {
+          console.warn('[ServiceInitializer] 凭据恢复重试失败:', error);
+          if (!stopped) schedule();
+        });
+      }, CREDENTIAL_RECOVERY_INTERVAL_MS);
+      timer.unref?.();
+    };
+    schedule();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
   }
 
   /**
