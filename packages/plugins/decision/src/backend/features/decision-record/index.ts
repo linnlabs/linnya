@@ -9,3 +9,6 @@ export { checkDecisionOptions } from './functions/checkDecisionOptions';
 export { recordDecisionProgress, reviewDecisionAction } from './functions/recordDecisionProgress';
 export { renderDecisionReport } from './functions/renderDecisionReport';
 export type { DecisionReport } from './definitions/decisionReport';
+export { projectDecisionDelivery, type DecisionDelivery } from './functions/projectDecisionDelivery';
+export { renderDecisionDelivery } from './functions/renderDecisionDelivery';
+export { writeDecisionArtifact } from './adapters/writeDecisionArtifact';

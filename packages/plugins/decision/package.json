@@ -1,22 +1,33 @@
 {
   "name": "@plugin/decision",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "private": true,
   "type": "module",
   "license": "Apache-2.0",
   "description": "Linnya decision prototype",
-  "linnya": {"development": {"backendLoading": "disk", "backendWatchConfig": "tsup.plugin.config.ts"}},
+  "linnya": {
+    "development": {
+      "backendLoading": "disk",
+      "backendWatchConfig": "tsup.plugin.config.ts"
+    }
+  },
   "exports": {
     "./shared": "./src/shared/index.ts",
-    "./backend": "./src/backend/index.ts"
+    "./backend": "./src/backend/index.ts",
+    "./renderer": "./src/renderer/index.ts"
   },
   "scripts": {
     "build:backend": "tsup --config tsup.plugin.config.ts",
-    "build": "pnpm run build:backend",
+    "build": "pnpm run build:backend && pnpm run build:renderer",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run --config vitest.config.ts src"
+    "test": "vitest run --config vitest.config.ts src",
+    "build:renderer": "vite build --config vite.plugin.config.mts"
   },
-  "dependencies": {"@app/schemas": "workspace:*", "zod": "^3.25.76"},
+  "dependencies": {
+    "@app/schemas": "workspace:*",
+    "zod": "^3.25.76",
+    "vue": "^3.5.13"
+  },
   "devDependencies": {
     "@linnlabs/linnkit": "0.40.0",
     "@linnya/plugin-host-contract": "workspace:*",
@@ -24,6 +35,7 @@
     "better-sqlite3": "13.0.3",
     "tsup": "^8.0.0",
     "typescript": "^5.5.4",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "vite": "^6.2.0"
   }
 }

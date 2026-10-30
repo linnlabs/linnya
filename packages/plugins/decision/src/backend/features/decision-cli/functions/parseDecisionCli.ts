@@ -11,6 +11,7 @@ export const DECISION_CLI_HELP = `Linnya decision prototype
   linnya-decision list
   linnya-decision read <decision-id> [--revision <n>]
   linnya-decision export <decision-id> --expected-revision <n>
+  linnya-decision delivery <decision-id> --expected-revision <n> (current saved recommendation; deterministic delivery artifact)
   linnya-decision compare <decision-id> --from <revision> --to <revision>
   linnya-decision update <decision-id> --expected-revision <n> --json '<update>'
   linnya-decision recommend <decision-id> --expected-revision <n> --json '<recommendation>'
@@ -66,6 +67,9 @@ export function parseDecisionCli(argv: readonly string[]) {
   }
   if (command === 'export' && rest.length === 3 && rest[1] === '--expected-revision') {
     return { kind: 'export', id: decisionId.parse(rest[0]), expectedRevision: positiveInteger.parse(rest[2]) } as const;
+  }
+  if (command === 'delivery' && rest.length === 3 && rest[1] === '--expected-revision') {
+    return { kind: 'delivery', id: decisionId.parse(rest[0]), expectedRevision: positiveInteger.parse(rest[2]) } as const;
   }
   if (command === 'compare' && rest.length === 5 && rest[1] === '--from' && rest[3] === '--to') {
     return { kind: 'compare', id: decisionId.parse(rest[0]), fromRevision: positiveInteger.parse(rest[2]), toRevision: positiveInteger.parse(rest[4]) } as const;

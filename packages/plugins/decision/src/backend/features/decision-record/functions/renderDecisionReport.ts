@@ -1,36 +1,16 @@
-import type { DecisionExpression, DecisionRecord, DecisionQuantityType } from '../../../../shared';
+import type { DecisionExpression, DecisionRecord } from '../../../../shared';
 import type { DecisionReport } from '../definitions/decisionReport';
-import type { CheckValueResult } from '../definitions/decisionEvaluation';
 import { projectDecisionRecord } from './updateDecisionRecord';
 import { evaluateExpression } from './evaluateDecisionExpression';
 import { evaluateDecisionCheck } from './evaluateDecisionCheck';
 import { DecisionFailure } from '../definitions/decisionFailure';
-import { formatDecisionClock } from './formatDecisionQuantity';
-
-/** 声明文字只能作为数据出现，不能借换行、表格或HTML冒充程序章节。 */
-function text(value: string): string {
-  return value.replace(/[\r\n\u2028\u2029]+/g, ' ').replace(/&/g, '&amp;').replace(/([\\`*_{}[\]<>|])/g, '\\$1');
-}
+import { decisionMarkdownText as text, decisionMarkdownResult as result, decisionMarkdownScalar as scalar, decisionMarkdownTable as table } from '../shared/decisionMarkdown';
 
 function expression(value: DecisionExpression): string {
   if ('input' in value) return value.input;
   if ('literal' in value) return String(value.literal);
   const symbol = { add: '+', subtract: '−', multiply: '×', divide: '÷' }[value.op];
   return `(${expression(value.left)} ${symbol} ${expression(value.right)})`;
-}
-
-function result(value: CheckValueResult, quantityType: DecisionQuantityType = 'other'): string {
-  return value.status === 'available' ? scalar(value.value, quantityType) : `不可用：${text(value.reason)}`;
-}
-
-function scalar(value: string | number | boolean, quantityType: DecisionQuantityType = 'other'): string {
-  // 离散检查不强转类型，报告同样保留字符串引号，避免把"false"显示成布尔false。
-  const clock = typeof value === 'number' ? formatDecisionClock(value, quantityType) : null;
-  return text(typeof value === 'string' ? JSON.stringify(value) : `${value}${clock ? `（${clock}）` : ''}`);
-}
-
-function table(headers: readonly string[], rows: readonly (readonly string[])[]): string {
-  return [headers.join(' | '), headers.map(() => '---').join(' | '), ...rows.map(row => row.join(' | '))].join('\n');
 }
 
 /** 同一保存版生成确定的原件；只复用既有求值，不从作者文字猜公式或修正其判断。 */

@@ -1,17 +1,23 @@
 import { createHash } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { DecisionFailure, type DecisionReport } from '../../decision-record';
+import { DecisionFailure } from '../definitions/decisionFailure';
+import type { DecisionReport } from '../definitions/decisionReport';
+import type { renderDecisionDelivery } from '../functions/renderDecisionDelivery';
+
+type SavedDecisionArtifact = DecisionReport | ReturnType<typeof renderDecisionDelivery>;
 
 /** 独立会话产物，不覆盖旧快照，也不冒充Workspace文档或长期记录。 */
-export async function writeDecisionReport(root: string, report: DecisionReport, signal: AbortSignal) {
+export async function writeDecisionArtifact(root: string, report: SavedDecisionArtifact, signal: AbortSignal) {
   signal.throwIfAborted();
+  const isDelivery = report.kind === 'decision_delivery';
+  const fileName = isDelivery ? 'delivery.md' : 'report.md';
   const directory = await mkdtemp(path.join(root, 'decision-report-')).catch(() => {
     signal.throwIfAborted();
     throw new DecisionFailure('export_failed', 'Could not create a report directory in the current conversation. No report was published.');
   });
   try {
-    await writeFile(path.join(directory, 'report.md'), report.markdown, { encoding: 'utf8', flag: 'wx', mode: 0o600, signal });
+    await writeFile(path.join(directory, fileName), report.markdown, { encoding: 'utf8', flag: 'wx', mode: 0o600, signal });
     signal.throwIfAborted();
   } catch (error: unknown) {
     // 只清理本次独占目录；失败/取消不能留下被当作完整报告的半份文件。
@@ -19,12 +25,12 @@ export async function writeDecisionReport(root: string, report: DecisionReport, 
     if (signal.aborted) throw error;
     throw new DecisionFailure('export_failed', 'Could not save the report in the current conversation directory. No report was published.');
   }
-  const locator = `conversation:/${path.basename(directory)}/report.md`;
-  const markdownLink = `[程序报告原件](${locator})`;
+  const locator = `conversation:/${path.basename(directory)}/${fileName}`;
+  const markdownLink = `[${isDelivery ? '决策交付原件' : '程序报告原件'}](${locator})`;
   // 使用本次实际文件身份生成可直接交付的附注，避免作者再拼路径或版本。
   const deliveryNote = `记录 ${report.decisionId} · revision ${report.revision} · inputRevision ${report.inputRevision}\n原件：${markdownLink}`;
   return {
-    kind: 'decision_report_export' as const,
+    kind: isDelivery ? 'decision_delivery_export' as const : 'decision_report_export' as const,
     decisionId: report.decisionId, revision: report.revision, inputRevision: report.inputRevision,
     artifact: {
       locator, markdownLink,

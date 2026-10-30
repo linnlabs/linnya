@@ -1,6 +1,7 @@
 import type { AgentDefinition } from '@plugin/backend/agentRegistry';
 import { DecisionPromptKeys } from '../../../shared';
 import { DECISION_SYSTEM_PROMPT } from './prompt';
+import { decisionToolManifest } from '../../toolManifest';
 
 export const decisionAgent: AgentDefinition = {
   id: DecisionPromptKeys.MAIN,
@@ -11,6 +12,7 @@ export const decisionAgent: AgentDefinition = {
     enableTools: true,
     allowedSubagentTypes: ['decision_research'],
     availableTools: [
+      ...decisionToolManifest.agentTools.decision,
       'list_files', 'read_file', 'grep', 'write_file', 'edit_file',
       'skill', 'ask', 'shell', 'process', 'tool_output_read', 'subagent',
       'web_search', 'web_read', 'knowledge_search', 'knowledge_read',

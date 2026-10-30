@@ -1,15 +1,55 @@
 {
   "id": "decision",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "name": "决策原型",
   "description": "比较选项、记录依据，并在条件变化后更新计算与建议。",
   "developer": "Linnya",
-  "details": ["早期原型：独立决策 Agent、方法 Skill、版本化记录和确定性计算。包含版本绑定的受管研究子链，尚无专用编辑器。"],
-  "agents": [{"name": "决策原型", "description": "澄清取舍，比较可行选项，保存并更新条件性建议。"}],
-  "skills": [{"name": "decision-exploration", "description": "决策分析与记录操作方法。"}],
-  "entry": {"backend": "./dist/backend/index.cjs"},
-  "dependsOn": ["platform"],
-  "compat": {"minApp": "0.0.38"},
-  "ownedTables": ["decision_record_versions", "decision_research_jobs"],
-  "migrations": [{"version": 1, "description": "Versioned project decision records"}, {"version": 2, "description": "Version-bound managed research requests"}, {"version": 3, "description": "Explicit quantity types for all persisted decision revisions"}, {"version": 4, "description": "Explicit unknown dates on historical cash-flow entries"}]
+  "details": [
+    "早期原型：独立决策 Agent、方法 Skill、版本化记录和确定性计算。包含版本绑定的受管研究子链，尚无专用编辑器。"
+  ],
+  "agents": [
+    {
+      "name": "决策原型",
+      "description": "澄清取舍，比较可行选项，保存并更新条件性建议。"
+    }
+  ],
+  "skills": [
+    {
+      "name": "decision-exploration",
+      "description": "决策分析与记录操作方法。"
+    }
+  ],
+  "entry": {
+    "backend": "./dist/backend/index.cjs",
+    "renderer": "./dist/renderer/index.js"
+  },
+  "dependsOn": [
+    "platform"
+  ],
+  "compat": {
+    "minApp": "0.0.38",
+    "rendererUi": "^2.0.0"
+  },
+  "ownedTables": [
+    "decision_record_versions",
+    "decision_research_jobs"
+  ],
+  "migrations": [
+    {
+      "version": 1,
+      "description": "Versioned project decision records"
+    },
+    {
+      "version": 2,
+      "description": "Version-bound managed research requests"
+    },
+    {
+      "version": 3,
+      "description": "Explicit quantity types for all persisted decision revisions"
+    },
+    {
+      "version": 4,
+      "description": "Explicit unknown dates on historical cash-flow entries"
+    }
+  ]
 }

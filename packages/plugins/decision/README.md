@@ -1,6 +1,6 @@
 # 决策原型插件
 
-本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.22.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
+本插件提供独立的 `decision_agent`、`decision-exploration` Skill 和版本化决策记录 CLI。目标是让建议可以在用户条件变化后继续更新，而不把聊天历史当作唯一状态。当前版本 0.23.0，是开发原型，尚未进入默认发行插件清单。它需要相应 SDK/CLI 身份合同的源码 Host；manifest 的 App 版本下限不能解释为旧发行包已具备这些能力。
 
 ## 能力与边界
 
@@ -23,7 +23,7 @@ Agent 负责澄清、探索、调查和判断，Skill 提供方法与操作说�
 
 修改必须提供 expected revision，事务内检查当前版再追加。输入更新保留旧建议及其输入版本；包括偏好在内的条件变化都会要求重新判断。表达式只引用本记录输入，未知/撤回/非数字和除零明确不可用，不执行生成代码。数值检查的模型、单位、完整性与事实真实性仍需判断。输入登记不代表它已参与计算：只有表达式实际引用的输入变化才会影响该项算值；新增费用或其他情形可能需要同步修改模型，不能把更新输入视为已覆盖新情形。
 
-`linnya-decision create/list/read/update/recommend` 经现有 Shell → Plugin CLI bridge 调用。prepare 只解析参数；执行前由 bridge 校验 internal-data 与写权限。它只访问本插件数据表，复用已有命令生命周期，不新增 Agent 工具、审批或重试器。当前此 CLI 需要 internal-data 权限；不能把它的可用性解释成解决了整个平台的内部存储保护问题。
+`linnya-decision create/list/read/update/recommend` 经现有 Shell → Plugin CLI bridge 调用。prepare 只解析参数；执行前由 bridge 校验 internal-data 与写权限。它只访问本插件数据表，复用已有命令生命周期；记录编辑仍用 CLI。0.23 仅为最终交付增加一个 Decision 角色收口工具（见文末），不增加审批或重试器。当前此 CLI 需要 internal-data 权限；不能把它的可用性解释成解决了整个平台的内部存储保护问题。
 
 create/update/recommend 支持 `--input` 读取当前会话内的相对 JSON 文件，文件读取在权限校验后进行并核对真实路径归属。小载荷也可用 `--json`；现有通用 bridge 的单参数 4096 字符限制不变，不能将大型条件拆成多次版本更新当作默认用法。
 
@@ -31,9 +31,9 @@ create/update/recommend 支持 `--input` 读取当前会话内的相对 JSON 文
 
 ## 开发与验收
 
-从仓库根运行 `pnpm --dir packages/plugins/decision run typecheck`、`test` 和 `build:backend`。源码 Desktop 的开发发现读取本包 `linnya.development.backendLoading=disk`，通过既有 direct-dir loader 装入构建产物；Skill 由平台从本包资源发现，requiredSkills 仅保证依赖存在，实际激活要检查轨迹。
+从仓库根运行 `pnpm --dir packages/plugins/decision run typecheck`、`test` 和 `build`。源码 Desktop 的开发发现读取本包 `linnya.development.backendLoading=disk`，通过既有 direct-dir loader 装入构建产物；Skill 由平台从本包资源发现，requiredSkills 仅保证依赖存在，实际激活要检查轨迹。
 
-后端变动需正常重启对应开发实例。插件启停后 Agent、CLI 与 Skill 应随注册能力收缩；卸载不删决策记录。进入正式分发前，还需按插件发布合同完成制品、默认发行配置和安装包验收；Renderer 入口仅在需要专用界面时添加。开发 direct-dir 加载不是已发布。
+后端变动需正常重启对应开发实例。插件启停后 Agent、CLI 与 Skill 应随注册能力收缩；卸载不删决策记录。进入正式分发前，还需按插件发布合同完成制品、默认发行配置和安装包验收；Renderer 入口目前只贡献交付工具卡，不提供专用编辑器。开发 direct-dir 加载不是已发布。
 
 业务测试覆盖创建、条件更新与重算、建议失效、违反硬约束拒绝、历史与项目隔离、过期版本拒绝、持久重开、偏好更新和来源撤回。真实模型冒烟另验 Skill 实际读取、CLI 实际执行、最终建议与计算是否一致，不以测试通过证明模型判断正确。
 
@@ -166,7 +166,7 @@ schemaVersion1可选加法，无新表或新工具。decisionRecommendationActio
 
 export <id> --expected-revision <n>从当前项目读取明确当前版，由decision-record的renderDecisionReport复用求值/投影生成确定的Markdown。报告包含输入及其声明出处、全部公式/算值/检查、当前建议选定的数值边界、当前行动投影和单独标识的作者建议原文。旧建议待复核时不按新输入重建旧边界；报告不会替作者修正错误建议或认证模型语义，作者文字按数据转义，不能冒充程序章节。
 
-CLI adapter沿conversationFiles=write权限，使用标准库在Host给定会话目录内创建独占报告目录，直接写UTF-8原件并返回conversation locator、sha256、字节数和源版本。每次导出新文件，旧产物不覆盖；取消/写失败不交付成功回执，记录逐字不变。调用不接受输出路径、项目覆盖或第二份数值，不新增工具/SDK/表。实现地图为decision-record/functions/renderDecisionReport与decision-cli/adapters/writeDecisionReport，Core和Linnkit不持有报告业务。
+CLI adapter沿conversationFiles=write权限，使用标准库在Host给定会话目录内创建独占报告目录，直接写UTF-8原件并返回conversation locator、sha256、字节数和源版本。每次导出新文件，旧产物不覆盖；取消/写失败不交付成功回执，记录逐字不变。调用不接受输出路径、项目覆盖或第二份数值，不新增工具/SDK/表。实现地图为decision-record/functions/renderDecisionReport与decision-record/adapters/writeDecisionArtifact，Core和Linnkit不持有报告业务。
 
 报告是生成时快照，之后的输入/行动变化不回写旧文件；当前状态仍read后按需重新导出。会话文件不等于Workspace或长期跨会话档案，重要说明仍由普通文件工具保存并区分待确认修订；hash只校验原件字节，Shell仍可修改文件，不能宣称不可篡改或已核事实。完整条件情景和逐次历史仍通过read/compare读取。decisionReport.integration.test.ts覆盖实际CLI/SQLite/文件写入、字节hash与重复导出、未知/撤回/过期建议、行动失效、版本/项目隔离、取消和输出失败及作者文字边界。
 
@@ -240,3 +240,18 @@ cashFlows的timeAnchor为同表时点锚点，entries.at是相对锚点的天数
 schemaVersion=3，插件migration4把schema2历史付款表的timeAnchor与全部at设为null，不猜过去日期；无付款表只升envelope。原始值、出处、金额、建议、行动、revision/inputRevision及导出原件不变，旧严格插件不能直接降级读取。canonical开发库迁移前先正常停止准确Main及Backend，复制数据库和存在的WAL/SHM文件，记录字节数/hash并验证副本；无损压缩备份须验证解压hash。迁移演练先在副本进行。
 
 本变更不提升应用开发数据epoch：它只升级插件owned表内有明确迁移的记录JSON，不改变App envelope、Host SQLite基线或目录布局。decisionCashFlowDates.integration.test.ts覆盖排序、同日付款、严格门槛、未知日期、条件更新/历史、迁移保留以及非法载荷原子拒绝；原cash-flow业务回归另覆盖尾款联动的伪边界。
+
+
+## 程序交付与运行收口（0.23）
+
+最小流程为更新条件、计算、保存建议、交付当前版。`decision_finish` 只向 Decision 角色声明，参数仅 decisionId/expectedRevision；它读取当前项目记录，要求建议与输入及所观察行动仍 current，复用既有求值器生成 Markdown，保存会话原件及 hash/链接，再返回既有 `control.finalAnswer` 和 `terminateRun`。Host 负责正式工具输出、最终答复、运行完成与历史回放，插件不写 Conversation 表或控制事件。父提示、Host 和 Linnkit 均不新增决策规则。
+
+程序区列全选项检查、已登记算值、数值边界、各情景独立结果、付款时序、未知与输入来源身份；作者选择、解释、变化条件和下一步单列，计划状态仍来自既有行动投影。通过只表示声明检查成立，现金流正数不自动成为硬检查、完整模型或执行授权。作者保存的错误解释仍会被原样交付，不能以程序出口认证其含义。
+
+`linnya-decision delivery <id> --expected-revision <n>` 是同一投影的文件预览，回执带原件链接；它和旧 export 一样只是 CLI 输出，不结束 Agent。旧 export 保留完整审计格式，可读尚无建议的记录；finish/delivery 必须有当前建议。CLI stdout 不拥有工具控制权限。
+
+工具从 Host 上下文取得当前项目、会话和文件解析 capability，沿本轮冻结权限要求 internal-data allowed 且允许会话写入；不接项目覆盖或任意文件路径。插件禁用、缺能力、只读、取消、过期版本、旧建议或写失败均抛出正式工具失败，不交付 finalAnswer。当前产物绑定读取时的保存版；其后其他会话修改记录不会偷偷更新旧快照。Shell 可改会话文件，hash 用于核字节，不宣称不可篡改。
+
+代码归属：decision-record 的投影与 artifact adapter 是 CLI 与收口共同使用的公开能力；decision-delivery 是窄运行适配器；toolManifest 集中注册名和角色名单。Renderer 只为 live/history 提供完整/紧凑标题，正文由正式 final_answer 显示。无新表、schema 或 migration；仍为 schema3/migration4。
+
+业务回归包括缺口225/实际到账后0、书面承诺不改变现金、未知日期、严格延期端点、失效/权限/取消、原件字节一致，以及生产 Graph/Flow/SQLite 中一次工具输出直接完成且不再调用模型。文件路径 transport 在组合测试中替换，原生验收另核真实 capability。首次新建/显示工具需正常重启当前实例；开发构建不等于发布。模型仍可能不用收口入口而自由结束，观察时必须单独计数，不能声称有全局强制交付门禁。

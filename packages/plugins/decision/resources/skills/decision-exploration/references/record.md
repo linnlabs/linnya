@@ -10,6 +10,7 @@
 | `linnya-decision create --json '<model>'` | 建立条件与选项，返回 id 和 revision=1 |
 | `linnya-decision read <id>` | 读取当前版、重算结果和建议状态 |
 | `linnya-decision read <id> --revision 1` | 读取指定历史版本 |
+| `linnya-decision delivery <id> --expected-revision <n>` | 生成当前建议的交付预览文件；不结束运行 |
 | `linnya-decision export <id> --expected-revision <n>` | 导出该当前版的程序报告到会话文件，记录不变 |
 | `linnya-decision compare <id> --from <revision> --to <revision>` | 对比两个保存版本的声明、结果及旧选择状态 |
 | `linnya-decision update <id> --expected-revision <n> --json '<update>'` | 更新条件；生成新版，旧建议进入待复核 |
@@ -277,3 +278,9 @@ progress.json必填planRevision、summary、origin、actualCost，可选sourceQu
 这些id都须指向本模型已登记的输入；三个day输入用duration/天，未知用null。程序按求得的时点排序，同一天先付后收，不按数组位置或节点名称猜日期。check默认回执、read的evaluation.cashFlows与export原件给最低余额、缺口、期末和逐节点余额。必要金额或时点未知返回needs_information；首笔或期末为正都不能抹掉中途缺口。
 
 每张表的timingThresholds逐个固定其他输入，给只改变一个时点后缺口为零的范围。若同日付款先于收款，门槛会是严格晚于回款日；回款日自身未知时继续需要信息。它只求已声明仿射日期，日期同时改变金额的模型明确不可用。这是现金缺口的条件，不代替其他生产/发货检查、用户许可或实际到账；日期与期初口径仍需如实登记。
+
+## 当前版本交付
+
+保存当前建议后，调用 `decision_finish`，只传 `decisionId` 与 `expectedRevision`。它保存本版交付原件并直接结束本轮，最终答复含程序算值、检查、条件分支、作者原文与原件链接。继续前先完成需要保存的说明或行动记录；这个工具不替你修改记录，也不执行下单等外部行动。版本过期或建议待复核时，先 read、重新判断并 recommend，再收口。
+
+如需先查看交付内容，`linnya-decision delivery <id> --expected-revision <n>` 使用 Shell 的写权限生成会话文件，按回执 locator 读取。CLI 预览不结束运行；旧 export 仍是完整审计报告。

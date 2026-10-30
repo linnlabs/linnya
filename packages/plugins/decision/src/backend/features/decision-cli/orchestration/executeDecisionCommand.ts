@@ -11,7 +11,7 @@ import {
   planDecisionAction, resolveDecisionAction, withdrawDecisionActionReport,
   checkDecisionOptions, DecisionFailure,
   recordDecisionProgress, reviewDecisionAction,
-  renderDecisionReport,
+  renderDecisionReport, renderDecisionDelivery,
 } from '../../decision-record';
 
 export function executeDecisionCommand(
@@ -45,6 +45,7 @@ export function executeDecisionCommand(
   if (command.kind === 'export') {
     return renderDecisionReport(current, command.expectedRevision);
   }
+  if (command.kind === 'delivery') return renderDecisionDelivery(current, command.expectedRevision);
   if (command.kind === 'simulate') return simulateDecisionScenarios(current, command.expectedRevision, command.scenarios);
   if (command.kind === 'check') return projectDecisionCheckOutput(checkDecisionOptions(current, command.expectedRevision, command.request), command.full);
   const record = command.kind === 'action_plan'

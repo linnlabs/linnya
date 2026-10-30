@@ -3,10 +3,12 @@ import { decisionManifest, decisionPluginMeta } from '../shared';
 import { decisionAgent } from './agents/decision';
 import { decisionPluginCli } from './features/decision-cli/orchestration/prepareDecisionCli';
 import { decisionMigrations } from './features/decision-record/persistence/migrations';
+import { decisionToolManifest } from './toolManifest';
 
 export const backendPlugin: PluginBackendContribution = {
   meta: decisionPluginMeta,
   agentDefinitions: [decisionAgent],
+  toolClasses: decisionToolManifest.classes,
   pluginCli: decisionPluginCli,
   subagentTypes: [{
     type: 'decision_research', promptKey: 'research_v1',
