@@ -501,6 +501,8 @@ pnpm test:linnya-runtime:e2e
 | ApiServer / bridge 集成 | token 双向隔离、loopback、描述文件权限和生命周期、稳定 HTTP 错误                                                                                 |
 | 真实 App smoke          | 穿过实际 Linnya App、模型、Slides Agent 与 PPT 工具链，验证产品可用性                                                                            |
 
+Runtime 进程 E2E 同时隔离 Workspace 和 AppData。测试通过显式 Runtime module / development root 使用临时目录，只复用本次构建资产，不能读取开发者的命令权限设置或凭据；只传 `--workspace` 不足以隔离 AppData。
+
 前三层不能替代 Host/bridge，Host/bridge 也不能替代真实模型 smoke。真实 App 验收建议按本 README
 §2 跑一个 3 页 PPT，并传入专门用于验收的 Workspace
 `--project`：保存回执，关闭首个 CLI 进程后继续 watch；若出现 `awaiting_user`

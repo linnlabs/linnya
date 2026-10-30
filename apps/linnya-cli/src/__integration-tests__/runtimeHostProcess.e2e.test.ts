@@ -55,7 +55,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
         continuation: { tool_replay: 'unavailable' },
       },
     }] }));
-    const environment = createRuntimeEnvironment({ connectionFile, modelCatalog });
+    const environment = await createRuntimeEnvironment({ connectionFile, modelCatalog });
     const runtime = await startRuntime({ workspace, environment });
     const projectId = 'approval-runtime-e2e';
     const database = new Database(path.join(workspace, 'workspace', 'workspace.sqlite'), { fileMustExist: true });
@@ -71,7 +71,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
         '--watch', '--interval', '250', '--timeout', '20000'];
       const waiting = await runCli(watchArgs, environment);
       expect(waiting.code, waiting.stderr).toBe(0);
-      expect(readLastJsonLine(waiting.stdout)).toMatchObject({ snapshot: {
+      expect(readLastJsonLine(waiting.stdout), `${choice}: ${waiting.stdout}\nfixture results: ${JSON.stringify(fixture.toolResults)}\n${runtime.stderr}`).toMatchObject({ snapshot: {
         run_id: receipt.run_id, status: 'running',
         command_approvals: [{ status: 'awaiting_reply' }],
       } });
@@ -127,7 +127,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     const modelCatalog = path.join(root, 'default-models.json');
     await fs.mkdir(workspace, { recursive: true });
     await writeFastMockModelCatalog(modelCatalog);
-    const environment = createRuntimeEnvironment({ connectionFile, modelCatalog });
+    const environment = await createRuntimeEnvironment({ connectionFile, modelCatalog });
 
     const first = await startRuntime({ workspace, environment });
     expect(await fs.stat(connectionFile)).toMatchObject({ mode: expect.any(Number) });
@@ -239,7 +239,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     const modelCatalog = path.join(root, 'default-models.json');
     await fs.mkdir(workspace, { recursive: true });
     await writeFastMockModelCatalog(modelCatalog);
-    const environment = createRuntimeEnvironment({ connectionFile, modelCatalog });
+    const environment = await createRuntimeEnvironment({ connectionFile, modelCatalog });
 
     const crashed = await startRuntime({ workspace, environment });
     const previousDescriptor = await readConnectionIdentity(connectionFile);
@@ -426,13 +426,24 @@ async function writeFastMockModelCatalog(target: string): Promise<void> {
   await fs.writeFile(target, source.replace(original, replacement));
 }
 
-function createRuntimeEnvironment(input: {
+async function createRuntimeEnvironment(input: {
   readonly connectionFile: string;
   readonly modelCatalog: string;
-}): NodeJS.ProcessEnv {
+}): Promise<NodeJS.ProcessEnv> {
+  const developmentRoot = path.join(path.dirname(input.connectionFile), 'runtime-host');
+  await fs.mkdir(developmentRoot, { recursive: true });
+  // Workspace 与 AppData 分属不同路径。仅覆盖 Workspace 会读到开发者的权限设置和凭据。
+  // 只复用本次构建的只读资产，所有可写运行状态保留在临时 development root。
+  for (const directory of ['dist', 'extraResources', 'src/features/skills/builtin/skills']) {
+    await fs.mkdir(path.dirname(path.join(developmentRoot, directory)), { recursive: true });
+    await fs.symlink(path.join(repoRoot, directory), path.join(developmentRoot, directory), 'junction');
+  }
   return {
     ...process.env,
     LINNYA_CLI_CONNECTION_FILE: input.connectionFile,
+    LINNYA_CLI_RUNTIME_MODULE: path.join(repoRoot, 'dist/main/linnya-cli-runtime.cjs'),
+    LINNYA_CLI_DEVELOPMENT_ROOT: developmentRoot,
+    LINNYA_PLUGIN_ROOT: path.join(developmentRoot, '_dev_data/plugins'),
     MODEL_REGISTRY_DEFAULTS_PATH: input.modelCatalog,
     LINNYA_PLUGIN_DIRECT_DIRS: undefined,
     LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: undefined,
