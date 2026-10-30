@@ -20,7 +20,7 @@
           class="knowledge-base-button"
           @click="toggleKnowledgeBase"
         >
-          <KnowledgeBaseIcon />
+          <LibraryIcon />
         </IconButton>
       </HoverTooltip>
       <HoverTooltip :text="layoutMessage('layout.header.settings')" placement="bottom">
@@ -41,7 +41,7 @@
 import { useUIStore } from '@/shared/stores/ui';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { SettingsIcon } from '@linnya/renderer-ui/icons';
-import { KnowledgeBaseIcon } from '@linnya/renderer-ui/icons';
+import { LibraryIcon } from '@linnya/renderer-ui/icons';
 import { SidebarIcon } from '@linnya/renderer-ui/icons';
 import { HoverTooltip, IconButton } from '@linnya/renderer-ui';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';

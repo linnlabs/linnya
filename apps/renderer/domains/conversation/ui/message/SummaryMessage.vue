@@ -4,15 +4,14 @@
     <div class="summary-content">
       <!-- 图标区域 -->
       <div class="summary-icon">
-        <!-- 加载状态：显示涟漪加载动画 -->
-        <RippleLoadingIcon
+        <!-- 加载状态：Linnya 标识的处理中动态 -->
+        <LinnyaLoadingIcon
           v-if="isSummarizing"
-          :color="'var(--color-info)'"
           :title="conversationMessage('conversation.summary.title.summarizing')"
         />
         
         <!-- 完成状态：显示成功图标 -->
-        <OkIcon
+        <CheckmarkIcon
           v-else-if="summaryStatus === 'completed'" 
           class="success-icon"
           :title="conversationMessage('conversation.summary.title.completed')"
@@ -48,8 +47,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { RippleLoadingIcon } from '@linnya/renderer-ui/icons';
-import { OkIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
+import { CheckmarkIcon } from '@linnya/renderer-ui/icons';
 import { useMessageExecutionActivity } from '../../shared/execution-presentation';
 import { useConversationLocalization } from '../useConversationLocalization';
 import type { BaseMessage } from '../../types';

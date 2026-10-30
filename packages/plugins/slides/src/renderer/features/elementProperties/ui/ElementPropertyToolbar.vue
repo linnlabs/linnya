@@ -44,8 +44,8 @@
               :disabled="busy"
               @click="emit('arrange', item.action)"
             >
-              <component
-                :is="item.icon"
+              <AlignObjectsIcon
+                :alignment="item.action"
                 class="slides-element-property-toolbar__icon"
               />
             </ToolbarButton>
@@ -59,8 +59,8 @@
               :disabled="busy || (selectionCount ?? 1) < 3"
               @click="emit('arrange', item.action)"
             >
-              <component
-                :is="item.icon"
+              <DistributeIcon
+                :direction="item.direction"
                 class="slides-element-property-toolbar__icon"
               />
             </ToolbarButton>
@@ -127,7 +127,7 @@
             :disabled="busy"
             @click="toggle('alignment', $event)"
           >
-            <AlignIcon
+            <TextAlignIcon
               class="slides-element-property-toolbar__icon"
               :alignment="currentTextAlign"
             />
@@ -334,11 +334,10 @@
 <script setup lang="ts">
 import { computed, ref, toRef, useId, type CSSProperties } from 'vue';
 import { BaseDropdown, CustomSelect, DropdownPanel, type DropdownActions, CustomNumberInput, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from '@linnya/renderer-ui';
-import { BoldIcon, ItalicIcon, UnderlineIcon, AlignIcon, ChevronIcon, DeleteIcon, ResizeIcon, LinnyaIcon, MoreIcon } from '@linnya/renderer-ui/icons';
 import {
-  AlignObjectsBottomIcon, AlignObjectsCenterIcon, AlignObjectsLeftIcon, AlignObjectsMiddleIcon, AlignObjectsRightIcon, AlignObjectsTopIcon,
-  ArrangeIcon, DistributeHorizontalIcon, DistributeVerticalIcon,
-} from '../../../shared/icons';
+  AlignObjectsIcon, ArrangeIcon, BoldIcon, ChevronIcon, DeleteIcon, DistributeIcon, ItalicIcon, LinnyaIcon, MoreIcon, ResizeIcon,
+  TextAlignIcon, UnderlineIcon,
+} from '@linnya/renderer-ui/icons';
 import { arrangeMenu, moreMenu, textAlignmentMenu } from '../functions/elementPropertyMenus';
 import { SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
 import type { ManualEditableTarget } from '../../manualEditing';
@@ -372,11 +371,10 @@ const emit = defineEmits<{ submit: [operation: ElementPropertyOperation]; 'delet
   arrange: [action: ElementArrangement]; layer: [direction: ElementLayerDirection]; copy: []; duplicate: [] }>();
 defineSlots<{ object?(): unknown }>();
 const SELECTION_ALIGNMENTS = [
-  { action: 'left', icon: AlignObjectsLeftIcon }, { action: 'center', icon: AlignObjectsCenterIcon }, { action: 'right', icon: AlignObjectsRightIcon },
-  { action: 'top', icon: AlignObjectsTopIcon }, { action: 'middle', icon: AlignObjectsMiddleIcon }, { action: 'bottom', icon: AlignObjectsBottomIcon },
+  { action: 'left' }, { action: 'center' }, { action: 'right' }, { action: 'top' }, { action: 'middle' }, { action: 'bottom' },
 ] as const;
 const SELECTION_DISTRIBUTIONS = [
-  { action: 'distributeX', icon: DistributeHorizontalIcon }, { action: 'distributeY', icon: DistributeVerticalIcon },
+  { action: 'distributeX', direction: 'horizontal' }, { action: 'distributeY', direction: 'vertical' },
 ] as const;
 const LIST_POPOVERS: ReadonlySet<string> = new Set(['fontSize', 'alignment', 'arrange', 'more']);
 const { elementPropertyMessage: message } = useElementPropertyLocalization();

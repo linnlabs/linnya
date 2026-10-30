@@ -34,7 +34,7 @@
             :title="editorMessage('editor.annotation.action.aiAndCreate')"
             :aria-label="editorMessage('editor.annotation.action.aiAndCreate')"
           >
-            <AiIcon />
+            <LinnyaIcon />
           </button>
           
           <!-- 取消按钮 -->
@@ -55,7 +55,7 @@
             :title="editorMessage('editor.annotation.action.create')"
             :aria-label="editorMessage('editor.annotation.action.create')"
           >
-            <OkIcon />
+            <CheckmarkIcon />
           </button>
         </div>
       </div>
@@ -79,8 +79,8 @@
 import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed, inject } from 'vue';
 import highlightState from '../AnnoHighlightState';
 import autoResize from '../utils/autoResize';
-import { AiIcon } from '@linnya/renderer-ui/icons';
-import { OkIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaIcon } from '@linnya/renderer-ui/icons';
+import { CheckmarkIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon as NoIcon } from '@linnya/renderer-ui/icons';
 import {
   ANNOTATION_PANEL_POSITION_MANAGER_KEY,

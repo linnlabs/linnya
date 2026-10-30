@@ -9,7 +9,7 @@
         :disabled="disabled"
       >
       <span class="checkbox-custom" :class="classNames?.indicator">
-        <OkIcon class="check-icon" :class="classNames?.checkIcon" />
+        <CheckmarkIcon class="check-icon" :class="classNames?.checkIcon" />
       </span>
       <span class="label-content" :class="classNames?.label" v-if="$slots.default">
         <slot></slot>
@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { OkIcon } from '@linnya/renderer-ui/icons';
+import { CheckmarkIcon } from '@linnya/renderer-ui/icons';
 import type { CustomCheckboxClassNames } from '../definitions/selectionClassNames';
 
 interface Props {

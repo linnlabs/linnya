@@ -41,7 +41,7 @@
       role="status"
       aria-live="polite"
     >
-      <OkIcon
+      <CheckmarkIcon
         v-if="shownStatus === 'slides.editingCommands.saved'"
         class="slides-editing-command-bar__status-icon"
       />{{ message(shownStatus) }}
@@ -53,9 +53,8 @@ import { ElementInsertionControls } from '../../elementInsertion';
 import { useElementClipboard } from '../../elementClipboard';
 import { preserveCanvasFocus } from '../../editingInteraction';
 import { ToolbarButton, ToolbarGroup } from '@linnya/renderer-ui';
-import { OkIcon } from '@linnya/renderer-ui/icons';
+import { CheckmarkIcon, PasteIcon, RedoIcon, UndoIcon } from '@linnya/renderer-ui/icons';
 import { useLocalization } from '@app/localization';
-import { PasteIcon, RedoIcon, UndoIcon } from '../../../shared/icons';
 import { EDITING_COMMAND_MESSAGES, type EditingCommandMessageKey } from '../definitions/editingCommandMessages';
 import { useEditingCommands } from '../orchestration/useEditingCommands';
 import { useDelayedSaveStatus } from '../orchestration/useDelayedSaveStatus';

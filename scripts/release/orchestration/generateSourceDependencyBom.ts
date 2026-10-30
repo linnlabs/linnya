@@ -12,6 +12,7 @@ import {
 } from '../definitions/dependencyLegalPolicy';
 import {
   CRAFT_AGENTS_OAUTH_NOTICE,
+  FLUENT_SYSTEM_ICONS_NOTICE,
   MODELS_DEV_CATALOG_NOTICE,
   NAPI_RS_CANVAS_NATIVE_NOTICE_EVIDENCE,
   type SourceDependencySupplementalNotice,
@@ -100,6 +101,7 @@ export function generateSourceDependencyBom(
     supplementalNotices: [
       CRAFT_AGENTS_OAUTH_NOTICE,
       MODELS_DEV_CATALOG_NOTICE,
+      FLUENT_SYSTEM_ICONS_NOTICE,
       napiCanvasNativeNotice,
     ],
     unknownLicenseEvidence: ROOT_DEPENDENCY_LICENSE_EVIDENCE,

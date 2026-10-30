@@ -21,7 +21,7 @@
         >
           <template #primary-content>
             <span v-if="!isGenerating" class="btn-content">
-              <AiIcon class="btn-icon" />
+              <LinnyaIcon class="btn-icon" />
               <span>{{ layoutMessage('layout.projectSetup.generate') }}</span>
             </span>
             <span v-else class="btn-content">
@@ -86,7 +86,7 @@ import { useChatFlowOrchestrator } from '@/domains/conversation/services/orchest
 import ConversationHost from '@/domains/conversation/ui/ConversationHost.vue';
 import AiAssistantInput from '@/domains/conversation/ui/AiAssistantInput.vue';
 import { ActionButtons } from '@linnya/renderer-ui';
-import { AiIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaIcon } from '@linnya/renderer-ui/icons';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { PROJECT_PLANNING_PROMPT_KEY } from '@app/schemas';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';

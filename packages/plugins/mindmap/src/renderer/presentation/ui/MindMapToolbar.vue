@@ -24,7 +24,7 @@
         class="mindmap-toolbar-button"
         @click="handleInitSide"
       >
-        <AlignIcon class="icon" alignment="center" />
+        <TextAlignIcon class="icon" alignment="center" />
       </button>
     </div> -->
 
@@ -85,7 +85,7 @@ import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useMindMapStore } from '../../domain/store/mindmapStore';
 import {
-  AlignIcon,
+  TextAlignIcon,
   FullscreenIcon,
   HomeIcon,
   MoveIcon,

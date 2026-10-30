@@ -136,6 +136,8 @@
   width: 14px; /* Slightly smaller icon for more compact look */
   height: 14px;
   flex-shrink: 0;
+  /* 品牌色实底按钮上，Linnya 标识跟随按钮文字改为白色 */
+  color: currentColor;
 }
 
 .project-setup-view .btn-spinner {

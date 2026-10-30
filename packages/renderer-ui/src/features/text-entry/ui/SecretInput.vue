@@ -22,14 +22,14 @@
       :title="visibilityLabel"
       @click="toggleVisibility"
     >
-      <SecretVisibilityIcon :visible="visible" />
+      <EyeIcon :visible="visible" />
     </button>
   </span>
 </template>
 
 <script setup lang="ts">
 import { computed, normalizeClass, normalizeStyle, ref, useAttrs } from 'vue';
-import { SecretVisibilityIcon } from '@linnya/renderer-ui/icons';
+import { EyeIcon } from '@linnya/renderer-ui/icons';
 import { useSharedComponentLocalization } from '@linnya/renderer-ui/localization';
 
 defineOptions({

@@ -237,7 +237,7 @@
   justify-content: center;
   padding: 0;
   cursor: pointer;
-  /* 默认可见（显示 ResearchIcon），但不可点击；hover 才允许点击关闭 */
+  /* 默认可见（显示 MicroscopeIcon），但不可点击；hover 才允许点击关闭 */
   opacity: 1;
   pointer-events: none;
   transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
@@ -266,7 +266,7 @@
   height: 14px;
 }
 
-/* 右侧图标：默认显示 ResearchIcon，hover 切换为 CloseIcon */
+/* 右侧图标：默认显示 MicroscopeIcon，hover 切换为 CloseIcon */
 .ai-assistant-input-footer .agent-choice-trigger-icon {
   /* 两个图标叠放，通过 opacity 做快速过渡（避免 display 切换导致“闪现”） */
   position: absolute;

@@ -10,7 +10,7 @@ import { defineAsyncComponent } from 'vue';
 import type { ToolUiConfig } from '../types';
 import { ImageIcon } from '@linnya/renderer-ui/icons';
 import { ReadIcon } from '@linnya/renderer-ui/icons';
-import { ListIcon } from '@linnya/renderer-ui/icons';
+import { BulletListIcon } from '@linnya/renderer-ui/icons';
 import { EditIcon } from '@linnya/renderer-ui/icons';
 import { SearchIcon } from '@linnya/renderer-ui/icons';
 import { projectTaskStatePresentation } from '../taskstate/functions/projectTaskStatePresentation';
@@ -108,7 +108,7 @@ const ImageReadCard = defineAsyncComponent(
 const subagentToolUiConfig: ToolUiConfig = {
   component: SubrunProgressCard,
   titleComponent: SubrunCompactStepTitle,
-  icon: ListIcon,
+  icon: BulletListIcon,
   presentation: projectSingleSubrunPresentation,
   compactStep: compactStep.subrun,
   runtime: { subrunTrace: true },
@@ -214,7 +214,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   // ---------------------------------------------------------------------------
   'list_files': {
     component: NoopToolContent,
-    icon: ListIcon,
+    icon: BulletListIcon,
     presentation: projectWorkspaceListFilesPresentation,
     compactStep: compactStep.listFiles,
     layout: { fullWidth: true, hideContent: true },
@@ -246,7 +246,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   // ---------------------------------------------------------------------------
   'assemble_evidence': {
     component: NoopToolContent,
-    icon: ListIcon,
+    icon: BulletListIcon,
     // 只读历史事件；backend 不再注册同名 executable tool。
     presentation: projectHistoricalAssembleEvidencePresentation,
     compactStep: compactStep.assemble,
@@ -254,7 +254,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'assemble_documents': {
     component: NoopToolContent,
-    icon: ListIcon,
+    icon: BulletListIcon,
     presentation: projectEvidenceHeaderPresentation,
     compactStep: compactStep.assemble,
     layout: { fullWidth: true, hideContent: true },
@@ -272,7 +272,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   // ---------------------------------------------------------------------------
   'sharedmemory_list': {
     component: SharedMemoryDocListCard,
-    icon: ListIcon,
+    icon: BulletListIcon,
     presentation: projectSharedMemoryListPresentation,
     compactStep: compactStep.sharedMemoryList,
     layout: { fullWidth: true, hideContent: true },
@@ -330,14 +330,14 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   // ---------------------------------------------------------------------------
   'todo_read': {
     component: AgentTodoCard,
-    icon: ListIcon,
+    icon: BulletListIcon,
     presentation: projectAgentTodoPresentation,
     compactStep: compactStep.todoRead,
     layout: { fullWidth: true, defaultCollapsed: true },
   },
   'todo_write': {
     component: AgentTodoCard,
-    icon: ListIcon,
+    icon: BulletListIcon,
     presentation: projectAgentTodoPresentation,
     compactStep: compactStep.todoWrite,
     layout: { fullWidth: true, defaultCollapsed: false },

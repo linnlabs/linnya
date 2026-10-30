@@ -16,8 +16,7 @@
     
     <div class="player-controls">
       <button class="play-button" @click="togglePlay">
-        <PlayIcon v-if="!isPlaying" class="play-icon" />
-        <PauseIcon v-else class="pause-icon" />
+        <PlayPauseIcon :playing="isPlaying" class="play-pause-icon" />
       </button>
       
       <div class="time-display">{{ currentTimeFormatted }} / {{ durationFormatted }}</div>
@@ -53,8 +52,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useNotificationStore } from '@/app/notification';
 import { useAudioRuntimeStore } from '../store/index.js';
 import { formatDuration } from '@/shared/utils/dateFormatter.js';
-import { PlayIcon } from '@linnya/renderer-ui/icons';
-import { PauseIcon } from '@linnya/renderer-ui/icons';
+import { PlayPauseIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
 
 // 导入子组件

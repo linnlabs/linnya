@@ -37,7 +37,7 @@
       @click="handleAcceptAll"
       :title="editorMessage('editor.revision.toolbar.acceptAllTitle')"
     >
-      <OkIcon class="btn-icon" />
+      <CheckmarkIcon class="btn-icon" />
       <span class="btn-text">{{ editorMessage('editor.revision.action.accept') }}</span>
     </button>
   </FloatingToolbar>
@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
 import { FloatingToolbar } from '@linnya/renderer-ui';
-import { OkIcon } from '@linnya/renderer-ui/icons';
+import { CheckmarkIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
 

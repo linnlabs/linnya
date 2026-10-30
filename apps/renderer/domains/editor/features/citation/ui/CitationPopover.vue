@@ -73,10 +73,10 @@
             :title="editorMessage('editor.citation.popover.jumpToSourceTitle')"
             @click="handleJumpToSource"
           >
-            <template #icon><SourceIcon /></template>
+            <template #icon><ExternalLinkIcon /></template>
             <!--
               中文说明：
-              - "查看来源"按钮统一使用 Renderer UI 包的 SourceIcon
+              - "查看来源"按钮统一使用 Renderer UI 包的 ExternalLinkIcon
               - 避免每个地方各自内联一份 SVG，后续主题/尺寸统一更容易维护
             -->
             <span>{{ editorMessage('editor.citation.popover.viewSource') }}</span>
@@ -89,7 +89,7 @@
             :title="editorMessage('editor.citation.popover.openUrlTitle')"
             @click="handleOpenUrl"
           >
-            <template #icon><SourceIcon /></template>
+            <template #icon><ExternalLinkIcon /></template>
             <span>{{ editorMessage('editor.citation.popover.openLink') }}</span>
           </BaseButton>
 
@@ -119,7 +119,7 @@ import { BaseButton } from '@linnya/renderer-ui';
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import type { CitationSourceType } from '../types'
 import { EditIcon } from '@linnya/renderer-ui/icons';
-import { SourceIcon } from '@linnya/renderer-ui/icons';
+import { ExternalLinkIcon } from '@linnya/renderer-ui/icons';
 import { openExternalUrl } from '@/shared/utils/openExternalUrl'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
 import {

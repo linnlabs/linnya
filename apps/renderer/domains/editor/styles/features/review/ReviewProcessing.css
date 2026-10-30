@@ -18,14 +18,10 @@
 }
 
 .review-processing-view .loading-icon {
-  /* 这里仅影响审阅处理页：RippleLoadingIcon 组件默认 18x18，此处之前放大到 32x32 视觉偏大。 */
-  width: 22px;
-  height: 22px;
+  /* 标题上方单独居中的加载位：品牌标识用 28px，比行内 18px 大一档。 */
+  width: 28px;
+  height: 28px;
   margin-bottom: var(--space-3);
-}
-
-.review-processing-view .loading-icon g {
-  stroke-width: 1.5;
 }
 
 .review-processing-view h3 {

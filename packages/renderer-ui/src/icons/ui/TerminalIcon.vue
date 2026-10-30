@@ -1,25 +1,22 @@
-<!-- 命令执行、终端窗口等场景使用的终端图标。 -->
+<!--
+ * packages/renderer-ui/src/icons/ui/TerminalIcon.vue
+ * “终端”图标组件。
+-->
 <template>
   <svg
+    class="linnya-ui-icon"
+    data-icon="terminal"
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
     aria-hidden="true"
     focusable="false"
   >
-    <path
-      d="M16.47,5H7.53c-1.4,0-2.53,1.13-2.53,2.53v8.94c0,1.4,1.13,2.53,2.53,2.53h8.94c1.4,0,2.53-1.13,2.53-2.53V7.53c0-1.4-1.13-2.53-2.53-2.53ZM17.83,16.47c0,.75-.61,1.36-1.36,1.36H7.53c-.75,0-1.36-.61-1.36-1.36V7.53c0-.75.61-1.36,1.36-1.36h8.94c.75,0,1.36.61,1.36,1.36v8.94Z"
-      fill="currentColor"
-      stroke-width="0"
-    />
-    <path
-      d="M7.52,9.88c-.24-.22-.25-.59-.03-.82.22-.24.59-.25.82-.03.01,0,.02.02.03.03l2.53,2.53c.23.23.23.6,0,.82l-2.53,2.53c-.22.24-.59.25-.82.03-.24-.22-.25-.59-.03-.82,0-.01.02-.02.03-.03l2.12-2.12-2.12-2.12h0Z"
-      fill="currentColor"
-      stroke-width="0"
-    />
-    <path
-      d="M16.22,14.13h-3.89c-.28,0-.5.22-.5.5s.22.5.5.5h3.89c.28,0,.5-.22.5-.5s-.22-.5-.5-.5Z"
-      fill="currentColor"
-      stroke-width="0"
-    />
+    <rect x="5.5" y="5.5" width="13" height="13" rx="2"/>
+    <path d="M8 9.5l2.5 2.5L8 14.5M12.5 14.5H16"/>
   </svg>
 </template>

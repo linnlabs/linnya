@@ -18,7 +18,7 @@
           class="row-action-button"
           @click="$emit('open', project.id)"
         >
-          <OpenIcon />
+          <FolderOpenIcon />
         </IconButton>
         <IconButton
           :label="workspaceMessage('workspace.sidebar.project.moreOptions')"
@@ -82,7 +82,7 @@
 import { computed, ref, watch } from 'vue';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
-import { OpenIcon } from '@linnya/renderer-ui/icons';
+import { FolderOpenIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect, IconButton, type IconButtonExposed } from '@linnya/renderer-ui';
 import SidebarChatList from '@/domains/conversation/ui/SidebarChatList.vue';
 import type { Project } from '@/domains/workspace/store';

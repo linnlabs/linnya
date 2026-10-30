@@ -1,5 +1,6 @@
 @import './tokens.css';
 @import './icons.css';
+@import './icon-motion.css';
 @import './scroll/index.css';
 @import '../features/actions/styles/BaseButton.css';
 @import '../features/actions/styles/IconButton.css';

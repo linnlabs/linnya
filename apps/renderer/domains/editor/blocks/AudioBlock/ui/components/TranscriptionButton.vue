@@ -7,7 +7,7 @@
     :title="buttonTitle"
   >
     <div class="audio-transcription-icon-wrapper">
-      <RippleLoadingIcon v-if="transcriptionState === 'loading'" />
+      <LinnyaLoadingIcon v-if="transcriptionState === 'loading'" />
       <SpeechToTextIcon v-else class="transcription-icon" />
     </div>
   </button>
@@ -16,7 +16,7 @@
 <script setup>
 import { computed } from 'vue';
 import { SpeechToTextIcon } from '@linnya/renderer-ui/icons';
-import { RippleLoadingIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';
 import { resolveAudioBlockTranscriptionButtonTitle } from '../../functions/audioBlockPresentation';
 

@@ -95,7 +95,7 @@
                 :label="editorMessage('editor.imageBlock.align.left')"
                 @click.stop.prevent="setAlignment('left')"
               >
-                <AlignIcon alignment="left" />
+                <TextAlignIcon alignment="left" />
               </IconButton>
               <IconButton
                 variant="overlay"
@@ -104,7 +104,7 @@
                 :label="editorMessage('editor.imageBlock.align.center')"
                 @click.stop.prevent="setAlignment('center')"
               >
-                <AlignIcon alignment="center" />
+                <TextAlignIcon alignment="center" />
               </IconButton>
               <IconButton
                 variant="overlay"
@@ -113,7 +113,7 @@
                 :label="editorMessage('editor.imageBlock.align.right')"
                 @click.stop.prevent="setAlignment('right')"
               >
-                <AlignIcon alignment="right" />
+                <TextAlignIcon alignment="right" />
               </IconButton>
             </div>
           </template>
@@ -167,7 +167,7 @@ import ImageResizePanel from './ImageResizePanel.vue';
 import { IconButton, ImagePreviewModal } from '@linnya/renderer-ui';
 import { ZoomInIcon } from '@linnya/renderer-ui/icons';
 import { ResizeIcon } from '@linnya/renderer-ui/icons';
-import { AlignIcon } from '@linnya/renderer-ui/icons';
+import { TextAlignIcon } from '@linnya/renderer-ui/icons';
 import { EditIcon } from '@linnya/renderer-ui/icons';
 import { FigureCaption, FigureCaptionField, commitFigureCaptionAttributes } from '../../../features/figure-caption';
 import { useRevisionStore } from '../../../features/Revision/useRevisionStore';

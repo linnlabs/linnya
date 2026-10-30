@@ -1,42 +1,39 @@
 <!--
  * packages/renderer-ui/src/icons/ui/SpeechToTextIcon.vue
- * "语音转文字"图标组件（文档+麦克风）
+ * “语音转文字”图标组件。
 -->
 <template>
   <svg
+    class="linnya-ui-icon"
+    data-icon="speech-to-text"
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
   >
-    <path
-      d="M19.77,14.68c-.22,0-.39.18-.39.39,0,1.37-1.23,2.35-2.75,2.35-.58,0-1.11-.14-1.55-.39-.48-.27-.86-.68-1.05-1.18-.1-.25-.15-.52-.15-.78,0-.22-.18-.39-.39-.39s-.39.18-.39.39c0,.27.04.53.12.78.13.43.37.83.68,1.18.57.62,1.4,1.05,2.34,1.16v.81c0,.22.18.39.39.39s.39-.18.39-.39v-.81c1.76-.2,3.14-1.55,3.14-3.12,0-.22-.18-.39-.39-.39Z"
-      fill="currentColor"
-      stroke-width="0"
-    />
-    <path
-      d="M19.25,11.5v-4.87c0-1.11-.91-2.02-2.02-2.02H5.85c-1.11,0-2.02.91-2.02,2.02v8.24c0,1.11.91,2.02,2.02,2.02h6.82c-.16-.28-.28-.59-.37-.9h-6.45c-.62,0-1.12-.5-1.12-1.12V6.64c0-.62.5-1.12,1.12-1.12h11.37c.62,0,1.12.5,1.12,1.12v3.75c.39.29.7.67.9,1.11Z"
-      fill="currentColor"
-      stroke-width="0"
-    />
-    <path
-      d="M16.64,10.76c-1.18,0-1.96.98-1.96,1.96v1.96c0,.42.14.84.4,1.18.37.5.95.79,1.56.78,1.18,0,1.96-.98,1.96-1.96v-1.96c0-.41-.14-.83-.39-1.17-.34-.46-.89-.79-1.57-.79Z"
-      fill="currentColor"
-      stroke-width="0"
-    />
-    <path
-      d="M11.74,13.4c.27,0,.49-.22.49-.49s-.22-.49-.49-.49h-4.31c-.27,0-.49.22-.49.49s.22.49.49.49h4.31Z"
-      fill="currentColor"
-      stroke-width="0"
-    />
-    <path
-      d="M12.52,10.07h-5.1c-.27,0-.49.22-.49.49s.22.49.49.49h5.1c.27,0,.49-.22.49-.49s-.22-.49-.49-.49Z"
-      fill="currentColor"
-      stroke-width="0"
-    />
-    <path
-      d="M7.42,7.72c-.27,0-.49.22-.49.49s.22.49.49.49h3.53c.27,0,.49-.22.49-.49s-.22-.49-.49-.49h-3.53Z"
-      fill="currentColor"
-      stroke-width="0"
-    />
+    <defs>
+      <mask :id="`${uid}-cut`" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+        <rect width="24" height="24" fill="white" stroke="none"/>
+        <rect x="15" y="11" width="4" height="6" rx="2" fill="black" stroke="black" stroke-width="2"/>
+        <path stroke="black" stroke-width="3" d="M13.5 15a3.5 3.5 0 0 0 7 0M17 18.5v1"/>
+      </mask>
+    </defs>
+    <g :mask="`url(#${uid}-cut)`">
+      <rect x="4.5" y="5.5" width="15" height="11" rx="2"/>
+      <path d="M7.5 8.5h4M7.5 11h6M7.5 13.5h4.5"/>
+    </g>
+    <rect x="15" y="11" width="4" height="6" rx="2" fill="currentColor" stroke="none"/>
+    <path d="M13.5 15a3.5 3.5 0 0 0 7 0M17 18.5v1"/>
   </svg>
 </template>
 
+<script setup lang="ts">
+import { useId } from 'vue';
+
+const uid = useId();
+</script>

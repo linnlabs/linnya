@@ -6,7 +6,7 @@
         class="ai-quote-button"
         @click="handleAiQuote"
       >
-        <AiIcon class="ai-icon" />
+        <LinnyaIcon class="ai-icon" />
         <span>{{ editorMessage('editor.floatingToolbar.aiReference') }}</span>
       </button>
     </ToolbarGroup>
@@ -160,7 +160,7 @@
 <script setup>
 import { BaseDropdown, DropdownPanel, ToolbarColorButton, ToolbarButton, ToolbarGroup } from '@linnya/renderer-ui';
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
-import { AiIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaIcon } from '@linnya/renderer-ui/icons';
 import { BoldIcon } from '@linnya/renderer-ui/icons';
 import { ItalicIcon } from '@linnya/renderer-ui/icons';
 import { StrikethroughIcon } from '@linnya/renderer-ui/icons';

@@ -38,7 +38,7 @@
             :title="editorMessage('editor.annotation.action.ai')"
             :aria-label="editorMessage('editor.annotation.action.ai')"
           >
-            <AiIcon />
+            <LinnyaIcon />
           </button>
           
           <!-- 编辑按钮 -->
@@ -64,7 +64,7 @@
               ? editorMessage('editor.annotation.action.reopen')
               : editorMessage('editor.annotation.action.resolveAria')"
           >
-            <OkIcon />
+            <CheckmarkIcon />
           </button>
           
           <!-- 删除按钮 -->
@@ -100,9 +100,9 @@
 import { computed } from 'vue';
 import { TagChip } from '@linnya/renderer-ui';
 import { AnnotationState } from '../commands/AnnoStateCommands';
-import { AiIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaIcon } from '@linnya/renderer-ui/icons';
 import { EditIcon } from '@linnya/renderer-ui/icons';
-import { OkIcon } from '@linnya/renderer-ui/icons';
+import { CheckmarkIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon as NoIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
 import {

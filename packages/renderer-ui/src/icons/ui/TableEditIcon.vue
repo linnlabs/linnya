@@ -1,17 +1,37 @@
-<!-- packages/renderer-ui/src/icons/ui/TableEditIcon.vue -->
-<!-- 该文件是"表格编辑"操作的SVG图标组件 -->
+<!--
+ * packages/renderer-ui/src/icons/ui/TableEditIcon.vue
+ * “编辑表格”图标组件。
+-->
 <template>
-  <svg class="shared-icon shared-icon--full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path d="M9,14h3.94l1.06-1.06v-3.94h3v1.23c.32-.14.66-.21,1-.23v-3.5c0-1.38-1.12-2.5-2.5-2.5H6.5c-1.38,0-2.5,1.12-2.5,2.5v9c0,1.38,1.12,2.5,2.5,2.5h3.72l.21-.85c.01-.05.03-.1.04-.15h-1.48v-3ZM14,5h1.65c.77.08,1.36.73,1.35,1.5v1.5h-3v-3ZM9,5h4v3h-4v-3ZM9,9h4v4h-4v-4ZM8,17h-1.64c-.77-.08-1.36-.73-1.36-1.5v-1.5h3v3ZM8,13h-3v-4h3v4ZM8,8h-3v-1.64c.08-.77.73-1.36,1.5-1.36h1.5v3Z" fill="currentColor" stroke-width="0"/>
-    <path d="M19.3,11.37c-.31-.31-.71-.48-1.15-.48-.43,0-.84.17-1.15.47l-5.45,5.46c-.11.13-.19.28-.23.45l-.63,2.33s0,.08.01.12c.02.09.08.16.16.21.05.03.11.04.17.04.03,0,.06,0,.09-.01l2.37-.65c.16-.06.3-.15.43-.27l5.46-5.46c.55-.64.52-1.61-.08-2.21ZM17.89,14.1l-4.45,4.45-.1.08s-.08.04-.12.05l-1.69.46.48-1.75c.03-.06.06-.12.11-.16l4.46-4.45,1.32,1.32ZM18.81,13.18l-.44.44-1.32-1.32.5-.49c.38-.31.92-.28,1.26.06l.06.06c.31.38.29.92-.06,1.26Z" fill="currentColor" stroke-width="0"/>
+  <svg
+    class="shared-icon shared-icon--full linnya-ui-icon"
+    data-icon="table-edit"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <defs>
+      <mask :id="`${uid}-cut`" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+        <rect width="24" height="24" fill="white" stroke="none"/>
+        <path fill="black" stroke="black" stroke-width="2" d="M17.8 12.55l-4.82 4.83a2 2 0 0 0-.58 1.02l-.37 1.5a.9.9 0 0 0 1.08 1.07l1.5-.37q.58-.16 1.01-.58l4.83-4.83a1.87 1.87 0 0 0-2.64-2.64z"/>
+      </mask>
+    </defs>
+    <g :mask="`url(#${uid}-cut)`">
+      <rect x="5.5" y="5.5" width="13" height="13" rx="2"/>
+      <path d="M9.5 5.5v13M14.5 5.5v13M5.5 9.5h13M5.5 14.5h13"/>
+    </g>
+    <path fill="currentColor" stroke="none" d="M17.8 12.55l-4.82 4.83a2 2 0 0 0-.58 1.02l-.37 1.5a.9.9 0 0 0 1.08 1.07l1.5-.37q.58-.16 1.01-.58l4.83-4.83a1.87 1.87 0 0 0-2.64-2.64z"/>
   </svg>
 </template>
 
 <script setup lang="ts">
-/**
- * 功能 (What): 表格编辑图标组件，展示一个表格和编辑笔的组合图标
- * 输入 (Input): 无props
- * 输出 (Output): 渲染一个SVG图标
- * 副作用 (Side-effects): 无
- */
+import { useId } from 'vue';
+
+const uid = useId();
 </script>

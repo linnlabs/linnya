@@ -99,7 +99,7 @@
             aria-label="缩小"
             @click="adjustZoom(-ZOOM_PERCENT_STEP)"
           >
-            <MinusIcon class="stage-zoom-slider__icon" />
+            <SubtractIcon class="stage-zoom-slider__icon" />
           </button>
           <CustomSlider
             class="stage-zoom-slider__input"
@@ -161,7 +161,7 @@ import { useSlidesUiStore } from '../../store/slidesUiStore';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import {
   AddIcon,
-  MinusIcon,
+  SubtractIcon,
 } from '@linnya/renderer-ui/icons';
 import SlideStage from '../preview/SlideStage.vue';
 import SlidesStatusState from '../shared/SlidesStatusState.vue';

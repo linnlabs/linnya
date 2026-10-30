@@ -2,6 +2,66 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.0.0 - 2026-10-30
+
+- `/icons` 全部图标改为同一套 24 画布、1u 描边的母版生成：几何以 Fluent System Icons 20 Regular（MIT）为基准，按统一的关键形、圆角、像素对齐与修饰角标规则重绘；带角标的图标改为实心角标并在角标外 1u 截断主体。所有图标根节点新增 `linnya-ui-icon` class 与 `data-icon`，原有根 class 保留。
+- 图标改按图形起名，方向、对齐、状态改用属性表达；逐像素相同的图标合并。删除与改名都是不兼容变化，插件需按下表迁移并把 `compat.rendererUi` 升到 `^3.0.0`。
+- 新增 `UndoIcon`、`RedoIcon`、`PasteIcon`、`DuplicateIcon`、`TextIcon`、`RectangleIcon`、`EllipseIcon`、`AlignObjectsIcon`、`DistributeIcon`、`ArrangeIcon`、`BringToFrontIcon`、`SendToBackIcon`、`FontSizeIcon`、`TextBoxAlignIcon`、`PlayPauseIcon`、`LinnyaLoadingIcon`。
+- `LinnyaIcon` 由同一图标库生成，`variant` 与 1em 尺寸不变；它同时作为 AI 入口图标，取代原来的 `AiIcon`。品牌色实底按钮里由调用方把颜色改为按钮文字色。
+- `LinnyaLoadingIcon` 取代涟漪加载：`activity` 为 `processing`（默认，光流）、`thinking`（摇曳）或 `generating`（生长），保留 `color` 属性，默认 18×18。
+- `/styles.css` 新增图标动效样式：方向箭头旋转、复制对勾、显示 / 隐藏、播放 / 暂停替换、刷新与加载旋转、Linnya 进行中三种动态；只引用 motion token，减少动态效果时停在静态图形。
+- 2.6.0 记录的 `--spacing-*` / `--transition-*` 兼容别名本版仍保留，删除顺延到之后的 major。
+
+改名：
+
+| 旧组件 | 新组件 |
+| --- | --- |
+| `AddCommentIcon` | `CommentAddIcon` |
+| `AlignIcon` | `TextAlignIcon` |
+| `ChecklistIcon` | `ArchiveCheckmarkIcon` |
+| `DocumentRightIcon` | `DocumentArrowIcon` |
+| `EditFileIcon` | `DocumentEditIcon` |
+| `EnterLeftIcon` | `EnterIcon` |
+| `EvidenceIcon` | `BookIcon` |
+| `ExportDocxIcon` | `DocumentDocxIcon` |
+| `ExportPdfIcon` | `DocumentPdfIcon` |
+| `ExportTxtIcon` | `DocumentTxtIcon` |
+| `KnowledgeBaseIcon` | `LibraryIcon` |
+| `ListItemIcon` | `BulletListIcon` |
+| `MinusIcon` | `SubtractIcon` |
+| `NewFileIcon` | `DocumentAddIcon` |
+| `NewFolderIcon` | `FolderAddIcon` |
+| `OkIcon` | `CheckmarkIcon` |
+| `OpenIcon` | `FolderOpenIcon` |
+| `ResearchIcon` | `MicroscopeIcon` |
+| `ReviewIcon` | `DocumentPersonIcon` |
+| `SecretVisibilityIcon` | `EyeIcon` |
+| `SolvedCommentIcon` | `CommentCheckmarkIcon` |
+| `SourceIcon` | `ExternalLinkIcon` |
+| `TimeIcon` | `ClockIcon` |
+| `UnsupportedDocumentIcon` | `DocumentErrorIcon` |
+
+删除：
+
+| 删除的组件 | 改用 |
+| --- | --- |
+| `AiIcon` | `<LinnyaIcon />（AI 入口；品牌色底上由调用方改白）` |
+| `AlignBottomIcon` | `<TextBoxAlignIcon alignment="bottom" />` |
+| `AlignMiddleIcon` | `<TextBoxAlignIcon alignment="middle" />` |
+| `AudioIcon` | `<SpeechToTextIcon />` |
+| `BackgroundColorIcon` | （无替代；`ToolbarColorButton` 自带背景色入口） |
+| `ChevronRightIcon` | `<ChevronIcon direction="right" />` |
+| `FontSizeDecreaseIcon` | `<FontSizeIcon direction="decrease" />` |
+| `FontSizeIncreaseIcon` | `<FontSizeIcon direction="increase" />` |
+| `ListIcon` | `<BulletListIcon />（原三条线与左对齐几乎相同，改用带圆点的列表）` |
+| `OutlineIcon` | `<BulletListIcon />` |
+| `PauseIcon` | `<PlayPauseIcon :playing="true" />` |
+| `PlayIcon` | `<PlayPauseIcon :playing="false" />` |
+| `PlusCircleIcon` | `<AddCircleIcon />` |
+| `RippleLoadingIcon` | `<LinnyaLoadingIcon />（旧的 color 属性保留；对话等待处改 activity="thinking"）` |
+| `TextColorIcon` | （无替代；`ToolbarColorButton` 自带文字颜色入口） |
+| `WindowMaxRestoreIcon` | `<WindowActionIcon action="maximize" :is-maximized="…" />` |
+
 ## 2.7.0 - 2026-10-27
 
 - `Modal` 新增可选的 `title-extra` 插槽，用于标题旁的来源或状态标签；标题字阶、间距、长标题换行与关闭入口仍由共享组件拥有。

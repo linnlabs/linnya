@@ -109,7 +109,7 @@
           @primary-click="handleAiCreate"
         >
           <template #primary-content>
-            <AiIcon class="ai-icon" />
+            <LinnyaIcon class="ai-icon" />
             <span>{{ workspaceMessage('workspace.project.modal.aiCreate') }}</span>
           </template>
         </ActionButtons>
@@ -128,7 +128,7 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { ActionButtons, applyTextareaAutoResize, CustomSelect, IconButton, Modal, TagChip } from '@linnya/renderer-ui';
-import { AiIcon } from '@linnya/renderer-ui/icons';
+import { LinnyaIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase';

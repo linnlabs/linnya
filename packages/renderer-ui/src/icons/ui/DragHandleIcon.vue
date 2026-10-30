@@ -1,14 +1,28 @@
 <!--
  * packages/renderer-ui/src/icons/ui/DragHandleIcon.vue
- * @description 拖拽手柄的SVG图标。
+ * “拖动手柄”图标组件。
 -->
 <template>
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-    <path d="M8.02,9.84c-1.01.03-1.82.84-1.85,1.85-.03,1.05.8,1.92,1.85,1.95.04,0,.07,0,.11,0,1.05-.03,1.88-.9,1.85-1.95-.03-1.05-.9-1.88-1.95-1.85Z" fill="currentColor" stroke-width="0"/>
-    <path d="M8.02,2.24c-1.01.03-1.82.84-1.85,1.85-.03,1.05.8,1.92,1.85,1.95.04,0,.07,0,.11,0,1.05-.03,1.88-.9,1.85-1.95-.03-1.05-.9-1.88-1.95-1.85Z" fill="currentColor" stroke-width="0"/>
-    <path d="M8.02,17.44c-1.01.03-1.82.84-1.85,1.85-.03,1.05.8,1.92,1.85,1.95.04,0,.07,0,.11,0,1.05-.03,1.88-.9,1.85-1.95-.03-1.05-.9-1.88-1.95-1.85Z" fill="currentColor" stroke-width="0"/>
-    <path d="M15.62,9.84c-1.01.03-1.82.84-1.85,1.85-.03,1.05.8,1.92,1.85,1.95.04,0,.07,0,.11,0,1.05-.03,1.88-.9,1.85-1.95-.03-1.05-.9-1.88-1.95-1.85Z" fill="currentColor" stroke-width="0"/>
-    <path d="M15.62,6.06s.07,0,.11,0c1.05-.03,1.88-.9,1.85-1.95-.03-1.05-.9-1.88-1.95-1.85-1.01.03-1.82.84-1.85,1.85-.03,1.05.8,1.92,1.85,1.95Z" fill="currentColor" stroke-width="0"/>
-    <path d="M15.62,17.44c-1.01.03-1.82.84-1.85,1.85-.03,1.05.8,1.92,1.85,1.95.04,0,.07,0,.11,0,1.05-.03,1.88-.9,1.85-1.95-.03-1.05-.9-1.88-1.95-1.85Z" fill="currentColor" stroke-width="0"/>
+  <svg
+    class="linnya-ui-icon"
+    data-icon="drag-handle"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <g fill="currentColor" stroke="none">
+      <circle cx="9" cy="6" r="1"/>
+      <circle cx="15" cy="6" r="1"/>
+      <circle cx="9" cy="12" r="1"/>
+      <circle cx="15" cy="12" r="1"/>
+      <circle cx="9" cy="18" r="1"/>
+      <circle cx="15" cy="18" r="1"/>
+    </g>
   </svg>
-</template> 
+</template>

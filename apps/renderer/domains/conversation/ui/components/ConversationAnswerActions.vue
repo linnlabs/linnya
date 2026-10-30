@@ -20,7 +20,7 @@
         class="answer-action-icon save-action-icon"
         :hidden="showSavedText"
       >
-        <DocumentRightIcon />
+        <DocumentArrowIcon />
       </span>
       <span
         class="action-text"
@@ -54,7 +54,7 @@
 
 <script setup lang="ts">
 import { CopyIcon } from '@linnya/renderer-ui/icons';
-import { DocumentRightIcon } from '@linnya/renderer-ui/icons';
+import { DocumentArrowIcon } from '@linnya/renderer-ui/icons';
 
 withDefaults(defineProps<{
   variant: 'card' | 'turn';

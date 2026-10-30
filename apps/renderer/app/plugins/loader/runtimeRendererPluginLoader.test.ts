@@ -123,7 +123,7 @@ describe('runtime renderer plugin loader', () => {
         data: [{
           pluginId: 'runtime-loader-test',
           version: '1.0.0',
-          rendererUiRange: '^2.0.0',
+          rendererUiRange: '^3.0.0',
           entryUrl: 'plugin://runtime-loader-test/dist/renderer/index.js',
           cssUrls: [
             'plugin://runtime-loader-test/dist/renderer/assets/style.css',
@@ -141,7 +141,7 @@ describe('runtime renderer plugin loader', () => {
         data: [{
           pluginId: 'runtime-loader-test',
           version: '1.0.0',
-          rendererUiRange: '^2.0.0',
+          rendererUiRange: '^3.0.0',
           entryUrl: 'plugin://runtime-loader-test/dist/renderer/index.js',
           cssUrls: [
             'plugin://runtime-loader-test/dist/renderer/assets/style.css',
@@ -191,7 +191,7 @@ describe('runtime renderer plugin loader', () => {
         data: [{
           pluginId: 'runtime-loader-serialized-test',
           version: '1.0.0',
-          rendererUiRange: '^2.0.0',
+          rendererUiRange: '^3.0.0',
           entryUrl: 'plugin://runtime-loader-serialized-test/dist/renderer/index.js',
           cssUrls: [],
         }],
@@ -250,7 +250,7 @@ describe('runtime renderer plugin loader', () => {
         data: [{
           pluginId: 'runtime-loader-settings-test',
           version: '1.0.0',
-          rendererUiRange: '^2.0.0',
+          rendererUiRange: '^3.0.0',
           entryUrl: 'plugin://runtime-loader-settings-test/dist/renderer/index.js',
           cssUrls: [],
         }],
@@ -296,7 +296,7 @@ describe('runtime renderer plugin loader', () => {
         data: [{
           pluginId: 'runtime-loader-registered-test',
           version: '1.0.0',
-          rendererUiRange: '^2.0.0',
+          rendererUiRange: '^3.0.0',
           entryUrl: 'plugin://runtime-loader-registered-test/dist/renderer/index.js',
           cssUrls: ['plugin://runtime-loader-registered-test/dist/renderer/assets/style.css'],
         }],
@@ -332,7 +332,7 @@ describe('runtime renderer plugin loader', () => {
         data: [{
           pluginId: 'runtime-loader-builtin-style-test',
           version: '1.0.0',
-          rendererUiRange: '^2.0.0',
+          rendererUiRange: '^3.0.0',
           entryUrl: 'plugin://runtime-loader-builtin-style-test/dist/renderer/index.js',
           cssUrls: [],
         }],
@@ -370,7 +370,7 @@ describe('runtime renderer plugin loader', () => {
         data: [{
           pluginId: 'runtime-loader-toggle-test',
           version: '1.0.0',
-          rendererUiRange: '^2.0.0',
+          rendererUiRange: '^3.0.0',
           entryUrl: 'plugin://runtime-loader-toggle-test/dist/renderer/index.js',
           cssUrls: ['plugin://runtime-loader-toggle-test/dist/renderer/assets/style.css'],
         }],
@@ -446,7 +446,7 @@ describe('runtime renderer plugin loader', () => {
         data: [{
           pluginId: 'runtime-loader-port-test',
           version: '1.0.0',
-          rendererUiRange: '^2.0.0',
+          rendererUiRange: '^3.0.0',
           entryUrl: 'plugin://runtime-loader-port-test/dist/renderer/index.js',
           cssUrls: ['plugin://runtime-loader-port-test/dist/renderer/assets/style.css'],
         }],
@@ -560,7 +560,7 @@ describe('runtime renderer plugin loader', () => {
           data: [{
             pluginId: 'runtime-loader-expected-plugin',
             version: '1.0.0',
-            rendererUiRange: '^2.0.0',
+            rendererUiRange: '^3.0.0',
             entryUrl: 'plugin://runtime-loader-expected-plugin/dist/renderer/index.js',
             cssUrls: ['plugin://runtime-loader-expected-plugin/dist/renderer/assets/style.css'],
           }],
@@ -621,7 +621,7 @@ describe('runtime renderer plugin loader', () => {
           data: [{
             pluginId: 'mindmap',
             version: '1.0.0',
-            rendererUiRange: '^2.0.0',
+            rendererUiRange: '^3.0.0',
             entryUrl: 'plugin://mindmap/dist/renderer/index.js',
             cssUrls: [],
           }],
@@ -675,7 +675,7 @@ describe('runtime renderer plugin loader', () => {
           data: [{
             pluginId: 'runtime-loader-bad-style-test',
             version: '1.0.0',
-            rendererUiRange: '^2.0.0',
+            rendererUiRange: '^3.0.0',
             entryUrl: 'plugin://runtime-loader-bad-style-test/dist/renderer/index.js',
             cssUrls: [],
           }],
@@ -707,7 +707,7 @@ describe('runtime renderer plugin loader', () => {
     const entry = {
       pluginId,
       version: '1.0.0',
-      rendererUiRange: '^2.0.0',
+      rendererUiRange: '^3.0.0',
       entryUrl: `plugin://${pluginId}/dist/renderer/index.js`,
       cssUrls: [],
     };
@@ -897,7 +897,7 @@ describe('runtime renderer plugin loader', () => {
           data: [{
             pluginId: 'runtime-loader-activate-fail-test',
             version: '1.0.0',
-            rendererUiRange: '^2.0.0',
+            rendererUiRange: '^3.0.0',
             entryUrl: 'plugin://runtime-loader-activate-fail-test/dist/renderer/index.js',
             cssUrls: ['plugin://runtime-loader-activate-fail-test/dist/renderer/assets/style.css'],
           }],

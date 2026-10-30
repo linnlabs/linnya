@@ -2,7 +2,7 @@ import type { RendererPluginContribution } from '../types';
 import { ConversationAgentIds } from '@app/schemas';
 import MarkdownDocumentSurface from './surfaces/MarkdownDocumentSurface.vue';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
-import { ResearchIcon } from '@linnya/renderer-ui/icons';
+import { MicroscopeIcon } from '@linnya/renderer-ui/icons';
 import { markdownHandler } from '@/domains/workspace/services/file-manager/handlers/markdown';
 import { commonToolConfigs } from '@/domains/conversation/ui/tools/configs/common';
 import { knowledgeBaseToolConfigs } from '@/domains/conversation/ui/tools/configs/knowledgeBase';
@@ -88,7 +88,7 @@ export const platformRendererPlugin: RendererPluginContribution = {
         key: 'plugins.contribution.agentChoice.deepResearch.ariaLabel',
         fallback: 'Investigate sources, independently review, and deliver an editable article.',
       },
-      iconComponent: ResearchIcon,
+      iconComponent: MicroscopeIcon,
     },
   ],
   toolCards: {

@@ -36,7 +36,7 @@
               :title="editorMessage('editor.aiWriting.submit')"
               :disabled="!inputText.trim()"
             >
-              <EnterLeftIcon />
+              <EnterIcon />
             </button>
           </div>
         </div>
@@ -50,7 +50,7 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, inject, toRef } from "
 import { useUIStore } from "../../../../../shared/stores/ui";
 import { TextSelection } from "prosemirror-state";
 import { CloseIcon } from '@linnya/renderer-ui/icons';
-import { EnterLeftIcon } from '@linnya/renderer-ui/icons';
+import { EnterIcon } from '@linnya/renderer-ui/icons';
 import { LinnyaIcon } from '@linnya/renderer-ui/icons';
 import { positionTextSelectionWithHandshake } from "../../RenderVirtualization";
 import { useAiWritingVirtualizationKeepAlive } from "./useAiWritingVirtualizationKeepAlive";

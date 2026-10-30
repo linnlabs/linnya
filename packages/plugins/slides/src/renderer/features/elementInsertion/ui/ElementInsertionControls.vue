@@ -33,10 +33,10 @@
 import { ref } from 'vue';
 import { ToolbarGroup, ToolbarButton } from '@linnya/renderer-ui';
 import { ImageIcon } from '@linnya/renderer-ui/icons';
-import { EllipseIcon, InsertTextIcon, RectangleIcon } from '../../../shared/icons';
+import { EllipseIcon, RectangleIcon, TextIcon } from '@linnya/renderer-ui/icons';
 import { useElementInsertion } from '../orchestration/useElementInsertion';
 const kinds = [
-  { kind: 'text', icon: InsertTextIcon },
+  { kind: 'text', icon: TextIcon },
   { kind: 'rect', icon: RectangleIcon },
   { kind: 'ellipse', icon: EllipseIcon },
 ] as const;

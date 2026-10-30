@@ -105,7 +105,7 @@
             <span class="ai-assistant-input__model-setup-label">
               {{ conversationMessage('conversation.input.model.configure') }}
             </span>
-            <ChevronRightIcon class="ai-assistant-input__model-setup-arrow" aria-hidden="true" />
+            <ChevronIcon direction="right" class="ai-assistant-input__model-setup-arrow" aria-hidden="true" />
           </span>
         </button>
 
@@ -157,7 +157,7 @@ import {
   resolveConversationAgentChoice,
   type ConversationAgentChoiceId,
 } from '../features/agent-choice';
-import { ChevronRightIcon } from '@linnya/renderer-ui/icons';
+import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import AiAssistantQuotePreview from './AiAssistantInput/AiAssistantQuotePreview.vue';
 import AiAssistantInputFooter from './AiAssistantInput/AiAssistantInputFooter.vue';
 import type { ConversationSurfaceVariant } from '../definitions/conversationPresentation';

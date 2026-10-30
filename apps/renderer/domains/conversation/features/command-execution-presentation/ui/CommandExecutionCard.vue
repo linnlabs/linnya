@@ -76,7 +76,7 @@
             :title="conversationMessage('conversation.tool.command.protectedInput.open')"
             @click="openProtectedInput"
           >
-            <SecretVisibilityIcon :visible="false" />
+            <EyeIcon :visible="false" />
             <span>{{ conversationMessage('conversation.tool.command.protectedInput.open') }}</span>
           </button>
         </div>
@@ -129,7 +129,7 @@ import PtyTerminalScreen from './PtyTerminalScreen.vue';
 import CommandProtectedInputDialog from './CommandProtectedInputDialog.vue';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import { CopyIcon } from '@linnya/renderer-ui/icons';
-import { SecretVisibilityIcon } from '@linnya/renderer-ui/icons';
+import { EyeIcon } from '@linnya/renderer-ui/icons';
 import { useCommandCardControlStore } from '../store/commandCardControlStore';
 import {
   cancelCommandFromCurrentCard,

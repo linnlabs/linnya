@@ -7,7 +7,7 @@
       :label="editorMessage('editor.audioBlock.action.transcribeAndCreate')"
       @click.stop="toggleMenu"
     >
-      <PlusCircleIcon />
+      <AddCircleIcon />
     </IconButton>
     
     <!-- 使用 Teleport 将菜单渲染到 body -->
@@ -34,7 +34,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
-import { PlusCircleIcon } from '@linnya/renderer-ui/icons';
+import { AddCircleIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect, IconButton } from '@linnya/renderer-ui';
 import { useCurrentBlockActivation } from '../../../../ui/composables/useCurrentBlockActivation';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';

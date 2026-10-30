@@ -3,7 +3,7 @@
     <div class="project-kb-header">
       <div class="header-text">
         <h2 class="header-title">
-          <KnowledgeBaseIcon class="header-title-icon" />
+          <LibraryIcon class="header-title-icon" />
           <span>{{ workspaceMessage('workspace.projectKb.title') }}</span>
         </h2>
         <p class="header-subtitle">
@@ -122,7 +122,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { ActionButtons, BaseButton, SkeletonRows } from '@linnya/renderer-ui';
-import { KnowledgeBaseIcon } from '@linnya/renderer-ui/icons';
+import { LibraryIcon } from '@linnya/renderer-ui/icons';
 import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase';
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';
 import { useNotificationStore } from '@/app/notification';
