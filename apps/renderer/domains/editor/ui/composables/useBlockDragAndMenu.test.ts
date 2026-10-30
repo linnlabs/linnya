@@ -95,6 +95,7 @@ function createMenuContext(editor: VueTiptapEditor): BlockMenuContext {
 
 afterEach(() => {
   blockActionMenuService.close();
+  vi.useRealTimers();
   clearAllProviders();
   vi.restoreAllMocks();
 
@@ -113,6 +114,30 @@ afterEach(() => {
 });
 
 describe('useBlockDragAndMenu', () => {
+  it('快速关闭菜单会取消待注册的外部监听，重新打开仍能点击外部关闭', async () => {
+    vi.useFakeTimers();
+    registerCommonMenuProvider({
+      name: 'listener-lifecycle-provider',
+      getItems: (): MenuItem[] => [{ id: 'duplicate', label: '创建副本' }],
+    });
+    const editor = createEditor();
+    const anchor = document.createElement('button');
+    const context = createMenuContext(editor);
+    await blockActionMenuService.open(context, anchor);
+    blockActionMenuService.close();
+    const addListener = vi.spyOn(document, 'addEventListener');
+
+    await vi.runOnlyPendingTimersAsync();
+    expect(addListener.mock.calls.filter(([type]) => (
+      type === 'click' || type === 'contextmenu'
+    ))).toEqual([]);
+
+    await blockActionMenuService.open(context, anchor);
+    await vi.runOnlyPendingTimersAsync();
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(blockActionMenuService.state.isOpen).toBe(false);
+  });
+
   it.each(['Enter', ' '])('块菜单按钮通过 %s 打开正确的菜单，保持编辑器原选区', async (key) => {
     registerCommonMenuProvider({
       name: 'keyboard-menu-provider',

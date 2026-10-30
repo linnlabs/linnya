@@ -74,6 +74,8 @@ function publishMenuPerf(sample: Omit<BlockActionMenuPerfSample, 'timestamp'>): 
  * 菜单服务类
  */
 class BlockActionMenuService {
+  private pendingOutsideListener: ReturnType<typeof setTimeout> | undefined;
+
   /**
    * 获取只读的菜单状态
    */
@@ -101,7 +103,6 @@ class BlockActionMenuService {
 
     // 如果没有菜单项，不打开
     if (items.length === 0) {
-      // @ts-ignore - import.meta.env 在构建时可用
       if (import.meta.env?.DEV) {
         console.warn('[BlockActionMenu] 没有可用的菜单项，取消打开');
       }
@@ -124,7 +125,8 @@ class BlockActionMenuService {
 
     // 添加全局点击监听（点击外部关闭）
     // 延迟添加，避免当前点击事件触发关闭
-    setTimeout(() => {
+    this.pendingOutsideListener = setTimeout(() => {
+      this.pendingOutsideListener = undefined;
       document.addEventListener('click', this.handleClickOutside, true);
       document.addEventListener('contextmenu', this.handleClickOutside, true);
     }, 100);
@@ -134,6 +136,11 @@ class BlockActionMenuService {
    * 关闭菜单
    */
   close(): void {
+    // 快速关闭时监听尚未注册；必须一起取消，不能在菜单销毁后留下全局监听。
+    if (this.pendingOutsideListener !== undefined) {
+      clearTimeout(this.pendingOutsideListener);
+      this.pendingOutsideListener = undefined;
+    }
     if (!state.isOpen) {
       return;
     }
