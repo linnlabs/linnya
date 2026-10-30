@@ -891,7 +891,13 @@ type SlidesAuthorTextStyle = LayoutTextStyleInput;
 type SlidesEditableTextContent = string | LayoutPlainTextRun[];
 
 type SlidesInsertedObject = SlidesInsertedObjectBase & (
-  | { readonly kind: 'text'; readonly content: SlidesEditableTextContent; readonly style: SlidesAuthorTextStyle }
+  | {
+    readonly kind: 'text';
+    readonly content: SlidesEditableTextContent;
+    readonly style: SlidesAuthorTextStyle;
+    /** content 的 box.h 仅用于插入占位；minimum 和历史未声明值保留最小高度。 */
+    readonly heightMode?: 'content' | 'minimum';
+  }
   | { readonly kind: 'shape'; readonly geometry: 'rect' | 'ellipse'; readonly fill: string; readonly content: SlidesEditableTextContent }
   | { readonly kind: 'image'; readonly assetId: string; readonly fit: 'contain' | 'cover'; readonly alt: string }
 );

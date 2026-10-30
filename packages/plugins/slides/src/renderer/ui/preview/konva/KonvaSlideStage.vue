@@ -25,6 +25,12 @@
         :manual-visual-previews="props.manualVisualPreviews"
       />
 
+      <PendingInsertionLayer
+        :insertions="props.pendingInsertions ?? []"
+        :logical-size="logicalSize"
+        :transform="contentTransform"
+      />
+
       <!-- Overlay 层：选中 / 诊断高亮（FE-K4 填充） -->
       <SlideOverlayLayer
         :transform="contentTransform"
@@ -58,6 +64,8 @@ import type {
 } from '../../../features/sourceSelection';
 import SlideBackgroundLayer from './layers/SlideBackgroundLayer.vue';
 import SlideContentLayer from './layers/SlideContentLayer.vue';
+import PendingInsertionLayer from './layers/PendingInsertionLayer.vue';
+import type { EditingInsertionPreview } from '../../../features/editingPreview';
 import SlideOverlayLayer from './layers/SlideOverlayLayer.vue';
 import type {
   ManualEditableTarget,
@@ -78,7 +86,7 @@ const props = defineProps<{
   manualSelectedTargets?: readonly ManualEditableTarget[];
   manualHoveredTarget?: { readonly elementId: string; readonly polygon: readonly { readonly x: number; readonly y: number }[] } | null;
   snapGuides?: readonly { readonly axis: 'x' | 'y'; readonly position: number; readonly from: number; readonly to: number }[];
-  pendingInsertions?: readonly { readonly editKey: string; readonly box: { readonly x: number; readonly y: number; readonly w: number; readonly h: number } }[];
+  pendingInsertions?: readonly EditingInsertionPreview[];
   hiddenTextElementIds?: ReadonlySet<string>;
   manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();

@@ -1,3 +1,4 @@
+import type { EditingPreviewProjector } from '../../editingPreview';
 import type { SlidesEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import type { Ref } from 'vue';
 import type { SlideRenderModel } from '../../../types/render';
@@ -29,6 +30,7 @@ export interface TextDraftPresentation {
 }
 
 export interface SlideEditingInteractionOptions {
+  readonly projectPreview?: EditingPreviewProjector;
   /** 当前正式画面是否仍可命中。提交中的旧画面也应允许用户表达下一次选择。 */
   readonly canSelect: Ref<boolean>;
   /** 当前文稿能否手动写入；不能时仍可选中对象交给 AI，但不移动、不删除、不进入文字输入。省略表示可写。 */

@@ -1,5 +1,5 @@
 import { copyManualObjects } from '../features/presentationManualEditing';
-import type { SlidesInsertedObject } from '@plugin/slides/shared/authoringEditing';
+import type { SlidesInsertedObject, SlidesImportedImage } from '@plugin/slides/shared/authoringEditing';
 import type { ViewReadRequest, ViewReadResponse } from '@plugin/slides/shared/presentationViewSnapshot';
 /**
  * PptCoordinator
@@ -85,7 +85,7 @@ function isConversationAwareImageSourceResolver(
 }
 
 export interface PptCoordinatorRuntimeOptions {
-  readonly importImage?: (documentId: string, bytes: Uint8Array) => Promise<string>;
+  readonly importImage?: (documentId: string, bytes: Uint8Array) => Promise<SlidesImportedImage>;
   readonly manualEditHistoryStore?: ManualEditHistoryStore;
   readonly history?: PresentationHistoryRuntime;
   readonly revisionScope?: PresentationRevisionScope;
@@ -105,7 +105,7 @@ export class PptCoordinator {
     if (!current || current.currentRevisionId !== input.revisionId) throw new Error('文稿已变化，请重新复制。');
     return copyManualObjects(current.deckSpec, input.targets);
   }
-  async importImage(documentId: string, bytes: Uint8Array): Promise<string> {
+  async importImage(documentId: string, bytes: Uint8Array): Promise<SlidesImportedImage> {
     if (!this.imageImporter) throw new Error('图片导入暂不可用。');
     return this.imageImporter(documentId, bytes);
   }

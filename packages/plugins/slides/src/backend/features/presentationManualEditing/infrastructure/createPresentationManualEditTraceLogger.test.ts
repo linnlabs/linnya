@@ -15,7 +15,7 @@ describe('createPresentationManualEditTraceLogger', () => {
       commandId: 'command-1',
       documentId: 'deck-1',
       stage: 'semantic_build_started',
-      path: 'projected_translation',
+      path: 'projected_edit',
     });
     now = 140;
     trace.record({

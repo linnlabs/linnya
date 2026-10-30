@@ -129,8 +129,9 @@
           :slide-left="currentLayout.slideLeft"
           :slide-top="currentLayout.slideTop"
           :render-scale="renderScale"
+          @preview="manualResizePreview = $event"
           @dragging="textWidthDragging = $event"
-          @submit="submitTextWidth"
+          @submit="manualSubmission.enqueue"
           @finish="scrollHostRef?.focus({ preventScroll: true })"
         />
       </div>
@@ -177,7 +178,7 @@
 </template>
 
 <script setup lang="ts">
-import { collectEditingPreviewGeometries } from '../../features/editingPreview';
+import { collectEditingPreviewGeometries, useSlideEditingPreview } from '../../features/editingPreview';
 import { ref, shallowRef, computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useSlideStageViewport } from '../../features/stageZoom';
@@ -222,11 +223,11 @@ import {
   projectElementPropertyTarget,
 } from '../../features/elementProperties';
 import type { ManualEditingVisualPreview } from '../../features/manualEditing';
-import type { SlidesManualEditCommandOperation } from '@plugin/slides/shared/authoringEditing';
 import { manualSelectionBounds } from '../../features/manualEditing';
 import { resolveLayerAvailability, useEditingCommands } from '../../features/editingCommands';
 import { useElementClipboard } from '../../features/elementClipboard';
 import { ImageEditingControls } from '../../features/imageEditing';
+import { unpresentedInsertions } from '../../features/editingPreview';
 
 const props = defineProps<{
   sourceEditBusy?: boolean;
@@ -246,8 +247,6 @@ const {
   enabled: manualEditingEnabled,
 } = storeToRefs(manualEditingStore);
 const allRenderSlides = computed(() => renderModel.value?.slides ?? []);
-const manualPendingInsertions = computed(() => manualEditingEnabled.value
-  ? manualEditingStore.pendingInsertions.filter(entry => entry.slideIndex === currentSlideRender.value?.index) : []);
 const {
   displayedSlide,
   imageResources,
@@ -258,6 +257,10 @@ const {
   targetSlide: currentSlideRender,
   allSlides: allRenderSlides,
 });
+const manualPendingInsertions = computed(() => manualEditingEnabled.value && displayedSlide.value
+  && displayedSlide.value.index === currentSlideRender.value?.index
+  ? unpresentedInsertions(manualEditingStore.pendingInsertions.filter(entry => entry.slideIndex === displayedSlide.value?.index), displayedSlide.value) : []);
+
 
 const renderSlideSize = computed(() => renderModel.value?.slideSize ?? null);
 const currentSlideKonvaCompatible = computed(() =>
@@ -340,11 +343,9 @@ const {
 });
 
 const manualResizePreview = shallowRef<ManualEditingVisualPreview | null>(null);
+const projectEditingPreview = useSlideEditingPreview(displayedSlide);
 const textWidthDragging = ref(false);
 const manualSubmission = useManualEditSubmission();
-function submitTextWidth(operation: SlidesManualEditCommandOperation): void {
-  manualSubmission.enqueue({ operation });
-}
 const {
   selectedTarget: manualSelectedTarget,
   selectedTargets: manualSelectedTargets,
@@ -388,6 +389,7 @@ const {
   slideSize: actualSlideSize,
   wrapperRef: konvaWrapperRef,
   visualPreview: manualResizePreview,
+  projectPreview: projectEditingPreview,
   submitIntent: manualSubmission.enqueue,
   focusCanvas: () => scrollHostRef.value?.focus({ preventScroll: true }),
 });
@@ -419,7 +421,7 @@ const manualVisualPreviews = computed(() => collectManualVisualPreviews(
   manualResizePreview.value,
 ));
 const manualPresentedSelectedTargets = computed(() => {
-  const geometries = collectEditingPreviewGeometries(displayedSlide.value?.elements ?? [], manualVisualPreviews.value);
+  const geometries = collectEditingPreviewGeometries(displayedSlide.value?.elements ?? [], manualVisualPreviews.value, projectEditingPreview);
   return manualSelectedTargets.value.map(target => projectManualEditableTargetSelection(target, manualPreviewTranslations.value, geometries));
 });
 const manualPresentedSelectedTarget = computed(() => manualPresentedSelectedTargets.value.length === 1

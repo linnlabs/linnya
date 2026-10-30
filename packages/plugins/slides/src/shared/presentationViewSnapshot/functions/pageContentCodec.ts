@@ -81,8 +81,10 @@ export function splitSlideContent(slide: SlideRenderModel): { content: ViewJsonR
   const facts = { layoutKey: slide.layoutKey, background: slide.background,
     ...(slide.referencePreview ? { referencePreview: slide.referencePreview } : {}) };
   return {
-    content: { ...viewRecord(facts), elements: elements.map(splitNode) },
-    binding: { nodes: bindings, ...(diagnostics ? { diagnostics: toViewJson(diagnostics) } : {}) },
+    content: { ...viewRecord(facts), elements: elements.map(splitNode),
+      ...(slide.layoutReplay ? { layoutReplay: { nodes: slide.layoutReplay.nodes.map(({ id: _id, ...node }) => toViewJson(node)) } } : {}) },
+    binding: { nodes: bindings, ...(diagnostics ? { diagnostics: toViewJson(diagnostics) } : {}),
+      ...(slide.layoutReplay ? { layoutIds: slide.layoutReplay.nodes.map(node => node.id) } : {}) },
   };
 }
 
@@ -107,7 +109,15 @@ export function restoreSlideContent(
     return result;
   }
   if (!Array.isArray(content.elements)) throw new Error('Slides page elements are missing');
+  let layoutReplay: ViewJsonRecord | undefined;
+  if (content.layoutReplay) {
+    const nodes = readRecord(content.layoutReplay).nodes;
+    const ids = binding.layoutIds;
+    if (!Array.isArray(nodes) || !Array.isArray(ids) || nodes.length !== ids.length) throw new Error('Slides layout bindings are missing');
+    layoutReplay = { nodes: nodes.map((node, position) => ({ ...readRecord(node), id: ids[position] })) };
+  }
   const result = { ...content, slideId, index, elements: content.elements.map(restoreNode),
+    ...(layoutReplay ? { layoutReplay } : {}),
     ...(binding.diagnostics ? { diagnostics: binding.diagnostics } : {}) };
   if (cursor !== bindings.length || !isSlideRenderModel(result)) throw new Error('Slides page content/binding mismatch');
   return result;

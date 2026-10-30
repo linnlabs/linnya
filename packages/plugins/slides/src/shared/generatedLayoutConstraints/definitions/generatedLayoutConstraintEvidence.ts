@@ -1,5 +1,5 @@
 /**
- * Flex/Yoga 编译后供质量诊断消费的窄布局事实。
+ * Flex/Yoga 编译后供质量诊断与等价人工编辑投影消费的窄布局事实。
  *
  * 这是 generated-only 的内部追踪合同，不是 deck.js authoring API。它只保留
  * “作者声明”与“Yoga 最终结果”之间可验证的差异，不复制 LayoutNode 或样式树。
@@ -52,7 +52,16 @@ export interface GeneratedParentLayoutConstraintFacts {
   readonly parent: GeneratedLayoutConstraintNode;
 }
 
+/** Yoga 自动文本高度的确定性输入；仅标记实际使用 portable heuristic 的编译。 */
+export interface GeneratedTextHeightMeasurement {
+  readonly source: 'heuristic';
+  readonly fontSizePt: number;
+  readonly lineSpacingMultiple: number;
+  readonly letterSpacingPt?: number;
+}
+
 export interface GeneratedLayoutConstraintEvidence {
+  readonly textHeightMeasurement?: GeneratedTextHeightMeasurement;
   /** 无约束文本的最终字形测量来源；启发式来源不得伪装为系统字体测量。 */
   readonly intrinsicTextAdvanceSource?: 'harfbuzz' | 'pretext' | 'heuristic' | 'mixed';
   /** 作者显式授权的画布出血范围，单位英寸。 */

@@ -61,12 +61,15 @@ export function projectBlankSlideInsertion(
         ? { ...updated, children: updated.children.map(shiftFreeform) }
         : updated;
     }
+    const layoutReplay = slide.spec.layoutReplay && {
+      nodes: slide.spec.layoutReplay.nodes.map(node => ({ ...node, id: shiftId(node.id) })),
+    };
     return {
       ...slide,
       slideNumber: number,
       spec: slide.spec.type === 'structured'
-        ? { ...slide.spec, elements: slide.spec.elements.map(element => shiftMetadata(element)) }
-        : { ...slide.spec, elements: slide.spec.elements.map(shiftFreeform) },
+        ? { ...slide.spec, ...(layoutReplay ? { layoutReplay } : {}), elements: slide.spec.elements.map(element => shiftMetadata(element)) }
+        : { ...slide.spec, ...(layoutReplay ? { layoutReplay } : {}), elements: slide.spec.elements.map(shiftFreeform) },
     };
   });
   slides.splice(index, 0, {

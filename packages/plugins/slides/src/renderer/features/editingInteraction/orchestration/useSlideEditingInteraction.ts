@@ -343,6 +343,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
 
   function readHitProjection(): ManualEditingHitProjection {
     return {
+      projectPreview: options.projectPreview,
       transientTranslation: translationPreview.value,
       pendingTranslations: pendingTranslations.value,
       pendingVisuals: pendingVisuals.value,

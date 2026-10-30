@@ -1,3 +1,4 @@
+import { verifyInsertionPreviewFrames } from './insertionPreviewBrowser';
 import { verifyFontPreviewFrames } from './fontPreviewBrowser';
 import { verifyIncrementalThumbnails } from './thumbnailIncrementalBrowser';
 import { mountShapeTextEditingSmoke } from './shapeTextEditingBrowser';
@@ -311,6 +312,7 @@ window.previewTransitionSmoke = (async () => ({
   ...await verifyManualTranslation(),
   ...await verifyManualVisual(),
   ...await verifyFontPreviewFrames(),
+  ...await verifyInsertionPreviewFrames(),
 }))();
 window.mountManualPropertySmoke = mountManualPropertySmoke;
 

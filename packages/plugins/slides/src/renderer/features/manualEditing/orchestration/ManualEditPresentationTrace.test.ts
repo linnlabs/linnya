@@ -20,6 +20,8 @@ describe('ManualEditPresentationTrace', () => {
     const log = vi.fn();
     const trace = new ManualEditPresentationTrace({ now: () => time, log });
 
+    trace.recordQueued(COMMAND.commandId);
+    time = 7;
     trace.begin(COMMAND);
     time = 20;
     trace.recordResponse({
@@ -37,6 +39,8 @@ describe('ManualEditPresentationTrace', () => {
     expect(log).toHaveBeenLastCalledWith('frame_presented', expect.objectContaining({
       commandId: 'command-1',
       revision: 2,
+      queueWaitMs: 7,
+      dispatchToResponseMs: 13,
       inputToResponseMs: 20,
       responseToRefreshMs: 10,
       refreshToFrameMs: 10,

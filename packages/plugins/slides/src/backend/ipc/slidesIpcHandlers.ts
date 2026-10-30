@@ -1,4 +1,4 @@
-import type { SlidesInsertedObject } from '@plugin/slides/shared/authoringEditing';
+import type { SlidesInsertedObject, SlidesImportedImage } from '@plugin/slides/shared/authoringEditing';
 import { ViewReadRequestSchema, type ViewReadRequest, type ViewReadResponse } from '@plugin/slides/shared/presentationViewSnapshot';
 import type {
   DeckPreview,
@@ -37,7 +37,7 @@ export interface SlidesSourceSlicesForAiEditInput {
 
 export interface SlidesIpcCoordinatorPort {
   copyObjects(input: { documentId: string; revisionId: string; targets: readonly { slideKey: string; editKey: string }[] }): Promise<readonly SlidesInsertedObject[]>;
-  importImage(documentId: string, bytes: Uint8Array): Promise<string>;
+  importImage(documentId: string, bytes: Uint8Array): Promise<SlidesImportedImage>;
   readViewSnapshot(request: ViewReadRequest): Promise<ViewReadResponse>;
   readonly history?: { preview(documentId: string, versionId: string): Promise<PresentationRenderModel> };
   readSourceSlicesForAiEdit(input: SlidesSourceSlicesForAiEditInput): Promise<SlidesSourceSlicesOutput>;

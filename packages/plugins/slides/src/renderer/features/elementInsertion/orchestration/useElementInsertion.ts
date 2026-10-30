@@ -21,10 +21,10 @@ export function useElementInsertion() {
   const message = (key: keyof typeof INSERTION_MESSAGES) => translate(key, INSERTION_MESSAGES[key]);
   const available = computed(() => manual.enabled && !manual.pendingPageOperation && slides.documentBuildState?.state === 'ready' && !!render.currentSlideRender && !busy.value);
 
-  async function insert(objects: readonly SlidesInsertedObject[], index = slides.currentSlideIndex): Promise<void> {
+  async function insert(objects: readonly SlidesInsertedObject[], index = slides.currentSlideIndex, insertionImageSources?: ReadonlyMap<string, string>): Promise<void> {
     const documentId = slides.currentDeckId;
     const previousSelection = manual.selectedTargets.map(target => target.elementId).join('\0');
-    const result = await submission.enqueue({ operation: { op: 'insert_objects', index, objects } }).settled;
+    const result = await submission.enqueue({ operation: { op: 'insert_objects', index, objects }, ...(insertionImageSources ? { insertionImageSources } : {}) }).settled;
     // 等待期间用户已改选、换页或换稿时，不抢走他们的选区。
     if (result.status !== 'presented' || slides.currentDeckId !== documentId || slides.currentSlideIndex !== index || manual.selectedTargets.map(target => target.elementId).join('\0') !== previousSelection) return;
     const [only] = objects;
@@ -53,8 +53,9 @@ export function useElementInsertion() {
       const h = image.height * scale;
       const assetId = image.assetId;
       if (slides.currentDeckId !== documentId || (manual.history?.revisionId ?? slides.documentBuildState?.versionId) !== revision || slides.currentSlideIndex !== index) throw new Error(message('slides.insert.changed'));
-      await insert([{ kind: 'image', editKey: `inserted-${crypto.randomUUID()}`, assetId, fit: 'contain', alt: file.name,
-        box: { x: (size.width - w) / 2, y: (size.height - h) / 2, w, h } }], index);
+      const editKey = `inserted-${crypto.randomUUID()}`;
+      await insert([{ kind: 'image', editKey, assetId, fit: 'contain', alt: file.name,
+        box: { x: (size.width - w) / 2, y: (size.height - h) / 2, w, h } }], index, new Map([[editKey, image.previewSource]]));
     } catch (error) {
       manual.setNotice(error instanceof Error ? error.message : message('slides.insert.failed'));
     } finally {

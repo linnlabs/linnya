@@ -33,9 +33,9 @@ import type { PresentationRevisionScope, PresentationHistoryRuntime } from '../.
 import type { PresentationManualEditTracePort } from '../definitions/presentationManualEditTrace.js';
 import { createManualEditPayloadDigest } from '../functions/createManualEditPayloadDigest.js';
 import {
-  projectManualTranslationToDeckSpec,
+  projectManualEditToDeckSpec,
   SlidesManualEditDeckProjectionError,
-} from '../functions/projectManualTranslationToDeckSpec.js';
+} from '../functions/projectManualEditToDeckSpec.js';
 import {
   SlidesManualEditSourceError,
   writeManualEditsToDeckSource,
@@ -89,7 +89,9 @@ export class PresentationManualEditingRuntime {
   }
 
   submit(command: SlidesManualEditCommand): Promise<SlidesManualEditCommandResult> {
+    this.recordTrace(command, 'request_received');
     const run = async (): Promise<SlidesManualEditCommandResult> => {
+      this.recordTrace(command, 'scope_acquired');
       try {
         return await this.submitInScope(command);
       } catch (error) {
@@ -105,7 +107,6 @@ export class PresentationManualEditingRuntime {
   private async submitInScope(
     command: SlidesManualEditCommand,
   ): Promise<SlidesManualEditCommandResult> {
-    this.recordTrace(command, 'request_received');
     const payloadDigest = createManualEditPayloadDigest(command);
     const receipt = await this.deps.presentationRepo.getManualEditReceipt(command.commandId);
     if (receipt) {
@@ -140,7 +141,8 @@ export class PresentationManualEditingRuntime {
     if (this.deps.draftRepo?.has(command.documentId)) {
       return this.conflict(command, 'draft_present');
     }
-    this.recordTrace(command, 'snapshot_validated');
+    this.recordTrace(command, 'snapshot_validated', { slideCount: current.deckSpec.slides.length,
+      compiledRootCount: current.deckSpec.slides.reduce((count, slide) => count + slide.spec.elements.length, 0) });
     const historyState = reconcileManualEditHistory(this.history.read(command.documentId), current.currentRevisionId);
     this.history.write(command.documentId, historyState);
 
@@ -171,7 +173,7 @@ export class PresentationManualEditingRuntime {
         projection = { kind: 'projected', deckSpec: current.deckSpec };
         for (const operation of command.operation.operations) {
           if (projection.kind !== 'projected') break;
-          projection = projectManualTranslationToDeckSpec(projection.deckSpec, operation);
+          projection = projectManualEditToDeckSpec(projection.deckSpec, operation);
         }
         projection = relocateProjectedInsertions(projection, written);
       } else if (command.operation.op === 'move_slide') {
@@ -185,7 +187,7 @@ export class PresentationManualEditingRuntime {
         const sourceOperation = prepareManualEditSourceOperation(current.deckSpec, command.operation);
         const written = writeManualEditsToDeckSource(current.deckSource, sourceOperation);
         source = written.source;
-        projection = relocateProjectedInsertions(projectManualTranslationToDeckSpec(current.deckSpec, command.operation), written);
+        projection = relocateProjectedInsertions(projectManualEditToDeckSpec(current.deckSpec, command.operation), written);
       }
     } catch (error) {
       if (
@@ -198,7 +200,7 @@ export class PresentationManualEditingRuntime {
       throw error;
     }
     const path = restoreVersion ? 'history_restore' : projection.kind === 'projected'
-      ? command.operation.op === 'insert_blank_slide' ? 'projected_slide_insertion' : 'projected_translation'
+      ? command.operation.op === 'insert_blank_slide' ? 'projected_slide_insertion' : 'projected_edit'
       : 'full_compile';
     this.recordTrace(command, 'source_rewritten', { path });
 
@@ -213,6 +215,7 @@ export class PresentationManualEditingRuntime {
           payloadDigest,
         },
         origin: 'edit',
+        onProgress: buildPhase => this.recordTrace(command, 'build_progress', { path, buildPhase }),
       };
       this.recordTrace(command, 'semantic_build_started', { path });
       const result = restoreVersion && this.deps.restoreRevision
@@ -303,6 +306,7 @@ export class PresentationManualEditingRuntime {
       commandId: command.commandId,
       documentId: command.documentId,
       stage,
+      operation: command.operation.op,
       ...details,
     });
   }

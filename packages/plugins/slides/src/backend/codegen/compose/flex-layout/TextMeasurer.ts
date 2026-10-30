@@ -1,3 +1,4 @@
+import { measureGeneratedTextHeight, type GeneratedTextHeightMeasurement } from '@plugin/slides/shared/generatedLayoutConstraints';
 import { defaultTextMeasureService } from '@linnya/text-measurement-core';
 import {
   DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
@@ -71,6 +72,9 @@ export function estimateTextHeight(
     return 0;
   }
 
+  if (defaultTextMeasureService.getPrimaryAdapter().kind === 'heuristic') {
+    return measureGeneratedTextHeight(content, widthIn, { source: 'heuristic', fontSizePt: fontSize, lineSpacingMultiple: lineSpacing, letterSpacingPt: letterSpacing });
+  }
   return defaultTextMeasureService.measure({
     paragraphs: [{ text: content }],
     style: {
@@ -84,4 +88,13 @@ export function estimateTextHeight(
     },
     sourceKind: 'generated',
   }).totalHeightInches;
+}
+
+/** 非生产的定制测量 adapter 不承诺可在 Renderer 重放，不能伪装成 heuristic。 */
+export function readGeneratedTextHeightMeasurement(node: LayoutTextNode): GeneratedTextHeightMeasurement | undefined {
+  if (defaultTextMeasureService.getPrimaryAdapter().kind !== 'heuristic') return undefined;
+  return { source: 'heuristic', fontSizePt: node.fontSize ?? DEFAULT_FONT_SIZE,
+    lineSpacingMultiple: node.lineHeight ?? node.lineSpacing ?? DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
+    ...(node.letterSpacing !== undefined ? { letterSpacingPt: node.letterSpacing } : {}),
+  };
 }

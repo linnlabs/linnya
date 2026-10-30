@@ -84,6 +84,7 @@ export function translateManualLayoutResult(
     dy: inherited.dy + (ownTranslation?.dy ?? 0),
   };
   return {
+    ...result,
     node: result.node,
     box: {
       ...result.box,

@@ -14,8 +14,11 @@ export function readInsertedObjects(value: unknown): { value: readonly SlidesIns
       || !finite(box.x) || !finite(box.y) || !finite(box.w) || !finite(box.h) || box.w <= 0 || box.h <= 0) return { error: '新增对象的位置和正尺寸必须是有限数字。' };
     const base = { editKey: entry.editKey, box: { x: box.x, y: box.y, w: box.w, h: box.h } };
     const common = ['kind', 'editKey', 'box'];
-    if (entry.kind === 'text' && only(entry, [...common, 'content', 'style']) && isEditableTextContent(entry.content) && isAuthorTextStyle(entry.style)) {
-      result.push({ ...base, kind: 'text', content: entry.content, style: entry.style });
+    if (entry.kind === 'text' && only(entry, [...common, 'content', 'style', 'heightMode'])
+      && (entry.heightMode === undefined || entry.heightMode === 'content' || entry.heightMode === 'minimum')
+      && isEditableTextContent(entry.content) && isAuthorTextStyle(entry.style)) {
+      result.push({ ...base, kind: 'text', content: entry.content, style: entry.style,
+        ...(entry.heightMode !== undefined ? { heightMode: entry.heightMode } : {}) });
     } else if (entry.kind === 'shape' && only(entry, [...common, 'geometry', 'fill', 'content'])
       && (entry.geometry === 'rect' || entry.geometry === 'ellipse') && typeof entry.fill === 'string' && /^#[0-9a-f]{6}$/iu.test(entry.fill) && isEditableTextContent(entry.content)) {
       result.push({ ...base, kind: 'shape', geometry: entry.geometry, fill: entry.fill, content: entry.content });

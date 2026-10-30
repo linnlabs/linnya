@@ -48,6 +48,7 @@ shared/
 | 插件与 IPC 合同 | `pluginMeta.ts`、`ipc.ts` | 插件 id、文档类型、文件扩展名、owned tables、IPC channel 名称 |
 | 文档来源与源码定位 | `documentSource/` | presentation 来源、deck.js source span、slide marker 行号索引 |
 | Generated 布局事实 | `generatedLayoutConstraints/` | 声明约束、Yoga 最终盒、比例与 computed 父容器身份；不是 authoring API |
+| Generated 布局重排 | [`generatedLayoutReplay/`](generatedLayoutReplay/README.md) | 编译后的页面布局输入与严格准入；不执行作者源码 |
 | DeckSpec 与 patch 合同 | `deckSpec/` | 生成结果、导入稿 patch、元素、尺寸、图片引用和语义角色 |
 | 作者编辑合同 | `authoringEditing/` | `slideKey + editKey` 稳定身份、严格校验与后续人工编辑命令 |
 | 视觉与主题合同 | `visual/` | 颜色规范化、主题与 chart palette |

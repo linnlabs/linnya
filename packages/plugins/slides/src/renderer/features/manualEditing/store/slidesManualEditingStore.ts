@@ -32,12 +32,14 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   const pendingPageOperation = computed(() => queue.value.some(entry => ownsManualPageOrder(entry.intent.operation))
     || (activeIntent.value !== null && ownsManualPageOrder(activeIntent.value.operation)));
   const pendingTranslations = computed(() => activeIntent.value?.translationPreviews ?? []);
-  /** 已排队或提交中、尚未呈现的插入对象外框；画布先画占位，正式帧到达后由真实对象取代。 */
+  /** 新增预览跟随队列生命周期；提交失败或正式帧呈现时一起撤下。 */
   const pendingInsertions = computed(() => [...activeIntent.value ? [activeIntent.value] : [], ...queuedIntents.value]
-    .flatMap(({ operation }) => {
+    .flatMap(({ operation, insertionImageSources }) => {
       if (operation.op !== 'insert_objects') return [];
       const slideIndex = operation.index;
-      return operation.objects.map(object => ({ slideIndex, editKey: object.editKey, box: object.box }));
+      return operation.objects.map(object => ({ slideIndex, object,
+        ...(insertionImageSources?.has(object.editKey) ? { imageSource: insertionImageSources.get(object.editKey) } : {}),
+      }));
     }));
   const pendingVisuals = computed(() => activeIntent.value?.visualPreviews ?? []);
   const submitting = computed(() => submission.value.phase === 'submitting');

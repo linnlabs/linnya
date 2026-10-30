@@ -98,7 +98,7 @@ const templateSummary: TemplateSummary = {
 function makeCoordinator(): SlidesIpcCoordinatorPort {
   return {
     readViewSnapshot: vi.fn(async () => { throw new Error('Snapshot read is outside this handler fixture'); }),
-    importImage: vi.fn(async () => 'owned-image'),
+    importImage: vi.fn(async () => ({ assetId: 'owned-image', width: 640, height: 480 })),
     copyObjects: vi.fn(async () => []),
     readManualEditHistory: vi.fn(async () => ({ revisionId: 'version-1', undoDepth: 0, redoDepth: 0 })),
     readSourceSlicesForAiEdit: vi.fn(async () => sourceSlices),

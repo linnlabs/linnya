@@ -67,4 +67,6 @@ export interface ManualEditIntent {
   readonly operation: SlidesManualEditCommandOperation;
   readonly translationPreviews?: readonly ManualEditingTranslationPreview[];
   readonly visualPreviews?: readonly ManualEditingVisualPreview[];
+  /** 本地图片只供待保存画面读取，不属于 operation 或持久化数据。 */
+  readonly insertionImageSources?: ReadonlyMap<string, string>;
 }

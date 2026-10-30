@@ -61,6 +61,7 @@ export function mapGeneratedSlide(
 ): SlideRenderModel {
   return {
     slideId: `s${entry.slideNumber}`,
+    ...(entry.spec.layoutReplay ? { layoutReplay: entry.spec.layoutReplay } : {}),
     index,
     layoutKey: resolveGeneratedLayoutKey(entry.spec),
     background: resolveBackground(entry.spec),

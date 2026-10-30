@@ -1,3 +1,5 @@
+import { readGeneratedTextHeightMeasurement } from './TextMeasurer';
+import { computeGeneratedLayoutRatios } from '@plugin/slides/shared/generatedLayoutConstraints';
 import type {
   GeneratedLayoutConstraintEvidence,
   GeneratedLayoutDeclaredConstraints,
@@ -55,7 +57,10 @@ export function buildGeneratedLayoutConstraintEvidence(input: {
     grandparentPath,
   );
 
+  const textHeightMeasurement = result.node._type === 'Text' && declared.heightInches === undefined
+    ? readGeneratedTextHeightMeasurement(result.node) : undefined;
   return {
+    ...(textHeightMeasurement ? { textHeightMeasurement } : {}),
     ...(allowedBleedInches != null ? { allowedBleedInches } : {}),
     layoutNodeId: buildLayoutNodeId(slideNumber, nodePath),
     positionMode: resolveLayoutPositionMode(result.node),
@@ -103,15 +108,7 @@ function buildComputedRatios(
   node: LayoutNode,
   box: LayoutResult['box'],
 ): GeneratedLayoutConstraintEvidence['computedRatios'] {
-  const declared = readDeclaredConstraints(node);
-  return {
-    ...(declared.widthInches !== undefined && declared.widthInches > 0
-      ? { widthToDeclared: ratio(box.w, declared.widthInches) }
-      : {}),
-    ...(declared.heightInches !== undefined && declared.heightInches > 0
-      ? { heightToDeclared: ratio(box.h, declared.heightInches) }
-      : {}),
-  };
+  return computeGeneratedLayoutRatios(readDeclaredConstraints(node), box);
 }
 
 function readDeclaredConstraints(node: LayoutNode): GeneratedLayoutDeclaredConstraints {
@@ -174,10 +171,6 @@ function toGeneratedBox(box: LayoutResult['box']): GeneratedLayoutConstraintEvid
     h: round4(box.h),
     unit: 'in',
   };
-}
-
-function ratio(finalValue: number, declaredValue: number): number {
-  return round4(finalValue / declaredValue);
 }
 
 function round4(value: number): number {

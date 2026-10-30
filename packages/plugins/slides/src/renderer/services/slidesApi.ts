@@ -1,3 +1,4 @@
+import { SlidesImportedImageSchema, type SlidesImportedImage } from '@plugin/slides/shared/authoringEditing';
 import type { SlidesInsertedObject, SlidesAuthoringEditRef } from '@plugin/slides/shared/authoringEditing';
 /**
  * Slides API 服务
@@ -91,8 +92,8 @@ export const slidesApi = {
   copyObjects(documentId: string, revisionId: string, targets: readonly SlidesAuthoringEditRef[]): Promise<readonly SlidesInsertedObject[]> {
     return invokeSlidesIpc(SLIDES_IPC.copyObjects, { documentId, revisionId, targets });
   },
-  importImage(documentId: string, base64: string): Promise<string> {
-    return invokeSlidesIpc(SLIDES_IPC.importImage, { documentId, base64 });
+  async importImage(documentId: string, base64: string): Promise<SlidesImportedImage> {
+    return SlidesImportedImageSchema.parse(await invokeSlidesIpc<unknown>(SLIDES_IPC.importImage, { documentId, base64 }));
   },
   /** 引用目录可查询未打开的文稿摘要；正式画布加载使用 documentRuntime 的一致快照。 */
   async getDeckPreview(nodeId: string): Promise<DeckPreview> {

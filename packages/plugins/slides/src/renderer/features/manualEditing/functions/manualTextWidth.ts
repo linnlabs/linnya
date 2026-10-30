@@ -1,20 +1,13 @@
-import { quantizeManualTranslation, roundToManualTranslationGrid, type SlidesManualEditCommandOperation } from '@plugin/slides/shared/authoringEditing';
+import { quantizeManualTranslation, roundToManualTranslationGrid } from '@plugin/slides/shared/authoringEditing';
 import { INCHES_TO_PX } from '../../../shared/constants';
 import type { ManualEditableTarget } from '../definitions/manualEditingTypes';
+import type { ManualTextWidthHandle, ManualTextWidthIntent, ManualTextWidthResult } from '../definitions/manualTextWidth';
 
-export type ManualTextWidthHandle = 'left' | 'right';
 const MIN_TEXT_WIDTH = 0.3;
 
 /** 作者文字框只开放宽度手柄：高度随内容决定，不提供上下与角点缩放。 */
 export function canResizeTextWidth(target: ManualEditableTarget): boolean {
   return target.targetKind === 'text' && target.capabilities.includes('translate') && target.capabilities.includes('set_text_content');
-}
-
-export interface ManualTextWidthResult {
-  /** 松手时提交的写入：右手柄只改宽度；左手柄同时平移，保持右边缘不动。 */
-  readonly operation: SlidesManualEditCommandOperation;
-  /** 拖动中的外框，单位 inches，供画布即时显示。 */
-  readonly bounds: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
 }
 
 export function resolveManualTextWidth(
@@ -35,4 +28,16 @@ export function resolveManualTextWidth(
       : resize,
     bounds: { x: target.bounds.x + (shift?.dx ?? 0), y: target.bounds.y, w: nextWidth, h: target.bounds.h },
   };
+}
+
+/** 左手柄的位移只在宽度重排成功时一起可见，不能把旧行移到一个尚未生效的新外框。 */
+export function createManualTextWidthIntent(target: ManualEditableTarget, result: ManualTextWidthResult): ManualTextWidthIntent {
+  const width = result.operation.op === 'batch'
+    ? result.operation.operations[1] : result.operation;
+  const translation = result.operation.op === 'batch'
+    ? result.operation.operations[0] : undefined;
+  return { operation: result.operation, visualPreviews: [{ elementId: target.elementId,
+    affectedElementIds: [target.elementId], operation: width,
+    ...(translation ? { translationDelta: translation.delta } : {}),
+  }] };
 }

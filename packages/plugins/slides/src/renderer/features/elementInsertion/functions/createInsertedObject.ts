@@ -11,6 +11,6 @@ export function createInsertedObject(
   const w = Math.min(kind === 'text' ? 4 : 2, size.width * 0.8);
   const h = Math.min(kind === 'text' ? 0.65 : 2, size.height * 0.8);
   const base = { editKey, box: { x: (size.width - w) / 2, y: (size.height - h) / 2, w, h } };
-  return kind === 'text' ? { ...base, kind: 'text', content, style: { fontSize: 28, color: palette.text } }
+  return kind === 'text' ? { ...base, kind: 'text', content, heightMode: 'content', style: { fontSize: 28, color: palette.text } }
     : { ...base, kind: 'shape', geometry: kind, fill: palette.fill, content: '' };
 }

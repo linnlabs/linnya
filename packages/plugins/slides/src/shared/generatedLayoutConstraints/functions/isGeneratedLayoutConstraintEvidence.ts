@@ -17,6 +17,7 @@ export function isGeneratedLayoutConstraintEvidence(
   return isRecord(value)
     && hasOnlyKeys(value, [
       'intrinsicTextAdvanceSource',
+      'textHeightMeasurement',
       'allowedBleedInches',
       'layoutNodeId',
       'positionMode',
@@ -27,6 +28,12 @@ export function isGeneratedLayoutConstraintEvidence(
       'parentConstraint',
       'clipSemantics',
     ])
+    && (value.textHeightMeasurement === undefined || (isRecord(value.textHeightMeasurement)
+      && hasOnlyKeys(value.textHeightMeasurement, ['source', 'fontSizePt', 'lineSpacingMultiple', 'letterSpacingPt'])
+      && value.textHeightMeasurement.source === 'heuristic'
+      && isFiniteNumber(value.textHeightMeasurement.fontSizePt) && value.textHeightMeasurement.fontSizePt > 0
+      && isFiniteNumber(value.textHeightMeasurement.lineSpacingMultiple) && value.textHeightMeasurement.lineSpacingMultiple > 0
+      && (value.textHeightMeasurement.letterSpacingPt === undefined || isFiniteNumber(value.textHeightMeasurement.letterSpacingPt))))
     && (value.intrinsicTextAdvanceSource === undefined
       || value.intrinsicTextAdvanceSource === 'harfbuzz' || value.intrinsicTextAdvanceSource === 'pretext'
       || value.intrinsicTextAdvanceSource === 'heuristic' || value.intrinsicTextAdvanceSource === 'mixed')

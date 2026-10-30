@@ -17,6 +17,7 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
   let processing = false;
 
   function settle(entry: ManualEditQueueEntry, result: ManualEditSettlement): void {
+    ports.trace?.recordQueueSettled(entry.clientOperationIds);
     logSlidesVerbose('ManualEditQueue', 'settled', { clientOperationIds: entry.clientOperationIds, status: result.status });
     for (const id of entry.clientOperationIds) {
       receipts.get(id)?.(result);
@@ -130,6 +131,7 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
         status: 'failed', commandId: clientOperationId, message,
       }) };
     }
+    ports.trace?.recordQueued(clientOperationId);
     const settled = new Promise<ManualEditSettlement>(resolve => receipts.set(clientOperationId, resolve));
     store.setQueue(appendManualEditQueueEntry(store.queue, { intent, clientOperationIds: [clientOperationId] }));
     // 后续输入不能抹掉“已保存但未刷新”的恢复入口；上一次操作提示随新动作失效。
@@ -167,6 +169,7 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
     processing = false;
     for (const resolve of receipts.values()) resolve({ status: 'cancelled' });
     receipts.clear();
+    ports.trace?.clear();
     store.$reset();
   }
 

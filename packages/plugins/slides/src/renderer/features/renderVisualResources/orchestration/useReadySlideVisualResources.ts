@@ -8,7 +8,7 @@ import {
   type ShallowRef,
 } from 'vue';
 import type { SlideRenderModel } from '../../../types/render';
-import { warnSlides } from '../../../shared/diagnosticLogging';
+import { logSlidesVerbose, warnSlides } from '../../../shared/diagnosticLogging';
 import type { SlideChartResourceMap } from '../../renderChartResources';
 import type { SlideImageResourceMap } from '../../renderImageResources';
 import type { ReadySlideVisualFrame } from '../definitions/slideVisualResources';
@@ -62,6 +62,7 @@ export function useReadySlideVisualResources(
         return;
       }
 
+      const startedAt = performance.now();
       const controller = new AbortController();
       activeController = controller;
       preparing.value = true;
@@ -71,6 +72,8 @@ export function useReadySlideVisualResources(
         signal: controller.signal,
       }).then((resources) => {
         if (controller.signal.aborted || currentRequestId !== requestId) return;
+        logSlidesVerbose('RenderVisualResources', 'frame resources ready', { slideId: slide.slideId,
+          elapsedMs: performance.now() - startedAt, images: resources.imageResources.size, charts: resources.chartResources.size });
         frame.value = { slide, ...resources };
         preparing.value = false;
         preparationFailed.value = false;

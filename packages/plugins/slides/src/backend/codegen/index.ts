@@ -6,6 +6,7 @@ export {
 } from './InitialPresentationDraftCreator';
 export type { InitialPresentationDraftCreatorDeps } from './InitialPresentationDraftCreator';
 export type {
+  CodegenDeckBuildPhase,
   CodegenDeckBuildInput,
   CodegenDeckBuildResult,
   CodegenDeckBuilderFailureLogger,

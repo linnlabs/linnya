@@ -1,3 +1,4 @@
+import { layoutReplaySchema } from '../generatedLayoutReplay';
 import type {
   RenderChartAxis,
   RenderChartDataLabels,
@@ -42,6 +43,7 @@ export function isSlideRenderModel(value: unknown): value is SlideRenderModel {
       'elements',
       'diagnostics',
       'referencePreview',
+      'layoutReplay',
     ])
     && isNonEmptyString(value.slideId)
     && isFiniteNumber(value.index)
@@ -49,7 +51,8 @@ export function isSlideRenderModel(value: unknown): value is SlideRenderModel {
     && isSlideBackground(value.background)
     && isArrayOf(value.elements, isRenderNode)
     && isOptional(value.diagnostics, isSlideDiagnostics)
-    && isOptional(value.referencePreview, isSlideReferencePreview);
+    && isOptional(value.referencePreview, isSlideReferencePreview)
+    && (value.layoutReplay === undefined || layoutReplaySchema.safeParse(value.layoutReplay).success);
 }
 
 /** 只定位失败合同，不回显未知字段名、节点内容或资源路径。 */

@@ -13,7 +13,7 @@ export function readCopyableAuthoringValue(element: FreeformElement | Structured
   const textStyle = Object.fromEntries(Object.entries('style' in element ? element.style ?? {} : {}).filter(([, value]) => value !== undefined));
   if ((element.type === 'text' || element.type === 'title') && (!('textWrap' in element) || element.textWrap === undefined || element.textWrap === 'word')
     && isEditableTextContent(element.content) && isAuthorTextStyle(textStyle)) {
-    return { kind: 'text', content: element.content, style: textStyle };
+    return { kind: 'text', content: element.content, style: textStyle, heightMode: 'minimum' };
   }
   if (element.type === 'shape') {
     const geometry = element.geometry ?? 'rect';

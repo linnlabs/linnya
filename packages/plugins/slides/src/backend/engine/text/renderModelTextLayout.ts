@@ -218,10 +218,11 @@ function forEachTextNode(
   for (const slide of renderModel.slides) {
     visitRenderNodes(slide.elements, ({ node }) => {
       if (node.kind === 'text') {
-        visitor(node, 'plain-textbox', node.authoringEdit?.capabilities.includes('set_text_style'));
+        // 自动布局编辑可能改变没有 author key 的相邻文字，测量事实不能只准备给手柄目标。
+        visitor(node, 'plain-textbox', Boolean(slide.layoutReplay) || node.authoringEdit?.capabilities.includes('set_text_style'));
       }
       if (node.kind === 'shape' && node.innerText) {
-        visitor(node.innerText, 'shape-inner-text', node.authoringEdit?.capabilities.includes('set_visual_size'));
+        visitor(node.innerText, 'shape-inner-text', Boolean(slide.layoutReplay) || node.authoringEdit?.capabilities.includes('set_visual_size'));
       }
     });
   }

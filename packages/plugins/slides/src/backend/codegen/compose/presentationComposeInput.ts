@@ -1,3 +1,4 @@
+import { layoutReplaySchema, type LayoutReplay } from '@plugin/slides/shared/generatedLayoutReplay';
 /**
  * presentationComposeInput — 直接建稿输入解析
  *
@@ -88,6 +89,7 @@ export interface DirectComposeInput {
 }
 
 export interface DirectSlideInput {
+  layoutReplay?: LayoutReplay;
   background?: {
     /** 内部统一合同；Flex 编译器直接产出该字段。 */
     paint?: Paint;
@@ -298,6 +300,8 @@ function parseSlideInput(
     return { error: `slides[${slideIndex}].background: ${backgroundResult.error}` };
   }
   const notes = isNonEmptyString(value.notes) ? value.notes : undefined;
+  const replay = acceptCompiledFields && value.layoutReplay !== undefined ? layoutReplaySchema.safeParse(value.layoutReplay) : undefined;
+  if (replay && !replay.success) return { error: `slides[${slideIndex}].layoutReplay: invalid compiled layout` };
 
   if (!Array.isArray(value.elements)) {
     return { error: `slides[${slideIndex}].elements 必须是数组。` };
@@ -320,6 +324,7 @@ function parseSlideInput(
       background: backgroundResult.background,
       elements,
       notes,
+      ...(replay?.success ? { layoutReplay: replay.data } : {}),
     },
   };
 }
@@ -735,6 +740,7 @@ function buildStructuredSlideSpec(slide: DirectSlideInput): StructuredSlideSpec 
     background: slide.background,
     elements: slide.elements.map(buildStructuredElement),
     notes: slide.notes,
+    ...(slide.layoutReplay ? { layoutReplay: slide.layoutReplay } : {}),
   };
 }
 
@@ -744,6 +750,7 @@ function buildFreeformSlideSpec(slide: DirectSlideInput): FreeformSlideSpec {
     background: slide.background,
     elements: slide.elements.map(buildFreeformElement),
     notes: slide.notes,
+    ...(slide.layoutReplay ? { layoutReplay: slide.layoutReplay } : {}),
   };
 }
 

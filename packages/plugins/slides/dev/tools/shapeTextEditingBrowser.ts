@@ -1,4 +1,6 @@
 import { preparePreviewFixture } from './preparedPreviewFixture';
+import { projectIndependentTextWidth } from '../../src/shared/generatedLayoutConstraints';
+import { isSlideRenderModel } from '../../src/shared/renderModel';
 import { layoutTextNode, resolveTextLayoutContractFromNode } from '../../src/shared/textLayout';
 import { createApp, h, nextTick } from 'vue';
 import { createPinia } from 'pinia';
@@ -18,7 +20,12 @@ import SlideEditingCommandBar from '../../src/renderer/features/editingCommands/
 import '../../src/renderer/features/editingCommands/ui/SlideEditingCommandBar.css';
 
 /** 完整生产 Stage + 输入/选择/提交队列。只替换 IPC 与文稿读取，不模拟交互或结算。 */
-export function mountShapeTextEditingSmoke(withCommands = false) {
+export function mountShapeTextEditingSmoke(withCommands = false, textWidthMode?: 'fixed' | 'auto' | 'flow', flowFrames?: unknown) {
+  let compiledFrames: SlideRenderModel[] | undefined;
+  if (flowFrames !== undefined) {
+    if (!Array.isArray(flowFrames) || !flowFrames.every(isSlideRenderModel)) throw new Error('Invalid compiled flow frames');
+    compiledFrames = flowFrames;
+  }
   const host = document.createElement('div');
   host.style.cssText = 'position:relative;width:720px;height:420px';
   document.body.append(host);
@@ -58,6 +65,21 @@ export function mountShapeTextEditingSmoke(withCommands = false) {
     authoringRef: { slideKey: 'overview', editKey: 'standalone', targetKind: 'text' },
     authoringEdit: { capabilities: ['delete', 'translate', 'set_text_content', 'set_text_style'], text: { kind: 'plain_text', content: 'Plain text', fontSizePt: 14, color: '#111827' } },
   };
+  const widthContent = 'Width preview wraps immediately while saving the text box.';
+  if (textWidthMode && textWidthMode !== 'flow') {
+    standalone.autoFitPolicy = 'resize-shape';
+    standalone.wrap = 'word';
+    standalone.layoutConstraintEvidence = {
+      layoutNodeId: 'standalone', positionMode: 'absolute', clipSemantics: 'visible',
+      declared: { leftInches: 0.5, topInches: 2, widthInches: 2.5, ...(textWidthMode === 'fixed' ? { heightInches: 1 } : { minHeightInches: 0.35 }) },
+      finalBox: standalone.box, computedRatios: { widthToDeclared: 1 },
+      parent: { nodeId: 'page', kind: 'slide', label: 'page', finalBox: { x: 0, y: 0, w: 6.5, h: 3.5, unit: 'in' }, zIndex: -1 },
+      ...(textWidthMode === 'auto' ? { textHeightMeasurement: { source: 'heuristic', fontSizePt: 14, lineSpacingMultiple: 1 } } : {}),
+    };
+    const initialBox = projectIndependentTextWidth(standalone.layoutConstraintEvidence, 2.5, widthContent);
+    if (!initialBox) throw new Error('Invalid width fixture');
+    standalone.box = initialBox;
+  }
   const slide = { ...initialSlide, elements: [first, second, standalone] };
   const pinia = createPinia();
   const slides = useSlidesStore(pinia);
@@ -66,6 +88,7 @@ export function mountShapeTextEditingSmoke(withCommands = false) {
   const interaction = useSlidesEditingInteractionStore(pinia);
   const ui = useSlidesUiStore(pinia);
   const content = new Map<string, SlidesEditableTextContent>([['badge', 'Shape text'], ['second', 'Second shape'], ['standalone', 'Plain text']]);
+  if (textWidthMode) content.set('standalone', widthContent);
   let savedRevision = 1;
   const before = new Set(Konva.stages);
 
@@ -74,11 +97,13 @@ export function mountShapeTextEditingSmoke(withCommands = false) {
       versionNumber: version, sourceHash: 'a'.repeat(64) };
   }
   function present(version: number) {
+    const flowFrame = compiledFrames?.[version - 1];
+    if (compiledFrames && !flowFrame) throw new Error('Missing compiled flow revision');
     const renderModel: PresentationRenderModel = {
       presentationId: 'interaction-fixture', title: 'Editing interaction', version, sourceKind: 'generated',
       slideSize: { width: 6.5, height: 3.5, unit: 'in' },
       capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true, canEditSourceSelection: true },
-      slides: [{ ...slide, elements: slide.elements.map(node => {
+      slides: flowFrame ? [flowFrame] : [{ ...slide, elements: slide.elements.map(node => {
         const text = node.kind === 'shape' ? node.innerText : node;
         if (!text || !node.authoringEdit) throw new Error('Invalid text fixture');
         const value = content.get(node.id) ?? '';
@@ -159,6 +184,30 @@ export function mountShapeTextEditingSmoke(withCommands = false) {
       if (!element || getComputedStyle(element).visibility === 'hidden') throw new Error(`Missing visible control: ${selector}`);
       const box = element.getBoundingClientRect();
       return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) };
+    },
+    textWidthSnapshot() {
+      const stage = Konva.stages.find(candidate => !before.has(candidate));
+      const group = stage?.getLayers()[1]?.find('Group').find(candidate => candidate instanceof Konva.Group
+        && candidate.getChildren().filter((child): child is Konva.Text => child instanceof Konva.Text).map(child => child.text()).join('').startsWith('Width'));
+      if (!(group instanceof Konva.Group)) throw new Error('Missing standalone text canvas');
+      const text = group.getChildren().filter((child): child is Konva.Text => child instanceof Konva.Text);
+      return { x: group.x() - group.offsetX(), y: group.y() - group.offsetY(), width: group.width(), height: group.height(),
+        lines: new Set(text.map(line => line.y())).size,
+        paint: text.map(line => ({ text: line.text(), x: line.x(), y: line.y(), width: line.width(), height: line.height() })),
+        selection: stage?.getLayers()[2]?.find('Line').filter(node => node.isVisible()).map(node => node.attrs),
+        following: textWidthMode === 'flow' ? stage?.getLayers()[1]?.find('Rect').map(node => node.getAbsolutePosition()) : undefined,
+      };
+    },
+    textWidthPoint() {
+      const node = render.renderModel?.slides[0]?.elements.find(candidate => candidate.id === 'standalone');
+      const wrapper = host.querySelector('.stage-canvas-wrapper');
+      if (!node || !wrapper) throw new Error('Missing width fixture');
+      const box = wrapper.getBoundingClientRect();
+      return { x: Math.round(box.x + box.width * (node.box.x + node.box.w / 2) / 6.5),
+        y: Math.round(box.y + box.height * (node.box.y + node.box.h / 2) / 3.5) };
+    },
+    assertWidthCommands(sent: number, queued: number) {
+      if (commands.length !== sent || manual.queue.length !== queued) throw new Error(`Wrong width commands: ${commands.length}/${manual.queue.length}, expected ${sent}/${queued}`);
     },
     assertToolbar(id: string, visible = true) {
       const toolbar = host.querySelector<HTMLElement>('.slides-element-property-toolbar');
@@ -377,6 +426,21 @@ export function mountShapeTextEditingSmoke(withCommands = false) {
       if (!item) throw new Error('Missing queued command');
       if (success) {
         const operation = item.command.operation;
+        if (textWidthMode && textWidthMode !== 'flow') {
+          for (const edit of operation.op === 'batch' ? operation.operations : [operation]) {
+            const evidence = standalone.layoutConstraintEvidence;
+            if (!evidence) throw new Error('Missing width fixture facts');
+            if (edit.op === 'translate_by') {
+              standalone.box = { ...standalone.box, x: standalone.box.x + edit.delta.dx, y: standalone.box.y + edit.delta.dy };
+              standalone.layoutConstraintEvidence = { ...evidence, finalBox: standalone.box };
+            } else if (edit.op === 'set_text_width') {
+              const box = projectIndependentTextWidth(evidence, edit.width, widthContent);
+              if (!box) throw new Error('Invalid committed width');
+              standalone.box = box;
+              standalone.layoutConstraintEvidence = { ...evidence, finalBox: box, declared: { ...evidence.declared, widthInches: edit.width } };
+            }
+          }
+        }
         if (operation.op === 'set_text_content') content.set(operation.target.editKey, operation.content);
         if (operation.op === 'set_text_style') content.set(operation.target.editKey,
           patchWholeTextContent(content.get(operation.target.editKey) ?? '', operation));

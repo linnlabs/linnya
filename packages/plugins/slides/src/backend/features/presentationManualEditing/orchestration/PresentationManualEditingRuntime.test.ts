@@ -140,6 +140,7 @@ describe('PresentationManualEditingRuntime', () => {
     expect(buildFromSource.mock.calls[0][0].source).toContain('content": "Updated"');
     expect(traceRecord.mock.calls.map(([event]) => event.stage)).toEqual([
       'request_received',
+      'scope_acquired',
       'snapshot_validated',
       'source_rewritten',
       'semantic_build_started',

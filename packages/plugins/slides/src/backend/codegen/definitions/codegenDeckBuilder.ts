@@ -43,7 +43,11 @@ export interface CodegenSandboxExecutor {
   execute(request: SandboxExecutionRequest): Promise<SandboxExecutionResult>;
 }
 
+export type CodegenDeckBuildPhase = 'sandbox_started' | 'sandbox_completed' | 'layout_started' | 'layout_completed' | 'assets_completed' | 'persistence_started';
+
 export interface CodegenDeckBuildInput {
+  /** 进程内观察端口，不进入源码或 Worker DTO。 */
+  readonly onProgress?: (phase: CodegenDeckBuildPhase) => void;
   nodeId: string;
   source: string;
   conversationId?: string;

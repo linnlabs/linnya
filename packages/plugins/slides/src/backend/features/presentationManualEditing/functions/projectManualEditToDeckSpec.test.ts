@@ -6,9 +6,9 @@ import {
   initYoga,
 } from '../../../codegen/index.js';
 import {
-  projectManualTranslationToDeckSpec,
+  projectManualEditToDeckSpec,
   SlidesManualEditDeckProjectionError,
-} from './projectManualTranslationToDeckSpec.js';
+} from './projectManualEditToDeckSpec.js';
 
 const TARGET = { slideKey: 'overview', editKey: 'headline' } as const;
 
@@ -45,7 +45,7 @@ function makeDeck(): DeckSpec {
   };
 }
 
-describe('projectManualTranslationToDeckSpec', () => {
+describe('projectManualEditToDeckSpec', () => {
   beforeAll(async () => {
     await initYoga();
   });
@@ -82,7 +82,7 @@ describe('projectManualTranslationToDeckSpec', () => {
     if (!base.input || !fullyCompiled.input) {
       throw new Error(base.error ?? fullyCompiled.error ?? 'Expected compiled decks.');
     }
-    const projected = projectManualTranslationToDeckSpec(
+    const projected = projectManualEditToDeckSpec(
       buildDeckSpecFromDirectInput(base.input),
       {
         op: 'translate_by',
@@ -99,7 +99,7 @@ describe('projectManualTranslationToDeckSpec', () => {
 
   it('只复制目标路径，并同步平移元素盒与布局证据', () => {
     const deck = makeDeck();
-    const result = projectManualTranslationToDeckSpec(deck, {
+    const result = projectManualEditToDeckSpec(deck, {
       op: 'translate_by',
       target: TARGET,
       targetKind: 'text',
@@ -119,7 +119,7 @@ describe('projectManualTranslationToDeckSpec', () => {
   });
 
   it('把内容修改、Frame 和嵌套目标交给完整编译器', () => {
-    expect(projectManualTranslationToDeckSpec(makeDeck(), {
+    expect(projectManualEditToDeckSpec(makeDeck(), {
       op: 'set_text_content', targetKind: 'text',
       target: TARGET,
       content: 'Updated',
@@ -144,13 +144,13 @@ describe('projectManualTranslationToDeckSpec', () => {
         },
       }],
     };
-    expect(projectManualTranslationToDeckSpec(frameDeck, {
+    expect(projectManualEditToDeckSpec(frameDeck, {
       op: 'translate_by',
       target: { slideKey: 'overview', editKey: 'frame' },
       targetKind: 'frame',
       delta: { dx: 1, dy: 1 },
     })).toEqual({ kind: 'requires_full_compile' });
-    expect(projectManualTranslationToDeckSpec(frameDeck, {
+    expect(projectManualEditToDeckSpec(frameDeck, {
       op: 'translate_by',
       target: { slideKey: 'overview', editKey: 'nested' },
       targetKind: 'shape',
@@ -159,14 +159,14 @@ describe('projectManualTranslationToDeckSpec', () => {
   });
 
   it('拒绝缺失、重复或类型不一致的作者目标', () => {
-    expect(() => projectManualTranslationToDeckSpec(makeDeck(), {
+    expect(() => projectManualEditToDeckSpec(makeDeck(), {
       op: 'translate_by',
       target: { slideKey: 'overview', editKey: 'missing' },
       targetKind: 'text',
       delta: { dx: 1, dy: 1 },
     })).toThrowError(SlidesManualEditDeckProjectionError);
 
-    expect(() => projectManualTranslationToDeckSpec(makeDeck(), {
+    expect(() => projectManualEditToDeckSpec(makeDeck(), {
       op: 'translate_by',
       target: TARGET,
       targetKind: 'shape',
@@ -178,7 +178,7 @@ describe('projectManualTranslationToDeckSpec', () => {
     if (slide?.spec.type === 'structured') {
       slide.spec.elements.push({ ...slide.spec.elements[0] });
     }
-    expect(() => projectManualTranslationToDeckSpec(duplicate, {
+    expect(() => projectManualEditToDeckSpec(duplicate, {
       op: 'translate_by',
       target: TARGET,
       targetKind: 'text',

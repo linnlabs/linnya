@@ -144,6 +144,7 @@ renderer source selection
   `chartOptions/tableOptions` 绕过跨端合同。
 - 正数 `flex: N` 映射为 grow=N、shrink=1、basis=0。未声明 flex 的显式主轴尺寸保持固定；`minWidth/minHeight` 用于限制弹性节点下界。Text 在 Yoga 的 AT_MOST 测量中返回固有宽度与可用宽度的较小值，EXACTLY 才使用分配宽度。
 - Table 未声明高度时通过 [`engine/table`](../engine/table/README.md) 计算文字与合并单元格所需固有高度，参与正常 Flex 流。Yoga 和最终预览/PPTX 使用同一表格规则；显式尺寸仍归作者所有，受压缩内容由诊断报告，不在输出层额外扩大行高。
+- 人工插入 Text 的 `heightMode` 由 `InsertedObjectProjection` 转成普通作者约束：`content` 不把占位高度写入 minHeight，`minimum` 及历史未声明值保留原高度下限。复制显式携带 minimum；普通作者 height/minHeight 不经过该规则。
 - Text 的 authoring 宽度语义在 Flex compiler 统一收口：Flex 流或显式
   `width/maxWidth/左右边界` 表示固定宽度并自动换行；绝对定位且没有横向约束时，compiler
   先由 Yoga 估算，落库前通过 `engine/text/materializeIntrinsicTextBoxes` 使用最终排版同源的字体解析、cluster advance 与行布局物化盒宽，只保留源码中的显式换行。页码、序号和短标签可省略宽度；正文仍应声明宽度或放入 Flex 容器。
@@ -169,8 +170,14 @@ renderer source selection
   是 DirectCompose/PptxGenJS 内部入口；它们不属于工厂 config，也不能被描述为 deck.js 高级能力。
 - Flex compiler 在 `LayoutResult.node + box` 同时可用时派生
   [`generatedLayoutConstraints`](../../shared/generatedLayoutConstraints/README.md)：只传递数值声明、Yoga
-  最终盒、比例与 computed 父容器身份。禁止在 quality 重新解析 deck.js 或从最终盒反推声明值；
+  最终盒、比例、computed 父容器身份，以及自动高度 Text 实际使用的 portable 测量输入。
+  独立文本宽度编辑可重放同源高度规则，最终字形排版仍走正式 RenderModel；
+  禁止在 quality 重新解析 deck.js 或从最终盒反推声明值；
   imported PPTX 不伪造该事实。
+- 同一次 Yoga 编译为可重排页面生成内部 `layoutReplay`：归一化样式、原始布局顺序与 portable Text 测量输入。
+  由可信 compiled compose 出口进入 DeckSpec；普通作者输入不能提供它。
+  Renderer 重排当前页不执行 deck.js，规则与边界见
+  [`generatedLayoutReplay`](../../shared/generatedLayoutReplay/README.md)。新增 Yoga 属性时必须同步回放合同。
 - 新增公开能力必须同时具备：shared config 类型、sandbox
   runtime/compiler 消费、skill
   syntax 或生成 reference 可发现性，以及真实 sandbox → Flex
@@ -231,3 +238,5 @@ renderer source selection
 - codegen
   examples：`packages/plugins/slides/src/backend/__tests__/codegenFirstExamples.test.ts`
 - 插件全量：`pnpm run test:plugin:slides`
+
+人工编辑的 build input 可传进程内 `onProgress` 观察端口，报告 sandbox、layout、资产就绪与提交开始；不进入源码、Worker DTO 或持久化。人工编辑 owner 用 command ID 汇总这些阶段，编译器不依赖 Renderer 或具体日志设施。

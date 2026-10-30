@@ -1,6 +1,6 @@
 # Slides limited manual editing
 
-`manualEditing` owns the Renderer side of limited editing for generated `deck.js` presentations. It provides compiler-projected author targets and temporary visual projections, and submits a strict command against the exact revision/source snapshot. The backend remains the only writer. It may use proven-equivalent projections for a unique top-level atomic translation or an independent blank-page insertion; other edits use the full author compiler. Both paths commit the semantic revision without waiting for PPTX assembly and publish the same revision contract.
+`manualEditing` owns the Renderer side of limited editing for generated `deck.js` presentations. It provides compiler-projected author targets and temporary visual projections, and submits a strict command against the exact revision/source snapshot. The backend remains the only writer. It may use proven-equivalent projections for eligible atomic/Frame translation, Shape/Image visual size, Shape/Frame fill, independent Text width or an independent blank-page insertion; other edits use the full author compiler. Both paths commit the semantic revision without waiting for PPTX assembly and publish the same revision contract.
 
 ## Current interaction
 
@@ -79,11 +79,11 @@ The `refresh_completed` boundary now covers installation of the complete revisio
 
 Each accepted command uses its UUID as the Renderer/Backend correlation ID. When
 `localStorage['linnya.slides.debug']` is set to `verbose`, the Renderer emits structured
-`Slides/ManualEditTrace` events for request start, retry, response, refresh completion and the first
+`Slides/ManualEditTrace` events for queue admission, request start, retry, response, refresh completion and the first
 browser animation frame after the complete target revision is installed. The terminal
-`frame_presented` event includes input-to-response, response-to-refresh, refresh-to-frame and total
+`frame_presented` event includes queue wait, dispatch-to-response, input-to-response, response-to-refresh, refresh-to-frame and total
 input-to-frame timings. Backend `slides_manual_edit.backend_trace` events use the same command ID and
-identify `projected_translation` versus `full_compile` without logging source or edited content.
+identify the operation and `projected_edit` versus `full_compile`, including scope wait and compiler phases without logging source or edited content.
 
 - `backend/__tests__/manual-edit-save-reopen.integration.test.ts` joins the production Renderer queue, sandbox profile/evaluator, compiler, manual runtime, disk SQLite repository and lazy PPTX artifact runtime. It edits Shape text, position and color in sequence, reopens the database, and verifies the resulting source, revision, DeckSpec and exported XML. Host IPC transport and native UI are covered separately; the test does not touch user documents.
 
@@ -93,7 +93,7 @@ Text-content intents carry a typed visual preview alongside style operations, re
 
 ## Complete visual projection
 
-[editingPreview](../editingPreview/README.md) owns paint and layout projection. Canvas, selection, hit testing and editor re-entry consume the same complete nodes. The queue only owns ordered intents and revision settlement; manualEditing no longer owns a partial run-style projection or a Shape-only old-line repositioner. A text-size operation updates layout and box together when exact local facts are available. Flow/intrinsic author layout and missing measurements retain the complete prior frame until formal compilation. A weak cache shares the synchronous result without adding a second store or asynchronous callback lifecycle.
+[editingPreview](../editingPreview/README.md) owns paint and layout projection. Canvas, selection, hit testing and editor re-entry consume the same complete nodes. The queue only owns ordered intents and revision settlement; manualEditing no longer owns a partial run-style projection or a Shape-only old-line repositioner. A text-size operation updates layout and box together when exact local facts are available. Flow Text widths with a compiled page replay snapshot reflow through editingPreview; unsupported layout dependencies and missing measurements retain the complete prior frame until formal compilation. A weak cache shares the synchronous result without adding a second store or asynchronous callback lifecycle.
 
 The page supplies `preparePresentation` for structure selection. One logical command prepares once across transport retries and confirms/cancels at its final outcome; the queue does not implement selection rules. See [documentRuntime](../documentRuntime/README.md).
 
@@ -110,4 +110,6 @@ Editing command UI is owned by [editingCommands](../editingCommands/README.md), 
 
 ## Text width handles
 
-Text boxes expose only width handles (`ManualTextWidthHandles`, `resolveManualTextWidth`): the right handle submits `set_text_width`; the left handle submits one batch of `translate_by` plus `set_text_width` so the right edge stays put. Widths and shifts are on the compiler grid; while dragging, a dashed ghost with the width label replaces the property toolbar, and the real reflow arrives with the committed revision.
+Text boxes expose only width handles (`ManualTextWidthHandles`, `resolveManualTextWidth`): the right handle submits `set_text_width`; the left handle submits one batch of `translate_by` plus `set_text_width` so the right edge stays put. Widths and shifts are on the compiler grid. The gesture freezes the initially presented bounds and zoom, then feeds each width into editingPreview: wrapping, the visible box and selection update together without IPC. Release enqueues the same preview before clearing the gesture; subsequent drags start from the visible pending width. Escape cancels only the current gesture, and save failure rolls back the pending width. A dashed guide retains the width label while the property toolbar is hidden. Independent fixed-height Text and auto-height Text with compiler-provided measurement inputs use the shared exact projection; flow Text uses the compiled page replay through editingPreview, updating affected siblings, paint and hit geometry together. It still saves through the full compiler. Pages with unsupported measurement owners or insufficient prepared facts retain their prior complete frame until compilation. Old saved revisions acquire replay facts on their next successful full compile.
+
+Pending insertions retain complete typed object values in the queue. A newly imported image may also retain its local data URI for preview; this field never enters the command, source or backend history. `pendingInsertions` is derived state, and settlement/failure/reset drops these values. The stage filters out objects already present in the displayed formal frame before handing them to editingPreview. Selection and follow-up editing still begin only after the confirmed frame.
