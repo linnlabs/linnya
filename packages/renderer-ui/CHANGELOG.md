@@ -12,7 +12,7 @@
 - `LinnyaLoadingIcon` 取代涟漪加载：`activity` 为 `processing`（默认，光流）、`thinking`（摇曳）或 `generating`（生长），保留 `color` 属性，默认 18×18。
 - `/styles.css` 新增图标动效样式：方向箭头旋转、复制对勾、显示 / 隐藏、播放 / 暂停替换、发送 / 暂停 / 继续（暂停与继续之间两条竖线形变成三角）、刷新与加载旋转、Linnya 进行中三种动态；只引用 motion token，减少动态效果时停在静态图形。
 - `RunControlIcon` 是对话输入框主按钮的图标，`action` 为 `send`、`pause` 或 `resume`，不带外圈，用在深色实底按钮里。
-- `CustomSelect` 的子菜单箭头、`SimpleDatePicker` 的翻页按钮、`TextPopover` 的关闭按钮由文字字符改为 `ChevronIcon` / `CloseIcon`，不再随字体变形；`SimpleDatePicker` 翻页按钮补上可访问名称（新增本地化键 `shared.simpleDatePicker.previous` / `next`）。`.option-arrow` 现在是 12px 的 SVG。
+- `CustomSelect` 的子菜单箭头、`SimpleDatePicker` 的翻页按钮、`TextPopover` 的关闭按钮由文字字符改为 `ChevronIcon` / `CloseIcon`，不再随字体变形；`SimpleDatePicker` 翻页按钮补上可访问名称（新增本地化键 `shared.simpleDatePicker.previous` / `next`）。`.option-arrow` 现在是 12px 的 SVG，主菜单与各级子菜单同尺寸。
 - 2.6.0 记录的 `--spacing-*` / `--transition-*` 兼容别名本版仍保留，删除顺延到之后的 major。
 
 改名：

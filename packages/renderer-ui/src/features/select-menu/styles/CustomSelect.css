@@ -290,7 +290,8 @@
   opacity: 0.85;
 }
 
-.custom-select__options .option-arrow {
+.custom-select__options .option-arrow,
+.custom-select__submenu .option-arrow {
   flex-shrink: 0;
   width: 12px;
   height: 12px;
