@@ -5,9 +5,14 @@ import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
+import { createRequire } from 'node:module';
 
 import { createIsolatedRunRoot } from './harness/isolatedRunRoot.mjs';
 import { bindElectronVersion } from './harness/electronRuntimeIdentity.mjs';
+
+const { prepareWindowsAppLocalRuntime } = createRequire(import.meta.url)(
+  '../../build/functions/production-package-contract.cjs',
+);
 
 const fixtureDirectory = fileURLToPath(
   new URL('./fixtures/windows-native-runtime-package/', import.meta.url),
@@ -42,6 +47,7 @@ const manifestFileName = 'linnyaCommandProcessOwner.manifest.json';
 const sshHost = process.env.LINNYA_WINDOWS_SSH_HOST;
 const sshUser = process.env.LINNYA_WINDOWS_SSH_USER;
 const sshKey = process.env.LINNYA_WINDOWS_SSH_KEY;
+const vcRuntimeSource = process.env.LINNYA_WINDOWS_VC_RUNTIME_DIR;
 const OUTPUT_LIMIT = 256 * 1024;
 
 if (process.platform !== 'darwin') {
@@ -52,6 +58,9 @@ if (!sshHost || !sshUser || !sshKey || !path.isAbsolute(sshKey)) {
     'Windows E2E requires LINNYA_WINDOWS_SSH_HOST, LINNYA_WINDOWS_SSH_USER, '
       + 'and absolute LINNYA_WINDOWS_SSH_KEY',
   );
+}
+if (!vcRuntimeSource || !path.isAbsolute(vcRuntimeSource)) {
+  throw new Error('Windows packaged E2E requires absolute LINNYA_WINDOWS_VC_RUNTIME_DIR from a verified Visual Studio redistributable');
 }
 
 function run(file, args, { cwd = repositoryRoot, env = process.env, timeoutMs = 120_000 } = {}) {
@@ -181,6 +190,10 @@ async function main() {
         path.join(validationTarget, 'after-sign-runtime-assets.cjs'),
       ),
       fsp.copyFile(
+        path.join(repositoryRoot, 'build/windows-vc-runtime-trust.cjs'),
+        path.join(validationTarget, 'windows-vc-runtime-trust.cjs'),
+      ),
+      fsp.copyFile(
         afterSignDriverPath,
         path.join(validationTarget, 'after-sign-driver.mjs'),
       ),
@@ -214,6 +227,20 @@ async function main() {
     });
 
     const unpackedDirectory = path.join(outputDirectory, 'win-unpacked');
+    // fixture 同样携带正式包的 app-local CRT；实际 Microsoft Authenticode 校验在 Windows afterSign 执行。
+    const vcRuntimeDirectory = path.join(isolatedRoot.path, 'vc-runtime');
+    const runtimeFiles = prepareWindowsAppLocalRuntime({
+      sourceDirectory: vcRuntimeSource,
+      targetDirectory: vcRuntimeDirectory,
+      architecture: 'x64',
+    });
+    for (const relativeDirectory of ['.', 'resources/command-runtime/windows/x64', 'resources/bin/qdrant']) {
+      const targetDirectory = path.join(unpackedDirectory, relativeDirectory);
+      await fsp.mkdir(targetDirectory, { recursive: true });
+      for (const fileName of runtimeFiles) {
+        await fsp.copyFile(path.join(vcRuntimeDirectory, fileName), path.join(targetDirectory, fileName));
+      }
+    }
     const packagedRuntimeDirectory = path.join(
       unpackedDirectory,
       'resources/command-runtime/windows/x64',

@@ -215,7 +215,7 @@ describe('Windows command runtime afterSign trust contract', () => {
   const validVcRuntimeInspector = async () => ({
     status: 'Valid',
     status_message: 'Signature verified.',
-    publisher_identity: 'CN=Microsoft Corporation, O=Microsoft Corporation, C=US',
+    publisher_identity: 'CN=Microsoft Windows Software Compatibility Publisher, O=Microsoft Corporation, C=US',
   });
 
   it('开发构建明确验证未签名制品，并保留 development manifest', async () => {

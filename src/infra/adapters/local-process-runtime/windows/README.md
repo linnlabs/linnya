@@ -81,3 +81,16 @@ PTY 使用现有 Rust native owner 的 Pseudoconsole + Job List 组合。Utility
 ## 9. 测试
 
 必须有：普通用户三层进程树、root 早退、Job 后代、cancel/timeout、128 MiB 背压、native loader fault injection、ConPTY input/resize/EOF、packaged Electron 和安装包发布门；Sandbox 还要验证 evaluator 无控制台/顶层窗口、整树在 Job 内且 Utility crash 后归零。不能只检查进程返回码。
+
+macOS 控制的 `test:shell-tool:windows-native-runtime-package` 使用 SSH 连接独立 Windows 验收机。
+配置 `LINNYA_WINDOWS_SSH_HOST`、`LINNYA_WINDOWS_SSH_USER`、绝对路径的
+`LINNYA_WINDOWS_SSH_KEY` 与 `LINNYA_WINDOWS_VC_RUNTIME_DIR`；后者须是从合法 Visual Studio
+可再分发目录准备的 x64 CRT。控制端需要当前 Rust 工具链的 `x86_64-pc-windows-msvc` target 和
+`cargo-xwin`。fixture 按正式目录携带 CRT，在 Windows 上执行真实 afterSign 的微软验签，
+再验证 `release_unsigned` 正常执行、拒绝开发清单、篡改、架构/版本不匹配和恢复后的目录释放。
+该测试不安装系统 VC Runtime，也不代替完整产品的 NSIS 安装/覆盖升级/卸载验收。
+
+CRT 准备与 afterSign 共用 `build/windows-vc-runtime-trust.cjs` 的发布者规则：仅接受有效
+Authenticode 下的 `Microsoft Corporation` 或 `Microsoft Windows Software Compatibility Publisher`
+证书，组织必须为 `Microsoft Corporation`。后者是 Visual Studio redist 的真实签名身份；
+更新证书名单须先检查正式上游产物，不得绕过有效签名要求。

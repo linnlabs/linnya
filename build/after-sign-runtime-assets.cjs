@@ -2,6 +2,7 @@ const { spawn } = require('node:child_process');
 const { createHash, randomUUID } = require('node:crypto');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const { isMicrosoftVcRuntimePublisher } = require('./windows-vc-runtime-trust.cjs');
 
 const HEADLESS_NODE_RUNTIME_CATALOG = require('../config/headless-node-runtime.json');
 
@@ -400,7 +401,7 @@ async function assertPackagedWindowsVcRuntime(appOutDir, authenticodeInspector) 
     const signature = await authenticodeInspector(filePath);
     if (
       signature.status !== 'Valid'
-      || !/^CN=Microsoft Corporation(?:,|$)/.test(signature.publisher_identity ?? '')
+      || !isMicrosoftVcRuntimePublisher(signature.publisher_identity)
     ) {
       throw new Error(`Packaged Windows VC runtime has invalid Microsoft signature: ${filePath}`);
     }

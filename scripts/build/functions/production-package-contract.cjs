@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { isMicrosoftVcRuntimePublisher } = require('../../../build/windows-vc-runtime-trust.cjs');
 
 const SUPPORTED_NATIVE_TARGETS = new Set([
   'darwin:arm64',
@@ -184,7 +185,7 @@ function assertWindowsVcRuntimeAuthenticode({ filePath, status, subject }) {
   if (status !== 'Valid') {
     throw new Error(`Windows VC runtime Authenticode signature is not valid (${status}): ${filePath}`);
   }
-  if (typeof subject !== 'string' || !/^CN=Microsoft Corporation(?:,|$)/.test(subject)) {
+  if (!isMicrosoftVcRuntimePublisher(subject)) {
     throw new Error(`Windows VC runtime signer is not Microsoft Corporation: ${filePath}`);
   }
 }

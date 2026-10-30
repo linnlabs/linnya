@@ -317,6 +317,19 @@ describe('Windows app-local VC runtime contract', () => {
     expect(() => assertWindowsVcRuntimeAuthenticode({
       filePath: 'C:\\runtime\\vcruntime140.dll',
       status: 'Valid',
+      subject: 'CN=Microsoft Windows Software Compatibility Publisher, O=Microsoft Corporation, L=Redmond, S=Washington, C=US',
+    })).not.toThrow();
+    for (const subject of [
+      'CN=Microsoft Windows Software Compatibility Publisher, O=Example Corporation, C=US',
+      'CN=Microsoft Corporation Impersonator, O=Microsoft Corporation, C=US',
+    ]) {
+      expect(() => assertWindowsVcRuntimeAuthenticode({
+        filePath: 'C:\\runtime\\vcruntime140.dll', status: 'Valid', subject,
+      })).toThrow('signer is not Microsoft Corporation');
+    }
+    expect(() => assertWindowsVcRuntimeAuthenticode({
+      filePath: 'C:\\runtime\\vcruntime140.dll',
+      status: 'Valid',
       subject: 'CN=Microsoft Corporation, O=Microsoft Corporation, C=US',
     })).not.toThrow();
     expect(() => assertWindowsVcRuntimeAuthenticode({

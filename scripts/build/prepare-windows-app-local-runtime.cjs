@@ -19,16 +19,23 @@ function readOption(optionName) {
 function inspectAuthenticodeSignature(filePath) {
   const script = [
     '$ErrorActionPreference = "Stop"',
-    '$signature = Get-AuthenticodeSignature -LiteralPath $env:LINNYA_WINDOWS_RUNTIME_FILE',
+    '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
+    "$securityModule = Join-Path $PSHOME 'Modules\\Microsoft.PowerShell.Security\\Microsoft.PowerShell.Security.psd1'",
+    'Import-Module -Name $securityModule -Force -ErrorAction Stop',
+    '$signature = Microsoft.PowerShell.Security\\Get-AuthenticodeSignature -LiteralPath $env:LINNYA_WINDOWS_RUNTIME_FILE',
     '$result = [pscustomobject]@{ status = [string]$signature.Status; subject = $signature.SignerCertificate.Subject }',
     '$result | ConvertTo-Json -Compress',
   ].join('; ');
+  // 与 afterSign 保持一致：PowerShell 7 的模块搜索路径不能带进系统 Windows PowerShell。
+  const environment = { ...process.env, LINNYA_WINDOWS_RUNTIME_FILE: filePath };
+  delete environment.PSModulePath;
+  delete environment.PSMODULEPATH;
   return JSON.parse(execFileSync(
     'powershell.exe',
     ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
     {
       encoding: 'utf8',
-      env: { ...process.env, LINNYA_WINDOWS_RUNTIME_FILE: filePath },
+      env: environment,
     },
   ));
 }
