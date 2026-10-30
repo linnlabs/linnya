@@ -55,7 +55,7 @@ export function renderDecisionReport(record: DecisionRecord, expectedRevision: n
         ])),
         ...flow.timingThresholds.map(threshold => text(threshold.text)),
       ]),
-      '锚点、时点、金额范围与期初可动用现金由作者声明；程序按天数排序、同日先付后收。缺口门槛不等于满足所有合同，流入不等于现实已到账，最低余额不等于利润。',
+      '锚点、时点、银行余额、隔离准备与节点金额由作者声明；程序按天数排序、同日先付后收。',
     ] : []),
     '## 当前建议引用的程序边界',
     basis === null ? '未声明 numericBasis。'

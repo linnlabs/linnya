@@ -37,5 +37,5 @@ export function evaluateCashFlow(model: DecisionModel, flow: DecisionCashFlow) {
   const result = calculateCashFlowBalances(openingBank.value, openingReserve.value, resolved.map(entry => ({ id: entry.id, direction: entry.direction, amount: entry.amountValue })));
   if (result.status === 'unavailable') return { ...unresolved, status: 'unavailable' as const, text: `${flow.label}：${result.reason}` };
   return { ...common, ...result, entries: resolved, missingInputIds: [], missingTimingIds: [],
-    text: `${flow.label}：按相对“${flow.timeAnchor}”的天数排序、同日先付后收，期初银行 ${openingBank.value}、隔离准备 ${openingReserve.value}，最低可动用余额 ${result.minimumBalance} ${flow.unit}，资金缺口 ${result.shortfall} ${flow.unit}，期末余额 ${result.endingBalance} ${flow.unit}。` };
+    text: `${flow.label}：按相对“${flow.timeAnchor}”的天数排序、同日先付后收，期初银行 ${openingBank.value}、隔离准备 ${openingReserve.value}，最低可动用余额 ${result.minimumBalance} ${flow.unit}，资金缺口 ${result.shortfall} ${flow.unit}，期末可动用余额 ${result.endingBalance} ${flow.unit}。` };
 }
