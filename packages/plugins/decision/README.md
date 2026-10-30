@@ -16,6 +16,7 @@ Agent 负责澄清、探索、调查和判断，Skill 提供方法与操作说�
 - `src/backend/features/decision-record/`：计算、更新规则和持久化。
 - `src/backend/features/decision-research/`：研究委托、输入与观察版本、结果接纳与失效规则。
 - `src/backend/features/decision-cli/`：参数解析与 App bridge adapter。
+- `src/backend/features/decision-delivery/`：Decision 专属工具到既有 Host 收口合同的窄适配器；交付计算与文件能力仍由 decision-record 公共入口提供。
 
 ## 持久化与操作
 
