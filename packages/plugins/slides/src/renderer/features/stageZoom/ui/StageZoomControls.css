@@ -1,0 +1,74 @@
+/* 缩放组放在宿主工具栏里，与相邻按钮同用扁平样式，不自带背景或阴影。 */
+.stage-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.stage-zoom-controls .stage-zoom-controls__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  outline: none;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.stage-zoom-controls .stage-zoom-controls__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.stage-zoom-controls .stage-zoom-controls__button:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.stage-zoom-controls .stage-zoom-controls__button:active:not(:disabled) {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.stage-zoom-controls .stage-zoom-controls__button:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-border-focus);
+}
+
+.stage-zoom-controls .stage-zoom-controls__button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stage-zoom-controls .stage-zoom-controls__slider {
+  flex-shrink: 0;
+  width: 88px;
+  margin: 0 4px;
+}
+
+/*
+ * 宽度跟随最近的 inline-size 容器（宿主工具栏）。容器变窄时收起滑块，
+ * 把百分比移到加减之间，保留“− 百分比 +”三个控件。
+ */
+@container (max-width: 640px) {
+  .stage-zoom-controls .stage-zoom-controls__slider {
+    display: none;
+  }
+
+  .stage-zoom-controls .stage-zoom-menu {
+    order: 1;
+  }
+
+  .stage-zoom-controls .stage-zoom-controls__button--in {
+    order: 2;
+  }
+}
