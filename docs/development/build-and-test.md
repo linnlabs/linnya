@@ -112,7 +112,7 @@ pnpm run build:main
 签名产物没有 Linnya 发行清单，运行时按 `community` 处理，不连接官方更新和 Cloud。
 `official` 必须由受保护环境生成发行 payload、使用受信 Ed25519 私钥签名并与平台代码
 签名共同进入发布证据；普通环境变量、`NODE_ENV=production` 和 `app.isPackaged` 都不能
-提升发行身份。当前公开 key ring 尚未配置，正式 Desktop 发布仍处于关闭状态。
+提升发行身份。公开 key ring 位于 `src/electron-main/distribution/registry/`，只含公钥。
 
 ## 5. 原生模块与跨平台边界
 

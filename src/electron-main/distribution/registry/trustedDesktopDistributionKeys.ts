@@ -1,7 +1,11 @@
 import type { TrustedDesktopDistributionKeys } from '../definitions/desktopDistributionManifest';
 
 /**
- * 正式 Desktop 发行 key 建立前保持为空。公开 key 可以进入源码；私钥只能位于受保护
- * 发布环境。空 key ring 会让所有 packaged 构建安全地落到 community。
+ * 只保存可公开的公钥；私钥只位于受保护的发布环境。轮换时加入新 key，泄露时删除旧 key。
  */
-export const trustedDesktopDistributionKeys: TrustedDesktopDistributionKeys = Object.freeze({});
+export const trustedDesktopDistributionKeys: TrustedDesktopDistributionKeys = Object.freeze({
+  'linnya-desktop-2026-d85adc': `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAhMCJ2Kp5fNwqPXZt9ZqiV1KVziIO27Cdz5IA0aaHNC4=
+-----END PUBLIC KEY-----
+`,
+});
