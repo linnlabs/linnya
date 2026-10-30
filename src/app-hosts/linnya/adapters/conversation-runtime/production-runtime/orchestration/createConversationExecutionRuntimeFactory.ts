@@ -131,6 +131,7 @@ export function createConversationExecutionRuntimeFactory(input: {
           mainBundleDirectory: input.bootstrap.mainBundleDirectory,
           platform: input.bootstrap.platform,
           architecture: input.bootstrap.architecture,
+          hostEnvironment: input.internalChildEnvironment,
         });
         logger.info('Sandbox evaluator runtime 已冻结', {
           nodeVersion: sandboxEvaluatorRuntime.nodeVersion,

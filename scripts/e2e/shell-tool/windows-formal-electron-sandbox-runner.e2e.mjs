@@ -7,6 +7,7 @@ import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 
 import { createIsolatedRunRoot } from './harness/isolatedRunRoot.mjs';
+import { buildFormalSandboxFixture } from './harness/buildFormalSandboxFixture.mjs';
 import {
   bindElectronVersion,
   expectedElectronVersion,
@@ -134,17 +135,7 @@ async function createBuildProject(rootPath) {
     path.join(runtimeDirectory, runtimeManifestFileName),
     'utf8',
   ));
-  await runChecked('pnpm', [
-    'exec',
-    'esbuild',
-    path.join(fixtureDirectory, 'main.ts'),
-    '--bundle',
-    '--platform=node',
-    '--format=cjs',
-    '--target=node20',
-    '--external:electron',
-    `--outfile=${path.join(projectDirectory, 'main.cjs')}`,
-  ], { timeoutMs: 120_000 });
+  await buildFormalSandboxFixture(projectDirectory);
   await Promise.all([
     copyFile(utilityPath, path.join(projectDirectory, 'sandbox/sandboxUtilityProcess.cjs')),
     copyFile(evaluatorPath, path.join(projectDirectory, 'sandbox/sandboxEvaluatorProcess.cjs')),
@@ -165,6 +156,8 @@ async function createBuildProject(rootPath) {
   packageManifest.version = runtimeManifest.application_version;
   packageManifest.build.productName = 'Linnya Formal Sandbox Runner Windows Validation';
   packageManifest.build.extraResources = [
+    // 与正式包一样复制插件父目录，builder 会过滤复制根的 node_modules。
+    { from: 'plugins', to: 'plugins', filter: ['**/*'] },
     {
       from: 'runtime/windows/x64',
       to: 'command-runtime/windows/x64',
@@ -278,7 +271,10 @@ function assertSummary(summary) {
 async function runWindowsValidation(outputDirectory, buildRoot) {
   const token = randomUUID().replaceAll('-', '');
   const archivePath = path.join(buildRoot, `windows-formal-sandbox-${token}.tar.gz`);
-  await runChecked('tar', ['-czf', archivePath, '-C', outputDirectory, 'win-unpacked']);
+  // 不把 macOS 扩展属性转换成 Windows 包里的 AppleDouble 旁车文件。
+  await runChecked('tar', ['-czf', archivePath, '-C', outputDirectory, 'win-unpacked'], {
+    env: { ...process.env, COPYFILE_DISABLE: '1' },
+  });
 
   const sshTarget = `${sshUser}@${sshHost}`;
   const sshArgs = [

@@ -73,6 +73,12 @@ App Server ready 仍要求本地数据库、目录恢复和正式路由可用；
 | 全仓 TypeScript 存量债务 | `pnpm run guard:tsc-baseline` |
 | 代码边界与格式 | 对修改文件运行 ESLint，并执行 `pnpm run lint:style`、`git diff --check` |
 
+Sandbox 的跨平台打包验收入口是 `test:shell-tool:formal-electron-sandbox`（macOS）和
+`test:shell-tool:windows-formal-electron-sandbox`（macOS 经 SSH 控制 Windows）。两者共用
+`scripts/e2e/shell-tool/harness/buildFormalSandboxFixture.mjs`，将 Slides profile 打成独立 CJS
+制品，并用插件正式构建入口携带最小 TypeScript runtime，避免源码内联或本机依赖掩盖安装态缺失。
+这组 fixture 验证 Sandbox 运行合同，不代替完整 Desktop 安装包验收。
+
 定向运行时直接把测试文件或目录交给 Vitest，也可以使用 `pnpm test <test-file>`。不要在
 `pnpm test` 后添加 `--`：pnpm 会把它原样传给 `vitest run`，后面的路径不再成为文件过滤条件，
 从而运行整个测试发现范围。需要预览命中文件时使用 `pnpm exec vitest list <test-file> --filesOnly`，

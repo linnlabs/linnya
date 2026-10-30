@@ -35,6 +35,7 @@ describe('Sandbox evaluator runtime resolver', () => {
       mainBundleDirectory: fixture.mainBundleDirectory,
       platform: 'darwin',
       architecture: 'arm64',
+      hostEnvironment: { API_KEY: 'not-for-evaluator', NODE_OPTIONS: '--inspect' },
     });
 
     expect(runtime.nodeVersion).toBe(runtimeCatalog.node_version);
@@ -55,6 +56,7 @@ describe('Sandbox evaluator runtime resolver', () => {
       mainBundleDirectory: fixture.mainBundleDirectory,
       platform: 'darwin',
       architecture: 'arm64',
+      hostEnvironment: { API_KEY: 'not-for-evaluator', NODE_OPTIONS: '--inspect' },
     })).rejects.toThrow(/size|hash/u);
   });
 
@@ -72,6 +74,7 @@ describe('Sandbox evaluator runtime resolver', () => {
       mainBundleDirectory: fixture.mainBundleDirectory,
       platform: 'darwin',
       architecture: 'arm64',
+      hostEnvironment: { API_KEY: 'not-for-evaluator', NODE_OPTIONS: '--inspect' },
     });
 
     expect(runtime.launch).toEqual({
@@ -90,6 +93,7 @@ describe('Sandbox evaluator runtime resolver', () => {
       mainBundleDirectory: fixture.mainBundleDirectory,
       platform: 'darwin',
       architecture: 'arm64',
+      hostEnvironment: { API_KEY: 'not-for-evaluator', NODE_OPTIONS: '--inspect' },
     })).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });

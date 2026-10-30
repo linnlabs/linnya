@@ -22,6 +22,7 @@ export async function resolveSandboxEvaluatorRuntime(input: {
   readonly mainBundleDirectory: string;
   readonly platform: NodeJS.Platform;
   readonly architecture: string;
+  readonly hostEnvironment: NodeJS.ProcessEnv;
 }): Promise<SandboxEvaluatorRuntime> {
   const catalog = parseHeadlessNodeRuntimeCatalog(runtimeCatalogSource);
   const runtimeDirectory = input.packaged
@@ -63,13 +64,23 @@ export async function resolveSandboxEvaluatorRuntime(input: {
   if (!entryStat.isFile() || entryStat.size <= 0) {
     throw new Error('Sandbox evaluator bundle 不是非空普通文件');
   }
+  const environment: Record<string, string> = {};
+  if (input.platform === 'win32') {
+    const windowsRoot = Object.entries(input.hostEnvironment).find(
+      ([name]) => name.toLowerCase() === 'systemroot',
+    )?.[1];
+    if (!windowsRoot) throw new Error('Windows Sandbox evaluator requires SystemRoot');
+    // Node 的 Windows 随机数初始化依赖系统目录；空环境会在执行 evaluator 前 CSPRNG abort。
+    // 仅携带这项 OS 事实，不把 Host 凭据、NODE_OPTIONS 或命令 PATH 传入代码沙箱。
+    environment.SystemRoot = windowsRoot;
+  }
   return Object.freeze({
     nodeVersion: runtime.nodeVersion,
     manifestPath: runtime.manifestPath,
     launch: Object.freeze({
       executablePath: runtime.executablePath,
       entryPath,
-      environment: Object.freeze({}),
+      environment: Object.freeze(environment),
     }),
   });
 }

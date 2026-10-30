@@ -87,6 +87,7 @@ async function createProductionScope() {
     mainBundleDirectory: __dirname,
     platform: process.platform,
     architecture: process.arch,
+    hostEnvironment: process.env,
   });
   if (process.platform === 'win32') {
     if (process.arch !== 'x64') {
@@ -236,7 +237,7 @@ async function runSuite(): Promise<void> {
       || typeof result.value !== 'object'
       || result.value === null
       || Reflect.get(result.value, 'iteration') !== index) {
-      throw new Error(`Sandbox identity stress iteration ${index} failed`);
+      throw new Error(`Sandbox identity stress iteration ${index} failed: ${JSON.stringify(result)}`);
     }
     identityStress.push({
       iteration: index,

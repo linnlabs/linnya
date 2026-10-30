@@ -6,6 +6,7 @@ import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 
 import { createIsolatedRunRoot } from './harness/isolatedRunRoot.mjs';
+import { buildFormalSandboxFixture } from './harness/buildFormalSandboxFixture.mjs';
 import {
   bindElectronVersion,
   expectedElectronVersion,
@@ -190,17 +191,7 @@ async function createBuildProject(rootPath) {
     timeoutMs: 120_000,
   });
   await runChecked('pnpm', ['run', 'build:sandbox-runner'], { timeoutMs: 120_000 });
-  await runChecked('pnpm', [
-    'exec',
-    'esbuild',
-    path.join(fixtureDirectory, 'main.ts'),
-    '--bundle',
-    '--platform=node',
-    '--format=cjs',
-    '--target=node20',
-    '--external:electron',
-    `--outfile=${path.join(projectDirectory, 'main.cjs')}`,
-  ], { timeoutMs: 120_000 });
+  await buildFormalSandboxFixture(projectDirectory);
   await copyFile(
     productionUtilityPath,
     path.join(projectDirectory, 'sandbox/sandboxUtilityProcess.cjs'),
