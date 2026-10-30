@@ -39,7 +39,7 @@
     "better-sqlite3": "13.0.3",
     "tsup": "^8.0.0",
     "typescript": "^5.5.4",
-    "vite": "^6.2.0",
+    "vite": "^6.4.5",
     "vitest": "^4.1.12"
   }
 }
