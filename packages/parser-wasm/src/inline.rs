@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
 use pulldown_cmark::{
-    Event as PulldownEvent, Options as PulldownOptions, Parser as PulldownParser, Tag as PulldownTag,
+    Event as PulldownEvent, Options as PulldownOptions, Parser as PulldownParser,
+    Tag as PulldownTag,
 };
 use serde_json::Value as JsonValue;
 
@@ -16,11 +17,24 @@ fn generate_inline_element_id(prefix: &str) -> String {
     format!("{}-{}", prefix, count)
 }
 
+/// 开闭事件需要保留嵌套深度，片段的 marks 则表达当前生效的样式集合。
+/// 按完整 Mark（含属性）比较，避免把不同链接等具有独立语义的样式合并。
+fn project_active_marks(mark_stack: &[Mark]) -> Vec<Mark> {
+    let mut active_marks = Vec::with_capacity(mark_stack.len());
+    for mark in mark_stack {
+        if !active_marks.contains(mark) {
+            active_marks.push(mark.clone());
+        }
+    }
+    active_marks
+}
+
 /// 使用 pulldown-cmark 将一段 markdown 文本解析为内联片段序列。
 /// 这里只处理行内级元素（粗体、斜体、链接、删除线、代码、行内公式等），
 /// 块级结构（表格、标题、列表等）由外层块解析器负责。
 pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<ContentFragment> {
     let mut fragments = Vec::new();
+    // 不能在入栈时去重：内层结束后，外层相同样式仍应继续生效。
     let mut current_marks: Vec<Mark> = Vec::new();
 
     let mut options = PulldownOptions::empty();
@@ -61,7 +75,7 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                     fragments.push(ContentFragment {
                         r#type: "text".to_string(),
                         text: Some(text_cow.into_string()),
-                        marks: current_marks.clone(),
+                        marks: project_active_marks(&current_marks),
                         attrs: None,
                     });
                 }
@@ -82,11 +96,17 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                     r#type: "strike".to_string(),
                     attrs: None,
                 }),
-                PulldownTag::Link { dest_url, title, .. } => {
+                PulldownTag::Link {
+                    dest_url, title, ..
+                } => {
                     let mut attrs_map = HashMap::new();
-                    attrs_map.insert("href".to_string(), JsonValue::String(dest_url.into_string()));
+                    attrs_map.insert(
+                        "href".to_string(),
+                        JsonValue::String(dest_url.into_string()),
+                    );
                     if !title.is_empty() {
-                        attrs_map.insert("title".to_string(), JsonValue::String(title.into_string()));
+                        attrs_map
+                            .insert("title".to_string(), JsonValue::String(title.into_string()));
                     }
                     current_marks.push(Mark {
                         r#type: "link".to_string(),
@@ -135,7 +155,10 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                 let latex_source = text.into_string();
                 if !latex_source.is_empty() {
                     let mut attrs_map = HashMap::new();
-                    attrs_map.insert("latexSource".to_string(), JsonValue::String(latex_source.clone()));
+                    attrs_map.insert(
+                        "latexSource".to_string(),
+                        JsonValue::String(latex_source.clone()),
+                    );
                     attrs_map.insert(
                         "id".to_string(),
                         JsonValue::String(generate_inline_element_id("inline-latex")),
@@ -155,7 +178,10 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                 let latex_source = text.into_string();
                 if !latex_source.is_empty() {
                     let mut attrs_map = HashMap::new();
-                    attrs_map.insert("latexSource".to_string(), JsonValue::String(latex_source.clone()));
+                    attrs_map.insert(
+                        "latexSource".to_string(),
+                        JsonValue::String(latex_source.clone()),
+                    );
                     attrs_map.insert(
                         "id".to_string(),
                         JsonValue::String(generate_inline_element_id("display-math-in-inline")),
@@ -178,14 +204,14 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                         fragments.push(ContentFragment {
                             r#type: "hardBreak".to_string(),
                             text: None,
-                            marks: current_marks.clone(),
+                            marks: project_active_marks(&current_marks),
                             attrs: None,
                         });
                     } else {
                         fragments.push(ContentFragment {
                             r#type: "text".to_string(), // 暂时按纯文本处理
                             text: Some(html_str),
-                            marks: current_marks.clone(),
+                            marks: project_active_marks(&current_marks),
                             attrs: None,
                         });
                     }
@@ -195,7 +221,7 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                 fragments.push(ContentFragment {
                     r#type: "text".to_string(),
                     text: Some(" ".to_string()),
-                    marks: current_marks.clone(),
+                    marks: project_active_marks(&current_marks),
                     attrs: None,
                 });
             }
@@ -203,7 +229,7 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                 fragments.push(ContentFragment {
                     r#type: "hardBreak".to_string(),
                     text: None,
-                    marks: current_marks.clone(),
+                    marks: project_active_marks(&current_marks),
                     attrs: None,
                 });
             }
@@ -215,7 +241,7 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                     } else {
                         "[ ] ".to_string()
                     }),
-                    marks: current_marks.clone(),
+                    marks: project_active_marks(&current_marks),
                     attrs: None,
                 });
             }
@@ -225,7 +251,7 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                     fragments.push(ContentFragment {
                         r#type: "text".to_string(),
                         text: Some(html_content.into_string()),
-                        marks: current_marks.clone(),
+                        marks: project_active_marks(&current_marks),
                         attrs: None,
                     });
                 }
@@ -235,7 +261,7 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                 fragments.push(ContentFragment {
                     r#type: "text".to_string(),
                     text: Some(format!("[^{}]", name.into_string())),
-                    marks: current_marks.clone(),
+                    marks: project_active_marks(&current_marks),
                     attrs: None,
                 });
             }
@@ -257,3 +283,94 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
     fragments
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nested_marks_preserve_outer_scope_until_its_own_end() {
+        for (markdown, mark_type) in [
+            ("**a **b** c** tail", "bold"),
+            ("*a *b* c* tail", "italic"),
+            ("~~a ~~b~~ c~~ tail", "strike"),
+        ] {
+            let fragments = parse_inline_markdown_to_fragments(markdown);
+            assert_eq!(
+                fragments
+                    .iter()
+                    .map(|f| f.text.as_deref())
+                    .collect::<Vec<_>>(),
+                vec![Some("a "), Some("b"), Some(" c"), Some(" tail")],
+                "{markdown}"
+            );
+            let mark = Mark {
+                r#type: mark_type.to_string(),
+                attrs: None,
+            };
+            for fragment in &fragments[..3] {
+                assert_eq!(fragment.marks, vec![mark.clone()], "{markdown}");
+            }
+            assert!(fragments[3].marks.is_empty(), "{markdown}");
+        }
+    }
+
+    #[test]
+    fn nested_marks_are_projected_on_breaks_and_inline_html() {
+        for (markdown, expected_content) in [
+            (
+                "****a\nb****",
+                vec![
+                    ("text", Some("a")),
+                    ("text", Some(" ")),
+                    ("text", Some("b")),
+                ],
+            ),
+            (
+                "****a  \nb****",
+                vec![
+                    ("text", Some("a")),
+                    ("hardBreak", None),
+                    ("text", Some("b")),
+                ],
+            ),
+            (
+                "****a<br>b****",
+                vec![
+                    ("text", Some("a")),
+                    ("hardBreak", None),
+                    ("text", Some("b")),
+                ],
+            ),
+            (
+                "****a<span>b</span>c****",
+                vec![
+                    ("text", Some("a")),
+                    ("text", Some("<span>")),
+                    ("text", Some("b")),
+                    ("text", Some("</span>")),
+                    ("text", Some("c")),
+                ],
+            ),
+        ] {
+            let fragments = parse_inline_markdown_to_fragments(markdown);
+            assert_eq!(
+                fragments
+                    .iter()
+                    .map(|f| (f.r#type.as_str(), f.text.as_deref()))
+                    .collect::<Vec<_>>(),
+                expected_content,
+                "{markdown}"
+            );
+            for fragment in fragments {
+                assert_eq!(
+                    fragment.marks,
+                    vec![Mark {
+                        r#type: "bold".to_string(),
+                        attrs: None
+                    }],
+                    "{markdown}"
+                );
+            }
+        }
+    }
+}

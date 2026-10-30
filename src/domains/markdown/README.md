@@ -111,6 +111,9 @@ Agent 的写法、字段表和示例只在内置 Skill `linnya-markdown` 的 `re
 
 ## 行内强调与引用投影
 
+Markdown 行内样式的嵌套栈到片段集合投影由 [parser-wasm](../../../packages/parser-wasm/README.md#行内样式合同)
+拥有。合法的同型嵌套样式在导入源头合并，normalization、Workspace 工具和存储校验不另设去重或容错旁路。
+
 AI 修改正文不会授予颜色创作能力。未改文字上的用户颜色、高亮由
 [edit-preservation](features/edit-preservation/README.md) 在 Pending 预览与接受时统一保留；
 新增或替换的字素使用默认呈现，不从相邻文字推断强调。字号仍由内容角色决定，题注默认比正文小一级。
