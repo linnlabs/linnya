@@ -15,6 +15,8 @@ const databasePath = path.join(temporaryRoot, 'workspace.sqlite');
 const commandEntry = path.join(pluginRoot, 'dist/cli/slides-cli.cjs');
 
 try {
+  // 使用隔离配置根复演 dotenv 启动提示，不能依赖开发者恰好存在的 .env.local。
+  await writeFile(path.join(temporaryRoot, '.env.local'), 'LINNYA_COMMAND_MODE_E2E=1\n');
   await mkdir(pluginRoot, { recursive: true });
   await writeFile(path.join(pluginRoot, 'plugin.json'), JSON.stringify({
     id: 'slides',
@@ -70,7 +72,7 @@ try {
       'LinnyaDefinitelyMissingFont',
     ],
     {
-      cwd: repositoryRoot,
+      cwd: temporaryRoot,
       encoding: 'utf8',
       env: environment,
       timeout: 60_000,

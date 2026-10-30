@@ -28,8 +28,8 @@ function tryLoadEnvFile(filePath: string): LoadResult {
     return { filePath, loaded: false };
   }
 
-  // dotenv.config 不会 throw；即便解析失败也会在返回值里给出 error
-  const result = dotenv.config({ path: filePath, override: false });
+  // 环境加载先于 command mode；dotenv 的启动提示不能污染 CLI 的 JSON stdout。
+  const result = dotenv.config({ path: filePath, override: false, quiet: true });
   return { filePath, loaded: !result.error };
 }
 
@@ -55,13 +55,12 @@ export function bootstrapDevEnv(params: {
   const results = candidates.map(tryLoadEnvFile).filter((r) => r.loaded);
   if (results.length === 0) return;
 
-  // 只在开发相关场景下输出提示，避免污染生产日志
+  // 开发提示走 stderr，让普通启动和 command mode 共用同一环境准入流程。
   const isDev = process.env.NODE_ENV === 'development' || process.env.LINNYA_DEV_MODE === 'true';
   if (!isDev) return;
 
   const loadedFiles = results.map((r) => r.filePath).join(', ');
-  // eslint-disable-next-line no-console
-  console.log(`[ENV] ✅ 已加载环境变量文件: ${loadedFiles}`);
+  process.stderr.write(`[ENV] 已加载环境变量文件: ${loadedFiles}\n`);
 }
 
 

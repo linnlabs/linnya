@@ -72,6 +72,7 @@ Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也�
 - Renderer request 必须先经过页面身份与 channel admission；未知 channel、失效页面和越界路径应失败关闭。
 - Desktop capability 必须是窄 port，不能开放 Electron 对象、任意 method table、真实凭据或未经准入的物理路径。
 - `app.isPackaged` 与 `LINNYA_DEV_MODE` 都不能证明官方发行身份；新增官方服务统一消费[发行身份合同](../shared/distribution-identity/README.md)。
+- 开发环境加载早于 command mode，启动提示只能写 stderr；stdout 保留给命令结果，不能让 dotenv 提示破坏 JSON 协议。
 - 架构或运行 owner 变化时，同步更新本 README 和对应 owner README，不以兼容 fallback 掩盖双 owner。
 
 ## 验证
