@@ -259,7 +259,10 @@ async function main() {
 
     const token = randomUUID().replaceAll('-', '');
     const archivePath = path.join(isolatedRoot.path, `native-runtime-${token}.tar.gz`);
-    await run('tar', ['-czf', archivePath, '-C', outputDirectory, 'win-unpacked']);
+    // Windows 不消费 AppleDouble；macOS 扩展属性不能变成额外的 ._*.dll 混入验签目录。
+    await run('tar', ['-czf', archivePath, '-C', outputDirectory, 'win-unpacked'], {
+      env: { ...process.env, COPYFILE_DISABLE: '1' },
+    });
     const sshTarget = `${sshUser}@${sshHost}`;
     const sshArgs = ['-i', sshKey, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8'];
     const remoteArchive = `C:/Users/${sshUser}/AppData/Local/Temp/linnya-native-runtime-${token}.tar.gz`;
