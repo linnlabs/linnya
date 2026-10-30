@@ -320,7 +320,8 @@ const selectRef = ref<HTMLElement | null>(null);
 const optionsRef = ref<HTMLElement | null>(null);
 const submenuRef = ref<HTMLElement | null>(null);
 const nestedSubmenuRef = ref<HTMLElement | null>(null);
-const externalTriggerRefProp = toRef(props, 'externalTriggerRef');
+// 通过 getter 暴露只读 prop，保留泛型字段的准确类型，也不会向 props 写回。
+const externalTriggerRefProp = toRef(() => props.externalTriggerRef);
 
 // 使用下拉框核心逻辑
 const { isOpen, toggle, close } = useDropdown({
@@ -371,9 +372,9 @@ const { optionsPanelStyle } = useDropdownPanelPosition({
   isOpen: computedIsOpen,
   selectRef,
   optionsRef,
-  minWidth: toRef(props, 'minWidth'),
-  optionsMaxHeight: toRef(props, 'optionsMaxHeight'),
-  optionsOverflow: toRef(props, 'optionsOverflow'),
+  minWidth: toRef(() => props.minWidth),
+  optionsMaxHeight: toRef(() => props.optionsMaxHeight),
+  optionsOverflow: toRef(() => props.optionsOverflow),
 });
 
 const {
@@ -386,8 +387,8 @@ const {
   openFromKeyboard,
   restoreTriggerFocus,
 } = useSelectFocusNavigation({
-  manualMode: toRef(props, 'manualMode'),
-  disabled: toRef(props, 'disabled'),
+  manualMode: toRef(() => props.manualMode),
+  disabled: toRef(() => props.disabled),
   isOpen: computedIsOpen,
   selectRef,
   optionsRef,
@@ -410,7 +411,7 @@ const {
 } = useKeyboardNavigation({
   // 中文说明：把 props.options 以 ref 形式传入，确保选项更新（例如 SlashMenu 输入 query 过滤）时
   // 键盘导航能拿到最新 options，而不是初始快照。
-  options: toRef(props, 'options'),
+  options: toRef(() => props.options),
   optionsRef,
   onSelect: selectOption,
   enabled: props.enableKeyboardNav,

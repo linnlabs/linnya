@@ -40,6 +40,9 @@ pnpm run dev:electron
 解析边界。升级原生模块后还要执行一次真实安装脚本和最小加载冒烟，确认 override 没有只修复审计
 结果却破坏 ABI 或运行时加载。
 
+URL tarball（如 SheetJS）也必须保留 `resolution.integrity`。更新锁文件后核对下载内容的
+SHA-512 与发行锁一致，再生成 Source BOM；不能因为来源不是 npm registry 而放过缺失 hash。
+
 开发入口按依赖图并行准备 runtime、WASM、资源和 workspace package。每个长期 watcher 只执行一次首次构建；
 收到本轮成功事件、完成资源复制和 Backend/原生依赖门禁后才启动 Electron。Vite 在自己的依赖就绪后提前启动并预热入口。
 开发会话退出或首次构建失败时，统一关闭本次创建的进程和 Vite。只验证准备阶段、不打开应用可运行

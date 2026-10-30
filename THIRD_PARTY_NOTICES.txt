@@ -1,6 +1,6 @@
 LINNYA THIRD-PARTY PRODUCTION DEPENDENCY NOTICE
 
-Project: linnya@0.0.38
+Project: linnya@0.1.0
 Target: darwin/arm64
 
 This deterministic inventory is generated from the installed production dependency graph.
@@ -33,9 +33,12 @@ PACKAGES
 - @asamuzakjp/css-color@4.1.1 — MIT — https://github.com/asamuzaK/cssColor — sha512-B0Hv6G3gWGMn0xKJ0txEi/jM5iFpT3MfDxmhZFb4W047GvytCf1DHQ1D69W3zHI4yWe2aTZAA0JnbMZ7Xc8DuQ==
 - @asamuzakjp/dom-selector@6.7.6 — MIT — https://github.com/asamuzaK/domSelector — sha512-hBaJER6A9MpdG3WgdlOolHmbOYvSk46y7IQN/1+iqiCuUu6iWdQrs9DGKF8ocqsEqWujWf/V7b7vaDgiUmIvUg==
 - @asamuzakjp/nwsapi@2.3.9 — MIT — https://github.com/dperini/nwsapi — sha512-n8GuYSrI9bF7FFZ/SjhwevlHc8xaVlb/7HmHelnc/PZXBD2ZR49NnN9sMMuDdEGPeeRQ5d0hqlSlEpgCX3Wl0Q==
+- @babel/helper-string-parser@7.29.11 — MIT — https://github.com/babel/babel — sha512-snZbO7MEDOof+hvNa97EjEY7qD7h2kwvQr5AJC3ZhQudKW5dnej6k3kP9NQV88hJwaS8vDqRLFo9rivLEhle2g==
 - @babel/helper-string-parser@7.29.7 — MIT — https://github.com/babel/babel — sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==
 - @babel/helper-validator-identifier@7.29.7 — MIT — https://github.com/babel/babel — sha512-qehxGkRj55h/ff8EMaJ+cYhyaKlHIxqYDn682wQD7RNp9UujOQsHog2uS0r2vzr4pW+sXf90NeeayjcNaX3fFg==
+- @babel/parser@7.29.12 — MIT — https://github.com/babel/babel — sha512-WJ7JBp/Q4+z/ImydtI7jS6NVco5++632ExBemSX+Ysb+G1lCwQ5BVo3SY+jGGOcZXI4ZccbZSUSJLNBW6eEpJg==
 - @babel/parser@7.29.7 — MIT — https://github.com/babel/babel — sha512-hnORnjP/1P/zFEndoeX+n+t1RwWRJiJpM/jO7FW32Kn9r5+sJB2JWOdYo4L6k78j15eCwY3Gm/7364B1EMwtNg==
+- @babel/types@7.29.11 — MIT — https://github.com/babel/babel — sha512-WCsemW40Cpc6gouC1SrY6PBaZ+oLRlEVY9XBvZBI7il/HyUrb2nJ505wE1MHEFyDZNnrWDEuy4jL50WVHfTTSQ==
 - @babel/types@7.29.7 — MIT — https://github.com/babel/babel — sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==
 - @bcoe/v8-coverage@1.0.2 — MIT — https://github.com/bcoe/v8-coverage — sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==
 - @chenglou/pretext@0.0.5 — MIT — https://github.com/chenglou/pretext — sha512-A8GZN10REdFGsyuiUgLV8jjPDDFMg5GmgxGWV0I3igxBOnzj+jgz2VMmVD7g+SFyoctfeqHFxbNatKSzVRWtRg==
@@ -54,8 +57,8 @@ PACKAGES
 - @floating-ui/dom@1.7.4 — MIT — https://github.com/floating-ui/floating-ui — sha512-OOchDgh4F2CchOX94cRVqhvy7b3AFb+/rQXyswmzmGakRfkMgoWVjfnLWkRirfLEfuD4ysVW16eXzwt3jHIzKA==
 - @floating-ui/utils@0.2.10 — MIT — https://github.com/floating-ui/floating-ui — sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==
 - @img/colour@1.1.0 — MIT — https://github.com/lovell/colour — sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==
-- @img/sharp-darwin-arm64@0.35.4 — Apache-2.0 — https://github.com/lovell/sharp — sha512-Uhfl4V4lhP2nbUVF9+hyH1+luj86f1gUFeo8ALYxFoULoU+G87D43BfeMP8XHsk9boxAnCY/bf2EHwhA7MuGsA==
-- @img/sharp-libvips-darwin-arm64@1.3.3 — LGPL-3.0-or-later — https://github.com/lovell/sharp-libvips — sha512-suTBPTDGrI9WodccaDdwZItTSaBYASlBk1NSfElSHrUfzu3szG6lvIF58+WiFvnfzuK8ZBFS5zE00PxqxnRiPg==
+- @img/sharp-darwin-arm64@0.35.5 — Apache-2.0 — https://github.com/lovell/sharp — sha512-QRUlFQ0WxvdWyqqG/WtI3iupfD5rBzmCHXSdPsY91sAtVtTo7Q4cb6zOccZ3gqEqkr0f1As1ehLqmEpDsRf+lg==
+- @img/sharp-libvips-darwin-arm64@1.3.4 — LGPL-3.0-or-later — https://github.com/lovell/sharp-libvips — sha512-5R89nBYiRdUlSWJxPhO+GVtaXzXSxKnRu/xqMn3KTA3L9EB9Oy/P+Nn2f2vlhPuUdy/Zusb2DarbyTpGCfEDuw==
 - @isaacs/fs-minipass@4.0.1 — ISC — https://github.com/npm/fs-minipass — sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==
 - @jridgewell/resolve-uri@3.1.2 — MIT — https://github.com/jridgewell/resolve-uri — sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==
 - @jridgewell/sourcemap-codec@1.5.5 — MIT — https://github.com/jridgewell/sourcemaps — sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==
@@ -125,26 +128,26 @@ PACKAGES
 - @types/unist@3.0.3 — MIT — https://github.com/DefinitelyTyped/DefinitelyTyped — sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==
 - @types/web-bluetooth@0.0.21 — MIT — https://github.com/DefinitelyTyped/DefinitelyTyped — sha512-oIQLCGWtcFZy2JW77j9k8nHzAOpqMHLQejDA48XXMWH6tjCQHz5RCFz1bzsmROyL6PUm+LLnUiI4BCn221inxA==
 - @vercel/oidc@3.2.0 — Apache-2.0 — https://github.com/vercel/vercel — sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==
-- @vitest/coverage-v8@4.1.11 — MIT — https://github.com/vitest-dev/vitest — sha512-8MVGEFnJIcdGjcbfKmeq8z0pZHH0JlVtoVZH9Q/qwUp6wyFnEJUBMrw9DCaj+ra3vShGmhavjalMIhPNxZAUcw==
-- @vitest/expect@4.1.11 — MIT — https://github.com/vitest-dev/vitest — sha512-VX2x5vNJXET47KAFzwERI+KRMtTTCSWTfSMKsW7JsUsXV4psq++e3DvZpuTDOpHcxytiDs6p2nhVb2tVDiiUYw==
-- @vitest/mocker@4.1.11 — MIT — https://github.com/vitest-dev/vitest — sha512-2XJVD55d1o5AZous5CCGKS74g/riOj9odEt2bQpCVZeblHyHdnMeFl4jl0XjU21stf4mbjUkew2eXQZt65g5CQ==
-- @vitest/pretty-format@4.1.11 — MIT — https://github.com/vitest-dev/vitest — sha512-yiZzPbGTS9Sr/JpFl8zHrcIkAofNbFV6k21vIgQN/cY/oxZeXhJv5sc/MBJ5jFKWmWs+oJHw0UXLZjmf931+Vw==
-- @vitest/runner@4.1.11 — MIT — https://github.com/vitest-dev/vitest — sha512-LztvUgdwMNJMIkj3hQnnxiC2Xy1zNxq928W/xhjCLaNCzqTZOudjwbQf6v9IntZGPw132i2Lq2rgTRZHD3JHNw==
-- @vitest/snapshot@4.1.11 — MIT — https://github.com/vitest-dev/vitest — sha512-pN7ikn1ON7h8ee4gIAp4AzyK+zBtJPzVbqOgu5LCEh4VaJVbPQcgYQYJIMGQPXVeJJq1fnfazis7a5pFNPahog==
-- @vitest/spy@4.1.11 — MIT — https://github.com/vitest-dev/vitest — sha512-apNa/prQy2qCeywhnixOHPRCgGNhvg7T4Dapfl1GahLp/R+uhBm5cPyFoNVyqsNd2h1nJxL6BqqdIjiABL60YA==
-- @vitest/utils@4.1.11 — MIT — https://github.com/vitest-dev/vitest — sha512-zTCVGpyFsGWBhllOyKlTw/vnr6D9qxsfSDyfbyZmTyjHw5N/VuvzHpHoQjm2ZJzn4RJgx5w4r7V0er69CmLgPQ==
-- @vue/compiler-core@3.5.22 — MIT — https://github.com/vuejs/core — sha512-jQ0pFPmZwTEiRNSb+i9Ow/I/cHv2tXYqsnHKKyCQ08irI2kdF5qmYedmF8si8mA7zepUFmJ2hqzS8CQmNOWOkQ==
-- @vue/compiler-dom@3.5.22 — MIT — https://github.com/vuejs/core — sha512-W8RknzUM1BLkypvdz10OVsGxnMAuSIZs9Wdx1vzA3mL5fNMN15rhrSCLiTm6blWeACwUwizzPVqGJgOGBEN/hA==
-- @vue/compiler-sfc@3.5.22 — MIT — https://github.com/vuejs/core — sha512-tbTR1zKGce4Lj+JLzFXDq36K4vcSZbJ1RBu8FxcDv1IGRz//Dh2EBqksyGVypz3kXpshIfWKGOCcqpSbyGWRJQ==
-- @vue/compiler-ssr@3.5.22 — MIT — https://github.com/vuejs/core — sha512-GdgyLvg4R+7T8Nk2Mlighx7XGxq/fJf9jaVofc3IL0EPesTE86cP/8DD1lT3h1JeZr2ySBvyqKQJgbS54IX1Ww==
+- @vitest/coverage-v8@4.1.12 — MIT — https://github.com/vitest-dev/vitest — sha512-6S7/iVknKglLAxMFxQGNppBI0iqJS2NgM6FBxavitj7KaDq/vywOWGf6dGu7F2L1Qy0G6S3uTp7aGshHrzK8JA==
+- @vitest/expect@4.1.12 — MIT — https://github.com/vitest-dev/vitest — sha512-vFlTt+YEu9WBpNjdGayNmlMVzrWPi1+sv853/7t2FU7hpO5gAFBKHzQmkCq5Xjpr+evegF2994LQT3hF3mRlqQ==
+- @vitest/mocker@4.1.12 — MIT — https://github.com/vitest-dev/vitest — sha512-fKShNpKZzupWZuY0z7egydvL0sqW4INEZBEExMBMAa6izlENEVHwoXgdaTCaBZ5fwlr4xf2o1wXC83n9RpO+NA==
+- @vitest/pretty-format@4.1.12 — MIT — https://github.com/vitest-dev/vitest — sha512-XW9O8+Mxx4VpCtkYdMJLZQQwsVryP9wk7cPKDxtXFfwSak6yRh5+2fep/Y0XF/ElBvJHq8bcYdi6aeuai0opZA==
+- @vitest/runner@4.1.12 — MIT — https://github.com/vitest-dev/vitest — sha512-NKlVKCr5QnCe8jijdMnmkpHHU+WTqiLFR6G0pHji9uRjXK9xJl1k1nTw6F3pOOj2PDcsDt2GKQMI7wIsaT491w==
+- @vitest/snapshot@4.1.12 — MIT — https://github.com/vitest-dev/vitest — sha512-ko1y1Qgb/slzQ9mr+b89Cuqud8WG1TKtsPD8r7ZUBdvVOGt85Af2HwCqHujrhwJq95hs/9RM7fcAPg57o1vlzw==
+- @vitest/spy@4.1.12 — MIT — https://github.com/vitest-dev/vitest — sha512-RGq9x4JNGNTZHEJxvN0oSiJjeSCExm0n2gZKKJZHY9cX5AVA6M7VJILBT3ZJ/tJ/0J9uWT7fETV9/btoi//vSg==
+- @vitest/utils@4.1.12 — MIT — https://github.com/vitest-dev/vitest — sha512-Q3awXrwOfEV+qc3WmO5ONyE0yO7Q1gQ9/oyHxGLZ/pl7N3NO/ZztqQwKLuwMkV+CA1JYSIeO3gkHnRDIo4AVaA==
+- @vue/compiler-core@3.5.44 — MIT — https://github.com/vuejs/core — sha512-k34nCytbK8PQ1gR2mGROYOw6Pnv/mumqIdrZ3x2tbyXZDWm7ViKGLTfdB+DRrWqEQsLgGJvn0WN9jBif5zCTLQ==
+- @vue/compiler-dom@3.5.44 — MIT — https://github.com/vuejs/core — sha512-W5AoBFWdw1lQAKiHowkfgFKFab82oSRT6sGsPfw/q1GRjsy/ZJFLHGhJyBRIFN9APLTUduDH9U2JAiPOIyKuYg==
+- @vue/compiler-sfc@3.5.44 — MIT — https://github.com/vuejs/core — sha512-dzHmQ4jXTpdr5FjIQUeykVakN/uzqFbUo9/C5ikBFg3a3PeM6uRxeczx1ZbXBML0/zJstEh3ygYipzR5Z7b2Pw==
+- @vue/compiler-ssr@3.5.44 — MIT — https://github.com/vuejs/core — sha512-xr5gb1JVHlfXJwSlRz1FeP6uxoazdzHuMTVLE7up+4Vrqxk219CvxLPxD9NXBt47yvZW7+p4DXfyp4O1fkByIA==
 - @vue/devtools-api@7.7.7 — MIT — https://github.com/vuejs/devtools — sha512-lwOnNBH2e7x1fIIbVT7yF5D+YWhqELm55/4ZKf45R9T8r9dE2AIOy8HKjfqzGsoTHFbWbr337O4E0A0QADnjBg==
 - @vue/devtools-kit@7.7.7 — MIT — https://github.com/vuejs/devtools — sha512-wgoZtxcTta65cnZ1Q6MbAfePVFxfM+gq0saaeytoph7nEa7yMXoi6sCPy4ufO111B9msnw0VOWjPEFCXuAKRHA==
 - @vue/devtools-shared@7.7.7 — MIT — https://github.com/vuejs/devtools — sha512-+udSj47aRl5aKb0memBvcUG9koarqnxNM5yjuREvqwK6T3ap4mn3Zqqc17QrBFTqSMjr3HK1cvStEZpMDpfdyw==
-- @vue/reactivity@3.5.22 — MIT — https://github.com/vuejs/core — sha512-f2Wux4v/Z2pqc9+4SmgZC1p73Z53fyD90NFWXiX9AKVnVBEvLFOWCEgJD3GdGnlxPZt01PSlfmLqbLYzY/Fw4A==
-- @vue/runtime-core@3.5.22 — MIT — https://github.com/vuejs/core — sha512-EHo4W/eiYeAzRTN5PCextDUZ0dMs9I8mQ2Fy+OkzvRPUYQEyK9yAjbasrMCXbLNhF7P0OUyivLjIy0yc6VrLJQ==
-- @vue/runtime-dom@3.5.22 — MIT — https://github.com/vuejs/core — sha512-Av60jsryAkI023PlN7LsqrfPvwfxOd2yAwtReCjeuugTJTkgrksYJJstg1e12qle0NarkfhfFu1ox2D+cQotww==
-- @vue/server-renderer@3.5.22 — MIT — https://github.com/vuejs/core — sha512-gXjo+ao0oHYTSswF+a3KRHZ1WszxIqO7u6XwNHqcqb9JfyIL/pbWrrh/xLv7jeDqla9u+LK7yfZKHih1e1RKAQ==
-- @vue/shared@3.5.22 — MIT — https://github.com/vuejs/core — sha512-F4yc6palwq3TT0u+FYf0Ns4Tfl9GRFURDN2gWG7L1ecIaS/4fCIuFOjMTnCyjsu/OK6vaDKLCrGAa+KvvH+h4w==
+- @vue/reactivity@3.5.44 — MIT — https://github.com/vuejs/core — sha512-u+QJdKeBBEADkPdevsL+6E12QlYVfBD8Zcw5qjDQKtamI6l14KyqazJMobhCKelhWN5zpyKUiEDoTyHE93cqWw==
+- @vue/runtime-core@3.5.44 — MIT — https://github.com/vuejs/core — sha512-uEa/ndwjhrrhnOfb2p+sZy6zeoamJOISqaLSJGk/8R6nABT1ZldpzcJoPzKj+zHVomVBPcmQYyC2r4LtvDV6CQ==
+- @vue/runtime-dom@3.5.44 — MIT — https://github.com/vuejs/core — sha512-3fc4ARcXVhVBaJ3ujWiNZJARD6pkyRcwG+ZYhMzjKtKUp7MAY0HLwr7r3Smep3Li6ZaWT6ewdmx8XqdaD5oNZg==
+- @vue/server-renderer@3.5.44 — MIT — https://github.com/vuejs/core — sha512-R4S1UoH4h5Frrauv8Z5XE5TxV9oBiUSgWIC4TyVK1FK+RocRnOLwFA5Xcmo2011RlgJp+AbZCnw6afrhlgRuUQ==
+- @vue/shared@3.5.44 — MIT — https://github.com/vuejs/core — sha512-H82XLH0DjmSOdbEwO15x3QTo1f5PWEtv237eLpYKc0mqLu+B8hnq16lFWmuBmNurkeiG3wr+oM1FhOll/YVFRg==
 - @vueuse/core@13.9.0 — MIT — https://github.com/vueuse/vueuse — sha512-ts3regBQyURfCE2BcytLqzm8+MmLlo5Ln/KLoxDVcsZ2gzIwVNnQpQOL/UKV8alUqjSZOlpFZcRNsLRqj+OzyA==
 - @vueuse/metadata@13.9.0 — MIT — https://github.com/vueuse/vueuse — sha512-1AFRvuiGphfF7yWixZa0KwjYH8ulyjDCC0aFgrGRz8+P4kvDFSdXLVfTk5xAN9wEuD1J6z4/myMoYbnHoX07zg==
 - @vueuse/shared@13.9.0 — MIT — https://github.com/vueuse/vueuse — sha512-e89uuTLMh0U5cZ9iDpEI2senqPGfbPRTHM/0AaQkcxnpqjkZqDYP8rpfm7edOz8s+pOCOROEy1PIveSW8+fL5g==
@@ -176,17 +179,17 @@ PACKAGES
 - bidi-js@1.0.3 — MIT — https://github.com/lojjic/bidi-js — sha512-RKshQI1R3YQ+n9YJz2QQ147P66ELpa1FQEg20Dk8oW9t2KgLbpDLLp9aGZ7y8WHSshDknG0bknqGw5/tyCs5tw==
 - birpc@2.9.0 — MIT — https://github.com/antfu-collective/birpc — sha512-KrayHS5pBi69Xi9JmvoqrIgYGDkD6mcSe/i6YKi3w5kekCLzrX4+nawcXqrj2tIp50Kw/mT/s3p+GVK0A0sKxw==
 - bluebird@3.4.7 — MIT — https://github.com/petkaantonov/bluebird — sha512-iD3898SR7sWVRHbiQv+sHUtHnMvC1o3nW5rAcqnq3uOn07DSAppZYUkIGslDz6gXC7HfunPe7YVBgoEJASPcHA==
-- body-parser@2.3.0 — MIT — https://github.com/expressjs/body-parser — sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==
+- body-parser@2.4.0 — MIT — https://github.com/expressjs/body-parser — sha512-Ifk1KcLrxaGt1occQagQNFNNOqRt1LFuehEnHHzB8Z6cRgIxRU1TBaiIsUiCdA+gy5PL7Y1IX31DNKkRmxtXjQ==
 - boolbase@1.0.0 — ISC — https://github.com/fb55/boolbase — sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==
 - boolbase@2.0.0 — ISC — https://github.com/fb55/boolbase — sha512-DkVaaQHymRhpYEYo9x1oo7Q7B0Y6KJUsjm3c9eTyFDby4MHLBTwZ6ZDWBel5zrYxj1WsZgC5oLpiz+93MluXeA==
-- brace-expansion@1.1.18 — MIT — https://github.com/juliangruber/brace-expansion — sha512-Edep/X9fGqVNmzKBVsDYIOtD+z1tuezV70LBjdCst9Tqu76lsnvRiZ6oTic1n+/BIwX6QDGAO94PN4N2SADvtw==
+- brace-expansion@1.1.21 — MIT — https://github.com/juliangruber/brace-expansion — sha512-9zeA+KLZNNzglF2TPKRQEDyx6Yby7daAkuy8MiPzpXPsYDWi/DRM8jmwUDxokQjYqBpv5DgPiwD4h4ZZSy1Ujw==
 - brotli@1.3.3 — declared MIT; concluded MIT AND Apache-2.0 (package manifest 声明 MIT，但发布内容 dec/*.js 携带 Google Apache-2.0 版权与授权头；最终 NOTICE 必须同时覆盖两者) — https://github.com/devongovett/brotli.js — sha512-oTKjJdShmDuGW94SyyaoQvAjf30dZaHnjJ8uAF+u2/vGJkJbJPJAT1gDiOJP5v1Zb6f9KEyW/1HpuaWIXtGHPg==
 - builder-util-runtime@9.7.0 — MIT — https://github.com/electron-userland/electron-builder — sha512-g/kR520giAFYkSXTzcmF3kqQq7wi8F6N6SzeDgZrqTBN+VHdmgWOyTdD1yD7AATDId/yXLvuP34CxW46/BwCdw==
 - busboy@1.6.0 — MIT — https://github.com/mscdex/busboy — sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==
 - bytes@3.1.2 — MIT — https://github.com/visionmedia/bytes.js — sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==
 - call-bind-apply-helpers@1.0.2 — MIT — https://github.com/ljharb/call-bind-apply-helpers — sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==
 - call-bound@1.0.4 — MIT — https://github.com/ljharb/call-bound — sha512-+ys997U96po4Kx/ABpBCqhA9EuxJaQWDQg7295H4hBphv3IZg0boBKuwYpt4YXp6MZ5AmZQnU/tyMTlRpaSejg==
-- chai@6.2.2 — MIT — https://github.com/chaijs/chai — sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==
+- chai@6.3.0 — MIT — https://github.com/chaijs/chai — sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==
 - cheerio@1.0.0 — MIT — https://github.com/cheeriojs/cheerio — sha512-quS9HgjQpdaXOvsZz82Oz7uxtXiy6UIsIQcpBj7HRw2M63Skasm9qlDocAM7jNuaxdhpPU7c4kJN+gA5MCu4ww==
 - cheerio-select@2.1.0 — BSD-2-Clause — https://github.com/cheeriojs/cheerio-select — sha512-9v9kG0LvzrlcungtnJtpGNxY+fzECQKhK4EGJX2vByejiMX84MFNQw4UxPJl3bFbTMw+Dfs37XaIkCwTZfLh4g==
 - chownr@3.0.0 — BlueOak-1.0.0 — https://github.com/isaacs/chownr — sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==
@@ -194,7 +197,7 @@ PACKAGES
 - color-support@1.1.3 — ISC — https://github.com/isaacs/color-support — sha512-qiBjkpbMLO/HL68y+lh4q0/O1MZFj2RX6X/KmMa3+gJD3z+WwI1ZzDHysvqHGS3mP6mznPckpXmw1nI9cJjyRg==
 - combined-stream@1.0.8 — MIT — https://github.com/felixge/node-combined-stream — sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==
 - commander@12.1.0 — MIT — https://github.com/tj/commander.js — sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==
-- commander@8.3.0 — MIT — https://github.com/tj/commander.js — sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==
+- commander@15.0.0 — MIT — https://github.com/tj/commander.js — sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==
 - concat-map@0.0.1 — MIT — https://github.com/substack/node-concat-map — sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==
 - conf@14.0.0 — MIT — https://github.com/sindresorhus/conf — sha512-L6BuueHTRuJHQvQVc6YXYZRtN5vJUtOdCTLn0tRYYV5azfbAFcPghB5zEE40mVrV6w7slMTqUfkDomutIK14fw==
 - console-control-strings@1.1.0 — ISC — https://github.com/iarna/console-control-strings — sha512-ty/fTekppD2fIwRvnZAVdeOiGd1c7YXEixbgJTNzqcxJWKQnjJ/V1bNEEE6hygpM3WjwHFUVK6HTjWSzV4a8sQ==
@@ -215,7 +218,7 @@ PACKAGES
 - css-what@8.0.0 — BSD-2-Clause — https://github.com/fb55/css-what — sha512-DH0Bqq3DNp5tdOReuNyAA+Ev4Y2GS5FMbZpeTLP6C4CDi0h5nL0BmUPChXw3o/qbHLDWHl49sbNqQVY7bMSDdw==
 - cssom@0.5.0 — MIT — https://github.com/NV/CSSOM — sha512-iKuQcq+NdHqlAcwUY0o/HL69XQrUaQdMjmStJ8JFmUaiiQErlhrmuigkg/CU4E2J0IyUKUrMAgl36TvN67MqTw==
 - cssstyle@5.3.5 — MIT — https://github.com/jsdom/cssstyle — sha512-GlsEptulso7Jg0VaOZ8BXQi3AkYM5BOJKEO/rjMidSCq70FkIC5y0eawrCXeYzxgt3OCf4Ls+eoxN+/05vN0Ag==
-- csstype@3.1.3 — MIT — https://github.com/frenic/csstype — sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==
+- csstype@3.2.3 — MIT — https://github.com/frenic/csstype — sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==
 - data-urls@6.0.0 — MIT — https://github.com/jsdom/data-urls — sha512-BnBS08aLUM+DKamupXs3w2tJJoqU+AkaE/+6vQxi/G/DPmIZFJJp9Dkb1kM03AZx8ADehDUZgsNxju3mPXZYIA==
 - debounce-fn@6.0.0 — MIT — https://github.com/sindresorhus/debounce-fn — sha512-rBMW+F2TXryBwB54Q0d8drNEI+TfoS9JpNTAoVpukbWEhjXQq4rySFYLaqXMFXwdv61Zb2OHtj5bviSoimqxRQ==
 - debug@4.4.3 — MIT — https://github.com/debug-js/debug — sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==
@@ -238,7 +241,7 @@ PACKAGES
 - domelementtype@3.0.0 — BSD-2-Clause — https://github.com/fb55/domelementtype — sha512-umCQid3jKbDmVjx8jGaW7uUykm4DEUeyV21hPxNMo2nV955DhUThwqyOIDtreepP31hl84X7G5U9ZfsWvIB3Pg==
 - domhandler@5.0.3 — BSD-2-Clause — https://github.com/fb55/domhandler — sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==
 - domhandler@6.0.1 — BSD-2-Clause — https://github.com/fb55/domhandler — sha512-gYzvtM72ZtxQO0T048kd6HWSbbGCNOUwcnfQ01cqIJ4X2IYKFFHZ5mKvrQETcFXxsRObZulDaKmy//R7TPtsBg==
-- dompurify@3.4.14 — Apache-2.0 — https://github.com/cure53/DOMPurify — sha512-dVoH9z+MY+C9IilgGCk3YfFqjLi3fChm2OiKJMzh6axrJ5qwxqWaZamgmHrpv22CN/KdbZJuGEGgfQoL00LTdg==
+- dompurify@3.4.17 — Apache-2.0 — https://github.com/cure53/DOMPurify — sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==
 - domutils@3.2.2 — BSD-2-Clause — https://github.com/fb55/domutils — sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==
 - domutils@4.0.2 — BSD-2-Clause — https://github.com/fb55/domutils — sha512-qI4JLRKnSzqFqr7hAlS5xQDusBCjKSEG4t4+7aNrIQMHBcsC2TGEhuyABJdYkgSewL57PNLYEiibY2iPKhKpaA==
 - dot-prop@9.0.0 — MIT — https://github.com/sindresorhus/dot-prop — sha512-1gxPBJpI/pcjQhKgIU91II6Wkay+dLcN3M6rf2uwP8hRur3HtQXjVrdAK3sjC0piaEuxzMwjXChcETiJl47lAQ==
@@ -272,10 +275,10 @@ PACKAGES
 - expect-type@1.4.0 — Apache-2.0 — https://github.com/mmkal/expect-type — sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==
 - express@5.1.0 — MIT — https://github.com/expressjs/express — sha512-DT9ck5YIRU+8GYzzU5kT3eHGA5iL+1Zd0EutOmTE9Dtk+Tvuzd23VBU+ec7HPNSTxXYO55gPV/hq4pSBJDjFpA==
 - fast-deep-equal@3.1.3 — MIT — https://github.com/epoberezkin/fast-deep-equal — sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==
-- fast-uri@3.1.7 — BSD-3-Clause — https://github.com/fastify/fast-uri — sha512-dOvZVzjdZdz7phd9v6jCbwxrBW3fK6n8Rc0CtdmM4bumzMnxywBYhuph6J819RRw/ku+rLbelwfMunktuzVVHg==
+- fast-uri@3.1.9 — BSD-3-Clause — https://github.com/fastify/fast-uri — sha512-hS/0Wt3Ya043oKXs0sIxrMpKQITXhMLIrVAKKXi4gozGC9v7YRWVnXIZzjNPTO02M9BdxLCWqK1yRXgNziVyJQ==
 - fdir@6.5.0 — MIT — https://github.com/thecodrr/fdir — sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==
 - finalhandler@2.1.0 — MIT — https://github.com/pillarjs/finalhandler — sha512-/t88Ty3d5JWQbWYgaOGCCYfXRwV1+be02WqYYlL6h0lEiUAMPM8o8qKGO01YIkOHzka2up08wvgYD0mDiI+q3Q==
-- follow-redirects@1.16.0 — MIT — https://github.com/follow-redirects/follow-redirects — sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==
+- follow-redirects@1.16.1 — MIT — https://github.com/follow-redirects/follow-redirects — sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==
 - fontkit@2.0.4 — MIT — https://github.com/foliojs/fontkit — sha512-syetQadaUEDNdxdugga9CpEYVaQIxOwk7GlwZWWZ19//qW4zE5bknOKeMBDYAASwnpaSHKJITRLMF9m1fp3s6g==
 - form-data@4.0.6 — MIT — https://github.com/form-data/form-data — sha512-vKatAh4SlVfgbv+YtmhiRjhEMJsYpsG1Y2rMQtR+SVSbytsSD1YGzDIcrAJmdFec88u/+VoGmxnl+80gL1tRCQ==
 - forwarded@0.2.0 — MIT — https://github.com/jshttp/forwarded — sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==
@@ -335,7 +338,7 @@ PACKAGES
 - jsonfile@6.2.0 — MIT — https://github.com/jprichardson/node-jsonfile — sha512-FGuPw30AdOIUTRMC2OMRtQV+jkVj2cfPqSeWXv1NEAJ1qZ5zb1X6z1mFhbfOB/iy3ssJCD+3KuZ8r8C3uVFlAg==
 - jsonrepair@3.15.0 — ISC — https://github.com/josdejong/jsonrepair — sha512-wy8OTjwsJwQRnQJkKnMJJ9vcytRdBPAgIF/Hy6+s1dAj42BHMKiyL8JzEieIl3JY7idt8eyHwBWTO8mh/+mtwA==
 - jszip@3.10.1 — MIT — https://github.com/Stuk/jszip — sha512-xXDvecyTpGLrqFrvkrUSoxxfJI5AH7U8zxxtVclpsUtMCq4JQ290LY8AW5c7Ggnr/Y/oK+bQMbqK2qmtk3pN4g==
-- katex@0.16.25 — MIT — https://github.com/KaTeX/KaTeX — sha512-woHRUZ/iF23GBP1dkDQMh1QBad9dmr8/PAwNA54VrSOVYgI12MAcE14TqnDdQOdzyEonGzMepYnqBMYdsoAr8Q==
+- katex@0.18.11 — MIT — https://github.com/KaTeX/KaTeX — sha512-yvyz/2VMKqoho/35Hat5w37wIEdWJ5ElVMidTAlWrxr5uW4aBGsEpveTmKh18/zw08v/7lGswCPon4OhqmqrTA==
 - konva@10.2.3 — MIT — https://github.com/konvajs/konva — sha512-NDGeIxm2nsQcp6oqZKS9T764JEi53RpQvpUxV2EK7Awm49fwdd1+EB1Nq1nyspRc0hOAKyKssoTFvPaKwiSUog==
 - lazy-val@1.0.5 — MIT — https://github.com/develar/lazy-val — sha512-0/BnGCCfyUMkBpeDgWihanIAF9JmZhHBgUhEqzvf+adhNGLoP6TaiI5oF8oyb3I45P+PcnrqihSf01M0l0G5+Q==
 - lie@3.3.0 — MIT — https://github.com/calvinmetcalf/lie — sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ==
@@ -354,7 +357,7 @@ PACKAGES
 - make-dir@3.1.0 — MIT — https://github.com/sindresorhus/make-dir — sha512-g3FeP20LNwhALb/6Cz6Dd4F2ngze0jz7tbzrD2wAV+o9FeNHe4rL+yK2md0J/fiSf1sa1ADhXqi5+oVwOM/eGw==
 - make-dir@4.0.0 — MIT — https://github.com/sindresorhus/make-dir — sha512-hXdUTZYIVOt1Ex//jAQi+wTZZpUpwBj/0QsOzqegb3rGMMeJiSEu5xLHnYfBrRV4RH2+OCSOO95Is/7x1WJ4bw==
 - mammoth@1.11.0 — BSD-2-Clause — https://github.com/mwilliamson/mammoth.js — sha512-BcEqqY/BOwIcI1iR5tqyVlqc3KIaMRa4egSoK83YAVrBf6+yqdAAbtUcFDCWX8Zef8/fgNZ6rl4VUv+vVX8ddQ==
-- markdown-it@14.2.0 — MIT — https://github.com/markdown-it/markdown-it — sha512-1TGiQiJVRQ3NPmZH6sx5Cfnmg6GQm9jvC1ch4TK511NjSJvjzKLzn5pPfZRNZkRPZP0HqCioSndqH8v2nRaWVQ==
+- markdown-it@14.3.3 — MIT — https://github.com/markdown-it/markdown-it — sha512-L//tDAkjTjJCU6pBUSBTgs3Kg4InVaZuUZog/b6V12UKhcDQ7S78877ibbCanRExwPuYP1CZD7Gd2dxSy1GXRg==
 - markdown-it-footnote@4.0.0 — MIT — https://github.com/markdown-it/markdown-it-footnote — sha512-WYJ7urf+khJYl3DqofQpYfEYkZKbmXmwxQV8c8mO/hGIhgZ1wOe7R4HLFNwqx7TjILbnC98fuyeSsin19JdFcQ==
 - markdown-it-ins@4.0.0 — MIT — https://github.com/markdown-it/markdown-it-ins — sha512-sWbjK2DprrkINE4oYDhHdCijGT+MIDhEupjSHLXe5UXeVr5qmVxs/nTUVtgi0Oh/qtF+QKV0tNWDhQBEPxiMew==
 - markdown-it-mark@4.0.0 — MIT — https://github.com/markdown-it/markdown-it-mark — sha512-YLhzaOsU9THO/cal0lUjfMjrqSMPjjyjChYM7oyj4DnyaXEzA8gnW6cVJeyCrCVeyesrY2PlEdUYJSPFYL4Nkg==
@@ -384,7 +387,7 @@ PACKAGES
 - node-addon-api@7.1.1 — MIT — https://github.com/nodejs/node-addon-api — sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==
 - node-addon-api@8.5.0 — MIT — https://github.com/nodejs/node-addon-api — sha512-/bRZty2mXUIFY/xU5HLvveNHlswNJej+RnxBjOMkidWfwZzgTbPG1E3K5TOxRLOR+5hX7bSofy8yf1hZevMS8A==
 - node-fetch@2.7.0 — MIT — https://github.com/bitinn/node-fetch — sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==
-- node-forge@1.4.0 — BSD-3-Clause — https://github.com/digitalbazaar/forge — sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==
+- node-forge@1.4.2 — BSD-3-Clause — https://github.com/digitalbazaar/forge — sha512-rRtAR5XLJ8gCKd9du4qrKAsgCG1ObGP4gLeNJMa4vYSeq4bmBMOJk5IHkrviBV0q7uoAJlVd8HEQYQSVUb4FGQ==
 - node-machine-id@1.1.12 — MIT — https://github.com/automation-stack/node-machine-id — sha512-QNABxbrPa3qEIfrE6GOJ7BYIuignnJw7iQ2YPbc3Nla1HzRJjXzZOiikfF8m7eAMfichLt3M4VgLOetqgDmgGQ==
 - node-pty@1.2.0-beta.14 — MIT — https://github.com/microsoft/node-pty — sha512-XORU9BQgpxVgqr7WivjJ17mLenOHUgKKWzuZZNaw3NDYgHc/wPJQMSaoLDrpEgqV6aU1nNwil1o/OqYj6lWmUA==
 - nopt@5.0.0 — ISC — https://github.com/npm/nopt — sha512-Tbj67rffqceeLpcRXrT7vKAN8CwfPeIBgM7E6iBkmKLV7bEMwpGgYLGv0jACUsECaa/vuxP0IjEont6umdMgtQ==
@@ -441,11 +444,11 @@ PACKAGES
 - prosemirror-transform@1.10.4 — MIT — https://github.com/prosemirror/prosemirror-transform — sha512-pwDy22nAnGqNR1feOQKHxoFkkUtepoFAd3r2hbEDsnf4wp57kKA36hXsB3njA9FtONBEwSDnDeCiJe+ItD+ykw==
 - prosemirror-transform@1.12.1 — MIT — https://code.haverbeke.berlin/prosemirror/prosemirror-transform — sha512-t4F5615FycnCqsX7ShTUs8+jfnwcf46kuFRvSl/3qFx2QTZ4DjgowesLHQXcFP7G//TjesqZG3WtgL7vdyVJyA==
 - prosemirror-view@1.42.3 — MIT — https://code.haverbeke.berlin/prosemirror/prosemirror-view — sha512-oTN7EtH+CpwxU9NrwEYWd0UZ4JUx7l048l5A2Xppm4p/60isZYLnth9QVQmC3VRIvdrIWCxwZSd+Uz791G31/w==
-- proxy-addr@2.0.7 — MIT — https://github.com/jshttp/proxy-addr — sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==
+- proxy-addr@2.0.8 — MIT — https://github.com/jshttp/proxy-addr — sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==
 - proxy-from-env@2.1.0 — MIT — https://github.com/Rob--W/proxy-from-env — sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==
 - punycode@2.3.1 — MIT — https://github.com/mathiasbynens/punycode.js — sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==
 - punycode.js@2.3.1 — MIT — https://github.com/mathiasbynens/punycode.js — sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA==
-- qs@6.16.0 — BSD-3-Clause — https://github.com/ljharb/qs — sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==
+- qs@6.16.1 — BSD-3-Clause — https://github.com/ljharb/qs — sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==
 - range-parser@1.2.1 — MIT — https://github.com/jshttp/range-parser — sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==
 - raw-body@3.0.2 — MIT — https://github.com/stream-utils/raw-body — sha512-K5zQjDllxWkf7Z5xJdV0/B0WTNqx6vxG70zJE4N0kBs4LovmEYWJzQGxC9bS9RAKu3bgM40lrd5zoLJ12MQ5BA==
 - readable-stream@2.3.8 — MIT — https://github.com/nodejs/readable-stream — sha512-8p0AUk4XODgIewSi0l8Epjs+EVnWiK7NoDIEGU0HhE7+ZyY8D1IMY7odu5lRrFXGg71L15KG8QrPmum45RTtdA==
@@ -471,14 +474,14 @@ PACKAGES
 - set-blocking@2.0.0 — ISC — https://github.com/yargs/set-blocking — sha512-KiKBS8AnWGEyLzofFfmvKwpdPzqiy16LvQfK3yv/fVH7Bj13/wl3JSR1J+rfgRE9q7xUJK4qvgS8raSOeLUehw==
 - setimmediate@1.0.5 — MIT — https://github.com/YuzuJS/setImmediate — sha512-MATJdZp8sLqDl/68LfQmbP8zKPLQNV6BIZoIgrscFDQ+RsvK/BxeDQOgyxKKoh0y/8h3BqVFnCqQ/gd+reiIXA==
 - setprototypeof@1.2.0 — ISC — https://github.com/wesleytodd/setprototypeof — sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==
-- sharp@0.35.4 — Apache-2.0 — https://github.com/lovell/sharp — sha512-n++8XWcj+jCOr2IOl7h8LbKnGBDY4aPbmprMONBNFdn0ImXqpGVv5zliDs0V9HbmbCQLpbuo2ej9rAoOQTvMDA==
+- sharp@0.35.5 — Apache-2.0 — https://github.com/lovell/sharp — sha512-Ywn4OnzGukp7CDMrp08RQ50YKmuwG47brZgIVPTvBaaAfQlRlygrRqSrxdCiL9M+LlzLBiJ68IR1QqvzHyjC7g==
 - side-channel@1.1.1 — MIT — https://github.com/ljharb/side-channel — sha512-6x6dK6zJdpTzF4sQeNYxwtvBzf6Eg4GtlesS94HOvTudUeyK2WXAaIfmDgsyslYrRBeFIlsi54AYsFGUuhmvrQ==
 - side-channel-list@1.0.1 — MIT — https://github.com/ljharb/side-channel-list — sha512-mjn/0bi/oUURjc5Xl7IaWi/OJJJumuoJFQJfDDyO46+hBWsfaVM65TBHq2eoZBhzl9EchxOijpkbRC8SVBQU0w==
 - side-channel-map@1.0.1 — MIT — https://github.com/ljharb/side-channel-map — sha512-VCjCNfgMsby3tTdo02nbjtM/ewra6jPHmpThenkTYh8pG9ucZ/1P8So4u4FGBek/BjpOVsDCMoLA/iuBKIFXRA==
 - side-channel-weakmap@1.0.2 — MIT — https://github.com/ljharb/side-channel-weakmap — sha512-WPS/HvHQTYnHisLo9McqBHOJk2FkHO/tlpvldyrnem4aeQp4hai3gythswg6p01oSoTl58rcpiFAjF2br2Ak2A==
 - siginfo@2.0.0 — ISC — https://github.com/emilbayes/siginfo — sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==
 - signal-exit@3.0.7 — ISC — https://github.com/tapjs/signal-exit — sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==
-- source-map-js@1.2.1 — BSD-3-Clause — https://github.com/7rulnik/source-map-js — sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==
+- source-map-js@1.2.2 — BSD-3-Clause — https://github.com/7rulnik/source-map-js — sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==
 - speakingurl@14.0.1 — BSD-3-Clause — https://github.com/pid/speakingurl — sha512-1POYv7uv2gXoyGFpBCmpDVSNV74IfsWlDW216UPjbWufNf+bSU6GdbDsxdcxtfwb4xlI3yxzOTKClUosxARYrQ==
 - sprintf-js@1.0.3 — BSD-3-Clause — https://github.com/alexei/sprintf.js — sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==
 - stackback@0.0.2 — MIT — https://github.com/shtylman/node-stackback — sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==
@@ -522,8 +525,8 @@ PACKAGES
 - uhyphen@0.2.0 — ISC — https://github.com/WebReflection/uhyphen — sha512-qz3o9CHXmJJPGBdqzab7qAYuW8kQGKNEuoHFYrBwV6hWIMcpAmxDLXojcHfFr9US1Pe6zUswEIJIbLI610fuqA==
 - uint8array-extras@1.5.0 — MIT — https://github.com/sindresorhus/uint8array-extras — sha512-rvKSBiC5zqCCiDZ9kAOszZcDvdAHwwIKJG33Ykj43OKcWsnmcBRL09YTU4nOeHZ8Y2a7l1MgTd08SBe9A8Qj6A==
 - underscore@1.13.8 — MIT — https://github.com/jashkenas/underscore — sha512-DXtD3ZtEQzc7M8m4cXotyHR+FAS18C64asBYY5vqZexfYryNNnDc02W4hKg3rdQuqOYas1jkseX0+nZXjTXnvQ==
-- undici@6.28.1 — MIT — https://github.com/nodejs/undici — sha512-zWpdTVD54H48CIybL0rWQ3ukpb9d23wM7eH5RtfdmeP70cWHNjtfo7P4vZX+5CoDcO53J4Pu5uXp7lNfjc6DRA==
-- undici@7.29.1 — MIT — https://github.com/nodejs/undici — sha512-RYONW2MeafgYlkVOKYKkA/Ag7BmXqgIWCa8t1m0JcxrQg9pI9lEqRhAOruOBCbAohOa/gkCF+iPi9hrgvTzu6Q==
+- undici@6.29.1 — MIT — https://github.com/nodejs/undici — sha512-EvRlUt/QqAEvXdQeRMYUfwOQsfzpDztykrG2owGEE/rBOBoYv9uF39ZzsNDh4lTFHhTr2XOZjKkYgueD12ZmGA==
+- undici@7.30.1 — MIT — https://github.com/nodejs/undici — sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg==
 - undici-types@7.16.0 — MIT — https://github.com/nodejs/undici — sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==
 - unicode-properties@1.4.1 — MIT — https://github.com/devongovett/unicode-properties — sha512-CLjCCLQ6UuMxWnbIylkisbRj31qxHPAurvena/0iwSVbQ2G1VY5/HjV0IRabOEbDHlzZlRdCrD4NhB0JtU40Pg==
 - unicode-trie@2.0.0 — MIT — https://github.com/devongovett/unicode-trie — sha512-x7bc76x0bm4prf1VLg79uhAzKw8DVboClSN5VxJuQ+LKDOVEW9CdH+VY7SP+vX7xCYQqzzgQpFqz15zeLvAtZQ==
@@ -532,9 +535,9 @@ PACKAGES
 - util-deprecate@1.0.2 — MIT — https://github.com/TooTallNate/util-deprecate — sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==
 - uuid@11.1.1 — MIT — https://github.com/uuidjs/uuid — sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==
 - vary@1.1.2 — MIT — https://github.com/jshttp/vary — sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==
-- vite@6.4.3 — MIT — https://github.com/vitejs/vite — sha512-NTKlcQjlAK7MlQoyb6LgaqHc8sso/pVyUJYWMws3jg21uTJw/LddqIFPcPqP6PzpgbIcZyKI85sFE4HBrQDA8A==
-- vitest@4.1.11 — MIT — https://github.com/vitest-dev/vitest — sha512-fhACrNXUidIbGSBr5FlbuBkO7VWC1ZyLl0DO4CU2DrQoAPxX84Ysxs+HeGQpii5lZWV1Q4gBZTTu49mF+A6Edw==
-- vue@3.5.22 — MIT — https://github.com/vuejs/core — sha512-toaZjQ3a/G/mYaLSbV+QsQhIdMo9x5rrqIpYRObsJ6T/J+RyCSFwN2LHNVH9v8uIcljDNa3QzPVdv3Y6b9hAJQ==
+- vite@6.4.5 — MIT — https://github.com/vitejs/vite — sha512-4enwjFfi4IwtEh0w+jPzpLVOFQiPHmmzPxcHXQOyEur47o6u0jE573DmGpjA+7irXoMLYRZD5ZaFUEneS3abPg==
+- vitest@4.1.12 — MIT — https://github.com/vitest-dev/vitest — sha512-5eWdz2yb3ajxWF3C8C4TjkXl7FGm3n2E/VlazALrQHzK7nYMSGFnCZto0bbPNl77AwkOZVLk0YnBAejUu0NiWA==
+- vue@3.5.44 — MIT — https://github.com/vuejs/core — sha512-dvvmaOCG7lAMkJTPqPwWeGMsPS6DIsFsfZDUgBp9V6mHf9b3+/wyVwYR4Es+WV6uJC0FKRxp81Obcq0ZwUcGFQ==
 - vue-konva@3.4.0 — MIT — https://github.com/konvajs/vue-konva — sha512-l7yqAPmc6gPbdXzxoukTiXzA6EdqTtPhzQp1pTdppwWLiimPCgFHcqp8nApXQN5dqF11p2OejwjKv150cf9ncA==
 - w3c-keyname@2.2.8 — MIT — https://github.com/marijnh/w3c-keyname — sha512-dpojBhNsCNN7T82Tm7k26A6G9ML3NkhDsnw9n/eoxSRlVBB4CEtIQ/KTCLI2Fwf3ataSXRhYFkQi3SlnFwPvPQ==
 - w3c-xmlserializer@5.0.0 — MIT — https://github.com/jsdom/w3c-xmlserializer — sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==
@@ -569,6 +572,7 @@ PACKAGES WITH MANIFEST-ONLY LICENSE EVIDENCE
 - @ai-sdk/provider-utils@5.0.59 — declared Apache-2.0 — https://github.com/vercel/ai
 - @esbuild/darwin-arm64@0.25.11 — declared MIT — https://github.com/evanw/esbuild
 - @esbuild/darwin-arm64@0.25.12 — declared MIT — https://github.com/evanw/esbuild
+- @img/sharp-libvips-darwin-arm64@1.3.4 — declared LGPL-3.0-or-later — https://github.com/lovell/sharp-libvips
 - @napi-rs/keyring-darwin-arm64@2.1.0 — declared MIT — https://github.com/Brooooooklyn/keyring-node
 - @node-rs/jieba-darwin-arm64@2.0.1 — declared MIT — https://github.com/napi-rs/node-rs
 - @rollup/rollup-darwin-arm64@4.63.1 — declared MIT — https://github.com/rollup/rollup
@@ -755,7 +759,7 @@ POSSIBILITY OF SUCH DAMAGE.
 LICENSE AND NOTICE TEXTS
 
 ----- LICENSE 008938a3441801ca3960f8e3ccb4c0738e7996442a53063141d57d3769a7344d -----
-Applies to: vite@6.4.3
+Applies to: vite@6.4.5
 Installed file names: LICENSE.md
 
 # Vite core license
@@ -3221,7 +3225,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE 04512a63dce4d2d506ad612dc0bd7681ccf6e3655f7b6eaef7dfac8323d1ec0b -----
-Applies to: commander@12.1.0, commander@8.3.0
+Applies to: commander@12.1.0, commander@15.0.0
 Installed file names: LICENSE
 
 (The MIT License)
@@ -3248,7 +3252,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ----- LICENSE 04575fc5bfae19a9b63100f8691f901a2e15a399011ac02db435a9ef27295551 -----
-Applies to: @vitest/coverage-v8@4.1.11, @vitest/expect@4.1.11, @vitest/mocker@4.1.11, @vitest/pretty-format@4.1.11, @vitest/runner@4.1.11, @vitest/snapshot@4.1.11, @vitest/spy@4.1.11, @vitest/utils@4.1.11
+Applies to: @vitest/coverage-v8@4.1.12, @vitest/expect@4.1.12, @vitest/mocker@4.1.12, @vitest/pretty-format@4.1.12, @vitest/runner@4.1.12, @vitest/snapshot@4.1.12, @vitest/spy@4.1.12, @vitest/utils@4.1.12
 Installed file names: LICENSE
 
 MIT License
@@ -3649,7 +3653,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE 117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76 -----
-Applies to: @babel/helper-string-parser@7.29.7, @babel/helper-validator-identifier@7.29.7, @babel/types@7.29.7
+Applies to: @babel/helper-string-parser@7.29.11, @babel/helper-string-parser@7.29.7, @babel/helper-validator-identifier@7.29.7, @babel/types@7.29.11, @babel/types@7.29.7
 Installed file names: LICENSE
 
 MIT License
@@ -3704,7 +3708,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ----- LICENSE 11d55bd4541c75ee7879547ac49089c489163dae49551389713c3d026cab383e -----
-Applies to: csstype@3.1.3
+Applies to: csstype@3.2.3
 Installed file names: LICENSE
 
 Copyright (c) 2017-2018 Fredrik Nicol
@@ -4187,7 +4191,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ----- LICENSE 1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175 -----
-Applies to: @vue/compiler-core@3.5.22, @vue/compiler-dom@3.5.22, @vue/compiler-sfc@3.5.22, @vue/compiler-ssr@3.5.22, @vue/reactivity@3.5.22, @vue/runtime-core@3.5.22, @vue/runtime-dom@3.5.22, @vue/server-renderer@3.5.22, @vue/shared@3.5.22, vue@3.5.22
+Applies to: @vue/compiler-core@3.5.44, @vue/compiler-dom@3.5.44, @vue/compiler-sfc@3.5.44, @vue/compiler-ssr@3.5.44, @vue/reactivity@3.5.44, @vue/runtime-core@3.5.44, @vue/runtime-dom@3.5.44, @vue/server-renderer@3.5.44, @vue/shared@3.5.44, vue@3.5.44
 Installed file names: LICENSE
 
 The MIT License (MIT)
@@ -4479,7 +4483,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ----- LICENSE 23d466b1b134b415b66fa50c6526b4cf3e7b9258554da88d3abb371721e7ce68 -----
-Applies to: body-parser@2.3.0, type-is@2.0.1, type-is@2.1.0
+Applies to: body-parser@2.4.0, type-is@2.0.1, type-is@2.1.0
 Installed file names: LICENSE
 
 (The MIT License)
@@ -4761,7 +4765,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE 2e97627cb278aa7556fb9e8817368302301a595b6c7582512b8d74c57b773652 -----
-Applies to: @babel/parser@7.29.7
+Applies to: @babel/parser@7.29.12, @babel/parser@7.29.7
 Installed file names: LICENSE
 
 Copyright (C) 2012-2014 by various contributors (see AUTHORS)
@@ -8168,7 +8172,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE 68f12f6e2c33688699249c01d8f9623c534da20aa71989c57b061b7bc1676d14 -----
-Applies to: brace-expansion@1.1.18
+Applies to: brace-expansion@1.1.21
 Installed file names: LICENSE
 
 MIT License
@@ -8330,7 +8334,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ----- LICENSE 6cb0631f71c7749763fd3dd1d5bee52dd1070ec17f2edc1710079ad070bd2fbd -----
-Applies to: source-map-js@1.2.1
+Applies to: source-map-js@1.2.2
 Installed file names: LICENSE
 
 Copyright (c) 2009-2011, Mozilla Foundation and contributors
@@ -8589,7 +8593,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ----- LICENSE 73ba74dfaa520b49a401b5d21459a8523a146f3b7518a833eea5efa85130bf68 -----
-Applies to: @img/sharp-darwin-arm64@0.35.4, sharp@0.35.4
+Applies to: @img/sharp-darwin-arm64@0.35.5, sharp@0.35.5
 Installed file names: LICENSE
 
 Apache License
@@ -8836,7 +8840,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ----- LICENSE 766ccc1f306c885aa45542a9846bbd0a505b27a0374f146778171c2254ce18e3 -----
-Applies to: katex@0.16.25
+Applies to: katex@0.18.11
 Installed file names: LICENSE
 
 The MIT License (MIT)
@@ -9005,7 +9009,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE 792c48c5a849a15fdf9e37e8bcf9e6d1dd13b32b46c642a748a0a46a9919d473 -----
-Applies to: markdown-it@14.2.0
+Applies to: markdown-it@14.3.3
 Installed file names: LICENSE
 
 Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin.
@@ -9692,7 +9696,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE 881d660c26831481b697e39724d4a35c9f86e07b67156d4aeb693a0b39910435 -----
-Applies to: vitest@4.1.11
+Applies to: vitest@4.1.12
 Installed file names: LICENSE.md
 
 # Vitest core license
@@ -12213,7 +12217,7 @@ Apache License
    END OF TERMS AND CONDITIONS
 
 ----- LICENSE a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27 -----
-Applies to: undici-types@7.16.0, undici@6.28.1, undici@7.29.1
+Applies to: undici-types@7.16.0, undici@6.29.1, undici@7.30.1
 Installed file names: LICENSE
 
 MIT License
@@ -12265,7 +12269,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE a7996721249a136fbcfc1c201bcb5f414f38a701d4a24f28abe65e16cfcce813 -----
-Applies to: etag@1.8.1, proxy-addr@2.0.7
+Applies to: etag@1.8.1, proxy-addr@2.0.8
 Installed file names: LICENSE
 
 (The MIT License)
@@ -12488,7 +12492,7 @@ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ----- LICENSE b010b0dfdfdb23d7396e03b82cd4621fc9bb8f95d6b0aea70b9c24e12074c786 -----
-Applies to: fast-uri@3.1.7
+Applies to: fast-uri@3.1.9
 Installed file names: LICENSE
 
 Copyright (c) 2011-2021, Gary Court until https://github.com/garycourt/uri-js/commit/a1acf730b4bba3f1097c9f52e7d9d3aba8cdcaae
@@ -12729,7 +12733,7 @@ Apache License
    limitations under the License.
 
 ----- LICENSE b181da80336ff9dd1043fc8be1a764d7382363433319aa872e4d2cb5ce2a3066 -----
-Applies to: chai@6.2.2
+Applies to: chai@6.3.0
 Installed file names: LICENSE
 
 MIT License
@@ -13349,7 +13353,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE bfa8a54bb952ccda79f0f1889721d108f5b605babbb2b8a3705ffb52f4132eb7 -----
-Applies to: follow-redirects@1.16.0
+Applies to: follow-redirects@1.16.1
 Installed file names: LICENSE
 
 Copyright 2014–present Olivier Lalonde <olalonde@gmail.com>, James Talmage <james@talmage.io>, Ruben Verborgh
@@ -13993,7 +13997,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30 -----
-Applies to: dompurify@3.4.14
+Applies to: dompurify@3.4.17
 Installed file names: LICENSE
 
 Apache License
@@ -15679,7 +15683,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE e7dc37bf662d7f786efcb46c545615e70c1daf458a38385521c63cf6607cdfe1 -----
-Applies to: qs@6.16.0
+Applies to: qs@6.16.1
 Installed file names: LICENSE.md
 
 BSD 3-Clause License
@@ -15938,7 +15942,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ----- LICENSE f63ff0e4e239244aa79280da2dd4811a0469e5e201caf5cbc0d97c3a1dff8e82 -----
-Applies to: node-forge@1.4.0
+Applies to: node-forge@1.4.2
 Installed file names: LICENSE
 
 You may use the Forge project under the terms of either the BSD License or the
@@ -17083,7 +17087,7 @@ Repository: https://github.com/yargs/yargs-parser.git
 > ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ----- LICENSE fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85 -----
-Applies to: dompurify@3.4.14
+Applies to: dompurify@3.4.17
 Installed file names: LICENSE-MPL
 
 Mozilla Public License Version 2.0
@@ -17535,57 +17539,6 @@ Files located in the node_modules and vendor directories are externally
 maintained libraries used by this software which have their own
 licenses; we recommend you read them, as their terms may differ from the
 terms above.
-
------ NOTICE 47083f1ae7e990f74a56f576bcb8434051cb84ed1982fa57932720869e5147fe -----
-Applies to: @img/sharp-libvips-darwin-arm64@1.3.3
-Installed file names: README.md
-
-# `@img/sharp-libvips-darwin-arm64`
-
-Prebuilt libvips and dependencies for use with sharp on macOS 64-bit ARM.
-
-## Licensing
-
-This software contains third-party libraries
-used under the terms of the following licenses:
-
-| Library       | Used under the terms of                                                                                   |
-|---------------|-----------------------------------------------------------------------------------------------------------|
-| aom           | BSD 2-Clause + [Alliance for Open Media Patent License 1.0](https://aomedia.org/license/patent-license/)  |
-| cairo         | Mozilla Public License 2.0                                                                                |
-| cgif          | MIT License                                                                                               |
-| expat         | MIT License                                                                                               |
-| fontconfig    | [fontconfig License](https://gitlab.freedesktop.org/fontconfig/fontconfig/blob/main/COPYING) (BSD-like)   |
-| freetype      | [freetype License](https://git.savannah.gnu.org/cgit/freetype/freetype2.git/tree/docs/FTL.TXT) (BSD-like) |
-| fribidi       | LGPLv3                                                                                                    |
-| glib          | LGPLv3                                                                                                    |
-| harfbuzz      | MIT License                                                                                               |
-| highway       | BSD 3-Clause                                                                                              |
-| lcms          | MIT License                                                                                               |
-| libarchive    | BSD 2-Clause                                                                                              |
-| libexif       | LGPLv3                                                                                                    |
-| libffi        | MIT License                                                                                               |
-| libheif       | LGPLv3                                                                                                    |
-| libimagequant | [BSD 2-Clause](https://github.com/lovell/libimagequant/blob/main/COPYRIGHT)                               |
-| libnsgif      | MIT License                                                                                               |
-| libpng        | [libpng License](https://github.com/pnggroup/libpng/blob/master/LICENSE)                                  |
-| librsvg       | LGPLv3                                                                                                    |
-| libtiff       | [libtiff License](https://gitlab.com/libtiff/libtiff/blob/master/LICENSE.md) (BSD-like)                   |
-| libultrahdr   | MIT License                                                                                               |
-| libvips       | LGPLv3                                                                                                    |
-| libwebp       | New BSD License                                                                                           |
-| libxml2       | MIT License                                                                                               |
-| mozjpeg       | [zlib License, IJG License, BSD 3-Clause](https://github.com/mozilla/mozjpeg/blob/master/LICENSE.md)      |
-| pango         | LGPLv3                                                                                                    |
-| pixman        | MIT License                                                                                               |
-| proxy-libintl | LGPLv3                                                                                                    |
-| zlib-ng       | [zlib License](https://github.com/zlib-ng/zlib-ng/blob/develop/LICENSE.md)                                |
-
-Use of libraries under the terms of the LGPLv3 is via the
-"any later version" clause of the LGPLv2 or LGPLv2.1.
-
-Please report any errors or omissions via
-https://github.com/lovell/sharp-libvips/issues/new
 
 ----- NOTICE d491d358344f842685c1b1585970999db65fe30ecf7ef3867af8814f4016c016 -----
 Applies to: echarts@6.1.0

@@ -30,6 +30,12 @@ export const DEPENDENCY_LICENSE_SELECTIONS = [
     selectedExpression: 'Apache-2.0',
   },
   {
+    packageName: 'dompurify',
+    version: '3.4.17',
+    declaredExpression: '(MPL-2.0 OR Apache-2.0)',
+    selectedExpression: 'Apache-2.0',
+  },
+  {
     packageName: 'duck',
     version: '0.1.12',
     declaredExpression: 'BSD',
@@ -56,6 +62,12 @@ export const DEPENDENCY_LICENSE_SELECTIONS = [
   {
     packageName: 'node-forge',
     version: '1.4.0',
+    declaredExpression: '(BSD-3-Clause OR GPL-2.0)',
+    selectedExpression: 'BSD-3-Clause',
+  },
+  {
+    packageName: 'node-forge',
+    version: '1.4.2',
     declaredExpression: '(BSD-3-Clause OR GPL-2.0)',
     selectedExpression: 'BSD-3-Clause',
   },

@@ -2,6 +2,10 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.0.1 - 2026-10-30
+
+- 适配 Vue 3.5.44 的属性引用类型推导：`CustomSelect` 用 getter 提供只读 prop 引用，保留选项更新、键盘导航和外置触发器的响应性；公开 props、事件、样式和交互语义不变，现有 `^3.0.0` 插件保持兼容。
+
 ## 3.0.0 - 2026-10-30
 
 - `/icons` 全部图标改为同一套 24 画布、1u 描边的母版生成：几何以 Fluent System Icons 20 Regular（MIT）为基准，按统一的关键形、圆角、像素对齐与修饰角标规则重绘；带角标的图标改为实心角标并在角标外 1u 截断主体。所有图标根节点新增 `linnya-ui-icon` class 与 `data-icon`，原有根 class 保留。

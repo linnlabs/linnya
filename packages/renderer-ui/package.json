@@ -1,6 +1,6 @@
 {
   "name": "@linnya/renderer-ui",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "type": "module",
   "private": true,
   "license": "Apache-2.0",
@@ -39,7 +39,7 @@
     "jsdom": "27.4.0",
     "typescript": "^5.5.4",
     "vitest": "^4.1.12",
-    "vue": "3.5.22",
+    "vue": "3.5.44",
     "vue-tsc": "~3.1.0"
   },
   "scripts": {
