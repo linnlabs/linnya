@@ -181,6 +181,8 @@ describe('slides IPC handlers', () => {
     })).resolves.toEqual({
       success: false,
       error: 'targets must contain valid source slice targets.',
+      code: 'validation',
+      retryable: false,
     });
     expect(coordinator.readSourceSlicesForAiEdit).not.toHaveBeenCalled();
   });

@@ -40,14 +40,7 @@ export type {
 } from './toolContextBinding';
 export {
   getPresentationCoordinator,
-  readOptionalBooleanArgStrict,
-  readOptionalNonEmptyStringArgStrict,
-  readOptionalNonNegativeIntegerArg,
-  readOptionalNonNegativeIntegerArgStrict,
-  readOptionalPositiveIntegerArg,
-  readOptionalPositiveIntegerArgStrict,
   readRequiredStringArg,
-  requireCodegenPresentationService,
   requireConversationId,
   requirePresentationInspectTargetResolver,
   requirePresentationCoordinator,

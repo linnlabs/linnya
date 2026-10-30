@@ -79,25 +79,10 @@ describe('slides page context functions', () => {
     expect(buildSlidesDocumentContextFragment(input)).toBeNull();
   });
 
-  it('prefers source-backed selections and falls back to the UI selected element', () => {
-    expect(buildSlidesPageContextSelection({
-      sourceSelectedElementIds: ['source-a', 'source-b'],
-      selectedElementId: 'legacy-selected',
-    })).toEqual({
-      selectedElementIds: ['source-a', 'source-b'],
-    });
-
-    expect(buildSlidesPageContextSelection({
-      sourceSelectedElementIds: [],
-      selectedElementId: 'legacy-selected',
-    })).toEqual({
-      selectedElementIds: ['legacy-selected'],
-    });
-
-    expect(buildSlidesPageContextSelection({
-      sourceSelectedElementIds: [],
-      selectedElementId: null,
-    })).toBeUndefined();
+  it('serializes the shared selection and omits an empty selection', () => {
+    expect(buildSlidesPageContextSelection({ selectedElementIds: ['source-a', 'source-b'] }))
+      .toEqual({ selectedElementIds: ['source-a', 'source-b'] });
+    expect(buildSlidesPageContextSelection({ selectedElementIds: [] })).toBeUndefined();
   });
 
   it('builds a stable document fragment for conversation context', () => {

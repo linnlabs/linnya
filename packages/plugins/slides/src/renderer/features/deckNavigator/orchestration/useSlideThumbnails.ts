@@ -1,6 +1,6 @@
 import { onScopeDispose, watch } from 'vue';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { resolveFilmstripThumbnailSize } from '../../../shared/thumbnailGeometry';
 import { logSlidesVerbose, warnSlides } from '../../../shared/diagnosticLogging';
 import { renderSlideRasterToImageBitmap } from '../../slideRasterization';

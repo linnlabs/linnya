@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { describe, expect, it, vi } from 'vitest';
 import type { DeckPreview } from '@plugin/slides/shared';
 import { installTestPresentation } from '../../documentRuntime/testing/installTestPresentation';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { provideManualEditSubmission, useSlidesManualEditingStore, type ManualEditSettlement, type ManualEditSubmissionPort } from '../../manualEditing';
 import { useEditingCommands } from './useEditingCommands';
 

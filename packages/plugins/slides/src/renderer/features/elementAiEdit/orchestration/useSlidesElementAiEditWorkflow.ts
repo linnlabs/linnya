@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { requireRendererAiInvocationPort } from '@plugin/renderer/aiInvocationPort';
 import { slidesApi } from '../../../services/slidesApi';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import {
   buildSlidesElementAiEditContext,
   buildSlidesElementAiEditSourceTargets,

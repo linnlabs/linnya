@@ -71,7 +71,7 @@ describe('DiagnosticFinding contract', () => {
   });
 
   it('rejects message-only fields and missing source identity', () => {
-    const { sourceRefs: _sourceRefs, ...withoutSource } = outOfBoundsFinding();
+    const withoutSource = { ...outOfBoundsFinding(), sourceRefs: undefined };
     expect(() => admitDiagnosticFinding({ ...withoutSource, message: 'overflow' })).toThrow();
   });
 

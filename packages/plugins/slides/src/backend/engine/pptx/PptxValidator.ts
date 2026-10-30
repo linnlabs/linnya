@@ -103,7 +103,7 @@ export class PptxValidator {
     }
 
     // 5. 解析 slide 列表
-    const slideRefs = this.parseSlideRefs(presXml, zip, structure);
+    const slideRefs = this.parseSlideRefs(presXml, zip);
     structure.slideCount = slideRefs.length;
 
     // 6. 先收集 slide/master/layout/theme 文件，再验证 slide 本体
@@ -227,7 +227,6 @@ export class PptxValidator {
   private parseSlideRefs(
     presDoc: XmlDocument,
     zip: JSZip,
-    structure: PptxStructureInfo,
   ): string[] {
     const refs: string[] = [];
     const sldIdLst = presDoc.getElementsByTagName('p:sldIdLst');

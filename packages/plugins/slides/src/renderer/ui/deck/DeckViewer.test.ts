@@ -79,7 +79,7 @@ vi.mock('@linnya/renderer-ui/icons', () => ({
 }));
 
 import DeckViewer from './DeckViewer.vue';
-import { useSlidesStore } from '../../store/slidesStore';
+import { useSlidesStore } from '../../features/documentRuntime';
 import { useSlidesManualEditingStore, provideManualEditSubmission } from '../../features/manualEditing';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
 

@@ -102,7 +102,7 @@ import { useSlidesUiStore } from '../../../store/slidesUiStore';
 import { useManualEditSubmission } from '../../manualEditing';
 import { useSlideStructureActions } from '../orchestration/useSlideStructureActions';
 import { useDeckNavigatorLocalization } from './useDeckNavigatorLocalization';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import type { SlideContextMenuAnchor } from '../definitions/deckNavigatorTypes';
 import SlideContextMenu from './SlideContextMenu.vue';
 import DeckFilmstrip from './DeckFilmstrip.vue';

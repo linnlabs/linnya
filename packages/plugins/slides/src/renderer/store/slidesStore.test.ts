@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { useSlidesStore } from './slidesStore';
+import { useSlidesStore } from '../features/documentRuntime';
 import { useSlidesDocumentRuntime } from '../features/documentRuntime/orchestration/useSlidesDocumentRuntime';
 import { makePresentationView } from '../../shared/presentationViewSnapshot/testing/viewFixture';
 

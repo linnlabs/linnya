@@ -11,6 +11,7 @@ import { onRendererPluginPush } from '@plugin/renderer/pluginPushClient';
 import { logSlidesVerbose } from '../shared/diagnosticLogging';
 import {
   SLIDES_IPC,
+  SlidesIpcError,
   SLIDES_PLUGIN_ID,
   SLIDES_PUSH_EVENTS,
   type OperationResult,
@@ -45,7 +46,7 @@ function unwrapSlidesIpcResult<T>(
   channel: SlidesIpcChannel,
 ): T {
   if (!result.success) {
-    throw new Error(result.error);
+    throw new SlidesIpcError(result.error, result.code ?? 'transport', result.retryable === true);
   }
   if (result.data === undefined) {
     throw new Error(`[slidesApi] ${channel} returned no data.`);

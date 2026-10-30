@@ -36,9 +36,6 @@ export const THUMBNAIL_PIXEL_RATIO = typeof window !== 'undefined'
   ? Math.min(window.devicePixelRatio ?? 2, 2)
   : 2;
 
-/** Inspector 面板默认宽度 */
-export const INSPECTOR_DEFAULT_WIDTH = 280;
-
 /** PPT 舞台滚动边界留白（px） */
 export const SLIDE_STAGE_SCROLL_GUTTER = 48;
 

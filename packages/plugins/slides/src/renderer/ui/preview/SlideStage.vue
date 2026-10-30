@@ -182,11 +182,11 @@ import { collectEditingPreviewGeometries, useSlideEditingPreview } from '../../f
 import { ref, shallowRef, computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useSlideStageViewport } from '../../features/stageZoom';
-import { useSlidesStore } from '../../store/slidesStore';
+import { useSlidesStore } from '../../features/documentRuntime';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import {
   SourceSelectionPromptPopover,
-  findSourceElementsForSelection,
+  selectSourceTargets,
   resolveSourceSelectionPromptPosition,
   type SourceSelectionEditSubmitPayload,
   useSlideSourceSelectionInteraction,
@@ -517,9 +517,11 @@ function handleStageDoubleClick(event: MouseEvent): void {
 }
 
 /** 交给 AI 的源码目标：作者对象选区优先，否则是只带源码定位的元素选区。 */
-const aiTargets = computed(() => manualSelectedTargets.value.length > 0
-  ? findSourceElementsForSelection(displayedSlide.value?.elements ?? [], manualSelectedTargets.value)
-  : selectedSourceTargets.value);
+const aiTargets = computed(() => selectSourceTargets({
+  nodes: displayedSlide.value?.elements ?? [],
+  manualTargets: manualSelectedTargets.value,
+  sourceElementIds: selectedSourceTargets.value.map(target => target.elementId),
+}));
 const canAskAi = computed(() => canSelectSourceElements.value && aiTargets.value.length > 0);
 const aiPromptOpen = ref(false);
 // 只带源码定位的元素没有属性可改，选中即展开 AI 输入；作者对象由浮条入口或 ⌘K 展开。

@@ -3,7 +3,7 @@ import { getActiveFileSession, markActiveFileDirty } from '@plugin/renderer/work
 import { registerSlidesDocumentSaveParticipant } from '../../features/documentRuntime';
 import { useTextInputSession, useSlidesEditingInteractionStore } from '../../features/editingInteraction';
 import { useSlidesManualEditingStore, useManualEditingLocalization, type ManualEditSubmissionPort } from '../../features/manualEditing';
-import { useSlidesStore } from '../../store/slidesStore';
+import { useSlidesStore } from '../../features/documentRuntime';
 
 /** 页面组合根连接输入、写队列和文档生命周期；各 feature 不反向依赖对方。 */
 export function useSlidesDocumentSave(submission: ManualEditSubmissionPort): void {

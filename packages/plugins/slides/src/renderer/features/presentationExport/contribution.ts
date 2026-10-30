@@ -8,7 +8,7 @@ import {
   resolvePresentationExportMenuFormat,
 } from './functions/presentationExportOptions';
 import { usePresentationExportStore } from './store/presentationExportStore';
-import { useSlidesStore } from '../../store/slidesStore';
+import { useSlidesStore } from '../documentRuntime';
 
 export const slidesDocumentActionMenu: DocumentActionMenuContribution = {
   activeDocumentType: SLIDES_ACTIVE_DOCUMENT_TYPE,

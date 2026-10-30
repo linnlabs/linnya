@@ -21,7 +21,7 @@ function resolveYogaLoadSpecifier() {
   // 先按 helper 自己的位置解析随 artifact 分发的 yoga-layout，再用 file URL import ESM。
   try {
     return pathToFileURL(require.resolve('yoga-layout/load')).href;
-  } catch (_error) {
+  } catch {
     return 'yoga-layout/load';
   }
 }

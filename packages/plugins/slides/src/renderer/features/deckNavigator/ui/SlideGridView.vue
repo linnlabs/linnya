@@ -69,7 +69,7 @@ import type { ComponentPublicInstance } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useVirtualList } from '@vueuse/core';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import { useSlidesThumbnailStore } from '../store/slidesThumbnailStore';
 import { useSlidesUiStore } from '../../../store/slidesUiStore';

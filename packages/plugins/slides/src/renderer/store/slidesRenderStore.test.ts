@@ -1,6 +1,6 @@
 import { beforeEach, expect, it } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { useSlidesStore } from './slidesStore';
+import { useSlidesStore } from '../features/documentRuntime';
 import { useSlidesRenderStore } from './slidesRenderStore';
 import { makePresentationView } from '../../shared/presentationViewSnapshot/testing/viewFixture';
 beforeEach(() => setActivePinia(createPinia()));

@@ -13,3 +13,5 @@ const invalidCodeEvidencePair = {
 
 // @ts-expect-error element_overlap 必须携带 node_overlap evidence，不能只靠运行时发现错配。
 const _invalidFinding: DiagnosticFinding = invalidCodeEvidencePair;
+
+void _invalidFinding;

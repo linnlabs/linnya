@@ -236,11 +236,10 @@ export class FreeformCompiler {
         ),
       } as PptxGenJS.TextPropsOptions);
     } else if (Array.isArray(el.content)) {
-      const {
-        lineSpacing: _lineSpacing,
-        lineSpacingMultiple: _lineSpacingMultiple,
-        ...richTextBoxStyle
-      } = textStyle;
+      // 富文本行距由首个 run 承载，避免 textbox 再叠加一次。
+      const richTextBoxStyle = { ...textStyle };
+      delete richTextBoxStyle.lineSpacing;
+      delete richTextBoxStyle.lineSpacingMultiple;
       const paragraphLineSpacing = mapTextParagraphLineSpacingToProps(el.style);
       const hasFormula = el.content.some((run) => 'formula' in run);
       if (hasFormula && !formulaContext) {
@@ -288,8 +287,6 @@ export class FreeformCompiler {
     el: FreeformShapeElement,
     transform: Transform,
     paintContext?: PptxPaintCompileContext,
-    svgGraphicContext?: SvgGraphicCompileContext,
-    formulaContext?: FormulaPptxCompileContext,
   ): void {
     const position = this.applyTransform(el.position, transform);
     const geometry = resolvePptxShapeGeometry(el.geometry, position);

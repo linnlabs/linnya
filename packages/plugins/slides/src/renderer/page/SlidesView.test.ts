@@ -2,8 +2,9 @@
 import { createApp, nextTick, type App } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
+import { SlidesIpcError } from '@plugin/slides/shared/ipc';
 import SlidesView from './SlidesView.vue';
-import { useSlidesStore } from '../store/slidesStore';
+import { useSlidesStore } from '../features/documentRuntime';
 import { useSlidesManualEditingStore, useManualEditSubmission } from '../features/manualEditing';
 import { useSlidesDocumentRuntime } from '../features/documentRuntime';
 import { makePresentationView } from '../../shared/presentationViewSnapshot/testing/viewFixture';
@@ -55,13 +56,13 @@ it('keeps a committed operation and the old complete view when refreshing fails,
   expect(manual.submission.phase).toBe('idle'); expect(submit).toHaveBeenCalledTimes(1);
 });
 
-it('keeps one structure selection intent across a lost response and its idempotent retry', async () => {
+it('keeps one structure selection intent across an explicitly retryable failure', async () => {
   read.mockResolvedValueOnce(candidate(1)).mockResolvedValueOnce(candidate(2));
   const runtime = useSlidesDocumentRuntime();
   let confirm!: (value: unknown) => void;
   submit.mockImplementationOnce(async () => {
     void runtime.refreshDeck('deck', 2);
-    throw new Error('response lost');
+    throw new SlidesIpcError('busy', 'busy', true);
   }).mockImplementationOnce(() => new Promise(resolve => { confirm = resolve; }));
   await runtime.loadDeck('deck'); const host = mount(); host.querySelector<HTMLElement>('.duplicate')?.click(); await flush();
   expect(useSlidesStore().renderModel?.version).toBe(1);

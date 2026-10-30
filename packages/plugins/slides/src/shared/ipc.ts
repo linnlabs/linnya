@@ -57,6 +57,8 @@ export type OperationResult<T = unknown> =
   | {
       success: false;
       error: string;
+      code?: SlidesIpcErrorCode;
+      retryable?: boolean;
       diagnostic?: {
         code: 'validation' | 'missing' | 'disabled' | 'permission_denied' | 'missing_handler' | 'crash';
         pluginId?: string;
@@ -64,3 +66,13 @@ export type OperationResult<T = unknown> =
         message: string;
       };
     };
+
+export type SlidesIpcErrorCode = 'validation' | 'busy' | 'internal' | 'transport';
+
+/** 仅明确声明可重试的失败才允许重发；IPC 拒绝本身不代表响应丢失。 */
+export class SlidesIpcError extends Error {
+  constructor(message: string, readonly code: SlidesIpcErrorCode, readonly retryable: boolean) {
+    super(message);
+    this.name = 'SlidesIpcError';
+  }
+}

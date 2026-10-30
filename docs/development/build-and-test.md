@@ -146,3 +146,6 @@ pnpm run build:main
 该 gate 用当前正式构建产物启动三个临时开发实例，覆盖 Renderer/API/Qdrant 端口、profile、CLI 描述、
 向量数据隔离、同目录单实例和独立退出；不读取开发者数据库或调用模型，结束后清理临时进程与文件。
 Windows 的 profile 与动态端口逻辑共用同一实现，仍需 Windows 真机验收；该 gate 不代替平台发布验收。
+
+Slides 的源码 ESLint 由 `pnpm --filter @plugin/slides lint` 执行，并纳入公共 package CI。
+Sandbox 生成的 ambient DSL 声明是供独立 deck.js 消费的 API，保留公开类型，不按宿主引用数删除。

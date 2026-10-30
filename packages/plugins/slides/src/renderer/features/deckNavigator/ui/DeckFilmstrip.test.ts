@@ -11,7 +11,7 @@ import type {
 import DeckNavigatorBar from './DeckNavigatorBar.vue';
 import { provideManualEditSubmission } from '../../manualEditing';
 import DeckFilmstrip from './DeckFilmstrip.vue';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 
 interface OverlayCall {
   params: UseOverlayScrollViewportParams;

@@ -45,4 +45,3 @@ export interface DeckPreviewViewModel {
 }
 
 /** Inspector 面板 tab 枚举 */
-export type InspectorTab = 'overview' | 'diagnostics' | 'suggestions';

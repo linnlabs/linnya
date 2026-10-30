@@ -14,8 +14,7 @@
   overflow: hidden;
 }
 
-.deck-viewer .deck-viewer-stage,
-.deck-viewer .deck-viewer-inspector {
+.deck-viewer .deck-viewer-stage {
   /*
    * Slides 的可见 pane 分割线必须统一来源，避免顶部线和侧栏线在不同主题下变粗或变浅。
    * 直接画在各 pane 的边框层，避免被 pane 背景或内部舞台内容覆盖。
@@ -30,25 +29,6 @@
   min-width: 0;
   overflow: hidden;
   background: var(--color-bg-subtle);
-}
-
-.deck-viewer .deck-viewer-inspector {
-  flex-shrink: 0;
-  border-left: var(--deck-viewer-pane-divider);
-  background: var(--color-bg-surface);
-  overflow: hidden;
-}
-
-.deck-viewer .inspector-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
-.deck-viewer .inspector-label {
-  font-size: 12px;
-  color: var(--color-text-placeholder);
 }
 
 .deck-viewer .deck-viewer__draft-failure-content {

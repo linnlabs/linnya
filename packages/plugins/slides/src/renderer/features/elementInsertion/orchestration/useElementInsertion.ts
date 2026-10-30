@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue';
 import type { SlidesInsertedObject } from '@plugin/slides/shared/authoringEditing';
 import { useLocalization } from '@app/localization';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import { importSlideImage } from '../../imageEditing';
 import { useManualEditSubmission, useSlidesManualEditingStore } from '../../manualEditing';

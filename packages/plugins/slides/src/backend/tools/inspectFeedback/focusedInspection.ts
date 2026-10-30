@@ -1,6 +1,5 @@
 import type {
   PresentationInspectionSourceRange,
-  SceneGraphNodeSummary,
   SceneGraphSlideSummary,
 } from '@plugin/slides/shared';
 import type {

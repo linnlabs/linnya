@@ -1,7 +1,6 @@
 import type { ExportArtifactTargetRequest } from '@plugin/renderer/exportArtifact';
 import type {
   PresentationExportChartMode,
-  PresentationExportFormat,
   PresentationExportImageWidth,
   PresentationExportRequest,
 } from '@plugin/slides/shared/presentationExport';

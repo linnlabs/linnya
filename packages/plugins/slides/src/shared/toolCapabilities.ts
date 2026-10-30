@@ -1,5 +1,4 @@
 import type {
-  EditableOperation,
   EditableTarget,
   PresentationRenderModel,
 } from './renderModel';

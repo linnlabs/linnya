@@ -11,6 +11,7 @@ import {
   collectSourceElementsInRect,
   findSourceElementAtPoint,
   findSourceElementsForSelection,
+  selectSourceTargets,
 } from './renderNodeSourceSelection';
 import { resolveSourceSelectionAvailability } from './sourceSelectionAvailability';
 import {
@@ -300,5 +301,23 @@ describe('findSourceElementsForSelection', () => {
       { elementId: 'frame-label', translationElementIds: ['frame-label'] },
     ]);
     expect(targets.map(target => [target.elementId, target.sourceSpan])).toEqual([['frame-label', SPAN_1], ['badge', SPAN_2]]);
+  });
+});
+
+
+describe('shared AI selection', () => {
+  it('uses author selection after source selection is cleared, and resolves source-only selection', () => {
+    const nodes = [
+      text('title', box({ x: 1, y: 1, w: 2, h: 1 }), 1, SPAN_1),
+      shape('badge', box({ x: 4, y: 1, w: 1, h: 1 }), 2, SPAN_2),
+    ];
+    const manualTargets = [{ elementId: 'title', translationElementIds: ['title'] }];
+    expect(selectSourceTargets({ nodes, manualTargets, sourceElementIds: [] }))
+      .toMatchObject([{ elementId: 'title', sourceSpan: SPAN_1 }]);
+    expect(selectSourceTargets({ nodes, manualTargets, sourceElementIds: ['badge'] }))
+      .toMatchObject([{ elementId: 'title' }]);
+    expect(selectSourceTargets({ nodes, manualTargets: [], sourceElementIds: ['badge'] }))
+      .toMatchObject([{ elementId: 'badge', sourceSpan: SPAN_2 }]);
+    expect(selectSourceTargets({ nodes: [], manualTargets, sourceElementIds: [] })).toEqual([]);
   });
 });

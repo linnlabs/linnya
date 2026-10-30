@@ -1,3 +1,4 @@
+import { SlidesIpcError } from '@plugin/slides/shared/ipc';
 import type { SlidesInsertedObject, SlidesImportedImage } from '@plugin/slides/shared/authoringEditing';
 import { ViewReadRequestSchema, type ViewReadRequest, type ViewReadResponse } from '@plugin/slides/shared/presentationViewSnapshot';
 import type {
@@ -86,6 +87,8 @@ function registerSlidesResultHandler<T>(
         return {
           success: false,
           error: readSlidesIpcErrorMessage(error),
+          code: error instanceof SlidesIpcError ? error.code : error instanceof z.ZodError ? 'validation' : 'internal',
+          retryable: error instanceof SlidesIpcError && error.retryable,
         };
       }
     },

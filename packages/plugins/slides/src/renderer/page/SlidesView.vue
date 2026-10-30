@@ -19,8 +19,7 @@ import { storeToRefs } from 'pinia';
 import DeckViewer from '../ui/deck/DeckViewer.vue';
 import SlidesStatusState from '../ui/shared/SlidesStatusState.vue';
 import { useSlidesRenderStore } from '../store/slidesRenderStore';
-import { useSlidesSessionStore } from '../store/slidesSessionStore';
-import { useSlidesStore } from '../store/slidesStore';
+import { useSlidesStore } from '../features/documentRuntime';
 import { useSlidesUiStore } from '../store/slidesUiStore';
 import type { SourceSelectionEditSubmitPayload } from '../features/sourceSelection';
 import { usePresentationExportStore } from '../features/presentationExport';
@@ -54,7 +53,6 @@ const {
   documentBuildState,
 } = storeToRefs(slidesStore);
 const slidesUiStore = useSlidesUiStore();
-const slidesSessionStore = useSlidesSessionStore();
 const presentationExportStore = usePresentationExportStore();
 const editingInteractionStore = useSlidesEditingInteractionStore();
 const { manualEditingMessage } = useManualEditingLocalization();
@@ -78,7 +76,6 @@ useSlideThumbnails();
 /** 文档身份重置交互；渲染刷新只由正式 revision 驱动，与页面挂载先后无关。 */
 watch(currentDeckId, () => {
   slidesUiStore.$reset();
-  slidesSessionStore.$reset();
   presentationExportStore.$reset();
   editingInteractionStore.$reset();
   manualEditPresentationTrace.clear();

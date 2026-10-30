@@ -52,6 +52,11 @@ export default [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
+  {
+    // Sandbox 声明提供给独立 deck.js 源码，不能按宿主文件的引用数删掉公开 DSL 类型。
+    files: ['packages/plugins/slides/src/backend/sandbox/pptComposeProfile.ambient.d.ts'],
+    rules: { '@typescript-eslint/no-unused-vars': 'off' },
+  },
   ...vuePlugin.configs['flat/recommended'],
   {
     files: ['apps/renderer/**/*.vue', 'packages/**/*.vue'],

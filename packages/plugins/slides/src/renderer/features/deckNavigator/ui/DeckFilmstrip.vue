@@ -73,7 +73,7 @@ import type { ComponentPublicInstance } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useVirtualList } from '@vueuse/core';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { useSlidesThumbnailStore } from '../store/slidesThumbnailStore';
 import {
   FILMSTRIP_ITEM_GAP_PX,

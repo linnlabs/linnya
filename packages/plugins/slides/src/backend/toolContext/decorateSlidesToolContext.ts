@@ -24,7 +24,6 @@ import {
   attachPresentationInspectTargetResolverToToolContext,
   type PresentationCoordinatorProvider,
   type PresentationInspectTargetResolver,
-  type PresentationToolCoordinatorPort,
 } from '../tools';
 
 interface SlidesToolDatabaseService {

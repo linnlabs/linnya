@@ -1,6 +1,5 @@
 import type {
   SandboxJsonObject,
-  SandboxJsonValue,
 } from '@plugin/backend/sandboxRuntime';
 
 export function measureJsonBytes(value: unknown): number {

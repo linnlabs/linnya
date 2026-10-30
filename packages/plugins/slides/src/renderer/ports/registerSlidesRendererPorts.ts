@@ -44,9 +44,10 @@ import {
   buildSlidesPageContextSummary,
 } from '../features/pageContext';
 import type { SlidesDeckPageContextInput } from '../features/pageContext';
-import { useSlidesStore } from '../store/slidesStore';
-import { useSlidesUiStore } from '../store/slidesUiStore';
-import { useSlidesSourceSelectionStore } from '../features/sourceSelection';
+import { useSlidesStore } from '../features/documentRuntime';
+import { useSlidesRenderStore } from '../store/slidesRenderStore';
+import { useSlidesManualEditingStore } from '../features/manualEditing';
+import { selectSourceTargets, useSlidesSourceSelectionStore } from '../features/sourceSelection';
 import {
   listSlidesReferenceIds,
   resolveSlidesReferenceFocusTarget,
@@ -79,10 +80,13 @@ function buildSlidesDocumentInfo() {
 
 function buildSlidesSelection() {
   const sourceSelectionStore = useSlidesSourceSelectionStore();
-  const uiStore = useSlidesUiStore();
+  const manualStore = useSlidesManualEditingStore();
   return buildSlidesPageContextSelection({
-    sourceSelectedElementIds: sourceSelectionStore.selectedElementIds,
-    selectedElementId: uiStore.selectedElementId,
+    selectedElementIds: selectSourceTargets({
+      nodes: useSlidesRenderStore().currentSlideRender?.elements ?? [],
+      manualTargets: manualStore.selectedTargets,
+      sourceElementIds: sourceSelectionStore.selectedElementIds,
+    }).map(target => target.elementId),
   });
 }
 
@@ -166,7 +170,8 @@ export function registerSlidesRendererPorts(): void {
         return { status: 'reference-not-found' };
       }
 
-      useSlidesUiStore().selectElement(null);
+      useSlidesManualEditingStore().clearSelection();
+      useSlidesSourceSelectionStore().clearSelection();
       if (target.kind === 'slide') {
         slidesStore.setCurrentSlide(target.slideIndex);
       }

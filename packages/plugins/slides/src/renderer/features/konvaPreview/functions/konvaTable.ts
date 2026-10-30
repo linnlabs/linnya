@@ -6,7 +6,6 @@ import {
   resolveTableCellLayouts,
   type TableCellLayout,
 } from '../../../../shared/renderModel';
-import { SLIDES_RENDER_COLORS } from '../../../shared/constants';
 
 export type { TableCellLayout } from '../../../../shared/renderModel';
 
@@ -14,12 +13,6 @@ export interface TableBorderSegment {
   points: [number, number, number, number];
   stroke: RenderStroke;
 }
-
-const DEFAULT_STROKE: RenderStroke = {
-  paint: { type: 'solid', color: SLIDES_RENDER_COLORS.tableBorderStroke },
-  width: 1,
-  dash: 'solid',
-};
 
 export function buildTableCellLayouts(node: TableRenderNode): TableCellLayout[] {
   return resolveTableCellLayouts(node);

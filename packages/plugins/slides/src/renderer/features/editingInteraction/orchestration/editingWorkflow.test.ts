@@ -6,7 +6,7 @@ import type { SlidesManualEditCommand, SlidesManualEditCommandResult } from '@pl
 import { useManualEditQueue, useSlidesManualEditingStore } from '../../manualEditing';
 import type { TextEditingTarget } from '../../textEditing';
 import { useSlidesEditingInteractionStore } from '../store/slidesEditingInteractionStore';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { useSlidesDocumentSave } from '../../../page/orchestration/useSlidesDocumentSave';
 import { slidesFileHandler } from '../../documentRuntime';
 import { useTextInputSession } from './useTextInputSession';

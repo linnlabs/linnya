@@ -32,6 +32,5 @@ export interface SlidesDeckPageContextInput {
 }
 
 export interface SlidesSelectionPageContextInput {
-  sourceSelectedElementIds: readonly string[];
-  selectedElementId: string | null;
+  selectedElementIds: readonly string[];
 }

@@ -1,5 +1,5 @@
 import { watch } from 'vue';
-import { useSlidesStore } from '../../store/slidesStore';
+import { useSlidesStore } from '../../features/documentRuntime';
 import { useSlidesManualEditingStore } from '../../features/manualEditing';
 import { slidesApi } from '../../services/slidesApi';
 

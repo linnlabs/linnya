@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { useLocalization } from '@app/localization';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { useManualEditSubmission, useSlidesManualEditingStore } from '../../manualEditing';
 import { importSlideImage } from './importSlideImage';
 import { IMAGE_EDITING_MESSAGES, type ImageEditingMessageKey } from '../definitions/imageEditingMessages';

@@ -1,5 +1,5 @@
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { arrangeSelection } from '../functions/arrangeSelection';
 import type { SelectionArrangement } from '../definitions/selectionArrangement';
 import { computed, nextTick } from 'vue';

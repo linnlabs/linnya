@@ -1,6 +1,6 @@
 import { computed, type ComputedRef } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
 import {
   useSlidesManualEditingStore,

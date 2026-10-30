@@ -6,7 +6,7 @@
 
 `useSlidesDocumentRuntime` is the public read boundary. It reads `slides:view-snapshot`, assembles all batches of the same snapshot, restores missing content/binding blocks and validates complete pages. The protocol is defined in [presentationViewSnapshot](../../../shared/presentationViewSnapshot/README.md).
 
-A single installed reference contains build state, navigation, RenderModel and selection. The old deck store path re-exports this owner; `slidesRenderStore` is a read-only projection with no independent request or model state. `SlidesView` never schedules model reads in a revision watcher. Preloaded documents and newly mounted surfaces consume the same installed view.
+A single installed reference contains build state, navigation, RenderModel and selection. The feature public entry exports the document store; `slidesRenderStore` is a read-only projection with no independent request or model state. `SlidesView` never schedules model reads in a revision watcher. Preloaded documents and newly mounted surfaces consume the same installed view.
 
 `createActiveDeckRefreshCoordinator` coalesces command receipts and mutation events in the same document session epoch. Only a complete installed ready snapshot satisfies a requested revision. A→B→A visits cannot join an earlier A read. An unversioned refresh always checks current state, including draft updates on an unchanged compiled base. Concurrent version requests can share the current read and one follow-up when the target revision did not yet exist.
 

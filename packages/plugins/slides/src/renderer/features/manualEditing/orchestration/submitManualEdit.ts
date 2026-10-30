@@ -1,3 +1,4 @@
+import { SlidesIpcError } from '@plugin/slides/shared/ipc';
 import type {
   SlidesManualEditCommandResult,
   SlidesManualEditCommandOperation,
@@ -29,8 +30,12 @@ export async function submitManualEdit(input: {
   let result: SlidesManualEditCommandResult;
   try {
     result = await ports.submit(command);
-  } catch {
-    // 第一次响应可能在 revision 已提交后丢失；同 commandId 重试由 backend receipt 收口。
+  } catch (error) {
+    if (!(error instanceof SlidesIpcError) || !error.retryable) {
+      ports.trace?.recordTransportFailure(command.commandId);
+      throw error;
+    }
+    // 后端明确允许的临时失败才重试，沿用 commandId 保持回执幂等。
     ports.trace?.recordTransportRetry(command.commandId);
     try {
       result = await ports.submit(command);

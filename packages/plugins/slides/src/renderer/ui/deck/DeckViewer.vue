@@ -39,14 +39,6 @@
           @action="reload"
         />
         <SlidesStatusState
-          v-else-if="renderError"
-          :title="slidesPreviewMessage('slides.preview.error.presentationRendering')"
-          :description="renderError"
-          action-label="重试"
-          tone="error"
-          @action="reload"
-        />
-        <SlidesStatusState
           v-else-if="!deckPreview"
           title="无预览数据"
         />
@@ -87,18 +79,6 @@
 
         <!-- 顶部居中的文稿命令条浮在舞台上，不进入布局；幻灯片位置不随它出现或消失。 -->
         <SlideEditingCommandBar v-if="manualEditingEnabled && deckPreview && deckViewMode === 'slide'" />
-
-      </div>
-
-      <!-- 右栏：Inspector（FE-2 填充） -->
-      <div
-        v-if="inspectorVisible"
-        class="deck-viewer-inspector"
-        :style="{ width: `${INSPECTOR_DEFAULT_WIDTH}px` }"
-      >
-        <div class="inspector-placeholder">
-          <span class="inspector-label">Inspector</span>
-        </div>
       </div>
     </div>
 
@@ -131,21 +111,19 @@ import { SlideEditingCommandBar, useEditingCommands } from '../../features/editi
 import { useSlidesDocumentRuntime } from '../../features/documentRuntime';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useSlidesStore } from '../../store/slidesStore';
+import { useSlidesStore } from '../../features/documentRuntime';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import SlideStage from '../preview/SlideStage.vue';
 import SlidesStatusState from '../shared/SlidesStatusState.vue';
 import { SlidesDraftFailureLog } from '../../features/documentBuildFailure';
 import {
-  INSPECTOR_DEFAULT_WIDTH,
   SLIDE_STAGE_FIT_PADDING,
   ZOOM_MIN,
   ZOOM_MAX,
 } from '../../shared/constants';
 import { computeFitScale } from '../../shared/slideScale';
 import type { SourceSelectionEditSubmitPayload } from '../../features/sourceSelection';
-import { useSlidesPreviewLocalization } from '../../features/previewRenderState';
 import { DeckNavigatorBar, SlideGridView } from '../../features/deckNavigator';
 import { StageZoomControls, clampStageZoomPercent, type StageZoomMenuAction } from '../../features/stageZoom';
 import {
@@ -172,7 +150,6 @@ const { handleClipboardShortcut } = useElementClipboard();
 const { handleHistoryShortcut } = useEditingCommands();
 const manualEditSubmission = useManualEditSubmission();
 const { manualEditingMessage } = useManualEditingLocalization();
-const { slidesPreviewMessage } = useSlidesPreviewLocalization();
 
 const {
   deckPreview,
@@ -183,7 +160,6 @@ const {
 } = storeToRefs(slidesStore);
 const {
   deckViewMode,
-  inspectorVisible,
   zoomLevel,
   zoomMode,
   fitZoomLevel,
@@ -196,7 +172,6 @@ const {
 const {
   renderLoading,
   renderModel,
-  renderError,
   currentSlideRender,
 } = storeToRefs(slidesRenderStore);
 

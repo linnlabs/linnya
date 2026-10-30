@@ -81,6 +81,17 @@ export function findSourceElementsForSelection(
   return [...new Map(found.map(element => [element.elementId, element])).values()];
 }
 
+/** 舞台 AI 输入与 Conversation 页面上下文共用此规则，不能另读旧 UI 选区。 */
+export function selectSourceTargets(input: {
+  readonly nodes: readonly RenderNode[];
+  readonly manualTargets: readonly { readonly elementId: string; readonly translationElementIds: readonly string[] }[];
+  readonly sourceElementIds: readonly string[];
+}): SourceSelectableElement[] {
+  return input.manualTargets.length > 0
+    ? findSourceElementsForSelection(input.nodes, input.manualTargets)
+    : findSourceElementsByIds(input.nodes, input.sourceElementIds);
+}
+
 function buildSelectableElement(
   geometry: RenderNodeSelectionGeometry<SourceTrackedRenderNode>,
 ): SourceSelectableElement {

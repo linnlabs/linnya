@@ -3,7 +3,6 @@ import { DEFAULT_TEXT_LINE_SPACING } from '../definitions/lineSpacing';
 import type {
   FontLineMetrics,
   FontMetricsProvider,
-  RunMeasureStyle,
   TextRunStyleResolver,
 } from '../definitions/types';
 import { MathFormulaError } from '../../mathFormula';

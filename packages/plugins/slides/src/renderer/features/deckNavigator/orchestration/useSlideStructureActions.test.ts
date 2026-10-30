@@ -7,7 +7,7 @@ import type { SlidesManualEditCommand, SlidesManualEditCommandResult } from '@pl
 import type { PresentationRenderModel } from '../../../types/render';
 import { useManualEditQueue, useSlidesManualEditingStore } from '../../manualEditing';
 import { useSlidesRenderStore } from '../../../store/slidesRenderStore';
-import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesStore } from '../../documentRuntime';
 import { useSlideStructureActions } from './useSlideStructureActions';
 
 vi.mock('@plugin/renderer/workspaceRuntime', () => ({

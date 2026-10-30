@@ -1,3 +1,4 @@
+import { SlidesIpcError } from '@plugin/slides/shared/ipc';
 import { readInsertedObjects } from '@plugin/slides/shared/authoringEditing';
 import { readSlidesTextStylePatch, SLIDES_TEXT_STYLE_FIELDS, isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import {
@@ -46,7 +47,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function readNonEmptyString(value: unknown, fieldName: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error(`${fieldName} must be a non-empty string.`);
+    throw new SlidesIpcError(`${fieldName} must be a non-empty string.`, 'validation', false);
   }
   return value;
 }
@@ -64,13 +65,13 @@ function assertOnlyKeys(
   fieldName: string,
 ): void {
   const unknownKey = Object.keys(value).find(key => !allowed.includes(key));
-  if (unknownKey) throw new Error(`${fieldName} contains unknown field ${unknownKey}.`);
+  if (unknownKey) throw new SlidesIpcError(`${fieldName} contains unknown field ${unknownKey}.`, 'validation', false);
 }
 
 function readAuthoringKey(value: unknown, fieldName: string): string {
   const key = readNonEmptyString(value, fieldName);
   if (!SLIDES_AUTHORING_KEY_PATTERN.test(key)) {
-    throw new Error(`${fieldName} must be a valid Slides authoring key.`);
+    throw new SlidesIpcError(`${fieldName} must be a valid Slides authoring key.`, 'validation', false);
   }
   return key;
 }
@@ -87,13 +88,13 @@ function readManualTargetKind(value: unknown): SlidesManualTargetKind {
     case 'formula':
       return value;
     default:
-      throw new Error('operation.targetKind is invalid.');
+      throw new SlidesIpcError('operation.targetKind is invalid.', 'validation', false);
   }
 }
 
 function readFiniteNumber(value: unknown, fieldName: string): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new Error(`${fieldName} must be a finite number.`);
+    throw new SlidesIpcError(`${fieldName} must be a finite number.`, 'validation', false);
   }
   return value;
 }
@@ -131,12 +132,12 @@ function readBuffer(value: unknown): Buffer {
   if (ArrayBuffer.isView(value)) {
     return Buffer.from(value.buffer, value.byteOffset, value.byteLength);
   }
-  throw new Error('buffer must be an ArrayBuffer, typed array, or Buffer.');
+  throw new SlidesIpcError('buffer must be an ArrayBuffer, typed array, or Buffer.', 'validation', false);
 }
 
 export function parseSlidesNodePayload(payload: unknown, channel: SlidesIpcChannel): SlidesNodePayload {
   if (!isRecord(payload)) {
-    throw new Error(`${channel} payload must be an object.`);
+    throw new SlidesIpcError(`${channel} payload must be an object.`, 'validation', false);
   }
   return {
     nodeId: readNonEmptyString(payload.nodeId, 'nodeId'),
@@ -148,10 +149,10 @@ export { parsePresentationExportRequest };
 export function parseSlidesSourceSlicesPayload(payload: unknown): SlidesSourceSlicesPayload {
   const base = parseSlidesNodePayload(payload, 'slides:source-slices');
   if (!isRecord(payload)) {
-    throw new Error('slides:source-slices payload must be an object.');
+    throw new SlidesIpcError('slides:source-slices payload must be an object.', 'validation', false);
   }
   if (!isSourceSliceTargetArray(payload.targets)) {
-    throw new Error('targets must contain valid source slice targets.');
+    throw new SlidesIpcError('targets must contain valid source slice targets.', 'validation', false);
   }
 
   return {
@@ -163,14 +164,14 @@ export function parseSlidesSourceSlicesPayload(payload: unknown): SlidesSourceSl
 
 export function parseSlidesTemplateImportPayload(payload: unknown): SlidesTemplateImportPayload {
   if (!isRecord(payload)) {
-    throw new Error('slides:template-import payload must be an object.');
+    throw new SlidesIpcError('slides:template-import payload must be an object.', 'validation', false);
   }
   const buffer = readBuffer(payload.buffer);
   if (buffer.length === 0) {
-    throw new Error('PPTX file is required.');
+    throw new SlidesIpcError('PPTX file is required.', 'validation', false);
   }
   if (buffer.length > SLIDES_TEMPLATE_IMPORT_MAX_BYTES) {
-    throw new Error(`PPTX file is too large. Maximum size is ${SLIDES_TEMPLATE_IMPORT_MAX_BYTES} bytes.`);
+    throw new SlidesIpcError(`PPTX file is too large. Maximum size is ${SLIDES_TEMPLATE_IMPORT_MAX_BYTES} bytes.`, 'validation', false);
   }
 
   return {
@@ -182,23 +183,23 @@ export function parseSlidesTemplateImportPayload(payload: unknown): SlidesTempla
 }
 
 export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEditCommand {
-  if (!isRecord(payload)) throw new Error('slides:manual-edit payload must be an object.');
+  if (!isRecord(payload)) throw new SlidesIpcError('slides:manual-edit payload must be an object.', 'validation', false);
   assertOnlyKeys(payload, ['commandId', 'documentId', 'expectedBase', 'operation'], 'payload');
   const commandId = readNonEmptyString(payload.commandId, 'commandId');
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(commandId)) {
-    throw new Error('commandId must be a UUID.');
+    throw new SlidesIpcError('commandId must be a UUID.', 'validation', false);
   }
-  if (!isRecord(payload.expectedBase)) throw new Error('expectedBase must be an object.');
+  if (!isRecord(payload.expectedBase)) throw new SlidesIpcError('expectedBase must be an object.', 'validation', false);
   assertOnlyKeys(payload.expectedBase, ['revisionId', 'revision', 'sourceHash'], 'expectedBase');
   const revision = payload.expectedBase.revision;
   if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 1) {
-    throw new Error('expectedBase.revision must be a positive safe integer.');
+    throw new SlidesIpcError('expectedBase.revision must be a positive safe integer.', 'validation', false);
   }
   const sourceHash = readNonEmptyString(payload.expectedBase.sourceHash, 'expectedBase.sourceHash');
   if (!/^[0-9a-f]{64}$/u.test(sourceHash)) {
-    throw new Error('expectedBase.sourceHash must be a lowercase SHA-256 digest.');
+    throw new SlidesIpcError('expectedBase.sourceHash must be a lowercase SHA-256 digest.', 'validation', false);
   }
-  if (!isRecord(payload.operation)) throw new Error('operation must be an object.');
+  if (!isRecord(payload.operation)) throw new SlidesIpcError('operation must be an object.', 'validation', false);
   const base = {
     commandId,
     documentId: readNonEmptyString(payload.documentId, 'documentId'),
@@ -214,32 +215,32 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
 function readManualEditOperation(operation: Record<string, unknown>): SlidesManualEditCommandOperation {
   if (operation.op === 'set_layer') {
     assertOnlyKeys(operation, ['op', 'target', 'direction'], 'operation');
-    if (!isRecord(operation.target)) throw new Error('图层目标无效。');
+    if (!isRecord(operation.target)) throw new SlidesIpcError('图层目标无效。', 'validation', false);
     assertOnlyKeys(operation.target, ['slideKey', 'editKey'], 'operation.target');
     const direction = operation.direction;
-    if (direction !== 'front' && direction !== 'back' && direction !== 'forward' && direction !== 'backward') throw new Error('图层顺序无效。');
+    if (direction !== 'front' && direction !== 'back' && direction !== 'forward' && direction !== 'backward') throw new SlidesIpcError('图层顺序无效。', 'validation', false);
     return { op: 'set_layer', target: { slideKey: readAuthoringKey(operation.target.slideKey, 'slideKey'), editKey: readAuthoringKey(operation.target.editKey, 'editKey') }, direction };
   }
   if (operation.op === 'move_slide') {
     assertOnlyKeys(operation, ['op', 'index', 'toIndex'], 'operation');
     const index = operation.index;
     const toIndex = operation.toIndex;
-    if (typeof index !== 'number' || typeof toIndex !== 'number' || !Number.isSafeInteger(index) || !Number.isSafeInteger(toIndex) || index < 0 || toIndex < 0) throw new Error('页面顺序无效。');
+    if (typeof index !== 'number' || typeof toIndex !== 'number' || !Number.isSafeInteger(index) || !Number.isSafeInteger(toIndex) || index < 0 || toIndex < 0) throw new SlidesIpcError('页面顺序无效。', 'validation', false);
     return { op: 'move_slide', index, toIndex };
   }
   if (operation.op === 'insert_objects') {
     assertOnlyKeys(operation, ['op', 'index', 'objects'], 'operation');
     const parsed = readInsertedObjects(operation.objects);
-    if ('error' in parsed) throw new Error(parsed.error);
-    if (parsed.value.length === 0) throw new Error('至少需要一个新增对象。');
+    if ('error' in parsed) throw new SlidesIpcError(parsed.error, 'validation', false);
+    if (parsed.value.length === 0) throw new SlidesIpcError('至少需要一个新增对象。', 'validation', false);
     const index = operation.index;
-    if (typeof index !== 'number' || !Number.isSafeInteger(index) || index < 0) throw new Error('新增对象的页面位置无效。');
+    if (typeof index !== 'number' || !Number.isSafeInteger(index) || index < 0) throw new SlidesIpcError('新增对象的页面位置无效。', 'validation', false);
     return { op: 'insert_objects', index, objects: parsed.value };
   }
   if (operation.op === 'insert_blank_slide' || operation.op === 'duplicate_slide' || operation.op === 'delete_slide') {
     assertOnlyKeys(operation, ['op', 'index'], 'operation');
     const index = operation.index;
-    if (typeof index !== 'number' || !Number.isSafeInteger(index) || index < 0) throw new Error('operation.index must be a non-negative safe integer.');
+    if (typeof index !== 'number' || !Number.isSafeInteger(index) || index < 0) throw new SlidesIpcError('operation.index must be a non-negative safe integer.', 'validation', false);
     return { op: operation.op, index };
   }
   if (operation.op === 'undo' || operation.op === 'redo') {
@@ -249,10 +250,10 @@ function readManualEditOperation(operation: Record<string, unknown>): SlidesManu
   if (operation.op === 'batch') {
     assertOnlyKeys(operation, ['op', 'operations'], 'operation');
     if (!Array.isArray(operation.operations) || operation.operations.length === 0 || operation.operations.length > 1000) {
-      throw new Error('A batch must contain 1..1000 object operations.');
+      throw new SlidesIpcError('A batch must contain 1..1000 object operations.', 'validation', false);
     }
     return { op: 'batch', operations: operation.operations.map(item => {
-      if (!isRecord(item)) throw new Error('A batch entry must be an object operation.');
+      if (!isRecord(item)) throw new SlidesIpcError('A batch entry must be an object operation.', 'validation', false);
       return readManualObjectOperation(item);
     }) };
   }
@@ -260,7 +261,7 @@ function readManualEditOperation(operation: Record<string, unknown>): SlidesManu
 }
 
 function readManualObjectOperation(operation: Record<string, unknown>): SlidesManualEditOperation {
-  if (!isRecord(operation.target)) throw new Error('operation.target must be an object.');
+  if (!isRecord(operation.target)) throw new SlidesIpcError('operation.target must be an object.', 'validation', false);
   assertOnlyKeys(operation.target, ['slideKey', 'editKey'], 'operation.target');
   const target = {
     slideKey: readAuthoringKey(operation.target.slideKey, 'operation.target.slideKey'),
@@ -270,24 +271,24 @@ function readManualObjectOperation(operation: Record<string, unknown>): SlidesMa
   if (operation.op === 'set_text_width') {
     assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'width'], 'operation');
     const width = readFiniteNumber(operation.width, 'operation.width');
-    if (operation.targetKind !== 'text' || width <= 0) throw new Error('文字宽度无效。');
+    if (operation.targetKind !== 'text' || width <= 0) throw new SlidesIpcError('文字宽度无效。', 'validation', false);
     return { op: 'set_text_width', target, targetKind: 'text', width };
   }
   if (operation.op === 'set_image') {
     assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'assetId', 'fit'], 'operation');
     const assetId = operation.assetId === undefined ? undefined : readNonEmptyString(operation.assetId, 'operation.assetId');
     const fit = operation.fit;
-    if (operation.targetKind !== 'image' || (fit !== undefined && fit !== 'contain' && fit !== 'cover') || (!assetId && !fit)) throw new Error('图片修改无效。');
+    if (operation.targetKind !== 'image' || (fit !== undefined && fit !== 'contain' && fit !== 'cover') || (!assetId && !fit)) throw new SlidesIpcError('图片修改无效。', 'validation', false);
     return { op: 'set_image', target, targetKind: 'image', ...(assetId ? { assetId } : {}), ...(fit ? { fit } : {}) };
   }
   if (operation.op === 'set_text_content') {
     assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'content'], 'operation');
     if (operation.targetKind !== 'text' && operation.targetKind !== 'shape') {
-      throw new Error('operation.targetKind must be text or shape.');
+      throw new SlidesIpcError('operation.targetKind must be text or shape.', 'validation', false);
     }
-    if (!isEditableTextContent(operation.content)) throw new Error('operation.content must be text or text runs.');
+    if (!isEditableTextContent(operation.content)) throw new SlidesIpcError('operation.content must be text or text runs.', 'validation', false);
     if (operation.targetKind === 'shape') {
-      if (typeof operation.content !== 'string') throw new Error('Shape content must be a string.');
+      if (typeof operation.content !== 'string') throw new SlidesIpcError('Shape content must be a string.', 'validation', false);
       return { op: 'set_text_content', target, targetKind: 'shape', content: operation.content };
     }
     return { op: 'set_text_content', target, targetKind: operation.targetKind, content: operation.content };
@@ -295,7 +296,7 @@ function readManualObjectOperation(operation: Record<string, unknown>): SlidesMa
   if (operation.op === 'set_translation') {
     assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'translation'], 'operation');
     if (!isRecord(operation.translation)) {
-      throw new Error('operation.translation must be an object.');
+      throw new SlidesIpcError('operation.translation must be an object.', 'validation', false);
     }
     assertOnlyKeys(operation.translation, ['dx', 'dy'], 'operation.translation');
     return {
@@ -311,7 +312,7 @@ function readManualObjectOperation(operation: Record<string, unknown>): SlidesMa
   if (operation.op === 'translate_by') {
     assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'delta'], 'operation');
     if (!isRecord(operation.delta)) {
-      throw new Error('operation.delta must be an object.');
+      throw new SlidesIpcError('operation.delta must be an object.', 'validation', false);
     }
     assertOnlyKeys(operation.delta, ['dx', 'dy'], 'operation.delta');
     return {
@@ -327,15 +328,15 @@ function readManualObjectOperation(operation: Record<string, unknown>): SlidesMa
   if (operation.op === 'set_text_style') {
     assertOnlyKeys(operation, ['op', 'target', ...SLIDES_TEXT_STYLE_FIELDS], 'operation');
     const patch = readSlidesTextStylePatch(operation);
-    if ('error' in patch) throw new Error(patch.error);
-    if (Object.keys(patch.value).length === 0) throw new Error('文本样式操作至少需要一个值。');
+    if ('error' in patch) throw new SlidesIpcError(patch.error, 'validation', false);
+    if (Object.keys(patch.value).length === 0) throw new SlidesIpcError('文本样式操作至少需要一个值。', 'validation', false);
     return { op: 'set_text_style', target, ...patch.value };
   }
   if (operation.op === 'set_fill_color') {
     assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'color'], 'operation');
     const targetKind = readManualTargetKind(operation.targetKind);
     if (targetKind !== 'frame' && targetKind !== 'shape') {
-      throw new Error('operation.targetKind must be frame or shape.');
+      throw new SlidesIpcError('operation.targetKind must be frame or shape.', 'validation', false);
     }
     return {
         op: 'set_fill_color',
@@ -348,10 +349,10 @@ function readManualObjectOperation(operation: Record<string, unknown>): SlidesMa
     assertOnlyKeys(operation, ['op', 'target', 'targetKind', 'visualSize', 'translationDelta'], 'operation');
     const targetKind = readManualTargetKind(operation.targetKind);
     if (targetKind !== 'shape' && targetKind !== 'image') {
-      throw new Error('operation.targetKind must be shape or image.');
+      throw new SlidesIpcError('operation.targetKind must be shape or image.', 'validation', false);
     }
     if (!isRecord(operation.visualSize)) {
-      throw new Error('operation.visualSize must be an object.');
+      throw new SlidesIpcError('operation.visualSize must be an object.', 'validation', false);
     }
     assertOnlyKeys(operation.visualSize, ['width', 'height'], 'operation.visualSize');
     const width = readFiniteNumber(operation.visualSize.width, 'operation.visualSize.width');
@@ -359,7 +360,7 @@ function readManualObjectOperation(operation: Record<string, unknown>): SlidesMa
     let translationDelta: { dx: number; dy: number } | undefined;
     if (operation.translationDelta !== undefined) {
       const delta = operation.translationDelta;
-      if (!isRecord(delta)) throw new Error('operation.translationDelta must be an object.');
+      if (!isRecord(delta)) throw new SlidesIpcError('operation.translationDelta must be an object.', 'validation', false);
       assertOnlyKeys(delta, ['dx', 'dy'], 'operation.translationDelta');
       translationDelta = {
         dx: readFiniteNumber(delta.dx, 'operation.translationDelta.dx'),
@@ -367,7 +368,7 @@ function readManualObjectOperation(operation: Record<string, unknown>): SlidesMa
       };
     }
     if (width <= 0 || height <= 0) {
-      throw new Error('operation.visualSize width and height must be positive.');
+      throw new SlidesIpcError('operation.visualSize width and height must be positive.', 'validation', false);
     }
     return { op: 'set_visual_size', target, targetKind, visualSize: { width, height }, ...(translationDelta ? { translationDelta } : {}) };
   }
@@ -376,12 +377,12 @@ function readManualObjectOperation(operation: Record<string, unknown>): SlidesMa
     const targetKind = readManualTargetKind(operation.targetKind);
     return { op: 'delete_target', target, targetKind };
   }
-  throw new Error('operation.op is invalid.');
+  throw new SlidesIpcError('operation.op is invalid.', 'validation', false);
 }
 
 function readHexColor(value: unknown, path: string): string {
   if (typeof value !== 'string' || !/^#[0-9A-Fa-f]{6}$/u.test(value)) {
-    throw new Error(`${path} must be #RRGGBB.`);
+    throw new SlidesIpcError(`${path} must be #RRGGBB.`, 'validation', false);
   }
   return value;
 }
