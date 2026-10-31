@@ -60,6 +60,12 @@ export const DEPENDENCY_LICENSE_SELECTIONS = [
     selectedExpression: 'MIT',
   },
   {
+    packageName: 'jszip',
+    version: '3.10.2',
+    declaredExpression: '(MIT OR GPL-3.0-or-later)',
+    selectedExpression: 'MIT',
+  },
+  {
     packageName: 'node-forge',
     version: '1.4.0',
     declaredExpression: '(BSD-3-Clause OR GPL-2.0)',

@@ -133,8 +133,8 @@ function execFile(file, fileArgs, cwd = rootDir, options = {}) {
   console.log(`📁 目录: ${cwd}\n`);
   try {
     execFileSync(file, fileArgs, { cwd, stdio: 'inherit', env: mergedEnv });
-  } catch {
-    console.error(`\n❌ 命令执行失败: ${file}`);
+  } catch (error) {
+    console.error(`\n❌ 命令执行失败: ${file}: ${error.message}`);
     process.exit(1);
   }
 }
@@ -365,7 +365,7 @@ if (isMac) {
 
 if (builderMirror) {
   console.log(`🌐 Builder 镜像: ${builderMirror}`);
-  execFile('pnpm', buildArguments, rootDir, {
+  execFile(process.execPath, buildArguments, rootDir, {
     // 清理 npm 注入值；Electron 主包仍使用上方显式冻结的镜像。
     unsetEnvKeys: [
       'npm_config_electron_mirror',
@@ -379,7 +379,7 @@ if (builderMirror) {
   });
 } else {
   console.log('🌐 Builder 二进制源: 官方源（未设置 ELECTRON_BUILDER_BINARIES_MIRROR）');
-  execFile('pnpm', buildArguments, rootDir, {
+  execFile(process.execPath, buildArguments, rootDir, {
     // 即使未显式设置 builder 镜像，也要清理 npm 注入的 electron_mirror，避免误路由到 npmmirror
     unsetEnvKeys: [
       'npm_config_electron_mirror',

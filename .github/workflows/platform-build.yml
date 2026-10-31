@@ -35,6 +35,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Verify native packaging command entry
+        run: pnpm exec vitest run scripts/build/functions/__tests__/productionPackageContract.test.mjs
       - name: Install pinned Rust build tools
         run: |
           rustup toolchain install 1.97.0 --profile minimal

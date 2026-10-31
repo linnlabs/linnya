@@ -255,8 +255,8 @@ function buildElectronBuilderArguments({
     throw new Error(`Unsupported Electron package target: ${platform}/${architecture}`);
   }
   const argumentsList = [
-    'exec',
-    'electron-builder',
+    // 直接交给 Node 执行已安装的 CLI，避免 Windows 把 pnpm.cmd 当成可执行文件。
+    require.resolve('electron-builder/cli.js'),
     '--projectDir',
     'dist_build',
     platform === 'darwin' ? '--mac' : '--win',

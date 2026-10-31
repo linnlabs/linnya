@@ -133,6 +133,11 @@ diff。正式构建不会重新解析依赖，而是把经过合同校验的 loc
 `dist_build/package-lock.json`，再执行
 `npm ci --omit=dev`。公开候选不能复用私有组合根的 lock：clean-root 编排会在公共 workspace 删除私有 owner 后重新生成，并把其 SHA-256 写入演练证据；Desktop 内容 BOM 也记录本次生产 lock 的 SHA-256。
 
+两份 lock 中的同名依赖可能版本不同；更新生产 lock 时，须同时核对新增版本的随包许可文本，
+在 `dependencyLegalPolicy.ts` 登记需要选择的精确版本，不能只用 pnpm Source BOM 代替成品验证。
+正式打包通过当前 Node 直接启动已安装的 electron-builder CLI，两端平台 CI 验证该真实入口，
+避免 Windows 的命令脚本启动失败被推迟到构建末尾。
+
 生产依赖、移植源码和随产品分发的第三方目录数据都是发布合同的一部分。升级
 依赖、修改 supplemental notice 或更新 bundled catalog 来源后，必须重新运行
 `pnpm run generate:ai-sdk-third-party-notice` 并提交根目录

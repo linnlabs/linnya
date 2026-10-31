@@ -1,4 +1,5 @@
 import * as fsp from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -98,6 +99,14 @@ describe('production native artifact contract', () => {
 });
 
 describe('electron-builder production command contract', () => {
+  it('真实 Node 入口可启动 builder，并保持平台配置参数完整', () => {
+    const args = buildElectronBuilderArguments({
+      platform: 'win32', architecture: 'x64', windowsUnsignedRelease: true,
+    });
+    const output = execFileSync(process.execPath, [...args, '--version'], { encoding: 'utf8' });
+    expect(output.trim()).toBe(require('electron-builder/package.json').version);
+  });
+
   it('显式传入更新地址时覆盖发布配置，未传入时不改动', () => {
     const base = { platform: 'darwin', architecture: 'arm64', adHocMacSigning: true };
     expect(buildElectronBuilderArguments(base).join(' ')).not.toContain('publish.url');
