@@ -76,6 +76,14 @@
           </button>
         </div>
 
+        <div
+          v-if="suspendedManualEditCount && !manualEditError && !manualEditNotice"
+          class="stage-manual-edit-error"
+          role="status"
+        >
+          部分人工修改因原对象或生成逻辑变化未应用。请让 AI 检查源码及历史，恢复需要的修改。
+        </div>
+
         <!-- 顶部居中的文稿命令条浮在舞台上，不进入布局；幻灯片位置不随它出现或消失。 -->
         <SlideEditingCommandBar v-if="manualEditingEnabled && deckPreview && deckViewMode === 'slide'" />
       </div>
@@ -173,6 +181,7 @@ const showLoading = computed(() => {
   if (deckPreview.value && renderLoading.value && !renderModel.value) return true;
   return false;
 });
+const suspendedManualEditCount = computed(() => deckPreview.value?.warnings.filter(warning => warning.code === 'manual_edit_suspended').length ?? 0);
 
 const draftFailureLog = computed(() => {
   if (documentBuildState.value?.state !== 'draft') return '';

@@ -30,7 +30,7 @@ const PreviewSchema: z.ZodType<DeckPreview> = z.object({
       text: z.string().optional(), position: box.optional(), chartType: z.string().optional(), imageRef: asset.optional() })) })),
   theme: z.object({ colors: z.record(z.string(), z.string()), fonts: z.object({ major: z.string(), minor: z.string() }) }),
   warnings: z.array(z.object({ slideNumber: z.number().finite(), elementId: z.string().optional(),
-    code: z.enum(['unsupported_element', 'parse_error', 'missing_asset', 'fidelity_fallback']), message: z.string() })),
+    code: z.enum(['unsupported_element', 'parse_error', 'missing_asset', 'fidelity_fallback', 'manual_edit_suspended']), message: z.string() })),
 });
 
 export const ViewHeaderSchema = z.object({
@@ -62,7 +62,7 @@ function isJson(value: unknown): value is JsonValue {
 }
 const record = z.custom<ViewJsonRecord>((value): value is ViewJsonRecord => isJson(value)
   && value !== null && typeof value === 'object' && !Array.isArray(value));
-export const ViewReadResponseSchema = z.object({ formatVersion: z.literal(1), snapshotId: hash,
+export const ViewReadResponseSchema = z.object({ formatVersion: z.literal(2), snapshotId: hash,
   nodeId: z.string(), header: ViewHeaderSchema.nullable(), manifest: ViewManifestSchema,
   blocks: z.array(z.object({ hash, value: record }).strict()), nextOffset: z.number().finite().int().nonnegative().nullable(),
 }).strict();

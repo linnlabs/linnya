@@ -109,6 +109,7 @@ function makeRuntime(options: {
     },
     draftRepo: { has: vi.fn(() => options.hasDraft ?? false) },
     builder: {
+      buildDeckSpecFromSource: vi.fn(async () => options.document?.deckSpec ?? DECK_SPEC),
       commitManualEditFromSource: buildFromSource,
       commitManualEditFromProjectedDeckSpec: buildFromProjectedDeckSpec,
     },
@@ -226,8 +227,8 @@ describe('PresentationManualEditingRuntime', () => {
       },
       {
         op: 'delete_target',
-        target: { slideKey: 'overview', editKey: 'card' },
-        targetKind: 'frame',
+        target: { slideKey: 'overview', editKey: 'headline' },
+        targetKind: 'text',
       },
     ];
 

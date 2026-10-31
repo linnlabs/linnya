@@ -1,6 +1,8 @@
 import type { MessageCatalogContribution, MessageParams } from '@app/localization';
 
 export type ElementPropertyMessageKey =
+  | 'slides.elementProperties.contentViaAi'
+  | 'slides.elementProperties.formulaViaAi'
   | 'slides.elementProperties.bold'
   | 'slides.elementProperties.italic'
   | 'slides.elementProperties.underline'
@@ -63,6 +65,8 @@ export type ElementPropertyMessageResolver = (
 ) => string;
 
 export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
+  'slides.elementProperties.contentViaAi': '可移动或删除，内容请交给 AI 修改',
+  'slides.elementProperties.formulaViaAi': '含公式的正文请交给 AI 修改',
   'slides.elementProperties.bold': '加粗',
   'slides.elementProperties.italic': '斜体',
   'slides.elementProperties.underline': '下划线',
@@ -121,6 +125,8 @@ export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
 } as const satisfies Readonly<Record<ElementPropertyMessageKey, string>>;
 
 const ELEMENT_PROPERTY_EN_US_MESSAGES = {
+  'slides.elementProperties.contentViaAi': 'Move or delete; ask AI to edit the content',
+  'slides.elementProperties.formulaViaAi': 'Ask AI to edit text containing formulas',
   'slides.elementProperties.bold': 'Bold',
   'slides.elementProperties.italic': 'Italic',
   'slides.elementProperties.underline': 'Underline',

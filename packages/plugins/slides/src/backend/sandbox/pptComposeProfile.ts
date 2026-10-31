@@ -1,4 +1,5 @@
 import { CHART_PRESET_NAMES } from './chartPresets';
+import { AUTHORING_IDENTITY_RUNTIME_SOURCE, instrumentAuthoringSource } from './authoringIdentity/index.js';
 import { LAYOUT_PRIMITIVES_SOURCE } from './layoutPrimitives';
 import {
   instrumentDeckSourceForLayoutTrace,
@@ -129,9 +130,10 @@ export const pptComposeProfile: SandboxProfile<PptComposeSandboxValue> = {
       ),
     ].filter(Boolean).join('\n');
 
-    const executableSource = instrumentDeckSourceForLayoutTrace(request.source) + '\nreturn __buildLayoutTrace();';
+    const executableSource = instrumentDeckSourceForLayoutTrace(instrumentAuthoringSource(request.source)) + '\nreturn __buildLayoutTrace();';
     const augmentedSource = [
       LAYOUT_TRACE_RUNTIME_SOURCE,
+      AUTHORING_IDENTITY_RUNTIME_SOURCE,
       LAYOUT_PRIMITIVES_SOURCE,
       stubs,
       executableSource,

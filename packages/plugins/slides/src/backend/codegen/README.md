@@ -115,12 +115,12 @@ renderer source selection
 - `src/shared/flexComposeContract.ts` 是 deck.js 场景图的公开类型真值；其中
   `Layout*Config` 表示 Agent 可写输入，`Layout*Node` 还包含运行时只读结构。
 - generated deck 的前端编辑身份由 [`shared/authoringEditing`](../../shared/authoringEditing/README.md)
-  统一拥有。页面显式声明 `slideKey`，作者对象显式声明 `editKey`；Flex compiler 校验
+  统一拥有。系统为可见作者对象分配编辑身份；作者仍可显式声明 `slideKey/editKey`。Flex compiler 校验
   文稿内页面唯一性与页内对象唯一性，再把完整 ref 投影到 DeckSpec 和 RenderModel。
-  旧源码没有 key 时继续编译，但不能从页码、数组下标、sourceSpan 或几何位置伪造稳定身份。
+  旧源码没有 key 时沿系统调用来源获得身份；长期身份不从页码、数组下标、sourceSpan、文字或几何猜测，具体边界见 [系统编辑身份](../sandbox/authoringIdentity/README.md)。
 - `compose({ manualEdits })` 先经过 shared 严格 codec。文本完整值在 Yoga 前投影，保证
   固有尺寸和换行继续走正式 owner；位移在 Yoga 后按 Frame／子对象层级累加，再进入
-  DeckSpec、RenderModel 与 PPTX。dangling ref、重复 key、未知字段和目标类型不符都属于
+  DeckSpec、RenderModel 与 PPTX。失联人工记录停用并报告，原值仍保留；未知字段和目标类型不符仍属于
   compose contract 错误，不选择相似文字或第一个同名对象作为 fallback。
 - 人工 `translate_by` 对唯一顶层原子作者对象属于 post-layout 纯位移。manualEditing feature 可从精确
   current DeckSpec 投影同一 delta，再通过 `commitManualEditFromProjectedDeckSpec` 做语义 revision 的

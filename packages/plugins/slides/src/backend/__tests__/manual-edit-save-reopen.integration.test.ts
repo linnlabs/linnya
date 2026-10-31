@@ -45,7 +45,10 @@ const initialDeck: DeckSpec = { title: 'Save lifecycle', layout: '16x9', slides:
 }] };
 const materialize = async (deckSpec: DeckSpec) => Buffer.from(await materializePresentationPptx({ deckSpec, svgAssets: [], svgFallbacks: [] }));
 
-it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导出读取相同内容', async () => {
+it.each(['explicit', 'system'])('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导出读取相同内容（%s）', async mode => {
+  const authorSource = mode === 'system' ? source.replace(/(?:slideKey|editKey): '[^']+',?\s*/g, '') : source;
+  const startingDeck = structuredClone(initialDeck);
+  if (mode === 'system') for (const slide of startingDeck.slides) for (const element of slide.spec.elements) delete element._authoringRef;
   const directory = mkdtempSync(join(tmpdir(), 'slides-save-reopen-'));
   const path = join(directory, 'workspace.sqlite');
   let db = new Database(path);
@@ -58,7 +61,7 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
       INSERT INTO workspace_nodes VALUES ('deck', 'project', 'presentation', 'save.slides', 1, 1, NULL);`);
     for (const ddl of [...PRESENTATION_DOCUMENT_SCHEMAS, ...PRESENTATION_MANUAL_EDIT_SCHEMAS]) db.exec(ddl);
     const repository = new PresentationRepository(db);
-    await repository.createPresentation('deck', initialDeck, { deckSource: source, pptxBuffer: await materialize(initialDeck), origin: 'codegen' });
+    await repository.createPresentation('deck', startingDeck, { deckSource: authorSource, pptxBuffer: await materialize(startingDeck), origin: 'codegen' });
     const profiles = new SandboxProfileRegistry(); profiles.register(pptComposeProfile);
     const builder = new CodegenDeckBuilder({ presentationRepo: repository,
       sandbox: new SandboxService(profiles, createSandboxEvaluatorTestRunner()),
@@ -68,11 +71,13 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
     setActivePinia(createPinia());
     const presentedRevision = shallowRef<number | null>(null);
     const snapshot = shallowRef<ManualEditQueueSnapshot>({ documentId: 'deck', presentationError: null, buildState: null, renderVersion: null });
+    let presentedDeck = startingDeck;
     async function refresh() {
       const saved = await repository.getPresentation('deck');
       if (!saved) throw new Error('Missing saved presentation');
+      presentedDeck = saved.deckSpec.authoringIdentityVersion === 1 ? saved.deckSpec : await builder.buildDeckSpecFromSource({nodeId:'deck',source:saved.deckSource,sourceContext:{theme:saved.deckSpec.theme}});
       const model = new RenderModelMapper().fromGeneratedDeck('deck', saved.currentRevision, saved.title,
-        saved.deckSpec, { width: 13.333, height: 7.5 });
+        presentedDeck, { width: 13.333, height: 7.5 });
       snapshot.value = { documentId: 'deck', presentationError: null, renderVersion: model.version, buildState: { state: 'ready',
         presentationId: 'deck', versionId: saved.currentRevisionId, versionNumber: saved.currentRevision, sourceHash: saved.sourceHash } };
       presentedRevision.value = model.version;
@@ -84,7 +89,9 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
       submit: command => { commands.push(command); return backend.submit(command); },
     }));
     if (!queue) throw new Error('Missing queue');
-    const target = { slideKey: 'overview', editKey: 'badge' };
+    const target = presentedDeck.slides[0].spec.elements.find(element=>element._authoringRef?.targetKind==='shape')?._authoringRef;
+    const captionTarget = presentedDeck.slides[0].spec.elements.find(element=>element._authoringRef?.targetKind==='text')?._authoringRef;
+    if (!target || !captionTarget) throw new Error('Missing presented author targets');
     queue.enqueue({ operation: { op: 'set_text_content', target, targetKind: 'shape', content: 'Saved\nsecond line' } });
     queue.enqueue({ operation: { op: 'translate_by', target, targetKind: 'shape', delta: { dx: 0.5, dy: 0.25 } } });
     queue.enqueue({ operation: { op: 'set_fill_color', target, targetKind: 'shape', color: '#CC5500' } });
@@ -104,10 +111,10 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
     } })).toMatchObject({ status: 'conflict', reason: 'command_reused' });
 
     // 原始源码富文本尚无人工 content 时，整框操作也必须覆盖其显式局部样式。
-    queue.enqueue({ operation: { op: 'set_text_style', target: { slideKey: 'overview', editKey: 'caption' }, fontSizePt: 22, color: '#116644' } });
+    queue.enqueue({ operation: { op: 'set_text_style', target: captionTarget, fontSizePt: 22, color: '#116644' } });
     await queue.flush();
     const initialStyleSaved = await repository.getPresentation('deck');
-    const initialText = initialStyleSaved?.deckSpec.slides[0].spec.elements.find(element => element._authoringRef?.editKey === 'caption');
+    const initialText = initialStyleSaved?.deckSpec.slides[0].spec.elements.find(element => element._authoringRef?.editKey === captionTarget.editKey);
     expect(initialText).toMatchObject({ content: [{ text: 'Revenue ', style: { bold: true, fontSize: 22, color: '#116644' } },
       { text: '30%', style: { fontSize: 22, color: '#116644' } }] });
 
@@ -116,7 +123,7 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
       { text: '30%', style: { color: '#335577', fontSize: 18 } }]);
     const captionState = EditorState.create({ doc: captionDoc, selection: TextSelection.create(captionDoc, 9, 12) });
     const captionContent = documentToTextContent(captionState.apply(patchSelectedTextStyle(captionState, { color: '#E11D48', fontSizePt: 28 })).doc);
-    queue.enqueue({ operation: { op: 'set_text_content', targetKind: 'text', target: { slideKey: 'overview', editKey: 'caption' }, content: captionContent } });
+    queue.enqueue({ operation: { op: 'set_text_content', targetKind: 'text', target: captionTarget, content: captionContent } });
     await queue.flush();
     const richSaved = await repository.getPresentation('deck');
     expect(richSaved?.currentRevision).toBe(7);
@@ -124,7 +131,7 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
     if (!richSaved) throw new Error('Missing mixed revision');
     const legacyModel = new RenderModelMapper().fromGeneratedDeck('deck', richSaved.currentRevision, richSaved.title,
       richSaved.deckSpec, { width: 13.333, height: 7.5 });
-    const legacyText = legacyModel.slides[0].elements.find(node => node.authoringRef?.editKey === 'caption');
+    const legacyText = legacyModel.slides[0].elements.find(node => node.authoringRef?.editKey === captionTarget.editKey);
     if (legacyText?.kind !== 'text') throw new Error('Missing mixed text');
     expect(legacyText.paragraphs.flatMap(paragraph => paragraph.runs)).toEqual(expect.arrayContaining([
       expect.objectContaining({ text: 'Revenue ', fontSize: 22, color: '#116644' }),
@@ -136,14 +143,13 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
       { text: 'Revenue ', style: { bold: true } }, { text: '30%', style: { fontSize: 28, color: '#E11D48' } },
     ] } })).toMatchObject({ status: 'committed', revision: 7 });
     // 局部 → 整框 → 再局部：真实编译结果作为下一次原位输入的唯一作者值。
-    const captionTarget = { slideKey: 'overview', editKey: 'caption' };
     queue.enqueue({ operation: { op: 'set_text_style', target: captionTarget, fontSizePt: 32, color: '#2563EB' } });
     await queue.flush();
     const wholeSaved = await repository.getPresentation('deck');
     if (!wholeSaved) throw new Error('Missing whole-text revision');
     const wholeModel = new RenderModelMapper().fromGeneratedDeck('deck', wholeSaved.currentRevision, wholeSaved.title,
       wholeSaved.deckSpec, { width: 13.333, height: 7.5 });
-    const wholeText = wholeModel.slides[0].elements.find(node => node.authoringRef?.editKey === 'caption')?.authoringEdit?.text;
+    const wholeText = wholeModel.slides[0].elements.find(node => node.authoringRef?.editKey === captionTarget.editKey)?.authoringEdit?.text;
     if (wholeText?.kind !== 'rich_text' || !wholeText.content) throw new Error('Missing editable whole text');
     expect(wholeText.content).toEqual([{ text: 'Revenue ', style: { bold: true, fontSize: 32, color: '#2563EB' } },
       { text: '30%', style: { fontSize: 32, color: '#2563EB' } }]);
@@ -161,7 +167,7 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
     expect(read?.deckSpec).toEqual(finalSaved?.deckSpec);
     if (!read) throw new Error('Missing reopened document');
     const reopenedModel = new RenderModelMapper().fromGeneratedDeck('deck', read.currentRevision, read.title, read.deckSpec, { width: 13.333, height: 7.5 });
-    const caption = reopenedModel.slides[0].elements.find(node => node.authoringRef?.editKey === 'caption');
+    const caption = reopenedModel.slides[0].elements.find(node => node.authoringRef?.editKey === captionTarget.editKey);
     expect(caption?.authoringEdit).toMatchObject({ capabilities: expect.arrayContaining(['set_text_content', 'set_text_style']), text: { kind: 'rich_text', content: finalContent } });
     expect(read?.deckSource).toContain('Saved\\nsecond line');
     const artifact = new PresentationPptxArtifactRuntime({ repository: reopened,

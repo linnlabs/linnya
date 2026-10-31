@@ -25,7 +25,7 @@ import type {
 } from '../../presentationScreenshot';
 
 export const SLIDES_CLI_REPORT_KIND = 'linnya.slides.inspection-report' as const;
-export const SLIDES_CLI_REPORT_VERSION = 9 as const;
+export const SLIDES_CLI_REPORT_VERSION = 10 as const;
 export const SLIDES_CLI_FONT_CHECK_KIND = 'linnya.slides.font-check' as const;
 export const SLIDES_CLI_FONT_LIST_KIND = 'linnya.slides.font-list' as const;
 export const SLIDES_CLI_FONT_REPORT_VERSION = 1 as const;
@@ -155,6 +155,7 @@ export interface SlidesCliDiagnosticSummary {
 }
 
 export interface SlidesCliInspectionReport {
+  readonly manualEditWarnings?: readonly string[];
   readonly kind: typeof SLIDES_CLI_REPORT_KIND;
   readonly schemaVersion: typeof SLIDES_CLI_REPORT_VERSION;
   readonly cliVersion: typeof SLIDES_CLI_VERSION;

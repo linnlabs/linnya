@@ -279,7 +279,7 @@ host 不复制 presentation 字段。
 - **图表无法跨渲染器完全保真。** Linnya 前端使用 ECharts，PowerPoint 使用自己的图表渲染器，两者的字体、间距和标签布局无法保证完全一致。因此，[Slides 导出 UI 合同](./src/renderer/features/presentationExport/README.md)提供“将图表转换为图片”设置。该设置默认关闭：需要视觉一致时主动开启，需要继续编辑图表时保留默认的 PowerPoint 原生图表。
 - **Brush 视觉资产暂不支持透明底。** 当前 pinned p5.brush standalone 合成器会把最终画布写成不透明。首版只支持显式纯色背景的整区资产；需要透出下层内容时改用 Shape 或受控 SVG。后续若上游提供稳定 alpha 合同，可在不改写现有不透明 intent 的前提下扩展。
 - **PDF 导出暂不开放。** 已实现的栅格 PDF 不含可选择、搜索和复制的文字对象，因此不再挂载产品入口。真正的语义/矢量 PDF 仍需完成独立的可行性与 ROI 验证。
-- **前端人工编辑保留明确边界。** 支持下述基础网页编辑闭环；含公式正文、表格/图表内容、复杂对象独立复制、编组、reparent 和自由裁剪焦点尚未开放。页面结构操作受静态源码约束，旧对象需具有 `slideKey/editKey` 才能编辑。完整行为、保存语义及限制见[网页编辑体验](./src/renderer/docs/editing-experience.md)。
+- **前端人工编辑保留明确边界。** 支持下述基础网页编辑闭环；含公式正文、表格/图表内容、复杂对象独立复制、编组、reparent 和自由裁剪焦点尚未开放。页面结构操作受静态源码约束，旧稿通过精确源码补充身份编译后即可按对象能力编辑；系统标记、循环改稿停用和兼容规则见 [系统编辑身份](./src/backend/sandbox/authoringIdentity/README.md)。完整行为、保存语义及限制见[网页编辑体验](./src/renderer/docs/editing-experience.md)。
 
 手动编辑的离开、关闭和导出共用 [documentRuntime 保存屏障](src/renderer/features/documentRuntime/README.md)：原位输入先交给串行写队列，所有修改落盘后才允许离开或读取导出 snapshot。画布即时预览不代表已保存；正式 revision 驱动渲染刷新，不依赖页面和预览的挂载先后。
 

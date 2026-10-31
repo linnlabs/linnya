@@ -18,7 +18,7 @@ export function buildViewTransfer(nodeId: string, captured: CapturedView, now: n
     const bindingHash = block({ ...parts.binding, contentHash });
     return { slideId: slide.slideId, index: slide.index, contentHash, bindingHash };
   });
-  const snapshotId = digest(JSON.stringify(toViewJson({ formatVersion: 1, header, manifest })));
+  const snapshotId = digest(JSON.stringify(toViewJson({ formatVersion: 2, header, manifest })));
   const bytes = [...blocks.values()].reduce((sum, entry) => sum + entry.bytes, Buffer.byteLength(JSON.stringify(header)));
   const snapshot: CachedView = { nodeId, header, manifest, blocks: [...blocks.values()], bytes, createdAt: now };
   return { snapshotId, snapshot };
@@ -32,7 +32,7 @@ export function selectViewBatch(snapshotId: string, snapshot: CachedView, reques
     const missing = snapshot.blocks.filter(entry => !known.has(entry.hash));
     let offset = request.offset ?? 0;
     if (offset > missing.length) throw new Error('Slides view offset is invalid');
-    const response: ViewReadResponse = { formatVersion: 1, snapshotId, nodeId: snapshot.nodeId,
+    const response: ViewReadResponse = { formatVersion: 2, snapshotId, nodeId: snapshot.nodeId,
       header: request.snapshotId === undefined ? snapshot.header : null,
       manifest: request.snapshotId === undefined ? snapshot.manifest : [], blocks: [], nextOffset: null };
     let bytes = Buffer.byteLength(JSON.stringify(response));

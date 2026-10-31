@@ -106,6 +106,11 @@ export function formatDiagnosticsForAi(
   if (records.some(isBorderRadiusDiagnostic)) {
     lines.push('', BORDER_RADIUS_HINT_SENTENCE);
   }
+  // JS 赋值会放宽判别字段；提示正确的既有写法，不放宽公开联合类型。
+  if (records.some(record => [2322, 2345, 2769].includes(record.code)
+    && record.message.includes('type: string') && /linear|radial|polygon|path/.test(record.message))) {
+    lines.push('', '复杂渐变或 geometry 对象请直接写在 createShape/createSlide 等工厂的 config 参数中。先赋给属性或变量会把 type 放宽成 string；复用时用返回节点的 helper，保留精确联合类型。');
+  }
 
   return { message: lines.join('\n'), records };
 }

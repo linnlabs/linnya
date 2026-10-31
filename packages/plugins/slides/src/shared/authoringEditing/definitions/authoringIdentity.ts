@@ -3,7 +3,8 @@ import type { SlidesManualTargetKind } from './manualEdits';
 /**
  * generated deck 作者对象的稳定编辑身份。
  *
- * 这个身份来自 deck.js 显式字面量，不能由页码、数组下标、源码行号或几何位置推导。
+ * 身份来自显式 key 或系统调用来源；循环来源仅在同一生成程序内对应。
+ * 长期身份不按页码、源码行、正文或几何位置猜测。
  */
 export interface SlidesAuthoringEditRef {
   readonly slideKey: string;

@@ -4,6 +4,7 @@ import type {
 } from '@plugin/slides/shared';
 import type { InsertBlankSlideIntoDeckSourceResult } from './insertBlankSlideIntoDeckSource.js';
 import type { ManualEditDeckProjection } from '../definitions/manualEditDeckProjection.js';
+import { hasUnanchoredObjectCalls } from '../../../sandbox/authoringIdentity/index.js';
 
 /**
  * 新的空白 createSlide 没有布局依赖。内联 compose.slides 只增加一个成员，已有页无需重跑
@@ -16,6 +17,12 @@ export function projectBlankSlideInsertion(
   backgroundColor: string,
 ): ManualEditDeckProjection {
   if (!insertion.canProject) return { kind: 'requires_full_compile' };
+  // 页面结构改变生成程序摘要；未固定调用点或循环序号身份不能沿用旧投影。
+  if (deck.slides.some(slide => slide.spec.elements.some(element =>
+    element._authoringRef?.editKey.startsWith('sysr_')
+    || element._authoringRef?.editKey.startsWith('sysu_') && hasUnanchoredObjectCalls(insertion.source)))) {
+    return { kind: 'requires_full_compile' };
+  }
 
   const shiftSpan = (span: SourceSpan): SourceSpan => ({
     startLine: shiftLine(span.startLine),

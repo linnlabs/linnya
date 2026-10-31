@@ -1,7 +1,9 @@
 import { resolveImageSources } from '../engine/assets/imageSourceResolver';
 import { materializeIntrinsicTextBoxes } from '../engine/text/materializeIntrinsicTextBoxes';
 import { randomUUID } from 'node:crypto';
-import { MathFormulaError, SlideMarkerIndex, type DeckSpec } from '@plugin/slides/shared';
+import { isFlexComposeInput, MathFormulaError, SlideMarkerIndex, type DeckSpec } from '@plugin/slides/shared';
+import { resolveManualEditTargets } from './compose/flex-layout/resolveManualEditTargets.js';
+import { compareManualEditRecords } from './compareManualEditRecords.js';
 import {
   createSlidesEngineExecutionContext,
   type DeckAssembleOptions,
@@ -139,10 +141,13 @@ export class CodegenDeckBuilder {
 
   async buildFromSource(input: CodegenDeckBuildInput): Promise<CodegenDeckBuildResult> {
     const { source, current, expectedBase } = await this.readExistingBuildBase(input);
-    const compiled = await this.compileAuthoringInputFromSource(
+    const generated = await this.compileAuthoringInputFromSource(
       source,
       current.deckSpec.theme
     );
+    const compiled = { ...generated, diagnostics: mergeCodegenDiagnostics(
+      generated.diagnostics, compareManualEditRecords(current.deckSource, source),
+    ) };
     const deckSpec = await this.buildOwnedDeckSpec(compiled, {
       documentId: input.nodeId,
       ...(input.conversationId ? { conversationId: input.conversationId } : {}),
@@ -187,6 +192,10 @@ export class CodegenDeckBuilder {
   }
 
   async buildDeckSpecFromSource(input: CodegenDeckBuildInput): Promise<DeckSpec> {
+    if (input.sourceContext) {
+      const compiled = await this.compileAuthoringInputFromSource(this.readNonEmptySource(input.source), input.sourceContext.theme);
+      return this.buildOwnedDeckSpec(compiled, { documentId: input.nodeId });
+    }
     let current: Awaited<ReturnType<PresentationRepositoryPort['getPresentation']>>;
     try {
       current = await this.deps.presentationRepo.getPresentation(input.nodeId);
@@ -242,6 +251,7 @@ export class CodegenDeckBuilder {
     onProgress?.('layout_completed');
     const diagnostics = mergeCodegenDiagnostics(
       validateLayoutTrace(rawPayload.layoutTrace, markerIndex.listSlides()),
+      ...(isFlexComposeInput(rawPayload.rawPayload) ? [resolveManualEditTargets(rawPayload.rawPayload).diagnostics] : []),
       mapParseWarningsToCodegenDiagnostics(compiled.parseWarnings)
     );
     return {
@@ -274,6 +284,9 @@ export class CodegenDeckBuilder {
     let deckSpec: DeckSpec;
     try {
       deckSpec = buildDeckSpecFromDirectInput(ownedInput);
+      deckSpec.authoringIdentityVersion = 1;
+      const manualWarnings = compiled.diagnostics.filter(diagnostic => diagnostic.code === 'manual_edit_suspended' || diagnostic.code === 'manual_edit_removed').map(diagnostic => diagnostic.message);
+      if (manualWarnings.length) deckSpec.manualEditWarnings = manualWarnings;
       await materializeIntrinsicTextBoxes(deckSpec);
     } catch (error) {
       if (error instanceof PresentationBuildFailureError) throw error;

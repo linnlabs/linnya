@@ -1,3 +1,4 @@
+import { readSystemSlideKey } from '../../../sandbox/authoringIdentity/index.js';
 import type { SlidesInsertedObject } from '@plugin/slides/shared/authoringEditing';
 import { isSlidesAuthoringKey } from '@plugin/slides/shared/authoringEditing';
 import { readSlideSourceStructure, SlidesSlideInsertionSourceError } from './insertBlankSlideIntoDeckSource';
@@ -13,9 +14,9 @@ export function insertObjectsAtSlide(source: string, slideCount: number, index: 
   const call = declaration?.initializer;
   if (!call || !ts.isCallExpression(call)) throw invalid();
   const config = call.arguments[0];
-  if (!config || !ts.isObjectLiteralExpression(config)) throw invalid();
-  let key: string | undefined;
-  for (const property of config.properties) {
+  if (config && !ts.isObjectLiteralExpression(config)) throw invalid();
+  let key = readSystemSlideKey(source, call.getStart(sourceFile));
+  for (const property of config?.properties ?? []) {
     if (ts.isSpreadAssignment(property) || (property.name && ts.isComputedPropertyName(property.name))) throw invalid();
     if (ts.isPropertyAssignment(property) && (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) && property.name.text === 'slideKey') {
       if (!ts.isStringLiteralLike(property.initializer)) throw invalid();

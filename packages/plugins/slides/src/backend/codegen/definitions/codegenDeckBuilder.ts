@@ -46,6 +46,8 @@ export interface CodegenSandboxExecutor {
 export type CodegenDeckBuildPhase = 'sandbox_started' | 'sandbox_completed' | 'layout_started' | 'layout_completed' | 'assets_completed' | 'persistence_started';
 
 export interface CodegenDeckBuildInput {
+  /** 只读补充物化使用捕获修订自身主题，不重新读取 latest。 */
+  readonly sourceContext?: { readonly theme: DeckSpec['theme'] };
   /** 进程内观察端口，不进入源码或 Worker DTO。 */
   readonly onProgress?: (phase: CodegenDeckBuildPhase) => void;
   nodeId: string;

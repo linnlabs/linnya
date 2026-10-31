@@ -1,4 +1,5 @@
 import { orderManualPaint } from './ManualPaintOrder.js';
+import { resolveManualEditTargets } from './resolveManualEditTargets.js';
 import { buildLayoutReplay } from './LayoutReplayProjection';
 import { appendInsertedObjects } from './InsertedObjectProjection.js';
 /**
@@ -130,11 +131,8 @@ export function compileFlexInput(raw: FlexComposeInput): FlexCompileResult {
     if ('error' in manualResult) return manualResult;
     manualSlides = manualResult.value.slides;
   }
-  const manualBySlide = new Map(manualSlides.map(slide => [slide.slideKey, slide]));
-  const danglingSlide = manualSlides.find(slide => !slideKeys.has(slide.slideKey));
-  if (danglingSlide) {
-    return { error: `人工编辑页面 \"${danglingSlide.slideKey}\" 在作者树中不存在。` };
-  }
+  const manualBySlide = new Map(resolveManualEditTargets({ ...raw,
+    manualEdits: { version: 2, slides: manualSlides } }).slides.map(slide => [slide.slideKey, slide]));
 
   const slides: DirectSlideInput[] = [];
   const rejectedSlides: RejectedSlide[] = [];

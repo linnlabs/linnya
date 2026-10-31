@@ -169,6 +169,10 @@ export interface SlideEntry {
 }
 
 export interface DeckSpec {
+  /** 编译派生能力版本；旧稿按精确源码与主题补充编译，不按画面反推身份。 */
+  authoringIdentityVersion?: 1;
+  /** 当前修订中失联的人工记录；诊断派生值，原始覆盖仍在源码中。 */
+  manualEditWarnings?: string[];
   title: string;
   layout?: SlideLayout;
   theme?: ThemeSpec;

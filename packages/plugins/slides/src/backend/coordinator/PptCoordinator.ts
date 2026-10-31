@@ -236,6 +236,7 @@ export class PptCoordinator {
         const snapshot = await this.queryRuntime.getRenderModelSnapshot(nodeId);
         return {
           versionId: snapshot.version.id,
+          manualEditWarnings: snapshot.version.deckSpec.manualEditWarnings,
           renderModel: snapshot.renderModel,
         };
       },

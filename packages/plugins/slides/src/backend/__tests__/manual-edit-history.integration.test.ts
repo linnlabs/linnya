@@ -139,7 +139,7 @@ slide${i}.add(shape${i});`).join('\n') + `\ncompose({ title: '30 page editing', 
       { op: 'translate_by', targetKind: 'shape', target: { slideKey: 'page0', editKey: 'badge' }, delta: { dx: 2, dy: 1 } },
       { op: 'delete_target', targetKind: 'shape', target: { slideKey: 'page0', editKey: 'missing' } },
     ] } });
-    expect(invalid.status).toBe('build_failed');
+    expect(invalid.status).toBe('validation_failed');
     expect((await current()).currentRevisionId).toBe(base.currentRevisionId);
     // 插入、改样式、宽度、层序和重排走正式编译；源码定位必须仍指向新增作者 literal。
     await submit({ op: 'insert_blank_slide', index: 0 });

@@ -63,7 +63,7 @@ export class GeneratedPreviewMapper {
           ? { palette: [chart.palette[0], ...chart.palette.slice(1)] }
           : undefined,
       },
-      warnings: [],
+      warnings: (input.deckSpec.manualEditWarnings ?? []).map(message => ({ slideNumber: 0, code: 'manual_edit_suspended', message })),
     };
   }
 }
