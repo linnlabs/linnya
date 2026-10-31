@@ -36,7 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Verify native packaging command entry
-        run: pnpm exec vitest run scripts/build/functions/__tests__/productionPackageContract.test.mjs scripts/release/orchestration/generateDesktopArtifactContentBom.test.ts
+        run: pnpm exec vitest run scripts/build/functions/__tests__/productionPackageContract.test.mjs
+      - name: Verify artifact evidence on the target platform
+        run: pnpm run test:artifact-content-bom
       - name: Install pinned Rust build tools
         run: |
           rustup toolchain install 1.97.0 --profile minimal
