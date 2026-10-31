@@ -18,6 +18,23 @@ const repositoryRoot = path.resolve(testDirectory, '../../../../..');
 const fixturePath = path.join(testDirectory, 'fixtures', 'runAppServerControlFixture.mjs');
 
 describe('Node App Server process supervisor', () => {
+  it.each(['executable', 'cwd'])('真实 %s 不存在时报告启动错误并完成关闭，不泄漏 EPIPE', async missing => {
+    const supervisor = createNodeAppServerProcessSupervisor({
+      launch: {
+        executablePath: missing === 'executable' ? path.join(testDirectory, 'missing-node') : process.execPath,
+        entryPath: fixturePath,
+        workingDirectory: missing === 'cwd' ? path.join(testDirectory, 'missing-cwd') : repositoryRoot,
+        environment: collectTestEnvironment(),
+        bootstrapBytes: encodeAppServerBootstrap(createBootstrap()),
+      },
+      rpcHandlers: new Map(),
+      controlTimeoutMs: 100,
+    });
+    await expect(supervisor.start()).rejects.toThrow('ENOENT');
+    await expect(supervisor.shutdown()).resolves.toBeUndefined();
+    await expect(supervisor.waitForExit()).resolves.toMatchObject({ signal: null });
+  });
+
   it('以绝对 Node/entry 启动、校验 epoch、ping，并等待 child owner 退出', async () => {
     const stderr: string[] = [];
     let reversePayload: JsonValue | undefined;

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { Readable, Writable } from 'node:stream';
+import { finished } from 'node:stream/promises';
 import {
   spawn,
   type ChildProcessWithoutNullStreams,
@@ -83,6 +84,7 @@ export function createNodeAppServerProcessSupervisor(input: {
   };
 
   const failProtocol = (error: Error): void => {
+    clearStartTimeout();
     startReject?.(error);
     startReject = null;
     startResolve = null;
@@ -207,7 +209,8 @@ export function createNodeAppServerProcessSupervisor(input: {
     launchedChild.once('error', error => {
       failProtocol(new Error(`App Server process 启动失败：${error.message}`));
     });
-    launchedChild.once('exit', (code, signal) => {
+    // spawn 失败没有 exit，但仍会 close；统一等待进程与 stdio 收口，避免失败后 shutdown 永久等待。
+    launchedChild.once('close', (code, signal) => {
       clearStartTimeout();
       exitResolve?.();
       exitResolve = null;
@@ -237,8 +240,10 @@ export function createNodeAppServerProcessSupervisor(input: {
         failProtocol(failure);
       }, startTimeoutMs);
     });
-    void writeBootstrapFrame(bootstrapInput, input.launch.bootstrapBytes).catch(error => {
-      failProtocol(error);
+    launchedChild.once('spawn', () => {
+      void writeBootstrapFrame(bootstrapInput, input.launch.bootstrapBytes).catch(error => {
+        failProtocol(error);
+      });
     });
     return startSettlement;
   };
@@ -384,13 +389,8 @@ function assertPositiveTimeout(value: number, label: string): void {
 }
 
 async function writeBootstrapFrame(output: Writable, bytes: Uint8Array): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    output.end(Buffer.from(bytes), (error?: Error | null) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve();
-    });
-  });
+  // end 的 callback 不消费 error 事件；finished 同时接纳失败，避免 EPIPE 成为未捕获异常。
+  const completion = finished(output, { readable: false, cleanup: true });
+  output.end(Buffer.from(bytes));
+  await completion;
 }

@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -25,6 +27,11 @@ describe('App Server Node runtime admission', () => {
     expect(launch.executablePath).toBe(executablePath);
     expect(launch.entryPath).toBe(path.join(input.backendFacts.mainBundleDirectory, 'app-server-entry.cjs'));
     expect(launch.workingDirectory).toBe(input.backendFacts.runtimePathRoots.appDataRoot);
+    // 不预建数据目录，直接让 OS 以计划中的 cwd 启动真实进程，覆盖全新安装的 ENOENT。
+    const child = await promisify(execFile)(process.execPath, ['-p', 'process.cwd()'], {
+      cwd: launch.workingDirectory,
+    });
+    expect(child.stdout.trim()).toBe(await realpath(launch.workingDirectory));
     const bootstrap = parseAppServerBootstrap(JSON.parse(new TextDecoder().decode(launch.bootstrapBytes)));
     expect(bootstrap.headless_node_executable_path).toBe(executablePath);
     expect(bootstrap.backend_facts.packaged).toBe(true);
