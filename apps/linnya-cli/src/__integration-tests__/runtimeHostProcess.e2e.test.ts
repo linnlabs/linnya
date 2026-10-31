@@ -137,7 +137,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
       }
     }
     runtime.child.kill('SIGTERM');
-    expect(await waitForClose(runtime.child)).toBe(0);
+    expect(await waitForClose(runtime.child), runtime.stderr).toBe(0);
     removeLiveRuntime(runtime.child);
   }, 90_000);
 
@@ -226,7 +226,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     });
 
     first.child.kill('SIGINT');
-    expect(await waitForClose(first.child)).toBe(0);
+    expect(await waitForClose(first.child), first.stderr).toBe(0);
     removeLiveRuntime(first.child);
     await expect(fs.stat(connectionFile)).rejects.toMatchObject({ code: 'ENOENT' });
     expect(isProcessAlive(first.ready.runtime.pid)).toBe(false);
@@ -248,7 +248,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
       receiptB.conversation_id,
     ]));
     restarted.child.kill('SIGTERM');
-    expect(await waitForClose(restarted.child)).toBe(0);
+    expect(await waitForClose(restarted.child), restarted.stderr).toBe(0);
     removeLiveRuntime(restarted.child);
     await expect(fs.stat(connectionFile)).rejects.toMatchObject({ code: 'ENOENT' });
   }, 60_000);
@@ -277,7 +277,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     expect(replacementDescriptor.pid).toBe(restarted.ready.runtime.pid);
     expect(replacementDescriptor.appInstanceId).not.toBe(previousDescriptor.appInstanceId);
     restarted.child.kill('SIGTERM');
-    expect(await waitForClose(restarted.child)).toBe(0);
+    expect(await waitForClose(restarted.child), restarted.stderr).toBe(0);
     removeLiveRuntime(restarted.child);
   }, 45_000);
 });
