@@ -90,7 +90,7 @@ packages/plugins/slides/
 Backend 的 deck.js AST/typecheck 使用插件自带的最小 TypeScript
 runtime：compiler 位于 `dist/backend/node_modules/typescript`，标准库只包含
 `lib.es2020.d.ts` 的传递引用闭包。它在第一次源码检查或插桩时加载，不属于 backend
-contribution 注册成本。`build:backend` 同时执行 2.1 MiB 入口预算、1.6 MiB build Worker 预算、
+contribution 注册成本。`build:backend` 同时执行 2.15 MiB 入口预算、1.6 MiB build Worker 预算、
 13.5 MiB backend 总预算、依赖图、懒加载和真实 compiler
 smoke；metafile 只用于构建验证，不进入 artifact。
 

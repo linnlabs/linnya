@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { cp, mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 import path from 'node:path';
@@ -16,8 +17,8 @@ import {
 } from './build/copyYogaRuntime.mjs';
 
 // App Server 入口只负责编排、查询与持久化；PPTX 生成依赖属于 build Worker。
-// Zod 4 使用可裁剪的直接 namespace import 后入口约 2.04 MiB；保持原上限，阻止整套物化栈回流。
-const MAX_BACKEND_ENTRY_BYTES = 2.1 * 1024 * 1024;
+// Worker 必需的两份纯身份 schema 随插件内联，增加约 50 KiB；仍禁止整套物化栈回流。
+const MAX_BACKEND_ENTRY_BYTES = 2.15 * 1024 * 1024;
 // TypeScript/Yoga、PptxGenJS/JSZip 与原生公式装配均归同一 build Worker；1.6 MiB
 // 只保留小幅依赖漂移空间，防止 parser、Host SDK 或完整 backend 被意外卷入。
 const MAX_PRESENTATION_BUILD_WORKER_BYTES = 1.6 * 1024 * 1024;
@@ -81,7 +82,7 @@ export async function verifySlidesBackendBundle({ backendDir, bundlePath, metafi
   verifyNoVmIncompatibleNodeImports(bundleSource);
   verifyPptxGenVmRuntime();
   verifyLazyBackendRuntime(bundlePath);
-  verifyPresentationBuildWorkerRuntime(presentationBuildWorkerPath);
+  await verifyPresentationBuildWorkerRuntime(presentationBuildWorkerPath);
   const backendBytes = await measureDirectoryBytes(
     backendDir,
     new Set([normalizePath(path.resolve(metafilePath))])
@@ -100,15 +101,25 @@ export async function verifySlidesBackendBundle({ backendDir, bundlePath, metafi
   );
 }
 
-function verifyPresentationBuildWorkerRuntime(workerPath) {
+async function verifyPresentationBuildWorkerRuntime(workerPath) {
   const smokePath = fileURLToPath(
     new URL('./verify-presentation-build-worker.mjs', import.meta.url)
   );
-  const result = spawnSync(process.execPath, [smokePath, path.resolve(workerPath)], {
-    cwd: process.cwd(),
-    encoding: 'utf8',
-    timeout: 30_000,
-  });
+  // Worker 必须从仓库以外解析依赖，避免工作区 @app/schemas 链接让漏打包的制品误通过。
+  const isolatedRoot = await mkdtemp(path.join(tmpdir(), 'linnya-slides-build-worker-'));
+  let result;
+  try {
+    const isolatedBackend = path.join(isolatedRoot, 'backend');
+    await cp(path.dirname(path.resolve(workerPath)), isolatedBackend, { recursive: true });
+    result = spawnSync(process.execPath, [smokePath, path.join(isolatedBackend, path.basename(workerPath))], {
+      cwd: isolatedRoot,
+      env: { ...process.env, NODE_PATH: '', NODE_OPTIONS: '' },
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+  } finally {
+    await rm(isolatedRoot, { recursive: true, force: true });
+  }
   if (result.status !== 0) {
     throw new Error(
       [
