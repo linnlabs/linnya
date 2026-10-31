@@ -25,9 +25,11 @@ const missingExports = [
   'version',
   'createApp',
   'createVNode',
+  'createStaticVNode',
   'render',
   'shallowRef',
   'ref',
+  'isRef',
   'triggerRef',
   'computed',
   'watch',
@@ -64,6 +66,8 @@ const missingExports = [
   'vShow',
   'Fragment',
   'renderList',
+  'renderSlot',
+  'mergeProps',
   'toDisplayString',
   'withKeys',
   'withCtx',
@@ -83,9 +87,11 @@ if (missingExports.length > 0) {
 export const version = host.version;
 export const createApp = host.createApp;
 export const createVNode = host.createVNode;
+export const createStaticVNode = host.createStaticVNode;
 export const render = host.render;
 export const shallowRef = host.shallowRef;
 export const ref = host.ref;
+export const isRef = host.isRef;
 export const triggerRef = host.triggerRef;
 export const computed = host.computed;
 export const watch = host.watch;
@@ -122,6 +128,8 @@ export const withDirectives = host.withDirectives;
 export const vShow = host.vShow;
 export const Fragment = host.Fragment;
 export const renderList = host.renderList;
+export const renderSlot = host.renderSlot;
+export const mergeProps = host.mergeProps;
 export const toDisplayString = host.toDisplayString;
 export const withKeys = host.withKeys;
 export const withCtx = host.withCtx;

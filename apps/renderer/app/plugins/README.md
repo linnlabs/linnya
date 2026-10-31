@@ -12,4 +12,9 @@ Renderer 插件运行时属于 app-level orchestration：它连接主进程提�
 
 ## 测试要求
 
+磁盘插件通过 `plugin://host/vue.js` 消费 Host 的同一个 Vue runtime。协议模块必须提供插件
+源码与 Vue 编译器生成代码所用的导出，包括静态 VNode、slot、props 合并和 ref 判断；只给
+Host 挂载 namespace 不代表 ESM shim 已导出它们。发布验收要在真实 Renderer 中 import 随包
+入口并打开文档 surface，不能只用 Backend 的插件列表或诊断证明前端可用。
+
 生命周期测试必须覆盖真实状态转换，而不是只断言函数调用：至少验证并发到达的安装与卸载快照按顺序生效、插件不会重复激活、后续快照不会因前次失败而丢失，以及激活失败后 contribution、CSS 和各业务 registry 能完整回滚。
