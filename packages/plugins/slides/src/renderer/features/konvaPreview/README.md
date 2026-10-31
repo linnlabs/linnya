@@ -74,7 +74,7 @@ finalized RenderModel
 - `clip` / `ellipsis` 在文本框外边界裁剪；padding 只参与 shared 布局，不能成为字形裁剪边界。ellipsis 字符已经由 shared 布局写入 slices。
 - 普通文本缺 `node.layout`、table cell 缺 `cell.textLayout` 都是生产合同错误，必须抛错，不能前端 fallback。
 - shape inner text 也消费 finalized layout，避免 shape 与独立文本框采用不同 autofit。
-- 每个 run 的 `resolvedFontFamily + resolvedFontWeight + resolvedFontStyle` 共同表示后端命中的实际 face；Konva 必须优先使用整组事实，不能把 resolved family 和作者请求的 bold/italic 重新拼成另一张字体。
+- 每个 run 的 resolved family/weight/style 表示测量所用的底层字面。Konva 使用 resolved family，并保留字面固有强调及作者请求的 bold/italic；没有粗体或斜体字面时允许浏览器合成，resolved normal 不能覆盖作者强调。普通文本、表格、缩略图和 raster 共用这个映射。
 
 ## 开发规范
 

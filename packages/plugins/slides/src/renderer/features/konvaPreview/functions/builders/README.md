@@ -82,7 +82,7 @@ konva-builders/
 - `TextLayoutContract` 是 padding / wrap / autofit / font resolution 的唯一语义来源；builder 只能消费 RenderModel 和行级 IR。
 - 缺 `node.layout` 必须失败，不能在 renderer 重建段落 wrap；所有新换行问题都回到 shared `textLayout` 与后端 render-model。
 - bullet、`letterSpacing`、混排 run 样式必须从 slice 对应 run 读取；不能再把段落 runs 压成第一个 run 的样式。
-- 字体 family、weight、style 必须共同优先读取后端 resolved face 事实；禁止用 `resolvedFontFamily` 配作者请求字重，制造测量与绘制身份分叉。
+- 字体 family 使用后端 resolved 事实；weight/style 同时保留底层字面固有强调和作者请求的强调。没有对应字面时交给浏览器合成，不能把 resolved normal 当作取消 bold/italic 的命令。底层测量身份仍由后端拥有，绘制边界不等于 advance。
 - 不做 line-spacing 双语义判定（RenderModel mapping 阶段已把它收口到 `RenderParagraph.lineSpacing`）。
 - 每个 slice 使用自己的 `textY` 对齐公共 baseline；不能统一使用 line.y，否则混合字号会漂移。
 - 普通 slice 不设置 Konva Text `width`：后端 `slice.width` 只负责布局 advance，字形 paint 只能由外层文本框裁剪。仅 justify 为分配词间距保留显式宽度。

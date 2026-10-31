@@ -145,6 +145,18 @@ describe('textBuilder', () => {
       fontFamily: 'Resolved CJK',
       fontStyle: 'bold',
     });
+
+    // 普通字面仍需保留作者的强调，交给浏览器合成；不能把“没有斜体文件”解释成取消斜体。
+    const run = node.paragraphs[0]!.runs[0]!;
+    if (!('text' in run)) throw new Error('Expected text run');
+    run.resolvedFontWeight = 'normal';
+    run.fontWeight = 'bold';
+    run.fontStyle = 'italic';
+    expect(buildTextLineConfigs(node)[0]?.fontStyle).toBe('italic bold');
+    run.fontWeight = 'normal';
+    expect(buildTextLineConfigs(node)[0]?.fontStyle).toBe('italic');
+    run.fontStyle = 'normal';
+    expect(buildTextLineConfigs(node)[0]?.fontStyle).toBe('normal');
   });
 
   it('does not use backend advance as a Konva paint clipping boundary', () => {

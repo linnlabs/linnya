@@ -30,8 +30,8 @@ interface FontCatalogCacheEntry extends FontFileIdentity {
   fonts: readonly FontMetadata[];
 }
 
-// v4 增加压缩后的 cmap 覆盖区间；旧 OS/2-only 缓存不能继续参与逐字解析。
-const CACHE_VERSION = 4;
+// v5 按 weight class 识别 Semibold；旧缓存会把 PingFang 的全部字重误归为 regular。
+const CACHE_VERSION = 5;
 const FONT_FILE_EXTENSIONS = new Set(['.ttf', '.otf', '.ttc']);
 
 export class FontCatalog {
