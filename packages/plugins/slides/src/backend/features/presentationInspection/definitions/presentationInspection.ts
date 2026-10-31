@@ -42,6 +42,7 @@ export interface DiagnosticToolFeedbackPayload extends ToolFeedbackPayload {
 }
 
 export interface PresentationInspectionResult {
+  readonly manualEditWarnings?: readonly string[];
   readonly versionId: string;
   readonly renderModel: PresentationRenderModel;
   readonly totalSlideCount: number;

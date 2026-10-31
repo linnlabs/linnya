@@ -66,7 +66,7 @@ CLI 将 `sharp`、`better-sqlite3`、`fontkit`、Yoga、HarfBuzz、jieba 和 PDF
 - Agent 直接把 `slides[].locator` 交给 `read_file(locator=...)`，不要自行拼接路径。
 - `inspect` 的 stdout 是单行紧凑 JSON 文档；运行日志全部写 stderr。
 - standalone Electron command 必须等待 stdout/stderr 写入完成后退出，保证大型 inspection 报告仍是完整 JSON；调用方不需要按行拼接残缺片段。
-- inspection report schema v9 与 `ppt_inspect` 共享 finding、源码定位、可选 focus 和 projection 契约；CLI 1.9.0 保留完整 evidence/source/remediation，并序列化同源 priority、summary 与 root group finding IDs；Agent observation 只做低 token 文本投影，二者都不得自行重算分级、根因或几何关系。
+- inspection report schema v10 与 `ppt_inspect` 共享 finding、源码定位、可选 focus 和 projection 契约，并在 `manualEditWarnings` 报告当前未应用或被移除的人工记录。CLI 保留完整 evidence/source/remediation，并序列化同源 priority、summary 与 root group finding IDs；Agent observation 只做低 token 文本投影，二者都不得自行重算分级、根因或几何关系。
 - 图表身份与标签容量也只通过标准 `chart_identity_missing / chart_label_capacity_exceeded` finding 出现；CLI 不另建图表诊断字段，Agent 与 CLI 在同一版本和页选择下必须得到相同 code、evidence 与 P1 派生结果。
 - 表格单元格末行孤字只通过标准 `text_single_glyph_last_line` finding 出现，evidence 用从 0 开始的 `tableCell.rowIndex/columnIndex` 对应 `rows[row][column]`；CLI 不展开整个表格或复制单元格全文。
 - 同一 App 中的 CLI bridge 与 `ppt_inspect` 必须调用同一个 `PptCoordinator.inspectPresentation`；standalone CLI 通过同一个 `PresentationInspectionRuntime` 生成事实。输出形态可以分别面向机器与 Agent，但同一版本、页选择、focus 和 heuristics 参数下的 finding 与 focus 事实必须一致。

@@ -31,6 +31,10 @@
             <span>AI</span>
           </ToolbarButton>
         </ToolbarGroup>
+        <span
+          v-if="limitationMessage && !multiple"
+          role="note"
+        >{{ message(limitationMessage) }}</span>
         <template v-if="multiple">
           <ToolbarGroup>
             <span class="slides-element-property-toolbar__count">{{ message('slides.elementProperties.selectionCount', { count: selectionCount ?? 1 }) }}</span>
@@ -341,6 +345,7 @@ import {
 import { arrangeMenu, moreMenu, textAlignmentMenu } from '../functions/elementPropertyMenus';
 import { SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
 import type { ManualEditableTarget } from '../../manualEditing/selection';
+import { readEditingLimitation } from '../functions/readEditingLimitation';
 import { preserveCanvasFocus } from '../../editingInteraction';
 import type { ElementPropertyAnchor } from '../definitions/elementPropertyToolbar';
 import type { ElementArrangement, ElementLayerAvailability, ElementLayerDirection, ElementPropertyMenuValue, ElementPropertyOperation } from '../definitions/elementPropertyTypes';
@@ -401,6 +406,7 @@ const emphasisStyles = [
   { field: 'italic', label: 'slides.elementProperties.italic', icon: ItalicIcon },
   { field: 'underline', label: 'slides.elementProperties.underline', icon: UnderlineIcon },
 ] as const;
+const limitationMessage = computed(() => readEditingLimitation(props.target));
 const multiple = computed(() => (props.selectionCount ?? 1) > 1);
 const currentTextAlign = computed(() => props.target.textEditing?.textAlign === 'center' ? 'center'
   : props.target.textEditing?.textAlign === 'right' ? 'right' : 'left');

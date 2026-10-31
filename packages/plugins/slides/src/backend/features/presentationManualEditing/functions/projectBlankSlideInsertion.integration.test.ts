@@ -7,8 +7,9 @@ import { pptComposeProfile } from '../../../sandbox/pptComposeProfile.js';
 import { createInProcessPresentationBuildExecution } from '../../presentationBuildExecution/index.js';
 import { insertBlankSlideIntoDeckSource } from './insertBlankSlideIntoDeckSource.js';
 import { projectBlankSlideInsertion } from './projectBlankSlideInsertion.js';
+import { anchorAuthoringSource } from '../../../sandbox/authoringIdentity/index.js';
 
-const source = `function heading(text) { return createText({ content: text, width: 2, height: 1 }); }
+const source = anchorAuthoringSource(`function heading(text) { return createText({ content: text, width: 2, height: 1 }); }
 const first = createSlide({ slideKey: 'first', notes: 'Keep notes' });
 const outer = createFrame({ editKey: 'outer', width: 5, height: 3, backgroundColor: '#112233' });
 const inner = createFrame({ editKey: 'inner', width: 4, height: 2, backgroundColor: '#223344' });
@@ -19,7 +20,7 @@ const last = createSlide({ slideKey: 'last' });
 last.add(heading('Shared helper'));
 compose({ title: 'Projection', layout: '4x3', slides: [first, last], manualEdits: {
   version: 2, slides: [{ slideKey: 'first', targets: [{ kind: 'frame', editKey: 'inner', translation: { dx: 0.5, dy: 0.25 } }] }]
-} });`;
+} });`);
 
 it('beginning/middle/end insertion equals full compilation including nested author metadata and shared source locations', async () => {
   const profiles = new SandboxProfileRegistry(); profiles.register(pptComposeProfile);
@@ -35,7 +36,7 @@ it('beginning/middle/end insertion equals full compilation including nested auth
     const projection = projectBlankSlideInsertion(deck, insertion, index, '#FFFFFF');
     expect(projection.kind).toBe('projected');
     if (projection.kind !== 'projected') throw new Error('Expected projection');
-    expect(projection.deckSpec).toEqual(await builder.buildDeckSpecFromSource({ nodeId: 'deck', source: insertion.source }));
+    expect(JSON.parse(JSON.stringify(projection.deckSpec))).toEqual(JSON.parse(JSON.stringify(await builder.buildDeckSpecFromSource({ nodeId: 'deck', source: insertion.source }))));
   }
   const named = source.replace("compose({ title: 'Projection', layout: '4x3', slides: [first, last]", "const pages = [first, last];\ncompose({ title: 'Projection', layout: '4x3', slides: pages");
   const insertion = insertBlankSlideIntoDeckSource(named, { index: 1, slideCount: 2, backgroundColor: '#FFFFFF' });

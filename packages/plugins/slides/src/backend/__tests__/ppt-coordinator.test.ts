@@ -17,6 +17,7 @@ import type {
 import { createInProcessPresentationBuildExecution } from '../features/presentationBuildExecution';
 
 const deckSpec: DeckSpec = {
+  authoringIdentityVersion: 1,
   title: 'Quarterly Review',
   layout: '16x9',
   slides: [
@@ -320,6 +321,7 @@ describe('PptCoordinator', () => {
     expect(codegenBuilder.buildDeckSpecFromSource).toHaveBeenCalledWith({
       nodeId: 'node-1',
       source: makeDocument().deckSource,
+      sourceContext: { theme: makeDocument().deckSpec.theme },
     });
     expect(model.capabilities.canEditSourceSelection).toBe(true);
   });

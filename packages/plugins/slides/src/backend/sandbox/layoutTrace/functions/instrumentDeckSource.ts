@@ -17,6 +17,7 @@ const SOURCE_TRACKED_FACTORIES = new Set([
   'createSvgGraphic',
   'createFormula',
   'createSpacer',
+  'createBrushArtwork',
 ]);
 
 interface SourceEdit {

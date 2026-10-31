@@ -63,6 +63,7 @@ export interface PresentationQueryRuntimeDeps {
  * - sourceSpan 恢复属于 render-model 查询能力，也收在这里，防止 coordinator 继续膨胀。
  */
 export class PresentationQueryRuntime {
+  private identityMaterialization?: { readonly nodeId: string; readonly revisionId: string; readonly source: string; readonly deckSpec: DeckSpec };
   private readonly viewSnapshots = new PresentationViewSnapshotRuntime(nodeId => this.captureView(nodeId));
 
   readViewSnapshot(request: ViewReadRequest): Promise<ViewReadResponse> {
@@ -285,7 +286,7 @@ export class PresentationQueryRuntime {
       };
     }
 
-    if (deckSpecHasSourceSpan(version.deckSpec)) {
+    if (deckSpecHasSourceSpan(version.deckSpec) && version.deckSpec.authoringIdentityVersion === 1) {
       return {
         deckSpec: version.deckSpec,
         canEditSourceSelection: true,
@@ -293,15 +294,22 @@ export class PresentationQueryRuntime {
     }
 
     try {
+      const cached = this.identityMaterialization;
+      if (cached?.nodeId === nodeId && cached.revisionId === version.id && cached.source === version.deckSource) {
+        return { deckSpec: cached.deckSpec, canEditSourceSelection: deckSpecHasSourceSpan(cached.deckSpec) };
+      }
       const deckSpec = await this.deps.getCodegenDeckBuilder().buildDeckSpecFromSource({
         nodeId,
         source: version.deckSource,
+        sourceContext: { theme: version.deckSpec.theme },
       });
+      this.identityMaterialization = { nodeId, revisionId: version.id, source: version.deckSource, deckSpec };
       return {
         deckSpec,
         canEditSourceSelection: deckSpecHasSourceSpan(deckSpec),
       };
     } catch (error) {
+      if (version.deckSpec.authoringIdentityVersion !== 1) throw error;
       new Logger('SlidesQuery').warn('slides.query.source_spans_failed', {
         nodeId,
         versionId: version.id,

@@ -40,6 +40,7 @@ export function buildSlidesCliInspectionReport(
     requestedSlideNumbers: [...inspection.requestedSlideNumbers],
     shownSlideNumbers: feedback.pageSummaries.map((page) => page.slideNumber),
     truncated: inspection.truncated,
+    ...(inspection.manualEditWarnings?.length ? { manualEditWarnings: inspection.manualEditWarnings } : {}),
     buildStatus: { ...feedback.buildStatus },
     findingSummary: summarizeDiagnosticProjection(projection),
     rootGroups: projection.rootGroups.map((group) => ({

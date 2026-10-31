@@ -438,7 +438,7 @@ describe('authoring identity projection', () => {
     expect(slideXml).not.toContain('Delete me');
   });
 
-  it('拒绝 dangling 与类型不符的人工记录', () => {
+  it('停用 dangling 但拒绝类型不符的人工记录', () => {
     const baseSlide = slide('overview', [shape('hero_art')]);
     const dangling = compileFlexInput({
       ...deck([baseSlide]),
@@ -450,7 +450,8 @@ describe('authoring identity projection', () => {
         }],
       },
     });
-    expect(dangling.error).toContain('overview/missing');
+    expect(dangling.error).toBeUndefined();
+    expect(dangling.input?.slides).toHaveLength(1);
 
     const mismatch = compileFlexInput({
       ...deck([baseSlide]),

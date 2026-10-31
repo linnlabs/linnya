@@ -54,7 +54,7 @@ deck.js 按 JavaScript 检查。在 JavaScript 中，对象字面量**赋值给�
 
 ## 3. 页面、容器与父子关系
 
-`createSlide()` 创建页面，`createFrame()` 创建容器。两者都是 Flex 容器；子节点只有经过父级 `.add(...)` 才属于文稿。新文稿使用 `createSlide({ slideKey: "overview" })` 声明稳定页面身份，并在可编辑对象上使用 `editKey`，例如 `createText({ editKey: "headline", content: "标题" })`。`slideKey` 在整份文稿唯一，`editKey` 在所属页面唯一；两者不能从页码、数组下标、源码行或显示文字临时生成。
+`createSlide()` 创建页面，`createFrame()` 创建容器。两者都是 Flex 容器；子节点只有经过父级 `.add(...)` 才属于文稿。所有可见作者对象默认获得系统编辑身份，无需手工补 key。需要明确的数据身份时仍可使用 `createSlide({ slideKey: "overview" })` 和 `createText({ editKey: "headline", content: "标题" })`。系统首次人工保存会写入 `/*@slides-id:…*/` 注释，页面身份也由该注释固定。已有 `@slides-id`／`@slides-generation` 标记、人工值、`additions` 与 `paintOrder` 必须保留；复制独立对象时不能复制其标记或 key。循环实例没有明确稳定 key 时，生成程序变化会停用原人工值，不能按相同文字、位置或序号重绑。显式 `slideKey` 在整份文稿唯一，`editKey` 在所属页面唯一；两者不能从页码、数组下标、源码行或显示文字临时生成。
 
 `compose({ manualEdits })` 保存已经提交的前端人工值。version 2 支持 Text 完整正文（字符串或带局部 style 的文字 run 数组）与字号／颜色、带字 Shape 的完整纯文本（同一 shape 记录的 content）、Frame／Shape 纯色、Shape／Image 视觉尺寸、各作者目标累计位移，以及删除任意具备 `editKey` 的作者目标；普通目标删除自身，Frame 删除完整作者子树。位移和尺寸单位是 inches。一个目标的删除值与内容、样式、尺寸和位移互斥；记录是当前值，不是不断追加的操作日志，同一页不能重复写同一个 `editKey`。Agent 修改已有对象时须同时查看对应人工值；正文已有 content 覆盖时，应更新该完整值，避免只修改初始节点而被已有人工值覆盖。Text 中显式 `run.style` 优先于节点或人工记录中继承的字号／颜色；统一整框格式时须同步修改全部 run 的对应字段，保留其他字段。前端整框操作会基于当前修订自动写入这一完整作者值，不改变旧文稿的继承规则。不要手写 arbitrary property path、JSON Patch 或引擎 option。完整、参与 typecheck 的写法见 [`manual-edits.js`](./examples/manual-edits.js)。同一页记录里的 `additions` 是用户在编辑器中插入的文字、形状和图片（各自带 `editKey` 与 inches 单位的 `box`），`paintOrder` 是用户调整过的同级绘制顺序；它们与页面上的其他对象同等重要。改稿时必须原样保留，不要因为在源码里找不到对应的 `create*` 调用而删除；需要修改插入对象时改对应 `additions` 条目，需要删除时整条移除。
 

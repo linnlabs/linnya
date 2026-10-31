@@ -1,6 +1,6 @@
 # Slides authoring editing contract
 
-`authoringEditing` owns the cross-process contract used to identify editable objects in a generated `deck.js` document. A target is the pair `slideKey + editKey`; both keys are explicit author facts and remain independent from page order, render order, source lines, content and geometry.
+`authoringEditing` owns the cross-process contract used to identify editable objects in a generated `deck.js` document. A target is the pair `slideKey + editKey`; keys are either explicit author facts or compiler-owned system identities and remain independent from page order, render order, source lines, content and geometry.
 
 `manualEdits` is a versioned, strictly parsed authoring value block. Version 2 supports complete Text content replacement (string or styled text runs), text font size/color/emphasis/alignment/width, owned-image replacement/fit, Frame/Shape solid color, Shape/Image visual size, deletion of every editable author target and cumulative post-layout translation. Version 1 remains a read-only migration input and is normalized to version 2 at the codec boundary; every new source write emits version 2. Inline formula editing, table content and chart data remain outside the manual UI contract. The contract never accepts arbitrary property paths or generic JSON patches.
 
@@ -19,9 +19,9 @@ Rules:
 - `set_text_content` carries an explicit `targetKind: 'text' | 'shape'`. A Shape's string content belongs to that Shape identity, not a synthetic child text target. Shape content is stored alongside its fill, size and translation in the same manual record; Shape rich content remains unsupported. For targetKind=text the content is a complete string or text-run array; for shape it remains strictly a string. This does not enable shape text-style editing.
 
 - keys use `^[A-Za-z][A-Za-z0-9_-]{0,63}$` so they are deterministic, readable and safe in source and render identities;
-- `slideKey` is unique in one deck and `editKey` is unique in one slide authoring tree;
+- `slideKey` is unique in one deck and `editKey` is unique in one slide authoring tree; system namespaces `sysp_`, `sysu_`, `sysr_` are compiler-owned;
 - a node with `editKey` requires its slide to have `slideKey`;
-- old sources without keys continue to compile, but do not receive an authoring edit reference;
+- generated sources without keys receive system identities through the sandbox authoring-identity owner; old compiled revisions obtain the same facts from exact-source materialization;
 - `RenderNode.id` remains a render-tree detail; persistence and commands use `authoringRef`.
 - compiled `authoringRef` also carries `targetKind` so Renderer can distinguish a decorated Frame from a Shape; this field does not participate in identity and command targets still use only the two keys;
 - flattened descendants carry their editable Frame ancestors separately from their own `authoringRef`; a child remains independently editable while also participating in each ancestor Frame translation;
@@ -53,3 +53,7 @@ Text additions may declare `heightMode: 'content' | 'minimum'`. New UI text uses
 `set_text_style` additionally accepts explicit boolean bold/italic/underline and left/center/right alignment. False overrides an authored emphasis. `set_text_width` changes only the Text width before Yoga; it preserves the authored height and text overflow policy. `set_image` references an already document-owned asset and/or contain/cover fit, preserving geometry; it accepts neither arbitrary paths nor URLs. New additions may preserve Shape rich content during copy, while Shape inline text editing remains plain-string-only.
 
 Image adoption returns the strict `SlidesImportedImage` DTO (owned asset ID and positive integer pixel width/height). Renderer parses it before using the dimensions; file bytes and local preview sources are not part of this response or any manual-edit command. Ownership and asset reachability remain backend responsibilities.
+
+## System identity lifecycle
+
+The sandbox [authoring identity owner](../../backend/sandbox/authoringIdentity/README.md) defines system source markers, unique call paths and revision-bound loop identities. The persisted v2 shape and explicit-key semantics remain unchanged. Current-revision references stay identical through the first marker write and subsequent manual saves. Missing targets are retained but suspended during source compilation; malformed values and invalid new commands remain errors. Source changes never rebind records by content, geometry or occurrence count.

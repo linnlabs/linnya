@@ -1,3 +1,4 @@
+import { readSystemSlideKey } from '../../../sandbox/authoringIdentity/index.js';
 import type ts from 'typescript';
 import { isSlidesAuthoringKey } from '@plugin/slides/shared';
 import { readSlideSourceStructure, SlidesSlideInsertionSourceError } from './insertBlankSlideIntoDeckSource.js';
@@ -39,7 +40,7 @@ export function rewriteSlideStructureInDeckSource(
     throw invalid('源码页面声明顺序与页面列表不一致，请让 AI 整理源码后重试。');
   }
 
-  let slideKey: string | undefined;
+  let slideKey = readSystemSlideKey(source, declaration.initializer.getStart(sourceFile));
   const config = declaration.initializer.arguments[0];
   if (config && !ts.isObjectLiteralExpression(config)) throw invalid('页面配置必须是对象字面量，才能保留副本的人工修改。');
   if (config && ts.isObjectLiteralExpression(config)) {

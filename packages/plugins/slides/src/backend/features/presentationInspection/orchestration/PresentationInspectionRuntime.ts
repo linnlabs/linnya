@@ -68,6 +68,7 @@ export class PresentationInspectionRuntime {
 
     return {
       versionId: snapshot.versionId,
+      ...(snapshot.manualEditWarnings?.length ? { manualEditWarnings: snapshot.manualEditWarnings } : {}),
       renderModel: selected.renderModel,
       totalSlideCount: snapshot.renderModel.slides.length,
       requestedSlideNumbers: selected.requestedSlideNumbers,

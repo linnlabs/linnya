@@ -20,7 +20,8 @@ export type PreviewWarningCode =
   | 'unsupported_element'
   | 'parse_error'
   | 'missing_asset'
-  | 'fidelity_fallback';
+  | 'fidelity_fallback'
+  | 'manual_edit_suspended';
 
 export interface PreviewWarning {
   slideNumber: number;

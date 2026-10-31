@@ -86,6 +86,7 @@ export class StandaloneSlidesCliExecutionRuntime implements SlidesCliExecutionPo
     const inspectionRuntime = new PresentationInspectionRuntime({
       loadSnapshot: async () => ({
         versionId: snapshot.document.currentRevisionId,
+        manualEditWarnings: snapshot.document.deckSpec.manualEditWarnings,
         renderModel,
       }),
       loadSourceLocations: async () =>

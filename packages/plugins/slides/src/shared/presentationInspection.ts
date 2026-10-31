@@ -24,6 +24,7 @@ export interface PresentationInspectionRequest {
 }
 
 export interface PresentationInspectionSnapshot {
+  readonly manualEditWarnings?: readonly string[];
   readonly versionId: string;
   readonly renderModel: PresentationRenderModel;
 }

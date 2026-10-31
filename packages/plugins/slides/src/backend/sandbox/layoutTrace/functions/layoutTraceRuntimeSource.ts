@@ -29,12 +29,13 @@ function __withLoc(node, sourceSpan) {
 }
 
 function __withComposeTrace(composeFn, input, insertedLocations) {
+  __layoutTraceRoots = input && Array.isArray(input.slides) ? input.slides.slice() : [];
+  __assignAuthoringIdentities(input);
   if (insertedLocations && input && Array.isArray(input.slides)) {
     input.slides.forEach(function(slide) {
       if (Object.prototype.hasOwnProperty.call(insertedLocations, slide.slideKey)) slide._insertedObjectLocations = insertedLocations[slide.slideKey];
     });
   }
-  __layoutTraceRoots = input && Array.isArray(input.slides) ? input.slides.slice() : [];
   return composeFn(input);
 }
 

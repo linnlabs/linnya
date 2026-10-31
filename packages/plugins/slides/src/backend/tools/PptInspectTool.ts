@@ -193,7 +193,7 @@ export class PptInspectTool extends BaseTool {
       ...feedback,
     };
 
-    const observation = buildInspectObservation(observationData);
+    const observation = [buildInspectObservation(observationData), ...(inspection.manualEditWarnings ?? [])].join('\n');
     const findingSummary = summarizeDiagnosticProjection(
       projectDiagnosticFindings(feedback.findings),
     );

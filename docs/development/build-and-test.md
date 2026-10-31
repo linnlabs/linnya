@@ -196,3 +196,7 @@ Windows 的 profile 与动态端口逻辑共用同一实现，仍需 Windows 真
 
 Slides 的源码 ESLint 由 `pnpm --filter @plugin/slides lint` 执行，并纳入公共 package CI。
 Sandbox 生成的 ambient DSL 声明是供独立 deck.js 消费的 API，保留公开类型，不按宿主引用数删除。
+
+### Slides 系统编辑身份回归
+
+身份实现与兼容边界见 [owner 文档](../../packages/plugins/slides/src/backend/sandbox/authoringIdentity/README.md)。修改调用追踪、人工值或源码写回时，至少运行该目录集成测试、manual-edit 保存重开与历史集成测试、Slides 全量测试、类型/lint、codegen-first 检查及 backend artifact smoke；选择交互和提示变动还需原生 preview-transitions。实际验收用 Linnya CLI 的 Workspace write/read/edit 回执记录文稿、修订与诊断，再验证预览和导出。CLI 工具调用不使用 LLM，不能记为模型质量实验。

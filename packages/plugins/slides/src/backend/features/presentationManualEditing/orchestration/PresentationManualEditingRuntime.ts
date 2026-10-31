@@ -17,6 +17,7 @@ import { rewriteSlideStructureInDeckSource } from '../functions/rewriteSlideStru
 import { prepareManualEditBatch } from '../functions/prepareManualEditBatch.js';
 import { prepareManualEditSourceOperation } from '../functions/prepareManualEditSourceOperation.js';
 import type {
+  DeckSpec,
   SlidesManualEditCommand,
   SlidesManualEditHistoryStatus,
   SlidesManualEditCommandResult,
@@ -55,6 +56,8 @@ import {
   SlidesSlideInsertionSourceError,
 } from '../functions/insertBlankSlideIntoDeckSource.js';
 import { resolveInsertedSlideBackgroundColor } from '../functions/resolveInsertedSlideBackgroundColor.js';
+import { anchorSystemAuthoringSource } from '../functions/anchorSystemAuthoringSource.js';
+import { preserveAuthoringGeneration } from '../../../sandbox/authoringIdentity/index.js';
 
 export interface PresentationManualEditingRuntimeDeps {
   readonly presentationRepo: Pick<
@@ -65,6 +68,7 @@ export interface PresentationManualEditingRuntimeDeps {
   readonly restoreRevision?: PresentationHistoryRuntime['commitDeferredRestore'];
   readonly draftRepo: Pick<PresentationDraftRepositoryPort, 'has'>;
   readonly builder: {
+    buildDeckSpecFromSource(input: CodegenDeckBuildInput): Promise<DeckSpec>;
     commitManualEditFromSource(
       input: CodegenDeckBuildInput
     ): Promise<CodegenManualEditCommitResult>;
@@ -137,7 +141,7 @@ export class PresentationManualEditingRuntime {
       };
     }
 
-    const current = await this.deps.presentationRepo.getPresentation(command.documentId);
+    let current = await this.deps.presentationRepo.getPresentation(command.documentId);
     if (!current) {
       return this.validationFailure(command, 'document_not_found', '演示文稿不存在。');
     }
@@ -151,6 +155,13 @@ export class PresentationManualEditingRuntime {
     if (this.deps.draftRepo.has(command.documentId)) {
       return this.conflict(command, 'draft_present');
     }
+    if (current.deckSpec.authoringIdentityVersion !== 1) {
+      current = { ...current, deckSpec: await this.deps.builder.buildDeckSpecFromSource({
+        nodeId: command.documentId, source: current.deckSource, expectedBase: command.expectedBase,
+        sourceContext: { theme: current.deckSpec.theme },
+      }) };
+    }
+    current = { ...current, deckSource: anchorSystemAuthoringSource(current.deckSource, current.deckSpec) };
     this.recordTrace(command, 'snapshot_validated', {
       slideCount: current.deckSpec.slides.length,
       compiledRootCount: current.deckSpec.slides.reduce(
@@ -276,6 +287,9 @@ export class PresentationManualEditingRuntime {
       }
       throw error;
     }
+    // 标记不改变生成程序摘要或现有 ref，因此排队中的后续操作无需猜测重绑。
+    // 同一行插入注释也保留已有 sourceSpan 的行号和投影快路径。
+    if (!restoreVersion) source = preserveAuthoringGeneration(current.deckSource, source);
     const path = restoreVersion
       ? 'history_restore'
       : projection.kind === 'projected'

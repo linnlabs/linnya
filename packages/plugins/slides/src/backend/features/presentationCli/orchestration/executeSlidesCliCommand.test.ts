@@ -199,7 +199,7 @@ describe('executeSlidesCliCommand', () => {
     expect(result.exitCode).toBe(SlidesCliExitCode.SUCCESS);
     const report = JSON.parse(result.stdout);
     expect(report.presentation.versionId).toBe('version-uuid-7');
-    expect(report.schemaVersion).toBe(9);
+    expect(report.schemaVersion).toBe(10);
     expect(report).not.toHaveProperty('mode');
     expect(report).not.toHaveProperty('pages');
     expect(report.buildStatus).toEqual({ state: 'ready' });

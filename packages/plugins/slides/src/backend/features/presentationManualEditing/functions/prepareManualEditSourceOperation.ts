@@ -1,4 +1,4 @@
-import type { DeckSpec, SlidesManualEditOperation } from '@plugin/slides/shared';
+import type { DeckSpec, FreeformElement, StructuredElement, SlidesManualEditOperation } from '@plugin/slides/shared';
 import { isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import type { SlidesManualEditSourceOperation } from '../definitions/manualEditSourceOperation.js';
 import { collectManualAuthoringTargets } from './collectManualAuthoringTargets.js';
@@ -6,9 +6,19 @@ import { SlidesManualEditSourceError } from './writeManualEditsToDeckSource.js';
 
 /** 将本次整框动作展开成同一修订的完整作者值，保留既有 v2 源码的 run 继承语义。 */
 export function prepareManualEditSourceOperation(deckSpec: DeckSpec, operation: SlidesManualEditOperation): SlidesManualEditSourceOperation {
-  if (operation.op !== 'set_text_style') return operation;
   const matches = collectManualAuthoringTargets(deckSpec, operation.target);
   const match = matches[0];
+  function hasFrameAncestor(node: FreeformElement | StructuredElement): boolean {
+    return node._authoringAncestorRefs?.some(ref => ref.slideKey === operation.target.slideKey && ref.editKey === operation.target.editKey) === true
+      || node.type === 'group' && (node.children ?? []).some(hasFrameAncestor);
+  }
+  // 无装饰 Frame 没有独立渲染元素；其正式祖先 ref 仍然是可验证的作者目标。
+  if (matches.length === 0 && 'targetKind' in operation && operation.targetKind === 'frame'
+    && deckSpec.slides.some(slide => slide.spec.elements.some(hasFrameAncestor))) return operation;
+  if (matches.length !== 1 || !match || ('targetKind' in operation && match.ref.targetKind !== operation.targetKind)) {
+    throw new SlidesManualEditSourceError('operation_invalid', '人工编辑目标在当前修订中不存在、重复或类型不符。');
+  }
+  if (operation.op !== 'set_text_style') return operation;
   if (matches.length !== 1 || !match || match.ref.targetKind !== 'text'
     || (match.element.type !== 'text' && match.element.type !== 'title') || !isEditableTextContent(match.element.content)) {
     throw new SlidesManualEditSourceError('operation_invalid',

@@ -1,12 +1,12 @@
 # Presentation manual editing
 
-This feature owns deterministic user edits for generated `deck.js` documents. Object edits rewrite only the machine-owned `compose.manualEdits` literal; inserting a blank slide adds one top-level slide declaration and its entry in `compose.slides`. Copying/deleting a slide rewrites its source block and the static page list, and copies/removes its manual values. The feature orchestrates candidate compilation or proven-equivalent projection and revision commit. It does not mutate DeckSpec, PPTX or Renderer state as a second source of truth.
+This feature owns deterministic user edits for generated `deck.js` documents. Object edits rewrite the machine-owned `compose.manualEdits` literal and, on the first save of a system-identity source, fix its source call markers; inserting a blank slide adds one top-level slide declaration and its entry in `compose.slides`. Copying/deleting a slide rewrites its source block and the static page list, and copies/removes its manual values. The feature orchestrates candidate compilation or proven-equivalent projection and revision commit. It does not mutate DeckSpec, PPTX or Renderer state as a second source of truth.
 
 Current source rules:
 
 - the document contains exactly one `compose({...})` object;
 - `manualEdits` is a static JSON literal and is parsed by the shared strict codec;
-- unrelated source text and comments remain byte-for-byte unchanged;
+- unrelated source text and comments remain byte-for-byte unchanged outside the documented system identity marker insertion;
 - text writes carry explicit Text/Shape target kind and replace the complete author value (Text string/runs, Shape string); Shape content merges with its existing fill, size and translation rather than creating a child Text record; text style writes merge font size/color; Frame/Shape fill writes replace the solid background/fill; Shape/Image visual-size writes replace width/height and atomically accumulate an optional resize-anchor translationDelta into the existing translation; deleting any editable author target replaces its record with the exclusive deletion marker;
 - absolute translation writes the complete cumulative `dx / dy` value, while renderer drag commands use `translate_by` so repeated drags accumulate against the checked base revision;
 - source size is checked before the candidate reaches the build pipeline.
@@ -89,3 +89,7 @@ The real compiler + SQLite integration fixture `backend/__tests__/manual-edit-hi
 
 
 修订作用域与 draft repository 是人工编辑必需依赖，不能缺省绕过串行化和草稿冲突检查。操作分派使用穷尽 switch，新增命令必须选择明确的源码写入/编译路径。对象复制和图片接管由 `PresentationObjectTransferRuntime` 拥有，协调器只转发。IPC 输入由 shared/ipcCommands 的 Zod schema 接纳，图片和模板都传二进制；临时图片 data URI 仅留在 Renderer 预览，不跨 IPC。
+
+## Automatic author targets
+
+The [identity owner](../../sandbox/authoringIdentity/README.md) assigns opaque keys before compilation. Legacy compiled DeckSpecs are rebuilt from the checked source and captured theme before target validation. The first marker insertion preserves references already held by the queue; CAS, draft checks, command digest/receipt and history remain the only commit path. An undecorated explicit Frame is validated through its compiler-owned ancestor refs. New commands against missing targets fail validation even though old source records may remain suspended.
