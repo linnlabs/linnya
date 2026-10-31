@@ -11,6 +11,7 @@ vi.mock('../../../../electron-main/services/apiServer', () => ({
 
 vi.mock('../../../../electron-main/services/serviceInitializer', () => ({
   ServiceInitializer: class TestServiceInitializer {
+    async stopStartupMaintenance(): Promise<void> {}
     async initializeServices(): Promise<never> {
       throw new Error('initializeServices test implementation is required');
     }
@@ -99,8 +100,10 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     expect(qdrantStart).toHaveBeenCalledOnce();
   });
 
-  it('按 API、命令 owner、Sandbox owner、后台队列顺序停止', async () => {
+  it('先取消启动维护，再按 API、命令 owner、Sandbox owner、后台队列顺序停止', async () => {
     const order: string[] = [];
+    vi.spyOn(ServiceInitializer.prototype, 'stopStartupMaintenance')
+      .mockImplementation(async () => { order.push('maintenance'); });
     const manager = new TestBackendRuntimeOwner();
     vi.spyOn(manager.getApiServer(), 'stop').mockImplementation(async () => { order.push('api'); });
     vi.spyOn(QueueManager.getInstance(), 'shutdown').mockImplementation(async () => { order.push('queue'); });
@@ -113,7 +116,7 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     });
 
     await manager.stop();
-    expect(order).toEqual(['api', 'command', 'sandbox', 'queue']);
+    expect(order).toEqual(['maintenance', 'api', 'command', 'sandbox', 'queue']);
     await expect(manager.start(BACKEND_CONFIGURATION)).rejects.toThrow('App 运行时已经结束');
   });
 

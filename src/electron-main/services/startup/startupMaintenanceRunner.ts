@@ -9,6 +9,8 @@
  * - 日志只输出必要的 summary（不泄漏内容/算法细节，避免日志膨胀）
  */
 
+import { setTimeout as delay } from 'node:timers/promises';
+
 import { Logger } from '../../../shared/logger';
 
 import type { DatabaseService } from '../database';
@@ -57,10 +59,9 @@ export interface ManagedImageStartupMaintenanceDeps {
   readonly databaseService: DatabaseService;
 }
 
-let scheduled = false;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+export interface StartupMaintenanceLifecycle {
+  /** 取消尚未开始的维护；已开始的存储操作完成后才允许释放依赖。 */
+  stop(): Promise<void>;
 }
 
 /**
@@ -80,10 +81,11 @@ async function waitForQdrantReachable(params: {
   logger: Logger;
   maxWaitMs: number;
   pollIntervalMs: number;
+  signal: AbortSignal;
 }): Promise<boolean> {
-  const { qdrantRepository, logger, maxWaitMs, pollIntervalMs } = params;
+  const { qdrantRepository, logger, maxWaitMs, pollIntervalMs, signal } = params;
   const start = Date.now();
-  while (Date.now() - start < maxWaitMs) {
+  while (!signal.aborted && Date.now() - start < maxWaitMs) {
     try {
       await qdrantRepository.collectionExists('default');
       return true;
@@ -91,7 +93,7 @@ async function waitForQdrantReachable(params: {
       logger.warn(
         `Qdrant 未就绪，等待重试中... costMs=${Date.now() - start}, err=${e instanceof Error ? e.message : String(e)}`
       );
-      await sleep(pollIntervalMs);
+      await delay(pollIntervalMs, undefined, { signal });
     }
   }
   return false;
@@ -216,10 +218,9 @@ export async function runCommandOutputArtifactStartupMaintenance(input?: {
 export function scheduleStartupMaintenanceOnce(
   deps: StartupMaintenanceDeps,
   options?: StartupMaintenanceOptions
-): void {
-  if (scheduled) return;
-  scheduled = true;
-
+): StartupMaintenanceLifecycle {
+  const controller = new AbortController();
+  const { signal } = controller;
   const logger = new Logger('StartupMaintenance');
   const initialDelayMs =
     typeof options?.initialDelayMs === 'number' &&
@@ -230,7 +231,8 @@ export function scheduleStartupMaintenanceOnce(
 
   logger.info(`已调度启动维护任务：首次延迟 ${initialDelayMs} ms（仅启动一次）`);
 
-  setTimeout(async () => {
+  const completion = (async () => {
+    await delay(initialDelayMs, undefined, { signal });
     const start = Date.now();
     logger.info('🚀 启动维护任务开始');
 
@@ -241,12 +243,16 @@ export function scheduleStartupMaintenanceOnce(
       logger.warn(`日志维护执行失败: ${e instanceof Error ? e.message : String(e)}`);
     }
 
+    if (signal.aborted) return;
+
     // 1) Workspace 清理（SQLite 内部；只复查挂有卫星数据的 Markdown 文档，逐篇让出事件循环）
     try {
       await runWorkspaceMaintenanceOnce(deps.databaseService);
     } catch (e) {
       logger.warn(`Workspace 维护执行失败: ${e instanceof Error ? e.message : String(e)}`);
     }
+
+    if (signal.aborted) return;
 
     // 1.5) Conversation 维护（SQLite 内部，轻量）
     // 受管图片迁移与 GC 已在路由开放前同步完成，不能放回本延迟任务。
@@ -256,6 +262,8 @@ export function scheduleStartupMaintenanceOnce(
     } catch (e) {
       logger.warn(`Conversation 维护执行失败: ${e instanceof Error ? e.message : String(e)}`);
     }
+
+    if (signal.aborted) return;
 
     // 2) 知识库一致性清理（SQLite + SoT + Qdrant）
     try {
@@ -271,7 +279,9 @@ export function scheduleStartupMaintenanceOnce(
         logger,
         maxWaitMs: 120_000,
         pollIntervalMs: 5_000,
+        signal,
       });
+      if (signal.aborted) return;
       if (!qdrantReachable) {
         logger.warn(
           'Qdrant 在启动维护窗口内仍不可达，跳过本轮知识库维护（避免误删），后续可由用户/后台触发再次维护'
@@ -291,6 +301,7 @@ export function scheduleStartupMaintenanceOnce(
         `知识库维护汇总: totalFailed=${stats.totalFailed}, sqliteCleared=${stats.sqliteCleared}, qdrantCleared=${stats.qdrantCleared}, sotCleared=${stats.sotCleared}`
       );
 
+      if (signal.aborted) return;
       const chunkStats = await runChunkCollectionStartupMaintenanceOnce(
         deps.metadataRepository,
         deps.qdrantRepository
@@ -299,9 +310,21 @@ export function scheduleStartupMaintenanceOnce(
         `chunk collection 启动维护汇总: scanned=${chunkStats.scannedCollections}, recreated=${chunkStats.recreatedCollections}, deletedEmpty=${chunkStats.deletedEmptyCollections}, skipped=${chunkStats.skippedCollections}, failed=${chunkStats.failedCollections}`
       );
     } catch (e) {
+      if (signal.aborted) return;
       logger.error(`知识库维护执行失败: ${e instanceof Error ? e.message : String(e)}`);
     }
 
     logger.info(`✅ 启动维护任务结束: costMs=${Date.now() - start}`);
-  }, initialDelayMs);
+  })().catch((error: unknown) => {
+    if (signal.aborted) return;
+    logger.error(`启动维护执行失败: ${error instanceof Error ? error.message : String(error)}`);
+  });
+
+  return Object.freeze({
+    stop() {
+      // 不能仅 unref 定时器：退出期间维护仍可能访问已经关闭的数据库或 Qdrant。
+      controller.abort();
+      return completion;
+    },
+  });
 }

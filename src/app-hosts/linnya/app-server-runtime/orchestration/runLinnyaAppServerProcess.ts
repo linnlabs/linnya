@@ -144,7 +144,6 @@ export async function runLinnyaAppServerProcess(
           failures.push(error);
         }
         responsivenessMonitor.stop();
-        parentLiveness?.dispose();
         composition?.dispose();
         rpc.dispose(new Error('App Server Backend owner 正在关闭'));
         if (failures.length > 0) throw failures[0];
@@ -164,6 +163,8 @@ export async function runLinnyaAppServerProcess(
     onParentLost() {
       // 走 control input error 的统一收口路径；不在 monitor 内直接操作业务 owner。
       process.stdin.destroy(new Error('App Server parent process 已退出'));
+      // parent 已消失时，额外 pipe 可能不投递 EOF；此时已没有可等待的对端。
+      rpcInput.destroy();
     },
   });
   parentLiveness.start();
@@ -174,12 +175,31 @@ export async function runLinnyaAppServerProcess(
   });
 
   process.stdin.resume();
-  await controlHost.completed;
-  // lifecycle.shutdown 已先 dispose RPC 业务请求。部分平台在 parent SIGKILL 后不会
-  // 为额外 pipe 投递 EOF，继续等待 readable end 会让已收口 Backend 永久占住 Workspace lock。
-  rpcInput.destroy();
+  try {
+    await controlHost.completed;
+    // control ACK 与 RPC response 走不同 pipe，没有跨管道的到达顺序保证。
+    // 业务已收口后继续读完 RPC，等 parent 接收 ACK 并关闭写端，避免正常退出制造 EPIPE。
+    await waitForRpcInputEnd(rpcInput);
+  } finally {
+    parentLiveness.dispose();
+    rpcInput.destroy();
+  }
   await endSocket(rpcOutput);
   await endSocket(process.stdout);
+}
+
+async function waitForRpcInputEnd(input: Socket): Promise<void> {
+  if (input.readableEnded || input.destroyed) return;
+  await new Promise<void>(resolve => {
+    const finish = (): void => {
+      input.off('end', finish);
+      input.off('close', finish);
+      resolve();
+    };
+    input.once('end', finish);
+    // parent-liveness monitor 在崩溃路径主动 destroy；正常 EOF 与该路径共用收口屏障。
+    input.once('close', finish);
+  });
 }
 
 function registerRpcHandlers(

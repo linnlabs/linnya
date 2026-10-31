@@ -66,6 +66,10 @@ async function main(): Promise<void> {
   await waitForReadableEnd(rpcInput);
   await endSocket(rpcOutput);
   signalOwnership.dispose();
+  if (process.argv.includes('--retain-shutdown-timer')) {
+    // 模拟业务已 ACK、但后台维护忘记取消定时器的真实故障。
+    setInterval(() => undefined, 60_000);
+  }
 }
 
 void main().then(() => {

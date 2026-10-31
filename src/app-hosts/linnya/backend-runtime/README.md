@@ -36,3 +36,6 @@ App Server 同样安装 event-loop 响应性 monitor。健康采样不刷日志�
 `profileRoot` 打开与 App Server 相同的凭据存储，安装模型端点与 Provider OAuth 端口。
 任务消息只传路径事实，不传 Key/token；OAuth 更新复用同一原子写入合同。
 此入口不能从轻量启动合同 `index.ts` 重导出，否则会把模型 SDK 和业务 owner 打进 CLI 父宿主。
+
+延迟启动维护由 ServiceInitializer 创建并交给 Backend owner 收口：退出先取消尚未触发的延迟及 Qdrant 重试等待，
+已开始的单次存储维护必须完成后才释放队列和 Qdrant。初始化中途失败也执行同一收口，避免关停 ACK 后仍有后台定时器存活。

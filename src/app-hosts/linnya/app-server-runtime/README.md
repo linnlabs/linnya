@@ -19,7 +19,10 @@ bootstrap 的 `host_kind` 只在 composition root 选择投影 presenter：Deskt
 
 构建产物分成 tiny `app-server-entry.cjs` 与完整 `app-server-backend.cjs`。tiny entry 在动态加载 Backend 前先把全局
 console 固定到 stderr，保证任何模块初始化日志都不能污染 lifecycle stdout；fd 3/4/5 之外不复用命令行或 Renderer IPC。
-bootstrap 同时冻结直接 parent PID。stdio/RPC EOF 是正常 parent-death 信号；平台未及时投递 EOF 时，App Server 的 parent-liveness monitor 会触发同一 shutdown。业务收口完成后主动关闭残余 pipe 并释放 Workspace owner，避免 launcher 被 `SIGKILL` 后留下半死 Backend。
+bootstrap 同时冻结直接 parent PID。stdio/RPC EOF 是正常 parent-death 信号；平台未及时投递 EOF 时，App Server 的 parent-liveness monitor 会触发同一 shutdown，并关闭失联对端的残余 pipe，避免 launcher 被 `SIGKILL` 后留下半死 Backend。
+正常关闭在业务收口、释放 Workspace owner 和发送 control ACK 后，继续读完 RPC，等待 parent
+接收 ACK 并关闭写端；两个 pipe 没有跨管道的到达顺序保证，提前销毁读端会让迟到响应产生 EPIPE。
+parent-liveness monitor 保留到该传输收口屏障结束，保证 parent 在关停期间崩溃也能完成退出。
 
 凭据文件由本 composition 创建，模型、OAuth、插件和 Web 设置共享一个窄 storage port。路径使用
 已冻结的 profileRoot，与 Workspace 分离。读写、权限、并发和故障合同见[文件凭据存储](../../../infra/adapters/credential-storage/file/README.md)。

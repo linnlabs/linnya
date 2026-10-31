@@ -221,8 +221,10 @@ export class BackendRuntimeOwner {
 
     // 先停止接收新请求，随后命令 owner 才能在没有新 admission 的前提下可信收口。
     // 先同步发出取消，防止 HTTP drain 期间目录刷新继续接单或发起下一轮写入。
+    const startupMaintenanceStopped = this.serviceInitializer.stopStartupMaintenance();
     const modelSynchronizationStopped = this.providerModelSynchronization?.stop();
     await stopStage('API服务器', () => this.apiServer.stop());
+    await stopStage('启动维护', async () => { await startupMaintenanceStopped; });
     await stopStage('账号模型同步', async () => { await modelSynchronizationStopped; });
     if (this.commandOwnerLifecycle) {
       const commandOwnerLifecycle = this.commandOwnerLifecycle;

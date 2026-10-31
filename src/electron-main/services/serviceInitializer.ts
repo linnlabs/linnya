@@ -34,6 +34,7 @@ import {
   runCommandOutputArtifactStartupMaintenance,
   runToolOutputStoreStartupMaintenance,
   scheduleStartupMaintenanceOnce,
+  type StartupMaintenanceLifecycle,
 } from './startup/startupMaintenanceRunner';
 import { QueueManager } from 'src/infra/task-queue/queues';
 import { modelCatalog } from 'src/domains/model-catalog';
@@ -102,6 +103,7 @@ export interface ServiceInitializationConfig {
 export class ServiceInitializer {
   private serviceRegistry: ServiceRegistry;
   private qdrantUrl: string | null = null;
+  private startupMaintenance: StartupMaintenanceLifecycle | null = null;
 
   constructor(
     private readonly queueWorkerRuntime: QueueWorkerRuntime,
@@ -187,11 +189,17 @@ export class ServiceInitializer {
         disposeRendererIntegration,
       };
     } catch (error) {
+      await this.stopStartupMaintenance();
       disposeRendererIntegration?.();
       console.error('[🔥 SERVICE-INIT] ❌❌❌ SERVICE INITIALIZATION FAILED:', error);
       console.error('[ServiceInitializer] 💥 服务初始化过程中出现严重错误:', error);
       throw error;
     }
+  }
+
+  async stopStartupMaintenance(): Promise<void> {
+    await this.startupMaintenance?.stop();
+    this.startupMaintenance = null;
   }
 
   /**
@@ -333,7 +341,7 @@ export class ServiceInitializer {
 
     // 启动后一次性维护任务（Phase 2）：统一编排 workspace 清理 + 知识库一致性清理
     console.log('[ServiceInitializer] 🧹 Step 6.1: 调度启动维护任务(仅一次)...');
-    scheduleStartupMaintenanceOnce({
+    this.startupMaintenance = scheduleStartupMaintenanceOnce({
       databaseService,
       metadataRepository,
       qdrantRepository,

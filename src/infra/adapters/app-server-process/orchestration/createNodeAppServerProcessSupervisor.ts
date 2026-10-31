@@ -296,6 +296,7 @@ export function createNodeAppServerProcessSupervisor(input: {
     shutdownSettlement = (async () => {
       const activeChild = child;
       if (!activeChild) return;
+      const requiresCleanExit = identity !== null;
       let requestFailure: unknown;
       try {
         if (identity) await requestControl('shutdown');
@@ -311,6 +312,10 @@ export function createNodeAppServerProcessSupervisor(input: {
       const exited = exitSettlement;
       if (exited) await waitForChildExit(activeChild, exited, controlTimeoutMs);
       if (requestFailure) throw requestFailure;
+      const exit = await observedExit;
+      if (requiresCleanExit && (exit.code !== 0 || exit.signal !== null)) {
+        throw new Error(`App Server 未正常关停：code=${String(exit.code)} signal=${String(exit.signal)}`);
+      }
     })();
     return shutdownSettlement;
   };

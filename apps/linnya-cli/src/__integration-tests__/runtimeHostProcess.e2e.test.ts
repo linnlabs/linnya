@@ -272,12 +272,16 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     // 真正的恢复门禁是旧 API 已停且 Workspace 排他 owner 已释放。
     await waitFor(() => isWorkspaceOwnershipAvailable(workspace), 30_000);
 
-    const restarted = await startRuntime({ workspace, environment });
+    const restarted = await startRuntime({ workspace, environment: {
+      ...environment,
+      LINNYA_CLI_RUNTIME_MODULE: path.join(import.meta.dirname, 'fixtures/delayedRuntimeDiagnostics.cjs'),
+    } });
     const replacementDescriptor = await readConnectionIdentity(connectionFile);
     expect(replacementDescriptor.pid).toBe(restarted.ready.runtime.pid);
     expect(replacementDescriptor.appInstanceId).not.toBe(previousDescriptor.appInstanceId);
     restarted.child.kill('SIGTERM');
     expect(await waitForClose(restarted.child), restarted.stderr).toBe(0);
+    expect(restarted.stderr).toContain('fixture-delayed-shutdown-diagnostic');
     removeLiveRuntime(restarted.child);
   }, 45_000);
 });
