@@ -10,6 +10,12 @@ import type {
  */
 export const DEPENDENCY_LICENSE_SELECTIONS = [
   {
+    packageName: '@img/sharp-win32-x64',
+    version: '0.35.5',
+    declaredExpression: 'Apache-2.0 AND LGPL-3.0-or-later',
+    selectedExpression: 'Apache-2.0 AND LGPL-3.0-or-later',
+  },
+  {
     packageName: 'brotli',
     version: '1.3.3',
     declaredExpression: 'MIT',
@@ -135,6 +141,20 @@ export const DEPENDENCY_SOURCE_OVERRIDES = [
 
 /** 普通 LICENSE/NOTICE 自动发现；这里只登记另有法律或版本意义的随包文件。 */
 export const DEPENDENCY_SUPPLEMENTAL_EVIDENCE_FILES = [
+  {
+    packageName: '@img/sharp-win32-x64',
+    version: '0.35.5',
+    relativePath: 'README.md',
+    kind: 'notice',
+    reason: '记录 Windows 随包 libvips 及其嵌套 native libraries 的许可证声明',
+  },
+  {
+    packageName: '@img/sharp-win32-x64',
+    version: '0.35.5',
+    relativePath: 'versions.json',
+    kind: 'metadata',
+    reason: '锁定当前 Windows x64 native runtime 的嵌套组件版本',
+  },
   {
     packageName: '@img/sharp-libvips-darwin-arm64',
     version: '1.3.3',
