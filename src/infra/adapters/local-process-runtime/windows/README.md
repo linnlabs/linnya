@@ -12,7 +12,9 @@
 
 Windows 的 `child.exit` 不保证后代消失，`taskkill` 也不能提供稳定的 owner 和资源 accounting。Job Object 可以在普通用户下把 root/后代绑定到统一资源对象，cancel 和 App end 可以对整棵树操作。
 
-Job 只解决进程归属和清理，不解决文件访问权限。Windows 的文件安全承诺仍然是普通用户 + 固定风险规则 + 审批 + 审计，规则漏判是明确接受的产品风险。
+Job 只解决进程归属和清理，不解决文件访问权限。只读、标准档的文件边界由独立的
+[账户隔离 adapter](../../command-runtime/windows/isolation/README.md) 提供；完全访问档
+直接使用当前普通用户的 Job owner。不能把本模块的进程管理能力当作受限 Shell 的完整安全边界。
 
 ## 3. 启动和 native loader
 
@@ -73,7 +75,7 @@ PTY 使用现有 Rust native owner 的 Pseudoconsole + Job List 组合。Utility
 
 ## 8. 已知限制
 
-- 普通用户 Job 不是 OS 文件沙箱；
+- 普通用户 Job 本身不是 OS 文件沙箱；1/2 档还必须通过账户隔离 adapter，初始化失败不能降级到本 owner 裸跑；
 - 外部 CLI 自己的行为、凭据和数据库加密不属于 Linnya 职责；
 - Docker/虚拟机只能验证部分协议，不能代替真实 Windows Job/native/NSIS 矩阵；
 - x64 兼容层测试不能证明 ARM64 原生包。
