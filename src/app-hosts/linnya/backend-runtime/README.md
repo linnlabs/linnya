@@ -1,8 +1,8 @@
 # Linnya Backend Runtime Host Contract
 
-本目录定义 Backend 业务 owner 与外层 Host 之间的启动合同。`BackendBootstrapFacts` 只包含冻结、可序列化的数据；`BackendHostDependencies` 组合现有业务端口与可选宿主能力（凭据保护、Renderer 投影、插件隐藏 Renderer worker 的 data-only host、Browser Pretext 文本测量、外部授权浏览器与 raster PDF），但不暴露 Electron 对象、Renderer、环境变量袋或任意进程控制。插件 hidden worker 的 codec 与同步 registry 在 Backend composition 内组装，不属于 Desktop 依赖。
+本目录定义 Backend 业务 owner 与外层 Host 之间的启动合同。`BackendBootstrapFacts` 只包含冻结、可序列化的数据；`BackendHostDependencies` 组合现有业务端口与可选宿主能力（凭据文件存储、Renderer 投影、插件隐藏 Renderer worker 的 data-only host、Browser Pretext 文本测量、外部授权浏览器与 raster PDF），但不暴露 Electron 对象、Renderer、环境变量袋或任意进程控制。插件 hidden worker 的 codec 与同步 registry 在 Backend composition 内组装，不属于 Desktop 依赖。
 
-Backend 只存在一套业务启动链：Desktop Electron Main 或源码 CLI Runtime 监督固定 headless Node，App Server 在独立进程中调用 `initializeAppServerBackend` 创建唯一 Backend owner。旧同进程入口、生命周期 facade、Renderer 不可达的启停 IPC 和宽配置对象已经删除。App Server bundle 不加载 Electron runtime；启动事实通过严格 bootstrap 数据进入 headless Node。Desktop 通过窄反向 RPC 提供完整能力，CLI Runtime 只提供凭据、终端命令审批及明确支持的 Node 能力；缺少 Chromium、PDF raster、系统 reveal、OAuth browser 或 Desktop export 时显式报告 unavailable。
+Backend 只存在一套业务启动链：Desktop Electron Main 或源码 CLI Runtime 监督固定 headless Node，App Server 在独立进程中调用 `initializeAppServerBackend` 创建唯一 Backend owner。旧同进程入口、生命周期 facade、Renderer 不可达的启停 IPC 和宽配置对象已经删除。App Server bundle 不加载 Electron runtime；启动事实通过严格 bootstrap 数据进入 headless Node。Desktop 通过窄反向 RPC 提供完整能力，CLI Runtime 只提供终端命令审批及明确支持的 Node 能力；缺少 Chromium、PDF raster、系统 reveal、OAuth browser 或 Desktop export 时显式报告 unavailable。
 
 `processRuntime` 只包含 Backend 自己拥有的 Qdrant、owned pipe launcher 与队列 Worker 运行依赖。它与对话 `conversationExecutionRuntimeFactory` 都由最外层 composition 注入；这样 App Server 可以选择纯 Node adapter，而无需在 Backend 入口里按宿主类型分支或读取 `process.env`。
 
@@ -31,3 +31,8 @@ Backend 不安装旧数据路径 registry，也不从当前路径推导旧文件
 App Server 同样安装 event-loop 响应性 monitor。健康采样不刷日志，只有 p99/max 越过 Backend 阈值才记录结构化告警；CPU 密集型业务必须进入 feature-owned Worker，不能因为已经离开 Main 就在 App Server 事件循环同步执行。
 
 `commandApprovalControl`接入唯一Commands审批owner的窄控制端口。API Server在鉴权bridge就绪后注册可用性、关闭时撤销；不将Renderer票据、TTY或任意执行能力注入CLI。
+
+可信知识库 Worker 通过独立入口 `workerModelServices.ts` 在自己的运行域调用 `initializeWorkerModelServices`，使用 owner 传入的
+`profileRoot` 打开与 App Server 相同的凭据存储，安装模型端点与 Provider OAuth 端口。
+任务消息只传路径事实，不传 Key/token；OAuth 更新复用同一原子写入合同。
+此入口不能从轻量启动合同 `index.ts` 重导出，否则会把模型 SDK 和业务 owner 打进 CLI 父宿主。

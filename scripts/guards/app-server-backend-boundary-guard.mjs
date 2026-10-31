@@ -39,8 +39,10 @@ for (const forbidden of [
     throw new Error(`CLI Runtime Host 不得内联 Backend 实现: ${forbidden}`);
   }
 }
-if (!cliRuntime.includes('require("@napi-rs/keyring")')) {
-  throw new Error('CLI Runtime Host 必须 external 加载目标平台 keyring 原生模块');
+for (const bundle of [cliRuntime, backend]) {
+  if (/safeStorage|@napi-rs\/keyring|desktop\.credential_protection/u.test(bundle)) {
+    throw new Error('产品运行时不得包含已退役的系统钥匙串凭据实现');
+  }
 }
 
 console.log('[app-server-backend-boundary-guard] Backend、CLI Host、tiny entry 与 stdout 边界有效。');

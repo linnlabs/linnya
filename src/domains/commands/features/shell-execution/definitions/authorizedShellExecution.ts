@@ -1,5 +1,6 @@
 import type {
   CommandLaunchEnvironmentV1,
+  CommandInternalStorageBoundary,
   CommandExecutionMode,
   CommandLaunchSnapshotV1,
   CommandPermissionSnapshotV1,
@@ -18,6 +19,7 @@ export interface AuthorizedShellExecution {
 }
 
 export interface ShellLaunchRuntimeContext {
+  readonly internalStorage: CommandInternalStorageBoundary;
   readonly shell: CommandResolvedShellV1;
   readonly environment: CommandLaunchEnvironmentV1;
   readonly hardTimeoutMs: number;
@@ -25,6 +27,7 @@ export interface ShellLaunchRuntimeContext {
 
 /** host 同时交付固定默认值和上限；单条命令选择后再收窄为 launch context。 */
 export interface ShellLaunchRuntimePolicyContext {
+  readonly internalStorage: CommandInternalStorageBoundary;
   readonly shell: CommandResolvedShellV1;
   readonly environment: CommandLaunchEnvironmentV1;
   readonly defaultHardTimeoutMs: number;

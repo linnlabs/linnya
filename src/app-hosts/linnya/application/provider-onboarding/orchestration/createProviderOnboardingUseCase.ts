@@ -240,7 +240,7 @@ export function createProviderOnboardingUseCase(
       authMethod === 'api_key' &&
       configuredEndpoints.some(
         endpoint =>
-          endpoint.credential_status === 'missing' || endpoint.credential_status === 'unavailable'
+          endpoint.credential_status === 'missing'
       ) &&
       !command.api_key
     ) {

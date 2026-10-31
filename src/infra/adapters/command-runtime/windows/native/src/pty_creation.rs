@@ -23,6 +23,27 @@ pub(crate) struct SharedPseudoConsole {
     value: Mutex<Option<HPCON>>,
 }
 
+pub(crate) enum OwnedPseudoConsole {
+    Local(SharedPseudoConsole),
+    Isolated(crate::isolated_process::IsolatedPseudoConsole),
+}
+
+impl OwnedPseudoConsole {
+    pub(crate) fn resize(&self, columns: u16, rows: u16) -> NativeResult<()> {
+        match self {
+            Self::Local(console) => console.resize(columns, rows),
+            Self::Isolated(console) => console.resize(columns, rows),
+        }
+    }
+
+    pub(crate) fn close(&self) -> NativeResult<()> {
+        match self {
+            Self::Local(console) => console.close(),
+            Self::Isolated(console) => console.close(),
+        }
+    }
+}
+
 impl SharedPseudoConsole {
     fn new(value: HPCON) -> NativeResult<Self> {
         if value == 0 {
@@ -94,6 +115,7 @@ impl Drop for SharedPseudoConsole {
 }
 
 pub(crate) struct CreatedWindowsPtyResources {
+    pub(crate) isolation: Option<crate::isolated_process::IsolatedWorkerLifetime>,
     // 异常返回时 Rust 按字段声明顺序 drop。必须先用 Job 结束 client，再关闭 parent
     // output/input 端，最后关闭 HPCON；否则旧版 Windows 的 ClosePseudoConsole 可能
     // 等待仍存活或无人排空的 client，令创建失败路径永久卡住。
@@ -102,9 +124,9 @@ pub(crate) struct CreatedWindowsPtyResources {
     pub(crate) thread: OwnedHandle,
     pub(crate) output_reader: OwnedHandle,
     pub(crate) input_writer: OwnedHandle,
-    pub(crate) pseudoconsole: SharedPseudoConsole,
-    pub(crate) conpty_input_reader: OwnedHandle,
-    pub(crate) conpty_output_writer: OwnedHandle,
+    pub(crate) pseudoconsole: OwnedPseudoConsole,
+    pub(crate) conpty_input_reader: Option<OwnedHandle>,
+    pub(crate) conpty_output_writer: Option<OwnedHandle>,
 }
 
 pub(crate) fn validate_pty_size(columns: u16, rows: u16) -> NativeResult<()> {
@@ -206,14 +228,15 @@ pub(crate) fn create_windows_pty_resources(
     }
 
     let resources = CreatedWindowsPtyResources {
+        isolation: None,
         job,
         process: OwnedHandle::from_raw(process_information.hProcess, "pty_process_handle")?,
         thread: OwnedHandle::from_raw(process_information.hThread, "pty_thread_handle")?,
         output_reader: output_pipe.reader,
         input_writer: input_pipe.writer,
-        pseudoconsole,
-        conpty_input_reader: input_pipe.reader,
-        conpty_output_writer: output_pipe.writer,
+        pseudoconsole: OwnedPseudoConsole::Local(pseudoconsole),
+        conpty_input_reader: Some(input_pipe.reader),
+        conpty_output_writer: Some(output_pipe.writer),
     };
     // 先形成字段顺序固定的 owner，再注入 post-create 故障。失败时 job 字段最先 drop，
     // KILL_ON_JOB_CLOSE 会先结束 suspended client，之后 ClosePseudoConsole 才不会在

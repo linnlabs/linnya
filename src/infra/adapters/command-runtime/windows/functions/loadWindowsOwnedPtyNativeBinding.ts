@@ -47,7 +47,7 @@ function callExactByteAcceptanceMethod(
   });
 }
 
-function wrapNativePtyProcess(input: unknown): WindowsOwnedPtyNativeProcess {
+export function wrapNativePtyProcess(input: unknown): WindowsOwnedPtyNativeProcess {
   const processRecord = asWindowsNativeObject(input);
   if (!processRecord) {
     throw new WindowsNativeRuntimeLoadError(

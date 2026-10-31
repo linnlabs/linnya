@@ -34,6 +34,28 @@ afterEach(async () => {
 });
 
 runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
+  it('凭据文件损坏时启动明确报错、保留原件，不泄露文件片段或发布 ready', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-credentials-e2e-'));
+    temporaryRoots.push(root);
+    const workspace = path.join(root, 'workspace');
+    const connectionFile = path.join(root, 'connection.json');
+    const modelCatalog = path.join(root, 'default-models.json');
+    await fs.mkdir(workspace, { recursive: true });
+    await writeFastMockModelCatalog(modelCatalog);
+    const environment = await createRuntimeEnvironment({ connectionFile, modelCatalog });
+    const credentialFile = path.join(root, 'runtime-host', '_dev_electron', 'AIService', 'config', 'credentials.json');
+    const broken = '{"secret":"startup-must-not-log-this",';
+    await fs.mkdir(path.dirname(credentialFile), { recursive: true });
+    await fs.writeFile(credentialFile, broken, { mode: 0o600 });
+    const result = await runCli(['runtime', 'start', '--workspace', workspace,
+      '--qdrant-port', String(await reservePort())], environment);
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain('保留原文件');
+    expect(result.stderr).not.toContain('startup-must-not-log-this');
+    expect(await fs.readFile(credentialFile, 'utf8')).toBe(broken);
+    await expect(fs.stat(connectionFile)).rejects.toMatchObject({ code: 'ENOENT' });
+  }, 30_000);
+
   it('无 Renderer/TTY 的真实 Shell 等待 CLI 决定；接受、拒绝和取消均保留原 run', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-approval-e2e-'));
     temporaryRoots.push(root);

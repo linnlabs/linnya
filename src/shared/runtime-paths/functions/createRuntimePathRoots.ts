@@ -6,6 +6,7 @@ import type { RuntimePathRoots } from '../definitions/runtimePathRoots';
 export function createRuntimePathRoots(input: RuntimePathRoots): RuntimePathRoots {
   requireAbsolute(input.developmentRoot, 'developmentRoot');
   requireAbsolute(input.appDataRoot, 'appDataRoot');
+  if (input.profileRoot !== undefined) requireAbsolute(input.profileRoot, 'profileRoot');
   requireAbsolute(input.workspaceRoot, 'workspaceRoot');
   return Object.freeze({ ...input });
 }

@@ -6,28 +6,20 @@ Catalog 的职责不同：目录描述模型和推理端点，账号描述 OAuth
 
 ## 边界
 
-- OAuth access token、refresh token、ID
-  token、过期时间和供应商账号 ID 只进入本 domain 的加密持久化；
-- AppData `config/provider_accounts.json` 只保存 Desktop
-  Host 系统安全存储产生的密文，文件权限为
-  `0600`，不跟随 Workspace 导出；初始化时通过异步 credential protection
-  port 逐条尝试解入 App Server 内存，无法解密的账号仍保留 metadata 并标记为不可用，
-  不阻断 App Server 启动；推理热路径只读可用内存缓存，不同步跨进程调用 Electron；
-- 新密文由 Desktop 与 CLI 共用的系统 keyring master key 保护；新版 Desktop 在本 domain 的文件事务中
-  重包旧 `safeStorage` 密文，独立 CLI 不复制 Chromium 解密逻辑。尚未迁移或系统 keyring 不可用时保留
-  账号 metadata，并分别投影稳定的不可用原因；
+- OAuth access token、refresh token、ID token、过期时间和供应商账号 ID 进入
+  `provider-accounts` namespace，由 App Server 注入的 `CredentialStoragePort` 持久化；
+- 账号元数据与 token 一次原子提交，和模型、插件共用 profile 下的 `AIService/config/credentials.json`。
+  不依赖系统钥匙串，不迁移旧账号凭据；文件损坏或读取失败保留原件并阻止保存。
+  文件权限和并发规则见[文件凭据存储](../../infra/adapters/credential-storage/file/README.md)；
 - Renderer、Provider Catalog、Model Catalog 和日志只允许看到不含凭据的
   `ProviderAccount`；
-- ProviderAccount 只引用账号型
-  `provider_connection_definition_id`，不引用品牌 ID；当前持久化版本为
-  `2.0.0`，旧 `chatgpt` 身份一次性迁移为 `openai-chatgpt-subscription`
-  后立即写回；
+- ProviderAccount 只引用账号型 `provider_connection_definition_id`，不引用品牌 ID；
 - 模型请求通过窄 credential resolver 引用 account ID，不自行刷新或解析 OAuth
   token；
 - credential resolver 只附加账号身份头；`OpenAI-Beta`
   等协议头由具体请求 profile 拥有，不能随账号凭据传播到模型发现或图片生成；
 - 模型选择工作流只通过窄 `hasCredential(accountId)`
-  port 读取账号当前是否有可用密文凭据；退出登录保留 ConfiguredProvider 和已添加模型，但它们立即变为不可用，重新授权后自动恢复；
+  port 读取账号当前是否有可用凭据；退出登录保留 ConfiguredProvider 和已添加模型，但它们立即变为不可用，重新授权后自动恢复；
 - 浏览器打开、loopback callback、token HTTP
   exchange 属于授权 workflow，不进入 registry。
 
@@ -41,8 +33,8 @@ Linnya 的产品版本只进入 `User-Agent`，不能用于上游模型可见性
 
 授权成功后的模型目录落地不属于本 domain。App-level 授权 workflow 在凭据安全落盘后调用 Provider
 Onboarding 的窄同步端口；同步从上述账户目录注册新模型，原位刷新已存在模型的名称、容量和能力，并通过统一 durable 删除用例退出当前账号已不可见的历史模型，幂等复用同一 ConfiguredProvider、InferenceEndpoint 与 account
-reference。仍可解密的已有凭据在本地启动恢复完成后沿同一用例后台补同步，远端目录不属于 App Server ready 的前置条件；因此进程中断、上游容量变化或历史静态目录数据都无需用户重新登录、也无需手动删除重加；
-若 Desktop 安全存储连续性丢失，账号 metadata 仍保留但状态为 disconnected，必须重新授权后才能恢复同步。
+reference。可用的已有凭据在本地启动恢复完成后沿同一用例后台补同步，远端目录不属于 App Server ready 的前置条件；因此进程中断、上游容量变化或历史静态目录数据都无需用户重新登录、也无需手动删除重加；
+凭据文件无法读取时不能当作登出或删除账号；修复文件并重启后恢复读取。
 
 模型发现接收调用方的取消信号，与自身 HTTP 超时共同约束目录请求。凭据 resolver 的 OAuth refresh 可能被推理
 共享，不能随单个目录请求一起取消；取消发生在共享 refresh 期间时，等待 refresh 收口后立即停止目录请求。

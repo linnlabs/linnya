@@ -40,6 +40,7 @@ export function validateShellCommandInput(value: unknown): ShellCommandInputVali
     ...(parsed.data.cwd === undefined ? {} : { requestedCwd: parsed.data.cwd }),
     interactive: parsed.data.interactive ?? false,
     requiresWriteAccess: parsed.data.requires_write_access ?? false,
+    requiresInternalStorageAccess: parsed.data.requires_internal_storage_access ?? false,
     initialWaitMs: parsed.data.initial_wait_ms ?? SHELL_INITIAL_WAIT_DEFAULT_MS,
     ...(parsed.data.hard_timeout_seconds === undefined
       ? {}

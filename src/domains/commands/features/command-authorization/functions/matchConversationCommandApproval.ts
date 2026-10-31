@@ -9,6 +9,15 @@ import {
 } from '../definitions/simpleCommand';
 import { isSupportedSimpleCommandContext } from './isSupportedSimpleCommandContext';
 import { validateRememberableSimpleCommandPrefix } from './validateRememberableSimpleCommandPrefix';
+import { INTERNAL_STORAGE_AUTHORIZATION_MATCHER_REVISION } from '../definitions/simpleCommand';
+
+function isValidCandidate(candidate: CommandConversationApprovalCandidate): boolean {
+  if (candidate.matching_context.matcher_revision === INTERNAL_STORAGE_AUTHORIZATION_MATCHER_REVISION) {
+    // 这里保存的单项是完整命令，不是可追加的 token 前缀；动态脚本也只能精确复用。
+    return candidate.token_prefix.length === 1 && candidate.token_prefix[0].length > 0;
+  }
+  return validateRememberableSimpleCommandPrefix(candidate.token_prefix).status === 'rememberable';
+}
 
 function hasSameContext(
   left: CommandConversationApprovalCandidate,
@@ -48,13 +57,13 @@ export function matchConversationCommandApproval(params: {
   readonly conversationId: CommandConversationId;
   readonly candidate: CommandConversationApprovalCandidate;
   readonly approvals: readonly ConversationCommandApproval[];
+  readonly cwd?: string;
 }): ConversationCommandApprovalMatch {
   if (!isSupportedSimpleCommandContext(params.candidate.matching_context)) {
     return { status: 'unavailable', reason: 'unsupported_matcher_context' };
   }
   if (
-    validateRememberableSimpleCommandPrefix(params.candidate.token_prefix).status
-      !== 'rememberable'
+    !isValidCandidate(params.candidate)
   ) {
     return { status: 'unavailable', reason: 'invalid_current_candidate' };
   }
@@ -64,14 +73,15 @@ export function matchConversationCommandApproval(params: {
     && hasSameContext(approval.candidate, params.candidate)
   ));
   if (approvalsInCurrentContext.some(
-    approval => validateRememberableSimpleCommandPrefix(
-      approval.candidate.token_prefix,
-    ).status !== 'rememberable',
+    approval => !isValidCandidate(approval.candidate),
   )) {
     return { status: 'unavailable', reason: 'invalid_stored_approval' };
   }
 
   const matches = approvalsInCurrentContext.filter(approval => (
+    (params.candidate.matching_context.matcher_revision !== INTERNAL_STORAGE_AUTHORIZATION_MATCHER_REVISION
+      || approval.approvedCwd === params.cwd)
+    &&
     isTokenPrefix(
       approval.candidate.token_prefix,
       params.candidate.token_prefix,

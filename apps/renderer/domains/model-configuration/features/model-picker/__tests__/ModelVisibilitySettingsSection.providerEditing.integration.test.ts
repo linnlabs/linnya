@@ -94,7 +94,7 @@ function snapshot(overrides: { readonly credentialAvailable?: boolean } = {}): M
         picker_enabled: true,
         credential_available: overrides.credentialAvailable ?? true,
         ...(overrides.credentialAvailable === false
-          ? { credential_unavailable_reason: 'invalidated' as const }
+          ? { credential_unavailable_reason: 'missing' as const }
           : {}),
         models: [materializedModel('openai-gpt')],
       },

@@ -6,7 +6,7 @@ connection 本地配置身份与模型归属的唯一 owner。它回答“用户
 ## 边界
 
 - `ProviderDefinition` 与 `ProviderModelDefinition` 仍属于 `provider-catalog`；
-- `ModelConfig`、`InferenceEndpoint` 与 credential 密文仍属于 `model-catalog`；
+- `ModelConfig`、`InferenceEndpoint` 与 credential 凭据仍属于 `model-catalog`；
 - 本 domain 只保存 `ConfiguredProvider`
   对 ProviderDefinition/ProviderConnectionDefinition 的稳定引用，以及
   `ConfiguredProviderModel` 归属；唯一性按 connection

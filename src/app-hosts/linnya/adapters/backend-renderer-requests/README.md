@@ -17,8 +17,7 @@ AppData 私有 mailbox；大 leaf 独立写入权限收紧的文件，RPC 只携
 `registerCoreBackendRendererRequestHandlers` 已把 Workspace、Agent 配置、Todo、知识库关联、Markdown、
 AudioBlock、BlockHistory、Web Search/Web Read 配置、插件安装/启停/诊断和已启用插件的 `plugin:invoke`
 注册到同一 App Server
-registry。Web 凭据在 App Server ready 前通过 Desktop credential port 解密进内存；读取热路径不跨进程，
-保存时才异步调用系统安全存储。部分纯 Node handler 和初始化器仍位于 `electron-main` 历史目录，这是待按
+registry。Web 设置与凭据由 App Server 的统一文件存储持有，读取和保存均不经过 Desktop 凭据 RPC。部分纯 Node handler 和初始化器仍位于 `electron-main` 历史目录，这是待按
 domain/feature 逐步归位的物理目录债务，不代表它们运行在 Main，也不允许新的 Backend 代码继续放入该目录。
 
 会话文件 `resolve/reveal` 也由 App Server 执行路径准入；`reveal` 在 conversation 删除屏障内通过窄

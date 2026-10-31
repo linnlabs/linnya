@@ -179,7 +179,7 @@ read model，具体菜单层级、图片草稿禁用态和“管理模型…”�
 模型管理的开关层级由来源语义决定：正式 Provider 在详情标题提供总开关，关闭后其模型区域整体不可编辑；每个模型仍有独立开关。自定义模型按 Host 投影的分组名称展示在“自定义模型供应商”下，没有伪造的 Provider 总开关，只提供单模型开关；点击自定义模型主内容打开详情弹窗，编辑与删除复用 Model
 Catalog 的正式流程。正式 Provider 的详情标题在总开关左侧提供删除入口；确认后通过 `removeModelSource` 清理该 Provider 的配置、凭据和已激活模型。connection 的 `credential_kind` 为 `api_key` 时，删除入口左侧另有“更新 API Key”，只单向提交新 Key，由 Host 在原 credential boundary 内替换，模型、可见性与用途绑定不变；账号型和本地运行时不提供该入口。
 
-自定义分组的详情标题提供“编辑供应商”和删除入口。编辑弹窗以 Host 快照预填名称、API 格式与地址，Key 留空表示沿用当前凭据；提交后由 Host 决定保留或新建 endpoint、是否需要重新填写 Key，并原子改绑分组内全部模型，Renderer 随后重读模型目录与选择投影。删除需确认，逐个复用模型删除流程，最后一个模型删除时 Host 自动清理 endpoint 与密文。弹窗只在打开期间挂载，草稿与未提交的 Key 随关闭一并丢弃。Linnya
+自定义分组的详情标题提供“编辑供应商”和删除入口。编辑弹窗以 Host 快照预填名称、API 格式与地址，Key 留空表示沿用当前凭据；提交后由 Host 决定保留或新建 endpoint、是否需要重新填写 Key，并原子改绑分组内全部模型，Renderer 随后重读模型目录与选择投影。删除需确认，逐个复用模型删除流程，最后一个模型删除时 Host 自动清理 endpoint 与凭据。弹窗只在打开期间挂载，草稿与未提交的 Key 随关闭一并丢弃。Linnya
 Cloud 是官方管理的优先来源，客户端不显示 Provider 总开关，也不显示单模型开关；Cloud 模型的上架、下架和可用性由 Cloud
 Model
 Catalog 统一控制。图片生成默认模型也必须由 Cloud Catalog 以 `image_generation` capability 发布，客户端不得把本地环境变量模型改名伪装成 Linnya Cloud。Cloud 与正式 Provider 模型行都不提供详情点击入口。左侧来源导航只负责选择详情，不承载开关或启用数量。
@@ -252,9 +252,9 @@ source 猜正式 Provider；Cloud、正式 Provider、自定义模型和 runtime
 availability 已由 Host 一次投影完成。
 
 当正式 Provider 的本机凭据不可用时，快照会同时返回受控的
-`credential_unavailable_reason`（缺失、系统安全存储暂不可用、密文失效/格式错误或未知错误），Settings
+`credential_unavailable_reason`（凭据缺失），Settings
 以错误色展示具体原因；API-Key 接入以“更新 API Key”为首选恢复操作，同时保留“删除凭据并重新添加”操作。该操作通过 domain-level
-模型删除编排清理 Provider 的已激活模型、孤儿 endpoint 与本机密文，不在 Renderer 直接访问凭据文件。
+模型删除编排清理 Provider 的已激活模型、孤儿 endpoint 与本机凭据，不在 Renderer 直接访问凭据文件。
 
 store 只持有最后一次严格解析后的快照、当前操作和结构化错误。HTTP、更新流程和同步 state
 action 分别位于 infrastructure、orchestration 和 store。新增目录模型不会在 Renderer 生成默认偏好；尚未 materialize 的正式 Provider 模型只服务 Settings 全目录，不进入快捷选择候选。

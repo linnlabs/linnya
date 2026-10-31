@@ -7,6 +7,7 @@ import {
 } from './commandExecution';
 import { CommandApprovalRequestIdSchema } from './commandIdentity';
 import { CommandPermissionSnapshotV1Schema } from './commandPermission';
+import { InternalFileReadProposalV1Schema } from './internalFileReadProposal';
 import {
   SHELL_COMMAND_MAX_LENGTH,
   countShellCommandCharacters,
@@ -47,6 +48,7 @@ const CommandFixedRiskRuleReasonSchema = z.object({
 export const CommandApprovalReasonSchema = z.discriminatedUnion('type', [
   CommandPermissionElevationReasonSchema,
   CommandFixedRiskRuleReasonSchema,
+  z.object({ type: z.literal('internal_storage_access') }).strict(),
 ]);
 export type CommandApprovalReason = z.infer<typeof CommandApprovalReasonSchema>;
 
@@ -108,7 +110,7 @@ const CommandApprovalRequestBaseSchema = z.object({
   protocol_version: z.literal(COMMAND_RUNTIME_PROTOCOL_VERSION),
   kind: z.literal('command_approval_request'),
   approval_request_id: CommandApprovalRequestIdSchema,
-  proposal: ShellCommandProposalV1Schema,
+  proposal: z.union([ShellCommandProposalV1Schema, InternalFileReadProposalV1Schema]),
   reasons: z.array(CommandApprovalReasonSchema).min(1),
   requested_at_ms: z.number().int().nonnegative().safe(),
 });
@@ -134,6 +136,14 @@ export const CommandApprovalRequestV1Schema = z.union([
   OneTimeCommandApprovalRequestSchema,
   RememberableCommandApprovalRequestSchema,
 ]).superRefine((request, context) => {
+  const storageReasons = request.reasons.filter(reason => reason.type === 'internal_storage_access');
+  if (storageReasons.length !== (request.proposal.requests_internal_storage_access ? 1 : 0)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['reasons'],
+      message: 'internal storage access must have exactly its own approval reason',
+    });
+  }
   const elevationReasons = request.reasons.filter(
     reason => reason.type === 'permission_elevation',
   );
@@ -147,6 +157,7 @@ export const CommandApprovalRequestV1Schema = z.union([
   if (
     request.proposal.permission.base_level === 'read_only'
     && elevationReasons.length !== 1
+    && !request.reasons.some(reason => reason.type === 'internal_storage_access')
   ) {
     context.addIssue({
       code: z.ZodIssueCode.custom,

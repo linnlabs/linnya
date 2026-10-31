@@ -1,3 +1,4 @@
+import type { CredentialStoragePort } from '../../../../shared/credential-storage';
 import type { CommandApprovalControlEndpointPort } from '../../../../domains/commands';
 import type { ExternalAuthorizationBrowserPort } from '../../application/provider-account-authorization';
 import type { ConversationExecutionRuntimeFactoryPort } from '../../application/conversation-runtime';
@@ -7,7 +8,6 @@ import type { LaunchOwnedPipeProcess } from '../../../../shared/process-runtime'
 import type {
   BackendRendererIntegrationPort,
   BackendTextMeasurementRuntimeDependencies,
-  DesktopCredentialProtectionPort,
   DesktopHiddenWorkerHostPort,
   DesktopRasterPdfDocumentPort,
 } from '../../desktop-capabilities';
@@ -29,7 +29,7 @@ export interface BackendHostDependencies {
   readonly bootstrap: BackendBootstrapFacts;
   readonly processRuntime: BackendProcessRuntimeDependencies;
   readonly conversationExecutionRuntimeFactory: ConversationExecutionRuntimeFactoryPort;
-  readonly credentialProtection: DesktopCredentialProtectionPort;
+  readonly credentialStorage: CredentialStoragePort;
   readonly hiddenWorkerHost: DesktopHiddenWorkerHostPort;
   readonly textMeasurement: BackendTextMeasurementRuntimeDependencies;
   readonly rendererIntegration: BackendRendererIntegrationPort;

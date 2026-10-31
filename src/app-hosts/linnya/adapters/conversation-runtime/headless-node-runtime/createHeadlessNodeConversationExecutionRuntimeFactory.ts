@@ -1,3 +1,4 @@
+import type { DesktopCommandIsolationSetupPort } from 'src/app-hosts/linnya/desktop-capabilities';
 import path from 'node:path';
 
 import type { CommandPermissionSettingsPort } from 'src/domains/commands';
@@ -22,6 +23,7 @@ export function createHeadlessNodeConversationExecutionRuntimeFactory(input: {
   readonly commandPermissionSettings: CommandPermissionSettingsPort;
   readonly commandApprovalHost: CommandApprovalHostPort;
   readonly commandPresentationHost: CommandExecutionPresentationHostPort;
+  readonly commandIsolationSetup?: DesktopCommandIsolationSetupPort;
 }): ConversationExecutionRuntimeFactoryPort {
   const internalChildEnvironment = createInternalChildEnvironment(
     input.bootstrap.platform,
@@ -33,6 +35,7 @@ export function createHeadlessNodeConversationExecutionRuntimeFactory(input: {
     commandPermissionSettings: input.commandPermissionSettings,
     commandApprovalHost: input.commandApprovalHost,
     commandPresentationHost: input.commandPresentationHost,
+    commandIsolationSetup: input.commandIsolationSetup,
     commandRunnerProcess: createNodeCommandRunnerProcessPort({
       runnerPath: path.join(
         input.bootstrap.mainBundleDirectory,

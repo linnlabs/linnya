@@ -1,6 +1,6 @@
 # Model Request Auth
 
-本目录是 Linnya Host 发起模型 HTTP 请求时的统一认证材料解析边界。它连接 Model Catalog 中的窄 `CredentialReference`、本机密文/环境变量与 Host 管理的 Linnya Cloud 设备身份，但不拥有 Provider 协议、模型目录、发行身份或业务重试。
+本目录是 Linnya Host 发起模型 HTTP 请求时的统一认证材料解析边界。它连接 Model Catalog 中的窄 `CredentialReference`、本机凭据/环境变量与 Host 管理的 Linnya Cloud 设备身份，但不拥有 Provider 协议、模型目录、发行身份或业务重试。
 
 ## 边界
 

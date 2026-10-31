@@ -34,7 +34,17 @@ export const CommandPermissionSnapshotV1Schema = z.object({
   effective_level: CommandPermissionLevelSchema,
   grant_source: CommandPermissionGrantSourceSchema,
   internal_data_access: CommandInternalDataAccessSchema,
+  /** 仅本次操作的原始存储授权；缺省表示未授权，与插件的内部数据开关无关。 */
+  internal_storage_access: z.boolean().optional(),
 }).strict().superRefine((snapshot, context) => {
+  if (snapshot.internal_storage_access && snapshot.grant_source === 'global_setting'
+    && snapshot.base_level !== 'full_access') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['internal_storage_access'],
+      message: 'internal storage access requires an explicit approval or full access',
+    });
+  }
   if (
     snapshot.grant_source === 'global_setting'
     && snapshot.base_level !== snapshot.effective_level
@@ -49,14 +59,17 @@ export const CommandPermissionSnapshotV1Schema = z.object({
   if (
     snapshot.grant_source !== 'global_setting'
     && !(
-      snapshot.effective_level === 'standard'
+      (snapshot.effective_level === 'standard'
+        || (snapshot.base_level === 'read_only'
+          && snapshot.effective_level === 'read_only'
+          && snapshot.internal_storage_access === true))
       && (snapshot.base_level === 'read_only' || snapshot.base_level === 'standard')
     )
   ) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['effective_level'],
-      message: 'an approval can only grant the standard permission level',
+      message: 'an approval may grant standard access or keep read-only for internal storage access',
     });
   }
 });

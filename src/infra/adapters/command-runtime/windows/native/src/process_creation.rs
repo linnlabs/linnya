@@ -179,10 +179,11 @@ pub(crate) fn create_job() -> NativeResult<OwnedHandle> {
 }
 
 pub(crate) struct CreatedWindowsProcessResources {
+    pub(crate) isolation: Option<crate::isolated_process::IsolatedWorkerLifetime>,
     pub(crate) job: OwnedHandle,
     pub(crate) process: OwnedHandle,
     pub(crate) thread: OwnedHandle,
-    pub(crate) stdin_writer: OwnedHandle,
+    pub(crate) stdin_writer: Option<OwnedHandle>,
     pub(crate) stdout_reader: OwnedHandle,
     pub(crate) stderr_reader: OwnedHandle,
 }
@@ -261,10 +262,11 @@ pub(crate) fn create_windows_process_resources(
     fault_injection.check("process_after_create")?;
 
     Ok(CreatedWindowsProcessResources {
+        isolation: None,
         job,
         process,
         thread,
-        stdin_writer: stdin_pipe.writer,
+        stdin_writer: Some(stdin_pipe.writer),
         stdout_reader: stdout_pipe.reader,
         stderr_reader: stderr_pipe.reader,
     })

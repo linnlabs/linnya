@@ -8,6 +8,8 @@ export interface RuntimePathRoots {
   readonly developmentRoot: string;
   /** 不随 Workspace 迁移的应用私有数据根。 */
   readonly appDataRoot: string;
+  /** 应用 profile；App Server 与需要模型凭据的 Worker 必须提供。 */
+  readonly profileRoot?: string;
   /** 整套数据工作区的物理根，可包含多个 Project；不是项目 ID、VFS path 或会话 cwd。 */
   readonly workspaceRoot: string;
   /** Workspace 根是否来自用户或环境显式覆盖。 */

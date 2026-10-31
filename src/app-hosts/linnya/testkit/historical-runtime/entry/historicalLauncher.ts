@@ -1,7 +1,6 @@
 import path from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { runCliRuntimeHost } from '../../../cli-runtime/orchestration/runCliRuntimeHost';
-import { createSystemCredentialProtectionPort } from 'src/infra/adapters/credential-protection/system-keyring';
 
 // 开发入口只监督正式 Backend，不实现自己的 Agent loop 或协议。
 async function main(): Promise<void> {
@@ -27,15 +26,10 @@ async function main(): Promise<void> {
   mkdirSync(workspaceRoot, { recursive: false });
   const pluginRoot = path.join(outputRoot, `empty-plugins-${path.basename(workspaceRoot)}`);
   mkdirSync(pluginRoot, { recursive: false });
-  const repositoryRoot = process.cwd();
   const developmentRoot = path.join(outputRoot, 'host-root');
   await runCliRuntimeHost({
     developmentRoot,
     mainBundleDirectory: path.join(developmentRoot, 'dist', 'main'),
-    credentialProtection: createSystemCredentialProtectionPort({
-      vaultId: path.join(repositoryRoot, '_dev_data'),
-      allowMasterKeyCreation: false,
-    }),
     applicationVersion: '0.0.38',
     workspaceRootOverride: workspaceRoot,
     apiPort: 0,

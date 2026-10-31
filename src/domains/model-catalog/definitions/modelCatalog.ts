@@ -1,3 +1,4 @@
+import type { CredentialStoragePort } from 'src/shared/credential-storage';
 import type { CustomApiGroup, CustomApiGroupMigration } from './customApiGroup';
 import type { ModelReasoningResolver } from './modelReasoningResolver';
 /**
@@ -23,7 +24,6 @@ import type {
   InferenceEndpointSelection,
   InferenceEndpointView,
   EndpointCredentialStatus,
-  EndpointCredentialCodec,
 } from './inferenceEndpoint';
 
 export type {
@@ -253,15 +253,13 @@ export interface ModelCatalog {
   /** 返回不含明文的 credential identity，供 Host auth boundary 选择凭据 owner。 */
   getCredentialReference(modelId: string): CredentialReference | undefined;
 
-  /** 不解密，只报告当前进程能否解析该模型的凭据引用。 */
+  /** 只报告当前进程能否解析该模型的凭据引用。 */
   hasCredential(modelId: string): boolean;
-  /** 钥匙串授权完成后补上此前暂时不可用的凭据。 */
-  retryUnavailableCredentials(): Promise<{ recovered: boolean; pending: boolean }>;
 
-  /** 返回本机凭据的可用性及受控的系统安全存储错误分类。 */
+  /** 返回本机凭据的可用性；文件错误必须传播。 */
   getCredentialStatus(modelId: string): EndpointCredentialStatus | 'missing';
 
-  /** 返回不含密文和明文的内部推理 endpoint read model。 */
+  /** 返回不含凭据和明文的内部推理 endpoint read model。 */
   getInferenceEndpoints(): InferenceEndpointView[];
 
   /** 独立自定义分组连接归属；没有模型时仍保留。 */
@@ -290,8 +288,8 @@ export interface ModelCatalog {
     expectedRevision: number
   ): Promise<void>;
 
-  /** 安装由 App composition 通过 Desktop Host capability 提供的系统安全存储 codec。 */
-  installEndpointCredentialCodec(codec: EndpointCredentialCodec): void;
+  /** 安装由 App Server composition 提供的统一文件凭据 port。 */
+  installEndpointCredentialStorage(storage: CredentialStoragePort): void;
 
   /** 必须在 initialize 前安装；Catalog 不直接依赖 SDK 或 Host。 */
   installModelReasoningResolver(resolver: ModelReasoningResolver): void;
@@ -310,7 +308,7 @@ export interface ModelCatalog {
   /**
    * 原子更新一组已有用户模型，并把它们改绑到同一个新建或已有的内部推理 endpoint。
    *
-   * 不再被任何模型引用的旧 endpoint 与其独占密文在同一事务中清理；写盘失败时撤销本次凭据变更。
+   * 不再被任何模型引用的旧 endpoint 与其独占凭据在同一事务中清理；写盘失败时撤销本次凭据变更。
    */
   rebindUserModels(
     models: readonly ModelConfig[],

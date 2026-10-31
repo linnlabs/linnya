@@ -122,6 +122,7 @@ function createLaunch(input: {
     protocol_version: 1,
     kind: 'pipe_command_launch_snapshot',
     conversation_root: input.executionRoot,
+    internal_storage: { protected_roots: [input.executionRoot + '/.private'], readable_roots: [] },
     proposal: {
       protocol_version: 1,
       kind: 'shell_command_proposal',

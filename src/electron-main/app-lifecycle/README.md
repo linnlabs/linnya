@@ -31,3 +31,6 @@ Main 的 event-loop 响应性 monitor 同样由 App owner 创建和停止。它�
 源码开发按工作目录隔离 Electron profile，Main 在锁之前配置 `_dev_electron`，业务 `_dev_data` 保持原位。
 Desktop 通过 bootstrap 一次传入当前 Renderer origin 和 API/Qdrant 动态端口请求；Backend 不自行读取
 Vite 环境或猜默认地址。详见[并行开发](../../../docs/development/env-local.md)。
+
+Backend ready 之前的启动失败由 Main 显示错误对话框，再走同一启动失败收口。
+凭据文件损坏等可修复错误不能只记日志后静默退出；文件适配器仅提供不含凭据内容的错误消息。

@@ -1,4 +1,7 @@
+import type { DesktopCommandIsolationSetupPort } from 'src/app-hosts/linnya/desktop-capabilities';
 import type Database from 'better-sqlite3';
+import type { CommandInternalStorageBoundary } from '@app/schemas/commands';
+import { createNodeInternalStoragePathPolicy, createInternalStorageFileAccessPort } from 'src/app-hosts/linnya/adapters/internal-storage-protection';
 import { SQLiteEventStore } from 'src/app-hosts/linnya/adapters/persistence/event-store';
 
 import { ToolOutputBlobSourceSchema } from 'src/tools/tool_output';
@@ -35,6 +38,7 @@ import type {
 import type { CommandProductionScope } from '../definitions/commandProductionScope';
 import type { CommandRuntimeFacts } from '../definitions/commandRuntimeFacts';
 import { validateCommandConstructionPolicy } from '../functions/validateCommandConstructionPolicy';
+import { readCredentialEnvironmentVariableNames } from '../functions/readCredentialEnvironmentVariableNames';
 import { getLogger } from 'src/shared/logger';
 import type {
   BackendPluginCliRegistration,
@@ -61,8 +65,10 @@ export async function createCommandProductionScope(input: {
   readonly approvalHost: CommandApprovalHostPort;
   readonly commandExecutionAudit: CommandExecutionAuditPort;
   readonly presentationHost: CommandExecutionPresentationHostPort;
+  readonly commandIsolationSetup?: DesktopCommandIsolationSetupPort;
   readonly constructionPolicy: CommandConstructionPolicy;
   readonly runtimeFacts: CommandRuntimeFacts;
+  readonly internalStorage: CommandInternalStorageBoundary;
   readonly runnerProcess: CommandRunnerProcessPort;
   readonly artifactStorageRoot: string;
   resolveToolOutputBlobsDirectory(scope: {
@@ -127,6 +133,7 @@ export async function createCommandProductionScope(input: {
     launchRuntimeContext: {
       shell: input.runtimeFacts.shell,
       environment: input.runtimeFacts.environment,
+      internalStorage: input.internalStorage,
       defaultHardTimeoutMs: constructionPolicy.defaultHardTimeoutMs,
       maximumHardTimeoutMs: constructionPolicy.maximumHardTimeoutMs,
     },
@@ -160,10 +167,26 @@ export async function createCommandProductionScope(input: {
   });
   const agentRunLifecycle = createCommandAgentRunLifecycle(owner);
   const approvals = new SqliteConversationCommandApprovalPort(input.db);
+  const internalStoragePathPolicy = createNodeInternalStoragePathPolicy(input.internalStorage);
+  const internalStorageFileAccess = createInternalStorageFileAccessPort({
+    policy: internalStoragePathPolicy,
+    conversationAdmission: input.conversationAdmission,
+    platform: input.runtimeFacts.shell.platform,
+    approvals,
+    approval: input.approvalHost,
+    readOwnerGenerationId: () => {
+      const snapshot = owner.readActivitySnapshot();
+      if (snapshot.lifecycle !== 'active') throw new Error('文件访问的运行 owner 已结束');
+      return snapshot.generationId;
+    },
+  });
   const shellToolRuntime = createShellToolRuntime({
+    commandIsolationSetup: input.commandIsolationSetup,
+    readCredentialEnvironmentVariableNames,
     backend,
     conversationAdmission: input.conversationAdmission,
     workingDirectoryFileSystem: createNodeShellWorkingDirectoryFileSystemPort(),
+    internalStoragePathPolicy,
     approvals,
     approval: input.approvalHost,
     audit: commandExecutionAudit,
@@ -204,6 +227,7 @@ export async function createCommandProductionScope(input: {
 
   return Object.freeze({
     shellToolRuntime,
+    internalStorageFileAccess,
     agentRunLifecycle,
     conversationCleanupCommands: owner,
     conversationApprovalDeletion: approvals,

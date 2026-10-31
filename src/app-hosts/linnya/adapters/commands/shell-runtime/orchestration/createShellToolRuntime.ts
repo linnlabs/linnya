@@ -1,3 +1,4 @@
+import type { DesktopCommandIsolationSetupPort } from 'src/app-hosts/linnya/desktop-capabilities';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -53,6 +54,7 @@ import {
   projectShellToolTerminal,
 } from '../functions';
 import { withShellWorkingDirectoryAdmission } from './withShellWorkingDirectoryAdmission';
+import { resolveShellCredentialEnvironment, type InternalStoragePathPolicy } from 'src/app-hosts/linnya/adapters/internal-storage-protection';
 
 const INITIAL_OUTPUT_CURSOR = ProcessOutputCursorSchema.parse(0);
 const PROCESS_INPUT_ENCODER = new TextEncoder();
@@ -146,9 +148,12 @@ function projectProcessActionAuditSummary(
 }
 
 export interface ShellToolRuntimeDependencies {
+  readonly commandIsolationSetup?: DesktopCommandIsolationSetupPort;
   readonly backend: ShellCommandRuntimeBackend;
   readonly conversationAdmission: ConversationWorkDirectoryAdmissionPort;
   readonly workingDirectoryFileSystem: ShellWorkingDirectoryFileSystemPort;
+  readonly internalStoragePathPolicy: InternalStoragePathPolicy;
+  readonly readCredentialEnvironmentVariableNames: () => readonly string[];
   readonly approvals: ConversationCommandApprovalPort;
   readonly approval: CommandApprovalPort;
   readonly audit: CommandExecutionAuditPort;
@@ -222,7 +227,15 @@ export function createShellToolRuntime(
         },
         conversationAdmission: dependencies.conversationAdmission,
         fileSystem: dependencies.workingDirectoryFileSystem,
-        admitted(directory) {
+        async admitted(directory) {
+          const requestsInternalStorage = runPermissionSnapshot.permission_level !== 'full_access'
+            && (validated.input.requiresInternalStorageAccess
+              || await dependencies.internalStoragePathPolicy.commandRequestsAccess({
+                command: validated.input.command,
+                cwd: directory.workingDirectory.canonicalPath,
+                conversationRoot: directory.workingDirectory.canonicalConversationRoot,
+                context: { platform: runtimeContext.shell.platform, shellSemanticsId: runtimeContext.shell.shell_semantics_id },
+              }));
           const identity = CommandExecutionIdentitySchema.parse({
             conversation_id: request.conversationId,
             agent_run_id: request.agentRunId,
@@ -240,6 +253,7 @@ export function createShellToolRuntime(
             kind: 'shell_command_proposal',
             identity,
             command: validated.input.command,
+            requests_internal_storage_access: requestsInternalStorage,
             cwd: directory.workingDirectory.canonicalPath,
             permission,
           });
@@ -408,28 +422,53 @@ export function createShellToolRuntime(
         : rejectedShell('audit_unavailable', 'The command rejection audit record is unavailable.');
     };
 
-    if (request.abortSignal?.aborted) {
+    const rejectWithdrawnApproval = async (
+      input: Parameters<typeof rejectAuthorizedExecution>[0],
+    ): Promise<ShellToolRuntimeResult> => {
       if (authorization.persistedApproval?.created) {
         try {
-          await dependencies.approvals.revoke(
-            authorization.persistedApproval.approvalRequestId,
-          );
+          await dependencies.approvals.revoke(authorization.persistedApproval.approvalRequestId);
         } catch {
           releaseReservation();
           return rejectAuthorizedExecution({
-            reason: 'approval_revoke_failed',
-            resourceState: 'not_acquired',
-            code: 'permission_unavailable',
-            observation: 'The cancelled approval could not be revoked.',
+            reason: 'approval_revoke_failed', resourceState: 'not_acquired',
+            code: 'permission_unavailable', observation: 'The cancelled approval could not be revoked.',
           });
         }
       }
       releaseReservation();
-      return rejectAuthorizedExecution({
+      return rejectAuthorizedExecution(input);
+    };
+
+    let setupFailure: 'cancelled' | 'failed' | undefined;
+    if (runtimeContext.shell.platform === 'windows'
+      && authorization.permission.effective_level !== 'full_access'
+      && dependencies.commandIsolationSetup
+      && !request.abortSignal?.aborted) {
+      try {
+        const setup = await dependencies.commandIsolationSetup.ensureReady();
+        if (setup !== 'ready') setupFailure = 'cancelled';
+      } catch {
+        setupFailure = 'failed';
+      }
+    }
+
+    if (request.abortSignal?.aborted) {
+      return rejectWithdrawnApproval({
         reason: 'request_cancelled',
         resourceState: 'not_acquired',
         code: 'approval_denied',
         observation: 'The command request was cancelled.',
+      });
+    }
+
+    if (setupFailure) {
+      return rejectWithdrawnApproval({
+        reason: 'runtime_preparation_failed', resourceState: 'not_acquired',
+        code: 'runtime_unavailable',
+        observation: setupFailure === 'cancelled'
+          ? 'Windows safe command setup was cancelled. The command was not started.'
+          : 'Windows safe command setup failed. The command was not started.',
       });
     }
 
@@ -441,7 +480,13 @@ export function createShellToolRuntime(
       },
       runtime: {
         shell: runtimeContext.shell,
-        environment: runtimeContext.environment,
+        environment: resolveShellCredentialEnvironment({
+          environment: runtimeContext.environment,
+          permission: authorization.permission,
+          credentialVariableNames: dependencies.readCredentialEnvironmentVariableNames(),
+          platform: runtimeContext.shell.platform,
+        }),
+        internalStorage: runtimeContext.internalStorage,
         hardTimeoutMs: hardTimeout.hardTimeoutMs,
       },
       mode: mode === 'pipe'
@@ -487,23 +532,7 @@ export function createShellToolRuntime(
       });
     }
     if (started.status === 'rejected') {
-      if (authorization.persistedApproval?.created) {
-        try {
-          await dependencies.approvals.revoke(
-            authorization.persistedApproval.approvalRequestId,
-          );
-        } catch {
-          releaseReservation();
-          return rejectAuthorizedExecution({
-            reason: 'approval_revoke_failed',
-            resourceState: 'not_acquired',
-            code: 'permission_unavailable',
-            observation: 'The cancelled approval could not be revoked.',
-          });
-        }
-      }
-      releaseReservation();
-      return rejectAuthorizedExecution({
+      return rejectWithdrawnApproval({
         reason: 'owner_rejected',
         resourceState: 'not_acquired',
         code: 'capacity_unavailable',

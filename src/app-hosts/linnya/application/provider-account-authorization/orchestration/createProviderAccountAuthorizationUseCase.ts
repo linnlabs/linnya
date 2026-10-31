@@ -89,7 +89,7 @@ export function createProviderAccountAuthorizationUseCase(
           } catch {
             throw new ProviderAccountAuthorizationError(
               'provider_account.credential_persistence_failed',
-              'ChatGPT 已授权，但本机安全存储失败',
+              'ChatGPT 已授权，但凭据保存失败',
               500
             );
           }

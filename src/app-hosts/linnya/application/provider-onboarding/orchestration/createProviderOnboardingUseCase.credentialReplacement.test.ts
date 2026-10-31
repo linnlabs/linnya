@@ -139,14 +139,14 @@ describe('createProviderOnboardingUseCase.replaceDirectProviderCredential', () =
     expect(storage.catalog.replaceInferenceEndpointCredential).not.toHaveBeenCalled();
   });
 
-  it('密文写入失败时返回稳定错误码，不暴露底层异常', async () => {
+  it('凭据写入失败时返回稳定错误码，不暴露底层异常', async () => {
     const { storage, useCase } = setup();
     await useCase.configureDirectProvider({
       provider_connection_definition_id: API_KEY_CONNECTION.id,
       api_key: 'original-secret',
     });
     storage.catalog.replaceInferenceEndpointCredential.mockRejectedValueOnce(
-      new Error('keyring unavailable')
+      new Error('credential storage unavailable')
     );
 
     await expect(

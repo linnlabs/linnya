@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import { createFileCredentialStorage } from 'src/infra/adapters/credential-storage/file/createFileCredentialStorage';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,7 +11,6 @@ const paths = vi.hoisted(() => ({ directory: '' }));
 vi.mock('src/shared/utils/pathManager', () => ({
   pathManager: {
     getUserModelsConfigPath: async () => `${paths.directory}/user_models.json`,
-    getEndpointCredentialsConfigPath: () => `${paths.directory}/endpoint_credentials.json`,
   },
 }));
 
@@ -74,6 +74,7 @@ describe('Host SDK 能力装配', () => {
 
     const { ModelCatalogRegistry } = await import('src/domains/model-catalog');
     const catalog = ModelCatalogRegistry.getInstance();
+    catalog.installEndpointCredentialStorage(createFileCredentialStorage(path.join(paths.directory, 'credentials.json')));
     catalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
     await catalog.initialize(createSourceDistributionIdentity());
 
@@ -86,7 +87,7 @@ describe('Host SDK 能力装配', () => {
         default_effort: 'medium',
       },
     });
-    // 能力查询只重建运行时投影，不改用户文件和连接身份，也不需要解密凭据。
+    // 能力查询只重建运行时投影，不改用户文件和连接身份，也不需要模型凭据。
     expect(await fs.readFile(file, 'utf8')).toBe(stored);
     expect(catalog.getCustomApiGroups()).toEqual([
       { name: 'Relay', inference_endpoint_ids: ['existing-endpoint'] },

@@ -37,6 +37,8 @@ POST /api/v1/conversation-control/commands
 ## 连接描述生命周期
 
 默认文件为 `~/.linnya/runtime/conversation-control-v1.json`，可用 `LINNYA_CLI_CONNECTION_FILE` 为测试或多实例场景覆盖。
+覆盖文件须位于专用运行目录。内部存储边界保护整个连接目录，使原子替换的新文件也继承权限；
+不能只保护即将被替换的旧文件对象。
 源码开发 Desktop 会在未显式覆盖时选择当前 profile 下的 `runtime/conversation-control-v1.json`，
 防止多个 worktree 覆盖全局连接。外部 CLI 使用同一环境变量选择目标实例，详见[开发配置](../../../../../docs/development/env-local.md)。
 

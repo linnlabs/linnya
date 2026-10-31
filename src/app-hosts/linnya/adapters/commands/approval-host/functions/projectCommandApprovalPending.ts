@@ -17,7 +17,9 @@ export function projectCommandApprovalPending(input: {
     agent_run_id: input.request.proposal.identity.agent_run_id,
     origin_tool_call_id: input.request.proposal.identity.origin_tool_call_id,
     command_execution_id: input.request.proposal.identity.command_execution_id,
-    command: input.request.proposal.command,
+    command: input.request.proposal.kind === 'shell_command_proposal'
+      ? input.request.proposal.command
+      : `read_file ${JSON.stringify(input.request.proposal.file_path)}`,
     cwd: input.request.proposal.cwd,
     reasons: input.request.reasons,
     available_choices: input.request.available_choices,

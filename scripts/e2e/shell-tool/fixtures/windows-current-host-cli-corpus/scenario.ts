@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import { verifyWindowsInternalStorage } from './internal-storage';
+import { activateDesiredBackendPluginClis, deactivateStaleBackendPluginClis } from '../../../../../src/app-hosts/linnya/plugin-registry/pluginCliInvocationRuntime';
+import type { BackendPluginCliRegistration } from '../../../../../src/app-hosts/linnya/plugin-registry/registry';
 import path from 'node:path';
 import { promises as fsp } from 'node:fs';
 
 import { app } from 'electron';
+import { createElectronCommandRunnerProcessPort } from '../../../../../src/electron-main/commands/runner-runtime';
 import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/adapters/local-process-runtime/production-runtime';
 import {
   CommandAgentRunIdSchema,
@@ -43,6 +47,7 @@ const ENVIRONMENT_REVISION = 'windows-current-host-cli-corpus-v1';
 const MISSING_COMMAND = 'linnya_missing_cli_7b972af6';
 
 const CORPUS: readonly CorpusCase[] = Object.freeze([
+  { id: 'plugin-bridge', command: 'linnya-platform inspect "中文参数 空格"; exit $LASTEXITCODE', expectedExitCode: 0, stdoutIncludes: ['PLUGIN_BRIDGE_OK'], stderrIncludes: [] },
   {
     id: 'app-owner-environment',
     command: [
@@ -207,20 +212,13 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
   installProductionE2eRuntimePathRoots({ runRoot: input.runRoot, appDataRoot });
   await fsp.mkdir(appDataRoot, { recursive: true });
   const databaseService = new DatabaseService(path.join(input.runRoot, 'workspace.sqlite'));
-  databaseService.initialize({ lifecycleBootstrap: bootstrapBuiltinPluginLifecycle });
+  databaseService.initialize({ lifecycleBootstrap: db => bootstrapBuiltinPluginLifecycle(db, app.getVersion()) });
   const db = databaseService.getDb();
   const eventStore = new SQLiteEventStore(db);
   const lifecycle = createConversationRouteLifecycle({ db, eventStore, storageRoot: appDataRoot });
   const audit = createCollectingCommandExecutionAuditPort();
   const environment = input.commandHostProcessEnvironment;
-  const commandScope = await createElectronCommandProductionScope({
-    // 此场景只验证宿主命令，不注册插件 CLI。
-    resolvePluginCli: () => undefined,
-    db,
-    conversationAdmission: lifecycle.workDirectoryAdmission,
-    approvalHost: createCommandApprovalHost(),
-    commandExecutionAudit: audit,
-    runtimeFacts: resolveCommandRuntimeFacts({
+  const runtimeFacts = resolveCommandRuntimeFacts({
       platform: process.platform,
       environment: environment.entries,
       revision: ENVIRONMENT_REVISION,
@@ -234,10 +232,51 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
         packaged: false,
         hostEnvironment: environment.entries,
       }),
-    }),
+    });
+  const runnerProcess = createElectronCommandRunnerProcessPort({
+    runnerPath: path.join(__dirname, 'commands', 'commandRunnerUtilityProcess.cjs'),
+    helperEnvironment: {},
+    platformRuntime: runtimeFacts.platformRuntime,
+  });
+  const approvalHost = createCommandApprovalHost();
+  const registration: BackendPluginCliRegistration = {
+    pluginId: 'platform',
+    cli: {
+      prepare({ argv }) {
+        assert.deepEqual(argv, ['inspect', '中文参数 空格']);
+        return { status: 'ready', plan: {
+          access: { internalDataAccess: 'required', conversationFiles: 'none', externalFiles: 'denied', network: 'denied', guiControl: 'denied', localIpcControl: 'denied' },
+          async execute(context) {
+            assert.equal(context.conversationId, CONVERSATION_ID);
+            return { exitCode: 0, stdout: 'PLUGIN_BRIDGE_OK', stderr: '' };
+          },
+        } };
+      },
+    },
+  };
+  activateDesiredBackendPluginClis([registration]);
+  const commandScope = await createElectronCommandProductionScope({
+    resolvePluginCli: pluginId => pluginId === registration.pluginId ? registration : undefined,
+    db,
+    conversationAdmission: lifecycle.workDirectoryAdmission,
+    approvalHost,
+    commandExecutionAudit: audit,
+    runtimeFacts,
+    runnerProcess: {
+      fork(handlers) {
+        return runnerProcess.fork({
+          ...handlers,
+          onDiagnostic(bytes) {
+            process.stderr.write(bytes);
+            handlers.onDiagnostic(bytes);
+          },
+        });
+      },
+    },
     helperEnvironment: {},
     runnerPath: path.join(__dirname, 'commands', 'commandRunnerUtilityProcess.cjs'),
     artifactStorageRoot: artifactRoot,
+    internalStorage: { protected_roots: [appDataRoot], readable_roots: [] },
     resolveToolOutputBlobsDirectory: ({ conversationId, instanceId }) => (
       path.join(appDataRoot, 'ToolOutputBlobs', conversationId, instanceId)
     ),
@@ -271,7 +310,7 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
       });
       assert.equal(result.status, 'completed', `${corpusCase.id} must complete`);
       if (result.status !== 'completed') throw new Error(`${corpusCase.id} did not complete`);
-      assert.equal(result.terminal.outcome, 'exited', corpusCase.id);
+      assert.equal(result.terminal.outcome, 'exited', `${corpusCase.id}: ${JSON.stringify(result)}`);
       if (result.terminal.outcome !== 'exited') throw new Error(`${corpusCase.id} did not exit`);
       assert.equal(result.terminal.exitCode, corpusCase.expectedExitCode, corpusCase.id);
       const raw = await readRawOutput({ artifactRoot, originToolCallId });
@@ -296,6 +335,9 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
 
     assert.equal(audit.read().filter(event => event.kind === 'execution_started').length, CORPUS.length);
     assert.equal(audit.read().filter(event => event.kind === 'execution_terminal').length, CORPUS.length);
+    const internalStorage = await verifyWindowsInternalStorage({
+      scope: commandScope, approvalHost, conversationId: CONVERSATION_ID, appDataRoot,
+    });
     const agentRunEndBarrier = await commandScope.agentRunLifecycle.endAgentRun({
       conversationId: CONVERSATION_ID,
       agentRunId: AGENT_RUN_ID,
@@ -313,9 +355,11 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
       windowsNativeJobRuntimeConfigured: true,
       pythonAliasExecuted: false,
       cases: results,
+      internalStorage,
     };
   } finally {
     await commandScope.endOwnerAndWait();
+    await deactivateStaleBackendPluginClis([]);
     databaseService.close();
   }
 }

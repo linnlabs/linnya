@@ -76,6 +76,7 @@ export interface ToolContext extends ToolExecutionContext {
   toolResultAssetClaims?: import('../domains/assets/features/tool-result-claims').ToolResultAssetClaimRegistryPort;
   /** Host 注入的普通物理文件读取端口；read_file 不直接访问 Node 文件系统。 */
   physicalFileReader?: import('../app-hosts/linnya/application/file-read').PhysicalFileReaderPort;
+  internalStorageFileAccess?: import('../app-hosts/linnya/adapters/internal-storage-protection').InternalStorageFileAccessPort;
 
   /** 根 run 启动时冻结；child run 继承，工具执行期间禁止重新读取全局设置。 */
   commandRunPermission?: import('../domains/commands/features/permission-settings').CommandRunPermissionContext;

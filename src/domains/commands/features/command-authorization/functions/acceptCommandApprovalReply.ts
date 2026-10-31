@@ -38,6 +38,8 @@ export function acceptCommandApprovalReply(
   const permission = resolveApprovedCommandPermission({
     current: request.proposal.permission,
     source,
+    internalStorageAccess: request.reasons.some(reason => reason.type === 'internal_storage_access'),
+    elevateToStandard: request.reasons.some(reason => reason.type === 'permission_elevation'),
   });
   if (permission.status === 'rejected') {
     return { status: 'rejected', code: 'permission_not_approvable' };
@@ -54,9 +56,6 @@ export function acceptCommandApprovalReply(
   }
 
   if (!request.conversation_candidate) {
-    return { status: 'rejected', code: 'choice_not_available' };
-  }
-  if (request.proposal.kind !== 'shell_command_proposal') {
     return { status: 'rejected', code: 'choice_not_available' };
   }
   return {

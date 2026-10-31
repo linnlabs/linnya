@@ -1,3 +1,4 @@
+import type { CredentialStoragePort } from '../../../../../shared/credential-storage';
 import { registerProjectHandlers } from 'src/electron-main/ipc/handlers/projects/project-ipc';
 import { createProjectLifecycle } from 'src/domains/projects';
 import type { BackendRuntimeOwner } from '../../../backend-runtime/orchestration/backendRuntimeOwner';
@@ -27,7 +28,6 @@ import { createBackendRendererIpcStyleRegistrar } from './createBackendRendererI
 import { registerDocumentHistoryRequests } from './registerDocumentHistoryRequests';
 import type {
   BackendRendererIntegrationPort,
-  DesktopCredentialProtectionPort,
   DesktopFileRevealPort,
 } from '../../../desktop-capabilities';
 import type { DistributionIdentity } from 'src/shared/distribution-identity';
@@ -39,7 +39,7 @@ import type { DistributionIdentity } from 'src/shared/distribution-identity';
 export async function registerCoreBackendRendererRequestHandlers(input: {
   readonly runtimeOwner: BackendRuntimeOwner;
   readonly registry: BackendRendererRequestRegistryPort;
-  readonly credentialProtection: DesktopCredentialProtectionPort;
+  readonly credentialStorage: CredentialStoragePort;
   readonly rendererIntegration: BackendRendererIntegrationPort;
   readonly applicationVersion: string;
   readonly packaged: boolean;
@@ -62,10 +62,10 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   registerAudioBlockHandlers(input.runtimeOwner, ipc);
   registerBlockHistoryHandlers(input.runtimeOwner, ipc);
   await registerWebSearchConfigHandlers(ipc, {
-    credentialProtection: input.credentialProtection,
+    credentialStorage: input.credentialStorage,
   });
   await registerWebReadConfigHandlers(ipc, {
-    credentialProtection: input.credentialProtection,
+    credentialStorage: input.credentialStorage,
   });
   registerConversationFileLinkHandlers({ ipc, fileReveal: input.fileReveal });
 

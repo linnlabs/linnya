@@ -12,6 +12,7 @@ import { resolveWorkerQdrantUrl } from '../functions/resolveWorkerQdrantUrl';
  */
 
 import { parentPort, workerData } from 'worker_threads';
+import { initializeWorkerModelServices } from '../../../app-hosts/linnya/backend-runtime/workerModelServices';
 import { IngestionJobPayload } from '../jobs';
 import {
   IngestionStateMachineManager,
@@ -50,7 +51,6 @@ import type { IngestionStateMachineRepositories } from '../../../features/knowle
 import {
   createDefaultHostInferencePort,
   createEmbeddingPort,
-  createLinnyaModelReasoningResolver,
   createTextGenerationPort,
 } from '../../../app-hosts/linnya/adapters/inference';
 import type { EmbeddingPort } from '../../../domains/model-inference';
@@ -60,7 +60,6 @@ if (parentPort) {
   const diagnosticPort = parentPort;
   enableDiagnosticLogForwarding(envelope => diagnosticPort.postMessage(envelope));
 }
-console.log(`[IngestionWorker] 📋 Worker received data:`, JSON.stringify(workerData, null, 2));
 
 const logger = new Logger('IngestionWorker');
 
@@ -91,14 +90,14 @@ function immediateWorkerDiagnostics() {
 // 立即运行诊断
 immediateWorkerDiagnostics();
 
-function installWorkerRuntimePathRoots(): void {
+function installWorkerRuntimePathRoots(): RuntimePathRoots {
   const runtimePathRoots = (
     workerData as { readonly runtimePathRoots?: RuntimePathRoots } | undefined
   )?.runtimePathRoots;
   if (!runtimePathRoots) {
     throw new Error('[IngestionWorker] 缺少 owner 传入的 Runtime path roots');
   }
-  installRuntimePathRoots(runtimePathRoots);
+  return installRuntimePathRoots(runtimePathRoots);
 }
 
 function installWorkerDistributionIdentity(): DistributionIdentity {
@@ -147,13 +146,12 @@ async function initializeWorkerServices(): Promise<EmbeddingPort> {
   logger.info(`🔧 初始化Worker环境服务...`);
 
   // 🔥 新增：首先修复Worker环境
-  installWorkerRuntimePathRoots();
+  const runtimePathRoots = installWorkerRuntimePathRoots();
   const distributionIdentity = installWorkerDistributionIdentity();
 
   try {
     // 路径合法性由 Model Catalog 唯一入口校验，worker 不重复探测或选择目录。
-    modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
-    await modelCatalog.initialize(distributionIdentity);
+    await initializeWorkerModelServices({ runtimePathRoots, distributionIdentity });
 
     const embeddingModels = modelCatalog.getModelsByCapability('embedding');
     logger.info(`🔍 可用的嵌入模型: [${embeddingModels.map(m => m.id).join(', ')}]`);

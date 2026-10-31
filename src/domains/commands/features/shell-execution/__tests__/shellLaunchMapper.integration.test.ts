@@ -14,6 +14,7 @@ import { resolveShellLaunchRequest } from '../functions/resolveShellLaunchReques
 import { validateShellCommandInput } from '../functions/validateShellCommandInput';
 
 const EXECUTION_ID = 'command_execution_018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d2a';
+const INTERNAL_STORAGE = { protected_roots: ['/tmp/linnya-private'], readable_roots: [] };
 const OTHER_EXECUTION_ID = 'command_execution_018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d2b';
 const MACOS_AUTHORIZATION_CONTEXT = Object.freeze({
   platform: 'macos' as const,
@@ -106,6 +107,7 @@ describe('shell command input validation', () => {
         command: '😀'.repeat(12_000),
         interactive: false,
         requiresWriteAccess: false,
+        requiresInternalStorageAccess: false,
         initialWaitMs: 10_000,
       },
     });
@@ -137,6 +139,7 @@ describe('shell command input validation', () => {
     const runtime = {
       shell: createShell(),
       environment: createEnvironment(),
+        internalStorage: INTERNAL_STORAGE,
       defaultHardTimeoutMs: 180_000,
       maximumHardTimeoutMs: 600_000,
     };
@@ -171,7 +174,7 @@ describe('authorized shell launch mapper', () => {
     const result = resolveShellLaunchRequest({
       conversationRoot: '/tmp/linnya conversation',
       authorized: { context: MACOS_AUTHORIZATION_CONTEXT, proposal, permission },
-      runtime: { shell, environment, hardTimeoutMs: 180_000 },
+      runtime: { shell, environment, internalStorage: INTERNAL_STORAGE, hardTimeoutMs: 180_000 },
     });
 
     expect(result.status).toBe('resolved');
@@ -206,6 +209,7 @@ describe('authorized shell launch mapper', () => {
       runtime: {
         shell: createShell(),
         environment: createEnvironment(),
+        internalStorage: INTERNAL_STORAGE,
         hardTimeoutMs: 180_000,
       },
     })).toEqual({ status: 'rejected', code: 'authorization_identity_mismatch' });
@@ -223,6 +227,7 @@ describe('authorized shell launch mapper', () => {
       runtime: {
         shell: createShell(),
         environment: createEnvironment(),
+        internalStorage: INTERNAL_STORAGE,
         hardTimeoutMs: 180_000,
       },
     })).toEqual({ status: 'rejected', code: 'authorization_scope_mismatch' });
@@ -237,6 +242,7 @@ describe('authorized shell launch mapper', () => {
       runtime: {
         shell: createShell({ snapshotRevision: 'app-startup-a' }),
         environment: createEnvironment({ revision: 'app-startup-b' }),
+        internalStorage: INTERNAL_STORAGE,
         hardTimeoutMs: 180_000,
       },
     })).toEqual({ status: 'rejected', code: 'runtime_snapshot_mismatch' });
@@ -247,6 +253,7 @@ describe('authorized shell launch mapper', () => {
       runtime: {
         shell: createShell(),
         environment: createEnvironment(),
+        internalStorage: INTERNAL_STORAGE,
         hardTimeoutMs: 0,
       },
     })).toEqual({ status: 'rejected', code: 'invalid_launch_context' });
@@ -280,6 +287,7 @@ describe('authorized shell launch mapper', () => {
       runtime: {
         shell: createShell({ platform: 'windows' }),
         environment: duplicateWindowsEnvironment,
+        internalStorage: INTERNAL_STORAGE,
         hardTimeoutMs: 180_000,
       },
     })).toEqual({ status: 'rejected', code: 'invalid_launch_context' });
@@ -295,6 +303,7 @@ describe('authorized shell launch mapper', () => {
       runtime: {
         shell: createShell({ platform: 'windows' }),
         environment: createEnvironment(),
+        internalStorage: INTERNAL_STORAGE,
         hardTimeoutMs: 180_000,
       },
     })).toEqual({ status: 'rejected', code: 'authorization_runtime_mismatch' });

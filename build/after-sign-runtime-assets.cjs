@@ -8,6 +8,10 @@ const HEADLESS_NODE_RUNTIME_CATALOG = require('../config/headless-node-runtime.j
 
 const ARTIFACT_FILE_NAME = 'linnyaCommandProcessOwner.node';
 const MANIFEST_FILE_NAME = 'linnyaCommandProcessOwner.manifest.json';
+const COMMAND_RUNTIME_ARTIFACTS = [
+  { artifact: ARTIFACT_FILE_NAME, manifest: MANIFEST_FILE_NAME, runtimeId: 'linnya_command_process_owner', matchesContract: manifest => manifest.minimum_node_api_version === 8 && manifest.binding_contract_version === 1 },
+  { artifact: 'linnyaCommandIsolation.exe', manifest: 'linnyaCommandIsolation.manifest.json', runtimeId: 'linnya_windows_command_isolation', matchesContract: manifest => manifest.protocol_version === 1 },
+];
 const SUPPORTED_ARCHITECTURES = new Set(['x64', 'arm64']);
 const BUILD_TRUST_ENV_NAME = 'LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST';
 const EXPECTED_PUBLISHER_ENV_NAME = 'LINNYA_WINDOWS_EXPECTED_PUBLISHER_IDENTITY';
@@ -272,20 +276,19 @@ function readBuildTrust(environment) {
   );
 }
 
-async function readPreSignRuntime(runtimeDirectory, architecture, applicationVersion) {
-  const artifactPath = path.join(runtimeDirectory, ARTIFACT_FILE_NAME);
-  const manifestPath = path.join(runtimeDirectory, MANIFEST_FILE_NAME);
+async function readPreSignRuntime(runtimeDirectory, architecture, applicationVersion, spec) {
+  const artifactPath = path.join(runtimeDirectory, spec.artifact);
+  const manifestPath = path.join(runtimeDirectory, spec.manifest);
   const manifest = JSON.parse(await fsp.readFile(manifestPath, 'utf8'));
   if (
     manifest?.schema_version !== 1
-    || manifest?.runtime_id !== 'linnya_command_process_owner'
+    || manifest?.runtime_id !== spec.runtimeId
     || manifest?.platform !== 'win32'
     || manifest?.architecture !== architecture
     || manifest?.application_version !== applicationVersion
-    || manifest?.minimum_node_api_version !== 8
-    || manifest?.binding_contract_version !== 1
+    || !spec.matchesContract(manifest)
     || manifest?.signature_evidence?.kind !== 'development_unsigned'
-    || manifest?.artifact?.file_name !== ARTIFACT_FILE_NAME
+    || manifest?.artifact?.file_name !== spec.artifact
   ) {
     throw new Error(`Windows command native pre-sign manifest is invalid: ${manifestPath}`);
   }
@@ -309,11 +312,13 @@ async function finalizeRuntimeDirectory(
   applicationVersion,
   buildTrust,
   authenticodeInspector,
+  spec,
 ) {
   const runtime = await readPreSignRuntime(
     runtimeDirectory,
     architecture,
     applicationVersion,
+    spec,
   );
   const authenticode = await authenticodeInspector(runtime.artifactPath);
 
@@ -362,7 +367,7 @@ async function finalizeRuntimeDirectory(
     );
   }
 
-  // Authenticode 会修改 .node 的 byte；最终 hash 必须在验签之后生成。
+  // Authenticode 会修改 PE 制品的 byte；最终 hash 必须在验签之后生成。
   // manifest 记录的是发布管线事实，运行时 loader 只复核这些 byte 未被替换。
   await writeJsonAtomically(runtime.manifestPath, {
     ...runtime.manifest,
@@ -371,7 +376,7 @@ async function finalizeRuntimeDirectory(
       publisher_identity: buildTrust.expectedPublisherIdentity,
     },
     artifact: {
-      file_name: ARTIFACT_FILE_NAME,
+      file_name: spec.artifact,
       size_bytes: runtime.artifactBytes.byteLength,
       sha256: createHash('sha256').update(runtime.artifactBytes).digest('hex'),
     },
@@ -650,13 +655,16 @@ function createAfterSignRuntimeAssetsHook({
       if (!SUPPORTED_ARCHITECTURES.has(entry.name)) {
         throw new Error(`Unsupported packaged Windows command runtime architecture: ${entry.name}`);
       }
-      await finalizeRuntimeDirectory(
-        path.join(runtimeRoot, entry.name),
-        entry.name,
-        applicationVersion,
-        buildTrust,
-        authenticodeInspector,
-      );
+      for (const spec of COMMAND_RUNTIME_ARTIFACTS) {
+        await finalizeRuntimeDirectory(
+          path.join(runtimeRoot, entry.name),
+          entry.name,
+          applicationVersion,
+          buildTrust,
+          authenticodeInspector,
+          spec,
+        );
+      }
     }
   };
 }

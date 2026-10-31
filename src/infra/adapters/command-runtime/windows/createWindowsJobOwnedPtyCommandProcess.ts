@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream';
+import type { WindowsOwnedPipeNativeLaunchInput } from '../../local-process-runtime/windows';
 
 import type { ProcessInteractionActionV1 } from '@app/schemas/commands';
 
@@ -14,7 +15,6 @@ import type {
   OwnedProcessTreeStopResult,
 } from '../../../../shared/process-runtime';
 import type {
-  WindowsOwnedPtyNativeBinding,
   WindowsOwnedPtyNativeProcess,
 } from './definitions/windowsOwnedPtyNativeBinding';
 import { parseWindowsOwnedPtyNativeEvent } from './functions/parseWindowsOwnedPtyNativeEvent';
@@ -261,11 +261,11 @@ async function failAfterNativeAdmission(
  * 合同。本层不解析终端屏幕，也不把 transcript 声称为 child 原始 stdout。
  */
 export function createWindowsJobOwnedPtyCommandProcessLauncher(
-  binding: WindowsOwnedPtyNativeBinding,
+  prepare: (input: WindowsOwnedPipeNativeLaunchInput, columns: number, rows: number) => WindowsOwnedPtyNativeProcess | Promise<WindowsOwnedPtyNativeProcess>,
 ): LaunchOwnedPtyCommandProcess {
   return async (launch, options = {}) => {
     if (options.abortSignal?.aborted) throw launchAbortedError();
-    const nativeProcess = binding.createWindowsOwnedPtyProcess(
+    const nativeProcess = await prepare(
       {
         executablePath: launch.executablePath,
         argv: [...launch.argv],

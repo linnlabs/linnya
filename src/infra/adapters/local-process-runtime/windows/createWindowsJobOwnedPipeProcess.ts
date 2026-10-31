@@ -10,7 +10,7 @@ import type {
   OwnedProcessTreeStopResult,
 } from '../../../../shared/process-runtime';
 import type {
-  WindowsOwnedPipeNativeBinding,
+  WindowsOwnedPipeNativeLaunchInput,
   WindowsOwnedPipeNativeOutputChannel,
   WindowsOwnedPipeNativeProcess,
 } from './definitions/windowsOwnedPipeNativeBinding';
@@ -353,11 +353,11 @@ async function releaseBeforeUserCodeCommit(
  * manifest loader 显式注入；本模块不读取 Electron、PATH、cwd，也不公开 PID/native handle。
  */
 export function createWindowsJobOwnedPipeProcessLauncher(
-  binding: WindowsOwnedPipeNativeBinding,
+  prepare: (input: WindowsOwnedPipeNativeLaunchInput) => WindowsOwnedPipeNativeProcess | Promise<WindowsOwnedPipeNativeProcess>,
 ): LaunchOwnedPipeProcess {
   return async (launch, options = {}) => {
     throwIfLaunchAborted(options);
-    const nativeProcess = binding.createWindowsOwnedPipeProcess({
+    const nativeProcess = await prepare({
       executablePath: launch.executablePath,
       argv: [...launch.argv],
       cwd: launch.cwd,

@@ -97,6 +97,10 @@ cleanup; prefer the current directory unless the user requests another permitted
         type: 'boolean',
         description: 'Request approval for standard write access when the current mode is read-only. This does not grant full access or expand the standard writable boundary.',
       },
+      requires_internal_storage_access: {
+        type: 'boolean',
+        description: 'Request user approval to access Linnya private storage for this exact command. Low permission modes otherwise block this storage, including through scripts and child processes. After a sandbox denial, request approval in a new call only if the user task requires that access; never automatically repeat a command that may already have performed other work.',
+      },
       initial_wait_ms: {
         type: 'integer',
         description: `Initial wait only, at most ${SHELL_INITIAL_WAIT_MAX_MS} ms; this is not the total command runtime. Longer commands return a handle: use process with action.type="wait" and action.wait_timeout_ms to continue waiting. Do not increase this value for long commands.`,

@@ -409,15 +409,7 @@ const credentialUnavailableMessage = computed(() => {
       ? selectedSource.value.credentialUnavailableReason
       : undefined;
   if (!reason) return settingsMessage('settings.modelPicker.credentialUnavailable');
-  const messageKeys = {
-    missing: 'settings.modelPicker.credentialReason.missing',
-    temporarily_unavailable: 'settings.modelPicker.credentialReason.temporarilyUnavailable',
-    invalidated: 'settings.modelPicker.credentialReason.invalidated',
-    malformed_ciphertext: 'settings.modelPicker.credentialReason.malformedCiphertext',
-    migration_required: 'settings.modelPicker.credentialReason.migrationRequired',
-    unknown: 'settings.modelPicker.credentialReason.unknown',
-  } as const;
-  return settingsMessage(messageKeys[reason]);
+  return settingsMessage('settings.modelPicker.credentialReason.missing');
 });
 const editableModelsById = computed(
   () => new Map(modelCatalog.models.value.map(model => [model.id, model]))

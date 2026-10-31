@@ -98,6 +98,7 @@ export type ConversationMessageKey =
   | 'conversation.commandApproval.rememberedPrefix'
   | 'conversation.commandApproval.deny'
   | 'conversation.commandApproval.reason.permissionElevation'
+  | 'conversation.commandApproval.reason.internalStorageAccess'
   | 'conversation.commandApproval.reason.delete'
   | 'conversation.commandApproval.reason.moveOverwriteRename'
   | 'conversation.commandApproval.reason.externalUpload'

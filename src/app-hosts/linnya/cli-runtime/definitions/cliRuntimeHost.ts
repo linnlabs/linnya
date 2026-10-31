@@ -5,14 +5,11 @@ import type {
 } from '@app/schemas/commands';
 
 import type { AppServerProcessIdentity } from '../../../../infra/adapters/app-server-process';
-import type { DesktopCredentialProtectionPort } from '../../desktop-capabilities';
 
 export interface CliRuntimeHostInput {
   readonly developmentRoot: string;
   /** 显式 composition 选择的 Backend bundle；CLI 用户参数不开放该内部接缝。 */
   readonly mainBundleDirectory?: string;
-  /** Host composition 可复用已授权的系统凭据保护，不改变 Backend 或模型请求合同。 */
-  readonly credentialProtection?: DesktopCredentialProtectionPort;
   readonly applicationVersion: string;
   readonly workspaceRootOverride?: string;
   readonly apiPort: number;

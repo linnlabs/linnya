@@ -51,7 +51,7 @@ Linnya 是统一逻辑数据库，但不同数据有各自的物理落点和 own
 - **Workspace SQLite**：保存项目树、Conversation 执行事实以及 Core/插件的结构化状态。[Workspace/VFS](./src/features/workspace/vfs/README.md) 拥有文档树和路径投影，[EventStore](./src/app-hosts/linnya/adapters/persistence/event-store/README.md) 拥有 Conversation 事实，各业务 domain/插件拥有自己的数据。
 - **受管文件存储**：保存资产字节、Conversation 过程文件和超长工具输出；分别从 [Assets](./src/domains/assets/README.md)、[conversation-files](./src/domains/conversation-files/README.md) 和 [ToolOutputStore](./src/tools/tool_output/README.md) 进入。
 - **Knowledge 存储**：由 [Knowledge Base](./src/features/knowledge-base/README.md) 统一编排 SQLite 元数据、Qdrant 向量和原文文件，不属于 Workspace VFS。
-- **凭据**：API Key、OAuth 等只进入 AppData 的系统安全存储；不得进入 Workspace、Renderer、日志或数据库导出。
+- **凭据**：API Key、OAuth 等只进入应用 profile 的私有文件凭据存储；不得进入 Workspace、Renderer、日志或数据库导出。
 
 只记三条规则：Renderer 不直接访问数据库或物理路径；App Server 是业务存储的运行 owner；连接与迁移由 [`DatabaseService`](./src/electron-main/services/database.ts) 管理，具体读写必须回到对应 domain repository/用例，禁止跨 domain 直接写 SQL。项目文档树由 VFS 投影为 `workspace:/...`，Agent 只通过正式工具访问。
 

@@ -83,6 +83,7 @@ function createLaunch(identity: CommandExecutionIdentity) {
     protocol_version: 1,
     kind: 'pty_command_launch_snapshot',
     conversation_root: process.cwd(),
+    internal_storage: { protected_roots: [process.cwd() + '/.private'], readable_roots: [] },
     proposal: {
       protocol_version: 1,
       kind: 'shell_command_proposal',

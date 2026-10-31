@@ -1,213 +1,61 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import { CredentialStorageError, type CredentialStoragePort } from 'src/shared/credential-storage';
+import type { EndpointCredentialStatus } from '../../../definitions/inferenceEndpoint';
 
-import { pathManager } from 'src/shared/utils/pathManager';
-import {
-  readCredentialProtectionErrorCode,
-  type CredentialProtectionErrorCode,
-} from 'src/shared/credential-protection';
-
-import {
-  EndpointCredentialUnavailableError,
-  type EndpointCredentialCodec,
-  type EndpointCredentialStatus,
-} from '../../../definitions/inferenceEndpoint';
-import {
-  ENDPOINT_CREDENTIAL_FILE_VERSION,
-  readEndpointCredentialFile,
-  type EndpointCredentialFile,
-  type StoredEndpointCredential,
-} from '../definitions/endpointCredentialFile';
+const NAMESPACE = 'model-endpoints';
 
 export class EndpointCredentialStore {
-  private credentialCodec: EndpointCredentialCodec | null = null;
-  private credentialFilePath: string | null = null;
-  private credentials = new Map<string, StoredEndpointCredential>();
-  private plaintextCredentials = new Map<string, string>();
-  private credentialStatuses = new Map<string, EndpointCredentialStatus>();
+  private storage: CredentialStoragePort | null = null;
 
-  installCodec(codec: EndpointCredentialCodec): void {
-    this.credentialCodec = codec;
+  installStorage(storage: CredentialStoragePort): void {
+    this.storage = storage;
   }
 
   async initialize(): Promise<void> {
-    if (this.credentialFilePath) return;
-    this.credentialFilePath = pathManager.getEndpointCredentialsConfigPath();
-    await fs.mkdir(path.dirname(this.credentialFilePath), { recursive: true });
-    try {
-      const parsed: unknown = JSON.parse(await fs.readFile(this.credentialFilePath, 'utf8'));
-      const credentials = new Map(readEndpointCredentialFile(parsed).map(item => [item.id, item]));
-      const decrypted = await this.decryptCredentials(credentials);
-      this.plaintextCredentials = decrypted.plaintext;
-      this.credentialStatuses = decrypted.statuses;
-      this.credentials = decrypted.credentials;
-      if (decrypted.migrated) await this.write(decrypted.credentials);
-    } catch (error: unknown) {
-      const code =
-        error instanceof Error && 'code' in error ? Reflect.get(error, 'code') : undefined;
-      if (code !== 'ENOENT') throw error;
-      await this.write(new Map());
-    }
+    this.read();
   }
 
-  /** 钥匙串授权未完成的记录在授权后补上；返回本次是否有记录恢复、是否还有记录在等待。 */
-  async retryTemporarilyUnavailable(): Promise<{ recovered: boolean; pending: boolean }> {
-    const waiting = new Map(
-      Array.from(this.credentials).filter(
-        ([id]) => this.credentialStatuses.get(id) === 'temporarily_unavailable'
-      )
-    );
-    if (waiting.size === 0) return { recovered: false, pending: false };
-    const decrypted = await this.decryptCredentials(waiting);
-    let recovered = false;
-    for (const [id, original] of waiting) {
-      // 解密期间用户可能已替换或删除这条凭据，以当前记录为准。
-      if (this.credentials.get(id) !== original) continue;
-      const status = decrypted.statuses.get(id);
-      if (status) this.credentialStatuses.set(id, status);
-      const plaintext = decrypted.plaintext.get(id);
-      if (plaintext === undefined) continue;
-      this.plaintextCredentials.set(id, plaintext);
-      this.credentials.set(id, decrypted.credentials.get(id) ?? original);
-      recovered = true;
+  private requireStorage(): CredentialStoragePort {
+    if (!this.storage) throw new Error('endpoint credential storage 尚未安装');
+    return this.storage;
+  }
+
+  private read(): ReadonlyMap<string, string> {
+    const entries = new Map<string, string>();
+    for (const [id, value] of this.requireStorage().read(NAMESPACE)) {
+      if (typeof value !== 'string') throw new CredentialStorageError('invalid_format');
+      entries.set(id, value);
     }
-    if (decrypted.migrated) await this.write(this.credentials);
-    return {
-      recovered,
-      pending: Array.from(this.credentialStatuses.values()).includes('temporarily_unavailable'),
-    };
+    return entries;
   }
 
   has(credentialId: string): boolean {
-    return this.credentialStatuses.get(credentialId) === 'available';
+    return this.read().has(credentialId);
   }
 
   getStatus(credentialId: string): EndpointCredentialStatus | 'missing' {
-    return this.credentialStatuses.get(credentialId) ?? 'missing';
+    return this.has(credentialId) ? 'available' : 'missing';
   }
 
   resolve(credentialId: string): string {
-    if (!this.credentials.has(credentialId)) {
-      throw new Error(`endpoint credential 不存在: ${credentialId}`);
-    }
-    const status = this.credentialStatuses.get(credentialId);
-    if (!status) throw new Error(`endpoint credential 尚未完成初始化: ${credentialId}`);
-    if (status !== 'available') throw new EndpointCredentialUnavailableError(status);
-    const plaintext = this.plaintextCredentials.get(credentialId);
-    if (plaintext === undefined) {
-      throw new Error(`endpoint credential 尚未完成初始化: ${credentialId}`);
-    }
-    return plaintext;
+    const value = this.read().get(credentialId);
+    if (value === undefined) throw new Error(`endpoint credential 不存在: ${credentialId}`);
+    return value;
   }
 
   async put(credentialId: string, plaintext: string): Promise<void> {
-    if (!this.credentialCodec) throw new Error('endpoint credential codec 尚未安装');
-    const encryptedSecret = await this.credentialCodec.encrypt(plaintext);
-    const next = new Map(this.credentials);
-    next.set(credentialId, {
-      id: credentialId,
-      encrypted_secret: encryptedSecret,
-    });
-    await this.write(next);
-    this.credentials = next;
-    this.plaintextCredentials.set(credentialId, plaintext);
-    this.credentialStatuses.set(credentialId, 'available');
+    this.read();
+    await this.requireStorage().update(NAMESPACE, new Map([[credentialId, plaintext]]));
   }
 
   async remove(credentialId: string): Promise<void> {
-    const next = new Map(this.credentials);
-    if (!next.delete(credentialId)) return;
-    await this.write(next);
-    this.credentials = next;
-    this.plaintextCredentials.delete(credentialId);
-    this.credentialStatuses.delete(credentialId);
+    this.read();
+    await this.requireStorage().update(NAMESPACE, new Map([[credentialId, undefined]]));
   }
 
-  /**
-   * 目录事务只持有撤回能力，原密文和缓存状态始终封装在 store 内。
-   * 不可解密不等于不存在；撤回必须恢复原记录，不能依赖再次解密或重新加密。
-   */
+  /** 只撤回目录事务涉及的记录，不把其他业务刚写入的凭据回滚到旧快照。 */
   captureRollback(credentialId: string): () => Promise<void> {
-    const credential = this.credentials.get(credentialId);
-    const plaintext = this.plaintextCredentials.get(credentialId);
-    const status = this.credentialStatuses.get(credentialId);
-    return async () => {
-      const next = new Map(this.credentials);
-      if (credential) next.set(credentialId, credential);
-      else next.delete(credentialId);
-      await this.write(next);
-      this.credentials = next;
-      if (plaintext === undefined) this.plaintextCredentials.delete(credentialId);
-      else this.plaintextCredentials.set(credentialId, plaintext);
-      if (status === undefined) this.credentialStatuses.delete(credentialId);
-      else this.credentialStatuses.set(credentialId, status);
-    };
-  }
-
-  private async write(credentials: Map<string, StoredEndpointCredential>): Promise<void> {
-    const filePath = this.credentialFilePath ?? pathManager.getEndpointCredentialsConfigPath();
-    this.credentialFilePath = filePath;
-    const data: EndpointCredentialFile = {
-      version: ENDPOINT_CREDENTIAL_FILE_VERSION,
-      last_updated: new Date().toISOString(),
-      credentials: Array.from(credentials.values()),
-    };
-    const temporaryPath = `${filePath}.${process.pid}.tmp`;
-    await fs.writeFile(temporaryPath, `${JSON.stringify(data, null, 2)}\n`, {
-      encoding: 'utf8',
-      mode: 0o600,
-    });
-    await fs.rename(temporaryPath, filePath);
-  }
-
-  private async decryptCredentials(
-    credentials: ReadonlyMap<string, StoredEndpointCredential>
-  ): Promise<{
-    readonly credentials: Map<string, StoredEndpointCredential>;
-    readonly plaintext: Map<string, string>;
-    readonly statuses: Map<string, EndpointCredentialStatus>;
-    readonly migrated: boolean;
-  }> {
-    if (credentials.size === 0) {
-      return { credentials: new Map(), plaintext: new Map(), statuses: new Map(), migrated: false };
-    }
-    const codec = this.credentialCodec;
-    if (!codec) throw new Error('endpoint credential codec 尚未安装');
-    const decrypted = await Promise.all(
-      Array.from(credentials.values(), async credential => {
-        try {
-          const migratedCiphertext = await codec.rewrap?.(credential.encrypted_secret);
-          const effectiveCredential =
-            migratedCiphertext !== undefined
-              ? { ...credential, encrypted_secret: migratedCiphertext }
-              : credential;
-          return {
-            id: credential.id,
-            credential: effectiveCredential,
-            plaintext: await codec.decrypt(effectiveCredential.encrypted_secret),
-            status: 'available' as const,
-            migrated: migratedCiphertext !== undefined,
-          };
-        } catch (error: unknown) {
-          const code: CredentialProtectionErrorCode = readCredentialProtectionErrorCode(error);
-          return { id: credential.id, status: code };
-        }
-      })
-    );
-    const effectiveCredentials = new Map(credentials);
-    for (const item of decrypted) {
-      if (item.status === 'available') effectiveCredentials.set(item.id, item.credential);
-    }
-    return {
-      credentials: effectiveCredentials,
-      plaintext: new Map(
-        decrypted.flatMap(item =>
-          item.status === 'available' ? [[item.id, item.plaintext] as const] : []
-        )
-      ),
-      statuses: new Map(decrypted.map(item => [item.id, item.status])),
-      migrated: decrypted.some(item => item.status === 'available' && item.migrated),
-    };
+    const previous = this.read().get(credentialId);
+    return () => this.requireStorage().update(NAMESPACE, new Map([[credentialId, previous]]));
   }
 }
 

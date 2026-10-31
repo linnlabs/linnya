@@ -63,6 +63,29 @@ describe('managed image maintenance', () => {
     await Promise.all(tempDirs.splice(0).map(dir => fsp.rm(dir, { recursive: true, force: true })));
   });
 
+  it('拒绝直接链接外部来源，受管 staging 复制后才发布且不破坏来源', async () => {
+    const appDataRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-managed-ingress-boundary-'));
+    tempDirs.push(appDataRoot);
+    const paths = createManagedImageStoragePaths(appDataRoot, STORE_ID);
+    await fsp.mkdir(paths.stagingRoot, { recursive: true });
+    const source = path.join(appDataRoot, 'external.png');
+    const bytes = 'synthetic-asset';
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const finalPath = path.join(paths.contentRoot, sha256.slice(0, 2), `${sha256}.png`);
+    await fsp.writeFile(source, bytes);
+    const publish = (stagingPath: string) => publishStagedManagedImage({
+      paths, publishId: 'safe-ingress', stagingPath, finalPath, expectedSha256: sha256,
+    });
+    await expect(publish(source)).rejects.toThrow('protected staging root');
+    await expect(fsp.stat(finalPath)).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(fsp.stat(paths.pendingRoot)).rejects.toMatchObject({ code: 'ENOENT' });
+    const staged = path.join(paths.stagingRoot, 'copied.upload');
+    await fsp.copyFile(source, staged);
+    await publish(staged);
+    expect(await fsp.readFile(finalPath, 'utf8')).toBe(bytes);
+    expect(await fsp.readFile(source, 'utf8')).toBe(bytes);
+  });
+
   it('只恢复显式 pending 发布，不扫描或删除当前账本不认识的正式内容', async () => {
     const appDataRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-managed-image-cleanup-'));
     tempDirs.push(appDataRoot);

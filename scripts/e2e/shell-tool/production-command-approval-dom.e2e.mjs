@@ -238,6 +238,10 @@ async function main() {
       ),
       path.join(projectRoot, 'yogaRuntimeLoader.cjs')
     );
+    await copyFile(
+      path.join(repositoryRoot, 'src/features/text-measurement/infrastructure/system/harfbuzzRuntimeLoader.cjs'),
+      path.join(projectRoot, 'harfbuzzRuntimeLoader.cjs')
+    );
     await symlink(
       path.join(repositoryRoot, 'node_modules'),
       path.join(projectRoot, 'node_modules')

@@ -1,3 +1,5 @@
+import { modelCatalog } from '../../../../domains/model-catalog';
+import { providerAccountRegistry } from '../../../../domains/provider-account';
 import {
   BackendRuntimeOwner,
   getBackendRuntimeOwner,
@@ -13,7 +15,6 @@ import {
   installBackendHiddenWorkerRuntimePort,
   installBackendRendererIntegrationPort,
   installBackendTextMeasurementRuntimeDependencies,
-  installDesktopCredentialProtectionPort,
   installDesktopRasterPdfDocumentPort,
 } from '../../desktop-capabilities';
 import type { BackendHostDependencies } from '../definitions/backendHostDependencies';
@@ -42,7 +43,8 @@ export async function initializeAppServerBackend(
   logger.info('App Server Backend 初始化开始');
 
   try {
-    installDesktopCredentialProtectionPort(hostDependencies.credentialProtection);
+    modelCatalog.installEndpointCredentialStorage(hostDependencies.credentialStorage);
+    providerAccountRegistry.installCredentialStorage(hostDependencies.credentialStorage);
     installBackendHiddenWorkerRuntimePort(
       createBackendHiddenWorkerRuntime(hostDependencies.hiddenWorkerHost),
     );

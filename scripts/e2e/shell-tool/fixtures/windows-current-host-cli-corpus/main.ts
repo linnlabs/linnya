@@ -20,12 +20,12 @@ const commandHostProcessEnvironment = createHostProcessEnvironment(process.env);
 process.env.LINNYA_PC54_LATE_INTERNAL = 'must-not-reach-agent-shell';
 process.env.LINNYA_WORKSPACE_DIR = path.join(runRoot, 'workspace');
 
-function publishResult(value: unknown): void {
+const publishResult = (value: unknown): void => {
   const pendingPath = `${resultPath}.${process.pid}.pending`;
   fs.mkdirSync(path.dirname(resultPath), { recursive: true });
   fs.writeFileSync(pendingPath, JSON.stringify(value), 'utf8');
   fs.renameSync(pendingPath, resultPath);
-}
+};
 
 app.on('window-all-closed', () => undefined);
 app.whenReady()

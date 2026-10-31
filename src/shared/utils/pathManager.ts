@@ -403,29 +403,14 @@ export function getModelPickerPreferencesConfigPath(): string {
   return path.join(modelsPath, 'model_picker_preferences.json');
 }
 
-/** 用户推理端点凭据只存 AppData 安全密文，不跟随 Workspace 导出。 */
-export function getEndpointCredentialsConfigPath(): string {
-  return path.join(getAppDataPath(), 'config', 'endpoint_credentials.json');
-}
-
-/** OAuth/套餐账号凭据只存 AppData 安全密文，不跟随 Workspace 导出。 */
-export function getProviderAccountsConfigPath(): string {
-  return path.join(getAppDataPath(), 'config', 'provider_accounts.json');
-}
-
-/** 网络搜索配置含加密凭证，存放在不可迁移、不会随工作区导出的 AppData。 */
+/** 旧网络搜索偏好读取位置；新设置和 Key 统一通过凭据存储提交。 */
 export function getWebSearchConfigPath(): string {
   return path.join(getAppDataPath(), 'config', 'web_search.json');
 }
 
-/** 网络读取配置含加密凭证，与搜索配置分文件保存。 */
+/** 旧网络读取偏好读取位置；不读取旧凭据。 */
 export function getWebReadConfigPath(): string {
   return path.join(getAppDataPath(), 'config', 'web_read.json');
-}
-
-/** 插件凭据只存 AppData 安全密文，不跟随 Workspace 导出。 */
-export function getPluginCredentialsConfigPath(): string {
-  return path.join(getAppDataPath(), 'config', 'plugin_credentials.json');
 }
 
 /**
@@ -810,11 +795,8 @@ export const pathManager = {
   getUserModelsConfigPath,
   getProviderConfigurationsConfigPath,
   getModelPickerPreferencesConfigPath,
-  getEndpointCredentialsConfigPath,
-  getProviderAccountsConfigPath,
   getWebSearchConfigPath,
   getWebReadConfigPath,
-  getPluginCredentialsConfigPath,
   getLogDirectory,
   getTempDirectory,
   getArtifactsRootPath,

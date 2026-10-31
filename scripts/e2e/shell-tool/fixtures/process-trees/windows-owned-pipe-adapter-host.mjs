@@ -159,7 +159,7 @@ async function runAdapterSuite(bindingPath, adapterPath, cwd, architecture) {
   const require = createRequire(import.meta.url);
   const binding = require(bindingPath);
   const { createWindowsJobOwnedPipeProcessLauncher } = require(adapterPath);
-  const launch = createWindowsJobOwnedPipeProcessLauncher(binding);
+  const launch = createWindowsJobOwnedPipeProcessLauncher(input => binding.createWindowsOwnedPipeProcess(input));
   const largeOutput = await runLargeOutputEvidence(launch, cwd);
   const pausedCancellation = await runPausedCancellationEvidence(launch, cwd);
   console.log(JSON.stringify({

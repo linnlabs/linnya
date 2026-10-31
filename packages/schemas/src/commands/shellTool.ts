@@ -25,6 +25,8 @@ export const ShellToolArgumentsV1Schema = z.object({
   interactive: z.boolean().optional(),
   /** Agent 明知本条会写文件时显式声明；只读档由 host 审批，不能直接指定最终权限。 */
   requires_write_access: z.boolean().optional(),
+  /** 只提出内部存储访问请求；最终 grant 仍由 Host 审批生成。 */
+  requires_internal_storage_access: z.boolean().optional(),
   initial_wait_ms: z.number().int()
     .min(SHELL_INITIAL_WAIT_MIN_MS)
     .max(SHELL_INITIAL_WAIT_MAX_MS)

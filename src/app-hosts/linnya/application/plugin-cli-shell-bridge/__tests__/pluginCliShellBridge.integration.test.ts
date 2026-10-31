@@ -119,6 +119,7 @@ function createLaunch(input: {
       permission,
     },
     conversation_root: '/tmp/conversation-plugin-cli-bridge',
+    internal_storage: { protected_roots: ['/tmp/conversation-plugin-cli-bridge' + '/.private'], readable_roots: [] },
     permission,
     shell: {
       platform: 'macos',

@@ -51,6 +51,13 @@ impl Display for NativeError {
 
 impl std::error::Error for NativeError {}
 
+#[cfg(windows)]
+impl From<linnya_windows_command_isolation::IsolationError> for NativeError {
+    fn from(error: linnya_windows_command_isolation::IsolationError) -> Self {
+        Self::contract("account_isolation", error.to_string())
+    }
+}
+
 impl From<NativeError> for Error {
     fn from(error: NativeError) -> Self {
         Error::new(Status::GenericFailure, error.to_string())

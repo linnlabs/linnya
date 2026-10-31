@@ -2,9 +2,8 @@ import type {
   InferenceAuthProfile,
   LanguageInferenceRouteProfileId,
 } from '@app/schemas/model-inference';
-import type { CredentialProtectionErrorCode } from 'src/shared/credential-protection';
 
-export type EndpointCredentialStatus = 'available' | CredentialProtectionErrorCode;
+export type EndpointCredentialStatus = 'available';
 
 export type CredentialReference =
   | { readonly kind: 'none' }
@@ -23,7 +22,7 @@ export interface InferenceEndpoint {
 }
 
 export interface InferenceEndpointView extends InferenceEndpoint {
-  readonly credential_status: 'not_required' | 'configured' | 'missing' | 'unavailable';
+  readonly credential_status: 'not_required' | 'configured' | 'missing';
 }
 
 export interface NewInferenceEndpoint {
@@ -44,19 +43,3 @@ export type InferenceEndpointSelection =
       readonly credential_secret?: string;
     }
   | { readonly kind: 'create'; readonly endpoint: NewInferenceEndpoint };
-
-export interface EndpointCredentialCodec {
-  encrypt(plaintext: string): Promise<string>;
-  decrypt(ciphertext: string): Promise<string>;
-  rewrap?(ciphertext: string): Promise<string | undefined>;
-}
-
-export class EndpointCredentialUnavailableError extends Error {
-  readonly code: Exclude<EndpointCredentialStatus, 'available'>;
-
-  constructor(code: Exclude<EndpointCredentialStatus, 'available'>) {
-    super(`endpoint credential 当前不可用: ${code}`);
-    this.name = 'EndpointCredentialUnavailableError';
-    this.code = code;
-  }
-}

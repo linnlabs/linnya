@@ -49,6 +49,7 @@ const launch = CommandLaunchSnapshotV1Schema.parse({
   stdin: 'closed',
   proposal,
   conversation_root: '/tmp/linnya-audit-contract',
+  internal_storage: { protected_roots: ['/tmp/linnya-audit-contract' + '/.private'], readable_roots: [] },
   permission,
   shell: {
     platform: 'macos',

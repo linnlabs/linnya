@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { EndpointCredentialCodec } from '../../../definitions/inferenceEndpoint';
+import { createFileCredentialStorage } from 'src/infra/adapters/credential-storage/file/createFileCredentialStorage';
 import type {
   ModelCatalog,
   ModelConfig,
@@ -15,7 +15,6 @@ const paths = vi.hoisted(() => ({ directory: '' }));
 vi.mock('src/shared/utils/pathManager', () => ({
   pathManager: {
     getUserModelsConfigPath: async () => `${paths.directory}/user_models.json`,
-    getEndpointCredentialsConfigPath: () => `${paths.directory}/endpoint_credentials.json`,
   },
 }));
 
@@ -66,16 +65,11 @@ function registration(id: string, create: boolean, group = 'Relay'): UserModelRe
   };
 }
 
-const defaultCodec: EndpointCredentialCodec = {
-  encrypt: async plaintext => Buffer.from(plaintext).toString('base64'),
-  decrypt: async ciphertext => Buffer.from(ciphertext, 'base64').toString(),
-};
-
-async function openRegistry(codec: EndpointCredentialCodec = defaultCodec): Promise<ModelCatalog> {
+async function openRegistry(): Promise<ModelCatalog> {
   vi.resetModules();
   const { ModelCatalogRegistry } = await import('../../../registry/modelCatalogRegistry');
   const registry = ModelCatalogRegistry.getInstance();
-  registry.installEndpointCredentialCodec(codec);
+  registry.installEndpointCredentialStorage(createFileCredentialStorage(path.join(paths.directory, 'credentials.json')));
   await registry.initialize(createSourceDistributionIdentity());
   return registry;
 }
@@ -189,9 +183,9 @@ describe('自定义 API 分组连接生命周期', () => {
     expect(catalog.getCustomApiGroups()).toEqual([]);
     expect(catalog.getInferenceEndpoints()).toEqual([]);
     const credentials: unknown = JSON.parse(
-      await fs.readFile(path.join(paths.directory, 'endpoint_credentials.json'), 'utf8')
+      await fs.readFile(path.join(paths.directory, 'credentials.json'), 'utf8')
     );
-    expect(credentials).toMatchObject({ credentials: [] });
+    expect(credentials).toMatchObject({ namespaces: {} });
   });
 
   it('目录写入失败不发布增删；删除失败还原独占凭据，后续事务仍可提交', async () => {
@@ -247,108 +241,20 @@ describe('自定义 API 分组连接生命周期', () => {
     expect(catalog.getCustomApiGroups()).toEqual([]);
   });
 
-  it.each(['remove', 'replace', 'create'] as const)(
-    '旧凭据不可解密时，%s 目录失败恢复原密文和不可用状态',
-    async operation => {
-      let catalog = await openRegistry();
-      await catalog.registerCustomApiModels('Relay', [registration('a', true)], 0);
-      await catalog.applyCustomApiGroupModelDiff(
-        'Relay',
-        {
-          added: [],
-          updated: [],
-          removed: ['a'],
-        },
-        catalog.getUserRevision()
-      );
-      const credentialPath = path.join(paths.directory, 'endpoint_credentials.json');
-      const opaqueOriginal = 'fixture-opaque-unavailable-ciphertext';
-      const originalCredential = {
-        id: 'inference-endpoint:endpoint-a',
-        encrypted_secret: opaqueOriginal,
-      };
-      await fs.writeFile(
-        credentialPath,
-        JSON.stringify({
-          version: '1.0.0',
-          last_updated: '2026-10-15T00:00:00.000Z',
-          credentials: [originalCredential],
-        })
-      );
-      const encrypt = vi.fn(defaultCodec.encrypt);
-      const decrypt = vi.fn(async (ciphertext: string) => {
-        if (ciphertext === opaqueOriginal) throw new Error('fixture inaccessible old key');
-        return defaultCodec.decrypt(ciphertext);
-      });
-      const codec: EndpointCredentialCodec = { encrypt, decrypt };
-      catalog = await openRegistry(codec);
-      const before = await readCatalogFile();
-      const revision = catalog.getUserRevision();
-      expect(catalog.getInferenceEndpoints()).toEqual([
-        expect.objectContaining({ id: 'endpoint-a', credential_status: 'unavailable' }),
-      ]);
-      const originalRename = fs.rename;
-      const rename = vi.spyOn(fs, 'rename').mockImplementation(async (source, target) => {
-        if (target === path.join(paths.directory, 'user_models.json'))
-          throw new Error('fixture disk failure');
-        await originalRename(source, target);
-      });
-      const mutation =
-        operation === 'remove'
-          ? catalog.removeCustomApiGroup('Relay', revision)
-          : catalog.rebindCustomApiGroup(
-              'Relay',
-              'Relay',
-              [],
-              operation === 'replace'
-                ? {
-                    kind: 'existing',
-                    inference_endpoint_id: 'endpoint-a',
-                    credential_secret: 'new-key',
-                  }
-                : {
-                    kind: 'create',
-                    endpoint: {
-                      id: 'endpoint-b',
-                      route_profile_id: 'openai_chat',
-                      endpoint_id: 'new-fixture-endpoint',
-                      base_url: 'https://relay.example/v1',
-                      auth_profile: 'bearer',
-                      credential_secret: 'new-key',
-                      credential_reference: {
-                        kind: 'stored_secret',
-                        credential_id: originalCredential.id,
-                      },
-                    },
-                  },
-              revision
-            );
-      await expect(mutation).rejects.toThrow('fixture disk failure');
-      expect(catalog.getUserRevision()).toBe(revision);
-      expect(await readCatalogFile()).toBe(before);
-      expect(JSON.parse(await fs.readFile(credentialPath, 'utf8'))).toMatchObject({
-        credentials: [originalCredential],
-      });
-      expect(catalog.getInferenceEndpoints()).toEqual([
-        expect.objectContaining({ id: 'endpoint-a', credential_status: 'unavailable' }),
-      ]);
-      expect(() => catalog.resolveInferenceEndpointCredential('endpoint-a')).toThrowError(
-        expect.objectContaining({ code: 'invalidated' })
-      );
-      // 撤回直接恢复原记录与缓存；不能要求不可用的旧 Key 再次参与加解密。
-      expect(encrypt).toHaveBeenCalledTimes(operation === 'remove' ? 0 : 1);
-      expect(decrypt).toHaveBeenCalledOnce();
-      rename.mockRestore();
-      const restarted = await openRegistry(codec);
-      expect(restarted.getCustomApiGroups()).toEqual([
-        { name: 'Relay', inference_endpoint_ids: ['endpoint-a'] },
-      ]);
-      expect(restarted.getInferenceEndpoints()[0]?.credential_status).toBe('unavailable');
-      expect(() => restarted.resolveInferenceEndpointCredential('endpoint-a')).toThrowError(
-        expect.objectContaining({ code: 'invalidated' })
-      );
-    }
-  );
+  it('凭据文件损坏后拒绝目录删除和替换，保留原凭据与目录', async () => {
+    const catalog = await openRegistry();
+    await catalog.registerCustomApiModels('Relay', [registration('a', true)], 0);
+    const before = await readCatalogFile();
+    const credentialPath = path.join(paths.directory, 'credentials.json');
+    const broken = '{"secret":"do-not-log",';
+    await fs.writeFile(credentialPath, broken);
+    await expect(catalog.removeCustomApiGroup('Relay', catalog.getUserRevision())).rejects.toThrow('保留原文件');
+    await expect(catalog.rebindCustomApiGroup('Relay', 'Relay', [], {
+      kind: 'existing', inference_endpoint_id: 'endpoint-a', credential_secret: 'replacement',
+    }, catalog.getUserRevision())).rejects.toThrow('保留原文件');
+    expect(await readCatalogFile()).toBe(before);
+    expect(await fs.readFile(credentialPath, 'utf8')).toBe(broken);
+  });
 
   it('版本冲突拒绝旧远端快照，包括空 diff；空分组可改名和换 Key', async () => {
     const catalog = await openRegistry();
@@ -414,15 +320,16 @@ describe('自定义 API 分组连接生命周期', () => {
 
   it('凭据准备期间更新的账号投影不会被用户目录提交覆盖', async () => {
     const catalog = await openRegistry();
-    const encryptionStarted = deferred();
-    const encryptionRelease = deferred();
-    catalog.installEndpointCredentialCodec({
-      encrypt: async plaintext => {
-        encryptionStarted.resolve();
-        await encryptionRelease.promise;
-        return Buffer.from(plaintext).toString('base64');
+    const writeStarted = deferred();
+    const writeRelease = deferred();
+    const storage = createFileCredentialStorage(path.join(paths.directory, 'credentials.json'));
+    catalog.installEndpointCredentialStorage({
+      read: namespace => storage.read(namespace),
+      async update(namespace, changes) {
+        writeStarted.resolve();
+        await writeRelease.promise;
+        await storage.update(namespace, changes);
       },
-      decrypt: async ciphertext => Buffer.from(ciphertext, 'base64').toString(),
     });
     const registration = catalog.registerCustomApiModels(
       'Relay',
@@ -444,7 +351,7 @@ describe('自定义 API 分组连接生命周期', () => {
       ],
       0
     );
-    await encryptionStarted.promise;
+    await writeStarted.promise;
     catalog.replaceAccountModels('account-a', [
       {
         ...model('account-new'),
@@ -454,7 +361,7 @@ describe('自定义 API 分组连接生命周期', () => {
         credential_reference: { kind: 'provider_account', account_id: 'account-a' },
       },
     ]);
-    encryptionRelease.resolve();
+    writeRelease.resolve();
     await registration;
     expect(catalog.getModel('new')).toBeDefined();
     expect(catalog.getModel('account-new')).toMatchObject({ catalog_source: 'account' });

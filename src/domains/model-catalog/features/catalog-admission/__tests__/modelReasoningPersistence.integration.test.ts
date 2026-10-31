@@ -1,3 +1,4 @@
+import { createFileCredentialStorage } from 'src/infra/adapters/credential-storage/file/createFileCredentialStorage';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,7 +18,6 @@ const paths = vi.hoisted(() => ({ directory: '' }));
 vi.mock('src/shared/utils/pathManager', () => ({
   pathManager: {
     getUserModelsConfigPath: async () => `${paths.directory}/user_models.json`,
-    getEndpointCredentialsConfigPath: () => `${paths.directory}/endpoint_credentials.json`,
   },
 }));
 
@@ -54,10 +54,7 @@ async function openRegistry(resolver?: ModelReasoningResolver): Promise<ModelCat
   const { ModelCatalogRegistry } = await import('../../../registry/modelCatalogRegistry');
   const registry = ModelCatalogRegistry.getInstance();
   if (resolver) registry.installModelReasoningResolver(resolver);
-  registry.installEndpointCredentialCodec({
-    encrypt: async plaintext => Buffer.from(plaintext).toString('base64'),
-    decrypt: async ciphertext => Buffer.from(ciphertext, 'base64').toString(),
-  });
+  registry.installEndpointCredentialStorage(createFileCredentialStorage(path.join(paths.directory, 'credentials.json')));
   await registry.initialize(createSourceDistributionIdentity());
   return registry;
 }

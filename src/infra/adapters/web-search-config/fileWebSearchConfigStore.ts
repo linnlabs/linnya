@@ -1,53 +1,56 @@
 import fs from 'node:fs';
-import path from 'node:path';
+import { z } from 'zod';
+import { JsonValueSchema } from '@app/schemas';
+import {
+  CredentialStorageError,
+  type CredentialStoragePort,
+} from '../../../shared/credential-storage';
 import {
   DEFAULT_WEB_SEARCH_SETTINGS,
   WEB_SEARCH_ENGINE_IDS,
-  WebSearchConfigurationError,
+  WEB_SEARCH_KEY_SOURCES,
   type WebSearchConfig,
   type WebSearchSettings,
 } from '../../../tools/web/websearch/definitions/webSearchConfig';
-import {
-  normalizeWebSearchSettings,
-} from '../../../tools/web/websearch/functions/normalizeWebSearchConfig';
+import { normalizeWebSearchSettings } from '../../../tools/web/websearch/functions/normalizeWebSearchConfig';
 import { projectActiveWebSearchConfig } from '../../../tools/web/websearch/functions/projectActiveWebSearchConfig';
 import { resolveWebSearchConfigUpdate } from '../../../tools/web/websearch/functions/resolveWebSearchConfigUpdate';
 import type { WebSearchConfigReader } from '../../../tools/web/websearch/ports/webSearchConfigReader';
 
-export interface WebSearchCredentialCodec {
-  encrypt(plaintext: string): Promise<string>;
-  decrypt(ciphertext: string): Promise<string>;
-  rewrap?(ciphertext: string): Promise<string | undefined>;
-}
-
-type StoreState =
-  | { readonly ok: true; readonly settings: WebSearchSettings }
-  | { readonly ok: false; readonly message: string };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+const NAMESPACE = 'web-search';
+const SettingsSchema = z
+  .object({
+    engine: z.enum(WEB_SEARCH_ENGINE_IDS),
+    slots: z.partialRecord(
+      z.enum(WEB_SEARCH_ENGINE_IDS),
+      z
+        .object({
+          keySource: z.enum(WEB_SEARCH_KEY_SOURCES).optional(),
+          byokKey: z.string().min(1).optional(),
+          searxngBaseUrl: z.string().optional(),
+        })
+        .strict()
+    ),
+  })
+  .strict();
 
 export class FileWebSearchConfigStore implements WebSearchConfigReader {
   private saveQueue: Promise<void> = Promise.resolve();
 
   private constructor(
-    private readonly filePath: string,
-    private readonly credentialCodec: WebSearchCredentialCodec,
-    private state: StoreState,
+    private readonly storage: CredentialStoragePort,
+    private readonly initialSettings: WebSearchSettings
   ) {}
 
-  /** 凭据解密可能跨宿主边界完成，因此必须在 Backend ready 前显式等待。 */
   static async open(
     filePath: string,
-    credentialCodec: WebSearchCredentialCodec,
+    storage: CredentialStoragePort
   ): Promise<FileWebSearchConfigStore> {
-    const store = new FileWebSearchConfigStore(
-      filePath,
-      credentialCodec,
-      { ok: true, settings: DEFAULT_WEB_SEARCH_SETTINGS },
-    );
-    store.state = await store.load();
+    const initialSettings = storage.read(NAMESPACE).has('settings')
+      ? DEFAULT_WEB_SEARCH_SETTINGS
+      : readPreviousPreferences(filePath);
+    const store = new FileWebSearchConfigStore(storage, initialSettings);
+    store.readSettings();
     return store;
   }
 
@@ -56,126 +59,65 @@ export class FileWebSearchConfigStore implements WebSearchConfigReader {
   }
 
   readSettings(): WebSearchSettings {
-    if (!this.state.ok) {
-      throw new WebSearchConfigurationError('invalid_config', this.state.message);
-    }
-    return this.state.settings;
+    const stored = this.storage.read(NAMESPACE).get('settings');
+    if (stored === undefined) return this.initialSettings;
+    const parsed = SettingsSchema.safeParse(stored);
+    if (!parsed.success) throw new CredentialStorageError('invalid_format');
+    return normalizeWebSearchSettings(parsed.data);
   }
 
   preview(input: unknown): WebSearchConfig {
-    const settings = resolveWebSearchConfigUpdate(
-      input,
-      this.state.ok ? this.state.settings : DEFAULT_WEB_SEARCH_SETTINGS,
-    );
-    return projectActiveWebSearchConfig(settings);
+    return projectActiveWebSearchConfig(resolveWebSearchConfigUpdate(input, this.readSettings()));
   }
 
   save(input: unknown): Promise<WebSearchSettings> {
-    const operation = this.saveQueue.then(() => this.persist(input));
-    this.saveQueue = operation.then(() => undefined, () => undefined);
+    const operation = this.saveQueue.then(async () => {
+      const settings = resolveWebSearchConfigUpdate(input, this.readSettings());
+      // 选择与对应 Key 一次提交；失败时不会留下配置已变而凭据未变的半次保存。
+      await this.storage.update(
+        NAMESPACE,
+        new Map([['settings', JsonValueSchema.parse(settings)]])
+      );
+      return settings;
+    });
+    this.saveQueue = operation.then(
+      () => undefined,
+      () => undefined
+    );
     return operation;
   }
+}
 
-  private async persist(input: unknown): Promise<WebSearchSettings> {
-    const settings = resolveWebSearchConfigUpdate(
-      input,
-      this.state.ok ? this.state.settings : DEFAULT_WEB_SEARCH_SETTINGS,
+/** 只保留旧文件的非敏感偏好；旧 Key 不读取、不解密、不迁移。 */
+function readPreviousPreferences(filePath: string): WebSearchSettings {
+  let raw: string;
+  try {
+    raw = fs.readFileSync(filePath, 'utf8');
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
+      return DEFAULT_WEB_SEARCH_SETTINGS;
+    throw new CredentialStorageError('unreadable');
+  }
+  try {
+    const document = z
+      .object({
+        version: z.literal(3),
+        settings: z.object({
+          engine: z.unknown(),
+          slots: z.record(z.string(), z.unknown()),
+        }),
+      })
+      .parse(JSON.parse(raw));
+    const slots = Object.fromEntries(
+      Object.entries(document.settings.slots).map(([id, raw]) => {
+        const slot = z
+          .object({ keySource: z.unknown().optional(), searxngBaseUrl: z.unknown().optional() })
+          .parse(raw);
+        return [id, slot];
+      })
     );
-    const storedSlots: Record<string, unknown> = {};
-    for (const engine of WEB_SEARCH_ENGINE_IDS) {
-      const slot = settings.slots[engine];
-      if (!slot) continue;
-      storedSlots[engine] = {
-        ...(slot.keySource ? { keySource: slot.keySource } : {}),
-        ...(slot.searxngBaseUrl ? { searxngBaseUrl: slot.searxngBaseUrl } : {}),
-        ...(slot.byokKey
-          ? { encryptedByokKey: await this.credentialCodec.encrypt(slot.byokKey) }
-          : {}),
-      };
-    }
-    const document = `${JSON.stringify({
-      version: 3,
-      settings: { engine: settings.engine, slots: storedSlots },
-    }, null, 2)}\n`;
-    this.writeDocument(document);
-    this.state = { ok: true, settings };
-    return settings;
-  }
-
-  private async load(): Promise<StoreState> {
-    if (!fs.existsSync(this.filePath)) {
-      return { ok: true, settings: DEFAULT_WEB_SEARCH_SETTINGS };
-    }
-    try {
-      const document: unknown = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
-      if (!isRecord(document)) {
-        throw new Error('文件结构或版本不受支持。');
-      }
-      const settings = document.version === 3
-        ? await this.loadCurrentVersion(document)
-        : undefined;
-      if (!settings) throw new Error('文件结构或版本不受支持。');
-      return { ok: true, settings };
-    } catch (error: unknown) {
-      const reason = error instanceof Error ? error.message : String(error);
-      return {
-        ok: false,
-        message: `网络搜索配置文件无法读取：${reason}。请在设置页重新保存配置。`,
-      };
-    }
-  }
-
-  private async loadCurrentVersion(
-    document: Record<string, unknown>,
-  ): Promise<WebSearchSettings | undefined> {
-    if (!isRecord(document.settings) || !isRecord(document.settings.slots)) return undefined;
-    const slots: Record<string, unknown> = {};
-    const migratedStoredSlots: Record<string, unknown> = { ...document.settings.slots };
-    let migrated = false;
-    for (const engine of WEB_SEARCH_ENGINE_IDS) {
-      const storedSlot = document.settings.slots[engine];
-      if (storedSlot === undefined) continue;
-      if (!isRecord(storedSlot)) throw new Error(`搜索引擎 ${engine} 的配置槽格式无效。`);
-      const encryptedByokKey = storedSlot.encryptedByokKey;
-      if (encryptedByokKey !== undefined && typeof encryptedByokKey !== 'string') {
-        throw new Error('加密凭证字段格式错误。');
-      }
-      const rewrapped = encryptedByokKey
-        ? await this.credentialCodec.rewrap?.(encryptedByokKey)
-        : undefined;
-      const ciphertext = rewrapped ?? encryptedByokKey;
-      slots[engine] = {
-        keySource: storedSlot.keySource,
-        searxngBaseUrl: storedSlot.searxngBaseUrl,
-        ...(ciphertext
-          ? { byokKey: await this.credentialCodec.decrypt(ciphertext) }
-          : {}),
-      };
-      if (rewrapped !== undefined) {
-        migrated = true;
-        migratedStoredSlots[engine] = { ...storedSlot, encryptedByokKey: rewrapped };
-      }
-    }
-    const settings = normalizeWebSearchSettings({ engine: document.settings.engine, slots });
-    if (migrated) {
-      this.writeDocument(`${JSON.stringify({
-        ...document,
-        settings: { ...document.settings, slots: migratedStoredSlots },
-      }, null, 2)}\n`);
-    }
-    return settings;
-  }
-
-  private writeDocument(document: string): void {
-    const directory = path.dirname(this.filePath);
-    fs.mkdirSync(directory, { recursive: true });
-    const temporaryPath = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
-    try {
-      fs.writeFileSync(temporaryPath, document, { encoding: 'utf8', mode: 0o600 });
-      fs.renameSync(temporaryPath, this.filePath);
-    } catch (error: unknown) {
-      fs.rmSync(temporaryPath, { force: true });
-      throw error;
-    }
+    return normalizeWebSearchSettings({ engine: document.settings.engine, slots });
+  } catch {
+    throw new CredentialStorageError('invalid_format');
   }
 }

@@ -1,15 +1,10 @@
 export type * from './definitions/backendHiddenWorkerRuntimePort';
 export type * from './definitions/backendRendererIntegrationPort';
 export type * from './definitions/backendTextMeasurementRuntimeDependencies';
-export type * from './definitions/desktopCredentialProtectionPort';
 export type * from './definitions/desktopFileRevealPort';
 export type * from './definitions/desktopHiddenWorkerHostPort';
 export type * from './definitions/desktopRasterPdfDocumentPort';
 export * from './orchestration/createBackendHiddenWorkerRuntime';
-export * from './features/credential-protection-rpc/definitions/credentialProtectionRpc';
-export * from './features/credential-protection-rpc/functions/credentialProtectionRpcCodec';
-export * from './features/credential-protection-rpc/orchestration/createDesktopCredentialProtectionRpcClient';
-export * from './features/credential-protection-rpc/orchestration/createDesktopCredentialProtectionRpcHandlers';
 export * from './features/file-reveal-rpc/definitions/fileRevealRpc';
 export * from './features/file-reveal-rpc/functions/fileRevealRpcCodec';
 export * from './features/file-reveal-rpc/orchestration/createDesktopFileRevealRpcClient';
@@ -39,5 +34,8 @@ export * from './shared/mailbox-rpc/orchestration/createDesktopCapabilityMailbox
 export * from './registry/backendHiddenWorkerRuntimeRegistry';
 export * from './registry/backendRendererIntegrationRegistry';
 export * from './registry/backendTextMeasurementRuntimeRegistry';
-export * from './registry/desktopCredentialProtectionRegistry';
 export * from './registry/desktopRasterPdfDocumentRegistry';
+
+export type { DesktopCommandIsolationSetupPort } from './definitions/desktopCommandIsolationSetupPort';
+export { createCommandIsolationSetupRpcClient } from './features/command-isolation-setup-rpc/orchestration/createCommandIsolationSetupRpcClient';
+export { createCommandIsolationSetupRpcHandlers } from './features/command-isolation-setup-rpc/orchestration/createCommandIsolationSetupRpcHandlers';

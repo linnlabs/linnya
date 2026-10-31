@@ -295,6 +295,7 @@ export async function runCurrentHostCliCorpusScenario(input: {
     helperEnvironment: Object.freeze({ PATH: '/usr/bin:/bin:/usr/sbin:/sbin' }),
     runnerPath: path.join(input.runRoot, 'runner', 'commandRunnerUtilityProcess.cjs'),
     artifactStorageRoot: artifactRoot,
+    internalStorage: { protected_roots: [artifactRoot], readable_roots: [] },
     resolveToolOutputBlobsDirectory: ({ conversationId, instanceId }) => (
       path.join(appDataRoot, 'ToolOutputBlobs', conversationId, instanceId)
     ),

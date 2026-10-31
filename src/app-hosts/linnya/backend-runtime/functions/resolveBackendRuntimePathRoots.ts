@@ -23,6 +23,7 @@ export function resolveBackendRuntimePathRoots(
 
   return createRuntimePathRoots({
     developmentRoot,
+    profileRoot: path.resolve(input.userDataDirectory),
     appDataRoot: input.developmentMode
       ? developmentDataRoot
       : path.join(input.userDataDirectory, 'AIService'),

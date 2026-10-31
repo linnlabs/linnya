@@ -1,7 +1,8 @@
-param(
+﻿param(
   [string]$NodeExecutable,
   [Parameter(Mandatory = $true)][string]$FixtureMainPath,
   [Parameter(Mandatory = $true)][string]$InstallerIncludePath,
+  [Parameter(Mandatory = $true)][string]$IsolationHelperPath,
   [Parameter(Mandatory = $true)][string]$RunRoot,
   [Parameter(Mandatory = $true)][string]$ExpectedElectronVersion,
   [switch]$CleanupOnly
@@ -95,7 +96,10 @@ function Write-FixturePackage {
       productName = $productName
       asar = $true
       files = @('main.mjs', 'package.json')
-      extraResources = @([ordered]@{ from = 'marker.txt'; to = 'validation-marker.txt' })
+      extraResources = @(
+        [ordered]@{ from = 'marker.txt'; to = 'validation-marker.txt' },
+        [ordered]@{ from = 'isolation.exe'; to = 'command-runtime/windows/x64/linnyaCommandIsolation.exe' }
+      )
       directories = [ordered]@{ output = $outputRoot }
       win = [ordered]@{
         target = @([ordered]@{ target = 'nsis'; arch = @('x64') })
@@ -324,6 +328,7 @@ if ($CleanupOnly) {
   Remove-Item -LiteralPath $runRoot -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $FixtureMainPath -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $InstallerIncludePath -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $IsolationHelperPath -Force -ErrorAction SilentlyContinue
 
   # Keep the SSH command short by running cleanup inside the uploaded controller.
   $controllerPath = [IO.Path]::GetFullPath($MyInvocation.MyCommand.Path)
@@ -367,6 +372,10 @@ try {
   New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
   Copy-Item -LiteralPath $FixtureMainPath -Destination $projectMainPath -Force
   Copy-Item -LiteralPath $InstallerIncludePath -Destination $projectInstallerIncludePath -Force
+  # 此场景验证未启用隔离时无 UAC 的安装/更新/卸载，不能清理另一个正在运行的测试服务。
+  $ownerSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+  Assert-Condition (-not (Test-Path -LiteralPath "HKLM:\SOFTWARE\Linnlabs\CommandIsolation\$ownerSid")) 'finish active isolation tests before NSIS lifecycle'
+  Copy-Item -LiteralPath $IsolationHelperPath -Destination (Join-Path $projectRoot 'isolation.exe')
 
   Write-FixturePackage -Version $versionOne -Marker 'marker-version-one'
   $dependencyInstall = Invoke-BoundedProcess -FilePath $NodeExecutable -Arguments @(

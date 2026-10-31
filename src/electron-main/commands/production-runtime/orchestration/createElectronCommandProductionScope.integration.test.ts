@@ -264,6 +264,7 @@ describe('createElectronCommandProductionScope', () => {
       helperEnvironment: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
       runnerPath: '/unused/fake-runner.cjs',
       artifactStorageRoot: artifactRoot,
+      internalStorage: { protected_roots: [artifactRoot], readable_roots: [] },
       resolveToolOutputBlobsDirectory: scope => {
         toolOutputScopes.push(scope);
         return textRoot;

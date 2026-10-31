@@ -102,6 +102,7 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.commandApproval.rememberedPrefix': '本对话将记住的命令',
   'conversation.commandApproval.deny': '拒绝',
   'conversation.commandApproval.reason.permissionElevation': '这条命令需要写入文件。',
+  'conversation.commandApproval.reason.internalStorageAccess': '此操作请求访问 Linnya 内部存储，可能读取账号凭据和私人数据。保存规则只适用于本对话中的相同操作和运行目录。',
   'conversation.commandApproval.reason.delete': '这条命令可能删除文件或目录。',
   'conversation.commandApproval.reason.moveOverwriteRename': '这条命令可能移动、覆盖或重命名文件。',
   'conversation.commandApproval.reason.externalUpload': '这条命令可能向外部位置上传数据。',
@@ -829,6 +830,8 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.commandApproval.reason.permissionElevation':
         'This command needs permission to write files.',
       'conversation.commandApproval.reason.delete': 'This command may delete files or folders.',
+      'conversation.commandApproval.reason.internalStorageAccess':
+        'This operation requests access to Linnya internal storage, which may expose account credentials and private data. A saved rule applies only to the same operation and working directory in this conversation.',
       'conversation.commandApproval.reason.moveOverwriteRename':
         'This command may move, overwrite, or rename files.',
       'conversation.commandApproval.reason.externalUpload':

@@ -91,6 +91,7 @@ function createStartRequest(hardTimeoutMs = 60_000): Extract<
       protocol_version: 1,
       kind: 'pty_command_launch_snapshot',
       conversation_root: process.cwd(),
+      internal_storage: { protected_roots: [process.cwd() + '/.private'], readable_roots: [] },
       proposal: {
         protocol_version: 1,
         kind: 'shell_command_proposal',
@@ -558,6 +559,32 @@ describe('shared command runner PTY routing', () => {
       process_exit: { status: 'not_started' },
     });
     expect(exitCodes).toEqual([0]);
+  });
+
+  it('启动失败只向诊断发出阶段和系统码，不把原始错误带入终态或日志', async () => {
+    const events: CommandRunnerEventV1[] = [];
+    const diagnostics: string[] = [];
+    const exitCodes: number[] = [];
+    const controller = runCommandRunnerProcess({
+      async sendEvent(event) { events.push(event); },
+      writeDiagnostic(message) { diagnostics.push(message); },
+      finish(exitCode) { exitCodes.push(exitCode); },
+    }, {
+      launchOwnedPipeProcess: rejectPipeLaunch,
+      async launchOwnedPtyProcess() {
+        throw new CommandRunnerOwnedPtyProcessLaunchError(
+          'sandbox_unavailable', 'SYNTHETIC_SECRET', { status: 'guaranteed_not_started' },
+          { cause: new Error('windows_process_owner stage=account_isolation detail=windows_command_isolation stage=worker_logon detail=SYNTHETIC_SECRET (0x80070005)') },
+        );
+      },
+    });
+    controller.acceptRequest(START_REQUEST);
+    await waitFor(() => exitCodes.length === 1);
+    expect(diagnostics).toEqual(['launch_failed code=sandbox_unavailable native_stages=account_isolation,worker_logon system_codes=0x80070005']);
+    expect(JSON.stringify(events)).not.toContain('SYNTHETIC_SECRET');
+    expect(events.find(event => event.kind === 'command_runner_terminal')).toMatchObject({
+      terminal: { outcome: 'runtime_failure', failure: { code: 'sandbox_unavailable' } },
+    });
   });
 
   it('拒绝重复 interaction identity，并通过同一 owner 生命周期完成清理', async () => {

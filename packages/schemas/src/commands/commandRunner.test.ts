@@ -51,6 +51,7 @@ function createLaunch(overrides: Record<string, unknown> = {}) {
     protocol_version: 1,
     kind: 'pipe_command_launch_snapshot',
     conversation_root: '/tmp/linnya conversation',
+    internal_storage: { protected_roots: ['/tmp/linnya conversation' + '/.private'], readable_roots: [] },
     proposal: {
       protocol_version: 1,
       kind: 'shell_command_proposal',

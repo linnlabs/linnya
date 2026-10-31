@@ -125,6 +125,10 @@ src/domains/assets/features/local-image-registration/
 内容发布使用同一文件系统内的 staging hard
 link，保证不会覆盖已有内容寻址目标。目标已存在时必须重新读取并核对 SHA-256；已损坏的同名目标会明确失败，不会被新上传静默修复。并发发布相同 bytes 则收敛到同一个最终文件。
 
+staging 必须在当前 store 的受保护目录内新建并写入 bytes，不能直接移动或 hard link 外部文件
+作为 staging。Windows 同卷移动及 hard link 保留源对象 ACL；只有内部新建的对象才能继承正在
+运行的受限命令的拒绝权限。发布入口校验真实 staging 路径，外部来源由 ingress 读取并复制。
+
 发布者在创建正式 content 前先写入严格、版本化的 pending 凭证；凭证只保存当前 store 内的相对内容路径与预期 hash，不保存绝对路径。只有 asset
 ledger 或 event/link 事务取得 durable 所有权后，调用方才完成该凭证。进程中断留下的显式 pending 会在下次启动按当前账本裁决：已登记内容只清凭证，未登记内容先移动到
 `quarantine/`，隔离满 30 天后再删除。维护不扫描整个 `content/`

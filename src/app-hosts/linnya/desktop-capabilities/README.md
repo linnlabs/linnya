@@ -3,15 +3,8 @@
 这里定义 App Server 可以向 Electron Desktop Host 请求的窄能力，不暴露 `app`、`BrowserWindow`、`ipcMain`、
 `shell` 或任意方法调用。每个 capability 必须有 data-only 合同、唯一 composition owner 和独立安全边界。
 
-当前 credential protection 在初始化/写入时异步调用[共用系统 keyring adapter](../../../infra/adapters/credential-protection/system-keyring/README.md)；Provider Account 与 Model Catalog 完成初始化后，
-只在 App Server 内存中持有可解密记录的缓存，推理热路径不会跨进程等待。单条密文无法解密时，store 保留业务
-metadata 并记录 `temporarily_unavailable`、`invalidated`、`malformed_ciphertext` 或 `unknown` 状态；该状态不会
-阻断 App Server 启动，真正需要凭据的请求必须在 resolver 边界 fail closed。系统钥匙串等待用户响应授权弹窗时，Desktop 读取
-最多等待 3 秒后按 `temporarily_unavailable` 继续，同一请求保持未决；用户授权后 App Server 在后台补上这些记录并发布
-`publishModelsChanged()`。用户拒绝后不再自动询问，只有主动保存凭据才重新询问，任何情况都不会创建新的 master key。密文仍由各业务 domain 自己持久化，
-Desktop Host 不拥有账号或模型目录。reverse RPC 只注册 `encrypt/decrypt/rewrap` 三个严格字符串 DTO 方法，并把平台错误
-压缩为稳定错误 code；`rewrap` 只让原 owner 事务化迁移旧 Electron `safeStorage` 密文，不改变凭据归属。App Server
-业务层仍只取得 `DesktopCredentialProtectionPort`，不会接触 method name、raw RPC peer 或 Electron 原始错误文案。
+凭据文件由 App Server 自己拥有，不属于 Desktop capability，不提供凭据加解密或插件凭据的 reverse RPC。
+文件合同见[文件凭据存储](../../../infra/adapters/credential-storage/file/README.md)。
 
 Backend renderer integration 只发布已有 Model Catalog、Ingestion/任务队列、知识图谱、转录进度、Workspace mutation 和已校验的插件 push
 事实，并拥有 Model Catalog 订阅的释放函数。Backend 不读取 BrowserWindow；迁移前由 Electron adapter 投影到原

@@ -28,7 +28,7 @@ describe('Provider account authorization use case', () => {
       }
     );
     const accounts: ProviderAccountRegistry = {
-      installCredentialCodec: vi.fn(),
+      installCredentialStorage: vi.fn(),
       initialize: vi.fn(async () => undefined),
       list: () => (storedAccount ? [storedAccount] : []),
       get: () => storedAccount,

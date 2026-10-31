@@ -3,14 +3,7 @@ import { CustomApiFormatSchema } from '../custom-api-onboarding';
 
 const NonEmptyStringSchema = z.string().trim().min(1);
 const ReasoningEffortSchema = z.enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh']);
-const CredentialUnavailableReasonSchema = z.enum([
-  'missing',
-  'temporarily_unavailable',
-  'invalidated',
-  'malformed_ciphertext',
-  'migration_required',
-  'unknown',
-]);
+const CredentialUnavailableReasonSchema = z.literal('missing');
 
 export const ModelPickerReasoningSchema = z
   .object({

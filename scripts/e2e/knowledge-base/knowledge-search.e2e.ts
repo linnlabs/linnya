@@ -35,6 +35,26 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
+async function initializeDiagnosticModelServices(workspaceRoot: string): Promise<void> {
+  const { installRuntimePathRoots } = await import('src/shared/runtime-paths');
+  const { createSourceDistributionIdentity, installDistributionIdentity } = await import('src/shared/distribution-identity');
+  const { initializeWorkerModelServices } = await import('src/app-hosts/linnya/backend-runtime/workerModelServices');
+  const developmentRoot = process.cwd();
+  // 源码诊断入口与 Desktop/CLI 共用 profile，凭据不跟随被诊断的 Workspace。
+  const runtimePathRoots = installRuntimePathRoots({
+    developmentRoot,
+    appDataRoot: path.join(developmentRoot, '_dev_data'),
+    profileRoot: path.join(developmentRoot, '_dev_electron'),
+    workspaceRoot,
+    workspaceRootIsCustom: workspaceRoot !== path.join(developmentRoot, '_dev_data'),
+  });
+  await initializeWorkerModelServices({
+    runtimePathRoots,
+    distributionIdentity: installDistributionIdentity(createSourceDistributionIdentity()),
+  });
+}
+
+
 import { QdrantAdapter } from 'src/infra/adapters/vector-store/qdrant';
 import type { QdrantCollectionInfo, QdrantConfig } from 'src/infra/adapters/vector-store/qdrant';
 
@@ -44,9 +64,6 @@ import type { DatabaseService as DatabaseServiceType } from 'src/electron-main/s
 import type { QdrantRepositoryImpl } from 'src/features/knowledge-base/infrastructure/QdrantRepositoryImpl';
 import type { BetterSqliteMetadataRepository } from 'src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
 import type { FileSotRepository } from 'src/features/knowledge-base/infrastructure/sotRepository';
-import type { BetterSqliteKnowledgeGraphRepository } from 'src/features/knowledge-base/graph/infrastructure/better-sqlite-knowledge-graph.repository';
-import type { DefaultSearchService } from 'src/features/knowledge-base/application/searchService';
-import type { KnowledgeBaseCoordinator } from 'src/features/knowledge-base/application/KnowledgeBaseCoordinator';
 import type {
   KnowledgeBaseSearchRequest,
   DocumentSearchRequest,
@@ -68,7 +85,6 @@ import type { AgentKnowledgeSearchOutput } from 'src/features/knowledge-base/app
 import type {
   GraphAugmentation,
   GraphEvidenceRef,
-  GraphSearchService,
 } from 'src/features/knowledge-base/graph/application/graphSearchService';
 import { readConfiguredTargetSegmentCount } from 'src/features/knowledge-base/infrastructure/qdrant-repository/segmentPolicy';
 import { attachCitationSequence } from 'src/domains/citation';
@@ -655,7 +671,7 @@ async function initCliDeps(params: {
 }): Promise<CliDeps> {
   const { DatabaseService } = await import('src/electron-main/services/database');
   const { pathManager } = await import('src/shared/utils/pathManager');
-  const { modelCatalog, sourceDefaultModelsPath } = await import('src/domains/model-catalog');
+  const { sourceDefaultModelsPath } = await import('src/domains/model-catalog');
   const { createEmbeddingPort, createRerankingPort } = await import(
     'src/app-hosts/linnya/adapters/inference'
   );
@@ -709,7 +725,7 @@ async function initCliDeps(params: {
   databaseService.initialize();
 
   // 2) 模型注册表（embedding/rerank 会用到）
-  await modelCatalog.initialize();
+  await initializeDiagnosticModelServices(workspaceRoot);
 
   // 3) Qdrant
   const qdrantUrl =
@@ -950,11 +966,11 @@ async function handleQdrantSearchStandalone(argv: string[]): Promise<void> {
   dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
   dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-  const { modelCatalog, sourceDefaultModelsPath } = await import('src/domains/model-catalog');
+  const { sourceDefaultModelsPath } = await import('src/domains/model-catalog');
   process.env.MODEL_REGISTRY_DEFAULTS_PATH ??= sourceDefaultModelsPath(process.cwd());
   const { createEmbeddingPort } = await import('src/app-hosts/linnya/adapters/inference');
 
-  await modelCatalog.initialize();
+  await initializeDiagnosticModelServices(path.resolve(process.cwd(), '_dev_data'));
   const embedding = createEmbeddingPort();
 
   const embeddingModelId =

@@ -68,8 +68,6 @@ PACKAGES
 - @mozilla/readability@0.6.0 — Apache-2.0 — https://github.com/mozilla/readability — sha512-juG5VWh4qAivzTAeMzvY9xs9HY5rAcr2E4I7tiSSCokRFi7XIZCAu92ZkSTsIj1OPceCifL3cpfteP3pDT9/QQ==
 - @napi-rs/canvas@1.0.8 — MIT — https://github.com/Brooooooklyn/canvas — sha512-/SaLcvlqGWdm0HSCWMgHu7cjJiQXfP8/mOY+6dUyV9flQz7sPBBZ+ed2zYtoukojPmxOaL7bm+d/G4GeWWoN7g==
 - @napi-rs/canvas-darwin-arm64@1.0.8 — MIT — https://github.com/Brooooooklyn/canvas — sha512-7jQ47gi+fZ7KJmfc/5rNyy1CYw/cu4kZ0KPIYbo9UUgSdW0bKQJpt+WihEor6s4Lyp7+xc3a+3HeyXmAEbbnPg==
-- @napi-rs/keyring@2.1.0 — MIT — https://github.com/Brooooooklyn/keyring-node — sha512-km9J3fomkGSLpImpelq0cMvLBrJ5eVlTzuWdG3Iy0laP6gU90MmHYjqhUhG32aYq0/0++r2TLuAA9xlnh4XU1g==
-- @napi-rs/keyring-darwin-arm64@2.1.0 — MIT — https://github.com/Brooooooklyn/keyring-node — sha512-j6ATTOhmPW+N5EKwi8Yzn6P4Bz/uqnxzyYvqOL73/dgzDSYG5pS5eprqpVmOLse68WUTf79ZMqz97HnfvirJ9g==
 - @node-rs/jieba@2.0.1 — MIT — https://github.com/napi-rs/node-rs — sha512-tnfzXOMqzVQF2dSKMhPC9HrHzzWmN6KheL/zYtGenhOpq/bCKHJWVASSggEnHlkmHgXGeIJHR2N/IuPzewz1BQ==
 - @node-rs/jieba-darwin-arm64@2.0.1 — MIT — https://github.com/napi-rs/node-rs — sha512-10+nwGQ6KzXXJlIL/sELA6Fi6m7eJ7xJksBiKuw1kxKUgaJwtVfAG0iqRF+NRQv0Sdq7r3k5ew9K9y0+IYaEcA==
 - @openrouter/ai-sdk-provider@3.1.0 — Apache-2.0 — https://github.com/OpenRouterTeam/ai-sdk-provider — sha512-BQy1TA9fKrh47s9ivsO6FY5QimN7GUF0i8Qon3pkxQclEgShso0dClpcWn8OIyPLEZZPFaFKgI8TW4S/O0p0Dw==
@@ -573,7 +571,6 @@ PACKAGES WITH MANIFEST-ONLY LICENSE EVIDENCE
 - @esbuild/darwin-arm64@0.25.11 — declared MIT — https://github.com/evanw/esbuild
 - @esbuild/darwin-arm64@0.25.12 — declared MIT — https://github.com/evanw/esbuild
 - @img/sharp-libvips-darwin-arm64@1.3.4 — declared LGPL-3.0-or-later — https://github.com/lovell/sharp-libvips
-- @napi-rs/keyring-darwin-arm64@2.1.0 — declared MIT — https://github.com/Brooooooklyn/keyring-node
 - @node-rs/jieba-darwin-arm64@2.0.1 — declared MIT — https://github.com/napi-rs/node-rs
 - @rollup/rollup-darwin-arm64@4.63.1 — declared MIT — https://github.com/rollup/rollup
 - brotli@1.3.3 — declared MIT — https://github.com/devongovett/brotli.js
@@ -3197,32 +3194,6 @@ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
-
------ LICENSE 02965ed67e29f871a53f7a7afa593a0ddc8020f86ccce0faaf1aa59215b5269e -----
-Applies to: @napi-rs/keyring@2.1.0
-Installed file names: LICENSE
-
-MIT License
-
-Copyright (c) 2020 N-API for Rust
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 
 ----- LICENSE 04512a63dce4d2d506ad612dc0bd7681ccf6e3655f7b6eaef7dfac8323d1ec0b -----
 Applies to: commander@12.1.0, commander@15.0.0

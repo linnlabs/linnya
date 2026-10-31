@@ -332,8 +332,8 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
 
   it.each([
     {
-      name: '原凭据不可用',
-      endpoints: [endpoint('relay', { credential_status: 'unavailable' })],
+      name: '原凭据缺失',
+      endpoints: [endpoint('relay', { credential_status: 'missing' })],
       groups: ['relay'],
     },
     {

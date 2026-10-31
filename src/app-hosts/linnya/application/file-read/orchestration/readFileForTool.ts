@@ -118,11 +118,23 @@ async function readPhysicalLocator(input: {
     if (absolutePath.includes('\0')) {
       throw new PhysicalFileReadError('READ_FILE_LOCATOR_INVALID', 'file locator 解码后包含 NUL。');
     }
+    const { internalStorageFileAccess, commandRunPermission, runId } = input.context;
+    if (!internalStorageFileAccess || !commandRunPermission || !runId) {
+      throw new PhysicalFileReadError('READ_FILE_PERMISSION_UNAVAILABLE', '物理文件读取权限上下文不完整。');
+    }
     return readPhysicalFileForTool({
       ...deps,
       locator: input.parsedLocator.locator,
       absolutePath,
       scope: { kind: 'host' },
+      authorizeRead: resolvedPath => internalStorageFileAccess.authorizeRead({
+        absolutePath: resolvedPath,
+        conversationId: deps.conversationId,
+        agentRunId: runId,
+        toolCallId: deps.toolCallId,
+        permission: commandRunPermission,
+        ...(input.context.abortSignal ? { abortSignal: input.context.abortSignal } : {}),
+      }),
       hasExplicitTextWindow,
       hasAttachedImageContent,
     });

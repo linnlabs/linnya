@@ -1,3 +1,5 @@
+import { resolveLocalProcessPlatformRuntime } from '../../../infra/adapters/local-process-runtime/production-runtime';
+import { createElectronCommandIsolationSetupPort } from '../../desktop-capabilities/command-isolation-setup/createElectronCommandIsolationSetupPort';
 import path from 'node:path';
 import type { Writable } from 'node:stream';
 
@@ -13,8 +15,8 @@ import {
   createCommandDesktopRpcGateways,
 } from '../../../app-hosts/linnya/adapters/commands/renderer-rpc';
 import {
-  createDesktopCredentialProtectionRpcHandlers,
   createDesktopFileRevealRpcHandlers,
+  createCommandIsolationSetupRpcHandlers,
   createDesktopHiddenWorkerHostRpcHandlers,
   createDesktopRasterPdfDocumentRpcHandlers,
   createDesktopRendererIntegrationRpcHandlers,
@@ -31,7 +33,6 @@ import type { AppServerBackendConfiguration } from '../../../app-hosts/linnya/ap
 import type { BackendBootstrapFacts } from '../../../app-hosts/linnya/backend-runtime';
 import type { HostProcessEnvironment } from '../../../infra/adapters/command-runtime/environment';
 import { WebPageRenderManager } from '../../web-render/WebPageRenderManager';
-import { createElectronCredentialProtectionPort } from '../../desktop-capabilities/credential-protection';
 import { createElectronFileRevealPort } from '../../desktop-capabilities/file-reveal';
 import { createElectronBackendRendererIntegrationPort } from '../../desktop-capabilities/backend-renderer-integration';
 import { createElectronDesktopHiddenWorkerHostPort } from '../../desktop-capabilities/backend-hidden-worker-runtime';
@@ -43,9 +44,6 @@ import type { RuntimePathRoots } from '../../../shared/runtime-paths';
 import type { ElectronAppServerRuntime } from '../definitions/electronAppServerRuntime';
 import { createHiddenWorkerArtifactAdmission } from '../functions/assertHiddenWorkerDescriptorAllowed';
 import { resolveAppServerProcessLaunch } from '../../../app-hosts/linnya/app-server-runtime/orchestration/resolveAppServerProcessLaunch';
-import { createPluginCredentialRuntimeRpcHandlers } from '../../../app-hosts/linnya/plugin-registry/features/credential-runtime-rpc';
-import { createFilePluginCredentialRuntimePort } from '../../../plugin-sdk/backend/filePluginCredentialRuntime';
-import { store } from '../../store/index.js';
 import { createExportArtifactCommitRpcHandlers } from '../../../app-hosts/linnya/application/export-artifact-commit';
 import { commitAuthorizedExportArtifact } from '../../../features/system/export/orchestration/exportArtifactTargetRuntime';
 import { createDesktopDiagnosticLogRpcHandlers } from '../../../app-hosts/linnya/app-server-runtime/features/diagnostic-log-rpc';
@@ -101,23 +99,31 @@ export async function createElectronAppServerRuntime(input: {
       : []),
   ]);
   const rpcHandlers = new Map<string, AppServerRpcHandler>();
-  const credentialProtection = createElectronCredentialProtectionPort({
-    appDataRoot: input.runtimePathRoots.appDataRoot,
-  });
-  const pluginCredentialRuntime = await createFilePluginCredentialRuntimePort({
-    filePath: path.join(input.runtimePathRoots.appDataRoot, 'config', 'plugin_credentials.json'),
-    credentialProtection,
-    legacyStore: store,
-  });
+  if (input.backendFacts.platform === 'win32') {
+    const runtime = resolveLocalProcessPlatformRuntime({
+      platform: input.backendFacts.platform, architecture: input.backendFacts.architecture,
+      applicationVersion: input.backendFacts.applicationVersion,
+      applicationExecutablePath: input.backendFacts.applicationExecutablePath,
+      resourcesPath: input.backendFacts.resourcesPath, packaged: input.backendFacts.packaged,
+      hostEnvironment: input.commandHostEnvironment.entries,
+    });
+    if (runtime.platform !== 'win32') throw new Error('Windows command runtime expected');
+    registerHandlers(rpcHandlers, createCommandIsolationSetupRpcHandlers(createElectronCommandIsolationSetupPort({
+      runtime: {
+        manifestPath: runtime.manifest_path,
+        expectedRuntimeVersion: runtime.expected_runtime_version,
+        expectedApplicationVersion: runtime.expected_application_version,
+        trust: runtime.trust.kind === 'release'
+          ? { kind: 'release', expectedPublisherIdentity: runtime.trust.expected_publisher_identity }
+          : runtime.trust,
+      },
+      environment: launch.environment,
+    })));
+  }
+
   registerHandlers(rpcHandlers, createDesktopDiagnosticLogRpcHandlers({
     writeRecord: writeForwardedDiagnosticLogRecord,
   }));
-  registerHandlers(rpcHandlers, createDesktopCredentialProtectionRpcHandlers(
-    credentialProtection,
-  ));
-  registerHandlers(rpcHandlers, createPluginCredentialRuntimeRpcHandlers(
-    pluginCredentialRuntime,
-  ));
   registerHandlers(rpcHandlers, createExportArtifactCommitRpcHandlers({
     mailboxRoot,
     port: Object.freeze({ commit: commitAuthorizedExportArtifact }),

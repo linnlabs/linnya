@@ -77,7 +77,7 @@ async function runRealCommand(manifestPath: string): Promise<{
   const binding = await createWindowsOwnedPipeNativeBindingLoader(
     createLoaderOptions(manifestPath),
   ).load();
-  const launch = createWindowsJobOwnedPipeProcessLauncher(binding);
+  const launch = createWindowsJobOwnedPipeProcessLauncher(input => binding.createWindowsOwnedPipeProcess(input));
   const ownedProcess = await launch({
     executablePath: process.env.ComSpec
       ?? path.win32.join('C:/', 'Windows', 'System32', 'cmd.exe'),

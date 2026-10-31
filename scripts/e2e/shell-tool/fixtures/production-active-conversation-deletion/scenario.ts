@@ -238,6 +238,7 @@ export async function runProductionActiveConversationDeletionScenario(input: {
     helperEnvironment: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
     runnerPath: path.join(input.runnerRoot, 'commandRunnerUtilityProcess.cjs'),
     artifactStorageRoot: artifactRoot,
+    internalStorage: { protected_roots: [artifactRoot], readable_roots: [] },
     resolveToolOutputBlobsDirectory: ({ conversationId, instanceId }) => (
       path.join(appDataRoot, 'ToolOutputBlobs', conversationId, instanceId)
     ),

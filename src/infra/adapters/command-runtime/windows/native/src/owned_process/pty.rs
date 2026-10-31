@@ -17,7 +17,9 @@ use crate::handle::SharedHandle;
 use crate::launch_spec::NativeLaunchSpec;
 use crate::output_flow::OutputFlowGate;
 use crate::owned_process::{active_process_count, wait_for_tree_empty};
-use crate::pty_creation::{SharedPseudoConsole, create_windows_pty_resources, validate_pty_size};
+use crate::pty_creation::{
+    CreatedWindowsPtyResources, OwnedPseudoConsole, create_windows_pty_resources, validate_pty_size,
+};
 #[cfg(feature = "test-fault-injection")]
 use crate::test_support::{WindowsProcessIdentityForTest, read_process_identity_for_test};
 
@@ -26,6 +28,7 @@ const OBSERVER_READY_DEADLINE: Duration = Duration::from_secs(5);
 const ROOT_EXIT_DEADLINE: Duration = Duration::from_secs(5);
 
 pub(crate) struct WindowsOwnedPtyProcessState {
+    isolation: Option<crate::isolated_process::IsolatedWorkerLifetime>,
     // Job 必须最先 drop。utility 被强杀或测试 owner 非正常退出时，业务树先结束，
     // 随后的 HPCON close 才不会在 Windows 10/旧版 Windows 11 等待活 client。
     pub(super) job: SharedHandle,
@@ -35,7 +38,7 @@ pub(crate) struct WindowsOwnedPtyProcessState {
     // parent pipe 并请求取消 writer，避免旧系统在 ClosePseudoConsole 内互等。
     pub(super) output_reader: SharedHandle,
     pub(super) input: PtyInputWriter,
-    pub(super) pseudoconsole: SharedPseudoConsole,
+    pub(super) pseudoconsole: OwnedPseudoConsole,
     pub(super) conpty_input_reader: SharedHandle,
     pub(super) conpty_output_writer: SharedHandle,
     pub(super) output_flow: OutputFlowGate,
@@ -56,17 +59,25 @@ impl WindowsOwnedPtyProcessState {
         fault_injection: NativeFaultInjection,
     ) -> NativeResult<Self> {
         let resources = create_windows_pty_resources(spec, columns, rows, &fault_injection)?;
+        Self::from_resources(resources, fault_injection)
+    }
+
+    pub(crate) fn from_resources(
+        resources: CreatedWindowsPtyResources,
+        fault_injection: NativeFaultInjection,
+    ) -> NativeResult<Self> {
         let input = PtyInputWriter::start(resources.input_writer)?;
         fault_injection.check("input_writer_ready")?;
         Ok(Self {
+            isolation: resources.isolation,
             job: SharedHandle::new(resources.job),
             process: SharedHandle::new(resources.process),
             thread: SharedHandle::new(resources.thread),
             output_reader: SharedHandle::new(resources.output_reader),
             input,
             pseudoconsole: resources.pseudoconsole,
-            conpty_input_reader: SharedHandle::new(resources.conpty_input_reader),
-            conpty_output_writer: SharedHandle::new(resources.conpty_output_writer),
+            conpty_input_reader: SharedHandle::from_option(resources.conpty_input_reader),
+            conpty_output_writer: SharedHandle::from_option(resources.conpty_output_writer),
             output_flow: OutputFlowGate::default(),
             observers_started: AtomicBool::new(false),
             output_observer_started: AtomicBool::new(false),
@@ -450,6 +461,12 @@ impl WindowsOwnedPtyProcessState {
             ("thread", self.thread.close("pty_thread_release")),
             ("process", self.process.close("pty_process_release")),
             ("job", self.job.close("pty_job_release")),
+            (
+                "isolation",
+                self.isolation
+                    .as_ref()
+                    .map_or(Ok(()), |isolation| isolation.release()),
+            ),
         ] {
             if let Err(error) = result {
                 failures.push(format!("{stage}={error}"));

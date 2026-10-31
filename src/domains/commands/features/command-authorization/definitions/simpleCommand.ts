@@ -10,6 +10,9 @@ import type { ConversationCommandApproval } from '../../../definitions/commandAp
  */
 export const COMMAND_AUTHORIZATION_MATCHER_REVISION = 'command-authorization-v2';
 
+/** 内部存储批准保存完整命令文本；绝不按可追加参数的前缀复用普通写入批准。 */
+export const INTERNAL_STORAGE_AUTHORIZATION_MATCHER_REVISION = 'internal-storage-command-exact-v1';
+
 export const SUPPORTED_SIMPLE_COMMAND_SHELLS = {
   macos: ['zsh'],
   windows: ['powershell-5.1', 'powershell-7'],

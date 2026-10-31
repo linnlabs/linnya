@@ -59,6 +59,20 @@ async function createPackagedRuntime(artifactBytes = Buffer.from('unsigned-runti
       },
     }, null, 2)}\n`),
   ]);
+  const isolationArtifactPath = path.join(runtimeDirectory, 'linnyaCommandIsolation.exe');
+  const isolationManifestPath = path.join(runtimeDirectory, 'linnyaCommandIsolation.manifest.json');
+  const isolationBytes = Buffer.from('isolation-helper');
+  await fsp.writeFile(isolationArtifactPath, isolationBytes);
+  await fsp.writeFile(isolationManifestPath, JSON.stringify({
+    schema_version: 1,
+    runtime_id: 'linnya_windows_command_isolation',
+    runtime_version: '0.1.0',
+    application_version: '0.0.38',
+    platform: 'win32', architecture: 'x64', protocol_version: 1,
+    signature_evidence: { kind: 'development_unsigned' },
+    artifact: { file_name: 'linnyaCommandIsolation.exe', size_bytes: isolationBytes.length,
+      sha256: createHash('sha256').update(isolationBytes).digest('hex') },
+  }));
   const sandboxTarget = sandboxRuntimeCatalog.targets.find(target => (
     target.platform === 'win32' && target.architecture === 'x64'
   ));
@@ -104,6 +118,8 @@ async function createPackagedRuntime(artifactBytes = Buffer.from('unsigned-runti
   return {
     artifactPath,
     manifestPath,
+    isolationArtifactPath,
+    isolationManifestPath,
     sandboxNodePath,
     context: {
       electronPlatformName: 'win32',
@@ -237,6 +253,8 @@ describe('Windows command runtime afterSign trust contract', () => {
 
     const manifest = JSON.parse(await fsp.readFile(runtime.manifestPath, 'utf8'));
     expect(manifest.signature_evidence).toEqual({ kind: 'development_unsigned' });
+    expect(JSON.parse(await fsp.readFile(runtime.isolationManifestPath, 'utf8')).signature_evidence)
+      .toEqual({ kind: 'development_unsigned' });
   });
 
   it('开发构建拒绝意外签名或打包后 byte 漂移', async () => {
@@ -292,6 +310,8 @@ describe('Windows command runtime afterSign trust contract', () => {
     await createHook()(runtime.context);
     expect(JSON.parse(await fsp.readFile(runtime.manifestPath, 'utf8')).signature_evidence)
       .toEqual({ kind: 'release_unsigned' });
+    expect(JSON.parse(await fsp.readFile(runtime.isolationManifestPath, 'utf8')).signature_evidence)
+      .toEqual({ kind: 'release_unsigned' });
 
     const invalid = await createPackagedRuntime();
     await expect(createHook({ status: 'HashMismatch' })(invalid.context))
@@ -303,6 +323,20 @@ describe('Windows command runtime afterSign trust contract', () => {
     await expect(createHook()(invalid.context)).rejects.toThrow('changed after its manifest');
     expect(JSON.parse(await fsp.readFile(invalid.manifestPath, 'utf8')).signature_evidence)
       .toEqual({ kind: 'development_unsigned' });
+  });
+
+  it('拒绝隔离 helper 被替换或漏打包，不允许只验 native owner', async () => {
+    const runtime = await createPackagedRuntime();
+    const hook = createAfterSignRuntimeAssetsHook({
+      hostPlatform: 'win32',
+      environment: { LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST: 'development' },
+      authenticodeInspector: async () => ({ status: 'NotSigned', publisher_identity: null }),
+      windowsVcRuntimeAuthenticodeInspector: validVcRuntimeInspector,
+    });
+    await fsp.appendFile(runtime.isolationArtifactPath, '-tampered');
+    await expect(hook(runtime.context)).rejects.toThrow('changed after its manifest');
+    await fsp.rm(runtime.isolationArtifactPath);
+    await expect(hook(runtime.context)).rejects.toThrow(/ENOENT/);
   });
 
   it('发布构建必须显式提供精确发布者，不能因配置缺失降级', async () => {
@@ -354,7 +388,7 @@ describe('Windows command runtime afterSign trust contract', () => {
         LINNYA_WINDOWS_EXPECTED_PUBLISHER_IDENTITY: 'CN=Linnya Release',
       },
       authenticodeInspector: async artifactPath => {
-        expect(artifactPath).toBe(runtime.artifactPath);
+        expect([runtime.artifactPath, runtime.isolationArtifactPath]).toContain(artifactPath);
         return {
           status: 'Valid',
           status_message: 'Signature verified.',

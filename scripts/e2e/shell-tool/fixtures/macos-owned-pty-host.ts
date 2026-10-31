@@ -17,6 +17,8 @@ const owned = await createMacOsSandboxedOwnedPtyCommandProcess({
   argv: [processTreeFixture, runRoot, 'owner-death', 'ignore-term'],
   cwd: runRoot,
   conversationRoot: runRoot,
+  internalStorage: { protected_roots: [path.join(runRoot, ".private")], readable_roots: [] },
+  internalStorageAccess: false,
   environment,
   permissionLevel: 'full_access',
   terminalSize: { columns: 80, rows: 24 },

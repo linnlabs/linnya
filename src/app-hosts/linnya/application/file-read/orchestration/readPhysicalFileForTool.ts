@@ -54,6 +54,7 @@ export async function readPhysicalFileForTool(input: {
   readonly locator: string;
   readonly absolutePath: string;
   readonly scope: PhysicalFileReadScope;
+  readonly authorizeRead?: (resolvedPath: string) => Promise<void>;
   /** 只能在内容识别为图片后拒绝；拒绝必须发生在 ingress 和 claim 之前。 */
   readonly hasExplicitTextWindow: boolean;
   /** 由 app-level history projection 判断相同像素是否已进入当前 run。 */
@@ -62,6 +63,7 @@ export async function readPhysicalFileForTool(input: {
   const physical = await input.reader.readFile({
     absolutePath: input.absolutePath,
     scope: input.scope,
+    ...(input.authorizeRead ? { authorizeRead: input.authorizeRead } : {}),
   });
   if (physical.kind === 'text') {
     return Object.freeze({ ...physical, locator: input.locator });

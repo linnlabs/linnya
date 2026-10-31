@@ -129,6 +129,7 @@ function createStartRequest(command: string, mode: 'pipe' | 'pty' = 'pipe') {
   const launchBase = {
     protocol_version: 1 as const,
     conversation_root: RUN_CWD,
+    internal_storage: { protected_roots: [RUN_CWD + '/.private'], readable_roots: [] },
     proposal: {
       protocol_version: 1 as const,
       kind: 'shell_command_proposal' as const,

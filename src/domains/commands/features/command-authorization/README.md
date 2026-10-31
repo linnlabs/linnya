@@ -1,5 +1,20 @@
 # Command Authorization
 
+## 内部存储授权合同
+
+内部存储访问与普通写入授权分开。`read_only`、`standard` 必须得到用户批准，
+`full_access` 直接放行，不产生内部存储审批。正式插件的 `internal_data_access`
+开关管理插件数据 API，不代表 Shell 已获得原始文件访问权限。
+
+`requires_internal_storage_access` 只提出请求，不能指定 grant。Host 将请求冻结在
+proposal 中，审批显示可能涉及凭据和私人数据。允许本次仅用于该 execution；保存规则
+使用 `internal-storage-command-exact-v1`，在同一对话、同一 Shell 语义、相同 cwd 下
+精确匹配完整命令。该 matcher 的单项 token 保存完整命令，禁止当作普通前缀追加参数，
+也不能复用旧的普通命令批准。只读操作获批后仍保持只读；写入另需已有的标准权限审批。
+
+平台执行边界必须覆盖解释器和子进程。命令文本检查只负责提前提示，不能替代操作系统
+限制。沙箱拒绝后不自动重跑已执行的命令，避免重复前半段已经完成的写入或网络请求。
+
 ## 1. 功能边界
 
 这个 feature 在命令真正创建进程之前，回答一个问题：**这次 proposal 是否可以启动，还是必须先让用户审批**。它只处理授权事实和匹配规则，不负责展示弹窗、不负责写权限设置文件，也不负责启动进程。
@@ -60,13 +75,14 @@ grant_source = global_setting | allow_once | conversation_approval
 internal_data_access = allowed | denied
 ```
 
-Schema 对提升有结构性限制：`global_setting` 不能改变用户选中的档位；审批只能把 `read_only` 或 `standard` 临时提升到 `standard`，不能通过一次审批变成 `full_access`。因此调用方不能靠拼一个对象绕过规则。
+Schema 对提升有结构性限制：`global_setting` 不能改变用户选中的档位；普通审批最多授予 `standard`，内部读取批准可以保持 `read_only`。任何审批都不能变成 `full_access`。
 
 ### 4.2 审批原因
 
-`CommandApprovalReason` 只有两类：
+`CommandApprovalReason` 包含：
 
 - `permission_elevation`：从 `read_only` 临时提升到 `standard`。
+- `internal_storage_access`：单次原始存储访问；不改变插件数据开关，也不自动授予写入。
 - `fixed_risk_rule`：携带 `rule_id` 和风险类别。
 
 风险类别目前是 `delete`、`move_overwrite_rename`、`external_upload`、`download_and_execute`、`system_or_disk_impact`。规则 id 是审计和测试的稳定标识，修改规则语义时必须增加 matcher revision 或明确迁移策略。
@@ -96,7 +112,7 @@ macOS 使用 zsh 语义扫描，Windows 使用 PowerShell 简单命令扫描。�
 - 需要审批但页面不可用：保持 pending 或由上层取消，不能自动允许。
 - 规则扫描无法可靠完成：按需要审批处理，不得按低风险放行。
 - 记忆上下文不匹配：只允许本次，不能复用旧批准。
-- `internal_data_access = denied` 时，正式插件 CLI bridge 在执行需要内部数据的 access plan 前拒绝；这个开关独立于三档权限。当前普通 Shell 授权规则不解析脚本中的数据库读取，macOS 文件策略也未据此拒绝内部路径读取。因此不能把 bridge 的拒绝合同外推为任意解释器/外部 CLI 的文件隔离保证。
+- `internal_data_access = denied` 时，正式插件 CLI bridge 在执行需要内部数据的 access plan 前拒绝；这个开关独立于三档权限与单次原始存储访问批准。任意解释器的读取由平台文件边界落实，不能把 bridge 的拒绝合同当作平台隔离证明。
 - `local_ipc_control = denied` 当前只是固定配置值，不构成对任意本机 HTTP/IPC 访问的执行隔离；Shell 仍可访问 localhost。本机 Conversation Control CLI 信任同一 OS 用户，连接文件的 `0700/0600` 不能区分该用户启动的 CLI 与受管 Agent 进程，不能据此承诺阻止 Agent 取得本机控制凭据。具体鉴权与限制见 [Conversation Control Bridge](../../../../app-hosts/linnya/adapters/conversation-control-bridge/README.md)。
 - `gui_control = denied` 不是一条可审批风险规则。直接或经解释器、自定义二进制启动 GUI 都必须由平台执行边界拒绝；当前跨解释器 enforcement 与正式 fixture 是 Command 上线门禁。
 

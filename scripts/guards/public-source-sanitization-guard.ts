@@ -53,10 +53,11 @@ const RETIRED_PRODUCT_NAME_PATTERN = new RegExp(
   `(?<![A-Za-z0-9])${['ting', 'talk'].join('')}(?=$|[^A-Za-z0-9])`,
   'giu'
 );
-// npm scope、GitHub URL 和 workflow `uses:` 是正式发布身份；只有裸路径写法表示
+// npm scope、GitHub URL、Windows Software 注册表键和 workflow `uses:` 是正式发布身份；裸路径写法表示
 // 对个人父级工作区的假设，公共仓必须拒绝。
 const PARENT_WORKSPACE_PATH_PATTERN =
   /(?<!github\.com\/)(?<!@)(?<!uses: )linnlabs[\\/]+/giu;
+const WINDOWS_SOFTWARE_KEY_PREFIX = /["'`](?:(?:HKCU|HKLM):\\+)?SOFTWARE\\+$/iu;
 
 function isPublicPlaceholderSegment(segment: string): boolean {
   const normalized = segment.toLowerCase();
@@ -101,7 +102,12 @@ function collectPatternViolations(
   pattern: RegExp,
   reason: PublicSourceSanitizationReason
 ): PublicSourceSanitizationViolation[] {
-  return Array.from(content.matchAll(pattern)).map(match => ({
+  return Array.from(content.matchAll(pattern)).filter(match => {
+    // Windows 产品注册表名称不是本机 checkout；只识别字面量起点，不放行磁盘上的
+    // .../Software/<vendor>/ 路径，也不按源文件名给整个文件豁免。
+    return reason !== 'parent-workspace-path'
+      || !WINDOWS_SOFTWARE_KEY_PREFIX.test(content.slice(0, match.index));
+  }).map(match => ({
     file: relativePath,
     line: resolveLineNumber(content, match.index),
     reason,

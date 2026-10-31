@@ -96,10 +96,10 @@ describe('evaluateModelRuntimeAvailability', () => {
         capability: 'chat',
         context: {
           ...baseContext,
-          inferenceEndpoints: [{ ...endpoint, credential_status: 'unavailable' }],
+          inferenceEndpoints: [{ ...endpoint, credential_status: 'configured' }],
         },
       }),
-    ).toEqual({ available: false, reason: 'credential_missing' });
+    ).toEqual({ available: true });
   });
 
   it('Model Picker 的聚合标记与具体用途共享同一判定', () => {

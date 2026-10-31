@@ -14,7 +14,7 @@ ProviderAccount，注册 command 不携带 token。`synchronizeConnectedProvider
 
 `replaceDirectProviderCredential` 供模型管理更换已连接 API-Key Provider 的 Key：只接收 connection ID 与新
 Key，校验 connection 的 setup schema 确为 API Key 且已存在 ConfiguredProvider，确认其全部 endpoint 共享唯一
-`stored_secret` 后，通过 Model Catalog `replaceInferenceEndpointCredential` 在原 credential boundary 内替换密文。
+`stored_secret` 后，通过 Model Catalog `replaceInferenceEndpointCredential` 在原 credential boundary 内替换凭据。
 它不新建 endpoint、不改写模型或用途绑定，也不接受 URL、协议等字段；账号型 Provider 继续走登录授权。
 
 API-Key Provider 的 `refreshRegisteredProviderModels` 只原位更新已经激活的 ModelConfig，

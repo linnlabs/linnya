@@ -47,6 +47,10 @@ SRT 0.0.81 的配置 schema 已显式使用 `zod/v3`，可复用 Zod 4 包内的
 当前两个安装边界均仅对 SRT 的依赖范围覆盖为 4.6.7；这不把其 schema 强行改成 v4 API。
 上游放宽依赖范围后可移除此定向覆盖。升级 SRT 必须回归 macOS pipe/PTY 的真实文件权限与进程回收。
 
+Windows 受限 Shell 的完整 CLI 回归使用 `test:shell-tool:windows-current-host-cli-corpus`。除 SSH host/user/key 外，须指定 `LINNYA_WINDOWS_INTERACTIVE_USER`：专用 VM 中已经登录桌面的普通测试用户。SSH 管理员只安装和回收测试账户组件；实际打包 Electron、PowerShell、插件 CLI 与审批链路通过该普通用户的交互式任务运行。不能把 SSH 的 Session 0 当作桌面登录环境；回归拒绝覆盖用户已有的隔离服务，结束后回收本次任务、服务、账户和文件。
+
+macOS 的 `test:shell-tool:production-command-approval-dom` 使用真实 Renderer/Preload，覆盖内部存储的三档权限、本次批准与保存规则。两类 E2E 都会重建 command runner，须顺序运行，不能共享 `dist/main/commands` 并发构建。
+
 产品及官方插件使用正式 npm Linnkit 0.41.0 与 Zod 4.6.7。Zod 主版本升级必须同时检查
 模型列表的缺省字段、工具错误路径、图表诊断与递归 JSON 输入类型，并重建 schemas 的 CJS/ESM
 产物和生产锁。不能只通过依赖覆盖声明兼容；运行合同与独立打包消费门禁都必须通过。
@@ -83,6 +87,13 @@ App Server ready 仍要求本地数据库、目录恢复和正式路由可用；
 | Slides plugin | `pnpm --filter @plugin/slides typecheck` 与 `pnpm --filter @plugin/slides test` |
 | 全仓 TypeScript 存量债务 | `pnpm run guard:tsc-baseline` |
 | 代码边界与格式 | 对修改文件运行 ESLint，并执行 `pnpm run lint:style`、`git diff --check` |
+
+凭据持久化变更需覆盖 App Server 的 `credentialPersistence.integration.test.ts` 与
+Backend Worker 的 `workerModelCredentials.integration.test.ts`：前者验证模型、OAuth、插件的
+保存/重启、损坏保护、并发进程和写入中断，后者验证独立线程的模型 Key、OAuth 与环境变量。
+Web Search/Read 的配置持久化测试覆盖各自 namespace 与脱敏视图。执行 Main、Backend、Worker
+构建后，继续跑 Shell 的真实 macOS 审批 DOM 和 Windows 普通用户 CLI corpus，验证实际
+`credentials.json` 在三档权限下的访问结果。记录实际测试的 Windows 版本和架构；兼容目标不能表述为已完成实机验证。
 
 Sandbox 的跨平台打包验收入口是 `test:shell-tool:formal-electron-sandbox`（macOS）和
 `test:shell-tool:windows-formal-electron-sandbox`（macOS 经 SSH 控制 Windows）。两者共用

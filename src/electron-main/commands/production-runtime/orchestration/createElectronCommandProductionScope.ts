@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import type { CommandInternalStorageBoundary } from '@app/schemas/commands';
 
 import type { CommandRunnerProcessPort } from '../../../../domains/commands';
 import type { CommandExecutionAuditPort } from 'src/domains/audit';
@@ -28,6 +29,7 @@ export async function createElectronCommandProductionScope(input: {
   readonly commandExecutionAudit: CommandExecutionAuditPort;
   readonly cardControlHost?: CommandCardControlHost;
   readonly runtimeFacts: CommandRuntimeFacts;
+  readonly internalStorage: CommandInternalStorageBoundary;
   readonly helperEnvironment: Readonly<Record<string, string>>;
   readonly runnerPath: string;
   readonly artifactStorageRoot: string;
@@ -52,6 +54,7 @@ export async function createElectronCommandProductionScope(input: {
     presentationHost: cardControlHost,
     constructionPolicy: LINNYA_COMMAND_PRODUCTION_CONSTRUCTION_POLICY,
     runtimeFacts: input.runtimeFacts,
+    internalStorage: input.internalStorage,
     runnerProcess,
     artifactStorageRoot: input.artifactStorageRoot,
     resolveToolOutputBlobsDirectory: input.resolveToolOutputBlobsDirectory,

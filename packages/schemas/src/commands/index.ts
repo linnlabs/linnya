@@ -7,6 +7,8 @@ export * from './commandOutcome';
 export * from './processControl';
 export * from './processTool';
 export * from './commandPermission';
+export * from './commandInternalStorage';
+export * from './internalFileReadProposal';
 export * from './commandPermissionSettings';
 export * from './commandPresentationFacts';
 export * from './shellCommandProposal';

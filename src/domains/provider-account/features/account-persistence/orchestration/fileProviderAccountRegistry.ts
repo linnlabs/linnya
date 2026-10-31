@@ -1,221 +1,90 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-
-import { pathManager } from 'src/shared/utils/pathManager';
-import {
-  readCredentialProtectionErrorCode,
-  type CredentialProtectionErrorCode,
-} from 'src/shared/credential-protection';
+import { JsonValueSchema } from '@app/schemas';
+import { CredentialStorageError, type CredentialStoragePort } from 'src/shared/credential-storage';
 import type {
   ProviderAccount,
-  ProviderAccountCredentialCodec,
   ProviderAccountOAuthCredential,
   ProviderAccountCredentialStatus,
   ProviderAccountRegistry,
 } from '../../../definitions/providerAccount';
-import { ProviderAccountCredentialUnavailableError } from '../../../definitions/providerAccount';
 import {
-  PROVIDER_ACCOUNT_FILE_VERSION,
-  migrateProviderAccountFileV1,
-  readProviderAccountFile,
-  readProviderAccountOAuthCredential,
-  type ProviderAccountFile,
+  readStoredProviderAccount,
   type StoredProviderAccount,
-} from '../definitions/providerAccountFile';
+} from '../definitions/providerAccountCredential';
+
+const NAMESPACE = 'provider-accounts';
 
 export class FileProviderAccountRegistry implements ProviderAccountRegistry {
-  private credentialCodec: ProviderAccountCredentialCodec | null = null;
-  private filePath: string | null = null;
-  private accounts = new Map<string, StoredProviderAccount>();
-  private plaintextCredentials = new Map<string, ProviderAccountOAuthCredential>();
-  private credentialStatuses = new Map<string, ProviderAccountCredentialStatus>();
+  private storage: CredentialStoragePort | null = null;
 
-  installCredentialCodec(codec: ProviderAccountCredentialCodec): void {
-    this.credentialCodec = codec;
+  installCredentialStorage(storage: CredentialStoragePort): void {
+    this.storage = storage;
   }
 
   async initialize(): Promise<void> {
-    if (this.filePath) return;
-    this.filePath = pathManager.getProviderAccountsConfigPath();
-    await fs.mkdir(path.dirname(this.filePath), { recursive: true });
-    try {
-      const parsed: unknown = JSON.parse(await fs.readFile(this.filePath, 'utf8'));
-      const migrated = migrateProviderAccountFileV1(parsed);
-      const accounts = new Map(
-        (migrated ?? readProviderAccountFile(parsed)).map(account => [account.id, account])
-      );
-      const decrypted = await this.decryptCredentials(accounts);
-      this.accounts = decrypted.accounts;
-      this.plaintextCredentials = decrypted.plaintext;
-      this.credentialStatuses = decrypted.statuses;
-      if (migrated || decrypted.migrated) await this.write(decrypted.accounts);
-    } catch (error: unknown) {
-      const code =
-        error instanceof Error && 'code' in error ? Reflect.get(error, 'code') : undefined;
-      if (code !== 'ENOENT') throw error;
-      await this.write(new Map());
-    }
+    this.read();
   }
 
-  /** 钥匙串授权未完成的账号在授权后补上；返回本次是否有账号恢复、是否还有账号在等待。 */
-  async retryTemporarilyUnavailable(): Promise<{ recovered: boolean; pending: boolean }> {
-    const waiting = new Map(
-      Array.from(this.accounts).filter(
-        ([id]) => this.credentialStatuses.get(id) === 'temporarily_unavailable'
-      )
-    );
-    if (waiting.size === 0) return { recovered: false, pending: false };
-    const decrypted = await this.decryptCredentials(waiting);
-    let recovered = false;
-    for (const [id, original] of waiting) {
-      // 解密期间账号可能已被更新或删除，以当前记录为准。
-      if (this.accounts.get(id) !== original) continue;
-      const status = decrypted.statuses.get(id);
-      if (status) this.credentialStatuses.set(id, status);
-      const credential = decrypted.plaintext.get(id);
-      if (!credential) continue;
-      this.plaintextCredentials.set(id, credential);
-      this.accounts.set(id, decrypted.accounts.get(id) ?? original);
-      recovered = true;
+  private requireStorage(): CredentialStoragePort {
+    if (!this.storage) throw new Error('Provider account credential storage 尚未安装');
+    return this.storage;
+  }
+
+  private read(): ReadonlyMap<string, StoredProviderAccount> {
+    const accounts = new Map<string, StoredProviderAccount>();
+    for (const [id, value] of this.requireStorage().read(NAMESPACE)) {
+      const stored = readStoredProviderAccount(value);
+      if (stored.account.id !== id) throw new CredentialStorageError('invalid_format');
+      accounts.set(id, stored);
     }
-    if (decrypted.migrated) await this.write(this.accounts);
-    return {
-      recovered,
-      pending: Array.from(this.credentialStatuses.values()).includes('temporarily_unavailable'),
-    };
+    return accounts;
   }
 
   list(): readonly ProviderAccount[] {
-    return Array.from(this.accounts.values(), account => this.toAccount(account));
+    return Array.from(this.read().values(), stored => stored.account);
   }
 
   get(accountId: string): ProviderAccount | undefined {
-    const account = this.accounts.get(accountId);
-    return account ? this.toAccount(account) : undefined;
+    return this.read().get(accountId)?.account;
   }
 
   hasCredential(accountId: string): boolean {
-    return this.credentialStatuses.get(accountId) === 'available';
+    return this.read().has(accountId);
   }
 
   getCredentialStatus(accountId: string): ProviderAccountCredentialStatus | 'missing' {
-    return this.credentialStatuses.get(accountId) ?? 'missing';
+    return this.hasCredential(accountId) ? 'available' : 'missing';
   }
 
   resolveOAuthCredential(accountId: string): ProviderAccountOAuthCredential {
-    if (!this.accounts.has(accountId)) throw new Error(`Provider account 不存在: ${accountId}`);
-    const status = this.credentialStatuses.get(accountId);
-    if (!status) throw new Error(`Provider account 凭据尚未完成初始化: ${accountId}`);
-    if (status !== 'available') throw new ProviderAccountCredentialUnavailableError(status);
-    const credential = this.plaintextCredentials.get(accountId);
-    if (!credential) throw new Error(`Provider account 凭据尚未完成初始化: ${accountId}`);
-    return { ...credential };
+    const stored = this.read().get(accountId);
+    if (!stored) throw new Error(`Provider account 不存在: ${accountId}`);
+    return stored.credential;
   }
 
   async putOAuthCredential(
     input: Omit<ProviderAccount, 'created_at' | 'updated_at'>,
     credential: ProviderAccountOAuthCredential
   ): Promise<ProviderAccount> {
-    if (!this.credentialCodec) throw new Error('Provider account credential codec 尚未安装');
-    const encryptedCredential = await this.credentialCodec.encrypt(JSON.stringify(credential));
-    const current = this.accounts.get(input.id);
+    const current = this.read().get(input.id);
     const updatedAt = new Date().toISOString();
-    const stored: StoredProviderAccount = {
-      ...input,
-      created_at: current?.created_at ?? updatedAt,
-      updated_at: updatedAt,
-      encrypted_credential: encryptedCredential,
-    };
-    const next = new Map(this.accounts);
-    next.set(stored.id, stored);
-    await this.write(next);
-    this.accounts = next;
-    this.plaintextCredentials.set(stored.id, { ...credential });
-    this.credentialStatuses.set(stored.id, 'available');
-    return this.toAccount(stored);
+    const stored = readStoredProviderAccount({
+      account: {
+        ...input,
+        created_at: current?.account.created_at ?? updatedAt,
+        updated_at: updatedAt,
+      },
+      credential,
+    });
+    await this.requireStorage().update(
+      NAMESPACE,
+      new Map([[input.id, JsonValueSchema.parse(stored)]])
+    );
+    return stored.account;
   }
 
   async remove(accountId: string): Promise<void> {
-    const next = new Map(this.accounts);
-    if (!next.delete(accountId)) return;
-    await this.write(next);
-    this.accounts = next;
-    this.plaintextCredentials.delete(accountId);
-    this.credentialStatuses.delete(accountId);
-  }
-
-  private toAccount(stored: StoredProviderAccount): ProviderAccount {
-    return {
-      id: stored.id,
-      provider_connection_definition_id: stored.provider_connection_definition_id,
-      auth_method: stored.auth_method,
-      created_at: stored.created_at,
-      updated_at: stored.updated_at,
-    };
-  }
-
-  private async write(accounts: Map<string, StoredProviderAccount>): Promise<void> {
-    const filePath = this.filePath ?? pathManager.getProviderAccountsConfigPath();
-    this.filePath = filePath;
-    const data: ProviderAccountFile = {
-      version: PROVIDER_ACCOUNT_FILE_VERSION,
-      last_updated: new Date().toISOString(),
-      accounts: Array.from(accounts.values()),
-    };
-    const temporaryPath = `${filePath}.${process.pid}.tmp`;
-    await fs.writeFile(temporaryPath, `${JSON.stringify(data, null, 2)}\n`, {
-      encoding: 'utf8',
-      mode: 0o600,
-    });
-    await fs.rename(temporaryPath, filePath);
-  }
-
-  private async decryptCredentials(
-    accounts: ReadonlyMap<string, StoredProviderAccount>
-  ): Promise<{
-    readonly accounts: Map<string, StoredProviderAccount>;
-    readonly plaintext: Map<string, ProviderAccountOAuthCredential>;
-    readonly statuses: Map<string, ProviderAccountCredentialStatus>;
-    readonly migrated: boolean;
-  }> {
-    if (accounts.size === 0) {
-      return { accounts: new Map(), plaintext: new Map(), statuses: new Map(), migrated: false };
-    }
-    const codec = this.credentialCodec;
-    if (!codec) throw new Error('Provider account credential codec 尚未安装');
-    const decrypted = await Promise.all(Array.from(accounts.values(), async account => {
-      try {
-        const migratedCiphertext = await codec.rewrap?.(account.encrypted_credential);
-        const effectiveAccount = migratedCiphertext !== undefined
-          ? { ...account, encrypted_credential: migratedCiphertext }
-          : account;
-        const plaintext = await codec.decrypt(effectiveAccount.encrypted_credential);
-        return {
-          id: account.id,
-          account: effectiveAccount,
-          credential: readProviderAccountOAuthCredential(JSON.parse(plaintext)),
-          status: 'available' as const,
-          migrated: migratedCiphertext !== undefined,
-        };
-      } catch (error: unknown) {
-        const code: CredentialProtectionErrorCode = readCredentialProtectionErrorCode(error);
-        return { id: account.id, status: code };
-      }
-    }));
-    const effectiveAccounts = new Map(accounts);
-    for (const item of decrypted) {
-      if (item.status === 'available') effectiveAccounts.set(item.id, item.account);
-    }
-    return {
-      accounts: effectiveAccounts,
-      plaintext: new Map(
-        decrypted.flatMap(item => item.status === 'available'
-          ? [[item.id, item.credential] as const]
-          : []),
-      ),
-      statuses: new Map(decrypted.map(item => [item.id, item.status])),
-      migrated: decrypted.some(item => item.status === 'available' && item.migrated),
-    };
+    this.read();
+    await this.requireStorage().update(NAMESPACE, new Map([[accountId, undefined]]));
   }
 }
 

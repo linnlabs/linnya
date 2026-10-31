@@ -17,9 +17,9 @@
  */
 
 import { parentPort, workerData } from 'worker_threads';
+import { initializeWorkerModelServices } from '../../../app-hosts/linnya/backend-runtime/workerModelServices';
 
 import { enableDiagnosticLogForwarding, Logger } from '../../../shared/logger';
-import { modelCatalog } from 'src/domains/model-catalog';
 import {
   readProviderConnectionLookup,
   type ProviderConnectionLookup,
@@ -47,7 +47,6 @@ import { collectExtractableTextBlocks } from '../../../features/knowledge-base/g
 import { getKnowledgeGraphExtractionModelPolicy } from 'src/app-hosts/linnya/agent-registry/internals/knowledge_graph_extraction';
 import {
   createDefaultHostInferencePort,
-  createLinnyaModelReasoningResolver,
   createTextGenerationPort,
 } from 'src/app-hosts/linnya/adapters/inference';
 import {
@@ -86,14 +85,14 @@ function sendMessage(type: WorkerMessageType, data: unknown): void {
   parentPort.postMessage(msg);
 }
 
-function installWorkerRuntimePathRoots(): void {
+function installWorkerRuntimePathRoots(): RuntimePathRoots {
   const runtimePathRoots = (
     workerData as { readonly runtimePathRoots?: RuntimePathRoots } | undefined
   )?.runtimePathRoots;
   if (!runtimePathRoots) {
     throw new Error('[GraphExtractionWorker] 缺少 owner 传入的 Runtime path roots');
   }
-  installRuntimePathRoots(runtimePathRoots);
+  return installRuntimePathRoots(runtimePathRoots);
 }
 
 function installWorkerDistributionIdentity(): DistributionIdentity {
@@ -107,14 +106,10 @@ function installWorkerDistributionIdentity(): DistributionIdentity {
 }
 
 async function initializeWorkerServices(): Promise<void> {
-  installWorkerRuntimePathRoots();
+  const runtimePathRoots = installWorkerRuntimePathRoots();
   const distributionIdentity = installWorkerDistributionIdentity();
 
-  // 初始化模型注册表
-  if (modelCatalog.getModels().length === 0) {
-    modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
-    await modelCatalog.initialize(distributionIdentity);
-  }
+  await initializeWorkerModelServices({ runtimePathRoots, distributionIdentity });
 
 }
 

@@ -25,14 +25,6 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.modelPicker.customModels': '自定义模型',
   'settings.modelPicker.credentialUnavailable': '凭据不可用，请删除后重新添加。',
   'settings.modelPicker.credentialReason.missing': '未找到本机凭据。请删除后重新添加。',
-  'settings.modelPicker.credentialReason.temporarilyUnavailable':
-    '系统安全存储暂时不可用。请稍后重试，或删除后重新添加。',
-  'settings.modelPicker.credentialReason.invalidated':
-    '系统安全存储无法解密该凭据（可能是 macOS 钥匙串已重置）。请删除后重新添加。',
-  'settings.modelPicker.credentialReason.malformedCiphertext':
-    '凭据密文格式无效。请删除后重新添加。',
-  'settings.modelPicker.credentialReason.unknown':
-    '系统安全存储处理凭据时发生未知错误。请删除后重新添加。',
   'settings.modelPicker.removeProvider': '删除 Provider',
   'settings.modelPicker.removeProvider.confirm':
     '将删除该 Provider 的配置、凭据及其已启用模型，之后可以重新添加。是否继续？',
@@ -183,7 +175,7 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.webRead.apiKey.placeholder': '请输入 API Key',
   'settings.webRead.apiKey.availablePlaceholder': '已有可用凭证，留空则继续使用',
   'settings.webRead.apiKey.savedDescription':
-    'Key 已通过系统安全存储加密；新输入会替换当前服务的 Key。',
+    'Key 已保存在本机；新输入会替换当前服务的 Key。',
   'settings.webRead.apiKey.registryDescription': '当前服务已有可用的本机凭证。',
   'settings.webRead.apiKey.obtain': '获取 API Key',
   'settings.webRead.actions.save': '保存',
@@ -365,7 +357,6 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.modelPicker.synchronizeModels': '同步模型列表',
   'settings.modelPicker.refreshedSyncFailed':
     '“{source}”的模型已刷新，但列表同步失败，请重新打开模型管理。',
-  'settings.modelPicker.credentialReason.migrationRequired': '此凭据需要迁移，请重新连接该供应商。',
   'settings.modelPicker.customProviders': '自定义模型供应商',
   'settings.modelPicker.editProvider': '编辑供应商',
   'settings.modelPicker.editCustomProvider.title': '编辑自定义模型供应商',
@@ -493,14 +484,6 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
         'The credential is unavailable. Delete it and add the Provider again.',
       'settings.modelPicker.credentialReason.missing':
         'The local credential was not found. Delete it and add the Provider again.',
-      'settings.modelPicker.credentialReason.temporarilyUnavailable':
-        'The system secure storage is temporarily unavailable. Try again later, or delete and add the Provider again.',
-      'settings.modelPicker.credentialReason.invalidated':
-        'The system secure storage cannot decrypt this credential (the macOS Keychain may have been reset). Delete it and add the Provider again.',
-      'settings.modelPicker.credentialReason.malformedCiphertext':
-        'The credential ciphertext is invalid. Delete it and add the Provider again.',
-      'settings.modelPicker.credentialReason.unknown':
-        'The system secure storage returned an unknown error. Delete it and add the Provider again.',
       'settings.modelPicker.removeProvider': 'Delete Provider',
       'settings.modelPicker.removeProvider.confirm':
         'This will delete the Provider configuration, credential, and activated models. You can add the Provider again afterward. Continue?',
@@ -663,7 +646,7 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.webRead.apiKey.availablePlaceholder':
         'A credential is available; leave blank to keep using it',
       'settings.webRead.apiKey.savedDescription':
-        "The key is encrypted by system secure storage. A new value replaces this service's key.",
+        "The key is saved on this device. A new value replaces this service's key.",
       'settings.webRead.apiKey.registryDescription':
         'An on-device credential is available for this service.',
       'settings.webRead.apiKey.obtain': 'Get API key',
@@ -854,8 +837,6 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.modelPicker.synchronizeModels': 'Sync model list',
       'settings.modelPicker.refreshedSyncFailed':
         'Models for {source} were refreshed, but the lists could not be synchronized. Reopen model management.',
-      'settings.modelPicker.credentialReason.migrationRequired':
-        'This credential requires migration. Reconnect this provider.',
       'settings.modelPicker.customProviders': 'Custom Providers',
       'settings.modelPicker.editProvider': 'Edit provider',
       'settings.modelPicker.editCustomProvider.title': 'Edit custom provider',

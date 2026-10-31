@@ -87,6 +87,19 @@ describe('public source sanitization guard', () => {
     ]);
   });
 
+  it('允许产品 Software 注册表键，但不豁免同名磁盘目录', () => {
+    const key = ['Software', 'Linnlabs', 'CommandIsolation'].join('\\');
+    const content = [
+      `r"${key}"`,
+      `'HKCU:${'\\'}${key}'`,
+      JSON.stringify(key),
+      `"C:${'\\'}${key}"`,
+    ].join('\n');
+    expect(analyzePublicTextForSourceSanitization('fixture.rs', content)).toEqual([
+      { file: 'fixture.rs', line: 4, reason: 'parent-workspace-path' },
+    ]);
+  });
+
   it('扫描 Git 候选文件并排除已忽略的本地文件', () => {
     const repositoryRoot = mkdtempSync(path.join(tmpdir(), 'linnya-public-path-guard-'));
     const user = createPrivateUserSegment();

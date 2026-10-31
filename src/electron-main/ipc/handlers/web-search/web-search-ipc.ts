@@ -1,6 +1,6 @@
+import type { CredentialStoragePort } from '../../../../shared/credential-storage';
 import {
   FileWebSearchConfigStore,
-  type WebSearchCredentialCodec,
 } from '../../../../infra/adapters/web-search-config/fileWebSearchConfigStore';
 import type { BackendRendererIpcStyleRegistrarPort } from '../../../../app-hosts/linnya/adapters/backend-renderer-requests';
 import { pathManager } from '../../../../shared/utils/pathManager';
@@ -32,18 +32,18 @@ interface RegisterWebSearchConfigHandlersOptions {
     selection: WebSearchConfig,
     dependencies?: WebSearchProviderFactoryDependencies,
   ) => WebSearchProvider;
-  readonly credentialProtection?: WebSearchCredentialCodec;
+  readonly credentialStorage?: CredentialStoragePort;
 }
 
 async function createDefaultStore(
-  credentialProtection: WebSearchCredentialCodec | undefined,
+  credentialStorage: CredentialStoragePort | undefined,
 ): Promise<FileWebSearchConfigStore> {
-  if (!credentialProtection) {
-    throw new Error('Web Search 配置缺少 Desktop credential protection port');
+  if (!credentialStorage) {
+    throw new Error('Web Search 配置缺少 credential storage port');
   }
   return FileWebSearchConfigStore.open(
     pathManager.getWebSearchConfigPath(),
-    credentialProtection,
+    credentialStorage,
   );
 }
 
@@ -55,7 +55,7 @@ export async function registerWebSearchConfigHandlers(
   ipc: BackendRendererIpcStyleRegistrarPort,
   options: RegisterWebSearchConfigHandlersOptions = {},
 ): Promise<void> {
-  const store = options.store ?? await createDefaultStore(options.credentialProtection);
+  const store = options.store ?? await createDefaultStore(options.credentialStorage);
   const providerFactory = options.createProvider ?? createWebSearchProvider;
   installWebSearchConfigReader(store);
 

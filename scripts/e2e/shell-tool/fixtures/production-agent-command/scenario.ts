@@ -362,6 +362,7 @@ export async function runProductionAgentCommandScenario(input: {
       'commandRunnerUtilityProcess.cjs',
     ),
     artifactStorageRoot: artifactRoot,
+    internalStorage: { protected_roots: [artifactRoot], readable_roots: [] },
     resolveToolOutputBlobsDirectory: ({ conversationId, instanceId }) => (
       path.join(toolOutputRoot, conversationId, instanceId)
     ),

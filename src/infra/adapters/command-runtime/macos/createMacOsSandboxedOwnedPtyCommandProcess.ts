@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 
 import { SandboxManager } from '@anthropic-ai/sandbox-runtime';
 import type {
+  CommandInternalStorageBoundary,
   CommandPermissionLevel,
   ProcessInteractionActionV1,
 } from '@app/schemas/commands';
@@ -65,6 +66,8 @@ export interface MacOsSandboxedOwnedPtyCommandProcessLaunch
   extends OwnedPtyCommandProcessLaunch {
   readonly permissionLevel: CommandPermissionLevel;
   readonly conversationRoot: string;
+  readonly internalStorage: CommandInternalStorageBoundary;
+  readonly internalStorageAccess: boolean;
 }
 
 export class MacOsOwnedPtyCommandProcessLaunchError extends Error {

@@ -5,6 +5,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -13,6 +14,9 @@ const nativeManifestPath = path.join(
   repositoryRoot,
   'src/infra/adapters/command-runtime/windows/native/Cargo.toml',
 );
+const isolationManifestPath = path.join(repositoryRoot, 'src/infra/adapters/command-runtime/windows/isolation/native/Cargo.toml');
+const isolationFileName = 'linnyaCommandIsolation.exe';
+const isolationRuntimeManifestFileName = 'linnyaCommandIsolation.manifest.json';
 const packageJsonPath = path.join(repositoryRoot, 'package.json');
 const artifactFileName = 'linnyaCommandProcessOwner.node';
 const runtimeManifestFileName = 'linnyaCommandProcessOwner.manifest.json';
@@ -32,7 +36,7 @@ function run(file, args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(file, args, {
       cwd: repositoryRoot,
-      env: process.env,
+      env: options.environment ?? process.env,
       stdio: options.capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
       shell: false,
     });
@@ -73,14 +77,14 @@ function readRequiredString(record, key, label) {
   return value;
 }
 
-async function readBuildIdentity() {
+async function readBuildIdentity(manifestPath, expectedPackageName) {
   const [metadataText, packageJson] = await Promise.all([
     run('cargo', [
       'metadata',
       '--no-deps',
       '--format-version=1',
       '--manifest-path',
-      nativeManifestPath,
+      manifestPath,
     ], { capture: true }),
     readJson(packageJsonPath),
   ]);
@@ -94,7 +98,7 @@ async function readBuildIdentity() {
     'name',
     'Windows command native package name',
   );
-  if (packageName !== 'linnya_command_process_owner') {
+  if (packageName !== expectedPackageName) {
     throw new Error(`Unexpected Windows command native package: ${packageName}`);
   }
   return {
@@ -142,25 +146,42 @@ async function writeJsonAtomically(filePath, value) {
   await fsp.rename(temporaryPath, filePath);
 }
 
+async function prepareBuildToolchain() {
+  // 服务副本不与 Electron 共目录，不能依赖 app-local VC Runtime。
+  const environment = { ...process.env, RUSTFLAGS: `${process.env.RUSTFLAGS ?? ''} -C target-feature=+crt-static`.trim() };
+  if (process.platform === 'win32') return { environment, dispose: async () => {} };
+  if (process.platform !== 'darwin') throw new Error(`Unsupported Windows build host: ${process.platform}`);
+  const sysroot = (await run('rustc', ['--print', 'sysroot'], { capture: true })).trim();
+  const host = (await run('rustc', ['-vV'], { capture: true })).match(/^host: (.+)$/m)?.[1];
+  if (!host) throw new Error('Rust host target is unavailable');
+  const archiver = path.join(sysroot, 'lib/rustlib', host, 'bin/llvm-ar');
+  if (!(await fsp.stat(archiver)).isFile()) throw new Error('Install rustup component llvm-tools-preview before cross-building');
+  const directory = await fsp.mkdtemp(path.join(tmpdir(), 'linnya-windows-build-tools-'));
+  // llvm-ar 根据 argv[0] 选择 MSVC lib 模式；cc 的 Windows C 依赖需要 llvm-lib。
+  await fsp.symlink(archiver, path.join(directory, 'llvm-lib'));
+  environment.PATH = `${directory}${path.delimiter}${environment.PATH ?? ''}`;
+  return { environment, dispose: () => fsp.rm(directory, { recursive: true, force: true }) };
+}
+
 async function buildWindowsRuntime(architecture) {
   const spec = architectureSpecs[architecture];
   if (!spec) throw new Error(`Unsupported Windows command runtime architecture: ${architecture}`);
-  const identity = await readBuildIdentity();
-  const cargoArguments = [
-    'build',
-    '--locked',
-    '--release',
-    '--manifest-path',
-    nativeManifestPath,
-    '--target',
-    spec.rustTarget,
-  ];
-
-  // Windows 使用原生 MSVC 工具链；macOS 只做已验证的 xwin 交叉构建。
-  // 两条路径使用同一个 Cargo.lock，且正式构建永不启用故障注入 feature。
-  if (process.platform === 'win32') await run('cargo', cargoArguments);
-  else if (process.platform === 'darwin') await run('cargo', ['xwin', ...cargoArguments]);
-  else throw new Error(`Unsupported build host for Windows command runtime: ${process.platform}`);
+  const identity = await readBuildIdentity(nativeManifestPath, 'linnya_command_process_owner');
+  const isolationIdentity = await readBuildIdentity(isolationManifestPath, 'linnya_windows_command_isolation');
+  if (identity.runtimeVersion !== isolationIdentity.runtimeVersion) {
+    throw new Error('Windows command owner and isolation runtime versions must match');
+  }
+  const toolchain = await prepareBuildToolchain();
+  try {
+    for (const manifestPath of [nativeManifestPath, isolationManifestPath]) {
+      const args = ['build', '--locked', '--release', '--manifest-path', manifestPath, '--target', spec.rustTarget];
+      await run('cargo', process.platform === 'darwin' ? ['xwin', ...args] : args, {
+        environment: toolchain.environment,
+      });
+    }
+  } finally {
+    await toolchain.dispose();
+  }
 
   const sourceArtifactPath = path.join(
     identity.targetDirectory,
@@ -201,6 +222,28 @@ async function buildWindowsRuntime(architecture) {
       file_name: artifactFileName,
       size_bytes: artifactBytes.byteLength,
       sha256: createHash('sha256').update(artifactBytes).digest('hex'),
+    },
+  });
+  const isolationBytes = await fsp.readFile(path.join(
+    isolationIdentity.targetDirectory, spec.rustTarget, 'release', 'linnya_windows_command_isolation.exe',
+  ));
+  if (readPeMachine(isolationBytes) !== spec.peMachine) {
+    throw new Error('Windows command isolation PE architecture mismatch');
+  }
+  await fsp.writeFile(path.join(outputDirectory, isolationFileName), isolationBytes, { flag: 'wx' });
+  await writeJsonAtomically(path.join(outputDirectory, isolationRuntimeManifestFileName), {
+    schema_version: 1,
+    runtime_id: 'linnya_windows_command_isolation',
+    runtime_version: isolationIdentity.runtimeVersion,
+    application_version: identity.applicationVersion,
+    platform: 'win32',
+    architecture,
+    protocol_version: 1,
+    signature_evidence: { kind: 'development_unsigned' },
+    artifact: {
+      file_name: isolationFileName,
+      size_bytes: isolationBytes.byteLength,
+      sha256: createHash('sha256').update(isolationBytes).digest('hex'),
     },
   });
   console.log(

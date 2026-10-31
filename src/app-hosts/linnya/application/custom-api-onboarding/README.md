@@ -87,7 +87,7 @@ membership 规范化未命名的历史自定义模型。不能凭 URL 或 route 
 
 模型 route 只替换连接事实（endpoint identity、base URL、auth 与 profile），模型 ID、容量、视觉声明以及
 usage/continuation 保持原值；图片来源仍按新格式的 profile 重新投影。全部模型通过 Model Catalog
-`rebindCustomApiGroup` 一次事务改绑，旧 endpoint 在没有模型或分组引用后与其独占密文同事务清理；写盘失败时撤销本次凭据变更，
+`rebindCustomApiGroup` 一次事务改绑，旧 endpoint 在没有模型或分组引用后与其独占凭据同事务清理；写盘失败时撤销本次凭据变更，
 use case 只返回稳定错误码。编辑同样使用目录版本检查，避免覆盖交错提交的模型资料。
 
 ## 分组删除与提交边界

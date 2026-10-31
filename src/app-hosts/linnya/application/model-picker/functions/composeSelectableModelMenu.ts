@@ -109,11 +109,7 @@ function providerCredentialStatus(
   }
   const status = input.get_credential_status(firstModelConfigId);
   const resolvedStatus =
-    endpoint.credential_status === 'missing'
-      ? 'missing'
-      : endpoint.credential_status === 'unavailable' && status === 'available'
-        ? 'invalidated'
-        : status;
+    endpoint.credential_status === 'missing' ? 'missing' : status;
   return resolvedStatus === 'available'
     ? { available: true }
     : { available: false, reason: resolvedStatus };

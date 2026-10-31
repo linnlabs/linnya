@@ -6,8 +6,8 @@ import type { HeadlessAppServerBackendComposition } from '../definitions/headles
 import {
   createBackendRendererIntegrationRpcClient,
   createDesktopCapabilityMailboxRpcClient,
-  createDesktopCredentialProtectionRpcClient,
   createDesktopFileRevealRpcClient,
+  createCommandIsolationSetupRpcClient,
   createDesktopHiddenWorkerHostRpcClient,
   createDesktopRasterPdfDocumentRpcClient,
   createDesktopTextMeasurementWorkerRpcClient,
@@ -36,7 +36,8 @@ import { createHeadlessNodeConversationExecutionRuntimeFactory } from '../../ada
 import { createLocalProcessPlatformLauncher } from '../../../../infra/adapters/local-process-runtime/production-runtime';
 import { resolveQdrantProcessRuntime } from '../../../../infra/adapters/vector-store/qdrant';
 import { resolveQueueWorkerRuntime } from '../../../../infra/task-queue/functions/resolveQueueWorkerRuntime';
-import { createPluginCredentialRuntimeRpcClient } from '../../plugin-registry/features/credential-runtime-rpc';
+import { createStoredPluginCredentialRuntimePort } from '../../adapters/plugin-credentials/createStoredPluginCredentialRuntimePort';
+import { createProfileCredentialStorage } from '../../adapters/credential-storage/createProfileCredentialStorage';
 import { createExportArtifactCommitRpcClient } from '../../application/export-artifact-commit';
 
 /** 纯 Node App Server composition：这里创建唯一 Commands owner，并把 Desktop 能力收窄为 reverse RPC port。 */
@@ -46,6 +47,7 @@ export function createHeadlessAppServerBackendComposition(input: {
   readonly mailboxRoot: string;
   readonly reportAsyncFailure: (error: Error) => void;
 }): HeadlessAppServerBackendComposition {
+  const credentialStorage = createProfileCredentialStorage(input.bootstrap.backend_facts.runtimePathRoots);
   const mailbox = createDesktopCapabilityMailboxRpcClient({
     rpc: input.rpc,
     mailboxRoot: input.mailboxRoot,
@@ -138,8 +140,10 @@ export function createHeadlessAppServerBackendComposition(input: {
           commandPermissionSettings,
           commandApprovalHost,
           commandPresentationHost: commandCardControlHost,
+          commandIsolationSetup: input.bootstrap.host_kind === 'desktop' && input.bootstrap.backend_facts.platform === 'win32'
+            ? createCommandIsolationSetupRpcClient(input.rpc) : undefined,
         }),
-      credentialProtection: createDesktopCredentialProtectionRpcClient(input.rpc),
+      credentialStorage,
       hiddenWorkerHost: createDesktopHiddenWorkerHostRpcClient({
         rpc: input.rpc,
         mailbox,
@@ -163,7 +167,7 @@ export function createHeadlessAppServerBackendComposition(input: {
     backendRpcHandlers,
     exportArtifactCommit: createExportArtifactCommitRpcClient(mailbox),
     fileReveal: createDesktopFileRevealRpcClient(input.rpc),
-    pluginCredentialRuntime: createPluginCredentialRuntimeRpcClient(input.rpc),
+    pluginCredentialRuntime: createStoredPluginCredentialRuntimePort(credentialStorage),
     dispose() {
       rendererChangePublisher?.dispose();
       hostPresenterPublisher?.dispose();

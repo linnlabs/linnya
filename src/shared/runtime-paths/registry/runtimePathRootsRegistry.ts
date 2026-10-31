@@ -34,6 +34,7 @@ function haveSameRoots(left: RuntimePathRoots, right: RuntimePathRoots): boolean
   return (
     left.developmentRoot === right.developmentRoot &&
     left.appDataRoot === right.appDataRoot &&
+    left.profileRoot === right.profileRoot &&
     left.workspaceRoot === right.workspaceRoot &&
     left.workspaceRootIsCustom === right.workspaceRootIsCustom
   );

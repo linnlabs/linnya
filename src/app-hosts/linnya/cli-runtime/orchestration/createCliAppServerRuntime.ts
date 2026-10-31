@@ -6,7 +6,6 @@ import type {
 } from '../../app-server-rpc';
 import { resolveBackendRendererRequestMailboxRoot } from '../../adapters/backend-renderer-requests/functions/backendRendererRequestMailbox';
 import { createCommandApprovalHostPresenterRpcGateway } from '../../adapters/commands/host-presenter-rpc/orchestration/createCommandApprovalHostPresenterRpcGateway';
-import { createDesktopCredentialProtectionRpcHandlers } from '../../desktop-capabilities/features/credential-protection-rpc/orchestration/createDesktopCredentialProtectionRpcHandlers';
 import { createDesktopFileRevealRpcHandlers } from '../../desktop-capabilities/features/file-reveal-rpc/orchestration/createDesktopFileRevealRpcHandlers';
 import { createDesktopHiddenWorkerHostRpcHandlers } from '../../desktop-capabilities/features/hidden-worker-host-rpc/orchestration/createDesktopHiddenWorkerHostRpcHandlers';
 import { createDesktopRasterPdfDocumentRpcHandlers } from '../../desktop-capabilities/features/raster-pdf-document-rpc/orchestration/createDesktopRasterPdfDocumentRpcHandlers';
@@ -25,14 +24,9 @@ import { createBackendBootstrapFacts } from '../../backend-runtime/functions/cre
 import { resolveAppDefaultModelsPath } from '../../backend-runtime/functions/resolveAppDefaultModelsPath';
 import { resolveBackendRuntimePathRoots } from '../../backend-runtime/functions/resolveBackendRuntimePathRoots';
 import { createDesktopDiagnosticLogRpcHandlers } from '../../app-server-runtime/features/diagnostic-log-rpc/orchestration/createDesktopDiagnosticLogRpcHandlers';
-import {
-  createPluginCredentialRuntimeRpcHandlers,
-} from '../../plugin-registry/features/credential-runtime-rpc';
 import { createNodeAppServerProcessSupervisor } from '../../../../infra/adapters/app-server-process/orchestration/createNodeAppServerProcessSupervisor';
 import { createHostProcessEnvironment } from '../../../../infra/adapters/command-runtime/environment/functions/createHostProcessEnvironment';
-import { createSystemCredentialProtectionPort } from '../../../../infra/adapters/credential-protection/system-keyring';
 import { createSourceDistributionIdentity } from '../../../../shared/distribution-identity/functions/createDistributionIdentity';
-import { createFilePluginCredentialRuntimePort } from '../../../../plugin-sdk/backend/filePluginCredentialRuntime';
 import type { CliAppServerRuntime, CliRuntimeHostInput } from '../definitions/cliRuntimeHost';
 import {
   createCliRuntimeRendererIntegrationPort,
@@ -46,7 +40,8 @@ export async function createCliAppServerRuntime(
 ): Promise<CliAppServerRuntime> {
   const runtimePathRoots = resolveBackendRuntimePathRoots({
     developmentRoot: input.developmentRoot,
-    userDataDirectory: input.developmentRoot,
+    // profile 是内部运行数据，不能把整个源码 checkout 误列为受保护的 profile。
+    userDataDirectory: path.join(input.developmentRoot, '_dev_electron'),
     documentsDirectory: input.developmentRoot,
     developmentMode: true,
     workspaceRootOverride: input.workspaceRootOverride,
@@ -85,24 +80,10 @@ export async function createCliAppServerRuntime(
   });
   const unavailable = createCliRuntimeUnavailableCapabilities();
   const mailboxRoot = resolveBackendRendererRequestMailboxRoot(runtimePathRoots.appDataRoot);
-  const credentialProtection = input.credentialProtection ?? createSystemCredentialProtectionPort({
-    vaultId: runtimePathRoots.appDataRoot,
-    allowMasterKeyCreation: false,
-  });
-  const pluginCredentialRuntime = await createFilePluginCredentialRuntimePort({
-    filePath: path.join(runtimePathRoots.appDataRoot, 'config', 'plugin_credentials.json'),
-    credentialProtection,
-  });
   const rpcHandlers = new Map<string, AppServerRpcHandler>();
   registerHandlers(rpcHandlers, createDesktopDiagnosticLogRpcHandlers({
     writeRecord(record) { input.stderrSink.write(`${record.line}\n`); },
   }));
-  registerHandlers(rpcHandlers, createDesktopCredentialProtectionRpcHandlers(
-    credentialProtection,
-  ));
-  registerHandlers(rpcHandlers, createPluginCredentialRuntimeRpcHandlers(
-    pluginCredentialRuntime,
-  ));
   registerHandlers(rpcHandlers, createDesktopRendererIntegrationRpcHandlers(
     createCliRuntimeRendererIntegrationPort(),
   ));

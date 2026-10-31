@@ -1,3 +1,4 @@
+import type { DesktopCommandIsolationSetupPort } from 'src/app-hosts/linnya/desktop-capabilities';
 import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
@@ -266,6 +267,7 @@ function shellRequest(input: {
   readonly initialWaitMs?: number;
   readonly hardTimeoutSeconds?: number;
   readonly requiresWriteAccess?: boolean;
+  readonly requiresInternalStorageAccess?: boolean;
   readonly permissionLevel?: 'read_only' | 'standard' | 'full_access';
   readonly runId?: string;
   readonly rootRunId?: string;
@@ -277,6 +279,7 @@ function shellRequest(input: {
       initial_wait_ms: input.initialWaitMs ?? 250,
       ...(input.interactive ? { interactive: true } : {}),
       ...(input.requiresWriteAccess ? { requires_write_access: true } : {}),
+      ...(input.requiresInternalStorageAccess ? { requires_internal_storage_access: true } : {}),
       ...(input.hardTimeoutSeconds === undefined
         ? {}
         : { hard_timeout_seconds: input.hardTimeoutSeconds }),
@@ -293,6 +296,8 @@ function shellRequest(input: {
 }
 
 function fixture(input: {
+  readonly windows?: boolean;
+  readonly commandIsolationSetup?: DesktopCommandIsolationSetupPort;
   readonly approvalChoice?: 'allow_once' | 'allow_for_conversation' | 'deny';
   readonly immediate?: boolean;
   readonly failStart?: boolean;
@@ -313,6 +318,7 @@ function fixture(input: {
   readonly onAuditRecord?: (event: CommandExecutionAuditEvent) => void;
   readonly ownerNow?: () => number;
 } = {}) {
+  const conversationRoot = input.windows ? 'C:\\linnya\\conversation-a' : '/tmp/linnya/conversation-a';
   const lifecycle: string[] = [];
   const approvals = new MemoryApprovals({
     lifecycle,
@@ -345,7 +351,13 @@ function fixture(input: {
     initialPtySize: { columns: 80, rows: 24 },
     readLaunchRuntimeContext() {
       return {
-        shell: CommandResolvedShellV1Schema.parse({
+        shell: CommandResolvedShellV1Schema.parse(input.windows ? {
+          platform: 'windows', shell_semantics_id: 'powershell-5.1', shell_version: '5.1',
+          snapshot_revision: 'startup-a', output_text_encoding: 'utf-8',
+          command_invocation_profile_id: 'powershell-utf8-v1',
+          executable_path: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+          argv_prefix: ['-NoProfile', '-Command'],
+        } : {
           platform: 'macos',
           shell_semantics_id: 'zsh',
           shell_version: '5.9',
@@ -357,8 +369,9 @@ function fixture(input: {
         }),
         environment: CommandLaunchEnvironmentV1Schema.parse({
           revision: input.mismatchRuntimeSnapshot ? 'startup-b' : 'startup-a',
-          entries: { PATH: '/usr/bin:/bin' },
+          entries: { PATH: '/usr/bin:/bin', MODEL_TEST_KEY: 'fixture-key', USER_BUILD_FLAG: 'keep' },
         }),
+        internalStorage: { protected_roots: ['/tmp/linnya'], readable_roots: [] },
         defaultHardTimeoutMs: 180_000,
         maximumHardTimeoutMs: 600_000,
       };
@@ -405,12 +418,18 @@ function fixture(input: {
             `conversation_${'a'.repeat(64)}`,
           ),
         },
-        absolutePath: '/tmp/linnya/conversation-a',
+        absolutePath: conversationRoot,
         status: 'existing',
       });
     },
   };
   const runtime = createShellToolRuntime({
+    commandIsolationSetup: input.commandIsolationSetup,
+    readCredentialEnvironmentVariableNames: () => ['MODEL_TEST_KEY'],
+    internalStoragePathPolicy: {
+      isProtectedPath: async () => false,
+      commandRequestsAccess: async () => false,
+    },
     backend,
     conversationAdmission,
     workingDirectoryFileSystem: {
@@ -470,6 +489,63 @@ function fixture(input: {
 }
 
 describe('ShellToolRuntime production orchestration', () => {
+  it('Windows 1/2 档在准备前等待初始化，full_access 完全跳过；取消和失败不启动', async () => {
+    for (const level of ['read_only', 'standard', 'full_access'] as const) {
+      let called = 0;
+      const f = fixture({ windows: true, immediate: true, commandIsolationSetup: {
+        async ensureReady() { called += 1; return 'ready'; },
+      } });
+      await expect(f.runtime.executeShell(shellRequest({ command: 'Write-Output ok', permissionLevel: level })))
+        .resolves.toMatchObject({ status: 'completed' });
+      expect(called).toBe(level === 'full_access' ? 0 : 1);
+    }
+    for (const failure of ['cancelled', 'error'] as const) {
+      const f = fixture({ windows: true, immediate: true, approvalChoice: 'allow_for_conversation', commandIsolationSetup: {
+        async ensureReady() {
+          if (failure === 'error') throw new Error('initialization failed');
+          return 'cancelled';
+        },
+      } });
+      await expect(f.runtime.executeShell(shellRequest({ command: 'Write-Output ok', requiresInternalStorageAccess: true })))
+        .resolves.toMatchObject({ status: 'rejected', code: 'runtime_unavailable' });
+      expect(f.launches).toHaveLength(0);
+      expect(f.lifecycle).not.toContain('prepare:pipe');
+      expect(f.lifecycle).toContain('approval:persisted');
+      expect(f.lifecycle).toContain('approval:revoked');
+      expect(f.approvals.values).toHaveLength(0);
+    }
+  });
+
+  it('等待系统初始化时取消本次调用，初始化完成也不能启动该命令', async () => {
+    const entered = deferred<void>();
+    const ready = deferred<'ready'>();
+    const abort = new AbortController();
+    const f = fixture({ windows: true, immediate: true, commandIsolationSetup: {
+      async ensureReady() { entered.resolve(); return ready.promise; },
+    } });
+    const result = f.runtime.executeShell({ ...shellRequest({ command: 'Write-Output ok' }), abortSignal: abort.signal });
+    await entered.promise;
+    abort.abort();
+    ready.resolve('ready');
+    await expect(result).resolves.toMatchObject({ status: 'rejected', code: 'approval_denied' });
+    expect(f.launches).toHaveLength(0);
+  });
+
+  it('1/2 档不继承 Host 凭据变量，普通变量保留；内部访问批准和完全访问不剥离', async () => {
+    for (const permissionLevel of ['read_only', 'standard', 'full_access'] as const) {
+      for (const requiresInternalStorageAccess of [false, true]) {
+        const f = fixture({ immediate: true, approvalChoice: 'allow_once' });
+        await expect(f.runtime.executeShell(shellRequest({
+          command: 'printenv', permissionLevel, requiresInternalStorageAccess,
+        }))).resolves.toMatchObject({ status: 'completed' });
+        expect(f.launches[0]?.environment.entries.USER_BUILD_FLAG).toBe('keep');
+        expect(f.launches[0]?.environment.entries.MODEL_TEST_KEY).toBe(
+          permissionLevel === 'full_access' || requiresInternalStorageAccess ? 'fixture-key' : undefined,
+        );
+      }
+    }
+  });
+
   it('把 ToolOutput 会话实例身份贯穿到 prepared runtime', async () => {
     const f = fixture({ immediate: true });
 

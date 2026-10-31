@@ -16,6 +16,7 @@ const controllerPath = fileURLToPath(
 );
 const repositoryRoot = path.resolve(fixtureDirectory, '../../../../..');
 const installerIncludePath = path.join(repositoryRoot, 'build/installer.nsh');
+const isolationHelperPath = path.join(repositoryRoot, 'dist/main/commands/runtime/windows/x64/linnyaCommandIsolation.exe');
 const sshHost = process.env.LINNYA_WINDOWS_SSH_HOST;
 const sshUser = process.env.LINNYA_WINDOWS_SSH_USER;
 const sshKey = process.env.LINNYA_WINDOWS_SSH_KEY;
@@ -37,9 +38,9 @@ function appendBounded(current, chunk) {
   return `${current}${chunk.toString('utf8')}`.slice(-outputLimit);
 }
 
-function run(file, args, { cwd = repositoryRoot, timeoutMs = 180_000 } = {}) {
+function run(file, args, { cwd = repositoryRoot, timeoutMs = 180_000, env = process.env } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(file, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(file, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     let timedOut = false;
@@ -75,6 +76,7 @@ async function cleanupRemote(sshArgs, target, paths) {
     '-ExecutionPolicy', 'Bypass', '-File', paths.controller,
     '-FixtureMainPath', paths.fixtureMain,
     '-InstallerIncludePath', paths.installerInclude,
+    '-IsolationHelperPath', paths.isolationHelper,
     '-RunRoot', paths.runRoot,
     '-ExpectedElectronVersion', expectedElectronVersion,
     '-CleanupOnly',
@@ -95,6 +97,7 @@ async function validateOnWindows() {
   const remoteController = `${tempRoot}/linnya-nsis-lifecycle-${token}.ps1`;
   const remoteFixtureMain = `${tempRoot}/linnya-nsis-lifecycle-${token}-main.mjs`;
   const remoteInstallerInclude = `${tempRoot}/linnya-nsis-lifecycle-${token}-installer.nsh`;
+  const remoteIsolationHelper = `${tempRoot}/linnya-nsis-lifecycle-${token}-isolation.exe`;
   let result;
   let primaryError;
   try {
@@ -113,12 +116,17 @@ async function validateOnWindows() {
       installerIncludePath,
       `${target}:/C:/Users/${sshUser}/AppData/Local/Temp/${path.basename(remoteInstallerInclude)}`,
     ]);
+    await runChecked('scp', [
+      ...sshArgs, isolationHelperPath,
+      `${target}:/C:/Users/${sshUser}/AppData/Local/Temp/${path.basename(remoteIsolationHelper)}`,
+    ]);
     const remote = await runChecked('ssh', [
       ...sshArgs, target, 'powershell', '-NoLogo', '-NoProfile', '-NonInteractive',
       '-ExecutionPolicy', 'Bypass', '-File', remoteController,
       '-NodeExecutable', windowsNodeExecutable,
       '-FixtureMainPath', remoteFixtureMain,
       '-InstallerIncludePath', remoteInstallerInclude,
+      '-IsolationHelperPath', remoteIsolationHelper,
       '-RunRoot', remoteRunRoot,
       '-ExpectedElectronVersion', expectedElectronVersion,
     ], { timeoutMs: 900_000 });
@@ -134,6 +142,7 @@ async function validateOnWindows() {
       controller: remoteController,
       fixtureMain: remoteFixtureMain,
       installerInclude: remoteInstallerInclude,
+      isolationHelper: remoteIsolationHelper,
     });
   } catch (error) {
     cleanupError = error;
@@ -151,6 +160,9 @@ async function validateOnWindows() {
   return result;
 }
 
+await runChecked('node', ['scripts/build/commands/build-windows-command-native-runtime.mjs'], {
+  env: { ...process.env, LINNYA_BUILD_TARGET_PLATFORM: 'win32', LINNYA_BUILD_TARGET_ARCH: 'x64' },
+});
 const result = await validateOnWindows();
 assert.equal(result.success, true);
 assert.equal(result.isAdministrator, false);

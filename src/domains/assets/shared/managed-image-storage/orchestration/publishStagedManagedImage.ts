@@ -60,6 +60,16 @@ export async function publishStagedManagedContent(params: {
   readonly finalPath: string;
   readonly expectedSha256: string;
 }): Promise<ManagedContentPendingPublish> {
+  // hard link 保留源文件 ACL。只有 store 内新建的 staging 才继承内部存储权限；
+  // 不能把任意外部文件直接链接进 content，绕过运行中 Windows 命令的读取拒绝。
+  const [stagingRoot, stagingPath] = await Promise.all([
+    fsp.realpath(params.paths.stagingRoot), fsp.realpath(params.stagingPath),
+  ]);
+  const relativeStaging = path.relative(stagingRoot, stagingPath);
+  if (!relativeStaging || relativeStaging === '..' || relativeStaging.startsWith(`..${path.sep}`)
+    || path.isAbsolute(relativeStaging)) {
+    throw new Error('Managed content publish source must belong to its protected staging root');
+  }
   const receipt = createPendingReceipt(params);
   await writeDurableReceipt(receipt.receiptPath, receipt.contents);
   await fsp.mkdir(path.dirname(params.finalPath), { recursive: true });

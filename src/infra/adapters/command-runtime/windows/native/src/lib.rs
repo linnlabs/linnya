@@ -8,6 +8,15 @@ mod launch_spec;
 #[cfg(target_os = "windows")]
 mod handle;
 #[cfg(target_os = "windows")]
+mod isolated_launch;
+#[cfg(target_os = "windows")]
+mod isolated_process;
+#[cfg(target_os = "windows")]
+pub use isolated_launch::{
+    WindowsCommandIsolationInput, create_windows_isolated_pipe_process,
+    create_windows_isolated_pty_process,
+};
+#[cfg(target_os = "windows")]
 mod output_flow;
 #[cfg(target_os = "windows")]
 mod owned_process;

@@ -26,6 +26,8 @@ prepared (no OS resource)
 
 process exit 不是终态。若 Helper 根进程退出而孙进程仍存活，必须继续整树清理；输出尚未排空时不能丢弃已经产生的字节。
 
+平台启动失败的诊断只包含分类、原生阶段和系统错误码，不记录原始 error message、路径、命令或环境值。诊断独立于 command output 与持久化终态；测试入口可显式收集 runner diagnostic port，不能依赖模型结果还原底层错误。
+
 ## 背压和容量
 
 IPC handler 到 output `accept/offer` 必须同步完成入队，第一个 `await` 之后才能碰磁盘或解析器。双流、事件队列、ACK pending、head/tail 和 PTY screen 都必须有界，慢 sink 不能堵住 Utility 的 pipe。

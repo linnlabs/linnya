@@ -1,5 +1,8 @@
+import type { DesktopCommandIsolationSetupPort } from 'src/app-hosts/linnya/desktop-capabilities';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import os from 'node:os';
+import fs from 'node:fs/promises';
 
 import type { CommandRunnerProcessPort, CommandPermissionSettingsPort } from 'src/domains/commands';
 import {
@@ -35,6 +38,7 @@ import { createMacOsShellEnvironmentSnapshot } from 'src/infra/adapters/command-
 import type { HostProcessEnvironment } from 'src/infra/adapters/command-runtime/environment';
 import type { LocalProcessPlatformRuntime } from 'src/infra/adapters/local-process-runtime/platform-runtime';
 import { getLogger } from 'src/shared/logger';
+import { resolveConversationControlConnectionFile } from 'src/app-hosts/linnya/adapters/conversation-control-bridge';
 
 const logger = getLogger('ConversationExecutionRuntime');
 
@@ -49,6 +53,7 @@ export function createConversationExecutionRuntimeFactory(input: {
   readonly commandPermissionSettings: CommandPermissionSettingsPort;
   readonly commandApprovalHost: CommandApprovalHostPort;
   readonly commandPresentationHost: CommandExecutionPresentationHostPort;
+  readonly commandIsolationSetup?: DesktopCommandIsolationSetupPort;
   readonly commandRunnerProcess: CommandRunnerProcessPort;
   readonly sandboxUtilityProcessFork: SandboxUtilityProcessForkPort;
   readonly internalChildEnvironment: Readonly<Record<string, string>>;
@@ -109,6 +114,14 @@ export function createConversationExecutionRuntimeFactory(input: {
         revision: commandEnvironmentRevision,
         platformRuntime: input.localProcessPlatformRuntime,
       });
+      const userRuntimeRoot = path.join(os.homedir(), '.linnya');
+      const connectionDirectory = path.dirname(resolveConversationControlConnectionFile(
+        input.commandHostProcessEnvironment.entries,
+      ));
+      // 原子替换会创建新文件对象，Windows 必须保护连接目录及其 staging，不能只给
+      // 旧连接文件加 ACL。首次启动也先建立产品拥有的目录，不能静默跳过不存在的保护根。
+      await fs.mkdir(userRuntimeRoot, { recursive: true, mode: 0o700 });
+      await fs.mkdir(connectionDirectory, { recursive: true, mode: 0o700 });
 
       let commandScope: ConversationExecutionRuntimeScope['command'] | null = null;
       try {
@@ -118,8 +131,19 @@ export function createConversationExecutionRuntimeFactory(input: {
           approvalHost: input.commandApprovalHost,
           commandExecutionAudit: scopeInput.commandExecutionAudit,
           presentationHost: input.commandPresentationHost,
+          commandIsolationSetup: input.commandIsolationSetup,
           constructionPolicy: LINNYA_COMMAND_PRODUCTION_CONSTRUCTION_POLICY,
           runtimeFacts: commandRuntimeFacts,
+          internalStorage: {
+            protected_roots: [...new Set([
+              scopeInput.appDataRoot,
+              input.bootstrap.runtimePathRoots.workspaceRoot,
+              ...(input.bootstrap.runtimePathRoots.profileRoot ? [input.bootstrap.runtimePathRoots.profileRoot] : []),
+              userRuntimeRoot,
+              connectionDirectory,
+            ])],
+            readable_roots: [pluginCliLauncherDirectory],
+          },
           runnerProcess: input.commandRunnerProcess,
           artifactStorageRoot: scopeInput.commandArtifactStorageRoot,
           resolveToolOutputBlobsDirectory: scopeInput.resolveToolOutputBlobsDirectory,

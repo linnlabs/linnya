@@ -23,7 +23,7 @@ export interface WindowsOwnedPipeNativeBindingLoader {
   load(): Promise<WindowsOwnedPipeNativeBinding>;
 }
 
-function wrapNativeProcess(input: unknown): WindowsOwnedPipeNativeProcess {
+export function wrapNativeProcess(input: unknown): WindowsOwnedPipeNativeProcess {
   const processRecord = asWindowsNativeObject(input);
   if (!processRecord) {
     throw new WindowsNativeRuntimeLoadError(

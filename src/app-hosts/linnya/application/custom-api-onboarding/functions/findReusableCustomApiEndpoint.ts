@@ -15,8 +15,7 @@ export function findReusableCustomApiEndpoint(
         endpoint.endpoint_id.startsWith(`${binding.endpoint_id}:`)) &&
       endpoint.base_url === baseUrl &&
       endpoint.auth_profile === binding.auth_profile &&
-      endpoint.credential_status !== 'missing' &&
-      endpoint.credential_status !== 'unavailable'
+      endpoint.credential_status !== 'missing'
   );
   // 相同地址可能属于不同账号；不能按数组顺序替用户挑一个密钥。
   return matches.length === 1 ? matches[0] : undefined;

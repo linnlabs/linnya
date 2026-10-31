@@ -36,7 +36,7 @@ const { credentialStoreMock, credentialRollbackMock, fetchCloudModelsMock, persi
       },
       credentialStoreMock: {
         initialize: vi.fn(async () => {}),
-        installCodec: vi.fn(),
+        installStorage: vi.fn(),
         captureRollback: vi.fn(
           (credentialId: string) => () => credentialRollbackMock(credentialId)
         ),
@@ -599,7 +599,7 @@ describe('Registry default model by capability', () => {
     expect(credentialRollbackMock).toHaveBeenCalledWith('inference-endpoint:only-endpoint');
   });
 
-  it('改绑一组用户模型到新 endpoint 时清理旧 endpoint 与独占密文', async () => {
+  it('改绑一组用户模型到新 endpoint 时清理旧 endpoint 与独占凭据', async () => {
     fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
@@ -652,7 +652,7 @@ describe('Registry default model by capability', () => {
     expect(JSON.stringify(persisterMock.saveState.mock.calls)).not.toContain('rotated-secret');
   });
 
-  it('改绑时复用仍被新 endpoint 引用的凭据，不删除密文', async () => {
+  it('改绑时复用仍被新 endpoint 引用的凭据，不删除凭据', async () => {
     fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
@@ -770,7 +770,7 @@ describe('Registry default model by capability', () => {
     expect(credentialStoreMock.put).not.toHaveBeenCalled();
   });
 
-  it('在原 credential boundary 内替换 endpoint 密文且不改写目录文件', async () => {
+  it('在原 credential boundary 内替换 endpoint 凭据且不改写目录文件', async () => {
     fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],

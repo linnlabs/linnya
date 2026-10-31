@@ -1,6 +1,6 @@
+import type { CredentialStoragePort } from '../../../../shared/credential-storage';
 import {
   FileWebReadConfigStore,
-  type WebReadCredentialCodec,
 } from '../../../../infra/adapters/web-read-config/fileWebReadConfigStore';
 import type { BackendRendererIpcStyleRegistrarPort } from '../../../../app-hosts/linnya/adapters/backend-renderer-requests';
 import { Logger } from '../../../../shared/logger';
@@ -43,18 +43,18 @@ interface RegisterWebReadConfigHandlersOptions {
     dependencies?: WebReadProviderFactoryDependencies,
   ) => WebReadProvider;
   readonly hasFallbackCredential?: (reader: WebReadCredentialReaderId) => boolean;
-  readonly credentialProtection?: WebReadCredentialCodec;
+  readonly credentialStorage?: CredentialStoragePort;
 }
 
 async function createDefaultStore(
-  credentialProtection: WebReadCredentialCodec | undefined,
+  credentialStorage: CredentialStoragePort | undefined,
 ): Promise<FileWebReadConfigStore> {
-  if (!credentialProtection) {
-    throw new Error('Web Read 配置缺少 Desktop credential protection port');
+  if (!credentialStorage) {
+    throw new Error('Web Read 配置缺少 credential storage port');
   }
   return FileWebReadConfigStore.open(
     pathManager.getWebReadConfigPath(),
-    credentialProtection,
+    credentialStorage,
   );
 }
 
@@ -77,7 +77,7 @@ export async function registerWebReadConfigHandlers(
   ipc: BackendRendererIpcStyleRegistrarPort,
   options: RegisterWebReadConfigHandlersOptions = {},
 ): Promise<void> {
-  const store = options.store ?? await createDefaultStore(options.credentialProtection);
+  const store = options.store ?? await createDefaultStore(options.credentialStorage);
   const providerFactory = options.createProvider ?? createWebReadProvider;
   const fallbackCredentialAvailable = options.hasFallbackCredential
     ?? hasWebReadFallbackCredential;

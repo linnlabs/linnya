@@ -17,6 +17,7 @@ import {
   type LaunchCommandRunnerOwnedPtyProcess,
 } from '../definitions/commandRunnerOwnedPtyProcess';
 import { createBoundedCommandRunnerEventTransport } from '../functions/createBoundedCommandRunnerEventTransport';
+import { projectCommandLaunchDiagnostic } from '../functions/projectCommandLaunchDiagnostic';
 import {
   createDisposablePipeCommandRun,
   type DisposablePipeCommandRun,
@@ -124,12 +125,24 @@ export function runCommandRunnerProcess(
       ? createDisposablePipeCommandRun({
           request,
           events,
-          launchOwnedProcess: launchers.launchOwnedPipeProcess,
+          async launchOwnedProcess(launch, options) {
+            try { return await launchers.launchOwnedPipeProcess(launch, options); }
+            catch (error) {
+              writeRunnerDiagnostic(projectCommandLaunchDiagnostic(error));
+              throw error;
+            }
+          },
         })
       : createDisposablePtyCommandRun({
           request,
           events,
-          launchOwnedProcess: launchers.launchOwnedPtyProcess,
+          async launchOwnedProcess(launch, options) {
+            try { return await launchers.launchOwnedPtyProcess(launch, options); }
+            catch (error) {
+              writeRunnerDiagnostic(projectCommandLaunchDiagnostic(error));
+              throw error;
+            }
+          },
         });
     activeStart = activeRun.start();
     void activeStart.then(

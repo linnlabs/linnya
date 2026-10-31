@@ -1,3 +1,4 @@
+import { createFileCredentialStorage } from '../../../../../src/infra/adapters/credential-storage/file/createFileCredentialStorage';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { promises as fsp } from 'node:fs';
@@ -20,7 +21,7 @@ import { createEventStoreConversationFactsPort } from '../../../../../src/app-ho
 import { SqliteConversationDirectoryCleanupJobPort } from '../../../../../src/app-hosts/linnya/adapters/persistence/conversation-files';
 import { createConversationLifecycleApplicationScope } from '../../../../../src/app-hosts/linnya/application/conversation-lifecycle';
 import { createLocalConversationDirectoryPort } from '../../../../../src/infra/adapters/conversation-files/local-directory';
-import { createCommandApprovalHost } from '../../../../../src/app-hosts/linnya/adapters/commands/approval-host';
+import { createCommandApprovalHost, createLocalCommandApprovalRendererGateway } from '../../../../../src/app-hosts/linnya/adapters/commands/approval-host';
 import {
   createElectronCommandProductionScope,
   resolveCommandRuntimeFacts,
@@ -227,7 +228,10 @@ async function waitForNoApprovalDom(window: BrowserWindow): Promise<void> {
   });
 }
 
-function commandPermission(rootAgentRunId: CommandAgentRunId) {
+function commandPermission(
+  rootAgentRunId: CommandAgentRunId,
+  level: 'read_only' | 'standard' | 'full_access' = 'standard',
+) {
   return {
     status: 'available' as const,
     snapshot: CommandRunPermissionSnapshotV1Schema.parse({
@@ -236,7 +240,7 @@ function commandPermission(rootAgentRunId: CommandAgentRunId) {
       root_agent_run_id: rootAgentRunId,
       settings_revision: 1,
       captured_at_ms: Date.now(),
-      permission_level: 'standard',
+      permission_level: level,
       internal_data_access: 'allowed',
       gui_control: 'denied',
       local_ipc_control: 'denied',
@@ -246,7 +250,7 @@ function commandPermission(rootAgentRunId: CommandAgentRunId) {
 }
 
 function startDeleteCommand(input: {
-  readonly commandScope: ReturnType<typeof createElectronCommandProductionScope>;
+  readonly commandScope: Awaited<ReturnType<typeof createElectronCommandProductionScope>>;
   readonly conversationId: CommandConversationId;
   readonly agentRunId: CommandAgentRunId;
   readonly originToolCallId: CommandOriginToolCallId;
@@ -326,6 +330,9 @@ export async function runProductionCommandApprovalDomScenario(input: {
     'approval-dom-once',
     'approval-dom-remembered',
     'approval-dom-reload',
+    'approval-dom-internal-read_only',
+    'approval-dom-internal-standard',
+    'approval-dom-internal-full_access',
   ]) {
     seedConversation.run(conversationId, `Approval DOM ${conversationId}`, seededAt, seededAt);
   }
@@ -336,8 +343,9 @@ export async function runProductionCommandApprovalDomScenario(input: {
     facts: createEventStoreConversationFactsPort(eventStore),
   });
   const approvalHost = createCommandApprovalHost();
-  registerCommandApprovalHandlers({ host: approvalHost });
-  const commandScope = createElectronCommandProductionScope({
+  registerCommandApprovalHandlers({ host: createLocalCommandApprovalRendererGateway(approvalHost) });
+  const commandScope = await createElectronCommandProductionScope({
+    resolvePluginCli: () => undefined,
     db,
     conversationAdmission: lifecycle.workDirectoryAdmission,
     approvalHost,
@@ -359,6 +367,7 @@ export async function runProductionCommandApprovalDomScenario(input: {
     helperEnvironment: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
     runnerPath: input.runnerPath,
     artifactStorageRoot: artifactRoot,
+    internalStorage: { protected_roots: [appDataRoot], readable_roots: [] },
     resolveToolOutputBlobsDirectory: ({ conversationId, instanceId }) => (
       path.join(appDataRoot, 'ToolOutputBlobs', conversationId, instanceId)
     ),
@@ -599,10 +608,49 @@ export async function runProductionCommandApprovalDomScenario(input: {
     assert.equal(commandScope.hasExecutingCommands(), false);
     await waitForNoApprovalDom(window);
 
+    const secretPath = path.join(appDataRoot, 'config', 'credentials.json');
+    await createFileCredentialStorage(secretPath).update('model-endpoints', new Map([['fixture', 'SYNTHETIC_INTERNAL_CREDENTIAL']]));
+    for (const level of ['read_only', 'standard', 'full_access'] as const) {
+      const conversationId = CommandConversationIdSchema.parse(`approval-dom-internal-${level}`);
+      let call = 0;
+      const readInternal = () => {
+        const agentRunId = CommandAgentRunIdSchema.parse(`internal-${level}-${++call}`);
+        return commandScope.shellToolRuntime.executeShell({
+          arguments: { command: `cat '${secretPath.replace(/'/gu, "'\\''")}'`, initial_wait_ms: 10_000 },
+          conversationId, agentRunId,
+          originToolCallId: CommandOriginToolCallIdSchema.parse(`internal-${level}-${call}`),
+          toolOutputInstanceId: 'default', commandRunPermission: commandPermission(agentRunId, level),
+        });
+      };
+      if (level !== 'full_access') {
+        const once = readInternal();
+        const prompt = await waitForApprovalDom(window);
+        assert(prompt.reasons.some(reason => reason.includes('内部')));
+        await clickApprovalChoice(window, 'allow_once');
+        assert((await once).observation.includes('SYNTHETIC_INTERNAL_CREDENTIAL'));
+        await waitForNoApprovalDom(window);
+        const again = readInternal();
+        await waitForApprovalDom(window);
+        await clickApprovalChoice(window, 'deny');
+        assert.equal((await again).status, 'rejected');
+        await waitForNoApprovalDom(window);
+        const remembered = readInternal();
+        await waitForApprovalDom(window);
+        await clickApprovalChoice(window, 'allow_for_conversation');
+        assert((await remembered).observation.includes('SYNTHETIC_INTERNAL_CREDENTIAL'));
+        await waitForNoApprovalDom(window);
+      }
+      const direct = await readInternal();
+      assertCompleted(`internal:${level}`, direct);
+      assert(direct.observation.includes('SYNTHETIC_INTERNAL_CREDENTIAL'));
+      assert.equal(await readApprovalDom(window), undefined);
+    }
+
     return {
       success: true,
       version: 1,
       renderer: 'real-vue-dom',
+      internalStorage: { levels: 3, allowOnce: true, savedRule: true, fullAccess: true },
       preload: 'production-command-runtime-preload',
       deny: {
         status: deniedResult.status,

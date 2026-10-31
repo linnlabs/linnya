@@ -122,7 +122,7 @@ async function createHarness(
       return native;
     },
   };
-  const launch = createWindowsJobOwnedPtyCommandProcessLauncher(binding);
+  const launch = createWindowsJobOwnedPtyCommandProcessLauncher((input, columns, rows) => binding.createWindowsOwnedPtyProcess(input, columns, rows));
   const process = await launch({
     executablePath: 'C:\\runtime\\pwsh.exe',
     argv: ['-NoLogo'],
@@ -257,9 +257,7 @@ describe('Windows Job owned PTY adapter', () => {
     native.onStartObservers = () => {
       native.emitInvalid(['terminal_data', 'not-bytes', null, null]);
     };
-    const launch = createWindowsJobOwnedPtyCommandProcessLauncher({
-      createWindowsOwnedPtyProcess() { return native; },
-    });
+    const launch = createWindowsJobOwnedPtyCommandProcessLauncher(() => native);
     await expect(launch({
       executablePath: 'C:\\runtime\\pwsh.exe',
       argv: [],
@@ -278,9 +276,7 @@ describe('Windows Job owned PTY adapter', () => {
     const startError = new Error('observer start failed');
     const native = new FakeWindowsOwnedPtyNativeProcess();
     native.startObserversError = startError;
-    const launch = createWindowsJobOwnedPtyCommandProcessLauncher({
-      createWindowsOwnedPtyProcess() { return native; },
-    });
+    const launch = createWindowsJobOwnedPtyCommandProcessLauncher(() => native);
 
     await expect(launch({
       executablePath: 'C:\\runtime\\pwsh.exe',
@@ -324,7 +320,7 @@ describe('Windows Job owned PTY adapter', () => {
         return native;
       },
     };
-    const launch = createWindowsJobOwnedPtyCommandProcessLauncher(binding);
+    const launch = createWindowsJobOwnedPtyCommandProcessLauncher((input, columns, rows) => binding.createWindowsOwnedPtyProcess(input, columns, rows));
     await expect(launch({
       executablePath: 'C:\\runtime\\pwsh.exe',
       argv: [],

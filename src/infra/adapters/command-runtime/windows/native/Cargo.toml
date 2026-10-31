@@ -29,6 +29,9 @@ windows-sys = { version = "=0.61.2", features = [
 [build-dependencies]
 napi-build = "=2.4.0"
 
+[target.'cfg(windows)'.dependencies]
+linnya_windows_command_isolation = { path = "../isolation/native" }
+
 [profile.release]
 lto = true
 strip = "symbols"

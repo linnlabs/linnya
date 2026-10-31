@@ -93,6 +93,7 @@ const AppServerBootstrapSchema = z.object({
       appDataRoot: AbsolutePathSchema,
       workspaceRoot: AbsolutePathSchema,
       workspaceRootIsCustom: z.boolean(),
+      profileRoot: z.string().optional(),
     }).strict(),
     exposeProviderOutboundDebugRoutes: z.boolean(),
   }).strict(),

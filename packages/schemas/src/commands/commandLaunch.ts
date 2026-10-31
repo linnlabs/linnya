@@ -6,6 +6,7 @@ import {
 } from './commandExecution';
 import { CommandOutputTextEncodingSchema } from './commandOutput';
 import { CommandPermissionSnapshotV1Schema } from './commandPermission';
+import { CommandInternalStorageBoundarySchema } from './commandInternalStorage';
 import {
   ShellCommandProposalV1Schema,
   ShellWorkingDirectorySchema,
@@ -104,6 +105,7 @@ const CommandLaunchSnapshotBaseV1Schema = z.object({
   protocol_version: z.literal(COMMAND_RUNTIME_PROTOCOL_VERSION),
   proposal: ShellCommandProposalV1Schema,
   conversation_root: ShellWorkingDirectorySchema,
+  internal_storage: CommandInternalStorageBoundarySchema,
   permission: CommandPermissionSnapshotV1Schema,
   shell: CommandResolvedShellV1Schema,
   environment: CommandLaunchEnvironmentV1Schema,
@@ -154,6 +156,15 @@ function validateCommandLaunchSnapshot(
       code: z.ZodIssueCode.custom,
       path: ['permission', 'base_level'],
       message: 'authorization must not replace the selected permission level',
+    });
+  }
+  if (snapshot.permission.internal_storage_access
+    && snapshot.permission.base_level !== 'full_access'
+    && !snapshot.proposal.requests_internal_storage_access) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['permission', 'internal_storage_access'],
+      message: 'internal storage approval must belong to the requested operation',
     });
   }
   if (

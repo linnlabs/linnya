@@ -14,7 +14,7 @@ shell_semantics_id
 executable/profile id
 cwd (validated conversation directory)
 encoding / locale policy
-environment entries (allowlisted and redacted)
+environment entries (captured from host and login environment)
 mode = pipe | pty
 initial wait / hard timeout
 ```
@@ -27,8 +27,11 @@ macOS 默认 zsh；Windows 优先 PowerShell 7，缺失时使用 PowerShell 5.1 
 
 ## 4. 安全和兼容
 
-cwd 必须来自 conversation-files admission，不能是任意绝对路径。环境变量按 allowlist 生成，保护输入、source、token 和完整用户环境不得进入 argv/env。路径和 executable 解析失败要在 spawn 前报告。
+当前会话根来自 conversation-files admission；cwd 可按 Shell 合同另行解析，不能用它替换权限
+写入根。环境快照忠实合并 Host 和登录环境，并非通用白名单。App Host 在本次授权完成后，
+从未获准内部访问的 1/2 档 launch 中移除已声明的模型与 Web 凭据变量；通用 adapter 不猜测
+产品凭据名称。原始快照、变量值与登录 profile 输出不得进入日志或审计。
 
 ## 5. 测试
 
-覆盖 macOS zsh、Windows PowerShell 7/5.1、缺失 shell、cwd 越界、编码/Unicode、env allowlist、PTY/pipe 互斥、超时快照和 packaged 发布路径。
+覆盖 macOS zsh、Windows PowerShell 7/5.1、缺失 shell、cwd 解析、编码/Unicode、环境合并、凭据变量投影、PTY/pipe 互斥、超时快照和 packaged 发布路径。

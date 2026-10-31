@@ -26,10 +26,12 @@ src/infra/adapters/command-runtime/
 ├── platform-runtime/  platform launch DTO、失败分类、launcher
 ├── working-directory/ cwd file system port
 ├── macos/              SRT + PTY/pipe 的 macOS command wrapper
-└── windows/            command 专属 PTY/native wrapper
+└── windows/            command 专属 PTY/native owner 与独立账户隔离
 ```
 
 目录不能按“方便 import”重新合并。`output` 不得导入 `runner`，`runner` 不得导入 permission feature，平台目录不得向 Commands domain 反向暴露 native 类型。
+
+Windows 1/2 档的初始化、文件权限、并行身份和卸载边界见 [account isolation](./windows/isolation/README.md)。
 
 ## 3. 公共进程合同
 

@@ -1,3 +1,4 @@
+import { createFileCredentialStorage } from '../../../infra/adapters/credential-storage/file/createFileCredentialStorage';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,10 +8,13 @@ import { toWebSearchConfigView } from '../websearch/functions/normalizeWebSearch
 import { installWebSearchConfigReader } from '../websearch/ports/webSearchConfigReader';
 import { createWebSearchProvider } from '../websearch/providers/factory';
 
-const testCodec = {
-  encrypt: async (plaintext: string) => Buffer.from(`encrypted:${plaintext}`, 'utf8').toString('base64'),
-  decrypt: async (ciphertext: string) => Buffer.from(ciphertext, 'base64').toString('utf8').replace(/^encrypted:/u, ''),
-};
+function credentialPath(configPath: string): string {
+  return path.join(path.dirname(configPath), 'credentials.json');
+}
+function storage(configPath: string) {
+  return createFileCredentialStorage(credentialPath(configPath));
+}
+
 
 describe('Web Search 配置保存与重启恢复', () => {
   let tempRoot: string;
@@ -25,12 +29,12 @@ describe('Web Search 配置保存与重启恢复', () => {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 
-  it('BYOK Key 只以密文落盘，重启恢复后 get 视图仍只返回掩码状态', async () => {
-    const store = await FileWebSearchConfigStore.open(configPath, testCodec);
+  it('BYOK Key 保存在统一凭据文件，重启恢复后 get 视图仍只返回掩码状态', async () => {
+    const store = await FileWebSearchConfigStore.open(configPath, storage(configPath));
     await store.save({ engine: 'serper', keySource: 'byok', byokKey: 'private-serper-key' });
-    expect(fs.readFileSync(configPath, 'utf8')).not.toContain('private-serper-key');
+    expect(fs.readFileSync(credentialPath(configPath), 'utf8')).toContain('private-serper-key');
 
-    const restarted = await FileWebSearchConfigStore.open(configPath, testCodec);
+    const restarted = await FileWebSearchConfigStore.open(configPath, storage(configPath));
     expect(restarted.read()).toMatchObject({
       engine: 'serper',
       keySource: 'byok',
@@ -49,49 +53,16 @@ describe('Web Search 配置保存与重启恢复', () => {
   });
 
   it('多个引擎分别保存凭证，重启和来回切换都不会互相覆盖', async () => {
-    const store = await FileWebSearchConfigStore.open(configPath, testCodec);
+    const store = await FileWebSearchConfigStore.open(configPath, storage(configPath));
     await store.save({ engine: 'serper', keySource: 'byok', byokKey: 'serper-key' });
     await store.save({ engine: 'tavily', keySource: 'byok', byokKey: 'tavily-key' });
 
-    const restarted = await FileWebSearchConfigStore.open(configPath, testCodec);
+    const restarted = await FileWebSearchConfigStore.open(configPath, storage(configPath));
     expect(restarted.read()).toMatchObject({ engine: 'tavily', byokKey: 'tavily-key' });
     await restarted.save({ engine: 'serper', keySource: 'byok' });
     expect(restarted.read()).toMatchObject({ engine: 'serper', byokKey: 'serper-key' });
-    expect(fs.readFileSync(configPath, 'utf8')).not.toContain('serper-key');
-    expect(fs.readFileSync(configPath, 'utf8')).not.toContain('tavily-key');
-  });
-
-  it('打开旧宿主密文后迁移全部搜索引擎凭据，CLI codec 可直接读取', async () => {
-    fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(configPath, `${JSON.stringify({
-      version: 3,
-      settings: {
-        engine: 'tavily',
-        slots: {
-          serper: { keySource: 'byok', encryptedByokKey: 'legacy:serper-key' },
-          tavily: { keySource: 'byok', encryptedByokKey: 'legacy:tavily-key' },
-        },
-      },
-    })}\n`, { mode: 0o600 });
-    const desktopCodec = {
-      encrypt: testCodec.encrypt,
-      decrypt: async (ciphertext: string) => ciphertext.replace(/^(?:legacy|current):/u, ''),
-      rewrap: async (ciphertext: string) => ciphertext.startsWith('legacy:')
-        ? ciphertext.replace(/^legacy:/u, 'current:')
-        : undefined,
-    };
-    await FileWebSearchConfigStore.open(configPath, desktopCodec);
-    expect(fs.readFileSync(configPath, 'utf8')).not.toContain('legacy:');
-
-    const cliCodec = {
-      encrypt: testCodec.encrypt,
-      decrypt: async (ciphertext: string) => {
-        if (!ciphertext.startsWith('current:')) throw new Error('不支持旧宿主密文');
-        return ciphertext.replace(/^current:/u, '');
-      },
-    };
-    const restarted = await FileWebSearchConfigStore.open(configPath, cliCodec);
-    expect(restarted.read()).toMatchObject({ engine: 'tavily', byokKey: 'tavily-key' });
+    expect(fs.readFileSync(credentialPath(configPath), 'utf8')).toContain('serper-key');
+    expect(fs.readFileSync(credentialPath(configPath), 'utf8')).toContain('tavily-key');
   });
 
   it('旧版本配置明确失败，不保留 Cloud 搜索兼容读取', async () => {
@@ -104,18 +75,17 @@ describe('Web Search 配置保存与重启恢复', () => {
       },
     }));
 
-    const rejected = await FileWebSearchConfigStore.open(configPath, testCodec);
-    expect(() => rejected.read()).toThrow(/文件结构或版本不受支持/u);
+    await expect(FileWebSearchConfigStore.open(configPath, storage(configPath))).rejects.toThrow('保留原文件');
   });
 
   it('保存 BYOK 后，重启实例通过配置 port 创建唯一搜索服务', async () => {
-    const store = await FileWebSearchConfigStore.open(configPath, testCodec);
+    const store = await FileWebSearchConfigStore.open(configPath, storage(configPath));
     await store.save({
       engine: 'serper',
       keySource: 'byok',
       byokKey: 'saved-serper-key',
     });
-    const restarted = await FileWebSearchConfigStore.open(configPath, testCodec);
+    const restarted = await FileWebSearchConfigStore.open(configPath, storage(configPath));
     const uninstall = installWebSearchConfigReader(restarted);
     try {
       expect(createWebSearchProvider(undefined, { environment: {} }).name).toBe('serper');

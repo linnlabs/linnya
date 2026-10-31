@@ -46,7 +46,10 @@ export function createLocalProcessPlatformLauncher(
   let launcher: LaunchOwnedPipeProcess | undefined;
 
   return async (launch, options) => {
-    launcher ??= createWindowsJobOwnedPipeProcessLauncher(await loader.load());
+    if (!launcher) {
+      const binding = await loader.load();
+      launcher = createWindowsJobOwnedPipeProcessLauncher(input => binding.createWindowsOwnedPipeProcess(input));
+    }
     return launcher(launch, options);
   };
 }

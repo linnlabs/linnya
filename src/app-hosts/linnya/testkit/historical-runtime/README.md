@@ -18,7 +18,7 @@ owner 分别创建研究项目和合成读写验证项目，后者的文档不�
 `scripts/benchmark/build-historical-runtime.ts`
 复用正式 Backend 构建选项，生成标准 `host-root/dist/main`
 布局的独立产物。实验配置路径只编入开发产物，不进入生产 bootstrap 或环境白名单。构建需要已准备好的正式 headless
-Node、Qdrant、队列 worker、命令运行资源和 Node parser-wasm，并复制冻结 deep-research Skill；缺少已构建资源就失败。操作者另行准备加密凭据、模型配置及实验配置，不得提交本地凭据或私有资料。
+Node、Qdrant、队列 worker、命令运行资源和 Node parser-wasm，并复制冻结 deep-research Skill；缺少已构建资源就失败。操作者另行准备文件凭据、模型配置及实验配置，不得提交本地凭据或私有资料。
 
 调用模型前必须用正式 CLI 在验证项目中执行长 Markdown 写入、完整分页回读、精确编辑及再次回读。仅有 Host ready 和纯函数测试不足以证明文档资源齐备。语料也须全文核对正文边界；哈希和发布日期检查无法自动识别当前网站导航混入历史稿件。环境失败与模型研究失败分别记账，修复后另开身份，不能覆盖失败样本。
 

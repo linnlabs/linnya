@@ -1,4 +1,5 @@
 import type { ShellToolRuntimePort } from '../../shell-runtime';
+import type { InternalStorageFileAccessPort } from 'src/app-hosts/linnya/adapters/internal-storage-protection';
 import type { CommandAgentRunLifecyclePort } from '../../process-owner';
 import type {
   CommandExecutionOwnerPort,
@@ -18,6 +19,7 @@ export interface CommandAppOwnerLifecyclePort {
  */
 export interface CommandProductionScope extends CommandAppOwnerLifecyclePort {
   readonly shellToolRuntime: ShellToolRuntimePort;
+  readonly internalStorageFileAccess: InternalStorageFileAccessPort;
   readonly agentRunLifecycle: CommandAgentRunLifecyclePort;
   /** 只供 App 级对话删除工作流使用，不向 History 或 renderer 暴露进程 owner。 */
   readonly conversationCleanupCommands: Pick<

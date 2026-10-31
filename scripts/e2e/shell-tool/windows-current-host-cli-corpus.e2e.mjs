@@ -20,12 +20,14 @@ const runtimeDirectory = path.join(repositoryRoot, 'dist/main/commands/runtime/w
 const sshHost = process.env.LINNYA_WINDOWS_SSH_HOST;
 const sshUser = process.env.LINNYA_WINDOWS_SSH_USER;
 const sshKey = process.env.LINNYA_WINDOWS_SSH_KEY;
+const interactiveUser = process.env.LINNYA_WINDOWS_INTERACTIVE_USER;
 const outputLimit = 256 * 1024;
 
 if (process.platform !== 'darwin')
   throw new Error('Windows corpus must be orchestrated from macOS');
-if (!sshHost || !sshUser || !sshKey || !path.isAbsolute(sshKey)) {
-  throw new Error('Windows corpus requires LINNYA_WINDOWS_SSH_HOST/USER/KEY');
+if (!sshHost || !sshUser || !sshKey || !path.isAbsolute(sshKey)
+  || !interactiveUser || !/^[a-zA-Z0-9._-]+$/u.test(interactiveUser)) {
+  throw new Error('Windows corpus requires LINNYA_WINDOWS_SSH_HOST/USER/KEY and LINNYA_WINDOWS_INTERACTIVE_USER');
 }
 
 function appendBounded(current, chunk) {
@@ -76,6 +78,9 @@ async function createProject(root) {
     env: { ...process.env, LINNYA_BUILD_TARGET_PLATFORM: 'win32', LINNYA_BUILD_TARGET_ARCH: 'x64' },
   });
   await cp(runtimeDirectory, path.join(project, 'runtime/windows/x64'), { recursive: true });
+  await runChecked('node', ['scripts/build/commands/build-plugin-cli-client.mjs'], {
+    env: { ...process.env, LINNYA_BUILD_TARGET_PLATFORM: 'win32', LINNYA_BUILD_TARGET_ARCH: 'x64' },
+  });
   await runChecked('pnpm', [
     'exec',
     'esbuild',
@@ -111,12 +116,15 @@ async function createProject(root) {
     path.join(repositoryRoot, 'src/features/text-measurement/infrastructure/system/harfbuzzRuntimeLoader.cjs'),
     path.join(project, 'harfbuzzRuntimeLoader.cjs')
   );
+  await copyFile(path.join(fixtureDirectory, 'user-session.ps1'), path.join(project, 'user-session.ps1'));
   await mkdir(path.join(project, 'host-cli-fixtures'));
   await Promise.all(
     ['host-cli-cmd.cmd', 'host-cli-bat.bat'].map(name =>
       copyFile(path.join(fixtureDirectory, name), path.join(project, 'host-cli-fixtures', name))
     )
   );
+  await copyFile(path.join(repositoryRoot, 'dist/main/plugin-cli-runtime/win32/x64/linnya-plugin-cli-client.exe'),
+    path.join(project, 'host-cli-fixtures/linnya-platform.exe'));
   const manifest = bindElectronVersion(
     JSON.parse(await readFile(path.join(fixtureDirectory, 'package.json'), 'utf8'))
   );
@@ -154,6 +162,7 @@ async function cleanupAndVerifyRemote(sshArgs, target, paths) {
     `$controller = ${quotePowerShell(paths.controller)}`,
     `$appProcessId = ${paths.appProcessId ?? '$null'}`,
     "$extendedRoot = '\\\\?\\' + [IO.Path]::GetFullPath($root)",
+    "if (Test-Path -LiteralPath (Join-Path $root 'recovery-required')) { throw ('Isolation cleanup needs recovery; retained fixture: ' + $root) }",
     '$deadline = [DateTime]::UtcNow.AddSeconds(15)',
     '$deleteError = $null',
     'while (Test-Path -LiteralPath $root) {',
@@ -218,7 +227,16 @@ async function validateWindows(project, root) {
   const sshArgs = ['-i', sshKey, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8'];
   const remoteArchive = `C:/Users/${sshUser}/AppData/Local/Temp/linnya-host-cli-${token}.tar.gz`;
   const remoteController = `C:/Users/${sshUser}/AppData/Local/Temp/linnya-host-cli-${token}.ps1`;
-  const remoteRunRoot = `C:/Users/${sshUser}/AppData/Local/Temp/linnya-windows-host-cli-${token}`;
+  const commonDocumentsQuery = Buffer.from(
+    "[Console]::Write([Environment]::GetFolderPath('CommonDocuments'))", 'utf16le',
+  ).toString('base64');
+  const commonDocuments = await runChecked('ssh', [
+    ...sshArgs, target, 'powershell', '-NoLogo', '-NoProfile', '-NonInteractive',
+    '-EncodedCommand', commonDocumentsQuery,
+  ]);
+  const commonRoot = commonDocuments.stdout.trim();
+  assert(path.win32.isAbsolute(commonRoot), 'Windows common documents must be absolute');
+  const remoteRunRoot = path.win32.join(commonRoot, `linnya-windows-host-cli-${token}`).replaceAll('\\', '/');
   let appProcessId;
   try {
     await runChecked('scp', [
@@ -248,8 +266,10 @@ async function validateWindows(project, root) {
         remoteArchive,
         '-RunRoot',
         remoteRunRoot,
+        '-InteractiveUser',
+        interactiveUser,
       ],
-      { timeoutMs: 240_000 }
+      { timeoutMs: 600_000 }
     );
     const result = JSON.parse(remote.stdout.trim().split(/\r?\n/u).at(-1));
     appProcessId = result.appProcessId;
@@ -274,9 +294,11 @@ try {
   assert.equal(Number.isInteger(result.appProcessId), true);
   assert.equal(result.shell, 'powershell-5.1');
   assert.equal(result.pythonAliasExecuted, false);
+  assert.deepEqual(result.internalStorage, { levels: 3, indirectDenied: true, allowOnce: true, savedRule: true, fullAccess: true });
   assert.deepEqual(
     result.cases.map(item => [item.id, item.exitCode]),
     [
+      ['plugin-bridge', 0],
       ['app-owner-environment', 0],
       ['powershell', 0],
       ['where-exe', 0],

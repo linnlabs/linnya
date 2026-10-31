@@ -101,6 +101,7 @@ export interface AgentRunnerRuntimePort {
     | {
         readonly kind: 'enabled';
         readonly shellToolRuntime: ShellToolRuntimePort;
+        readonly internalStorageFileAccess: NonNullable<ToolContext['internalStorageFileAccess']>;
         readonly agentRunLifecycle: CommandAgentRunLifecyclePort;
       };
 }
@@ -403,6 +404,8 @@ export class AgentRunnerService {
                     ? this.runtime.commandRuntime.shellToolRuntime
                     : undefined,
                 physicalFileReader: this.runtime.physicalFileReader,
+                internalStorageFileAccess: this.runtime.commandRuntime.kind === 'enabled'
+                  ? this.runtime.commandRuntime.internalStorageFileAccess : undefined,
                 conversationWorkDirectoryAdmission: this.runtime.conversationWorkDirectoryAdmission,
                 managedImageIngress: this.runtime.managedImageIngress,
                 toolResultAssetClaims: this.runtime.toolResultAssetClaims,

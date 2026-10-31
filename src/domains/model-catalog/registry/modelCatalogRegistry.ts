@@ -1,3 +1,4 @@
+import type { CredentialStoragePort } from 'src/shared/credential-storage';
 import fs from 'node:fs';
 
 import type { CustomApiGroup, CustomApiGroupMigration } from '../definitions/customApiGroup';
@@ -27,7 +28,6 @@ import type {
   InferenceEndpoint,
   InferenceEndpointSelection,
   InferenceEndpointView,
-  EndpointCredentialCodec,
   EndpointCredentialStatus,
 } from '../definitions/inferenceEndpoint';
 import { processModelConfig } from '../features/catalog-admission/functions/processModelConfig';
@@ -163,8 +163,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
     this.modelReasoningResolver = resolver;
   }
 
-  installEndpointCredentialCodec(codec: EndpointCredentialCodec): void {
-    endpointCredentialStore.installCodec(codec);
+  installEndpointCredentialStorage(storage: CredentialStoragePort): void {
+    endpointCredentialStore.installStorage(storage);
   }
 
   resolveCredential(modelId: string): string | undefined {
@@ -182,10 +182,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return model.inference_endpoint_id
       ? this.inferenceEndpoints.get(model.inference_endpoint_id)?.credential_reference
       : model.credential_reference;
-  }
-
-  retryUnavailableCredentials(): Promise<{ recovered: boolean; pending: boolean }> {
-    return endpointCredentialStore.retryTemporarilyUnavailable();
   }
 
   hasCredential(modelId: string): boolean {
@@ -364,7 +360,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
       }
       const secret = credentialSecret.trim();
       if (!secret) throw new Error('替换的 credential secret 不能为空');
-      // 密文文件自身原子写入；共享同一 credential 的 endpoint 一并生效，目录文件无需变化。
+      // 凭据文件自身原子写入；共享同一 credential 的 endpoint 一并生效，目录文件无需变化。
       await endpointCredentialStore.put(endpoint.credential_reference.credential_id, secret);
     });
   }
@@ -744,7 +740,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
     if (endpoint.credential_reference.kind !== 'stored_secret') return 'configured';
     const status = endpointCredentialStore.getStatus(endpoint.credential_reference.credential_id);
     if (status === 'available') return 'configured';
-    return status === 'missing' ? 'missing' : 'unavailable';
+    return 'missing';
   }
 
   private async loadCloudModels(): Promise<boolean> {

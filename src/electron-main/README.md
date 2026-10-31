@@ -11,7 +11,7 @@ Electron Main 负责：
 - 单实例、启动、窗口、权限、协议、更新和统一退出；
 - 从打包事实与受信发行清单解析 `source / community / official` 发行身份，并把它冻结到 App Server bootstrap；
 - 解析并冻结 Desktop 路径与平台事实，启动固定 Node 中的 App Server；
-- 向 App Server 提供 safeStorage、系统浏览器、文件定位、隐藏 Chromium、PDF 和文本测量等窄 Desktop capability；
+- 向 App Server 提供 系统浏览器、文件定位、隐藏 Chromium、PDF 和文本测量等窄 Desktop capability；
 - 对 Renderer 页面身份做 admission，并转发 App Server 已登记的 data-only request/push；
 - 通过 Preload 暴露受限 Renderer API，不向页面暴露 Electron 对象或任意 IPC。
 
@@ -43,7 +43,7 @@ Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也�
 | App Server 子进程、bootstrap、双向 RPC | [`app-server-runtime/`](./app-server-runtime/README.md) | Main 只托管进程并实现 Desktop reverse capability |
 | Renderer 的 Preload API 与 IPC 白名单 | `preload/`、`ipc/index.js`、`ipc/handlers/index.ts` | 页面只见稳定 DTO；新增业务 handler 应注册到 App Server request registry |
 | App Server 业务请求转发 | `app-server-runtime/orchestration/registerBackendRendererRequestIpcHandlers.ts` | 只转发 App Server 已登记 channel，完整合同见 [Backend Renderer Requests](../app-hosts/linnya/adapters/backend-renderer-requests/README.md) |
-| safeStorage、OAuth browser、文件定位、PDF、隐藏窗口等 | `desktop-capabilities/`、`hidden-worker/`、`measurement/`、`web-render/` | 对外只实现 [Desktop capability ports](../app-hosts/linnya/desktop-capabilities/README.md) |
+| OAuth browser、文件定位、PDF、隐藏窗口等 | `desktop-capabilities/`、`hidden-worker/`、`measurement/`、`web-render/` | 对外只实现 [Desktop capability ports](../app-hosts/linnya/desktop-capabilities/README.md) |
 | 自定义协议与受管媒体 | `protocols/`、`plugins/loader/pluginProtocol.ts` | scheme 必须在 `app.ready` 前登记；文件路径必须经过准入 |
 | Command 审批/权限的页面身份与 RPC | [`commands/`](./commands/README.md)、`ipc/handlers/commands/` | 命令 owner 在 App Server；Main 不处理 stdout、PTY 或命令状态 |
 | 发行身份 | [`distribution`](./distribution/README.md) | 未打包固定为 `source`；未通过发行清单验签的包固定为 `community` |

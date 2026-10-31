@@ -33,9 +33,7 @@ export type {
   InferenceEndpointSelection,
   InferenceEndpointView,
   EndpointCredentialStatus,
-  EndpointCredentialCodec,
 } from './definitions/inferenceEndpoint';
-export { EndpointCredentialUnavailableError } from './definitions/inferenceEndpoint';
 
 export {
   CLOUD_DEEPSEEK_CHAT_MODEL_ID,

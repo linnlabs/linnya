@@ -17,6 +17,7 @@ import { resolveWorkerQdrantUrl } from '../functions/resolveWorkerQdrantUrl';
  */
 
 import { parentPort, workerData } from 'worker_threads';
+import { initializeWorkerModelServices } from '../../../app-hosts/linnya/backend-runtime/workerModelServices';
 
 import { modelCatalog } from 'src/domains/model-catalog';
 import { enableDiagnosticLogForwarding, Logger } from '../../../shared/logger';
@@ -39,7 +40,6 @@ import { textsToSparseVectors } from '../../../features/knowledge-base/ingestion
 import { generateGraphVectorPointId } from '../../../shared/utils/idUtils';
 import {
   createEmbeddingPort,
-  createLinnyaModelReasoningResolver,
 } from '../../../app-hosts/linnya/adapters/inference';
 import type { EmbeddingPort } from '../../../domains/model-inference';
 
@@ -58,14 +58,14 @@ if (parentPort) {
 
 let isCancelled = false;
 
-function installWorkerRuntimePathRoots(): void {
+function installWorkerRuntimePathRoots(): RuntimePathRoots {
   const runtimePathRoots = (
     workerData as { readonly runtimePathRoots?: RuntimePathRoots } | undefined
   )?.runtimePathRoots;
   if (!runtimePathRoots) {
     throw new Error('[GraphIndexingWorker] 缺少 owner 传入的 Runtime path roots');
   }
-  installRuntimePathRoots(runtimePathRoots);
+  return installRuntimePathRoots(runtimePathRoots);
 }
 
 function installWorkerDistributionIdentity(): DistributionIdentity {
@@ -79,9 +79,11 @@ function installWorkerDistributionIdentity(): DistributionIdentity {
 }
 
 async function initializeWorkerServices(): Promise<EmbeddingPort> {
-  installWorkerRuntimePathRoots();
-  modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
-  await modelCatalog.initialize(installWorkerDistributionIdentity());
+  const runtimePathRoots = installWorkerRuntimePathRoots();
+  await initializeWorkerModelServices({
+    runtimePathRoots,
+    distributionIdentity: installWorkerDistributionIdentity(),
+  });
   return createEmbeddingPort({ catalog: modelCatalog });
 }
 

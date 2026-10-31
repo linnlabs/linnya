@@ -25,7 +25,7 @@ use crate::fault_injection::NativeFaultInjection;
 use crate::handle::SharedHandle;
 use crate::launch_spec::NativeLaunchSpec;
 use crate::output_flow::OutputFlowGate;
-use crate::process_creation::create_windows_process_resources;
+use crate::process_creation::{CreatedWindowsProcessResources, create_windows_process_resources};
 #[cfg(feature = "test-fault-injection")]
 use crate::test_support::{WindowsProcessIdentityForTest, read_process_identity_for_test};
 use observation::{ObserverCallback, ObserverChannel};
@@ -69,6 +69,7 @@ pub(crate) fn wait_for_tree_empty(job: HANDLE) -> NativeResult<()> {
 }
 
 pub(crate) struct WindowsOwnedProcessState {
+    isolation: Option<crate::isolated_process::IsolatedWorkerLifetime>,
     // Job 必须最先 drop：utility 非正常退出时，KILL_ON_JOB_CLOSE 先终止整棵树。
     job: SharedHandle,
     process: SharedHandle,
@@ -92,12 +93,19 @@ impl WindowsOwnedProcessState {
         fault_injection: NativeFaultInjection,
     ) -> NativeResult<Self> {
         let resources = create_windows_process_resources(spec, &fault_injection)?;
+        Self::from_resources(resources, fault_injection)
+    }
 
+    pub(crate) fn from_resources(
+        resources: CreatedWindowsProcessResources,
+        fault_injection: NativeFaultInjection,
+    ) -> NativeResult<Self> {
         Ok(Self {
+            isolation: resources.isolation,
             job: SharedHandle::new(resources.job),
             process: SharedHandle::new(resources.process),
             thread: SharedHandle::new(resources.thread),
-            stdin_writer: SharedHandle::new(resources.stdin_writer),
+            stdin_writer: SharedHandle::from_option(resources.stdin_writer),
             stdout_reader: SharedHandle::new(resources.stdout_reader),
             stderr_reader: SharedHandle::new(resources.stderr_reader),
             stdout_flow: OutputFlowGate::default(),
@@ -459,6 +467,9 @@ impl WindowsOwnedProcessState {
             self.thread.close("thread_release"),
             self.process.close("process_release"),
             self.job.close("job_release"),
+            self.isolation
+                .as_ref()
+                .map_or(Ok(()), |isolation| isolation.release()),
         ] {
             if let Err(error) = result {
                 failures.push(error.to_string());

@@ -119,7 +119,7 @@ async function run(): Promise<void> {
     expectedApplicationVersion: applicationVersion,
     trust: { kind: 'development' },
   }).load();
-  const launch = createWindowsJobOwnedPtyCommandProcessLauncher(binding);
+  const launch = createWindowsJobOwnedPtyCommandProcessLauncher((input, columns, rows) => binding.createWindowsOwnedPtyProcess(input, columns, rows));
 
   const inputOwner = await launch(launchInput(fixturePath, '--quiet-input', suiteRoot));
   const inputTerminal = collectTerminal(inputOwner);

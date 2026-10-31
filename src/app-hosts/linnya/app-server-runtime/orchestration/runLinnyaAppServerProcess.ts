@@ -106,7 +106,7 @@ export async function runLinnyaAppServerProcess(
     await registerCoreBackendRendererRequestHandlers({
       runtimeOwner,
       registry: rendererRequests,
-      credentialProtection: composition.backendHostDependencies.credentialProtection,
+      credentialStorage: composition.backendHostDependencies.credentialStorage,
       rendererIntegration: composition.backendHostDependencies.rendererIntegration,
       applicationVersion: bootstrap.backend_facts.applicationVersion,
       packaged: bootstrap.backend_facts.packaged,

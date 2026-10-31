@@ -10,7 +10,7 @@ import {
   CommandRunPermissionSnapshotV1Schema,
   type CommandPermissionLevel,
 } from '@app/schemas/commands';
-import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createNodePhysicalFileReader } from 'src/app-hosts/linnya/adapters/file-read/createNodePhysicalFileReader';
@@ -47,8 +47,10 @@ describe('read_file host locator 与命令权限边界', () => {
         conversationId: 'conv-host-read',
         turnId: `turn-${permissionLevel}`,
         patch: {
+          runId: RunIdSchema.parse(`agent-run-${permissionLevel}`),
           parentToolCallId: ToolCallIdSchema.parse(`tool-call-${permissionLevel}`),
           physicalFileReader: createNodePhysicalFileReader(),
+          internalStorageFileAccess: { authorizeRead: vi.fn().mockResolvedValue(undefined) },
           managedImageIngress: { ingestLocalImage },
           toolResultAssetClaims: {
             issueClaims,
@@ -107,8 +109,19 @@ describe('read_file host locator 与命令权限边界', () => {
       conversationId: 'conv-host-read-error',
       turnId: 'turn-host-read-error',
       patch: {
+        runId: RunIdSchema.parse('agent-run-format'),
         parentToolCallId: ToolCallIdSchema.parse('tool-call-host-read-error'),
         physicalFileReader: createNodePhysicalFileReader(),
+        internalStorageFileAccess: { authorizeRead: vi.fn().mockResolvedValue(undefined) },
+        commandRunPermission: {
+          status: 'available',
+          snapshot: CommandRunPermissionSnapshotV1Schema.parse({
+            protocol_version: 1, kind: 'command_run_permission_snapshot',
+            root_agent_run_id: 'agent-run-format', settings_revision: 1, captured_at_ms: 1,
+            permission_level: 'standard', internal_data_access: 'allowed',
+            gui_control: 'denied', local_ipc_control: 'denied', process_lifecycle: 'terminate_with_run',
+          }),
+        },
         managedImageIngress: {
           ingestLocalImage: vi.fn(() => Promise.reject(new Error('非图片不应进入图片 ingress。'))),
         },

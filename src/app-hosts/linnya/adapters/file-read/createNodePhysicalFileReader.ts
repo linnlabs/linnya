@@ -65,10 +65,13 @@ export function createNodePhysicalFileReader(): PhysicalFileReaderPort {
     async readFile(input: {
       readonly absolutePath: string;
       readonly scope: PhysicalFileReadScope;
+      readonly authorizeRead?: (resolvedPath: string) => Promise<void>;
     }): Promise<PhysicalFileReadResult> {
       // 必须在 open 前拒绝 FIFO、socket 和设备文件，否则打开命名管道可能永久等待 writer。
       const inspected = await inspectNodePhysicalRegularFile(input);
       const resolvedPath = inspected.resolvedPath;
+      // 先解析 symlink，再审批实际目标；拒绝时不能读取文件头或导入图片正文。
+      await input.authorizeRead?.(resolvedPath);
       let handle: Awaited<ReturnType<typeof fsp.open>>;
       try {
         handle = await fsp.open(resolvedPath, 'r');

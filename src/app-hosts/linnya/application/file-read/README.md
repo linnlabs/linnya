@@ -41,5 +41,8 @@ URL、标题和摘录都随文档保存，目录路径不参与来源身份。�
 ref 唯一性。正文改写复用 Citation domain 的 Markdown parser，fenced/inline code 中的 `[@ref]` 示例保持
 普通代码。`grep` 和 pending diff 继续遮罩 citation，不构成旁路 producer。
 
-该 use case 不依赖 Commands domain，也不读取命令权限档位。三档命令权限不会在这里制造三套
-相同的只读授权判断。
+Host `file:` 读取需要注入内部存储访问 port 和当前 run 的权限快照。Node adapter 先解析
+真实目标，再在读取文件头、正文或导入图片前等待授权：1/2 档访问内部存储须审批，完全访问
+直接放行；外部普通文件保持原读取行为。授权规则由 App Host adapter 与 Commands 公共审批
+合同承担，本 use case 只传递上下文，不复制规则。`conversation:` 继续在原生命周期准入内
+执行目录包含检查和 leaf symlink 拒绝，不把等待用户审批放进删除屏障。

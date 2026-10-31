@@ -3,6 +3,8 @@ import type { SupportedImageMediaType } from 'src/shared/media/image-inspection'
 export const PHYSICAL_TEXT_FILE_MAX_BYTES = 20 * 1024 * 1024;
 
 export type PhysicalFileReadErrorCode =
+  | 'READ_FILE_PERMISSION_UNAVAILABLE'
+  | 'READ_FILE_INTERNAL_STORAGE_ACCESS_DENIED'
   | 'READ_FILE_LOCATOR_INVALID'
   | 'READ_FILE_NOT_FOUND'
   | 'READ_FILE_NOT_REGULAR_FILE'
@@ -68,6 +70,8 @@ export interface PhysicalFileReaderPort {
   readFile(input: {
     readonly absolutePath: string;
     readonly scope: PhysicalFileReadScope;
+    /** Agent 调用注入准入门；宿主 UI 的主动文件操作不使用 Agent 权限。 */
+    readonly authorizeRead?: (resolvedPath: string) => Promise<void>;
   }): Promise<PhysicalFileReadResult>;
 }
 

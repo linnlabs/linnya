@@ -2,7 +2,6 @@ export {
   CHATGPT_PROVIDER_ACCOUNT_ID,
   CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID,
   type ProviderAccount,
-  type ProviderAccountCredentialCodec,
   type ProviderAccountCredentialStatus,
   type ProviderAccountOAuthCredential,
   type ProviderAccountModelDefinition,
@@ -11,7 +10,6 @@ export {
   type ProviderAccountRequestCredential,
   type ProviderAccountRequestCredentialResolver,
 } from './definitions/providerAccount';
-export { ProviderAccountCredentialUnavailableError } from './definitions/providerAccount';
 export {
   FileProviderAccountRegistry,
   providerAccountRegistry,

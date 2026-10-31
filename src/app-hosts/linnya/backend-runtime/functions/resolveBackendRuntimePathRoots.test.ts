@@ -16,6 +16,7 @@ describe('resolveBackendRuntimePathRoots', () => {
       appDataRoot: '/workspace/linnya/_dev_data',
       workspaceRoot: '/workspace/linnya/_dev_data',
       workspaceRootIsCustom: false,
+      profileRoot: '/ignored/user-data',
     });
   });
 
@@ -33,6 +34,7 @@ describe('resolveBackendRuntimePathRoots', () => {
       appDataRoot: '/users/me/app-data/Linnya/AIService',
       workspaceRoot: '/workspace/linnya/disposable-workspace',
       workspaceRootIsCustom: true,
+      profileRoot: '/users/me/app-data/Linnya',
     });
   });
 });

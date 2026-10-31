@@ -66,7 +66,7 @@ specifier，初次加载结束后会解析失败；这类 chunk 必须先改为�
    `ServiceInitializer` 在真实 App Server Backend 初始化服务后注入数据库连接；未注入必须 fail-fast，不能返回空 enabled 集或把 DB 错误伪装成 missing。
 2. **`plugin:invoke` 必须注册在 App Server 的 Backend Renderer Request registry 上**。Main 只转发已由
    App Server 登记的 data-only channel，不能 import 插件 registry、推断 enabled 状态或创建第二份 allowlist。
-3. **Desktop-only 能力必须是窄反向 RPC port**。保存框、隐藏窗口、Chromium PDF、safeStorage 和系统浏览器
+3. **Desktop-only 能力必须是窄反向 RPC port**。保存框、隐藏窗口、Chromium PDF、系统浏览器
    仍由 Main 拥有；插件不能看到 Electron 对象、真实路径或任意 method table，大二进制使用私有 mailbox。
 
 > 该不变式已有 Backend boundary、Renderer request registry 与插件 fail-fast

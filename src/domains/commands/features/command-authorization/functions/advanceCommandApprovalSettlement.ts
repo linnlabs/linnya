@@ -50,6 +50,8 @@ export function advanceCommandApprovalSettlement(params: {
         !== state.request.proposal.permission.base_level
       || settlement.permission.internal_data_access
         !== state.request.proposal.permission.internal_data_access
+      || (settlement.permission.internal_storage_access === true)
+        !== state.request.reasons.some(reason => reason.type === 'internal_storage_access')
     )
   ) {
     return { status: 'stale', state, code: 'permission_snapshot_mismatch' };

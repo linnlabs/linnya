@@ -93,7 +93,7 @@ function createHarness(input: {
       return native;
     },
   };
-  const launch = createWindowsJobOwnedPipeProcessLauncher(binding);
+  const launch = createWindowsJobOwnedPipeProcessLauncher(input => binding.createWindowsOwnedPipeProcess(input));
   return launch({
     executablePath: 'C:\\runtime\\node.exe',
     argv: ['fixture.js'],

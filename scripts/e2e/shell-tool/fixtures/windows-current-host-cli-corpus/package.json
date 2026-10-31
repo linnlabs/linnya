@@ -34,6 +34,10 @@
       {
         "from": "host-cli-fixtures",
         "to": "host-cli-fixtures"
+      },
+      {
+        "from": "user-session.ps1",
+        "to": "user-session.ps1"
       }
     ],
     "win": {

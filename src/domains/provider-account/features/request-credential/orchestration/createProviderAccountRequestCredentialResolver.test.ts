@@ -32,7 +32,7 @@ describe('Provider account request credential resolver', () => {
       async () => account
     );
     const accounts: ProviderAccountRegistry = {
-      installCredentialCodec: vi.fn(),
+      installCredentialStorage: vi.fn(),
       initialize: vi.fn(async () => undefined),
       list: () => [account],
       get: () => account,
