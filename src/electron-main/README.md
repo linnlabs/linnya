@@ -73,6 +73,7 @@ Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也�
 - Desktop capability 必须是窄 port，不能开放 Electron 对象、任意 method table、真实凭据或未经准入的物理路径。
 - `app.isPackaged` 与 `LINNYA_DEV_MODE` 都不能证明官方发行身份；新增官方服务统一消费[发行身份合同](../shared/distribution-identity/README.md)。
 - 开发环境加载早于 command mode，启动提示只能写 stderr；stdout 保留给命令结果，不能让 dotenv 提示破坏 JSON 协议。
+- 正式包关闭 Electron `enableCookieEncryption` fuse。即使业务不调用 `safeStorage`，开启 Cookie 加密也会在 macOS 访问系统钥匙串，并可能等待授权而阻塞退出。Cookie 使用 Chromium 默认的文件存储；API Key/OAuth/插件凭据仍只由 App Server 的私有文件凭据 owner 保存，不能借 Cookie 存储。此前开启加密的测试 profile 不作为 Cookie 迁移来源；验收必须使用全新 profile，验证启动、重启与正常退出，并读取实际成品 fuse。
 - 架构或运行 owner 变化时，同步更新本 README 和对应 owner README，不以兼容 fallback 掩盖双 owner。
 
 ## 验证

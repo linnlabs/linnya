@@ -6,6 +6,7 @@
 import fs from 'fs';
 import { createRequire } from 'module';
 import path from 'path';
+import { getProjectRoot } from '../../../../shared/utils/pathManager';
 import type { WasmBlockEventLike } from './types';
 
 type UnknownRecord = Record<string, unknown>;
@@ -21,11 +22,7 @@ type WasmParserApi = {
 };
 
 let cachedApiPromise: Promise<WasmParserApi> | null = null;
-const NODE_WASM_ENTRY_RELATIVE_PATHS = [
-  'packages/parser-wasm/pkg-node/parser_wasm.js',
-  'packages/parser-wasm/pkg-nodejs/parser_wasm.js'
-] as const;
-const requireFromWorkspace = createRequire(path.join(process.cwd(), 'package.json'));
+const NODE_WASM_ENTRY_RELATIVE_PATH = 'packages/parser-wasm/pkg-node/parser_wasm.js';
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -51,10 +48,6 @@ function getConstructor(value: unknown, key: string): (new () => StreamingParser
   return isStreamingParserConstructor(candidate) ? candidate : null;
 }
 
-function getNodeParserCandidatePaths(cwd: string = process.cwd()): string[] {
-  return NODE_WASM_ENTRY_RELATIVE_PATHS.map((relativePath) => path.resolve(cwd, relativePath));
-}
-
 /**
  * 解析 Electron main / Node 侧可用的 wasm 入口。
  *
@@ -63,29 +56,25 @@ function getNodeParserCandidatePaths(cwd: string = process.cwd()): string[] {
  * - 明确禁止回退到 `pkg/` 的 web 版 wrapper，否则会在 Node 环境里走 fetch 初始化并失败；
  * - 这样一旦开发链路漏掉 `build:wasm`，错误会被立即暴露，而不是继续把 placeholder 当成真实块文档。
  */
-export function resolveNodeParserModulePath(cwd: string = process.cwd()): string {
-  const candidatePaths = getNodeParserCandidatePaths(cwd);
-  for (const candidatePath of candidatePaths) {
-    if (fs.existsSync(candidatePath)) {
-      return candidatePath;
-    }
-  }
-
-  const checked = candidatePaths.map((candidatePath) => `- ${candidatePath}`).join('\n');
+export function resolveNodeParserModulePath(applicationRoot: string = getProjectRoot()): string {
+  // App Server 的 cwd 是用户数据目录。只消费 Host 冻结的资源根，发布包对应
+  // app.asar.unpacked；不能从当前目录搜索源码，也不能加载 web target 代替 Node wrapper。
+  const modulePath = path.resolve(applicationRoot, NODE_WASM_ENTRY_RELATIVE_PATH);
+  if (fs.existsSync(modulePath)) return modulePath;
   throw new Error(
     [
-      '未找到 Node 侧 parser-wasm 产物（pkg-node / pkg-nodejs）。',
+      '未找到 Node 侧 parser-wasm 产物（pkg-node）。',
       '后端 Markdown 规范化只允许使用 nodejs target 的 wasm wrapper，不能回退到 web 版 pkg。',
       '请先执行 `npm run build:wasm`，或使用会预构建 wasm 的 Electron 开发流程。',
       '已检查路径：',
-      checked
+      modulePath
     ].join('\n')
   );
 }
 
 async function importLocalParserModule(): Promise<unknown> {
   const modulePath = resolveNodeParserModulePath();
-  return requireFromWorkspace(modulePath);
+  return createRequire(modulePath)(modulePath);
 }
 
 export function resetNodeParserApiCacheForTests(): void {

@@ -150,6 +150,13 @@ pnpm run build:main
 
 `better-sqlite3`、Electron、图像与音频原生模块必须匹配当前 Node、Electron、平台和架构。切换 Node 或 Electron 版本后，先重新执行冻结安装，再运行仓库提供的 runtime 验证；不要复制另一台机器的 `node_modules`。
 
+App Server 与后台 Worker 使用独立 Node，只能读取物理文件，不能解析 `app.asar`。生产
+`node_modules` 统一解包，包括原生加载器的 JavaScript 依赖与 Worker 的普通 npm 依赖；
+不维护只覆盖顶层原生包的零散名单。Tiktoken 按包目录定位 WASM，必须保留 external 包边界。
+安装验收必须把完整 App 复制到仓库外再启动；仅在 `dist_build` 内运行可能借用祖先目录的
+`node_modules`，掩盖安装包漏依赖。平台源码 CI 同时执行官方插件 artifact 编排，验证
+Windows 的批处理入口和 Mac 的直接进程入口均可完成构建与打包。
+
 平台相关改动至少要区分：
 
 - 可在普通 CI 验证的类型、合同和纯函数；

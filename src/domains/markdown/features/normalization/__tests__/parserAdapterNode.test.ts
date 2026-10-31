@@ -1,7 +1,8 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as runtimePaths from '../../../../../shared/runtime-paths';
 
 import {
   parseMarkdownToBlocksInNode,
@@ -22,6 +23,7 @@ const tempDirs: string[] = [];
 
 describe('parserAdapterNode', () => {
   afterEach(() => {
+    vi.restoreAllMocks();
     resetNodeParserApiCacheForTests();
     while (tempDirs.length > 0) {
       const tempDir = tempDirs.pop();
@@ -61,6 +63,22 @@ describe('parserAdapterNode', () => {
     expect(events[0]?.raw_content_fallback).toBe('标题');
     expect(events[1]?.block_type).toBe('BaseBlock');
     expect(events[1]?.raw_content_fallback).toBe('普通段落');
+  });
+
+  it('loads real WASM from the Host resource root when cwd is a user data directory', async () => {
+    const applicationRoot = process.cwd();
+    const dataRoot = createTempDir('linnya-parser-profile-');
+    tempDirs.push(dataRoot);
+    vi.spyOn(runtimePaths, 'readInstalledRuntimePathRoots').mockReturnValue({
+      developmentRoot: applicationRoot,
+      appDataRoot: dataRoot,
+      workspaceRoot: dataRoot,
+      workspaceRootIsCustom: false,
+    });
+    vi.spyOn(process, 'cwd').mockReturnValue(dataRoot);
+
+    const events = await parseMarkdownToBlocksInNode('# Installed application\n\nPersisted text');
+    expect(events.map(event => event.raw_content_fallback)).toEqual(['Installed application', 'Persisted text']);
   });
 
   it('preserves CommonMark comments as independent block events', async () => {

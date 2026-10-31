@@ -4,6 +4,9 @@
 
 这里的核心原则是：**发布目标集中登记，生命周期同形执行，脚本只编排发布流程，不反向改业务代码。**
 
+批量插件构建在 Windows 通过 shell 执行固定的 `pnpm.cmd`，其他 Node verifier 直接启动。
+两端平台 CI 均运行 `package:plugins:official`，覆盖与 Desktop 打包相同的插件编排入口。
+
 ## 边界
 
 - Linnya 主应用发布：管理

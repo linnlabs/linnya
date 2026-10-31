@@ -20,9 +20,9 @@ export default defineConfig({
   // AI SDK 7/Provider packages 都含纯 ESM 入口，必须在这里完成 CJS bundle 转换，
   // 不能把格式桥接责任推给 v8-compile-cache 或运行时动态加载。
   // App Server 由独立 Node 从 app.asar.unpacked 执行，不能像 Electron 一样解析 asar
-  // 内的普通 node_modules。除原生/运行时加载模块外全部内联，发布目录只需解包真实物理依赖。
+  // 内的普通 node_modules。除原生/运行时加载模块外全部内联，生产依赖树统一解包供 Node 使用。
   noExternal: [
-    /^(?!(?:electron|electron-store|better-sqlite3|yoga-layout|sharp|@node-rs\/jieba|@napi-rs\/canvas|pdfjs-dist|canvas)(?:$|\/)).*/,
+    /^(?!(?:electron|electron-store|better-sqlite3|yoga-layout|sharp|tiktoken|@node-rs\/jieba|@napi-rs\/canvas|pdfjs-dist|canvas)(?:$|\/)).*/,
   ],
   // sharp 是 N-API 原生模块（@img/* 预编译二进制），必须 external 从 node_modules 运行时解析，
   // 禁止打进 bundle（官方要求，与 better-sqlite3 同理；sharp 无需 electron-rebuild）。
@@ -32,6 +32,8 @@ export default defineConfig({
     'better-sqlite3',
     'yoga-layout',
     'sharp',
+    // 分词器按自身 __dirname 加载 WASM；内联后只能偶然借到源码仓中的资源。
+    'tiktoken',
     '@node-rs/jieba',
     '@node-rs/jieba/dict',
     '@napi-rs/canvas',

@@ -349,7 +349,7 @@
     "appId": "com.skysiix.Linnya",
     "electronFuses": {
       "runAsNode": false,
-      "enableCookieEncryption": true
+      "enableCookieEncryption": false
     },
     "productName": "林芽",
     "copyright": "Copyright © 2024–present BCAutumn and Linnya contributors",
@@ -370,16 +370,8 @@
       "**/dist/*.worker.cjs",
       "**/dist/builtin-skills/**/*",
       "**/dist/domains/model-catalog/**/*",
-      "**/node_modules/better-sqlite3/**/*",
-      "**/node_modules/@discordjs/opus/**/*",
-      "**/node_modules/@node-rs/**/*",
-      "**/node_modules/@napi-rs/**/*",
-      "**/node_modules/harfbuzzjs/**/*",
-      "**/node_modules/pdfjs-dist/**/*",
-      "**/node_modules/yoga-layout/**/*",
-      "**/node_modules/node-pty/**/*",
-      "**/node_modules/sharp/**/*",
-      "**/node_modules/@img/**/*"
+      "**/packages/parser-wasm/pkg-node/**/*",
+      "**/node_modules/**/*"
     ],
     "files": [
       "dist/**/*",

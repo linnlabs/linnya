@@ -13,6 +13,10 @@ package 清单是受跟踪真源；`pkg/`、`pkg-node/` 和 `target/`
 - `pkg-node/` 是 Node 侧测试、benchmark 与打包流程使用的产物；
 - 上层应用不得直接维护另一份生成包清单，也不得要求依赖安装前先存在生成目录。
 
+Node adapter 从 Host 冻结的资源根加载唯一 `packages/parser-wasm/pkg-node` 入口。
+正式包把该目录解包到 `app.asar.unpacked`，使独立 Node 可以加载 wrapper 和 WASM；
+不根据 App Server 的用户数据 cwd 查找源码，不回退到旧目录名或 Web wrapper。
+
 首次依赖安装只需要受跟踪的 workspace package 清单。运行 Renderer、测试 Node
 adapter 或生成安装包前，再通过根命令构建两个目标：
 

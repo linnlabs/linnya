@@ -37,6 +37,9 @@ function runCommand(command, args, cwd) {
   const result = spawnSync(command, args, {
     cwd,
     stdio: 'inherit',
+    // Windows 的 pnpm.cmd 是批处理入口，不能交给 CreateProcess 直接执行。
+    // 这里只对固定的 pnpm 命令启用 shell；Node verifier 继续直接启动。
+    shell: process.platform === 'win32' && command === 'pnpm.cmd',
   });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
