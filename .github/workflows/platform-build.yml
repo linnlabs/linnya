@@ -53,3 +53,6 @@ jobs:
           pnpm run build:linnya-cli
       - name: Verify built CLI against bridge
         run: pnpm exec cross-env LINNYA_CLI_TEST_ENTRY=bundle vitest run apps/linnya-cli/src/__integration-tests__
+      - name: Verify real Runtime lifecycle and approval on macOS
+        if: runner.os == 'macOS'
+        run: pnpm run test:linnya-runtime:e2e

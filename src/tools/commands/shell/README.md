@@ -49,7 +49,7 @@
 - Shell 创建的物理文件和 Workspace `write_file` / `edit_file` 写入的 VFS 文档当前没有自动同步。需要让 Shell 读取某份 Workspace 内容时，必须先有明确的物理文件来源；不能假定 VFS 文档已经落在 conversation cwd 中。
 - Shell 主描述对所有 Agent 说明：`workspace:/` 是数据库 VFS 文档，`conversation:/` 对应本次物理工作目录，`file:///` 对应宿主绝对文件；三者不自动同步。不能通过查找应用存储或数据库恢复 Workspace 文档。相对 OS 路径默认落在当前会话，`/tmp` 跨会话共享且不参与 Linnya 会话清理；这不表示操作系统永不清理它。
 - `read_only` / `standard` 对内部原始存储单独审批，可允许本次或在当前对话保存规则；Shell 规则匹配完整命令和 cwd，普通命令前缀规则不能授权内部访问。`full_access` 直接放行。静态路径预检只负责提前提示，动态脚本由平台边界拒绝；不会自动重放可能已有副作用的命令。
-- macOS pipe/PTY 在系统沙箱内保护 Host 注入的数据根、profile 和控制连接文件，只保留当前会话与受管 CLI 文件的正常访问。Windows 的 Job 仍只管进程生命周期，内部读取隔离尚未接入，不能据跨平台审批合同宣称 Windows 已受保护。
+- macOS pipe/PTY 在系统沙箱内保护 Host 注入的数据根、profile 和控制连接文件，只保留当前会话与受管 CLI 文件的正常访问。Windows 1/2 档使用每次执行独立的账户 SID 和文件 ACL 保护这些位置，Job 负责进程树生命周期；首次由 Desktop 引导管理员初始化，失败时不降级裸跑。实现与实机验收边界见 [Windows 隔离 owner](../../../infra/adapters/command-runtime/windows/isolation/README.md)。
 - `internal_data_access` 继续只约束正式插件 CLI bridge。Host 已声明的模型与 Web 凭据环境变量在未批准内部访问的 1/2 档 Shell 中移除；完全访问及获准调用保留。此规则不扫描或猜测用户任意环境变量，细节见 [内部存储访问](../../../app-hosts/linnya/adapters/internal-storage-protection/README.md)。
 
 实现入口：[ShellTool.ts](./ShellTool.ts)。业务测试见同目录 `__tests__` 和 App Host 的 `shell-runtime` integration 测试。Workspace 虚拟路径与 Shell 物理目录的边界见 [Workspace 工具说明](../../workspace/README.md) 和 [Commands README](../../../domains/commands/README.md)。

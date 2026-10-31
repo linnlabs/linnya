@@ -133,9 +133,10 @@ lifecycle 从启动 cwd 所代表的仓库根解析该源码资产；`app.getApp
 
 Model Catalog 使用 Desktop Host 经严格 bootstrap 传入的发行身份，不再读取
 `LINNYA_DEV_MODE` 判断 Cloud。`source` 和 `community` 不加载 Cloud catalog，也不安排后台
-重试；只有发行清单验签通过的 `official` 保留 Cloud 客户端接入边界。当前正式发行 key
-ring 为空，因此源码运行和本地打包都只使用 default/user/BYOK 模型。发行身份不是服务端
-授权；账号 token、entitlement 与计量完成前 Cloud 数据面继续独立关闭。
+重试；只有发行清单验签通过的 `official` 保留 Cloud 客户端接入边界。发行公钥由
+[Desktop key ring](../../electron-main/distribution/registry/trustedDesktopDistributionKeys.ts) 管理，
+公钥存在不代表当前构建具有官方身份。发行身份也不是服务端授权；当前 Cloud 数据面独立关闭，
+源码和正式包均只使用 default/user/BYOK 模型，不因验签成功自动开放 Cloud。
 
 Cloud transport 启用时，每次只执行一次 `/v1/models` 请求，并把公开模型映射为本地
 `cloud-` ID。公开项必须直接给出 `client_base_url` 和完整

@@ -275,7 +275,7 @@ abort 与 plugin draining。这样既不复制 Commands domain，也不把插件
 
 - macOS 默认使用 zsh，启动时冻结 Shell 语义和用户登录环境；进程组负责整树接管，SRT/Seatbelt 平台边界建立失败时关闭执行。
 - Windows 支持 Windows 10 22H2 x64 与 Windows 11 x64；Job Object 负责整树接管，PowerShell 7 优先、系统 PowerShell 5.1 作为明确启动配置。native loader 必须校验 manifest、架构、hash、版本与发布者，不能回退到裸 child。
-- 两个平台保持一致的产品权限、状态与 UI 语义，但允许底层 Shell、PTY、错误和发布限制不同。Windows 不伪装拥有 OS 文件写入沙箱，其风险由普通用户权限、固定审批规则、Job 与审计共同约束。
+- 两个平台保持一致的产品权限、状态与 UI 语义，但底层实现不同。Windows 1/2 档通过每次执行独立账户和 ACL 建立内部存储边界，首次需要管理员初始化；Job 仍只管理进程树。普通文件写入规则与 macOS 沙箱并不完全等价，详见 [Windows 隔离 owner](../../infra/adapters/command-runtime/windows/isolation/README.md)。
 
 ### 主要风险
 
