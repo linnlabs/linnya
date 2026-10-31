@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import path from 'node:path';
 
 const harness = vi.hoisted(() => ({
   commandRunnerProcess: Object.freeze({ fork: vi.fn() }),
@@ -22,19 +23,33 @@ vi.mock('../production-runtime', () => ({
 import { createHeadlessNodeConversationExecutionRuntimeFactory } from './createHeadlessNodeConversationExecutionRuntimeFactory';
 
 describe('Headless Node conversation runtime composition', () => {
-  it('把 Command 与 Sandbox 一次性 child 都绑定到同一随包 Node', () => {
+  it.each([
+    { platform: 'darwin' as const, architecture: 'arm64' as const },
+    { platform: 'win32' as const, architecture: 'x64' as const },
+  ])('$platform：同一随包 Node 能取得必需 OS 环境，但不能取得宿主秘密或注入选项', ({ platform, architecture }) => {
     harness.createCommandRunner.mockReturnValue(harness.commandRunnerProcess);
     harness.createSandboxFork.mockReturnValue(harness.sandboxUtilityProcessFork);
     harness.createConversationFactory.mockReturnValue(harness.conversationFactory);
+    const resourcesPath = platform === 'win32'
+      ? 'C:\\Program Files\\Linnya\\resources'
+      : '/Applications/Linnya.app/Contents/Resources';
+    const mainBundleDirectory = path.join(resourcesPath, 'app.asar', 'dist', 'main');
+    const nodeExecutablePath = path.join(resourcesPath, 'headless-node-runtime', platform,
+      architecture, platform === 'win32' ? 'node.exe' : 'bin/node');
+    const helperEnvironment = platform === 'win32'
+      ? { SystemRoot: 'C:\\Windows' }
+      : { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' };
     const bootstrap = {
       applicationVersion: '0.0.38',
-      applicationExecutablePath: '/Applications/Linnya.app/Contents/MacOS/Linnya',
-      platform: 'darwin' as const,
-      architecture: 'arm64' as const,
+      applicationExecutablePath: platform === 'win32'
+        ? 'C:\\Program Files\\Linnya\\Linnya.exe'
+        : '/Applications/Linnya.app/Contents/MacOS/Linnya',
+      platform,
+      architecture,
       packaged: true,
       distributionIdentity: { kind: 'community' as const, packaged: true as const },
-      resourcesPath: '/Applications/Linnya.app/Contents/Resources',
-      mainBundleDirectory: '/Applications/Linnya.app/Contents/Resources/app.asar/dist/main',
+      resourcesPath,
+      mainBundleDirectory,
       runtimePathRoots: {
         developmentRoot: '/workspace/linnya',
         appDataRoot: '/Users/test/Library/Application Support/Linnya/AIService',
@@ -45,11 +60,19 @@ describe('Headless Node conversation runtime composition', () => {
     };
     const commandHostProcessEnvironment = {
       kind: 'host_process_environment' as const,
-      entries: Object.freeze({ PATH: '/user/bin' }),
+      entries: Object.freeze({ PATH: '/user/bin', sYsTeMrOoT: 'C:\\Windows',
+        API_KEY: 'not-for-internal-child', NODE_OPTIONS: '--inspect' }),
     };
-    const localProcessPlatformRuntime = {
+    const localProcessPlatformRuntime = platform === 'darwin' ? {
       schema_version: 1 as const,
       platform: 'darwin' as const,
+    } : {
+      schema_version: 1 as const,
+      platform: 'win32' as const,
+      manifest_path: 'C:\\Program Files\\Linnya\\resources\\command-runtime.manifest.json',
+      expected_runtime_version: '1.0.0',
+      expected_application_version: bootstrap.applicationVersion,
+      trust: { kind: 'release_unsigned' as const },
     };
     const commandPermissionSettings = {
       read: vi.fn(() => ({ status: 'missing' as const })),
@@ -77,23 +100,23 @@ describe('Headless Node conversation runtime composition', () => {
       bootstrap,
       commandHostProcessEnvironment,
       localProcessPlatformRuntime,
-      headlessNodeExecutablePath: '/Applications/Linnya.app/Contents/Resources/headless-node-runtime/darwin/arm64/bin/node',
+      headlessNodeExecutablePath: nodeExecutablePath,
       commandPermissionSettings,
       commandApprovalHost,
       commandPresentationHost,
     });
 
     expect(result).toBe(harness.conversationFactory);
-    expect(harness.createCommandRunner).toHaveBeenCalledWith({
-      runnerPath: `${bootstrap.mainBundleDirectory}/commands/commandRunnerProcess.cjs`,
-      nodeExecutablePath: '/Applications/Linnya.app/Contents/Resources/headless-node-runtime/darwin/arm64/bin/node',
-      helperEnvironment: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    expect(harness.createCommandRunner).toHaveBeenLastCalledWith({
+      runnerPath: path.join(mainBundleDirectory, 'commands', 'commandRunnerProcess.cjs'),
+      nodeExecutablePath,
+      helperEnvironment,
       platformRuntime: localProcessPlatformRuntime,
     });
-    expect(harness.createSandboxFork).toHaveBeenCalledWith({
-      nodeExecutablePath: '/Applications/Linnya.app/Contents/Resources/headless-node-runtime/darwin/arm64/bin/node',
+    expect(harness.createSandboxFork).toHaveBeenLastCalledWith({
+      nodeExecutablePath,
     });
-    expect(harness.createConversationFactory).toHaveBeenCalledWith(expect.objectContaining({
+    expect(harness.createConversationFactory).toHaveBeenLastCalledWith(expect.objectContaining({
       bootstrap,
       commandHostProcessEnvironment,
       localProcessPlatformRuntime,
@@ -102,6 +125,7 @@ describe('Headless Node conversation runtime composition', () => {
       commandPresentationHost,
       commandRunnerProcess: harness.commandRunnerProcess,
       sandboxUtilityProcessFork: harness.sandboxUtilityProcessFork,
+      internalChildEnvironment: helperEnvironment,
     }));
   });
 });

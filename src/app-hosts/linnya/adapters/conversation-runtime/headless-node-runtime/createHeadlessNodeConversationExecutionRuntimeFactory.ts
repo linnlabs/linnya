@@ -27,6 +27,7 @@ export function createHeadlessNodeConversationExecutionRuntimeFactory(input: {
 }): ConversationExecutionRuntimeFactoryPort {
   const internalChildEnvironment = createInternalChildEnvironment(
     input.bootstrap.platform,
+    input.commandHostProcessEnvironment.entries,
   );
   return createConversationExecutionRuntimeFactory({
     bootstrap: input.bootstrap,
@@ -55,7 +56,17 @@ export function createHeadlessNodeConversationExecutionRuntimeFactory(input: {
 
 function createInternalChildEnvironment(
   platform: NodeJS.Platform,
+  hostEnvironment: Readonly<Record<string, string>>,
 ): Readonly<Record<string, string>> {
+  if (platform === 'win32') {
+    const systemRoot = Object.entries(hostEnvironment).find(
+      ([name]) => name.toLowerCase() === 'systemroot',
+    )?.[1];
+    if (!systemRoot) throw new Error('Windows internal Node children require SystemRoot');
+    // evaluator 校验和 Node/OpenSSL 的随机数初始化都需要这项 OS 事实，不能把 Windows
+    // 环境清空，也不能为此透传宿主凭据、NODE_OPTIONS 或用户 PATH。
+    return Object.freeze({ SystemRoot: systemRoot });
+  }
   return platform === 'darwin'
     ? Object.freeze({ PATH: '/usr/bin:/bin:/usr/sbin:/sbin' })
     : Object.freeze({});
