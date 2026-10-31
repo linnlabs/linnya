@@ -126,6 +126,9 @@ export default defineConfig({
     hostBackendExternal,
   ],
   noExternal: [
+    // shared barrel 的身份校验也被独立 Worker 引用；Worker 没有 Host resolver，纯 schema 必须自包含。
+    '@app/schemas/plugins/manifest',
+    '@app/schemas/conversation/selected-agent',
     // 数字格式是插件自带的纯计算；宿主没有提供这个 schemas 子入口，Backend 与 Worker 都必须内联。
     '@app/schemas/chart-number-format',
     '@xmldom/xmldom',
