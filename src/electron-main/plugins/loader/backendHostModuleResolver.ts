@@ -6,6 +6,9 @@ import path from 'node:path';
 
 import * as appSchemas from '@app/schemas';
 import * as appFileLocator from '@app/schemas/file-locator';
+import * as appDocumentView from '@app/schemas/document-view';
+import * as appPluginManifest from '@app/schemas/plugins/manifest';
+import * as appSelectedAgent from '@app/schemas/conversation/selected-agent';
 import * as agentRegistry from '../../../plugin-sdk/backend/agentRegistry';
 import * as blockReferenceRuntime from '../../../plugin-sdk/backend/blockReferenceRuntime';
 import * as citationSourceRuntime from '../../../plugin-sdk/backend/citationSourceRuntime';
@@ -43,6 +46,10 @@ type CommonJsLoad = (
 const backendHostModules = new Map<string, unknown>([
   ['@app/schemas', appSchemas],
   ['@app/schemas/file-locator', appFileLocator],
+  // 与 artifact 允许的 external 合同一致；磁盘插件不能依赖开发仓 node_modules 才能加载。
+  ['@app/schemas/document-view', appDocumentView],
+  ['@app/schemas/plugins/manifest', appPluginManifest],
+  ['@app/schemas/conversation/selected-agent', appSelectedAgent],
   ['@plugin/backend/agentRegistry', agentRegistry],
   ['@plugin/backend/blockReferenceRuntime', blockReferenceRuntime],
   ['@plugin/backend/citationSourceRuntime', citationSourceRuntime],
