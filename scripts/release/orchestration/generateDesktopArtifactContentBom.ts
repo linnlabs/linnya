@@ -92,8 +92,10 @@ function collectAsarEntries(asarPath: string): readonly ArtifactContentEntry[] {
   for (const listedPath of listPackage(asarPath, { isPack: false })) {
     // ASAR 列表使用宿主分隔符表示归档虚拟根；Windows 的反斜杠不代表本机绝对路径。
     // 只在这个上游适配边界去掉虚拟根，通用 artifact 路径校验仍拒绝绝对路径和越界。
-    const artifactPath = normalizeArtifactPath(listedPath.replace(/^[/\\]+/u, ''));
-    const metadata = statFile(asarPath, artifactPath, false);
+    const archiveEntryPath = listedPath.replace(/^[/\\]+/u, '');
+    const artifactPath = normalizeArtifactPath(archiveEntryPath);
+    // ASAR 查询仍按宿主分隔符查目录；只有写入跨平台 BOM 的路径才转为正斜杠。
+    const metadata = statFile(asarPath, archiveEntryPath, false);
     if ('files' in metadata) continue;
     if ('link' in metadata) {
       const target = normalizeArtifactPath(metadata.link);
@@ -106,7 +108,7 @@ function collectAsarEntries(asarPath: string): readonly ArtifactContentEntry[] {
       });
       continue;
     }
-    const bytes = extractFile(asarPath, artifactPath, false);
+    const bytes = extractFile(asarPath, archiveEntryPath, false);
     entries.push({
       type: 'file',
       scope: 'app-asar',

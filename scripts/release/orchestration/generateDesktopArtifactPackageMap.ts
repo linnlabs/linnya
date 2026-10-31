@@ -102,7 +102,8 @@ export function generateDesktopArtifactPackageMap(input: {
         entry.path.endsWith('/package.json')
     )
     .map(entry => {
-      const bytes = extractFile(paths.asarPath, entry.path, false);
+      // BOM 保存平台无关路径，ASAR 的查询 API 则按当前宿主分隔符拆分目录。
+      const bytes = extractFile(paths.asarPath, path.normalize(entry.path), false);
       if (sha256(bytes) !== entry.sha256) {
         throw new Error(`artifact package.json 与 content BOM hash 不一致：${entry.path}`);
       }
