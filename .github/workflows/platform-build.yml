@@ -40,15 +40,21 @@ jobs:
           rustup toolchain install 1.97.0 --profile minimal
           rustup default 1.97.0
           cargo install wasm-pack --version 0.15.0 --locked
-      - name: Build public source surfaces
-        run: |
-          pnpm run package:plugins:official
-          pnpm run build:wasm
-          pnpm run build:frontend
-          pnpm run build:main
-          pnpm run build:preload
-          pnpm run build:backend
-          pnpm run build:linnya-cli
+      # 每个原生命令独立成 step，避免 PowerShell 用后续成功的退出码掩盖前一步失败。
+      - name: Package official plugins from a clean checkout
+        run: pnpm run package:plugins:official
+      - name: Build WASM
+        run: pnpm run build:wasm
+      - name: Build Renderer
+        run: pnpm run build:frontend
+      - name: Build Electron Main
+        run: pnpm run build:main
+      - name: Build Preload
+        run: pnpm run build:preload
+      - name: Build Backend
+        run: pnpm run build:backend
+      - name: Build CLI
+        run: pnpm run build:linnya-cli
       - name: Verify built CLI against bridge
         run: pnpm exec cross-env LINNYA_CLI_TEST_ENTRY=bundle vitest run apps/linnya-cli/src/__integration-tests__
       - name: Verify real Runtime lifecycle and approval on macOS
