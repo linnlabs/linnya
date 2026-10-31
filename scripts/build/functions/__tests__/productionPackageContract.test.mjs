@@ -162,7 +162,7 @@ describe('electron-builder production command contract', () => {
       platform: 'win32', architecture: 'x64', adHocMacSigning: false,
     });
     expect(macArguments).toContain(
-      '--config.mac.identity=Developer ID Application: Linnya Example (TEAMID)',
+      '--config.mac.identity=Linnya Example (TEAMID)',
     );
     expect(windowsArguments.some(argument => argument.startsWith('--config.mac.'))).toBe(false);
     expect(macArguments).toContain('--config.npmRebuild=false');
@@ -170,7 +170,7 @@ describe('electron-builder production command contract', () => {
     expect(() => buildElectronBuilderArguments({
       platform: 'win32', architecture: 'x64', adHocMacSigning: true,
     })).toThrow('only be used for a macOS build');
-    for (const macSigningIdentity of [undefined, '-']) {
+    for (const macSigningIdentity of [undefined, '-', 'Developer ID Application: ']) {
       expect(() => buildElectronBuilderArguments({
         platform: 'darwin',
         architecture: 'arm64',

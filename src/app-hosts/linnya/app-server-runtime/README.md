@@ -3,6 +3,9 @@
 本目录是 headless Node App Server 的 production composition root。它只消费严格 bootstrap、双向 RPC port 与
 AppData 私有 mailbox 根；不导入 Electron，也不读取 PATH、`process.execPath`、`process.resourcesPath` 或可变环境袋。
 
+Host 解析生产启动计划时先创建 AppData 根，再将其作为固定 Node 的 cwd。全新安装不能依赖旧数据目录存在，
+也不能把 cwd 的创建推迟到尚未启动的 Backend；目录创建失败应直接上报启动错误。
+
 这里创建当前 App 唯一的命令权限 authority、审批 host 与命令卡 control host，并把它们同时交给 Conversation
 production runtime 和 typed Renderer RPC handlers。Command runner 与 Profiled Code Sandbox evaluator 使用 Main 已验证并
 通过 bootstrap 传入的固定 Node executable；Qdrant、Queue Worker 与普通进程树 owner 也只消费冻结事实。

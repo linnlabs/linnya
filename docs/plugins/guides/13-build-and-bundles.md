@@ -78,6 +78,10 @@ specifier，初次加载结束后会解析失败；这类 chunk 必须先改为�
 entry 的同步调用栈里做受控解析。解析只对当前插件目录内的父模块生效，并在本次加载结束后恢复 CommonJS
 loader，避免进程级常驻 monkey patch。
 
+`@app/schemas` 以及已准入的 `file-locator`、`document-view`、`plugins/manifest`、
+`conversation/selected-agent` 子入口同样由该 resolver 提供。artifact external 白名单与宿主解析必须同步；
+从源码仓运行的 tsx smoke 可能通过工作区 alias 掩盖遗漏，需同时验证系统临时目录中的真实磁盘插件加载。
+
 插件侧无需也禁止模仿这套机制；需要新增 host 能力时，只补 SDK 窄门面并登记到 backend
 host module resolver。若未来要做到完全无 `Module._load`
 接管，需要把发布 artifact 升级为真实 `node_modules/@plugin/backend/*`

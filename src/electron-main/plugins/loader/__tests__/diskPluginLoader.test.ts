@@ -81,6 +81,9 @@ describe('disk plugin backend loader', () => {
         const { defaultTextMeasureService } = require('@plugin/backend/textMeasurement');
         const { getWorkspaceDatabasePath } = require('@plugin/backend/workspaceDatabasePath');
         const { formatConversationFileLocator } = require('@app/schemas/file-locator');
+        const { parsePluginManifest, pluginMetaFromManifest } = require('@app/schemas/plugins/manifest');
+        const { DocumentViewDocTypeSchema } = require('@app/schemas/document-view');
+        const { ConversationSelectedAgentIdSchema } = require('@app/schemas/conversation/selected-agent');
         if (!Array.isArray(listSandboxProfileIds())) {
           throw new Error('sandboxRuntime host module did not expose listSandboxProfileIds');
         }
@@ -96,26 +99,43 @@ describe('disk plugin backend loader', () => {
         if (formatConversationFileLocator('demo.txt') !== 'conversation:/demo.txt') {
           throw new Error('file-locator host module did not expose the canonical formatter');
         }
+        if (DocumentViewDocTypeSchema.parse('demo') !== 'demo'
+          || ConversationSelectedAgentIdSchema.parse('demo-agent') !== 'demo-agent') {
+          throw new Error('schema subpaths did not expose their canonical parsers');
+        }
         class DemoTool extends BaseTool {}
         module.exports.backendPlugin = {
-          meta: {
+          meta: pluginMetaFromManifest(parsePluginManifest({
             id: 'demo',
             name: 'Demo',
             version: '1.0.0',
             description: 'Demo plugin',
+            details: ['Demo plugin details'],
             developer: 'Linnya',
-            builtin: false,
-          },
+            entry: { backend: './dist/backend/index.cjs' },
+          }), { builtin: false }),
           toolClasses: [DemoTool],
         };
       `,
       'utf8'
     );
 
-    const loaded = loadBackendPluginsFromDisk({
-      pluginRoot: path.join(tempRoot, 'plugins'),
-      appVersion: '0.0.36',
+    const originalLoad: unknown = Reflect.get(Module, '_load');
+    if (typeof originalLoad !== 'function') throw new Error('CommonJS loader unavailable');
+    // 模拟安装环境没有 workspace alias：漏登记的 external 不允许借用测试 runner 的源码解析。
+    Reflect.set(Module, '_load', (request: string, parent: NodeModule | null, isMain: boolean) => {
+      if (request.startsWith('@app/schemas')) throw new Error(`Unresolved isolated schema: ${request}`);
+      return Reflect.apply(originalLoad, Module, [request, parent, isMain]);
     });
+    let loaded: ReturnType<typeof loadBackendPluginsFromDisk>;
+    try {
+      loaded = loadBackendPluginsFromDisk({
+        pluginRoot: path.join(tempRoot, 'plugins'),
+        appVersion: '0.0.36',
+      });
+    } finally {
+      Reflect.set(Module, '_load', originalLoad);
+    }
 
     expect(loaded).toHaveLength(1);
     expect(loaded[0]?.contribution.meta.id).toBe('demo');

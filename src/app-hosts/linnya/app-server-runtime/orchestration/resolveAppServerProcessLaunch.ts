@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { mkdir } from 'node:fs/promises';
 
 import headlessNodeRuntimeCatalogSource from '../../../../../config/headless-node-runtime.json';
 import {
@@ -59,6 +60,10 @@ export async function resolveAppServerProcessLaunch(input: {
     input.backendFacts.mainBundleDirectory,
     'app-server-entry.cjs',
   );
+  // 首次安装尚无业务数据目录；必须由 Host 在 spawn 前创建，不能等 child 自己初始化 cwd。
+  if (input.backendFacts.packaged) {
+    await mkdir(input.backendFacts.runtimePathRoots.appDataRoot, { recursive: true, mode: 0o700 });
+  }
 
   return Object.freeze({
     executablePath: headlessNode.executablePath,
