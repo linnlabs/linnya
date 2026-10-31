@@ -87,7 +87,7 @@
     "build:plugin:mindmap": "pnpm --dir packages/plugins/mindmap run build",
     "build:plugin:slides": "pnpm --dir packages/plugins/slides run build",
     "build:linnya-cli": "pnpm --dir apps/linnya-cli run build",
-    "build:linnya-runtime": "pnpm run prepare:headless-node-runtime && pnpm run prepare:qdrant-runtime && pnpm run build:backend && pnpm run build:linnya-cli",
+    "build:linnya-runtime": "pnpm run prepare:headless-node-runtime && pnpm run prepare:qdrant-runtime && pnpm run build:backend && pnpm run build:worker && pnpm run build:linnya-cli",
     "benchmark:agent": "tsx apps/linnya-benchmark/src/main.ts",
     "linnya:cli": "tsx apps/linnya-cli/src/main.ts",
     "linnya:runtime": "pnpm run build:linnya-runtime && tsx apps/linnya-cli/src/main.ts runtime start",
