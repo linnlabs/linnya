@@ -99,6 +99,10 @@ scripts/release/
 
 ## 主应用发布
 
+macOS 正式构建接受 `security find-identity` 显示的完整 Developer ID Application 身份。
+构建入口给 electron-builder 传去掉证书类型前缀的名称，DMG 的 `codesign` 继续使用完整身份；
+二者参数约定不同，不能直接把同一个完整标签传给 builder 的 `mac.identity`。
+
 主应用发布只认这些真源：
 
 - `package.json#version`

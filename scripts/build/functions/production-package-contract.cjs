@@ -281,10 +281,12 @@ function buildElectronBuilderArguments({
     // 布尔 false 会被拼成 codesign 不接受的 --timestamp=false。
     argumentsList.push('--config.mac.identity=-', '--config.mac.timestamp=none');
   } else if (platform === 'darwin') {
-    if (!macSigningIdentity || macSigningIdentity === '-') {
+    // builder 自己按发行类型选择证书，并拒绝 Apple 类型前缀；codesign/DMG 仍使用调用方的完整身份。
+    const builderIdentity = macSigningIdentity?.replace(/^Developer ID Application:\s*/u, '').trim();
+    if (!builderIdentity || builderIdentity === '-') {
       throw new Error('Formal macOS builds require a non-ad-hoc signing identity');
     }
-    argumentsList.push(`--config.mac.identity=${macSigningIdentity}`);
+    argumentsList.push(`--config.mac.identity=${builderIdentity}`);
   }
   if (updateFeedUrl) argumentsList.push(`--config.publish.url=${updateFeedUrl}`);
   return argumentsList;
