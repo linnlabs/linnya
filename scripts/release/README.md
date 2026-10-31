@@ -137,6 +137,8 @@ diff。正式构建不会重新解析依赖，而是把经过合同校验的 loc
 在 `dependencyLegalPolicy.ts` 登记需要选择的精确版本，不能只用 pnpm Source BOM 代替成品验证。
 正式打包通过当前 Node 直接启动已安装的 electron-builder CLI，两端平台 CI 验证该真实入口，
 避免 Windows 的命令脚本启动失败被推迟到构建末尾。
+两端还使用真实 ASAR 验证 Desktop 内容盘点；ASAR 列表的虚拟根按宿主分隔符转换，
+不能把 Windows 的归档路径误认为本机绝对路径，也不能放宽通用路径越界校验。
 
 生产依赖、移植源码和随产品分发的第三方目录数据都是发布合同的一部分。升级
 依赖、修改 supplemental notice 或更新 bundled catalog 来源后，必须重新运行

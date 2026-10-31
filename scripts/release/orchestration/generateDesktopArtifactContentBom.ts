@@ -90,7 +90,9 @@ async function collectFilesystemEntries(
 function collectAsarEntries(asarPath: string): readonly ArtifactContentEntry[] {
   const entries: ArtifactContentEntry[] = [];
   for (const listedPath of listPackage(asarPath, { isPack: false })) {
-    const artifactPath = normalizeArtifactPath(listedPath.replace(/^\/+/, ''));
+    // ASAR 列表使用宿主分隔符表示归档虚拟根；Windows 的反斜杠不代表本机绝对路径。
+    // 只在这个上游适配边界去掉虚拟根，通用 artifact 路径校验仍拒绝绝对路径和越界。
+    const artifactPath = normalizeArtifactPath(listedPath.replace(/^[/\\]+/u, ''));
     const metadata = statFile(asarPath, artifactPath, false);
     if ('files' in metadata) continue;
     if ('link' in metadata) {
