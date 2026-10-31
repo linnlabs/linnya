@@ -78,3 +78,26 @@ it('rejects a missing or mismatched binding instead of installing a partial revi
   });
   await expect(readPresentationView('deck', new Map(), new Map())).rejects.toThrow('content/binding mismatch');
 });
+
+it('rejects an old running backend without changing the installed caches, then recovers with the matching backend', async () => {
+  connect();
+  const installed = await readPresentationView('deck', new Map(), new Map());
+  const cachedBlocks = [...installed.blocks.entries()];
+  const cachedPages = [...installed.pages.entries()];
+  const matchingBackend = invoke.getMockImplementation();
+  if (!matchingBackend) throw new Error('Missing backend');
+  invoke.mockImplementation(async (...args) => {
+    const response = await matchingBackend(...args);
+    return { ...response, data: { ...responses.at(-1), formatVersion: 1 } };
+  });
+  invoke.mockClear();
+  await expect(readPresentationView('deck', installed.blocks, installed.pages))
+    .rejects.toThrow('预览与后台版本不一致');
+  expect(invoke).toHaveBeenCalledTimes(1);
+  expect([...installed.blocks.entries()]).toEqual(cachedBlocks);
+  expect([...installed.pages.entries()]).toEqual(cachedPages);
+  invoke.mockImplementation(matchingBackend);
+  const recovered = await readPresentationView('deck', installed.blocks, installed.pages);
+  expect(recovered.installed.renderModel).toEqual(view.renderModel);
+  expect(recovered.installed.snapshotId).toBe(installed.installed.snapshotId);
+});
