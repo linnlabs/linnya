@@ -6,6 +6,7 @@ import type { PresentationRenderModel } from '../../renderModel';
 import type { ViewJsonRecord } from '../functions/pageContentCodec';
 
 const hash = z.string().regex(/^[a-f0-9]{64}$/u);
+export const SLIDES_VIEW_FORMAT_VERSION = 2;
 const identity = { presentationId: z.string().min(1), versionId: z.string().min(1),
   versionNumber: z.number().finite().int().positive(), sourceHash: hash };
 export const ViewBuildStateSchema = z.discriminatedUnion('state', [
@@ -62,7 +63,7 @@ function isJson(value: unknown): value is JsonValue {
 }
 const record = z.custom<ViewJsonRecord>((value): value is ViewJsonRecord => isJson(value)
   && value !== null && typeof value === 'object' && !Array.isArray(value));
-export const ViewReadResponseSchema = z.object({ formatVersion: z.literal(2), snapshotId: hash,
+export const ViewReadResponseSchema = z.object({ formatVersion: z.literal(SLIDES_VIEW_FORMAT_VERSION), snapshotId: hash,
   nodeId: z.string(), header: ViewHeaderSchema.nullable(), manifest: ViewManifestSchema,
   blocks: z.array(z.object({ hash, value: record }).strict()), nextOffset: z.number().finite().int().nonnegative().nullable(),
 }).strict();

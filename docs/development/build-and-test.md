@@ -200,3 +200,5 @@ Sandbox 生成的 ambient DSL 声明是供独立 deck.js 消费的 API，保留�
 ### Slides 系统编辑身份回归
 
 身份实现与兼容边界见 [owner 文档](../../packages/plugins/slides/src/backend/sandbox/authoringIdentity/README.md)。修改调用追踪、人工值或源码写回时，至少运行该目录集成测试、manual-edit 保存重开与历史集成测试、Slides 全量测试、类型/lint、codegen-first 检查及 backend artifact smoke；选择交互和提示变动还需原生 preview-transitions。实际验收用 Linnya CLI 的 Workspace write/read/edit 回执记录文稿、修订与诊断，再验证预览和导出。CLI 工具调用不使用 LLM，不能记为模型质量实验。
+
+修改 `slides:view-snapshot` 协议后，还必须完全退出对应 Desktop 开发实例，从该工作目录重新启动并打开真实文稿。Vite 热更新、构建成功与独立 CLI 渲染不证明正在运行的 Backend 已使用新协议；版本不一致必须明确报告并保留原文稿，不能通过放宽 codec 或转换版本号掩盖。

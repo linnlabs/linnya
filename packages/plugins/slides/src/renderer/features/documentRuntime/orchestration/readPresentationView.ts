@@ -1,9 +1,10 @@
 import type { SlideRenderModel } from '@plugin/slides/shared/renderModel';
 import { invokeRendererPluginIpc } from '@plugin/renderer/pluginIpcClient';
 import { SLIDES_IPC, SLIDES_PLUGIN_ID } from '@plugin/slides/shared/ipc';
-import { restoreSlideContent, ViewReadResponseSchema, type InstalledPresentationView,
+import { restoreSlideContent, type InstalledPresentationView,
   type ViewJsonRecord, type ViewReadResponse, type ViewHeader, type ViewManifest } from '@plugin/slides/shared/presentationViewSnapshot';
 import { logSlidesVerbose } from '../../../shared/diagnosticLogging';
+import { readViewSnapshotResponse } from '../functions/readViewSnapshotResponse';
 
 /** 块在完整候选拼装前由本次读取持有；不会因缓存驱逐缺失后续批次的基线。 */
 export async function readPresentationView(nodeId: string, cached: ReadonlyMap<string, ViewJsonRecord>, cachedPages: ReadonlyMap<string, SlideRenderModel>): Promise<{
@@ -23,7 +24,7 @@ export async function readPresentationView(nodeId: string, cached: ReadonlyMap<s
     const result = await invokeRendererPluginIpc<unknown>(SLIDES_PLUGIN_ID, SLIDES_IPC.viewSnapshot,
       { nodeId, knownHashes, ...(snapshotId !== undefined ? { snapshotId, offset } : {}) });
     if (!result.success) throw new Error(result.error);
-    response = ViewReadResponseSchema.parse(result.data);
+    response = readViewSnapshotResponse(result.data);
     batches++; receivedBlocks += response.blocks.length;
     if (response.nodeId !== nodeId || (snapshotId !== undefined && snapshotId !== response.snapshotId)) {
       throw new Error('Slides view response identity mismatch');

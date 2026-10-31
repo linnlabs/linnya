@@ -26,6 +26,8 @@ The barrier commits an active text session, drains every admitted command, and c
 
 Silent document-read errors propagate to the queue while retaining the existing preview. Snapshot read errors propagate to the queue. The installed complete view remains available, and retry reads the snapshot without resubmitting the committed command.
 
+A running Backend keeps its loaded protocol until it exits; Renderer hot updates do not restart it. A snapshot format mismatch is rejected before any blocks or pages are installed, with an explicit instruction to restart the current instance. The client never relabels an old snapshot as the current format or retries an incompatible version in a loop. Verification after a protocol change must include opening a document in a fully restarted Desktop, alongside compiler and CLI checks.
+
 Navigation count/current page derive from RenderModel. DeckPreview remains a summary projection for context and export;
 it does not define navigation bounds. `usePresentedFrame` owns animation-frame scheduling and cancellation on view disposal.
 Presentation resource failures are reported separately from snapshot read failures and unblock the queue with a refresh error.
