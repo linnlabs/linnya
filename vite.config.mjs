@@ -112,34 +112,9 @@ export function resolveRendererManualChunk(moduleId) {
   // 图表运行时（ECharts 注册）只经动态 import 到达：单独成块，才能让 vendor-charts 保持按需加载，
   // 不被归入随编辑器启动加载的 interaction 块而变成静态依赖。
   if (normalizedId.includes(`${editorFeaturePrefix}chart-reading/orchestration/runtime/`)) return 'renderer-editor-chart-runtime'
-  if (normalizedId.includes(`${editorFeaturePrefix}Revision/`)) return 'renderer-editor-revision'
-  if (
-    normalizedId.includes(`${editorFeaturePrefix}Annotation/`)
-    || normalizedId.includes(`${editorFeaturePrefix}citation/`)
-  ) return 'renderer-editor-annotation'
-  if (
-    normalizedId.includes(`${editorFeaturePrefix}RenderVirtualization/`)
-    || normalizedId.includes(`${editorFeaturePrefix}BlockHistory/`)
-    || normalizedId.includes(`${editorFeaturePrefix}FindReplace/`)
-  ) return 'renderer-editor-runtime'
-  if (normalizedId.includes(editorFeaturePrefix)) return 'renderer-editor-interaction'
-  if (normalizedId.includes(`${editorPrefix}blocks/`)) return 'renderer-editor-blocks'
-  if (normalizedId.includes(`${editorPrefix}definitions/`)) return 'renderer-editor-definitions'
-  if (normalizedId.includes(editorPrefix)) return 'renderer-editor-core'
-
-  const conversationPrefix = '/apps/renderer/domains/conversation/'
-  if (normalizedId.includes(`${conversationPrefix}ui/tools/`)) return 'renderer-conversation-tools'
-  if (
-    normalizedId.includes(`${conversationPrefix}ui/message/`)
-    || normalizedId.includes(`${conversationPrefix}ui/components/`)
-    || normalizedId.includes(`${conversationPrefix}ui/renderers/`)
-  ) return 'renderer-conversation-messages'
-  if (normalizedId.includes(`${conversationPrefix}ui/`)) return 'renderer-conversation-ui'
-  if (normalizedId.includes(`${conversationPrefix}definitions/`)) return 'renderer-conversation-definitions'
-  if (normalizedId.includes(conversationPrefix)) return 'renderer-conversation-core'
-
-  const domainMatch = normalizedId.match(/\/apps\/renderer\/domains\/([^/]+)\//)
-  return domainMatch ? `renderer-domain-${domainMatch[1]}` : undefined
+  // 目录不是运行期依赖边界；强制拆分互相引用的业务模块会让常量在初始化前被访问，导致成品白屏。
+  // 交给 Rollup 按实际依赖与动态 import 分块，保留上面明确独立的图表加载边界。
+  return undefined
 }
 
 export default defineConfig(() => {
@@ -207,6 +182,13 @@ export default defineConfig(() => {
   build: {
     outDir: 'dist/renderer',
     rollupOptions: {
+      onwarn(warning, warn) {
+        // 成品已实测出现初始化顺序错误；不能再让循环 chunk 仅以警告通过源码 CI。
+        if (warning.code === 'CIRCULAR_CHUNK') {
+          throw new Error(warning.message)
+        }
+        warn(warning)
+      },
       // 确保 stream-markdown-parser 的依赖能被正确解析
       output: {
         manualChunks: resolveRendererManualChunk,
