@@ -68,6 +68,9 @@ Runtime 在 stdout 输出一次 ready JSON 后保持前台运行；另一个终�
 默认 6333。一个 Workspace 同时只允许一个 Desktop 或 CLI Runtime
 owner，竞争启动以 `conversation_busy` 拒绝，不做隐式 attach、接管或另开数据库。
 
+`build:linnya-runtime` 先按锁定清单准备并校验独立 Node 与 Qdrant，再编译 Backend/CLI；
+全新 checkout 不依赖曾经运行 Desktop 构建留下的 `extraResources`。进程 E2E 复用同一构建入口。
+
 关闭某个 `send/status`
 客户端不会停止已接纳的 run。关闭 Runtime 终端、Ctrl+C 或 SIGTERM 会停止该 Runtime 拥有的 Backend、所有任务和子进程；CLI
 launcher 被强制终止时，App Server 也会按 parent identity 收口并释放 Workspace
