@@ -4,6 +4,8 @@ import { cleanupCliBridges, createScriptedBridge, runCliProcess } from './__test
 afterEach(cleanupCliBridges);
 
 describe('Shell approvals through the real CLI process', () => {
+  // 串行启动五个真实 Node/tsx 进程；共享 CI runner 的冷启动总耗时会超过单例默认的 5 秒。
+  // 这里只给完整审批往返留出进程启动预算，watch 的 1 秒业务超时和精确请求数断言保持不变。
   it('查询子 run 审批、结束等待并精确回复，拒绝旧请求且丢失回复不自动重发', async () => {
     const pending = {
       protocol_version: 1, kind: 'command_approval_pending_projection',
@@ -58,6 +60,6 @@ describe('Shell approvals through the real CLI process', () => {
     expect(bridge.receivedCommands.map(request => request.command)).toEqual([
       'command_approvals', 'status', 'command_approvals', 'command_approvals', 'command_approvals',
     ]);
-  });
+  }, 20_000);
 
 });
