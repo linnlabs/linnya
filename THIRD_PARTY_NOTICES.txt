@@ -276,7 +276,7 @@ PACKAGES
 - fast-uri@3.1.9 — BSD-3-Clause — https://github.com/fastify/fast-uri — sha512-hS/0Wt3Ya043oKXs0sIxrMpKQITXhMLIrVAKKXi4gozGC9v7YRWVnXIZzjNPTO02M9BdxLCWqK1yRXgNziVyJQ==
 - fdir@6.5.0 — MIT — https://github.com/thecodrr/fdir — sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==
 - finalhandler@2.1.0 — MIT — https://github.com/pillarjs/finalhandler — sha512-/t88Ty3d5JWQbWYgaOGCCYfXRwV1+be02WqYYlL6h0lEiUAMPM8o8qKGO01YIkOHzka2up08wvgYD0mDiI+q3Q==
-- follow-redirects@1.16.1 — MIT — https://github.com/follow-redirects/follow-redirects — sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==
+- follow-redirects@1.16.2 — MIT — https://github.com/follow-redirects/follow-redirects — sha512-/kVP2U8z596Ia0gwFrwyIeo74ta5aVmSeU1FfAUMAmcEP5EP7zydmag3SLiN64NaRKef3lxsq7i/g7ltJQDGow==
 - fontkit@2.0.4 — MIT — https://github.com/foliojs/fontkit — sha512-syetQadaUEDNdxdugga9CpEYVaQIxOwk7GlwZWWZ19//qW4zE5bknOKeMBDYAASwnpaSHKJITRLMF9m1fp3s6g==
 - form-data@4.0.6 — MIT — https://github.com/form-data/form-data — sha512-vKatAh4SlVfgbv+YtmhiRjhEMJsYpsG1Y2rMQtR+SVSbytsSD1YGzDIcrAJmdFec88u/+VoGmxnl+80gL1tRCQ==
 - forwarded@0.2.0 — MIT — https://github.com/jshttp/forwarded — sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==
@@ -13324,7 +13324,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE bfa8a54bb952ccda79f0f1889721d108f5b605babbb2b8a3705ffb52f4132eb7 -----
-Applies to: follow-redirects@1.16.1
+Applies to: follow-redirects@1.16.2
 Installed file names: LICENSE
 
 Copyright 2014–present Olivier Lalonde <olalonde@gmail.com>, James Talmage <james@talmage.io>, Ruben Verborgh
