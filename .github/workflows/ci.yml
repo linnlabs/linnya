@@ -73,6 +73,7 @@ jobs:
       - name: Verify public packages
         run: |
           pnpm run test:schemas-package-gate
+          pnpm run typecheck:linnya-cli
           pnpm run test:provider-package-gate
           pnpm run test:renderer-ui-package-gate
           pnpm --filter @linnya/plugin-host-contract typecheck
