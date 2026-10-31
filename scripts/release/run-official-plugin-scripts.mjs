@@ -16,9 +16,8 @@ if (!supportedScriptKinds.has(scriptKind)) {
   process.exitCode = 1;
 } else {
   const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-  if (scriptKind === 'smoke-artifact') {
-    runCommand(pnpmCommand, ['run', 'build:schemas'], repoRoot);
-  }
+  // 插件的独立浏览器入口消费 schemas 的正式导出；全新 checkout 不能借用旧 dist。
+  runCommand(pnpmCommand, ['run', 'build:schemas'], repoRoot);
   for (const pluginId of listOfficialPluginReleaseTargetIds()) {
     const packageDir = resolvePluginPackageDir(pluginId);
     console.log(`[official-plugin:${scriptKind}] ${pluginId} package:artifact`);

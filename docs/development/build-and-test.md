@@ -156,6 +156,8 @@ App Server 与后台 Worker 使用独立 Node，只能读取物理文件，不�
 安装验收必须把完整 App 复制到仓库外再启动；仅在 `dist_build` 内运行可能借用祖先目录的
 `node_modules`，掩盖安装包漏依赖。平台源码 CI 同时执行官方插件 artifact 编排，验证
 Windows 的批处理入口和 Mac 的直接进程入口均可完成构建与打包。
+此入口自行先编译插件依赖的公共 schemas；平台 CI 在其他构建之前运行它，保证干净 checkout
+不依赖本机残留的 `packages/schemas/dist`。
 
 平台相关改动至少要区分：
 

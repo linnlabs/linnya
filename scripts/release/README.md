@@ -6,6 +6,8 @@
 
 批量插件构建在 Windows 通过 shell 执行固定的 `pnpm.cmd`，其他 Node verifier 直接启动。
 两端平台 CI 均运行 `package:plugins:official`，覆盖与 Desktop 打包相同的插件编排入口。
+该入口先构建 `@app/schemas` 的正式 CJS/ESM 导出，再逐个打包插件；artifact smoke 复用同一顺序。
+平台 CI 在其他源码构建之前执行该入口，避免预先生成的 schemas 产物掩盖全新 checkout 的依赖缺失。
 
 ## 边界
 

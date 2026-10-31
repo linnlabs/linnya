@@ -42,13 +42,12 @@ jobs:
           cargo install wasm-pack --version 0.15.0 --locked
       - name: Build public source surfaces
         run: |
+          pnpm run package:plugins:official
           pnpm run build:wasm
-          pnpm run build:schemas
           pnpm run build:frontend
           pnpm run build:main
           pnpm run build:preload
           pnpm run build:backend
-          pnpm run package:plugins:official
           pnpm run build:linnya-cli
       - name: Verify built CLI against bridge
         run: pnpm exec cross-env LINNYA_CLI_TEST_ENTRY=bundle vitest run apps/linnya-cli/src/__integration-tests__
