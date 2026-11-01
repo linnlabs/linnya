@@ -48,6 +48,6 @@
 - Shell 创建的物理文件和 Workspace `write_file` / `edit_file` 写入的 VFS 文档当前没有自动同步。需要让 Shell 读取某份 Workspace 内容时，必须先有明确的物理文件来源；不能假定 VFS 文档已经落在 conversation cwd 中。
 - Shell 主描述对所有 Agent 说明：`workspace:/` 是数据库 VFS 文档，`conversation:/` 对应本次物理工作目录，`file:///` 对应宿主绝对文件；三者不自动同步。不能通过查找应用存储或数据库恢复 Workspace 文档。相对 OS 路径默认落在当前会话，`/tmp` 跨会话共享且不参与 Linnya 会话清理；这不表示操作系统永不清理它。
 - macOS pipe/PTY 保留只读及标准档写入范围限制；Windows pipe/PTY 使用当前用户和 Job Object 管理进程树，不创建隔离账户或申请管理员初始化。两端均不提供专门的内部存储读取隔离。
-- 1/2 档命令直接引用凭据文件或所在目录时弹出审批，可允许本次或记住本对话中的相同命令和 cwd；完全访问直接执行。静态提示不能识别脚本内部读取或动态拼接，不能作为文件保密保证。`internal_data_access` 仍只约束正式插件 CLI bridge。
+- 1/2 档命令直接引用凭据文件或所在目录时弹出审批，可允许本次或记住本对话中的相同命令和 cwd；完全访问直接执行。静态提示不能识别脚本内部读取、动态拼接或路径别名，不能作为文件保密保证。`internal_data_access` 仍只约束正式插件 CLI bridge。
 
 实现入口：[ShellTool.ts](./ShellTool.ts)。业务测试见同目录 `__tests__` 和 App Host 的 `shell-runtime` integration 测试。Workspace 虚拟路径与 Shell 物理目录的边界见 [Workspace 工具说明](../../workspace/README.md) 和 [Commands README](../../../domains/commands/README.md)。

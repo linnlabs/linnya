@@ -75,7 +75,7 @@ PTY 使用现有 Rust native owner 的 Pseudoconsole + Job List 组合。Utility
 
 ## 8. 已知限制
 
-- 普通用户 Job 本身不是 OS 文件沙箱；1/2 档还必须通过账户隔离 adapter，初始化失败不能降级到本 owner 裸跑；
+- 普通用户 Job 本身不是 OS 文件沙箱；各档使用同一进程 owner，1/2 档的命令风险审批不构成文件保密边界；
 - 外部 CLI 自己的行为、凭据和数据库加密不属于 Linnya 职责；
 - Docker/虚拟机只能验证部分协议，不能代替真实 Windows Job/native/NSIS 矩阵；
 - x64 兼容层测试不能证明 ARM64 原生包。
