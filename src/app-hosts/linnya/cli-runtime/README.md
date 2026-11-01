@@ -9,7 +9,7 @@ CLI Runtime 使用 `_dev_data` AppData，并可显式覆盖 Workspace。Workspac
 数据库恢复前取得，因此 Desktop 与 CLI 指向同一 Workspace 时后启动者会明确失败。会话 HTTP/SSE、历史、
 模型目录、Flow、并行运行、命令进程树和崩溃恢复继续由同一 Backend owner 提供。
 
-源码 CLI 与默认开发 Desktop 使用同一 `_dev_electron` profile 根；内部存储保护针对该运行目录，不能把整个 development checkout 当作 profile 限制读取。
+源码 CLI 与默认开发 Desktop 使用同一 `_dev_electron` profile 根，统一凭据文件位于其中。Shell 仅对可见的凭据路径提供风险审批，不提供 profile 读取隔离。
 
 Desktop 和 CLI 的 App Server 使用同一个 profile 凭据文件，不依赖钥匙串授权，也不创建独立主密钥。
 文件读取失败明确报告并阻止覆盖；旧凭据不迁移。Renderer 瞬时通知由空展示

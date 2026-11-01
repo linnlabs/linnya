@@ -6,8 +6,7 @@
 
 `workspaceRoot` 是整套数据工作区的物理根，可包含多个 Project；项目 ID、项目 VFS 地址与会话工作目录均不能作为这个参数。Project 生命周期见[Project domain](../../domains/projects/README.md)。
 
-Desktop 与源码 CLI 同时提供 `profileRoot`，供 Agent 内部存储保护覆盖浏览器 profile 等不在业务
-AppData 子目录中的状态。App Server 的统一凭据文件位于该根的 `AIService/config/credentials.json`；生产组合必须提供此字段，Backend 不自行推测路径。
+Desktop 与源码 CLI 同时提供 `profileRoot`，用于定位不随 Workspace 迁移的浏览器 profile 与凭据。App Server 的统一凭据文件位于该根的 `AIService/config/credentials.json`；生产组合必须提供此字段，Backend 不自行推测路径。
 
 `registry/` 只解决同一运行域内大量历史 `pathManager` 调用尚未完成依赖注入的问题：同值安装幂等，不同值安装失败。它不是可切换配置中心，也不能被 feature 当成新的全局 service。新增业务应优先接收所需的窄路径或 storage port；待历史调用迁完后删除该 registry 和 `pathManager` 聚合对象。
 
