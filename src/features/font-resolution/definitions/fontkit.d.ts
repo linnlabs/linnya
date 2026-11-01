@@ -54,4 +54,5 @@ declare module 'fontkit' {
   }
 
   export function openSync(filePath: string, postscriptName?: string): FontKitFont | FontKitCollection;
+  export function open(filePath: string, postscriptName?: string): Promise<FontKitFont | FontKitCollection>;
 }

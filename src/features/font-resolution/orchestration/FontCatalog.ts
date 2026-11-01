@@ -7,7 +7,7 @@ import {
   FontCatalogUnavailableError,
   type FontCatalogState,
 } from '../definitions/fontCatalogQuery.js';
-import { parseFontFileMetadata as defaultParseFontFileMetadata } from '../functions/parseFontMetadata.js';
+import { readFontFileMetadata } from '../functions/parseFontMetadata.js';
 import {
   hasScriptCoverage,
   isPublicFontFamily,
@@ -17,7 +17,7 @@ export interface FontCatalogOptions {
   scanRoots?: readonly string[];
   /** 由装配点传入 app userData 下路径；这里只保存字体 metadata，不保存字体文件本体。 */
   cacheFilePath: string;
-  parseFontFileMetadata?: (filePath: string) => readonly FontMetadata[];
+  parseFontFileMetadata?: (filePath: string) => readonly FontMetadata[] | Promise<readonly FontMetadata[]>;
 }
 
 interface FontFileIdentity {
@@ -37,7 +37,7 @@ const FONT_FILE_EXTENSIONS = new Set(['.ttf', '.otf', '.ttc']);
 export class FontCatalog {
   private readonly scanRoots: readonly string[];
   private readonly cacheFilePath: string;
-  private readonly parseFontFileMetadata: (filePath: string) => readonly FontMetadata[];
+  private readonly parseFontFileMetadata: NonNullable<FontCatalogOptions['parseFontFileMetadata']>;
   private fonts: FontMetadata[] = [];
   private fontsByFamily = new Map<string, FontMetadata[]>();
   private state: FontCatalogState = 'idle';
@@ -46,7 +46,7 @@ export class FontCatalog {
   constructor(options: FontCatalogOptions) {
     this.scanRoots = options.scanRoots ?? defaultScanRoots();
     this.cacheFilePath = options.cacheFilePath;
-    this.parseFontFileMetadata = options.parseFontFileMetadata ?? defaultParseFontFileMetadata;
+    this.parseFontFileMetadata = options.parseFontFileMetadata ?? readFontFileMetadata;
   }
 
   scan(): Promise<void> {
@@ -87,7 +87,7 @@ export class FontCatalog {
         ? cachedEntry
         : {
             ...identity,
-            fonts: this.parseFontFileMetadata(filePath),
+            fonts: await this.parseFontFileMetadata(filePath),
           };
 
       nextEntries.set(filePath, entry);

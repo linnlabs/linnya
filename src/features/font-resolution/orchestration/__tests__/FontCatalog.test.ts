@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { setImmediate } from 'node:timers/promises';
 import { describe, expect, it } from 'vitest';
 import { FontCatalogUnavailableError } from '../../definitions/fontCatalogQuery.js';
 import type { FontMetadata } from '../../definitions/types.js';
@@ -149,7 +150,10 @@ describe('FontCatalog', () => {
     const catalog = new FontCatalog({
       scanRoots: [root],
       cacheFilePath: join(root, 'font-catalog-cache.json'),
-      parseFontFileMetadata: (filePath) => [makeMeta({ filePath })],
+      parseFontFileMetadata: async (filePath) => {
+        await setImmediate();
+        return [makeMeta({ filePath })];
+      },
     });
 
     const scan = catalog.scan();

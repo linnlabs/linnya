@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { openSync } from 'fontkit';
+import { createReadStream, readFileSync } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+import { open, openSync } from 'fontkit';
 import type { FontKitCollection, FontKitFont } from 'fontkit';
 import type { FontMetadata } from '../definitions/types.js';
 import { compressGlyphCodePointRanges } from './glyphCoverage.js';
@@ -30,23 +31,43 @@ export function parseFontFileMetadata(filePath: string): readonly FontMetadata[]
   try {
     const fileFingerprint = hashFontFile(filePath);
     const opened = openSync(filePath);
-    if (!isFontCollection(opened)) {
-      const metadata = buildMetadata(filePath, opened, 0, fileFingerprint);
-      return metadata == null ? [] : [metadata];
-    }
-
-    const metadataList: FontMetadata[] = [];
-    for (const [faceIndex, font] of opened.fonts.entries()) {
-      const metadata = buildMetadata(filePath, font, faceIndex, fileFingerprint);
-      if (metadata != null) {
-        metadataList.push(metadata);
-      }
-    }
-    return metadataList;
+    return buildFileMetadata(filePath, opened, fileFingerprint);
   } catch {
     // 同 parseFontMetadata：系统字体目录是外部边界，坏文件不应中断整个 catalog 扫描。
     return [];
   }
+}
+
+/** 系统目录冷扫描与业务 RPC 共用事件循环，不能同步读取、散列整份大型 CJK collection。 */
+export async function readFontFileMetadata(filePath: string): Promise<readonly FontMetadata[]> {
+  try {
+    const hash = createHash('sha256');
+    // 流式 I/O 让哈希按读取块推进；保留与同步入口相同的完整文件 SHA-256 身份。
+    await pipeline(createReadStream(filePath), hash);
+    const fileFingerprint = hash.digest('hex');
+    const opened = await open(filePath);
+    return buildFileMetadata(filePath, opened, fileFingerprint);
+  } catch {
+    // 与同步入口一致：损坏或无法读取的外部字体不应阻断整个目录扫描。
+    return [];
+  }
+}
+
+function buildFileMetadata(
+  filePath: string,
+  opened: FontKitOpenResult,
+  fileFingerprint: string,
+): readonly FontMetadata[] {
+  if (!isFontCollection(opened)) {
+    const metadata = buildMetadata(filePath, opened, 0, fileFingerprint);
+    return metadata == null ? [] : [metadata];
+  }
+  const metadataList: FontMetadata[] = [];
+  for (const [faceIndex, font] of opened.fonts.entries()) {
+    const metadata = buildMetadata(filePath, font, faceIndex, fileFingerprint);
+    if (metadata != null) metadataList.push(metadata);
+  }
+  return metadataList;
 }
 
 function isFontCollection(opened: FontKitOpenResult): opened is FontKitCollection {
