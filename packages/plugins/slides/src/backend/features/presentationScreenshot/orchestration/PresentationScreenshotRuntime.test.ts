@@ -158,6 +158,24 @@ describe('PresentationScreenshotRuntime', () => {
     expect([...bytes.subarray(0, 2)]).toEqual([0xff, 0xd8]);
   });
 
+  it.each(['directory', 'latest_version'] as const)('长路径下的 %s 输出仍能完成 staging、发布和清理', async (kind) => {
+    const root = await createOutputRoot();
+    const segment = 'nested-output-'.repeat(8);
+    const outputRoot = path.join(root, segment, segment, segment);
+    expect(outputRoot.length).toBeGreaterThan(260);
+
+    const result = await createRuntime().render(kind === 'directory'
+      ? directoryRequest(outputRoot)
+      : managedRequest(outputRoot, { kind: 'single', slideNumber: 1 }));
+
+    expect((await fs.readFile(path.join(outputRoot, result.slides[0].relativePath))).length)
+      .toBeGreaterThan(0);
+    expect((await fs.readdir(outputRoot)).some(entry => entry.startsWith('.linnya-screenshot-')))
+      .toBe(false);
+    expect((await fs.readdir(path.dirname(outputRoot))).some(entry => entry.startsWith('.linnya-screenshot-')))
+      .toBe(false);
+  });
+
   it('任一页返回坏 PNG 时拒绝整个批次且不发布成功页子集', async () => {
     const outputRoot = await createOutputRoot();
     const runtime = createRuntime({

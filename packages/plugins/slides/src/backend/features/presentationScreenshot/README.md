@@ -54,6 +54,7 @@ render model 与 `versionId/versionNumber/sourceKind` 必须来自同一次 quer
 - page raster 的确定性 `invalid_request` 保留为 `slides.screenshot.invalid_request`，连同原页码和
   codec 生成的安全字段路径返回调用方；不得退化成 `render_failed`。未知异常仍使用固定安全文案。
 - 所有请求页先在最终目录之外的 staging 目录完成。任一页失败时 staging 整体删除；成功页子集不能泄漏成可消费结果。
+- staging 创建使用 Node 的标准 namespace 路径转换，兼容 Windows 深层 Conversation 路径；不依赖用户启用系统长路径设置，返回的受管相对 locator 不变。
 - 全部页面完成后才按已知文件名发布；替换已有页面时先把旧文件移入本批 staging，发布途中失败或取消会删除新文件并恢复旧文件。
 - runtime 只有整批发布完成后才返回成功结果。CLI 再把结果中的相对文件名转换为 `conversation:` 或 `file:` locator 并写 stdout，因此进程成功终态就是调用方可消费这批图片的边界，不需要额外持久化提交标记。
 - 显式 `directory` 输出中，`overwrite=false` 在本次任一页文件存在时拒绝；`overwrite=true` 只替换本次确定的文件，不扫描或清理目录中的其他用户文件。

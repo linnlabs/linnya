@@ -278,7 +278,8 @@ async function listManagedVersionDirectories(
 async function createStagingRoot(parentRoot: string): Promise<string> {
   return runOutputOperation(async () => {
     await fs.mkdir(parentRoot, { recursive: true });
-    return fs.mkdtemp(path.join(parentRoot, '.linnya-screenshot-'));
+    // Windows 的 mkdtemp 不会自动接纳长路径；深层对话工作目录需要标准 namespace，不能要求用户改系统设置。
+    return fs.mkdtemp(path.toNamespacedPath(path.join(parentRoot, '.linnya-screenshot-')));
   }, 'Screenshot staging directory could not be created');
 }
 
