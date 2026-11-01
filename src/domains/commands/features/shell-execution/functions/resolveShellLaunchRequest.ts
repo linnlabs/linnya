@@ -25,9 +25,6 @@ function freezeLaunchSnapshot(
   Object.freeze(launch.shell);
   Object.freeze(launch.environment.entries);
   Object.freeze(launch.environment);
-  Object.freeze(launch.internal_storage.protected_roots);
-  Object.freeze(launch.internal_storage.readable_roots);
-  Object.freeze(launch.internal_storage);
   return Object.freeze(launch);
 }
 
@@ -82,7 +79,6 @@ export function resolveShellLaunchRequest(params: {
       : 'pty_command_launch_snapshot',
     proposal,
     conversation_root: params.conversationRoot,
-    internal_storage: params.runtime.internalStorage,
     permission,
     mode: mode.mode,
     shell: params.runtime.shell,

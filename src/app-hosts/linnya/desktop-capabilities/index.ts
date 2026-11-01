@@ -35,7 +35,3 @@ export * from './registry/backendHiddenWorkerRuntimeRegistry';
 export * from './registry/backendRendererIntegrationRegistry';
 export * from './registry/backendTextMeasurementRuntimeRegistry';
 export * from './registry/desktopRasterPdfDocumentRegistry';
-
-export type { DesktopCommandIsolationSetupPort } from './definitions/desktopCommandIsolationSetupPort';
-export { createCommandIsolationSetupRpcClient } from './features/command-isolation-setup-rpc/orchestration/createCommandIsolationSetupRpcClient';
-export { createCommandIsolationSetupRpcHandlers } from './features/command-isolation-setup-rpc/orchestration/createCommandIsolationSetupRpcHandlers';

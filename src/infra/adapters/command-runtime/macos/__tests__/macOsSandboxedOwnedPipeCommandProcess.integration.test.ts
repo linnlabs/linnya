@@ -66,8 +66,6 @@ async function runNode(input: {
     argv: ['-e', input.script, ...(input.argv ?? [])],
     cwd: input.cwd,
     conversationRoot: input.conversationRoot ?? input.cwd,
-    internalStorage: { protected_roots: [path.join(input.cwd, '.private')], readable_roots: [] },
-    internalStorageAccess: false,
     environment: input.environment ?? readHostEnvironment(),
     permissionLevel: input.permissionLevel,
   });
@@ -228,8 +226,6 @@ describe.skipIf(globalThis.process.platform !== 'darwin')(
         argv: [],
         cwd: path.join(cwd, 'missing-working-directory'),
         conversationRoot: cwd,
-        internalStorage: { protected_roots: [path.join(cwd, '.private')], readable_roots: [] },
-        internalStorageAccess: false,
         environment: readHostEnvironment(),
         permissionLevel: 'standard',
       })).rejects.toMatchObject({

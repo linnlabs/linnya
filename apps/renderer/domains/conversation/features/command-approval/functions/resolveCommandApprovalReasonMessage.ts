@@ -7,8 +7,8 @@ export function resolveCommandApprovalReasonMessage(
   if (reason.type === 'permission_elevation') {
     return 'conversation.commandApproval.reason.permissionElevation';
   }
-  if (reason.type === 'internal_storage_access') {
-    return 'conversation.commandApproval.reason.internalStorageAccess';
+  if (reason.type === 'sensitive_path_access') {
+    return 'conversation.commandApproval.reason.sensitivePathAccess';
   }
   switch (reason.category) {
     case 'delete':

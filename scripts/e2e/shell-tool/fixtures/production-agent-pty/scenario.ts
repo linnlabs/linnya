@@ -187,6 +187,7 @@ export async function runProductionAgentPtyScenario(input: {
   ]);
 
   const commandScope = await createElectronCommandProductionScope({
+      credentialFilePath: path.resolve('credential-path-fixture/config/credentials.json'),
     // 此场景只验证宿主命令，不注册插件 CLI。
     resolvePluginCli: () => undefined,
     db,
@@ -210,7 +211,6 @@ export async function runProductionAgentPtyScenario(input: {
     helperEnvironment: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
     runnerPath: path.join(input.runnerRoot, 'commandRunnerUtilityProcess.cjs'),
     artifactStorageRoot: artifactRoot,
-    internalStorage: { protected_roots: [artifactRoot], readable_roots: [] },
     resolveToolOutputBlobsDirectory: ({ conversationId, instanceId }) => (
       path.join(appDataRoot, 'ToolOutputBlobs', conversationId, instanceId)
     ),

@@ -16,4 +16,3 @@ export * from './functions/matchFixedRiskRule';
 export * from './functions/resolveApprovedCommandPermission';
 export * from './functions/validateRememberableSimpleCommandPrefix';
 export * from './orchestration/authorizeCommandProposal';
-export * from './orchestration/authorizeInternalFileRead';

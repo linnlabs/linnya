@@ -7,7 +7,6 @@ import {
   createBackendRendererIntegrationRpcClient,
   createDesktopCapabilityMailboxRpcClient,
   createDesktopFileRevealRpcClient,
-  createCommandIsolationSetupRpcClient,
   createDesktopHiddenWorkerHostRpcClient,
   createDesktopRasterPdfDocumentRpcClient,
   createDesktopTextMeasurementWorkerRpcClient,
@@ -140,8 +139,6 @@ export function createHeadlessAppServerBackendComposition(input: {
           commandPermissionSettings,
           commandApprovalHost,
           commandPresentationHost: commandCardControlHost,
-          commandIsolationSetup: input.bootstrap.host_kind === 'desktop' && input.bootstrap.backend_facts.platform === 'win32'
-            ? createCommandIsolationSetupRpcClient(input.rpc) : undefined,
         }),
       credentialStorage,
       hiddenWorkerHost: createDesktopHiddenWorkerHostRpcClient({

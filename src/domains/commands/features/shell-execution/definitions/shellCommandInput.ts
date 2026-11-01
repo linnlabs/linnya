@@ -12,7 +12,6 @@ export interface ValidatedShellCommandInput {
   readonly requestedCwd?: ShellToolArgumentsV1['cwd'];
   readonly interactive: boolean;
   readonly requiresWriteAccess: boolean;
-  readonly requiresInternalStorageAccess: boolean;
   readonly initialWaitMs: number;
   readonly requestedHardTimeoutMs?: number;
 }

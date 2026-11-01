@@ -25,7 +25,6 @@ export interface ToolContextHostServices {
   workspaceMutationPublisher?: WorkspaceMutationPublisher;
   shellToolRuntime?: ShellToolRuntimePort;
   physicalFileReader?: PhysicalFileReaderPort;
-  internalStorageFileAccess?: ToolContext['internalStorageFileAccess'];
   conversationWorkDirectoryAdmission?: ConversationWorkDirectoryAdmissionPort;
   managedImageIngress?: ToolContext['managedImageIngress'];
   toolResultAssetClaims?: ToolContext['toolResultAssetClaims'];
@@ -121,7 +120,6 @@ export function createToolContext(options: ToolContextFactoryOptions): ToolConte
     workspaceMutationPublisher: options.hostServices.workspaceMutationPublisher,
     shellToolRuntime: options.hostServices.shellToolRuntime,
     physicalFileReader: options.hostServices.physicalFileReader,
-    internalStorageFileAccess: options.hostServices.internalStorageFileAccess,
     conversationWorkDirectoryAdmission: options.hostServices.conversationWorkDirectoryAdmission,
     webFileStore: options.hostServices.conversationWorkDirectoryAdmission
       ? createWebFileStore(options.hostServices.conversationWorkDirectoryAdmission, options.conversationId)

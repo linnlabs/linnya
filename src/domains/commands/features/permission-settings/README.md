@@ -87,7 +87,7 @@ Renderer 不传路径、revision 以外的内部字段，不直接读文件，�
 - 内存 authority 是会话内唯一事实源；任何命令前重新读文件都是错误。
 - 文件原子替换成功、marker 写入失败时，必须保留失败结果并记录上下文，不能报告成功。
 - 设置文件路径由 Desktop Host 在 bootstrap 中冻结，App Host adapter 负责原子持久化；domain 不假定具体 appData 目录。
-- `internal_data_access` 只约束正式插件 CLI bridge 的内部数据 access plan。原始存储访问使用独立的单次授权：1/2 档审批，完全访问直接放行；不能从此插件开关推导原始文件权限。macOS 已接入系统文件边界，Windows 的 Job 尚不能提供同等隔离，见 [内部存储访问](../../../../app-hosts/linnya/adapters/internal-storage-protection/README.md)。
+- `internal_data_access` 只约束正式插件 CLI bridge 的内部数据 access plan。1/2 档另外对可见凭据路径引用弹出审批，完全访问直接执行；不提供专门的内部存储读取隔离，不能由插件开关推导原始文件权限。
 - `full_access` 只是“不再询问”，不是 OS 文件沙箱；产品页面必须明确网络、外部 CLI、系统设置和数据泄露风险。
 - `full_access` 不能改变 `gui_control = denied`。GUI 禁止需要平台执行边界与直接/间接 launch fixture 共同证明，不能只依赖设置字段或命令词法扫描。
 

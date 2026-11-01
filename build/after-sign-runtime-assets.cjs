@@ -10,7 +10,6 @@ const ARTIFACT_FILE_NAME = 'linnyaCommandProcessOwner.node';
 const MANIFEST_FILE_NAME = 'linnyaCommandProcessOwner.manifest.json';
 const COMMAND_RUNTIME_ARTIFACTS = [
   { artifact: ARTIFACT_FILE_NAME, manifest: MANIFEST_FILE_NAME, runtimeId: 'linnya_command_process_owner', matchesContract: manifest => manifest.minimum_node_api_version === 8 && manifest.binding_contract_version === 1 },
-  { artifact: 'linnyaCommandIsolation.exe', manifest: 'linnyaCommandIsolation.manifest.json', runtimeId: 'linnya_windows_command_isolation', matchesContract: manifest => manifest.protocol_version === 1 },
 ];
 const SUPPORTED_ARCHITECTURES = new Set(['x64', 'arm64']);
 const BUILD_TRUST_ENV_NAME = 'LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST';

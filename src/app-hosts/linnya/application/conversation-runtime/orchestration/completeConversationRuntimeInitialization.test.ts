@@ -77,7 +77,6 @@ function createCommandScope(
 ): CommandProductionScope {
   return {
     shellToolRuntime: { executeShell: vi.fn(), executeProcess: vi.fn() },
-    internalStorageFileAccess: { authorizeRead: vi.fn() },
     agentRunLifecycle: {
       endAgentRun: vi.fn().mockResolvedValue({ release: vi.fn() }),
     },

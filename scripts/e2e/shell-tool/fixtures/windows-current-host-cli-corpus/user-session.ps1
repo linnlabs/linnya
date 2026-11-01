@@ -1,13 +1,11 @@
-﻿param(
-  [Parameter(Mandatory = $true)][string]$RunRoot,
-  [switch]$CleanupUser
+param(
+  [Parameter(Mandatory = $true)][string]$RunRoot
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false)
 $unpackedRoot = Join-Path $RunRoot 'application\win-unpacked'
-$isolationHelper = Join-Path $unpackedRoot 'resources\command-runtime\windows\x64\linnyaCommandIsolation.exe'
-$reportPath = Join-Path $RunRoot $(if ($CleanupUser) { 'cleanup.json' } else { 'session.json' })
+$reportPath = Join-Path $RunRoot 'session.json'
 $appProcess = $null
 function Wait-JsonResult {
   param([string]$Path, [Diagnostics.Process]$Owner)
@@ -29,13 +27,6 @@ function Wait-JsonResult {
 
 try {
   if ((Get-Process -Id $PID).SessionId -eq 0) { throw 'This fixture requires a logged-in desktop session' }
-  if ($CleanupUser) {
-    & $isolationHelper cleanup-user
-    if ($LASTEXITCODE -ne 0) { throw 'fixture user permission recovery failed' }
-    $report = @{ success = $true }
-  } else {
-    & $isolationHelper configure-user
-    if ($LASTEXITCODE -ne 0) { throw 'fixture user filesystem setup failed' }
     $runRoot = $RunRoot
     $resultPath = Join-Path $RunRoot 'result.json'
     $executablePath = Join-Path $unpackedRoot 'Linnya Windows Current Host CLI Corpus.exe'
@@ -64,8 +55,7 @@ try {
     throw "packaged Electron failed: code=$($appProcess.ExitCode); stderr=$stderr; stdout=$stdout"
   }
   if ($result.success -ne $true) { throw "scenario failed: $($result.error)" }
-    $report = @{ success = $true; appProcessId = [int]$appProcess.Id; result = $result }
-  }
+  $report = @{ success = $true; appProcessId = [int]$appProcess.Id; result = $result }
 } catch {
   $report = @{ success = $false; error = $_.Exception.Message }
 } finally {

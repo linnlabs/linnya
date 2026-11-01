@@ -1,19 +1,15 @@
 # Command Authorization
 
-## 内部存储授权合同
+## 可见凭据路径风险提示
 
-内部存储访问与普通写入授权分开。`read_only`、`standard` 必须得到用户批准，
-`full_access` 直接放行，不产生内部存储审批。正式插件的 `internal_data_access`
-开关管理插件数据 API，不代表 Shell 已获得原始文件访问权限。
+Host 识别命令文本中直接引用的凭据文件及其目录，或按当前 cwd 解析出的静态路径参数，
+把 `references_sensitive_path` 冻结到 proposal。1/2 档显示 `sensitive_path_access` 审批理由；
+完全访问不弹窗。此规则不扫描脚本文件、模拟运行或依赖操作系统读取隔离，不能保证凭据保密。
 
-`requires_internal_storage_access` 只提出请求，不能指定 grant。Host 将请求冻结在
-proposal 中，审批显示可能涉及凭据和私人数据。允许本次仅用于该 execution；保存规则
-使用 `internal-storage-command-exact-v1`，在同一对话、同一 Shell 语义、相同 cwd 下
-精确匹配完整命令。该 matcher 的单项 token 保存完整命令，禁止当作普通前缀追加参数，
-也不能复用旧的普通命令批准。只读操作获批后仍保持只读；写入另需已有的标准权限审批。
-
-平台执行边界必须覆盖解释器和子进程。命令文本检查只负责提前提示，不能替代操作系统
-限制。沙箱拒绝后不自动重跑已执行的命令，避免重复前半段已经完成的写入或网络请求。
+允许本次不保存规则；保存规则使用 `sensitive-path-command-exact-v1`，仅在同一对话、同一
+Shell 语义、相同 cwd 下精确匹配完整命令。修改命令、追加参数或更换 cwd 必须重新判断，
+也不能复用普通写入批准。只读命令获批后仍保持只读，写入按现有权限提升和固定风险规则审批。
+正式插件的 `internal_data_access` 开关继续只管理插件数据 API，与磁盘文件读取不同。
 
 ## 1. 功能边界
 
@@ -82,7 +78,6 @@ Schema 对提升有结构性限制：`global_setting` 不能改变用户选中�
 `CommandApprovalReason` 包含：
 
 - `permission_elevation`：从 `read_only` 临时提升到 `standard`。
-- `internal_storage_access`：单次原始存储访问；不改变插件数据开关，也不自动授予写入。
 - `fixed_risk_rule`：携带 `rule_id` 和风险类别。
 
 风险类别目前是 `delete`、`move_overwrite_rename`、`external_upload`、`download_and_execute`、`system_or_disk_impact`。规则 id 是审计和测试的稳定标识，修改规则语义时必须增加 matcher revision 或明确迁移策略。

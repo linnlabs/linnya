@@ -9,10 +9,10 @@ import {
 } from '../definitions/simpleCommand';
 import { isSupportedSimpleCommandContext } from './isSupportedSimpleCommandContext';
 import { validateRememberableSimpleCommandPrefix } from './validateRememberableSimpleCommandPrefix';
-import { INTERNAL_STORAGE_AUTHORIZATION_MATCHER_REVISION } from '../definitions/simpleCommand';
+import { SENSITIVE_PATH_AUTHORIZATION_MATCHER_REVISION } from '../definitions/simpleCommand';
 
 function isValidCandidate(candidate: CommandConversationApprovalCandidate): boolean {
-  if (candidate.matching_context.matcher_revision === INTERNAL_STORAGE_AUTHORIZATION_MATCHER_REVISION) {
+  if (candidate.matching_context.matcher_revision === SENSITIVE_PATH_AUTHORIZATION_MATCHER_REVISION) {
     // 这里保存的单项是完整命令，不是可追加的 token 前缀；动态脚本也只能精确复用。
     return candidate.token_prefix.length === 1 && candidate.token_prefix[0].length > 0;
   }
@@ -79,7 +79,7 @@ export function matchConversationCommandApproval(params: {
   }
 
   const matches = approvalsInCurrentContext.filter(approval => (
-    (params.candidate.matching_context.matcher_revision !== INTERNAL_STORAGE_AUTHORIZATION_MATCHER_REVISION
+    (params.candidate.matching_context.matcher_revision !== SENSITIVE_PATH_AUTHORIZATION_MATCHER_REVISION
       || approval.approvedCwd === params.cwd)
     &&
     isTokenPrefix(

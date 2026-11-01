@@ -15,7 +15,6 @@ import type {
 export function resolveApprovedCommandPermission(params: {
   readonly current: CommandPermissionSnapshotV1;
   readonly source: ApprovedCommandPermissionSource;
-  readonly internalStorageAccess?: boolean;
   readonly elevateToStandard?: boolean;
 }): ApprovedCommandPermissionResolution {
   const { current, source } = params;
@@ -36,7 +35,6 @@ export function resolveApprovedCommandPermission(params: {
       ...current,
       effective_level: params.elevateToStandard === false ? current.base_level : 'standard',
       grant_source: source,
-      ...(params.internalStorageAccess ? { internal_storage_access: true } : {}),
     }),
   };
 }

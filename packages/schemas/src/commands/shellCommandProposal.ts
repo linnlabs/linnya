@@ -37,7 +37,7 @@ export const ShellCommandProposalV1Schema = z.object({
   command: ShellCommandTextSchema,
   cwd: ShellWorkingDirectorySchema,
   permission: CommandPermissionSnapshotV1Schema,
-  requests_internal_storage_access: z.boolean().optional(),
+  references_sensitive_path: z.boolean().optional(),
 }).strict().superRefine((proposal, context) => {
   if (!hasSameCommandExecutionIdentity(proposal.identity, proposal.permission.identity)) {
     context.addIssue({

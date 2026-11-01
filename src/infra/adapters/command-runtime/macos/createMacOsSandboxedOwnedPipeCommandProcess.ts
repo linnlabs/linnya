@@ -1,7 +1,7 @@
 import {
   SandboxManager,
 } from '@anthropic-ai/sandbox-runtime';
-import type { CommandInternalStorageBoundary, CommandPermissionLevel } from '@app/schemas/commands';
+import type { CommandPermissionLevel } from '@app/schemas/commands';
 
 import { OwnedPipeProcessStartupCleanupError } from '../../../../shared/process-runtime';
 import type {
@@ -18,8 +18,6 @@ export interface MacOsSandboxedOwnedPipeCommandProcessLaunch
   extends OwnedPipeProcessLaunch {
   readonly permissionLevel: CommandPermissionLevel;
   readonly conversationRoot: string;
-  readonly internalStorage: CommandInternalStorageBoundary;
-  readonly internalStorageAccess: boolean;
 }
 
 export type MacOsOwnedPipeCommandProcessLaunchFailureStage =

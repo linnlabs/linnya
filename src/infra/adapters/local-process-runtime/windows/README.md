@@ -12,9 +12,9 @@
 
 Windows 的 `child.exit` 不保证后代消失，`taskkill` 也不能提供稳定的 owner 和资源 accounting。Job Object 可以在普通用户下把 root/后代绑定到统一资源对象，cancel 和 App end 可以对整棵树操作。
 
-Job 只解决进程归属和清理，不解决文件访问权限。只读、标准档的文件边界由独立的
-[账户隔离 adapter](../../command-runtime/windows/isolation/README.md) 提供；完全访问档
-直接使用当前普通用户的 Job owner。不能把本模块的进程管理能力当作受限 Shell 的完整安全边界。
+Job 只解决进程归属和清理，不解决文件访问权限。各档均使用当前普通用户的 Job owner；
+权限和风险提示由 Commands 在启动前审批，不创建隔离账户或管理员服务。不能把
+进程管理和命令审批当成操作系统文件隔离或凭据保密保证。
 
 ## 3. 启动和 native loader
 

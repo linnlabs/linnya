@@ -35,7 +35,6 @@ function createRunner(
               executeShell: vi.fn(),
               executeProcess: vi.fn(),
             },
-            internalStorageFileAccess: { authorizeRead: vi.fn() },
             agentRunLifecycle: commandAgentRunLifecycle,
           }
         : { kind: 'disabled' },

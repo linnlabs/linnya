@@ -50,7 +50,6 @@ describe('read_file host locator 与命令权限边界', () => {
           runId: RunIdSchema.parse(`agent-run-${permissionLevel}`),
           parentToolCallId: ToolCallIdSchema.parse(`tool-call-${permissionLevel}`),
           physicalFileReader: createNodePhysicalFileReader(),
-          internalStorageFileAccess: { authorizeRead: vi.fn().mockResolvedValue(undefined) },
           managedImageIngress: { ingestLocalImage },
           toolResultAssetClaims: {
             issueClaims,
@@ -112,7 +111,6 @@ describe('read_file host locator 与命令权限边界', () => {
         runId: RunIdSchema.parse('agent-run-format'),
         parentToolCallId: ToolCallIdSchema.parse('tool-call-host-read-error'),
         physicalFileReader: createNodePhysicalFileReader(),
-        internalStorageFileAccess: { authorizeRead: vi.fn().mockResolvedValue(undefined) },
         commandRunPermission: {
           status: 'available',
           snapshot: CommandRunPermissionSnapshotV1Schema.parse({

@@ -14,7 +14,7 @@ import { deriveSimpleCommandCandidate } from './deriveSimpleCommandCandidate';
 import { matchConversationCommandApproval } from './matchConversationCommandApproval';
 import { matchFixedRiskRule } from './matchFixedRiskRule';
 import { resolveApprovedCommandPermission } from './resolveApprovedCommandPermission';
-import { INTERNAL_STORAGE_AUTHORIZATION_MATCHER_REVISION } from '../definitions/simpleCommand';
+import { SENSITIVE_PATH_AUTHORIZATION_MATCHER_REVISION } from '../definitions/simpleCommand';
 
 function riskReasons(
   findings: Extract<
@@ -86,15 +86,15 @@ export function evaluateCommandAuthorization(params: {
     };
   }
 
-  const requestsInternalStorage = params.proposal.requests_internal_storage_access === true;
-  const candidate = requestsInternalStorage ? {
+  const referencesSensitivePath = params.proposal.references_sensitive_path === true;
+  const candidate = referencesSensitivePath ? {
     status: 'derived' as const,
     candidate: {
       token_prefix: [params.proposal.command],
       matching_context: {
         platform: params.platform,
         shell_semantics_id: params.shellSemanticsId,
-        matcher_revision: INTERNAL_STORAGE_AUTHORIZATION_MATCHER_REVISION,
+        matcher_revision: SENSITIVE_PATH_AUTHORIZATION_MATCHER_REVISION,
       },
     },
   } : deriveSimpleCommandCandidate({
@@ -157,12 +157,11 @@ export function evaluateCommandAuthorization(params: {
     );
   const rememberedCoversRequest = remembered.status === 'matched'
     && uncoveredFindings.length === 0
-    && (risk.status === 'matched' || needsStandardPermission || requestsInternalStorage);
+    && (risk.status === 'matched' || needsStandardPermission || referencesSensitivePath);
   if (rememberedCoversRequest) {
     const permission = resolveApprovedCommandPermission({
       current: basePermission,
       source: 'conversation_approval',
-      internalStorageAccess: requestsInternalStorage,
       elevateToStandard: needsStandardPermission,
     });
     if (permission.status === 'rejected') {
@@ -185,9 +184,9 @@ export function evaluateCommandAuthorization(params: {
     };
   }
 
-  if (uncoveredFindings.length > 0 || needsStandardPermission || requestsInternalStorage) {
+  if (uncoveredFindings.length > 0 || needsStandardPermission || referencesSensitivePath) {
     const reasons: CommandApprovalReason[] = [...riskReasons(uncoveredFindings)];
-    if (requestsInternalStorage) reasons.unshift({ type: 'internal_storage_access' });
+    if (referencesSensitivePath) reasons.unshift({ type: 'sensitive_path_access' });
     if (needsStandardPermission) {
       reasons.unshift({
         type: 'permission_elevation',

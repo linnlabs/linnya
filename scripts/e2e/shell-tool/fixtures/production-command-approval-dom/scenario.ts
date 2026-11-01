@@ -345,6 +345,7 @@ export async function runProductionCommandApprovalDomScenario(input: {
   const approvalHost = createCommandApprovalHost();
   registerCommandApprovalHandlers({ host: createLocalCommandApprovalRendererGateway(approvalHost) });
   const commandScope = await createElectronCommandProductionScope({
+      credentialFilePath: path.join(appDataRoot, 'config', 'credentials.json'),
     resolvePluginCli: () => undefined,
     db,
     conversationAdmission: lifecycle.workDirectoryAdmission,
@@ -367,7 +368,6 @@ export async function runProductionCommandApprovalDomScenario(input: {
     helperEnvironment: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
     runnerPath: input.runnerPath,
     artifactStorageRoot: artifactRoot,
-    internalStorage: { protected_roots: [appDataRoot], readable_roots: [] },
     resolveToolOutputBlobsDirectory: ({ conversationId, instanceId }) => (
       path.join(appDataRoot, 'ToolOutputBlobs', conversationId, instanceId)
     ),
@@ -625,7 +625,7 @@ export async function runProductionCommandApprovalDomScenario(input: {
       if (level !== 'full_access') {
         const once = readInternal();
         const prompt = await waitForApprovalDom(window);
-        assert(prompt.reasons.some(reason => reason.includes('内部')));
+        assert(prompt.reasons.some(reason => reason.includes('凭据')));
         await clickApprovalChoice(window, 'allow_once');
         assert((await once).observation.includes('SYNTHETIC_INTERNAL_CREDENTIAL'));
         await waitForNoApprovalDom(window);
@@ -650,7 +650,6 @@ export async function runProductionCommandApprovalDomScenario(input: {
       success: true,
       version: 1,
       renderer: 'real-vue-dom',
-      internalStorage: { levels: 3, allowOnce: true, savedRule: true, fullAccess: true },
       preload: 'production-command-runtime-preload',
       deny: {
         status: deniedResult.status,

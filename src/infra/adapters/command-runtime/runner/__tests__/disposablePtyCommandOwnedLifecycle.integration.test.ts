@@ -91,7 +91,6 @@ function createStartRequest(hardTimeoutMs = 60_000): Extract<
       protocol_version: 1,
       kind: 'pty_command_launch_snapshot',
       conversation_root: process.cwd(),
-      internal_storage: { protected_roots: [process.cwd() + '/.private'], readable_roots: [] },
       proposal: {
         protocol_version: 1,
         kind: 'shell_command_proposal',
@@ -574,13 +573,13 @@ describe('shared command runner PTY routing', () => {
       async launchOwnedPtyProcess() {
         throw new CommandRunnerOwnedPtyProcessLaunchError(
           'sandbox_unavailable', 'SYNTHETIC_SECRET', { status: 'guaranteed_not_started' },
-          { cause: new Error('windows_process_owner stage=account_isolation detail=windows_command_isolation stage=worker_logon detail=SYNTHETIC_SECRET (0x80070005)') },
+          { cause: new Error('windows_process_owner stage=pty_create detail=SYNTHETIC_SECRET (0x80070005)') },
         );
       },
     });
     controller.acceptRequest(START_REQUEST);
     await waitFor(() => exitCodes.length === 1);
-    expect(diagnostics).toEqual(['launch_failed code=sandbox_unavailable native_stages=account_isolation,worker_logon system_codes=0x80070005']);
+    expect(diagnostics).toEqual(['launch_failed code=sandbox_unavailable native_stages=pty_create system_codes=0x80070005']);
     expect(JSON.stringify(events)).not.toContain('SYNTHETIC_SECRET');
     expect(events.find(event => event.kind === 'command_runner_terminal')).toMatchObject({
       terminal: { outcome: 'runtime_failure', failure: { code: 'sandbox_unavailable' } },

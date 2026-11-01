@@ -1,5 +1,4 @@
 import type { ResolvedAppServerProcessLaunch } from '../../../app-hosts/linnya/app-server-runtime';
-import { createElectronCommandIsolationSetupPort } from '../../desktop-capabilities/command-isolation-setup/createElectronCommandIsolationSetupPort';
 import path from 'node:path';
 import type { Writable } from 'node:stream';
 
@@ -16,7 +15,6 @@ import {
 } from '../../../app-hosts/linnya/adapters/commands/renderer-rpc';
 import {
   createDesktopFileRevealRpcHandlers,
-  createCommandIsolationSetupRpcHandlers,
   createDesktopHiddenWorkerHostRpcHandlers,
   createDesktopRasterPdfDocumentRpcHandlers,
   createDesktopRendererIntegrationRpcHandlers,
@@ -84,7 +82,7 @@ export async function createElectronAppServerRuntime(input: {
     await textMeasurement.dispose();
     throw error;
   }
-  const { launch, localProcessPlatformRuntime: runtime } = preparedLaunch;
+  const { launch } = preparedLaunch;
   const webPageRenderer = WebPageRenderManager.instance();
   const hiddenWorkerAdmission = createHiddenWorkerArtifactAdmission([
     input.pluginRuntime.userPluginRoot,
@@ -99,21 +97,6 @@ export async function createElectronAppServerRuntime(input: {
       : []),
   ]);
   const rpcHandlers = new Map<string, AppServerRpcHandler>();
-  if (input.backendFacts.platform === 'win32') {
-    if (runtime.platform !== 'win32') throw new Error('Windows command runtime expected');
-    registerHandlers(rpcHandlers, createCommandIsolationSetupRpcHandlers(createElectronCommandIsolationSetupPort({
-      runtime: {
-        manifestPath: runtime.manifest_path,
-        expectedRuntimeVersion: runtime.expected_runtime_version,
-        expectedApplicationVersion: runtime.expected_application_version,
-        trust: runtime.trust.kind === 'release'
-          ? { kind: 'release', expectedPublisherIdentity: runtime.trust.expected_publisher_identity }
-          : runtime.trust,
-      },
-      environment: launch.environment,
-    })));
-  }
-
   registerHandlers(rpcHandlers, createDesktopDiagnosticLogRpcHandlers({
     writeRecord: writeForwardedDiagnosticLogRecord,
   }));

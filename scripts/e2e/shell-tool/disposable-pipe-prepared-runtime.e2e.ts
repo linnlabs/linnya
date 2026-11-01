@@ -114,7 +114,6 @@ function createLaunch(identity: CommandExecutionIdentity, scenario: string) {
     protocol_version: 1,
     kind: 'pipe_command_launch_snapshot',
     conversation_root: repositoryRoot,
-    internal_storage: { protected_roots: [repositoryRoot + '/.private'], readable_roots: [] },
     proposal: {
       protocol_version: 1,
       kind: 'shell_command_proposal',

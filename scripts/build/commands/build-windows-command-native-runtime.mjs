@@ -14,9 +14,6 @@ const nativeManifestPath = path.join(
   repositoryRoot,
   'src/infra/adapters/command-runtime/windows/native/Cargo.toml',
 );
-const isolationManifestPath = path.join(repositoryRoot, 'src/infra/adapters/command-runtime/windows/isolation/native/Cargo.toml');
-const isolationFileName = 'linnyaCommandIsolation.exe';
-const isolationRuntimeManifestFileName = 'linnyaCommandIsolation.manifest.json';
 const packageJsonPath = path.join(repositoryRoot, 'package.json');
 const artifactFileName = 'linnyaCommandProcessOwner.node';
 const runtimeManifestFileName = 'linnyaCommandProcessOwner.manifest.json';
@@ -167,18 +164,12 @@ async function buildWindowsRuntime(architecture) {
   const spec = architectureSpecs[architecture];
   if (!spec) throw new Error(`Unsupported Windows command runtime architecture: ${architecture}`);
   const identity = await readBuildIdentity(nativeManifestPath, 'linnya_command_process_owner');
-  const isolationIdentity = await readBuildIdentity(isolationManifestPath, 'linnya_windows_command_isolation');
-  if (identity.runtimeVersion !== isolationIdentity.runtimeVersion) {
-    throw new Error('Windows command owner and isolation runtime versions must match');
-  }
   const toolchain = await prepareBuildToolchain();
   try {
-    for (const manifestPath of [nativeManifestPath, isolationManifestPath]) {
-      const args = ['build', '--locked', '--release', '--manifest-path', manifestPath, '--target', spec.rustTarget];
-      await run('cargo', process.platform === 'darwin' ? ['xwin', ...args] : args, {
-        environment: toolchain.environment,
-      });
-    }
+    const args = ['build', '--locked', '--release', '--manifest-path', nativeManifestPath, '--target', spec.rustTarget];
+    await run('cargo', process.platform === 'darwin' ? ['xwin', ...args] : args, {
+      environment: toolchain.environment,
+    });
   } finally {
     await toolchain.dispose();
   }
@@ -222,28 +213,6 @@ async function buildWindowsRuntime(architecture) {
       file_name: artifactFileName,
       size_bytes: artifactBytes.byteLength,
       sha256: createHash('sha256').update(artifactBytes).digest('hex'),
-    },
-  });
-  const isolationBytes = await fsp.readFile(path.join(
-    isolationIdentity.targetDirectory, spec.rustTarget, 'release', 'linnya_windows_command_isolation.exe',
-  ));
-  if (readPeMachine(isolationBytes) !== spec.peMachine) {
-    throw new Error('Windows command isolation PE architecture mismatch');
-  }
-  await fsp.writeFile(path.join(outputDirectory, isolationFileName), isolationBytes, { flag: 'wx' });
-  await writeJsonAtomically(path.join(outputDirectory, isolationRuntimeManifestFileName), {
-    schema_version: 1,
-    runtime_id: 'linnya_windows_command_isolation',
-    runtime_version: isolationIdentity.runtimeVersion,
-    application_version: identity.applicationVersion,
-    platform: 'win32',
-    architecture,
-    protocol_version: 1,
-    signature_evidence: { kind: 'development_unsigned' },
-    artifact: {
-      file_name: isolationFileName,
-      size_bytes: isolationBytes.byteLength,
-      sha256: createHash('sha256').update(isolationBytes).digest('hex'),
     },
   });
   console.log(

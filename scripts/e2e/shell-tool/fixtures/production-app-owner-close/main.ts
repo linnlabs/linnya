@@ -115,6 +115,7 @@ void app.whenReady().then(async () => {
     storageRoot: appDataRoot,
   });
   const commandScope = await createElectronCommandProductionScope({
+      credentialFilePath: path.resolve('credential-path-fixture/config/credentials.json'),
     db,
     conversationAdmission: lifecycle.workDirectoryAdmission,
     approvalHost: createCommandApprovalHost(),
@@ -128,7 +129,6 @@ void app.whenReady().then(async () => {
     helperEnvironment: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
     runnerPath: path.join(runnerRoot, 'commandRunnerUtilityProcess.cjs'),
     artifactStorageRoot: path.join(appDataRoot, 'ConversationArtifacts', 'v1'),
-    internalStorage: { protected_roots: [path.join(appDataRoot, 'ConversationArtifacts', 'v1')], readable_roots: [] },
     resolveToolOutputBlobsDirectory: ({ conversationId, instanceId }) => (
       path.join(appDataRoot, 'ToolOutputBlobs', conversationId, instanceId)
     ),

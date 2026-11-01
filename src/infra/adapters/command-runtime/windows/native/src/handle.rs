@@ -13,12 +13,6 @@ pub(crate) struct OwnedHandle {
 }
 
 impl OwnedHandle {
-    pub(crate) fn from_owned(handle: impl std::os::windows::io::IntoRawHandle) -> Self {
-        Self {
-            raw: handle.into_raw_handle() as usize,
-        }
-    }
-
     pub(crate) fn from_raw(raw: HANDLE, stage: &'static str) -> NativeResult<Self> {
         if raw.is_null() {
             return Err(NativeError::last_win32(stage));
@@ -83,12 +77,8 @@ pub(crate) struct SharedHandle {
 
 impl SharedHandle {
     pub(crate) fn new(handle: OwnedHandle) -> Self {
-        Self::from_option(Some(handle))
-    }
-
-    pub(crate) fn from_option(handle: Option<OwnedHandle>) -> Self {
         Self {
-            value: Mutex::new(handle),
+            value: Mutex::new(Some(handle)),
         }
     }
 

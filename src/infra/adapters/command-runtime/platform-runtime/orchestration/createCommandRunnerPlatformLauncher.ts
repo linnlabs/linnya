@@ -28,9 +28,6 @@ import type {
   LocalProcessPlatformRuntime,
 } from '../../../local-process-runtime/platform-runtime';
 import { classifyCommandPlatformLaunchFailure } from '../functions/classifyCommandPlatformLaunchFailure';
-import { createWindowsCommandIsolationBindingLoader } from '../../windows/isolation/functions/loadWindowsCommandIsolationBinding';
-import { verifyWindowsCommandIsolationHelper } from '../../windows/isolation/functions/verifyWindowsCommandIsolationHelper';
-import { createWindowsCommandFilesystemPolicy } from '../../windows/isolation/functions/createWindowsCommandFilesystemPolicy';
 import { LINNYA_CONVERSATION_ROOT_ENV } from '../../../../../domains/commands/definitions/internalCommandMode';
 
 function createPlatformLaunchError(input: {
@@ -132,8 +129,6 @@ export function createCommandRunnerPlatformLauncher(
           ...createInvocation(launch, options?.internalEnvironment),
           permissionLevel: launch.permission.effective_level,
           conversationRoot: launch.conversation_root,
-          internalStorage: launch.internal_storage,
-          internalStorageAccess: launch.permission.internal_storage_access === true,
         }, options);
       } catch (error) {
         throw createPlatformLaunchError({
@@ -179,8 +174,6 @@ export function createCommandRunnerPlatformLauncher(
           ...createInvocation(launch, options?.internalEnvironment),
           permissionLevel: launch.permission.effective_level,
           conversationRoot: launch.conversation_root,
-          internalStorage: launch.internal_storage,
-          internalStorageAccess: launch.permission.internal_storage_access === true,
           terminalSize: launch.terminal_size,
         }, options);
       } catch (error) {
@@ -217,28 +210,6 @@ export function createCommandRunnerPlatformLauncher(
   };
   const pipeLoader = createWindowsOwnedPipeNativeBindingLoader(loaderOptions);
   const ptyLoader = createWindowsOwnedPtyNativeBindingLoader(loaderOptions);
-  const isolationLoader = createWindowsCommandIsolationBindingLoader(loaderOptions);
-  let isolationHelper: Promise<string> | undefined;
-  async function prepareIsolation(
-    launch: Parameters<LaunchCommandRunnerOwnedPipeProcess>[0] | Parameters<LaunchCommandRunnerOwnedPtyProcess>[0],
-  ) {
-    if (launch.permission.effective_level === 'full_access') {
-      throw new Error('Full access does not use the Windows isolation runtime');
-    }
-    isolationHelper ??= verifyWindowsCommandIsolationHelper(loaderOptions);
-    const [binding, helperPath] = await Promise.all([isolationLoader.load(), isolationHelper]);
-    return {
-      binding,
-      policy: createWindowsCommandFilesystemPolicy({
-        helperPath,
-        permissionLevel: launch.permission.effective_level,
-        conversationRoot: launch.conversation_root,
-        internalStorage: launch.internal_storage,
-        internalStorageAccess: launch.permission.internal_storage_access === true,
-      }),
-    };
-  }
-
   let pipeNativeBinding: Awaited<ReturnType<typeof pipeLoader.load>> | undefined;
   let ptyNativeBinding: Awaited<ReturnType<typeof ptyLoader.load>> | undefined;
   const launchOwnedPipeProcess: LaunchCommandRunnerOwnedPipeProcess = async (
@@ -253,12 +224,6 @@ export function createCommandRunnerPlatformLauncher(
       );
     }
     try {
-      if (launch.permission.effective_level !== 'full_access') {
-        const { binding, policy } = await prepareIsolation(launch);
-        return await createWindowsJobOwnedPipeProcessLauncher(
-          input => binding.createPipe(input, policy),
-        )(createInvocation(launch, options?.internalEnvironment), options);
-      }
       pipeNativeBinding ??= await pipeLoader.load();
       const binding = pipeNativeBinding;
       return await createWindowsJobOwnedPipeProcessLauncher(
@@ -266,8 +231,7 @@ export function createCommandRunnerPlatformLauncher(
       )(createInvocation(launch, options?.internalEnvironment), options);
     } catch (error) {
       throw createPlatformLaunchError({
-        failureCode: launch.permission.effective_level === 'full_access'
-          ? 'process_owner_unavailable' : 'sandbox_unavailable',
+        failureCode: 'process_owner_unavailable',
         message: 'Windows command process owner could not be established',
         error,
       });
@@ -289,12 +253,6 @@ export function createCommandRunnerPlatformLauncher(
         ...createInvocation(launch, options?.internalEnvironment),
         terminalSize: launch.terminal_size,
       };
-      if (launch.permission.effective_level !== 'full_access') {
-        const { binding, policy } = await prepareIsolation(launch);
-        return await createWindowsJobOwnedPtyCommandProcessLauncher(
-          (input, columns, rows) => binding.createPty(input, policy, columns, rows),
-        )(invocation, options);
-      }
       ptyNativeBinding ??= await ptyLoader.load();
       const binding = ptyNativeBinding;
       return await createWindowsJobOwnedPtyCommandProcessLauncher(
@@ -302,8 +260,7 @@ export function createCommandRunnerPlatformLauncher(
       )(invocation, options);
     } catch (error) {
       throw createPtyPlatformLaunchError({
-        failureCode: launch.permission.effective_level === 'full_access'
-          ? 'process_owner_unavailable' : 'sandbox_unavailable',
+        failureCode: 'process_owner_unavailable',
         message: 'Windows command PTY process owner could not be established',
         error,
       });

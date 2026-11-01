@@ -1,5 +1,4 @@
 import type Database from 'better-sqlite3';
-import type { CommandInternalStorageBoundary } from '@app/schemas/commands';
 
 import type { CommandRunnerProcessPort } from '../../../../domains/commands';
 import type { CommandExecutionAuditPort } from 'src/domains/audit';
@@ -23,13 +22,13 @@ import {
  * 都只在这里汇合一次；Shell 工具只能取得最外层用例，不能取得平台进程能力。
  */
 export async function createElectronCommandProductionScope(input: {
+  readonly credentialFilePath: string;
   readonly db: Database.Database;
   readonly conversationAdmission: ConversationWorkDirectoryAdmissionPort;
   readonly approvalHost: CommandApprovalHost;
   readonly commandExecutionAudit: CommandExecutionAuditPort;
   readonly cardControlHost?: CommandCardControlHost;
   readonly runtimeFacts: CommandRuntimeFacts;
-  readonly internalStorage: CommandInternalStorageBoundary;
   readonly helperEnvironment: Readonly<Record<string, string>>;
   readonly runnerPath: string;
   readonly artifactStorageRoot: string;
@@ -47,6 +46,7 @@ export async function createElectronCommandProductionScope(input: {
     platformRuntime: input.runtimeFacts.platformRuntime,
   });
   return createCommandProductionScope({
+    credentialFilePath: input.credentialFilePath,
     db: input.db,
     conversationAdmission: input.conversationAdmission,
     approvalHost: input.approvalHost,
@@ -54,7 +54,6 @@ export async function createElectronCommandProductionScope(input: {
     presentationHost: cardControlHost,
     constructionPolicy: LINNYA_COMMAND_PRODUCTION_CONSTRUCTION_POLICY,
     runtimeFacts: input.runtimeFacts,
-    internalStorage: input.internalStorage,
     runnerProcess,
     artifactStorageRoot: input.artifactStorageRoot,
     resolveToolOutputBlobsDirectory: input.resolveToolOutputBlobsDirectory,

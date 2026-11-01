@@ -71,8 +71,8 @@ function projectReason(reason: CommandApprovalReason): string {
   switch (reason.type) {
     case 'permission_elevation':
       return `permission ${reason.from_level} -> ${reason.to_level}`;
-    case 'internal_storage_access':
-      return 'access Linnya internal storage (may contain credentials and private application data)';
+    case 'sensitive_path_access':
+      return 'directly reference the credential file or its directory (may expose API keys)';
     case 'fixed_risk_rule':
       return `${reason.category} (${reason.rule_id})`;
   }

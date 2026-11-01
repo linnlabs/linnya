@@ -38,7 +38,6 @@ export function acceptCommandApprovalReply(
   const permission = resolveApprovedCommandPermission({
     current: request.proposal.permission,
     source,
-    internalStorageAccess: request.reasons.some(reason => reason.type === 'internal_storage_access'),
     elevateToStandard: request.reasons.some(reason => reason.type === 'permission_elevation'),
   });
   if (permission.status === 'rejected') {

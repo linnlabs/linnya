@@ -9,7 +9,6 @@ export function projectCommandAgentRuntimes(scope: CommandProductionScope) {
   const root = Object.freeze({
     ...child,
     shellToolRuntime: scope.shellToolRuntime,
-    internalStorageFileAccess: scope.internalStorageFileAccess,
   });
   return Object.freeze({ root, child });
 }

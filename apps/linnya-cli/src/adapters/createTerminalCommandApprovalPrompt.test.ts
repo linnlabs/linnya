@@ -25,15 +25,15 @@ describe('terminal command approval prompt', () => {
         command_execution_id: `command_execution_${randomUUID()}`,
         command: 'cat internal-file',
         cwd: '/test',
-        reasons: [{ type: 'internal_storage_access' }],
+        reasons: [{ type: 'sensitive_path_access' }],
         available_choices: ['allow_once', 'deny'],
         requested_at_ms: 0,
         status: 'awaiting_reply',
       }));
       input.write('1\n');
       await expect(result).resolves.toBe('allow_once');
-      expect(text).toContain('access Linnya internal storage');
-      expect(text).toContain('credentials and private application data');
+      expect(text).toContain('directly reference the credential file or its directory');
+      expect(text).toContain('may expose API keys');
     } finally {
       prompt.close();
     }

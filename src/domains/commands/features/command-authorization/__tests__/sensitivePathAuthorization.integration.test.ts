@@ -17,7 +17,7 @@ function fixture() {
       choice?: CommandApprovalChoice;
       command?: string;
       cwd?: string;
-      requestStorage?: boolean;
+      sensitivePath?: boolean;
       requestWrite?: boolean;
     } = {}) {
       const level = input.level ?? 'standard';
@@ -32,7 +32,7 @@ function fixture() {
         protocol_version: 1, kind: 'shell_command_proposal', identity,
         command: input.command ?? 'cat /private/app/credentials.json',
         cwd: input.cwd ?? '/work/current',
-        requests_internal_storage_access: input.requestStorage ?? true,
+        references_sensitive_path: input.sensitivePath ?? true,
         permission: {
           protocol_version: 1, kind: 'command_permission_snapshot', identity,
           base_level: level, effective_level: level, grant_source: 'global_setting',
@@ -74,13 +74,13 @@ function fixture() {
   };
 }
 
-describe('内部存储审批到授权的业务流程', () => {
+describe('可见凭据路径风险审批流程', () => {
   it.each(['read_only', 'standard'] as const)('%s：拒绝不放行，允许本次不保存，读取批准不升级写权限', async level => {
     const f = fixture();
     expect(await f.authorize({ level })).toMatchObject({ status: 'rejected', code: 'approval_denied' });
     expect(await f.authorize({ level, choice: 'allow_once' })).toMatchObject({
       status: 'authorized',
-      permission: { effective_level: level, internal_storage_access: true, internal_data_access: 'denied' },
+      permission: { effective_level: level, internal_data_access: 'denied' },
     });
     expect(f.remembered).toHaveLength(0);
     expect(await f.authorize({ level })).toMatchObject({ status: 'rejected' });
@@ -92,17 +92,17 @@ describe('内部存储审批到授权的业务流程', () => {
     const command = 'node -e "require(\'fs\').readFileSync(\'/private/app/credentials.json\')"';
     expect(await f.authorize({ command, choice: 'allow_for_conversation' })).toMatchObject({ status: 'authorized' });
     expect(await f.authorize({ command })).toMatchObject({
-      status: 'authorized', permission: { grant_source: 'conversation_approval', internal_storage_access: true },
+      status: 'authorized', permission: { grant_source: 'conversation_approval', },
     });
     expect(f.prompts).toBe(1);
     expect(await f.authorize({ command: `${command}; echo changed` })).toMatchObject({ status: 'rejected' });
     expect(await f.authorize({ command, cwd: '/work/other' })).toMatchObject({ status: 'rejected' });
   });
 
-  it('普通写入批准不会授权内部存储，完全访问直接执行且不弹审批', async () => {
+  it('普通写入批准不会复用为凭据路径规则，完全访问直接执行且不弹审批', async () => {
     const f = fixture();
     const command = 'cat /private/app/credentials.json';
-    await f.authorize({ command, level: 'read_only', requestStorage: false, requestWrite: true, choice: 'allow_for_conversation' });
+    await f.authorize({ command, level: 'read_only', sensitivePath: false, requestWrite: true, choice: 'allow_for_conversation' });
     expect(await f.authorize({ command })).toMatchObject({ status: 'rejected' });
     const promptCount = f.prompts;
     expect(await f.authorize({ level: 'full_access' })).toMatchObject({

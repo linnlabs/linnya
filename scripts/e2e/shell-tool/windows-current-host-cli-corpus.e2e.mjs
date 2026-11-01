@@ -162,7 +162,6 @@ async function cleanupAndVerifyRemote(sshArgs, target, paths) {
     `$controller = ${quotePowerShell(paths.controller)}`,
     `$appProcessId = ${paths.appProcessId ?? '$null'}`,
     "$extendedRoot = '\\\\?\\' + [IO.Path]::GetFullPath($root)",
-    "if (Test-Path -LiteralPath (Join-Path $root 'recovery-required')) { throw ('Isolation cleanup needs recovery; retained fixture: ' + $root) }",
     '$deadline = [DateTime]::UtcNow.AddSeconds(15)',
     '$deleteError = $null',
     'while (Test-Path -LiteralPath $root) {',
@@ -294,7 +293,6 @@ try {
   assert.equal(Number.isInteger(result.appProcessId), true);
   assert.equal(result.shell, 'powershell-5.1');
   assert.equal(result.pythonAliasExecuted, false);
-  assert.deepEqual(result.internalStorage, { levels: 3, indirectDenied: true, allowOnce: true, savedRule: true, fullAccess: true });
   assert.deepEqual(
     result.cases.map(item => [item.id, item.exitCode]),
     [

@@ -232,6 +232,7 @@ describe('createElectronCommandProductionScope', () => {
       releaseBackgroundTerminalAudit = resolve;
     });
     const scope = await createElectronCommandProductionScope({
+      credentialFilePath: path.join(conversationRoot, '.credential-fixture', 'config', 'credentials.json'),
       db: createDatabase(conversationId),
       conversationAdmission: createAdmission({ conversationId, conversationRoot }),
       approvalHost,
@@ -264,7 +265,6 @@ describe('createElectronCommandProductionScope', () => {
       helperEnvironment: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
       runnerPath: '/unused/fake-runner.cjs',
       artifactStorageRoot: artifactRoot,
-      internalStorage: { protected_roots: [artifactRoot], readable_roots: [] },
       resolveToolOutputBlobsDirectory: scope => {
         toolOutputScopes.push(scope);
         return textRoot;

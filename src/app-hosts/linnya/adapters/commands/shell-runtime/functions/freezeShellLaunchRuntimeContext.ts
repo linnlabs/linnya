@@ -1,6 +1,5 @@
 import {
   CommandLaunchEnvironmentV1Schema,
-  CommandInternalStorageBoundarySchema,
   CommandResolvedShellV1Schema,
 } from '@app/schemas/commands';
 import type {
@@ -26,10 +25,6 @@ export function freezeShellLaunchRuntimeContext(
   }
   const shell = CommandResolvedShellV1Schema.parse(value.shell);
   const environment = CommandLaunchEnvironmentV1Schema.parse(value.environment);
-  const internalStorage = CommandInternalStorageBoundarySchema.parse(value.internalStorage);
-  Object.freeze(internalStorage.protected_roots);
-  Object.freeze(internalStorage.readable_roots);
-  Object.freeze(internalStorage);
   Object.freeze(shell.argv_prefix);
   Object.freeze(shell);
   Object.freeze(environment.entries);
@@ -37,7 +32,6 @@ export function freezeShellLaunchRuntimeContext(
   return Object.freeze({
     shell,
     environment,
-    internalStorage,
     defaultHardTimeoutMs: value.defaultHardTimeoutMs,
     maximumHardTimeoutMs: value.maximumHardTimeoutMs,
   });

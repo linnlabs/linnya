@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { verifyWindowsInternalStorage } from './internal-storage';
 import { activateDesiredBackendPluginClis, deactivateStaleBackendPluginClis } from '../../../../../src/app-hosts/linnya/plugin-registry/pluginCliInvocationRuntime';
 import type { BackendPluginCliRegistration } from '../../../../../src/app-hosts/linnya/plugin-registry/registry';
 import path from 'node:path';
@@ -256,6 +255,7 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
   };
   activateDesiredBackendPluginClis([registration]);
   const commandScope = await createElectronCommandProductionScope({
+      credentialFilePath: path.resolve('credential-path-fixture/config/credentials.json'),
     resolvePluginCli: pluginId => pluginId === registration.pluginId ? registration : undefined,
     db,
     conversationAdmission: lifecycle.workDirectoryAdmission,
@@ -276,7 +276,6 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
     helperEnvironment: {},
     runnerPath: path.join(__dirname, 'commands', 'commandRunnerUtilityProcess.cjs'),
     artifactStorageRoot: artifactRoot,
-    internalStorage: { protected_roots: [appDataRoot], readable_roots: [] },
     resolveToolOutputBlobsDirectory: ({ conversationId, instanceId }) => (
       path.join(appDataRoot, 'ToolOutputBlobs', conversationId, instanceId)
     ),
@@ -335,9 +334,6 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
 
     assert.equal(audit.read().filter(event => event.kind === 'execution_started').length, CORPUS.length);
     assert.equal(audit.read().filter(event => event.kind === 'execution_terminal').length, CORPUS.length);
-    const internalStorage = await verifyWindowsInternalStorage({
-      scope: commandScope, approvalHost, conversationId: CONVERSATION_ID, appDataRoot,
-    });
     const agentRunEndBarrier = await commandScope.agentRunLifecycle.endAgentRun({
       conversationId: CONVERSATION_ID,
       agentRunId: AGENT_RUN_ID,
@@ -355,7 +351,6 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
       windowsNativeJobRuntimeConfigured: true,
       pythonAliasExecuted: false,
       cases: results,
-      internalStorage,
     };
   } finally {
     await commandScope.endOwnerAndWait();
