@@ -78,6 +78,7 @@ function createRouteDependencies(): RouteDependencies {
     commandOwnerLifecycleRegistration: { register: () => undefined },
     providerModelSynchronizationLifecycleRegistration: { register: () => undefined },
     sandboxOwnerLifecycleRegistration: { register: () => undefined },
+    agentRunActivityRegistration: { register: () => undefined },
   };
 }
 

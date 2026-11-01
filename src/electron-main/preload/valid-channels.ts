@@ -42,10 +42,13 @@ const MODEL_CHANNELS = ['get-models', 'update-models', 'models-updated'] as cons
 
 // --- 应用更新 ---
 const UPDATE_CHANNELS = [
-  'update-message',
-  'updater-check-for-updates',
-  'updater-start-download',
-  'updater-quit-and-install',
+  'app-update:state',
+  'app-update:get-state',
+  'app-update:check',
+  'app-update:download',
+  'app-update:cancel-download',
+  'app-update:install',
+  'app-update:acknowledge-installed',
   'renderer-ready',
 ] as const;
 

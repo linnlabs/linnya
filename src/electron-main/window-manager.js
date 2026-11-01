@@ -47,20 +47,17 @@ function readLiveMainWindow() {
   return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
 }
 
-async function requestExecutingCommandsCloseDecision(intent) {
+async function requestExecutingCommandsCloseDecision() {
   const targetWindow = readLiveMainWindow();
   if (!targetWindow) throw new Error('主窗口已不可用，无法确认运行中命令的关闭方式');
 
-  const installingUpdate = intent === 'install_update';
-
+  // 安装更新的任务确认由更新入口负责；这里只处理普通关闭。
   const result = await dialog.showMessageBox(targetWindow, {
     type: 'warning',
-    title: installingUpdate ? '更新前需要停止任务' : '任务仍在运行',
+    title: '任务仍在运行',
     message: '仍有命令正在运行',
-    detail: installingUpdate
-      ? '安装更新将停止当前命令及其全部子进程。'
-      : '关闭 Linnya 将停止当前命令及其全部子进程。',
-    buttons: installingUpdate ? ['稍后更新', '停止任务并更新'] : ['返回继续', '停止全部并关闭'],
+    detail: '关闭 Linnya 将停止当前命令及其全部子进程。',
+    buttons: ['返回继续', '停止全部并关闭'],
     defaultId: 0,
     cancelId: 0,
     noLink: true,

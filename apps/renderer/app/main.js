@@ -166,26 +166,17 @@ if (!isConversationFixture) {
 }
 
 /**
- * 更新弹窗稳定性：尽可能早地注册 update-message 监听器，并在监听器就绪后通知主进程。
- * 只有 Main 已验真的 official 发行身份会继续检查更新；source/community 仍需要
+ * 应用更新状态由 Main 唯一持有：先挂好状态监听并读取当前快照，再发 renderer-ready。
+ * 只有 Main 已验真的 official 发行身份会开始后台检查；source/community 仍需要
  * renderer-ready 完成其他 App 生命周期订阅，不能在 Renderer 自行猜发行身份。
- *
- * 根因（中文）：
- * - 如果主进程在窗口/监听器就绪前发送 update-message，渲染进程会漏收，从而“不弹窗”。
- * - official 发行通过 renderer-ready 握手触发 checkForUpdates，保证消息不会丢。
  */
 if (!isConversationFixture) {
-  const updateStore = useUpdateStore()
-  if (window.electronAPI && typeof window.electronAPI.onUpdateMessage === 'function') {
-    window.electronAPI.onUpdateMessage(({ channel, payload }) => {
-      updateStore.handleIpc(channel, payload)
-    })
-  }
+  void useUpdateStore().connect()
 }
 
 app.mount('#app')
 
-// 监听器已注册后通知主进程 ready；是否检查更新由 Main 的发行身份决定。
+// 更新状态监听已注册后通知主进程 ready；是否检查更新由 Main 的发行身份决定。
 if (
   !isConversationFixture
   && window.electronAPI

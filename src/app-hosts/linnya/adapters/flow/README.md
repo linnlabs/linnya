@@ -165,6 +165,7 @@ run admission 前失败使用 `transport_error`；run admission 后失败使用 
 | `incoming-events/` | wire incoming event 校验、资源提交与 RuntimeEvent 物化 |
 | `interactive-run/` | foreground run 查询、resume / cancel contract |
 | `interactive-run/orchestration/stopConversationFlowActivity.ts` | 对话删除前停止全部 Flow root、等待 Host completion 并复查 child |
+| `interactive-run/orchestration/foregroundAgentRunActivity.ts` | App 更新前列出执行中的前台根 run 并经 `pauseRun` 批量暂停；结果按暂停后的持久状态归类，不取消任何运行 |
 
 `interactive-run/orchestration/flowExecutionCompletionRegistry.ts` 是 cancel command、对话 cleanup 与原 Flow execution 之间唯一的进程内完成屏障。它不替代 RunSupervisor、不保存持久业务状态，也不允许用 timeout 猜测 settlement。start 在 RunSupervisor admission 后立即登记 `runId + conversationId`；resume 在 claim 前登记，使 claim、incoming commit、activate、runner settlement 与 Host finalize 属于同一屏障。Supervisor 的精确 run 查询是异步的，必须保留查询前后捕获到的 completion；active running/pending run 缺少注册记录必须在取消前直接失败。自然完成从 active 列表消失不是失败，按持久 run 终态返回 `already_terminal`；run 不存在或 conversation/parent 身份不匹配仍必须失败。
 

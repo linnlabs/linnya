@@ -2,6 +2,10 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.1.0 - 2026-11-01
+
+- 新增 `UpdateIcon`（Fluent arrow_circle_up 几何）作为应用更新入口图标。可选属性 `progress`（0–1）把圆环变成 30% 底环加从 12 点钟顺时针的进度弧；不传时是静态图标。
+
 ## 3.0.1 - 2026-10-30
 
 - 适配 Vue 3.5.44 的属性引用类型推导：`CustomSelect` 用 getter 提供只读 prop 引用，保留选项更新、键盘导航和外置触发器的响应性；公开 props、事件、样式和交互语义不变，现有 `^3.0.0` 插件保持兼容。

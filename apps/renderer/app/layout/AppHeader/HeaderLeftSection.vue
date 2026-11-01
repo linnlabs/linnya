@@ -33,6 +33,7 @@
           <SettingsIcon />
         </IconButton>
       </HoverTooltip>
+      <UpdateEntry />
     </div>
   </div>
 </template>
@@ -45,6 +46,7 @@ import { LibraryIcon } from '@linnya/renderer-ui/icons';
 import { SidebarIcon } from '@linnya/renderer-ui/icons';
 import { HoverTooltip, IconButton } from '@linnya/renderer-ui';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
+import UpdateEntry from '@/app/update/ui/UpdateEntry.vue';
 
 const props = defineProps<{
   isMac: boolean;

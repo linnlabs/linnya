@@ -98,6 +98,7 @@ export { default as TextIcon } from './ui/TextIcon.vue';
 export { default as TimelineIcon } from './ui/TimelineIcon.vue';
 export { default as TranslateIcon } from './ui/TranslateIcon.vue';
 export { default as UnderlineIcon } from './ui/UnderlineIcon.vue';
+export { default as UpdateIcon } from './ui/UpdateIcon.vue';
 export { default as UndoIcon } from './ui/UndoIcon.vue';
 export { default as UploadIcon } from './ui/UploadIcon.vue';
 export { default as WindowActionIcon } from './ui/WindowActionIcon.vue';

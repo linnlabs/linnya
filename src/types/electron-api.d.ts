@@ -33,7 +33,12 @@ import type {
   UserFacingMessage,
   WorkspaceMutationEvent,
 } from '@app/schemas';
-import type { UpdateStatusMessage } from '../shared/update/definitions/updateMessage';
+import type {
+  AppUpdateCheckResult,
+  AppUpdateInstallRequest,
+  AppUpdateInstallResult,
+  AppUpdateState,
+} from '../shared/update/definitions/updateMessage';
 import type { CommandPermissionSettingsUpdateV1 } from '@app/schemas/commands';
 import type {
   WindowClosePreparationResult,
@@ -281,8 +286,16 @@ declare global {
       getModels: () => Promise<any>;
       updateModels: (models: any) => Promise<any>;
       
-      // Update events
-      onUpdateMessage: (callback: (message: UpdateStatusMessage) => void) => () => void;
+      // App update（状态由 Main 唯一持有）
+      appUpdate: {
+        getState: () => Promise<AppUpdateState>;
+        check: () => Promise<AppUpdateCheckResult>;
+        download: () => Promise<void>;
+        cancelDownload: () => Promise<void>;
+        install: (request: AppUpdateInstallRequest) => Promise<AppUpdateInstallResult>;
+        acknowledgeInstalled: () => Promise<void>;
+        onState: (callback: (state: AppUpdateState) => void) => () => void;
+      };
 
       // Plugin state
       plugins: {

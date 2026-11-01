@@ -2,11 +2,11 @@
 
 本目录只放 App owner 级别的定义与编排。Commands domain 负责命令状态和进程 owner；窗口层只读取“是否存在真实执行中的命令”，不能取得 PID、handle 或停止单条命令的内部能力。
 
-最后窗口、菜单退出、启动失败和安装更新共用一个 typed App shutdown owner。普通退出有活动命令时先让用户返回或停止全部；安装更新使用“稍后更新 / 停止任务并更新”的独立文案，但复用同一 renderer 保存屏障。窗口编排不直接结束命令 owner，也不能自行放行关闭。正式收口先停止 Backend admission 并等待 Command/Profiled Code Sandbox owner，随后卸载 Backend plugin runtime resources，最后才由 Desktop Host 销毁 Browser Pretext 等隐藏窗口；不能在仍有后端调用时抢先关闭 Desktop capability。
+最后窗口、菜单退出、启动失败和安装更新共用一个 typed App shutdown owner。普通退出有活动命令时先让用户返回或停止全部；安装更新的任务确认由[应用更新](../update/README.md)在提交前完成（列出 Agent 运行、命令与知识库导入，确认后先暂停 Agent 运行），这里不再询问，但复用同一 renderer 保存屏障。窗口编排不直接结束命令 owner，也不能自行放行关闭。正式收口先停止 Backend admission 并等待 Command/Profiled Code Sandbox owner，随后卸载 Backend plugin runtime resources，最后才由 Desktop Host 销毁 Browser Pretext 等隐藏窗口；不能在仍有后端调用时抢先关闭 Desktop capability。
 
 退出意图遵循“先提交者唯一生效”：普通退出与安装更新在确认阶段互不抢占，启动失败可以接管尚未提交的确认；一旦进入 `shutdown_committed`，迟到 IPC、activate、second-instance 和另一种退出意图都不能替换它。统一 commit port 会为普通退出、安装更新和启动失败单向放行 BrowserWindow，不能把许可放进普通 `app.quit()` 分支，否则 updater handoff 会被正式 close listener 拦截。`preparing_exit` 期间原窗口保持可用，但不允许创建第二个窗口；用户返回后才恢复 `running`。
 
-普通退出与启动失败在参与者和日志收口后由 Electron 退出；启动失败固定退出码 1。更新只有在下载 ready、用户确认、renderer 保存、网页 renderer/measurement/backend/命令 owner 和日志全部收口后才调用 updater handoff。handoff 前切换到 `update_handoff`，使 `quitAndInstall()` 触发的 `before-quit`/`will-quit` 不再被 host 拦截；该阶段有意保持到进程交给 updater。handoff 抛错则恢复 committed 并以 1 退出。`autoInstallOnAppQuit` 必须关闭。
+普通退出与启动失败在参与者和日志收口后由 Electron 退出；启动失败固定退出码 1。更新只有在下载 ready、用户确认、renderer 保存、网页 renderer/measurement/backend/命令 owner 和日志全部收口后才调用 updater handoff。handoff 前切换到 `update_handoff`，使 `quitAndInstall()` 触发的 `before-quit`/`will-quit` 不再被 host 拦截；该阶段有意保持到进程交给 updater。“重启以更新”使用 `restart` 模式，handoff 抛错则恢复 committed 并以 1 退出。普通退出时若已有下载完成的更新，同一条收口链结束后以 `install_on_exit` 模式顺带安装且不重新打开；这一步失败不影响普通退出，仍以 0 退出。`autoInstallOnAppQuit` 必须关闭，安装只经过这个 owner。
 
 不能恢复固定等待时间。renderer 在 App 根监听安装后先声明就绪，主进程才发送带页面会话和唯一请求编号的保存请求；插件初始化不阻塞这次握手。慢保存不是保存成功；保存失败保持窗口并允许下一次关闭重试。请求发出后页面导航会让旧请求明确失败，旧页面结果不能完成新请求。renderer 已销毁时没有页面状态可保存，此时继续结束 App owner，避免留下无窗口命令。
 

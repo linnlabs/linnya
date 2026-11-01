@@ -19,7 +19,6 @@ import {
 import {
   prepareElectronPluginRuntimeEnvironment,
 } from './plugins/loader/prepareElectronPluginRuntimeEnvironment.ts';
-import { initializeUpdateManager } from './update-manager.js';
 import path from 'path';
 import { Logger, enableFileLogging, shutdownDiagnosticLogging } from '../shared/logger.js';
 import { getLogDirectory } from '../shared/utils/pathManager.js';
@@ -32,7 +31,7 @@ import { shouldAllowRendererPermission } from './security/rendererPermissionPoli
 import { runAppShutdownStages } from './app-lifecycle/runAppShutdownStages.ts';
 import { createAppShutdownLifecycle } from './app-lifecycle/orchestration/createAppShutdownLifecycle.ts';
 import { createElectronUpdaterHandoff } from './update/orchestration/electronUpdaterHandoff.ts';
-import { configureInstallDownloadedUpdateRequest } from './update/orchestration/installDownloadedUpdate.ts';
+import { initializeAppUpdates } from './update/orchestration/initializeAppUpdates.ts';
 import {
   createBackendBootstrapFacts,
   resolveAppDefaultModelsPath,
@@ -172,9 +171,6 @@ export function initialize() {
     },
     updateHandoff: createElectronUpdaterHandoff(),
   });
-  configureInstallDownloadedUpdateRequest(onCommitted => (
-    appShutdownLifecycle.requestInstallUpdate(onCommitted)
-  ));
 
   // 关闭确认使用动态后端引用，因此生命周期可以在启动初期就接管菜单退出和重开窗口闸门。
   configureMainWindowCloseLifecycle({
@@ -188,13 +184,13 @@ export function initialize() {
     canAcceptWindowRequests: () => appShutdownLifecycle.canAcceptWindowRequest(),
   });
   
-  try {
-    logger.info('调用 initializeUpdateManager...');
-    initializeUpdateManager(distributionIdentity);
-    logger.info('initializeUpdateManager 调用成功');
-  } catch (err) {
-    logger.error('初始化更新管理器失败:', err);
-  }
+  // 更新状态 owner 在窗口前创建；后台检查等 renderer-ready 后才开始，活动事实动态读取 Backend。
+  initializeAppUpdates({
+    distributionIdentity,
+    currentVersion: applicationVersion,
+    readActivityPort: () => appServerRuntime?.activity,
+    requestInstall: () => appShutdownLifecycle.requestInstallUpdate(),
+  });
   
   // 当Electron完成初始化并准备创建窗口时
   app.whenReady().then(async () => {

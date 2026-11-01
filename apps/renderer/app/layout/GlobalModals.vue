@@ -20,7 +20,7 @@
     <ExportSettingsModal />
     
     <!-- 更新对话框 -->
-    <UpdateDialog />
+    <UpdateRestartConfirmDialog />
 
     <!-- 查找替换面板 -->
     <FindReplacePanel />
@@ -94,7 +94,7 @@ import { ExportSettingsModal } from '@/domains/workspace/features/import-export'
 import { useProjectOverviewModalStore } from '@/domains/workspace/features/project-overview/store/projectOverviewModalStore';
 import ProjectOverviewModal from '@/domains/workspace/features/project-overview/ui/ProjectOverviewModal.vue';
 // import KnowledgeBaseModal from '@/domains/knowledgebase/ui/KnowledgeBaseModal.vue';
-import UpdateDialog from '@/app/update/ui/UpdateDialog.vue';
+import UpdateRestartConfirmDialog from '@/app/update/ui/UpdateRestartConfirmDialog.vue';
 import { FindReplacePanel } from '@/domains/editor/features/FindReplace';
 import CitationPanel from '@/domains/editor/features/citation/ui/CitationPanel.vue';
 import CitationPopover from '@/domains/editor/features/citation/ui/CitationPopover.vue';

@@ -60,11 +60,17 @@ export function createAppShutdownLifecycle(
         shutdownFailure ??= error;
       }
 
-      if (committedIntent === 'install_update' && shutdownFailure === undefined) {
+      // 普通退出时已有下载完成的更新：同一条 handoff 顺带安装，但不重新打开 App。
+      const handoffMode = committedIntent === 'install_update'
+        ? 'restart'
+        : committedIntent === 'ordinary_exit' && ports.updateHandoff.isReady()
+          ? 'install_on_exit'
+          : undefined;
+      if (handoffMode && shutdownFailure === undefined) {
         try {
           // quitAndInstall 会同步触发 Electron quit 事件；先切换 phase，让 host 不再拦截 updater handoff。
           phase = 'update_handoff';
-          ports.updateHandoff.handoff();
+          ports.updateHandoff.handoff(handoffMode);
           return Object.freeze({
             intent: committedIntent,
             exitCode: null,
@@ -73,7 +79,8 @@ export function createAppShutdownLifecycle(
           });
         } catch (error: unknown) {
           phase = 'shutdown_committed';
-          shutdownFailure = error;
+          // 顺带安装失败不影响普通退出本身；更新安装失败仍按失败退出。
+          if (handoffMode === 'restart') shutdownFailure = error;
         }
       }
 

@@ -111,6 +111,10 @@ import {
 } from '../../app-hosts/linnya/adapters/flow/flow.history-handler.service';
 import { AgentRunnerService } from '../../app-hosts/linnya/adapters/flow/flow.agent-runner.service';
 import { FlowOrchestrator } from '../../app-hosts/linnya/adapters/flow/flow.orchestrator';
+import {
+  createForegroundAgentRunActivity,
+  type ForegroundAgentRunActivityPort,
+} from '../../app-hosts/linnya/adapters/flow/interactive-run/orchestration/foregroundAgentRunActivity';
 import { createConversationFlowRouter } from '../../app-hosts/linnya/adapters/flow/flow.router';
 import { createConversationImageAttachmentRouter } from './conversationImageAttachmentRouter';
 import { createWorkspaceImagePreviewRouter } from './workspaceImagePreviewRouter';
@@ -227,6 +231,10 @@ export interface RouteDependencies {
   };
   readonly providerModelSynchronizationLifecycleRegistration: {
     register(lifecycle: ProviderModelSynchronizationLifecycle): void;
+  };
+  /** 会话路由挂载后注册，供 App 更新前读取并暂停执行中的前台 Agent run。 */
+  readonly agentRunActivityRegistration: {
+    register(activity: ForegroundAgentRunActivityPort): void;
   };
   // chatService 已移除，使用新的统一架构
 }
@@ -503,6 +511,7 @@ export async function configureRoutes(
   // ==================== 会话服务路由（新模块化架构） ====================
 
   let flowOrchestrator: FlowOrchestrator | null = null;
+  let agentRunActivity: ForegroundAgentRunActivityPort | null = null;
   let historyService: HistoryService | null = null;
   let imageIngress: ConversationImageIngressPort | null = null;
   let imagePreview: WorkspaceImagePreviewPort | null = null;
@@ -782,6 +791,12 @@ export async function configureRoutes(
       agentRuntime
     );
     flowOrchestrator = initializedFlowOrchestrator;
+    agentRunActivity = createForegroundAgentRunActivity({
+      supervisor: agentRuntime.supervisor,
+      flow: initializedFlowOrchestrator,
+      readConversationTitle: async conversationId =>
+        (await conversationEventStore.getConversationMetadata(conversationId))?.title ?? null,
+    });
     const conversationCleanup = conversationLifecycle.bindCleanup({
       commands: commandScope.conversationCleanupCommands,
       approvals: commandScope.conversationApprovalDeletion,
@@ -902,6 +917,7 @@ export async function configureRoutes(
   if (
     historyService &&
     flowOrchestrator &&
+    agentRunActivity &&
     imageIngress &&
     imagePreview &&
     documentImagePreview &&
@@ -961,6 +977,7 @@ export async function configureRoutes(
     );
     conversationControlBridgeMounted = true;
     conversationRoutesMounted = true;
+    dependencies.agentRunActivityRegistration.register(agentRunActivity);
     logger.info('✅ 会话图片、预览、历史、流程、CLI 控制桥与存储空间路由已挂载');
   } else {
     logger.error('❌ 对话流程启动失败，无法挂载路由！初始化错误:', conversationInitError);

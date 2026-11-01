@@ -31,9 +31,9 @@ function createFixture(input: {
     exitElectron: exitCode => events.push(`exit:${exitCode}`),
     updateHandoff: {
       isReady: () => input.updateReady ?? false,
-      handoff: () => {
+      handoff: mode => {
         expect(lifecycle?.isUpdateHandoffInProgress()).toBe(true);
-        events.push('update_handoff');
+        events.push(mode === 'restart' ? 'update_handoff' : `update_handoff:${mode}`);
         input.handoff?.();
       },
     },
@@ -217,5 +217,38 @@ describe('createAppShutdownLifecycle', () => {
       'log_drain',
       'exit:1',
     ]);
+  });
+
+  it('普通退出时已有下载完成的更新：收口后顺带安装且不重新打开', async () => {
+    const fixture = createFixture({ updateReady: true });
+    await expect(fixture.lifecycle.requestOrdinaryExit()).resolves.toBe('shutdown_committed');
+    await expect(fixture.lifecycle.completeCommittedShutdown()).resolves.toEqual({
+      intent: 'ordinary_exit',
+      exitCode: null,
+      completed: true,
+      updateHandoffStarted: true,
+    });
+    expect(fixture.events).toEqual([
+      'window_close_committed',
+      'electron_quit',
+      'shutdown_stages',
+      'log_drain',
+      'update_handoff:install_on_exit',
+    ]);
+  });
+
+  it('普通退出顺带安装失败时仍正常退出，退出码为 0', async () => {
+    const fixture = createFixture({
+      updateReady: true,
+      handoff: () => { throw new Error('quitAndInstall failed'); },
+    });
+    await fixture.lifecycle.requestOrdinaryExit();
+    await expect(fixture.lifecycle.completeCommittedShutdown()).resolves.toMatchObject({
+      intent: 'ordinary_exit',
+      exitCode: 0,
+      completed: true,
+      updateHandoffStarted: false,
+    });
+    expect(fixture.events[fixture.events.length - 1]).toBe('exit:0');
   });
 });

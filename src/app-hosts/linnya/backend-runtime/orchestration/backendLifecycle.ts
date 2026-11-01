@@ -94,6 +94,9 @@ export async function initializeAppServerBackend(
         sandboxOwnerLifecycleRegistration: {
           register: lifecycle => runtimeOwner.registerSandboxOwnerLifecycle(lifecycle),
         },
+        agentRunActivityRegistration: {
+          register: activity => runtimeOwner.registerAgentRunActivity(activity),
+        },
       };
       const routeResult = await apiServer.configureRoutes(routeDependencies);
       runtimeOwner.setRouteConfigurationResult(routeResult);

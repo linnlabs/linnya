@@ -15,6 +15,12 @@ export function createMainWindowCloseLifecycle(
   let currentRequest: Promise<MainWindowCloseOutcome> | undefined;
 
   async function closeOnce(intent: MainWindowCloseIntent): Promise<MainWindowCloseOutcome> {
+    // 安装更新前，更新入口已经列出全部运行中任务并取得确认（含确认后新出现的任务）；
+    // 这里再问一次只会让用户对同一件事回答两遍。
+    if (intent === 'install_update') {
+      await ports.prepareRendererForClose();
+      return 'ready_to_quit';
+    }
     const currentActivity = ports.hasExecutingCommands();
     const hasExecutingCommands = typeof currentActivity === 'boolean'
       ? currentActivity

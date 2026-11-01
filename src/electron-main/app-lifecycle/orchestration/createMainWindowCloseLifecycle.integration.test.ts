@@ -39,8 +39,15 @@ describe('createMainWindowCloseLifecycle', () => {
   it('运行中命令明确停止后才保存并进入唯一 App 退出链', async () => {
     const fixture = createFixture({ executing: true, decision: 'stop_and_close' });
 
-    await expect(fixture.lifecycle.requestClose('install_update')).resolves.toBe('ready_to_quit');
+    await expect(fixture.lifecycle.requestClose('ordinary_exit')).resolves.toBe('ready_to_quit');
     expect(fixture.events).toEqual(['decision', 'renderer_prepared']);
+  });
+
+  it('安装更新不再询问命令：任务确认已由更新入口在提交前完成', async () => {
+    const fixture = createFixture({ executing: true, decision: 'return' });
+
+    await expect(fixture.lifecycle.requestClose('install_update')).resolves.toBe('ready_to_quit');
+    expect(fixture.events).toEqual(['renderer_prepared']);
   });
 
   it('并发关闭请求共享同一次用户选择和 renderer 保存', async () => {

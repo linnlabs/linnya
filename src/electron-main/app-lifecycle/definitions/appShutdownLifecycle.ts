@@ -24,9 +24,12 @@ export interface AppShutdownCompletion {
   readonly updateHandoffStarted: boolean;
 }
 
+/** restart：安装后重新打开；install_on_exit：普通退出时顺带安装，不重新打开。 */
+export type UpdateHandoffMode = 'restart' | 'install_on_exit';
+
 export interface UpdateHandoffPort {
   isReady(): boolean;
-  handoff(): void;
+  handoff(mode: UpdateHandoffMode): void;
 }
 
 export interface AppShutdownLifecyclePorts {

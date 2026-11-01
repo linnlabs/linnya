@@ -1,0 +1,234 @@
+/* 标题栏更新入口：位于设置按钮右侧，只在有更新相关状态时出现。 */
+.app-update-entry {
+  display: inline-flex;
+  -webkit-app-region: no-drag;
+  animation: app-update-entry-in var(--duration-medium) var(--ease-enter);
+}
+
+.app-update-entry__trigger {
+  display: inline-flex;
+}
+
+.app-update-entry__button.is-accent,
+.app-update-entry__button.is-accent:hover {
+  color: var(--color-accent);
+}
+
+.app-update-entry__button.is-accent:hover {
+  background-color: var(--color-accent-bg);
+}
+
+.app-update-entry__button.is-warning,
+.app-update-entry__button.is-warning:hover {
+  color: var(--color-warning-text);
+}
+
+.app-update-entry__pill {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--space-2) 0 var(--space-1-5);
+  font-family: inherit;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  color: var(--color-accent-text);
+  white-space: nowrap;
+  cursor: pointer;
+  background-color: var(--color-accent-bg);
+  border: none;
+  border-radius: var(--radius-md);
+  transition: background-color var(--duration-micro) var(--ease-standard);
+}
+
+.app-update-entry__pill:hover:not(:disabled) {
+  background-color: var(--color-accent-bg-hover);
+}
+
+.app-update-entry__pill:disabled {
+  cursor: default;
+}
+
+.app-update-entry__pill:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.app-update-entry__pill > svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes app-update-entry-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-update-entry {
+    animation: none;
+  }
+}
+
+/* 下载详情面板 */
+.app-update-panel.linnya-dropdown-surface {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-popover);
+  box-sizing: border-box;
+  max-height: none;
+  padding: var(--space-3);
+}
+
+.app-update-panel__title {
+  margin: 0 0 var(--space-0-5);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.app-update-panel__subtitle {
+  margin: 0 0 var(--space-2-5);
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-tertiary);
+}
+
+.app-update-panel__bar {
+  height: 4px;
+  overflow: hidden;
+  background-color: var(--color-border-light);
+  border-radius: var(--radius-xs);
+}
+
+.app-update-panel__bar > i {
+  display: block;
+  height: 100%;
+  background-color: var(--color-accent);
+  transition: width var(--duration-medium) linear;
+}
+
+.app-update-panel__bar.is-warning > i {
+  background-color: var(--color-warning);
+}
+
+.app-update-panel__meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-1-5);
+  font-size: var(--font-size-footnote);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-tertiary);
+}
+
+.app-update-panel__notes {
+  max-height: 160px;
+  padding-top: var(--space-2);
+  margin-top: var(--space-2-5);
+  overflow-y: auto;
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-secondary);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.app-update-panel__notes-title {
+  margin-bottom: var(--space-1);
+  color: var(--color-text-tertiary);
+}
+
+.app-update-panel__notes-body :where(p, ul, ol) {
+  margin: 0 0 var(--space-1);
+}
+
+.app-update-panel__notes-body :where(ul, ol) {
+  padding-left: var(--space-4);
+}
+
+.app-update-panel__actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+.app-update-panel__action {
+  height: 26px;
+  padding: 0 var(--space-3);
+  font-family: inherit;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+  background-color: var(--color-bg-default);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.app-update-panel__action:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.app-update-panel__action.is-quiet {
+  color: var(--color-text-secondary);
+  background-color: transparent;
+  border-color: transparent;
+}
+
+/* 重启前的任务确认：与 Modal 标题同一左右边距 */
+.app-update-confirm {
+  padding: var(--space-1) var(--space-5) 0;
+}
+
+.app-update-confirm__footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
+.app-update-confirm__description {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.app-update-confirm__changed {
+  margin: var(--space-2) 0 0;
+  color: var(--color-warning-text);
+}
+
+.app-update-confirm__list {
+  padding: 0;
+  margin: var(--space-3) 0 0;
+  list-style: none;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+}
+
+.app-update-confirm__list > li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-2-5);
+}
+
+.app-update-confirm__list > li + li {
+  border-top: 1px solid var(--color-border-light);
+}
+
+.app-update-confirm__kind {
+  flex: none;
+  min-width: 36px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+}
+
+.app-update-confirm__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

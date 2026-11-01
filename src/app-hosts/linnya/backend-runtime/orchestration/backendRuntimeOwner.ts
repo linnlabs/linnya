@@ -36,6 +36,15 @@ import type { QdrantProcessRuntime } from '../../../../infra/adapters/vector-sto
 import type { LaunchOwnedPipeProcess } from '../../../../shared/process-runtime';
 import type { QueueWorkerRuntime } from '../../../../infra/task-queue/definitions/queueWorkerRuntime';
 import type { RuntimePathRoots } from '../../../../shared/runtime-paths';
+import type {
+  ForegroundAgentRunActivityPort,
+  ForegroundAgentRunPauseSettlement,
+} from '../../adapters/flow/interactive-run/orchestration/foregroundAgentRunActivity';
+
+const EMPTY_AGENT_RUN_PAUSE_SETTLEMENT: ForegroundAgentRunPauseSettlement = Object.freeze({
+  pausedConversationIds: Object.freeze([]),
+  unpausableConversationIds: Object.freeze([]),
+});
 
 export class BackendRuntimeShutdownError extends Error {
   constructor(readonly failures: readonly unknown[]) {
@@ -77,6 +86,7 @@ export class BackendRuntimeOwner {
   private providerModelSynchronization: ProviderModelSynchronizationLifecycle | null = null;
   private sandboxOwnerLifecycle: SandboxAppOwnerLifecyclePort | null = null;
   private sandboxAppOwnerEnded = false;
+  private agentRunActivity: ForegroundAgentRunActivityPort | null = null;
   private shutdownSettlement: Promise<void> | null = null;
 
   // Qdrant服务管理
@@ -206,6 +216,8 @@ export class BackendRuntimeOwner {
   private async stopOnce(): Promise<void> {
     console.log('[Backend Service] 🛑 开始停止服务...');
     const failures: unknown[] = [];
+    // 收口开始后不再对外报告或暂停 Agent run；Flow 与数据库即将随路由一起释放。
+    this.agentRunActivity = null;
 
     const stopStage = async (name: string, stop: () => Promise<void>): Promise<boolean> => {
       try {
@@ -318,6 +330,24 @@ export class BackendRuntimeOwner {
     return this.commandOwnerLifecycle?.hasExecutingCommands() ?? false;
   }
 
+  /** 知识库摄入队列是否还有待处理或执行中的任务；Backend 未就绪或正在收口时为 false。 */
+  hasActiveKnowledgeIngestion(): boolean {
+    if (!this.services || this.shutdownSettlement) return false;
+    const stats = QueueManager.getInstance().getQueueStats();
+    return stats.pending + stats.running > 0;
+  }
+
+  /** Agent runtime 在会话路由装配后才注册；此前没有可报告的前台 run。 */
+  async listActiveAgentRuns() {
+    return this.agentRunActivity ? this.agentRunActivity.listActive() : [];
+  }
+
+  async pauseActiveAgentRuns(): Promise<ForegroundAgentRunPauseSettlement> {
+    return this.agentRunActivity
+      ? this.agentRunActivity.pauseAll()
+      : EMPTY_AGENT_RUN_PAUSE_SETTLEMENT;
+  }
+
   getToken(): string {
     return this.apiServer.getToken();
   }
@@ -345,6 +375,13 @@ export class BackendRuntimeOwner {
       throw new Error('当前 App owner 已注册另一套命令运行时');
     }
     this.commandOwnerLifecycle = lifecycle;
+  }
+
+  registerAgentRunActivity(activity: ForegroundAgentRunActivityPort): void {
+    if (this.agentRunActivity && this.agentRunActivity !== activity) {
+      throw new Error('当前 App owner 已注册另一套 Agent run 活动端口');
+    }
+    this.agentRunActivity = activity;
   }
 
   registerSandboxOwnerLifecycle(lifecycle: SandboxAppOwnerLifecyclePort): void {

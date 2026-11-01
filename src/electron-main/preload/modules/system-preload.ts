@@ -11,7 +11,19 @@
  */
 
 import type { IpcRenderer, IpcRendererEvent } from 'electron';
-import type { UpdateStatusMessage } from '../../../shared/update/definitions/updateMessage';
+import {
+  APP_UPDATE_ACKNOWLEDGE_INSTALLED_CHANNEL,
+  APP_UPDATE_CANCEL_DOWNLOAD_CHANNEL,
+  APP_UPDATE_CHECK_CHANNEL,
+  APP_UPDATE_DOWNLOAD_CHANNEL,
+  APP_UPDATE_GET_STATE_CHANNEL,
+  APP_UPDATE_INSTALL_CHANNEL,
+  APP_UPDATE_STATE_CHANNEL,
+  type AppUpdateCheckResult,
+  type AppUpdateInstallRequest,
+  type AppUpdateInstallResult,
+  type AppUpdateState,
+} from '../../../shared/update/definitions/updateMessage';
 import type { ExportArtifactTargetRequest } from '@linnya/plugin-host-contract/renderer/exportArtifact';
 import {
   WINDOW_CLOSE_PREPARATION_RESULT_CHANNEL,
@@ -95,12 +107,22 @@ export function buildSystemPreloadApi(ipcRenderer: IpcRenderer) {
     },
 
     // --- 应用更新 ---
-    onUpdateMessage: (callback: (message: UpdateStatusMessage) => void) => {
-      const listener = (_event: IpcRendererEvent, message: UpdateStatusMessage) => callback(message);
-      ipcRenderer.on('update-message', listener);
-      return () => {
-        ipcRenderer.removeListener('update-message', listener);
-      };
+    appUpdate: {
+      getState: (): Promise<AppUpdateState> => ipcRenderer.invoke(APP_UPDATE_GET_STATE_CHANNEL),
+      check: (): Promise<AppUpdateCheckResult> => ipcRenderer.invoke(APP_UPDATE_CHECK_CHANNEL),
+      download: (): Promise<void> => ipcRenderer.invoke(APP_UPDATE_DOWNLOAD_CHANNEL),
+      cancelDownload: (): Promise<void> => ipcRenderer.invoke(APP_UPDATE_CANCEL_DOWNLOAD_CHANNEL),
+      install: (request: AppUpdateInstallRequest): Promise<AppUpdateInstallResult> => (
+        ipcRenderer.invoke(APP_UPDATE_INSTALL_CHANNEL, request)
+      ),
+      acknowledgeInstalled: (): Promise<void> => ipcRenderer.invoke(APP_UPDATE_ACKNOWLEDGE_INSTALLED_CHANNEL),
+      onState: (callback: (state: AppUpdateState) => void) => {
+        const listener = (_event: IpcRendererEvent, state: AppUpdateState) => callback(state);
+        ipcRenderer.on(APP_UPDATE_STATE_CHANNEL, listener);
+        return () => {
+          ipcRenderer.removeListener(APP_UPDATE_STATE_CHANNEL, listener);
+        };
+      },
     },
 
     // --- API 端口设置 ---
