@@ -16,6 +16,7 @@ import {
 } from '../../../../infra/adapters/headless-node-runtime';
 import { resolveLocalProcessPlatformRuntime } from '../../../../infra/adapters/local-process-runtime/production-runtime';
 import { createAppServerProcessEnvironment } from '../functions/createAppServerProcessEnvironment';
+import type { ResolvedAppServerProcessLaunch } from '../definitions/resolvedAppServerProcessLaunch';
 
 export async function resolveAppServerProcessLaunch(input: {
   readonly hostKind: 'desktop' | 'cli_runtime';
@@ -31,7 +32,7 @@ export async function resolveAppServerProcessLaunch(input: {
   };
   readonly processEnvironment: NodeJS.ProcessEnv;
   readonly commandApprovalPresenter: { readonly available: boolean };
-}): Promise<AppServerProcessLaunch> {
+}): Promise<ResolvedAppServerProcessLaunch> {
   const runtimeDirectory = path.join(
     input.backendFacts.packaged
       ? input.backendFacts.resourcesPath
@@ -47,7 +48,7 @@ export async function resolveAppServerProcessLaunch(input: {
     architecture: input.backendFacts.architecture,
     verifyPreparedExecutableIntegrity: !input.backendFacts.packaged,
   });
-  const localProcessPlatformRuntime = resolveLocalProcessPlatformRuntime({
+  const localProcessPlatformRuntime = await resolveLocalProcessPlatformRuntime({
     platform: input.backendFacts.platform,
     architecture: input.backendFacts.architecture,
     applicationVersion: input.backendFacts.applicationVersion,
@@ -65,7 +66,7 @@ export async function resolveAppServerProcessLaunch(input: {
     await mkdir(input.backendFacts.runtimePathRoots.appDataRoot, { recursive: true, mode: 0o700 });
   }
 
-  return Object.freeze({
+  const launch: AppServerProcessLaunch = Object.freeze({
     executablePath: headlessNode.executablePath,
     entryPath,
     workingDirectory: input.backendFacts.packaged
@@ -93,4 +94,5 @@ export async function resolveAppServerProcessLaunch(input: {
       },
     }),
   });
+  return Object.freeze({ launch, localProcessPlatformRuntime });
 }

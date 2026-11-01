@@ -1,5 +1,6 @@
-import { spawnSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 import {
   parseLocalProcessPlatformRuntime,
@@ -11,9 +12,10 @@ import {
 } from '../definitions/windowsApplicationSignature';
 
 const WINDOWS_LOCAL_PROCESS_RUNTIME_VERSION = '0.1.0';
+const executeSignatureInspection = promisify(execFile);
 
 const nodeWindowsApplicationSignatureProbe: WindowsApplicationSignatureProbePort = Object.freeze({
-  readAuthenticodeSignature(input: {
+  async readAuthenticodeSignature(input: {
     readonly executablePath: string;
     readonly environment: Readonly<Record<string, string>>;
   }) {
@@ -45,7 +47,9 @@ const nodeWindowsApplicationSignatureProbe: WindowsApplicationSignatureProbePort
       '$publisher = if ($null -eq $signature.SignerCertificate) { $null } else { [string]$signature.SignerCertificate.Subject }',
       '@{ status = [string]$signature.Status; publisher = $publisher } | ConvertTo-Json -Compress',
     ].join('\n');
-    const result = spawnSync(powershellPath, [
+    // 冷启动 PowerShell 与加载系统安全模块实测接近三秒。检查应异步等待一次，
+    // 不能阻塞 Electron Main，也不能把检查超时伪装成“未签名”；保留原始进程错误。
+    const result = await executeSignatureInspection(powershellPath, [
       '-NoLogo',
       '-NoProfile',
       '-NonInteractive',
@@ -54,10 +58,9 @@ const nodeWindowsApplicationSignatureProbe: WindowsApplicationSignatureProbePort
     ], {
       encoding: 'utf8',
       env: inspectionEnvironment,
-      timeout: 3_000,
+      timeout: 30_000,
       windowsHide: true,
     });
-    if (result.status !== 0) return undefined;
     const signature = WindowsApplicationSignatureSchema.safeParse(JSON.parse(result.stdout));
     return signature.success ? signature.data : undefined;
   },
@@ -67,7 +70,7 @@ const nodeWindowsApplicationSignatureProbe: WindowsApplicationSignatureProbePort
  * Electron host 只在 App owner 启动时验证一次本地进程 owner 的发布事实。后续
  * Commands、Sandbox 与 Qdrant 共享同一个 data-only DTO，不各自猜 manifest 或信任来源。
  */
-export function resolveLocalProcessPlatformRuntime(input: {
+export async function resolveLocalProcessPlatformRuntime(input: {
   readonly platform: NodeJS.Platform;
   readonly architecture: NodeJS.Architecture;
   readonly applicationVersion: string;
@@ -76,7 +79,7 @@ export function resolveLocalProcessPlatformRuntime(input: {
   readonly packaged: boolean;
   readonly hostEnvironment: Readonly<Record<string, string>>;
   readonly signatureProbe?: WindowsApplicationSignatureProbePort;
-}): LocalProcessPlatformRuntime {
+}): Promise<LocalProcessPlatformRuntime> {
   if (input.platform === 'darwin') {
     return parseLocalProcessPlatformRuntime({ schema_version: 1, platform: 'darwin' });
   }
@@ -88,7 +91,7 @@ export function resolveLocalProcessPlatformRuntime(input: {
   }
 
   const trust = input.packaged
-    ? resolveReleaseTrust(input)
+    ? await resolveReleaseTrust(input)
     : { kind: 'development' as const };
   return parseLocalProcessPlatformRuntime({
     schema_version: 1,
@@ -106,14 +109,14 @@ export function resolveLocalProcessPlatformRuntime(input: {
   });
 }
 
-function resolveReleaseTrust(input: {
+async function resolveReleaseTrust(input: {
   readonly applicationExecutablePath: string;
   readonly hostEnvironment: Readonly<Record<string, string>>;
   readonly signatureProbe?: WindowsApplicationSignatureProbePort;
-}): { readonly kind: 'release'; readonly expected_publisher_identity: string }
-  | { readonly kind: 'release_unsigned' } {
+}): Promise<{ readonly kind: 'release'; readonly expected_publisher_identity: string }
+  | { readonly kind: 'release_unsigned' }> {
   // expected publisher 必须来自已签名 App 自身，而不是同目录可改 manifest 或普通环境变量。
-  const signature = (input.signatureProbe ?? nodeWindowsApplicationSignatureProbe)
+  const signature = await (input.signatureProbe ?? nodeWindowsApplicationSignatureProbe)
     .readAuthenticodeSignature({
       executablePath: input.applicationExecutablePath,
       environment: input.hostEnvironment,

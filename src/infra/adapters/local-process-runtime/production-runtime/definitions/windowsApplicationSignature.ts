@@ -12,5 +12,5 @@ export interface WindowsApplicationSignatureProbePort {
   readAuthenticodeSignature(input: {
     readonly executablePath: string;
     readonly environment: Readonly<Record<string, string>>;
-  }): WindowsApplicationSignature | undefined;
+  }): Promise<WindowsApplicationSignature | undefined>;
 }

@@ -1,4 +1,4 @@
-import { resolveLocalProcessPlatformRuntime } from '../../../infra/adapters/local-process-runtime/production-runtime';
+import type { ResolvedAppServerProcessLaunch } from '../../../app-hosts/linnya/app-server-runtime';
 import { createElectronCommandIsolationSetupPort } from '../../desktop-capabilities/command-isolation-setup/createElectronCommandIsolationSetupPort';
 import path from 'node:path';
 import type { Writable } from 'node:stream';
@@ -27,7 +27,6 @@ import {
   createExternalAuthorizationBrowserRpcHandlers,
 } from '../../../app-hosts/linnya/application/provider-account-authorization';
 import { createAppServerActivityRpcGateway } from '../../../app-hosts/linnya/app-server-runtime/features/activity-rpc';
-import type { AppServerProcessLaunch } from '../../../infra/adapters/app-server-process';
 import { createNodeAppServerProcessSupervisor } from '../../../infra/adapters/app-server-process';
 import type { AppServerBackendConfiguration } from '../../../app-hosts/linnya/app-server-bootstrap';
 import type { BackendBootstrapFacts } from '../../../app-hosts/linnya/backend-runtime';
@@ -66,9 +65,9 @@ export async function createElectronAppServerRuntime(input: {
     input.runtimePathRoots.appDataRoot,
   );
   const textMeasurement = createElectronTextMeasurementWorkerRuntime();
-  let launch: AppServerProcessLaunch;
+  let preparedLaunch: ResolvedAppServerProcessLaunch;
   try {
-    launch = await resolveAppServerProcessLaunch({
+    preparedLaunch = await resolveAppServerProcessLaunch({
       hostKind: 'desktop',
       backendConfiguration: input.backendConfiguration,
       backendFacts: input.backendFacts,
@@ -85,6 +84,7 @@ export async function createElectronAppServerRuntime(input: {
     await textMeasurement.dispose();
     throw error;
   }
+  const { launch, localProcessPlatformRuntime: runtime } = preparedLaunch;
   const webPageRenderer = WebPageRenderManager.instance();
   const hiddenWorkerAdmission = createHiddenWorkerArtifactAdmission([
     input.pluginRuntime.userPluginRoot,
@@ -100,13 +100,6 @@ export async function createElectronAppServerRuntime(input: {
   ]);
   const rpcHandlers = new Map<string, AppServerRpcHandler>();
   if (input.backendFacts.platform === 'win32') {
-    const runtime = resolveLocalProcessPlatformRuntime({
-      platform: input.backendFacts.platform, architecture: input.backendFacts.architecture,
-      applicationVersion: input.backendFacts.applicationVersion,
-      applicationExecutablePath: input.backendFacts.applicationExecutablePath,
-      resourcesPath: input.backendFacts.resourcesPath, packaged: input.backendFacts.packaged,
-      hostEnvironment: input.commandHostEnvironment.entries,
-    });
     if (runtime.platform !== 'win32') throw new Error('Windows command runtime expected');
     registerHandlers(rpcHandlers, createCommandIsolationSetupRpcHandlers(createElectronCommandIsolationSetupPort({
       runtime: {

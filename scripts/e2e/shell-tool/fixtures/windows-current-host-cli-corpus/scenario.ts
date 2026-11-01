@@ -222,7 +222,7 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
       platform: process.platform,
       environment: environment.entries,
       revision: ENVIRONMENT_REVISION,
-      platformRuntime: resolveLocalProcessPlatformRuntime({
+      platformRuntime: await resolveLocalProcessPlatformRuntime({
         platform: process.platform,
         architecture: process.arch,
         applicationVersion: app.getVersion(),

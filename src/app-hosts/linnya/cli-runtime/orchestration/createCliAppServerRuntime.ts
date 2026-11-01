@@ -115,7 +115,7 @@ export async function createCliAppServerRuntime(
     mailboxRoot,
   }));
 
-  const launch = await resolveAppServerProcessLaunch({
+  const { launch } = await resolveAppServerProcessLaunch({
     hostKind: 'cli_runtime',
     backendConfiguration: {
       qdrant: { host: '127.0.0.1', port: input.qdrantPort },

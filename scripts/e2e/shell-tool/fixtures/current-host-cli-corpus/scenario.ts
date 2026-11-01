@@ -281,7 +281,7 @@ export async function runCurrentHostCliCorpusScenario(input: {
       platform: process.platform,
       environment: environmentResolution.snapshot.entries,
       revision: ENVIRONMENT_REVISION,
-      platformRuntime: resolveLocalProcessPlatformRuntime({
+      platformRuntime: await resolveLocalProcessPlatformRuntime({
         platform: process.platform,
         architecture: process.arch,
         applicationVersion: app.getVersion(),

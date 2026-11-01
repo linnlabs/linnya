@@ -179,7 +179,7 @@ export async function runProductionAgentProcessScenario(input: {
       platform: process.platform,
       environment: process.env,
       revision: randomUUID(),
-      platformRuntime: resolveLocalProcessPlatformRuntime({
+      platformRuntime: await resolveLocalProcessPlatformRuntime({
         platform: process.platform,
         architecture: process.arch,
         applicationVersion: app.getVersion(),

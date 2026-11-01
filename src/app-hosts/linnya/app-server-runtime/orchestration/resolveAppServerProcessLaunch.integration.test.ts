@@ -21,7 +21,7 @@ afterEach(async () => {
 describe('App Server Node runtime admission', () => {
   it('打包态将重签 Node 的固定路径传入启动计划和 bootstrap', async () => {
     const input = await createRuntimeFixture(true);
-    const launch = await resolveAppServerProcessLaunch(input);
+    const { launch, localProcessPlatformRuntime } = await resolveAppServerProcessLaunch(input);
     const executablePath = path.join(input.backendFacts.resourcesPath, 'headless-node-runtime/darwin/arm64/bin/node');
 
     expect(launch.executablePath).toBe(executablePath);
@@ -35,6 +35,7 @@ describe('App Server Node runtime admission', () => {
     const bootstrap = parseAppServerBootstrap(JSON.parse(new TextDecoder().decode(launch.bootstrapBytes)));
     expect(bootstrap.headless_node_executable_path).toBe(executablePath);
     expect(bootstrap.backend_facts.packaged).toBe(true);
+    expect(bootstrap.local_process_platform_runtime).toEqual(localProcessPlatformRuntime);
   });
 
   it('开发态仍拒绝与准备清单不同的 Node，不生成可启动计划', async () => {

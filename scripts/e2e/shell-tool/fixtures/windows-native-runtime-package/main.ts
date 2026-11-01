@@ -46,7 +46,7 @@ function readAll(stream: Readable): Promise<Buffer> {
 }
 
 // 用真实已打包 App 的 Authenticode 状态装配，不能用 development 旁路正式入口。
-const platformRuntime = resolveLocalProcessPlatformRuntime({
+const platformRuntimePromise = resolveLocalProcessPlatformRuntime({
   platform: process.platform,
   architecture: process.arch,
   applicationVersion: app.getVersion(),
@@ -58,7 +58,8 @@ const platformRuntime = resolveLocalProcessPlatformRuntime({
   )),
 });
 
-function createLoaderOptions(manifestPath: string): WindowsOwnedPipeNativeBindingLoaderOptions {
+async function createLoaderOptions(manifestPath: string): Promise<WindowsOwnedPipeNativeBindingLoaderOptions> {
+  const platformRuntime = await platformRuntimePromise;
   if (platformRuntime.platform !== 'win32' || platformRuntime.trust.kind !== 'release_unsigned') {
     throw new Error('Packaged fixture must resolve the unsigned release trust from its executable');
   }
@@ -75,7 +76,7 @@ async function runRealCommand(manifestPath: string): Promise<{
   readonly exitCode: number;
 }> {
   const binding = await createWindowsOwnedPipeNativeBindingLoader(
-    createLoaderOptions(manifestPath),
+    await createLoaderOptions(manifestPath),
   ).load();
   const launch = createWindowsJobOwnedPipeProcessLauncher(input => binding.createWindowsOwnedPipeProcess(input));
   const ownedProcess = await launch({
@@ -108,7 +109,7 @@ async function runRealCommand(manifestPath: string): Promise<{
 async function expectLoadError(manifestPath: string): Promise<string> {
   try {
     await createWindowsOwnedPipeNativeBindingLoader(
-      createLoaderOptions(manifestPath),
+      await createLoaderOptions(manifestPath),
     ).load();
   } catch (error) {
     if (error instanceof WindowsNativeRuntimeLoadError) return error.code;
