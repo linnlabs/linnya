@@ -11,7 +11,7 @@ import {
 
 const logger = new Logger('SystemFontResolution');
 
-let installedCatalogCachePath: string | null = null;
+let installedRuntime: { readonly catalog: FontCatalog; readonly cacheFilePath: string } | null = null;
 
 export function configureDefaultSystemFontResolution(): void {
   const runtimePathRoots = readInstalledRuntimePathRoots();
@@ -27,10 +27,11 @@ export function configureDefaultSystemFontResolution(): void {
   const catalog = new FontCatalog({ cacheFilePath });
   configureDefaultFontResolutionService({ catalog });
   configureDefaultFontCatalogQueryService({ catalog });
-  installedCatalogCachePath = cacheFilePath;
+  installedRuntime = { catalog, cacheFilePath };
 
   void catalog.scan()
     .then(() => {
+      if (!catalog.isReady()) return;
       logger.info(`font_resolution.catalog.ready fonts=${catalog.allFonts().length}`);
     })
     .catch((error: unknown) => {
@@ -39,12 +40,14 @@ export function configureDefaultSystemFontResolution(): void {
     });
 }
 
-export function resetDefaultSystemFontResolution(): void {
+export async function resetDefaultSystemFontResolution(): Promise<void> {
+  const runtime = installedRuntime;
+  installedRuntime = null;
   resetDefaultFontResolutionService();
   resetDefaultFontCatalogQueryService();
-  installedCatalogCachePath = null;
+  await runtime?.catalog.dispose();
 }
 
 export function getDefaultSystemFontResolutionRuntimeStateForTests(): string | null {
-  return installedCatalogCachePath;
+  return installedRuntime?.cacheFilePath ?? null;
 }

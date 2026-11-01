@@ -1,4 +1,5 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { EventEmitter, once } from 'node:events';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setImmediate } from 'node:timers/promises';
@@ -163,6 +164,45 @@ describe('FontCatalog', () => {
 
     expect(catalog.getState()).toBe('ready');
     expect(catalog.isReady()).toBe(true);
+  });
+
+  it('退出等待当前字体读取后停止扫描，保留旧缓存且不发布部分目录', async () => {
+    const root = createTempDir();
+    writeFileSync(join(root, 'First.ttf'), 'first font');
+    writeFileSync(join(root, 'Second.ttf'), 'second font');
+    const cacheFilePath = join(root, 'font-catalog-cache.json');
+    const previousCache = JSON.stringify({ version: 4, entries: [] });
+    writeFileSync(cacheFilePath, previousCache);
+    const parserEvents = new EventEmitter();
+    const parserEntered = once(parserEvents, 'entered');
+    const finishCurrentFile = once(parserEvents, 'continue');
+    const parsed: string[] = [];
+    const catalog = new FontCatalog({
+      scanRoots: [root], cacheFilePath,
+      parseFontFileMetadata: async filePath => {
+        parsed.push(filePath);
+        parserEvents.emit('entered');
+        await finishCurrentFile;
+        return [makeMeta({ filePath })];
+      },
+    });
+
+    const scan = catalog.scan();
+    await parserEntered;
+    const waitingQuery = expect(catalog.waitUntilReady()).rejects.toBeInstanceOf(FontCatalogUnavailableError);
+    let disposed = false;
+    const disposal = catalog.dispose().then(() => { disposed = true; });
+    await setImmediate();
+    expect(disposed).toBe(false);
+    expect(catalog.getState()).toBe('disposed');
+    parserEvents.emit('continue');
+    await Promise.all([scan, disposal, waitingQuery]);
+
+    expect(parsed).toEqual([join(root, 'First.ttf')]);
+    expect(catalog.allFonts()).toEqual([]);
+    expect(catalog.isReady()).toBe(false);
+    expect(readFileSync(cacheFilePath, 'utf8')).toBe(previousCache);
+    await expect(catalog.scan()).rejects.toBeInstanceOf(FontCatalogUnavailableError);
   });
 
   it('扫描失败进入 failed 终态，查询返回稳定错误而不是假空名单', async () => {

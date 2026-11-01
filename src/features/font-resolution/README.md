@@ -20,6 +20,7 @@
 - FontCatalog 只缓存系统字体 metadata 与文件身份（path/mtime/size），不复制、不缓存、不打包字体文件本体。
 - 冷扫描通过 Node 流式读取计算文件 SHA-256，并使用 fontkit 异步打开文件；不能在业务 Backend 事件循环同步读取和散列整份系统字体。大型 CJK collection 和慢磁盘会让普通 Renderer RPC 超时。同步单文件解析入口仍供显式同步调用使用，不能作为目录扫描默认实现。
 - FontCatalog 以 `idle -> scanning -> ready | failed` 表达扫描生命周期。查询必须等待 `ready/failed` 真实终态；`failed` 或尚未启动扫描时抛出稳定的 `FontCatalogUnavailableError`，不能返回假的空目录。
+- Backend runtime effect 退出时须 dispose 当前目录并等待正在读取的文件完成；`disposed` 后不再遍历或解析下一份字体，不发布部分索引、不覆盖成功缓存。后台扫描不能越过 Backend owner 的退出屏障继续运行。
 - FontResolutionService 是唯一的字体解析入口：目录未就绪时返回 `catalogReady=false` 并沿用原始字体名；目录就绪后用 OS/2 Unicode range 建立主导脚本粗候选池，再用字体 cmap 对当前 run 的实际 code point 做全覆盖判断。精确 family 已安装但 cmap 不覆盖正文时同样不能强行命中；OS/2 漏报某个 block 时不能否定 cmap 的真实字形。
 - FontCatalogQueryService 是面向插件的只读事实入口：`checkFamily` 按规范化 family 精确检查，`listFamilies` 按脚本稳定排序、去重、过滤点号前缀的系统内部 UI 字体、限制 1–100 项并以 offset 分页。查询结果只包含 family、脚本候选、regular/bold/italic 和 monospace，不暴露 file path、PostScript name、face index 或缓存信息。
 - 完整应用由 platform runtime effect 配置默认字体解析与查询；独立 backend 进程必须持有 `SystemFontResolutionRuntime`，等待同一份 catalog 扫描完成后再执行业务，并在进程生命周期结束时 dispose。只创建 `SystemFontCatalogQueryRuntime` 不能让默认排版解析器就绪。

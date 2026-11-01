@@ -1,6 +1,6 @@
 import type { ScriptClass } from './types.js';
 
-export type FontCatalogState = 'idle' | 'scanning' | 'ready' | 'failed';
+export type FontCatalogState = 'idle' | 'scanning' | 'ready' | 'failed' | 'disposed';
 export type FontFamilyStyle = 'regular' | 'bold' | 'italic';
 
 /** 面向上层设计能力的字体族事实；有意不包含字体文件路径与 face index。 */

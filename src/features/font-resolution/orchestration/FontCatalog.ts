@@ -50,6 +50,9 @@ export class FontCatalog {
   }
 
   scan(): Promise<void> {
+    if (this.isDisposed()) {
+      return Promise.reject(new FontCatalogUnavailableError());
+    }
     if (this.state === 'scanning' && this.activeScan) {
       return this.activeScan;
     }
@@ -63,11 +66,22 @@ export class FontCatalog {
   private async performScan(): Promise<void> {
     try {
       await this.buildCatalog();
-      this.state = 'ready';
+      if (!this.isDisposed()) this.state = 'ready';
     } catch (error) {
-      this.state = 'failed';
+      if (!this.isDisposed()) this.state = 'failed';
       throw error;
     }
+  }
+
+  async dispose(): Promise<void> {
+    this.state = 'disposed';
+    // 不再开启下一份字体 I/O；当前文件先自然完成，避免退出后后台扫描继续占住 Node。
+    // 扫描失败由 scan 的调用方接纳；释放只等待该任务收口，不重报此前的目录错误。
+    await this.activeScan?.catch(() => undefined);
+  }
+
+  private isDisposed(): boolean {
+    return this.state === 'disposed';
   }
 
   private async buildCatalog(): Promise<void> {
@@ -77,7 +91,9 @@ export class FontCatalog {
     const fontFiles = await this.collectFontFiles();
 
     for (const filePath of fontFiles) {
+      if (this.isDisposed()) return;
       const identity = await readFontFileIdentity(filePath);
+      if (this.isDisposed()) return;
       if (identity == null) {
         continue;
       }
@@ -94,6 +110,8 @@ export class FontCatalog {
       nextFonts.push(...entry.fonts);
     }
 
+    // 取消扫描不能发布不完整目录，也不能覆盖上一次成功扫描的缓存。
+    if (this.isDisposed()) return;
     this.fonts = nextFonts;
     this.fontsByFamily = buildFamilyIndex(nextFonts);
     await writeCache(this.cacheFilePath, [...nextEntries.values()]);
@@ -131,12 +149,14 @@ export class FontCatalog {
     } catch {
       throw new FontCatalogUnavailableError();
     }
+    if (!this.isReady()) throw new FontCatalogUnavailableError();
   }
 
   private async collectFontFiles(): Promise<readonly string[]> {
     const fontFiles: string[] = [];
     for (const root of this.scanRoots) {
-      await collectFontFilesFromRoot(resolve(root), fontFiles);
+      if (this.isDisposed()) return [];
+      await collectFontFilesFromRoot(resolve(root), fontFiles, () => this.isDisposed());
     }
     return fontFiles.sort((first, second) => first.localeCompare(second));
   }
@@ -152,7 +172,11 @@ export class FontCatalog {
   }
 }
 
-async function collectFontFilesFromRoot(root: string, fontFiles: string[]): Promise<void> {
+async function collectFontFilesFromRoot(
+  root: string,
+  fontFiles: string[],
+  isDisposed: () => boolean,
+): Promise<void> {
   let entries: Dirent[];
   try {
     entries = await readdir(root, { withFileTypes: true });
@@ -162,9 +186,10 @@ async function collectFontFilesFromRoot(root: string, fontFiles: string[]): Prom
   }
 
   for (const entry of entries) {
+    if (isDisposed()) return;
     const entryPath = join(root, entry.name);
     if (entry.isDirectory()) {
-      await collectFontFilesFromRoot(entryPath, fontFiles);
+      await collectFontFilesFromRoot(entryPath, fontFiles, isDisposed);
       continue;
     }
     if (entry.isFile() && isSupportedFontFile(entry.name)) {
