@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { EventEmitter, once } from 'node:events';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -96,6 +96,27 @@ describe('FontCatalog', () => {
 
     expect(parseCount).toBe(2);
     expect(catalog.findByFamily('Changing Sans 2')).toHaveLength(1);
+  });
+
+  it('旧目录缓存即使文件未变化，也重新识别被误归为 regular 的 Semibold', async () => {
+    const root = createTempDir();
+    const filePath = join(root, 'Semibold.ttf');
+    const cacheFilePath = join(root, 'font-catalog-cache.json');
+    writeFileSync(filePath, 'unchanged font bytes');
+    const { size, mtimeMs } = statSync(filePath);
+    writeFileSync(cacheFilePath, JSON.stringify({ version: 4, entries: [{ filePath, size, mtimeMs,
+      fonts: [makeMeta({ filePath, family: 'CJK Sans', subfamily: 'Semibold', bold: false })],
+    }] }));
+    let parseCount = 0;
+    const catalog = new FontCatalog({ scanRoots: [root], cacheFilePath,
+      parseFontFileMetadata: () => {
+        parseCount += 1;
+        return [makeMeta({ filePath, family: 'CJK Sans', subfamily: 'Semibold', bold: true })];
+      },
+    });
+    await catalog.scan();
+    expect(parseCount).toBe(1);
+    expect(catalog.findByFamily('CJK Sans')[0]?.bold).toBe(true);
   });
 
   it('递归扫描 .ttf/.otf/.ttc，并按脚本覆盖返回候选池', async () => {

@@ -15,6 +15,7 @@ declare module 'fontkit' {
   export interface FontKitOS2Table {
     version: number;
     xAvgCharWidth: number;
+    usWeightClass: number;
     panose: readonly number[];
     ulCharRange: readonly number[];
     fsSelection: FontKitSelectionFlags;

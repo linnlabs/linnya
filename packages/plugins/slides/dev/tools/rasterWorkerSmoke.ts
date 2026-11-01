@@ -1,5 +1,6 @@
 import { assertChartPlotBackgrounds, assertGeneratedChartRenders, GENERATED_CHART_RASTER_SOURCE } from './rasterChartFidelity';
 import { assertIntrinsicTextFidelity } from './intrinsicTextFidelity';
+import { assertTextEmphasisFidelity } from './textEmphasisFidelity';
 import { materializeIntrinsicTextBoxes } from '../../src/backend/engine/text/materializeIntrinsicTextBoxes';
 import { assertGradientFidelityRenders } from './rasterGradientFidelity';
 import { assertSvgGraphicFallbackRenders } from './rasterSvgGraphicFidelity';
@@ -433,6 +434,10 @@ async function assertSystemFontDecksRender(): Promise<void> {
     ))?.family ?? cases[0].family;
     await assertTextClippingAuditRenders(clippingFontFamily);
     await assertIntrinsicTextFidelity(clippingFontFamily, compileDeckSourceToRenderModel);
+    const pingFang = await fontRuntime.checkFontFamily('PingFang SC');
+    await assertTextEmphasisFidelity([
+      ...cases.map(fontCase => fontCase.family), ...(pingFang.installed ? ['PingFang SC'] : []),
+    ], compileDeckSourceToRenderModel);
   } finally {
     fontRuntime.dispose();
     await fs.rm(runtimeRoot, { recursive: true, force: true });

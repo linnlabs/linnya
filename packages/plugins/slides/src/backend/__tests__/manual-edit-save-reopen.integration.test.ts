@@ -111,12 +111,12 @@ it.each(['explicit', 'system'])('连续编辑经真实编译与 SQLite 保存后
     } })).toMatchObject({ status: 'conflict', reason: 'command_reused' });
 
     // 原始源码富文本尚无人工 content 时，整框操作也必须覆盖其显式局部样式。
-    queue.enqueue({ operation: { op: 'set_text_style', target: captionTarget, fontSizePt: 22, color: '#116644' } });
+    queue.enqueue({ operation: { op: 'set_text_style', target: captionTarget, fontSizePt: 22, color: '#116644', bold: true, italic: true } });
     await queue.flush();
     const initialStyleSaved = await repository.getPresentation('deck');
     const initialText = initialStyleSaved?.deckSpec.slides[0].spec.elements.find(element => element._authoringRef?.editKey === captionTarget.editKey);
-    expect(initialText).toMatchObject({ content: [{ text: 'Revenue ', style: { bold: true, fontSize: 22, color: '#116644' } },
-      { text: '30%', style: { fontSize: 22, color: '#116644' } }] });
+    expect(initialText).toMatchObject({ content: [{ text: 'Revenue ', style: { bold: true, italic: true, fontSize: 22, color: '#116644' } },
+      { text: '30%', style: { bold: true, italic: true, fontSize: 22, color: '#116644' } }] });
 
     // 同一正式队列接收前端选区事务产出的作者 runs，验证没有只改 DOM 而漏保存。
     const captionDoc = textContentToDocument([{ text: 'Revenue ', style: { bold: true } },
@@ -143,7 +143,7 @@ it.each(['explicit', 'system'])('连续编辑经真实编译与 SQLite 保存后
       { text: 'Revenue ', style: { bold: true } }, { text: '30%', style: { fontSize: 28, color: '#E11D48' } },
     ] } })).toMatchObject({ status: 'committed', revision: 7 });
     // 局部 → 整框 → 再局部：真实编译结果作为下一次原位输入的唯一作者值。
-    queue.enqueue({ operation: { op: 'set_text_style', target: captionTarget, fontSizePt: 32, color: '#2563EB' } });
+    queue.enqueue({ operation: { op: 'set_text_style', target: captionTarget, fontSizePt: 32, color: '#2563EB', bold: false, italic: false } });
     await queue.flush();
     const wholeSaved = await repository.getPresentation('deck');
     if (!wholeSaved) throw new Error('Missing whole-text revision');
@@ -151,11 +151,11 @@ it.each(['explicit', 'system'])('连续编辑经真实编译与 SQLite 保存后
       wholeSaved.deckSpec, { width: 13.333, height: 7.5 });
     const wholeText = wholeModel.slides[0].elements.find(node => node.authoringRef?.editKey === captionTarget.editKey)?.authoringEdit?.text;
     if (wholeText?.kind !== 'rich_text' || !wholeText.content) throw new Error('Missing editable whole text');
-    expect(wholeText.content).toEqual([{ text: 'Revenue ', style: { bold: true, fontSize: 32, color: '#2563EB' } },
-      { text: '30%', style: { fontSize: 32, color: '#2563EB' } }]);
+    expect(wholeText.content).toEqual([{ text: 'Revenue ', style: { bold: false, italic: false, fontSize: 32, color: '#2563EB' } },
+      { text: '30%', style: { bold: false, italic: false, fontSize: 32, color: '#2563EB' } }]);
     const nextDoc = textContentToDocument(wholeText.content);
     const nextState = EditorState.create({ doc: nextDoc, selection: TextSelection.create(nextDoc, 9, 12) });
-    const finalContent = documentToTextContent(nextState.apply(patchSelectedTextStyle(nextState, { fontSizePt: 20 })).doc);
+    const finalContent = documentToTextContent(nextState.apply(patchSelectedTextStyle(nextState, { fontSizePt: 20, bold: true, italic: true })).doc);
     queue.enqueue({ operation: { op: 'set_text_content', targetKind: 'text', target: captionTarget, content: finalContent } });
     await queue.flush();
     const finalSaved = await repository.getPresentation('deck');
@@ -181,9 +181,12 @@ it.each(['explicit', 'system'])('连续编辑经真实编译与 SQLite 保存后
     const textRuns = Array.from(document.getElementsByTagName('a:r'));
     const selectedRun = textRuns.find(run => run.getElementsByTagName('a:t')[0]?.textContent === '30%');
     expect(selectedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('sz')).toBe('2000');
+    expect(selectedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('b')).toBe('1');
+    expect(selectedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('i')).toBe('1');
     expect(selectedRun?.getElementsByTagName('a:srgbClr')[0]?.getAttribute('val')).toBe('2563EB');
     const retainedRun = textRuns.find(run => run.getElementsByTagName('a:t')[0]?.textContent === 'Revenue ');
-    expect(retainedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('b')).toBe('1');
+    expect(retainedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('b')).not.toBe('1');
+    expect(retainedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('i')).not.toBe('1');
     expect(retainedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('sz')).toBe('3200');
     expect(retainedRun?.getElementsByTagName('a:srgbClr')[0]?.getAttribute('val')).toBe('2563EB');
     expect(xml).not.toContain('Original'); expect(xml).toContain('CC5500');

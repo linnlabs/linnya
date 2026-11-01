@@ -53,7 +53,7 @@ DeckSpec / CanonicalDeck
 
 - generated 未声明行距为 1.0；不能从字体 metrics 推导默认倍数。
 - prewarm 与同步 measure 必须使用相同 clusters、run style 和字号档位。
-- 字体解析写入的 `resolvedFontWeight/resolvedFontStyle` 是实际 face 事实；prewarm、HarfBuzz、行 metrics 与 renderer 都必须优先消费它们，不能继续拿作者请求样式测量另一张 face。
+- 字体解析写入的 `resolvedFontWeight/resolvedFontStyle` 是底层字面的二档样式事实；prewarm、HarfBuzz 与行 metrics 使用它们，不能拿另一张 face 测量。绘制保留作者请求的 bold/italic：缺少对应字面时允许浏览器合成强调，不能因为 resolved 为 normal 而静默取消作者样式。平台将 Semibold 归入 bold 二档，确保 PingFang 粗体测量与浏览器的实际字面匹配；合成效果的字形绘制边界与排版 advance 仍分开。
 - `RunAdvanceProvider` 的长度不匹配立即失败，不做启发式补齐。
 - shape inner text 与导出一致使用 shrink-text；resize-shape 只在 finalization 后修改外框。
 - table cell 缺 `textLayout` 是生产合同错误，renderer 必须 fail closed。

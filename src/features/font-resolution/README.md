@@ -27,14 +27,14 @@
 - `resolvedFamily` 是渲染/测量应使用的字体声明，`fontFamily/request.family` 是 PPTX 导出必须保留的原始声明。
 - 替换打分只表达“谁更接近”，不锁定绝对分数；候选 PANOSE 的 `0/Any` 与非正 `xAvgCharWidth` 是低置信 metadata，必须计入罚分，不能被当作零差异。请求 family 已安装但缺少当前字形时，仍必须用该 family 中最接近请求样式的 face 作为相似度参考，不能退回通用脚本基线。只要存在 bold/italic 完全匹配且 cmap 覆盖正文的 face，就只能在该样式集合内继续比较；样式不匹配的 face 只在没有匹配样式时参与选择。
 - 原始请求字体名和解析后的字体名要同时保留：渲染/测量使用解析结果，PPTX 导出继续写原始字体名。
-- OS/2 Unicode Range 只用于 `latin`、`eastAsian`、`complex` 候选池。bit 60 是 Private Use Area，不属于 CJK。最终覆盖事实来自 fontkit `characterSet` 压缩后的 cmap 闭区间；FontCatalog cache v4 持久化这些区间，不持久化字体文件本体。
+- OS/2 Unicode Range 只用于 `latin`、`eastAsian`、`complex` 候选池。bit 60 是 Private Use Area，不属于 CJK。最终覆盖事实来自 fontkit `characterSet` 压缩后的 cmap 闭区间；FontCatalog cache 持久化这些区间，不持久化字体文件本体。
 - macOS 点号前缀 family 是系统内部 UI 实现：精确请求仍可查询安装事实，但不能进入 AI 设计列表或缺失字体替代池。
-- 对外样式只承诺当前 metadata 与排版链已稳定表达的 regular、bold、italic；数值字重不在当前查询合同内。
+- 对外样式只承诺 regular、bold、italic；bold 二档包含 OS/2 bold 标志或 weight class ≥600 的字面，让 PingFang 等仅提供 Semibold 的字体正确参与粗体匹配。数值字重不在当前查询合同内。catalog cache v5 会重新扫描旧缓存，避免沿用把所有 PingFang 字重归为 regular 的事实。
 
 ## 验证入口
 
 - 确定性查询与解析测试使用可注入 catalog，并包含 Heiti SC 标点漏报与 regular/bold 竞争语料：`pnpm exec vitest run src/features/font-resolution packages/plugins/slides/src/backend/engine/text/__tests__/font-resolution-integration.test.ts`。
-- 真实系统目录与浏览器渲染 smoke：`pnpm --dir packages/plugins/slides run smoke:raster-worker`。该命令从当前机器分别读取 Latin / East Asian 候选，只使用候选明确返回的 regular+bold 样式，把主题字体经 deck.js、RenderModel 和共享文本布局送入 Electron raster worker，并检查中英文文本产生可见 PNG 像素。
+- 真实系统目录与浏览器渲染 smoke：`pnpm --dir packages/plugins/slides run smoke:raster-worker`。该命令从当前机器分别读取 Latin / East Asian 候选，验证主题字体经 deck.js、RenderModel 和共享文本布局进入 Electron raster worker。强调回归使用真实 HarfBuzz 和像素比较，覆盖普通、粗体、斜体、粗斜体及显式取消；已安装 PingFang SC 时必须验证 Semibold 与 Regular 命中不同字面。图片保存在 Slides 的 `dist/dev/text-emphasis-fidelity/`。
 - 真实 smoke 只能证明“当前机器的候选可进入完整渲染链”，不能把 OS/2 脚本候选提升为某种自然语言的完整字形覆盖证明。
 
 `resolveFontText` 是需要混合字形回退的文本入口：按完整 grapheme 解析 cmap 覆盖，连续同 face、同脚本的片段合并。它保留每段原始请求字体，不让一个缺失汉字替换整段拉丁数字。调用方不能拆开组合字符或把解析 family 写回作者字体声明。

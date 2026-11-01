@@ -111,7 +111,9 @@ function buildMetadata(
     typoDescent: normalizeMetric(os2.typoDescender, font.unitsPerEm),
     typoLineGap: normalizeMetric(os2.typoLineGap, font.unitsPerEm),
     useTypoMetrics: os2.fsSelection.useTypoMetrics,
-    bold: os2.fsSelection.bold,
+    // 平台只暴露 regular/bold 两档；Semibold 是 CSS bold 在 PingFang 等字体中的实际匹配字面。
+    // 这类字体没有 fsSelection.bold，若忽略 weight class，测量会始终退回 Regular。
+    bold: os2.fsSelection.bold || os2.usWeightClass >= 600,
     italic: os2.fsSelection.italic || os2.fsSelection.oblique,
   };
 }

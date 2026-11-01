@@ -289,7 +289,7 @@ export interface RenderTextRun {
   fontResolution?: TextFontResolutionKind;
   /** 实际命中字体文件/face 的安全指纹；不得替换为本机绝对路径。 */
   fontFaceFingerprint?: TextFontFaceFingerprint;
-  /** 实际命中 face 的样式；测量和绘制必须优先于作者请求样式。 */
+  /** 实际命中 face 的二档样式；测量使用该事实，绘制另保留作者强调以允许浏览器合成。 */
   resolvedFontWeight?: 'normal' | 'bold';
   resolvedFontStyle?: 'normal' | 'italic';
   fontSize?: number;

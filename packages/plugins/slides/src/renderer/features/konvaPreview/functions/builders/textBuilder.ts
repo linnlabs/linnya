@@ -113,8 +113,10 @@ function resolveLayoutSliceStyle(
 
 function toKonvaFontStyle(run: RenderTextRun): string {
   const parts: string[] = [];
-  if ((run.resolvedFontStyle ?? run.fontStyle) === 'italic') parts.push('italic');
-  if ((run.resolvedFontWeight ?? run.fontWeight) === 'bold') parts.push('bold');
+  // resolved 样式描述底层字面，不能取消作者的强调；缺少对应字面时由浏览器合成。
+  // 仍保留替代字面固有的强调，避免把已用粗体测量的替代字体重新声明成 regular。
+  if (run.fontStyle === 'italic' || run.resolvedFontStyle === 'italic') parts.push('italic');
+  if (run.fontWeight === 'bold' || run.resolvedFontWeight === 'bold') parts.push('bold');
   return parts.length > 0 ? parts.join(' ') : 'normal';
 }
 
