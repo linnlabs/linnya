@@ -35,7 +35,6 @@ export interface WorkspaceNavigationPort {
   openEmptyProjectFiles(projectId: string): Promise<void>;
   openKnowledgeBase(): Promise<void>;
   openPluginStore(): Promise<void>;
-  openProjectSetup(projectId: string): Promise<void>;
   /**
    * 工具卡/实体引用打开文档内目标时使用。
    * 优先复用 fileSession 的保存/关闭生命周期；只读 runtime 文档仍走 documentRuntimeLoaders。

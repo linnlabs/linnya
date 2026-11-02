@@ -105,13 +105,3 @@
 .conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view:is(:hover, :focus-within)::-webkit-scrollbar-thumb:hover {
   background-color: var(--scrollbar-thumb-hover-color);
 }
-
-.editor-shell.for-project-setup .conversation-view-wrapper {
-  height: auto;
-}
-
-.editor-shell.for-project-setup .conversation-view {
-  height: auto;
-  max-height: none;
-  overflow-y: visible !important;
-}

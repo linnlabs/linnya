@@ -319,10 +319,8 @@ export function openBypassViewState(state: LayoutState, bypassView: NonNullable<
   const next = cloneState(state);
   if (bypassView.type === 'knowledge-base') {
     next.scene = { kind: 'knowledge-base' };
-  } else if (bypassView.type === 'plugin-store') {
-    next.scene = { kind: 'plugin-store' };
   } else {
-    next.scene = { kind: 'project-setup', projectId: bypassView.projectId };
+    next.scene = { kind: 'plugin-store' };
   }
   next.bypassView = { ...bypassView };
   next.documentPane = {

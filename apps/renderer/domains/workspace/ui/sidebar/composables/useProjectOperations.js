@@ -6,26 +6,16 @@ import { projectGateway } from '@/shared/ipc/projectGateway';
 
 import { ref } from 'vue';
 import { projectKbLinksGateway } from '../../../../../shared/ipc/projectKbLinksGateway';
-import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
 import { resolveWorkspaceOperationFailure } from '@/domains/workspace/functions/resolveWorkspaceOperationFailure';
 import { getWorkspaceOperationFailure } from '@/domains/workspace/definitions/workspaceOperationError';
 
 export function useProjectOperations(workspaceStore, notificationStore, treeStore, options = {}) {
-  const navigation = getWorkspaceNavigationPort();
-  const { createProjectPlanningConversation } = options;
+  const { startProjectPlanning } = options;
   const { workspaceMessage } = useWorkspaceLocalization();
   const showCreateProjectDialog = ref(false);
   const isEditMode = ref(false);
   const editProjectData = ref(null);
-
-  const createPlanningConversation = ({ projectId, projectName }) => {
-    if (typeof createProjectPlanningConversation !== 'function') {
-      throw new Error('[useProjectOperations] 缺少项目规划对话创建能力');
-    }
-
-    return createProjectPlanningConversation({ projectId, projectName });
-  };
 
   /**
    * 将“项目 ↔ 知识库关联”写入后端（统一走 IPC gateway）。
@@ -228,8 +218,7 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
    * 处理 AI 辅助项目创建
    * 1. 立即创建真实项目
    * 2. 切换到项目上下文
-   * 3. 创建新对话（使用 project_planning promptKey）
-   * 4. 切换到 PROJECT_SETUP 视图
+   * 3. 在统一项目对话中开启项目初始化 Agent
    */
   const handleAiCreateProject = async ({ name, description, kbIds }) => {
     try {
@@ -274,29 +263,12 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
       // 2. 切换到项目上下文
       workspaceStore.setActiveProject(projectId);
 
-      /**
-       * 中文说明（关键）：
-       * - ProjectSetup 期间，左侧工作区需要显示“AI 项目初始化”的占位卡片，而不是上一个项目遗留的文件树。
-       * - app 侧边栏组合面的卡片展示条件会跟随 PROJECT_SETUP 场景和空树状态。
-       * - 这里在切换 activeProject 后，立即清空树状态，避免 UI 短暂/持续展示旧项目的文件列表。
-       * - 等 AI 真正创建完文件后，`ProjectSetupView` 会调用 `workspaceTreeStore.reloadActiveProjectTree()` 再刷新为新项目内容。
-       */
-      if (treeStore && typeof treeStore.clearTree === 'function') {
-        treeStore.clearTree();
-      }
-      
-      // 3. 创建新对话，使用 project_planning 模式
-      // 对话会自动绑定到当前项目
-      const conversationId = createPlanningConversation({
-        projectId,
-        projectName: name,
+      // 3. 在统一项目对话中开启项目初始化 Agent。
+      await startProjectPlanning({
+        id: projectId,
+        name: trimmedName,
+        description: description || '',
       });
-      
-      console.log('[useProjectOperations] 创建项目规划对话，conversationId:', conversationId);
-      
-      // 4. 切换到 PROJECT_SETUP 场景。
-      // 中文说明：项目初始化是 app-level scene，workspace domain 只发起导航意图。
-      navigation.openProjectSetup(projectId);
       
       notificationStore.show(workspaceMessage('workspace.project.operation.createdWithAiPlanning', { projectName: name }), 'success');
       
@@ -321,21 +293,11 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
       const project = workspaceStore.projects.find(p => p.id === projectId);
       const projectName = project ? project.name : workspaceMessage('workspace.project.operation.currentProject');
 
-      // 1. 清空当前树（UI 表现为加载/空状态，直到 AI生成）
-      if (treeStore && typeof treeStore.clearTree === 'function') {
-        treeStore.clearTree();
-      }
-
-      // 2. 创建新对话，使用 project_planning 模式
-      const conversationId = createPlanningConversation({
-        projectId,
-        projectName,
+      await startProjectPlanning({
+        id: projectId,
+        name: projectName,
+        description: project?.description ?? '',
       });
-
-      console.log('[useProjectOperations] 为现有项目创建规划对话，conversationId:', conversationId);
-
-      // 3. 切换到 PROJECT_SETUP 场景。
-      navigation.openProjectSetup(projectId);
 
       notificationStore.show(workspaceMessage('workspace.project.operation.aiPlanningStarted', { projectName }), 'success');
 

@@ -3,6 +3,7 @@
  * @description subagent_* 基础配置测试
  */
 
+import { ConversationAgentIds } from '@app/schemas';
 import { describe, expect, it } from 'vitest';
 
 import { ALL_AGENT_DEFINITIONS_FOR_TESTS } from '../index';
@@ -85,6 +86,7 @@ describe('subagent definitions', () => {
   it('project_planning 使用 Markdown 议题树，不无条件暴露插件文档格式', () => {
     const def = findByPromptKey(PromptKeys.PROJECT_PLANNING);
 
+    expect(def?.id).toBe(ConversationAgentIds.PROJECT_PLANNING);
     expect(def?.config?.availableTools).toContain('list_files');
     expect(PROJECT_PLANNING_PROMPT.content).toContain('list_files(locator="workspace:/")');
     expect(PROJECT_PLANNING_PROMPT.content).toContain('Locator: "workspace:/Problem Definition.md"');
@@ -92,6 +94,8 @@ describe('subagent definitions', () => {
     expect(PROJECT_PLANNING_PROMPT.content).toContain('Issue Tree (Markdown)');
     expect(PROJECT_PLANNING_PROMPT.content).toContain('Markdown headings and nested bullets');
     expect(PROJECT_PLANNING_PROMPT.content).not.toMatch(/mindmap/i);
+    expect(PROJECT_PLANNING_PROMPT.content).toContain('ask the user whether to generate them now');
+    expect(PROJECT_PLANNING_PROMPT.content).not.toContain('clicks');
   });
 
 });

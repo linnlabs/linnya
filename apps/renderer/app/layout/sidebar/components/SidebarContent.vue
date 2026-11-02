@@ -89,23 +89,8 @@
             </div>
           </div>
 
-          <div v-if="isProjectSetupView && projectTree.length === 0" class="project-setup-empty-state">
-            <div class="project-setup-card">
-              <div class="project-setup-title-row">
-                <div class="project-setup-title-main">
-                  <span class="project-setup-eyebrow">{{ workspaceMessage('workspace.sidebar.projectSetup.eyebrow') }}</span>
-                  <span class="project-setup-title">{{ workspaceMessage('workspace.sidebar.projectSetup.title') }}</span>
-                </div>
-                <span class="project-setup-badge">{{ workspaceMessage('workspace.sidebar.projectSetup.badge') }}</span>
-              </div>
-              <p class="project-setup-subtitle">
-                {{ workspaceMessage('workspace.sidebar.projectSetup.subtitle') }}
-              </p>
-            </div>
-          </div>
-
           <SkeletonRows
-            v-else-if="shouldShowProjectTreeLoading"
+            v-if="shouldShowProjectTreeLoading"
             class="workspace-sidebar-skeleton"
             :label="workspaceMessage('workspace.sidebar.fileTree.loading')"
             :rows="6"
@@ -164,7 +149,6 @@ defineProps<{
   isFilteringProjectFiles: boolean;
   isDragOverRoot: boolean;
   shouldShowProjectTreeLoading: boolean;
-  isProjectSetupView: boolean;
   isProjectFilesPanelVisible: boolean;
   isProjectExpanded: (projectId: string) => boolean;
   getConversationRevealPulseKey: (scope: NavigationScope) => number;

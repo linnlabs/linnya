@@ -7,7 +7,6 @@ import AppLayout from './layout/AppLayout.vue';
 
 // 四个 scene 互斥，按当前 scene 加载，避免把非首屏业务页面合进应用入口。
 const WorkspaceStage = defineAsyncComponent(() => import('./pages/WorkspaceStage/WorkspaceStage.vue'));
-const ProjectSetupPage = defineAsyncComponent(() => import('./pages/ProjectSetupPage/ProjectSetupPage.vue'));
 const KnowledgeBasePage = defineAsyncComponent(() => import('./pages/KnowledgeBasePage/KnowledgeBasePage.vue'));
 const PluginStorePage = defineAsyncComponent(() => import('./pages/PluginStorePage/PluginStorePage.vue'));
 
@@ -95,7 +94,6 @@ const unsubscribePluginChanges = enabledPluginsStore.subscribeToBackendChanges({
 });
 const scene = computed(() => layoutStore.state.scene);
 const isWorkspaceStageView = computed(() => scene.value.kind === 'workspace');
-const isProjectSetupView = computed(() => scene.value.kind === 'project-setup');
 const isKnowledgeBaseView = computed(() => scene.value.kind === 'knowledge-base');
 const isPluginStoreView = computed(() => scene.value.kind === 'plugin-store');
 
@@ -182,7 +180,6 @@ onBeforeUnmount(() => {
   <AppLayout>
     <!-- 页面组件负责组装领域组件，App.vue 只根据 layout scene 做顶层分发 -->
     <WorkspaceStage v-if="isWorkspaceStageView" />
-    <ProjectSetupPage v-else-if="isProjectSetupView" />
     <KnowledgeBasePage v-else-if="isKnowledgeBaseView" />
     <PluginStorePage v-else-if="isPluginStoreView" />
   </AppLayout>

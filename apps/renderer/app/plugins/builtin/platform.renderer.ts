@@ -2,7 +2,7 @@ import type { RendererPluginContribution } from '../types';
 import { ConversationAgentIds } from '@app/schemas';
 import MarkdownDocumentSurface from './surfaces/MarkdownDocumentSurface.vue';
 import { DocumentTextIcon } from '@linnya/renderer-ui/icons';
-import { MicroscopeIcon } from '@linnya/renderer-ui/icons';
+import { FolderAddIcon, MicroscopeIcon } from '@linnya/renderer-ui/icons';
 import { markdownHandler } from '@/domains/workspace/services/file-manager/handlers/markdown';
 import { commonToolConfigs } from '@/domains/conversation/ui/tools/configs/common';
 import { knowledgeBaseToolConfigs } from '@/domains/conversation/ui/tools/configs/knowledgeBase';
@@ -89,6 +89,27 @@ export const platformRendererPlugin: RendererPluginContribution = {
         fallback: 'Investigate sources, independently review, and deliver an editable article.',
       },
       iconComponent: MicroscopeIcon,
+    },
+    {
+      id: 'project_planning',
+      agentId: ConversationAgentIds.PROJECT_PLANNING,
+      menuHidden: true,
+      menuText: 'Project setup',
+      pillText: 'Project setup',
+      ariaLabel: 'Clarify the project and create its starting documents.',
+      menuLocalizedText: {
+        key: 'plugins.contribution.agentChoice.projectPlanning.menuText',
+        fallback: 'Project setup',
+      },
+      pillLocalizedText: {
+        key: 'plugins.contribution.agentChoice.projectPlanning.pillText',
+        fallback: 'Project setup',
+      },
+      ariaLocalizedText: {
+        key: 'plugins.contribution.agentChoice.projectPlanning.ariaLabel',
+        fallback: 'Clarify the project and create its starting documents.',
+      },
+      iconComponent: FolderAddIcon,
     },
   ],
   toolCards: {

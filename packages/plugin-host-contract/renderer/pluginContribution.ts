@@ -75,6 +75,8 @@ export interface DocumentRuntimeLoaderContribution {
 export interface ConversationAgentChoiceContribution {
   /** 禁止新选择；保留贡献以便显示已有会话的 Agent 身份及不可用文案。 */
   readonly disabled?: boolean;
+  /** 不进入输入框菜单，只由产品入口选中；选中后仍按普通 Agent 展示和移除。 */
+  readonly menuHidden?: boolean;
   /** Renderer 菜单项身份，只用于选择器与诊断。 */
   readonly id: string;
   /** 产品 Agent 身份，必须对应已注册的 AgentDefinition.id。 */

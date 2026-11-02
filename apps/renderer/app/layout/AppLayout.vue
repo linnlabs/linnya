@@ -59,7 +59,6 @@
             [documentShellClass]: !!documentShellClass,
             'for-non-editor': shellDocumentType !== 'editor',
             // 项目初始化视图：需要占满可用高度，由内部自己管理布局与滚动
-            'for-project-setup': isProjectSetupScene,
             // 知识库视图：独立全屏页面，外层只传递高度，滚动由知识库列表/详情页内部管理
             'for-knowledge-base': isKnowledgeBaseScene,
             // 插件视图：独立整页管理页，滚动由 editor-shell 统一管理
@@ -141,7 +140,6 @@ const editorDocumentSettings = useEditorDocumentSettingsStore();
 const layoutStore = useLayoutStore();
 const scene = computed(() => layoutStore.state.scene);
 const isWorkspaceScene = computed(() => scene.value.kind === 'workspace');
-const isProjectSetupScene = computed(() => scene.value.kind === 'project-setup');
 const isKnowledgeBaseScene = computed(() => scene.value.kind === 'knowledge-base');
 const isPluginStoreScene = computed(() => scene.value.kind === 'plugin-store');
 const isWorkspaceStageActive = computed(() => isWorkspaceScene.value);

@@ -31,7 +31,6 @@ export interface WorkspaceNavigationPort {
   openWorkspace(scope: WorkspaceNavigationScope): Promise<void>;
   openKnowledgeBase(): Promise<void>;
   openPluginStore(): Promise<void>;
-  openProjectSetup(projectId: string): Promise<void>;
   openDocumentTarget(request: WorkspaceDocumentNavigationRequest): Promise<void>;
   openConversation(request: WorkspaceConversationNavigationRequest): Promise<void>;
   openDocument(request: WorkspaceDocumentNavigationRequest): Promise<void>;

@@ -247,7 +247,7 @@ const { t } = useLocalization();
 const isInputControlsDisabled = computed(() => props.disabled);
 
 const inputActionMenuOptions = computed<ConversationInputActionMenuOption[]>(() => {
-  const agents = conversationAgentChoices.value.map(agentChoice => {
+  const agents = conversationAgentChoices.value.filter(agentChoice => !agentChoice.menuHidden).map(agentChoice => {
     const agentChoiceText = resolveConversationAgentChoiceTextPresentation(agentChoice, t);
     return {
       id: agentChoice.id,

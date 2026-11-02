@@ -68,7 +68,6 @@
       :is-filtering-project-files="isFilteringProjectFiles"
       :is-drag-over-root="isDragOverRoot"
       :should-show-project-tree-loading="shouldShowProjectTreeLoading"
-      :is-project-setup-view="isProjectSetupView"
       :is-project-files-panel-visible="isProjectFilesPanelVisible"
       :is-project-expanded="isProjectExpanded"
       :get-conversation-reveal-pulse-key="getConversationRevealPulseKey"
@@ -146,10 +145,13 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
-import { PROJECT_PLANNING_PROMPT_KEY } from '@app/schemas';
 import { useWorkspaceProjectsStore, useWorkspaceSelectionStore, useWorkspaceTreeStore } from '@/domains/workspace/store';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
-import { useConversationState } from '@/domains/conversation/store/conversationState';
+import { useChatFlowOrchestrator } from '@/domains/conversation/services/orchestration/chatFlowOrchestrator';
+import { applyConversationAgentChoice } from '@/domains/conversation/features/agent-choice/orchestration/applyConversationAgentChoice';
+import { useConversationAgentChoices } from '@/app/plugins/composables';
+import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
+import { startProjectPlanningConversation } from '@/app/layout/orchestration/startProjectPlanningConversation';
 import { useHistoryListStore } from '@/domains/conversation/history/store/historyListStore';
 import { useUIStore } from '@/shared/stores/ui';
 import { useFileStore } from '@/shared/stores/file';
@@ -222,7 +224,8 @@ const treeStore = useWorkspaceTreeStore();
 const selectionStore = useWorkspaceSelectionStore();
 const projectExpansionStore = useSidebarProjectExpansionStore();
 const assistantStore = useAssistantStore();
-const conversationState = useConversationState();
+const chatFlowOrchestrator = useChatFlowOrchestrator();
+const conversationAgentChoices = useConversationAgentChoices();
 const historyListStore = useHistoryListStore();
 const uiStore = useUIStore();
 const fileStore = useFileStore();
@@ -255,17 +258,19 @@ const projectHistoryDrawerReadyPromises = new Map();
 const creatableDocumentTypes = useLocalizedCreatableDocumentTypes();
 
 const showError = (message) => notificationStore.show(message, 'error');
-const createProjectPlanningConversation = ({ projectId, projectName }) => {
-  return conversationState.createConversation({
-    title: resolveCurrentLayoutMessage('layout.sidebar.project.planningConversationTitle', { projectName }),
-    autoActivate: true,
-    metadata: {
-      promptKey: PROJECT_PLANNING_PROMPT_KEY,
-      projectId,
-      isProjectSetup: true,
-    },
-  });
-};
+const startProjectPlanning = (project) => startProjectPlanningConversation({
+  project,
+  navigation: getWorkspaceNavigationPort(),
+  startDraft: startDraftConversation,
+  chooseAgent: (agentChoiceId) => applyConversationAgentChoice({
+    assistantStore,
+    scopeStore: navigationScope,
+    agentChoiceId,
+    choices: conversationAgentChoices.value,
+  }),
+  send: (text, projectMetadata) => chatFlowOrchestrator.sendChatMessage({ text }, { projectMetadata }),
+  resolveInitialMessage: resolveCurrentLayoutMessage,
+});
 
 const {
   showCreateProjectDialog,
@@ -280,7 +285,7 @@ const {
   initializeExistingProjectWithAi,
   deleteProject,
 } = useProjectOperations(projectsStore, notificationStore, treeStore, {
-  createProjectPlanningConversation,
+  startProjectPlanning,
 });
 
 const { isDragOverRoot, handleRootDragOver, handleRootDragLeave, handleRootDrop } = useSidebarDragDrop(showError);
@@ -387,9 +392,8 @@ const shouldShowProjectTreeLoading = computed(() => {
 
   return treeStore.loadedProjectId !== activeProjectId || treeStore.projectTree.length === 0;
 });
-const isProjectSetupView = computed(() => props.activeScene === 'project-setup');
 const isProjectFilesPanelVisible = computed(() => {
-  return isProjectSetupView.value || Boolean(projectsStore.activeProjectId);
+  return Boolean(projectsStore.activeProjectId);
 });
 const {
   showDeleteProjectDialog,

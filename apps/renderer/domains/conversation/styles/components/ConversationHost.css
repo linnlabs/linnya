@@ -181,25 +181,3 @@
   bottom: 0;
   z-index: 20;
 }
-
-
-
-/* 项目初始化视图由 ProjectSetupView 自己渲染输入区，这里只保留宿主布局例外。 */
-.editor-shell.for-project-setup .conversation-host .panel-footer {
-  display: none;
-}
-
-.editor-shell.for-project-setup .conversation-host {
-  height: auto;
-  overflow: visible;
-}
-
-.editor-shell.for-project-setup .conversation-host .conversation-host-viewport {
-  height: auto;
-  overflow: visible;
-}
-
-.editor-shell.for-project-setup .conversation-host .panel-content {
-  height: auto;
-  overflow: visible;
-}

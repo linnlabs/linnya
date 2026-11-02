@@ -152,8 +152,7 @@ provide(CONVERSATION_RENDER_SCOPE_KEY, Object.freeze({ conversationId: props.con
 // 提供消息列表给子组件（用于ThoughtMessage判断思考是否完成）
 provide('conversationMessages', () => props.messages);
 
-// Refs：在默认情况下，使用内部 .conversation-view 作为滚动容器；
-// 在 PROJECT_SETUP 视图中，会在 onMounted 中自动提升为外层 .editor-shell.for-project-setup。
+// Refs：在默认情况下，使用内部 .conversation-view 作为滚动容器。
 const conversationWrapperRef = ref<HTMLElement | null>(null);
 const conversationRef = ref<HTMLElement>();
 const messagesContainerRef = ref<HTMLElement | null>(null);

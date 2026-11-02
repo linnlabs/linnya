@@ -29,14 +29,14 @@ describe('resolveLayoutMessage', () => {
     expect(result).toBe('保存时发生意外错误');
   });
 
-  it('resolves project planning conversation title fallback', () => {
+  it('resolves project planning initial message fallback', () => {
     const result = resolveLayoutMessage(
-      'layout.sidebar.project.planningConversationTitle',
+      'layout.projectPlanning.initialMessage',
       (_key, fallback, params) => fallback.replace('{projectName}', String(params?.projectName)),
       { projectName: 'Demo' },
     );
 
-    expect(result).toBe('Demo - 项目规划');
+    expect(result).toBe('帮我初始化这个项目：Demo。');
   });
 
   it('resolves workspace document export fallbacks', () => {

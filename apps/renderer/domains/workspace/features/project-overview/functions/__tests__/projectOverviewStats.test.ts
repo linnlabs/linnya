@@ -85,7 +85,7 @@ describe('projectOverviewStats', () => {
       charCount: null,
       workspaceMessage,
     })).toEqual([
-      { label: '页面', value: 4, hint: '包含文档、思维导图、表格与演示文稿' },
+      { label: '页面', value: 4, hint: '包含项目中的所有文件' },
       { label: '文件夹', value: 2, hint: '' },
       { label: '字符数', value: '—', hint: '统计中' },
     ]);

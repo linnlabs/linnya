@@ -270,16 +270,6 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
       });
     },
 
-    async openProjectSetup(projectId) {
-      await leaveDocumentRuntimeThen(() => {
-        const layoutStore = useLayoutStore();
-        const navigationScope = useNavigationScope();
-        useProjectOverviewModalStore().close();
-        navigationScope.enterProject(projectId);
-        layoutStore.openBypassView({ type: 'project-setup', projectId });
-      });
-    },
-
     toggleWorkspacePanePlacement() {
       const layoutStore = useLayoutStore();
       const swappedRightPaneWidth = computeWorkspacePanePlacementSwapPreferredWidth(

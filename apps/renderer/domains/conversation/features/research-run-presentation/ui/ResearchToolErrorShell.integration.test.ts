@@ -88,7 +88,7 @@ beforeEach(() => {
   useEnabledPluginsStore().seedFromRegisteredRendererPlugins();
   registerWorkspaceNavigationPort({
     openWorkspace: async () => {}, openEmptyProjectFiles: async () => {}, openKnowledgeBase: async () => {},
-    openPluginStore: async () => {}, openProjectSetup: async () => {}, openDocumentTarget: async () => {},
+    openPluginStore: async () => {}, openDocumentTarget: async () => {},
     openConversation: async () => {}, openDocument: async () => {}, closeWorkspaceDocument: async () => {},
     toggleWorkspacePanePlacement: () => {}, toggleWorkspaceRightPaneVisibility: () => {},
   });

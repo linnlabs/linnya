@@ -25,7 +25,7 @@
           :isLoading="isLoading"
           :isTimelineCollapsed="isTimelineCollapsed"
           :is-history-replay-loading="isHistoryReplayLoading"
-          :use-overlay-scroll-viewport="!useOwnScrollViewport && !hideFooter"
+          :use-overlay-scroll-viewport="!useOwnScrollViewport"
           :has-more-before="messageWindowHasMoreBefore"
           :has-more-after="messageWindowHasMoreAfter"
           :message-window-status="messageWindowStatus"
@@ -62,7 +62,7 @@
       </div>
 
       <!-- 底部输入区域 -->
-      <div v-if="!hideFooter" class="panel-footer">
+      <div class="panel-footer">
         <ScrollToBottomButton
           v-if="!subrunDetailScope"
           class="conversation-scroll-to-bottom"
@@ -137,13 +137,11 @@ const props = withDefaults(defineProps<{
   isActive?: boolean;
   useOwnScrollViewport?: boolean;
   // 在某些视图下（如项目初始化），可以隐藏内置输入框，改由外层自行渲染
-  hideFooter?: boolean;
   inputPlaceholder?: string;
   inputVariant?: ConversationSurfaceVariant;
 }>(), {
   isActive: true,
   useOwnScrollViewport: false,
-  hideFooter: false,
   inputVariant: 'regular',
 });
 

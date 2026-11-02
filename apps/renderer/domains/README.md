@@ -7,7 +7,7 @@
 ## 核心心智模型（TL;DR）
 
 - **`app/` = 壳（Shell）**：应用入口、全局布局、页面/场景装配。
-  - 顶层场景分发在 `apps/renderer/app/App.vue`（按 `layoutStore.state.scene` 渲染 workspace / knowledge-base / project-setup）
+  - 顶层场景分发在 `apps/renderer/app/App.vue`（按 `layoutStore.state.scene` 渲染 workspace / knowledge-base / plugin-store）
   - 全局布局在 `apps/renderer/app/layout/*`
   - 页面/场景壳在 `apps/renderer/app/pages/*`
 - **`domains/` = 领域能力（Capabilities）**：Editor / Workspace / Conversation / MindMap / KnowledgeBase / Settings / Sheets 等“能独立成立的业务模块”。
@@ -103,7 +103,7 @@
 
 - **场景状态源**：`apps/renderer/app/layout/store/layoutStore.ts` 中的 `scene`
 - **业务 scope 权威**：`apps/renderer/app/navigation/index.ts`
-- **顶层分发**：`apps/renderer/app/App.vue` 按 `scene` 异步渲染 `WorkspaceStage / KnowledgeBasePage / ProjectSetupPage / PluginStorePage`
+- **顶层分发**：`apps/renderer/app/App.vue` 按 `scene` 异步渲染 `WorkspaceStage / KnowledgeBasePage / PluginStorePage`
 - **唯一导航入口**：`apps/renderer/app/layout/orchestration/workspaceNavigation.ts`
 - **跨 domain 调用入口**：`apps/renderer/shared/ports/workspaceNavigationPort.ts`
 - **文档 surface ready 契约**：`apps/renderer/shared/ports/documentSurfaceRuntimePort.ts`
@@ -124,7 +124,7 @@
 
 ## 新增一个顶层场景怎么做？
 
-这里的“顶层场景”指：新增一个和 `workspace / knowledge-base / project-setup` 同级的 app shell 场景。普通 workspace 内能力优先作为 pane、modal、popover 或 domain feature 接入，不要轻易新增顶层场景。
+这里的“顶层场景”指：新增一个和 `workspace / knowledge-base / plugin-store` 同级的 app shell 场景。普通 workspace 内能力优先作为 pane、modal、popover 或 domain feature 接入，不要轻易新增顶层场景。
 
 ### 1) 新建 Page（场景壳）
 

@@ -14,14 +14,14 @@
 
 - **app/pages/\***（页面 / 场景壳）
   - **关注点**：在「某个应用场景」下，如何组合/摆放各个领域 UI。
-  - 例子：`ChatCentricPage`、`MarkdownEditorPage`、`MindmapPage`、`ProjectSetupPage`；Sheet / Slides 这类插件文档 surface 由 renderer contribution 注册。
+  - 例子：`ChatCentricPage`、`MarkdownEditorPage`、`MindmapPage`；Sheet / Slides 这类插件文档 surface 由 renderer contribution 注册。
   - 未来会负责：跨领域组合、路由参数解析、权限/守卫、场景级 Header / 操作条等。
   - **不实现具体领域业务逻辑**，只做「装配」。
 
 这与 `apps/renderer/docs/DIRECTORY-STRUCTURE-PLAN.md` 中的设计是一致的：
 
 - `domains/*` = 领域能力（Editor / Mindmap / Workspace / Conversation / KnowledgeBase / Settings）。
-- `app/pages/*` = 场景页面（编辑模式、项目对话、导图视图、初始化向导等）。
+- `app/pages/*` = 场景页面（编辑模式、项目对话、导图视图等）。
 
 ### 当前工作台模型
 
@@ -31,7 +31,7 @@
 - `ChatCentricPage`：对话主区的首页壳。
 - `WorkspaceConversationSurface`：主区与右侧共用的工作区对话装配面，统一分派项目 / `Linnya 助手`，并把应用场景映射为空态 composer 位置。
 - `DocumentSurface`：统一承载 Markdown / Mindmap / Sheet / Slides 的文档 runtime surface。
-- `KnowledgeBasePage` 与 `ProjectSetupPage`：旁路全屏视图。
+- `KnowledgeBasePage`：旁路全屏视图。
 
 顶层场景由 `app/layout/store/layoutStore.ts` 中的 `scene` 表达；当前项目、Linnya 助手、草稿对话和历史会话由
 `app/navigation/index.ts` 作为唯一 scope 权威表达。Page 层只做场景装配，不保存第二份导航状态。
@@ -42,7 +42,7 @@
 
 ### 构建加载边界
 
-- `App.vue` 中的 `WorkspaceStage / ProjectSetupPage / KnowledgeBasePage / PluginStorePage` 是互斥 scene，必须通过 `defineAsyncComponent` 按当前 `scene` 加载；禁止恢复顶层静态导入。
+- `App.vue` 中的 `WorkspaceStage / KnowledgeBasePage / PluginStorePage` 是互斥 scene，必须通过 `defineAsyncComponent` 按当前 `scene` 加载；禁止恢复顶层静态导入。
 - `WorkspaceStage` 中的 `DocumentPane` 与 `ConversationSidePane` 由现有 `v-if` 决定是否存在，组件本身也必须异步加载。折叠已挂载文档仍只改变可见性，不能借代码分包改变 runtime 生命周期契约。
 - `AppLayout` 中只在 editor 文档激活时出现的 menu、outline、LaTeX 面板和 block action menu 必须保持异步；全局导航、通知和模态框仍属于常驻 app shell。
 - `vite.config.mjs` 的手工 chunk 先按稳定第三方包族拆分，再按 `domains/` 和 editor / conversation 内部既有职责边界拆分。它只决定缓存与解析边界，不改变 domain 依赖方向。
@@ -97,12 +97,6 @@
   - `app/pages` 不再保存具体插件文档页面壳，host 只通过 document type registry 挂载 surface。
   - 插件 surface 的 CSS、page context、header action 和 file lifecycle 都跟随插件启停收缩。
 
-### `ProjectSetupPage/ProjectSetupPage.vue`
-
-- **作用**：项目初始化向导页面壳（AI + Workspace）。
-- 当前由 `App.vue` 根据 `layoutStore.scene === 'project-setup'` 渲染。
-- `workspaceNavigation.enterProjectSetup` 负责进入该旁路场景前的文档保存与关闭。
-- `ProjectSetupPage/ProjectSetupView.vue` 是 app-level 跨领域容器：conversation 负责对话和输入，workspace 负责项目树刷新与项目信息读取，外层 `.editor-shell.for-project-setup` 由 `AppLayout` 统一标记。
 
 ---
 
@@ -135,7 +129,7 @@
 ## 4. 记忆小结（给未来的自己）
 
 - **当纠结「要不要再建一个 Page 文件/目录」时：**
-  - 如果这是一个**host 自有顶层视图模式**（WORKSPACE / EDITOR / MINDMAP / PROJECT_SETUP 等），**就应该有对应的 Page**；插件文档 surface 则放到对应插件 renderer 包。
+  - 如果这是一个**host 自有顶层视图模式**（WORKSPACE / EDITOR / MINDMAP 等），**就应该有对应的 Page**；插件文档 surface 则放到对应插件 renderer 包。
   - 哪怕现在只是一层简单包裹，将来也很可能慢慢长成「场景组合中心」。
 
 - **当纠结「这个东西是 Page 还是 Domain」时：**

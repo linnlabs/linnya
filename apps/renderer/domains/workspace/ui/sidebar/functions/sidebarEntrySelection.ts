@@ -1,6 +1,6 @@
 import type { NavigationScope } from '@/app/navigation';
 
-export type SidebarSceneKind = 'workspace' | 'knowledge-base' | 'plugin-store' | 'project-setup';
+export type SidebarSceneKind = 'workspace' | 'knowledge-base' | 'plugin-store';
 
 interface AssistantSelectionInput {
   activeScene: SidebarSceneKind;

@@ -553,18 +553,7 @@ const conversationBreadcrumbSegments = computed(() => {
   });
 });
 
-const setupBreadcrumbSegments = computed(() => {
-  if (scene.value.kind !== 'project-setup') return [];
-  const projectId = navigationScope.currentProjectId;
-  const project = projectsStore.projects.find((p) => p.id === projectId);
-  const name = project?.name || projectsStore.activeProject?.name || layoutMessage('layout.header.untitledProject');
-  return [layoutMessage('layout.header.projectSetup'), name];
-});
-
 const mainHeaderBreadcrumbSegments = computed(() => {
-  if (scene.value.kind === 'project-setup') {
-    return setupBreadcrumbSegments.value;
-  }
   if (isDocumentInMainPane.value) {
     return documentBreadcrumbSegments.value;
   }

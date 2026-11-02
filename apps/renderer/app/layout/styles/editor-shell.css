@@ -28,31 +28,6 @@
   padding-bottom: 0;
 }
 
-/* 项目初始化视图：占满高度，由外层统一管理滚动（避免对话组件内再嵌套一层滚动） */
-.editor-shell.for-project-setup {
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 0;
-  height: 100%;
-  min-height: 0;
-  /**
-   * 中文说明：
-   * - 解决“消息最开始看起来居中，内容变多后才左对齐”的视觉抖动。
-   * - 根因是滚动条在内容溢出前后会“出现/消失”，导致可用宽度变化，居中的内容列会发生水平位移。
-   * - `scrollbar-gutter: stable` 会提前预留滚动条占位，使布局从第一帧开始就稳定。
-   */
-  scrollbar-gutter: stable;
-}
-
-.editor-shell.for-project-setup .scroll-content-wrapper {
-  /* 允许内容自然撑开高度，由 .editor-shell 滚动 */
-  height: auto;
-  /* 确保占满高度，使子元素能够撑开到底部 */
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
 /* 知识库视图：由 editor-shell 统一滚动，滚动条贴 app 主窗口最右侧。 */
 .editor-shell.for-knowledge-base {
   overflow-y: auto;

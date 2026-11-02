@@ -78,7 +78,7 @@ apps/renderer/domains/workspace/
 - 前端文件树的右键菜单和 More 菜单必须从节点能力模型生成；虚拟资源不能触发真实节点的重命名、删除、复制 IPC。
 - 左侧侧边栏的跨 domain 组合面位于 `app/layout/sidebar/WorkspaceSidebarSurface.vue`；`app/layout/sidebar/components/SidebarProjectGroup.vue` 承载“项目行 + 对话列表”的混合展示。workspace domain 只保留项目和文件树能力，不直接持有 conversation domain 的 UI 或 store。
 - 左侧侧边栏的宽度调整属于应用布局能力，由 `app/layout/composables/useSidebarResize.ts` 统一管理；workspace domain 不得再维护独立的 resize 状态或实现。
-- 工作区项目对话与项目初始化页属于 app-level 场景组合，分别位于 `app/pages/WorkspaceConversationSurface/ProjectConversationSurface.vue` 和 `app/pages/ProjectSetupPage/ProjectSetupView.vue`。前者同时服务主区首页与右侧栏，两个位置共享消息列和输入框规格，但只在首页装配建议操作和知识库预加载；workspace domain 只提供项目树、项目概览、项目统计、项目知识库设置等领域能力。项目概览可从侧边栏 More 菜单直接打开，不能为了弹窗而切换当前工作区。
+- 工作区项目对话属于 app-level 场景组合，位于 `app/pages/WorkspaceConversationSurface/ProjectConversationSurface.vue`。项目初始化不是独立页面：`app/layout/orchestration/startProjectPlanningConversation.ts` 在统一项目对话里选中项目初始化 Agent。该对话面同时服务主区首页与右侧栏，两个位置共享消息列和输入框规格，但只在首页装配建议操作和知识库预加载；workspace domain 只提供项目树、项目概览、项目统计、项目知识库设置等领域能力。项目概览可从侧边栏 More 菜单直接打开，不能为了弹窗而切换当前工作区。
 
 ## 左侧侧边栏与文件树视觉约定
 

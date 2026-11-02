@@ -22,6 +22,7 @@ export type ConversationSelectedAgentId = z.infer<typeof ConversationSelectedAge
  */
 export const ConversationAgentIds = {
   RESEARCH: ConversationSelectedAgentIdSchema.parse(RESEARCH_AGENT_ID),
+  PROJECT_PLANNING: ConversationSelectedAgentIdSchema.parse('project_planning'),
   /** 仅保留旧会话与暂停运行的身份，不能映射到新版执行。 */
   DEEP_RESEARCH: ConversationSelectedAgentIdSchema.parse('deep_research_leader'),
 } as const;
