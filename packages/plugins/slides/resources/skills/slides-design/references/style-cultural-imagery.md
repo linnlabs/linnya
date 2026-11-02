@@ -9,6 +9,7 @@
 - **去背主体压住版面**：主体越过色块边界、压住大字、伸出画框，形成前后层次。这是和“图片摆在格子里”最大的区别。
 - **极少的点缀**：一枚朱印、一条金线、一组窗格，选一到两种贯穿全稿。
 - **低密度**：内容页一个主体加三五行字。放不下就拆页，不缩字号。
+- **页面上的字都有来源**：讲次、时长、页数、日期这类用户没给的信息不要印上去；需要提示讲者的写进备注。
 - **明确的章节节奏**：封面、目录、章节页、内容页，章节页用满版素材换气。
 
 计划阶段的 `visualDirection.signature` 就写这只“主题实物”和它在各页的变化方式。
@@ -74,7 +75,7 @@ from rembg import new_session, remove
 remove(Image.open(sys.argv[1]).convert("RGB"), session=new_session("isnet-general-use")).save(sys.argv[2])
 ```
 
-两种方式都要把结果裁到透明边界（`im.crop(im.getchannel("A").point(lambda a: 255 if a > 20 else 0).getbbox())`，rembg 的透明通道有微弱噪声，不取阈值裁不掉），否则盒子比主体大，定位和压叠全会偏。用纯色底预览一次再放进文稿，检查有没有残留背景和被吃掉的边。整张去背失败时换图，不要交付毛边。
+两种方式都要把结果裁到透明边界（`im.crop(im.getchannel("A").point(lambda a: 255 if a > 20 else 0).getbbox())`，rembg 的透明通道有微弱噪声，不取阈值裁不掉），否则盒子比主体大，定位和压叠全会偏。放进文稿前，放到与页面反差大的纯色底（如品红）上放大看一次，重点看底部、镂空和阴影处有没有残留背景，以及被吃掉的边；浅色残留压在米色页面上不显眼，放映时才会露出来。整张去背失败时换图，不要交付毛边。
 
 ## 书法字
 
@@ -82,7 +83,8 @@ remove(Image.open(sys.argv[1]).convert("RGB"), session=new_session("isnet-genera
 
 | 字体 | 许可 | 特点 |
 |---|---|---|
-| Zhi Mang Xing、Ma Shan Zheng、Liu Jian Mao Cao、Long Cang（Google Fonts） | OFL 1.1 | 简体；笔画偏细，大字可外扩加粗 |
+| Ma Shan Zheng（Google Fonts） | OFL 1.1 | 简体；笔画本身够粗，不要加粗 |
+| Zhi Mang Xing、Liu Jian Mao Cao、Long Cang（Google Fonts） | OFL 1.1 | 简体；笔画偏细，大字可少量加粗 |
 | Bakudai 莫大毛筆（max32002/bakudaifont） | OFL 1.1 | 笔画粗；以繁体和日文字形为主 |
 
 没有内置许可、也找不到作者原始声明的字体不用；用户明确提供授权时除外。
@@ -95,7 +97,24 @@ cmap = TTFont(path, lazy=True).getBestCmap()
 missing = [c for c in text if ord(c) not in cmap]
 ```
 
-用 Pillow 画到足够大的透明底（封面主字 1000px 以上），裁到字形边界后导出 PNG。需要加粗时用 `stroke_width` 外扩约字号的 1%，再轻微模糊后取阈值，磨圆接缝；半径超过字号的 0.5% 笔画就会发肿，飞白和锐利的起收笔也一起没了。不要自己叠加噪点假装飞白。竖写大字逐字向下排，字距按字形实际高度微调。
+用下面的函数画到透明底（封面主字 `size` 取 1000 以上），边缘是字体轮廓本身，放大后仍然锐利：
+
+```python
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+def glyph(font_path, ch, size, rgb, stroke=0):
+    mask = Image.new("L", (size * 2, size * 2), 0)
+    font = ImageFont.truetype(font_path, size)
+    ImageDraw.Draw(mask).text((size // 3, size // 3), ch, font=font, fill=255, stroke_width=stroke, stroke_fill=255)
+    if stroke:  # 只磨掉外扩的接缝；阈值区间要窄，否则边缘发虚
+        mask = mask.filter(ImageFilter.GaussianBlur(size * 0.002))
+        mask = mask.point(lambda v: 0 if v < 110 else 255 if v > 145 else (v - 110) * 255 // 35)
+    out = Image.new("RGBA", mask.size, rgb + (0,))
+    out.putalpha(mask)
+    return out.crop(mask.point(lambda v: 255 if v > 20 else 0).getbbox())
+```
+
+默认 `stroke=0`。只有细笔字体压不住版面时才加粗，`stroke` 不超过字号的 0.6%。先把不加粗和加粗的结果并排看一次：字内的小空隙被糊上、笔画变成圆润的墨团，就退回不加粗或换字体。不要自己叠加噪点假装飞白。竖写大字逐字向下排，字距按字形实际高度微调。
 
 做完放在实际背景上读图：笔画有没有糊成一团、缺字、字义是否对。书法字是这种风格的门面，看着普通就换字体或换字。
 
@@ -116,5 +135,5 @@ missing = [c for c in text if ord(c) not in cmap]
 
 - 去背主体确实压住了什么，而不是漂在空白里；
 - 书法字读得出来，没有方块；
-- 每页都能看出和主题实物的关系；
+- 每页都能看出和主题实物的关系，目录页也不例外；
 - 深色底上的小字仍读得清，封面以外的页面没有被装饰挤占。
