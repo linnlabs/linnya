@@ -57,6 +57,8 @@ function buildDefinition(tool: BaseTool): ToolRuntimeDefinition {
     parameters: tool.parameters,
     validateArguments: args => tool['validateArguments'](args),
     idempotency: tool.idempotency,
+    modelInputRequirement: tool.modelInputRequirement,
+    modelInputDelivery: tool.modelInputDelivery,
     streaming: tool.streaming,
   };
 }

@@ -16,9 +16,17 @@ import { readFileForTool } from '../../../app-hosts/linnya/application/file-read
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '../../types';
 import { validateWorkspaceFileToolArguments } from '../shared/workspaceFileToolContract';
 
+const READ_FILE_MODEL_INPUT_REQUIREMENT = Object.freeze({
+  requires_image_input: true,
+  placements: Object.freeze(['tool_result_image'] as const),
+});
+
 export class ReadFileTool extends BaseTool {
   readonly name = 'read_file';
   readonly argumentValidationErrorCode = 'READ_FILE_ARGUMENTS_INVALID';
+  // 读文本与读图共用一个工具；模型收不到工具结果图片时读图降级为元数据，不能让 run 失败。
+  readonly modelInputRequirement = READ_FILE_MODEL_INPUT_REQUIREMENT;
+  readonly modelInputDelivery = 'when_supported' as const;
 
   get description() {
     return [

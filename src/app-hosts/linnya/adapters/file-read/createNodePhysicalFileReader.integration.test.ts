@@ -169,6 +169,7 @@ describe('Node physical file reader', () => {
       scope: { kind: 'host' },
       hasExplicitTextWindow: false,
       hasAttachedImageContent: () => false,
+      imageDelivery: 'attach',
     });
 
     expect(result).toMatchObject({

@@ -29,6 +29,13 @@ import { hasRunImageAttachment } from '../functions/hasRunImageAttachment';
 import { remapWorkspaceCitationRefs } from '../functions/remapWorkspaceCitationRefs';
 import { readPhysicalFileForTool } from './readPhysicalFileForTool';
 
+const IMAGE_READ_OBSERVATIONS = {
+  attached: '已读取图片文件；真实像素已附加到本次工具结果。',
+  already_attached: '已读取图片文件；相同像素已在当前 run 的模型上下文中，本次未重复附加。',
+  not_delivered:
+    '已读取图片文件的格式和尺寸；当前模型连接不接收工具结果图片，你没有看到像素。不要声称已看过这张图，需要像素判断时在答复中说明未检查。',
+} as const;
+
 type TextReadFileArgs = Extract<WorkspaceReadFileArgs, { readonly view: 'text' }>;
 
 // VFS provider 当前先产出完整字符串，再在边界裁剪。行号分页必须先看到真实换行；
@@ -80,6 +87,9 @@ async function readPhysicalLocator(input: {
       hasRunImageAttachment(conversationView.getWorkingHistoryEvents(), runId, sha256)
     );
   };
+  // ToolNode 只在真实 active model 不收工具结果图片时才明确拒绝；无 ToolNode 的直接调用仍按附加处理。
+  const imageDelivery =
+    input.context.modelInputAdmission?.admitted === false ? 'metadata_only' : 'attach';
   const hasExplicitTextWindow = ['offset', 'limit', 'offset_chars', 'max_chars'].some(key =>
     Object.prototype.hasOwnProperty.call(input.rawArgs, key)
   );
@@ -103,6 +113,7 @@ async function readPhysicalLocator(input: {
           scope: { kind: 'conversation', rootPath: directory.absolutePath },
           hasExplicitTextWindow,
           hasAttachedImageContent,
+          imageDelivery,
         })
       );
     }
@@ -125,6 +136,7 @@ async function readPhysicalLocator(input: {
       scope: { kind: 'host' },
       hasExplicitTextWindow,
       hasAttachedImageContent,
+      imageDelivery,
     });
   })();
 
@@ -146,9 +158,7 @@ async function readPhysicalLocator(input: {
           height: read.height,
           attachment_status: read.attachmentStatus,
         },
-        observation: attached
-          ? '已读取图片文件；真实像素已附加到本次工具结果。'
-          : '已读取图片文件；相同像素已在当前 run 的模型上下文中，本次未重复附加。',
+        observation: IMAGE_READ_OBSERVATIONS[read.attachmentStatus],
         ...(attached ? { modelInput: { attachments: [read.selection] } } : {}),
       }),
       null,
