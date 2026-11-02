@@ -24,6 +24,7 @@
 |---|---|---|
 | Cleveland Museum of Art | `https://openaccess-api.clevelandart.org/api/artworks/?q=<词>&cc0=1&has_image=1&limit=20` | `share_license_status` 为 `CC0`；图在 `images.print.url` |
 | The Met | `https://collectionapi.metmuseum.org/public/collection/v1.1/search?hasImages=true&isPublicDomain=true&q=<词>&limit=20`，再取 `/public/collection/v1/objects/<id>` | `isPublicDomain` 为 true；图在 `primaryImage` |
+| Wikimedia Commons | `https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo&iiprop=url\|extmetadata&titles=File:<文件名>` | `extmetadata.LicenseShortName`；`Artist`、`Credit` 写进出处。CC BY / BY-SA 必须署名，NC、ND 不用；壁画、雕塑的现代照片常被错标为公有领域，能在博物馆源找到同一件时优先用博物馆源 |
 
 下载到 conversation 工作目录（`assets/...`），再用 `conversation:/assets/...` 引用。下载的文件先放进单独目录，脚本放在别处。
 
@@ -131,8 +132,11 @@ def glyph(font_path, ch, size, rgb, stroke=0):
 
 ## 检查
 
+当前模型看不到图片像素时（`read_file` 返回 `attachment_status: not_delivered`），用数值统计核对去背残留和裁切，并在最终答复里写明哪些页没有经过读图检查，不要声称已看过。
+
 `inspect` 对压叠报 `element_overlap` 是预期内的，确认是有意压叠后不用改；真溢出和越界照常修。像素复核时重点看：
 
+- 博物馆照片边缘常带色卡、比例尺或编号牌，进稿前裁掉；
 - 去背主体确实压住了什么，而不是漂在空白里；
 - 书法字读得出来，没有方块；
 - 每页都能看出和主题实物的关系，目录页也不例外；
