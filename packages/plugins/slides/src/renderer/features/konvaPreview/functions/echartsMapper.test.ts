@@ -86,6 +86,16 @@ describe('echartsMapper', () => {
     });
   });
 
+  it.each(['center', 'inside', 'outside', undefined] as const)('keeps doughnut labels inside the ring for %s', (position) => {
+    const option = mapChartNodeToEChartsOption(createChartNode({
+      chartType: 'doughnut',
+      categories: ['North', 'South'],
+      series: [{ name: 'Share', values: [10, 20] }],
+      dataLabels: { visible: true, position },
+    }));
+    expect(option).toMatchObject({ series: [{ label: { position: 'inside' }, labelLine: { show: false } }] });
+  });
+
   it('maps pie chart slices from categories and category palette', () => {
     const option = mapChartNodeToEChartsOption(
       createChartNode({

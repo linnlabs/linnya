@@ -13,7 +13,9 @@ export function resolveGeneratedChartLayout(chart: ChartElement, options: PptxGe
   const values = series?.values ?? [];
   const total = values.reduce((sum, value) => sum + value, 0);
   const labelsVisible = series?.showDataLabels ?? (options.showValue === true || options.showLabel === true || options.showPercent === true);
-  const outside = options.dataLabelPosition !== 'ctr' && options.dataLabelPosition !== 'inEnd';
+  // PowerPoint 的环图标签只能在环内，预留外部标签空间会让预览和导出分叉。
+  const outside = chart.chartType !== 'doughnut'
+    && options.dataLabelPosition !== 'ctr' && options.dataLabelPosition !== 'inEnd';
   const positions = { t: 'top', b: 'bottom', l: 'left', r: 'right', tr: 'right' } as const;
   return resolveChartLayout({
     width: chart.position.w, height: chart.position.h,

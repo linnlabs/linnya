@@ -314,6 +314,9 @@ function buildPieChart(
   const dlFormat = firstSeries.dataLabelFormat ?? node.dataLabels?.format;
   const dlFont = resolveFontStyle(node.dataLabels?.labelStyle, node.labelStyle);
   const plot = node.layout?.plot;
+  // PowerPoint 的环图标签只能在环内，位置配置对环图不生效。
+  const labelsInside = node.chartType === 'doughnut'
+    || node.dataLabels?.position === 'center' || node.dataLabels?.position === 'inside';
 
   return {
     animation: false,
@@ -332,7 +335,7 @@ function buildPieChart(
       ...(plot ? { width: plot.w * node.box.w * INCHES_TO_PX, height: plot.h * node.box.h * INCHES_TO_PX } : {}),
       center: ['50%', '50%'],
       label: {
-        position: node.dataLabels?.position === 'center' || node.dataLabels?.position === 'inside' ? 'inside' : 'outside',
+        position: labelsInside ? 'inside' : 'outside',
         overflow: 'break',
         show: dlVisible,
         color: dlFont.color ?? node.pptxHints?.dataLabelColor ?? PPT.dataLabelColor,
@@ -353,7 +356,7 @@ function buildPieChart(
           }
           : undefined,
       },
-      labelLine: { show: dlVisible && node.dataLabels?.position !== 'inside' && node.dataLabels?.position !== 'center' },
+      labelLine: { show: dlVisible && !labelsInside },
     }],
     legend: buildLegendConfig(node, node.categories),
   };
