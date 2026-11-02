@@ -548,6 +548,32 @@ describe('LayoutLint', () => {
     });
   });
 
+  it('does not report full-bleed elements that exceed an EMU-rounded slide width by float error', () => {
+    // 13.333in 在 admission 时取整为 12191695 EMU ≈ 13.33299978in；满版元素仍是 13.333in。
+    const report = lint.lint(makeInfo({
+      slideSize: { width: 12_191_695 / 914_400, height: 7.5 },
+      slides: [{
+        number: 1,
+        elements: [
+          {
+            name: 'Band',
+            type: 'image',
+            position: { x: 0, y: 2.9, w: 13.333, h: 1.79 },
+          },
+          {
+            name: 'Overflow',
+            type: 'shape',
+            position: { x: 12.5, y: 5, w: 0.85, h: 1 },
+          },
+        ],
+      }],
+    }));
+
+    const outOfBounds = report.issues.filter((issue) => issue.code === 'out_of_bounds');
+    expect(outOfBounds).toHaveLength(1);
+    expect(outOfBounds[0]?.evidence).toMatchObject({ node: { label: 'Overflow' } });
+  });
+
   it('warns when two elements overlap heavily', () => {
     const report = lint.lint(makeInfo({
       slides: [{
