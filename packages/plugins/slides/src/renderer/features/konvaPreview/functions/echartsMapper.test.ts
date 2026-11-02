@@ -23,6 +23,10 @@ function createChartNode(overrides: Partial<ChartRenderNode> = {}): ChartRenderN
 }
 
 describe('echartsMapper', () => {
+  it('10pt 字号保留转换后的分数像素', () => {
+    expect(mapChartNodeToEChartsOption(createChartNode({ labelStyle: { fontSize: 10 } })))
+      .toMatchObject({ xAxis: { axisLabel: { fontSize: 10 * (96 / 72) } } });
+  });
   it('保留深色图例和绘图区样式，饼图标签换行并为图例留位', () => {
     const style = {
       legend: { visible: true, position: 'right' as const, labelStyle: { color: '#FFFFFF' } },
@@ -69,17 +73,27 @@ describe('echartsMapper', () => {
           type: 'bar',
           data: [40],
           stack: 'total',
-          barGap: '50%',
+          barGap: '-100%',
         },
         {
           name: 'Cost',
           type: 'bar',
           data: [60],
           stack: 'total',
-          barGap: '50%',
+          barGap: '-100%',
         },
       ],
     });
+  });
+
+  it.each(['center', 'inside', 'outside', undefined] as const)('keeps doughnut labels inside the ring for %s', (position) => {
+    const option = mapChartNodeToEChartsOption(createChartNode({
+      chartType: 'doughnut',
+      categories: ['North', 'South'],
+      series: [{ name: 'Share', values: [10, 20] }],
+      dataLabels: { visible: true, position },
+    }));
+    expect(option).toMatchObject({ series: [{ label: { position: 'inside' }, labelLine: { show: false } }] });
   });
 
   it('maps pie chart slices from categories and category palette', () => {

@@ -1,9 +1,10 @@
+import type { ShapeTextAutofitLayouts } from '../../../engine/text/shapeTextAutofitPptx';
 import type { TypecheckResult } from '../../../sandbox/codegenTypecheck';
 import type { SandboxJsonObject } from '@plugin/backend/sandboxRuntime';
 import type { MathFormulaErrorCode } from '@plugin/slides/shared';
 import type { PresentationComposeCompilationResult } from './presentationBuildExecution';
 
-export const PRESENTATION_BUILD_WORKER_PROTOCOL_VERSION = 4 as const;
+export const PRESENTATION_BUILD_WORKER_PROTOCOL_VERSION = 5 as const;
 export const PRESENTATION_BUILD_SOURCE_MAX_BYTES = 256 * 1024;
 export const PRESENTATION_BUILD_COMPOSE_PAYLOAD_MAX_BYTES = 2 * 1024 * 1024;
 export const PRESENTATION_BUILD_MATERIALIZATION_JSON_MAX_BYTES = 64 * 1024 * 1024;
@@ -49,6 +50,7 @@ export interface PresentationBuildWorkerMaterializeRequest {
   readonly type: 'materialize';
   readonly requestId: string;
   readonly deckSpec: SandboxJsonObject;
+  readonly shapeTextAutofit: ShapeTextAutofitLayouts;
   readonly svgAssets: readonly SandboxJsonObject[];
   readonly svgFallbacks: readonly PresentationBuildWorkerMaterializedSvgFallback[];
 }

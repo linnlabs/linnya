@@ -4,7 +4,7 @@ import process from 'node:process';
 import { clearTimeout, setTimeout } from 'node:timers';
 import JSZip from 'jszip';
 
-const PROTOCOL_VERSION = 4;
+const PROTOCOL_VERSION = 5;
 
 const workerPath = path.resolve(process.argv[2] ?? '');
 if (!process.argv[2]) {
@@ -78,7 +78,7 @@ async function compileCompose(payload) {
   return responsePromise;
 }
 
-async function materialize(deckSpec) {
+async function materialize(deckSpec, shapeTextAutofit = deckSpec.slides.map(() => [])) {
   const requestId = nextRequestId();
   const responsePromise = waitForMessage(
     message => message?.requestId === requestId,
@@ -91,6 +91,7 @@ async function materialize(deckSpec) {
     deckSpec,
     svgAssets: [],
     svgFallbacks: [],
+    shapeTextAutofit,
   });
   return responsePromise;
 }
@@ -183,6 +184,19 @@ try {
     || invalidChart.result.kind !== 'compose_contract'
     || !invalidChart.result.message?.includes('numberFormat')) {
     throw new Error('Packaged chart admission did not reject unsupported number formats.');
+  }
+  // 真实 Worker 只能使用 Host 传来的缩字标量，不能加载字体服务。
+  const autofit = await materialize({
+    title: 'Shape autofit artifact smoke', slides: [{ slideNumber: 1, spec: { type: 'freeform', elements: [{
+      type: 'shape', geometry: 'rect', position: { x: 1, y: 1, w: 2, h: 0.5 },
+      content: 'Synthetic shape text', style: { fontSize: 24 },
+    }] } }],
+  }, [[{ fontScale: 0.55, lineSpacingReduction: 0.09 }]]);
+  if (autofit.type !== 'materialize_result') throw new Error('Packaged shape autofit materialization failed.');
+  const autofitZip = await JSZip.loadAsync(autofit.buffer);
+  const autofitXml = await autofitZip.file('ppt/slides/slide1.xml')?.async('text');
+  if (!autofitXml?.includes('<a:normAutofit fontScale="55000" lnSpcReduction="9000"/>')) {
+    throw new Error('Packaged Worker did not preserve the prepared shape text scale.');
   }
   const unsupportedFormula = await materialize({
     title: 'Unsupported formula smoke',

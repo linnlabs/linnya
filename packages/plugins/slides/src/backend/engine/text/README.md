@@ -11,6 +11,8 @@ text/
 ├── generatedTextRenderInput.ts       # DeckSpec text/shape -> RenderParagraph
 ├── renderModelTextLayout.ts          # cluster 预热与全 RenderModel finalization
 ├── textLayoutPptxOptions.ts          # 布局合同 -> PPTX textbox options
+├── prepareShapeTextAutofit.ts       # Host 同源形状缩字结果准备
+├── shapeTextAutofitPptx.ts          # 形状缩字同源布局与 OOXML 物化计划
 └── __tests__/                        # 字体、finalization、PPTX 映射测试
 ```
 
@@ -48,6 +50,8 @@ DeckSpec / CanonicalDeck
 - `exactPt` 精确输出 OOXML `spcPts`；
 - run mapper 不输出行距、对齐、段前后或缩进；
 - PptxGenJS rich-text 路径只在段落首 run 承载 paragraph 行距，避免库把同一段落属性复制到每个 run。
+
+freeform 形状内文字的 `prepareShapeTextAutofit` 复用正式 mapper、字体预热和 finalizer，按页与深度优先绘制顺序输出 `fontScale` / `lineSpacingReduction`。Host 在 `preparePresentationMaterialization` 中准备这些标量，经严格、版本化的 Worker DTO 传输；不能在 Worker 重新测量。`shapeTextAutofitPptx` 只收集对象 marker，并在 sanitizer 的 Paint 处理前按 100000 单位写入 `normAutofit`。默认 1 / 0 不写属性。计划只存在于单次导出，不改 deck.js 或持久化 DeckSpec。显式 in-process 的 `DeckAssembler` / `FreeformCompiler` 也使用相同准备函数；Worker 使用 `PreparedDeckAssembler` / `FreeformPptxCompiler`。真实包与禁止 Worker 重测的断言见 `backend/__tests__/shape-text-autofit-pptx.test.ts`。
 
 ## 不变量
 

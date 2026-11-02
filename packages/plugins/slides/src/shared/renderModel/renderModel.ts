@@ -477,6 +477,8 @@ export interface ChartRenderNode extends RenderNodeBase {
   palette: [string, ...string[]];
   plotBackgroundColor?: string;
   seriesLineWidth?: number;
+  /** generated 图表的共享 inner plot 与图例布局。 */
+  layout?: import('../chartLayout/definitions/chartLayout').ResolvedChartLayout;
   axes?: RenderChartAxes;
   legend?: RenderChartLegend;
   dataLabels?: RenderChartDataLabels;

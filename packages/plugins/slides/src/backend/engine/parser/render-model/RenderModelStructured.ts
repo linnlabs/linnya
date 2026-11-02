@@ -23,6 +23,7 @@ import {
 import { resolveTextStyleLineSpacing, textStyleToRuns } from './RenderModelText.js';
 import type { RenderBaseNode, RenderDefaultsContext } from './RenderModelShared.js';
 import { resolveChartOptions } from '../../chart/chartOptions';
+import { resolveGeneratedChartLayout } from '../../chart/resolveGeneratedChartLayout';
 
 export function resolveTextStyle(
   element: StructuredElement | undefined,
@@ -52,7 +53,8 @@ export function mapStructuredChartNode(
   element: Extract<StructuredElement, { type: 'chart' }>,
   defaults: RenderDefaultsContext,
 ): ChartRenderNode {
-  const opts: Record<string, unknown> = { ...resolveChartOptions(element) };
+  const options = resolveChartOptions(element);
+  const opts: Record<string, unknown> = { ...options };
   // barDir 决定横向/纵向：'bar' = 横向，'col'/默认 = 纵向
   const rawType = resolveGeneratedRenderChartType(element.chartType);
   const chartType = (rawType === 'column' && opts.barDir === 'bar')
@@ -90,6 +92,7 @@ export function mapStructuredChartNode(
     legend: resolveChartLegendStyle(opts, element.chartStyle?.legendColor, defaults.minorFontFamily),
     plotBackgroundColor: element.chartStyle?.plotBackgroundColor,
     seriesLineWidth: element.chartStyle?.seriesLineWidth,
+    layout: resolveGeneratedChartLayout(element, options),
     stacking: resolveChartStacking(opts),
     axes: resolveChartAxes(opts, chartType, baseLabelStyle, element.chartStyle),
     dataLabels: resolveChartDataLabels(opts, element.chartStyle?.dataLabelColor, element.data.series.some(s => s.showDataLabels === true)),

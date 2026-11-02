@@ -1,3 +1,4 @@
+import { preparePresentationMaterialization } from '../features/presentationBuildExecution/orchestration/preparePresentationMaterialization';
 import { PresentationDraftRepository } from '../persistence';
 import { SlideMarkerIndex } from '@plugin/slides/shared';
 import { copyManualObjects } from '../features/presentationManualEditing';
@@ -253,7 +254,7 @@ slide${i}.add(shape${i});`).join('\n') + `\ncompose({ title: '30 page editing', 
     expect(await scope.run('deck', () => builder.buildDeckSpecFromSource({ nodeId: 'deck', source: reopened.deckSource }))).toEqual(reopened.deckSpec);
     const exported = structuredClone(reopened.deckSpec);
     await resolveImageSources(exported, imageSourceResolver, { documentId: 'deck' });
-    const zip = await JSZip.loadAsync(await materializePresentationPptx({ deckSpec: exported, svgAssets: [], svgFallbacks: [] }));
+    const zip = await JSZip.loadAsync(await materializePresentationPptx(await preparePresentationMaterialization(exported, undefined, {})));
     const slideXml = await Promise.all(Object.entries(zip.files).filter(([name]) => /^ppt\/slides\/slide\d+\.xml$/u.test(name)).map(([, file]) => file.async('string')));
     expect(slideXml).toHaveLength(reopened.deckSpec.slides.length);
     const insertedXml = slideXml.find(xml => xml.includes('New title'));

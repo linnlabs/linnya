@@ -1,3 +1,4 @@
+import type { ShapeTextAutofitLayouts } from '../../../engine/text/shapeTextAutofitPptx';
 import type { TypecheckResult } from '../../../sandbox/codegenTypecheck';
 import type { SandboxJsonObject } from '@plugin/backend/sandboxRuntime';
 import type {
@@ -50,6 +51,7 @@ export interface PresentationMaterializedSvgFallback {
  */
 export interface PresentationMaterializationInput {
   readonly deckSpec: DeckSpec;
+  readonly shapeTextAutofit: ShapeTextAutofitLayouts;
   readonly svgAssets: readonly SvgGraphicResolvedAsset[];
   readonly svgFallbacks: readonly PresentationMaterializedSvgFallback[];
 }

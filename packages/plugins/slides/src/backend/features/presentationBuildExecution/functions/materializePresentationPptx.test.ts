@@ -27,7 +27,7 @@ describe('materializePresentationPptx', () => {
     const deckSpec = buildDeckSpecFromDirectInput(compiled.input);
     expect(deckSpec.slides[0].spec.elements.map(e => e.position.h)).toEqual([0, 0]);
     const input = readPresentationMaterializationInput(encodePresentationMaterializationInput({
-      deckSpec, svgAssets: [], svgFallbacks: [],
+      deckSpec, svgAssets: [], shapeTextAutofit: [[]], svgFallbacks: [],
     }));
     const zip = await JSZip.loadAsync(await materializePresentationPptx(input));
     const slideXml = await zip.file('ppt/slides/slide1.xml')?.async('text');
@@ -45,7 +45,7 @@ describe('materializePresentationPptx', () => {
 
     const invalidDeck = structuredClone(deckSpec);
     invalidDeck.slides[0].spec.elements[0].position.h = -1;
-    expect(() => encodePresentationMaterializationInput({ deckSpec: invalidDeck, svgAssets: [], svgFallbacks: [] })).toThrow('deck spec is invalid');
+    expect(() => encodePresentationMaterializationInput({ deckSpec: invalidDeck, svgAssets: [], shapeTextAutofit: [[]], svgFallbacks: [] })).toThrow('deck spec is invalid');
   });
 
   it('builds and sanitizes a real PPTX package from a self-contained DTO', async () => {
@@ -67,7 +67,7 @@ describe('materializePresentationPptx', () => {
         }],
       },
       svgAssets: [],
-      svgFallbacks: [],
+      shapeTextAutofit: [[]], svgFallbacks: [],
     });
 
     const zip = await JSZip.loadAsync(buffer);

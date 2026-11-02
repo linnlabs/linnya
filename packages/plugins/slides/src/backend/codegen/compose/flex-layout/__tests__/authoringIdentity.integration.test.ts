@@ -1,3 +1,4 @@
+import { preparePresentationMaterialization } from '../../../../features/presentationBuildExecution/orchestration/preparePresentationMaterialization';
 import { beforeAll, describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import { RenderModelMapper } from '../../../../engine/parser/RenderModelMapper';
@@ -119,7 +120,7 @@ describe('authoring identity projection', () => {
       },
       innerText: { paragraphs: [{ runs: [expect.objectContaining({ text: 'After' })] }] },
     });
-    const zip = await JSZip.loadAsync(await materializePresentationPptx({ deckSpec: spec, svgAssets: [], svgFallbacks: [] }));
+    const zip = await JSZip.loadAsync(await materializePresentationPptx(await preparePresentationMaterialization(spec, undefined, {})));
     const xml = await zip.file('ppt/slides/slide1.xml')?.async('string');
     expect(xml).toContain('After');
     expect(xml).not.toContain('Before');
@@ -423,7 +424,7 @@ describe('authoring identity projection', () => {
     const admitted = readCompiledDirectComposeInput(structuredClone(compiled.input));
     if (!admitted.input) throw new Error(admitted.error ?? 'Expected admitted compiled input.');
     const deckSpec = buildDeckSpecFromDirectInput(admitted.input);
-    const pptx = await materializePresentationPptx({ deckSpec, svgAssets: [], svgFallbacks: [] });
+    const pptx = await materializePresentationPptx(await preparePresentationMaterialization(deckSpec, undefined, {}));
     const zip = await JSZip.loadAsync(pptx);
     const slideFile = zip.file('ppt/slides/slide1.xml');
     if (!slideFile) throw new Error('Expected slide XML.');

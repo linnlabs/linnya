@@ -1,3 +1,4 @@
+import { preparePresentationMaterialization } from '../features/presentationBuildExecution/orchestration/preparePresentationMaterialization';
 import { DOMParser } from '@xmldom/xmldom';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
@@ -63,7 +64,7 @@ describe('table explicit line breaks', () => {
     expect(configs.every(config => config.wrap === 'none')).toBe(true);
 
     // 检查真实导出保留两行，而不是让预览修复以删除源换行为代价。
-    const pptx = await materializePresentationPptx({ deckSpec: deck, svgAssets: [], svgFallbacks: [] });
+    const pptx = await materializePresentationPptx(await preparePresentationMaterialization(deck, undefined, {}));
     const zip = await JSZip.loadAsync(pptx);
     const xml = await zip.file('ppt/slides/slide1.xml')?.async('text');
     if (!xml) throw new Error('Expected slide XML');

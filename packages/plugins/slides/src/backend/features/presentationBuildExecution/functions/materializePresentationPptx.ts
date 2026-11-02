@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 
-import { DeckAssembler } from '../../../engine/DeckAssembler';
-import { FreeformCompiler } from '../../../engine/FreeformCompiler';
+import { PreparedDeckAssembler } from '../../../engine/PreparedDeckAssembler';
+import { FreeformPptxCompiler } from '../../../engine/FreeformPptxCompiler';
 import { StructuredCompiler } from '../../../engine/StructuredCompiler';
 import type {
   SvgGraphicAssetResolverPort,
@@ -48,14 +48,14 @@ export async function materializePresentationPptx(
     },
   };
 
-  const buffer = await new DeckAssembler(
+  const buffer = await new PreparedDeckAssembler(
     new StructuredCompiler(),
-    new FreeformCompiler(),
+    new FreeformPptxCompiler(),
     undefined,
     undefined,
     svgAssetResolver,
     svgFallbackRasterizer,
-  ).assemble(input.deckSpec);
+  ).assemble(input.deckSpec, { shapeTextAutofit: input.shapeTextAutofit });
   return toExactArrayBuffer(buffer);
 }
 

@@ -194,6 +194,7 @@ export function createPresentationBuildWorkerMaterializeRequest(input: {
     type: 'materialize',
     requestId: requireRequestId(input.requestId),
     deckSpec: encoded.deckSpec,
+    shapeTextAutofit: encoded.shapeTextAutofit,
     svgAssets: encoded.svgAssets,
     svgFallbacks: encoded.svgFallbacks,
   };
@@ -324,7 +325,8 @@ export function parsePresentationBuildWorkerRequest(
     && value.svgAssets.every(isSandboxJsonObject)
     && Array.isArray(value.svgFallbacks)
   ) {
-    readPresentationMaterializationInput({
+    const prepared = readPresentationMaterializationInput({
+      shapeTextAutofit: value.shapeTextAutofit,
       deckSpec: value.deckSpec,
       svgAssets: value.svgAssets,
       svgFallbacks: value.svgFallbacks,
@@ -336,6 +338,7 @@ export function parsePresentationBuildWorkerRequest(
       deckSpec: value.deckSpec,
       svgAssets: value.svgAssets,
       svgFallbacks: value.svgFallbacks,
+      shapeTextAutofit: prepared.shapeTextAutofit,
     };
   }
   throw new Error('Slides build worker request type is invalid.');

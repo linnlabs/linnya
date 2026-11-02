@@ -1,4 +1,5 @@
 import { isRecord } from '../valueRecord';
+import { resolvedChartLayoutSchema } from '../chartLayout/definitions/chartLayout';
 import { layoutReplaySchema } from '../generatedLayoutReplay';
 import type {
   RenderChartAxis,
@@ -820,6 +821,7 @@ function isChartRenderNode(value: Record<string, unknown>): boolean {
       'gridlines',
       'plotBackgroundColor',
       'seriesLineWidth',
+      'layout',
       'stacking',
       'labelStyle',
       'pptxHints',
@@ -835,6 +837,7 @@ function isChartRenderNode(value: Record<string, unknown>): boolean {
     && isOptional(value.dataLabels, isRenderChartDataLabels)
     && isOptional(value.plotBackgroundColor, isString)
     && isOptional(value.seriesLineWidth, width => isFiniteNumber(width) && width > 0)
+    && isOptional(value.layout, layout => resolvedChartLayoutSchema.safeParse(layout).success)
     && isOptional(value.gridlines, isRenderChartGridlines)
     && isOptional(value.stacking, stacking => isOneOf(stacking, ['none', 'stacked', 'percent']))
     && isOptional(value.labelStyle, isRenderChartLabelStyle)

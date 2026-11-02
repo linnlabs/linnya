@@ -68,3 +68,7 @@ TypeScript compiler 继续以插件自包含的精确版本发布，并与 `lib.
 Flex 的同步文本估算复用 `@linnya/text-measurement-core`。该 portable package 与宿主共享同一 deterministic heuristic，Worker 不反向加载 Plugin SDK、Electron 或 Main 的文本测量装配。
 
 无横向约束的绝对定位 Text 不参与 Flex 流。Worker 返回其临时估算盒后，codegen 在 Host 已装配的系统字体 runtime 中通过 `engine/text/materializeIntrinsicTextBoxes` 完成最终尺寸物化，再落库和请求 PPTX 构建；Worker 不因此获得字体文件访问能力。
+
+## 形状文字缩字结果
+
+物化 protocol v5 必须携带按页、深度优先绘制顺序排列的 `shapeTextAutofit`。Host 在准备自包含 DTO 时复用预览 mapper 与 text finalizer，输出每个非空 freeform 形状文字的 fontScale / lineSpacingReduction；codec 校验页数、形状数量、有限值与范围。缺失或非法结果直接拒绝，不允许 Worker 用 heuristic 重算。Worker 使用 `PreparedDeckAssembler` 与 `FreeformPptxCompiler`，只把标量写入 normAutofit；Host / 测试的显式 in-process 入口继续由 DeckAssembler / FreeformCompiler 统一准备。实际包及禁止重测的回归见 `backend/__tests__/shape-text-autofit-pptx.test.ts`；backend artifact smoke 另验证真实 Worker 写出 55000 / 9000。

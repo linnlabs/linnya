@@ -70,6 +70,8 @@ export function validateChartSemantics(chart: Extract<StructuredElement, { type:
   }
   if (chart.dataLabelContent && chart.dataLabelContent !== 'value' && !pie) fail('percentage/category 标签仅支持饼图和环图。');
   if (pie && chart.data.series.length !== 1) fail('饼图和环图必须只有一个系列。');
+  if (chart.dataLabelPosition === 'outside' && chart.chartType === 'doughnut') fail('环图标签只能在环内，PowerPoint 不支持 outside。');
+  if (chart.dataLabelPosition === 'outside' && chart.stacking && chart.stacking !== 'none') fail('堆叠柱不支持 outside 标签，请用 inside 或 center。');
   if (chart.stacking && chart.stacking !== 'none' && chart.chartType !== 'bar') fail('堆叠目前只支持柱/条图，不与组合或双轴混用。');
   if (chart.stacking === 'percent' && (chart.valueAxis?.min != null || chart.valueAxis?.max != null)) fail('百分比堆叠使用固定比例轴，不能覆盖 min/max。');
   if (chart.chartType === 'combo' && chart.options?.barDir === 'bar') fail('组合图中的柱系列必须为纵向柱，不使用横向预设。');

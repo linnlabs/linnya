@@ -2,10 +2,12 @@ import { DOMParser, XMLSerializer, type Document, type Element } from '@xmldom/x
 import type JSZip from 'jszip';
 import { directChildren, getElementByTag, getElements } from '../parser/xml/XmlNode';
 import { stripHash } from '../visual/presentationVisualDefaults';
+import { resolvePptxLabelPosition } from './chartOptions';
 import type { ChartPptxPatch } from './chartPptx';
 import { resolvePptxPartTarget } from '../pptx/pptxPartPath';
+import { applyChartPptxLayout } from './applyChartPptxLayout';
 
-/** 原生 series/dPt 后处理：只补 SDK 缺少的细粒度样式，不重建图表或工作簿。 */
+/** 物化共享布局并补 SDK 缺少的系列样式，保留原生图表和工作簿。 */
 export async function applyChartPptxStyles(zip: JSZip, plan: readonly ChartPptxPatch[] = []): Promise<boolean> {
   const parser = new DOMParser();
   const serializer = new XMLSerializer();
@@ -26,6 +28,8 @@ export async function applyChartPptxStyles(zip: JSZip, plan: readonly ChartPptxP
     if (!target) throw new Error(`Chart materialization: missing relationship for ${patch.marker}`);
     const chartPath = resolvePptxPartTarget(slidePath, target);
     const chart = await read(chartPath);
+    if (patch.layout) applyChartPptxLayout(chart, patch.layout);
+    if (patch.horizontalBar) applyHorizontalBarAxes(chart);
     const series = getElements(chart, 'c:ser');
     if (series.length !== patch.series.length) throw new Error('Chart materialization: series cardinality changed');
     patch.series.forEach((entry, index) => {
@@ -89,11 +93,9 @@ export async function applyChartPptxStyles(zip: JSZip, plan: readonly ChartPptxP
               ensureLabelField(chart, label, field).setAttribute('val', visible && active ? '1' : '0');
             }
           }
-          if (patch.labelPosition) {
-            const position = entry.type === 'line' && patch.labelPosition !== 'ctr'
-              ? patch.labelPosition === 'outEnd' || patch.labelPosition === 't' ? 't' : 'b' : patch.labelPosition;
-            ensureLabelField(chart, label, 'c:dLblPos').setAttribute('val', position);
-          }
+          const position = patch.labelPosition
+            && resolvePptxLabelPosition(entry.type, patch.labelPosition, patch.stacked ?? false);
+          if (position) ensureLabelField(chart, label, 'c:dLblPos').setAttribute('val', position);
         }
       }
     });
@@ -102,6 +104,27 @@ export async function applyChartPptxStyles(zip: JSZip, plan: readonly ChartPptxP
     zip.file(slidePath, serializer.serializeToString(slide));
   }
   return plan.length > 0;
+}
+
+/**
+ * 横向条形按作者顺序从上往下读；只改坐标方向，不改系列、缓存或工作簿顺序。
+ * SDK 的类型未开放 maxMin / max，在正式物化阶段成对设置，避免反向后值轴跑到顶部。
+ */
+function applyHorizontalBarAxes(doc: Document): void {
+  const category = getElementByTag(doc, 'c:catAx');
+  const value = getElementByTag(doc, 'c:valAx');
+  const scaling = category && child(category, 'c:scaling');
+  const orientation = scaling && child(scaling, 'c:orientation');
+  const crossing = value && (child(value, 'c:crosses') ?? child(value, 'c:crossesAt'));
+  if (!orientation || !value || !crossing) throw new Error('Chart materialization: missing horizontal bar axes');
+  orientation.setAttribute('val', 'maxMin');
+  // CT_ValAx 的 crosses / crossesAt 是互斥项，位于 crossAx 与 crossBetween 之间。
+  // 替换原节点保留合法顺序；max 指类目最大端，反向后正好是图表底部。
+  const crosses = doc.createElement('c:crosses');
+  crosses.setAttribute('val', 'max');
+  value.replaceChild(crosses, crossing);
+  // low 指类目低端，反向后在顶部；标签要跟着值轴留在底部。
+  child(value, 'c:tickLblPos')?.setAttribute('val', 'nextTo');
 }
 
 /** CT_DLbl/CT_DLbls 的有序子节点；新增字段必须遵守 OOXML 顺序。 */

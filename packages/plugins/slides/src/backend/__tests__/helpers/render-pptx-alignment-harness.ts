@@ -63,7 +63,8 @@ export function runDualPipeline(
     if (theme.fonts?.minor) themeProps.bodyFontFace = theme.fonts.minor;
     (pptx as unknown as { theme: unknown }).theme = themeProps;
   }
-  compiler.compileSlide(pptx, spec, theme);
+  // 与 compileDeck 一样提供物化计划；spy 只读取 SDK 参数，XML 由端到端测试另验。
+  compiler.compileSlide(pptx, spec, theme, undefined, undefined, undefined, { slideIndex: 0, plan: [] });
   const captures = slideCaptures[0] ?? [];
   const pptxElements = captures.map((c, i) => normalizePptxCapture(c, i));
 

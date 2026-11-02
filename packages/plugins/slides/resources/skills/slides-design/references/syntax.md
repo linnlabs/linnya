@@ -297,7 +297,7 @@ arc radius 和 flowLine length 按元素短边百分比解释。需要重复花�
 | Chart | `stacking` | none / stacked / percent；仅柱/条，不与 combo 混用；percent 的刻度以 0～1 为单位，不另设 min/max |
 | Chart | `showDataLabels` / `dataLabelFormat` | 全局标签显隐、数字格式；系列可覆盖，格式不会改变底层数据 |
 | Chart | `dataLabelContent` | value / percentage / category；后两者仅饼/环，percentage 按该系列合计计算占比 |
-| Chart | `dataLabelPosition` | inside / outside / center；柱和饼环为内部/外部/内部居中，折线为点下/点上/点中心；本轮不扩展雷达/散点的标签内容和位置 |
+| Chart | `dataLabelPosition` | inside / outside / center；柱和饼环为内部/外部/内部居中，折线为点下/点上/点中心；本轮不扩展雷达/散点的标签内容和位置；环图不支持 outside，堆叠柱不支持 outside |
 | Chart | `legendPosition` | top / bottom / left / right / none |
 | series | `chartType` / `axis` | combo 每个系列必须显式指定 bar / line / area；axis 默认为 primary，secondary 必须同时声明 secondaryValueAxis，至少保留一个 primary 系列 |
 | series | `color` / `pointColors` | 基色覆盖 theme（散点暂不支持）；pointColors 仅柱/饼/环，与 values 等长，null 继承基色/调色板 |

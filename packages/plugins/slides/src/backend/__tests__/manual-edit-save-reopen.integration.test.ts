@@ -1,3 +1,4 @@
+import { preparePresentationMaterialization } from '../features/presentationBuildExecution/orchestration/preparePresentationMaterialization';
 import { PresentationRevisionScope } from '../features/presentationSourceHistory';
 import { PresentationDraftRepository } from '../persistence';
 import { EditorState, TextSelection } from '@tiptap/pm/state';
@@ -43,7 +44,7 @@ const initialDeck: DeckSpec = { title: 'Save lifecycle', layout: '16x9', slides:
     position: { x: 1, y: 3, w: 5, h: 1 }, _authoringRef: { slideKey: 'overview', editKey: 'caption', targetKind: 'text' },
   }] },
 }] };
-const materialize = async (deckSpec: DeckSpec) => Buffer.from(await materializePresentationPptx({ deckSpec, svgAssets: [], svgFallbacks: [] }));
+const materialize = async (deckSpec: DeckSpec) => Buffer.from(await materializePresentationPptx(await preparePresentationMaterialization(deckSpec, undefined, {})));
 
 it.each(['explicit', 'system'])('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导出读取相同内容（%s）', async mode => {
   const authorSource = mode === 'system' ? source.replace(/(?:slideKey|editKey): '[^']+',?\s*/g, '') : source;

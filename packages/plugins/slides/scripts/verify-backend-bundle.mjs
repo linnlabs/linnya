@@ -32,7 +32,7 @@ const TYPESCRIPT_INPUT_PATTERN =
 const PRESENTATION_BUILD_WORKER_ONLY_INPUT_PATTERNS = Object.freeze([
   /node_modules\/(?:\.pnpm\/pptxgenjs@[^/]+\/node_modules\/)?pptxgenjs\//u,
   /node_modules\/(?:\.pnpm\/pptx-automizer@[^/]+\/node_modules\/)?pptx-automizer\//u,
-  /packages\/plugins\/slides\/src\/backend\/engine\/(?:DeckAssembler|FreeformCompiler|StructuredCompiler)\.ts$/u,
+  /packages\/plugins\/slides\/src\/backend\/engine\/(?:DeckAssembler|PreparedDeckAssembler|FreeformCompiler|FreeformPptxCompiler|StructuredCompiler)\.ts$/u,
   /packages\/plugins\/slides\/src\/backend\/engine\/patch\/PatchCompiler\.ts$/u,
   /packages\/plugins\/slides\/src\/backend\/features\/presentationBuildExecution\/functions\/materializePresentationPptx\.ts$/u,
 ]);

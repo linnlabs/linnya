@@ -1,3 +1,4 @@
+import type { ShapeTextAutofitContext } from './text/shapeTextAutofitPptx';
 import { randomUUID } from 'node:crypto';
 import type {
   DeckPreview,
@@ -99,7 +100,8 @@ export interface FreeformCompilerPort {
     theme?: ThemeSpec,
     paintContext?: PptxPaintCompileContext,
     svgGraphicContext?: SvgGraphicCompileContext,
-    formulaContext?: FormulaPptxCompileContext
+    formulaContext?: FormulaPptxCompileContext,
+    shapeTextContext?: ShapeTextAutofitContext,
   ): void;
   compileDeck?(deckSpec: DeckSpec): Promise<Buffer>;
 }

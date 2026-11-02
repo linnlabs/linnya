@@ -1,3 +1,4 @@
+import { preparePresentationMaterialization } from '../features/presentationBuildExecution/orchestration/preparePresentationMaterialization';
 import { PresentationRevisionScope } from '../features/presentationSourceHistory';
 import { PresentationDraftRepository } from '../persistence';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -37,7 +38,7 @@ compose({
   slides: [cover, closing],
 });`;
 
-const materialize = async (deckSpec: DeckSpec) => Buffer.from(await materializePresentationPptx({ deckSpec, svgAssets: [], svgFallbacks: [] }));
+const materialize = async (deckSpec: DeckSpec) => Buffer.from(await materializePresentationPptx(await preparePresentationMaterialization(deckSpec, undefined, {})));
 
 it('界面新建空白页经真实编译、SQLite 保存与重开后，页序、主题背景和 PPTX 页数一致', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'slides-insert-reopen-'));
