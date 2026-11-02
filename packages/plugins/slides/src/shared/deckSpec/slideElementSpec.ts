@@ -40,6 +40,8 @@ export interface TextStyle {
   color?: string; // hex, e.g. '#333333'
   align?: 'left' | 'center' | 'right';
   valign?: 'top' | 'middle' | 'bottom';
+  /** 文字方向；缺省为横排。只在文本元素级生效。 */
+  writingMode?: 'vertical-rl';
   /** 字间距，单位 = pt */
   letterSpacing?: number;
   /** 段落行距；内部只接受明确的 multiple / exactPt 语义。 */

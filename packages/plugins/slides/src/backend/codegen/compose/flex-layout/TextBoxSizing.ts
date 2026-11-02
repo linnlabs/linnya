@@ -7,6 +7,10 @@ import type { FlexProps, LayoutTextNode } from './LayoutTypes.js';
  * Flex 布局提供横向约束，使用正常自动换行。
  */
 export function resolveLayoutTextWrapPolicy(node: LayoutTextNode): TextWrapPolicy {
+  // 竖排的行内约束是高度：不写高度时每段一列，写了才按高度换列。
+  if (node.writingMode === 'vertical-rl') {
+    return node.height != null || node.h != null || node.maxHeight != null ? 'word' : 'none';
+  }
   return isUnconstrainedAbsoluteText(node) ? 'none' : 'word';
 }
 

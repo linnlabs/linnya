@@ -58,6 +58,42 @@ export function measureIntrinsicTextBox(node: LayoutTextNode): IntrinsicTextBoxS
 }
 
 /**
+ * 竖排的同步估算：行内方向是物理高度。inlineLimitInches 为外框高度上限，undefined 表示每段一列。
+ * 与横排一样只是 Yoga 输入；绝对定位无约束的竖排 Text 由 materializeIntrinsicTextBoxes 物化最终外框。
+ */
+export function measureVerticalTextBox(node: LayoutTextNode, inlineLimitInches?: number): IntrinsicTextBoxSize {
+  const { top, right, bottom, left } = PPTX_DEFAULT_TEXT_INSET;
+  const content = typeof node.content === 'string'
+    ? node.content
+    : Array.isArray(node.content)
+      ? node.content.map((run) => 'text' in run ? run.text : '').join('')
+      : '';
+  const measurement = defaultTextMeasureService.measure({
+    paragraphs: [{ text: content }],
+    style: {
+      fontFamily: node.fontFamily,
+      fontSizePt: node.fontSize ?? DEFAULT_FONT_SIZE,
+      bold: node.fontWeight === 'bold'
+        || (typeof node.fontWeight === 'number' && node.fontWeight >= 700)
+        || node.bold === true,
+      italic: node.fontStyle === 'italic' || node.italic === true,
+      lineHeightMultiplier: node.lineHeight ?? node.lineSpacing ?? DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
+      letterSpacingPt: node.letterSpacing,
+    },
+    box: {
+      widthInches: inlineLimitInches ?? 1,
+      wrap: inlineLimitInches === undefined ? 'none' : 'word',
+      padding: { left: top, right: bottom, top: right, bottom: left },
+    },
+    sourceKind: 'generated',
+  });
+  return {
+    widthInches: measurement.totalHeightInches,
+    heightInches: inlineLimitInches ?? measurement.maxLineWidthInches + top + bottom,
+  };
+}
+
+/**
  * 为 Yoga 流布局提供同步估高；实际 adapter 由当前运行域装配。
  * 无横向约束的绝对定位 Text 还会经过 Backend 同源尺寸物化，不能用这里判断最终测量来源。
  */

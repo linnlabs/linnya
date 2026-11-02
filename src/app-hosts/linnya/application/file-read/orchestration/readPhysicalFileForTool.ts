@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 
+import { ASSET_IMAGE_MAX_PIXELS } from 'src/domains/assets/definitions/imageAssetPolicy';
 import {
   ManagedImageIngressError,
   type ManagedImageIngressPort,
 } from 'src/domains/assets/features/managed-image-ingress';
 import type { ToolResultAssetClaimRegistryPort } from 'src/domains/assets/features/tool-result-claims';
-import { ImageInspectionError } from 'src/shared/media/image-inspection';
+import { ImageInspectionError, inspectImageBytes } from 'src/shared/media/image-inspection';
 import {
   PhysicalFileReadError,
   type PhysicalFileReaderPort,
@@ -58,6 +60,8 @@ export async function readPhysicalFileForTool(input: {
   readonly hasExplicitTextWindow: boolean;
   /** 由 app-level history projection 判断相同像素是否已进入当前 run。 */
   readonly hasAttachedImageContent: (sha256: string) => boolean;
+  /** 当前模型连接收不到工具结果图片时只返回元数据，不登记受管副本也不签发 claim。 */
+  readonly imageDelivery: 'attach' | 'metadata_only';
 }): Promise<PhysicalFileToolReadResult> {
   const physical = await input.reader.readFile({
     absolutePath: input.absolutePath,
@@ -71,6 +75,28 @@ export async function readPhysicalFileForTool(input: {
       'READ_FILE_IMAGE_WINDOW_CONFLICT',
       '图片没有字符窗口；请只传 locator。',
     );
+  }
+
+  if (input.imageDelivery === 'metadata_only') {
+    try {
+      const facts = await inspectImageBytes({
+        bytes: await readFile(physical.resolvedPath),
+        maxImagePixels: ASSET_IMAGE_MAX_PIXELS,
+      });
+      return Object.freeze({
+        kind: 'image' as const,
+        locator: input.locator,
+        resolvedPath: physical.resolvedPath,
+        fileName: physical.fileName,
+        contentType: facts.mediaType,
+        byteLength: physical.byteLength,
+        width: facts.width,
+        height: facts.height,
+        attachmentStatus: 'not_delivered' as const,
+      });
+    } catch (error: unknown) {
+      projectIngressError(error);
+    }
   }
 
   let asset;

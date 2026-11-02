@@ -97,5 +97,5 @@ export type PhysicalFileToolReadResult =
       readonly selection: PhysicalFileImageSelection;
     })
   | (PhysicalImageToolReadFacts & {
-      readonly attachmentStatus: 'already_attached';
+      readonly attachmentStatus: 'already_attached' | 'not_delivered';
     });

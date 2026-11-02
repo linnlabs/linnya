@@ -27,6 +27,7 @@ describe('styleParsers / 已知字段集与 parser 实际识别字段同步', ()
       color: '#FFFFFF',
       align: 'center',
       valign: 'middle',
+      writingMode: 'vertical-rl',
       lineSpacing: 1.4,
       letterSpacing: 0.5,
     };

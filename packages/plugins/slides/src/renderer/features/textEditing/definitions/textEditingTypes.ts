@@ -25,6 +25,7 @@ export interface TextEditingTarget {
   readonly rotation: number;
   readonly padding: TextEditingPadding;
   readonly verticalOffset: number;
+  readonly writingMode?: 'vertical-rl';
   readonly fontFamily: string;
   readonly fontSizePt: number;
   readonly appliedFontScale: number;

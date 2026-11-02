@@ -1,5 +1,6 @@
 import {
   DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
+  EMU_PER_INCH,
   PPTX_DEFAULT_TEXT_INSET,
   flattenSlideElements,
   segmentClusters,
@@ -37,6 +38,12 @@ export type LayoutLintCode =
   | 'descendant_outside_computed_parent';
 
 export type LayoutLintIssue = Extract<QualityDiagnosticDraft, { code: LayoutLintCode }>;
+
+/**
+ * 页面尺寸在 admission 时按 EMU 取整，节点几何仍是英寸浮点；PPTX 也只保存 EMU。
+ * 越界比较给一个 EMU 的容差，避免 13.333in 宽页上的满版元素因取整误差被判越界。
+ */
+const BOUNDS_TOLERANCE_INCHES = 1 / EMU_PER_INCH;
 
 export interface LayoutLintReport {
   issueCount: number;
@@ -174,12 +181,13 @@ export class LayoutLint {
     }
 
     const bleed = element.layoutConstraintEvidence?.allowedBleedInches ?? 0;
-    if (x < -bleed || y < -bleed || x + w > slideSize.width + bleed || y + h > slideSize.height + bleed) {
-      const violatedSides: Array<'left' | 'right' | 'top' | 'bottom'> = [];
-      if (x < -bleed) violatedSides.push('left');
-      if (x + w > slideSize.width + bleed) violatedSides.push('right');
-      if (y < -bleed) violatedSides.push('top');
-      if (y + h > slideSize.height + bleed) violatedSides.push('bottom');
+    const limit = bleed + BOUNDS_TOLERANCE_INCHES;
+    const violatedSides: Array<'left' | 'right' | 'top' | 'bottom'> = [];
+    if (x < -limit) violatedSides.push('left');
+    if (x + w > slideSize.width + limit) violatedSides.push('right');
+    if (y < -limit) violatedSides.push('top');
+    if (y + h > slideSize.height + limit) violatedSides.push('bottom');
+    if (violatedSides.length > 0) {
 
       issues.push({
         code: 'out_of_bounds',
@@ -625,6 +633,13 @@ function resolveFinalTextContentWidth(
   element: SlideElementInfo & { position: NonNullable<SlideElementInfo['position']> },
 ): number {
   const padding = element.textBody?.padding;
+  // 竖排的断行约束是物理高度，诊断的“内容宽”与 maxLineWidth 保持同一方向。
+  if (element.textLayout?.writingMode === 'vertical-rl') {
+    return Number(Math.max(
+      element.position.h - (padding?.top ?? PPTX_DEFAULT_TEXT_INSET.top) - (padding?.bottom ?? PPTX_DEFAULT_TEXT_INSET.bottom),
+      0,
+    ).toFixed(6));
+  }
   return Number(Math.max(
     element.position.w - (padding?.left ?? PPTX_DEFAULT_TEXT_INSET.left) - (padding?.right ?? PPTX_DEFAULT_TEXT_INSET.right),
     0,

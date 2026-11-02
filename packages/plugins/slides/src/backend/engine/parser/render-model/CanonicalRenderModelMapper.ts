@@ -187,6 +187,7 @@ function mapTextNode(
     kind: 'text',
     paragraphs,
     verticalAlign,
+    ...(element.visual?.textWritingMode ? { writingMode: element.visual.textWritingMode } : {}),
     autoFitPolicy: element.visual?.textAutoFit,
     padding: element.visual?.textPadding ?? PPTX_DEFAULT_TEXT_INSET,
     wrap: element.visual?.textWrap ?? 'word',
@@ -245,6 +246,7 @@ function mapShapeNode(
           element.visual?.textPadding,
           element.visual?.textWrap,
           element.paragraphs,
+          element.visual?.textWritingMode,
         )
       : undefined,
   };
@@ -387,6 +389,8 @@ function buildInnerText(
   fallbackWrap: TextRenderNode['wrap'] | undefined,
   /** imported / patched 路径专用：按 OOXML a:p 顺序保留的段落。 */
   fallbackParagraphs: readonly CanonicalTextParagraph[] | undefined,
+  /** imported / patched 路径专用 fallback：来自 OOXML `bodyPr@vert="eaVert"`。 */
+  fallbackWritingMode: TextRenderNode['writingMode'] | undefined,
 ): TextRenderNode {
   if (specElement?.type === 'shape') {
     return buildShapeTextNode(
@@ -422,6 +426,7 @@ function buildInnerText(
   );
   return {
     ...node,
+    ...(fallbackWritingMode ? { writingMode: fallbackWritingMode } : {}),
     paragraphs: fallbackParagraphs && fallbackParagraphs.length > 0
       ? mapCanonicalParagraphs(fallbackParagraphs, defaultFontFamily)
       : node.paragraphs,

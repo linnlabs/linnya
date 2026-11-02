@@ -43,6 +43,8 @@ export interface CanonicalVisualHints extends SlideElementShapeVisual {
    * `bodyPr@anchor` 提取）。generated 路径走 specElement.style.valign，本字段为空。
    */
   textVerticalAlign?: 'top' | 'middle' | 'bottom';
+  /** imported 路径由 PptxReader 从 `bodyPr@vert="eaVert"` 提取；generated 路径走 specElement.style。 */
+  textWritingMode?: 'vertical-rl';
   /**
    * 文本框 / shape 内文本的 autofit 策略（imported 路径由 PptxReader 从
    * `bodyPr` 子节点 normAutofit / spAutoFit / noAutofit 提取）。

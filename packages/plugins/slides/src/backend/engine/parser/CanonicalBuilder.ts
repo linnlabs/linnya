@@ -121,6 +121,7 @@ export class CanonicalBuilder {
     const textAutoFit = el.textBody?.autoFit;
     const textPadding = el.textBody?.padding;
     const textWrap = el.textBody?.wrap;
+    const textWritingMode = el.textBody?.writingMode;
     if (
       !shapeVisual
       && fill == null
@@ -129,6 +130,7 @@ export class CanonicalBuilder {
       && textAutoFit == null
       && textPadding == null
       && textWrap == null
+      && textWritingMode == null
     ) {
       return undefined;
     }
@@ -140,6 +142,7 @@ export class CanonicalBuilder {
       ...(textAutoFit != null ? { textAutoFit } : {}),
       ...(textPadding != null ? { textPadding } : {}),
       ...(textWrap != null ? { textWrap } : {}),
+      ...(textWritingMode != null ? { textWritingMode } : {}),
     };
   }
 

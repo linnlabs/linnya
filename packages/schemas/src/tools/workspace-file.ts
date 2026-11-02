@@ -406,13 +406,13 @@ const WorkspaceReadFileModelInputSchema = z
   .strict();
 
 const PhysicalImageAttachmentStatusSchema = z
-  .enum(['attached', 'already_attached'])
+  .enum(['attached', 'already_attached', 'not_delivered'])
   // 旧事件没有该字段；回放时按当时唯一存在的 attached 语义解释。
   .default('attached');
 
 function requireValidPhysicalImageAttachment(
   result: {
-    readonly data: { readonly attachment_status: 'attached' | 'already_attached' };
+    readonly data: { readonly attachment_status: 'attached' | 'already_attached' | 'not_delivered' };
     readonly modelInput?: unknown;
   },
   context: z.RefinementCtx,
@@ -422,7 +422,7 @@ function requireValidPhysicalImageAttachment(
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['modelInput'],
-      message: 'attached image requires modelInput; already_attached image must omit it',
+      message: 'attached image requires modelInput; other statuses must omit it',
     });
   }
 }

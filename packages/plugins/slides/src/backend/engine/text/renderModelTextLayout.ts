@@ -21,6 +21,7 @@ import {
   resolveTextLayoutFontScaleCandidates,
   resolveTextLayoutContractFromNode,
   resizeTextBoxForAutoFit,
+  resizeVerticalTextBoxForAutoFit,
   segmentClusters,
 } from '@plugin/slides/shared/textLayout';
 import {
@@ -58,7 +59,9 @@ export function applyTextLayoutToRenderModel(
       contract,
       defaultFontFamily: resolveDefaultFontFamily(node),
     }, provider, fontMetricsProvider);
-    if (
+    if (contract.autoFitPolicy === 'resize-shape' && layout.writingMode === 'vertical-rl') {
+      node.box = resizeVerticalTextBoxForAutoFit(node.box, layout, contract.verticalAlign);
+    } else if (
       contract.autoFitPolicy === 'resize-shape'
       && layout.requiredHeightInches != null
     ) {

@@ -5,10 +5,12 @@ import { createSlidesDocumentHookRuntime } from './createSlidesDocumentHookRunti
 
 const workspaceRuntimeMock = vi.hoisted(() => ({
   WorkspaceService: vi.fn(),
+  createConversationFilePathResolver: vi.fn(),
 }));
 
 vi.mock('@plugin/backend/workspaceRuntime', () => ({
   WorkspaceService: workspaceRuntimeMock.WorkspaceService,
+  createConversationFilePathResolver: workspaceRuntimeMock.createConversationFilePathResolver,
 }));
 
 const coordinatorRuntimeMock = vi.hoisted(() => ({
@@ -65,6 +67,25 @@ function makeCoordinator() {
 describe('createSlidesDocumentHookRuntime', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+  });
+
+  it('fallback 写入绑定 conversation 文件解析，首次写入即可引用 conversation:/ 图片', async () => {
+    const { db, context } = createContext();
+    const coordinator = makeCoordinator();
+    const conversationFilePathResolver = { resolveRelativePath: vi.fn() };
+    workspaceRuntimeMock.createConversationFilePathResolver.mockReturnValue(conversationFilePathResolver);
+    coordinatorRuntimeMock.getSharedPptCoordinator.mockReturnValue(coordinator);
+
+    const runtime = createSlidesDocumentHookRuntime(context);
+    await runtime.writeSource(
+      { source: 'compose({ title: "Deck", slides: [] })' },
+      { conversationId: 'conv-1', projectId: 'project-1' },
+    );
+
+    expect(workspaceRuntimeMock.createConversationFilePathResolver).toHaveBeenCalledWith(context);
+    expect(coordinatorRuntimeMock.getSharedPptCoordinator).toHaveBeenCalledWith(db, {
+      conversationFilePathResolver,
+    });
   });
 
   it('通用 document hook fallback 复用共享 coordinator', async () => {

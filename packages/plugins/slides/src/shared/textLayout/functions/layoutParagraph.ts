@@ -15,6 +15,7 @@ import { isRenderTextRun } from '../definitions/types';
 import { combineTextLayoutAdvanceSources } from './advanceSource';
 import { breakParagraphIntoLines } from './breakLines';
 import { measureLineMetrics } from './lineMetrics';
+import { buildVerticalGlyphRuns } from './verticalText';
 
 const DEFAULT_FONT_SIZE_PT = 14;
 
@@ -29,6 +30,7 @@ export interface LayoutParagraphOptions {
   fontScale: number;
   lineSpacingReduction?: number;
   defaultFontFamily: string;
+  vertical?: boolean;
 }
 
 export interface LayoutParagraphResult {
@@ -50,6 +52,7 @@ export function layoutParagraph(options: LayoutParagraphOptions): LayoutParagrap
     (run) => resolveRunMeasureStyle(run, options.defaultFontFamily, options.fontScale),
     options.paragraphIndex,
     options.fontScale,
+    options.vertical === true,
   );
 
   let y = options.startY + spacingBefore;
@@ -85,10 +88,12 @@ export function layoutParagraph(options: LayoutParagraphOptions): LayoutParagrap
           height: roundInches(ascent + descent),
         };
       }
+      const { clusters, ...textSlice } = slice;
       return {
-        ...slice,
+        ...textSlice,
         x,
         textY: roundInches(y + (metrics.textTopByRunIndex.get(slice.runIndex) ?? 0)),
+        ...(clusters ? { verticalGlyphRuns: buildVerticalGlyphRuns(clusters) } : {}),
       };
     });
     const slices = lineIndex === 0
@@ -98,6 +103,7 @@ export function layoutParagraph(options: LayoutParagraphOptions): LayoutParagrap
         textSlices,
         y + (metrics.textTopByRunIndex.get(-1) ?? 0),
         options.fontScale,
+        options.vertical === true,
       )
       : textSlices;
 
@@ -204,6 +210,7 @@ function prependBulletSlice(
   textSlices: RenderInlineLineSlice[],
   textY: number,
   fontScale: number,
+  vertical: boolean,
 ): RenderInlineLineSlice[] {
   const marker = resolveBulletMarker(paragraph.bullet, paragraphIndex);
   if (marker == null) {
@@ -219,6 +226,7 @@ function prependBulletSlice(
     width: bulletWidth,
     textY: roundInches(textY),
     isBulletMarker: true,
+    ...(vertical ? { verticalGlyphRuns: [{ text: marker, offset: 0, orientation: 'upright' as const }] } : {}),
   }, ...textSlices];
 }
 

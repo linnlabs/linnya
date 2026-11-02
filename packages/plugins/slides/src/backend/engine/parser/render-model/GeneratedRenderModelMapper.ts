@@ -1,6 +1,7 @@
 import { isEditableTextContent, readCopyableAuthoringValue } from '@plugin/slides/shared/authoringEditing';
 import type {
   FreeformElement,
+  FreeformShapeElement,
   SlidesAuthoringEditCapability,
   SlidesAuthoringEditProjection,
   SlidesAuthoringFillEditProjection,
@@ -135,6 +136,7 @@ function mapStructuredElement(
           padding: PPTX_DEFAULT_TEXT_INSET,
           autoFitPolicy: 'resize-shape',
           wrap: element.textWrap,
+          writingMode: element.style?.writingMode,
         },
       );
     }
@@ -466,6 +468,7 @@ function mapFreeformTextNode(
       padding: PPTX_DEFAULT_TEXT_INSET,
       autoFitPolicy: 'resize-shape',
       wrap: element.textWrap,
+      writingMode: style.writingMode,
     },
   );
 }
@@ -489,7 +492,7 @@ function mapFreeformShapeNode(
     shadow: resolveShadow(element.style?.shadow),
     opacity: element.style?.opacity,
     rotation: element.style?.rotate,
-    innerText: typeof element.content === 'string'
+    innerText: hasShapeTextContent(element.content)
       ? buildGeneratedShapeTextNode(
         makeBaseNode(`${base.id}-inner`, base.box, base.zIndex),
         element.content,
@@ -499,6 +502,12 @@ function mapFreeformShapeNode(
       )
       : undefined,
   };
+}
+
+function hasShapeTextContent(
+  content: FreeformShapeElement['content'],
+): content is NonNullable<FreeformShapeElement['content']> {
+  return typeof content === 'string' || (Array.isArray(content) && content.length > 0);
 }
 
 function resolveFreeformTextStyle(
@@ -517,6 +526,7 @@ function resolveFreeformTextStyle(
     color: style.color,
     align: style.align,
     valign: style.valign,
+    writingMode: style.writingMode,
     letterSpacing: style.letterSpacing,
     lineSpacing: style.lineSpacing,
   };

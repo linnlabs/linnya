@@ -67,7 +67,13 @@ export type {
 } from './functions/segmentClusters';
 export {
   resizeTextBoxForAutoFit,
+  resizeVerticalTextBoxForAutoFit,
 } from './functions/resizeTextBoxForAutoFit';
+export {
+  buildVerticalGlyphRuns,
+  classifyVerticalGlyph,
+  resolveVerticalLineColumn,
+} from './functions/verticalText';
 export {
   layoutTextNode,
   resolveTextLayoutFontScaleCandidates,
@@ -77,6 +83,8 @@ export type {
 } from './functions/resolveTextLayoutContract';
 export type {
   RenderLineSlice,
+  VerticalGlyphOrientation,
+  VerticalGlyphRun,
   InlineBoxLineSlice,
   RenderInlineLineSlice,
   RenderTextLine,

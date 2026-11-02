@@ -1,5 +1,5 @@
 import {
-  layoutPreparedText, PreparedTextMeasurementUnavailable, resizeTextBoxForAutoFit,
+  layoutPreparedText, PreparedTextMeasurementUnavailable, resizeTextBoxForAutoFit, resizeVerticalTextBoxForAutoFit,
 } from '@plugin/slides/shared/textLayout';
 import type { TextRenderNode } from '../../../types/render';
 
@@ -9,9 +9,12 @@ export function deriveTextPreview(input: TextRenderNode): TextRenderNode | null 
   if (!prepared) return null;
   try {
     const layout = layoutPreparedText(input, prepared);
-    const box = input.autoFitPolicy === 'resize-shape' && layout.requiredHeightInches !== undefined
-      ? resizeTextBoxForAutoFit(input.box, layout.requiredHeightInches, input.verticalAlign ?? 'top')
-      : input.box;
+    const resizes = input.autoFitPolicy === 'resize-shape';
+    const box = resizes && layout.writingMode === 'vertical-rl'
+      ? resizeVerticalTextBoxForAutoFit(input.box, layout, input.verticalAlign ?? 'top')
+      : resizes && layout.requiredHeightInches !== undefined
+        ? resizeTextBoxForAutoFit(input.box, layout.requiredHeightInches, input.verticalAlign ?? 'top')
+        : input.box;
     return { ...input, box, layout };
   } catch (error) {
     // 新 shaping 输入／不支持缩放的测量来源必须等正式修订；其他排版错误继续暴露。

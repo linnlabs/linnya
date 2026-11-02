@@ -12,6 +12,7 @@
 import type { Database } from 'better-sqlite3';
 import { DocumentHistoryError, type DocumentHistoryCapability } from '@plugin/backend/documentHistory';
 import {
+  createConversationFilePathResolver,
   createWorkspaceService,
   type PluginWorkspaceServicePort,
 } from '@plugin/backend/workspaceRuntime';
@@ -74,7 +75,13 @@ function readWorkspaceService(context: SlidesHookToolContext): PluginWorkspaceSe
 function readFallbackPresentationCoordinator(
   context: SlidesHookToolContext
 ): PresentationToolCoordinatorPort {
-  return getSharedPptCoordinator(readDatabaseService(context).getDb());
+  // write_file/edit_file 不经过 Slides 工具装饰器；这里同样绑定 conversation 文件解析，
+  // 否则进程内第一次写入引用 conversation:/ 图片时会因 resolver 尚未绑定而失败。
+  const conversationFilePathResolver = createConversationFilePathResolver(context);
+  const db = readDatabaseService(context).getDb();
+  return conversationFilePathResolver
+    ? getSharedPptCoordinator(db, { conversationFilePathResolver })
+    : getSharedPptCoordinator(db);
 }
 
 export const createSlidesDocumentHookRuntime: SlidesDocumentHookRuntimeFactory = (

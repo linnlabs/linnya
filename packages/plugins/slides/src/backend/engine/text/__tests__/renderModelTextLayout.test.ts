@@ -287,6 +287,18 @@ it('matches a freshly mapped generated shape across default font and compact pad
   }
 });
 
+it('builds generated shape text from styled runs and splits paragraphs on run newlines', async () => {
+  const { buildGeneratedShapeTextNode } = await import('../../parser/render-model/RenderModelText');
+  const node = buildGeneratedShapeTextNode({ id: 'seal-inner', zIndex: 0, box: { x: 0, y: 0, w: 1, h: 1, unit: 'in' } }, [
+    { text: '茶', style: { fontFamily: 'Xingkai SC', fontSize: 20, color: '#EFE7D9' } },
+    { text: '\nfine', style: { color: '#123456' } },
+  ], { color: '#000000' }, 'Arial', undefined);
+
+  expect(node.paragraphs).toHaveLength(2);
+  expect(node.paragraphs[0]?.runs).toMatchObject([{ text: '茶', fontFamily: 'Xingkai SC', fontSize: 20, color: '#EFE7D9' }]);
+  expect(node.paragraphs[1]?.runs).toMatchObject([{ text: 'fine', color: '#123456' }]);
+});
+
 it('omits editing measurements and extra font variants for read-only rendering', () => {
   const model = makeRenderModel(makeTextNode());
   const shape = model.slides[0].elements.find(node => node.kind === 'shape');

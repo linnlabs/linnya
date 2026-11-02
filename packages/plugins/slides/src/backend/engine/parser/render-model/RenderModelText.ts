@@ -1,4 +1,4 @@
-import type { TextStyle } from '@plugin/slides/shared';
+import type { FreeformTextRun, TextStyle } from '@plugin/slides/shared';
 import type {
   RenderBox,
   RenderParagraph,
@@ -96,6 +96,7 @@ export function buildGeneratedTextRenderNode(
     padding?: TextRenderNode['padding'];
     autoFitPolicy?: TextRenderNode['autoFitPolicy'];
     wrap?: TextRenderNode['wrap'];
+    writingMode?: TextRenderNode['writingMode'];
   } = {},
 ): TextRenderNode {
   const contract = resolveTextLayoutContract({
@@ -107,12 +108,14 @@ export function buildGeneratedTextRenderNode(
     autoFitPolicy: layoutOverrides.autoFitPolicy,
     wrap: layoutOverrides.wrap,
     verticalAlign,
+    writingMode: layoutOverrides.writingMode,
   });
   return {
     ...base,
     // mapper 只建立语义模型；尺寸与断行必须由最终布局阶段一次性决定。
     box: base.box,
     verticalAlign: contract.verticalAlign,
+    ...(contract.writingMode ? { writingMode: contract.writingMode } : {}),
     wrap: contract.wrap,
     overflow: contract.overflow,
     autoFitPolicy: contract.autoFitPolicy,
@@ -122,14 +125,15 @@ export function buildGeneratedTextRenderNode(
 
 export function buildGeneratedShapeTextNode(
   base: RenderBaseNode,
-  text: string,
+  content: string | readonly FreeformTextRun[],
   style: TextStyle,
   defaultFontFamily: string,
   rotation: number | undefined,
 ): TextRenderNode {
+  const plainText = typeof content === 'string' ? content : content.map((run) => run.text).join('');
   const layout = resolveShapeTextLayout(
     { x: base.box.x, y: base.box.y, w: base.box.w, h: base.box.h },
-    text,
+    plainText,
     style,
     rotation != null,
   );
@@ -139,8 +143,19 @@ export function buildGeneratedShapeTextNode(
     align: layout.align,
     valign: layout.valign,
   };
-  const paragraphs = text.split('\n').map((line) => ({
-    runs: textStyleToRuns(line, textStyle, defaultFontFamily, layout.fontSize),
+  // 分段 run 按其中的 \n 拆段；run 自身样式覆盖形状级样式，未声明的字段继承形状排版结果。
+  const lines: Array<Array<{ text: string; style: TextStyle }>> = [[]];
+  for (const run of typeof content === 'string' ? [{ text: content }] : content) {
+    const runStyle: TextStyle = 'style' in run && run.style ? { ...textStyle, ...run.style } : textStyle;
+    run.text.split('\n').forEach((part, index) => {
+      if (index > 0) lines.push([]);
+      if (part.length > 0) lines[lines.length - 1]!.push({ text: part, style: runStyle });
+    });
+  }
+  const paragraphs = lines.map((parts) => ({
+    runs: parts.length > 0
+      ? parts.flatMap((part) => textStyleToRuns(part.text, part.style, defaultFontFamily, layout.fontSize))
+      : textStyleToRuns('', textStyle, defaultFontFamily, layout.fontSize),
     align: resolveParagraphAlign(layout.align),
     lineSpacing: resolveTextStyleLineSpacing(textStyle.lineSpacing),
   }));

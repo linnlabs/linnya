@@ -72,9 +72,9 @@ Flex 子项可以使用 `flex`、`width`、`height`、margin 与父容器的 gap
 
 需要循环计算“坐标 + 文本 + 颜色”等混合记录时，使用 `[{ x: 1, label: "阶段 A", color: "#..." }]` 这类具名对象；不要用 `[1, "阶段 A", "#..."]` 异构 tuple 再解构做算术，plain JavaScript typecheck 会把元素推断为联合类型。页面内循环创建叶子节点是支持的，`timeline.js` 是可执行示例；只有顶层页面必须逐个显式 `createSlide()`。
 
-`compose({ layout })` 接受 `"16x9"`、`"16x10"`、`"4x3"`，也接受文稿级自定义物理尺寸 `{ width, height, unit: "in" }`。自定义宽高各为 1–56 英寸；整份文稿共用一个尺寸，不支持逐页混用。需要海报、竖版报告或方形画布时应直接声明真实尺寸，不要用比例字符串猜测物理大小。
+`compose({ layout })` 接受 `"16x9"`（10 × 5.625 英寸）、`"16x10"`（10 × 6.25）、`"4x3"`（10 × 7.5），也接受文稿级自定义物理尺寸 `{ width, height, unit: "in" }`。自定义宽高各为 1–56 英寸；整份文稿共用一个尺寸，不支持逐页混用。需要海报、竖版报告或方形画布时应直接声明真实尺寸，不要用比例字符串猜测物理大小。PowerPoint 默认宽屏 13.333 × 7.5 英寸不是 `"16x9"` preset，需要时写成自定义尺寸。
 
-`SLIDE_W = 10`、`SLIDE_H = 5.625` 是 sandbox 注入的 **16:9 参考常量**，不是由本次 `compose({ layout })` 预先计算的当前画布。非 16:9 文稿优先用 Flex、百分比和父容器约束；不要拿这两个常量铺满页面。若必须做全页 absolute 布局，应使用所声明 layout 的真实英寸宽高，并在整份 source 中保持一致。
+`SLIDE_W = 10`、`SLIDE_H = 5.625` 是 sandbox 注入的 **16:9 参考常量**，不是由本次 `compose({ layout })` 预先计算的当前画布；声明自定义尺寸后它们仍是 10 与 5.625。非 16:9 或自定义尺寸的文稿优先用 Flex、百分比和父容器约束；不要拿这两个常量铺满页面。若必须做全页 absolute 布局，应使用所声明 layout 的真实英寸宽高，并在整份 source 中保持一致。
 
 ## 5. 内容节点地图
 
@@ -124,6 +124,10 @@ Text 的宽度语义与 PowerPoint 一致：
 Text 可以用 `backgroundColor` 和纯色 `border: { color, width, dash? }` 装饰自己的盒子，但仍没有 padding。需要可靠的文字内边距、圆角底或卡片阴影时，使用 Frame 包住 Text。
 
 主题字体放在 deck theme 中，局部字体只用于明确的层级或语言需求。不要在每个节点重复同一个全局字体。字体是否真实可用要通过 CLI `fonts check/list` 查询，不凭经验猜系统字体。
+
+### 竖排
+
+`writingMode: "vertical-rl"` 是原生竖排：汉字直立、西文旋转、列从右向左，导出为 PowerPoint 竖排文本框，不要用逐字 `\n` 模拟。不写 `height` 时每段一列、盒子随内容；写 `height` 时按高度自动换列。`textAlign` 控制列内上/中/下，`verticalAlign` 的 `top` / `middle` / `bottom` 控制列组靠右/居中/靠左。竖排只属于 Text：不支持行内公式，Shape 内文字不能竖排。
 
 ### 6.1 原生数学公式
 

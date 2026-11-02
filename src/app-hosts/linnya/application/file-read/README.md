@@ -15,6 +15,8 @@ Workspace VFS、conversation 工作目录、Assets 和工具运行时之间的 a
 - 图片 ingress 得到内容 SHA-256 后，只查询 admitted working history 中当前 run 的正式附件事实；相同像素
   已附加时返回 `attachment_status=already_attached` 且不再签发 claim。其他 run、已被压缩移除的附件或仅同名文件
   都不能命中；
+- 当前模型连接不接收工具结果图片时（ToolNode 的 `modelInputAdmission.admitted=false`），只校验图片并返回
+  `attachment_status=not_delivered` 与尺寸，不进入 ingress、不签发 claim，observation 明确告知模型没有看到像素；
 - PDF、Office、压缩包、数据库和可执行文件不在 generic Read 内提取，由 Shell/CLI 显式转换。
 
 普通文本在该 use case 中统一投影为 1-based 行窗口，`offset/limit` 分别表示起始行和最大行数；

@@ -15,6 +15,9 @@ export type TextLineBreakPolicy =
 
 export type TextAutoFitPolicy = 'none' | 'shrink-text' | 'resize-shape';
 
+/** 横排是默认事实，不写入合同；竖排列序固定从右到左，对应 OOXML `vert="eaVert"`。 */
+export type TextWritingMode = 'vertical-rl';
+
 export interface TextBoxInsets {
   top: number;
   right: number;
@@ -39,6 +42,7 @@ export interface TextLayoutContract {
   autoFitPolicy: TextAutoFitPolicy;
   overflow: 'clip' | 'ellipsis' | 'visible';
   verticalAlign: 'top' | 'middle' | 'bottom';
+  writingMode?: TextWritingMode;
   font: TextFontResolutionContract;
 }
 

@@ -338,9 +338,12 @@ export class FreeformCompiler {
       }
     }
 
-    if (el.content && typeof el.content === 'string') {
+    const shapeText = typeof el.content === 'string'
+      ? el.content
+      : el.content?.map((run) => run.text).join('') ?? '';
+    if (shapeText.length > 0) {
       const rotated = el.style?.rotate != null;
-      const textLayout = resolveShapeTextLayout(el.position, el.content, el.style, rotated);
+      const textLayout = resolveShapeTextLayout(el.position, shapeText, el.style, rotated);
       const textOptions: Omit<PptxGenJS.TextPropsOptions, 'shape'> = {
         ...opts,
         ...mapTextParagraphStyleToProps(el.style),
@@ -354,7 +357,13 @@ export class FreeformCompiler {
           { padding: textLayout.paddingInches },
         ),
       };
-      addPptxShapeText(slide, el.content, geometry, textOptions);
+      const content = typeof el.content === 'string'
+        ? el.content
+        : (el.content ?? []).map((run): PptxGenJS.TextProps => ({
+          text: run.text,
+          options: mapTextRunStyleToProps(run.style) as PptxGenJS.TextPropsOptions,
+        }));
+      addPptxShapeText(slide, content, geometry, textOptions);
     } else {
       if (geometry.shapeName === 'custGeom') {
         addPptxCustomGeometryShape(slide, opts);
