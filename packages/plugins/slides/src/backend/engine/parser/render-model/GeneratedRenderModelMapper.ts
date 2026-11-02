@@ -1,6 +1,7 @@
 import { isEditableTextContent, readCopyableAuthoringValue } from '@plugin/slides/shared/authoringEditing';
 import type {
   FreeformElement,
+  FreeformShapeElement,
   SlidesAuthoringEditCapability,
   SlidesAuthoringEditProjection,
   SlidesAuthoringFillEditProjection,
@@ -489,7 +490,7 @@ function mapFreeformShapeNode(
     shadow: resolveShadow(element.style?.shadow),
     opacity: element.style?.opacity,
     rotation: element.style?.rotate,
-    innerText: typeof element.content === 'string'
+    innerText: hasShapeTextContent(element.content)
       ? buildGeneratedShapeTextNode(
         makeBaseNode(`${base.id}-inner`, base.box, base.zIndex),
         element.content,
@@ -499,6 +500,12 @@ function mapFreeformShapeNode(
       )
       : undefined,
   };
+}
+
+function hasShapeTextContent(
+  content: FreeformShapeElement['content'],
+): content is NonNullable<FreeformShapeElement['content']> {
+  return typeof content === 'string' || (Array.isArray(content) && content.length > 0);
 }
 
 function resolveFreeformTextStyle(

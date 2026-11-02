@@ -16,7 +16,7 @@ export interface PptxShapeGeometry {
 
 export function addPptxShapeText(
   slide: PptxGenJS.Slide,
-  text: string,
+  text: string | PptxGenJS.TextProps[],
   geometry: PptxShapeGeometry,
   options: Omit<PptxGenJS.TextPropsOptions, 'shape'>,
 ): void {

@@ -250,6 +250,30 @@ describe('FreeformCompiler', () => {
     expect(slideXml).toContain('<a:normAutofit/>');
   });
 
+  it('writes styled run content inside a shape', async () => {
+    const buffer = await freeformCompiler.compileDeck({
+      title: 'Shape runs',
+      slides: [{
+        slideNumber: 1,
+        spec: makeFreeformSlide({
+          elements: [{
+            type: 'shape',
+            geometry: 'rect',
+            position: { x: 1, y: 1, w: 1, h: 1 },
+            style: { fill: '#A33A2C' },
+            content: [{ text: '茶', style: { fontFamily: 'Xingkai SC', fontSize: 20, color: '#EFE7D9' } }],
+          }],
+        }),
+      }],
+    });
+    const xml = await readSlideXml(buffer);
+
+    expect(xml).toContain('<a:t>茶</a:t>');
+    expect(xml).toContain('typeface="Xingkai SC"');
+    expect(xml).toContain('sz="2000"');
+    expect(xml).toContain('<a:srgbClr val="EFE7D9"/>');
+  });
+
   it('compiles background and notes', async () => {
     const deck: DeckSpec = {
       title: 'BG Notes',
