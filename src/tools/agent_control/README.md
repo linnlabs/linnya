@@ -9,6 +9,8 @@
 - `ask/`：暂停当前 run 并等待用户填写问卷。
 - `subrun/`：可见 Subagent、host-only batch 与公共 child-run admission/runner。
 
+`ask` 的必填单选、多选题始终提供“其他”输入，让用户能如实说明选项都不符合或目前未知；选填题仍按声明决定是否开放。多选上限不小于实际选项数时不设置上限，有效的较小上限继续保留。此规则在新问卷接纳时执行，不改写历史问卷。
+
 能力族 `index.ts` 只聚合工具类。feature 之间不能读取彼此内部状态；Checkpoint 对 TaskState 的协作复用 TaskState domain 和同一组参数合同，Subagent 不读取或注入父 TaskState。
 
 产品口径见 [产品模型总览](../../../docs/product-model-overview.md)，TaskState 事实源见 [TaskState domain](../../domains/task-state/README.md)，child-run 宿主边界见 [Child Runs adapter](../../app-hosts/linnya/adapters/child-runs/README.md)。

@@ -31,6 +31,8 @@ Electron Main 不负责：
 4. Main 注册 Renderer request gateway、Commands 的 Desktop admission host 和自身拥有的系统 IPC，然后创建主窗口。
 5. 普通退出、启动失败和安装更新统一经过 `app-lifecycle/`：先停止 App Server 及其后代，再释放 Desktop capability、日志和窗口。
 
+macOS 麦克风授权请求异步发起，不作为 App Server 或窗口就绪的前置条件。系统弹窗未处理、用户拒绝或请求失败时，启动链仍继续；录音能否使用由实际系统权限决定，请求失败保留诊断。
+
 Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也不存在同进程 Backend fallback。
 
 文档受管图片的 `media://load/asset-image/` 也遵守此边界：协议在 App Server ready 后注册，通过当前实例认证的固定 HTTP 端点读取图片；资产归属和内容校验留在 Backend。不能在协议里调用数据库单例。详见 [Markdown 图片资产编排](../app-hosts/linnya/application/markdown-image-assets/README.md)。
