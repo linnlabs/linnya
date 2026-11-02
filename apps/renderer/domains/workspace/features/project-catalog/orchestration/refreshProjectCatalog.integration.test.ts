@@ -41,6 +41,17 @@ describe('Project catalog refresh', () => {
     expect(store.projects.map(project => project.id)).toEqual(['selected', 'other']);
     expect(navigation.currentProjectId).toBe('selected');
     expect(navigation.currentDraft).toEqual(draft);
+    // 创建回执和 mutation 通知都可能刷新目录；相同事实不能打断正在播放的插入动画。
+    const acceptedCatalog = store.projects;
+    await refreshProjectCatalog();
+    expect(store.projects).toBe(acceptedCatalog);
+    vi.mocked(projectGateway.list).mockResolvedValue({
+      success: true,
+      data: { projects: [{ ...record, name: 'Changed again' }] },
+    });
+    await refreshProjectCatalog();
+    expect(store.activeProject?.name).toBe('Changed again');
+    expect(store.projects.map(project => project.id)).toEqual(['selected']);
     vi.mocked(projectGateway.list).mockResolvedValue({ success: true, data: { projects: [] } });
     await refreshProjectCatalog();
     expect(store.projects).toEqual([]);

@@ -8,6 +8,9 @@
 最后调用 `WorkspaceProjectsStore.replaceProjects` 同步写入状态。失败交给既有通知订阅层记录，
 不以空数组替代失败结果。该流程不创建默认项目、不切换 NavigationScope，也不重置草稿或文档树。
 
+创建回执和 mutation 通知可以各自读取正式目录，但内容与顺序相同时不重复写入 store。
+否则迟到的相同快照会使正在移动的 TransitionGroup 重算位置，造成下移动画被打断并重新播放。
+
 历史启动入口 `loadProjects` 在空列表时会创建默认项目，不能用于事件刷新。现有 store 的旧异步动作
 尚未整体迁出，本 feature 的新增流程遵循 orchestration 调用纯 store action 的方向。
 

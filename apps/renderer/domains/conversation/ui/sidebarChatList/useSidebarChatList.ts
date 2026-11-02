@@ -109,7 +109,8 @@ export function useSidebarChatList(
   const error = computed(() => historyListStore.errorByScope(props.scope));
   const hasLoaded = computed(() => historyListStore.hasLoadedScope(props.scope));
   const isLoadInFlight = computed(() => isLoading.value);
-  const shouldShowInitialLoading = computed(() => isLoading.value && conversations.value.length === 0);
+  // 已加载的空列表也是正式结果；后台刷新不能用五行骨架替换它、改变抽屉目标高度。
+  const shouldShowInitialLoading = computed(() => isLoading.value && !hasLoaded.value);
 
   const isConversationDeleting = (conversationId: string): boolean => (
     conversationDeletionStore.isDeletingConversation(conversationId)
@@ -633,7 +634,8 @@ export function useSidebarChatList(
       const nextScope = nextKey.split('|')[0] ?? '';
       const previousScope = previousKey?.split('|')[0] ?? '';
       const scopeChanged = previousKey === undefined || nextScope !== previousScope;
-      const shouldResetList = scopeChanged || !hasLoaded.value;
+      // 组件首次挂载不代表 scope 未加载：侧栏展开前已经预热过目标 scope。
+      const shouldResetList = !hasLoaded.value;
 
       if (scopeChanged) {
         isConversationListExpanded.value = false;

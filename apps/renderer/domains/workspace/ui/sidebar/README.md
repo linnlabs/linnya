@@ -45,6 +45,8 @@
 - 跨 domain 的 workspace scope、conversation 打开、VFS runtime context 刷新不写进 workspace 领域组件内部规则；app 组合面只发出明确事件或调用已有窄口。
 - 文件树刷新规则位于 `app/layout/functions/workspaceVfsRuntimeContext.ts`，避免 UI 组件暗中承担跨 domain 判断。
 - 普通创建、AI 辅助创建和点击项目共用 app 层 `openProjectWorkspaceFromSidebar`：先保存并停用旧文档，再提交导航 scope、项目列表投影、草稿与文件树。创建入口不得提前调用 store 切 scope；否则旧文档会被误认为属于新项目。AI 初始化显式要求新草稿，即使目标仍是当前项目。
+- 创建回执与项目事实通知返回相同目录时不重复写状态，避免重启未完成的列表位移动画。
+- 项目历史预热后的空结果直接用于展开；首次挂载不强制重查，后台刷新不切回骨架，展开高度只由实际内容决定。
 - 创建成功即关闭弹窗，目录通过 `refreshProjectCatalog` 刷新，不重新进入整栏加载骨架屏；已有项目节点保留，新项目从顶部淡入并推动列表下移。打开创建弹窗时先把列表滚回顶部，减少动态效果设置下使用即时滚动。
 - 删除通过 app 注入的回调完成跨域收尾。确认框明确说明文档、全部对话及关联数据会一并删除，并停止运行中的对话任务。确认即消费弹窗意图，避免清理等待期间重复提交。Backend 完整清理成功后进入干净草稿；失败保留项目入口并明确提示部分内容可能已删除，可重试。
 - `pnpm run test:conversation-resource-link:electron` 覆盖打开项目文档后通过真实弹窗创建空项目，检查项目身份、空文件树、旧文件 session 退出、旧节点保留及真实位移/淡入；随后从真实菜单删除普通项目，核对确认范围、项目会话与工作目录删除且另一项目仍可正常打开。普通/AI 创建及保存失败边界另由 app/layout 的 `createProjectNavigation.integration.test.ts` 覆盖；删除失败与删除其他项目由 `projectDeletion.integration.test.ts` 覆盖。
@@ -56,3 +58,5 @@
 侧栏样式由 workspace domain 样式入口聚合。普通节点样式必须收口到 `.workspace-sidebar` 和组件根类下；Teleport 菜单必须使用自身唯一 wrapper 类。
 
 新增样式优先放到对应组件或 feature 的 domain CSS 中。只有真正跨 domain/插件稳定复用的基础浮层、控件或变量，才允许进入 `@linnya/renderer-ui` 的对应 feature；不得重新建立 Host `shared/styles` 杂物目录。
+
+项目创建动效与空项目展开使用独立门禁：`LINNYA_CONVERSATION_E2E_SCENARIO=project-creation node scripts/e2e/conversation-navigation/run-electron-conversation-navigation-e2e.mjs`。它打开隔离 Electron 窗口，延迟重复目录响应验证只移动一次，并逐帧检查空抽屉不超出最终高度；不调用系统文件管理器。资源链接定位的系统交互继续属于独立 `resource-link` 场景。

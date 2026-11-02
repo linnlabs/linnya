@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { seedBottomReturnHistory, runBottomReturnScenario } from './bottom-return-scenario.mjs';
 import { runHistoryLoadFailureScenario } from './history-load-failure-scenario.mjs';
 import { runSidebarResizeScenario } from './sidebar-resize-scenario.mjs';
-import { runCreateProjectAfterDocumentOpen } from './create-project-scenario.mjs';
+import { runCreateProjectAfterDocumentOpen, runEmptyProjectExpansion } from './create-project-scenario.mjs';
 import { runProjectDeletionScenario } from './project-deletion-scenario.mjs';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -40,6 +40,7 @@ const seededTurnCount = [
   'subrun-reload',
   'projection-settlement',
   'resource-link',
+  'project-creation',
 ].includes(scenario) ? 1 : 24;
 const resourceLinkConversationId = 'e2e-conversation-a';
 const resourceLinkWorkspaceDocumentId = '2f86c591-99de-4ec1-bc75-118167b76bd8';
@@ -385,7 +386,7 @@ function seedConversations(projectId) {
       ) VALUES (?, ?, ?, ?, ?)
     `);
 
-    if (scenario === 'resource-link') {
+    if (scenario === 'resource-link' || scenario === 'project-creation') {
       db.prepare(`
         INSERT INTO workspace_nodes (
           id, project_id, parent_id, type, name, icon, created_at, updated_at,
@@ -1638,6 +1639,27 @@ async function run() {
       });
       cdp.close();
       console.log('[conversation-navigation-e2e] 脱敏 Thought/Subrun 回放、单一 tail geometry 与终态释放通过。');
+      return;
+    }
+
+    if (scenario === 'project-creation') {
+      if (sourceDatabasePath) throw new Error('项目侧栏门禁仅使用隔离 fixture');
+      await cdp.send('Page.bringToFront');
+      await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: true });
+      await clickConversation(cdp, 'E2E 对话 A');
+      await waitForActiveConversationReady(cdp);
+      await evaluate(cdp, `(async () => {
+        const { getWorkspaceNavigationPort } = await import('/apps/renderer/shared/ports/workspaceNavigationPort.ts');
+        await getWorkspaceNavigationPort().openDocument({
+          documentId: ${JSON.stringify(resourceLinkWorkspaceDocumentId)},
+          projectId: ${JSON.stringify(projectId)}, type: 'editor',
+        });
+      })()`);
+      const createdProjectId = await runCreateProjectAfterDocumentOpen({ cdp, evaluate, waitFor, documentId: resourceLinkWorkspaceDocumentId });
+      await runEmptyProjectExpansion({ cdp, evaluate, projectId: createdProjectId });
+      await assertRendererHealthy(cdp, rendererErrors, '项目创建与空历史展开');
+      cdp.close();
+      console.log('[project-sidebar-e2e] 项目创建与空历史展开通过；未调用系统文件管理器。');
       return;
     }
 
