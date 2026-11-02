@@ -14,6 +14,7 @@ export interface StartProjectPlanningConversationInput {
   readonly navigation: {
     openWorkspace(scope: { kind: 'project'; projectId: string }): Promise<void>;
   };
+  readonly ensureProjectTreeLoaded: (projectId: string) => Promise<void>;
   readonly startDraft: (scope: { kind: 'project'; projectId: string }) => void;
   readonly chooseAgent: (agentChoiceId: string) => Promise<unknown>;
   readonly send: (
@@ -40,6 +41,8 @@ export async function startProjectPlanningConversation(
   const description = project.description.trim();
 
   await input.navigation.openWorkspace(scope);
+  // 导航只切换作用域，文件树由入口负责加载；新项目否则会继续显示上一个项目的文件。
+  await input.ensureProjectTreeLoaded(project.id);
   input.startDraft(scope);
   await input.chooseAgent(PROJECT_PLANNING_AGENT_CHOICE_ID);
 

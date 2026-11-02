@@ -21,6 +21,9 @@ function createInput(description: string) {
         calls.push('openWorkspace');
       }),
     },
+    ensureProjectTreeLoaded: vi.fn(async () => {
+      calls.push('ensureProjectTreeLoaded');
+    }),
     startDraft: vi.fn(() => {
       calls.push('startDraft');
     }),
@@ -37,7 +40,8 @@ describe('startProjectPlanningConversation', () => {
 
     await expect(startProjectPlanningConversation(input)).resolves.toBe(true);
 
-    expect(calls).toEqual(['openWorkspace', 'startDraft', 'chooseAgent', 'send']);
+    expect(calls).toEqual(['openWorkspace', 'ensureProjectTreeLoaded', 'startDraft', 'chooseAgent', 'send']);
+    expect(input.ensureProjectTreeLoaded).toHaveBeenCalledWith('project-1');
     expect(chooseAgent).toHaveBeenCalledWith(PROJECT_PLANNING_AGENT_CHOICE_ID);
     expect(input.startDraft).toHaveBeenCalledWith({ kind: 'project', projectId: 'project-1' });
   });

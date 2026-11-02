@@ -261,6 +261,7 @@ const showError = (message) => notificationStore.show(message, 'error');
 const startProjectPlanning = (project) => startProjectPlanningConversation({
   project,
   navigation: getWorkspaceNavigationPort(),
+  ensureProjectTreeLoaded: (projectId) => treeStore.ensureProjectTreeLoaded(projectId),
   startDraft: startDraftConversation,
   chooseAgent: (agentChoiceId) => applyConversationAgentChoice({
     assistantStore,
