@@ -2,12 +2,15 @@ import type PptxGenJS from 'pptxgenjs';
 import type { ChartSeries, ChartType, ThemeSpec } from '@plugin/slides/shared';
 import { mapPosition, resolveChartPalette, stripHash } from '../visual/presentationVisualDefaults';
 import { resolveChartOptions, type ChartElement } from './chartOptions';
+import { resolveGeneratedChartLayout } from './resolveGeneratedChartLayout';
+import type { ResolvedChartLayout } from '@plugin/slides/shared/chartLayout';
 
 export interface ChartPptxPatch {
   slideIndex: number;
   marker: string;
   labelPosition?: PptxGenJS.IChartOpts['dataLabelPosition'];
   labelContent?: ChartElement['dataLabelContent'];
+  layout?: ResolvedChartLayout;
   series: { source: ChartSeries; order: number; type: ChartType; color: string }[];
 }
 export interface ChartPptxContext { slideIndex: number; plan: ChartPptxPatch[] }
@@ -21,6 +24,8 @@ export function addNativeChart(
 ): void {
   const palette = resolveChartPalette(theme).map(c => stripHash(c, 'chart.palette'));
   const options = { ...mapPosition(chart.position), chartColors: palette, ...resolveChartOptions(chart) };
+  const layout = resolveGeneratedChartLayout(chart, options);
+  if (layout) options.layout = layout.plot;
   const groups: { type: Exclude<ChartType, 'combo'>; axis: 'primary' | 'secondary'; series: ChartPptxPatch['series'] }[] = [];
   chart.data.series.forEach((source, order) => {
     const type = source.chartType ?? chart.chartType;
@@ -35,12 +40,13 @@ export function addNativeChart(
     order !== index || source.pointColors || source.lineWidth != null || source.lineDash || source.marker
     || source.showDataLabels != null || source.dataLabelFormat != null,
   );
-  if (requiresSeriesPatch) {
+  if (requiresSeriesPatch || layout) {
     if (!context) throw new Error('图表系列样式需要正式 PPTX materialization context。');
     options.objectName = `linnya-chart:${context.slideIndex}:${context.plan.length}`;
     context.plan.push({ slideIndex: context.slideIndex, marker: options.objectName, series: entries,
       labelPosition: chart.dataLabelPosition ? options.dataLabelPosition : undefined,
       labelContent: chart.dataLabelContent,
+      layout,
     });
   }
   const data = (entries: ChartPptxPatch['series']): PptxGenJS.OptsChartData[] => entries.map(({ source }) => ({

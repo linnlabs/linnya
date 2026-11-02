@@ -4,8 +4,9 @@ import { directChildren, getElementByTag, getElements } from '../parser/xml/XmlN
 import { stripHash } from '../visual/presentationVisualDefaults';
 import type { ChartPptxPatch } from './chartPptx';
 import { resolvePptxPartTarget } from '../pptx/pptxPartPath';
+import { applyChartPptxLayout } from './applyChartPptxLayout';
 
-/** 原生 series/dPt 后处理：只补 SDK 缺少的细粒度样式，不重建图表或工作簿。 */
+/** 物化共享布局并补 SDK 缺少的系列样式，保留原生图表和工作簿。 */
 export async function applyChartPptxStyles(zip: JSZip, plan: readonly ChartPptxPatch[] = []): Promise<boolean> {
   const parser = new DOMParser();
   const serializer = new XMLSerializer();
@@ -26,6 +27,7 @@ export async function applyChartPptxStyles(zip: JSZip, plan: readonly ChartPptxP
     if (!target) throw new Error(`Chart materialization: missing relationship for ${patch.marker}`);
     const chartPath = resolvePptxPartTarget(slidePath, target);
     const chart = await read(chartPath);
+    if (patch.layout) applyChartPptxLayout(chart, patch.layout);
     const series = getElements(chart, 'c:ser');
     if (series.length !== patch.series.length) throw new Error('Chart materialization: series cardinality changed');
     patch.series.forEach((entry, index) => {

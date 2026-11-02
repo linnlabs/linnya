@@ -6,12 +6,11 @@
  *
  * 设计原则：
  * - 前端预览不追求像素级匹配 PPT，但必须"看起来是正确的图表"
- * - 标签碰撞、堆叠标签居中、图例换行等边界场景交给 ECharts 内置逻辑
+ * - generated 普通图消费共享 plot/legend 布局，未承诺的图表族保留引擎自动布局
  * - 颜色、字体、间距尽量对齐 PPT 风格
  */
 
 import type {
-  ChartPptxHints,
   ChartRenderNode,
   RenderChartLabelStyle,
   RenderChartType,
@@ -126,10 +125,8 @@ function buildCartesianChart(
 
     if (isStacked) item.stack = 'total';
 
-    // 柱状图间距：从 pptxHints 读取，PPT 堆叠/非堆叠默认值不同
     if (seriesType === 'bar') {
-      item.barGap = resolveBarGap(hints, isStacked);
-      item.barCategoryGap = resolveBarCategoryGap(hints);
+      Object.assign(item, resolveBarSpacing(node, isStacked, s.axis));
     }
 
     // 面积图
@@ -180,7 +177,7 @@ function buildCartesianChart(
     },
     name: catAxisConfig?.title,
     nameLocation: 'middle',
-    nameGap: catFont.fontSize * 2.5,
+    nameGap: node.layout ? node.layout.categoryTitleGap * INCHES_TO_PX : catFont.fontSize * 2.5,
     nameTextStyle: { color: catFont.color ?? PPT.labelColor, fontSize: catFont.fontSize, fontFamily: catFont.fontFamily },
     ...(shouldInverse ? { inverse: true } : {}),
   };
@@ -216,6 +213,10 @@ function buildCartesianChart(
   if (valAxisConfig?.min != null) valueAxis.min = valAxisConfig.min;
   if (valAxisConfig?.max != null) valueAxis.max = valAxisConfig.max;
   Object.assign(valueAxis, valueAxisDetails(valAxisConfig, node));
+  if (node.layout) {
+    valueAxis.nameLocation = 'middle';
+    valueAxis.nameGap = node.layout.valueTitleGap * INCHES_TO_PX;
+  }
   if (isPercent) {
     valueAxis.min = node.series.some(s => s.values.some(v => v < 0)) ? -100 : 0;
     valueAxis.max = node.series.some(s => s.values.some(v => v > 0)) ? 100 : 0;
@@ -234,7 +235,10 @@ function buildCartesianChart(
     xAxis = valueAxis;
     yAxis = categoryAxis;
   } else if (node.chartType === 'combo' && node.axes?.y2) {
-    xAxis = categoryAxis;
+    const secondaryBars = node.series.some(series => series.axis === 'secondary'
+      && resolveEChartsSeriesType(node.chartType, series.chartType) === 'bar');
+    // 原生主/次轴柱簇分别计算柱宽；ECharts 也必须拥有独立的 base axis。
+    xAxis = secondaryBars ? [categoryAxis, { ...categoryAxis, show: false, name: undefined }] : categoryAxis;
     yAxis = [
       valueAxis,
       {
@@ -249,6 +253,7 @@ function buildCartesianChart(
       const orig = node.series[idx];
       if (orig?.axis === 'secondary') {
         s.yAxisIndex = 1;
+        if (secondaryBars) s.xAxisIndex = 1;
       }
     });
   } else {
@@ -308,6 +313,7 @@ function buildPieChart(
   const dlVisible = firstSeries.showDataLabels ?? node.dataLabels?.visible === true;
   const dlFormat = firstSeries.dataLabelFormat ?? node.dataLabels?.format;
   const dlFont = resolveFontStyle(node.dataLabels?.labelStyle, node.labelStyle);
+  const plot = node.layout?.plot;
 
   return {
     animation: false,
@@ -317,12 +323,13 @@ function buildPieChart(
     series: [{
       type: 'pie',
       data,
-      radius,
+      radius: plot ? [`${node.chartType === 'doughnut' ? node.pptxHints?.holeSize ?? 50 : 0}%`, '100%'] : radius,
       // 饼图也为图例留通道；标签允许换行，避免 ECharts 默认省略正文。
-      left: node.legend?.visible && legendPosition === 'left' ? '18%' : 0,
-      right: node.legend?.visible && legendPosition === 'right' ? '18%' : 0,
-      top: node.legend?.visible && legendPosition === 'top' ? '18%' : 0,
-      bottom: node.legend?.visible && legendPosition === 'bottom' ? '18%' : 0,
+      left: plot ? plot.x * node.box.w * INCHES_TO_PX : node.legend?.visible && legendPosition === 'left' ? '18%' : 0,
+      right: plot ? undefined : node.legend?.visible && legendPosition === 'right' ? '18%' : 0,
+      top: plot ? plot.y * node.box.h * INCHES_TO_PX : node.legend?.visible && legendPosition === 'top' ? '18%' : 0,
+      bottom: plot ? undefined : node.legend?.visible && legendPosition === 'bottom' ? '18%' : 0,
+      ...(plot ? { width: plot.w * node.box.w * INCHES_TO_PX, height: plot.h * node.box.h * INCHES_TO_PX } : {}),
       center: ['50%', '50%'],
       label: {
         position: node.dataLabels?.position === 'center' || node.dataLabels?.position === 'inside' ? 'inside' : 'outside',
@@ -429,6 +436,13 @@ function buildRadarChart(
 /** 饼图/雷达图没有 ECharts grid，绘图区色必须独立于含图例的 chart 背景。 */
 function buildNonCartesianPlotBackground(node: ChartRenderNode): Record<string, unknown>[] {
   if (!node.plotBackgroundColor) return [];
+  if (node.layout) {
+    const plot = node.layout.plot;
+    return [{ type: 'rect', silent: true, z: -1,
+      shape: { x: plot.x * node.box.w * INCHES_TO_PX, y: plot.y * node.box.h * INCHES_TO_PX,
+        width: plot.w * node.box.w * INCHES_TO_PX, height: plot.h * node.box.h * INCHES_TO_PX },
+      style: { fill: node.plotBackgroundColor } }];
+  }
   const position = node.legend?.visible ? node.legend.position ?? 'right' : undefined;
   const left = position === 'left' ? 0.18 : 0;
   const top = position === 'top' ? 0.18 : 0;
@@ -448,6 +462,15 @@ function buildNonCartesianPlotBackground(node: ChartRenderNode): Record<string, 
 // ─── Grid 布局 ───────────────────────────────────────────────────────────
 
 function buildGrid(node: ChartRenderNode): Record<string, unknown> {
+  if (node.layout) {
+    const plot = node.layout.plot;
+    return {
+      outerBoundsMode: 'none',
+      left: plot.x * node.box.w * INCHES_TO_PX, top: plot.y * node.box.h * INCHES_TO_PX,
+      width: plot.w * node.box.w * INCHES_TO_PX, height: plot.h * node.box.h * INCHES_TO_PX,
+      show: node.plotBackgroundColor != null, backgroundColor: node.plotBackgroundColor,
+    };
+  }
   const legendVisible = node.legend?.visible === true;
   const pos = node.legend?.position ?? 'right';
 
@@ -457,10 +480,10 @@ function buildGrid(node: ChartRenderNode): Record<string, unknown> {
     outerBoundsMode: 'auto',
     outerBoundsContain: 'all',
     outerBounds: {
-      left: legendVisible && pos === 'left' ? '18%' : 0,
-      right: legendVisible && pos === 'right' ? '18%' : 0,
-      top: legendVisible && pos === 'top' ? '18%' : 0,
-      bottom: legendVisible && pos === 'bottom' ? '18%' : 0,
+      left: legendVisible && pos === 'left' ? '18%' : 1,
+      right: legendVisible && pos === 'right' ? '18%' : 1,
+      top: legendVisible && pos === 'top' ? '18%' : 1,
+      bottom: legendVisible && pos === 'bottom' ? '18%' : 1,
     },
     show: node.plotBackgroundColor != null,
     backgroundColor: node.plotBackgroundColor,
@@ -497,6 +520,19 @@ function buildLegendConfig(
   // 饼图/甜甜圈图例数据来自 categories
   if (node.chartType === 'pie' || node.chartType === 'doughnut') {
     config.data = node.categories;
+  }
+
+  if (node.layout?.legend) {
+    const { box, lines, orient } = node.layout.legend;
+    return {
+      ...config, orient, padding: 0,
+      left: box.x * node.box.w * INCHES_TO_PX, top: box.y * node.box.h * INCHES_TO_PX,
+      width: box.w * node.box.w * INCHES_TO_PX, height: box.h * node.box.h * INCHES_TO_PX,
+      itemGap: font.fontSize * 0.75,
+      itemWidth: font.fontSize * 0.9, itemHeight: font.fontSize * 0.7,
+      textStyle: { fontSize: font.fontSize, fontFamily: font.fontFamily, color: font.color ?? PPT.labelColor, lineHeight: font.fontSize * 1.4 },
+      data: lines.flatMap((line, index) => index ? ['\n', ...line] : line),
+    };
   }
 
   switch (pos) {
@@ -623,7 +659,7 @@ function resolveFontStyle(
 ): FontStyle {
   const rawSizePt = primary?.fontSize ?? fallback?.fontSize ?? PPT.defaultFontSizePt;
   return {
-    fontSize: Math.round(rawSizePt * POINTS_TO_PX),
+    fontSize: rawSizePt * POINTS_TO_PX,
     fontFamily: primary?.fontFamily ?? fallback?.fontFamily ?? 'Arial',
     color: primary?.color ?? fallback?.color,
   };
@@ -632,27 +668,20 @@ function resolveFontStyle(
 // ─── pptxHints → ECharts 柱状图间距 ─────────────────────────────────────
 
 /**
- * PPT barGapWidthPct 含义：同类目柱子之间的间距占柱宽的百分比。
- * ECharts barGap 含义完全一致，因此可以直接使用。
- * PPT 默认值：非堆叠 150（柱间距 = 1.5 倍柱宽），堆叠 50。
+ * PPT gapWidth 以柱宽为分母，ECharts barCategoryGap 以类目槽宽为分母。
+ * S 根柱、重叠率 O、簇间距 G 时：簇宽 = [S - (S-1)O] × 柱宽，
+ * 槽宽 = 簇宽 + G × 柱宽；堆叠只有一个横向槽位，折线不占柱槽。
+ * 类目数 N 只把绘图区等分为 N 槽，因此换算后的比例与 N 无关。
  */
-function resolveBarGap(hints?: ChartPptxHints, isStacked = false): string {
-  if (hints?.barGapWidthPct != null) {
-    return `${hints.barGapWidthPct}%`;
-  }
-  const defaultPct = isStacked ? PPT.barGapWidthPctStacked : PPT.barGapWidthPct;
-  return `${defaultPct}%`;
-}
-
-/**
- * barCategoryGap 控制类目之间的留白。
- * PPT 没有独立的 categoryGap 参数（其 barGapWidthPct 已包含间距语义），
- * 这里设置一个视觉上与 PPT 接近的固定值。
- */
-function resolveBarCategoryGap(hints?: ChartPptxHints): string {
-  if (hints?.barOverlapPct != null) {
-    const gap = Math.max(0, 50 - hints.barOverlapPct);
-    return `${Math.round(gap)}%`;
-  }
-  return '20%';
+function resolveBarSpacing(node: ChartRenderNode, isStacked: boolean, axis: RenderChartSeries['axis']): Record<string, string> {
+  const count = node.series.filter(series => resolveEChartsSeriesType(node.chartType, series.chartType) === 'bar'
+    && (node.chartType !== 'combo' || (series.axis ?? 'primary') === (axis ?? 'primary'))).length;
+  if (count === 0) return {};
+  const gap = (node.pptxHints?.barGapWidthPct ?? (isStacked ? PPT.barGapWidthPctStacked : PPT.barGapWidthPct)) / 100;
+  const overlap = isStacked ? 1 : (node.pptxHints?.barOverlapPct ?? 0) / 100;
+  const clusterWidth = isStacked ? 1 : count - (count - 1) * overlap;
+  return {
+    barGap: `${-overlap * 100}%`,
+    barCategoryGap: `${gap / (clusterWidth + gap) * 100}%`,
+  };
 }

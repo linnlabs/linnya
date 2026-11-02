@@ -22,6 +22,8 @@
 | `chartOptions.ts` | 预设/内部 options → 公开语义覆盖。导出与 generated RenderModel 共用；无预设时字号沿用 shared 默认，显式字号优先 |
 | `chartPptx.ts` | 以“图表族 + 主/次轴”分组，写原生图表及内嵌工作簿，收集 marker 和逐系列物化计划 |
 | `applyChartPptxStyles.ts` | sanitizer 阶段通过 slide marker → relationship → chart part，写系列样式、单点颜色、标签和顺序 |
+| `resolveGeneratedChartLayout.ts` | 将最终选项投影为 shared 布局输入，供 RenderModel 与 PPTX 使用 |
+| `applyChartPptxLayout.ts` | 物化共享 inner plot / 原生图例的 manualLayout，保留原生图表与数据 |
 
 同类型同轴的系列保持一个 chart group，否则簇状柱、堆叠和图例语义会改变。组合图不按“折线=右轴”推断，
 右轴必须显式声明，且不能继承左轴单位/范围/标题。系列重排只用于原生 group，`c:order` 保留作者顺序。
@@ -37,6 +39,9 @@ marker 和 series 索引必须唯一命中，否则编译失败，不能输出�
 ## 预览与承诺
 
 generated RenderModel 直接来自 DeckSpec，经 ECharts 绘图；轴、标签、series 样式和数据共用事实。
+普通柱、条、折线以及最多 8 类的饼/环使用 [共享布局](../../../shared/chartLayout/README.md)，
+两端显式消费同一绘图区与图例边界，不再各自按固定百分比或自动布局确定 plot。
+不为自动数值轴补写 min/max/majorUnit；作者显式轴控制继续两端一致。
 mapper 必须逐字段投影 `RenderChartSeries`，不能展开整个 DeckSpec series：作者/原生导出使用的
 `labels` 不属于 RenderModel。新增轴步长、旋转、次轴、系列线型/点型/单点颜色或标签内容时，
 必须同步 `renderModelCodec` 的闭合字段与值校验；类型允许但 worker 拒绝同样属于合同缺陷，
@@ -44,6 +49,10 @@ mapper 必须逐字段投影 `RenderChartSeries`，不能展开整个 DeckSpec s
 series、axis 和 dataLabels 的 validator 字段集合对正式 TypeScript 合同作穷尽检查，新增字段
 遗漏运行时校验会直接阻断类型门禁；准入仍逐字段检查值，不能仅凭穷尽的 key 列表恢复类型。
 百分比堆叠只改变柱高，标签仍为原值；饼/环 percentage 标签先计算占比，百分号格式再负责显示。
+柱图的 gapWidth 是簇间距与柱宽之比，overlap 控制簇内重叠。预览按柱系列数换算为
+ECharts 的槽宽留白，折线不占柱槽；堆叠按一个槽位计算。未显式给 gap 时沿用
+PptxGenJS 的普通柱 150、堆叠柱 50；显式 gap 150 的堆叠柱宽占类目槽 40%。
+组合图的主/次轴分别计算柱簇；预览为次轴柱建立隐藏类目轴，不能把另一轴柱数计入簇宽。
 字体、字号、绘图区底色、线宽等所有像素属性进入 [图表资源缓存身份](../../../renderer/features/renderChartResources/README.md)。
 
 默认 PPTX 保留原生 chart 与可编辑数据，不改成 SVG/形状或图片；用户选择图表转图片时继续走既有导出链。
@@ -55,6 +64,9 @@ ECharts 与 Office 的排版不保证像素级一致。`PptxReader` 当前只识
 - `backend/__tests__/codegenFirstExamples.test.ts`：真实 sandbox → DeckSpec → ECharts SVG 与 PPTX XML/工作簿；
   组合分组、右轴隔离、原始顺序、单点颜色、逐系列标签、百分比、无效组合。
 - `backend/__tests__/render-model-mapping-chart-table.test.ts` 与 `renderer/.../echartsMapper.test.ts`：既有图表回归。
+- `backend/__tests__/chart-layout.integration.test.ts`：共享 plot/legend 的预览实际几何与原生 manualLayout，
+  自动轴不固定、显式轴保留、四侧图例、多行图例与紧凑轴标题。
+- `renderer/.../echartsBarSpacing.integration.test.ts`：实际柱宽比例与重叠间距，包含堆叠和柱线组合。
 - 图表资源 registry 测试：编辑颜色/线宽/背景后重绘，移动时复用，不返回旧像素。
 - `smoke:raster-worker` 另覆盖真实 deck.js 折线与百分比堆叠柱 → generated RenderModel →
   backend/preload 严格 admission → ECharts PNG，检查尺寸和系列可见像素。
