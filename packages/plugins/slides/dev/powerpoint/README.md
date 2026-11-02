@@ -64,6 +64,7 @@ Windows adapter 通过 COM 直接调用它，避免 SaveAs 的全稿目录命名
 本机 macOS PowerPoint 的 `PowerPoint.sdef` 只公开 `save`、`save as picture`（shape）与 `run VB macro`，
 没有 Slide.Export；不假设 VBA 方法能直接作为 AppleScript 命令调用。注入 VBA 会增加宏安装与信任前提，因此未采用。
 
+macOS 实测 AppleScript `open` 返回 -9074，访问容器外路径会等待授权框直到 -1712 超时，所以样稿和 PDF 经 PowerPoint 容器内临时目录中转，用 `open -a` 打开。
 macOS adapter 对明确的 presentation 调用原生 PDF SaveAs，再用锁定的 PDF.js / Node CanvasFactory 逐页生成 PNG。
 这是 PowerPoint 真实页面经 PDF 的路径，报告中与原生 PNG 明确区分；字体嵌入、PDF.js 栅格化和直接 PNG 可能产生差异。
 此路径避开已观察到不稳定的 PNG SaveAs 过滤器，但**尚未证明其真实 Office 稳定性**。
@@ -72,8 +73,8 @@ macOS adapter 对明确的 presentation 调用原生 PDF SaveAs，再用锁定�
 
 当前沙箱内已验证：固定图片比较、报告文件流程、样稿真实 PPTX XML、PDF.js -> PNG 像素链、开发工具与插件严格类型和 ESLint。
 完整命令的 worker 构建成功，但 Electron 以 SIGABRT 退出；没有产出真实预览/Office 对照图片。
-`osacompile` 也出现 `com.apple.hiservices-xpcservice: Connection Invalid` 及 -2741，AppleScript 编译与执行均须沙箱外复跑。
-macOS PDF SaveAs 和 Windows COM adapter 都必须由真实安装环境验证，不能把模拟回执或固定图片测试记成 Office 验收通过。
+`osacompile` 也出现 `com.apple.hiservices-xpcservice: Connection Invalid` 及 -2741，AppleScript 必须在沙箱外运行。
+macOS PDF SaveAs 已在 PowerPoint 16.110.2 实跑；Windows COM adapter 仍须由真实安装环境验证，不能把模拟回执或固定图片测试记成 Office 验收通过。
 
 ## 测试
 

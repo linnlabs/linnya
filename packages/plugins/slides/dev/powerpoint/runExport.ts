@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, mkdir, copyFile, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, copyFile, rm, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,6 +33,36 @@ const evidence: ExportEvidence = {
   status: 'failed',
 };
 type ExportEvidence = ReturnType<typeof exportEvidenceSchema.parse>;
+
+/** 沙箱版 PowerPoint 访问容器外路径会弹授权框，因此样稿和 PDF 都经容器内目录中转。 */
+async function exportThroughMacPowerPoint(
+  sample: string,
+  sampleName: string,
+  pdf: string,
+  scriptRoot: string
+) {
+  const container = path.join(
+    homedir(),
+    'Library/Containers/com.microsoft.Powerpoint/Data/tmp',
+    `linnya-conformance-${randomUUID()}`
+  );
+  await mkdir(container, { recursive: true });
+  try {
+    const stagedSample = path.join(container, sampleName);
+    const stagedPdf = path.join(container, 'office.pdf');
+    await copyFile(sample, stagedSample);
+    await run('/usr/bin/open', ['-a', 'Microsoft PowerPoint', stagedSample]);
+    const result = await run(
+      '/usr/bin/osascript',
+      [path.join(scriptRoot, 'export-macos.applescript'), stagedPdf, sampleName],
+      { timeout: 130_000 }
+    );
+    await copyFile(stagedPdf, pdf);
+    return result;
+  } finally {
+    await rm(container, { recursive: true, force: true });
+  }
+}
 try {
   const sampleName = `synthetic-${randomUUID()}.pptx`;
   const sample = path.join(office, sampleName);
@@ -39,16 +70,7 @@ try {
   const scriptRoot = fileURLToPath(new URL('.', import.meta.url));
   const result =
     process.platform === 'darwin'
-      ? await run(
-          '/usr/bin/osascript',
-          [
-            path.join(scriptRoot, 'export-macos.applescript'),
-            sample,
-            path.join(office, 'office.pdf'),
-            sampleName,
-          ],
-          { timeout: 130_000 }
-        )
+      ? await exportThroughMacPowerPoint(sample, sampleName, path.join(office, 'office.pdf'), scriptRoot)
       : await run(
           'powershell.exe',
           [
