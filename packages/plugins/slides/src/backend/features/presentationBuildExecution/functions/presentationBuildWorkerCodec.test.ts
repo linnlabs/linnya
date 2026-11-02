@@ -183,7 +183,7 @@ describe('presentationBuildWorkerCodec', () => {
           }],
         },
         svgAssets: [],
-        svgFallbacks: [],
+        shapeTextAutofit: [[]], svgFallbacks: [],
       },
     });
     expect(parsePresentationBuildWorkerRequest(request)).toEqual(request);
@@ -209,7 +209,7 @@ describe('presentationBuildWorkerCodec', () => {
           }],
         },
         svgAssets: [],
-        svgFallbacks: [],
+        shapeTextAutofit: [[]], svgFallbacks: [],
       },
     });
 
@@ -235,7 +235,7 @@ describe('presentationBuildWorkerCodec', () => {
           }],
         },
         svgAssets: [],
-        svgFallbacks: [],
+        shapeTextAutofit: [[]], svgFallbacks: [],
       },
     })).toThrow('deck spec is invalid');
   });

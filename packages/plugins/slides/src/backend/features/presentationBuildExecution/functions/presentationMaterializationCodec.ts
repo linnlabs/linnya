@@ -1,3 +1,4 @@
+import type { ShapeTextAutofitLayouts } from '../../../engine/text/shapeTextAutofitPptx';
 import { isRecord } from '@plugin/slides/shared/valueRecord';
 import type {
   DeckSpec,
@@ -29,6 +30,7 @@ import {
 
 interface EncodedPresentationMaterializationInput {
   readonly deckSpec: SandboxJsonObject;
+  readonly shapeTextAutofit: ShapeTextAutofitLayouts;
   readonly svgAssets: readonly SandboxJsonObject[];
   readonly svgFallbacks: readonly PresentationBuildWorkerMaterializedSvgFallback[];
 }
@@ -67,6 +69,7 @@ export function encodePresentationMaterializationInput(
   const svgFallbacks = input.svgFallbacks.map(encodeSvgFallback);
   return readEncodedPresentationMaterializationInput({
     deckSpec,
+    shapeTextAutofit: input.shapeTextAutofit,
     svgAssets,
     svgFallbacks,
   });
@@ -74,11 +77,15 @@ export function encodePresentationMaterializationInput(
 
 export function readPresentationMaterializationInput(input: {
   readonly deckSpec: unknown;
+  readonly shapeTextAutofit: unknown;
   readonly svgAssets: unknown;
   readonly svgFallbacks: unknown;
 }): PresentationMaterializationInput {
   if (!isSandboxJsonObject(input.deckSpec) || !isMaterializableDeckSpec(input.deckSpec)) {
     throw new Error('Slides materialization deck spec is invalid.');
+  }
+  if (!isShapeTextAutofitLayouts(input.shapeTextAutofit, input.deckSpec)) {
+    throw new Error('Slides materialization shape text autofit is invalid.');
   }
   if (
     !Array.isArray(input.svgAssets)
@@ -88,7 +95,7 @@ export function readPresentationMaterializationInput(input: {
     throw new Error('Slides materialization SVG assets are invalid.');
   }
   if (
-    measureJsonBytes(input.deckSpec) + measureJsonBytes(input.svgAssets)
+    measureJsonBytes(input.deckSpec) + measureJsonBytes(input.svgAssets) + measureJsonBytes(input.shapeTextAutofit)
     > PRESENTATION_BUILD_MATERIALIZATION_JSON_MAX_BYTES
   ) {
     throw new Error('Slides materialization JSON exceeds the build worker byte limit.');
@@ -112,6 +119,7 @@ export function readPresentationMaterializationInput(input: {
 
   return {
     deckSpec: input.deckSpec,
+    shapeTextAutofit: input.shapeTextAutofit,
     svgAssets: input.svgAssets,
     svgFallbacks,
   };
@@ -396,4 +404,22 @@ function isNonNegativeInteger(value: unknown): value is number {
 
 function isPositiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+function countShapeText(element: FreeformElement): number {
+  if (element.type === 'group') return element.children?.reduce((sum, child) => sum + countShapeText(child), 0) ?? 0;
+  if (element.type !== 'shape') return 0;
+  const text = typeof element.content === 'string' ? element.content : element.content?.map(run => run.text).join('') ?? '';
+  return text.length > 0 ? 1 : 0;
+}
+
+function isShapeTextAutofitLayouts(value: unknown, deck: DeckSpec): value is ShapeTextAutofitLayouts {
+  return Array.isArray(value) && value.length === deck.slides.length && value.every((layouts, index) => {
+    const spec = deck.slides[index].spec;
+    const count = spec.type === 'freeform' ? spec.elements.reduce((sum, element) => sum + countShapeText(element), 0) : 0;
+    return Array.isArray(layouts) && layouts.length === count && layouts.every(layout =>
+      isRecord(layout) && Object.keys(layout).length === 2
+      && isFiniteNumber(layout.fontScale) && layout.fontScale > 0 && layout.fontScale <= 1
+      && isFiniteNumber(layout.lineSpacingReduction) && layout.lineSpacingReduction >= 0 && layout.lineSpacingReduction < 1);
+  });
 }

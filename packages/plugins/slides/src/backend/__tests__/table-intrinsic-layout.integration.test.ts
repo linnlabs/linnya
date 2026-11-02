@@ -1,3 +1,4 @@
+import { preparePresentationMaterialization } from '../features/presentationBuildExecution/orchestration/preparePresentationMaterialization';
 import { DOMParser } from '@xmldom/xmldom';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
@@ -19,7 +20,7 @@ async function compileTable(table: SandboxJsonObject) {
   const model = renderDeck(deck);
   const node = model.slides[0].elements.find(element => element.kind === 'table');
   if (!node || node.kind !== 'table') throw new Error('Expected table');
-  const pptx = await materializePresentationPptx({ deckSpec: deck, svgAssets: [], svgFallbacks: [] });
+  const pptx = await materializePresentationPptx(await preparePresentationMaterialization(deck, undefined, {}));
   const xml = await (await JSZip.loadAsync(pptx)).file('ppt/slides/slide1.xml')?.async('text');
   if (!xml) throw new Error('Expected native table XML');
   const document = new DOMParser().parseFromString(xml, 'text/xml');

@@ -1,3 +1,4 @@
+import { prepareShapeTextAutofit } from '../../../engine/text/prepareShapeTextAutofit';
 import type { DeckSpec } from '@plugin/slides/shared';
 import type {
   DeckAssembleOptions,
@@ -60,6 +61,7 @@ export async function preparePresentationMaterialization(
 
   return {
     deckSpec: preparedDeckSpec,
+    shapeTextAutofit: await prepareShapeTextAutofit(preparedDeckSpec),
     svgAssets: [...svgAssets.values()],
     svgFallbacks,
   };

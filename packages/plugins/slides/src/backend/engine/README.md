@@ -10,9 +10,11 @@ engine 不负责 workspace 节点生命周期、数据库、IPC、工具上下�
 backend/engine/
 ├── core.ts                    # coordinator/codegen 装配所需的窄入口
 ├── types.ts                   # engine adapter、port、执行上下文类型
-├── DeckAssembler.ts           # DeckSpec -> PPTX Buffer 主编译入口
+├── DeckAssembler.ts           # Host / in-process：同源文本准备与 PPTX 编译
+├── PreparedDeckAssembler.ts   # Worker：准备完成的 DTO -> PPTX Buffer
 ├── StructuredCompiler.ts      # structured slide -> PPTX
-├── FreeformCompiler.ts        # freeform slide -> PPTX
+├── FreeformCompiler.ts        # Host / in-process freeform deck 入口
+├── FreeformPptxCompiler.ts    # Worker：freeform slide 与缩字标量 -> PPTX
 ├── assets/                    # 图片来源解析、预取和写入前归一化
 ├── chart/                     # 图表公开控制、原生系列分组与细粒度样式物化
 ├── coordinator/               # engine 内 query、导入稿 patch、生成校验
@@ -41,8 +43,9 @@ deck.js
   -> backend/codegen Flex/Yoga compiler
   -> DeckSpec（所有元素已有显式几何）
   -> presentationBuildExecution 准备自包含资产 DTO
-  -> build Worker 内 DeckAssembler
-  -> StructuredCompiler / FreeformCompiler
+  -> Host 同源形状文字布局 -> 缩字标量 DTO
+  -> build Worker 内 PreparedDeckAssembler
+  -> StructuredCompiler / FreeformPptxCompiler
   -> pptx sanitizer / validator
   -> transferable ArrayBuffer -> Buffer
 ```

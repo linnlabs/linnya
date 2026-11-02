@@ -58,4 +58,4 @@ ECharts 与 Office 的排版不保证像素级一致。`PptxReader` 当前只识
 - 图表资源 registry 测试：编辑颜色/线宽/背景后重绘，移动时复用，不返回旧像素。
 - `smoke:raster-worker` 另覆盖真实 deck.js 折线与百分比堆叠柱 → generated RenderModel →
   backend/preload 严格 admission → ECharts PNG，检查尺寸和系列可见像素。
-- 类型检查、生成 d.ts、Skill gate、Slides 全量测试和插件构建。实际 Office 字体/标签排版仍需 PowerPoint 人工验收。
+- 类型检查、生成 d.ts、Skill gate、Slides 全量测试和插件构建。实际 Office 字体/标签排版使用 [开发用 PowerPoint 对照工具](../../../../dev/powerpoint/README.md) 生成并排图、结构指标和差异报告后人工确认；真实驱动须在沙箱外验证。

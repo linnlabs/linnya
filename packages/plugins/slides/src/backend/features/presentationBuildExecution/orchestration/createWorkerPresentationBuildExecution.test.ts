@@ -194,7 +194,7 @@ describe('createWorkerPresentationBuildExecution', () => {
         viewBox: { width: 10, height: 10 },
         canonicalSvg,
       }],
-      svgFallbacks: [{
+      shapeTextAutofit: [[]], svgFallbacks: [{
         assetId: 'svg-1',
         contentHash: 'hash-1',
         pngBytes: fallbackBytes,
@@ -242,7 +242,7 @@ describe('createWorkerPresentationBuildExecution', () => {
         }],
       },
       svgAssets: [],
-      svgFallbacks: [],
+      shapeTextAutofit: [[]], svgFallbacks: [],
     })).rejects.toMatchObject({
       kind: 'contract',
       message: 'Slides materialization deck spec is invalid.',
@@ -282,7 +282,7 @@ describe('createWorkerPresentationBuildExecution', () => {
         }],
       },
       svgAssets: [],
-      svgFallbacks: [],
+      shapeTextAutofit: [[]], svgFallbacks: [],
     });
     const queued = runtime.typecheckCodegenSource('afterFormula();');
     transport.emitReady();

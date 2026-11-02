@@ -34,3 +34,7 @@ renderer 选择格式并取得 Host target token
 - 代表性 PPTX 已在 Microsoft PowerPoint 中打开验证；PowerPoint 验收只针对 PPTX 的无修复提示、原生图表可编辑性和图表图片化透明背景，不适用于图片 ZIP。
 - 30 页 4K 图片导出已完成真实运行与人工验收。约 102 秒观测窗口内，全进程 working set 峰值相对基线增加约 529 MB；该结果已接受为当前串行页面栅格链的合理基线。
 - 图片 ZIP 的验收对象是页数、顺序、分辨率、背景/透明度与末页完整性。页级进度属于产品合同；当前不以并行 worker pool、分块 writer 或另一套 renderer 继续优化。
+
+## 开发用 PowerPoint 对照
+
+固定合成样稿、同源预览、PowerPoint 驱动及对照报告见 [dev/powerpoint](../../../../dev/powerpoint/README.md)。三段可独立运行；完整命令为 `pnpm --dir packages/plugins/slides run office:conformance -- all /tmp/linnya-office-review`（仓库根目录，输出目录必须不存在）。该工具不进入生产包，真实 Office 驱动仍需沙箱外验证；固定图片测试不能代替实际字体、标签与断行验收。

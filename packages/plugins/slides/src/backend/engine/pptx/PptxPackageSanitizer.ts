@@ -1,3 +1,4 @@
+import { applyShapeTextAutofit, type ShapeTextAutofitPlan } from '../text/shapeTextAutofitPptx';
 import JSZip from 'jszip';
 import {
   DOMParser,
@@ -18,6 +19,7 @@ import type { ChartPptxPatch } from '../chart/chartPptx';
 import { applyChartPptxStyles } from '../chart/applyChartPptxStyles';
 
 export interface PptxPackageSanitizeOptions {
+  readonly shapeTextPlan?: ShapeTextAutofitPlan;
   readonly paintPlan?: PptxPaintPatchPlan;
   readonly declaredThemeFonts?: NonNullable<ThemeSpec['fonts']>;
   readonly svgGraphicFallbacks?: readonly SvgGraphicPptxFallbackPlanEntry[];
@@ -95,6 +97,8 @@ export class PptxPackageSanitizer {
 
     const idMutated = await this.normalizePartObjectIds(zip);
     mutated = mutated || idMutated;
+    const textMutated = await applyShapeTextAutofit(zip, options.shapeTextPlan);
+    mutated = mutated || textMutated;
     const paintMutated = await applyPptxPaintPatches(zip, options.paintPlan);
     mutated = mutated || paintMutated;
     // 兼容尚未迁移的历史 marker 文件；新编译链只走内存 Paint plan。

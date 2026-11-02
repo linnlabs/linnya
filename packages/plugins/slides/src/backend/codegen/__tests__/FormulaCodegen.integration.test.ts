@@ -99,7 +99,7 @@ describe('Formula codegen integration', () => {
 
     const workerRequest = createPresentationBuildWorkerMaterializeRequest({
       requestId: 'formula-e2e',
-      materialization: { deckSpec: deck, svgAssets: [], svgFallbacks: [] },
+      materialization: { deckSpec: deck, svgAssets: [], shapeTextAutofit: [[]], svgFallbacks: [] },
     });
     const parsedRequest = parsePresentationBuildWorkerRequest(workerRequest);
     if (parsedRequest.type !== 'materialize') {

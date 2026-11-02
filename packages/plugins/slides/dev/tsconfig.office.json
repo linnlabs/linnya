@@ -1,0 +1,6 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "types": ["node", "electron"] },
+  "include": ["powerpoint/**/*.ts", "../host-types/rendererEnv.d.ts"],
+  "exclude": ["powerpoint/**/*.test.ts"]
+}
