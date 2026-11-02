@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
-/** 只用于隔离 fixture：删除有历史对话的项目，验证退出、历史显式展开和再次选择。 */
-export async function runProjectDeletionScenario({ cdp, evaluate, waitFor, projectId }) {
+/** 只用于隔离 fixture：删除项目连同对话，另一项目的历史仍可正常打开。 */
+export async function runProjectDeletionScenario({ cdp, evaluate, waitFor, projectId, retainedProjectId }) {
   const name = await evaluate(cdp, `(async () => {
     const { openProjectWorkspaceFromSidebar } = await import('/apps/renderer/app/layout/orchestration/openProjectWorkspaceFromSidebar.ts');
     const { useWorkspaceProjectsStore } = await import('/apps/renderer/domains/workspace/store/WorkspaceProjectsStore.ts');
@@ -18,6 +18,8 @@ export async function runProjectDeletionScenario({ cdp, evaluate, waitFor, proje
   await waitFor(() => evaluate(cdp, `document.querySelectorAll('.sidebar-project-menu-wrapper .select-option').length === 3`), '项目操作菜单');
   await evaluate(cdp, `document.querySelectorAll('.sidebar-project-menu-wrapper .select-option')[2].click()`);
   await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('.alert-dialog-footer button'))`), '项目删除确认');
+  const confirmation = await evaluate(cdp, `document.querySelector('.alert-dialog-message').textContent`);
+  assert.match(confirmation, /全部对话及其关联数据|all conversations, and associated data/);
   await evaluate(cdp, `Array.from(document.querySelectorAll('.alert-dialog-footer button')).at(-1).click()`);
   const after = await waitFor(() => evaluate(cdp, `(async () => {
     const { useNavigationScope } = await import('/apps/renderer/app/navigation/index.ts');
@@ -39,8 +41,14 @@ export async function runProjectDeletionScenario({ cdp, evaluate, waitFor, proje
     const { revealSidebarConversationHistory } = await import('/apps/renderer/app/layout/orchestration/revealSidebarConversationHistory.ts');
     await revealSidebarConversationHistory({ kind: 'linnya-assistant' });
   })()`);
-  await waitFor(() => evaluate(cdp, `document.querySelectorAll('[data-sidebar-scroll-viewport] > .sidebar-chat-list .chat-list-item').length > 0`), '主动打开历史仍能看到保留的对话');
-  await evaluate(cdp, `document.querySelector('[data-sidebar-scroll-viewport] > .sidebar-chat-list .chat-list-item').click()`);
-  await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('[data-sidebar-scroll-viewport] > .sidebar-chat-list .chat-list-item.is-active'))`), '选择无项目历史后列表保持可见');
-  console.log('[project-deletion-e2e] 真实删除确认、无隐式历史、保留对话可显式打开和选择通过。');
+  await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('[data-sidebar-scroll-viewport] > .sidebar-chat-list .chat-list-state'))`), '无项目历史为空');
+  assert.equal(await evaluate(cdp, `document.querySelectorAll('[data-sidebar-scroll-viewport] > .sidebar-chat-list .chat-list-item').length`), 0);
+  await evaluate(cdp, `(async () => {
+    const { revealSidebarConversationHistory } = await import('/apps/renderer/app/layout/orchestration/revealSidebarConversationHistory.ts');
+    await revealSidebarConversationHistory({ kind: 'project', projectId: ${JSON.stringify(retainedProjectId)} });
+  })()`);
+  await waitFor(() => evaluate(cdp, `document.querySelectorAll('.project-chat-panel .chat-list-item').length === 1`), '另一项目仍有一条历史');
+  await evaluate(cdp, `document.querySelector('.project-chat-panel .chat-list-item').click()`);
+  await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('.project-chat-panel .chat-list-item.is-active'))`), '另一项目对话仍可打开');
+  console.log('[project-deletion-e2e] 确认框范围、项目会话删除、不转成无项目历史、另一项目保持正常通过。');
 }

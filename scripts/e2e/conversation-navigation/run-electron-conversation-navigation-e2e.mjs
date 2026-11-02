@@ -1650,11 +1650,19 @@ async function run() {
       // 删除门禁使用刚创建的普通项目；默认项目不可删除。只调整隔离 fixture 的会话归属。
       const fixtureDb = openNodeDatabase();
       try {
-        fixtureDb.prepare('UPDATE conversations SET project_id = ?').run(createdProjectId);
+        fixtureDb.prepare('UPDATE conversations SET project_id = ? WHERE conversation_id = ?').run(createdProjectId, resourceLinkConversationId);
       } finally {
         fixtureDb.close();
       }
-      await runProjectDeletionScenario({ cdp, evaluate, waitFor, projectId: createdProjectId });
+      await runProjectDeletionScenario({ cdp, evaluate, waitFor, projectId: createdProjectId, retainedProjectId: projectId });
+      const verificationDb = openNodeDatabase({ readonly: true });
+      try {
+        assert.equal(verificationDb.prepare('SELECT 1 FROM conversations WHERE conversation_id = ?').get(resourceLinkConversationId), undefined);
+        assert.equal(verificationDb.prepare('SELECT COUNT(*) AS count FROM conversations').get().count, 1);
+      } finally {
+        verificationDb.close();
+      }
+      assert.equal(existsSync(resolveConversationWorkDirectory(resourceLinkConversationId)), false);
       await assertRendererHealthy(cdp, rendererErrors, '资源文档打开后创建新项目');
       cdp.close();
       console.log('[conversation-navigation-e2e] Workspace 应用内打开、Conversation/Host 文件管理器定位通过。');

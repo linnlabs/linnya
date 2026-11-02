@@ -21,3 +21,4 @@ export type {
 } from '@app/schemas';
 export { PROJECT_SCHEMAS } from './features/lifecycle/persistence/projectSchema';
 export { assertProjectExists } from './features/lifecycle/persistence/assertProjectExists';
+export { assertProjectDeletable } from './features/lifecycle/functions/projectRules';

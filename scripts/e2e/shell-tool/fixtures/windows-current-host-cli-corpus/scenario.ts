@@ -214,7 +214,7 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
   databaseService.initialize({ lifecycleBootstrap: db => bootstrapBuiltinPluginLifecycle(db, app.getVersion()) });
   const db = databaseService.getDb();
   const eventStore = new SQLiteEventStore(db);
-  const lifecycle = createConversationRouteLifecycle({ db, eventStore, storageRoot: appDataRoot });
+  const lifecycle = createConversationRouteLifecycle({ db, eventStore, storageRoot: appDataRoot, artifactsRoot: artifactRoot });
   const audit = createCollectingCommandExecutionAuditPort();
   const environment = input.commandHostProcessEnvironment;
   const runtimeFacts = resolveCommandRuntimeFacts({

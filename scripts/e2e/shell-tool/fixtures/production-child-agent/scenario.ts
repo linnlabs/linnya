@@ -223,7 +223,7 @@ export async function runProductionChildAgentScenario(input: {
   const db = databaseService.getDb();
   setPluginRuntimeDatabase(db);
   const eventStore = new SQLiteEventStore(db);
-  const lifecycle = createConversationRouteLifecycle({ db, eventStore, storageRoot: appDataRoot });
+  const lifecycle = createConversationRouteLifecycle({ db, eventStore, storageRoot: appDataRoot, artifactsRoot: artifactRoot });
   const commandScope = await createElectronCommandProductionScope({
       credentialFilePath: path.resolve('credential-path-fixture/config/credentials.json'),
     // 此场景只验证宿主命令，不注册插件 CLI。
@@ -530,17 +530,9 @@ export async function runProductionChildAgentScenario(input: {
     const sealedAfterDeletion = await readConversationManifests(artifactRoot, CONVERSATION_ID);
     assert.equal(
       sealedAfterDeletion.length,
-      2,
-      'conversation deletion must seal the still-running root artifact without discarding child bytes',
+      0,
+      'conversation deletion must stop and drain root/child commands, then remove their artifacts',
     );
-    const rootManifest = sealedAfterDeletion.find(manifest => (
-      manifest.owner.identity.origin_tool_call_id === CHILD_AGENT_TOOL_CALL_IDS.rootShell
-    ));
-    const retainedChildManifest = sealedAfterDeletion.find(manifest => (
-      manifest.owner.identity.origin_tool_call_id === CHILD_AGENT_TOOL_CALL_IDS.childShell
-    ));
-    assert.equal(rootManifest?.owner.identity.agent_run_id, rootRunId);
-    assert.equal(retainedChildManifest?.owner.identity.agent_run_id, childRunId);
 
     return {
       success: true,

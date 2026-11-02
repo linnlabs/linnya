@@ -23,7 +23,7 @@ src/features/conversation/history/
 
 - `HistoryService` 必须注入 `ConversationDeletionPort`；这是删除 API 的唯一生产出口，不允许可选注入或缺失时退回 Repository 直删。
 - `HistoryRepository` 不拥有“删除整段对话”能力。它只处理 History 自己的读写；EventStore 的原子事实删除通过 App 生命周期工作流持有的窄 port 使用。
-- 完整调用链固定为 `History router -> HistoryService -> ConversationDeletionPort -> App conversation lifecycle`。App workflow 先建立持久清理屏障并停止活动 owner，再删除工作目录、批准、对话事实和 identity metadata，最后完成 cleanup job。
+- 完整调用链固定为 `History router -> HistoryService -> ConversationDeletionPort -> App conversation lifecycle`。App workflow 先建立持久清理屏障并停止活动 owner，再删除工作目录、专属工具输出与证据文件、批准、对话事实和 identity metadata，最后完成 cleanup job。
 - 首次用户删除的 `not_found` 返回失败；持久 job 恢复时事实已经不存在则按幂等成功处理。History 不得自行复制这两套语义。
 
 ## 当前窗口条件刷新

@@ -40,6 +40,7 @@ import { FlowOrchestrator } from '../../../../../src/app-hosts/linnya/adapters/f
 import { AgentRunnerService } from '../../../../../src/app-hosts/linnya/adapters/flow/flow.agent-runner.service';
 import { SqliteConversationCommandApprovalPort } from '../../../../../src/app-hosts/linnya/adapters/persistence/command-approvals';
 import { createConversationRouteLifecycle } from '../../../../../src/electron-main/routes/orchestration/createConversationRouteLifecycle';
+import { deriveCommandOutputConversationDirectory } from '../../../../../src/infra/adapters/command-runtime/output';
 import {
   createElectronCommandProductionScope,
   projectCommandAgentRuntimes,
@@ -212,6 +213,7 @@ export async function runProductionActiveConversationDeletionScenario(input: {
     db,
     eventStore,
     storageRoot: appDataRoot,
+    artifactsRoot: artifactRoot,
   });
   const approvalHost = createCommandApprovalHost();
   const commandScope = await createElectronCommandProductionScope({
@@ -421,6 +423,9 @@ export async function runProductionActiveConversationDeletionScenario(input: {
     });
 
     assert.equal(await pathExists(targetDirectory.absolutePath), false);
+    assert.equal(await pathExists(path.join(
+      artifactRoot, deriveCommandOutputConversationDirectory(TARGET_CONVERSATION_ID),
+    )), false, 'completed deletion must also remove the stopped command output files');
     assert.equal(await pathExists(otherDirectory.absolutePath), true);
     assert.equal(await fsp.readFile(path.join(otherDirectory.absolutePath, 'other.txt'), 'utf8'), 'other');
     assert.equal(await eventStore.getConversationMetadata(TARGET_CONVERSATION_ID), null);

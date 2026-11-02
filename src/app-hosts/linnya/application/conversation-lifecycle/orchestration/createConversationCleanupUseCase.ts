@@ -1,3 +1,4 @@
+import type { ConversationArtifactsDeletionPort } from '../definitions/conversationArtifactsDeletionPort';
 import type {
   ConversationDirectoryCleanupJobPort,
   ConversationDirectoryDeletionPort,
@@ -34,6 +35,7 @@ import { retryPendingConversationCleanup } from './retryPendingConversationClean
 export function createConversationCleanupUseCase(input: {
   readonly gate: ConversationLifecycleGate;
   readonly jobs: ConversationDirectoryCleanupJobPort;
+  readonly artifacts: ConversationArtifactsDeletionPort;
   readonly directories: ConversationDirectoryDeletionPort;
   readonly approvals: ConversationCommandApprovalDeletionPort;
   readonly commandCardSettlements: ConversationCommandCardSettlementDeletionPort;
@@ -46,6 +48,7 @@ export function createConversationCleanupUseCase(input: {
       conversationId,
       gate: input.gate,
       jobs: input.jobs,
+      artifacts: input.artifacts,
       directories: input.directories,
       approvals: input.approvals,
       commandCardSettlements: input.commandCardSettlements,
@@ -57,6 +60,7 @@ export function createConversationCleanupUseCase(input: {
       conversationId,
       gate: input.gate,
       jobs: input.jobs,
+      artifacts: input.artifacts,
       directories: input.directories,
       approvals: input.approvals,
       commandCardSettlements: input.commandCardSettlements,
@@ -72,6 +76,7 @@ export function createConversationCleanupUseCase(input: {
       conversationId,
       gate: input.gate,
       jobs: input.jobs,
+      artifacts: input.artifacts,
       directories: input.directories,
       approvals: input.approvals,
       commandCardSettlements: input.commandCardSettlements,
@@ -81,6 +86,7 @@ export function createConversationCleanupUseCase(input: {
     recoverPending: () => recoverPendingConversationCleanupJobs({
       gate: input.gate,
       jobs: input.jobs,
+      artifacts: input.artifacts,
       directories: input.directories,
       approvals: input.approvals,
       commandCardSettlements: input.commandCardSettlements,

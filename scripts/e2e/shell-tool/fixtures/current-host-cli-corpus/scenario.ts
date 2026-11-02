@@ -241,6 +241,7 @@ export async function runCurrentHostCliCorpusScenario(input: {
     db,
     eventStore,
     storageRoot: appDataRoot,
+    artifactsRoot: artifactRoot,
   });
   const audit = createCollectingCommandExecutionAuditPort();
   const host = createHostProcessEnvironment({

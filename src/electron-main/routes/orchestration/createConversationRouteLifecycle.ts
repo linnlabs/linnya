@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { createLocalConversationArtifactsDeletionPort } from '../../../app-hosts/linnya/adapters/conversation-artifacts/createLocalConversationArtifactsDeletionPort';
 
 import type {
   CommandExecutionOwnerPort,
@@ -59,6 +60,7 @@ export function createConversationRouteLifecycle(input: {
   readonly db: Database.Database;
   readonly eventStore: IEventStore;
   readonly storageRoot: string;
+  readonly artifactsRoot: string;
 }): ConversationRouteLifecycle {
   const jobs = new SqliteConversationDirectoryCleanupJobPort(input.db);
   const directories = createLocalConversationDirectoryPort({ storageRoot: input.storageRoot });
@@ -79,6 +81,7 @@ export function createConversationRouteLifecycle(input: {
         gate: scope.gate,
         jobs,
         directories,
+        artifacts: createLocalConversationArtifactsDeletionPort({ artifactsRoot: input.artifactsRoot }),
         approvals: binding.approvals,
         commandCardSettlements: {
           async deleteForConversationAndWait(conversationId) {

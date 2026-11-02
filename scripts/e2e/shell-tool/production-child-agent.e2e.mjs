@@ -319,7 +319,7 @@ async function main() {
     assert.equal(result.success, true, result.error);
     assert.equal(result.sameConversation, true);
     assert.equal(result.childParentIdentityVerified, true);
-    assert.equal(result.rawByteArtifacts, 2);
+    assert.equal(result.rawByteArtifacts, 0);
     assert.equal(result.rendererRootCommandCards, 1);
     assert.equal(result.childFileCreated, true);
     assert.equal(result.conversationDeleted, true);

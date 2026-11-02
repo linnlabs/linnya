@@ -78,7 +78,7 @@ describe('createConversationRouteLifecycle', () => {
       }
 
       const eventStore = new SQLiteEventStore(db);
-      const lifecycle = createConversationRouteLifecycle({ db, eventStore, storageRoot });
+      const lifecycle = createConversationRouteLifecycle({ db, eventStore, storageRoot, artifactsRoot: path.join(storageRoot, 'artifacts') });
       const commandBegins: string[] = [];
       const commandStops: string[] = [];
       const commandForgets: string[] = [];

@@ -1,3 +1,4 @@
+import type { ConversationArtifactsDeletionPort } from '../definitions/conversationArtifactsDeletionPort';
 import type {
   ConversationDirectoryCleanupJobPort,
   ConversationDirectoryDeletionPort,
@@ -30,6 +31,7 @@ import { executeConversationDirectoryCleanupJob } from './executeConversationDir
 export async function recoverPendingConversationCleanupJobs(input: {
   readonly gate: ConversationLifecycleGate;
   readonly jobs: ConversationDirectoryCleanupJobPort;
+  readonly artifacts: ConversationArtifactsDeletionPort;
   readonly directories: ConversationDirectoryDeletionPort;
   readonly approvals: ConversationCommandApprovalDeletionPort;
   readonly commandCardSettlements: ConversationCommandCardSettlementDeletionPort;
@@ -63,6 +65,7 @@ export async function recoverPendingConversationCleanupJobs(input: {
         job: current,
         ports: {
           activity: input.activity,
+          artifacts: input.artifacts,
           directories: input.directories,
           approvals: input.approvals,
           commandCardSettlements: input.commandCardSettlements,

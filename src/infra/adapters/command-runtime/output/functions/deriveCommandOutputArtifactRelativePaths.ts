@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { CommandConversationIdSchema } from '@app/schemas/commands';
 
 import {
   CommandOutputArtifactOwnerSchema,
@@ -16,6 +17,10 @@ function encodeOwnerSegment(prefix: 'conversation' | 'instance', value: string):
   return `${prefix}_${digest}`;
 }
 
+export function deriveCommandOutputConversationDirectory(conversationId: string): string {
+  return encodeOwnerSegment('conversation', CommandConversationIdSchema.parse(conversationId));
+}
+
 /**
  * 通用 path sanitizer 会把不同非法字符都替换成 `_`，也会直接截断长身份，因此不能承担
  * command artifact 的 owner 隔离。这里使用稳定摘要生成路径段，原始身份仍由 manifest 校验。
@@ -31,7 +36,7 @@ export function deriveCommandOutputArtifactRelativePaths(
 
   return {
     directorySegments: [
-      encodeOwnerSegment('conversation', owner.identity.conversation_id),
+      deriveCommandOutputConversationDirectory(owner.identity.conversation_id),
       'instances',
       encodeOwnerSegment('instance', owner.instance_id),
       'command-output',

@@ -143,6 +143,7 @@ function createUseCase(harness: UseCaseHarness) {
     jobs: harness.jobs,
     directories: harness.directories,
     approvals: harness.approvals,
+    artifacts: { deleteForConversation: async () => {} },
     commandCardSettlements: {
       async deleteForConversationAndWait(): Promise<void> {},
     },

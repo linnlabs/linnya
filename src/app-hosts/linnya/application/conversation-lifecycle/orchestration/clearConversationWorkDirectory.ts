@@ -1,3 +1,4 @@
+import type { ConversationArtifactsDeletionPort } from '../definitions/conversationArtifactsDeletionPort';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -35,6 +36,7 @@ export async function requestConversationWorkDirectoryClear(input: {
   readonly conversationId: unknown;
   readonly gate: ConversationLifecycleGate;
   readonly jobs: ConversationDirectoryCleanupJobPort;
+  readonly artifacts: ConversationArtifactsDeletionPort;
   readonly directories: ConversationDirectoryDeletionPort;
   readonly approvals: ConversationCommandApprovalDeletionPort;
   readonly commandCardSettlements: ConversationCommandCardSettlementDeletionPort;
@@ -79,6 +81,7 @@ export async function requestConversationWorkDirectoryClear(input: {
     job,
     ports: {
       activity: input.activity,
+      artifacts: input.artifacts,
       directories: input.directories,
       approvals: input.approvals,
       commandCardSettlements: input.commandCardSettlements,

@@ -1,3 +1,4 @@
+import type { ConversationArtifactsDeletionPort } from '../definitions/conversationArtifactsDeletionPort';
 import {
   type ConversationDirectoryCleanupJob,
   type ConversationDirectoryCleanupJobPort,
@@ -25,6 +26,7 @@ import { projectConversationCleanupFailure } from '../functions/projectConversat
 
 interface ConversationCleanupExecutionPorts {
   readonly activity: ConversationCleanupActivityPort;
+  readonly artifacts: ConversationArtifactsDeletionPort;
   readonly directories: ConversationDirectoryDeletionPort;
   readonly approvals: ConversationCommandApprovalDeletionPort;
   readonly commandCardSettlements: ConversationCommandCardSettlementDeletionPort;
@@ -112,6 +114,9 @@ export async function executeConversationDirectoryCleanupJob(input: {
     await input.ports.directories.deleteWorkDirectory(identity);
 
     if (input.job.operation === 'delete_conversation') {
+      stage = 'delete_conversation_artifacts';
+      await input.ports.artifacts.deleteForConversation(input.job.conversationId);
+
       stage = 'delete_conversation_approvals';
       await input.ports.approvals.deleteForConversation(
         CommandConversationIdSchema.parse(input.job.conversationId),

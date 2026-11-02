@@ -61,5 +61,6 @@ export {
 } from './orchestration/createPipeCommandTextProjectionSession';
 export {
   deriveCommandOutputArtifactRelativePaths,
+  deriveCommandOutputConversationDirectory,
   type CommandOutputArtifactRelativePaths,
 } from './functions/deriveCommandOutputArtifactRelativePaths';

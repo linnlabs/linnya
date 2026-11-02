@@ -4,6 +4,7 @@ import {
   ProjectUpdateRequestSchema,
 } from '@app/schemas';
 import type { ProjectLifecyclePort } from 'src/domains/projects';
+import type { ProjectDeletionUseCasePort } from 'src/app-hosts/linnya/application/project-deletion';
 import { Logger } from 'src/shared/logger';
 import type { BackendRendererIpcStyleRegistrarPort } from 'src/app-hosts/linnya/adapters/backend-renderer-requests';
 import { createWorkspaceOperationFailure } from '../workspace/workspace-operation-failure';
@@ -13,7 +14,8 @@ const logger = new Logger('ProjectIPC');
 /** 项目生命周期的 Desktop 适配；Backend 组合根注入当前数据工作区的项目能力。 */
 export function registerProjectHandlers(
   projects: () => ProjectLifecyclePort,
-  ipc: BackendRendererIpcStyleRegistrarPort
+  ipc: BackendRendererIpcStyleRegistrarPort,
+  deletion: ProjectDeletionUseCasePort,
 ): void {
   ipc.handle('workspace:create-project', async (_event, input: unknown) => {
     try {
@@ -54,7 +56,7 @@ export function registerProjectHandlers(
   });
   ipc.handle('workspace:delete-project', async (_event, input: unknown) => {
     try {
-      projects().delete(ProjectIdentityInputSchema.parse(input).projectId);
+      await deletion.requestDeletion(ProjectIdentityInputSchema.parse(input).projectId);
       return { success: true };
     } catch (error: unknown) {
       logger.error('[workspace:delete-project] Failed', error);

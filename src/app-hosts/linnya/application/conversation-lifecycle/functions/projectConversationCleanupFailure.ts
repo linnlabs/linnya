@@ -12,6 +12,7 @@ const FALLBACK_CODES: Readonly<Record<
 >> = Object.freeze({
   stop_conversation_activity: 'conversation_activity_stop_failed',
   delete_work_directory: 'work_directory_delete_failed',
+  delete_conversation_artifacts: 'conversation_artifacts_delete_failed',
   delete_conversation_approvals: 'conversation_approvals_delete_failed',
   delete_command_card_settlements: 'command_card_settlements_delete_failed',
   delete_conversation_facts: 'conversation_facts_delete_failed',

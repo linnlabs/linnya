@@ -157,6 +157,7 @@ export type WorkspaceMessageKey =
   | 'workspace.project.operation.updateFailed'
   | 'workspace.project.operation.deleted'
   | 'workspace.project.operation.deleteFailed'
+  | 'workspace.project.operation.deleteIncomplete'
   | 'workspace.project.operation.createdWithAiPlanning'
   | 'workspace.project.operation.selectProjectFirst'
   | 'workspace.project.operation.currentProject'

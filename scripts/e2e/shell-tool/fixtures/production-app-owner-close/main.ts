@@ -113,6 +113,7 @@ void app.whenReady().then(async () => {
     db,
     eventStore,
     storageRoot: appDataRoot,
+    artifactsRoot: path.join(appDataRoot, 'ConversationArtifacts', 'v1'),
   });
   const commandScope = await createElectronCommandProductionScope({
       credentialFilePath: path.resolve('credential-path-fixture/config/credentials.json'),

@@ -46,8 +46,8 @@
 - 文件树刷新规则位于 `app/layout/functions/workspaceVfsRuntimeContext.ts`，避免 UI 组件暗中承担跨 domain 判断。
 - 普通创建、AI 辅助创建和点击项目共用 app 层 `openProjectWorkspaceFromSidebar`：先保存并停用旧文档，再提交导航 scope、项目列表投影、草稿与文件树。创建入口不得提前调用 store 切 scope；否则旧文档会被误认为属于新项目。AI 初始化显式要求新草稿，即使目标仍是当前项目。
 - 创建成功即关闭弹窗，目录通过 `refreshProjectCatalog` 刷新，不重新进入整栏加载骨架屏；已有项目节点保留，新项目从顶部淡入并推动列表下移。打开创建弹窗时先把列表滚回顶部，减少动态效果设置下使用即时滚动。
-- 删除通过 app 注入的回调完成跨域收尾。当前项目删除后进入干净草稿，历史仅由显式历史入口展开；后端仍按既有合同保留对话并解除项目归属。
-- `pnpm run test:conversation-resource-link:electron` 覆盖打开项目文档后通过真实弹窗创建空项目，检查项目身份、空文件树、旧文件 session 退出、旧节点保留及真实位移/淡入；随后从真实菜单删除普通项目，验证无隐式历史且保留对话仍能显式打开和选择。普通/AI 创建及保存失败边界另由 app/layout 的 `createProjectNavigation.integration.test.ts` 覆盖；删除失败与删除其他项目由 `projectDeletion.integration.test.ts` 覆盖。
+- 删除通过 app 注入的回调完成跨域收尾。确认框明确说明文档、全部对话及关联数据会一并删除，并停止运行中的对话任务。确认即消费弹窗意图，避免清理等待期间重复提交。Backend 完整清理成功后进入干净草稿；失败保留项目入口并明确提示部分内容可能已删除，可重试。
+- `pnpm run test:conversation-resource-link:electron` 覆盖打开项目文档后通过真实弹窗创建空项目，检查项目身份、空文件树、旧文件 session 退出、旧节点保留及真实位移/淡入；随后从真实菜单删除普通项目，核对确认范围、项目会话与工作目录删除且另一项目仍可正常打开。普通/AI 创建及保存失败边界另由 app/layout 的 `createProjectNavigation.integration.test.ts` 覆盖；删除失败与删除其他项目由 `projectDeletion.integration.test.ts` 覆盖。
 - 对话置顶状态由后端持久化并参与列表排序，侧栏本地排序只用于点击后的即时反馈，规则需与后端保持一致。
 - 项目菜单的删除可用性来自项目契约 `canDelete`。侧栏只能消费能力，不要按项目名称推断默认项目。
 

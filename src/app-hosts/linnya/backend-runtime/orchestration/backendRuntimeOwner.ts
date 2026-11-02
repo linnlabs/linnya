@@ -36,6 +36,7 @@ import type { QdrantProcessRuntime } from '../../../../infra/adapters/vector-sto
 import type { LaunchOwnedPipeProcess } from '../../../../shared/process-runtime';
 import type { QueueWorkerRuntime } from '../../../../infra/task-queue/definitions/queueWorkerRuntime';
 import type { RuntimePathRoots } from '../../../../shared/runtime-paths';
+import type { ProjectDeletionUseCasePort } from '../../application/project-deletion';
 import type {
   ForegroundAgentRunActivityPort,
   ForegroundAgentRunPauseSettlement,
@@ -87,6 +88,7 @@ export class BackendRuntimeOwner {
   private sandboxOwnerLifecycle: SandboxAppOwnerLifecyclePort | null = null;
   private sandboxAppOwnerEnded = false;
   private agentRunActivity: ForegroundAgentRunActivityPort | null = null;
+  private projectDeletion: ProjectDeletionUseCasePort | null = null;
   private shutdownSettlement: Promise<void> | null = null;
 
   // Qdrant服务管理
@@ -218,6 +220,7 @@ export class BackendRuntimeOwner {
     const failures: unknown[] = [];
     // 收口开始后不再对外报告或暂停 Agent run；Flow 与数据库即将随路由一起释放。
     this.agentRunActivity = null;
+    this.projectDeletion = null;
 
     const stopStage = async (name: string, stop: () => Promise<void>): Promise<boolean> => {
       try {
@@ -382,6 +385,15 @@ export class BackendRuntimeOwner {
       throw new Error('当前 App owner 已注册另一套 Agent run 活动端口');
     }
     this.agentRunActivity = activity;
+  }
+
+  registerProjectDeletion(deletion: ProjectDeletionUseCasePort): void {
+    this.projectDeletion = deletion;
+  }
+
+  getProjectDeletion(): ProjectDeletionUseCasePort {
+    if (!this.projectDeletion) throw new Error('Project deletion lifecycle is not initialized');
+    return this.projectDeletion;
   }
 
   registerSandboxOwnerLifecycle(lifecycle: SandboxAppOwnerLifecyclePort): void {

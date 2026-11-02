@@ -31,6 +31,7 @@ afterEach(async () => {
 
 function createRouteDependencies(): RouteDependencies {
   return {
+    projectDeletionRegistration: { register: vi.fn() },
     commandApprovalControl: createCommandApprovalHost(),
     documentOcr: {
       resolveModelProfile: async () => undefined,

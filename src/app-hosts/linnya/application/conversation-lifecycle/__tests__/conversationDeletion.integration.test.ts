@@ -259,6 +259,7 @@ describe('conversation deletion use case', () => {
       jobs,
       directories,
       approvals,
+      artifacts: { deleteForConversation: async () => {} },
       commandCardSettlements: {
         async deleteForConversationAndWait(): Promise<void> {
           observed.push('delete_command_card_settlements');
@@ -318,6 +319,7 @@ describe('conversation deletion use case', () => {
       jobs: fixture.jobs,
       directories: fixture.directories,
       approvals: fixture.approvals,
+      artifacts: { deleteForConversation: async () => {} },
       commandCardSettlements: passiveCommandCardSettlements(),
       activity: {
         beginStopping(): void {},
@@ -350,6 +352,7 @@ describe('conversation deletion use case', () => {
       jobs: fixture.jobs,
       directories: fixture.directories,
       approvals: fixture.approvals,
+      artifacts: { deleteForConversation: async () => {} },
       commandCardSettlements: passiveCommandCardSettlements(),
       activity: {
         beginStopping(): void {},
@@ -378,10 +381,11 @@ describe('conversation deletion use case', () => {
     await expect(deletion).resolves.toBe(true);
   });
 
-  it('七个崩溃边界都保留一次失败事实，并可从固定步骤起点幂等恢复', async () => {
+  it('八个崩溃边界都保留一次失败事实，并可从固定步骤起点幂等恢复', async () => {
     const failureStages: readonly ConversationCleanupFailureStage[] = [
       'stop_conversation_activity',
       'delete_work_directory',
+      'delete_conversation_artifacts',
       'delete_conversation_approvals',
       'delete_command_card_settlements',
       'delete_conversation_facts',
@@ -457,6 +461,7 @@ describe('conversation deletion use case', () => {
         directories,
         approvals,
         commandCardSettlements,
+        artifacts: { async deleteForConversation() { inject('delete_conversation_artifacts'); } },
         activity,
         facts: fixture.facts,
         factsDeletion,
@@ -487,6 +492,7 @@ describe('conversation deletion use case', () => {
         jobs: fixture.jobs,
         directories: fixture.directories,
         approvals: fixture.approvals,
+        artifacts: { deleteForConversation: async () => {} },
         commandCardSettlements: passiveCommandCardSettlements(),
         activity: passiveActivity(),
         facts: fixture.factsDeletion,
@@ -528,6 +534,7 @@ describe('conversation deletion use case', () => {
         jobs: fixture.jobs,
         directories: fixture.directories,
         approvals: fixture.approvals,
+        artifacts: { deleteForConversation: async () => {} },
         commandCardSettlements: passiveCommandCardSettlements(),
         facts: fixture.factsDeletion,
         activity: passiveActivity(),
@@ -567,6 +574,7 @@ describe('conversation deletion use case', () => {
         jobs: fixture.jobs,
         directories: fixture.directories,
         approvals: fixture.approvals,
+        artifacts: { deleteForConversation: async () => {} },
         commandCardSettlements: passiveCommandCardSettlements(),
         facts: fixture.factsDeletion,
         activity: {
@@ -587,6 +595,7 @@ describe('conversation deletion use case', () => {
       jobs: fixture.jobs,
       directories: fixture.directories,
       approvals: fixture.approvals,
+      artifacts: { deleteForConversation: async () => {} },
       commandCardSettlements: passiveCommandCardSettlements(),
       facts: fixture.facts,
       factsDeletion: fixture.factsDeletion,
@@ -643,6 +652,7 @@ describe('conversation deletion use case', () => {
       jobs: fixture.jobs,
       directories: fixture.directories,
       approvals: fixture.approvals,
+      artifacts: { deleteForConversation: async () => {} },
       commandCardSettlements: passiveCommandCardSettlements(),
       facts: fixture.factsDeletion,
       activity: {

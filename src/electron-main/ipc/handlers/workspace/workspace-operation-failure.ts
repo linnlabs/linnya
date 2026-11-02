@@ -1,4 +1,5 @@
 import { DefaultProjectDeleteBlockedError, ProjectNameConflictError, ProjectNotFoundError } from 'src/domains/projects';
+import { ProjectDeletionIncompleteError } from 'src/app-hosts/linnya/application/project-deletion';
 import {
   createOperationFailure,
   createUserFacingMessage,
@@ -56,6 +57,9 @@ export function createWorkspaceOperationFailure(
   error: unknown,
   fallbackKey: WorkspaceOperationFallbackKey,
 ): OperationFailure {
+  if (error instanceof ProjectDeletionIncompleteError) {
+    return failure(error, 'workspace.project.operation.deleteIncomplete');
+  }
   if (error instanceof ProjectNameConflictError) {
     return failure(error, 'workspace.project.operation.duplicateName', {
       projectName: error.projectName,

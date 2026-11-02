@@ -5,6 +5,9 @@ import { createBackendRendererRequestRegistry } from 'src/app-hosts/linnya/adapt
 import { createBackendRendererIpcStyleRegistrar } from 'src/app-hosts/linnya/adapters/backend-renderer-requests/orchestration/createBackendRendererIpcStyleRegistrar';
 import { projectGateway } from '@/shared/ipc/projectGateway';
 import { registerProjectHandlers } from './project-ipc';
+import { createProjectDeletionUseCase } from 'src/app-hosts/linnya/application/project-deletion';
+import { createSqliteProjectDeletionCatalog, PROJECT_DELETION_SCHEMA } from 'src/app-hosts/linnya/adapters/persistence/project-deletion';
+import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 
 describe('Project Renderer gateway → Backend IPC → SQLite', () => {
   let db: Database.Database;
@@ -13,10 +16,16 @@ describe('Project Renderer gateway → Backend IPC → SQLite', () => {
   beforeEach(() => {
     db = new Database(':memory:');
     PROJECT_SCHEMAS.forEach(sql => db.exec(sql));
+    CONVERSATION_SCHEMAS.forEach(sql => db.exec(sql));
+    PROJECT_DELETION_SCHEMA.forEach(sql => db.exec(sql));
     registry = createBackendRendererRequestRegistry();
     registerProjectHandlers(
       () => createProjectLifecycle(db),
-      createBackendRendererIpcStyleRegistrar(registry)
+      createBackendRendererIpcStyleRegistrar(registry),
+      createProjectDeletionUseCase({
+        catalog: createSqliteProjectDeletionCatalog(db, createProjectLifecycle(db)),
+        conversations: { requestDeletion: vi.fn(async () => true) },
+      }),
     );
     vi.stubGlobal('window', {
       electronAPI: {

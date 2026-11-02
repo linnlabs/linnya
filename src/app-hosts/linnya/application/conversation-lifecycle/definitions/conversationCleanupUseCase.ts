@@ -8,6 +8,7 @@ import type {
 export const ConversationCleanupFailureStageSchema = z.enum([
   'stop_conversation_activity',
   'delete_work_directory',
+  'delete_conversation_artifacts',
   'delete_conversation_approvals',
   'delete_command_card_settlements',
   'delete_conversation_facts',

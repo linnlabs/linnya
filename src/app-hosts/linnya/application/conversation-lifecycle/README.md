@@ -9,7 +9,7 @@
 | 用例 | 语义 |
 | --- | --- |
 | `requestWorkDirectoryClear` | 只清空当前对话工作目录，保留聊天和 durable UI 事实 |
-| `requestDeletion` | 完整删除工作目录、批准、卡片事实、对话事实和 identity metadata |
+| `requestDeletion` | 完整删除工作目录、专属 artifact、批准、卡片事实、对话事实和 identity metadata |
 | `recoverPending` | 启动时恢复尚未完成的 cleanup job |
 | `stopConversationActivityAndWait` | 停止 Flow/Commands owner，并等待事实收口 |
 
@@ -31,6 +31,7 @@ gate 只保护 admission，不在 gate 内等待进程或删除文件；否则�
 - cleanup job id 每代唯一且不可复用，迟到 worker 必须拒绝。
 - History repository 不能绕过 use case 直接删除事实。
 - 删除期间不允许新的 command reserve、approval claim 或目录 materialize。
+- 专属工具输出、命令输出与证据文件由 `ConversationArtifactsDeletionPort` 在 owner 停止后清理；精准清空工作目录不执行此步。共享 asset 仅释放事实引用，回收仍归 asset owner。
 - 失败要可观察；不能把“目录删除失败”伪装成对话已删除。
 
 ## 5. 异常和人工恢复

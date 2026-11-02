@@ -198,6 +198,8 @@ import { createStorageSpaceRouter } from 'src/features/storage-space/storageSpac
 import { CONVERSATION_CONTROL_BRIDGE_PATH } from '@app/schemas';
 import type { ConversationControlUseCase } from 'src/app-hosts/linnya/application/conversation-control';
 import { createProjectLifecycle } from 'src/domains/projects';
+import { createProjectDeletionUseCase, type ProjectDeletionUseCasePort } from 'src/app-hosts/linnya/application/project-deletion';
+import { createSqliteProjectDeletionCatalog } from 'src/app-hosts/linnya/adapters/persistence/project-deletion';
 import {
   selectRunRecoveryRetention,
   releaseTerminalRunRecovery,
@@ -214,6 +216,7 @@ const logger = getLogger('RouteConfig');
  * 路由配置依赖接口
  */
 export interface RouteDependencies {
+  readonly projectDeletionRegistration: { register(deletion: ProjectDeletionUseCasePort): void };
   readonly agentToolEnvironment?: AgentToolEnvironment;
   readonly commandApprovalControl: CommandApprovalControlEndpointPort;
   knowledgeBaseService?: KnowledgeBaseService;
@@ -695,6 +698,7 @@ export async function configureRoutes(
       db,
       eventStore: conversationEventStore,
       storageRoot: appDataRoot,
+      artifactsRoot: getConversationArtifactsV1Path(),
     });
     registerConversationFileLinkRuntime(
       createConversationFileLinkRuntime({
@@ -804,6 +808,10 @@ export async function configureRoutes(
       stopFlowAndWait: conversationId =>
         initializedFlowOrchestrator.stopConversationActivityAndWait(conversationId),
     });
+    dependencies.projectDeletionRegistration.register(createProjectDeletionUseCase({
+      catalog: createSqliteProjectDeletionCatalog(db, createProjectLifecycle(db)),
+      conversations: conversationCleanup,
+    }));
     storageSpaceUseCase = createStorageSpaceUseCase({
       catalog: createSqliteConversationStorageCatalogPort(db),
       inventory: createLocalManagedStorageInventoryPort({

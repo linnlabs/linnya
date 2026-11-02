@@ -172,6 +172,7 @@ function deleteConversation(
     jobs: fixture.jobs,
     directories: fixture.directories,
     approvals: { deleteForConversation: async () => {} },
+    artifacts: { deleteForConversation: async () => {} },
     commandCardSettlements: { deleteForConversationAndWait: async () => {} },
     activity,
     facts: {

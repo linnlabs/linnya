@@ -80,6 +80,7 @@ describe('storage-space backend E2E', () => {
         db,
         eventStore,
         storageRoot: appDataRoot,
+        artifactsRoot: path.join(workspaceRoot, 'Artifacts', 'v1', 'conversations'),
       });
       const workDirectoryPath = await lifecycle.workDirectoryAdmission.withAdmission(
         { conversationId },

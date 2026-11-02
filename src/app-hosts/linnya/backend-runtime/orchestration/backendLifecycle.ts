@@ -75,6 +75,9 @@ export async function initializeAppServerBackend(
         throw new Error('路由配置失败：DocumentOcrPort 未初始化');
       }
       const routeDependencies: RouteDependencies = {
+        projectDeletionRegistration: {
+          register: deletion => runtimeOwner.registerProjectDeletion(deletion),
+        },
         agentToolEnvironment: hostDependencies.agentToolEnvironment,
         commandApprovalControl: hostDependencies.commandApprovalControl,
         knowledgeBaseService: services.knowledgeBaseService || undefined,

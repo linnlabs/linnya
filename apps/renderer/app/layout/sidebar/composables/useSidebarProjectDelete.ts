@@ -40,11 +40,9 @@ export function useSidebarProjectDelete(options: UseWorkspaceSidebarProjectDelet
       return;
     }
 
-    try {
-      await options.deleteProject(projectId);
-    } finally {
-      resetDeleteDialog();
-    }
+    // 删除可能等待运行结束；确认即收起弹窗并消费意图，避免重复点击提交同一删除。
+    resetDeleteDialog();
+    await options.deleteProject(projectId);
   }
 
   function handleCancelDeleteProject(): void {
