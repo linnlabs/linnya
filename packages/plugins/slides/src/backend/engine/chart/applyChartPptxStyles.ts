@@ -2,6 +2,7 @@ import { DOMParser, XMLSerializer, type Document, type Element } from '@xmldom/x
 import type JSZip from 'jszip';
 import { directChildren, getElementByTag, getElements } from '../parser/xml/XmlNode';
 import { stripHash } from '../visual/presentationVisualDefaults';
+import { resolvePptxLabelPosition } from './chartOptions';
 import type { ChartPptxPatch } from './chartPptx';
 import { resolvePptxPartTarget } from '../pptx/pptxPartPath';
 
@@ -89,11 +90,9 @@ export async function applyChartPptxStyles(zip: JSZip, plan: readonly ChartPptxP
               ensureLabelField(chart, label, field).setAttribute('val', visible && active ? '1' : '0');
             }
           }
-          if (patch.labelPosition) {
-            const position = entry.type === 'line' && patch.labelPosition !== 'ctr'
-              ? patch.labelPosition === 'outEnd' || patch.labelPosition === 't' ? 't' : 'b' : patch.labelPosition;
-            ensureLabelField(chart, label, 'c:dLblPos').setAttribute('val', position);
-          }
+          const position = patch.labelPosition
+            && resolvePptxLabelPosition(entry.type, patch.labelPosition, patch.stacked ?? false);
+          if (position) ensureLabelField(chart, label, 'c:dLblPos').setAttribute('val', position);
         }
       }
     });

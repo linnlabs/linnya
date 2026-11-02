@@ -73,10 +73,11 @@ export function resolveChartOptions(chart: ChartElement): PptxGenJS.IChartOpts {
   }
   options.dataLabelFormatCode ??= chart.dataLabelContent === 'percentage' ? '0%' : 'General';
   if (chart.dataLabelPosition) {
-    const pos = chart.dataLabelPosition;
-    const line = chart.chartType === 'line' || chart.chartType === 'scatter';
-    options.dataLabelPosition = pos === 'center' ? 'ctr' : line ? (pos === 'outside' ? 't' : 'b') : (pos === 'outside' ? 'outEnd' : 'inEnd');
+    options.dataLabelPosition = resolvePptxLabelPosition(chart.chartType, chart.dataLabelPosition, isStackedBar(options));
   }
+  // 预设和内部选项可以直接带 SDK 位置值，同样不能越过合法性约束。
+  if (chart.chartType === 'doughnut' || chart.chartType === 'area') delete options.dataLabelPosition;
+  if (isStackedBar(options) && options.dataLabelPosition === 'outEnd') options.dataLabelPosition = 'inEnd';
   return options;
 }
 
@@ -91,4 +92,23 @@ export function mapValueAxisOptions(axis?: LayoutChartValueAxis): PptxGenJS.ICha
     ...(axis.numberFormat ? { valAxisLabelFormatCode: axis.numberFormat } : {}),
     ...(axis.showGridlines != null ? { valGridLine: { style: axis.showGridlines ? 'solid' : 'none' } } : {}),
   };
+}
+
+export function isStackedBar(options: Pick<PptxGenJS.IChartOpts, 'barGrouping'>): boolean {
+  return options.barGrouping === 'stacked' || options.barGrouping === 'percentStacked';
+}
+
+/**
+ * dLblPos 的合法值由图表族决定，写入不合法的值时 PowerPoint 无法打开整份文件：
+ * 环图和面积图不允许该字段，堆叠柱不允许 outEnd。
+ */
+export function resolvePptxLabelPosition(
+  type: string,
+  position: 'inside' | 'outside' | 'center',
+  stacked: boolean,
+): PptxGenJS.IChartOpts['dataLabelPosition'] {
+  if (type === 'doughnut' || type === 'area') return undefined;
+  if (position === 'center') return 'ctr';
+  if (type === 'line' || type === 'scatter') return position === 'outside' ? 't' : 'b';
+  return position === 'outside' && !stacked ? 'outEnd' : 'inEnd';
 }

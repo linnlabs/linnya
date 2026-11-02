@@ -1,12 +1,13 @@
 import type PptxGenJS from 'pptxgenjs';
 import type { ChartSeries, ChartType, ThemeSpec } from '@plugin/slides/shared';
 import { mapPosition, resolveChartPalette, stripHash } from '../visual/presentationVisualDefaults';
-import { resolveChartOptions, type ChartElement } from './chartOptions';
+import { isStackedBar, resolveChartOptions, resolvePptxLabelPosition, type ChartElement } from './chartOptions';
 
 export interface ChartPptxPatch {
   slideIndex: number;
   marker: string;
-  labelPosition?: PptxGenJS.IChartOpts['dataLabelPosition'];
+  labelPosition?: 'inside' | 'outside' | 'center';
+  stacked?: boolean;
   labelContent?: ChartElement['dataLabelContent'];
   series: { source: ChartSeries; order: number; type: ChartType; color: string }[];
 }
@@ -39,7 +40,8 @@ export function addNativeChart(
     if (!context) throw new Error('图表系列样式需要正式 PPTX materialization context。');
     options.objectName = `linnya-chart:${context.slideIndex}:${context.plan.length}`;
     context.plan.push({ slideIndex: context.slideIndex, marker: options.objectName, series: entries,
-      labelPosition: chart.dataLabelPosition ? options.dataLabelPosition : undefined,
+      labelPosition: chart.dataLabelPosition,
+      stacked: isStackedBar(options),
       labelContent: chart.dataLabelContent,
     });
   }
@@ -62,9 +64,7 @@ export function addNativeChart(
       secondaryCatAxis: group.axis === 'secondary',
       // 组合图没有全局 dataLabelPosition；按系列族转换，避免 outEnd 被折线丢弃。
       ...(chart.dataLabelPosition ? {
-        dataLabelPosition: chart.dataLabelPosition === 'center' ? 'ctr'
-          : group.type === 'line' ? (chart.dataLabelPosition === 'outside' ? 't' : 'b')
-            : chart.dataLabelPosition === 'outside' ? 'outEnd' : 'inEnd',
+        dataLabelPosition: resolvePptxLabelPosition(group.type, chart.dataLabelPosition, false),
       } : {}),
     },
   }));
