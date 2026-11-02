@@ -77,6 +77,8 @@ export function extractTextBodyInfo(txBody: XmlElement): SlideElementTextBodyInf
           ? 'top'
           : undefined,
     padding: hasPadding ? padding : undefined,
+    // 其余 vert 值（整体旋转、WordArt 堆叠）不是东亚竖排，语义不同，仍按横排排版。
+    writingMode: getAttr(bodyPr, 'vert') === 'eaVert' ? 'vertical-rl' : undefined,
   };
 }
 

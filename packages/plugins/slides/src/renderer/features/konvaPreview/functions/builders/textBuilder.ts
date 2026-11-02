@@ -1,12 +1,15 @@
 import { resolveBoxRotation } from '@plugin/slides/shared/render-geometry';
 import type { RenderTextRun, TextRenderNode } from '../../../../types/render';
-import type { RenderLineSlice } from '@plugin/slides/shared';
+import type { RenderLineSlice, VerticalGlyphRun } from '@plugin/slides/shared';
+import { resolveVerticalLineColumn } from '@plugin/slides/shared/textLayout';
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../../shared/constants';
 import {
   resolveRenderableFontFamily,
 } from '../konvaText';
 
 const POINTS_TO_PX = INCHES_TO_PX / 72;
+/** 横排字形的逗号句号在字格左下，竖排应移到右上。 */
+const CORNER_PUNCTUATION_SHIFT_EM = 0.6;
 
 export interface TextLineConfig {
   x: number;
@@ -23,6 +26,7 @@ export interface TextLineConfig {
   ellipsis: boolean;
   letterSpacing?: number;
   textDecoration?: string;
+  rotation?: number;
 }
 
 export function buildTextGroupConfig(node: TextRenderNode) {
@@ -53,6 +57,7 @@ export function buildTextLineConfigs(node: TextRenderNode): TextLineConfig[] {
   }
   const padTop = (node.padding?.top ?? 0) * INCHES_TO_PX;
   const padLeft = (node.padding?.left ?? 0) * INCHES_TO_PX;
+  const contentWidth = node.box.w - (node.padding?.left ?? 0) - (node.padding?.right ?? 0);
   const appliedFontScale = node.layout.appliedFontScale;
   const configs: TextLineConfig[] = [];
 
@@ -62,6 +67,29 @@ export function buildTextLineConfigs(node: TextRenderNode): TextLineConfig[] {
       const style = resolveLayoutSliceStyle(node, slice);
       const text = slice.text;
       const fontSize = (style.fontSize ?? 14) * appliedFontScale * POINTS_TO_PX;
+      if (slice.verticalGlyphRuns) {
+        const column = resolveVerticalLineColumn(line, contentWidth);
+        const columnCenter = padLeft + (column.x + column.width / 2) * INCHES_TO_PX;
+        for (const glyph of slice.verticalGlyphRuns) {
+          configs.push({
+            ...buildVerticalGlyphPlacement(glyph, columnCenter, padTop + (slice.x + glyph.offset) * INCHES_TO_PX, fontSize),
+            text: glyph.text,
+            fontSize,
+            fontFamily: style.resolvedFontFamily ?? resolveRenderableFontFamily(style.fontFamily, glyph.text),
+            fontStyle: toKonvaFontStyle(style),
+            fill: style.color ?? SLIDES_RENDER_COLORS.textFallbackFill,
+            align: 'left',
+            lineHeight: 1,
+            wrap: 'none',
+            ellipsis: false,
+            // 直立字的步进已含字距；只有成段旋转的西文仍由画布逐字分配。
+            letterSpacing: glyph.orientation !== 'rotated' || style.letterSpacing == null
+              ? undefined
+              : style.letterSpacing * appliedFontScale * POINTS_TO_PX,
+          });
+        }
+        continue;
+      }
       configs.push({
         x: padLeft + slice.x * INCHES_TO_PX,
         y: padTop + slice.textY * INCHES_TO_PX,
@@ -92,6 +120,22 @@ export function buildTextLineConfigs(node: TextRenderNode): TextLineConfig[] {
   }
 
   return configs;
+}
+
+/** 字形中心落在列中轴；旋转段绕起点顺时针 90°，字身向左展开。 */
+function buildVerticalGlyphPlacement(
+  glyph: VerticalGlyphRun,
+  columnCenter: number,
+  y: number,
+  fontSize: number,
+): Pick<TextLineConfig, 'x' | 'y' | 'rotation'> {
+  if (glyph.orientation === 'rotated') {
+    return { x: columnCenter + fontSize / 2, y, rotation: 90 };
+  }
+  const x = columnCenter - fontSize / 2;
+  return glyph.orientation === 'corner'
+    ? { x: x + fontSize * CORNER_PUNCTUATION_SHIFT_EM, y: y - fontSize * CORNER_PUNCTUATION_SHIFT_EM }
+    : { x, y };
 }
 
 function resolveLayoutSliceStyle(

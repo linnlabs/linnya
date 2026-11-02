@@ -26,6 +26,7 @@ export function createInlineTextEditorStyle(
     paddingBottom: `${target.padding.bottom * INCHES_TO_CSS_PX * scale}px`,
     paddingLeft: `${target.padding.left * INCHES_TO_CSS_PX * scale}px`,
     transform: `rotate(${target.rotation}deg)`,
+    ...(target.writingMode ? { writingMode: target.writingMode } : {}),
     fontFamily: target.fontFamily,
     fontSize: `${target.fontSizePt * target.appliedFontScale * POINTS_TO_CSS_PX * scale}px`,
     fontWeight: target.fontWeight,

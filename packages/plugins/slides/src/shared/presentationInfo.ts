@@ -45,6 +45,7 @@ export interface SlideElementTextBodyInfo {
   autoFit?: 'none' | 'shrink-text' | 'resize-shape';
   wrap?: 'word' | 'char' | 'none';
   verticalAlign?: 'top' | 'middle' | 'bottom';
+  writingMode?: 'vertical-rl';
   padding?: {
     top: number;
     right: number;

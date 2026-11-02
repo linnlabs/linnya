@@ -1,5 +1,6 @@
 import type { DeckSpec, StructuredElement, FreeformElement } from '@plugin/slides/shared';
 import { resolveSlideSizeInches, PPTX_DEFAULT_TEXT_INSET } from '@plugin/slides/shared';
+import type { TextLayoutResult } from '@plugin/slides/shared/textLayout';
 import { RenderModelMapper } from '../parser/RenderModelMapper';
 import { applyTextLayoutToRenderModel, prewarmTextLayoutForRenderModel } from './renderModelTextLayout';
 
@@ -28,6 +29,10 @@ export async function materializeIntrinsicTextBoxes(deck: DeckSpec): Promise<voi
       const node = model.slides[slideIndex]?.elements[index];
       if (node?.kind !== 'text' || !node.layout) throw new Error('Intrinsic text layout is missing');
       const padding = node.padding ?? PPTX_DEFAULT_TEXT_INSET;
+      if (node.layout.writingMode === 'vertical-rl') {
+        materializeVerticalBox(element, node.layout, padding);
+        continue;
+      }
       const measuredWidth = Math.max(0, ...node.layout.lines.map(line => line.width)) + (padding.left ?? PPTX_DEFAULT_TEXT_INSET.left) + (padding.right ?? PPTX_DEFAULT_TEXT_INSET.right);
       // 向上量化到 OOXML EMU，避免十进制舍入重新制造字形级溢出。
       const width = Math.max(
@@ -57,6 +62,35 @@ export async function materializeIntrinsicTextBoxes(deck: DeckSpec): Promise<voi
         };
       }
     }
+  }
+}
+
+/** 竖排的行内方向是物理高度：高度取最长列，宽度取列总宽，均向上量化到 EMU。 */
+function materializeVerticalBox(
+  element: StructuredElement | FreeformElement,
+  layout: TextLayoutResult,
+  padding: { readonly top?: number; readonly bottom?: number },
+): void {
+  const evidence = element._layoutConstraintEvidence;
+  const previous = element.position;
+  const longestColumn = Math.max(0, ...layout.lines.map(line => line.width));
+  const height = Math.ceil((longestColumn + (padding.top ?? PPTX_DEFAULT_TEXT_INSET.top) + (padding.bottom ?? PPTX_DEFAULT_TEXT_INSET.bottom)) * 914400) / 914400;
+  const width = Math.ceil((layout.requiredWidthInches ?? previous.w) * 914400) / 914400;
+  const rightAnchored = evidence?.declared.rightInches != null && evidence.declared.leftInches == null;
+  const bottomAnchored = evidence?.declared.bottomInches != null && evidence.declared.topInches == null;
+  const position = {
+    x: rightAnchored ? previous.x + previous.w - width : previous.x,
+    y: bottomAnchored ? previous.y + previous.h - height : previous.y,
+    w: width,
+    h: height,
+  };
+  element.position = position;
+  if (evidence) {
+    element._layoutConstraintEvidence = {
+      ...evidence,
+      finalBox: { ...position, unit: 'in' },
+      intrinsicTextAdvanceSource: layout.advanceSource,
+    };
   }
 }
 

@@ -14,8 +14,47 @@ import type {
 import { combineTextLayoutAdvanceSources } from '../functions/advanceSource';
 import { applyEllipsisOverflow } from '../functions/applyEllipsisOverflow';
 import { layoutParagraph } from '../functions/layoutParagraph';
+import { toVerticalLogicalContract } from '../functions/verticalText';
 
 export function layoutTextNode(
+  input: TextLayoutInput,
+  provider: RunAdvanceProvider,
+  fontMetricsProvider?: FontMetricsProvider,
+): TextLayoutResult {
+  if (input.contract.writingMode === 'vertical-rl') {
+    return layoutVerticalText(input, provider, fontMetricsProvider);
+  }
+  return layoutLogicalText(input, provider, fontMetricsProvider);
+}
+
+function layoutVerticalText(
+  input: TextLayoutInput,
+  provider: RunAdvanceProvider,
+  fontMetricsProvider: FontMetricsProvider | undefined,
+): TextLayoutResult {
+  const contract = toVerticalLogicalContract(input.contract);
+  let result = layoutLogicalText({ ...input, contract }, provider, fontMetricsProvider);
+  let requiredInline: number | undefined;
+  // 不换列的竖排按内容撑高外框，正如横排 resize-shape 不保留旧高度造成的假溢出。
+  if (contract.wrap === 'none' && contract.autoFitPolicy === 'resize-shape' && result.overflow.horizontal) {
+    const longestColumn = Math.max(0, ...result.lines.map((line) => line.width));
+    requiredInline = Number((contract.padding.left + longestColumn + contract.padding.right).toFixed(6));
+    result = layoutLogicalText(
+      { ...input, contract: { ...contract, box: { ...contract.box, w: requiredInline } } },
+      provider,
+      fontMetricsProvider,
+    );
+  }
+  const { requiredHeightInches: requiredBlock, ...layout } = result;
+  return {
+    ...layout,
+    writingMode: 'vertical-rl',
+    ...(requiredBlock === undefined ? {} : { requiredWidthInches: requiredBlock }),
+    ...(requiredInline === undefined ? {} : { requiredHeightInches: requiredInline }),
+  };
+}
+
+function layoutLogicalText(
   input: TextLayoutInput,
   provider: RunAdvanceProvider,
   fontMetricsProvider?: FontMetricsProvider,
@@ -90,6 +129,7 @@ function layoutAtScale(
       fontScale: scale,
       lineSpacingReduction,
       defaultFontFamily: input.defaultFontFamily,
+      vertical: input.contract.writingMode === 'vertical-rl',
     });
     lines.push(...result.lines);
     advanceSources.push(result.advanceSource);

@@ -45,6 +45,8 @@ export interface BrokenLineSlice {
   x: number;
   width: number;
   isBulletMarker?: boolean;
+  /** 仅竖排请求时保留：切片内逐 cluster 的正文与 advance。 */
+  clusters?: { text: string; advance: number }[];
 }
 
 export type BrokenLineInlineSlice = BrokenLineSlice | Omit<InlineBoxLineSlice, 'boxY' | 'height'>;
@@ -57,7 +59,9 @@ export function breakParagraphIntoLines(
   resolveRunStyle: TextRunStyleResolver,
   paragraphIndex = 0,
   fontScale = 1,
+  keepClusters = false,
 ): BrokenLine[] {
+  const toLine = (atoms: readonly FlatAtom[]) => buildLine(atoms, keepClusters);
   const flat = flattenParagraph(paragraph, paragraphIndex, provider, resolveRunStyle, fontScale);
   if (flat.some((atom) => atom.kind === 'inlineBox' && atom.advance > usableWidthInches)) {
     throw new MathFormulaError(
@@ -162,7 +166,7 @@ function flattenParagraph(
   });
 }
 
-function toLine(atoms: readonly FlatAtom[]): BrokenLine {
+function buildLine(atoms: readonly FlatAtom[], keepClusters: boolean): BrokenLine {
   const slices: BrokenLineInlineSlice[] = [];
   let x = 0;
   for (const atom of atoms) {
@@ -184,6 +188,7 @@ function toLine(atoms: readonly FlatAtom[]): BrokenLine {
     if (previous && previous.kind !== 'inlineBox' && previous.runIndex === atom.runIndex && !previous.isBulletMarker) {
       previous.text += atom.text;
       previous.width = roundInches(previous.width + atom.advance);
+      previous.clusters?.push({ text: atom.text, advance: atom.advance });
     } else {
       slices.push({
         kind: 'text',
@@ -192,6 +197,7 @@ function toLine(atoms: readonly FlatAtom[]): BrokenLine {
         text: atom.text,
         x,
         width: atom.advance,
+        ...(keepClusters ? { clusters: [{ text: atom.text, advance: atom.advance }] } : {}),
       });
     }
     x += atom.advance;

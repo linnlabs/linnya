@@ -486,6 +486,8 @@ export type {
   LayoutParagraphOptions,
   LayoutParagraphResult,
   RenderLineSlice,
+  VerticalGlyphOrientation,
+  VerticalGlyphRun,
   InlineBoxLineSlice,
   RenderInlineLineSlice,
   RenderTextLine,

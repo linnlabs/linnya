@@ -56,6 +56,27 @@ describe('FreeformCompiler', () => {
     expect(xml.match(/<a:lnSpc>/gu)).toHaveLength(1);
     expect(xml).toContain('<a:spcPct val="118000"/>');
   });
+  it('writes vertical text as a native East Asian vertical body', async () => {
+    const buffer = await freeformCompiler.compileDeck({
+      title: 'Vertical text',
+      slides: [{
+        slideNumber: 1,
+        spec: makeFreeformSlide({
+          elements: [
+            { type: 'text', position: { x: 1, y: 1, w: 1, h: 4 }, content: '清风徐来', style: { writingMode: 'vertical-rl' } },
+            { type: 'text', position: { x: 3, y: 1, w: 3, h: 1 }, content: 'Horizontal' },
+          ],
+        }),
+      }],
+    });
+    const xml = await readSlideXml(buffer);
+
+    expect(xml.match(/vert="eaVert"/gu)).toHaveLength(1);
+    expect(xml).toMatch(/anchor="t" vert="eaVert"/u);
+    // 不能用逐字换行冒充竖排。
+    expect(xml).toContain('清风徐来');
+  });
+
   it('compiles a text element', async () => {
     const deck: DeckSpec = {
       title: 'Freeform Text',

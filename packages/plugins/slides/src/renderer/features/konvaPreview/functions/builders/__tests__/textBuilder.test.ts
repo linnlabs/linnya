@@ -208,6 +208,51 @@ describe('textBuilder', () => {
     });
   });
 
+  it('draws vertical glyph runs on the column axis instead of logical slice coordinates', () => {
+    const node = makeTextNode({
+      box: { x: 0, y: 0, w: 2, h: 3, unit: 'in' },
+      padding: { top: 0, left: 0, right: 0, bottom: 0 },
+      writingMode: 'vertical-rl',
+      paragraphs: [{ runs: [{ text: '茶A，', fontSize: 72, color: '#000000' }] }],
+      layout: {
+        writingMode: 'vertical-rl',
+        lines: [{
+          paragraphIndex: 0,
+          y: 0,
+          baseline: 0.8,
+          height: 1,
+          width: 2.5,
+          align: 'left',
+          slices: [{
+            paragraphIndex: 0,
+            runIndex: 0,
+            text: '茶A，',
+            x: 0.25,
+            width: 2.5,
+            textY: 0,
+            verticalGlyphRuns: [
+              { text: '茶', offset: 0, orientation: 'upright' },
+              { text: 'A', offset: 1, orientation: 'rotated' },
+              { text: '，', offset: 1.5, orientation: 'corner' },
+            ],
+          }],
+        }],
+        contentHeightInches: 1,
+        appliedFontScale: 1,
+        appliedLineSpacingReduction: 0,
+        advanceSource: 'harfbuzz',
+        overflow: { horizontal: false, vertical: false, hiddenLineCount: 0 },
+      },
+    });
+    const [upright, rotated, corner] = buildTextLineConfigs(node);
+    // 第一列贴右：列 [1in, 2in]，中轴 1.5in = 144px，字号 96px。
+    expect(upright).toMatchObject({ text: '茶', x: 96, y: 24 });
+    expect(upright).not.toHaveProperty('rotation');
+    expect(rotated).toMatchObject({ text: 'A', x: 192, y: 120, rotation: 90 });
+    expect(corner!.x).toBeCloseTo(96 + 57.6);
+    expect(corner!.y).toBeCloseTo(168 - 57.6);
+  });
+
   it('requires shared backend layout instead of running a renderer wrap fallback', () => {
     expect(() => buildTextLineConfigs(makeTextNode()))
       .toThrow('missing shared text layout');

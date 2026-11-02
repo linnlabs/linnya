@@ -381,6 +381,12 @@ export interface LayoutTextConfig extends FlexProps, LayoutAuthoringTargetConfig
   fontFamily?: string;
   textAlign?: LayoutTextAlign;
   verticalAlign?: LayoutVerticalAlign;
+  /**
+   * 文字方向。`vertical-rl` 为原生竖排：汉字直立、西文旋转、列从右向左，导出为 PowerPoint 竖排文本框。
+   * 不写 height 时每段一列、盒子随内容；写 height 时按高度自动换列。竖排时 textAlign 控制列内上/中/下，
+   * verticalAlign 的 top/middle/bottom 控制列组靠右/居中/靠左。不支持行内公式。
+   */
+  writingMode?: 'horizontal-tb' | 'vertical-rl';
   /** 行高倍数；富文本 run 的精确行距使用 style.lineSpacing。 */
   lineHeight?: number;
   /** 字间距，单位为 pt。 */

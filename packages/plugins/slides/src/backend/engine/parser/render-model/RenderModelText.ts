@@ -96,6 +96,7 @@ export function buildGeneratedTextRenderNode(
     padding?: TextRenderNode['padding'];
     autoFitPolicy?: TextRenderNode['autoFitPolicy'];
     wrap?: TextRenderNode['wrap'];
+    writingMode?: TextRenderNode['writingMode'];
   } = {},
 ): TextRenderNode {
   const contract = resolveTextLayoutContract({
@@ -107,12 +108,14 @@ export function buildGeneratedTextRenderNode(
     autoFitPolicy: layoutOverrides.autoFitPolicy,
     wrap: layoutOverrides.wrap,
     verticalAlign,
+    writingMode: layoutOverrides.writingMode,
   });
   return {
     ...base,
     // mapper 只建立语义模型；尺寸与断行必须由最终布局阶段一次性决定。
     box: base.box,
     verticalAlign: contract.verticalAlign,
+    ...(contract.writingMode ? { writingMode: contract.writingMode } : {}),
     wrap: contract.wrap,
     overflow: contract.overflow,
     autoFitPolicy: contract.autoFitPolicy,

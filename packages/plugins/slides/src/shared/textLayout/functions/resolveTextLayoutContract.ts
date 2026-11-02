@@ -17,6 +17,7 @@ import {
   type TextLayoutContract,
   type TextLayoutProfile,
   type TextWrapPolicy,
+  type TextWritingMode,
 } from '../definitions/contract';
 
 export interface ResolveTextLayoutContractInput {
@@ -29,6 +30,7 @@ export interface ResolveTextLayoutContractInput {
   autoFitPolicy?: TextAutoFitPolicy;
   overflow?: TextLayoutContract['overflow'];
   verticalAlign?: TextLayoutContract['verticalAlign'];
+  writingMode?: TextWritingMode;
   font?: TextLayoutContract['font'];
 }
 
@@ -51,6 +53,7 @@ export function resolveTextLayoutContract(
     autoFitPolicy: input.autoFitPolicy ?? DEFAULT_TEXT_AUTOFIT_POLICY,
     overflow: input.overflow ?? DEFAULT_TEXT_OVERFLOW_POLICY,
     verticalAlign: input.verticalAlign ?? DEFAULT_TEXT_VERTICAL_ALIGN,
+    ...(input.writingMode ? { writingMode: input.writingMode } : {}),
     font: input.font ?? {
       declaredFontFamily: primaryRun?.fontFamily,
       resolvedFontFamily: primaryRun?.resolvedFontFamily,
@@ -75,6 +78,7 @@ export function resolveTextLayoutContractFromNode(
     autoFitPolicy: node.autoFitPolicy,
     overflow: node.overflow,
     verticalAlign: node.verticalAlign,
+    writingMode: node.writingMode,
   });
 }
 

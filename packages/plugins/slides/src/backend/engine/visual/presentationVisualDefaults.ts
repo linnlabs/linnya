@@ -179,6 +179,11 @@ export function mapTextParagraphStyleToProps(style?: TextStyle): Record<string, 
   const opts = mapTextRunStyleToProps(style);
   if (style?.align) opts.align = style.align;
   if (style?.valign) opts.valign = style.valign;
+  if (style?.writingMode === 'vertical-rl') {
+    opts.vert = 'eaVert';
+    // PptxGenJS 缺省写 anchor="ctr"；竖排的外框常宽于列组，必须与预览的缺省靠右一致。
+    opts.valign = style.valign ?? 'top';
+  }
   return { ...opts, ...mapTextParagraphLineSpacingToProps(style) };
 }
 

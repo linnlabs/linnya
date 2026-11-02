@@ -309,6 +309,7 @@ function isTextRenderNode(value: Record<string, unknown>): boolean {
     && hasNodeKeys(value, [
       'paragraphs',
       'verticalAlign',
+      'writingMode',
       'wrap',
       'overflow',
       'autoFitPolicy',
@@ -319,6 +320,7 @@ function isTextRenderNode(value: Record<string, unknown>): boolean {
     ])
     && isArrayOf(value.paragraphs, isRenderParagraph)
     && isOptional(value.verticalAlign, align => isOneOf(align, ['top', 'middle', 'bottom']))
+    && isOptional(value.writingMode, mode => mode === 'vertical-rl')
     && isOptional(value.wrap, wrap => isOneOf(wrap, ['word', 'char', 'none']))
     && isOptional(value.overflow, overflow => isOneOf(overflow, ['clip', 'ellipsis', 'visible']))
     && isOptional(value.autoFitPolicy, policy => isOneOf(policy, ['none', 'shrink-text', 'resize-shape']))
@@ -437,17 +439,21 @@ function isRenderBullet(value: unknown): boolean {
 function isTextLayoutResult(value: unknown): boolean {
   return isRecord(value)
     && hasOnlyKeys(value, [
+      'writingMode',
       'lines',
       'contentHeightInches',
       'requiredHeightInches',
+      'requiredWidthInches',
       'appliedFontScale',
       'appliedLineSpacingReduction',
       'advanceSource',
       'overflow',
     ])
+    && isOptional(value.writingMode, mode => mode === 'vertical-rl')
     && isArrayOf(value.lines, isRenderTextLine)
     && isFiniteNumber(value.contentHeightInches)
     && isOptional(value.requiredHeightInches, isFiniteNumber)
+    && isOptional(value.requiredWidthInches, isFiniteNumber)
     && isFiniteNumber(value.appliedFontScale)
     && isFiniteNumber(value.appliedLineSpacingReduction)
     && isOneOf(value.advanceSource, ['pretext', 'heuristic', 'harfbuzz'])
@@ -507,6 +513,7 @@ function isRenderInlineLineSlice(value: unknown): boolean {
     'width',
     'textY',
     'isBulletMarker',
+    'verticalGlyphRuns',
   ])
     && isOptional(value.kind, kind => kind === 'text')
     && isFiniteNumber(value.paragraphIndex)
@@ -515,7 +522,16 @@ function isRenderInlineLineSlice(value: unknown): boolean {
     && isFiniteNumber(value.x)
     && isFiniteNumber(value.width)
     && isFiniteNumber(value.textY)
-    && isOptional(value.isBulletMarker, isBoolean);
+    && isOptional(value.isBulletMarker, isBoolean)
+    && isOptional(value.verticalGlyphRuns, runs => isArrayOf(runs, isVerticalGlyphRun));
+}
+
+function isVerticalGlyphRun(value: unknown): boolean {
+  return isRecord(value)
+    && hasOnlyKeys(value, ['text', 'offset', 'orientation'])
+    && isString(value.text)
+    && isFiniteNumber(value.offset)
+    && isOneOf(value.orientation, ['upright', 'rotated', 'corner']);
 }
 
 function isShapeRenderNode(value: Record<string, unknown>): boolean {

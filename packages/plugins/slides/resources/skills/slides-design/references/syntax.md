@@ -125,6 +125,10 @@ Text 可以用 `backgroundColor` 和纯色 `border: { color, width, dash? }` 装
 
 主题字体放在 deck theme 中，局部字体只用于明确的层级或语言需求。不要在每个节点重复同一个全局字体。字体是否真实可用要通过 CLI `fonts check/list` 查询，不凭经验猜系统字体。
 
+### 竖排
+
+`writingMode: "vertical-rl"` 是原生竖排：汉字直立、西文旋转、列从右向左，导出为 PowerPoint 竖排文本框，不要用逐字 `\n` 模拟。不写 `height` 时每段一列、盒子随内容；写 `height` 时按高度自动换列。`textAlign` 控制列内上/中/下，`verticalAlign` 的 `top` / `middle` / `bottom` 控制列组靠右/居中/靠左。竖排只属于 Text：不支持行内公式，Shape 内文字不能竖排。
+
 ### 6.1 原生数学公式
 
 独立公式使用 `createFormula()`。输入是受控 LaTeX，前端以同源矢量投影预览，导出 PPTX 后是可双击编辑的 Office Math，不是图片：

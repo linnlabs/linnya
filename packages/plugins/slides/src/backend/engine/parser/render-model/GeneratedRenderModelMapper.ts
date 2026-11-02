@@ -136,6 +136,7 @@ function mapStructuredElement(
           padding: PPTX_DEFAULT_TEXT_INSET,
           autoFitPolicy: 'resize-shape',
           wrap: element.textWrap,
+          writingMode: element.style?.writingMode,
         },
       );
     }
@@ -467,6 +468,7 @@ function mapFreeformTextNode(
       padding: PPTX_DEFAULT_TEXT_INSET,
       autoFitPolicy: 'resize-shape',
       wrap: element.textWrap,
+      writingMode: style.writingMode,
     },
   );
 }
@@ -524,6 +526,7 @@ function resolveFreeformTextStyle(
     color: style.color,
     align: style.align,
     valign: style.valign,
+    writingMode: style.writingMode,
     letterSpacing: style.letterSpacing,
     lineSpacing: style.lineSpacing,
   };

@@ -6,6 +6,8 @@ import { resolveLayoutTextWrapPolicy } from './TextBoxSizing';
 
 export function readLayoutReplayMeasurement(node: LayoutNode): LayoutReplayMeasurement | undefined {
   if (node._type !== 'Text') return undefined;
+  // 重放算法只懂横排的“宽度决定高度”；竖排页交给正式编译。
+  if (node.writingMode === 'vertical-rl') return undefined;
   const measurement = readGeneratedTextHeightMeasurement(node);
   if (!measurement) return undefined;
   return { kind: 'text', content: typeof node.content === 'string' ? node.content : (node.content ?? []).map(run => 'text' in run ? run.text : '').join(''),

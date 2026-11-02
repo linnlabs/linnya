@@ -34,7 +34,8 @@ export function createTextEditingTarget(
   const innerHeight = Math.max(0, node.box.h - padding.top - padding.bottom);
   const contentHeight = node.layout?.contentHeightInches ?? 0;
   const remainingHeight = Math.max(0, innerHeight - contentHeight);
-  const verticalOffset = node.verticalAlign === 'bottom'
+  const vertical = node.writingMode === 'vertical-rl';
+  const verticalOffset = vertical ? 0 : node.verticalAlign === 'bottom'
     ? remainingHeight
     : node.verticalAlign === 'middle'
       ? remainingHeight / 2
@@ -59,6 +60,7 @@ export function createTextEditingTarget(
     rotation: Math.atan2(horizontalEnd.y - origin.y, horizontalEnd.x - origin.x) * 180 / Math.PI,
     padding,
     verticalOffset,
+    ...(vertical ? { writingMode: 'vertical-rl' as const } : {}),
     fontFamily: rich ? text.baseStyle?.fontFamily ?? 'sans-serif' : firstRun?.resolvedFontFamily ?? firstRun?.fontFamily ?? 'sans-serif',
     fontSizePt,
     appliedFontScale,

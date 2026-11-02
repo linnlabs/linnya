@@ -47,7 +47,7 @@ import type {
 } from './LayoutTypes.js';
 import { DEFAULT_TEXT_LINE_SPACING_MULTIPLE } from '@plugin/slides/shared';
 import { isContainerNode } from './LayoutTypes.js';
-import { estimateTextHeight, measureIntrinsicTextBox } from './TextMeasurer.js';
+import { estimateTextHeight, measureIntrinsicTextBox, measureVerticalTextBox } from './TextMeasurer.js';
 import { resolveLayoutTextWrapPolicy } from './TextBoxSizing.js';
 import { readLayoutTableData } from './TableLayoutInput.js';
 import { resolveGeneratedTableLayout } from '../../../engine/table';
@@ -293,6 +293,21 @@ function applyTextMeasure(
   const explicitWidth = node.width ?? node.w;
   const explicitHeight = node.height ?? node.h;
   if (explicitWidth != null && explicitHeight != null) return;
+
+  if (node.writingMode === 'vertical-rl') {
+    const intrinsic = measureVerticalTextBox(node);
+    if (explicitHeight == null) {
+      if (explicitWidth == null) yogaNode.setWidth(toPt(intrinsic.widthInches));
+      yogaNode.setHeight(toPt(intrinsic.heightInches));
+      return;
+    }
+    yogaNode.setMeasureFunc((_widthPt, _widthMode, heightPt, heightMode) => {
+      const limit = heightMode === yoga.MEASURE_MODE_UNDEFINED ? intrinsic.heightInches : toIn(heightPt);
+      const size = measureVerticalTextBox(node, limit);
+      return { width: toPt(size.widthInches), height: toPt(size.heightInches) };
+    });
+    return;
+  }
 
   if (resolveLayoutTextWrapPolicy(node) === 'none') {
     const intrinsicSize = measureIntrinsicTextBox(node);

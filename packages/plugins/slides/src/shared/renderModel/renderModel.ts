@@ -233,8 +233,10 @@ export type RenderNode =
 export interface TextRenderNode extends RenderNodeBase {
   kind: 'text';
   paragraphs: RenderParagraph[];
-  /** 文本框级垂直对齐 */
+  /** 文本框级垂直对齐；竖排时 top/middle/bottom 依次对应靠右/居中/靠左。 */
   verticalAlign?: 'top' | 'middle' | 'bottom';
+  /** 文字方向；缺省为横排。 */
+  writingMode?: 'vertical-rl';
   /** 文本换行策略 */
   wrap?: 'word' | 'char' | 'none';
   /** 溢出处理 */

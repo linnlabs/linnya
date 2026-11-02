@@ -5,7 +5,20 @@ import type {
   RenderTextRun,
 } from '../../renderModel';
 import type { MathFormulaRenderProjection } from '../../mathFormula';
-import type { TextLayoutContract } from './contract';
+import type { TextLayoutContract, TextWritingMode } from './contract';
+
+/**
+ * 竖排一个可绘制序列的字形方向：upright 直立；rotated 顺时针旋转 90°（西文、括号、破折号）；
+ * corner 直立并移到字格右上角（逗号、句号、顿号）。
+ */
+export type VerticalGlyphOrientation = 'upright' | 'rotated' | 'corner';
+
+export interface VerticalGlyphRun {
+  text: string;
+  /** 相对 slice 起点的行内（物理纵向）偏移，单位英寸。 */
+  offset: number;
+  orientation: VerticalGlyphOrientation;
+}
 
 /**
  * 一行内属于同一个 run 的连续文本切片。所有坐标为文本框内容区内的英寸值。
@@ -22,6 +35,8 @@ export interface RenderLineSlice {
   textY: number;
   /** bullet marker 由布局引擎插入，前端需要按普通 slice 画但不参与原文拼接。 */
   isBulletMarker?: boolean;
+  /** 仅 vertical-rl：x/textY 仍是逻辑坐标，绘制必须消费这份字形序列。 */
+  verticalGlyphRuns?: VerticalGlyphRun[];
 }
 
 export interface InlineBoxLineSlice {
@@ -53,10 +68,15 @@ export interface RenderTextLine {
 }
 
 export interface TextLayoutResult {
+  /** vertical-rl 时 lines 为逻辑坐标：x/width 沿物理纵向，y/height 为列从右起的偏移与列宽。 */
+  writingMode?: TextWritingMode;
   lines: RenderTextLine[];
+  /** 行堆叠方向的内容尺寸；vertical-rl 时对应物理宽度。 */
   contentHeightInches: number;
   /** resize-shape 所需外框高度（内容高度 + 上下 padding），单位 = inches。 */
   requiredHeightInches?: number;
+  /** vertical-rl 的 resize-shape 所需外框宽度（列总宽 + 左右 padding），单位 = inches。 */
+  requiredWidthInches?: number;
   /** normAutofit 实际应用的字号缩放（1 = 未缩放） */
   appliedFontScale: number;
   /** 行距缩减量（M3 前恒为 0） */

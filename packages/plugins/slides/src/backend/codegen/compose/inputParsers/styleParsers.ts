@@ -52,6 +52,7 @@ export function parseTextStyle(value: unknown): TextStyle | null {
   if (value.valign === 'top' || value.valign === 'middle' || value.valign === 'bottom') {
     style.valign = value.valign;
   }
+  if (value.writingMode === 'vertical-rl') style.writingMode = value.writingMode;
   if (value.lineSpacing != null) {
     const lineSpacing = parseTextLineSpacingInput(value.lineSpacing);
     if (!lineSpacing) return null;
@@ -87,6 +88,7 @@ export const KNOWN_TEXT_STYLE_KEYS: readonly string[] = [
   'color',
   'align',
   'valign',
+  'writingMode',
   'lineSpacing',
   'letterSpacing',
 ];

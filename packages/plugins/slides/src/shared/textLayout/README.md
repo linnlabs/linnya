@@ -25,6 +25,7 @@ shared/textLayout/
 │   ├── lineMetrics.ts               # 行步进、公共 baseline 与 run 的 textY
 │   ├── applyEllipsisOverflow.ts     # 确定性省略号与 overflow 事实
 │   ├── resizeTextBoxForAutoFit.ts   # resize-shape 的锚点感知外框几何
+│   ├── verticalText.ts              # 竖排逻辑合同、字形方向与物理列
 │   ├── summarizeTextLayoutProvenance.ts # 页级紧凑归因摘要
 │   └── resolveTextLayoutContract.ts # RenderModel 输入 -> 布局合同
 └── orchestration/
@@ -66,6 +67,14 @@ HarfBuzz 完整 run 的原始 fontUnits 与 metricsInEm 可在任意字号下同
 `resolveShapeTextLayout` 是 generated Shape 默认字号与内边距的唯一规则，`shapeTextResizeInput` 派生缩放输入。`shapeTextSizing` 保存显式字号或按尺寸估算的语义。非线性 provider 的 Shape 快照仅覆盖默认字号与 shrink 的真实可达档位；线性字体事实一次记录即可覆盖这些档位。
 
 缺失测量事实抛出明确的 PreparedTextMeasurementUnavailable，editingPreview 保留整个旧节点等待正式修订；不允许近似移动旧行或换测量算法。任意新正文、作者布局树重排和通用 ellipsis 编辑不在本地精确快照范围。只读 standalone CLI 使用 prepareEditingMeasurements=false 关闭额外预热和快照。
+
+## 竖排
+
+`writingMode: 'vertical-rl'` 是文本框级合同，对应 OOXML `bodyPr@vert="eaVert"`，不用逐字换行模拟。`verticalText.ts` 把合同投影为逻辑合同后复用同一断行、行距、autofit 与 overflow：逻辑 x/width 沿物理纵向，逻辑 y/height 是列从右起的偏移与列宽，padding 同步旋转。段落 `align` 控制列内上/中/下，`verticalAlign` 的 top/middle/bottom 控制列组靠右/居中/靠左。
+
+`TextLayoutResult.lines` 在竖排时仍是逻辑坐标，消费方必须经 `resolveVerticalLineColumn()` 得到物理列，并按 `slice.verticalGlyphRuns` 绘制。字形方向依 UTR #50 简化分类：汉字、假名、谚文与全角形式直立，西文和括号、破折号、省略号顺时针旋转，逗号、句号、顿号移到字格右上。PPTX 的字形方向由 PowerPoint 决定，这里只约束预览。
+
+`resize-shape` 通过 `requiredWidthInches` 扩展列总宽，不换列时 `requiredHeightInches` 扩展列高；外框落地统一走 `resizeVerticalTextBoxForAutoFit()`。`ellipsis` 在竖排按 `clip` 报告。行内公式由 Flex 编译器拒绝；交互重放不覆盖竖排，整页走正式编译。Shape 内文字和下划线的竖排绘制不在当前范围，导入的 Shape 文字保留方向事实并按相同规则排版。
 
 ## 行距合同
 

@@ -633,6 +633,13 @@ function resolveFinalTextContentWidth(
   element: SlideElementInfo & { position: NonNullable<SlideElementInfo['position']> },
 ): number {
   const padding = element.textBody?.padding;
+  // 竖排的断行约束是物理高度，诊断的“内容宽”与 maxLineWidth 保持同一方向。
+  if (element.textLayout?.writingMode === 'vertical-rl') {
+    return Number(Math.max(
+      element.position.h - (padding?.top ?? PPTX_DEFAULT_TEXT_INSET.top) - (padding?.bottom ?? PPTX_DEFAULT_TEXT_INSET.bottom),
+      0,
+    ).toFixed(6));
+  }
   return Number(Math.max(
     element.position.w - (padding?.left ?? PPTX_DEFAULT_TEXT_INSET.left) - (padding?.right ?? PPTX_DEFAULT_TEXT_INSET.right),
     0,

@@ -439,6 +439,7 @@ function buildTextElement(node: LayoutTextNode, position: Box): DirectElementInp
       color: node.color,
       align: node.textAlign ?? node.align,
       valign: node.verticalAlign ?? node.valign,
+      writingMode: resolveLayoutTextWritingMode(node),
       lineSpacing: lineHeight == null
         ? undefined
         : createMultipleTextLineSpacing(lineHeight),
@@ -447,6 +448,17 @@ function buildTextElement(node: LayoutTextNode, position: Box): DirectElementInp
       border: readOptionalShapeStroke(node.border, 'Text.border'),
     },
   }, node._sourceSpan);
+}
+
+function resolveLayoutTextWritingMode(node: LayoutTextNode): 'vertical-rl' | undefined {
+  if (node.writingMode === undefined || node.writingMode === 'horizontal-tb') return undefined;
+  if (node.writingMode !== 'vertical-rl') {
+    throw new FlexComposeContractError('Text.writingMode 必须是 horizontal-tb / vertical-rl。');
+  }
+  if (Array.isArray(node.content) && node.content.some((run) => !('text' in run))) {
+    throw new FlexComposeContractError('竖排 Text 不支持行内公式；请把公式放在独立的横排元素中。');
+  }
+  return node.writingMode;
 }
 
 function normalizeLayoutTextContent(
