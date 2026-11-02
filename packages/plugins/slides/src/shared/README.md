@@ -20,6 +20,7 @@ shared/
 ├── authoringEditing/                 # generated deck 稳定编辑身份与后续人工写回合同
 ├── visual/                           # 颜色合同、theme、chart palette
 ├── renderModel/                      # PresentationRenderModel、RenderNode 遍历、editable target 纯规则
+├── chartLayout/                      # generated 图表的共享 inner plot 与图例布局
 ├── svgGraphic/                       # SVG Graphic 来源、owned ref、admission DTO 与错误码
 ├── mathFormula/                      # 原生公式 durable source、SVG metrics 与稳定错误码
 ├── slideRasterization/               # 单页 raster request/profile/result/error 纯合同

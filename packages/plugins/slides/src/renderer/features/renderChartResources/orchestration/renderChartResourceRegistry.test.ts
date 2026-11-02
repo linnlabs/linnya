@@ -118,6 +118,18 @@ describe('renderChartResourceRegistry', () => {
     expect(renderImage).toHaveBeenCalledTimes(3);
   });
 
+  it('布局变化后重新绘制，移动同一布局仍复用图像', async () => {
+    const renderImage = vi.fn(async () => createDecodedImage());
+    const registry = createRenderChartResourceRegistry({ renderImage });
+    const node = createChartNode('layout-chart');
+    await registry.load(node, 1);
+    node.layout = { plot: { x: 0.1, y: 0.1, w: 0.8, h: 0.7 }, categoryTitleGap: 0, valueTitleGap: 0 };
+    const image = await registry.load(node, 1);
+    node.box.x += 1;
+    expect(await registry.load(node, 1)).toBe(image);
+    expect(renderImage).toHaveBeenCalledTimes(2);
+  });
+
   it('evicts least-recently-used decoded charts within the configured byte bound', async () => {
     const renderImage = vi.fn(async () => createDecodedImage(100, 100));
     const registry = createRenderChartResourceRegistry({
