@@ -23,7 +23,7 @@ describe('PowerPoint image conformance', () => {
     const base = await fixture('text');
     for (const [name, issue] of [
       ['text-wrap', 'line-count'],
-      ['text-break', 'line-break'],
+      ['text-break', 'line-extent'],
       ['text-spacing', 'line-spacing'],
       ['text-overflow', 'overflow'],
     ] as const) {

@@ -36,8 +36,19 @@ pnpm --dir packages/plugins/slides run office:conformance -- compare /tmp/linnya
 
 ## 样稿和报告
 
-六页覆盖：受限宽度的中英文文字边界、形状内 shrink-text、多列竖排、multiple/exactPt 行距，以及三个系列的
-簇状柱图（gap 50 / overlap 0、gap 300 / overlap 50）。图表保留原生 chart，禁止将图片化预览充当 Office 对照。
+十一页固定样稿使用公开 DeckSpec 能力，不依赖其他分支的图表布局实现：
+
+| 页 | 内容 | 图例 |
+| --- | --- | --- |
+| 1–4 | 中英文文字边界、形状内 shrink-text、竖排、multiple/exactPt 行距 | 无 |
+| 5–6 | 三系列簇状柱图，gap/overlap 分别为 50/0、300/50 | 底部 |
+| 7 | 三系列折线与圆形数据点 | 底部 |
+| 8 | 三系列水平条形图 | 底部 |
+| 9 | 环图，三个扇区、三个百分比标签 | 底部 |
+| 10–11 | 三系列簇状柱图 | 右侧、顶部 |
+
+图表保留原生 chart，禁止将图片化预览充当 Office 对照。新增 manifest 的 region.chart 记录实际 RenderModel 的
+图表类型和图例位置；首版未带此字段的存档明确沿用当时唯一的「纵向柱图、底部图例」。
 
 主要输出：
 
@@ -48,9 +59,18 @@ pnpm --dir packages/plugins/slides run office:conformance -- compare /tmp/linnya
 
 直接打开 `report.html`，按「预览 / Office / 差异图」比较。不要把生成目录或本机字体缓存提交到仓库。
 
-自动比较使用墨迹行/列投影，报告可见行数/列数、逐行起止、行距及外框之外的墨迹；用专用绘图区底色与三个系列纯色
-测量绘图区、每根可见柱的宽度/位置、图例色块和文字边界。阈值固定为 960px 画幅下边缘 3px 与通道差 24，
-仅用于容许抗锯齿，不自动对齐，不因失败调宽。
+自动比较使用墨迹行/列投影，以完整空白像素行分隔墨迹带；窄小的离散标点仅在唯一近邻正文带可辨识时合并。
+预览带数与已知排版行数不一致、离散墨迹归属不明，或墨迹触及 probe 边缘时，分行标为 `indeterminate`，
+不据此报告行数、行内范围或行距差异。位置与框外溢出独立测量，仍保留真实差异。不会按作者行数强切 Office 图片。
+
+绘图区通过无损 PNG 中 `PLOT_COLOR` 的精确纯色内区识别，不包含轴线边框；原来的宽松颜色匹配会误收刻度文字和
+图例的浅色抗锯齿。柱子测量只访问该内区；图例先识别完整系列色块，再排除与绘图区相交的对象，并按声明的顶部、
+底部或侧边位置提取文字范围，避免把柱底残边、类目刻度收进图例。水平条形的宽度指标按横截面厚度计算。
+折线、饼/环使用系列连通块的几何边界，不套用柱宽指标。当前样稿固定使用三个系列/扇区专色，并非任意图表识别器。
+
+几何差异标准仍为 960px 画幅下 3px，系列色匹配与差异图通道标准仍为 24，不自动对齐、不因失败调宽。
+`text-position` 表示整体行/列起始位置差异；`line-extent` 只表示行内墨迹范围变化，不能断言断词改变。
+具体断词变化列为 `word-breaks` 不可判定，必须看图。报告同时保留 `differences` 与 `indeterminate`，后者不计成差异。
 
 **指标不做 OCR。** 逐行长度是断行变化的图像证据，不能证明每个词都相同；字体替换、墨迹裁剪、同长度的错误断行、
 图例标签内容与重叠柱的被遮挡部分仍需人工看图。`review` 明确表示待审核，不是自动通过。
@@ -76,6 +96,14 @@ macOS adapter 对明确的 presentation 调用原生 PDF SaveAs，再用锁定�
 `osacompile` 也出现 `com.apple.hiservices-xpcservice: Connection Invalid` 及 -2741，AppleScript 必须在沙箱外运行。
 macOS PDF SaveAs 已在 PowerPoint 16.110.2 实跑；Windows COM adapter 仍须由真实安装环境验证，不能把模拟回执或固定图片测试记成 Office 验收通过。
 
+PowerPoint 16.110.2 的原六页合成产物已用于比较回归，仓库仅保留小尺寸 PNG 裁片，来源与坐标见
+[fixtures 说明](./fixtures/README.md)。两张柱图现在只报告图例差异：专色内区 preview 为 `(107,57,796,353)`，
+Office 为 `(107,58,797,353)`；各系列三根柱子，几何差约 1px。文字边界页的位置/溢出差异、multiple 行距
+45px 对 54px 的差异均保留。新增五页已验证实际 PPTX XML，尚需重新生成并进行真实 Office 验收。
+
+若复制的存档只有 manifest、preview、office、render-model，仍会输出每页比较结果，但缺少 `sample.pptx` 导致
+完整性校验失败，整份报告为 `incomplete`、退出码为 1。不要伪造 PPTX 或修改哈希来消除这个状态。
+
 ## 测试
 
 ```bash
@@ -85,4 +113,5 @@ pnpm exec eslint packages/plugins/slides/dev/powerpoint packages/plugins/slides/
 ```
 
 固定图片是确定性的几何墨迹样本，不依赖本机字体和 OCR。测试覆盖额外换行、断行长度、行距、溢出、竖排列数、
-绘图区/柱宽/图例漂移、空白页拒绝、缺页、旧导出与不完整报告。实际 PPTX 测试另检查六页与对应 OOXML。
+绘图区/柱宽/图例漂移、顶部/右侧图例、折线/环图系列、空白页拒绝、缺页、旧导出与不完整报告。
+真实裁片另覆盖紧行距、竖排标点、灰色刻度抗锯齿与图例误分类。实际 PPTX 测试检查十一页与对应 OOXML。

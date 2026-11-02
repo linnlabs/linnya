@@ -108,7 +108,7 @@ export async function compareConformance(root: string): Promise<ConformanceRepor
   const escape = (text: string) =>
     text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const html = `<!doctype html><meta charset="utf-8"><title>PowerPoint 对照报告</title><style>body{font:16px system-ui;margin:24px}img{width:32%;border:1px solid #bbb}pre{white-space:pre-wrap}section{margin-bottom:36px}</style>
-<h1>PowerPoint 对照：${report.status}</h1><p>顺序：Slides 预览 / PowerPoint / 像素差异。文字指标来自墨迹行列投影；断行词语、字形、裁剪与图例标签必须看图确认。review 表示等待人工确认，不代表已通过 Office 验收。</p>
+<h1>PowerPoint 对照：${report.status}</h1><p>顺序：Slides 预览 / PowerPoint / 像素差异。文字指标来自墨迹行列投影；断行词语、字形、裁剪与图例标签必须看图确认。不可判定指标列在 indeterminate，不计为 differences；分行失真或探测边缘裁剪时，仍独立报告可观察的位置和溢出。line-extent 表示墨迹范围变化，不能据此断言断词改变。review 表示等待人工确认，不代表已通过 Office 验收。</p>
 <pre>${escape(report.errors.join('\n'))}</pre>${report.pages.map((page, index) => `<section><h2>${escape(page.id)}</h2><p>预览断行：${escape(manifest.pages[index].regions.map(region => region.previewLines?.join(' | ') ?? '').join('; '))}</p><img src="preview/${page.image}"><img src="office/${page.image}"><img src="comparison/${page.image}"><pre>${escape(JSON.stringify(page, null, 2))}</pre></section>`).join('')}`;
   await writeFile(path.join(root, 'report.html'), html);
   return report;

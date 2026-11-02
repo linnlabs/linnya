@@ -8,6 +8,12 @@ const rectangle = z
     h: z.number().positive(),
   })
   .strict();
+export const chartObservationSchema = z
+  .object({
+    type: z.enum(['column', 'bar', 'line', 'pie', 'doughnut']),
+    legendPosition: z.enum(['top', 'bottom', 'left', 'right', 'none']),
+  })
+  .strict();
 export const regionSchema = z
   .object({
     id: z.string(),
@@ -18,6 +24,7 @@ export const regionSchema = z
     previewLines: z.array(z.string()).optional(),
     scale: z.number().optional(),
     reduction: z.number().optional(),
+    chart: chartObservationSchema.optional(),
   })
   .strict();
 export const manifestSchema = z

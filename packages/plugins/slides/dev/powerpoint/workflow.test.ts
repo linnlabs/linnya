@@ -11,14 +11,14 @@ import { StructuredCompiler } from '../../src/backend/engine/StructuredCompiler'
 import { compareConformance } from './compareReport';
 import type { Manifest } from './definitions';
 
-it('compiles all six synthetic pages with shrink, vertical, paragraph spacing and distinct native bar controls', async () => {
+it('compiles eleven synthetic pages including line, horizontal bar, doughnut and three legend positions', async () => {
   const deck = createConformanceDeck();
   const zip = await JSZip.loadAsync(
     await new DeckAssembler(new StructuredCompiler(), new FreeformCompiler()).assemble(deck)
   );
   expect(
     Object.keys(zip.files).filter(file => /^ppt\/slides\/slide\d+\.xml$/.test(file))
-  ).toHaveLength(6);
+  ).toHaveLength(11);
   expect(await zip.file('ppt/slides/slide2.xml')!.async('text')).toMatch(
     /normAutofit fontScale="\d+" lnSpcReduction="\d+"/
   );
@@ -31,11 +31,18 @@ it('compiles all six synthetic pages with shrink, vertical, paragraph spacing an
       .filter(file => /^ppt\/charts\/chart\d+\.xml$/.test(file))
       .map(file => zip.file(file)!.async('text'))
   );
-  expect(charts).toHaveLength(2);
+  expect(charts).toHaveLength(7);
   expect(charts[0]).toContain('<c:gapWidth val="50"/>');
   expect(charts[0]).toContain('<c:overlap val="0"/>');
   expect(charts[1]).toContain('<c:gapWidth val="300"/>');
   expect(charts[1]).toContain('<c:overlap val="50"/>');
+  expect(charts[2]).toContain('<c:lineChart>');
+  expect(charts[3]).toContain('<c:barDir val="bar"/>');
+  expect(charts[4]).toContain('<c:doughnutChart>');
+  expect(charts[4]).toContain('<c:showPercent val="1"/>');
+  for (const color of ['2468C4', 'D85C28', '33854B']) expect(charts[4]).toContain(color);
+  expect(charts[5]).toContain('<c:legendPos val="r"/>');
+  expect(charts[6]).toContain('<c:legendPos val="t"/>');
 });
 
 describe('independent comparison report', () => {
@@ -84,6 +91,14 @@ describe('independent comparison report', () => {
       await writeFile(path.join(root, 'office/slide-001.png'), base);
       expect((await compareConformance(root)).status).toBe('review');
       expect(await readFile(path.join(root, 'report.html'), 'utf8')).toContain('等待人工确认');
+      manifest.pages[0].regions[0].previewLines = ['one', 'two', 'three'];
+      await writeFile(path.join(root, 'manifest.json'), JSON.stringify(manifest));
+      const indeterminate = await compareConformance(root);
+      expect(indeterminate.status).toBe('review');
+      expect(indeterminate.pages[0].regions[0].result.indeterminate).toContain('line-segmentation');
+      expect(await readFile(path.join(root, 'report.html'), 'utf8')).toContain('不可判定');
+      manifest.pages[0].regions[0].previewLines = ['Synthetic line one', 'Synthetic line two'];
+      await writeFile(path.join(root, 'manifest.json'), JSON.stringify(manifest));
       await writeFile(
         path.join(root, 'office/slide-001.png'),
         await readFile(new URL('./fixtures/text-wrap.png', import.meta.url))

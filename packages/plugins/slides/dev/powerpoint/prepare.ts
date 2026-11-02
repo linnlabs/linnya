@@ -10,15 +10,22 @@ import {
   prewarmTextLayoutForRenderModel,
 } from '../../src/backend/engine/text/renderModelTextLayout';
 import type { SlideRasterRequest } from '../../src/shared/slideRasterization';
-import { createConformanceDeck } from './samples';
-import { PAGE_HEIGHT, PAGE_WIDTH, slideFile, type Manifest, type Region } from './definitions';
+import { createConformanceSamples } from './samples';
+import {
+  chartObservationSchema,
+  PAGE_HEIGHT,
+  PAGE_WIDTH,
+  slideFile,
+  type Manifest,
+  type Region,
+} from './definitions';
 
 export async function prepareConformance(
   root: string,
   rasterize: (request: SlideRasterRequest) => Promise<Uint8Array>
 ): Promise<Manifest> {
   await mkdir(path.join(root, 'preview'), { recursive: true });
-  const deck = createConformanceDeck();
+  const { deck, pageIds } = createConformanceSamples();
   const model = new RenderModelMapper().fromGeneratedDeck(
     'synthetic-conformance',
     1,
@@ -71,6 +78,15 @@ export async function prepareConformance(
               : 'text',
         box,
         probe,
+        ...(node.kind === 'chart'
+          ? {
+              chart: chartObservationSchema.parse({
+                type: node.chartType,
+                legendPosition:
+                  node.legend?.visible === false ? 'none' : (node.legend?.position ?? 'bottom'),
+              }),
+            }
+          : {}),
         ...(text?.layout
           ? {
               previewLines: text.layout.lines.map(line =>
@@ -98,14 +114,7 @@ export async function prepareConformance(
     });
     await writeFile(path.join(root, 'preview', slideFile(index)), png);
     manifest.pages.push({
-      id: [
-        'text-boundary',
-        'shape-shrink',
-        'vertical',
-        'line-spacing',
-        'chart-gap50-overlap0',
-        'chart-gap300-overlap50',
-      ][index],
+      id: pageIds[index],
       regions,
     });
   }
