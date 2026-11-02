@@ -5,8 +5,6 @@
 1	SCALE-06-z-index	apps/renderer/app/layout/styles/components/SidebarProjectGroup.css
 1	SCALE-06-z-index	apps/renderer/app/layout/styles/components/SidebarShell.css
 1	SCALE-06-z-index	apps/renderer/app/layout/styles/editor-shell.css
-1	SCALE-03-line-height	apps/renderer/app/pages/ProjectSetupPage/styles/ProjectSetupView.css
-3	SCALE-06-z-index	apps/renderer/app/pages/ProjectSetupPage/styles/ProjectSetupView.css
 1	SCALE-02-font-weight	apps/renderer/app/styles/base/utilities.css
 1	SCALE-05-spacing	apps/renderer/app/system/features/process-memory-observation/ui/process-memory-observation.css
 7	SCALE-05-spacing	apps/renderer/domains/conversation/features/command-execution-presentation/ui/CommandExecutionCard.css
