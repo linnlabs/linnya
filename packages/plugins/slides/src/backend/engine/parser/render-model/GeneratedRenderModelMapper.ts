@@ -402,7 +402,8 @@ function buildAuthoringEditProjection(
           },
         };
       }
-      if ((element.type === 'text' || element.type === 'title') && Array.isArray(element.content) && isEditableTextContent(element.content)) {
+      // 先按作者编辑合同排除公式 run，再投影可编辑的富文本数组。
+      if ((element.type === 'text' || element.type === 'title') && isEditableTextContent(element.content) && Array.isArray(element.content)) {
         capabilities.push('set_text_content', 'set_text_style');
         return {
           capabilities,
