@@ -14,7 +14,7 @@ Host 没有业务标题，展示 authored title 和 locator 后缀。组件不�
 
 物理文件标题末尾若已包含 locator 的同一后缀，拆分到统一的后缀展示槽并保留大小写；没有 authored title
 时，basename 也按相同规则拆分，确保后缀样式不取决于 Markdown 链接文本的写法。
-后缀仍属于文件名，与标题保持同一字号，只弱化颜色；解析中、不可用等状态说明单独展示。
+后缀仍属于文件名，与标题保持同一颜色和字号；解析中、不可用等状态说明单独展示并弱化。
 
 业务测试覆盖 href 编码边界、标题投影、Workspace 显式导航身份和物理文件 reveal DTO。真实 preload、IPC、
 Electron shell 与 Workspace 打开链由 `pnpm run test:conversation-resource-link:electron` 验证。

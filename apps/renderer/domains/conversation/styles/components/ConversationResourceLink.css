@@ -34,8 +34,8 @@
 }
 
 .conversation-resource-link__suffix {
-  /* 后缀属于文件名；仅弱化颜色，不缩小字号。状态说明使用单独的展示规则。 */
-  color: color-mix(in srgb, currentColor 62%, transparent);
+  /* 后缀属于文件名，与标题保持相同颜色和字号；弱化规则仅用于状态说明。 */
+  color: inherit;
   font: inherit;
 }
 
