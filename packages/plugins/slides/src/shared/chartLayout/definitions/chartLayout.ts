@@ -1,4 +1,5 @@
-import { z } from 'zod';
+// 直接 namespace import 才能让构建器裁剪未用 API 与语言包，避免 Backend/Worker 重复膨胀。
+import * as z from 'zod';
 
 /** 坐标相对于整个 chart 外框；plot 为不含轴标签的 inner plot。 */
 export const chartLayoutBoxSchema = z.object({
