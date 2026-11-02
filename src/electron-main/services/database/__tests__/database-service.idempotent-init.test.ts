@@ -322,7 +322,7 @@ describe('DatabaseService.initialize() — createTables-always invariants', () =
 
     const svc = new DatabaseService(dbPath);
     expect(() => initializeWithTestPluginLifecycle(svc)).toThrow(
-      new RegExp(`早于当前支持的 Host Schema 基线 v${HOST_SCHEMA_BASELINE_VERSION}`)
+      /当前版本无法直接升级或打开。原数据未被修改/
     );
     expect(() => svc.getDb()).toThrow(/not initialized/i);
 
@@ -343,7 +343,7 @@ describe('DatabaseService.initialize() — createTables-always invariants', () =
 
     const svc = new DatabaseService(dbPath);
     expect(() => initializeWithTestPluginLifecycle(svc)).toThrow(
-      new RegExp(`新于当前应用支持的 v${SCHEMA_VERSION}`)
+      /请使用创建这份数据的版本或更新版本/
     );
     expect(() => svc.getDb()).toThrow(/not initialized/i);
 

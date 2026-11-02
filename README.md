@@ -12,11 +12,7 @@ Linnya is built around Markdown and offers extensive plugin support. Plugins can
 
 ## Official plugins
 
-Linnya currently offers official support for the following plugins:
-
-### [Mindmap](packages/plugins/mindmap)
-
-<!-- Add when the screenshot is ready: ![Linnya Mindmap](docs/media/mindmap.png) -->
+The 0.1.0 desktop release bundles Slides. Mindmap and experimental Decision source remain available for development, but are not included in this release.
 
 ### [Slides](packages/plugins/slides)
 
@@ -101,3 +97,5 @@ Do not post API keys, database contents, private documents, full user directorie
 Unless a path states a different license, Linnya and its documentation are licensed under [Apache License 2.0](LICENSE). Copyright © 2024–present BCAutumn and Linnya contributors.
 
 Linnkit, the Linnkit AI SDK provider adapter, and the vendored Stream Markdown Parser retain their separately declared MIT licenses. Third-party components and redistributed assets may have additional notices in `THIRD_PARTY_NOTICES.txt`. The Linnya name and official icons are covered by [TRADEMARKS.md](TRADEMARKS.md).
+
+Mindmap renderer derivatives also retain the Mind Elixir and Viselect MIT notices.

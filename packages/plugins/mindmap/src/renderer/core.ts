@@ -1,3 +1,4 @@
+// Derived from Mind Elixir (c) 2019 DjZhou. MIT license: see resources/third-party and package README.
 import { LEFT, RIGHT, SIDE, DARK_THEME, THEME } from './domain/constants'
 import { generateUUID } from './shared/utils/index'
 import { findEle } from './shared/utils/dom/index'

@@ -1,3 +1,4 @@
+// Derived from Viselect (c) 2018 - present Simon Reinisch. MIT license: see resources/third-party and package README.
 import { EventTarget } from './EventEmitter'
 import ScrollHandler from './ScrollHandler'
 import SelectionRenderer from './SelectionRenderer'

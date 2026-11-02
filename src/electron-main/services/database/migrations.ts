@@ -20,16 +20,16 @@ export type { HostSchemaMigration, MigrationFunction } from './migrations/types'
 export function assertSupportedHostSchemaVersion(currentVersion: number): void {
   if (currentVersion < HOST_SCHEMA_BASELINE_VERSION) {
     throw new Error(
-      `[DatabaseService] workspace.sqlite schema v${currentVersion} 早于当前支持的 Host Schema 基线 ` +
-        `v${HOST_SCHEMA_BASELINE_VERSION}。本开发基线不提供 v1-v60 兼容迁移，数据库尚未被修改。` +
-        '默认开发数据请先停止应用，再执行 pnpm run dev:data:reset；其他 Workspace 需要显式重建或导入。'
+      '这份数据由较早版本的林芽创建，当前版本无法直接升级或打开。原数据未被修改。' +
+        '请退出当前应用，保留完整的数据目录和旧版应用，使用旧版继续访问；不要删除或重置原数据。' +
+        `（数据格式 v${currentVersion}，当前支持 v${HOST_SCHEMA_BASELINE_VERSION}–v${SCHEMA_VERSION}）`
     );
   }
 
   if (currentVersion > SCHEMA_VERSION) {
     throw new Error(
-      `[DatabaseService] workspace.sqlite schema v${currentVersion} 新于当前应用支持的 ` +
-        `v${SCHEMA_VERSION}。数据库尚未被修改，请使用匹配或更新的应用版本。`
+      '这份数据由更新版本的林芽创建，当前版本无法打开。原数据未被修改。' +
+        `请使用创建这份数据的版本或更新版本。（数据格式 v${currentVersion}，当前最高支持 v${SCHEMA_VERSION}）`
     );
   }
 }

@@ -33,27 +33,26 @@ describe('plugin bundled root contract', () => {
   it('accepts an isolated root whose directories exactly match the requested release targets', () => {
     const bundledPluginRoot = makeTempRoot();
     writeBundledManifest(bundledPluginRoot, 'slides');
-    writeBundledManifest(bundledPluginRoot, 'mindmap');
 
     expect(
       assertBundledPluginRootMatchesPluginIds({
         bundledPluginRoot,
-        expectedPluginIds: ['mindmap', 'slides'],
+        expectedPluginIds: ['slides'],
       })
-    ).toEqual(['mindmap', 'slides']);
+    ).toEqual(['slides']);
   });
 
   it('rejects a stale non-target plugin directory instead of silently including it', () => {
     const bundledPluginRoot = makeTempRoot();
     writeBundledManifest(bundledPluginRoot, 'mindmap');
-    writeBundledManifest(bundledPluginRoot, 'sheet');
+    writeBundledManifest(bundledPluginRoot, 'slides');
 
     expect(() =>
       assertBundledPluginRootMatchesPluginIds({
         bundledPluginRoot,
-        expectedPluginIds: ['mindmap'],
+        expectedPluginIds: ['slides'],
       })
-    ).toThrow('expected=mindmap, actual=mindmap,sheet');
+    ).toThrow('expected=slides, actual=mindmap,slides');
   });
 
   it('rejects a directory whose name and manifest identity disagree', () => {

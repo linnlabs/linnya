@@ -1,6 +1,6 @@
 # @plugin/mindmap
 
-这是 Linnya 第一个完整落地的官方 runtime 插件包。Mindmap 已具备独立 manifest、独立版本、独立 backend/renderer 构建产物、插件级 schema migration、预置 seed、磁盘加载、R2 artifact 分发和插件商店展示。
+这是 Linnya 的开源 Mindmap runtime 插件包。0.1.0 正式发行不包含本插件；源码与开发态加载保留。Mindmap 已具备独立 manifest、独立版本、独立 backend/renderer 构建产物、插件级 schema migration、预置 seed、磁盘加载、R2 artifact 分发和插件商店展示。
 
 当前包承载 Mindmap 的完整 repo-internal 插件实现：共享契约在 `src/shared`，主进程能力在 `src/backend`，渲染端 surface、文件生命周期、工具卡和 MindMap domain 实现在 `src/renderer`。主应用只能通过公开入口注册这些能力，包内调用宿主能力必须走 `@plugin/*` 下的窄 port / SDK 门面。
 
@@ -37,10 +37,22 @@ Mindmap 专属的版本化与数据生命周期说明见 `docs/README.md`。Shee
 
 - `pnpm run build:plugin:mindmap`：构建 renderer ESM 与 backend CJS 产物到 `packages/plugins/mindmap/dist/`。
 - `pnpm run package:plugin:mindmap`：先构建，再生成 `dist/SHA512SUMS` 与 `dist/artifacts/mindmap-<version>.zip`。
-- `pnpm run prepare:extra-resources`：把当前 artifact seed 源整理到根目录 `extraResources/plugins/mindmap`，供 Electron 打包预置。
+- 默认 `pnpm run prepare:extra-resources` 只整理当前发行集合，不包含 Mindmap；开发态通过 workspace 插件发现机制加载。
 
 renderer 构建会把 `vue`、`pinia`、`@plugin/renderer/*` 和 Renderer UI 公开入口改写为受控的
 `plugin://host/*` URL；最终 artifact 不保留这些 bare specifier，也不复制 Host runtime。backend 产物会保留
 `@plugin/backend/*`、`@app/schemas`、Electron/native 依赖。插件内部 shared 代码和 `uuid` 会打进产物，避免磁盘插件运行时依赖自己的 `node_modules`。
 
-生产启动时，主应用会把预置 artifact 复制到 `<userData>/plugins/mindmap/<version>`，通过 `active.json` 选择版本；backend 经 `require(entry.backend)` 注册，renderer 经 `plugin://mindmap/dist/renderer/index.js` 动态加载。R2 升级只做官方包的 `latest.json` / zip / sha512 完整性校验，不做第三方签名、沙箱或权限执行。
+在明确包含此插件的自定义构建中，主应用会把预置 artifact 复制到 `<userData>/plugins/mindmap/<version>`，通过 `active.json` 选择版本；backend 经 `require(entry.backend)` 注册，renderer 经 `plugin://mindmap/dist/renderer/index.js` 动态加载。R2 升级只做官方包的 `latest.json` / zip / sha512 完整性校验，不做第三方签名、沙箱或权限执行。
+
+## 第三方来源与许可
+
+本插件 Renderer 的脑图引擎派生自 [Mind Elixir](https://github.com/SSShooter/mind-elixir-core)，
+Copyright (c) 2019 DjZhou，MIT。核心入口、节点操作、布局、连线、交互与类型经过拆分和修改；
+`src/renderer/interaction/selection` 的框选实现还派生自 [Viselect](https://github.com/simonwep/viselect)，
+Copyright (c) 2018 - present Simon Reinisch，MIT。这些来源不因改名或模块拆分而改变。
+
+完整许可保存在 `resources/third-party/`，随独立插件 artifact 的 resources 一起分发，
+并纳入根目录自动生成的 `THIRD_PARTY_NOTICES.txt`。插件其余原创部分沿用仓库 Apache-2.0。
+本次对照上游 Mind Elixir `8410d837ee361f5f6c392fd56da1be571f798114` 与
+Viselect `54e2838137f10cc951fb3126da6e21716077404d`；这是归属核查的参考版本，不宣称为最初移植版本。

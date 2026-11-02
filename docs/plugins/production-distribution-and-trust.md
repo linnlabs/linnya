@@ -79,3 +79,9 @@ Desktop 发行身份和插件 artifact 来源是两层不同证明。当前产�
 - Artifact 与发布：[`docs/plugins/guides/15-release.md`](./guides/15-release.md)
 - 插件商店投影：[`docs/plugins/guides/18-store-presentation.md`](./guides/18-store-presentation.md)
 - 公共/私有文档边界：[`docs/documentation-governance.md`](../documentation-governance.md)
+
+## 当前 Desktop 发行集合
+
+0.1.0 仅随包提供 Slides；Mindmap 与 Decision 保留源码和开发入口，不进入默认生产集合。
+发行装配由 `scripts/release/plugin-release-targets.mjs` 拥有，Core 不维护插件身份特判。
+未加载插件的既有文档和表不会因此被删除；本版本不能编辑其文档类型。

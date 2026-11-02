@@ -7,14 +7,8 @@ export const repoRoot = path.resolve(scriptDir, '../..');
 
 const defaultPluginDownloadRootUrl = 'https://download.linnyai.com/plugins';
 
+// 发行集合与源码中的开发插件独立；尚未发行的插件仍可通过开发入口加载。
 const publicOfficialPluginReleaseTargets = [
-  {
-    id: 'mindmap',
-    packageDir: 'packages/plugins/mindmap',
-    defaultR2Prefix: 'plugins/mindmap',
-    defaultDownloadBaseUrl: `${defaultPluginDownloadRootUrl}/mindmap`,
-    productionDistDirectories: ['dist/backend', 'dist/renderer'],
-  },
   {
     id: 'slides',
     packageDir: 'packages/plugins/slides',
