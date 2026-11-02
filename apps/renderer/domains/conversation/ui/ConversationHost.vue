@@ -177,6 +177,17 @@ const {
     viewportMountRef: conversationViewportRef,
     viewportRef: overlayScrollViewportRef,
   },
+  options: {
+    // 与独立 ConversationView 使用相同的尺寸测量节奏，覆盖外部滚动宿主。
+    update: {
+      debounce: {
+        mutation: [0, 33],
+        resize: [120, 360],
+        event: [33, 99],
+        env: [222, 666, true],
+      },
+    },
+  },
 });
 
 // 计算属性

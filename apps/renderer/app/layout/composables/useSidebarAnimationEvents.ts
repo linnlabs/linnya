@@ -39,28 +39,18 @@ export function useSidebarAnimationEvents() {
     );
   };
 
-  const schedulePanelResizeEnd = () => {
-    if (!transitionActive) return;
-    if (!document.body.classList.contains('panel-resizing')) return;
-    const revision = ++scheduledEndRevision;
-    // 等 Vue 把最终 margin 提交给 DOM，再通知依赖布局事件的 owner 做一次最终测量。
-    void nextTick(() => {
-      if (revision !== scheduledEndRevision) return;
-      dispatchSidebarAnimEnd();
-    });
-  };
-
   /**
    * 发送侧边栏动画开始事件
    */
   const dispatchSidebarAnimStart = (reason: SidebarAnimStartDetail['reason']) => {
+    // 一次连续拖动只有一轮布局事务；逐帧结束会让 Editor 反复执行最终测量。
+    if (transitionActive) return;
     transitionActive = true;
     window.dispatchEvent(
       new CustomEvent<SidebarAnimStartDetail>('sidebar-anim-start', { 
         detail: { reason } 
       })
     );
-    schedulePanelResizeEnd();
   };
 
   /**
@@ -74,9 +64,25 @@ export function useSidebarAnimationEvents() {
     }
   };
 
-  // 监听侧边栏状态变化，发送动画开始事件
-  watch(() => uiStore.sidebarVisible, () => dispatchSidebarAnimStart('sidebar-visible'));
-  watch(() => uiStore.sidebarWidth, () => dispatchSidebarAnimStart('sidebar-width'));
+  watch(
+    [() => uiStore.sidebarVisible, () => uiStore.sidebarWidth, () => uiStore.sidebarResizing],
+    ([visible, width, resizing], [previousVisible, previousWidth, wasResizing]) => {
+      if (resizing) {
+        if (!wasResizing) dispatchSidebarAnimStart('sidebar-width');
+        return;
+      }
+      if (wasResizing) {
+        const revision = ++scheduledEndRevision;
+        // 最终宽度和拖动态同批提交；等 DOM 更新后结束，不能在最后一帧重新开启事务。
+        void nextTick(() => {
+          if (revision === scheduledEndRevision) dispatchSidebarAnimEnd();
+        });
+        return;
+      }
+      if (visible !== previousVisible) dispatchSidebarAnimStart('sidebar-visible');
+      else if (width !== previousWidth) dispatchSidebarAnimStart('sidebar-width');
+    },
+  );
 
   onUnmounted(() => {
     scheduledEndRevision += 1;

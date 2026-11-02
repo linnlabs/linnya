@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { seedBottomReturnHistory, runBottomReturnScenario } from './bottom-return-scenario.mjs';
 import { runHistoryLoadFailureScenario } from './history-load-failure-scenario.mjs';
+import { runSidebarResizeScenario } from './sidebar-resize-scenario.mjs';
+import { runCreateProjectAfterDocumentOpen } from './create-project-scenario.mjs';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -835,7 +837,7 @@ async function runSubrunDetailNavigation(
 
   await waitFor(async () => {
     if (rendererErrors.length > 0) return false;
-    return evaluate(cdp, `(() => {
+    const detailState = await evaluate(cdp, `(() => {
       const state = {
         hasDetail: Boolean(document.querySelector('.subrun-detail')),
         hasParentView: Boolean(document.querySelector('.conversation-view')),
@@ -886,9 +888,9 @@ async function runSubrunDetailNavigation(
           && document.querySelector('.subrun-detail-footer__status')?.textContent?.trim() === 'AI 输出结束',
         hasModel: document.querySelector('.subrun-detail-footer')?.textContent
           ?.includes('scripted-subagent-model') === true,
-        hasFooterReturn: document.querySelector('.subrun-detail-footer__back') instanceof HTMLButtonElement,
+        hasFooterReturn: document.querySelector('.subrun-detail-footer button') instanceof HTMLButtonElement,
       };
-      return state.hasDetail
+      const ready = state.hasDetail
         && !state.hasParentView
         && state.hasChildTool
         && state.hasChildAnswer
@@ -902,10 +904,13 @@ async function runSubrunDetailNavigation(
         && state.hasReadOnlyFooter
         && state.hasTerminalStatus
         && state.hasModel
-        && state.hasFooterReturn
-        ? state
-        : false;
+        && state.hasFooterReturn;
+      return { ...state, ready };
     })()`);
+    if (!detailState.ready) {
+      throw new Error(`Subrun 详情接纳状态: ${JSON.stringify(detailState)}`);
+    }
+    return detailState;
   }, 'Subrun 就地详情完成完整 child tool admission');
   await assertRendererHealthy(cdp, rendererErrors, 'Subrun 详情首次打开后');
 
@@ -1004,11 +1009,11 @@ async function runSubrunDetailNavigation(
   })()`);
   if (!didOpenFooterReturn) throw new Error('Subrun 底部面板返回验证无法重新打开详情');
   await waitFor(
-    () => evaluate(cdp, `Boolean(document.querySelector('.subrun-detail-footer__back'))`),
+    () => evaluate(cdp, `Boolean(document.querySelector('.subrun-detail-footer button'))`),
     'Subrun 底部状态面板挂载',
   );
   const didClickFooterReturn = await evaluate(cdp, `(() => {
-    const button = document.querySelector('.subrun-detail-footer__back');
+    const button = document.querySelector('.subrun-detail-footer button');
     if (!(button instanceof HTMLButtonElement)) return false;
     button.click();
     return true;
@@ -1111,14 +1116,14 @@ async function runProjectionNavigationInterleaving(cdp, options) {
 
 async function runProjectionFailureNavigationInterleaving(cdp) {
   const result = await evaluate(cdp, `(async () => {
-    const [{ useAssistantStore }, { useInteractiveRunStore }] = await Promise.all([
+    const [{ useAssistantStore }, { reconcileInteractiveRunTransportOutcome }] = await Promise.all([
       import('/apps/renderer/domains/conversation/store/assistantStore.ts'),
-      import('/apps/renderer/domains/conversation/features/interactive-run/store/interactiveRunStore.ts'),
+      import('/apps/renderer/domains/conversation/features/interactive-run/index.ts'),
     ]);
     const assistantStore = useAssistantStore();
-    const interactiveRunStore = useInteractiveRunStore();
     const conversationId = 'e2e-conversation-a';
-    assistantStore.startInteractiveRun(new AbortController());
+    const controller = new AbortController();
+    assistantStore.startInteractiveRun(controller);
 
     const projection = await assistantStore.handleSseEvent(conversationId, {
       type: 'final_answer',
@@ -1134,28 +1139,37 @@ async function runProjectionFailureNavigationInterleaving(cdp) {
     });
     if (projection.success) return { phase: 'protocol-accepted', projection };
 
-    interactiveRunStore.failRun(conversationId, '对话执行失败');
-    await new Promise(resolveFrame => requestAnimationFrame(() => requestAnimationFrame(resolveFrame)));
-    const errorBannerVisible = document.body.innerText.includes('对话执行失败');
-    if (!errorBannerVisible) {
-      return { phase: 'error-banner', projection };
-    }
-    const navigationTarget = Array.from(document.querySelectorAll('.chat-list-item'))
-      .find(element => element.querySelector('.chat-list-title')?.textContent?.trim() === 'E2E 对话 B');
-    if (!(navigationTarget instanceof HTMLElement)) {
-      return { phase: 'navigation-target', projection };
-    }
-    navigationTarget.click();
-    return { phase: 'complete', projection };
+    // 错误展示已由持久 client notice 接管；走 transport owner，不能只改控制 store 模拟旧 banner。
+    await reconcileInteractiveRunTransportOutcome(conversationId, controller, {
+      kind: 'failed',
+      failure: { source: 'client', kind: 'protocol', error: new Error(projection.reason) },
+    });
+    return { phase: 'failure-reconciled', projection };
   })()`);
-
   if (
-    result?.phase !== 'complete'
+    result?.phase !== 'failure-reconciled'
     || result.projection?.success !== false
     || !String(result.projection?.reason).includes('arrived without a live chunk stream')
   ) {
     throw new Error(`协议失败与导航交错未命中预期分支: ${JSON.stringify(result)}`);
   }
+  await waitFor(
+    () => evaluate(cdp, `Array.from(document.querySelectorAll('.client-notice')).some(
+      element => element.textContent?.includes('内容无法显示'),
+    )`),
+    '协议失败产生可见的客户端历史通知',
+  );
+  const navigated = await evaluate(cdp, `(() => {
+    const navigationTarget = Array.from(document.querySelectorAll('.chat-list-item'))
+      .find(element => element.querySelector('.chat-list-title')?.textContent?.trim() === 'E2E 对话 B');
+    if (!(navigationTarget instanceof HTMLElement)) {
+      return false;
+    }
+    navigationTarget.click();
+    return true;
+  })()`);
+
+  if (!navigated) throw new Error('协议失败后未找到对话 B 导航入口');
 }
 
 async function runCopyFeedbackCycle(cdp, rendererErrors, options) {
@@ -1529,6 +1543,15 @@ async function run() {
       '两条历史会话进入侧栏',
     );
 
+    if (scenario === 'sidebar-resize') {
+      await runSidebarResizeScenario({ cdp, evaluate, clickConversation });
+      await assertRendererHealthy(cdp, rendererErrors, '快速侧栏拖动后');
+      await evaluate(cdp, "window.electronAPI.windowAction('close')");
+      cdp.close();
+      assert.equal(await waitForProcessExit(electronProcess, 10_000), true, '侧栏拖动场景未正常退出 Desktop');
+      return;
+    }
+
     if (scenario === 'history-load-failure') {
       if (sourceDatabasePath) throw new Error('读取失败门禁使用隔离 fixture，不接受外部数据库快照');
       await runHistoryLoadFailureScenario({
@@ -1622,6 +1645,8 @@ async function run() {
         throw new Error('资源链接门禁使用隔离 fixture，不接受外部数据库快照');
       }
       await runConversationResourceLinks(cdp, rendererErrors);
+      await runCreateProjectAfterDocumentOpen({ cdp, evaluate, waitFor, documentId: resourceLinkWorkspaceDocumentId });
+      await assertRendererHealthy(cdp, rendererErrors, '资源文档打开后创建新项目');
       cdp.close();
       console.log('[conversation-navigation-e2e] Workspace 应用内打开、Conversation/Host 文件管理器定位通过。');
       return;

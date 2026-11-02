@@ -24,6 +24,8 @@ interface UseSidebarResizeOptions {
   direction?: 'left' | 'right';
   /** 通过公开 action 写回唯一状态源。 */
   setWidth: (width: number) => void;
+  /** 将一次连续手势作为布局事务，而不是把每帧当成独立动画。 */
+  setResizing: (resizing: boolean) => void;
 }
 
 /**
@@ -52,6 +54,7 @@ export function useSidebarResize(options: UseSidebarResizeOptions): UseSidebarRe
     maxWidth = 500,
     direction = 'right',
     setWidth,
+    setResizing,
   } = options;
 
   let startX = 0;
@@ -86,6 +89,7 @@ export function useSidebarResize(options: UseSidebarResizeOptions): UseSidebarRe
    */
   const startResize = (event: PointerEvent) => {
     isResizing = true;
+    setResizing(true);
     startX = event.clientX;
     startWidth = clampWidth(getWidth());
 
@@ -136,6 +140,7 @@ export function useSidebarResize(options: UseSidebarResizeOptions): UseSidebarRe
     window.removeEventListener('pointerup', stopResize);
     window.removeEventListener('pointercancel', stopResize);
     document.body.classList.remove('panel-resizing');
+    setResizing(false);
   };
 
   /**
@@ -152,6 +157,7 @@ export function useSidebarResize(options: UseSidebarResizeOptions): UseSidebarRe
     window.removeEventListener('pointerup', stopResize);
     window.removeEventListener('pointercancel', stopResize);
     document.body.classList.remove('panel-resizing');
+    setResizing(false);
   };
 
   return {

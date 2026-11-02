@@ -319,8 +319,10 @@ AppLayout 的 `.content-area` 规则必须限定到 `> .main-container > .conten
 AnswerMessage 等 domain 内部的同名局部 class。
 
 `useSidebarAnimationEvents` 以真实 `transitionend` 结束正常动效事务；拖拽侧栏时 CSS 已进入
-`panel-resizing` 并取消 transition，因此在当前 Vue 提交后主动结束事务。批注位置的逐帧计算
+`panel-resizing` 并取消 transition，因此在手势结束且最终宽度提交到 DOM 后主动结束事务。批注位置的逐帧计算
 只由 EditorContext 响应 `sidebar-anim-start/end`，AppLayout 不再建立第二套 300ms rAF 重算。
+
+侧栏宽度手势由 `sidebarResizing` 明确起止；一整次拖动只发一对布局事务事件，松手、取消或卸载后结束拖动态，不能每帧重复“结束”。持久化适配器只写真正改变的偏好；`workspaceStageWidth` 等未持久化测量字段不应引发重复存储写入。完整 App 性能复演使用 `LINNYA_CONVERSATION_E2E_SCENARIO=sidebar-resize node scripts/e2e/conversation-navigation/run-electron-conversation-navigation-e2e.mjs`，可用 `LINNYA_RESIZE_TRACE` 指定本地 trace 输出路径。
 
 文件树、项目列表、对话历史等具体 UI 仍在对应 domain 内。app/layout 不应该深入操作 workspace domain 内部树结构；确实涉及跨 domain 的同步，例如 conversationId 影响 VFS runtime context，应放在 app-level composable：
 

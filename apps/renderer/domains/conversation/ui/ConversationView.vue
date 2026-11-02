@@ -175,6 +175,17 @@ const {
     viewportMountRef: conversationOverlayViewportMountRef,
     viewportRef: conversationOverlayViewportRef,
   },
+  options: {
+    // 消息列宽度运动时不逐帧切换 overflow 并读取全树样式；内容变更仍走独立更新通道。
+    update: {
+      debounce: {
+        mutation: [0, 33],
+        resize: [120, 360],
+        event: [33, 99],
+        env: [222, 666, true],
+      },
+    },
+  },
 });
 // 时间轴位置上报（解耦：只提供测量函数，触发时机交给滚动/DOM 监听）
 const { updateTurnPositionsToTimeline } = useConversationTimelinePositions(

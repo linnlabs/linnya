@@ -53,6 +53,8 @@ import PaneDivider from '@/app/layout/components/PaneDivider.vue';
 import { useSidebarResize } from '@/app/layout/composables/useSidebarResize';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
 
+defineOptions({ name: 'WorkspaceSidebarShell' });
+
 const uiStore = useUIStore();
 const layoutStore = useLayoutStore();
 const navigation = getWorkspaceNavigationPort();
@@ -66,6 +68,7 @@ const { startResize, resizeTo, cleanup: cleanupResize } = useSidebarResize({
   maxWidth: SIDEBAR_WIDTH_LIMITS.max,
   direction: 'right',
   setWidth: (width) => uiStore.setSidebarWidth(width),
+  setResizing: (resizing) => uiStore.setSidebarResizing(resizing),
 });
 
 // ============================================================================

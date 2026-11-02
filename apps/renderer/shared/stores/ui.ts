@@ -62,6 +62,8 @@ export const useUIStore = defineStore('ui', {
     debugPanelVisible: false,
     // ++ 在 State 中添加 sidebarWidth 状态 ++
     sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+    // 手势生命周期只用于协调布局，不属于可持久化偏好。
+    sidebarResizing: false,
     outlineSidebarWidth: 240, // 默认大纲侧边栏宽度
     notificationPanelVisible: true,
     // 知识库模态框可见性
@@ -198,6 +200,10 @@ export const useUIStore = defineStore('ui', {
     // ++ 在 Actions 中添加 setSidebarWidth 方法 ++
     setSidebarWidth(newWidth: number) {
       this.sidebarWidth = clampSidebarWidth(newWidth);
+    },
+
+    setSidebarResizing(resizing: boolean) {
+      this.sidebarResizing = resizing;
     },
 
     normalizeSidebarWidth() {

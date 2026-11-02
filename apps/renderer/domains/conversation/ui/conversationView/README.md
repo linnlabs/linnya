@@ -12,6 +12,8 @@
 
 `ConversationView.vue` 只做响应式接线和 UI 事件转发。归组、估高、分页规则与滚动模式判断分别留在 `logic/`、`utils/` 和 `functions/`，不能重新塞回 SFC。
 
+独立 View 和外部 Host 的 OverlayScrollbars 都对尺寸事件使用 120ms quiet window、360ms 最长等待，避免连续拖动侧栏时逐帧切换 overflow 并强制重算消息子树样式。内容变更与显式滚动更新保持独立，不暂停消息显示、真实布局或 TanStack 的滚动所有权。完整 App 的快速拖动回归见 `scripts/e2e/conversation-navigation/sidebar-resize-scenario.mjs`。
+
 ## 目录
 
 ```text

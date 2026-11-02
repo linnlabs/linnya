@@ -41,6 +41,7 @@ describe('useSidebarAnimationEvents', () => {
     app.unmount();
     container.remove();
     document.body.classList.remove('panel-resizing');
+    useUIStore().setSidebarResizing(false);
     window.removeEventListener('sidebar-anim-start', recordStart);
     window.removeEventListener('sidebar-anim-end', recordEnd);
   });
@@ -57,10 +58,33 @@ describe('useSidebarAnimationEvents', () => {
 
   it('拖拽宽度禁用 CSS transition 时不会留下未结束的布局事务', async () => {
     document.body.classList.add('panel-resizing');
+    useUIStore().setSidebarResizing(true);
     useUIStore().setSidebarWidth(320);
+    await nextTick();
+    useUIStore().setSidebarWidth(360);
+    await nextTick();
+    expect(events).toEqual(['start']);
+
+    useUIStore().setSidebarWidth(370);
+    document.body.classList.remove('panel-resizing');
+    useUIStore().setSidebarResizing(false);
     await nextTick();
     await nextTick();
 
     expect(events).toEqual(['start', 'end']);
+  });
+
+  it('取消拖动也结束布局事务，后续拖动可以重新开始', async () => {
+    for (const width of [300, 400]) {
+      document.body.classList.add('panel-resizing');
+      useUIStore().setSidebarResizing(true);
+      useUIStore().setSidebarWidth(width);
+      await nextTick();
+      document.body.classList.remove('panel-resizing');
+      useUIStore().setSidebarResizing(false);
+      await nextTick();
+      await nextTick();
+    }
+    expect(events).toEqual(['start', 'end', 'start', 'end']);
   });
 });
