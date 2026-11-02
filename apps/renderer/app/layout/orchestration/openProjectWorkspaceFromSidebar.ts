@@ -15,7 +15,10 @@ import {
  * 如果这里提前改 scope，导航会把跨项目切换误判为重复进入当前项目，
  * 从而保留上一个项目的 activeDocument。
  */
-export async function openProjectWorkspaceFromSidebar(projectId: string): Promise<void> {
+export async function openProjectWorkspaceFromSidebar(
+  projectId: string,
+  options: { startNewConversation?: boolean } = {},
+): Promise<void> {
   const navigationScope = useNavigationScope();
   const targetScope: ProjectNavigationScope = { kind: 'project', projectId };
   const isSameProjectScope = areNavigationScopesEqual(
@@ -26,7 +29,7 @@ export async function openProjectWorkspaceFromSidebar(projectId: string): Promis
   await getWorkspaceNavigationPort().openWorkspace(targetScope);
 
   useWorkspaceProjectsStore().markActiveProject(projectId);
-  if (!isSameProjectScope) {
+  if (!isSameProjectScope || options.startNewConversation) {
     startDraftConversation(targetScope);
   }
 

@@ -10,7 +10,7 @@ export { default as FileTreeView } from './file-tree/FileTreeView.vue';
 export { default as CreateProjectModal } from './components/CreateProjectModal.vue';
 export { default as ContextMenu } from './components/ContextMenu.vue';
 
-export { useProjectOperations } from './composables/useProjectOperations.js';
+export { useProjectOperations } from './composables/useProjectOperations';
 export { useContextMenu } from './composables/useContextMenu.js';
 export { useSidebarDragDrop } from './composables/useSidebarDragDrop.js';
 export { useDocumentOperations } from './composables/useDocumentOperations';

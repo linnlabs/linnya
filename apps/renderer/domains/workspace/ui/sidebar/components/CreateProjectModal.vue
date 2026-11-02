@@ -133,6 +133,7 @@ import { AddIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
+import type { ProjectFormValues } from '../definitions/projectOperations';
 
 // 组件接口定义
 type InitialProjectData = {
@@ -149,8 +150,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'confirm', payload: { name: string; description: string; kbIds: string[] }): void;
-  (e: 'ai-create', payload: { name: string; description: string; kbIds: string[] }): void;
+  (e: 'confirm', payload: ProjectFormValues): void;
+  (e: 'ai-create', payload: ProjectFormValues): void;
 }>();
 const { workspaceMessage } = useWorkspaceLocalization();
 

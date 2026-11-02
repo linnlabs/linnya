@@ -150,7 +150,6 @@ import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { useChatFlowOrchestrator } from '@/domains/conversation/services/orchestration/chatFlowOrchestrator';
 import { applyConversationAgentChoice } from '@/domains/conversation/features/agent-choice/orchestration/applyConversationAgentChoice';
 import { useConversationAgentChoices } from '@/app/plugins/composables';
-import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { startProjectPlanningConversation } from '@/app/layout/orchestration/startProjectPlanningConversation';
 import { useHistoryListStore } from '@/domains/conversation/history/store/historyListStore';
 import { useUIStore } from '@/shared/stores/ui';
@@ -260,9 +259,7 @@ const creatableDocumentTypes = useLocalizedCreatableDocumentTypes();
 const showError = (message) => notificationStore.show(message, 'error');
 const startProjectPlanning = (project) => startProjectPlanningConversation({
   project,
-  navigation: getWorkspaceNavigationPort(),
-  ensureProjectTreeLoaded: (projectId) => treeStore.ensureProjectTreeLoaded(projectId),
-  startDraft: startDraftConversation,
+  openProjectWorkspace: (projectId) => openProjectWorkspaceFromSidebar(projectId, { startNewConversation: true }),
   chooseAgent: (agentChoiceId) => applyConversationAgentChoice({
     assistantStore,
     scopeStore: navigationScope,
@@ -285,7 +282,8 @@ const {
   handleAiCreateProject,
   initializeExistingProjectWithAi,
   deleteProject,
-} = useProjectOperations(projectsStore, notificationStore, treeStore, {
+} = useProjectOperations(projectsStore, notificationStore, {
+  openProjectWorkspace: openProjectWorkspaceFromSidebar,
   startProjectPlanning,
 });
 

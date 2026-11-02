@@ -163,14 +163,6 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
   }
 
   /**
-   * 设置当前活动项目
-   */
-  function setActiveProject(projectId: string): void {
-    markActiveProject(projectId);
-    navigationScope.enterProject(projectId);
-  }
-
-  /**
    * 仅更新项目列表领域的当前项目投影。
    *
    * 中文说明：
@@ -209,7 +201,6 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
     replaceProjects,
     updateProject,
     deleteProject,
-    setActiveProject,
     markActiveProject,
     showProjectList,
     clearActiveProject,

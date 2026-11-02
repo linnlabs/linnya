@@ -11,11 +11,8 @@ export interface ProjectPlanningTarget {
 
 export interface StartProjectPlanningConversationInput {
   readonly project: ProjectPlanningTarget;
-  readonly navigation: {
-    openWorkspace(scope: { kind: 'project'; projectId: string }): Promise<void>;
-  };
-  readonly ensureProjectTreeLoaded: (projectId: string) => Promise<void>;
-  readonly startDraft: (scope: { kind: 'project'; projectId: string }) => void;
+  /** 共用项目导航，包含旧文档退出、项目投影、文件树加载和新草稿。 */
+  readonly openProjectWorkspace: (projectId: string) => Promise<void>;
   readonly chooseAgent: (agentChoiceId: string) => Promise<unknown>;
   readonly send: (
     text: string,
@@ -37,13 +34,9 @@ export async function startProjectPlanningConversation(
   input: StartProjectPlanningConversationInput,
 ): Promise<boolean> {
   const { project } = input;
-  const scope = { kind: 'project', projectId: project.id } as const;
   const description = project.description.trim();
 
-  await input.navigation.openWorkspace(scope);
-  // 导航只切换作用域，文件树由入口负责加载；新项目否则会继续显示上一个项目的文件。
-  await input.ensureProjectTreeLoaded(project.id);
-  input.startDraft(scope);
+  await input.openProjectWorkspace(project.id);
   await input.chooseAgent(PROJECT_PLANNING_AGENT_CHOICE_ID);
 
   const text = description

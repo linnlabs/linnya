@@ -7,7 +7,7 @@ import {
 
 function createInput(description: string) {
   const calls: string[] = [];
-  const send = vi.fn(async () => {
+  const send = vi.fn<StartProjectPlanningConversationInput['send']>(async () => {
     calls.push('send');
     return true;
   });
@@ -16,16 +16,8 @@ function createInput(description: string) {
   });
   const input: StartProjectPlanningConversationInput = {
     project: { id: 'project-1', name: 'Demo', description },
-    navigation: {
-      openWorkspace: vi.fn(async () => {
-        calls.push('openWorkspace');
-      }),
-    },
-    ensureProjectTreeLoaded: vi.fn(async () => {
-      calls.push('ensureProjectTreeLoaded');
-    }),
-    startDraft: vi.fn(() => {
-      calls.push('startDraft');
+    openProjectWorkspace: vi.fn(async () => {
+      calls.push('openProjectWorkspace');
     }),
     chooseAgent,
     send,
@@ -40,10 +32,9 @@ describe('startProjectPlanningConversation', () => {
 
     await expect(startProjectPlanningConversation(input)).resolves.toBe(true);
 
-    expect(calls).toEqual(['openWorkspace', 'ensureProjectTreeLoaded', 'startDraft', 'chooseAgent', 'send']);
-    expect(input.ensureProjectTreeLoaded).toHaveBeenCalledWith('project-1');
+    expect(calls).toEqual(['openProjectWorkspace', 'chooseAgent', 'send']);
+    expect(input.openProjectWorkspace).toHaveBeenCalledWith('project-1');
     expect(chooseAgent).toHaveBeenCalledWith(PROJECT_PLANNING_AGENT_CHOICE_ID);
-    expect(input.startDraft).toHaveBeenCalledWith({ kind: 'project', projectId: 'project-1' });
   });
 
   it('sends a short visible message and passes project metadata', async () => {

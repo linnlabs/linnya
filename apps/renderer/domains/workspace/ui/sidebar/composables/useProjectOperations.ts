@@ -1,5 +1,5 @@
 /**
- * @file useProjectOperations.js
+ * @file useProjectOperations.ts
  * @description 项目创建和管理操作逻辑
  */
 import { projectGateway } from '@/shared/ipc/projectGateway';
@@ -9,13 +9,21 @@ import { projectKbLinksGateway } from '../../../../../shared/ipc/projectKbLinksG
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
 import { resolveWorkspaceOperationFailure } from '@/domains/workspace/functions/resolveWorkspaceOperationFailure';
 import { getWorkspaceOperationFailure } from '@/domains/workspace/definitions/workspaceOperationError';
+import type { NotificationStore } from '@/app/notification';
+import type { useWorkspaceProjectsStore } from '../../../store/WorkspaceProjectsStore';
+import type { Project } from '../../../definitions/project';
+import type { ProjectEditData, ProjectFormValues, ProjectOperationsOptions } from '../definitions/projectOperations';
 
-export function useProjectOperations(workspaceStore, notificationStore, treeStore, options = {}) {
-  const { startProjectPlanning } = options;
+export function useProjectOperations(
+  workspaceStore: ReturnType<typeof useWorkspaceProjectsStore>,
+  notificationStore: Pick<NotificationStore, 'show'>,
+  options: ProjectOperationsOptions,
+) {
+  const { openProjectWorkspace, startProjectPlanning } = options;
   const { workspaceMessage } = useWorkspaceLocalization();
   const showCreateProjectDialog = ref(false);
   const isEditMode = ref(false);
-  const editProjectData = ref(null);
+  const editProjectData = ref<ProjectEditData | null>(null);
 
   /**
    * 将“项目 ↔ 知识库关联”写入后端（统一走 IPC gateway）。
@@ -23,16 +31,12 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
    * - 创建项目后立即写入，确保进入项目对话/AI 规划时就能读到关联关系；
    * - 使用 replace 接口保证幂等与最终一致（即使用户在弹窗里多次增删）。
    */
-  const applyProjectKnowledgeBaseLinks = async (projectId, kbIds) => {
-    const normalizedKbIds = Array.isArray(kbIds)
-      ? kbIds.filter((id) => typeof id === 'string' && id.trim().length > 0)
-      : [];
-
+  const applyProjectKnowledgeBaseLinks = async (projectId: string, kbIds: string[]) => {
     try {
       const result =
         await projectKbLinksGateway.replaceProjectKnowledgeBaseLinks({
           projectId,
-          kbIds: normalizedKbIds
+          kbIds
         });
 
       if (!result.success) {
@@ -82,7 +86,7 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
   /**
    * 处理项目创建
    */
-  const handleCreateProject = async ({ name, description, kbIds }) => {
+  const handleCreateProject = async ({ name, description, kbIds }: ProjectFormValues) => {
     try {
       // 在调用后端之前，先在前端做一次项目名唯一性校验，避免触发数据库 UNIQUE 约束错误
       const trimmedName = name.trim();
@@ -99,25 +103,17 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
       
       if (result.success) {
         notificationStore.show(workspaceMessage('workspace.project.operation.created', { projectName: name }), 'success');
-        const projectId = result.data && result.data.projectId ? result.data.projectId : '';
+        const projectId = result.data.projectId;
 
         // 先写入“创建弹窗里选择的关联知识库”，保证后续进入项目时能立刻读到
-        if (projectId) {
-          await applyProjectKnowledgeBaseLinks(projectId, kbIds);
-        }
+        await applyProjectKnowledgeBaseLinks(projectId, kbIds);
 
         closeProjectDialog();
         await workspaceStore.loadProjects();
 
         // 自动进入新创建的项目
-        if (projectId) {
-          await workspaceStore.setActiveProject(projectId);
-
-          // 显式加载项目树
-          if (treeStore) {
-            await treeStore.loadProjectTree(projectId);
-          }
-        }
+        // 项目创建与点击既有项目共用导航：先保存并退出旧文档，再提交新项目身份。
+        await openProjectWorkspace(projectId);
       } else {
         notificationStore.show(
           resolveWorkspaceOperationFailure(
@@ -137,7 +133,7 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
   /**
    * 处理项目更新
    */
-  const handleUpdateProject = async ({ name, description }) => {
+  const handleUpdateProject = async ({ name, description }: ProjectFormValues) => {
     if (!editProjectData.value) return;
     
     try {
@@ -166,7 +162,7 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
   /**
    * 统一的项目对话框确认处理
    */
-  const handleProjectDialogConfirm = async (data) => {
+  const handleProjectDialogConfirm = async (data: ProjectFormValues) => {
     if (isEditMode.value) {
       await handleUpdateProject(data);
     } else {
@@ -178,7 +174,7 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
    * 打开编辑特定项目对话框
    * @param {Object} project - 要编辑的项目对象
    */
-  const promptEditSpecificProject = (project) => {
+  const promptEditSpecificProject = (project: Project) => {
     if (project) {
       isEditMode.value = true;
       editProjectData.value = {
@@ -194,7 +190,7 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
    * 删除项目
    * @param {string} projectId - 要删除的项目 ID
    */
-  const deleteProject = async (projectId) => {
+  const deleteProject = async (projectId: string) => {
     try {
       await workspaceStore.deleteProject(projectId);
       notificationStore.show(workspaceMessage('workspace.project.operation.deleted'), 'success');
@@ -220,7 +216,7 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
    * 2. 切换到项目上下文
    * 3. 在统一项目对话中开启项目初始化 Agent
    */
-  const handleAiCreateProject = async ({ name, description, kbIds }) => {
+  const handleAiCreateProject = async ({ name, description, kbIds }: ProjectFormValues) => {
     try {
       // 与普通创建保持一致：AI 辅助创建前同样做项目名唯一性检查
       const trimmedName = name.trim();
@@ -260,10 +256,8 @@ export function useProjectOperations(workspaceStore, notificationStore, treeStor
       // 刷新项目列表
       await workspaceStore.loadProjects();
       
-      // 2. 切换到项目上下文
-      workspaceStore.setActiveProject(projectId);
-
-      // 3. 在统一项目对话中开启项目初始化 Agent。
+      // 2. 由 app 组合层统一导航并开启项目初始化 Agent。
+      // 这里不能提前切 scope，否则导航会把跨项目切换误判成同项目。
       await startProjectPlanning({
         id: projectId,
         name: trimmedName,

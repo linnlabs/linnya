@@ -136,7 +136,7 @@ describe('WorkspaceTreeStore.loadProjectTree', () => {
       data: Array<Record<string, unknown>>;
     }>();
     mocks.listNodesMock.mockReturnValue(listRequest.promise);
-    useWorkspaceProjectsStore().setActiveProject('project-1');
+    useWorkspaceProjectsStore().markActiveProject('project-1');
 
     const store = useWorkspaceTreeStore();
     const reloading = store.reloadActiveProjectTree();
@@ -196,7 +196,7 @@ describe('WorkspaceTreeStore.loadProjectTree', () => {
     mocks.listNodesMock.mockResolvedValue({ success: true, data: [] });
 
     const projectsStore = useWorkspaceProjectsStore();
-    projectsStore.setActiveProject('project-1');
+    projectsStore.markActiveProject('project-1');
     const store = useWorkspaceTreeStore();
 
     const documentId = await store.createDocument({

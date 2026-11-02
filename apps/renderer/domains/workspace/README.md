@@ -60,7 +60,7 @@ apps/renderer/domains/workspace/
             ├── useSidebarDragDrop.js           # 文件拖放
             ├── useTreeItemDragDrop.js          # 树节点拖放
             ├── useDocumentOperations.js        # 文档操作
-            ├── useProjectOperations.js         # 项目操作
+            ├── useProjectOperations.ts         # 项目操作与 app 导航合同
             └── useContextMenu.js               # 右键菜单
 
 ## 重要约定
