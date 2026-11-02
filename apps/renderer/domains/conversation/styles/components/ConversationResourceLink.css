@@ -33,7 +33,12 @@
   vertical-align: -0.125em;
 }
 
-.conversation-resource-link__suffix,
+.conversation-resource-link__suffix {
+  /* 后缀属于文件名；仅弱化颜色，不缩小字号。状态说明使用单独的展示规则。 */
+  color: color-mix(in srgb, currentColor 62%, transparent);
+  font: inherit;
+}
+
 .conversation-resource-link__status {
   color: color-mix(in srgb, currentColor 62%, transparent);
   font-size: 0.82em;
