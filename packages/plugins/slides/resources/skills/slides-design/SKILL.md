@@ -4,7 +4,7 @@ description: Plan, create, edit, inspect, and visually verify Linnya Slides thro
 metadata:
   author: linnya
   pluginId: slides
-  version: "7.16"
+  version: "7.17"
 ---
 
 # Slides Design
@@ -74,11 +74,12 @@ presentation-owned 资产。
 | 任务 | 读取资源 | 资源性质 |
 |---|---|---|
 | 理解 deck.js 结构、布局和节点 | [`syntax.md`](./references/syntax.md) | 正式语法说明 |
-| 查精确字段、联合类型和工厂签名 | [`layoutPrimitives.d.ts`](./references/layoutPrimitives.d.ts) | 由代码生成的类型真值 |
-| 选择图表 preset | [`chart-presets.md`](./references/chart-presets.md) | 由运行时注册表生成 |
+| 查精确字段、联合类型和工厂签名 | [`layoutPrimitives.d.ts`](./references/layoutPrimitives.d.ts) | 类型真值 |
+| 选择图表 preset | [`chart-presets.md`](./references/chart-presets.md) | 运行时生成 |
 | 做叙事、视觉系统、页面节奏判断 | [`design.md`](./references/design.md) | 设计建议，不是 lint 合同 |
-| 确认某个能力具体怎么写 | [`examples/`](./references/examples/) 中覆盖该能力的 `.js` | 语法与能力示范，不是版式模板 |
+| 确认某个能力具体怎么写 | [`examples/`](./references/examples/) 中覆盖该能力的 `.js` | 能力示范 |
 | 调用 CLI、消费 JSON/图片 locator | [`cli.md`](./references/cli.md) | Agent CLI 合同 |
+| 文化历史题材的画册风 | [`style-cultural-imagery.md`](./references/style-cultural-imagery.md) | 按需流程 |
 
 示例按能力而非页面类型划分：结构与节奏看
 [`cover-variants.js`](./references/examples/cover-variants.js)、[`card-grid.js`](./references/examples/card-grid.js)、
@@ -89,7 +90,7 @@ presentation-owned 资产。
 [`native-formula.js`](./references/examples/native-formula.js)、
 [`brush-artwork.js`](./references/examples/brush-artwork.js)、[`timeline.js`](./references/examples/timeline.js)。
 
-示例仅示范语法与能力；颜色、字体和版式不是默认或推荐风格。视觉决策由内容和受众决定。
+示例只示范语法与能力；颜色、字体和版式不是推荐风格。视觉决策由内容和受众决定。
 
 发生冲突时，运行时代码和生成文件高于散文；CLI 实际输出高于手写推断；设计建议不能覆盖类型、诊断或用户要求。
 
