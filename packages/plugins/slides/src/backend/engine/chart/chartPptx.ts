@@ -11,6 +11,7 @@ export interface ChartPptxPatch {
   labelPosition?: 'inside' | 'outside' | 'center';
   stacked?: boolean;
   labelContent?: ChartElement['dataLabelContent'];
+  horizontalBar: boolean;
   layout?: ResolvedChartLayout;
   series: { source: ChartSeries; order: number; type: ChartType; color: string }[];
 }
@@ -26,6 +27,7 @@ export function addNativeChart(
   const palette = resolveChartPalette(theme).map(c => stripHash(c, 'chart.palette'));
   const options = { ...mapPosition(chart.position), chartColors: palette, ...resolveChartOptions(chart) };
   const layout = resolveGeneratedChartLayout(chart, options);
+  const horizontalBar = chart.chartType === 'bar' && options.barDir === 'bar';
   if (layout) options.layout = layout.plot;
   const groups: { type: Exclude<ChartType, 'combo'>; axis: 'primary' | 'secondary'; series: ChartPptxPatch['series'] }[] = [];
   chart.data.series.forEach((source, order) => {
@@ -41,13 +43,14 @@ export function addNativeChart(
     order !== index || source.pointColors || source.lineWidth != null || source.lineDash || source.marker
     || source.showDataLabels != null || source.dataLabelFormat != null,
   );
-  if (requiresSeriesPatch || layout) {
+  if (requiresSeriesPatch || layout || horizontalBar) {
     if (!context) throw new Error('图表系列样式需要正式 PPTX materialization context。');
     options.objectName = `linnya-chart:${context.slideIndex}:${context.plan.length}`;
     context.plan.push({ slideIndex: context.slideIndex, marker: options.objectName, series: entries,
       labelPosition: chart.dataLabelPosition,
       stacked: isStackedBar(options),
       labelContent: chart.dataLabelContent,
+      horizontalBar,
       layout,
     });
   }

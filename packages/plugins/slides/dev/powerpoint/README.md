@@ -50,6 +50,12 @@ pnpm --dir packages/plugins/slides run office:conformance -- compare /tmp/linnya
 图表保留原生 chart，禁止将图片化预览充当 Office 对照。新增 manifest 的 region.chart 记录实际 RenderModel 的
 图表类型和图例位置；首版未带此字段的存档明确沿用当时唯一的「纵向柱图、底部图例」。
 
+水平条形页的验收目标是 Alpha 在上、每组 North 在上、图例 North / South / West，值轴位于底部。
+导出使用反向类目轴及值轴最大端交叉点，工作簿仍保持作者顺序；共享布局负责类目与端点刻度留位。
+Node 测试检查 XML、工作簿及预览几何，不能证明 PowerPoint 的图例排布或最终像素一致。
+原生图例没有独立的顺序控制；若轴反向后 Office 仍反排图例，应记录为未通过，不能以缓存中的系列
+顺序正确代替图例验收。修改后的水平条形页需在沙箱外重新生成并用真实 PowerPoint 验证。
+
 主要输出：
 
 - `sample.pptx`、`manifest.json`、`render-model.json`：合成样稿、预览断行/缩字与最终布局事实；

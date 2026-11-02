@@ -29,6 +29,7 @@ export async function applyChartPptxStyles(zip: JSZip, plan: readonly ChartPptxP
     const chartPath = resolvePptxPartTarget(slidePath, target);
     const chart = await read(chartPath);
     if (patch.layout) applyChartPptxLayout(chart, patch.layout);
+    if (patch.horizontalBar) applyHorizontalBarAxes(chart);
     const series = getElements(chart, 'c:ser');
     if (series.length !== patch.series.length) throw new Error('Chart materialization: series cardinality changed');
     patch.series.forEach((entry, index) => {
@@ -103,6 +104,25 @@ export async function applyChartPptxStyles(zip: JSZip, plan: readonly ChartPptxP
     zip.file(slidePath, serializer.serializeToString(slide));
   }
   return plan.length > 0;
+}
+
+/**
+ * 横向条形按作者顺序从上往下读；只改坐标方向，不改系列、缓存或工作簿顺序。
+ * SDK 的类型未开放 maxMin / max，在正式物化阶段成对设置，避免反向后值轴跑到顶部。
+ */
+function applyHorizontalBarAxes(doc: Document): void {
+  const category = getElementByTag(doc, 'c:catAx');
+  const value = getElementByTag(doc, 'c:valAx');
+  const scaling = category && child(category, 'c:scaling');
+  const orientation = scaling && child(scaling, 'c:orientation');
+  const crossing = value && (child(value, 'c:crosses') ?? child(value, 'c:crossesAt'));
+  if (!orientation || !value || !crossing) throw new Error('Chart materialization: missing horizontal bar axes');
+  orientation.setAttribute('val', 'maxMin');
+  // CT_ValAx 的 crosses / crossesAt 是互斥项，位于 crossAx 与 crossBetween 之间。
+  // 替换原节点保留合法顺序；max 指类目最大端，反向后正好是图表底部。
+  const crosses = doc.createElement('c:crosses');
+  crosses.setAttribute('val', 'max');
+  value.replaceChild(crosses, crossing);
 }
 
 /** CT_DLbl/CT_DLbls 的有序子节点；新增字段必须遵守 OOXML 顺序。 */

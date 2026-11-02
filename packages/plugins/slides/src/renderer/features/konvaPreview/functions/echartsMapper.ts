@@ -158,9 +158,8 @@ function buildCartesianChart(
     isBar ? node.axes?.y?.labelStyle : node.axes?.x?.labelStyle,
     node.labelStyle,
   );
-  // catAxisOrientation: 'maxMin' → inverse，'minMax' → 正序；横向 bar 默认反向
-  const shouldInverse = hints?.catAxisOrientation === 'maxMin'
-    || (hints?.catAxisOrientation == null && isBar);
+  // 横向条形的作者顺序就是从上往下的阅读顺序，与原生导出的 maxMin 一致。
+  const shouldInverse = isBar || hints?.catAxisOrientation === 'maxMin';
 
   const categoryAxis: Record<string, unknown> = {
     show: catAxisConfig?.visible !== false,
@@ -232,6 +231,8 @@ function buildCartesianChart(
   let yAxis: unknown;
 
   if (isBar) {
+    valueAxis.position = 'bottom';
+    valueAxis.axisLine = { show: true, onZero: false, lineStyle: { color: PPT.axisLineColor } };
     xAxis = valueAxis;
     yAxis = categoryAxis;
   } else if (node.chartType === 'combo' && node.axes?.y2) {

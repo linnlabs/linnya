@@ -4,12 +4,14 @@ import path from 'node:path';
 import os from 'node:os';
 import { createHash } from 'node:crypto';
 import JSZip from 'jszip';
+import { DOMParser } from '@xmldom/xmldom';
 import { createConformanceDeck } from './samples';
 import { DeckAssembler } from '../../src/backend/engine/DeckAssembler';
 import { FreeformCompiler } from '../../src/backend/engine/FreeformCompiler';
 import { StructuredCompiler } from '../../src/backend/engine/StructuredCompiler';
 import { compareConformance } from './compareReport';
 import type { Manifest } from './definitions';
+import { getElementByTag } from '../../src/backend/engine/parser/xml/XmlNode';
 
 it('compiles eleven synthetic pages including line, horizontal bar, doughnut and three legend positions', async () => {
   const deck = createConformanceDeck();
@@ -38,6 +40,12 @@ it('compiles eleven synthetic pages including line, horizontal bar, doughnut and
   expect(charts[1]).toContain('<c:overlap val="50"/>');
   expect(charts[2]).toContain('<c:lineChart>');
   expect(charts[3]).toContain('<c:barDir val="bar"/>');
+  const horizontal = new DOMParser().parseFromString(charts[3], 'application/xml');
+  const categoryAxis = getElementByTag(horizontal, 'c:catAx');
+  const valueAxis = getElementByTag(horizontal, 'c:valAx');
+  if (!categoryAxis || !valueAxis) throw new Error('Expected horizontal sample axes');
+  expect(getElementByTag(categoryAxis, 'c:orientation')?.getAttribute('val')).toBe('maxMin');
+  expect(getElementByTag(valueAxis, 'c:crosses')?.getAttribute('val')).toBe('max');
   expect(charts[4]).toContain('<c:doughnutChart>');
   expect(charts[4]).toContain('<c:showPercent val="1"/>');
   for (const color of ['2468C4', 'D85C28', '33854B']) expect(charts[4]).toContain(color);

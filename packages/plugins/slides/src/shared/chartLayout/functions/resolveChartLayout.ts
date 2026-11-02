@@ -56,15 +56,20 @@ export function resolveChartLayout(input: ChartLayoutInput): ResolvedChartLayout
     const labelHeight = Math.max(0, ...categoryBoxes.map(box => Math.abs(box.w * Math.sin(angle)) + Math.abs(box.h * Math.cos(angle))));
     const values = [0, ...input.series.flatMap(series => series.values), val?.min ?? 0, val?.max ?? 0];
     const valueWidth = Math.max(...values.map(value => measure(formatChartValue(value, val?.format ?? 'General'), val?.labelStyle).w));
-    const catDepth = cat?.visible === false ? 0 : (horizontal ? labelWidth : labelHeight) + LABEL_GAP;
+    // 横向类目标签以右边缘锚定，portable 字宽低估会直接裁掉首字（如 Gamma）。
+    // 用半行高保留字形外延；两端共享这份占位，不能让 Office 再自行挤压 plot。
+    const catDepth = cat?.visible === false ? 0 : (horizontal ? labelWidth + fontHeight(cat?.labelStyle) / 2 : labelHeight) + LABEL_GAP;
     // 给自动取整后的刻度文本留一个字宽，但不指定其数值或步长。
     const valDepth = val?.visible === false ? 0 : (horizontal ? fontHeight(val?.labelStyle) : valueWidth + fontHeight(val?.labelStyle)) + LABEL_GAP;
     categoryTitleGap = catDepth + fontHeight(cat?.labelStyle) / 2;
     valueTitleGap = valDepth + fontHeight(val?.labelStyle) / 2;
     const catGutter = catDepth + (cat?.title && cat.visible !== false ? fontHeight(cat.labelStyle) + LABEL_GAP : 0);
     const valGutter = valDepth + (val?.title && val.visible !== false ? fontHeight(val.labelStyle) + LABEL_GAP : 0);
-    area.x += horizontal ? catGutter : valGutter;
-    area.w -= horizontal ? catGutter : valGutter;
+    // 水平值轴的首尾刻度居中于端点，左右各需要半个文本宽度。
+    const valueEndInset = horizontal && val?.visible !== false ? valueWidth / 2 : 0;
+    const leftGutter = horizontal ? Math.max(catGutter, valueEndInset) : valGutter;
+    area.x += leftGutter;
+    area.w -= leftGutter + valueEndInset;
     area.h -= horizontal ? valGutter : catGutter;
     // 居中的轴标题可能长于绘图区；移动 plot 中心，仍让标题留在 chart 外框内。
     const yTitle = horizontal ? cat : val;

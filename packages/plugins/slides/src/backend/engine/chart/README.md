@@ -28,6 +28,13 @@
 同类型同轴的系列保持一个 chart group，否则簇状柱、堆叠和图例语义会改变。组合图不按“折线=右轴”推断，
 右轴必须显式声明，且不能继承左轴单位/范围/标题。系列重排只用于原生 group，`c:order` 保留作者顺序。
 
+横向条形（`bar` + `barDir=bar`）的作者顺序就是从上往下的阅读顺序。正式物化阶段将类目轴
+`orientation` 设为 `maxMin`，值轴 `crosses` 设为 `max`，让值轴留在底部；仅修改已有节点，
+`crosses` / `crossesAt` 保持互斥及 ECMA-376 顺序。PptxGenJS 4.0.1 的轴类型未开放这两个值，
+不通过断言扩宽 SDK 选项。普通、堆叠、百分比堆叠和逐系列样式共用此路径，工作簿、缓存与
+`c:order` 均保留作者顺序。原生图例没有独立的顺序字段，不能伪造 `legendEntry` 顺序控制；
+轴反向后的 Office 实际图例顺序仍须在 PowerPoint 验收。
+
 PptxGenJS 4.0.1 的 multi API 第二参数必须留空，options 在第三参数；空数组会吞掉 options。
 仓库现有 pnpm patch 补了这个实际存在的类型重载，没有更改 SDK 图表运行时或绕过 TypeScript。
 
@@ -66,6 +73,8 @@ ECharts 与 Office 的排版不保证像素级一致。`PptxReader` 当前只识
 - `backend/__tests__/render-model-mapping-chart-table.test.ts` 与 `renderer/.../echartsMapper.test.ts`：既有图表回归。
 - `backend/__tests__/chart-layout.integration.test.ts`：共享 plot/legend 的预览实际几何与原生 manualLayout，
   自动轴不固定、显式轴保留、四侧图例、多行图例与紧凑轴标题。
+- `backend/__tests__/chart-horizontal-bar.integration.test.ts`：横向轴方向与底部交叉点、XML 节点顺序、
+  原始缓存及工作簿顺序、样式补丁与堆叠路径、预览阅读顺序及类目/端点标签边界；其他图表轴不变。
 - `renderer/.../echartsBarSpacing.integration.test.ts`：实际柱宽比例与重叠间距，包含堆叠和柱线组合。
 - 图表资源 registry 测试：编辑颜色/线宽/背景后重绘，移动时复用，不返回旧像素。
 - `smoke:raster-worker` 另覆盖真实 deck.js 折线与百分比堆叠柱 → generated RenderModel →
