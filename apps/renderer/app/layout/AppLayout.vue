@@ -10,7 +10,7 @@
   - 全局快捷键：useGlobalKeyboardShortcuts
   - 主题管理：useThemeManager
   - 侧边栏动画事件：useSidebarAnimationEvents
-  - CSS 变量管理：useCssVariables
+  - 内容区左边距：useContentAreaStyle
   - 全局模态框：GlobalModals.vue
   - 全局样式：styles/index.css
 -->
@@ -126,7 +126,7 @@ import {
   useThemeManager, 
   useFontSmoothingManager,
   useSidebarAnimationEvents,
-  useCssVariables,
+  useContentAreaStyle,
   useStartupNavigationScope,
   useSidebarSelectionVisibility,
 } from './composables';
@@ -178,7 +178,7 @@ useFontSmoothingManager();
 useStartupNavigationScope();
 useSidebarSelectionVisibility();
 const { emitSidebarTransitionEnd } = useSidebarAnimationEvents();
-const { contentAreaStyle } = useCssVariables();
+const { contentAreaStyle } = useContentAreaStyle();
 
 // 启动时初始化逻辑
 onMounted(() => {

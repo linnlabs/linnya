@@ -30,7 +30,7 @@ app/layout/
 │   └── PaneDivider.vue
 ├── composables/
 │   ├── index.ts
-│   ├── useCssVariables.ts
+│   ├── useContentAreaStyle.ts
 │   ├── useGlobalKeyboardShortcuts.ts
 │   ├── useRightPaneResize.ts
 │   ├── useSidebarAnimationEvents.ts

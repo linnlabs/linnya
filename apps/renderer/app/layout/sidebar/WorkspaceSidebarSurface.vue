@@ -420,6 +420,10 @@ const {
     viewportMountRef: sidebarContentViewportMountRef,
     viewportRef: sidebarContentViewportRef,
   },
+  options: {
+    // 拖动侧栏时宽度每帧都变，但行不换行、滚动范围不变；每帧测量会强制重算所有行的样式。
+    update: { debounce: { resize: [120, 360] } },
+  },
 });
 
 const isPluginStoreActive = () => {
