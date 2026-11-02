@@ -1,3 +1,19 @@
+/* Vue FLIP 只移动已有项目的 transform，保留展开对话和节点身份，避免重挂载整栏。 */
+.workspace-sidebar .sidebar-project-list-move {
+  transition: transform var(--duration-long) var(--ease-standard);
+}
+
+.workspace-sidebar .sidebar-project-list-enter-active {
+  transition:
+    opacity var(--duration-medium) var(--ease-enter) var(--duration-micro),
+    transform var(--duration-long) var(--ease-enter);
+}
+
+.workspace-sidebar .sidebar-project-list-enter-from {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
 .workspace-sidebar .sidebar-project-group {
   display: flex;
   flex-direction: column;

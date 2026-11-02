@@ -15,4 +15,5 @@ export interface ProjectEditData {
 export interface ProjectOperationsOptions {
   openProjectWorkspace: (projectId: string) => Promise<void>;
   startProjectPlanning: (project: ProjectEditData) => Promise<boolean>;
+  deleteProject: (projectId: string) => Promise<void>;
 }

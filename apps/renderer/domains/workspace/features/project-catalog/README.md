@@ -2,6 +2,7 @@
 
 `refreshProjectCatalog` 是项目事实变更后的只读刷新入口。App-level mutation effects 收到
 `project.created / project.updated` 后调用它；即使事件属于其他项目，也必须刷新整个项目列表。
+手动或 AI 创建项目成功后也调用此入口，保留现有侧栏列表挂载，让按创建时间倒序的正式记录驱动顶部插入动效。
 
 流程只通过 `projectGateway.list` 获取 Backend 正式记录，复用 domain `shared/projectRecord` 投影，
 最后调用 `WorkspaceProjectsStore.replaceProjects` 同步写入状态。失败交给既有通知订阅层记录，

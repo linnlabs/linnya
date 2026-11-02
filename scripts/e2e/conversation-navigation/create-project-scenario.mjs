@@ -14,6 +14,18 @@ export async function runCreateProjectAfterDocumentOpen({ cdp, evaluate, waitFor
   await evaluate(cdp, `document.querySelectorAll('.sidebar-fixed-top .sidebar-entry')[1].click()`);
   await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('.create-project-content input'))`), '创建项目弹窗');
   await evaluate(cdp, `(() => {
+    const rows = Array.from(document.querySelectorAll('.sidebar-project-group'));
+    const probe = { rows, transitions: [] };
+    const onTransition = (event) => {
+      if (event.target.matches('.sidebar-project-group')) {
+        probe.transitions.push({ existing: rows.includes(event.target), property: event.propertyName });
+      }
+    };
+    document.addEventListener('transitionstart', onTransition);
+    probe.stop = () => document.removeEventListener('transitionstart', onTransition);
+    window.__projectCreationProbe = probe;
+  })()`);
+  await evaluate(cdp, `(() => {
     const name = document.querySelector('.create-project-content input');
     name.value = 'E2E New Empty Project';
     name.dispatchEvent(new Event('input', { bubbles: true }));
@@ -38,5 +50,21 @@ export async function runCreateProjectAfterDocumentOpen({ cdp, evaluate, waitFor
   assert.equal(state.treeSize, 0);
   assert.equal(state.activeDocument, null);
   assert.equal(state.activeSession, null);
-  console.log('[project-creation-e2e] 新项目空树、旧文档保存退出和项目身份一致通过。');
+  const motion = await waitFor(() => evaluate(cdp, `(() => {
+    const probe = window.__projectCreationProbe;
+    const inserted = document.querySelector('.sidebar-project-group');
+    const moving = probe.transitions.some(item => item.existing && item.property === 'transform');
+    const fading = probe.transitions.some(item => !item.existing && item.property === 'opacity');
+    if (!moving || !fading) return null;
+    probe.stop();
+    return {
+      retained: probe.rows.every(row => row.isConnected),
+      firstName: inserted.querySelector('.project-row-name').textContent.trim(),
+      moving, fading,
+    };
+  })()`), '既有项目向下移动与新项目淡入');
+  assert.equal(motion.retained, true, '创建不能卸载原项目列表');
+  assert.equal(motion.firstName, 'E2E New Empty Project');
+  console.log('[project-creation-e2e] 新项目空树、旧文档退出、顶部插入、旧节点保留和实际位移/淡入通过。');
+  return state.projectId;
 }

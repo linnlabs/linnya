@@ -13,7 +13,6 @@ import { projectGateway } from '@/shared/ipc/projectGateway';
 import { ref, computed } from 'vue';
 import type { Ref, ComputedRef } from 'vue';
 import { toProject } from '../shared/projectRecord';
-import { useNavigationScope } from '@/app/navigation';
 import type { Project } from '../definitions/project';
 import { resolveCurrentWorkspaceMessage } from '../functions/resolveCurrentWorkspaceMessage';
 import { WorkspaceOperationError } from '../definitions/workspaceOperationError';
@@ -34,7 +33,6 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
 
   /** 错误信息 */
   const error: Ref<string | null> = ref(null);
-  const navigationScope = useNavigationScope();
 
   // ==========================================================================
   // Computed
@@ -139,30 +137,6 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
   }
 
   /**
-   * 删除普通项目（后端会永久删除，并拒绝删除系统默认项目）
-   */
-  async function deleteProject(projectId: string): Promise<void> {
-    try {
-      const result = await projectGateway.delete(projectId);
-      
-      if (result.success) {
-        // 从本地列表中移除
-        projects.value = projects.value.filter(p => p.id !== projectId);
-        
-        // 如果删除的是当前活动项目，返回项目列表视图
-        if (activeProjectId.value === projectId) {
-          showProjectList();
-        }
-      } else {
-        throw new WorkspaceOperationError(result);
-      }
-    } catch (e) {
-      console.error(`[WorkspaceProjectsStore] Failed to delete project ${projectId}:`, e);
-      throw e;
-    }
-  }
-
-  /**
    * 仅更新项目列表领域的当前项目投影。
    *
    * 中文说明：
@@ -172,14 +146,6 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
    */
   function markActiveProject(projectId: string): void {
     activeProjectId.value = projectId;
-  }
-
-  /**
-   * 切换回项目列表视图
-   */
-  function showProjectList(): void {
-    clearActiveProject();
-    navigationScope.enterLinnyaAssistant();
   }
 
   function clearActiveProject(): void {
@@ -200,9 +166,7 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
     loadProjects,
     replaceProjects,
     updateProject,
-    deleteProject,
     markActiveProject,
-    showProjectList,
     clearActiveProject,
   };
 });

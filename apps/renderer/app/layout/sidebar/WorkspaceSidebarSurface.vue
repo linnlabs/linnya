@@ -17,7 +17,7 @@
       :active-scene="activeScene"
       :is-plugin-store-active="isPluginStoreActive()"
       @new-conversation="handleNewConversation"
-      @create-project="promptAndCreateProject"
+      @create-project="handleCreateProjectRequest"
       @knowledge-base-click="handleKnowledgeBaseClick"
       @plugin-store-click="handlePluginStoreClick"
     />
@@ -59,6 +59,7 @@
       :sidebar-nav="effectiveSidebarNav"
       :sidebar-mode="sidebarMode"
       :current-scope="currentScope"
+      :show-assistant-history="showAssistantHistory"
       :projects="projectsStore.projects"
       :is-workspace-scene="isWorkspaceScene"
       :project-chat-search-query="projectChatSearchQuery"
@@ -186,6 +187,7 @@ import { useSidebarAssetPreviewState } from '@/app/layout/sidebar/composables/us
 import { useSidebarFileTreeOpen } from '@/app/layout/sidebar/composables/useSidebarFileTreeOpen';
 import { useSidebarProjectDelete } from '@/app/layout/sidebar/composables/useSidebarProjectDelete';
 import { openProjectWorkspaceFromSidebar } from '@/app/layout/orchestration/openProjectWorkspaceFromSidebar';
+import { deleteProjectFromSidebar } from '@/app/layout/orchestration/projectDeletion';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
 import { workspaceAssetImagePreviewApi } from '@/domains/workspace/features/asset-image-preview';
@@ -285,6 +287,7 @@ const {
 } = useProjectOperations(projectsStore, notificationStore, {
   openProjectWorkspace: openProjectWorkspaceFromSidebar,
   startProjectPlanning,
+  deleteProject: deleteProjectFromSidebar,
 });
 
 const { isDragOverRoot, handleRootDragOver, handleRootDragLeave, handleRootDrop } = useSidebarDragDrop(showError);
@@ -340,6 +343,10 @@ provide('workspaceHandleMenuSelect', (payload) => handleMenuSelect(payload));
 
 const sidebarMode = computed(() => props.sidebarMode);
 const currentScope = computed(() => navigationScope.currentScope);
+const showAssistantHistory = computed(() => (
+  currentScope.value.kind === 'linnya-assistant'
+  && sidebarHistoryRevealStore.latestRequest?.scope.kind === 'linnya-assistant'
+));
 const effectiveSidebarNav = computed(() => {
   if (props.sidebarNav === 'project' && currentScope.value.kind === 'project') {
     return 'project';
@@ -358,6 +365,15 @@ const readExposedElementRef = (exposedValue) => {
 const sidebarContentHostRef = computed(() => readExposedElementRef(sidebarContentRef.value?.sidebarContentHostRef));
 const sidebarContentViewportMountRef = computed(() => readExposedElementRef(sidebarContentRef.value?.sidebarContentViewportMountRef));
 const sidebarContentViewportRef = ref(null);
+
+const handleCreateProjectRequest = () => {
+  // 用户填写弹窗时先回到列表起点，新项目插入时才能看见完整的推移动效。
+  sidebarContentViewportRef.value?.scrollTo({
+    top: 0,
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+  });
+  promptAndCreateProject();
+};
 
 const projectCreateOptions = computed(() => [
   { value: 'folder', text: workspaceMessage('workspace.sidebar.fileTree.newFolder') },
@@ -623,6 +639,11 @@ watch(
     scheduleSidebarOverlayScrollUpdate();
   },
   { flush: 'post' },
+);
+
+watch(
+  () => getNavigationScopeKey(currentScope.value),
+  () => sidebarHistoryRevealStore.dismiss(),
 );
 
 watch(

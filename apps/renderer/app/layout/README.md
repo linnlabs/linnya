@@ -150,6 +150,10 @@ app/layout/
 
 侧边栏项目入口通过 `orchestration/openProjectWorkspaceFromSidebar.ts` 组织“导航提交 → 项目领域投影 → 新草稿 → 文件树加载”。跨项目时禁止在调用 `workspaceNavigation.openWorkspace` 前直接改写 `navigationScope`，否则导航会误判为同一 scope，并把上一个项目的活动文档带入新项目。
 
+侧栏删除由 `orchestration/projectDeletion.ts` 统一组织 Desktop 删除成功与外部删除通知后的收尾。
+删除当前项目先停用其已失效的文档会话，再通过正式导航进入无项目草稿、清空项目树和历史展开意图；
+不能通过项目 store 直接切 scope。删除失败不提前清理界面，删除其他项目不改变当前导航。
+
 domain 内部需要导航时，调用 `apps/renderer/shared/ports/workspaceNavigationPort.ts`。domain 不能 import `app/layout`，也不能直接调用 `layoutStore`。
 
 `orchestration/workspaceContext.ts` 是 app-level workspace 上下文读取入口。它负责把 workspace store 与 file-manager 的内部状态投影为窄接口：
@@ -341,6 +345,11 @@ AnswerMessage 等 domain 内部的同名局部 class。
 - `SidebarProjectNav.vue`：项目态顶部返回、分段切换、搜索与新建菜单；
 - `SidebarContent.vue`：列表态/项目态内容区拼装，会同时组合 workspace 文件树和 conversation 对话列表；
 - `SidebarAssetPreview.vue`：文件树资源预览弹窗。
+
+无项目历史列表只在 Header「全部历史对话」显式请求后展开，不从 `linnya-assistant` scope 自动推导；
+切换 scope 清除展开意图，同 scope 选择历史仍保留列表。删除项目返回首页不能突然展开历史。
+项目创建后复用只读目录刷新，保持旧节点挂载；`SidebarContent` 的 keyed TransitionGroup
+让既有项目向下位移、新项目从顶部淡入。动效使用统一 motion token，遵循减少动态效果设置。
 
 文件树点击打开、资源预览、项目删除确认等局部流程放在 `sidebar/composables/useSidebar*.ts`，避免主组合面继续膨胀。只有纯 workspace 的项目、文件树、菜单、拖放能力才放到 `domains/workspace/ui/sidebar`。
 

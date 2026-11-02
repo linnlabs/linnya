@@ -13,13 +13,14 @@ import type { NotificationStore } from '@/app/notification';
 import type { useWorkspaceProjectsStore } from '../../../store/WorkspaceProjectsStore';
 import type { Project } from '../../../definitions/project';
 import type { ProjectEditData, ProjectFormValues, ProjectOperationsOptions } from '../definitions/projectOperations';
+import { refreshProjectCatalog } from '../../../features/project-catalog';
 
 export function useProjectOperations(
   workspaceStore: ReturnType<typeof useWorkspaceProjectsStore>,
   notificationStore: Pick<NotificationStore, 'show'>,
   options: ProjectOperationsOptions,
 ) {
-  const { openProjectWorkspace, startProjectPlanning } = options;
+  const { openProjectWorkspace, startProjectPlanning, deleteProject: deleteProjectWorkspace } = options;
   const { workspaceMessage } = useWorkspaceLocalization();
   const showCreateProjectDialog = ref(false);
   const isEditMode = ref(false);
@@ -105,11 +106,13 @@ export function useProjectOperations(
         notificationStore.show(workspaceMessage('workspace.project.operation.created', { projectName: name }), 'success');
         const projectId = result.data.projectId;
 
+        closeProjectDialog();
+
         // 先写入“创建弹窗里选择的关联知识库”，保证后续进入项目时能立刻读到
         await applyProjectKnowledgeBaseLinks(projectId, kbIds);
 
-        closeProjectDialog();
-        await workspaceStore.loadProjects();
+        // 已加载的列表保持挂载，正式目录刷新会按创建时间把新项目插在顶部。
+        await refreshProjectCatalog();
 
         // 自动进入新创建的项目
         // 项目创建与点击既有项目共用导航：先保存并退出旧文档，再提交新项目身份。
@@ -192,7 +195,7 @@ export function useProjectOperations(
    */
   const deleteProject = async (projectId: string) => {
     try {
-      await workspaceStore.deleteProject(projectId);
+      await deleteProjectWorkspace(projectId);
       notificationStore.show(workspaceMessage('workspace.project.operation.deleted'), 'success');
     } catch (error) {
       console.error('[useProjectOperations] Failed to delete project:', error);
@@ -247,14 +250,13 @@ export function useProjectOperations(
       const projectId = result.data.projectId;
       console.log('[useProjectOperations] AI 辅助创建项目成功，projectId:', projectId);
 
+      closeProjectDialog();
+
       // 先写入“关联知识库”，再进入项目/创建对话，确保后续上下文读取到最新关联
       await applyProjectKnowledgeBaseLinks(projectId, kbIds);
 
-      // 关闭对话框
-      closeProjectDialog();
-      
       // 刷新项目列表
-      await workspaceStore.loadProjects();
+      await refreshProjectCatalog();
       
       // 2. 由 app 组合层统一导航并开启项目初始化 Agent。
       // 这里不能提前切 scope，否则导航会把跨项目切换误判成同项目。

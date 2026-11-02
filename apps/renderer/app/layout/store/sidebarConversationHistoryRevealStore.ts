@@ -27,8 +27,14 @@ export const useSidebarConversationHistoryRevealStore = defineStore('sidebarConv
     nextRequestId = latestRequest.value.id;
   };
 
+  /** 历史展开是显式 UI 意图，不能随导航到无项目首页而自动出现。 */
+  const dismiss = (): void => {
+    latestRequest.value = null;
+  };
+
   return {
     latestRequest,
     requestReveal,
+    dismiss,
   };
 });

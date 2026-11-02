@@ -65,6 +65,7 @@ describe('project creation navigation', () => {
   function operations() {
     return useProjectOperations(useWorkspaceProjectsStore(), { show: vi.fn() }, {
       openProjectWorkspace: openProjectWorkspaceFromSidebar,
+      deleteProject: vi.fn(),
       startProjectPlanning: (project: { id: string; name: string; description: string }) => (
         startProjectPlanningConversation({
           project,

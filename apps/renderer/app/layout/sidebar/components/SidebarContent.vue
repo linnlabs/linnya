@@ -15,7 +15,7 @@
     >
       <template v-if="sidebarNav === 'list'">
         <SidebarChatList
-          v-if="currentScope.kind === 'linnya-assistant'"
+          v-if="currentScope.kind === 'linnya-assistant' && showAssistantHistory"
           :scope="{ kind: 'linnya-assistant' }"
           surface="outer-list"
           :reveal-pulse-key="getConversationRevealPulseKey({ kind: 'linnya-assistant' })"
@@ -23,7 +23,7 @@
           @display-change="$emit('display-change')"
         />
 
-          <div class="projects-section">
+        <div class="projects-section">
           <div class="section-header">
             <span class="section-title">{{ workspaceMessage('workspace.sidebar.section.projects') }}</span>
           </div>
@@ -32,8 +32,14 @@
             {{ workspaceMessage('workspace.sidebar.project.empty') }}
           </div>
 
-          <template v-for="project in projects" :key="project.id">
+          <TransitionGroup
+            name="sidebar-project-list"
+            tag="div"
+            class="sidebar-project-list"
+          >
             <SidebarProjectGroup
+              v-for="project in projects"
+              :key="project.id"
               :project="project"
               :is-expanded="isProjectExpanded(project.id)"
               :conversation-selection-enabled="isWorkspaceScene"
@@ -48,7 +54,7 @@
               @collapse-transition-start="$emit('collapse-transition-start')"
               @collapse-transition-end="$emit('collapse-transition-end')"
             />
-          </template>
+          </TransitionGroup>
         </div>
       </template>
 
@@ -140,6 +146,7 @@ defineProps<{
   sidebarNav: WorkspaceSidebarNav;
   sidebarMode: WorkspaceSidebarMode;
   currentScope: NavigationScope;
+  showAssistantHistory: boolean;
   projects: Project[];
   isWorkspaceScene: boolean;
   projectChatSearchQuery: string;

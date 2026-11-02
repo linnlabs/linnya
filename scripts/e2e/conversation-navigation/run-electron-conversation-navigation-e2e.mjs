@@ -3,6 +3,7 @@ import { seedBottomReturnHistory, runBottomReturnScenario } from './bottom-retur
 import { runHistoryLoadFailureScenario } from './history-load-failure-scenario.mjs';
 import { runSidebarResizeScenario } from './sidebar-resize-scenario.mjs';
 import { runCreateProjectAfterDocumentOpen } from './create-project-scenario.mjs';
+import { runProjectDeletionScenario } from './project-deletion-scenario.mjs';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -1645,7 +1646,15 @@ async function run() {
         throw new Error('资源链接门禁使用隔离 fixture，不接受外部数据库快照');
       }
       await runConversationResourceLinks(cdp, rendererErrors);
-      await runCreateProjectAfterDocumentOpen({ cdp, evaluate, waitFor, documentId: resourceLinkWorkspaceDocumentId });
+      const createdProjectId = await runCreateProjectAfterDocumentOpen({ cdp, evaluate, waitFor, documentId: resourceLinkWorkspaceDocumentId });
+      // 删除门禁使用刚创建的普通项目；默认项目不可删除。只调整隔离 fixture 的会话归属。
+      const fixtureDb = openNodeDatabase();
+      try {
+        fixtureDb.prepare('UPDATE conversations SET project_id = ?').run(createdProjectId);
+      } finally {
+        fixtureDb.close();
+      }
+      await runProjectDeletionScenario({ cdp, evaluate, waitFor, projectId: createdProjectId });
       await assertRendererHealthy(cdp, rendererErrors, '资源文档打开后创建新项目');
       cdp.close();
       console.log('[conversation-navigation-e2e] Workspace 应用内打开、Conversation/Host 文件管理器定位通过。');
