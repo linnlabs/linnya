@@ -29,7 +29,7 @@
 右轴必须显式声明，且不能继承左轴单位/范围/标题。系列重排只用于原生 group，`c:order` 保留作者顺序。
 
 横向条形（`bar` + `barDir=bar`）的作者顺序就是从上往下的阅读顺序。正式物化阶段将类目轴
-`orientation` 设为 `maxMin`，值轴 `crosses` 设为 `max`，让值轴留在底部；仅修改已有节点，
+`orientation` 设为 `maxMin`，值轴 `crosses` 设为 `max`、`tickLblPos` 设为 `nextTo`，让值轴和标签留在底部；仅修改已有节点，
 `crosses` / `crossesAt` 保持互斥及 ECMA-376 顺序。PptxGenJS 4.0.1 的轴类型未开放这两个值，
 不通过断言扩宽 SDK 选项。普通、堆叠、百分比堆叠和逐系列样式共用此路径，工作簿、缓存与
 `c:order` 均保留作者顺序。原生图例没有独立的顺序字段，不能伪造 `legendEntry` 顺序控制；

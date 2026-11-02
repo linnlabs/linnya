@@ -53,6 +53,7 @@ describe('横向条形的作者阅读顺序', () => {
     expect(required(value, 'c:orientation').getAttribute('val')).toBe('minMax');
     expect(required(value, 'c:axPos').getAttribute('val')).toBe('b');
     expect(required(value, 'c:crosses').getAttribute('val')).toBe('max');
+    expect(required(value, 'c:tickLblPos').getAttribute('val')).toBe('nextTo');
     expect(getElements(value, 'c:crossesAt')).toHaveLength(0);
     expect(required(category, 'c:crosses').getAttribute('val')).toBe('autoZero');
 

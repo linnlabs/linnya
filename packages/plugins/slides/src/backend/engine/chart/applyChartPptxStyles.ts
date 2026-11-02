@@ -123,6 +123,8 @@ function applyHorizontalBarAxes(doc: Document): void {
   const crosses = doc.createElement('c:crosses');
   crosses.setAttribute('val', 'max');
   value.replaceChild(crosses, crossing);
+  // low 指类目低端，反向后在顶部；标签要跟着值轴留在底部。
+  child(value, 'c:tickLblPos')?.setAttribute('val', 'nextTo');
 }
 
 /** CT_DLbl/CT_DLbls 的有序子节点；新增字段必须遵守 OOXML 顺序。 */
