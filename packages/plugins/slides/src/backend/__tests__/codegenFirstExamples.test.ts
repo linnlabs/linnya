@@ -293,9 +293,10 @@ describe('slides-design runnable examples (closed loop)', () => {
     // 原始数值缓存与可编辑工作簿必须存在，不以图片替代扩展能力。
     expect(xmls[0]).toContain('<c:v>0.22</c:v>');
     expect(Object.keys(zip.files).filter(p => p.startsWith('ppt/embeddings/') && p.endsWith('.xlsx'))).toHaveLength(3);
-    const pie = new DOMParser().parseFromString(xmls[2], 'application/xml');
-    for (const label of getElements(pie, 'c:dLbl')) {
-      expect(getElementByTag(label, 'c:dLblPos')?.getAttribute('val')).toBe('inEnd');
+    const doughnut = new DOMParser().parseFromString(xmls[2], 'application/xml');
+    expect(getElements(doughnut, 'c:doughnutChart')).toHaveLength(1);
+    expect(getElements(doughnut, 'c:dLblPos')).toHaveLength(0);
+    for (const label of getElements(doughnut, 'c:dLbl')) {
       expect(getElementByTag(label, 'c:showPercent')?.getAttribute('val')).toBe('1');
       expect(getElementByTag(label, 'c:showVal')?.getAttribute('val')).toBe('0');
     }
