@@ -1,5 +1,5 @@
 import { readCanvasLinePalette } from '../../src/shared';
-import { app, BrowserWindow, nativeImage } from 'electron';
+import { app, BrowserWindow, nativeImage, type WebContents, type Event, type RenderProcessGoneDetails } from 'electron';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
@@ -12,18 +12,32 @@ if (!output) throw new Error('Visual output directory required');
 app.setPath('userData', path.join(output, 'profile'));
 app.on('window-all-closed', () => {});
 
+async function evaluate(webContents: WebContents, expression: string): Promise<unknown> {
+  console.log(`[canvas visual] ${expression}`);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let removeCrashListener = () => {};
+  try {
+    return await Promise.race([webContents.executeJavaScript(expression), new Promise<never>((_, reject) => {
+      const gone = (_event: Event, details: RenderProcessGoneDetails) => reject(new Error(`visual_renderer_gone:${details.reason}:${details.exitCode}:${expression}`));
+      webContents.once('render-process-gone', gone); removeCrashListener = () => { webContents.removeListener('render-process-gone', gone); };
+      timer = setTimeout(() => reject(new Error(`visual_case_timeout:${expression}`)), 45000);
+    })]);
+  } finally { clearTimeout(timer); removeCrashListener(); }
+}
+
 async function run() {
   await app.whenReady();
   if (process.platform === 'darwin') app.setActivationPolicy('accessory');
   const win = new BrowserWindow({ show: false, width: 2400, height: 1200, webPreferences: { sandbox: true, contextIsolation: true,
     offscreen: true, backgroundThrottling: false, enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
-  win.webContents.on('console-message', details => { if (details.level === 'error' || details.level === 'warning') console.error(details.message); });
+  win.webContents.on('console-message', details => { if (details.level === 'error' || details.level === 'warning' || details.message.startsWith('[canvas visual')) console.error(details.message); });
+  win.webContents.on('render-process-gone', (_event, details) => console.error('[canvas visual renderer gone]', details));
   try {
     await win.loadFile(path.join(output, 'index.html'));
     win.webContents.setZoomFactor(2);
     const reports = [];
     for (const theme of ['light', 'dark']) for (const material of ['paper', 'card']) for (const color of material === 'paper' ? ['white', 'red', 'green'] : ['white']) {
-      const state = prepared.parse(await win.webContents.executeJavaScript(`window.prepareCanvasVisualProbe(${JSON.stringify(theme)},${JSON.stringify(material)},${JSON.stringify(color)})`));
+      const state = prepared.parse(await evaluate(win.webContents, `window.prepareCanvasVisualProbe(${JSON.stringify(theme)},${JSON.stringify(material)},${JSON.stringify(color)})`));
       const screenshot = nativeImage.createFromBuffer((await win.webContents.capturePage()).toPNG());
       const size = screenshot.getSize();
       const ratio = size.width / state.viewportWidth;
@@ -67,7 +81,7 @@ async function run() {
       if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || inkIou < 0.95 || pixiIou < 0.95 || crossedText < 10 || ghostPreservation < 0.95
         || Math.min(authored.dom, authored.raster, authored.pixi) < 10) throw new Error(`visual_content_mismatch:${JSON.stringify(report)}`);
     }
-    const line = z.object({ dpr: z.number(), image: z.string() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasLineVisualProbe()'));
+    const line = z.object({ dpr: z.number(), image: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasLineVisualProbe()'));
     const lineImage = nativeImage.createFromDataURL(line.image), linePixels = lineImage.toBitmap(), lineWidth = lineImage.getSize().width;
     let dashInk = 0, dashGap = 0;
     for (let x = Math.ceil(80 * line.dpr); x < Math.floor(250 * line.dpr); x++) {
@@ -77,7 +91,7 @@ async function run() {
     await writeFile(path.join(output, 'lines.png'), lineImage.toPNG());
     if (dashInk < 30 || dashGap < 30) throw new Error(`line_dash_is_not_rendered:${dashInk}:${dashGap}`);
     const coloredLines = z.object({ light: z.string(), dark: z.string(), dpr: z.number(), colors: z.array(z.enum(['red', 'orange', 'yellow', 'green', 'cyan', 'purple'])) })
-      .parse(await win.webContents.executeJavaScript('window.prepareCanvasLineColorsVisualProbe()'));
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasLineColorsVisualProbe()'));
     const colorReports = [];
     for (const theme of ['light', 'dark'] as const) {
       const image = nativeImage.createFromDataURL(coloredLines[theme]), pixels = image.toBitmap(), width = image.getSize().width, palette = readCanvasLinePalette(theme === 'dark');
@@ -94,7 +108,7 @@ async function run() {
       await writeFile(path.join(output, `lines-colors-${theme}.png`), image.toPNG());
     }
     const occlusion = z.object({ before: z.string(), during: z.string(), after: z.string(), dpr: z.number() })
-      .parse(await win.webContents.executeJavaScript('window.prepareCanvasDragOcclusionVisualProbe()'));
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasDragOcclusionVisualProbe()'));
     const magenta = (data: string) => {
       const image = nativeImage.createFromDataURL(data), pixels = image.toBitmap(), width = image.getSize().width; let count = 0;
       for (let y = 80 * occlusion.dpr; y < 200 * occlusion.dpr; y++) for (let x = 70 * occlusion.dpr; x < 300 * occlusion.dpr; x++) {
@@ -105,7 +119,7 @@ async function run() {
     const dragOcclusion = { before: magenta(occlusion.before), during: magenta(occlusion.during), after: magenta(occlusion.after) };
     if (dragOcclusion.before || dragOcclusion.after || dragOcclusion.during < 1000) throw new Error(`drag_occlusion_stale:${JSON.stringify(dragOcclusion)}`);
     await writeFile(path.join(output, 'drag-revealed-body.png'), nativeImage.createFromDataURL(occlusion.during).toPNG());
-    const guides = z.object({ shown: z.string(), hidden: z.string() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasGuidesVisualProbe()'));
+    const guides = z.object({ shown: z.string(), hidden: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasGuidesVisualProbe()'));
     const greenPixels = (url: string) => {
       const pixels = nativeImage.createFromDataURL(url).toBitmap(); let count = 0;
       for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 1] > pixels[i + 2] + 20 && pixels[i + 1] > pixels[i] + 20) count++;
@@ -113,7 +127,7 @@ async function run() {
     };
     const snapGuides = { shown: greenPixels(guides.shown), hidden: greenPixels(guides.hidden) };
     if (snapGuides.shown < 1000 || snapGuides.hidden !== 0) throw new Error(`snap_guides_not_projected_or_cleared:${JSON.stringify(snapGuides)}`);
-    const map = z.object({ before: z.string(), after: z.string(), dpr: z.number(), dx: z.number(), dy: z.number() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasMapPanVisualProbe()'));
+    const map = z.object({ before: z.string(), after: z.string(), dpr: z.number(), dx: z.number(), dy: z.number() }).parse(await evaluate(win.webContents, 'window.prepareCanvasMapPanVisualProbe()'));
     const mapBefore = nativeImage.createFromDataURL(map.before), mapAfter = nativeImage.createFromDataURL(map.after);
     const beforePixels = mapBefore.toBitmap(), afterPixels = mapAfter.toBitmap(), mapSize = mapBefore.getSize();
     let mapInk = 0, mapPreserved = 0;
@@ -126,7 +140,7 @@ async function run() {
     if (mapInk < 100 || mapPreserved / mapInk < 0.95) throw new Error(`map_pan_labels_mismatch:${mapInk}:${mapPreserved}`);
     await writeFile(path.join(output, 'map-before.png'), mapBefore.toPNG()); await writeFile(path.join(output, 'map-after.png'), mapAfter.toPNG());
     const selectedMap = z.object({ before: z.string(), selected: z.string(), reference: z.string() })
-      .parse(await win.webContents.executeJavaScript('window.prepareCanvasSelectedMapVisualProbe()'));
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasSelectedMapVisualProbe()'));
     const beforeMap = nativeImage.createFromDataURL(selectedMap.before).toBitmap(), chosenMap = nativeImage.createFromDataURL(selectedMap.selected).toBitmap();
     const expectedMap = nativeImage.createFromDataURL(selectedMap.reference).toBitmap(); let selectedInk = 0, selectedIntersection = 0, selectedUnion = 0, selectionChanges = 0;
     for (let i = 0; i < expectedMap.length; i += 4) {
@@ -137,7 +151,7 @@ async function run() {
     }
     const selectedLabels = { selectedInk, selectionChanges, ratio: selectedIntersection / selectedUnion };
     if (selectedInk < 100 || selectionChanges < 100 || selectedLabels.ratio < 0.99) throw new Error(`selected_map_priority_missing:${JSON.stringify(selectedLabels)}`);
-    const thumbnails = z.object({ titles: z.string(), thumbnails: z.string(), dpr: z.number() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasThumbnailVisualProbe()'));
+    const thumbnails = z.object({ titles: z.string(), thumbnails: z.string(), dpr: z.number() }).parse(await evaluate(win.webContents, 'window.prepareCanvasThumbnailVisualProbe()'));
     const thumbReports = [];
     for (const mode of ['titles', 'thumbnails'] as const) {
       const image = nativeImage.createFromDataURL(thumbnails[mode]), pixels = image.toBitmap(), size = image.getSize();
@@ -154,7 +168,7 @@ async function run() {
     }
     const lodReports = [];
     for (const theme of ['light', 'dark']) {
-      const lod = z.object({ expected: z.string(), actual: z.string() }).parse(await win.webContents.executeJavaScript(`window.prepareCanvasMixedLodVisualProbe(${JSON.stringify(theme)})`));
+      const lod = z.object({ expected: z.string(), actual: z.string() }).parse(await evaluate(win.webContents, `window.prepareCanvasMixedLodVisualProbe(${JSON.stringify(theme)})`));
       const expected = nativeImage.createFromDataURL(lod.expected), actual = nativeImage.createFromDataURL(lod.actual), a = expected.toBitmap(), b = actual.toBitmap();
       let union = 0, intersection = 0;
       const ink = (pixels: Uint8Array, index: number) => theme === 'light' ? pixels[index] < 180 && pixels[index + 1] < 180 && pixels[index + 2] < 180 : pixels[index] > 150 && pixels[index + 1] > 150 && pixels[index + 2] > 150;
@@ -163,7 +177,7 @@ async function run() {
       lodReports.push({ theme, union, intersection, ratio: intersection / union }); await writeFile(path.join(output, `mixed-lod-${theme}.png`), actual.toPNG());
     }
     const context = z.object({ before: z.string(), after: z.string(), rejected: z.boolean(), beforeStats: z.object({ cards: z.number(), bitmaps: z.number() }), afterStats: z.object({ cards: z.number(), bitmaps: z.number() }) })
-      .parse(await win.webContents.executeJavaScript('window.prepareCanvasContextLossVisualProbe()'));
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasContextLossVisualProbe()'));
     const contextBefore = nativeImage.createFromDataURL(context.before).toBitmap(), contextAfterImage = nativeImage.createFromDataURL(context.after), contextAfter = contextAfterImage.toBitmap();
     let contextInk = 0, contextPreserved = 0;
     for (let index = 0; index < contextBefore.length; index += 4) if (contextBefore[index] < 180 && contextBefore[index + 1] < 180 && contextBefore[index + 2] < 180) {
@@ -172,7 +186,7 @@ async function run() {
     if (contextInk < 100 || contextPreserved / contextInk < 0.95 || context.afterStats.cards !== context.beforeStats.cards || context.afterStats.bitmaps !== context.beforeStats.bitmaps) throw new Error('context_restore_content_missing');
     await writeFile(path.join(output, 'context-restored.png'), contextAfterImage.toPNG());
     const editing = z.object({ expected: z.string(), actual: z.string(), dpr: z.number(), visible: z.number(), status: z.string(), again: z.string(), smoothing: z.string() })
-      .parse(await win.webContents.executeJavaScript('window.prepareCanvasEditingVisualProbe()'));
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasEditingVisualProbe()'));
     const editingExpected = nativeImage.createFromDataURL(editing.expected), expectedPixels = editingExpected.toBitmap();
     const editingActual = nativeImage.createFromDataURL(editing.actual), actualPixels = editingActual.toBitmap(), editingWidth = editingExpected.getSize().width, actualWidth = editingActual.getSize().width;
     let editingInk = 0, editingIntersection = 0, editingUnion = 0;
@@ -189,7 +203,7 @@ async function run() {
     let fallbackInk = 0;
     try {
       await unsupported.loadFile(path.join(output, 'index.html'));
-      const fallback = z.object({ image: z.string(), errors: z.array(z.string()) }).parse(await unsupported.webContents.executeJavaScript('window.prepareCanvasUnsupportedApiVisualProbe()'));
+      const fallback = z.object({ image: z.string(), errors: z.array(z.string()) }).parse(await evaluate(unsupported.webContents, 'window.prepareCanvasUnsupportedApiVisualProbe()'));
       const fallbackImage = nativeImage.createFromDataURL(fallback.image), pixels = fallbackImage.toBitmap();
       for (let index = 0; index < pixels.length; index += 4) if (pixels[index] < 150 && pixels[index + 1] < 150 && pixels[index + 2] < 150) fallbackInk++;
       if (fallbackInk < 100) throw new Error('unsupported_api_identity_is_empty');

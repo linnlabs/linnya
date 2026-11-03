@@ -13,7 +13,9 @@
     "./performanceRenderer.ts",
     "./performanceElectron.ts",
     "./visibilityRenderer.ts",
-    "./visibilityElectron.ts"
+    "./visibilityElectron.ts",
+    "./visibleUpdateRenderer.ts",
+    "./visibleUpdateElectron.ts"
   ],
   "exclude": []
 }
