@@ -16,6 +16,7 @@ import * as aiInvocationPort from '@plugin/renderer/aiInvocationPort';
 import * as composerCommandPort from '@plugin/renderer/composerCommandPort';
 import * as conversationSubrunInvocationPort from '@plugin/renderer/conversationSubrunInvocationPort';
 import * as documentReferences from '@plugin/renderer/documentReferences';
+import * as pluginRuntime from '@plugin/renderer/pluginRuntime';
 import * as documentPreview from '@plugin/renderer/documentPreview';
 import * as documentMutationPort from '@plugin/renderer/documentMutationPort';
 import * as documentReferenceRuntimePort from '@plugin/renderer/documentReferenceRuntimePort';
@@ -81,6 +82,7 @@ export function installRendererPluginHostModules(): void {
       '@plugin/renderer/composerCommandPort': composerCommandPort,
       '@plugin/renderer/conversationSubrunInvocationPort': conversationSubrunInvocationPort,
       '@plugin/renderer/documentReferences': documentReferences,
+      '@plugin/renderer/pluginRuntime': pluginRuntime,
       '@plugin/renderer/documentPreview': documentPreview,
       '@plugin/renderer/documentMutationPort': documentMutationPort,
       '@plugin/renderer/documentReferenceRuntimePort': documentReferenceRuntimePort,

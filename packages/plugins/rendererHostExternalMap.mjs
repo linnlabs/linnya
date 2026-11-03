@@ -34,6 +34,7 @@ export const hostRendererExternalUrls = Object.freeze({
   '@plugin/renderer/toolRefreshPort': 'plugin://host/plugin-renderer/toolRefreshPort.js',
   '@plugin/renderer/workspaceNavigation': 'plugin://host/plugin-renderer/workspaceNavigation.js',
   '@plugin/renderer/documentReferences': 'plugin://host/plugin-renderer/documentReferences.js',
+  '@plugin/renderer/pluginRuntime': 'plugin://host/plugin-renderer/pluginRuntime.js',
   '@plugin/renderer/documentPreview': 'plugin://host/plugin-renderer/documentPreview.js',
   '@plugin/renderer/workspaceRuntime': 'plugin://host/plugin-renderer/workspaceRuntime.js',
   ...rendererUiExternalUrls,
