@@ -88,6 +88,7 @@ class PixiCanvasKernel implements CanvasKernel {
   private destroyed = false;
   private readonly removeInteraction: () => void;
   private readonly reduced: boolean;
+  private readonly capture: boolean;
   private readonly software: boolean;
   private readonly notify?: (intent: CanvasKernelIntent) => void;
   private renderStatus: CanvasRenderStatus = { limited: false, phase: 'ready', message: null };
@@ -113,6 +114,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.canvas = app.canvas;
     // 命中由空间索引和原生DOM事件负责，Pixi只绘制，避免第二套隐式全树扫描。
     app.stage.eventMode = 'none';
+    this.capture = options.renderingMode === 'capture';
     this.software = readCanvasGpuMode(app.renderer).software;
     this.reduced = this.software && options.renderingMode !== 'capture'; this.notify = options.onIntent;
     if (this.reduced) app.renderer.resize(Math.max(1, width), Math.max(1, height), 1);
@@ -290,7 +292,8 @@ class PixiCanvasKernel implements CanvasKernel {
   }
 
   setCamera(next: CanvasCamera): void {
-    const zoom = Math.max(0.02, Math.min(4, next.zoom));
+    // 导出区域由输出像素/世界尺寸确定倍率；交互缩放上限不能改变所请求的裁切。
+    const zoom = this.capture ? next.zoom : Math.max(0.02, Math.min(4, next.zoom));
     const zoomChanged = zoom !== this.camera.zoom;
     const lodChanged = (zoom < 0.15) !== (this.camera.zoom < 0.15) || (zoom < 0.3) !== (this.camera.zoom < 0.3);
     this.camera = { x: next.x, y: next.y, zoom };

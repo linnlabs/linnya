@@ -10,6 +10,7 @@ import { persistCanvasPreferences, CanvasAppearanceSection } from './features/ma
 import canvasStyles from './styles/canvas.css?url';
 import markdownStyles from '@linnya/markdown-document-core/style.css?url';
 import cardInkStyles from './features/cardRendering/styles/canvasCardInk.css?url';
+import cardMediaStyles from './features/cardRendering/styles/canvasMediaContent.css?url';
 import { clearCanvasDisplayImageCache } from './features/cardRendering/content';
 
 let stopPreferences: (() => void) | null = null;
@@ -21,7 +22,7 @@ const CanvasView = defineAsyncComponent(async () => {
 });
 export const rendererPlugin: RendererPluginContribution = {
   meta: canvasPluginMeta,
-  stylesheets: [markdownStyles, canvasStyles, cardInkStyles],
+  stylesheets: [markdownStyles, canvasStyles, cardInkStyles, cardMediaStyles],
   conversationInput: { referenceKinds: [createCanvasSelectionReferenceKind(createCanvasSelectionReferencePort())], referenceProviders: [] },
   activate() {
     stopPreferences = persistCanvasPreferences();

@@ -2,3 +2,5 @@ export { createCanvasCardRasterBatch } from './orchestration/createCanvasCardRas
 export type { CanvasCardRasterInput, CanvasCardRasterOutput } from './definitions/canvasCardRasterization';
 export { hydrateCanvasManagedImages } from './functions/hydrateCanvasManagedImages';
 export { hydrateCanvasDocumentTags } from './functions/hydrateCanvasDocumentTags';
+
+export { createCanvasImageSurface } from './functions/createCanvasImageSurface';

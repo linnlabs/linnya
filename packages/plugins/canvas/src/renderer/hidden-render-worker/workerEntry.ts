@@ -3,6 +3,7 @@ import { createLatestRasterQueue } from '../capabilities/textRasterization';
 import { createCanvasWorkerExecutor } from './orchestration/createCanvasWorkerExecutor';
 import '@linnya/markdown-document-core/style.css';
 import '../features/cardRendering/styles/canvasCardInk.css';
+import '../features/cardRendering/styles/canvasMediaContent.css';
 
 declare global { interface Window { __canvasRenderBridge: CanvasRenderBridge } }
 const bridge = window.__canvasRenderBridge;

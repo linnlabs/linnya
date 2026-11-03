@@ -28,7 +28,12 @@ async function executeCanvasWorkerRequest(input: CanvasWorkerRequest, signal: Ab
       kernel.setDocumentTitles(new Map(Object.entries(request.documents).map(([id, presentation]) => [id, presentation.title])));
       kernel.setThumbnailCards(new Set(request.snapshot.elements.filter((element): element is CanvasCard => element.type === 'document' && request.documents[element.data.documentId]?.keepThumbnail === true).map(card => card.id)));
       kernel.setAppearance({ dark: request.theme === 'dark', material: request.material, overview: 'titles' });
-      kernel.fit(request.region ? [request.region] : canvasRenderRectangles(request.snapshot.elements));
+      if (request.region) {
+        // 区域是明确的裁切边界，不应用整图fit的40px留白；保持比例并居中。
+        const region = request.region, zoom = Math.min(request.width / region.width, request.height / region.height);
+        kernel.setCamera({ zoom, x: (request.width - region.width * zoom) / 2 - region.x * zoom,
+          y: (request.height - region.height * zoom) / 2 - region.y * zoom });
+      } else kernel.fit(canvasRenderRectangles(request.snapshot.elements));
       const camera = kernel.readCamera();
       const cards = kernel.rasterCards();
       const renderBatch = createCanvasCardRasterBatch({ rasterizer, createContent: async card => createCardSurface(card, request) });
