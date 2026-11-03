@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createDocumentReferenceOperations, DOCUMENT_REFERENCE_SCHEMAS } from '../../../index';
+import { readDocumentBacklinks, createDocumentReferenceOperations, DOCUMENT_REFERENCE_SCHEMAS } from '../../../index';
 import { readWorkspaceDocumentIdentity } from 'src/plugin-sdk/backend/workspaceDocumentProjection';
 
 let db: Database.Database;
@@ -21,6 +21,22 @@ beforeEach(() => {
 afterEach(() => db.close());
 
 describe('document reference business lifecycle', () => {
+  it('paginates grouped backlinks without leaking moved/deleted sources or a foreign target', () => {
+    const insert = db.prepare('INSERT INTO workspace_nodes VALUES (?, ?, ?, ?, NULL)');
+    insert.run('source2', 'p1', 'Second', 'slides'); insert.run('moved', 'p1', 'Private', 'document'); insert.run('removed', 'p1', 'Deleted', 'document');
+    db.transaction(() => {
+      operations().replace({ sourceDocumentId: 'source', references: [{ referenceId: 'r1', targetDocumentId: 'target', kind: 'inline' }, { referenceId: 'r2', targetDocumentId: 'target', kind: 'card' }] });
+      for (const id of ['source2', 'moved', 'removed']) operations().replace({ sourceDocumentId: id, references: [{ referenceId: id, targetDocumentId: 'target', kind: 'inline' }] });
+    }).immediate();
+    db.prepare('UPDATE workspace_nodes SET project_id = ? WHERE id = ?').run('p2', 'moved'); db.prepare('UPDATE workspace_nodes SET deleted_at = 1 WHERE id = ?').run('removed');
+    const port = { read: (id: string) => readWorkspaceDocumentIdentity(db, id), listBacklinks: operations().listBacklinks };
+    const first = readDocumentBacklinks({ projectId: 'p1', documentId: 'target', limit: 1 }, port);
+    expect(first).toEqual({ referenceCount: 3, documentCount: 2, documents: [{ sourceDocumentId: 'source', title: 'Source', nodeType: 'document', referenceCount: 2 }], nextOffset: 1 });
+    expect(readDocumentBacklinks({ projectId: 'p1', documentId: 'target', offset: 1, limit: 1 }, port)).toMatchObject({ documents: [{ sourceDocumentId: 'source2', nodeType: 'slides', referenceCount: 1 }], nextOffset: null });
+    expect(readDocumentBacklinks({ projectId: 'p2', documentId: 'target' }, port)).toEqual({ referenceCount: 0, documentCount: 0, documents: [], nextOffset: null });
+    db.prepare('DELETE FROM workspace_nodes WHERE id = ?').run('target'); insert.run('replacement', 'p1', 'Target', 'document');
+    expect(readDocumentBacklinks({ projectId: 'p1', documentId: 'replacement' }, port).referenceCount).toBe(0);
+  });
   it('joins the caller transaction, preserving old references when any participant fails', () => {
     expect(() => replace()).toThrow('transaction_required');
     db.transaction(() => replace()).immediate();
