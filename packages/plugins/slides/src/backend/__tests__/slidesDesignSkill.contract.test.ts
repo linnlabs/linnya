@@ -49,4 +49,18 @@ describe('slides-design Skill 产品合同', () => {
     expect(fs.existsSync(path.join(skillRoot, 'references/syntax.md'))).toBe(true);
     expect(fs.existsSync(path.join(skillRoot, 'references/examples/complete-deck.js'))).toBe(true);
   });
+
+  it('两种人文风格各有导航入口，且互相指向对方', () => {
+    const body = parsed?.body ?? '';
+    const cultural = fs.readFileSync(path.join(skillRoot, 'references/style-cultural-imagery.md'), 'utf-8');
+    const catalog = fs.readFileSync(path.join(skillRoot, 'references/style-catalog-handout.md'), 'utf-8');
+
+    expect(body).toContain('references/style-cultural-imagery.md');
+    expect(body).toContain('references/style-catalog-handout.md');
+    expect(cultural).toContain('style-catalog-handout.md');
+    expect(catalog).toContain('style-cultural-imagery.md');
+    // 图录阅读稿的栅格和图注规则只属于一份指南，不在展示稿指南里重复。
+    expect(cultural).not.toContain('## 高密度页');
+    expect(catalog).toContain('## 版式系统');
+  });
 });
