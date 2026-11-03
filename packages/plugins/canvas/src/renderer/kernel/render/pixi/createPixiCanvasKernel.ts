@@ -457,11 +457,14 @@ class PixiCanvasKernel implements CanvasKernel {
     if (this.scheduled) cancelAnimationFrame(this.scheduled);
     this.removeInteraction();
     this.canvas.removeEventListener('webglcontextlost', this.loseContext); this.canvas.removeEventListener('webglcontextrestored', this.restoreContext);
-    this.invalidateBitmaps();
-    this.mapLabels.destroy();
-    this.lines.destroy();
-    this.app.destroy({ removeView: true }, { children: true, texture: false });
-    this.backgrounds.paper.destroy(true); this.backgrounds.card.destroy(true);
+    this.canvas.remove();
+    this.invalidateBitmaps(); this.mapLabels.destroy(); this.lines.destroy();
     this.views.clear(); this.cards.clear();
+    // HTML paint事件兑现的Promise仍在Chromium原生paint回调的微任务中。
+    // 此时WEBGL_lose_context会使Renderer进程崩溃；下一task完整释放GPU，逻辑关闭立即生效。
+    setTimeout(() => {
+      this.app.destroy({ removeView: true }, { children: true, texture: false });
+      this.backgrounds.paper.destroy(true); this.backgrounds.card.destroy(true);
+    }, 0);
   }
 }

@@ -6,6 +6,7 @@ import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/ke
 import { createCanvasRasterPresentation } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
+import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
 import '../../src/renderer/styles/canvas.css';
 
 const source = { kind: 'user', conversationId: null, runId: null };
@@ -279,7 +280,12 @@ async function prepareEditingVisual() {
       if (smoothing !== 'ready' || raster.readStats().completed <= after) throw new Error('font_smoothing_did_not_invalidate_exact_bitmap');
       return { status, again, before, after, expected: expectedUrl, actual, dpr: devicePixelRatio, visible: kernel.visibleCards().length, smoothing };
     } finally { direct.dispose(); inkHost.remove(); }
-  } finally { raster.dispose(); }
+  } finally {
+    raster.dispose(); kernel.destroy(); previousKernel = null;
+    const closed = raster.readReadiness([cards[0].id]);
+    if (closed.complete || !closed.suspended || closed.cards[0].mode !== 'outside') throw new Error('disposed_readiness_touched_closed_renderer');
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+  }
 }
 Object.defineProperty(window, 'prepareCanvasEditingVisualProbe', { value: prepareEditingVisual });
 

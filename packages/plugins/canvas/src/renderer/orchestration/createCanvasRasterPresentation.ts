@@ -160,6 +160,8 @@ class CanvasRasterPresentation {
     this.preciseCards.set(demand.card.id, demand.key); return 'ready';
   }
   readReadiness(ids: readonly CanvasCardId[]): CanvasRasterReadiness {
+    if (this.disposed) return { cards: ids.map((id): CanvasRasterReadinessCard => ({ id, revision: null, mode: 'outside', status: 'not_required' })),
+      complete: false, precisionSettling: false, suspended: true };
     const camera = this.options.kernel.readCamera(), targets = new Set(this.options.kernel.rasterCards().map(card => card.id));
     const frame = { count: targets.size, font: this.fontKey() };
     const cards = ids.map(id => this.readCardReadiness(id, targets, frame));
