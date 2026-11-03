@@ -150,3 +150,5 @@ Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。
 `renderer/documentReferences` 提供同项目文档候选及当前展示身份：候选按活动节点名称查询，选择后保存稳定 documentId；标题、类型、路径与插件可用状态在查询时读取。越界或已删除目标不返回标题/路径，插件停用单独标记。Editor 的 @ 与文档型插件的选文档界面共用此门面，不各自读取 Workspace 树或增加专用 IPC。
 
 引用发送准备上下文同时冻结 conversationId 与 projectId。已有会话的归属仍由 Backend 正式会话记录决定；尚未创建会话时，provider 只能使用 Host 冻结的当前项目，不能从引用自带 metadata 猜测。`deduplicationKey` 只用于当前 composer 内同 owner/kind 的重复引用合并，移除或发送后可以重新加入，不写入 Agent 引用正文。
+
+`subscribeWorkspaceMutations` 转发 Workspace 的正式跨进程 mutation stream，回调只接收 `@app/schemas` 的已验证事件，调用方关闭时取消订阅。引用或预览消费者可据稳定 ID 失效派生资源；不建立第二套 Canvas/标签事件总线，也不能用事件正文代替重新读取后的项目范围验证。
