@@ -1,0 +1,41 @@
+import type { CanvasCard } from '@plugin/canvas/shared';
+import type { CanvasDocumentSession } from '../../canvasDocument';
+import type { CanvasResizeGesture } from '../definitions/cardResizing';
+import { createCanvasResizeState } from '../store/createCanvasResizeState';
+import { resolveCanvasResize } from '../functions/resolveCanvasResize';
+
+export function createCanvasCardResize(session: CanvasDocumentSession, report: (error: unknown) => void) {
+  const state = createCanvasResizeState();
+  let gesture: CanvasResizeGesture | null = null;
+  let timer: ReturnType<typeof setInterval> | null = null;
+  const release = (active: CanvasResizeGesture) => {
+    if (timer) clearInterval(timer); timer = null;
+    active.target.removeEventListener('pointermove', move); active.target.removeEventListener('pointerup', up); active.target.removeEventListener('pointercancel', cancel);
+    window.removeEventListener('keydown', escape, true); window.removeEventListener('blur', cancel);
+    if (active.target.hasPointerCapture(active.pointer)) active.target.releasePointerCapture(active.pointer);
+    gesture = null; state.set(null);
+  };
+  const cancel = () => { if (gesture) { const active = gesture; release(active); void session.protect(active.card.id, []).catch(report); } };
+  const move = (event: PointerEvent) => { if (gesture?.pointer === event.pointerId) state.set(resolveCanvasResize(gesture, event)); };
+  const up = (event: PointerEvent) => {
+    if (!gesture || event.pointerId !== gesture.pointer) return;
+    const active = gesture, size = resolveCanvasResize(active, event);
+    release(active);
+    void session.commit([{ op: 'update', id: active.card.id, baseRevision: active.card.revision, patch: { width: size.width, height: size.height } }])
+      .catch(report).finally(() => { void session.protect(active.card.id, []).catch(report); });
+  };
+  const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); } };
+  return { state,
+    start(card: CanvasCard, event: PointerEvent, zoom: number) {
+      if (card.locked || event.button !== 0 || !(event.currentTarget instanceof HTMLElement)) return;
+      cancel();
+      gesture = { card, pointer: event.pointerId, clientX: event.clientX, clientY: event.clientY, target: event.currentTarget, zoom };
+      gesture.target.setPointerCapture(event.pointerId); state.set(card);
+      gesture.target.addEventListener('pointermove', move); gesture.target.addEventListener('pointerup', up); gesture.target.addEventListener('pointercancel', cancel);
+      window.addEventListener('keydown', escape, true); window.addEventListener('blur', cancel);
+      void session.protect(card.id, ['width', 'height']).catch(report);
+      timer = setInterval(() => { void session.protect(card.id, ['width', 'height']).catch(report); }, 2000);
+    },
+    dispose: cancel,
+  };
+}
