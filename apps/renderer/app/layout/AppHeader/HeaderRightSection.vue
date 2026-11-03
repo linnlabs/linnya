@@ -305,6 +305,7 @@
       :key="activeDocumentId"
       :document-id="activeDocumentId"
       :preview-component="historyPreviewComponent"
+      :client-session-id="historyClientSessionId"
       @close="showDocumentHistory = false"
     />
 
@@ -417,6 +418,7 @@ const documentAvailability = useDocumentTypeAvailabilityByActiveType(activeDocum
 const historyPreviewComponent = computed(() => documentAvailability.value?.state === 'enabled'
   ? documentAvailability.value.documentType.historyPreviewComponent : undefined);
 const showDocumentHistory = ref(false);
+const historyClientSessionId = ref<string>();
 const { message: historyMessage } = useHistoryMessages();
 const pluginDocumentActionMenu = useDocumentActionMenu(activeDocumentType);
 watch([activeDocumentId, historyPreviewComponent], () => { showDocumentHistory.value = false; showDocMenu.value = false; });
@@ -857,7 +859,15 @@ type DocMenuValue =
 // 处理文档菜单选项选择
 const handleDocMenuSelect = async (value: unknown) => {
   showDocMenu.value = false;
-  if (value === 'document-history' && historyPreviewComponent.value) { showDocumentHistory.value = true; return; }
+  if (value === 'document-history' && historyPreviewComponent.value && activeDocumentId.value) {
+    // 会话属于实际打开的文档表面；确认期间固定它，不能把恢复计入后来切换的视图。
+    const availability = documentAvailability.value;
+    historyClientSessionId.value = availability?.state === 'enabled'
+      ? availability.documentType.historyClientSessionId?.(activeDocumentId.value) ?? undefined
+      : undefined;
+    showDocumentHistory.value = true;
+    return;
+  }
   const menu = pluginDocumentActionMenu.value;
   if (menu?.isAvailable() && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')) {
     await menu.select(value);
