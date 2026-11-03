@@ -56,6 +56,7 @@ export interface CanvasKernel {
   setDocumentTitles(titles: ReadonlyMap<string, string>): void;
   setThumbnailCards(ids: ReadonlySet<CanvasCardId>): void;
   readEdgeGeometry(id: CanvasEdgeId): CanvasEdgeGeometry | null;
+  readCard(id: CanvasCardId): CanvasCard | null;
   visibleCards(): readonly CanvasCard[];
   renderableCards(): readonly CanvasCard[];
   rasterCards(): readonly CanvasCard[];

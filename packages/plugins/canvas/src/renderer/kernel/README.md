@@ -51,3 +51,7 @@ CI可用 `CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes
 `CANVAS_PERFORMANCE_CPU_PROFILE=1`可生成拖动CPU profile辅助定位；带Profiler的输出明确不计真实硬件基线，不能用它的时延作为性能验收结论。
 
 macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事实；powerMonitor的idle只能作辅助。锁屏/未登录/非console用户在创建窗口前拒绝，报告仅保留boolean状态，不写用户身份。被拒绝的新运行写preflight.json并保留上一原始结果；此前仅powerMonitor校验的旧输出不能单独证明解锁态，不得作为正式基线。
+
+光栅回执通过readCard读取当前display事实，不能为每张位图重新分配并扫描整张画布的visibleCards；环境身份校验也不应重复执行缺片矩形差。可见性仍由当前片段验证，旧内容或已退出视口的结果释放。
+
+`node packages/plugins/canvas/dev/probes/run-visibility-probe.mjs`需要已解锁桌面，使用与正式主窗口相同的backgroundThrottling设置，执行原生hide、隐藏期间更新正文、超过paint超时时间后show，并与全新前景绘图比较像素。锁屏在建窗前拒绝；该验证不作为帧率基线。

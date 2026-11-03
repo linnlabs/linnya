@@ -2,7 +2,7 @@ import type { CanvasCard, CanvasCardId } from '@plugin/canvas/shared';
 import { cardRasterKey, createHtmlCardRasterizer, createLatestRasterQueue, splitCardRasterRegions,
   type RasterQueueResult } from '../capabilities/textRasterization';
 import { createCanvasCardRasterBatch, type CanvasCardRasterInput, type CanvasCardRasterOutput } from '../features/cardRendering';
-import type { CanvasRasterDemand, CanvasRasterPending, CanvasRasterPresentationOptions } from '../definitions/canvasRasterPresentation';
+import type { CanvasRasterDemand, CanvasRasterIdentity, CanvasRasterFrame, CanvasRasterPending, CanvasRasterPresentationOptions } from '../definitions/canvasRasterPresentation';
 
 /** 可见内容的派生投影；正文/相机/主题都由各owner提供，不另存一份正文。 */
 export function createCanvasRasterPresentation(options: CanvasRasterPresentationOptions) { return new CanvasRasterPresentation(options); }
@@ -50,7 +50,7 @@ class CanvasRasterPresentation {
     // 补图准备是有界工作批次，不进入纯绘制RAF闭包；同批Promise回执合并一次需求刷新。
     this.pump = true; queueMicrotask(() => { this.pump = false; this.refresh(); });
   }
-  private demand(card: CanvasCard, frame: { readonly count: number; readonly font: string; readonly precise?: boolean }): CanvasRasterDemand {
+  private identity(card: CanvasCard, frame: CanvasRasterFrame): CanvasRasterIdentity {
     const camera = this.options.kernel.readCamera(), pixelRatio = this.options.kernel.readResolution();
     const appearance = this.options.readAppearance();
     const screenWidth = card.width * camera.zoom * pixelRatio;
@@ -59,9 +59,13 @@ class CanvasRasterPresentation {
     const scale = physicalWidth / card.width, content = this.descriptor(card), externalKey = this.options.readContentKey?.(card) ?? '';
     const key = cardRasterKey({ revision: 0, theme: appearance.dark ? 'dark' : 'light', dpr: pixelRatio,
       material: 'body', lod: 0, font: `${frame.font}/14/1.7`, uiScale: 1 }) + content + externalKey + (precise ? JSON.stringify(['exact', physicalWidth]) : 'bucket');
+    return { card, key, content, externalKey, scale, precise, dark: appearance.dark, physicalWidth };
+  }
+  private demand(card: CanvasCard, frame: CanvasRasterFrame): CanvasRasterDemand {
+    const identity = this.identity(card, frame), { key, scale, precise, physicalWidth } = identity;
     const regions = splitCardRasterRegions(this.options.kernel.readMissingBitmapRegions(card.id, key,
       this.options.kernel.readVisibleCardRegions(card.id), { scale, exact: precise }), scale);
-    return { card, key, jobKey: key + physicalWidth + JSON.stringify(regions), content, externalKey, scale, precise, dark: appearance.dark, regions };
+    return { ...identity, jobKey: key + physicalWidth + JSON.stringify(regions), regions };
   }
   private accept(demand: CanvasRasterDemand): boolean {
     const pending = this.pending.get(demand.card.id);
@@ -86,8 +90,8 @@ class CanvasRasterPresentation {
     let installed = false;
     if (this.pending.get(demand.card.id) === job) this.pending.delete(demand.card.id);
     if (result.status === 'ready' && result.value.kind === 'ready') {
-      const current = this.options.kernel.visibleCards().find(candidate => candidate.id === demand.card.id);
-      if (current && this.demand(current, { count: 1, font: this.fontKey(), precise: demand.precise }).key === demand.key) {
+      const current = this.options.kernel.readCard(demand.card.id);
+      if (current && this.options.kernel.readVisibleCardRegions(current.id).length && this.identity(current, { count: 1, font: this.fontKey(), precise: demand.precise }).key === demand.key) {
         installed = this.options.kernel.setRasterTiles(current.id, current.revision, demand.key, result.value.tiles);
       } else for (const tile of result.value.tiles) tile.bitmap.close();
     } else if (result.status === 'failed') this.fail(demand, result.error);
@@ -133,8 +137,8 @@ class CanvasRasterPresentation {
   }
   private async prepareExact(id: CanvasCardId): Promise<'ready' | 'unavailable'> {
     if (this.disposed || this.suspended()) return 'unavailable';
-    const card = this.options.kernel.visibleCards().find(card => card.id === id);
-    if (!card) return 'unavailable';
+    const card = this.options.kernel.readCard(id);
+    if (!card || !this.options.kernel.readVisibleCardRegions(id).length) return 'unavailable';
     const demand = this.demand(card, { count: 1, font: this.fontKey(), precise: true });
     if (!demand.regions.length) return 'ready';
     if (this.failed.get(id) === demand.key) return 'unavailable';

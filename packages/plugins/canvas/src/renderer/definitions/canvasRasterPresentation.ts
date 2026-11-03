@@ -24,3 +24,6 @@ export interface CanvasRasterDemand {
 }
 
 export interface CanvasRasterPending { readonly key: string; readonly contentKey: string; readonly scale: number; readonly completion: Promise<boolean> }
+
+export type CanvasRasterIdentity = Omit<CanvasRasterDemand, 'regions' | 'jobKey'> & { readonly physicalWidth: number };
+export interface CanvasRasterFrame { readonly count: number; readonly font: string; readonly precise?: boolean }

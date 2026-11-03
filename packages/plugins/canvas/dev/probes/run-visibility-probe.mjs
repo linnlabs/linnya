@@ -1,0 +1,15 @@
+import { build } from 'esbuild';
+import electron from 'electron';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { execFileSync, spawn } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { buildProbeRenderer } from './build-probe-renderer.mjs';
+const probe = path.dirname(fileURLToPath(import.meta.url)), root = path.resolve(probe, '../../../../..'), output = path.join(root, '_dev_data/canvas-visibility-probe');
+await mkdir(output, { recursive: true });
+await buildProbeRenderer({ entry: path.join(probe, 'visibilityRenderer.ts'), root, output });
+await writeFile(path.join(output, 'index.html'), `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src data: blob:; font-src 'self' data: blob:"><link rel="stylesheet" href="renderer.css"></head><body><script src="renderer.js"></script></body></html>`);
+await build({ entryPoints: [path.join(probe, 'visibilityElectron.ts')], outfile: path.join(output, 'electron.cjs'), bundle: true, platform: 'node', format: 'cjs', external: ['electron'] });
+const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+const child = spawn(electron, [path.join(output, 'electron.cjs'), output], { stdio: 'inherit', env: { ...process.env, CANVAS_PROBE_SOURCE_COMMIT: commit } });
+child.once('error', error => { console.error(error); process.exitCode = 1; }); child.once('exit', code => { process.exitCode = code ?? 1; });
