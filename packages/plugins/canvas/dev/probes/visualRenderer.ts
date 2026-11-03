@@ -1,4 +1,4 @@
-import { CanvasCardSchema, CanvasCardIdSchema, CanvasEdgeSchema, readCanvasCardCssPalette, type CanvasColor } from '../../src/shared';
+import { CanvasCardSchema, CanvasCardIdSchema, CanvasEdgeSchema, readCanvasCardCssPalette, type CanvasColor, type CanvasCard } from '../../src/shared';
 import { CanvasRenderRequestSchema } from '../../src/shared/rendering';
 import { createCardSurface } from '../../src/renderer/hidden-render-worker/functions/createCardSurface';
 import { createHtmlCardRasterizer } from '../../src/renderer/capabilities/textRasterization';
@@ -192,6 +192,7 @@ async function mixedLodVisual(theme: 'light' | 'dark') {
     if (kernel.readMissingBitmapRegions(card.id, 'bucket', frame, { scale: devicePixelRatio, exact: false }).length
       || !kernel.readMissingBitmapRegions(card.id, 'bucket', frame, { scale: devicePixelRatio, exact: true }).length) throw new Error('lod_coverage_mode_mismatch');
     if (kernel.readRasterReceipt(card.id, 'bucket')?.rendered !== false) throw new Error('unrendered_bitmap_reported_ready');
+    while (kernel.readStats().fadingCards) await new Promise<void>(resolve => setTimeout(resolve, 10));
     await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
     if (!kernel.readRasterReceipt(card.id, 'bucket')?.rendered) throw new Error('drawn_bitmap_receipt_missing');
     kernel.setEditingCard(card.id);
@@ -315,3 +316,71 @@ async function selectedMapVisual() {
   kernel.setElements([white]); return { before, selected, reference: await kernel.captureImage('png') };
 }
 Object.defineProperty(window, 'prepareCanvasSelectedMapVisualProbe', { value: selectedMapVisual });
+
+let fadeFixture: { readonly kernel: CanvasKernel; readonly card: CanvasCard; readonly old: ImageBitmap;
+  readonly blue: ImageBitmap; green?: ImageBitmap; readonly started: number } | undefined;
+function colorBitmap(width: number, height: number, color: string): ImageBitmap {
+  const source = new OffscreenCanvas(width, height), context = source.getContext('2d'); if (!context) throw new Error('fade_context_missing');
+  context.fillStyle = color; context.fillRect(0, 0, width, height); return source.transferToImageBitmap();
+}
+async function beginFadeVisual() {
+  previousKernel?.destroy(); document.body.replaceChildren();
+  const host = document.createElement('div'); document.body.append(host); host.style.cssText = 'width:400px;height:250px';
+  const kernel = await createPixiCanvasKernel({ host, width: 400, height: 250, resolution: devicePixelRatio }); previousKernel = kernel;
+  const card = CanvasCardSchema.parse({ id: 'c1', type: 'text', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white',
+    createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, x: 20, y: 20, width: 200, height: 140, parentId: null,
+    data: { contentVersion: 1, content: { type: 'doc', content: [] } } });
+  kernel.setElements([card]);
+  const old = colorBitmap(50, 35, '#e02020'), blue = colorBitmap(100, 70, '#2030e0');
+  kernel.setRasterTiles(card.id, 1, 'old', [{ bitmap: old, x: 0, y: 0, width: 200, height: 140, scale: 0.25 }]);
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  const before = await kernel.captureImage('png');
+  fadeFixture = { kernel, card, old, blue, started: performance.now() };
+  kernel.setRasterTiles(card.id, 1, 'new', [{ bitmap: blue, x: 0, y: 0, width: 200, height: 140, scale: 0.5 }]);
+  return { before, ...await readFadeVisual() };
+}
+async function readFadeVisual() {
+  const state = fadeFixture; if (!state) throw new Error('fade_fixture_missing');
+  return { image: await state.kernel.captureImage('png'), elapsed: performance.now() - state.started, dpr: devicePixelRatio,
+    stats: state.kernel.readStats(), oldWidth: state.old.width, blueWidth: state.blue.width, greenWidth: state.green?.width ?? 0,
+    rendered: state.kernel.readRasterReceipt(state.card.id, state.green ? 'green' : 'new')?.rendered ?? false,
+    reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+}
+async function replaceFadeVisual() {
+  const state = fadeFixture; if (!state) throw new Error('fade_fixture_missing');
+  state.green = colorBitmap(150, 105, '#20d030');
+  state.kernel.setRasterTiles(state.card.id, 1, 'green', [{ bitmap: state.green, x: 0, y: 0, width: 200, height: 140, scale: 0.75 }]);
+  return readFadeVisual();
+}
+async function finishFadePreferenceVisual() {
+  const state = fadeFixture; if (!state) throw new Error('fade_fixture_missing');
+  const started = performance.now();
+  while ((!matchMedia('(prefers-reduced-motion: reduce)').matches || state.kernel.readStats().fadingCards) && performance.now() - started < 2000) await new Promise<void>(resolve => setTimeout(resolve, 5));
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  const result = await readFadeVisual(); state.kernel.invalidateBitmaps();
+  if (state.kernel.readStats().bitmapBytes || state.old.width || state.blue.width || state.green?.width) throw new Error('fade_ownership_not_released');
+  return result;
+}
+Object.defineProperties(window, { beginCanvasFadeVisualProbe: { value: beginFadeVisual }, readCanvasFadeVisualProbe: { value: readFadeVisual },
+  replaceCanvasFadeVisualProbe: { value: replaceFadeVisual }, finishCanvasFadePreferenceVisualProbe: { value: finishFadePreferenceVisual } });
+
+async function fadeBudgetVisual() {
+  const oldFixture = fadeFixture; if (!oldFixture) throw new Error('fade_fixture_missing');
+  previousKernel?.destroy(); document.body.replaceChildren();
+  const host = document.createElement('div'); document.body.append(host);
+  const kernel = await createPixiCanvasKernel({ host, width: 600, height: 250, bitmapBudgetBytes: 50000 }); previousKernel = kernel;
+  const first = oldFixture.card, second = CanvasCardSchema.parse({ ...first, id: 'c2', x: 240, width: 160, height: 120 }); kernel.setElements([first, second]);
+  const old = colorBitmap(50, 35, '#e02020'), blue = colorBitmap(100, 70, '#2030e0'), green = colorBitmap(80, 60, '#20d030');
+  kernel.setBitmap(first.id, 1, 'old', old);
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  kernel.setBitmap(first.id, 1, 'blue', blue);
+  const during = kernel.readStats(); kernel.setBitmap(second.id, 1, 'green', green); const reserved = kernel.readStats();
+  if (reserved.bitmapBytes > reserved.bitmapBudgetBytes || reserved.bitmaps !== 2 || old.width || blue.width !== 100 || green.width !== 80) throw new Error('fade_retirement_was_not_reserved_within_budget');
+  const oversized = colorBitmap(300, 200, '#f000f0');
+  if (kernel.setBitmap(second.id, 1, 'oversized', oversized) || oversized.width || !kernel.hasBitmap(second.id, 'green')) throw new Error('oversized_bitmap_destroyed_the_valid_current_entry');
+  const replacing = colorBitmap(10, 7, '#9020c0'); kernel.setBitmap(first.id, 1, 'replacing', replacing); kernel.invalidateBitmaps();
+  await new Promise<void>(resolve => setTimeout(resolve, 16));
+  if (kernel.readStats().bitmapBytes || kernel.readStats().fadingCards || old.width || blue.width || green.width || replacing.width) throw new Error('cancelled_fade_left_native_bitmaps_or_timers');
+  return { during, reserved, cleared: kernel.readStats() };
+}
+Object.defineProperty(window, 'prepareCanvasFadeBudgetVisualProbe', { value: fadeBudgetVisual });

@@ -25,6 +25,37 @@ async function evaluate(webContents: WebContents, expression: string): Promise<u
   } finally { clearTimeout(timer); removeCrashListener(); }
 }
 
+const fadeState = z.object({ image: z.string(), dpr: z.number(), elapsed: z.number(), oldWidth: z.number(), blueWidth: z.number(), greenWidth: z.number(),
+  rendered: z.boolean(), reduced: z.boolean(), stats: z.object({ fadingCards: z.number(), retiringBytes: z.number(), bitmapBytes: z.number(), bitmapBudgetBytes: z.number() }) });
+async function verifyFade(win: BrowserWindow) {
+  win.webContents.debugger.attach('1.3');
+  try {
+    await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    const initial = fadeState.extend({ before: z.string() }).parse(await evaluate(win.webContents, 'window.beginCanvasFadeVisualProbe()'));
+    if (initial.stats.fadingCards !== 1 || initial.rendered || initial.oldWidth !== 50 || initial.stats.bitmapBytes !== 35000) throw new Error('real_texture_fade_did_not_start');
+    await new Promise(resolve => setTimeout(resolve, 40));
+    const middle = fadeState.parse(await evaluate(win.webContents, 'window.readCanvasFadeVisualProbe()'));
+    const pixel = (url: string, dpr: number) => {
+      const image = nativeImage.createFromDataURL(url), bytes = image.toBitmap(), i = (Math.round(80 * dpr) * image.getSize().width + Math.round(100 * dpr)) * 4;
+      return { r: bytes[i + 2], g: bytes[i + 1], b: bytes[i] };
+    };
+    const mixed = pixel(middle.image, middle.dpr), midpointObserved = middle.stats.fadingCards > 0;
+    if (midpointObserved && (mixed.r < 50 || mixed.b < 60)) throw new Error(`fade_midpoint_pixels_missing:${JSON.stringify(mixed)}`);
+    await evaluate(win.webContents, 'window.replaceCanvasFadeVisualProbe()');
+    await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    const reduced = fadeState.parse(await evaluate(win.webContents, 'window.finishCanvasFadePreferenceVisualProbe()'));
+    const green = pixel(reduced.image, reduced.dpr);
+    if (!reduced.reduced || reduced.stats.fadingCards || reduced.stats.retiringBytes || !reduced.rendered || reduced.oldWidth || reduced.blueWidth
+      || reduced.greenWidth !== 150 || reduced.stats.bitmapBytes !== 63000 || green.g < 190 || green.r > 45) throw new Error('reduced_motion_did_not_finish_actual_texture_fade');
+    if (Math.max(initial.stats.bitmapBytes, middle.stats.bitmapBytes, reduced.stats.bitmapBytes) > initial.stats.bitmapBudgetBytes) throw new Error('fade_exceeded_bitmap_budget');
+    await writeFile(path.join(output, 'fade-midpoint.png'), nativeImage.createFromDataURL(middle.image).toPNG());
+    await writeFile(path.join(output, 'fade-reduced.png'), nativeImage.createFromDataURL(reduced.image).toPNG());
+    await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    const budget: unknown = await evaluate(win.webContents, 'window.prepareCanvasFadeBudgetVisualProbe()');
+    return { midpointObserved, mixed, green, oldAndNewBytes: initial.stats.bitmapBytes, reducedBytes: reduced.stats.bitmapBytes, reducedRendered: reduced.rendered, budget };
+  } finally { await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [] }); win.webContents.debugger.detach(); }
+}
+
 async function run() {
   await app.whenReady();
   if (process.platform === 'darwin') app.setActivationPolicy('accessory');
@@ -176,6 +207,7 @@ async function run() {
       if (union < 100 || intersection / union < 0.95) throw new Error(`mixed_lod_composite_mismatch:${theme}:${intersection / union}`);
       lodReports.push({ theme, union, intersection, ratio: intersection / union }); await writeFile(path.join(output, `mixed-lod-${theme}.png`), actual.toPNG());
     }
+    const fade = await verifyFade(win);
     const context = z.object({ before: z.string(), after: z.string(), rejected: z.boolean(), beforeStats: z.object({ cards: z.number(), bitmaps: z.number() }), afterStats: z.object({ cards: z.number(), bitmaps: z.number() }) })
       .parse(await evaluate(win.webContents, 'window.prepareCanvasContextLossVisualProbe()'));
     const contextBefore = nativeImage.createFromDataURL(context.before).toBitmap(), contextAfterImage = nativeImage.createFromDataURL(context.after), contextAfter = contextAfterImage.toBitmap();
@@ -210,7 +242,7 @@ async function run() {
       await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());
     } finally { unsupported.destroy(); }
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap, colors: colorReports }, dragOcclusion, snapGuides, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk, selectedLabels }, thumbnails: thumbReports,
-      mixedLod: lodReports, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
+      mixedLod: lodReports, fade, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
 }

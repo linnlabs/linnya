@@ -1,28 +1,25 @@
-import { Container, Rectangle, Sprite, Texture, type TextureSource } from 'pixi.js';
+import type { Container } from 'pixi.js';
 import type { CanvasCardId, CanvasRectangle } from '../../../../shared';
 import type { CanvasRasterTile } from '../../definitions/canvasKernel';
 import { subtractCanvasRegions } from '../../geometry/canvasVisibleRegions';
 import { selectCanvasRasterCoverage } from '../../geometry/selectCanvasRasterCoverage';
+import { CanvasBitmapResources, type CanvasBitmapLayer, type CanvasBitmapRegion } from './canvasBitmapResources';
+import { CanvasBitmapFades } from './CanvasBitmapFades';
 
-interface BitmapOwner { readonly source: TextureSource; readonly bitmap: ImageBitmap; readonly frame: CanvasRectangle }
-interface Region extends CanvasRectangle { readonly scale: number; readonly owner: BitmapOwner; readonly sprite: Sprite; readonly texture: Texture }
-interface Entry { readonly key: string; readonly regions: readonly Region[]; readonly bytes: number; readonly acceptedAfterRender: number }
-const owners = (regions: readonly Region[]) => new Set(regions.map(region => region.owner));
-const size = (owner: BitmapOwner) => owner.bitmap.width * owner.bitmap.height * 4;
-function releaseRegion(region: Region): void { region.sprite.removeFromParent(); region.sprite.destroy(); region.texture.destroy(false); }
-function releaseOwner(owner: BitmapOwner): void { owner.source.destroy(); owner.bitmap.close(); }
-function croppedRegion(owner: BitmapOwner, frame: CanvasRectangle, scale: number): Region {
-  const source = owner.frame, x = (frame.x - source.x) / source.width * owner.bitmap.width, y = (frame.y - source.y) / source.height * owner.bitmap.height;
-  const texture = new Texture({ source: owner.source, frame: new Rectangle(x, y, frame.width / source.width * owner.bitmap.width, frame.height / source.height * owner.bitmap.height) });
-  const sprite = new Sprite(texture); sprite.position.set(frame.x, frame.y); sprite.width = frame.width; sprite.height = frame.height;
-  return { ...frame, scale, owner, texture, sprite };
-}
+interface Entry extends CanvasBitmapLayer { readonly key: string; acceptedAfterRender: number }
 
-/** 持有位图唯一所有权与有界LRU；高倍补图只裁掉旧低倍重叠，不重叠叠画半透明笔画。 */
+/** 当前采样与120ms退休层共用唯一位图owner及同一个有界LRU预算。 */
 export class CanvasBitmapCache {
   private readonly entries = new Map<CanvasCardId, Entry>();
-  private bytes = 0;
-  constructor(private readonly options: { readonly budget: number; readonly changed: (id: CanvasCardId) => void; readonly readRenderCount: () => number }) {}
+  private readonly resources = new CanvasBitmapResources();
+  private readonly fades;
+  constructor(private readonly options: { readonly budget: number; readonly changed: (id: CanvasCardId) => void;
+    readonly requestDraw: () => void; readonly readRenderCount: () => number }) {
+    this.fades = new CanvasBitmapFades({ resources: this.resources, requestDraw: options.requestDraw, complete: id => {
+      const entry = this.entries.get(id); if (entry) { entry.acceptedAfterRender = options.readRenderCount(); options.changed(id); }
+    } });
+  }
+  setMotionEnabled(enabled: boolean): void { this.fades.setEnabled(enabled); }
   has(id: CanvasCardId, key?: string): boolean { const entry = this.entries.get(id); return entry !== undefined && (key === undefined || entry.key === key); }
   covers(id: CanvasCardId, regions: readonly CanvasRectangle[]): boolean {
     const entry = this.entries.get(id); return entry !== undefined && subtractCanvasRegions(regions, entry.regions).length === 0;
@@ -32,51 +29,62 @@ export class CanvasBitmapCache {
   }
   touch(id: CanvasCardId): void { const entry = this.entries.get(id); if (entry) { this.entries.delete(id); this.entries.set(id, entry); } }
   remove(id: CanvasCardId): void {
-    const entry = this.entries.get(id); if (!entry) return;
-    entry.regions.forEach(releaseRegion); owners(entry.regions).forEach(releaseOwner);
-    this.bytes -= entry.bytes; this.entries.delete(id); this.options.changed(id);
+    this.fades.cancel(id); const entry = this.entries.get(id); if (!entry) return;
+    for (const region of entry.regions) this.resources.release(region);
+    this.entries.delete(id); this.options.changed(id);
   }
   clear(): void { for (const id of this.entries.keys()) this.remove(id); }
-  private upgrade(entry: Entry, tiles: readonly CanvasRasterTile[], body: Container): Entry {
-    const regions = entry.regions.flatMap(region => {
-      const remaining = subtractCanvasRegions([region], tiles.filter(tile => tile.scale > region.scale));
-      if (remaining.length === 1 && remaining[0] === region) return [region];
-      releaseRegion(region);
-      return remaining.map(frame => { const next = croppedRegion(region.owner, frame, region.scale); body.addChild(next.sprite); return next; });
-    });
-    const retained = owners(regions);
-    for (const owner of owners(entry.regions)) if (!retained.has(owner)) releaseOwner(owner);
-    return { key: entry.key, regions, acceptedAfterRender: entry.acceptedAfterRender, bytes: [...retained].reduce((sum, owner) => sum + size(owner), 0) };
+  private reserve(bytes: number, current: CanvasCardId): void {
+    while (this.resources.readBytes() + bytes > this.options.budget) {
+      // 先结束退休层，再淘汰不相关卡；旧/新双份资源绝不突破原预算。
+      if (this.fades.finishOldest()) continue;
+      let candidate: CanvasCardId | undefined;
+      for (const id of this.entries.keys()) if (id !== current) { candidate = id; break; }
+      if (candidate !== undefined) this.remove(candidate);
+      else { this.remove(current); break; }
+    }
+  }
+  private retained(previous: Entry | undefined, key: string, additions: readonly CanvasRasterTile[], body: Container): CanvasBitmapRegion[] {
+    if (previous?.key !== key) return [];
+    return previous.regions.flatMap(region => subtractCanvasRegions([region], additions.filter(tile => tile.scale > region.scale))
+      .map(frame => { const next = this.resources.region(region.owner, frame, region.scale); body.addChild(next.sprite); return next; }));
   }
   install(id: CanvasCardId, key: string, tiles: readonly CanvasRasterTile[], body: Container): boolean {
-    const previous = this.entries.get(id);
-    let retained = previous?.key === key ? previous : undefined;
+    const existing = this.entries.get(id), same = existing?.key === key ? existing : undefined;
     const additions = tiles.filter(tile => {
-      if (retained && !subtractCanvasRegions([tile], retained.regions.filter(region => region.scale === tile.scale)).length) { tile.bitmap.close(); return false; }
+      if (same && !subtractCanvasRegions([tile], same.regions.filter(region => region.scale === tile.scale)).length) { tile.bitmap.close(); return false; }
       return true;
     });
     if (!additions.length) return true;
     const bytes = additions.reduce((sum, tile) => sum + tile.bitmap.width * tile.bitmap.height * 4, 0);
     if (bytes > this.options.budget) { additions.forEach(tile => tile.bitmap.close()); return false; }
-    if (retained) {
-      const next = this.upgrade(retained, additions, body); this.bytes += next.bytes - retained.bytes;
-      retained = next; this.entries.set(id, retained);
+    this.reserve(bytes, id);
+    const previous = this.entries.get(id), regions = this.retained(previous, key, additions, body);
+    for (const tile of additions) {
+      const owner = this.resources.create(tile), region = this.resources.region(owner, tile, tile.scale);
+      body.addChild(region.sprite); regions.push(region);
     }
-    if (!retained || retained.bytes + bytes > this.options.budget) { this.remove(id); retained = undefined; }
-    else this.touch(id);
-    while (this.bytes + bytes > this.options.budget) { const first = this.entries.keys().next(); if (first.done) break; this.remove(first.value); }
-    const regions = additions.map(tile => {
-      const texture = Texture.from(tile.bitmap, true);
-      const owner: BitmapOwner = { source: texture.source, bitmap: tile.bitmap, frame: { x: tile.x, y: tile.y, width: tile.width, height: tile.height } };
-      const sprite = new Sprite(texture); sprite.position.set(tile.x, tile.y); sprite.width = tile.width; sprite.height = tile.height; body.addChild(sprite);
-      return { ...owner.frame, owner, texture, sprite, scale: tile.scale };
-    });
-    this.entries.set(id, { key, acceptedAfterRender: this.options.readRenderCount(), regions: [...retained?.regions ?? [], ...regions], bytes: (retained?.bytes ?? 0) + bytes }); this.bytes += bytes;
+    const next = { key, regions, alpha: 1, acceptedAfterRender: this.options.readRenderCount() };
+    this.entries.delete(id); this.entries.set(id, next);
+    // 首图未实际显示时直接接纳新图；不能为未见过的旧片制造一次模糊飞入。
+    const displayed = previous && (this.fades.has(id) || this.options.readRenderCount() > previous.acceptedAfterRender) ? previous : undefined;
+    this.fades.start(id, displayed, next);
+    if (!this.fades.has(id) && previous) for (const region of previous.regions) this.resources.release(region);
     this.options.changed(id); return true;
   }
   readReceipt(id: CanvasCardId, key: string): number | null {
     const entry = this.entries.get(id); return entry?.key === key ? entry.acceptedAfterRender : null;
   }
-  readStats() { return { bitmaps: this.entries.size, bitmapBytes: this.bytes, bitmapBudgetBytes: this.options.budget,
-    rasterTiles: [...this.entries.values()].reduce((sum, entry) => sum + entry.regions.length, 0) }; }
+  isFading(id: CanvasCardId): boolean { return this.fades.has(id); }
+  readStats() {
+    const current = new Set<CanvasBitmapRegion['owner']>();
+    let currentBytes = 0, rasterTiles = 0;
+    for (const entry of this.entries.values()) for (const region of entry.regions) {
+      rasterTiles++;
+      if (!current.has(region.owner)) { current.add(region.owner); currentBytes += region.owner.bitmap.width * region.owner.bitmap.height * 4; }
+    }
+    const retiringTiles = this.fades.readRetiringTiles();
+    return { bitmaps: this.entries.size, bitmapBytes: this.resources.readBytes(), bitmapBudgetBytes: this.options.budget,
+      fadingCards: this.fades.readCount(), retiringBytes: this.resources.readBytes() - currentBytes, retiringTiles, rasterTiles: rasterTiles + retiringTiles };
+  }
 }
