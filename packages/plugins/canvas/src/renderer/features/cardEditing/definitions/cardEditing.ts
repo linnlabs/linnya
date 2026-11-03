@@ -3,6 +3,11 @@ import type { JsonValue } from '@app/schemas';
 import type { CanvasCardId, CanvasRectangle, CanvasTextCardSchema, CanvasTextDocument } from '@plugin/canvas/shared';
 import type { z } from 'zod';
 
+export interface CanvasTextEditingLease {
+  readonly documentId: string;
+  readonly elementId: CanvasCardId;
+  readonly owner: string;
+}
 export interface CanvasCardDraft {
   readonly elementId: CanvasCardId;
   readonly content: CanvasTextDocument;
@@ -27,7 +32,7 @@ export interface CanvasCardEditingState {
 }
 export interface CanvasCardEditor {
   readonly state: CanvasCardEditingState;
-  open(elementId: CanvasCardId, historyGroupId?: string): Promise<void>;
+  open(elementId: CanvasCardId, historyGroupId?: string, signal?: AbortSignal): Promise<void>;
   update(content: JsonValue): void;
   setComposing(value: boolean): void;
   measure(height: number): void;
