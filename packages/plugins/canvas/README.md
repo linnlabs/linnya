@@ -38,6 +38,8 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 
 ## Renderer
 
+单张文档卡近景聚焦时，通过Host公开挂载门面显示只读全文或类型owner详情；远景、框选和文字编辑期间仍保留位图。挂载取消、项目边界与相机分流见[文档详情](./src/renderer/features/documentDetail/README.md)。
+
 `renderer/features/canvasDocument` 拥有每个表面的已提交文档会话。打开前先订阅变更，再读取快照并追平读取窗口中的版本；提交和 push 均从 `canvas:changes` 接纳连续增量或日志裁剪后的正式快照。旧表面的异步结果不会写入新会话。`cardEditing` 独立持有输入草稿、组合输入状态及保存屏障，失败时保留正文，自动保存不结束同一次文字编辑撤销组。
 
 `renderer/orchestration/createCanvasSurface` 只装配文档端口、嵌入编辑器、选择及绘制；生产 Host 与 Electron 探针可以注入同一组窄合同。文件会话切换和手动保存通过保存参与端口等待草稿落盘。kernel 只产生交互意图和显示预览：3px 后才拖动，松手提交一次，Escape/失焦取消。框选默认触碰选中，Cmd/Ctrl 改为全包含；Shift 追加。
