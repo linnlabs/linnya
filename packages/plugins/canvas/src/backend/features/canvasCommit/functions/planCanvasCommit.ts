@@ -9,6 +9,7 @@ import { findCanvasPlacement } from './findCanvasPlacement';
 import { validateCanvasGraph } from './validateCanvasGraph';
 
 interface WorkingPlan {
+  origin: string;
   elements: Map<CanvasElementId, CanvasStoredElement>;
   changes: CanvasElementChange[];
   results: CanvasOperationResult[];
@@ -32,8 +33,10 @@ function appendChange(plan: WorkingPlan, before: CanvasElement | null, after: Ca
   plan.changes.push({ id, before, after, fields });
   if (after) {
     const versions = { ...plan.elements.get(id)?.fieldVersions };
-    for (const field of fields) versions[field] = after.revision;
-    plan.elements.set(id, { element: after, fieldVersions: versions });
+    const origins = { ...plan.elements.get(id)?.fieldOrigins };
+    for (const field of fields) { versions[field] = after.revision; origins[field] = plan.origin; }
+    if (!before) { versions.$existence = after.revision; origins.$existence = plan.origin; }
+    plan.elements.set(id, { element: after, fieldVersions: versions, fieldOrigins: origins });
   } else plan.elements.delete(id);
 }
 
@@ -124,9 +127,9 @@ function mutateElement(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 
 
 export function planCanvasCommit(input: {
   readonly state: CanvasCommitState; readonly operations: readonly CanvasCommand[];
-  readonly actor: CanvasCommitActor; readonly claims: readonly CanvasEditingClaim[]; readonly now: number;
+  readonly actor: CanvasCommitActor; readonly origin: string; readonly claims: readonly CanvasEditingClaim[]; readonly now: number;
 }): CanvasCommitPlan {
-  const plan: WorkingPlan = { elements: new Map(input.state.elements.map(row => [row.element.id, row])), changes: [], results: [], refs: {},
+  const plan: WorkingPlan = { origin: input.origin, elements: new Map(input.state.elements.map(row => [row.element.id, row])), changes: [], results: [], refs: {},
     nextCard: input.state.nextCard, nextEdge: input.state.nextEdge, actor: input.actor, claims: input.claims, now: input.now };
   for (const command of input.operations) {
     if (command.op === 'update' || command.op === 'delete') plan.results.push(mutateElement(plan, command));
@@ -136,6 +139,6 @@ export function planCanvasCommit(input: {
     }
   }
   validateCanvasGraph([...plan.elements.values()].map(row => row.element));
-  return { changes: plan.changes, results: plan.results, refs: plan.refs,
-    state: { sequence: input.state.sequence + (plan.changes.length > 0 ? 1 : 0), nextCard: plan.nextCard, nextEdge: plan.nextEdge, elements: [...plan.elements.values()] } };
+  return { origin: input.origin, changes: plan.changes, results: plan.results, refs: plan.refs,
+    state: { sequence: input.state.sequence + (plan.changes.length > 0 ? 1 : 0), nextCard: plan.nextCard, nextEdge: plan.nextEdge, elements: [...plan.elements.values()], deletedOrigins: input.state.deletedOrigins } };
 }
