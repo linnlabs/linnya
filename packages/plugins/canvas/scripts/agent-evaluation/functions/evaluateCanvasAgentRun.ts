@@ -1,6 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { checkCanvas } from '../../../src/backend/features/canvasQuery';
-import { readCanvasElementText } from '../../../src/shared';
+import { readCanvasElementText } from '@plugin/canvas/shared';
 import { CanvasAgentEvaluationRunSchema, type CanvasAgentEvaluationRun, type CanvasAgentAssertion, type CanvasAgentTaskId } from '../definitions/canvasAgentEvaluation';
 import { canvasAgentTasks } from '../definitions/canvasAgentTasks';
 import { assertion, architectureCorrect, cards, evidenceLinked, linked, originalCardsUnchanged, pendingTargetsCorrect, sceneSequence, treeDepth } from './canvasAgentAssertions';
@@ -8,7 +7,7 @@ import { assertion, architectureCorrect, cards, evidenceLinked, linked, original
 const taskEvaluators: Record<CanvasAgentTaskId, (run: CanvasAgentEvaluationRun) => CanvasAgentAssertion[]> = {
   T1(run) {
     const after = cards(run.after);
-    const check = checkCanvas(run.after);
+    const check = run.check;
     const zeroOverlap = assertion('zero-overlap', check.overlapCount === 0, `overlaps=${check.overlapCount}`);
     const ids = Object.values(run.documentIds), documents = after.filter(card => card.type === 'document'), conclusions = after.filter(card => card.type === 'text');
       return [assertion('8-documents', ids.length === 8 && ids.every(id => documents.some(card => card.data.documentId === id)), `expected=${ids.length}, actual=${documents.length}`), assertion('document-conclusion-links', documents.every(card => conclusions.some(conclusion => linked(run.after, card.id, conclusion.id))), '每文档指向结论'), zeroOverlap];
@@ -20,13 +19,13 @@ const taskEvaluators: Record<CanvasAgentTaskId, (run: CanvasAgentEvaluationRun) 
   },
   T3(run) {
     const after = cards(run.after);
-    const check = checkCanvas(run.after);
+    const check = run.check;
     const zeroOverlap = assertion('zero-overlap', check.overlapCount === 0, `overlaps=${check.overlapCount}`);
     return [assertion('20-card-tree-depth3', after.length >= 20 && treeDepth(run) === 3, `cards=${after.length}, depth=${treeDepth(run)}`), zeroOverlap];
   },
   T4(run) {
     const after = cards(run.after);
-    const check = checkCanvas(run.after);
+    const check = run.check;
     const zeroOverlap = assertion('zero-overlap', check.overlapCount === 0, `overlaps=${check.overlapCount}`);
     const branches = ['S02', 'S05'].map(code => after.find(card => readCanvasElementText(card).includes(code)));
       const labels = (id: string) => run.after.elements.flatMap(element => element.type === 'edge' && element.from.kind === 'card' && element.from.cardId === id ? [element.label] : []);
@@ -37,7 +36,7 @@ const taskEvaluators: Record<CanvasAgentTaskId, (run: CanvasAgentEvaluationRun) 
     return [assertion('exact-dependencies', architectureCorrect(run), '8模块与12条固定有向依赖')];
   },
   T6(run) {
-    const check = checkCanvas(run.after);
+    const check = run.check;
     const zeroOverlap = assertion('zero-overlap', check.overlapCount === 0, `overlaps=${check.overlapCount}`);
     return [assertion('12-ordered-scenes', sceneSequence(run), '12个独立场景编号与11条顺序线'), zeroOverlap];
   },
@@ -54,7 +53,7 @@ const taskEvaluators: Record<CanvasAgentTaskId, (run: CanvasAgentEvaluationRun) 
   T9(run) {
     const before = cards(run.before);
     const after = cards(run.after);
-    const check = checkCanvas(run.after);
+    const check = run.check;
     const zeroOverlap = assertion('zero-overlap', check.overlapCount === 0, `overlaps=${check.overlapCount}`);
     return [assertion('60-preserved', before.length === 60 && after.length === 60 && originalCardsUnchanged(run, true), '只准位置及提交元数据变化'), assertion('trusted-approval-allowed', run.controls.approvalShown && run.controls.approvalDecision === 'allow', '验收runner观察UI允许'), zeroOverlap];
   },
@@ -78,7 +77,7 @@ const taskEvaluators: Record<CanvasAgentTaskId, (run: CanvasAgentEvaluationRun) 
     const before = cards(run.before);
     const after = cards(run.after);
     const existing = new Set(before.map(card => card.id)), added = after.filter(card => !existing.has(card.id));
-    const check = checkCanvas(run.after);
+    const check = run.check;
     const zeroOverlap = assertion('zero-overlap', check.overlapCount === 0, `overlaps=${check.overlapCount}`);
     return [assertion('2000+300', before.length === 2000 && added.length === 300 && after.length === 2300 && originalCardsUnchanged(run), `before=${before.length}, added=${added.length}, after=${after.length}`), zeroOverlap, assertion('real-performance-gates', run.metrics.layoutWorkerP50Ms !== undefined && run.metrics.layoutWorkerP50Ms <= 200 && run.metrics.commitToFrameP95Ms !== undefined && run.metrics.commitToFrameP95Ms <= 300 && run.metrics.averageFps !== undefined && run.metrics.averageFps >= 45 && run.metrics.worstFrameMs !== undefined && run.metrics.worstFrameMs <= 50, JSON.stringify(run.metrics))];
   },
@@ -88,6 +87,8 @@ export function evaluateCanvasAgentRun(value: unknown) {
   if (!task) throw new Error('Unknown evaluation task');
   const checks = taskEvaluators[run.taskId](run);
   if (run.imageCapability === 'no-vision') checks.push(assertion('no-unsupported-render', run.controls.renderCount === 0, `renderCount=${run.controls.renderCount}`));
+  else checks.push(assertion('actual-render-and-read', run.controls.renderCount > 0 && run.controls.imageReadCount > 0,
+    `renderCount=${run.controls.renderCount}, imageReadCount=${run.controls.imageReadCount}`));
   const automaticPassed = checks.every(check => check.passed), reviewed = run.review?.approved === true;
   return { fixtureVersion: 1, taskId: run.taskId, model: run.model, imageCapability: run.imageCapability, repetition: run.repetition,
     evidenceMode: run.evidenceMode, status: !automaticPassed ? 'failed' : run.taskId === 'T8' && run.evidenceMode !== 'network' ? 'offline_baseline' : reviewed ? 'passed' : 'needs_review', firstSubmissionAccepted: run.attempts[0]?.validationAccepted === true,
