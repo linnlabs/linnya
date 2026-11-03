@@ -22,3 +22,5 @@ Vite 在自身依赖完成后启动并预热；Electron 等待所有本轮构建
 并行 worktree 使用各自的 Vite 实际监听 URL，端口不设两个实例的上限。Desktop 退出只报告 exited，
 不能像单次构建那样把 code=0 写成 ready；真正的 `[Desktop] ready` 由 Main 在 Backend 就绪且
 主页面加载完成后报告。profile、服务与数据隔离见[开发配置](../../../../../docs/development/env-local.md)。
+
+配置构建入口支持 tsup 单配置与多配置数组。每个配置保留自己的 entry 与 onSuccess，首轮必须等全部入口（含声明生成）成功后运行完整产物脚本并放行消费者；不能把配置数组 spread 成无 entry 的对象。后续成功构建的产物脚本串行执行，一次失败不能阻塞后续修正后的成功事件。
