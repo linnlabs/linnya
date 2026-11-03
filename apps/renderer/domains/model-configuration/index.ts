@@ -54,6 +54,7 @@ export {
   modelHasCapability,
   modelHasVisibility,
   modelSupportsBindingSlot,
+  readAuxiliaryPurposeLowestReasoningEffort,
   readEffectiveAuxiliaryModelPurposeBinding,
   readEffectiveModelPurposeBinding,
   readPrimaryReasoningEffort,

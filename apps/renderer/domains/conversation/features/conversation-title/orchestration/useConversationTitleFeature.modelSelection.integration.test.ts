@@ -42,6 +42,10 @@ function chatModel(id: string): ModelCatalogItem {
   return { id, catalog_source: 'user', capabilities: ['chat'], ui_visibility: ['chat'] };
 }
 
+function reasoningModel(id: string, efforts: ModelCatalogItem['reasoning']): ModelCatalogItem {
+  return { ...chatModel(id), reasoning: efforts };
+}
+
 /** 通过真实目录生命周期接纳模型，避免测试直接写目录 store。 */
 async function loadCatalog(models: readonly ModelCatalogItem[]): Promise<void> {
   harness.catalogModels = [...models];
@@ -124,6 +128,42 @@ describe('对话标题的模型选择', () => {
     await submitFirstMessage();
 
     expect(lastRequestOptions()).toMatchObject({ model_id: 'title-flash' });
+  });
+
+  it('标题请求使用标题模型支持的最弱思考档，有关闭档时关闭思考', async () => {
+    await loadCatalog([
+      reasoningModel('main', { supported_efforts: ['high', 'off', 'low'], default_effort: 'high' }),
+    ]);
+    setModelPurposeBinding('primary', 'main');
+    harness.titleResponse.mockResolvedValue(titleResponse('东京旅行规划'));
+
+    await submitFirstMessage();
+
+    expect(lastRequestOptions()).toMatchObject({ model_id: 'main', reasoning_effort: 'off' });
+  });
+
+  it('用户所选标题模型没有关闭档时用它的最低档，不沿用主模型档位', async () => {
+    await loadCatalog([
+      reasoningModel('main', { supported_efforts: ['off', 'high'], default_effort: 'high' }),
+      reasoningModel('title-flash', { supported_efforts: ['high', 'medium'], default_effort: 'high' }),
+    ]);
+    setModelPurposeBinding('primary', 'main');
+    setAuxiliaryModelPurposeBinding('conversation_title', 'title-flash');
+    harness.titleResponse.mockResolvedValue(titleResponse('东京旅行规划'));
+
+    await submitFirstMessage();
+
+    expect(lastRequestOptions()).toMatchObject({ model_id: 'title-flash', reasoning_effort: 'medium' });
+  });
+
+  it('标题模型不声明思考档时不额外指定标题档位', async () => {
+    await loadCatalog([chatModel('main')]);
+    setModelPurposeBinding('primary', 'main');
+    harness.titleResponse.mockResolvedValue(titleResponse('东京旅行规划'));
+
+    await submitFirstMessage();
+
+    expect(lastRequestOptions()).not.toHaveProperty('reasoning_effort');
   });
 
   it('标题模型和主模型都不可用时只发一次请求，失败后保留首问标题且不重试', async () => {

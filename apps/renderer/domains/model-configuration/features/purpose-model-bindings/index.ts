@@ -27,6 +27,7 @@ export {
 } from './functions/modelCapabilities';
 export {
   clearBindingsForModel,
+  readAuxiliaryPurposeLowestReasoningEffort,
   readEffectiveAuxiliaryModelPurposeBinding,
   readEffectiveModelPurposeBinding,
   readPrimaryReasoningEffort,

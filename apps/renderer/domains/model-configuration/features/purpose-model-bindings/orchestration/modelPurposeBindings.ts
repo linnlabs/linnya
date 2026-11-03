@@ -11,6 +11,7 @@ import {
 } from '../definitions/modelPurposes';
 import { modelSupportsBindingSlot } from '../functions/modelCapabilities';
 import {
+  lowestReasoningEffortForModel,
   reasoningEffortOptionsForModel,
   resolveAuxiliaryModelId,
   resolveAuxiliaryPurposeDefaultModelId,
@@ -114,6 +115,14 @@ export function readEffectiveAuxiliaryModelPurposeBinding(
   purposeKey: AuxiliaryModelPurposeKey,
 ): string | null {
   return resolveAuxiliaryModelId(createResolutionContext(), purposeKey);
+}
+
+/** 辅助用途实际使用的模型的最弱思考档，供标题这类不需要深度思考的请求省成本。 */
+export function readAuxiliaryPurposeLowestReasoningEffort(
+  purposeKey: AuxiliaryModelPurposeKey,
+): ReasoningEffort | null {
+  const context = createResolutionContext();
+  return lowestReasoningEffortForModel(context.models, resolveAuxiliaryModelId(context, purposeKey));
 }
 
 export function readPrimaryReasoningEffort(): ReasoningEffort | null {

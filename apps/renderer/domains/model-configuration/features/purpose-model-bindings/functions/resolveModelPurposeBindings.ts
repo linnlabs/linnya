@@ -1,4 +1,4 @@
-import { resolveEffectiveEffort, type ReasoningEffort } from '@linnlabs/linnkit/contracts';
+import { REASONING_EFFORTS, resolveEffectiveEffort, type ReasoningEffort } from '@linnlabs/linnkit/contracts';
 
 import type { ModelCatalogItem } from '../../model-catalog';
 import type { ModelPurposeSelections } from '../definitions/modelPurposeBindings';
@@ -65,6 +65,16 @@ export function reasoningEffortOptionsForModel(
   modelId: string | null,
 ): readonly ReasoningEffort[] {
   return models.find(model => model.id === modelId)?.reasoning?.supported_efforts ?? [];
+}
+
+/** 模型支持的最弱思考档：有 off 时即 off；模型不声明思考档时返回 null。 */
+export function lowestReasoningEffortForModel(
+  models: readonly ModelCatalogItem[],
+  modelId: string | null,
+): ReasoningEffort | null {
+  const efforts = reasoningEffortOptionsForModel(models, modelId);
+  if (efforts.length === 0) return null;
+  return [...efforts].sort((a, b) => REASONING_EFFORTS.indexOf(a) - REASONING_EFFORTS.indexOf(b))[0] ?? null;
 }
 
 export function resolveAuxiliaryPurposeDefaultModelId(

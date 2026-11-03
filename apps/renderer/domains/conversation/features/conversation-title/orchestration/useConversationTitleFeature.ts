@@ -1,5 +1,6 @@
 import { PromptKeys } from '@app/schemas';
 import { generateMessageId } from '@shared/utils/idUtils';
+import { readAuxiliaryPurposeLowestReasoningEffort } from '@/domains/model-configuration';
 import { generateText } from '@/shared/services/aiService/unifiedApiService';
 import { useConversationState } from '../../../store/conversationState';
 import { historyApiService } from '../../../history/services/historyApiService';
@@ -34,6 +35,8 @@ export function useConversationTitleFeature(): ConversationTitleCoordinator {
         history_mode: 'isolated',
         run_lane: 'auxiliary',
         event_visibility: 'none',
+        // 标题不需要深度思考：用标题模型支持的最弱档；模型不声明思考档时沿用原有默认。
+        reasoning_effort: readAuxiliaryPurposeLowestReasoningEffort(PromptKeys.CONVERSATION_TITLE) ?? undefined,
       }, signal);
       return response.generated_text;
     },
