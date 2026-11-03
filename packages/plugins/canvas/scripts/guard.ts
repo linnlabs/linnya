@@ -7,6 +7,7 @@ import { readCanvasQualityMetrics } from './quality/functions/readCanvasQualityM
 import { checkCanvasSourceBoundaries } from './quality/functions/checkCanvasSourceBoundaries';
 import { checkCanvasFrameClosure } from './quality/functions/checkCanvasFrameClosure';
 import { checkCanvasGlobalReferences } from './quality/functions/checkCanvasGlobalReferences';
+import { checkCanvasUnionSwitches } from './quality/functions/checkCanvasUnionSwitches';
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const configPath = path.join(pluginRoot, 'tsconfig.json'), config = ts.readConfigFile(configPath, ts.sys.readFile);
@@ -16,7 +17,8 @@ const program = ts.createProgram({ rootNames: parsed.fileNames, options: parsed.
 const sources = readCanvasQualitySources(pluginRoot), metrics = readCanvasQualityMetrics(sources, canvasQualityExceptions);
 const boundaries = checkCanvasSourceBoundaries(sources, { pluginRoot, compilerOptions: parsed.options }), frame = checkCanvasFrameClosure(program, pluginRoot);
 const globals = checkCanvasGlobalReferences(program, pluginRoot);
-const report = { ...metrics, frame: { entries: frame.entries, preparationFrames: frame.preparationFrames, projectFunctions: frame.projectFunctions, externalCalls: frame.externalCalls }, issues: [...metrics.issues, ...boundaries, ...globals, ...frame.issues] };
+const switches = checkCanvasUnionSwitches(program, pluginRoot);
+const report = { ...metrics, frame: { entries: frame.entries, preparationFrames: frame.preparationFrames, projectFunctions: frame.projectFunctions, externalCalls: frame.externalCalls }, issues: [...metrics.issues, ...boundaries, ...globals, ...switches, ...frame.issues] };
 if (process.argv.includes('--json')) process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 else {
   for (const issue of report.issues) process.stdout.write(`${issue.severity} ${issue.file}:${issue.line} ${issue.function ?? ''} [${issue.rule}] ${issue.message}\n`);

@@ -47,6 +47,15 @@ function groupAnchors(entries: Iterable<EdgeAnchors>): Map<string, Anchor[]> {
   }
   return groups;
 }
+function removeAnchorFromGroup(endpoint: Anchor, groups: Map<string, Anchor[]>, touched: Set<string>): void {
+  const key = anchorGroup(endpoint); if (!key) return;
+  const group = groups.get(key); if (!group) throw new Error('canvas_edge_layout_group_missing');
+  group.splice(group.indexOf(endpoint), 1); if (!group.length) groups.delete(key); touched.add(key);
+}
+function registerAnchorInGroup(endpoint: Anchor, groups: Map<string, Anchor[]>, touched: Set<string>): void {
+  const key = anchorGroup(endpoint); if (!key) return;
+  const group = groups.get(key) ?? []; group.push(endpoint); groups.set(key, group); touched.add(key);
+}
 function spread(groups: Iterable<Anchor[]>): void {
   for (const endpoints of groups) {
     const first = endpoints[0];
@@ -134,16 +143,9 @@ export function createCanvasEdgeLayout(edges: readonly CanvasEdge[], cards: Read
       for (const id of changed) {
         const previous = entries.get(id);
         if (!previous) throw new Error('canvas_edge_layout_entry_missing');
-        for (const endpoint of [previous.from, previous.to]) {
-          const key = anchorGroup(endpoint); if (!key) continue;
-          const group = groups.get(key); if (!group) throw new Error('canvas_edge_layout_group_missing');
-          group.splice(group.indexOf(endpoint), 1); if (!group.length) groups.delete(key); touched.add(key);
-        }
+        for (const endpoint of [previous.from, previous.to]) removeAnchorFromGroup(endpoint, groups, touched);
         const next = anchors(previous.edge, nextCards, geometries.get(id)); entries.set(id, next);
-        for (const endpoint of [next.from, next.to]) {
-          const key = anchorGroup(endpoint); if (!key) continue;
-          const group = groups.get(key) ?? []; group.push(endpoint); groups.set(key, group); touched.add(key);
-        }
+        for (const endpoint of [next.from, next.to]) registerAnchorInGroup(endpoint, groups, touched);
       }
       const touchedGroups = [...touched].flatMap(key => { const group = groups.get(key); return group ? [group] : []; });
       spread(touchedGroups);
