@@ -144,7 +144,7 @@ export function planCanvasCommit(input: {
   }
   validateCanvasGraph([...plan.elements.values()].map(row => row.element));
   const result: CanvasCommitPlan = { origin: input.origin, changes: plan.changes, results: plan.results, refs: plan.refs,
-    state: { sequence: input.state.sequence + (plan.changes.length > 0 ? 1 : 0), nextCard: plan.nextCard, nextEdge: plan.nextEdge, elements: [...plan.elements.values()], deletedOrigins: input.state.deletedOrigins } };
+    state: { ...input.state, sequence: input.state.sequence + (plan.changes.length > 0 ? 1 : 0), nextCard: plan.nextCard, nextEdge: plan.nextEdge, elements: [...plan.elements.values()], deletedOrigins: input.state.deletedOrigins } };
   const groups = input.layoutGroups?.map(group => group.flatMap(id => { const resolved = resolveElementId(plan, id); return resolved ? [resolved] : []; }));
   const moved = new Set<CanvasElementId>(plan.results.flatMap((outcome, index) => {
     const operation = input.operations[index];

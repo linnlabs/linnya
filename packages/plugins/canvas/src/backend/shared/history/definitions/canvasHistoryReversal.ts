@@ -40,3 +40,11 @@ export interface CanvasHistoryRestorationMetadata {
   readonly now: number;
   readonly revision: number;
 }
+
+export interface CanvasHistoryRestorationPlacementInput {
+  readonly rows: ReadonlyMap<CanvasElementId, CanvasStoredElement>;
+  readonly changes: readonly CanvasElementChange[];
+  readonly results: import('../../../features/canvasCommit').CanvasCommitPlan['results'];
+  readonly restorationResults: ReadonlyMap<CanvasElementId, number>;
+  readonly origin: string;
+}

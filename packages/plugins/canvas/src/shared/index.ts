@@ -1,6 +1,7 @@
 export * from './model/definitions/canvasElement';
 export * from './model/functions/readCanvasContent';
 export * from './model/functions/canvasCardSizing';
+export * from './history/functions/canvasHistorySession';
 export { readCanvasCardPalette, readCanvasCardCssPalette } from './appearance/functions/readCanvasCardPalette';
 export type { CanvasCardPalette, CanvasCardCssPalette } from './appearance/definitions/canvasCardPalette';
 export type * from './geometry/definitions/canvasGeometry';
@@ -28,3 +29,4 @@ export type { CanvasArrangeRequest } from './layout/definitions/canvasLayout';
 
 export { CanvasVersionBudgetStatusSchema } from './history/definitions/canvasVersionBudget';
 export type { CanvasVersionBudgetStatus } from './history/definitions/canvasVersionBudget';
+export * from './history/definitions/canvasVersionRequests';

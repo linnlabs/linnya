@@ -3,13 +3,16 @@ import { createDocumentReferenceMarkdownRuntime } from '@plugin/backend/document
 import { broadcastRendererPluginMessage } from '@plugin/backend/pluginRendererPush';
 import {
   CANVAS_PLUGIN_ID, CANVAS_DOCUMENT_TYPE, CANVAS_CHANGED_CHANNEL, CANVAS_GROUPS_CHANGED_CHANNEL, CanvasRendererCommitRequestSchema,
-  type CanvasSnapshot, type CanvasUndoRequest, type CanvasCommitRequest,
+  type CanvasSnapshot, type CanvasUndoRequest, type CanvasCommitRequest, CANVAS_HISTORY_BUDGET_CHANNEL, CANVAS_RESTORED_CHANNEL,
 } from '../../shared';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
-import { initializeCanvasDocument, readCanvasSnapshot, readCanvasSynchronization, updateCanvasEditingClaim } from '../features/canvasCommit';
-import { createCanvasHistoryRuntime } from '../features/canvasUndoHistory';
-import { collectCanvasCommandAssetIds, readCanvasDocumentIdentity, CanvasDocumentFailure } from '../features/canvasDocument';
-import { readCanvasPendingBatches } from '../features/agentChanges';
+import { initializeCanvasDocument, readCanvasSnapshot, canvasSourceKey, readCanvasSynchronization, updateCanvasEditingClaim } from '../features/canvasCommit';
+import { createCanvasHistoryRuntime } from './history/createCanvasHistoryRuntime';
+import { createCanvasVersionHistoryRuntime } from '../features/canvasVersionHistory';
+import { createCanvasVersionHistoryPorts } from '../adapters/createCanvasVersionHistoryPorts';
+import { createCanvasVersionActions } from './createCanvasVersionActions';
+import { readCanvasDocumentIdentity, CanvasDocumentFailure } from '../features/canvasDocument';
+import { findCanvasAgentGroup } from '../features/agentChanges';
 import { createCanvasTextSnapshots } from './createCanvasTextSnapshots';
 import { createCanvasDocumentCommitParticipants } from '../adapters/createCanvasDocumentCommitParticipants';
 import { readCanvasProjectionContext } from '../features/canvasDocument';
@@ -19,13 +22,22 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
   const logger = new Logger('Canvas');
   const workspace = createWorkspaceService(database);
   const textSnapshots = createCanvasTextSnapshots(database);
-  const views = new Set<string>();
+  const views = new Map<string, string>();
+  let active = true;
+  const assertActive = () => { if (!active) throw new CanvasDocumentFailure('runtime_closed', '画布运行态已停用，请重新打开后重试'); };
+  const versionPorts = createCanvasVersionHistoryPorts({ database, retainedElements: documentId => editing.retainedElements(documentId),
+    budgetChanged: status => broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_HISTORY_BUDGET_CHANNEL, status) });
+  const versions = createCanvasVersionHistoryRuntime({ database, ports: versionPorts.ports });
   const admission = createCanvasDocumentCommitParticipants(database, references);
   const editing: ReturnType<typeof createCanvasHistoryRuntime> = createCanvasHistoryRuntime({ database,
     pendingApproval: admission.pendingApproval,
-    groupsChanged(documentId) { broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_GROUPS_CHANGED_CHANNEL, { documentId }); },
+    groupsChanged(documentId) { versions.requestMaintenance(documentId); broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_GROUPS_CHANGED_CHANNEL, { documentId }); },
     ports: {
     participants: admission.participants,
+    history(input) {
+      const beforeGroup = input.context.actor.source.kind === 'agent' && !findCanvasAgentGroup(database, input.context.documentId, canvasSourceKey(input.context.actor));
+      return versions.recordCommit(input, { beforeGroup });
+    },
     publish(plan, context) {
       const node = readCanvasDocumentIdentity(database, context.documentId);
       textSnapshots.schedule(context.documentId);
@@ -36,18 +48,21 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
     publicationFailed(error) { logger.error('Canvas 已提交，后续通知失败；客户端须按序号补拉', { error }); },
   } });
 
+  const history = createCanvasVersionActions({ database, versions, editing, hasView: (documentId, viewId) => active && views.get(viewId) === documentId,
+    restored(event) { try { broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_RESTORED_CHANNEL, event); } catch (error) { logger.error('Canvas版本已恢复，恢复通知失败', { error, documentId: event.documentId }); } } });
   function read(documentId: string, projectId?: string, viewId?: string): CanvasSnapshot {
-    readCanvasDocumentIdentity(database, documentId, projectId);
-    if (viewId) { editing.registerView({ documentId, viewId }); views.add(viewId); }
+    assertActive(); readCanvasDocumentIdentity(database, documentId, projectId);
+    if (viewId) { editing.registerView({ documentId, viewId }); views.set(viewId, documentId); }
     return readCanvasSnapshot(database, documentId);
   }
   function create(input: { readonly projectId: string; readonly parentId: string | null; readonly name: string; readonly content?: string }): string {
+    assertActive();
     if (input.content?.trim()) throw new CanvasDocumentFailure('projection_read_only', '创建空画布后用 linnya-canvas apply 添加内容；不能把投影当文件覆写');
     let documentId = '';
     database.transaction(() => {
       const node = workspace.createNode({ type: CANVAS_DOCUMENT_TYPE, name: input.name, projectId: input.projectId, parentId: input.parentId });
       documentId = node.id;
-      initializeCanvasDocument(database, documentId);
+      initializeCanvasDocument(database, documentId); versions.initialize(documentId);
       textSnapshots.refresh(documentId);
     }).immediate();
     return documentId;
@@ -57,12 +72,12 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
     return commitUser(request, viewId, historyGroupId);
   }
   function commitUser(request: CanvasCommitRequest, viewId: string, historyGroupId?: string) {
-    readCanvasDocumentIdentity(database, request.documentId);
-    views.add(viewId);
+    assertActive(); readCanvasDocumentIdentity(database, request.documentId);
+    if (!views.has(viewId)) views.set(viewId, request.documentId);
     return editing.commit({ request, actor: { source: { kind: 'user', conversationId: null, runId: null }, viewId }, historyGroupId, now: Date.now() });
   }
   function undo(request: CanvasUndoRequest) {
-    readCanvasDocumentIdentity(database, request.documentId);
+    assertActive(); readCanvasDocumentIdentity(database, request.documentId);
     return editing.undo(request, Date.now());
   }
   function project(documentId: string): string {
@@ -70,23 +85,24 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
     return projectCanvasDocument(snapshot, readCanvasProjectionContext(database, snapshot));
   }
   function changes(documentId: string, afterSequence: number) {
-    readCanvasDocumentIdentity(database, documentId);
+    assertActive(); readCanvasDocumentIdentity(database, documentId);
     return readCanvasSynchronization(database, { documentId, afterSequence });
   }
   function protect(input: { documentId: string; viewId: string; elementId: string; fields: readonly string[] }) {
-    readCanvasDocumentIdentity(database, input.documentId);
+    assertActive(); readCanvasDocumentIdentity(database, input.documentId);
     updateCanvasEditingClaim(database, { ...input, now: Date.now() });
   }
   function close(documentId: string, viewId: string) {
-    try { textSnapshots.refresh(documentId); }
-    finally { editing.releaseView(viewId); views.delete(viewId); }
+    try { textSnapshots.refresh(documentId); versions.close(documentId); }
+    finally { if (views.get(viewId) === documentId) { editing.releaseView(viewId); views.delete(viewId); } }
   }
   function dispose() {
+    if (!active) return; active = false;
     textSnapshots.flush();
-    for (const view of views) editing.releaseView(view);
-    views.clear();
+    for (const [viewId, documentId] of views) { versions.close(documentId); editing.releaseView(viewId); }
+    views.clear(); versions.dispose();
   }
-  return { create, read, commit, commitUser, undo, changes, project, protect, close, dispose, refreshTextSnapshot: textSnapshots.refresh, editing, references, pendingAssetIds: (documentId: string) => [...new Set(readCanvasPendingBatches(database, documentId).flatMap(batch => collectCanvasCommandAssetIds(batch.request.operations)))],
+  return { create, read, commit, commitUser, undo, changes, project, protect, close, dispose, refreshTextSnapshot: textSnapshots.refresh, editing, references, versions, history, pendingAssetIds: versionPorts.pendingAssetIds,
   };
 }
 export type CanvasDocumentRuntime = ReturnType<typeof createCanvasDocumentRuntime>;

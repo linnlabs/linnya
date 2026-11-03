@@ -3,6 +3,7 @@ export { applyCanvasSynchronization } from './functions/applyCanvasSynchronizati
 export type { CanvasDocumentPort, CanvasDocumentSession } from './definitions/canvasDocumentSession';
 export { canvasFileHandler } from './fileHandler';
 export { registerCanvasSaveParticipant, saveCanvasDocumentDrafts } from './ports/canvasSaveParticipants';
-export { requireCanvasUserCommitApplied } from './functions/requireCanvasUserCommitApplied';
+export { requireCanvasUserCommitApplied, CanvasCommitOutcomeError } from './functions/requireCanvasUserCommitApplied';
 export { requireWritableCanvas, isCanvasReadonly } from './functions/requireWritableCanvas';
 export { registerCanvasHistorySession, readCanvasHistorySession } from './ports/canvasHistorySessions';
+export { CanvasDeliveryUnknownError } from './definitions/canvasMutation';

@@ -5,38 +5,39 @@ import {
   CANVAS_PLUGIN_ID, CanvasChangesRequestSchema, CanvasEditingRequestSchema, CanvasReadRequestSchema, CanvasUndoRequestSchema,
   CanvasCloseRequestSchema, CanvasGroupsRequestSchema, CanvasCloseGroupRequestSchema, CanvasReviewRequestSchema,
   CanvasWithdrawGroupRequestSchema, CanvasResolveApprovalRequestSchema,
-  CanvasReadImageRequestSchema,
+  CanvasReadImageRequestSchema, CanvasHistoryPreviewRequestSchema, CanvasHistoryBudgetRequestSchema,
 } from '../../shared';
-import type { CanvasDocumentRuntime } from '../orchestration/createCanvasDocumentRuntime';
 import { CanvasReadOnlyFormatError, CanvasContentPolicyError } from '../features/canvasCommit';
 import { CanvasDocumentFailure } from '../features/canvasDocument';
-import type { createCanvasImageRuntime } from '../orchestration/createCanvasImageRuntime';
 import { readCanvasClipboard, readCanvasSelectionContext } from '../orchestration/readCanvasSelectionContext';
-import type { createCanvasArrangementRuntime } from '../orchestration/createCanvasArrangementRuntime';
+import type { CanvasIpcServices } from '../definitions/canvasIpcServices';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
 
 export const CANVAS_IPC_CHANNELS = ['canvas:read', 'canvas:commit', 'canvas:changes', 'canvas:editing', 'canvas:undo', 'canvas:close',
-  'canvas:groups', 'canvas:complete-group', 'canvas:review', 'canvas:withdraw', 'canvas:approval', 'canvas:import-image', 'canvas:prepare-image', 'canvas:read-image', 'canvas:context', 'canvas:clipboard', 'canvas:arrange', 'canvas:cancel-arrange'] as const;
+  'canvas:groups', 'canvas:complete-group', 'canvas:review', 'canvas:withdraw', 'canvas:approval', 'canvas:import-image', 'canvas:prepare-image', 'canvas:read-image', 'canvas:context', 'canvas:clipboard', 'canvas:arrange', 'canvas:cancel-arrange', 'canvas:history-preview', 'canvas:history-budget'] as const;
 
-export function registerCanvasIpc(database: CanvasDatabase, runtime: CanvasDocumentRuntime, images: ReturnType<typeof createCanvasImageRuntime>, register: BackendPluginIpcHandlerRegistrar, arrangement?: ReturnType<typeof createCanvasArrangementRuntime>): void {
+export function registerCanvasIpc(input: { readonly database: CanvasDatabase; readonly services: () => CanvasIpcServices; readonly register: BackendPluginIpcHandlerRegistrar }): void {
+  const { database, register, services } = input;
   const handlers = {
-    'canvas:read': (payload: unknown) => { const input = CanvasReadRequestSchema.parse(payload); return runtime.read(input.documentId, undefined, input.viewId); },
-    'canvas:commit': (payload: unknown) => runtime.commit(payload),
-    'canvas:changes': (payload: unknown) => { const input = CanvasChangesRequestSchema.parse(payload); return runtime.changes(input.documentId, input.afterSequence); },
-    'canvas:editing': (payload: unknown) => { runtime.protect(CanvasEditingRequestSchema.parse(payload)); return null; },
-    'canvas:undo': (payload: unknown) => runtime.undo(CanvasUndoRequestSchema.parse(payload)),
-    'canvas:close': (payload: unknown) => { const input = CanvasCloseRequestSchema.parse(payload); arrangement?.close(input.documentId, input.viewId); runtime.close(input.documentId, input.viewId); return null; },
-    'canvas:groups': (payload: unknown) => { const input = CanvasGroupsRequestSchema.parse(payload); runtime.read(input.documentId); return runtime.editing.listGroups(input.documentId, Date.now(), input.viewId); },
-    'canvas:complete-group': (payload: unknown) => { const input = CanvasCloseGroupRequestSchema.parse(payload); runtime.read(input.documentId); runtime.editing.closeGroup(input); return null; },
-    'canvas:review': (payload: unknown) => { const input = CanvasReviewRequestSchema.parse(payload); runtime.read(input.documentId); runtime.editing.reviewElement(input); return null; },
-    'canvas:withdraw': (payload: unknown) => { const input = CanvasWithdrawGroupRequestSchema.parse(payload); runtime.read(input.documentId); return runtime.editing.withdraw(input, Date.now()); },
-    'canvas:approval': (payload: unknown) => { const input = CanvasResolveApprovalRequestSchema.parse(payload); runtime.read(input.documentId); return runtime.editing.resolveApproval(input, Date.now()); },
-    'canvas:import-image': (payload: unknown) => images.importImage(payload),
-    'canvas:prepare-image': (payload: unknown) => images.prepareImage(payload),
-    'canvas:read-image': (payload: unknown) => images.readImage(CanvasReadImageRequestSchema.parse(payload)),
-    'canvas:arrange': (payload: unknown) => { if (!arrangement) throw new Error('canvas_arrangement_unavailable'); return arrangement.arrange(payload); },
-    'canvas:cancel-arrange': (payload: unknown) => { if (!arrangement) throw new Error('canvas_arrangement_unavailable'); arrangement.cancel(payload); return null; },
+    'canvas:read': (payload: unknown) => { const input = CanvasReadRequestSchema.parse(payload); return services().runtime.read(input.documentId, undefined, input.viewId); },
+    'canvas:commit': (payload: unknown) => services().runtime.commit(payload),
+    'canvas:changes': (payload: unknown) => { const input = CanvasChangesRequestSchema.parse(payload); return services().runtime.changes(input.documentId, input.afterSequence); },
+    'canvas:editing': (payload: unknown) => { services().runtime.protect(CanvasEditingRequestSchema.parse(payload)); return null; },
+    'canvas:undo': (payload: unknown) => services().runtime.undo(CanvasUndoRequestSchema.parse(payload)),
+    'canvas:close': (payload: unknown) => { const input = CanvasCloseRequestSchema.parse(payload); services().arrangement.close(input.documentId, input.viewId); services().runtime.close(input.documentId, input.viewId); return null; },
+    'canvas:groups': (payload: unknown) => { const input = CanvasGroupsRequestSchema.parse(payload); services().runtime.read(input.documentId); return services().runtime.editing.listGroups(input.documentId, Date.now(), input.viewId); },
+    'canvas:complete-group': (payload: unknown) => { const input = CanvasCloseGroupRequestSchema.parse(payload); services().runtime.read(input.documentId); services().runtime.editing.closeGroup(input); return null; },
+    'canvas:review': (payload: unknown) => { const input = CanvasReviewRequestSchema.parse(payload); services().runtime.read(input.documentId); services().runtime.editing.reviewElement(input); return null; },
+    'canvas:withdraw': (payload: unknown) => { const input = CanvasWithdrawGroupRequestSchema.parse(payload); services().runtime.read(input.documentId); return services().runtime.editing.withdraw(input, Date.now()); },
+    'canvas:approval': (payload: unknown) => { const input = CanvasResolveApprovalRequestSchema.parse(payload); services().runtime.read(input.documentId); return services().runtime.editing.resolveApproval(input, Date.now()); },
+    'canvas:import-image': (payload: unknown) => services().images.importImage(payload),
+    'canvas:prepare-image': (payload: unknown) => services().images.prepareImage(payload),
+    'canvas:read-image': (payload: unknown) => services().images.readImage(CanvasReadImageRequestSchema.parse(payload)),
+    'canvas:arrange': (payload: unknown) => { return services().arrangement.arrange(payload); },
+    'canvas:cancel-arrange': (payload: unknown) => { services().arrangement.cancel(payload); return null; },
     'canvas:clipboard': (payload: unknown) => readCanvasClipboard(database, payload),
+    'canvas:history-preview': (payload: unknown) => { const value = CanvasHistoryPreviewRequestSchema.parse(payload); return services().runtime.history.preview(value.documentId, value.versionId); },
+    'canvas:history-budget': (payload: unknown) => { const value = CanvasHistoryBudgetRequestSchema.parse(payload); return services().runtime.history.budget(value.documentId); },
     'canvas:context': (payload: unknown) => readCanvasSelectionContext(database, payload),
   };
   for (const channel of CANVAS_IPC_CHANNELS) {

@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import { createCanvasPlainTextDocument, type CanvasColor } from '../../../../shared';
 import { canvasPluginMigrations } from '../../../persistence/migrations';
 import { initializeCanvasDocument, readCanvasSnapshot, validateCanvasGraph, type CanvasCommitActor } from '../../canvasCommit';
-import { createCanvasHistoryRuntime } from '../../canvasUndoHistory';
+import { createCanvasHistoryRuntime } from '../../../orchestration/history/createCanvasHistoryRuntime';
 
 const colors: readonly CanvasColor[] = ['white', 'red', 'orange', 'yellow', 'green', 'cyan', 'purple'];
 const step = fc.record({ source: fc.constantFrom('user', 'A', 'B'), field: fc.constantFrom('color', 'label'), value: fc.integer({ min: 0, max: 6 }) });

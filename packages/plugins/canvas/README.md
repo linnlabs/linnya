@@ -51,6 +51,8 @@ Backend 按数据库实例持有 `createCanvasHistoryRuntime`。组合入口位�
 Backend contribution 按数据库实例拥有文档运行态，停用释放定时器、编辑声明与用户撤销栈。创建在同步事务内维护 Workspace 节点、Canvas 当前内容和初始搜索快照；只读 VFS 投影不能被普通文本写入覆盖。正式写入将文档引用、受管图片归属和节点时间加入同一事务，Agent 的项目归属在最终提交时复核。成功后才发布内容序号；通知失败不伪称回滚。
 
 搜索纯文本快照独立于历史版本：第一批脏内容启动 30 秒刷新，持续输入不会无限延后，关闭时刷新。引用投影使用 Workspace 当前路径；跨项目和已删除引用仅展示不可访问状态。快照按 UTF-8 限制为 1 MiB。Renderer `canvas:read` 可带视图身份登记删除框基线，`canvas:close` 释放视图。
+
+历史面板经通用 documentHistory capability 读取摘要和恢复，Canvas 的 `history-preview` / `history-budget` 只传验证后的画布 DTO。恢复会话身份同时携带真实视图及该次草稿捕获编号，Backend 验证仍打开的视图，恢复推送回显完整身份；迟到的恢复结果不能清除后来的草稿。恢复前的脏内容与恢复结果均在同一内容事务形成检查点，恢复进入发起视图的用户撤销栈，保留既有 Agent 组。历史资产与当前内容、用户栈、Agent 组、待确认批次的可达集合一起登记/释放。详见 [版本历史 owner](./src/backend/features/canvasVersionHistory/README.md)。
 CLI 的 `payloadIdentity` 由可信编排从原始 operations/options 构造，不能由模型填写 hash。`replayAgentRequest` 在 Markdown 解析、append 归一化、测高及资产接管前查询；原始身份与成功回执在同一事务保存，正文变更不会让同次 append 重试变成第二次追加。未传身份时仍以正式 operations 为准。`approvalResults` 提供当前对话最近 50 条审批状态，CLI 读操作可主动报告已允许、拒绝或过期结果。
 
 文字卡自动高度复用 shared 的 `canvasAutomaticTextHeight`，手动缩放后持久化为 fixed；编辑器 DOM 测量和正文在同一次更新提交。正文、拖动、缩放分别持有字段保护 owner，同视图只向 Backend 发送这些 owner 的字段并集；结束其中一个动作不会清除另一个尚在进行的动作，长拖动和缩放持续续约。
@@ -78,3 +80,9 @@ Standalone `entry.command` 只提供 read/show/find/neighbors/region/check，显
 当前内容格式为1。读取时仅把可验证的元素交给显示投影；未知类型、非法正文/字段版本/排序、坏分组及依赖隔离卡片的线保留原始SQLite行，并返回 `integrity` 诊断。出现任何此类问题或更高格式版本时整张画布只读，当前提交、撤销、批准与恢复共享提交入口并拒绝写入，避免老版本剥离未来字段。隔离只影响展示，不写占位节点、不回存过滤后的快照。未来增加真正内容格式迁移时，必须先用版本历史保留迁移前状态。
 
 兼容策略参考 [Excalidraw对未知属性保留的修复](https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/CHANGELOG.md) 与 [tldraw的schema迁移owner约定](https://github.com/tldraw/tldraw/blob/main/packages/tlschema/README.md)；本插件以只读和原始行保留避免静默损失。
+
+## Renderer 写确认
+
+同一表面把commit、undo、排布和Agent组撤回/批准放入写确认通道。运输结果不确定时，保留原调用与冻结负载并显示“重试确认”；只重发同一requestId，其他意图等待。已收到成功回执但补拉失败时只重试接纳，不再次发送写入。明确业务拒绝会释放通道并保留对应草稿；关闭使本地等待失效，不否认后台已成功事实。初次文字卡已经创建而关联线跳过时接纳真实卡片身份，准确说明部分成功。
+
+一次多图片导入先完成全部资产准备，再共同提交全部卡片、归属和一次用户撤销；准备任一图片失败时不创建部分卡片。准备结果只保留稳定资产身份与尺寸，不在UI数组长期持有原图字节。初始图框尺寸由shared `canvasDefaultImageSize`计算。
