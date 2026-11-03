@@ -20,6 +20,7 @@ export class CanvasBitmapCache {
     } });
   }
   setMotionEnabled(enabled: boolean): void { this.fades.setEnabled(enabled); }
+  finishTransitions(ids?: readonly CanvasCardId[]): void { for (const id of ids ?? this.entries.keys()) this.fades.finish(id); }
   has(id: CanvasCardId, key?: string): boolean { const entry = this.entries.get(id); return entry !== undefined && (key === undefined || entry.key === key); }
   covers(id: CanvasCardId, regions: readonly CanvasRectangle[]): boolean {
     const entry = this.entries.get(id); return entry !== undefined && subtractCanvasRegions(regions, entry.regions).length === 0;

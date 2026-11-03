@@ -7,7 +7,7 @@ export type CanvasKernelIntent =
   | { readonly kind: 'hover'; readonly id: CanvasCardId | null }
   | { readonly kind: 'select'; readonly ids: readonly CanvasCardId[]; readonly additive: boolean }
   | { readonly kind: 'select-edge'; readonly id: CanvasEdgeId | null }
-  | { readonly kind: 'move'; readonly ids: readonly CanvasCardId[]; readonly dx: number; readonly dy: number; readonly copy?: boolean }
+  | { readonly kind: 'move'; readonly ids: readonly CanvasCardId[]; readonly positions: readonly CanvasCardPosition[]; readonly dx: number; readonly dy: number; readonly copy?: boolean }
   | { readonly kind: 'editing'; readonly ids: readonly CanvasCardId[]; readonly active: boolean }
   | { readonly kind: 'open'; readonly id: CanvasCardId }
   | { readonly kind: 'context'; readonly point: CanvasPoint; readonly id: CanvasCardId | null; readonly edgeId?: CanvasEdgeId | null }
@@ -19,6 +19,8 @@ export interface CanvasRenderStatus {
   readonly message: string | null;
 }
 export interface CanvasGuide { readonly from: CanvasPoint; readonly to: CanvasPoint }
+export interface CanvasCardPosition extends CanvasPoint { readonly id: CanvasCardId }
+export interface CanvasSceneMotionOptions { readonly animateIds?: readonly CanvasCardId[]; readonly batch?: boolean }
 export interface CanvasAppearance {
   readonly dark: boolean;
   readonly material: 'paper' | 'card';
@@ -30,9 +32,13 @@ export interface CanvasRasterTile {
 }
 export interface CanvasKernel {
   readonly canvas: HTMLCanvasElement;
-  setElements(elements: readonly CanvasElement[]): void;
+  setElements(elements: readonly CanvasElement[], options?: CanvasSceneMotionOptions): void;
   setCamera(camera: CanvasCamera): void;
   readCamera(): CanvasCamera;
+  animateCamera(camera: CanvasCamera, durationMs?: number): void;
+  finishTransitions(ids?: readonly CanvasCardId[]): void;
+  readDisplayPosition(id: CanvasCardId): CanvasPoint | null;
+  isMoving(): boolean;
   readRenderStatus(): CanvasRenderStatus;
   readResolution(): number;
   setSelection(ids: readonly CanvasCardId[]): void;
@@ -46,6 +52,7 @@ export interface CanvasKernel {
   setGuides(guides: readonly CanvasGuide[]): void;
   setBitmap(id: CanvasCardId, revision: number, key: string, bitmap: ImageBitmap): boolean;
   setRasterTiles(id: CanvasCardId, revision: number, key: string, tiles: readonly CanvasRasterTile[]): boolean;
+  setRasterContentKey(id: CanvasCardId, key: string): void;
   invalidateBitmaps(): void;
   setAppearance(appearance: CanvasAppearance): void;
   resize(width: number, height: number, resolution?: number): void;
@@ -68,10 +75,11 @@ export interface CanvasKernel {
   captureImage(format: 'png' | 'jpeg', quality?: number): Promise<string>;
   readStats(): CanvasSpatialProjectionStats & { readonly cards: number; readonly edges: number; readonly bitmaps: number; readonly bitmapBytes: number; readonly renders: number; readonly bitmapBudgetBytes: number; readonly rasterTiles: number;
     readonly fadingCards: number; readonly retiringBytes: number; readonly retiringTiles: number;
+    readonly sceneTransitions: number; readonly cameraTransition: boolean;
     readonly viewportCards: number; readonly renderableCards: number; readonly rasterCards: number;
     readonly lineMeshBuilds: number; readonly visibleEdges: number };
   destroy(): void;
 }
 
 export type CanvasInteractionKernel = Pick<CanvasKernel,
-  'canvas' | 'readCamera' | 'setCamera' | 'screenToWorld' | 'hitTest' | 'hitTestEdge' | 'setHoveredCard' | 'visibleCards' | 'readSelection' | 'setBrush' | 'setGuides' | 'setDragPreview' | 'clearDragPreview'>;
+  'canvas' | 'readCamera' | 'setCamera' | 'screenToWorld' | 'hitTest' | 'hitTestEdge' | 'setHoveredCard' | 'visibleCards' | 'readSelection' | 'readDisplayPosition' | 'setBrush' | 'setGuides' | 'setDragPreview' | 'clearDragPreview'>;

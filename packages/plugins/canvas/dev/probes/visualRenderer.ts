@@ -1,3 +1,4 @@
+import './sceneVisualRenderer';
 import { CanvasCardSchema, CanvasCardIdSchema, CanvasEdgeSchema, readCanvasCardCssPalette, type CanvasColor, type CanvasCard } from '../../src/shared';
 import { CanvasRenderRequestSchema } from '../../src/shared/rendering';
 import { createCardSurface } from '../../src/renderer/hidden-render-worker/functions/createCardSurface';
@@ -371,14 +372,17 @@ async function fadeBudgetVisual() {
   const kernel = await createPixiCanvasKernel({ host, width: 600, height: 250, bitmapBudgetBytes: 50000 }); previousKernel = kernel;
   const first = oldFixture.card, second = CanvasCardSchema.parse({ ...first, id: 'c2', x: 240, width: 160, height: 120 }); kernel.setElements([first, second]);
   const old = colorBitmap(50, 35, '#e02020'), blue = colorBitmap(100, 70, '#2030e0'), green = colorBitmap(80, 60, '#20d030');
-  kernel.setBitmap(first.id, 1, 'old', old);
+  kernel.setRasterContentKey(first.id, 'authorized-generation'); kernel.setBitmap(first.id, 1, 'old', old);
   await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   kernel.setBitmap(first.id, 1, 'blue', blue);
   const during = kernel.readStats(); kernel.setBitmap(second.id, 1, 'green', green); const reserved = kernel.readStats();
   if (reserved.bitmapBytes > reserved.bitmapBudgetBytes || reserved.bitmaps !== 2 || old.width || blue.width !== 100 || green.width !== 80) throw new Error('fade_retirement_was_not_reserved_within_budget');
   const oversized = colorBitmap(300, 200, '#f000f0');
   if (kernel.setBitmap(second.id, 1, 'oversized', oversized) || oversized.width || !kernel.hasBitmap(second.id, 'green')) throw new Error('oversized_bitmap_destroyed_the_valid_current_entry');
-  const replacing = colorBitmap(10, 7, '#9020c0'); kernel.setBitmap(first.id, 1, 'replacing', replacing); kernel.invalidateBitmaps();
+  const replacing = colorBitmap(10, 7, '#9020c0'); kernel.setBitmap(first.id, 1, 'replacing', replacing);
+  kernel.setRasterContentKey(first.id, 'inaccessible-generation');
+  if (blue.width || replacing.width || kernel.hasBitmap(first.id, 'replacing')) throw new Error('external_content_generation_kept_old_fading_bytes');
+  kernel.invalidateBitmaps();
   await new Promise<void>(resolve => setTimeout(resolve, 16));
   if (kernel.readStats().bitmapBytes || kernel.readStats().fadingCards || old.width || blue.width || green.width || replacing.width) throw new Error('cancelled_fade_left_native_bitmaps_or_timers');
   return { during, reserved, cleared: kernel.readStats() };
