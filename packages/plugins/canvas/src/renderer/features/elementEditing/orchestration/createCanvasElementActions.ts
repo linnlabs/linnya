@@ -1,7 +1,8 @@
 import { CanvasCardIdSchema, CanvasEdgeIdSchema, type CanvasCommand, type CanvasElement } from '@plugin/canvas/shared';
 import type { CanvasDocumentSession } from '../../canvasDocument';
 import { buildCanvasDuplication, selectCanvasSubgraph } from '../../clipboard';
-import type { CanvasElementActionSelection } from '../definitions/canvasElementActions';
+import type { CanvasAlignment, CanvasDistribution, CanvasElementActionSelection } from '../definitions/canvasElementActions';
+import { buildDistributeCommands } from '../functions/buildCanvasDistributionCommands';
 import { buildAlignCommands, buildLayerCommands, buildLockCommands } from '../functions/buildCardLayoutCommands';
 
 export function createCanvasElementActions(session: CanvasDocumentSession, selection: CanvasElementActionSelection) {
@@ -10,7 +11,8 @@ export function createCanvasElementActions(session: CanvasDocumentSession, selec
   return {
     lock: () => commit(buildLockCommands(elements(), selection.read())),
     layer: (direction: 'front' | 'back') => commit(buildLayerCommands(elements(), selection.read(), direction)),
-    align: (mode: 'left' | 'top' | 'grid') => commit(buildAlignCommands(elements(), selection.read(), mode)),
+    align: (mode: CanvasAlignment) => commit(buildAlignCommands(elements(), selection.read(), mode)),
+    distribute: (mode: CanvasDistribution) => commit(buildDistributeCommands(elements(), selection.read(), mode)),
     async duplicate(source: readonly CanvasElement[] = selectCanvasSubgraph(elements(), selection.read()), dx = 32, dy = 32) {
       const ids = source.filter(element => element.type !== 'edge').map(card => card.id);
       const plan = buildCanvasDuplication({ elements: source, ids, dx, dy, allocateReferenceId: () => crypto.randomUUID() });

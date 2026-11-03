@@ -42,3 +42,12 @@ it('新连线拖到空白只开启本地文字草稿，不提前写入历史', a
   target.dispatchEvent(f.pointer('pointerdown')); target.dispatchEvent(f.pointer('pointerup', 80, 90));
   expect(f.createText).toHaveBeenCalledExactlyOnceWith({ x: 80, y: 90 }, edge.from); expect(f.commit).not.toHaveBeenCalled(); await f.dispose();
 });
+
+it('反转同一连线保留稳定ID和端点身份，定位查询不产生提交', async () => {
+  const f = await fixture(); await f.connection.select(edge.id);
+  expect(f.connection.endpoint('from')).toEqual(edge.from); expect(f.connection.endpoint('to')).toEqual(edge.to);
+  expect(f.commit).not.toHaveBeenCalled();
+  await f.connection.reverse();
+  expect(f.commands).toEqual([[{ op: 'update', id: edge.id, baseRevision: edge.revision, patch: { from: edge.to, to: edge.from } }]]);
+  await f.dispose();
+});
