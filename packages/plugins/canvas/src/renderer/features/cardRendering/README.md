@@ -4,4 +4,6 @@
 
 批量正文装配按正式 DOM 排版，独立报告单卡内容准备失败；一张不可访问图片不阻塞同批文字卡。长卡依据完整排版高度显示裁切状态，切片保持完整正文排版宽度。实际绘制经 textRasterization capability 的一次 paint atlas，再裁出独立像素所有权的 ImageBitmap，不让小碎片持有整页 backing。
 
-Renderer 组合层调度只补当前世界可见片段中尚无纹理的部分；同一正文版本的片段可合并。移动/颜色不使正文失效，元数据通过 readContentKey 精确失效，旧异步结果不能覆盖新的授权标题/状态。失败在当前键下保留错误，显式 retry 后重试，不无限热循环。
+Renderer 组合层调度只补当前世界可见片段中尚无纹理的部分；同一正文版本的片段可合并。移动不使正文失效，染纸会改变同色深墨，颜色须参与正文键。元数据通过 readContentKey 精确失效，旧异步结果不能覆盖新的授权标题/状态。失败在当前键下保留错误，显式 retry 后重试，不无限热循环。
+
+`shared/appearance` 是纸面、标题、正文、辅助墨色的唯一色板。`content` 公开的 `installCanvasCardInk` 由编辑器、Renderer与离屏正文共同消费，同源CSS提供标题/辅助层级和长卡底部淡出；作者显式行内颜色保留。前后台共同调用 `createCanvasCardRasterBatch` 的批量测高/裁切/paint流程。

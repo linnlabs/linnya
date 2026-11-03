@@ -2,13 +2,14 @@ import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import { JsonValueSchema } from '@app/schemas';
 import type { CanvasCard } from '../../../shared';
 import type { CanvasWorkerRequest, CanvasRenderRequest } from '../../../shared/rendering';
-import { hydrateCanvasManagedImages, hydrateCanvasDocumentTags } from '../../features/cardRendering/content';
+import { hydrateCanvasManagedImages, hydrateCanvasDocumentTags, installCanvasCardInk } from '../../features/cardRendering/content';
 
 export function createCardSurface(card: CanvasCard, request: CanvasRenderRequest): HTMLElement {
   const element = document.createElement('div');
   element.className = 'markdown-document-content';
   element.style.cssText = 'box-sizing:border-box;padding:16px 18px 18px;width:100%;overflow-wrap:anywhere';
   installTypography(element, request);
+  installCanvasCardInk(element, card.color, request.theme === 'dark');
   if (card.type === 'text') {
     element.append(createMarkdownDocumentFragment(JsonValueSchema.parse(card.data.content), document));
     hydrateCanvasManagedImages(element, request.assets); hydrateCanvasDocumentTags(element, request.documents);
@@ -23,6 +24,7 @@ export function createCardSurface(card: CanvasCard, request: CanvasRenderRequest
   } else {
     const preview = request.documents[card.data.documentId];
     const title = document.createElement('p');
+    title.className = 'canvas-card-title';
     title.textContent = preview?.title ?? '文档当前不可访问';
     element.append(title);
     if (preview?.image && (!preview.status || preview.status === 'available')) {

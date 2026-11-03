@@ -79,4 +79,10 @@ describe('document reference business lifecycle', () => {
     db.prepare('DELETE FROM workspace_nodes WHERE id = ?').run('source');
     expect(operations().listBacklinks('target')).toHaveLength(0);
   });
+  it('rejects folder identities as either end of a document reference', () => {
+    db.prepare('INSERT INTO workspace_nodes VALUES (?, ?, ?, ?, NULL)').run('folder', 'p1', 'Folder', 'folder');
+    expect(() => db.transaction(() => replace('folder', 'new')).immediate()).toThrow('target_not_found');
+    expect(() => db.transaction(() => operations().replace({ sourceDocumentId: 'folder', references: [] })).immediate()).toThrow('source_not_found');
+  });
+
 });

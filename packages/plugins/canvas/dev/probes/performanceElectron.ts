@@ -53,7 +53,8 @@ async function run() {
         for (let i = 0; i < 50; i++) { win.webContents.sendInputEvent({ type: 'mouseMove', x: Math.round(target.point.x + i * 2), y: Math.round(target.point.y + i) }); await delay(20); }
         win.webContents.sendInputEvent({ type: 'mouseUp', x: Math.round(target.point.x + 98), y: Math.round(target.point.y + 49), button: 'left', clickCount: 1 });
         const frames: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
-        const intents: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceDrag()');
+        const intents = z.object({ movedCards: z.number(), selected: z.number() }).parse(await win.webContents.executeJavaScript('window.finishCanvasPerformanceDrag()'));
+        if (intents.movedCards !== target.selected) throw new Error(`native_drag_did_not_finish:${intents.movedCards}:${target.selected}`);
         drag = { target, frames, intents };
       }
       const report = { count, clustered, initial, pan, close, bodyLoad, bodySettled, zoom, zoomSettled, drag };

@@ -28,7 +28,7 @@ export async function readCanvasResources(input: { readonly database: CanvasData
     // 画布封面只在外层请求绘制，内部画布卡始终是身份牌，避免互引递归。
     if (!input.covers || status !== 'available' || resolution.nodeType === CANVAS_DOCUMENT_TYPE || source.projectId === null) continue;
     const preview = await previews.read({ documentId: targetDocumentId, projectId: source.projectId, widthPx: 640, pixelRatio: 1 });
-    if (preview.status === 'ready' && preview.content?.image) documents[targetDocumentId] = { ...metadata, image: preview.content.image.dataUri };
+    if (preview.status === 'ready' && preview.content?.image) documents[targetDocumentId] = { ...metadata, image: preview.content.image.dataUri, keepThumbnail: preview.content.overview === 'thumbnail' };
   }
   input.signal.throwIfAborted();
   return { assets, documents };

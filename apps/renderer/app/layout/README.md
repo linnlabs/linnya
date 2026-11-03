@@ -418,3 +418,5 @@ npm test -- apps/renderer/app/layout/functions/headerPaneGeometry.test.ts apps/r
 
 Workspace context 对外使用文档 `nodeType`；file-manager 的 `fileSessionType` 由注册表转换。
 两者可能不同，直接透传会使 Conversation 找不到插件的选区、摘要与文稿片段 provider。
+
+统一节点删除通过 `workspaceNodeDeletion` 组合当前引用影响与既有单项/批量确认，只展示一个应用内确认框。完整后代范围由 Backend Workspace owner 提供，提醒排除本次一起删除的来源；取消返回明确 cancelled，不删除、不切页、不显示成功。引用风险文案在 Workspace message catalog 中维护。

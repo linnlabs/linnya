@@ -85,4 +85,10 @@ describe('trusted Markdown document reference bindings', () => {
     } finally { f.database.close(); }
   });
 
+  it('reports malformed authored workspace URI escapes as an actionable reference error', () => {
+    const f = fixture();
+    try { expect(() => f.runtime.admit({ ...f.identity, content: parseMarkdownDocument('[Bad](workspace:/100%.md)') })).toThrow('workspace 文档链接'); }
+    finally { f.database.close(); }
+  });
+
 });

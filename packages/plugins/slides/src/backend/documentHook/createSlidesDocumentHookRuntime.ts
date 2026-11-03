@@ -177,6 +177,7 @@ export const slidesDocumentPreviewCapability: import('@plugin/backend/documentPr
     const preview = await coordinator.getPreview(input.documentId);
     return {
       revisionKey: identity.versionId,
+      overview: 'thumbnail',
       summary: preview.slides.flatMap(slide => slide.elements.flatMap(element => element.text ? [element.text] : [])).join('\n').slice(0, 4000),
       image: { dataUri: 'data:image/png;base64,' + Buffer.from(page.bytes).toString('base64'), widthPx: page.widthPx, heightPx: page.heightPx },
     };

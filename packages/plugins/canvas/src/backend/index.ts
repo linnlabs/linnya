@@ -15,6 +15,7 @@ import { readCanvasServiceManagerDatabase } from './functions/readCanvasHostCont
 import { canvasPluginMigrations } from './persistence/migrations';
 import { createCanvasHiddenWorkerDefinition } from './features/canvasRender';
 import { resolveCanvasArtifactPaths } from './functions/resolveCanvasArtifactPaths';
+import { createCanvasPreviewCapability } from './adapters/createCanvasPreviewCapability';
 import { createCanvasImageRuntime } from './orchestration/createCanvasImageRuntime';
 
 /** 实例拥有运行态，测试与多个Host可分别装配，模块不保存可变的全局运行状态。 */
@@ -40,7 +41,7 @@ export function createCanvasBackendPlugin(): PluginBackendContribution {
   return {
     pluginCli: createCanvasPluginCli((command, context, root) => executeCanvasCliCommand(command, context, root, { capabilities: capabilitiesFor(), runtimeFor, referencesFor }), createCanvasCliFailureProjector(logger)),
     meta: canvasPluginMeta, ownedTables: canvasManifest.ownedTables, pluginMigrations: canvasPluginMigrations,
-    documentTypeHooks: [createCanvasDocumentHook(runtimeFor)],
+    documentTypeHooks: [createCanvasDocumentHook(runtimeFor, createCanvasPreviewCapability(capabilitiesFor))],
     rendererPush: { channels: [CANVAS_CHANGED_CHANNEL, CANVAS_GROUPS_CHANGED_CHANNEL] },
     hiddenWorkers: [createCanvasHiddenWorkerDefinition(paths)],
     skillResourceRoots: [paths.skillResourceRoot],

@@ -15,6 +15,8 @@ export const DocumentPreviewImageSchema = z.object({
 export const DocumentPreviewContentSchema = z.object({
   revisionKey: z.string().min(1),
   summary: z.string().max(16_000),
+  /** 内容owner声明远景偏好；有摘要图片不代表适合保留缩略图。 */
+  overview: z.enum(['title', 'thumbnail']).optional(),
   image: DocumentPreviewImageSchema.optional(),
   detail: z.object({ format: z.enum(['markdown', 'text']), text: z.string().max(1_000_000) }).strict().optional(),
 }).strict();

@@ -10,7 +10,6 @@ import {
   getWorkspaceNodeTransferPort,
   WorkspaceNodeTransferSaveError,
 } from '@/shared/ports/workspaceNodeTransferPort';
-import { confirm } from '../../../../../shared/composables/confirmDialog';
 import {
   buildNodeContextMenuOptions,
   filterBatchUnsupportedNodeContextMenuActions,
@@ -246,15 +245,6 @@ export function useContextMenu(treeStore, fileStore, notificationStore, options 
     if (shouldDeleteMultiple) {
       // 批量删除
       const count = selectedIds.size;
-      // 使用应用内确认框替代 window.confirm，避免 Windows 下原生模态导致焦点恢复异常
-      const confirmed = await confirm({
-        title: workspaceMessage('workspace.sidebar.node.batchDeleteTitle'),
-        message: workspaceMessage('workspace.sidebar.node.batchDeleteMessage', { count }),
-        confirmText: workspaceMessage('workspace.sidebar.node.deleteConfirm'),
-        cancelText: workspaceMessage('workspace.sidebar.node.deleteCancel'),
-        isDangerousAction: true,
-      });
-      if (!confirmed) return;
       try {
         const nodesToDelete = [];
         // 收集所有要删除的节点
@@ -268,7 +258,8 @@ export function useContextMenu(treeStore, fileStore, notificationStore, options 
         const result = await nodeDeletion.deleteNodes(nodesToDelete.map((node) => ({
           id: node.id,
           parentId: node.parentId ?? null,
-        })));
+        })), { title: workspaceMessage('workspace.sidebar.node.batchDeleteTitle'), message: workspaceMessage('workspace.sidebar.node.batchDeleteMessage', { count }), confirmText: workspaceMessage('workspace.sidebar.node.deleteConfirm'), cancelText: workspaceMessage('workspace.sidebar.node.deleteCancel') });
+        if (result.cancelled) return;
         const failCount = result.failures.length;
         const successCount = nodesToDelete.length - failCount;
         
@@ -284,20 +275,12 @@ export function useContextMenu(treeStore, fileStore, notificationStore, options 
     } else {
       // 单个删除
       if (!clickedNode) return;
-      // 使用应用内确认框替代 window.confirm，避免 Windows 下原生模态导致焦点恢复异常
-      const confirmed = await confirm({
-        title: workspaceMessage('workspace.sidebar.node.deleteTitle'),
-        message: workspaceMessage('workspace.sidebar.node.deleteMessage', { nodeName: getNodeDisplayName(clickedNode, workspaceMessage) }),
-        confirmText: workspaceMessage('workspace.sidebar.node.deleteConfirm'),
-        cancelText: workspaceMessage('workspace.sidebar.node.deleteCancel'),
-        isDangerousAction: true,
-      });
-      if (!confirmed) return;
       try {
         const result = await nodeDeletion.deleteNodes([{
           id: clickedNode.id,
           parentId: clickedNode.parentId ?? null,
-        }]);
+        }], { title: workspaceMessage('workspace.sidebar.node.deleteTitle'), message: workspaceMessage('workspace.sidebar.node.deleteMessage', { nodeName: getNodeDisplayName(clickedNode, workspaceMessage) }), confirmText: workspaceMessage('workspace.sidebar.node.deleteConfirm'), cancelText: workspaceMessage('workspace.sidebar.node.deleteCancel') });
+        if (result.cancelled) return;
         if (result.failures.length > 0) {
           throw new Error(result.failures[0]?.message ?? workspaceMessage('workspace.sidebar.node.deleteFailed'));
         }

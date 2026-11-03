@@ -2,6 +2,7 @@ import type { CanvasCard } from '../../../../shared';
 import type { CardRasterizer, CardRasterRequest } from '../../../capabilities/textRasterization';
 import type { CanvasCardRasterInput, CanvasCardRasterOutput } from '../definitions/canvasCardRasterization';
 import { createCanvasRasterDom } from '../functions/createCanvasRasterDom';
+import { installCanvasCardInk } from '../functions/installCanvasCardInk';
 
 type Prepared = { readonly kind: 'ready'; readonly input: CanvasCardRasterInput; readonly element: HTMLElement }
   | { readonly kind: 'failed'; readonly error: unknown };
@@ -15,7 +16,7 @@ export function createCanvasCardRasterBatch(options: {
       try {
         signal.throwIfAborted();
         const element = options.createContent ? await options.createContent(input.card, signal) : createCanvasRasterDom(input);
-        element.classList.add('markdown-document-content', 'canvas-card-content'); element.style.color = input.dark ? '#e8e9e3' : '#252c27';
+        element.classList.add('markdown-document-content', 'canvas-card-content'); installCanvasCardInk(element, input.card.color, input.dark);
         prepared.push({ kind: 'ready', input, element });
       } catch (error) { signal.throwIfAborted(); prepared.push({ kind: 'failed', error }); }
     }
