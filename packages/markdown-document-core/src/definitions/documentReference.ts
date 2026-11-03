@@ -8,6 +8,9 @@ export const DocumentReferenceNode = Node.create({
     referenceId: { default: null, parseHTML: element => element.getAttribute('data-reference-id') },
   }),
   parseHTML: () => [{ tag: 'span[data-document-id][data-reference-id]' }],
-  renderHTML: ({ node }) => ['span', { 'data-document-id': node.attrs.documentId, 'data-reference-id': node.attrs.referenceId }, '文档'],
+  renderHTML: ({ node }) => ['span', { 'data-document-id': node.attrs.documentId, 'data-reference-id': node.attrs.referenceId, class: 'markdown-document-reference' },
+    ['span', { class: 'markdown-document-reference-icon', 'data-document-reference-icon': '', 'aria-hidden': 'true' }],
+    ['span', { class: 'markdown-document-reference-label', 'data-document-reference-label': '' }, '文档'],
+  ],
   renderMarkdown() { throw new Error('document_reference_projection_required'); },
 });
