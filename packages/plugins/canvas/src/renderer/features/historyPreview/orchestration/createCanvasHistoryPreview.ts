@@ -25,13 +25,15 @@ export function createCanvasHistoryPreview(options: {
         if (token !== generation) { current.destroy(); return; }
         kernel = current; current.canvas.setAttribute('aria-label', '画布历史预览，只读，可平移和缩放');
         const content = options.createContent(documentId);
-        const raster = createCanvasRasterPresentation({ host: options.staging, kernel: current, createContent: content.create,
+        const raster = createCanvasRasterPresentation({ host: options.staging, kernel: current, createContent: content.create, readContentKey: content.contentKey,
           readAppearance: () => ({ dark: document.documentElement.dataset.theme === 'dark', material: 'paper', overview: 'titles' }), reportFailure: message => state.fail(message) });
         refresh = raster.refresh;
         cards = snapshot.elements.filter((element): element is CanvasCard => element.type !== 'edge');
+        const stopContent = content.subscribe(failure => { if (failure) state.fail(failure.message); else { current.setDocumentTitles(content.documentTitles()); raster.refresh(); } });
+        void content.refreshReferences(cards).catch(error => { if (token === generation) state.fail(error instanceof Error ? error.message : String(error)); });
         current.setElements(snapshot.elements); current.fit(cards); raster.refresh();
         const resize = new ResizeObserver(() => { current.resize(options.host.clientWidth, options.host.clientHeight, devicePixelRatio); raster.refresh(); }); resize.observe(options.host);
-        disposeView = () => { resize.disconnect(); raster.dispose(); content.dispose(); current.destroy(); };
+        disposeView = () => { stopContent(); resize.disconnect(); raster.dispose(); content.dispose(); current.destroy(); };
         state.ready();
       } catch (error) { if (token === generation) state.fail(error instanceof Error ? error.message : String(error)); }
     },

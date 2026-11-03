@@ -47,14 +47,14 @@ export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCa
   };
   return {
     state, save,
-    async open(elementId) {
+    async open(elementId, historyGroupId) {
       if (state.draft.value?.elementId === elementId) return;
       if (!(await save(true))) throw new Error('当前文字草稿尚未保存');
       const card = session.state.snapshot.value?.elements.find(element => element.id === elementId);
       if (!card || card.type !== 'text') throw new Error('这张卡不能进入文字编辑');
       if (card.locked) throw new Error('请先解锁这张卡');
       await session.protect(elementId, ['data', 'height'], 'text');
-      state.begin(card, crypto.randomUUID());
+      state.begin(card, historyGroupId ?? crypto.randomUUID());
       renewal = setInterval(() => {
         if (state.draft.value?.elementId !== elementId) return;
         void session.protect(elementId, ['data', 'height'], 'text').catch(error => state.failed(error instanceof Error ? error.message : String(error)));
