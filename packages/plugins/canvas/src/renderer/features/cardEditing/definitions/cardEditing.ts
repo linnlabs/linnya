@@ -26,7 +26,7 @@ export interface CanvasCardEditingState {
 }
 export interface CanvasCardEditor {
   readonly state: CanvasCardEditingState;
-  open(elementId: CanvasCardId): Promise<void>;
+  open(elementId: CanvasCardId, historyGroupId?: string): Promise<void>;
   update(content: JsonValue): void;
   setComposing(value: boolean): void;
   measure(height: number): void;

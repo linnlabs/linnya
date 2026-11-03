@@ -54,7 +54,7 @@ export async function createPixiCanvasKernel(options: KernelOptions): Promise<Ca
 
 class PixiCanvasKernel implements CanvasKernel {
   readonly canvas: HTMLCanvasElement;
-  private readonly world = new Container();
+  private readonly world = new Container({ isRenderGroup: true });
   private readonly lines = new CanvasLines();
   private readonly cardLayer = new Container();
   private readonly selectionLayer = new Graphics();
@@ -257,6 +257,7 @@ class PixiCanvasKernel implements CanvasKernel {
   }
   readCamera(): CanvasCamera { return { ...this.camera }; }
   setSelection(ids: readonly CanvasCardId[]): void {
+    if (ids.length === this.selected.size && ids.every(id => this.selected.has(id))) return;
     this.selected.clear(); ids.forEach((id) => this.selected.add(id));
     this.lines.setSelection(ids);
     this.redrawSelection(); this.schedule();
@@ -285,7 +286,7 @@ class PixiCanvasKernel implements CanvasKernel {
       view.card.x = original.x + dx; view.card.y = original.y + dy;
       view.container.position.set(view.card.x, view.card.y);
     }
-    this.redrawEdges(); this.redrawSelection(); this.schedule();
+    this.lines.preview([...this.dragOriginals.keys()], this.cards, [...this.cards.values()]); this.redrawSelection(); this.schedule();
   }
   clearDragPreview(): void {
     for (const [id, card] of this.dragOriginals) {

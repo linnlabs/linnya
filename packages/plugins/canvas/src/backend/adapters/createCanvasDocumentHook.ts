@@ -2,6 +2,7 @@ import { buildDocumentView, sliceTextWindow } from '@app/schemas';
 import type { DocumentTypeBackendHook } from '@plugin/backend/documentTypeBackendHook';
 import { isPluginRuntimeEnabled } from '@plugin/backend/pluginRuntime';
 import { CANVAS_DOCUMENT_TYPE, CANVAS_FILE_EXTENSION, CANVAS_PLUGIN_ID } from '../../shared';
+import type { DocumentPreviewCapability } from '@plugin/backend/documentPreview';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
 import type { CanvasDocumentRuntime } from '../orchestration/createCanvasDocumentRuntime';
 import { readCanvasHostDatabase } from '../functions/readCanvasHostContext';
@@ -9,8 +10,9 @@ import { readCanvasSnapshot } from '../features/canvasCommit';
 import { CanvasDocumentFailure, readCanvasProjectionContext } from '../features/canvasDocument';
 import { projectCanvasDocument } from '../features/canvasProjection';
 
-export function createCanvasDocumentHook(runtimeFor: (database: CanvasDatabase) => CanvasDocumentRuntime): DocumentTypeBackendHook {
+export function createCanvasDocumentHook(runtimeFor: (database: CanvasDatabase) => CanvasDocumentRuntime, preview?: DocumentPreviewCapability): DocumentTypeBackendHook {
   return {
+    preview,
     docType: CANVAS_DOCUMENT_TYPE, displayName: '画布', fileExtension: CANVAS_FILE_EXTENSION,
     isEnabled: () => isPluginRuntimeEnabled(CANVAS_PLUGIN_ID),
     createDocument(params) {

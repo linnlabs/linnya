@@ -27,6 +27,9 @@
       "@linnya/markdown-document-core": [
         "../../packages/markdown-document-core/src/index.ts"
       ],
+      "@linnya/markdown-document-core/references": [
+        "../../packages/markdown-document-core/src/references.ts"
+      ],
       "@linnya/markdown-document-core/validation": [
         "../../packages/markdown-document-core/src/functions/assertMarkdownDocument.ts"
       ],

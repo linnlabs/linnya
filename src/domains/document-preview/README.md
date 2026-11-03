@@ -11,3 +11,5 @@ Backend 插件经 `@plugin/backend/documentPreview.createDocumentPreviewReader(d
 Markdown 的封面是无活动 HTML 的文字摘要 SVG，完整 Markdown 详情由标准只读 renderer 消费；它不是完整正文截图。Slides 第一页复用正式 Hidden Worker 页面光栅化管线，不写会话文件。详情组件是文档类型的可选增强，不能让远景为每张卡挂一个实时 surface。
 
 业务验证覆盖稳定身份、改名、软删除、越界、停用快照、渲染中移动、版本失效、缓存复用、并发合并和有界队列。真实 Electron 的冷封面耗时与跨平台视觉属于原生验证，不能由纯函数计时替代。
+
+封面内容可声明 `overview: thumbnail`，表示远景仍适合保留缩略图；未声明时使用标题身份。该偏好由内容 owner 提供，消费者不能按插件 ID 或是否存在摘要图片猜测。

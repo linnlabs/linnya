@@ -318,3 +318,66 @@
   right: var(--space-2);
   z-index: 2;
 }
+.canvas-connection-anchor, .canvas-connection-endpoint {
+  position: absolute;
+  z-index: 12;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-accent);
+  background: var(--color-bg-default);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: crosshair;
+  padding: 0;
+}
+.canvas-connection-anchor {
+  opacity: .6;
+}
+.canvas-connection-anchor:hover {
+  opacity: 1;
+}
+.canvas-connection-bar {
+  position: absolute;
+  z-index: 16;
+  left: 12px;
+  top: 68px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 24px);
+  overflow-x: auto;
+  padding: 6px;
+  background: var(--color-bg-default);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+.canvas-connection-label-input {
+  position: absolute;
+  z-index: 18;
+  width: 200px;
+  transform: translate(-50%, -50%);
+  padding: 5px 8px;
+  border: 1px solid var(--color-accent);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--color-bg-default);
+}
+.canvas-connection-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 11;
+}
+.canvas-connection-preview line {
+  stroke: var(--color-accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+}
+.canvas-editor-provisional {
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-default);
+  box-shadow: 0 2px 12px var(--shadow-color-md);
+}

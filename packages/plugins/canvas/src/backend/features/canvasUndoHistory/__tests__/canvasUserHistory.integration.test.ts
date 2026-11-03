@@ -80,3 +80,20 @@ describe('Canvas user undo and redo', () => {
     expect(broken.status('doc', 'view')).toEqual({ canUndo: false, canRedo: false }); expect(f.elements).toHaveLength(0); f.database.close();
   });
 });
+
+it('records trusted restoration as one undoable user action and sends undo/redo to durable history hooks', async () => {
+  const { planCanvasCommit } = await import('../../canvasCommit');
+  const f = fixture(); const changes: number[] = [];
+  const history = createCanvasHistoryRuntime({ database: f.database, ports: { history(input) {
+    expect(f.database.inTransaction).toBe(true); changes.push(input.plan.state.sequence); return undefined;
+  } } });
+  history.commit({ request: { documentId: 'doc', requestId: 'create', operations: [add] }, actor: f.user, now: 1 });
+  history.transition({ documentId: 'doc', requestId: 'restore', payload: { kind: 'versionRestore', versionId: 'v1' }, actor: f.user, now: 2,
+    buildPlan: (state, claims, origin) => planCanvasCommit({ state, claims, origin, actor: f.user, now: 2, operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'yellow' } }] }) });
+  history.undo({ documentId: 'doc', viewId: 'view', requestId: 'undo-restore', direction: 'undo' }, 3);
+  expect(f.elements[0]).toMatchObject({ color: 'white' });
+  history.undo({ documentId: 'doc', viewId: 'view', requestId: 'redo-restore', direction: 'redo' }, 4);
+  expect(f.elements[0]).toMatchObject({ color: 'yellow' });
+  expect(changes).toEqual([1, 2, 3, 4]);
+  f.database.close();
+});
