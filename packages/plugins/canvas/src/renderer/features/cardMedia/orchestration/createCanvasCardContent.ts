@@ -5,9 +5,8 @@ import { createCanvasReferenceMetadata } from './createCanvasReferenceMetadata';
 import { createCanvasImageSources } from './createCanvasImageSources';
 import { createCanvasDocumentPreviews } from './createCanvasDocumentPreviews';
 import { canvasReferencedDocuments } from '../functions/canvasReferencedDocuments';
-import { hydrateCanvasDocumentTags, hydrateCanvasManagedImages, createCanvasImageSurface } from '../../cardRendering/content';
+import { hydrateCanvasDocumentTags, hydrateCanvasManagedImages, createCanvasImageSurface, createCanvasDocumentSurface, canvasDocumentPreviewMessage } from '../../cardRendering/content';
 
-const statuses = { deleted: '文档已删除', outside_project: '目标在其他项目，当前不可访问', plugin_unavailable: '需要启用或安装文档插件', preview_unavailable: '暂时没有可用预览', ready: '' };
 /** 内容投影只持有有界资源缓存；文档与图片的持久身份仍归各自owner。 */
 export function createCanvasCardContent(documentId: string, port: CanvasCardMediaPort): CanvasCardContent {
   const metadata = createCanvasReferenceMetadata(port);
@@ -33,17 +32,14 @@ export function createCanvasCardContent(documentId: string, port: CanvasCardMedi
       }
       if (card.type === 'document') {
         const result = await previews.read(card); signal.throwIfAborted();
-        const title = document.createElement('strong'); title.className = 'canvas-card-title'; title.textContent = result.title ?? '文档'; element.append(title);
-        if (result.content?.image) { const img = document.createElement('img'); img.src = result.content.image.dataUri; img.alt = result.title ?? ''; element.append(img); }
-        else { const summary = document.createElement('p'); summary.textContent = result.content?.summary ?? statuses[result.status]; element.append(summary); }
-        if (result.status !== 'ready') { const message = document.createElement('small'); message.className = 'canvas-card-auxiliary'; message.textContent = statuses[result.status]; element.append(message); }
+        return createCanvasDocumentSurface({ title: result.title, status: result.status, summary: result.content?.summary, image: result.content?.image?.dataUri }, document);
       }
       return element;
     },
     async open(card) {
       if (card.type !== 'document') return;
       const result = await previews.read(card);
-      if (result.status !== 'ready' || !result.nodeType) throw new Error(statuses[result.status] || '文档不可打开');
+      if (result.status !== 'ready' || !result.nodeType) throw new Error(canvasDocumentPreviewMessage(result.status) || '文档不可打开');
       await port.openDocument(card.data.documentId, result.nodeType, result.title);
     },
     documentTitles: metadata.titles, contentKey: card => `${metadata.key(card)}:${previews.key(card)}`,

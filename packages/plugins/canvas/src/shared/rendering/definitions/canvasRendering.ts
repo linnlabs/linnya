@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DocumentPreviewImageSchema, DocumentReferencePresentationSchema } from '@app/schemas';
+import { DocumentPreviewImageSchema, DocumentPreviewContentSchema, DocumentPreviewResultSchema, DocumentReferencePresentationSchema } from '@app/schemas';
 import { CanvasSnapshotSchema, CanvasTextDocumentSchema } from '../../model/definitions/canvasElement';
 
 export const CANVAS_RENDER_WORKER_ID = 'canvas-render';
@@ -16,6 +16,7 @@ const common = {
   uiScale: finite.min(0.5).max(4).default(1),
   assets: z.record(z.string(), resource).default({}),
   documents: z.record(z.string(), z.object({ title: z.string(), status: DocumentReferencePresentationSchema.shape.status.optional(),
+    previewStatus: DocumentPreviewResultSchema.shape.status.optional(), summary: DocumentPreviewContentSchema.shape.summary.optional(),
     keepThumbnail: z.boolean().optional(), image: DocumentPreviewImageSchema.shape.dataUri.optional() }).strict()).default({}),
 };
 export const CanvasMeasureRequestSchema = z.object({
