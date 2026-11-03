@@ -12,10 +12,12 @@ export async function prepareCanvasWrite(input: CanvasWritePreparation, ports: C
   for (const [index, operation] of input.operations.entries()) {
     input.signal.throwIfAborted();
     try {
-      if (operation.op === 'arrange') { arrange = operation; continue; }
+      if (operation.op === 'arrange') {
+        arrange = { algorithm: operation.algorithm, direction: operation.direction, elementIds: operation.elementIds, columns: operation.columns, groups: operation.groups }; continue;
+      }
       if (operation.op === 'add') {
-        const placement = { ref: operation.ref, width: operation.width, color: operation.color,
-          near: operation.near ?? operation.after ?? operation.in, side: operation.side ?? 'right', parentId: operation.in };
+        const placement = { ref: operation.ref ?? `$__canvas_${index}`, width: operation.width, color: operation.color,
+          near: operation.near ?? operation.after ?? operation.in, side: operation.side ?? 'right' };
         if (operation.type === 'text') {
           const content = await ports.parseText(operation.text);
           measurements.push({ ref: String(commands.length), content, width: operation.width });

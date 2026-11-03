@@ -58,3 +58,9 @@ CLI 的 `payloadIdentity` 由可信编排从原始 operations/options 构造，�
 图片卡与正文插图只持久化受管 assetId/稳定 src。Renderer 从正式图片端口读取临时 bytes，用有界缓存投影为 data URI，避免 media 协议在 HTML 光栅时空白；异步准备图片不提前建立归属。文档卡经通用候选与 preview 门面读取当前项目标题、封面和不可用状态，打开仍走 Workspace 导航。搜索由 shared 纯函数同时供 Renderer/CLI 消费，不把内部文档 ID 当作可见正文。
 
 加入对话使用一个 Canvas 选区引用；发送前先等待仍打开表面的草稿保存，再经 Backend 冻结一次最新提交内容。画布关闭后仍可刷新，失败不会回退加入时旧文字。引用记录文档和卡片身份，点击经通用 Workspace 导航打开并定位；同一选区通过通用 composer 去重键合并。复制含标签的子图时保留目标 documentId，但为每个新出现位置分配新的 referenceId，避免原子引用索引冲突。
+
+## CLI 与自动布局
+
+`linnya-canvas` 通过正式 Plugin CLI bridge 注入已冻结的项目、对话及 run 身份，路径解析和最终提交均复核项目归属。`read/show/find/neighbors/region/check/groups` 不创建写运行态；`apply` 先解析受管正文、批量真实测高，再作一次字段事务。`render` 只在授权 conversation 目录创建独占图像产物，返回正式 locator。Skill 维护模型可见语义操作合同，不开放磁盘数据库、批准标志或 Agent 坐标。
+
+布局与检查在独立 Node worker 内执行，ELK 仅进入计算 worker 制品。取消、关闭视图和停用插件会终止未提交计算；最终提交保留已完成事实。新卡预测ID在进入事务前反绑本批临时名字，因此其他来源先分配同号卡也不会改错对象。期间尺寸改变、锁定、编辑声明及新增障碍按最新内容复核；布局只平移实际成功的目标组，不移动用户新增卡。

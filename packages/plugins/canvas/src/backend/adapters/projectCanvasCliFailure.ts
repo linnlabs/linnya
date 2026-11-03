@@ -1,0 +1,31 @@
+import { ZodError } from 'zod';
+import { Logger } from '@plugin/backend/workspaceRuntime';
+import { CanvasCliFailure, formatCanvasCliInputError } from '../features/canvasCli';
+import { CanvasDocumentFailure } from '../features/canvasDocument';
+import { CanvasWriteFailure } from '../features/canvasWrite';
+import { CanvasRenderingError } from '../features/canvasRender';
+
+const messages: Readonly<Record<string, string>> = {
+  request_id_payload_mismatch: '此request-id已经用于不同内容，请复用原始操作或为新动作使用新编号。',
+  canvas_element_not_found: '元素不存在，请重新read/show读取当前编号。',
+  canvas_layout_timeout: '布局计算超时，本批没有提交；缩小范围后再试。',
+  canvas_layout_queue_full: '布局队列已满，请稍后使用同一request-id重试。',
+  canvas_layout_cancelled: '布局已取消。',
+  canvas_approval_denied: '用户已拒绝此批次，不能用同一请求再次执行。',
+  canvas_approval_replaced: '此批次已被新待确认批次替换。',
+  canvas_approval_withdrawn: '此批次所属改动已撤回。',
+  canvas_approval_closed: '此批次所属改动组已经完成。',
+};
+/** 未识别的异常保留在Host日志；模型输出不携带磁盘路径、SQL或内部身份。 */
+export function createCanvasCliFailureProjector(logger: Logger) {
+  return (error: unknown) => {
+    if (error instanceof ZodError || error instanceof CanvasCliFailure) return formatCanvasCliInputError(error);
+    if (error instanceof CanvasDocumentFailure || error instanceof CanvasRenderingError) return { code: error.code, message: error.message };
+    if (error instanceof CanvasWriteFailure) return { code: error.code, message: error.message, operation: error.operation, field: error.field };
+    if (error instanceof SyntaxError) return { code: 'invalid_json', message: 'ops-file必须是UTF-8 JSON操作数组，请修正语法后再提交。' };
+    if (error instanceof Error && messages[error.message]) return { code: error.message, message: messages[error.message] };
+    if (error instanceof Error && error.name === 'AbortError') return { code: 'cancelled', message: '操作已取消。' };
+    logger.error('Canvas CLI执行失败', { error });
+    return { code: 'operation_failed', message: '操作失败，详细原因已记入应用日志。本次请求可用同一request-id查询或重试。' };
+  };
+}

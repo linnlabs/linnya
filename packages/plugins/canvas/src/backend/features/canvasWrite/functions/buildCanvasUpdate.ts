@@ -21,8 +21,14 @@ export async function buildCanvasUpdate(operation: Extract<CanvasCliOperation, {
   }
   if (operation.text !== undefined || operation.append !== undefined) {
     if (current.type !== 'text') throw new CanvasWriteFailure('wrong_element_type', 'text/append 只适用于文字卡。');
-    const markdown = operation.text ?? `${ports.readBody(current.id)}\n${operation.append}`;
-    patch = { ...patch, data: { ...current.data, content: await ports.parseText(markdown, { elementId: current.id, revision: operation.revision }) } };
+    let content = current.data.content;
+    if (operation.text !== undefined) content = await ports.parseText(operation.text, { elementId: current.id, revision: operation.revision, mode: 'replace' });
+    else if (operation.append !== undefined) {
+      // 追加只解析新块，保留原有标签和图片身份，避免Markdown往返抹掉稳定attrs。
+      const parsed = await ports.parseText(operation.append, { elementId: current.id, revision: operation.revision, mode: 'append' });
+      content = { ...current.data.content, content: [...current.data.content.content, ...parsed.content] };
+    }
+    patch = { ...patch, data: { ...current.data, content } };
   }
   return { op: 'update', id: operation.id, baseRevision: operation.revision, patch };
 }

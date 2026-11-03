@@ -3,7 +3,7 @@ import type { CanvasDatabase } from '../../../definitions/canvasDatabase';
 import type { CanvasCommitActor, CanvasCommitContext, CanvasCommitParticipant, CanvasCommitPlan, CanvasCommitState, CanvasEditingClaim } from '../definitions/canvasCommit';
 import { planCanvasCommit } from '../functions/planCanvasCommit';
 import type { CanvasRectangle } from '../../../../shared/geometry/definitions/canvasGeometry';
-import { canvasPayloadHash, canvasSourceKey } from '../functions/canvasRequestIdentity';
+import { canvasPayloadHash, canvasSourceKey, canvasOperationsPayload } from '../functions/canvasRequestIdentity';
 import { persistCanvasCommit, readCanvasCommitState, readCanvasEditingClaims, readCanvasReceipt } from '../persistence/canvasRepository';
 
 export interface CanvasHistoryCommitInput {
@@ -27,6 +27,7 @@ export interface CanvasTransitionInput {
   readonly payload: unknown;
   readonly actor: CanvasCommitActor;
   readonly now: number;
+  readonly referenceBindings?: readonly import('@app/schemas').DocumentReferenceMarkdownBinding[];
   readonly ports?: CanvasCommitPorts;
   readonly buildPlan: (state: CanvasCommitState, claims: readonly CanvasEditingClaim[], origin: string) => CanvasCommitPlan;
 }
@@ -35,7 +36,7 @@ export interface CanvasTransitionInput {
 export function commitCanvasTransition(input: CanvasTransitionInput): CanvasCommitResult {
   const sourceKey = canvasSourceKey(input.actor);
   const payloadHash = canvasPayloadHash(input.payload);
-  const context: CanvasCommitContext = { documentId: input.documentId, requestId: input.requestId, actor: input.actor, now: input.now };
+  const context: CanvasCommitContext = { documentId: input.documentId, requestId: input.requestId, actor: input.actor, now: input.now, referenceBindings: input.referenceBindings };
   let result: CanvasCommitResult | undefined;
   let committedPlan: CanvasCommitPlan | undefined;
   let updateMemory: (() => void) | undefined;
@@ -70,7 +71,8 @@ export function commitCanvasOperations(input: {
 }): CanvasCommitResult {
   const request = CanvasCommitRequestSchema.parse(input.request);
   return commitCanvasTransition({ ...input, documentId: request.documentId, requestId: request.requestId,
-    payload: { kind: 'operations', operations: request.operations },
-    buildPlan: (state, claims, origin) => planCanvasCommit({ state, operations: request.operations, actor: input.actor, claims, now: input.now, origin, reservedRectangles: input.ports?.reservedRectangles?.(state, { documentId: request.documentId, requestId: request.requestId, actor: input.actor, now: input.now }) }),
+    referenceBindings: request.referenceBindings,
+    payload: canvasOperationsPayload(request),
+    buildPlan: (state, claims, origin) => planCanvasCommit({ state, operations: request.operations, actor: input.actor, claims, now: input.now, origin, layoutGroups: request.layoutGroups, reservedRectangles: input.ports?.reservedRectangles?.(state, { documentId: request.documentId, requestId: request.requestId, actor: input.actor, now: input.now }) }),
   });
 }

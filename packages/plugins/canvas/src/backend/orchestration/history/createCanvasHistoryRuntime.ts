@@ -40,7 +40,7 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
     const request = CanvasCommitRequestSchema.parse(input.request);
     const state = readCanvasCommitState(options.database, request.documentId);
     const claims = readCanvasEditingClaims(options.database, { documentId: request.documentId, viewId: input.actor.viewId, now: input.now });
-    return planCanvasCommit({ state, claims, actor: input.actor, now: input.now, operations: request.operations, origin: 'preview', reservedRectangles: reservedRectangles(state, { documentId: request.documentId, requestId: request.requestId, actor: input.actor, now: input.now }) });
+    return planCanvasCommit({ state, claims, actor: input.actor, now: input.now, operations: request.operations, layoutGroups: request.layoutGroups, origin: 'preview', reservedRectangles: reservedRectangles(state, { documentId: request.documentId, requestId: request.requestId, actor: input.actor, now: input.now }) });
   }
   function recordUserHistory(history: CanvasHistoryCommitInput, groupId: string | null = null) {
     if (history.context.actor.source.kind !== 'user' || !history.plan.changes.length) return undefined;

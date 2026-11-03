@@ -18,16 +18,3 @@ export function collectCanvasReferences(elements: readonly CanvasElement[]): Doc
   }
   return references;
 }
-
-export function collectCanvasAssetIds(elements: readonly CanvasElement[]): string[] {
-  const ids = new Set<string>();
-  const visit = (node: CanvasContentNode): void => {
-    if (node.type === 'image' && typeof node.attrs?.assetId === 'string') ids.add(node.attrs.assetId);
-    for (const child of node.content ?? []) visit(child);
-  };
-  for (const element of elements) {
-    if (element.type === 'image') ids.add(element.data.assetId);
-    if (element.type === 'text') visit(element.data.content);
-  }
-  return [...ids];
-}

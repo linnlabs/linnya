@@ -29,6 +29,8 @@ export interface CanvasCommitPlan {
   readonly changes: readonly CanvasElementChange[];
   readonly results: CanvasOperationResult[];
   readonly refs: Record<string, CanvasElementId>;
+  /** 仅可信历史/撤回计划提供原元素作身份凭据，不来自Renderer或CLI请求。 */
+  readonly retainedElements?: readonly CanvasElement[];
 }
 export interface CanvasCommitActor {
   readonly projectId?: string;
@@ -45,4 +47,5 @@ export interface CanvasCommitContext {
   readonly requestId: string;
   readonly actor: CanvasCommitActor;
   readonly now: number;
+  readonly referenceBindings?: readonly import('@app/schemas').DocumentReferenceMarkdownBinding[];
 }

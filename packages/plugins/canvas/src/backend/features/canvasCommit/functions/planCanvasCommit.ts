@@ -1,3 +1,5 @@
+import { assertPortableMarkdownDocument } from '@linnya/markdown-document-core';
+import { JsonValueSchema } from '@app/schemas';
 import { generateKeyBetween } from 'fractional-indexing';
 import {
   CanvasCardIdSchema, CanvasEdgeIdSchema, CanvasElementSchema,
@@ -8,9 +10,11 @@ import type { CanvasCommitActor, CanvasCommitPlan, CanvasCommitState, CanvasEdit
 import type { CanvasRectangle } from '../../../../shared/geometry/definitions/canvasGeometry';
 import { findCanvasPlacement } from './findCanvasPlacement';
 import { validateCanvasGraph } from './validateCanvasGraph';
+import { clearCanvasLayoutObstacles } from './clearCanvasLayoutObstacles';
 
 interface WorkingPlan {
   origin: string;
+  layoutTargets: ReadonlySet<string>;
   reservedRectangles: readonly CanvasRectangle[];
   elements: Map<CanvasElementId, CanvasStoredElement>;
   changes: CanvasElementChange[];
@@ -65,6 +69,7 @@ function createCard(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 'ad
     width: command.width, height: command.height,
     parentId: command.parentId ? CanvasCardIdSchema.parse(resolveElementId(plan, command.parentId)) : null, data,
   });
+  if (element.type === 'text') assertPortableMarkdownDocument(JsonValueSchema.parse(element.data.content));
   appendChange(plan, null, element, Object.keys(element));
   if (command.ref) plan.refs[command.ref] = element.id;
   return element.id;
@@ -99,17 +104,21 @@ function mutateElement(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 
   const skip = (reason: string): CanvasOperationResult => ({ index: plan.results.length, id: id ?? null, status: 'skipped', reason });
   if (!id || !row) return skip('element_missing');
   const current = row.element;
-  if (plan.actor.source.kind === 'agent' && current.locked) return skip('element_locked');
+  const unlocking = plan.actor.source.kind === 'user' && command.op === 'update' && command.patch.locked === false && Object.keys(command.patch).every(field => field === 'locked');
+  if (current.locked && !unlocking) return skip('element_locked');
   const fields = command.op === 'update' ? Object.keys(command.patch) : ['$existence'];
   const protectedFields = plan.claims.filter(claim => claim.elementId === id).flatMap(claim => claim.fields);
-  if (plan.actor.source.kind === 'agent' && (command.op === 'delete' ? protectedFields.length > 0 : fields.some(field => protectedFields.includes(field)))) {
+  if ((plan.actor.source.kind === 'agent' || plan.layoutTargets.has(command.id) || plan.layoutTargets.has(id)) && (command.op === 'delete' ? protectedFields.length > 0 : fields.some(field => protectedFields.includes(field)))) {
     return skip('user_editing');
   }
   if (command.op === 'update') {
+    // 布局同时依赖尺寸；期间长高或拉伸过的卡留在原处，不能按旧尺寸挤进新位置。
+    if ((plan.layoutTargets.has(command.id) || plan.layoutTargets.has(id)) && ['width', 'height'].some(field => (row.fieldVersions[field] ?? 0) > command.baseRevision && row.fieldOrigins[field] !== plan.origin)) return skip('stale_layout_size');
     // 文字按其字段版本判断；同卡颜色或位置改变不应把独立正文误判为冲突。
     if (fields.some(field => (row.fieldVersions[field] ?? 0) > command.baseRevision)) return skip('stale_field');
     const after = CanvasElementSchema.parse({ ...current, ...command.patch,
       revision: current.revision + 1, updatedBy: plan.actor.source, updatedAt: plan.now });
+    if (after.type === 'text' && fields.includes('data')) assertPortableMarkdownDocument(JsonValueSchema.parse(after.data.content));
     appendChange(plan, current, after, fields);
   } else {
     if (command.baseRevision !== undefined && command.baseRevision !== current.revision) return skip('stale_element');
@@ -126,9 +135,9 @@ function mutateElement(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 
 
 export function planCanvasCommit(input: {
   readonly state: CanvasCommitState; readonly operations: readonly CanvasCommand[];
-  readonly actor: CanvasCommitActor; readonly origin: string; readonly claims: readonly CanvasEditingClaim[]; readonly now: number; readonly reservedRectangles?: readonly CanvasRectangle[];
+  readonly actor: CanvasCommitActor; readonly origin: string; readonly claims: readonly CanvasEditingClaim[]; readonly now: number; readonly reservedRectangles?: readonly CanvasRectangle[]; readonly layoutGroups?: readonly (readonly string[])[];
 }): CanvasCommitPlan {
-  const plan: WorkingPlan = { reservedRectangles: input.reservedRectangles ?? [], origin: input.origin, elements: new Map(input.state.elements.map(row => [row.element.id, row])), changes: [], results: [], refs: {},
+  const plan: WorkingPlan = { layoutTargets: new Set(input.layoutGroups?.flat()), reservedRectangles: input.reservedRectangles ?? [], origin: input.origin, elements: new Map(input.state.elements.map(row => [row.element.id, row])), changes: [], results: [], refs: {},
     nextCard: input.state.nextCard, nextEdge: input.state.nextEdge, actor: input.actor, claims: input.claims, now: input.now };
   for (const command of input.operations) {
     if (command.op === 'update' || command.op === 'delete') plan.results.push(mutateElement(plan, command));
@@ -138,6 +147,12 @@ export function planCanvasCommit(input: {
     }
   }
   validateCanvasGraph([...plan.elements.values()].map(row => row.element));
-  return { origin: input.origin, changes: plan.changes, results: plan.results, refs: plan.refs,
+  const result: CanvasCommitPlan = { origin: input.origin, changes: plan.changes, results: plan.results, refs: plan.refs,
     state: { sequence: input.state.sequence + (plan.changes.length > 0 ? 1 : 0), nextCard: plan.nextCard, nextEdge: plan.nextEdge, elements: [...plan.elements.values()], deletedOrigins: input.state.deletedOrigins } };
+  const groups = input.layoutGroups?.map(group => group.flatMap(id => { const resolved = resolveElementId(plan, id); return resolved ? [resolved] : []; }));
+  const moved = new Set<CanvasElementId>(plan.results.flatMap((outcome, index) => {
+    const operation = input.operations[index];
+    return outcome.status === 'applied' && outcome.id && operation.op === 'update' && (plan.layoutTargets.has(operation.id) || plan.layoutTargets.has(outcome.id)) && ('x' in operation.patch || 'y' in operation.patch) ? [outcome.id] : [];
+  }));
+  return groups?.length ? clearCanvasLayoutObstacles(result, groups, plan.reservedRectangles, moved) : result;
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DocumentReferenceMarkdownBindingSchema, JsonValueSchema } from '@app/schemas';
 import {
   CanvasCardIdSchema, CanvasColorSchema, CanvasDocumentCardSchema, CanvasElementIdSchema,
   CanvasEndpointSchema, CanvasImageCardSchema, CanvasTextCardSchema, CanvasTextDocumentSchema,
@@ -16,7 +17,7 @@ export const CanvasPatchSchema = z.object({
 }).strict().refine(patch => Object.keys(patch).length > 0, '至少修改一个字段');
 
 const placement = {
-  ref: z.string().regex(/^\$[A-Za-z][A-Za-z0-9_-]*$/).optional(),
+  ref: z.string().regex(/^\$[A-Za-z_][A-Za-z0-9_-]*$/).optional(),
   width: finite.positive(), height: finite.positive(),
   x: finite.optional(), y: finite.optional(), near: z.string().min(1).optional(),
   side: z.enum(['right', 'left', 'top', 'bottom']).optional(),
@@ -42,11 +43,14 @@ export const CanvasCommandSchema = z.discriminatedUnion('op', [
 export const CanvasCommitRequestSchema = z.object({
   documentId: z.string().min(1), requestId: z.string().min(1).max(160),
   // 500 限制属于模型原始操作；一次排布会展开成更多元素更新，必须仍是同一事务。
-  operations: z.array(CanvasCommandSchema).min(1),
+  operations: z.array(CanvasCommandSchema),
+  referenceBindings: z.array(DocumentReferenceMarkdownBindingSchema).optional(),
+  layoutGroups: z.array(z.array(z.string().min(1)).min(1)).optional(),
+  payloadIdentity: JsonValueSchema.optional(),
 }).strict();
-export const CanvasRendererCommitRequestSchema = CanvasCommitRequestSchema.extend({
+export const CanvasRendererCommitRequestSchema = CanvasCommitRequestSchema.omit({ referenceBindings: true, layoutGroups: true, payloadIdentity: true }).extend({
   viewId: z.string().min(1), historyGroupId: z.string().min(1).optional(),
-});
+}).refine(request => request.operations.length > 0, '界面提交至少包含一个动作');
 export const CanvasOperationResultSchema = z.object({
   index: z.number().int().nonnegative(), status: z.enum(['applied', 'skipped']),
   id: CanvasElementIdSchema.nullable(), reason: z.string().nullable(),

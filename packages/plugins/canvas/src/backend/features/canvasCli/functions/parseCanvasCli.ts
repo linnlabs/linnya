@@ -15,7 +15,7 @@ export function parseCanvasCli(argv: readonly string[]): CanvasCliCommand {
   if (!argv.length || argv[0] === '--help' || argv[0] === 'help') return { kind: 'help' };
   const kind = argv[0];
   const optionTypes = kind === 'apply' ? { 'ops-file': 'string', 'request-id': 'string', 'dry-run': 'boolean' }
-    : kind === 'arrange' ? { 'request-id': 'string', 'dry-run': 'boolean', algorithm: 'string', scope: 'string', direction: 'string', columns: 'string' }
+    : kind === 'arrange' ? { 'request-id': 'string', 'dry-run': 'boolean', algorithm: 'string', scope: 'string', groups: 'string', direction: 'string', columns: 'string' }
       : kind === 'render' ? { format: 'string', width: 'string', height: 'string', theme: 'string' }
         : kind === 'neighbors' ? { depth: 'string' } : {};
   const options: Record<string, { type: 'string' | 'boolean' }> = {};
@@ -39,7 +39,8 @@ export function parseCanvasCli(argv: readonly string[]): CanvasCliCommand {
   if (kind === 'apply') return { kind, path, file: required('ops-file'), requestId: required('request-id'), dryRun: parsed.values['dry-run'] === true };
   if (kind === 'arrange') return { kind, path, requestId: required('request-id'), dryRun: parsed.values['dry-run'] === true,
     options: CanvasArrangeOptionsSchema.parse({ algorithm: string('algorithm', 'tree'), direction: string('direction', 'right'), elementIds: typeof parsed.values.scope === 'string' ? parsed.values.scope.split(',') : undefined,
-      columns: parsed.values.columns === undefined ? undefined : Number(parsed.values.columns) }) };
+      columns: parsed.values.columns === undefined ? undefined : Number(parsed.values.columns),
+      groups: typeof parsed.values.groups === 'string' ? parsed.values.groups.split(';').map(group => group.split(',')) : undefined }) };
   if (kind === 'show' || kind === 'find' || kind === 'neighbors' || kind === 'region') {
     if (!value) throw new CanvasCliFailure('missing_argument', '缺少卡片编号、搜索词或方位。');
     const depth = Number(string('depth', '1'));
