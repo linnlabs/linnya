@@ -160,6 +160,7 @@ function normalizeEvidenceNodes(
     case 'node_size':
     case 'text_layout':
     case 'image_aspect':
+    case 'image_resolution':
     case 'chart_readability':
     case 'text_pattern':
       return { ...evidence, node: normalizeNode(evidence.node, context) };
@@ -242,6 +243,7 @@ function collectEvidenceNodeIds(evidence: DiagnosticEvidence): string[] {
     case 'node_size':
     case 'text_layout':
     case 'image_aspect':
+    case 'image_resolution':
     case 'chart_readability':
     case 'text_pattern':
       ids = [evidence.node.nodeId];

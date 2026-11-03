@@ -1,5 +1,6 @@
 import { resolveSlideSizeInches } from '@plugin/slides/shared/deckSpec';
 import type { PresentationRenderModel } from '@plugin/slides/shared/renderModel';
+import { attachImageNaturalSizes } from '../assets/imageNaturalSize';
 import { resolveImageSources } from '../assets/imageSourceResolver';
 import { resolveSvgGraphicAssets } from '../assets/svgGraphicAssetResolver';
 import { RenderModelMapper } from '../parser/RenderModelMapper';
@@ -63,6 +64,7 @@ export class GeneratedPresentationRenderModelBuilder {
       { canEditSourceSelection: options.canEditSourceSelection === true },
       svgAssets,
     );
+    await attachImageNaturalSizes(renderModel);
     await prewarmTextLayoutForRenderModel(renderModel, undefined, options);
     return applyTextLayoutToRenderModel(renderModel, undefined, undefined, options);
   }

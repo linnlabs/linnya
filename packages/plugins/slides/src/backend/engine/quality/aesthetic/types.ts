@@ -52,6 +52,8 @@ export type AestheticLintCode =
   | 'text_contrast_low'
   /** P1 Tier-1：图片 fit=stretch 且元素宽高比与原图差 > 10%，会压扁/拉伸 */
   | 'image_aspect_distorted'
+  /** 图片源像素不足，全屏放映时被明显放大发虚 */
+  | 'image_resolution_low'
   /** P1 Tier-1：类别或系列缺少可见身份通道；外部文字可能补充，因此需 render 复核。 */
   | 'chart_identity_missing'
   /** P1 Tier-1：标签估算所需跨度明显超过图表可用跨度。 */

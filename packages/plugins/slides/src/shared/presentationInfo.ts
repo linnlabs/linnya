@@ -243,6 +243,9 @@ export interface SlideElementInfo {
    * 当 naturalSize 任一边 ≤ 0 时为 undefined。
    */
   imageNaturalAspect?: number;
+  /** 图片原始像素尺寸与归一化裁剪（仅 image 类型），供清晰度检查估算放映时的放大倍数。 */
+  imageNaturalSizePx?: { width: number; height: number };
+  imageCrop?: { top: number; right: number; bottom: number; left: number };
   children?: SlideElementInfo[];
   editableTarget?: EditableTarget;
 }

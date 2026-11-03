@@ -215,6 +215,18 @@ export const ImageAspectEvidenceSchema = z.object({
   thresholdRatio: z.number().finite().nonnegative(),
 }).strict();
 
+export const ImageResolutionEvidenceSchema = z.object({
+  kind: z.literal('image_resolution'),
+  node: DiagnosticNodeRefSchema,
+  fitMode: z.enum(['fill', 'contain', 'cover', 'stretch']),
+  visibleWidthPx: z.number().int().positive(),
+  visibleHeightPx: z.number().int().positive(),
+  effectivePpi: z.number().int().nonnegative(),
+  targetPpi: z.number().int().positive(),
+  ratio: z.number().finite().nonnegative(),
+  thresholdRatio: z.number().finite().positive(),
+}).strict();
+
 const ChartReadabilityBaseEvidenceSchema = z.object({
   kind: z.literal('chart_readability'),
   node: DiagnosticNodeRefSchema,
@@ -309,6 +321,7 @@ export const DIAGNOSTIC_EVIDENCE_SCHEMAS = {
   hue_drift: HueDriftEvidenceSchema,
   color_contrast: ColorContrastEvidenceSchema,
   image_aspect: ImageAspectEvidenceSchema,
+  image_resolution: ImageResolutionEvidenceSchema,
   chart_readability: ChartReadabilityEvidenceSchema,
   slide_similarity: SlideSimilarityEvidenceSchema,
   content_presence: ContentPresenceEvidenceSchema,

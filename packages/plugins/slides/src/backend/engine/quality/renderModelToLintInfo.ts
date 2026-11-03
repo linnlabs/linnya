@@ -109,7 +109,9 @@ function renderNodeToElementInfo(node: RenderNode, parentNodeId?: string): Slide
     if (node.fitMode) info.imageFit = node.fitMode;
     if (node.naturalSize && node.naturalSize.width > 0 && node.naturalSize.height > 0) {
       info.imageNaturalAspect = node.naturalSize.width / node.naturalSize.height;
+      info.imageNaturalSizePx = { width: node.naturalSize.width, height: node.naturalSize.height };
     }
+    if (node.crop) info.imageCrop = { ...node.crop };
   }
 
   if (node.kind === 'chart') {

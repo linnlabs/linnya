@@ -42,6 +42,9 @@ import {
   FULL_BLEED_RATIO,
   HUE_CLUSTER_GRANULARITY_DEG,
   IMAGE_ASPECT_TOLERANCE,
+  IMAGE_RESOLUTION_MIN_DISPLAY_IN,
+  IMAGE_RESOLUTION_MIN_RATIO,
+  IMAGE_RESOLUTION_REFERENCE_WIDTH_PX,
   MAX_ELEMENTS_PER_SLIDE,
   PALETTE_HUE_BUCKET_LIMIT,
   PRIMARY_HUE_DRIFT_THRESHOLD_DEG,
@@ -1003,6 +1006,62 @@ export function lintTextContrast(
  * 仅 stretch 模式有压扁/拉伸风险——cover/contain/fill 都保留宽高比或裁剪。
  * 缺少 imageNaturalAspect 时跳过（PptxReader 路径暂无该数据）。
  */
+/**
+ * 按 fitMode 估算图片可见区域在页面上每英寸分到多少源像素，与 1920px 宽放映所需像素比较。
+ * contain 取整图缩放，cover/fill 取覆盖缩放，stretch 取两轴中较差的一轴；裁剪先扣掉被裁部分。
+ */
+export function lintImageResolution(
+  slideNumber: number,
+  slideSize: { width: number; height: number },
+  elements: SlideElementInfo[],
+): AestheticLintIssue[] {
+  const issues: AestheticLintIssue[] = [];
+  const targetPpi = IMAGE_RESOLUTION_REFERENCE_WIDTH_PX / slideSize.width;
+  for (const el of elements) {
+    if (el.type !== 'image' || !el.position || !el.imageNaturalSizePx) continue;
+    const { w, h } = el.position;
+    if (w < IMAGE_RESOLUTION_MIN_DISPLAY_IN || h <= 0) continue;
+    const crop = el.imageCrop ?? { top: 0, right: 0, bottom: 0, left: 0 };
+    const visibleW = el.imageNaturalSizePx.width * Math.max(0, 1 - crop.left - crop.right);
+    const visibleH = el.imageNaturalSizePx.height * Math.max(0, 1 - crop.top - crop.bottom);
+    if (visibleW <= 0 || visibleH <= 0) continue;
+    const effectivePpi = resolveEffectivePpi(el.imageFit ?? 'contain', visibleW, visibleH, w, h);
+    const ratio = effectivePpi / targetPpi;
+    if (ratio >= IMAGE_RESOLUTION_MIN_RATIO) continue;
+    issues.push({
+      code: 'image_resolution_low',
+      severity: 'warning',
+      confidence: 'medium',
+      slides: [slideNumber],
+      evidence: {
+        kind: 'image_resolution',
+        node: buildDiagnosticNodeRef(el),
+        fitMode: el.imageFit ?? 'contain',
+        visibleWidthPx: Math.round(visibleW),
+        visibleHeightPx: Math.round(visibleH),
+        effectivePpi: Math.round(effectivePpi),
+        targetPpi: Math.round(targetPpi),
+        ratio,
+        thresholdRatio: IMAGE_RESOLUTION_MIN_RATIO,
+      },
+    });
+  }
+  return issues;
+}
+
+function resolveEffectivePpi(
+  fit: NonNullable<SlideElementInfo['imageFit']>,
+  pxW: number,
+  pxH: number,
+  inW: number,
+  inH: number,
+): number {
+  const horizontal = pxW / inW;
+  const vertical = pxH / inH;
+  if (fit === 'contain') return Math.max(horizontal, vertical);
+  return Math.min(horizontal, vertical);
+}
+
 export function lintImageAspect(
   slideNumber: number,
   elements: SlideElementInfo[],

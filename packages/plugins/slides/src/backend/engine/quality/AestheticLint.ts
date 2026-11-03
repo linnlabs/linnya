@@ -47,6 +47,7 @@ import {
   lintFontSizeTiers,
   lintHierarchy,
   lintImageAspect,
+  lintImageResolution,
   lintPaletteDiversity,
   lintPrimaryHueDrift,
   lintTextContrast,
@@ -100,6 +101,7 @@ export class AestheticLint {
       aesthetic.push(...lintPaletteDiversity(slide.number, sampled));
       aesthetic.push(...lintTextContrast(slide.number, positioned));
       aesthetic.push(...lintImageAspect(slide.number, positioned));
+      aesthetic.push(...lintImageResolution(slide.number, info.slideSize, positioned));
       aesthetic.push(...lintChartReadability(slide.number, positioned));
       const primary = pickPrimaryHue(sampled);
       if (primary != null) {

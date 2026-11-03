@@ -131,6 +131,14 @@ export const TEXT_CONTRAST_MIN_RATIO = 3.0;
 export const IMAGE_ASPECT_TOLERANCE = 0.1;
 
 /**
+ * 图片清晰度按 1920px 宽全屏放映估算：页面每英寸需要 1920 / 页宽 个源像素。
+ * 源像素不足 80%（放大超过 1.25 倍）时满版照片能看出发虚；宽度不足 1in 的小图不检查。
+ */
+export const IMAGE_RESOLUTION_REFERENCE_WIDTH_PX = 1920;
+export const IMAGE_RESOLUTION_MIN_RATIO = 0.8;
+export const IMAGE_RESOLUTION_MIN_DISPLAY_IN = 1;
+
+/**
  * 图表标签估算所需跨度 / 实际可用跨度超过该值才报告容量风险。
  * 1.35 为 ECharts 自动间隔、字体宽度估算误差和短标签微调保留 35% 余量；
  * 调低会把正常的紧凑图表误报为拥挤，调高会漏掉明显跳标或碰撞。

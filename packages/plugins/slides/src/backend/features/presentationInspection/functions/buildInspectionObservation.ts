@@ -359,6 +359,8 @@ function formatEvidence(
       return `mean=${formatNumber(evidence.circularMeanDegrees)}deg stddev=${formatNumber(evidence.circularStdDevDegrees)}deg threshold=${formatNumber(evidence.thresholdDegrees)}deg samples=${evidence.primaryHues.map((sample) => `${sample.slideNumber}:${formatNumber(sample.hueDegrees)}`).join(',')}`;
     case 'color_contrast':
       return `text=${node(evidence.textNode)} container=${node(evidence.containerNode)} colors=${evidence.textColor}/${evidence.backgroundColor} ratio=${formatNumber(evidence.contrastRatio)} threshold=${formatNumber(evidence.thresholdRatio)}`;
+    case 'image_resolution':
+      return `node=${node(evidence.node)} fit=${evidence.fitMode} visible=${evidence.visibleWidthPx}x${evidence.visibleHeightPx}px ppi=${evidence.effectivePpi}/${evidence.targetPpi} ratio=${formatRatio(evidence.ratio)} threshold=${formatRatio(evidence.thresholdRatio)}`;
     case 'image_aspect':
       return `node=${node(evidence.node)} fit=${evidence.fitMode} frame=${formatRatio(evidence.frameAspect)} natural=${formatRatio(evidence.naturalAspect)} deviation=${formatRatio(evidence.deviationRatio)} threshold=${formatRatio(evidence.thresholdRatio)}`;
     case 'chart_readability':
@@ -381,6 +383,7 @@ function collectEvidenceNodes(evidence: DiagnosticEvidence): DiagnosticNodeRef[]
     case 'node_size':
     case 'text_layout':
     case 'image_aspect':
+    case 'image_resolution':
     case 'chart_readability':
     case 'text_pattern':
       return [evidence.node];

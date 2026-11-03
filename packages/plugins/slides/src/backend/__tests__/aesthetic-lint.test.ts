@@ -798,6 +798,54 @@ describe('AestheticLint', () => {
         .toBeUndefined();
     });
 
+    it('满版照片源像素不足时报告清晰度，contain 小图和高分辨率图不报', () => {
+      const image = (name: string, w: number, h: number, px: [number, number], fit: SlideElementInfo['imageFit']) => ({
+        name,
+        type: 'image' as const,
+        position: { x: 0, y: 0, w, h },
+        imageFit: fit,
+        imageNaturalSizePx: { width: px[0], height: px[1] },
+      });
+      const report = lint.lint(makeInfo({
+        slideSize: { width: 13.333, height: 7.5 },
+        slides: [{
+          number: 1,
+          elements: [
+            image('mural', 13.333, 7.5, [1200, 675], 'cover'),
+            image('plate', 4, 3, [1200, 900], 'contain'),
+            image('thumb', 0.8, 0.8, [40, 40], 'contain'),
+          ],
+        }],
+      }));
+
+      const issues = report.aesthetic.filter((issue) => issue.code === 'image_resolution_low');
+      expect(issues).toHaveLength(1);
+      expect(issues[0]).toMatchObject({
+        slides: [1],
+        evidence: { kind: 'image_resolution', fitMode: 'cover', visibleWidthPx: 1200, targetPpi: 144 },
+      });
+    });
+
+    it('裁剪掉的部分不计入可见像素', () => {
+      const report = lint.lint(makeInfo({
+        slideSize: { width: 10, height: 5.625 },
+        slides: [{
+          number: 1,
+          elements: [{
+            name: 'detail',
+            type: 'image',
+            position: { x: 0, y: 0, w: 5, h: 5 },
+            imageFit: 'cover',
+            imageNaturalSizePx: { width: 2000, height: 2000 },
+            imageCrop: { top: 0.35, right: 0.35, bottom: 0.35, left: 0.35 },
+          }],
+        }],
+      }));
+
+      expect(report.aesthetic.find((issue) => issue.code === 'image_resolution_low'))
+        .toMatchObject({ evidence: { visibleWidthPx: 600, effectivePpi: 120, targetPpi: 192 } });
+    });
+
     it('Office 目标下报告 Mac 专属字体不可交付，并按 family 聚合', () => {
       const info = makeInfo({
         slides: [1, 3].map((number) => ({

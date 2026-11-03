@@ -69,6 +69,7 @@ PresentationRenderModel
 - 文本测量或字体信息如需参与规则，必须通过平台 port 或上游已经计算好的 lint input，不在 quality 内部新建测量实现。
 - 字体规则只消费 run 级 `fontFamily + resolvedFontFamily + fontScript + fontResolution`：按脚本分别统计，weight/style 不算新 family，unresolved 单独形成 finding；requested/resolved family 不一致时输出 `font_family_substituted`，请求样式与 `resolvedBold/resolvedItalic` 不一致时输出 `font_style_substituted`。这些规则都禁止在 quality 内重新解析字体或退回第一 run 的原始 family 字符串猜测。
 - 字体可交付性由调用方传入 `fontTarget`（生成稿取 `theme.fontTarget`，缺省 `office`；导入稿不传）。`font_not_deliverable` 只看作者声明的 family，按 `shared/fontDelivery` 的 Office 字体表判断，本机装了也照报；目标为 `office` 时，Office 字体在本机缺失造成的预览替代不报 `font_family_substituted`，避免催 Agent 换成本机专属字体。
+- 图片规则消费 RenderModel 的 `naturalSize`（生成稿由 `GeneratedPresentationRenderModelBuilder` 只读位图尺寸头后补齐，SVG 不填）：`image_aspect_distorted` 看 stretch 变形；`image_resolution_low` 按 fitMode 与 crop 估算可见区域每英寸源像素，与 1920px 宽全屏放映所需像素比较，低于 80% 报 medium-confidence warning，宽度不足 1in 的图不检查。
 - quality 不读取 PPTX zip，不访问 repository、workspace、IPC、renderer store。
 - quality 输出 issue/report 供内部分析；`ppt_inspect` 与 Slides CLI 只投影 `buildStatus + findings`，不输出综合分、passed 或 blocker。
 - generated 文本优先消费最终 `textLayout`：连续两位及以上数字若实际排成多行，`short_numeric_text_wrapped` 记录真实行数；非显式换行的段落若自动断行后末行只剩一个字素，`text_single_glyph_last_line` 记录段落与孤字。表格单元格不伪造 RenderNode，而是通过 table 节点上的窄 `tableInfo` 事实报告 `rows[row][column]`。这些规则只报告，不改文字、不重新测量、不强制不换行，也不替 Renderer 修正布局。
