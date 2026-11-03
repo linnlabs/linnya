@@ -57,3 +57,23 @@ it('共线反向控制柄仍保留端点外弯，折线与真实曲线偏差不�
     expect(error * 4).toBeLessThanOrEqual(0.25);
   }
 });
+it('拖动使用当前倍率细分仍保持相同屏幕误差，低倍率不承担最大倍率的顶点数', () => {
+  const curve = [{ x: 0, y: 0 }, { x: -200, y: 700 }, { x: 1200, y: -300 }, { x: 1000, y: 400 }] as const;
+  const counts: number[] = [];
+  for (const zoom of [0.02, 0.1, 0.6, 1, 4]) {
+    const points = flattenCanvasCubic(curve, zoom); counts.push(points.length);
+    for (let sample = 0; sample <= 1024; sample++) {
+      const t = sample / 1024, s = 1 - t;
+      const x = 3 * s * s * t * curve[1].x + 3 * s * t * t * curve[2].x + t ** 3 * curve[3].x;
+      const y = 3 * s * s * t * curve[1].y + 3 * s * t * t * curve[2].y + t ** 3 * curve[3].y;
+      let error = Infinity;
+      for (let i = 1; i < points.length; i++) {
+        const a = points[i - 1], b = points[i], dx = b.x - a.x, dy = b.y - a.y, length = dx * dx + dy * dy;
+        const ratio = length ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / length)) : 0;
+        error = Math.min(error, Math.hypot(x - a.x - ratio * dx, y - a.y - ratio * dy));
+      }
+      expect(error * zoom).toBeLessThanOrEqual(0.25);
+    }
+  }
+  expect(counts[2]).toBeLessThan(counts[4]);
+});

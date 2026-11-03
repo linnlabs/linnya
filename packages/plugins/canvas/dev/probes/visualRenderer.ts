@@ -243,7 +243,7 @@ async function prepareEditingVisual() {
   try {
     const status = await raster.prepareEditing(cards[0].id), before = raster.readStats().completed;
     const again = await raster.prepareEditing(cards[0].id), after = raster.readStats().completed;
-    if (status !== 'ready' || again !== 'ready' || before !== after || errors.length || !kernel.hasBitmap(cards[0].id)) throw new Error('editing_exact_prepare_did_not_finish_or_reuse');
+    if (status !== 'ready' || again !== 'ready' || before !== after || errors.length || kernel.readStats().bitmaps === 0) throw new Error('editing_exact_prepare_did_not_finish_or_reuse');
     const inkHost = document.createElement('div'); document.body.append(inkHost);
     const direct = createHtmlCardRasterizer({ host: inkHost });
     try {
