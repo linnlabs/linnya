@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import { readPersistedWorkspaceVfsNode, type WorkspaceVfsStatement } from '../../vfs';
+import { readPersistedWorkspaceVfsNode, type WorkspaceVfsStatement } from '../../vfs/projection';
 
 interface WorkspaceProjectionDatabase {
   prepare(sql: string): unknown;
