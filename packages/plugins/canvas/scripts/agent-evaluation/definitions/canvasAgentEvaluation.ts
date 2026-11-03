@@ -14,6 +14,7 @@ export interface CanvasAgentTask {
 /** 输入由可信验收runner收集，不接纳模型自己报告的成功/点击/计时。 */
 export const CanvasAgentEvaluationRunSchema = z.object({
   fixtureVersion: z.literal(1), taskId: CanvasAgentTaskIdSchema,
+  sourceRevision: z.string().regex(/^[a-f0-9]{40}$/), batchId: z.string().min(1),
   model: z.object({ provider: z.string().min(1), model: z.string().min(1), version: z.string().min(1) }).strict(),
   imageCapability: z.enum(['vision', 'no-vision']), evidenceMode: z.enum(['not-applicable', 'offline', 'network']).default('not-applicable'), repetition: z.number().int().positive(),
   startedAt: z.number().nonnegative(), finishedAt: z.number().nonnegative(),
