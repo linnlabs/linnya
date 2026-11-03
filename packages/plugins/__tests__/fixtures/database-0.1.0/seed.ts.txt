@@ -1,0 +1,84 @@
+import { it, expect } from 'vitest';
+import { createHash } from 'node:crypto';
+import { DatabaseService } from 'src/electron-main/services/database';
+import { PluginStateService } from 'src/features/plugins/infrastructure/sqlite/plugin-state.service';
+import { PluginUpgradeRunner } from 'src/features/plugins/infrastructure/sqlite/plugin-upgrade.runner';
+import { SLIDES_PLUGIN_META, SLIDES_OWNED_TABLES } from '../slides/src/shared';
+import { slidesPluginMigrations } from '../slides/src/backend/persistence/slidesPluginMigrations';
+
+// 只由 generate.mjs 复制到历史 checkout 执行；日常测试不重新生成发行基线。
+it.runIf(!!process.env.LINNYA_RELEASE_FIXTURE_OUTPUT)('generates synthetic release data with historical code', () => {
+  const service = new DatabaseService(process.env.LINNYA_RELEASE_FIXTURE_OUTPUT);
+  try {
+    service.initialize({ lifecycleBootstrap: db => {
+      new PluginStateService(db).ensureBuiltinInstalled([SLIDES_PLUGIN_META]);
+      const result = new PluginUpgradeRunner(db, { appVersion: '0.1.0' }).run({
+        pluginId: SLIDES_PLUGIN_META.id, targetVersion: SLIDES_PLUGIN_META.version,
+        ownedTables: SLIDES_OWNED_TABLES, migrations: slidesPluginMigrations,
+      });
+      expect(result.status).toBe('upgraded');
+    } });
+    const db = service.getDb();
+    expect(db.pragma('user_version', { simple: true })).toBe(68);
+    const source = 'export default { title: "Synthetic upgrade deck", slides: [] };';
+    const hash = createHash('sha256').update(source).digest('hex');
+    db.transaction(() => {
+      db.exec(`
+        INSERT INTO projects(id,name,description,created_at,updated_at) VALUES
+          ('fixture-project','Synthetic upgrade project','Public test data',1,1);
+        INSERT INTO workspace_nodes(id,project_id,type,name,created_at,updated_at) VALUES
+          ('fixture-markdown','fixture-project','document','Synthetic notes',1,1),
+          ('fixture-slides','fixture-project','presentation','Synthetic deck',1,1);
+        INSERT INTO document_versions(id,node_id,version_number,content_json,created_at) VALUES
+          ('fixture-document-version','fixture-markdown',1,'{"type":"doc","content":[{"type":"rootBlock","attrs":{"id":"fixture-block"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Synthetic baseline"}]}]}]}',1);
+        INSERT INTO markdown_block_pending_revisions(id,document_node_id,target_block_id,new_markdown,operation,created_at)
+          VALUES ('fixture-pending','fixture-markdown','fixture-block','Synthetic proposal','update',2);
+        INSERT INTO conversations(conversation_id,title,created_at,last_event_at,project_id) VALUES
+          ('fixture-conversation','Synthetic conversation',1,3,'fixture-project');
+        INSERT INTO runs(id,conversation_id,kind,status,start_ts,end_ts) VALUES
+          ('fixture-run','fixture-conversation','agent','completed',1,3);
+        INSERT INTO events(id,run_id,type,payload,ts) VALUES
+          ('fixture-event','fixture-run','final_answer','{"content":"Synthetic answer"}',3);
+        INSERT INTO subrun_trace_runs(subrun_id,conversation_id,turn_id,parent_run_id,parent_tool_call_id,created_at)
+          VALUES ('fixture-subrun','fixture-conversation','fixture-run','fixture-run','fixture-call',2);
+        INSERT INTO subrun_trace_items(subrun_id,source_event_id,kind,timestamp,payload_json)
+          VALUES ('fixture-subrun','fixture-child-event','final_answer',3,'{"content":"Synthetic child answer"}');
+      `);
+      db.prepare(`INSERT INTO presentation_documents(node_id,current_revision_id,current_revision,deck_source,source_hash,deck_spec_json,pptx_buffer,pptx_revision_id,title,slide_count,created_at,updated_at)
+        VALUES ('fixture-slides','fixture-revision-2',2,?,?,'{"slides":[]}',X'','fixture-revision-2','Synthetic deck',0,1,2)`)
+        .run(source, hash);
+      for (let n = 1; n <= 2; n++) {
+        db.prepare(`INSERT INTO presentation_revisions(id,node_id,revision,source_hash,storage_kind,source_checkpoint,patch_bytes,created_at,origin)
+          VALUES (?,'fixture-slides',?,?,'checkpoint',?,0,?,'create')`).run(`fixture-revision-${n}`, n, hash, source, n);
+        db.prepare('INSERT INTO presentation_revision_contexts(revision_id,theme_json) VALUES (?,?)')
+          .run(`fixture-revision-${n}`, '{"name":"Synthetic theme"}');
+        db.prepare(`INSERT INTO presentation_revision_assets(revision_id,asset_id,asset_kind) VALUES (?,?,'image')`)
+          .run(`fixture-revision-${n}`, `fixture-image-${n}`);
+      }
+      db.prepare(`INSERT INTO presentation_drafts(node_id,deck_source,source_hash,base_revision_id,base_revision,created_at,updated_at)
+        VALUES ('fixture-slides',?,?,'fixture-revision-2',2,2,2)`).run(source, hash);
+      db.exec(`
+        INSERT INTO presentation_templates(id,name,template_spec_json,source_pptx_buffer,created_at,updated_at)
+          VALUES ('fixture-template','Synthetic template','{}',X'',1,1);
+        INSERT INTO presentation_image_bindings(presentation_id,source_identity,asset_id,created_at)
+          VALUES ('fixture-slides','synthetic-image','fixture-image-1',1);
+        INSERT INTO presentation_svg_graphic_bindings(presentation_id,source_identity,asset_id,content_hash,byte_length,viewbox_width,viewbox_height,created_at)
+          VALUES ('fixture-slides','synthetic-svg','fixture-svg','synthetic-hash',10,10,10,1);
+        INSERT INTO presentation_asset_releases(node_id,asset_id) VALUES ('fixture-slides','fixture-released-asset');
+        INSERT INTO presentation_manual_edit_receipts(command_id,node_id,payload_digest,revision_id,revision,created_at)
+          VALUES ('fixture-command','fixture-slides','synthetic-digest','fixture-revision-2',2,2);
+      `);
+    })();
+    expect(db.pragma('foreign_key_check')).toEqual([]);
+    for (const table of SLIDES_OWNED_TABLES) {
+      const row = db.prepare<[], { count: number }>(`SELECT COUNT(*) AS count FROM "${table}"`).get();
+      expect(row?.count, table).toBeGreaterThan(0);
+    }
+    db.exec('VACUUM');
+    db.pragma('wal_checkpoint(TRUNCATE)');
+    // 发行夹具只保留单文件；只读验收不应在源码树生成 WAL/SHM。
+    db.pragma('journal_mode = DELETE');
+  } finally {
+    service.close();
+  }
+});
