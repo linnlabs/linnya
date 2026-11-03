@@ -57,6 +57,10 @@ CLI 的 `payloadIdentity` 由可信编排从原始 operations/options 构造，�
 
 图片卡与正文插图只持久化受管 assetId/稳定 src。Renderer 从正式图片端口读取临时 bytes，用有界缓存投影为 data URI，避免 media 协议在 HTML 光栅时空白；异步准备图片不提前建立归属。文档卡经通用候选与 preview 门面读取当前项目标题、封面和不可用状态，打开仍走 Workspace 导航。搜索由 shared 纯函数同时供 Renderer/CLI 消费，不把内部文档 ID 当作可见正文。
 
+显示图片共享 `cardRendering/content.resolveCanvasDisplayImages`：串行解码并生成长边不超过2048的派生，原始资源不进入长期显示缓存；查看原图仍按需读取正式资产。图片归属和结构化正文不使用显示派生。可见文档预览最多4个并行，preview缓存按32 MiB/128项限制；远景仅按owner的 `overview:thumbnail` 声明保留小缩略，不推断具体插件或有图即缩略。标题、preview及在途结果随文档变更和插件可用性失效。
+
+Renderer只读降级同时关闭编辑器、插图锚点、拖动/缩放、菜单和快捷键写入口，释放字段声明但保留已有正文草稿。软件GPU或WebGL恢复提示独立于正文错误。历史预览为独立只读表面；恢复发起窗口的viewId通过通用 `historyClientSessionId` 冻结传递，不能选择其他窗口的撤销栈。
+
 加入对话使用一个 Canvas 选区引用；发送前先等待仍打开表面的草稿保存，再经 Backend 冻结一次最新提交内容。画布关闭后仍可刷新，失败不会回退加入时旧文字。引用记录文档和卡片身份，点击经通用 Workspace 导航打开并定位；同一选区通过通用 composer 去重键合并。复制含标签的子图时保留目标 documentId，但为每个新出现位置分配新的 referenceId，避免原子引用索引冲突。
 
 ## CLI 与自动布局

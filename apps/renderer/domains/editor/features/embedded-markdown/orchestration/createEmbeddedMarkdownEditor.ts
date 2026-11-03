@@ -48,15 +48,17 @@ export function createEmbeddedMarkdownEditor(
     readMarkdown: () => editor.getMarkdown(),
     replaceContent,
     insertContent(content) {
+      if (!editor.isEditable) throw new Error('只读正文不能插入内容');
       assertProseMirrorJsonMatchesSchema(content, editor.schema);
       const node = editor.schema.nodeFromJSON(content);
       editor.commands.insertContent(node.type === editor.schema.topNodeType ? node.content.toJSON() : node.toJSON());
     },
     captureInsertion() {
+      if (!editor.isEditable) throw new Error('只读正文不能插入内容');
       const insertion = createEmbeddedMarkdownInsertion(editor, () => insertions.delete(insertion));
       insertions.add(insertion); return insertion;
     },
-    setEditable: editable => editor.setEditable(editable),
+    setEditable: editable => { if (!editable) cancelInsertions(); editor.setEditable(editable); },
     focus: () => { editor.commands.focus(); },
     destroy: () => { cancelInsertions(); editor.destroy(); },
   };

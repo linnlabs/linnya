@@ -1,5 +1,5 @@
 import type { CanvasArrangeRequest, CanvasCommand } from '@plugin/canvas/shared';
-import { requireCanvasUserCommitApplied, type CanvasDocumentSession } from '../../canvasDocument';
+import { requireCanvasUserCommitApplied, requireWritableCanvas, type CanvasDocumentSession } from '../../canvasDocument';
 import type { CanvasArrangementPort } from '../definitions/canvasLayoutCommands';
 import { createCanvasLayoutState } from '../store/createCanvasLayoutState';
 import { planCanvasTreeCreation } from '../functions/planCanvasTreeCreation';
@@ -14,7 +14,7 @@ export function createCanvasLayoutCommands(session: CanvasDocumentSession, port:
     async run(options: CanvasArrangeRequest['options'], operations: readonly CanvasCommand[] = [], historyGroupId?: string) {
       if (disposed) throw new DOMException('Canvas layout disposed', 'AbortError');
       if (active) throw new Error('排布正在进行，请稍候或先取消');
-      const documentId = session.state.snapshot.value?.documentId; if (!documentId) throw new Error('画布尚未打开');
+      const { documentId } = requireWritableCanvas(session.state.snapshot.value);
       const job = { documentId, requestId: crypto.randomUUID(), cancelled: false }; active = job; state.begin();
       let release!: () => void; settled = new Promise<void>(resolve => { release = resolve; });
       try {

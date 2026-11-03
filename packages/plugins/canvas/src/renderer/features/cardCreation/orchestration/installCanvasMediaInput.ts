@@ -1,4 +1,3 @@
-import type { DocumentImageAsset } from '@app/schemas';
 import type { CanvasPoint } from '@plugin/canvas/shared';
 import type { EmbeddedMarkdownInsertion } from '@plugin/renderer/embeddedMarkdownEditor';
 import type { CanvasCardContent } from '../../cardMedia';
@@ -12,19 +11,21 @@ export function installCanvasMediaInput(options: {
   readonly captureInsertion: () => EmbeddedMarkdownInsertion;
   readonly worldPoint: (point: CanvasPoint) => CanvasPoint;
   readonly report: (error: unknown) => void;
+  readonly canWrite: () => boolean;
 }) {
   const inline = async (files: readonly File[]) => {
     const insertion = options.captureInsertion();
+    const assetIds: string[] = [];
     try {
-      const assets: DocumentImageAsset[] = [];
-      for (const file of files) { const asset = await options.creation.prepare(file); options.content.stageImage(asset); assets.push(asset); }
-      if (!insertion.insert({ type: 'doc', content: assets.map(asset => ({ type: 'image', attrs: { assetId: asset.assetId, src: `asset:${asset.assetId}`, alt: '', title: null } })) })) throw new Error('原文字卡已关闭，请重新插入图片');
-    } finally { insertion.cancel(); }
+      for (const file of files) { const asset = await options.creation.prepare(file); await options.content.stageImage(asset); assetIds.push(asset.assetId); }
+      if (!insertion.insert({ type: 'doc', content: assetIds.map(assetId => ({ type: 'image', attrs: { assetId, src: `asset:${assetId}`, alt: '', title: null } })) })) throw new Error('原文字卡已关闭，请重新插入图片');
+    } finally { insertion.cancel(); options.content.releaseStagedImages(assetIds); }
   };
   const paste = (event: ClipboardEvent) => {
     const files = Array.from(event.clipboardData?.files ?? []).filter(file => file.type.startsWith('image/'));
     if (!files.length) return;
     event.preventDefault(); event.stopPropagation();
+    if (!options.canWrite()) { options.report(new Error('画布为只读，无法插入图片')); return; }
     void (event.currentTarget === options.editor ? inline(files) : options.creation.importFiles(files)).catch(options.report);
   };
   const dragover = (event: DragEvent) => {
@@ -36,6 +37,7 @@ export function installCanvasMediaInput(options: {
     const files = Array.from(event.dataTransfer.files).filter(file => file.type.startsWith('image/'));
     if (!id && !files.length) return;
     event.preventDefault();
+    if (!options.canWrite()) { options.report(new Error('画布为只读，无法添加卡片')); return; }
     const rect = options.stage.getBoundingClientRect(), point = options.worldPoint({ x: event.clientX - rect.left, y: event.clientY - rect.top });
     void (id ? options.creation.addDocument(id, point) : options.creation.importFiles(files, point)).catch(options.report);
   };

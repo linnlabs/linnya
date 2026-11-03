@@ -16,6 +16,7 @@ export function createCanvasDragProtection(session: CanvasDocumentSession, repor
         await Promise.all(released.map(id => session.protect(id, [], 'drag')));
       }
     },
+    async cancel() { const selected = [...ids]; ids.clear(); clearInterval(timer); timer = undefined; await Promise.all(selected.map(id => session.protect(id, [], 'drag'))); },
     dispose() { clearInterval(timer); timer = undefined; ids.clear(); },
   };
 }

@@ -1,7 +1,7 @@
 import type { CanvasCardId, CanvasPoint } from '@plugin/canvas/shared';
 import type { CanvasKernel } from '../kernel';
 import type { CanvasSurfacePorts } from '../definitions/canvasSurface';
-import type { CanvasDocumentSession } from '../features/canvasDocument';
+import { isCanvasReadonly, type CanvasDocumentSession } from '../features/canvasDocument';
 import { installCanvasClipboard, selectCanvasSubgraph, canvasPasteOffset, installCanvasPastePosition } from '../features/clipboard';
 import { buildDeleteCommands, type createCanvasElementActions } from '../features/elementEditing';
 
@@ -13,6 +13,7 @@ export function installCanvasSurfaceClipboard(options: {
 }) {
   const position = installCanvasPastePosition(options.host, options.kernel.screenToWorld.bind(options.kernel)), point = () => options.contextPoint() ?? position.read();
   const clipboard = installCanvasClipboard(options.host, { canHandle: options.canHandle,
+    canWrite: () => !isCanvasReadonly(options.session.state.snapshot.value),
     read: () => selectCanvasSubgraph(options.session.state.snapshot.value?.elements ?? [], options.selection()),
     prepare: ids => { if (!options.ports.prepareClipboard) throw new Error('当前表面未配置子图复制'); return options.ports.prepareClipboard(ids); },
     pastePoint: point,

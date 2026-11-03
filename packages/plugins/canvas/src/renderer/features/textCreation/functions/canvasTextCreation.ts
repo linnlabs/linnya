@@ -5,8 +5,8 @@ export function canvasTextHasContent(content: CanvasTextDocument): boolean {
   return content.content.some(meaningful);
 }
 /** 新卡朝向来源的边中点落在松手处；不向模型/持久层暴露临时卡片身份。 */
-export function canvasTextCreationRectangle(point: CanvasPoint, from: CanvasEndpoint | null): CanvasRectangle {
-  const width = 280, height = 180;
+export function canvasTextCreationRectangle(point: CanvasPoint, from: CanvasEndpoint | null, height = 180): CanvasRectangle {
+  const width = 280;
   const side = from?.kind === 'card' ? from.side : 'auto';
   return { x: point.x - (side === 'left' ? width : side === 'top' || side === 'bottom' ? width / 2 : 0),
     y: point.y - (side === 'top' ? height : side === 'left' || side === 'right' ? height / 2 : 0), width, height };

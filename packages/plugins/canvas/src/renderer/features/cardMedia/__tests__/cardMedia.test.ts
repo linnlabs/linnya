@@ -22,7 +22,7 @@ describe('受管卡片内容投影', () => {
     f.content.dispose();
   });
   it('刚prepare尚未建立归属的插图可显示，读取失败明确失败不回退远程URL', async () => {
-    const f = fixture(); f.content.stageImage(image);
+    const f = fixture(); await f.content.stageImage(image);
     expect(await f.content.resolveImageSource('asset:image-1')).toBe(image.dataUri);
     expect(f.readImage).not.toHaveBeenCalled();
     f.readImage.mockRejectedValueOnce(new Error('asset missing'));

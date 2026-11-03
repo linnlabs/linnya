@@ -1,6 +1,6 @@
 import type { Ref } from 'vue';
 import type { JsonValue } from '@app/schemas';
-import type { CanvasCardId, CanvasTextCardSchema, CanvasTextDocument } from '@plugin/canvas/shared';
+import type { CanvasCardId, CanvasRectangle, CanvasTextCardSchema, CanvasTextDocument } from '@plugin/canvas/shared';
 import type { z } from 'zod';
 
 export interface CanvasCardDraft {
@@ -11,6 +11,7 @@ export interface CanvasCardDraft {
   readonly savedSequence: number;
   readonly historyGroupId: string;
   readonly measuredHeight: number | null;
+  readonly placement: CanvasRectangle;
 }
 export interface CanvasCardEditingState {
   readonly draft: Readonly<Ref<CanvasCardDraft | null>>;
@@ -31,5 +32,6 @@ export interface CanvasCardEditor {
   setComposing(value: boolean): void;
   measure(height: number): void;
   save(finish?: boolean): Promise<boolean>;
+  suspend(): Promise<void>;
   dispose(): void;
 }

@@ -24,7 +24,7 @@ export function createCanvasConnectionEditing(session: CanvasDocumentSession, ke
     })();
     try { return await pendingLabel; } finally { pendingLabel = null; }
   }
-  const gesture = createCanvasEndpointGesture(session, kernel, state, options.report, options.createText);
+  const gesture = createCanvasEndpointGesture({ session, kernel, state, report: options.report, createText: options.createText });
   return { state, selected, patch, saveLabel, geometry: () => { void session.state.snapshot.value; return selected.value ? kernel.readEdgeGeometry(selected.value.id) : null; },
     async select(id: CanvasEdgeId | null) {
       if (!(await options.finishText()) || !(await saveLabel())) return;
@@ -37,6 +37,7 @@ export function createCanvasConnectionEditing(session: CanvasDocumentSession, ke
     },
     async remove() { if (selected.value?.locked) throw new Error('请先解锁这条连线'); if (!(await saveLabel())) return; const edge = selected.value; if (!edge) return; await session.commit([{ op: 'delete', id: edge.id, baseRevision: edge.revision }]); state.select(null); kernel.setSelectedEdge(null); },
     cancelLabel() { void releaseLabel().catch(options.report); state.endLabel(); },
+    async suspend() { gesture.dispose(); await releaseLabel(); },
     start: gesture.start,
     dispose() { gesture.dispose(); if (renewal) clearInterval(renewal); },
   };
