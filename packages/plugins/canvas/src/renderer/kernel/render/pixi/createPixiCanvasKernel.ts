@@ -378,6 +378,7 @@ class PixiCanvasKernel implements CanvasKernel {
   hitTest(point: CanvasPoint): CanvasCard | null {
     return this.spatial.hitTest(point);
   }
+  readCard(id: CanvasCardId): CanvasCard | null { return this.cards.get(id) ?? null; }
   visibleCards(): readonly CanvasCard[] { return this.ordered.flatMap(entry => { const card = this.cards.get(entry.id); return card && this.visible(card) ? [card] : []; }); }
   renderableCards(): readonly CanvasCard[] { return this.exposed; }
   private keepsThumbnail(card: CanvasCard): boolean { return card.type === 'image' || this.thumbnailCards.has(card.id); }
