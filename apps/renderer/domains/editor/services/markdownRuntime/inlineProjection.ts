@@ -143,7 +143,7 @@ function projectionFromFragments(
 
     spans.push({
       text: fragment.textRepresentation,
-      marks: [],
+      marks: pickSupportedSpanMarks(fragment.marks),
       inlineAtom: {
         type: 'inlineLatex',
         latexSource: fragment.latexSource,
@@ -212,6 +212,7 @@ export function structuredContentToInlineProjection(
         fragments.push({
           type: 'inlineLatex',
           attrs,
+          marks: toMarkArray(fragment.marks),
           latexSource,
           textRepresentation: latexSource ? `$${latexSource}$` : '$$',
         })
@@ -371,7 +372,7 @@ export function buildInlineNodesFromProjection(
         inlineLatexType.create({
           id: generateBlockId(),
           latexSource: fragment.latexSource,
-        })
+        }, null, buildSchemaMarks(schema, fragment.marks))
       )
     } catch {
       nodes.push(schema.text(fragment.textRepresentation))

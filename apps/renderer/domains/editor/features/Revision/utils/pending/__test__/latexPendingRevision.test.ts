@@ -203,3 +203,30 @@ it('行内公式只按源码比较：只改文字时公式保留基线节点，�
   expect(formulas[1]?.id).toEqual(expect.any(String));
   expect(String(formulas[1]?.id)).not.toMatch(/^inline-latex-/);
 });
+
+it.each([
+  { delimiter: '**', marks: [{ type: 'bold' }] },
+  { delimiter: '***', marks: [{ type: 'bold' }, { type: 'italic' }] },
+  { delimiter: '~~', marks: [{ type: 'strike' }] },
+])('带$delimiter格式的公式只改邻近文字：预览、接受及重开保持格式', async ({ delimiter, marks }) => {
+  const editor = createEditor();
+  const baseline = documentOf({ type: 'baseBlock', attrs: { id: 'styled-paragraph', blockType: 'base' }, content: [
+    { type: 'text', text: '原句：', marks },
+    { type: 'inlineLatex', attrs: { id: 'styled-formula', latexSource: 'E = mc^2' }, marks },
+    { type: 'text', text: '成立。', marks },
+  ] });
+  const markdown = `${delimiter}改句：$E = mc^2$成立。${delimiter}`;
+  const store = await open(editor, snapshot(baseline, 'update', markdown));
+  const formulas: JSONContent[] = [];
+  editor.state.doc.descendants(node => { if (node.type.name === 'inlineLatex') formulas.push(node.toJSON()); });
+  expect(formulas).toEqual([{ type: 'inlineLatex', attrs: expect.objectContaining({ id: 'styled-formula', latexSource: 'E = mc^2' }), marks }]);
+
+  const imported = (await importMarkdownToDocJson(markdown)).docJson;
+  if (!imported) throw new Error('缺少公式导入结果');
+  mocks.commit.mockResolvedValueOnce({ success: true, data: { content: imported, pendingRevisions: [], versionNumber: 2 } });
+  await store.acceptAllRevisions('formula-root');
+  await open(editor, { content: imported, pendingRevisions: [], versionNumber: 2 });
+  const persisted: JSONContent[] = [];
+  editor.state.doc.descendants(node => { if (node.type.name === 'inlineLatex') persisted.push(node.toJSON()); });
+  expect(persisted).toEqual([{ type: 'inlineLatex', attrs: expect.objectContaining({ latexSource: 'E = mc^2' }), marks }]);
+});

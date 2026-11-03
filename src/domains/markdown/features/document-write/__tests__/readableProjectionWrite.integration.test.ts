@@ -258,3 +258,31 @@ it('未变行内公式按语义保留呈现，换掉公式后不迁移颜色，�
       .toBe(preserved);
   }
 });
+
+it('带粗体和斜体的行内公式经真实写入、接受、存储重读及再次导入后保留格式', async () => {
+  const { store, normalizer, read, write } = setup();
+  const created = await buildMarkdownDocumentFromText({ markdown: '***原句：$E = mc^2$成立。***', normalizer, resolveCitationSources: async () => [] });
+  const baseline = parseMarkdownDocJson(created.content);
+  const originalFormula = baseline.content[0].content?.[0]?.content?.find(node => node.type === 'inlineLatex');
+  if (!originalFormula) throw new Error('Missing formula');
+  // 模拟用户在富文本编辑器里给整段设置格式，不能让导入器的旧缺陷先污染基线。
+  originalFormula.marks = [{ type: 'bold' }, { type: 'italic' }];
+  store.createDocument('doc', baseline);
+  const edited = (read()?.text ?? '').replace('原句', '改句');
+  await write(edited);
+  const version = store.getLatestVersion('doc');
+  if (!version) throw new Error('Missing test document version');
+  await new PendingRevisionApplyService(store).commitEditorRevision({
+    documentId: 'doc', expectedVersionNumber: version.version_number,
+    expectedPending: store.getPendingRevisions('doc').map(({ id, revision }) => ({ id, revision })),
+    baseline: store.getDocument('doc'), decision: { mode: 'accept' },
+  });
+  const formula = store.getDocument('doc').content[0].content?.[0]?.content?.find(node => node.type === 'inlineLatex');
+  expect(formula?.marks).toEqual([{ type: 'bold' }, { type: 'italic' }]);
+  expect(read()?.text).toBe(edited);
+  expect((await write(edited)).edits).toEqual([]);
+  const imported = await buildMarkdownDocumentFromText({ markdown: edited, normalizer, resolveCitationSources: async () => [] });
+  const importedDocument = parseMarkdownDocJson(imported.content);
+  expect(importedDocument.content[0]?.content?.[0]?.content?.find(node => node.type === 'inlineLatex')?.marks)
+    .toEqual([{ type: 'bold' }, { type: 'italic' }]);
+});

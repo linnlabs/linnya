@@ -21,6 +21,7 @@ export type ContentFragmentLike =
   | {
       type: 'inlineLatex'
       attrs?: Record<string, unknown> | null
+      marks?: MarkLike[] | null
     }
   | {
       type: 'hardBreak'
@@ -53,6 +54,7 @@ export type MarkdownInlineFragment =
   | {
       type: 'inlineLatex'
       attrs: Record<string, unknown>
+      marks: MarkLike[]
       latexSource: string
       textRepresentation: string
     }

@@ -77,6 +77,7 @@ apps/renderer/domains/editor/services/markdownRuntime/
 - 产出统一的 `MarkdownInlineProjection`
 - 为 `Revision` / `RichDiff` 提供可消费的 `TextSpan[]`
 - 保留 `inlineLatex`、`hardBreak` 等 non-text inline 语义
+- `inlineLatex` 与文字一样携带外层 marks：fragments 保留完整格式，diff spans 保留其支持的格式，物化时传入 schema；不能只保留公式源码而清空粗体等呈现
 
 当前协议：
 

@@ -69,6 +69,7 @@ describe('buildTableRowsFromParsedTable', () => {
         {
           type: 'inlineLatex',
           attrs: { latexSource: 'x+y' },
+          marks: [],
           latexSource: 'x+y',
           textRepresentation: '$x+y$',
         },

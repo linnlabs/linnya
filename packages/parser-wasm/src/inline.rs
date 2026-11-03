@@ -166,7 +166,8 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                     let new_fragment = ContentFragment {
                         r#type: "inlineLatex".to_string(),
                         text: None,
-                        marks: Vec::new(),
+                        // 公式也是行内内容；丢掉外层 marks 会在修订接受后静默改写用户格式。
+                        marks: project_active_marks(&current_marks),
                         attrs: Some(JsonValue::Object(attrs_map.into_iter().collect())),
                     };
                     fragments.push(new_fragment);
@@ -189,7 +190,7 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
                     let new_fragment = ContentFragment {
                         r#type: "inlineLatex".to_string(),
                         text: None,
-                        marks: Vec::new(),
+                        marks: project_active_marks(&current_marks),
                         attrs: Some(JsonValue::Object(attrs_map.into_iter().collect())),
                     };
                     fragments.push(new_fragment);
@@ -286,6 +287,21 @@ pub(crate) fn parse_inline_markdown_to_fragments(markdown_text: &str) -> Vec<Con
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn math_preserves_surrounding_marks_without_leaking_them_to_following_text() {
+        for (markdown, expected) in [
+            ("**公式 $E = mc^2$ 成立** tail", vec!["bold"]),
+            ("***公式 $E = mc^2$ 成立*** tail", vec!["italic", "bold"]),
+            ("~~公式 $E = mc^2$ 成立~~ tail", vec!["strike"]),
+            ("****$E = mc^2$**** tail", vec!["bold"]),
+        ] {
+            let fragments = parse_inline_markdown_to_fragments(markdown);
+            let formula = fragments.iter().find(|f| f.r#type == "inlineLatex").unwrap();
+            assert_eq!(formula.marks.iter().map(|m| m.r#type.as_str()).collect::<Vec<_>>(), expected, "{markdown}");
+            assert!(fragments.last().unwrap().marks.is_empty(), "{markdown}");
+        }
+    }
 
     #[test]
     fn nested_marks_preserve_outer_scope_until_its_own_end() {
