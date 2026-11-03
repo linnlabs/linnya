@@ -1,5 +1,6 @@
 export * from './model/definitions/canvasElement';
 export * from './model/functions/readCanvasContent';
+export * from './model/functions/canvasCardSizing';
 export type * from './geometry/definitions/canvasGeometry';
 export { canvasBounds, canvasRectanglesOverlap, canvasScreenToWorld, canvasWorldToScreen } from './geometry/functions/canvasGeometry';
 
@@ -12,3 +13,6 @@ export * from './agentChanges/definitions/canvasAgentChanges';
 export * from './images/definitions/canvasImageRequests';
 export { searchCanvasElements } from './search/functions/searchCanvasElements';
 export type { CanvasSearchHit, CanvasSearchContext } from './search/definitions/canvasSearch';
+export { searchCanvasElements } from './search/functions/searchCanvasElements';
+export type { CanvasSearchHit, CanvasSearchContext } from './search/definitions/canvasSearch';
+export * from './images/definitions/canvasImageRequests';

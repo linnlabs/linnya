@@ -1,14 +1,6 @@
-export type PluginDocumentImageMediaType = 'image/jpeg' | 'image/png' | 'image/webp';
-
-export interface PluginDocumentImageAsset {
-  readonly assetId: string;
-  readonly mediaType: PluginDocumentImageMediaType;
-  readonly byteLength: number;
-  readonly width: number;
-  readonly height: number;
-  readonly sha256: string;
-  readonly dataUri: string;
-}
+import type { DocumentImageAsset } from '@app/schemas';
+export type PluginDocumentImageAsset = DocumentImageAsset;
+export type PluginDocumentImageMediaType = DocumentImageAsset['mediaType'];
 
 export interface PluginDocumentImageAssetRuntimePort {
   /** 准备受管字节与媒体事实，不建立文档归属；归属由调用方提交事务登记。 */
