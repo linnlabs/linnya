@@ -2,7 +2,6 @@ import type { WorkspaceMutationEvent } from '@app/schemas';
 import type {
   CreateWorkspaceDocumentInput,
   CreateWorkspaceDocumentOutput,
-  FileSaveContext,
   FileSessionDescriptor,
   OperationResult,
   OperationResultWithData,
