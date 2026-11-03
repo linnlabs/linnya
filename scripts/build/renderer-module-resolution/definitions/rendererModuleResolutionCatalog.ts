@@ -41,6 +41,7 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
   browser('@linnya/renderer-ui/scroll', 'packages/renderer-ui/src/scroll/index.ts', 'exact'),
   browser('@linnya/renderer-ui/theme', 'packages/renderer-ui/src/theme/index.ts', 'exact'),
   browser('@linnya/renderer-ui/version', 'packages/renderer-ui/src/version.ts', 'exact'),
+  browser('@linnya/markdown-document-core', 'packages/markdown-document-core/src/index.ts', 'exact'),
   browser('@linnya/text-measurement-core', 'packages/text-measurement-core/src/index.ts', 'exact'),
   browser('@linnya/citation-domain/conversation-presentation', 'src/domains/citation/conversation-presentation.ts', 'exact'),
   browser('@linnya/citation-domain/markdown-reference', 'src/domains/citation/markdown-reference.ts', 'exact'),
@@ -49,6 +50,7 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
   browser('stream-markdown-parser', 'packages/stream-markdown-parser/src', 'subpath'),
 
   facade('@plugin/renderer', 'src/plugin-sdk/renderer', 'subpath'),
+  pluginEntry('@plugin/canvas/shared', 'packages/plugins/canvas/src/shared/index.ts', 'exact'),
   pluginEntry('@plugin/mindmap/shared', 'packages/plugins/mindmap/src/shared/index.ts', 'exact'),
   pluginEntry('@plugin/slides/shared', 'packages/plugins/slides/src/shared/index.ts', 'exact'),
   pluginEntry('@plugin/slides/shared', 'packages/plugins/slides/src/shared', 'subpath'),
