@@ -47,14 +47,25 @@ markdownRuntime 的统一准入，不重复解析图表 JSON。
 ## 水平分割线的 Pending
 
 水平分割线同样是原子块：没有行内文字，不拆成行内 mark，也不走文本 diff。`pendingMarkdownRuntime` 把单个 `HorizontalRuleBlock` 归为 `atomic-block`，
-`resolvePendingMarkdownForSingleBlock` 经 markdownRuntime 的 materializer 得到 `rootBlock -> horizontalRuleBlock`（与完整文档导入同一分支）并只取内容块；
-计划层据此选择整块 `block-replace` / `block-remove`，不选 `content-diff`。Revision 不解析分割线语法，也不自己拼装节点。
+执行前经 markdownRuntime 的 materializer 得到 `rootBlock -> horizontalRuleBlock`（与完整文档导入同一分支）并只取内容块；
+计划层据此选择整块 `block-replace` / `block-remove`，通过共用原子块应用器执行，不选 `content-diff`。Revision 不解析分割线语法，也不自己拼装节点。
 
 - **insert / update**：目标块的内容整块替换为分割线，目标 rootBlock 的身份与属性不变；计一次新增，被替换的原内容非空时计一次删除（空占位不计）。目标本来就是分割线则不改文档、不登记修订。
 - **delete**：目标内容块是原子块时文档保持不变，只登记一次整块删除；不能当作“内容已为空”而静默跳过。
 - 原块保存在投影账本里，拒绝、接受前的基线读取与其他结构变换相同；预览、接受、拒绝和重开得到同一个 `horizontalRuleBlock`。
 - Schema 无法表达分割线时投影失败（保留数据库快照与原始基线），不降级成空文本或普通段落。
 - 当前内容是分割线、提议是文字的 update，沿用通用文本路径：块转换为文本块，新内容以插入标记显示，原分割线由账本保存；尚未提供对被删分割线的专门显示，列为已知限制。
+
+## 独立公式与异常提议
+
+独立 `LatexBlock` 与水平分割线共用 materializer 和 `atomicPendingRevisionApplier`：insert/update 以整条公式替换，
+计一增一删（空占位不计删除）；相同源码不修改文档、不登记；delete 保留原节点，只登记整块删除。
+行内公式继续作为文本 diff 的原子单元。`LatexBlockView` 直接渲染提议的公式，update 且原块也是公式时
+通过 `readProjectionBaseline` 提供“查看原内容 / 查看提议”，Pending 期间关闭并禁止编辑面板。
+
+多块 Pending 不属于正式合同：全文写入已拆成多条单块提议。多块或未知单块类型在投影前明确失败，
+数据库快照、计数与原始基线保留；块头显示“这条修改无法预览”，只允许拒绝，文档级接受也被阻止。
+单块解析不再使用 `detectBlockType` 正则猜测或截取第一块。公式/图表/分割线与文字互转时的被删原块专门展示仍未提供。
 
 ## 用户决策
 
@@ -85,3 +96,6 @@ Teleport 到该视口后以局部绝对定位居中。不能再使用整个窗�
 ## 验证
 
 核心回归位于 [文档会话测试](../document-session/__tests__/markdownDocumentSession.test.ts)，覆盖空快照、快速切换、同 ID 更新、清空后不复活、并发编辑、保存中输入和失败保留。水平分割线 Pending 的预览、拒绝、接受与重开使用生产 Editor schema 和真实 parser，位于 `utils/pending/__test__/horizontalRulePendingRevision.test.ts`。Shell 窗口、块 UI、引用及 Markdown 物化测试仍位于相邻模块；跨后端物化测试使用仓库默认 Vitest 配置。
+
+独立公式及多块失败的生产 schema、真实 parser、KaTeX NodeView 与只读对照回归位于
+`utils/pending/__test__/latexPendingRevision.test.ts`；后端真实 SQLite 写入/决策与准入失败保留见 Markdown domain 的 document-write 测试。

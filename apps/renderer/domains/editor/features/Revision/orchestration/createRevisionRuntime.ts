@@ -15,6 +15,7 @@ import { markdownSerializer } from '../../../services/markdownConversion';
 import { markCitationDerivationTransaction, markPendingRevisionProjectionTransaction } from '../../../core/transactions/editorTransactionMeta';
 import { restorePendingPresentation } from '../functions/restorePendingPresentation';
 import { pendingListMayAffectCitationDerivation } from '../store/workspacePendingCitation';
+import { assertPendingDecisionPreview } from '../functions/assertPendingDecisionPreview';
 
 /** 装载、显示与用户动作的编排门面；数据库提交能力由文档会话绑定。 */
 export function createRevisionRuntime(editor: Editor): RevisionStore {
@@ -138,9 +139,15 @@ export function createRevisionRuntime(editor: Editor): RevisionStore {
     startRevision: state.startRevision,
     clearAllRevisions: () => { epoch++; state.replacePending([]); },
     projectPendingRevisionsForBlocks,
-    acceptAllRevisions: async blockId => { await commit({ mode: 'accept', blockId }); },
+    acceptAllRevisions: async blockId => {
+      assertPendingDecisionPreview(Object.values(state.canonicalPendingSessions.value), blockId);
+      await commit({ mode: 'accept', blockId });
+    },
     rejectAllRevisions: async blockId => { await commit({ mode: 'reject', blockId }); },
-    acceptAllRevisionsInDocument: async () => { await commit({ mode: 'accept' }); },
+    acceptAllRevisionsInDocument: async () => {
+      assertPendingDecisionPreview(Object.values(state.canonicalPendingSessions.value));
+      await commit({ mode: 'accept' });
+    },
     rejectAllRevisionsInDocument: async () => { await commit({ mode: 'reject' }); },
     acceptSingleRevision: (blockId, from, to) => resolveInline(blockId, from, to, 'accept'),
     rejectSingleRevision: (blockId, from, to) => resolveInline(blockId, from, to, 'reject'),

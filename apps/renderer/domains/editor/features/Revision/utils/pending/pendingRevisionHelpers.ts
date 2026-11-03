@@ -1,7 +1,6 @@
 /**
  * Pending Revision 公共工具方法
  * - rootBlock 定位
- * - 块类型探测
  * - 表格节点构建
  * - 整块 insert 标记
  */
@@ -71,110 +70,9 @@ export function findRootBlockPosByIdInDoc(doc: ProseMirrorNode, blockId: string)
   return pos
 }
 
-/**
- * 探测 Markdown 文本对应的块类型
- * @param markdown - 原始 Markdown 文本
- * @returns { contentType, blockAttrs, cleanMarkdown }
- */
-export function detectBlockType(markdown: string): {
-  contentType: string
-  blockAttrs: Record<string, unknown>
-  cleanMarkdown: string
-} {
-  // 预处理：统一换行符，避免 Windows \r\n 影响正则与 split
-  const normalized = typeof markdown === 'string' ? markdown.replace(/\r\n/g, '\n') : ''
-
-  // 0. Fenced Code Block:
-  // ```lang
-  // code...
-  // ```
-  // 中文说明：代码块必须在“标题/列表”之前识别，否则会被误判成 baseBlock。
-  const fenced = normalized.match(/^```([^\n`]*)\n([\s\S]*?)\n```$/)
-  if (fenced) {
-    const language = fenced[1] ? fenced[1].trim() : ''
-    return {
-      contentType: 'codeBlock',
-      blockAttrs: { language: language || null },
-      // 代码块内容必须原样保留（包括空格/缩进/反斜杠等）
-      cleanMarkdown: fenced[2] ?? '',
-    }
-  }
-
-  // 1. Heading: # Title
-  const headingMatch = normalized.match(/^(#{1,6})\s(.*)$/s)
-  if (headingMatch) {
-    return {
-      contentType: 'headingBlock',
-      blockAttrs: { level: headingMatch[1].length },
-      cleanMarkdown: headingMatch[2], // 去除 # 后的内容
-    }
-  }
-
-  // 2. 单行列表项：- Item / * Item / 1. Item
-  const bulletMatch = normalized.match(/^([-*])\s(.*)$/s)
-  if (bulletMatch) {
-    return {
-      contentType: 'listItemBlock',
-      blockAttrs: { listType: 'bullet' },
-      cleanMarkdown: bulletMatch[2],
-    }
-  }
-
-  const orderedMatch = normalized.match(/^\s*(\d+)\.\s(.*)$/s)
-  if (orderedMatch) {
-    return {
-      contentType: 'listItemBlock',
-      blockAttrs: { listType: 'ordered' },
-      cleanMarkdown: orderedMatch[2],
-    }
-  }
-
-  // 3. Quote: > Content（支持多行，每行都去掉前缀）
-  const quoteMatch = normalized.match(/^>\s(.*)$/s)
-  if (quoteMatch) {
-    const cleaned = normalized
-      .split('\n')
-      .map((line) => line.replace(/^>\s?/, ''))
-      .join('\n')
-    return {
-      contentType: 'quoteBlock',
-      blockAttrs: {},
-      cleanMarkdown: cleaned,
-    }
-  }
-
-  // 4. 多行列表（GFM 常见输出）：历史上 decorations 方案无法在单个 rootBlock 内真实还原为多个 listItemBlock，
-  // 因此会做“清洗 marker”的预览降级。
-  // 当前已回到 mark 方案：多行列表应优先交由旧 applier 的“块创建/转换”能力处理。
-  const lines = normalized.split('\n')
-  const isAllBulletLines =
-    lines.length > 1 && lines.every((l) => l.trim().length === 0 || /^([-*])\s+/.test(l.trim()))
-  const isAllOrderedLines =
-    lines.length > 1 && lines.every((l) => l.trim().length === 0 || /^\d+\.\s+/.test(l.trim()))
-
-  if (isAllBulletLines || isAllOrderedLines) {
-    const cleaned = lines
-      .map((line) => {
-        const trimmed = line.trim()
-        if (trimmed.length === 0) return ''
-        if (isAllOrderedLines) return trimmed.replace(/^\d+\.\s+/, '')
-        return trimmed.replace(/^([-*])\s+/, '')
-      })
-      .join('\n')
-
-    return {
-      contentType: 'baseBlock',
-      blockAttrs: {},
-      cleanMarkdown: cleaned,
-    }
-  }
-
-  // 默认: baseBlock
-  return {
-    contentType: 'baseBlock',
-    blockAttrs: {},
-    cleanMarkdown: normalized,
-  }
+/** Markdown 物化只依赖 schema，不要求测试或调用方伪造完整 Editor。 */
+export interface PendingMarkdownEditor {
+  readonly state: { readonly schema: Schema }
 }
 
 export interface PendingTableRowsBuildResult {
@@ -183,7 +81,7 @@ export interface PendingTableRowsBuildResult {
 }
 
 interface PendingMarkdownResolutionBase {
-  source: 'runtime-single-block' | 'heuristic-fallback' | 'plain-text-fast-path'
+  source: 'runtime-single-block' | 'plain-text-fast-path'
 }
 
 export interface PendingContentBlockResolution extends PendingMarkdownResolutionBase {
@@ -200,8 +98,8 @@ export interface PendingTableBlockResolution extends PendingMarkdownResolutionBa
 }
 
 /**
- * 没有行内内容的整块（当前只有水平分割线）。
- * 节点由 markdownRuntime 的 materializer 物化，与完整文档导入得到同一个 `horizontalRuleBlock`；
+ * 没有行内内容的整块（水平分割线、独立公式）。
+ * 节点由 markdownRuntime 的 materializer 物化，与完整文档导入得到同样的公式/分割线节点；
  * 执行层整块替换目标 rootBlock 的内容，不经过行内 spans 或文本 diff。
  */
 export interface PendingAtomicBlockResolution extends PendingMarkdownResolutionBase {
@@ -228,7 +126,7 @@ export function looksLikeTableMarkdown(markdown: string): boolean {
 }
 
 export async function buildTableRowsFromTableModel(
-  editor: Editor,
+  editor: PendingMarkdownEditor,
   model: PendingTableModel,
   hydration?: Record<string, import('@/shared/utils/citationHydration').CitationHydrationData> | null
 ): Promise<{ rows: ProseMirrorNode[] }> {
@@ -256,7 +154,7 @@ export async function buildTableRowsFromTableModel(
  * - 列宽设置为默认 150px，与手动创建表格的行为一致
  */
 export async function buildTableRowsFromParsedTable(
-  editor: Editor,
+  editor: PendingMarkdownEditor,
   parsed: {
     headerCells: string[]
     alignments: Array<'left' | 'center' | 'right' | null>
@@ -300,7 +198,7 @@ export async function buildTableRowsFromParsedTable(
 }
 
 export async function buildTableRowsFromMarkdown(
-  editor: Editor,
+  editor: PendingMarkdownEditor,
   markdown: string,
   hydration?: Record<string, import('@/shared/utils/citationHydration').CitationHydrationData> | null
 ): Promise<PendingTableRowsBuildResult> {
@@ -332,7 +230,7 @@ export async function buildTableRowsFromMarkdown(
 }
 
 /** 经 materializer 物化 `rootBlock -> 内容块`，只取内容块：目标 rootBlock 的身份与属性由调用方保留。 */
-function materializeAtomicContentBlock(schema: Schema, event: BlockEventLike): ProseMirrorNode {
+export function materializeAtomicContentBlock(schema: Schema, event: BlockEventLike): ProseMirrorNode {
   const [rootBlock] = blockEventsToRootBlockNodes([event], schema)
   const contentBlock = rootBlock?.firstChild
   if (!contentBlock) {
@@ -342,7 +240,7 @@ function materializeAtomicContentBlock(schema: Schema, event: BlockEventLike): P
 }
 
 export async function resolvePendingMarkdownForSingleBlock(
-  editor: Editor,
+  editor: PendingMarkdownEditor,
   markdown: string,
   options: {
     operation: string
@@ -403,33 +301,16 @@ export async function resolvePendingMarkdownForSingleBlock(
     }
   }
 
-  const { contentType, blockAttrs, cleanMarkdown } = detectBlockType(markdown)
-  const tableRowsResult =
-    editor.state.schema.nodes.table && looksLikeTableMarkdown(markdown)
-      ? await buildTableRowsFromMarkdown(editor, markdown, options.hydration)
-      : { rows: [], source: 'none' as const }
-
-  return {
-    ...(tableRowsResult.rows.length > 0
-      ? {
-          kind: 'table-block' as const,
-          tableRowsResult: tableRowsResult as Exclude<PendingTableRowsBuildResult, { source: 'none' }>,
-        }
-      : {
-          kind: 'content-block' as const,
-          contentType,
-          blockAttrs,
-          cleanMarkdown,
-          spans:
-            contentType === 'codeBlock'
-              ? [{ text: cleanMarkdown, marks: [] }]
-              : (await parsePendingMarkdownToInlineProjection(cleanMarkdown, {
-              operation: options.operation,
-              blockId: options.blockId,
-            })).spans,
-        }),
-    source: 'heuristic-fallback',
+  if (runtimeClassification.status === 'empty' && !markdown.trim()) {
+    return { kind: 'content-block', contentType: 'baseBlock', blockAttrs: {}, cleanMarkdown: '', spans: [], source: 'runtime-single-block' }
   }
+  // 数据库以单 rootBlock 为决策单位；无法物化时必须保留原文，不能猜成段落或截取第一块。
+  const reason = runtimeClassification.status === 'multiple-meaningful-blocks'
+    ? `Pending 必须对应一个 rootBlock，实际为 ${runtimeClassification.totalBlocks}`
+    : runtimeClassification.status === 'unsupported-single-block'
+      ? `Pending 不支持的块类型：${runtimeClassification.blockType}`
+      : 'Pending 无法物化为一个内容块'
+  throw new Error(reason)
 }
 
 /**

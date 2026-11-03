@@ -35,6 +35,8 @@
     class="block-revision-indicator-row"
   >
     <RevisionIndicator
+      :projection-failed="revisionState.projectionFailed.value"
+      :force-visible="revisionState.hasPendingRevision.value"
       :status="revisionState.blockRevisionState.value?.status || 'pending'"
       :insert-count="revisionState.revisionDiffStats.value.insertCount"
       :delete-count="revisionState.revisionDiffStats.value.deleteCount"
@@ -51,6 +53,7 @@
 
   <!-- 修订工具栏（悬浮在块上方） -->
   <RevisionToolbar
+    :editor="props.editor"
     v-if="blockActivation.renderRevisionToolbar.value && revisionState.hasPendingRevision.value"
     :visible="true"
     :block-id="currentRootBlockId ?? ''"

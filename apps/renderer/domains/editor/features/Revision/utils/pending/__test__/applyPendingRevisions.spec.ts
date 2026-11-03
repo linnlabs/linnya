@@ -50,6 +50,11 @@ vi.mock('../imagePendingRevision', () => ({
   applyImagePendingItems: () => [],
 }))
 
+vi.mock('../materializedAtomicPendingRevision', () => ({
+  partitionMaterializedAtomicPendingRevisions: async (_doc: unknown, revisions: unknown[]) => ({ items: [], failures: [], others: revisions }),
+  applyMaterializedAtomicPendingItems: () => [],
+}))
+
 import { applyPendingRevisionsToEditor } from '../applyPendingRevisions'
 
 describe('applyPendingRevisionsToEditor', () => {

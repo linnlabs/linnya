@@ -5,7 +5,7 @@ import { MarkdownRevisionCommitSchema } from '@app/schemas';
  * @description 文档读写 IPC 通道处理器（按 node.type 路由）与 MarkdownDocument 专属操作。
  */
 
-import { PendingRevisionApplyService } from 'src/domains/markdown';
+import { PendingRevisionApplyService, importPendingMarkdownRootBlock } from 'src/domains/markdown';
 import type { BackendRuntimeOwner } from '../../../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
 import { WorkspaceService } from '../../../../../services/workspace/workspace';
 import { Logger } from '../../../../../../shared/logger';
@@ -138,11 +138,11 @@ export function registerMarkdownDocumentHandlers(
         const db = databaseService.getDb();
         const documentService = createMarkdownDocumentStore(db);
 
-        let writtenCount = 0;
-        const errors: string[] = [];
-
         for (const rev of revisions) {
-          try {
+          await importPendingMarkdownRootBlock(rev.newMarkdown);
+        }
+        documentService.runInTransaction(() => {
+          for (const rev of revisions) {
             documentService.setPendingRevision(
               documentId,
               rev.blockId,
@@ -150,16 +150,12 @@ export function registerMarkdownDocumentHandlers(
               rev.source ?? 'user',
               rev.meta
             );
-            writtenCount++;
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            errors.push(`${rev.blockId}: ${msg}`);
           }
-        }
+        });
 
         return {
           success: true,
-          data: { writtenCount, totalRequested: revisions.length, errors },
+          data: { writtenCount: revisions.length, totalRequested: revisions.length, errors: [] },
         };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);

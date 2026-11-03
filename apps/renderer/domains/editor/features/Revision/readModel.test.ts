@@ -34,6 +34,7 @@ describe('Revision readModel', () => {
       createdAt: 1_700_000_000_000,
       forceVisible: true,
       pendingOnly: false,
+      projectionFailed: false,
     })
   })
 
@@ -48,6 +49,7 @@ describe('Revision readModel', () => {
       createdAt: 1_700_000_000_000,
       forceVisible: true,
       pendingOnly: true,
+      projectionFailed: false,
     })
   })
 
@@ -59,6 +61,7 @@ describe('Revision readModel', () => {
       deleteCount: 0,
       forceVisible: false,
       pendingOnly: false,
+      projectionFailed: false,
     })
   })
 })

@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Editor } from '@tiptap/core'
+import type { PendingMarkdownEditor } from '../pendingRevisionHelpers'
 import { Schema } from 'prosemirror-model'
 
 import { workspaceMarkdownSchemaLite } from 'src/domains/markdown'
+import type { PendingTopLevelBlockParseResult } from '../pendingMarkdownRuntime'
 import type { MarkdownInlineProjection } from '../../../../../services/markdownRuntime/types'
 
 const { parsePendingMarkdownToInlineProjection } = vi.hoisted(() => ({
@@ -18,7 +19,6 @@ vi.mock('../pendingMarkdownRuntime', () => ({
 import {
   buildTableRowsFromMarkdown,
   buildTableRowsFromParsedTable,
-  detectBlockType,
   resolvePendingMarkdownForSingleBlock,
 } from '../pendingRevisionHelpers'
 import {
@@ -26,12 +26,12 @@ import {
   classifyPendingMarkdownTopLevelBlock,
 } from '../pendingMarkdownRuntime'
 
-function createSchemaOnlyEditor(): Editor {
-  return { state: { schema: workspaceMarkdownSchemaLite } } as unknown as Editor
+function createSchemaOnlyEditor(): PendingMarkdownEditor {
+  return { state: { schema: workspaceMarkdownSchemaLite } }
 }
 
 /** 能表达段落、但没有 horizontalRuleBlock 的最小 Schema。 */
-function createEditorWithoutHorizontalRule(): Editor {
+function createEditorWithoutHorizontalRule(): PendingMarkdownEditor {
   const schema = new Schema({
     nodes: {
       doc: { content: 'rootBlock+' },
@@ -43,40 +43,8 @@ function createEditorWithoutHorizontalRule(): Editor {
       text: { group: 'inline' },
     },
   })
-  return { state: { schema } } as unknown as Editor
+  return { state: { schema } }
 }
-
-describe('detectBlockType', () => {
-  it('recognizes standard fenced code blocks as codeBlock and preserves full multiline content', () => {
-    const markdown = [
-      '```python',
-      '# 这是一个Python代码示例',
-      'def hello_world():',
-      '    print("Hello, World!")',
-      '    return "批量插入测试成功"',
-      '',
-      '# 调用函数',
-      'result = hello_world()',
-      'print(result)',
-      '```',
-    ].join('\n')
-
-    expect(detectBlockType(markdown)).toEqual({
-      contentType: 'codeBlock',
-      blockAttrs: { language: 'python' },
-      cleanMarkdown: [
-        '# 这是一个Python代码示例',
-        'def hello_world():',
-        '    print("Hello, World!")',
-        '    return "批量插入测试成功"',
-        '',
-        '# 调用函数',
-        'result = hello_world()',
-        'print(result)',
-      ].join('\n'),
-    })
-  })
-})
 
 describe('buildTableRowsFromParsedTable', () => {
   beforeEach(() => {
@@ -119,7 +87,7 @@ describe('buildTableRowsFromParsedTable', () => {
     parsePendingMarkdownToInlineProjection.mockResolvedValueOnce(bodyProjection)
 
     const { rows } = await buildTableRowsFromParsedTable(
-      { state: { schema: workspaceMarkdownSchemaLite } } as any,
+      createSchemaOnlyEditor(),
       {
         headerCells: ['**表头**'],
         alignments: [null],
@@ -207,7 +175,7 @@ describe('buildTableRowsFromParsedTable', () => {
     })
 
     const result = await buildTableRowsFromMarkdown(
-      { state: { schema: workspaceMarkdownSchemaLite } } as any,
+      createSchemaOnlyEditor(),
       '| 文档链接 |\n| --- |\n| [访问这里](https://example.com/path) |'
     )
 
@@ -245,7 +213,7 @@ describe('buildTableRowsFromParsedTable', () => {
     })
 
     const result = await buildTableRowsFromMarkdown(
-      { state: { schema: workspaceMarkdownSchemaLite } } as any,
+      createSchemaOnlyEditor(),
       '说明文字\n\n| h |\n| --- |\n| c |'
     )
 
@@ -412,7 +380,7 @@ describe('resolvePendingMarkdownForSingleBlock', () => {
     })
 
     const result = await resolvePendingMarkdownForSingleBlock(
-      { state: { schema: workspaceMarkdownSchemaLite } } as any,
+      createSchemaOnlyEditor(),
       '## 标题 $x+y$',
       { operation: 'testResolve', blockId: 'heading-runtime' }
     )
@@ -473,7 +441,7 @@ describe('resolvePendingMarkdownForSingleBlock', () => {
     })
 
     const result = await resolvePendingMarkdownForSingleBlock(
-      { state: { schema: workspaceMarkdownSchemaLite } } as any,
+      createSchemaOnlyEditor(),
       '| h |\n| --- |\n| c |',
       { operation: 'testResolve', blockId: 'table-runtime' }
     )
@@ -526,37 +494,17 @@ describe('resolvePendingMarkdownForSingleBlock', () => {
     expect(parsePendingMarkdownToInlineProjection).not.toHaveBeenCalled()
   })
 
-  it('falls back to heuristic detection when runtime reports unsupported single-block types', async () => {
-    vi.mocked(classifyPendingMarkdownTopLevelBlock).mockResolvedValue({
-      status: 'unsupported-single-block',
-      blockType: 'FootnoteDefinitionBlock',
-    })
-    parsePendingMarkdownToInlineProjection.mockResolvedValue({
-      fragments: [{ type: 'text', text: '[^1]: 脚注', marks: [] }],
-      spans: [{ text: '[^1]: 脚注', marks: [] }],
-      plainText: '[^1]: 脚注',
-      newlineMode: 'hardBreak',
-      sourceBlockCount: 1,
-      droppedBlockCount: 0,
-    })
-
-    const result = await resolvePendingMarkdownForSingleBlock(
-      { state: { schema: workspaceMarkdownSchemaLite } } as any,
-      '[^1]: 脚注',
-      { operation: 'testResolve', blockId: 'unsupported-fallback' }
-    )
-
-    expect(result).toEqual({
-      kind: 'content-block',
-      contentType: 'baseBlock',
-      blockAttrs: {},
-      cleanMarkdown: '[^1]: 脚注',
-      spans: [{ text: '[^1]: 脚注', marks: [] }],
-      source: 'heuristic-fallback',
-    })
-    expect(parsePendingMarkdownToInlineProjection).toHaveBeenCalledWith('[^1]: 脚注', {
-      operation: 'testResolve',
-      blockId: 'unsupported-fallback',
-    })
+  it('rejects unknown and multi-block proposals instead of truncating or displaying Markdown source', async () => {
+    const classifications: PendingTopLevelBlockParseResult[] = [
+      { status: 'unsupported-single-block', blockType: 'FootnoteDefinitionBlock' },
+      { status: 'multiple-meaningful-blocks', totalBlocks: 2, blockTypes: ['HeadingBlock', 'BaseBlock'] },
+    ]
+    for (const classification of classifications) {
+      vi.mocked(classifyPendingMarkdownTopLevelBlock).mockResolvedValue(classification)
+      await expect(resolvePendingMarkdownForSingleBlock(createSchemaOnlyEditor(), '## heading\n\nparagraph', {
+        operation: 'testResolve', blockId: 'unsupported',
+      })).rejects.toThrow(/Pending/)
+      expect(parsePendingMarkdownToInlineProjection).not.toHaveBeenCalled()
+    }
   })
 })

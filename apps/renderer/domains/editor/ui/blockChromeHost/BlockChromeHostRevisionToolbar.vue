@@ -5,6 +5,7 @@
     contenteditable="false"
   >
     <RevisionToolbar
+      :editor="props.editor"
       v-if="revisionSummary.hasPendingRevision"
       placement="block-top-right"
       :visible="true"

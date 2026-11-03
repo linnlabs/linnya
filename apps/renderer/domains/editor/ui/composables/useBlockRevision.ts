@@ -39,6 +39,7 @@ export interface UseBlockRevisionOptions {
 }
 
 export interface UseBlockRevisionReturn {
+  projectionFailed: ComputedRef<boolean>;
   /** 当前块的修订状态 */
   blockRevisionState: ComputedRef<BlockRevisionState | null>;
   /** 是否有待处理的修订 */
@@ -68,6 +69,7 @@ export function useBlockRevision(options: UseBlockRevisionOptions): UseBlockRevi
   });
 
   const blockId = computed<string | null>(() => resolvedProps.value.blockId);
+  const projectionFailed = computed(() => blockId.value !== null && revisionStore.value?.getCanonicalSession(blockId.value)?.projection === 'failed');
 
   watch(
     [
@@ -155,6 +157,7 @@ export function useBlockRevision(options: UseBlockRevisionOptions): UseBlockRevi
   };
 
   return {
+    projectionFailed,
     blockRevisionState,
     hasPendingRevision,
     revisionDiffStats,

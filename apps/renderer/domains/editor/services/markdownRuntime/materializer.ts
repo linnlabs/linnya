@@ -285,18 +285,20 @@ export function blockEventsToDocJson(
 
     if (typeName === 'LatexBlock') {
       const latexType = schema.nodes.latexBlock
-      if (latexType) {
-        const latexNode = latexType.create({
-          id: generateBlockId(),
-          blockType: 'latex',
-          latexSource: rawFallback ?? '',
-        })
-        const root = buildRootBlock(latexNode, schema)
-        if (root) {
-          rootBlocks.push(root.toJSON())
-          continue
-        }
+      if (!latexType) {
+        throw new Error('[MarkdownImport] 当前 Schema 不支持 latexBlock，无法物化独立公式')
       }
+      const latexNode = latexType.create({
+        id: generateBlockId(),
+        blockType: 'latex',
+        latexSource: rawFallback ?? '',
+      })
+      const root = buildRootBlock(latexNode, schema)
+      if (!root) {
+        throw new Error('[MarkdownImport] 当前 Schema 不支持 rootBlock，无法物化独立公式')
+      }
+      rootBlocks.push(root.toJSON())
+      continue
     }
 
     if (typeName === 'HorizontalRuleBlock') {

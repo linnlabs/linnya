@@ -155,6 +155,13 @@ parser 输出的 `HorizontalRuleBlock` 事件没有 `structured_content`，mater
 - 它不能经过 inline projection：投影结果为空，会逼调用方退回纯文本或空段落。pending 分类器因此在投影之前把单个 `HorizontalRuleBlock` 分流为整块（`atomic-block`），不是 `unsupported-single-block`。
 - Schema 无法表达时 materializer 显式抛错，不降级成空 `baseBlock`。
 
+独立 `LatexBlock` 同样在行内投影前归为 `atomic-block`，由这里物化为 `rootBlock -> latexBlock`。
+Revision 与分割线共用原子块应用器和投影账本，源码相同不替换；缺少 `latexBlock` schema 时明确失败。
+行内 `inlineLatex` 的 diff 单元保持不变。
+
+Pending 的分类结果是正式合同：多块与未知类型不能用正则猜成段落，也不能只消费第一块。
+Revision 将它们标为投影失败并保留原始基线；Backend 写入和接受共用正式单 rootBlock 导入准入。
+
 ### C. 表格
 
 ```text

@@ -74,7 +74,7 @@
             <button
               class="toolbar-btn accept-btn"
               type="button"
-              :disabled="busy"
+              :disabled="busy || projectionFailed"
               @click="handleAcceptAll"
             >
               {{ editorMessage('editor.revision.action.acceptAll') }}

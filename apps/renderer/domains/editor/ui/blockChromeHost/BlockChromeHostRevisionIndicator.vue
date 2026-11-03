@@ -10,6 +10,7 @@
       :created-at="revisionSummary.createdAt"
       :force-visible="revisionSummary.forceVisible"
       :pending-only="revisionSummary.pendingOnly"
+      :projection-failed="revisionSummary.projectionFailed"
     />
   </div>
 </template>
