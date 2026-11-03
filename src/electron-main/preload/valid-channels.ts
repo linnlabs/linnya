@@ -115,6 +115,8 @@ const WORKSPACE_CHANNELS = [
   'workspace:create-project',
   'document-preview:types',
   'document-preview:read',
+  'document-references:search',
+  'document-references:resolve',
   'document-history:list',
   'document-history:restore',
   'workspace:ensure-default-project',

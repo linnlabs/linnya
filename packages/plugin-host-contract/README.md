@@ -144,3 +144,7 @@ Renderer 插件通过 `@plugin/renderer/exportArtifact` 请求系统保存框，
 `workspaceRuntime.hasWorkspaceNodeTextSnapshot` 与既有保存端口供迁移在同一事务内补齐缺失快照；插件不能直接读写 Host 快照表，也不能用回填覆盖已有快照。没有新增持久化字段或版本迁移。
 
 Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。聚焦由 app 先显露当前对话区域，再交给 Conversation 注册的输入能力；插件不能取得编辑器实例或操作 Conversation store。输入框关闭时注销能力，多个暂存表面仅由当前可见的输入框接纳聚焦。
+
+`backend/conversationProjection` 只读取正式会话当前项目 ID，不存在或无项目返回 null。它不打开完整 EventStore、不读取消息或 metadata，发送准备等调用方据此重验会话项目，不能借当前界面项目补齐缺失归属。
+
+`renderer/documentReferences` 提供同项目文档候选及当前展示身份：候选按活动节点名称查询，选择后保存稳定 documentId；标题、类型、路径与插件可用状态在查询时读取。越界或已删除目标不返回标题/路径，插件停用单独标记。Editor 的 @ 与文档型插件的选文档界面共用此门面，不各自读取 Workspace 树或增加专用 IPC。

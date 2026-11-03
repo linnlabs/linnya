@@ -19,3 +19,5 @@ Markdown 使用 `++下划线++`、`==高亮==`、`~下标~`、`^上标^`、`$行
 交互公式与只读 DOM 使用同一 KaTeX 信任、错误与 displayMode 配置，禁止 TeX 授予 HTML/链接权限。只读 fragment 会生成真实排版 DOM，调用方加载 `style.css` 即同时带上对应公式字体；不创建 Editor 或 NodeView。HTML 源文仍保持原有只读原文行为。
 
 Tiptap 固定为 3.31.3；mathematics 的 peer 仅接受 KaTeX 0.16～0.18，因此这里精确使用 0.18.10。0.18.11 曾误以补丁版本发布 breaking strict 行为且已被上游弃用，0.19 不在当前 peer 范围内；升级必须与 Tiptap peer 及交互/只读公式回归一起进行。依据：[Tiptap mathematics](https://tiptap.dev/docs/editor/extensions/nodes/mathematics)、[Markdown 扩展合同](https://tiptap.dev/docs/editor/markdown/guides/integrate-markdown-in-your-extension)、[KaTeX 0.19 说明](https://github.com/KaTeX/KaTeX/releases/tag/v0.19.0)。
+
+受管 image 可以携带可选的 `assetId`（字符串或 null），与 src 分开。DOM 使用 `data-asset-id` 保存身份，Host 可据此将展示地址替换为已接纳图片字节；本包不查资产库、不推断 URL 身份或执行接管。Markdown 的图片源地址仍由调用方准备，写回时的受管身份绑定由 Host 负责。
