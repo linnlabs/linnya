@@ -38,11 +38,13 @@ export interface CanvasSurfaceState {
   readonly renderNotice: Readonly<Ref<string | null>>;
   readonly hoveredId: Readonly<Ref<CanvasCardId | null>>;
   readonly detailId: Readonly<Ref<CanvasCardId | null>>;
+  readonly displayVersion: Readonly<Ref<number>>;
   setCamera(camera: CanvasCamera): void;
   fail(message: string): void;
   clearFailure(): void;
   setContext(context: { readonly point: CanvasPoint; readonly id: CanvasCardId | null; readonly edgeId?: CanvasEdgeId | null } | null): void;
   setHovered(id: CanvasCardId | null): void;
   setDetailVisible(id: CanvasCardId, visible: boolean): void;
+  advanceDisplay(): void;
   setRenderNotice(message: string | null): void;
 }

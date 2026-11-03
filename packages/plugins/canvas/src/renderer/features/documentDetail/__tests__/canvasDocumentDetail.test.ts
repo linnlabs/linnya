@@ -60,6 +60,9 @@ describe('单张近景文档详情', () => {
     const app = createApp(CanvasDocumentDetail, { card: card(), camera: { x: 10, y: 20, zoom: 1 }, projectId: 'project', title: '项目文档', port: host, onClose: close });
     app.mount(root); await Promise.resolve(); await Promise.resolve(); await nextTick();
     expect(root.textContent).toContain('只读正文，可选择复制'); expect(root.querySelector('[contenteditable]')).toBeNull(); expect(host.visible).toHaveBeenCalledWith(card().id, true);
+    const shortcut = vi.fn(); root.addEventListener('keydown', shortcut);
+    root.querySelector('section')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true })); expect(shortcut).toHaveBeenCalledOnce();
+    root.querySelector('section')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true })); expect(shortcut).toHaveBeenCalledOnce();
     root.querySelector('section')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     expect(close).toHaveBeenCalledTimes(1); expect(host.focus).toHaveBeenCalledTimes(1);
     app.unmount(); expect(release).toHaveBeenCalledTimes(1); expect(host.visible).toHaveBeenLastCalledWith(card().id, false); root.remove();

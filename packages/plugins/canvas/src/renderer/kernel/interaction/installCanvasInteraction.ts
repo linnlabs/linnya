@@ -24,6 +24,14 @@ class CanvasPointerInteraction {
   }
   private selectedIds(gesture: CanvasPointerGesture): readonly CanvasCardId[] { return gesture.id && gesture.selection.includes(gesture.id)
     ? gesture.selection : gesture.id ? [gesture.id] : []; }
+  private beginMove(gesture: CanvasPointerGesture) {
+    if (gesture.origins) return;
+    const ids = this.selectedIds(gesture);
+    // 真正越过拖动阈值时冻结当前视觉位置；不能用已提交的动画终点替代鼠标下的卡片。
+    this.kernel.setDragPreview(ids, 0, 0);
+    gesture.origins = ids.flatMap(id => { const point = this.kernel.readDisplayPosition(id); return point ? [{ id, ...point }] : []; });
+    this.snapTargets = createCanvasSnapTargets(this.kernel.visibleCards(), ids);
+  }
   private cancel = () => {
     if (this.active) {
       this.onIntent({ kind: 'editing', ids: this.selectedIds(this.active), active: false });
@@ -34,11 +42,13 @@ class CanvasPointerInteraction {
   };
   private down = (event: PointerEvent): void => {
     if (event.button !== 0 && event.button !== 1) return;
+    // 开始任何手势时停在当前飞行相机，世界起点不能在3px阈值期间继续自行移动。
+    this.kernel.setCamera(this.kernel.readCamera());
     const screen = this.point(event);
     const world = this.kernel.screenToWorld(screen);
     const card = this.kernel.hitTest(world);
     this.active = { pointer: event.pointerId, screen, world, camera: this.kernel.readCamera(), id: card?.id ?? null, edgeId: card ? null : this.kernel.hitTestEdge(world)?.id ?? null,
-      pan: this.isReadonly() || this.space || event.button === 1, locked: card?.locked ?? false, selection: this.kernel.readSelection(), additive: event.shiftKey, moved: false };
+      pan: this.isReadonly() || this.space || event.button === 1, locked: card?.locked ?? false, selection: this.kernel.readSelection(), additive: event.shiftKey, moved: false, origins: null };
     this.canvas.setPointerCapture(event.pointerId); this.canvas.focus({ preventScroll: true });
     this.kernel.setBrush(null);
     this.snapTargets = createCanvasSnapTargets(this.kernel.visibleCards(), this.selectedIds(this.active));
@@ -58,6 +68,7 @@ class CanvasPointerInteraction {
     }
     const world = this.kernel.screenToWorld(current);
     if (gesture.id && !gesture.locked) {
+      this.beginMove(gesture);
       const ids = this.selectedIds(gesture);
       this.onIntent({ kind: 'select', ids, additive: false });
       const delta = this.movement(event, gesture);
@@ -81,7 +92,8 @@ class CanvasPointerInteraction {
     this.active = null; this.kernel.setBrush(null);
     if (!gesture.pan && gesture.id && !gesture.locked && gesture.moved) {
       const delta = this.movement(event, gesture);
-      this.onIntent({ kind: 'move', ids: this.selectedIds(gesture), dx: delta.x, dy: delta.y, copy: event.altKey });
+      const positions = (gesture.origins ?? []).map(origin => ({ id: origin.id, x: origin.x + delta.x, y: origin.y + delta.y }));
+      this.onIntent({ kind: 'move', ids: this.selectedIds(gesture), positions, dx: delta.x, dy: delta.y, copy: event.altKey });
       // 提交完成前保留编辑保护；feature 在真实提交/失败收口后释放。
     } else if (!gesture.pan && !gesture.moved) {
       if (gesture.edgeId) this.onIntent({ kind: 'select-edge', id: gesture.edgeId });

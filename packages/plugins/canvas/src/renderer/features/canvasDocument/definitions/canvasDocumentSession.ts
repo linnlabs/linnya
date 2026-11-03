@@ -1,9 +1,11 @@
-import type { CanvasCommand, CanvasChangedEvent, CanvasCommitResult, CanvasEditingRequestSchema, CanvasSnapshot, CanvasSynchronization, CanvasUndoRequest, CanvasUndoResult } from '@plugin/canvas/shared';
+import type { CanvasCardId, CanvasCommand, CanvasChangedEvent, CanvasCommitResult, CanvasEditingRequestSchema, CanvasSnapshot, CanvasSource, CanvasSynchronization, CanvasUndoRequest, CanvasUndoResult } from '@plugin/canvas/shared';
 import type { z } from 'zod';
 import type { Ref } from 'vue';
 import type { CanvasConfirmedMutation } from './canvasMutation';
 
 export type CanvasDocumentPhase = 'closed' | 'loading' | 'ready' | 'failed';
+export interface CanvasProjectedCardChange { readonly id: CanvasCardId; readonly sourceKind: CanvasSource['kind'] }
+export interface CanvasDocumentProjection { readonly snapshot: CanvasSnapshot; readonly cardChanges: readonly CanvasProjectedCardChange[] }
 export interface CanvasDocumentPort {
   read(documentId: string, viewId: string): Promise<CanvasSnapshot>;
   changes(documentId: string, afterSequence: number): Promise<CanvasSynchronization>;
@@ -14,11 +16,12 @@ export interface CanvasDocumentPort {
   subscribe(callback: (event: CanvasChangedEvent) => void): () => void;
 }
 export interface CanvasDocumentState {
+  readonly projection: Readonly<Ref<CanvasDocumentProjection | null>>;
   readonly snapshot: Readonly<Ref<CanvasSnapshot | null>>;
   readonly phase: Readonly<Ref<CanvasDocumentPhase>>;
   readonly error: Readonly<Ref<string | null>>;
   begin(): void;
-  install(snapshot: CanvasSnapshot): void;
+  install(snapshot: CanvasSnapshot, cardChanges?: readonly CanvasProjectedCardChange[]): void;
   fail(error: string): void;
   clear(): void;
 }
