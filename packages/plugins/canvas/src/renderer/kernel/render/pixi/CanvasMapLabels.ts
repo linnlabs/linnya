@@ -23,6 +23,7 @@ export class CanvasMapLabels {
     readonly height: number;
     readonly dark: boolean;
     readonly visible: boolean;
+    readonly readTitle?: (card: CanvasCard) => string;
   }): void {
     this.sprite.visible = input.visible;
     if (!input.visible) return;
@@ -43,7 +44,7 @@ export class CanvasMapLabels {
       const key = `${Math.floor(x / 150)}:${Math.floor(y / 24)}`;
       if (occupied.has(key)) continue;
       occupied.add(key);
-      let title = readCanvasElementText(card).split('\n')[0].slice(0, 18) || '空白卡片';
+      let title = (input.readTitle?.(card) ?? readCanvasElementText(card)).split('\n')[0].slice(0, 18) || '空白卡片';
       while (title.length > 1 && context.measureText(title).width > 140) title = title.slice(0, -1);
       context.fillText(title, x + 2, y + 2);
     }

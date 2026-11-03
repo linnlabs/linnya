@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
 
 const rectangle = z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() });
-const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(), dpr: z.number(), reference: rectangle, raster: rectangle, pixi: rectangle });
+const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(), dpr: z.number(), reference: rectangle, raster: rectangle, pixi: rectangle, ghostY: z.number() });
 const output = process.argv[2];
 if (!output) throw new Error('Visual output directory required');
 app.setPath('userData', path.join(output, 'profile'));
@@ -13,6 +13,7 @@ app.on('window-all-closed', () => {});
 
 async function run() {
   await app.whenReady();
+  if (process.platform === 'darwin') app.setActivationPolicy('accessory');
   const win = new BrowserWindow({ show: false, width: 2400, height: 1200, webPreferences: { sandbox: true, contextIsolation: true,
     offscreen: true, backgroundThrottling: false, enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
   win.webContents.on('console-message', details => { if (details.level === 'error' || details.level === 'warning') console.error(details.message); });
@@ -40,23 +41,26 @@ async function run() {
       }
       let referenceInk = 0; let rasterInk = 0; let intersection = 0; let union = 0;
       let pixiInk = 0; let pixiIntersection = 0; let pixiUnion = 0;
+      let crossedText = 0, preservedText = 0;
       for (let i = 0; i < a.length; i += 4) {
         const aa = ink(a, i); const bb = ink(b, i); const cc = ink(c, i);
         if (aa) referenceInk++; if (bb) rasterInk++; if (aa && bb) intersection++; if (aa || bb) union++;
         // Pixi 包含纸片阴影/边框；正文比较区来自实时 DOM 墨迹范围，不锁定外观数值。
         const x = i / 4 % width; const y = Math.floor(i / 4 / width);
+        if (Math.abs(y / state.dpr - state.ghostY) < 2 && aa) { crossedText++; if (cc) preservedText++; }
         if (x >= left && x <= right && y >= top && y <= bottom) {
           if (cc) pixiInk++; if (aa && cc) pixiIntersection++; if (aa || cc) pixiUnion++;
         }
       }
       const inkIou = intersection / union;
       const pixiIou = pixiIntersection / pixiUnion;
-      const report = { theme, material, dpr: state.dpr, size: dom.getSize(), referenceInk, rasterInk, pixiInk, inkIou, pixiIou };
+      const ghostPreservation = preservedText / crossedText;
+      const report = { theme, material, dpr: state.dpr, size: dom.getSize(), referenceInk, rasterInk, pixiInk, inkIou, pixiIou, crossedText, ghostPreservation };
       reports.push(report);
       await writeFile(path.join(output, `${theme}-${material}-dom.png`), dom.toPNG());
       await writeFile(path.join(output, `${theme}-${material}-raster.png`), raster.toPNG());
       await writeFile(path.join(output, `${theme}-${material}-pixi.png`), pixi.toPNG());
-      if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || inkIou < 0.95 || pixiIou < 0.95) throw new Error(`visual_content_mismatch:${JSON.stringify(report)}`);
+      if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || inkIou < 0.95 || pixiIou < 0.95 || crossedText < 10 || ghostPreservation < 0.95) throw new Error(`visual_content_mismatch:${JSON.stringify(report)}`);
     }
     const line = z.object({ dpr: z.number(), image: z.string() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasLineVisualProbe()'));
     const lineImage = nativeImage.createFromDataURL(line.image), linePixels = lineImage.toBitmap(), lineWidth = lineImage.getSize().width;

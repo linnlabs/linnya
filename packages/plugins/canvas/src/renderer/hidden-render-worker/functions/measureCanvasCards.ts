@@ -42,7 +42,7 @@ export async function measureCanvasCards(
   const keys: string[] = [];
   const measured = new Map<string, number>();
   const availableAssets = Object.keys(request.assets).sort();
-  const documentTitles = Object.entries(request.documents).map(([id, presentation]) => [id, presentation.title]).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+  const documentTitles = Object.entries(request.documents).map(([id, presentation]) => [id, presentation.title, presentation.status ?? 'available']).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
   for (const card of cards) {
     signal.throwIfAborted();
     const key = JSON.stringify([card.contentVersion, card.content, card.width, request.fontFamily, request.fontSize, request.theme, request.dpr, request.uiScale, availableAssets, documentTitles]);

@@ -26,6 +26,7 @@ export interface CardRasterResult {
 export interface CardRasterizer {
   measure(element: HTMLElement, width: number, signal?: AbortSignal): Promise<number>;
   rasterize(request: CardRasterRequest, signal?: AbortSignal): Promise<CardRasterResult>;
+  rasterizeBatch(requests: readonly CardRasterRequest[], signal?: AbortSignal): Promise<readonly CardRasterResult[]>;
   dispose(): void;
 }
 export type RasterQueueResult<T> =

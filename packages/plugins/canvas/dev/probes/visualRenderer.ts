@@ -21,6 +21,7 @@ const content = { type: 'doc', content: [
     { type: 'text', text: ' 下标', marks: [{ type: 'subscript' }] }, { type: 'text', text: '上标', marks: [{ type: 'superscript' }] },
     { type: 'text', text: '下划线', marks: [{ type: 'underline' }] }] },
   { type: 'blockMath', attrs: { latex: '\\frac{a}{b}' } },
+  { type: 'paragraph', content: [{ type: 'text', text: '正式标签：' }, { type: 'documentReference', attrs: { documentId: 'visual-document', referenceId: 'stable-tag' } }] },
 ] };
 
 let previousKernel: CanvasKernel | null = null;
@@ -33,7 +34,7 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card') {
     data: { contentVersion: 1, content } });
   const request = CanvasRenderRequestSchema.parse({ protocol: 1, requestId: 'visual', kind: 'render', theme, material,
     fontFamily: 'system-ui', fontSize: 14, dpr: devicePixelRatio, width: 1000, height: 600, region: null,
-    quality: 1, format: 'png', snapshot: { schemaVersion: 1, documentId: 'visual', sequence: 1, elements: [card] }, assets: {}, documents: {} });
+    quality: 1, format: 'png', snapshot: { schemaVersion: 1, documentId: 'visual', sequence: 1, elements: [card] }, assets: {}, documents: { 'visual-document': { title: '同源标签', status: 'available' } } });
   const reference = createCardSurface(card, request);
   if (!reference.querySelector('.katex') || !reference.querySelector('.katex-display')) throw new Error('visual_math_is_not_formal_katex');
   const background = theme === 'light' ? '#fbfaf5' : '#323631';
@@ -41,7 +42,8 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card') {
   const staging = document.createElement('div');
   document.body.append(reference, staging);
   const rasterizer = createHtmlCardRasterizer({ host: staging });
-  const raster = await rasterizer.rasterize({ element: createCardSurface(card, request), width: 360, height: 500, scale: devicePixelRatio });
+  const rasters = await rasterizer.rasterizeBatch(Array.from({ length: 8 }, () => ({ element: createCardSurface(card, request), width: 360, height: 500, scale: devicePixelRatio })));
+  const raster = rasters[7];
   const canvas = document.createElement('canvas');
   canvas.style.cssText = `position:absolute;left:420px;top:20px;width:360px;height:500px;background:${background}`;
   canvas.width = raster.bitmap.width; canvas.height = raster.bitmap.height;
@@ -54,14 +56,20 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card') {
   document.body.append(kernelHost);
   const kernel = await createPixiCanvasKernel({ host: kernelHost, width: 360, height: 500, resolution: devicePixelRatio });
   previousKernel = kernel;
-  kernel.setElements([card]);
+  const paragraph = reference.querySelector('p');
+  if (!paragraph) throw new Error('visual_text_fixture_missing');
+  const ghostY = paragraph.getBoundingClientRect().top - reference.getBoundingClientRect().top + Number.parseFloat(getComputedStyle(paragraph).lineHeight) / 2;
+  const ghost = CanvasEdgeSchema.parse({ id: 'e1', type: 'edge', schemaVersion: 1, revision: 1, order: 'a1', locked: false, color: 'white',
+    createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, from: { kind: 'point', x: 0, y: ghostY }, to: { kind: 'point', x: 360, y: ghostY },
+    lineStyle: 'straight', direction: 'none', label: '' });
+  kernel.setElements([card, ghost]);
   kernel.setAppearance({ dark: theme === 'dark', material, overview: 'titles' });
-  kernel.setBitmap(card.id, card.revision, 'visual', await createImageBitmap(raster.bitmap));
-  raster.bitmap.close(); rasterizer.dispose(); staging.remove();
+  kernel.setBitmap(card.id, card.revision, 'visual', await createImageBitmap(rasters[0].bitmap));
+  rasters.forEach(result => result.bitmap.close()); rasterizer.dispose(); staging.remove();
   await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   const rectangle = (element: HTMLElement) => { const { x, y, width, height } = element.getBoundingClientRect(); return { x, y, width, height }; };
   return { viewportWidth: innerWidth, viewportHeight: innerHeight, dpr: devicePixelRatio, reference: rectangle(reference), raster: rectangle(canvas),
-    pixi: rectangle(kernelHost) };
+    pixi: rectangle(kernelHost), ghostY };
 }
 Object.defineProperty(window, 'prepareCanvasVisualProbe', { value: prepare });
 

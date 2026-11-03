@@ -40,4 +40,17 @@ describe('latest card raster queue', () => {
     queue.dispose();
     expect(await queue.enqueue('disposed', 4)).toEqual({ status: 'cancelled' });
   });
+  it('同一paint批次只取消旧卡结果，其余卡仍能完成', async () => {
+    const batches: number[][] = [], released: number[] = [];
+    const queue = createLatestRasterQueue({ batchSize: 3,
+      executeBatch: async (values: readonly number[]) => { batches.push([...values]); await Promise.resolve(); return values.map(value => value * 10); },
+      disposeResult: value => released.push(value),
+    });
+    const first = queue.enqueue('c0', 0), one = queue.enqueue('c1', 1), removed = queue.enqueue('c2', 2), stale = queue.enqueue('c3', 3), four = queue.enqueue('c4', 4);
+    queue.cancel('c2'); await first; queue.cancel('c3');
+    const results = await Promise.all([one, removed, stale, four]);
+    expect(batches).toEqual([[0], [1, 3, 4]]);
+    expect(results).toEqual([{ status: 'ready', value: 10 }, { status: 'cancelled' }, { status: 'cancelled' }, { status: 'ready', value: 40 }]);
+    expect(released).toEqual([30]); queue.dispose();
+  });
 });

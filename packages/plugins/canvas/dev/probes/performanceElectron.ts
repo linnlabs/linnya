@@ -1,4 +1,5 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, powerMonitor, screen } from 'electron';
+import os from 'node:os';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
@@ -11,7 +12,14 @@ const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 
 async function run() {
   await app.whenReady();
-  const win = new BrowserWindow({ show: true, width: 1600, height: 968, webPreferences: { sandbox: true, contextIsolation: true,
+  const unlocked = (state: string) => state === 'active' || state === 'idle';
+  const idleBefore = powerMonitor.getSystemIdleState(1), thermalBefore = powerMonitor.getCurrentThermalState();
+  if (!unlocked(idleBefore)) throw new Error(`Native benchmark requires a verified unlocked desktop: ${idleBefore}`);
+  const lockEvents: { readonly event: string; readonly time: string }[] = [];
+  powerMonitor.on('lock-screen', () => lockEvents.push({ event: 'lock', time: new Date().toISOString() }));
+  powerMonitor.on('unlock-screen', () => lockEvents.push({ event: 'unlock', time: new Date().toISOString() }));
+  const startedAt = new Date().toISOString();
+  const win = new BrowserWindow({ show: true, width: 1600, height: 968, useContentSize: true, title: 'Canvas native performance probe', webPreferences: { sandbox: true, contextIsolation: true,
     backgroundThrottling: false, enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
   try {
     await win.loadFile(path.join(output, 'index.html'));
@@ -28,17 +36,25 @@ async function run() {
       const pan: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
       const close: unknown = await win.webContents.executeJavaScript('window.closeCanvasPerformanceView()');
       await win.webContents.executeJavaScript('window.startCanvasPerformanceCollection()');
-      await delay(1500);
+      const bodySettled: unknown = await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
       const bodyLoad: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
+      await writeFile(path.join(output, `${count}-${clustered ? 'cluster' : 'uniform'}.png`), (await win.webContents.capturePage()).toPNG());
       await win.webContents.executeJavaScript('window.startCanvasPerformanceCollection()');
       for (let i = 0; i < 100; i++) { win.webContents.sendInputEvent({ type: 'mouseWheel', x: 800, y: 480,
         deltaY: i < 50 ? -5 : 5, deltaX: 0, modifiers: ['control'], canScroll: true }); await delay(20); }
       const zoom: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
-      const report = { count, clustered, initial, pan, close, bodyLoad, zoom };
+      const zoomSettled: unknown = await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
+      const report = { count, clustered, initial, pan, close, bodyLoad, bodySettled, zoom, zoomSettled };
       reports.push(report); console.log(JSON.stringify(report));
     }
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, platform: process.platform,
-      arch: process.arch, gpu: await app.getGPUInfo('basic'), reports }, null, 2));
+    const idleAfter = powerMonitor.getSystemIdleState(1), display = screen.getDisplayMatching(win.getBounds());
+    const validHardwareRun = unlocked(idleAfter) && !lockEvents.some(event => event.event === 'lock');
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: 'production-dom-v2', startedAt, endedAt: new Date().toISOString(),
+      versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
+      idleBefore, idleAfter, lockEvents, validHardwareRun, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
+      display: { label: display.label, internal: display.internal, scaleFactor: display.scaleFactor, displayFrequency: display.displayFrequency, bounds: display.bounds },
+      gpu: await app.getGPUInfo('basic'), reports }, null, 2));
+    if (!validHardwareRun) throw new Error('Desktop locked during native performance benchmark');
   } finally { win.destroy(); }
 }
 void mkdir(output, { recursive: true }).then(run).then(() => app.exit(0), (error: unknown) => { console.error(error); app.exit(1); });
