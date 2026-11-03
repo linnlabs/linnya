@@ -34,7 +34,7 @@ export function createCanvasRasterPresentation(options: {
   const queue = createLatestRasterQueue({
     execute: async (input: RasterInput, signal) => {
       const element = options.createContent ? await options.createContent(input.card, signal) : document.createElement('div');
-      element.className = 'markdown-document-content canvas-card-content';
+      element.classList.add('markdown-document-content', 'canvas-card-content');
       element.style.color = input.dark ? '#e8e9e3' : '#252c27';
       if (!options.createContent) {
         if (input.card.type === 'text') element.append(createMarkdownDocumentFragment(JsonValueSchema.parse(input.card.data.content), document));
