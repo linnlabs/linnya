@@ -1,7 +1,8 @@
-export type CanvasShortcut = 'delete' | 'edit' | 'escape' | 'all' | 'actual' | 'fit' | 'fit-selection' | 'zoom-in' | 'zoom-out' | 'undo' | 'redo' | 'duplicate' | 'left' | 'right' | 'up' | 'down';
+import type { CanvasShortcut } from '../definitions/canvasKeyboard';
 
-export function readCanvasShortcut(event: KeyboardEvent, editing: boolean): CanvasShortcut | null {
+export function readCanvasShortcut(event: KeyboardEvent, editing: boolean, treeMode = false): CanvasShortcut | null {
   if (event.isComposing) return null;
+  if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, button, [role="combobox"]') && event.key !== 'Escape') return null;
   if (event.key === 'Escape') return 'escape';
   if (editing) return null;
   if (event.metaKey || event.ctrlKey) {
@@ -12,6 +13,8 @@ export function readCanvasShortcut(event: KeyboardEvent, editing: boolean): Canv
       case '+': case '=': return 'zoom-in'; case '-': return 'zoom-out'; default: return null;
     }
   }
+  if (treeMode && event.key === 'Tab' && !event.shiftKey) return 'tree-child';
+  if (treeMode && event.key === 'Enter') return 'tree-sibling';
   switch (event.key) {
     case 'Delete': case 'Backspace': return 'delete'; case 'Enter': return 'edit';
     case 'ArrowLeft': return 'left'; case 'ArrowRight': return 'right'; case 'ArrowUp': return 'up'; case 'ArrowDown': return 'down';

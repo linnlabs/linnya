@@ -86,6 +86,14 @@
         </ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup>
+        <CanvasLayoutControls
+          v-if="surface.layout"
+          :layout="surface.layout"
+          :on-arrange="surface.arrange"
+          :run="run"
+        />
+      </ToolbarGroup>
+      <ToolbarGroup>
         <ToolbarButton
           label="显示全部 ⌘1"
           @click="surface.fit()"
@@ -200,6 +208,25 @@
       v-if="search"
       :search="search"
     />
+    <p
+      v-if="surface?.layout?.state.busy.value"
+      class="canvas-layout-status"
+      role="status"
+    >
+      排布中… <button
+        type="button"
+        @click="run(() => surface?.layout?.cancel())"
+      >
+        取消排布（Esc）
+      </button>
+    </p>
+    <p
+      v-else-if="surface?.layout?.state.diagnostics.value.length"
+      class="canvas-layout-status"
+      role="status"
+    >
+      {{ surface.layout.state.diagnostics.value.map(item => item.message).join('；') }}
+    </p>
     <CanvasDocumentPicker
       v-if="creation"
       :creation="creation"
@@ -263,6 +290,8 @@ import { createCanvasCardContent, type CanvasCardContent } from '../features/car
 import { createCanvasCardCreation, installCanvasMediaInput, CanvasDocumentPicker } from '../features/cardCreation';
 import { createCanvasSearch, CanvasSearchPanel } from '../features/canvasSearch';
 import { CanvasConnectionControls } from '../features/connections';
+import { CanvasLayoutControls } from '../features/layoutCommands';
+import { createCanvasArrangementPort } from '../adapters/createCanvasArrangementPort';
 
 const stage = ref<HTMLElement | null>(null), editorHost = ref<HTMLElement | null>(null), staging = ref<HTMLElement | null>(null), imagePicker = ref<HTMLInputElement | null>(null);
 const surface = shallowRef<Awaited<ReturnType<typeof createCanvasSurface>> | null>(null);
@@ -283,7 +312,7 @@ const moreActions = [{ value: 'lock', text: '锁定 / 解锁' }, { value: 'front
 const contextActions = computed(() => selection.value.length ? [{ value: 'ai', text: '加入对话 ⌘K' }, { value: 'edit', text: '编辑或打开 ↩' }, { value: 'copy', text: '复制 ⌘C' }, { value: 'cut', text: '剪切 ⌘X' }, { value: 'duplicate', text: '创建副本 ⌘D' }, ...moreActions] : [{ value: 'paste', text: '粘贴 ⌘V' }, { value: 'new', text: '新建文字卡' }, { value: 'document', text: '添加文档…' }, { value: 'image', text: '添加图片…' }, { value: 'fit', text: '显示全部 ⌘1' }]);
 const colors = [{ value: 'white', text: '原色' }, { value: 'red', text: '红' }, { value: 'orange', text: '橙' }, { value: 'yellow', text: '黄' }, { value: 'green', text: '绿' }, { value: 'cyan', text: '青' }, { value: 'purple', text: '紫' }];
 const report = (error: unknown) => { failure.value = error instanceof Error ? error.message : String(error); };
-const run = async (action: () => Promise<unknown> | undefined) => { failure.value = null; try { await action(); } catch (error) { report(error); } };
+const run = async (action: () => Promise<unknown> | undefined) => { failure.value = null; surface.value?.clearFailure(); try { await action(); } catch (error) { report(error); } };
 const changeColor = (value: string | number | boolean) => run(() => surface.value?.color(CanvasColorSchema.parse(value)));
 const elementAction = (value: string | number | boolean) => run(async () => {
   const current = surface.value; if (!current) return;
@@ -312,6 +341,7 @@ const addToConversation = () => run(async () => {
   await addCanvasSelectionReference({ documentId, projectId, elementIds: current.selection.ids.value }, createCanvasSelectionReferencePort());
 });
 const keydown = (event: KeyboardEvent) => {
+  if (!event.isComposing && event.key === 'Escape' && surface.value?.layout?.state.busy.value) { event.preventDefault(); void run(() => surface.value?.layout?.cancel()); return; }
   if (!event.isComposing && (event.ctrlKey || event.metaKey) && ['f', 'k'].includes(event.key.toLowerCase())) {
     event.preventDefault(); if (event.key.toLowerCase() === 'f') search.value?.state.show(); else void addToConversation();
   } else surface.value?.keydown(event);
@@ -322,7 +352,7 @@ onMounted(async () => {
   try {
     const mediaPort = createCanvasCardMediaPort(), cardContent = createCanvasCardContent(session.documentId, mediaPort); content = cardContent;
     const result = await createCanvasSurface({ host, editorHost: editorElement, stagingHost: rasterHost, documentId: session.documentId }, {
-      document: createCanvasDocumentPort(), createEditor: createEmbeddedMarkdownEditor, createContent: cardContent.create, readContentKey: cardContent.contentKey, readDocumentTitles: cardContent.documentTitles, refreshReferences: cardContent.refreshReferences, subscribeContent: cardContent.subscribe, resolveImageSource: cardContent.resolveImageSource,
+      document: createCanvasDocumentPort(), arrangement: createCanvasArrangementPort(), createEditor: createEmbeddedMarkdownEditor, createContent: cardContent.create, readContentKey: cardContent.contentKey, readDocumentTitles: cardContent.documentTitles, refreshReferences: cardContent.refreshReferences, subscribeContent: cardContent.subscribe, resolveImageSource: cardContent.resolveImageSource,
       prepareClipboard: ids => readCanvasClipboard(session.documentId, ids),
       pasteImages: async (files, point) => { if (!creation.value) throw new Error('图片导入尚未就绪'); await creation.value.importFiles(files, point); },
       openCard: async card => { if (card.type === 'image') imagePreview.value = await mediaPort.readImage(session.documentId, card.data.assetId); else await cardContent.open(card); },

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { CanvasTextCardSchema } from '@plugin/canvas/shared';
 import { createCanvasCardContent } from '..';
 import type { CanvasCardMediaPort } from '..';
+vi.mock('../../cardRendering/content', async importOriginal => ({ ...await importOriginal<typeof import('../../cardRendering/content')>(), resolveCanvasDisplayImages: async (assets: Readonly<Record<string, string>>) => assets }));
 const image = { assetId: 'image-1', mediaType: 'image/png' as const, byteLength: 3, width: 1, height: 1, sha256: 'a'.repeat(64), dataUri: 'data:image/png;base64,YWJj' };
 function fixture() {
   const readImage = vi.fn(async () => image);

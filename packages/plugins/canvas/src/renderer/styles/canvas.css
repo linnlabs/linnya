@@ -381,3 +381,17 @@
   background: var(--color-bg-default);
   box-shadow: 0 2px 12px var(--shadow-color-md);
 }
+.canvas-layout-status {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 40px;
+  z-index: 15;
+  max-height: 80px;
+  overflow: auto;
+  padding: var(--space-2);
+  margin: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-default);
+  font-size: var(--font-size-footnote);
+}

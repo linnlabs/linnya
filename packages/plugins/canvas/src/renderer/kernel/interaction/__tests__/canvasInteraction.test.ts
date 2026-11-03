@@ -97,4 +97,11 @@ describe('Canvas pointer gestures', () => {
     f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 40, 10); f.pointer('pointerup', 40, 10);
     expect(f.intents.some(intent => intent.kind === 'select' || intent.kind === 'move' || intent.kind === 'editing')).toBe(false);
   });
+  it('拖动中进入只读立即取消预览，不在松手时提交，后续手势只平移', () => {
+    let readonly = false; const f = fixture({ readReadonly: () => readonly });
+    f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 40, 10); readonly = true; f.pointer('pointerup', 40, 10);
+    expect(f.intents.some(intent => intent.kind === 'move')).toBe(false); expect(f.clear).toHaveBeenCalled();
+    const oldCamera = f.kernel.readCamera(); f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 40, 10); f.pointer('pointerup', 40, 10);
+    expect(f.kernel.readCamera().x).toBe(oldCamera.x + 30);
+  });
 });

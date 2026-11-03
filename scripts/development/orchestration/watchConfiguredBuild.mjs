@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
+import { watchTsupConfigurations } from '../features/build-session/orchestration/watchTsupConfigurations.mjs';
 
 const [builder, configPath, ...afterBuildScripts] = process.argv.slice(2);
 process.on('message', message => { if (message?.type === 'stop') process.exit(0); });
@@ -20,22 +21,7 @@ try {
   if (builder === 'tsup') {
     const { build } = await import('tsup');
     const { default: configuration } = await import(pathToFileURL(path.resolve(configPath)).href);
-    let initialBuildCompleted = false;
-    await build({
-      ...configuration,
-      config: false,
-      // tsup 按真实 buildDependencies 决定是否重编译；额外目录只排除运行数据/产物。
-      watch: true,
-      ignoreWatch: ['**/_dev_data/**', '**/_dev_electron/**', '**/target/**', 'dist/**', 'packages/plugins/*/dist/**'],
-      async onSuccess() {
-        await configuration.onSuccess?.();
-        await runAfterBuildScripts();
-        if (initialBuildCompleted) process.send?.({ type: 'build-ready' });
-      },
-    });
-    // build() 包含首轮声明生成；不能在 JS onSuccess 时抢先启动依赖消费者。
-    initialBuildCompleted = true;
-    process.send?.({ type: 'build-ready' });
+    await watchTsupConfigurations({ configuration, build, afterBuild: runAfterBuildScripts, ready: () => process.send?.({ type: 'build-ready' }) });
   } else if (builder === 'vite') {
     const { build } = await import('vite');
     const watcher = await build({ configFile: configPath, build: { watch: {}, reportCompressedSize: false } });
