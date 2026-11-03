@@ -2,6 +2,7 @@ import { computed } from 'vue';
 import type { CanvasEdge, CanvasEdgeId, CanvasEndpoint, CanvasPatch, CanvasPoint } from '@plugin/canvas/shared';
 import type { CanvasDocumentSession } from '../../canvasDocument';
 import type { CanvasConnectionKernel } from '../definitions/canvasConnections';
+import { buildCanvasConnectionReversal } from '../functions/buildCanvasConnectionReversal';
 import { createCanvasConnectionState } from '../store/createCanvasConnectionState';
 import { createCanvasEndpointGesture } from './createCanvasEndpointGesture';
 
@@ -33,6 +34,12 @@ export function createCanvasConnectionEditing(session: CanvasDocumentSession, ke
     async select(id: CanvasEdgeId | null) {
       if (!(await options.finishText()) || !(await saveLabel())) return;
       state.select(id); kernel.setSelectedEdge(id); if (id) options.clearCards();
+    },
+    endpoint(which: 'from' | 'to'): CanvasEndpoint | null { return selected.value?.[which] ?? null; },
+    async reverse() {
+      if (!(await saveLabel())) return;
+      const edge = selected.value;
+      if (edge) await session.commit([buildCanvasConnectionReversal(edge)]);
     },
     async beginLabel() {
       const edge = selected.value; if (!edge || edge.locked || state.label.value) return;

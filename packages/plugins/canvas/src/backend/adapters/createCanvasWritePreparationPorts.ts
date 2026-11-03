@@ -1,7 +1,7 @@
 import { JsonValueSchema, type DocumentReferenceMarkdownBinding } from '@app/schemas';
 import { parseMarkdownDocument } from '@linnya/markdown-document-core';
 import { DocumentReferenceMarkdownError, type createDocumentReferenceMarkdownRuntime } from '@plugin/backend/documentReferences';
-import { resolveWorkspaceVfsNodeForPluginTool } from '@plugin/backend/workspaceRuntime';
+import { resolveWorkspaceDocumentPath, readWorkspaceDocumentLocation } from '@plugin/backend/workspaceDocumentProjection';
 import type { BackendPluginCliExecutionContext } from '@plugin/backend/pluginCli';
 import { CanvasTextDocumentSchema, type CanvasSnapshot } from '../../shared';
 import { CanvasMeasureBatchRequestSchema } from '../../shared/rendering';
@@ -15,6 +15,7 @@ import { createCanvasImagePreparation } from './createCanvasImagePreparation';
 import { readCanvasResources } from '../orchestration/readCanvasRenderingResources';
 
 export function createCanvasWritePreparationPorts(input: { readonly database: CanvasDatabase; readonly snapshot: CanvasSnapshot; readonly context: BackendPluginCliExecutionContext;
+  readonly projectId: string;
   readonly readerId: string; readonly conversationRoot: string; readonly requestId: string; readonly dryRun: boolean;
   readonly references: ReturnType<typeof createDocumentReferenceMarkdownRuntime>; readonly capabilities: CanvasBackendCapabilities }) {
   const bindings: DocumentReferenceMarkdownBinding[] = [];
@@ -37,10 +38,14 @@ export function createCanvasWritePreparationPorts(input: { readonly database: Ca
       }
     },
     async resolveDocument(path) {
-      const resolved = await resolveWorkspaceVfsNodeForPluginTool(input.context.hostContext, { path });
-      if (!resolved.ok || resolved.node.type === 'folder') throw new CanvasWriteFailure('document_unavailable', resolved.ok ? '文档卡不能指向目录。' : resolved.message, undefined, 'document');
-      bindings.push({ referenceId: `document-card-input:${bindings.length}`, targetDocumentId: resolved.node.id, path: `workspace:${resolved.node.path}`, label: resolved.node.name });
-      return resolved.node.id;
+      // Plugin CLI 的项目由已授权父execution冻结；hostContext只是数据能力，不是文件工具上下文。
+      const resolved = resolveWorkspaceDocumentPath(input.database, { projectId: input.projectId, path });
+      if (!resolved) throw new CanvasWriteFailure('document_unavailable', '文档路径不存在或不在当前项目。', undefined, 'document');
+      if (resolved.nodeType === 'folder') throw new CanvasWriteFailure('document_unavailable', '文档卡不能指向目录。', undefined, 'document');
+      const location = readWorkspaceDocumentLocation(input.database, resolved.id);
+      if (!location) throw new CanvasWriteFailure('document_unavailable', '文档当前无法定位。', undefined, 'document');
+      bindings.push({ referenceId: `document-card-input:${bindings.length}`, targetDocumentId: resolved.id, path: location.path, label: resolved.name });
+      return resolved.id;
     },
     prepareImage: (file, dryRun) => images.prepare(file, dryRun),
     async measure(cards, signal) {

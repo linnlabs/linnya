@@ -14,3 +14,4 @@ export { planCanvasCommit } from './functions/planCanvasCommit';
 export { canvasSourceKey, canvasPayloadHash, canvasOperationsPayload } from './functions/canvasRequestIdentity';
 export { CanvasReadOnlyFormatError, CanvasContentPolicyError } from './definitions/canvasContentFailure';
 export { validateCanvasPlanContent } from './functions/validateCanvasContent';
+export { releaseCanvasEditingClaims, pruneCanvasHistoryGuards } from './persistence/canvasRepository';

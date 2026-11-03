@@ -3,7 +3,7 @@ export { createEmptyCanvasDocument, readCanvasSnapshot, updateCanvasEditingClaim
 export { commitCanvasOperations } from './features/canvasCommit/orchestration/commitCanvasOperations';
 export { createCanvasDocumentRuntime } from './orchestration/createCanvasDocumentRuntime';
 export { createCanvasBackendPlugin } from './index';
-export { readCanvasSelectionContext } from './orchestration/readCanvasSelectionContext';
+export { readCanvasSelectionContext, readCanvasClipboard } from './orchestration/readCanvasSelectionContext';
 export { executeCanvasCliCommand } from './orchestration/executeCanvasCliCommand';
 export { createCanvasComputationRuntime } from './capabilities/canvasComputation';
 export type { CanvasCliServices } from './orchestration/definitions/canvasCliExecution';

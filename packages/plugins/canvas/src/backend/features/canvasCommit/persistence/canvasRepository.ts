@@ -108,6 +108,15 @@ export function updateCanvasEditingClaim(database: CanvasDatabase, input: {
     .run(input.documentId, input.viewId, input.elementId, JSON.stringify(input.fields), input.now + 10_000);
 }
 
+export function releaseCanvasEditingClaims(database: CanvasDatabase, viewId: string): void {
+  database.prepare('DELETE FROM canvas_editing_claims WHERE view_id = ?').run(viewId);
+}
+
+/** 删除身份只保留到用户栈/Agent组释放；长期版本通过文档修订下界保证旧写不被接纳。 */
+export function pruneCanvasHistoryGuards(database: CanvasDatabase, input: { readonly documentId: string; readonly retainedIds: readonly string[] }): void {
+  database.prepare('DELETE FROM canvas_history_guards WHERE node_id = ? AND element_id NOT IN (SELECT value FROM json_each(?))').run(input.documentId, JSON.stringify(input.retainedIds));
+}
+
 /** 日志只负责同步；缺口或裁剪始终退回当前正式快照。 */
 export function readCanvasSynchronization(database: Pick<CanvasDatabase, 'prepare'>, input: { readonly documentId: string; readonly afterSequence: number }): import('../../../../shared').CanvasSynchronization {
   const sequence = readCanvasSequence(database, input.documentId);

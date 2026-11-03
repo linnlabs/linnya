@@ -7,7 +7,10 @@
  */
 
 import { findFormatOwnershipByNodeType } from '../../../../app-hosts/linnya/plugin-registry/formatOwnershipCatalog';
-import type { WorkspaceNodeRow, WorkspaceVfsNode } from '../definitions/workspaceVfsNode';
+import { WorkspaceNodeRowSchema, type WorkspaceNodeRow, type WorkspaceVfsNode } from '../definitions/workspaceVfsNode';
+import type { WorkspaceVfsDatabase } from '../definitions/workspaceVfsDatabase';
+export type { WorkspaceVfsDatabase, WorkspaceVfsStatement } from '../definitions/workspaceVfsDatabase';
+import { getWorkspaceVfsNodeRow as getNodeById, buildWorkspaceNodePath } from '../persistence/workspaceVfsNodeRows';
 import { hasResourceLibraryRole } from '../functions/resourceLibraryRole';
 import {
   isSystemByInodeFolderId,
@@ -46,16 +49,6 @@ export interface ListWorkspaceVfsNodesParams {
   readonly nodeTypeAccessPolicy?: WorkspaceVfsNodeTypeAccessPolicy;
 }
 
-export interface WorkspaceVfsStatement {
-  all(...params: readonly unknown[]): unknown[];
-  get(...params: readonly unknown[]): unknown;
-  run(...params: readonly unknown[]): unknown;
-}
-
-export interface WorkspaceVfsDatabase {
-  prepare(sql: string): WorkspaceVfsStatement;
-}
-
 function normalizeProjectId(projectId: string): string {
   const trimmed = projectId.trim();
   if (!trimmed) throw new Error('projectId is required');
@@ -79,7 +72,7 @@ function toVfsWorkspaceNode(row: WorkspaceNodeRow, pathValue: string): Workspace
     path: pathValue,
     project_id: row.project_id,
     parent_id: row.parent_id,
-    type: row.type as WorkspaceVfsNode['type'],
+    type: row.type,
     name: row.name,
     ...(displayName ? { display_name: displayName } : {}),
     icon: row.icon,
@@ -116,38 +109,9 @@ function getChildRows(
       WHERE parent_id = ? AND project_id = ? AND deleted_at IS NULL
       ORDER BY type DESC, name ASC
     `;
-  return (
-    parentId === null
-      ? db.prepare(query).all(projectId)
-      : db.prepare(query).all(parentId, projectId)
-  ) as WorkspaceNodeRow[];
-}
-
-function getNodeById(db: WorkspaceVfsDatabase, nodeId: string): WorkspaceNodeRow | null {
-  const row = db
-    .prepare(
-      `
-    SELECT * FROM workspace_nodes
-    WHERE id = ? AND deleted_at IS NULL
-  `
-    )
-    .get(nodeId) as WorkspaceNodeRow | undefined;
-  return row ?? null;
-}
-
-function buildWorkspaceNodePath(db: WorkspaceVfsDatabase, row: WorkspaceNodeRow): string {
-  const segments = [row.name];
-  let parentId = row.parent_id;
-  const visited = new Set<string>([row.id]);
-  while (parentId) {
-    if (visited.has(parentId)) break;
-    visited.add(parentId);
-    const parent = getNodeById(db, parentId);
-    if (!parent) break;
-    segments.unshift(parent.name);
-    parentId = parent.parent_id;
-  }
-  return `/${segments.join('/')}`;
+  return WorkspaceNodeRowSchema.array().parse(parentId === null
+    ? db.prepare(query).all(projectId)
+    : db.prepare(query).all(parentId, projectId));
 }
 
 /** 同步 owner 事务内读取刚提交的节点身份；不遍历系统虚拟视图。 */

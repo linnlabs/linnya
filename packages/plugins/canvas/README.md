@@ -10,6 +10,8 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 - 包外只消费 shared/backend/renderer 与测试专用 backend-test-support 入口，不 deep import。
 - 文档引用、图片资产、历史保留、正文编辑器与 Conversation 权限仍由各 Host owner 通过窄门面提供。
 
+当前内容提交及纯规则的职责见 [canvasCommit owner](./src/backend/features/canvasCommit/README.md)。
+
 ## 数据规则
 
 卡片 ID 为画布内稳定的 `cN`，线为 `eN`；ID 永不复用。元素 revision、画布 sequence 与历史版本身份独立。相机和选择不进入文档内容。每个写请求必须有稳定请求 ID，重试复用，不能靠相同内容猜测重试。
@@ -27,6 +29,8 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 ## 验证
 
 插件自身提供 typecheck、test、lint、build 入口。测试覆盖真实提交/重开、失败回滚、并发/撤回与插件生命周期；技术探针放在 `dev/probes`，本地结果不成为构建依赖。插件不属于默认官方发行目标。
+
+[Canvas Regression](../../../.github/workflows/canvas-regression.yml) 在 macOS、Windows、Linux 分别验证业务结果与离屏绘制的确定性工作量；Linux不代表新增Desktop发行平台。共享CI不比较帧耗时，也不能代替真实GPU、输入法和屏幕交互验收。固定模型任务与完整证据的评分入口见 [Agent验收](./scripts/agent-evaluation/README.md)；模型评测与无凭据CI分开运行。
 
 ## Renderer
 
@@ -65,6 +69,8 @@ Renderer只读降级同时关闭编辑器、插图锚点、拖动/缩放、菜�
 
 加入对话使用一个 Canvas 选区引用；发送前先等待仍打开表面的草稿保存，再经 Backend 冻结一次最新提交内容。画布关闭后仍可刷新，失败不会回退加入时旧文字。引用记录文档和卡片身份，点击经通用 Workspace 导航打开并定位；同一选区通过通用 composer 去重键合并。复制含标签的子图时保留目标 documentId，但为每个新出现位置分配新的 referenceId，避免原子引用索引冲突。
 
+部分所选卡删除时只发送仍存在的卡；全部删除时引用保留原始选择身份、显示已删除并发送该次提交的删除说明，不含旧正文。撤销删除后，同一引用可再次读取恢复的卡。复制/剪切没有有效元素时仍失败，不能用删除说明替换用户剪贴板。
+
 ## CLI 与自动布局
 
 `linnya-canvas` 通过正式 Plugin CLI bridge 注入已冻结的项目、对话及 run 身份，路径解析和最终提交均复核项目归属。`read/show/find/neighbors/region/check/groups` 不创建写运行态；`apply` 先解析受管正文、批量真实测高，再作一次字段事务。`render` 只在授权 conversation 目录创建独占图像产物，返回正式 locator。Skill 维护模型可见语义操作合同，不开放磁盘数据库、批准标志或 Agent 坐标。
@@ -90,3 +96,5 @@ Standalone `entry.command` 只提供 read/show/find/neighbors/region/check，显
 历史恢复的 `clientSessionId` 是Canvas的opaque `[viewId,captureUUID]` token。Header打开历史时冻结正文、临时新卡、连线标签的编辑世代；正式恢复通知先同步提交，再仅清理仍匹配的草稿。重复通知和旧面板的迟到通知不会删除后来的输入，恢复不调用保存旧草稿的finish。预算从Backend正式状态读取并订阅变化，超过软预算会说明最近5版与仍可达资产的保留原因。
 
 Canvas表面、正文编辑器和历史预览统一读取Renderer UI公开的 `RENDERER_UI_THEME_ATTRIBUTE`，并监听同一属性。`moon-blue`依据Renderer UI正式语义仍使用浅色纸张；不能通过历史data-theme或dark class猜测当前主题。
+
+键盘与读屏通过同一选择/导航流程工作：搜索定位既支持卡片也支持线标签，关闭搜索/右键菜单和结束标签编辑会回焦画布；选中摘要复用正文搜索投影和当前可访问文档标题，限制朗读长度，不输出目标内部ID。失败草稿可显式选择“使用已保存内容”，经危险操作确认后仅放弃本地草稿；写入进行中或结果待确认时禁止放弃，不自动重载覆盖。

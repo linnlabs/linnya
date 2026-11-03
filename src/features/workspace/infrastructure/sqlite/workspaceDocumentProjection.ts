@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import { readPersistedWorkspaceVfsNode, splitNormalizedVfsPath, type WorkspaceVfsStatement } from '../../vfs/projection';
+import { readPersistedWorkspaceDocumentLocation, splitNormalizedVfsPath, type WorkspaceVfsStatement } from '../../vfs/projection';
 
 interface WorkspaceProjectionDatabase {
   prepare(sql: string): unknown;
@@ -94,12 +94,11 @@ function isVfsStatement(value: unknown): value is WorkspaceVfsStatement {
 }
 
 export function readWorkspaceDocumentLocation(db: WorkspaceProjectionDatabase, nodeId: string) {
-  const node = readPersistedWorkspaceVfsNode({ prepare(sql) {
+  return readPersistedWorkspaceDocumentLocation({ prepare(sql) {
     const statement = db.prepare(sql);
     if (!isVfsStatement(statement)) throw new Error('Workspace location requires a complete statement port');
     return statement;
   } }, nodeId);
-  return node ? { id: node.id, projectId: node.project_id, path: `workspace:${node.path}`, nodeType: node.type } : null;
 }
 
 const candidateRowsSchema = z.array(z.object({ id: z.string(), name: z.string(), type: z.string(), project_id: z.string() }));

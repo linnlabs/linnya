@@ -97,8 +97,8 @@
       aria-label="连线标签"
       @input="updateLabel"
       @blur="run(editing.saveLabel)"
-      @keydown.enter.prevent="blurLabel"
-      @keydown.esc.prevent.stop="blurLabel"
+      @keydown.enter.prevent="finishLabel"
+      @keydown.esc.prevent.stop="finishLabel"
       @keydown.stop
       @pointerdown.stop
     >
@@ -121,6 +121,7 @@ import { CanvasEdgeSchema, CanvasColorSchema, type CanvasCamera, type CanvasCard
 import type { createCanvasConnectionEditing } from '../orchestration/createCanvasConnectionEditing';
 import { canvasConnectionAnchors } from '../functions/canvasConnectionAnchors';
 const props = defineProps<{ editing: ReturnType<typeof createCanvasConnectionEditing>; card: CanvasCard | null; camera: CanvasCamera; run: (action: () => Promise<unknown>) => Promise<void> }>();
+const emit = defineEmits<{ focusCanvas: [] }>();
 const edge = computed(() => props.editing.selected.value), labelInput = ref<HTMLInputElement | null>(null);
 const anchors = computed(() => props.card ? canvasConnectionAnchors(props.card) : []);
 const geometry = computed(() => { void props.camera; return props.editing.geometry(); });
@@ -136,6 +137,6 @@ const setStyle = (value: string | number | boolean) => patch({ lineStyle: Canvas
 const setPattern = (value: string | number | boolean) => patch({ linePattern: CanvasEdgeSchema.shape.linePattern.parse(value) });
 const setColor = (value: string | number | boolean) => patch({ color: CanvasColorSchema.parse(value) });
 const updateLabel = (event: Event) => { if (event.target instanceof HTMLInputElement) props.editing.state.updateLabel(event.target.value); };
-const blurLabel = () => labelInput.value?.blur();
+const finishLabel = () => props.run(async () => { if (await props.editing.saveLabel()) emit('focusCanvas'); });
 watch(() => props.editing.state.label.value?.edge.id, async id => { if (id) { await nextTick(); labelInput.value?.focus(); labelInput.value?.select(); } });
 </script>

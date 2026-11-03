@@ -7,4 +7,3 @@ export const CanvasHistoryChangeSchema = z.object({
 export const CanvasHistoryEntrySchema = z.object({ changes: z.array(CanvasHistoryChangeSchema), groupId: z.string().nullable() }).strict();
 export type CanvasHistoryChange = z.infer<typeof CanvasHistoryChangeSchema>;
 export type CanvasHistoryEntry = z.infer<typeof CanvasHistoryEntrySchema>;
-export interface CanvasUserHistoryScope { readonly documentId: string; readonly viewId: string; undo: CanvasHistoryEntry[]; redo: CanvasHistoryEntry[] }

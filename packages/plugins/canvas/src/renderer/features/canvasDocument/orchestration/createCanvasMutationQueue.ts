@@ -10,9 +10,10 @@ export function createCanvasMutationQueue() {
     const token = generation;
     const result = tail.then(() => {
       if (token !== generation) throw new DOMException('Canvas session closed', 'AbortError');
+      state.setPending(true);
       return new Promise<T>((resolve, reject) => {
         let received: { readonly value: T } | null = null, running = false, settled = false;
-        const finish = () => { settled = true; if (active === attempt) active = null; state.setNotice(null); };
+        const finish = () => { settled = true; if (active === attempt) active = null; state.setNotice(null); state.setPending(false); };
         const attempt = {
           async retry() {
             if (running || settled) return;
@@ -37,5 +38,5 @@ export function createCanvasMutationQueue() {
     });
     tail = result.catch(() => undefined); return result;
   }
-  return { state, execute, retry: async () => { await active?.retry(); }, reset() { generation += 1; active?.cancel(); active = null; state.setNotice(null); tail = Promise.resolve(); } };
+  return { state, execute, retry: async () => { await active?.retry(); }, reset() { generation += 1; active?.cancel(); active = null; state.setNotice(null); state.setPending(false); tail = Promise.resolve(); } };
 }

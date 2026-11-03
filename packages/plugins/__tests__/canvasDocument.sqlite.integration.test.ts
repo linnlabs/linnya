@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { canvasPluginMigrations, createCanvasDocumentRuntime, createCanvasBackendPlugin, readCanvasSelectionContext } from '@plugin/canvas/backend-test-support';
-import { createCanvasPlainTextDocument } from '@plugin/canvas/shared';
+import { createCanvasPlainTextDocument, encodeCanvasHistorySession } from '@plugin/canvas/shared';
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema';
 import { WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/node-text-snapshot.schema';
 import { DOCUMENT_REFERENCE_SCHEMAS, createDocumentReferenceOperations } from 'src/domains/document-references';
@@ -52,11 +52,17 @@ it('refreshes a closed canvas from a single committed version and keeps the sent
   db.prepare('UPDATE conversations SET project_id = NULL WHERE conversation_id = ?').run('chat');
   expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], conversationId: 'chat' })).toThrow('项目');
 });
-it('rejects missing selected cards instead of sending a stale stored reference', () => {
+it('sends only the committed deletion notice for an empty selection and rejects copying it', async () => {
   const id = runtime.create({ projectId, parentId: null, name: '删除.canvas' });
   runtime.commit({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('已选择')] });
   runtime.commit({ documentId: id, viewId: 'view', requestId: 'delete', operations: [{ op: 'delete', id: 'c1' }] });
-  expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'] })).toThrow('重新选择');
+  const context = readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'] });
+  expect(context).toMatchObject({ sequence: 2, elementIds: [] });
+  expect(context.text).toContain('已全部删除'); expect(context.text).not.toContain('已选择');
+  const { readCanvasClipboard } = await import('@plugin/canvas/backend-test-support');
+  expect(() => readCanvasClipboard(db, { documentId: id, elementIds: ['c1'] })).toThrow('没有可复制');
+  runtime.undo({ documentId: id, viewId: 'view', requestId: 'undo-selected-deletion', direction: 'undo' });
+  expect(readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'] }).text).toContain('已选择');
 });
 it('refreshes a partially deleted selection using only remaining committed cards', () => {
   const id = runtime.create({ projectId, parentId: null, name: '部分.canvas' });
@@ -113,7 +119,8 @@ it('runs the real semantic CLI against Host SQLite with frozen scope, idempotent
   const services: import('@plugin/canvas/backend-test-support').CanvasCliServices = { runtimeFor: () => runtime, referencesFor: () => runtime.references,
     capabilities: { computation, measurement: { async measureBatch(request) { measureCalls++; return request.cards.map(card => ({ ref: card.ref, width: card.width, height: 120 })); },
       async measure(request) { return { width: request.width, height: 120 }; } }, rendering: { async render() { throw new Error('not a render test'); } } } };
-  const context = { hostContext: { databaseService: { getDb: () => db }, workspaceProjectId: projectId, conversationId: 'chat' }, projectId, conversationId: 'chat', agentRunId: 'run', signal: new AbortController().signal };
+  // 正式Plugin CLI只保证冻结identity与数据能力，不能伪装完整文件工具上下文让测试误过。
+  const context = { hostContext: { databaseService: { getDb: () => db } }, projectId, conversationId: 'chat', agentRunId: 'run', signal: new AbortController().signal };
   const cli = createCanvasPluginCli((command, execution, directory) => executeCanvasCliCommand(command, execution, directory, services), formatCanvasCliInputError);
   const run = async (argv: string[]) => {
     const prepared = cli.prepare({ argv, invocationId: 'invocation', conversationRoot: root });
@@ -138,6 +145,25 @@ it('runs the real semantic CLI against Host SQLite with frozen scope, idempotent
     expect((await run([...append, '--approved'])).exitCode).not.toBe(0);
     const wrong = await executeCanvasCliCommand({ kind: 'read', path: 'workspace:/命令.canvas' }, { ...context, projectId: 'other' }, root, services).catch(error => error);
     expect(wrong).toMatchObject({ code: 'document_missing' });
+    const workspace = new WorkspaceService(db);
+    const target = workspace.createNode({ projectId, parentId: null, type: 'document', name: '项目资料.md' });
+    workspace.createNode({ projectId, parentId: null, type: 'folder', name: '资料目录' });
+    const outsideProject = createProjectLifecycle(db).create({ name: '其他项目资料' });
+    workspace.createNode({ projectId: outsideProject, parentId: null, type: 'document', name: '仅外部.md' });
+    await writeFile(path.join(root, 'document.json'), JSON.stringify([{ op: 'add', type: 'document', document: 'workspace:/项目资料.md', ref: '$source' }]));
+    const documentArgs = ['apply', 'workspace:/命令.canvas', '--ops-file', 'document.json', '--request-id', 'document-card'];
+    const beforeDocument = runtime.read(id);
+    const dry = await run([...documentArgs, '--dry-run']); expect(dry.exitCode, dry.stdout).toBe(0); expect(dry.stdout).toContain('dry-run');
+    expect(runtime.read(id)).toEqual(beforeDocument);
+    const addedDocument = await run(documentArgs); expect(addedDocument.exitCode, addedDocument.stdout).toBe(0);
+    expect(runtime.read(id).elements.filter(element => element.type === 'document')).toEqual([expect.objectContaining({ data: expect.objectContaining({ documentId: target.id }) })]);
+    expect(await run(documentArgs)).toEqual(addedDocument);
+    const beforeInvalid = runtime.read(id);
+    for (const document of ['workspace:/资料目录', 'workspace:/仅外部.md']) {
+      await writeFile(path.join(root, 'invalid-document.json'), JSON.stringify([{ op: 'add', text: '整批不能落盘' }, { op: 'add', type: 'document', document }]));
+      const rejected = await run(['apply', 'workspace:/命令.canvas', '--ops-file', 'invalid-document.json', '--request-id', `invalid-${document}`]);
+      expect(rejected.exitCode).not.toBe(0); expect(rejected.stdout).toContain('invalid_arguments'); expect(runtime.read(id)).toEqual(beforeInvalid);
+    }
   } finally { await computation.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -203,4 +229,28 @@ it('rejects an in-flight Agent write against a disposed runtime and accepts it o
   runtime = createCanvasDocumentRuntime(db);
   expect(runtime.editing.commitAgent(late)).toMatchObject({ kind: 'committed', commit: { sequence: 1 } });
   expect(runtime.read(id).elements).toHaveLength(1);
+});
+
+it('confirms a lost restoration response without applying it twice and repeats only its captured-session notification', async () => {
+  const id = runtime.create({ projectId, parentId: null, name: '恢复重试.canvas' });
+  runtime.read(id, projectId, 'view');
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'restore-source', operations: [text('恢复目标')] });
+  runtime.versions.checkpoint({ documentId: id, reason: 'close' });
+  const target = runtime.history.list(id)[0];
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'before-restore', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }] });
+  const request = { documentId: id, versionId: target.versionId, expectedCurrentVersionId: runtime.history.list(id)[0].versionId,
+    clientSessionId: encodeCanvasHistorySession('view', '09e16e02-7dc9-41a7-b690-96f7a8815a45') };
+  await runtime.history.restore(request);
+  const restoredSequence = runtime.read(id).sequence;
+  const card = runtime.read(id).elements[0];
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'after-restore', operations: [{ op: 'update', id: 'c1', baseRevision: card.revision, patch: { color: 'green' } }] });
+  const sequence = runtime.read(id).sequence;
+  await runtime.history.restore(request);
+  expect(runtime.read(id)).toMatchObject({ sequence, elements: [{ color: 'green' }] });
+  const notifications = push.mock.calls.filter(([event]) => event.channel === 'canvas:restored');
+  expect(notifications).toHaveLength(2);
+  for (const [event] of notifications) expect(event.payload).toEqual({ documentId: id, clientSessionId: request.clientSessionId, sequence: restoredSequence });
+  runtime.undo({ documentId: id, viewId: 'view', requestId: 'undo-after-restore', direction: 'undo' });
+  runtime.undo({ documentId: id, viewId: 'view', requestId: 'undo-confirmed-restore', direction: 'undo' });
+  expect(runtime.read(id).elements[0]).toMatchObject({ color: 'red' });
 });
