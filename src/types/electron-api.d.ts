@@ -95,6 +95,8 @@ declare global {
     };
 
     electronAPI: {
+      'document-preview:types': () => Promise<unknown>;
+      'document-preview:read': (request: import('@app/schemas').DocumentPreviewRequest) => Promise<unknown>;
       'document-history:list': (request: { documentId: string }) => Promise<unknown>;
       'document-history:restore': (request: import('@app/schemas').DocumentVersionRestoreRequest) => Promise<unknown>;
       readCommandPermissionSettings: () => Promise<unknown>;
