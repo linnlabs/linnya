@@ -49,6 +49,7 @@ describe('trusted Markdown document reference bindings', () => {
       const text = serializeMarkdownDocument(f.read().content); const prepared = f.write(text);
       f.database.prepare('UPDATE workspace_nodes SET project_id = ? WHERE id = ?').run('other-project', 'target');
       expect(() => f.runtime.assertBindings({ sourceDocumentId: 'source', bindings: prepared.bindings })).toThrow('改名');
+      expect(() => f.write('Replacement before any new read')).toThrow('不能无损替换');
       const unavailable = f.read(); expect(unavailable.unprojectableReferenceIds).toEqual(['ref-1']); expect(JSON.stringify(unavailable.content)).not.toContain('Target Space');
       expect(() => f.write('Replace everything')).toThrow('不能无损替换');
     } finally { f.database.close(); }
