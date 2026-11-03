@@ -4,10 +4,11 @@ import type { CanvasKernel, CanvasAppearance } from '../kernel';
 import type { CanvasDocumentSession } from '../features/canvasDocument';
 import type { useCanvasPreferencesStore } from '../features/materialSetting';
 import type { CanvasSurfacePorts } from '../definitions/canvasSurface';
+import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
 
 /** 已提交场景、当前身份、主题与窗口尺寸共同投影到kernel；不承担用户提交。 */
 export function installCanvasDisplayProjection(options: {
-  readonly host: HTMLElement; readonly session: CanvasDocumentSession; readonly kernel: CanvasKernel;
+  readonly host: HTMLElement; readonly session: Pick<CanvasDocumentSession, 'state'>; readonly kernel: Pick<CanvasKernel, 'setDocumentTitles' | 'setThumbnailCards' | 'setElements' | 'setAppearance' | 'resize'>;
   readonly raster: { refresh(): void }; readonly readAppearance: () => CanvasAppearance;
   readonly preferences: ReturnType<typeof useCanvasPreferencesStore>; readonly ports: CanvasSurfacePorts; readonly report: (failure: unknown) => void;
   readonly refreshEditorInk?: () => void;
@@ -33,6 +34,6 @@ export function installCanvasDisplayProjection(options: {
   const appearance = () => { options.kernel.setAppearance(options.readAppearance()); options.refreshEditorInk?.(); options.raster.refresh(); };
   const stopAppearance = watch(() => options.preferences.preferences, appearance);
   const observer = new ResizeObserver(() => { options.kernel.resize(options.host.clientWidth, options.host.clientHeight, devicePixelRatio); options.raster.refresh(); }); observer.observe(options.host);
-  const theme = new MutationObserver(appearance); theme.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme', 'style'] });
+  const theme = new MutationObserver(appearance); theme.observe(document.documentElement, { attributes: true, attributeFilter: [RENDERER_UI_THEME_ATTRIBUTE, 'style'] });
   return () => { disposed = true; stopContent?.(); stopSnapshot(); stopAppearance(); observer.disconnect(); theme.disconnect(); };
 }

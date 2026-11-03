@@ -6,6 +6,7 @@ import { cardEditorStyle, type CanvasCardEditor } from '../features/cardEditing'
 import type { createCanvasTextCreation } from '../features/textCreation';
 import type { CanvasKernel } from '../kernel';
 import { installCanvasCardInk } from '../features/cardRendering/content';
+import { readCanvasIsDark } from '../functions/readCanvasAppearance';
 
 /** 单一 DOM 编辑器只跟随当前草稿；切卡替换与光栅资源各有自己的生命周期。 */
 export function installCanvasEditorProjection(options: {
@@ -14,7 +15,7 @@ export function installCanvasEditorProjection(options: {
   readonly cards: () => readonly CanvasCard[]; readonly setDirty: () => void; readonly refresh: () => void;
 }) {
   const color = () => options.cards().find(card => card.id === options.editor.state.draft.value?.elementId)?.color ?? 'white';
-  const refreshInk = () => installCanvasCardInk(options.host, color(), document.documentElement.dataset.theme === 'dark' || document.documentElement.classList.contains('dark'));
+  const refreshInk = () => installCanvasCardInk(options.host, color(), readCanvasIsDark());
   const stopInk = watch(color, refreshInk, { immediate: true });
   const bodyObserver = new ResizeObserver(() => { const body = options.host.firstElementChild; if (body) { const height = body.getBoundingClientRect().height / options.camera.value.zoom + 34; if (options.creation.state.draft.value) options.creation.measure(height); else options.editor.measure(height); } });
   if (options.host.firstElementChild) bodyObserver.observe(options.host.firstElementChild);
