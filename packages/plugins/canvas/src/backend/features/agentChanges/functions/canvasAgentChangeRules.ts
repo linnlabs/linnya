@@ -33,7 +33,7 @@ export function projectCanvasAgentGroup(group: CanvasAgentGroupRecord, pendingAp
     else if (kind === 'deleted') deleted.push(id);
     else if (kind === 'updated') updated.push(id);
   }
-  const deletedCards = [...byId.values()].flatMap(records => { const last = records[records.length - 1]; return last?.before && !last.after && last.before.type !== 'edge' ? [last.before] : []; });
+  const deletedCards = [...byId.values()].flatMap(records => { const last = records[records.length - 1]; return classifyCardChanges(records) === 'deleted' && last?.before && last.before.type !== 'edge' ? [last.before] : []; });
   return { id: group.id, documentId: group.documentId, conversationId: group.conversationId, runIds: group.runIds, reviewedElementIds: group.reviewedElementIds, createdAt: group.createdAt, lastWriteAt: group.lastWriteAt, writing: group.entry.changes.length > 0 && now - group.lastWriteAt < 3000, added, updated, deleted, changes, outcomes: group.outcomes ?? { complete: false, skippedWrites: [] }, deletedCards, visibleDeletedCards: visibleAfterSequence === undefined ? [] : deletedCards.filter(card => (group.deletedAtSequence[card.id] ?? 0) > visibleAfterSequence), pendingApproval };
 }
 export function selectCanvasGroupWithdrawal(entry: CanvasHistoryEntry, elementIds: readonly CanvasElementId[] | undefined): { selected: CanvasHistoryEntry; remaining: CanvasHistoryEntry } {
