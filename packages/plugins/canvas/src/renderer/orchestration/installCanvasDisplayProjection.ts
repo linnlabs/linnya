@@ -4,7 +4,6 @@ import type { CanvasKernel, CanvasAppearance } from '../kernel';
 import type { CanvasDocumentSession } from '../features/canvasDocument';
 import type { useCanvasPreferencesStore } from '../features/materialSetting';
 import type { CanvasSurfacePorts } from '../definitions/canvasSurface';
-import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
 
 /** 已提交场景、当前身份、主题与窗口尺寸共同投影到kernel；不承担用户提交。 */
 export function installCanvasDisplayProjection(options: {
@@ -34,6 +33,7 @@ export function installCanvasDisplayProjection(options: {
   const appearance = () => { options.kernel.setAppearance(options.readAppearance()); options.refreshEditorInk?.(); options.raster.refresh(); };
   const stopAppearance = watch(() => options.preferences.preferences, appearance);
   const observer = new ResizeObserver(() => { options.kernel.resize(options.host.clientWidth, options.host.clientHeight, devicePixelRatio); options.raster.refresh(); }); observer.observe(options.host);
-  const theme = new MutationObserver(appearance); theme.observe(document.documentElement, { attributes: true, attributeFilter: [RENDERER_UI_THEME_ATTRIBUTE, 'style'] });
+  // 根外观属性也包含Host字体抗锯齿设置；观察同批属性，不依赖Host私有常量。
+  const theme = new MutationObserver(appearance); theme.observe(document.documentElement, { attributes: true });
   return () => { disposed = true; stopContent?.(); stopSnapshot(); stopAppearance(); observer.disconnect(); theme.disconnect(); };
 }

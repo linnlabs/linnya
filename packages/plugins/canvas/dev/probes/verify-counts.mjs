@@ -50,7 +50,7 @@ for (const report of result.reports) {
     hitCandidates: Math.max(...report.counts.hits.map(hit => hit.candidates)), tiles: report.counts.scene.rasterTiles,
     bitmapBytes: report.counts.scene.bitmapBytes, peakPending: report.counts.queue.peakPending, peakBatchSize: report.counts.queue.peakBatchSize });
 }
-assert(result.reports.length > 0);
+assert.deepEqual([...seen].sort(), [250, 2500, 12000].flatMap(count => [`${count}:false`, `${count}:true`]).sort(), 'CI requires all three scales and both distributions');
 for (const count of new Set(result.reports.map(report => report.count))) assert(seen.has(`${count}:true`) && seen.has(`${count}:false`), `missing distribution ${count}`);
 const summary = { source: result.source, renderingProfile: result.renderingProfile, passed: true, checkedRows: rows.length, rows };
 await writeFile(path.join(path.dirname(file), 'counts-summary.json'), `${JSON.stringify(summary, null, 2)}\n`);

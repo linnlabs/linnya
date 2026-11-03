@@ -39,10 +39,11 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
       const beforeGroup = input.context.actor.source.kind === 'agent' && !findCanvasAgentGroup(database, input.context.documentId, canvasSourceKey(input.context.actor));
       return versions.recordCommit(input, { beforeGroup });
     },
-    publish(plan, context) {
+    publish(plan, context, publication) {
       const node = readCanvasDocumentIdentity(database, context.documentId);
       textSnapshots.schedule(context.documentId);
-      broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_CHANGED_CHANNEL, { documentId: context.documentId, sequence: plan.state.sequence });
+      broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_CHANGED_CHANNEL, { documentId: context.documentId, sequence: plan.state.sequence,
+        committedAt: publication.committedAt, sourceKind: context.actor.source.kind, changedElementCount: new Set(plan.changes.map(change => change.id)).size });
       publishWorkspaceDocumentUpdated({ documentId: context.documentId, projectId: node.projectId, nodeType: CANVAS_DOCUMENT_TYPE,
         mutationKind: 'incremental', versionNumber: plan.state.sequence });
     },

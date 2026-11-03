@@ -32,4 +32,10 @@ describe('画布选区引用', () => {
     expect(f.add).toHaveBeenCalledWith(expect.objectContaining({ pluginId: 'canvas', kind: 'canvas-selection', deduplicationKey: 'doc:c1' }));
     expect(f.focusComposer).toHaveBeenCalledTimes(1);
   });
+  it('全部删除发送最新说明并标记已删除，保留原选区身份供撤销恢复后再次刷新', async () => {
+    const f = fixture(); f.read.mockResolvedValueOnce({ documentId: 'doc', sequence: 8, elementIds: [], path: 'workspace:/画布.canvas', text: '所选卡片已全部删除，没有可发送的正文。' });
+    const deleted = await f.kind.prepareForSend?.(reference, { conversationId: 'conversation', projectId: 'project', signal: new AbortController().signal });
+    expect(deleted).toMatchObject({ label: '画布 · 已删除', text: '所选卡片已全部删除，没有可发送的正文。', metadata: { elementIds: ['c1'], sequence: 8 } });
+    expect(reference.text).toBe('旧');
+  });
 });
