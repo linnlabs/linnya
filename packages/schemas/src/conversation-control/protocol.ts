@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { ConversationControlInstanceSchema } from './auditControl';
 
 export const CONVERSATION_CONTROL_SCHEMA_VERSION = 1 as const;
-export const CONVERSATION_CONTROL_PROTOCOL_VERSION = 7 as const;
+export const CONVERSATION_CONTROL_PROTOCOL_VERSION = 8 as const;
 export const CONVERSATION_CONTROL_BRIDGE_PATH = '/api/v1/conversation-control' as const;
 export const CONVERSATION_CONTROL_TOKEN_HEADER = 'x-linnya-cli-token' as const;
 export const CONVERSATION_CONTROL_CONNECTION_FILE_ENV = 'LINNYA_CLI_CONNECTION_FILE' as const;
@@ -20,6 +21,7 @@ export const ConversationControlCapabilitySchema = z.enum([
   'stop',
   'result',
   'audit',
+  'audit_level',
   'tools',
   'command_approvals',
 ]);
@@ -64,6 +66,7 @@ export const ConversationControlHandshakeResponseSchema = z
     protocol_version: z.literal(CONVERSATION_CONTROL_PROTOCOL_VERSION),
     app_instance_id: z.string().trim().min(1),
     app_version: z.string().trim().min(1),
+    instance: ConversationControlInstanceSchema,
     // 能力公告是可扩展名称集合。未知名称不授予执行权限；旧客户端仍能使用认识的命令。
     // command DTO 继续使用封闭联合，破坏性 wire 变化必须提升 protocol_version。
     capabilities: z.array(z.string().regex(/^[a-z][a-z0-9_]*$/)).max(128),

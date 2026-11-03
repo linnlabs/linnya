@@ -152,6 +152,7 @@ describe('registered child cancellation SQLite lifecycle', () => {
         },
         childRunInvoker,
         lifecycle: new LinnyaRegisteredChildRunLifecycle({
+          audit: { level: 'off', levelForRun: async () => 'off' },
           supervisor,
           eventStore: new graph.MemoryEventStore(),
           nextEventStoreId: graph.createMonotonicEventStoreIdFactory(),

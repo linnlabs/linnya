@@ -3,6 +3,7 @@ import { ConversationControlSkillsRequestSchema } from '@app/schemas';
 import {
   CONVERSATION_CONTROL_SCHEMA_VERSION,
   ConversationControlAuditRequestSchema,
+  ConversationControlAuditLevelRequestSchema,
   ConversationControlCommandRequestSchema,
   ConversationControlCommandApprovalsRequestSchema,
   ConversationControlListRequestSchema,
@@ -189,7 +190,7 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         kind: 'runtime-start',
         workspaceDirectory: readString(tokens, 'workspace'),
         apiPort: readPort(tokens, 'api-port', 0, true),
-        qdrantPort: readPort(tokens, 'qdrant-port', 6333),
+        qdrantPort: readPort(tokens, 'qdrant-port', 0, true),
         pretty,
       };
     }
@@ -400,6 +401,14 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
       return { kind: 'command', request, pretty };
     }
     case 'audit': {
+      if (tokens.positionals[0] === 'level') {
+        assertAllowedOptions(tokens, []);
+        if (tokens.positionals.length > 2) usageError('audit level accepts at most one level');
+        return { kind: 'command', pretty, request: ConversationControlAuditLevelRequestSchema.parse({
+          schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION, command: 'audit_level',
+          level: tokens.positionals[1],
+        }) };
+      }
       assertAllowedOptions(tokens, ['run']);
       const request = ConversationControlAuditRequestSchema.parse({
         schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,

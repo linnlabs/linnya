@@ -22,7 +22,7 @@ async function* observeStreamSession(): AsyncGenerator<string | undefined> {
 
 describe('Host inference Conversation session', () => {
   beforeEach(() => {
-    createLinnyaAuditRuntime({ level: 'off', sink: { emit() {} } });
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'off', level: 'off', sink: { emit() {} } });
     setPluginRuntimeStateForTests({
       installedPluginIds: ['platform'],
       enabledPluginIds: ['platform'],
@@ -36,7 +36,8 @@ describe('Host inference Conversation session', () => {
       await runWithAgentAuditScope(
         { conversationId: 'conversation-stable', runId, traceId: runId },
         async () => {
-          expect(getCurrentLlmAuditContext()).toBeUndefined();
+          // 关闭记录仍保留当前 run 身份，不能把父 run 的 context 泄漏到子任务。
+          expect(getCurrentLlmAuditContext()).toMatchObject({ runId });
           for await (const sessionId of observeStreamSession()) observed.push(sessionId);
         }
       );
@@ -67,6 +68,7 @@ describe('Host inference Conversation session', () => {
           }),
         },
         lifecycle: new LinnyaRegisteredChildRunLifecycle({
+          audit: { level: 'off', levelForRun: async () => 'off' },
           supervisor,
           eventStore: new graph.MemoryEventStore(),
           nextEventStoreId: graph.createMonotonicEventStoreIdFactory(),

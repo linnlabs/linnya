@@ -238,7 +238,7 @@ describe('正式 Go 连接的未知400有限试探', () => {
 
   it('SDK原资格、Host政策和审计有效资格可按attempt关联，均不泄露正文', async () => {
     const envelopes: AuditEnvelope[] = [];
-    createLinnyaAuditRuntime({ level: 'stream', sink: { emit: event => { envelopes.push(event); } } });
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'stream', level: 'stream', sink: { emit: event => { envelopes.push(event); } } });
     const f = fixture({ response: () => rejected({ type: 'invalid_request_error', message: 'PRIVATE_PROVIDER_BODY' }) });
     const request: CanonicalInferenceRequest = {
       model_id: 'model-go-policy', messages: [{ role: 'user', content: [{ type: 'text', text: 'PRIVATE_PROMPT' }] }],

@@ -12,8 +12,6 @@ export {
 export { resolveAuditLevel } from './functions/resolveAuditLevel';
 export {
   createLinnyaAuditRuntime,
-  type CreateLinnyaAuditRuntimeOptions,
-  type LinnyaAuditRuntime,
 } from './orchestration/createLinnyaAuditRuntime';
 
 export {
@@ -58,3 +56,6 @@ export type {
   CommandExecutionAuditRuntimeSummary,
   ProjectCommandExecutionAuditEnvelopeInput,
 } from './features/command-execution-audit';
+
+export { AuditUnavailableError, type AuditControlPort, type LinnyaAuditRuntime, type CreateLinnyaAuditRuntimeOptions } from './definitions/auditRuntime';
+export { readAuditLevelSnapshot } from './functions/readAuditLevelSnapshot';

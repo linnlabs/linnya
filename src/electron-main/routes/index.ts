@@ -1,3 +1,6 @@
+import type { AuditControlPort } from 'src/domains/audit';
+import { readSourceCheckoutIdentity } from 'src/shared/runtime-paths/functions/readSourceCheckoutIdentity';
+import { realpathSync } from 'node:fs';
 import { skillManagement } from 'src/features/skills';
 import { createSkillManagementRouter } from 'src/features/skills/skillManagement.router';
 import { bindMarkdownDocumentImageOwnership, readDocumentImageAsset } from 'src/app-hosts/linnya/application/markdown-image-assets';
@@ -523,7 +526,7 @@ export async function configureRoutes(
   let sandboxProductionScope: SandboxProductionScope | null = null;
   let storageSpaceUseCase: StorageSpaceUseCasePort | null = null;
   let conversationControlUseCase: ConversationControlUseCase | null = null;
-  let auditAvailable = false;
+  let auditControl: AuditControlPort | null = null;
   let conversationInitError: unknown = null;
 
   try {
@@ -589,7 +592,7 @@ export async function configureRoutes(
       llmInputMaterializer,
       toolModelInputResolver,
     });
-    auditAvailable = agentRuntime.auditEnabled;
+    auditControl = agentRuntime.audit;
     if (recoveredRuns.length > 0) {
       logger.warn('[RunSupervisor] 启动恢复已收口遗留的活跃 run', {
         recoveredCount: recoveredRuns.length,
@@ -874,7 +877,7 @@ export async function configureRoutes(
       telemetry: telemetryPort,
       events: createEventStoreExecutionAuditEventPort(conversationEventStore),
       tools: dependencies.agentToolEnvironment?.toolRuntime ?? defaultToolRuntimePort,
-      auditAvailable: agentRuntime.auditEnabled,
+      auditControl: agentRuntime.audit,
     });
     logger.info('✅ 历史管理服务已初始化');
     logger.info('✅ 流程编排器已初始化');
@@ -932,7 +935,8 @@ export async function configureRoutes(
     commandProductionScope &&
     sandboxProductionScope &&
     storageSpaceUseCase &&
-    conversationControlUseCase
+    conversationControlUseCase &&
+    auditControl
   ) {
     const db = getDatabaseService().getDb();
     const preparedRoutes = await completeConversationRuntimeInitialization({
@@ -977,7 +981,11 @@ export async function configureRoutes(
         useCase: conversationControlUseCase,
         appInstanceId: hostContext.conversationControl.appInstanceId,
         appVersion: dependencies.backendBootstrap.applicationVersion,
-        auditAvailable,
+        auditControl,
+        // 真正运行的源码由 Backend bundle 所在 checkout 决定；测试的数据根可独立隔离。
+        sourceCheckout: dependencies.backendBootstrap.packaged ? null : readSourceCheckoutIdentity(
+          path.resolve(realpathSync(dependencies.backendBootstrap.mainBundleDirectory), '../..'),
+        ),
         diagnostics: {
           error: (message, context) => logger.error(message, context),
         },

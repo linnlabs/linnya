@@ -10,6 +10,7 @@ import {
 } from '@app/schemas/commands';
 import {
   createLinnyaAuditRuntime,
+  readAuditLevelSnapshot,
   flushLinnyaAudit,
   projectCommandExecutionAuditEnvelope,
   recordLlmResponseSummary,
@@ -46,11 +47,12 @@ async function fixture() {
       startedAt: 1,
       updatedAt: 1,
       parentRunId: parentOf(runId),
+      metadata: { auditLevel: 'response' },
     });
   }
   const store = new LinnyaEventStoreAdapter(db, new SQLiteEventStore(db));
   const sink = audit.createEventStoreAudit({ eventStore: store });
-  const runtime = createLinnyaAuditRuntime({ level: 'response', sink });
+  const runtime = createLinnyaAuditRuntime({ readRunLevel: async runId => readAuditLevelSnapshot((await registryStore.load(RunIdSchema.parse(runId)))?.metadata?.auditLevel), level: 'response', sink });
   const supervisor = new runSupervisor.DefaultRunSupervisor({ registryStore });
   const commandAudit = createEventStoreCommandExecutionAuditPort({
     auditPort: runtime.auditPort,
@@ -103,7 +105,7 @@ function recordResponse(attemptId: string) {
 
 afterEach(() => {
   // 生产只有一个 runtime，测试结束关闭全局配置，避免影响其他用例。
-  createLinnyaAuditRuntime({ level: 'off', sink: { emit() {} } });
+  createLinnyaAuditRuntime({ readRunLevel: async () => 'off', level: 'off', sink: { emit() {} } });
 });
 
 describe('child command / response audit through real SQLite', () => {
@@ -119,6 +121,7 @@ describe('child command / response audit through real SQLite', () => {
           })
         )
       );
+      f.runtime.setLevel('off');
       const child = await f.registryStore.load(childId);
       if (!child) throw new Error('missing fixture child');
       await f.registryStore.save({ ...child, status: 'cancelled', updatedAt: 3 });

@@ -1,3 +1,5 @@
+import { readSourceCheckoutIdentity } from 'src/shared/runtime-paths/functions/readSourceCheckoutIdentity';
+import type { AuditLevel, LinnyaAuditRuntime } from 'src/domains/audit';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import type { Server } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -25,7 +27,7 @@ import { runCliProcess } from '../../../apps/linnya-cli/src/__integration-tests_
 
 /**
  * `linnya audit` 在 App 里是否可用，取决于一条完整链路：
- * Host 环境 → App Server 环境白名单 → Audit 等级解析 → 运行时作用域 `auditEnabled` → 控制桥握手。
+ * Host 环境 → App Server 环境白名单 → Audit 等级解析 → 运行时审计控制端口 → 控制桥握手。
  * 这里用真实实现串起整条链路（只替换业务 use case），防止任何一环悄悄改变“握手声明了什么”。
  */
 
@@ -38,7 +40,8 @@ interface AuditScenario {
   /** Electron Main 或 CLI Runtime 交给 App Server 启动器的环境。 */
   readonly environment: Readonly<Record<string, string>>;
   readonly packaged: boolean;
-  readonly auditEnabled: boolean;
+  readonly level: AuditLevel;
+  readonly available: boolean;
 }
 
 const SCENARIOS: readonly AuditScenario[] = [
@@ -46,38 +49,38 @@ const SCENARIOS: readonly AuditScenario[] = [
     name: '开发 App 默认不启用审计',
     environment: DEVELOPMENT_APP,
     packaged: false,
-    auditEnabled: false,
+    level: 'off', available: true,
   },
   ...(['behavior', 'response', 'stream'] as const).map(level => ({
     name: `开发 App 设置 LINNYA_AUDIT_LEVEL=${level}`,
     environment: { ...DEVELOPMENT_APP, LINNYA_AUDIT_LEVEL: level },
     packaged: false,
-    auditEnabled: true,
+    level, available: true,
   })),
   {
     name: '开发 App 的未知审计等级回到默认关闭',
     environment: { ...DEVELOPMENT_APP, LINNYA_AUDIT_LEVEL: 'verbose' },
     packaged: false,
-    auditEnabled: false,
+    level: 'off', available: true,
   },
   {
     name: '没有开发身份时 LINNYA_AUDIT_LEVEL 不生效',
     environment: { LINNYA_AUDIT_LEVEL: 'behavior' },
     packaged: false,
-    auditEnabled: false,
+    level: 'off', available: true,
   },
   {
     name: '发行包忽略开发环境与 LINNYA_AUDIT_LEVEL',
     environment: { ...DEVELOPMENT_APP, LINNYA_AUDIT_LEVEL: 'stream' },
     packaged: true,
-    auditEnabled: false,
+    level: 'off', available: false,
   },
 ];
 
 interface StartedHost {
   readonly baseUrl: string;
   readonly connectionFile: string;
-  readonly auditEnabled: boolean;
+  readonly audit: LinnyaAuditRuntime;
   readonly execute: ReturnType<typeof vi.fn>;
 }
 
@@ -132,8 +135,8 @@ async function startHost(scenario: AuditScenario): Promise<StartedHost> {
       useCase: { execute },
       appInstanceId: 'audit-capability-test',
       appVersion: '0.0.38',
-      // 与 routes/index.ts 相同：握手读取运行时作用域的真实审计开关。
-      auditAvailable: runtime.auditEnabled,
+      auditControl: runtime.audit,
+      sourceCheckout: scenario.packaged ? null : readSourceCheckoutIdentity(process.cwd()),
       diagnostics: { error: vi.fn() },
     }),
   );
@@ -161,7 +164,7 @@ async function startHost(scenario: AuditScenario): Promise<StartedHost> {
   return {
     baseUrl: `http://127.0.0.1:${address.port}${CONVERSATION_CONTROL_BRIDGE_PATH}`,
     connectionFile,
-    auditEnabled: runtime.auditEnabled,
+    audit: runtime.audit,
     execute,
   };
 }
@@ -184,50 +187,34 @@ describe('conversation-control 握手的 audit 能力', () => {
   it.each(SCENARIOS)('$name', async scenario => {
     const host = await startHost(scenario);
 
-    expect(host.auditEnabled).toBe(scenario.auditEnabled);
-    // 门禁只摘掉 audit，其余命令的声明不受审计开关影响。
+    expect(host.audit.level).toBe(scenario.level);
+    expect(host.audit.available).toBe(scenario.available);
+    // off 仍可读历史、切档；只有生产身份摘掉两项能力。
     expect(await readHandshakeCapabilities(host)).toEqual(
       LINNYA_CONVERSATION_CONTROL_CAPABILITIES.filter(
-        capability => scenario.auditEnabled || capability !== 'audit',
+        capability => scenario.available || !['audit', 'audit_level'].includes(capability),
       ),
     );
   });
 
-  it('真实 CLI：未启用审计时 doctor 说明原因、audit 不到达 Host；启用后命令可以到达 Host', async () => {
-    const disabled = await startHost(SCENARIOS[0]);
-    const doctorDisabled = await runCliProcess(['doctor'], disabled.connectionFile);
-    expect(doctorDisabled.exitCode, doctorDisabled.stderr).toBe(0);
-    expect(JSON.parse(doctorDisabled.stdout)).toMatchObject({
-      ok: true,
-      capabilities: expect.not.arrayContaining(['audit']),
-      unavailable_capabilities: [
-        { capability: 'audit', reason: expect.stringContaining('LINNYA_AUDIT_LEVEL') },
-      ],
-    });
-    const rejected = await runCliProcess(['audit', 'conversation-1'], disabled.connectionFile);
-    expect(rejected.exitCode).toBe(7);
-    expect(rejected.stdout).toBe('');
-    expect(JSON.parse(rejected.stderr)).toMatchObject({
-      ok: false,
-      command: 'audit',
-      error: { code: 'capability_unavailable', message: expect.stringContaining('LINNYA_AUDIT_LEVEL') },
-    });
-    expect(disabled.execute).not.toHaveBeenCalled();
-
-    const enabled = await startHost(SCENARIOS[1]);
-    const doctorEnabled = await runCliProcess(['doctor'], enabled.connectionFile);
-    expect(doctorEnabled.exitCode, doctorEnabled.stderr).toBe(0);
-    expect(JSON.parse(doctorEnabled.stdout)).toMatchObject({
-      capabilities: expect.arrayContaining(['audit']),
+  it('真实 CLI：off 仍可读历史，切档后的 doctor 和错误携带当前实例信息', async () => {
+    const host = await startHost(SCENARIOS[0]);
+    const doctor = await runCliProcess(['doctor'], host.connectionFile);
+    expect(doctor.exitCode, doctor.stderr).toBe(0);
+    expect(JSON.parse(doctor.stdout)).toMatchObject({
+      capabilities: expect.arrayContaining(['audit', 'audit_level']),
       unavailable_capabilities: [],
+      app: { source_root: process.cwd(), audit_level: 'off' },
     });
-    const reached = await runCliProcess(
-      ['audit', 'conversation-1', '--run', 'run-1'],
-      enabled.connectionFile,
-    );
-    // run_not_found 来自上面的替身 use case，证明 CLI 没有在客户端拦截这条命令。
+    host.audit.setLevel('response');
+    const changed = await runCliProcess(['doctor'], host.connectionFile);
+    expect(JSON.parse(changed.stdout)).toMatchObject({ app: { audit_level: 'response' } });
+    const reached = await runCliProcess(['audit', 'conversation-1', '--run', 'run-1'], host.connectionFile);
     expect(reached.exitCode).toBe(6);
-    expect(JSON.parse(reached.stderr)).toMatchObject({ error: { code: 'run_not_found' } });
-    expect(enabled.execute).toHaveBeenCalledOnce();
+    expect(JSON.parse(reached.stderr)).toMatchObject({
+      error: { code: 'run_not_found' },
+      connection: { state: 'connected', instance: { source_root: process.cwd(), audit_level: 'response' } },
+    });
+    expect(host.execute).toHaveBeenCalledOnce();
   }, 30_000);
 });

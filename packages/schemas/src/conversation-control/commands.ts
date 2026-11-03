@@ -1,6 +1,7 @@
 import { ConversationControlSkillsRequestSchema } from './skills';
 import { ConversationControlProjectsRequestSchema } from './projects';
 import { z } from 'zod';
+import { ConversationControlAuditLevelRequestSchema } from './auditControl';
 import { ConversationControlCommandApprovalsRequestSchema } from './commandApprovals';
 import { JsonValueSchema } from '../json-value';
 import { ConversationSelectedAgentIdSchema } from '../conversation/selected-agent';
@@ -224,6 +225,7 @@ export const ConversationControlCommandRequestSchema = z.union([
   ConversationControlStopRequestSchema,
   ConversationControlResultRequestSchema,
   ConversationControlAuditRequestSchema,
+  ConversationControlAuditLevelRequestSchema,
   ConversationControlToolsRequestSchema,
   ConversationControlCommandApprovalsRequestSchema,
 ]);

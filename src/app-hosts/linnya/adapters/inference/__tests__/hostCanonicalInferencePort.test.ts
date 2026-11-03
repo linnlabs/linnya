@@ -119,7 +119,7 @@ describe('Host canonical inference orchestration', () => {
   it('真实 Host attempt 写入安全终态和 Provider usage，不保存输入正文', async () => {
     const outboundDiagnostics = createInMemoryProviderOutboundDiagnostics();
     const auditEnvelopes: AuditEnvelope[] = [];
-    createLinnyaAuditRuntime({
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'response',
       level: 'response',
       sink: {
         emit: envelope => {
@@ -223,7 +223,7 @@ describe('Host canonical inference orchestration', () => {
 
   it('stream 等级记录每个 canonical 片段并在入库前移除 raw Provider 数据', async () => {
     const auditEnvelopes: AuditEnvelope[] = [];
-    createLinnyaAuditRuntime({
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'stream',
       level: 'stream',
       sink: {
         emit: envelope => {
@@ -281,7 +281,7 @@ describe('Host canonical inference orchestration', () => {
 
   it('response 等级把 Provider failure 投影为稳定分类而不是错误正文', async () => {
     const auditEnvelopes: AuditEnvelope[] = [];
-    createLinnyaAuditRuntime({
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'response',
       level: 'response',
       sink: {
         emit: envelope => {

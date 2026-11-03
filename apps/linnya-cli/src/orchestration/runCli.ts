@@ -1,3 +1,5 @@
+import type { ConversationControlConnectionContext } from '@app/schemas';
+import { resolveCliSourceCheckout } from '../functions/resolveCliSourceCheckout';
 import { readFile } from 'node:fs/promises';
 import {
   ConversationControlCapabilitySchema,
@@ -64,6 +66,7 @@ export function linnyaCliUsage(): string {
     '  linnya stop <conversation-id> [--run ID] [--reason TEXT] [--timeout MS]',
     '  linnya result <conversation-id> [--run ID]',
     '  linnya audit <conversation-id> [--run ID]',
+    '  linnya audit level [off|behavior|response|stream]',
     '  linnya tools list',
     '  linnya tools web <on|off|status>',
     '  linnya tools describe <tool-name>',
@@ -87,8 +90,8 @@ export function linnyaCliUsage(): string {
     '  Shell approval is separate from respond: use approvals to inspect exact run/subtree requests, then approval-reply with the pending agent_run_id.',
     '  status --watch returns when command_approvals contains awaiting_reply; it never auto-approves commands.',
     '  A watch timeout only ends observation; it does not stop the App-owned run.',
-    '  audit needs an App with Agent Run Audit enabled: development only, LINNYA_AUDIT_LEVEL=behavior|response|stream at App start; packaged Desktop builds keep it off.',
-    '  doctor reports capabilities the connected App does not declare (such as audit) under unavailable_capabilities.',
+    '  audit level changes the connected source Host default for new runs; restart resets it to startup configuration. Packaged builds never provide audit.',
+    '  Source CLI connects only to its own checkout; doctor reports its directory, branch and current default audit level.',
     '',
   ].join('\n');
 }
@@ -106,7 +109,10 @@ export async function runCli(
     writeError: text => process.stderr.write(text),
   };
 
+  let connectionContext: ConversationControlConnectionContext = { source_root: null, branch: null, state: 'not_connected', instance: null };
   try {
+    const sourceCheckout = resolveCliSourceCheckout();
+    connectionContext = { ...connectionContext, source_root: sourceCheckout?.root ?? null, branch: sourceCheckout?.branch ?? null };
     let invocation;
     try {
       invocation = parseCliInvocation(argv);
@@ -164,7 +170,8 @@ export async function runCli(
       return LINNYA_CLI_EXIT.success;
     }
 
-    const client = await (options.connection ?? createConversationControlConnection()).connect();
+    const client = await (options.connection ?? createConversationControlConnection({ sourceCheckout })).connect();
+    connectionContext = { ...connectionContext, state: 'connected', instance: client.handshake.instance };
     if (invocation.kind === 'skill-write') {
       const content = new TextDecoder('utf-8', { fatal: true }).decode(await readFile(invocation.file));
       let expected: string | null = null;
@@ -187,7 +194,7 @@ export async function runCli(
         schema_version: 1, ok: true, command: 'doctor',
         cli: { version: LINNYA_CLI_VERSION, build_id: LINNYA_CLI_BUILD_ID,
           mode: LINNYA_CLI_BUILD_ID === 'source' ? 'source' : 'bundle' },
-        app: { version: client.handshake.app_version, instance_id: client.handshake.app_instance_id },
+        app: { version: client.handshake.app_version, instance_id: client.handshake.app_instance_id, ...client.handshake.instance },
         protocol_version: client.handshake.protocol_version,
         capabilities: client.handshake.capabilities,
         // 握手只列出可用能力；缺席的能力在这里给出原因，避免只能靠对照 help 发现 audit 不可用。
@@ -255,7 +262,7 @@ export async function runCli(
       && response.status === 'stale') return LINNYA_CLI_EXIT.conflict;
     return LINNYA_CLI_EXIT.success;
   } catch (error: unknown) {
-    const projected = projectCliError(error);
+    const projected = projectCliError(error, connectionContext);
     io.writeError(serialize(projected, false));
     return exitCodeForError(projected.error.code);
   }

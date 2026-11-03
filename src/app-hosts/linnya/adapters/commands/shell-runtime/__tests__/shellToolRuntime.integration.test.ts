@@ -687,7 +687,7 @@ describe('ShellToolRuntime production orchestration', () => {
 
   it('统一开发审计 sink 不可写时，正常授权与命令执行不受影响', async () => {
     let writeAttempts = 0;
-    const auditRuntime = createLinnyaAuditRuntime({
+    const auditRuntime = createLinnyaAuditRuntime({ readRunLevel: async () => 'behavior',
       level: 'behavior',
       sink: { async emit() { writeAttempts += 1; throw new Error('disk unavailable'); } },
     });

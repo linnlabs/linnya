@@ -10,9 +10,9 @@ import { cleanupCliBridges, createScriptedBridge, runCliProcess } from './__test
 
 afterEach(cleanupCliBridges);
 
-/** 默认关闭 Agent Run Audit 的 App（开发默认与发行包）不会在握手里声明 audit。 */
+/** 不提供审计能力的 Host；源码 Host 的 off 不属于这种情况。 */
 const CAPABILITIES_WITHOUT_AUDIT = ConversationControlCapabilitySchema.options
-  .filter(capability => capability !== 'audit');
+  .filter(capability => !['audit', 'audit_level'].includes(capability));
 
 describe('linnya CLI real process -> scripted bridge', () => {
   it.each([
@@ -54,7 +54,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
     expect(bridge.receivedCommands).toEqual([]);
   });
 
-  it('App 握手没有 audit 时，audit 在发出命令前以 capability_unavailable 拒绝并说明开启方式', async () => {
+  it('App 握手没有 audit 时，audit 在发出命令前以 capability_unavailable 拒绝并说明生产限制', async () => {
     const bridge = await createScriptedBridge(
       () => { throw new Error('audit must be rejected before it reaches the App'); },
       CAPABILITIES_WITHOUT_AUDIT,
@@ -68,7 +68,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
       error: {
         code: 'capability_unavailable',
         retryable: false,
-        message: expect.stringMatching(/LINNYA_AUDIT_LEVEL=behavior\|response\|stream.*LINNYA_CLI_CONNECTION_FILE/),
+        message: '生产环境不提供审计',
       },
     });
     expect(bridge.receivedCommands).toEqual([]);
@@ -81,7 +81,8 @@ describe('linnya CLI real process -> scripted bridge', () => {
     expect(JSON.parse(degraded.stdout)).toMatchObject({
       ok: true,
       unavailable_capabilities: [
-        { capability: 'audit', reason: expect.stringContaining('LINNYA_AUDIT_LEVEL') },
+        { capability: 'audit', reason: '生产环境不提供审计' },
+        { capability: 'audit_level', reason: '生产环境不提供审计' },
       ],
     });
 

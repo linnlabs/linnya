@@ -16,7 +16,7 @@ void startNormalAppMode().catch(handleNormalAppBootstrapFailure);
 async function startNormalAppMode() {
   require('v8-compile-cache');
   const { app } = require('electron');
-  const { bootstrapDevEnv } = require('./bootstrap-env.ts');
+  const { bootstrapDevEnv } = require('../infra/adapters/development-environment/functions/bootstrapDevEnv.ts');
   bootstrapDevEnv({
     isPackaged: app.isPackaged,
     developmentRoot: process.cwd(),

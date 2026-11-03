@@ -1,3 +1,4 @@
+import type { LinnyaAuditRuntime } from 'src/domains/audit';
 import type { PromptKey } from 'src/app-hosts/linnya/agent-registry/prompt.types';
 import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
 import { ExecutionIdSchema, type RunId } from '@linnlabs/linnkit/contracts';
@@ -11,6 +12,7 @@ import type { CheckpointWriter } from '../persistence/execution-commit';
 type RunHandle = runSupervisor.RunHandle<AgentInvocationRequest>;
 
 export interface LinnyaRegisteredChildRunLifecycleDependencies {
+  audit: Pick<LinnyaAuditRuntime, 'level' | 'levelForRun'>;
   supervisor: runSupervisor.RunSupervisor<AgentInvocationRequest>;
   eventStore: graph.EventStore;
   nextEventStoreId: () => string;
@@ -157,6 +159,10 @@ export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLife
               source: 'registered-child-run',
               promptKey: params.request.promptKey,
               ...(params.metadata ?? {}),
+              // 子任务属于父 run 的同一次诊断，不能受期间发生的实例切档影响。
+              auditLevel: params.parentRunId
+                ? await this.dependencies.audit.levelForRun(params.parentRunId)
+                : this.dependencies.audit.level,
             },
             ...(params.descriptor
               ? {

@@ -43,7 +43,7 @@ Root，表中的根目录随宿主解析结果变化。Audit 不拥有路径解�
 
 ## 审计等级和环境策略
 
-统一开关是 `LINNYA_AUDIT_LEVEL`，可选值如下：
+启动默认档位由 `LINNYA_AUDIT_LEVEL` 决定，运行中通过 CLI 切换，可选值如下：
 
 | 等级       | 记录内容                                                                 | 适用场景                   |
 | ---------- | ------------------------------------------------------------------------ | -------------------------- |
@@ -52,15 +52,14 @@ Root，表中的根目录随宿主解析结果变化。Audit 不拥有路径解�
 | `response` | `behavior` 加上游响应摘要、usage、结束原因和错误分类，不保存完整正文     | 开发显式开启               |
 | `stream`   | `response` 加有界 canonical 流式 delta/chunk、上下文和协议诊断           | 仅开发诊断会话             |
 
-开发进程默认 `off`；必须通过 `.env.local` 或开发启动环境显式设置
+开发进程默认 `off`；可通过 CLI 临时切档，或通过 `.env.local` / 开发启动环境设置启动默认值
 `LINNYA_AUDIT_LEVEL=behavior|response|stream`。生产 Host 根据已验证的 packaged 运行身份固定为
 `off`，忽略审计环境变量，不能通过 `LINNYA_DEV_MODE`、CLI 或 HTTP 控制面绕过。未知值和空值回到
 当前环境的安全默认值。旧的 `LINNYA_LLM_RUN_AUDIT` 及其容量环境变量不再是配置入口。
 
-等级在 App Server 装配时只读取一次，修改后须重启对应 App。等级为 `off`（开发默认值，以及全部发行包）时，
-Conversation Control 握手不声明 `audit`，use case 对绕过 CLI 的调用同样返回 `capability_unavailable`；
-`linnya audit` 因此在发出请求前被拒绝，并提示开启方式。握手与 use case 共用运行时作用域的 `auditEnabled`，
-CLI 的行为与连接目标见 [Conversation CLI](../../../apps/linnya-cli/README.md)。
+源码 Host 的实例默认档位由启动配置初始化，`linnya audit level [off|behavior|response|stream]` 可在运行中修改；省略档位只查询。实例默认值不持久化，重启重新读取配置。源码 `off` 仍允许查询档位及已有审计，安装版在 Host 控制入口拒绝并固定关闭。
+
+新 root run 接纳时把档位冻结到 RunRegistry 的 `metadata.auditLevel`；child 继承父 run，暂停、HITL、重启恢复和延迟命令终态沿用该快照。没有快照的历史 run 不补录。该字段是已有 run 的最小诊断策略事实，不是持久化的实例开关，也不新增数据库表或 recorder。所有审计 producer 按 run 身份使用同一 Audit Runtime，不能逐条读取当前默认等级。
 
 等级只决定记录哪些事实，不改变入口。所有等级都经过同一个 `AuditPort`，所有事件都使用
 `AuditEnvelope`，并且只能追加，不能更新或删除单条审计信封。正式 Audit 只有一个数据库存储
@@ -85,7 +84,7 @@ continuation、raw usage 等瞬态字段；达到片段或字节上限后停止�
 
 | 现象                             | owner                     | 是否是审计                                                   |
 | -------------------------------- | ------------------------- | ------------------------------------------------------------ |
-| `linnya audit` CLI               | `execution-audit-export`  | 否。它只读取统一审计、RunRegistry 和 Telemetry，生成安全摘要 |
+| `linnya audit <会话ID>` CLI               | `execution-audit-export`  | 否。它只读取统一审计、RunRegistry 和 Telemetry，生成安全摘要 |
 | Backend 日志                     | logging                   | 否。用于诊断，不是事实源                                     |
 | `engine_telemetry`               | Telemetry                 | 否。用于统计和性能分析，有自己的保留周期                     |
 | checkpoint                       | runtime / recovery        | 否。用于恢复中断执行                                         |
@@ -94,8 +93,7 @@ continuation、raw usage 等瞬态字段；达到片段或字节上限后停止�
 | Provider outbound latest attempt | provider diagnostics      | 否。当前是进程内最新快照，不落库，不得被称为第二套审计       |
 | `audit_envelope`                 | Audit Domain + EventStore | 是。唯一 durable audit 事实源                                |
 
-因此，CLI 的 `audit`
-命令不能写文件、写数据库或启动另一种 recorder。未来如果需要新的审计事实，应增加新的
+因此，CLI 的审计读取命令不能写文件、写数据库或启动另一种 recorder；`audit level` 只调用当前 Host 的内存控制端口。未来如果需要新的审计事实，应增加新的
 `action` 和安全投影，继续调用当前 `AuditPort`。
 
 暂停/继续的入口、提交边界、资源保留与未知副作用限制统一见
@@ -105,18 +103,9 @@ continuation、raw usage 等瞬态字段；达到片段或字节上限后停止�
 
 ## 如何使用
 
-应用组装只在主进程完成：
-
-```ts
-const auditRuntime = createLinnyaAuditRuntime({
-  sink: audit.createEventStoreAudit({ eventStore }),
-});
-
-const runtimeScope = {
-  auditPort: auditRuntime.auditPort,
-  // supervisor 等其他 runtime 依赖也复用这个 port
-};
-```
+App Server 在 [Agent Runtime 装配](../../electron-main/services/agentRuntimeSingletons.ts) 中创建唯一 Audit Runtime，
+注入 EventStore sink、可信 Host 身份和读取 run 冻结档位的窄端口。Audit domain 不依赖 RunRegistry 的具体存储。
+Supervisor、Command 和 LLM evidence 共用这个 AuditPort；切档只修改实例默认值，不重建 sink 或修改进程环境。
 
 业务代码不允许直接构造 EventStore audit sink，不允许直接写
 `workspace.sqlite`，也不允许从 `features/llm-evidence`
@@ -125,7 +114,7 @@ const runtimeScope = {
 1. Runtime 或 Command 通过注入的 `AuditPort` 发出 `AuditEnvelope`。
 2. LLM response/stream evidence 通过 `src/domains/audit` 的上下文函数记录；它只在对应
    等级工作，存储路由由同一个 Audit Runtime 决定并进入 EventStore。
-3. CLI 和查询 use case 只读取 EventStore / RunRegistry /
+3. CLI 审计读取用例只访问 EventStore / RunRegistry /
    Telemetry 的公开查询能力。
 
 LLM evidence 使用 AsyncLocalStorage 关联 conversation、run、trace、subrun 和父工具调用。
@@ -133,7 +122,7 @@ LLM evidence 使用 AsyncLocalStorage 关联 conversation、run、trace、subrun
 单片段超过 512 KiB、单次 run 超过 256 个 stream 片段、64 个 response attempt 摘要、16 个工具
 协议错误或 16 个 system reminder 片段时停止继续记录；单次 run 的 response 摘要总大小上限为
 1 MiB，stream evidence 总大小上限为 16 MiB。超过上限只记录容量丢弃诊断，不阻断 Agent。
-审计写入 / flush 失败由唯一 Audit Runtime 记录安全诊断，不覆盖正常业务结果，也不重试或另建 sink。`off` 不调用 sink（含 flush）。事件投影 / 合同校验错误仍属于 producer 编程错误，不能被当作存储不可用吞掉。生产执行和恢复所需的授权、提交与对账记录不属于此可关闭的诊断模块。
+审计写入 / flush 失败由唯一 Audit Runtime 记录安全诊断，不覆盖正常业务结果，也不重试或另建 sink。冻结为 `off` 的 run 不写 sink；实例切到 `off` 后，已有非 off run 的记录和待写入队列仍正常收尾。事件投影 / 合同校验错误仍属于 producer 编程错误，不能被当作存储不可用吞掉。生产执行和恢复所需的授权、提交与对账记录不属于此可关闭的诊断模块。
 
 ## 新增审计事件的规范
 
@@ -158,7 +147,7 @@ LLM evidence 使用 AsyncLocalStorage 关联 conversation、run、trace、subrun
 cleanup 会一起删除该对话的审计事件；从历史截断时，属于被截断 run 的事件也按同一事实源规则处理。内存 sink 只用于测试，不需要清理磁盘。
 
 审计不再创建 `<Documents>/LLMRunAudit/` 文件、`.in_progress` checkpoint 文件或 JSONL 正式审计副本。
-开发阶段和生产阶段的区别由 Host 运行身份与 `LINNYA_AUDIT_LEVEL` 控制：生产固定 `off`，开发排障
+开发阶段和生产阶段的区别由 Host 运行身份和每个 run 的冻结档位控制：生产固定 `off`，开发排障
 才临时使用 `response` 或 `stream`。stream evidence 的容量上限在写入 EventStore 前执行；统一
 conversation startup maintenance 会按固定 7 天窗口清理过期的 `audit_envelope`。
 
@@ -168,10 +157,10 @@ conversation startup maintenance 会按固定 7 天窗口清理过期的 `audit_
 
 当前的清理操作按下面的规则执行：
 
-- 开发排障结束后把 `LINNYA_AUDIT_LEVEL` 恢复为 `off`；stream evidence 已写入 `workspace.sqlite`，并由启动维护按 7 天窗口清理。
+- 开发排障结束后使用 `audit level off`；若设置过启动默认值，也将 `.env.local` 中的 `LINNYA_AUDIT_LEVEL` 恢复为 `off`；stream evidence 已写入 `workspace.sqlite`，并由启动维护按 7 天窗口清理。
 - 不要手工删除 `workspace.sqlite` 释放审计空间；需要立即释放空间时使用后续提供的 Audit maintenance/query 合同。
 - 生产环境固定为 `off`，不会新建任何 Agent Run Audit 事实；普通 Backend/terminal log 仍按 logging owner 的策略运行。
-- 当前 CLI 的 `audit` 是只读摘要，没有“清空审计”命令。不要直接删除 `workspace.sqlite`，也不要通过 CLI 另造清理路径。
+- 当前 CLI 的 `audit <会话ID>` 是只读摘要，没有“清空审计”命令。不要直接删除 `workspace.sqlite`，也不要通过 CLI 另造清理路径。
 
 ## 开发和验证
 
@@ -181,7 +170,8 @@ conversation startup maintenance 会按固定 7 天窗口清理过期的 `audit_
 - `behavior / response / stream` 对 action 的过滤；
 - LLM stream evidence 只经统一数据库 sink 写入，并在 flush 后可查询；
 - 图片 transient、超大证据和协议错误上限按规范丢弃；
-- CLI 仍是只读投影；
+- CLI 读取仍是只读投影，off 仍可读历史和切档；生产直接调用也拒绝；
+- 运行中切档、父子继承、暂停/重启继续和延迟 Shell 终态均保持接纳时的档位；
 - 对话删除或历史截断不会留下脱离 conversation/run 的审计事实。
 
 审计模块的坏味道包括：出现新的 `audit*.json` 目录、新的审计环境变量、直接调用

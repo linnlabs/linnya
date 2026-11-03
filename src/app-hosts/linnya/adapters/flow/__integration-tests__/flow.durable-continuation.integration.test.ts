@@ -654,7 +654,7 @@ describe('durable root Flow continuation, production Audit off', () => {
         throwAfterEvents: new Error('network interrupted'),
       },
     ]);
-    expect(first.runtime.auditEnabled).toBe(false);
+    expect(first.runtime.audit.level).toBe('off');
     await first.flow.next(request, () => {});
     const original = await paused(first);
     const descriptor = await first.runtime.runDescriptors?.load(original.run_id);

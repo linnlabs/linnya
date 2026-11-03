@@ -394,10 +394,10 @@ export async function runProductionAgentProcessScenario(input: {
     ));
     if (app.isPackaged) {
       // 发行包关闭开发诊断；命令恢复依赖正式执行事务，不依赖诊断 audit_envelope。
-      assert.equal(agentRuntime.auditEnabled, false);
+      assert.equal(agentRuntime.audit.level, 'off');
       assert.deepEqual(commandAuditActions, []);
     } else {
-      assert.equal(agentRuntime.auditEnabled, true, 'development fixture must enable behavior audit');
+      assert.equal(agentRuntime.audit.level, 'behavior', 'development fixture must enable behavior audit');
       assert(commandAuditActions.includes('command.process.action'));
       assert.equal(
         commandAuditActions.filter(action => action === 'command.execution.terminal').length,

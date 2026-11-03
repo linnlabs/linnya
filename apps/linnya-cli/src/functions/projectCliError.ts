@@ -2,6 +2,7 @@ import {
   CONVERSATION_CONTROL_SCHEMA_VERSION,
   ConversationControlErrorResponseSchema,
   type ConversationControlErrorCode,
+  type ConversationControlConnectionContext,
   type ConversationControlErrorResponse,
 } from '@app/schemas';
 import {
@@ -9,7 +10,7 @@ import {
   LinnyaCliError,
 } from '../definitions/cli';
 
-export function projectCliError(error: unknown): ConversationControlErrorResponse {
+export function projectCliError(error: unknown, connection: ConversationControlConnectionContext): ConversationControlErrorResponse {
   const failure = error instanceof LinnyaCliError
     ? error
     : new LinnyaCliError(
@@ -20,6 +21,7 @@ export function projectCliError(error: unknown): ConversationControlErrorRespons
     schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
     ok: false,
     command: failure.command,
+    connection: failure.connection ?? connection,
     error: {
       code: failure.code,
       message: failure.message,
@@ -33,6 +35,7 @@ export function exitCodeForError(code: ConversationControlErrorCode): number {
     case 'invalid_request': return LINNYA_CLI_EXIT.usage;
     case 'app_not_running':
     case 'stale_connection':
+    case 'source_mismatch':
     case 'transport_failure':
       return LINNYA_CLI_EXIT.connection;
     case 'protocol_incompatible': return LINNYA_CLI_EXIT.protocol;

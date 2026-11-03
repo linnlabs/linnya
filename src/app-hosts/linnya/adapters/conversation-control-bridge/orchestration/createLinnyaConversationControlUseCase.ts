@@ -1,3 +1,4 @@
+import type { AuditControlPort } from 'src/domains/audit';
 import type { ProjectLifecyclePort } from 'src/domains/projects';
 import { skillManagement } from 'src/features/skills';
 import type { CommandApprovalControlPort } from 'src/domains/commands';
@@ -51,7 +52,7 @@ interface LinnyaConversationControlUseCaseOwners {
   readonly providerAccounts: Pick<ProviderAccountRegistry, 'hasCredential'>;
   readonly telemetry: ExecutionAuditTelemetryPort;
   readonly events: ExecutionAuditEventPort;
-  readonly auditAvailable?: boolean;
+  readonly auditControl: AuditControlPort;
   readonly tools: Pick<ToolRuntimePort, 'getToolSchemas'>;
   readonly history: Pick<
     HistoryService,
@@ -209,7 +210,7 @@ export function createLinnyaConversationControlUseCase(
       },
     },
     audit,
-    auditAvailable: owners.auditAvailable,
+    auditControl: owners.auditControl,
     createConversationId: generateConversationId,
     now: Date.now,
   });

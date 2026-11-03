@@ -11,15 +11,17 @@ POST /api/v1/conversation-control/handshake
 POST /api/v1/conversation-control/commands
 ```
 
-`handshake` 返回协议版本、App 实例 ID、实际能力和请求/watch 上限；`commands` 使用共享 strict schema 接纳与返回命令。非法 JSON、超限 body、合同错误和 use-case 错误都投影为稳定 JSON，不落到 Express HTML 错误页。
+`handshake` 返回协议版本、App 实例 ID、实际能力、源码根/分支/当前审计档位和请求/watch 上限；`commands` 使用共享 strict schema 接纳与返回命令。非法 JSON、超限 body、合同错误和 use-case 错误都投影为稳定 JSON，不落到 Express HTML 错误页。
 
-当前握手声明 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / tools / command_approvals`。
+当前握手声明 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / audit_level / tools / command_approvals`。
 
-`audit` 只在 Host 的 Agent Run Audit 等级不是 `off` 时声明（开发默认值与发行包都是 `off`，见 [Audit](../../../../domains/audit/README.md)）；router 与 use case 的 `capability_unavailable` 门禁读取同一个运行时事实，客户端不能靠握手之外的路径假定它存在。
+源码 Host 始终公告 `audit / audit_level`，`off` 只关闭新 run 的记录。生产 Host 不公告这两项能力，
+use case 也会拒绝直接请求，提示“生产环境不提供审计”（见 [Audit](../../../../domains/audit/README.md)）。
+router 和 use case 接收同一审计控制端口，每次握手读取实时默认档位，不保存启动时布尔值。
 
 能力公告允许未来新增合法标识符，消费者忽略不认识的能力；命令 union 和响应 schema 仍然封闭且严格。改变既有协议语义必须升级 protocol，不能借能力扩展绕过合同校验。
 
-当前 wire protocol 为 7：`projects` 请求与响应必须带 `action`，新增带显式确认的空项目删除；项目详情、创建和修改形态保持不变。
+当前 wire protocol 为 8：握手必填实例身份，新增 `audit_level` 控制命令和 `source_mismatch` 错误；CLI 必须在业务命令前核对真实源码根。`projects` 的带 `action` 合同与空项目删除沿用协议 7。
 工具命令自协议 5 起统一为 `tools`，临时 Web 访问动作和 allowlist 保持不变。
 已有 audit 的 `llm_responses`、status/watch 的 `command_approvals` 与精确查询/回复合同保持不变。
 连接描述与 handshake 一致校验版本，旧 CLI 须明确升级；URL 和连接文件名中的 v1 仍是稳定发现地址。
@@ -38,10 +40,11 @@ POST /api/v1/conversation-control/commands
 
 ## 连接描述生命周期
 
-默认文件为 `~/.linnya/runtime/conversation-control-v1.json`，可用 `LINNYA_CLI_CONNECTION_FILE` 为测试或多实例场景覆盖。
-覆盖文件须位于专用运行目录。连接描述按当前用户权限保存，不提供专门的 Agent 读取隔离。
-源码开发 Desktop 会在未显式覆盖时选择当前 profile 下的 `runtime/conversation-control-v1.json`，
-防止多个 worktree 覆盖全局连接。外部 CLI 使用同一环境变量选择目标实例，详见[开发配置](../../../../../docs/development/env-local.md)。
+源码 Desktop 与 CLI Runtime 默认文件为当前 checkout 的 `_dev_electron/runtime/conversation-control-v1.json`；
+安装版保留用户级路径。`LINNYA_CLI_CONNECTION_FILE` 可覆盖发现路径，但不能绕过源码根校验。
+Host 从实际代码 bundle 根解析真实路径与分支，不把 Workspace 数据根、profile 或启动 cwd 当成代码身份。
+源码 CLI 根据自身入口找 checkout，没有本地连接时直接失败，不回退用户级连接。分支仅作诊断。
+覆盖文件须位于专用运行目录，连接描述按当前用户权限保存，不提供 Agent 读取隔离。见[开发配置](../../../../../docs/development/env-local.md)。
 
 descriptor owner 在 API Server 已绑定真实端口且 Conversation 路由装配成功后才原子发布文件。目录和文件权限分别为 `0700`、`0600`。撤销时只删除仍属于当前 `app_instance_id` 的文件，避免旧进程删除新实例刚发布的连接信息；Server 关闭时先撤销描述，再关闭 listener。异常退出遗留的文件不代表 owner 存活；新 Host 仍必须先取得 Workspace 排他锁，再用新实例 identity 原子替换。
 
@@ -58,7 +61,7 @@ pnpm exec vitest run \
   src/electron-main/services/apiServer.lifecycle.test.ts
 ```
 
-门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期。`src/electron-main/routes/conversationControlAuditCapability.integration.test.ts` 把 App Server 环境白名单、Audit 等级解析、运行时作用域与握手串起来，并用真实 CLI 进程验证 `audit` 在未启用时被明确拒绝、启用后到达 Host。`projectCliProcess.integration.test.ts` 使用真实 CLI 子进程、HTTP router 和 SQLite 验证项目写入、失败边界与持久化；不放入独立 CLI 包，以保持其与 Backend 的编译边界。普通 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`；无 Electron Runtime 的冷启动、并行、owner 竞争、重启和强制终止恢复见 `runtimeHostProcess.e2e.test.ts`。
+门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期。`src/electron-main/routes/conversationControlAuditCapability.integration.test.ts` 把 App Server 环境白名单、Audit 等级解析、运行时作用域与握手串起来，并用真实 CLI 进程验证 `off` 仍能读取审计、切档后握手和错误显示实时档位。`projectCliProcess.integration.test.ts` 使用真实 CLI 子进程、HTTP router 和 SQLite 验证项目写入、失败边界与持久化；不放入独立 CLI 包，以保持其与 Backend 的编译边界。普通 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`；无 Electron Runtime 的冷启动、并行、owner 竞争、重启和强制终止恢复见 `runtimeHostProcess.e2e.test.ts`。
 
 `projects` 的 `list / get / create / update / delete` 委托 `domains/projects` 公开生命周期端口，
 不复制项目规则或读取 SQL。列表返回 `project_id / name`；`get / create / update` 返回安全项目详情，

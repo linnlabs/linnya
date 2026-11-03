@@ -1,3 +1,4 @@
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import type Database from 'better-sqlite3';
 import {
   audit,
@@ -37,6 +38,7 @@ import {
   createLinnyaAuditRuntime,
   resetLlmAuditForTest,
   resolveAuditLevel,
+  readAuditLevelSnapshot,
 } from 'src/domains/audit';
 
 type DefaultRunSupervisor = runSupervisor.DefaultRunSupervisor<AgentInvokeRequest>;
@@ -64,22 +66,24 @@ let fallbackEventStore: graph.MemoryEventStore | null = null;
 
 function createFallbackAgentRuntimeSingletons(): LinnyaAgentRuntimeScope {
   const eventStore = getFallbackEventStore();
+  const registryStore = new runSupervisor.MemoryRunRegistryStore();
   const auditLevel = resolveAuditLevel();
   const auditRuntime = createLinnyaAuditRuntime({
     sink: audit.createEventStoreAudit({ eventStore }),
     level: auditLevel,
+    readRunLevel: async runId => readAuditLevelSnapshot((await registryStore.load(RunIdSchema.parse(runId)))?.metadata?.auditLevel),
   });
   return {
     supervisor: createSupervisor({
       auditPort: auditRuntime.auditPort,
-      registryStore: new runSupervisor.MemoryRunRegistryStore(),
+      registryStore,
     }),
     costCollector: new LinnyaRunCostCollector(),
     tokenCalibrationCollector: new LinnyaTokenCalibrationCollector(),
     eventStore,
     nextEventStoreId: graph.createMonotonicEventStoreIdFactory(),
     auditPort: auditRuntime.auditPort,
-    auditEnabled: auditRuntime.level !== 'off',
+    audit: auditRuntime,
   };
 }
 
@@ -123,16 +127,18 @@ export function configureAgentRuntimeSingletons(
   const tokenCalibrationCollector =
     singletons?.tokenCalibrationCollector ?? new LinnyaTokenCalibrationCollector();
   const runtimeEventStore = new LinnyaEventStoreAdapter(options.db, options.eventStore);
+  const registryStore = new SQLiteRunRegistryStore(options.db);
   const auditLevel = resolveAuditLevel(process.env, { packaged: options.packaged });
   const auditRuntime = createLinnyaAuditRuntime({
     sink: audit.createEventStoreAudit({ eventStore: runtimeEventStore }),
     level: auditLevel,
+    readRunLevel: async runId => readAuditLevelSnapshot((await registryStore.load(RunIdSchema.parse(runId)))?.metadata?.auditLevel),
     trust: { packaged: options.packaged },
   });
   singletons = {
     supervisor: createSupervisor({
       auditPort: auditRuntime.auditPort,
-      registryStore: new SQLiteRunRegistryStore(options.db),
+      registryStore,
       runDescriptors: options.recovery?.runDescriptors,
     }),
     costCollector,
@@ -140,7 +146,7 @@ export function configureAgentRuntimeSingletons(
     eventStore: runtimeEventStore,
     nextEventStoreId: singletons?.nextEventStoreId ?? graph.createMonotonicEventStoreIdFactory(),
     auditPort: auditRuntime.auditPort,
-    auditEnabled: auditRuntime.level !== 'off',
+    audit: auditRuntime,
     llmInputMaterializer: options.llmInputMaterializer,
     toolModelInputResolver: options.toolModelInputResolver,
     ...options.recovery,

@@ -23,14 +23,15 @@ afterEach(async () => {
 
 async function startBridge(
   useCase: ConversationControlUseCase,
-  options: { auditAvailable?: boolean } = {},
+  options: { auditAllowed?: boolean } = {},
 ): Promise<string> {
   const app = express();
   app.use(CONVERSATION_CONTROL_BRIDGE_PATH, createConversationControlBridgeRouter({
     useCase,
     appInstanceId: 'app-instance-1',
     appVersion: '1.2.3',
-    auditAvailable: options.auditAvailable,
+    auditControl: { available: options.auditAllowed !== false, level: 'off', setLevel: vi.fn() },
+    sourceCheckout: options.auditAllowed === false ? null : { root: '/example/linnya', branch: 'main' },
     diagnostics: { error: vi.fn() },
   }));
   const server = await new Promise<Server>((resolve, reject) => {
@@ -89,7 +90,7 @@ describe('conversation-control bridge router', () => {
   it('握手声明 Host 已实现的 conversation control 能力', async () => {
     const baseUrl = await startBridge(createUseCase(vi.fn()));
     const response = await postJson(baseUrl, '/handshake', {
-      protocol_version: 7,
+      protocol_version: 8,
       client_name: 'linnya-cli',
       client_version: '0.1.0',
     });
@@ -104,9 +105,9 @@ describe('conversation-control bridge router', () => {
   });
 
   it('生产 runtime 关闭审计时不声明 audit capability', async () => {
-    const baseUrl = await startBridge(createUseCase(vi.fn()), { auditAvailable: false });
+    const baseUrl = await startBridge(createUseCase(vi.fn()), { auditAllowed: false });
     const response = await postJson(baseUrl, '/handshake', {
-      protocol_version: 7,
+      protocol_version: 8,
       client_name: 'linnya-cli',
       client_version: '0.1.0',
     });

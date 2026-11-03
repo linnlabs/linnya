@@ -18,7 +18,7 @@ LINNYA_DEV_MODE=true
 LINNYA_KG_DUMP_JSON=1
 
 # ========== 统一审计 ==========
-# 开发环境默认关闭 Agent Run Audit；需要排查时显式选择一个等级。
+# 可选启动默认档位；临时排障优先用 pnpm linnya:cli audit level behavior，无需改文件或重启。
 # 低体积行为审计：Agent/run 身份、工具/命令行为、授权/拒绝和终态。
 # LINNYA_AUDIT_LEVEL=behavior
 #
@@ -44,7 +44,7 @@ LINNYA_KG_DUMP_JSON=1
 
 ## 生效位置说明
 
-- **主进程/后端/worker**：开发态启动时由 `src/electron-main/bootstrap-env.ts` 加载；发布包明确跳过 dotenv 文件。
+- **Desktop / CLI Runtime 的 Backend 与 worker**：开发态启动时由 Host 共用的 `src/infra/adapters/development-environment/functions/bootstrapDevEnv.ts` 加载并传递；发布包明确跳过 dotenv 文件。
 - **前端（Vite）**：Vite 会自动加载 `.env.local`，但只有 `VITE_` 前缀会暴露给 renderer 侧代码。
 - **发行身份**：不从 `.env.local` 推导。未打包运行固定为 `source`，未通过受信发行清单验签的安装包固定为 `community`。
 
@@ -68,7 +68,21 @@ Backend 只接纳当前 Host 传入的精确开发页面 origin，
 窗口标题包含工作目录名称，DevTools 快捷键只作用于当前窗口；日志记录 profile、Renderer URL 与实际 API 端口。
 
 开发实例的 CLI 连接文件默认位于 `_dev_electron/runtime/conversation-control-v1.json`，不会覆盖
-用户级默认连接。外部终端使用 CLI 时，通过 `LINNYA_CLI_CONNECTION_FILE` 指定该文件；显式设置该变量
-仍优先，多个实例须指向不同文件。覆盖路径须放在专用运行目录中，不要把连接文件直接放在个人主目录或项目根目录。连接文件按当前用户权限保存，但不提供 Agent 读取隔离。App 启动的命令继承当前实例的连接路径。
+用户级默认连接。`pnpm linnya:cli` 默认读取自身源码目录的该文件，不需要设置环境变量；
+`pnpm linnya:runtime` 启动的无界面实例也使用该位置。实例未运行时直接报错，不回退到安装版。
+显式设置 `LINNYA_CLI_CONNECTION_FILE` 仍优先，但握手必须核对双方真实源码根；不一致时拒绝并显示两边目录。
+符号链接归一后比较，分支仅用于显示。多个实例须指向不同文件。覆盖路径须放在专用运行目录中，不要把连接文件直接放在个人主目录或项目根目录。连接文件按当前用户权限保存，但不提供 Agent 读取隔离。App 启动的命令继承当前实例的连接路径。
 
 升级到该机制后，需要正常退出旧开发会话，再在各目录重新启动；源码合并不会自动替换正在运行的 Backend。
+
+## 运行中切换审计
+
+使用 `pnpm linnya:cli audit level behavior`，可选 `off / behavior / response / stream`；不传档位显示当前值。
+`doctor` 显示所连目录、分支和当前档位。错误中的 `connection` 保留已知身份，未连上时实例与档位未知。
+
+开关只影响所连源码 Host 的新 run，不影响其他分支、已开始的 run、其 child、暂停/HITL 继续或延迟 Shell 终态。
+同一会话之后的新 run 使用新档位。读取仍用 `audit <会话ID> --run <runID>`；关闭后可读历史，开启前的记录不会补回来。
+
+Desktop 和 Runtime 共用 dotenv 加载：显式进程环境优先，其次 `.env.local`、`.env`，都只补齐未设置的变量。
+CLI 切档不写文件；重启恢复启动配置，没设就是 `off`。若希望每次启动自动打开，继续在 `.env.local` 设置
+`LINNYA_AUDIT_LEVEL`。生产 Host 一律拒绝审计，提示“生产环境不提供审计”。

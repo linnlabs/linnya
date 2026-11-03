@@ -1,3 +1,4 @@
+import type { AuditControlPort } from 'src/domains/audit';
 import type { SkillManagementPort } from 'src/features/skills';
 import type { ProjectLifecyclePort } from 'src/domains/projects';
 import type { ConversationControlSkillsResponse } from '@app/schemas';
@@ -5,6 +6,7 @@ import type {
   ConversationControlCommandApprovalsRequest,
   ConversationControlCommandApprovalsResponse,
   ConversationControlAuditRequest,
+  ConversationControlAuditLevelResponse,
   ConversationControlAuditResponse,
   ConversationControlCommandRequest,
   ConversationControlListRequest,
@@ -215,8 +217,7 @@ export interface ConversationControlUseCasePorts {
   readonly tools: ConversationControlToolCatalogPort;
   readonly audit: ExecutionAuditExportUseCase;
   readonly commandApprovals: CommandApprovalControlPort;
-  /** 生产 Host 关闭开发 Agent Run Audit 时，控制面必须显式返回 capability_unavailable。 */
-  readonly auditAvailable?: boolean;
+  readonly auditControl: AuditControlPort;
   readonly createConversationId: () => string;
   readonly now: () => number;
 }
@@ -238,6 +239,7 @@ export interface ConversationControlUseCase {
     | ConversationControlStopResponse
     | ConversationControlResultResponse
     | ConversationControlAuditResponse
+    | ConversationControlAuditLevelResponse
     | ConversationControlToolsResponse
   >;
   commandApprovals(request: ConversationControlCommandApprovalsRequest): Promise<ConversationControlCommandApprovalsResponse>;

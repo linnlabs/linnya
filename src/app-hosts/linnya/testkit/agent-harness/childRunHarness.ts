@@ -33,6 +33,7 @@ export function createChildRunHarness(options: ChildRunHarnessOptions): ChildRun
   );
   const eventStore = new graph.MemoryEventStore();
   const childRunLifecycle = new LinnyaRegisteredChildRunLifecycle({
+    audit: { level: 'off', levelForRun: async () => 'off' },
     supervisor: new runSupervisor.DefaultRunSupervisor({
       registryStore: new runSupervisor.MemoryRunRegistryStore(),
     }),

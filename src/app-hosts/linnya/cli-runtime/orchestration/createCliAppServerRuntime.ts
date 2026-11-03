@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { CONVERSATION_CONTROL_CONNECTION_FILE_ENV, CONVERSATION_CONTROL_CONNECTION_FILE_NAME } from '@app/schemas';
+import { bootstrapDevEnv } from '../../../../infra/adapters/development-environment/functions/bootstrapDevEnv';
 
 import type {
   AppServerRpcHandler,
@@ -38,13 +40,16 @@ import { createCliRuntimeCommandApprovalPresenter } from './createCliRuntimeComm
 export async function createCliAppServerRuntime(
   input: CliRuntimeHostInput,
 ): Promise<CliAppServerRuntime> {
+  const environment = { ...input.processEnvironment };
+  bootstrapDevEnv({ isPackaged: false, developmentRoot: input.developmentRoot, environment });
+  const profileRoot = path.join(input.developmentRoot, '_dev_electron');
   const runtimePathRoots = resolveBackendRuntimePathRoots({
     developmentRoot: input.developmentRoot,
     // profile 是内部运行数据，不能把整个源码 checkout 误列为受保护的 profile。
-    userDataDirectory: path.join(input.developmentRoot, '_dev_electron'),
+    userDataDirectory: profileRoot,
     documentsDirectory: input.developmentRoot,
     developmentMode: true,
-    workspaceRootOverride: input.workspaceRootOverride,
+    workspaceRootOverride: input.workspaceRootOverride ?? environment.LINNYA_WORKSPACE_DIR,
   });
   const mainBundleDirectory = resolveAppServerBundleDirectory({
     packaged: false,
@@ -53,19 +58,21 @@ export async function createCliAppServerRuntime(
       ?? path.join(input.developmentRoot, 'dist', 'main'),
   });
   const defaultModels = resolveAppDefaultModelsPath({
-    configuredPath: input.processEnvironment.MODEL_REGISTRY_DEFAULTS_PATH,
+    configuredPath: environment.MODEL_REGISTRY_DEFAULTS_PATH,
     applicationPath: input.developmentRoot,
     developmentRoot: input.developmentRoot,
     isPackaged: false,
   });
   const processEnvironment: NodeJS.ProcessEnv = {
-    ...input.processEnvironment,
+    ...environment,
     LINNYA_DEV_MODE: 'true',
-    LINNYA_PLUGIN_ROOT: input.processEnvironment.LINNYA_PLUGIN_ROOT
+    [CONVERSATION_CONTROL_CONNECTION_FILE_ENV]: environment[CONVERSATION_CONTROL_CONNECTION_FILE_ENV]?.trim()
+      || path.join(profileRoot, 'runtime', CONVERSATION_CONTROL_CONNECTION_FILE_NAME),
+    LINNYA_PLUGIN_ROOT: environment.LINNYA_PLUGIN_ROOT
       ?? path.join(runtimePathRoots.appDataRoot, 'plugins'),
     MODEL_REGISTRY_DEFAULTS_PATH: defaultModels.path,
   };
-  const commandHostEnvironment = createHostProcessEnvironment(input.processEnvironment);
+  const commandHostEnvironment = createHostProcessEnvironment(processEnvironment);
   const backendFacts = createBackendBootstrapFacts({
     applicationVersion: input.applicationVersion,
     applicationExecutablePath: process.execPath,

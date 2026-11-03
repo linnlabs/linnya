@@ -2,7 +2,7 @@ import { promises as fsp } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { bootstrapDevEnv } from './bootstrap-env';
+import { bootstrapDevEnv } from '../functions/bootstrapDevEnv';
 
 describe('development environment bootstrap', () => {
   const tempDirs: string[] = [];
@@ -40,5 +40,17 @@ describe('development environment bootstrap', () => {
 
     expect(process.env[key]).toBeUndefined();
     expect(process.env.LINNYA_DEV_MODE).toBe(previousDevMode);
+  });
+
+  it('Runtime 环境快照按进程、local、env 优先级补齐，不修改父进程', async () => {
+    const key = `LINNYA_RUNTIME_BOOTSTRAP_TEST_${Date.now()}`;
+    const root = await createEnvironmentRoot(`${key}=local\nLINNYA_AUDIT_LEVEL=response\n`);
+    await fsp.writeFile(path.join(root, '.env'), `${key}=shared\nSHARED_TEST_VALUE=shared\n`);
+    const environment: NodeJS.ProcessEnv = { LINNYA_AUDIT_LEVEL: 'behavior' };
+    bootstrapDevEnv({ isPackaged: false, developmentRoot: root, environment });
+    expect(environment).toMatchObject({
+      [key]: 'local', LINNYA_AUDIT_LEVEL: 'behavior', SHARED_TEST_VALUE: 'shared',
+    });
+    expect(process.env[key]).toBeUndefined();
   });
 });

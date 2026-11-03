@@ -23,3 +23,9 @@ Web Read 仍可工作，其动态页面升级路径不会伪装为成功。
 参数、控制面连接和输出，不把完整 Backend 打进控制客户端。bundle 导出显式 Host contract version；CLI 拒绝加载旧合同产物。
 
 开发装配可通过进程内 `CliRuntimeHostInput` 显式传入 main bundle 目录，复用相同 supervisor。普通 CLI 不暴露这些 override 参数；实验数据与生产参数不混用。
+
+Runtime 与 Desktop 共用开发环境加载器：只补齐进程环境中尚未设置的 `.env.local` / `.env` 值。
+默认连接文件是当前源码目录的 `_dev_electron/runtime/conversation-control-v1.json`，API 与 Qdrant 默认选择空闲端口。
+`LINNYA_CLI_CONNECTION_FILE` 可覆盖位置，连接时仍必须核对真实源码根；指定数据根不改变代码身份。
+审计默认档位来自启动配置，`audit level` 只修改本实例内存中的新 run 默认值；生命周期与快照合同见
+[Audit](../../../domains/audit/README.md)。

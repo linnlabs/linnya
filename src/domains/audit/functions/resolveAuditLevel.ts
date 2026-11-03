@@ -1,9 +1,6 @@
 import { AuditLevelSchema, DEFAULT_AUDIT_LEVEL, type AuditLevel } from '../definitions/auditLevel';
 
-export interface AuditRuntimeTrust {
-  /** packaged 由已验证的 Host bootstrap facts 提供，不能由用户环境变量伪造。 */
-  readonly packaged?: boolean;
-}
+import type { AuditRuntimeTrust } from '../definitions/auditRuntime';
 
 /**
  * 解析当前进程的统一审计开关。

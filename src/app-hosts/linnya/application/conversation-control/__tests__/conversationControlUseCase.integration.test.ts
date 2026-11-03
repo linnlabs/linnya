@@ -1,3 +1,6 @@
+import express from 'express';
+import { createConversationControlBridgeRouter } from '../../../adapters/conversation-control-bridge/conversationControlBridge.router';
+import { createLinnyaAuditRuntime } from 'src/domains/audit';
 import { createCommandApprovalHost } from 'src/app-hosts/linnya/adapters/commands/approval-host';
 import { parseCommandApprovalRequest, CommandApprovalReplySubmissionV1Schema } from '@app/schemas/commands';
 import { describe, expect, it } from 'vitest';
@@ -284,7 +287,7 @@ function contextCompactionAuditFixture(): ExecutionAuditExport['contextCompactio
 
 function fixture(
   initialRuns: ConversationControlRunRecord[] = [],
-  options: { auditAvailable?: boolean } = {}
+  options: { auditAllowed?: boolean } = {}
 ) {
   const commandApprovals = createCommandApprovalHost();
   commandApprovals.setControlEndpointAvailable(true);
@@ -532,13 +535,17 @@ function fixture(
         };
       },
     },
-    auditAvailable: options.auditAvailable,
+    auditControl: createLinnyaAuditRuntime({
+      level: 'off', trust: { packaged: options.auditAllowed === false },
+      readRunLevel: async () => 'off', sink: { emit() {} },
+    }),
     createConversationId: () => 'conversation-1',
     now: () => 115,
   };
 
   return {
     useCase: createConversationControlUseCase(ports),
+    auditControl: ports.auditControl,
     commandApprovals,
     startRequests,
     responseRequests,
@@ -1229,6 +1236,55 @@ describe('conversation-control use case', () => {
     });
   });
 
+  it('off 可切档、查询；控制只修改当前实例且生产环境拒绝直接命令', async () => {
+    const first = fixture([]);
+    const other = fixture([]);
+    const query = { schema_version: 1, command: 'audit_level' } as const;
+    expect(await first.useCase.execute(query)).toMatchObject({ level: 'off' });
+    for (const level of ['behavior', 'response', 'stream', 'off'] as const) {
+      expect(await first.useCase.execute({ ...query, level })).toMatchObject({ level });
+      expect(await first.useCase.execute(query)).toMatchObject({ level });
+      expect(await other.useCase.execute(query)).toMatchObject({ level: 'off' });
+    }
+    const packaged = fixture([], { auditAllowed: false });
+    await expect(packaged.useCase.execute(query)).rejects.toMatchObject({
+      code: 'capability_unavailable', message: '生产环境不提供审计',
+    });
+    await expect(packaged.useCase.execute({ ...query, level: 'stream' })).rejects.toMatchObject({
+      code: 'capability_unavailable', message: '生产环境不提供审计',
+    });
+  });
+
+  it('生产 Host 直接 HTTP 调用读审计或切档也拒绝，不依赖客户端能力检查', async () => {
+    const test = fixture([], { auditAllowed: false });
+    const app = express();
+    app.use(createConversationControlBridgeRouter({
+      useCase: test.useCase, auditControl: test.auditControl, sourceCheckout: null,
+      appInstanceId: 'packaged-test', appVersion: 'test', diagnostics: { error() {} },
+    }));
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>(resolve => server.once('listening', resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('Missing test port');
+      for (const command of [
+        { command: 'audit_level' }, { command: 'audit_level', level: 'stream' },
+        { command: 'audit', conversation_id: 'conversation-1', run_id: 'run-1' },
+      ]) {
+        const response = await fetch(`http://127.0.0.1:${address.port}/commands`, {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ schema_version: 1, ...command }),
+        });
+        expect(response.status).toBe(409);
+        expect(await response.json()).toMatchObject({
+          error: { code: 'capability_unavailable', message: '生产环境不提供审计' },
+        });
+      }
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    }
+  });
+
   it('audit 只投影安全聚合字段并保留 telemetry 尽力而为语义', async () => {
     const test = fixture([run('completed', { updatedAt: 130 })]);
     await expect(
@@ -1277,7 +1333,7 @@ describe('conversation-control use case', () => {
   });
 
   it('生产 runtime 关闭审计时返回 capability_unavailable', async () => {
-    const test = fixture([run('completed')], { auditAvailable: false });
+    const test = fixture([run('completed')], { auditAllowed: false });
     await expect(
       test.useCase.audit({
         schema_version: 1,
@@ -1287,7 +1343,7 @@ describe('conversation-control use case', () => {
       })
     ).rejects.toMatchObject({
       code: 'capability_unavailable',
-      message: 'Agent Run Audit is disabled in this runtime environment',
+      message: '生产环境不提供审计',
     });
   });
 });

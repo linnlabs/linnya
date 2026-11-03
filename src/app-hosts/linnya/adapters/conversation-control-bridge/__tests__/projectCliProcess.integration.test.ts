@@ -1,3 +1,4 @@
+import { readSourceCheckoutIdentity } from 'src/shared/runtime-paths/functions/readSourceCheckoutIdentity';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -43,6 +44,8 @@ describe('Project CLI process → real HTTP bridge → Project SQLite', () => {
     app.use(
       CONVERSATION_CONTROL_BRIDGE_PATH,
       createConversationControlBridgeRouter({
+        sourceCheckout: readSourceCheckoutIdentity(process.cwd()),
+        auditControl: { available: true, level: 'off', setLevel() {} },
         appInstanceId: 'project-cli-test',
         appVersion: '0.0.38',
         diagnostics: { error: vi.fn() },

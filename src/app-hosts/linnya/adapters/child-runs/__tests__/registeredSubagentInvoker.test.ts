@@ -170,6 +170,7 @@ function createMemoryChildRunLifecycle(): {
   return {
     supervisor,
     lifecycle: new LinnyaRegisteredChildRunLifecycle({
+      audit: { level: 'off', levelForRun: async () => 'off' },
       supervisor,
       eventStore: new graph.MemoryEventStore(),
       nextEventStoreId: graph.createMonotonicEventStoreIdFactory(() => Date.now()),
@@ -246,7 +247,7 @@ describe('RegisteredChildRunInvoker', () => {
   afterEach(() => {
     clearPluginRuntimeStateForTests();
     vi.restoreAllMocks();
-    createLinnyaAuditRuntime({ level: 'off', sink: { emit() {} } });
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'off', level: 'off', sink: { emit() {} } });
   });
 
   it('应只把可见消息注入 seed history，并显式下发 trace/execution policy', async () => {
@@ -700,7 +701,7 @@ describe('RegisteredChildRunInvoker', () => {
     );
     await host.ensureConversation(conversationId, [seed], undefined, 'agent');
 
-    createLinnyaAuditRuntime({ level: 'response', sink: audit.createEventStoreAudit({ eventStore: adapter }) });
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'response', level: 'response', sink: audit.createEventStoreAudit({ eventStore: adapter }) });
     const registryStore = new SQLiteRunRegistryStore(db);
     const rootSupervisor = new runSupervisor.DefaultRunSupervisor<AgentInvocationRequest>({
       registryStore,
@@ -797,6 +798,7 @@ describe('RegisteredChildRunInvoker', () => {
       },
       childRunInvoker: childInvoker,
       lifecycle: new LinnyaRegisteredChildRunLifecycle({
+        audit: { level: 'off', levelForRun: async () => 'off' },
         supervisor: rootSupervisor,
         eventStore: adapter,
         nextEventStoreId,
@@ -1002,6 +1004,7 @@ describe('RegisteredChildRunInvoker', () => {
       agentResolver: { resolveByPromptKey: vi.fn(() => createDefaultResolvedAgent()) },
       childRunInvoker,
       lifecycle: new LinnyaRegisteredChildRunLifecycle({
+        audit: { level: 'off', levelForRun: async () => 'off' },
         supervisor,
         eventStore: adapter,
         nextEventStoreId,
@@ -1183,6 +1186,7 @@ describe('RegisteredChildRunInvoker', () => {
       agentResolver: { resolveByPromptKey: vi.fn(() => createDefaultResolvedAgent()) },
       childRunInvoker,
       lifecycle: new LinnyaRegisteredChildRunLifecycle({
+        audit: { level: 'off', levelForRun: async () => 'off' },
         supervisor,
         eventStore: adapter,
         nextEventStoreId,
@@ -1404,6 +1408,7 @@ describe('RegisteredChildRunInvoker', () => {
       },
       childRunInvoker: childInvoker,
       lifecycle: new LinnyaRegisteredChildRunLifecycle({
+        audit: { level: 'off', levelForRun: async () => 'off' },
         supervisor: rootSupervisor,
         eventStore: adapter,
         nextEventStoreId: graph.createMonotonicEventStoreIdFactory(),
@@ -1485,6 +1490,7 @@ describe('RegisteredChildRunInvoker', () => {
       },
     };
     const lifecycle = new LinnyaRegisteredChildRunLifecycle({
+      audit: { level: 'off', levelForRun: async () => 'off' },
       supervisor: new runSupervisor.DefaultRunSupervisor<AgentInvocationRequest>({
         registryStore: new runSupervisor.MemoryRunRegistryStore(),
       }),

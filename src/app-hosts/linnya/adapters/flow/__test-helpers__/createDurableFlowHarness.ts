@@ -102,13 +102,14 @@ export function installRecoveryModelFixture(reasoning?: ModelConfig['reasoning']
 export async function createDurableFlowHarness(
   path: string,
   inference: ScriptedLlmTurn[] | ScriptedInferenceHarness,
-  tools: BaseTool[] = []
+  tools: BaseTool[] = [],
+  packaged = true,
 ) {
   const database = new DatabaseService(path);
   database.initialize();
   const db = database.getDb();
   const eventStore = new SQLiteEventStore(db);
-  const { runtime } = await bootstrapAgentRuntimeSingletons({ db, eventStore, packaged: true });
+  const { runtime } = await bootstrapAgentRuntimeSingletons({ db, eventStore, packaged });
   if (!runtime.executionCheckpoints || !runtime.runDescriptors)
     throw new Error('Recovery composition missing');
   const descriptors = runtime.runDescriptors;

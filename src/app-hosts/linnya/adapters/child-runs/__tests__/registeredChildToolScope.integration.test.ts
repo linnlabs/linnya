@@ -88,6 +88,7 @@ describe('registered child tool scope ownership', () => {
           ),
       },
       lifecycle: new LinnyaRegisteredChildRunLifecycle({
+        audit: { level: 'off', levelForRun: async () => 'off' },
         supervisor,
         eventStore: new graph.MemoryEventStore(),
         nextEventStoreId: graph.createMonotonicEventStoreIdFactory(),
@@ -218,6 +219,7 @@ describe('registered child tool scope ownership', () => {
       let allowedTools = ['read_file'];
       const calls: childRuns.ChildRunInvokeConfig[] = [];
       const lifecycle = new LinnyaRegisteredChildRunLifecycle({
+        audit: { level: 'off', levelForRun: async () => 'off' },
         supervisor,
         eventStore: new LinnyaEventStoreAdapter(db, eventStore),
         nextEventStoreId: graph.createMonotonicEventStoreIdFactory(),

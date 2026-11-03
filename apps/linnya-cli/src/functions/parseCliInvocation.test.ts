@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { parseCliInvocation } from './parseCliInvocation';
 
 describe('parseCliInvocation', () => {
+  it('审计切档和读取使用不同命令，非法档位、混用参数在连接前拒绝', () => {
+    expect(parseCliInvocation(['audit', 'level'])).toMatchObject({ request: { command: 'audit_level' } });
+    for (const level of ['off', 'behavior', 'response', 'stream']) {
+      expect(parseCliInvocation(['audit', 'level', level])).toMatchObject({ request: { command: 'audit_level', level } });
+    }
+    expect(parseCliInvocation(['audit', 'conversation-1', '--run', 'run-1'])).toMatchObject({
+      request: { command: 'audit', conversation_id: 'conversation-1', run_id: 'run-1' },
+    });
+    for (const args of [['level', 'invalid'], ['level', 'off', 'extra'], ['level', '--run', 'run-1']]) {
+      expect(() => parseCliInvocation(['audit', ...args])).toThrow();
+    }
+  });
   it('项目动作要求明确身份，允许清空描述但不允许空名称或空更新', () => {
     expect(parseCliInvocation(['projects'])).toEqual(parseCliInvocation(['projects', 'list']));
     expect(parseCliInvocation(['projects', 'create', ' 研究 ', '--description', '保留原文空格 ']))
@@ -56,7 +68,7 @@ describe('parseCliInvocation', () => {
       kind: 'runtime-start',
       workspaceDirectory: '/tmp/workspace',
       apiPort: 0,
-      qdrantPort: 6333,
+      qdrantPort: 0,
       pretty: false,
     });
     expect(parseCliInvocation([

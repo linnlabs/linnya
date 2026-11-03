@@ -1,6 +1,9 @@
 # Runtime Path Roots
 
-该模块只定义一个跨业务、跨进程稳定的基础合同：当前 JavaScript 运行域使用哪一组持久化根目录。
+该模块定义跨业务、跨进程稳定的路径事实：当前运行域使用哪一组持久化根目录，以及源码 Host / CLI 的真实 checkout 身份。
+
+`readSourceCheckoutIdentity` 接收调用方已确定的代码根，用 realpath 归一目录，读取当前分支用于诊断；没有 Git 分支时为 null。
+源码目录与 Workspace 数据根分开。CLI 按自己的入口定位代码根，Backend 按实际 bundle 定位；不能从会话 cwd 推断，不能用相同分支名代替目录校验。
 
 最外层 Host 是路径的唯一解析者。Desktop 读取 Electron 的 `userData` / `documents`、开发根目录和 `LINNYA_WORKSPACE_DIR`；源码 CLI Runtime 使用仓库 `_dev_data` 并接受显式 `--workspace`。两者都生成并冻结 `RuntimePathRoots`，再把纯数据事实传给 App Server 和 Queue Worker。App Server、Worker 与业务 domain 不得再次加载 Electron、读取自己的 `cwd` 或用用户 Home 目录猜另一套路径。
 

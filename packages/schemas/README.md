@@ -338,7 +338,7 @@ shape 回放存量卡片，但这些 schema 不得重新用于注册 Agent execu
 Conversation CLI 的 `audit.workspace_documents` 只交换诊断严重度计数、调用身份与截断数，
 独立合同位于 `src/conversation-control/workspaceDocumentAudit.ts`。诊断 code/message/target
 没有安全文本保证，均不进入导出；工具保存成功、诊断结果和内容质量不得合成一个成功布尔值。
-该必填响应变化始于wire protocol 2；protocol 3起同时要求status/watch的`command_approvals`，当前protocol为7。旧CLI通过明确版本拒绝后升级，不能宽松双读。
+该必填响应变化始于wire protocol 2；protocol 3起同时要求status/watch的`command_approvals`，当前protocol为8。旧CLI通过明确版本拒绝后升级，不能宽松双读。
 
 `grep` 新 producer 的 `truncated` 表示搜索范围或匹配输出不完整，不只是命中条数达到上限。索引的 `truncated_files` 必须包含缓存复用后的前缀覆盖事实；零命中仍有可能未搜全。字段形状不变，历史响应 reader 不追溯拒绝旧的矛盾结果。完整性由 Workspace VFS producer 与真实 SQLite 业务测试保证，不由 schema 猜测未保存的历史覆盖范围。
 
@@ -513,3 +513,5 @@ Renderer 以正式删除结果清理本地目录与用途绑定，再重读投�
 ## Markdown 图片合同
 
 `src/markdown-image.ts` 统一前后端图片准入、文档内引用和 Pending 来源快照。`caption` 为默认空字符串、单行、最多 200 字，与 alt/title 独立。新增来源仅为 Host 已接纳的会话图片，持久化正文不得保留 `conversation:/` 或 `linnya-image://` 临时引用。后者只用于 Markdown 投影与写入协议；完整来源由文档快照恢复。未知引用和混排图片明确拒绝。
+
+控制协议 8 的 handshake 必填实例源码目录、分支与当前审计档位；源码 CLI 在命令前核对目录。`audit_level` 查询或修改所连源码实例的新 run 默认档位，`off` 保留读取和切档能力，生产 Host 拒绝。

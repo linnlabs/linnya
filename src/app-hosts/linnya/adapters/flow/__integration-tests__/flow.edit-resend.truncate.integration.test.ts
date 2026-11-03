@@ -50,6 +50,7 @@ let persistOnlyRequestSequence = 0;
 
 function createPersistOnlyRuntimePersistence(): FlowRuntimePort {
   return {
+    audit: { level: 'off' },
     supervisor: new runSupervisor.DefaultRunSupervisor<AgentInvokeRequest>({
       registryStore: new runSupervisor.MemoryRunRegistryStore(),
     }),

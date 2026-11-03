@@ -57,18 +57,18 @@ describe('unified audit runtime', () => {
     ).toBe('off');
   });
 
-  it('filters behavior actions before they reach the only sink', () => {
+  it('filters behavior actions before they reach the only sink', async () => {
     const envelopes: AuditEnvelope[] = [];
     const sink: AuditPort = {
       emit: envelope => {
         envelopes.push(envelope);
       },
     };
-    const runtime = createLinnyaAuditRuntime({ sink, level: 'behavior' });
+    const runtime = createLinnyaAuditRuntime({ readRunLevel: async () => 'behavior', sink, level: 'behavior' });
 
-    runtime.auditPort.emit(baseEnvelope('model.select'));
-    runtime.auditPort.emit(baseEnvelope('run.cancel'));
-    runtime.auditPort.emit(baseEnvelope('command.execution.started'));
+    await runtime.auditPort.emit(baseEnvelope('model.select'));
+    await runtime.auditPort.emit(baseEnvelope('run.cancel'));
+    await runtime.auditPort.emit(baseEnvelope('command.execution.started'));
 
     expect(envelopes.map(envelope => envelope.action)).toEqual([
       'model.select',
@@ -77,17 +77,17 @@ describe('unified audit runtime', () => {
     ]);
   });
 
-  it('keeps response summaries separate from stream evidence', () => {
+  it('keeps response summaries separate from stream evidence', async () => {
     const envelopes: AuditEnvelope[] = [];
     const sink: AuditPort = {
       emit: envelope => {
         envelopes.push(envelope);
       },
     };
-    const runtime = createLinnyaAuditRuntime({ sink, level: 'response' });
+    const runtime = createLinnyaAuditRuntime({ readRunLevel: async () => 'response', sink, level: 'response' });
 
-    runtime.auditPort.emit(baseEnvelope('llm.response.summary'));
-    runtime.auditPort.emit(baseEnvelope('llm.context.after'));
+    await runtime.auditPort.emit(baseEnvelope('llm.response.summary'));
+    await runtime.auditPort.emit(baseEnvelope('llm.context.after'));
 
     expect(envelopes.map(envelope => envelope.action)).toEqual(['llm.response.summary']);
   });
@@ -99,7 +99,7 @@ describe('unified audit runtime', () => {
         envelopes.push(envelope);
       },
     };
-    createLinnyaAuditRuntime({ sink, level: 'response' });
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'response', sink, level: 'response' });
 
     await runWithLlmAuditContext(
       {
@@ -164,7 +164,7 @@ describe('unified audit runtime', () => {
         envelopes.push(envelope);
       },
     };
-    createLinnyaAuditRuntime({ sink, level: 'stream' });
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'stream', sink, level: 'stream' });
 
     await runWithLlmAuditContext(
       {
@@ -190,7 +190,7 @@ describe('unified audit runtime', () => {
 
   it('packaged runtime ignores an explicitly requested stream level', async () => {
     const sink: AuditPort = { emit: vi.fn(), flush: vi.fn() };
-    const runtime = createLinnyaAuditRuntime({
+    const runtime = createLinnyaAuditRuntime({ readRunLevel: async () => 'stream',
       sink,
       level: 'stream',
       trust: { packaged: true },
@@ -201,6 +201,8 @@ describe('unified audit runtime', () => {
     await runtime.flush();
 
     expect(runtime.level).toBe('off');
+    expect(runtime.available).toBe(false);
+    expect(() => runtime.setLevel('stream')).toThrow('生产环境不提供审计');
     expect(sink.emit).not.toHaveBeenCalled();
     expect(sink.flush).not.toHaveBeenCalled();
   });
@@ -211,7 +213,7 @@ describe('unified audit runtime', () => {
       return Promise.reject(new Error('storage unavailable'));
     });
     const flush = vi.fn(async () => { throw new Error('flush unavailable'); });
-    const runtime = createLinnyaAuditRuntime({ sink: { emit, flush }, level: 'behavior' });
+    const runtime = createLinnyaAuditRuntime({ readRunLevel: async () => 'behavior', sink: { emit, flush }, level: 'behavior' });
     await expect(runtime.auditPort.emit(baseEnvelope('run.cancel'))).resolves.toBeUndefined();
     await expect(runtime.auditPort.emit(baseEnvelope('command.execution.started'))).resolves.toBeUndefined();
     await expect(runtime.flush()).resolves.toBeUndefined();

@@ -31,7 +31,7 @@ afterEach(() => {
 describe('LLM stream evidence', () => {
   it('uses the configured AuditPort and keeps protocol error evidence bounded', async () => {
     const envelopes: AuditEnvelope[] = [];
-    configureLlmEvidence({ auditPort: createSink(envelopes), level: 'stream' });
+    configureLlmEvidence({ auditPort: createSink(envelopes), levelForRun: async () => 'stream' });
 
     await runWithLlmAuditContext(context, async () => {
       for (let index = 0; index < 20; index += 1) {
@@ -51,7 +51,7 @@ describe('LLM stream evidence', () => {
 
   it('fails closed for transient provider image values', async () => {
     const envelopes: AuditEnvelope[] = [];
-    configureLlmEvidence({ auditPort: createSink(envelopes), level: 'stream' });
+    configureLlmEvidence({ auditPort: createSink(envelopes), levelForRun: async () => 'stream' });
 
     await runWithLlmAuditContext(context, async () => {
       recordAfterContextManager({

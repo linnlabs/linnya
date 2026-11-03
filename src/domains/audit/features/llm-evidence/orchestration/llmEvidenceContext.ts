@@ -26,11 +26,12 @@ const als = new AsyncLocalStorage<LlmEvidenceStore>();
 let configuration: LlmEvidenceConfiguration | undefined;
 
 interface LlmEvidenceConfiguration {
-  readonly level: AuditLevel;
+  readonly levelForRun: (runId: string) => Promise<AuditLevel>;
   readonly auditPort: AuditPort;
 }
 
 interface LlmEvidenceState {
+  readonly level: AuditLevel;
   readonly auditPort: AuditPort;
   sequence: number;
   emittedEvents: number;
@@ -56,7 +57,7 @@ interface LlmEvidenceStore {
 
 export function configureLlmEvidence(options: {
   readonly auditPort: AuditPort;
-  readonly level: AuditLevel;
+  readonly levelForRun: (runId: string) => Promise<AuditLevel>;
 }): void {
   configuration = options;
 }
@@ -297,9 +298,8 @@ export async function runWithLlmAuditContext<T>(
   contextPatch: Partial<LlmAuditContext>,
   run: () => Promise<T>
 ): Promise<T> {
-  if (configuration?.level !== 'response' && configuration?.level !== 'stream') {
-    return await run();
-  }
+  const configured = configuration;
+  if (!configured) return await run();
 
   const parentContext = getCurrentLlmAuditContext();
   const merged = mergeLlmAuditContext(parentContext, contextPatch);
@@ -309,7 +309,9 @@ export async function runWithLlmAuditContext<T>(
   // 同 run 的标签补充共用队列；独立 child 不能耗尽父预算或将父队列标记为已结束。
   const sameRun = parentContext?.runId === merged.runId &&
     parentContext.conversationId === merged.conversationId;
-  const evidence = sameRun && parentStore ? parentStore.evidence : createLlmEvidenceState();
+  const evidence = sameRun && parentStore ? parentStore.evidence
+    : createLlmEvidenceState(configured.auditPort, await configured.levelForRun(merged.runId));
+  // off 也隔离 run 身份，避免嵌套执行误用父上下文；记录入口仍按冻结档位过滤。
   return await als.run(
     {
       stack: [...(parentStore?.stack ?? []), merged],
@@ -334,27 +336,22 @@ export async function runWithLlmAuditContext<T>(
 }
 
 function getStreamEvidenceState(): LlmEvidenceState | undefined {
-  if (configuration?.level !== 'stream') return undefined;
   const store = als.getStore();
-  if (!store || store.evidence.flushed) return undefined;
+  if (store?.evidence.level !== 'stream') return undefined;
+  if (store.evidence.flushed) return undefined;
   return store.evidence;
 }
 
 function getResponseState(): LlmEvidenceState | undefined {
-  if (configuration?.level !== 'response' && configuration?.level !== 'stream') return undefined;
   const store = als.getStore();
-  if (!store || store.evidence.flushed) return undefined;
+  if (store?.evidence.level !== 'response' && store?.evidence.level !== 'stream') return undefined;
+  if (store.evidence.flushed) return undefined;
   return store.evidence;
 }
 
-function createLlmEvidenceState(): LlmEvidenceState {
-  const auditPort = configuration?.auditPort;
-  if (!auditPort) {
-    throw new Error(
-      'Unified audit runtime must be configured before creating an LLM evidence scope'
-    );
-  }
+function createLlmEvidenceState(auditPort: AuditPort, level: AuditLevel): LlmEvidenceState {
   return {
+    level,
     auditPort,
     sequence: 0,
     emittedEvents: 0,

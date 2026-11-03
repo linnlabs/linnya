@@ -28,7 +28,7 @@ function createIo() {
 function createClient(execute: ConversationControlClient['execute']): ConversationControlClient {
   return {
     descriptor: {
-      protocol_version: 7,
+      protocol_version: 8,
       app_instance_id: 'app-1',
       pid: 42,
       host: '127.0.0.1',
@@ -39,9 +39,10 @@ function createClient(execute: ConversationControlClient['execute']): Conversati
     },
     handshake: {
       schema_version: 1,
-      protocol_version: 7,
+      protocol_version: 8,
       app_instance_id: 'app-1',
       app_version: '0.0.38',
+      instance: { kind: 'source', source_root: '/example/linnya', branch: 'main', audit_level: 'off' },
       capabilities: [
         'send',
         'models',
@@ -93,7 +94,7 @@ describe('runCli', () => {
     expect(connection.connect).not.toHaveBeenCalled();
     expect(runtimeLauncher.run).toHaveBeenCalledWith(expect.objectContaining({
       apiPort: 0,
-      qdrantPort: 6333,
+      qdrantPort: 0,
     }));
     expect(JSON.parse(output.stdout())).toMatchObject({
       command: 'runtime',
@@ -473,12 +474,12 @@ describe('runCli', () => {
     await expect(runCli(['--help'], { connection, io: output.io })).resolves.toBe(0);
     expect(connection.connect).not.toHaveBeenCalled();
     expect(output.stdout()).toContain('linnya audit <conversation-id>');
-    expect(output.stdout()).toMatch(/audit needs an App with Agent Run Audit enabled.*LINNYA_AUDIT_LEVEL/);
+    expect(output.stdout()).toContain('linnya audit level [off|behavior|response|stream]');
   });
 
   it('doctor 对握手缺席的能力给出原因，已声明的能力不重复列出', async () => {
     const output = createIo();
-    // createClient 的握手没有声明 audit，正好对应默认关闭审计的 App。
+    // 模拟不提供审计能力的 Host；默认 off 的源码 Host 必须仍声明审计能力。
     const client = createClient(async () => {
       throw new Error('doctor must not call the App');
     });
@@ -487,7 +488,7 @@ describe('runCli', () => {
       ok: true,
       capabilities: expect.not.arrayContaining(['audit']),
       unavailable_capabilities: expect.arrayContaining([
-        { capability: 'audit', reason: expect.stringContaining('LINNYA_AUDIT_LEVEL') },
+        { capability: 'audit', reason: '生产环境不提供审计' },
       ]),
     });
     expect(JSON.parse(output.stdout())).toMatchObject({

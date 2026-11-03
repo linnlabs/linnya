@@ -1,7 +1,7 @@
 # Linnya Conversation CLI
 
 `linnya` 同时提供轻量命令行控制面和源码开发用的前台 Runtime
-Host。普通命令连接当前 Workspace 的唯一 Backend，复用正式 Conversation
+Host。源码普通命令只连接 CLI 所属源码工作目录的 Desktop 或 Runtime Backend，复用正式 Conversation
 admission、Flow、持久化和 read model；`runtime start`
 则在不启动 Electron 的情况下监督同一 App
 Server 实现。两种入口都不让 CLI 直读 SQLite，也不创建每 Agent 一套 Backend。当前仅供仓库内开发、评测与 Benchmark 使用，尚未作为生产功能开放或随桌面产品分发。
@@ -65,7 +65,7 @@ node apps/linnya-cli/bin/linnya.cjs runtime start \
 Runtime 在 stdout 输出一次 ready JSON 后保持前台运行；另一个终端中的普通
 `linnya` 命令通过同一私有连接描述访问它。`--api-port 0`
 是默认值，由 OS 选择空闲 loopback 端口；`--qdrant-port`
-默认 6333。一个 Workspace 同时只允许一个 Desktop 或 CLI Runtime
+默认 0，同样由 OS 分配，多个工作目录无需手动分配端口。Runtime 与 Desktop 都加载本目录的 `.env.local`，默认连接文件同在 `_dev_electron/runtime/`。一个 Workspace 同时只允许一个 Desktop 或 CLI Runtime
 owner，竞争启动以 `conversation_busy` 拒绝，不做隐式 attach、接管或另开数据库。
 
 `build:linnya-runtime` 先按锁定清单准备并校验独立 Node 与 Qdrant，再编译 Backend、队列 Worker 与 CLI；
@@ -89,7 +89,7 @@ approval，并只接受 Host 声明的选择；stdout 仍只保留机器可读 J
 独立分发必须同时携带 `bin/linnya.cjs`、`dist/cli.cjs` 和
 `dist/build.json`。launcher 核对产物 SHA-256；在包含源码的仓库内还核对 CLI、公共 Schema、构建输入与锁文件的内容指纹。产物缺失、损坏或源码变更后未重建会以退出码 4 明确拒绝，不自动切换运行入口。版本号不变也能发现旧 bundle。`--version`
 显示 `source` 或 bundle 指纹；`doctor`
-只读显示 CLI 身份、App 实例、协议与能力，并在 `unavailable_capabilities` 列出握手缺席的能力及原因（例如审计未启用时的 `audit`），不打印连接 token 或描述文件。
+只读显示 CLI 身份、所连 App 的真实源码目录、分支、当前审计默认档位、协议与能力，并在 `unavailable_capabilities` 列出握手缺席的能力及原因。源码 `off` 仍提供审计查询和切档能力，不打印连接 token 或描述文件。
 
 ## 2. 一个最小的 PPT 真实请求
 
@@ -335,7 +335,7 @@ CLI 的 `web_search` 只允许普通搜索，`deep_search=true` 明确拒绝，�
 保存带引用的 Markdown 同样沿用该会话；只能引用工具实际返回的 `[@ref]`，不能自造来源编号。
 这里只记录 Linnya 工具执行与产物，不会自动导入外部 Agent 的推理、模型 token 或评审记录。
 
-工具命令自 wire protocol 5 起统一为 `tools`，当前项目管理合同使用 protocol 7。
+工具命令自 wire protocol 5 起统一为 `tools`，当前控制协议为 8（项目管理形态沿用 protocol 7）。
 CLI 与 Host 都要升级并重启 Host；旧协议会明确拒绝，不做双协议猜测。
 
 外部 Agent 的 Skill 安装由该产品管理。可将内置 `deep-research` 及其 `references/` 原样复制到
@@ -360,8 +360,8 @@ token。外部 Agent 若只需要编辑当前 Linnya 项目，应使用
 Slides CLI。两者当前没有相互转发。Slides CLI 的完整参数与运行环境见
 [`presentationCli/README.md`](../../packages/plugins/slides/src/backend/features/presentationCli/README.md)。
 
-`audit`
-是查询和导出入口，不是审计 recorder；它不会写数据库、写文件或根据 CLI 参数开启另一种审计。从 RunRegistry 读取权威 run/Agent/终态，从统一 Audit
+`audit <conversation-id> [--run ID]`
+是查询和导出入口；`audit level [off|behavior|response|stream]` 查询或修改所连源码实例的新 run 默认档位。两者都复用同一 Audit Domain，不新增 recorder。查询从 RunRegistry 读取权威 run/Agent/终态，从统一 Audit
 Domain 所写的 EventStore 配对 durable tool decision/output，并复用 Command
 Audit 区分 Tool error 与 Shell 子进程非零退出。`tool_pairing.complete` 及
 `paired / decision_missing / terminal_missing / duplicate_terminal`
@@ -390,22 +390,23 @@ execution 最多 64 条/1 MiB，且可能写入失败。没有记录的 run 标�
 新增的严格 audit 响应属于控制协议 4；CLI 与 Host 必须同版本，旧版本在握手前后明确拒绝，
 不对已有 audit DTO 做宽松解析。
 
-CLI 不负责开启或切换 Agent Run Audit 等级。开发环境的等级由 App 启动时的
-`LINNYA_AUDIT_LEVEL=off|behavior|response|stream`
-决定，修改后需要重启 App；CLI 只读取当前有效审计并导出安全摘要。生产 Desktop 不打包此 CLI，且生产 Host 固定关闭开发 Agent
-Run Audit；即使外部自行运行 Node 版 CLI，也不能通过控制面开启审计，`audit`
-能力不会在生产握手中声明。
+源码开发可直接运行 `pnpm linnya:cli audit level behavior` 开启行为审计；不带档位的
+`pnpm linnya:cli audit level` 显示当前默认值。可选档位为 `off / behavior / response / stream`。
+切档只影响当前连接实例中新接纳的 root run，不影响其他工作目录。运行中的 run、暂停/HITL 后继续的同一个 run、
+它的 child 以及延迟回报的 Shell 终态均保留原档位；同一会话下一次新 run 才采用新默认值。
 
-App 未启用审计时握手缺少 `audit`，CLI 不会把它当作可执行命令发出：`audit` 在请求前以
-`capability_unavailable`（退出码 7，`retryable=false`）拒绝，错误信息说明审计是开发诊断、
-默认关闭且发行包永远关闭，并给出 `LINNYA_AUDIT_LEVEL` 与 `LINNYA_CLI_CONNECTION_FILE` 的使用方式；
-`--help` 在 Workflow 中标注同一前提，`doctor` 在 `unavailable_capabilities` 给出原因。控制协议要求 CLI 与
-App 版本严格一致，所以这个错误只表示审计未启用，不表示 App 版本过旧。
+实例开关仅在内存中生效。重启后重新读取本目录 `.env.local` 的 `LINNYA_AUDIT_LEVEL`，未设置则为 `off`；
+显式进程环境优先。Desktop 与 `linnya runtime start` 使用同一规则。CLI 不改配置文件。
+开启前的 run 不补录；关闭后仍可用原来的 `audit <conversation-id> --run ID` 读取已保存事实，查询只访问所连 Host 自己的数据库。
 
-不带 `LINNYA_CLI_CONNECTION_FILE` 的 `linnya` 命令连接 `~/.linnya/runtime/` 里的默认 App，运行着已安装的发行包时
-它就是那个 App，审计固定关闭。读取源码 App 的审计须先让该 App 以 `LINNYA_AUDIT_LEVEL` 启动，再把
-`LINNYA_CLI_CONNECTION_FILE` 指向它的连接文件（源码 Desktop 默认在 `_dev_electron/runtime/`，见[开发配置](../../docs/development/env-local.md#多工作目录并行开发)）。
-`linnya runtime start` 不读取 `.env.local`，等级须在启动它的 shell 环境中设置。
+生产 Host 不公告 `audit / audit_level`，直接调用控制入口也返回 `capability_unavailable`：
+“生产环境不提供审计”。源码 CLI 显式指向安装版会先在连接阶段以 `source_mismatch` 拒绝。
+
+源码 CLI 根据自身入口所在的 checkout 定位实例（不采用 Shell 会话的工作目录），默认读取该目录下
+`_dev_electron/runtime/conversation-control-v1.json`。例如在 `linnya-slides` 运行 `pnpm linnya:cli` 就只连接该 checkout。
+本目录没有实例或连接已过期时直接报错，不读取用户级连接作回退。
+`LINNYA_CLI_CONNECTION_FILE` 仍可覆盖发现路径，但 App 握手报告的真实源码根必须与 CLI 一致；
+符号链接归一后比较目录，分支名只用于诊断，不用来认定实例相同。细节见[开发配置](../../docs/development/env-local.md#多工作目录并行开发)。
 
 ## 4. 状态与控制语义
 
@@ -465,7 +466,7 @@ contract，也不借此调整全局工具权限。
 | --: | ----------------------------------------------- |
 | `0` | 成功                                            |
 | `2` | 参数或请求合同错误                              |
-| `3` | App 未运行、连接描述过期或本地传输失败          |
+| `3` | App 未运行、目录不一致、连接描述过期或本地传输失败          |
 | `4` | CLI 与 App 协议不兼容                           |
 | `5` | 未授权                                          |
 | `6` | 目标或状态冲突，例如项目重名、不存在、busy、run/interaction 不匹配 |
@@ -476,20 +477,20 @@ Benchmark 应把 CLI 当作子进程，解析 stdout 的 JSON/JSONL，并用退�
 
 ## 6. 本地连接与安全
 
-Desktop 或 CLI Runtime 启动后原子发布当前实例的私有连接描述：
+源码 Desktop 与 CLI Runtime 默认在各自 checkout 的 `_dev_electron/runtime/conversation-control-v1.json`
+原子发布连接描述。安装版继续使用 `~/.linnya/runtime/conversation-control-v1.json`；只有脱离源码 checkout
+分发的独立 CLI 才使用用户级默认路径。源码 CLI 不回退到该路径。
 
-```text
-~/.linnya/runtime/conversation-control-v1.json
-```
-
-测试或多实例隔离可以设置 `LINNYA_CLI_CONNECTION_FILE` 覆盖路径。目录权限为
+`LINNYA_CLI_CONNECTION_FILE` 可以覆盖路径，目录身份校验仍必需。目录权限为
 `0700`，文件权限为
 `0600`；文件包含 loopback 地址、实际端口、App 实例 ID 和随机 session
 token。Host 正常退出会撤销自己发布的描述文件；异常终止后新 owner 会以 Workspace 排他锁和实例身份安全替换陈旧描述。
 
 CLI token 只允许访问 `/api/v1/conversation-control/*`，Renderer
 token 也不能访问该命名空间。token 在 body
-parser 前校验，不写入普通日志。CLI 连接时还会校验协议版本、握手返回的 App 实例 ID 和能力上限，避免使用陈旧文件连到另一个进程。
+parser 前校验，不写入普通日志。CLI 连接时还会校验协议版本、握手返回的 App 实例 ID、真实源码根和能力上限，避免使用陈旧文件连到另一个进程。
+
+所有 CLI 错误都携带 `connection`，包含 CLI 源码根/分支、连接状态和已核验的 App 身份/档位。握手前的错误没有实时实例信息，`instance=null`，不能把未知档位写成 `off`。目录拒绝时保留双方目录；`doctor.app` 展示匹配后的实例信息。
 
 ## 7. CLI 自身怎么测试
 
@@ -510,7 +511,7 @@ pnpm test:linnya-runtime:e2e
 | parser / orchestration  | 命令映射、JSON 响应、退出码、watch 去重与停止条件正确                                                                                            |
 | CLI 进程集成            | 真实 Node 子进程连接脚本化 HTTP bridge，验证 stdout/stderr、JSONL 和稳定退出码                                                                   |
 | Project bridge 集成 | 真实 CLI → HTTP router → Project SQLite，覆盖空库读取、创建、修改、重名/不存在、写入事件与重开数据库 |
-| Runtime 进程 E2E        | 构建后的 CLI → 固定 Node App Server → 临时 SQLite/Qdrant，验证无 Electron 冷启动、不同 Agent 并行、唯一 Workspace owner、正常/异常退出与历史重启 |
+| Runtime 进程 E2E        | 构建后的 CLI → 固定 Node App Server → 临时 SQLite/Qdrant，验证无 Electron 冷启动、不同 Agent 并行、唯一 Workspace owner、正常/异常退出、dotenv 默认、本目录连接发布、并行实例切档隔离与历史重启 |
 | Host use case 集成      | send durable acceptance、busy、HITL resume、stop settlement、run 精确结果读取                                                                    |
 | ApiServer / bridge 集成 | token 双向隔离、loopback、描述文件权限和生命周期、稳定 HTTP 错误                                                                                 |
 | 真实 App smoke          | 穿过实际 Linnya App、模型、Slides Agent 与 PPT 工具链，验证产品可用性                                                                            |
@@ -565,7 +566,7 @@ diagnostics 与 build failure 判断，并在修复后重新写入。
 `project_name_conflict`，不存在返回 `project_not_found`，两者退出码均为 6；非法参数退出码为 2。
 项目写入失败或响应丢失不会自动重试：先用 `projects list/get` 检查实际状态，再决定下一次操作。
 
-当前 wire protocol 为 7：请求和响应都必须带 `action`，裸命令只在 CLI 参数层转为 `list`。
+当前 wire protocol 为 8；项目合同自 7 起请求和响应都必须带 `action`，裸命令只在 CLI 参数层转为 `list`。
 协议 7 新增确认后的空项目删除与对应错误；协议 6 的项目读写形态保持不变。
 CLI 与 Host 必须同步升级，已有 Host 需要重启；不接受旧的无 action 请求，也不回退双协议。
 真实链路测试位于 `src/app-hosts/linnya/adapters/conversation-control-bridge/__tests__/projectCliProcess.integration.test.ts`；

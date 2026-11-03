@@ -309,6 +309,7 @@ export function createChildLifecycle(options: {
   nextEventStoreId: () => string;
 }) {
   return new LinnyaRegisteredChildRunLifecycle({
+    audit: { level: 'off', levelForRun: async () => 'off' },
     supervisor: options.supervisor,
     eventStore: options.eventStore,
     nextEventStoreId: options.nextEventStoreId,

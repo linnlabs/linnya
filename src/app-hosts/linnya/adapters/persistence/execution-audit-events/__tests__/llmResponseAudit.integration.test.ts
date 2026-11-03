@@ -92,7 +92,7 @@ afterEach(resetLlmAuditForTest);
 describe('LLM response evidence → EventStore query → CLI audit', () => {
   it('保留 child 安全失败与随后成功；只选真实子树，不从共享 trace 关联其它 run', async () => {
     const envelopes: AuditEnvelope[] = [];
-    createLinnyaAuditRuntime({ level: 'response', sink: { emit: envelope => { envelopes.push(envelope); } } });
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'response', level: 'response', sink: { emit: envelope => { envelopes.push(envelope); } } });
     await runWithLlmAuditContext({ conversationId, runId: 'root' }, async () => {
       recordLlmResponseSummary(summary('root-attempt', 'failed'));
       await runWithLlmAuditContext({ conversationId, runId: 'child', parentRunId: 'root' }, async () => {
@@ -145,7 +145,7 @@ describe('LLM response evidence → EventStore query → CLI audit', () => {
 
   it('实际记录端封顶后明确覆盖未知，不能把缺失的第65次失败补成无失败', async () => {
     const events: RoutedRuntimeEvent[] = [];
-    createLinnyaAuditRuntime({ level: 'response', sink: { emit: envelope => { events.push(eventFor(envelope)); } } });
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'response', level: 'response', sink: { emit: envelope => { events.push(eventFor(envelope)); } } });
     await runWithLlmAuditContext({ conversationId, runId: 'root' }, async () => {
       for (let index = 0; index < 64; index += 1) recordLlmResponseSummary(summary(`attempt-${index}`, 'succeeded'));
       recordLlmResponseSummary(summary('dropped-failure', 'failed'));
@@ -162,7 +162,7 @@ describe('LLM response evidence → EventStore query → CLI audit', () => {
 
   it('审计 off 与旧运行没有 response 事实时保留不可用语义，不调用模型补齐', async () => {
     const events: RoutedRuntimeEvent[] = [];
-    createLinnyaAuditRuntime({ level: 'off', sink: { emit: envelope => { events.push(eventFor(envelope)); } } });
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'off', level: 'off', sink: { emit: envelope => { events.push(eventFor(envelope)); } } });
     await runWithLlmAuditContext({ conversationId, runId: 'root' }, async () => {
       recordLlmResponseSummary(summary('not-recorded', 'failed'));
     });
@@ -175,7 +175,7 @@ describe('LLM response evidence → EventStore query → CLI audit', () => {
 
   it('字节上限先于条数上限时仍报告覆盖未知，并排除有体积的 route 字段', async () => {
     const events: RoutedRuntimeEvent[] = [];
-    createLinnyaAuditRuntime({ level: 'response', sink: { emit: envelope => { events.push(eventFor(envelope)); } } });
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'response', level: 'response', sink: { emit: envelope => { events.push(eventFor(envelope)); } } });
     await runWithLlmAuditContext({ conversationId, runId: 'root' }, async () => {
       for (let index = 0; index < 3; index += 1) {
         recordLlmResponseSummary({ ...summary(`large-attempt-${index}`, index === 2 ? 'failed' : 'succeeded'),
@@ -190,7 +190,7 @@ describe('LLM response evidence → EventStore query → CLI audit', () => {
 
   it('不从 stream 或原始错误补造摘要，损坏的 response 不能静默变成零失败', async () => {
     const envelopes: AuditEnvelope[] = [];
-    createLinnyaAuditRuntime({ level: 'response', sink: { emit: envelope => { envelopes.push(envelope); } } });
+    createLinnyaAuditRuntime({ readRunLevel: async () => 'response', level: 'response', sink: { emit: envelope => { envelopes.push(envelope); } } });
     await runWithLlmAuditContext({ conversationId, runId: 'root' }, async () => {
       recordLlmResponseSummary({ ...summary('protocol-failure', 'failed'),
         failure: { kind: 'protocol', code: 'provider_attempt_threw', retryable: false } });

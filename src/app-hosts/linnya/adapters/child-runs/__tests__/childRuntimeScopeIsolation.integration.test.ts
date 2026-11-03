@@ -40,6 +40,7 @@ function createIsolatedRuntime(label: string): {
     supervisor,
     invoker: createRegisteredChildRunInvoker({
       runtime: {
+        audit: { level: 'off', levelForRun: async () => 'off' },
         supervisor,
         eventStore,
         nextEventStoreId: graph.createMonotonicEventStoreIdFactory(),

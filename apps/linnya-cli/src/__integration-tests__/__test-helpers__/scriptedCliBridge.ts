@@ -9,6 +9,7 @@ import {
   ConversationControlCommandRequestSchema,
   ConversationControlConnectionDescriptorSchema,
   type ConversationControlCommandRequest,
+  type ConversationControlInstance,
 } from '@app/schemas';
 
 const repoRoot = path.resolve(import.meta.dirname, '../../../../..');
@@ -42,7 +43,8 @@ function sendJson(response: ServerResponse, status: number, body: unknown): void
 
 export async function createScriptedBridge(
   execute: (request: ConversationControlCommandRequest, response: ServerResponse) => unknown,
-  capabilities: readonly unknown[] = ['send', 'models', 'projects', 'list', 'messages', 'status', 'resume', 'respond', 'stop', 'result', 'audit', 'tools', 'command_approvals', 'future_additive_capability'],
+  capabilities: readonly unknown[] = ['send', 'models', 'projects', 'list', 'messages', 'status', 'resume', 'respond', 'stop', 'result', 'audit', 'audit_level', 'tools', 'command_approvals', 'future_additive_capability'],
+  instance: ConversationControlInstance = { kind: 'source', source_root: repoRoot, branch: 'main', audit_level: 'off' },
 ): Promise<{
   readonly connectionFile: string;
   readonly receivedCommands: ConversationControlCommandRequest[];
@@ -59,9 +61,10 @@ export async function createScriptedBridge(
         await readJsonRequest(request);
         sendJson(response, 200, {
           schema_version: 1,
-          protocol_version: 7,
+          protocol_version: 8,
           app_instance_id: 'app-process-test',
           app_version: '0.0.38',
+          instance,
           capabilities,
           limits: {
             max_request_bytes: 1024 * 1024,
@@ -99,7 +102,7 @@ export async function createScriptedBridge(
   temporaryRoots.push(temporaryRoot);
   const connectionFile = path.join(temporaryRoot, 'connection.json');
   const descriptor = ConversationControlConnectionDescriptorSchema.parse({
-    protocol_version: 7,
+    protocol_version: 8,
     app_instance_id: 'app-process-test',
     pid: process.pid,
     host: '127.0.0.1',

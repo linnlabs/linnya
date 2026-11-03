@@ -514,6 +514,8 @@ export class FlowOrchestrator {
                       eventStore: this.runtime.eventStore,
                       costCollector: this.runtime.costCollector,
                       metadata: {
+                        // 非持久恢复入口也在注册时冻结，不能在 producer 发事件时读默认值。
+                        auditLevel: this.runtime.audit.level,
                         executionId: hostSession.sequencer.getExecutionId(),
                         turnId,
                         traceId: registrationRequest.review_run_id ?? turnId,

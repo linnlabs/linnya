@@ -1,6 +1,6 @@
 # Conversation Control Use Case
 
-本 feature 是 Linnya Conversation 外部控制动作的产品级 use case。它把 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / tools / command_approvals` 编排到现有模型目录、Flow、run registry、durable history、工具目录和执行审计 ports，供 CLI 等入口复用。
+本 feature 是 Linnya Conversation 外部控制动作的产品级 use case。它把 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / audit_level / tools / command_approvals` 编排到现有模型目录、Flow、run registry、durable history、工具目录和执行审计 ports，供 CLI 等入口复用。
 
 它不拥有 HTTP、鉴权、命令行解析、数据库 SQL 或 Agent runtime。共享 wire 合同位于 `packages/schemas/src/conversation-control/`；本地传输位于 `adapters/conversation-control-bridge/`。
 
@@ -16,6 +16,7 @@
 | `ConversationControlHistoryPort` | 会话列表、消息窗口、指定 run 最终回答、会话 Agent 选择 |
 | `ConversationControlToolCatalogPort` | 读取当前获准 CLI 工具的正式描述与参数 schema |
 | `CommandApprovalControlPort` | 从唯一Commands owner读取审批投影、按精确身份提交单次回复 |
+| `AuditControlPort` | 查询/修改当前源码实例默认档位；生产身份拒绝 |
 | `ExecutionAuditExportUseCase` | 关联 RunRegistry、EventStore、Command Audit 与 Telemetry 的安全只读执行摘要 |
 
 use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLite 实现。跨 domain 的具体组合在 `adapters/conversation-control-bridge/orchestration/createLinnyaConversationControlUseCase.ts` 完成。
@@ -56,7 +57,7 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 
 `command_approvals`的list要求明确conversation/run，返回该run及后代的真实pending；reply要求请求实际`agent_run_id`、request ID和明确choice。审批owner同步校验作用域和允许选项，并与Renderer/TTY竞争唯一接纳点。`accepted`只确认回复被接纳，授权持久化与进程终态须继续观察原运行；不创建新Flow、user message或execution。
 
-`status.run.command_approvals`为必填数组，来自同一owner并按root子树筛选；保留真实run生命周期，不能把等待命令审批伪装为已有HITL。无审批返回空数组，端点不可用明确报错；`processing`不是待回复。当前控制面使用 wire protocol 7，旧CLI必须升级，不用宽松解析吞掉新增字段。
+`status.run.command_approvals`为必填数组，来自同一owner并按root子树筛选；保留真实run生命周期，不能把等待命令审批伪装为已有HITL。无审批返回空数组，端点不可用明确报错；`processing`不是待回复。当前控制面使用 wire protocol 8，旧CLI必须升级，不用宽松解析吞掉新增字段。
 
 ## 并发与已知边界
 
@@ -82,3 +83,5 @@ HTTP 状态为 409 / 404，CLI 均退出 6。Project owner 提交后发布变更
 `delete` 要求 `confirm=true`，只委托 `deleteEmpty`；非空为 `project_not_empty`，受保护或数据库限制为 `project_delete_blocked`（HTTP 409 / CLI 6）。
 非空或持久化规则阻止删除时，由此应用层提示用户在 Linnya 前端手动删除；不得引导 Agent 自动清空内容后重试。默认项目始终禁止删除，不提示换入口绕过。
 成功只返回删除的 `project_id`，通知当前 Desktop 退出失效项目。系统角色设置、完整删除和 Workspace 管理不开放。
+
+控制协议 8 的 handshake 必填实例源码目录、分支与当前审计档位；源码 CLI 在命令前核对目录。`audit_level` 查询或修改所连源码实例的新 run 默认档位，`off` 保留读取和切档能力，生产 Host 拒绝。

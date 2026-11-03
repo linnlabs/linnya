@@ -1,5 +1,5 @@
 /**
- * @file src/electron-main/bootstrap-env.ts
+ * @file development-environment/bootstrapDevEnv.ts
  *
  * @description
  * 统一加载开发环境变量文件（仅做“补齐”，不覆盖命令行/系统已设置的变量）。
@@ -23,14 +23,17 @@ type LoadResult = {
   loaded: boolean;
 };
 
-function tryLoadEnvFile(filePath: string): LoadResult {
+function tryLoadEnvFile(filePath: string, environment: NodeJS.ProcessEnv): LoadResult {
   if (!fs.existsSync(filePath)) {
     return { filePath, loaded: false };
   }
 
-  // 环境加载先于 command mode；dotenv 的启动提示不能污染 CLI 的 JSON stdout。
-  const result = dotenv.config({ path: filePath, override: false, quiet: true });
-  return { filePath, loaded: !result.error };
+  // 只解析到调用方的环境快照；Runtime 不能把本地配置泄漏到启动它的 CLI 进程。
+  const values = dotenv.parse(fs.readFileSync(filePath));
+  for (const [key, value] of Object.entries(values)) {
+    if (environment[key] === undefined) environment[key] = value;
+  }
+  return { filePath, loaded: true };
 }
 
 /**
@@ -43,6 +46,7 @@ function tryLoadEnvFile(filePath: string): LoadResult {
 export function bootstrapDevEnv(params: {
   readonly isPackaged: boolean;
   readonly developmentRoot: string;
+  readonly environment?: NodeJS.ProcessEnv;
 }): void {
   // 生产包的 cwd 由 Finder、终端、快捷方式或调用方决定，不能成为配置来源。
   if (params.isPackaged) return;
@@ -52,15 +56,14 @@ export function bootstrapDevEnv(params: {
     path.join(params.developmentRoot, '.env'),
   ];
 
-  const results = candidates.map(tryLoadEnvFile).filter((r) => r.loaded);
+  const environment = params.environment ?? process.env;
+  const results = candidates.map(file => tryLoadEnvFile(file, environment)).filter(r => r.loaded);
   if (results.length === 0) return;
 
   // 开发提示走 stderr，让普通启动和 command mode 共用同一环境准入流程。
-  const isDev = process.env.NODE_ENV === 'development' || process.env.LINNYA_DEV_MODE === 'true';
+  const isDev = environment.NODE_ENV === 'development' || environment.LINNYA_DEV_MODE === 'true';
   if (!isDev) return;
 
-  const loadedFiles = results.map((r) => r.filePath).join(', ');
+  const loadedFiles = results.map(r => r.filePath).join(', ');
   process.stderr.write(`[ENV] 已加载环境变量文件: ${loadedFiles}\n`);
 }
-
-

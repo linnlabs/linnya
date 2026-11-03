@@ -15,4 +15,4 @@ export type FlowRuntimePort = Pick<
   | 'runDescriptors'
   | 'createCheckpointWriter'
   | 'runAdmissionCommit'
->;
+> & { readonly audit: Pick<LinnyaAgentRuntimeScope['audit'], 'level'> };

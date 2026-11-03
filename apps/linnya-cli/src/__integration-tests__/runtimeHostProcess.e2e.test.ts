@@ -145,13 +145,16 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-runtime-e2e-'));
     temporaryRoots.push(root);
     const workspace = path.join(root, 'workspace');
-    const connectionFile = path.join(root, 'connection.json');
+    const connectionFile = path.join(root, 'runtime-host/_dev_electron/runtime/conversation-control-v1.json');
     const modelCatalog = path.join(root, 'default-models.json');
     await fs.mkdir(workspace, { recursive: true });
     await writeFastMockModelCatalog(modelCatalog);
-    const environment = await createRuntimeEnvironment({ connectionFile, modelCatalog });
+    const startupEnvironment = await createRuntimeEnvironment({ connectionFile: path.join(root, 'connection.json'), modelCatalog });
+    delete startupEnvironment.LINNYA_CLI_CONNECTION_FILE;
+    const environment = { ...startupEnvironment, LINNYA_CLI_CONNECTION_FILE: connectionFile };
+    await fs.writeFile(path.join(root, 'runtime-host/.env.local'), 'LINNYA_AUDIT_LEVEL=behavior\n');
 
-    const first = await startRuntime({ workspace, environment });
+    const first = await startRuntime({ workspace, environment: startupEnvironment });
     expect(await fs.stat(connectionFile)).toMatchObject({ mode: expect.any(Number) });
     expect(first.ready.runtime.database_ready).toBe(true);
     expect(first.stderr).not.toContain('Electron');
@@ -160,8 +163,24 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     expect(doctor.code).toBe(0);
     expect(parseJson(doctor.stdout)).toMatchObject({
       ok: true,
-      app: { version: '0.0.38' },
+      app: { version: '0.0.38', source_root: repoRoot, audit_level: 'behavior' },
     });
+
+    expect(parseJson((await runCli(['audit', 'level'], environment)).stdout)).toMatchObject({ level: 'behavior' });
+    const change = await runCli(['audit', 'level', 'stream'], environment);
+    expect(change.code, change.stderr).toBe(0);
+    expect(parseJson(change.stdout)).toMatchObject({ level: 'stream' });
+    expect(parseJson((await runCli(['doctor'], environment)).stdout)).toMatchObject({ app: { audit_level: 'stream' } });
+
+    // 两个独立 Host 同时运行；改变第一个的默认档位不能影响第二个。
+    const otherRoot = path.join(root, 'other');
+    const otherEnvironment = await createRuntimeEnvironment({ connectionFile: path.join(otherRoot, 'connection.json'), modelCatalog });
+    const other = await startRuntime({ workspace: path.join(otherRoot, 'workspace'), environment: otherEnvironment });
+    expect(parseJson((await runCli(['audit', 'level'], otherEnvironment)).stdout)).toMatchObject({ level: 'off' });
+    expect(parseJson((await runCli(['audit', 'level'], environment)).stdout)).toMatchObject({ level: 'stream' });
+    other.child.kill('SIGTERM');
+    expect(await waitForClose(other.child), other.stderr).toBe(0);
+    removeLiveRuntime(other.child);
 
     // 空数据工作区通过正式 CLI 创建项目，然后用返回身份发起会话。
     const empty = await runCli(['projects', 'list'], environment);
@@ -216,6 +235,12 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     expect(readLastJsonLine(statusA.stdout)).toMatchObject({ snapshot: { status: 'completed' } });
     expect(readLastJsonLine(statusB.stdout)).toMatchObject({ snapshot: { status: 'completed' } });
 
+    const disabled = await runCli(['audit', 'level', 'off'], environment);
+    expect(disabled.code, disabled.stderr).toBe(0);
+    const audit = await runCli(['audit', receiptA.conversation_id, '--run', receiptA.run_id], environment);
+    expect(audit.code, audit.stderr).toBe(0);
+    expect(parseJson(audit.stdout)).toMatchObject({ command: 'audit', requested_run_id: receiptA.run_id });
+
     const contender = await runCli([
       'runtime', 'start', '--workspace', workspace,
       '--qdrant-port', String(await reservePort()),
@@ -231,7 +256,10 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     await expect(fs.stat(connectionFile)).rejects.toMatchObject({ code: 'ENOENT' });
     expect(isProcessAlive(first.ready.runtime.pid)).toBe(false);
 
-    const restarted = await startRuntime({ workspace, environment });
+    const restarted = await startRuntime({ workspace, environment: startupEnvironment });
+    expect(parseJson((await runCli(['audit', 'level'], environment)).stdout)).toMatchObject({ level: 'behavior' });
+    const auditAfterRestart = await runCli(['audit', receiptA.conversation_id, '--run', receiptA.run_id], environment);
+    expect(auditAfterRestart.code, auditAfterRestart.stderr).toBe(0);
     const removedProject = await runCli(['projects', 'get', temporaryId], environment);
     expect(removedProject.code).toBe(6);
     expect(parseJson(removedProject.stderr)).toMatchObject({ error: { code: 'project_not_found' } });
@@ -251,7 +279,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     expect(await waitForClose(restarted.child), restarted.stderr).toBe(0);
     removeLiveRuntime(restarted.child);
     await expect(fs.stat(connectionFile)).rejects.toMatchObject({ code: 'ENOENT' });
-  }, 60_000);
+  }, 90_000);
 
   it('launcher 被 SIGKILL 后 App Server 通过 pipe EOF 收口，并允许同一 Workspace 重启', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-runtime-crash-e2e-'));
@@ -342,7 +370,6 @@ async function startRuntime(input: {
     cliEntry,
     'runtime', 'start',
     '--workspace', input.workspace,
-    '--qdrant-port', String(await reservePort()),
   ], {
     cwd: repoRoot,
     env: input.environment,
@@ -467,6 +494,8 @@ async function createRuntimeEnvironment(input: {
   return {
     ...process.env,
     LINNYA_CLI_CONNECTION_FILE: input.connectionFile,
+    LINNYA_AUDIT_LEVEL: undefined,
+    NODE_ENV: 'development',
     LINNYA_CLI_RUNTIME_MODULE: path.join(repoRoot, 'dist/main/linnya-cli-runtime.cjs'),
     LINNYA_CLI_DEVELOPMENT_ROOT: developmentRoot,
     LINNYA_PLUGIN_ROOT: path.join(developmentRoot, '_dev_data/plugins'),

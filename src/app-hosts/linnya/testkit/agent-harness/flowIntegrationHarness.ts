@@ -231,6 +231,7 @@ export function createFlowIntegrationRuntimePersistence(
     registryStore: new runtimeKernel.runSupervisor.MemoryRunRegistryStore(),
   });
   return {
+    audit: { level: 'off' },
     supervisor,
     costCollector,
     eventStore,

@@ -2,25 +2,13 @@ import type { AuditEnvelope } from '@linnlabs/linnkit/contracts';
 import type { AuditPort } from '@linnlabs/linnkit/ports';
 
 import { configureLlmEvidence } from '../features/llm-evidence/orchestration/llmEvidenceContext';
-import { isAuditActionEnabled, type AuditLevel } from '../definitions/auditLevel';
-import { resolveAuditLevel, type AuditRuntimeTrust } from '../functions/resolveAuditLevel';
+import { AuditLevelSchema, isAuditActionEnabled, type AuditLevel } from '../definitions/auditLevel';
+import { resolveAuditLevel } from '../functions/resolveAuditLevel';
+import { AuditUnavailableError, type CreateLinnyaAuditRuntimeOptions, type LinnyaAuditRuntime } from '../definitions/auditRuntime';
+import { createAuditLevelState } from '../shared/store/auditLevelState';
 import { Logger } from '../../../shared/logger';
 
 const logger = new Logger('AuditRuntime');
-
-export interface LinnyaAuditRuntime {
-  readonly level: AuditLevel;
-  readonly auditPort: AuditPort;
-  flush(): Promise<void>;
-}
-
-export interface CreateLinnyaAuditRuntimeOptions {
-  /** KB 级结构化决策账本的唯一 durable sink。 */
-  readonly sink: AuditPort;
-  readonly level?: AuditLevel;
-  /** 由 Host bootstrap 提供的运行身份；packaged 环境强制关闭开发审计。 */
-  readonly trust?: AuditRuntimeTrust;
-}
 
 /**
  * 创建 Linnya 进程内唯一审计入口。
@@ -33,10 +21,15 @@ export function createLinnyaAuditRuntime(
   options: CreateLinnyaAuditRuntimeOptions
 ): LinnyaAuditRuntime {
   const requestedLevel = options.level ?? resolveAuditLevel(process.env, options.trust);
-  const level = options.trust?.packaged === true ? 'off' : requestedLevel;
+  const available = options.trust?.packaged !== true && process.env.NODE_ENV !== 'production';
+  const state = createAuditLevelState(available ? requestedLevel : 'off');
+  const levelForRun = async (runId: string): Promise<AuditLevel> =>
+    available ? options.readRunLevel(runId) : 'off';
+  let hasWrites = false;
   const auditPort: AuditPort = Object.freeze({
     async emit(envelope: AuditEnvelope): Promise<void> {
-      if (!isAuditActionEnabled(level, envelope.action)) return;
+      if (!isAuditActionEnabled(await levelForRun(envelope.runId), envelope.action)) return;
+      hasWrites = true;
       try {
         await options.sink.emit(envelope);
       } catch {
@@ -47,7 +40,7 @@ export function createLinnyaAuditRuntime(
       }
     },
     flush: async () => {
-      if (level === 'off') return;
+      if (!hasWrites) return;
       try {
         await options.sink.flush?.();
       } catch {
@@ -56,10 +49,16 @@ export function createLinnyaAuditRuntime(
     },
   });
 
-  configureLlmEvidence({ auditPort, level });
+  configureLlmEvidence({ auditPort, levelForRun });
 
   return Object.freeze({
-    level,
+    available,
+    get level() { return state.level; },
+    setLevel(level: AuditLevel) {
+      if (!available) throw new AuditUnavailableError();
+      state.setLevel(AuditLevelSchema.parse(level));
+    },
+    levelForRun,
     auditPort,
     async flush(): Promise<void> {
       await auditPort.flush?.();

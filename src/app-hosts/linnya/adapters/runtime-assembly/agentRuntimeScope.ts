@@ -1,3 +1,4 @@
+import type { LinnyaAuditRuntime } from 'src/domains/audit';
 import type { AuditPort, LlmInputMaterializerPort } from '@linnlabs/linnkit/ports';
 import type {
   graph,
@@ -26,7 +27,7 @@ export interface LinnyaAgentRuntimeScope {
   readonly nextEventStoreId: () => string;
   readonly auditPort: AuditPort;
   /** 开发 Agent Run Audit 是否在当前 Host 进程启用。 */
-  readonly auditEnabled: boolean;
+  readonly audit: LinnyaAuditRuntime;
   readonly llmInputMaterializer?: LlmInputMaterializerPort;
   readonly toolModelInputResolver?: ToolModelInputResolverPort;
   readonly runDescriptors?: RunDescriptorStore;

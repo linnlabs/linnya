@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 const { createHash } = require('node:crypto');
-const { existsSync, readFileSync } = require('node:fs');
+const { existsSync, readFileSync, realpathSync } = require('node:fs');
+const { spawnSync } = require('node:child_process');
 const path = require('node:path');
 
 const cliRoot = path.resolve(__dirname, '..');
@@ -29,11 +30,19 @@ function verifyBundle() {
 try {
   verifyBundle();
 } catch (error) {
+  // bundle 尚未通过校验，不能加载它获取诊断身份；这里只报告启动器已知的源码目录。
+  const candidate = path.resolve(cliRoot, '../..');
+  const sourceRoot = existsSync(path.join(cliRoot, 'src/main.ts')) && existsSync(path.join(candidate, 'pnpm-workspace.yaml'))
+    ? realpathSync(candidate) : null;
+  const git = sourceRoot && spawnSync('git', ['-C', sourceRoot, 'symbolic-ref', '--quiet', '--short', 'HEAD'], {
+    encoding: 'utf8', timeout: 2000, windowsHide: true,
+  });
   process.stderr.write(`${JSON.stringify({ schema_version: 1, ok: false, error: {
     code: 'protocol_incompatible',
     message: error instanceof Error ? error.message : 'Cannot verify CLI bundle',
     retryable: false,
-  } })}\n`);
+  }, connection: { source_root: sourceRoot, branch: git && git.status === 0 ? git.stdout.trim() || null : null,
+    state: 'not_connected', instance: null } })}\n`);
   process.exit(4);
 }
 require(bundlePath);

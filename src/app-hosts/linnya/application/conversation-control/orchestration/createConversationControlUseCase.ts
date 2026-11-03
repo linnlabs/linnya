@@ -278,6 +278,13 @@ export function createConversationControlUseCase(
           return useCase.stop(request);
         case 'result':
           return useCase.result(request);
+        case 'audit_level': {
+          if (!ports.auditControl.available) {
+            throw new ConversationControlError('capability_unavailable', '生产环境不提供审计');
+          }
+          if (request.level !== undefined) ports.auditControl.setLevel(request.level);
+          return { schema_version: 1, ok: true, command: 'audit_level', level: ports.auditControl.level };
+        }
         case 'audit':
           return useCase.audit(request);
         case 'tools':
@@ -529,10 +536,10 @@ export function createConversationControlUseCase(
     },
 
     async audit(request) {
-      if (ports.auditAvailable === false) {
+      if (!ports.auditControl.available) {
         throw new ConversationControlError(
           'capability_unavailable',
-          'Agent Run Audit is disabled in this runtime environment'
+          '生产环境不提供审计'
         );
       }
       const audit = await ports.audit.export({

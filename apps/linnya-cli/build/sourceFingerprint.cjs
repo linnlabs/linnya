@@ -24,6 +24,7 @@ function createCliSourceFingerprint(cliRoot) {
   collect('apps/linnya-cli/src');
   // CLI 静态内联公共 Schema，指纹必须覆盖这份源码，而不能只检查 CLI 自身。
   collect('packages/schemas/src');
+  collect('src/shared/runtime-paths');
   const hash = createHash('sha256');
   for (const input of inputs.sort()) {
     const bytes = readFileSync(path.join(repoRoot, input));

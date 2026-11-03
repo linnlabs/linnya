@@ -536,7 +536,7 @@ export function createRegisteredChildRunInvoker(dependencies: {
     | 'runAdmissionCommit'
     | 'createCheckpointWriter'
     | 'toolResults'
-  >;
+  > & { readonly audit: Pick<LinnyaAgentRuntimeScope['audit'], 'level' | 'levelForRun'> };
   telemetryPort: telemetry.TelemetryPort;
   agentResolver?: RegisteredAgentResolverPort;
   childRunInvoker?: Pick<childRuns.ChildRunInvoker, 'invoke'>;
@@ -558,6 +558,7 @@ export function createRegisteredChildRunInvoker(dependencies: {
         modelInputResolver: dependencies.runtime.toolModelInputResolver,
       }),
     lifecycle: new LinnyaRegisteredChildRunLifecycle({
+      audit: dependencies.runtime.audit,
       supervisor: dependencies.runtime.supervisor,
       eventStore: dependencies.runtime.eventStore,
       nextEventStoreId: dependencies.runtime.nextEventStoreId,

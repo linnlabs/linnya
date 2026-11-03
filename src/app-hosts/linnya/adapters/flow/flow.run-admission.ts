@@ -62,6 +62,8 @@ export async function admitDurableFlowStart(input: {
     costCollector: input.runtime.costCollector,
     replacesPausedRun,
     metadata: {
+      // 与 run 接纳一起持久化；切档和重启都不能改变这个任务后半段的记录规则。
+      auditLevel: input.runtime.audit.level,
       executionId: input.host.sequencer.getExecutionId(),
       turnId: input.turnId,
       traceId: descriptor.runContext.traceId,

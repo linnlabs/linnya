@@ -1,6 +1,7 @@
 import { ConversationControlSkillsResponseSchema } from './skills';
 import { ConversationControlProjectsResponseSchema } from './projects';
 import { z } from 'zod';
+import { ConversationControlAuditLevelResponseSchema, ConversationControlConnectionContextSchema } from './auditControl';
 import { ConversationControlAuditLlmResponsesSchema } from './llmResponseAudit';
 import { CommandApprovalPendingProjectionV1Schema } from '../commands';
 import { ConversationControlCommandApprovalsResponseSchema } from './commandApprovals';
@@ -604,6 +605,7 @@ export const ConversationControlErrorCodeSchema = z.enum([
   'invalid_request',
   'app_not_running',
   'stale_connection',
+  'source_mismatch',
   'protocol_incompatible',
   'unauthorized',
   'capability_unavailable',
@@ -629,6 +631,7 @@ export const ConversationControlErrorResponseSchema = z
   .object({
     schema_version: z.literal(CONVERSATION_CONTROL_SCHEMA_VERSION),
     ok: z.literal(false),
+    connection: ConversationControlConnectionContextSchema.optional(),
     command: z
       .enum([
         'skills',
@@ -643,6 +646,7 @@ export const ConversationControlErrorResponseSchema = z
         'stop',
         'result',
         'audit',
+        'audit_level',
         'tools',
         'command_approvals',
       ])
@@ -670,6 +674,7 @@ export const ConversationControlCommandResponseSchema = z.union([
   ConversationControlStopResponseSchema,
   ConversationControlResultResponseSchema,
   ConversationControlAuditResponseSchema,
+  ConversationControlAuditLevelResponseSchema,
   ConversationControlToolsResponseSchema,
   ConversationControlCommandApprovalsResponseSchema,
   ConversationControlErrorResponseSchema,

@@ -1,3 +1,4 @@
+import { readSourceCheckoutIdentity } from 'src/shared/runtime-paths/functions/readSourceCheckoutIdentity';
 import { controlSkills } from '../../../app-hosts/linnya/application/conversation-control/orchestration/controlSkills';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -21,6 +22,8 @@ describe('Skill CLI lifecycle', () => {
     const token = 'a'.repeat(64); const app = express();
     app.use((req, res, next) => { if (req.header('x-linnya-cli-token') !== token) res.sendStatus(401); else next(); });
     app.use('/api/v1/conversation-control', createConversationControlBridgeRouter({
+        sourceCheckout: readSourceCheckoutIdentity(process.cwd()),
+        auditControl: { available: true, level: 'off', setLevel() {} },
       appInstanceId: 'skill-cli-instance', appVersion: 'test', diagnostics: { error() {} },
       useCase: { async execute(request) {
         if (request.command !== 'skills') throw new Error('test only supports skills');

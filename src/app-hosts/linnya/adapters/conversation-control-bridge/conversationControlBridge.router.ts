@@ -1,3 +1,5 @@
+import type { AuditControlPort } from 'src/domains/audit';
+import type { SourceCheckoutIdentity } from 'src/shared/runtime-paths/definitions/sourceCheckoutIdentity';
 import express, { type NextFunction, type Request, type Response, Router } from 'express';
 import {
   CONVERSATION_CONTROL_PROTOCOL_VERSION,
@@ -29,7 +31,8 @@ interface CreateConversationControlBridgeRouterOptions {
   readonly useCase: Pick<ConversationControlUseCase, 'execute'>;
   readonly appInstanceId: string;
   readonly appVersion: string;
-  readonly auditAvailable?: boolean;
+  readonly auditControl: AuditControlPort;
+  readonly sourceCheckout: SourceCheckoutIdentity | null;
   readonly diagnostics: ConversationControlBridgeDiagnosticPort;
 }
 
@@ -41,6 +44,7 @@ function errorStatus(code: ConversationControlErrorCode): number {
     case 'project_not_found': return 404;
     case 'app_not_running':
     case 'stale_connection':
+    case 'source_mismatch':
     case 'protocol_incompatible':
     case 'capability_unavailable':
     case 'skill_conflict':
@@ -97,8 +101,11 @@ export function createConversationControlBridgeRouter(
       protocol_version: CONVERSATION_CONTROL_PROTOCOL_VERSION,
       app_instance_id: options.appInstanceId,
       app_version: options.appVersion,
+      instance: options.sourceCheckout
+        ? { kind: 'source', source_root: options.sourceCheckout.root, branch: options.sourceCheckout.branch, audit_level: options.auditControl.level }
+        : { kind: 'packaged', source_root: null, branch: null, audit_level: 'off' },
       capabilities: LINNYA_CONVERSATION_CONTROL_CAPABILITIES.filter(
-        capability => capability !== 'audit' || options.auditAvailable !== false,
+        capability => !['audit', 'audit_level'].includes(capability) || options.auditControl.available,
       ),
       limits: {
         max_request_bytes: CONVERSATION_CONTROL_MAX_REQUEST_BYTES,
