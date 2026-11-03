@@ -81,10 +81,10 @@ async function waitForBody() {
   while (performance.now() - started < 5000) {
     const stats = presentation?.readStats();
     if (stats?.failed) return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats };
-    if (stats && !stats.pending && !stats.running) {
+    if (stats && !stats.pending && !stats.running && !kernel?.readStats().fadingCards) {
       await nextFrame(); await nextFrame();
       const after = presentation?.readStats();
-      if (after && !after.pending && !after.running) return { settled: true, ms: performance.now() - started, camera: kernel?.readCamera(), stats: after };
+      if (after && !after.pending && !after.running && !kernel?.readStats().fadingCards) return { settled: true, ms: performance.now() - started, camera: kernel?.readCamera(), stats: after };
     }
     await nextFrame();
   }

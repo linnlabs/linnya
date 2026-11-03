@@ -12,6 +12,7 @@ describe('latest card raster queue', () => {
       disposeResult: (value) => disposed.push(value),
     });
     const first = queue.enqueue('card', 0);
+    await Promise.resolve(); // 本场景验证运行中的旧版本，不只是尚未开始的排队替换。
     const replaced = queue.enqueue('card', 1);
     const latest = queue.enqueue('card', 2);
     const other = Array.from({ length: 20 }, (_, i) => queue.enqueue(`other-${i}`, i + 10));
@@ -42,15 +43,28 @@ describe('latest card raster queue', () => {
   });
   it('同一paint批次只取消旧卡结果，其余卡仍能完成', async () => {
     const batches: number[][] = [], released: number[] = [];
+    let started: (() => void) | undefined, release: (() => void) | undefined;
+    const executing = new Promise<void>(resolve => { started = resolve; }), barrier = new Promise<void>(resolve => { release = resolve; });
     const queue = createLatestRasterQueue({ batchSize: 3,
-      executeBatch: async (values: readonly number[]) => { batches.push([...values]); await Promise.resolve(); return values.map(value => value * 10); },
+      executeBatch: async (values: readonly number[]) => { batches.push([...values]); if (values.includes(3)) { started?.(); await barrier; } return values.map(value => value * 10); },
       disposeResult: value => released.push(value),
     });
-    const first = queue.enqueue('c0', 0), one = queue.enqueue('c1', 1), removed = queue.enqueue('c2', 2), stale = queue.enqueue('c3', 3), four = queue.enqueue('c4', 4);
-    queue.cancel('c2'); await first; queue.cancel('c3');
+    const first = queue.enqueue('c0', 0); await Promise.resolve();
+    const one = queue.enqueue('c1', 1), removed = queue.enqueue('c2', 2), stale = queue.enqueue('c3', 3), four = queue.enqueue('c4', 4);
+    queue.cancel('c2'); await first; await executing; queue.cancel('c3'); release?.();
     const results = await Promise.all([one, removed, stale, four]);
     expect(batches).toEqual([[0], [1, 3, 4]]);
     expect(results).toEqual([{ status: 'ready', value: 10 }, { status: 'cancelled' }, { status: 'cancelled' }, { status: 'ready', value: 40 }]);
     expect(released).toEqual([30]); queue.dispose();
+  });
+  it('移动时缩小批次并按当前视口优先级重排待办，不取消同批其他结果', async () => {
+    const batches: number[][] = [];
+    let moving = true;
+    const queue = createLatestRasterQueue({ batchSize: 4, readBatchSize: () => moving ? 2 : 4,
+      executeBatch: async (values: readonly number[]) => { batches.push([...values]); moving = false; return values; }, disposeResult() {} });
+    const results = Array.from({ length: 6 }, (_, i) => queue.enqueue(`c${i}`, i));
+    queue.prioritize(['c5', 'c4', 'c3', 'c2', 'c1', 'c0']);
+    expect(await Promise.all(results)).toEqual(Array.from({ length: 6 }, (_, i) => ({ status: 'ready', value: i })));
+    expect(batches).toEqual([[5, 4], [3, 2, 1, 0]]); queue.dispose();
   });
 });

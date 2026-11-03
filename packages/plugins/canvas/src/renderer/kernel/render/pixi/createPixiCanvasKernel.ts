@@ -89,6 +89,8 @@ class PixiCanvasKernel implements CanvasKernel {
   private readonly removeInteraction: () => void;
   private readonly reduced: boolean;
   private readonly capture: boolean;
+  private readonly motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+  private readonly motionChanged = () => this.bitmaps.setMotionEnabled(!this.capture && !this.reduced && !this.motionPreference.matches);
   private readonly software: boolean;
   private readonly notify?: (intent: CanvasKernelIntent) => void;
   private renderStatus: CanvasRenderStatus = { limited: false, phase: 'ready', message: null };
@@ -129,9 +131,10 @@ class PixiCanvasKernel implements CanvasKernel {
     options.host.append(this.canvas);
     this.world.addChild(this.cardLayer, this.guideLayer, this.selectionLayer);
     this.app.stage.addChild(this.lines.below, this.world, this.lines.above, this.mapLabels.sprite);
-    this.bitmaps = new CanvasBitmapCache({ budget: options.bitmapBudgetBytes ?? 256 * 1024 * 1024, readRenderCount: () => this.renders, changed: id => {
+    this.bitmaps = new CanvasBitmapCache({ budget: options.bitmapBudgetBytes ?? 256 * 1024 * 1024, readRenderCount: () => this.renders, requestDraw: () => this.schedule(), changed: id => {
       const view = this.views.get(id); if (!this.destroyed && view) { this.updateView(view); this.schedule(); }
     } });
+    this.motionChanged(); this.motionPreference.addEventListener('change', this.motionChanged);
     this.removeInteraction = options.onIntent ? installCanvasInteraction(this, options.onIntent, { readonly: options.readonly, readReadonly: options.readReadonly, readPreferences: options.readInteractionPreferences }) : () => undefined;
   }
   private schedule(): void {
@@ -319,7 +322,7 @@ class PixiCanvasKernel implements CanvasKernel {
     const accepted = this.bitmaps.readReceipt(id, key), view = this.views.get(id);
     if (accepted === null || !view) return null;
     const acceptedAfterRender = Math.max(accepted, view.visibleAfterRender);
-    return { acceptedAfterRender, rendered: !this.contextLost && view.container.visible && view.body.visible && this.renders > acceptedAfterRender };
+    return { acceptedAfterRender, rendered: !this.contextLost && !this.bitmaps.isFading(id) && view.container.visible && view.body.visible && this.renders > acceptedAfterRender };
   }
   setEditingCard(id: CanvasCardId | null): void {
     const previous = this.editingCard; this.editingCard = id;
@@ -454,6 +457,7 @@ class PixiCanvasKernel implements CanvasKernel {
   readStats() { return { viewportCards: this.visibleCards().length, renderableCards: this.exposed.length, rasterCards: this.rasterCards().length, cards: this.cards.size, edges: this.edges.length, renders: this.renders, ...this.bitmaps.readStats(), ...this.lines.readStats(), ...this.spatial.readStats() }; }
   destroy(): void {
     this.destroyed = true;
+    this.motionPreference.removeEventListener('change', this.motionChanged);
     if (this.scheduled) cancelAnimationFrame(this.scheduled);
     this.removeInteraction();
     this.canvas.removeEventListener('webglcontextlost', this.loseContext); this.canvas.removeEventListener('webglcontextrestored', this.restoreContext);

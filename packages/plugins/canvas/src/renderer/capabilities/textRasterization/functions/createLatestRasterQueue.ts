@@ -15,6 +15,7 @@ type Execution<I, O> =
 export function createLatestRasterQueue<I, O>(options: Execution<I, O> & {
   readonly disposeResult: (output: O) => void;
   readonly capacity?: number;
+  readonly readBatchSize?: () => number;
 }) {
   const capacity = options.capacity ?? 64, batchSize = options.batchSize ?? 1;
   if (!Number.isInteger(capacity) || capacity < 1 || !Number.isInteger(batchSize) || batchSize < 1 || batchSize > 64) throw new Error('raster_queue_capacity');
@@ -22,10 +23,16 @@ export function createLatestRasterQueue<I, O>(options: Execution<I, O> & {
   let running: readonly RasterJob<I, O>[] = [];
   let group: AbortController | null = null;
   let disposed = false, peakPending = 0, peakBatchSize = 0, completed = 0, discarded = 0;
+  let scheduled = false;
+  const scheduleDrain = () => {
+    if (scheduled || disposed) return;
+    scheduled = true; queueMicrotask(() => { scheduled = false; void drain(); });
+  };
   const abortGroupIfUnused = () => { if (running.length && running.every(job => job.controller.signal.aborted)) group?.abort(); };
   async function drain(): Promise<void> {
     if (running.length || disposed || !pending.size) return;
-    const jobs = [...pending.values()].slice(0, batchSize);
+    const limit = Math.max(1, Math.min(batchSize, Math.floor(options.readBatchSize?.() ?? batchSize)));
+    const jobs = [...pending.values()].slice(0, limit);
     jobs.forEach(job => pending.delete(job.key)); running = jobs; peakBatchSize = Math.max(peakBatchSize, jobs.length);
     const active = new AbortController(); group = active;
     try {
@@ -41,7 +48,7 @@ export function createLatestRasterQueue<I, O>(options: Execution<I, O> & {
     } catch (error) {
       jobs.forEach(job => job.resolve(job.superseded ? { status: 'superseded' }
         : job.controller.signal.aborted || disposed ? { status: 'cancelled' } : { status: 'failed', error }));
-    } finally { running = []; group = null; void drain(); }
+    } finally { running = []; group = null; scheduleDrain(); }
   }
   return {
     enqueue(key: string, input: I): Promise<RasterQueueResult<O>> {
@@ -54,7 +61,12 @@ export function createLatestRasterQueue<I, O>(options: Execution<I, O> & {
         if (!oldest.done) { pending.delete(oldest.value.key); oldest.value.resolve({ status: 'dropped' }); discarded++; }
       }
       const result = new Promise<RasterQueueResult<O>>(resolve => pending.set(key, { key, input, resolve, controller: new AbortController(), superseded: false }));
-      peakPending = Math.max(peakPending, pending.size); void drain(); return result;
+      peakPending = Math.max(peakPending, pending.size); scheduleDrain(); return result;
+    },
+    prioritize(keys: readonly string[]): void {
+      const ordered = keys.flatMap(key => { const job = pending.get(key); return job ? [job] : []; });
+      for (const job of ordered) pending.delete(job.key);
+      const tail = [...pending.values()]; pending.clear(); for (const job of [...ordered, ...tail]) pending.set(job.key, job);
     },
     cancel(key: string): void {
       const job = pending.get(key); if (job) { pending.delete(key); job.resolve({ status: 'cancelled' }); }
