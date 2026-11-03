@@ -68,6 +68,9 @@ describe('slides-design Skill 产品合同', () => {
     const report = fs.readFileSync(path.join(skillRoot, 'references/style-consulting-report.md'), 'utf-8');
     expect(report).toContain('## 不要做成一个模板');
     expect(report).toContain('不要照抄本文的任何具体值');
+    // 咨询稿信息密、最容易压字号：下限与对应 inspect 代码必须写在本指南里，不能只留在通用 design.md。
+    expect(report).toContain('font_size_below_floor');
+    expect(report).toContain('不低于 8pt');
   });
 
   it('人文展示与图录阅读两份指南互相指向，图录的栅格规则只在图录指南里', () => {
