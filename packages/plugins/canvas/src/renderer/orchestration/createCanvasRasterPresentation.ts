@@ -32,7 +32,7 @@ export function createCanvasRasterPresentation(options: {
   let cameraChangedAt = 0;
   let precisionTimer: ReturnType<typeof setTimeout> | undefined;
   const queue = createLatestRasterQueue({
-    batchSize: 16, executeBatch: createCanvasCardRasterBatch({ rasterizer, createContent: options.createContent }),
+    batchSize: 32, executeBatch: createCanvasCardRasterBatch({ rasterizer, createContent: options.createContent }),
     disposeResult: output => { if (output.kind === 'ready') for (const tile of output.tiles) tile.bitmap.close(); },
   });
   const schedule = () => {

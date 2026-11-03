@@ -35,6 +35,8 @@ let collection = 0;
 let previous = 0;
 let gaps: number[] = [];
 let failures: string[] = [];
+let elements: readonly CanvasElement[] = [];
+let movedCards = 0;
 const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
 
@@ -47,9 +49,11 @@ async function prepare(count: number, clustered: boolean) {
   kernel = await createPixiCanvasKernel({ host, resolution: devicePixelRatio, onIntent: (intent) => {
     if (intent.kind === 'camera') presentation?.refresh();
     if (intent.kind === 'select') kernel?.setSelection(intent.ids);
+    if (intent.kind === 'move') movedCards = intent.ids.length;
   } });
   presentation = createCanvasRasterPresentation({ host: staging, kernel, readAppearance: () => appearance, reportFailure: (message) => failures.push(message) });
   const data = fixture(count, clustered);
+  elements = data; movedCards = 0;
   const cards = data.filter((element): element is CanvasCard => element.type !== 'edge');
   const started = performance.now(); kernel.setElements(data); kernel.fit(cards); presentation.refresh(); await nextFrame();
   return { installMs: performance.now() - started, dpr: devicePixelRatio, width: innerWidth, height: innerHeight,
@@ -84,8 +88,22 @@ async function waitForBody() {
   }
   return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats: presentation?.readStats() };
 }
+async function prepareDrag(selectedCount: number) {
+  if (!kernel) throw new Error('probe_not_prepared');
+  closeView(); await waitForBody();
+  const visible = kernel.renderableCards(), top = visible[visible.length - 1];
+  if (!top) throw new Error('drag_fixture_not_visible');
+  const selected = [top.id, ...elements.filter((element): element is CanvasCard => element.type !== 'edge' && element.id !== top.id).slice(0, selectedCount - 1).map(card => card.id)];
+  kernel.setSelection(selected); movedCards = 0;
+  // 取最上层可见卡的实际纸面内点；所有位移由原生pointer走正式交互层产生。
+  const regions = kernel.readVisibleCardRegions(top.id), region = regions[regions.length - 1];
+  if (!region) throw new Error('drag_fixture_region_missing');
+  const point = kernel.worldToScreen({ x: top.x + region.x + region.width / 2, y: top.y + region.y + region.height / 2 });
+  return { point, selected: selected.length, cardId: top.id };
+}
 Object.defineProperties(window, {
   prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start },
   finishCanvasPerformanceCollection: { value: finish }, closeCanvasPerformanceView: { value: closeView },
   waitForCanvasPerformanceBody: { value: waitForBody },
+  prepareCanvasPerformanceDrag: { value: prepareDrag }, finishCanvasPerformanceDrag: { value: () => ({ movedCards, selected: kernel?.readSelection().length }) },
 });

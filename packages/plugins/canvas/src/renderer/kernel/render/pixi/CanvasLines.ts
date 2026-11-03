@@ -1,5 +1,5 @@
 import { AlphaFilter, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
-import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdge, CanvasEdgeId, CanvasPoint } from '../../../../shared';
+import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdge, CanvasEdgeId, CanvasPoint, CanvasRectangle } from '../../../../shared';
 import type { CanvasAppearance } from '../../definitions/canvasKernel';
 import { layoutCanvasEdges, type CanvasEdgeGeometry } from '../../geometry/canvasEdgeGeometry';
 import { CanvasLineMesh } from './CanvasLineMesh';
@@ -47,7 +47,7 @@ export class CanvasLines {
     this.ghostContainer.filters = [this.ghostAlpha]; this.ghostContainer.filterArea = this.ghostArea;
     this.above.addChild(this.cardMask, this.ghostContainer, this.highlight.mesh, this.selectedLine.mesh, this.labels, this.endpoints);
   }
-  setElements(edges: readonly CanvasEdge[], cards: ReadonlyMap<string, CanvasCard>): void {
+  setElements(edges: readonly CanvasEdge[], cards: ReadonlyMap<string, CanvasCard>, mask: readonly CanvasRectangle[]): void {
     this.geometries = layoutCanvasEdges(edges, cards, 4, this.geometries);
     this.entries = edges.map(edge => {
       const geometry = this.geometries.get(edge.id);
@@ -59,7 +59,7 @@ export class CanvasLines {
       points: [entry.geometry.from, entry.geometry.to], midpoint: { x: (entry.geometry.from.x + entry.geometry.to.x) / 2, y: (entry.geometry.from.y + entry.geometry.to.y) / 2 } } }));
     this.base.clearCache();
     this.cardMask.clear();
-    for (const card of cards.values()) this.cardMask.rect(card.x, card.y, card.width, card.height);
+    for (const region of mask) this.cardMask.rect(region.x, region.y, region.width, region.height);
     this.cardMask.fill(0xffffff);
     this.key = ''; this.update();
   }

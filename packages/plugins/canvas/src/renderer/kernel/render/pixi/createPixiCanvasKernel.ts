@@ -67,6 +67,7 @@ class PixiCanvasKernel implements CanvasKernel {
   private brush: CanvasRectangle | null = null;
   private editingCard: CanvasCardId | null = null;
   private documentTitles: ReadonlyMap<string, string> = new Map();
+  private readonly textTitles = new WeakMap<CanvasCard, string>();
   private readonly mapLabels = new CanvasMapLabels();
   private overviewOrder: readonly CanvasCard[] = [];
   private edges: readonly CanvasEdge[] = [];
@@ -152,7 +153,12 @@ class PixiCanvasKernel implements CanvasKernel {
     this.mapLabels.draw({ cards: this.overviewOrder, camera: this.camera, width: this.width, height: this.height,
       dark: this.appearance.dark, visible: this.camera.zoom < 0.3 && this.appearance.overview === 'titles', readTitle: card => this.title(card) });
   }
-  private title(card: CanvasCard): string { return card.type === 'document' ? this.documentTitles.get(card.data.documentId) ?? '文档' : readCanvasElementText(card); }
+  private title(card: CanvasCard): string {
+    if (card.type === 'document') return this.documentTitles.get(card.data.documentId) ?? '文档';
+    const cached = this.textTitles.get(card);
+    if (cached !== undefined) return cached;
+    const value = readCanvasElementText(card); this.textTitles.set(card, value); return value;
+  }
   private redrawSelection(): void {
     this.selectionLayer.clear();
     if (this.brush) this.selectionLayer.rect(this.brush.x, this.brush.y, this.brush.width, this.brush.height)
@@ -163,7 +169,9 @@ class PixiCanvasKernel implements CanvasKernel {
     }
   }
   private redrawEdges(): void {
-    this.lines.setElements(this.edges, this.cards);
+    // 手势投影暂未建立遮挡差，使用完整当前纸面；静态场景只画已缓存的可见条块，避免密集卡片反复覆盖stencil。
+    const mask = this.dragOriginals.size ? [...this.cards.values()] : [...this.visibleRegions.values()].flat();
+    this.lines.setElements(this.edges, this.cards, mask);
   }
   private refreshCamera(styleChanged = false, edgesChanged = false): void {
     this.world.position.set(this.camera.x, this.camera.y);
@@ -370,6 +378,7 @@ class PixiCanvasKernel implements CanvasKernel {
   setHoveredCard(id: CanvasCardId | null): void { this.lines.setHovered(id); this.schedule(); }
   setDocumentTitles(titles: ReadonlyMap<string, string>): void {
     this.documentTitles = new Map(titles);
+    this.mapLabels.invalidate();
     for (const view of this.views.values()) if (view.card.type === 'document') view.label.text = this.title(view.card).split('\n')[0].slice(0, 120);
     this.updateLabels(); this.schedule();
   }

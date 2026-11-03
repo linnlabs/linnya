@@ -3,7 +3,7 @@ import electron from 'electron';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { buildProbeRenderer } from './build-probe-renderer.mjs';
 
 const probeRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -15,6 +15,8 @@ await buildProbeRenderer({ entry: path.join(probeRoot, 'performanceRenderer.ts')
 await writeFile(path.join(output, 'index.html'), '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src data: blob:; font-src \'self\' data: blob:"><link rel="stylesheet" href="renderer.css"></head><body><script src="renderer.js"></script></body></html>');
 await build({ entryPoints: [path.join(probeRoot, 'performanceElectron.ts')], outfile: path.join(output, 'electron.cjs'),
   bundle: true, platform: 'node', format: 'cjs', external: ['electron'] });
-const child = spawn(electron, [path.join(output, 'electron.cjs'), output], { stdio: 'inherit', env: process.env });
+const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+const sourceDirty = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim().length > 0;
+const child = spawn(electron, [path.join(output, 'electron.cjs'), output], { stdio: 'inherit', env: { ...process.env, CANVAS_PROBE_SOURCE_COMMIT: sourceCommit, CANVAS_PROBE_SOURCE_DIRTY: sourceDirty ? '1' : '0' } });
 child.once('error', (error) => { console.error(error); process.exitCode = 1; });
 child.once('exit', (code) => { process.exitCode = code ?? 1; });

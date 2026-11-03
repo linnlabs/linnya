@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
 
 const rectangle = z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() });
-const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(), dpr: z.number(), reference: rectangle, raster: rectangle, pixi: rectangle, ghostY: z.number() });
+const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(), dpr: z.number(), reference: rectangle, raster: rectangle, pixi: rectangle, ghostY: z.number(), measuredHeights: z.array(z.number().nullable()) });
 const output = process.argv[2];
 if (!output) throw new Error('Visual output directory required');
 app.setPath('userData', path.join(output, 'profile'));
@@ -55,7 +55,7 @@ async function run() {
       const inkIou = intersection / union;
       const pixiIou = pixiIntersection / pixiUnion;
       const ghostPreservation = preservedText / crossedText;
-      const report = { theme, material, dpr: state.dpr, size: dom.getSize(), referenceInk, rasterInk, pixiInk, inkIou, pixiIou, crossedText, ghostPreservation };
+      const report = { theme, material, dpr: state.dpr, size: dom.getSize(), referenceInk, rasterInk, pixiInk, inkIou, pixiIou, crossedText, ghostPreservation, measuredHeights: state.measuredHeights };
       reports.push(report);
       await writeFile(path.join(output, `${theme}-${material}-dom.png`), dom.toPNG());
       await writeFile(path.join(output, `${theme}-${material}-raster.png`), raster.toPNG());
@@ -71,7 +71,19 @@ async function run() {
     }
     await writeFile(path.join(output, 'lines.png'), lineImage.toPNG());
     if (dashInk < 30 || dashGap < 30) throw new Error(`line_dash_is_not_rendered:${dashInk}:${dashGap}`);
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap } }, null, 2));
+    const map = z.object({ before: z.string(), after: z.string(), dpr: z.number(), dx: z.number(), dy: z.number() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasMapPanVisualProbe()'));
+    const mapBefore = nativeImage.createFromDataURL(map.before), mapAfter = nativeImage.createFromDataURL(map.after);
+    const beforePixels = mapBefore.toBitmap(), afterPixels = mapAfter.toBitmap(), mapSize = mapBefore.getSize();
+    let mapInk = 0, mapPreserved = 0;
+    for (let y = 0; y < mapSize.height - map.dy * map.dpr; y++) for (let x = 0; x < mapSize.width - map.dx * map.dpr; x++) {
+      const a = (y * mapSize.width + x) * 4, b = ((y + map.dy * map.dpr) * mapSize.width + x + map.dx * map.dpr) * 4;
+      if (beforePixels[a] < 150 && beforePixels[a + 1] < 150 && beforePixels[a + 2] < 150) {
+        mapInk++; if (afterPixels[b] < 150 && afterPixels[b + 1] < 150 && afterPixels[b + 2] < 150) mapPreserved++;
+      }
+    }
+    if (mapInk < 100 || mapPreserved / mapInk < 0.95) throw new Error(`map_pan_labels_mismatch:${mapInk}:${mapPreserved}`);
+    await writeFile(path.join(output, 'map-before.png'), mapBefore.toPNG()); await writeFile(path.join(output, 'map-after.png'), mapAfter.toPNG());
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap }, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
 }

@@ -9,23 +9,28 @@ export function createHtmlCardRasterizer(options: {
   readonly maxTextureEdge?: number;
 }): CardRasterizer {
   const document = options.host.ownerDocument;
-  const canvas = document.createElement('canvas'), viewport = document.createElement('div'), source = document.createElement('div');
+  const canvas = document.createElement('canvas'), viewport = document.createElement('div');
   const modern = 'content' in canvas;
   canvas.setAttribute(modern ? 'content' : 'layoutsubtree', modern ? 'drawable' : '');
   viewport.setAttribute('drawable', ''); viewport.style.cssText = 'position:relative;overflow:hidden';
-  viewport.append(source); canvas.append(viewport);
+  canvas.append(viewport);
   // opacity:0 会在部分Chromium破坏paint记录，staging由使用方放在底层。
   canvas.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:-1'; options.host.append(canvas);
   let disposed = false;
   const lifetime = new AbortController();
   const activeSignal = (signal?: AbortSignal) => signal ? AbortSignal.any([lifetime.signal, signal]) : lifetime.signal;
-  async function install(element: HTMLElement, width: number, signal: AbortSignal): Promise<void> {
+  async function measureBatch(requests: readonly { readonly element: HTMLElement; readonly width: number }[], signal?: AbortSignal): Promise<readonly PromiseSettledResult<number>[]> {
     if (disposed) throw new Error('rasterizer_disposed');
-    if (!Number.isFinite(width) || width <= 0) throw new Error('invalid_raster_width');
-    const clone = element.cloneNode(true);
-    if (!(clone instanceof HTMLElement)) throw new Error('invalid_raster_dom');
-    viewport.replaceChildren(source); source.replaceChildren(clone); source.style.width = `${width}px`; source.style.transform = '';
-    await prepareRasterDom(source, signal);
+    const active = activeSignal(signal);
+    const sources = requests.map(request => {
+      if (!Number.isFinite(request.width) || request.width <= 0) throw new Error('invalid_raster_width');
+      const source = document.createElement('div'); source.style.width = `${request.width}px`;
+      source.append(request.element.cloneNode(true)); return source;
+    });
+    viewport.replaceChildren(...sources); viewport.style.width = `${Math.max(1, ...requests.map(request => request.width))}px`; viewport.style.height = 'auto';
+    // 同批先安装全部DOM，再集中读取几何；图片失败仍按卡返回，不能牵连其他正文。
+    const values = await Promise.allSettled(sources.map(async source => { await prepareRasterDom(source, active); return source.getBoundingClientRect().height; }));
+    active.throwIfAborted(); return values;
   }
   async function batch(requests: readonly CardRasterRequest[], signal?: AbortSignal) {
     if (disposed) throw new Error('rasterizer_disposed');
@@ -35,7 +40,8 @@ export function createHtmlCardRasterizer(options: {
     return results;
   }
   return {
-    async measure(element, width, signal) { await install(element, width, activeSignal(signal)); return source.getBoundingClientRect().height; },
+    async measure(element, width, signal) { const [result] = await measureBatch([{ element, width }], signal); if (result.status === 'rejected') throw result.reason; return result.value; },
+    measureBatch,
     async rasterize(request, signal) { return (await batch([request], signal))[0]; },
     rasterizeBatch: batch,
     dispose() { disposed = true; lifetime.abort(new Error('rasterizer_disposed')); canvas.remove(); },

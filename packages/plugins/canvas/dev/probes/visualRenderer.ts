@@ -42,6 +42,11 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card') {
   const staging = document.createElement('div');
   document.body.append(reference, staging);
   const rasterizer = createHtmlCardRasterizer({ host: staging });
+  const broken = document.createElement('div'), brokenImage = document.createElement('img'); brokenImage.src = 'data:image/png;base64,AA=='; broken.append(brokenImage);
+  const measurements = await rasterizer.measureBatch([... [180, 360, 720].map(width => ({ element: createCardSurface(card, request), width })), { element: broken, width: 360 }]);
+  const measuredHeights = measurements.map(result => result.status === 'fulfilled' ? result.value : null);
+  if (measurements[0].status !== 'fulfilled' || measurements[1].status !== 'fulfilled' || measurements[2].status !== 'fulfilled'
+    || measurements[3].status !== 'rejected' || measurements[0].value <= measurements[2].value || measurements[0].value < measurements[1].value) throw new Error('batch_measurement_width_or_failure_isolation_mismatch');
   const rasters = await rasterizer.rasterizeBatch(Array.from({ length: 8 }, () => ({ element: createCardSurface(card, request), width: 360, height: 500, scale: devicePixelRatio })));
   const raster = rasters[7];
   const canvas = document.createElement('canvas');
@@ -69,7 +74,7 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card') {
   await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   const rectangle = (element: HTMLElement) => { const { x, y, width, height } = element.getBoundingClientRect(); return { x, y, width, height }; };
   return { viewportWidth: innerWidth, viewportHeight: innerHeight, dpr: devicePixelRatio, reference: rectangle(reference), raster: rectangle(canvas),
-    pixi: rectangle(kernelHost), ghostY };
+    pixi: rectangle(kernelHost), ghostY, measuredHeights };
 }
 Object.defineProperty(window, 'prepareCanvasVisualProbe', { value: prepare });
 
@@ -92,3 +97,16 @@ async function lineVisual() {
   return { dpr: devicePixelRatio, image: await kernel.captureImage('png') };
 }
 Object.defineProperty(window, 'prepareCanvasLineVisualProbe', { value: lineVisual });
+
+async function mapPanVisual() {
+  previousKernel?.destroy(); document.body.replaceChildren();
+  const host = document.createElement('div'); host.style.cssText = 'width:900px;height:600px'; document.body.append(host);
+  const kernel = await createPixiCanvasKernel({ host, width: 900, height: 600, resolution: devicePixelRatio }); previousKernel = kernel;
+  const card = CanvasCardSchema.parse({ id: 'c1', type: 'text', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white',
+    createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, x: 0, y: 0, width: 1000, height: 300, parentId: null, data: { contentVersion: 1, content } });
+  kernel.setElements([card]); kernel.setCamera({ x: 100, y: 100, zoom: 0.1 });
+  const before = await kernel.captureImage('png');
+  kernel.setCamera({ x: 120, y: 110, zoom: 0.1 });
+  return { before, after: await kernel.captureImage('png'), dpr: devicePixelRatio, dx: 20, dy: 10 };
+}
+Object.defineProperty(window, 'prepareCanvasMapPanVisualProbe', { value: mapPanVisual });

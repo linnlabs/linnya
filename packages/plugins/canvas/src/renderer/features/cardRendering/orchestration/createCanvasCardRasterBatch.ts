@@ -16,14 +16,17 @@ export function createCanvasCardRasterBatch(options: {
         signal.throwIfAborted();
         const element = options.createContent ? await options.createContent(input.card, signal) : createCanvasRasterDom(input);
         element.classList.add('markdown-document-content', 'canvas-card-content'); element.style.color = input.dark ? '#e8e9e3' : '#252c27';
-        if (input.card.type === 'text') {
-          const contentHeight = await options.rasterizer.measure(element, input.card.width, signal);
-          element.classList.toggle('canvas-card-content-clipped', contentHeight > input.card.height);
-          element.style.position = 'relative'; element.style.height = `${input.card.height}px`;
-        }
         prepared.push({ kind: 'ready', input, element });
       } catch (error) { signal.throwIfAborted(); prepared.push({ kind: 'failed', error }); }
     }
+    const textItems = prepared.flatMap((item, index) => item.kind === 'ready' && item.input.card.type === 'text' ? [{ item, index }] : []);
+    const measurements = await options.rasterizer.measureBatch(textItems.map(({ item }) => ({ element: item.element, width: item.input.card.width })), signal);
+    measurements.forEach((measurement, position) => {
+      const { index, item } = textItems[position];
+      if (measurement.status === 'rejected') { prepared[index] = { kind: 'failed', error: measurement.reason }; return; }
+      item.element.classList.toggle('canvas-card-content-clipped', measurement.value > item.input.card.height);
+      item.element.style.position = 'relative'; item.element.style.height = `${item.input.card.height}px`;
+    });
     const requests: CardRasterRequest[] = prepared.flatMap(item => item.kind === 'failed' ? [] : item.input.regions.map(region => ({
       element: item.element, width: item.input.card.width, height: region.height, scale: item.input.scale,
       tileWidth: region.width, offsetX: region.x, offsetY: region.y,

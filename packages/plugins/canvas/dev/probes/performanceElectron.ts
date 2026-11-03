@@ -3,6 +3,7 @@ import os from 'node:os';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
+import { z } from 'zod';
 
 const output = process.argv[2];
 if (!output) throw new Error('Performance output directory required');
@@ -44,12 +45,23 @@ async function run() {
         deltaY: i < 50 ? -5 : 5, deltaX: 0, modifiers: ['control'], canScroll: true }); await delay(20); }
       const zoom: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
       const zoomSettled: unknown = await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
-      const report = { count, clustered, initial, pan, close, bodyLoad, bodySettled, zoom, zoomSettled };
+      let drag: unknown;
+      if (process.env.CANVAS_PERFORMANCE_DRAG === '1') {
+        const target = z.object({ point: z.object({ x: z.number(), y: z.number() }), selected: z.number(), cardId: z.string() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasPerformanceDrag(500)'));
+        await win.webContents.executeJavaScript('window.startCanvasPerformanceCollection()');
+        win.webContents.sendInputEvent({ type: 'mouseDown', x: Math.round(target.point.x), y: Math.round(target.point.y), button: 'left', clickCount: 1 });
+        for (let i = 0; i < 50; i++) { win.webContents.sendInputEvent({ type: 'mouseMove', x: Math.round(target.point.x + i * 2), y: Math.round(target.point.y + i) }); await delay(20); }
+        win.webContents.sendInputEvent({ type: 'mouseUp', x: Math.round(target.point.x + 98), y: Math.round(target.point.y + 49), button: 'left', clickCount: 1 });
+        const frames: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
+        const intents: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceDrag()');
+        drag = { target, frames, intents };
+      }
+      const report = { count, clustered, initial, pan, close, bodyLoad, bodySettled, zoom, zoomSettled, drag };
       reports.push(report); console.log(JSON.stringify(report));
     }
     const idleAfter = powerMonitor.getSystemIdleState(1), display = screen.getDisplayMatching(win.getBounds());
     const validHardwareRun = unlocked(idleAfter) && !lockEvents.some(event => event.event === 'lock');
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: 'production-dom-v2', startedAt, endedAt: new Date().toISOString(),
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: 'production-dom-v3', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1' }, startedAt, endedAt: new Date().toISOString(),
       versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
       idleBefore, idleAfter, lockEvents, validHardwareRun, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
       display: { label: display.label, internal: display.internal, scaleFactor: display.scaleFactor, displayFrequency: display.displayFrequency, bounds: display.bounds },
