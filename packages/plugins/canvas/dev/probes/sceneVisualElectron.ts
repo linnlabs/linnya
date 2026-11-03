@@ -35,10 +35,18 @@ export async function verifySceneVisual(win: BrowserWindow, output: string, eval
       if (matching < 40) throw new Error(`identity_gpu_ink_not_visible:${sample.dark}:${sample.color}:${matching}`);
       return { dark: sample.dark, color: sample.color, matching };
     });
+    const identityBounds = z.object({ image: z.string(), dpr: z.number() }).parse(await evaluate(win.webContents, 'window.prepareCanvasIdentityBoundsProbe()'));
+    const boundsImage = nativeImage.createFromDataURL(identityBounds.image), boundsPixels = boundsImage.toBitmap(), boundsSize = boundsImage.getSize(); let outsideInk = 0;
+    for (let y = 0; y < boundsSize.height; y++) for (let x = 0; x < boundsSize.width; x++) {
+      if (x / identityBounds.dpr >= 18 && x / identityBounds.dpr <= 102 && y / identityBounds.dpr >= 28 && y / identityBounds.dpr <= 64) continue;
+      const i = (y * boundsSize.width + x) * 4; if (Math.max(boundsPixels[i], boundsPixels[i + 1], boundsPixels[i + 2]) < 120) outsideInk++;
+    }
+    await writeFile(path.join(output, 'identity-tiny-card.png'), boundsImage.toPNG());
+    if (outsideInk) throw new Error(`identity_text_escaped_its_card:${outsideInk}`);
     const began = z.object({ started: z.number(), reduced: z.boolean() }).parse(await evaluate(win.webContents, 'window.beginCanvasReducedSceneProbe()'));
     if (began.started !== 1 || began.reduced) throw new Error('scene_motion_was_not_running_before_system_preference_change');
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     const reduced: unknown = await evaluate(win.webContents, 'window.finishCanvasReducedSceneProbe()');
-    return { move: { start: move.start, middlePosition: move.middlePosition, frozen: move.frozen, camera: move.camera, stats: move.stats }, opacity: { initial, middle, opaque, removed, revealed }, mapInk, identityInk, reduced };
+    return { move: { start: move.start, middlePosition: move.middlePosition, frozen: move.frozen, camera: move.camera, stats: move.stats }, opacity: { initial, middle, opaque, removed, revealed }, mapInk, identityInk, outsideInk, reduced };
   } finally { await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [] }); win.webContents.debugger.detach(); }
 }

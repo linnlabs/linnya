@@ -79,6 +79,11 @@ async function identityInkVisual() {
   }
   return samples;
 }
+async function identityBoundsVisual() {
+  const kernel = await setup(), initial = CanvasCardSchema.parse({ ...card('c1', 20), width: 80, height: 32,
+    data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '😀中文'.repeat(1000) }] }] } } });
+  kernel.setElements([initial]); return { image: await kernel.captureImage('png'), dpr: devicePixelRatio };
+}
 async function beginReducedScene() {
   const kernel = await setup(), initial = card('c1', 20); kernel.setElements([initial]); await drawn();
   kernel.setElements([{ ...initial, revision: 2, x: 330 }], { animateIds: [initial.id] }); kernel.animateCamera({ x: 100, y: 60, zoom: 1.2 }, 320);
@@ -93,4 +98,4 @@ async function finishReducedScene() {
   const stats = kernel.readStats(); kernel.destroy(); current = undefined; return stats;
 }
 Object.defineProperties(window, { prepareCanvasSceneVisualProbe: { value: sceneVisual }, prepareCanvasSceneOpacityVisualProbe: { value: sceneOpacityVisual }, prepareCanvasSceneMapVisualProbe: { value: sceneMapVisual },
-  prepareCanvasIdentityInkProbe: { value: identityInkVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });
+  prepareCanvasIdentityInkProbe: { value: identityInkVisual }, prepareCanvasIdentityBoundsProbe: { value: identityBoundsVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });
