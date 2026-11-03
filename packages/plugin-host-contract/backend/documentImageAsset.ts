@@ -50,3 +50,5 @@ export class PluginDocumentImageAssetError extends Error {
 export declare function createDocumentImageAssetRuntime(
   databaseValue: unknown
 ): PluginDocumentImageAssetRuntimePort;
+/** dry-run使用与正式图片准入相同的产品预算，不建立资源或归属。 */
+export declare function readDocumentImageAssetLimits(): { readonly maxImageBytes: number; readonly maxImagePixels: number };

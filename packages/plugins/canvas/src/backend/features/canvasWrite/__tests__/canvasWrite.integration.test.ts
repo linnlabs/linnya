@@ -14,7 +14,7 @@ it('measures a 300-card batch once and places against the final transaction stat
   let calls = 0;
   const ports: CanvasWritePorts = {
     parseText: async text => CanvasTextDocumentSchema.parse(parseMarkdownDocument(text)),
-    readBody: () => '', resolveDocument: async () => { throw new Error('not a document task'); }, prepareImage: async () => { throw new Error('not an image task'); },
+    resolveDocument: async () => { throw new Error('not a document task'); }, prepareImage: async () => { throw new Error('not an image task'); },
     measure: async cards => { calls++; return cards.map(card => ({ ref: card.ref, height: 110 })); },
   };
   const operations = CanvasCliBatchSchema.parse(Array.from({ length: 300 }, (_, index) => ({ op: 'add', text: `## 发现 ${index}\n正文`, ref: `$n${index}` })));
@@ -38,7 +38,7 @@ it('preserves fixed text height while updating Markdown and reports an indexed w
     createdAt: 1, updatedAt: 1, x: 0, y: 0, width: 240, height: 200, parentId: null, data: { contentVersion: 1, heightMode: 'fixed', content: createCanvasPlainTextDocument('原文') },
   }] });
   let measured = false;
-  const ports: CanvasWritePorts = { parseText: async text => CanvasTextDocumentSchema.parse(parseMarkdownDocument(text)), readBody: () => '原文',
+  const ports: CanvasWritePorts = { parseText: async text => CanvasTextDocumentSchema.parse(parseMarkdownDocument(text)),
     resolveDocument: async () => '', prepareImage: async () => ({ assetId: '', width: 1, height: 1 }), measure: async () => { measured = true; return []; } };
   const input = { snapshot, dryRun: false, signal: new AbortController().signal };
   const result = await prepareCanvasWrite({ ...input, operations: CanvasCliBatchSchema.parse([{ op: 'update', id: 'c1', revision: 1, append: '追加' }]) }, ports);

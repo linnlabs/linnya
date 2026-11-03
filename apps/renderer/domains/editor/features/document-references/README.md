@@ -6,4 +6,4 @@
 
 悬停先显示只读图片与摘要，可展开 provider 的只读详情。展开只生成 portable DOM，不装 NodeView、不递归请求引用文档。离开或销毁后不会打开晚到的预览，详情异步返回后也会释放。窗口内的候选和预览采用 Renderer UI token；图标复用公开 DocumentIcon。
 
-独立正文消费者通过 Host 工厂的同名 extension override 装配。Workspace 的注册点仍是 `core/extensionRegistry.ts`；启用前必须有后端正式 schema、保存索引与 Markdown/Pending 投影支持。NodeView 成功展示不是正文持久化全链验收。
+独立正文消费者通过 Host 工厂的同名 extension override 装配。Workspace 的正式注册点是 `core/extensionRegistry.ts`，后端 schema、同事务保存索引、可信 Markdown 读取与 Pending 接受/拒绝/部分决策已同步接入。共享 Markdown serializer 调用 NodeSpec 的严格身份投影，缺少当前 presentation 时明确失败，不把通用占位字当成 Markdown 链接。生产 schema conformance 与真实 parser→Revision→节点物化共同验收。

@@ -81,8 +81,14 @@ describe('trusted Markdown document reference bindings', () => {
       f.runtime.registerBindings({ ...f.identity, bindings: read.bindings, unprojectableReferenceIds: read.unprojectableReferenceIds });
       expect(() => f.write(text)).toThrow('改名');
       expect(f.runtime.hydrate({ content: parseMarkdownDocument(text), bindings: read.bindings })).toEqual(tagged);
-      expect(() => f.runtime.hydrate({ content: parseMarkdownDocument('[Other](workspace:/Target%20Space.md)'), bindings: read.bindings })).toThrow('同项目');
+      expect(() => f.runtime.hydrate({ content: parseMarkdownDocument('[Other](workspace:/Target%20Space.md)'), bindings: read.bindings })).toThrow('identity binding');
     } finally { f.database.close(); }
+  });
+
+  it('reports malformed authored workspace URI escapes as an actionable reference error', () => {
+    const f = fixture();
+    try { expect(() => f.runtime.admit({ ...f.identity, content: parseMarkdownDocument('[Bad](workspace:/100%.md)') })).toThrow('workspace 文档链接'); }
+    finally { f.database.close(); }
   });
 
 });

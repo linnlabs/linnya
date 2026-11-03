@@ -156,6 +156,7 @@ function buildCitationCompareKey(citation: CitationInlineMeta): string {
  * 新增属性时先判断它是内容还是身份；只有内容属性才能加入这里。
  */
 function buildInlineAtomCompareKey(inlineAtom: InlineAtom): string {
+  if (inlineAtom.type === 'documentReference') return `documentReference:${JSON.stringify([inlineAtom.documentId, inlineAtom.referenceId])}`;
   if (inlineAtom.type === 'citation') {
     return `citation:${buildCitationCompareKey(inlineAtom.citation)}`
   }

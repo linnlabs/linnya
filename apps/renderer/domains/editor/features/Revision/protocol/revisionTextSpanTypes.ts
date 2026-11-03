@@ -53,7 +53,9 @@ export interface CitationAtom {
   textRepresentation: string
 }
 
-export type InlineAtom = InlineLatexAtom | CitationAtom
+export interface DocumentReferenceAtom { type: 'documentReference'; documentId: string; referenceId: string; textRepresentation: string }
+
+export type InlineAtom = InlineLatexAtom | CitationAtom | DocumentReferenceAtom
 
 /** 带 marks 的文本片段 */
 export interface TextSpan {

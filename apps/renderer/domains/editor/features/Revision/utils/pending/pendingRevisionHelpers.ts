@@ -1,3 +1,5 @@
+import type { DocumentReferenceMarkdownBinding } from '@app/schemas';
+import { hydrateReferenceProjection } from './documentReferenceHydration';
 /**
  * Pending Revision 公共工具方法
  * - rootBlock 定位
@@ -128,14 +130,16 @@ export function looksLikeTableMarkdown(markdown: string): boolean {
 export async function buildTableRowsFromTableModel(
   editor: PendingMarkdownEditor,
   model: PendingTableModel,
-  hydration?: Record<string, import('@/shared/utils/citationHydration').CitationHydrationData> | null
+  hydration?: Record<string, import('@/shared/utils/citationHydration').CitationHydrationData> | null,
+  documentReferenceBindings: readonly DocumentReferenceMarkdownBinding[] = [],
 ): Promise<{ rows: ProseMirrorNode[] }> {
+  const usedReferences = new Set<string>();
   const rows = materializeTableRowsFromTableModel(
     model as unknown as Record<string, unknown>,
     editor.state.schema,
     {
       hydrateProjection: (projection) =>
-        attachCitationHydrationToProjection(projection, hydration || null),
+        hydrateReferenceProjection(attachCitationHydrationToProjection(projection, hydration || null), documentReferenceBindings, usedReferences),
     }
   )
 
@@ -247,6 +251,7 @@ export async function resolvePendingMarkdownForSingleBlock(
     blockId?: string
     listSeparatorBefore?: unknown
     hydration?: Record<string, import('@/shared/utils/citationHydration').CitationHydrationData> | null
+    documentReferenceBindings?: readonly DocumentReferenceMarkdownBinding[]
   }
 ): Promise<PendingMarkdownResolutionResult> {
   const plainTextFastPath = resolvePlainTextMarkdownFastPath(markdown)
@@ -273,7 +278,7 @@ export async function resolvePendingMarkdownForSingleBlock(
       spans:
         runtimeClassification.block.contentType === 'codeBlock'
           ? [{ text: runtimeClassification.block.cleanMarkdown, marks: [] }]
-          : (runtimeClassification.block.inlineProjection?.spans ?? []),
+          : (runtimeClassification.block.inlineProjection ? hydrateReferenceProjection(runtimeClassification.block.inlineProjection, options.documentReferenceBindings ?? []).spans : []),
       source: 'runtime-single-block',
     }
   }
@@ -290,7 +295,8 @@ export async function resolvePendingMarkdownForSingleBlock(
     const { rows } = await buildTableRowsFromTableModel(
       editor,
       runtimeClassification.model,
-      options.hydration
+      options.hydration,
+      options.documentReferenceBindings,
     )
     if (rows.length > 0) {
       return {

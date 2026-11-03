@@ -16,7 +16,7 @@ const common = {
   uiScale: finite.min(0.5).max(4).default(1),
   assets: z.record(z.string(), resource).default({}),
   documents: z.record(z.string(), z.object({ title: z.string(), status: DocumentReferencePresentationSchema.shape.status.optional(),
-    image: DocumentPreviewImageSchema.shape.dataUri.optional(), keepThumbnail: z.boolean().optional() }).strict()).default({}),
+    keepThumbnail: z.boolean().optional(), image: DocumentPreviewImageSchema.shape.dataUri.optional() }).strict()).default({}),
 };
 export const CanvasMeasureRequestSchema = z.object({
   ...common, kind: z.literal('measure'), content: CanvasTextDocumentSchema, width: finite.positive().max(4096),

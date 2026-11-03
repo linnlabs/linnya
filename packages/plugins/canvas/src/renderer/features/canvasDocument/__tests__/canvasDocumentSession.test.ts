@@ -75,4 +75,15 @@ describe('Canvas document session', () => {
     expect(f.session.state.snapshot.value?.sequence).toBe(0);
     expect(f.session.state.phase.value).toBe('failed');
   });
+
+  it('部分提交先同步正式序号再说明跳过，失败不阻塞下一次独立动作', async () => {
+    const f = fixture(); await f.session.open('doc');
+    const commit = f.commit.getMockImplementation(); if (!commit) throw new Error('fixture commit missing');
+    f.commit.mockImplementationOnce(async input => ({ ...await commit(input), results: [{ index: 0, status: 'applied', id: null, reason: null }, { index: 1, status: 'skipped', id: null, reason: 'revision_conflict' }] }));
+    const operations = [{ op: 'delete' as const, id: 'c1', baseRevision: 1 }];
+    await expect(f.session.commit(operations)).rejects.toThrow('已提交 1 项，另有 1 项跳过');
+    expect(f.session.state.snapshot.value?.sequence).toBe(1);
+    await f.session.commit(operations); expect(f.session.state.snapshot.value?.sequence).toBe(2);
+    await f.session.close();
+  });
 });

@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { DocumentReferenceMarkdownBindingSchema, JsonValueSchema, type DocumentReferenceMarkdownBinding, type JsonValue } from '@app/schemas';
-import { ReferenceMarkdownError } from '../definitions/referenceMarkdown';
 import type { ReferenceMarkdownBaseline, ReferenceMarkdownPort } from '../definitions/referenceMarkdown';
-import { collectDocumentReferenceInputs, commonReferenceMarks, normalizedReferencePath, transformWorkspaceReferenceLinks } from '../functions/referenceContent';
+import { collectDocumentReferenceInputs, hydrateDocumentReferenceLinks } from '../functions/referenceContent';
 import { projectReferenceMarkdown, assertReferenceMarkdownBindings } from '../functions/projectReferenceMarkdown';
 import { admitReferenceMarkdown } from '../functions/admitReferenceMarkdown';
 
@@ -34,15 +33,9 @@ export function createDocumentReferenceMarkdownRuntime(port: ReferenceMarkdownPo
     while (reads.size > 1024) { const oldest = reads.keys().next().value; if (oldest === undefined) break; reads.delete(oldest); }
   }
   function hydrate(input: { readonly content: JsonValue; readonly bindings: readonly DocumentReferenceMarkdownBinding[] }): JsonValue {
-    const bindings = input.bindings.map(binding => DocumentReferenceMarkdownBindingSchema.parse(binding)); const used = new Set<string>();
-    return transformWorkspaceReferenceLinks(JsonValueSchema.parse(input.content), (nodes, href) => {
-      const path = normalizedReferencePath(href); const label = nodes.map(node => typeof node.text === 'string' ? node.text : '').join('');
-      const binding = bindings.find(candidate => candidate.path === path && candidate.label === label && !used.has(candidate.referenceId));
-      if (!binding) throw new ReferenceMarkdownError('reference_path_not_found');
-      used.add(binding.referenceId); const marks = commonReferenceMarks(nodes);
-      return { type: 'documentReference', attrs: { documentId: binding.targetDocumentId, referenceId: binding.referenceId }, ...(marks.length ? { marks } : {}) };
-    });
+    return hydrateDocumentReferenceLinks(JsonValueSchema.parse(input.content), input.bindings.map(binding => DocumentReferenceMarkdownBindingSchema.parse(binding)));
   }
+
   function clearReader(readerId: string) { for (const [readKey, value] of reads) if (value.readerId === readerId) reads.delete(readKey); }
   return { project: (input: { readonly sourceDocumentId: string; readonly content: JsonValue }) => { const result = projectReferenceMarkdown(input, port); return { content: result.content, ...result.baseline }; }, registerRead, registerBindings, hydrate, admit, assertBindings, clearReader };
 }

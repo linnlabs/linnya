@@ -1,0 +1,141 @@
+<template>
+  <template v-if="card && !card.locked">
+    <button
+      v-for="anchor in anchors"
+      :key="anchor.side"
+      type="button"
+      class="canvas-connection-anchor"
+      :style="pointStyle(anchor)"
+      :aria-label="`从卡片${sideNames[anchor.side]}侧开始连线`"
+      @pointerdown.stop.prevent="editing.start($event, { kind: 'card', cardId: card.id, side: anchor.side }, anchor, null, 'to', card)"
+    />
+  </template>
+  <div
+    v-if="edge"
+    class="canvas-connection-bar"
+    role="toolbar"
+    aria-label="所选连线"
+    @pointerdown.stop
+    @keydown.stop
+  >
+    <CustomSelect
+      :model-value="edge.direction"
+      :options="directions"
+      title="连线方向"
+      width="90px"
+      min-width="90px"
+      @update:model-value="setDirection"
+    />
+    <CustomSelect
+      :model-value="edge.lineStyle"
+      :options="styles"
+      title="连线形状"
+      width="70px"
+      min-width="70px"
+      @update:model-value="setStyle"
+    />
+    <CustomSelect
+      :model-value="edge.linePattern"
+      :options="patterns"
+      title="连线笔触"
+      width="70px"
+      min-width="70px"
+      @update:model-value="setPattern"
+    />
+    <CustomSelect
+      :model-value="edge.color"
+      :options="colors"
+      title="连线颜色"
+      width="64px"
+      min-width="64px"
+      @update:model-value="setColor"
+    />
+    <ToolbarButton
+      label="编辑连线标签"
+      :disabled="edge.locked"
+      @click="run(editing.beginLabel)"
+    >
+      标签
+    </ToolbarButton>
+    <ToolbarButton
+      :label="edge.locked ? '解锁连线' : '锁定连线'"
+      @click="run(() => editing.patch(edge!, { locked: !edge!.locked }))"
+    >
+      {{ edge.locked ? '解锁' : '锁定' }}
+    </ToolbarButton>
+    <ToolbarButton
+      label="删除连线"
+      :disabled="edge.locked"
+      @click="run(editing.remove)"
+    >
+      删除
+    </ToolbarButton>
+  </div>
+  <template v-if="edge && geometry">
+    <button
+      v-if="!edge.locked"
+      type="button"
+      class="canvas-connection-endpoint"
+      :style="pointStyle(geometry.from)"
+      aria-label="移动连线起点"
+      @pointerdown.stop.prevent="editing.start($event, edge.to, geometry.to, edge, 'from')"
+    />
+    <button
+      v-if="!edge.locked"
+      type="button"
+      class="canvas-connection-endpoint"
+      :style="pointStyle(geometry.to)"
+      aria-label="移动连线终点"
+      @pointerdown.stop.prevent="editing.start($event, edge.from, geometry.from, edge, 'to')"
+    />
+    <input
+      v-if="editing.state.label.value"
+      ref="labelInput"
+      class="canvas-connection-label-input"
+      :style="pointStyle(geometry.midpoint)"
+      :value="editing.state.label.value.value"
+      aria-label="连线标签"
+      @input="updateLabel"
+      @blur="run(editing.saveLabel)"
+      @keydown.enter.prevent="blurLabel"
+      @keydown.esc.prevent.stop="blurLabel"
+      @keydown.stop
+      @pointerdown.stop
+    >
+  </template>
+  <svg
+    v-if="preview"
+    class="canvas-connection-preview"
+    aria-hidden="true"
+  ><line
+    :x1="preview.from.x"
+    :y1="preview.from.y"
+    :x2="preview.to.x"
+    :y2="preview.to.y"
+  /></svg>
+</template>
+<script setup lang="ts">
+import { computed, nextTick, ref, watch } from 'vue';
+import { ToolbarButton, CustomSelect } from '@linnya/renderer-ui';
+import { CanvasEdgeSchema, CanvasColorSchema, type CanvasCamera, type CanvasCard, type CanvasPoint } from '@plugin/canvas/shared';
+import type { createCanvasConnectionEditing } from '../orchestration/createCanvasConnectionEditing';
+import { canvasConnectionAnchors } from '../functions/canvasConnectionAnchors';
+const props = defineProps<{ editing: ReturnType<typeof createCanvasConnectionEditing>; card: CanvasCard | null; camera: CanvasCamera; run: (action: () => Promise<unknown>) => Promise<void> }>();
+const edge = computed(() => props.editing.selected.value), labelInput = ref<HTMLInputElement | null>(null);
+const anchors = computed(() => props.card ? canvasConnectionAnchors(props.card) : []);
+const geometry = computed(() => { void props.camera; return props.editing.geometry(); });
+const project = (point: CanvasPoint) => ({ x: props.camera.x + point.x * props.camera.zoom, y: props.camera.y + point.y * props.camera.zoom });
+const pointStyle = (point: CanvasPoint) => { const screen = project(point); return { left: `${screen.x}px`, top: `${screen.y}px` }; };
+const preview = computed(() => { const value = props.editing.state.preview.value; return value ? { from: project(value.from), to: project(value.to) } : null; });
+const sideNames = { top: '上', right: '右', bottom: '下', left: '左' };
+const directions = [{ value: 'none', text: '无箭头' }, { value: 'forward', text: '单向' }, { value: 'both', text: '双向' }], styles = [{ value: 'curve', text: '曲线' }, { value: 'straight', text: '直线' }], patterns = [{ value: 'solid', text: '实线' }, { value: 'dashed', text: '虚线' }];
+const colors = [{ value: 'white', text: '原色' }, { value: 'red', text: '红' }, { value: 'orange', text: '橙' }, { value: 'yellow', text: '黄' }, { value: 'green', text: '绿' }, { value: 'cyan', text: '青' }, { value: 'purple', text: '紫' }];
+const patch = (value: Parameters<typeof props.editing.patch>[1]) => props.run(async () => { const current = edge.value; if (current) await props.editing.patch(current, value); });
+const setDirection = (value: string | number | boolean) => patch({ direction: CanvasEdgeSchema.shape.direction.parse(value) });
+const setStyle = (value: string | number | boolean) => patch({ lineStyle: CanvasEdgeSchema.shape.lineStyle.parse(value) });
+const setPattern = (value: string | number | boolean) => patch({ linePattern: CanvasEdgeSchema.shape.linePattern.parse(value) });
+const setColor = (value: string | number | boolean) => patch({ color: CanvasColorSchema.parse(value) });
+const updateLabel = (event: Event) => { if (event.target instanceof HTMLInputElement) props.editing.state.updateLabel(event.target.value); };
+const blurLabel = () => labelInput.value?.blur();
+watch(() => props.editing.state.label.value?.edge.id, async id => { if (id) { await nextTick(); labelInput.value?.focus(); labelInput.value?.select(); } });
+</script>

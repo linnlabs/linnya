@@ -1,3 +1,4 @@
+import { InlineDocumentReferenceAttrsSchema } from '@app/schemas';
 /**
  * @file linearizeBlock.ts
  * @description 文档 → TextSpan[] 抽取器
@@ -205,6 +206,9 @@ export function linearizeRootBlock(editor: Editor, blockPos: number): LinearizeR
         text: '\n',
         marks: [],
       })
+    } else if (node.type.name === 'documentReference') {
+      const attrs = InlineDocumentReferenceAttrsSchema.parse(node.attrs);
+      spans.push({ text: '文档', marks: extractMarkNames(node.marks), inlineAtom: { type: 'documentReference', ...attrs, textRepresentation: '文档' } });
     } else if (node.type.name === 'inlineLatex') {
       const textRepresentation = inlineLatexToText(node)
       spans.push({
@@ -269,6 +273,9 @@ export function linearizeNode(node: ProseMirrorNode): LinearizeResult {
         text: '\n',
         marks: [],
       })
+    } else if (n.type.name === 'documentReference') {
+      const attrs = InlineDocumentReferenceAttrsSchema.parse(n.attrs);
+      spans.push({ text: '文档', marks: extractMarkNames(n.marks), inlineAtom: { type: 'documentReference', ...attrs, textRepresentation: '文档' } });
     } else if (n.type.name === 'inlineLatex') {
       const textRepresentation = inlineLatexToText(n)
       spans.push({

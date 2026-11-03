@@ -29,17 +29,17 @@ export function projectCanvasCardBody(card: CanvasCard, context: CanvasProjectio
   }
 }
 
-export function listCanvasReferencedDocuments(elements: readonly CanvasElement[]): string[] {
+export function listCanvasContentReferencedDocuments(content: CanvasContentNode): string[] {
   const ids = new Set<string>();
   const visit = (node: CanvasContentNode): void => {
     if (node.type === 'documentReference' && typeof node.attrs?.documentId === 'string') ids.add(node.attrs.documentId);
     for (const child of node.content ?? []) visit(child);
   };
-  for (const element of elements) {
-    if (element.type === 'document') ids.add(element.data.documentId);
-    if (element.type === 'text') visit(element.data.content);
-  }
+  visit(content);
   return [...ids];
+}
+export function listCanvasReferencedDocuments(elements: readonly CanvasElement[]): string[] {
+  return [...new Set(elements.flatMap(element => element.type === 'document' ? [element.data.documentId] : element.type === 'text' ? listCanvasContentReferencedDocuments(element.data.content) : []))];
 }
 
 const regions = ['左上', '上方', '右上', '左侧', '正中', '右侧', '左下', '下方', '右下'];

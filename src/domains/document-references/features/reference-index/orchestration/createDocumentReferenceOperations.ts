@@ -31,11 +31,13 @@ export function createDocumentReferenceOperations(db: ReferenceDatabase, nodes: 
       for (const reference of parsed.references) insert.run(parsed.sourceDocumentId, reference.referenceId, reference.targetDocumentId, reference.kind);
     },
     listBacklinks(targetDocumentId: string): readonly DocumentBacklink[] {
+      const target = nodes.read(targetDocumentId);
+      if (!target || target.deletedAt !== null || !target.projectId) return [];
       const rows = z.array(rowSchema).parse(db.prepare('SELECT * FROM document_references WHERE target_document_id = ? ORDER BY source_document_id, reference_id').all(targetDocumentId));
       const result: DocumentBacklink[] = [];
       for (const row of rows) {
         const source = nodes.read(row.source_document_id);
-        if (!source || source.deletedAt !== null) continue;
+        if (!source || source.deletedAt !== null || source.projectId !== target.projectId) continue;
         result.push({ sourceDocumentId: source.id, sourceTitle: source.name, sourceNodeType: source.nodeType, referenceId: row.reference_id, targetDocumentId: row.target_document_id, kind: row.kind });
       }
       return result;

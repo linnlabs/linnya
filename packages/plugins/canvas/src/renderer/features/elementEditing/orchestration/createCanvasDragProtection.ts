@@ -10,9 +10,10 @@ export function createCanvasDragProtection(session: CanvasDocumentSession, repor
     async set(selected: readonly CanvasCardId[], active: boolean) {
       if (active) { selected.forEach(id => ids.add(id)); if (!timer) timer = setInterval(() => { void renew().catch(report); }, 2000); await renew(); }
       else {
+        const released = selected.filter(id => ids.has(id));
         selected.forEach(id => ids.delete(id));
         if (!ids.size) { clearInterval(timer); timer = undefined; }
-        await Promise.all(selected.map(id => session.protect(id, [], 'drag')));
+        await Promise.all(released.map(id => session.protect(id, [], 'drag')));
       }
     },
     dispose() { clearInterval(timer); timer = undefined; ids.clear(); },

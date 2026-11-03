@@ -23,3 +23,5 @@ export { searchCanvasElements } from './search/functions/searchCanvasElements';
 export type { CanvasSearchHit, CanvasSearchContext } from './search/definitions/canvasSearch';
 export { CanvasCheckReportSchema } from './query/definitions/canvasCheck';
 export type { CanvasCheckReport } from './query/definitions/canvasCheck';
+export { CanvasArrangeRequestSchema, CanvasArrangeResultSchema, CanvasCancelArrangementRequestSchema } from './layout/definitions/canvasLayout';
+export type { CanvasArrangeRequest } from './layout/definitions/canvasLayout';

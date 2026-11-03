@@ -1,3 +1,5 @@
+import { JsonValueSchema } from '@app/schemas';
+import { getMarkdownDocumentReferences, projectMarkdownReferenceContent } from '../../../../domains/markdown/features/document-references';
 import { createMarkdownDocumentStore } from '../../application/markdown-image-assets';
 import { createMarkdownImageSourceResolver, type MarkdownImageSourceContext } from '../../application/markdown-image-assets';
 import type Database from 'better-sqlite3';
@@ -92,6 +94,8 @@ function createMarkdownFileCreateProvider(params: {
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileCreateResult>;
 }): WorkspaceDocumentFileCreateProvider {
   const documentStore = createMarkdownDocumentStore(params.db);
+  const references = getMarkdownDocumentReferences(params.db);
+  if (!references) throw new Error('Markdown reference capabilities were not bound.');
   return {
     displayName: 'Markdown',
     enabled: true,
@@ -129,10 +133,12 @@ function createMarkdownFileCreateProvider(params: {
             parent.parentId,
             'document'
           );
-          documentStore.createDocument(documentId, built.content);
+          const admitted = references.admit({ readerId: JSON.stringify([params.context.conversationId, params.context.runId]), sourceDocumentId: documentId, sourceKey: 'create', content: JsonValueSchema.parse(built.content) });
+          references.assertBindings({ sourceDocumentId: documentId, bindings: admitted.bindings });
+          documentStore.createDocument(documentId, admitted.content);
           // 与编辑回执使用同一领域投影；普通链接、代码中的引用示例不冒充来源。
           const currentProjection = buildMarkdownCitationReadProjection({
-            content: documentStore.getDocument(documentId),
+            content: projectMarkdownReferenceContent(references, documentId, documentStore.getDocument(documentId)).content,
             pendings: [],
             viewMode: 'preview',
           });

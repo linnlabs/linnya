@@ -30,6 +30,7 @@ describe('document reference business lifecycle', () => {
   it('follows stable identities across rename and moves, without leaking a cross-project title', () => {
     db.transaction(() => replace()).immediate();
     db.prepare('UPDATE workspace_nodes SET name = ?, project_id = ? WHERE id = ?').run('Renamed', 'p2', 'target');
+    expect(operations().listBacklinks('target')).toEqual([]);
     expect(operations().resolve({ sourceDocumentId: 'source', targetDocumentId: 'target' })).toEqual({ targetDocumentId: 'target', status: 'outside_project', title: null, nodeType: null });
     db.transaction(() => replace()).immediate();
     db.prepare('UPDATE workspace_nodes SET project_id = ? WHERE id = ?').run('p1', 'target');
@@ -78,4 +79,10 @@ describe('document reference business lifecycle', () => {
     db.prepare('DELETE FROM workspace_nodes WHERE id = ?').run('source');
     expect(operations().listBacklinks('target')).toHaveLength(0);
   });
+  it('rejects folder identities as either end of a document reference', () => {
+    db.prepare('INSERT INTO workspace_nodes VALUES (?, ?, ?, ?, NULL)').run('folder', 'p1', 'Folder', 'folder');
+    expect(() => db.transaction(() => replace('folder', 'new')).immediate()).toThrow('target_not_found');
+    expect(() => db.transaction(() => operations().replace({ sourceDocumentId: 'folder', references: [] })).immediate()).toThrow('source_not_found');
+  });
+
 });
