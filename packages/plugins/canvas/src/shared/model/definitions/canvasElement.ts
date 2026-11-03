@@ -102,8 +102,14 @@ export type CanvasEdge = z.infer<typeof CanvasEdgeSchema>;
 export type CanvasElement = z.infer<typeof CanvasElementSchema>;
 export type CanvasEndpoint = z.infer<typeof CanvasEndpointSchema>;
 
+export const CanvasIntegrityIssueSchema = z.object({ elementId: z.string().nullable(),
+  code: z.enum(['future_format', 'unknown_element', 'invalid_element', 'dangling_edge']), message: z.string(),
+}).strict();
+export const CanvasIntegritySchema = z.object({ readOnly: z.literal(true), formatVersion: z.number().int(), issues: z.array(CanvasIntegrityIssueSchema) }).strict();
+export type CanvasIntegrityIssue = z.infer<typeof CanvasIntegrityIssueSchema>;
+
 export const CanvasSnapshotSchema = z.object({
   schemaVersion: z.literal(1), documentId: z.string().min(1),
-  sequence: z.number().int().nonnegative(), elements: z.array(CanvasElementSchema),
+  sequence: z.number().int().nonnegative(), elements: z.array(CanvasElementSchema), integrity: CanvasIntegritySchema.optional(),
 }).strict();
 export type CanvasSnapshot = z.infer<typeof CanvasSnapshotSchema>;
