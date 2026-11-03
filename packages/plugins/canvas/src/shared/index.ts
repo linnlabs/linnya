@@ -28,3 +28,4 @@ export type { CanvasArrangeRequest } from './layout/definitions/canvasLayout';
 
 export { CanvasVersionBudgetStatusSchema } from './history/definitions/canvasVersionBudget';
 export type { CanvasVersionBudgetStatus } from './history/definitions/canvasVersionBudget';
+export * from './history/definitions/canvasVersionRequests';
