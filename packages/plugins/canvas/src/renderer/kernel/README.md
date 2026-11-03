@@ -52,6 +52,8 @@ CI可用 `CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes
 
 `CANVAS_PERFORMANCE_CPU_PROFILE=1`可生成拖动CPU profile辅助定位；带Profiler的输出明确不计真实硬件基线，不能用它的时延作为性能验收结论。
 
+当前kernel没有卡片飞入、时间插值、纹理交叉淡入或相机缓动；相机与位图接纳立即更新，单次RAF只绘制。地图LOD透明度和纸面淡影是静态材质，不是持续动画，因此不额外创建无作用的减少动效监听。通用菜单/对话框动效由RendererUI拥有。
+
 macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事实；powerMonitor的idle只能作辅助。锁屏/未登录/非console用户在创建窗口前拒绝，报告仅保留boolean状态，不写用户身份。被拒绝的新运行写preflight.json并保留上一原始结果；此前仅powerMonitor校验的旧输出不能单独证明解锁态，不得作为正式基线。
 
 光栅回执通过readCard读取当前display事实，不能为每张位图重新分配并扫描整张画布的visibleCards；环境身份校验也不应重复执行缺片矩形差。可见性仍由当前片段验证，旧内容或已退出视口的结果释放。
