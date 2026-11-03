@@ -159,6 +159,8 @@ Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。
 
 `DocumentTypeContribution.historyClientSessionId(documentId)` 可在打开历史面板时提供当前文档编辑会话身份。Host 固定该身份并在用户确认恢复时通过通用 `clientSessionId` 字段透传；插件自己拥有会话注册及撤销栈，Core 不解释其格式。未提供回调或返回 null 时省略身份。
 
+迁移数据库的 statement 明确提供同步 `get/all/run`：Host adapter 三项能力始终齐全，迁移可读取旧事实后在调用方迁移事务内写入，不应以可选方法或空查询结果替代合同缺失。
+
 ## Renderer IPC 的投递结果
 
 `pluginIpcClient.invokeRendererPluginIpc` 保留 `failureKind`：正式Handler返回的失败为 `application`；调用通道抛出或返回结构无法验证为 `delivery_unknown`。后者不能证明写入没有执行。需要幂等的写用例必须保留原requestId和完整负载，确认前不能生成另一份写意图；DTO仍由调用方的正式schema接纳。`application`描述返回来源，事务是否已写入由业务owner的提交合同保证。

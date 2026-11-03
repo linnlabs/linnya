@@ -4,9 +4,9 @@
  * 迁移只暴露 SQLite 所需的最小能力，不暴露 host 的 DatabaseService。
  */
 export interface PluginMigrationStatement {
-  readonly get?: (...params: unknown[]) => unknown;
-  readonly all?: (...params: unknown[]) => unknown[];
-  readonly run?: (...params: unknown[]) => unknown;
+  readonly get: (...params: unknown[]) => unknown;
+  readonly all: (...params: unknown[]) => unknown[];
+  readonly run: (...params: unknown[]) => unknown;
 }
 
 export interface PluginMigrationDatabase {

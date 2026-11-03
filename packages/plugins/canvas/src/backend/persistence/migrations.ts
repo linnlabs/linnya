@@ -1,4 +1,5 @@
 import type { PluginMigrationDefinition } from '@plugin/backend/pluginMigration';
+import { backfillCanvasMaximumRevision } from './functions/backfillCanvasMaximumRevision';
 
 export const canvasPluginMigrations: readonly PluginMigrationDefinition[] = [{
   version: 1,
@@ -98,5 +99,12 @@ export const canvasPluginMigrations: readonly PluginMigrationDefinition[] = [{
       dirty_since INTEGER, reverse_blob BLOB, bytes_since_anchor INTEGER NOT NULL DEFAULT 0,
       used_bytes INTEGER NOT NULL DEFAULT 0, over_budget_bytes INTEGER NOT NULL DEFAULT 0
     );`);
+  },
+}, {
+  version: 5,
+  description: 'Monotonic document revision floor for historical entity restoration',
+  up(database) {
+    database.exec('ALTER TABLE canvas_documents ADD COLUMN maximum_revision INTEGER NOT NULL DEFAULT 0');
+    backfillCanvasMaximumRevision(database);
   },
 }];

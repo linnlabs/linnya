@@ -32,7 +32,7 @@ const commands: Readonly<Record<string, CommandParser>> = {
 export function parseCanvasCli(argv: readonly string[]): CanvasCliCommand {
   if (!argv.length || argv[0] === '--help' || argv[0] === 'help') return { kind: 'help' };
   const kind = argv[0], definition = commands[kind];
-  if (!Object.hasOwn(commands, kind)) throw new CanvasCliFailure('unknown_command', `未知子命令 ${kind}；运行 linnya-canvas help。`);
+  if (!Object.prototype.hasOwnProperty.call(commands, kind)) throw new CanvasCliFailure('unknown_command', `未知子命令 ${kind}；运行 linnya-canvas help。`);
   const parsed = parseArgs({ args: [...argv.slice(1)], options: definition.options, allowPositionals: true, strict: true });
   const path = parsed.positionals[0];
   if (!path?.startsWith('workspace:')) throw new CanvasCliFailure('invalid_path', '请使用 workspace:/目录/画布.canvas；不接受磁盘路径。');

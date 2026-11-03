@@ -8,6 +8,8 @@ export interface CanvasStoredElement {
 }
 export interface CanvasCommitState {
   readonly sequence: number;
+  /** 持久化文档修订下界，删除guard清理后恢复旧ID也不能重新接纳旧写入。 */
+  readonly maximumRevision: number;
   readonly nextCard: number;
   readonly nextEdge: number;
   readonly elements: readonly CanvasStoredElement[];
