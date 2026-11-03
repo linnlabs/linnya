@@ -132,6 +132,18 @@ async function verifyCroppedImage(port: CanvasRenderWorkerPort, request: CanvasR
   await writeFile(path.join(output, 'canvas-vertical-image-crop.png'), result.bytes); return { blue, red, captionInk, regionInk, enlargedInk };
 }
 
+async function verifyDocumentSummary(port: CanvasRenderWorkerPort, request: CanvasRenderRequest) {
+  const card = request.snapshot.elements.find(element => element.type === 'text'); if (!card) throw new Error('summary_fixture_missing');
+  const input = CanvasRenderRequestSchema.parse({ ...request, snapshot: { ...request.snapshot, elements: [{ ...card, type: 'document', height: 240, data: { documentId: 'summary-target' } }] } });
+  const runtime = createCanvasRenderRuntime(port), summary = '当前正文摘要必须在无封面文档卡和后台出图中保持一致。中文 English '.repeat(3);
+  const base = { title: '同源标题', status: 'available', previewStatus: 'ready' } as const;
+  const titleOnly = await runtime.render({ ...input, requestId: 'doc-title-only', documents: { 'summary-target': base } });
+  const withSummary = await runtime.render({ ...input, requestId: 'doc-current-summary', documents: { 'summary-target': { ...base, summary } } });
+  const before = inkBounds(titleOnly.bytes), after = inkBounds(withSummary.bytes);
+  if (after.height <= before.height + 40) throw new Error('document_summary_missing_from_background_png');
+  await writeFile(path.join(output, 'canvas-document-summary.png'), withSummary.bytes); return { titleBounds: before, summaryBounds: after };
+}
+
 async function run(): Promise<void> {
   await app.whenReady();
   if (process.platform === 'darwin') app.setActivationPolicy('accessory');
@@ -195,12 +207,13 @@ async function run(): Promise<void> {
     const documentCover = await verifyDocumentCover(port, request);
     const danglingEdgePixels = await verifyDanglingEdge(port, request);
     const imageCrop = await verifyCroppedImage(port, request);
+    const documentSummary = await verifyDocumentSummary(port, request);
     await mkdir(output, { recursive: true });
     await writeFile(path.join(output, 'canvas.png'), image.bytes);
     await writeFile(path.join(output, 'canvas-dpr1.png'), unit.bytes);
     await writeFile(path.join(output, 'canvas-second.jpg'), second.bytes);
     await writeFile(path.join(output, 'canvas-wide.png'), wide.bytes);
-    const report = { versions: process.versions, measurement, cancellationObserved, danglingEdgePixels, imageCrop, wideBounds, managedImages, referenceMeasurement, documentCover, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
+    const report = { versions: process.versions, measurement, cancellationObserved, danglingEdgePixels, imageCrop, documentSummary, wideBounds, managedImages, referenceMeasurement, documentCover, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
       sha256: createHash('sha256').update(image.bytes).digest('hex') }, second: { bytes: second.bytes.length, sequence: second.sequence } };
     await writeFile(path.join(output, 'results.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));

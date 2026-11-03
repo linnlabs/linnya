@@ -46,6 +46,8 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 
 图片卡的受管显示源、归一化裁切和底部说明使用 `cardRendering/content` 的同一 DOM 投影及公开媒体样式，前台与后台出图一致。后台指定区域按输出长宽等比居中，边界不添加整图适配留白；导出倍率不受交互相机缩放范围限制。
 
+文档卡也使用同一纯DOM投影：标题、无封面摘要、封面及不可用状态。Worker只消费请求中明确提供的授权`summary`和`previewStatus`；引用权限状态优先于迟到的预览状态，失去访问权时不显示旧摘要或图片，缺metadata仅显示不可访问身份牌。
+
 ## Agent 改动与确认
 
 Backend 按数据库实例持有 `createCanvasHistoryRuntime`。组合入口位于 `backend/orchestration/history`；用户栈与 Agent 组共用 `backend/shared/history` 的字段片段及逆变更规则。`agentChanges` 只拥有持久组、待确认批次与审批回执。组按对话与文档累计，子 run 共享组；没有对话的开发 CLI 使用该画布的命令行组。对话身份没有外键，删除对话不丢撤回记录。`closeGroup` 关闭当前组，后续写入创建新组。
