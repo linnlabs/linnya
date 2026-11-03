@@ -1,10 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { z } from 'zod';
 import { ConversationControlSendResponseSchema } from '@app/schemas';
-import { CanvasSnapshotSchema } from '@plugin/canvas/shared';
 import type { EvaluationRunnerPorts } from '../definitions/evaluationRunner';
+import { readEvaluationSnapshot } from '../functions/readEvaluationSnapshot';
 import {
   createEvidenceStep,
   readRunnerState,
@@ -26,10 +25,11 @@ export async function startCanvasEvaluation(input: {
     command: Parameters<EvaluationRunnerPorts['bridge']>[0]['command']
   ) =>
     input.ports.bridge({ connectionFile, projectId: state.projectId, directory, label, command });
-  const before = z
-    .object({ snapshot: CanvasSnapshotSchema })
-    .parse(await bridge('before', { id: randomUUID(), kind: 'read', payload: {} }));
-  await writeEvidence(input.directory, 'before.json', before.snapshot);
+  const before = readEvaluationSnapshot(
+    await bridge('before', { id: randomUUID(), kind: 'read', payload: {} }),
+    state.documentId
+  );
+  await writeEvidence(input.directory, 'before.json', before);
   await bridge('stats-reset', { id: randomUUID(), kind: 'stats', payload: { reset: true } });
   const prompt = await readFile(path.join(input.directory, 'prompt.txt'), 'utf8'),
     startedAt = Date.now();

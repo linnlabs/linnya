@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
-import { CanvasSnapshotSchema } from '@plugin/canvas/shared';
 import type { EvaluationRunnerPorts } from '../definitions/evaluationRunner';
+import { readEvaluationSnapshot } from '../functions/readEvaluationSnapshot';
 import { createEvidenceStep, readRunnerState, writeEvidence } from '../adapters/evidenceFiles';
 import { collectEvaluationMessages } from './collectMessages';
 
@@ -55,8 +54,8 @@ export async function collectCanvasEvaluation(input: {
         label: 'after',
         command: { id: randomUUID(), kind: 'read', payload: {} },
       });
-      const after = z.object({ snapshot: CanvasSnapshotSchema }).parse(raw);
-      await writeEvidence(directory, 'after.json', after.snapshot);
+      const after = readEvaluationSnapshot(raw, state.documentId);
+      await writeEvidence(directory, 'after.json', after);
       await input.ports.bridge({
         connectionFile,
         projectId: state.projectId,
