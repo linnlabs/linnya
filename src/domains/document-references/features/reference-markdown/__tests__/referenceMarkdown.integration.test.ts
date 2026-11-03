@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { parseMarkdownDocument, serializeMarkdownDocument } from '@linnya/markdown-document-core';
 import { createDocumentReferenceMarkdownRuntime } from 'src/plugin-sdk/backend/documentReferences';
 import type { JsonValue } from '@app/schemas';
+import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema';
 
 const tagged: JsonValue = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'documentReference', attrs: { documentId: 'target', referenceId: 'ref-1' } }] }] };
 function fixture() {
   const database = new Database(':memory:');
-  database.exec('CREATE TABLE workspace_nodes(id TEXT PRIMARY KEY, project_id TEXT, name TEXT, type TEXT, deleted_at INTEGER, parent_id TEXT, last_opened_at INTEGER, updated_at INTEGER)');
-  const insert = database.prepare('INSERT INTO workspace_nodes VALUES (?, ?, ?, ?, NULL, NULL, NULL, 1)');
+  for (const ddl of CORE_SCHEMAS) database.exec(ddl);
+  for (const id of ['project', 'other', 'other-project']) database.prepare('INSERT INTO projects(id,name,created_at,updated_at) VALUES (?,?,1,1)').run(id, id);
+  const insert = database.prepare('INSERT INTO workspace_nodes(id, project_id, name, type, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 1)');
   insert.run('source', 'project', 'Source.md', 'document'); insert.run('target', 'project', 'Target Space.md', 'document');
   const runtime = createDocumentReferenceMarkdownRuntime(database);
   const identity = { readerId: 'conversation:run', sourceDocumentId: 'source', sourceKey: 'c1:1' };
@@ -29,7 +31,7 @@ describe('trusted Markdown document reference bindings', () => {
     const f = fixture();
     try {
       const text = serializeMarkdownDocument(f.read().content); f.database.prepare('UPDATE workspace_nodes SET name = ? WHERE id = ?').run('Renamed.md', 'target');
-      f.database.prepare('INSERT INTO workspace_nodes VALUES (?, ?, ?, ?, NULL, NULL, NULL, 1)').run('replacement', 'project', 'Target Space.md', 'document');
+      f.database.prepare('INSERT INTO workspace_nodes(id, project_id, name, type, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 1)').run('replacement', 'project', 'Target Space.md', 'document');
       expect(() => f.write(text)).toThrow('改名'); expect(() => f.write(text.replace('Target Space.md]', 'Changed label]'))).toThrow('改名');
       // 同一正文版本重读新路径也不能让旧链接重新绑定到 replacement。
       const fresh = serializeMarkdownDocument(f.read().content); expect(() => f.write(text)).toThrow('改名'); expect(f.write(fresh).references[0]?.targetDocumentId).toBe('target');
@@ -77,7 +79,7 @@ describe('trusted Markdown document reference bindings', () => {
       const read = f.runtime.project({ sourceDocumentId: 'source', content: tagged });
       const text = serializeMarkdownDocument(read.content);
       f.database.prepare('UPDATE workspace_nodes SET name = ? WHERE id = ?').run('Renamed.md', 'target');
-      f.database.prepare('INSERT INTO workspace_nodes VALUES (?, ?, ?, ?, NULL, NULL, NULL, 1)').run('replacement', 'project', 'Target Space.md', 'document');
+      f.database.prepare('INSERT INTO workspace_nodes(id, project_id, name, type, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 1)').run('replacement', 'project', 'Target Space.md', 'document');
       f.runtime.registerBindings({ ...f.identity, bindings: read.bindings, unprojectableReferenceIds: read.unprojectableReferenceIds });
       expect(() => f.write(text)).toThrow('改名');
       expect(f.runtime.hydrate({ content: parseMarkdownDocument(text), bindings: read.bindings })).toEqual(tagged);

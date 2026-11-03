@@ -1,3 +1,4 @@
+import { readCanvasLinePalette } from '../../src/shared';
 import { app, BrowserWindow, nativeImage } from 'electron';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -75,6 +76,35 @@ async function run() {
     }
     await writeFile(path.join(output, 'lines.png'), lineImage.toPNG());
     if (dashInk < 30 || dashGap < 30) throw new Error(`line_dash_is_not_rendered:${dashInk}:${dashGap}`);
+    const coloredLines = z.object({ light: z.string(), dark: z.string(), dpr: z.number(), colors: z.array(z.enum(['red', 'orange', 'yellow', 'green', 'cyan', 'purple'])) })
+      .parse(await win.webContents.executeJavaScript('window.prepareCanvasLineColorsVisualProbe()'));
+    const colorReports = [];
+    for (const theme of ['light', 'dark'] as const) {
+      const image = nativeImage.createFromDataURL(coloredLines[theme]), pixels = image.toBitmap(), width = image.getSize().width, palette = readCanvasLinePalette(theme === 'dark');
+      for (const [index, color] of coloredLines.colors.entries()) {
+        const expected = palette[color], r = expected >> 16 & 255, g = expected >> 8 & 255, b = expected & 255;
+        let matching = 0;
+        for (let x = 80 * coloredLines.dpr; x < 800 * coloredLines.dpr; x++) for (let y = (59 + index * 70) * coloredLines.dpr; y <= (61 + index * 70) * coloredLines.dpr; y++) {
+          const offset = (y * width + x) * 4;
+          if (Math.abs(pixels[offset] - b) <= 4 && Math.abs(pixels[offset + 1] - g) <= 4 && Math.abs(pixels[offset + 2] - r) <= 4) matching++;
+        }
+        if (matching < 500) throw new Error(`edge_color_missing:${theme}:${color}:${matching}`);
+        colorReports.push({ theme, color, matching });
+      }
+      await writeFile(path.join(output, `lines-colors-${theme}.png`), image.toPNG());
+    }
+    const occlusion = z.object({ before: z.string(), during: z.string(), after: z.string(), dpr: z.number() })
+      .parse(await win.webContents.executeJavaScript('window.prepareCanvasDragOcclusionVisualProbe()'));
+    const magenta = (data: string) => {
+      const image = nativeImage.createFromDataURL(data), pixels = image.toBitmap(), width = image.getSize().width; let count = 0;
+      for (let y = 80 * occlusion.dpr; y < 200 * occlusion.dpr; y++) for (let x = 70 * occlusion.dpr; x < 300 * occlusion.dpr; x++) {
+        const offset = (y * width + x) * 4; if (pixels[offset + 2] > 170 && pixels[offset + 1] < 40 && pixels[offset] > 150) count++;
+      }
+      return count;
+    };
+    const dragOcclusion = { before: magenta(occlusion.before), during: magenta(occlusion.during), after: magenta(occlusion.after) };
+    if (dragOcclusion.before || dragOcclusion.after || dragOcclusion.during < 1000) throw new Error(`drag_occlusion_stale:${JSON.stringify(dragOcclusion)}`);
+    await writeFile(path.join(output, 'drag-revealed-body.png'), nativeImage.createFromDataURL(occlusion.during).toPNG());
     const map = z.object({ before: z.string(), after: z.string(), dpr: z.number(), dx: z.number(), dy: z.number() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasMapPanVisualProbe()'));
     const mapBefore = nativeImage.createFromDataURL(map.before), mapAfter = nativeImage.createFromDataURL(map.after);
     const beforePixels = mapBefore.toBitmap(), afterPixels = mapAfter.toBitmap(), mapSize = mapBefore.getSize();
@@ -121,6 +151,20 @@ async function run() {
     }
     if (contextInk < 100 || contextPreserved / contextInk < 0.95 || context.afterStats.cards !== context.beforeStats.cards || context.afterStats.bitmaps !== context.beforeStats.bitmaps) throw new Error('context_restore_content_missing');
     await writeFile(path.join(output, 'context-restored.png'), contextAfterImage.toPNG());
+    const editing = z.object({ expected: z.string(), actual: z.string(), dpr: z.number(), visible: z.number(), status: z.string(), again: z.string(), smoothing: z.string() })
+      .parse(await win.webContents.executeJavaScript('window.prepareCanvasEditingVisualProbe()'));
+    const editingExpected = nativeImage.createFromDataURL(editing.expected), expectedPixels = editingExpected.toBitmap();
+    const editingActual = nativeImage.createFromDataURL(editing.actual), actualPixels = editingActual.toBitmap(), editingWidth = editingExpected.getSize().width, actualWidth = editingActual.getSize().width;
+    let editingInk = 0, editingIntersection = 0, editingUnion = 0;
+    for (let y = 8 * editing.dpr; y < editingWidth - 8 * editing.dpr; y++) for (let x = 8 * editing.dpr; x < editingWidth - 8 * editing.dpr; x++) {
+      const a = (y * editingWidth + x) * 4, b = (y * actualWidth + x) * 4;
+      const expected = expectedPixels[a] < 180 && expectedPixels[a + 1] < 180 && expectedPixels[a + 2] < 180;
+      const actual = actualPixels[b] < 180 && actualPixels[b + 1] < 180 && actualPixels[b + 2] < 180;
+      if (expected) editingInk++; if (expected && actual) editingIntersection++; if (expected || actual) editingUnion++;
+    }
+    await writeFile(path.join(output, 'editing-exact-expected.png'), editingExpected.toPNG());
+    await writeFile(path.join(output, 'editing-exact-actual.png'), editingActual.toPNG());
+    if (editing.visible <= 40 || editingInk < 10 || editingIntersection / editingUnion < 0.95) throw new Error(`editing_exact_pixels_missing:${editingIntersection}:${editingUnion}`);
     const unsupported = new BrowserWindow({ show: false, width: 900, height: 600, webPreferences: { sandbox: true, contextIsolation: true, offscreen: true, backgroundThrottling: false, disableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
     let fallbackInk = 0;
     try {
@@ -131,8 +175,8 @@ async function run() {
       if (fallbackInk < 100) throw new Error('unsupported_api_identity_is_empty');
       await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());
     } finally { unsupported.destroy(); }
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap }, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk }, thumbnails: thumbReports,
-      mixedLod: lodReports, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap, colors: colorReports }, dragOcclusion, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk }, thumbnails: thumbReports,
+      mixedLod: lodReports, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
 }

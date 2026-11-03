@@ -21,12 +21,12 @@ export function createLatestRasterQueue<I, O>(options: Execution<I, O> & {
   const pending = new Map<string, RasterJob<I, O>>();
   let running: readonly RasterJob<I, O>[] = [];
   let group: AbortController | null = null;
-  let disposed = false, peakPending = 0, completed = 0, discarded = 0;
+  let disposed = false, peakPending = 0, peakBatchSize = 0, completed = 0, discarded = 0;
   const abortGroupIfUnused = () => { if (running.length && running.every(job => job.controller.signal.aborted)) group?.abort(); };
   async function drain(): Promise<void> {
     if (running.length || disposed || !pending.size) return;
     const jobs = [...pending.values()].slice(0, batchSize);
-    jobs.forEach(job => pending.delete(job.key)); running = jobs;
+    jobs.forEach(job => pending.delete(job.key)); running = jobs; peakBatchSize = Math.max(peakBatchSize, jobs.length);
     const active = new AbortController(); group = active;
     try {
       const values = options.executeBatch ? await options.executeBatch(jobs.map(job => job.input), active.signal)
@@ -60,7 +60,7 @@ export function createLatestRasterQueue<I, O>(options: Execution<I, O> & {
       const job = pending.get(key); if (job) { pending.delete(key); job.resolve({ status: 'cancelled' }); }
       for (const active of running) if (active.key === key) active.controller.abort(); abortGroupIfUnused();
     },
-    readStats() { return { pending: pending.size, running: running.length > 0, peakPending, completed, discarded }; },
+    readStats() { return { pending: pending.size, running: running.length > 0, peakPending, peakBatchSize, capacity, batchSize, completed, discarded }; },
     dispose(): void {
       disposed = true; running.forEach(job => job.controller.abort()); group?.abort();
       for (const job of pending.values()) job.resolve({ status: 'cancelled' }); pending.clear();

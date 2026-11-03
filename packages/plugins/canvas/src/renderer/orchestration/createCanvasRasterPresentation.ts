@@ -2,7 +2,7 @@ import type { CanvasCard, CanvasCardId } from '@plugin/canvas/shared';
 import { cardRasterKey, createHtmlCardRasterizer, createLatestRasterQueue, splitCardRasterRegions,
   type RasterQueueResult } from '../capabilities/textRasterization';
 import { createCanvasCardRasterBatch, type CanvasCardRasterInput, type CanvasCardRasterOutput } from '../features/cardRendering';
-import type { CanvasRasterDemand, CanvasRasterPresentationOptions } from '../definitions/canvasRasterPresentation';
+import type { CanvasRasterDemand, CanvasRasterPending, CanvasRasterPresentationOptions } from '../definitions/canvasRasterPresentation';
 
 /** 可见内容的派生投影；正文/相机/主题都由各owner提供，不另存一份正文。 */
 export function createCanvasRasterPresentation(options: CanvasRasterPresentationOptions) { return new CanvasRasterPresentation(options); }
@@ -10,7 +10,8 @@ export function createCanvasRasterPresentation(options: CanvasRasterPresentation
 class CanvasRasterPresentation {
   private readonly rasterizer;
   private readonly queue;
-  private readonly pending = new Map<CanvasCardId, string>();
+  private readonly pending = new Map<CanvasCardId, CanvasRasterPending>();
+  private readonly preparingEdits = new Map<CanvasCardId, Promise<'ready' | 'unavailable'>>();
   private readonly failed = new Map<CanvasCardId, string>();
   private readonly descriptors = new WeakMap<CanvasCard, string>();
   private disposed = false;
@@ -49,43 +50,46 @@ class CanvasRasterPresentation {
     // 补图准备是有界工作批次，不进入纯绘制RAF闭包；同批Promise回执合并一次需求刷新。
     this.pump = true; queueMicrotask(() => { this.pump = false; this.refresh(); });
   }
-  private demand(card: CanvasCard, frame: { readonly count: number; readonly font: string }): CanvasRasterDemand {
+  private demand(card: CanvasCard, frame: { readonly count: number; readonly font: string; readonly precise?: boolean }): CanvasRasterDemand {
     const camera = this.options.kernel.readCamera(), pixelRatio = this.options.kernel.readResolution();
     const appearance = this.options.readAppearance();
     const screenWidth = card.width * camera.zoom * pixelRatio;
-    const precise = camera.zoom >= 0.75 && frame.count <= 40 && performance.now() - this.cameraChangedAt >= 100;
+    const precise = frame.precise ?? (camera.zoom >= 0.75 && frame.count <= 40 && performance.now() - this.cameraChangedAt >= 100);
     const physicalWidth = precise ? screenWidth : screenWidth <= 140 ? 70 : screenWidth <= 280 ? 280 : screenWidth <= 560 ? 560 : 1120;
     const scale = physicalWidth / card.width, content = this.descriptor(card), externalKey = this.options.readContentKey?.(card) ?? '';
     const key = cardRasterKey({ revision: 0, theme: appearance.dark ? 'dark' : 'light', dpr: pixelRatio,
       material: 'body', lod: 0, font: `${frame.font}/14/1.7`, uiScale: 1 }) + content + externalKey + (precise ? JSON.stringify(['exact', physicalWidth]) : 'bucket');
     const regions = splitCardRasterRegions(this.options.kernel.readMissingBitmapRegions(card.id, key,
       this.options.kernel.readVisibleCardRegions(card.id), { scale, exact: precise }), scale);
-    return { card, key, jobKey: key + physicalWidth + JSON.stringify(regions), content, externalKey, scale, dark: appearance.dark, regions };
+    return { card, key, jobKey: key + physicalWidth + JSON.stringify(regions), content, externalKey, scale, precise, dark: appearance.dark, regions };
   }
   private accept(demand: CanvasRasterDemand): boolean {
-    if (this.failed.get(demand.card.id) === demand.key || !demand.regions.length || this.pending.get(demand.card.id) === demand.jobKey) return false;
+    if (this.failed.get(demand.card.id) === demand.key || !demand.regions.length || this.pending.get(demand.card.id)?.key === demand.jobKey) return false;
     if (this.pending.has(demand.card.id)) { this.queue.cancel(demand.card.id); this.pending.delete(demand.card.id); }
     return true;
   }
-  private enqueue(demand: CanvasRasterDemand): void {
+  private enqueue(demand: CanvasRasterDemand): Promise<boolean> {
     for (const region of demand.regions) {
       this.requestedTiles++; this.requestedPixels += Math.ceil(region.width * demand.scale) * Math.ceil(region.height * demand.scale);
       if (Math.min(region.width, region.height) * demand.scale < 0.001) this.subPixelTiles++;
     }
-    this.pending.set(demand.card.id, demand.jobKey);
-    void this.queue.enqueue(demand.card.id, { card: demand.card, scale: demand.scale, dark: demand.dark, regions: demand.regions })
-      .then(result => this.complete(demand, result));
+    const completion: Promise<boolean> = this.queue.enqueue(demand.card.id, { card: demand.card, scale: demand.scale, dark: demand.dark, regions: demand.regions })
+      .then(result => this.complete(demand, result, job));
+    const job: CanvasRasterPending = { key: demand.jobKey, completion }; this.pending.set(demand.card.id, job);
+    return completion;
   }
-  private complete(demand: CanvasRasterDemand, result: RasterQueueResult<CanvasCardRasterOutput>): void {
-    if (this.pending.get(demand.card.id) === demand.jobKey) this.pending.delete(demand.card.id);
+  private complete(demand: CanvasRasterDemand, result: RasterQueueResult<CanvasCardRasterOutput>, job: CanvasRasterPending): boolean {
+    let installed = false;
+    if (this.pending.get(demand.card.id) === job) this.pending.delete(demand.card.id);
     if (result.status === 'ready' && result.value.kind === 'ready') {
       const current = this.options.kernel.visibleCards().find(candidate => candidate.id === demand.card.id);
-      if (current && this.descriptor(current) === demand.content && (this.options.readContentKey?.(current) ?? '') === demand.externalKey) {
-        this.options.kernel.setRasterTiles(current.id, current.revision, demand.key, result.value.tiles);
+      if (current && this.demand(current, { count: 1, font: this.fontKey(), precise: demand.precise }).key === demand.key) {
+        installed = this.options.kernel.setRasterTiles(current.id, current.revision, demand.key, result.value.tiles);
       } else for (const tile of result.value.tiles) tile.bitmap.close();
     } else if (result.status === 'failed') this.fail(demand, result.error);
     else if (result.status === 'ready' && result.value.kind === 'failed') this.fail(demand, result.value.error);
     if (result.status === 'ready') this.schedule();
+    return installed;
   }
   private fail(demand: CanvasRasterDemand, error: unknown): void {
     this.failed.set(demand.card.id, demand.key); this.options.reportFailure(error instanceof Error ? error.message : String(error));
@@ -99,18 +103,43 @@ class CanvasRasterPresentation {
       this.precisionTimer = setTimeout(() => { this.precisionTimer = undefined; this.refresh(); }, 100);
     }
     const visible = this.options.kernel.rasterCards(), ids = new Set(visible.map(card => card.id));
-    for (const id of this.pending.keys()) if (!ids.has(id)) { this.queue.cancel(id); this.pending.delete(id); }
-    const font = getComputedStyle(this.options.host).fontFamily;
+    for (const id of this.pending.keys()) if (!ids.has(id) && !this.preparingEdits.has(id)) { this.queue.cancel(id); this.pending.delete(id); }
+    const font = this.fontKey();
     const prioritized = visible.map(card => ({ card, area: this.options.kernel.readVisibleCardRegions(card.id).reduce((sum, region) => sum + region.width * region.height, 0) }))
       .sort((a, b) => b.area - a.area);
     for (const { card } of prioritized) {
+      if (this.preparingEdits.has(card.id)) continue;
       const demand = this.demand(card, { count: visible.length, font });
       if (!this.accept(demand)) continue;
       // 不能把几百张可见卡反复冲入64槽队列；完成一个任务后再补下一张。
       if (this.pending.size >= 65) break;
-      this.enqueue(demand);
+      void this.enqueue(demand);
     }
     this.refreshes++; this.maximumRefreshMs = Math.max(this.maximumRefreshMs, performance.now() - started);
+  }
+  private fontKey(): string {
+    const style = getComputedStyle(this.options.host);
+    return `${style.fontFamily}/${style.getPropertyValue('-webkit-font-smoothing')}`;
+  }
+  prepareEditing(id: CanvasCardId): Promise<'ready' | 'unavailable'> {
+    const existing = this.preparingEdits.get(id); if (existing) return existing;
+    const preparation = this.prepareExact(id); this.preparingEdits.set(id, preparation);
+    const release = () => { if (this.preparingEdits.get(id) === preparation) this.preparingEdits.delete(id); };
+    void preparation.then(release, release); return preparation;
+  }
+  private async prepareExact(id: CanvasCardId): Promise<'ready' | 'unavailable'> {
+    if (this.disposed || this.suspended()) return 'unavailable';
+    const card = this.options.kernel.visibleCards().find(card => card.id === id);
+    if (!card) return 'unavailable';
+    const demand = this.demand(card, { count: 1, font: this.fontKey(), precise: true });
+    if (!demand.regions.length) return 'ready';
+    if (this.failed.get(id) === demand.key) return 'unavailable';
+    const existing = this.pending.get(id);
+    if (existing?.key === demand.jobKey) return await existing.completion ? 'ready' : 'unavailable';
+    if (existing) { this.queue.cancel(id); this.pending.delete(id); }
+    // 单卡进入编辑优先于远处补图，但仍保留同一全局有界队列和结果所有权。
+    if (this.pending.size >= 65) { const first = this.pending.keys().next(); if (!first.done) { this.queue.cancel(first.value); this.pending.delete(first.value); } }
+    return await this.enqueue(demand) ? 'ready' : 'unavailable';
   }
   retry(): void { this.failed.clear(); this.refresh(); }
   readStats() { return { ...this.queue.readStats(), failed: this.failed.size, refreshes: this.refreshes,

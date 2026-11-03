@@ -10,6 +10,6 @@ export function resolveCanvasArtifactPaths() {
     computationWorkerPath: path.join(packageRoot, 'dist/backend/canvas-computation-worker.cjs'),
     workerHtmlPath: path.join(packageRoot, 'dist/render-worker/worker.html'),
     preloadPath: path.join(packageRoot, 'dist/backend/render-worker-preload.cjs'),
-    skillResourceRoot: path.join(packageRoot, 'skills'),
+    skillResourceRoot: path.join(packageRoot, 'resources/skills'),
   };
 }

@@ -1,4 +1,5 @@
 import { AlphaFilter, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { readCanvasLinePalette } from '../../../../shared';
 import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdge, CanvasEdgeId, CanvasPoint, CanvasRectangle } from '../../../../shared';
 import type { CanvasAppearance } from '../../definitions/canvasKernel';
 import { createCanvasEdgeLayout, type CanvasEdgeGeometry } from '../../geometry/canvasEdgeGeometry';
@@ -73,7 +74,7 @@ export class CanvasLines {
     this.setMask(mask);
     this.key = ''; this.emphasisKey = ''; this.update();
   }
-  private setMask(mask: readonly CanvasRectangle[]): void {
+  setMask(mask: readonly CanvasRectangle[]): void {
     this.cardMask.clear();
     for (const region of mask) this.cardMask.rect(region.x, region.y, region.width, region.height);
     this.cardMask.fill(0xffffff);
@@ -146,10 +147,11 @@ export class CanvasLines {
     const { x, y, zoom } = this.camera;
     const background = this.appearance.dark ? 0x222723 : 0xf2f3ee, ink = this.appearance.dark ? 0xe8e9e3 : 0x252c27;
     const amount = zoom < 0.15 ? 0.1 : zoom < 0.3 ? 0.16 : 0.22;
-    this.base.setColor(blend(ink, background, amount));
-    this.movingBase.setColor(blend(ink, background, amount));
-    this.ghost.setColor(ink); this.movingGhost.setColor(ink);
-    this.highlight.setColor(blend(ink, background, 0.55)); this.selectedLine.setColor(0x347b45, 1.5);
+    const palette = readCanvasLinePalette(this.appearance.dark);
+    this.base.setColor(blend(ink, background, amount), 1, palette);
+    this.movingBase.setColor(blend(ink, background, amount), 1, palette);
+    this.ghost.setColor(ink, 1, palette); this.movingGhost.setColor(ink, 1, palette);
+    this.highlight.setColor(blend(ink, background, 0.55), 1.25, palette); this.selectedLine.setColor(0x347b45, 1.5);
     for (const layer of [this.base, this.ghost, this.movingBase, this.movingGhost, this.highlight, this.selectedLine]) layer.setCamera(this.camera, this.resolution);
     this.cardMask.position.set(x, y); this.cardMask.scale.set(zoom);
     this.ghostArea.width = this.width; this.ghostArea.height = this.height;

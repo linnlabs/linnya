@@ -26,6 +26,7 @@ export interface CanvasDocumentSession {
   readonly state: CanvasDocumentState;
   readonly viewId: string;
   readonly deliveryNotice: Readonly<Ref<string | null>>;
+  readonly mutationPending: Readonly<Ref<boolean>>;
   open(documentId: string): Promise<void>;
   synchronize(sequence: number): Promise<void>;
   commit(operations: readonly CanvasCommand[], historyGroupId?: string): Promise<CanvasCommitResult>;

@@ -8,7 +8,7 @@ function bodyText(node: CanvasContentNode, context: CanvasSearchContext): string
   if (node.type === 'hardBreak') return '\n';
   return node.content?.map(child => bodyText(child, context)).join(' ') ?? '';
 }
-function elementText(element: CanvasElement, context: CanvasSearchContext): string {
+export function readCanvasElementSearchText(element: CanvasElement, context: CanvasSearchContext): string {
   if (element.type === 'text') return bodyText(element.data.content, context);
   if (element.type === 'image') return [element.data.caption, element.data.alt].join(' ');
   if (element.type === 'document') return context.documentTitles.get(element.data.documentId) ?? '';
@@ -21,7 +21,7 @@ export function searchCanvasElements(elements: readonly CanvasElement[], query: 
   if (!needle) return [];
   const ordered = [...elements].sort((a, b) => a.type === 'edge' ? b.type === 'edge' ? 0 : 1 : b.type === 'edge' ? -1 : a.y - b.y || a.x - b.x);
   return ordered.flatMap(element => {
-    const text = elementText(element, context), start = text.toLocaleLowerCase().indexOf(needle);
+    const text = readCanvasElementSearchText(element, context), start = text.toLocaleLowerCase().indexOf(needle);
     return start < 0 ? [] : [{ id: element.id, type: element.type, text: text.slice(Math.max(0, start - 36), start + needle.length + 100) }];
   });
 }

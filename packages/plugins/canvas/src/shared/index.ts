@@ -20,7 +20,7 @@ export * from './history/definitions/canvasUserHistory';
 export * from './agentChanges/definitions/canvasAgentChanges';
 export * from './images/definitions/canvasImageRequests';
 export * from './context/definitions/canvasSelectionContext';
-export { searchCanvasElements } from './search/functions/searchCanvasElements';
+export { searchCanvasElements, readCanvasElementSearchText } from './search/functions/searchCanvasElements';
 export type { CanvasSearchHit, CanvasSearchContext } from './search/definitions/canvasSearch';
 export { CanvasCheckReportSchema } from './query/definitions/canvasCheck';
 export type { CanvasCheckReport } from './query/definitions/canvasCheck';
@@ -30,3 +30,5 @@ export type { CanvasArrangeRequest } from './layout/definitions/canvasLayout';
 export { CanvasVersionBudgetStatusSchema } from './history/definitions/canvasVersionBudget';
 export type { CanvasVersionBudgetStatus } from './history/definitions/canvasVersionBudget';
 export * from './history/definitions/canvasVersionRequests';
+
+export { readCanvasLinePalette, type CanvasLinePalette } from './appearance/functions/readCanvasLinePalette';

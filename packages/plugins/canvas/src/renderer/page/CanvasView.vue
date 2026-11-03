@@ -3,6 +3,14 @@
     class="linnya-canvas"
     @keydown="keydown"
   >
+    <p
+      :id="descriptionId"
+      class="canvas-accessible-summary"
+      role="status"
+      aria-live="polite"
+    >
+      {{ surface?.selectionDescription.value }}
+    </p>
     <div
       ref="stage"
       class="canvas-stage"
@@ -38,6 +46,7 @@
       :card="surface.selectedCards.value.length === 1 ? surface.selectedCards.value[0] ?? null : null"
       :camera="camera"
       :run="run"
+      @focus-canvas="surface?.focus()"
     />
     <div
       v-if="surface"
@@ -217,6 +226,7 @@
     <CanvasSearchPanel
       v-if="search"
       :search="search"
+      @close="surface?.focus()"
     />
     <p
       v-if="surface?.layout?.state.busy.value"
@@ -274,7 +284,28 @@
       role="alert"
     >
       {{ shownError }}
+      <button
+        v-if="surface?.hasDraft.value"
+        type="button"
+        :disabled="saving || Boolean(surface.session.deliveryNotice.value)"
+        @click="discardVisible = true"
+      >
+        使用已保存内容
+      </button>
     </p>
+    <AlertDialog
+      :visible="discardVisible"
+      title="使用已保存内容？"
+      message="这会放弃当前未保存的草稿，重新显示已保存内容。请先复制需要保留的文字。"
+      confirm-text="放弃草稿并继续"
+      cancel-text="保留草稿"
+      :is-confirmation="true"
+      :is-dangerous-action="true"
+      :close-is-cancel="true"
+      @confirm="confirmDiscard"
+      @cancel="discardVisible = false"
+      @close="discardVisible = false"
+    />
     <div
       v-if="surface?.session.deliveryNotice.value"
       class="canvas-read-notice"
@@ -307,7 +338,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import type { DocumentImageAsset } from '@app/schemas';
-import { ToolbarButton, ToolbarGroup, CustomSelect, ImagePreviewModal } from '@linnya/renderer-ui';
+import { ToolbarButton, ToolbarGroup, CustomSelect, ImagePreviewModal, AlertDialog } from '@linnya/renderer-ui';
 import { TextIcon, FullscreenIcon, EditIcon, ZoomInIcon, ZoomOutIcon, UndoIcon, RedoIcon, DuplicateIcon, LinkIcon, DocumentAddIcon, ImageIcon, LinnyaIcon } from '@linnya/renderer-ui/icons';
 import { getActiveFileSession, markActiveFileDirty, getCurrentWorkspaceProjectId } from '@plugin/renderer/workspaceRuntime';
 import { createEmbeddedMarkdownEditor } from '@plugin/renderer/embeddedMarkdownEditor';
@@ -336,12 +367,13 @@ const review = shallowRef<ReturnType<typeof createCanvasAgentReview> | null>(nul
 const creation = shallowRef<ReturnType<typeof createCanvasCardCreation> | null>(null);
 const search = shallowRef<ReturnType<typeof createCanvasSearch> | null>(null);
 const imagePreview = shallowRef<DocumentImageAsset | null>(null), failure = shallowRef<string | null>(null);
+const descriptionId = `canvas-description-${crypto.randomUUID()}`, discardVisible = ref(false);
 let destroyed = false, content: CanvasCardContent | null = null, removeMediaInput: (() => void) | null = null, removeReferenceFocus: (() => void) | null = null;
 const camera = computed(() => surface.value?.camera.value ?? { x: 0, y: 0, zoom: 1 });
 const selection = computed(() => surface.value?.selection.ids.value ?? []);
 const readonly = computed(() => surface.value?.readonly.value ?? true);
 const draft = computed(() => surface.value?.editingDraft.value);
-const saving = computed(() => Boolean(surface.value?.editor.state.saving.value || surface.value?.creation.state.saving.value));
+const saving = computed(() => Boolean(surface.value?.editor.state.saving.value || surface.value?.creation.state.saving.value || surface.value?.session.mutationPending.value));
 const editorStyle = computed(() => surface.value?.editorStyle.value ?? { display: 'none' });
 const markers = computed(() => review.value && surface.value ? projectCanvasReviewMarkers(review.value.state.groups.value, surface.value.session.state.snapshot.value?.elements ?? [], camera.value, review.value.state.activeGroupId.value) : []);
 const shownError = computed(() => failure.value ?? surface.value?.creation.state.error.value ?? surface.value?.editor.state.error.value ?? surface.value?.session.state.error.value ?? surface.value?.error.value);
@@ -352,6 +384,7 @@ const contextActions = computed(() => readonly.value ? writableContextActions.va
 const colors = [{ value: 'white', text: '原色' }, { value: 'red', text: '红' }, { value: 'orange', text: '橙' }, { value: 'yellow', text: '黄' }, { value: 'green', text: '绿' }, { value: 'cyan', text: '青' }, { value: 'purple', text: '紫' }];
 const report = (error: unknown) => { failure.value = error instanceof Error ? error.message : String(error); };
 const run = async (action: () => Promise<unknown> | undefined) => { failure.value = null; surface.value?.clearFailure(); try { await action(); } catch (error) { report(error); } };
+const confirmDiscard = () => { discardVisible.value = false; void run(async () => { surface.value?.discardDraft(); }); };
 const changeColor = (value: string | number | boolean) => run(() => surface.value?.color(CanvasColorSchema.parse(value)));
 const menuCommand = createCanvasPageCommands({ readSurface: () => surface.value, addToConversation: () => addToConversation(), showDocuments: async () => { await creation.value?.showDocuments(); }, pickImages: () => imagePicker.value?.click() });
 const elementAction = (value: string | number | boolean) => run(() => menuCommand(value));
@@ -372,7 +405,7 @@ onMounted(async () => {
   if (!session || !host || !editorElement || !rasterHost) { failure.value = '没有可打开的画布文档'; return; }
   try {
     const mediaPort = createCanvasCardMediaPort(), cardContent = createCanvasCardContent(session.documentId, mediaPort); content = cardContent;
-    const result = await createCanvasSurface({ host, editorHost: editorElement, stagingHost: rasterHost, documentId: session.documentId }, {
+    const result = await createCanvasSurface({ host, editorHost: editorElement, stagingHost: rasterHost, documentId: session.documentId, descriptionId }, {
       document: createCanvasDocumentPort(), subscribeRestored: subscribeCanvasRestored, arrangement: createCanvasArrangementPort(), createEditor: createEmbeddedMarkdownEditor, createContent: cardContent.create, readContentKey: cardContent.contentKey, readDocumentTitles: cardContent.documentTitles, refreshReferences: cardContent.refreshReferences, refreshVisibleContent: cardContent.refreshVisible, readThumbnailCards: cardContent.thumbnailCards, retryContent: cardContent.retry, subscribeContent: cardContent.subscribe, resolveImageSource: cardContent.resolveImageSource,
       prepareClipboard: ids => readCanvasClipboard(session.documentId, ids),
       pasteImages: async (files, point) => { if (!creation.value) throw new Error('图片导入尚未就绪'); await creation.value.importFiles(files, point); },
@@ -383,7 +416,7 @@ onMounted(async () => {
     removeReferenceFocus = registerCanvasReferenceFocus(session.documentId, async ids => { await result.select(ids); result.fit(true); });
     surface.value = result; review.value = createCanvasAgentReview(result.session, createCanvasAgentReviewPort());
     creation.value = createCanvasCardCreation(result.session, createCanvasCardCreationPort(), result.centerPoint, result.select);
-    search.value = createCanvasSearch(result.session, cardContent.documentTitles, result.locate);
+    search.value = createCanvasSearch(result.session, cardContent.documentTitles, ids => { void run(() => result.focusElements(ids)); });
     removeMediaInput = installCanvasMediaInput({ stage: host, editor: editorElement, creation: creation.value, content: cardContent, captureInsertion: result.captureInsertion, worldPoint: result.worldPoint, canWrite: () => !result.readonly.value, report });
     await review.value.refresh();
   } catch (error) { report(error); }
