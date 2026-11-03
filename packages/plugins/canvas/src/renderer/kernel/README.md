@@ -45,3 +45,17 @@ WebGL适配器识别SwiftShader/llvmpipe软件绘图，交互模式自动将实�
 CI可用 `CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs` 后执行 `node packages/plugins/canvas/dev/probes/verify-counts.mjs`。后者对fixture独立线性可见/命中oracle、空间候选、可见片段、位图预算与队列峰值作确定性断言，并输出counts-summary.json；容量从正式公开stats读取，不按机器锁帧时。离屏输出明确不代表真实GPU性能验收。
 
 `prepareEditing(id)`强制当前单卡按相机×实际DPR精确采样，等待位图接纳后返回ready；不受40张阈值或100ms闲时条件限制。已有exact缓存直接复用，能力或资源失败返回unavailable供DOM编辑继续降级。准备期间普通补图不替换该任务；主题/DPR/字体及字体平滑发生变化时，旧结果不能进入新环境。字体平滑只读staging计算CSS，不依赖Host私有设置属性。50张可见卡的即时进入编辑、精确像素与缓存复用在真实Electron门禁验证。
+
+拖动或平移改变需求区域时，同内容、同采样比例的在途正文片仍有效；先接纳它们，再补最新缺片。仅正文/环境/采样改变或卡退出需求时取消，避免每个pointer把仍正确的paint丢掉。拖动曲线按当前相机保持同一1/4屏幕px误差，缩放时重算当前关联曲线，不为每次移动一律生成最大4倍倍率的冗余顶点。
+
+`CANVAS_PERFORMANCE_CPU_PROFILE=1`可生成拖动CPU profile辅助定位；带Profiler的输出明确不计真实硬件基线，不能用它的时延作为性能验收结论。
+
+macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事实；powerMonitor的idle只能作辅助。锁屏/未登录/非console用户在创建窗口前拒绝，报告仅保留boolean状态，不写用户身份。被拒绝的新运行写preflight.json并保留上一原始结果；此前仅powerMonitor校验的旧输出不能单独证明解锁态，不得作为正式基线。
+
+光栅回执通过readCard读取当前display事实，不能为每张位图重新分配并扫描整张画布的visibleCards；环境身份校验也不应重复执行缺片矩形差。可见性仍由当前片段验证，旧内容或已退出视口的结果释放。
+
+`node packages/plugins/canvas/dev/probes/run-visibility-probe.mjs`需要已解锁桌面，使用与正式主窗口相同的backgroundThrottling设置，执行原生hide、隐藏期间更新正文、超过paint超时时间后show，并与全新前景绘图比较像素。锁屏在建窗前拒绝；该验证不作为帧率基线。
+
+`readReadiness(ids)`按当前环境、外部内容世代与可见缺片读取正文事实，不泄露正文缓存键。body只有在匹配位图已接纳、该卡可见且随后实际draw后才ready；进入/退出DOM编辑或重新进入视口也须等新draw。overview/thumbnail/outside分别报告，不能充当正文完成；complete要求非空可见交集全部body ready且无精确升级/隐藏暂停。内容序号的几何首帧由调用方另行关联，不能拿位图旧回执替代新提交的实际投影。
+
+地图标签按选中、染纸、文档与面积优先；选中变化只作稳定分区并更新相关卡的远景透明度。单卡编辑的精确采样在DOM接管前保持，普通补图不能立即降回档位；相机倍率/环境改变或离开需求后解除。Pixi stage不另作交互命中（eventMode:none），所有意图仍走原生DOM事件与唯一空间索引，参见[Pixi事件合同](https://pixijs.com/8.x/guides/components/events)。

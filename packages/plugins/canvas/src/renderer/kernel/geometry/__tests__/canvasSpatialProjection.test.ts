@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { CanvasCardSchema, type CanvasCard, type CanvasRectangle } from '../../../../shared';
 import { CanvasSpatialProjection } from '../CanvasSpatialProjection';
-import { createCanvasVisibleRegionProjection, intersectCanvasRegion } from '../canvasVisibleRegions';
+import { createCanvasVisibleRegionProjection, intersectCanvasRegion, subtractCanvasRegions } from '../canvasVisibleRegions';
 
 const source = { kind: 'user', conversationId: null, runId: null };
 const card = (id: string, bounds: CanvasRectangle) => CanvasCardSchema.parse({ id, type: 'text', schemaVersion: 1, revision: 1, order: 'a0',
@@ -10,6 +10,12 @@ const card = (id: string, bounds: CanvasRectangle) => CanvasCardSchema.parse({ i
 const area = (regions: readonly CanvasRectangle[], viewport: CanvasRectangle) => regions.reduce((sum, region) => {
   const part = intersectCanvasRegion(region, viewport); return sum + (part ? part.width * part.height : 0);
 }, 0);
+function expectSameVisibleRegions(actual: readonly CanvasRectangle[], expected: readonly CanvasRectangle[], viewport: CanvasRectangle) {
+  const clip = (regions: readonly CanvasRectangle[]) => regions.flatMap(region => { const visible = intersectCanvasRegion(region, viewport); return visible ? [visible] : []; });
+  const a = clip(actual), b = clip(expected);
+  expect(area(a, viewport)).toBeCloseTo(area(b, viewport), 5);
+  expect(area(subtractCanvasRegions(a, b), viewport) + area(subtractCanvasRegions(b, a), viewport)).toBeCloseTo(0, 5);
+}
 it('索引投影与逐卡矩形差在负坐标、跨格、长卡和重叠纸面上保持相同可见面积', () => {
   const cards: CanvasCard[] = [card('c1', { x: -200, y: -300, width: 280, height: 50000 })];
   let seed = 117;
@@ -17,7 +23,7 @@ it('索引投影与逐卡矩形差在负坐标、跨格、长卡和重叠纸面�
   for (let i = 0; i < 250; i++) cards.push(card(`c${i + 2}`, { x: -300 + random() * 1600, y: -400 + random() * 1200, width: 80 + random() * 300, height: 40 + random() * 200 }));
   const index = new CanvasSpatialProjection(); index.setCards(cards);
   const viewport = { x: -250, y: -300, width: 1500, height: 1000 }, actual = index.project(viewport), expected = createCanvasVisibleRegionProjection(cards);
-  for (const entry of cards) expect(area(actual.get(entry.id) ?? [], viewport)).toBeCloseTo(area(expected.get(entry.id) ?? [], viewport), 5);
+  for (const entry of cards) expectSameVisibleRegions(actual.get(entry.id) ?? [], expected.get(entry.id) ?? [], viewport);
   const builds = index.readStats().spatialCellBuilds;
   expect(index.project({ ...viewport, x: viewport.x + 1 })).toBe(actual);
   expect(index.readStats().spatialCellBuilds).toBe(builds);
@@ -57,9 +63,9 @@ it('密集多卡交错移动与层级重装不会复用失效遮挡证明', () =
     cards = cards.map((entry, position) => ids.has(position) ? { ...entry, x: entry.x + 11 * (turn % 3 - 1), y: entry.y + 9 * (turn % 2 ? 1 : -1) } : entry);
     index.updateCards(cards.filter((_, position) => ids.has(position)));
     const actual = index.project(viewport), expected = createCanvasVisibleRegionProjection(cards);
-    for (const entry of cards) expect(area(actual.get(entry.id) ?? [], viewport)).toBeCloseTo(area(expected.get(entry.id) ?? [], viewport), 6);
+    for (const entry of cards) expectSameVisibleRegions(actual.get(entry.id) ?? [], expected.get(entry.id) ?? [], viewport);
   }
   cards = cards.slice().reverse(); index.setCards(cards);
   const actual = index.project(viewport), expected = createCanvasVisibleRegionProjection(cards);
-  for (const entry of cards) expect(area(actual.get(entry.id) ?? [], viewport)).toBeCloseTo(area(expected.get(entry.id) ?? [], viewport), 6);
+  for (const entry of cards) expectSameVisibleRegions(actual.get(entry.id) ?? [], expected.get(entry.id) ?? [], viewport);
 });

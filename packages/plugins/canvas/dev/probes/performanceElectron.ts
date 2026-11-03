@@ -1,9 +1,10 @@
 import { app, BrowserWindow, powerMonitor, screen } from 'electron';
 import os from 'node:os';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
 import { z } from 'zod';
+import { readNativeSessionState } from './readNativeSessionState';
 
 const output = process.argv[2];
 if (!output) throw new Error('Performance output directory required');
@@ -18,7 +19,11 @@ async function run() {
   await app.whenReady();
   const unlocked = (state: string) => state === 'active' || state === 'idle';
   const idleBefore = powerMonitor.getSystemIdleState(1), thermalBefore = powerMonitor.getCurrentThermalState();
-  if (!offscreenProfile && !unlocked(idleBefore)) throw new Error(`Native benchmark requires a verified unlocked desktop: ${idleBefore}`);
+  const nativeSessionBefore = offscreenProfile ? null : readNativeSessionState();
+  const accepted = offscreenProfile || unlocked(idleBefore) && (process.platform !== 'darwin' || nativeSessionBefore?.unlocked === true);
+  await writeFile(path.join(output, 'preflight.json'), JSON.stringify({ time: new Date().toISOString(), accepted, idleBefore, nativeSessionBefore }, null, 2));
+  if (!accepted) throw new Error('Native benchmark requires an actually unlocked console session');
+  await rm(path.join(output, 'results.json'), { force: true });
   if (offscreenProfile && process.platform === 'darwin') app.setActivationPolicy('accessory');
   const lockEvents: { readonly event: string; readonly time: string }[] = [];
   powerMonitor.on('lock-screen', () => lockEvents.push({ event: 'lock', time: new Date().toISOString() }));
@@ -57,9 +62,14 @@ async function run() {
       if (process.env.CANVAS_PERFORMANCE_DRAG === '1') {
         const target = z.object({ point: z.object({ x: z.number(), y: z.number() }), selected: z.number(), cardId: z.string() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasPerformanceDrag(500)'));
         await win.webContents.executeJavaScript('window.startCanvasPerformanceCollection()');
+        if (process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1') { win.webContents.debugger.attach('1.3'); await win.webContents.debugger.sendCommand('Profiler.enable'); await win.webContents.debugger.sendCommand('Profiler.start'); }
         win.webContents.sendInputEvent({ type: 'mouseDown', x: Math.round(target.point.x), y: Math.round(target.point.y), button: 'left', clickCount: 1 });
         for (let i = 0; i < 50; i++) { win.webContents.sendInputEvent({ type: 'mouseMove', x: Math.round(target.point.x + i * 2), y: Math.round(target.point.y + i) }); await delay(20); }
         win.webContents.sendInputEvent({ type: 'mouseUp', x: Math.round(target.point.x + 98), y: Math.round(target.point.y + 49), button: 'left', clickCount: 1 });
+        if (process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1') {
+          const profile: unknown = await win.webContents.debugger.sendCommand('Profiler.stop');
+          await writeFile(path.join(output, `${count}-${clustered ? 'cluster' : 'uniform'}-drag.cpuprofile`), JSON.stringify(profile)); win.webContents.debugger.detach();
+        }
         const frames: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
         const intents = z.object({ movedCards: z.number(), selected: z.number() }).parse(await win.webContents.executeJavaScript('window.finishCanvasPerformanceDrag()'));
         if (intents.movedCards !== target.selected) throw new Error(`native_drag_did_not_finish:${intents.movedCards}:${target.selected}`);
@@ -71,12 +81,15 @@ async function run() {
       reports.push(report); console.log(JSON.stringify(report));
     }
     const idleAfter = powerMonitor.getSystemIdleState(1), display = screen.getDisplayMatching(win.getBounds());
-    const validDesktopRun = unlocked(idleAfter) && !lockEvents.some(event => event.event === 'lock');
-    const validHardwareRun = !offscreenProfile && validDesktopRun;
+    const nativeSessionAfter = offscreenProfile ? null : readNativeSessionState();
+    const validDesktopRun = unlocked(idleAfter) && !lockEvents.some(event => event.event === 'lock')
+      && (offscreenProfile || process.platform !== 'darwin' || nativeSessionAfter?.unlocked === true);
+    const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1';
+    const validHardwareRun = !offscreenProfile && validDesktopRun && !profiling;
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: 'production-dom-v4', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1' }, startedAt, endedAt: new Date().toISOString(),
       renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',
       versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
-      idleBefore, idleAfter, lockEvents, validHardwareRun, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
+      idleBefore, idleAfter, nativeSessionBefore, nativeSessionAfter, lockEvents, validHardwareRun, profiling, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
       display: { label: display.label, internal: display.internal, scaleFactor: display.scaleFactor, displayFrequency: display.displayFrequency, bounds: display.bounds },
       gpu: await app.getGPUInfo('basic'), reports }, null, 2));
     if (!offscreenProfile && !validDesktopRun) throw new Error('Desktop locked during native performance benchmark');

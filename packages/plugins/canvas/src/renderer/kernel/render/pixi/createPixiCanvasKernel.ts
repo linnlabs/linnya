@@ -15,7 +15,7 @@ import { CanvasSpatialProjection } from '../../geometry/CanvasSpatialProjection'
 import { readCanvasGpuMode } from './readCanvasGpuMode';
 import { CanvasBitmapCache } from './CanvasBitmapCache';
 
-interface CardView { readonly card: CanvasCard; readonly container: Container; readonly background: NineSliceSprite; readonly body: Container; readonly label: Text }
+interface CardView { readonly card: CanvasCard; readonly container: Container; readonly background: NineSliceSprite; readonly body: Container; readonly label: Text; visibleAfterRender: number }
 
 function makeBackground(material: 'paper' | 'card'): Texture {
   const canvas = document.createElement('canvas');
@@ -111,6 +111,8 @@ class PixiCanvasKernel implements CanvasKernel {
 
   constructor(private readonly app: Application, options: KernelOptions, private width: number, private height: number) {
     this.canvas = app.canvas;
+    // 命中由空间索引和原生DOM事件负责，Pixi只绘制，避免第二套隐式全树扫描。
+    app.stage.eventMode = 'none';
     this.software = readCanvasGpuMode(app.renderer).software;
     this.reduced = this.software && options.renderingMode !== 'capture'; this.notify = options.onIntent;
     if (this.reduced) app.renderer.resize(Math.max(1, width), Math.max(1, height), 1);
@@ -125,7 +127,7 @@ class PixiCanvasKernel implements CanvasKernel {
     options.host.append(this.canvas);
     this.world.addChild(this.cardLayer, this.guideLayer, this.selectionLayer);
     this.app.stage.addChild(this.lines.below, this.world, this.lines.above, this.mapLabels.sprite);
-    this.bitmaps = new CanvasBitmapCache({ budget: options.bitmapBudgetBytes ?? 256 * 1024 * 1024, changed: id => {
+    this.bitmaps = new CanvasBitmapCache({ budget: options.bitmapBudgetBytes ?? 256 * 1024 * 1024, readRenderCount: () => this.renders, changed: id => {
       const view = this.views.get(id); if (!this.destroyed && view) { this.updateView(view); this.schedule(); }
     } });
     this.removeInteraction = options.onIntent ? installCanvasInteraction(this, options.onIntent, { readonly: options.readonly, readReadonly: options.readReadonly, readPreferences: options.readInteractionPreferences }) : () => undefined;
@@ -149,6 +151,7 @@ class PixiCanvasKernel implements CanvasKernel {
   }
   private updateView(view: CardView): void {
     const { card, background, body, label, container } = view;
+    const wasVisible = container.visible && body.visible;
     container.position.set(card.x, card.y);
     container.visible = this.exposedIds.has(card.id);
     background.texture = this.backgrounds[this.appearance.material];
@@ -166,6 +169,7 @@ class PixiCanvasKernel implements CanvasKernel {
     label.visible = !overview && this.titleExposed(card) && !this.bitmaps.covers(card.id, this.readVisibleCardRegions(card.id));
     body.visible = !overview && this.bitmaps.has(card.id);
     if (this.editingCard === card.id) { label.visible = false; body.visible = false; }
+    if (!wasVisible && container.visible && body.visible) view.visibleAfterRender = this.renders;
     label.position.set(14, 12);
     // 地图标签只在确定的屏幕格中保留一个，避免一屏几千张纹理和文字重叠。
     if (this.camera.zoom < 0.15) { label.visible = false; container.alpha = this.selected.has(card.id) ? 1 : 0.6; }
@@ -223,7 +227,9 @@ class PixiCanvasKernel implements CanvasKernel {
     for (const view of this.views.values()) {
       if (styleChanged) this.updateView(view);
       else {
+        const wasVisible = view.container.visible;
         view.container.visible = this.exposedIds.has(view.card.id);
+        if (!wasVisible && view.container.visible) view.visibleAfterRender = this.renders;
         if (view.container.visible) {
           const overview = !this.keepsThumbnail(view.card) && this.camera.zoom < 0.3 && this.appearance.overview === 'titles';
           view.label.visible = this.editingCard !== view.card.id && !overview && this.titleExposed(view.card) && !this.bitmaps.covers(view.card.id, this.readVisibleCardRegions(view.card.id));
@@ -246,7 +252,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.spatial.setCards(this.ordered);
     this.overviewOrder = nextCards.slice().sort((a, b) => Number(b.color !== 'white') - Number(a.color !== 'white')
       || Number(b.type === 'document') - Number(a.type === 'document') || b.width * b.height - a.width * a.height);
-    this.titleOrder = this.overviewOrder.filter(card => !this.keepsThumbnail(card));
+    this.refreshTitleOrder();
     for (let i = 0; i < this.ordered.length; i++) {
       const view = this.views.get(this.ordered[i].id);
       if (view) this.cardLayer.setChildIndex(view.container, i);
@@ -280,7 +286,7 @@ class PixiCanvasKernel implements CanvasKernel {
       style: { fontFamily: 'system-ui', fontSize: 15, wordWrap: true, wordWrapWidth: Math.max(1, card.width - 28), breakWords: true } });
     container.addChild(background, body, label);
     this.cardLayer.addChild(container);
-    this.views.set(card.id, { card, container, background, body, label });
+    this.views.set(card.id, { card, container, background, body, label, visibleAfterRender: this.renders });
   }
 
   setCamera(next: CanvasCamera): void {
@@ -297,12 +303,21 @@ class PixiCanvasKernel implements CanvasKernel {
   readResolution(): number { return this.app.renderer.resolution; }
   setSelection(ids: readonly CanvasCardId[]): void {
     if (ids.length === this.selected.size && ids.every(id => this.selected.has(id))) return;
+    const previous = [...this.selected];
     this.selected.clear(); ids.forEach((id) => this.selected.add(id));
+    for (const id of [...previous, ...ids]) { const view = this.views.get(id); if (view) view.container.alpha = this.camera.zoom < 0.15 && !this.selected.has(id) ? 0.6 : 1; }
+    this.refreshTitleOrder(); this.updateLabels();
     this.lines.setSelection(ids);
     this.redrawSelection(); this.schedule();
   }
   readSelection(): readonly CanvasCardId[] { return [...this.selected]; }
   hasBitmap(id: CanvasCardId, key: string): boolean { return this.bitmaps.has(id, key); }
+  readRasterReceipt(id: CanvasCardId, key: string): { readonly acceptedAfterRender: number; readonly rendered: boolean } | null {
+    const accepted = this.bitmaps.readReceipt(id, key), view = this.views.get(id);
+    if (accepted === null || !view) return null;
+    const acceptedAfterRender = Math.max(accepted, view.visibleAfterRender);
+    return { acceptedAfterRender, rendered: !this.contextLost && view.container.visible && view.body.visible && this.renders > acceptedAfterRender };
+  }
   setEditingCard(id: CanvasCardId | null): void {
     const previous = this.editingCard; this.editingCard = id;
     for (const target of [previous, id]) { if (target) { const view = this.views.get(target); if (view) this.updateView(view); } }
@@ -344,9 +359,18 @@ class PixiCanvasKernel implements CanvasKernel {
     this.dragOriginals.clear(); this.refreshOverviewCards(); this.mapLabels.invalidate(); this.updateLabels(); this.projectCards(false); this.redrawEdges(); this.redrawSelection(); this.schedule();
     this.notify?.({ kind: 'preview-changed' });
   }
+  private refreshTitleOrder(): void {
+    const selected: CanvasCard[] = [], remaining: CanvasCard[] = [];
+    for (const card of this.overviewOrder) {
+      if (this.keepsThumbnail(card)) continue;
+      (this.selected.has(card.id) ? selected : remaining).push(card);
+    }
+    // 只作稳定分区，保留颜色/文档/面积原优先序；选择不需要重新排序整张画布。
+    this.titleOrder = [...selected, ...remaining];
+  }
   private refreshOverviewCards(): void {
     this.overviewOrder = this.overviewOrder.map(card => this.cards.get(card.id) ?? card);
-    this.titleOrder = this.overviewOrder.filter(card => !this.keepsThumbnail(card));
+    this.refreshTitleOrder();
   }
   setBitmap(id: CanvasCardId, revision: number, key: string, bitmap: ImageBitmap): boolean {
     const card = this.cards.get(id);
@@ -378,6 +402,7 @@ class PixiCanvasKernel implements CanvasKernel {
   hitTest(point: CanvasPoint): CanvasCard | null {
     return this.spatial.hitTest(point);
   }
+  readCard(id: CanvasCardId): CanvasCard | null { return this.cards.get(id) ?? null; }
   visibleCards(): readonly CanvasCard[] { return this.ordered.flatMap(entry => { const card = this.cards.get(entry.id); return card && this.visible(card) ? [card] : []; }); }
   renderableCards(): readonly CanvasCard[] { return this.exposed; }
   private keepsThumbnail(card: CanvasCard): boolean { return card.type === 'image' || this.thumbnailCards.has(card.id); }
@@ -408,7 +433,7 @@ class PixiCanvasKernel implements CanvasKernel {
   setThumbnailCards(ids: ReadonlySet<CanvasCardId>): void {
     if (ids.size === this.thumbnailCards.size && [...ids].every(id => this.thumbnailCards.has(id))) return;
     this.thumbnailCards = new Set(ids);
-    this.titleOrder = this.overviewOrder.filter(card => !this.keepsThumbnail(card));
+    this.refreshTitleOrder();
     this.refreshCamera(true);
   }
   readEdgeGeometry(id: CanvasEdgeId) { return this.lines.readGeometry(id); }

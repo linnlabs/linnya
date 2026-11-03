@@ -1,6 +1,19 @@
 {
   "extends": "../../tsconfig.json",
-  "compilerOptions": { "noEmit": true },
-  "include": ["../../src/renderer/env.d.ts", "./renderer.ts", "./electron.ts", "./kernelProbe.ts", "./visualRenderer.ts", "./visualElectron.ts", "./performanceRenderer.ts", "./performanceElectron.ts"],
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "../../src/renderer/env.d.ts",
+    "./renderer.ts",
+    "./electron.ts",
+    "./kernelProbe.ts",
+    "./visualRenderer.ts",
+    "./visualElectron.ts",
+    "./performanceRenderer.ts",
+    "./performanceElectron.ts",
+    "./visibilityRenderer.ts",
+    "./visibilityElectron.ts"
+  ],
   "exclude": []
 }

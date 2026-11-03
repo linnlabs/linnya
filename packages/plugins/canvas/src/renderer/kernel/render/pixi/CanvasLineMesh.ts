@@ -102,7 +102,8 @@ export class CanvasLineMesh {
       const dx = b.x - a.x || offsetB.x - offsetA.x, dy = b.y - a.y || offsetB.y - offsetA.y;
       const length = Math.hypot(dx, dy);
       if (!length) return;
-      for (const [endpoint, side] of lineVertices) {
+      for (let index = 0; index < lineVertices.length; index++) {
+        const endpoint = lineVertices[index][0], side = lineVertices[index][1];
         const point = endpoint ? b : a, offset = endpoint ? offsetB : offsetA;
         positions[cursor * 2] = point.x; positions[cursor * 2 + 1] = point.y;
         normals[cursor * 2] = -dy / length * side; normals[cursor * 2 + 1] = dx / length * side;
