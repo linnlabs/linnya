@@ -7,6 +7,7 @@ interface ProbeResult {
   readonly mode: string;
   readonly measured: boolean;
   readonly drawn: boolean;
+  readonly kernelPassed: boolean;
   readonly details: unknown;
 }
 
@@ -32,15 +33,21 @@ async function probe(mode: 'hidden' | 'offscreen'): Promise<void> {
     },
   });
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.on('page-title-updated', (_event, title) => console.log(`[${mode}] ${title}`));
   win.webContents.on('will-navigate', (event) => event.preventDefault());
   try {
     await win.loadFile(path.join(output, 'index.html'));
-    const result: unknown = await win.webContents.executeJavaScript('window.runCanvasProbe()');
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const result: unknown = await Promise.race([
+      win.webContents.executeJavaScript('window.runCanvasProbe()'),
+      new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('probe_timeout')), 30000); }),
+    ]).finally(() => clearTimeout(timeout));
     const measured = typeof result === 'object' && result !== null && Reflect.get(result, 'measurementPassed') === true;
     const drawn = typeof result === 'object' && result !== null && Reflect.get(result, 'drawingPassed') === true;
-    results.push({ mode, measured, drawn, details: result });
+    const kernelPassed = typeof result === 'object' && result !== null && Reflect.get(result, 'kernelPassed') === true;
+    results.push({ mode, measured, drawn, kernelPassed, details: result });
   } catch (error) {
-    results.push({ mode, measured: false, drawn: false, details: String(error) });
+    results.push({ mode, measured: false, drawn: false, kernelPassed: false, details: String(error) });
   } finally {
     win.destroy();
   }
@@ -54,7 +61,7 @@ void app.whenReady().then(async () => {
     await mkdir(output, { recursive: true });
     await writeFile(path.join(output, 'results.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));
-    app.exit(results.some((r) => r.measured && r.drawn) ? 0 : 1);
+    app.exit(results.some((r) => r.measured && r.drawn && r.kernelPassed) ? 0 : 1);
   } catch (error) {
     console.error(error);
     app.exit(1);
