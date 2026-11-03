@@ -7,7 +7,7 @@ import type { ConversationReferenceChipInput } from '@plugin/renderer/conversati
 const SelectionPreview = defineAsyncComponent(() => import('../ui/CanvasSelectionReferencePreview.vue'));
 export function createCanvasSelectionReferenceKind(port: CanvasSelectionReferencePort): ConversationReferenceKindContribution {
   return { pluginId: CANVAS_PLUGIN_ID, kind: CANVAS_SELECTION_REFERENCE_KIND,
-    chip: { label: reference => reference.label, preview: reference => reference.previewText },
+    chip: { label: reference => reference.label, preview: reference => reference.label },
     previewComponent: defineComponent((props: { readonly reference: ConversationReferenceChipInput }) => () => h(SelectionPreview, { reference: props.reference, read: port.read }), { props: { reference: { type: Object, required: true } } }),
     isValid: reference => CanvasSelectionReferenceMetadataSchema.safeParse(reference.metadata).success,
     async prepareForSend(reference, context) {

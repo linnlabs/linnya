@@ -10,7 +10,7 @@ export function createWorkspaceDocumentReferenceKind(ports: {
   readonly open: (input: DocumentReferencePresentation, projectId: string) => Promise<void>;
 }): ConversationReferenceKindContribution {
   return { pluginId: 'platform', kind: WORKSPACE_DOCUMENT_REFERENCE_KIND,
-    chip: { label: reference => reference.label, preview: reference => reference.previewText },
+    chip: { label: reference => reference.label, preview: reference => reference.label },
     previewComponent: defineAsyncComponent(() => import('./WorkspaceDocumentReferencePreview.vue')),
     async onActivate(reference) {
       const target = readWorkspaceReferenceIdentity(reference, ports.currentProjectId());

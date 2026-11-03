@@ -13,7 +13,7 @@
       @focus="hover.enter(true)"
       @keydown.esc="hover.escape()"
     >
-      {{ presentation.label }}
+      {{ presentation.preview }}
     </button>
     <button
       type="button"
