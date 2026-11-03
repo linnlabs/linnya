@@ -1,10 +1,11 @@
-import type { CanvasCard, CanvasEdge, CanvasEndpoint, CanvasPoint } from '@plugin/canvas/shared';
+import type { CanvasEndpoint, CanvasPoint } from '@plugin/canvas/shared';
 import type { CanvasDocumentSession } from '../../canvasDocument';
-import type { CanvasConnectionKernel, CanvasEndpointGesture } from '../definitions/canvasConnections';
+import type { CanvasConnectionKernel, CanvasEndpointGesture, CanvasEndpointStart } from '../definitions/canvasConnections';
 import type { createCanvasConnectionState } from '../store/createCanvasConnectionState';
 import { canvasEndpointAt } from '../functions/canvasConnectionAnchors';
 
-export function createCanvasEndpointGesture(session: CanvasDocumentSession, kernel: CanvasConnectionKernel, state: ReturnType<typeof createCanvasConnectionState>, report: (failure: unknown) => void, createText: (point: CanvasPoint, from: CanvasEndpoint) => Promise<void>) {
+export function createCanvasEndpointGesture(options: { readonly session: CanvasDocumentSession; readonly kernel: CanvasConnectionKernel; readonly state: ReturnType<typeof createCanvasConnectionState>; readonly report: (failure: unknown) => void; readonly createText: (point: CanvasPoint, from: CanvasEndpoint) => Promise<void> }) {
+  const { session, kernel, state, report, createText } = options;
   let active: CanvasEndpointGesture | null = null, renewal: ReturnType<typeof setInterval> | null = null;
   const world = (event: PointerEvent) => { const bounds = kernel.canvas.getBoundingClientRect(); return kernel.screenToWorld({ x: event.clientX - bounds.left, y: event.clientY - bounds.top }); };
   const release = () => {
@@ -16,9 +17,10 @@ export function createCanvasEndpointGesture(session: CanvasDocumentSession, kern
   };
   const unprotect = (gesture: CanvasEndpointGesture) => gesture.edge ? session.protect(gesture.edge.id, [], 'line-endpoint') : Promise.resolve();
   const cancel = () => { const gesture = release(); if (gesture) void unprotect(gesture).catch(report); };
-  const move = (event: PointerEvent) => { if (active && event.pointerId === active.pointer) state.setPreview({ from: active.origin, to: world(event) }); };
+  const move = (event: PointerEvent) => { if (session.state.snapshot.value?.integrity?.readOnly) { cancel(); return; } if (active && event.pointerId === active.pointer) state.setPreview({ from: active.origin, to: world(event) }); };
   const up = (event: PointerEvent) => {
     if (!active || event.pointerId !== active.pointer) return;
+    if (session.state.snapshot.value?.integrity?.readOnly) { cancel(); return; }
     const gesture = release(); if (!gesture) return;
     if (Math.hypot(event.clientX - gesture.screen.x, event.clientY - gesture.screen.y) < 3) { void unprotect(gesture).catch(report); return; }
     const point = world(event), target = canvasEndpointAt(point, kernel.hitTest(point));
@@ -29,8 +31,9 @@ export function createCanvasEndpointGesture(session: CanvasDocumentSession, kern
   };
   const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); } };
   return {
-    start(event: PointerEvent, from: CanvasEndpoint, origin: CanvasPoint, edge: CanvasEdge | null = null, field: 'from' | 'to' = 'to', card?: CanvasCard) {
-      if (event.button !== 0 || edge?.locked || card?.locked || !(event.currentTarget instanceof HTMLElement)) return;
+    start(input: CanvasEndpointStart) {
+      const { event, from, origin } = input, edge = input.kind === 'reattach' ? input.edge : null, field = input.kind === 'reattach' ? input.field : 'to';
+      if (event.button !== 0 || edge?.locked || session.state.snapshot.value?.integrity?.readOnly || !(event.currentTarget instanceof HTMLElement)) return;
       cancel(); const target = event.currentTarget;
       active = { pointer: event.pointerId, target, edge, field, from, origin, screen: { x: event.clientX, y: event.clientY } }; target.setPointerCapture(event.pointerId);
       target.addEventListener('pointermove', move); target.addEventListener('pointerup', up); target.addEventListener('pointercancel', cancel);

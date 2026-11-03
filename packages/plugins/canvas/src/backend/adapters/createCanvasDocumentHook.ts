@@ -9,10 +9,12 @@ import { readCanvasHostDatabase } from '../functions/readCanvasHostContext';
 import { readCanvasSnapshot } from '../features/canvasCommit';
 import { CanvasDocumentFailure, readCanvasProjectionContext } from '../features/canvasDocument';
 import { projectCanvasDocument } from '../features/canvasProjection';
+import { createCanvasHistoryCapability } from './createCanvasHistoryCapability';
 
 export function createCanvasDocumentHook(runtimeFor: (database: CanvasDatabase) => CanvasDocumentRuntime, preview?: DocumentPreviewCapability): DocumentTypeBackendHook {
   return {
     preview,
+    history: createCanvasHistoryCapability(runtimeFor),
     docType: CANVAS_DOCUMENT_TYPE, displayName: '画布', fileExtension: CANVAS_FILE_EXTENSION,
     isEnabled: () => isPluginRuntimeEnabled(CANVAS_PLUGIN_ID),
     createDocument(params) {

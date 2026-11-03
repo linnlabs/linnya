@@ -28,14 +28,14 @@
         <span class="canvas-approval-reason">{{ group.pendingApproval.reason === 'delete_threshold' ? '批量删除' : '大范围整理' }}待确认（{{ group.pendingApproval.operationCount }}项）</span>
         <button
           type="button"
-          :disabled="busy"
+          :disabled="busy || readonly"
           @click="review.approve(group.pendingApproval.id, 'allow')"
         >
           允许本批
         </button>
         <button
           type="button"
-          :disabled="busy"
+          :disabled="busy || readonly"
           @click="review.approve(group.pendingApproval.id, 'deny')"
         >
           拒绝
@@ -44,14 +44,14 @@
       <template v-else>
         <button
           type="button"
-          :disabled="busy"
+          :disabled="busy || readonly"
           @click="review.withdraw(group.id)"
         >
           撤回本组
         </button>
         <button
           type="button"
-          :disabled="busy"
+          :disabled="busy || readonly"
           @click="review.complete(group.id)"
         >
           完成
@@ -78,7 +78,7 @@
 import { computed } from 'vue';
 import type { CanvasAgentGroup, CanvasElementId } from '@plugin/canvas/shared';
 import type { createCanvasAgentReview } from '../orchestration/createCanvasAgentReview';
-const props = defineProps<{ review: ReturnType<typeof createCanvasAgentReview> }>();
+const props = defineProps<{ review: ReturnType<typeof createCanvasAgentReview>; readonly?: boolean }>();
 const emit = defineEmits<{ locate: [ids: readonly CanvasElementId[]] }>();
 const groups = computed(() => props.review.state.groups.value);
 const busy = computed(() => props.review.state.busy.value);

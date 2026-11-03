@@ -9,6 +9,7 @@ const output = process.argv[2];
 if (!output) throw new Error('Performance output directory required');
 app.setPath('userData', path.join(output, 'profile'));
 const softwareProfile = process.env.CANVAS_PERFORMANCE_SOFTWARE === '1';
+const offscreenProfile = softwareProfile || process.env.CANVAS_PERFORMANCE_OFFSCREEN === '1';
 if (softwareProfile) { app.commandLine.appendSwitch('use-angle', 'swiftshader'); app.commandLine.appendSwitch('enable-unsafe-swiftshader'); }
 app.on('window-all-closed', () => {});
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -17,13 +18,13 @@ async function run() {
   await app.whenReady();
   const unlocked = (state: string) => state === 'active' || state === 'idle';
   const idleBefore = powerMonitor.getSystemIdleState(1), thermalBefore = powerMonitor.getCurrentThermalState();
-  if (!softwareProfile && !unlocked(idleBefore)) throw new Error(`Native benchmark requires a verified unlocked desktop: ${idleBefore}`);
-  if (softwareProfile && process.platform === 'darwin') app.setActivationPolicy('accessory');
+  if (!offscreenProfile && !unlocked(idleBefore)) throw new Error(`Native benchmark requires a verified unlocked desktop: ${idleBefore}`);
+  if (offscreenProfile && process.platform === 'darwin') app.setActivationPolicy('accessory');
   const lockEvents: { readonly event: string; readonly time: string }[] = [];
   powerMonitor.on('lock-screen', () => lockEvents.push({ event: 'lock', time: new Date().toISOString() }));
   powerMonitor.on('unlock-screen', () => lockEvents.push({ event: 'unlock', time: new Date().toISOString() }));
   const startedAt = new Date().toISOString();
-  const win = new BrowserWindow({ show: !softwareProfile, width: 1600, height: 968, useContentSize: true, title: 'Canvas native performance probe', webPreferences: { sandbox: true, contextIsolation: true, offscreen: softwareProfile,
+  const win = new BrowserWindow({ show: !offscreenProfile, width: 1600, height: 968, useContentSize: true, title: 'Canvas native performance probe', webPreferences: { sandbox: true, contextIsolation: true, offscreen: offscreenProfile,
     backgroundThrottling: false, enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
   try {
     await win.loadFile(path.join(output, 'index.html'));
@@ -69,14 +70,14 @@ async function run() {
     }
     const idleAfter = powerMonitor.getSystemIdleState(1), display = screen.getDisplayMatching(win.getBounds());
     const validDesktopRun = unlocked(idleAfter) && !lockEvents.some(event => event.event === 'lock');
-    const validHardwareRun = !softwareProfile && validDesktopRun;
+    const validHardwareRun = !offscreenProfile && validDesktopRun;
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: 'production-dom-v3', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1' }, startedAt, endedAt: new Date().toISOString(),
-      renderingProfile: softwareProfile ? 'offscreen-swiftshader' : 'visible-hardware',
+      renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',
       versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
       idleBefore, idleAfter, lockEvents, validHardwareRun, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
       display: { label: display.label, internal: display.internal, scaleFactor: display.scaleFactor, displayFrequency: display.displayFrequency, bounds: display.bounds },
       gpu: await app.getGPUInfo('basic'), reports }, null, 2));
-    if (!softwareProfile && !validDesktopRun) throw new Error('Desktop locked during native performance benchmark');
+    if (!offscreenProfile && !validDesktopRun) throw new Error('Desktop locked during native performance benchmark');
   } finally { win.destroy(); }
 }
 void mkdir(output, { recursive: true }).then(run).then(() => app.exit(0), (error: unknown) => { console.error(error); app.exit(1); });

@@ -1,6 +1,7 @@
 import type { CanvasCommand, CanvasCommitResult, CanvasEditingRequestSchema, CanvasSnapshot, CanvasSynchronization, CanvasUndoRequest, CanvasUndoResult } from '@plugin/canvas/shared';
 import type { z } from 'zod';
 import type { Ref } from 'vue';
+import type { CanvasConfirmedMutation } from './canvasMutation';
 
 export type CanvasDocumentPhase = 'closed' | 'loading' | 'ready' | 'failed';
 export interface CanvasDocumentPort {
@@ -24,10 +25,13 @@ export interface CanvasDocumentState {
 export interface CanvasDocumentSession {
   readonly state: CanvasDocumentState;
   readonly viewId: string;
+  readonly deliveryNotice: Readonly<Ref<string | null>>;
   open(documentId: string): Promise<void>;
   synchronize(sequence: number): Promise<void>;
   commit(operations: readonly CanvasCommand[], historyGroupId?: string): Promise<CanvasCommitResult>;
   undo(direction: 'undo' | 'redo'): Promise<CanvasUndoResult>;
   protect(elementId: z.infer<typeof CanvasEditingRequestSchema>['elementId'], fields: z.infer<typeof CanvasEditingRequestSchema>['fields'], owner: string): Promise<void>;
+  confirmMutation<T>(operation: CanvasConfirmedMutation<T>): Promise<T>;
+  retryDelivery(): Promise<void>;
   close(): Promise<void>;
 }

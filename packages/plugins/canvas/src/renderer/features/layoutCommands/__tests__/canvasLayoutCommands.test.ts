@@ -19,7 +19,7 @@ it('排布等待后台共同提交后同步，同一请求身份可取消，失�
   const f = await fixture(); await f.layout.run({ algorithm: 'tree', direction: 'right' });
   expect(f.session.state.snapshot.value?.sequence).toBe(1); expect(f.layout.state.diagnostics.value[0]?.code).toBe('locked');
   let reject!: (failure: Error) => void; f.arrange.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
-  const running = f.layout.run({ algorithm: 'layered', direction: 'right' }); const request = f.arrange.mock.calls[1]?.[0];
+  const running = f.layout.run({ algorithm: 'layered', direction: 'right' }); await vi.waitFor(() => expect(f.arrange).toHaveBeenCalledTimes(2)); const request = f.arrange.mock.calls[1]?.[0];
   await f.layout.cancel(); expect(f.cancel).toHaveBeenCalledWith({ documentId: 'doc', viewId: f.session.viewId, requestId: request?.requestId });
   reject(new Error('canvas_layout_cancelled')); await expect(running).rejects.toThrow('排布已取消'); await f.layout.flush(); expect(f.layout.state.busy.value).toBe(false);
   await f.layout.run({ algorithm: 'grid', direction: 'right' }); await f.session.close();

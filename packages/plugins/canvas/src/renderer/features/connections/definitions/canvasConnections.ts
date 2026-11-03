@@ -7,3 +7,5 @@ export interface CanvasEndpointGesture {
   readonly field: 'from' | 'to'; readonly from: CanvasEndpoint; readonly origin: CanvasPoint;
   readonly screen: CanvasPoint;
 }
+export type CanvasEndpointStart = { readonly event: PointerEvent; readonly from: CanvasEndpoint; readonly origin: CanvasPoint }
+  & ({ readonly kind: 'create' } | { readonly kind: 'reattach'; readonly edge: CanvasEdge; readonly field: 'from' | 'to' });

@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { canvasPluginMigrations } from '../../../persistence/migrations';
 import { initializeCanvasDocument, readCanvasSnapshot, readCanvasSynchronization } from '../../canvasCommit';
-import { createCanvasHistoryRuntime } from '../index';
+import { createCanvasHistoryRuntime } from '../../../orchestration/history/createCanvasHistoryRuntime';
 import { createCanvasPlainTextDocument } from '../../../../shared';
 
 function fixture() {

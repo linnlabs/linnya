@@ -18,6 +18,9 @@ export interface CanvasSurfacePorts {
   createContent?(card: CanvasCard, signal: AbortSignal): Promise<HTMLElement>;
   readContentKey?(card: CanvasCard): string;
   readDocumentTitles?(): ReadonlyMap<string, string>;
+  readThumbnailCards?(cards: readonly CanvasCard[]): ReadonlySet<CanvasCardId>;
+  refreshVisibleContent?(cards: readonly CanvasCard[]): void;
+  retryContent?(): void;
   refreshReferences?(cards: readonly CanvasCard[]): Promise<void>;
   subscribeContent?(listener: (failure: Error | null) => void): () => void;
   prepareClipboard?(ids: readonly CanvasElementId[]): Promise<{ readonly elements: readonly CanvasElement[]; readonly text: string }>;
@@ -29,8 +32,10 @@ export interface CanvasSurfaceState {
   readonly camera: Readonly<Ref<CanvasCamera>>;
   readonly error: Readonly<Ref<string | null>>;
   readonly context: Readonly<Ref<{ readonly point: CanvasPoint; readonly id: CanvasCardId | null } | null>>;
+  readonly renderNotice: Readonly<Ref<string | null>>;
   setCamera(camera: CanvasCamera): void;
   fail(message: string): void;
   clearFailure(): void;
   setContext(context: { readonly point: CanvasPoint; readonly id: CanvasCardId | null } | null): void;
+  setRenderNotice(message: string | null): void;
 }

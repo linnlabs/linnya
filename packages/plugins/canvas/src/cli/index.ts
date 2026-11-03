@@ -1,5 +1,4 @@
-import { parseCanvasCli } from '../backend/features/canvasCli/functions/parseCanvasCli';
-import { CanvasCliFailure } from '../backend/features/canvasCli';
+import { parseCanvasCli, CanvasCliFailure } from '../backend/features/canvasCli';
 
 /** 人/CI只读adapter，Agent facade独立拒绝database/project参数。help不加载原生DB。 */
 async function main(): Promise<void> {

@@ -1,6 +1,7 @@
 export * from './model/definitions/canvasElement';
 export * from './model/functions/readCanvasContent';
 export * from './model/functions/canvasCardSizing';
+export * from './history/functions/canvasHistorySession';
 export { readCanvasCardPalette, readCanvasCardCssPalette } from './appearance/functions/readCanvasCardPalette';
 export type { CanvasCardPalette, CanvasCardCssPalette } from './appearance/definitions/canvasCardPalette';
 export type * from './geometry/definitions/canvasGeometry';

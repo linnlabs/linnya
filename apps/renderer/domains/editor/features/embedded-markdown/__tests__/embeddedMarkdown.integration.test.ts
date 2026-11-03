@@ -47,8 +47,12 @@ describe('embedded Markdown surface', () => {
 
   it('只读与重新编辑使用同一正文，不需要 Workspace 保存会话', () => {
     const { handle, element } = mount('- 第一项\n- 第二项');
+    const insertion = handle.captureInsertion();
     handle.setEditable(false);
     expect(element.querySelector('[contenteditable="false"]')).not.toBeNull();
+    expect(insertion.insert({ type: 'paragraph' })).toBe(false);
+    expect(() => handle.insertContent({ type: 'paragraph' })).toThrow('只读');
+    expect(() => handle.captureInsertion()).toThrow('只读');
     handle.setEditable(true);
     expect(element.querySelector('[contenteditable="true"]')).not.toBeNull();
     expect(handle.readMarkdown()).toContain('第一项');

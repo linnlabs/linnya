@@ -86,4 +86,18 @@ describe('Canvas document session', () => {
     await f.session.commit(operations); expect(f.session.state.snapshot.value?.sequence).toBe(2);
     await f.session.close();
   });
+
+  it('读到兼容性只读快照后不发送写入或续约，已有保护仍能释放', async () => {
+    const f = fixture(); await f.session.open('doc');
+    const id = (await import('@plugin/canvas/shared')).CanvasCardIdSchema.parse('c1');
+    await f.session.protect(id, ['data'], 'text');
+    f.changes.mockResolvedValueOnce({ kind: 'snapshot', snapshot: { ...snapshot('doc', 1), integrity: { readOnly: true, formatVersion: 2, issues: [{ elementId: null, code: 'future_format', message: '新格式' }] } } });
+    await f.session.synchronize(1);
+    expect(() => f.session.commit([])).toThrow('只读');
+    expect(() => f.session.undo('undo')).toThrow('只读');
+    await expect(f.session.protect(id, ['data'], 'text')).rejects.toThrow('只读');
+    await f.session.protect(id, [], 'text');
+    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] }));
+    expect(f.commit).not.toHaveBeenCalled(); await f.session.close();
+  });
 });

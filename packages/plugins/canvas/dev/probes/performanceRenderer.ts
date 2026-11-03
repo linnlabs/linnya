@@ -2,6 +2,7 @@ import { CanvasCardSchema, CanvasEdgeSchema, type CanvasCard, type CanvasElement
 import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/kernel';
 import { createCanvasRasterPresentation } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
 import '@linnya/markdown-document-core/style.css';
+import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/styles/canvas.css';
 
 function fixture(count: number, clustered: boolean): CanvasElement[] {

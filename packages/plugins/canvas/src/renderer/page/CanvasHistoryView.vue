@@ -39,15 +39,17 @@
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { invokeRendererPluginIpc } from '@plugin/renderer/pluginIpcClient';
 import { CANVAS_PLUGIN_ID, CanvasSnapshotSchema } from '@plugin/canvas/shared';
-import { createCanvasCardContent } from '../../cardMedia';
-import { createCanvasCardMediaPort } from '../../../adapters/createCanvasCardMediaPort';
-import { createCanvasHistoryPreview } from '../orchestration/createCanvasHistoryPreview';
+import { createCanvasRasterPresentation } from '../orchestration/createCanvasRasterPresentation';
+import { createCanvasCardContent } from '../features/cardMedia';
+import { createCanvasCardMediaPort } from '../adapters/createCanvasCardMediaPort';
+import { createCanvasHistoryPreview } from '../features/historyPreview';
 const props = defineProps<{ documentId: string; versionId: string }>();
 const host = ref<HTMLElement | null>(null), staging = ref<HTMLElement | null>(null);
 const preview = shallowRef<ReturnType<typeof createCanvasHistoryPreview> | null>(null);
 onMounted(() => {
-  if (!host.value || !staging.value) return;
-  preview.value = createCanvasHistoryPreview({ host: host.value, staging: staging.value, createContent: documentId => createCanvasCardContent(documentId, createCanvasCardMediaPort()),
+  const stage = host.value, stagingHost = staging.value;
+  if (!stage || !stagingHost) return;
+  preview.value = createCanvasHistoryPreview({ host: stage, createContent: documentId => createCanvasCardContent(documentId, createCanvasCardMediaPort()), createRaster: settings => createCanvasRasterPresentation({ ...settings, host: stagingHost }),
     read: async (documentId, versionId) => { const result = await invokeRendererPluginIpc<unknown>(CANVAS_PLUGIN_ID, 'canvas:history-preview', { documentId, versionId }); if (!result.success) throw new Error(result.error); return CanvasSnapshotSchema.parse(result.data); },
   });
   void preview.value.open(props.documentId, props.versionId);

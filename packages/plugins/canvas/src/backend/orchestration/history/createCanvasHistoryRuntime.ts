@@ -5,7 +5,6 @@ import type { CanvasHistoryEntry, CanvasUserHistoryScope } from '../../shared/hi
 import { canvasDeletionReservations, readCanvasAgentGroups, recordCanvasAgentCommit, reviewCanvasAgentElement } from '../../features/agentChanges';
 import { createCanvasGroupReview } from './createCanvasGroupReview';
 import { createCanvasAgentApprovals } from './createCanvasAgentApprovals';
-import { z } from 'zod';
 import { captureCanvasHistory, mergeCanvasHistoryEntry } from '../../shared/history/functions/captureCanvasHistory';
 import { planCanvasHistoryReversal } from '../../shared/history/functions/planCanvasHistoryReversal';
 
@@ -55,8 +54,9 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
       value.redo = [];
     };
   }
-  function historyPorts(input: { readonly historyGroupId?: string; readonly onCommit?: (history: CanvasHistoryCommitInput) => void }): CanvasCommitPorts {
+  function historyPorts(input: { readonly historyGroupId?: string; readonly onCommit?: (history: CanvasHistoryCommitInput) => void; readonly beforeHistory?: (history: CanvasHistoryCommitInput) => void }): CanvasCommitPorts {
     return { ...options.ports, reservedRectangles, history(history) {
+      input.beforeHistory?.(history);
       const updateOuter = options.ports?.history?.(history);
       recordCanvasAgentCommit(options.database, history);
       if (history.context.actor.source.kind === 'user') for (const change of history.plan.changes) reviewCanvasAgentElement(options.database, { documentId: history.context.documentId, elementId: change.id });
@@ -65,12 +65,12 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
       return () => { updateOwn?.(); updateOuter?.(); };
     } };
   }
-  function transition(input: Omit<CanvasTransitionInput, 'database' | 'ports'> & { readonly historyGroupId?: string; readonly onCommit?: (history: CanvasHistoryCommitInput) => void }): CanvasCommitResult {
+  function transition(input: Omit<CanvasTransitionInput, 'database' | 'ports'> & { readonly historyGroupId?: string; readonly onCommit?: (history: CanvasHistoryCommitInput) => void; readonly beforeHistory?: (history: CanvasHistoryCommitInput) => void }): CanvasCommitResult {
     if (input.actor.source.kind !== 'user') throw new Error('canvas_user_transition_required');
     const result = commitCanvasTransition({ ...input, database: options.database, ports: historyPorts(input) });
     pruneGuards(input.documentId); return result;
   }
-  function commit(input: { readonly request: unknown; readonly actor: CanvasCommitActor; readonly now: number; readonly historyGroupId?: string; readonly onCommit?: (history: CanvasHistoryCommitInput) => void }): CanvasCommitResult {
+  function commit(input: { readonly request: unknown; readonly actor: CanvasCommitActor; readonly now: number; readonly historyGroupId?: string; readonly onCommit?: (history: CanvasHistoryCommitInput) => void; readonly beforeHistory?: (history: CanvasHistoryCommitInput) => void }): CanvasCommitResult {
     const request = CanvasCommitRequestSchema.parse(input.request);
     const result = commitCanvasOperations({ database: options.database, ...input, ports: historyPorts(input) });
     pruneGuards(request.documentId);
@@ -93,6 +93,7 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
     return { commit: result, ...status(request.documentId, request.viewId) };
   }
   function releaseView(viewId: string) {
+    options.database.prepare('DELETE FROM canvas_editing_claims WHERE view_id = ?').run(viewId);
     for (const [key, view] of viewBaselines) if (view.viewId === viewId) viewBaselines.delete(key);
     const documents = new Set<string>();
     for (const [key, value] of scopes) if (value.viewId === viewId) { documents.add(value.documentId); scopes.delete(key); }
@@ -104,8 +105,7 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
   }
   const review = createCanvasGroupReview({ ...options, status, pruneGuards, notifyGroups, recordUserHistory, viewBaseline: (documentId, viewId) => viewBaselines.get(JSON.stringify([documentId, viewId]))?.sequence });
   const approvals = createCanvasAgentApprovals({ database: options.database, commit, pruneGuards, onPending: options.pendingApproval });
-  // 用户栈不跨进程保留。重启只清理已经没有持有者的删除身份，组记录仍可继续撤回。
-  for (const raw of options.database.prepare('SELECT DISTINCT node_id FROM canvas_history_guards').all()) pruneGuards(z.object({ node_id: z.string() }).parse(raw).node_id);
+  // 重启丢弃内存用户栈；遗留删除身份由下一次实际操作/视图释放回收，读取不写数据库。
   return { registerView, preview, retainedElements, commit, transition, undo, status, releaseView, ...review, replayAgentRequest: approvals.replayAgentRequest, approvalResults: approvals.approvalResults,
     commitAgent(input: Parameters<typeof approvals.commitAgent>[0]) { const result = approvals.commitAgent(input); const request = CanvasCommitRequestSchema.parse(input.request); notifyGroups(request.documentId); return result; },
     resolveApproval(input: Parameters<typeof approvals.resolveApproval>[0], now: number) { const result = approvals.resolveApproval(input, now); notifyGroups(input.documentId); return result; },

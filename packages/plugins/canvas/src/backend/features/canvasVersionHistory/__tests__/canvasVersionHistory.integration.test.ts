@@ -6,7 +6,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { canvasPluginMigrations } from '../../../persistence/migrations';
-import { createCanvasHistoryRuntime } from '../../canvasUndoHistory';
+import { createCanvasHistoryRuntime } from '../../../orchestration/history/createCanvasHistoryRuntime';
 import { initializeCanvasDocument, readCanvasCommitState, planCanvasCommit, type CanvasCommitActor } from '../../canvasCommit';
 import { collectCanvasAssetIds } from '../../canvasDocument';
 import { createCanvasPlainTextDocument, type CanvasSnapshot } from '../../../../shared';

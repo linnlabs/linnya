@@ -16,6 +16,7 @@ export function canvasMutationTargets(event: WorkspaceMutationEvent, known: read
     case 'workspace.node.transferred': return event.movedNodeIds;
     case 'workspace.node.created': case 'workspace.node.renamed': case 'workspace.node.moved': return [event.nodeId];
     case 'project.deleted': return known;
-    default: return [];
+    // 项目创建/改名不改变已有目标的身份、可用性或正文，文档事件负责其余失效。
+    case 'project.created': case 'project.updated': return [];
   }
 }
