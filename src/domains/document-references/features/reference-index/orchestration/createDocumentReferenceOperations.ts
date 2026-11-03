@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ReplaceDocumentReferencesInputSchema, type DocumentBacklink, type ReplaceDocumentReferencesInput } from '@app/schemas';
+import { DocumentReferenceRetainedIdentitySchema, ReplaceDocumentReferencesInputSchema, type DocumentReferenceRetainedIdentity, type DocumentBacklink, type ReplaceDocumentReferencesInput } from '@app/schemas';
 import { DocumentReferenceError, type ReferenceDatabase, type ReferenceNodePort, type ReferenceResolutionInput } from '../../../definitions/documentReferences';
 import { admitReferenceChanges } from '../../../functions/admitReferenceChanges';
 import { resolveReferenceStatus } from '../../../functions/resolveReferenceStatus';
@@ -8,15 +8,22 @@ const rowSchema = z.object({ source_document_id: z.string(), reference_id: z.str
 
 export function createDocumentReferenceOperations(db: ReferenceDatabase, nodes: ReferenceNodePort) {
   return {
-    replace(input: ReplaceDocumentReferencesInput): void {
+    replace(input: ReplaceDocumentReferencesInput, options: { readonly retainedReferences?: readonly DocumentReferenceRetainedIdentity[] } = {}): void {
       const parsed = ReplaceDocumentReferencesInputSchema.parse(input);
       if (!db.inTransaction) throw new DocumentReferenceError('transaction_required');
       const source = nodes.read(parsed.sourceDocumentId);
       const existing = z.array(rowSchema).parse(db.prepare('SELECT * FROM document_references WHERE source_document_id = ?').all(parsed.sourceDocumentId));
+      const retained = new Map<string, string>();
+      for (const value of options.retainedReferences ?? []) {
+        const identity = DocumentReferenceRetainedIdentitySchema.parse(value);
+        const previous = retained.get(identity.referenceId);
+        if (previous !== undefined && previous !== identity.targetDocumentId) throw new DocumentReferenceError('reference_retargeted');
+        retained.set(identity.referenceId, identity.targetDocumentId);
+      }
       const byReferenceId = new Map(existing.map(row => [row.reference_id, row.target_document_id]));
       admitReferenceChanges(source, parsed.references.map(reference => ({
         reference,
-        existingTargetId: byReferenceId.get(reference.referenceId),
+        existingTargetId: byReferenceId.get(reference.referenceId) ?? retained.get(reference.referenceId),
         target: nodes.read(reference.targetDocumentId),
       })));
       db.prepare('DELETE FROM document_references WHERE source_document_id = ?').run(parsed.sourceDocumentId);
