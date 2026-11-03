@@ -1,10 +1,14 @@
 import { AlphaFilter, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdge, CanvasEdgeId, CanvasPoint, CanvasRectangle } from '../../../../shared';
 import type { CanvasAppearance } from '../../definitions/canvasKernel';
-import { layoutCanvasEdges, type CanvasEdgeGeometry } from '../../geometry/canvasEdgeGeometry';
+import { createCanvasEdgeLayout, type CanvasEdgeGeometry } from '../../geometry/canvasEdgeGeometry';
 import { CanvasLineMesh } from './CanvasLineMesh';
 
 interface Entry { readonly edge: CanvasEdge; readonly geometry: CanvasEdgeGeometry; readonly left: number; readonly right: number; readonly top: number; readonly bottom: number }
+function entryFor(edge: CanvasEdge, geometry: CanvasEdgeGeometry): Entry {
+  return { edge, geometry, left: Math.min(...geometry.points.map(point => point.x)), right: Math.max(...geometry.points.map(point => point.x)),
+    top: Math.min(...geometry.points.map(point => point.y)), bottom: Math.max(...geometry.points.map(point => point.y)) };
+}
 const blend = (ink: number, background: number, amount: number) => {
   const channel = (shift: number) => Math.round((ink >> shift & 255) * amount + (background >> shift & 255) * (1 - amount));
   return channel(16) << 16 | channel(8) << 8 | channel(0);
@@ -15,6 +19,8 @@ export class CanvasLines {
   readonly above = new Container();
   private readonly base = new CanvasLineMesh();
   private readonly ghost = new CanvasLineMesh();
+  private readonly movingBase = new CanvasLineMesh();
+  private readonly movingGhost = new CanvasLineMesh();
   private readonly highlight = new CanvasLineMesh();
   private readonly selectedLine = new CanvasLineMesh();
   private readonly ghostContainer = new Container();
@@ -26,6 +32,9 @@ export class CanvasLines {
   private readonly labelTexture = Texture.from(this.labelCanvas);
   private readonly labels = new Sprite(this.labelTexture);
   private geometries: ReadonlyMap<CanvasEdgeId, CanvasEdgeGeometry> = new Map();
+  private layout: ReturnType<typeof createCanvasEdgeLayout> | undefined;
+  private previewIds: ReadonlySet<CanvasEdgeId> | undefined;
+  private movingDirty = false;
   private entries: readonly Entry[] = [];
   private selected: CanvasEdgeId | null = null;
   private selectedCards = new Set<CanvasCardId>();
@@ -37,31 +46,60 @@ export class CanvasLines {
   private resolution = 1;
   private far = false;
   private key = '';
+  private emphasisKey = '';
   private builds = 0;
   private visibleCount = 0;
   private farEntries: readonly Entry[] = [];
   constructor() {
-    this.below.addChild(this.base.mesh);
-    this.ghostContainer.addChild(this.ghost.mesh); this.ghostContainer.mask = this.cardMask;
+    this.below.addChild(this.base.mesh, this.movingBase.mesh);
+    this.ghostContainer.addChild(this.ghost.mesh, this.movingGhost.mesh); this.ghostContainer.mask = this.cardMask;
     // 整层合成后再淡化：交叉处不累加墨色，也不能用不透明浅色覆盖正文笔画。
     this.ghostContainer.filters = [this.ghostAlpha]; this.ghostContainer.filterArea = this.ghostArea;
     this.above.addChild(this.cardMask, this.ghostContainer, this.highlight.mesh, this.selectedLine.mesh, this.labels, this.endpoints);
   }
   setElements(edges: readonly CanvasEdge[], cards: ReadonlyMap<string, CanvasCard>, mask: readonly CanvasRectangle[]): void {
-    this.geometries = layoutCanvasEdges(edges, cards, 4, this.geometries);
+    this.previewIds = undefined;
+    this.layout = createCanvasEdgeLayout(edges, cards, 4, this.geometries); this.geometries = this.layout.read();
     this.entries = edges.map(edge => {
       const geometry = this.geometries.get(edge.id);
       if (!geometry) throw new Error('canvas_edge_geometry_missing');
-      return { edge, geometry, left: Math.min(...geometry.points.map(point => point.x)), right: Math.max(...geometry.points.map(point => point.x)),
-        top: Math.min(...geometry.points.map(point => point.y)), bottom: Math.max(...geometry.points.map(point => point.y)) };
+      return entryFor(edge, geometry);
     });
     this.farEntries = this.entries.map(entry => ({ ...entry, geometry: { ...entry.geometry,
       points: [entry.geometry.from, entry.geometry.to], midpoint: { x: (entry.geometry.from.x + entry.geometry.to.x) / 2, y: (entry.geometry.from.y + entry.geometry.to.y) / 2 } } }));
     this.base.clearCache();
+    this.movingBase.setGeometry([]); this.movingGhost.shareGeometry(this.movingBase);
+    this.setMask(mask);
+    this.key = ''; this.emphasisKey = ''; this.update();
+  }
+  private setMask(mask: readonly CanvasRectangle[]): void {
     this.cardMask.clear();
     for (const region of mask) this.cardMask.rect(region.x, region.y, region.width, region.height);
     this.cardMask.fill(0xffffff);
-    this.key = ''; this.update();
+  }
+  preview(cardIds: readonly CanvasCardId[], cards: ReadonlyMap<string, CanvasCard>, mask: readonly CanvasRectangle[]): void {
+    if (!this.layout) return;
+    if (!this.previewIds) {
+      // 邻卡的同侧连接也可能重新排开；这些线独立于不变的世界线层，不能每个pointer重建全图。
+      const movedCards = new Set<string>(cardIds), affectedCards = new Set<string>(cardIds);
+      for (const entry of this.entries) if ([entry.edge.from, entry.edge.to].some(endpoint => endpoint.kind === 'card' && movedCards.has(endpoint.cardId))) {
+        for (const endpoint of [entry.edge.from, entry.edge.to]) if (endpoint.kind === 'card') affectedCards.add(endpoint.cardId);
+      }
+      this.previewIds = new Set(this.entries.filter(entry => [entry.edge.from, entry.edge.to].some(endpoint => endpoint.kind === 'card' && affectedCards.has(endpoint.cardId))).map(entry => entry.edge.id));
+      this.key = '';
+    }
+    const changed = new Set(this.layout.update(cards, cardIds, 4));
+    this.entries = this.entries.map(entry => {
+      if (!changed.has(entry.edge.id)) return entry;
+      const geometry = this.geometries.get(entry.edge.id); if (!geometry) throw new Error('canvas_edge_geometry_missing');
+      return entryFor(entry.edge, geometry);
+    });
+    this.farEntries = this.farEntries.map((entry, index) => {
+      if (!changed.has(entry.edge.id)) return entry;
+      const current = this.entries[index];
+      return { ...current, geometry: { ...current.geometry, points: [current.geometry.from, current.geometry.to], midpoint: { x: (current.geometry.from.x + current.geometry.to.x) / 2, y: (current.geometry.from.y + current.geometry.to.y) / 2 } } };
+    });
+    this.movingDirty = true; this.emphasisKey = ''; this.setMask(mask); this.update();
   }
   setCamera(camera: CanvasCamera, width: number, height: number, resolution: number): void {
     this.camera = camera; this.width = width; this.height = height; this.resolution = resolution;
@@ -70,9 +108,9 @@ export class CanvasLines {
     this.update();
   }
   setAppearance(appearance: CanvasAppearance): void { this.appearance = appearance; this.update(); }
-  setSelection(cards: readonly CanvasCardId[]): void { this.selectedCards = new Set(cards); this.key = ''; this.update(); }
-  setSelected(id: CanvasEdgeId | null): void { this.selected = id; this.key = ''; this.update(); }
-  setHovered(id: CanvasCardId | null): void { if (this.hovered === id) return; this.hovered = id; this.key = ''; this.update(); }
+  setSelection(cards: readonly CanvasCardId[]): void { this.selectedCards = new Set(cards); this.update(); }
+  setSelected(id: CanvasEdgeId | null): void { this.selected = id; this.update(); }
+  setHovered(id: CanvasCardId | null): void { if (this.hovered === id) return; this.hovered = id; this.update(); }
   readGeometry(id: CanvasEdgeId): CanvasEdgeGeometry | null { return this.far ? this.farEntries.find(entry => entry.edge.id === id)?.geometry ?? null : this.geometries.get(id) ?? null; }
   private emphasized(edge: CanvasEdge): boolean {
     return [edge.from, edge.to].some(endpoint => endpoint.kind === 'card' && (this.selectedCards.has(endpoint.cardId) || endpoint.cardId === this.hovered));
@@ -84,19 +122,23 @@ export class CanvasLines {
       && entry.top * zoom + y <= this.height && entry.bottom * zoom + y >= 0);
     this.visibleCount = visible.length;
     const allowed = visible.length > 3000 ? visible.filter(entry => this.emphasized(entry.edge) || entry.edge.id === this.selected) : entries.length > 3000 ? visible : entries;
-    const key = `${this.far}:${allowed.map(entry => entry.edge.id).join(',')}`;
+    const stationary = this.previewIds ? allowed.filter(entry => !this.previewIds?.has(entry.edge.id)) : allowed;
+    const key = `${this.far}:${stationary.map(entry => entry.edge.id).join(',')}`;
     if (key !== this.key) {
-      this.base.setGeometry(allowed, entries.length <= 3000 ? `${this.far}` : undefined); this.ghost.shareGeometry(this.base);
-      this.highlight.setGeometry(allowed.filter(entry => this.emphasized(entry.edge)));
-      this.selectedLine.setGeometry(allowed.filter(entry => entry.edge.id === this.selected));
+      this.base.setGeometry(stationary, entries.length <= 3000 && !this.previewIds ? `${this.far}` : undefined); this.ghost.shareGeometry(this.base);
       this.key = key; this.builds++;
     }
+    if (this.previewIds && this.movingDirty) { this.movingBase.setGeometry(allowed.filter(entry => this.previewIds?.has(entry.edge.id))); this.movingGhost.shareGeometry(this.movingBase); this.movingDirty = false; }
+    const emphasized = allowed.filter(entry => this.emphasized(entry.edge));
+    const emphasisKey = `${this.far}:${emphasized.map(entry => entry.edge.id).join(',')}:${this.selected}`;
+    if (emphasisKey !== this.emphasisKey) { this.highlight.setGeometry(emphasized); this.selectedLine.setGeometry(allowed.filter(entry => entry.edge.id === this.selected)); this.emphasisKey = emphasisKey; }
     const background = this.appearance.dark ? 0x222723 : 0xf2f3ee, ink = this.appearance.dark ? 0xe8e9e3 : 0x252c27;
     const amount = zoom < 0.15 ? 0.1 : zoom < 0.3 ? 0.16 : 0.22;
     this.base.setColor(blend(ink, background, amount));
-    this.ghost.setColor(ink);
+    this.movingBase.setColor(blend(ink, background, amount));
+    this.ghost.setColor(ink); this.movingGhost.setColor(ink);
     this.highlight.setColor(blend(ink, background, 0.55)); this.selectedLine.setColor(0x347b45, 1.5);
-    for (const layer of [this.base, this.ghost, this.highlight, this.selectedLine]) layer.setCamera(this.camera, this.resolution);
+    for (const layer of [this.base, this.ghost, this.movingBase, this.movingGhost, this.highlight, this.selectedLine]) layer.setCamera(this.camera, this.resolution);
     this.cardMask.position.set(x, y); this.cardMask.scale.set(zoom);
     this.ghostArea.width = this.width; this.ghostArea.height = this.height;
     this.ghostContainer.visible = zoom >= 0.3;
@@ -143,7 +185,7 @@ export class CanvasLines {
   }
   readStats() { return { lineMeshBuilds: this.builds, visibleEdges: this.visibleCount }; }
   destroy(): void {
-    this.ghost.destroy(); this.highlight.destroy(); this.selectedLine.destroy(); this.base.destroy(); this.labelTexture.destroy(true);
+    this.ghost.destroy(); this.movingGhost.destroy(); this.movingBase.destroy(); this.highlight.destroy(); this.selectedLine.destroy(); this.base.destroy(); this.labelTexture.destroy(true);
     this.below.destroy({ children: true }); this.above.destroy({ children: true });
     this.ghostAlpha.destroy();
   }

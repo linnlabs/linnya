@@ -91,15 +91,21 @@ async function waitForBody() {
 async function prepareDrag(selectedCount: number) {
   if (!kernel) throw new Error('probe_not_prepared');
   closeView(); await waitForBody();
-  const visible = kernel.renderableCards(), top = visible[visible.length - 1];
-  if (!top) throw new Error('drag_fixture_not_visible');
+  const visible = kernel.renderableCards();
+  let target: { readonly card: CanvasCard; readonly point: { readonly x: number; readonly y: number } } | undefined;
+  for (let i = visible.length - 1; i >= 0 && !target; i--) {
+    const card = visible[i];
+    for (const region of kernel.readVisibleCardRegions(card.id)) {
+      const world = { x: card.x + region.x + region.width / 2, y: card.y + region.y + region.height / 2 }, point = kernel.worldToScreen(world);
+      if (point.x > 20 && point.y > 20 && point.x < innerWidth - 130 && point.y < innerHeight - 80 && kernel.hitTest(world)?.id === card.id) { target = { card, point }; break; }
+    }
+  }
+  if (!target) throw new Error('drag_fixture_safe_target_missing');
+  const top = target.card;
   const selected = [top.id, ...elements.filter((element): element is CanvasCard => element.type !== 'edge' && element.id !== top.id).slice(0, selectedCount - 1).map(card => card.id)];
   kernel.setSelection(selected); movedCards = 0;
-  // 取最上层可见卡的实际纸面内点；所有位移由原生pointer走正式交互层产生。
-  const regions = kernel.readVisibleCardRegions(top.id), region = regions[regions.length - 1];
-  if (!region) throw new Error('drag_fixture_region_missing');
-  const point = kernel.worldToScreen({ x: top.x + region.x + region.width / 2, y: top.y + region.y + region.height / 2 });
-  return { point, selected: selected.length, cardId: top.id };
+  // 为整条原生拖动轨迹保留窗口边界，不能让离开窗口的mouseup被误当作已验收。
+  return { point: target.point, selected: selected.length, cardId: top.id };
 }
 Object.defineProperties(window, {
   prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start },
