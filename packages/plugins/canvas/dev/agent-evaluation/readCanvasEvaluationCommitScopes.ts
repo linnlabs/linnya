@@ -7,8 +7,12 @@ export interface CanvasEvaluationCommitScope {
 /** 只用实际连续delta归属变更，不能把整份snapshot差异归到其中某一次提交。 */
 export function readCanvasEvaluationCommitScopes(update: CanvasSynchronization): readonly CanvasEvaluationCommitScope[] {
   if (update.kind !== 'delta') return [];
-  return update.commits.map(commit => ({ sequence: commit.sequence,
-    cards: commit.changes.flatMap(change => change.after && change.after.type !== 'edge' ? [{ id: change.after.id, revision: change.after.revision }] : []),
-    deletedCardIds: commit.changes.flatMap(change => !change.after && change.before && change.before.type !== 'edge' ? [change.before.id] : []),
-  }));
+  return update.commits.map(commit => {
+    // add+arrange可以在同一事务多次改变同一卡；可见交集按最终版本唯一计数。
+    const changes = [...new Map(commit.changes.map(change => [change.id, change])).values()];
+    return { sequence: commit.sequence,
+      cards: changes.flatMap(change => change.after && change.after.type !== 'edge' ? [{ id: change.after.id, revision: change.after.revision }] : []),
+      deletedCardIds: changes.flatMap(change => !change.after && change.before && change.before.type !== 'edge' ? [change.before.id] : []),
+    };
+  });
 }

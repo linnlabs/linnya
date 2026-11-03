@@ -8,6 +8,7 @@ import CanvasEvaluationHarness from './CanvasEvaluationHarness.vue';
 import type { createCanvasSurface } from '../../src/renderer/orchestration/createCanvasSurface';
 import { createCanvasEvaluationFrameMetrics } from './createCanvasEvaluationFrameMetrics';
 import { createCanvasEvaluationCommitMetrics } from './createCanvasEvaluationCommitMetrics';
+import { readCanvasEvaluationLayout } from './readCanvasEvaluationLayout';
 type Surface = Awaited<ReturnType<typeof createCanvasSurface>>;
 const parameters = new URL(import.meta.url).searchParams;
 const connection = CanvasEvaluationBridgeConnectionSchema.parse({ protocol: 1, host: '127.0.0.1', port: Number(parameters.get('port')), nonce: parameters.get('nonce'), projectId: parameters.get('projectId') });
@@ -24,7 +25,10 @@ async function mount(documentId: string, projectId: string): Promise<unknown> {
   if (projectId !== connection.projectId) throw new Error('验收project不匹配');
   const identity = await readDocumentReference({ projectId, documentId });
   if (identity.status !== 'available' || identity.nodeType !== 'canvas') throw new Error('验收画布不在已授权project中');
-  await unmount(); const container = document.createElement('div'); root = container; document.body.append(container);
+  await unmount(); const container = document.createElement('div');
+  // 全屏属于验收组合容器。不能让组件同权重class被后加载的产品.linnya-canvas样式覆盖。
+  container.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:100000;background:var(--color-bg-default)';
+  root = container; document.body.append(container);
   await new Promise<void>((resolve, reject) => {
     app = createApp(CanvasEvaluationHarness, { documentId, projectId, onReady: (value: Surface) => { surface = value; resolve(); }, onSynchronized: (update: CanvasSynchronization) => commits?.synchronized(update), onFailure: (message: string) => reject(new Error(message)) }); app.mount(container);
   });
@@ -58,7 +62,7 @@ async function execute(command: CanvasEvaluationCommand): Promise<unknown> {
     case 'edit': await value.focusElements([command.payload.elementId]); await value.edit(); return { viewId: value.session.viewId };
     case 'save': if (!(await value.editor.save(true))) throw new Error('草稿未保存'); return { snapshot: value.session.state.snapshot.value };
     case 'fit': if (command.payload.elementIds) value.locate(command.payload.elementIds); else value.fit(); return { camera: value.camera.value };
-    case 'stats': if (command.payload.reset) { metrics.reset(); commits?.reset(); } return { presentation: value.readPresentationStats(), frames: metrics.read(), commits: commits?.read() ?? null, sequence: value.session.state.snapshot.value?.sequence ?? null };
+    case 'stats': if (command.payload.reset) { metrics.reset(); commits?.reset(); } return { presentation: value.readPresentationStats(), layout: readCanvasEvaluationLayout(root), frames: metrics.read(), commits: commits?.read() ?? null, sequence: value.session.state.snapshot.value?.sequence ?? null };
   }
 }
 function hostInstalled(): boolean {
