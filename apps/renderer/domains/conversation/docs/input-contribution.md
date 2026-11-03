@@ -65,6 +65,8 @@
 
 `ConversationReferenceInput` 是公共单一真源。provider 候选可携带 resolve 所需的私有字段，但宿主不解析。候选 `icon` 收窄为标准菜单可渲染的 Vue `Component`（不接受无法渲染的 string 假能力）。
 
+引用chip显示注册的`label`。悬停400ms或键盘聚焦时，宿主懒挂载kind的`previewComponent`，只传标准`reference` DTO；关闭、移除或替换引用时卸载。未贡献组件时显示只读文字预览。弹层可进入、可聚焦并以Escape关闭。点击通过`onActivate`交回owner；owner负责源文档当前项目与可用性复核。hover读取不修改引用正文，发送前刷新仍独立等待`prepareForSend`并冻结本次结果。App装配的Workspace引用复用正式文档preview与类型贡献的只读详情组件，不在Conversation识别插件类型。
+
 ### 2.2 Input Extension 契约（宿主内部完整契约）
 
 | 字段 | 语义 |

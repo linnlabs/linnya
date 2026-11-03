@@ -14,9 +14,11 @@ import { useWorkspaceTreeStore } from '@/domains/workspace/store';
 import { getDocumentTypeByNodeType } from '@/app/plugins/registry';
 import { useLocalization } from '@/app/localization';
 import { resolveDocumentTypeTextPresentation } from '@/app/plugins/functions/pluginContributionPresentation';
+import { createWorkspaceDocumentReferenceKind } from './conversation-input/createWorkspaceDocumentReferenceKind';
+import { readDocumentReference } from '@plugin/renderer/documentReferences';
+import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import {
   createWorkspaceDocumentReferenceProvider,
-  WORKSPACE_DOCUMENT_REFERENCE_KIND,
 } from './conversation-input/createWorkspaceDocumentReferenceProvider';
 
 /**
@@ -39,14 +41,10 @@ export function installBuiltinConversationInputContributions(): void {
     },
   });
 
-  registerConversationReferenceKind({
-    pluginId: 'platform',
-    kind: WORKSPACE_DOCUMENT_REFERENCE_KIND,
-    chip: {
-      label: (reference) => reference.label,
-      preview: (reference) => reference.previewText,
-    },
-  });
+  registerConversationReferenceKind(createWorkspaceDocumentReferenceKind({
+    currentProjectId: () => navigationScope.currentProjectId, read: readDocumentReference,
+    async open(presentation, projectId) { if (presentation.nodeType) await getWorkspaceNavigationPort().openDocumentTarget({ documentId: presentation.documentId, projectId, type: presentation.nodeType, displayName: presentation.title }); },
+  }));
 
   registerConversationReferenceProvider(createWorkspaceDocumentReferenceProvider({
     getCurrentProjectId: () => navigationScope.currentProjectId,
