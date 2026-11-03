@@ -229,6 +229,10 @@
       :search="search"
       @close="surface?.focus()"
     />
+    <CanvasWheelSuggestion
+      v-if="wheelSuggestion"
+      :suggestion="wheelSuggestion"
+    />
     <p
       v-if="surface?.layout?.state.busy.value"
       class="canvas-layout-status"
@@ -361,6 +365,7 @@ import { createCanvasCardCreation, installCanvasMediaInput, CanvasDocumentPicker
 import { createCanvasSearch, CanvasSearchPanel } from '../features/canvasSearch';
 import { CanvasConnectionControls } from '../features/connections';
 import { CanvasLayoutControls } from '../features/layoutCommands';
+import { CanvasWheelSuggestion, installCanvasWheelSuggestion } from '../features/materialSetting';
 import { createCanvasArrangementPort } from '../adapters/createCanvasArrangementPort';
 
 const stage = ref<HTMLElement | null>(null), editorHost = ref<HTMLElement | null>(null), staging = ref<HTMLElement | null>(null), imagePicker = ref<HTMLInputElement | null>(null);
@@ -368,6 +373,7 @@ const surface = shallowRef<Awaited<ReturnType<typeof createCanvasSurface>> | nul
 const review = shallowRef<ReturnType<typeof createCanvasAgentReview> | null>(null);
 const creation = shallowRef<ReturnType<typeof createCanvasCardCreation> | null>(null);
 const search = shallowRef<ReturnType<typeof createCanvasSearch> | null>(null);
+const wheelSuggestion = shallowRef<ReturnType<typeof installCanvasWheelSuggestion> | null>(null);
 const imagePreview = shallowRef<DocumentImageAsset | null>(null), failure = shallowRef<string | null>(null);
 const descriptionId = `canvas-description-${crypto.randomUUID()}`, discardVisible = ref(false);
 let destroyed = false, content: CanvasCardContent | null = null, removeMediaInput: (() => void) | null = null, removeReferenceFocus: (() => void) | null = null;
@@ -417,11 +423,12 @@ onMounted(async () => {
     if (destroyed) { result.destroy(); cardContent.dispose(); return; }
     removeReferenceFocus = registerCanvasReferenceFocus(session.documentId, async ids => { await result.select(ids); result.fit(true); });
     surface.value = result; review.value = createCanvasAgentReview(result.session, createCanvasAgentReviewPort());
+    wheelSuggestion.value = installCanvasWheelSuggestion(host);
     creation.value = createCanvasCardCreation(result.session, createCanvasCardCreationPort(), result.centerPoint, result.select);
     search.value = createCanvasSearch(result.session, cardContent.documentTitles, ids => { void run(() => result.focusElements(ids)); });
     removeMediaInput = installCanvasMediaInput({ stage: host, editor: editorElement, creation: creation.value, content: cardContent, captureInsertion: result.captureInsertion, worldPoint: result.worldPoint, canWrite: () => !result.readonly.value, report });
     await review.value.refresh();
   } catch (error) { report(error); }
 });
-onBeforeUnmount(() => { destroyed = true; removeReferenceFocus?.(); removeMediaInput?.(); creation.value?.dispose(); review.value?.dispose(); surface.value?.destroy(); content?.dispose(); });
+onBeforeUnmount(() => { destroyed = true; wheelSuggestion.value?.dispose(); removeReferenceFocus?.(); removeMediaInput?.(); creation.value?.dispose(); review.value?.dispose(); surface.value?.destroy(); content?.dispose(); });
 </script>

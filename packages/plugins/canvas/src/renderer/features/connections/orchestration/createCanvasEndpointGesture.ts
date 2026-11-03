@@ -13,11 +13,18 @@ export function createCanvasEndpointGesture(options: { readonly session: CanvasD
     gesture.target.removeEventListener('pointermove', move); gesture.target.removeEventListener('pointerup', up); gesture.target.removeEventListener('pointercancel', cancel);
     window.removeEventListener('blur', cancel); window.removeEventListener('keydown', escape, true);
     if (gesture.target.hasPointerCapture(gesture.pointer)) gesture.target.releasePointerCapture(gesture.pointer);
-    if (renewal) clearInterval(renewal); renewal = null; state.setPreview(null); return gesture;
+    if (renewal) clearInterval(renewal); renewal = null; state.setPreview(null); kernel.setHoveredCard(null); return gesture;
   };
   const unprotect = (gesture: CanvasEndpointGesture) => gesture.edge ? session.protect(gesture.edge.id, [], 'line-endpoint') : Promise.resolve();
   const cancel = () => { const gesture = release(); if (gesture) void unprotect(gesture).catch(report); };
-  const move = (event: PointerEvent) => { if (session.state.snapshot.value?.integrity?.readOnly) { cancel(); return; } if (active && event.pointerId === active.pointer) state.setPreview({ from: active.origin, to: world(event) }); };
+  const move = (event: PointerEvent) => {
+    if (session.state.snapshot.value?.integrity?.readOnly) { cancel(); return; }
+    if (!active || event.pointerId !== active.pointer) return;
+    const point = world(event), previous = state.preview.value?.target;
+    const nearPrevious = previous && canvasEndpointAt(point, [previous], kernel.readCamera().zoom).kind === 'card' ? previous : null;
+    const target = kernel.hitTest(point) ?? nearPrevious;
+    state.setPreview({ from: active.origin, to: point, target }); kernel.setHoveredCard(target?.id ?? null);
+  };
   const up = (event: PointerEvent) => {
     if (!active || event.pointerId !== active.pointer) return;
     if (session.state.snapshot.value?.integrity?.readOnly) { cancel(); return; }

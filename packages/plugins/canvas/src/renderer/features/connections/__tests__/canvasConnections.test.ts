@@ -10,7 +10,7 @@ async function fixture() {
   const commit = vi.fn(async (input: Parameters<CanvasDocumentPort['commit']>[0]): Promise<CanvasCommitResult> => { commands.push(input.operations); return { documentId: 'doc', requestId: input.requestId, sequence: 0, refs: {}, results: input.operations.map((_, index) => ({ index, status: 'applied', id: null, reason: null })) }; });
   const port: CanvasDocumentPort = { editing, commit, read: async () => ({ documentId: 'doc', schemaVersion: 1, sequence: 0, elements: [edge] }), changes: vi.fn(), undo: vi.fn(), close: async () => {}, subscribe: () => () => {} };
   const session = createCanvasDocumentSession(port); await session.open('doc');
-  const kernel: CanvasConnectionKernel = { canvas: document.createElement('canvas'), screenToWorld: point => point, hitTest: () => null, visibleCards: () => [], readCamera: () => ({ x: 0, y: 0, zoom: 1 }), readEdgeGeometry: () => null, setSelectedEdge: vi.fn() };
+  const kernel: CanvasConnectionKernel = { canvas: document.createElement('canvas'), screenToWorld: point => point, hitTest: () => null, visibleCards: () => [], readCamera: () => ({ x: 0, y: 0, zoom: 1 }), readEdgeGeometry: () => null, setHoveredCard: vi.fn(), setSelectedEdge: vi.fn() };
   const createText = vi.fn(async () => {});
   const connection = createCanvasConnectionEditing(session, kernel, { finishText: async () => true, createText, clearCards: vi.fn(), report });
   const target = document.createElement('button'), captured = new Set<number>(); document.body.append(target);

@@ -1,13 +1,13 @@
 <template>
-  <template v-if="card && !card.locked">
+  <template v-if="anchors.length">
     <button
       v-for="anchor in anchors"
-      :key="anchor.side"
+      :key="`${anchor.cardId}-${anchor.side}`"
       type="button"
       class="canvas-connection-anchor"
       :style="pointStyle(anchor)"
       :aria-label="`从卡片${sideNames[anchor.side]}侧开始连线`"
-      @pointerdown.stop.prevent="editing.start({ kind: 'create', event: $event, from: { kind: 'card', cardId: card.id, side: anchor.side }, origin: anchor })"
+      @pointerdown.stop.prevent="editing.start({ kind: 'create', event: $event, from: { kind: 'card', cardId: anchor.cardId, side: anchor.side }, origin: anchor })"
     />
   </template>
   <div
@@ -148,7 +148,12 @@ const observer = new ResizeObserver(entries => { const entry = entries[0]; if (e
 watch(bar, value => { observer.disconnect(); if (value) observer.observe(value); });
 onBeforeUnmount(() => observer.disconnect());
 const edge = computed(() => props.editing.selected.value), labelInput = ref<HTMLInputElement | null>(null);
-const anchors = computed(() => props.card ? canvasConnectionAnchors(props.card) : []);
+const anchors = computed(() => {
+  if (props.camera.zoom < 0.3) return [];
+  const target = props.editing.state.preview.value?.target, cards = props.card && !props.card.locked ? [props.card] : [];
+  if (target && !cards.some(card => card.id === target.id)) cards.push(target);
+  return cards.flatMap(card => canvasConnectionAnchors(card).map(anchor => ({ ...anchor, cardId: card.id })));
+});
 const geometry = computed(() => { void props.camera; return props.editing.geometry(); });
 const project = (point: CanvasPoint) => ({ x: props.camera.x + point.x * props.camera.zoom, y: props.camera.y + point.y * props.camera.zoom });
 const pointStyle = (point: CanvasPoint) => { const screen = project(point); return { left: `${screen.x}px`, top: `${screen.y}px` }; };
