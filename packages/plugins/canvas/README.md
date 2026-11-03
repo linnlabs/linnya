@@ -30,6 +30,8 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 
 插件自身提供 typecheck、test、lint、build 入口。测试覆盖真实提交/重开、失败回滚、并发/撤回与插件生命周期；技术探针放在 `dev/probes`，本地结果不成为构建依赖。插件不属于默认官方发行目标。
 
+[Canvas Regression](../../../.github/workflows/canvas-regression.yml) 在 macOS、Windows、Linux 分别验证业务结果与离屏绘制的确定性工作量；Linux不代表新增Desktop发行平台。共享CI不比较帧耗时，也不能代替真实GPU、输入法和屏幕交互验收。固定模型任务与完整证据的评分入口见 [Agent验收](./scripts/agent-evaluation/README.md)；模型评测与无凭据CI分开运行。
+
 ## Renderer
 
 `renderer/features/canvasDocument` 拥有每个表面的已提交文档会话。打开前先订阅变更，再读取快照并追平读取窗口中的版本；提交和 push 均从 `canvas:changes` 接纳连续增量或日志裁剪后的正式快照。旧表面的异步结果不会写入新会话。`cardEditing` 独立持有输入草稿、组合输入状态及保存屏障，失败时保留正文，自动保存不结束同一次文字编辑撤销组。
@@ -66,6 +68,8 @@ CLI 的 `payloadIdentity` 由可信编排从原始 operations/options 构造，�
 Renderer只读降级同时关闭编辑器、插图锚点、拖动/缩放、菜单和快捷键写入口，释放字段声明但保留已有正文草稿。软件GPU或WebGL恢复提示独立于正文错误。历史预览为独立只读表面；恢复发起窗口的viewId通过通用 `historyClientSessionId` 冻结传递，不能选择其他窗口的撤销栈。
 
 加入对话使用一个 Canvas 选区引用；发送前先等待仍打开表面的草稿保存，再经 Backend 冻结一次最新提交内容。画布关闭后仍可刷新，失败不会回退加入时旧文字。引用记录文档和卡片身份，点击经通用 Workspace 导航打开并定位；同一选区通过通用 composer 去重键合并。复制含标签的子图时保留目标 documentId，但为每个新出现位置分配新的 referenceId，避免原子引用索引冲突。
+
+部分所选卡删除时只发送仍存在的卡；全部删除时引用保留原始选择身份、显示已删除并发送该次提交的删除说明，不含旧正文。撤销删除后，同一引用可再次读取恢复的卡。复制/剪切没有有效元素时仍失败，不能用删除说明替换用户剪贴板。
 
 ## CLI 与自动布局
 

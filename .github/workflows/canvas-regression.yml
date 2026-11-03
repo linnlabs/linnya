@@ -1,0 +1,58 @@
+name: Canvas Regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canvas-regression-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  deterministic:
+    name: Canvas business and drawing counts (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # Linux 仅验证插件业务与离屏绘制，不表示新增 Desktop 发行平台。
+        os: [ubuntu-24.04, macos-latest, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck Canvas
+        run: pnpm --filter @plugin/canvas typecheck
+      - name: Check Canvas architecture and frame closure
+        run: pnpm exec tsx packages/plugins/canvas/scripts/guard.ts
+      - name: Build the actual computation worker
+        run: pnpm --filter @plugin/canvas build:backend
+      - name: Run Canvas business cases
+        run: pnpm --filter @plugin/canvas test
+      - name: Run actual Host persistence and restoration cases
+        run: pnpm exec vitest run packages/plugins/__tests__/canvasDocument.sqlite.integration.test.ts packages/plugins/__tests__/canvasVersionHistory.sqlite.integration.test.ts
+      - name: Prepare Linux offscreen display
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64
+      - name: Check drawing workload on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
+      - name: Check drawing workload on macOS and Windows
+        if: runner.os != 'Linux'
+        run: pnpm exec cross-env CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
+      - name: Verify drawing counts and bounded resources
+        run: node packages/plugins/canvas/dev/probes/verify-counts.mjs

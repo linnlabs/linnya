@@ -4,6 +4,7 @@ import type { CanvasEdgeGeometry } from '../geometry/canvasEdgeGeometry';
 
 export type CanvasKernelIntent =
   | { readonly kind: 'preview-changed' }
+  | { readonly kind: 'hover'; readonly id: CanvasCardId | null }
   | { readonly kind: 'select'; readonly ids: readonly CanvasCardId[]; readonly additive: boolean }
   | { readonly kind: 'select-edge'; readonly id: CanvasEdgeId | null }
   | { readonly kind: 'move'; readonly ids: readonly CanvasCardId[]; readonly dx: number; readonly dy: number; readonly copy?: boolean }
@@ -17,6 +18,7 @@ export interface CanvasRenderStatus {
   readonly phase: 'ready' | 'restoring';
   readonly message: string | null;
 }
+export interface CanvasGuide { readonly from: CanvasPoint; readonly to: CanvasPoint }
 export interface CanvasAppearance {
   readonly dark: boolean;
   readonly material: 'paper' | 'card';
@@ -40,6 +42,7 @@ export interface CanvasKernel {
   setDragPreview(ids: readonly CanvasCardId[], dx: number, dy: number): void;
   clearDragPreview(): void;
   setBrush(rectangle: CanvasRectangle | null): void;
+  setGuides(guides: readonly CanvasGuide[]): void;
   setBitmap(id: CanvasCardId, revision: number, key: string, bitmap: ImageBitmap): boolean;
   setRasterTiles(id: CanvasCardId, revision: number, key: string, tiles: readonly CanvasRasterTile[]): boolean;
   invalidateBitmaps(): void;
