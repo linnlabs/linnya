@@ -10,8 +10,10 @@
  */
 
 const { spawnSync } = require('child_process');
+const path = require('node:path');
 
-const vitestPath = require.resolve('vitest/vitest.mjs');
+// Vitest 4 不再导出 vitest.mjs 子路径；从公开 package.json 定位 CLI 文件。
+const vitestPath = path.join(path.dirname(require.resolve('vitest/package.json')), 'vitest.mjs');
 const args = process.argv.slice(2);
 
 const result = spawnSync(
