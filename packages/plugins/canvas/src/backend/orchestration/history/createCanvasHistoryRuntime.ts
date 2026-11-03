@@ -1,6 +1,6 @@
 import { CanvasCommitRequestSchema, CanvasUndoRequestSchema, type CanvasCommitResult, type CanvasUndoRequest, type CanvasUndoResult } from '../../../shared';
 import type { CanvasDatabase } from '../../definitions/canvasDatabase';
-import { commitCanvasOperations, commitCanvasTransition, planCanvasCommit, readCanvasCommitState, readCanvasEditingClaims, readCanvasSequence, type CanvasCommitActor, type CanvasCommitPorts, type CanvasHistoryCommitInput } from '../../features/canvasCommit';
+import { commitCanvasOperations, commitCanvasTransition, planCanvasCommit, readCanvasCommitState, readCanvasEditingClaims, readCanvasSequence, type CanvasCommitActor, type CanvasCommitPorts, type CanvasHistoryCommitInput, type CanvasTransitionInput } from '../../features/canvasCommit';
 import type { CanvasHistoryEntry, CanvasUserHistoryScope } from '../../shared/history/definitions/canvasHistory';
 import { canvasDeletionReservations, readCanvasAgentGroups, recordCanvasAgentCommit, reviewCanvasAgentElement } from '../../features/agentChanges';
 import { createCanvasGroupReview } from './createCanvasGroupReview';
@@ -54,15 +54,23 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
       value.redo = [];
     };
   }
-  function commit(input: { readonly request: unknown; readonly actor: CanvasCommitActor; readonly now: number; readonly historyGroupId?: string; readonly onCommit?: (history: CanvasHistoryCommitInput) => void }): CanvasCommitResult {
-    const request = CanvasCommitRequestSchema.parse(input.request);
-    const result = commitCanvasOperations({ database: options.database, ...input, ports: { ...options.ports, reservedRectangles, history(history) {
+  function historyPorts(input: { readonly historyGroupId?: string; readonly onCommit?: (history: CanvasHistoryCommitInput) => void }): CanvasCommitPorts {
+    return { ...options.ports, reservedRectangles, history(history) {
       recordCanvasAgentCommit(options.database, history);
       if (history.context.actor.source.kind === 'user') for (const change of history.plan.changes) reviewCanvasAgentElement(options.database, { documentId: history.context.documentId, elementId: change.id });
       input.onCommit?.(history);
       const updateOuter = options.ports?.history?.(history); const updateOwn = recordUserHistory(history, input.historyGroupId ?? null);
       return () => { updateOwn?.(); updateOuter?.(); };
-    } } });
+    } };
+  }
+  function transition(input: Omit<CanvasTransitionInput, 'database' | 'ports'> & { readonly historyGroupId?: string; readonly onCommit?: (history: CanvasHistoryCommitInput) => void }): CanvasCommitResult {
+    if (input.actor.source.kind !== 'user') throw new Error('canvas_user_transition_required');
+    const result = commitCanvasTransition({ ...input, database: options.database, ports: historyPorts(input) });
+    pruneGuards(input.documentId); return result;
+  }
+  function commit(input: { readonly request: unknown; readonly actor: CanvasCommitActor; readonly now: number; readonly historyGroupId?: string; readonly onCommit?: (history: CanvasHistoryCommitInput) => void }): CanvasCommitResult {
+    const request = CanvasCommitRequestSchema.parse(input.request);
+    const result = commitCanvasOperations({ database: options.database, ...input, ports: historyPorts(input) });
     pruneGuards(request.documentId);
     return result;
   }
@@ -75,7 +83,7 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
     let inverse: CanvasHistoryEntry | undefined;
     const actor: CanvasCommitActor = { source: { kind: 'user', conversationId: null, runId: null }, viewId: request.viewId };
     const result = commitCanvasTransition({ database: options.database, documentId: request.documentId, requestId: request.requestId, actor, now,
-      payload: { kind: 'history', direction: request.direction }, ports: { ...options.ports, history: undefined },
+      payload: { kind: 'history', direction: request.direction }, ports: options.ports,
       buildPlan(state, claims, origin) { const plan = planCanvasHistoryReversal({ state, claims, origin, actor, entry, now }); inverse = captureCanvasHistory(state, plan); return plan; },
     });
     if (inverse && from.length) { from.pop(); if (inverse.changes.length) to.push(inverse); }
@@ -96,7 +104,7 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
   const approvals = createCanvasAgentApprovals({ database: options.database, commit, pruneGuards });
   // 用户栈不跨进程保留。重启只清理已经没有持有者的删除身份，组记录仍可继续撤回。
   for (const raw of options.database.prepare('SELECT DISTINCT node_id FROM canvas_history_guards').all()) pruneGuards(z.object({ node_id: z.string() }).parse(raw).node_id);
-  return { registerView, preview, retainedElements, commit, undo, status, releaseView, ...review, replayAgentRequest: approvals.replayAgentRequest, approvalResults: approvals.approvalResults,
+  return { registerView, preview, retainedElements, commit, transition, undo, status, releaseView, ...review, replayAgentRequest: approvals.replayAgentRequest, approvalResults: approvals.approvalResults,
     commitAgent(input: Parameters<typeof approvals.commitAgent>[0]) { const result = approvals.commitAgent(input); const request = CanvasCommitRequestSchema.parse(input.request); notifyGroups(request.documentId); return result; },
     resolveApproval(input: Parameters<typeof approvals.resolveApproval>[0], now: number) { const result = approvals.resolveApproval(input, now); notifyGroups(input.documentId); return result; },
   };

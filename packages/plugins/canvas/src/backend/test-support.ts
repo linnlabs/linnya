@@ -4,3 +4,8 @@ export { commitCanvasOperations } from './features/canvasCommit/orchestration/co
 export { createCanvasDocumentRuntime } from './orchestration/createCanvasDocumentRuntime';
 export { createCanvasBackendPlugin } from './index';
 export { readCanvasSelectionContext } from './orchestration/readCanvasSelectionContext';
+export { executeCanvasCliCommand } from './orchestration/executeCanvasCliCommand';
+export { createCanvasComputationRuntime } from './capabilities/canvasComputation';
+export type { CanvasCliServices } from './orchestration/definitions/canvasCliExecution';
+export { createCanvasPluginCli, formatCanvasCliInputError } from './features/canvasCli';
+export { readCanvasStandalone } from './orchestration/readCanvasStandalone';

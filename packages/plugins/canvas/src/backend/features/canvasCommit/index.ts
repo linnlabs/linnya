@@ -1,5 +1,5 @@
 export { commitCanvasOperations } from './orchestration/commitCanvasOperations';
-export type { CanvasCommitPorts, CanvasHistoryCommitInput } from './orchestration/commitCanvasOperations';
+export type { CanvasCommitPorts, CanvasHistoryCommitInput, CanvasTransitionInput } from './orchestration/commitCanvasOperations';
 export { readCanvasSnapshot, readCanvasSequence, updateCanvasEditingClaim } from './persistence/canvasRepository';
 export type { CanvasCommitActor, CanvasCommitParticipant, CanvasCommitPlan, CanvasElementChange } from './definitions/canvasCommit';
 
