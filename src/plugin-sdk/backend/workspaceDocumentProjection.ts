@@ -3,6 +3,7 @@ export {
   readWorkspaceDocumentMetadata,
   readWorkspaceDocumentIdentity,
   readWorkspaceDocumentLocation,
+  resolveWorkspaceDocumentPath,
   listWorkspaceDocumentIds,
   touchWorkspaceDocument,
 } from 'src/features/workspace/infrastructure/sqlite/workspaceDocumentProjection';

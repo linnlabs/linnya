@@ -1,7 +1,7 @@
 import type { ReplaceDocumentReferencesInput } from '@app/schemas';
 import type { PluginSqliteDatabaseLike } from '@linnya/plugin-host-contract/backend/workspaceRuntime';
-import { createDocumentReferenceOperations, type ReferenceDatabase } from 'src/domains/document-references';
-import { readWorkspaceDocumentIdentity } from './workspaceDocumentProjection';
+import { createDocumentReferenceMarkdownRuntime as createMarkdownRuntime, createDocumentReferenceOperations, type ReferenceDatabase } from 'src/domains/document-references';
+import { readWorkspaceDocumentLocation, resolveWorkspaceDocumentPath, readWorkspaceDocumentIdentity } from './workspaceDocumentProjection';
 
 interface ReferenceStatement { all(...values: readonly unknown[]): unknown[]; run(...values: readonly unknown[]): unknown }
 function isReferenceStatement(value: unknown): value is ReferenceStatement {
@@ -27,4 +27,9 @@ export function listDocumentBacklinks(db: PluginSqliteDatabaseLike, targetDocume
 }
 export function resolveDocumentReference(db: PluginSqliteDatabaseLike, input: { readonly sourceDocumentId: string; readonly targetDocumentId: string }) {
   return operations(db).resolve(input);
+}
+
+/** 实例由调用方持有；可信 CLI read/show 登记与写入使用同一实例。 */
+export function createDocumentReferenceMarkdownRuntime(db: Pick<PluginSqliteDatabaseLike, 'prepare'>) {
+  return createMarkdownRuntime({ read: documentId => readWorkspaceDocumentIdentity(db, documentId), location: documentId => readWorkspaceDocumentLocation(db, documentId), resolvePath: (projectId, path) => resolveWorkspaceDocumentPath(db, { projectId, path }) });
 }
