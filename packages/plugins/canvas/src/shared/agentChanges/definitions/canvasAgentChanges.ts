@@ -1,6 +1,15 @@
 import { z } from 'zod';
 import { CanvasElementIdSchema, CanvasCardSchema } from '../../model/definitions/canvasElement';
-import { CanvasCommitResultSchema } from '../../changeset/definitions/canvasCommands';
+import { CanvasCommitResultSchema, CanvasOperationResultSchema } from '../../changeset/definitions/canvasCommands';
+
+export const CanvasAgentCardChangeSchema = z.object({
+  id: CanvasElementIdSchema, kind: z.enum(['added', 'updated', 'deleted']), fields: z.array(z.string()),
+}).strict();
+export const CanvasGroupWriteOutcomesSchema = z.object({
+  /** 旧组没有持久化逐操作结果时明确说明缺信息，不把“未记录”当作没有跳过。 */
+  complete: z.boolean(),
+  skippedWrites: z.array(CanvasOperationResultSchema.omit({ status: true }).extend({ requestId: z.string(), fields: z.array(z.string()).nullable() })),
+}).strict();
 
 export const CanvasPendingApprovalSchema = z.object({
   id: z.string().min(1), groupId: z.string().min(1), requestId: z.string().min(1),
@@ -16,6 +25,7 @@ export const CanvasAgentGroupSchema = z.object({
   id: z.string().min(1), documentId: z.string().min(1), conversationId: z.string().nullable(), runIds: z.array(z.string()),
   createdAt: z.number().int().nonnegative(), lastWriteAt: z.number().int().nonnegative(), writing: z.boolean(),
   reviewedElementIds: z.array(CanvasElementIdSchema), added: z.array(CanvasElementIdSchema), updated: z.array(CanvasElementIdSchema), deleted: z.array(CanvasElementIdSchema),
+  changes: z.array(CanvasAgentCardChangeSchema), outcomes: CanvasGroupWriteOutcomesSchema,
   deletedCards: z.array(CanvasCardSchema), visibleDeletedCards: z.array(CanvasCardSchema), pendingApproval: CanvasPendingApprovalSchema.nullable(),
 }).strict();
 export const CanvasAgentCommitResultSchema = z.discriminatedUnion('kind', [
@@ -34,6 +44,8 @@ export const CanvasApprovalResolutionSchema = z.discriminatedUnion('kind', [
 ]);
 export type CanvasPendingApproval = z.infer<typeof CanvasPendingApprovalSchema>;
 export type CanvasAgentGroup = z.infer<typeof CanvasAgentGroupSchema>;
+export type CanvasAgentCardChange = z.infer<typeof CanvasAgentCardChangeSchema>;
+export type CanvasGroupWriteOutcomes = z.infer<typeof CanvasGroupWriteOutcomesSchema>;
 export type CanvasAgentCommitResult = z.infer<typeof CanvasAgentCommitResultSchema>;
 export type CanvasWithdrawGroupRequest = z.infer<typeof CanvasWithdrawGroupRequestSchema>;
 export type CanvasResolveApprovalRequest = z.infer<typeof CanvasResolveApprovalRequestSchema>;

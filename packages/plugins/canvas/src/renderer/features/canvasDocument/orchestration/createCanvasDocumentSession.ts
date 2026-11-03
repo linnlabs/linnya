@@ -97,10 +97,10 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
       }).then(result => { requireCanvasUserCommitApplied(result); return result; });
     },
     protect: claims.protect,
-    undo(direction) {
+    undo(direction, options) {
       const token = sessionId;
       const document = requireWritableCanvas(state.snapshot.value);
-      const input = CanvasUndoRequestSchema.parse({ documentId: document.documentId, viewId, requestId: crypto.randomUUID(), direction });
+      const input = CanvasUndoRequestSchema.parse({ documentId: document.documentId, viewId, requestId: crypto.randomUUID(), direction, ...options });
       return confirmMutation({
         send: () => port.undo(input),
         accept: async result => { if (token !== sessionId) throw new DOMException('Canvas session closed', 'AbortError'); await synchronize(result.commit.sequence); },

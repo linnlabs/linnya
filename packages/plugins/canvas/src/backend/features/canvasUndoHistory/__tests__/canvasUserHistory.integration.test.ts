@@ -36,6 +36,19 @@ describe('Canvas user undo and redo', () => {
     f.undo(); expect(f.elements[0]).toMatchObject({ color: 'white' });
     expect(f.history.status('doc', 'another')).toEqual({ canUndo: false, canRedo: false }); f.database.close();
   });
+  it('guards the exact history action, including all-skipped traversal without a sequence change', () => {
+    const f = fixture(); const created = f.commit([add]);
+    const edit = f.commit([{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }]);
+    f.history.commitAgent({ request: { documentId: 'doc', requestId: 'foreign', operations: [{ op: 'update', id: 'c1', baseRevision: 2, patch: { color: 'green' } }] }, actor: { source: { kind: 'agent', conversationId: 'A', runId: 'r' }, viewId: 'agent' }, now: 5 });
+    const sequence = readCanvasSnapshot(f.database, 'doc').sequence;
+    const request = { documentId: 'doc', viewId: 'view', requestId: 'guarded', direction: 'undo' as const, expectedActionId: edit.requestId };
+    const skipped = f.history.undo(request, 6); expect(skipped.commit.results.every(result => result.status === 'skipped')).toBe(true);
+    expect(skipped.commit.sequence).toBe(sequence);
+    expect(() => f.history.undo({ ...request, requestId: 'stale-button' }, 7)).toThrow('canvas_history_head_changed');
+    expect(f.history.undo(request, 8).commit).toEqual(skipped.commit);
+    expect(() => f.history.undo({ ...request, requestId: 'actual-head', expectedActionId: created.requestId }, 9)).not.toThrow();
+    f.database.close();
+  });
   it('does not pop another entry when an undo response is retried', () => {
     const f = fixture(); f.commit([add]); f.commit([{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }]);
     const first = f.undo('undo', 'retry'); const second = f.undo('undo', 'retry');
