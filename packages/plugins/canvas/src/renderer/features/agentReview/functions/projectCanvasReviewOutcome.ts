@@ -3,7 +3,7 @@ import type { CanvasWithdrawalSummary } from '../definitions/agentReview';
 import { canvasReviewCardTitle, canvasReviewFields } from './projectCanvasReviewTargets';
 
 const reasons: Readonly<Record<string, string>> = {
-  stale_field: '读取后字段已被修改', editing_field: '用户正在编辑', locked: '卡片已锁定', element_missing: '对象已不存在',
+  stale_field: '读取后字段已被修改', user_editing: '用户正在编辑', element_locked: '卡片已锁定', stale_layout_size: '测量后卡片尺寸已改变', stale_element: '读取后对象已被修改', element_missing: '对象已不存在',
   later_fields_preserved: '保留后来修改的字段', later_use_preserved: '保留后来使用的对象', later_existence_preserved: '保留后来变更的对象身份',
   dependency_missing: '依赖已不存在或连线重复', restored_nearby: '原位置被占用，已在附近恢复', stale_revision: '读取后对象已被修改',
 };

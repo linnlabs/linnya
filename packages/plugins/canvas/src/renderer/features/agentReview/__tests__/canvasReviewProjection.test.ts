@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CanvasAgentGroupSchema, CanvasTextCardSchema, createCanvasPlainTextDocument, type CanvasAgentGroup } from '@plugin/canvas/shared';
 import { projectCanvasReviewMarkers, projectCanvasReviewDirections } from '../functions/projectCanvasReviewMarkers';
 import { chooseCanvasReviewGroup, projectCanvasReviewTargets } from '../functions/projectCanvasReviewTargets';
-import { projectCanvasWithdrawalSummary } from '../functions/projectCanvasReviewOutcome';
+import { canvasReviewReason, projectCanvasWithdrawalSummary } from '../functions/projectCanvasReviewOutcome';
 import { selectCanvasReviewTarget } from '../functions/selectCanvasReviewTarget';
 
 function card(id: string, x: number, y = 0) {
@@ -36,6 +36,11 @@ describe('Agent 逐卡审阅投影', () => {
     expect(chooseCanvasReviewGroup([], [a, b], null)).toBe('new');
     expect(chooseCanvasReviewGroup([a, b], [a, b], a.id)).toBe(a.id);
     expect(chooseCanvasReviewGroup([a, b], [{ ...a, lastWriteAt: 4 }, b], b.id)).toBe(a.id);
+  });
+  it('跳过说明消费正式编辑声明和锁定原因码，不把已知原因退成未知', () => {
+    expect(canvasReviewReason('user_editing')).toBe('用户正在编辑');
+    expect(canvasReviewReason('element_locked')).toBe('卡片已锁定');
+    expect(canvasReviewReason('stale_layout_size')).toBe('测量后卡片尺寸已改变');
   });
   it('部分成功和完整跳过分别说明，保留后写不能假报为全部失败', () => {
     const result = projectCanvasWithdrawalSummary({ documentId: 'doc', requestId: 'withdraw', sequence: 4, refs: {}, results: [{ id: card('c1', 0).id, index: 0, status: 'applied', reason: 'later_fields_preserved' }, { id: card('c2', 0).id, index: 1, status: 'skipped', reason: 'later_use_preserved' }] }, [card('c1', 0), card('c2', 0)]);
