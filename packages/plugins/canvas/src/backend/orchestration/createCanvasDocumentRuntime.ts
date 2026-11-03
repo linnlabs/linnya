@@ -30,10 +30,11 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
   const versions = createCanvasVersionHistoryRuntime({ database, ports: versionPorts.ports });
   const admission = createCanvasDocumentCommitParticipants(database, references);
   const editing: ReturnType<typeof createCanvasHistoryRuntime> = createCanvasHistoryRuntime({ database,
-    pendingApproval: admission.pendingApproval,
+    pendingApproval(batch) { assertActive(); admission.pendingApproval(batch); },
     groupsChanged(documentId) { versions.requestMaintenance(documentId); broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_GROUPS_CHANGED_CHANNEL, { documentId }); },
     ports: {
-    participants: admission.participants,
+    // CLI 的正文/图片准入可跨过停用时刻；最终事务统一拒绝旧运行态，不能只检查入口。
+    participants: [{ commit() { assertActive(); } }, ...admission.participants],
     history(input) {
       const beforeGroup = input.context.actor.source.kind === 'agent' && !findCanvasAgentGroup(database, input.context.documentId, canvasSourceKey(input.context.actor));
       return versions.recordCommit(input, { beforeGroup });

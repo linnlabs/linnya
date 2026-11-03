@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { canvasPluginMigrations, createCanvasDocumentRuntime, createCanvasBackendPlugin, readCanvasSelectionContext } from '@plugin/canvas/backend-test-support';
-import { createCanvasPlainTextDocument } from '@plugin/canvas/shared';
+import { createCanvasPlainTextDocument, encodeCanvasHistorySession } from '@plugin/canvas/shared';
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema';
 import { WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/node-text-snapshot.schema';
 import { DOCUMENT_REFERENCE_SCHEMAS, createDocumentReferenceOperations } from 'src/domains/document-references';
@@ -190,4 +190,41 @@ it('revalidates the frozen project after asynchronous read-only computation', as
   };
   await expect(executeCanvasCliCommand({ kind: 'check', path: 'workspace:/异步作用域.canvas' }, { hostContext: { databaseService: { getDb: () => db } },
     projectId, conversationId: 'chat', agentRunId: 'run', signal: new AbortController().signal }, '/unused', services)).rejects.toMatchObject({ code: 'outside_project' });
+});
+
+it('rejects an in-flight Agent write against a disposed runtime and accepts it only through the new instance', () => {
+  const id = runtime.create({ projectId, parentId: null, name: '重新启用.canvas' });
+  const oldEditing = runtime.editing;
+  const actor = { projectId, viewId: 'agent', source: { kind: 'agent' as const, conversationId: 'chat', runId: 'late' } };
+  const late = { actor, now: Date.now(), request: { documentId: id, requestId: 'late-write', operations: [text('旧计算结果')] } };
+  runtime.dispose();
+  expect(() => oldEditing.commitAgent(late)).toThrow('停用');
+  expect(db.prepare('SELECT sequence FROM canvas_documents WHERE node_id = ?').get(id)).toEqual({ sequence: 0 });
+  runtime = createCanvasDocumentRuntime(db);
+  expect(runtime.editing.commitAgent(late)).toMatchObject({ kind: 'committed', commit: { sequence: 1 } });
+  expect(runtime.read(id).elements).toHaveLength(1);
+});
+
+it('confirms a lost restoration response without applying it twice and repeats only its captured-session notification', async () => {
+  const id = runtime.create({ projectId, parentId: null, name: '恢复重试.canvas' });
+  runtime.read(id, projectId, 'view');
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'restore-source', operations: [text('恢复目标')] });
+  runtime.versions.checkpoint({ documentId: id, reason: 'close' });
+  const target = runtime.history.list(id)[0];
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'before-restore', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }] });
+  const request = { documentId: id, versionId: target.versionId, expectedCurrentVersionId: runtime.history.list(id)[0].versionId,
+    clientSessionId: encodeCanvasHistorySession('view', '09e16e02-7dc9-41a7-b690-96f7a8815a45') };
+  await runtime.history.restore(request);
+  const restoredSequence = runtime.read(id).sequence;
+  const card = runtime.read(id).elements[0];
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'after-restore', operations: [{ op: 'update', id: 'c1', baseRevision: card.revision, patch: { color: 'green' } }] });
+  const sequence = runtime.read(id).sequence;
+  await runtime.history.restore(request);
+  expect(runtime.read(id)).toMatchObject({ sequence, elements: [{ color: 'green' }] });
+  const notifications = push.mock.calls.filter(([event]) => event.channel === 'canvas:restored');
+  expect(notifications).toHaveLength(2);
+  for (const [event] of notifications) expect(event.payload).toEqual({ documentId: id, clientSessionId: request.clientSessionId, sequence: restoredSequence });
+  runtime.undo({ documentId: id, viewId: 'view', requestId: 'undo-after-restore', direction: 'undo' });
+  runtime.undo({ documentId: id, viewId: 'view', requestId: 'undo-confirmed-restore', direction: 'undo' });
+  expect(runtime.read(id).elements[0]).toMatchObject({ color: 'red' });
 });

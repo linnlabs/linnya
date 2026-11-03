@@ -26,7 +26,11 @@ export function createCanvasVersionActions(input: { readonly database: CanvasDat
     const requestId = 'version-restore:' + createHash('sha256').update(JSON.stringify(request)).digest('hex');
     // 重复确认只接纳已提交事实；不得在后来Agent又修改后重放旧恢复。
     const replay = readCanvasReceipt(input.database, { documentId: request.documentId, requestId, sourceKey: canvasSourceKey(actor) });
-    if (replay) return list(request.documentId)[0];
+    if (replay) {
+      // 首次回包或推送可能丢失；重复确认补发捕获身份，让对应草稿完成同步，内容不重做。
+      input.restored({ documentId: request.documentId, clientSessionId, sequence: replay.result.sequence });
+      return list(request.documentId)[0];
+    }
     const prepared = input.versions.prepareRestore(request);
     const images = createDocumentImageAssetRuntime(input.database);
     for (const assetId of collectCanvasAssetIds(prepared.snapshot.elements)) await images.readOwnedImage({ documentId: request.documentId, assetId });
