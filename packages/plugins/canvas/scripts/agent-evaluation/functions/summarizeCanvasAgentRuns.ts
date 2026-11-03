@@ -6,7 +6,7 @@ export function summarizeCanvasAgentRuns(values: readonly unknown[]) {
   const groups = new Map<string, ReturnType<typeof evaluateCanvasAgentRun>[]>();
   for (const value of values) {
     const run = CanvasAgentEvaluationRunSchema.parse(value);
-    const key = JSON.stringify([run.model.provider, run.model.model, run.model.version, run.imageCapability]);
+    const key = JSON.stringify([run.sourceRevision, run.batchId, run.model.provider, run.model.model, run.model.version, run.imageCapability]);
     const reports = groups.get(key) ?? [];
     reports.push(evaluateCanvasAgentRun(run)); groups.set(key, reports);
   }
@@ -20,7 +20,7 @@ export function summarizeCanvasAgentRuns(values: readonly unknown[]) {
     const completed = reports.filter(report => report.status === 'passed').length;
     const corrections = reports.reduce((sum, report) => sum + report.correctionRetries, 0);
     const firstSubmissionRate = firstAccepted / expected, completionRate = completed / expected, averageCorrections = corrections / expected;
-    return { model: first.model, imageCapability: first.imageCapability, repetitions, expected, observed: reports.length, complete, missing,
+    return { sourceRevision: first.sourceRevision, batchId: first.batchId, model: first.model, imageCapability: first.imageCapability, repetitions, expected, observed: reports.length, complete, missing,
       duplicateIdentities: [...unique].filter(identity => identities.filter(value => value === identity).length > 1),
       firstSubmissionRate, completionRate, averageCorrections,
       passed: complete && firstSubmissionRate >= 0.9 && completionRate >= 0.85 && averageCorrections <= 0.3,

@@ -10,7 +10,7 @@ const actor = { viewId: 'fixture', source: { kind: 'user', conversationId: null,
 const empty: CanvasCommitState = { sequence: 0, maximumRevision: 0, nextCard: 1, nextEdge: 1, elements: [], deletedOrigins: {} };
 const snapshot = (state: CanvasCommitState): CanvasSnapshot => ({ documentId: 'fixture', schemaVersion: 1, sequence: state.sequence, elements: state.elements.map(row => row.element) });
 function evidence(taskId: string, before: CanvasSnapshot, after: CanvasSnapshot) {
-  return { fixtureVersion: 1, taskId, model: { provider: 'fixture', model: 'test', version: '1' }, imageCapability: 'no-vision', repetition: 1,
+  return { fixtureVersion: 1, taskId, sourceRevision: 'a'.repeat(40), batchId: 'test', model: { provider: 'fixture', model: 'test', version: '1' }, imageCapability: 'no-vision', repetition: 1,
     startedAt: 100, finishedAt: 200, before, after, check: checkCanvas(after), documentIds: {}, attempts: [{ requestId: 'write1', validationAccepted: true, correction: false, responseFile: 'response.json' }], commits: [],
     controls: { approvalShown: false, approvalDecision: null, editedCardId: null, renderCount: 0, imageReadCount: 0 }, metrics: {}, evidenceFiles: ['trace.json'] };
 }

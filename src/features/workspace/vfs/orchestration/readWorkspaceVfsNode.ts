@@ -3,7 +3,6 @@
  * @description 按 VFS path / inode 读取节点内容。
  */
 
-import { promises as fsp } from 'fs';
 import type { WorkspaceVfsNode } from '../definitions/workspaceVfsNode';
 import type { WorkspaceVfsError, WorkspaceVfsReadResult, WorkspaceVfsReadSuccess } from '../definitions/workspaceVfsRead';
 import {

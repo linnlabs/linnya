@@ -90,7 +90,7 @@ export function evaluateCanvasAgentRun(value: unknown) {
   else checks.push(assertion('actual-render-and-read', run.controls.renderCount > 0 && run.controls.imageReadCount > 0,
     `renderCount=${run.controls.renderCount}, imageReadCount=${run.controls.imageReadCount}`));
   const automaticPassed = checks.every(check => check.passed), reviewed = run.review?.approved === true;
-  return { fixtureVersion: 1, taskId: run.taskId, model: run.model, imageCapability: run.imageCapability, repetition: run.repetition,
+  return { fixtureVersion: 1, taskId: run.taskId, sourceRevision: run.sourceRevision, batchId: run.batchId, model: run.model, imageCapability: run.imageCapability, repetition: run.repetition,
     evidenceMode: run.evidenceMode, status: !automaticPassed ? 'failed' : run.taskId === 'T8' && run.evidenceMode !== 'network' ? 'offline_baseline' : reviewed ? 'passed' : 'needs_review', firstSubmissionAccepted: run.attempts[0]?.validationAccepted === true,
     correctionRetries: run.attempts.filter(attempt => attempt.correction).length, durationMs: run.finishedAt - run.startedAt, metrics: run.metrics,
     renderCount: run.controls.renderCount, imageReadCount: run.controls.imageReadCount, checks, requiredReview: task.review, review: run.review ?? null,

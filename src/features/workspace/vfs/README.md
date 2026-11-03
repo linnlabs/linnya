@@ -35,3 +35,5 @@ Workspace VFS 是项目节点树的路径投影和文档类型能力调度层。
 ## 插件文档投影
 
 插件通过 `workspaceDocumentProjection` 的窄 SDK 读取活动节点身份和 project 归属，在自己的表中统计或读取正文。节点更新时间仍由 Workspace 的 SQLite adapter 写入，并加入调用方已有事务；VFS 文本快照通过 node-text-snapshot 公开读写能力同步。禁止插件跨域 JOIN 或直接更新节点表。
+
+`projection.ts` 的持久文档地址读取只使用节点行与父链，不装配 system views、格式注册表或正文 reader；独立只读 CLI 可通过公开 SDK 内联这条闭包。完整 listing 仍拥有格式展示名与虚拟节点，两者复用唯一节点行/父链实现，不能为了只读消费引入插件注册与写运行态。节点行在数据库边界按 schema 接纳，schema 与类型共用定义。
