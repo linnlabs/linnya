@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { generateKeyBetween } from 'fractional-indexing';
-import { JsonValueSchema } from '@app/schemas';
-import { assertPortableMarkdownDocument } from '@linnya/markdown-document-core';
+import { validateCanvasTextContent } from './validateCanvasContent';
+import { CanvasReadOnlyFormatError } from '../definitions/canvasContentFailure';
+export { CanvasReadOnlyFormatError };
 import { CanvasElementSchema, type CanvasIntegrityIssue } from '../../../../shared';
 import type { CanvasStoredElement } from '../definitions/canvasCommit';
 import { quarantineCanvasRelations } from './quarantineCanvasRelations';
@@ -9,10 +10,7 @@ const rowSchema = z.object({ element_id: z.string(), element_json: z.string(), f
 const versions = z.record(z.string(), z.number().int().nonnegative());
 const origins = z.record(z.string(), z.string());
 const knownTypes = new Set(['text', 'image', 'document', 'edge']);
-export class CanvasReadOnlyFormatError extends Error {
-  readonly code = 'read_only_format';
-  constructor() { super('画布含本版本无法无损处理的内容，已只读打开；原始元素未修改。请使用支持该格式的版本。'); }
-}
+
 
 /** 解码与隔离属于读取规则，仓储只取原始列；绝不把未知数据改写成占位节点。 */
 export function decodeCanvasPersistedRows(values: readonly unknown[]) {
@@ -30,7 +28,7 @@ export function decodeCanvasPersistedRows(values: readonly unknown[]) {
       const element = CanvasElementSchema.parse(json);
       if (element.id !== stored.element_id) throw new Error('canvas_row_identity_mismatch');
       generateKeyBetween(element.order, null);
-      if (element.type === 'text') assertPortableMarkdownDocument(JsonValueSchema.parse(element.data.content));
+      if (element.type === 'text') validateCanvasTextContent(element.data.content);
       rows.push({ element, fieldVersions: versions.parse(JSON.parse(stored.field_versions_json)), fieldOrigins: origins.parse(JSON.parse(stored.field_origins_json)) });
     } catch (error) {
       // 此边界只调用纯内容/排序验证器；仓储读取和业务副作用不在try内。

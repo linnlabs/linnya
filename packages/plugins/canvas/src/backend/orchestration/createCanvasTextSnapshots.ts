@@ -11,6 +11,11 @@ export function createCanvasTextSnapshots(database: CanvasDatabase) {
   let timer: ReturnType<typeof setTimeout> | null = null;
   function refresh(documentId: string) {
     const snapshot = readCanvasSnapshot(database, documentId);
+    if (snapshot.integrity) {
+      pending.delete(documentId);
+      logger.warn('Canvas只读隔离保留此前可读文本快照', { documentId, issueCount: snapshot.integrity.issues.length });
+      return;
+    }
     saveWorkspaceNodeTextSnapshot({ db: database, nodeId: documentId, contentType: 'text/plain',
       text: projectCanvasSearchText(snapshot, readCanvasProjectionContext(database, snapshot)), sourcePluginId: CANVAS_PLUGIN_ID, sourceNodeType: CANVAS_DOCUMENT_TYPE });
     pending.delete(documentId);

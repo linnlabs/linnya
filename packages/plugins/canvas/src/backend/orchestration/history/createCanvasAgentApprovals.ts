@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { JsonValueSchema } from '@app/schemas';
 import { CanvasCommitRequestSchema, CanvasResolveApprovalRequestSchema, type CanvasAgentCommitResult, type CanvasApprovalResolution, type CanvasCommitResult, type CanvasResolveApprovalRequest } from '../../../shared';
 import type { CanvasDatabase } from '../../definitions/canvasDatabase';
-import { canvasPayloadHash, canvasSourceKey, canvasOperationsPayload, planCanvasCommit, readCanvasCommitState, readCanvasEditingClaims, readCanvasReceipt, type CanvasCommitActor, type CanvasHistoryCommitInput } from '../../features/canvasCommit';
+import { canvasPayloadHash, canvasSourceKey, canvasOperationsPayload, planCanvasCommit, validateCanvasPlanContent, readCanvasCommitState, readCanvasEditingClaims, readCanvasReceipt, type CanvasCommitActor, type CanvasHistoryCommitInput } from '../../features/canvasCommit';
 import { completeCanvasApproval, createCanvasAgentGroup, evaluateCanvasApproval, findCanvasAgentGroup, parseCanvasAgentReceiptResult, readCanvasAgentReceipt, readCanvasApprovalReceipt, readCanvasPendingApproval, saveCanvasAgentCommittedReceipt, readCanvasAgentRequestStatuses, saveCanvasAgentGroup, saveCanvasPendingApproval, clearCanvasPendingApproval, type CanvasPendingBatch } from '../../features/agentChanges';
 
 export function createCanvasAgentApprovals(options: { readonly database: CanvasDatabase; readonly commit: (input: { request: unknown; actor: CanvasCommitActor; now: number; onCommit?: (input: CanvasHistoryCommitInput) => void }) => CanvasCommitResult; readonly pruneGuards: (documentId: string) => void; readonly onPending?: (batch: CanvasPendingBatch) => void }) {
@@ -33,6 +33,7 @@ export function createCanvasAgentApprovals(options: { readonly database: CanvasD
       const state = readCanvasCommitState(options.database, request.documentId);
       const claims = readCanvasEditingClaims(options.database, { documentId: request.documentId, viewId: input.actor.viewId, now: input.now });
       const plan = planCanvasCommit({ state, operations: request.operations, layoutGroups: request.layoutGroups, actor: input.actor, now: input.now, claims, origin: `${sourceKey}:${request.requestId}` });
+      validateCanvasPlanContent(plan);
       const previous = findCanvasAgentGroup(options.database, request.documentId, sourceKey);
       const approval = evaluateCanvasApproval(state, plan, previous);
       if (!approval.reason) return { kind: 'ready' };

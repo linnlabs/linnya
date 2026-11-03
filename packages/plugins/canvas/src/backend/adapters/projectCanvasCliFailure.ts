@@ -2,11 +2,14 @@ import { ZodError } from 'zod';
 import { Logger } from '@plugin/backend/workspaceRuntime';
 import { CanvasCliFailure, formatCanvasCliInputError } from '../features/canvasCli';
 import { CanvasDocumentFailure } from '../features/canvasDocument';
-import { CanvasReadOnlyFormatError } from '../features/canvasCommit';
+import { CanvasReadOnlyFormatError, CanvasContentPolicyError } from '../features/canvasCommit';
 import { CanvasWriteFailure } from '../features/canvasWrite';
 import { CanvasRenderingError } from '../features/canvasRender';
 
 const messages: Readonly<Record<string, string>> = {
+  render_scope_conflict: '卡片scope与九宫格region只能选一个。',
+  render_region_invalid: '请使用九宫格方位，如左上、正中或右下。',
+  canvas_layout_group_overlap: '一张卡只能属于一个排布组，请修正groups。',
   request_id_payload_mismatch: '此request-id已经用于不同内容，请复用原始操作或为新动作使用新编号。',
   canvas_element_not_found: '元素不存在，请重新read/show读取当前编号。',
   canvas_layout_timeout: '布局计算超时，本批没有提交；缩小范围后再试。',
@@ -21,7 +24,7 @@ const messages: Readonly<Record<string, string>> = {
 export function createCanvasCliFailureProjector(logger: Logger) {
   return (error: unknown) => {
     if (error instanceof ZodError || error instanceof CanvasCliFailure) return formatCanvasCliInputError(error);
-    if (error instanceof CanvasDocumentFailure || error instanceof CanvasRenderingError || error instanceof CanvasReadOnlyFormatError) return { code: error.code, message: error.message };
+    if (error instanceof CanvasDocumentFailure || error instanceof CanvasRenderingError || error instanceof CanvasReadOnlyFormatError || error instanceof CanvasContentPolicyError) return { code: error.code, message: error.message };
     if (error instanceof CanvasWriteFailure) return { code: error.code, message: error.message, operation: error.operation, field: error.field };
     if (error instanceof SyntaxError) return { code: 'invalid_json', message: 'ops-file必须是UTF-8 JSON操作数组，请修正语法后再提交。' };
     if (error instanceof Error && messages[error.message]) return { code: error.message, message: messages[error.message] };

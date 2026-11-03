@@ -1,6 +1,6 @@
 import { CanvasCommitRequestSchema, CanvasUndoRequestSchema, type CanvasCommitResult, type CanvasUndoRequest, type CanvasUndoResult } from '../../../shared';
 import type { CanvasDatabase } from '../../definitions/canvasDatabase';
-import { commitCanvasOperations, commitCanvasTransition, planCanvasCommit, readCanvasCommitState, readCanvasEditingClaims, readCanvasSequence, type CanvasCommitActor, type CanvasCommitPorts, type CanvasHistoryCommitInput, type CanvasTransitionInput } from '../../features/canvasCommit';
+import { commitCanvasOperations, commitCanvasTransition, planCanvasCommit, validateCanvasPlanContent, readCanvasCommitState, readCanvasEditingClaims, readCanvasSequence, type CanvasCommitActor, type CanvasCommitPorts, type CanvasHistoryCommitInput, type CanvasTransitionInput } from '../../features/canvasCommit';
 import type { CanvasHistoryEntry, CanvasUserHistoryScope } from '../../shared/history/definitions/canvasHistory';
 import { canvasDeletionReservations, readCanvasAgentGroups, recordCanvasAgentCommit, reviewCanvasAgentElement } from '../../features/agentChanges';
 import { createCanvasGroupReview } from './createCanvasGroupReview';
@@ -40,7 +40,8 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
     const request = CanvasCommitRequestSchema.parse(input.request);
     const state = readCanvasCommitState(options.database, request.documentId);
     const claims = readCanvasEditingClaims(options.database, { documentId: request.documentId, viewId: input.actor.viewId, now: input.now });
-    return planCanvasCommit({ state, claims, actor: input.actor, now: input.now, operations: request.operations, layoutGroups: request.layoutGroups, origin: 'preview', reservedRectangles: reservedRectangles(state, { documentId: request.documentId, requestId: request.requestId, actor: input.actor, now: input.now }) });
+    const plan = planCanvasCommit({ state, claims, actor: input.actor, now: input.now, operations: request.operations, layoutGroups: request.layoutGroups, origin: 'preview', reservedRectangles: reservedRectangles(state, { documentId: request.documentId, requestId: request.requestId, actor: input.actor, now: input.now }) });
+    validateCanvasPlanContent(plan); return plan;
   }
   function recordUserHistory(history: CanvasHistoryCommitInput, groupId: string | null = null) {
     if (history.context.actor.source.kind !== 'user' || !history.plan.changes.length) return undefined;
