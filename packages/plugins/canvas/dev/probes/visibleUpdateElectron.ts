@@ -7,8 +7,8 @@ const output = process.argv[2]; if (!output) throw new Error('Visible-update out
 app.setPath('userData', path.join(output, 'profile')); app.on('window-all-closed', () => {});
 async function run() {
   await app.whenReady(); if (process.platform === 'darwin') app.setActivationPolicy('accessory');
-  const win = new BrowserWindow({ show: false, width: 1400, height: 900, useContentSize: true,
-    webPreferences: { sandbox: true, contextIsolation: true, offscreen: true, backgroundThrottling: false, enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
+  const win = new BrowserWindow({ show: false, width: 2800, height: 1800, useContentSize: true,
+    webPreferences: { sandbox: true, contextIsolation: true, offscreen: true, zoomFactor: 2, backgroundThrottling: false, enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
   try {
     win.webContents.on('console-message', details => { if (details.level === 'error') console.error(details.message); });
     await win.loadFile(path.join(output, 'index.html'));

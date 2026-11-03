@@ -19,9 +19,9 @@ async function prepare() {
   const failures: string[] = [], raster = createCanvasRasterPresentation({ host: staging, kernel, suspendWhenHidden: false,
     readAppearance: () => appearance, reportFailure: message => failures.push(message) });
   cards = Array.from({ length: 500 }, (_, i) => CanvasCardSchema.parse({ id: `c${i + 1}`, type: 'text', schemaVersion: 1, revision: 1,
-    order: String(i).padStart(6, '0'), x: i % 25 * 112, y: Math.floor(i / 25) * 80, width: 100, height: 55,
+    order: String(i).padStart(6, '0'), x: i % 25 * 104, y: Math.floor(i / 25) * 88, width: 88, height: 72,
     locked: false, color: 'white', parentId: null, createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0,
-    data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: `卡${i + 1}` }] }] } } }));
+    data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: `卡 ${String(i + 1).padStart(3, '0')}` }] }] } } }));
   const ids = cards.map(card => card.id);
   const settle = async (poll: boolean) => {
     const started = performance.now(); let polls = 0;
@@ -47,7 +47,7 @@ async function prepare() {
       bodyMs: performance.now() - started, scene: kernel.readStats(), queue: raster.readStats(), failures };
   };
   dispose = () => { raster.dispose(); kernel.destroy(); apply = undefined; };
-  return { camera: kernel.readCamera(), scene: kernel.readStats(), queue: raster.readStats() };
+  return { viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio }, camera: kernel.readCamera(), scene: kernel.readStats(), queue: raster.readStats() };
 }
 Object.defineProperties(window, {
   prepareVisibleUpdateProbe: { value: prepare },
