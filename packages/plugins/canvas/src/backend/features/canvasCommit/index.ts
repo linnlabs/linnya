@@ -12,3 +12,4 @@ export type { CanvasCommitState, CanvasStoredElement, CanvasEditingClaim } from 
 export { readCanvasCommitState, readCanvasEditingClaims, readCanvasReceipt } from './persistence/canvasRepository';
 export { planCanvasCommit } from './functions/planCanvasCommit';
 export { canvasSourceKey, canvasPayloadHash, canvasOperationsPayload } from './functions/canvasRequestIdentity';
+export { CanvasReadOnlyFormatError } from './functions/decodeCanvasPersistedRows';

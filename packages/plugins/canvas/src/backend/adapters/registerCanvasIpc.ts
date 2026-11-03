@@ -8,6 +8,7 @@ import {
   CanvasReadImageRequestSchema,
 } from '../../shared';
 import type { CanvasDocumentRuntime } from '../orchestration/createCanvasDocumentRuntime';
+import { CanvasReadOnlyFormatError } from '../features/canvasCommit';
 import { CanvasDocumentFailure } from '../features/canvasDocument';
 import type { createCanvasImageRuntime } from '../orchestration/createCanvasImageRuntime';
 import { readCanvasClipboard, readCanvasSelectionContext } from '../orchestration/readCanvasSelectionContext';
@@ -43,7 +44,7 @@ export function registerCanvasIpc(database: CanvasDatabase, runtime: CanvasDocum
       assertPluginRuntimeEnabled({ pluginId: CANVAS_PLUGIN_ID, pluginName: 'Canvas', action: '操作画布' });
       try { return { success: true, data: await handlers[channel](payload) }; }
       catch (error) {
-        const code = error instanceof z.ZodError ? 'validation' : error instanceof CanvasDocumentFailure && error.code === 'document_missing' ? 'missing' : 'crash';
+        const code = error instanceof z.ZodError || error instanceof CanvasReadOnlyFormatError ? 'validation' : error instanceof CanvasDocumentFailure && error.code === 'document_missing' ? 'missing' : 'crash';
         return { success: false, error: error instanceof Error ? error.message : String(error), diagnostic: { code, pluginId: CANVAS_PLUGIN_ID, channel } };
       }
     });

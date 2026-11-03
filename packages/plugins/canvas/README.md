@@ -68,3 +68,9 @@ CLI 的 `payloadIdentity` 由可信编排从原始 operations/options 构造，�
 布局 `diagnostics` 描述本次计算窗口；命中正式请求回执时返回空诊断数组，提交序号、分配ID和逐操作结果仍复用原回执，不重新测量或运行布局。
 
 Standalone `entry.command` 只提供 read/show/find/neighbors/region/check，显式指定 `--project`，可传 `--database`，用只读连接消费相同查询规则。help 不加载原生数据库；该制品不装配写入协调器、Agent审批或历史运行态。Agent facade 拒绝上述独立宿主参数；render 继续复用 App 已注册的正式 Hidden Worker。
+
+## 格式与损坏隔离
+
+当前内容格式为1。读取时仅把可验证的元素交给显示投影；未知类型、非法正文/字段版本/排序、坏分组及依赖隔离卡片的线保留原始SQLite行，并返回 `integrity` 诊断。出现任何此类问题或更高格式版本时整张画布只读，当前提交、撤销、批准与恢复共享提交入口并拒绝写入，避免老版本剥离未来字段。隔离只影响展示，不写占位节点、不回存过滤后的快照。未来增加真正内容格式迁移时，必须先用版本历史保留迁移前状态。
+
+兼容策略参考 [Excalidraw对未知属性保留的修复](https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/CHANGELOG.md) 与 [tldraw的schema迁移owner约定](https://github.com/tldraw/tldraw/blob/main/packages/tlschema/README.md)；本插件以只读和原始行保留避免静默损失。
