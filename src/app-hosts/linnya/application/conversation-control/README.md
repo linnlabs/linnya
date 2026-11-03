@@ -14,7 +14,7 @@
 | `projects`（`ProjectLifecyclePort` 的 list/get/create/update/deleteEmpty 子集） | 查询、修改与空项目删除；不含完整删除、默认项目初始化和数据库连接 |
 | `ConversationControlModelCatalogPort` | 查询安全模型投影，并按统一运行可用性规则校验显式 Chat/图片模型 |
 | `ConversationControlHistoryPort` | 会话列表、消息窗口、指定 run 最终回答、会话 Agent 选择 |
-| `ConversationControlToolCatalogPort` | 读取当前获准 CLI 工具的正式描述与参数 schema |
+| `ConversationControlToolCatalogPort` | 读取当前获准 CLI 工具的正式描述与参数 schema，并判断一次调用是否需要模型输入 |
 | `CommandApprovalControlPort` | 从唯一Commands owner读取审批投影、按精确身份提交单次回复 |
 | `AuditControlPort` | 查询/修改当前源码实例默认档位；生产身份拒绝 |
 | `ExecutionAuditExportUseCase` | 关联 RunRegistry、EventStore、Command Audit 与 Telemetry 的安全只读执行摘要 |
@@ -51,6 +51,7 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 - `tools` 默认开放五个 Workspace 工具：`list_files / read_file / grep / write_file / edit_file`。`web_access` 临时开放或关闭 `web_search / web_read / tool_output_read`；状态归当前 use case 实例，Host 重启重置为关闭，不进入用户设置。`list / describe` 读取真实 Tool registry schema；`call` 必须绑定项目或已有 Conversation，并复用正式 Flow admission 与 ToolNode 执行。
 - 只给项目时创建前端可见的新 Conversation；只给 Conversation 时从历史 owner 解析项目；同时提供时必须一致。Workspace locator 本身不携带项目身份，禁止按当前前端页面或文件存在性猜测作用域。
 - Host 工具请求使用 `yield_after_batch`：完整工具批次结算后结束 run，不调用 LLM。工具 decision/output、权限、审计、pending revision 与 UI projection 仍走普通工具链，不能在本 feature 复制工具执行逻辑。
+- 这类 run 没有模型，ToolNode 无法核对模型能否接收工具结果图片。`call` 在 Flow 接纳前经 `ConversationControlToolCatalogPort.requiresModelInput` 读取工具的正式声明（参数决定的动态要求优先于静态要求）：需要模型看图的调用以 `capability_unavailable` 拒绝，不创建会话或 run；不需要模型输入的参数照常执行，例如 `read_file` 读 `workspace:` 文本。这只约束无模型的 CLI 入口，Agent 运行的准入与降级不变。
 - Web 开关在提交 Flow 前检查；关闭后不接纳新 Web 调用，已接纳的 run 不被暗中取消。普通 Agent 不受此开关影响。CLI 拒绝 `deep_search=true`，保证此入口不隐式启动模型子运行；外部 Agent 自行编排普通搜索与阅读。`tool_output_read` 必须沿用原会话，以保留 blob 归属。
 
 ### 命令审批

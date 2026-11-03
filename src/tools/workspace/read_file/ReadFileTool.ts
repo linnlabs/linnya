@@ -11,6 +11,7 @@ import {
   WORKSPACE_READ_FILE_MAX_LIMIT,
   WorkspaceReadFileArgsSchema,
   WorkspaceReadFileResultSchema,
+  WorkspaceFileLocatorSchema,
 } from '@app/schemas';
 import { readFileForTool } from '../../../app-hosts/linnya/application/file-read';
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '../../types';
@@ -27,6 +28,17 @@ export class ReadFileTool extends BaseTool {
   // 读文本与读图共用一个工具；模型收不到工具结果图片时读图降级为元数据，不能让 run 失败。
   readonly modelInputRequirement = READ_FILE_MODEL_INPUT_REQUIREMENT;
   readonly modelInputDelivery = 'when_supported' as const;
+  /**
+   * 每次调用的模型输入要求只看参数：Workspace 文档（workspace: locator 或 inode）只返回文本或
+   * DocumentView，不会产出图片，因此不要求模型能力；conversation:/file: 可能按 magic bytes 读成图片，
+   * 保留图片要求。ToolNode 只对有要求的调用检查“最近一次成功的模型”，所以无模型的 Host 直接调用
+   * （CLI tools call）读 Workspace 文本不会因缺少模型失败，Agent 读图的准入与降级保持不变。
+   * 必须是确定性规则、不做 I/O；locator 非法时由参数校验先拒绝。
+   */
+  readonly resolveModelInputRequirement = (args: Record<string, unknown>) =>
+    typeof args.locator === 'string' && !WorkspaceFileLocatorSchema.safeParse(args.locator).success
+      ? READ_FILE_MODEL_INPUT_REQUIREMENT
+      : undefined;
 
   get description() {
     return [

@@ -20,6 +20,7 @@ import {
   type ConversationControlUseCasePorts,
 } from '..';
 import type { ExecutionAuditExport } from '../../execution-audit-export';
+import { ReadFileTool } from 'src/tools/workspace/read_file/ReadFileTool';
 
 function shellApproval(runId = 'run-child') {
   const identity = {
@@ -285,6 +286,8 @@ function contextCompactionAuditFixture(): ExecutionAuditExport['contextCompactio
   };
 }
 
+const readFileTool = new ReadFileTool();
+
 function fixture(
   initialRuns: ConversationControlRunRecord[] = [],
   options: { auditAllowed?: boolean } = {}
@@ -473,6 +476,11 @@ function fixture(
           description: `${name} description`,
           parameters: { type: 'object', properties: {}, additionalProperties: false },
         }));
+      },
+      // read_file 使用真实工具声明，其余 CLI 工具不需要模型输入。
+      requiresModelInput(toolName, args) {
+        return toolName === 'read_file'
+          && readFileTool.resolveModelInputRequirement({ ...args })?.requires_image_input === true;
       },
     },
     audit: {
@@ -686,6 +694,24 @@ describe('conversation-control use case', () => {
         },
       },
     });
+  });
+
+  it('CLI 没有模型：读 Workspace 文本照常接纳，可能交给模型看图的读取在 Flow 前明确拒绝', async () => {
+    const test = fixture();
+    const call = { schema_version: 1, command: 'tools', action: 'call', tool_name: 'read_file',
+      project_id: 'project-1' } as const;
+    await test.useCase.tools({ ...call, args: { locator: 'workspace:/notes.md' } });
+    test.setRuns([run('completed')]);
+    await test.useCase.tools({ ...call, args: { inode: 'inode-notes' } });
+    test.setRuns([run('completed')]);
+    expect(test.startRequests).toHaveLength(2);
+
+    for (const locator of ['conversation:/slide.png', 'file:///tmp/notes.md']) {
+      const rejected = test.useCase.tools({ ...call, args: { locator } });
+      await expect(rejected).rejects.toMatchObject({ code: 'capability_unavailable' });
+      await expect(rejected).rejects.toThrow(/run without a model/);
+    }
+    expect(test.startRequests).toHaveLength(2);
   });
 
   it('已有会话继承项目，并拒绝项目不一致或未绑定项目的会话', async () => {

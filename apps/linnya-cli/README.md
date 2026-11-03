@@ -287,6 +287,10 @@ pnpm linnya:cli tools call write_file \
 `offset_chars/max_chars`。CLI 不重新解释这些字段，完整合同以
 `tools describe read_file` 返回的 App 当前 schema 为准。
 
+`tools call` 不运行模型，因此不要求 Workspace 配置模型。`read_file` 读 `workspace:` locator 或 inode 不需要模型；
+`conversation:` 与 `file:` 可能读成交给模型看的图片，Host 在创建会话前以 `capability_unavailable`
+（退出码 7）拒绝，并说明原因。需要模型查看这类文件时，改用 `send` 让接收工具结果图片的模型读取。
+
 作用域规则只有三条：
 
 - 只传 `--project`：创建一个绑定该项目、前端可见的新 Conversation，并返回
