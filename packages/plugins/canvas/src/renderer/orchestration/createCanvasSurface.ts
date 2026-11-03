@@ -80,6 +80,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   const createTree = async (kind: 'child' | 'sibling') => { if (!layout || !(await finish())) return; const plan = layout.planTree(selection.ids.value, kind); await createText(plan.point, '', plan.from, plan.options); };
   async function handleIntent(intent: CanvasKernelIntent) {
     switch (intent.kind) {
+      case 'preview-changed': refreshView(); return;
       case 'render-status': state.setRenderNotice(intent.message); return;
       case 'select-edge': await connections.select(intent.id); return;
       case 'select': await select(intent.ids, intent.additive); return;
