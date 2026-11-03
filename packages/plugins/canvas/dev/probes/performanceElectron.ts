@@ -65,13 +65,15 @@ async function run() {
         if (intents.movedCards !== target.selected) throw new Error(`native_drag_did_not_finish:${intents.movedCards}:${target.selected}`);
         drag = { target, frames, intents };
       }
-      const report = { count, clustered, initial, pan, close, bodyLoad, bodySettled, zoom, zoomSettled, drag };
+      await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
+      const counts: unknown = await win.webContents.executeJavaScript('window.verifyCanvasDeterministicCounts()');
+      const report = { count, clustered, initial, pan, close, bodyLoad, bodySettled, zoom, zoomSettled, drag, counts };
       reports.push(report); console.log(JSON.stringify(report));
     }
     const idleAfter = powerMonitor.getSystemIdleState(1), display = screen.getDisplayMatching(win.getBounds());
     const validDesktopRun = unlocked(idleAfter) && !lockEvents.some(event => event.event === 'lock');
     const validHardwareRun = !offscreenProfile && validDesktopRun;
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: 'production-dom-v3', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1' }, startedAt, endedAt: new Date().toISOString(),
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: 'production-dom-v4', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1' }, startedAt, endedAt: new Date().toISOString(),
       renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',
       versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
       idleBefore, idleAfter, lockEvents, validHardwareRun, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),

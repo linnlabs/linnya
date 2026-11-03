@@ -48,11 +48,11 @@ async function prepare(count: number, clustered: boolean) {
   const staging = document.createElement('div'); staging.className = 'canvas-raster-staging';
   document.body.append(host, staging); failures = [];
   kernel = await createPixiCanvasKernel({ host, resolution: devicePixelRatio, onIntent: (intent) => {
-    if (intent.kind === 'camera') presentation?.refresh();
+    if (intent.kind === 'camera' || intent.kind === 'preview-changed') presentation?.refresh();
     if (intent.kind === 'select') kernel?.setSelection(intent.ids);
     if (intent.kind === 'move') movedCards = intent.ids.length;
   } });
-  presentation = createCanvasRasterPresentation({ host: staging, kernel, readAppearance: () => appearance, reportFailure: (message) => failures.push(message) });
+  presentation = createCanvasRasterPresentation({ host: staging, kernel, suspendWhenHidden: false, readAppearance: () => appearance, reportFailure: (message) => failures.push(message) });
   const data = fixture(count, clustered);
   elements = data; movedCards = 0;
   const cards = data.filter((element): element is CanvasCard => element.type !== 'edge');
@@ -112,5 +112,26 @@ Object.defineProperties(window, {
   prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start },
   finishCanvasPerformanceCollection: { value: finish }, closeCanvasPerformanceView: { value: closeView },
   waitForCanvasPerformanceBody: { value: waitForBody },
-  prepareCanvasPerformanceDrag: { value: prepareDrag }, finishCanvasPerformanceDrag: { value: () => ({ movedCards, selected: kernel?.readSelection().length }) },
+  prepareCanvasPerformanceDrag: { value: prepareDrag }, finishCanvasPerformanceDrag: { value: () => { const result = { movedCards, selected: kernel?.readSelection().length }; kernel?.clearDragPreview(); presentation?.refresh(); return result; } },
 });
+
+// 以fixture事实作独立线性oracle；不借用生产索引来证明索引自己正确。
+function deterministicCounts() {
+  if (!kernel || !presentation) throw new Error('probe_not_prepared');
+  const camera = kernel.readCamera(), cards = elements.filter((element): element is CanvasCard => element.type !== 'edge');
+  const viewport = { x: -camera.x / camera.zoom, y: -camera.y / camera.zoom, width: innerWidth / camera.zoom, height: innerHeight / camera.zoom };
+  const expected = cards.filter(card => card.x <= viewport.x + viewport.width && card.x + card.width >= viewport.x
+    && card.y <= viewport.y + viewport.height && card.y + card.height >= viewport.y).map(card => card.id).sort();
+  const actual = kernel.visibleCards().map(card => card.id).sort();
+  const probes = cards.slice(0, 20).map(card => ({ x: card.x + card.width / 2, y: card.y + card.height / 2 }));
+  const hits = probes.map(point => {
+    const expected = cards.slice().reverse().find(card => point.x >= card.x && point.x <= card.x + card.width && point.y >= card.y && point.y <= card.y + card.height);
+    return { expected: expected?.id ?? null, actual: kernel?.hitTest(point)?.id ?? null, candidates: kernel?.readStats().spatialHitCandidates };
+  });
+  const regions = kernel.renderableCards().flatMap(card => kernel?.readVisibleCardRegions(card.id).map(region => ({ card, region })) ?? []);
+  const invalidRegions = regions.filter(({ card, region }) => region.width <= 0 || region.height <= 0 || region.x < 0 || region.y < 0
+    || region.x + region.width > card.width + 1e-8 || region.y + region.height > card.height + 1e-8).length;
+  return { expectedVisibleIds: expected, actualVisibleIds: actual, hits, invalidRegions, visibleRegions: regions.length,
+    scene: kernel.readStats(), queue: presentation.readStats() };
+}
+Object.defineProperty(window, 'verifyCanvasDeterministicCounts', { value: deterministicCounts });
