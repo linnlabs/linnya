@@ -41,6 +41,7 @@ void main() {
   finalColor = vec4(uLineColor * alpha, alpha);
 }`;
 const program = GlProgram.from({ vertex, fragment, name: 'canvas-screen-width-line' });
+const lineVertices = [[0, 1], [0, -1], [1, 1], [1, 1], [0, -1], [1, -1]] as const;
 
 /** 世界顶点只在内容/远景档变化时上传；相机与1 CSS像素宽度由 uniform 计算。 */
 export class CanvasLineMesh {
@@ -66,17 +67,21 @@ export class CanvasLineMesh {
       if (this.ownsGeometry) this.mesh.geometry.destroy(true);
       this.mesh.geometry = cached.geometry; this.mesh.visible = cached.visible; this.ownsGeometry = false; return;
     }
-    const positions: number[] = [], normals: number[] = [], offsets: number[] = [], sides: number[] = [];
-    const distances: number[] = [], patterns: number[] = [];
+    const segments = entries.reduce((sum, entry) => sum + Math.max(0, entry.geometry.points.length - 1)
+      + (entry.geometry.points.length > 1 ? entry.edge.direction === 'both' ? 4 : entry.edge.direction === 'none' ? 0 : 2 : 0), 0);
+    const positions = new Float32Array(segments * 12), normals = new Float32Array(segments * 12), offsets = new Float32Array(segments * 12);
+    const sides = new Float32Array(segments * 6), distances = new Float32Array(segments * 6), patterns = new Float32Array(segments * 6);
+    let cursor = 0;
     const line = (a: CanvasPoint, b: CanvasPoint, offsetA: CanvasPoint = { x: 0, y: 0 }, offsetB: CanvasPoint = { x: 0, y: 0 }, start = 0, dashed = false) => {
       const dx = b.x - a.x || offsetB.x - offsetA.x, dy = b.y - a.y || offsetB.y - offsetA.y;
       const length = Math.hypot(dx, dy);
       if (!length) return;
-      for (const [endpoint, side] of [[0, 1], [0, -1], [1, 1], [1, 1], [0, -1], [1, -1]]) {
+      for (const [endpoint, side] of lineVertices) {
         const point = endpoint ? b : a, offset = endpoint ? offsetB : offsetA;
-        positions.push(point.x, point.y); normals.push(-dy / length * side, dx / length * side);
-        offsets.push(offset.x, offset.y); sides.push(side);
-        distances.push(start + (endpoint ? length : 0)); patterns.push(dashed ? 1 : 0);
+        positions[cursor * 2] = point.x; positions[cursor * 2 + 1] = point.y;
+        normals[cursor * 2] = -dy / length * side; normals[cursor * 2 + 1] = dx / length * side;
+        offsets[cursor * 2] = offset.x; offsets[cursor * 2 + 1] = offset.y; sides[cursor] = side;
+        distances[cursor] = start + (endpoint ? length : 0); patterns[cursor] = dashed ? 1 : 0; cursor++;
       }
     };
     const arrow = (tip: CanvasPoint, before: CanvasPoint) => {
@@ -97,14 +102,14 @@ export class CanvasLineMesh {
     }
     const previous = this.mesh.geometry;
     this.mesh.geometry = new Geometry({ attributes: {
-      aPosition: { buffer: new Float32Array(positions), format: 'float32x2' },
-      aNormal: { buffer: new Float32Array(normals), format: 'float32x2' },
-      aOffset: { buffer: new Float32Array(offsets), format: 'float32x2' },
-      aSide: { buffer: new Float32Array(sides), format: 'float32' },
-      aDistance: { buffer: new Float32Array(distances), format: 'float32' },
-      aPattern: { buffer: new Float32Array(patterns), format: 'float32' },
+      aPosition: { buffer: positions.subarray(0, cursor * 2), format: 'float32x2' },
+      aNormal: { buffer: normals.subarray(0, cursor * 2), format: 'float32x2' },
+      aOffset: { buffer: offsets.subarray(0, cursor * 2), format: 'float32x2' },
+      aSide: { buffer: sides.subarray(0, cursor), format: 'float32' },
+      aDistance: { buffer: distances.subarray(0, cursor), format: 'float32' },
+      aPattern: { buffer: patterns.subarray(0, cursor), format: 'float32' },
     } });
-    this.mesh.visible = positions.length > 0;
+    this.mesh.visible = cursor > 0;
     if (this.ownsGeometry) previous.destroy(true);
     this.ownsGeometry = !cacheKey;
     if (cacheKey) this.cached.set(cacheKey, { geometry: this.mesh.geometry, visible: this.mesh.visible });

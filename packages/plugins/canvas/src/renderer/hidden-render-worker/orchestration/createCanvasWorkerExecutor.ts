@@ -1,7 +1,8 @@
 import type { CanvasWorkerRequest, CanvasWorkerResult } from '../../../shared/rendering';
 import type { CanvasCard } from '../../../shared';
-import { createPixiCanvasKernel, type CanvasRasterTile } from '../../kernel';
+import { createPixiCanvasKernel } from '../../kernel';
 import { createHtmlCardRasterizer, splitCardRasterRegions } from '../../capabilities/textRasterization';
+import { createCanvasCardRasterBatch } from '../../features/cardRendering';
 import { createCardSurface } from '../functions/createCardSurface';
 import { createCanvasLayoutCache, measureCanvasCards, type CanvasLayoutCache } from '../functions/measureCanvasCards';
 
@@ -22,24 +23,23 @@ async function executeCanvasWorkerRequest(request: CanvasWorkerRequest, signal: 
     try {
       kernel.setElements(request.snapshot.elements);
       kernel.setDocumentTitles(new Map(Object.entries(request.documents).map(([id, presentation]) => [id, presentation.title])));
+      kernel.setThumbnailCards(new Set(request.snapshot.elements.filter((element): element is CanvasCard => element.type === 'document' && request.documents[element.data.documentId]?.keepThumbnail === true).map(card => card.id)));
       kernel.setAppearance({ dark: request.theme === 'dark', material: request.material, overview: 'titles' });
       kernel.fit(request.region ? [request.region] : request.snapshot.elements.filter((element): element is CanvasCard => element.type !== 'edge'));
       const camera = kernel.readCamera();
-      // 远景按产品规则显示标题；近景必须画正式正文，图片始终保留图像。
-      for (const card of kernel.renderableCards()) {
+      const cards = kernel.rasterCards();
+      const renderBatch = createCanvasCardRasterBatch({ rasterizer, createContent: async card => createCardSurface(card, request) });
+      const scale = Math.max(0.25, camera.zoom * request.dpr);
+      // 前后台使用同一正文测高、裁切提示和批量paint，不另写一套逐片正文路径。
+      for (let start = 0; start < cards.length; start += 32) {
         signal.throwIfAborted();
-        if (camera.zoom < 0.3 && card.type !== 'image') continue;
-        const element = createCardSurface(card, request);
-        const scale = Math.max(0.25, camera.zoom * request.dpr);
-        const tiles: CanvasRasterTile[] = [];
-        const regions = splitCardRasterRegions(kernel.readVisibleCardRegions(card.id), scale);
-        try {
-          for (const { x, y, width, height } of regions) {
-            const raster = await rasterizer.rasterize({ element, width: card.width, tileWidth: width, height, scale, offsetX: x, offsetY: y }, signal);
-            tiles.push({ bitmap: raster.bitmap, x, y, width, height });
-          }
-        } catch (error) { tiles.forEach((tile) => tile.bitmap.close()); throw error; }
-        kernel.setRasterTiles(card.id, card.revision, `worker:${request.snapshot.sequence}:${request.theme}:${scale}`, tiles);
+        const batch = cards.slice(start, start + 32);
+        const results = await renderBatch(batch.map(card => ({ card, dark: request.theme === 'dark', scale, regions: splitCardRasterRegions(kernel.readVisibleCardRegions(card.id), scale) })), signal);
+        const failed = results.find(result => result.kind === 'failed');
+        if (failed) { for (const result of results) if (result.kind === 'ready') for (const tile of result.tiles) tile.bitmap.close(); throw failed.error; }
+        results.forEach((result, index) => {
+          if (result.kind === 'ready') kernel.setRasterTiles(batch[index].id, batch[index].revision, `worker:${request.snapshot.sequence}:${request.theme}:${scale}`, result.tiles);
+        });
       }
       signal.throwIfAborted();
       const dataUrl = await kernel.captureImage(request.format, request.quality);

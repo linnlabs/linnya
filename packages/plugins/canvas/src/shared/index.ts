@@ -1,6 +1,8 @@
 export * from './model/definitions/canvasElement';
 export * from './model/functions/readCanvasContent';
 export * from './model/functions/canvasCardSizing';
+export { readCanvasCardPalette, readCanvasCardCssPalette } from './appearance/functions/readCanvasCardPalette';
+export type { CanvasCardPalette, CanvasCardCssPalette } from './appearance/definitions/canvasCardPalette';
 export type * from './geometry/definitions/canvasGeometry';
 export { canvasBounds, canvasRectanglesOverlap, canvasScreenToWorld, canvasWorldToScreen } from './geometry/functions/canvasGeometry';
 export { createCanvasEdgeLayout, layoutCanvasEdges, resolveCanvasEdgeGeometry } from './geometry/functions/canvasEdgeGeometry';

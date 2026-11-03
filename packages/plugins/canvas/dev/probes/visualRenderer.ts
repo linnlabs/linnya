@@ -1,4 +1,4 @@
-import { CanvasCardSchema, CanvasEdgeSchema } from '../../src/shared';
+import { CanvasCardSchema, CanvasEdgeSchema, readCanvasCardCssPalette, type CanvasColor } from '../../src/shared';
 import { CanvasRenderRequestSchema } from '../../src/shared/rendering';
 import { createCardSurface } from '../../src/renderer/hidden-render-worker/functions/createCardSurface';
 import { createHtmlCardRasterizer } from '../../src/renderer/capabilities/textRasterization';
@@ -22,14 +22,15 @@ const content = { type: 'doc', content: [
     { type: 'text', text: '下划线', marks: [{ type: 'underline' }] }] },
   { type: 'blockMath', attrs: { latex: '\\frac{a}{b}' } },
   { type: 'paragraph', content: [{ type: 'text', text: '正式标签：' }, { type: 'documentReference', attrs: { documentId: 'visual-document', referenceId: 'stable-tag' } }] },
+  { type: 'paragraph', content: [{ type: 'text', text: '作者保留的红色', marks: [{ type: 'textStyle', attrs: { color: '#cc0000' } }] }] },
 ] };
 
 let previousKernel: CanvasKernel | null = null;
-async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card') {
+async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', color: CanvasColor = 'white') {
   previousKernel?.destroy(); previousKernel = null;
   document.body.replaceChildren();
   document.body.style.cssText = 'margin:0;background:#888';
-  const card = CanvasCardSchema.parse({ id: 'c1', type: 'text', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white',
+  const card = CanvasCardSchema.parse({ id: 'c1', type: 'text', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color,
     createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, x: 0, y: 0, width: 360, height: 500, parentId: null,
     data: { contentVersion: 1, content } });
   const request = CanvasRenderRequestSchema.parse({ protocol: 1, requestId: 'visual', kind: 'render', theme, material,
@@ -37,7 +38,7 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card') {
     quality: 1, format: 'png', snapshot: { schemaVersion: 1, documentId: 'visual', sequence: 1, elements: [card] }, assets: {}, documents: { 'visual-document': { title: '同源标签', status: 'available' } } });
   const reference = createCardSurface(card, request);
   if (!reference.querySelector('.katex') || !reference.querySelector('.katex-display')) throw new Error('visual_math_is_not_formal_katex');
-  const background = theme === 'light' ? '#fbfaf5' : '#323631';
+  const background = readCanvasCardCssPalette(card.color, theme === 'dark').paper;
   reference.style.cssText += `;position:absolute;left:20px;top:20px;width:360px;height:500px;background:${background}`;
   const staging = document.createElement('div');
   document.body.append(reference, staging);
@@ -110,3 +111,22 @@ async function mapPanVisual() {
   return { before, after: await kernel.captureImage('png'), dpr: devicePixelRatio, dx: 20, dy: 10 };
 }
 Object.defineProperty(window, 'prepareCanvasMapPanVisualProbe', { value: mapPanVisual });
+
+async function thumbnailVisual() {
+  previousKernel?.destroy(); document.body.replaceChildren();
+  const host = document.createElement('div'); host.style.cssText = 'width:900px;height:600px'; document.body.append(host);
+  const kernel = await createPixiCanvasKernel({ host, width: 900, height: 600, resolution: devicePixelRatio }); previousKernel = kernel;
+  const common = { schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white', createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0,
+    y: 0, width: 1000, height: 600, parentId: null };
+  const cards = [CanvasCardSchema.parse({ ...common, id: 'c1', x: 0, type: 'image', data: { assetId: 'image', caption: '', alt: '', crop: null } }),
+    CanvasCardSchema.parse({ ...common, id: 'c2', x: 1500, type: 'document', data: { documentId: 'thumbnail' } }),
+    CanvasCardSchema.parse({ ...common, id: 'c3', x: 3000, type: 'document', data: { documentId: 'title' } })];
+  kernel.setElements(cards); kernel.setThumbnailCards(new Set([cards[1].id])); kernel.setCamera({ x: 100, y: 100, zoom: 0.1 });
+  const picture = new OffscreenCanvas(20, 20), context = picture.getContext('2d'); if (!context) throw new Error('thumbnail_fixture_context_missing');
+  context.fillStyle = '#e000cc'; context.fillRect(0, 0, 10, 20); context.fillStyle = '#00c8ee'; context.fillRect(10, 0, 10, 20);
+  for (const card of cards) kernel.setBitmap(card.id, card.revision, 'thumbnail', await createImageBitmap(picture));
+  const titles = await kernel.captureImage('png'); kernel.setAppearance({ dark: false, material: 'paper', overview: 'thumbnails' });
+  const thumbnails = await kernel.captureImage('png');
+  return { titles, thumbnails, dpr: devicePixelRatio };
+}
+Object.defineProperty(window, 'prepareCanvasThumbnailVisualProbe', { value: thumbnailVisual });

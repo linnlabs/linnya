@@ -103,6 +103,7 @@ export class CanvasLines {
   }
   setCamera(camera: CanvasCamera, width: number, height: number, resolution: number): void {
     this.camera = camera; this.width = width; this.height = height; this.resolution = resolution;
+    if (this.previewIds) this.movingDirty = true;
     const far = camera.zoom < 0.15;
     if (far !== this.far) { this.far = far; this.key = ''; }
     this.update();
@@ -128,8 +129,8 @@ export class CanvasLines {
       this.base.setGeometry(stationary, entries.length <= 3000 && !this.previewIds ? `${this.far}` : undefined); this.ghost.shareGeometry(this.base);
       this.key = key; this.builds++;
     }
-    if (this.previewIds && this.movingDirty) { this.movingBase.setGeometry(allowed.filter(entry => this.previewIds?.has(entry.edge.id))); this.movingGhost.shareGeometry(this.movingBase); this.movingDirty = false; }
-    const emphasized = allowed.filter(entry => this.emphasized(entry.edge));
+    if (this.previewIds && this.movingDirty) { this.movingBase.setGeometry((visible.length > 3000 ? allowed : visible).filter(entry => this.previewIds?.has(entry.edge.id))); this.movingGhost.shareGeometry(this.movingBase); this.movingDirty = false; }
+    const emphasized = visible.filter(entry => this.emphasized(entry.edge));
     const emphasisKey = `${this.far}:${emphasized.map(entry => entry.edge.id).join(',')}:${this.selected}`;
     if (emphasisKey !== this.emphasisKey) { this.highlight.setGeometry(emphasized); this.selectedLine.setGeometry(allowed.filter(entry => entry.edge.id === this.selected)); this.emphasisKey = emphasisKey; }
     const background = this.appearance.dark ? 0x222723 : 0xf2f3ee, ink = this.appearance.dark ? 0xe8e9e3 : 0x252c27;
