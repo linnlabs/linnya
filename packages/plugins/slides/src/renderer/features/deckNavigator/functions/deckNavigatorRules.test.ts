@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SlidesDocumentBuildState } from '@plugin/slides/shared/documentSource';
 import type { PresentationRenderModel } from '../../../types/render';
 import { resolveBlankSlideInsertion } from './blankSlideInsertion';
+import { resolveFilmstripDropIndex } from './filmstripDropIndex';
 import { resolveNearestScrollOffset } from './nearestScrollOffset';
 import { resolveSlideGridLayout } from './slideGridLayout';
 import { resolveSlideNavigationIndex } from './slideKeyboardNavigation';
@@ -110,5 +111,36 @@ describe('resolveNearestScrollOffset', () => {
     expect(resolveNearestScrollOffset({ ...viewport, start: 40, end: 140 })).toBe(24);
     expect(resolveNearestScrollOffset({ ...viewport, start: 450, end: 550 })).toBe(166);
     expect(resolveNearestScrollOffset({ ...viewport, scrollOffset: 0, start: 0, end: 100 })).toBeNull();
+  });
+});
+
+describe('resolveFilmstripDropIndex', () => {
+  // 每页占 112px：100px 缩略图 + 12px 间距，内容左侧留白 16px。
+  const geometry = { inset: 16, itemWidth: 112, gap: 12, slideCount: 3 };
+
+  it('指针在缩略图上时落到该页', () => {
+    expect(resolveFilmstripDropIndex({ ...geometry, contentX: 16 })).toBe(0);
+    expect(resolveFilmstripDropIndex({ ...geometry, contentX: 16 + 112 + 50 })).toBe(1);
+  });
+
+  it('间距按中线分给左右两页', () => {
+    // 第 0 页缩略图右缘在 116，间距 116–128，中线 122。
+    expect(resolveFilmstripDropIndex({ ...geometry, contentX: 121 })).toBe(0);
+    expect(resolveFilmstripDropIndex({ ...geometry, contentX: 123 })).toBe(1);
+  });
+
+  it('末页插入线右侧与末页之后的留白都落到末页', () => {
+    // 末页缩略图右缘在 340，插入线约在 347.5；右侧任意位置都应可放下。
+    expect(resolveFilmstripDropIndex({ ...geometry, contentX: 350 })).toBe(2);
+    expect(resolveFilmstripDropIndex({ ...geometry, contentX: 900 })).toBe(2);
+  });
+
+  it('首页左侧留白落到首页', () => {
+    expect(resolveFilmstripDropIndex({ ...geometry, contentX: 0 })).toBe(0);
+  });
+
+  it('没有页或宽度无效时没有落点', () => {
+    expect(resolveFilmstripDropIndex({ ...geometry, slideCount: 0, contentX: 20 })).toBeNull();
+    expect(resolveFilmstripDropIndex({ ...geometry, itemWidth: 0, contentX: 20 })).toBeNull();
   });
 });
