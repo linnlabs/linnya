@@ -1,5 +1,6 @@
 import { createApp, nextTick, type App } from 'vue';
 import { JsonValueSchema } from '@app/schemas';
+import type { CanvasSynchronization } from '@plugin/canvas/shared';
 import { readDocumentReference } from '@plugin/renderer/documentReferences';
 import { readRendererPluginAvailability } from '@plugin/renderer/pluginRuntime';
 import { CanvasEvaluationBridgeConnectionSchema, CanvasEvaluationCommandSchema, type CanvasEvaluationCommand, type CanvasEvaluationResult } from './bridge/definitions/canvasEvaluationBridge';
@@ -25,7 +26,7 @@ async function mount(documentId: string, projectId: string): Promise<unknown> {
   if (identity.status !== 'available' || identity.nodeType !== 'canvas') throw new Error('验收画布不在已授权project中');
   await unmount(); const container = document.createElement('div'); root = container; document.body.append(container);
   await new Promise<void>((resolve, reject) => {
-    app = createApp(CanvasEvaluationHarness, { documentId, projectId, onReady: (value: Surface) => { surface = value; resolve(); }, onFailure: (message: string) => reject(new Error(message)) }); app.mount(container);
+    app = createApp(CanvasEvaluationHarness, { documentId, projectId, onReady: (value: Surface) => { surface = value; resolve(); }, onSynchronized: (update: CanvasSynchronization) => commits?.synchronized(update), onFailure: (message: string) => reject(new Error(message)) }); app.mount(container);
   });
   commits = createCanvasEvaluationCommitMetrics(requireSurface());
   return { viewId: requireSurface().session.viewId, snapshot: requireSurface().session.state.snapshot.value };
