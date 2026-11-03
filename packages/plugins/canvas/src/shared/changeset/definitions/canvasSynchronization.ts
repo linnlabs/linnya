@@ -15,6 +15,13 @@ export const CanvasSynchronizationSchema = z.discriminatedUnion('kind', [
     sequence: z.number().int().nonnegative(), commits: z.array(CanvasCommitDeltaSchema) }).strict(),
 ]);
 export type CanvasSynchronization = z.infer<typeof CanvasSynchronizationSchema>;
+export const CanvasChangedEventSchema = z.object({
+  documentId: z.string(), sequence: z.number().int().nonnegative(),
+  /** UTC毫秒，在SQLite事务完成后采样；不使用请求开始时间冒充提交到帧延迟。 */
+  committedAt: z.number().finite().nonnegative().optional(),
+  sourceKind: z.enum(['user', 'agent']).optional(), changedElementCount: z.number().int().nonnegative().optional(),
+}).strict();
+export type CanvasChangedEvent = z.infer<typeof CanvasChangedEventSchema>;
 export const CanvasEditingRequestSchema = z.object({
   documentId: z.string().min(1), viewId: z.string().min(1), elementId: CanvasElementIdSchema,
   fields: z.array(z.enum(['data', 'x', 'y', 'width', 'height', 'from', 'to', 'label'])),

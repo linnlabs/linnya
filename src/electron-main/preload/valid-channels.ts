@@ -118,6 +118,7 @@ const WORKSPACE_CHANNELS = [
   'document-references:deletion-preview',
   'document-references:search',
   'document-references:resolve',
+  'document-references:backlinks',
   'document-history:list',
   'document-history:restore',
   'workspace:ensure-default-project',

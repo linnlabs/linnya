@@ -92,10 +92,23 @@ async function verifyDocumentCover(port: CanvasRenderWorkerPort, request: Canvas
   return { shown, hidden };
 }
 
+async function verifyDanglingEdge(port: CanvasRenderWorkerPort, request: CanvasRenderRequest): Promise<number> {
+  const source = { kind: 'user', conversationId: null, runId: null };
+  const edge = { id: 'e1', type: 'edge', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'red',
+    createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, lineStyle: 'straight', linePattern: 'solid', direction: 'none', label: '',
+    from: { kind: 'point', x: 10000, y: 10000 }, to: { kind: 'point', x: 10400, y: 10000 } };
+  const image = await createCanvasRenderRuntime(port).render(CanvasRenderRequestSchema.parse({ ...request, requestId: 'far-dangling-only',
+    snapshot: { ...request.snapshot, elements: [edge] } }));
+  const pixels = nativeImage.createFromBuffer(Buffer.from(image.bytes)).toBitmap(); let colored = 0;
+  for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 2] > pixels[i + 1] + 30 && pixels[i + 1] < 160 && pixels[i] < 160) colored++;
+  if (colored < 500) throw new Error(`dangling_edge_did_not_fit:${colored}`);
+  await writeFile(path.join(output, 'canvas-far-dangling-edge.png'), image.bytes); return colored;
+}
+
 async function run(): Promise<void> {
   await app.whenReady();
   if (process.platform === 'darwin') app.setActivationPolicy('accessory');
-  const packageRoot = path.join(root, 'packages/plugins/canvas');
+  const packageRoot = process.argv[3] ?? path.join(root, 'packages/plugins/canvas');
   const definition = createCanvasHiddenWorkerDefinition({
     workerHtmlPath: path.join(packageRoot, 'dist/render-worker/worker.html'),
     preloadPath: path.join(packageRoot, 'dist/backend/render-worker-preload.cjs'),
@@ -153,12 +166,13 @@ async function run(): Promise<void> {
     const managedImages = await verifyManagedImages(port, request);
     const referenceMeasurement = await verifyReferenceMeasurement(port);
     const documentCover = await verifyDocumentCover(port, request);
+    const danglingEdgePixels = await verifyDanglingEdge(port, request);
     await mkdir(output, { recursive: true });
     await writeFile(path.join(output, 'canvas.png'), image.bytes);
     await writeFile(path.join(output, 'canvas-dpr1.png'), unit.bytes);
     await writeFile(path.join(output, 'canvas-second.jpg'), second.bytes);
     await writeFile(path.join(output, 'canvas-wide.png'), wide.bytes);
-    const report = { versions: process.versions, measurement, cancellationObserved, wideBounds, managedImages, referenceMeasurement, documentCover, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
+    const report = { versions: process.versions, measurement, cancellationObserved, danglingEdgePixels, wideBounds, managedImages, referenceMeasurement, documentCover, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
       sha256: createHash('sha256').update(image.bytes).digest('hex') }, second: { bytes: second.bytes.length, sequence: second.sequence } };
     await writeFile(path.join(output, 'results.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));

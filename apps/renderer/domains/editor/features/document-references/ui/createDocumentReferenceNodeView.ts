@@ -36,13 +36,21 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
     close();
     const panel = document.createElement('section');
     panel.className = 'document-reference-preview'; panel.setAttribute('aria-label', '文档预览');
-    panel.addEventListener('mouseenter', () => { if (timer) clearTimeout(timer); });
-    panel.addEventListener('mouseleave', () => { timer = setTimeout(close, 200); });
+    let pointerInPanel = false;
+    let expandDetail: (() => void) | null = null;
+    panel.addEventListener('mouseenter', () => { pointerInPanel = true; if (timer) clearTimeout(timer); expandDetail?.(); });
+    panel.addEventListener('mouseleave', () => { pointerInPanel = false; timer = setTimeout(close, 200); });
     const title = document.createElement('strong'); title.textContent = dom.textContent; panel.append(title);
     const bounds = dom.getBoundingClientRect();
     panel.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - 360))}px`;
     panel.style.top = `${Math.max(8, Math.min(bounds.bottom + 8, window.innerHeight - 240))}px`;
     document.body.append(panel); popup = panel;
+    const recovery = port.recoveryAction(info);
+    if (recovery) {
+      const action = document.createElement('button'); action.type = 'button'; action.textContent = recovery.label;
+      action.onclick = () => { action.disabled = true; void recovery.activate().then(async () => { const refreshed = await refresh(); if (refreshed?.status === 'available') { close(); await port.open(refreshed); } }).catch(error => { action.disabled = false; port.report(error); }); };
+      panel.append(action);
+    }
     const preview = await port.preview(documentId);
     if (destroyed || popup !== panel) return;
     if (preview.content?.image) { const image = document.createElement('img'); image.src = preview.content.image.dataUri; image.alt = preview.title ?? '文档封面'; panel.append(image); }
@@ -51,7 +59,7 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
       const detail = preview.content.detail;
       const expand = document.createElement('button'); expand.type = 'button'; expand.textContent = '展开';
       let loading = false;
-      expand.onclick = () => {
+      expandDetail = () => {
         if (disposeDetail || loading) return;
         loading = true;
         const content = document.createElement('div'); content.className = 'document-reference-detail'; panel.append(content);
@@ -61,15 +69,16 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
           panel.style.top = `${Math.max(8, Math.min(bounds.bottom + 8, window.innerHeight - panel.getBoundingClientRect().height - 8))}px`;
         }).catch(error => { loading = false; content.remove(); port.report(error); });
       };
-      panel.append(expand);
+      expand.onclick = expandDetail; panel.append(expand);
+      if (pointerInPanel) expandDetail();
     }
   }
   dom.addEventListener('mouseenter', () => { const generation = ++hoverGeneration; if (timer) clearTimeout(timer); timer = setTimeout(() => { void show(generation).catch(port.report); }, 400); });
   dom.addEventListener('mouseleave', () => { hoverGeneration += 1; if (timer) clearTimeout(timer); timer = setTimeout(close, 200); });
-  const open = () => { void refresh().then(info => info ? port.open(info) : undefined).catch(port.report); };
+  const open = () => { void refresh().then(info => { if (!info) return; if (info.status === 'plugin_unavailable') return show(++hoverGeneration); return port.open(info); }).catch(port.report); };
   dom.addEventListener('click', event => { event.preventDefault(); open(); });
   dom.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); open(); } });
-  const unsubscribe = port.subscribe(documentId, () => { void refresh().catch(port.report); });
+  const unsubscribe = port.subscribe(documentId, () => { hoverGeneration += 1; close(); void refresh().catch(port.report); });
   void refresh().catch(port.report);
   return { dom, stopEvent: () => true, destroy() { destroyed = true; hoverGeneration += 1; unsubscribe(); close(); render(null, icon); } };
 }

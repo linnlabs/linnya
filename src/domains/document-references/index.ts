@@ -11,3 +11,6 @@ export { ReferenceMarkdownError } from './features/reference-markdown/definition
 export type { ReferenceMarkdownPort, ReferenceMarkdownPrepared } from './features/reference-markdown/definitions/referenceMarkdown';
 
 export { readDocumentDeletionReferences } from './features/deletion-preview/functions/readDocumentDeletionReferences';
+
+export { readDocumentBacklinks } from './features/reference-query/functions/readDocumentBacklinks';
+export type { BacklinkQueryPort } from './features/reference-query/definitions/backlinkQuery';
