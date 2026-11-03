@@ -27,3 +27,13 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 ## 验证
 
 插件自身提供 typecheck、test、lint、build 入口。测试覆盖真实提交/重开、失败回滚、并发/撤回与插件生命周期；技术探针放在 `dev/probes`，本地结果不成为构建依赖。插件不属于默认官方发行目标。
+
+## Agent 改动与确认
+
+Backend 按数据库实例持有 `createCanvasHistoryRuntime`。组合入口位于 `backend/orchestration/history`；用户栈与 Agent 组共用 `backend/shared/history` 的字段片段及逆变更规则。`agentChanges` 只拥有持久组、待确认批次与审批回执。组按对话与文档累计，子 run 共享组；没有对话的开发 CLI 使用该画布的命令行组。对话身份没有外键，删除对话不丢撤回记录。`closeGroup` 关闭当前组，后续写入创建新组。
+
+`commitAgent` 返回 `committed` 或 `pending`。同一对话、请求编号的重试不受 run/工具视图变化影响；异载荷拒绝。删除用户创建的卡累计达到 20 张，或一批移动至少 20 张且覆盖当前用户卡九成时，整批保存为待确认。每组最多一批，新待确认替换旧批。只有可信 Renderer 入口调用 `resolveApproval`；CLI 不接收批准标志。批准按当前字段版本、编辑声明与预期删除修订重新验证；同意或拒绝后的重试有稳定结果。撤回或完成组使待确认过期。
+
+组记录不依赖 512 批同步日志；进程重启后仍可撤回。`withdraw` 支持整组或元素子集，撤回本身进入发起视图的用户栈。新对象一旦被其他来源使用，整体保留；恢复删除对象使用原 ID，原位置被后来卡片占用时在四个方向中选择最近可用位置，并返回 `restored_nearby`。依赖消失或同方向线已存在时跳过，保留当前图。
+
+`registerView` 幂等记录初开序号；`listGroups` 的 `deletedCards` 用于查看旧位置，`visibleDeletedCards` 仅包含当前打开后产生的删除框。这些可见删除框参与新卡避让，全部视图关闭后不留下隐藏障碍。`reviewElement` 只清除角标，不删除撤回记录；后续 Agent 再改该卡会重新标记。`retainedElements` 暴露用户栈和持久组仍持有的元素版本供资产 owner 计算保留集合。内容和组状态变化分别发布；调用方用 `groupsChanged` 接纳不增加内容序号的待确认、拒绝、完成和审阅状态变化。
