@@ -32,7 +32,7 @@ export function createCanvasWritePreparationPorts(input: { readonly database: Ca
         return await normalizeCanvasInlineImages(CanvasTextDocumentSchema.parse(admitted.content), source => images.prepare(source, input.dryRun));
       } catch (error) {
         if (error instanceof CanvasWriteFailure) throw error;
-        if (error instanceof DocumentReferenceMarkdownError) throw new CanvasWriteFailure('invalid_content', `${error.code}：${error.message}`, undefined, 'text');
+        if (error instanceof DocumentReferenceMarkdownError) throw new CanvasWriteFailure(error.code, error.message, undefined, 'text');
         throw new CanvasWriteFailure('invalid_content', '正文不符合受支持的Markdown格式。请检查块类型、行内格式和图片来源。', undefined, 'text');
       }
     },

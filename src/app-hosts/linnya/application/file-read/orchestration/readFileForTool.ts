@@ -27,6 +27,7 @@ import type { ToolContext } from 'src/tools/types';
 import { PhysicalFileReadError } from '../definitions/physicalFileRead';
 import { hasRunImageAttachment } from '../functions/hasRunImageAttachment';
 import { remapWorkspaceCitationRefs } from '../functions/remapWorkspaceCitationRefs';
+import { registerDeliveredDocumentReferences, stripDocumentReferenceReadMetadata } from './registerDeliveredDocumentReferences';
 import { readPhysicalFileForTool } from './readPhysicalFileForTool';
 
 const IMAGE_READ_OBSERVATIONS = {
@@ -273,6 +274,8 @@ async function readWorkspaceLocator(input: {
     const observation = citationProjection
       ? citationProjection.remapText(document.observation)
       : document.observation;
+    registerDeliveredDocumentReferences({ context: input.context, documentId: node.id, metadata: document.data.details?.documentReferences, text: document.data.presentation.kind === 'blocks' ? document.data.presentation.items.map(item => item.text).join('\n\n') : document.data.presentation.kind === 'text' ? document.data.presentation.text : '' });
+    const visibleDocument = stripDocumentReferenceReadMetadata(document.data);
     // DocumentView 的 nextOffset 属于源文档；工具 facade 才负责说明下一次工具调用。
     const nextPage =
       document.data.nextOffset === null
@@ -291,8 +294,8 @@ async function readWorkspaceLocator(input: {
           inode: node.inode,
           content_type: 'application/vnd.linnya.document-view',
           document: citationProjection
-            ? citationProjection.remapDocumentData(document.data)
-            : document.data,
+            ? citationProjection.remapDocumentData(visibleDocument)
+            : visibleDocument,
           ...(citationFields ?? {}),
         },
         observation: observation + nextPage,
@@ -352,6 +355,7 @@ async function readWorkspaceLocator(input: {
   const returnedText = citationProjection
     ? citationProjection.remapText(window.rawText)
     : window.rawText;
+  registerDeliveredDocumentReferences({ context: input.context, documentId: node.id, metadata: read.metadata?.documentReferences, text: returnedText });
   const textMetrics = {
     window: countTextCharacters(returnedText),
     full_text: countTextCharacters(read.text),

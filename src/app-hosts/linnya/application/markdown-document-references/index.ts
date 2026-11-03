@@ -18,3 +18,5 @@ export function bindMarkdownDocumentReferenceCapabilities(db: Database.Database)
   });
 }
 export { collectDocumentReferenceInputs };
+
+export { selectDeliveredReferenceBindings } from './functions/selectDeliveredReferenceBindings';
