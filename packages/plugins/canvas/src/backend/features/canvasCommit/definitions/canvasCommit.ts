@@ -31,6 +31,7 @@ export interface CanvasCommitPlan {
   readonly refs: Record<string, CanvasElementId>;
 }
 export interface CanvasCommitActor {
+  readonly projectId?: string;
   readonly source: CanvasSource;
   readonly viewId: string;
 }

@@ -58,4 +58,27 @@ export const canvasPluginMigrations: readonly PluginMigrationDefinition[] = [{
         PRIMARY KEY(node_id, element_id)
       );`);
   },
+}, {
+  version: 3,
+  description: 'Durable conversation change groups and trusted UI approvals',
+  up(database) {
+    database.exec(`CREATE TABLE canvas_agent_groups (
+      node_id TEXT NOT NULL REFERENCES canvas_documents(node_id) ON DELETE CASCADE,
+      group_id TEXT NOT NULL, source_key TEXT NOT NULL, record_json TEXT NOT NULL,
+      PRIMARY KEY(node_id, group_id), UNIQUE(node_id, source_key)
+    );
+    CREATE TABLE canvas_pending_approvals (
+      node_id TEXT NOT NULL REFERENCES canvas_documents(node_id) ON DELETE CASCADE,
+      pending_id TEXT NOT NULL, group_id TEXT NOT NULL, batch_json TEXT NOT NULL,
+      PRIMARY KEY(node_id, pending_id), UNIQUE(node_id, group_id),
+      FOREIGN KEY(node_id, group_id) REFERENCES canvas_agent_groups(node_id, group_id) ON DELETE CASCADE
+    );
+    CREATE TABLE canvas_agent_requests (
+      node_id TEXT NOT NULL REFERENCES canvas_documents(node_id) ON DELETE CASCADE,
+      source_key TEXT NOT NULL, request_id TEXT NOT NULL, payload_hash TEXT NOT NULL,
+      status TEXT NOT NULL, pending_id TEXT, result_json TEXT,
+      PRIMARY KEY(node_id, source_key, request_id)
+    );
+    CREATE INDEX canvas_agent_request_pending ON canvas_agent_requests(node_id, pending_id);`);
+  },
 }];

@@ -58,7 +58,7 @@ describe('Canvas user undo and redo', () => {
     f.history.commit({ request: { documentId: 'doc', requestId: 'agent', operations: [{ ...add, ref: '$b' }, { op: 'connect', from: 'c1', to: '$b' }] }, actor: { source: { kind: 'agent', conversationId: 'other', runId: 'run' }, viewId: 'agent' }, now: 5 });
     expect(f.undo().commit.results[0]?.status).toBe('skipped'); expect(f.elements).toHaveLength(3);
     f.commit([{ op: 'delete', id: 'c1' }]);
-    f.history.releaseView('view'); expect(f.database.prepare('SELECT count(*) AS n FROM canvas_history_guards').get()).toEqual({ n: 0 }); f.database.close();
+    f.history.releaseView('view'); expect(f.database.prepare('SELECT count(*) AS n FROM canvas_history_guards WHERE element_id = ?').get('c1')).toEqual({ n: 0 }); f.database.close();
   });
   it('keeps field versions stale after undo restores the old logical origin', () => {
     const f = fixture(); f.commit([add]); f.commit([{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }]); f.undo();

@@ -5,11 +5,13 @@ import {
 } from '../../../../shared';
 import type { CanvasCommand, CanvasOperationResult } from '../../../../shared/changeset/definitions/canvasCommands';
 import type { CanvasCommitActor, CanvasCommitPlan, CanvasCommitState, CanvasEditingClaim, CanvasElementChange, CanvasStoredElement } from '../definitions/canvasCommit';
+import type { CanvasRectangle } from '../../../../shared/geometry/definitions/canvasGeometry';
 import { findCanvasPlacement } from './findCanvasPlacement';
 import { validateCanvasGraph } from './validateCanvasGraph';
 
 interface WorkingPlan {
   origin: string;
+  reservedRectangles: readonly CanvasRectangle[];
   elements: Map<CanvasElementId, CanvasStoredElement>;
   changes: CanvasElementChange[];
   results: CanvasOperationResult[];
@@ -51,7 +53,7 @@ function createCard(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 'ad
   const cards = [...plan.elements.values()].flatMap(row => row.element.type === 'edge' ? [] : [row.element]);
   const position = plan.actor.source.kind === 'user' && command.x !== undefined && command.y !== undefined
     ? { x: command.x, y: command.y }
-    : findCanvasPlacement({ width: command.width, height: command.height, near: near?.type === 'edge' ? undefined : near, side: command.side ?? 'right', occupied: cards });
+    : findCanvasPlacement({ width: command.width, height: command.height, near: near?.type === 'edge' ? undefined : near, side: command.side ?? 'right', occupied: [...cards, ...plan.reservedRectangles] });
   const orders = [...plan.elements.values()].map(row => row.element.order).sort();
   const lastOrder = orders[orders.length - 1] ?? null;
   const data = command.op === 'addText' ? { contentVersion: 1, content: command.content } : command.data;
@@ -127,9 +129,9 @@ function mutateElement(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 
 
 export function planCanvasCommit(input: {
   readonly state: CanvasCommitState; readonly operations: readonly CanvasCommand[];
-  readonly actor: CanvasCommitActor; readonly origin: string; readonly claims: readonly CanvasEditingClaim[]; readonly now: number;
+  readonly actor: CanvasCommitActor; readonly origin: string; readonly claims: readonly CanvasEditingClaim[]; readonly now: number; readonly reservedRectangles?: readonly CanvasRectangle[];
 }): CanvasCommitPlan {
-  const plan: WorkingPlan = { origin: input.origin, elements: new Map(input.state.elements.map(row => [row.element.id, row])), changes: [], results: [], refs: {},
+  const plan: WorkingPlan = { reservedRectangles: input.reservedRectangles ?? [], origin: input.origin, elements: new Map(input.state.elements.map(row => [row.element.id, row])), changes: [], results: [], refs: {},
     nextCard: input.state.nextCard, nextEdge: input.state.nextEdge, actor: input.actor, claims: input.claims, now: input.now };
   for (const command of input.operations) {
     if (command.op === 'update' || command.op === 'delete') plan.results.push(mutateElement(plan, command));

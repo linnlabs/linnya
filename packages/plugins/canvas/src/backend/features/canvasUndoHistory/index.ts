@@ -1,5 +1,3 @@
-export { createCanvasHistoryRuntime } from './orchestration/createCanvasHistoryRuntime';
-export { captureCanvasHistory, mergeCanvasHistoryEntry } from './functions/captureCanvasHistory';
-export { planCanvasHistoryReversal } from './functions/planCanvasHistoryReversal';
-export { CanvasHistoryEntrySchema } from './definitions/canvasHistory';
-export type { CanvasHistoryEntry, CanvasHistoryChange } from './definitions/canvasHistory';
+export { createCanvasHistoryRuntime } from '../../orchestration/history/createCanvasHistoryRuntime';
+export { captureCanvasHistory, mergeCanvasHistoryEntry, planCanvasHistoryReversal, CanvasHistoryEntrySchema } from '../../shared/history';
+export type { CanvasHistoryEntry, CanvasHistoryChange } from '../../shared/history';

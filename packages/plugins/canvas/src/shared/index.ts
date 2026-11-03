@@ -8,3 +8,4 @@ export * from './changeset/definitions/canvasCommands';
 export * from './changeset/definitions/canvasSynchronization';
 
 export * from './history/definitions/canvasUserHistory';
+export * from './agentChanges/definitions/canvasAgentChanges';

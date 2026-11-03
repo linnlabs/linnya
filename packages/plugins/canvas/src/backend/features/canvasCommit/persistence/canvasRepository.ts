@@ -9,6 +9,12 @@ const elementRowSchema = z.object({ element_json: z.string(), field_versions_jso
 const versionsSchema = z.record(z.string(), z.number().int().nonnegative());
 const receiptRowSchema = z.object({ payload_hash: z.string(), result_json: z.string() });
 
+export function readCanvasSequence(database: Pick<CanvasDatabase, 'prepare'>, documentId: string): number {
+  const raw = database.prepare('SELECT sequence FROM canvas_documents WHERE node_id = ?').get(documentId);
+  if (!raw) throw new Error('canvas_document_missing');
+  return z.object({ sequence: z.number().int().nonnegative() }).parse(raw).sequence;
+}
+
 export function createEmptyCanvasDocument(database: CanvasDatabase, documentId: string): void {
   database.prepare('INSERT INTO canvas_documents (node_id) VALUES (?)').run(documentId);
 }
@@ -98,11 +104,12 @@ export function updateCanvasEditingClaim(database: CanvasDatabase, input: {
 
 /** 日志只负责同步；缺口或裁剪始终退回当前正式快照。 */
 export function readCanvasSynchronization(database: Pick<CanvasDatabase, 'prepare'>, input: { readonly documentId: string; readonly afterSequence: number }): import('../../../../shared').CanvasSynchronization {
-  const snapshot = readCanvasSnapshot(database, input.documentId);
-  if (input.afterSequence > snapshot.sequence) return { kind: 'snapshot', snapshot };
+  const sequence = readCanvasSequence(database, input.documentId);
+  const snapshot = () => ({ kind: 'snapshot' as const, snapshot: readCanvasSnapshot(database, input.documentId) });
+  if (input.afterSequence > sequence) return snapshot();
   const rows = database.prepare('SELECT sequence, source_json, changes_json FROM canvas_changes WHERE node_id = ? AND sequence > ? ORDER BY sequence').all(input.documentId, input.afterSequence);
   const schema = z.object({ sequence: z.number(), source_json: z.string(), changes_json: z.string() });
   const commits = rows.map(value => { const row = schema.parse(value); return CanvasCommitDeltaSchema.parse({ sequence: row.sequence, source: JSON.parse(row.source_json), changes: JSON.parse(row.changes_json) }); });
-  if (commits.length !== snapshot.sequence - input.afterSequence || commits.some((commit, index) => commit.sequence !== input.afterSequence + index + 1)) return { kind: 'snapshot', snapshot };
-  return { kind: 'delta', documentId: input.documentId, fromSequence: input.afterSequence, sequence: snapshot.sequence, commits };
+  if (commits.length !== sequence - input.afterSequence || commits.some((commit, index) => commit.sequence !== input.afterSequence + index + 1)) return snapshot();
+  return { kind: 'delta', documentId: input.documentId, fromSequence: input.afterSequence, sequence, commits };
 }
