@@ -142,3 +142,5 @@ Renderer 插件通过 `@plugin/renderer/exportArtifact` 请求系统保存框，
 `backend/workspaceDocumentProjection` 提供活动节点归属查询、按项目/类型列出节点身份，以及文档更新时间写入。Workspace 拥有节点事实，插件只用这些身份查询自有正文表。调用方传入当前连接，更新时间写入加入插件现有事务，不自行提交或提前广播事件。该门面没有 App runtime 依赖，standalone CLI 可直接使用。
 
 `workspaceRuntime.hasWorkspaceNodeTextSnapshot` 与既有保存端口供迁移在同一事务内补齐缺失快照；插件不能直接读写 Host 快照表，也不能用回填覆盖已有快照。没有新增持久化字段或版本迁移。
+
+Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。聚焦由 app 先显露当前对话区域，再交给 Conversation 注册的输入能力；插件不能取得编辑器实例或操作 Conversation store。输入框关闭时注销能力，多个暂存表面仅由当前可见的输入框接纳聚焦。

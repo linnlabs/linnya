@@ -15,7 +15,11 @@ export interface RendererComposerCommandPort {
   /** 返回宿主生成的 id，供调用方精确撤销本次新增。 */
   addReference(input: ComposerCommandReferenceInput): string;
   removeReference(referenceId: string): void;
+  /** 打开并聚焦当前composer；未挂载可聚焦输入框时返回false。 */
+  focusInput(): Promise<boolean>;
 }
 
 export declare function addComposerReference(input: ComposerCommandReferenceInput): string;
 export declare function removeComposerReference(referenceId: string): void;
+
+export declare function focusComposerInput(): Promise<boolean>;

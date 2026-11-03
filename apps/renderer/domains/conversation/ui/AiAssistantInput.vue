@@ -96,16 +96,26 @@
             外层蒙版约束光的轮廓，内部两块连续渐变沿 Motion Path 移动。
             不能省掉蒙版：沿路径旋转一根长条仍然会在圆角处露出直线。
           -->
-          <span class="ai-assistant-input__model-setup-border-flow-track" aria-hidden="true">
+          <span
+            class="ai-assistant-input__model-setup-border-flow-track"
+            aria-hidden="true"
+          >
             <span class="ai-assistant-input__model-setup-border-flow-beam" />
             <span class="ai-assistant-input__model-setup-border-flow-beam" />
           </span>
           <span class="ai-assistant-input__model-setup-content">
-            <span class="ai-assistant-input__model-setup-dot" aria-hidden="true" />
+            <span
+              class="ai-assistant-input__model-setup-dot"
+              aria-hidden="true"
+            />
             <span class="ai-assistant-input__model-setup-label">
               {{ conversationMessage('conversation.input.model.configure') }}
             </span>
-            <ChevronIcon direction="right" class="ai-assistant-input__model-setup-arrow" aria-hidden="true" />
+            <ChevronIcon
+              direction="right"
+              class="ai-assistant-input__model-setup-arrow"
+              aria-hidden="true"
+            />
           </span>
         </button>
 
@@ -128,6 +138,7 @@
 </template>
 
 <script setup lang="ts">
+import { registerComposerInputFocus } from '../features/composer-focus';
 import { captureConversationClientNotice } from '../features/client-notices';
 import { computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { Editor as TiptapEditor, EditorContent } from '@tiptap/vue-3';
@@ -293,6 +304,11 @@ type EditorForEditorContent = InstanceType<typeof EditorContent>['$props']['edit
  * - 传给 `<EditorContent>` 时用 `editor ?? undefined` 转换为 `undefined`，与 props 类型对齐。
  */
 const editor = shallowRef<EditorForEditorContent | null>(null);
+const unregisterInputFocus = registerComposerInputFocus(() => {
+  const current = editor.value;
+  if (!current || !current.view.dom.getClientRects().length) return false;
+  return current.commands.focus();
+});
 
 const inputContextBarHandles: ConversationInputContextBarHandles = {
   composer: {
@@ -814,6 +830,7 @@ onMounted(() => {
 });
 // 组件销毁前销毁Tiptap编辑器
 onBeforeUnmount(() => {
+  unregisterInputFocus();
   referencePreparation?.abort();
   if (editor.value) {
     editor.value.destroy();
