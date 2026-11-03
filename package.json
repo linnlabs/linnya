@@ -342,7 +342,10 @@
     "release:lock:production:verify": "node scripts/build/orchestration/updateProductionPackageLock.mjs --verify",
     "release:lock:production:install-smoke": "node scripts/build/orchestration/updateProductionPackageLock.mjs --verify-install",
     "test:production-package-lock": "vitest run scripts/build/functions/productionPackageManifest.test.ts scripts/build/functions/productionPackageLock.test.ts",
-    "release:checklist": "node --import tsx ./scripts/release/orchestration/printUploadChecklist.ts"
+    "release:checklist": "node --import tsx ./scripts/release/orchestration/printUploadChecklist.ts",
+    "guard:canvas": "pnpm --filter @plugin/canvas guard",
+    "package:plugin:canvas": "pnpm --dir packages/plugins/canvas run package:artifact",
+    "smoke:plugin:canvas:artifact": "pnpm run build:schemas && pnpm run package:plugin:canvas && node packages/plugins/canvas/scripts/smoke-artifact.mjs"
   },
   "keywords": [],
   "author": "",

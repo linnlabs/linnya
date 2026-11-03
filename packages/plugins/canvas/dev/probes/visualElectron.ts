@@ -105,6 +105,14 @@ async function run() {
     const dragOcclusion = { before: magenta(occlusion.before), during: magenta(occlusion.during), after: magenta(occlusion.after) };
     if (dragOcclusion.before || dragOcclusion.after || dragOcclusion.during < 1000) throw new Error(`drag_occlusion_stale:${JSON.stringify(dragOcclusion)}`);
     await writeFile(path.join(output, 'drag-revealed-body.png'), nativeImage.createFromDataURL(occlusion.during).toPNG());
+    const guides = z.object({ shown: z.string(), hidden: z.string() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasGuidesVisualProbe()'));
+    const greenPixels = (url: string) => {
+      const pixels = nativeImage.createFromDataURL(url).toBitmap(); let count = 0;
+      for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 1] > pixels[i + 2] + 20 && pixels[i + 1] > pixels[i] + 20) count++;
+      return count;
+    };
+    const snapGuides = { shown: greenPixels(guides.shown), hidden: greenPixels(guides.hidden) };
+    if (snapGuides.shown < 1000 || snapGuides.hidden !== 0) throw new Error(`snap_guides_not_projected_or_cleared:${JSON.stringify(snapGuides)}`);
     const map = z.object({ before: z.string(), after: z.string(), dpr: z.number(), dx: z.number(), dy: z.number() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasMapPanVisualProbe()'));
     const mapBefore = nativeImage.createFromDataURL(map.before), mapAfter = nativeImage.createFromDataURL(map.after);
     const beforePixels = mapBefore.toBitmap(), afterPixels = mapAfter.toBitmap(), mapSize = mapBefore.getSize();
@@ -175,7 +183,7 @@ async function run() {
       if (fallbackInk < 100) throw new Error('unsupported_api_identity_is_empty');
       await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());
     } finally { unsupported.destroy(); }
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap, colors: colorReports }, dragOcclusion, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk }, thumbnails: thumbReports,
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap, colors: colorReports }, dragOcclusion, snapGuides, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk }, thumbnails: thumbReports,
       mixedLod: lodReports, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }

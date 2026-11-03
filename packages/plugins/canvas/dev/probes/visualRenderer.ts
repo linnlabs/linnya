@@ -263,3 +263,14 @@ async function prepareEditingVisual() {
   } finally { raster.dispose(); }
 }
 Object.defineProperty(window, 'prepareCanvasEditingVisualProbe', { value: prepareEditingVisual });
+
+async function guidesVisual() {
+  previousKernel?.destroy(); document.body.replaceChildren();
+  const host = document.createElement('div'); host.style.cssText = 'width:900px;height:600px'; document.body.append(host);
+  const kernel = await createPixiCanvasKernel({ host, width: 900, height: 600, resolution: devicePixelRatio }); previousKernel = kernel;
+  kernel.setCamera({ x: 40, y: 20, zoom: 0.5 });
+  kernel.setGuides([{ from: { x: 100, y: 200 }, to: { x: 1100, y: 200 } }]);
+  const shown = await kernel.captureImage('png'); kernel.setGuides([]);
+  return { shown, hidden: await kernel.captureImage('png') };
+}
+Object.defineProperty(window, 'prepareCanvasGuidesVisualProbe', { value: guidesVisual });

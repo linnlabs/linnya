@@ -25,7 +25,8 @@
   "entry": {
     "backend": "./dist/backend/index.cjs",
     "renderer": "./dist/renderer/index.js",
-    "command": "./dist/cli/canvas-cli.cjs"
+    "command": "./dist/cli/canvas-cli.cjs",
+    "renderWorker": "./dist/render-worker/worker.html"
   },
   "dependsOn": [
     "platform"
