@@ -8,7 +8,29 @@
   "linnya": {
     "development": {
       "backendLoading": "disk",
-      "backendWatchConfig": "tsup.plugin.config.ts"
+      "backendWatchConfig": "tsup.plugin.config.ts",
+      "additionalBuilds": [
+        {
+          "id": "renderer",
+          "type": "configured",
+          "builder": "vite",
+          "config": "vite.plugin.config.mts"
+        },
+        {
+          "id": "render-worker",
+          "type": "configured",
+          "builder": "vite",
+          "config": "vite.render-worker.config.mts"
+        },
+        {
+          "id": "render-preload",
+          "type": "script",
+          "script": "build:preload",
+          "dependencies": [
+            "backend"
+          ]
+        }
+      ]
     }
   },
   "exports": {

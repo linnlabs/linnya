@@ -9,3 +9,5 @@
 `parseEmbeddedMarkdown` / `serializeEmbeddedMarkdown` 在同一组扩展上转换，不创建 Editor 或挂载 DOM；Renderer 门面只转发 portable core；Backend 消费者直接消费该公开包，不能深导入 Renderer。
 
 验证使用 `__tests__/embeddedMarkdown.integration.test.ts`，覆盖独立表面互不污染、真实 Markdown 往返、非法替换保护、只读与编辑切换。Host facade 的 provider、浏览器 protocol shim 与外部模块映射必须一起维护。
+
+异步插图可调用 `captureInsertion()` 保存一个随正文事务映射的插入锚点，准备完成后一次插入结构化节点。替换正文或销毁表面会取消未完成锚点，不能把迟到的图片插入下一份文档。`insertContent` 与锚点插入都先做同源严格 schema 校验。`resolveImageSource` 只把持久 src 投影为临时可显示地址，NodeView 不改 JSON；图片身份继续由调用方的资产归属与提交事务拥有。

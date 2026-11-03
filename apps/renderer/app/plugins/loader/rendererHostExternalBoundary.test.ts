@@ -280,6 +280,11 @@ describe('renderer plugin host external boundary', () => {
     expect(externalMapSource).toContain(`'${subrunSpecifier}': '${subrunUrl}'`);
   });
 
+  it('每个插件实际使用的Renderer SDK入口都具有明确external协议映射', () => {
+    const modules = new Set(collectRuntimeImports().map(input => input.moduleId).filter(id => id.startsWith('@plugin/renderer/')));
+    for (const id of modules) expect(hostRendererExternalUrls).toHaveProperty(id);
+  });
+
   it('keeps named runtime imports exported by plugin://host renderer SDK shims', () => {
     const sdkImportsByModule = new Map<string, Set<string>>();
     for (const runtimeImport of collectRuntimeImports()) {

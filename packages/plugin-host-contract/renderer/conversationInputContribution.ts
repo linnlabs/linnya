@@ -2,6 +2,8 @@ import type { Component } from 'vue';
 
 /** 创建 composer 引用所需的宿主无关输入。引用 id 由宿主在真正入栈时生成。 */
 export interface ConversationReferenceInput {
+  /** 仅composer内同owner/kind去重，移除或发送后可再次加入。 */
+  readonly deduplicationKey?: string;
   readonly text: string;
   readonly previewText?: string;
   readonly source?: Record<string, unknown>;
@@ -70,6 +72,7 @@ export interface ConversationReferenceChipDescriptor {
  * 标准 pill 展示、校验及显式点击动作；动态正文只在发送准备阶段解析一次。
  */
 export interface ConversationReferencePreparationContext {
+  readonly projectId: string | null;
   readonly conversationId: string | null;
   readonly signal: AbortSignal;
 }

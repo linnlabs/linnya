@@ -28,6 +28,7 @@ const missingExports = [
   'createStaticVNode',
   'render',
   'shallowRef',
+  'shallowReadonly',
   'ref',
   'isRef',
   'triggerRef',
@@ -90,6 +91,7 @@ export const createVNode = host.createVNode;
 export const createStaticVNode = host.createStaticVNode;
 export const render = host.render;
 export const shallowRef = host.shallowRef;
+export const shallowReadonly = host.shallowReadonly;
 export const ref = host.ref;
 export const isRef = host.isRef;
 export const triggerRef = host.triggerRef;
@@ -181,6 +183,7 @@ const rendererHostShims = new Map<string, string>([
   ['/plugin-renderer/composerCommandPort.js', buildNamedHostShim('@plugin/renderer/composerCommandPort', [
     'addComposerReference',
     'removeComposerReference',
+    'focusComposerInput',
   ])],
   ['/plugin-renderer/conversationSubrunInvocationPort.js', buildNamedHostShim('@plugin/renderer/conversationSubrunInvocationPort', [
     'startConversationSubruns',
@@ -196,6 +199,7 @@ const rendererHostShims = new Map<string, string>([
   ['/plugin-renderer/documentPreview.js', buildNamedHostShim('@plugin/renderer/documentPreview', ['readDocumentPreview', 'listDocumentPreviewTypes'])],
   ['/plugin-renderer/workspaceRuntime.js', buildNamedHostShim('@plugin/renderer/workspaceRuntime', [
     'getCurrentWorkspaceProjectId',
+    'subscribeWorkspaceMutations',
     'listProjectKnowledgeBaseIds',
     'isActiveFileDirty',
     'showWorkspaceNotification',

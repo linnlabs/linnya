@@ -1,6 +1,6 @@
 import type { EmbeddedMarkdownEditor, EmbeddedMarkdownEditorOptions } from '@plugin/renderer/embeddedMarkdownEditor';
 import type { Ref } from 'vue';
-import type { CanvasCamera, CanvasCardId, CanvasPoint } from '@plugin/canvas/shared';
+import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasPoint } from '@plugin/canvas/shared';
 import type { CanvasDocumentPort } from '../features/canvasDocument';
 
 export interface CanvasSurfaceOptions {
@@ -13,6 +13,9 @@ export interface CanvasSurfacePorts {
   readonly document: CanvasDocumentPort;
   createEditor(options: EmbeddedMarkdownEditorOptions): EmbeddedMarkdownEditor;
   markDirty(dirty: boolean): void;
+  createContent?(card: CanvasCard, signal: AbortSignal): Promise<HTMLElement>;
+  openCard?(card: CanvasCard): Promise<void>;
+  resolveImageSource?(source: string): Promise<string>;
 }
 export interface CanvasSurfaceState {
   readonly camera: Readonly<Ref<CanvasCamera>>;
