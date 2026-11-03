@@ -13,7 +13,7 @@ import { createCanvasRasterPresentation } from './createCanvasRasterPresentation
 import type { CanvasSurfaceOptions, CanvasSurfacePorts } from '../definitions/canvasSurface';
 import { createCanvasSurfaceState } from '../store/createCanvasSurfaceState';
 import { selectCanvasSubgraph } from '../features/clipboard';
-import { createCanvasKeyboardHandler, describeCanvasSelection } from '../features/accessibility';
+import { createCanvasKeyboardHandler, createCanvasKeyboardNavigation, describeCanvasSelection } from '../features/accessibility';
 import { createCanvasConnectionEditing } from '../features/connections';
 import { installCanvasEditorProjection } from './installCanvasEditorProjection';
 import { installCanvasDisplayProjection } from './installCanvasDisplayProjection';
@@ -121,7 +121,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   const edit = async () => { if (connections.selected.value) { await connections.beginLabel(); return; } const id = selection.ids.value[0]; if (id) await opening.open(id); };
   const keydown = createCanvasKeyboardHandler({ isEditing: () => Boolean(editor.state.draft.value || creation.state.draft.value || connections.state.label.value), selection: () => selection.ids.value, allIds: () => cards().map(card => card.id),
     treeMode: () => Boolean(layout?.state.treeKeyboard.value && selection.ids.value.length === 1), createTree,
-    zoomValue: () => camera.value.zoom, duplicate: () => actions.duplicate(), undo, remove, edit, select, fit, zoom, move: movement.move,
+    zoomValue: () => camera.value.zoom, duplicate: () => actions.duplicate(), undo, remove, edit, select, fit, zoom, move: movement.move, navigation: createCanvasKeyboardNavigation({ cards, selection: () => selection.ids.value, select, reveal: viewport.reveal }),
     escape: async () => { const wasEditing = Boolean(editor.state.draft.value || creation.state.draft.value); if (await finish()) { if (!wasEditing) await select([]); kernel.canvas.focus(); } },
   });
   try { kernel.setAppearance(readAppearance()); await session.open(options.documentId); }

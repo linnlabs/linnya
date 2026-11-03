@@ -1,4 +1,5 @@
 import type { CanvasCardId } from '@plugin/canvas/shared';
+export type CanvasNavigationDirection = 'next' | 'previous' | 'left' | 'right' | 'up' | 'down';
 export interface CanvasKeyboardActions {
   isEditing(): boolean;
   treeMode?(): boolean;
@@ -15,5 +16,6 @@ export interface CanvasKeyboardActions {
   fit(selected?: boolean): void;
   zoom(value: number): void;
   move(ids: readonly CanvasCardId[], dx: number, dy: number): Promise<void>;
+  navigation(direction: CanvasNavigationDirection): (() => Promise<void>) | null;
 }
-export type CanvasShortcut = 'delete' | 'edit' | 'escape' | 'all' | 'actual' | 'fit' | 'fit-selection' | 'zoom-in' | 'zoom-out' | 'undo' | 'redo' | 'duplicate' | 'left' | 'right' | 'up' | 'down' | 'tree-child' | 'tree-sibling';
+export type CanvasShortcut = 'delete' | 'edit' | 'escape' | 'all' | 'actual' | 'fit' | 'fit-selection' | 'zoom-in' | 'zoom-out' | 'undo' | 'redo' | 'duplicate' | 'left' | 'right' | 'up' | 'down' | 'tree-child' | 'tree-sibling' | 'navigate';

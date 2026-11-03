@@ -111,6 +111,8 @@ Canvas表面、正文编辑器和历史预览统一读取Renderer UI公开的 `R
 
 键盘与读屏通过同一选择/导航流程工作：搜索定位既支持卡片也支持线标签，关闭搜索/右键菜单和结束标签编辑会回焦画布；选中摘要复用正文搜索投影和当前可访问文档标题，限制朗读长度，不输出目标内部ID。失败草稿可显式选择“使用已保存内容”，经危险操作确认后仅放弃本地草稿；写入进行中或结果待确认时禁止放弃，不自动重载覆盖。
 
+默认模式Tab/Shift+Tab按卡片顺序阅读，首尾可退出到浏览器正常焦点顺序；Command/Control加方向键选择最近的对应方向卡片，读屏同时播报卡片世界位置。树模式Tab创建子节点保持不变。导航只平移显露目标，不改变缩放倍率，详见[键盘与可读选择](./src/renderer/features/accessibility/README.md)。
+
 ## 制品闭包
 
 `pnpm run smoke:plugin:canvas:artifact`先构建schemas和Canvas独立制品，再用临时隔离根验证checksum/content BOM、正式disk Backend加载、Skill/worker/migration发现、无数据库的CLI help、编译CLI真实只读SQLite与写入拒绝、编译Node计算worker及正式Host HiddenWorker的PNG/JPEG/取消/字体/标签/图片路径。临时制品根与数据库测试后删除；Canvas不进入默认官方发行目标。

@@ -11,6 +11,7 @@ function modified(event: KeyboardEvent): CanvasShortcut | null {
 function ordinary(event: KeyboardEvent, treeMode: boolean): CanvasShortcut | null {
   if (treeMode && event.key === 'Tab' && !event.shiftKey) return 'tree-child';
   if (treeMode && event.key === 'Enter') return 'tree-sibling';
+  if (event.key === 'Tab') return 'navigate';
   return canvasPlainKeys[event.key] ?? null;
 }
 export function readCanvasShortcut(event: KeyboardEvent, editing: boolean, treeMode = false): CanvasShortcut | null {
