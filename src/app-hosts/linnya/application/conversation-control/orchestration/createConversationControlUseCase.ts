@@ -616,6 +616,12 @@ export function createConversationControlUseCase(
       }
       // 在最后一个异步查询后读取开关，使关闭操作也能阻止尚未提交的调用。
       assertCliToolCallAllowed(request, toolAccess.isWebEnabled());
+      // 参数错误属于命令准入，不能被图片能力检查遮住，也不能进入 run 后变成工具执行失败。
+      const argumentsValidation = ports.tools.validateArguments(request.tool_name, request.args);
+      if (!argumentsValidation.success) {
+        throw new ConversationControlError('invalid_request',
+          argumentsValidation.error ?? `Invalid arguments for CLI tool ${request.tool_name}`);
+      }
       // Host 直接调用在批次后结束 run，没有模型；需要模型看图的调用在 Flow 接纳前明确拒绝，
       // 不留下只含能力错误的会话。参数不需要模型的同一工具照常执行。
       if (ports.tools.requiresModelInput(request.tool_name, request.args)) {

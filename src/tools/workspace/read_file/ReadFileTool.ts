@@ -11,7 +11,6 @@ import {
   WORKSPACE_READ_FILE_MAX_LIMIT,
   WorkspaceReadFileArgsSchema,
   WorkspaceReadFileResultSchema,
-  WorkspaceFileLocatorSchema,
 } from '@app/schemas';
 import { readFileForTool } from '../../../app-hosts/linnya/application/file-read';
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '../../types';
@@ -35,10 +34,12 @@ export class ReadFileTool extends BaseTool {
    * （CLI tools call）读 Workspace 文本不会因缺少模型失败，Agent 读图的准入与降级保持不变。
    * 必须是确定性规则、不做 I/O；locator 非法时由参数校验先拒绝。
    */
-  readonly resolveModelInputRequirement = (args: Record<string, unknown>) =>
-    typeof args.locator === 'string' && !WorkspaceFileLocatorSchema.safeParse(args.locator).success
+  readonly resolveModelInputRequirement = (args: Record<string, unknown>) => {
+    const locator = FileLocatorSchema.safeParse(args.locator);
+    return locator.success && !locator.data.startsWith('workspace:')
       ? READ_FILE_MODEL_INPUT_REQUIREMENT
       : undefined;
+  };
 
   get description() {
     return [

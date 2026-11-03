@@ -208,6 +208,11 @@ export function createLinnyaConversationControlUseCase(
           };
         });
       },
+      validateArguments(toolName, args) {
+        const validate = owners.tools.getToolDefinition(toolName)?.validateArguments;
+        if (!validate) throw new Error(`CLI tool ${toolName} has no argument admission`);
+        return validate({ ...args });
+      },
       requiresModelInput(toolName, args) {
         const definition = owners.tools.getToolDefinition(toolName);
         if (!definition) throw new Error(`CLI tool ${toolName} is not registered`);

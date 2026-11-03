@@ -477,6 +477,9 @@ function fixture(
           parameters: { type: 'object', properties: {}, additionalProperties: false },
         }));
       },
+      validateArguments(toolName, args) {
+        return toolName === 'read_file' ? readFileTool['validateArguments']({ ...args }) : { success: true };
+      },
       // read_file 使用真实工具声明，其余 CLI 工具不需要模型输入。
       requiresModelInput(toolName, args) {
         return toolName === 'read_file'
@@ -713,6 +716,17 @@ describe('conversation-control use case', () => {
     }
     expect(test.startRequests).toHaveLength(2);
   });
+
+  it.each(['/notes.md', 'workspace:document-id', 'conversation:notes.md', 'file:relative.md', ' workspace:/notes.md'])(
+    '错误 locator %s 在能力判断与 Flow 之前返回参数错误', async locator => {
+      const test = fixture();
+      const result = test.useCase.tools({ schema_version: 1, command: 'tools', action: 'call',
+        tool_name: 'read_file', project_id: 'project-1', args: { locator } });
+      await expect(result).rejects.toMatchObject({ code: 'invalid_request' });
+      await expect(result).rejects.toThrow('READ_FILE_LOCATOR_INVALID');
+      expect(test.startRequests).toHaveLength(0);
+    },
+  );
 
   it('已有会话继承项目，并拒绝项目不一致或未绑定项目的会话', async () => {
     const existing = fixture();
