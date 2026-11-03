@@ -17,6 +17,7 @@ export const HiddenWorkerDescriptorRpcSchema = z.object({
   workerHtmlPath: AbsolutePathSchema,
   preloadPath: AbsolutePathSchema,
   partition: NonEmptyStringSchema.optional(),
+  renderingMode: z.enum(['background', 'offscreen']).optional(),
   cancelChannel: NonEmptyStringSchema.optional(),
   idleTimeoutMs: PositiveIntegerSchema.optional(),
   readyTimeoutMs: PositiveIntegerSchema.optional(),

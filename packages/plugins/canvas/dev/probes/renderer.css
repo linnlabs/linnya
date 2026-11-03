@@ -1,0 +1,8 @@
+@import '../../../../../apps/renderer/domains/editor/styles/tokens/typography.css';
+:root { --font-size-md: 16px; --font-size-2xl: 24px; }
+body { margin: 0; font-family: system-ui, sans-serif; color: #1f2328; }
+.card { width: 280px; box-sizing: border-box; padding: 16px; background: #faf8f1; }
+.card .tiptap { font-size: var(--editor-body-font-size); line-height: var(--editor-body-line-height); overflow-wrap: anywhere; }
+.card p { margin: 0 0 var(--editor-paragraph-gap); }
+.card h2 { margin: 0 0 var(--editor-heading-after); font-size: var(--editor-h2-font-size); line-height: var(--editor-h2-line-height); }
+.card ul { padding-left: 20px; }
