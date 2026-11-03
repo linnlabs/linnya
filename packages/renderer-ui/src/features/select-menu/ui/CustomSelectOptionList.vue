@@ -109,6 +109,16 @@
           v-if="option.rightIconComponent"
           class="option-right-icon"
         />
+        <span
+          v-if="hasSelectedCheckmarkSlot(option)"
+          class="option-check"
+          aria-hidden="true"
+        >
+          <CheckmarkIcon
+            v-if="isOptionSelected(option)"
+            class="option-check__icon"
+          />
+        </span>
         <ChevronIcon
           v-if="showSubmenuState && option.children?.length"
           direction="right"
@@ -134,7 +144,7 @@ import type {
 import { CustomNumberInput } from '../../number-entry';
 import type { NumberInputValue } from '../../number-entry';
 import { resolveOptionLabelMarquee } from '../functions/resolveOptionLabelMarquee';
-import { ChevronIcon } from '../../../icons';
+import { CheckmarkIcon, ChevronIcon } from '../../../icons';
 
 interface CustomSelectOptionListProps {
   options: readonly CustomSelectOption<Value>[];
@@ -148,6 +158,7 @@ interface CustomSelectOptionListProps {
   classNames?: CustomSelectClassNames;
   optionLabelOverflow?: CustomSelectOptionLabelOverflow;
   showOptionLabelTooltip?: boolean;
+  showSelectedCheckmark?: boolean;
 }
 
 const props = withDefaults(defineProps<CustomSelectOptionListProps>(), {
@@ -161,6 +172,7 @@ const props = withDefaults(defineProps<CustomSelectOptionListProps>(), {
   classNames: () => ({}),
   optionLabelOverflow: 'visible',
   showOptionLabelTooltip: true,
+  showSelectedCheckmark: false,
 });
 
 const emit = defineEmits<{
@@ -238,6 +250,16 @@ function isOptionSelected(option: CustomSelectOption<Value>): boolean {
   return option.selected === true
     || option.value === props.modelValue
     || option.children?.some(isOptionSelected) === true;
+}
+
+/**
+ * 对勾槽位只属于可直接选中的叶子项：带子菜单的项右侧已有箭头，行内数字项右侧是输入控件。
+ * 槽位对所有叶子项一律保留，选中项切换时标签宽度不会变化。
+ */
+function hasSelectedCheckmarkSlot(option: CustomSelectOption<Value>): boolean {
+  return props.showSelectedCheckmark
+    && !option.children?.length
+    && !option.inlineNumberInput?.enabled;
 }
 
 function optionAriaSelected(option: CustomSelectOption<Value>): string | undefined {

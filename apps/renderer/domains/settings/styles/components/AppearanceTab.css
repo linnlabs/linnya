@@ -16,6 +16,14 @@
   color: var(--color-text-secondary);
 }
 
+/*
+ * 语言选择器按内容收缩，触发器只比当前选中文字宽一点，装不下菜单项的“文字 + 对勾槽位”。
+ * 给它一个下限，让菜单与触发器同宽并完整显示每种语言的名称和对勾。
+ */
+.appearance-language-select {
+  min-width: 156px;
+}
+
 .appearance-theme-selector {
   display: grid;
   /* 固定 80px 宽的小卡片，四个选项始终一行；整组随 SettingsRow 的 end 控件列靠右对齐。 */

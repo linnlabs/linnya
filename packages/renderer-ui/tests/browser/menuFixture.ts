@@ -144,6 +144,120 @@ async function mount({
   await settle();
 }
 
+/** 触发器的真实排版：文字与箭头笔画之间的间隙由浏览器布局给出，jsdom 无法量到。 */
+async function mountTrigger(theme: string) {
+  app?.unmount();
+  await settle();
+  document.documentElement.dataset.linnyaUiTheme = theme;
+  document.body.style.margin = '0';
+  app = createApp(() =>
+    h('div', { style: { position: 'fixed', left: '40px', top: '40px' } }, [
+      h(CustomSelect<string>, {
+        modelValue: 'zh-CN',
+        options: [
+          { value: 'zh-CN', text: '简体中文' },
+          { value: 'en-US', text: 'English' },
+        ],
+      }),
+    ])
+  );
+  app.mount('#fixture');
+  await settle();
+}
+
+function triggerGeometry() {
+  const trigger = document.querySelector<HTMLElement>('.select-trigger');
+  const value = trigger?.querySelector<HTMLElement>('.selected-value');
+  const chevron = trigger?.querySelector<SVGPathElement>('.arrow-icon path');
+  if (!trigger || !value || !chevron) throw new Error('Select trigger parts not found');
+  const text = document.createRange();
+  text.selectNodeContents(value);
+  const textRect = text.getBoundingClientRect();
+  const triggerRect = trigger.getBoundingClientRect();
+  const chevronRect = chevron.getBoundingClientRect();
+  return {
+    textRight: textRect.right,
+    chevronLeft: chevronRect.left,
+    chevronRight: chevronRect.right,
+    triggerRight: triggerRect.right,
+  };
+}
+
+/** Host 的全局 reset 是 border-box，菜单面板的 100% 宽度按它计算；fixture 只对标了属性的子树复现。 */
+const appResetStyle = document.createElement('style');
+appResetStyle.textContent =
+  '[data-app-reset], [data-app-reset] *, [data-app-reset] *::before, [data-app-reset] *::after { box-sizing: border-box; }';
+document.head.append(appResetStyle);
+
+/**
+ * 带对勾的语言选择器，宽度下限与设置页的业务样式一致（156px）：
+ * 菜单与触发器同宽，每一行的文字、间距和对勾槽位要由真实排版完整放下。
+ */
+async function mountCheckmarkSelect(theme: string) {
+  app?.unmount();
+  await settle();
+  document.documentElement.dataset.linnyaUiTheme = theme;
+  document.body.style.margin = '0';
+  app = createApp(() =>
+    h('div', { 'data-app-reset': '', style: { position: 'fixed', left: '40px', top: '40px' } }, [
+      h(CustomSelect<string>, {
+        modelValue: 'zh-CN',
+        showSelectedCheckmark: true,
+        style: { minWidth: '156px', fontSize: '14px' },
+        options: [
+          { value: 'zh-CN', text: '简体中文' },
+          { value: 'en-US', text: 'English' },
+        ],
+      }),
+    ])
+  );
+  app.mount('#fixture');
+  document.querySelector<HTMLButtonElement>('.select-trigger')?.click();
+  await settle();
+}
+
+function checkmarkGeometry() {
+  const trigger = document.querySelector<HTMLElement>('.select-trigger');
+  const panel = document.querySelector<HTMLElement>('.custom-select__options');
+  if (!trigger || !panel) throw new Error('Checkmark select parts not found');
+  const triggerRect = trigger.getBoundingClientRect();
+  const panelRect = panel.getBoundingClientRect();
+  return {
+    triggerWidth: triggerRect.width,
+    panelWidth: panelRect.width,
+    panelScrollWidth: panel.scrollWidth,
+    panelClientWidth: panel.clientWidth,
+    rows: [...panel.querySelectorAll<HTMLElement>('.select-option')].map(row => {
+      const label = row.querySelector<HTMLElement>('.linnya-ui-select-menu-option-label-text');
+      const slot = row.querySelector<HTMLElement>('.option-check');
+      const icon = slot?.querySelector<SVGElement>('svg') ?? null;
+      if (!label || !slot) throw new Error('Option label or check slot not found');
+      const text = document.createRange();
+      text.selectNodeContents(label);
+      const rowRect = row.getBoundingClientRect();
+      const textRect = text.getBoundingClientRect();
+      const slotRect = slot.getBoundingClientRect();
+      return {
+        text: label.textContent?.trim(),
+        selected: row.classList.contains('is-selected'),
+        rowLeft: rowRect.left,
+        rowRight: rowRect.right,
+        textLeft: textRect.left,
+        textRight: textRect.right,
+        slotLeft: slotRect.left,
+        slotRight: slotRect.right,
+        slotWidth: slotRect.width,
+        iconWidth: icon?.getBoundingClientRect().width ?? null,
+        iconHeight: icon?.getBoundingClientRect().height ?? null,
+        iconColor: icon ? getComputedStyle(icon).color : null,
+        labelColor: getComputedStyle(label).color,
+        rowPaddingRight: Number.parseFloat(getComputedStyle(row).paddingRight),
+        rowBackground: getComputedStyle(row).backgroundColor,
+      };
+    }),
+  };
+}
+
 function snapshot() {
   const panels = [...document.querySelectorAll<HTMLElement>('.custom-select__submenu')].filter(
     panel => !panel.classList.contains('submenu-fade-leave-active')
@@ -196,7 +310,16 @@ function submenuRows() {
   );
 }
 
-const fixture = { mount, settle, snapshot, submenuRows };
+const fixture = {
+  checkmarkGeometry,
+  mount,
+  mountCheckmarkSelect,
+  mountTrigger,
+  settle,
+  snapshot,
+  submenuRows,
+  triggerGeometry,
+};
 declare global {
   interface Window {
     menuFixture: typeof fixture;

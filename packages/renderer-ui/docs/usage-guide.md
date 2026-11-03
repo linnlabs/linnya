@@ -80,9 +80,11 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 选择面板需要向上展开时，传入 `options-motion-direction="up"`；不要覆盖包内私有 transition class。
 
-自定义 `arrow-icon` 插槽时，通过 `classNames.trigger` 映射的触发器及其 `aria-expanded` 驱动辅助箭头的展开态；主操作图标保持静止。箭头尺寸、方向和旋转动效遵循[展开箭头规范](./design.md#101-展开箭头)，面板继续使用组件自带的进入与退出过渡。
+自定义 `arrow-icon` 插槽时，通过 `classNames.trigger` 映射的触发器及其 `aria-expanded` 驱动辅助箭头的展开态；主操作图标保持静止。箭头尺寸、方向和旋转动效遵循[展开箭头规范](./design.md#101-展开箭头)，面板继续使用组件自带的进入与退出过渡。触发器在默认箭头一侧按“箭头位置 + 箭头尺寸 + 文字间隙”预留空间，选中文字不会贴到箭头；业务自绘并绝对定位 `arrow-icon` 插槽时，如果仍使用默认触发器内边距，箭头应放在同样的右侧位置，或在自己的触发器 class 上给文字留出相同的间隙。
 
 菜单宽度受限且选项名称可能很长时，传入 `option-label-overflow="ellipsis"`；若还需要在鼠标停留时阅读完整名称，使用 `option-label-overflow="marquee-on-hover"`。后者只滚动真实溢出的标签，并在 reduced-motion 环境保持静态省略号。默认值是 `visible`，不会改变既有菜单布局。
+
+选项较少、需要让当前选择在菜单里一眼可辨时（例如界面语言），传入 `show-selected-checkmark`：每个可直接选中的选项右侧保留一个定宽对勾槽位，选中项显示对勾，未选中项留空，切换选择时标签宽度不变；对勾颜色跟随选中项文字色，槽位对辅助技术隐藏，选中语义仍由 `aria-selected` 表达。带子菜单的父项右侧已有箭头、行内数字项右侧是输入控件，不占槽位。菜单面板与触发器同宽，触发器按内容收缩时可能装不下“文字 + 槽位”，调用方需要给选择器根节点（`class` 会落在它上面）设置合适的 `min-width`，业务不要复制菜单模板。默认值是 `false`，不会改变既有菜单外观。
 
 ### 悬浮提示
 

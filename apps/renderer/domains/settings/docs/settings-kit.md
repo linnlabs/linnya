@@ -113,7 +113,7 @@ import {
 - **`fill`** —— 控件占满标签右侧整列。单选组、滑杆和组合操作区用这个。
 - **`end`** —— 控件贴右、宽度自适应。**开关、单个按钮**用这个：开关只有 36px 宽，不该占掉一整列，剩下的空间留给文案更好读。
 
-设置件套内的普通输入、密文输入和下拉控件统一使用 14px 字号；普通输入的占位符继承同一字号。使用 `CustomTextInput` 或 `SecretInput` 时，为根组件加上 `settings-text-control` class，让件套把统一字号传递给控件；紧凑型搜索框等明确标注 `size="compact"` 的例外不受此规则影响。
+设置件套内的普通输入、密文输入和下拉控件统一使用 14px（`--font-size-prose`）字号；普通输入的占位符继承同一字号。共享的 `CustomTextInput` 默认继承所在环境的字号，设置面板的环境字号是根字号 16px，所以件套在 `SettingsRow` 的控件列上设置 14px：列内任何层级的输入（包括被自己的包裹层隔开的）都继承它，不必加 class。不在 `SettingsRow` 里的设置表单（例如弹窗里一个字段一行的编辑表单）给 `CustomTextInput` 或 `SecretInput` 的根组件加上 `settings-text-control` class，得到同一字号，不要求它是某个容器的直属子元素。紧凑型搜索框等明确标注 `size="compact"` 的例外保留自己的字号。`CustomSelect` 的字号来自它的 `font-size` prop（默认 13px），设置页里的下拉统一传 `font-size="14px"`。
 
 `description` 和 `hint` 别混：说明这一项**是什么**用 `description`（左侧，跟标签走）；说明**选了会怎样**用 `hint`（右侧，跟控件走）。开关行只用 `description`。
 

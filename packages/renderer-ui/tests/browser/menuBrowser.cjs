@@ -206,6 +206,46 @@ async function run() {
     assert.equal(parentRow.rowHeight, plainRow.rowHeight, JSON.stringify(parentRow));
     assert(parentRow.labelWidth >= parentRow.labelTextWidth - 1, JSON.stringify(parentRow));
   }
+  for (const theme of ['light', 'dark', 'moon-blue']) {
+    await evaluate(`window.menuFixture.mountTrigger(${JSON.stringify(theme)})`);
+    const trigger = await evaluate('window.menuFixture.triggerGeometry()');
+    // 触发器按内容收缩时，文字与箭头笔画之间要留出间隙，箭头仍落在触发器内。
+    assert(trigger.chevronLeft - trigger.textRight >= 8, JSON.stringify(trigger));
+    assert(trigger.chevronRight <= trigger.triggerRight, JSON.stringify(trigger));
+  }
+  for (const theme of ['light', 'dark', 'moon-blue']) {
+    await evaluate(`window.menuFixture.mountCheckmarkSelect(${JSON.stringify(theme)})`);
+    const check = await evaluate('window.menuFixture.checkmarkGeometry()');
+    if (process.env.LINNYA_MENU_BROWSER_CHECKMARK_SCREENSHOT) {
+      await writeFile(
+        `${process.env.LINNYA_MENU_BROWSER_CHECKMARK_SCREENSHOT}-${theme}.png`,
+        (await window.webContents.capturePage({ x: 20, y: 20, width: 220, height: 140 })).toPNG()
+      );
+    }
+    const [selected, idle] = check.rows;
+    const detail = JSON.stringify(check);
+    // 菜单与触发器同宽，且完整放下文字、间距和对勾槽位，没有横向滚动。
+    assert.equal(check.panelWidth, check.triggerWidth, detail);
+    assert(check.panelScrollWidth <= check.panelClientWidth, detail);
+    assert.equal(selected.text, '简体中文', detail);
+    assert.equal(idle.text, 'English', detail);
+    assert(selected.selected && !idle.selected, detail);
+    for (const row of check.rows) {
+      // 对勾槽位定宽 16px、紧贴选项右侧内边距，文字与槽位之间留出间距且不重叠。
+      assert.equal(row.slotWidth, 16, detail);
+      assert(Math.abs(row.rowRight - row.rowPaddingRight - row.slotRight) <= 0.5, detail);
+      assert(row.slotLeft - row.textRight >= 8, detail);
+      assert(row.textLeft >= row.rowLeft, detail);
+    }
+    // 只有选中项画出对勾（16px，颜色随选中文字），未选中项的槽位空着但位置相同。
+    assert.equal(selected.iconWidth, 16, detail);
+    assert.equal(selected.iconHeight, 16, detail);
+    assert.equal(selected.iconColor, selected.labelColor, detail);
+    assert.equal(idle.iconWidth, null, detail);
+    assert.equal(selected.slotLeft, idle.slotLeft, detail);
+    assert.equal(selected.slotRight, idle.slotRight, detail);
+    assert.notEqual(selected.rowBackground, idle.rowBackground, detail);
+  }
   window.setContentSize(260, 240);
   await mount({ manual: true, x: 20, y: 20 });
   await focus('.custom-select__options .select-option');
@@ -231,7 +271,7 @@ async function run() {
   }
   window.destroy();
   console.log(
-    'Menu Chromium checks passed: 170/171 rows, 3 themes, manual/Teleport, native keys/wheel, 2 levels, resize, custom content.'
+    'Menu Chromium checks passed: 170/171 rows, 3 themes, manual/Teleport, native keys/wheel, 2 levels, resize, custom content, trigger arrow gap, selected checkmark.'
   );
 }
 run().then(

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, h, markRaw, nextTick } from 'vue';
+import { createApp, h, markRaw, nextTick, ref } from 'vue';
 import { CustomSelect } from '../src';
 import type { CustomSelectValue } from '../src';
 
@@ -216,6 +216,73 @@ function mountOverflowingLabelSelectWithoutTooltip(): MountedCustomSelect {
               },
             ],
           },
+        ],
+      });
+    },
+  });
+  app.mount(host);
+
+  return {
+    host,
+    unmount: () => {
+      app.unmount();
+      host.remove();
+    },
+  };
+}
+
+function mountLanguageSelect(
+  showSelectedCheckmark: boolean | undefined,
+  onUpdate: (value: CustomSelectValue) => void = () => undefined,
+): MountedCustomSelect {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const language = ref<CustomSelectValue>('zh-CN');
+  const app = createApp({
+    render() {
+      return h(CustomSelect, {
+        modelValue: language.value,
+        ...(showSelectedCheckmark === undefined ? {} : { showSelectedCheckmark }),
+        options: [
+          { value: 'zh-CN', text: '简体中文' },
+          { value: 'en-US', text: 'English' },
+        ],
+        'onUpdate:modelValue': (value: CustomSelectValue) => {
+          language.value = value;
+          onUpdate(value);
+        },
+      });
+    },
+  });
+  app.mount(host);
+
+  return {
+    host,
+    unmount: () => {
+      app.unmount();
+      host.remove();
+    },
+  };
+}
+
+function mountCheckmarkSubmenuSelect(): MountedCustomSelect {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const app = createApp({
+    render() {
+      return h(CustomSelect, {
+        modelValue: 'gpt-5.6',
+        showSelectedCheckmark: true,
+        options: [
+          {
+            value: 'openai',
+            text: 'OpenAI',
+            children: [
+              { value: 'gpt-5.6', text: 'GPT-5.6' },
+              { value: 'gpt-5.5', text: 'GPT-5.5' },
+            ],
+          },
+          { value: 'local', text: 'Local' },
         ],
       });
     },
@@ -715,5 +782,169 @@ describe('CustomSelect 子菜单交互与定位', () => {
     if (!(submenu instanceof HTMLElement)) throw new Error('Submenu not found');
     // 父项中心 120px，受限子菜单半高 100px，因此 top 为 20px。
     expect(submenu.style.top).toBe('20px');
+  });
+});
+
+describe('CustomSelect 选中项对勾', () => {
+  async function openMenu(mounted: MountedCustomSelect): Promise<HTMLButtonElement[]> {
+    const trigger = mounted.host.querySelector('.select-trigger');
+    if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
+    trigger.click();
+    await flushRendering();
+    return Array.from(mounted.host.querySelectorAll<HTMLButtonElement>('.custom-select__options .select-option'));
+  }
+
+  it('开启后只有选中项显示对勾，其余项保留同样的空槽位', async () => {
+    const mounted = mountLanguageSelect(true);
+    mountedSelects.push(mounted);
+
+    const [chinese, english] = await openMenu(mounted);
+    if (!chinese || !english) throw new Error('Language options not found');
+
+    expect(chinese.getAttribute('aria-selected')).toBe('true');
+    expect(english.getAttribute('aria-selected')).toBe('false');
+    const selectedSlot = chinese.querySelector('.option-check');
+    const idleSlot = english.querySelector('.option-check');
+    expect(selectedSlot?.getAttribute('aria-hidden')).toBe('true');
+    expect(selectedSlot?.querySelector('svg[data-icon="checkmark"]')).not.toBeNull();
+    expect(idleSlot?.getAttribute('aria-hidden')).toBe('true');
+    expect(idleSlot?.querySelector('svg')).toBeNull();
+    // 对勾位于标签之后，是选项主行的最后一个元素。
+    expect(chinese.querySelector('.select-option__main')?.lastElementChild).toBe(selectedSlot);
+  });
+
+  it('选择另一项后对勾跟随选中项移动，选项总数与槽位不变', async () => {
+    const onUpdate = vi.fn();
+    const mounted = mountLanguageSelect(true, onUpdate);
+    mountedSelects.push(mounted);
+
+    const [, english] = await openMenu(mounted);
+    english?.click();
+    await flushRendering();
+    expect(onUpdate).toHaveBeenCalledWith('en-US');
+
+    const reopened = await openMenu(mounted);
+    expect(reopened).toHaveLength(2);
+    expect(reopened[0]?.querySelector('.option-check svg')).toBeNull();
+    expect(reopened[1]?.querySelector('.option-check svg[data-icon="checkmark"]')).not.toBeNull();
+    expect(reopened[1]?.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('默认关闭：菜单里没有对勾槽位，选中态仍由 aria-selected 与 is-selected 表达', async () => {
+    for (const flag of [undefined, false]) {
+      const mounted = mountLanguageSelect(flag);
+      mountedSelects.push(mounted);
+
+      const [chinese] = await openMenu(mounted);
+      expect(mounted.host.querySelector('.option-check')).toBeNull();
+      expect(mounted.host.querySelector('svg[data-icon="checkmark"]')).toBeNull();
+      expect(chinese?.classList).toContain('is-selected');
+      expect(chinese?.getAttribute('aria-selected')).toBe('true');
+
+      mountedSelects.pop()?.unmount();
+      await flushRendering();
+    }
+  });
+
+  it('带子菜单的父项不占对勾槽位，子菜单里的叶子项沿用同一开关', async () => {
+    const mounted = mountCheckmarkSubmenuSelect();
+    mountedSelects.push(mounted);
+
+    const [provider, local] = await openMenu(mounted);
+    if (!provider || !local) throw new Error('Menu options not found');
+    expect(provider.classList).toContain('has-children');
+    expect(provider.querySelector('.option-check')).toBeNull();
+    expect(local.querySelector('.option-check')).not.toBeNull();
+    expect(local.querySelector('.option-check svg')).toBeNull();
+
+    provider.dispatchEvent(new MouseEvent('mouseenter'));
+    await flushRendering();
+    await flushRendering();
+
+    const children = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>('.custom-select__submenu .select-option'),
+    );
+    expect(children).toHaveLength(2);
+    expect(children[0]?.querySelector('.option-check svg[data-icon="checkmark"]')).not.toBeNull();
+    expect(children[1]?.querySelector('.option-check')).not.toBeNull();
+    expect(children[1]?.querySelector('.option-check svg')).toBeNull();
+  });
+});
+
+describe('CustomSelect 触发器箭头间距', () => {
+  const srcRoot = join(dirname(fileURLToPath(import.meta.url)), '../src');
+  const MIN_TEXT_ARROW_GAP_PX = 8;
+
+  function ruleDeclarations(css: string, selector: string): Map<string, string> {
+    const style = document.createElement('style');
+    style.textContent = css;
+    document.head.appendChild(style);
+    try {
+      const rule = Array.from(style.sheet?.cssRules ?? []).find(
+        (candidate): candidate is CSSStyleRule =>
+          candidate instanceof CSSStyleRule && candidate.selectorText === selector,
+      );
+      if (!rule) throw new Error(`CSS rule not found: ${selector}`);
+      return new Map(Array.from(rule.style, name => [name, rule.style.getPropertyValue(name)]));
+    } finally {
+      style.remove();
+    }
+  }
+
+  /** 只支持本组件间距用到的 px、var() 与加法 calc()，遇到其他写法直接失败而不是猜。 */
+  function toPx(value: string, variables: ReadonlyMap<string, string>): number {
+    const substituted = value.replace(/var\((--[\w-]+)\)/gu, (_match, name: string) => {
+      const resolved = variables.get(name);
+      if (resolved === undefined) throw new Error(`Unknown custom property: ${name}`);
+      return `(${resolved})`;
+    });
+    if (substituted.includes('var(')) return toPx(substituted, variables);
+    const sum = substituted.replace(/calc|[()]/gu, '');
+    if (!/^\s*\d+(?:\.\d+)?px(?:\s*\+\s*\d+(?:\.\d+)?px)*\s*$/u.test(sum)) {
+      throw new Error(`Unsupported length expression: ${value}`);
+    }
+    return sum.split('+').reduce((total, part) => total + Number.parseFloat(part), 0);
+  }
+
+  function splitBoxShorthand(value: string): string[] {
+    const parts: string[] = [];
+    let depth = 0;
+    let current = '';
+    for (const character of value) {
+      if (character === '(') depth += 1;
+      if (character === ')') depth -= 1;
+      if (/\s/u.test(character) && depth === 0) {
+        if (current) parts.push(current);
+        current = '';
+      } else {
+        current += character;
+      }
+    }
+    if (current) parts.push(current);
+    return parts;
+  }
+
+  it('默认触发器为箭头预留的右侧空间，比箭头自身占用的宽度多出一段文字间隙', () => {
+    const selectCss = readFileSync(join(srcRoot, 'features/select-menu/styles/CustomSelect.css'), 'utf8');
+    const geometryCss = readFileSync(join(srcRoot, 'styles/tokens/geometry.css'), 'utf8');
+    const variables = new Map<string, string>([
+      ...ruleDeclarations(geometryCss, ':root'),
+      ...ruleDeclarations(selectCss, '.custom-select'),
+    ]);
+    const trigger = ruleDeclarations(selectCss, '.custom-select .select-trigger');
+    const arrow = ruleDeclarations(selectCss, '.custom-select .arrow-icon');
+
+    const [, paddingRight] = splitBoxShorthand(trigger.get('padding') ?? '');
+    const arrowEnd = toPx(arrow.get('right') ?? '', variables) + toPx(arrow.get('width') ?? '', variables);
+    const reservedForArrow = toPx(paddingRight ?? '', variables);
+
+    expect(reservedForArrow - arrowEnd).toBeGreaterThanOrEqual(MIN_TEXT_ARROW_GAP_PX);
+  });
+
+  it('样式规则对应的 DOM 结构存在：箭头是触发器的直接子元素', () => {
+    const mounted = mountCustomSelect();
+    mountedSelects.push(mounted);
+
+    expect(mounted.host.querySelector('.custom-select > .select-trigger > .arrow-icon')).not.toBeNull();
   });
 });
