@@ -22,6 +22,7 @@ export interface CanvasAppearance {
 }
 export interface CanvasRasterTile {
   readonly bitmap: ImageBitmap; readonly x: number; readonly y: number; readonly width: number; readonly height: number;
+  readonly scale: number;
 }
 export interface CanvasKernel {
   readonly canvas: HTMLCanvasElement;
@@ -54,7 +55,7 @@ export interface CanvasKernel {
   renderableCards(): readonly CanvasCard[];
   rasterCards(): readonly CanvasCard[];
   readVisibleCardRegions(id: CanvasCardId): readonly CanvasRectangle[];
-  readMissingBitmapRegions(id: CanvasCardId, key: string, regions: readonly CanvasRectangle[]): readonly CanvasRectangle[];
+  readMissingBitmapRegions(id: CanvasCardId, key: string, regions: readonly CanvasRectangle[], resolution: { readonly scale: number; readonly exact: boolean }): readonly CanvasRectangle[];
   screenToWorld(point: CanvasPoint): CanvasPoint;
   worldToScreen(point: CanvasPoint): CanvasPoint;
   captureImage(format: 'png' | 'jpeg', quality?: number): Promise<string>;

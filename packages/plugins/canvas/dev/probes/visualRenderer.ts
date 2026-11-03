@@ -5,6 +5,7 @@ import { createHtmlCardRasterizer } from '../../src/renderer/capabilities/textRa
 import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/kernel';
 import { createCanvasRasterPresentation } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
 import '@linnya/markdown-document-core/style.css';
+import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 
 const source = { kind: 'user', conversationId: null, runId: null };
 const content = { type: 'doc', content: [
@@ -166,3 +167,32 @@ async function unsupportedApiVisual() {
   } finally { raster.dispose(); }
 }
 Object.defineProperty(window, 'prepareCanvasUnsupportedApiVisualProbe', { value: unsupportedApiVisual });
+
+async function mixedLodVisual(theme: 'light' | 'dark') {
+  await prepare(theme, 'paper'); const kernel = previousKernel; if (!kernel) throw new Error('lod_fixture_missing');
+  const card = kernel.visibleCards()[0]; kernel.setElements([card]); kernel.invalidateBitmaps(); kernel.setCamera({ x: 0, y: 0, zoom: 0.6 });
+  const request = CanvasRenderRequestSchema.parse({ protocol: 1, requestId: 'lod', kind: 'render', theme, material: 'paper', fontFamily: 'system-ui', fontSize: 14,
+    dpr: devicePixelRatio, width: 1000, height: 600, region: null, quality: 1, format: 'png', snapshot: { schemaVersion: 1, documentId: 'lod', sequence: 1, elements: [card] },
+    documents: { 'visual-document': { title: '同源标签', status: 'available' } } });
+  const staging = document.createElement('div'); document.body.append(staging); const rasterizer = createHtmlCardRasterizer({ host: staging });
+  try {
+    const low = await rasterizer.rasterize({ element: createCardSurface(card, request), width: 360, height: 500, scale: devicePixelRatio });
+    const high = await rasterizer.rasterize({ element: createCardSurface(card, request), width: 360, tileWidth: 180, height: 250, offsetX: 20, offsetY: 60, scale: devicePixelRatio * 2 });
+    const expected = document.createElement('canvas'); expected.width = 360 * devicePixelRatio; expected.height = 500 * devicePixelRatio;
+    const context = expected.getContext('2d'); if (!context) throw new Error('lod_oracle_context_missing');
+    const factor = devicePixelRatio * 0.6; context.fillStyle = readCanvasCardCssPalette(card.color, theme === 'dark').paper; context.fillRect(0, 0, expected.width, expected.height);
+    context.drawImage(low.bitmap, 0, 0, 360 * factor, 500 * factor);
+    context.fillRect(20 * factor, 60 * factor, 180 * factor, 250 * factor); context.drawImage(high.bitmap, 20 * factor, 60 * factor, 180 * factor, 250 * factor);
+    kernel.setRasterTiles(card.id, card.revision, 'bucket', [{ bitmap: low.bitmap, x: 0, y: 0, width: 360, height: 500, scale: devicePixelRatio }]);
+    kernel.setRasterTiles(card.id, card.revision, 'bucket', [{ bitmap: high.bitmap, x: 20, y: 60, width: 180, height: 250, scale: devicePixelRatio * 2 }]);
+    const frame = [{ x: 0, y: 0, width: 360, height: 500 }];
+    if (kernel.readMissingBitmapRegions(card.id, 'bucket', frame, { scale: devicePixelRatio, exact: false }).length
+      || !kernel.readMissingBitmapRegions(card.id, 'bucket', frame, { scale: devicePixelRatio, exact: true }).length) throw new Error('lod_coverage_mode_mismatch');
+    const actual = await kernel.captureImage('png'), bytes = kernel.readStats().bitmapBytes;
+    if (bytes !== low.bitmap.width * low.bitmap.height * 4 + high.bitmap.width * high.bitmap.height * 4) throw new Error('cropped_source_memory_counted_more_than_once');
+    kernel.invalidateBitmaps();
+    if (low.bitmap.width !== 0 || high.bitmap.width !== 0 || kernel.readStats().bitmapBytes !== 0) throw new Error('cropped_source_ownership_not_released');
+    return { expected: expected.toDataURL('image/png'), actual };
+  } finally { rasterizer.dispose(); staging.remove(); }
+}
+Object.defineProperty(window, 'prepareCanvasMixedLodVisualProbe', { value: mixedLodVisual });

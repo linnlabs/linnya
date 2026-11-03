@@ -72,7 +72,9 @@ export class CanvasLineMesh {
     const positions = new Float32Array(segments * 12), normals = new Float32Array(segments * 12), offsets = new Float32Array(segments * 12);
     const sides = new Float32Array(segments * 6), distances = new Float32Array(segments * 6), patterns = new Float32Array(segments * 6);
     let cursor = 0;
-    const line = (a: CanvasPoint, b: CanvasPoint, offsetA: CanvasPoint = { x: 0, y: 0 }, offsetB: CanvasPoint = { x: 0, y: 0 }, start = 0, dashed = false) => {
+    const zero = { x: 0, y: 0 }, segment = { offsetA: zero, offsetB: zero, start: 0, dashed: false };
+    const line = (a: CanvasPoint, b: CanvasPoint) => {
+      const { offsetA, offsetB, start, dashed } = segment;
       const dx = b.x - a.x || offsetB.x - offsetA.x, dy = b.y - a.y || offsetB.y - offsetA.y;
       const length = Math.hypot(dx, dy);
       if (!length) return;
@@ -87,14 +89,18 @@ export class CanvasLineMesh {
     const arrow = (tip: CanvasPoint, before: CanvasPoint) => {
       const angle = Math.atan2(tip.y - before.y, tip.x - before.x);
       // 箭头8×6.4屏幕像素；偏移不乘世界缩放。
-      for (const side of [-1, 1]) line(tip, tip, { x: -Math.cos(angle) * 8 - Math.sin(angle) * side * 3.2,
-        y: -Math.sin(angle) * 8 + Math.cos(angle) * side * 3.2 }, { x: 0, y: 0 });
+      segment.start = 0; segment.dashed = false; segment.offsetB = zero;
+      for (const side of [-1, 1]) {
+        segment.offsetA = { x: -Math.cos(angle) * 8 - Math.sin(angle) * side * 3.2, y: -Math.sin(angle) * 8 + Math.cos(angle) * side * 3.2 };
+        line(tip, tip);
+      }
     };
     for (const { edge, geometry } of entries) {
       const { points } = geometry;
       let distance = 0;
+      segment.offsetA = zero; segment.offsetB = zero; segment.dashed = edge.linePattern === 'dashed';
       for (let i = 1; i < points.length; i++) {
-        line(points[i - 1], points[i], undefined, undefined, distance, edge.linePattern === 'dashed');
+        segment.start = distance; line(points[i - 1], points[i]);
         distance += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
       }
       if (edge.direction !== 'none' && points.length > 1) arrow(points[points.length - 1], points[points.length - 2]);

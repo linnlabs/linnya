@@ -28,6 +28,7 @@ export function createCanvasRasterPresentation(options: {
   let pump = 0;
   let refreshes = 0;
   let maximumRefreshMs = 0;
+  let requestedTiles = 0, requestedPixels = 0, subPixelTiles = 0;
   let cameraKey = '';
   let cameraChangedAt = 0;
   let precisionTimer: ReturnType<typeof setTimeout> | undefined;
@@ -63,15 +64,16 @@ export function createCanvasRasterPresentation(options: {
       const content = descriptor(card);
       const externalKey = options.readContentKey?.(card) ?? '';
       const key = cardRasterKey({ revision: 0, theme: appearance.dark ? 'dark' : 'light', dpr: pixelRatio,
-        material: 'body', lod: physicalWidth, font: `${font}/14/1.7`, uiScale: 1 }) + content + externalKey;
+        material: 'body', lod: 0, font: `${font}/14/1.7`, uiScale: 1 }) + content + externalKey + (precise ? JSON.stringify(['exact', physicalWidth]) : 'bucket');
       if (failed.get(card.id) === key) continue;
-      const regions = splitCardRasterRegions(options.kernel.readMissingBitmapRegions(card.id, key, visibleRegions), scale);
+      const regions = splitCardRasterRegions(options.kernel.readMissingBitmapRegions(card.id, key, visibleRegions, { scale, exact: precise }), scale);
       if (!regions.length) continue;
-      const jobKey = key + JSON.stringify(regions);
+      const jobKey = key + physicalWidth + JSON.stringify(regions);
       if (pending.get(card.id) === jobKey) continue;
       if (pending.has(card.id)) { queue.cancel(card.id); pending.delete(card.id); }
       // 不能把几百张可见卡反复冲入64槽队列；完成一个任务后再补下一张。
       if (pending.size >= 65) break;
+      for (const region of regions) { requestedTiles++; requestedPixels += Math.ceil(region.width * scale) * Math.ceil(region.height * scale); if (Math.min(region.width, region.height) * scale < 0.001) subPixelTiles++; }
       pending.set(card.id, jobKey);
       void queue.enqueue(card.id, { card, scale, dark: appearance.dark, regions }).then(result => {
         if (pending.get(card.id) === jobKey) pending.delete(card.id);
@@ -92,6 +94,6 @@ export function createCanvasRasterPresentation(options: {
     }
     refreshes++; maximumRefreshMs = Math.max(maximumRefreshMs, performance.now() - started);
   }
-  return { refresh, retry() { failed.clear(); refresh(); }, readStats: () => ({ ...queue.readStats(), failed: failed.size, refreshes, maximumRefreshMs }),
+  return { refresh, retry() { failed.clear(); refresh(); }, readStats: () => ({ ...queue.readStats(), failed: failed.size, refreshes, maximumRefreshMs, requestedTiles, requestedPixels, subPixelTiles }),
     dispose() { disposed = true; clearTimeout(precisionTimer); if (pump) cancelAnimationFrame(pump); queue.dispose(); rasterizer.dispose(); } };
 }
