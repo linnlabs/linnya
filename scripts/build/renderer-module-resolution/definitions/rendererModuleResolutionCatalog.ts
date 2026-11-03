@@ -42,6 +42,7 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
   browser('@linnya/renderer-ui/theme', 'packages/renderer-ui/src/theme/index.ts', 'exact'),
   browser('@linnya/renderer-ui/version', 'packages/renderer-ui/src/version.ts', 'exact'),
   browser('@linnya/markdown-document-core', 'packages/markdown-document-core/src/index.ts', 'exact'),
+  browser('@linnya/markdown-document-core/references', 'packages/markdown-document-core/src/references.ts', 'exact'),
   browser('@linnya/markdown-document-core/validation', 'packages/markdown-document-core/src/functions/assertMarkdownDocument.ts', 'exact'),
   browser('@linnya/text-measurement-core', 'packages/text-measurement-core/src/index.ts', 'exact'),
   browser('@linnya/citation-domain/conversation-presentation', 'src/domains/citation/conversation-presentation.ts', 'exact'),

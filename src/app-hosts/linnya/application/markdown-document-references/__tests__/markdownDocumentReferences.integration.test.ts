@@ -8,6 +8,8 @@ import { listDocumentBacklinks } from 'src/plugin-sdk/backend/documentReferences
 import { collectMarkdownDocumentReferences } from 'src/domains/markdown/features/document-references';
 import { createMarkdownDocumentStore } from '../../markdown-image-assets';
 import { getMarkdownDocumentReferenceRuntime } from '..';
+import { readFileForTool } from '../../file-read/orchestration/readFileForTool';
+import { WorkspaceReadFileArgsSchema } from '@app/schemas';
 import { createWorkspaceDocumentFileCreateProviderResolver } from '../../../adapters/document-file-create/createWorkspaceDocumentFileCreateProviderResolver';
 import { createWorkspaceDocumentFileWriteProviderResolver } from '../../../adapters/document-file-write/createWorkspaceDocumentFileWriteProviderResolver';
 
@@ -129,4 +131,24 @@ describe('Markdown stable document reference read/write/proposal lifecycle', () 
     await f.decide('accept'); expect(collectMarkdownDocumentReferences(f.store.getDocument(id))).toEqual([]);
   });
 
+});
+
+it('registers only the actual read_file page and rejects a stale delivered path before pending write', async () => {
+  const f = await source(); const id = f.identity.documentId;
+  const args = WorkspaceReadFileArgsSchema.parse({ locator: 'workspace:/source.md', view: 'text' });
+  const output = await readFileForTool({ args, rawArgs: args, context: { ...context, databaseService: database, workspaceService: f.workspace, workspaceProjectId: f.projectId } });
+  expect(output).not.toContain('referenceId'); expect(output).not.toContain(f.targetId);
+  const body = f.read(false);
+  f.db.prepare('UPDATE workspace_nodes SET name = ? WHERE id = ?').run('Moved.md', f.targetId);
+  f.workspace.createDocument(f.projectId, 'Target.md', null, 'document');
+  await expect(f.writer.write({ identity: f.identity, operation: 'write', content: body.text + ' stale' })).rejects.toMatchObject({ code: 'reference_path_changed' });
+  expect(f.store.getPendingRevisions(id)).toEqual([]);
+});
+it('does not expose Host document reference metadata in DocumentView tool output', async () => {
+  const f = await source();
+  const args = WorkspaceReadFileArgsSchema.parse({ locator: 'workspace:/source.md', view: 'document' });
+  const output = await readFileForTool({ args, rawArgs: args, context: { ...context, databaseService: database, workspaceService: f.workspace, workspaceProjectId: f.projectId } });
+  expect(output).not.toContain('referenceId'); expect(output).not.toContain('documentReferences'); expect(output).not.toContain(f.targetId);
+  await f.writer.write({ identity: f.identity, operation: 'write', content: f.read(false).text + ' updated' });
+  expect(f.store.getPendingRevisions(f.identity.documentId)).toHaveLength(1);
 });
