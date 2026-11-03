@@ -175,6 +175,8 @@ async function loadImage(params: {
     byteLength: inspected.byteLength,
     width: inspected.width,
     height: inspected.height,
+    displayWidth: inspected.displayWidth,
+    displayHeight: inspected.displayHeight,
     sha256: inspected.sha256,
     bytes,
   };

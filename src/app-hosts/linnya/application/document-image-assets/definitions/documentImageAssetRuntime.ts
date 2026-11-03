@@ -1,20 +1,15 @@
 import type { ManagedImageContentIngressPort } from 'src/domains/assets/features/managed-image-ingress';
 import type { WorkspaceVerifiedImageLoaderPort } from 'src/features/workspace/assets/shared/verified-image';
-import type { SupportedImageMediaType } from 'src/shared/media/image-inspection';
+import type { DocumentImageAsset } from '@app/schemas';
 import type { DocumentAssetOwnershipPort } from '../../document-assets';
 
-export interface DocumentImageAsset {
-  readonly assetId: string;
-  readonly mediaType: SupportedImageMediaType;
-  readonly byteLength: number;
-  readonly width: number;
-  readonly height: number;
-  readonly sha256: string;
-  readonly dataUri: string;
-}
+export type { DocumentImageAsset } from '@app/schemas';
 
 export interface DocumentImageAssetRuntimePort {
-  prepareImageBytes(input: { readonly documentId: string; readonly bytes: Uint8Array }): Promise<DocumentImageAsset>;
+  prepareImageBytes(input: {
+    readonly documentId: string;
+    readonly bytes: Uint8Array;
+  }): Promise<DocumentImageAsset>;
   adoptLocalImage(input: {
     readonly documentId: string;
     readonly sourcePath: string;
