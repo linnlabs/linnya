@@ -19,3 +19,10 @@ export function canvasHistoryDependenciesValid(element: CanvasElement, rows: Rea
   }
   return true;
 }
+
+/** 新卡被后来新增的边或预留分组关系使用时，撤回不得级联吞掉该关系。 */
+export function canvasHistoryElementDependsOn(element: CanvasElement, id: CanvasElementId): boolean {
+  return element.type === 'edge'
+    ? [element.from, element.to].some(endpoint => endpoint.kind === 'card' && endpoint.cardId === id)
+    : element.parentId === id;
+}
