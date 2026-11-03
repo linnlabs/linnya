@@ -22,5 +22,5 @@ export function mergeCanvasHistoryEntry(previous: CanvasHistoryEntry, next: Canv
       changes[changes.length - 1] = { ...last, after: change.after, afterOrigins: { ...last.afterOrigins, ...Object.fromEntries(change.fields.map(field => [field, change.afterOrigins[field]])) } };
     } else changes.push(change);
   }
-  return { groupId: previous.groupId, changes };
+  return { groupId: previous.groupId, actionId: next.actionId, changes };
 }

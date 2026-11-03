@@ -25,6 +25,22 @@ function fixture() {
 const update = (color: string, baseRevision: number) => [{ op: 'update', id: 'c1', baseRevision, patch: { color } }];
 
 describe('Canvas durable Agent change groups', () => {
+  it('persists skipped operations and actual changed fields without inventing a new write or duplicate retry', () => {
+    const f = fixture(); f.commit([add]); f.apply('A', update('yellow', 1), 'success');
+    const first = f.history.listGroups('doc', 10000)[0]; if (!first) throw new Error('missing group');
+    expect(first.changes).toEqual([{ id: 'c1', kind: 'updated', fields: ['color'] }]);
+    f.apply('A', update('red', 0), 'stale'); f.apply('A', update('red', 0), 'stale');
+    const group = f.history.listGroups('doc', 10000)[0];
+    expect(group?.lastWriteAt).toBe(first.lastWriteAt); expect(group?.writing).toBe(false);
+    expect(group?.outcomes).toEqual({ complete: true, skippedWrites: [{ requestId: 'stale', index: 0, id: 'c1', reason: 'stale_field', fields: ['color'] }] });
+    f.restart(); expect(f.history.listGroups('doc', 10000)[0]?.outcomes).toEqual(group?.outcomes); f.database.close();
+  });
+  it('keeps layout-only changes withdrawable without counting them as content review markers', () => {
+    const f = fixture(); f.commit([add]); f.apply('A', [{ op: 'update', id: 'c1', baseRevision: 1, patch: { x: 40 } }]);
+    const group = f.history.listGroups('doc', 10000)[0]; if (!group) throw new Error('missing group');
+    expect(group.changes).toEqual([]); expect(group.updated).toEqual([]);
+    f.withdraw(group.id); expect(f.elements[0]).toMatchObject({ x: 0 }); f.database.close();
+  });
   it('retains the intervening B value when A writes again, and redo only replays the actual withdrawal', () => {
     const f = fixture(); f.commit([add]); f.apply('A', update('yellow', 1)); f.apply('B', update('green', 2)); f.apply('A', update('red', 3));
     const group = f.history.listGroups('doc', 1).find(group => group.conversationId === 'A'); if (!group) throw new Error('missing group');

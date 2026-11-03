@@ -13,6 +13,7 @@ export interface CanvasHistoryCommitInput {
   readonly before: CanvasCommitState;
   readonly plan: CanvasCommitPlan;
   readonly result: CanvasCommitResult;
+  readonly operations?: readonly import('../../../../shared').CanvasCommand[];
 }
 export interface CanvasCommitPorts {
   readonly reservedRectangles?: (state: CanvasCommitState, context: CanvasCommitContext) => readonly CanvasRectangle[];
@@ -30,6 +31,7 @@ export interface CanvasTransitionInput {
   readonly actor: CanvasCommitActor;
   readonly now: number;
   readonly referenceBindings?: readonly import('@app/schemas').DocumentReferenceMarkdownBinding[];
+  readonly operations?: readonly import('../../../../shared').CanvasCommand[];
   readonly ports?: CanvasCommitPorts;
   readonly buildPlan: (state: CanvasCommitState, claims: readonly CanvasEditingClaim[], origin: string) => CanvasCommitPlan;
 }
@@ -56,7 +58,7 @@ export function commitCanvasTransition(input: CanvasTransitionInput): CanvasComm
     result = { documentId: input.documentId, requestId: input.requestId, sequence: plan.state.sequence, results: plan.results, refs: plan.refs };
     persistCanvasCommit(input.database, { documentId: input.documentId, sourceKey, source: input.actor.source, plan, result, payloadHash, now: input.now });
     for (const participant of input.ports?.participants ?? []) participant.commit(plan, context);
-    updateMemory = input.ports?.history?.({ context, before: state, plan, result });
+    updateMemory = input.ports?.history?.({ context, before: state, plan, result, operations: input.operations });
     committedPlan = plan;
   }).immediate();
   const committedAt = performance.timeOrigin + performance.now();
@@ -76,6 +78,7 @@ export function commitCanvasOperations(input: {
   const request = CanvasCommitRequestSchema.parse(input.request);
   return commitCanvasTransition({ ...input, documentId: request.documentId, requestId: request.requestId,
     referenceBindings: request.referenceBindings,
+    operations: request.operations,
     payload: canvasOperationsPayload(request),
     buildPlan: (state, claims, origin) => planCanvasCommit({ state, operations: request.operations, actor: input.actor, claims, now: input.now, origin, layoutGroups: request.layoutGroups, reservedRectangles: input.ports?.reservedRectangles?.(state, { documentId: request.documentId, requestId: request.requestId, actor: input.actor, now: input.now }) }),
   });
