@@ -29,7 +29,7 @@ export const rendererPlugin: RendererPluginContribution = {
   deactivate() { clearCanvasReferenceFocus(); stopPreferences?.(); stopPreferences = null; unregisterAppearanceSection(CANVAS_PLUGIN_ID, 'material'); },
   documentTypes: [{ pluginId: CANVAS_PLUGIN_ID, nodeType: CANVAS_DOCUMENT_TYPE, activeDocumentType: CANVAS_DOCUMENT_TYPE,
     fileSessionType: CANVAS_DOCUMENT_TYPE, createRequestType: CANVAS_DOCUMENT_TYPE, createBackend: 'workspace-document',
-    surfaceComponent: CanvasView, deferSurfaceUntilOpen: true, fileHandler: canvasFileHandler, shellClass: 'for-canvas', label: '画布', createLabel: '新建画布', defaultName: '未命名画布',
+    surfaceComponent: CanvasView, historyPreviewComponent: defineAsyncComponent(() => import('./features/historyPreview/ui/CanvasHistoryPreview.vue')), deferSurfaceUntilOpen: true, fileHandler: canvasFileHandler, shellClass: 'for-canvas', label: '画布', createLabel: '新建画布', defaultName: '未命名画布',
     iconComponent: DocumentTextIcon, iconClass: 'canvas-icon', createPriority: 25,
     entityReferences: [{ kind: 'document', uriPattern: 'linnya://canvas/{documentId}', description: '自由画布文档' }],
   }],

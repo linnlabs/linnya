@@ -9,6 +9,7 @@ import type {
 import { createEmbeddedMarkdownImage } from './createEmbeddedMarkdownImage';
 import { createEmbeddedMarkdownInsertion } from './createEmbeddedMarkdownInsertion';
 import { createMarkdownDocumentExtensions } from '@linnya/markdown-document-core';
+import { createDocumentReferenceExtension } from '@/domains/editor/features/document-references';
 
 /** 外部文档持有正文和保存生命周期；此入口只拥有一个可销毁的编辑表面。 */
 export function createEmbeddedMarkdownEditor(
@@ -18,7 +19,7 @@ export function createEmbeddedMarkdownEditor(
   const cancelInsertions = () => { for (const insertion of [...insertions]) insertion.cancel(); };
   const editor = new Editor({
     element: options.element,
-    extensions: createMarkdownDocumentExtensions([createEmbeddedMarkdownImage(options)]),
+    extensions: createMarkdownDocumentExtensions([createEmbeddedMarkdownImage(options), createDocumentReferenceExtension()]),
     editable: !options.readonly,
     editorProps: {
       attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label },

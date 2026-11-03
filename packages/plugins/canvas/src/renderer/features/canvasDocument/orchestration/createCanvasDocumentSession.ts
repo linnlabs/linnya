@@ -78,6 +78,11 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
         const result = await port.commit({ documentId: document.documentId, requestId, viewId, operations, ...(historyGroupId ? { historyGroupId } : {}) });
         if (token !== sessionId) throw new DOMException('Canvas committed after its surface closed', 'AbortError');
         await synchronize(result.sequence);
+        const skipped = result.results.filter(outcome => outcome.status === 'skipped');
+        if (skipped.length) {
+          const applied = result.results.length - skipped.length;
+          throw new Error(`${applied ? `已提交 ${applied} 项，另有 ${skipped.length} 项跳过` : '本次修改未提交'}：${[...new Set(skipped.map(outcome => outcome.reason ?? '内容已变化，请重试'))].join('；')}`);
+        }
         return result;
       });
       // 一个动作失败不能把后续用户动作永远卡在 rejected promise 上。

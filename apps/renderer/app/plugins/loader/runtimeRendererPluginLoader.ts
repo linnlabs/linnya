@@ -23,6 +23,7 @@ const requiredPluginSdkHostModuleIds = [
   '@plugin/renderer/conversationSubrunInvocationPort',
   '@plugin/renderer/documentMutationPort',
   '@plugin/renderer/documentReferences',
+  '@plugin/renderer/pluginRuntime',
   '@plugin/renderer/documentPreview',
   '@plugin/renderer/documentReferenceRuntimePort',
   '@plugin/renderer/exportArtifact',
