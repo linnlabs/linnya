@@ -82,3 +82,14 @@ export function reviewCanvasAgentElement(database: ReadDatabase, input: { readon
     if ((!input.groupId || group.id === input.groupId) && group.entry.changes.some(change => change.id === input.elementId) && !group.reviewedElementIds.includes(input.elementId)) saveCanvasAgentGroup(database, { ...group, reviewedElementIds: [...group.reviewedElementIds, input.elementId] });
   }
 }
+
+/** 原始 CLI 身份和正文提交共同保存，append 重试不能先重新计算第二次正文。 */
+export function saveCanvasAgentCommittedReceipt(database: ReadDatabase, input: { readonly documentId: string; readonly sourceKey: string; readonly requestId: string; readonly payloadHash: string; readonly result: CanvasCommitResult }): void {
+  database.prepare('INSERT INTO canvas_agent_requests(node_id, source_key, request_id, payload_hash, status, result_json) VALUES (?, ?, ?, ?, ?, ?)').run(input.documentId, input.sourceKey, input.requestId, input.payloadHash, 'committed', JSON.stringify(input.result));
+}
+export function readCanvasAgentRequestStatuses(database: ReadDatabase, documentId: string, conversationId: string | null): import('../../../../shared').CanvasAgentRequestStatus[] {
+  return database.prepare('SELECT request_id, payload_hash, status, pending_id, result_json FROM canvas_agent_requests WHERE node_id = ? AND source_key = ? AND pending_id IS NOT NULL ORDER BY rowid DESC LIMIT 50').all(documentId, JSON.stringify(['agent', conversationId])).map(raw => {
+    const row = receiptSchema.extend({ request_id: z.string() }).parse(raw);
+    return { requestId: row.request_id, status: row.status, pendingId: row.pending_id, commit: row.result_json ? parseCanvasAgentReceiptResult(row.result_json) : null };
+  });
+}

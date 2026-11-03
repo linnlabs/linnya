@@ -35,3 +35,9 @@ export type CanvasAgentCommitResult = z.infer<typeof CanvasAgentCommitResultSche
 export type CanvasWithdrawGroupRequest = z.infer<typeof CanvasWithdrawGroupRequestSchema>;
 export type CanvasResolveApprovalRequest = z.infer<typeof CanvasResolveApprovalRequestSchema>;
 export type CanvasApprovalResolution = z.infer<typeof CanvasApprovalResolutionSchema>;
+
+export const CanvasAgentRequestStatusSchema = z.object({
+  requestId: z.string(), status: z.enum(['pending', 'committed', 'denied', 'replaced', 'withdrawn', 'closed']),
+  pendingId: z.string().nullable(), commit: CanvasCommitResultSchema.nullable(),
+}).strict();
+export type CanvasAgentRequestStatus = z.infer<typeof CanvasAgentRequestStatusSchema>;

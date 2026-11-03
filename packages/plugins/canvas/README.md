@@ -37,3 +37,5 @@ Backend 按数据库实例持有 `createCanvasHistoryRuntime`。组合入口位�
 组记录不依赖 512 批同步日志；进程重启后仍可撤回。`withdraw` 支持整组或元素子集，撤回本身进入发起视图的用户栈。新对象一旦被其他来源使用，整体保留；恢复删除对象使用原 ID，原位置被后来卡片占用时在四个方向中选择最近可用位置，并返回 `restored_nearby`。依赖消失或同方向线已存在时跳过，保留当前图。
 
 `registerView` 幂等记录初开序号；`listGroups` 的 `deletedCards` 用于查看旧位置，`visibleDeletedCards` 仅包含当前打开后产生的删除框。这些可见删除框参与新卡避让，全部视图关闭后不留下隐藏障碍。`reviewElement` 只清除角标，不删除撤回记录；后续 Agent 再改该卡会重新标记。`retainedElements` 暴露用户栈和持久组仍持有的元素版本供资产 owner 计算保留集合。内容和组状态变化分别发布；调用方用 `groupsChanged` 接纳不增加内容序号的待确认、拒绝、完成和审阅状态变化。
+
+CLI 的 `payloadIdentity` 由可信编排从原始 operations/options 构造，不能由模型填写 hash。`replayAgentRequest` 在 Markdown 解析、append 归一化、测高及资产接管前查询；原始身份与成功回执在同一事务保存，正文变更不会让同次 append 重试变成第二次追加。未传身份时仍以正式 operations 为准。`approvalResults` 提供当前对话最近 50 条审批状态，CLI 读操作可主动报告已允许、拒绝或过期结果。
