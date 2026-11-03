@@ -19,7 +19,11 @@ export function createCanvasConnectionEditing(session: CanvasDocumentSession, ke
     if (pendingLabel) return pendingLabel;
     const draft = state.label.value; if (!draft) return true;
     pendingLabel = (async () => {
-      try { if (draft.value !== draft.edge.label) await patch(draft.edge, { label: draft.value }); await releaseLabel(); state.endLabel(); return true; }
+      try {
+        if (draft.value !== draft.edge.label) await patch(draft.edge, { label: draft.value });
+        if (state.label.value?.identity !== draft.identity) return true;
+        await releaseLabel(); state.endLabel(); return true;
+      }
       catch (failure) { options.report(failure); return false; }
     })();
     try { return await pendingLabel; } finally { pendingLabel = null; }

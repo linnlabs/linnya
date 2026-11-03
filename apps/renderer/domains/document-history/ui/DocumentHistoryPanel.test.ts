@@ -63,7 +63,7 @@ it('真实面板选历史、确认恢复并刷新 current；切换语言和卸�
         restoredFrom: { versionId: 'old', createdAt: 1000 } }],
       earlier: [],
     });
-    restoreButtons().at(-1)?.click();
+    const buttons = restoreButtons(); buttons[buttons.length - 1]?.click();
     await flush();
     expect(port.restore).toHaveBeenCalledExactlyOnceWith({
       documentId: 'doc',

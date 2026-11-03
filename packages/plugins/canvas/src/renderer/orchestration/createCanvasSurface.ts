@@ -1,8 +1,8 @@
 import { computed } from 'vue';
 import { JsonValueSchema } from '@app/schemas';
 import { createCanvasPlainTextDocument, canvasBounds, type CanvasArrangeRequest, type CanvasCard, type CanvasCardId, type CanvasColor, type CanvasElementId, type CanvasEndpoint, type CanvasPoint } from '@plugin/canvas/shared';
-import { createPixiCanvasKernel, type CanvasAppearance, type CanvasKernelIntent } from '../kernel';
-import { createCanvasDocumentSession, registerCanvasSaveParticipant, registerCanvasHistorySession, requireWritableCanvas, isCanvasReadonly } from '../features/canvasDocument';
+import { createPixiCanvasKernel, type CanvasKernelIntent } from '../kernel';
+import { createCanvasDocumentSession, registerCanvasSaveParticipant, requireWritableCanvas, isCanvasReadonly } from '../features/canvasDocument';
 import { createCanvasCardEditor, cardEditorStyle } from '../features/cardEditing';
 import { createCanvasSelection, mergeCanvasSelection } from '../features/selection';
 import { buildColorCommands, buildDeleteCommands, createCanvasElementActions, createCanvasCardMovement, createCanvasDragProtection } from '../features/elementEditing';
@@ -22,6 +22,9 @@ import { installCanvasSurfaceClipboard } from './installCanvasSurfaceClipboard';
 import { createCanvasLayoutCommands } from '../features/layoutCommands';
 import { installCanvasReadonlyProjection } from './installCanvasReadonlyProjection';
 import { canvasIntegrityNotice } from '../functions/canvasIntegrityNotice';
+import { installCanvasHistoryRestore } from './installCanvasHistoryRestore';
+import { createCanvasRestoreDraftParticipants } from './createCanvasRestoreDraftParticipants';
+import { readCanvasAppearance } from '../functions/readCanvasAppearance';
 
 /** 表面的组合根：只连接已提交文档、草稿、选择、kernel与Host端口。 */
 export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: CanvasSurfacePorts) {
@@ -36,7 +39,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   const report = (value: unknown) => { state.fail(value instanceof Error ? value.message : String(value)); };
   const dragging = createCanvasDragProtection(session, report);
   const resizing = createCanvasCardResize(session, report);
-  const readAppearance = (): CanvasAppearance => ({ dark: document.documentElement.dataset.theme === 'dark' || document.documentElement.classList.contains('dark'), material: preferences.preferences.material, overview: preferences.preferences.overview });
+  const readAppearance = () => readCanvasAppearance(preferences.preferences);
   const kernel = await createPixiCanvasKernel({ host: options.host, readReadonly: () => readonly.value, readInteractionPreferences: () => preferences.preferences, onIntent: intent => { void handleIntent(intent).catch(report); } });
   const raster = createCanvasRasterPresentation({ host: options.stagingHost, kernel, readAppearance, reportFailure: report, createContent: ports.createContent, readContentKey: ports.readContentKey });
   const refreshView = () => { ports.refreshVisibleContent?.(kernel.renderableCards()); raster.refresh(); };
@@ -101,7 +104,8 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   options.host.addEventListener('dblclick', doubleClick);
   const clipboard = installCanvasSurfaceClipboard({ host: options.host, kernel, session, ports, actions, canHandle: () => !editor.state.draft.value && !creation.state.draft.value, selection: () => selection.ids.value, contextPoint: () => context.value?.point, select, createText, report });
   const removeSave = registerCanvasSaveParticipant({ documentId: options.documentId, save });
-  const removeHistory = registerCanvasHistorySession(options.documentId, session.viewId);
+  const removeHistory = installCanvasHistoryRestore({ documentId: options.documentId, session, subscribe: ports.subscribeRestored,
+    participants: createCanvasRestoreDraftParticipants({ editor, creation, connections, report }), changed: () => { setDirty(); state.clearFailure(); }, report });
   const selectedCards = computed(selected);
   const selectionStyle = computed(() => canvasSelectionToolbarStyle(canvasBounds(selectedCards.value), camera.value, options.host.clientWidth));
   const resizeStyle = computed(() => cardEditorStyle(resizing.state.preview.value ?? (selectedCards.value.length === 1 ? selectedCards.value[0] : undefined), camera.value));

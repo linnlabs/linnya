@@ -318,6 +318,7 @@ import { addCanvasSelectionReference, registerCanvasReferenceFocus } from '../fe
 import { createCanvasSelectionReferencePort } from '../adapters/createCanvasSelectionReferencePort';
 import { readCanvasClipboard } from '../adapters/readCanvasSelectionContext';
 import { createCanvasDocumentPort } from '../adapters/createCanvasDocumentPort';
+import { subscribeCanvasRestored } from '../adapters/subscribeCanvasRestored';
 import { createCanvasAgentReviewPort } from '../adapters/createCanvasAgentReviewPort';
 import { createCanvasCardMediaPort } from '../adapters/createCanvasCardMediaPort';
 import { createCanvasCardCreationPort } from '../adapters/createCanvasCardCreationPort';
@@ -372,7 +373,7 @@ onMounted(async () => {
   try {
     const mediaPort = createCanvasCardMediaPort(), cardContent = createCanvasCardContent(session.documentId, mediaPort); content = cardContent;
     const result = await createCanvasSurface({ host, editorHost: editorElement, stagingHost: rasterHost, documentId: session.documentId }, {
-      document: createCanvasDocumentPort(), arrangement: createCanvasArrangementPort(), createEditor: createEmbeddedMarkdownEditor, createContent: cardContent.create, readContentKey: cardContent.contentKey, readDocumentTitles: cardContent.documentTitles, refreshReferences: cardContent.refreshReferences, refreshVisibleContent: cardContent.refreshVisible, readThumbnailCards: cardContent.thumbnailCards, retryContent: cardContent.retry, subscribeContent: cardContent.subscribe, resolveImageSource: cardContent.resolveImageSource,
+      document: createCanvasDocumentPort(), subscribeRestored: subscribeCanvasRestored, arrangement: createCanvasArrangementPort(), createEditor: createEmbeddedMarkdownEditor, createContent: cardContent.create, readContentKey: cardContent.contentKey, readDocumentTitles: cardContent.documentTitles, refreshReferences: cardContent.refreshReferences, refreshVisibleContent: cardContent.refreshVisible, readThumbnailCards: cardContent.thumbnailCards, retryContent: cardContent.retry, subscribeContent: cardContent.subscribe, resolveImageSource: cardContent.resolveImageSource,
       prepareClipboard: ids => readCanvasClipboard(session.documentId, ids),
       pasteImages: async (files, point) => { if (!creation.value) throw new Error('图片导入尚未就绪'); await creation.value.importFiles(files, point); },
       openCard: async card => { if (card.type === 'image') imagePreview.value = await mediaPort.readImage(session.documentId, card.data.assetId); else await cardContent.open(card); },

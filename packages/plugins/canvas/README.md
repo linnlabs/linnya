@@ -88,3 +88,7 @@ Standalone `entry.command` 只提供 read/show/find/neighbors/region/check，显
 同一表面把commit、undo、排布和Agent组撤回/批准放入写确认通道。运输结果不确定时，保留原调用与冻结负载并显示“重试确认”；只重发同一requestId，其他意图等待。已收到成功回执但补拉失败时只重试接纳，不再次发送写入。明确业务拒绝会释放通道并保留对应草稿；关闭使本地等待失效，不否认后台已成功事实。初次文字卡已经创建而关联线跳过时接纳真实卡片身份，准确说明部分成功。
 
 一次多图片导入先完成全部资产准备，再共同提交全部卡片、归属和一次用户撤销；准备任一图片失败时不创建部分卡片。准备结果只保留稳定资产身份与尺寸，不在UI数组长期持有原图字节。初始图框尺寸由shared `canvasDefaultImageSize`计算。
+
+历史恢复的 `clientSessionId` 是Canvas的opaque `[viewId,captureUUID]` token。Header打开历史时冻结正文、临时新卡、连线标签的编辑世代；正式恢复通知先同步提交，再仅清理仍匹配的草稿。重复通知和旧面板的迟到通知不会删除后来的输入，恢复不调用保存旧草稿的finish。预算从Backend正式状态读取并订阅变化，超过软预算会说明最近5版与仍可达资产的保留原因。
+
+Canvas表面、正文编辑器和历史预览统一读取Renderer UI公开的 `RENDERER_UI_THEME_ATTRIBUTE`，并监听同一属性。`moon-blue`依据Renderer UI正式语义仍使用浅色纸张；不能通过历史data-theme或dark class猜测当前主题。
