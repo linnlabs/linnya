@@ -55,7 +55,7 @@ export async function invokeRendererPluginIpc(
       };
     }
     if (!result.success) return { success: false, error: result.error, failureKind: 'application' };
-    return result;
+    return { success: true, data: result.data };
   } catch (error) {
     return {
       success: false,
