@@ -56,7 +56,7 @@ uniform float uFeather;
 out vec4 finalColor;
 void main() {
   float alpha = 1.0 - smoothstep(uWidth * 0.5, uWidth * 0.5 + uFeather, abs(vDistance));
-  if (vPattern > 0.5) alpha *= 1.0 - smoothstep(5.5, 6.0, mod(vLength, 10.0));
+  if (vPattern > 0.5) alpha *= 1.0 - smoothstep(4.5, 5.0, mod(vLength, 9.0));
   finalColor = vec4(vColor * alpha, alpha);
 }`;
 const program = GlProgram.from({ vertex, fragment, name: 'canvas-screen-width-line' });

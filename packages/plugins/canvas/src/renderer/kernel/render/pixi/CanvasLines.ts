@@ -3,6 +3,7 @@ import { readCanvasLinePalette } from '../../../../shared';
 import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdge, CanvasEdgeId, CanvasPoint, CanvasRectangle } from '../../../../shared';
 import type { CanvasAppearance } from '../../definitions/canvasKernel';
 import { createCanvasEdgeLayout, type CanvasEdgeGeometry } from '../../geometry/canvasEdgeGeometry';
+import { canvasFitLineLabel } from '../../geometry/canvasFitLineLabel';
 import { CanvasLineMesh } from './CanvasLineMesh';
 
 interface Entry { readonly edge: CanvasEdge; readonly geometry: CanvasEdgeGeometry; readonly left: number; readonly right: number; readonly top: number; readonly bottom: number }
@@ -137,7 +138,7 @@ export class CanvasLines {
     const allowed = visible.length > 3000 ? visible.filter(entry => this.emphasized(entry.edge) || entry.edge.id === this.selected) : entries.length > 3000 ? visible : entries;
     this.updateMeshes(allowed, visible);
     this.updateAppearance();
-    this.drawEndpoints(); this.drawLabels(visible);
+    this.drawEndpoints(visible.length > 3000 ? allowed : visible); this.drawLabels(visible);
   }
   private updateMeshes(allowed: readonly Entry[], visible: readonly Entry[]): void {
     const entries = this.far ? this.farEntries : this.entries;
@@ -167,8 +168,21 @@ export class CanvasLines {
     this.below.visible = !this.reduced || zoom >= 0.3;
     this.ghostContainer.visible = !this.reduced && zoom >= 0.3;
   }
-  private drawEndpoints(): void {
+  private drawLooseEnd(point: CanvasPoint, color: number): void {
+    this.endpoints.circle(point.x * this.camera.zoom + this.camera.x, point.y * this.camera.zoom + this.camera.y, 3)
+      .fill(this.appearance.dark ? 0x222723 : 0xf2f3ee).stroke({ width: 1, color });
+  }
+  private drawEndpoints(visible: readonly Entry[]): void {
     this.endpoints.clear();
+    const palette = readCanvasLinePalette(this.appearance.dark), background = this.appearance.dark ? 0x222723 : 0xf2f3ee;
+    const ink = this.appearance.dark ? 0xe8e9e3 : 0x252c27;
+    const neutral = blend(ink, background, this.camera.zoom < 0.15 ? 0.1 : this.camera.zoom < 0.3 ? 0.16 : 0.22);
+    for (const { edge, geometry } of visible) {
+      const color = edge.color === 'white' ? neutral : palette[edge.color];
+      // 只有无箭头的悬空端才是空心圆；选中后的实心点另作拖动控制点。
+      if (edge.from.kind === 'point' && edge.direction !== 'both') this.drawLooseEnd(geometry.from, color);
+      if (edge.to.kind === 'point' && edge.direction === 'none') this.drawLooseEnd(geometry.to, color);
+    }
     const geometry = this.selected ? this.geometries.get(this.selected) : undefined;
     if (!geometry) return;
     for (const point of [geometry.from, geometry.to]) this.endpoints.circle(point.x * this.camera.zoom + this.camera.x,
@@ -184,8 +198,7 @@ export class CanvasLines {
     context.scale(this.resolution, this.resolution); context.font = '12px system-ui'; context.textAlign = 'center'; context.textBaseline = 'middle';
     context.strokeStyle = this.appearance.dark ? '#222723' : '#f2f3ee'; context.fillStyle = this.appearance.dark ? '#b5bcb3' : '#626b61'; context.lineWidth = 5;
     for (const entry of labeled) {
-      let label = entry.edge.label;
-      while (label.length > 1 && context.measureText(label).width > 200) label = label.slice(0, -2) + '…';
+      const label = canvasFitLineLabel(entry.edge.label, text => context.measureText(text).width);
       const point = entry.geometry.midpoint, x = point.x * this.camera.zoom + this.camera.x, y = point.y * this.camera.zoom + this.camera.y;
       context.strokeText(label, x, y); context.fillText(label, x, y);
     }
