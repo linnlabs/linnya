@@ -52,11 +52,17 @@ it('refreshes a closed canvas from a single committed version and keeps the sent
   db.prepare('UPDATE conversations SET project_id = NULL WHERE conversation_id = ?').run('chat');
   expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], conversationId: 'chat' })).toThrow('项目');
 });
-it('rejects missing selected cards instead of sending a stale stored reference', () => {
+it('sends only the committed deletion notice for an empty selection and rejects copying it', async () => {
   const id = runtime.create({ projectId, parentId: null, name: '删除.canvas' });
   runtime.commit({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('已选择')] });
   runtime.commit({ documentId: id, viewId: 'view', requestId: 'delete', operations: [{ op: 'delete', id: 'c1' }] });
-  expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'] })).toThrow('重新选择');
+  const context = readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'] });
+  expect(context).toMatchObject({ sequence: 2, elementIds: [] });
+  expect(context.text).toContain('已全部删除'); expect(context.text).not.toContain('已选择');
+  const { readCanvasClipboard } = await import('@plugin/canvas/backend-test-support');
+  expect(() => readCanvasClipboard(db, { documentId: id, elementIds: ['c1'] })).toThrow('没有可复制');
+  runtime.undo({ documentId: id, viewId: 'view', requestId: 'undo-selected-deletion', direction: 'undo' });
+  expect(readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'] }).text).toContain('已选择');
 });
 it('refreshes a partially deleted selection using only remaining committed cards', () => {
   const id = runtime.create({ projectId, parentId: null, name: '部分.canvas' });
