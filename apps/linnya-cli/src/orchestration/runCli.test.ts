@@ -466,4 +466,35 @@ describe('runCli', () => {
       error: { code: 'invalid_request' },
     });
   });
+
+  it('help 离线说明 audit 的前提，不把它当作任何 App 都能执行的命令', async () => {
+    const output = createIo();
+    const connection: ConversationControlConnectionPort = { connect: vi.fn() };
+    await expect(runCli(['--help'], { connection, io: output.io })).resolves.toBe(0);
+    expect(connection.connect).not.toHaveBeenCalled();
+    expect(output.stdout()).toContain('linnya audit <conversation-id>');
+    expect(output.stdout()).toMatch(/audit needs an App with Agent Run Audit enabled.*LINNYA_AUDIT_LEVEL/);
+  });
+
+  it('doctor 对握手缺席的能力给出原因，已声明的能力不重复列出', async () => {
+    const output = createIo();
+    // createClient 的握手没有声明 audit，正好对应默认关闭审计的 App。
+    const client = createClient(async () => {
+      throw new Error('doctor must not call the App');
+    });
+    await expect(runCli(['doctor'], { connection: connect(client), io: output.io })).resolves.toBe(0);
+    expect(JSON.parse(output.stdout())).toMatchObject({
+      ok: true,
+      capabilities: expect.not.arrayContaining(['audit']),
+      unavailable_capabilities: expect.arrayContaining([
+        { capability: 'audit', reason: expect.stringContaining('LINNYA_AUDIT_LEVEL') },
+      ]),
+    });
+    expect(JSON.parse(output.stdout())).toMatchObject({
+      unavailable_capabilities: expect.not.arrayContaining([
+        expect.objectContaining({ capability: 'send' }),
+      ]),
+    });
+    expect(output.stderr()).toBe('');
+  });
 });

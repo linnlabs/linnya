@@ -15,6 +15,8 @@ POST /api/v1/conversation-control/commands
 
 当前握手声明 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / tools / command_approvals`。
 
+`audit` 只在 Host 的 Agent Run Audit 等级不是 `off` 时声明（开发默认值与发行包都是 `off`，见 [Audit](../../../../domains/audit/README.md)）；router 与 use case 的 `capability_unavailable` 门禁读取同一个运行时事实，客户端不能靠握手之外的路径假定它存在。
+
 能力公告允许未来新增合法标识符，消费者忽略不认识的能力；命令 union 和响应 schema 仍然封闭且严格。改变既有协议语义必须升级 protocol，不能借能力扩展绕过合同校验。
 
 当前 wire protocol 为 7：`projects` 请求与响应必须带 `action`，新增带显式确认的空项目删除；项目详情、创建和修改形态保持不变。
@@ -56,7 +58,7 @@ pnpm exec vitest run \
   src/electron-main/services/apiServer.lifecycle.test.ts
 ```
 
-门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期。`projectCliProcess.integration.test.ts` 使用真实 CLI 子进程、HTTP router 和 SQLite 验证项目写入、失败边界与持久化；不放入独立 CLI 包，以保持其与 Backend 的编译边界。普通 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`；无 Electron Runtime 的冷启动、并行、owner 竞争、重启和强制终止恢复见 `runtimeHostProcess.e2e.test.ts`。
+门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期。`src/electron-main/routes/conversationControlAuditCapability.integration.test.ts` 把 App Server 环境白名单、Audit 等级解析、运行时作用域与握手串起来，并用真实 CLI 进程验证 `audit` 在未启用时被明确拒绝、启用后到达 Host。`projectCliProcess.integration.test.ts` 使用真实 CLI 子进程、HTTP router 和 SQLite 验证项目写入、失败边界与持久化；不放入独立 CLI 包，以保持其与 Backend 的编译边界。普通 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`；无 Electron Runtime 的冷启动、并行、owner 竞争、重启和强制终止恢复见 `runtimeHostProcess.e2e.test.ts`。
 
 `projects` 的 `list / get / create / update / delete` 委托 `domains/projects` 公开生命周期端口，
 不复制项目规则或读取 SQL。列表返回 `project_id / name`；`get / create / update` 返回安全项目详情，

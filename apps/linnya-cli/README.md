@@ -89,7 +89,7 @@ approval，并只接受 Host 声明的选择；stdout 仍只保留机器可读 J
 独立分发必须同时携带 `bin/linnya.cjs`、`dist/cli.cjs` 和
 `dist/build.json`。launcher 核对产物 SHA-256；在包含源码的仓库内还核对 CLI、公共 Schema、构建输入与锁文件的内容指纹。产物缺失、损坏或源码变更后未重建会以退出码 4 明确拒绝，不自动切换运行入口。版本号不变也能发现旧 bundle。`--version`
 显示 `source` 或 bundle 指纹；`doctor`
-只读显示 CLI 身份、App 实例、协议与能力，不打印连接 token 或描述文件。
+只读显示 CLI 身份、App 实例、协议与能力，并在 `unavailable_capabilities` 列出握手缺席的能力及原因（例如审计未启用时的 `audit`），不打印连接 token 或描述文件。
 
 ## 2. 一个最小的 PPT 真实请求
 
@@ -205,7 +205,7 @@ Shell 审批与 `respond --approve` 无关。控制协议自 3 起要求明确�
 | `projects create <name>`           | 创建普通项目 | `--description` |
 | `projects update <project-id>`     | 修改项目名称或描述 | `--name`、`--description` |
 | `projects delete <project-id>`     | 删除无持久关联的普通项目 | 必填 `--yes` |
-| `doctor`                           | 只读核验 CLI 与运行中 App 的连接、身份和能力                      | `--pretty`                                                                                             |
+| `doctor`                           | 只读核验 CLI 与运行中 App 的连接、身份、能力和缺席能力的原因      | `--pretty`                                                                                             |
 | `list`                             | 查询已有会话                                                      | `--limit`、`--cursor`、`--search`、`--project`                                                         |
 | `messages <conversation-id>`       | 按会话查询 durable 消息窗口                                       | `--limit`、`--before`、`--after`                                                                       |
 | `status <conversation-id>`         | 查询当前或指定 root run 的状态                                    | `--run`、`--watch`、`--interval`、`--timeout`                                                          |
@@ -215,7 +215,7 @@ Shell 审批与 `respond --approve` 无关。控制协议自 3 起要求明确�
 | `respond <conversation-id>`        | 回应当前 `awaiting_user` 交互并继续同一 run                       | `--interaction`，以及一个 response 选项                                                                |
 | `stop <conversation-id>`           | 终止 foreground root run，并等待真实终态结算                      | `--run`、`--reason`、`--timeout`（毫秒，默认 60000）                                                   |
 | `result <conversation-id>`         | 读取指定或最近 terminal root run 的最终回答                       | `--run`                                                                                                |
-| `audit <conversation-id>`          | 只读导出统一 Audit Domain 的安全执行摘要                          | `--run`                                                                                                |
+| `audit <conversation-id>`          | 只读导出统一 Audit Domain 的安全执行摘要；App 未启用审计时拒绝    | `--run`                                                                                                |
 | `tools list`                       | 列出 CLI 允许调用的 Workspace 工具名称与简介                      | 无                                                                                                     |
 | `tools describe <tool-name>`       | 查询一个 Workspace 工具的真实参数合同                             | 无                                                                                                     |
 | `tools call <tool-name>`           | 在绑定项目的 Conversation 中执行一次 Workspace 工具调用并等待结果 | `--conversation`、`--project`、`--args-json` / `--args-file`、`--omit-args`、`--interval`、`--timeout` |
@@ -395,6 +395,17 @@ CLI 不负责开启或切换 Agent Run Audit 等级。开发环境的等级由 A
 决定，修改后需要重启 App；CLI 只读取当前有效审计并导出安全摘要。生产 Desktop 不打包此 CLI，且生产 Host 固定关闭开发 Agent
 Run Audit；即使外部自行运行 Node 版 CLI，也不能通过控制面开启审计，`audit`
 能力不会在生产握手中声明。
+
+App 未启用审计时握手缺少 `audit`，CLI 不会把它当作可执行命令发出：`audit` 在请求前以
+`capability_unavailable`（退出码 7，`retryable=false`）拒绝，错误信息说明审计是开发诊断、
+默认关闭且发行包永远关闭，并给出 `LINNYA_AUDIT_LEVEL` 与 `LINNYA_CLI_CONNECTION_FILE` 的使用方式；
+`--help` 在 Workflow 中标注同一前提，`doctor` 在 `unavailable_capabilities` 给出原因。控制协议要求 CLI 与
+App 版本严格一致，所以这个错误只表示审计未启用，不表示 App 版本过旧。
+
+不带 `LINNYA_CLI_CONNECTION_FILE` 的 `linnya` 命令连接 `~/.linnya/runtime/` 里的默认 App，运行着已安装的发行包时
+它就是那个 App，审计固定关闭。读取源码 App 的审计须先让该 App 以 `LINNYA_AUDIT_LEVEL` 启动，再把
+`LINNYA_CLI_CONNECTION_FILE` 指向它的连接文件（源码 Desktop 默认在 `_dev_electron/runtime/`，见[开发配置](../../docs/development/env-local.md#多工作目录并行开发)）。
+`linnya runtime start` 不读取 `.env.local`，等级须在启动它的 shell 环境中设置。
 
 ## 4. 状态与控制语义
 

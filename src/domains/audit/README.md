@@ -57,6 +57,11 @@ Root，表中的根目录随宿主解析结果变化。Audit 不拥有路径解�
 `off`，忽略审计环境变量，不能通过 `LINNYA_DEV_MODE`、CLI 或 HTTP 控制面绕过。未知值和空值回到
 当前环境的安全默认值。旧的 `LINNYA_LLM_RUN_AUDIT` 及其容量环境变量不再是配置入口。
 
+等级在 App Server 装配时只读取一次，修改后须重启对应 App。等级为 `off`（开发默认值，以及全部发行包）时，
+Conversation Control 握手不声明 `audit`，use case 对绕过 CLI 的调用同样返回 `capability_unavailable`；
+`linnya audit` 因此在发出请求前被拒绝，并提示开启方式。握手与 use case 共用运行时作用域的 `auditEnabled`，
+CLI 的行为与连接目标见 [Conversation CLI](../../../apps/linnya-cli/README.md)。
+
 等级只决定记录哪些事实，不改变入口。所有等级都经过同一个 `AuditPort`，所有事件都使用
 `AuditEnvelope`，并且只能追加，不能更新或删除单条审计信封。正式 Audit 只有一个数据库存储
 类别；高等级不再通过 JSONL 形成第二套正式存储。

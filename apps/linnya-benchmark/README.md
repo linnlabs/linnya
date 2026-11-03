@@ -46,7 +46,7 @@ prompt；文件读取、权限和失败语义都由真实 Agent/Host 链路负�
 [Audit owner](../../src/domains/audit/README.md)；Runner 消费已有 audit，不能新建另一套 recorder。
 
 `capability_unavailable`
-不足以区分开关关闭与运行版本缺少入口，需结合 Host 版本和启动配置核实；不能据此宣称产品没有审计能力。事后开启不会补回当时未采集的数据。缺失、估算和实际 usage 必须分栏；缺失运行保留为资产，但不进入 token 成本比较。
+在 CLI 与 App 协议一致时只表示该 App 没有启用审计（错误信息会写明开启方式；例如 CLI 连到了固定关闭审计的已安装发行包），不能据此宣称产品没有审计能力。事后开启不会补回当时未采集的数据。缺失、估算和实际 usage 必须分栏；缺失运行保留为资产，但不进入 token 成本比较。
 
 合并历史批次时，facts 按 `run_id` 去重，消息先限定对应 run，再按稳定
 `message_id`

@@ -1,5 +1,8 @@
 import { readFile } from 'node:fs/promises';
-import { ConversationControlToolsCallRequestSchema } from '@app/schemas';
+import {
+  ConversationControlCapabilitySchema,
+  ConversationControlToolsCallRequestSchema,
+} from '@app/schemas';
 import { ZodError } from 'zod';
 import type { ConversationControlProgressFrame } from '@app/schemas';
 import {
@@ -7,6 +10,7 @@ import {
   LINNYA_CLI_VERSION,
   LINNYA_CLI_BUILD_ID,
   LinnyaCliError,
+  describeUnavailableCapability,
   type ConversationControlConnectionPort,
   type LinnyaCliIo,
   type LinnyaCliRuntimeLauncherPort,
@@ -83,6 +87,8 @@ export function linnyaCliUsage(): string {
     '  Shell approval is separate from respond: use approvals to inspect exact run/subtree requests, then approval-reply with the pending agent_run_id.',
     '  status --watch returns when command_approvals contains awaiting_reply; it never auto-approves commands.',
     '  A watch timeout only ends observation; it does not stop the App-owned run.',
+    '  audit needs an App with Agent Run Audit enabled: development only, LINNYA_AUDIT_LEVEL=behavior|response|stream at App start; packaged Desktop builds keep it off.',
+    '  doctor reports capabilities the connected App does not declare (such as audit) under unavailable_capabilities.',
     '',
   ].join('\n');
 }
@@ -184,6 +190,10 @@ export async function runCli(
         app: { version: client.handshake.app_version, instance_id: client.handshake.app_instance_id },
         protocol_version: client.handshake.protocol_version,
         capabilities: client.handshake.capabilities,
+        // 握手只列出可用能力；缺席的能力在这里给出原因，避免只能靠对照 help 发现 audit 不可用。
+        unavailable_capabilities: ConversationControlCapabilitySchema.options
+          .filter(capability => !client.handshake.capabilities.includes(capability))
+          .map(capability => ({ capability, reason: describeUnavailableCapability(capability) })),
         limits: client.handshake.limits,
       }, invocation.pretty));
       return LINNYA_CLI_EXIT.success;

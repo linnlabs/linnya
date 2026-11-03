@@ -2,12 +2,17 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import {
+  ConversationControlCapabilitySchema,
   ConversationControlConnectionDescriptorSchema,
 } from '@app/schemas';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanupCliBridges, createScriptedBridge, runCliProcess } from './__test-helpers__/scriptedCliBridge';
 
 afterEach(cleanupCliBridges);
+
+/** 默认关闭 Agent Run Audit 的 App（开发默认与发行包）不会在握手里声明 audit。 */
+const CAPABILITIES_WITHOUT_AUDIT = ConversationControlCapabilitySchema.options
+  .filter(capability => capability !== 'audit');
 
 describe('linnya CLI real process -> scripted bridge', () => {
   it.each([
@@ -47,6 +52,45 @@ describe('linnya CLI real process -> scripted bridge', () => {
     expect(result.stdout).not.toContain('d'.repeat(64));
     expect(result.stdout).not.toContain(bridge.connectionFile);
     expect(bridge.receivedCommands).toEqual([]);
+  });
+
+  it('App 握手没有 audit 时，audit 在发出命令前以 capability_unavailable 拒绝并说明开启方式', async () => {
+    const bridge = await createScriptedBridge(
+      () => { throw new Error('audit must be rejected before it reaches the App'); },
+      CAPABILITIES_WITHOUT_AUDIT,
+    );
+    const result = await runCliProcess(['audit', 'conversation-1', '--run', 'run-1'], bridge.connectionFile);
+    expect(result.exitCode).toBe(7);
+    expect(result.stdout).toBe('');
+    expect(JSON.parse(result.stderr)).toMatchObject({
+      ok: false,
+      command: 'audit',
+      error: {
+        code: 'capability_unavailable',
+        retryable: false,
+        message: expect.stringMatching(/LINNYA_AUDIT_LEVEL=behavior\|response\|stream.*LINNYA_CLI_CONNECTION_FILE/),
+      },
+    });
+    expect(bridge.receivedCommands).toEqual([]);
+  });
+
+  it('doctor 列出握手缺席的能力及原因；能力齐全时列表为空', async () => {
+    const withoutAudit = await createScriptedBridge(() => null, CAPABILITIES_WITHOUT_AUDIT);
+    const degraded = await runCliProcess(['doctor'], withoutAudit.connectionFile);
+    expect(degraded.exitCode).toBe(0);
+    expect(JSON.parse(degraded.stdout)).toMatchObject({
+      ok: true,
+      unavailable_capabilities: [
+        { capability: 'audit', reason: expect.stringContaining('LINNYA_AUDIT_LEVEL') },
+      ],
+    });
+
+    const complete = await createScriptedBridge(() => null, ConversationControlCapabilitySchema.options);
+    const healthy = await runCliProcess(['doctor'], complete.connectionFile);
+    expect(healthy.exitCode).toBe(0);
+    expect(JSON.parse(healthy.stdout)).toMatchObject({ ok: true, unavailable_capabilities: [] });
+    expect(withoutAudit.receivedCommands).toEqual([]);
+    expect(complete.receivedCommands).toEqual([]);
   });
 
   it('非法能力类型仍在握手阶段被拒绝', async () => {

@@ -1,4 +1,5 @@
 import type {
+  ConversationControlCapability,
   ConversationControlCommandRequest,
   ConversationControlCommandResponse,
   ConversationControlConnectionDescriptor,
@@ -134,6 +135,23 @@ export class LinnyaCliError extends Error {
   }
 }
 
+/**
+ * `audit` 只在 Host 的 Agent Run Audit 不是 off 时才出现在握手里；开发进程默认 off，发行包永远 off。
+ * 控制协议要求 CLI 与 App 版本严格一致，所以握手缺少 `audit` 唯一的原因就是审计未启用，
+ * 不是 App 版本太旧。这里给出可执行的修复路径；错误码仍是 capability_unavailable，调用方靠它识别。
+ */
+const AUDIT_UNAVAILABLE_MESSAGE =
+  'Agent Run Audit is not enabled in the running Linnya App, so audit is unavailable. '
+  + 'It is a development diagnostic: off by default and always off in packaged Desktop builds. '
+  + 'Start a development App (or "linnya runtime start") with LINNYA_AUDIT_LEVEL=behavior|response|stream '
+  + 'and connect this CLI to it (LINNYA_CLI_CONNECTION_FILE selects the App). '
+  + '"linnya doctor" shows which capabilities the connected App declares.';
+
+export function describeUnavailableCapability(capability: ConversationControlCapability): string {
+  if (capability === 'audit') return AUDIT_UNAVAILABLE_MESSAGE;
+  return `The running Linnya App does not provide the ${capability} capability`;
+}
+
 export function requireCapability(
   capabilities: readonly string[],
   command: ConversationControlCommandRequest['command'],
@@ -141,7 +159,7 @@ export function requireCapability(
   if (capabilities.includes(command)) return;
   throw new LinnyaCliError(
     'capability_unavailable',
-    `The running Linnya App does not provide the ${command} capability`,
+    describeUnavailableCapability(command),
     false,
     command,
   );
