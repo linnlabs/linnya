@@ -184,7 +184,8 @@ class PixiCanvasKernel implements CanvasKernel {
     background.tint = palette.paper;
     // 近景身份牌必须复用纹理；连续缩放不能每个事件重新生成几百张文字纹理。
     label.resolution = Math.max(1, this.app.renderer.resolution);
-    label.style.fill = palette.title;
+    // 字形始终烘为白色，纸色/主题通过GPU tint改变深墨；否则500次染纸会重建500张字形纹理。
+    label.tint = palette.title;
     label.style.wordWrapWidth = Math.max(1, card.width - 28);
     const overview = !this.keepsThumbnail(card) && this.camera.zoom < 0.3 && this.appearance.overview === 'titles';
     label.style.fontSize = 15;
@@ -331,7 +332,7 @@ class PixiCanvasKernel implements CanvasKernel {
     const body = new Container();
     body.visible = false;
     const label = new Text({ text: this.title(card).split('\n')[0].slice(0, 120) || '空白卡片',
-      style: { fontFamily: 'system-ui', fontSize: 15, wordWrap: true, wordWrapWidth: Math.max(1, card.width - 28), breakWords: true } });
+      style: { fill: 0xffffff, fontFamily: 'system-ui', fontSize: 15, wordWrap: true, wordWrapWidth: Math.max(1, card.width - 28), breakWords: true } });
     container.addChild(background, body, label);
     this.cardLayer.addChild(container);
     this.views.set(card.id, { card, container, background, body, label, visibleAfterRender: this.renders, rasterContentKey: undefined, lodAlpha: 1 });
