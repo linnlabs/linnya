@@ -1,11 +1,16 @@
 import { createDocumentImageAssetRuntime } from '@plugin/backend/documentImageAsset';
-import { CanvasImportImageRequestSchema, type CanvasReadImageRequest } from '../../shared';
+import { CanvasImportImageRequestSchema, CanvasPrepareImageRequestSchema, type CanvasReadImageRequest } from '../../shared';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
 import type { CanvasDocumentRuntime } from './createCanvasDocumentRuntime';
 
 export function createCanvasImageRuntime(database: CanvasDatabase, document: CanvasDocumentRuntime) {
   const assets = createDocumentImageAssetRuntime(database);
   return {
+    async prepareImage(value: unknown) {
+      const input = CanvasPrepareImageRequestSchema.parse(value);
+      document.read(input.documentId);
+      return assets.prepareImageBytes({ documentId: input.documentId, bytes: Buffer.from(input.bytesBase64, 'base64') });
+    },
     async importImage(value: unknown) {
       const input = CanvasImportImageRequestSchema.parse(value);
       document.read(input.documentId);

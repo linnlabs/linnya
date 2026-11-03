@@ -1,5 +1,6 @@
 export * from './model/definitions/canvasElement';
 export * from './model/functions/readCanvasContent';
+export * from './model/functions/canvasCardSizing';
 export type * from './geometry/definitions/canvasGeometry';
 export { canvasBounds, canvasRectanglesOverlap, canvasScreenToWorld, canvasWorldToScreen } from './geometry/functions/canvasGeometry';
 export { layoutCanvasEdges, resolveCanvasEdgeGeometry } from './geometry/functions/canvasEdgeGeometry';
@@ -14,6 +15,9 @@ export type { CanvasComputationRuntime } from './computation/definitions/canvasC
 
 export * from './history/definitions/canvasUserHistory';
 export * from './agentChanges/definitions/canvasAgentChanges';
+export * from './images/definitions/canvasImageRequests';
+export * from './context/definitions/canvasSelectionContext';
 export { searchCanvasElements } from './search/functions/searchCanvasElements';
 export type { CanvasSearchHit, CanvasSearchContext } from './search/definitions/canvasSearch';
-export * from './images/definitions/canvasImageRequests';
+export { CanvasCheckReportSchema } from './query/definitions/canvasCheck';
+export type { CanvasCheckReport } from './query/definitions/canvasCheck';

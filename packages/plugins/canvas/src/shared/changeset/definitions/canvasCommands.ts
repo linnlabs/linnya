@@ -21,10 +21,11 @@ const placement = {
   x: finite.optional(), y: finite.optional(), near: z.string().min(1).optional(),
   side: z.enum(['right', 'left', 'top', 'bottom']).optional(),
   color: CanvasColorSchema.optional(),
+  locked: z.boolean().optional(),
   parentId: z.string().min(1).optional(),
 };
 export const CanvasCommandSchema = z.discriminatedUnion('op', [
-  z.object({ ...placement, op: z.literal('addText'), content: CanvasTextDocumentSchema }).strict(),
+  z.object({ ...placement, op: z.literal('addText'), content: CanvasTextDocumentSchema, heightMode: z.enum(['auto', 'fixed']).optional() }).strict(),
   z.object({ ...placement, op: z.literal('addImage'), data: CanvasImageCardSchema.shape.data }).strict(),
   z.object({ ...placement, op: z.literal('addDocument'), data: CanvasDocumentCardSchema.shape.data }).strict(),
   z.object({ op: z.literal('update'), id: z.string().min(1), baseRevision: z.number().int().nonnegative(), patch: CanvasPatchSchema }).strict(),
@@ -34,11 +35,14 @@ export const CanvasCommandSchema = z.discriminatedUnion('op', [
     from: z.union([z.string().min(1), CanvasEndpointSchema]), to: z.union([z.string().min(1), CanvasEndpointSchema]),
     label: z.string().default(''), direction: z.enum(['none', 'forward', 'both']).default('forward'),
     lineStyle: z.enum(['curve', 'straight']).default('curve'), linePattern: z.enum(['solid', 'dashed']).default('solid'),
+    color: CanvasColorSchema.optional(), locked: z.boolean().optional(),
+    fromSide: z.enum(['auto', 'top', 'right', 'bottom', 'left']).optional(), toSide: z.enum(['auto', 'top', 'right', 'bottom', 'left']).optional(),
   }).strict(),
 ]);
 export const CanvasCommitRequestSchema = z.object({
   documentId: z.string().min(1), requestId: z.string().min(1).max(160),
-  operations: z.array(CanvasCommandSchema).min(1).max(500),
+  // 500 限制属于模型原始操作；一次排布会展开成更多元素更新，必须仍是同一事务。
+  operations: z.array(CanvasCommandSchema).min(1),
 }).strict();
 export const CanvasRendererCommitRequestSchema = CanvasCommitRequestSchema.extend({
   viewId: z.string().min(1), historyGroupId: z.string().min(1).optional(),

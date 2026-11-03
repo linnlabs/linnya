@@ -10,11 +10,13 @@ import {
 import type { CanvasDocumentRuntime } from '../orchestration/createCanvasDocumentRuntime';
 import { CanvasDocumentFailure } from '../features/canvasDocument';
 import type { createCanvasImageRuntime } from '../orchestration/createCanvasImageRuntime';
+import { readCanvasSelectionContext } from '../orchestration/readCanvasSelectionContext';
+import type { CanvasDatabase } from '../definitions/canvasDatabase';
 
 export const CANVAS_IPC_CHANNELS = ['canvas:read', 'canvas:commit', 'canvas:changes', 'canvas:editing', 'canvas:undo', 'canvas:close',
-  'canvas:groups', 'canvas:complete-group', 'canvas:review', 'canvas:withdraw', 'canvas:approval', 'canvas:import-image', 'canvas:read-image'] as const;
+  'canvas:groups', 'canvas:complete-group', 'canvas:review', 'canvas:withdraw', 'canvas:approval', 'canvas:import-image', 'canvas:prepare-image', 'canvas:read-image', 'canvas:context'] as const;
 
-export function registerCanvasIpc(runtime: CanvasDocumentRuntime, images: ReturnType<typeof createCanvasImageRuntime>, register: BackendPluginIpcHandlerRegistrar): void {
+export function registerCanvasIpc(database: CanvasDatabase, runtime: CanvasDocumentRuntime, images: ReturnType<typeof createCanvasImageRuntime>, register: BackendPluginIpcHandlerRegistrar): void {
   const handlers = {
     'canvas:read': (payload: unknown) => { const input = CanvasReadRequestSchema.parse(payload); return runtime.read(input.documentId, undefined, input.viewId); },
     'canvas:commit': (payload: unknown) => runtime.commit(payload),
@@ -28,7 +30,9 @@ export function registerCanvasIpc(runtime: CanvasDocumentRuntime, images: Return
     'canvas:withdraw': (payload: unknown) => { const input = CanvasWithdrawGroupRequestSchema.parse(payload); runtime.read(input.documentId); return runtime.editing.withdraw(input, Date.now()); },
     'canvas:approval': (payload: unknown) => { const input = CanvasResolveApprovalRequestSchema.parse(payload); runtime.read(input.documentId); return runtime.editing.resolveApproval(input, Date.now()); },
     'canvas:import-image': (payload: unknown) => images.importImage(payload),
+    'canvas:prepare-image': (payload: unknown) => images.prepareImage(payload),
     'canvas:read-image': (payload: unknown) => images.readImage(CanvasReadImageRequestSchema.parse(payload)),
+    'canvas:context': (payload: unknown) => readCanvasSelectionContext(database, payload),
   };
   for (const channel of CANVAS_IPC_CHANNELS) {
     register(CANVAS_PLUGIN_ID, channel, async (_event, payload) => {
