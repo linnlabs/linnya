@@ -84,6 +84,8 @@ export interface ConversationReferenceKindContribution {
   readonly pluginId: string;
   readonly kind: string;
   readonly chip: ConversationReferenceChipDescriptor;
+  /** 悬停时才挂载，只读；接收reference标准DTO，关闭/移除后卸载。 */
+  readonly previewComponent?: Component;
   readonly isValid?: (reference: ConversationReferenceChipInput) => boolean;
   readonly isAvailable?: () => boolean;
   /** 发送前由 Host 等待；失败保留草稿，成功结果冻结进本次消息。 */

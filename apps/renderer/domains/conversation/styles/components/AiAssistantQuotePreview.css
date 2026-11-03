@@ -144,3 +144,32 @@
   text-align: inherit;
   cursor: pointer;
 }
+
+.ai-assistant-quote-preview__pill:focus-within .ai-assistant-quote-preview__pill-close {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.conversation-reference-hover {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-popover);
+  width: min(360px, calc(100vw - 16px));
+}
+
+.conversation-reference-hover__content {
+  max-height: min(60vh, 560px);
+  padding: var(--space-3);
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.conversation-reference-hover p {
+  margin-block: var(--space-2);
+  white-space: pre-wrap;
+}
+
+.conversation-reference-hover img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}

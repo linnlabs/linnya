@@ -13,3 +13,5 @@ Markdown 的封面是无活动 HTML 的文字摘要 SVG，完整 Markdown 详情
 业务验证覆盖稳定身份、改名、软删除、越界、停用快照、渲染中移动、版本失效、缓存复用、并发合并和有界队列。真实 Electron 的冷封面耗时与跨平台视觉属于原生验证，不能由纯函数计时替代。
 
 封面内容可声明 `overview: thumbnail`，表示远景仍适合保留缩略图；未声明时使用标题身份。该偏好由内容 owner 提供，消费者不能按插件 ID 或是否存在摘要图片猜测。
+
+Renderer 的近景详情通过 `mountDocumentPreviewDetail` 挂到调用方 DOM 容器，使用 App 的唯一 document-preview workflow；可传 AbortSignal，返回独立 disposer。该本地能力不经 IPC，不开放可写文档会话，调用方退出或换目标必须取消并释放。Composer 仍封面后展开，文档卡可 detailOnly 直开；只有聚焦项应挂载详情。

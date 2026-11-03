@@ -412,6 +412,54 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+.canvas-image-crop-stage {
+  display: flex;
+  justify-content: center;
+  margin-block: var(--space-3);
+}
+.canvas-image-crop-source {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  line-height: 0;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+.canvas-image-crop-source img {
+  display: block;
+  max-width: 100%;
+  max-height: min(45vh, 360px);
+  width: auto;
+  height: auto;
+  pointer-events: none;
+}
+.canvas-image-crop-range {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 0 0 999px color-mix(in srgb, var(--color-bg-default) 72%, transparent);
+  pointer-events: none;
+}
+.canvas-image-edit-fields {
+  display: grid;
+  gap: var(--space-2);
+  border: 0;
+  padding: 0;
+}
+.canvas-image-edit-fields label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.canvas-image-edit-fields input {
+  flex: 1;
+  min-width: 0;
+}
+.canvas-image-edit-fields output {
+  min-width: 4ch;
+  text-align: right;
+}
 
 .canvas-wheel-suggestion {
   position: absolute;
