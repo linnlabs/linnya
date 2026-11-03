@@ -10,6 +10,7 @@ export interface CanvasSurfaceOptions {
   readonly editorHost: HTMLElement;
   readonly stagingHost: HTMLElement;
   readonly documentId: string;
+  readonly descriptionId?: string;
 }
 export interface CanvasSurfacePorts {
   readonly document: CanvasDocumentPort;
