@@ -412,3 +412,25 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+.canvas-wheel-suggestion {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  z-index: 30;
+  max-width: 360px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-default);
+  color: var(--color-text-primary);
+}
+.canvas-wheel-suggestion p { margin: 0 0 8px; }
+.canvas-wheel-suggestion button {
+  margin-right: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-default);
+  color: inherit;
+}

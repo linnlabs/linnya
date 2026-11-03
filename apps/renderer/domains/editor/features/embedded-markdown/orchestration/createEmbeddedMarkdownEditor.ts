@@ -10,12 +10,16 @@ import { createEmbeddedMarkdownImage } from './createEmbeddedMarkdownImage';
 import { createEmbeddedMarkdownInsertion } from './createEmbeddedMarkdownInsertion';
 import { createMarkdownDocumentExtensions } from '@linnya/markdown-document-core';
 import { createDocumentReferenceExtension } from '@/domains/editor/features/document-references';
+import { createEmbeddedMarkdownSpaceInput } from './createEmbeddedMarkdownSpaceInput';
+import { installEmbeddedMarkdownNavigation } from './installEmbeddedMarkdownNavigation';
 
 /** 外部文档持有正文和保存生命周期；此入口只拥有一个可销毁的编辑表面。 */
 export function createEmbeddedMarkdownEditor(
   options: EmbeddedMarkdownEditorOptions,
 ): EmbeddedMarkdownEditor {
   const insertions = new Set<EmbeddedMarkdownInsertion>();
+  const space = createEmbeddedMarkdownSpaceInput();
+  let navigation: ReturnType<typeof installEmbeddedMarkdownNavigation> | null = null;
   const cancelInsertions = () => { for (const insertion of [...insertions]) insertion.cancel(); };
   const editor = new Editor({
     element: options.element,
@@ -23,9 +27,11 @@ export function createEmbeddedMarkdownEditor(
     editable: !options.readonly,
     editorProps: {
       attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label },
+      handleTextInput: (view, _from, _to, text) => space.capture(view, text),
     },
     onUpdate: () => options.onUpdate(JsonValueSchema.parse(editor.getJSON())),
     onBlur: () => options.onBlur?.(),
+    onTransaction: ({ transaction }) => space.record(transaction),
   });
   const replaceContent = (content: JsonValue): void => {
     // Tiptap 的宽松 HTML/JSON 接纳会丢未知节点；先用同一生产 schema 完整校验。
@@ -35,6 +41,7 @@ export function createEmbeddedMarkdownEditor(
       throw new Error('Embedded Markdown content must be a document');
     }
     cancelInsertions();
+    navigation?.cancel();
     editor.commands.setContent(document.toJSON(), { emitUpdate: false, errorOnInvalidContent: true });
   };
   try {
@@ -43,6 +50,7 @@ export function createEmbeddedMarkdownEditor(
     editor.destroy();
     throw error;
   }
+  if (options.onNavigate) navigation = installEmbeddedMarkdownNavigation({ element: options.element, editor, space, navigate: options.onNavigate });
   return {
     readContent: () => JsonValueSchema.parse(editor.getJSON()),
     readMarkdown: () => editor.getMarkdown(),
@@ -58,8 +66,8 @@ export function createEmbeddedMarkdownEditor(
       const insertion = createEmbeddedMarkdownInsertion(editor, () => insertions.delete(insertion));
       insertions.add(insertion); return insertion;
     },
-    setEditable: editable => { if (!editable) cancelInsertions(); editor.setEditable(editable); },
+    setEditable: editable => { if (!editable) { cancelInsertions(); navigation?.cancel(); } editor.setEditable(editable); },
     focus: () => { editor.commands.focus(); },
-    destroy: () => { cancelInsertions(); editor.destroy(); },
+    destroy: () => { navigation?.dispose(); cancelInsertions(); editor.destroy(); },
   };
 }
