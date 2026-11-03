@@ -33,7 +33,7 @@ src/app-hosts/linnya/adapters/sandbox/production-runtime/
 SandboxService
  → SandboxRunnerPort
  → App Host Sandbox production scope
- → 宿主注入的一次性 Utility fork adapter
+ → 宿主注入的一次性 Utility fork adapter（可预热一个已 ready 的 Utility，仍只承接一轮）
  → 一次性 Utility process
  → shared local-process runtime
  → 随包无界面 Node evaluator

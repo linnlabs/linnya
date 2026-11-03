@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { TextLayoutContract } from '@plugin/slides/shared';
-import { mapTextLayoutContractToPptxTextOptions } from '../textLayoutPptxOptions.js';
+import {
+  mapTextLayoutContractToPptxTextOptions,
+  resolveGeneratedPptxTextLayoutOptions,
+} from '../textLayoutPptxOptions.js';
 
 function contract(overrides: Partial<TextLayoutContract> = {}): TextLayoutContract {
   return {
@@ -24,6 +27,7 @@ describe('mapTextLayoutContractToPptxTextOptions', () => {
       fit: 'resize',
       wrap: true,
       margin: [7.2, 7.2, 3.6, 3.6],
+      valign: 'top',
     });
   });
 
@@ -36,6 +40,33 @@ describe('mapTextLayoutContractToPptxTextOptions', () => {
       fit: 'shrink',
       wrap: false,
       margin: [28.8, 14.4, 21.6, 0],
+      valign: 'top',
     });
+  });
+
+  it('always writes the contract vertical anchor so PptxGenJS cannot fall back to ctr', () => {
+    for (const verticalAlign of ['top', 'middle', 'bottom'] as const) {
+      expect(mapTextLayoutContractToPptxTextOptions(contract({ verticalAlign })).valign).toBe(verticalAlign);
+    }
+  });
+});
+
+describe('resolveGeneratedPptxTextLayoutOptions', () => {
+  const box = { x: 1, y: 1, w: 3, h: 1 };
+
+  it('defaults to the preview vertical anchor (top) when the author did not declare one', () => {
+    expect(resolveGeneratedPptxTextLayoutOptions(box, 'resize-shape', 'plain-textbox').valign).toBe('top');
+    expect(resolveGeneratedPptxTextLayoutOptions(box, 'resize-shape', 'bullet-textbox', {
+      verticalAlign: undefined,
+    }).valign).toBe('top');
+  });
+
+  it('lets the explicit author vertical alignment override the default', () => {
+    expect(resolveGeneratedPptxTextLayoutOptions(box, 'resize-shape', 'title-textbox', {
+      verticalAlign: 'bottom',
+    }).valign).toBe('bottom');
+    expect(resolveGeneratedPptxTextLayoutOptions(box, 'shrink-text', 'shape-inner-text', {
+      verticalAlign: 'middle',
+    }).valign).toBe('middle');
   });
 });

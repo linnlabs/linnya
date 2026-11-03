@@ -64,6 +64,11 @@ interface ActiveSandboxRun {
   waitForSettlement(): Promise<SandboxRunnerResult>;
 }
 
+interface WarmSandboxUtility {
+  readonly transport: SandboxUtilityProcessTransport;
+  readonly idleTimer: NodeJS.Timeout;
+}
+
 class SandboxHostSettlementError extends Error {
   constructor(readonly failures: readonly unknown[], message: string) {
     super(message);
@@ -80,6 +85,12 @@ export interface CreateSandboxProductionScopeInput {
   readonly utilityProcessFork: SandboxUtilityProcessForkPort;
   /** App Host 文件系统 adapter 边界；生产默认使用严格的固定目录删除策略。 */
   readonly removeRunDirectory?: (runDirectory: string) => Promise<void>;
+  /**
+   * 预热一个已经启动、尚未承接任何请求的 Utility，下一轮直接发送 start，省掉 Node 启动与
+   * bundle 装载。每个 Utility 仍只承接一轮；首轮结束后才开始预热，空闲 idleMs 后退役。
+   * 不传则每轮现场 fork。
+   */
+  readonly utilityPrewarm?: { readonly idleMs: number };
 }
 
 /**
@@ -102,9 +113,82 @@ export function createSandboxProductionScope(
   });
   const serializedPlatformRuntime = serializeLocalProcessPlatformRuntime(input.platformRuntime);
   const removeRunDirectory = input.removeRunDirectory ?? removeSandboxRunDirectory;
+  const utilityPrewarm = input.utilityPrewarm;
+  if (utilityPrewarm && (!Number.isSafeInteger(utilityPrewarm.idleMs) || utilityPrewarm.idleMs <= 0)) {
+    throw new Error('sandbox utility prewarm idle time must be a positive safe integer');
+  }
   const activeRuns = new Set<ActiveSandboxRun>();
+  const utilityRetirements = new Set<Promise<void>>();
+  let warmUtility: WarmSandboxUtility | undefined;
   let ownerEnded = false;
   let ownerSettlement: Promise<void> | undefined;
+
+  function forkUtility(): SandboxUtilityProcessTransport {
+    const generation = parseSandboxUtilityGeneration(randomUUID());
+    const child = utilityProcessFork.fork({
+      utilityPath: input.utilityPath,
+      argv: [generation, serializedPlatformRuntime],
+      environment: utilityEnvironment,
+    });
+    return createSandboxUtilityProcessTransport({ child, generation });
+  }
+
+  /** 优先取预热且仍可 start 的 Utility；已失效的预热进程退役，本轮现场 fork。 */
+  function acquireUtility(): SandboxUtilityProcessTransport {
+    const warm = takeWarmUtility();
+    if (warm?.isStartable()) return warm;
+    if (warm) retireUtility(warm);
+    return forkUtility();
+  }
+
+  function takeWarmUtility(): SandboxUtilityProcessTransport | undefined {
+    const warm = warmUtility;
+    if (!warm) return undefined;
+    warmUtility = undefined;
+    clearTimeout(warm.idleTimer);
+    return warm.transport;
+  }
+
+  function refillWarmUtility(): void {
+    if (!utilityPrewarm || ownerEnded || warmUtility) return;
+    let transport: SandboxUtilityProcessTransport;
+    try {
+      transport = forkUtility();
+    } catch {
+      // 预热只是延迟优化；fork 失败留给下一轮现场 fork 按正式结果暴露，不在这里重试。
+      return;
+    }
+    const warm: WarmSandboxUtility = {
+      transport,
+      idleTimer: setTimeout(() => {
+        if (warmUtility === warm) retireUtility(takeWarmUtility());
+      }, utilityPrewarm.idleMs),
+    };
+    warm.idleTimer.unref();
+    warmUtility = warm;
+    // ready 前失败时 transport 已自行强杀并观察退出；这里只让出槽位，不再补一个，避免反复拉起。
+    void transport.waitUntilReady().catch(() => {
+      if (warmUtility === warm) takeWarmUtility();
+    });
+  }
+
+  function retireUtility(transport: SandboxUtilityProcessTransport | undefined): void {
+    if (!transport) return;
+    const retirement = (async () => {
+      try {
+        await transport.endOwner();
+        await transport.waitForExit();
+      } catch {
+        try {
+          await transport.killAndWait();
+        } catch {
+          logger.error('[SandboxRuntime] warm utility retirement incomplete', { utilityPrewarm: true });
+        }
+      }
+    })();
+    utilityRetirements.add(retirement);
+    void retirement.finally(() => utilityRetirements.delete(retirement));
+  }
 
   return Object.freeze({
     execute(
@@ -139,14 +223,13 @@ export function createSandboxProductionScope(
         options,
         activeRun,
         storageRoot: input.storageRoot,
-        utilityPath: input.utilityPath,
-        utilityEnvironment,
         evaluator,
-        serializedPlatformRuntime,
-        utilityProcessFork,
+        acquireUtility,
         removeRunDirectory,
       }).finally(() => {
         if (!activeRun.hasResidualCleanup()) activeRuns.delete(activeRun);
+        // 本轮完全收口后再预热下一个，避免两个 Node 启动与正在进行的求值争用 CPU。
+        refillWarmUtility();
       });
       activeRun.bindSettlement(settlement);
       return settlement;
@@ -155,12 +238,16 @@ export function createSandboxProductionScope(
     endOwnerAndWait(): Promise<void> {
       if (ownerSettlement) return ownerSettlement;
       ownerEnded = true;
+      retireUtility(takeWarmUtility());
       const admittedRuns = [...activeRuns];
       for (const run of admittedRuns) run.requestTermination('owner_ended');
-      const attempt = Promise.all(admittedRuns.map(async run => {
-        await run.waitForSettlement();
-        activeRuns.delete(run);
-      })).then(() => undefined);
+      const attempt = Promise.all([
+        ...admittedRuns.map(async run => {
+          await run.waitForSettlement();
+          activeRuns.delete(run);
+        }),
+        ...utilityRetirements,
+      ]).then(() => undefined);
       const trackedAttempt = attempt.finally(() => {
         if (ownerSettlement === trackedAttempt) ownerSettlement = undefined;
       });
@@ -176,11 +263,8 @@ async function executeActiveSandboxRun(input: {
   readonly options?: SandboxRunnerExecutionOptions;
   readonly activeRun: ActiveSandboxRun;
   readonly storageRoot: string;
-  readonly utilityPath: string;
-  readonly utilityEnvironment: Readonly<Record<string, string>>;
   readonly evaluator: SandboxEvaluatorLaunch;
-  readonly serializedPlatformRuntime: string;
-  readonly utilityProcessFork: SandboxUtilityProcessForkPort;
+  readonly acquireUtility: () => SandboxUtilityProcessTransport;
   readonly removeRunDirectory: (runDirectory: string) => Promise<void>;
 }): Promise<SandboxRunnerResult> {
   const runToken = input.runToken;
@@ -214,14 +298,8 @@ async function executeActiveSandboxRun(input: {
     });
 
     if (!input.activeRun.readTerminationIntent()) {
-      const generation = parseSandboxUtilityGeneration(randomUUID());
-      const child = input.utilityProcessFork.fork({
-        utilityPath: input.utilityPath,
-        argv: [generation, input.serializedPlatformRuntime],
-        environment: input.utilityEnvironment,
-      });
+      transport = input.acquireUtility();
       utilityForked = true;
-      transport = createSandboxUtilityProcessTransport({ child, generation });
       input.activeRun.attachTransport(transport);
 
       [terminal] = await Promise.all([

@@ -4,6 +4,11 @@ import type { DeckSpec, StructuredSlideSpec } from '@plugin/slides/shared';
 import { StructuredCompiler } from '../engine/StructuredCompiler.js';
 import { PptxValidator } from '../engine/pptx/PptxValidator.js';
 import { PptxReader } from '../engine/parser/PptxReader.js';
+import {
+  findTextBodyAnchor,
+  readTableCellAnchors,
+  readTextBodyAnchors,
+} from './helpers/pptx-text-body-anchors.js';
 
 function makeDeck(slides: StructuredSlideSpec[], overrides?: Partial<DeckSpec>): DeckSpec {
   return {
@@ -158,6 +163,79 @@ describe('StructuredCompiler', () => {
 
     expect(slideXml).toContain('<a:bodyPr wrap="none"');
     expect(slideXml).toContain('<a:spAutoFit/>');
+  });
+
+  it('anchors text boxes to the preview vertical alignment (default top, explicit override)', async () => {
+    const deck = makeDeck([structured([
+      { type: 'title', content: 'Default title', position: { x: 0.5, y: 0.2, w: 9, h: 1 } },
+      { type: 'text', content: 'Default body', position: { x: 0.5, y: 1.3, w: 4, h: 1.2 } },
+      { type: 'text', content: 'Top body', position: { x: 5, y: 1.3, w: 4, h: 1.2 }, style: { valign: 'top' } },
+      { type: 'text', content: 'Middle body', position: { x: 0.5, y: 2.6, w: 4, h: 1.2 }, style: { valign: 'middle' } },
+      { type: 'title', content: 'Bottom title', position: { x: 5, y: 2.6, w: 4, h: 1.2 }, style: { valign: 'bottom' } },
+    ])]);
+    const anchors = readTextBodyAnchors(await readSlideXml(await compiler.compileDeck(deck)));
+
+    expect(findTextBodyAnchor(anchors, 'Default title').anchor).toBe('t');
+    expect(findTextBodyAnchor(anchors, 'Default body').anchor).toBe('t');
+    expect(findTextBodyAnchor(anchors, 'Top body').anchor).toBe('t');
+    expect(findTextBodyAnchor(anchors, 'Middle body').anchor).toBe('ctr');
+    expect(findTextBodyAnchor(anchors, 'Bottom title').anchor).toBe('b');
+  });
+
+  it('writes list vertical alignment on the text box container, not only on item runs', async () => {
+    const deck = makeDeck([structured([
+      {
+        type: 'bulletList',
+        items: [{ text: 'Bullet A' }, { text: 'Bullet B' }],
+        position: { x: 0.5, y: 0.5, w: 4, h: 3 },
+      },
+      {
+        type: 'bulletList',
+        items: [{ text: 'Top bullet' }],
+        position: { x: 5, y: 0.5, w: 4, h: 3 },
+        style: { valign: 'top' },
+      },
+      {
+        type: 'numberedList',
+        items: [{ text: 'Number A' }, { text: 'Number B' }],
+        position: { x: 0.5, y: 3.6, w: 4, h: 1.8 },
+      },
+      {
+        type: 'numberedList',
+        items: [{ text: 'Bottom number' }],
+        position: { x: 5, y: 3.6, w: 4, h: 1.8 },
+        style: { valign: 'bottom' },
+      },
+    ])]);
+    const anchors = readTextBodyAnchors(await readSlideXml(await compiler.compileDeck(deck)));
+
+    expect(findTextBodyAnchor(anchors, 'Bullet ABullet B').anchor).toBe('t');
+    expect(findTextBodyAnchor(anchors, 'Top bullet').anchor).toBe('t');
+    expect(findTextBodyAnchor(anchors, 'Number ANumber B').anchor).toBe('t');
+    expect(findTextBodyAnchor(anchors, 'Bottom number').anchor).toBe('b');
+  });
+
+  it('keeps shape inner text and table cell anchors unchanged', async () => {
+    const deck = makeDeck([structured([
+      { type: 'shape', geometry: 'rect', position: { x: 0.5, y: 0.5, w: 3, h: 1.5 }, text: 'Single line shape' },
+      { type: 'shape', geometry: 'rect', position: { x: 4, y: 0.5, w: 3, h: 1.5 }, text: 'Line one\nLine two' },
+      {
+        type: 'table',
+        headers: ['Head'],
+        rows: [[{ text: 'Cell' }], [{ text: 'Styled cell', style: { bold: true } }]],
+        position: { x: 0.5, y: 2.5, w: 6, h: 2 },
+      },
+    ])]);
+    const slideXml = await readSlideXml(await compiler.compileDeck(deck));
+    const anchors = readTextBodyAnchors(slideXml);
+
+    expect(findTextBodyAnchor(anchors, 'Single line shape').anchor).toBe('ctr');
+    expect(findTextBodyAnchor(anchors, 'Line oneLine two').anchor).toBe('t');
+    expect(readTableCellAnchors(slideXml).map((cell) => [cell.text, cell.anchor])).toEqual([
+      ['Head', 'ctr'],
+      ['Cell', 'ctr'],
+      ['Styled cell', 'ctr'],
+    ]);
   });
 
   it('compiles bulletList with nested levels', async () => {

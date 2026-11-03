@@ -11,7 +11,7 @@ import {
 
 const POINTS_PER_INCH = 72;
 
-export type PptxTextLayoutOptions = Pick<PptxGenJS.TextPropsOptions, 'fit' | 'wrap' | 'margin'>;
+export type PptxTextLayoutOptions = Pick<PptxGenJS.TextPropsOptions, 'fit' | 'wrap' | 'margin' | 'valign'>;
 
 export function mapTextLayoutContractToPptxTextOptions(
   contract: TextLayoutContract,
@@ -28,6 +28,9 @@ export function mapTextLayoutContractToPptxTextOptions(
       inchesToPoints(contract.padding.bottom),
       inchesToPoints(contract.padding.top),
     ],
+    // PptxGenJS 对非占位符文本缺省写 anchor="ctr"；必须始终显式写出合同的纵向锚点，
+    // 使 PowerPoint 与预览（缺省 top）在框高大于或小于内容时落在同一位置。
+    valign: contract.verticalAlign,
   };
 }
 
@@ -39,6 +42,8 @@ export function resolveGeneratedPptxTextLayoutOptions(
   layoutOverrides: {
     padding?: TextBoxInsets;
     wrap?: TextWrapPolicy;
+    /** 作者显式的纵向对齐；缺省时由布局合同给出与预览相同的默认值。 */
+    verticalAlign?: TextLayoutContract['verticalAlign'];
   } = {},
 ): PptxTextLayoutOptions {
   return mapTextLayoutContractToPptxTextOptions(resolveTextLayoutContract({
@@ -47,6 +52,7 @@ export function resolveGeneratedPptxTextLayoutOptions(
     box,
     padding: layoutOverrides.padding,
     wrap: layoutOverrides.wrap,
+    verticalAlign: layoutOverrides.verticalAlign,
     autoFitPolicy,
   }));
 }

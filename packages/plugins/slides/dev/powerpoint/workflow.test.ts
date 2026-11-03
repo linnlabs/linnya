@@ -11,7 +11,7 @@ import { FreeformCompiler } from '../../src/backend/engine/FreeformCompiler';
 import { StructuredCompiler } from '../../src/backend/engine/StructuredCompiler';
 import { compareConformance } from './compareReport';
 import type { Manifest } from './definitions';
-import { getElementByTag } from '../../src/backend/engine/parser/xml/XmlNode';
+import { getElementByTag, getElements } from '../../src/backend/engine/parser/xml/XmlNode';
 
 it('compiles eleven synthetic pages including line, horizontal bar, doughnut and three legend positions', async () => {
   const deck = createConformanceDeck();
@@ -28,6 +28,13 @@ it('compiles eleven synthetic pages including line, horizontal bar, doughnut and
   const spacing = await zip.file('ppt/slides/slide4.xml')!.async('text');
   expect(spacing).toContain('spcPct val="140000"');
   expect(spacing).toContain('spcPts val="3200"');
+  // 预览缺省 top；PowerPoint 的文本框锚点必须一致，否则框高与内容不同时纵向错位。
+  const bodyAnchors = (xml: string) =>
+    getElements(new DOMParser().parseFromString(xml, 'application/xml'), 'a:bodyPr').map(body =>
+      body.getAttribute('anchor')
+    );
+  expect(bodyAnchors(await zip.file('ppt/slides/slide1.xml')!.async('text'))).toEqual(['t']);
+  expect(bodyAnchors(spacing)).toEqual(['t', 't']);
   const charts = await Promise.all(
     Object.keys(zip.files)
       .filter(file => /^ppt\/charts\/chart\d+\.xml$/.test(file))

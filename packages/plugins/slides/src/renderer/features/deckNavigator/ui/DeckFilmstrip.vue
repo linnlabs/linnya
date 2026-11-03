@@ -16,6 +16,8 @@
       @scroll="handleViewportScroll"
       @wheel="handleWheel"
       @keydown="handleKeydown"
+      @dragover="allowDrop"
+      @drop="dropSlide"
     >
       <!-- OverlayScrollbars 会改写自定义视口的 padding，留白放在内层内容上。 -->
       <div class="deck-filmstrip__content">
@@ -44,8 +46,6 @@
               :aria-label="deckNavigatorMessage('slides.navigator.slide.label', { number: item.index + 1 })"
               :draggable="reorderEnabled"
               @dragstart="startDrag($event, item.index)"
-              @dragover="allowDrop($event, item.index)"
-              @drop="dropSlide($event, item.index)"
               @dragend="endDrag"
               @click="selectSlide(item.index)"
               @contextmenu.prevent.stop="emit('slideContextMenu', $event, item.index)"
@@ -83,6 +83,7 @@ import {
 } from '../../../shared/thumbnailGeometry';
 import { isSlideNavigationKey, resolveSlideNavigationIndex } from '../functions/slideKeyboardNavigation';
 import { resolveNearestScrollOffset } from '../functions/nearestScrollOffset';
+import { resolveFilmstripDropIndex } from '../functions/filmstripDropIndex';
 import { useDeckNavigatorLocalization } from './useDeckNavigatorLocalization';
 import SlideThumbnail from './SlideThumbnail.vue';
 
@@ -98,8 +99,25 @@ function startDrag(event: DragEvent, index: number): void {
   event.dataTransfer.effectAllowed = 'move';
   event.dataTransfer.setData('application/x-linnya-slide', String(index));
 }
-function allowDrop(event: DragEvent, index: number): void {
+/**
+ * 放置区是整个视口，而不只是缩略图本身：插入线画在缩略图间距里，指针越过它、落在间距或末页之后的留白时
+ * 也必须能放下。落点按指针横坐标求得。
+ */
+function resolveDropIndexFromPointer(event: DragEvent): number | null {
+  const viewport = viewportMountRef.value;
+  if (!viewport) return null;
+  return resolveFilmstripDropIndex({
+    contentX: event.clientX - viewport.getBoundingClientRect().left + viewport.scrollLeft,
+    inset: VIEWPORT_INSET_PX,
+    itemWidth: itemWidth.value,
+    gap: FILMSTRIP_ITEM_GAP_PX,
+    slideCount: slides.value.length,
+  });
+}
+function allowDrop(event: DragEvent): void {
   if (!props.reorderEnabled || draggedIndex.value === null) return;
+  const index = resolveDropIndexFromPointer(event);
+  if (index === null) return;
   event.preventDefault();
   if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
   dropIndex.value = index === draggedIndex.value ? null : index;
@@ -108,10 +126,11 @@ function endDrag(): void {
   draggedIndex.value = null;
   dropIndex.value = null;
 }
-function dropSlide(event: DragEvent, index: number): void {
+function dropSlide(event: DragEvent): void {
   if (!props.reorderEnabled || draggedIndex.value === null) return;
+  const index = resolveDropIndexFromPointer(event);
   event.preventDefault();
-  if (draggedIndex.value !== index) emit('moveSlide', draggedIndex.value, index);
+  if (index !== null && draggedIndex.value !== index) emit('moveSlide', draggedIndex.value, index);
   endDrag();
 }
 

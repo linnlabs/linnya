@@ -38,6 +38,7 @@ import { getLogger } from 'src/shared/logger';
 import { resolveProfileCredentialFilePath } from 'src/app-hosts/linnya/adapters/credential-storage/createProfileCredentialStorage';
 
 const logger = getLogger('ConversationExecutionRuntime');
+const SANDBOX_UTILITY_PREWARM_IDLE_MS = 5 * 60_000;
 
 /**
  * Linnya 对话执行的唯一宿主无关组合根。Commands/Sandbox 的业务 owner 只在这里创建；
@@ -151,6 +152,8 @@ export function createConversationExecutionRuntimeFactory(input: {
           evaluator: sandboxEvaluatorRuntime.launch,
           platformRuntime: commandRuntimeFacts.platformRuntime,
           utilityProcessFork: input.sandboxUtilityProcessFork,
+          // Slides 人工编辑每次都要整稿求值；常备一个已启动的 Utility，空闲 5 分钟后退役。
+          utilityPrewarm: { idleMs: SANDBOX_UTILITY_PREWARM_IDLE_MS },
         });
         return Object.freeze({
           command: commandScope,

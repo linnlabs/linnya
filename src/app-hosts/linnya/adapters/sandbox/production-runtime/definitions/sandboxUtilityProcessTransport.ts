@@ -43,6 +43,8 @@ export interface SandboxUtilityProcessTerminal {
 
 export interface SandboxUtilityProcessTransport {
   waitUntilReady(): Promise<number>;
+  /** 仍可承接唯一一次 start：进程未退出、transport 未失败，且尚未发送 start 或 owner end。 */
+  isStartable(): boolean;
   sendStart(payload: SandboxUtilityStartPayload): Promise<void>;
   sendCancel(runToken: string): Promise<void>;
   endOwner(): Promise<void>;
