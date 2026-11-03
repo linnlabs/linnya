@@ -1,6 +1,6 @@
 import type { EmbeddedMarkdownEditor, EmbeddedMarkdownEditorOptions } from '@plugin/renderer/embeddedMarkdownEditor';
 import type { Ref } from 'vue';
-import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasPoint } from '@plugin/canvas/shared';
+import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasElement, CanvasElementId, CanvasPoint } from '@plugin/canvas/shared';
 import type { CanvasDocumentPort } from '../features/canvasDocument';
 
 export interface CanvasSurfaceOptions {
@@ -14,6 +14,12 @@ export interface CanvasSurfacePorts {
   createEditor(options: EmbeddedMarkdownEditorOptions): EmbeddedMarkdownEditor;
   markDirty(dirty: boolean): void;
   createContent?(card: CanvasCard, signal: AbortSignal): Promise<HTMLElement>;
+  readContentKey?(card: CanvasCard): string;
+  readDocumentTitles?(): ReadonlyMap<string, string>;
+  refreshReferences?(cards: readonly CanvasCard[]): Promise<void>;
+  subscribeContent?(listener: (failure: Error | null) => void): () => void;
+  prepareClipboard?(ids: readonly CanvasElementId[]): Promise<{ readonly elements: readonly CanvasElement[]; readonly text: string }>;
+  pasteImages?(files: readonly File[], point: CanvasPoint): Promise<void>;
   openCard?(card: CanvasCard): Promise<void>;
   resolveImageSource?(source: string): Promise<string>;
 }
