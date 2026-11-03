@@ -28,6 +28,8 @@ Revision 展示 Markdown 数据库中的待处理修改，提供块级、行内�
 
 富文本 diff 的比较单元与编辑器位置必须分开：比较按 Unicode 字符及原子节点，片段的 `documentSize` 按 ProseMirror 规则计量（文字使用 UTF-16 长度，公式／引用等原子节点为 1）。不能拿比较单元数量移动选区或修改范围，否则 emoji 后方的修订会错位。
 
+行内原子节点的比较键只含内容载荷：行内公式只比较 `latexSource`，引用只比较来源字段；节点身份（公式 `id`、引用 `citationId`）与引用的显示别名 `ref` 不参与比较。基线公式的 id 来自编辑器，提议侧由 parser 重新编号，同一公式两侧必然不同。marks 在相等区间另行比较，公式加粗等变化仍显示为修改。未改的原子以 equal 片段保留基线节点，预览与行内部分接受后身份不变；新增公式只取内容属性，由编辑器生成 id，不沿用 parser 的 `inline-latex-N`。每个原子单独成段，相邻的同内容公式或引用不会合并。块级与全文接受由后端重新导入提议 Markdown，块内节点 id 随导入重新生成，这一行为不在 Revision 内改变。
+
 Markdown 解析和物化继续复用 [markdownRuntime](../../services/markdownRuntime/README.md)。Revision 不维护另一套 Markdown 解释器。全文文件写入的 Pending metadata 可携带 `listSeparatorBefore`，用于恢复列表项之间的紧凑/松散间隔；单块 Markdown 本身不含前一项，解析时不得据此猜成松散列表。单项、批次及插入投影都把该事实传给统一 resolver，接受后的正文由后端同一合同确认。现有表格整块替换与历史视图属于显示策略，不改变数据库事务语义。
 
 ## 图表块的 Pending

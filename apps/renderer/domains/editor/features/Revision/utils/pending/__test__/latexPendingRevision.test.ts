@@ -155,3 +155,51 @@ it('真实 LatexBlockView 渲染提议和原式，Pending 期间点击公式不�
     expect(useLatexEditorStore().isPanelVisible).toBe(false);
   } finally { app.unmount(); container.remove(); }
 });
+
+it('行内公式只按源码比较：只改文字时公式保留基线节点，源码变化才标删增', async () => {
+  const paragraph = (formulaSource: string): JSONContent => ({ type: 'baseBlock', attrs: { id: 'paragraph-content', blockType: 'base' }, content: [
+    { type: 'text', text: '能量公式 ' },
+    { type: 'inlineLatex', attrs: { id: 'block-inline-formula', latexSource: formulaSource } },
+    { type: 'text', text: ' 成立。' },
+  ] });
+  const inlineFormulas = (editor: Editor) => {
+    const found: Array<{ id: unknown; source: unknown; change: unknown; pos: number }> = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name !== 'inlineLatex') return;
+      found.push({ id: node.attrs.id, source: node.attrs.latexSource, pos,
+        change: node.marks.find(mark => mark.type.name === 'revisionMark')?.attrs.changeType ?? null });
+    });
+    return found;
+  };
+  const editor = createEditor();
+  const baseline = documentOf(paragraph('E = mc^2'));
+  const store = await open(editor, snapshot(baseline, 'update', '质能方程 $E = mc^2$ 成立。'));
+  expect(store.getCanonicalSession('formula-root')?.projection).toBe('ready');
+  expect(inlineFormulas(editor)).toEqual([{ id: 'block-inline-formula', source: 'E = mc^2', change: null, pos: expect.any(Number) }]);
+  const textChanges: Array<{ from: number; to: number; change: unknown }> = [];
+  editor.state.doc.descendants((node, pos) => {
+    const mark = node.marks.find(item => item.type.name === 'revisionMark');
+    if (mark && node.isText) textChanges.push({ from: pos, to: pos + node.nodeSize, change: mark.attrs.changeType });
+  });
+  expect(textChanges.length).toBeGreaterThan(0);
+
+  // 接受一段文字修改：草稿里未改的公式仍是基线节点，身份不变。
+  const insert = textChanges.find(change => change.change === 'insert');
+  if (!insert) throw new Error('缺少文字新增');
+  mocks.commit.mockResolvedValueOnce({ success: true, data: { content: baseline, pendingRevisions: [], versionNumber: 2 } });
+  await store.acceptSingleRevision('formula-root', insert.from, insert.to);
+  const resolution: MarkdownRevisionCommit = mocks.commit.mock.calls[0][0];
+  expect(resolution.decision).toMatchObject({ mode: 'resolve', blockId: 'formula-root' });
+  const draft = editor.schema.nodeFromJSON(resolution.baseline);
+  const draftFormulaIds: unknown[] = [];
+  draft.descendants(node => { if (node.type.name === 'inlineLatex') draftFormulaIds.push(node.attrs.id); });
+  expect(draftFormulaIds).toEqual(['block-inline-formula']);
+
+  const changed = createEditor();
+  await open(changed, snapshot(baseline, 'update', '能量公式 $E = mc^3$ 成立。'));
+  const formulas = inlineFormulas(changed);
+  expect(formulas.map(({ source, change }) => [source, change])).toEqual([['E = mc^2', 'delete'], ['E = mc^3', 'insert']]);
+  expect(formulas[0]?.id).toBe('block-inline-formula');
+  expect(formulas[1]?.id).toEqual(expect.any(String));
+  expect(String(formulas[1]?.id)).not.toMatch(/^inline-latex-/);
+});

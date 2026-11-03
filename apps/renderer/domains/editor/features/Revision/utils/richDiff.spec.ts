@@ -166,6 +166,76 @@ describe('richDiff', () => {
       })
     })
 
+    describe('行内原子节点只按内容比较，不按身份比较', () => {
+      // 基线来自编辑器（block-xxxx），提议来自 parser（inline-latex-N）：同一公式两侧 id 必然不同。
+      const latex = (latexSource: string, id: string): TextSpan => ({
+        text: `$${latexSource}$`,
+        marks: [],
+        inlineAtom: {
+          type: 'inlineLatex',
+          latexSource,
+          textRepresentation: `$${latexSource}$`,
+          attrs: { id, latexSource },
+        },
+      })
+      const citation = (ref: string): TextSpan => {
+        const meta = { ref, sourceType: 'knowledge_base' as const, sourceId: 'doc_1', title: 'T', snippet: 'S' }
+        return { text: `[@${ref}]`, marks: [], citation: meta, inlineAtom: { type: 'citation', citation: meta, textRepresentation: `[@${ref}]` } }
+      }
+
+      it('同源码、不同 id 的行内公式不产生 diff', () => {
+        const result = computeRichDiff(
+          [{ text: '质能 ', marks: [] }, latex('E = mc^2', 'block-abc123')],
+          [{ text: '质能 ', marks: [] }, latex('E = mc^2', 'inline-latex-1')]
+        )
+
+        expect(result.segments.every(segment => segment.type === 'equal')).toBe(true)
+        expect(result.stats).toMatchObject({ insertCount: 0, deleteCount: 0 })
+      })
+
+      it('源码不同时仍输出整条公式的删除与新增', () => {
+        const result = computeRichDiff(
+          [latex('E = mc^2', 'block-abc123')],
+          [latex('E = mc^3', 'inline-latex-1')]
+        )
+
+        expect(result.segments.map(segment => [segment.type, segment.text, segment.documentSize])).toEqual([
+          ['delete', '$E = mc^2$', 1],
+          ['insert', '$E = mc^3$', 1],
+        ])
+        expect(result.segments[1]?.inlineAtom).toMatchObject({ type: 'inlineLatex', latexSource: 'E = mc^3' })
+      })
+
+      it('只改段落文字时只标文字，未变的公式保持相等', () => {
+        const result = computeRichDiff(
+          [{ text: '能量公式 ', marks: [] }, latex('E = mc^2', 'block-abc123'), { text: ' 成立。', marks: [] }],
+          [{ text: '质能方程 ', marks: [] }, latex('E = mc^2', 'inline-latex-1'), { text: ' 成立。', marks: [] }]
+        )
+
+        const changed = result.segments.filter(segment => segment.type !== 'equal')
+        expect(changed.length).toBeGreaterThan(0)
+        expect(changed.some(segment => segment.text.includes('$') || segment.inlineAtom)).toBe(false)
+        expect(result.segments.find(segment => segment.text.includes('$E = mc^2$'))?.type).toBe('equal')
+      })
+
+      it('公式的 marks 变化仍算修改', () => {
+        const bold = { ...latex('x', 'inline-latex-1'), marks: ['bold' as const] }
+        const result = computeRichDiff([latex('x', 'block-abc123')], [bold])
+
+        expect(result.segments.map(segment => segment.type)).toEqual(['delete', 'insert'])
+      })
+
+      it('相同引用不受显示别名影响；相邻的相同原子各自成段，不合成一个节点', () => {
+        expect(computeRichDiff([citation('existing-citation')], [citation('Abc234')]).segments.map(segment => segment.type))
+          .toEqual(['equal'])
+
+        const formulas = computeRichDiff([], [latex('x', 'inline-latex-1'), latex('x', 'inline-latex-2')])
+        expect(formulas.segments.map(segment => [segment.type, segment.documentSize])).toEqual([['insert', 1], ['insert', 1]])
+        const citations = computeRichDiff([], [citation('Abc234'), citation('Abc234')])
+        expect(citations.segments.map(segment => [segment.type, segment.documentSize])).toEqual([['insert', 1], ['insert', 1]])
+      })
+    })
+
     it('当纯文本相同但 citation 元数据变化时，应输出 delete+insert', () => {
       const originalSpans: TextSpan[] = [{ text: '[@Abc234]', marks: [] }]
       const newSpans: TextSpan[] = [

@@ -363,6 +363,25 @@ describe('linearizeBlock', () => {
       expect(result.plainText).toBe('A$x+y$B')
     })
 
+    it('相邻的相同公式或引用各自成段，不合并成一个原子', () => {
+      const citation = createCitationNode({ sourceId: 'doc_1', title: 'T', snippet: 'S', ref: 'Abc234' })
+      const node = createContainerNode([
+        createInlineLatexNode('x'),
+        createInlineLatexNode('x'),
+        citation,
+        citation,
+      ])
+
+      const result = linearizeNode(node)
+
+      expect(result.spans.map(span => [span.text, span.inlineAtom?.type])).toEqual([
+        ['$x$', 'inlineLatex'],
+        ['$x$', 'inlineLatex'],
+        ['[@Abc234]', 'citation'],
+        ['[@Abc234]', 'citation'],
+      ])
+    })
+
     // ==================== 相邻合并 ====================
 
     it('应合并相邻的同类 spans', () => {
