@@ -61,6 +61,7 @@ export function projectCanvasDocument(snapshot: CanvasSnapshot, context: CanvasP
     `# 画布：${context.name}（${cards.length} 张卡，${edges.length} 条线）`,
     `提交序号：${snapshot.sequence}；卡片 ID 只在这张画布内有效。`,
   ];
+  if (snapshot.integrity) lines.push('〔只读：原始数据保留；部分未知或损坏元素已从显示中隔离〕', ...snapshot.integrity.issues.map(issue => `- ${issue.elementId ?? '画布'}：${issue.message}`));
   const summary = cards.length > 250;
   if (summary) lines.push('大画布先列各卡摘要；用 linnya-canvas show <画布路径> <卡片ID> 读取全文。');
   for (const region of regions) {

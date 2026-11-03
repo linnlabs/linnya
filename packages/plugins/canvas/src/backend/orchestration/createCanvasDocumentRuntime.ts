@@ -1,7 +1,5 @@
-import { createWorkspaceService, saveWorkspaceNodeTextSnapshot, publishWorkspaceDocumentUpdated, Logger } from '@plugin/backend/workspaceRuntime';
-import { touchWorkspaceDocument } from '@plugin/backend/workspaceDocumentProjection';
-import { replaceDocumentReferences, createDocumentReferenceMarkdownRuntime } from '@plugin/backend/documentReferences';
-import { registerDocumentAssetOwnership } from '@plugin/backend/documentAssetOwnership';
+import { createWorkspaceService, publishWorkspaceDocumentUpdated, Logger } from '@plugin/backend/workspaceRuntime';
+import { createDocumentReferenceMarkdownRuntime } from '@plugin/backend/documentReferences';
 import { broadcastRendererPluginMessage } from '@plugin/backend/pluginRendererPush';
 import {
   CANVAS_PLUGIN_ID, CANVAS_DOCUMENT_TYPE, CANVAS_CHANGED_CHANNEL, CANVAS_GROUPS_CHANGED_CHANNEL, CanvasRendererCommitRequestSchema,
@@ -10,52 +8,27 @@ import {
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
 import { initializeCanvasDocument, readCanvasSnapshot, readCanvasSynchronization, updateCanvasEditingClaim } from '../features/canvasCommit';
 import { createCanvasHistoryRuntime } from '../features/canvasUndoHistory';
-import { collectCanvasAssetIds, collectCanvasReferences, readCanvasDocumentIdentity, CanvasDocumentFailure, readCanvasProjectionContext } from '../features/canvasDocument';
-import { projectCanvasDocument, projectCanvasSearchText } from '../features/canvasProjection';
+import { collectCanvasCommandAssetIds, readCanvasDocumentIdentity, CanvasDocumentFailure } from '../features/canvasDocument';
+import { readCanvasPendingBatches } from '../features/agentChanges';
+import { createCanvasTextSnapshots } from './createCanvasTextSnapshots';
+import { createCanvasDocumentCommitParticipants } from '../adapters/createCanvasDocumentCommitParticipants';
+import { readCanvasProjectionContext } from '../features/canvasDocument';
+import { projectCanvasDocument } from '../features/canvasProjection';
 
 export function createCanvasDocumentRuntime(database: CanvasDatabase, references = createDocumentReferenceMarkdownRuntime(database)) {
   const logger = new Logger('Canvas');
   const workspace = createWorkspaceService(database);
-  const pendingSnapshots = new Set<string>();
+  const textSnapshots = createCanvasTextSnapshots(database);
   const views = new Set<string>();
-  let snapshotTimer: ReturnType<typeof setTimeout> | null = null;
-
-  function refreshTextSnapshot(documentId: string): void {
-    const snapshot = readCanvasSnapshot(database, documentId);
-    saveWorkspaceNodeTextSnapshot({ db: database, nodeId: documentId, contentType: 'text/plain',
-      text: projectCanvasSearchText(snapshot, readCanvasProjectionContext(database, snapshot)), sourcePluginId: CANVAS_PLUGIN_ID, sourceNodeType: CANVAS_DOCUMENT_TYPE });
-    pendingSnapshots.delete(documentId);
-  }
-  function flushTextSnapshots(): void {
-    if (snapshotTimer) clearTimeout(snapshotTimer);
-    snapshotTimer = null;
-    for (const id of [...pendingSnapshots]) {
-      try { refreshTextSnapshot(id); }
-      catch (error) { logger.error('Canvas 文本快照刷新失败', { documentId: id, error }); }
-    }
-  }
-  function scheduleTextSnapshot(documentId: string): void {
-    pendingSnapshots.add(documentId);
-    if (!snapshotTimer) snapshotTimer = setTimeout(flushTextSnapshots, 30_000);
-  }
+  const admission = createCanvasDocumentCommitParticipants(database, references);
   const editing: ReturnType<typeof createCanvasHistoryRuntime> = createCanvasHistoryRuntime({ database,
+    pendingApproval: admission.pendingApproval,
     groupsChanged(documentId) { broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_GROUPS_CHANGED_CHANNEL, { documentId }); },
     ports: {
-    participants: [{ commit(plan, context) {
-      // CLI 开始后画布可能被用户移入另一项目；最终写入与权限检查必须在同一事务。
-      readCanvasDocumentIdentity(database, context.documentId, context.actor.projectId);
-      references.assertBindings({ sourceDocumentId: context.documentId, bindings: context.referenceBindings ?? [] });
-      const elements = plan.state.elements.map(row => row.element);
-      touchWorkspaceDocument(database, context.documentId, context.now);
-      const retainedReferences = collectCanvasReferences(plan.retainedElements ?? []).map(reference => ({ referenceId: reference.referenceId, targetDocumentId: reference.targetDocumentId }));
-      replaceDocumentReferences(database, { sourceDocumentId: context.documentId, references: collectCanvasReferences(elements) },
-        { retainedReferences });
-      const assets = collectCanvasAssetIds(elements);
-      if (assets.length) registerDocumentAssetOwnership({ database, documentId: context.documentId, assetIds: assets, usageHint: 'canvas:content' });
-    } }],
+    participants: admission.participants,
     publish(plan, context) {
       const node = readCanvasDocumentIdentity(database, context.documentId);
-      scheduleTextSnapshot(context.documentId);
+      textSnapshots.schedule(context.documentId);
       broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_CHANGED_CHANNEL, { documentId: context.documentId, sequence: plan.state.sequence });
       publishWorkspaceDocumentUpdated({ documentId: context.documentId, projectId: node.projectId, nodeType: CANVAS_DOCUMENT_TYPE,
         mutationKind: 'incremental', versionNumber: plan.state.sequence });
@@ -75,7 +48,7 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
       const node = workspace.createNode({ type: CANVAS_DOCUMENT_TYPE, name: input.name, projectId: input.projectId, parentId: input.parentId });
       documentId = node.id;
       initializeCanvasDocument(database, documentId);
-      refreshTextSnapshot(documentId);
+      textSnapshots.refresh(documentId);
     }).immediate();
     return documentId;
   }
@@ -105,15 +78,15 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
     updateCanvasEditingClaim(database, { ...input, now: Date.now() });
   }
   function close(documentId: string, viewId: string) {
-    try { refreshTextSnapshot(documentId); }
+    try { textSnapshots.refresh(documentId); }
     finally { editing.releaseView(viewId); views.delete(viewId); }
   }
   function dispose() {
-    flushTextSnapshots();
+    textSnapshots.flush();
     for (const view of views) editing.releaseView(view);
     views.clear();
   }
-  return { create, read, commit, commitUser, undo, changes, project, protect, close, dispose, refreshTextSnapshot, editing, references,
+  return { create, read, commit, commitUser, undo, changes, project, protect, close, dispose, refreshTextSnapshot: textSnapshots.refresh, editing, references, pendingAssetIds: (documentId: string) => [...new Set(readCanvasPendingBatches(database, documentId).flatMap(batch => collectCanvasCommandAssetIds(batch.request.operations)))],
   };
 }
 export type CanvasDocumentRuntime = ReturnType<typeof createCanvasDocumentRuntime>;

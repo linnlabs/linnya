@@ -93,3 +93,7 @@ export function readCanvasAgentRequestStatuses(database: ReadDatabase, documentI
     return { requestId: row.request_id, status: row.status, pendingId: row.pending_id, commit: row.result_json ? parseCanvasAgentReceiptResult(row.result_json) : null };
   });
 }
+
+export function readCanvasPendingBatches(database: CanvasDatabase, documentId: string): CanvasPendingBatch[] {
+  return database.prepare('SELECT batch_json FROM canvas_pending_approvals WHERE node_id = ?').all(documentId).map(raw => CanvasPendingBatchSchema.parse(JSON.parse(z.object({ batch_json: z.string() }).parse(raw).batch_json)));
+}
