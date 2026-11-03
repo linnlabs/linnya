@@ -25,3 +25,6 @@ export { CanvasCheckReportSchema } from './query/definitions/canvasCheck';
 export type { CanvasCheckReport } from './query/definitions/canvasCheck';
 export { CanvasArrangeRequestSchema, CanvasArrangeResultSchema, CanvasCancelArrangementRequestSchema } from './layout/definitions/canvasLayout';
 export type { CanvasArrangeRequest } from './layout/definitions/canvasLayout';
+
+export { CanvasVersionBudgetStatusSchema } from './history/definitions/canvasVersionBudget';
+export type { CanvasVersionBudgetStatus } from './history/definitions/canvasVersionBudget';
