@@ -38,6 +38,7 @@ interface KernelOptions {
   readonly bitmapBudgetBytes?: number;
   readonly onIntent?: (intent: CanvasKernelIntent) => void;
   readonly readonly?: boolean;
+  readonly readInteractionPreferences?: () => { readonly wheelZoom: boolean; readonly snapping: boolean };
 }
 
 /** Pixi 是唯一引擎依赖点；外部只看到 CanvasKernel 与业务快照。 */
@@ -93,7 +94,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.world.addChild(this.cardLayer, this.selectionLayer);
     this.app.stage.addChild(this.lines.below, this.world, this.lines.above, this.mapLabels.sprite);
     this.budget = options.bitmapBudgetBytes ?? 256 * 1024 * 1024;
-    this.removeInteraction = options.onIntent ? installCanvasInteraction(this, options.onIntent, { readonly: options.readonly }) : () => undefined;
+    this.removeInteraction = options.onIntent ? installCanvasInteraction(this, options.onIntent, { readonly: options.readonly, readPreferences: options.readInteractionPreferences }) : () => undefined;
   }
   private schedule(): void {
     if (this.scheduled || this.destroyed) return;
