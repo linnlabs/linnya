@@ -21,8 +21,8 @@ async function run() {
     await win.loadFile(path.join(output, 'index.html'));
     win.webContents.setZoomFactor(2);
     const reports = [];
-    for (const theme of ['light', 'dark']) for (const material of ['paper', 'card']) {
-      const state = prepared.parse(await win.webContents.executeJavaScript(`window.prepareCanvasVisualProbe(${JSON.stringify(theme)},${JSON.stringify(material)})`));
+    for (const theme of ['light', 'dark']) for (const material of ['paper', 'card']) for (const color of material === 'paper' ? ['white', 'red', 'green'] : ['white']) {
+      const state = prepared.parse(await win.webContents.executeJavaScript(`window.prepareCanvasVisualProbe(${JSON.stringify(theme)},${JSON.stringify(material)},${JSON.stringify(color)})`));
       const screenshot = nativeImage.createFromBuffer((await win.webContents.capturePage()).toPNG());
       const size = screenshot.getSize();
       const ratio = size.width / state.viewportWidth;
@@ -42,8 +42,11 @@ async function run() {
       let referenceInk = 0; let rasterInk = 0; let intersection = 0; let union = 0;
       let pixiInk = 0; let pixiIntersection = 0; let pixiUnion = 0;
       let crossedText = 0, preservedText = 0;
+      const authored = { dom: 0, raster: 0, pixi: 0 };
       for (let i = 0; i < a.length; i += 4) {
         const aa = ink(a, i); const bb = ink(b, i); const cc = ink(c, i);
+        const red = (pixels: Uint8Array) => pixels[i + 2] > 160 && pixels[i + 1] < 80 && pixels[i] < 80;
+        if (red(a)) authored.dom++; if (red(b)) authored.raster++; if (red(c)) authored.pixi++;
         if (aa) referenceInk++; if (bb) rasterInk++; if (aa && bb) intersection++; if (aa || bb) union++;
         // Pixi 包含纸片阴影/边框；正文比较区来自实时 DOM 墨迹范围，不锁定外观数值。
         const x = i / 4 % width; const y = Math.floor(i / 4 / width);
@@ -55,12 +58,13 @@ async function run() {
       const inkIou = intersection / union;
       const pixiIou = pixiIntersection / pixiUnion;
       const ghostPreservation = preservedText / crossedText;
-      const report = { theme, material, dpr: state.dpr, size: dom.getSize(), referenceInk, rasterInk, pixiInk, inkIou, pixiIou, crossedText, ghostPreservation, measuredHeights: state.measuredHeights };
+      const report = { theme, material, color, dpr: state.dpr, size: dom.getSize(), referenceInk, rasterInk, pixiInk, inkIou, pixiIou, crossedText, ghostPreservation, measuredHeights: state.measuredHeights, authored };
       reports.push(report);
-      await writeFile(path.join(output, `${theme}-${material}-dom.png`), dom.toPNG());
-      await writeFile(path.join(output, `${theme}-${material}-raster.png`), raster.toPNG());
-      await writeFile(path.join(output, `${theme}-${material}-pixi.png`), pixi.toPNG());
-      if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || inkIou < 0.95 || pixiIou < 0.95 || crossedText < 10 || ghostPreservation < 0.95) throw new Error(`visual_content_mismatch:${JSON.stringify(report)}`);
+      await writeFile(path.join(output, `${theme}-${material}-${color}-dom.png`), dom.toPNG());
+      await writeFile(path.join(output, `${theme}-${material}-${color}-raster.png`), raster.toPNG());
+      await writeFile(path.join(output, `${theme}-${material}-${color}-pixi.png`), pixi.toPNG());
+      if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || inkIou < 0.95 || pixiIou < 0.95 || crossedText < 10 || ghostPreservation < 0.95
+        || Math.min(authored.dom, authored.raster, authored.pixi) < 10) throw new Error(`visual_content_mismatch:${JSON.stringify(report)}`);
     }
     const line = z.object({ dpr: z.number(), image: z.string() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasLineVisualProbe()'));
     const lineImage = nativeImage.createFromDataURL(line.image), linePixels = lineImage.toBitmap(), lineWidth = lineImage.getSize().width;
@@ -83,7 +87,22 @@ async function run() {
     }
     if (mapInk < 100 || mapPreserved / mapInk < 0.95) throw new Error(`map_pan_labels_mismatch:${mapInk}:${mapPreserved}`);
     await writeFile(path.join(output, 'map-before.png'), mapBefore.toPNG()); await writeFile(path.join(output, 'map-after.png'), mapAfter.toPNG());
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap }, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk } }, null, 2));
+    const thumbnails = z.object({ titles: z.string(), thumbnails: z.string(), dpr: z.number() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasThumbnailVisualProbe()'));
+    const thumbReports = [];
+    for (const mode of ['titles', 'thumbnails'] as const) {
+      const image = nativeImage.createFromDataURL(thumbnails[mode]), pixels = image.toBitmap(), size = image.getSize();
+      const counts = [100, 250, 400].map(left => {
+        let count = 0;
+        for (let y = 100 * thumbnails.dpr; y < 160 * thumbnails.dpr; y++) for (let x = left * thumbnails.dpr; x < (left + 100) * thumbnails.dpr; x++) {
+          const index = (y * size.width + x) * 4;
+          if (pixels[index + 2] > 170 && pixels[index + 1] < 160 && pixels[index] > 160) count++;
+        }
+        return count;
+      });
+      if (counts[0] < 500 || counts[1] < 500 || (mode === 'titles' ? counts[2] !== 0 : counts[2] < 500)) throw new Error(`far_thumbnail_semantics_mismatch:${mode}:${counts}`);
+      thumbReports.push({ mode, counts }); await writeFile(path.join(output, `thumbnail-${mode}.png`), image.toPNG());
+    }
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap }, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk }, thumbnails: thumbReports }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
 }

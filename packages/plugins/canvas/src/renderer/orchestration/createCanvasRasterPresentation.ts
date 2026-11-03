@@ -20,8 +20,8 @@ export function createCanvasRasterPresentation(options: {
   const descriptor = (card: CanvasCard) => {
     const existing = descriptors.get(card);
     if (existing) return existing;
-    // revision 也会因移动/颜色变化递增；正文键只记录真正影响正文与排版的事实。
-    const value = JSON.stringify([card.type, card.width, card.height, card.data]);
+    // 移动也递增revision，但不改变正文；染纸会改变深墨，因此颜色必须入键。
+    const value = JSON.stringify([card.type, card.width, card.height, card.color, card.data]);
     descriptors.set(card, value); return value;
   };
   let disposed = false;
@@ -48,14 +48,9 @@ export function createCanvasRasterPresentation(options: {
       cameraKey = nextCameraKey; cameraChangedAt = performance.now(); clearTimeout(precisionTimer);
       precisionTimer = setTimeout(() => { precisionTimer = undefined; refresh(); }, 100);
     }
-    const visible = options.kernel.renderableCards();
+    const visible = options.kernel.rasterCards();
     const ids = new Set(visible.map(card => card.id));
     for (const id of pending.keys()) if (!ids.has(id)) { queue.cancel(id); pending.delete(id); }
-    // 远景标题是正式显示模式，不为已不显示的正文生成不可见位图。
-    if (camera.zoom < 0.3 && appearance.overview === 'titles') {
-      for (const id of pending.keys()) queue.cancel(id);
-      pending.clear(); return;
-    }
     const font = getComputedStyle(options.host).fontFamily;
     const prioritized = visible.map(card => ({ card, regions: options.kernel.readVisibleCardRegions(card.id) }))
       .sort((a, b) => b.regions.reduce((sum, region) => sum + region.width * region.height, 0) - a.regions.reduce((sum, region) => sum + region.width * region.height, 0));

@@ -40,9 +40,11 @@ export interface CanvasKernel {
   setSelectedEdge(id: CanvasEdgeId | null): void;
   setHoveredCard(id: CanvasCardId | null): void;
   setDocumentTitles(titles: ReadonlyMap<string, string>): void;
+  setThumbnailCards(ids: ReadonlySet<CanvasCardId>): void;
   readEdgeGeometry(id: CanvasEdgeId): CanvasEdgeGeometry | null;
   visibleCards(): readonly CanvasCard[];
   renderableCards(): readonly CanvasCard[];
+  rasterCards(): readonly CanvasCard[];
   readVisibleCardRegions(id: CanvasCardId): readonly CanvasRectangle[];
   readMissingBitmapRegions(id: CanvasCardId, key: string, regions: readonly CanvasRectangle[]): readonly CanvasRectangle[];
   screenToWorld(point: CanvasPoint): CanvasPoint;

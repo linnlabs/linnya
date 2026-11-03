@@ -4,7 +4,7 @@
 
 `setElements` 安装已提交或由调用方明确管理的场景投影；`setSelection` 只更新选择。`worldToScreen` / `screenToWorld` 是 DOM 编辑表面定位的共同坐标真源。Pointer 意图由 `onIntent` 发给 feature，最终移动在松手时产生；保存、冲突校验、撤销和组合多选移动由调用方负责。
 
-`setBitmap` 接管 ImageBitmap 的所有权；版本失效、重复缓存键、超预算或销毁都会负责关闭。位图资源有 256MiB 默认预算。纯移动/颜色更改不淘汰正文；主题切换必须刷新正文，材质切换保留正文。字体、DPR、界面缩放和内容版本的组合键由光栅 capability 提供，调用方在这些条件变化时重新调度。
+`setBitmap` 接管 ImageBitmap 的所有权；版本失效、重复缓存键、超预算或销毁都会负责关闭。位图资源有 256MiB 默认预算。纯移动不淘汰正文；染纸/主题切换必须刷新同色墨色，材质切换保留正文。字体、DPR、界面缩放和内容版本的组合键由光栅 capability 提供，调用方在这些条件变化时重新调度。
 
 `setRasterTiles` 接管同一卡片的可见纹理组；卡片可保持完整正文排版宽度，只上传可见横纵切片。`captureImage` 从同一场景输出指定物理比例的 PNG/JPEG，供后台导出使用，调用方保留快照序号并完成文件发布。
 
@@ -19,6 +19,8 @@
 `visibleCards` 保持视口相交的几何语义。世界矩形差按位置/层级缓存，阴影与圆角只取保守内接纸面作遮挡；相机变化只裁视口。`readVisibleCardRegions` 返回仍可见的卡内局部条块，`renderableCards` 排除无可见片段的卡，不改变框选范围。`readMissingBitmapRegions` 使平移只补缺片，同键纹理按片段合并并仍受256MiB LRU预算约束。
 
 纸面淡影先把线层合成，再统一淡化；不能直接把不透明浅色线画在正文上（会擦断笔画），也不能每根线单独加透明度（交叉处会不断变深）。授权文档标题通过 setDocumentTitles 注入，缺失元数据一律显示通用“文档”，不显示内部身份。
+
+内容owner可经 `setThumbnailCards` 指定远景保留画面的卡片，kernel不识别具体插件/文档类型。图片始终保留，普通文档默认标题；`rasterCards` 是当前真正需要正文位图的集合，前后台不能另猜远景规则。
 
 验证：插件 typecheck、lint、test；真实 Electron 入口 `node packages/plugins/canvas/dev/probes/run-render-probe.mjs`。探针的三档场景验证几何、标题 LOD、线与平移，不代表完整业务 UI、全量正文位图吞吐和真实鼠标交互已验收。
 

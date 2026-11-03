@@ -1,5 +1,5 @@
 import { Sprite, Texture } from 'pixi.js';
-import { readCanvasElementText, type CanvasCamera, type CanvasCard } from '../../../../shared';
+import { readCanvasCardCssPalette, readCanvasElementText, type CanvasCamera, type CanvasCard } from '../../../../shared';
 
 /** 地图标签在屏幕分辨率的单一图层绘制，不生成 1/zoom 倍的巨型文字纹理。 */
 export class CanvasMapLabels {
@@ -47,7 +47,6 @@ export class CanvasMapLabels {
     context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     const fontSize = camera.zoom < 0.15 ? 12 : 13;
     context.font = `${fontSize}px system-ui`;
-    context.fillStyle = input.dark ? '#e8e9e3' : '#252c27';
     context.textBaseline = 'top';
     const occupied = new Set<string>();
     for (const card of input.cards) {
@@ -67,6 +66,7 @@ export class CanvasMapLabels {
         if (this.fittedTitles.size >= 4096) this.fittedTitles.clear();
         this.fittedTitles.set(titleKey, title);
       }
+      context.fillStyle = readCanvasCardCssPalette(card.color, input.dark).title;
       context.fillText(title, x + 2, y + 2);
     }
     this.texture.source.update();
