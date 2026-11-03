@@ -95,6 +95,8 @@ declare global {
     };
 
     electronAPI: {
+      'document-references:search': (request: { projectId: string; keyword: string; limit?: number }) => Promise<unknown>;
+      'document-references:resolve': (request: { projectId: string; documentId: string }) => Promise<unknown>;
       'document-preview:types': () => Promise<unknown>;
       'document-preview:read': (request: import('@app/schemas').DocumentPreviewRequest) => Promise<unknown>;
       'document-history:list': (request: { documentId: string }) => Promise<unknown>;

@@ -41,6 +41,8 @@ import type {
 
 export function buildWorkspacePreloadApi(ipcRenderer: IpcRenderer) {
   return {
+    'document-references:search': (request: import('zod').input<typeof import('@app/schemas').DocumentReferenceSearchRequestSchema>): Promise<unknown> => ipcRenderer.invoke('document-references:search', request),
+    'document-references:resolve': (request: { projectId: string; documentId: string }): Promise<unknown> => ipcRenderer.invoke('document-references:resolve', request),
     'document-preview:types': (): Promise<unknown> => ipcRenderer.invoke('document-preview:types'),
     'document-preview:read': (request: import('@app/schemas').DocumentPreviewRequest): Promise<unknown> => ipcRenderer.invoke('document-preview:read', request),
     'document-history:list': (request: { documentId: string }): Promise<unknown> => ipcRenderer.invoke('document-history:list', request),
