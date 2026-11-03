@@ -15,3 +15,4 @@ export * from './history/definitions/canvasUserHistory';
 export * from './agentChanges/definitions/canvasAgentChanges';
 export { searchCanvasElements } from './search/functions/searchCanvasElements';
 export type { CanvasSearchHit, CanvasSearchContext } from './search/definitions/canvasSearch';
+export * from './images/definitions/canvasImageRequests';

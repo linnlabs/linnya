@@ -96,7 +96,7 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
   const approvals = createCanvasAgentApprovals({ database: options.database, commit, pruneGuards });
   // 用户栈不跨进程保留。重启只清理已经没有持有者的删除身份，组记录仍可继续撤回。
   for (const raw of options.database.prepare('SELECT DISTINCT node_id FROM canvas_history_guards').all()) pruneGuards(z.object({ node_id: z.string() }).parse(raw).node_id);
-  return { registerView, preview, retainedElements, commit, undo, status, releaseView, ...review,
+  return { registerView, preview, retainedElements, commit, undo, status, releaseView, ...review, replayAgentRequest: approvals.replayAgentRequest, approvalResults: approvals.approvalResults,
     commitAgent(input: Parameters<typeof approvals.commitAgent>[0]) { const result = approvals.commitAgent(input); const request = CanvasCommitRequestSchema.parse(input.request); notifyGroups(request.documentId); return result; },
     resolveApproval(input: Parameters<typeof approvals.resolveApproval>[0], now: number) { const result = approvals.resolveApproval(input, now); notifyGroups(input.documentId); return result; },
   };

@@ -12,7 +12,7 @@ export const CanvasPatchSchema = z.object({
   data: z.union([CanvasTextCardSchema.shape.data, CanvasImageCardSchema.shape.data, CanvasDocumentCardSchema.shape.data]).optional(),
   from: CanvasEndpointSchema.optional(), to: CanvasEndpointSchema.optional(),
   direction: z.enum(['none', 'forward', 'both']).optional(),
-  lineStyle: z.enum(['curve', 'straight']).optional(), label: z.string().optional(),
+  lineStyle: z.enum(['curve', 'straight']).optional(), linePattern: z.enum(['solid', 'dashed']).optional(), label: z.string().optional(),
 }).strict().refine(patch => Object.keys(patch).length > 0, '至少修改一个字段');
 
 const placement = {
@@ -21,6 +21,7 @@ const placement = {
   x: finite.optional(), y: finite.optional(), near: z.string().min(1).optional(),
   side: z.enum(['right', 'left', 'top', 'bottom']).optional(),
   color: CanvasColorSchema.optional(),
+  parentId: z.string().min(1).optional(),
 };
 export const CanvasCommandSchema = z.discriminatedUnion('op', [
   z.object({ ...placement, op: z.literal('addText'), content: CanvasTextDocumentSchema }).strict(),
@@ -30,8 +31,9 @@ export const CanvasCommandSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('delete'), id: z.string().min(1), baseRevision: z.number().int().nonnegative().optional() }).strict(),
   z.object({
     op: z.literal('connect'), ref: placement.ref,
-    from: z.string().min(1), to: z.string().min(1),
+    from: z.union([z.string().min(1), CanvasEndpointSchema]), to: z.union([z.string().min(1), CanvasEndpointSchema]),
     label: z.string().default(''), direction: z.enum(['none', 'forward', 'both']).default('forward'),
+    lineStyle: z.enum(['curve', 'straight']).default('curve'), linePattern: z.enum(['solid', 'dashed']).default('solid'),
   }).strict(),
 ]);
 export const CanvasCommitRequestSchema = z.object({

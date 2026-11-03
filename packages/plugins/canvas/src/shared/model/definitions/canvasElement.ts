@@ -90,7 +90,7 @@ export const CanvasEdgeSchema = z.object({
   ...identity, id: CanvasEdgeIdSchema, type: z.literal('edge'),
   from: CanvasEndpointSchema, to: CanvasEndpointSchema,
   direction: z.enum(['none', 'forward', 'both']),
-  lineStyle: z.enum(['curve', 'straight']), label: z.string(),
+  lineStyle: z.enum(['curve', 'straight']), linePattern: z.enum(['solid', 'dashed']).default('solid'), label: z.string(),
 }).strict();
 
 export const CanvasCardSchema = z.discriminatedUnion('type', [CanvasTextCardSchema, CanvasImageCardSchema, CanvasDocumentCardSchema]);

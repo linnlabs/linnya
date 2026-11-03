@@ -2,7 +2,7 @@ import type { Extensions } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import CodeBlock from '@tiptap/extension-code-block';
 import { Markdown } from '@tiptap/markdown';
-import Image from '@tiptap/extension-image';
+import { ManagedImage } from '../definitions/managedImage';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
 import { PortableSubscript, PortableSuperscript, PortableTextStyle, PortableColor, PortableHighlight } from '../definitions/portableMarks';
@@ -16,7 +16,7 @@ export function createMarkdownDocumentExtensions(overrides: Extensions = []): Ex
   const base: Extensions = [
     StarterKit.configure({ codeBlock: false, trailingNode: false, link: { openOnClick: false } }),
     PortableSubscript, PortableSuperscript, PortableTextStyle, PortableColor, PortableHighlight, PortableInlineMath, PortableBlockMath,
-    CodeBlock, TableKit, Image, TaskList, TaskItem.configure({ nested: true }), MarkdownHtmlBlock, DocumentReferenceNode,
+    CodeBlock, TableKit, ManagedImage, TaskList, TaskItem.configure({ nested: true }), MarkdownHtmlBlock, DocumentReferenceNode,
     Markdown.configure({ markedOptions: { gfm: true } }),
   ];
   const names = new Set(base.map(extension => extension.name));

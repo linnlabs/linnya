@@ -43,3 +43,14 @@ it('无效 TeX 保留源文，公式命令不获得 HTML 或链接信任', () =>
   expect(host.textContent).toContain('notARealCommand');
   expect(host.querySelector('a')).toBeNull(); expect(host.querySelector('script')).toBeNull();
 });
+
+
+it('受管图片的 JSON 与 DOM 携带独立资产身份，不把 src 当身份', async () => {
+  const { Editor } = await import('@tiptap/core');
+  const { createMarkdownDocumentExtensions } = await import('../index');
+  const content = { type: 'doc', content: [{ type: 'image', attrs: { assetId: 'asset-id', src: 'asset:asset-id', alt: '说明' } }] };
+  const host = document.createElement('article'); host.append(createMarkdownDocumentFragment(content, document));
+  const image = host.querySelector('img'); expect(image?.getAttribute('data-asset-id')).toBe('asset-id'); expect(image?.getAttribute('src')).toBe('asset:asset-id');
+  const editor = new Editor({ extensions: createMarkdownDocumentExtensions(), content: host.innerHTML });
+  try { expect(editor.getJSON().content?.[0]?.attrs?.assetId).toBe('asset-id'); } finally { editor.destroy(); }
+});
