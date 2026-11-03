@@ -33,3 +33,5 @@ export function resolveDocumentReference(db: PluginSqliteDatabaseLike, input: { 
 export function createDocumentReferenceMarkdownRuntime(db: Pick<PluginSqliteDatabaseLike, 'prepare'>) {
   return createMarkdownRuntime({ read: documentId => readWorkspaceDocumentIdentity(db, documentId), location: documentId => readWorkspaceDocumentLocation(db, documentId), resolvePath: (projectId, path) => resolveWorkspaceDocumentPath(db, { projectId, path }) });
 }
+
+export { ReferenceMarkdownError as DocumentReferenceMarkdownError } from 'src/domains/document-references';
