@@ -125,6 +125,12 @@ export class CanvasLines {
       && entry.top * zoom + y <= this.height && entry.bottom * zoom + y >= 0);
     this.visibleCount = visible.length;
     const allowed = visible.length > 3000 ? visible.filter(entry => this.emphasized(entry.edge) || entry.edge.id === this.selected) : entries.length > 3000 ? visible : entries;
+    this.updateMeshes(allowed, visible);
+    this.updateAppearance();
+    this.drawEndpoints(); this.drawLabels(visible);
+  }
+  private updateMeshes(allowed: readonly Entry[], visible: readonly Entry[]): void {
+    const entries = this.far ? this.farEntries : this.entries;
     const stationary = this.previewIds ? allowed.filter(entry => !this.previewIds?.has(entry.edge.id)) : allowed;
     const key = `${this.far}:${stationary.map(entry => entry.edge.id).join(',')}`;
     if (key !== this.key) {
@@ -135,6 +141,9 @@ export class CanvasLines {
     const emphasized = visible.filter(entry => this.emphasized(entry.edge));
     const emphasisKey = `${this.far}:${emphasized.map(entry => entry.edge.id).join(',')}:${this.selected}`;
     if (emphasisKey !== this.emphasisKey) { this.highlight.setGeometry(emphasized); this.selectedLine.setGeometry(allowed.filter(entry => entry.edge.id === this.selected)); this.emphasisKey = emphasisKey; }
+  }
+  private updateAppearance(): void {
+    const { x, y, zoom } = this.camera;
     const background = this.appearance.dark ? 0x222723 : 0xf2f3ee, ink = this.appearance.dark ? 0xe8e9e3 : 0x252c27;
     const amount = zoom < 0.15 ? 0.1 : zoom < 0.3 ? 0.16 : 0.22;
     this.base.setColor(blend(ink, background, amount));
@@ -146,7 +155,6 @@ export class CanvasLines {
     this.ghostArea.width = this.width; this.ghostArea.height = this.height;
     this.below.visible = !this.reduced || zoom >= 0.3;
     this.ghostContainer.visible = !this.reduced && zoom >= 0.3;
-    this.drawEndpoints(); this.drawLabels(visible);
   }
   private drawEndpoints(): void {
     this.endpoints.clear();

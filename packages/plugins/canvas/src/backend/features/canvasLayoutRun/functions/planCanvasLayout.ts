@@ -5,22 +5,27 @@ import { layoutCanvasGrid } from './layoutCanvasGrid';
 import { layoutCanvasTree } from './layoutCanvasTree';
 import { placeCanvasLayoutApart } from './placeCanvasLayoutApart';
 
-export async function planCanvasLayout(request: CanvasLayoutRequest, layered: CanvasLayoutAlgorithm): Promise<CanvasLayoutResult> {
-  const scope = resolveCanvasLayoutScope(request);
-  const diagnostics: CanvasLayoutDiagnostic[] = [...scope.diagnostics];
+/** 每张卡只属于一个排布组；未显式分组的选中卡形成最后一组。 */
+function resolveCanvasLayoutGroups(cards: readonly CanvasCard[], requested: CanvasLayoutRequest['groups']): readonly (readonly CanvasCard[])[] {
   const assigned = new Set<string>();
   const groups: CanvasCard[][] = [];
-  for (const ids of request.groups ?? []) {
+  for (const ids of requested ?? []) {
     const keys = new Set(ids);
-    const cards = scope.cards.filter(card => keys.has(card.id));
-    for (const card of cards) {
+    const group = cards.filter(card => keys.has(card.id));
+    for (const card of group) {
       if (assigned.has(card.id)) throw new Error('canvas_layout_group_overlap');
       assigned.add(card.id);
     }
-    if (cards.length) groups.push(cards);
+    if (group.length) groups.push(group);
   }
-  const rest = scope.cards.filter(card => !assigned.has(card.id));
+  const rest = cards.filter(card => !assigned.has(card.id));
   if (rest.length) groups.push(rest);
+  return groups;
+}
+export async function planCanvasLayout(request: CanvasLayoutRequest, layered: CanvasLayoutAlgorithm): Promise<CanvasLayoutResult> {
+  const scope = resolveCanvasLayoutScope(request);
+  const diagnostics: CanvasLayoutDiagnostic[] = [...scope.diagnostics];
+  const groups = resolveCanvasLayoutGroups(scope.cards, request.groups);
   const positions: CanvasLayoutPosition[] = [], obstacles: CanvasRectangle[] = [...scope.obstacles];
   for (const cards of groups) {
     const ids = new Set(cards.map(card => card.id));

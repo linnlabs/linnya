@@ -1,8 +1,9 @@
 import type { CanvasCard, CanvasCardId, CanvasEdge, CanvasLayoutDiagnostic } from '../../../../shared';
 import type { CanvasLayoutPosition } from '../definitions/canvasLayoutPlan';
+import type { CanvasLayoutTree, CanvasTreeDimensions } from '../definitions/canvasLayoutTree';
 
 /** 先到父节点成树，其余边保留在文档；迭代遍历避免长链把JS调用栈耗尽。 */
-export function layoutCanvasTree(cards: readonly CanvasCard[], edges: readonly CanvasEdge[], direction: 'right' | 'down') {
+function buildCanvasTree(cards: readonly CanvasCard[], edges: readonly CanvasEdge[]): CanvasLayoutTree {
   const nodes = new Map(cards.map(card => [card.id, card]));
   const outgoing = new Map<CanvasCardId, CanvasCardId[]>(), incoming = new Set<CanvasCardId>();
   for (const edge of edges) if (edge.from.kind === 'card' && edge.to.kind === 'card') {
@@ -25,6 +26,11 @@ export function layoutCanvasTree(cards: readonly CanvasCard[], edges: readonly C
   };
   for (const card of cards) if (!incoming.has(card.id)) traverse(card.id);
   for (const card of cards) traverse(card.id);
+  return { nodes, children, depth, roots, order, repeated };
+}
+/** 从叶到根量子树跨度；主轴每层取真实卡片尺寸的最大值。 */
+function measureCanvasTree(tree: CanvasLayoutTree, direction: 'right' | 'down'): CanvasTreeDimensions {
+  const { nodes, children, depth, order } = tree;
   const cross = new Map<CanvasCardId, number>(), mainSizes: number[] = [];
   for (let index = order.length - 1; index >= 0; index--) {
     const id = order[index], card = nodes.get(id);
@@ -36,6 +42,10 @@ export function layoutCanvasTree(cards: readonly CanvasCard[], edges: readonly C
   }
   let main = 0;
   const mainOffsets = mainSizes.map(size => { const value = main; main += size + 80; return value; });
+  return { cross, mainOffsets };
+}
+function positionCanvasTree(tree: CanvasLayoutTree, dimensions: CanvasTreeDimensions, direction: 'right' | 'down'): readonly CanvasLayoutPosition[] {
+  const { nodes, children, depth, roots, order } = tree, { cross, mainOffsets } = dimensions;
   let rootCross = 0;
   const starts = new Map<CanvasCardId, number>();
   for (const root of roots) { starts.set(root, rootCross); rootCross += (cross.get(root) ?? 0) + 80; }
@@ -51,6 +61,10 @@ export function layoutCanvasTree(cards: readonly CanvasCard[], edges: readonly C
     let current = start + (span - childrenSpan) / 2;
     for (const child of descendants) { starts.set(child, current); current += (cross.get(child) ?? 0) + 40; }
   }
-  const diagnostics: CanvasLayoutDiagnostic[] = repeated.size ? [{ code: 'cycle_or_multiple_parents', elementIds: [...repeated], message: '环或多父节点只取先到的父节点，其余线保持不变' }] : [];
+  return positions;
+}
+export function layoutCanvasTree(cards: readonly CanvasCard[], edges: readonly CanvasEdge[], direction: 'right' | 'down') {
+  const tree = buildCanvasTree(cards, edges), dimensions = measureCanvasTree(tree, direction), positions = positionCanvasTree(tree, dimensions, direction);
+  const diagnostics: CanvasLayoutDiagnostic[] = tree.repeated.size ? [{ code: 'cycle_or_multiple_parents', elementIds: [...tree.repeated], message: '环或多父节点只取先到的父节点，其余线保持不变' }] : [];
   return { positions, diagnostics };
 }

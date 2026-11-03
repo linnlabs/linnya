@@ -35,3 +35,5 @@ WebGL适配器识别SwiftShader/llvmpipe软件绘图，交互模式自动将实�
 加 `CANVAS_PERFORMANCE_DRAG=1` 可测最多500张选中卡的正式pointer预览与松手intent（这里只测内核，不代替Host提交验收）。整条轨迹必须在窗口内，松手没有产生完整move intent则探针失败。报告记录源码commit/dirty、解锁状态/锁屏事件、实际显示器频率、热状态及原始帧间隔；不得四舍五入原始值后判断门槛。
 
 `CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_PERFORMANCE_COUNTS=250` 运行独立SwiftShader/offscreen降级冒烟，输出到单独的canvas-software-probe并明确validHardwareRun=false。它验证自动简化、实际分辨率与状态，不证明真实显卡帧率或手感。
+
+正文补图由独立microtask批次调度，不占纯绘制RAF闭包。正式可见表面在Page Visibility变成hidden时取消未完成paint，恢复visible后按当前需求重新准备；保留已有纹理，不将后台节流当正文失败。实际paint超时只记录可见性、连接状态、能力和尺寸，不记录正文或Host配置。离屏技术验证可显式关闭这一可见表面策略。
