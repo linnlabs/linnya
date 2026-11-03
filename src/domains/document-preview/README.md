@@ -8,7 +8,7 @@ provider 的 getRevision 来自内容 owner 的真实版本。派生图片按 do
 
 Backend 插件经 `@plugin/backend/documentPreview.createDocumentPreviewReader(db)` 建立只读 reader；Renderer 经 `@plugin/renderer/documentPreview.readDocumentPreview` 调用统一 `document-preview:read`。Host wrapper 不公开数据库或物理路径。IPC/磁盘 resolver/renderer shim/external 必须一起更新。
 
-Markdown 的封面是无活动 HTML 的文字摘要 SVG，完整 Markdown 详情由标准只读 renderer 消费；它不是完整正文截图。Slides 第一页复用正式 Hidden Worker 页面光栅化管线，不写会话文件。详情组件是文档类型的可选增强，不能让远景为每张卡挂一个实时 surface。
+Markdown 的封面是无活动 HTML 的文字摘要 SVG，完整 Markdown 详情由标准只读 renderer 消费；它不是完整正文截图。Slides 第一页复用正式 Hidden Worker 页面光栅化管线，不写会话文件。`DocumentTypeContribution.readonlyPreviewComponent` 是详情档的可选增强，由内容 owner 懒贡献，接收 documentId/projectId；只在用户展开时挂载，不能让远景为每张卡挂一个实时 surface。Slides 详情复用插件的只读分页组件，离开即释放单页位图，Markdown 详情继续走标准只读 DOM。
 
 业务验证覆盖稳定身份、改名、软删除、越界、停用快照、渲染中移动、版本失效、缓存复用、并发合并和有界队列。真实 Electron 的冷封面耗时与跨平台视觉属于原生验证，不能由纯函数计时替代。
 

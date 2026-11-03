@@ -9,6 +9,7 @@ export interface DocumentReferenceUiPort {
   renderIcon(nodeType: string, element: HTMLElement): () => void;
   recoveryAction(presentation: DocumentReferencePresentation): { readonly label: string; activate(): Promise<void> } | null;
   open(presentation: DocumentReferencePresentation): Promise<void>;
+  readDetailRenderer(presentation: DocumentReferencePresentation): ((element: HTMLElement) => Promise<() => void>) | null;
   renderDetail(element: HTMLElement, markdown: string): Promise<() => void>;
   dispose(): void;
   report(error: unknown): void;
