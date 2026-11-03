@@ -3,6 +3,7 @@ import { CanvasCommandSchema, createCanvasPlainTextDocument, type CanvasSnapshot
 import { planCanvasCommit, type CanvasCommitState } from '../../../src/backend/features/canvasCommit';
 import { createCanvasAgentFixture } from '../functions/createCanvasAgentFixture';
 import { evaluateCanvasAgentRun } from '../functions/evaluateCanvasAgentRun';
+import { summarizeCanvasAgentRuns } from '../functions/summarizeCanvasAgentRuns';
 
 const actor = { viewId: 'fixture', source: { kind: 'user', conversationId: null, runId: null } } as const;
 const empty: CanvasCommitState = { sequence: 0, maximumRevision: 0, nextCard: 1, nextEdge: 1, elements: [], deletedOrigins: {} };
@@ -34,4 +35,19 @@ it('cannot report a denied destructive request successful when the actual snapsh
   expect(evaluateCanvasAgentRun(run).status).toBe('passed');
   const deleted = planCanvasCommit({ state: initial.state, actor, origin: 'bad', claims: [], now: 2, operations: initial.state.elements.map(row => CanvasCommandSchema.parse({ op: 'delete', id: row.element.id })) });
   expect(evaluateCanvasAgentRun({ ...run, after: snapshot(deleted.state) }).status).toBe('failed');
+});
+
+it('keeps duplicate or incomplete trials from becoming a passing model group and requires actual tool images for vision', () => {
+  const fixture = createCanvasAgentFixture('T12');
+  const initial = planCanvasCommit({ state: empty, operations: fixture.userSeedOperations, actor, origin: 'seed', claims: [], now: 1 });
+  const run = { ...evidence('T12', snapshot(initial.state), snapshot(initial.state)),
+    controls: { approvalShown: true, approvalDecision: 'deny', editedCardId: null, renderCount: 0, imageReadCount: 0 },
+    review: { approved: true, reviewer: 'UI reviewer', notes: '已确认拒绝后原卡完整保留' } };
+  expect(evaluateCanvasAgentRun(run).status).toBe('passed');
+  expect(evaluateCanvasAgentRun({ ...run, imageCapability: 'vision' }).status).toBe('failed');
+  const summary = summarizeCanvasAgentRuns([run, run]);
+  expect(summary.passed).toBe(false);
+  expect(summary.groups[0]).toMatchObject({ complete: false, duplicateIdentities: ['T12:1'] });
+  expect(summary.groups[0].missing).toContain('T1:1');
+  expect(summary.groups[0].completionRate).toBeLessThan(0.85);
 });
