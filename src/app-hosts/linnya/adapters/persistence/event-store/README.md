@@ -144,3 +144,5 @@ HTTP 窄入口由 `features/conversation/client-notices` 拥有，只接纳错�
 
 
 `readRunToolDeliveries` 只投影指定 conversation/run/tool 的新式正式工具参数与成功 data，用于 Host 结果接回。它不扫描 observation 或从最终答案补造产物；生命周期判断仍属于 RunRegistry，Workspace 保存版本仍属于文档 owner。消费方业务状态不进入 EventStore。
+
+`projection.ts` 是不初始化 EventStore 的公开只读入口。`readConversationProjectId` 直接查询正式会话项目归属，未知或无项目会话返回 null；不从 metadata、当前导航项目或运行历史推断。插件经 `@plugin/backend/conversationProjection` 消费，用于发送前再次核对会话与文档边界，不获得事件正文或会话写入能力。
