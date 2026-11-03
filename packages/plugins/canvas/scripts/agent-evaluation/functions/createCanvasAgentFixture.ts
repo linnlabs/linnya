@@ -1,4 +1,4 @@
-import { CanvasCommandSchema, createCanvasPlainTextDocument } from '../../../src/shared';
+import { CanvasCommandSchema, createCanvasPlainTextDocument } from '@plugin/canvas/shared';
 import type { CanvasAgentTaskId } from '../definitions/canvasAgentEvaluation';
 import { canvasAgentTasks } from '../definitions/canvasAgentTasks';
 

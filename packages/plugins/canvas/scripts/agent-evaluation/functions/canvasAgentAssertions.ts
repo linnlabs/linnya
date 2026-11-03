@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { readCanvasElementText, type CanvasCard, type CanvasContentNode, type CanvasElement, type CanvasSnapshot } from '../../../src/shared';
+import { readCanvasElementText, type CanvasCard, type CanvasContentNode, type CanvasElement, type CanvasSnapshot } from '@plugin/canvas/shared';
 import type { CanvasAgentAssertion, CanvasAgentEvaluationRun } from '../definitions/canvasAgentEvaluation';
 import { architectureDependencies, architectureModules } from './createCanvasAgentFixture';
 
