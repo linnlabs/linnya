@@ -26,7 +26,7 @@ export function createCanvasCardCreation(session: CanvasDocumentSession, port: C
       for (const file of files) {
         const bytesBase64 = await readImageFile(file, controller.signal);
         const image = await port.prepareImage(sourceId, bytesBase64);
-        controller.signal.throwIfAborted(); images.push({ assetId: image.assetId, width: image.width, height: image.height });
+        controller.signal.throwIfAborted(); images.push({ assetId: image.assetId, displayWidth: image.displayWidth, displayHeight: image.displayHeight });
       }
       if (!images.length) return;
       if (documentId() !== sourceId) throw new DOMException('图片导入的画布已关闭', 'AbortError');

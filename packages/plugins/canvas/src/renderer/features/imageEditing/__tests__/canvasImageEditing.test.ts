@@ -7,7 +7,7 @@ import { canvasImageCropFromPoints, canvasImageCropInset, fullCanvasImageCrop } 
 const card = CanvasImageCardSchema.parse({ id: 'c1', type: 'image', schemaVersion: 1, revision: 1, order: 'a0', color: 'white', locked: false,
   createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null }, createdAt: 1, updatedAt: 1,
   x: 0, y: 0, width: 400, height: 200, parentId: null, data: { assetId: 'old', caption: '原图注', alt: '原替代文字', crop: null } });
-const asset: DocumentImageAsset = { assetId: 'old', mediaType: 'image/png', byteLength: 1, width: 400, height: 200, sha256: 'a'.repeat(64), dataUri: 'data:image/png;base64,AA==' };
+const asset: DocumentImageAsset = { assetId: 'old', mediaType: 'image/png', byteLength: 1, width: 400, height: 200, displayWidth: 400, displayHeight: 200, sha256: 'a'.repeat(64), dataUri: 'data:image/png;base64,AA==' };
 async function fixture() {
   let snapshot: CanvasSnapshot = { documentId: 'doc', schemaVersion: 1, sequence: 0, elements: [card] };
   const commit = vi.fn(async (input: Parameters<CanvasDocumentPort['commit']>[0]): Promise<CanvasCommitResult> => {

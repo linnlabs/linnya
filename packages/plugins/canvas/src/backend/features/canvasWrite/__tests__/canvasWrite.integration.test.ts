@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { expect, it } from 'vitest';
 import { parseMarkdownDocument } from '@linnya/markdown-document-core';
-import { CanvasTextDocumentSchema, createCanvasPlainTextDocument } from '../../../../shared';
+import { CanvasTextDocumentSchema, CanvasSnapshotSchema, createCanvasPlainTextDocument } from '../../../../shared';
 import { CanvasCliBatchSchema } from '../../../../shared/cli/definitions/canvasCli';
 import { canvasPluginMigrations } from '../../../persistence/migrations';
 import { initializeCanvasDocument, readCanvasSnapshot, commitCanvasOperations } from '../../canvasCommit';
@@ -39,9 +39,22 @@ it('preserves fixed text height while updating Markdown and reports an indexed w
   }] });
   let measured = false;
   const ports: CanvasWritePorts = { parseText: async text => CanvasTextDocumentSchema.parse(parseMarkdownDocument(text)),
-    resolveDocument: async () => '', prepareImage: async () => ({ assetId: '', width: 1, height: 1 }), measure: async () => { measured = true; return []; } };
+    resolveDocument: async () => '', prepareImage: async () => ({ assetId: '', displayWidth: 1, displayHeight: 1 }), measure: async () => { measured = true; return []; } };
   const input = { snapshot, dryRun: false, signal: new AbortController().signal };
   const result = await prepareCanvasWrite({ ...input, operations: CanvasCliBatchSchema.parse([{ op: 'update', id: 'c1', revision: 1, append: '追加' }]) }, ports);
   expect(measured).toBe(false); expect(result.operations[0]).toMatchObject({ op: 'update', patch: { data: { heightMode: 'fixed' } } });
   await expect(prepareCanvasWrite({ ...input, operations: CanvasCliBatchSchema.parse([{ op: 'update', id: 'c1', revision: 1, caption: '错误字段' }]) }, ports)).rejects.toMatchObject({ code: 'wrong_element_type', operation: 0 });
+});
+it('CLI预检与正式图片写入使用同一转正宽高，不按编码宽高测框', async () => {
+  const dryRuns: boolean[] = [];
+  const ports: CanvasWritePorts = { parseText: async () => createCanvasPlainTextDocument(''), resolveDocument: async () => '',
+    prepareImage: async (_file, dryRun) => { dryRuns.push(dryRun); return { assetId: 'portrait', width: 120, height: 80, displayWidth: 80, displayHeight: 120 }; },
+    measure: async () => { throw new Error('图片不走正文测高'); } };
+  const snapshot = CanvasSnapshotSchema.parse({ schemaVersion: 1, documentId: 'canvas', sequence: 0, elements: [] });
+  for (const dryRun of [true, false]) {
+    const result = await prepareCanvasWrite({ snapshot, dryRun, signal: new AbortController().signal,
+      operations: CanvasCliBatchSchema.parse([{ op: 'add', type: 'image', file: 'portrait.jpg', width: 240 }]) }, ports);
+    expect(result.operations).toMatchObject([{ op: 'addImage', width: 240, height: 360, data: { assetId: 'portrait' } }]);
+  }
+  expect(dryRuns).toEqual([true, false]);
 });

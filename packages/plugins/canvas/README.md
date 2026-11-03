@@ -101,6 +101,8 @@ Standalone `entry.command` 只提供 read/show/find/neighbors/region/check，显
 
 一次多图片导入先完成全部资产准备，再共同提交全部卡片、归属和一次用户撤销；准备任一图片失败时不创建部分卡片。准备结果只保留稳定资产身份与尺寸，不在UI数组长期持有原图字节。初始图框尺寸由shared `canvasDefaultImageSize`计算。
 
+图片等比框统一消费Host的`displayWidth/displayHeight`（已考虑EXIF方向）；`width/height`仍是资产编码身份，不因显示转正迁移旧ledger。Renderer导入、Backend导入和CLI预检/正式写入共用同一显示比例；既有卡片及替换时的用户卡框保持既定布局，裁剪仍按浏览器转正后的图像范围归一化。
+
 历史恢复的 `clientSessionId` 是Canvas的opaque `[viewId,captureUUID]` token。Header打开历史时冻结正文、临时新卡、连线标签的编辑世代；正式恢复通知先同步提交，再仅清理仍匹配的草稿。重复通知和旧面板的迟到通知不会删除后来的输入，恢复不调用保存旧草稿的finish。预算从Backend正式状态读取并订阅变化，超过软预算会说明最近5版与仍可达资产的保留原因。
 
 Canvas表面、正文编辑器和历史预览统一读取Renderer UI公开的 `RENDERER_UI_THEME_ATTRIBUTE`，并监听同一属性。`moon-blue`依据Renderer UI正式语义仍使用浅色纸张；不能通过历史data-theme或dark class猜测当前主题。
