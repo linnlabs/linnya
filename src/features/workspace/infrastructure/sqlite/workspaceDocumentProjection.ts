@@ -101,3 +101,12 @@ export function readWorkspaceDocumentLocation(db: WorkspaceProjectionDatabase, n
   } }, nodeId);
   return node ? { id: node.id, projectId: node.project_id, path: `workspace:${node.path}`, nodeType: node.type } : null;
 }
+
+const candidateRowsSchema = z.array(z.object({ id: z.string(), name: z.string(), type: z.string(), project_id: z.string() }));
+export function searchWorkspaceDocumentIdentities(db: WorkspaceProjectionDatabase, input: { readonly projectId: string; readonly keyword: string; readonly limit: number }) {
+  const statement: unknown = db.prepare(`SELECT id, name, type, project_id FROM workspace_nodes WHERE project_id = ? AND type != 'folder' AND deleted_at IS NULL AND name LIKE ? ESCAPE '!' ORDER BY COALESCE(last_opened_at, 0) DESC, updated_at DESC, name LIMIT ?`);
+  if (typeof statement !== 'object' || statement === null || !('all' in statement) || typeof statement.all !== 'function') throw new Error('Workspace search requires a readable statement');
+  const keyword = input.keyword.replace(/[!%_]/g, char => '!' + char);
+  const rows: unknown = Reflect.apply(statement.all, statement, [input.projectId, '%' + keyword + '%', input.limit]);
+  return candidateRowsSchema.parse(rows);
+}
