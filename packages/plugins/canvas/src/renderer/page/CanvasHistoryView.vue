@@ -56,7 +56,6 @@ import { createCanvasHistoryPreview, canvasVersionBudgetNotice } from '../featur
 import { useCanvasPreferencesStore } from '../features/materialSetting';
 import { createCanvasHistoryPort } from '../adapters/createCanvasHistoryPort';
 import { readCanvasAppearance } from '../functions/readCanvasAppearance';
-import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
 const props = defineProps<{ documentId: string; versionId: string }>();
 const host = ref<HTMLElement | null>(null), staging = ref<HTMLElement | null>(null);
 const preview = shallowRef<ReturnType<typeof createCanvasHistoryPreview> | null>(null);
@@ -71,7 +70,7 @@ onMounted(() => {
     read: port.read, readBudget: port.readBudget, readAppearance: () => readCanvasAppearance(preferences.preferences),
   });
   removeBudget = port.subscribeBudget(status => preview.value?.budgetChanged(status));
-  theme = new MutationObserver(() => preview.value?.refreshAppearance()); theme.observe(document.documentElement, { attributes: true, attributeFilter: [RENDERER_UI_THEME_ATTRIBUTE, 'style'] });
+  theme = new MutationObserver(() => preview.value?.refreshAppearance()); theme.observe(document.documentElement, { attributes: true });
   void preview.value.open(props.documentId, props.versionId);
 });
 watch([() => props.documentId, () => props.versionId], ([documentId, versionId]) => { void preview.value?.open(documentId, versionId); });
