@@ -2,6 +2,7 @@ import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import { JsonValueSchema } from '@app/schemas';
 import type { CanvasMeasureBatchRequest, CanvasMeasureRequest } from '../../../shared/rendering';
 import { installTypography } from './createCardSurface';
+import { hydrateEmbeddedImages } from './hydrateEmbeddedImages';
 
 export interface CanvasLayoutCache {
   get(key: string): number | undefined;
@@ -40,9 +41,10 @@ export async function measureCanvasCards(
   const pending = new Map<string, HTMLElement>();
   const keys: string[] = [];
   const measured = new Map<string, number>();
+  const availableAssets = Object.keys(request.assets).sort();
   for (const card of cards) {
     signal.throwIfAborted();
-    const key = JSON.stringify([card.contentVersion, card.content, card.width, request.fontFamily, request.fontSize, request.theme, request.dpr, request.uiScale]);
+    const key = JSON.stringify([card.contentVersion, card.content, card.width, request.fontFamily, request.fontSize, request.theme, request.dpr, request.uiScale, availableAssets]);
     keys.push(key);
     const cached = cache.get(key);
     if (cached !== undefined) { measured.set(key, cached); continue; }
@@ -52,6 +54,7 @@ export async function measureCanvasCards(
     surface.style.cssText = `box-sizing:border-box;padding:16px 18px 18px;overflow-wrap:anywhere;width:${card.width}px`;
     installTypography(surface, request);
     surface.append(createMarkdownDocumentFragment(JsonValueSchema.parse(card.content), document));
+    hydrateEmbeddedImages(surface, request.assets);
     stage.append(surface); pending.set(key, surface);
   }
   await document.fonts.ready;

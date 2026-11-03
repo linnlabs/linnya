@@ -1,0 +1,7 @@
+# 有界画布计算
+
+`createCanvasComputationRuntime({workerPath})` 提供 `layout(request,signal)` 与 `check(snapshot,signal)`。能力只拥有 Node worker、1个运行任务/8个待办、严格数据边界、取消、30秒超时与销毁；不拥有排布规则、查询规则或文档提交。
+
+执行组合入口为 `backend/orchestration/canvasComputationWorker.ts`，通过 feature 公共入口分派。ELK 只在 layout 分支动态加载，主 Backend 和 check 客户端不加载其执行模块。调用方负责读出授权范围的精确快照，提交排布时重新验证序号/元素修订和编辑保护；check 永远只读。
+
+每个任务独占计算线程，取消或完成后终止，再接纳下一任务。销毁会拒绝待办并终止当前线程。不能在失败后悄悄同步计算或返回估算结果。

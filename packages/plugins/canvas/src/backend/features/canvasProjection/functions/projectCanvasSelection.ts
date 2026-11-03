@@ -2,10 +2,11 @@ import type { CanvasCard, CanvasElementId, CanvasSnapshot } from '../../../../sh
 import { projectCanvasCardBody, type CanvasProjectionContext } from './projectCanvasDocument';
 
 /** 按一次提交快照冻结引用；正文预算用尽后列出紧凑摘要与继续读取方法。 */
-export function projectCanvasSelection(snapshot: CanvasSnapshot, elementIds: readonly CanvasElementId[], path: string, context: CanvasProjectionContext): string {
+export function projectCanvasSelection(snapshot: CanvasSnapshot, elementIds: readonly CanvasElementId[], path: string, context: CanvasProjectionContext, format: 'context' | 'markdown' = 'context'): string {
   const selected = new Set<string>(elementIds);
   const cards = snapshot.elements.filter((element): element is CanvasCard => element.type !== 'edge' && selected.has(element.id))
     .sort((a, b) => a.y - b.y || a.x - b.x || a.id.localeCompare(b.id));
+  if (format === 'markdown') return cards.map(card => projectCanvasCardBody(card, context)).join('\n\n');
   const lines = snapshot.elements.filter(element => element.type === 'edge' && (selected.has(element.id)
     || element.from.kind === 'card' && selected.has(element.from.cardId) && element.to.kind === 'card' && selected.has(element.to.cardId)));
   const header = `画布 ${path}；提交序号 ${snapshot.sequence}；所选 ${cards.length} 张卡\n`;

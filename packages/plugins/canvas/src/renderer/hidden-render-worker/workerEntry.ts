@@ -26,7 +26,7 @@ bridge.setHandler(async (request) => {
     message: result.status === 'failed' && result.error instanceof Error ? result.error.message : `Canvas render ${result.status}` };
 });
 void execute({ protocol: CANVAS_RENDER_PROTOCOL, requestId: 'canvas-measure-self-check', kind: 'measure',
-  theme: 'light', dpr: 1, uiScale: 1, fontFamily: 'system-ui', fontSize: 14, width: 100,
+  theme: 'light', dpr: 1, uiScale: 1, assets: {}, fontFamily: 'system-ui', fontSize: 14, width: 100,
   content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '字体测量' }] }] } },
 new AbortController().signal).then((result) => {
   if (result.status !== 'measured' || result.height <= 0) throw new Error('Canvas measurement self-check failed');

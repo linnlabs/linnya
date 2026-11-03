@@ -9,8 +9,9 @@ export type { CanvasEdgeGeometry, CanvasEdgeSide } from './geometry/functions/ca
 export { CANVAS_PLUGIN_ID, CANVAS_DOCUMENT_TYPE, CANVAS_FILE_EXTENSION, canvasManifest, canvasPluginMeta } from './definitions/pluginMeta';
 export * from './changeset/definitions/canvasCommands';
 export * from './changeset/definitions/canvasSynchronization';
-export { CanvasLayoutOptionsSchema } from './layout/definitions/canvasLayout';
-export type { CanvasLayoutOptions, CanvasLayoutRequest, CanvasLayoutDiagnostic, CanvasLayoutResult, CanvasLayoutRuntime } from './layout/definitions/canvasLayout';
+export { CanvasLayoutOptionsSchema, CanvasLayoutDiagnosticSchema, CanvasLayoutResultSchema } from './layout/definitions/canvasLayout';
+export type { CanvasLayoutOptions, CanvasLayoutRequest, CanvasLayoutDiagnostic, CanvasLayoutResult } from './layout/definitions/canvasLayout';
+export type { CanvasComputationRuntime } from './computation/definitions/canvasComputation';
 
 export * from './history/definitions/canvasUserHistory';
 export * from './agentChanges/definitions/canvasAgentChanges';
@@ -18,3 +19,5 @@ export * from './images/definitions/canvasImageRequests';
 export * from './context/definitions/canvasSelectionContext';
 export { searchCanvasElements } from './search/functions/searchCanvasElements';
 export type { CanvasSearchHit, CanvasSearchContext } from './search/definitions/canvasSearch';
+export { CanvasCheckReportSchema } from './query/definitions/canvasCheck';
+export type { CanvasCheckReport } from './query/definitions/canvasCheck';

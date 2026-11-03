@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import { readPersistedWorkspaceVfsNode, type WorkspaceVfsStatement } from '../../vfs/projection';
+import { readPersistedWorkspaceVfsNode, splitNormalizedVfsPath, type WorkspaceVfsStatement } from '../../vfs/projection';
 
 interface WorkspaceProjectionDatabase {
   prepare(sql: string): unknown;
@@ -109,4 +109,18 @@ export function searchWorkspaceDocumentIdentities(db: WorkspaceProjectionDatabas
   const keyword = input.keyword.replace(/[!%_]/g, char => '!' + char);
   const rows: unknown = Reflect.apply(statement.all, statement, [input.projectId, '%' + keyword + '%', input.limit]);
   return candidateRowsSchema.parse(rows);
+}
+
+/** 只解析当前项目的正式持久节点；不把系统视图或文件系统路径接纳为引用目标。 */
+export function resolveWorkspaceDocumentPath(db: WorkspaceProjectionDatabase, input: { readonly projectId: string; readonly path: string }) {
+  if (!input.path.startsWith('workspace:/')) throw new Error('Workspace document reference requires a workspace:/ path');
+  const segments = splitNormalizedVfsPath(input.path.slice('workspace:'.length));
+  let parentId: string | null = null;
+  for (const segment of segments) {
+    const raw = readStatement(db, 'SELECT id FROM workspace_nodes WHERE project_id = ? AND parent_id IS ? AND name = ? AND deleted_at IS NULL').get(input.projectId, parentId, segment);
+    if (raw === undefined) return null;
+    parentId = z.object({ id: z.string() }).parse(raw).id;
+  }
+  if (!parentId || !readWorkspaceDocumentLocation(db, parentId)) return null;
+  return readWorkspaceDocumentIdentity(db, parentId);
 }

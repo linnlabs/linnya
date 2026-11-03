@@ -17,6 +17,10 @@ const content = { type: 'doc', content: [
     { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: '中文' }] }] },
     { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'English' }] }] },
   ] }] },
+  { type: 'paragraph', content: [{ type: 'text', text: '公式：' }, { type: 'inlineMath', attrs: { latex: 'E=mc^2' } },
+    { type: 'text', text: ' 下标', marks: [{ type: 'subscript' }] }, { type: 'text', text: '上标', marks: [{ type: 'superscript' }] },
+    { type: 'text', text: '下划线', marks: [{ type: 'underline' }] }] },
+  { type: 'blockMath', attrs: { latex: '\\frac{a}{b}' } },
 ] };
 
 let previousKernel: CanvasKernel | null = null;
@@ -31,6 +35,7 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card') {
     fontFamily: 'system-ui', fontSize: 14, dpr: devicePixelRatio, width: 1000, height: 600, region: null,
     quality: 1, format: 'png', snapshot: { schemaVersion: 1, documentId: 'visual', sequence: 1, elements: [card] }, assets: {}, documents: {} });
   const reference = createCardSurface(card, request);
+  if (!reference.querySelector('.katex') || !reference.querySelector('.katex-display')) throw new Error('visual_math_is_not_formal_katex');
   const background = theme === 'light' ? '#fbfaf5' : '#323631';
   reference.style.cssText += `;position:absolute;left:20px;top:20px;width:360px;height:500px;background:${background}`;
   const staging = document.createElement('div');

@@ -46,6 +46,8 @@ it('refreshes a closed canvas from a single committed version and keeps the sent
   const refreshed = readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], conversationId: 'chat' });
   expect(refreshed.sequence).toBe(2); expect(refreshed.text).toContain('最新正文');
   expect(first.text).toContain('旧正文'); expect(first.sequence).toBe(1);
+  expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], projectId: 'other-project' })).toThrow('其他项目');
+  expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], projectId: null })).toThrow('项目');
   db.prepare('UPDATE conversations SET project_id = NULL WHERE conversation_id = ?').run('chat');
   expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], conversationId: 'chat' })).toThrow('项目');
 });
@@ -54,6 +56,13 @@ it('rejects missing selected cards instead of sending a stale stored reference',
   runtime.commit({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('已选择')] });
   runtime.commit({ documentId: id, viewId: 'view', requestId: 'delete', operations: [{ op: 'delete', id: 'c1' }] });
   expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'] })).toThrow('重新选择');
+});
+it('refreshes a partially deleted selection using only remaining committed cards', () => {
+  const id = runtime.create({ projectId, parentId: null, name: '部分.canvas' });
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('已删除'), text('仍存在')] });
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'delete', operations: [{ op: 'delete', id: 'c1' }] });
+  const context = readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1', 'c2'] });
+  expect(context.elementIds).toEqual(['c2']); expect(context.text).toContain('仍存在'); expect(context.text).not.toContain('已删除');
 });
 afterEach(async () => {
   runtime.dispose();

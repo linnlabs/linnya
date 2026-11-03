@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { CanvasElementIdSchema } from '../../model/definitions/canvasElement';
 export const CanvasSelectionContextRequestSchema = z.object({
   documentId: z.string().min(1), elementIds: z.array(CanvasElementIdSchema).min(1), conversationId: z.string().min(1).optional(),
+  projectId: z.string().min(1).nullable().optional(),
+  format: z.enum(['context', 'markdown']).default('context'),
 }).strict();
 export const CanvasSelectionContextSchema = z.object({
   documentId: z.string().min(1), sequence: z.number().int().nonnegative(), elementIds: z.array(CanvasElementIdSchema),
