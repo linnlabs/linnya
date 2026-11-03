@@ -798,6 +798,57 @@ describe('AestheticLint', () => {
         .toBeUndefined();
     });
 
+    it('文字多的页面在正文和底部脚注之间空出大片时报告，页脚不算正文', () => {
+      const text = (name: string, y: number, h: number, chars: number, x = 0.6, w = 12.1) => ({
+        name,
+        type: 'text' as const,
+        text: '字'.repeat(chars),
+        position: { x, y, w, h },
+      });
+      const sparse = lint.lint(makeInfo({
+        slideSize: { width: 13.333, height: 7.5 },
+        slides: [{
+          number: 1,
+          elements: [
+            text('title', 0.5, 0.6, 12),
+            text('body', 1.3, 2.0, 260),
+            text('footnote', 6.3, 0.3, 40),
+            text('footer', 7.0, 0.25, 10),
+          ],
+        }],
+      })).aesthetic.filter((issue) => issue.code === 'content_area_underused');
+      expect(sparse).toHaveLength(1);
+      expect(sparse[0]!.evidence).toMatchObject({ metric: 'unused_bottom_ratio', samples: [3.3, 6.3, 1] });
+
+      const filled = lint.lint(makeInfo({
+        slideSize: { width: 13.333, height: 7.5 },
+        slides: [{
+          number: 1,
+          elements: [
+            text('title', 0.5, 0.6, 12),
+            text('left', 1.3, 5.2, 260, 0.6, 6),
+            text('right', 1.3, 5.0, 260, 6.8, 6),
+            text('footer', 7.0, 0.25, 10),
+          ],
+        }],
+      })).aesthetic.filter((issue) => issue.code === 'content_area_underused');
+      expect(filled).toHaveLength(0);
+    });
+
+    it('字数少的封面和章节页不检查留白', () => {
+      const issues = lint.lint(makeInfo({
+        slideSize: { width: 13.333, height: 7.5 },
+        slides: [{
+          number: 1,
+          elements: [
+            { name: 'title', type: 'text', text: '宋代五大名窑', position: { x: 0.6, y: 2, w: 8, h: 1 } },
+            { name: 'sub', type: 'text', text: '汝官哥钧定', position: { x: 0.6, y: 3.2, w: 8, h: 0.5 } },
+          ],
+        }],
+      })).aesthetic.filter((issue) => issue.code === 'content_area_underused');
+      expect(issues).toHaveLength(0);
+    });
+
     it('满版照片源像素不足时报告清晰度，contain 小图和高分辨率图不报', () => {
       const image = (name: string, w: number, h: number, px: [number, number], fit: SlideElementInfo['imageFit']) => ({
         name,

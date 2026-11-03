@@ -53,6 +53,7 @@ import {
   lintTextContrast,
   lintTextDensity,
   lintVisualAnchor,
+  lintUnusedContentArea,
   lintWhitespace,
 } from './aesthetic/lintRules.js';
 import { analyzeSlideRepetition } from './aesthetic/repetition.js';
@@ -90,6 +91,7 @@ export class AestheticLint {
       aesthetic.push(...lintTextDensity(slide.number, info.slideSize, positioned));
       aesthetic.push(...lintHierarchy(slide.number, positioned));
       aesthetic.push(...lintWhitespace(slide.number, info.slideSize, positioned));
+      aesthetic.push(...lintUnusedContentArea(slide.number, info.slideSize, positioned));
       aesthetic.push(...lintElementCount(slide.number, positioned));
       aesthetic.push(...lintVisualAnchor(slide.number, info.slideSize, positioned));
       /* P1 Tier-1：纯数值、零语义依赖 */

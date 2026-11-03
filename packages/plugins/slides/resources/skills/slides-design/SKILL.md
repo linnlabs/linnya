@@ -78,8 +78,8 @@ presentation-owned 资产。
 | 选择图表 preset | [`chart-presets.md`](./references/chart-presets.md) | 运行时生成 |
 | 做叙事、视觉系统、页面节奏判断 | [`design.md`](./references/design.md) | 设计建议，不是 lint 合同 |
 | 确认某个能力具体怎么写 | [`examples/`](./references/examples/) 中覆盖该能力的 `.js` | 能力示范 |
-| 调用 CLI、消费 JSON/图片 locator | [`cli.md`](./references/cli.md) | Agent CLI 合同 |
-| 文化历史题材的画册风 | [`style-cultural-imagery.md`](./references/style-cultural-imagery.md) | 按需流程 |
+| 调用 CLI、读 JSON/图片 locator | [`cli.md`](./references/cli.md) | Agent CLI 合同 |
+| 文化历史文物题材、杂志或图录风 | [`style-cultural-imagery.md`](./references/style-cultural-imagery.md) | 按需流程 |
 
 示例按能力而非页面类型划分：结构与节奏看
 [`cover-variants.js`](./references/examples/cover-variants.js)、[`card-grid.js`](./references/examples/card-grid.js)、

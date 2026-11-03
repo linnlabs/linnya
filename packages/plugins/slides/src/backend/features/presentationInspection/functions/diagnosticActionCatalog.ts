@@ -25,6 +25,7 @@ const ACTION_BY_CODE = {
   primary_hue_drift: '统一跨页主色角色或确认主题切换有意',
   text_contrast_low: '提高文字与背景的对比度',
   image_aspect_distorted: '保持图片原始宽高比或调整裁切方式',
+  content_area_underused: '正文区下方空着：放大正文和表格字号、拉高图片，或把下一页的内容并进来',
   image_resolution_low: '换更高分辨率的原图，或缩小图片显示尺寸、少裁一些',
   chart_identity_missing: '显示必要的图例或数据标签，使类别或系列可识别',
   chart_label_capacity_exceeded: '减少标签、扩大图表或调整标签位置与字号',

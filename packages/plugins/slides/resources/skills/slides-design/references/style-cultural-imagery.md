@@ -168,7 +168,7 @@ def glyph(font_path, ch, size, rgb, stroke=0):
 
 当前模型看不到图片像素时（`read_file` 返回 `attachment_status: not_delivered`），用数值统计核对去背残留和裁切，并在最终答复里写明哪些页没有经过读图检查，不要声称已看过。
 
-`inspect` 对压叠报 `element_overlap` 是预期内的，确认是有意压叠后不用改；真溢出和越界照常修。`image_resolution_low` 说明图片在全屏放映时会发虚，换更大的原图或缩小显示尺寸，封面和满版图尤其不能留。像素复核时重点看：
+`inspect` 对压叠报 `element_overlap` 是预期内的，确认是有意压叠后不用改；真溢出和越界照常修。`content_area_underused` 说明阅读页下方或表格之后空着一大片，放大正文和表格字号、拉高主图，或把相邻页内容并进来。`image_resolution_low` 说明图片在全屏放映时会发虚，换更大的原图或缩小显示尺寸，封面和满版图尤其不能留。像素复核时重点看：
 
 - 博物馆照片边缘常带色卡、比例尺或编号牌，进稿前裁掉；
 - 去背主体确实压住了什么，而不是漂在空白里；

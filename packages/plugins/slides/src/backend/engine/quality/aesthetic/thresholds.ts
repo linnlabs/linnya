@@ -32,6 +32,15 @@ export const MIN_FONT_SIZE_RANGE = 4;
 export const WHITESPACE_IMBALANCE = 0.4;
 
 /**
+ * 文字多的页面，正文区下方空出的高度占页高的比例上限。页脚、页码所在的底部带不算正文区；
+ * 字数少于下限的封面、章节页、引语页本来就靠留白成立，不检查。
+ */
+export const UNUSED_BOTTOM_RATIO = 0.2;
+export const UNUSED_BOTTOM_MIN_TEXT_CHARS = 200;
+export const UNUSED_BOTTOM_CHROME_BAND_RATIO = 0.12;
+export const UNUSED_BOTTOM_STRIPS = 12;
+
+/**
  * 页面结构相似度阈值。
  * 咨询风格 PPT 大量页面使用相同模板，结构相似度 90%+ 属于正常。
  * 只有结构 AND 内容都高度一致时才真正构成重复。

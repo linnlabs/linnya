@@ -111,6 +111,7 @@ export const ScalarMetricSchema = z.object({
     'renderable_count',
     'font_size',
     'font_size_tiers',
+    'unused_bottom_ratio',
   ]),
   actual: z.number().finite(),
   operator: z.enum(['lt', 'gt']),

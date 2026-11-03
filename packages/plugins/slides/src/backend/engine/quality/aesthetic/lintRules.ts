@@ -51,6 +51,10 @@ import {
   TEXT_CONTRAST_MIN_RATIO,
   TEXT_DENSITY_HIGH,
   TEXT_DENSITY_LOW,
+  UNUSED_BOTTOM_CHROME_BAND_RATIO,
+  UNUSED_BOTTOM_MIN_TEXT_CHARS,
+  UNUSED_BOTTOM_RATIO,
+  UNUSED_BOTTOM_STRIPS,
   WHITESPACE_IMBALANCE,
 } from './thresholds.js';
 import type { AestheticLintIssue } from './types.js';
@@ -158,6 +162,121 @@ export function lintHierarchy(
 }
 
 // ─── Whitespace Balance ─────────────────────────────────────────────────────
+
+/**
+ * 正文区大片空置：排除满版背景、细线和底部带里的页脚/页码后，把正文区横向切成若干条，
+ * 找每条里高于页高 20% 的空档（元素之间或最后一个元素之下）。相邻条带的空档在纵向上
+ * 仍有这么高的交集时连成一片，宽度超过正文区三分之一就报告；分栏页只有一栏写短了、
+ * 表格和底部脚注之间空着，都能发现。
+ * 文字框优先用实际排版高度，避免把撑满的空文本框当成内容。
+ */
+export function lintUnusedContentArea(
+  slideNumber: number,
+  slideSize: { width: number; height: number },
+  elements: SlideElementInfo[],
+): AestheticLintIssue[] {
+  const { width, height } = slideSize;
+  const bandTop = height * (1 - UNUSED_BOTTOM_CHROME_BAND_RATIO);
+  const chrome: SlideElementInfo[] = [];
+  const content: SlideElementInfo[] = [];
+  for (const el of elements) {
+    const p = el.position;
+    // 分组只是布局容器，flex 撑满时会盖住空白；只看叶子元素。
+    if (!p || p.w <= 0 || p.h <= 0 || el.type === 'group' || (el.children?.length ?? 0) > 0) continue;
+    if (p.w * p.h >= width * height * 0.85 || hasDecorativeRole(el.semanticRole)) continue;
+    if (Math.min(p.w, p.h) <= 0.05) continue;
+    if (isChromeTextRole(el.semanticRole) || (el.type === 'text' && p.y >= bandTop && p.h <= 0.45)) {
+      chrome.push(el);
+      continue;
+    }
+    content.push(el);
+  }
+  const textChars = content.reduce((sum, el) => sum + countElementChars(el), 0);
+  if (content.length < 2 || textChars < UNUSED_BOTTOM_MIN_TEXT_CHARS) return [];
+
+  const frameBottom = chrome.length > 0 ? Math.min(...chrome.map((el) => el.position!.y)) : height;
+  const left = Math.min(...content.map((el) => el.position!.x));
+  const right = Math.max(...content.map((el) => el.position!.x + el.position!.w));
+  const stripWidth = (right - left) / UNUSED_BOTTOM_STRIPS;
+  const minGap = height * UNUSED_BOTTOM_RATIO;
+
+  // 每条带列出所有足够高的空档（元素之间，以及最后一个元素到正文区底边）；
+  // 相邻条带的空档纵向交集仍够高时连成一片，取最宽的一片。
+  let best: { strips: number; top: number; bottom: number } | null = null;
+  let runs: { strips: number; top: number; bottom: number }[] = [];
+  for (let index = 0; index < UNUSED_BOTTOM_STRIPS; index += 1) {
+    const x0 = left + index * stripWidth;
+    const x1 = x0 + stripWidth;
+    const spans = content
+      .filter((el) => el.position!.x < x1 && el.position!.x + el.position!.w > x0)
+      .map((el) => [el.position!.y, visibleBottom(el)] as const)
+      .sort((a, b) => a[0] - b[0]);
+    const gaps: [number, number][] = [];
+    let cursor = spans.length > 0 ? spans[0]![1] : Infinity;
+    for (const [top, bottom] of spans.slice(1)) {
+      if (top - cursor >= minGap) gaps.push([cursor, top]);
+      cursor = Math.max(cursor, bottom);
+    }
+    if (frameBottom - cursor >= minGap) gaps.push([cursor, frameBottom]);
+
+    const next: { strips: number; top: number; bottom: number }[] = [];
+    for (const [top, bottom] of gaps) {
+      const extended = runs
+        .map((run) => ({ strips: run.strips + 1, top: Math.max(run.top, top), bottom: Math.min(run.bottom, bottom) }))
+        .filter((run) => run.bottom - run.top >= minGap)
+        .sort((a, b) => b.strips - a.strips)[0];
+      next.push(extended ?? { strips: 1, top, bottom });
+    }
+    runs = next;
+    for (const run of runs) {
+      if (best == null || run.strips > best.strips) best = run;
+    }
+  }
+  if (best == null || best.strips * 3 < UNUSED_BOTTOM_STRIPS) return [];
+  const unusedRatio = (best.bottom - best.top) / height;
+  return [{
+    code: 'content_area_underused',
+    severity: 'warning',
+    confidence: 'medium',
+    slides: [slideNumber],
+    evidence: {
+      kind: 'scalar_metric',
+      metric: 'unused_bottom_ratio',
+      actual: unusedRatio,
+      operator: 'gt',
+      threshold: UNUSED_BOTTOM_RATIO,
+      unit: 'ratio',
+      sampleCount: 3,
+      samples: [best.top, best.bottom, best.strips / UNUSED_BOTTOM_STRIPS],
+    },
+  }];
+}
+
+function countElementChars(el: SlideElementInfo): number {
+  const text = el.tableInfo
+    ? el.tableInfo.cells.map((cell) => cell.text ?? paragraphText(cell.paragraphs)).join('')
+    : el.text ?? paragraphText(el.paragraphs ?? []);
+  return text.replace(/\s/gu, '').length;
+}
+
+function paragraphText(paragraphs: readonly { runs: readonly { text: string }[] }[]): string {
+  return paragraphs.map((paragraph) => paragraph.runs.map((run) => run.text).join('')).join('');
+}
+
+function visibleBottom(el: SlideElementInfo): number {
+  const p = el.position!;
+  // 表格行高不随外框拉伸，显式高度大于行高总和时下方是空的；以最后一行的底边为准。
+  const cells = el.tableInfo?.cells ?? [];
+  if (cells.length > 0) {
+    return Math.min(p.y + p.h, Math.max(...cells.map((cell) => cell.position.y + cell.position.h)));
+  }
+  const layout = el.textLayout;
+  const align = el.textBody?.verticalAlign;
+  if (el.type === 'text' && layout?.requiredHeightInches != null && (align == null || align === 'top')) {
+    return p.y + Math.min(p.h, layout.requiredHeightInches);
+  }
+  return p.y + p.h;
+}
 
 export function lintWhitespace(
   slideNumber: number,

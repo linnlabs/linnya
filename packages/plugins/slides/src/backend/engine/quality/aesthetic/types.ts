@@ -54,6 +54,8 @@ export type AestheticLintCode =
   | 'image_aspect_distorted'
   /** 图片源像素不足，全屏放映时被明显放大发虚 */
   | 'image_resolution_low'
+  /** 文字多的页面正文区下方大片空着，通常应放大字号或重新分配空间 */
+  | 'content_area_underused'
   /** P1 Tier-1：类别或系列缺少可见身份通道；外部文字可能补充，因此需 render 复核。 */
   | 'chart_identity_missing'
   /** P1 Tier-1：标签估算所需跨度明显超过图表可用跨度。 */
