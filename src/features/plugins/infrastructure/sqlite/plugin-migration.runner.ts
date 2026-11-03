@@ -36,7 +36,7 @@ export class PluginMigrationRunner {
   ): PluginMigrationRunResult {
     const migrations = normalizeDeclaredMigrations(pluginId, declaredMigrations);
     const fromVersion = this.readCurrentVersion(pluginId);
-    const latestDeclaredVersion = migrations.at(-1)?.version ?? 0;
+    const latestDeclaredVersion = migrations[migrations.length - 1]?.version ?? 0;
     if (fromVersion > latestDeclaredVersion) {
       throw new Error(
         `[plugin-migration] ${pluginId} 数据库 schema 版本 v${fromVersion} 高于当前代码声明的 v${latestDeclaredVersion}`,
