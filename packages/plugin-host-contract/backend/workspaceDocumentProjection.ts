@@ -36,3 +36,6 @@ export declare function readWorkspaceDocumentLocation(
   db: Pick<PluginSqliteDatabaseLike, 'prepare'>,
   nodeId: string,
 ): { readonly id: string; readonly projectId: string | null; readonly path: string; readonly nodeType: string } | null;
+
+/** 解析当前项目正式持久文档路径；不返回系统视图或文件系统目标。 */
+export declare function resolveWorkspaceDocumentPath(db: Pick<PluginSqliteDatabaseLike, 'prepare'>, input: { readonly projectId: string; readonly path: string }): WorkspaceDocumentIdentity | null;
