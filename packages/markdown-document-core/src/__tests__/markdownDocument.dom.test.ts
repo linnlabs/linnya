@@ -54,3 +54,14 @@ it('受管图片的 JSON 与 DOM 携带独立资产身份，不把 src 当身份
   const editor = new Editor({ extensions: createMarkdownDocumentExtensions(), content: host.innerHTML });
   try { expect(editor.getJSON().content?.[0]?.attrs?.assetId).toBe('asset-id'); } finally { editor.destroy(); }
 });
+
+it('an empty Markdown document can be projected, reopened in the editor and cleared again', async () => {
+  const { Editor } = await import('@tiptap/core');
+  const { createMarkdownDocumentExtensions, serializeMarkdownDocument } = await import('../index');
+  const content = parseMarkdownDocument(''), host = document.createElement('article');
+  host.append(createMarkdownDocumentFragment(content, document));
+  expect(host.textContent).toBe('');
+  const editor = new Editor({ extensions: createMarkdownDocumentExtensions(), content: host.innerHTML });
+  try { expect(serializeMarkdownDocument(editor.getJSON())).toBe(''); expect(parseMarkdownDocument(editor.getMarkdown())).toEqual(content); }
+  finally { editor.destroy(); }
+});
