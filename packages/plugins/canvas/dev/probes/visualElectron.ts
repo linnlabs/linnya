@@ -1,3 +1,4 @@
+import { verifySceneVisual } from './sceneVisualElectron';
 import { readCanvasLinePalette } from '../../src/shared';
 import { app, BrowserWindow, nativeImage, type WebContents, type Event, type RenderProcessGoneDetails } from 'electron';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -208,6 +209,7 @@ async function run() {
       lodReports.push({ theme, union, intersection, ratio: intersection / union }); await writeFile(path.join(output, `mixed-lod-${theme}.png`), actual.toPNG());
     }
     const fade = await verifyFade(win);
+    const scene = await verifySceneVisual(win, output, evaluate);
     const context = z.object({ before: z.string(), after: z.string(), rejected: z.boolean(), beforeStats: z.object({ cards: z.number(), bitmaps: z.number() }), afterStats: z.object({ cards: z.number(), bitmaps: z.number() }) })
       .parse(await evaluate(win.webContents, 'window.prepareCanvasContextLossVisualProbe()'));
     const contextBefore = nativeImage.createFromDataURL(context.before).toBitmap(), contextAfterImage = nativeImage.createFromDataURL(context.after), contextAfter = contextAfterImage.toBitmap();
@@ -242,7 +244,7 @@ async function run() {
       await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());
     } finally { unsupported.destroy(); }
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap, colors: colorReports }, dragOcclusion, snapGuides, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk, selectedLabels }, thumbnails: thumbReports,
-      mixedLod: lodReports, fade, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
+      mixedLod: lodReports, fade, scene, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
 }

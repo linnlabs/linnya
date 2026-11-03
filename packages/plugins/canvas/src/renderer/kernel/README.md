@@ -2,7 +2,7 @@
 
 内核消费 Canvas 元素快照，拥有场景、相机、命中、交互意图和绘制资源，不拥有保存、正文解析、Agent、Host store 或 Vue 状态。`index.ts` 只暴露 `CanvasKernel` 合同与创建入口。Pixi 仅出现在 `render/pixi`。
 
-`setElements` 安装已提交或由调用方明确管理的场景投影；`setSelection` 只更新选择。`worldToScreen` / `screenToWorld` 是 DOM 编辑表面定位的共同坐标真源。Pointer 意图由 `onIntent` 发给 feature，最终移动在松手时产生；保存、冲突校验、撤销和组合多选移动由调用方负责。
+`setElements(elements,{animateIds,batch})` 安装已提交或由调用方明确管理的场景投影；调用方根据正式提交来源选择动画ID，kernel不识别Agent。`setSelection` 只更新选择。`worldToScreen` / `screenToWorld` 是 DOM 编辑表面定位的共同坐标真源。Pointer 意图由 `onIntent` 发给 feature，最终移动在松手时产生；保存、冲突校验、撤销和组合多选移动由调用方负责。
 
 `setBitmap` 接管 ImageBitmap 的所有权；版本失效、重复缓存键、超预算或销毁都会负责关闭。位图资源有 256MiB 默认预算。纯移动不淘汰正文；染纸/主题切换必须刷新同色墨色，材质切换保留正文。字体、DPR、界面缩放和内容版本的组合键由光栅 capability 提供，调用方在这些条件变化时重新调度。
 
@@ -67,3 +67,9 @@ macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事
 `readReadiness(ids)`按当前环境、外部内容世代与可见缺片读取正文事实，不泄露正文缓存键。body只有在匹配位图已接纳、120ms替换已完成、该卡可见且随后实际draw后才ready；进入/退出DOM编辑或重新进入视口也须等新draw。overview/thumbnail/outside分别报告，不能充当正文完成；complete要求非空可见交集全部body ready且无精确升级/隐藏暂停。内容序号的几何首帧由调用方另行关联，不能拿位图旧回执替代新提交的实际投影。stats分别报告fadingCards/retiringBytes/retiringTiles，总rasterTiles包含退休层；停手清晰测量必须等待fade归零。
 
 地图标签按选中、染纸、文档与面积优先；选中变化只作稳定分区并更新相关卡的远景透明度。单卡编辑的精确采样在DOM接管前保持，普通补图不能立即降回档位；相机倍率/环境改变或离开需求后解除。Pixi stage不另作交互命中（eventMode:none），所有意图仍走原生DOM事件与唯一空间索引，参见[Pixi事件合同](https://pixijs.com/8.x/guides/components/events)。
+
+场景显示与逻辑target分开：普通指定新增以96%大小淡入160ms，移动220ms，删除保留旧显示120ms；超过200个有效指定ID或显式batch时统一200ms淡入，避免逐卡飞行。删除的显示不再参与逻辑命中，仍持有的位图继续计入原有预算，退休后释放。透明新增阶段不扣除下层正文，地图标签跟随相同alpha。`sceneTransitions`和`cameraTransition`暴露实际未完成任务；正文回执还须等待场景过渡结束后的真正draw。
+
+`readDisplayPosition`返回当前视觉起点。真实拖动在阈值通过后冻结该起点，后续无关增量不重置预览，松手提交明确的绝对positions；取消恢复最新逻辑target。`finishTransitions(ids?)`同步到目标并刷新空间投影；编辑器和只读详情接管前使用它，正在编辑的卡不参与新动画。`animateCamera`默认320ms，用户相机输入从当前显示中断飞行；同值`setCamera`只取消任务，不额外重建投影。系统减少动态即时完成卡片、相机和纹理过渡，清理所有相关定时任务。
+
+`setRasterContentKey`用于不透明的外部内容/授权世代。世代变化立即释放当前卡的旧正文及退休纹理，不能把已失去访问权的封面或标签保留120ms淡出；普通采样升级才允许交叉淡入。

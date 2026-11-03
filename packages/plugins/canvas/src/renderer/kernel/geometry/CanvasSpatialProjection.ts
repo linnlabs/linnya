@@ -9,6 +9,7 @@ export class CanvasSpatialProjection {
   private readonly entries = new Map<CanvasCardId, CanvasSpatialEntry>();
   private readonly cells = new Map<string, CanvasSpatialCell>();
   private readonly large = new Set<CanvasSpatialEntry>();
+  private translucent: ReadonlySet<CanvasCardId> = new Set();
   private readonly cache = new Map<string, ReadonlyMap<CanvasCardId, readonly CanvasRectangle[]>>();
   private published = new Map<CanvasCardId, readonly CanvasRectangle[]>();
   private publishedKey = '';
@@ -24,13 +25,18 @@ export class CanvasSpatialProjection {
   updateCards(cards: readonly CanvasCard[]): void {
     for (const card of cards) { const previous = this.entries.get(card.id); if (previous) this.install(card, previous.rank); }
   }
+  setTranslucent(ids: ReadonlySet<CanvasCardId>): void {
+    this.translucent = ids;
+    for (const entry of this.entries.values()) if (entry.opaque === ids.has(entry.card.id)) this.install(entry.card, entry.rank);
+  }
   private install(card: CanvasCard, rank: number): void {
     const previous = this.entries.get(card.id);
-    if (previous && previous.rank === rank && previous.bounds.x === card.x && previous.bounds.y === card.y
+    const opaque = !this.translucent.has(card.id);
+    if (previous && previous.opaque === opaque && previous.rank === rank && previous.bounds.x === card.x && previous.bounds.y === card.y
       && previous.bounds.width === card.width && previous.bounds.height === card.height) { previous.card = card; return; }
     if (previous) this.remove(previous);
     const bounds = { x: card.x, y: card.y, width: card.width, height: card.height }, keys = canvasSpatialKeys(bounds);
-    const entry = { card, rank, bounds, keys: keys ?? [] }; this.entries.set(card.id, entry);
+    const entry = { card, rank, bounds, keys: keys ?? [], opaque }; this.entries.set(card.id, entry);
     if (keys === null) { this.large.add(entry); this.invalidateLarge(bounds); return; }
     for (const key of keys) {
       let cell = this.cells.get(key);
@@ -49,7 +55,7 @@ export class CanvasSpatialProjection {
     // 证明不了就重算该格，不能用“移动了小距离”猜测不会露出正文。
     for (const id of projection.keys()) {
       const cover = this.entries.get(id);
-      if (!cover || cover.rank <= entry.rank || cover.bounds.width <= 12 || cover.bounds.height <= 12) continue;
+      if (!cover || !cover.opaque || cover.rank <= entry.rank || cover.bounds.width <= 12 || cover.bounds.height <= 12) continue;
       const paper = { x: cover.bounds.x + 6, y: cover.bounds.y + 6, width: cover.bounds.width - 12, height: cover.bounds.height - 12 };
       visible = visible.flatMap(region => subtractCanvasRegion(region, paper));
       if (!visible.length) return;
@@ -105,12 +111,14 @@ export class CanvasSpatialProjection {
     this.published = published; this.publishedKey = key; this.candidateCards = candidates.size; this.queryCards = published.size;
     return published;
   }
-  hitTest(point: CanvasPoint): CanvasCard | null {
+  hitTest(point: CanvasPoint, accepts?: (card: CanvasCard) => boolean): CanvasCard | null {
     const key = `${Math.floor(point.x / canvasSpatialCellSize)}:${Math.floor(point.y / canvasSpatialCellSize)}`;
     const candidates = [...this.cells.get(key)?.entries ?? [], ...this.large].filter(entry => point.x >= entry.bounds.x && point.x <= entry.bounds.x + entry.bounds.width
       && point.y >= entry.bounds.y && point.y <= entry.bounds.y + entry.bounds.height);
     this.hitCandidates = (this.cells.get(key)?.entries.size ?? 0) + this.large.size;
-    candidates.sort((a, b) => b.rank - a.rank); return candidates[0]?.card ?? null;
+    candidates.sort((a, b) => b.rank - a.rank);
+    for (const entry of candidates) if (!accepts || accepts(entry.card)) return entry.card;
+    return null;
   }
   readStats(): CanvasSpatialProjectionStats {
     return { spatialCards: this.entries.size, spatialCells: this.cells.size, spatialLargeCards: this.large.size,

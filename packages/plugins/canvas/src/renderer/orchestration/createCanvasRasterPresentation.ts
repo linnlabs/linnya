@@ -42,7 +42,7 @@ class CanvasRasterPresentation {
     this.cadence = createCanvasRasterCadence(() => this.refresh());
     this.queue = createLatestRasterQueue<CanvasCardRasterInput, CanvasCardRasterOutput>({
       batchSize: 32, executeBatch: createCanvasCardRasterBatch({ rasterizer: this.rasterizer, createContent: options.createContent }),
-      readBatchSize: () => this.cadence.moving() ? 16 : 32,
+      readBatchSize: () => this.cadence.moving() || options.kernel.isMoving() ? 16 : 32,
       disposeResult: output => { if (output.kind === 'ready') for (const tile of output.tiles) tile.bitmap.close(); },
     });
     this.queueCapacity = this.queue.readStats().capacity;
@@ -122,6 +122,7 @@ class CanvasRasterPresentation {
   }
   private reconcileInterest(visible: readonly CanvasCard[]): boolean {
     const ids = new Set(visible.map(card => card.id));
+    for (const card of visible) this.options.kernel.setRasterContentKey(card.id, this.options.readContentKey?.(card) ?? '');
     for (const id of this.pending.keys()) if (!ids.has(id) && !this.preparingEdits.has(id)) { this.queue.cancel(id); this.pending.delete(id); }
     for (const id of this.preciseCards.keys()) if (!ids.has(id)) this.preciseCards.delete(id);
     if (this.cadence.paused(visible.length, this.options.kernel.readRenderStatus().limited)) {
@@ -169,6 +170,7 @@ class CanvasRasterPresentation {
     if (this.disposed || this.suspended()) return 'unavailable';
     const card = this.options.kernel.readCard(id);
     if (!card || !this.options.kernel.readVisibleCardRegions(id).length) return 'unavailable';
+    this.options.kernel.setRasterContentKey(id, this.options.readContentKey?.(card) ?? '');
     const demand = this.demand(card, { count: 1, font: this.fontKey(), precise: true });
     if (!demand.regions.length) { this.preciseCards.set(id, demand.key); return 'ready'; }
     if (this.failed.get(id) === demand.key) return 'unavailable';

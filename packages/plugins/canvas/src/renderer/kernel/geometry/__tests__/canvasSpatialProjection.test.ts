@@ -79,3 +79,11 @@ it('非重叠卡跨世界格仍只生成完整可见矩形，真实遮挡缺口�
   const covered = index.project(viewport), expected = createCanvasVisibleRegionProjection([...cards, cover]);
   for (const entry of cards) expectSameVisibleRegions(covered.get(entry.id) ?? [], expected.get(entry.id) ?? [], viewport);
 });
+it('半透明新增卡不挖掉下层正文，变为实体后再按当前纸面遮挡', () => {
+  const bottom = card('c1', { x: 20, y: 20, width: 100, height: 100 }), top = card('c2', { x: 0, y: 0, width: 140, height: 140 });
+  const index = new CanvasSpatialProjection(), viewport = { x: 0, y: 0, width: 200, height: 200 };
+  index.setCards([bottom, top]); expect(area(index.project(viewport).get(bottom.id) ?? [], viewport)).toBe(0);
+  index.setTranslucent(new Set([top.id])); expect(area(index.project(viewport).get(bottom.id) ?? [], viewport)).toBe(10000);
+  expect(index.hitTest({ x: 30, y: 30 }, entry => entry.id !== top.id)?.id).toBe(bottom.id);
+  index.setTranslucent(new Set()); expect(area(index.project(viewport).get(bottom.id) ?? [], viewport)).toBe(0);
+});
