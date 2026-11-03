@@ -10,6 +10,13 @@ import type {
  */
 export const DEPENDENCY_LICENSE_SELECTIONS = [
   {
+    packageName: 'elkjs',
+    version: '0.12.1',
+    declaredExpression: 'EPL-2.0 OR GPL-3.0-or-later',
+    selectedExpression: 'EPL-2.0',
+    reason: '发布包包含 Eclipse Public License v2.0 全文；使用该分支并保留对应源码与授权告知',
+  },
+  {
     packageName: '@img/sharp-win32-x64',
     version: '0.35.5',
     declaredExpression: 'Apache-2.0 AND LGPL-3.0-or-later',
