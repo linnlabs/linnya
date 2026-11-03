@@ -40,6 +40,8 @@ WebGL适配器识别SwiftShader/llvmpipe软件绘图，交互模式自动将实�
 
 `CanvasSpatialProjection`按512世界px维护卡片几何索引和有界世界格缓存，命中只查询所在格与长卡；长卡不为整篇正文登记数千空格。各格从上层向下扣纸面，拖动只使受影响格失效。已完全被现有上层纸面遮住的低层移动可保留精确投影；不能证明遮挡时立即重算。索引保存独立bounds，避免display对象原地移动后丢失旧几何。`preview-changed`只通知正文投影刷新，不表示已提交内容。
 
+缓存发布时按相同边跨度合并精确相邻片段，消除世界格边界造成的重复DOM及纹理；真实遮挡洞不合并。每轮必须减少片段数，否则立即结束，结果随世界格缓存复用，不放入纯绘制回调。
+
 线Mesh携带每条边的语义颜色索引，浅/深主题通过共享中间墨色palette切换uniform；默认中性线与独立选中高亮保持各自职责。不能只保存edge.color却把所有边绘为同一颜色。六色双主题、纸面淡影及拖动显露下层均有真实Electron像素断言。
 
 CI可用 `CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs` 后执行 `node packages/plugins/canvas/dev/probes/verify-counts.mjs`。后者对fixture独立线性可见/命中oracle、空间候选、可见片段、位图预算与队列峰值作确定性断言，并输出counts-summary.json；容量从正式公开stats读取，不按机器锁帧时。离屏输出明确不代表真实GPU性能验收。
