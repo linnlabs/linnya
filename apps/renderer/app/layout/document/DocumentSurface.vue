@@ -1,6 +1,6 @@
 <template>
   <div class="document-surface" :class="`document-surface--${activeDocument?.type ?? 'none'}`">
-    <component :is="activeSurfaceComponent" v-if="activeSurfaceComponent" />
+    <component :is="activeSurfaceComponent" v-if="activeSurfaceComponent" :key="activeDocument?.id" />
     <UnavailableDocumentPlaceholder
       v-else-if="unavailableDocument"
       :title="unavailableDocument.title"
