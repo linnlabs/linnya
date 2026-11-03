@@ -1,7 +1,9 @@
 import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdge, CanvasEdgeId, CanvasElement, CanvasPoint, CanvasRectangle } from '../../../shared';
+import type { CanvasSpatialProjectionStats } from './canvasSpatialProjection';
 import type { CanvasEdgeGeometry } from '../geometry/canvasEdgeGeometry';
 
 export type CanvasKernelIntent =
+  | { readonly kind: 'preview-changed' }
   | { readonly kind: 'select'; readonly ids: readonly CanvasCardId[]; readonly additive: boolean }
   | { readonly kind: 'select-edge'; readonly id: CanvasEdgeId | null }
   | { readonly kind: 'move'; readonly ids: readonly CanvasCardId[]; readonly dx: number; readonly dy: number; readonly copy?: boolean }
@@ -59,7 +61,8 @@ export interface CanvasKernel {
   screenToWorld(point: CanvasPoint): CanvasPoint;
   worldToScreen(point: CanvasPoint): CanvasPoint;
   captureImage(format: 'png' | 'jpeg', quality?: number): Promise<string>;
-  readStats(): { readonly cards: number; readonly edges: number; readonly bitmaps: number; readonly bitmapBytes: number; readonly renders: number;
+  readStats(): CanvasSpatialProjectionStats & { readonly cards: number; readonly edges: number; readonly bitmaps: number; readonly bitmapBytes: number; readonly renders: number; readonly bitmapBudgetBytes: number; readonly rasterTiles: number;
+    readonly viewportCards: number; readonly renderableCards: number; readonly rasterCards: number;
     readonly lineMeshBuilds: number; readonly visibleEdges: number };
   destroy(): void;
 }

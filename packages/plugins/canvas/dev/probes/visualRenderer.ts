@@ -196,3 +196,33 @@ async function mixedLodVisual(theme: 'light' | 'dark') {
   } finally { rasterizer.dispose(); staging.remove(); }
 }
 Object.defineProperty(window, 'prepareCanvasMixedLodVisualProbe', { value: mixedLodVisual });
+
+async function lineColorsVisual() {
+  previousKernel?.destroy(); document.body.replaceChildren();
+  const host = document.createElement('div'); host.style.cssText = 'width:900px;height:600px'; document.body.append(host);
+  const kernel = await createPixiCanvasKernel({ host, width: 900, height: 600, resolution: devicePixelRatio }); previousKernel = kernel;
+  const colors = ['red', 'orange', 'yellow', 'green', 'cyan', 'purple'] as const;
+  const edges = colors.map((color, index) => CanvasEdgeSchema.parse({ id: `e${index + 1}`, type: 'edge', schemaVersion: 1, revision: 1, order: 'a0',
+    locked: false, color, createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, lineStyle: 'straight', linePattern: 'solid', direction: 'none', label: '',
+    from: { kind: 'point', x: 40, y: 60 + index * 70 }, to: { kind: 'point', x: 850, y: 60 + index * 70 } }));
+  kernel.setElements(edges);
+  const light = await kernel.captureImage('png'); kernel.setAppearance({ dark: true, material: 'paper', overview: 'titles' });
+  return { light, dark: await kernel.captureImage('png'), dpr: devicePixelRatio, colors };
+}
+Object.defineProperty(window, 'prepareCanvasLineColorsVisualProbe', { value: lineColorsVisual });
+
+async function dragOcclusionVisual() {
+  previousKernel?.destroy(); document.body.replaceChildren();
+  const host = document.createElement('div'); host.style.cssText = 'width:900px;height:600px'; document.body.append(host);
+  const kernel = await createPixiCanvasKernel({ host, width: 900, height: 600, resolution: devicePixelRatio }); previousKernel = kernel;
+  const base = { type: 'text', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white', createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0,
+    width: 300, height: 180, parentId: null, data: { contentVersion: 1, content } };
+  const bottom = CanvasCardSchema.parse({ ...base, id: 'c1', x: 50, y: 60 }), top = CanvasCardSchema.parse({ ...base, id: 'c2', x: 30, y: 40, width: 340, height: 220, order: 'b0' });
+  kernel.setElements([bottom, top]);
+  const picture = new OffscreenCanvas(30, 18), context = picture.getContext('2d'); if (!context) throw new Error('occlusion_fixture_context_missing');
+  context.fillStyle = '#e000cc'; context.fillRect(0, 0, 30, 18); kernel.setBitmap(bottom.id, bottom.revision, 'body', await createImageBitmap(picture));
+  const before = await kernel.captureImage('png'); kernel.setDragPreview([top.id], 400, 0);
+  const during = await kernel.captureImage('png'); kernel.clearDragPreview();
+  return { before, during, after: await kernel.captureImage('png'), dpr: devicePixelRatio };
+}
+Object.defineProperty(window, 'prepareCanvasDragOcclusionVisualProbe', { value: dragOcclusionVisual });
