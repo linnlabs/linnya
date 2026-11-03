@@ -5,6 +5,7 @@ import type {
   ResolvedFont,
   ScriptClass,
 } from '../definitions/types.js';
+import { crossPlatformEquivalentFamilies } from '../functions/crossPlatformEquivalents.js';
 import { hasRequiredGlyphCoverage } from '../functions/glyphCoverage.js';
 import { scoreSubstitution as defaultScoreSubstitution } from '../functions/substitutionPenalty.js';
 
@@ -83,6 +84,20 @@ export class FontResolutionService {
       );
     }
 
+    const requestedMeta = chooseRequestedFamilyReference(request, requestedFamilyCandidates);
+    // 已知的跨平台同风格字体优先于通用打分：宋体缺失时落到 Songti SC，而不是同脚本里分数碰巧更低的日文明朝。
+    for (const family of crossPlatformEquivalentFamilies(request.family)) {
+      const equivalents = this.catalog.findByFamily(family)
+        .filter((font) => hasRequiredGlyphCoverage(font, request.requiredCodePoints));
+      if (equivalents.length > 0) {
+        return makeResolvedFont(
+          request,
+          chooseLowestPenalty(request, equivalents, this.scoreSubstitution, requestedMeta),
+          false,
+        );
+      }
+    }
+
     const candidates = this.catalog.candidatesForScript(request.script)
       .filter((font) => hasRequiredGlyphCoverage(
         font,
@@ -105,7 +120,7 @@ export class FontResolutionService {
         request,
         candidates,
         this.scoreSubstitution,
-        chooseRequestedFamilyReference(request, requestedFamilyCandidates),
+        requestedMeta,
       ),
       false,
     );

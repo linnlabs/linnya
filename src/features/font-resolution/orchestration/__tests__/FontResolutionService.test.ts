@@ -283,6 +283,29 @@ describe('FontResolutionService', () => {
       bold: false,
     });
   });
+
+  it('Office 中文字体本机缺失时先落到同书体的 Mac 字体，不按通用分数选日文或繁体字体', () => {
+    const cjk = (family: string, postscriptName: string) => makeMeta({
+      family,
+      postscriptName,
+      unicodeRanges: CJK_RANGES,
+    });
+    const yuMincho = cjk('YuMincho', 'YuMin-Demibold');
+    const heitiTc = cjk('Heiti TC', 'STHeitiTC-Light');
+    const songtiSc = cjk('Songti SC', 'STSongti-SC-Regular');
+    const service = new FontResolutionService({
+      catalog: new FakeCatalog([yuMincho, heitiTc, songtiSc]),
+      scoreSubstitution: (_request, candidate) => (candidate === songtiSc ? 10 : 1),
+    });
+
+    for (const family of ['SimSun', '宋体', 'STZhongsong']) {
+      const resolved = service.resolve(makeRequest({ family, script: 'eastAsian' }));
+      expect(resolved).toMatchObject({ resolvedFamily: 'Songti SC', resolution: 'substituted', exactMatch: false });
+    }
+    // 没有收录对照的字体仍走通用打分。
+    expect(service.resolve(makeRequest({ family: 'Unknown Serif', script: 'eastAsian' })).resolvedFamily)
+      .not.toBe('Songti SC');
+  });
 });
 
 class FakeCatalog implements FontResolutionCatalog {
