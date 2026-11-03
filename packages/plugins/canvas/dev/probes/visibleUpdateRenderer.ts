@@ -9,6 +9,8 @@ const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() =>
 const source = { kind: 'agent', conversationId: 'visible-update-probe', runId: 'diagnostic' };
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
 let cards: CanvasCard[] = [], dispose = () => {};
+const paints: number[] = [];
+document.addEventListener('paint', () => paints.push(performance.now()), true);
 let apply: ((poll: boolean) => Promise<unknown>) | undefined;
 
 async function prepare() {
@@ -36,6 +38,7 @@ async function prepare() {
   };
   kernel.setElements(cards); kernel.fit(cards); raster.refresh(); await settle(false);
   apply = async poll => {
+    paints.length = 0;
     const started = performance.now(), previousDraw = kernel.readStats().renders;
     cards = cards.map(card => ({ ...card, revision: card.revision + 1, color: card.color === 'green' ? 'orange' : 'green' }));
     kernel.setElements(cards); raster.refresh(); const projected = performance.now();
@@ -44,7 +47,7 @@ async function prepare() {
     if (kernel.readStats().renders <= previousDraw || readiness.cards.length !== 500 || readiness.cards.some(card => card.mode !== 'body' || card.status !== 'ready')) throw new Error('visible_update_body_not_drawn');
     return { measurement: 'kernel-input-to-current-body-draw', backendMeasured: false, validHardwareRun: false,
       cards: cards.length, poll, polls: settled.polls, projectMs: projected - started, geometryMs: geometry - started,
-      bodyMs: performance.now() - started, scene: kernel.readStats(), queue: raster.readStats(), failures };
+      bodyMs: performance.now() - started, paints: paints.map(time => time - started), scene: kernel.readStats(), queue: raster.readStats(), failures };
   };
   dispose = () => { raster.dispose(); kernel.destroy(); apply = undefined; };
   return { viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio }, camera: kernel.readCamera(), scene: kernel.readStats(), queue: raster.readStats() };

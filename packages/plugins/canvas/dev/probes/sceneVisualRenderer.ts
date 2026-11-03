@@ -1,4 +1,4 @@
-import { CanvasCardSchema, type CanvasCard } from '../../src/shared';
+import { CanvasCardSchema, readCanvasCardPalette, type CanvasCard } from '../../src/shared';
 import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/kernel';
 
 const source = { kind: 'agent', conversationId: 'visual', runId: 'motion' };
@@ -69,6 +69,16 @@ async function sceneMapVisual() {
   if (kernel.readStats().sceneTransitions || kernel.readStats().cards) throw new Error('scene_map_retirement_not_finished');
   return { before, middle, after };
 }
+async function identityInkVisual() {
+  const kernel = await setup(), initial = CanvasCardSchema.parse({ ...card('c1', 20), width: 500,
+    data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'IDENTITY 中文纯色' }] }] } } });
+  const samples = [];
+  for (const dark of [false, true]) for (const color of ['white', 'green', 'purple'] as const) {
+    kernel.setElements([{ ...initial, color }]); kernel.setAppearance({ dark, material: 'paper', overview: 'titles' });
+    samples.push({ dark, color, title: readCanvasCardPalette(color, dark).title, image: await kernel.captureImage('png') });
+  }
+  return samples;
+}
 async function beginReducedScene() {
   const kernel = await setup(), initial = card('c1', 20); kernel.setElements([initial]); await drawn();
   kernel.setElements([{ ...initial, revision: 2, x: 330 }], { animateIds: [initial.id] }); kernel.animateCamera({ x: 100, y: 60, zoom: 1.2 }, 320);
@@ -83,4 +93,4 @@ async function finishReducedScene() {
   const stats = kernel.readStats(); kernel.destroy(); current = undefined; return stats;
 }
 Object.defineProperties(window, { prepareCanvasSceneVisualProbe: { value: sceneVisual }, prepareCanvasSceneOpacityVisualProbe: { value: sceneOpacityVisual }, prepareCanvasSceneMapVisualProbe: { value: sceneMapVisual },
-  beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });
+  prepareCanvasIdentityInkProbe: { value: identityInkVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });

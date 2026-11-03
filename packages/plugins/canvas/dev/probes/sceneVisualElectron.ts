@@ -27,10 +27,18 @@ export async function verifySceneVisual(win: BrowserWindow, output: string, eval
     const mapInk = { before: darkness(map.before), middle: darkness(map.middle), after: darkness(map.after) };
     if (mapInk.before < 100 || mapInk.middle <= 0 || mapInk.middle >= mapInk.before || mapInk.after) throw new Error(`scene_map_label_did_not_fade_with_retired_paper:${JSON.stringify(mapInk)}`);
     await writeFile(path.join(output, 'scene-map-midpoint.png'), nativeImage.createFromDataURL(map.middle).toPNG());
+    const identity = z.array(z.object({ dark: z.boolean(), color: z.string(), title: z.number(), image: z.string() })).parse(await evaluate(win.webContents, 'window.prepareCanvasIdentityInkProbe()'));
+    const identityInk = identity.map(sample => {
+      const pixels = nativeImage.createFromDataURL(sample.image).toBitmap(); let matching = 0;
+      for (let i = 0; i < pixels.length; i += 4) if (Math.abs(pixels[i] - (sample.title & 255)) <= 3
+        && Math.abs(pixels[i + 1] - (sample.title >> 8 & 255)) <= 3 && Math.abs(pixels[i + 2] - (sample.title >> 16 & 255)) <= 3) matching++;
+      if (matching < 40) throw new Error(`identity_gpu_ink_not_visible:${sample.dark}:${sample.color}:${matching}`);
+      return { dark: sample.dark, color: sample.color, matching };
+    });
     const began = z.object({ started: z.number(), reduced: z.boolean() }).parse(await evaluate(win.webContents, 'window.beginCanvasReducedSceneProbe()'));
     if (began.started !== 1 || began.reduced) throw new Error('scene_motion_was_not_running_before_system_preference_change');
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     const reduced: unknown = await evaluate(win.webContents, 'window.finishCanvasReducedSceneProbe()');
-    return { move: { start: move.start, middlePosition: move.middlePosition, frozen: move.frozen, camera: move.camera, stats: move.stats }, opacity: { initial, middle, opaque, removed, revealed }, mapInk, reduced };
+    return { move: { start: move.start, middlePosition: move.middlePosition, frozen: move.frozen, camera: move.camera, stats: move.stats }, opacity: { initial, middle, opaque, removed, revealed }, mapInk, identityInk, reduced };
   } finally { await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [] }); win.webContents.debugger.detach(); }
 }
