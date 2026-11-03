@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.package.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "strict": true,
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [],
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/__tests__/**"
+  ]
+}

@@ -1,0 +1,12 @@
+.markdown-document-content { color: inherit; font: inherit; overflow-wrap: anywhere; line-height: 1.55; }
+.markdown-document-content p { margin: 0 0 0.65em; }
+.markdown-document-content :is(h1,h2,h3,h4,h5,h6) { line-height: 1.3; margin: 0.75em 0 0.45em; }
+.markdown-document-content ul, .markdown-document-content ol { margin: 0.5em 0; padding-inline-start: 1.5em; }
+.markdown-document-content blockquote { margin: 0.5em 0; padding-inline-start: 0.8em; border-inline-start: 0.18em solid currentColor; }
+.markdown-document-content pre { white-space: pre-wrap; font: 0.9em/1.5 monospace; margin: 0.5em 0; }
+.markdown-document-content code { font-family: monospace; }
+.markdown-document-content table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.markdown-document-content td, .markdown-document-content th { border: 1px solid currentColor; padding: 0.25em 0.4em; vertical-align: top; }
+.markdown-document-content img { max-width: 100%; height: auto; }
+.markdown-document-content > :first-child { margin-top: 0; }
+.markdown-document-content > :last-child { margin-bottom: 0; }
