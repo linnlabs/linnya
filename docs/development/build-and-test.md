@@ -130,6 +130,22 @@ Linnkit 仓修复并通过不含源码 alias 的产物类型门禁后发布，Li
 
 ## 4. 构建
 
+### 公共 CI 的执行与缓存
+
+公共测试使用 Vitest 原生三路分片，保留完整发现范围、文件隔离和既有断言；
+`Public test suite` 汇总门只有在所有分片成功后通过。各分片分别显示依赖准备、WASM、
+Main、Backend 和测试耗时。Backend 入口负责准备 schemas，不在同一任务中提前重复构建。
+平台源码构建继续覆盖 macOS 与 Windows，独立 package、架构和供应链门禁保持原有范围。
+
+公共 [Rust 准备入口](../../.github/actions/setup-rust-build/action.yml) 固定 Rust 与 wasm-pack，
+从 `Cargo.lock` 读取 wasm-bindgen 版本，下载校验过的预编译工具；下载失败不退回现场编译。
+Cargo 只缓存这三个原生 workspace 的依赖，不缓存安装包、签名结果、用户数据或私有配置。
+pnpm 缓存仍由 `setup-node` 管理，缺少任意缓存时均从正式锁文件重新准备。
+
+连续推送只取消同一 PR 的旧运行。main 使用独立运行分组，保证每次提交都保留完整检查。
+不对 Markdown 做整体路径排除：Skill、提示词、发行说明和部分测试输入也是 Markdown。
+修改 CI 后，应比较同一产品源码的实际 job 与 step 时间，并区分冷缓存和热缓存。
+
 ```bash
 pnpm run build:wasm
 pnpm run build:frontend

@@ -67,18 +67,18 @@ export function analyzeGitHubWorkflowActionPins(
 }
 
 export function runGitHubActionsPinGuard(repoRoot = process.cwd()): GitHubActionPinViolation[] {
-  const workflowRoot = path.join(repoRoot, '.github', 'workflows');
-  if (!fs.existsSync(workflowRoot)) return [];
-
-  return fs
-    .readdirSync(workflowRoot, { withFileTypes: true })
-    .filter(entry => entry.isFile() && WORKFLOW_EXTENSIONS.has(path.extname(entry.name)))
-    .sort((left, right) => left.name.localeCompare(right.name))
-    .flatMap(entry => {
-      const absolutePath = path.join(workflowRoot, entry.name);
-      const relativePath = path.relative(repoRoot, absolutePath).split(path.sep).join('/');
-      return analyzeGitHubWorkflowActionPins(relativePath, fs.readFileSync(absolutePath, 'utf8'));
+  // 本地复合 Action 仍可执行外部依赖，必须与调用它的 workflow 一起检查。
+  const inspectDirectory = (directory: string): GitHubActionPinViolation[] => {
+    if (!fs.existsSync(directory)) return [];
+    return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) return inspectDirectory(file);
+      if (!entry.isFile() || !WORKFLOW_EXTENSIONS.has(path.extname(entry.name))) return [];
+      const relativePath = path.relative(repoRoot, file).split(path.sep).join('/');
+      return analyzeGitHubWorkflowActionPins(relativePath, fs.readFileSync(file, 'utf8'));
     });
+  };
+  return ['workflows', 'actions'].flatMap(name => inspectDirectory(path.join(repoRoot, '.github', name)));
 }
 
 function main(): void {

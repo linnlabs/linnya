@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 import {
   analyzeGitHubWorkflowActionPins,
@@ -6,6 +9,20 @@ import {
 } from '../guards/github-actions-pin-guard';
 
 describe('GitHub Actions pin guard', () => {
+  it('沿本地复合 Action 检查嵌套外部依赖，不能借相对入口绕过固定版本规则', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'action-pins-'));
+    try {
+      const action = path.join(root, '.github/actions/setup');
+      fs.mkdirSync(action, { recursive: true });
+      fs.writeFileSync(path.join(action, 'action.yml'), 'runs:\n  steps:\n    - uses: owner/tool@main\n');
+      expect(runGitHubActionsPinGuard(root)).toEqual([
+        expect.objectContaining({ file: '.github/actions/setup/action.yml', reference: 'owner/tool@main' }),
+      ]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('当前仓库的外部 Action 全部固定到不可变摘要', () => {
     expect(runGitHubActionsPinGuard()).toEqual([]);
   });

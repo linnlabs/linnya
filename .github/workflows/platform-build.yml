@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: public-platform-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: public-platform-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   source-build:
@@ -39,11 +39,8 @@ jobs:
         run: pnpm exec vitest run scripts/build/functions/__tests__/productionPackageContract.test.mjs
       - name: Verify artifact evidence on the target platform
         run: pnpm run test:artifact-content-bom
-      - name: Install pinned Rust build tools
-        run: |
-          rustup toolchain install 1.97.0 --profile minimal
-          rustup default 1.97.0
-          cargo install wasm-pack --version 0.15.0 --locked
+      - name: Prepare Rust build tools
+        uses: ./.github/actions/setup-rust-build
       # 每个原生命令独立成 step，避免 PowerShell 用后续成功的退出码掩盖前一步失败。
       - name: Package official plugins from a clean checkout
         run: pnpm run package:plugins:official

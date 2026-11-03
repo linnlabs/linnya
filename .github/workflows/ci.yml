@@ -9,8 +9,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: public-required-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # PR 只保留最新推送；main 每次运行独立分组，排队中的提交也不会被替换。
+  group: public-required-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   architecture:
@@ -82,8 +83,12 @@ jobs:
           pnpm --filter @plugin/slides typecheck
           pnpm run test:workspace-plugins
 
-  tests:
-    name: Public test suite
+  test-shards:
+    name: Public tests (${{ matrix.shard }}/3)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     # 完整 backend 会构建 Desktop Plugin CLI native client；产品当前只支持 macOS/Windows，
     # 因此不能用没有正式 runtime target 的 Linux 冒充受支持宿主。
     runs-on: macos-latest
@@ -100,13 +105,27 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Prepare Rust build tools
+        uses: ./.github/actions/setup-rust-build
+      - name: Build WASM
+        run: pnpm run build:wasm
+      - name: Build Backend and its workspace dependencies
+        # build:backend 已拥有 schemas 的准备；不再提前重复编译一次。
+        run: pnpm run build:backend
+      - name: Build Electron Main
+        run: pnpm run build:main
       - name: Run tests without external credentials
-        run: |
-          rustup toolchain install 1.97.0 --profile minimal
-          rustup default 1.97.0
-          cargo install wasm-pack --version 0.15.0 --locked
-          pnpm run build:wasm
-          pnpm run build:schemas
-          pnpm run build:main
-          pnpm run build:backend
-          pnpm test
+        run: pnpm exec vitest run --shard=${{ matrix.shard }}/3
+
+  tests:
+    # 保留原必需检查名称；任一分片失败、取消或未运行都不能给出绿灯。
+    name: Public test suite
+    if: always()
+    needs: [test-shards]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every test shard to pass
+        env:
+          SHARDS_RESULT: ${{ needs.test-shards.result }}
+        run: test "$SHARDS_RESULT" = success
