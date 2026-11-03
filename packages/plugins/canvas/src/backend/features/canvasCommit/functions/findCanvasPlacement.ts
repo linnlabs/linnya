@@ -1,18 +1,18 @@
-import type { CanvasCard } from '../../../../shared';
 import type { CanvasPoint, CanvasRectangle } from '../../../../shared/geometry/definitions/canvasGeometry';
 import { canvasRectanglesOverlap } from '../../../../shared/geometry/functions/canvasGeometry';
 
 export function findCanvasPlacement(input: {
   readonly width: number; readonly height: number;
-  readonly near: CanvasCard | undefined;
+  readonly near: CanvasRectangle | undefined;
+  readonly origin?: CanvasPoint;
   readonly side: 'right' | 'left' | 'top' | 'bottom';
   readonly occupied: readonly CanvasRectangle[];
 }): CanvasPoint {
   const { width, height, near, side, occupied } = input;
   const gap = 32;
-  let x = near ? near.x : 0;
-  let y = near ? near.y : 0;
-  if (near) {
+  let x = input.origin?.x ?? (near ? near.x : 0);
+  let y = input.origin?.y ?? (near ? near.y : 0);
+  if (near && !input.origin) {
     if (side === 'right') x += near.width + gap;
     if (side === 'left') x -= width + gap;
     if (side === 'bottom') y += near.height + gap;

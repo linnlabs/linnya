@@ -75,5 +75,6 @@ export function planCanvasHistoryReversal(input: { readonly state: CanvasCommitS
   for (const record of creations.filter(record => record.after?.type !== 'edge')) apply(record);
   for (const record of records.filter(record => record.before && !record.after && record.before.type === 'edge')) apply(record);
   validateCanvasGraph([...rows.values()].map(row => row.element));
-  return { origin: input.origin, changes, results, refs: {}, state: { ...input.state, deletedOrigins: deleted, sequence: input.state.sequence + (changes.length ? 1 : 0), elements: [...rows.values()] } };
+  return { origin: input.origin, changes, results, refs: {}, retainedElements: records.flatMap(record => [record.before, record.after].flatMap(element => element ? [element] : [])),
+    state: { ...input.state, deletedOrigins: deleted, sequence: input.state.sequence + (changes.length ? 1 : 0), elements: [...rows.values()] } };
 }
