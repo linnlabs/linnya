@@ -6,7 +6,7 @@ import { selectCanvasRasterCoverage } from '../../geometry/selectCanvasRasterCov
 
 interface BitmapOwner { readonly source: TextureSource; readonly bitmap: ImageBitmap; readonly frame: CanvasRectangle }
 interface Region extends CanvasRectangle { readonly scale: number; readonly owner: BitmapOwner; readonly sprite: Sprite; readonly texture: Texture }
-interface Entry { readonly key: string; readonly regions: readonly Region[]; readonly bytes: number }
+interface Entry { readonly key: string; readonly regions: readonly Region[]; readonly bytes: number; readonly acceptedAfterRender: number }
 const owners = (regions: readonly Region[]) => new Set(regions.map(region => region.owner));
 const size = (owner: BitmapOwner) => owner.bitmap.width * owner.bitmap.height * 4;
 function releaseRegion(region: Region): void { region.sprite.removeFromParent(); region.sprite.destroy(); region.texture.destroy(false); }
@@ -22,7 +22,7 @@ function croppedRegion(owner: BitmapOwner, frame: CanvasRectangle, scale: number
 export class CanvasBitmapCache {
   private readonly entries = new Map<CanvasCardId, Entry>();
   private bytes = 0;
-  constructor(private readonly options: { readonly budget: number; readonly changed: (id: CanvasCardId) => void }) {}
+  constructor(private readonly options: { readonly budget: number; readonly changed: (id: CanvasCardId) => void; readonly readRenderCount: () => number }) {}
   has(id: CanvasCardId, key?: string): boolean { const entry = this.entries.get(id); return entry !== undefined && (key === undefined || entry.key === key); }
   covers(id: CanvasCardId, regions: readonly CanvasRectangle[]): boolean {
     const entry = this.entries.get(id); return entry !== undefined && subtractCanvasRegions(regions, entry.regions).length === 0;
@@ -46,7 +46,7 @@ export class CanvasBitmapCache {
     });
     const retained = owners(regions);
     for (const owner of owners(entry.regions)) if (!retained.has(owner)) releaseOwner(owner);
-    return { key: entry.key, regions, bytes: [...retained].reduce((sum, owner) => sum + size(owner), 0) };
+    return { key: entry.key, regions, acceptedAfterRender: entry.acceptedAfterRender, bytes: [...retained].reduce((sum, owner) => sum + size(owner), 0) };
   }
   install(id: CanvasCardId, key: string, tiles: readonly CanvasRasterTile[], body: Container): boolean {
     const previous = this.entries.get(id);
@@ -71,8 +71,11 @@ export class CanvasBitmapCache {
       const sprite = new Sprite(texture); sprite.position.set(tile.x, tile.y); sprite.width = tile.width; sprite.height = tile.height; body.addChild(sprite);
       return { ...owner.frame, owner, texture, sprite, scale: tile.scale };
     });
-    this.entries.set(id, { key, regions: [...retained?.regions ?? [], ...regions], bytes: (retained?.bytes ?? 0) + bytes }); this.bytes += bytes;
+    this.entries.set(id, { key, acceptedAfterRender: this.options.readRenderCount(), regions: [...retained?.regions ?? [], ...regions], bytes: (retained?.bytes ?? 0) + bytes }); this.bytes += bytes;
     this.options.changed(id); return true;
+  }
+  readReceipt(id: CanvasCardId, key: string): number | null {
+    const entry = this.entries.get(id); return entry?.key === key ? entry.acceptedAfterRender : null;
   }
   readStats() { return { bitmaps: this.entries.size, bitmapBytes: this.bytes, bitmapBudgetBytes: this.options.budget,
     rasterTiles: [...this.entries.values()].reduce((sum, entry) => sum + entry.regions.length, 0) }; }

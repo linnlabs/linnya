@@ -1,4 +1,4 @@
-import type { CanvasCard, CanvasRectangle } from '../../shared';
+import type { CanvasCard, CanvasCardId, CanvasRectangle } from '../../shared';
 import type { CanvasAppearance, CanvasKernel } from '../kernel';
 
 export interface CanvasRasterPresentationOptions {
@@ -27,3 +27,14 @@ export interface CanvasRasterPending { readonly key: string; readonly contentKey
 
 export type CanvasRasterIdentity = Omit<CanvasRasterDemand, 'regions' | 'jobKey'> & { readonly physicalWidth: number };
 export interface CanvasRasterFrame { readonly count: number; readonly font: string; readonly precise?: boolean }
+
+export type CanvasRasterReadinessCard =
+  | { readonly id: CanvasCardId; readonly revision: number | null; readonly mode: 'outside'; readonly status: 'not_required' }
+  | { readonly id: CanvasCardId; readonly revision: number; readonly mode: 'overview' | 'thumbnail'; readonly status: 'not_required' }
+  | { readonly id: CanvasCardId; readonly revision: number; readonly mode: 'body'; readonly status: 'ready' | 'awaiting_draw' | 'pending' | 'failed' };
+export interface CanvasRasterReadiness {
+  readonly cards: readonly CanvasRasterReadinessCard[];
+  readonly complete: boolean;
+  readonly precisionSettling: boolean;
+  readonly suspended: boolean;
+}

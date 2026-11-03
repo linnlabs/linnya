@@ -125,6 +125,18 @@ async function run() {
     }
     if (mapInk < 100 || mapPreserved / mapInk < 0.95) throw new Error(`map_pan_labels_mismatch:${mapInk}:${mapPreserved}`);
     await writeFile(path.join(output, 'map-before.png'), mapBefore.toPNG()); await writeFile(path.join(output, 'map-after.png'), mapAfter.toPNG());
+    const selectedMap = z.object({ before: z.string(), selected: z.string(), reference: z.string() })
+      .parse(await win.webContents.executeJavaScript('window.prepareCanvasSelectedMapVisualProbe()'));
+    const beforeMap = nativeImage.createFromDataURL(selectedMap.before).toBitmap(), chosenMap = nativeImage.createFromDataURL(selectedMap.selected).toBitmap();
+    const expectedMap = nativeImage.createFromDataURL(selectedMap.reference).toBitmap(); let selectedInk = 0, selectedIntersection = 0, selectedUnion = 0, selectionChanges = 0;
+    for (let i = 0; i < expectedMap.length; i += 4) {
+      const ink = (pixels: Uint8Array) => pixels[i] < 150 && pixels[i + 1] < 150 && pixels[i + 2] < 150;
+      const expected = ink(expectedMap), actual = ink(chosenMap);
+      if (expected) selectedInk++; if (expected && actual) selectedIntersection++; if (expected || actual) selectedUnion++;
+      if (actual !== ink(beforeMap)) selectionChanges++;
+    }
+    const selectedLabels = { selectedInk, selectionChanges, ratio: selectedIntersection / selectedUnion };
+    if (selectedInk < 100 || selectionChanges < 100 || selectedLabels.ratio < 0.99) throw new Error(`selected_map_priority_missing:${JSON.stringify(selectedLabels)}`);
     const thumbnails = z.object({ titles: z.string(), thumbnails: z.string(), dpr: z.number() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasThumbnailVisualProbe()'));
     const thumbReports = [];
     for (const mode of ['titles', 'thumbnails'] as const) {
@@ -183,7 +195,7 @@ async function run() {
       if (fallbackInk < 100) throw new Error('unsupported_api_identity_is_empty');
       await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());
     } finally { unsupported.destroy(); }
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap, colors: colorReports }, dragOcclusion, snapGuides, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk }, thumbnails: thumbReports,
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap, colors: colorReports }, dragOcclusion, snapGuides, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk, selectedLabels }, thumbnails: thumbReports,
       mixedLod: lodReports, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
