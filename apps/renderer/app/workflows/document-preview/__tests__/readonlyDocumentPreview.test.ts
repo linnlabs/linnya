@@ -25,6 +25,7 @@ vi.mock('@/app/plugins/documentTypePresentation', () => ({
   readDocumentTypeRecoveryAction: () => null,
 }));
 it('detailOnly renders readonly Markdown immediately, blocks nested navigation and removes content on availability or project changes', async () => {
+  await import('@linnya/markdown-document-core');
   ports.read.mockResolvedValue({
     documentId: 'doc',
     status: 'available',
@@ -65,9 +66,25 @@ it('detailOnly renders readonly Markdown immediately, blocks nested navigation a
         detailOnly: true,
       }),
   }).use(pinia);
+  const began = performance.now(),
+    transitions: { elapsed: number; html: string }[] = [];
+  const observer = new MutationObserver(() =>
+    transitions.push({ elapsed: performance.now() - began, html: host.innerHTML })
+  );
+  observer.observe(host, { childList: true, subtree: true, characterData: true });
   try {
     app.mount(host);
-    await vi.waitFor(() => expect(host.querySelector('h1')?.textContent).toBe('Full detail'));
+    await vi.waitFor(() =>
+      expect(
+        host.querySelector('h1')?.textContent,
+        JSON.stringify({
+          elapsed: performance.now() - began,
+          reads: ports.read.mock.calls.length,
+          previews: ports.preview.mock.calls.length,
+          transitions,
+        })
+      ).toBe('Full detail')
+    );
     expect(host.textContent).not.toContain('Cover summary');
     expect(host.querySelectorAll('[contenteditable]')).toHaveLength(0);
     const click = new MouseEvent('click', { bubbles: true, cancelable: true });
@@ -96,6 +113,7 @@ it('detailOnly renders readonly Markdown immediately, blocks nested navigation a
     await vi.waitFor(() => expect(host.textContent).toContain('不在当前项目'));
     expect(host.querySelector('h1')).toBeNull();
   } finally {
+    observer.disconnect();
     app.unmount();
     host.remove();
   }

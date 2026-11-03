@@ -16,3 +16,5 @@ store 同步持有，store 不发请求或执行规则。
 DOM、documentId/projectId 和可选 AbortSignal；DOM 与 signal 不经过 IPC。Host 在懒 import 前后再次解析目标范围，每个容器有独立的挂载所有权。abort 可在 import 或异步类型组件未完成时关闭；旧请求返回的 disposer 只清理自己的 VNode，不会卸载后来目标。正常卸载还释放当前单页位图、DOM 和订阅。
 
 布局 class 使用 readonly-document-preview 命名空间与既有 Markdown 全局样式，不为消费者增加未声明 scopedCSS。Canvas 视口、相机、卡片选区与近景判定属于消费者，不进入本 workflow。
+
+Markdown 详情的模块加载与 DOM 转换拥有独立生命周期，期间显示“正在加载详情”，失败有明确状态，关闭或换范围后的迟到转换不写 DOM。真实 DOM 业务测试先准备正式解析依赖再驱动 UI，不把 Vitest 首次转译队列计入交互断言；延迟模块与取消用受控 Promise 和真实解析器单独验证。生产冷载耗时仍需在正式 Renderer 产物测量，不能用该业务测试冒充速度达标。
