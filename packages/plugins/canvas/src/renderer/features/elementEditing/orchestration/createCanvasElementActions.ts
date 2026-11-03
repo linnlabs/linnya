@@ -34,7 +34,7 @@ export function createCanvasElementActions(session: CanvasDocumentSession, selec
         const fromRef = plan.refs.get(edge.from.cardId), toRef = plan.refs.get(edge.to.cardId);
         const fromId = fromRef ? result.refs[fromRef] : undefined, toId = toRef ? result.refs[toRef] : undefined;
         if (!current || current.type !== 'edge' || !fromId || !toId) continue;
-        patches.push({ op: 'update', id: current.id, baseRevision: current.revision, patch: { color: edge.color, locked: edge.locked, lineStyle: edge.lineStyle,
+        patches.push({ op: 'update', id: current.id, baseRevision: current.revision, patch: { color: edge.color, locked: edge.locked, lineStyle: edge.lineStyle, linePattern: edge.linePattern,
           from: { ...edge.from, cardId: CanvasCardIdSchema.parse(fromId) }, to: { ...edge.to, cardId: CanvasCardIdSchema.parse(toId) } } });
       }
       if (patches.length > 500) throw new Error('复制子图属性超过500项，请分批选择');
@@ -45,12 +45,12 @@ export function createCanvasElementActions(session: CanvasDocumentSession, selec
     async connect() {
       const [from, to] = selection.read();
       if (!from || !to || selection.read().length !== 2) throw new Error('请选择两张卡片再连线');
-      await session.commit([{ op: 'connect', from, to, label: '', direction: 'forward' }]);
+      await session.commit([{ op: 'connect', from, to, label: '', direction: 'forward', lineStyle: 'curve', linePattern: 'solid' }]);
     },
     async resize(width: number, height: number) {
       const card = elements().find(element => element.id === selection.read()[0]);
       if (!card || card.type === 'edge' || card.locked || selection.read().length !== 1) return;
-      await session.commit([{ op: 'update', id: card.id, baseRevision: card.revision, patch: { width: Math.max(80, width), height: Math.max(60, height) } }]);
+      await session.commit([{ op: 'update', id: card.id, baseRevision: card.revision, patch: { width: Math.max(80, width), height: Math.max(60, height), ...(card.type === 'text' ? { data: { ...card.data, heightMode: 'fixed' } } : {}) } }]);
     },
   };
 }

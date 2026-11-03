@@ -15,7 +15,7 @@ export function buildCanvasDuplication(elements: readonly CanvasElement[], ids: 
   for (const element of edges) {
     if (element.type !== 'edge' || element.from.kind !== 'card' || element.to.kind !== 'card') continue;
     const from = refs.get(element.from.cardId), to = refs.get(element.to.cardId);
-    if (from && to) operations.push({ op: 'connect', ref: `$edge${edgeIndex++}`, from, to, label: element.label, direction: element.direction });
+    if (from && to) operations.push({ op: 'connect', ref: `$edge${edgeIndex++}`, from, to, label: element.label, direction: element.direction, lineStyle: element.lineStyle, linePattern: element.linePattern });
   }
   if (operations.length > 500) throw new Error('本次复制超过500项，请分批选择');
   return { operations, refs, cards, edges };
