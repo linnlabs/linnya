@@ -1,5 +1,9 @@
 import type { Ref } from 'vue';
 import type { CanvasAgentGroup, CanvasApprovalResolution, CanvasCardId, CanvasElementId, CanvasRectangle, CanvasResolveApprovalRequest, CanvasUndoResult, CanvasWithdrawGroupRequest } from '@plugin/canvas/shared';
+export interface CanvasAgentReviewOptions {
+  /** 只在会改正文的审阅动作前保存当前表面草稿；false时不创建写请求。 */
+  readonly beforeMutation?: () => Promise<boolean>;
+}
 export interface CanvasAgentReviewPort {
   groups(documentId: string, viewId: string): Promise<CanvasAgentGroup[]>;
   withdraw(input: CanvasWithdrawGroupRequest): Promise<CanvasUndoResult>;
