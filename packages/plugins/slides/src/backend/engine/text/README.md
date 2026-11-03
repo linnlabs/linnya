@@ -45,6 +45,7 @@ DeckSpec / CanonicalDeck
 
 `textLayoutPptxOptions.ts` 只映射文本框层的 padding、wrap、autofit、vertical align 与 overflow。行距属于 paragraph：
 
+- 纵向锚点始终显式写出 `bodyPr@anchor`，值取自与预览相同的 `TextLayoutContract.verticalAlign`（缺省 top → `t`）；作者的 `style.valign` 与 Shape 的 `resolveShapeTextLayout().valign` 都作为合同输入传入，不在调用点各自补默认值。PptxGenJS 对非占位符文本的缺省是 `ctr`，不能依赖。列表条目的 run 选项不承载锚点，必须写在容器层；表格单元格不经本层，保留表格自身的 middle；
 - generated Text 的 `wrap` 来自 DeckSpec：RenderModel finalization 与 PPTX compiler 必须消费同一值；不得按文字内容或盒宽再次猜测。`none` 在预览中只保留显式换行，在 PPTX 中写为 `bodyPr wrap="none"`；
 - `multiple` 精确输出 OOXML `spcPct`；
 - `exactPt` 精确输出 OOXML `spcPts`；
@@ -70,5 +71,6 @@ freeform 形状内文字的 `prepareShapeTextAutofit` 复用正式 mapper、字�
 - PPTX textbox options：`src/backend/engine/text/__tests__/textLayoutPptxOptions.test.ts`
 - OOXML paragraph 行距：`src/backend/__tests__/{structured-compiler,freeform-compiler}.test.ts`
 - 前端/PPTX 几何对齐：`src/backend/__tests__/render-pptx-alignment.test.ts`
+- 纵向锚点预览、导出与重新导入一致：`src/backend/__tests__/text-vertical-anchor-roundtrip.test.ts`
 
 `materializeIntrinsicTextBoxes` 在 codegen 落库与 PPTX 物化前处理无横向约束的绝对定位 Text：复用本模块的字体解析、预热与最终布局，保留左右/底部锚点并按 EMU 向上量化外框宽度。Yoga 的临时启发式盒不能成为自动宽度的持久化事实。来源记录在 generated constraint evidence 的 `intrinsicTextAdvanceSource`；系统测量不可用时仍如实标记 heuristic。

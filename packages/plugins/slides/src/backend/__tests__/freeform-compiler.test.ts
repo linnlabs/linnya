@@ -6,6 +6,7 @@ import { StructuredCompiler } from '../engine/StructuredCompiler.js';
 import { PptxReader } from '../engine/parser/PptxReader.js';
 import { PptxValidator } from '../engine/pptx/PptxValidator.js';
 import type { DeckSpec, FreeformSlideSpec } from '@plugin/slides/shared';
+import { findTextBodyAnchor, readTextBodyAnchors } from './helpers/pptx-text-body-anchors.js';
 
 const freeformCompiler = new FreeformCompiler();
 const structuredCompiler = new StructuredCompiler();
@@ -75,6 +76,67 @@ describe('FreeformCompiler', () => {
     expect(xml).toMatch(/anchor="t" vert="eaVert"/u);
     // 不能用逐字换行冒充竖排。
     expect(xml).toContain('清风徐来');
+  });
+
+  it('anchors plain and rich text boxes to the preview vertical alignment', async () => {
+    const buffer = await freeformCompiler.compileDeck({
+      title: 'Text anchors',
+      slides: [{
+        slideNumber: 1,
+        spec: makeFreeformSlide({
+          elements: [
+            { type: 'text', position: { x: 0.5, y: 0.5, w: 4, h: 1.5 }, content: 'Default plain' },
+            {
+              type: 'text',
+              position: { x: 5, y: 0.5, w: 4, h: 1.5 },
+              content: [{ text: 'Default ', style: { bold: true } }, { text: 'rich' }],
+            },
+            { type: 'text', position: { x: 0.5, y: 2.2, w: 3, h: 1.5 }, content: 'Top plain', style: { valign: 'top' } },
+            { type: 'text', position: { x: 3.6, y: 2.2, w: 3, h: 1.5 }, content: 'Middle plain', style: { valign: 'middle' } },
+            {
+              type: 'text',
+              position: { x: 6.7, y: 2.2, w: 3, h: 1.5 },
+              content: [{ text: 'Bottom rich' }],
+              style: { valign: 'bottom' },
+            },
+          ],
+        }),
+      }],
+    });
+    const anchors = readTextBodyAnchors(await readSlideXml(buffer));
+
+    expect(findTextBodyAnchor(anchors, 'Default plain').anchor).toBe('t');
+    expect(findTextBodyAnchor(anchors, 'Default rich').anchor).toBe('t');
+    expect(findTextBodyAnchor(anchors, 'Top plain').anchor).toBe('t');
+    expect(findTextBodyAnchor(anchors, 'Middle plain').anchor).toBe('ctr');
+    expect(findTextBodyAnchor(anchors, 'Bottom rich').anchor).toBe('b');
+  });
+
+  it('keeps shape inner text anchors owned by the shape text layout', async () => {
+    const buffer = await freeformCompiler.compileDeck({
+      title: 'Shape anchors',
+      slides: [{
+        slideNumber: 1,
+        spec: makeFreeformSlide({
+          elements: [
+            { type: 'shape', geometry: 'rect', position: { x: 0.5, y: 0.5, w: 3, h: 1.5 }, content: 'Default shape' },
+            {
+              type: 'shape',
+              geometry: 'rect',
+              position: { x: 4, y: 0.5, w: 3, h: 1.5 },
+              content: 'Bottom shape',
+              style: { valign: 'bottom' },
+            },
+            { type: 'shape', geometry: 'rect', position: { x: 0.5, y: 2.5, w: 3, h: 1.5 }, content: 'Shape one\nShape two' },
+          ],
+        }),
+      }],
+    });
+    const anchors = readTextBodyAnchors(await readSlideXml(buffer));
+
+    expect(findTextBodyAnchor(anchors, 'Default shape').anchor).toBe('ctr');
+    expect(findTextBodyAnchor(anchors, 'Bottom shape').anchor).toBe('b');
+    expect(findTextBodyAnchor(anchors, 'Shape oneShape two').anchor).toBe('t');
   });
 
   it('compiles a text element', async () => {

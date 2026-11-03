@@ -182,6 +182,8 @@ export function mapTextParagraphStyleToProps(style?: TextStyle): Record<string, 
   if (style?.writingMode === 'vertical-rl') {
     opts.vert = 'eaVert';
     // PptxGenJS 缺省写 anchor="ctr"；竖排的外框常宽于列组，必须与预览的缺省靠右一致。
+    // 文本框的锚点最终由 textLayoutPptxOptions 按布局合同写出；本函数也服务 run 与表格单元格，
+    // 不能在这里为横排统一补 top，否则会覆盖表格单元格继承的 middle。
     opts.valign = style.valign ?? 'top';
   }
   return { ...opts, ...mapTextParagraphLineSpacingToProps(style) };

@@ -197,7 +197,7 @@ export class FreeformPptxCompiler {
           el.position,
           'resize-shape',
           'plain-textbox',
-          { wrap: el.textWrap },
+          { wrap: el.textWrap, verticalAlign: el.style?.valign },
         ),
       } as PptxGenJS.TextPropsOptions);
     } else if (Array.isArray(el.content)) {
@@ -240,7 +240,7 @@ export class FreeformPptxCompiler {
           el.position,
           'resize-shape',
           'plain-textbox',
-          { wrap: el.textWrap },
+          { wrap: el.textWrap, verticalAlign: el.style?.valign },
         ),
         ...(textBox ? { objectName: textBox.objectName } : {}),
       } as PptxGenJS.TextPropsOptions);
@@ -314,13 +314,13 @@ export class FreeformPptxCompiler {
         ...opts,
         ...mapTextParagraphStyleToProps(el.style),
         align: textLayout.align,
-        valign: textLayout.valign,
         fontSize: textLayout.fontSize,
+        // 形状的纵向锚点由 resolveShapeTextLayout 决定，经同一布局合同写出。
         ...resolveGeneratedPptxTextLayoutOptions(
           el.position,
           'shrink-text',
           'shape-inner-text',
-          { padding: textLayout.paddingInches },
+          { padding: textLayout.paddingInches, verticalAlign: textLayout.valign },
         ),
       };
       const content = typeof el.content === 'string'

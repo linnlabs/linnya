@@ -223,7 +223,7 @@ export class StructuredCompiler {
         el.position,
         'resize-shape',
         'title-textbox',
-        { wrap: el.textWrap },
+        { wrap: el.textWrap, verticalAlign: el.style?.valign },
       ),
     };
     // title 默认加粗、字号 24
@@ -244,7 +244,7 @@ export class StructuredCompiler {
         el.position,
         'resize-shape',
         'plain-textbox',
-        { wrap: el.textWrap },
+        { wrap: el.textWrap, verticalAlign: el.style?.valign },
       ),
     };
     if (typeof el.content === 'string') {
@@ -286,7 +286,13 @@ export class StructuredCompiler {
     }));
     slide.addText(textProps, {
       ...mapPosition(el.position),
-      ...resolveGeneratedPptxTextLayoutOptions(el.position, 'resize-shape', 'bullet-textbox'),
+      // 列表条目的 run 选项不能承载 bodyPr 锚点，必须在容器层写出。
+      ...resolveGeneratedPptxTextLayoutOptions(
+        el.position,
+        'resize-shape',
+        'bullet-textbox',
+        { verticalAlign: el.style?.valign },
+      ),
     } as PptxGenJS.TextPropsOptions);
   }
 
@@ -304,7 +310,13 @@ export class StructuredCompiler {
     }));
     slide.addText(textProps, {
       ...mapPosition(el.position),
-      ...resolveGeneratedPptxTextLayoutOptions(el.position, 'resize-shape', 'bullet-textbox'),
+      // 列表条目的 run 选项不能承载 bodyPr 锚点，必须在容器层写出。
+      ...resolveGeneratedPptxTextLayoutOptions(
+        el.position,
+        'resize-shape',
+        'bullet-textbox',
+        { verticalAlign: el.style?.valign },
+      ),
     } as PptxGenJS.TextPropsOptions);
   }
 
@@ -456,13 +468,13 @@ export class StructuredCompiler {
       const textOptions: Omit<PptxGenJS.TextPropsOptions, 'shape'> = {
         ...shapeOpts,
         align: textLayout.align,
-        valign: textLayout.valign,
         fontSize: textLayout.fontSize,
+        // 形状的纵向锚点由 resolveShapeTextLayout 决定，经同一布局合同写出。
         ...resolveGeneratedPptxTextLayoutOptions(
           el.position,
           'shrink-text',
           'shape-inner-text',
-          { padding: textLayout.paddingInches },
+          { padding: textLayout.paddingInches, verticalAlign: textLayout.valign },
         ),
       };
       addPptxShapeText(slide, el.text, geometry, textOptions);
