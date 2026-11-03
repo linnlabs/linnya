@@ -43,6 +43,7 @@ import { PptPresentationQueryService } from '../engine/coordinator/PptPresentati
 import { createSlidesEngineExecutionContext } from '../engine/types';
 import type { SlidesEngineExecutionAdapter } from '../engine/types';
 import { buildToolFeedbackPayloadAsync } from '@plugin/slides/backend-tools';
+import { resolveDeckFontDeliveryTarget } from '@plugin/slides/shared/fontDelivery';
 import { PresentationQueryRuntime } from './presentationQueryRuntime';
 import {
   PresentationCodegenRuntime,
@@ -238,6 +239,10 @@ export class PptCoordinator {
           versionId: snapshot.version.id,
           manualEditWarnings: snapshot.version.deckSpec.manualEditWarnings,
           renderModel: snapshot.renderModel,
+          fontTarget: resolveDeckFontDeliveryTarget(
+            snapshot.renderModel.sourceKind,
+            snapshot.version.deckSpec.theme,
+          ),
         };
       },
       loadSourceLocations: async renderModel => {
@@ -273,6 +278,7 @@ export class PptCoordinator {
             sourceSpanUseCounts: options.sourceSpanUseCounts,
             ...(options.focus ? { focus: options.focus } : {}),
             ...(options.sourceLocations ? { sourceLocations: options.sourceLocations } : {}),
+            ...(options.fontTarget ? { fontTarget: options.fontTarget } : {}),
             spatialAnalyzer: this.engine,
           }
         ),

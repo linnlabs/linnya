@@ -20,6 +20,7 @@ const ACTION_BY_CODE = {
   font_unresolved: '改用可用字体或补齐字体资源',
   font_family_substituted: '确认替代字体效果，必要时改用可稳定解析的字体',
   font_style_substituted: '确认字重与字形替代效果，必要时调整样式',
+  font_not_deliverable: '换成目标环境可用的字体（见 alternatives），或在 theme.fontTarget 声明只在本机放映',
   palette_too_diverse: '复核颜色角色并减少无必要色相',
   primary_hue_drift: '统一跨页主色角色或确认主题切换有意',
   text_contrast_low: '提高文字与背景的对比度',

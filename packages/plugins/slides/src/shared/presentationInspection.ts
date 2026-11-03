@@ -1,3 +1,4 @@
+import type { FontDeliveryTarget } from './fontDelivery';
 import type { PresentationRenderModel } from './renderModel';
 import type { SourceLocationHint } from './toolFeedback';
 
@@ -27,6 +28,8 @@ export interface PresentationInspectionSnapshot {
   readonly manualEditWarnings?: readonly string[];
   readonly versionId: string;
   readonly renderModel: PresentationRenderModel;
+  /** 生成稿的字体目标环境；导入稿不检查可交付性，留空。 */
+  readonly fontTarget?: FontDeliveryTarget;
 }
 
 export interface PresentationInspectionFeedbackOptions {
@@ -34,4 +37,5 @@ export interface PresentationInspectionFeedbackOptions {
   readonly sourceLocations?: ReadonlyMap<number, SourceLocationHint>;
   readonly sourceSpanUseCounts: ReadonlyMap<string, number>;
   readonly focus?: readonly PresentationInspectionSourceRange[];
+  readonly fontTarget?: FontDeliveryTarget;
 }

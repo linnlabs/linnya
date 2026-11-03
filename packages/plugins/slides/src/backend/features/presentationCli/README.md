@@ -52,8 +52,8 @@ CLI 将 `sharp`、`better-sqlite3`、`fontkit`、Yoga、HarfBuzz、jieba 和 PDF
 
 - standalone `render` 必须提供 presentation ID 和输出目录，可选单页、范围、宽度、像素比与 overwrite；Agent bridge 由 Host 管理输出。宽度与像素比在参数解析阶段先按统一 4000 万像素预算的正方形包络校验，读取真实文稿比例后 screenshot runtime 再按实际输出宽高精确复核。成功后把共享 renderer 已完成背景合成的不透明页面编码为 quality 90、4:4:4 JPEG 检查图，并输出单行 render report。无损 PNG 属于 screenshot/raster 领域入口，不由 review CLI 生产。
 - `inspect` 输出紧凑的 `buildStatus + findingSummary + rootGroups + findings` JSON；不复制 `read_file` 已能提供的页面结构，也不输出完整 scene graph、文本布局归因或背景图片 source。每条 finding 保留置信度、设计意图上下文、节点、源码位置、空间关系、建议和统一派生的 P0/P1/P2；`--heuristics` 可附加 Tier-2 低置信提示。需要比较已知源码对象时，可重复传入至多四个 `--source-range start:end`，报告只附加匹配节点及每页、每对范围最近节点的横纵 `gap/overlap`，不生成距离矩阵。
-- `fonts check --family <name>` 做不受候选分页影响的精确字体族检查。结果保留请求名称，并在命中时返回规范 family、脚本候选、regular/bold/italic 与 monospace。
-- `fonts list --script <latin|eastAsian|complex>` 按脚本发现候选，默认 30 项、最多 100 项，以 `--offset` 继续分页。结果稳定排序、按 family 去重，并过滤点号前缀的系统内部 UI 字体。
+- `fonts check --family <name>` 做不受候选分页影响的精确字体族检查。结果保留请求名称，并在命中时返回规范 family、脚本候选、regular/bold/italic 与 monospace；另带 `office`，按 `shared/fontDelivery` 字体表给出 Windows 与 Mac 版 PowerPoint 的交付状态（`core/cloud/unavailable`）和替换方向。本机已安装不代表可交付。
+- `fonts list --script <latin|eastAsian|complex>` 默认 `--target office`，列 Office 通用字体表并逐项标 `installedHere`，不分页。`--target local` 按脚本发现本机候选，默认 30 项、最多 100 项，以 `--offset` 继续分页；结果稳定排序、按 family 去重，并过滤点号前缀的系统内部 UI 字体。
 - `fonts` 输出不包含字体文件路径、PostScript name、face index、缓存位置或替代算法；OS/2 脚本元数据只代表候选，不代表完整覆盖某个自然语言。
 - standalone CLI 的 `--database` 可显式指定 workspace SQLite；省略时使用 CLI host 注入路径。它始终以只读连接打开数据库，不执行迁移或表写入。Agent bridge 明确拒绝该参数。
 

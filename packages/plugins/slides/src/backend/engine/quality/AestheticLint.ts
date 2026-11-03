@@ -30,6 +30,7 @@
 
 import {
   flattenSlideElements,
+  type FontDeliveryTarget,
   type PresentationInfo,
 } from '@plugin/slides/shared';
 import { LayoutLint } from './LayoutLint.js';
@@ -39,6 +40,7 @@ import {
   lintEdgeMargins,
   lintElementCount,
   lintFontFamilyConsistency,
+  lintFontDelivery,
   lintFontFamilySubstitution,
   lintFontStyleSubstitution,
   lintFontSizeFloor,
@@ -67,10 +69,15 @@ export type {
   SlideRepetitionPair,
 } from './aesthetic/types.js';
 
+export interface AestheticLintOptions {
+  /** 生成稿的字体目标环境；留空时不检查字体可交付性。 */
+  readonly fontTarget?: FontDeliveryTarget;
+}
+
 export class AestheticLint {
   private readonly layoutLint = new LayoutLint();
 
-  lint(info: PresentationInfo): AestheticLintReport {
+  lint(info: PresentationInfo, options: AestheticLintOptions = {}): AestheticLintReport {
     const layout = this.layoutLint.lint(info);
     const aesthetic: AestheticLintIssue[] = [];
 
@@ -101,7 +108,8 @@ export class AestheticLint {
     }
 
     aesthetic.push(...lintFontFamilyConsistency(info));
-    aesthetic.push(...lintFontFamilySubstitution(info));
+    aesthetic.push(...lintFontFamilySubstitution(info, options.fontTarget));
+    aesthetic.push(...lintFontDelivery(info, options.fontTarget));
     aesthetic.push(...lintFontStyleSubstitution(info));
     aesthetic.push(...lintPrimaryHueDrift(slidePrimaryHues));
     const repetition = analyzeSlideRepetition(info);

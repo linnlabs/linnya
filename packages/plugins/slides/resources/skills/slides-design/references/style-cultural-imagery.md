@@ -127,7 +127,7 @@ def glyph(font_path, ch, size, rgb, stroke=0):
 - **落影**：透明 PNG 不要用 `shadow`，它按矩形盒子画。在主体下方垫一个径向渐变椭圆（中心不透明，边缘 `opacity: 0`）。
 - **印章**：Frame 底色加居中原生 Text，字号要算上文字默认的左右各 0.1in 内边距，否则会折行。
 - **贴边**：Text 默认有 0.1in 内边距，要和图片或色块对齐时减去它。
-- **西文与正文字体**：用 `linnya-slides fonts check` 确认后再定。Mac 专属字体（Baskerville、Songti SC 等）到 Windows 会被替换；要跨平台就选 Georgia、Times New Roman，或提前说明。
+- **西文与正文字体**：从 `linnya-slides fonts list` 列出的 Office 通用字体里选。中文正文用宋体、楷体、仿宋；标题可用华文中宋、华文行楷，它们是 Office 云字体，旧版 Office 会替换。西文用 Georgia、Garamond。Songti SC、Baskerville 等 Mac 专属字体会被 inspect 报 `font_not_deliverable`。
 - **换图**：图片按来源路径绑定。字节变了要换新文件名，同名覆盖不会生效。
 
 ## 检查

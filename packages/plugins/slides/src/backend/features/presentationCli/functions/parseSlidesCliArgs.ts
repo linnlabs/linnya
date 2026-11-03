@@ -13,8 +13,12 @@ const HELP = `Linnya Slides CLI
 Usage:
   slides render --presentation <id> --output <directory> [options]
   slides inspect --presentation <id> [options]
-  slides fonts list --script <latin|eastAsian|complex> [--limit <number>] [--offset <number>]
+  slides fonts list --script <latin|eastAsian|complex> [--target <office|local>] [--limit <number>] [--offset <number>]
   slides fonts check --family <name>
+
+Font options:
+  --target office         List fonts PowerPoint opens on both Windows and Mac (default)
+  --target local          List fonts installed on this computer (supports --limit/--offset)
 
 Common options:
   --database <path>       Workspace SQLite path (defaults to the active workspace)
@@ -82,10 +86,11 @@ export function parseSlidesCliArgs(
   if (
     parsed.values.family !== undefined
     || parsed.values.script !== undefined
+    || parsed.values.target !== undefined
     || parsed.values.limit !== undefined
     || parsed.values.offset !== undefined
   ) {
-    throw usageError('--family, --script, --limit and --offset are fonts options');
+    throw usageError('--family, --script, --target, --limit and --offset are fonts options');
   }
   const presentationId = requireNonEmpty(parsed.values.presentation, '--presentation');
   const databasePath = readOptionalNonEmpty(parsed.values.database, '--database');
@@ -201,11 +206,30 @@ function parseFontCommand(args: readonly string[]): SlidesCliInvocation {
   if (script !== 'latin' && script !== 'eastAsian' && script !== 'complex') {
     throw usageError('--script must be one of: latin, eastAsian, complex');
   }
+  const target = parsed.values.target ?? 'office';
+  if (target !== 'office' && target !== 'local') {
+    throw usageError('--target must be one of: office, local');
+  }
+  if (target === 'office') {
+    if (parsed.values.limit !== undefined || parsed.values.offset !== undefined) {
+      throw usageError('--limit and --offset require --target local');
+    }
+    return {
+      kind: 'command',
+      command: {
+        kind: 'fonts-list',
+        format: readOutputFormat(parsed.values.format),
+        target,
+        script,
+      },
+    };
+  }
   return {
     kind: 'command',
     command: {
       kind: 'fonts-list',
       format: readOutputFormat(parsed.values.format),
+      target,
       request: {
         script,
         limit: readBoundedPositiveInteger(parsed.values.limit, '--limit', 30, 100),
@@ -237,6 +261,7 @@ function parseCommandOptions(args: readonly string[]) {
       heuristics: { type: 'boolean' },
       family: { type: 'string' },
       script: { type: 'string' },
+      target: { type: 'string' },
       limit: { type: 'string' },
       offset: { type: 'string' },
     },
@@ -266,10 +291,11 @@ function assertOnlyFontOptions(
   }
   if (action === 'check' && (
     values.script !== undefined
+    || values.target !== undefined
     || values.limit !== undefined
     || values.offset !== undefined
   )) {
-    throw usageError('--script, --limit and --offset require fonts list');
+    throw usageError('--script, --target, --limit and --offset require fonts list');
   }
   if (action === 'list' && values.family !== undefined) {
     throw usageError('--family requires fonts check');

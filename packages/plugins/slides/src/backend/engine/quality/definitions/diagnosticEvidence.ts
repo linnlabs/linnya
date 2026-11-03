@@ -165,6 +165,16 @@ export const FontResolutionEvidenceSchema = z.object({
   firstAffectedSlide: z.number().int().positive(),
 }).strict();
 
+export const FontDeliveryEvidenceSchema = z.object({
+  kind: z.literal('font_delivery'),
+  target: z.literal('office'),
+  requestedFamily: z.string().trim().min(1),
+  script: z.enum(['latin', 'eastAsian', 'complex', 'unknown']),
+  alternatives: z.array(z.string().trim().min(1)).min(1),
+  runCount: z.number().int().positive(),
+  firstAffectedSlide: z.number().int().positive(),
+}).strict();
+
 export const ColorPaletteEvidenceSchema = z.object({
   kind: z.literal('color_palette'),
   hueClusterCount: z.number().int().nonnegative(),
@@ -294,6 +304,7 @@ export const DIAGNOSTIC_EVIDENCE_SCHEMAS = {
   margin_balance: MarginBalanceEvidenceSchema,
   font_inventory: FontInventoryEvidenceSchema,
   font_resolution: FontResolutionEvidenceSchema,
+  font_delivery: FontDeliveryEvidenceSchema,
   color_palette: ColorPaletteEvidenceSchema,
   hue_drift: HueDriftEvidenceSchema,
   color_contrast: ColorContrastEvidenceSchema,

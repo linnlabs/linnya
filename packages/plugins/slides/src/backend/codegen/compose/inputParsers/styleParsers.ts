@@ -12,6 +12,7 @@ import type {
   ThemeSpec,
 } from '@plugin/slides/shared';
 import {
+  isFontDeliveryTarget,
   normalizeGradientPaint,
   normalizePaint,
   normalizeStrokePaint,
@@ -31,6 +32,7 @@ export type ThemeInput = {
     major: string;
     minor: string;
   }>;
+  fontTarget?: 'office' | 'local';
   chart?: {
     palette?: string[];
   };
@@ -375,6 +377,13 @@ export function readThemeSpecInput(
     } else if (major || minor) {
       return { error: 'theme.fonts.major 和 theme.fonts.minor 必须同时提供。' };
     }
+  }
+
+  if (value.fontTarget != null) {
+    if (!isFontDeliveryTarget(value.fontTarget)) {
+      return { error: "theme.fontTarget 只能是 'office' 或 'local'。" };
+    }
+    theme.fontTarget = value.fontTarget;
   }
 
   if (value.chart != null) {

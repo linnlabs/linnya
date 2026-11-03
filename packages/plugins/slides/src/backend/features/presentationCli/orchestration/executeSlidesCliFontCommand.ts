@@ -2,6 +2,10 @@ import {
   FontCatalogUnavailableError,
 } from '@plugin/backend/fontResolution';
 import {
+  assessFontDelivery,
+  listOfficeFontFamilies,
+} from '@plugin/slides/shared';
+import {
   SLIDES_CLI_FONT_CHECK_KIND,
   SLIDES_CLI_FONT_LIST_KIND,
   SLIDES_CLI_FONT_REPORT_VERSION,
@@ -24,11 +28,40 @@ export async function executeSlidesCliFontCommand(
     if (command.kind === 'fonts-check') {
       const result = await execution.checkFontFamily(command.family);
       signal?.throwIfAborted();
+      const { status, officeFamily, alternatives } = assessFontDelivery(
+        command.family,
+        'office',
+        result.match?.scripts[0],
+      );
       const report: SlidesCliFontCheckReport = {
         kind: SLIDES_CLI_FONT_CHECK_KIND,
         schemaVersion: SLIDES_CLI_FONT_REPORT_VERSION,
         cliVersion: SLIDES_CLI_VERSION,
         ...result,
+        office: { status, ...(officeFamily ? { officeFamily } : {}), alternatives },
+      };
+      return success(report, command.format);
+    }
+
+    if (command.target === 'office') {
+      const families = [];
+      for (const entry of listOfficeFontFamilies(command.script)) {
+        const installed = await isInstalledUnderAnyName(execution, [entry.family, ...entry.localNames]);
+        signal?.throwIfAborted();
+        families.push({
+          family: entry.family,
+          localNames: entry.localNames,
+          delivery: entry.status,
+          installedHere: installed,
+        });
+      }
+      const report: SlidesCliFontListReport = {
+        kind: SLIDES_CLI_FONT_LIST_KIND,
+        schemaVersion: SLIDES_CLI_FONT_REPORT_VERSION,
+        cliVersion: SLIDES_CLI_VERSION,
+        target: 'office',
+        script: command.script,
+        families,
       };
       return success(report, command.format);
     }
@@ -39,6 +72,7 @@ export async function executeSlidesCliFontCommand(
       kind: SLIDES_CLI_FONT_LIST_KIND,
       schemaVersion: SLIDES_CLI_FONT_REPORT_VERSION,
       cliVersion: SLIDES_CLI_VERSION,
+      target: 'local',
       ...result,
     };
     return success(report, command.format);
@@ -57,6 +91,16 @@ export async function executeSlidesCliFontCommand(
       stderr: 'slides.cli.font_catalog_unavailable: System font catalog is unavailable\n',
     };
   }
+}
+
+async function isInstalledUnderAnyName(
+  execution: SlidesCliFontExecutionPort,
+  names: readonly string[],
+): Promise<boolean> {
+  for (const name of names) {
+    if ((await execution.checkFontFamily(name)).installed) return true;
+  }
+  return false;
 }
 
 function success(report: SlidesCliFontCheckReport | SlidesCliFontListReport, format?: 'json' | 'pretty'): SlidesCliExecutionResult {

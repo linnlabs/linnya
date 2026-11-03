@@ -40,6 +40,8 @@ export type AestheticLintCode =
   | 'font_family_substituted'
   /** 字体解析命中的真实 face 字重/斜体与作者请求不同，测量和绘制会采用真实样式 */
   | 'font_style_substituted'
+  /** 生成稿声明的字体在目标放映环境中不存在，打开时会被替换并重新断行 */
+  | 'font_not_deliverable'
   /** P1 Tier-1：非全幅元素贴近画布边缘（< 0.3"），可能压迫视觉留白 */
   | 'element_edge_margin'
   /** P1 Tier-1：单页非中性主色 hue 簇 > 4，色彩使用过散 */

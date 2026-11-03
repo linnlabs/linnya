@@ -19,7 +19,7 @@
 新建文稿或整体改版时，根据已批准的视觉方向，在动手写第一页之前定下这四件事，并把结论写进 `compose({ theme })`：
 
 1. **主色与语义色**：一个主色，一到两个强调色，一组中性灰，以及含义稳定的语义色（例如"好/差"）。颜色一旦有含义就不要挪作装饰。
-2. **字体**：标题族与正文族各一个（`theme.fonts` 要求两者同时提供）。中文场景先用 CLI `fonts list --script eastAsian` 确认本机真实可用，不凭经验猜。
+2. **字体**：标题族与正文族各一个（`theme.fonts` 要求两者同时提供）。文稿默认面向 Windows 与 Mac 的 PowerPoint，只从 CLI `fonts list --script <latin|eastAsian>` 列出的 Office 通用字体里选；PingFang SC、Songti SC 这类 Mac 专属字体会被 `font_not_deliverable` 报出。用户明确只在本机放映时，写 `theme.fontTarget: 'local'`，再用 `--target local` 查本机字体。
 3. **背景基调**：浅底、深底，还是分区使用。深底要连带决定文字与图表的反白规则。
 4. **图表调色板**：`theme.chart.palette` 按 series 顺序取色，整份 deck 共用一份。
 

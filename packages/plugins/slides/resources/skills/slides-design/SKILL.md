@@ -56,7 +56,7 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 ### 查看与检查
 用 `read_file` 看 source；用 `ppt_inspect` 看低 token 诊断，机器化处理才用
 `linnya-slides inspect`；用 `linnya-slides render` 取得真实像素并读取返回的 JPEG locator。
-新建、整体换风格或用户明确换字体时使用 `linnya-slides fonts`。有视觉能力时必须读图判断效果。
+新建、换风格或换字体时用 `linnya-slides fonts` 选 Office 通用字体。有视觉能力时必须读图判断效果。
 
 CLI 的参数、输出消费顺序和 Agent 限制见 [`references/cli.md`](./references/cli.md)。
 

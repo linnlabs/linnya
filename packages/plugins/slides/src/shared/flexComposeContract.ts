@@ -181,6 +181,8 @@ export interface LayoutThemeInput {
     major: string;
     minor: string;
   };
+  /** 字体面向的放映环境：`office`（默认，Windows 与 Mac 的 PowerPoint）或 `local`（只在本机放映）。 */
+  fontTarget?: 'office' | 'local';
   chart?: {
     palette: [string, ...string[]];
   };

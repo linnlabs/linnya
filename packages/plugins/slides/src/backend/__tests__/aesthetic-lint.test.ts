@@ -798,6 +798,62 @@ describe('AestheticLint', () => {
         .toBeUndefined();
     });
 
+    it('Office 目标下报告 Mac 专属字体不可交付，并按 family 聚合', () => {
+      const info = makeInfo({
+        slides: [1, 3].map((number) => ({
+          number,
+          elements: [makeResolvedFontText({
+            name: `Body ${number}`,
+            text: '宋代瓷器',
+            declaredFamily: 'Songti SC',
+            script: 'eastAsian',
+          })],
+        })),
+      });
+
+      const officeIssues = lint.lint(info, { fontTarget: 'office' }).aesthetic
+        .filter((issue) => issue.code === 'font_not_deliverable');
+      expect(officeIssues).toEqual([expect.objectContaining({
+        severity: 'warning',
+        slides: [1, 3],
+        evidence: {
+          kind: 'font_delivery',
+          target: 'office',
+          requestedFamily: 'Songti SC',
+          script: 'eastAsian',
+          alternatives: ['SimSun', 'STZhongsong'],
+          runCount: 2,
+          firstAffectedSlide: 1,
+        },
+      })]);
+      expect(lint.lint(info, { fontTarget: 'local' }).aesthetic
+        .some((issue) => issue.code === 'font_not_deliverable')).toBe(false);
+      expect(lint.lint(info).aesthetic
+        .some((issue) => issue.code === 'font_not_deliverable')).toBe(false);
+    });
+
+    it('Office 字体在本机只是预览替代时不报替换，也不报不可交付', () => {
+      const info = makeInfo({
+        slides: [{
+          number: 1,
+          elements: [makeResolvedFontText({
+            name: 'Body',
+            text: '正文',
+            declaredFamily: '宋体',
+            resolvedFamily: 'Songti SC',
+            script: 'eastAsian',
+            resolution: 'substituted',
+          })],
+        }],
+      });
+
+      const officeCodes = lint.lint(info, { fontTarget: 'office' }).aesthetic.map((issue) => issue.code);
+      expect(officeCodes).not.toContain('font_family_substituted');
+      expect(officeCodes).not.toContain('font_not_deliverable');
+      expect(lint.lint(info, { fontTarget: 'local' }).aesthetic.map((issue) => issue.code))
+        .toContain('font_family_substituted');
+    });
+
     it('ignores legacy inputs without resolved font facts', () => {
       const report = lint.lint(makeInfo({
         slides: [{

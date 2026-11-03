@@ -14,7 +14,9 @@ import { hasDecorativeRole, isChromeTextRole } from '../SpatialSemantics';
  */
 
 import {
+  assessFontDelivery,
   flattenSlideElements,
+  type FontDeliveryTarget,
   type PresentationInfo,
   type SlideElementInfo,
   type SlideElementTextRunInfo,
@@ -590,7 +592,10 @@ export function lintFontFamilyConsistency(info: PresentationInfo): AestheticLint
  * 字体族替换是确定性渲染事实，即使落地 face 的 bold/italic 与请求一致，也需要单独可观察。
  * 相同 requested -> resolved + script 映射聚合为一条 finding，避免按正文 run 重复刷屏。
  */
-export function lintFontFamilySubstitution(info: PresentationInfo): AestheticLintIssue[] {
+export function lintFontFamilySubstitution(
+  info: PresentationInfo,
+  fontTarget?: FontDeliveryTarget,
+): AestheticLintIssue[] {
   const substitutions = new Map<string, {
     firstSlide: number;
     slideNumbers: Set<number>;
@@ -612,6 +617,9 @@ export function lintFontFamilySubstitution(info: PresentationInfo): AestheticLin
           || !requestedFamily
           || !resolvedFamily
           || normalizeFontFamily(requestedFamily) === normalizeFontFamily(resolvedFamily)
+          // 目标是 Office 时，本机缺少的 Office 字体只是预览替代；放映端有原字体，不能催 Agent 换成本机字体。
+          || (fontTarget === 'office'
+            && assessFontDelivery(requestedFamily, fontTarget, run.fontScript).status !== 'unavailable')
         ) {
           continue;
         }
@@ -654,6 +662,68 @@ export function lintFontFamilySubstitution(info: PresentationInfo): AestheticLin
       resolution: 'substituted',
       runCount: substitution.runCount,
       firstAffectedSlide: substitution.firstSlide,
+    },
+  }));
+}
+
+/**
+ * 生成稿声明的字体在目标放映环境中不存在时报告，按 requested family 聚合。
+ * 只看作者声明的 family，不看本机解析结果：本机装了 Songti SC 不代表 Windows 上有。
+ */
+export function lintFontDelivery(
+  info: PresentationInfo,
+  fontTarget: FontDeliveryTarget | undefined,
+): AestheticLintIssue[] {
+  if (fontTarget == null || fontTarget === 'local') return [];
+  const missing = new Map<string, {
+    requestedFamily: string;
+    script: TextFontScript | 'unknown';
+    alternatives: readonly string[];
+    slideNumbers: Set<number>;
+    firstSlide: number;
+    runCount: number;
+  }>();
+
+  for (const slide of info.slides) {
+    for (const element of flattenSlideElements(slide.elements)) {
+      if (element.paragraphs == null) continue;
+      for (const run of element.paragraphs.flatMap((paragraph) => paragraph.runs)) {
+        const requestedFamily = run.fontFamily?.trim();
+        if (!requestedFamily || !/\S/u.test(run.text)) continue;
+        const assessment = assessFontDelivery(requestedFamily, fontTarget, run.fontScript);
+        if (assessment.status !== 'unavailable') continue;
+        const key = normalizeFontFamily(requestedFamily);
+        const existing = missing.get(key);
+        if (existing) {
+          existing.runCount += 1;
+          existing.slideNumbers.add(slide.number);
+          continue;
+        }
+        missing.set(key, {
+          requestedFamily,
+          script: run.fontScript ?? 'unknown',
+          alternatives: assessment.alternatives,
+          slideNumbers: new Set([slide.number]),
+          firstSlide: slide.number,
+          runCount: 1,
+        });
+      }
+    }
+  }
+
+  return [...missing.values()].map((usage) => ({
+    code: 'font_not_deliverable',
+    severity: 'warning',
+    confidence: 'high',
+    slides: [...usage.slideNumbers].sort((left, right) => left - right),
+    evidence: {
+      kind: 'font_delivery',
+      target: fontTarget,
+      requestedFamily: usage.requestedFamily,
+      script: usage.script,
+      alternatives: [...usage.alternatives],
+      runCount: usage.runCount,
+      firstAffectedSlide: usage.firstSlide,
     },
   }));
 }
