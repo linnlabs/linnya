@@ -105,6 +105,33 @@ async function verifyDanglingEdge(port: CanvasRenderWorkerPort, request: CanvasR
   await writeFile(path.join(output, 'canvas-far-dangling-edge.png'), image.bytes); return colored;
 }
 
+async function verifyCroppedImage(port: CanvasRenderWorkerPort, request: CanvasRenderRequest) {
+  const pixels = Buffer.alloc(200 * 200 * 4);
+  for (let y = 0; y < 200; y++) for (let x = 0; x < 200; x++) {
+    const i = (y * 200 + x) * 4;
+    pixels[i] = y < 100 ? 40 : 220; pixels[i + 1] = y < 100 ? 50 : 80; pixels[i + 2] = y < 100 ? 220 : 30; pixels[i + 3] = 255;
+  }
+  const source = nativeImage.createFromBitmap(pixels, { width: 200, height: 200 }).toDataURL();
+  const card = request.snapshot.elements.find(element => element.type === 'text'); if (!card) throw new Error('crop_fixture_card_missing');
+  const cropped = CanvasRenderRequestSchema.parse({ ...request, requestId: 'vertical-image-crop', assets: { crop: source },
+    snapshot: { ...request.snapshot, elements: [{ ...card, type: 'image', width: 200, height: 100,
+      data: { assetId: 'crop', caption: '底部图注', alt: '下半蓝色', crop: { x: 0, y: 0.5, width: 1, height: 0.5 } } }] } });
+  const runtime = createCanvasRenderRuntime(port), result = await runtime.render(cropped), image = nativeImage.createFromBuffer(Buffer.from(result.bytes));
+  const data = image.toBitmap(), width = image.getSize().width; let blue = 0, red = 0, captionInk = 0;
+  for (let i = 0; i < data.length; i += 4) { if (data[i] > 180 && data[i + 1] < 150 && data[i + 2] < 100) blue++; if (data[i] < 100 && data[i + 1] < 150 && data[i + 2] > 180) red++; }
+  for (let y = 420; y < 500; y++) for (let x = 360; x < 760; x++) { const i = (y * width + x) * 4; if (Math.max(data[i], data[i + 1], data[i + 2]) < 140) captionInk++; }
+  if (blue < 20000 || red || captionInk < 100) throw new Error(`image_crop_or_caption_missing:${blue}:${red}:${captionInk}`);
+  const part = await runtime.render({ ...cropped, requestId: 'image-crop-bottom-region', width: 200, height: 40, region: { x: 0, y: 60, width: 200, height: 40 } });
+  const bottom = nativeImage.createFromBuffer(Buffer.from(part.bytes)).toBitmap(); let regionInk = 0;
+  for (let i = 0; i < bottom.length; i += 4) if (Math.max(bottom[i], bottom[i + 1], bottom[i + 2]) < 140) regionInk++;
+  if (regionInk < 100) throw new Error('image_caption_lost_when_clipping_visible_region');
+  const enlarged = await runtime.render({ ...cropped, requestId: 'image-crop-enlarged-region', dpr: 1, width: 1600, height: 320, region: { x: 0, y: 60, width: 200, height: 40 } });
+  const enlargedPixels = nativeImage.createFromBuffer(Buffer.from(enlarged.bytes)).toBitmap(); let enlargedInk = 0;
+  for (let i = 0; i < enlargedPixels.length; i += 4) if (Math.max(enlargedPixels[i], enlargedPixels[i + 1], enlargedPixels[i + 2]) < 140) enlargedInk++;
+  if (enlargedInk < regionInk * 10) throw new Error('capture_region_was_clamped_to_interactive_zoom');
+  await writeFile(path.join(output, 'canvas-vertical-image-crop.png'), result.bytes); return { blue, red, captionInk, regionInk, enlargedInk };
+}
+
 async function run(): Promise<void> {
   await app.whenReady();
   if (process.platform === 'darwin') app.setActivationPolicy('accessory');
@@ -167,12 +194,13 @@ async function run(): Promise<void> {
     const referenceMeasurement = await verifyReferenceMeasurement(port);
     const documentCover = await verifyDocumentCover(port, request);
     const danglingEdgePixels = await verifyDanglingEdge(port, request);
+    const imageCrop = await verifyCroppedImage(port, request);
     await mkdir(output, { recursive: true });
     await writeFile(path.join(output, 'canvas.png'), image.bytes);
     await writeFile(path.join(output, 'canvas-dpr1.png'), unit.bytes);
     await writeFile(path.join(output, 'canvas-second.jpg'), second.bytes);
     await writeFile(path.join(output, 'canvas-wide.png'), wide.bytes);
-    const report = { versions: process.versions, measurement, cancellationObserved, danglingEdgePixels, wideBounds, managedImages, referenceMeasurement, documentCover, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
+    const report = { versions: process.versions, measurement, cancellationObserved, danglingEdgePixels, imageCrop, wideBounds, managedImages, referenceMeasurement, documentCover, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
       sha256: createHash('sha256').update(image.bytes).digest('hex') }, second: { bytes: second.bytes.length, sequence: second.sequence } };
     await writeFile(path.join(output, 'results.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));
