@@ -35,6 +35,13 @@ describe('trusted Markdown document reference bindings', () => {
       const fresh = serializeMarkdownDocument(f.read().content); expect(() => f.write(text)).toThrow('改名'); expect(f.write(fresh).references[0]?.targetDocumentId).toBe('target');
     } finally { f.database.close(); }
   });
+  it('round-trips literal parentheses and percent signs in workspace document names', () => {
+    const f = fixture();
+    try {
+      f.database.prepare('UPDATE workspace_nodes SET name = ? WHERE id = ?').run('Notes (100%).md', 'target');
+      const text = serializeMarkdownDocument(f.read().content); expect(text).toContain('Notes%20%28100%25%29.md'); expect(f.write(text).references[0]?.targetDocumentId).toBe('target');
+    } finally { f.database.close(); }
+  });
   it('requires a trusted read for replacements containing prior tags and keeps reader scopes independent', () => {
     const f = fixture();
     try {

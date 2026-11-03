@@ -24,7 +24,7 @@ export function workspaceReferenceHref(node: ReferenceJsonObject): string | null
   return null;
 }
 export function normalizedReferencePath(href: string): string { return 'workspace:' + decodeURIComponent(href.slice('workspace:'.length)); }
-export function encodedReferencePath(path: string): string { return 'workspace:' + path.slice('workspace:'.length).split('/').map(segment => encodeURIComponent(segment)).join('/'); }
+export function encodedReferencePath(path: string): string { return 'workspace:' + path.slice('workspace:'.length).split('/').map(segment => encodeURIComponent(segment).replace(/[()]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase())).join('/'); }
 export function commonReferenceMarks(nodes: readonly ReferenceJsonObject[]): JsonValue[] {
   const first = nodes[0]; const marks = Array.isArray(first?.marks) ? first.marks : [];
   return marks.filter(mark => referenceObject(mark)?.type !== 'link' && nodes.every(node => Array.isArray(node.marks) && node.marks.some(other => JSON.stringify(other) === JSON.stringify(mark))));
