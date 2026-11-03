@@ -4,6 +4,8 @@ import { registerAppearanceSection, unregisterAppearanceSection } from '@plugin/
 import { DocumentTextIcon } from '@linnya/renderer-ui/icons';
 import { canvasPluginMeta, CANVAS_PLUGIN_ID, CANVAS_DOCUMENT_TYPE } from '@plugin/canvas/shared';
 import { canvasFileHandler } from './features/canvasDocument';
+import { createCanvasSelectionReferenceKind, clearCanvasReferenceFocus } from './features/conversationSelection';
+import { createCanvasSelectionReferencePort } from './adapters/createCanvasSelectionReferencePort';
 import { persistCanvasPreferences } from './features/materialSetting';
 import CanvasAppearanceSection from './features/materialSetting/ui/CanvasAppearanceSection.vue';
 import canvasStyles from './styles/canvas.css?url';
@@ -19,14 +21,15 @@ const CanvasView = defineAsyncComponent(async () => {
 export const rendererPlugin: RendererPluginContribution = {
   meta: canvasPluginMeta,
   stylesheets: [markdownStyles, canvasStyles],
+  conversationInput: { referenceKinds: [createCanvasSelectionReferenceKind(createCanvasSelectionReferencePort())], referenceProviders: [] },
   activate() {
     stopPreferences = persistCanvasPreferences();
     registerAppearanceSection({ pluginId: CANVAS_PLUGIN_ID, id: 'material', title: '画布', order: 10, component: CanvasAppearanceSection });
   },
-  deactivate() { stopPreferences?.(); stopPreferences = null; unregisterAppearanceSection(CANVAS_PLUGIN_ID, 'material'); },
+  deactivate() { clearCanvasReferenceFocus(); stopPreferences?.(); stopPreferences = null; unregisterAppearanceSection(CANVAS_PLUGIN_ID, 'material'); },
   documentTypes: [{ pluginId: CANVAS_PLUGIN_ID, nodeType: CANVAS_DOCUMENT_TYPE, activeDocumentType: CANVAS_DOCUMENT_TYPE,
     fileSessionType: CANVAS_DOCUMENT_TYPE, createRequestType: CANVAS_DOCUMENT_TYPE, createBackend: 'workspace-document',
-    surfaceComponent: CanvasView, fileHandler: canvasFileHandler, shellClass: 'for-canvas', label: '画布', createLabel: '新建画布', defaultName: '未命名画布',
+    surfaceComponent: CanvasView, historyPreviewComponent: defineAsyncComponent(() => import('./features/historyPreview/ui/CanvasHistoryPreview.vue')), deferSurfaceUntilOpen: true, fileHandler: canvasFileHandler, shellClass: 'for-canvas', label: '画布', createLabel: '新建画布', defaultName: '未命名画布',
     iconComponent: DocumentTextIcon, iconClass: 'canvas-icon', createPriority: 25,
     entityReferences: [{ kind: 'document', uriPattern: 'linnya://canvas/{documentId}', description: '自由画布文档' }],
   }],

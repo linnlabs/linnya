@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { JsonValueSchema } from '@app/schemas';
 import { CanvasCommitRequestSchema, CanvasResolveApprovalRequestSchema, type CanvasAgentCommitResult, type CanvasApprovalResolution, type CanvasCommitResult, type CanvasResolveApprovalRequest } from '../../../shared';
 import type { CanvasDatabase } from '../../definitions/canvasDatabase';
-import { canvasPayloadHash, canvasSourceKey, planCanvasCommit, readCanvasCommitState, readCanvasEditingClaims, readCanvasReceipt, type CanvasCommitActor, type CanvasHistoryCommitInput } from '../../features/canvasCommit';
+import { canvasPayloadHash, canvasSourceKey, canvasOperationsPayload, planCanvasCommit, readCanvasCommitState, readCanvasEditingClaims, readCanvasReceipt, type CanvasCommitActor, type CanvasHistoryCommitInput } from '../../features/canvasCommit';
 import { completeCanvasApproval, createCanvasAgentGroup, evaluateCanvasApproval, findCanvasAgentGroup, parseCanvasAgentReceiptResult, readCanvasAgentReceipt, readCanvasApprovalReceipt, readCanvasPendingApproval, saveCanvasAgentCommittedReceipt, readCanvasAgentRequestStatuses, saveCanvasAgentGroup, saveCanvasPendingApproval, clearCanvasPendingApproval, type CanvasPendingBatch } from '../../features/agentChanges';
 
 export function createCanvasAgentApprovals(options: { readonly database: CanvasDatabase; readonly commit: (input: { request: unknown; actor: CanvasCommitActor; now: number; onCommit?: (input: CanvasHistoryCommitInput) => void }) => CanvasCommitResult; readonly pruneGuards: (documentId: string) => void }) {
@@ -17,8 +18,9 @@ export function createCanvasAgentApprovals(options: { readonly database: CanvasD
   }
   function commitAgent(input: { readonly request: unknown; readonly actor: CanvasCommitActor; readonly now: number; readonly intent?: 'apply' | 'arrange'; readonly payloadIdentity?: unknown }): CanvasAgentCommitResult {
     if (input.actor.source.kind !== 'agent') throw new Error('canvas_agent_source_required');
-    const request = CanvasCommitRequestSchema.parse(input.request);
-    const sourceKey = canvasSourceKey(input.actor); const payloadIdentity = input.payloadIdentity === undefined ? { kind: 'operations', operations: request.operations } : input.payloadIdentity; const payloadHash = canvasPayloadHash(payloadIdentity);
+    const parsed = CanvasCommitRequestSchema.parse(input.request);
+    const sourceKey = canvasSourceKey(input.actor); const payloadIdentity = JsonValueSchema.parse(input.payloadIdentity === undefined ? canvasOperationsPayload(parsed) : input.payloadIdentity); const payloadHash = canvasPayloadHash(payloadIdentity);
+    const request = { ...parsed, payloadIdentity };
     const result = options.database.transaction((): CanvasAgentCommitResult | { kind: 'ready' } => {
       const replay = replayAgentRequest({ documentId: request.documentId, requestId: request.requestId, actor: input.actor, payloadIdentity });
       if (replay) return replay;
@@ -30,16 +32,18 @@ export function createCanvasAgentApprovals(options: { readonly database: CanvasD
       }
       const state = readCanvasCommitState(options.database, request.documentId);
       const claims = readCanvasEditingClaims(options.database, { documentId: request.documentId, viewId: input.actor.viewId, now: input.now });
-      const plan = planCanvasCommit({ state, operations: request.operations, actor: input.actor, now: input.now, claims, origin: `${sourceKey}:${request.requestId}` });
+      const plan = planCanvasCommit({ state, operations: request.operations, layoutGroups: request.layoutGroups, actor: input.actor, now: input.now, claims, origin: `${sourceKey}:${request.requestId}` });
       const previous = findCanvasAgentGroup(options.database, request.documentId, sourceKey);
       const approval = evaluateCanvasApproval(state, plan, previous);
       if (!approval.reason) return { kind: 'ready' };
       const group = previous ?? createCanvasAgentGroup(request.documentId, input.actor.source.conversationId, input.now);
       saveCanvasAgentGroup(options.database, group);
+      const changed = new Set(plan.changes.map(change => change.id));
+      const expectedRevisions = state.elements.filter(row => changed.has(row.element.id)).map(row => ({ id: row.element.id, revision: row.element.revision }));
       const batch: CanvasPendingBatch = { actor: input.actor, request, sourceKey, payloadHash, approval: {
         id: randomUUID(), groupId: group.id, requestId: request.requestId, reason: approval.reason,
-        operationCount: request.operations.length, elementIds: [...new Set(plan.changes.map(change => change.id))], baseSequence: state.sequence,
-        expectedRevisions: state.elements.filter(row => plan.changes.some(change => change.id === row.element.id)).map(row => ({ id: row.element.id, revision: row.element.revision })),
+        // 尚未分配的新卡ID只是预测，不能把后来同号的别人的卡当作待确认目标高亮。
+        operationCount: request.operations.length, elementIds: expectedRevisions.map(row => row.id), baseSequence: state.sequence, expectedRevisions,
         deletedUserCardCount: approval.deletedUserCardCount, movedUserCardCount: approval.movedUserCardCount, createdAt: input.now,
       } };
       saveCanvasPendingApproval(options.database, batch);

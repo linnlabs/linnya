@@ -30,7 +30,7 @@ export async function prepareComposerReferences(
     const frozenInput = structuredClone(toRaw(reference));
     const content = kind.prepareForSend
       ? await awaitPreparation(kind.prepareForSend(frozenInput, {
-          conversationId: options.conversationId,
+          conversationId: options.conversationId, projectId: options.projectId,
           signal: options.signal,
         }), options.signal)
       : frozenInput;

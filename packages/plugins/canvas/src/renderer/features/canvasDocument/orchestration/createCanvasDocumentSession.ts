@@ -1,4 +1,5 @@
-import type { CanvasCommand, CanvasElementId } from '@plugin/canvas/shared';
+import type { CanvasCommand, CanvasElementId, CanvasEditingRequestSchema } from '@plugin/canvas/shared';
+import type { z } from 'zod';
 import type { CanvasDocumentPort, CanvasDocumentSession } from '../definitions/canvasDocumentSession';
 import { createCanvasDocumentState } from '../store/createCanvasDocumentState';
 import { applyCanvasSynchronization } from '../functions/applyCanvasSynchronization';
@@ -11,6 +12,7 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
   let targetSequence = 0;
   let synchronization: Promise<void> | null = null;
   let unsubscribe: (() => void) | null = null;
+  const protections = new Map<CanvasElementId, Map<string, z.infer<typeof CanvasEditingRequestSchema>['fields']>>();
   let writes: Promise<unknown> = Promise.resolve();
   const requireDocument = () => {
     const current = state.snapshot.value;
@@ -41,11 +43,14 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
   return {
     state, viewId, synchronize,
     async open(documentId) {
+      const previousDocumentId = state.snapshot.value?.documentId;
       const token = ++sessionId;
       unsubscribe?.(); unsubscribe = null;
       synchronization = null; targetSequence = 0;
-      state.begin();
+      protections.clear(); state.begin();
       try {
+        if (previousDocumentId) await port.close(previousDocumentId, viewId);
+        if (token !== sessionId) return;
         // 先订阅再读快照，接住读取期间其他来源的提交；loading阶段只累计目标版本。
         unsubscribe = port.subscribe(event => {
           if (token !== sessionId || event.documentId !== documentId) return;
@@ -73,15 +78,23 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
         const result = await port.commit({ documentId: document.documentId, requestId, viewId, operations, ...(historyGroupId ? { historyGroupId } : {}) });
         if (token !== sessionId) throw new DOMException('Canvas committed after its surface closed', 'AbortError');
         await synchronize(result.sequence);
+        const skipped = result.results.filter(outcome => outcome.status === 'skipped');
+        if (skipped.length) {
+          const applied = result.results.length - skipped.length;
+          throw new Error(`${applied ? `已提交 ${applied} 项，另有 ${skipped.length} 项跳过` : '本次修改未提交'}：${[...new Set(skipped.map(outcome => outcome.reason ?? '内容已变化，请重试'))].join('；')}`);
+        }
         return result;
       });
       // 一个动作失败不能把后续用户动作永远卡在 rejected promise 上。
       writes = run.catch(() => undefined);
       return run;
     },
-    async protect(elementId: CanvasElementId, fields) {
+    async protect(elementId: CanvasElementId, fields, owner) {
       const document = requireDocument();
-      await port.editing({ documentId: document.documentId, viewId, elementId, fields });
+      const owners = protections.get(elementId) ?? new Map<string, z.infer<typeof CanvasEditingRequestSchema>['fields']>();
+      if (fields.length) owners.set(owner, fields); else owners.delete(owner);
+      if (owners.size) protections.set(elementId, owners); else protections.delete(elementId);
+      await port.editing({ documentId: document.documentId, viewId, elementId, fields: [...new Set([...owners.values()].flat())] });
     },
     undo(direction) {
       const token = sessionId;
@@ -100,7 +113,7 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
     async close() {
       const documentId = state.snapshot.value?.documentId;
       sessionId += 1; unsubscribe?.(); unsubscribe = null;
-      synchronization = null; targetSequence = 0; state.clear();
+      synchronization = null; targetSequence = 0; protections.clear(); state.clear();
       if (documentId) await port.close(documentId, viewId);
     },
   };

@@ -1,0 +1,18 @@
+# 操作合同 v1
+
+一批最多500个原始动作；临时ref以`$`和字母开头。字段严格校验，未知字段不会被忽略。
+
+| op | 主要字段 |
+| --- | --- |
+| add | text，或type=document+document，或type=image+file；可选ref/near/after/in/side/width/color |
+| update | id/revision；可选text或append、color、locked、width、图片caption/alt、连线label |
+| delete | id，可选revision；连在被删卡上的线一起删除 |
+| connect | from/to，可选ref/label/direction(none/forward/both)/lineStyle(curve/straight)/linePattern(solid/dashed) |
+| disconnect | 线id，可选revision |
+| arrange | algorithm(tree/grid/layered)，可选elementIds/direction/columns/groups；只可放最后 |
+
+图文归纳：先添加来源文档卡，再用文字卡记录结论，通过connect标明来源；文字中的证据链接使用当前workspace文档路径或普通外部网页链接。研究联网由既有工具完成，Canvas不自造搜索能力。
+
+局部修改：show读取revision后用update；只加新段落时优先append，原标签与图片节点保持原身份。出现reference_path_changed先重新读取，不按同路径新文档猜原目标。
+
+多幕故事：用groups明确每幕的卡集合，grid+columns=1使每幕为一列；用顺序connect表达场景。为场景补草稿使用新ref与near/after，不改原卡正文。

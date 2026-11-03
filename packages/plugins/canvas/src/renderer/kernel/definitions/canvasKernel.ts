@@ -3,6 +3,7 @@ import type { CanvasEdgeGeometry } from '../geometry/canvasEdgeGeometry';
 
 export type CanvasKernelIntent =
   | { readonly kind: 'select'; readonly ids: readonly CanvasCardId[]; readonly additive: boolean }
+  | { readonly kind: 'select-edge'; readonly id: CanvasEdgeId | null }
   | { readonly kind: 'move'; readonly ids: readonly CanvasCardId[]; readonly dx: number; readonly dy: number; readonly copy?: boolean }
   | { readonly kind: 'editing'; readonly ids: readonly CanvasCardId[]; readonly active: boolean }
   | { readonly kind: 'open'; readonly id: CanvasCardId }
@@ -38,9 +39,12 @@ export interface CanvasKernel {
   hitTestEdge(point: CanvasPoint): CanvasEdge | null;
   setSelectedEdge(id: CanvasEdgeId | null): void;
   setHoveredCard(id: CanvasCardId | null): void;
+  setDocumentTitles(titles: ReadonlyMap<string, string>): void;
   readEdgeGeometry(id: CanvasEdgeId): CanvasEdgeGeometry | null;
   visibleCards(): readonly CanvasCard[];
   renderableCards(): readonly CanvasCard[];
+  readVisibleCardRegions(id: CanvasCardId): readonly CanvasRectangle[];
+  readMissingBitmapRegions(id: CanvasCardId, key: string, regions: readonly CanvasRectangle[]): readonly CanvasRectangle[];
   screenToWorld(point: CanvasPoint): CanvasPoint;
   worldToScreen(point: CanvasPoint): CanvasPoint;
   captureImage(format: 'png' | 'jpeg', quality?: number): Promise<string>;
@@ -50,4 +54,4 @@ export interface CanvasKernel {
 }
 
 export type CanvasInteractionKernel = Pick<CanvasKernel,
-  'canvas' | 'readCamera' | 'setCamera' | 'screenToWorld' | 'hitTest' | 'visibleCards' | 'readSelection' | 'setBrush' | 'setDragPreview' | 'clearDragPreview'>;
+  'canvas' | 'readCamera' | 'setCamera' | 'screenToWorld' | 'hitTest' | 'hitTestEdge' | 'setHoveredCard' | 'visibleCards' | 'readSelection' | 'setBrush' | 'setDragPreview' | 'clearDragPreview'>;

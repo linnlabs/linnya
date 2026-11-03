@@ -7,6 +7,7 @@ export function resolveCanvasArtifactPaths() {
     ? path.resolve(__dirname, '../..')
     : path.resolve(process.cwd(), 'packages/plugins/canvas');
   return {
+    computationWorkerPath: path.join(packageRoot, 'dist/backend/canvas-computation-worker.cjs'),
     workerHtmlPath: path.join(packageRoot, 'dist/render-worker/worker.html'),
     preloadPath: path.join(packageRoot, 'dist/backend/render-worker-preload.cjs'),
     skillResourceRoot: path.join(packageRoot, 'skills'),

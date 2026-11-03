@@ -80,3 +80,42 @@ describe('Canvas atomic editing', () => {
     database.close();
   });
 });
+
+it('rechecks arrangement size dependencies and avoids obstacles created after worker calculation', () => {
+  const database = fixture();
+  const write = (requestId: string, operations: readonly unknown[], extras: object = {}) => commitCanvasOperations({ database, actor: user, now: 10, request: { documentId: 'canvas', requestId, operations, ...extras } });
+  write('initial', [{ ...add('A'), x: 0, y: 0 }, { ...add('B'), x: 1000, y: 0 }]);
+  write('new-obstacle', [{ ...add('用户新卡'), x: 500, y: 0 }]);
+  const arranged = write('arrange', [{ op: 'update', id: 'c1', baseRevision: 1, patch: { x: 500, y: 0 } }], { layoutGroups: [['c1']] });
+  expect(arranged.results[0]).toMatchObject({ status: 'applied', reason: 'placed_around_current_obstacle' });
+  const moved = readCanvasSnapshot(database, 'canvas').elements.find(element => element.id === 'c1');
+  expect(moved).not.toMatchObject({ x: 500, y: 0 });
+  write('resize-B', [{ op: 'update', id: 'c2', baseRevision: 1, patch: { height: 500 } }]);
+  expect(write('stale-layout', [{ op: 'update', id: 'c2', baseRevision: 1, patch: { x: 2000, y: 0 } }], { layoutGroups: [['c2']] }).results[0])
+    .toMatchObject({ status: 'skipped', reason: 'stale_layout_size' });
+  database.close();
+});
+
+it('binds computed new-card positions to local aliases despite another writer allocating the predicted ID', async () => {
+  const { bindCanvasLayout } = await import('../../canvasWrite');
+  const { CanvasElementIdSchema, CanvasLayoutResultSchema } = await import('../../../../shared');
+  const database = fixture();
+  const predictedId = CanvasElementIdSchema.parse('c1');
+  const bound = bindCanvasLayout(CanvasLayoutResultSchema.parse({ sequence: 1, operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { x: 1000, y: 1000 } }], diagnostics: [] }), { $new: predictedId });
+  commitCanvasOperations({ database, actor: user, now: 1, request: { documentId: 'canvas', requestId: 'other-writer', operations: [add('用户先分配')] } });
+  const result = commitCanvasOperations({ database, actor: agent, now: 2, request: { documentId: 'canvas', requestId: 'late-layout', operations: [{ ...add('Agent新卡'), ref: '$new' }, ...bound.operations], layoutGroups: bound.layoutGroups } });
+  expect(result.refs.$new).toBe('c2');
+  const snapshot = readCanvasSnapshot(database, 'canvas');
+  expect(snapshot.elements.find(element => element.id === 'c1')).toMatchObject({ x: 0, y: 0 });
+  expect(snapshot.elements.find(element => element.id === 'c2')).toMatchObject({ x: 1000, y: 1000 });
+  database.close();
+});
+
+it('does not relocate a locked newly created card through the arrangement obstacle pass', () => {
+  const database = fixture();
+  const result = commitCanvasOperations({ database, actor: user, now: 1, request: { documentId: 'canvas', requestId: 'locked-prefix',
+    operations: [{ ...add('锁定新卡'), x: 0, y: 0, locked: true, ref: '$new' }, { ...add('覆盖占位'), x: 0, y: 0 }, { op: 'update', id: '$new', baseRevision: 1, patch: { x: 1000, y: 1000 } }], layoutGroups: [['$new']] } });
+  expect(result.results[2]).toMatchObject({ status: 'skipped', reason: 'element_locked' });
+  expect(readCanvasSnapshot(database, 'canvas').elements.find(element => element.id === 'c1')).toMatchObject({ x: 0, y: 0, locked: true });
+  database.close();
+});

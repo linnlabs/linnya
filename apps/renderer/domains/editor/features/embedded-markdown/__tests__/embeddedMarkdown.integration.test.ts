@@ -34,6 +34,17 @@ describe('embedded Markdown surface', () => {
     expect(handle.readMarkdown()).toBe('已保存');
   });
 
+  it('异步插入锚点跨后续输入映射，替换正文后不能误插到下一张卡', () => {
+    const { handle } = mount('原文');
+    const insertion = handle.captureInsertion();
+    expect(insertion.insert({ type: 'image', attrs: { src: 'asset:one', assetId: 'one', alt: '图片' } })).toBe(true);
+    expect(handle.readContent()).toMatchObject({ content: expect.arrayContaining([expect.objectContaining({ type: 'image', attrs: expect.objectContaining({ assetId: 'one' }) })]) });
+    const stale = handle.captureInsertion();
+    handle.replaceContent(parseEmbeddedMarkdown('下一张卡'));
+    expect(stale.insert({ type: 'image', attrs: { src: 'asset:two', assetId: 'two' } })).toBe(false);
+    expect(handle.readMarkdown()).toBe('下一张卡');
+  });
+
   it('只读与重新编辑使用同一正文，不需要 Workspace 保存会话', () => {
     const { handle, element } = mount('- 第一项\n- 第二项');
     handle.setEditable(false);

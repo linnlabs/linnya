@@ -1,19 +1,16 @@
 import { z } from 'zod';
 import { CanvasColorSchema } from '../../model/definitions/canvasElement';
+import { CanvasArrangementOptionsSchema, CanvasLayoutTargetSchema } from '../../layout/definitions/canvasLayout';
 
 export const CANVAS_CLI_VERSION = 1;
 const id = z.string().regex(/^(?:[ce][1-9]\d*|\$[A-Za-z][A-Za-z0-9_-]*)$/);
 const placement = {
   ref: z.string().regex(/^\$[A-Za-z][A-Za-z0-9_-]*$/).optional(),
-  near: id.optional(), after: id.optional(), in: id.optional(),
+  near: CanvasLayoutTargetSchema.optional(), after: CanvasLayoutTargetSchema.optional(), in: CanvasLayoutTargetSchema.optional(),
   side: z.enum(['right', 'left', 'top', 'bottom']).optional(),
   width: z.number().finite().positive().max(4096).default(280), color: CanvasColorSchema.optional(),
 };
-export const CanvasArrangeOptionsSchema = z.object({
-  algorithm: z.enum(['tree', 'grid', 'layered']).default('tree'),
-  elementIds: z.array(id).min(1).optional(), direction: z.enum(['right', 'down']).default('right'),
-  columns: z.number().int().min(1).max(100).optional(),
-}).strict();
+export const CanvasArrangeOptionsSchema = CanvasArrangementOptionsSchema;
 export const CanvasCliOperationSchema = z.union([
   z.object({ ...placement, op: z.literal('add'), type: z.literal('text').default('text'), text: z.string() }).strict(),
   z.object({ ...placement, op: z.literal('add'), type: z.literal('document'), document: z.string().startsWith('workspace:') }).strict(),
@@ -24,7 +21,7 @@ export const CanvasCliOperationSchema = z.union([
   }).strict().refine(value => value.text === undefined || value.append === undefined, 'text 与 append 不能同时使用')
     .refine(value => Object.keys(value).some(key => !['op', 'id', 'revision'].includes(key)), '至少给出一个要修改的字段'),
   z.object({ op: z.literal('delete'), id, revision: z.number().int().positive().optional() }).strict(),
-  z.object({ op: z.literal('connect'), ref: placement.ref, from: id, to: id, label: z.string().default(''), direction: z.enum(['none', 'forward', 'both']).default('forward'),
+  z.object({ op: z.literal('connect'), ref: placement.ref, from: CanvasLayoutTargetSchema, to: CanvasLayoutTargetSchema, label: z.string().default(''), direction: z.enum(['none', 'forward', 'both']).default('forward'),
     lineStyle: z.enum(['curve', 'straight']).default('curve'), linePattern: z.enum(['solid', 'dashed']).default('solid'),
   }).strict(),
   z.object({ op: z.literal('disconnect'), id: z.string().regex(/^e[1-9]\d*$/), revision: z.number().int().positive().optional() }).strict(),

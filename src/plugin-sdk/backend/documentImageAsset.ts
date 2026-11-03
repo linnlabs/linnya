@@ -22,6 +22,9 @@ import { getAppDataPath, getWorkspaceRoot } from 'src/shared/utils/pathManager';
 import { requireDocumentAssetDatabase } from './documentAssetRuntimeDatabase';
 
 let runtimeByDatabase = new WeakMap<Database.Database, PluginDocumentImageAssetRuntimePort>();
+export function readDocumentImageAssetLimits() {
+  return { maxImageBytes: LINNYA_FLOW_IMAGE_INGRESS_POLICY.maxImageBytes, maxImagePixels: LINNYA_FLOW_IMAGE_INGRESS_POLICY.maxImagePixels };
+}
 
 export function createDocumentImageAssetRuntime(
   databaseValue: unknown

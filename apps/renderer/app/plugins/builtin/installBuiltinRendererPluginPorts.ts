@@ -22,11 +22,14 @@ import { registerRendererConversationSubrunInvocationPort } from '@plugin/render
 import { registerRendererInteractiveToolPort } from '@plugin/renderer/interactiveTool';
 import { registerRendererReferenceRuntimePort } from '@plugin/renderer/referenceRuntime';
 import { registerWorkspaceRuntimePort } from '@plugin/renderer/workspaceRuntime';
+import { registerRendererPluginRuntimePort } from '@plugin/renderer/pluginRuntime';
+import { createRendererPluginRuntimePort } from '../orchestration/createRendererPluginRuntimePort';
 import { useNavigationScope } from '@/app/navigation';
 import { useFileStore } from '@/shared/stores/file';
 import { useNotificationStore } from '@/app/notification';
 import { confirm } from '@/shared/composables/confirmDialog';
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';
+import { subscribeToWorkspaceMutation } from '@/shared/ipc/workspaceMutationSubscription';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import { validateWebManualForm } from '@/domains/editor/features/citation/adapters/webCitationAdapter';
 import { useWebManualCitationForm } from '@/domains/editor/features/citation/ui/useWebManualCitationForm';
@@ -227,6 +230,7 @@ async function startHistoryIsolatedRun(request: RendererAiHistoryIsolatedRunRequ
 
 function installWorkspaceRuntimePort(): void {
   registerWorkspaceRuntimePort({
+    subscribeMutations: subscribeToWorkspaceMutation,
     getCurrentProjectId: () => useNavigationScope().currentProjectId,
     getActiveFileSession,
     markActiveFileDirty,
@@ -293,6 +297,7 @@ function installComposerCommandPort(): void {
 }
 
 export function installBuiltinRendererPluginPorts(): void {
+  registerRendererPluginRuntimePort(createRendererPluginRuntimePort());
   registerToolPresentationProjectionPort(createToolPresentationProjectionPort());
   registerToolCompactStepProjectionPort(createToolCompactStepProjectionPort());
   registerKnowledgeSearchHistoryPort({

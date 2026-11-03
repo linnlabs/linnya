@@ -13,7 +13,7 @@ export function readCanvasElementText(element: CanvasElement): string {
   switch (element.type) {
     case 'text': return readCanvasNodeText(element.data.content);
     case 'image': return element.data.caption || element.data.alt;
-    case 'document': return element.data.documentId;
+    case 'document': return '文档';
     case 'edge': return element.label;
   }
 }

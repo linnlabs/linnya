@@ -1,5 +1,5 @@
-import { Container, Graphics, Sprite, Texture } from 'pixi.js';
-import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdge, CanvasEdgeId, CanvasPoint } from '../../../../shared';
+import { AlphaFilter, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdge, CanvasEdgeId, CanvasPoint, CanvasRectangle } from '../../../../shared';
 import type { CanvasAppearance } from '../../definitions/canvasKernel';
 import { layoutCanvasEdges, type CanvasEdgeGeometry } from '../../geometry/canvasEdgeGeometry';
 import { CanvasLineMesh } from './CanvasLineMesh';
@@ -18,6 +18,8 @@ export class CanvasLines {
   private readonly highlight = new CanvasLineMesh();
   private readonly selectedLine = new CanvasLineMesh();
   private readonly ghostContainer = new Container();
+  private readonly ghostAlpha = new AlphaFilter({ alpha: 0.22 * 0.42 });
+  private readonly ghostArea = new Rectangle(0, 0, 1, 1);
   private readonly cardMask = new Graphics();
   private readonly endpoints = new Graphics();
   private readonly labelCanvas = document.createElement('canvas');
@@ -41,9 +43,11 @@ export class CanvasLines {
   constructor() {
     this.below.addChild(this.base.mesh);
     this.ghostContainer.addChild(this.ghost.mesh); this.ghostContainer.mask = this.cardMask;
+    // 整层合成后再淡化：交叉处不累加墨色，也不能用不透明浅色覆盖正文笔画。
+    this.ghostContainer.filters = [this.ghostAlpha]; this.ghostContainer.filterArea = this.ghostArea;
     this.above.addChild(this.cardMask, this.ghostContainer, this.highlight.mesh, this.selectedLine.mesh, this.labels, this.endpoints);
   }
-  setElements(edges: readonly CanvasEdge[], cards: ReadonlyMap<string, CanvasCard>): void {
+  setElements(edges: readonly CanvasEdge[], cards: ReadonlyMap<string, CanvasCard>, mask: readonly CanvasRectangle[]): void {
     this.geometries = layoutCanvasEdges(edges, cards, 4, this.geometries);
     this.entries = edges.map(edge => {
       const geometry = this.geometries.get(edge.id);
@@ -55,7 +59,7 @@ export class CanvasLines {
       points: [entry.geometry.from, entry.geometry.to], midpoint: { x: (entry.geometry.from.x + entry.geometry.to.x) / 2, y: (entry.geometry.from.y + entry.geometry.to.y) / 2 } } }));
     this.base.clearCache();
     this.cardMask.clear();
-    for (const card of cards.values()) this.cardMask.rect(card.x, card.y, card.width, card.height);
+    for (const region of mask) this.cardMask.rect(region.x, region.y, region.width, region.height);
     this.cardMask.fill(0xffffff);
     this.key = ''; this.update();
   }
@@ -90,10 +94,11 @@ export class CanvasLines {
     const background = this.appearance.dark ? 0x222723 : 0xf2f3ee, ink = this.appearance.dark ? 0xe8e9e3 : 0x252c27;
     const amount = zoom < 0.15 ? 0.1 : zoom < 0.3 ? 0.16 : 0.22;
     this.base.setColor(blend(ink, background, amount));
-    this.ghost.setColor(blend(ink, this.appearance.dark ? 0x323631 : 0xfbfaf5, 0.22 * 0.42));
+    this.ghost.setColor(ink);
     this.highlight.setColor(blend(ink, background, 0.55)); this.selectedLine.setColor(0x347b45, 1.5);
-    for (const layer of [this.base, this.ghost, this.highlight, this.selectedLine]) layer.setCamera(this.camera, this.width, this.height, this.resolution);
+    for (const layer of [this.base, this.ghost, this.highlight, this.selectedLine]) layer.setCamera(this.camera, this.resolution);
     this.cardMask.position.set(x, y); this.cardMask.scale.set(zoom);
+    this.ghostArea.width = this.width; this.ghostArea.height = this.height;
     this.ghostContainer.visible = zoom >= 0.3;
     this.drawEndpoints(); this.drawLabels(visible);
   }
@@ -140,5 +145,6 @@ export class CanvasLines {
   destroy(): void {
     this.ghost.destroy(); this.highlight.destroy(); this.selectedLine.destroy(); this.base.destroy(); this.labelTexture.destroy(true);
     this.below.destroy({ children: true }); this.above.destroy({ children: true });
+    this.ghostAlpha.destroy();
   }
 }

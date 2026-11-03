@@ -32,6 +32,19 @@ describe('Canvas document session', () => {
     expect(f.session.state.snapshot.value).toBeNull();
   });
 
+  it('正文与拖动分别持有保护，结束正文编辑不会清掉仍在拖动的坐标字段', async () => {
+    const f = fixture(); await f.session.open('doc');
+    const id = (await import('@plugin/canvas/shared')).CanvasCardIdSchema.parse('c1');
+    await f.session.protect(id, ['data'], 'text');
+    await f.session.protect(id, ['x', 'y'], 'drag');
+    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: ['data', 'x', 'y'] }));
+    await f.session.protect(id, [], 'text');
+    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: ['x', 'y'] }));
+    await f.session.protect(id, [], 'drag');
+    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] }));
+    await f.session.close();
+  });
+
   it('A→B→A 的旧异步响应不能装进新的文档会话', async () => {
     const f = fixture();
     let finishOld: ((value: CanvasSnapshot) => void) | undefined;
@@ -61,5 +74,16 @@ describe('Canvas document session', () => {
     await expect(f.session.synchronize(4)).rejects.toThrow('does not continue');
     expect(f.session.state.snapshot.value?.sequence).toBe(0);
     expect(f.session.state.phase.value).toBe('failed');
+  });
+
+  it('部分提交先同步正式序号再说明跳过，失败不阻塞下一次独立动作', async () => {
+    const f = fixture(); await f.session.open('doc');
+    const commit = f.commit.getMockImplementation(); if (!commit) throw new Error('fixture commit missing');
+    f.commit.mockImplementationOnce(async input => ({ ...await commit(input), results: [{ index: 0, status: 'applied', id: null, reason: null }, { index: 1, status: 'skipped', id: null, reason: 'revision_conflict' }] }));
+    const operations = [{ op: 'delete' as const, id: 'c1', baseRevision: 1 }];
+    await expect(f.session.commit(operations)).rejects.toThrow('已提交 1 项，另有 1 项跳过');
+    expect(f.session.state.snapshot.value?.sequence).toBe(1);
+    await f.session.commit(operations); expect(f.session.state.snapshot.value?.sequence).toBe(2);
+    await f.session.close();
   });
 });

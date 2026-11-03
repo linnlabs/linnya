@@ -22,6 +22,7 @@ import {
 } from '@/app/plugins/registry';
 import { installBuiltinRendererPluginPorts } from './installBuiltinRendererPluginPorts';
 
+vi.mock('@/shared/ipc/workspaceMutationSubscription', () => ({ subscribeToWorkspaceMutation: () => () => {} }));
 vi.mock('@/app/layout/store/layoutStore', () => ({ useLayoutStore: () => ({ state: { layoutMode: 'editor-centric', conversationPane: { visible: true } }, openConversationInRightPane: vi.fn() }) }));
 vi.mock('@/domains/conversation/features/composer-focus', () => ({ focusRegisteredComposerInput: () => true }));
 
