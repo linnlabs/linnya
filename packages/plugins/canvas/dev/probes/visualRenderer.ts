@@ -95,12 +95,15 @@ async function lineVisual() {
     from: { kind: 'card', cardId: cards[0].id, side: 'auto' }, to: { kind: 'card', cardId: cards[1].id, side: 'auto' } });
   const dashed = CanvasEdgeSchema.parse({ ...common, id: 'e2', type: 'edge', lineStyle: 'straight', linePattern: 'dashed', direction: 'both', label: '',
     from: { kind: 'point', x: 40, y: 350 }, to: { kind: 'point', x: 800, y: 350 } });
-  kernel.setElements([...cards, selected, dashed]); kernel.setSelectedEdge(selected.id);
+  const loose = ['none', 'forward', 'both'].map((direction, index) => CanvasEdgeSchema.parse({ ...common, id: `e${index + 3}`, type: 'edge', color: 'purple', direction,
+    lineStyle: 'straight', label: '', from: { kind: 'point', x: 100, y: 450 + index * 50 }, to: { kind: 'point', x: 500, y: 450 + index * 50 } }));
+  kernel.setElements([...cards, selected, dashed, ...loose]); kernel.setSelectedEdge(selected.id);
   const geometry = kernel.readEdgeGeometry(selected.id);
   if (!geometry || kernel.hitTestEdge(geometry.midpoint)?.id !== selected.id || kernel.hitTestEdge({ x: geometry.midpoint.x, y: geometry.midpoint.y + 7 })?.id === selected.id) {
     throw new Error('line_geometry_hit_range_mismatch');
   }
-  return { dpr: devicePixelRatio, image: await kernel.captureImage('png') };
+  const image = await kernel.captureImage('png'); kernel.setCamera({ x: 0, y: 0, zoom: 0.5 });
+  return { dpr: devicePixelRatio, image, half: await kernel.captureImage('png') };
 }
 Object.defineProperty(window, 'prepareCanvasLineVisualProbe', { value: lineVisual });
 
