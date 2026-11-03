@@ -2,7 +2,7 @@ import type { DocumentReferenceMarkdownBinding, JsonValue } from '@app/schemas';
 import type { ReferenceMarkdownBaseline, ReferenceMarkdownPort, ReferenceMarkdownPrepared } from '../definitions/referenceMarkdown';
 import { ReferenceMarkdownError } from '../definitions/referenceMarkdown';
 import { assertReferenceMarkdownBindings, projectReferenceMarkdown } from './projectReferenceMarkdown';
-import { collectDocumentReferenceInputs, commonReferenceMarks, normalizedReferencePath, referenceChildren, referenceObject, workspaceReferenceHref, type ReferenceJsonObject } from './referenceContent';
+import { collectDocumentReferenceInputs, commonReferenceMarks, normalizedReferencePath, transformWorkspaceReferenceLinks, type ReferenceJsonObject } from './referenceContent';
 
 export function admitReferenceMarkdown(input: { readonly sourceDocumentId: string; readonly existingContent?: JsonValue; readonly content: JsonValue; readonly baseline?: ReferenceMarkdownBaseline }, port: ReferenceMarkdownPort, allocateReferenceId: () => string): ReferenceMarkdownPrepared {
   const source = port.read(input.sourceDocumentId);
@@ -28,21 +28,7 @@ export function admitReferenceMarkdown(input: { readonly sourceDocumentId: strin
     const marks = commonReferenceMarks(nodes);
     return { type: 'documentReference', attrs: { documentId: target.id, referenceId: binding.referenceId }, ...(marks.length ? { marks } : {}) };
   }
-  function transform(value: JsonValue): JsonValue {
-    const node = referenceObject(value); if (!node || node.type === 'codeBlock') return value;
-    const children = referenceChildren(node); if (!children) return node;
-    const next: JsonValue[] = [];
-    for (let index = 0; index < children.length; index += 1) {
-      const child = referenceObject(children[index]); const href = child ? workspaceReferenceHref(child) : null;
-      if (!child || !href) { next.push(transform(children[index])); continue; }
-      if (child.type !== 'text') throw new ReferenceMarkdownError('reference_path_not_found');
-      const group = [child];
-      while (index + 1 < children.length) { const following = referenceObject(children[index + 1]); if (!following || following.type !== 'text' || workspaceReferenceHref(following) !== href) break; group.push(following); index += 1; }
-      next.push(resolve(group, href));
-    }
-    return { ...node, content: next };
-  }
-  const content = transform(input.content);
+  const content = transformWorkspaceReferenceLinks(input.content, resolve);
   assertReferenceMarkdownBindings(input.sourceDocumentId, bindings, port);
   return { content, references: collectDocumentReferenceInputs(content), bindings };
 }

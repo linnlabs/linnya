@@ -71,4 +71,18 @@ describe('trusted Markdown document reference bindings', () => {
       f.database.prepare('UPDATE workspace_nodes SET project_id = ? WHERE id = ?').run('other-project', 'target'); expect(() => f.runtime.admit({ ...f.identity, sourceKey: 'new', content: parseMarkdownDocument('[Target](workspace:/Target%20Space.md)') })).toThrow('同项目');
     } finally { f.database.close(); }
   });
+  it('records the delivered projection without re-reading and hydrates accepted proposals by stored identity', () => {
+    const f = fixture();
+    try {
+      const read = f.runtime.project({ sourceDocumentId: 'source', content: tagged });
+      const text = serializeMarkdownDocument(read.content);
+      f.database.prepare('UPDATE workspace_nodes SET name = ? WHERE id = ?').run('Renamed.md', 'target');
+      f.database.prepare('INSERT INTO workspace_nodes VALUES (?, ?, ?, ?, NULL, NULL, NULL, 1)').run('replacement', 'project', 'Target Space.md', 'document');
+      f.runtime.registerBindings({ ...f.identity, bindings: read.bindings, unprojectableReferenceIds: read.unprojectableReferenceIds });
+      expect(() => f.write(text)).toThrow('改名');
+      expect(f.runtime.hydrate({ content: parseMarkdownDocument(text), bindings: read.bindings })).toEqual(tagged);
+      expect(() => f.runtime.hydrate({ content: parseMarkdownDocument('[Other](workspace:/Target%20Space.md)'), bindings: read.bindings })).toThrow('同项目');
+    } finally { f.database.close(); }
+  });
+
 });
