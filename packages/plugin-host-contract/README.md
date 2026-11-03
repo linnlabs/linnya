@@ -164,3 +164,5 @@ Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。
 ## Renderer IPC 的投递结果
 
 `pluginIpcClient.invokeRendererPluginIpc` 保留 `failureKind`：正式Handler返回的失败为 `application`；调用通道抛出或返回结构无法验证为 `delivery_unknown`。后者不能证明写入没有执行。需要幂等的写用例必须保留原requestId和完整负载，确认前不能生成另一份写意图；DTO仍由调用方的正式schema接纳。`application`描述返回来源，事务是否已写入由业务owner的提交合同保证。
+
+`renderer/documentReferences.readDocumentBacklinks` 以当前 projectId/documentId 读取同项目活动来源，按来源文档分组分页并返回文档数和引用数。它不读取正文、不打开文档、不赋予跨项目访问；标题与节点类型都是当前派生事实。

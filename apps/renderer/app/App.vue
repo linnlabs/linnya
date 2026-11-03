@@ -49,6 +49,8 @@ import {
 } from './plugins/loader/runtimeRendererPluginLoader';
 import { describeRendererPluginRegistryForDiagnostics } from './plugins/registry';
 import { registerConversationResourceLinkPort } from '@/domains/conversation/features/resource-link';
+import { registerDocumentTypePresentationPort } from '@/domains/editor/features/document-references';
+import { readDocumentTypeIcon, readDocumentTypeRecoveryAction } from './plugins/documentTypePresentation';
 import { createConversationResourceLinkPort } from './workflows/conversation-resource-link/orchestration/createConversationResourceLinkPort';
 
 const layoutStore = useLayoutStore();
@@ -69,6 +71,7 @@ registerWorkspaceNodeTransferPort(createWorkspaceNodeTransfer());
 registerDocumentSurfaceRuntimePort(createDocumentSurfaceRuntime());
 registerMarkdownDocumentEditorRuntimePort(createMarkdownDocumentEditorRuntime());
 registerConversationResourceLinkPort(createConversationResourceLinkPort());
+registerDocumentTypePresentationPort({ readIcon: readDocumentTypeIcon, readRecoveryAction: readDocumentTypeRecoveryAction });
 useWorkspaceVfsRuntimeContextSync();
 useWorkspaceMutationSubscription();
 useActiveDocumentPluginAvailabilityGuard();

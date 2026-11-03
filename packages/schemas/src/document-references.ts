@@ -49,3 +49,12 @@ export type DocumentReferenceRetainedIdentity = z.infer<typeof DocumentReference
 export const DocumentReferenceDeletionRequestSchema = z.object({ nodeIds: z.array(z.string().min(1)).min(1) }).strict();
 export const DocumentReferenceDeletionPreviewSchema = z.object({ referenceCount: z.number().int().nonnegative(), referencingDocumentCount: z.number().int().nonnegative(), documents: z.array(z.object({ sourceDocumentId: z.string(), title: z.string(), nodeType: z.string(), referenceCount: z.number().int().positive() }).strict()) }).strict();
 export type DocumentReferenceDeletionPreview = z.infer<typeof DocumentReferenceDeletionPreviewSchema>;
+
+
+/** 反向列表按来源文档分组分页，同一文档内的多种引用统一计数。 */
+export const DocumentBacklinkSourceSchema = z.object({ sourceDocumentId: z.string(), title: z.string(), nodeType: z.string(), referenceCount: z.number().int().positive() }).strict();
+export const DocumentBacklinksRequestSchema = DocumentReferencePresentationRequestSchema.extend({ offset: z.number().int().nonnegative().default(0), limit: z.number().int().min(1).max(100).default(50) }).strict();
+export const DocumentBacklinksPageSchema = z.object({ referenceCount: z.number().int().nonnegative(), documentCount: z.number().int().nonnegative(), documents: z.array(DocumentBacklinkSourceSchema), nextOffset: z.number().int().nonnegative().nullable() }).strict();
+export type DocumentBacklinksRequest = z.input<typeof DocumentBacklinksRequestSchema>;
+export type DocumentBacklinkSource = z.infer<typeof DocumentBacklinkSourceSchema>;
+export type DocumentBacklinksPage = z.infer<typeof DocumentBacklinksPageSchema>;

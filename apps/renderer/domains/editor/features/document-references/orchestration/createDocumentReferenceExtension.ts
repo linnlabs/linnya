@@ -40,7 +40,7 @@ export function createDocumentReferenceExtension(port: DocumentReferenceUiPort =
           allow: ({ state, range }) => { const position = state.doc.resolve(range.from); if (!port.getProjectId()) return false; for (let depth = position.depth; depth > 0; depth -= 1) { const name = position.node(depth).type.name; if (position.node(depth).type.spec.code || name.toLowerCase().includes('latex')) return false; } return true; },
           items: async ({ query }) => [...await port.query(query)],
           command: ({ editor, range, props }) => { editor.chain().focus().insertContentAt(range, [{ type: 'documentReference', attrs: { documentId: props.documentId, referenceId: crypto.randomUUID() } }, { type: 'text', text: ' ' }]).run(); },
-          render: createDocumentReferenceSuggestionView,
+          render: () => createDocumentReferenceSuggestionView(port),
         }),
       ];
     },
