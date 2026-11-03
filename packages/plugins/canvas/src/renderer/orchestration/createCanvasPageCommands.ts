@@ -1,7 +1,7 @@
-import type { createCanvasSurface } from './createCanvasSurface';
+import type { CanvasPageCommandSurface as Surface } from '../definitions/canvasPageCommands';
+import { readCanvasCardMenuColor } from '../functions/canvasMenuActions';
 import type { CanvasPoint } from '@plugin/canvas/shared';
 import { readCanvasConnectionMenuPatch } from '../features/connections';
-type Surface = Awaited<ReturnType<typeof createCanvasSurface>>;
 export function createCanvasPageCommands(options: { readSurface(): Surface | null; addToConversation(): Promise<void>; showDocuments(point?: CanvasPoint): Promise<void>; pickImages(point?: CanvasPoint): void }) {
   const commands = new Map<string, (surface: Surface) => void | Promise<unknown>>([
     ['ai', () => options.addToConversation()], ['new', surface => surface.createText(surface.context.value?.point)], ['document', surface => options.showDocuments(surface.context.value?.point)], ['image', surface => options.pickImages(surface.context.value?.point)],
@@ -18,8 +18,10 @@ export function createCanvasPageCommands(options: { readSurface(): Surface | nul
   return async (value: string | number | boolean) => {
     const current = options.readSurface(); if (!current) return;
     const command = typeof value === 'string' ? commands.get(value) : undefined;
+    const color = typeof value === 'string' ? readCanvasCardMenuColor(value) : null;
     const patch = typeof value === 'string' ? readCanvasConnectionMenuPatch(value) : null, edge = current.connections.selected.value;
-    if (patch && edge) await current.connections.patch(edge, patch);
+    if (color) await current.color(color);
+    else if (patch && edge) await current.connections.patch(edge, patch);
     else { if (!command) throw new Error('未知画布菜单动作'); await command(current); }
     current.closeContext();
   };
