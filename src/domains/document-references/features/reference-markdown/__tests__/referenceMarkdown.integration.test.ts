@@ -52,6 +52,8 @@ describe('trusted Markdown document reference bindings', () => {
       expect(() => f.write('Replacement before any new read')).toThrow('不能无损替换');
       const unavailable = f.read(); expect(unavailable.unprojectableReferenceIds).toEqual(['ref-1']); expect(JSON.stringify(unavailable.content)).not.toContain('Target Space');
       expect(() => f.write('Replace everything')).toThrow('不能无损替换');
+      const appended = f.runtime.admit({ ...f.identity, content: parseMarkdownDocument('Only new paragraph') }); expect(appended.references).toEqual([]);
+      expect(() => f.runtime.admit({ ...f.identity, content: parseMarkdownDocument(text) })).toThrow('改名');
     } finally { f.database.close(); }
   });
   it('resolves new links only in the current project and allocates independent IDs when copying a known tag', () => {

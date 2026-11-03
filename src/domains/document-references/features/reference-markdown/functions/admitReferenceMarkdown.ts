@@ -11,7 +11,7 @@ export function admitReferenceMarkdown(input: { readonly sourceDocumentId: strin
   const existing = input.existingContent ? collectDocumentReferenceInputs(input.existingContent) : [];
   if (existing.length && (!input.baseline || existing.some(reference => !input.baseline?.bindings.some(binding => binding.referenceId === reference.referenceId) && !input.baseline?.unprojectableReferenceIds.includes(reference.referenceId)))) throw new ReferenceMarkdownError('reference_read_required');
   const currentProjection = input.existingContent ? projectReferenceMarkdown({ sourceDocumentId: input.sourceDocumentId, content: input.existingContent }, port) : null;
-  if (currentProjection?.baseline.unprojectableReferenceIds.length || input.baseline?.unprojectableReferenceIds.length) throw new ReferenceMarkdownError('reference_projection_lossy');
+  if (input.existingContent !== undefined && (currentProjection?.baseline.unprojectableReferenceIds.length || input.baseline?.unprojectableReferenceIds.length)) throw new ReferenceMarkdownError('reference_projection_lossy');
   const knownBindings = [...(input.baseline?.bindings ?? []), ...(input.baseline ? currentProjection?.baseline.bindings ?? [] : [])];
   const used = new Set<string>(); const bindings: DocumentReferenceMarkdownBinding[] = [];
   function resolve(nodes: readonly ReferenceJsonObject[], href: string): JsonValue {
