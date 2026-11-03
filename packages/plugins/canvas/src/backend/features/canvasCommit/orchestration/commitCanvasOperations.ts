@@ -1,11 +1,12 @@
 import { CanvasCommitRequestSchema, CanvasCommitResultSchema, type CanvasCommitResult } from '../../../../shared/changeset/definitions/canvasCommands';
 import type { CanvasDatabase } from '../../../definitions/canvasDatabase';
-import type { CanvasCommitActor, CanvasCommitContext, CanvasCommitParticipant, CanvasCommitPlan, CanvasCommitState, CanvasEditingClaim } from '../definitions/canvasCommit';
+import type { CanvasCommitActor, CanvasCommitContext, CanvasCommitParticipant, CanvasCommitPlan, CanvasCommitState, CanvasEditingClaim, CanvasCommitPublication } from '../definitions/canvasCommit';
 import { validateCanvasPlanContent } from '../functions/validateCanvasContent';
 import { planCanvasCommit } from '../functions/planCanvasCommit';
 import type { CanvasRectangle } from '../../../../shared/geometry/definitions/canvasGeometry';
 import { canvasPayloadHash, canvasSourceKey, canvasOperationsPayload } from '../functions/canvasRequestIdentity';
 import { persistCanvasCommit, readCanvasCommitState, readCanvasEditingClaims, readCanvasReceipt } from '../persistence/canvasRepository';
+import { performance } from 'node:perf_hooks';
 
 export interface CanvasHistoryCommitInput {
   readonly context: CanvasCommitContext;
@@ -16,7 +17,7 @@ export interface CanvasHistoryCommitInput {
 export interface CanvasCommitPorts {
   readonly reservedRectangles?: (state: CanvasCommitState, context: CanvasCommitContext) => readonly CanvasRectangle[];
   readonly participants?: readonly CanvasCommitParticipant[];
-  readonly publish?: (plan: CanvasCommitPlan, context: CanvasCommitContext) => void;
+  readonly publish?: (plan: CanvasCommitPlan, context: CanvasCommitContext, publication: CanvasCommitPublication) => void;
   readonly publicationFailed?: (error: unknown) => void;
   /** 事务内持久化组事实，返回的纯内存更新仅在事务成功后调用。 */
   readonly history?: (input: CanvasHistoryCommitInput) => (() => void) | undefined;
@@ -58,9 +59,10 @@ export function commitCanvasTransition(input: CanvasTransitionInput): CanvasComm
     updateMemory = input.ports?.history?.({ context, before: state, plan, result });
     committedPlan = plan;
   }).immediate();
+  const committedAt = performance.timeOrigin + performance.now();
   updateMemory?.();
   if (committedPlan && committedPlan.changes.length > 0 && input.ports?.publish) {
-    try { input.ports.publish(committedPlan, context); }
+    try { input.ports.publish(committedPlan, context, { committedAt }); }
     catch (error) { input.ports.publicationFailed?.(error); }
   }
   return CanvasCommitResultSchema.parse(result);

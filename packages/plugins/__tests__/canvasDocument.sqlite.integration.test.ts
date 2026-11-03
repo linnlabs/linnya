@@ -80,7 +80,7 @@ it('creates, commits, closes and reopens through actual Host projection and curr
   const id = runtime.create({ projectId, parentId: null, name: '讨论' });
   runtime.read(id, projectId, 'view');
   runtime.commit({ documentId: id, viewId: 'view', requestId: 'first', operations: [text('中文正文')] });
-  expect(push).toHaveBeenCalledWith(expect.objectContaining({ channel: 'canvas:changed', payload: { documentId: id, sequence: 1 } }));
+  expect(push).toHaveBeenCalledWith(expect.objectContaining({ channel: 'canvas:changed', payload: expect.objectContaining({ documentId: id, sequence: 1, sourceKind: 'user', changedElementCount: 1, committedAt: expect.any(Number) }) }));
   runtime.close(id, 'view');
   expect(runtime.read(id).elements).toHaveLength(1);
   expect(runtime.project(id)).toContain('中文正文');

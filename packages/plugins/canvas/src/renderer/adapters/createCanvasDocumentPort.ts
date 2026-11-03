@@ -1,9 +1,7 @@
 import { onRendererPluginPush } from '@plugin/renderer/pluginPushClient';
-import { z } from 'zod';
-import { CANVAS_PLUGIN_ID, CANVAS_CHANGED_CHANNEL, CanvasSnapshotSchema, CanvasSynchronizationSchema, CanvasCommitResultSchema, CanvasUndoResultSchema } from '@plugin/canvas/shared';
+import { CANVAS_PLUGIN_ID, CANVAS_CHANGED_CHANNEL, CanvasChangedEventSchema, CanvasSnapshotSchema, CanvasSynchronizationSchema, CanvasCommitResultSchema, CanvasUndoResultSchema } from '@plugin/canvas/shared';
 import type { CanvasDocumentPort } from '../features/canvasDocument';
 import { requestCanvasIpc as request, requestCanvasMutation } from './requestCanvasIpc';
-const changedEvent = z.object({ documentId: z.string(), sequence: z.number().int().nonnegative() });
 
 export function createCanvasDocumentPort(): CanvasDocumentPort {
   return {
@@ -14,7 +12,7 @@ export function createCanvasDocumentPort(): CanvasDocumentPort {
     undo: input => requestCanvasMutation('canvas:undo', input, value => CanvasUndoResultSchema.parse(value)),
     close: async (documentId, viewId) => { await request('canvas:close', { documentId, viewId }); },
     subscribe: callback => onRendererPluginPush(CANVAS_PLUGIN_ID, CANVAS_CHANGED_CHANNEL, payload => {
-      callback(changedEvent.parse(payload));
+      callback(CanvasChangedEventSchema.parse(payload));
     }),
   };
 }

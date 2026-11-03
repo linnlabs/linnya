@@ -1,4 +1,4 @@
-import type { CanvasCommand, CanvasCommitResult, CanvasEditingRequestSchema, CanvasSnapshot, CanvasSynchronization, CanvasUndoRequest, CanvasUndoResult } from '@plugin/canvas/shared';
+import type { CanvasCommand, CanvasChangedEvent, CanvasCommitResult, CanvasEditingRequestSchema, CanvasSnapshot, CanvasSynchronization, CanvasUndoRequest, CanvasUndoResult } from '@plugin/canvas/shared';
 import type { z } from 'zod';
 import type { Ref } from 'vue';
 import type { CanvasConfirmedMutation } from './canvasMutation';
@@ -11,7 +11,7 @@ export interface CanvasDocumentPort {
   editing(input: z.infer<typeof CanvasEditingRequestSchema>): Promise<void>;
   undo(input: CanvasUndoRequest): Promise<CanvasUndoResult>;
   close(documentId: string, viewId: string): Promise<void>;
-  subscribe(callback: (event: { documentId: string; sequence: number }) => void): () => void;
+  subscribe(callback: (event: CanvasChangedEvent) => void): () => void;
 }
 export interface CanvasDocumentState {
   readonly snapshot: Readonly<Ref<CanvasSnapshot | null>>;
