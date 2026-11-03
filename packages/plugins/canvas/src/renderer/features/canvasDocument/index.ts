@@ -3,3 +3,4 @@ export { applyCanvasSynchronization } from './functions/applyCanvasSynchronizati
 export type { CanvasDocumentPort, CanvasDocumentSession } from './definitions/canvasDocumentSession';
 export { canvasFileHandler } from './fileHandler';
 export { registerCanvasSaveParticipant, saveCanvasDocumentDrafts } from './ports/canvasSaveParticipants';
+export { requireCanvasUserCommitApplied } from './functions/requireCanvasUserCommitApplied';

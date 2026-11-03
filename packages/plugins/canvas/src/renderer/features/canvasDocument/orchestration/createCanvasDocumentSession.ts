@@ -3,6 +3,7 @@ import type { z } from 'zod';
 import type { CanvasDocumentPort, CanvasDocumentSession } from '../definitions/canvasDocumentSession';
 import { createCanvasDocumentState } from '../store/createCanvasDocumentState';
 import { applyCanvasSynchronization } from '../functions/applyCanvasSynchronization';
+import { requireCanvasUserCommitApplied } from '../functions/requireCanvasUserCommitApplied';
 
 /** 一个表面拥有一个会话；Host file handler 在关闭前先等待该表面的保存屏障。 */
 export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDocumentSession {
@@ -78,11 +79,7 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
         const result = await port.commit({ documentId: document.documentId, requestId, viewId, operations, ...(historyGroupId ? { historyGroupId } : {}) });
         if (token !== sessionId) throw new DOMException('Canvas committed after its surface closed', 'AbortError');
         await synchronize(result.sequence);
-        const skipped = result.results.filter(outcome => outcome.status === 'skipped');
-        if (skipped.length) {
-          const applied = result.results.length - skipped.length;
-          throw new Error(`${applied ? `已提交 ${applied} 项，另有 ${skipped.length} 项跳过` : '本次修改未提交'}：${[...new Set(skipped.map(outcome => outcome.reason ?? '内容已变化，请重试'))].join('；')}`);
-        }
+        requireCanvasUserCommitApplied(result);
         return result;
       });
       // 一个动作失败不能把后续用户动作永远卡在 rejected promise 上。

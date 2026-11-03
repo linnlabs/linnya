@@ -1,6 +1,8 @@
 import type { CanvasCardId } from '@plugin/canvas/shared';
 export interface CanvasKeyboardActions {
   isEditing(): boolean;
+  treeMode?(): boolean;
+  createTree?(kind: 'child' | 'sibling'): Promise<void>;
   selection(): readonly CanvasCardId[];
   allIds(): readonly CanvasCardId[];
   zoomValue(): number;
@@ -14,3 +16,4 @@ export interface CanvasKeyboardActions {
   zoom(value: number): void;
   move(ids: readonly CanvasCardId[], dx: number, dy: number): Promise<void>;
 }
+export type CanvasShortcut = 'delete' | 'edit' | 'escape' | 'all' | 'actual' | 'fit' | 'fit-selection' | 'zoom-in' | 'zoom-out' | 'undo' | 'redo' | 'duplicate' | 'left' | 'right' | 'up' | 'down' | 'tree-child' | 'tree-sibling';

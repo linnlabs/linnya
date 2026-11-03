@@ -2,7 +2,7 @@ import type { CanvasKeyboardActions } from '../definitions/canvasKeyboard';
 import { readCanvasShortcut } from '../functions/readCanvasShortcut';
 export function createCanvasKeyboardHandler(actions: CanvasKeyboardActions) {
   return async (event: KeyboardEvent) => {
-    const command = readCanvasShortcut(event, actions.isEditing());
+    const command = readCanvasShortcut(event, actions.isEditing(), actions.treeMode?.() ?? false);
     if (!command) return;
     event.preventDefault();
     switch (command) {
@@ -11,6 +11,8 @@ export function createCanvasKeyboardHandler(actions: CanvasKeyboardActions) {
       case 'redo': await actions.undo('redo'); return;
       case 'delete': await actions.remove(); return;
       case 'edit': await actions.edit(); return;
+      case 'tree-child': await actions.createTree?.('child'); return;
+      case 'tree-sibling': await actions.createTree?.('sibling'); return;
       case 'escape': await actions.escape(); return;
       case 'all': await actions.select(actions.allIds()); return;
       case 'actual': actions.zoom(1); return;

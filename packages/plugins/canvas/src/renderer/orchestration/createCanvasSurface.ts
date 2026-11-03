@@ -1,6 +1,6 @@
 import { computed } from 'vue';
 import { JsonValueSchema } from '@app/schemas';
-import { createCanvasPlainTextDocument, canvasBounds, type CanvasCard, type CanvasCardId, type CanvasColor, type CanvasElementId, type CanvasEndpoint, type CanvasPoint } from '@plugin/canvas/shared';
+import { createCanvasPlainTextDocument, canvasBounds, type CanvasArrangeRequest, type CanvasCard, type CanvasCardId, type CanvasColor, type CanvasElementId, type CanvasEndpoint, type CanvasPoint } from '@plugin/canvas/shared';
 import { createPixiCanvasKernel, type CanvasAppearance, type CanvasKernelIntent } from '../kernel';
 import { createCanvasDocumentSession, registerCanvasSaveParticipant } from '../features/canvasDocument';
 import { createCanvasCardEditor, cardEditorStyle } from '../features/cardEditing';
@@ -19,10 +19,12 @@ import { installCanvasEditorProjection } from './installCanvasEditorProjection';
 import { installCanvasDisplayProjection } from './installCanvasDisplayProjection';
 import { createCanvasTextCreation } from '../features/textCreation';
 import { installCanvasSurfaceClipboard } from './installCanvasSurfaceClipboard';
+import { createCanvasLayoutCommands } from '../features/layoutCommands';
 
 /** 表面的组合根：只连接已提交文档、草稿、选择、kernel与Host端口。 */
 export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: CanvasSurfacePorts) {
   const session = createCanvasDocumentSession(ports.document);
+  const layout = ports.arrangement ? createCanvasLayoutCommands(session, ports.arrangement) : null;
   const editor = createCanvasCardEditor(session);
   const selection = createCanvasSelection();
   const preferences = useCanvasPreferencesStore();
@@ -39,7 +41,8 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     onBlur: () => { void save(true).then(setDirty).catch(report); },
   });
   const cards = () => session.state.snapshot.value?.elements.filter((element): element is CanvasCard => element.type !== 'edge') ?? [];
-  const creation = createCanvasTextCreation(session, async (id, continueEditing, readRemaining, historyGroupId) => { selection.select([id]); kernel.setSelection([id]); if (continueEditing) { await editor.open(id, historyGroupId); const remaining = readRemaining(); if (remaining) { editor.update(JsonValueSchema.parse(remaining)); editor.measure(creation.state.draft.value?.height ?? 64); } } });
+  const creation = createCanvasTextCreation(session, async (id, continueEditing, readRemaining, historyGroupId) => { selection.select([id]); kernel.setSelection([id]); if (continueEditing) { await editor.open(id, historyGroupId); const remaining = readRemaining(); if (remaining) { editor.update(JsonValueSchema.parse(remaining)); editor.measure(creation.state.draft.value?.height ?? 64); } } },
+    (operations, historyGroupId, arrangement) => { if (!arrangement) return session.commit(operations, historyGroupId); if (!layout) throw new Error('当前表面未配置自动排布'); return layout.run(arrangement, operations, historyGroupId); });
   const selected = () => cards().filter(card => selection.ids.value.includes(card.id));
   const setDirty = () => {
     const draft = editor.state.draft.value;
@@ -57,11 +60,12 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   }
   const connections = createCanvasConnectionEditing(session, kernel, { finishText: finish, createText: (point, from) => createText(point, '', from), clearCards: () => { selection.select([]); kernel.setSelection([]); }, report });
   const actions = createCanvasElementActions(session, { read: () => selection.ids.value, select });
-  async function createText(point?: CanvasPoint, text = '', from: CanvasEndpoint | null = null) {
+  async function createText(point?: CanvasPoint, text = '', from: CanvasEndpoint | null = null, arrangement: CanvasArrangeRequest['options'] | null = null) {
     if (!(await finish()) || !(await connections.saveLabel())) return;
     const target = point ?? kernel.screenToWorld({ x: options.host.clientWidth / 2 - 140, y: options.host.clientHeight / 2 - 90 });
-    selection.select([]); kernel.setSelection([]); await connections.select(null); creation.begin(target, from, text); setDirty();
+    selection.select([]); kernel.setSelection([]); await connections.select(null); creation.begin(target, from, text, arrangement); setDirty();
   }
+  const createTree = async (kind: 'child' | 'sibling') => { if (!layout || !(await finish())) return; const plan = layout.planTree(selection.ids.value, kind); await createText(plan.point, '', plan.from, plan.options); };
   async function handleIntent(intent: CanvasKernelIntent) {
     switch (intent.kind) {
       case 'select-edge': await connections.select(intent.id); return;
@@ -96,25 +100,28 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   const fit = (onlySelected = false) => { kernel.fit(onlySelected ? selected() : cards()); state.setCamera(kernel.readCamera()); raster.refresh(); };
   async function color(value: CanvasColor) { const commands = buildColorCommands(session.state.snapshot.value?.elements ?? [], selection.ids.value, value); if (commands.length) await session.commit(commands); }
   async function remove() { if (connections.selected.value) { await connections.remove(); return; } if (!(await finish())) return; const commands = buildDeleteCommands(session.state.snapshot.value?.elements ?? [], selection.ids.value); if (commands.length) await session.commit(commands); await select([]); }
-  async function undo(direction: 'undo' | 'redo') { if (await finish()) await session.undo(direction); }
+  async function undo(direction: 'undo' | 'redo') { await layout?.flush(); if (await finish()) await session.undo(direction); }
   const openCard = async (id: CanvasCardId) => { const card = cards().find(item => item.id === id); if (!card || !(await finish())) return; if (card.type === 'text') await editor.open(id); else await ports.openCard?.(card); };
   const edit = async () => { if (connections.selected.value) { await connections.beginLabel(); return; } const id = selection.ids.value[0]; if (id) await openCard(id); };
   const keydown = createCanvasKeyboardHandler({ isEditing: () => Boolean(editor.state.draft.value || creation.state.draft.value || connections.state.label.value), selection: () => selection.ids.value, allIds: () => cards().map(card => card.id),
+    treeMode: () => Boolean(layout?.state.treeKeyboard.value && selection.ids.value.length === 1), createTree,
     zoomValue: () => camera.value.zoom, duplicate: () => actions.duplicate(), undo, remove, edit, select, fit, zoom, move,
     escape: async () => { const wasEditing = Boolean(editor.state.draft.value || creation.state.draft.value); if (await finish()) { if (!wasEditing) await select([]); kernel.canvas.focus(); } },
   });
   try { kernel.setAppearance(readAppearance()); await session.open(options.documentId); }
   catch (failure) { report(failure); }
   return {
-    session, editor, creation, connections, selection, editingDraft: computed(() => Boolean(editor.state.draft.value || creation.state.draft.value)), setComposing: (value: boolean) => { creation.setComposing(value); editor.setComposing(value); }, captureInsertion: editable.captureInsertion, worldPoint: (point: CanvasPoint) => kernel.screenToWorld(point), centerPoint: () => kernel.screenToWorld({ x: options.host.clientWidth / 2, y: options.host.clientHeight / 2 }), camera, error, context, editorStyle, resizeStyle, selectionStyle, selectedCards, actions, createText, select, color, remove, fit, zoom, undo, report,
+    session, editor, creation, layout, connections, selection, editingDraft: computed(() => Boolean(editor.state.draft.value || creation.state.draft.value)), setComposing: (value: boolean) => { creation.setComposing(value); editor.setComposing(value); }, captureInsertion: editable.captureInsertion, worldPoint: (point: CanvasPoint) => kernel.screenToWorld(point), centerPoint: () => kernel.screenToWorld({ x: options.host.clientWidth / 2, y: options.host.clientHeight / 2 }), camera, error, context, editorStyle, resizeStyle, selectionStyle, selectedCards, actions, createText, select, color, remove, fit, zoom, undo, report,
+    async arrange(request: CanvasArrangeRequest['options']) { if (!layout || !(await finish())) return; await layout.run({ ...request, ...(selection.ids.value.length ? { elementIds: [...selection.ids.value] } : {}) }); layout.state.setDirection(request.direction); layout.state.setTreeKeyboard(request.algorithm === 'tree'); fit(Boolean(selection.ids.value.length)); },
     async connect() { if (await finish()) await connections.select(await actions.connect()); },
     clipboard,
+    clearFailure: state.clearFailure,
     resizeStart(event: PointerEvent) { const card = selectedCards.value[0]; if (card && selectedCards.value.length === 1) resizing.start(card, event, camera.value.zoom); },
     closeContext() { state.setContext(null); },
     contextStyle: computed(() => { const point = context.value?.point; const screen = point ? kernel.worldToScreen(point) : { x: 0, y: 0 }; return { left: `${Math.min(Math.max(8, screen.x), options.host.clientWidth - 180)}px`, top: `${Math.min(Math.max(8, screen.y), options.host.clientHeight - 320)}px` }; }),
     locate(ids: readonly CanvasElementId[]) { const elements = cards().filter(element => ids.includes(element.id)); kernel.fit(elements); state.setCamera(kernel.readCamera()); raster.refresh(); },
-    keydown: (event: KeyboardEvent) => { void keydown(event).catch(report); },
+    keydown: (event: KeyboardEvent) => { state.clearFailure(); void keydown(event).catch(report); },
     edit,
-    destroy() { connections.dispose(); dragging.dispose(); resizing.dispose(); clipboard.dispose(); removeSave(); stopDisplay(); projection.dispose(); options.host.removeEventListener('dblclick', doubleClick); editable.destroy(); editor.dispose(); void session.close().catch(report); raster.dispose(); kernel.destroy(); },
+    destroy() { void layout?.dispose().catch(report); connections.dispose(); dragging.dispose(); resizing.dispose(); clipboard.dispose(); removeSave(); stopDisplay(); projection.dispose(); options.host.removeEventListener('dblclick', doubleClick); editable.destroy(); editor.dispose(); void session.close().catch(report); raster.dispose(); kernel.destroy(); },
   };
 }

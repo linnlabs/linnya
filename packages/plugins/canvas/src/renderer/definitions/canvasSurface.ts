@@ -2,6 +2,7 @@ import type { EmbeddedMarkdownEditor, EmbeddedMarkdownEditorOptions } from '@plu
 import type { Ref } from 'vue';
 import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasElement, CanvasElementId, CanvasPoint } from '@plugin/canvas/shared';
 import type { CanvasDocumentPort } from '../features/canvasDocument';
+import type { CanvasArrangementPort } from '../features/layoutCommands';
 
 export interface CanvasSurfaceOptions {
   readonly host: HTMLElement;
@@ -11,6 +12,7 @@ export interface CanvasSurfaceOptions {
 }
 export interface CanvasSurfacePorts {
   readonly document: CanvasDocumentPort;
+  readonly arrangement?: CanvasArrangementPort;
   createEditor(options: EmbeddedMarkdownEditorOptions): EmbeddedMarkdownEditor;
   markDirty(dirty: boolean): void;
   createContent?(card: CanvasCard, signal: AbortSignal): Promise<HTMLElement>;
@@ -29,5 +31,6 @@ export interface CanvasSurfaceState {
   readonly context: Readonly<Ref<{ readonly point: CanvasPoint; readonly id: CanvasCardId | null } | null>>;
   setCamera(camera: CanvasCamera): void;
   fail(message: string): void;
+  clearFailure(): void;
   setContext(context: { readonly point: CanvasPoint; readonly id: CanvasCardId | null } | null): void;
 }
