@@ -9,13 +9,16 @@ export function createCanvasCardOpening(options: {
   readonly finish: () => Promise<boolean>;
   readonly cameraChanged: () => void;
   readonly prepare: (id: CanvasCardId) => Promise<'ready' | 'unavailable'>;
-  readonly openText: (id: CanvasCardId) => Promise<void>;
+  readonly openText: (id: CanvasCardId, signal: AbortSignal) => Promise<void>;
   readonly openMedia: (card: CanvasCard) => Promise<void> | undefined;
   readonly unavailable: () => void;
+  readonly opened?: (id: CanvasCardId) => void;
 }) {
   let generation = 0, disposed = false;
+  let cancellation: AbortController | null = null;
   return {
     async open(id: CanvasCardId) {
+      cancellation?.abort(); const controller = new AbortController(); cancellation = controller;
       const token = ++generation;
       if (!(await options.finish())) return;
       if (disposed || token !== generation) return;
@@ -27,9 +30,10 @@ export function createCanvasCardOpening(options: {
       const prepared = await options.prepare(id);
       if (disposed || token !== generation) return;
       if (prepared === 'unavailable') options.unavailable();
-      await options.openText(id);
+      await options.openText(id, controller.signal);
+      if (!disposed && token === generation) options.opened?.(id);
     },
-    cancel() { generation += 1; },
-    dispose() { disposed = true; generation += 1; },
+    cancel() { generation += 1; cancellation?.abort(); },
+    dispose() { disposed = true; generation += 1; cancellation?.abort(); },
   };
 }

@@ -13,7 +13,7 @@ function fixture(read: (documentId: string, versionId: string) => Promise<Canvas
     expect(options.readonly).toBe(true);
     return { canvas: document.createElement('canvas'), setElements: state.installed, setAppearance: vi.fn(), fit: vi.fn(), resize: vi.fn(), renderableCards: () => [], destroy: state.destroyed };
   });
-  return createCanvasHistoryPreview({ host: document.createElement('div'), read, readBudget, readAppearance: () => ({ dark: false, material: 'paper', overview: 'titles' }), createRaster: () => ({ refresh: vi.fn(), dispose: vi.fn() }),
+  return createCanvasHistoryPreview({ host: document.createElement('div'), read, readBudget, readAppearance: () => ({ dark: false, material: 'paper', overview: 'titles' }), createRaster: () => ({ refresh: vi.fn(), dispose: vi.fn() }), observeResolution: () => () => {},
     createContent: () => ({ create: vi.fn(), stageImage: vi.fn(), releaseStagedImages: vi.fn(), resolveImageSource: vi.fn(), open: vi.fn(), documentTitles: () => new Map(), contentKey: () => '', refreshReferences: async () => {}, refreshVisible: vi.fn(), thumbnailCards: () => new Set(), retry: vi.fn(), subscribe: () => () => {}, dispose: vi.fn() }),
   });
 }

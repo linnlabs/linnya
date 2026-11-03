@@ -119,9 +119,9 @@ describe('Canvas pointer gestures', () => {
 
   it('右键连线保留线身份，hover只在命中变化时通知且离开后清理', () => {
     const f = fixture(); f.pointer('pointermove', 20, 20); f.pointer('pointermove', 21, 20);
-    expect(f.intents.filter(intent => intent.kind === 'hover')).toEqual([{ kind: 'hover', id: 'c1' }]);
+    expect(f.intents.filter(intent => intent.kind === 'hover')).toEqual([{ kind: 'hover', id: 'c1', edgeId: null }]);
     window.dispatchEvent(new Event('blur'));
-    expect(f.intents).toContainEqual({ kind: 'hover', id: null });
+    expect(f.intents).toContainEqual({ kind: 'hover', id: null, edgeId: null });
     f.canvas.dispatchEvent(new MouseEvent('contextmenu', { clientX: 50, clientY: 80, cancelable: true }));
     expect(f.intents).toContainEqual({ kind: 'context', point: { x: 50, y: 80 }, id: null, edgeId: 'e1' });
   });
@@ -132,5 +132,11 @@ describe('Canvas pointer gestures', () => {
     expect(f.preview.mock.calls.slice(-2)).toEqual([[[id], 0, 0], [[id], 30, 0]]);
     f.displayPositions.set(id, { x: 500, y: 0 }); f.pointer('pointerup', 90, 10);
     expect(f.intents).toContainEqual(expect.objectContaining({ kind: 'move', positions: [{ id, x: 95, y: 0 }], dx: 40 }));
+  });
+  it('连线悬停独立报告身份，离开canvas即清理，便于DOM显示完整标签', () => {
+    const f = fixture(); f.pointer('pointermove', 60, 80);
+    expect(f.intents).toContainEqual({ kind: 'hover', id: null, edgeId: 'e1' });
+    f.canvas.dispatchEvent(new MouseEvent('pointerleave'));
+    expect(f.intents).toContainEqual({ kind: 'hover', id: null, edgeId: null });
   });
 });

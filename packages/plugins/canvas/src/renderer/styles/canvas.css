@@ -48,16 +48,6 @@
   transform: translateX(-50%);
   font-size: var(--font-size-footnote);
 }
-.canvas-zoom-value {
-  border: 0;
-  padding: var(--space-1);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: var(--font-size-footnote);
-  cursor: pointer;
-  min-width: 48px;
-}
 .canvas-editor-overlay {
   position: absolute;
   top: 0;
@@ -125,6 +115,17 @@
   background: var(--canvas-card-paper-color);
   color: var(--color-text-primary);
 }
+.canvas-line-label-preview {
+  position: absolute;
+  z-index: var(--linnya-ui-layer-popover);
+  box-sizing: border-box;
+  padding: 12px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.canvas-line-label-preview p { margin: 0; }
 .canvas-card-content {
   box-sizing: border-box;
   padding: 16px 18px 18px;
@@ -212,30 +213,6 @@
 .canvas-agent-status.writing { background: var(--color-accent); }
 .canvas-agent-counts { color: var(--color-text-secondary); }
 .canvas-review-markers { pointer-events: none; }
-.canvas-review-marker {
-  position: absolute;
-  z-index: 6;
-  width: 9px;
-  height: 9px;
-  padding: 0;
-  border: 2px solid var(--color-bg-default);
-  border-radius: 50%;
-  background: var(--color-accent);
-  cursor: pointer;
-  pointer-events: auto;
-  transform: translate(-50%, -50%);
-}
-.canvas-review-marker.updated { background: var(--color-warning); }
-.canvas-review-marker.deleted {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px dashed var(--color-error);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-error);
-  transform: none;
-}
 .canvas-card-resize-box {
   position: absolute;
   top: 0;

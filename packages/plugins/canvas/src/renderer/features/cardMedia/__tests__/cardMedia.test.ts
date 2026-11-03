@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { CanvasTextCardSchema } from '@plugin/canvas/shared';
+import { CanvasTextCardSchema, CanvasDocumentCardSchema } from '@plugin/canvas/shared';
 import { createCanvasCardContent } from '..';
 import type { CanvasCardMediaPort } from '..';
 vi.mock('../../cardRendering/content', async importOriginal => ({ ...await importOriginal<typeof import('../../cardRendering/content')>(), resolveCanvasDisplayImages: async (assets: Readonly<Record<string, string>>) => assets }));
@@ -8,7 +8,7 @@ const image = { assetId: 'image-1', mediaType: 'image/png' as const, byteLength:
 function fixture() {
   const readImage = vi.fn(async () => image);
   const port: CanvasCardMediaPort = { readImage, reference: async documentId => ({ documentId, title: '文档', status: 'available', nodeType: 'markdown', path: 'workspace:/文档' }), subscribe: () => () => {}, subscribeAvailability: () => () => {}, preview: async input => ({ documentId: input.documentId, title: null, nodeType: null, status: 'outside_project' }), projectId: () => 'project', openDocument: async () => {} };
-  return { content: createCanvasCardContent('doc', port), readImage };
+  return { content: createCanvasCardContent('doc', port), readImage, port };
 }
 const card = CanvasTextCardSchema.parse({ id: 'c1', type: 'text', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white', createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null }, createdAt: 0, updatedAt: 0, x: 0, y: 0, width: 280, height: 180, parentId: null, data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'image', attrs: { assetId: 'image-1', src: 'asset:image-1', alt: '', title: null } }] } } });
 describe('受管卡片内容投影', () => {
@@ -28,5 +28,13 @@ describe('受管卡片内容投影', () => {
     f.readImage.mockRejectedValueOnce(new Error('asset missing'));
     await expect(f.content.resolveImageSource('asset:missing')).rejects.toThrow('asset missing');
     f.content.dispose();
+  });
+  it('仅通过当前身份预览后通知已打开，通知在导航卸载表面之前发送', async () => {
+    const f = fixture();
+    const target = CanvasDocumentCardSchema.parse({ ...card, type: 'document', data: { documentId: 'target' } }), opened = vi.fn();
+    await expect(f.content.open(target, opened)).rejects.toThrow(); expect(opened).not.toHaveBeenCalled(); f.content.dispose();
+    const ready = fixture(); ready.port.preview = async () => ({ documentId: 'target', title: '项目文档', nodeType: 'markdown', status: 'ready', content: { revisionKey: 'v1', summary: '摘要' } });
+    ready.port.openDocument = async () => { expect(opened).toHaveBeenCalledExactlyOnceWith(target.id); };
+    await ready.content.open(target, opened); ready.content.dispose();
   });
 });

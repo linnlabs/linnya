@@ -4,7 +4,7 @@ import type { CanvasEdgeGeometry } from '../geometry/canvasEdgeGeometry';
 
 export type CanvasKernelIntent =
   | { readonly kind: 'preview-changed' }
-  | { readonly kind: 'hover'; readonly id: CanvasCardId | null }
+  | { readonly kind: 'hover'; readonly id: CanvasCardId | null; readonly edgeId: CanvasEdgeId | null }
   | { readonly kind: 'select'; readonly ids: readonly CanvasCardId[]; readonly additive: boolean }
   | { readonly kind: 'select-edge'; readonly id: CanvasEdgeId | null }
   | { readonly kind: 'move'; readonly ids: readonly CanvasCardId[]; readonly positions: readonly CanvasCardPosition[]; readonly dx: number; readonly dy: number; readonly copy?: boolean }

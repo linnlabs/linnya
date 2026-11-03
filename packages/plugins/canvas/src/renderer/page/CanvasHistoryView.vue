@@ -50,6 +50,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { createCanvasRasterPresentation } from '../orchestration/createCanvasRasterPresentation';
+import { installCanvasResolutionObserver } from '../orchestration/installCanvasResolutionObserver';
 import { createCanvasCardContent } from '../features/cardMedia';
 import { createCanvasCardMediaPort } from '../adapters/createCanvasCardMediaPort';
 import { createCanvasHistoryPreview, canvasVersionBudgetNotice } from '../features/historyPreview';
@@ -67,7 +68,7 @@ onMounted(() => {
   if (!stage || !stagingHost) return;
   const port = createCanvasHistoryPort();
   preview.value = createCanvasHistoryPreview({ host: stage, createContent: documentId => createCanvasCardContent(documentId, createCanvasCardMediaPort()), createRaster: settings => createCanvasRasterPresentation({ ...settings, host: stagingHost }),
-    read: port.read, readBudget: port.readBudget, readAppearance: () => readCanvasAppearance(preferences.preferences),
+    read: port.read, readBudget: port.readBudget, readAppearance: () => readCanvasAppearance(preferences.preferences), observeResolution: installCanvasResolutionObserver,
   });
   removeBudget = port.subscribeBudget(status => preview.value?.budgetChanged(status));
   theme = new MutationObserver(() => preview.value?.refreshAppearance()); theme.observe(document.documentElement, { attributes: true });

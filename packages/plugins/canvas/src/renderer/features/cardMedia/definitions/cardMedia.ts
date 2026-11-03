@@ -14,7 +14,7 @@ export interface CanvasCardContent {
   stageImage(asset: DocumentImageAsset): Promise<void>;
   releaseStagedImages(assetIds: readonly string[]): void;
   resolveImageSource(source: string): Promise<string>;
-  open(card: CanvasCard): Promise<void>;
+  open(card: CanvasCard, opening?: (id: CanvasCardId) => void): Promise<void>;
   documentTitles(): ReadonlyMap<string, string>;
   contentKey(card: CanvasCard): string;
   refreshReferences(cards: readonly CanvasCard[]): Promise<void>;

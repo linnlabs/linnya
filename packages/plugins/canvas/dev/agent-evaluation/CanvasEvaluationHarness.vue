@@ -70,7 +70,7 @@ onMounted(async () => {
       refreshReferences: cards.refreshReferences, subscribeContent: cards.subscribe, resolveImageSource: cards.resolveImageSource, retryContent: cards.retry, markDirty: value => { dirty.value = value; },
     });
     if (disposed) { value.destroy(); cards.dispose(); return; }
-    surface.value = value; review.value = createCanvasAgentReview(value.session, createCanvasAgentReviewPort()); await review.value.refresh(); emit('ready', value);
+    surface.value = value; review.value = createCanvasAgentReview(value.session, createCanvasAgentReviewPort(), { beforeMutation: value.prepareMutation }); await review.value.refresh(); emit('ready', value);
   } catch (error) { failure.value = error instanceof Error ? error.message : String(error); emit('failure', failure.value); }
 });
 onBeforeUnmount(() => { disposed = true; review.value?.dispose(); surface.value?.destroy(); content?.dispose(); });

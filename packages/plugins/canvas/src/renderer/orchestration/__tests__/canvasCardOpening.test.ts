@@ -13,7 +13,14 @@ it('远景编辑先定位长卡顶部并等待精确位图，切换选择不接�
   expect(finishTransitions).toHaveBeenCalledWith([card.id]);
   opening.cancel(); resolve('ready'); await first; expect(openText).not.toHaveBeenCalled();
   const second = opening.open(card.id); await vi.waitFor(() => expect(prepare).toHaveBeenCalledTimes(2)); resolve('unavailable'); await second;
-  expect(openText).toHaveBeenCalledExactlyOnceWith(card.id); expect(unavailable).toHaveBeenCalledOnce(); opening.dispose();
+  expect(openText).toHaveBeenCalledExactlyOnceWith(card.id, expect.any(AbortSignal)); expect(unavailable).toHaveBeenCalledOnce(); opening.dispose();
+});
+it('最终编辑声明等待期间取消，会传递abort且不把旧卡标为已打开', async () => {
+  let accepted!: () => void; const signals: AbortSignal[] = [];
+  const opened = vi.fn(), opening = createCanvasCardOpening({ kernel: { readCamera: () => ({ x: 0, y: 0, zoom: 1 }), setCamera: vi.fn(), finishTransitions: vi.fn() }, readCard: () => card,
+    finish: async () => true, cameraChanged: vi.fn(), prepare: async () => 'ready', openText: async (_id, incoming) => { signals.push(incoming); await new Promise<void>(resolve => { accepted = resolve; }); }, openMedia: vi.fn(), unavailable: vi.fn(), opened });
+  const pending = opening.open(card.id); await vi.waitFor(() => expect(signals).toHaveLength(1)); opening.cancel(); expect(signals[0]?.aborted).toBe(true);
+  accepted(); await pending; expect(opened).not.toHaveBeenCalled(); opening.dispose();
 });
 it('等待旧草稿保存时切换选择，迟到保存不再移动相机或准备旧卡', async () => {
   let saved!: (value: boolean) => void;
