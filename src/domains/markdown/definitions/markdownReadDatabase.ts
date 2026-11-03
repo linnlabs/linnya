@@ -1,5 +1,7 @@
+import type { MarkdownDocumentReferencesPort } from '../features/document-references';
 /** Markdown 只读 provider 依赖的最小数据库端口。 */
 export interface MarkdownReadDatabase {
+  readonly references?: MarkdownDocumentReferencesPort;
   readonly get: (sql: string, params: readonly unknown[]) => unknown;
   readonly all: (sql: string, params: readonly unknown[]) => unknown[];
 }

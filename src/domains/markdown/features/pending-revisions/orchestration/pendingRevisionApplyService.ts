@@ -27,6 +27,7 @@ import {
 } from '../../normalization/runtime';
 import { generateEditorBlockId } from 'src/shared/utils/idUtils';
 import type { MarkdownDocumentService } from '../../document-storage';
+import type { PendingRevisionMetadata } from '../definitions/pendingRevision';
 import type { PendingRevision } from '../definitions/pendingRevision';
 import {
   extractPendingCitationHydration,
@@ -95,8 +96,10 @@ export class PendingRevisionApplyService {
       ? await this.prepareAcceptReplacements(baseline, selected)
       : new Map<string, PreparedPendingReplacement>();
 
+    const remaining = new Map<string, { readonly markdown: string; readonly metadata: PendingRevisionMetadata }>();
     if (decision?.mode === 'resolve' && decision.remainingMarkdown !== null) {
-      await importPendingMarkdownRootBlock(decision.remainingMarkdown, this.importer);
+      const imported = await importPendingMarkdownRootBlock(decision.remainingMarkdown, this.importer);
+      for (const pending of selected) remaining.set(pending.id, this.markdownService.prepareRemainingReferenceRevision(request.documentId, baseline, pending, { type: 'doc', content: imported ? [imported] : [] }, decision.remainingMarkdown));
     }
 
     return this.markdownService.runInTransaction(() => {
@@ -117,8 +120,10 @@ export class PendingRevisionApplyService {
       }
       for (const pending of selected) {
         if (decision?.mode === 'resolve' && decision.remainingMarkdown !== null) {
+          const preparedRemaining = remaining.get(pending.id);
+          if (!preparedRemaining) throw new Error('Remaining revision was not prepared.');
           this.markdownService.setPendingRevision(request.documentId, pending.target_block_id,
-            decision.remainingMarkdown, pending.source, remainingRevisionMetadata(pending, baseline, decision.remainingMarkdown));
+            preparedRemaining.markdown, pending.source, { ...preparedRemaining.metadata, operation: remainingRevisionMetadata(pending, baseline, preparedRemaining.markdown).operation });
         } else {
           this.markdownService.clearPendingRevision(request.documentId, pending.target_block_id);
         }
@@ -163,6 +168,7 @@ export class PendingRevisionApplyService {
         preserveId: pending.target_block_id,
         oldRoot,
         listSeparatorBefore: metadata?.listSeparatorBefore,
+        referenceMetadata: metadata,
         citationHydration: extractPendingCitationHydration(metadata, pending.target_block_id),
         image: readPendingMarkdownImage(metadata),
         citationLinkHydration: extractPendingCitationLinkHydration(metadata, pending.target_block_id),
@@ -181,6 +187,7 @@ export class PendingRevisionApplyService {
     preserveId: string;
     oldRoot?: ProseMirrorJsonNode;
     listSeparatorBefore?: unknown;
+    referenceMetadata?: unknown;
     citationHydration?: Record<string, CitationNodeHydrationData> | null;
     image?: MarkdownImageAttrs | null;
     citationLinkHydration?: Record<string, CitationLinkHydrationData> | null;
@@ -191,7 +198,7 @@ export class PendingRevisionApplyService {
 
     const imported = await importPendingMarkdownRootBlock(params.markdown, this.importer);
     if (!imported) throw new Error(`Pending Markdown 解析未返回正文: blockId=${params.preserveId}`);
-    let docJson: MarkdownDocJson = { type: 'doc', content: [imported] };
+    let docJson: MarkdownDocJson = this.markdownService.hydratePendingDocumentReferences({ type: 'doc', content: [imported] }, params.referenceMetadata);
     docJson = hydrateMarkdownDocumentImages(docJson, new Map(params.image ? [[params.image.id, params.image]] : []));
 
     if (params.citationHydration || params.citationLinkHydration) {

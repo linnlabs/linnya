@@ -1,3 +1,4 @@
+import { getMarkdownDocumentReferences, assertMarkdownDocumentReferenceIdentities, collectMarkdownDocumentReferences, pendingDocumentReferenceBindings, hydratePendingDocumentReferences, prepareRemainingReferenceRevision } from '../../../document-references';
 /**
  * @file markdownDocumentService.ts
  * @description MarkdownDocumentService - Markdown 文档类型的专职服务。
@@ -138,6 +139,10 @@ export class MarkdownDocumentService {
       if (collectImageAssetIds(documentContent).length && !getMarkdownImageOwnership(this.db)) {
         throw new Error('Markdown image ownership port is not bound to this database.');
       }
+      assertMarkdownDocumentReferenceIdentities(documentContent);
+      const incomingReferences = collectMarkdownDocumentReferences(documentContent);
+      if (incomingReferences.length && !getMarkdownDocumentReferences(this.db)) throw new Error('Markdown document reference port is not bound to this database.');
+      const retainedReferences = this.readRetainedDocumentReferences(nodeId, incomingReferences);
       const normalizedContentJson = JSON.stringify(documentContent);
       const now = Date.now();
       const saved = this.versionRepository.save({
@@ -147,6 +152,7 @@ export class MarkdownDocumentService {
         authorId,
         createdAt: now,
       });
+      this.reconcileDocumentReferences(nodeId, retainedReferences);
       this.touchWorkspaceNodeUpdatedAt(nodeId, now);
       this.reconcileImageOwnership(nodeId, collectImageAssetIds(documentContent).length > 0);
       return saved;
@@ -220,6 +226,7 @@ export class MarkdownDocumentService {
         result.removedBlockVersions > 0
       ) {
         // 删除根块可能同时移除只存在于 Pending 的图片，清理后重新核算归属。
+        this.reconcileDocumentReferences(documentNodeId);
         this.reconcileImageOwnership(documentNodeId);
         console.log(
           `[MarkdownDocumentService] updateDocument: 在保存文档 ${documentNodeId} 时清理了 ` +
@@ -345,6 +352,7 @@ export class MarkdownDocumentService {
         throw new Error('Markdown image ownership port is not bound to this database.');
       }
       const pending = this.pendingRevisionsService.setPendingRevision({ documentId, blockId, newMarkdown, source, meta });
+      this.reconcileDocumentReferences(documentId);
       this.reconcileImageOwnership(documentId, collectImageAssetIds(meta).length > 0);
       return pending;
     });
@@ -428,6 +436,7 @@ export class MarkdownDocumentService {
   clearPendingRevision(documentId: string, blockId: string): number {
     return this.runInTransaction(() => {
       const removed = this.pendingRevisionsService.clearPendingRevision(documentId, blockId);
+      this.reconcileDocumentReferences(documentId);
       this.reconcileImageOwnership(documentId);
       return removed;
     });
@@ -442,9 +451,39 @@ export class MarkdownDocumentService {
   clearAllPendingRevisions(documentId: string): number {
     return this.runInTransaction(() => {
       const removed = this.pendingRevisionsService.clearAllPendingRevisions(documentId);
+      this.reconcileDocumentReferences(documentId);
       this.reconcileImageOwnership(documentId);
       return removed;
     });
+  }
+
+  /** baseline 与未决修订都仍可见；任一决策提交后立即收敛反向索引。 */
+  private readRetainedDocumentReferences(documentId: string, incoming: readonly import('@app/schemas').DocumentReferenceInput[]) {
+    if (!incoming.length) return [];
+    const previous = this.getLatestVersion(documentId);
+    const current = previous ? collectMarkdownDocumentReferences(JSON.parse(previous.content_json)) : [];
+    const known = new Set(current.map(reference => JSON.stringify([reference.referenceId, reference.targetDocumentId])));
+    if (incoming.every(reference => known.has(JSON.stringify([reference.referenceId, reference.targetDocumentId])))) return current;
+    // 只在引入当前正文没有的身份时检查真实历史；正文普通自动保存不扫描历史 JSON。
+    // 必须在新版本入库前读取，不能让本次用户输入成为自己的“历史授权”。
+    const snapshots = this.db.prepare<[string, string], { json: string }>(`SELECT content_json AS json FROM document_versions WHERE node_id = ? UNION ALL SELECT content_json AS json FROM markdown_block_versions WHERE document_node_id = ?`).all(documentId, documentId);
+    return snapshots.flatMap(row => collectMarkdownDocumentReferences(JSON.parse(row.json)));
+  }
+
+  reconcileDocumentReferences(documentId: string, retained: readonly import('@app/schemas').DocumentReferenceInput[] = []): void {
+    const port = getMarkdownDocumentReferences(this.db); if (!port) return;
+    const current = collectMarkdownDocumentReferences(this.getDocument(documentId));
+    const pending = pendingDocumentReferenceBindings(this.getPendingRevisions(documentId)).map(binding => ({ referenceId: binding.referenceId, targetDocumentId: binding.targetDocumentId, kind: 'inline' as const }));
+    const references = [...new Map([...current, ...pending].map(reference => [reference.referenceId, reference])).values()];
+    port.replace(documentId, references, retained);
+  }
+
+  prepareRemainingReferenceRevision(documentId: string, baseline: MarkdownDocJson, pending: PendingRevision, remainingContent: MarkdownDocJson, remainingMarkdown: string) {
+    return prepareRemainingReferenceRevision({ port: getMarkdownDocumentReferences(this.db), documentId, baseline, pending, remainingContent, remainingMarkdown });
+  }
+
+  hydratePendingDocumentReferences(content: unknown, metadata: unknown) {
+    return hydratePendingDocumentReferences(getMarkdownDocumentReferences(this.db), content, metadata);
   }
 
   /** 归属变化与正文/Pending 同事务，拒绝后仅释放不再被任何历史快照引用的资产。 */

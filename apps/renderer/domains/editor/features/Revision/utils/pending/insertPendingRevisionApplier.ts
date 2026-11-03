@@ -1,3 +1,4 @@
+import { readPendingDocumentReferenceBindings } from './documentReferenceHydration';
 /**
  * 单条 Pending Revision - insert 操作应用器
  *
@@ -77,6 +78,7 @@ export async function applyInsertPendingRevision(
     operation: 'applyInsertPendingRevision',
     blockId,
     listSeparatorBefore: parsed.metadata?.listSeparatorBefore,
+        documentReferenceBindings: readPendingDocumentReferenceBindings(parsed.metadata),
     hydration: hydrationPrepared.hydration,
   })
   const { source: resolutionSource } = resolution
@@ -301,6 +303,7 @@ export async function batchApplyInsertPendingRevisions(
       operation: 'batchApplyInsert',
       blockId,
       listSeparatorBefore: parsed.metadata?.listSeparatorBefore,
+        documentReferenceBindings: readPendingDocumentReferenceBindings(parsed.metadata),
       hydration: hydrationPrepared.hydration,
     })
     const { source: resolutionSource } = resolution

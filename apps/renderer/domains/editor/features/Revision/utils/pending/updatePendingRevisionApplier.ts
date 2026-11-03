@@ -1,3 +1,4 @@
+import { readPendingDocumentReferenceBindings } from './documentReferenceHydration';
 /**
  * 单条 Pending Revision - update 操作应用器
  *
@@ -88,6 +89,7 @@ export async function applyUpdatePendingRevision(
     operation: 'applyUpdatePendingRevision',
     blockId,
     listSeparatorBefore: parsed.metadata?.listSeparatorBefore,
+        documentReferenceBindings: readPendingDocumentReferenceBindings(parsed.metadata),
     hydration: hydrationPrepared.hydration,
   })
   logRevisionDebug(
