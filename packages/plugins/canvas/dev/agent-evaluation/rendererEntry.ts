@@ -28,7 +28,7 @@ async function mount(documentId: string, projectId: string): Promise<unknown> {
   await new Promise<void>((resolve, reject) => {
     app = createApp(CanvasEvaluationHarness, { documentId, projectId, onReady: (value: Surface) => { surface = value; resolve(); }, onSynchronized: (update: CanvasSynchronization) => commits?.synchronized(update), onFailure: (message: string) => reject(new Error(message)) }); app.mount(container);
   });
-  commits = createCanvasEvaluationCommitMetrics(requireSurface());
+  commits = createCanvasEvaluationCommitMetrics(requireSurface(), metrics);
   return { viewId: requireSurface().session.viewId, snapshot: requireSurface().session.state.snapshot.value };
 }
 async function presented(value: Surface, previousRenders: number): Promise<{ readonly status: string; readonly renderedAt?: number }> {
