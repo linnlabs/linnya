@@ -56,10 +56,10 @@ function createCard(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 'ad
     : findCanvasPlacement({ width: command.width, height: command.height, near: near?.type === 'edge' ? undefined : near, side: command.side ?? 'right', occupied: [...cards, ...plan.reservedRectangles] });
   const orders = [...plan.elements.values()].map(row => row.element.order).sort();
   const lastOrder = orders[orders.length - 1] ?? null;
-  const data = command.op === 'addText' ? { contentVersion: 1, content: command.content } : command.data;
+  const data = command.op === 'addText' ? { contentVersion: 1, content: command.content, heightMode: command.heightMode ?? 'auto' } : command.data;
   const element = CanvasElementSchema.parse({
     id: `c${plan.nextCard++}`, type: command.op === 'addText' ? 'text' : command.op === 'addImage' ? 'image' : 'document',
-    schemaVersion: 1, revision: 1, order: generateKeyBetween(lastOrder, null), locked: false,
+    schemaVersion: 1, revision: 1, order: generateKeyBetween(lastOrder, null), locked: command.locked ?? false,
     color: command.color ?? 'white', createdBy: plan.actor.source, updatedBy: plan.actor.source,
     createdAt: plan.now, updatedAt: plan.now, ...position,
     width: command.width, height: command.height,
@@ -79,9 +79,10 @@ function connectCards(plan: WorkingPlan, command: Extract<CanvasCommand, { op: '
   const id = CanvasEdgeIdSchema.parse(`e${plan.nextEdge++}`);
   const edge = CanvasElementSchema.parse({
     id, type: 'edge', schemaVersion: 1, revision: 1, order: generateKeyBetween(null, null),
-    locked: false, color: 'white', createdBy: plan.actor.source, updatedBy: plan.actor.source,
+    locked: command.locked ?? false, color: command.color ?? 'white', createdBy: plan.actor.source, updatedBy: plan.actor.source,
     createdAt: plan.now, updatedAt: plan.now,
-    from: endpoint(command.from), to: endpoint(command.to),
+    from: typeof command.from === 'string' ? { ...endpoint(command.from), side: command.fromSide ?? 'auto' } : endpoint(command.from),
+    to: typeof command.to === 'string' ? { ...endpoint(command.to), side: command.toSide ?? 'auto' } : endpoint(command.to),
     direction: command.direction, lineStyle: command.lineStyle, linePattern: command.linePattern, label: command.label,
   });
   appendChange(plan, null, edge, Object.keys(edge));

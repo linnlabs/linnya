@@ -6,6 +6,7 @@ export const CanvasImportImageRequestSchema = z.object({
   caption: z.string().default(''), alt: z.string().default(''),
   x: z.number().finite().optional(), y: z.number().finite().optional(),
 }).strict();
+export const CanvasPrepareImageRequestSchema = CanvasImportImageRequestSchema.pick({ documentId: true, bytesBase64: true });
 export const CanvasReadImageRequestSchema = z.object({ documentId: z.string().min(1), assetId: z.string().min(1) }).strict();
 export type CanvasImportImageRequest = z.infer<typeof CanvasImportImageRequestSchema>;
 export type CanvasReadImageRequest = z.infer<typeof CanvasReadImageRequestSchema>;

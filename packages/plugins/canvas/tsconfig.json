@@ -7,6 +7,7 @@
       "vite/client"
     ],
     "paths": {
+      "@app/localization": ["packages/plugin-host-contract/renderer/localization.ts"],
       "@plugin/backend/*": [
         "packages/plugin-host-contract/backend/*.ts"
       ],

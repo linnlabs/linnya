@@ -45,7 +45,7 @@ export function createCanvasElementActions(session: CanvasDocumentSession, selec
     async connect() {
       const [from, to] = selection.read();
       if (!from || !to || selection.read().length !== 2) throw new Error('请选择两张卡片再连线');
-      await session.commit([{ op: 'connect', from, to, label: '', direction: 'forward' }]);
+      await session.commit([{ op: 'connect', from, to, label: '', direction: 'forward', lineStyle: 'curve', linePattern: 'solid' }]);
     },
     async resize(width: number, height: number) {
       const card = elements().find(element => element.id === selection.read()[0]);
