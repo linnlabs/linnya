@@ -52,8 +52,9 @@ export const AUXILIARY_MODEL_PURPOSE_REGISTRY = [
     defaultStrategy: ModelPurposeDefaultStrategy.PRIMARY_MODEL,
   },
   {
+    // 未单独选择标题模型时跟随主模型（读时解析，不把主模型 ID 写进用户配置）。
     purposeKey: PromptKeys.CONVERSATION_TITLE,
-    defaultStrategy: ModelPurposeDefaultStrategy.FIXED_MODEL,
+    defaultStrategy: ModelPurposeDefaultStrategy.PRIMARY_MODEL,
   },
   {
     purposeKey: PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION,

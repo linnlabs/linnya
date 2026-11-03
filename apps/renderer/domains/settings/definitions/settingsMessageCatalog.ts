@@ -253,7 +253,7 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
     '用于文档审阅和建议生成；选择“使用主模型”时会随主模型变化。',
   'settings.modelConfig.auxiliary.purposes.conversationTitle.label': '对话标题',
   'settings.modelConfig.auxiliary.purposes.conversationTitle.description':
-    '用于新对话首次发送后自动生成标题；默认模型由辅助用途注册表指定。',
+    '用于新对话首次发送后自动生成标题；默认“使用主模型”，会随主模型变化。',
   'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.label': '知识图谱抽取',
   'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.description':
     '用于新上传文档的图谱抽取快照；默认模型由辅助用途注册表指定。',
@@ -727,7 +727,7 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
         'Used for document review and suggestion generation. "Use primary model" follows the current primary model.',
       'settings.modelConfig.auxiliary.purposes.conversationTitle.label': 'Conversation title',
       'settings.modelConfig.auxiliary.purposes.conversationTitle.description':
-        'Used to generate a title after the first message in a new conversation. The default model is specified by the auxiliary purpose registry.',
+        'Used to generate a title after the first message in a new conversation. Defaults to "Use primary model", which follows the current primary model.',
       'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.label':
         'Knowledge graph extraction',
       'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.description':

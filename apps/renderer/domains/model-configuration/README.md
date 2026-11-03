@@ -354,6 +354,7 @@ Catalog 中的正式本地运行时，不归到“自定义模型”，也不用
 - 显式选择写入 `modelPurposeBindingsStore`；
 - 有效模型由目录、Cloud readiness、purpose defaults 和显式选择实时派生；
 - 业务运行入口必须通过公开查询读取有效模型；显式选择只用于设置编辑、持久化和删除清理，不能直接作为运行时模型；
+- 辅助用途的默认策略在 purpose registry 声明：`primary_model` 表示未显式选择时读时跟随主模型（设置页提供“使用主模型”选项，选回该项即清除显式选择，不写入主模型 ID），`fixed_model` 表示使用 purpose defaults；对话标题、AI 写作、批注、审阅和音频摘要使用前者；
 - reasoning effort 使用 Linnkit 共享规则读时降级，不改写用户原选择；
 - 删除模型后由根编排清理所有显式绑定。
 

@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import type { ModelCatalogItem } from '../../model-catalog';
 import type { ModelPurposeSelections } from '../definitions/modelPurposeBindings';
 import {
+  findAuxiliaryModelPurposeDefinition,
+  ModelPurposeDefaultStrategy,
+} from '../definitions/modelPurposes';
+import {
   resolveAuxiliaryModelId,
   resolveImageGenerationModelId,
   resolveImageVisionModelId,
@@ -132,5 +136,70 @@ describe('model purpose resolution', () => {
     ];
 
     expect(resolveImageGenerationModelId(context(models))).toBeNull();
+  });
+
+  describe('对话标题模型', () => {
+    const chatModels: ModelCatalogItem[] = [
+      { id: 'primary-a', catalog_source: 'user', capabilities: ['chat'], ui_visibility: ['chat'] },
+      { id: 'primary-b', catalog_source: 'user', capabilities: ['chat'], ui_visibility: ['chat'] },
+      { id: 'title-flash', catalog_source: 'user', capabilities: ['chat'], ui_visibility: ['chat'] },
+    ];
+
+    it('未单独选择标题模型时跟随主模型，主模型变化后继续跟随', () => {
+      expect(resolveAuxiliaryModelId(
+        context(chatModels, { primaryModelId: 'primary-a' }),
+        'conversation_title'
+      )).toBe('primary-a');
+      expect(resolveAuxiliaryModelId(
+        context(chatModels, { primaryModelId: 'primary-b' }),
+        'conversation_title'
+      )).toBe('primary-b');
+    });
+
+    it('主模型未显式选择时，标题跟随主模型的有效默认值', () => {
+      expect(resolveAuxiliaryModelId(context(chatModels), 'conversation_title')).toBe(
+        resolvePrimaryModelId(context(chatModels))
+      );
+      expect(resolveAuxiliaryModelId(context(chatModels), 'conversation_title')).toBe('primary-a');
+    });
+
+    it('显式选择的标题模型优先于主模型', () => {
+      expect(resolveAuxiliaryModelId(
+        context(chatModels, {
+          primaryModelId: 'primary-a',
+          auxiliaryModelIds: { conversation_title: 'title-flash' },
+        }),
+        'conversation_title'
+      )).toBe('title-flash');
+    });
+
+    it('清除显式选择后回到跟随主模型', () => {
+      const selected = context(chatModels, {
+        primaryModelId: 'primary-b',
+        auxiliaryModelIds: { conversation_title: 'title-flash' },
+      });
+      const cleared = context(chatModels, {
+        primaryModelId: 'primary-b',
+        auxiliaryModelIds: { conversation_title: null },
+      });
+
+      expect(resolveAuxiliaryModelId(selected, 'conversation_title')).toBe('title-flash');
+      expect(resolveAuxiliaryModelId(cleared, 'conversation_title')).toBe('primary-b');
+    });
+
+    it('标题模型与主模型都不可用时没有有效模型，也不会借用其他用途默认值', () => {
+      const devOnly: ModelCatalogItem[] = [
+        { id: 'mock-debug-chat', catalog_source: 'default', capabilities: ['chat'], ui_visibility: ['chat'] },
+      ];
+
+      expect(resolveAuxiliaryModelId(context([]), 'conversation_title')).toBeNull();
+      expect(resolveAuxiliaryModelId(context(devOnly), 'conversation_title')).toBeNull();
+    });
+
+    it('默认策略被声明为跟随主模型，设置页据此提供“使用主模型”选项', () => {
+      expect(findAuxiliaryModelPurposeDefinition('conversation_title')?.defaultStrategy).toBe(
+        ModelPurposeDefaultStrategy.PRIMARY_MODEL
+      );
+    });
   });
 });
