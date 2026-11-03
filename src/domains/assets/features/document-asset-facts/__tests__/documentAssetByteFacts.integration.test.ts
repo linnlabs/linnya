@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { ASSET_LEDGER_SCHEMAS } from '../../asset-ledger/infrastructure/sqlite/schemas/assetLedger.schema';
-import { listDocumentAssetByteFacts, registerDocumentAssetOwnership, releaseDocumentAssetOwnership } from 'src/plugin-sdk/backend/documentAssetOwnership';
+import { listDocumentAssetByteFacts, registerDocumentAssetOwnership, releaseDocumentAssetOwnership, reconcileDocumentAssetOwnership } from 'src/plugin-sdk/backend/documentAssetOwnership';
 let db: Database.Database;
 beforeEach(() => {
   db = new Database(':memory:'); db.pragma('foreign_keys = ON');
@@ -24,4 +24,15 @@ it('rejects incomplete byte facts instead of admitting a zero-size history asset
   db.transaction(() => registerDocumentAssetOwnership({ database: db, documentId: 'a', assetIds: ['image'], usageHint: 'history' }))();
   db.prepare('UPDATE assets SET size_bytes = NULL WHERE id = ?').run('image');
   expect(() => listDocumentAssetByteFacts({ database: db, documentId: 'a', assetIds: ['image'] })).toThrow();
+});
+
+it('reconciles one document complete reachability set atomically while preserving shared ownership', () => {
+  db.prepare('INSERT INTO assets(id, uri, storage_status, created_at, size_bytes) VALUES (?, ?, ?, ?, ?)').run('other', 'asset:other', 'local', 1, 2048);
+  db.transaction(() => { registerDocumentAssetOwnership({ database: db, documentId: 'a', assetIds: ['image', 'other'], usageHint: 'old' }); registerDocumentAssetOwnership({ database: db, documentId: 'b', assetIds: ['image'], usageHint: 'shared' }); })();
+  expect(() => reconcileDocumentAssetOwnership({ database: db, documentId: 'a', assetIds: [], usageHint: 'history' })).toThrow('transaction');
+  expect(() => db.transaction(() => { reconcileDocumentAssetOwnership({ database: db, documentId: 'a', assetIds: [], usageHint: 'history' }); throw new Error('history rollback'); })()).toThrow('rollback');
+  expect(listDocumentAssetByteFacts({ database: db, documentId: 'a', assetIds: ['image', 'other'] })).toHaveLength(2);
+  db.transaction(() => reconcileDocumentAssetOwnership({ database: db, documentId: 'a', assetIds: ['other'], usageHint: 'history' }))();
+  expect(() => listDocumentAssetByteFacts({ database: db, documentId: 'a', assetIds: ['image'] })).toThrow();
+  expect(listDocumentAssetByteFacts({ database: db, documentId: 'b', assetIds: ['image'] })).toHaveLength(1);
 });
