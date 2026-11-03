@@ -6,7 +6,7 @@ import {
   type CanvasCamera, type CanvasCard, type CanvasCardId,
   type CanvasEdge, type CanvasEdgeId, type CanvasElement, type CanvasPoint, type CanvasRectangle,
 } from '../../../../shared';
-import type { CanvasAppearance, CanvasKernel, CanvasKernelIntent, CanvasRasterTile, CanvasRenderStatus } from '../../definitions/canvasKernel';
+import type { CanvasAppearance, CanvasGuide, CanvasKernel, CanvasKernelIntent, CanvasRasterTile, CanvasRenderStatus } from '../../definitions/canvasKernel';
 import { installCanvasInteraction } from '../../interaction/installCanvasInteraction';
 import { CanvasMapLabels } from './CanvasMapLabels';
 import { CanvasLines } from './CanvasLines';
@@ -59,6 +59,8 @@ class PixiCanvasKernel implements CanvasKernel {
   private readonly lines = new CanvasLines();
   private readonly cardLayer = new Container();
   private readonly selectionLayer = new Graphics();
+  private readonly guideLayer = new Graphics();
+  private guides: readonly CanvasGuide[] = [];
   private readonly backgrounds = { paper: makeBackground('paper'), card: makeBackground('card') };
   private readonly views = new Map<CanvasCardId, CardView>();
   private readonly cards = new Map<CanvasCardId, CanvasCard>();
@@ -121,7 +123,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.canvas.setAttribute('aria-label', '自由画布，按空格拖动平移，使用工具栏编辑所选卡片');
     this.canvas.style.cssText = 'display:block;touch-action:none;width:100%;height:100%';
     options.host.append(this.canvas);
-    this.world.addChild(this.cardLayer, this.selectionLayer);
+    this.world.addChild(this.cardLayer, this.guideLayer, this.selectionLayer);
     this.app.stage.addChild(this.lines.below, this.world, this.lines.above, this.mapLabels.sprite);
     this.bitmaps = new CanvasBitmapCache({ budget: options.bitmapBudgetBytes ?? 256 * 1024 * 1024, changed: id => {
       const view = this.views.get(id); if (!this.destroyed && view) { this.updateView(view); this.schedule(); }
@@ -183,6 +185,12 @@ class PixiCanvasKernel implements CanvasKernel {
     if (cached !== undefined) return cached;
     const value = readCanvasElementText(card); this.textTitles.set(card, value); return value;
   }
+  private redrawGuides(): void {
+    this.guideLayer.clear();
+    for (const guide of this.guides) this.guideLayer.moveTo(guide.from.x, guide.from.y).lineTo(guide.to.x, guide.to.y);
+    this.guideLayer.stroke({ width: 1 / this.camera.zoom, color: 0x347b45, alpha: 0.75 });
+  }
+  setGuides(guides: readonly CanvasGuide[]): void { this.guides = guides; this.redrawGuides(); this.schedule(); }
   private redrawSelection(): void {
     this.selectionLayer.clear();
     if (this.brush) this.selectionLayer.rect(this.brush.x, this.brush.y, this.brush.width, this.brush.height)
@@ -282,7 +290,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.camera = { x: next.x, y: next.y, zoom };
     // 大多数缩放帧只改相机；卡片外观只在明确的LOD边界变化。
     this.refreshCamera(lodChanged);
-    if (zoomChanged) this.redrawSelection();
+    if (zoomChanged) { this.redrawSelection(); this.redrawGuides(); }
   }
   readCamera(): CanvasCamera { return { ...this.camera }; }
   readRenderStatus(): CanvasRenderStatus { return { ...this.renderStatus }; }
