@@ -1,7 +1,7 @@
 import { generateKeyBetween } from 'fractional-indexing';
 import {
   CanvasCardIdSchema, CanvasEdgeIdSchema, CanvasElementSchema,
-  type CanvasElement, type CanvasElementId,
+  type CanvasElement, type CanvasElementId, type CanvasEndpoint,
 } from '../../../../shared';
 import type { CanvasCommand, CanvasOperationResult } from '../../../../shared/changeset/definitions/canvasCommands';
 import type { CanvasCommitActor, CanvasCommitPlan, CanvasCommitState, CanvasEditingClaim, CanvasElementChange, CanvasStoredElement } from '../definitions/canvasCommit';
@@ -62,7 +62,8 @@ function createCard(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 'ad
     schemaVersion: 1, revision: 1, order: generateKeyBetween(lastOrder, null), locked: false,
     color: command.color ?? 'white', createdBy: plan.actor.source, updatedBy: plan.actor.source,
     createdAt: plan.now, updatedAt: plan.now, ...position,
-    width: command.width, height: command.height, parentId: null, data,
+    width: command.width, height: command.height,
+    parentId: command.parentId ? CanvasCardIdSchema.parse(resolveElementId(plan, command.parentId)) : null, data,
   });
   appendChange(plan, null, element, Object.keys(element));
   if (command.ref) plan.refs[command.ref] = element.id;
@@ -70,23 +71,18 @@ function createCard(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 'ad
 }
 
 function connectCards(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 'connect' }>): CanvasElementId {
-  const from = resolveElementId(plan, command.from);
-  const to = resolveElementId(plan, command.to);
-  const fromId = CanvasCardIdSchema.parse(from);
-  const toId = CanvasCardIdSchema.parse(to);
-  if (fromId === toId) throw new Error('不支持自连线');
-  for (const row of plan.elements.values()) {
-    const edge = row.element;
-    if (edge.type === 'edge' && edge.from.kind === 'card' && edge.to.kind === 'card'
-      && edge.from.cardId === fromId && edge.to.cardId === toId) throw new Error('这两个端点之间已有同方向连线');
-  }
+  const endpoint = (value: string | CanvasEndpoint): CanvasEndpoint => {
+    if (typeof value === 'string') return { kind: 'card', cardId: CanvasCardIdSchema.parse(resolveElementId(plan, value)), side: 'auto' };
+    if (value.kind === 'point' && plan.actor.source.kind === 'agent') throw new Error('Agent 不能指定悬空坐标，请连到卡片');
+    return value;
+  };
   const id = CanvasEdgeIdSchema.parse(`e${plan.nextEdge++}`);
   const edge = CanvasElementSchema.parse({
     id, type: 'edge', schemaVersion: 1, revision: 1, order: generateKeyBetween(null, null),
     locked: false, color: 'white', createdBy: plan.actor.source, updatedBy: plan.actor.source,
     createdAt: plan.now, updatedAt: plan.now,
-    from: { kind: 'card', cardId: fromId, side: 'auto' }, to: { kind: 'card', cardId: toId, side: 'auto' },
-    direction: command.direction, lineStyle: 'curve', label: command.label,
+    from: endpoint(command.from), to: endpoint(command.to),
+    direction: command.direction, lineStyle: command.lineStyle, linePattern: command.linePattern, label: command.label,
   });
   appendChange(plan, null, edge, Object.keys(edge));
   if (command.ref) {

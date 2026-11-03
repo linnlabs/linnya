@@ -2,22 +2,26 @@ import { randomUUID } from 'node:crypto';
 import { CanvasCommitRequestSchema, CanvasResolveApprovalRequestSchema, type CanvasAgentCommitResult, type CanvasApprovalResolution, type CanvasCommitResult, type CanvasResolveApprovalRequest } from '../../../shared';
 import type { CanvasDatabase } from '../../definitions/canvasDatabase';
 import { canvasPayloadHash, canvasSourceKey, planCanvasCommit, readCanvasCommitState, readCanvasEditingClaims, readCanvasReceipt, type CanvasCommitActor, type CanvasHistoryCommitInput } from '../../features/canvasCommit';
-import { completeCanvasApproval, createCanvasAgentGroup, evaluateCanvasApproval, findCanvasAgentGroup, parseCanvasAgentReceiptResult, readCanvasAgentReceipt, readCanvasApprovalReceipt, readCanvasPendingApproval, saveCanvasAgentGroup, saveCanvasPendingApproval, clearCanvasPendingApproval, type CanvasPendingBatch } from '../../features/agentChanges';
+import { completeCanvasApproval, createCanvasAgentGroup, evaluateCanvasApproval, findCanvasAgentGroup, parseCanvasAgentReceiptResult, readCanvasAgentReceipt, readCanvasApprovalReceipt, readCanvasPendingApproval, saveCanvasAgentCommittedReceipt, readCanvasAgentRequestStatuses, saveCanvasAgentGroup, saveCanvasPendingApproval, clearCanvasPendingApproval, type CanvasPendingBatch } from '../../features/agentChanges';
 
 export function createCanvasAgentApprovals(options: { readonly database: CanvasDatabase; readonly commit: (input: { request: unknown; actor: CanvasCommitActor; now: number; onCommit?: (input: CanvasHistoryCommitInput) => void }) => CanvasCommitResult; readonly pruneGuards: (documentId: string) => void }) {
-  function commitAgent(input: { readonly request: unknown; readonly actor: CanvasCommitActor; readonly now: number; readonly intent?: 'apply' | 'arrange' }): CanvasAgentCommitResult {
+  function replayAgentRequest(input: { readonly documentId: string; readonly requestId: string; readonly actor: CanvasCommitActor; readonly payloadIdentity: unknown }): CanvasAgentCommitResult | undefined {
+    if (input.actor.source.kind !== 'agent') throw new Error('canvas_agent_source_required');
+    const receipt = readCanvasAgentReceipt(options.database, input.documentId, canvasSourceKey(input.actor), input.requestId);
+    if (!receipt) return undefined;
+    if (receipt.payload_hash !== canvasPayloadHash(input.payloadIdentity)) throw new Error('request_id_payload_mismatch');
+    if (receipt.status === 'committed' && receipt.result_json) return { kind: 'committed', commit: parseCanvasAgentReceiptResult(receipt.result_json) };
+    const batch = receipt.status === 'pending' && receipt.pending_id ? readCanvasPendingApproval(options.database, input.documentId, receipt.pending_id) : null;
+    if (batch) return { kind: 'pending', approval: batch.approval };
+    throw new Error(`canvas_approval_${receipt.status}`);
+  }
+  function commitAgent(input: { readonly request: unknown; readonly actor: CanvasCommitActor; readonly now: number; readonly intent?: 'apply' | 'arrange'; readonly payloadIdentity?: unknown }): CanvasAgentCommitResult {
     if (input.actor.source.kind !== 'agent') throw new Error('canvas_agent_source_required');
     const request = CanvasCommitRequestSchema.parse(input.request);
-    const sourceKey = canvasSourceKey(input.actor); const payloadHash = canvasPayloadHash({ kind: 'operations', operations: request.operations });
+    const sourceKey = canvasSourceKey(input.actor); const payloadIdentity = input.payloadIdentity === undefined ? { kind: 'operations', operations: request.operations } : input.payloadIdentity; const payloadHash = canvasPayloadHash(payloadIdentity);
     const result = options.database.transaction((): CanvasAgentCommitResult | { kind: 'ready' } => {
-      const receipt = readCanvasAgentReceipt(options.database, request.documentId, sourceKey, request.requestId);
-      if (receipt) {
-        if (receipt.payload_hash !== payloadHash) throw new Error('request_id_payload_mismatch');
-        if (receipt.status === 'committed' && receipt.result_json) return { kind: 'committed', commit: parseCanvasAgentReceiptResult(receipt.result_json) };
-        const batch = receipt.status === 'pending' && receipt.pending_id ? readCanvasPendingApproval(options.database, request.documentId, receipt.pending_id) : null;
-        if (batch) return { kind: 'pending', approval: batch.approval };
-        throw new Error(`canvas_approval_${receipt.status}`);
-      }
+      const replay = replayAgentRequest({ documentId: request.documentId, requestId: request.requestId, actor: input.actor, payloadIdentity });
+      if (replay) return replay;
       // 普通提交的正式回执优先；重试不能再次通过大改门槛或改变归组。
       const prior = readCanvasReceipt(options.database, { documentId: request.documentId, sourceKey, requestId: request.requestId });
       if (prior) {
@@ -41,7 +45,7 @@ export function createCanvasAgentApprovals(options: { readonly database: CanvasD
       saveCanvasPendingApproval(options.database, batch);
       return { kind: 'pending', approval: batch.approval };
     }).immediate();
-    if (result.kind === 'ready') return { kind: 'committed', commit: options.commit({ ...input, request }) };
+    if (result.kind === 'ready') return { kind: 'committed', commit: options.commit({ ...input, request, onCommit(history) { saveCanvasAgentCommittedReceipt(options.database, { documentId: request.documentId, sourceKey, requestId: request.requestId, payloadHash, result: history.result }); } }) };
     options.pruneGuards(request.documentId);
     return result;
   }
@@ -68,5 +72,5 @@ export function createCanvasAgentApprovals(options: { readonly database: CanvasD
     options.pruneGuards(request.documentId);
     return result;
   }
-  return { commitAgent, resolveApproval };
+  return { commitAgent, resolveApproval, replayAgentRequest, approvalResults: (documentId: string, conversationId: string | null) => readCanvasAgentRequestStatuses(options.database, documentId, conversationId) };
 }

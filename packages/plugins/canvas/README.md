@@ -51,3 +51,4 @@ Backend 按数据库实例持有 `createCanvasHistoryRuntime`。组合入口位�
 Backend contribution 按数据库实例拥有文档运行态，停用释放定时器、编辑声明与用户撤销栈。创建在同步事务内维护 Workspace 节点、Canvas 当前内容和初始搜索快照；只读 VFS 投影不能被普通文本写入覆盖。正式写入将文档引用、受管图片归属和节点时间加入同一事务，Agent 的项目归属在最终提交时复核。成功后才发布内容序号；通知失败不伪称回滚。
 
 搜索纯文本快照独立于历史版本：第一批脏内容启动 30 秒刷新，持续输入不会无限延后，关闭时刷新。引用投影使用 Workspace 当前路径；跨项目和已删除引用仅展示不可访问状态。快照按 UTF-8 限制为 1 MiB。Renderer `canvas:read` 可带视图身份登记删除框基线，`canvas:close` 释放视图。
+CLI 的 `payloadIdentity` 由可信编排从原始 operations/options 构造，不能由模型填写 hash。`replayAgentRequest` 在 Markdown 解析、append 归一化、测高及资产接管前查询；原始身份与成功回执在同一事务保存，正文变更不会让同次 append 重试变成第二次追加。未传身份时仍以正式 operations 为准。`approvalResults` 提供当前对话最近 50 条审批状态，CLI 读操作可主动报告已允许、拒绝或过期结果。
