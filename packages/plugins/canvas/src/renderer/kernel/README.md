@@ -56,7 +56,7 @@ CI可用 `CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes
 
 生命周期参考[MapLibre栅格淡入](https://maplibre.org/maplibre-style-spec/layers/#raster-fade-duration)及其[零时长仍保留旧瓦片的问题](https://github.com/maplibre/maplibre-gl-js/issues/2445)：禁用动效也要释放退休资源，不能只把时长设零。系统偏好使用原生[MediaQueryList变化事件](https://developer.mozilla.org/en-US/docs/Web/API/MediaQueryList)，不修改拖动等功能本身。
 
-缩放中每50ms按当前视口重排待办，指针附近的可见正文优先；采样需求继续接纳最新缩放，不等鼠标释放。移动时单批接纳上限从32减半为16，可见正文超过1500张或进入降级时暂停缩放中补图，停手恢复。近景不超过40张的精确采样不再额外等待100ms；手动进入编辑的单卡任务优先于远处补图。
+缩放中每50ms按当前视口重排待办，指针附近的可见正文优先；采样需求继续接纳最新缩放，不等鼠标释放。复杂正文单批32张、移动时减半为16；短纯文字在同一64任务容量内按像素/DOM预算合批至64张，移动时减半至32，可见正文超过1500张或进入降级时暂停缩放中补图，停手恢复。近景不超过40张的精确采样不再额外等待100ms；手动进入编辑的单卡任务优先于远处补图。
 
 macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事实；powerMonitor的idle只能作辅助。锁屏/未登录/非console用户在创建窗口前拒绝，报告仅保留boolean状态，不写用户身份。被拒绝的新运行写preflight.json并保留上一原始结果；此前仅powerMonitor校验的旧输出不能单独证明解锁态，不得作为正式基线。
 
@@ -73,3 +73,5 @@ macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事
 `readDisplayPosition`返回当前视觉起点。真实拖动在阈值通过后冻结该起点，后续无关增量不重置预览，松手提交明确的绝对positions；取消恢复最新逻辑target。`finishTransitions(ids?)`同步到目标并刷新空间投影；编辑器和只读详情接管前使用它，正在编辑的卡不参与新动画。`animateCamera`默认320ms，用户相机输入从当前显示中断飞行；同值`setCamera`只取消任务，不额外重建投影。系统减少动态即时完成卡片、相机和纹理过渡，清理所有相关定时任务。
 
 `setRasterContentKey`用于不透明的外部内容/授权世代。世代变化立即释放当前卡的旧正文及退休纹理，不能把已失去访问权的封面或标签保留120ms淡出；普通采样升级才允许交叉淡入。
+
+相机中断和系统减少动态参考[tldraw公开动画合同](https://tldraw.dev/sdk-features/animation)：程序定位在用户平移/缩放时让位；shape与camera都必须消费减少动态偏好，不能只关闭相机动画。这里的过渡只修改显示投影，Canvas持久字段与撤销链不受动画tick影响。

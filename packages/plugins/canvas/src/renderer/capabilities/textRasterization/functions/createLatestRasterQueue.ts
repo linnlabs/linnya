@@ -15,7 +15,7 @@ type Execution<I, O> =
 export function createLatestRasterQueue<I, O>(options: Execution<I, O> & {
   readonly disposeResult: (output: O) => void;
   readonly capacity?: number;
-  readonly readBatchSize?: () => number;
+  readonly readBatchSize?: (inputs: readonly I[]) => number;
 }) {
   const capacity = options.capacity ?? 64, batchSize = options.batchSize ?? 1;
   if (!Number.isInteger(capacity) || capacity < 1 || !Number.isInteger(batchSize) || batchSize < 1 || batchSize > 64) throw new Error('raster_queue_capacity');
@@ -31,8 +31,9 @@ export function createLatestRasterQueue<I, O>(options: Execution<I, O> & {
   const abortGroupIfUnused = () => { if (running.length && running.every(job => job.controller.signal.aborted)) group?.abort(); };
   async function drain(): Promise<void> {
     if (running.length || disposed || !pending.size) return;
-    const limit = Math.max(1, Math.min(batchSize, Math.floor(options.readBatchSize?.() ?? batchSize)));
-    const jobs = [...pending.values()].slice(0, limit);
+    const candidates = [...pending.values()].slice(0, batchSize);
+    const limit = Math.max(1, Math.min(batchSize, Math.floor(options.readBatchSize?.(candidates.map(job => job.input)) ?? batchSize)));
+    const jobs = candidates.slice(0, limit);
     jobs.forEach(job => pending.delete(job.key)); running = jobs; peakBatchSize = Math.max(peakBatchSize, jobs.length);
     const active = new AbortController(); group = active;
     try {

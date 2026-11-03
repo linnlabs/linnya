@@ -1,7 +1,7 @@
 import type { CanvasCard, CanvasCardId, CanvasPoint } from '@plugin/canvas/shared';
 import { cardRasterKey, createHtmlCardRasterizer, createLatestRasterQueue, splitCardRasterRegions,
   type RasterQueueResult } from '../capabilities/textRasterization';
-import { createCanvasCardRasterBatch, type CanvasCardRasterInput, type CanvasCardRasterOutput } from '../features/cardRendering';
+import { createCanvasCardRasterBatch, chooseCanvasRasterBatchSize, type CanvasCardRasterInput, type CanvasCardRasterOutput } from '../features/cardRendering';
 import type { CanvasRasterReadiness, CanvasRasterReadinessCard, CanvasRasterDemand, CanvasRasterIdentity, CanvasRasterFrame, CanvasRasterPending, CanvasRasterPresentationOptions } from '../definitions/canvasRasterPresentation';
 import { createCanvasRasterCadence } from '../functions/createCanvasRasterCadence';
 import { prioritizeCanvasRasterCards } from '../functions/prioritizeCanvasRasterCards';
@@ -41,8 +41,8 @@ class CanvasRasterPresentation {
     this.rasterizer = createHtmlCardRasterizer({ host: options.host });
     this.cadence = createCanvasRasterCadence(() => this.refresh());
     this.queue = createLatestRasterQueue<CanvasCardRasterInput, CanvasCardRasterOutput>({
-      batchSize: 32, executeBatch: createCanvasCardRasterBatch({ rasterizer: this.rasterizer, createContent: options.createContent }),
-      readBatchSize: () => this.cadence.moving() || options.kernel.isMoving() ? 16 : 32,
+      batchSize: 64, executeBatch: createCanvasCardRasterBatch({ rasterizer: this.rasterizer, createContent: options.createContent }),
+      readBatchSize: inputs => chooseCanvasRasterBatchSize(inputs, this.cadence.moving() || options.kernel.isMoving()),
       disposeResult: output => { if (output.kind === 'ready') for (const tile of output.tiles) tile.bitmap.close(); },
     });
     this.queueCapacity = this.queue.readStats().capacity;
