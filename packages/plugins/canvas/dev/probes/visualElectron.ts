@@ -151,6 +151,20 @@ async function run() {
     }
     if (contextInk < 100 || contextPreserved / contextInk < 0.95 || context.afterStats.cards !== context.beforeStats.cards || context.afterStats.bitmaps !== context.beforeStats.bitmaps) throw new Error('context_restore_content_missing');
     await writeFile(path.join(output, 'context-restored.png'), contextAfterImage.toPNG());
+    const editing = z.object({ expected: z.string(), actual: z.string(), dpr: z.number(), visible: z.number(), status: z.string(), again: z.string(), smoothing: z.string() })
+      .parse(await win.webContents.executeJavaScript('window.prepareCanvasEditingVisualProbe()'));
+    const editingExpected = nativeImage.createFromDataURL(editing.expected), expectedPixels = editingExpected.toBitmap();
+    const editingActual = nativeImage.createFromDataURL(editing.actual), actualPixels = editingActual.toBitmap(), editingWidth = editingExpected.getSize().width, actualWidth = editingActual.getSize().width;
+    let editingInk = 0, editingIntersection = 0, editingUnion = 0;
+    for (let y = 8 * editing.dpr; y < editingWidth - 8 * editing.dpr; y++) for (let x = 8 * editing.dpr; x < editingWidth - 8 * editing.dpr; x++) {
+      const a = (y * editingWidth + x) * 4, b = (y * actualWidth + x) * 4;
+      const expected = expectedPixels[a] < 180 && expectedPixels[a + 1] < 180 && expectedPixels[a + 2] < 180;
+      const actual = actualPixels[b] < 180 && actualPixels[b + 1] < 180 && actualPixels[b + 2] < 180;
+      if (expected) editingInk++; if (expected && actual) editingIntersection++; if (expected || actual) editingUnion++;
+    }
+    await writeFile(path.join(output, 'editing-exact-expected.png'), editingExpected.toPNG());
+    await writeFile(path.join(output, 'editing-exact-actual.png'), editingActual.toPNG());
+    if (editing.visible <= 40 || editingInk < 10 || editingIntersection / editingUnion < 0.95) throw new Error(`editing_exact_pixels_missing:${editingIntersection}:${editingUnion}`);
     const unsupported = new BrowserWindow({ show: false, width: 900, height: 600, webPreferences: { sandbox: true, contextIsolation: true, offscreen: true, backgroundThrottling: false, disableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
     let fallbackInk = 0;
     try {
@@ -162,7 +176,7 @@ async function run() {
       await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());
     } finally { unsupported.destroy(); }
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap, colors: colorReports }, dragOcclusion, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk }, thumbnails: thumbReports,
-      mixedLod: lodReports, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
+      mixedLod: lodReports, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
 }
