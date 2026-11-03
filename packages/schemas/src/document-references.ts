@@ -41,3 +41,7 @@ export const DocumentReferenceMarkdownBindingSchema = z.object({
   referenceId: z.string().min(1), targetDocumentId: z.string().min(1), path: z.string().startsWith('workspace:/'), label: z.string(),
 }).strict();
 export type DocumentReferenceMarkdownBinding = z.infer<typeof DocumentReferenceMarkdownBindingSchema>;
+
+/** 只来自调用方正式历史/撤回记录的稳定出现位置身份，不是模型批准参数。 */
+export const DocumentReferenceRetainedIdentitySchema = z.object({ referenceId: z.string().min(1).max(256), targetDocumentId: z.string().min(1) }).strict();
+export type DocumentReferenceRetainedIdentity = z.infer<typeof DocumentReferenceRetainedIdentitySchema>;

@@ -53,6 +53,22 @@ describe('document reference business lifecycle', () => {
     expect(operations().resolve({ sourceDocumentId: 'source', targetDocumentId: 'target' }).status).toBe('deleted');
     expect(operations().listBacklinks('replacement')).toHaveLength(0);
   });
+  it('restores exact retained identities after removal without granting new cross-project references', () => {
+    db.transaction(() => replace()).immediate(); db.transaction(() => operations().replace({ sourceDocumentId: 'source', references: [] })).immediate();
+    db.prepare('UPDATE workspace_nodes SET project_id = ? WHERE id = ?').run('p2', 'target');
+    expect(() => db.transaction(() => replace()).immediate()).toThrow('outside_project');
+    const references = [{ referenceId: 'inline-1', targetDocumentId: 'target', kind: 'inline' }]; const retainedReferences = [{ referenceId: 'inline-1', targetDocumentId: 'target' }];
+    db.transaction(() => operations().replace({ sourceDocumentId: 'source', references }, { retainedReferences })).immediate();
+    expect(operations().resolve({ sourceDocumentId: 'source', targetDocumentId: 'target' }).status).toBe('outside_project');
+    expect(() => db.transaction(() => operations().replace({ sourceDocumentId: 'source', references: [{ ...references[0], referenceId: 'new' }] }, { retainedReferences })).immediate()).toThrow('outside_project');
+  });
+  it('keeps deleted retained targets invalid and rejects changing their stable target identity', () => {
+    db.transaction(() => replace()).immediate(); db.transaction(() => operations().replace({ sourceDocumentId: 'source', references: [] })).immediate(); db.prepare('DELETE FROM workspace_nodes WHERE id = ?').run('target');
+    const retainedReferences = [{ referenceId: 'inline-1', targetDocumentId: 'target' }];
+    db.transaction(() => operations().replace({ sourceDocumentId: 'source', references: [{ referenceId: 'inline-1', targetDocumentId: 'target', kind: 'inline' }] }, { retainedReferences })).immediate();
+    expect(operations().resolve({ sourceDocumentId: 'source', targetDocumentId: 'target' }).status).toBe('deleted');
+    expect(() => db.transaction(() => operations().replace({ sourceDocumentId: 'source', references: [{ referenceId: 'inline-1', targetDocumentId: 'foreign', kind: 'inline' }] }, { retainedReferences })).immediate()).toThrow('reference_retargeted');
+  });
   it('excludes soft-deleted sources and restores backlinks after source restoration', () => {
     db.transaction(() => replace()).immediate();
     db.prepare('UPDATE workspace_nodes SET deleted_at = 10 WHERE id = ?').run('source');

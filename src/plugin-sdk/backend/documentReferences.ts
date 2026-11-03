@@ -1,4 +1,4 @@
-import type { ReplaceDocumentReferencesInput } from '@app/schemas';
+import type { DocumentReferenceRetainedIdentity, ReplaceDocumentReferencesInput } from '@app/schemas';
 import type { PluginSqliteDatabaseLike } from '@linnya/plugin-host-contract/backend/workspaceRuntime';
 import { createDocumentReferenceMarkdownRuntime as createMarkdownRuntime, createDocumentReferenceOperations, type ReferenceDatabase } from 'src/domains/document-references';
 import { readWorkspaceDocumentLocation, resolveWorkspaceDocumentPath, readWorkspaceDocumentIdentity } from './workspaceDocumentProjection';
@@ -19,8 +19,8 @@ function operations(db: PluginSqliteDatabaseLike) {
   };
   return createDocumentReferenceOperations(port, { read: id => readWorkspaceDocumentIdentity(db, id) });
 }
-export function replaceDocumentReferences(db: PluginSqliteDatabaseLike, input: ReplaceDocumentReferencesInput): void {
-  operations(db).replace(input);
+export function replaceDocumentReferences(db: PluginSqliteDatabaseLike, input: ReplaceDocumentReferencesInput, options: { readonly retainedReferences?: readonly DocumentReferenceRetainedIdentity[] } = {}): void {
+  operations(db).replace(input, options);
 }
 export function listDocumentBacklinks(db: PluginSqliteDatabaseLike, targetDocumentId: string) {
   return operations(db).listBacklinks(targetDocumentId);
