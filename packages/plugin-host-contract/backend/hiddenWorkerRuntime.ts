@@ -20,6 +20,8 @@ interface HiddenWorkerDefinitionBase {
   readonly workerHtmlPath: string;
   readonly preloadPath: string;
   readonly partition?: string;
+  /** 需要实际绘制的 worker 必须选择 offscreen；background 仅承诺排版。 */
+  readonly renderingMode?: 'background' | 'offscreen';
   readonly createRequestPayload: (request: unknown) => HiddenWorkerRequestEnvelope;
   readonly parseResponsePayload: (payload: unknown) => HiddenWorkerResponseEnvelope;
   readonly parseReadyPayload: (payload: unknown) => void;

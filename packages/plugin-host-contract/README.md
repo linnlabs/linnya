@@ -104,6 +104,8 @@ Plugin CLI bridge v1 的 access plan 固定拒绝 external files、network、GUI
 类型本身不是授权事实。当前 registry 只接受 Host 组合根对编译期已知官方插件显式授信的 contribution；
 磁盘插件自己声明的 `meta.builtin=true` 不能建立信任。
 
+Hidden worker 的 `renderingMode` 可选择 `background`（缺省）或 `offscreen`。前者适合排版和计算，不保证 HTML-in-Canvas 有实际像素；需要后台绘制的 provider 显式选择后者。该 data-only 选择沿 Desktop capability 传递，插件不接触 BrowserWindow；目标 DPR 仍由领域请求明确传入。
+
 Hidden worker 的单请求取消是可选能力，但 `cancelChannel` 与 `createCancelPayload` 必须成对声明。支持取消
 的 worker 应按 requestId 传播 AbortSignal；不支持的 worker 在 host abort 时只收口本地 pending，不能发送
 伪造 channel。插件 draining 必须等 Plugin CLI invocation 退出后再注销 worker。

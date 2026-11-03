@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, type BrowserWindowConstructorOptions } from 'electron';
 import { Logger } from '../../shared/logger.js';
+import { HTML_CANVAS_BLINK_FEATURES } from '../desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences.js';
 
 const DEFAULT_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_READY_TIMEOUT_MS = 2_000;
@@ -57,6 +58,7 @@ interface HiddenWorkerHostBaseOptions<TRequest, TResponse> {
   readonly workerHtmlPath: string;
   readonly preloadPath: string;
   readonly partition?: string;
+  readonly renderingMode?: 'background' | 'offscreen';
   readonly createRequestPayload: (request: TRequest) => HiddenWorkerRequestEnvelope;
   readonly parseResponsePayload: (payload: unknown) => HiddenWorkerResponseEnvelope<TResponse>;
   readonly parseReadyPayload: (payload: unknown) => void;
@@ -139,6 +141,7 @@ export class HiddenWorkerHost<TRequest, TResponse> {
   private readonly readyChannel: string;
   private readonly cancelChannel: string | undefined;
   private readonly workerHtmlPath: string;
+  private readonly renderingMode: 'background' | 'offscreen';
   private readonly preloadPath: string;
   private readonly partition: string;
   private readonly createRequestPayload: (request: TRequest) => HiddenWorkerRequestEnvelope;
@@ -170,6 +173,7 @@ export class HiddenWorkerHost<TRequest, TResponse> {
     this.readyChannel = options.readyChannel;
     this.cancelChannel = options.cancelChannel;
     this.workerHtmlPath = options.workerHtmlPath;
+    this.renderingMode = options.renderingMode ?? 'background';
     this.preloadPath = options.preloadPath;
     this.partition = options.partition ?? `hidden-worker:${this.workerId}`;
     this.createRequestPayload = options.createRequestPayload;
@@ -357,6 +361,8 @@ export class HiddenWorkerHost<TRequest, TResponse> {
         nodeIntegration: false,
         contextIsolation: true,
         backgroundThrottling: false,
+        enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES,
+        offscreen: this.renderingMode === 'offscreen',
         sandbox: true,
         partition: this.partition,
         devTools: false,

@@ -27,6 +27,7 @@ describe('Backend hidden worker data boundary', () => {
     };
     const definition: HiddenWorkerDefinition = {
       id: 'demo-worker',
+      renderingMode: 'offscreen',
       requestChannel: 'demo:request',
       responseChannel: 'demo:response',
       readyChannel: 'demo:ready',
@@ -56,6 +57,7 @@ describe('Backend hidden worker data boundary', () => {
 
     expect(registeredDescriptor).toEqual({
       id: 'demo-worker',
+      renderingMode: 'offscreen',
       requestChannel: 'demo:request',
       responseChannel: 'demo:response',
       readyChannel: 'demo:ready',

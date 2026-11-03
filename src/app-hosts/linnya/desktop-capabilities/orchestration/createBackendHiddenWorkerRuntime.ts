@@ -107,6 +107,7 @@ function toDesktopDescriptor(
     workerHtmlPath: definition.workerHtmlPath,
     preloadPath: definition.preloadPath,
     ...(definition.partition ? { partition: definition.partition } : {}),
+    ...(definition.renderingMode ? { renderingMode: definition.renderingMode } : {}),
     ...(definition.cancelChannel ? { cancelChannel: definition.cancelChannel } : {}),
     ...(definition.idleTimeoutMs == null ? {} : { idleTimeoutMs: definition.idleTimeoutMs }),
     ...(definition.readyTimeoutMs == null ? {} : { readyTimeoutMs: definition.readyTimeoutMs }),
