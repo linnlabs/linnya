@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   events: [] as string[],
   save: vi.fn<() => Promise<void>>(),
   open: vi.fn<(session: FileSessionDescriptor) => Promise<void>>(),
+  defer: false,
 }));
 vi.mock('@/app/layout/store/layoutStore', () => ({ useLayoutStore: () => ({
   openDocument: () => state.events.push('mount'),
@@ -21,6 +22,7 @@ vi.mock('@/domains/workspace/services/file-manager', () => ({
 }));
 vi.mock('@/app/plugins/registry', () => ({ getDocumentTypeByActiveType: () => ({
   pluginId: 'editable-plugin', activeDocumentType: 'editable', fileSessionType: 'editable',
+  deferSurfaceUntilOpen: state.defer,
 }) }));
 vi.mock('@/app/plugins/enabledPluginsStore', () => ({ useEnabledPluginsStore: () => ({ isPluginEnabled: () => true }) }));
 vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({ useWorkspaceTreeStore: vi.fn() }));
@@ -32,7 +34,7 @@ vi.mock('@/domains/workspace/features/project-overview/store/projectOverviewModa
 
 import { createWorkspaceNavigation } from './workspaceNavigation';
 const request = { documentId: 'next', projectId: 'project', type: 'editable', parameters: { slideNumber: 2 } };
-beforeEach(() => { state.events = []; vi.resetAllMocks(); });
+beforeEach(() => { state.events = []; state.defer = false; vi.resetAllMocks(); });
 
 it('文档内目标跳转等待旧会话保存，再挂载 surface 并携带定位参数打开 file session', async () => {
   let saved!: () => void;
@@ -52,4 +54,17 @@ it('旧文稿保存失败时保留原 surface，不打开目标文稿', async ()
   await expect(createWorkspaceNavigation().openDocumentTarget(request)).rejects.toThrow('save failed');
   expect(state.events).toEqual([]);
   expect(state.open).not.toHaveBeenCalled();
+});
+
+it('依赖会话身份的 surface 在引用跳转时也等待目标会话再挂载', async () => {
+  state.defer = true; state.open.mockImplementation(async () => { state.events.push('open'); });
+  await createWorkspaceNavigation().openDocumentTarget(request);
+  expect(state.events).toEqual(['deactivate', 'open', 'mount', 'ready']);
+  expect(state.open).toHaveBeenCalledTimes(1);
+});
+
+it('延迟挂载文档打开失败时不挂载无会话的界面', async () => {
+  state.defer = true; state.open.mockRejectedValue(new Error('document unavailable'));
+  await expect(createWorkspaceNavigation().openDocumentTarget(request)).rejects.toThrow('document unavailable');
+  expect(state.events).toEqual(['deactivate']);
 });

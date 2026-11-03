@@ -315,6 +315,18 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
       setNavigationScope({ kind: 'project', projectId });
       await saveCurrentSessionBeforeReplacingSurface(null);
       if (!isCurrentDocumentOpenIntent(intent)) return;
+      const openFileSession = () => activateFileSession({
+        documentId: request.documentId,
+        displayName: request.displayName ?? null,
+        type: getRequiredFileSessionType(documentType),
+        openSignal: intent.controller.signal,
+        payload: { projectId, parentId: request.parentId ?? null, navigationParameters: request.parameters },
+      });
+      // 引用跳转与侧栏打开遵守同一延迟挂载合同：依赖会话身份的 surface 不能先读旧会话。
+      if (documentType.deferSurfaceUntilOpen) {
+        await openFileSession();
+        if (!isCurrentDocumentOpenIntent(intent)) return;
+      }
       layoutStore.openDocument({
         id: request.documentId,
         projectId,
@@ -337,14 +349,8 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
       };
       if (documentRuntimeLoader) {
         await documentRuntimeLoader.load(runtimeLoadRequest);
-      } else {
-        await activateFileSession({
-          documentId: request.documentId,
-          displayName: request.displayName ?? null,
-          type: getRequiredFileSessionType(documentType),
-          openSignal: intent.controller.signal,
-          payload: { projectId, parentId: request.parentId ?? null, navigationParameters: request.parameters },
-        });
+      } else if (!documentType.deferSurfaceUntilOpen) {
+        await openFileSession();
       }
     },
 
