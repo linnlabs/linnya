@@ -4,3 +4,11 @@ export declare function releaseDocumentAssetOwnership(input: {
   readonly documentId: string;
   readonly assetIds: readonly string[];
 }): void;
+
+/** 图片准备完成后，加入调用方当前同步事务；不写资产字节、不自行提交。 */
+export declare function registerDocumentAssetOwnership(input: {
+  readonly database: unknown;
+  readonly documentId: string;
+  readonly assetIds: readonly string[];
+  readonly usageHint: string;
+}): void;

@@ -14,6 +14,7 @@ export interface DocumentImageAsset {
 }
 
 export interface DocumentImageAssetRuntimePort {
+  prepareImageBytes(input: { readonly documentId: string; readonly bytes: Uint8Array }): Promise<DocumentImageAsset>;
   adoptLocalImage(input: {
     readonly documentId: string;
     readonly sourcePath: string;

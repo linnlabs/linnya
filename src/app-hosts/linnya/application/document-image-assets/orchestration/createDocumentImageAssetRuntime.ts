@@ -54,6 +54,15 @@ export function createDocumentImageAssetRuntime(
   }
 
   return {
+    async prepareImageBytes(input): Promise<DocumentImageAsset> {
+      try {
+        const asset = await dependencies.imageIngress.ingestImageBytes({ bytes: input.bytes });
+        const [image] = await dependencies.imageLoader.loadImages([{ assetId: asset.assetId }]);
+        return toDocumentImageAsset(image);
+      } catch (error) {
+        throw projectDocumentImageFailure(error, input.documentId, null);
+      }
+    },
     async adoptLocalImage(input): Promise<DocumentImageAsset> {
       try {
         const asset = await dependencies.imageIngress.ingestLocalImage({
