@@ -1526,3 +1526,14 @@ describe('final enforce mode', () => {
     ).toBeNull();
   });
 });
+
+
+describe('document preview and reference facade boundaries', () => {
+  it('allows only public document facades inside plugin packages', () => {
+    const options = { includeRuntimePluginPackageRules: true };
+    expect(ruleIdsFor('packages/plugins/slides/src/backend/index.ts', "import { createDocumentPreviewReader } from '@plugin/backend/documentPreview';", options)).toEqual([]);
+    expect(ruleIdsFor('packages/plugins/slides/src/backend/index.ts', "import { replaceDocumentReferences } from '@plugin/backend/documentReferences';", options)).toEqual([]);
+    expect(ruleIdsFor('packages/plugins/slides/src/renderer/index.ts', "import { readDocumentPreview } from '@plugin/renderer/documentPreview';", options)).toEqual([]);
+    expect(ruleIdsFor('packages/plugins/slides/src/backend/index.ts', "import { createDocumentReferenceOperations } from 'src/domains/document-references';", options).length).toBeGreaterThan(0);
+  });
+});

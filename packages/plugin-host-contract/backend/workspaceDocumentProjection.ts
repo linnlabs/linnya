@@ -18,3 +18,15 @@ export declare function touchWorkspaceDocument(
   nodeId: string,
   updatedAt: number
 ): void;
+
+export interface WorkspaceDocumentIdentity {
+  readonly id: string;
+  readonly projectId: string | null;
+  readonly name: string;
+  readonly nodeType: string;
+  readonly deletedAt: number | null;
+}
+export declare function readWorkspaceDocumentIdentity(
+  db: Pick<PluginSqliteDatabaseLike, 'prepare'>,
+  nodeId: string,
+): WorkspaceDocumentIdentity | null;

@@ -26,6 +26,7 @@ import { dispatchPluginInvoke } from 'src/electron-main/ipc/handlers/plugins/plu
 import type { BackendRendererRequestRegistryPort } from '../definitions/backendRendererRequest';
 import { createBackendRendererIpcStyleRegistrar } from './createBackendRendererIpcStyleRegistrar';
 import { registerDocumentHistoryRequests } from './registerDocumentHistoryRequests';
+import { registerDocumentPreviewRequests } from './registerDocumentPreviewRequests';
 import type {
   BackendRendererIntegrationPort,
   DesktopFileRevealPort,
@@ -54,6 +55,7 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   }), ipc, input.runtimeOwner.getProjectDeletion());
   registerWorkspaceHandlers(input.runtimeOwner, ipc);
   registerDocumentHistoryRequests(input.runtimeOwner, input.registry);
+  registerDocumentPreviewRequests(input.runtimeOwner, input.registry);
   registerAgentsHandlers(input.runtimeOwner, ipc);
   registerTodoHandlers(input.runtimeOwner, ipc);
   registerProjectKnowledgeBaseLinksHandlers(input.runtimeOwner, ipc);

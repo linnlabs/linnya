@@ -41,6 +41,8 @@ import type {
 
 export function buildWorkspacePreloadApi(ipcRenderer: IpcRenderer) {
   return {
+    'document-preview:types': (): Promise<unknown> => ipcRenderer.invoke('document-preview:types'),
+    'document-preview:read': (request: import('@app/schemas').DocumentPreviewRequest): Promise<unknown> => ipcRenderer.invoke('document-preview:read', request),
     'document-history:list': (request: { documentId: string }): Promise<unknown> => ipcRenderer.invoke('document-history:list', request),
     'document-history:restore': (request: import('@app/schemas').DocumentVersionRestoreRequest): Promise<unknown> => ipcRenderer.invoke('document-history:restore', request),
     // --- Workspace ---

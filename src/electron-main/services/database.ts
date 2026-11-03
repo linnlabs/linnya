@@ -10,6 +10,7 @@
  */
 
 import Database from 'better-sqlite3';
+import { getDocumentReferenceSchemaProviders } from 'src/domains/document-references';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ISchemaProvider } from './database/schema-provider';
@@ -64,6 +65,7 @@ export class DatabaseService {
     // 注册所有 Schema Providers
     this.providers = [
       ...getWorkspaceSchemaProviders(),
+      ...getDocumentReferenceSchemaProviders(),
       ...getAssetSchemaProviders(),
       ...getMarkdownSchemaProviders(),
       ...getPluginStateSchemaProviders(),

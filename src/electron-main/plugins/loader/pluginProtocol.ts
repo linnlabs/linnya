@@ -192,6 +192,7 @@ const rendererHostShims = new Map<string, string>([
     'validateWebManualForm',
     'listKnowledgeBasesForPlugin',
   ])],
+  ['/plugin-renderer/documentPreview.js', buildNamedHostShim('@plugin/renderer/documentPreview', ['readDocumentPreview', 'listDocumentPreviewTypes'])],
   ['/plugin-renderer/workspaceRuntime.js', buildNamedHostShim('@plugin/renderer/workspaceRuntime', [
     'getCurrentWorkspaceProjectId',
     'listProjectKnowledgeBaseIds',
