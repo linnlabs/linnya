@@ -27,6 +27,7 @@ import { useFileStore } from '@/shared/stores/file';
 import { useNotificationStore } from '@/app/notification';
 import { confirm } from '@/shared/composables/confirmDialog';
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';
+import { subscribeToWorkspaceMutation } from '@/shared/ipc/workspaceMutationSubscription';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import { validateWebManualForm } from '@/domains/editor/features/citation/adapters/webCitationAdapter';
 import { useWebManualCitationForm } from '@/domains/editor/features/citation/ui/useWebManualCitationForm';
@@ -227,6 +228,7 @@ async function startHistoryIsolatedRun(request: RendererAiHistoryIsolatedRunRequ
 
 function installWorkspaceRuntimePort(): void {
   registerWorkspaceRuntimePort({
+    subscribeMutations: subscribeToWorkspaceMutation,
     getCurrentProjectId: () => useNavigationScope().currentProjectId,
     getActiveFileSession,
     markActiveFileDirty,

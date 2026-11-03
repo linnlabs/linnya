@@ -28,6 +28,6 @@ export interface CanvasDocumentSession {
   synchronize(sequence: number): Promise<void>;
   commit(operations: readonly CanvasCommand[], historyGroupId?: string): Promise<CanvasCommitResult>;
   undo(direction: 'undo' | 'redo'): Promise<CanvasUndoResult>;
-  protect(elementId: z.infer<typeof CanvasEditingRequestSchema>['elementId'], fields: z.infer<typeof CanvasEditingRequestSchema>['fields']): Promise<void>;
+  protect(elementId: z.infer<typeof CanvasEditingRequestSchema>['elementId'], fields: z.infer<typeof CanvasEditingRequestSchema>['fields'], owner: string): Promise<void>;
   close(): Promise<void>;
 }

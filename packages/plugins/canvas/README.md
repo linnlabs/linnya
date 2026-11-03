@@ -52,3 +52,9 @@ Backend contribution 按数据库实例拥有文档运行态，停用释放定�
 
 搜索纯文本快照独立于历史版本：第一批脏内容启动 30 秒刷新，持续输入不会无限延后，关闭时刷新。引用投影使用 Workspace 当前路径；跨项目和已删除引用仅展示不可访问状态。快照按 UTF-8 限制为 1 MiB。Renderer `canvas:read` 可带视图身份登记删除框基线，`canvas:close` 释放视图。
 CLI 的 `payloadIdentity` 由可信编排从原始 operations/options 构造，不能由模型填写 hash。`replayAgentRequest` 在 Markdown 解析、append 归一化、测高及资产接管前查询；原始身份与成功回执在同一事务保存，正文变更不会让同次 append 重试变成第二次追加。未传身份时仍以正式 operations 为准。`approvalResults` 提供当前对话最近 50 条审批状态，CLI 读操作可主动报告已允许、拒绝或过期结果。
+
+文字卡自动高度复用 shared 的 `canvasAutomaticTextHeight`，手动缩放后持久化为 fixed；编辑器 DOM 测量和正文在同一次更新提交。正文、拖动、缩放分别持有字段保护 owner，同视图只向 Backend 发送这些 owner 的字段并集；结束其中一个动作不会清除另一个尚在进行的动作，长拖动和缩放持续续约。
+
+图片卡与正文插图只持久化受管 assetId/稳定 src。Renderer 从正式图片端口读取临时 bytes，用有界缓存投影为 data URI，避免 media 协议在 HTML 光栅时空白；异步准备图片不提前建立归属。文档卡经通用候选与 preview 门面读取当前项目标题、封面和不可用状态，打开仍走 Workspace 导航。搜索由 shared 纯函数同时供 Renderer/CLI 消费，不把内部文档 ID 当作可见正文。
+
+加入对话使用一个 Canvas 选区引用；发送前先等待仍打开表面的草稿保存，再经 Backend 冻结一次最新提交内容。画布关闭后仍可刷新，失败不会回退加入时旧文字。引用记录文档和卡片身份，点击经通用 Workspace 导航打开并定位；同一选区通过通用 composer 去重键合并。复制含标签的子图时保留目标 documentId，但为每个新出现位置分配新的 referenceId，避免原子引用索引冲突。

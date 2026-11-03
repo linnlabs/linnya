@@ -8,8 +8,8 @@ const initial = CanvasTextCardSchema.parse({ id: 'c1', type: 'text', schemaVersi
   createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null },
   createdAt: 1, updatedAt: 1, x: 0, y: 0, width: 280, height: 180, parentId: null, data: { contentVersion: 1, content: createCanvasPlainTextDocument('before') } });
 
-async function fixture() {
-  let snapshot: CanvasSnapshot = { schemaVersion: 1, documentId: 'doc', sequence: 0, elements: [initial] };
+async function fixture(heightMode: 'auto' | 'fixed' = 'auto') {
+  let snapshot: CanvasSnapshot = { schemaVersion: 1, documentId: 'doc', sequence: 0, elements: [{ ...initial, data: { ...initial.data, heightMode } }] };
   const commit = vi.fn(async (input: Parameters<CanvasDocumentPort['commit']>[0]): Promise<CanvasCommitResult> => {
     const operation = input.operations[0];
     if (operation?.op !== 'update') throw new Error('expected update');
@@ -54,6 +54,18 @@ describe('文字草稿提交屏障', () => {
     expect(f.commit.mock.calls[0]?.[0].historyGroupId).toBe(f.commit.mock.calls[1]?.[0].historyGroupId);
     expect(f.commit.mock.calls[1]?.[0].operations[0]).toMatchObject({ baseRevision: 2 });
     f.editor.dispose(); f.session.close();
+  });
+
+  it('自动高度使用共享上限，固定高度的卡不会被正文测量改高', async () => {
+    const auto = await fixture(); auto.editor.update(createCanvasPlainTextDocument('长正文')); auto.editor.measure(10000);
+    expect(await auto.editor.save()).toBe(true);
+    expect(auto.commit.mock.calls[0]?.[0].operations[0]).toMatchObject({ patch: { height: 1800, data: { heightMode: 'auto' } } });
+    auto.editor.dispose(); await auto.session.close();
+    const fixed = await fixture('fixed'); fixed.editor.update(createCanvasPlainTextDocument('长正文')); fixed.editor.measure(10000);
+    expect(await fixed.editor.save()).toBe(true);
+    const command = fixed.commit.mock.calls[0]?.[0].operations[0];
+    expect(command?.op === 'update' && command.patch.height).toBeUndefined();
+    fixed.editor.dispose(); await fixed.session.close();
   });
 
   it('保存期间的新输入不会被清掉；退出需再次保存最新内容', async () => {

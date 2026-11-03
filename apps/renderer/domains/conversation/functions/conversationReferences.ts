@@ -30,6 +30,7 @@ export function createConversationReference(
   return {
     id: ConversationReferenceIdSchema.parse(id),
     pluginId: payload.pluginId,
+    ...(payload.deduplicationKey ? { deduplicationKey: payload.deduplicationKey } : {}),
     kind: payload.kind,
     ...(payload.uri ? { uri: payload.uri } : {}),
     label,

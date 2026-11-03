@@ -10,6 +10,7 @@ export interface CanvasCardDraft {
   readonly editSequence: number;
   readonly savedSequence: number;
   readonly historyGroupId: string;
+  readonly measuredHeight: number | null;
 }
 export interface CanvasCardEditingState {
   readonly draft: Readonly<Ref<CanvasCardDraft | null>>;
@@ -17,6 +18,7 @@ export interface CanvasCardEditingState {
   readonly error: Readonly<Ref<string | null>>;
   begin(card: z.infer<typeof CanvasTextCardSchema>, historyGroupId: string): void;
   update(content: CanvasTextDocument): void;
+  measure(height: number): void;
   beginSave(): void;
   saved(baseRevision: number, savedSequence: number): void;
   failed(message: string): void;
@@ -27,6 +29,7 @@ export interface CanvasCardEditor {
   open(elementId: CanvasCardId): Promise<void>;
   update(content: JsonValue): void;
   setComposing(value: boolean): void;
+  measure(height: number): void;
   save(finish?: boolean): Promise<boolean>;
   dispose(): void;
 }

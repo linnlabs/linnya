@@ -2,7 +2,7 @@ import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import { JsonValueSchema } from '@app/schemas';
 import type { CanvasMeasureBatchRequest, CanvasMeasureRequest } from '../../../shared/rendering';
 import { installTypography } from './createCardSurface';
-import { hydrateEmbeddedImages } from './hydrateEmbeddedImages';
+import { hydrateCanvasManagedImages, hydrateCanvasDocumentTags } from '../../features/cardRendering/content';
 
 export interface CanvasLayoutCache {
   get(key: string): number | undefined;
@@ -42,9 +42,10 @@ export async function measureCanvasCards(
   const keys: string[] = [];
   const measured = new Map<string, number>();
   const availableAssets = Object.keys(request.assets).sort();
+  const documentTitles = Object.entries(request.documents).map(([id, presentation]) => [id, presentation.title, presentation.status ?? 'available']).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
   for (const card of cards) {
     signal.throwIfAborted();
-    const key = JSON.stringify([card.contentVersion, card.content, card.width, request.fontFamily, request.fontSize, request.theme, request.dpr, request.uiScale, availableAssets]);
+    const key = JSON.stringify([card.contentVersion, card.content, card.width, request.fontFamily, request.fontSize, request.theme, request.dpr, request.uiScale, availableAssets, documentTitles]);
     keys.push(key);
     const cached = cache.get(key);
     if (cached !== undefined) { measured.set(key, cached); continue; }
@@ -54,7 +55,7 @@ export async function measureCanvasCards(
     surface.style.cssText = `box-sizing:border-box;padding:16px 18px 18px;overflow-wrap:anywhere;width:${card.width}px`;
     installTypography(surface, request);
     surface.append(createMarkdownDocumentFragment(JsonValueSchema.parse(card.content), document));
-    hydrateEmbeddedImages(surface, request.assets);
+    hydrateCanvasManagedImages(surface, request.assets); hydrateCanvasDocumentTags(surface, request.documents);
     stage.append(surface); pending.set(key, surface);
   }
   await document.fonts.ready;

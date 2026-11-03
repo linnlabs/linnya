@@ -1,0 +1,25 @@
+import type { CanvasReferenceFocus } from '../definitions/canvasSelectionReference';
+const handlers = new Map<string, CanvasReferenceFocus>();
+const waiters = new Map<string, Set<(focus: CanvasReferenceFocus | null) => void>>();
+
+/** 注册的是表面的定位能力，不保存选择或正文；窗口之间由各自模块实例隔离。 */
+export function registerCanvasReferenceFocus(documentId: string, focus: CanvasReferenceFocus): () => void {
+  handlers.set(documentId, focus);
+  for (const waiter of waiters.get(documentId) ?? []) waiter(focus);
+  return () => { if (handlers.get(documentId) === focus) handlers.delete(documentId); };
+}
+export async function focusCanvasReference(documentId: string, ids: Parameters<CanvasReferenceFocus>[0]): Promise<void> {
+  const current = handlers.get(documentId);
+  if (current) return current(ids);
+  const focus = await new Promise<CanvasReferenceFocus | null>((resolve, reject) => {
+    const waiting = waiters.get(documentId) ?? new Set<(focus: CanvasReferenceFocus | null) => void>();
+    const receive = (value: CanvasReferenceFocus | null) => { clearTimeout(timer); waiting.delete(receive); if (!waiting.size) waiters.delete(documentId); resolve(value); };
+    const timer = setTimeout(() => { waiting.delete(receive); if (!waiting.size) waiters.delete(documentId); reject(new Error('画布尚未准备好，请重试定位')); }, 5000);
+    waiting.add(receive); waiters.set(documentId, waiting);
+  });
+  if (!focus) throw new Error('画布插件已停用');
+  await focus(ids);
+}
+export function clearCanvasReferenceFocus(): void {
+  handlers.clear(); for (const waiting of waiters.values()) for (const resolve of waiting) resolve(null); waiters.clear();
+}

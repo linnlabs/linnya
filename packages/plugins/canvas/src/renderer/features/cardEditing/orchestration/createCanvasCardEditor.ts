@@ -1,4 +1,4 @@
-import { CanvasTextDocumentSchema } from '@plugin/canvas/shared';
+import { CanvasTextDocumentSchema, canvasAutomaticTextHeight } from '@plugin/canvas/shared';
 import type { CanvasCardId } from '@plugin/canvas/shared';
 import type { CanvasDocumentSession } from '../../canvasDocument';
 import type { CanvasCardEditor } from '../definitions/cardEditing';
@@ -10,7 +10,7 @@ export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCa
   let renewal: ReturnType<typeof setInterval> | null = null;
   let pendingSave: Promise<boolean> | null = null;
   const stopRenewal = () => { if (renewal) clearInterval(renewal); renewal = null; };
-  const release = async (elementId: CanvasCardId) => { stopRenewal(); await session.protect(elementId, []); };
+  const release = async (elementId: CanvasCardId) => { stopRenewal(); await session.protect(elementId, [], 'text'); };
   const save = async (finish = false): Promise<boolean> => {
     if (pendingSave) { if (!(await pendingSave)) return false; return save(finish); }
     const draft = state.draft.value;
@@ -27,7 +27,7 @@ export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCa
         if (!card || card.type !== 'text') throw new Error('文字卡已被移除，草稿仍保留');
         const result = await session.commit([{
           op: 'update', id: draft.elementId, baseRevision: draft.baseRevision,
-          patch: { data: { ...card.data, content: draft.content } },
+          patch: { data: { ...card.data, content: draft.content }, ...(card.data.heightMode === 'auto' && draft.measuredHeight !== null ? { height: draft.measuredHeight } : {}) },
         }], draft.historyGroupId);
         const outcome = result.results[0];
         if (outcome?.status !== 'applied') throw new Error(outcome?.reason ?? '文字修改没有提交，请重试');
@@ -53,14 +53,15 @@ export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCa
       const card = session.state.snapshot.value?.elements.find(element => element.id === elementId);
       if (!card || card.type !== 'text') throw new Error('这张卡不能进入文字编辑');
       if (card.locked) throw new Error('请先解锁这张卡');
-      await session.protect(elementId, ['data']);
+      await session.protect(elementId, ['data', 'height'], 'text');
       state.begin(card, crypto.randomUUID());
       renewal = setInterval(() => {
         if (state.draft.value?.elementId !== elementId) return;
-        void session.protect(elementId, ['data']).catch(error => state.failed(error instanceof Error ? error.message : String(error)));
+        void session.protect(elementId, ['data', 'height'], 'text').catch(error => state.failed(error instanceof Error ? error.message : String(error)));
       }, 2000);
     },
     update(content) { state.update(CanvasTextDocumentSchema.parse(content)); },
+    measure(height) { state.measure(canvasAutomaticTextHeight(Math.ceil(height))); },
     setComposing(value) { composing = value; },
     dispose() { stopRenewal(); },
   };

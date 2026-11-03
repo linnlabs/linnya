@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DocumentPreviewImageSchema, DocumentReferencePresentationSchema } from '@app/schemas';
 import { CanvasSnapshotSchema, CanvasTextDocumentSchema } from '../../model/definitions/canvasElement';
 
 export const CANVAS_RENDER_WORKER_ID = 'canvas-render';
@@ -14,6 +15,8 @@ const common = {
   fontFamily: z.string().min(1).max(256), fontSize: finite.min(8).max(72),
   uiScale: finite.min(0.5).max(4).default(1),
   assets: z.record(z.string(), resource).default({}),
+  documents: z.record(z.string(), z.object({ title: z.string(), status: DocumentReferencePresentationSchema.shape.status.optional(),
+    image: DocumentPreviewImageSchema.shape.dataUri.optional() }).strict()).default({}),
 };
 export const CanvasMeasureRequestSchema = z.object({
   ...common, kind: z.literal('measure'), content: CanvasTextDocumentSchema, width: finite.positive().max(4096),
@@ -29,7 +32,6 @@ export const CanvasRenderRequestSchema = z.object({
   region: z.object({ x: finite, y: finite, width: finite.positive(), height: finite.positive() }).strict().nullable(),
   format: z.enum(['png', 'jpeg']), quality: finite.min(0.1).max(1),
   material: z.enum(['paper', 'card']),
-  documents: z.record(z.string(), z.object({ title: z.string(), image: resource.optional() }).strict()),
 }).strict().refine((request) => request.width * request.height * request.dpr ** 2 <= 16_777_216, { message: 'Canvas output exceeds pixel budget' });
 export const CanvasWorkerRequestSchema = z.union([CanvasMeasureRequestSchema, CanvasMeasureBatchRequestSchema, CanvasRenderRequestSchema]);
 export const CanvasWorkerResultSchema = z.discriminatedUnion('status', [

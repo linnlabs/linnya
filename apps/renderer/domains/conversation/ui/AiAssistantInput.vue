@@ -659,14 +659,16 @@ const handleSubmit = async () => {
   // 在清空之前快照当前扩展与引用，确保结构化 userQuote 不因清空 composer 丢失。
   const extensionSnapshot = activeInputExtension.value;
   const conversationReferencesSnapshot = [...composerReferences.references.value];
+  const projectId = navigationScope.currentProjectId;
   const preparation = new AbortController();
   referencePreparation = preparation;
   try {
     const preparedReferences = await prepareComposerReferences({
       references: conversationReferencesSnapshot,
-      conversationId,
+      conversationId, projectId,
       signal: preparation.signal,
       isCurrent: () => assistantStore.activeConversationId === conversationId
+        && navigationScope.currentProjectId === projectId
         && activeInputExtension.value === extensionSnapshot
         && composerReferences.references.value.length === conversationReferencesSnapshot.length
         && composerReferences.references.value.every((reference, index) => reference.id === conversationReferencesSnapshot[index]?.id),
