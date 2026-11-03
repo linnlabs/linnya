@@ -20,3 +20,26 @@ describe('portable Markdown DOM projection', () => {
     expect(host.textContent).toContain('<script>alert(1)</script>');
   });
 });
+
+it('交互编辑和只读 DOM 都渲染公式墨迹并保持同样的正式文档', async () => {
+  const { Editor } = await import('@tiptap/core');
+  const { createMarkdownDocumentExtensions, serializeMarkdownDocument } = await import('../index');
+  const content = parseMarkdownDocument('++强调++ ~下标~ ^上标^ [textStyle color="#C00"]红字[/textStyle] $x^2$\n\n$$\n\\frac{a}{b}\n$$');
+  const element = document.createElement('div'); document.body.append(element);
+  const editor = new Editor({ element, extensions: createMarkdownDocumentExtensions(), content });
+  try {
+    const alternateDocument = document.implementation.createHTMLDocument('readonly');
+    const host = alternateDocument.createElement('article'); host.append(createMarkdownDocumentFragment(content, alternateDocument));
+    expect(host.querySelectorAll('.katex')).toHaveLength(2); expect(element.querySelectorAll('.katex')).toHaveLength(2);
+    expect(host.querySelectorAll('.katex-display')).toHaveLength(1); expect(element.querySelectorAll('.katex-display')).toHaveLength(1);
+    expect(host.querySelector('.katex .mord')).not.toBeNull(); expect(host.querySelector('u')?.textContent).toBe('强调'); expect(host.querySelector('sub')?.textContent).toBe('下标'); expect(host.querySelector('sup')?.textContent).toBe('上标');
+    expect(host.querySelector('span[style]')?.getAttribute('style')).toContain('color:'); expect(parseMarkdownDocument(serializeMarkdownDocument(editor.getJSON()))).toEqual(content);
+  } finally { editor.destroy(); element.remove(); }
+});
+
+it('无效 TeX 保留源文，公式命令不获得 HTML 或链接信任', () => {
+  const content = parseMarkdownDocument('$\\notARealCommand{x}$ $\\href{javascript:alert(1)}{click}$');
+  const host = document.createElement('article'); host.append(createMarkdownDocumentFragment(content, document));
+  expect(host.textContent).toContain('notARealCommand');
+  expect(host.querySelector('a')).toBeNull(); expect(host.querySelector('script')).toBeNull();
+});
