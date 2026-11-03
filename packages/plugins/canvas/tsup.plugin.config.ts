@@ -15,6 +15,8 @@ export default defineConfig([
     // 和现有独立CLI一样，只内联公开且无App装配依赖的SDK入口；不保留虚拟Host specifier。
     options.alias = { '@plugin/backend/workspaceDatabasePath': path.resolve('../../../src/plugin-sdk/backend/workspaceDatabasePath.ts'),
       '@plugin/backend/workspaceDocumentProjection': path.resolve('../../../src/plugin-sdk/backend/workspaceDocumentProjection.ts') };
+    // Host对native模块的白名单解析基于CJS；保留懒加载，但不要绕到Node的ESM package resolver。
+    options.supported = { ...options.supported, 'dynamic-import': false };
   }, noExternal: [...common.noExternal, /^@app\/schemas(?:\/|$)/] },
   { ...common, esbuildPlugins: [canvasBundleMetadata('computation')], entry: { 'canvas-computation-worker': 'src/backend/orchestration/canvasComputationWorker.ts' }, external: [], noExternal: [...common.noExternal, 'elkjs', /^@app\/schemas(?:\/|$)/] },
 ]);

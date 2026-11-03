@@ -98,3 +98,9 @@ Standalone `entry.command` 只提供 read/show/find/neighbors/region/check，显
 Canvas表面、正文编辑器和历史预览统一读取Renderer UI公开的 `RENDERER_UI_THEME_ATTRIBUTE`，并监听同一属性。`moon-blue`依据Renderer UI正式语义仍使用浅色纸张；不能通过历史data-theme或dark class猜测当前主题。
 
 键盘与读屏通过同一选择/导航流程工作：搜索定位既支持卡片也支持线标签，关闭搜索/右键菜单和结束标签编辑会回焦画布；选中摘要复用正文搜索投影和当前可访问文档标题，限制朗读长度，不输出目标内部ID。失败草稿可显式选择“使用已保存内容”，经危险操作确认后仅放弃本地草稿；写入进行中或结果待确认时禁止放弃，不自动重载覆盖。
+
+## 制品闭包
+
+`pnpm run smoke:plugin:canvas:artifact`先构建schemas和Canvas独立制品，再用临时隔离根验证checksum/content BOM、正式disk Backend加载、Skill/worker/migration发现、无数据库的CLI help、编译CLI真实只读SQLite与写入拒绝、编译Node计算worker及正式Host HiddenWorker的PNG/JPEG/取消/字体/标签/图片路径。临时制品根与数据库测试后删除；Canvas不进入默认官方发行目标。
+
+三个Node entry各有独立esbuild元数据，main/CLI/compute初始预算分别3/3.2/5 MiB。ELK只进入计算worker；main/CLI拒绝Pixi、Renderer和Host业务装配。CLI仅内联两个公开只读SDK入口，虚拟Host specifier不得留到独立进程；native模块保留懒加载并通过正式CJS Host白名单解析。公开barrel产生的空初始化闭包可保留，但输出AST必须证明未保留可执行写函数体。Renderer、HTML worker、CSS与字体引用均验证实际zip闭包，不把开发探针、元数据或源码混进制品。独立读取使用产品提供的Electron Node ABI，help也可由普通Node运行。

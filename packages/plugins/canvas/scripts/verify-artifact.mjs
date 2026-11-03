@@ -71,15 +71,15 @@ function artifactReference(file, reference) {
   const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), reference.split(/[?#]/)[0]));
   assert(!resolved.startsWith('../') && zip.file(resolved), `${file}: missing closed resource ${resolved}`);
 }
-for (const file of files.filter(file => file.startsWith('dist/render-worker/'))) {
+for (const file of files.filter(file => file.startsWith('dist/render-worker/') || file.startsWith('dist/renderer/'))) {
   const text = await zip.file(file).async('string');
   if (file.endsWith('.html')) for (const match of text.matchAll(/(?:src|href)=["']([^"']+)["']/g)) artifactReference(file, match[1]);
   if (file.endsWith('.css')) for (const match of text.matchAll(/url\(["']?([^\s)"']+)["']?\)/g)) artifactReference(file, match[1]);
   if (file.endsWith('.js')) {
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
     const visit = node => {
-      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) artifactReference(file, node.moduleSpecifier.text);
-      if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) artifactReference(file, node.arguments[0].text);
+      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) { if (node.moduleSpecifier.text.startsWith('.')) artifactReference(file, node.moduleSpecifier.text); else assert(file.startsWith('dist/renderer/'), `${file}: unclosed worker import ${node.moduleSpecifier.text}`); }
+      if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) { if (node.arguments[0].text.startsWith('.')) artifactReference(file, node.arguments[0].text); else assert(file.startsWith('dist/renderer/'), `${file}: unclosed worker import ${node.arguments[0].text}`); }
       ts.forEachChild(node, visit);
     }; visit(source);
   }

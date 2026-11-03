@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { access, readFile } from 'node:fs/promises';
+import { access, readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { loadBackendPluginsFromDisk } from '../../../../../src/electron-main/plugins/loader/diskPluginLoader';
 
 async function run() {
-  const artifactRoot = process.argv[2]; if (!artifactRoot) throw new Error('Isolated artifact root required');
+  const suppliedRoot = process.argv[2]; if (!suppliedRoot) throw new Error('Isolated artifact root required');
+  const artifactRoot = await realpath(suppliedRoot);
   const app: { version: string } = JSON.parse(await readFile(path.resolve('package.json'), 'utf8'));
   const loaded = loadBackendPluginsFromDisk({ directPluginDirs: [artifactRoot], appVersion: app.version });
   assert.equal(loaded.length, 1);
