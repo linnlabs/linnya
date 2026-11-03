@@ -24,7 +24,9 @@ it.skipIf(!process.env.LINNYA_CARRIER_CRASH_DB)('crash at a fixed child handoff'
     new ResearchCarrierFixtureTool(async point => {
       if (point === boundary) {
         process.kill(process.pid, 'SIGKILL');
-        throw new Error('SIGKILL must stop the fixture process');
+        // worker 发出的进程信号不是同步控制流屏障：高并发下，紧随其后的 throw
+        // 可能先被 ToolNode 持久化成真实错误。此处停止推进，只等待 OS 终止整个进程。
+        await new Promise<never>(() => {});
       }
     })
   );

@@ -82,7 +82,8 @@ describe('real process crash recovery with Audit off', () => {
         }
       );
       let output = '';
-      const timeout = setTimeout(() => child.kill('SIGKILL'), 20_000);
+      // watchdog 必须与夹具自己的边界 SIGKILL 不同，不能把启动超时冒认为有效崩溃。
+      const timeout = setTimeout(() => child.kill('SIGTERM'), 20_000);
       child.stdout.on('data', chunk => {
         output = (output + String(chunk)).slice(-12_000);
       });
@@ -93,7 +94,7 @@ describe('real process crash recovery with Audit off', () => {
         clearTimeout(timeout);
         reject(error);
       });
-      child.once('exit', (code, signal) => {
+      child.once('close', (code, signal) => {
         clearTimeout(timeout);
         resolve({ code, signal, output });
       });

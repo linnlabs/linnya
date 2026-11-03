@@ -139,6 +139,7 @@ Linnkit 仓修复并通过不含源码 alias 的产物类型门禁后发布，Li
 不能用加大 timeout、删除断言或跳过测试掩盖资源争用。
 
 真实子进程夹具应等待 `close` 收齐 stdout/stderr，并保留退出信号、耗时和失败时的业务事实。
+从 worker 请求 SIGKILL 后应停止执行并等待 OS 终止，不能紧接着抛占位异常：信号送达前异常可能已被业务层持久化。
 恢复测试需要先确认 Runtime tool output，再与 UI projection 对照，避免把工具失败误判为投影失败。
 脚本化 CLI bridge 使用共享协议常量、严格 handshake schema 和匹配当前 checkout 的实例身份，不能手抄旧版 wire shape。
 
