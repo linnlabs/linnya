@@ -3,9 +3,10 @@ import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { registerHiddenWorker, unregisterHiddenWorker, invokeHiddenWorker } from '../../../../../src/electron-main/hidden-worker/standaloneHiddenWorkerRuntime';
-import { createCanvasHiddenWorkerDefinition, createCanvasRenderRuntime } from '../../src/backend/features/canvasRender';
+import { createCanvasHiddenWorkerDefinition, createCanvasRenderRuntime, CanvasRenderingError } from '../../src/backend/features/canvasRender';
+import type { CanvasRenderWorkerPort } from '../../src/backend/definitions/canvasRenderWorkerPort';
 import { createCanvasCardMeasurement } from '../../src/backend/capabilities/cardMeasurement/createCanvasCardMeasurement';
-import { CanvasMeasureRequestSchema, CanvasMeasureBatchRequestSchema, CanvasRenderRequestSchema } from '../../src/shared/rendering';
+import { CanvasMeasureRequestSchema, CanvasMeasureBatchRequestSchema, CanvasRenderRequestSchema, type CanvasRenderRequest } from '../../src/shared/rendering';
 import { CanvasSnapshotSchema } from '../../src/shared';
 
 const root = process.argv[2];
@@ -32,6 +33,34 @@ function inkBounds(bytes: Uint8Array) {
   }
   if (right < left) throw new Error('background_output_has_no_text');
   return { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
+}
+
+async function verifyManagedImages(port: CanvasRenderWorkerPort, request: CanvasRenderRequest) {
+  const pixels = Buffer.alloc(120 * 80 * 4);
+  for (let i = 0; i < pixels.length; i += 4) { pixels[i] = 30; pixels[i + 1] = 80; pixels[i + 2] = 220; pixels[i + 3] = 255; }
+  const source = nativeImage.createFromBitmap(pixels, { width: 120, height: 80 }).toDataURL();
+  const caption = { type: 'paragraph', content: [{ type: 'text', text: '受管行内图片' }] };
+  const content = { type: 'doc', content: [caption, { type: 'image', attrs: { assetId: 'owned-image', src: 'asset:owned-image', alt: 'fixture' } }] };
+  const measurement = createCanvasCardMeasurement(port);
+  const measured = await measurement.measure(CanvasMeasureRequestSchema.parse({ ...common, requestId: 'measure-inline-image', kind: 'measure', width: 280,
+    content, assets: { 'owned-image': source } }));
+  const textOnly = await measurement.measure(CanvasMeasureRequestSchema.parse({ ...common, requestId: 'measure-inline-caption', kind: 'measure', width: 280,
+    content: { type: 'doc', content: [caption] } }));
+  if (measured.height - textOnly.height < 70) throw new Error('managed_image_not_in_real_layout');
+  let missingRejected = false;
+  try { await measurement.measure(CanvasMeasureRequestSchema.parse({ ...common, requestId: 'measure-missing-image', kind: 'measure', width: 280, content })); }
+  catch (error) { if (!(error instanceof CanvasRenderingError) || error.code !== 'resource_unavailable') throw error; missingRejected = true; }
+  if (!missingRejected) throw new Error('missing_asset_reused_cached_measurement');
+  const card = request.snapshot.elements.find(element => element.type === 'text');
+  if (!card) throw new Error('image_fixture_card_missing');
+  const image = await createCanvasRenderRuntime(port).render(CanvasRenderRequestSchema.parse({ ...request, requestId: 'render-inline-image', assets: { 'owned-image': source },
+    snapshot: { ...request.snapshot, elements: [{ ...card, height: measured.height, data: { contentVersion: 1, content } }] } }));
+  const bitmap = nativeImage.createFromBuffer(Buffer.from(image.bytes)).toBitmap();
+  let imagePixels = 0;
+  for (let i = 0; i < bitmap.length; i += 4) if (bitmap[i] < 100 && bitmap[i + 1] < 150 && bitmap[i + 2] > 180) imagePixels++;
+  if (imagePixels < 1000) throw new Error('managed_image_missing_from_background_png');
+  await writeFile(path.join(output, 'canvas-inline-image.png'), image.bytes);
+  return { measuredHeight: measured.height, captionHeight: textOnly.height, imagePixels, missingRejected };
 }
 
 async function run(): Promise<void> {
@@ -91,12 +120,13 @@ async function run(): Promise<void> {
       snapshot: { ...snapshot, elements: [{ ...card, width: 4000, height: 400,
         data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '宽卡切片 Chinese English '.repeat(150) }] }] } } }] } }));
     const wideBounds = inkBounds(wide.bytes);
+    const managedImages = await verifyManagedImages(port, request);
     await mkdir(output, { recursive: true });
     await writeFile(path.join(output, 'canvas.png'), image.bytes);
     await writeFile(path.join(output, 'canvas-dpr1.png'), unit.bytes);
     await writeFile(path.join(output, 'canvas-second.jpg'), second.bytes);
     await writeFile(path.join(output, 'canvas-wide.png'), wide.bytes);
-    const report = { versions: process.versions, measurement, cancellationObserved, wideBounds, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
+    const report = { versions: process.versions, measurement, cancellationObserved, wideBounds, managedImages, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
       sha256: createHash('sha256').update(image.bytes).digest('hex') }, second: { bytes: second.bytes.length, sequence: second.sequence } };
     await writeFile(path.join(output, 'results.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));

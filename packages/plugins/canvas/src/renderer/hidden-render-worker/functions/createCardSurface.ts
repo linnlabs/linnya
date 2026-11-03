@@ -2,13 +2,17 @@ import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import { JsonValueSchema } from '@app/schemas';
 import type { CanvasCard } from '../../../shared';
 import type { CanvasWorkerRequest, CanvasRenderRequest } from '../../../shared/rendering';
+import { hydrateEmbeddedImages } from './hydrateEmbeddedImages';
 
 export function createCardSurface(card: CanvasCard, request: CanvasRenderRequest): HTMLElement {
   const element = document.createElement('div');
   element.className = 'markdown-document-content';
   element.style.cssText = 'box-sizing:border-box;padding:16px 18px 18px;width:100%;overflow-wrap:anywhere';
   installTypography(element, request);
-  if (card.type === 'text') element.append(createMarkdownDocumentFragment(JsonValueSchema.parse(card.data.content), document));
+  if (card.type === 'text') {
+    element.append(createMarkdownDocumentFragment(JsonValueSchema.parse(card.data.content), document));
+    hydrateEmbeddedImages(element, request.assets);
+  }
   else if (card.type === 'image') {
     const source = request.assets[card.data.assetId];
     if (!source) throw new Error('resource_unavailable');
