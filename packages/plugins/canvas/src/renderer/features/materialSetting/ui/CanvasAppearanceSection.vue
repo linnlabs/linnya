@@ -31,5 +31,5 @@ const materials = [{ value: 'paper', text: '纸' }, { value: 'card', text: '卡'
 const overviews = [{ value: 'titles', text: '大标题' }, { value: 'thumbnails', text: '内容缩略图' }];
 const setMaterial = (value: string | number | boolean) => store.replace(CanvasPreferencesSchema.parse({ ...store.preferences, material: value }));
 const setOverview = (value: string | number | boolean) => store.replace(CanvasPreferencesSchema.parse({ ...store.preferences, overview: value }));
-const setToggle = (key: 'wheelZoom' | 'snapping', event: Event) => { if (event.target instanceof HTMLInputElement) store.replace(CanvasPreferencesSchema.parse({ ...store.preferences, [key]: event.target.checked })); };
+const setToggle = (key: 'wheelZoom' | 'snapping', event: Event) => { if (event.target instanceof HTMLInputElement) store.replace(CanvasPreferencesSchema.parse({ ...store.preferences, [key]: event.target.checked, ...(key === 'wheelZoom' ? { wheelSuggestionSeen: true } : {}) })); };
 </script>

@@ -57,8 +57,8 @@ it('只读弹窗正文用按钮和左右键翻页，首尾不循环；键盘不�
   try {
     app.mount(host);
     await flush();
-    const preview = host.querySelector<HTMLElement>('.slides-history-preview')!;
-    const nav = () => host.querySelector('.slides-history-navigation')!;
+    const preview = host.querySelector<HTMLElement>('.slides-readonly-preview')!;
+    const nav = () => host.querySelector('.slides-readonly-navigation')!;
     const key = (value: string) =>
       preview.dispatchEvent(
         new KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true })

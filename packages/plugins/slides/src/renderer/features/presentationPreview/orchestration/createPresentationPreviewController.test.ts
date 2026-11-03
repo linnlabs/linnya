@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import type { PresentationRenderModel } from '@plugin/slides/shared/renderModel';
-import { createHistoryPreviewController } from './createHistoryPreviewController';
+import { createPresentationPreviewController } from './createPresentationPreviewController';
 
 const model: PresentationRenderModel = {
   presentationId: 'doc',
@@ -27,7 +27,7 @@ it('切页丢弃迟到正文图片，关闭后释放当前 bitmap', async () => 
   const completions: ((bitmap: ImageBitmap) => void)[] = [];
   const signals: AbortSignal[] = [];
   const publish = vi.fn();
-  const controller = createHistoryPreviewController({
+  const controller = createPresentationPreviewController({
     read: async () => model,
     render: async (_model, _page, signal) => {
       signals.push(signal);
@@ -62,7 +62,7 @@ it('只渲染选中页；首尾不越界、无页不渲染、翻页和关闭释�
     return image;
   });
   const publish = vi.fn();
-  const controller = createHistoryPreviewController({
+  const controller = createPresentationPreviewController({
     read: async () => model,
     render,
     publish,
@@ -85,7 +85,7 @@ it('只渲染选中页；首尾不越界、无页不渲染、翻页和关闭释�
   );
   controller.dispose();
   expect(images.every(image => vi.mocked(image.close).mock.calls.length === 1)).toBe(true);
-  const empty = createHistoryPreviewController({
+  const empty = createPresentationPreviewController({
     read: async () => ({ ...model, slides: [] }),
     render,
     publish,
@@ -103,7 +103,7 @@ it('正文失败后可继续翻页，不预渲染其他页', async () => {
   const render = vi
     .fn(async (): Promise<ImageBitmap> => ({ width: 1, height: 1, close() {} }))
     .mockRejectedValueOnce(new Error('page failed'));
-  const controller = createHistoryPreviewController({
+  const controller = createPresentationPreviewController({
     read: async () => model,
     render,
     publish,
@@ -128,7 +128,7 @@ it('关闭时尚未返回的后端模型不触发栅格化', async () => {
     resolve = done;
   });
   const render = vi.fn(async (): Promise<ImageBitmap> => ({ width: 1, height: 1, close() {} }));
-  const controller = createHistoryPreviewController({
+  const controller = createPresentationPreviewController({
     read: () => read,
     render,
     publish: vi.fn(),

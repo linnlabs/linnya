@@ -14,6 +14,12 @@ export function assertPortableMarkdownDocument(content: JsonValue): void { asser
 
 export function parseMarkdownDocument(markdown: string): JsonValue {
   const parsed = manager.parse(markdown);
+  // Markdown空输入不产生块；让唯一schema生成最小合法正文，避免各消费者另造空文档。
+  if (!parsed.content?.length) {
+    const empty = schema.topNodeType.createAndFill();
+    if (!empty) throw new Error('Markdown schema cannot create an empty document');
+    return JsonValueSchema.parse(empty.toJSON());
+  }
   assertMarkdownDocument(parsed, schema);
   return JsonValueSchema.parse(schema.nodeFromJSON(parsed).toJSON());
 }

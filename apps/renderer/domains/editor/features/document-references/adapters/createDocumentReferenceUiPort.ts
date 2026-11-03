@@ -59,9 +59,16 @@ export function createDocumentReferenceUiPort(): DocumentReferenceUiPort {
     preview: documentId => readDocumentPreview({ documentId, projectId: projectId(), widthPx: 640, pixelRatio: Math.min(window.devicePixelRatio, 2) }),
     async open(presentation) {
       if (presentation.status !== 'available' || !presentation.nodeType) {
-        showWorkspaceNotification(presentation.status === 'plugin_unavailable' ? '需要启用或安装对应插件后打开' : '引用的文档当前不可访问', 'info'); return;
+        showWorkspaceNotification(presentation.status === 'deleted' ? '引用的文档已删除' : presentation.status === 'outside_project' ? '文档在其他项目，当前不可访问' : '需要启用或安装对应插件后打开', 'info'); return;
       }
       await getWorkspaceNavigationPort().openDocumentTarget({ documentId: presentation.documentId, projectId: projectId(), type: presentation.nodeType, displayName: presentation.title });
+    },
+    readDetailRenderer(presentation) {
+      if (presentation.status !== 'available' || !presentation.nodeType) return null;
+      const component = getDocumentTypePresentationPort().readPreviewComponent(presentation.nodeType);
+      if (!component) return null;
+      const scope = projectId();
+      return async element => { render(createVNode(component, { documentId: presentation.documentId, projectId: scope }), element); return () => render(null, element); };
     },
     async renderDetail(element, markdown) {
       const runtime = await import('@linnya/markdown-document-core');

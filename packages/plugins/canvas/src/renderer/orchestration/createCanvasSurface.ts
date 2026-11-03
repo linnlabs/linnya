@@ -28,6 +28,8 @@ import { readCanvasAppearance } from '../functions/readCanvasAppearance';
 import { createCanvasViewportCommands } from './createCanvasViewportCommands';
 import { createCanvasDraftDiscard } from './createCanvasDraftDiscard';
 import { createCanvasCardOpening } from './createCanvasCardOpening';
+import { createCanvasEditorNavigation } from './createCanvasEditorNavigation';
+import { installCanvasSurfaceDoubleClick } from './installCanvasSurfaceDoubleClick';
 
 /** 表面的组合根：只连接已提交文档、草稿、选择、kernel与Host端口。 */
 export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: CanvasSurfacePorts) {
@@ -48,6 +50,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   const raster = createCanvasRasterPresentation({ host: options.stagingHost, kernel, readAppearance, reportFailure: report, createContent: ports.createContent, readContentKey: ports.readContentKey });
   const refreshView = () => { ports.refreshVisibleContent?.(kernel.renderableCards()); raster.refresh(); };
   const editable = ports.createEditor({ element: options.editorHost, content: JsonValueSchema.parse(createCanvasPlainTextDocument('')), label: '文字卡正文', resolveImageSource: ports.resolveImageSource, onError: report,
+    onNavigate: createCanvasEditorNavigation(kernel, intent => { void handleIntent(intent).catch(report); }),
     onUpdate: content => { try { if (creation.state.draft.value) creation.update(content); else editor.update(content); setDirty(); } catch (failure) { report(failure); } },
     onBlur: () => { void save(true).then(setDirty).catch(report); },
   });
@@ -99,16 +102,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   }
   const projection = installCanvasEditorProjection({ host: options.editorHost, editor, creation, editable, kernel, camera, cards, setDirty, refresh: refreshView });
   const stopDisplay = installCanvasDisplayProjection({ host: options.host, session, kernel, raster: { refresh: refreshView }, preferences, readAppearance, ports, report, refreshEditorInk: projection.refreshInk });
-  const doubleClick = (event: MouseEvent) => {
-    if (event.target !== kernel.canvas) return;
-    const box = kernel.canvas.getBoundingClientRect();
-    const point = kernel.screenToWorld({ x: event.clientX - box.left, y: event.clientY - box.top });
-    if (readonly.value) return;
-    const edge = kernel.hitTestEdge(point);
-    if (edge && !kernel.hitTest(point)) void connections.select(edge.id).then(() => connections.beginLabel()).catch(report);
-    else if (!kernel.hitTest(point)) void createText(point).catch(report);
-  };
-  options.host.addEventListener('dblclick', doubleClick);
+  const stopDoubleClick = installCanvasSurfaceDoubleClick({ host: options.host, kernel, readonly: () => readonly.value, create: createText, label: async id => { await connections.select(id); await connections.beginLabel(); }, report });
   const clipboard = installCanvasSurfaceClipboard({ host: options.host, kernel, session, ports, actions, canHandle: () => !editor.state.draft.value && !creation.state.draft.value, selection: () => selection.ids.value, contextPoint: () => context.value?.point, select, createText, report });
   const removeSave = registerCanvasSaveParticipant({ documentId: options.documentId, save });
   const draftParticipants = createCanvasRestoreDraftParticipants({ editor, creation, connections, report });
@@ -137,6 +131,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     async connect() { if (await finish()) await connections.select(await actions.connect()); },
     clipboard, discardDraft, hasDraft: computed(() => draftParticipants.some(participant => participant.readGeneration() !== null)), focus: viewport.focus, focusElements: viewport.focusElements,
     readPresentationStats: () => ({ ...kernel.readStats(), status: kernel.readRenderStatus() }),
+    readContentReadiness: (ids: readonly CanvasCardId[]) => raster.readReadiness(ids),
     selectionDescription: computed(() => describeCanvasSelection(session.state.snapshot.value?.elements ?? [], connections.selected.value ? [connections.selected.value.id] : selection.ids.value, ports.readDocumentTitles?.() ?? new Map())),
     clearFailure: state.clearFailure,
     retryDisplay() { state.clearFailure(); ports.retryContent?.(); raster.retry(); refreshView(); },
@@ -147,6 +142,6 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     locateEndpoint: (which: 'from' | 'to') => viewport.locateEndpoint(connections.endpoint(which)),
     keydown: (event: KeyboardEvent) => { state.clearFailure(); void keydown(event).catch(report); },
     edit,
-    destroy() { opening.dispose(); void layout?.dispose().catch(report); connections.dispose(); dragging.dispose(); resizing.dispose(); clipboard.dispose(); removeSave(); removeHistory(); stopReadonly(); stopDisplay(); projection.dispose(); options.host.removeEventListener('dblclick', doubleClick); editable.destroy(); editor.dispose(); void session.close().catch(report); raster.dispose(); kernel.destroy(); },
+    destroy() { opening.dispose(); void layout?.dispose().catch(report); connections.dispose(); dragging.dispose(); resizing.dispose(); clipboard.dispose(); removeSave(); removeHistory(); stopReadonly(); stopDisplay(); projection.dispose(); stopDoubleClick(); editable.destroy(); editor.dispose(); void session.close().catch(report); raster.dispose(); kernel.destroy(); },
   };
 }

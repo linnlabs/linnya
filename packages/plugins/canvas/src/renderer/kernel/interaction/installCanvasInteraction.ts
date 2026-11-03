@@ -2,6 +2,7 @@ import type { CanvasCamera, CanvasCardId, CanvasPoint } from '../../../shared';
 import type { CanvasInteractionKernel, CanvasKernelIntent } from '../definitions/canvasKernel';
 import type { CanvasInteractionOptions, CanvasPointerGesture, CanvasSnapTargets } from '../definitions/canvasInteraction';
 import { createCanvasSnapTargets, snapCanvasMovementWithGuides } from './functions/canvasSnapping';
+import { canvasPanCamera, canvasZoomCamera } from './functions/canvasNavigationCamera';
 
 /** 手势只修改显示投影并产生意图；一次松手才提交一次业务修改。 */
 class CanvasPointerInteraction {
@@ -95,10 +96,8 @@ class CanvasPointerInteraction {
     const camera = this.kernel.readCamera();
     let next: CanvasCamera;
     if (event.ctrlKey || event.metaKey || this.options.readPreferences?.().wheelZoom) {
-      const screen = this.point(event), world = this.kernel.screenToWorld(screen);
-      const zoom = Math.min(4, Math.max(0.02, camera.zoom * Math.exp(-event.deltaY * 0.006)));
-      next = { zoom, x: screen.x - world.x * zoom, y: screen.y - world.y * zoom };
-    } else next = { ...camera, x: camera.x - event.deltaX, y: camera.y - event.deltaY };
+      next = canvasZoomCamera(camera, this.point(event), event.deltaY);
+    } else next = canvasPanCamera(camera, -event.deltaX, -event.deltaY);
     this.kernel.setCamera(next); this.onIntent({ kind: 'camera', camera: next });
   }
   private keyDown = (event: KeyboardEvent) => {

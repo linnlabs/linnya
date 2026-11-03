@@ -1,5 +1,9 @@
 import type { JsonValue } from '@app/schemas';
 
+export type EmbeddedMarkdownNavigationIntent =
+  | { readonly kind: 'pan'; readonly dx: number; readonly dy: number }
+  | { readonly kind: 'zoom'; readonly clientX: number; readonly clientY: number; readonly deltaY: number };
+
 /** 独立正文，不持有 Workspace 文档身份、保存状态或外层选择。 */
 export interface EmbeddedMarkdownEditorOptions {
   readonly element: HTMLElement;
@@ -11,6 +15,8 @@ export interface EmbeddedMarkdownEditorOptions {
   /** 临时显示源由调用方解析；结构化正文仍保留原始稳定src。 */
   readonly resolveImageSource?: (source: string) => Promise<string>;
   readonly onError?: (message: string) => void;
+  /** 正文内普通滚动保留给编辑器；捏合/Cmd滚轮、空格/中键拖可交给外层视口。 */
+  readonly onNavigate?: (intent: EmbeddedMarkdownNavigationIntent) => void;
 }
 
 export interface EmbeddedMarkdownInsertion {
