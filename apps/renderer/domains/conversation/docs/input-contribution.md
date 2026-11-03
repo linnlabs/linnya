@@ -219,3 +219,5 @@ Accessory 或插件贡献点。它读取正式 `user_input.metadata.context_usag
 - **provider resolve ownership 运行期强校验**：`resolveReference()` 返回的 `pluginId/kind` 目前是可选字段，guide 已要求插件显式返回 owner + kind；运行期校验与类型收窄另立小项，不加临时 fallback。
 
 > 上述能力**代码零预留**（沿用 N4 与「不做清单」）。启动时另开条目，不往本文回灌施工细节。
+
+Workspace 文档 chip 的预览 wrapper 复用 App `workflows/document-preview` 唯一只读装配，不再自建读取、订阅或 Markdown 详情流程。其 metadata 身份解析继续属于 Workspace 引用 kind，发送前刷新也保持原有独立流程。

@@ -22,6 +22,8 @@ import { registerRendererConversationSubrunInvocationPort } from '@plugin/render
 import { registerRendererInteractiveToolPort } from '@plugin/renderer/interactiveTool';
 import { registerRendererReferenceRuntimePort } from '@plugin/renderer/referenceRuntime';
 import { registerWorkspaceRuntimePort } from '@plugin/renderer/workspaceRuntime';
+import { registerRendererDocumentPreviewPort } from '@plugin/renderer/documentPreview';
+import { createDocumentPreviewRendererPort } from '@/app/workflows/document-preview';
 import { registerRendererPluginRuntimePort } from '@plugin/renderer/pluginRuntime';
 import { createRendererPluginRuntimePort } from '../orchestration/createRendererPluginRuntimePort';
 import { useNavigationScope } from '@/app/navigation';
@@ -298,6 +300,7 @@ function installComposerCommandPort(): void {
 
 export function installBuiltinRendererPluginPorts(): void {
   registerRendererPluginRuntimePort(createRendererPluginRuntimePort());
+  registerRendererDocumentPreviewPort(createDocumentPreviewRendererPort());
   registerToolPresentationProjectionPort(createToolPresentationProjectionPort());
   registerToolCompactStepProjectionPort(createToolCompactStepProjectionPort());
   registerKnowledgeSearchHistoryPort({

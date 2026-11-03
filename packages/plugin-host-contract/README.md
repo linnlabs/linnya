@@ -168,3 +168,5 @@ Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。
 `renderer/documentReferences.readDocumentBacklinks` 以当前 projectId/documentId 读取同项目活动来源，按来源文档分组分页并返回文档数和引用数。它不读取正文、不打开文档、不赋予跨项目访问；标题与节点类型都是当前派生事实。
 
 `DocumentTypeContribution.readonlyPreviewComponent` 是详情档的可选增强，接收 documentId/projectId。消费者只在用户展开时挂载，离开、换目标或插件不可用时卸载；组件必须只读、核对范围并释放资源，不绑定可写 file session。静态封面和摘要仍走统一 DocumentPreview 数据合同，不能为远景卡片批量挂实时组件。
+
+`renderer/documentPreview.mountDocumentPreviewDetail({element,documentId,projectId,signal?})` 是 Renderer 本地只读挂载口，返回 Promise<dispose>。Host 在 import 前后核对当前项目，signal 可在 Promise/插件组件加载中取消；旧 disposer 不会移除同容器后来挂载的目标。DOM 和 AbortSignal 不过 IPC，插件不得借此打开可写 surface 或批量挂载远景组件。
