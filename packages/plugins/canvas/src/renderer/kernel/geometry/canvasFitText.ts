@@ -1,6 +1,7 @@
-/** 按Unicode码点拟合显示标签；canonical全文仍供悬停与Agent读取。 */
-export function canvasFitLineLabel(text: string, measure: (text: string) => number, width = 200): string {
+/** 按Unicode码点拟合单行显示文字；canonical全文仍供悬停与Agent读取。 */
+export function canvasFitText(text: string, measure: (text: string) => number, width = 200): string {
   if (measure(text) <= width) return text;
+  if (measure('…') > width) return '';
   const points = Array.from(text); let low = 0, high = points.length;
   while (low < high) {
     const middle = Math.ceil((low + high) / 2);

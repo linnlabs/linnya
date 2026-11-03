@@ -3,7 +3,7 @@ import { readCanvasLinePalette } from '../../../../shared';
 import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdge, CanvasEdgeId, CanvasPoint, CanvasRectangle } from '../../../../shared';
 import type { CanvasAppearance } from '../../definitions/canvasKernel';
 import { createCanvasEdgeLayout, type CanvasEdgeGeometry } from '../../geometry/canvasEdgeGeometry';
-import { canvasFitLineLabel } from '../../geometry/canvasFitLineLabel';
+import { canvasFitText } from '../../geometry/canvasFitText';
 import { CanvasLineMesh } from './CanvasLineMesh';
 
 interface Entry { readonly edge: CanvasEdge; readonly geometry: CanvasEdgeGeometry; readonly left: number; readonly right: number; readonly top: number; readonly bottom: number }
@@ -198,7 +198,7 @@ export class CanvasLines {
     context.scale(this.resolution, this.resolution); context.font = '12px system-ui'; context.textAlign = 'center'; context.textBaseline = 'middle';
     context.strokeStyle = this.appearance.dark ? '#222723' : '#f2f3ee'; context.fillStyle = this.appearance.dark ? '#b5bcb3' : '#626b61'; context.lineWidth = 5;
     for (const entry of labeled) {
-      const label = canvasFitLineLabel(entry.edge.label, text => context.measureText(text).width);
+      const label = canvasFitText(entry.edge.label, text => context.measureText(text).width);
       const point = entry.geometry.midpoint, x = point.x * this.camera.zoom + this.camera.x, y = point.y * this.camera.zoom + this.camera.y;
       context.strokeText(label, x, y); context.fillText(label, x, y);
     }
