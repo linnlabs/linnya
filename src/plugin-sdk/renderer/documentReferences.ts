@@ -1,4 +1,4 @@
-import { DocumentReferenceCandidatesSchema, DocumentReferencePresentationRequestSchema, DocumentReferencePresentationSchema, DocumentReferenceSearchRequestSchema, type DocumentReferenceCandidate, type DocumentReferencePresentation } from '@app/schemas';
+import { DocumentReferenceCandidatesSchema, DocumentReferenceDeletionRequestSchema, DocumentReferenceDeletionPreviewSchema, type DocumentReferenceDeletionPreview, DocumentReferencePresentationRequestSchema, DocumentReferencePresentationSchema, DocumentReferenceSearchRequestSchema, type DocumentReferenceCandidate, type DocumentReferencePresentation } from '@app/schemas';
 
 async function invoke(channel: string, request: unknown): Promise<unknown> {
   const api: unknown = Reflect.get(window, 'electronAPI');
@@ -12,4 +12,8 @@ export async function queryDocumentReferences(input: { readonly projectId: strin
 }
 export async function readDocumentReference(input: { readonly projectId: string; readonly documentId: string }): Promise<DocumentReferencePresentation> {
   return DocumentReferencePresentationSchema.parse(await invoke('document-references:resolve', DocumentReferencePresentationRequestSchema.parse(input)));
+}
+
+export async function previewDocumentDeletionReferences(input: { readonly nodeIds: readonly string[] }): Promise<DocumentReferenceDeletionPreview> {
+  return DocumentReferenceDeletionPreviewSchema.parse(await invoke('document-references:deletion-preview', DocumentReferenceDeletionRequestSchema.parse(input)));
 }

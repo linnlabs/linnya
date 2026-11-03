@@ -41,6 +41,7 @@ import type {
 
 export function buildWorkspacePreloadApi(ipcRenderer: IpcRenderer) {
   return {
+    'document-references:deletion-preview': (request: { nodeIds: readonly string[] }): Promise<unknown> => ipcRenderer.invoke('document-references:deletion-preview', request),
     'document-references:search': (request: import('zod').input<typeof import('@app/schemas').DocumentReferenceSearchRequestSchema>): Promise<unknown> => ipcRenderer.invoke('document-references:search', request),
     'document-references:resolve': (request: { projectId: string; documentId: string }): Promise<unknown> => ipcRenderer.invoke('document-references:resolve', request),
     'document-preview:types': (): Promise<unknown> => ipcRenderer.invoke('document-preview:types'),

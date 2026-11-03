@@ -45,3 +45,7 @@ export type DocumentReferenceMarkdownBinding = z.infer<typeof DocumentReferenceM
 /** 只来自调用方正式历史/撤回记录的稳定出现位置身份，不是模型批准参数。 */
 export const DocumentReferenceRetainedIdentitySchema = z.object({ referenceId: z.string().min(1).max(256), targetDocumentId: z.string().min(1) }).strict();
 export type DocumentReferenceRetainedIdentity = z.infer<typeof DocumentReferenceRetainedIdentitySchema>;
+
+export const DocumentReferenceDeletionRequestSchema = z.object({ nodeIds: z.array(z.string().min(1)).min(1) }).strict();
+export const DocumentReferenceDeletionPreviewSchema = z.object({ referenceCount: z.number().int().nonnegative(), referencingDocumentCount: z.number().int().nonnegative(), documents: z.array(z.object({ sourceDocumentId: z.string(), title: z.string(), nodeType: z.string(), referenceCount: z.number().int().positive() }).strict()) }).strict();
+export type DocumentReferenceDeletionPreview = z.infer<typeof DocumentReferenceDeletionPreviewSchema>;
