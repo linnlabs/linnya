@@ -6,11 +6,12 @@ import {
   type CanvasCamera, type CanvasCard, type CanvasCardId,
   type CanvasEdge, type CanvasEdgeId, type CanvasElement, type CanvasPoint, type CanvasRectangle,
 } from '../../../../shared';
-import type { CanvasAppearance, CanvasKernel, CanvasKernelIntent, CanvasRasterTile } from '../../definitions/canvasKernel';
+import type { CanvasAppearance, CanvasKernel, CanvasKernelIntent, CanvasRasterTile, CanvasRenderStatus } from '../../definitions/canvasKernel';
 import { installCanvasInteraction } from '../../interaction/installCanvasInteraction';
 import { CanvasMapLabels } from './CanvasMapLabels';
 import { CanvasLines } from './CanvasLines';
 import { createCanvasVisibleRegionProjection, intersectCanvasRegion, subtractCanvasRegions } from '../../geometry/canvasVisibleRegions';
+import { readCanvasGpuMode } from './readCanvasGpuMode';
 
 interface CardView { readonly card: CanvasCard; readonly container: Container; readonly background: NineSliceSprite; readonly body: Container; readonly label: Text }
 interface BitmapResource extends CanvasRectangle { readonly texture: Texture; readonly bitmap: ImageBitmap }
@@ -37,6 +38,7 @@ interface KernelOptions {
   readonly onIntent?: (intent: CanvasKernelIntent) => void;
   readonly readonly?: boolean;
   readonly readInteractionPreferences?: () => { readonly wheelZoom: boolean; readonly snapping: boolean };
+  readonly renderingMode?: 'interactive' | 'capture';
 }
 
 /** Pixi 是唯一引擎依赖点；外部只看到 CanvasKernel 与业务快照。 */
@@ -84,9 +86,32 @@ class PixiCanvasKernel implements CanvasKernel {
   private destroyed = false;
   private readonly budget: number;
   private readonly removeInteraction: () => void;
+  private readonly reduced: boolean;
+  private readonly software: boolean;
+  private readonly notify?: (intent: CanvasKernelIntent) => void;
+  private renderStatus: CanvasRenderStatus = { limited: false, phase: 'ready', message: null };
+  private contextLost = false;
+  private contextGeneration = 0;
+  private readonly loseContext = (event: Event) => {
+    event.preventDefault(); this.contextLost = true; this.contextGeneration++;
+    this.renderStatus = { limited: true, phase: 'restoring', message: '图形渲染正在恢复，内容已保留' };
+    this.notify?.({ kind: 'render-status', ...this.renderStatus });
+  };
+  private readonly restoreContext = () => {
+    this.contextLost = false;
+    this.renderStatus = { limited: this.software, phase: 'ready', message: this.software ? '当前使用软件绘图，性能受限' : null };
+    this.refreshCamera(true); this.notify?.({ kind: 'render-status', ...this.renderStatus });
+  };
 
   constructor(private readonly app: Application, options: KernelOptions, private width: number, private height: number) {
     this.canvas = app.canvas;
+    this.software = readCanvasGpuMode(app.renderer).software;
+    this.reduced = this.software && options.renderingMode !== 'capture'; this.notify = options.onIntent;
+    if (this.reduced) app.renderer.resize(Math.max(1, width), Math.max(1, height), 1);
+    this.lines.setReduced(this.reduced);
+    this.renderStatus = { limited: this.software, phase: 'ready', message: this.software ? '当前使用软件绘图，性能受限' : null };
+    this.canvas.addEventListener('webglcontextlost', this.loseContext); this.canvas.addEventListener('webglcontextrestored', this.restoreContext);
+    queueMicrotask(() => { if (!this.destroyed) this.notify?.({ kind: 'render-status', ...this.renderStatus }); });
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute('role', 'application');
     this.canvas.setAttribute('aria-label', '自由画布，按空格拖动平移，使用工具栏编辑所选卡片');
@@ -98,8 +123,8 @@ class PixiCanvasKernel implements CanvasKernel {
     this.removeInteraction = options.onIntent ? installCanvasInteraction(this, options.onIntent, { readonly: options.readonly, readPreferences: options.readInteractionPreferences }) : () => undefined;
   }
   private schedule(): void {
-    if (this.scheduled || this.destroyed) return;
-    this.scheduled = requestAnimationFrame(() => { this.scheduled = 0; if (!this.destroyed) { this.app.render(); this.renders++; } });
+    if (this.scheduled || this.destroyed || this.contextLost) return;
+    this.scheduled = requestAnimationFrame(() => { this.scheduled = 0; if (!this.destroyed && !this.contextLost) { this.app.render(); this.renders++; } });
   }
   private removeBitmap(id: CanvasCardId): void {
     const entry = this.bitmaps.get(id);
@@ -258,6 +283,8 @@ class PixiCanvasKernel implements CanvasKernel {
     if (zoomChanged) this.redrawSelection();
   }
   readCamera(): CanvasCamera { return { ...this.camera }; }
+  readRenderStatus(): CanvasRenderStatus { return { ...this.renderStatus }; }
+  readResolution(): number { return this.app.renderer.resolution; }
   setSelection(ids: readonly CanvasCardId[]): void {
     if (ids.length === this.selected.size && ids.every(id => this.selected.has(id))) return;
     this.selected.clear(); ids.forEach((id) => this.selected.add(id));
@@ -342,7 +369,7 @@ class PixiCanvasKernel implements CanvasKernel {
   }
   resize(width: number, height: number, resolution?: number): void {
     this.width = width; this.height = height;
-    this.app.renderer.resize(Math.max(1, width), Math.max(1, height), resolution);
+    this.app.renderer.resize(Math.max(1, width), Math.max(1, height), this.reduced ? Math.min(1, resolution ?? this.app.renderer.resolution) : resolution);
     this.refreshCamera(true);
   }
   fit(rectangles: readonly CanvasRectangle[]): void {
@@ -397,9 +424,13 @@ class PixiCanvasKernel implements CanvasKernel {
   screenToWorld(point: CanvasPoint): CanvasPoint { return canvasScreenToWorld(point, this.camera); }
   worldToScreen(point: CanvasPoint): CanvasPoint { return canvasWorldToScreen(point, this.camera); }
   async captureImage(format: 'png' | 'jpeg', quality = 0.9): Promise<string> {
-    return this.app.renderer.extract.base64({ target: this.app.stage, format: format === 'jpeg' ? 'jpg' : 'png',
+    if (this.contextLost) throw new Error('canvas_graphics_context_lost');
+    const generation = this.contextGeneration;
+    const result = await this.app.renderer.extract.base64({ target: this.app.stage, format: format === 'jpeg' ? 'jpg' : 'png',
       quality, frame: new Rectangle(0, 0, this.width, this.height), resolution: this.app.renderer.resolution,
       clearColor: this.appearance.dark ? '#222723' : '#f2f3ee' });
+    if (this.contextLost || generation !== this.contextGeneration) throw new Error('canvas_graphics_context_lost');
+    return result;
   }
   readStats() { return { cards: this.cards.size, edges: this.edges.length, bitmaps: this.bitmaps.size, bitmapBytes: this.bitmapBytes, renders: this.renders,
     ...this.lines.readStats() }; }
@@ -407,6 +438,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.destroyed = true;
     if (this.scheduled) cancelAnimationFrame(this.scheduled);
     this.removeInteraction();
+    this.canvas.removeEventListener('webglcontextlost', this.loseContext); this.canvas.removeEventListener('webglcontextrestored', this.restoreContext);
     this.invalidateBitmaps();
     this.mapLabels.destroy();
     this.lines.destroy();

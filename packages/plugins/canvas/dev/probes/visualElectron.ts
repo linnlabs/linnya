@@ -102,7 +102,27 @@ async function run() {
       if (counts[0] < 500 || counts[1] < 500 || (mode === 'titles' ? counts[2] !== 0 : counts[2] < 500)) throw new Error(`far_thumbnail_semantics_mismatch:${mode}:${counts}`);
       thumbReports.push({ mode, counts }); await writeFile(path.join(output, `thumbnail-${mode}.png`), image.toPNG());
     }
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap }, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk }, thumbnails: thumbReports }, null, 2));
+    const context = z.object({ before: z.string(), after: z.string(), rejected: z.boolean(), beforeStats: z.object({ cards: z.number(), bitmaps: z.number() }), afterStats: z.object({ cards: z.number(), bitmaps: z.number() }) })
+      .parse(await win.webContents.executeJavaScript('window.prepareCanvasContextLossVisualProbe()'));
+    const contextBefore = nativeImage.createFromDataURL(context.before).toBitmap(), contextAfterImage = nativeImage.createFromDataURL(context.after), contextAfter = contextAfterImage.toBitmap();
+    let contextInk = 0, contextPreserved = 0;
+    for (let index = 0; index < contextBefore.length; index += 4) if (contextBefore[index] < 180 && contextBefore[index + 1] < 180 && contextBefore[index + 2] < 180) {
+      contextInk++; if (contextAfter[index] < 180 && contextAfter[index + 1] < 180 && contextAfter[index + 2] < 180) contextPreserved++;
+    }
+    if (contextInk < 100 || contextPreserved / contextInk < 0.95 || context.afterStats.cards !== context.beforeStats.cards || context.afterStats.bitmaps !== context.beforeStats.bitmaps) throw new Error('context_restore_content_missing');
+    await writeFile(path.join(output, 'context-restored.png'), contextAfterImage.toPNG());
+    const unsupported = new BrowserWindow({ show: false, width: 900, height: 600, webPreferences: { sandbox: true, contextIsolation: true, offscreen: true, backgroundThrottling: false, disableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
+    let fallbackInk = 0;
+    try {
+      await unsupported.loadFile(path.join(output, 'index.html'));
+      const fallback = z.object({ image: z.string(), errors: z.array(z.string()) }).parse(await unsupported.webContents.executeJavaScript('window.prepareCanvasUnsupportedApiVisualProbe()'));
+      const fallbackImage = nativeImage.createFromDataURL(fallback.image), pixels = fallbackImage.toBitmap();
+      for (let index = 0; index < pixels.length; index += 4) if (pixels[index] < 150 && pixels[index + 1] < 150 && pixels[index + 2] < 150) fallbackInk++;
+      if (fallbackInk < 100) throw new Error('unsupported_api_identity_is_empty');
+      await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());
+    } finally { unsupported.destroy(); }
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap }, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk }, thumbnails: thumbReports,
+      contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
 }

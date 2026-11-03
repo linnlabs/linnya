@@ -9,6 +9,7 @@ class CanvasPointerInteraction {
   private space = false;
   private active: CanvasPointerGesture | null = null;
   private snapTargets: CanvasSnapTargets | null = null;
+  private isReadonly(): boolean { return this.options.readonly === true || this.options.readReadonly?.() === true; }
   private movement(event: PointerEvent, gesture: CanvasPointerGesture): CanvasPoint {
     const world = this.kernel.screenToWorld(this.point(event)), movement = { x: world.x - gesture.world.x, y: world.y - gesture.world.y };
     return !event.altKey && this.options.readPreferences?.().snapping !== false ? snapCanvasMovement(this.snapTargets, movement, this.kernel.readCamera().zoom) : movement;
@@ -33,7 +34,7 @@ class CanvasPointerInteraction {
     const world = this.kernel.screenToWorld(screen);
     const card = this.kernel.hitTest(world);
     this.active = { pointer: event.pointerId, screen, world, camera: this.kernel.readCamera(), id: card?.id ?? null, edgeId: card ? null : this.kernel.hitTestEdge(world)?.id ?? null,
-      pan: this.options.readonly === true || this.space || event.button === 1, locked: card?.locked ?? false, selection: this.kernel.readSelection(), additive: event.shiftKey, moved: false };
+      pan: this.isReadonly() || this.space || event.button === 1, locked: card?.locked ?? false, selection: this.kernel.readSelection(), additive: event.shiftKey, moved: false };
     this.canvas.setPointerCapture(event.pointerId); this.canvas.focus({ preventScroll: true });
     this.kernel.setBrush(null);
     this.snapTargets = createCanvasSnapTargets(this.kernel.visibleCards(), this.selectedIds(this.active));
@@ -42,6 +43,7 @@ class CanvasPointerInteraction {
   private move = (event: PointerEvent): void => {
     const gesture = this.active;
     if (!gesture) { this.kernel.setHoveredCard(this.kernel.hitTest(this.kernel.screenToWorld(this.point(event)))?.id ?? null); return; }
+    if (this.isReadonly() && !gesture.pan) { this.cancel(); return; }
     if (gesture.pointer !== event.pointerId) return;
     const current = this.point(event);
     if (Math.hypot(current.x - gesture.screen.x, current.y - gesture.screen.y) < 3 && !gesture.moved) return;
@@ -71,6 +73,7 @@ class CanvasPointerInteraction {
   private up = (event: PointerEvent): void => {
     const gesture = this.active;
     if (!gesture || gesture.pointer !== event.pointerId) return;
+    if (this.isReadonly() && !gesture.pan) { this.cancel(); return; }
     this.active = null; this.kernel.setBrush(null);
     if (!gesture.pan && gesture.id && !gesture.locked && gesture.moved) {
       const delta = this.movement(event, gesture);
@@ -100,8 +103,8 @@ class CanvasPointerInteraction {
     if (event.key === 'Escape' && this.active) { event.preventDefault(); this.cancel(); }
   };
   private keyUp = (event: KeyboardEvent) => { if (event.code === 'Space') this.space = false; };
-  private open = (event: MouseEvent) => { if (this.options.readonly) return; const card = this.kernel.hitTest(this.kernel.screenToWorld(this.point(event))); if (card) this.onIntent({ kind: 'open', id: card.id }); };
-  private context = (event: MouseEvent) => { if (this.options.readonly) return; event.preventDefault(); const world = this.kernel.screenToWorld(this.point(event)); this.onIntent({ kind: 'context', point: world, id: this.kernel.hitTest(world)?.id ?? null }); };
+  private open = (event: MouseEvent) => { if (this.isReadonly()) return; const card = this.kernel.hitTest(this.kernel.screenToWorld(this.point(event))); if (card) this.onIntent({ kind: 'open', id: card.id }); };
+  private context = (event: MouseEvent) => { if (this.isReadonly()) return; event.preventDefault(); const world = this.kernel.screenToWorld(this.point(event)); this.onIntent({ kind: 'context', point: world, id: this.kernel.hitTest(world)?.id ?? null }); };
   constructor(private readonly kernel: CanvasInteractionKernel, private readonly onIntent: (intent: CanvasKernelIntent) => void, private readonly options: CanvasInteractionOptions) {
     this.canvas = kernel.canvas;
   }

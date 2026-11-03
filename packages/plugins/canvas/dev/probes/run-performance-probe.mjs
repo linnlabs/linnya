@@ -8,7 +8,7 @@ import { buildProbeRenderer } from './build-probe-renderer.mjs';
 
 const probeRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(probeRoot, '../../../../..');
-const output = path.join(root, '_dev_data/canvas-performance-probe');
+const output = path.join(root, process.env.CANVAS_PERFORMANCE_SOFTWARE === '1' ? '_dev_data/canvas-software-probe' : '_dev_data/canvas-performance-probe');
 await mkdir(output, { recursive: true });
 await rm(path.join(output, 'results.json'), { force: true });
 await buildProbeRenderer({ entry: path.join(probeRoot, 'performanceRenderer.ts'), root, output });

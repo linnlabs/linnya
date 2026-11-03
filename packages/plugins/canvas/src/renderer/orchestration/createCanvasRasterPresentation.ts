@@ -43,7 +43,8 @@ export function createCanvasRasterPresentation(options: {
     if (disposed) return;
     const started = performance.now();
     const camera = options.kernel.readCamera(), appearance = options.readAppearance();
-    const nextCameraKey = `${camera.x}:${camera.y}:${camera.zoom}:${devicePixelRatio}`;
+    const pixelRatio = options.kernel.readResolution();
+    const nextCameraKey = `${camera.x}:${camera.y}:${camera.zoom}:${pixelRatio}`;
     if (nextCameraKey !== cameraKey) {
       cameraKey = nextCameraKey; cameraChangedAt = performance.now(); clearTimeout(precisionTimer);
       precisionTimer = setTimeout(() => { precisionTimer = undefined; refresh(); }, 100);
@@ -55,13 +56,13 @@ export function createCanvasRasterPresentation(options: {
     const prioritized = visible.map(card => ({ card, regions: options.kernel.readVisibleCardRegions(card.id) }))
       .sort((a, b) => b.regions.reduce((sum, region) => sum + region.width * region.height, 0) - a.regions.reduce((sum, region) => sum + region.width * region.height, 0));
     for (const { card, regions: visibleRegions } of prioritized) {
-      const screenWidth = card.width * camera.zoom * devicePixelRatio;
+      const screenWidth = card.width * camera.zoom * pixelRatio;
       const precise = camera.zoom >= 0.75 && visible.length <= 40 && performance.now() - cameraChangedAt >= 100;
       const physicalWidth = precise ? screenWidth : screenWidth <= 140 ? 70 : screenWidth <= 280 ? 280 : screenWidth <= 560 ? 560 : 1120;
       const scale = physicalWidth / card.width;
       const content = descriptor(card);
       const externalKey = options.readContentKey?.(card) ?? '';
-      const key = cardRasterKey({ revision: 0, theme: appearance.dark ? 'dark' : 'light', dpr: devicePixelRatio,
+      const key = cardRasterKey({ revision: 0, theme: appearance.dark ? 'dark' : 'light', dpr: pixelRatio,
         material: 'body', lod: physicalWidth, font: `${font}/14/1.7`, uiScale: 1 }) + content + externalKey;
       if (failed.get(card.id) === key) continue;
       const regions = splitCardRasterRegions(options.kernel.readMissingBitmapRegions(card.id, key, visibleRegions), scale);
