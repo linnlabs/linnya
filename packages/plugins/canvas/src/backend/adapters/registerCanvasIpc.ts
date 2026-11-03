@@ -18,14 +18,16 @@ import type { CanvasDatabase } from '../definitions/canvasDatabase';
 export const CANVAS_IPC_CHANNELS = ['canvas:read', 'canvas:commit', 'canvas:changes', 'canvas:editing', 'canvas:undo', 'canvas:close',
   'canvas:groups', 'canvas:complete-group', 'canvas:review', 'canvas:withdraw', 'canvas:approval', 'canvas:import-image', 'canvas:prepare-image', 'canvas:read-image', 'canvas:context', 'canvas:clipboard', 'canvas:arrange', 'canvas:cancel-arrange'] as const;
 
-export function registerCanvasIpc(database: CanvasDatabase, runtime: CanvasDocumentRuntime, images: ReturnType<typeof createCanvasImageRuntime>, register: BackendPluginIpcHandlerRegistrar, arrangement?: ReturnType<typeof createCanvasArrangementRuntime>): void {
+export function registerCanvasIpc(input: { readonly database: CanvasDatabase; readonly runtime: CanvasDocumentRuntime; readonly images: ReturnType<typeof createCanvasImageRuntime>;
+  readonly register: BackendPluginIpcHandlerRegistrar; readonly arrangement: ReturnType<typeof createCanvasArrangementRuntime> }): void {
+  const { database, runtime, images, register, arrangement } = input;
   const handlers = {
     'canvas:read': (payload: unknown) => { const input = CanvasReadRequestSchema.parse(payload); return runtime.read(input.documentId, undefined, input.viewId); },
     'canvas:commit': (payload: unknown) => runtime.commit(payload),
     'canvas:changes': (payload: unknown) => { const input = CanvasChangesRequestSchema.parse(payload); return runtime.changes(input.documentId, input.afterSequence); },
     'canvas:editing': (payload: unknown) => { runtime.protect(CanvasEditingRequestSchema.parse(payload)); return null; },
     'canvas:undo': (payload: unknown) => runtime.undo(CanvasUndoRequestSchema.parse(payload)),
-    'canvas:close': (payload: unknown) => { const input = CanvasCloseRequestSchema.parse(payload); arrangement?.close(input.documentId, input.viewId); runtime.close(input.documentId, input.viewId); return null; },
+    'canvas:close': (payload: unknown) => { const input = CanvasCloseRequestSchema.parse(payload); arrangement.close(input.documentId, input.viewId); runtime.close(input.documentId, input.viewId); return null; },
     'canvas:groups': (payload: unknown) => { const input = CanvasGroupsRequestSchema.parse(payload); runtime.read(input.documentId); return runtime.editing.listGroups(input.documentId, Date.now(), input.viewId); },
     'canvas:complete-group': (payload: unknown) => { const input = CanvasCloseGroupRequestSchema.parse(payload); runtime.read(input.documentId); runtime.editing.closeGroup(input); return null; },
     'canvas:review': (payload: unknown) => { const input = CanvasReviewRequestSchema.parse(payload); runtime.read(input.documentId); runtime.editing.reviewElement(input); return null; },
@@ -34,8 +36,8 @@ export function registerCanvasIpc(database: CanvasDatabase, runtime: CanvasDocum
     'canvas:import-image': (payload: unknown) => images.importImage(payload),
     'canvas:prepare-image': (payload: unknown) => images.prepareImage(payload),
     'canvas:read-image': (payload: unknown) => images.readImage(CanvasReadImageRequestSchema.parse(payload)),
-    'canvas:arrange': (payload: unknown) => { if (!arrangement) throw new Error('canvas_arrangement_unavailable'); return arrangement.arrange(payload); },
-    'canvas:cancel-arrange': (payload: unknown) => { if (!arrangement) throw new Error('canvas_arrangement_unavailable'); arrangement.cancel(payload); return null; },
+    'canvas:arrange': (payload: unknown) => { return arrangement.arrange(payload); },
+    'canvas:cancel-arrange': (payload: unknown) => { arrangement.cancel(payload); return null; },
     'canvas:clipboard': (payload: unknown) => readCanvasClipboard(database, payload),
     'canvas:context': (payload: unknown) => readCanvasSelectionContext(database, payload),
   };

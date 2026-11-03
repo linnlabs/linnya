@@ -48,7 +48,7 @@ export function createCanvasBackendPlugin(): PluginBackendContribution {
     ipc: { channels: CANVAS_IPC_CHANNELS, register(manager, register) {
       const database = readCanvasServiceManagerDatabase(manager), runtime = runtimeFor(database);
       const arrangement = createCanvasArrangementRuntime(database, runtime, capabilitiesFor()); arrangements.add(arrangement);
-      registerCanvasIpc(database, runtime, createCanvasImageRuntime(database, runtime), register, arrangement);
+      registerCanvasIpc({ database, runtime, images: createCanvasImageRuntime(database, runtime), register, arrangement });
     } },
     runtimeEffects: [{ id: 'canvas-document-runtime', activate() {
       logger.debug('Canvas 已启用，文档运行态按数据库实例惰性装配');
