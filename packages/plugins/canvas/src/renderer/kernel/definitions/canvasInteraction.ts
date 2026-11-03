@@ -2,7 +2,8 @@ import type { CanvasCamera, CanvasCardId, CanvasEdgeId, CanvasPoint, CanvasRecta
 
 export interface CanvasInteractionPreferences { readonly wheelZoom: boolean; readonly snapping: boolean }
 export interface CanvasInteractionOptions { readonly readonly?: boolean; readonly readReadonly?: () => boolean; readonly readPreferences?: () => CanvasInteractionPreferences }
-export interface CanvasSnapTargets { readonly bounds: CanvasRectangle; readonly x: readonly number[]; readonly y: readonly number[] }
+export interface CanvasSnapAxisTarget { readonly value: number; readonly start: number; readonly end: number }
+export interface CanvasSnapTargets { readonly bounds: CanvasRectangle; readonly x: readonly CanvasSnapAxisTarget[]; readonly y: readonly CanvasSnapAxisTarget[] }
 
 export interface CanvasPointerGesture {
   readonly pointer: number;

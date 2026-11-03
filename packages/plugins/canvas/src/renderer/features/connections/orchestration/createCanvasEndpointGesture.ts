@@ -23,11 +23,12 @@ export function createCanvasEndpointGesture(options: { readonly session: CanvasD
     if (session.state.snapshot.value?.integrity?.readOnly) { cancel(); return; }
     const gesture = release(); if (!gesture) return;
     if (Math.hypot(event.clientX - gesture.screen.x, event.clientY - gesture.screen.y) < 3) { void unprotect(gesture).catch(report); return; }
-    const point = world(event), target = canvasEndpointAt(point, kernel.hitTest(point));
+    const point = world(event), target = canvasEndpointAt(point, kernel.visibleCards(), kernel.readCamera().zoom);
     if (gesture.edge) {
       void session.commit([{ op: 'update', id: gesture.edge.id, baseRevision: gesture.edge.revision, patch: { [gesture.field]: target } }]).catch(report).finally(() => { void unprotect(gesture).catch(report); });
     } else if (target.kind === 'point') void createText(point, gesture.from).catch(report);
-    else void session.commit([{ op: 'connect', from: gesture.from, to: target, direction: 'forward', label: '', lineStyle: 'curve', linePattern: 'solid' }]).catch(report);
+    else { const from: CanvasEndpoint = gesture.from.kind === 'card' ? { ...gesture.from, side: 'auto' } : gesture.from;
+      void session.commit([{ op: 'connect', from, to: target, direction: 'forward', label: '', lineStyle: 'curve', linePattern: 'solid' }]).catch(report); }
   };
   const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); } };
   return {

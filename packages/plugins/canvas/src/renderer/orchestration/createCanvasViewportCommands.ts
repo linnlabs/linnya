@@ -1,4 +1,4 @@
-import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasElement, CanvasElementId, CanvasRectangle } from '@plugin/canvas/shared';
+import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasElement, CanvasElementId, CanvasEndpoint, CanvasRectangle } from '@plugin/canvas/shared';
 import type { CanvasKernel } from '../kernel';
 export function createCanvasViewportCommands(options: {
   readonly kernel: Pick<CanvasKernel, 'canvas' | 'fit' | 'readCamera' | 'setCamera' | 'readEdgeGeometry'>; readonly setCamera: (value: CanvasCamera) => void; readonly refresh: () => void;
@@ -14,6 +14,13 @@ export function createCanvasViewportCommands(options: {
     if (!rectangles.length) return; options.kernel.fit(rectangles); update();
   };
   return { locate,
+    async selectContext(input: { readonly id: CanvasCardId | null; readonly edgeId?: Extract<CanvasElement, { type: 'edge' }>['id'] | null }) {
+      if (input.edgeId) await options.selectEdge(input.edgeId);
+      else if (input.id && !options.selected().some(card => card.id === input.id)) await options.select([input.id]);
+      else if (!input.id) await options.select([]);
+    },
+    locateEndpoint(endpoint: CanvasEndpoint | null) { if (!endpoint) return; if (endpoint.kind === 'card') { locate([endpoint.cardId]); return; }
+      const camera = options.kernel.readCamera(); options.kernel.setCamera({ ...camera, x: options.kernel.canvas.clientWidth / 2 - endpoint.x * camera.zoom, y: options.kernel.canvas.clientHeight / 2 - endpoint.y * camera.zoom }); update(); },
     zoom(value: number) { options.kernel.setCamera({ ...options.kernel.readCamera(), zoom: value }); update(); },
     fit(onlySelected = false) { const cards = onlySelected ? options.selected() : options.cards(); if (cards.length) { options.kernel.fit(cards); update(); } },
     focus: () => options.kernel.canvas.focus(),

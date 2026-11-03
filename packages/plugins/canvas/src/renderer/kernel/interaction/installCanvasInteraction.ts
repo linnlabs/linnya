@@ -1,7 +1,7 @@
 import type { CanvasCamera, CanvasCardId, CanvasPoint } from '../../../shared';
 import type { CanvasInteractionKernel, CanvasKernelIntent } from '../definitions/canvasKernel';
 import type { CanvasInteractionOptions, CanvasPointerGesture, CanvasSnapTargets } from '../definitions/canvasInteraction';
-import { createCanvasSnapTargets, snapCanvasMovement } from './functions/canvasSnapping';
+import { createCanvasSnapTargets, snapCanvasMovementWithGuides } from './functions/canvasSnapping';
 
 /** 手势只修改显示投影并产生意图；一次松手才提交一次业务修改。 */
 class CanvasPointerInteraction {
@@ -9,10 +9,13 @@ class CanvasPointerInteraction {
   private space = false;
   private active: CanvasPointerGesture | null = null;
   private snapTargets: CanvasSnapTargets | null = null;
+  private hovered: CanvasCardId | null = null;
   private isReadonly(): boolean { return this.options.readonly === true || this.options.readReadonly?.() === true; }
   private movement(event: PointerEvent, gesture: CanvasPointerGesture): CanvasPoint {
     const world = this.kernel.screenToWorld(this.point(event)), movement = { x: world.x - gesture.world.x, y: world.y - gesture.world.y };
-    return !event.altKey && this.options.readPreferences?.().snapping !== false ? snapCanvasMovement(this.snapTargets, movement, this.kernel.readCamera().zoom) : movement;
+    const result = !event.altKey && this.options.readPreferences?.().snapping !== false
+      ? snapCanvasMovementWithGuides(this.snapTargets, movement, this.kernel.readCamera().zoom) : { delta: movement, guides: [] };
+    this.kernel.setGuides(result.guides); return result.delta;
   }
   private point(event: MouseEvent): CanvasPoint {
     const box = this.canvas.getBoundingClientRect();
@@ -26,7 +29,7 @@ class CanvasPointerInteraction {
       this.onIntent({ kind: 'select', ids: this.active.selection, additive: false });
       if (this.canvas.hasPointerCapture(this.active.pointer)) this.canvas.releasePointerCapture(this.active.pointer);
     }
-    this.active = null; this.snapTargets = null; this.space = false; this.kernel.setBrush(null); this.kernel.clearDragPreview();
+    this.active = null; this.snapTargets = null; this.space = false; this.hover(null); this.kernel.setBrush(null); this.kernel.setGuides([]); this.kernel.clearDragPreview();
   };
   private down = (event: PointerEvent): void => {
     if (event.button !== 0 && event.button !== 1) return;
@@ -42,7 +45,7 @@ class CanvasPointerInteraction {
   }
   private move = (event: PointerEvent): void => {
     const gesture = this.active;
-    if (!gesture) { this.kernel.setHoveredCard(this.kernel.hitTest(this.kernel.screenToWorld(this.point(event)))?.id ?? null); return; }
+    if (!gesture) { this.hover(this.kernel.hitTest(this.kernel.screenToWorld(this.point(event)))?.id ?? null); return; }
     if (this.isReadonly() && !gesture.pan) { this.cancel(); return; }
     if (gesture.pointer !== event.pointerId) return;
     const current = this.point(event);
@@ -85,6 +88,7 @@ class CanvasPointerInteraction {
       this.onIntent({ kind: 'editing', ids: this.selectedIds(gesture), active: false });
     }
     if (this.canvas.hasPointerCapture(event.pointerId)) this.canvas.releasePointerCapture(event.pointerId);
+    this.kernel.setGuides([]); this.snapTargets = null;
   }
   private wheel = (event: WheelEvent): void => {
     event.preventDefault();
@@ -104,7 +108,8 @@ class CanvasPointerInteraction {
   };
   private keyUp = (event: KeyboardEvent) => { if (event.code === 'Space') this.space = false; };
   private open = (event: MouseEvent) => { if (this.isReadonly()) return; const card = this.kernel.hitTest(this.kernel.screenToWorld(this.point(event))); if (card) this.onIntent({ kind: 'open', id: card.id }); };
-  private context = (event: MouseEvent) => { if (this.isReadonly()) return; event.preventDefault(); const world = this.kernel.screenToWorld(this.point(event)); this.onIntent({ kind: 'context', point: world, id: this.kernel.hitTest(world)?.id ?? null }); };
+  private hover(id: CanvasCardId | null) { if (id === this.hovered) return; this.hovered = id; this.kernel.setHoveredCard(id); this.onIntent({ kind: 'hover', id }); }
+  private context = (event: MouseEvent) => { if (this.isReadonly()) return; event.preventDefault(); const world = this.kernel.screenToWorld(this.point(event)), card = this.kernel.hitTest(world); this.onIntent({ kind: 'context', point: world, id: card?.id ?? null, edgeId: card ? null : this.kernel.hitTestEdge(world)?.id ?? null }); };
   constructor(private readonly kernel: CanvasInteractionKernel, private readonly onIntent: (intent: CanvasKernelIntent) => void, private readonly options: CanvasInteractionOptions) {
     this.canvas = kernel.canvas;
   }

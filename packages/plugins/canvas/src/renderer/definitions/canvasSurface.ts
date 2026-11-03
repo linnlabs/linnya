@@ -1,6 +1,6 @@
 import type { EmbeddedMarkdownEditor, EmbeddedMarkdownEditorOptions } from '@plugin/renderer/embeddedMarkdownEditor';
 import type { Ref } from 'vue';
-import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasElement, CanvasElementId, CanvasPoint } from '@plugin/canvas/shared';
+import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdgeId, CanvasElement, CanvasElementId, CanvasPoint } from '@plugin/canvas/shared';
 import type { CanvasDocumentPort } from '../features/canvasDocument';
 import type { CanvasArrangementPort } from '../features/layoutCommands';
 import type { CanvasRestoredMessage } from './canvasHistoryRestoration';
@@ -34,11 +34,13 @@ export interface CanvasSurfacePorts {
 export interface CanvasSurfaceState {
   readonly camera: Readonly<Ref<CanvasCamera>>;
   readonly error: Readonly<Ref<string | null>>;
-  readonly context: Readonly<Ref<{ readonly point: CanvasPoint; readonly id: CanvasCardId | null } | null>>;
+  readonly context: Readonly<Ref<{ readonly point: CanvasPoint; readonly id: CanvasCardId | null; readonly edgeId?: CanvasEdgeId | null } | null>>;
   readonly renderNotice: Readonly<Ref<string | null>>;
+  readonly hoveredId: Readonly<Ref<CanvasCardId | null>>;
   setCamera(camera: CanvasCamera): void;
   fail(message: string): void;
   clearFailure(): void;
-  setContext(context: { readonly point: CanvasPoint; readonly id: CanvasCardId | null } | null): void;
+  setContext(context: { readonly point: CanvasPoint; readonly id: CanvasCardId | null; readonly edgeId?: CanvasEdgeId | null } | null): void;
+  setHovered(id: CanvasCardId | null): void;
   setRenderNotice(message: string | null): void;
 }
