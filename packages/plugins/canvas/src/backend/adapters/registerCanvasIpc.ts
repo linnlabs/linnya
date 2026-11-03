@@ -10,11 +10,11 @@ import {
 import type { CanvasDocumentRuntime } from '../orchestration/createCanvasDocumentRuntime';
 import { CanvasDocumentFailure } from '../features/canvasDocument';
 import type { createCanvasImageRuntime } from '../orchestration/createCanvasImageRuntime';
-import { readCanvasSelectionContext } from '../orchestration/readCanvasSelectionContext';
+import { readCanvasClipboard, readCanvasSelectionContext } from '../orchestration/readCanvasSelectionContext';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
 
 export const CANVAS_IPC_CHANNELS = ['canvas:read', 'canvas:commit', 'canvas:changes', 'canvas:editing', 'canvas:undo', 'canvas:close',
-  'canvas:groups', 'canvas:complete-group', 'canvas:review', 'canvas:withdraw', 'canvas:approval', 'canvas:import-image', 'canvas:prepare-image', 'canvas:read-image', 'canvas:context'] as const;
+  'canvas:groups', 'canvas:complete-group', 'canvas:review', 'canvas:withdraw', 'canvas:approval', 'canvas:import-image', 'canvas:prepare-image', 'canvas:read-image', 'canvas:context', 'canvas:clipboard'] as const;
 
 export function registerCanvasIpc(database: CanvasDatabase, runtime: CanvasDocumentRuntime, images: ReturnType<typeof createCanvasImageRuntime>, register: BackendPluginIpcHandlerRegistrar): void {
   const handlers = {
@@ -32,6 +32,7 @@ export function registerCanvasIpc(database: CanvasDatabase, runtime: CanvasDocum
     'canvas:import-image': (payload: unknown) => images.importImage(payload),
     'canvas:prepare-image': (payload: unknown) => images.prepareImage(payload),
     'canvas:read-image': (payload: unknown) => images.readImage(CanvasReadImageRequestSchema.parse(payload)),
+    'canvas:clipboard': (payload: unknown) => readCanvasClipboard(database, payload),
     'canvas:context': (payload: unknown) => readCanvasSelectionContext(database, payload),
   };
   for (const channel of CANVAS_IPC_CHANNELS) {
