@@ -1,4 +1,4 @@
-import type { CanvasCard, CanvasCommand, CanvasLayoutDiagnostic, CanvasLayoutRequest, CanvasLayoutResult, CanvasRectangle } from '../../../../shared';
+import type { CanvasCard, CanvasLayoutDiagnostic, CanvasLayoutRequest, CanvasLayoutResult, CanvasRectangle } from '../../../../shared';
 import type { CanvasLayoutAlgorithm, CanvasLayoutPosition } from '../definitions/canvasLayoutPlan';
 import { resolveCanvasLayoutScope } from './resolveCanvasLayoutScope';
 import { layoutCanvasGrid } from './layoutCanvasGrid';
@@ -41,7 +41,7 @@ export async function planCanvasLayout(request: CanvasLayoutRequest, layered: Ca
     }
   }
   const byId = new Map<string, CanvasCard>(scope.cards.map(card => [card.id, card]));
-  const operations: CanvasCommand[] = positions.flatMap(position => {
+  const operations: CanvasLayoutResult['operations'] = positions.flatMap(position => {
     const card = byId.get(position.id); if (!card) throw new Error('canvas_layout_unexpected_node');
     return position.x === card.x && position.y === card.y ? [] : [{ op: 'update', id: card.id, baseRevision: card.revision, patch: { x: position.x, y: position.y } }];
   });

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { CanvasCardIdSchema, type CanvasSnapshot } from '../../model/definitions/canvasElement';
-import { CanvasCommandSchema, type CanvasCommand } from '../../changeset/definitions/canvasCommands';
 
 export const CanvasLayoutOptionsSchema = z.object({
   algorithm: z.enum(['tree', 'grid', 'layered']), direction: z.enum(['right', 'down']).default('right'),
@@ -18,11 +17,11 @@ export const CanvasLayoutDiagnosticSchema = z.object({
   elementIds: z.array(z.string()), message: z.string(),
 }).strict();
 export type CanvasLayoutDiagnostic = z.infer<typeof CanvasLayoutDiagnosticSchema>;
-export interface CanvasLayoutResult {
-  readonly sequence: number;
-  readonly operations: readonly CanvasCommand[];
-  readonly diagnostics: readonly CanvasLayoutDiagnostic[];
-}
-export const CanvasLayoutResultSchema: z.ZodType<CanvasLayoutResult> = z.object({
-  sequence: z.number().int().nonnegative(), operations: z.array(CanvasCommandSchema), diagnostics: z.array(CanvasLayoutDiagnosticSchema),
+export const CanvasLayoutMoveSchema = z.object({
+  op: z.literal('update'), id: CanvasCardIdSchema, baseRevision: z.number().int().nonnegative(),
+  patch: z.object({ x: z.number().finite(), y: z.number().finite() }).strict(),
 }).strict();
+export const CanvasLayoutResultSchema = z.object({
+  sequence: z.number().int().nonnegative(), operations: z.array(CanvasLayoutMoveSchema), diagnostics: z.array(CanvasLayoutDiagnosticSchema),
+}).strict();
+export type CanvasLayoutResult = z.infer<typeof CanvasLayoutResultSchema>;
