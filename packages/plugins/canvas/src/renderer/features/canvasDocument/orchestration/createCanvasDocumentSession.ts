@@ -54,7 +54,7 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
           if (!current || event.sequence <= current.sequence) return;
           void synchronize(event.sequence).catch(() => { /* 状态已记录失败，界面提供明确重开入口。 */ });
         });
-        const snapshot = await port.read(documentId);
+        const snapshot = await port.read(documentId, viewId);
         if (token !== sessionId) return;
         if (snapshot.documentId !== documentId) throw new Error('Canvas open response belongs to another document');
         state.install(snapshot);
@@ -83,9 +83,25 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
       const document = requireDocument();
       await port.editing({ documentId: document.documentId, viewId, elementId, fields });
     },
-    close() {
+    undo(direction) {
+      const token = sessionId;
+      const document = requireDocument();
+      const requestId = crypto.randomUUID();
+      const run = writes.then(async () => {
+        if (token !== sessionId) throw new DOMException('Canvas session closed', 'AbortError');
+        const result = await port.undo({ documentId: document.documentId, viewId, requestId, direction });
+        if (token !== sessionId) throw new DOMException('Canvas session closed', 'AbortError');
+        await synchronize(result.commit.sequence);
+        return result;
+      });
+      writes = run.catch(() => undefined);
+      return run;
+    },
+    async close() {
+      const documentId = state.snapshot.value?.documentId;
       sessionId += 1; unsubscribe?.(); unsubscribe = null;
       synchronization = null; targetSequence = 0; state.clear();
+      if (documentId) await port.close(documentId, viewId);
     },
   };
 }

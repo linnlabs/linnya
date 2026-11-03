@@ -1,6 +1,6 @@
 import { computed, watch } from 'vue';
 import { JsonValueSchema } from '@app/schemas';
-import { createCanvasPlainTextDocument, type CanvasCard, type CanvasCardId, type CanvasColor, type CanvasPoint } from '@plugin/canvas/shared';
+import { createCanvasPlainTextDocument, type CanvasCard, type CanvasCardId, type CanvasColor, type CanvasElementId, type CanvasPoint } from '@plugin/canvas/shared';
 import { createPixiCanvasKernel, type CanvasAppearance, type CanvasKernelIntent } from '../kernel';
 import { createCanvasDocumentSession, registerCanvasSaveParticipant } from '../features/canvasDocument';
 import { createCanvasCardEditor } from '../features/cardEditing';
@@ -89,11 +89,14 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   const fit = (onlySelected = false) => { kernel.fit(onlySelected ? selected() : cards()); state.setCamera(kernel.readCamera()); raster.refresh(); };
   async function color(value: CanvasColor) { const commands = buildColorCommands(session.state.snapshot.value?.elements ?? [], selection.ids.value, value); if (commands.length) await session.commit(commands); }
   async function remove() { if (!(await finish())) return; const commands = buildDeleteCommands(session.state.snapshot.value?.elements ?? [], selection.ids.value); if (commands.length) await session.commit(commands); await select([]); }
+  async function undo(direction: 'undo' | 'redo') { if (await finish()) await session.undo(direction); }
   async function keydown(event: KeyboardEvent) {
     const action = readCanvasShortcut(event, Boolean(editor.state.draft.value));
     if (!action) return;
     event.preventDefault();
     switch (action) {
+      case 'undo': await undo('undo'); return;
+      case 'redo': await undo('redo'); return;
       case 'delete': await remove(); return;
       case 'edit': if (selection.ids.value[0]) await editor.open(selection.ids.value[0]); return;
       case 'escape': if (await finish()) { await select([]); kernel.canvas.focus(); } return;
@@ -112,9 +115,10 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   try { kernel.setAppearance(readAppearance()); await session.open(options.documentId); }
   catch (failure) { report(failure); }
   return {
-    session, editor, selection, camera, error, context, editorStyle, createText, select, color, remove, fit, zoom, report,
+    session, editor, selection, camera, error, context, editorStyle, createText, select, color, remove, fit, zoom, undo, report,
+    locate(ids: readonly CanvasElementId[]) { const elements = cards().filter(element => ids.includes(element.id)); kernel.fit(elements); state.setCamera(kernel.readCamera()); raster.refresh(); },
     keydown: (event: KeyboardEvent) => { void keydown(event).catch(report); },
     edit: async () => { const id = selection.ids.value[0]; if (id) await editor.open(id); },
-    destroy() { removeSave(); stopSnapshot(); stopDraft(); stopAppearance(); observer.disconnect(); themeObserver.disconnect(); options.host.removeEventListener('dblclick', doubleClick); editable.destroy(); editor.dispose(); session.close(); raster.dispose(); kernel.destroy(); },
+    destroy() { removeSave(); stopSnapshot(); stopDraft(); stopAppearance(); observer.disconnect(); themeObserver.disconnect(); options.host.removeEventListener('dblclick', doubleClick); editable.destroy(); editor.dispose(); void session.close().catch(report); raster.dispose(); kernel.destroy(); },
   };
 }
