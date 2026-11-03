@@ -13,7 +13,7 @@ export function createCanvasElementActions(session: CanvasDocumentSession, selec
     align: (mode: 'left' | 'top' | 'grid') => commit(buildAlignCommands(elements(), selection.read(), mode)),
     async duplicate(source: readonly CanvasElement[] = selectCanvasSubgraph(elements(), selection.read()), dx = 32, dy = 32) {
       const ids = source.filter(element => element.type !== 'edge').map(card => card.id);
-      const plan = buildCanvasDuplication(source, ids, dx, dy);
+      const plan = buildCanvasDuplication({ elements: source, ids, dx, dy, allocateReferenceId: () => crypto.randomUUID() });
       if (!plan.operations.length) return;
       const result = await session.commit(plan.operations);
       const newIds = plan.cards.flatMap(card => { const ref = plan.refs.get(card.id), id = ref ? result.refs[ref] : undefined; return id ? [CanvasCardIdSchema.parse(id)] : []; });

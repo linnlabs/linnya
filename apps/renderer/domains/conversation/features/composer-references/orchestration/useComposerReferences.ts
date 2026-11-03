@@ -15,6 +15,10 @@ export function useComposerReferences() {
   return {
     references: computed(() => store.references),
     addReference: (input: ConversationReferenceInput) => {
+      if (input.deduplicationKey) {
+        const existing = store.references.find(reference => reference.pluginId === input.pluginId && reference.kind === input.kind && reference.deduplicationKey === input.deduplicationKey);
+        if (existing) return existing.id;
+      }
       const id = generateConversationReferenceId();
       store.appendComposerReference(createConversationReference(input, id));
       return id;

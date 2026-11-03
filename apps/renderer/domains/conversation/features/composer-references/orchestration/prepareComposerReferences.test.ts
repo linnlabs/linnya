@@ -16,7 +16,7 @@ function run(kind: ConversationReferenceKindContribution) {
   const abort = new AbortController();
   const references = [reference()];
   const isCurrent = vi.fn(() => true);
-  const pending = prepareComposerReferences({ references, conversationId: 'conversation', signal: abort.signal, isCurrent });
+  const pending = prepareComposerReferences({ references, conversationId: 'conversation', projectId: 'project', signal: abort.signal, isCurrent });
   return { abort, references, isCurrent, pending };
 }
 
@@ -72,7 +72,7 @@ describe('composer reference preparation', () => {
     registerConversationReferenceKind(kindBase);
     const composer = useComposerReferences();
     composer.addReference({ pluginId: 'example', kind: 'selected', text: '文本', metadata: { ids: ['a'] } });
-    const prepared = await prepareComposerReferences({ references: composer.references.value, conversationId: null, signal: new AbortController().signal, isCurrent: () => true });
+    const prepared = await prepareComposerReferences({ references: composer.references.value, conversationId: null, projectId: null, signal: new AbortController().signal, isCurrent: () => true });
     expect(prepared[0]?.metadata).toEqual({ ids: ['a'] });
   });
 });

@@ -114,6 +114,12 @@
       aria-label="所选卡片"
       @pointerdown.stop
     >
+      <ToolbarButton
+        label="加入对话 ⌘K"
+        @click="addToConversation"
+      >
+        <LinnyaIcon />
+      </ToolbarButton>
       <span class="canvas-selection-count">{{ selection.length }} 张卡</span>
       <ToolbarButton
         label="编辑或打开 ↩"
@@ -232,11 +238,13 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import type { DocumentImageAsset } from '@app/schemas';
 import { ToolbarButton, ToolbarGroup, CustomSelect, ImagePreviewModal } from '@linnya/renderer-ui';
-import { TextIcon, FullscreenIcon, EditIcon, ZoomInIcon, ZoomOutIcon, UndoIcon, RedoIcon, DuplicateIcon, LinkIcon, DocumentAddIcon, ImageIcon } from '@linnya/renderer-ui/icons';
-import { getActiveFileSession, markActiveFileDirty } from '@plugin/renderer/workspaceRuntime';
+import { TextIcon, FullscreenIcon, EditIcon, ZoomInIcon, ZoomOutIcon, UndoIcon, RedoIcon, DuplicateIcon, LinkIcon, DocumentAddIcon, ImageIcon, LinnyaIcon } from '@linnya/renderer-ui/icons';
+import { getActiveFileSession, markActiveFileDirty, getCurrentWorkspaceProjectId } from '@plugin/renderer/workspaceRuntime';
 import { createEmbeddedMarkdownEditor } from '@plugin/renderer/embeddedMarkdownEditor';
 import { CanvasColorSchema } from '@plugin/canvas/shared';
 import { createCanvasSurface } from '../orchestration/createCanvasSurface';
+import { addCanvasSelectionReference, registerCanvasReferenceFocus } from '../features/conversationSelection';
+import { createCanvasSelectionReferencePort } from '../adapters/createCanvasSelectionReferencePort';
 import { createCanvasDocumentPort } from '../adapters/createCanvasDocumentPort';
 import { createCanvasAgentReviewPort } from '../adapters/createCanvasAgentReviewPort';
 import { createCanvasCardMediaPort } from '../adapters/createCanvasCardMediaPort';
@@ -252,7 +260,7 @@ const review = shallowRef<ReturnType<typeof createCanvasAgentReview> | null>(nul
 const creation = shallowRef<ReturnType<typeof createCanvasCardCreation> | null>(null);
 const search = shallowRef<ReturnType<typeof createCanvasSearch> | null>(null);
 const imagePreview = shallowRef<DocumentImageAsset | null>(null), failure = shallowRef<string | null>(null);
-let destroyed = false, content: CanvasCardContent | null = null, removeMediaInput: (() => void) | null = null;
+let destroyed = false, content: CanvasCardContent | null = null, removeMediaInput: (() => void) | null = null, removeReferenceFocus: (() => void) | null = null;
 const camera = computed(() => surface.value?.camera.value ?? { x: 0, y: 0, zoom: 1 });
 const selection = computed(() => surface.value?.selection.ids.value ?? []);
 const draft = computed(() => surface.value?.editor.state.draft.value);
@@ -262,7 +270,7 @@ const markers = computed(() => review.value && surface.value ? projectCanvasRevi
 const shownError = computed(() => failure.value ?? surface.value?.editor.state.error.value ?? surface.value?.session.state.error.value ?? surface.value?.error.value);
 const selectedColor = computed(() => surface.value?.selectedCards.value[0]?.color ?? 'white');
 const moreActions = [{ value: 'lock', text: '锁定 / 解锁' }, { value: 'front', text: '置于顶层' }, { value: 'back', text: '置于底层' }, { value: 'left', text: '左对齐' }, { value: 'top', text: '顶部对齐' }, { value: 'grid', text: '网格排列' }, { value: 'delete', text: '删除' }];
-const contextActions = computed(() => selection.value.length ? [{ value: 'edit', text: '编辑或打开 ↩' }, { value: 'duplicate', text: '创建副本 ⌘D' }, ...moreActions] : [{ value: 'new', text: '新建文字卡' }, { value: 'document', text: '添加文档…' }, { value: 'image', text: '添加图片…' }, { value: 'fit', text: '显示全部 ⌘1' }]);
+const contextActions = computed(() => selection.value.length ? [{ value: 'ai', text: '加入对话 ⌘K' }, { value: 'edit', text: '编辑或打开 ↩' }, { value: 'duplicate', text: '创建副本 ⌘D' }, ...moreActions] : [{ value: 'new', text: '新建文字卡' }, { value: 'document', text: '添加文档…' }, { value: 'image', text: '添加图片…' }, { value: 'fit', text: '显示全部 ⌘1' }]);
 const colors = [{ value: 'white', text: '原色' }, { value: 'red', text: '红' }, { value: 'orange', text: '橙' }, { value: 'yellow', text: '黄' }, { value: 'green', text: '绿' }, { value: 'cyan', text: '青' }, { value: 'purple', text: '紫' }];
 const report = (error: unknown) => { failure.value = error instanceof Error ? error.message : String(error); };
 const run = async (action: () => Promise<unknown> | undefined) => { failure.value = null; try { await action(); } catch (error) { report(error); } };
@@ -270,6 +278,7 @@ const changeColor = (value: string | number | boolean) => run(() => surface.valu
 const elementAction = (value: string | number | boolean) => run(async () => {
   const current = surface.value; if (!current) return;
   switch (value) {
+    case 'ai': await addToConversation(); break;
     case 'new': await current.createText(current.context.value?.point); break;
     case 'document': await creation.value?.showDocuments(); break;
     case 'image': imagePicker.value?.click(); break;
@@ -284,7 +293,16 @@ const elementAction = (value: string | number | boolean) => run(async () => {
   current.closeContext();
 });
 const imageFiles = (event: Event) => { if (event.target instanceof HTMLInputElement) { const files = Array.from(event.target.files ?? []); event.target.value = ''; void run(() => creation.value?.importFiles(files)); } };
-const keydown = (event: KeyboardEvent) => { if (!event.isComposing && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') { event.preventDefault(); search.value?.state.show(); } else surface.value?.keydown(event); };
+const addToConversation = () => run(async () => {
+  const current = surface.value, projectId = getCurrentWorkspaceProjectId(), documentId = current?.session.state.snapshot.value?.documentId;
+  if (!current || !projectId || !documentId) throw new Error('当前画布没有可访问的项目');
+  await addCanvasSelectionReference({ documentId, projectId, elementIds: current.selection.ids.value }, createCanvasSelectionReferencePort());
+});
+const keydown = (event: KeyboardEvent) => {
+  if (!event.isComposing && (event.ctrlKey || event.metaKey) && ['f', 'k'].includes(event.key.toLowerCase())) {
+    event.preventDefault(); if (event.key.toLowerCase() === 'f') search.value?.state.show(); else void addToConversation();
+  } else surface.value?.keydown(event);
+};
 onMounted(async () => {
   const session = getActiveFileSession(), host = stage.value, editorElement = editorHost.value, rasterHost = staging.value;
   if (!session || !host || !editorElement || !rasterHost) { failure.value = '没有可打开的画布文档'; return; }
@@ -296,6 +314,7 @@ onMounted(async () => {
       markDirty: dirty => { if (getActiveFileSession()?.documentId === session.documentId) markActiveFileDirty(dirty); },
     });
     if (destroyed) { result.destroy(); cardContent.dispose(); return; }
+    removeReferenceFocus = registerCanvasReferenceFocus(session.documentId, async ids => { await result.select(ids); result.fit(true); });
     surface.value = result; review.value = createCanvasAgentReview(result.session, createCanvasAgentReviewPort());
     creation.value = createCanvasCardCreation(result.session, createCanvasCardCreationPort(), result.centerPoint, result.select);
     search.value = createCanvasSearch(result.session, cardContent.documentTitles, result.locate);
@@ -303,5 +322,5 @@ onMounted(async () => {
     await review.value.refresh();
   } catch (error) { report(error); }
 });
-onBeforeUnmount(() => { destroyed = true; removeMediaInput?.(); creation.value?.dispose(); review.value?.dispose(); surface.value?.destroy(); content?.dispose(); });
+onBeforeUnmount(() => { destroyed = true; removeReferenceFocus?.(); removeMediaInput?.(); creation.value?.dispose(); review.value?.dispose(); surface.value?.destroy(); content?.dispose(); });
 </script>
