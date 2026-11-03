@@ -88,6 +88,9 @@ class PixiCanvasKernel implements CanvasKernel {
   private destroyed = false;
   private readonly removeInteraction: () => void;
   private readonly reduced: boolean;
+  private readonly capture: boolean;
+  private readonly motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+  private readonly motionChanged = () => this.bitmaps.setMotionEnabled(!this.capture && !this.reduced && !this.motionPreference.matches);
   private readonly software: boolean;
   private readonly notify?: (intent: CanvasKernelIntent) => void;
   private renderStatus: CanvasRenderStatus = { limited: false, phase: 'ready', message: null };
@@ -113,6 +116,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.canvas = app.canvas;
     // 命中由空间索引和原生DOM事件负责，Pixi只绘制，避免第二套隐式全树扫描。
     app.stage.eventMode = 'none';
+    this.capture = options.renderingMode === 'capture';
     this.software = readCanvasGpuMode(app.renderer).software;
     this.reduced = this.software && options.renderingMode !== 'capture'; this.notify = options.onIntent;
     if (this.reduced) app.renderer.resize(Math.max(1, width), Math.max(1, height), 1);
@@ -127,9 +131,10 @@ class PixiCanvasKernel implements CanvasKernel {
     options.host.append(this.canvas);
     this.world.addChild(this.cardLayer, this.guideLayer, this.selectionLayer);
     this.app.stage.addChild(this.lines.below, this.world, this.lines.above, this.mapLabels.sprite);
-    this.bitmaps = new CanvasBitmapCache({ budget: options.bitmapBudgetBytes ?? 256 * 1024 * 1024, readRenderCount: () => this.renders, changed: id => {
+    this.bitmaps = new CanvasBitmapCache({ budget: options.bitmapBudgetBytes ?? 256 * 1024 * 1024, readRenderCount: () => this.renders, requestDraw: () => this.schedule(), changed: id => {
       const view = this.views.get(id); if (!this.destroyed && view) { this.updateView(view); this.schedule(); }
     } });
+    this.motionChanged(); this.motionPreference.addEventListener('change', this.motionChanged);
     this.removeInteraction = options.onIntent ? installCanvasInteraction(this, options.onIntent, { readonly: options.readonly, readReadonly: options.readReadonly, readPreferences: options.readInteractionPreferences }) : () => undefined;
   }
   private schedule(): void {
@@ -290,7 +295,8 @@ class PixiCanvasKernel implements CanvasKernel {
   }
 
   setCamera(next: CanvasCamera): void {
-    const zoom = Math.max(0.02, Math.min(4, next.zoom));
+    // 导出区域由输出像素/世界尺寸确定倍率；交互缩放上限不能改变所请求的裁切。
+    const zoom = this.capture ? next.zoom : Math.max(0.02, Math.min(4, next.zoom));
     const zoomChanged = zoom !== this.camera.zoom;
     const lodChanged = (zoom < 0.15) !== (this.camera.zoom < 0.15) || (zoom < 0.3) !== (this.camera.zoom < 0.3);
     this.camera = { x: next.x, y: next.y, zoom };
@@ -316,7 +322,7 @@ class PixiCanvasKernel implements CanvasKernel {
     const accepted = this.bitmaps.readReceipt(id, key), view = this.views.get(id);
     if (accepted === null || !view) return null;
     const acceptedAfterRender = Math.max(accepted, view.visibleAfterRender);
-    return { acceptedAfterRender, rendered: !this.contextLost && view.container.visible && view.body.visible && this.renders > acceptedAfterRender };
+    return { acceptedAfterRender, rendered: !this.contextLost && !this.bitmaps.isFading(id) && view.container.visible && view.body.visible && this.renders > acceptedAfterRender };
   }
   setEditingCard(id: CanvasCardId | null): void {
     const previous = this.editingCard; this.editingCard = id;
@@ -451,14 +457,18 @@ class PixiCanvasKernel implements CanvasKernel {
   readStats() { return { viewportCards: this.visibleCards().length, renderableCards: this.exposed.length, rasterCards: this.rasterCards().length, cards: this.cards.size, edges: this.edges.length, renders: this.renders, ...this.bitmaps.readStats(), ...this.lines.readStats(), ...this.spatial.readStats() }; }
   destroy(): void {
     this.destroyed = true;
+    this.motionPreference.removeEventListener('change', this.motionChanged);
     if (this.scheduled) cancelAnimationFrame(this.scheduled);
     this.removeInteraction();
     this.canvas.removeEventListener('webglcontextlost', this.loseContext); this.canvas.removeEventListener('webglcontextrestored', this.restoreContext);
-    this.invalidateBitmaps();
-    this.mapLabels.destroy();
-    this.lines.destroy();
-    this.app.destroy({ removeView: true }, { children: true, texture: false });
-    this.backgrounds.paper.destroy(true); this.backgrounds.card.destroy(true);
+    this.canvas.remove();
+    this.invalidateBitmaps(); this.mapLabels.destroy(); this.lines.destroy();
     this.views.clear(); this.cards.clear();
+    // HTML paint事件兑现的Promise仍在Chromium原生paint回调的微任务中。
+    // 此时WEBGL_lose_context会使Renderer进程崩溃；下一task完整释放GPU，逻辑关闭立即生效。
+    setTimeout(() => {
+      this.app.destroy({ removeView: true }, { children: true, texture: false });
+      this.backgrounds.paper.destroy(true); this.backgrounds.card.destroy(true);
+    }, 0);
   }
 }

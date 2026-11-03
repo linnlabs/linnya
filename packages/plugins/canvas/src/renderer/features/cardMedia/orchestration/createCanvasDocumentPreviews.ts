@@ -30,7 +30,8 @@ export function createCanvasDocumentPreviews(port: CanvasCardMediaPort, version:
       if (disposed) throw new DOMException('Canvas previews disposed', 'AbortError');
       if (generation !== version(card.data.documentId) || identity !== key(card)) return read(card);
       presentations.set(card.data.documentId, { version: generation, keep: result.status === 'ready' && result.content?.overview === 'thumbnail', revision: `${result.status}:${result.content?.revisionKey ?? ''}` });
-      const size = ((result.content?.image?.dataUri.length ?? 0) + (result.content?.summary.length ?? 0)) * 2;
+      // DTO携带最长1M的只读详情；预算必须计入全文，不能只按封面和摘要估算。
+      const size = JSON.stringify(result).length * 2;
       if (size <= 32 * 1024 * 1024) {
         while (cache.size && (cache.size >= 128 || bytes + size > 32 * 1024 * 1024)) { const oldest = cache.entries().next().value; if (!oldest) break; cache.delete(oldest[0]); bytes -= oldest[1].bytes; }
         cache.set(identity, { result, bytes: size }); bytes += size;

@@ -1,5 +1,6 @@
 import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasElement, CanvasElementId, CanvasEndpoint, CanvasRectangle } from '@plugin/canvas/shared';
 import type { CanvasKernel } from '../kernel';
+import { canvasRevealCardCamera } from '../functions/canvasRevealCardCamera';
 export function createCanvasViewportCommands(options: {
   readonly kernel: Pick<CanvasKernel, 'canvas' | 'fit' | 'readCamera' | 'setCamera' | 'readEdgeGeometry'>; readonly setCamera: (value: CanvasCamera) => void; readonly refresh: () => void;
   readonly cards: () => readonly CanvasCard[]; readonly selected: () => readonly CanvasCard[]; readonly elements: () => readonly CanvasElement[];
@@ -14,6 +15,7 @@ export function createCanvasViewportCommands(options: {
     if (!rectangles.length) return; options.kernel.fit(rectangles); update();
   };
   return { locate,
+    reveal(id: CanvasCardId) { const card = options.cards().find(candidate => candidate.id === id); if (!card) return; options.kernel.setCamera(canvasRevealCardCamera({ card, camera: options.kernel.readCamera(), width: options.kernel.canvas.clientWidth, height: options.kernel.canvas.clientHeight })); update(); },
     async selectContext(input: { readonly id: CanvasCardId | null; readonly edgeId?: Extract<CanvasElement, { type: 'edge' }>['id'] | null }) {
       if (input.edgeId) await options.selectEdge(input.edgeId);
       else if (input.id && !options.selected().some(card => card.id === input.id)) await options.select([input.id]);

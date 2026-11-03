@@ -2,6 +2,7 @@ import type { CanvasCard, CanvasCardId, CanvasPoint, CanvasRectangle } from '../
 import type { CanvasSpatialCell, CanvasSpatialEntry, CanvasSpatialProjectionStats } from '../definitions/canvasSpatialProjection';
 import { intersectCanvasRegion, subtractCanvasRegion } from './canvasVisibleRegions';
 import { canvasSpatialCell, canvasSpatialCellSize, canvasSpatialKeys, projectCanvasSpatialCell } from './canvasSpatialCells';
+import { mergeCanvasRegionFragments } from './mergeCanvasRegionFragments';
 
 /** 几何索引拥有自己的bounds快照：拖动会原地改display card，不能用同一引用判断位置是否变化。 */
 export class CanvasSpatialProjection {
@@ -100,6 +101,7 @@ export class CanvasSpatialProjection {
     for (const entry of this.large) if (intersectCanvasRegion(entry.bounds, viewport)) candidates.add(entry.card.id);
     // 世界格缓存有界，不能让巡游过的五万字长卡留下无限排版投影。
     while (this.cache.size > 4096) { const first = this.cache.keys().next(); if (first.done) break; this.cache.delete(first.value); }
+    for (const [id, regions] of published) published.set(id, mergeCanvasRegionFragments(regions));
     this.published = published; this.publishedKey = key; this.candidateCards = candidates.size; this.queryCards = published.size;
     return published;
   }

@@ -2,7 +2,8 @@
  * @file workspaceVfsNode.ts
  * @description Workspace Path Layer 暴露给前端和工具层的统一节点契约。
  */
-import { z } from 'zod';
+// namespace import使独立只读消费者只保留实际用到的schema工厂，避免named z对象拉入全部locale。
+import * as z from 'zod';
 
 /** Workspace node type 是平台类型与插件贡献类型共用的开放字符串合同。 */
 export type WorkspaceVfsNodeType = string;

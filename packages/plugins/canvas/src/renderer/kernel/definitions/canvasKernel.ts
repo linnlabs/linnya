@@ -67,6 +67,7 @@ export interface CanvasKernel {
   worldToScreen(point: CanvasPoint): CanvasPoint;
   captureImage(format: 'png' | 'jpeg', quality?: number): Promise<string>;
   readStats(): CanvasSpatialProjectionStats & { readonly cards: number; readonly edges: number; readonly bitmaps: number; readonly bitmapBytes: number; readonly renders: number; readonly bitmapBudgetBytes: number; readonly rasterTiles: number;
+    readonly fadingCards: number; readonly retiringBytes: number; readonly retiringTiles: number;
     readonly viewportCards: number; readonly renderableCards: number; readonly rasterCards: number;
     readonly lineMeshBuilds: number; readonly visibleEdges: number };
   destroy(): void;

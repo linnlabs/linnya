@@ -4,6 +4,8 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 
 框选加入Conversation后，引用chip通过通用kind挂载点按需读取当前已提交选区供只读hover预览；关闭释放实例，异步切项目不显示旧正文。点击先复核画布当前归属，再打开并定位仍存在的卡片。hover不保存编辑草稿，也不修改发送快照；发送继续通过`prepareForSend`等待草稿保存并读取最新内容。
 
+选中图片卡可打开[图片属性编辑](./src/renderer/features/imageEditing/README.md)，非破坏性裁剪、图注与替换保存为一次正式内容变更，并进入现有用户撤销链。
+
 ## 边界与入口
 
 - `shared/model` 拥有卡片、连线、正文及提交快照合同；类型来自唯一 schema。
@@ -36,11 +38,17 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 
 ## Renderer
 
+单张文档卡近景聚焦时，通过Host公开挂载门面显示只读全文或类型owner详情；远景、框选和文字编辑期间仍保留位图。挂载取消、项目边界与相机分流见[文档详情](./src/renderer/features/documentDetail/README.md)。
+
 `renderer/features/canvasDocument` 拥有每个表面的已提交文档会话。打开前先订阅变更，再读取快照并追平读取窗口中的版本；提交和 push 均从 `canvas:changes` 接纳连续增量或日志裁剪后的正式快照。旧表面的异步结果不会写入新会话。`cardEditing` 独立持有输入草稿、组合输入状态及保存屏障，失败时保留正文，自动保存不结束同一次文字编辑撤销组。
 
 `renderer/orchestration/createCanvasSurface` 只装配文档端口、嵌入编辑器、选择及绘制；生产 Host 与 Electron 探针可以注入同一组窄合同。文件会话切换和手动保存通过保存参与端口等待草稿落盘。kernel 只产生交互意图和显示预览：3px 后才拖动，松手提交一次，Escape/失焦取消。框选默认触碰选中，Cmd/Ctrl 改为全包含；Shift 追加。
 
 可见正文走 portable Markdown DOM 与同一排版 class，经共享光栅队列只生成可见区域的 4096px 分块。Bitmap 所有权转交 kernel，主题/正文版本改变会重建；材质仅修改边框背景，不重建正文纹理。正文为 14px、1.7 行高和 16/18/18px 内边距。相机、选择和用户材质偏好不写进画布内容。
+
+图片卡的受管显示源、归一化裁切和底部说明使用 `cardRendering/content` 的同一 DOM 投影及公开媒体样式，前台与后台出图一致。后台指定区域按输出长宽等比居中，边界不添加整图适配留白；导出倍率不受交互相机缩放范围限制。
+
+文档卡也使用同一纯DOM投影：标题、无封面摘要、封面及不可用状态。Worker只消费请求中明确提供的授权`summary`和`previewStatus`；引用权限状态优先于迟到的预览状态，失去访问权时不显示旧摘要或图片，缺metadata仅显示不可访问身份牌。
 
 ## Agent 改动与确认
 
@@ -95,11 +103,15 @@ Standalone `entry.command` 只提供 read/show/find/neighbors/region/check，显
 
 一次多图片导入先完成全部资产准备，再共同提交全部卡片、归属和一次用户撤销；准备任一图片失败时不创建部分卡片。准备结果只保留稳定资产身份与尺寸，不在UI数组长期持有原图字节。初始图框尺寸由shared `canvasDefaultImageSize`计算。
 
+图片等比框统一消费Host的`displayWidth/displayHeight`（已考虑EXIF方向）；`width/height`仍是资产编码身份，不因显示转正迁移旧ledger。Renderer导入、Backend导入和CLI预检/正式写入共用同一显示比例；既有卡片及替换时的用户卡框保持既定布局，裁剪仍按浏览器转正后的图像范围归一化。
+
 历史恢复的 `clientSessionId` 是Canvas的opaque `[viewId,captureUUID]` token。Header打开历史时冻结正文、临时新卡、连线标签的编辑世代；正式恢复通知先同步提交，再仅清理仍匹配的草稿。重复通知和旧面板的迟到通知不会删除后来的输入，恢复不调用保存旧草稿的finish。预算从Backend正式状态读取并订阅变化，超过软预算会说明最近5版与仍可达资产的保留原因。
 
 Canvas表面、正文编辑器和历史预览统一读取Renderer UI公开的 `RENDERER_UI_THEME_ATTRIBUTE`，并监听同一属性。`moon-blue`依据Renderer UI正式语义仍使用浅色纸张；不能通过历史data-theme或dark class猜测当前主题。
 
 键盘与读屏通过同一选择/导航流程工作：搜索定位既支持卡片也支持线标签，关闭搜索/右键菜单和结束标签编辑会回焦画布；选中摘要复用正文搜索投影和当前可访问文档标题，限制朗读长度，不输出目标内部ID。失败草稿可显式选择“使用已保存内容”，经危险操作确认后仅放弃本地草稿；写入进行中或结果待确认时禁止放弃，不自动重载覆盖。
+
+默认模式Tab/Shift+Tab按卡片顺序阅读，首尾可退出到浏览器正常焦点顺序；Command/Control加方向键选择最近的对应方向卡片，读屏同时播报卡片世界位置。树模式Tab创建子节点保持不变。导航只平移显露目标，不改变缩放倍率，详见[键盘与可读选择](./src/renderer/features/accessibility/README.md)。
 
 ## 制品闭包
 

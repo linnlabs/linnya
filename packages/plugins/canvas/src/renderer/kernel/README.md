@@ -40,6 +40,8 @@ WebGL适配器识别SwiftShader/llvmpipe软件绘图，交互模式自动将实�
 
 `CanvasSpatialProjection`按512世界px维护卡片几何索引和有界世界格缓存，命中只查询所在格与长卡；长卡不为整篇正文登记数千空格。各格从上层向下扣纸面，拖动只使受影响格失效。已完全被现有上层纸面遮住的低层移动可保留精确投影；不能证明遮挡时立即重算。索引保存独立bounds，避免display对象原地移动后丢失旧几何。`preview-changed`只通知正文投影刷新，不表示已提交内容。
 
+缓存发布时按相同边跨度合并精确相邻片段，消除世界格边界造成的重复DOM及纹理；真实遮挡洞不合并。每轮必须减少片段数，否则立即结束，结果随世界格缓存复用，不放入纯绘制回调。
+
 线Mesh携带每条边的语义颜色索引，浅/深主题通过共享中间墨色palette切换uniform；默认中性线与独立选中高亮保持各自职责。不能只保存edge.color却把所有边绘为同一颜色。六色双主题、纸面淡影及拖动显露下层均有真实Electron像素断言。
 
 CI可用 `CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs` 后执行 `node packages/plugins/canvas/dev/probes/verify-counts.mjs`。后者对fixture独立线性可见/命中oracle、空间候选、可见片段、位图预算与队列峰值作确定性断言，并输出counts-summary.json；容量从正式公开stats读取，不按机器锁帧时。离屏输出明确不代表真实GPU性能验收。
@@ -50,12 +52,18 @@ CI可用 `CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes
 
 `CANVAS_PERFORMANCE_CPU_PROFILE=1`可生成拖动CPU profile辅助定位；带Profiler的输出明确不计真实硬件基线，不能用它的时延作为性能验收结论。
 
+可见旧/新正文纹理在同一世界位置交叉淡入120ms，连续升级从当前混合权重继续。系统`prefers-reduced-motion`变化会立即完成当前替换并释放退休层；capture和软件GPU降级也立即替换。首图尚未显示时不为未见过的旧片制造淡入。退休层与新层共享唯一位图owner，均计入原256MiB预算；预算紧张先结束退休层，再淘汰LRU，不增加预算。alpha由任务脉冲准备，纯绘制RAF仍只绘制。
+
+生命周期参考[MapLibre栅格淡入](https://maplibre.org/maplibre-style-spec/layers/#raster-fade-duration)及其[零时长仍保留旧瓦片的问题](https://github.com/maplibre/maplibre-gl-js/issues/2445)：禁用动效也要释放退休资源，不能只把时长设零。系统偏好使用原生[MediaQueryList变化事件](https://developer.mozilla.org/en-US/docs/Web/API/MediaQueryList)，不修改拖动等功能本身。
+
+缩放中每50ms按当前视口重排待办，指针附近的可见正文优先；采样需求继续接纳最新缩放，不等鼠标释放。移动时单批接纳上限从32减半为16，可见正文超过1500张或进入降级时暂停缩放中补图，停手恢复。近景不超过40张的精确采样不再额外等待100ms；手动进入编辑的单卡任务优先于远处补图。
+
 macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事实；powerMonitor的idle只能作辅助。锁屏/未登录/非console用户在创建窗口前拒绝，报告仅保留boolean状态，不写用户身份。被拒绝的新运行写preflight.json并保留上一原始结果；此前仅powerMonitor校验的旧输出不能单独证明解锁态，不得作为正式基线。
 
 光栅回执通过readCard读取当前display事实，不能为每张位图重新分配并扫描整张画布的visibleCards；环境身份校验也不应重复执行缺片矩形差。可见性仍由当前片段验证，旧内容或已退出视口的结果释放。
 
 `node packages/plugins/canvas/dev/probes/run-visibility-probe.mjs`需要已解锁桌面，使用与正式主窗口相同的backgroundThrottling设置，执行原生hide、隐藏期间更新正文、超过paint超时时间后show，并与全新前景绘图比较像素。锁屏在建窗前拒绝；该验证不作为帧率基线。
 
-`readReadiness(ids)`按当前环境、外部内容世代与可见缺片读取正文事实，不泄露正文缓存键。body只有在匹配位图已接纳、该卡可见且随后实际draw后才ready；进入/退出DOM编辑或重新进入视口也须等新draw。overview/thumbnail/outside分别报告，不能充当正文完成；complete要求非空可见交集全部body ready且无精确升级/隐藏暂停。内容序号的几何首帧由调用方另行关联，不能拿位图旧回执替代新提交的实际投影。
+`readReadiness(ids)`按当前环境、外部内容世代与可见缺片读取正文事实，不泄露正文缓存键。body只有在匹配位图已接纳、120ms替换已完成、该卡可见且随后实际draw后才ready；进入/退出DOM编辑或重新进入视口也须等新draw。overview/thumbnail/outside分别报告，不能充当正文完成；complete要求非空可见交集全部body ready且无精确升级/隐藏暂停。内容序号的几何首帧由调用方另行关联，不能拿位图旧回执替代新提交的实际投影。stats分别报告fadingCards/retiringBytes/retiringTiles，总rasterTiles包含退休层；停手清晰测量必须等待fade归零。
 
 地图标签按选中、染纸、文档与面积优先；选中变化只作稳定分区并更新相关卡的远景透明度。单卡编辑的精确采样在DOM接管前保持，普通补图不能立即降回档位；相机倍率/环境改变或离开需求后解除。Pixi stage不另作交互命中（eventMode:none），所有意图仍走原生DOM事件与唯一空间索引，参见[Pixi事件合同](https://pixijs.com/8.x/guides/components/events)。

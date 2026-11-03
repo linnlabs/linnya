@@ -1,0 +1,5 @@
+.canvas-image-content { position: relative; box-sizing: border-box; width: 100%; padding: 0; overflow: hidden; }
+.canvas-media-image { display: block; width: 100%; height: 100%; object-fit: cover; transform-origin: 0 0; }
+.canvas-image-content .canvas-image-caption { position: absolute; right: 0; bottom: 0; left: 0; padding: 8px; margin: 0; color: var(--canvas-card-body-color); background: var(--canvas-card-paper-color); }
+.canvas-document-content { box-sizing: border-box; padding: 16px 18px 18px; width: 100%; overflow-wrap: anywhere; }
+.canvas-document-content > .canvas-card-title { display: block; }

@@ -69,3 +69,13 @@ it('密集多卡交错移动与层级重装不会复用失效遮挡证明', () =
   const actual = index.project(viewport), expected = createCanvasVisibleRegionProjection(cards);
   for (const entry of cards) expectSameVisibleRegions(actual.get(entry.id) ?? [], expected.get(entry.id) ?? [], viewport);
 });
+it('非重叠卡跨世界格仍只生成完整可见矩形，真实遮挡缺口保持原样', () => {
+  const cards = Array.from({ length: 500 }, (_, i) => card(`c${i + 1}`, { x: i % 25 * 240 - 600, y: Math.floor(i / 25) * 180 - 400, width: 200, height: 140 }));
+  const index = new CanvasSpatialProjection(), viewport = { x: -600, y: -400, width: 6000, height: 3600 };
+  index.setCards(cards);
+  const projection = index.project(viewport);
+  for (const entry of cards) expect(projection.get(entry.id)).toEqual([{ x: entry.x, y: entry.y, width: entry.width, height: entry.height }]);
+  const cover = card('c501', { x: -520, y: -380, width: 80, height: 90 }); index.setCards([...cards, cover]);
+  const covered = index.project(viewport), expected = createCanvasVisibleRegionProjection([...cards, cover]);
+  for (const entry of cards) expectSameVisibleRegions(covered.get(entry.id) ?? [], expected.get(entry.id) ?? [], viewport);
+});
