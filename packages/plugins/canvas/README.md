@@ -94,3 +94,5 @@ Standalone `entry.command` 只提供 read/show/find/neighbors/region/check，显
 历史恢复的 `clientSessionId` 是Canvas的opaque `[viewId,captureUUID]` token。Header打开历史时冻结正文、临时新卡、连线标签的编辑世代；正式恢复通知先同步提交，再仅清理仍匹配的草稿。重复通知和旧面板的迟到通知不会删除后来的输入，恢复不调用保存旧草稿的finish。预算从Backend正式状态读取并订阅变化，超过软预算会说明最近5版与仍可达资产的保留原因。
 
 Canvas表面、正文编辑器和历史预览统一读取Renderer UI公开的 `RENDERER_UI_THEME_ATTRIBUTE`，并监听同一属性。`moon-blue`依据Renderer UI正式语义仍使用浅色纸张；不能通过历史data-theme或dark class猜测当前主题。
+
+键盘与读屏通过同一选择/导航流程工作：搜索定位既支持卡片也支持线标签，关闭搜索/右键菜单和结束标签编辑会回焦画布；选中摘要复用正文搜索投影和当前可访问文档标题，限制朗读长度，不输出目标内部ID。失败草稿可显式选择“使用已保存内容”，经危险操作确认后仅放弃本地草稿；写入进行中或结果待确认时禁止放弃，不自动重载覆盖。

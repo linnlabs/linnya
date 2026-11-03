@@ -4,7 +4,7 @@
     class="canvas-search-panel"
     aria-label="画布内搜索"
     @pointerdown.stop
-    @keydown.stop
+    @keydown="keydown"
   >
     <div class="canvas-search-input-row">
       <input
@@ -14,12 +14,11 @@
         aria-label="搜索卡片内容"
         @input="update"
         @keydown.enter.prevent="search.navigate($event.shiftKey ? -1 : 1)"
-        @keydown.esc.prevent="search.state.close()"
       >
       <button
         type="button"
         aria-label="关闭搜索"
-        @click="search.state.close()"
+        @click="close"
       >
         ×
       </button>
@@ -47,7 +46,10 @@
 import { nextTick, ref, watch } from 'vue';
 import type { createCanvasSearch } from '../orchestration/createCanvasSearch';
 const props = defineProps<{ search: ReturnType<typeof createCanvasSearch> }>();
+const emit = defineEmits<{ close: [] }>();
 const input = ref<HTMLInputElement | null>(null);
 watch(props.search.state.open, async open => { if (open) { await nextTick(); input.value?.focus(); input.value?.select(); } });
 const update = (event: Event) => { if (event.target instanceof HTMLInputElement) props.search.state.setQuery(event.target.value); };
+const close = () => { props.search.state.close(); emit('close'); };
+const keydown = (event: KeyboardEvent) => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); close(); } };
 </script>

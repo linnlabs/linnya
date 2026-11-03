@@ -57,7 +57,7 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
     return synchronization;
   };
   return {
-    state, viewId, synchronize, deliveryNotice: mutations.state.notice, retryDelivery: mutations.retry,
+    state, viewId, synchronize, deliveryNotice: mutations.state.notice, mutationPending: mutations.state.pending, retryDelivery: mutations.retry,
     confirmMutation,
     async open(documentId) {
       const previousDocumentId = state.snapshot.value?.documentId;
