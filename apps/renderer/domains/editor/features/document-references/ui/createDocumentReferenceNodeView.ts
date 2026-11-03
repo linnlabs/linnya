@@ -55,15 +55,17 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
     if (destroyed || popup !== panel) return;
     if (preview.content?.image) { const image = document.createElement('img'); image.src = preview.content.image.dataUri; image.alt = preview.title ?? '文档封面'; panel.append(image); }
     const summary = document.createElement('p'); summary.textContent = preview.content?.summary ?? (preview.status === 'plugin_unavailable' ? '需要启用或安装对应插件' : '预览不可用'); panel.append(summary);
-    if (preview.content?.detail) {
-      const detail = preview.content.detail;
+    const detail = preview.content?.detail;
+    const renderDetail = port.readDetailRenderer(info) ?? (detail ? (element: HTMLElement) => port.renderDetail(element, detail.text) : null);
+    if (renderDetail) {
       const expand = document.createElement('button'); expand.type = 'button'; expand.textContent = '展开';
       let loading = false;
       expandDetail = () => {
         if (disposeDetail || loading) return;
         loading = true;
+        panel.querySelector(':scope > img')?.remove(); summary.remove();
         const content = document.createElement('div'); content.className = 'document-reference-detail'; panel.append(content);
-        void port.renderDetail(content, detail.text).then(dispose => {
+        void renderDetail(content).then(dispose => {
           if (destroyed || popup !== panel) { dispose(); return; }
           disposeDetail = dispose; expand.remove();
           panel.style.top = `${Math.max(8, Math.min(bounds.bottom + 8, window.innerHeight - panel.getBoundingClientRect().height - 8))}px`;

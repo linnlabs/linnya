@@ -1,5 +1,8 @@
 <template>
-  <canvas ref="canvas" class="slides-history-canvas" />
+  <canvas
+    ref="canvas"
+    class="slides-readonly-canvas"
+  />
 </template>
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue';

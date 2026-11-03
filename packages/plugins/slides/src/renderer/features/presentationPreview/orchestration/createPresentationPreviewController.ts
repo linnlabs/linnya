@@ -1,13 +1,16 @@
-import type { HistoryPreviewPort, HistoryPreviewState } from '../definitions/historyPreview';
+import type {
+  PresentationPreviewPort,
+  PresentationPreviewState,
+} from '../definitions/presentationPreview';
 
 /** 只渲染并保留选中页，旧请求不能把图片写入新页。 */
-export function createHistoryPreviewController(input: HistoryPreviewPort) {
-  let model: HistoryPreviewState['model'] = null;
+export function createPresentationPreviewController(input: PresentationPreviewPort) {
+  let model: PresentationPreviewState['model'] = null;
   let bitmap: ImageBitmap | null = null;
   let generation = 0;
   let disposed = false;
   let abort: AbortController | undefined;
-  const publish = (pageIndex: number, phase: HistoryPreviewState['phase']) =>
+  const publish = (pageIndex: number, phase: PresentationPreviewState['phase']) =>
     input.publish({ model, bitmap, pageIndex, phase });
   function release(): void {
     bitmap?.close();

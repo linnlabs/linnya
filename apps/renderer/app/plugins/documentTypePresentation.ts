@@ -28,3 +28,8 @@ export function readDocumentTypeRecoveryAction(
   return { label: '前往插件商店', activate: () => getWorkspaceNavigationPort().openPluginStore() };
 }
 export type { DocumentTypeRecoveryAction } from './definitions/documentTypePresentation';
+
+/** 只返回类型自己的懒组件，App/Editor不解释插件正文DTO。 */
+export function readDocumentTypePreviewComponent(nodeType: string): Component | null {
+  return getDocumentTypeByNodeType(nodeType)?.readonlyPreviewComponent ?? null;
+}
