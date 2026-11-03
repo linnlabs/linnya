@@ -119,7 +119,8 @@ it('runs the real semantic CLI against Host SQLite with frozen scope, idempotent
   const services: import('@plugin/canvas/backend-test-support').CanvasCliServices = { runtimeFor: () => runtime, referencesFor: () => runtime.references,
     capabilities: { computation, measurement: { async measureBatch(request) { measureCalls++; return request.cards.map(card => ({ ref: card.ref, width: card.width, height: 120 })); },
       async measure(request) { return { width: request.width, height: 120 }; } }, rendering: { async render() { throw new Error('not a render test'); } } } };
-  const context = { hostContext: { databaseService: { getDb: () => db }, workspaceProjectId: projectId, conversationId: 'chat' }, projectId, conversationId: 'chat', agentRunId: 'run', signal: new AbortController().signal };
+  // 正式Plugin CLI只保证冻结identity与数据能力，不能伪装完整文件工具上下文让测试误过。
+  const context = { hostContext: { databaseService: { getDb: () => db } }, projectId, conversationId: 'chat', agentRunId: 'run', signal: new AbortController().signal };
   const cli = createCanvasPluginCli((command, execution, directory) => executeCanvasCliCommand(command, execution, directory, services), formatCanvasCliInputError);
   const run = async (argv: string[]) => {
     const prepared = cli.prepare({ argv, invocationId: 'invocation', conversationRoot: root });
@@ -144,6 +145,25 @@ it('runs the real semantic CLI against Host SQLite with frozen scope, idempotent
     expect((await run([...append, '--approved'])).exitCode).not.toBe(0);
     const wrong = await executeCanvasCliCommand({ kind: 'read', path: 'workspace:/命令.canvas' }, { ...context, projectId: 'other' }, root, services).catch(error => error);
     expect(wrong).toMatchObject({ code: 'document_missing' });
+    const workspace = new WorkspaceService(db);
+    const target = workspace.createNode({ projectId, parentId: null, type: 'document', name: '项目资料.md' });
+    workspace.createNode({ projectId, parentId: null, type: 'folder', name: '资料目录' });
+    const outsideProject = createProjectLifecycle(db).create({ name: '其他项目资料' });
+    workspace.createNode({ projectId: outsideProject, parentId: null, type: 'document', name: '仅外部.md' });
+    await writeFile(path.join(root, 'document.json'), JSON.stringify([{ op: 'add', type: 'document', document: 'workspace:/项目资料.md', ref: '$source' }]));
+    const documentArgs = ['apply', 'workspace:/命令.canvas', '--ops-file', 'document.json', '--request-id', 'document-card'];
+    const beforeDocument = runtime.read(id);
+    const dry = await run([...documentArgs, '--dry-run']); expect(dry.exitCode, dry.stdout).toBe(0); expect(dry.stdout).toContain('dry-run');
+    expect(runtime.read(id)).toEqual(beforeDocument);
+    const addedDocument = await run(documentArgs); expect(addedDocument.exitCode, addedDocument.stdout).toBe(0);
+    expect(runtime.read(id).elements.filter(element => element.type === 'document')).toEqual([expect.objectContaining({ data: expect.objectContaining({ documentId: target.id }) })]);
+    expect(await run(documentArgs)).toEqual(addedDocument);
+    const beforeInvalid = runtime.read(id);
+    for (const document of ['workspace:/资料目录', 'workspace:/仅外部.md']) {
+      await writeFile(path.join(root, 'invalid-document.json'), JSON.stringify([{ op: 'add', text: '整批不能落盘' }, { op: 'add', type: 'document', document }]));
+      const rejected = await run(['apply', 'workspace:/命令.canvas', '--ops-file', 'invalid-document.json', '--request-id', `invalid-${document}`]);
+      expect(rejected.exitCode).not.toBe(0); expect(rejected.stdout).toContain('invalid_arguments'); expect(runtime.read(id)).toEqual(beforeInvalid);
+    }
   } finally { await computation.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
