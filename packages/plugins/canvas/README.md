@@ -10,6 +10,8 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 - 包外只消费 shared/backend/renderer 与测试专用 backend-test-support 入口，不 deep import。
 - 文档引用、图片资产、历史保留、正文编辑器与 Conversation 权限仍由各 Host owner 通过窄门面提供。
 
+当前内容提交及纯规则的职责见 [canvasCommit owner](./src/backend/features/canvasCommit/README.md)。
+
 ## 数据规则
 
 卡片 ID 为画布内稳定的 `cN`，线为 `eN`；ID 永不复用。元素 revision、画布 sequence 与历史版本身份独立。相机和选择不进入文档内容。每个写请求必须有稳定请求 ID，重试复用，不能靠相同内容猜测重试。
