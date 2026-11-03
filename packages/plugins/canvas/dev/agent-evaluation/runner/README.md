@@ -15,4 +15,6 @@
 
 证据记录 argv、原始 stdout/stderr、退出码和时刻；桥 nonce 只从0600连接文件读入请求头，不复制到日志。消息分页保留完整原始工具事实，不能从模型文本猜提交、check、图片已读或批准。后续由可信审阅流程提取实际工具trace中的 check/commit/render/read_file，补真实UI截图和语义审阅，再交正式评分入口；本 runner 不写 run.json 或 report.json。
 
+桥 descriptor 的项目身份不足以证明当前挂载画布。attach 在播种前后、start 在发模型前、collect 在接纳 after 前都核对 snapshot.documentId；seed 回执也必须属于本题。错目标响应先原样保留，但不写正式 before/after、不发送模型；collect 将该次采集标记失败。
+
 每题完成后正常关闭上一桥，确认其标签和 descriptor已释放，再为下一独立项目启动桥。保留已配置模型与 App profile，不批量关闭其他任务的进程。固定提交上完整跑完各模型的13题，任何产品修复另开整批，不把旧成功题拼成新实现的结果。

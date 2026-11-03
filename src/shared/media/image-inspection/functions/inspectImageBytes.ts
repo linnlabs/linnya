@@ -89,6 +89,9 @@ export async function inspectImageBytes(params: {
       byteLength: params.bytes.length,
       width: metadata.width,
       height: metadata.height,
+      // 保留原始编码身份；不能为修复竖拍布局而改变既有资产的尺寸校验语义。
+      displayWidth: metadata.autoOrient.width,
+      displayHeight: metadata.autoOrient.height,
       sha256: createHash('sha256').update(params.bytes).digest('hex'),
     };
   } catch (error) {

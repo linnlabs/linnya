@@ -75,6 +75,3 @@ onMounted(async () => {
 });
 onBeforeUnmount(() => { disposed = true; review.value?.dispose(); surface.value?.destroy(); content?.dispose(); });
 </script>
-<style>
-.canvas-evaluation-harness { position: fixed; inset: 0; z-index: 100000; background: var(--color-bg-default); }
-</style>

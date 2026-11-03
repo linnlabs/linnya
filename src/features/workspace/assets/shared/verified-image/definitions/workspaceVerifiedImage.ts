@@ -26,6 +26,8 @@ export interface VerifiedWorkspaceImage {
   readonly byteLength: number;
   readonly width: number;
   readonly height: number;
+  readonly displayWidth: number;
+  readonly displayHeight: number;
   readonly sha256: string;
   readonly bytes: Uint8Array;
 }

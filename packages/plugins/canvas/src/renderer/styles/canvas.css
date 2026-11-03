@@ -75,6 +75,56 @@
   min-height: 1em;
   outline: none;
 }
+.canvas-document-detail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: 16px 18px 18px;
+  overflow: hidden;
+  transform-origin: 0 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.canvas-document-detail-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-primary);
+}
+.canvas-document-detail-header strong {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.canvas-document-detail-header button {
+  border: 0;
+  border-radius: 4px;
+  padding: 2px 5px;
+  background: var(--canvas-card-paper-color);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.canvas-document-detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.canvas-document-detail-loading {
+  visibility: hidden;
+}
+.canvas-document-detail-notice {
+  margin: 0;
+  font-size: 12px;
+  background: var(--canvas-card-paper-color);
+  color: var(--color-text-primary);
+}
 .canvas-card-content {
   box-sizing: border-box;
   padding: 16px 18px 18px;

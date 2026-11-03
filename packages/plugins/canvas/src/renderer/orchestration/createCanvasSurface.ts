@@ -13,7 +13,7 @@ import { createCanvasRasterPresentation } from './createCanvasRasterPresentation
 import type { CanvasSurfaceOptions, CanvasSurfacePorts } from '../definitions/canvasSurface';
 import { createCanvasSurfaceState } from '../store/createCanvasSurfaceState';
 import { selectCanvasSubgraph } from '../features/clipboard';
-import { createCanvasKeyboardHandler, describeCanvasSelection } from '../features/accessibility';
+import { createCanvasKeyboardHandler, createCanvasKeyboardNavigation, describeCanvasSelection } from '../features/accessibility';
 import { createCanvasConnectionEditing } from '../features/connections';
 import { installCanvasEditorProjection } from './installCanvasEditorProjection';
 import { installCanvasDisplayProjection } from './installCanvasDisplayProjection';
@@ -49,8 +49,9 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   if (options.descriptionId) kernel.canvas.setAttribute('aria-describedby', options.descriptionId);
   const raster = createCanvasRasterPresentation({ host: options.stagingHost, kernel, readAppearance, reportFailure: report, createContent: ports.createContent, readContentKey: ports.readContentKey });
   const refreshView = () => { ports.refreshVisibleContent?.(kernel.renderableCards()); raster.refresh(); };
+  const navigate = createCanvasEditorNavigation(kernel, intent => { void handleIntent(intent).catch(report); });
   const editable = ports.createEditor({ element: options.editorHost, content: JsonValueSchema.parse(createCanvasPlainTextDocument('')), label: '文字卡正文', resolveImageSource: ports.resolveImageSource, onError: report,
-    onNavigate: createCanvasEditorNavigation(kernel, intent => { void handleIntent(intent).catch(report); }),
+    onNavigate: navigate,
     onUpdate: content => { try { if (creation.state.draft.value) creation.update(content); else editor.update(content); setDirty(); } catch (failure) { report(failure); } },
     onBlur: () => { void save(true).then(setDirty).catch(report); },
   });
@@ -100,7 +101,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
       case 'context': await viewport.selectContext(intent); state.setContext(intent); return;
     }
   }
-  const projection = installCanvasEditorProjection({ host: options.editorHost, editor, creation, editable, kernel, camera, cards, setDirty, refresh: refreshView });
+  const projection = installCanvasEditorProjection({ host: options.editorHost, editor, creation, editable, kernel, camera, detailId: state.detailId, cards, setDirty, refresh: refreshView });
   const stopDisplay = installCanvasDisplayProjection({ host: options.host, session, kernel, raster: { refresh: refreshView }, preferences, readAppearance, ports, report, refreshEditorInk: projection.refreshInk });
   const stopDoubleClick = installCanvasSurfaceDoubleClick({ host: options.host, kernel, readonly: () => readonly.value, create: createText, label: async id => { await connections.select(id); await connections.beginLabel(); }, report });
   const clipboard = installCanvasSurfaceClipboard({ host: options.host, kernel, session, ports, actions, canHandle: () => !editor.state.draft.value && !creation.state.draft.value, selection: () => selection.ids.value, contextPoint: () => context.value?.point, select, createText, report });
@@ -120,7 +121,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   const edit = async () => { if (connections.selected.value) { await connections.beginLabel(); return; } const id = selection.ids.value[0]; if (id) await opening.open(id); };
   const keydown = createCanvasKeyboardHandler({ isEditing: () => Boolean(editor.state.draft.value || creation.state.draft.value || connections.state.label.value), selection: () => selection.ids.value, allIds: () => cards().map(card => card.id),
     treeMode: () => Boolean(layout?.state.treeKeyboard.value && selection.ids.value.length === 1), createTree,
-    zoomValue: () => camera.value.zoom, duplicate: () => actions.duplicate(), undo, remove, edit, select, fit, zoom, move: movement.move,
+    zoomValue: () => camera.value.zoom, duplicate: () => actions.duplicate(), undo, remove, edit, select, fit, zoom, move: movement.move, navigation: createCanvasKeyboardNavigation({ cards, selection: () => selection.ids.value, select, reveal: viewport.reveal }),
     escape: async () => { const wasEditing = Boolean(editor.state.draft.value || creation.state.draft.value); if (await finish()) { if (!wasEditing) await select([]); kernel.canvas.focus(); } },
   });
   try { kernel.setAppearance(readAppearance()); await session.open(options.documentId); }
@@ -132,6 +133,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     clipboard, discardDraft, hasDraft: computed(() => draftParticipants.some(participant => participant.readGeneration() !== null)), focus: viewport.focus, focusElements: viewport.focusElements,
     readPresentationStats: () => ({ ...kernel.readStats(), status: kernel.readRenderStatus() }),
     readContentReadiness: (ids: readonly CanvasCardId[]) => raster.readReadiness(ids),
+    prepareDetail: raster.prepareEditing, setDetailVisible: state.setDetailVisible, navigate,
     selectionDescription: computed(() => describeCanvasSelection(session.state.snapshot.value?.elements ?? [], connections.selected.value ? [connections.selected.value.id] : selection.ids.value, ports.readDocumentTitles?.() ?? new Map())),
     clearFailure: state.clearFailure,
     retryDisplay() { state.clearFailure(); ports.retryContent?.(); raster.retry(); refreshView(); },
