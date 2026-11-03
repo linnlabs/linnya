@@ -132,9 +132,14 @@
   min-width: 0;
 }
 
-/* 共享文本输入默认继承使用环境字号；设置页在件套边界内统一为 14px。 */
-.settings-row-control > .settings-text-control {
-  font-size: var(--font-size-sm);
+/*
+ * 共享文本输入（CustomTextInput 等）默认继承环境字号，而设置面板的环境字号是根字号 16px。
+ * 行内控件列把输入字号定为 14px：列内任何层级的共享输入都继承它，不依赖是否直属控件列或是否记得加 class。
+ * 不在 SettingsRow 里的设置表单（例如弹窗里的字段）给输入根组件加 settings-text-control，得到同一字号。
+ */
+.settings-row-control,
+.settings-text-control {
+  font-size: var(--font-size-prose);
 }
 
 .settings-row:is(.is-control-field, .is-control-fill) > .settings-row-control {

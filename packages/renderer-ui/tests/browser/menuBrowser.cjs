@@ -206,6 +206,13 @@ async function run() {
     assert.equal(parentRow.rowHeight, plainRow.rowHeight, JSON.stringify(parentRow));
     assert(parentRow.labelWidth >= parentRow.labelTextWidth - 1, JSON.stringify(parentRow));
   }
+  for (const theme of ['light', 'dark', 'moon-blue']) {
+    await evaluate(`window.menuFixture.mountTrigger(${JSON.stringify(theme)})`);
+    const trigger = await evaluate('window.menuFixture.triggerGeometry()');
+    // 触发器按内容收缩时，文字与箭头笔画之间要留出间隙，箭头仍落在触发器内。
+    assert(trigger.chevronLeft - trigger.textRight >= 8, JSON.stringify(trigger));
+    assert(trigger.chevronRight <= trigger.triggerRight, JSON.stringify(trigger));
+  }
   window.setContentSize(260, 240);
   await mount({ manual: true, x: 20, y: 20 });
   await focus('.custom-select__options .select-option');
@@ -231,7 +238,7 @@ async function run() {
   }
   window.destroy();
   console.log(
-    'Menu Chromium checks passed: 170/171 rows, 3 themes, manual/Teleport, native keys/wheel, 2 levels, resize, custom content.'
+    'Menu Chromium checks passed: 170/171 rows, 3 themes, manual/Teleport, native keys/wheel, 2 levels, resize, custom content, trigger arrow gap.'
   );
 }
 run().then(

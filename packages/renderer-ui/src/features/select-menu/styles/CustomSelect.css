@@ -1,4 +1,9 @@
 .custom-select {
+  /* 箭头的位置与尺寸只在这里定义：触发器右侧为文字预留的空间由它们推出，文字与箭头之间始终有 gap。 */
+  --linnya-ui-select-arrow-size: 16px;
+  --linnya-ui-select-arrow-inset: var(--space-3);
+  --linnya-ui-select-arrow-gap: var(--space-2);
+
   position: relative;
   display: inline-block;
   width: 100%;
@@ -11,7 +16,7 @@
   justify-content: space-between;
   width: 100%;
   height: 36px;
-  padding: var(--space-2) var(--space-6) var(--space-2) var(--space-3);
+  padding: var(--space-2) calc(var(--linnya-ui-select-arrow-inset) + var(--linnya-ui-select-arrow-size) + var(--linnya-ui-select-arrow-gap)) var(--space-2) var(--space-3);
   font-size: inherit;
   color: var(--color-text-primary);
   text-align: left;
@@ -82,10 +87,10 @@
 .custom-select .arrow-icon {
   position: absolute;
   top: 50%;
-  right: 12px;
+  right: var(--linnya-ui-select-arrow-inset);
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  width: var(--linnya-ui-select-arrow-size);
+  height: var(--linnya-ui-select-arrow-size);
   color: var(--color-text-tertiary);
   transition: transform var(--duration-medium) var(--ease-standard);
   transform: translateY(-50%);

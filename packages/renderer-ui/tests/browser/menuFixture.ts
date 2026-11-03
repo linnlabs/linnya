@@ -144,6 +144,45 @@ async function mount({
   await settle();
 }
 
+/** 触发器的真实排版：文字与箭头笔画之间的间隙由浏览器布局给出，jsdom 无法量到。 */
+async function mountTrigger(theme: string) {
+  app?.unmount();
+  await settle();
+  document.documentElement.dataset.linnyaUiTheme = theme;
+  document.body.style.margin = '0';
+  app = createApp(() =>
+    h('div', { style: { position: 'fixed', left: '40px', top: '40px' } }, [
+      h(CustomSelect<string>, {
+        modelValue: 'zh-CN',
+        options: [
+          { value: 'zh-CN', text: '简体中文' },
+          { value: 'en-US', text: 'English' },
+        ],
+      }),
+    ])
+  );
+  app.mount('#fixture');
+  await settle();
+}
+
+function triggerGeometry() {
+  const trigger = document.querySelector<HTMLElement>('.select-trigger');
+  const value = trigger?.querySelector<HTMLElement>('.selected-value');
+  const chevron = trigger?.querySelector<SVGPathElement>('.arrow-icon path');
+  if (!trigger || !value || !chevron) throw new Error('Select trigger parts not found');
+  const text = document.createRange();
+  text.selectNodeContents(value);
+  const textRect = text.getBoundingClientRect();
+  const triggerRect = trigger.getBoundingClientRect();
+  const chevronRect = chevron.getBoundingClientRect();
+  return {
+    textRight: textRect.right,
+    chevronLeft: chevronRect.left,
+    chevronRight: chevronRect.right,
+    triggerRight: triggerRect.right,
+  };
+}
+
 function snapshot() {
   const panels = [...document.querySelectorAll<HTMLElement>('.custom-select__submenu')].filter(
     panel => !panel.classList.contains('submenu-fade-leave-active')
@@ -196,7 +235,7 @@ function submenuRows() {
   );
 }
 
-const fixture = { mount, settle, snapshot, submenuRows };
+const fixture = { mount, mountTrigger, settle, snapshot, submenuRows, triggerGeometry };
 declare global {
   interface Window {
     menuFixture: typeof fixture;

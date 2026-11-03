@@ -717,3 +717,81 @@ describe('CustomSelect 子菜单交互与定位', () => {
     expect(submenu.style.top).toBe('20px');
   });
 });
+
+describe('CustomSelect 触发器箭头间距', () => {
+  const srcRoot = join(dirname(fileURLToPath(import.meta.url)), '../src');
+  const MIN_TEXT_ARROW_GAP_PX = 8;
+
+  function ruleDeclarations(css: string, selector: string): Map<string, string> {
+    const style = document.createElement('style');
+    style.textContent = css;
+    document.head.appendChild(style);
+    try {
+      const rule = Array.from(style.sheet?.cssRules ?? []).find(
+        (candidate): candidate is CSSStyleRule =>
+          candidate instanceof CSSStyleRule && candidate.selectorText === selector,
+      );
+      if (!rule) throw new Error(`CSS rule not found: ${selector}`);
+      return new Map(Array.from(rule.style, name => [name, rule.style.getPropertyValue(name)]));
+    } finally {
+      style.remove();
+    }
+  }
+
+  /** 只支持本组件间距用到的 px、var() 与加法 calc()，遇到其他写法直接失败而不是猜。 */
+  function toPx(value: string, variables: ReadonlyMap<string, string>): number {
+    const substituted = value.replace(/var\((--[\w-]+)\)/gu, (_match, name: string) => {
+      const resolved = variables.get(name);
+      if (resolved === undefined) throw new Error(`Unknown custom property: ${name}`);
+      return `(${resolved})`;
+    });
+    if (substituted.includes('var(')) return toPx(substituted, variables);
+    const sum = substituted.replace(/calc|[()]/gu, '');
+    if (!/^\s*\d+(?:\.\d+)?px(?:\s*\+\s*\d+(?:\.\d+)?px)*\s*$/u.test(sum)) {
+      throw new Error(`Unsupported length expression: ${value}`);
+    }
+    return sum.split('+').reduce((total, part) => total + Number.parseFloat(part), 0);
+  }
+
+  function splitBoxShorthand(value: string): string[] {
+    const parts: string[] = [];
+    let depth = 0;
+    let current = '';
+    for (const character of value) {
+      if (character === '(') depth += 1;
+      if (character === ')') depth -= 1;
+      if (/\s/u.test(character) && depth === 0) {
+        if (current) parts.push(current);
+        current = '';
+      } else {
+        current += character;
+      }
+    }
+    if (current) parts.push(current);
+    return parts;
+  }
+
+  it('默认触发器为箭头预留的右侧空间，比箭头自身占用的宽度多出一段文字间隙', () => {
+    const selectCss = readFileSync(join(srcRoot, 'features/select-menu/styles/CustomSelect.css'), 'utf8');
+    const geometryCss = readFileSync(join(srcRoot, 'styles/tokens/geometry.css'), 'utf8');
+    const variables = new Map<string, string>([
+      ...ruleDeclarations(geometryCss, ':root'),
+      ...ruleDeclarations(selectCss, '.custom-select'),
+    ]);
+    const trigger = ruleDeclarations(selectCss, '.custom-select .select-trigger');
+    const arrow = ruleDeclarations(selectCss, '.custom-select .arrow-icon');
+
+    const [, paddingRight] = splitBoxShorthand(trigger.get('padding') ?? '');
+    const arrowEnd = toPx(arrow.get('right') ?? '', variables) + toPx(arrow.get('width') ?? '', variables);
+    const reservedForArrow = toPx(paddingRight ?? '', variables);
+
+    expect(reservedForArrow - arrowEnd).toBeGreaterThanOrEqual(MIN_TEXT_ARROW_GAP_PX);
+  });
+
+  it('样式规则对应的 DOM 结构存在：箭头是触发器的直接子元素', () => {
+    const mounted = mountCustomSelect();
+    mountedSelects.push(mounted);
+
+    expect(mounted.host.querySelector('.custom-select > .select-trigger > .arrow-icon')).not.toBeNull();
+  });
+});
