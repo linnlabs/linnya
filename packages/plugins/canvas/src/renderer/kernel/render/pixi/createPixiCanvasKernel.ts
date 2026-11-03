@@ -1,16 +1,18 @@
-import { Application, Container, Graphics, NineSliceSprite, Sprite, Text, Texture } from 'pixi.js';
+// Pixi 的静态 uniform polyfill 支持严格 CSP；不放开 script-src unsafe-eval。
+import 'pixi.js/unsafe-eval';
+import { Application, Container, Graphics, NineSliceSprite, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import {
   canvasBounds, canvasScreenToWorld, canvasWorldToScreen, readCanvasElementText,
   type CanvasCamera, type CanvasCard, type CanvasCardId, type CanvasColor,
   type CanvasEdge, type CanvasElement, type CanvasPoint, type CanvasRectangle,
 } from '../../../../shared';
-import type { CanvasAppearance, CanvasKernel, CanvasKernelIntent } from '../../definitions/canvasKernel';
+import type { CanvasAppearance, CanvasKernel, CanvasKernelIntent, CanvasRasterTile } from '../../definitions/canvasKernel';
 import { canvasEdgePoints } from '../../geometry/canvasEdgeGeometry';
 import { installCanvasInteraction } from '../../interaction/installCanvasInteraction';
 import { CanvasMapLabels } from './CanvasMapLabels';
 
-interface CardView { readonly card: CanvasCard; readonly container: Container; readonly background: NineSliceSprite; readonly body: Sprite; readonly label: Text }
-interface BitmapEntry { readonly key: string; readonly texture: Texture; readonly bitmap: ImageBitmap; readonly bytes: number }
+interface CardView { readonly card: CanvasCard; readonly container: Container; readonly background: NineSliceSprite; readonly body: Container; readonly label: Text }
+interface BitmapEntry { readonly key: string; readonly resources: readonly { readonly texture: Texture; readonly bitmap: ImageBitmap }[]; readonly bytes: number }
 const LIGHT: Record<CanvasColor, number> = { white: 0xfbfaf5, red: 0xf5e4e1, orange: 0xf7e9dc, yellow: 0xf6f0d8, green: 0xe6ecdf, cyan: 0xe1edf0, purple: 0xeee7ef };
 const DARK: Record<CanvasColor, number> = { white: 0x323631, red: 0x4a3634, orange: 0x493c30, yellow: 0x464331, green: 0x354534, cyan: 0x324447, purple: 0x423747 };
 
@@ -90,9 +92,8 @@ class PixiCanvasKernel implements CanvasKernel {
     const entry = this.bitmaps.get(id);
     if (!entry) return;
     const view = this.views.get(id);
-    if (view) { view.body.texture = Texture.EMPTY; view.body.visible = false; }
-    entry.texture.destroy(true);
-    entry.bitmap.close();
+    if (view) { for (const child of view.body.removeChildren()) child.destroy(); view.body.visible = false; }
+    for (const resource of entry.resources) { resource.texture.destroy(true); resource.bitmap.close(); }
     this.bitmapBytes -= entry.bytes;
     this.bitmaps.delete(id);
     if (view) this.updateView(view);
@@ -124,8 +125,6 @@ class PixiCanvasKernel implements CanvasKernel {
     label.style.wordWrap = !overview;
     label.visible = !overview && !this.bitmaps.has(card.id);
     body.visible = !overview && this.bitmaps.has(card.id);
-    body.width = card.width;
-    body.height = card.height;
     label.position.set(14, 12);
     // 地图标签只在确定的屏幕格中保留一个，避免一屏几千张纹理和文字重叠。
     if (this.camera.zoom < 0.15) { label.visible = false; if (card.type !== 'image') body.visible = false; container.alpha = this.selected.has(card.id) ? 1 : 0.6; }
@@ -201,7 +200,7 @@ class PixiCanvasKernel implements CanvasKernel {
         this.views.set(card.id, view);
       } else this.createView(card);
     }
-    this.ordered = nextCards.sort((a, b) => a.order.localeCompare(b.order));
+    this.ordered = nextCards.sort((a, b) => a.order < b.order ? -1 : a.order > b.order ? 1 : 0);
     this.overviewOrder = nextCards.slice().sort((a, b) => Number(b.color !== 'white') - Number(a.color !== 'white')
       || Number(b.type === 'document') - Number(a.type === 'document') || b.width * b.height - a.width * a.height);
     for (let i = 0; i < this.ordered.length; i++) {
@@ -215,7 +214,7 @@ class PixiCanvasKernel implements CanvasKernel {
   private createView(card: CanvasCard): void {
     const container = new Container();
     const background = new NineSliceSprite({ texture: this.backgrounds[this.appearance.material], leftWidth: 8, rightWidth: 8, topHeight: 8, bottomHeight: 8 });
-    const body = new Sprite(Texture.EMPTY);
+    const body = new Container();
     body.visible = false;
     const label = new Text({ text: readCanvasElementText(card).split('\n')[0].slice(0, 120) || '空白卡片',
       style: { fontFamily: 'system-ui', fontSize: 15, wordWrap: true, wordWrapWidth: Math.max(1, card.width - 28), breakWords: true } });
@@ -237,21 +236,33 @@ class PixiCanvasKernel implements CanvasKernel {
   }
   setBitmap(id: CanvasCardId, revision: number, key: string, bitmap: ImageBitmap): boolean {
     const card = this.cards.get(id);
-    if (!card || card.revision !== revision || this.destroyed) { bitmap.close(); return false; }
+    if (!card) { bitmap.close(); return false; }
+    return this.setRasterTiles(id, revision, key, [{ bitmap, x: 0, y: 0, width: card.width, height: card.height }]);
+  }
+  setRasterTiles(id: CanvasCardId, revision: number, key: string, tiles: readonly CanvasRasterTile[]): boolean {
+    const card = this.cards.get(id);
+    if (!card || card.revision !== revision || this.destroyed) { tiles.forEach((tile) => tile.bitmap.close()); return false; }
     const previous = this.bitmaps.get(id);
-    if (previous?.key === key) { bitmap.close(); return true; }
+    if (previous?.key === key) { tiles.forEach((tile) => tile.bitmap.close()); return true; }
+    const bytes = tiles.reduce((total, tile) => total + tile.bitmap.width * tile.bitmap.height * 4, 0);
+    if (bytes > this.budget) { tiles.forEach((tile) => tile.bitmap.close()); return false; }
     this.removeBitmap(id);
-    const bytes = bitmap.width * bitmap.height * 4;
-    if (bytes > this.budget) { bitmap.close(); return false; }
     while (this.bitmapBytes + bytes > this.budget) {
       const oldest = this.bitmaps.keys().next();
       if (oldest.done) break;
       this.removeBitmap(oldest.value);
     }
-    const entry = { key, texture: Texture.from(bitmap, true), bitmap, bytes };
-    this.bitmaps.set(id, entry); this.bitmapBytes += bytes;
+    const resources = tiles.map((tile) => ({ texture: Texture.from(tile.bitmap, true), bitmap: tile.bitmap }));
+    this.bitmaps.set(id, { key, resources, bytes }); this.bitmapBytes += bytes;
     const view = this.views.get(id);
-    if (view) { view.body.texture = entry.texture; this.updateView(view); }
+    if (view) {
+      tiles.forEach((tile, index) => {
+        const sprite = new Sprite(resources[index].texture);
+        sprite.position.set(tile.x, tile.y); sprite.width = tile.width; sprite.height = tile.height;
+        view.body.addChild(sprite);
+      });
+      this.updateView(view);
+    }
     this.schedule(); return true;
   }
   invalidateBitmaps(): void { for (const id of this.bitmaps.keys()) this.removeBitmap(id); this.schedule(); }
@@ -280,6 +291,11 @@ class PixiCanvasKernel implements CanvasKernel {
   visibleCards(): readonly CanvasCard[] { return this.ordered.filter((card) => this.visible(card)); }
   screenToWorld(point: CanvasPoint): CanvasPoint { return canvasScreenToWorld(point, this.camera); }
   worldToScreen(point: CanvasPoint): CanvasPoint { return canvasWorldToScreen(point, this.camera); }
+  async captureImage(format: 'png' | 'jpeg', quality = 0.9): Promise<string> {
+    return this.app.renderer.extract.base64({ target: this.app.stage, format: format === 'jpeg' ? 'jpg' : 'png',
+      quality, frame: new Rectangle(0, 0, this.width, this.height), resolution: this.app.renderer.resolution,
+      clearColor: this.appearance.dark ? '#222723' : '#f2f3ee' });
+  }
   readStats() { return { cards: this.cards.size, edges: this.edges.length, bitmaps: this.bitmaps.size, bitmapBytes: this.bitmapBytes, renders: this.renders }; }
   destroy(): void {
     this.destroyed = true;

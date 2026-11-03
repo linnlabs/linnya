@@ -12,6 +12,9 @@ export interface CardRasterRequest {
   readonly width: number;
   readonly height: number;
   readonly scale: number;
+  /** width 保持完整正文排版宽度；tileWidth 只限制当前可见纹理。 */
+  readonly tileWidth?: number;
+  readonly offsetX?: number;
   readonly offsetY?: number;
 }
 export interface CardRasterResult {

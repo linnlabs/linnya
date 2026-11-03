@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": { "noEmit": true },
-  "include": ["./*.ts"],
+  "include": ["./renderer.ts", "./electron.ts", "./kernelProbe.ts"],
   "exclude": []
 }

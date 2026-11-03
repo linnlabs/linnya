@@ -92,23 +92,25 @@ export function createHtmlCardRasterizer(options: {
     },
     async rasterize(request: CardRasterRequest, signal): Promise<CardRasterResult> {
       const { width, height, scale } = request;
-      const physicalWidth = Math.ceil(width * scale);
+      const tileWidth = request.tileWidth ?? width;
+      const physicalWidth = Math.ceil(tileWidth * scale);
       const physicalHeight = Math.ceil(height * scale);
       const maxEdge = options.maxTextureEdge ?? 4096;
-      if (![height, scale].every((n) => Number.isFinite(n) && n > 0)
+      if (![tileWidth, height, scale].every((n) => Number.isFinite(n) && n > 0)
         || physicalWidth > maxEdge || physicalHeight > maxEdge) throw new Error('raster_tile_limit');
       await install(request.element, width, signal);
       const contentHeight = source.getBoundingClientRect().height;
-      source.style.transform = `translateY(${-Math.max(0, request.offsetY ?? 0)}px)`;
-      viewport.style.width = canvas.style.width = `${width}px`;
+      source.style.transform = `translate(${-Math.max(0, request.offsetX ?? 0)}px,${-Math.max(0, request.offsetY ?? 0)}px)`;
+      viewport.style.width = canvas.style.width = `${tileWidth}px`;
       viewport.style.height = canvas.style.height = `${height}px`;
       canvas.width = physicalWidth;
       canvas.height = physicalHeight;
       const context = canvas.getContext('2d');
       if (!context || !canDraw(context)) throw new Error('html_canvas_unavailable');
       await waitForPaint(canvas, () => {
-        context.setTransform(scale, 0, 0, scale, 0, 0);
-        context.clearRect(0, 0, width, height);
+        // HTML-in-Canvas 以 backing/CSS 比例生成记录；再次 scale 会把正文放大两遍。
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.clearRect(0, 0, physicalWidth, physicalHeight);
         context.drawElementImage(viewport, 0, 0);
       }, options.timeoutMs ?? 2000, signal);
       const bitmap = await createImageBitmap(canvas);
@@ -117,7 +119,7 @@ export function createHtmlCardRasterizer(options: {
         assertActive(signal);
         throw new Error('rasterizer_disposed');
       }
-      return { bitmap, width, height, contentHeight };
+      return { bitmap, width: tileWidth, height, contentHeight };
     },
     dispose() { disposed = true; canvas.remove(); },
   };

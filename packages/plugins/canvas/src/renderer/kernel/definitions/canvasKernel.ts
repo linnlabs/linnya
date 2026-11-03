@@ -11,6 +11,9 @@ export interface CanvasAppearance {
   readonly material: 'paper' | 'card';
   readonly overview: 'titles' | 'thumbnails';
 }
+export interface CanvasRasterTile {
+  readonly bitmap: ImageBitmap; readonly x: number; readonly y: number; readonly width: number; readonly height: number;
+}
 export interface CanvasKernel {
   readonly canvas: HTMLCanvasElement;
   setElements(elements: readonly CanvasElement[]): void;
@@ -18,6 +21,7 @@ export interface CanvasKernel {
   readCamera(): CanvasCamera;
   setSelection(ids: readonly CanvasCardId[]): void;
   setBitmap(id: CanvasCardId, revision: number, key: string, bitmap: ImageBitmap): boolean;
+  setRasterTiles(id: CanvasCardId, revision: number, key: string, tiles: readonly CanvasRasterTile[]): boolean;
   invalidateBitmaps(): void;
   setAppearance(appearance: CanvasAppearance): void;
   resize(width: number, height: number, resolution?: number): void;
@@ -26,6 +30,7 @@ export interface CanvasKernel {
   visibleCards(): readonly CanvasCard[];
   screenToWorld(point: CanvasPoint): CanvasPoint;
   worldToScreen(point: CanvasPoint): CanvasPoint;
+  captureImage(format: 'png' | 'jpeg', quality?: number): Promise<string>;
   readStats(): { readonly cards: number; readonly edges: number; readonly bitmaps: number; readonly bitmapBytes: number; readonly renders: number };
   destroy(): void;
 }
