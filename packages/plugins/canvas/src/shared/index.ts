@@ -10,3 +10,5 @@ export * from './changeset/definitions/canvasSynchronization';
 export * from './history/definitions/canvasUserHistory';
 export * from './agentChanges/definitions/canvasAgentChanges';
 export * from './images/definitions/canvasImageRequests';
+export { searchCanvasElements } from './search/functions/searchCanvasElements';
+export type { CanvasSearchHit, CanvasSearchContext } from './search/definitions/canvasSearch';

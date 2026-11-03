@@ -1,16 +1,19 @@
 import { computed, watch } from 'vue';
 import { JsonValueSchema } from '@app/schemas';
-import { createCanvasPlainTextDocument, type CanvasCard, type CanvasCardId, type CanvasColor, type CanvasElementId, type CanvasPoint } from '@plugin/canvas/shared';
+import { createCanvasPlainTextDocument, canvasBounds, type CanvasCard, type CanvasCardId, type CanvasColor, type CanvasElementId, type CanvasPoint } from '@plugin/canvas/shared';
 import { createPixiCanvasKernel, type CanvasAppearance, type CanvasKernelIntent } from '../kernel';
 import { createCanvasDocumentSession, registerCanvasSaveParticipant } from '../features/canvasDocument';
 import { createCanvasCardEditor } from '../features/cardEditing';
 import { createCanvasSelection, mergeCanvasSelection } from '../features/selection';
-import { buildColorCommands, buildDeleteCommands, buildMoveCommands } from '../features/elementEditing';
+import { buildColorCommands, buildDeleteCommands, buildMoveCommands, createCanvasElementActions } from '../features/elementEditing';
 import { useCanvasPreferencesStore } from '../features/materialSetting';
+import { createCanvasCardResize } from '../features/cardResizing';
+import { canvasSelectionToolbarStyle } from '../functions/canvasSelectionToolbarStyle';
 import { createCanvasRasterPresentation } from './createCanvasRasterPresentation';
 import type { CanvasSurfaceOptions, CanvasSurfacePorts } from '../definitions/canvasSurface';
 import { createCanvasSurfaceState } from '../store/createCanvasSurfaceState';
 import { cardEditorStyle } from '../features/cardEditing/functions/cardEditorStyle';
+import { installCanvasClipboard, selectCanvasSubgraph } from '../features/clipboard';
 import { readCanvasShortcut } from '../functions/readCanvasShortcut';
 
 /** 表面的组合根：只连接已提交文档、草稿、选择、kernel与Host端口。 */
@@ -22,6 +25,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   const state = createCanvasSurfaceState();
   const { camera, error, context } = state;
   const report = (value: unknown) => { state.fail(value instanceof Error ? value.message : String(value)); };
+  const resizing = createCanvasCardResize(session, report);
   const readAppearance = (): CanvasAppearance => ({ dark: document.documentElement.dataset.theme === 'dark' || document.documentElement.classList.contains('dark'), material: preferences.preferences.material, overview: preferences.preferences.overview });
   const kernel = await createPixiCanvasKernel({ host: options.host, onIntent: intent => { void handleIntent(intent).catch(report); } });
   const raster = createCanvasRasterPresentation({ host: options.stagingHost, kernel, readAppearance, reportFailure: report });
@@ -40,6 +44,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     if (!(await finish())) return;
     selection.select(mergeCanvasSelection(selection.ids.value, ids, additive)); kernel.setSelection(selection.ids.value);
   }
+  const actions = createCanvasElementActions(session, { read: () => selection.ids.value, select });
   async function createText(point?: CanvasPoint, text = '') {
     if (!(await finish())) return;
     const target = point ?? kernel.screenToWorld({ x: options.host.clientWidth / 2 - 140, y: options.host.clientHeight / 2 - 90 });
@@ -58,10 +63,12 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     switch (intent.kind) {
       case 'select': await select(intent.ids, intent.additive); return;
       case 'editing': await Promise.all(intent.ids.map(id => session.protect(id, intent.active ? ['x', 'y', 'width', 'height'] : []))); return;
-      case 'move': await move(intent.ids, intent.dx, intent.dy); return;
+      case 'move':
+        if (intent.copy) { try { await actions.duplicate(selectCanvasSubgraph(session.state.snapshot.value?.elements ?? [], intent.ids), intent.dx, intent.dy); } finally { kernel.clearDragPreview(); await Promise.all(intent.ids.map(id => session.protect(id, []))); } }
+        else await move(intent.ids, intent.dx, intent.dy); return;
       case 'open': await editor.open(intent.id); return;
       case 'camera': state.setCamera(intent.camera); raster.refresh(); return;
-      case 'context': state.setContext(intent); return;
+      case 'context': if (intent.id && !selection.ids.value.includes(intent.id)) await select([intent.id]); state.setContext(intent); return;
     }
   }
   const stopSnapshot = watch(session.state.snapshot, snapshot => { if (snapshot) { kernel.setElements(snapshot.elements); raster.refresh(); } });
@@ -83,7 +90,12 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     if (!kernel.hitTest(point)) void createText(point).catch(report);
   };
   options.host.addEventListener('dblclick', doubleClick);
+  const removeClipboard = installCanvasClipboard(options.host, { canHandle: () => !editor.state.draft.value, read: () => selectCanvasSubgraph(session.state.snapshot.value?.elements ?? [], selection.ids.value),
+    pasteElements: elements => actions.duplicate(elements), pasteText: text => createText(undefined, text), cut: remove, fail: report });
   const removeSave = registerCanvasSaveParticipant({ documentId: options.documentId, save: async final => { const result = await editor.save(final); setDirty(); return result; } });
+  const selectedCards = computed(selected);
+  const selectionStyle = computed(() => canvasSelectionToolbarStyle(canvasBounds(selectedCards.value), camera.value, options.host.clientWidth));
+  const resizeStyle = computed(() => cardEditorStyle(resizing.state.preview.value ?? (selectedCards.value.length === 1 ? selectedCards.value[0] : undefined), camera.value));
   const editorStyle = computed(() => cardEditorStyle(cards().find(card => card.id === editor.state.draft.value?.elementId), camera.value));
   const zoom = (value: number) => { kernel.setCamera({ ...camera.value, zoom: value }); state.setCamera(kernel.readCamera()); raster.refresh(); };
   const fit = (onlySelected = false) => { kernel.fit(onlySelected ? selected() : cards()); state.setCamera(kernel.readCamera()); raster.refresh(); };
@@ -95,6 +107,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     if (!action) return;
     event.preventDefault();
     switch (action) {
+      case 'duplicate': await actions.duplicate(); return;
       case 'undo': await undo('undo'); return;
       case 'redo': await undo('redo'); return;
       case 'delete': await remove(); return;
@@ -115,10 +128,13 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   try { kernel.setAppearance(readAppearance()); await session.open(options.documentId); }
   catch (failure) { report(failure); }
   return {
-    session, editor, selection, camera, error, context, editorStyle, createText, select, color, remove, fit, zoom, undo, report,
+    session, editor, selection, camera, error, context, editorStyle, resizeStyle, selectionStyle, selectedCards, actions, createText, select, color, remove, fit, zoom, undo, report,
+    resizeStart(event: PointerEvent) { const card = selectedCards.value[0]; if (card && selectedCards.value.length === 1) resizing.start(card, event, camera.value.zoom); },
+    closeContext() { state.setContext(null); },
+    contextStyle: computed(() => { const point = context.value?.point; const screen = point ? kernel.worldToScreen(point) : { x: 0, y: 0 }; return { left: `${Math.min(Math.max(8, screen.x), options.host.clientWidth - 180)}px`, top: `${Math.min(Math.max(8, screen.y), options.host.clientHeight - 320)}px` }; }),
     locate(ids: readonly CanvasElementId[]) { const elements = cards().filter(element => ids.includes(element.id)); kernel.fit(elements); state.setCamera(kernel.readCamera()); raster.refresh(); },
     keydown: (event: KeyboardEvent) => { void keydown(event).catch(report); },
     edit: async () => { const id = selection.ids.value[0]; if (id) await editor.open(id); },
-    destroy() { removeSave(); stopSnapshot(); stopDraft(); stopAppearance(); observer.disconnect(); themeObserver.disconnect(); options.host.removeEventListener('dblclick', doubleClick); editable.destroy(); editor.dispose(); void session.close().catch(report); raster.dispose(); kernel.destroy(); },
+    destroy() { resizing.dispose(); removeClipboard(); removeSave(); stopSnapshot(); stopDraft(); stopAppearance(); observer.disconnect(); themeObserver.disconnect(); options.host.removeEventListener('dblclick', doubleClick); editable.destroy(); editor.dispose(); void session.close().catch(report); raster.dispose(); kernel.destroy(); },
   };
 }

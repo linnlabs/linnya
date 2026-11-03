@@ -70,7 +70,7 @@ describe('renderer SDK ports', () => {
   it('forwards composer reference commands and returns the generated reference id', () => {
     const addReference = vi.fn(() => 'reference-1');
     const removeReference = vi.fn();
-    registerRendererComposerCommandPort({ addReference, removeReference });
+    registerRendererComposerCommandPort({ addReference, removeReference, focusInput: async () => true });
 
     const input = {
       text: 'Node A',
@@ -89,6 +89,7 @@ describe('renderer SDK ports', () => {
     const port = {
       addReference: vi.fn(() => 'reference-1'),
       removeReference: vi.fn(),
+      focusInput: async () => true,
     };
     registerRendererComposerCommandPort(port);
 

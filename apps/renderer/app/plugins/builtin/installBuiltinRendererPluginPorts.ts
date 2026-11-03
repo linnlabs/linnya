@@ -8,6 +8,9 @@
  * - port 实现保持窄小，避免把 conversation 细节暴露成插件公共 API。
  */
 
+import { nextTick } from 'vue';
+import { useLayoutStore } from '@/app/layout/store/layoutStore';
+import { focusRegisteredComposerInput } from '@/domains/conversation/features/composer-focus';
 import {
   registerRendererAiInvocationPort,
   type RendererEnsureAiConversationRequest,
@@ -274,6 +277,12 @@ function installInteractiveToolPort(): void {
 
 function installComposerCommandPort(): void {
   registerRendererComposerCommandPort({
+    async focusInput() {
+      const layout = useLayoutStore();
+      if (layout.state.layoutMode === 'editor-centric' && !layout.state.conversationPane.visible) layout.openConversationInRightPane();
+      await nextTick();
+      return focusRegisteredComposerInput();
+    },
     addReference(input) {
       return useComposerReferences().addReference(input);
     },

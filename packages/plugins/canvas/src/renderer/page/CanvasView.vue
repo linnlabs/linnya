@@ -111,7 +111,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { ToolbarButton, ToolbarGroup, CustomSelect } from '@linnya/renderer-ui';
-import { TextIcon, FullscreenIcon, EditIcon, ZoomInIcon, ZoomOutIcon, UndoIcon, RedoIcon } from '@linnya/renderer-ui/icons';
+import { TextIcon, FullscreenIcon, EditIcon, ZoomInIcon, ZoomOutIcon, UndoIcon, RedoIcon, DuplicateIcon, LinkIcon } from '@linnya/renderer-ui/icons';
 import { getActiveFileSession, markActiveFileDirty } from '@plugin/renderer/workspaceRuntime';
 import { createEmbeddedMarkdownEditor } from '@plugin/renderer/embeddedMarkdownEditor';
 import { createCanvasDocumentPort } from '../adapters/createCanvasDocumentPort';
@@ -137,6 +137,23 @@ const shownError = computed(() => failure.value ?? surface.value?.editor.state.e
 const selectedColor = computed(() => {
   const id = selection.value[0];
   return surface.value?.session.state.snapshot.value?.elements.find(element => element.id === id)?.color ?? 'white';
+});
+const moreActions = [{ value: 'lock', text: '锁定 / 解锁' }, { value: 'front', text: '置于顶层' }, { value: 'back', text: '置于底层' }, { value: 'left', text: '左对齐' }, { value: 'top', text: '顶部对齐' }, { value: 'grid', text: '网格排列' }, { value: 'delete', text: '删除' }];
+const contextActions = computed(() => selection.value.length ? [{ value: 'edit', text: '编辑' }, { value: 'duplicate', text: '复制卡片' }, ...moreActions] : [{ value: 'new', text: '新建文字卡' }, { value: 'fit', text: '显示全部' }]);
+const elementAction = (value: string | number | boolean) => run(async () => {
+  const current = surface.value;
+  if (!current) return;
+  switch (value) {
+    case 'new': await current.createText(current.context.value?.point); break;
+    case 'fit': current.fit(); break;
+    case 'edit': await current.edit(); break;
+    case 'duplicate': await current.actions.duplicate(); break;
+    case 'lock': await current.actions.lock(); break;
+    case 'front': case 'back': await current.actions.layer(value); break;
+    case 'left': case 'top': case 'grid': await current.actions.align(value); break;
+    case 'delete': await current.remove(); break;
+  }
+  current.closeContext();
 });
 const colors = [{ value: 'white', text: '原色' }, { value: 'red', text: '红' }, { value: 'orange', text: '橙' }, { value: 'yellow', text: '黄' }, { value: 'green', text: '绿' }, { value: 'cyan', text: '青' }, { value: 'purple', text: '紫' }];
 const run = async (action: () => Promise<unknown> | undefined) => { try { await action(); } catch (error) { failure.value = error instanceof Error ? error.message : String(error); } };
