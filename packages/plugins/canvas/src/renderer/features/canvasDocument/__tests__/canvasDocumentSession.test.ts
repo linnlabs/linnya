@@ -32,6 +32,19 @@ describe('Canvas document session', () => {
     expect(f.session.state.snapshot.value).toBeNull();
   });
 
+  it('正文与拖动分别持有保护，结束正文编辑不会清掉仍在拖动的坐标字段', async () => {
+    const f = fixture(); await f.session.open('doc');
+    const id = (await import('@plugin/canvas/shared')).CanvasCardIdSchema.parse('c1');
+    await f.session.protect(id, ['data'], 'text');
+    await f.session.protect(id, ['x', 'y'], 'drag');
+    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: ['data', 'x', 'y'] }));
+    await f.session.protect(id, [], 'text');
+    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: ['x', 'y'] }));
+    await f.session.protect(id, [], 'drag');
+    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] }));
+    await f.session.close();
+  });
+
   it('A→B→A 的旧异步响应不能装进新的文档会话', async () => {
     const f = fixture();
     let finishOld: ((value: CanvasSnapshot) => void) | undefined;

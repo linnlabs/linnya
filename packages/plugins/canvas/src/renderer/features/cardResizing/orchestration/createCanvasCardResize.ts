@@ -15,14 +15,14 @@ export function createCanvasCardResize(session: CanvasDocumentSession, report: (
     if (active.target.hasPointerCapture(active.pointer)) active.target.releasePointerCapture(active.pointer);
     gesture = null; state.set(null);
   };
-  const cancel = () => { if (gesture) { const active = gesture; release(active); void session.protect(active.card.id, []).catch(report); } };
+  const cancel = () => { if (gesture) { const active = gesture; release(active); void session.protect(active.card.id, [], 'resize').catch(report); } };
   const move = (event: PointerEvent) => { if (gesture?.pointer === event.pointerId) state.set(resolveCanvasResize(gesture, event)); };
   const up = (event: PointerEvent) => {
     if (!gesture || event.pointerId !== gesture.pointer) return;
     const active = gesture, size = resolveCanvasResize(active, event);
     release(active);
-    void session.commit([{ op: 'update', id: active.card.id, baseRevision: active.card.revision, patch: { width: size.width, height: size.height } }])
-      .catch(report).finally(() => { void session.protect(active.card.id, []).catch(report); });
+    void session.commit([{ op: 'update', id: active.card.id, baseRevision: active.card.revision, patch: { width: size.width, height: size.height, ...(active.card.type === 'text' ? { data: { ...active.card.data, heightMode: 'fixed' } } : {}) } }])
+      .catch(report).finally(() => { void session.protect(active.card.id, [], 'resize').catch(report); });
   };
   const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); } };
   return { state,
@@ -33,8 +33,8 @@ export function createCanvasCardResize(session: CanvasDocumentSession, report: (
       gesture.target.setPointerCapture(event.pointerId); state.set(card);
       gesture.target.addEventListener('pointermove', move); gesture.target.addEventListener('pointerup', up); gesture.target.addEventListener('pointercancel', cancel);
       window.addEventListener('keydown', escape, true); window.addEventListener('blur', cancel);
-      void session.protect(card.id, ['width', 'height']).catch(report);
-      timer = setInterval(() => { void session.protect(card.id, ['width', 'height']).catch(report); }, 2000);
+      void session.protect(card.id, card.type === 'text' ? ['width', 'height', 'data'] : ['width', 'height'], 'resize').catch(report);
+      timer = setInterval(() => { void session.protect(card.id, card.type === 'text' ? ['width', 'height', 'data'] : ['width', 'height'], 'resize').catch(report); }, 2000);
     },
     dispose: cancel,
   };

@@ -4,6 +4,7 @@ import { saveCanvasDocumentDrafts } from './ports/canvasSaveParticipants';
 
 export const canvasFileHandler: FileTypeLifecycleHandler = {
   type: CANVAS_DOCUMENT_TYPE,
+  deferSetFilePathUntilOpen: true,
   async open(session) {
     throwIfFileSessionOpenCancelled(session);
     const result = await notifyWorkspaceDocumentOpened({ documentId: session.documentId });
