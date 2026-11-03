@@ -9,3 +9,5 @@
 单卡与整组撤回共用正式写确认通道，结果按逐操作回执说明部分保留、未反转和附近恢复。撤回后“重做撤回”反转该撤回实际产生的用户步骤，并携带 expectedActionId；有后来用户动作或步骤已被消费时明确拒绝，不能撤掉别的动作。全跳过不提供重做。只读表面禁用变更按钮，阅读导航仍可用。
 
 组 skips 来自正式写结果与对应原操作字段；旧组缺记录明确显示“历史信息不全”。applied + later_fields_preserved 是部分成功。正文 sequence、当前内容相似度或按钮出现时长都不能替代事实或撤销栈顶身份。
+
+公开样式资源为`styles/agentReview.css`，由插件Renderer contribution以显式`?url`入口登记，不在feature index隐式装入，独立制品同时验证CSS闭包。
