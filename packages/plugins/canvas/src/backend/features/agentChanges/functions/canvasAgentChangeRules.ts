@@ -12,16 +12,24 @@ export function evaluateCanvasApproval(before: CanvasCommitState, plan: CanvasCo
   const reason: CanvasPendingApproval['reason'] | null = deletedUser.length && deletedUserCardCount >= 20 ? 'delete_threshold' : moved.size >= 20 && moved.size >= userCards.length * 0.9 ? 'arrange_threshold' : null;
   return { reason, deletedUserCardCount, movedUserCardCount: moved.size };
 }
+
+/** 一张卡可在组内多次变化，角标只表达组前后可见差异。 */
+function classifyCardChanges(records: CanvasHistoryEntry['changes']): 'added' | 'updated' | 'deleted' | null {
+  const first = records[0]; const last = records[records.length - 1];
+  if (!first || !last || (!first.before && !last.after) || (first.before ?? last.after)?.type === 'edge') return null;
+  if (!first.before && last.after) return 'added';
+  if (first.before && !last.after) return 'deleted';
+  return records.some(record => record.fields.some(field => !['x', 'y', 'order', 'parentId'].includes(field))) ? 'updated' : null;
+}
 export function projectCanvasAgentGroup(group: CanvasAgentGroupRecord, pendingApproval: CanvasPendingApproval | null, now: number, visibleAfterSequence?: number): CanvasAgentGroup {
   const byId = new Map<CanvasElementId, CanvasHistoryEntry['changes']>();
   for (const change of group.entry.changes) byId.set(change.id, [...(byId.get(change.id) ?? []), change]);
   const added: CanvasElementId[] = []; const updated: CanvasElementId[] = []; const deleted: CanvasElementId[] = [];
   for (const [id, records] of byId) {
-    const first = records[0]; const last = records[records.length - 1];
-    if (!first || !last || (!first.before && !last.after) || (first.before ?? last.after)?.type === 'edge') continue;
-    if (!first.before && last.after) added.push(id);
-    else if (first.before && !last.after) deleted.push(id);
-    else if (records.some(record => record.fields.some(field => !['x', 'y', 'order', 'parentId'].includes(field)))) updated.push(id);
+    const kind = classifyCardChanges(records);
+    if (kind === 'added') added.push(id);
+    else if (kind === 'deleted') deleted.push(id);
+    else if (kind === 'updated') updated.push(id);
   }
   const deletedCards = [...byId.values()].flatMap(records => { const last = records[records.length - 1]; return last?.before && !last.after && last.before.type !== 'edge' ? [last.before] : []; });
   return { id: group.id, documentId: group.documentId, conversationId: group.conversationId, runIds: group.runIds, reviewedElementIds: group.reviewedElementIds, createdAt: group.createdAt, lastWriteAt: group.lastWriteAt, writing: group.entry.changes.length > 0 && now - group.lastWriteAt < 3000, added, updated, deleted, deletedCards, visibleDeletedCards: visibleAfterSequence === undefined ? [] : deletedCards.filter(card => (group.deletedAtSequence[card.id] ?? 0) > visibleAfterSequence), pendingApproval };
