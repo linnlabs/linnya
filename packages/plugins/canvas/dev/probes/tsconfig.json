@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": { "noEmit": true },
-  "include": ["./renderer.ts", "./electron.ts", "./kernelProbe.ts"],
+  "include": ["./renderer.ts", "./electron.ts", "./kernelProbe.ts", "./visualRenderer.ts", "./visualElectron.ts"],
   "exclude": []
 }
