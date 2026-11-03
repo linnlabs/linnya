@@ -26,12 +26,12 @@ export function createCanvasAgentReview(session: CanvasDocumentSession, port: Ca
   return { state, refresh,
     select: state.select,
     withdraw: (groupId: string, elementIds?: readonly CanvasElementId[]) => run(async () => {
-      const result = await port.withdraw({ documentId: documentId(), viewId: session.viewId, requestId: crypto.randomUUID(), groupId, ...(elementIds?.length ? { elementIds: [...elementIds] } : {}) });
-      await session.synchronize(result.commit.sequence);
+      const request = { documentId: documentId(), viewId: session.viewId, requestId: crypto.randomUUID(), groupId, ...(elementIds?.length ? { elementIds: [...elementIds] } : {}) };
+      await session.confirmMutation({ send: () => port.withdraw(request), accept: result => session.synchronize(result.commit.sequence) });
     }),
     approve: (pendingId: string, decision: 'allow' | 'deny') => run(async () => {
-      const result = await port.approve({ documentId: documentId(), viewId: session.viewId, requestId: crypto.randomUUID(), pendingId, decision });
-      if (result.kind === 'committed') await session.synchronize(result.commit.sequence);
+      const request = { documentId: documentId(), viewId: session.viewId, requestId: crypto.randomUUID(), pendingId, decision };
+      await session.confirmMutation({ send: () => port.approve(request), accept: async result => { if (result.kind === 'committed') await session.synchronize(result.commit.sequence); } });
     }),
     complete: (groupId: string) => run(async () => { await port.complete(documentId(), groupId); }),
     review: (elementId: CanvasElementId, groupId?: string) => run(async () => { await port.review(documentId(), elementId, groupId); }),

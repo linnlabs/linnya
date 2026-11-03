@@ -78,3 +78,9 @@ Standalone `entry.command` 只提供 read/show/find/neighbors/region/check，显
 当前内容格式为1。读取时仅把可验证的元素交给显示投影；未知类型、非法正文/字段版本/排序、坏分组及依赖隔离卡片的线保留原始SQLite行，并返回 `integrity` 诊断。出现任何此类问题或更高格式版本时整张画布只读，当前提交、撤销、批准与恢复共享提交入口并拒绝写入，避免老版本剥离未来字段。隔离只影响展示，不写占位节点、不回存过滤后的快照。未来增加真正内容格式迁移时，必须先用版本历史保留迁移前状态。
 
 兼容策略参考 [Excalidraw对未知属性保留的修复](https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/CHANGELOG.md) 与 [tldraw的schema迁移owner约定](https://github.com/tldraw/tldraw/blob/main/packages/tlschema/README.md)；本插件以只读和原始行保留避免静默损失。
+
+## Renderer 写确认
+
+同一表面把commit、undo、排布和Agent组撤回/批准放入写确认通道。运输结果不确定时，保留原调用与冻结负载并显示“重试确认”；只重发同一requestId，其他意图等待。已收到成功回执但补拉失败时只重试接纳，不再次发送写入。明确业务拒绝会释放通道并保留对应草稿；关闭使本地等待失效，不否认后台已成功事实。初次文字卡已经创建而关联线跳过时接纳真实卡片身份，准确说明部分成功。
+
+一次多图片导入先完成全部资产准备，再共同提交全部卡片、归属和一次用户撤销；准备任一图片失败时不创建部分卡片。准备结果只保留稳定资产身份与尺寸，不在UI数组长期持有原图字节。初始图框尺寸由shared `canvasDefaultImageSize`计算。

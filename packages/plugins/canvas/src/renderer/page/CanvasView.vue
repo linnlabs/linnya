@@ -275,6 +275,19 @@
     >
       {{ shownError }}
     </p>
+    <div
+      v-if="surface?.session.deliveryNotice.value"
+      class="canvas-read-notice"
+      role="alert"
+    >
+      {{ surface.session.deliveryNotice.value }}
+      <button
+        type="button"
+        @click="run(() => surface?.session.retryDelivery())"
+      >
+        重试确认
+      </button>
+    </div>
     <p
       v-else-if="!surface"
       class="canvas-status"

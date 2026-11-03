@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { CanvasCardIdSchema, createCanvasPlainTextDocument, type CanvasCommitResult, type CanvasCardId, type CanvasTextDocument } from '@plugin/canvas/shared';
-import { createCanvasDocumentSession, type CanvasDocumentPort } from '../../canvasDocument';
+import { CanvasDeliveryUnknownError, createCanvasDocumentSession, type CanvasDocumentPort } from '../../canvasDocument';
 import { createCanvasTextCreation } from '..';
 async function fixture() {
   const commit = vi.fn(async (input: Parameters<CanvasDocumentPort['commit']>[0]): Promise<CanvasCommitResult> => ({ documentId: 'doc', requestId: input.requestId, sequence: 0, results: input.operations.map((_, index) => ({ index, status: 'applied', id: null, reason: null })), refs: { $created: CanvasCardIdSchema.parse('c2') } }));
@@ -28,4 +28,17 @@ it('请求期间的继续输入交给已创建卡片，不丢字；失败保留�
   expect(f.committed).toHaveBeenCalledWith(CanvasCardIdSchema.parse('c2'), true, expect.any(Function), expect.any(String)); expect(remaining).toEqual(createCanvasPlainTextDocument('第二版'));
   f.creation.begin({ x: 0, y: 0 }, null, '保留'); f.commit.mockRejectedValueOnce(new Error('save failed'));
   expect(await f.creation.save(true)).toBe(false); expect(f.creation.state.draft.value?.content).toEqual(createCanvasPlainTextDocument('保留')); await f.session.close();
+});
+it('回包丢失后确认只重发冻结正文，新输入在接纳真实卡片后继续；连线部分跳过也不重复建卡', async () => {
+  const f = await fixture(); let remaining: CanvasTextDocument | null = null;
+  f.committed.mockImplementation(async (_id, _editing, read) => { remaining = read(); });
+  f.commit.mockRejectedValueOnce(new CanvasDeliveryUnknownError('response lost'));
+  f.creation.begin({ x: 0, y: 0 }, null, '第一版'); const saving = f.creation.save(false);
+  await vi.waitFor(() => expect(f.session.deliveryNotice.value).not.toBeNull());
+  f.creation.update(createCanvasPlainTextDocument('第二版')); await f.session.retryDelivery(); expect(await saving).toBe(true);
+  expect(f.commit.mock.calls[0]?.[0]).toEqual(f.commit.mock.calls[1]?.[0]); expect(remaining).toEqual(createCanvasPlainTextDocument('第二版'));
+  f.creation.begin({ x: 0, y: 0 }, { kind: 'card', cardId: CanvasCardIdSchema.parse('c99'), side: 'right' }, '保留已创建正文');
+  f.commit.mockResolvedValueOnce({ documentId: 'doc', requestId: 'partial', sequence: 0, results: [{ index: 0, status: 'applied', id: CanvasCardIdSchema.parse('c2'), reason: null }, { index: 1, status: 'skipped', id: null, reason: 'missing_endpoint' }], refs: { $created: CanvasCardIdSchema.parse('c2') } });
+  expect(await f.creation.save(true)).toBe(true); expect(f.creation.state.draft.value).toBeNull(); expect(f.creation.state.error.value).toContain('已提交 1 项');
+  await f.creation.save(true); expect(f.commit).toHaveBeenCalledTimes(3); await f.session.close();
 });
