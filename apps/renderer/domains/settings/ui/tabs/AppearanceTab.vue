@@ -54,9 +54,11 @@
       >
         <CustomSelect
           v-model="languageValue"
+          class="appearance-language-select"
           :options="languageOptions"
           :title="settingsMessage('settings.appearance.language.selectTitle')"
           font-size="14px"
+          show-selected-checkmark
         />
       </SettingsRow>
     </SettingsSection>

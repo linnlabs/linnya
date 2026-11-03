@@ -91,6 +91,7 @@
               :class-names="classNames"
               :option-label-overflow="optionLabelOverflow"
               :show-option-label-tooltip="showOptionLabelTooltip"
+              :show-selected-checkmark="showSelectedCheckmark"
               @activate="activateOption"
               @hover="handleOptionHover"
               @open-submenu="handleOptionSubmenuOpen"
@@ -174,6 +175,7 @@
               :class-names="classNames"
               :option-label-overflow="optionLabelOverflow"
               :show-option-label-tooltip="showOptionLabelTooltip"
+              :show-selected-checkmark="showSelectedCheckmark"
               @activate="activateSubmenuOption"
               @hover="handleNestedOptionHover"
               @open-submenu="handleNestedOptionSubmenuOpen"
@@ -214,6 +216,7 @@
             :class-names="classNames"
             :option-label-overflow="optionLabelOverflow"
             :show-option-label-tooltip="showOptionLabelTooltip"
+            :show-selected-checkmark="showSelectedCheckmark"
             @activate="selectOption"
             @update-inline-number="updateInlineNumberValueDirect"
             @adjust-inline-number="adjustInlineNumber"
@@ -263,6 +266,7 @@ interface CustomSelectProps {
   optionsOverflow?: string;
   optionLabelOverflow?: CustomSelectOptionLabelOverflow;
   showOptionLabelTooltip?: boolean;
+  showSelectedCheckmark?: boolean;
   optionsMotionDirection?: CustomSelectOptionsMotionDirection;
   variant?: CustomSelectVariant;
   disabled?: boolean;
@@ -288,6 +292,7 @@ const props = withDefaults(defineProps<CustomSelectProps>(), {
   optionsOverflow: '',
   optionLabelOverflow: 'visible',
   showOptionLabelTooltip: true,
+  showSelectedCheckmark: false,
   optionsMotionDirection: 'down',
   variant: 'default',
   disabled: false,

@@ -84,6 +84,8 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 菜单宽度受限且选项名称可能很长时，传入 `option-label-overflow="ellipsis"`；若还需要在鼠标停留时阅读完整名称，使用 `option-label-overflow="marquee-on-hover"`。后者只滚动真实溢出的标签，并在 reduced-motion 环境保持静态省略号。默认值是 `visible`，不会改变既有菜单布局。
 
+选项较少、需要让当前选择在菜单里一眼可辨时（例如界面语言），传入 `show-selected-checkmark`：每个可直接选中的选项右侧保留一个定宽对勾槽位，选中项显示对勾，未选中项留空，切换选择时标签宽度不变；对勾颜色跟随选中项文字色，槽位对辅助技术隐藏，选中语义仍由 `aria-selected` 表达。带子菜单的父项右侧已有箭头、行内数字项右侧是输入控件，不占槽位。菜单面板与触发器同宽，触发器按内容收缩时可能装不下“文字 + 槽位”，调用方需要给选择器根节点（`class` 会落在它上面）设置合适的 `min-width`，业务不要复制菜单模板。默认值是 `false`，不会改变既有菜单外观。
+
 ### 悬浮提示
 
 `HoverTooltip` 与 `IconButton` 共用一个提示服务，区分指针与键盘两种真实交互来源：指针移动到触发器上时显示（首次等待 500ms，相邻控件之间无延迟），键盘导航形成 `focus-visible` 焦点时立即显示。窗口失焦会关闭现有提示；重新激活窗口本身不会恢复旧提示，必须等待新的指针移动或键盘导航，避免 Chromium 恢复历史焦点时误弹出。组件与浏览器状态机现由 package 拥有；Linnya Host 在 app-level orchestration 中把主进程 `BrowserWindow` 广播适配为 `HoverTooltipWindowFocusPort`，package 和插件都不读取 `window.electronAPI`。运行在 Host 组件树中的插件自然继承该 port；独立 browser consumer 未注入时使用同语义 DOM 事件。

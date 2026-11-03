@@ -304,6 +304,25 @@
   color: var(--color-text-tertiary);
 }
 
+/* showSelectedCheckmark：每个叶子项都保留这个定宽槽位，未选中项留空，选中项切换时标签宽度不变。
+   对勾不设自己的颜色，跟随选中项的文字色（--color-accent）。 */
+.custom-select__options .option-check,
+.custom-select__submenu .option-check {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: var(--space-3);
+}
+
+.custom-select__options .option-check__icon,
+.custom-select__submenu .option-check__icon {
+  width: 100%;
+  height: 100%;
+}
+
 .custom-select__options .select-option.has-children {
   padding-right: var(--space-2);
 }
