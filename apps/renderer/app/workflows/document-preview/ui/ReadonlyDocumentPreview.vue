@@ -44,12 +44,26 @@
         :document-id="current.target.documentId"
         :project-id="current.target.projectId"
       />
-      <div
-        v-else-if="expanded && markdownDetail"
-        ref="detail"
-        class="markdown-document-content readonly-document-preview__detail"
-        @click="preventPreviewNavigation"
-      />
+      <template v-else-if="expanded && markdownDetail">
+        <p
+          v-if="markdown.phase.value === 'loading'"
+          role="status"
+        >
+          正在加载详情…
+        </p>
+        <p
+          v-else-if="markdown.phase.value === 'failed'"
+          role="alert"
+        >
+          详情暂不可用，请重新打开预览。
+        </p>
+        <div
+          ref="detail"
+          class="markdown-document-content readonly-document-preview__detail"
+          :aria-busy="markdown.phase.value === 'loading'"
+          @click="preventPreviewNavigation"
+        />
+      </template>
       <p v-else-if="expanded">
         {{ current.preview.content?.summary ?? unavailable }}
       </p>
@@ -63,7 +77,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, ref, watch, watchEffect } from 'vue';
 import { useNavigationScope } from '@/app/navigation';
 import {
   readDocumentTypePreviewComponent,
@@ -71,6 +85,7 @@ import {
 } from '@/app/plugins/documentTypePresentation';
 import type { DocumentPreviewTarget } from '../definitions/documentPreview';
 import { createDocumentPreviewController } from '../orchestration/createDocumentPreviewController';
+import { createReadonlyMarkdownDetail } from '../orchestration/createReadonlyMarkdownDetail';
 const props = defineProps<{
   readTarget: () => DocumentPreviewTarget;
   detailOnly?: boolean;
@@ -82,6 +97,11 @@ const scope = useNavigationScope(),
   detail = ref<HTMLElement | null>(null);
 const controller = createDocumentPreviewController(props.readTarget, () => scope.currentProjectId),
   current = controller.result;
+const markdown = createReadonlyMarkdownDetail({
+  element: () => detail.value,
+  load: () => import('@linnya/markdown-document-core'),
+  report: failure => console.warn('[document-preview] readonly Markdown detail failed', failure),
+});
 const unavailable = computed(() =>
   current.value?.presentation.status === 'plugin_unavailable'
     ? '需要启用或安装对应插件'
@@ -115,25 +135,17 @@ watchEffect(() => {
 watch(current, () => {
   expanded.value = Boolean(props.detailOnly || pointerInside.value);
 });
-watch([expanded, current], async ([value]) => {
+watch([expanded, current], ([value]) => {
   const identity = current.value,
     content = markdownDetail.value;
-  if (!value || detailComponent.value || !content || !identity) return;
-  if (content.format === 'text') {
-    await nextTick();
-    if (controller.isCurrent(identity) && expanded.value && detail.value)
-      detail.value.textContent = content.text;
+  if (!value || detailComponent.value || !content || !identity) {
+    markdown.clear();
     return;
   }
-  const markdown = await import('@linnya/markdown-document-core');
-  await nextTick();
-  if (controller.isCurrent(identity) && expanded.value && detail.value)
-    detail.value.replaceChildren(
-      markdown.createMarkdownDocumentFragment(
-        markdown.parseMarkdownDocument(content.text),
-        detail.value.ownerDocument
-      )
-    );
+  void markdown.render(content, () => controller.isCurrent(identity) && expanded.value);
 });
-onBeforeUnmount(controller.dispose);
+onBeforeUnmount(() => {
+  markdown.clear();
+  controller.dispose();
+});
 </script>
