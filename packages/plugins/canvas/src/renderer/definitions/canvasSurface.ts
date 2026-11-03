@@ -3,6 +3,7 @@ import type { Ref } from 'vue';
 import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasElement, CanvasElementId, CanvasPoint } from '@plugin/canvas/shared';
 import type { CanvasDocumentPort } from '../features/canvasDocument';
 import type { CanvasArrangementPort } from '../features/layoutCommands';
+import type { CanvasRestoredMessage } from './canvasHistoryRestoration';
 
 export interface CanvasSurfaceOptions {
   readonly host: HTMLElement;
@@ -15,6 +16,7 @@ export interface CanvasSurfacePorts {
   readonly arrangement?: CanvasArrangementPort;
   createEditor(options: EmbeddedMarkdownEditorOptions): EmbeddedMarkdownEditor;
   markDirty(dirty: boolean): void;
+  subscribeRestored(listener: (message: CanvasRestoredMessage) => void): () => void;
   createContent?(card: CanvasCard, signal: AbortSignal): Promise<HTMLElement>;
   readContentKey?(card: CanvasCard): string;
   readDocumentTitles?(): ReadonlyMap<string, string>;

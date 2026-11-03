@@ -8,6 +8,7 @@ export function createCanvasTextCreation(session: CanvasDocumentSession, onCommi
   const state = createCanvasTextCreationState();
   let composing = false, pending: Promise<boolean> | null = null;
   const adopt = async (draft: CanvasTextCreationDraft, id: CanvasCardId, final: boolean) => {
+    if (state.draft.value?.identity !== draft.identity) return;
     const remaining = () => { const latest = state.draft.value; return latest && (latest.editSequence !== draft.editSequence || latest.height !== draft.height) ? latest.content : null; };
     // 先建立真实编辑会话再清临时草稿，保持唯一DOM与异步插图锚点。
     await onCommitted(id, !final || remaining() !== null, remaining, draft.identity); state.clear();

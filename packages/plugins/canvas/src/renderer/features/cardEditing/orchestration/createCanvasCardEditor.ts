@@ -29,6 +29,7 @@ export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCa
           op: 'update', id: draft.elementId, baseRevision: draft.baseRevision,
           patch: { data: { ...card.data, content: draft.content }, ...(card.data.heightMode === 'auto' && draft.measuredHeight !== null ? { height: draft.measuredHeight } : {}) },
         }], draft.historyGroupId);
+        if (state.draft.value?.historyGroupId !== draft.historyGroupId) return true;
         const outcome = result.results[0];
         if (outcome?.status !== 'applied') throw new Error(outcome?.reason ?? '文字修改没有提交，请重试');
         const current = session.state.snapshot.value?.elements.find(element => element.id === draft.elementId);

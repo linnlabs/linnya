@@ -33,27 +33,48 @@
     >
       {{ preview.state.error.value }}
     </p>
+    <div
+      v-if="budgetNotice || preview?.state.renderNotice.value"
+      class="canvas-read-notice"
+      role="status"
+    >
+      <p v-if="budgetNotice">
+        {{ budgetNotice }}
+      </p>
+      <p v-if="preview?.state.renderNotice.value">
+        {{ preview.state.renderNotice.value }}
+      </p>
+    </div>
   </section>
 </template>
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
-import { invokeRendererPluginIpc } from '@plugin/renderer/pluginIpcClient';
-import { CANVAS_PLUGIN_ID, CanvasSnapshotSchema } from '@plugin/canvas/shared';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { createCanvasRasterPresentation } from '../orchestration/createCanvasRasterPresentation';
 import { createCanvasCardContent } from '../features/cardMedia';
 import { createCanvasCardMediaPort } from '../adapters/createCanvasCardMediaPort';
-import { createCanvasHistoryPreview } from '../features/historyPreview';
+import { createCanvasHistoryPreview, canvasVersionBudgetNotice } from '../features/historyPreview';
+import { useCanvasPreferencesStore } from '../features/materialSetting';
+import { createCanvasHistoryPort } from '../adapters/createCanvasHistoryPort';
+import { readCanvasAppearance } from '../functions/readCanvasAppearance';
+import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
 const props = defineProps<{ documentId: string; versionId: string }>();
 const host = ref<HTMLElement | null>(null), staging = ref<HTMLElement | null>(null);
 const preview = shallowRef<ReturnType<typeof createCanvasHistoryPreview> | null>(null);
+const preferences = useCanvasPreferencesStore();
+const budgetNotice = computed(() => canvasVersionBudgetNotice(preview.value?.state.budget.value ?? null));
+let removeBudget: (() => void) | null = null, theme: MutationObserver | null = null;
 onMounted(() => {
   const stage = host.value, stagingHost = staging.value;
   if (!stage || !stagingHost) return;
+  const port = createCanvasHistoryPort();
   preview.value = createCanvasHistoryPreview({ host: stage, createContent: documentId => createCanvasCardContent(documentId, createCanvasCardMediaPort()), createRaster: settings => createCanvasRasterPresentation({ ...settings, host: stagingHost }),
-    read: async (documentId, versionId) => { const result = await invokeRendererPluginIpc<unknown>(CANVAS_PLUGIN_ID, 'canvas:history-preview', { documentId, versionId }); if (!result.success) throw new Error(result.error); return CanvasSnapshotSchema.parse(result.data); },
+    read: port.read, readBudget: port.readBudget, readAppearance: () => readCanvasAppearance(preferences.preferences),
   });
+  removeBudget = port.subscribeBudget(status => preview.value?.budgetChanged(status));
+  theme = new MutationObserver(() => preview.value?.refreshAppearance()); theme.observe(document.documentElement, { attributes: true, attributeFilter: [RENDERER_UI_THEME_ATTRIBUTE, 'style'] });
   void preview.value.open(props.documentId, props.versionId);
 });
 watch([() => props.documentId, () => props.versionId], ([documentId, versionId]) => { void preview.value?.open(documentId, versionId); });
-onBeforeUnmount(() => { preview.value?.dispose(); });
+watch(() => preferences.preferences, () => preview.value?.refreshAppearance());
+onBeforeUnmount(() => { removeBudget?.(); theme?.disconnect(); preview.value?.dispose(); });
 </script>
