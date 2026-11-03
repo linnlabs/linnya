@@ -14,7 +14,7 @@ function fixture() {
   const commit = vi.fn(async (input: Parameters<CanvasDocumentPort['commit']>[0]): Promise<CanvasCommitResult> => ({ documentId: input.documentId, requestId: input.requestId, sequence: ++sequence, results: [], refs: {} }));
   const editing = vi.fn(async () => {});
   const unsubscribe = vi.fn();
-  const port: CanvasDocumentPort = { read, changes, commit, editing, subscribe(callback) { push = callback; return unsubscribe; } };
+  const port: CanvasDocumentPort = { read, changes, commit, editing, close: async () => {}, undo: async () => { throw new Error('not used'); }, subscribe(callback) { push = callback; return unsubscribe; } };
   return { read, changes, commit, editing, unsubscribe, session: createCanvasDocumentSession(port), push(value: number) { sequence = value; push?.({ documentId: 'doc', sequence }); } };
 }
 

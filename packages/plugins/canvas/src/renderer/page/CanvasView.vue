@@ -111,15 +111,21 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { ToolbarButton, ToolbarGroup, CustomSelect } from '@linnya/renderer-ui';
-import { TextIcon, FullscreenIcon, EditIcon, ZoomInIcon, ZoomOutIcon } from '@linnya/renderer-ui/icons';
+import { TextIcon, FullscreenIcon, EditIcon, ZoomInIcon, ZoomOutIcon, UndoIcon, RedoIcon } from '@linnya/renderer-ui/icons';
 import { getActiveFileSession, markActiveFileDirty } from '@plugin/renderer/workspaceRuntime';
 import { createEmbeddedMarkdownEditor } from '@plugin/renderer/embeddedMarkdownEditor';
 import { createCanvasDocumentPort } from '../adapters/createCanvasDocumentPort';
+import { createCanvasAgentReviewPort } from '../adapters/createCanvasAgentReviewPort';
+import { createCanvasAgentReview, projectCanvasReviewMarkers } from '../features/agentReview';
+import CanvasAgentReviewBar from '../features/agentReview/ui/CanvasAgentReviewBar.vue';
+import CanvasReviewMarkers from '../features/agentReview/ui/CanvasReviewMarkers.vue';
 import { CanvasColorSchema } from '@plugin/canvas/shared';
 import { createCanvasSurface } from '../orchestration/createCanvasSurface';
 
 const stage = ref<HTMLElement | null>(null), editorHost = ref<HTMLElement | null>(null), staging = ref<HTMLElement | null>(null);
 const surface = shallowRef<Awaited<ReturnType<typeof createCanvasSurface>> | null>(null);
+const review = shallowRef<ReturnType<typeof createCanvasAgentReview> | null>(null);
+const markers = computed(() => review.value && surface.value ? projectCanvasReviewMarkers(review.value.state.groups.value, surface.value.session.state.snapshot.value?.elements ?? [], camera.value, review.value.state.activeGroupId.value) : []);
 const failure = shallowRef<string | null>(null);
 let destroyed = false;
 const selection = computed(() => surface.value?.selection.ids.value ?? []);
@@ -141,8 +147,8 @@ onMounted(async () => {
   try {
     const result = await createCanvasSurface({ host: stage.value, editorHost: editorHost.value, stagingHost: staging.value, documentId: session.documentId }, { document: createCanvasDocumentPort(), createEditor: createEmbeddedMarkdownEditor,
       markDirty: dirty => { if (getActiveFileSession()?.documentId === session.documentId) markActiveFileDirty(dirty); } });
-    if (destroyed) result.destroy(); else surface.value = result;
+    if (destroyed) result.destroy(); else { surface.value = result; review.value = createCanvasAgentReview(result.session, createCanvasAgentReviewPort()); await review.value.refresh(); }
   } catch (error) { failure.value = error instanceof Error ? error.message : String(error); }
 });
-onBeforeUnmount(() => { destroyed = true; surface.value?.destroy(); });
+onBeforeUnmount(() => { destroyed = true; review.value?.dispose(); surface.value?.destroy(); });
 </script>
