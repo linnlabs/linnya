@@ -3,11 +3,8 @@ import type {
   ConversationReferenceKindContribution,
 } from '@linnya/plugin-host-contract/renderer';
 
-export interface ConversationReferenceChipPresentation {
-  readonly label: string;
-  readonly preview: string;
-  readonly activate?: () => Promise<void>;
-}
+import type { ConversationReferenceChipPresentation } from '../definitions/conversationReferenceChip';
+export type { ConversationReferenceChipPresentation } from '../definitions/conversationReferenceChip';
 
 const referenceKinds = new Map<string, ConversationReferenceKindContribution>();
 
@@ -66,6 +63,7 @@ export function resolveConversationReferenceChipPresentation(
   return {
     label: contribution.chip.label(reference),
     preview: contribution.chip.preview(reference),
+    ...(contribution.previewComponent ? { previewComponent: contribution.previewComponent } : {}),
     ...(contribution.onActivate ? { activate: () => activateConversationReference(reference) } : {}),
   };
 }
