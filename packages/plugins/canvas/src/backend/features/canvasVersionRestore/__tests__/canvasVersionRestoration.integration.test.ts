@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createCanvasPlainTextDocument, type CanvasSnapshot } from '../../../../shared';
 import { canvasPluginMigrations } from '../../../persistence/migrations';
 import { initializeCanvasDocument, readCanvasCommitState, readCanvasSnapshot, updateCanvasEditingClaim, type CanvasCommitActor } from '../../canvasCommit';
-import { createCanvasHistoryRuntime } from '../../canvasUndoHistory';
+import { createCanvasHistoryRuntime } from '../../../orchestration/history/createCanvasHistoryRuntime';
 import { planCanvasVersionRestoration } from '..';
 
 const user: CanvasCommitActor = { source: { kind: 'user', conversationId: null, runId: null }, viewId: 'view' };

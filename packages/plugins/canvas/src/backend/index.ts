@@ -6,7 +6,8 @@ import { executeCanvasCliCommand } from './orchestration/executeCanvasCliCommand
 import { createCanvasPluginCli } from './features/canvasCli';
 import { createCanvasCliFailureProjector } from './adapters/projectCanvasCliFailure';
 import { Logger } from '@plugin/backend/workspaceRuntime';
-import { canvasManifest, canvasPluginMeta, CANVAS_CHANGED_CHANNEL, CANVAS_GROUPS_CHANGED_CHANNEL } from '../shared';
+import { canvasManifest, canvasPluginMeta, CANVAS_CHANGED_CHANNEL, CANVAS_GROUPS_CHANGED_CHANNEL, CANVAS_HISTORY_BUDGET_CHANNEL, CANVAS_RESTORED_CHANNEL } from '../shared';
+import type { CanvasIpcServices } from './definitions/canvasIpcServices';
 import type { CanvasDatabase } from './definitions/canvasDatabase';
 import { createCanvasDocumentRuntime, type CanvasDocumentRuntime } from './orchestration/createCanvasDocumentRuntime';
 import { createCanvasDocumentHook } from './adapters/createCanvasDocumentHook';
@@ -37,26 +38,35 @@ export function createCanvasBackendPlugin(): PluginBackendContribution {
     if (!runtime) { runtime = createCanvasDocumentRuntime(database, referencesFor(database)); byDatabase.set(database, runtime); instances.add(runtime); }
     return runtime;
   };
+  let ipcServices = new WeakMap<CanvasDatabase, CanvasIpcServices>();
   const arrangements = new Set<ReturnType<typeof createCanvasArrangementRuntime>>();
+  function servicesFor(database: CanvasDatabase): CanvasIpcServices {
+    let services = ipcServices.get(database);
+    if (!services) {
+      const runtime = runtimeFor(database), arrangement = createCanvasArrangementRuntime(database, runtime, capabilitiesFor());
+      arrangements.add(arrangement); services = { runtime, arrangement, images: createCanvasImageRuntime(database, runtime) }; ipcServices.set(database, services);
+    }
+    return services;
+  }
   return {
     pluginCli: createCanvasPluginCli((command, context, root) => executeCanvasCliCommand(command, context, root, { capabilities: capabilitiesFor(), runtimeFor, referencesFor }), createCanvasCliFailureProjector(logger)),
     meta: canvasPluginMeta, ownedTables: canvasManifest.ownedTables, pluginMigrations: canvasPluginMigrations,
     documentTypeHooks: [createCanvasDocumentHook(runtimeFor, createCanvasPreviewCapability(capabilitiesFor))],
-    rendererPush: { channels: [CANVAS_CHANGED_CHANNEL, CANVAS_GROUPS_CHANGED_CHANNEL] },
+    rendererPush: { channels: [CANVAS_CHANGED_CHANNEL, CANVAS_GROUPS_CHANGED_CHANNEL, CANVAS_HISTORY_BUDGET_CHANNEL, CANVAS_RESTORED_CHANNEL] },
     hiddenWorkers: [createCanvasHiddenWorkerDefinition(paths)],
     skillResourceRoots: [paths.skillResourceRoot],
     ipc: { channels: CANVAS_IPC_CHANNELS, register(manager, register) {
-      const database = readCanvasServiceManagerDatabase(manager), runtime = runtimeFor(database);
-      const arrangement = createCanvasArrangementRuntime(database, runtime, capabilitiesFor()); arrangements.add(arrangement);
-      registerCanvasIpc({ database, runtime, images: createCanvasImageRuntime(database, runtime), register, arrangement });
+      const database = readCanvasServiceManagerDatabase(manager);
+      registerCanvasIpc({ database, services: () => servicesFor(database), register });
     } },
     runtimeEffects: [{ id: 'canvas-document-runtime', activate() {
       logger.debug('Canvas 已启用，文档运行态按数据库实例惰性装配');
     }, async deactivate() {
       for (const arrangement of arrangements) arrangement.dispose(); arrangements.clear();
-      await capabilities?.computation.dispose(); capabilities = null;
+      const previousCapabilities = capabilities; capabilities = null;
       for (const runtime of instances) runtime.dispose();
-      instances.clear(); byDatabase = new WeakMap(); references = new WeakMap();
+      instances.clear(); byDatabase = new WeakMap(); references = new WeakMap(); ipcServices = new WeakMap();
+      await previousCapabilities?.computation.dispose();
     } }],
   };
 }

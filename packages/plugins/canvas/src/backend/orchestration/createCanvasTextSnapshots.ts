@@ -4,12 +4,16 @@ import type { CanvasDatabase } from '../definitions/canvasDatabase';
 import { readCanvasSnapshot } from '../features/canvasCommit';
 import { readCanvasProjectionContext } from '../features/canvasDocument';
 import { projectCanvasSearchText } from '../features/canvasProjection';
+import { readWorkspaceDocumentIdentity } from '@plugin/backend/workspaceDocumentProjection';
 
 /** 文本索引与版本检查点有独立节奏，持续输入不能延后第一批脏内容的30秒截止。 */
 export function createCanvasTextSnapshots(database: CanvasDatabase) {
   const pending = new Set<string>(); const logger = new Logger('CanvasSearchSnapshot');
   let timer: ReturnType<typeof setTimeout> | null = null;
   function refresh(documentId: string) {
+    const document = readWorkspaceDocumentIdentity(database, documentId);
+    // 正常关闭或删除文档时不再生成搜索投影；没有内容不能被当成格式损坏。
+    if (!document || document.deletedAt !== null) { pending.delete(documentId); return; }
     const snapshot = readCanvasSnapshot(database, documentId);
     if (snapshot.integrity) {
       pending.delete(documentId);
