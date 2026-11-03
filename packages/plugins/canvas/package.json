@@ -29,15 +29,16 @@
   },
   "dependencies": {
     "@app/schemas": "workspace:*",
-    "zod": "4.6.7",
+    "@linnya/markdown-document-core": "workspace:*",
+    "elkjs": "0.12.1",
     "fractional-indexing": "4.0.0",
     "pixi.js": "8.22.0",
-    "@linnya/markdown-document-core": "workspace:*"
+    "zod": "4.6.7"
   },
   "peerDependencies": {
     "@linnya/renderer-ui": "^3.0.0",
-    "vue": ">=3.5.0 <4",
-    "pinia": ">=3.0.0 <4"
+    "pinia": ">=3.0.0 <4",
+    "vue": ">=3.5.0 <4"
   },
   "devDependencies": {
     "@linnya/plugin-host-contract": "workspace:*",
