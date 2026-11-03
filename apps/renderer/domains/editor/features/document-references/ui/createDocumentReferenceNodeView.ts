@@ -1,0 +1,75 @@
+import { createVNode, render } from 'vue';
+import { DocumentIcon } from '@linnya/renderer-ui/icons';
+import type { DocumentReferenceUiPort } from '../definitions/documentReferenceUi';
+
+/** DOM 仅展示与转发交互；身份和正文始终通过只读 port 解析。 */
+export function createDocumentReferenceNodeView(documentId: string, referenceId: string, port: DocumentReferenceUiPort) {
+  const dom = document.createElement('span');
+  dom.className = 'markdown-document-reference';
+  dom.contentEditable = 'false';
+  dom.tabIndex = 0;
+  dom.setAttribute('role', 'link');
+  dom.dataset.documentId = documentId;
+  dom.dataset.referenceId = referenceId;
+  const icon = document.createElement('span'); icon.className = 'markdown-document-reference-icon'; icon.dataset.documentReferenceIcon = ''; icon.setAttribute('aria-hidden', 'true');
+  render(createVNode(DocumentIcon), icon);
+  const label = document.createElement('span'); label.className = 'markdown-document-reference-label'; label.dataset.documentReferenceLabel = ''; label.textContent = '文档'; dom.append(icon, label);
+  let destroyed = false;
+  let hoverGeneration = 0;
+  let refreshGeneration = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let popup: HTMLElement | null = null;
+  let disposeDetail: (() => void) | undefined;
+  function close() { if (timer) clearTimeout(timer); popup?.remove(); popup = null; disposeDetail?.(); disposeDetail = undefined; }
+  async function refresh() {
+    const generation = ++refreshGeneration;
+    const result = await port.resolve(documentId);
+    if (destroyed || generation !== refreshGeneration) return null;
+    label.textContent = result.status === 'deleted' ? '已失效' : result.status === 'outside_project' ? '其他项目的文档' : result.title ?? '文档';
+    dom.dataset.status = result.status;
+    dom.setAttribute('aria-label', label.textContent);
+    return result;
+  }
+  async function show(generation: number) {
+    const info = await refresh();
+    if (!info || destroyed || generation !== hoverGeneration) return;
+    close();
+    const panel = document.createElement('section');
+    panel.className = 'document-reference-preview'; panel.setAttribute('aria-label', '文档预览');
+    panel.addEventListener('mouseenter', () => { if (timer) clearTimeout(timer); });
+    panel.addEventListener('mouseleave', () => { timer = setTimeout(close, 200); });
+    const title = document.createElement('strong'); title.textContent = dom.textContent; panel.append(title);
+    const bounds = dom.getBoundingClientRect();
+    panel.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - 360))}px`;
+    panel.style.top = `${Math.max(8, Math.min(bounds.bottom + 8, window.innerHeight - 240))}px`;
+    document.body.append(panel); popup = panel;
+    const preview = await port.preview(documentId);
+    if (destroyed || popup !== panel) return;
+    if (preview.content?.image) { const image = document.createElement('img'); image.src = preview.content.image.dataUri; image.alt = preview.title ?? '文档封面'; panel.append(image); }
+    const summary = document.createElement('p'); summary.textContent = preview.content?.summary ?? (preview.status === 'plugin_unavailable' ? '需要启用或安装对应插件' : '预览不可用'); panel.append(summary);
+    if (preview.content?.detail) {
+      const detail = preview.content.detail;
+      const expand = document.createElement('button'); expand.type = 'button'; expand.textContent = '展开';
+      let loading = false;
+      expand.onclick = () => {
+        if (disposeDetail || loading) return;
+        loading = true;
+        const content = document.createElement('div'); content.className = 'document-reference-detail'; panel.append(content);
+        void port.renderDetail(content, detail.text).then(dispose => {
+          if (destroyed || popup !== panel) { dispose(); return; }
+          disposeDetail = dispose; expand.remove();
+          panel.style.top = `${Math.max(8, Math.min(bounds.bottom + 8, window.innerHeight - panel.getBoundingClientRect().height - 8))}px`;
+        }).catch(error => { loading = false; content.remove(); port.report(error); });
+      };
+      panel.append(expand);
+    }
+  }
+  dom.addEventListener('mouseenter', () => { const generation = ++hoverGeneration; if (timer) clearTimeout(timer); timer = setTimeout(() => { void show(generation).catch(port.report); }, 400); });
+  dom.addEventListener('mouseleave', () => { hoverGeneration += 1; if (timer) clearTimeout(timer); timer = setTimeout(close, 200); });
+  const open = () => { void refresh().then(info => info ? port.open(info) : undefined).catch(port.report); };
+  dom.addEventListener('click', event => { event.preventDefault(); open(); });
+  dom.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); open(); } });
+  const unsubscribe = port.subscribe(documentId, () => { void refresh().catch(port.report); });
+  void refresh().catch(port.report);
+  return { dom, stopEvent: () => true, destroy() { destroyed = true; hoverGeneration += 1; unsubscribe(); close(); render(null, icon); } };
+}
