@@ -12,6 +12,7 @@ import { installPluginHostTestRuntime, resetPluginHostTestRuntime } from 'src/pl
 import { backendPluginRegistry } from 'src/app-hosts/linnya/plugin-registry/registry';
 import { platformBackendPlugin } from 'src/app-hosts/linnya/plugin-registry/builtin/platform.backend';
 import { installBackendRendererIntegrationPort, clearBackendRendererIntegrationPortForTesting } from 'src/app-hosts/linnya/desktop-capabilities';
+import { ASSET_LEDGER_SCHEMAS } from 'src/domains/assets/features/asset-ledger/infrastructure/sqlite/schemas/assetLedger.schema';
 import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 
 let db: Database.Database;
@@ -21,7 +22,7 @@ const push = vi.fn();
 const text = (value: string) => ({ op: 'addText', content: createCanvasPlainTextDocument(value), width: 240, height: 120 });
 beforeEach(() => {
   db = new Database(':memory:'); db.pragma('foreign_keys = ON');
-  for (const ddl of [...CORE_SCHEMAS, ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS, ...CONVERSATION_SCHEMAS]) db.exec(ddl);
+  for (const ddl of [...CORE_SCHEMAS, ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS, ...CONVERSATION_SCHEMAS, ...ASSET_LEDGER_SCHEMAS]) db.exec(ddl);
   for (const migration of canvasPluginMigrations) migration.up(db);
   installPluginHostTestRuntime({ installedPluginIds: ['platform', 'canvas'], enabledPluginIds: ['platform', 'canvas'] });
   backendPluginRegistry.register(platformBackendPlugin);
@@ -153,4 +154,22 @@ it('reads standalone queries from a genuinely read-only connection without creat
     expect(readCanvasStandalone(reader, projectId, { kind: 'read', path: 'workspace:/只读.canvas' })).toMatchObject({ sequence: 1, text: expect.stringContaining('可读不可写') });
     expect(readCanvasStandalone(reader, projectId, { kind: 'check', path: 'workspace:/只读.canvas' })).toMatchObject({ sequence: 1 });
   } finally { reader.close(); await rm(directory, { recursive: true, force: true }); }
+});
+
+it('holds images for durable pending approval and keeps the prior proposal when replacement admission fails', () => {
+  db.prepare('INSERT INTO assets(id, uri, storage_status, created_at, size_bytes) VALUES (?, ?, ?, ?, ?)').run('pending-image', 'asset:pending-image', 'local', 1, 4096);
+  const id = runtime.create({ projectId, parentId: null, name: '待确认.canvas' });
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'user-cards', operations: Array.from({ length: 20 }, (_, index) => text(`用户 ${index}`)) });
+  const actor = { projectId, viewId: 'agent', source: { kind: 'agent' as const, conversationId: 'chat', runId: 'run' } };
+  const propose = (requestId: string, assetId: string) => runtime.editing.commitAgent({ actor, now: 2, request: { documentId: id, requestId,
+    operations: [{ op: 'addImage', data: { assetId, caption: '', alt: '', crop: null }, width: 240, height: 120 }, ...Array.from({ length: 20 }, (_, index) => ({ op: 'delete', id: `c${index + 1}`, baseRevision: 1 }))] } });
+  const pending = propose('first', 'pending-image'); expect(pending.kind).toBe('pending');
+  expect(runtime.pendingAssetIds(id)).toEqual(['pending-image']);
+  expect(db.prepare('SELECT asset_id FROM document_asset_links WHERE document_node_id = ?').all(id)).toEqual([{ asset_id: 'pending-image' }]);
+  expect(() => propose('replacement', 'missing-image')).toThrow();
+  expect(runtime.editing.listGroups(id, 3)[0].pendingApproval?.requestId).toBe('first');
+  expect(runtime.read(id).elements).toHaveLength(20);
+  if (pending.kind !== 'pending') throw new Error('Expected pending batch');
+  runtime.editing.resolveApproval({ documentId: id, viewId: 'view', requestId: 'deny', pendingId: pending.approval.id, decision: 'deny' }, 3);
+  expect(runtime.pendingAssetIds(id)).toEqual([]);
 });
