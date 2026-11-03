@@ -5,6 +5,11 @@ use case 负责把“本地图片或图片字节”接管为文档拥有的内�
 ownership 读取。它编排 Asset domain 的 ingress/ledger 与 Workspace
 ownership，但不把任一 domain 的内部异常暴露给文档插件。
 
+图片保留两对尺寸：`width/height` 是原始编码尺寸，用于既有账本与 durable 引用校验；
+`displayWidth/displayHeight` 是应用 EXIF 方向后的显示尺寸，供文档默认等比布局使用。
+显示事实由同一次真实图片检查提供，每次读取重新导出，不写入资产账本，不转码或改变原字节/hash。
+因此旧竖拍图片不需要改写资产身份；既有文档框也不会被读取动作自动重排。
+
 `document_asset_links` 的窄 adapter 已归属 sibling `document-assets` use case；Image 与 SVG
 各自保留独立 ingress/验证，只共享最终的文档归属事实。
 

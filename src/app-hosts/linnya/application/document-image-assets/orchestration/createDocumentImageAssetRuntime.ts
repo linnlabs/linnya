@@ -18,6 +18,8 @@ function toDocumentImageAsset(image: VerifiedWorkspaceImage): DocumentImageAsset
     byteLength: image.byteLength,
     width: image.width,
     height: image.height,
+    displayWidth: image.displayWidth,
+    displayHeight: image.displayHeight,
     sha256: image.sha256,
     dataUri: `data:${image.mediaType};base64,${Buffer.from(image.bytes).toString('base64')}`,
   };
