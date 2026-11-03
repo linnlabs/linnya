@@ -48,3 +48,12 @@ it('Backend 严格入口使用同一 schema，拒绝不合法内容表达式和�
   expect(() => assertPortableMarkdownDocument({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'documentReference', attrs: { documentId: '', referenceId: null } }] }] })).toThrow();
   expect(() => assertPortableMarkdownDocument(parseMarkdownDocument('Valid **document**'))).not.toThrow();
 });
+
+it('clearing Markdown preserves a valid canonical document through serialization without a DOM', () => {
+  for (const input of ['', ' \n\t\n']) {
+    const content = parseMarkdownDocument(input);
+    expect(() => assertPortableMarkdownDocument(content)).not.toThrow();
+    expect(serializeMarkdownDocument(content)).toBe('');
+    expect(parseMarkdownDocument(serializeMarkdownDocument(content))).toEqual(content);
+  }
+});
