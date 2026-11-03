@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./style.css": "./src/style.css",
-    "./validation": "./src/functions/assertMarkdownDocument.ts"
+    "./validation": "./src/functions/assertMarkdownDocument.ts",
+    "./references": "./src/references.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

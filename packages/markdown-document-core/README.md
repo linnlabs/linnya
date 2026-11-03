@@ -21,3 +21,5 @@ Markdown 使用 `++下划线++`、`==高亮==`、`~下标~`、`^上标^`、`$行
 Tiptap 固定为 3.31.3；mathematics 的 peer 仅接受 KaTeX 0.16～0.18，因此这里精确使用 0.18.10。0.18.11 曾误以补丁版本发布 breaking strict 行为且已被上游弃用，0.19 不在当前 peer 范围内；升级必须与 Tiptap peer 及交互/只读公式回归一起进行。依据：[Tiptap mathematics](https://tiptap.dev/docs/editor/extensions/nodes/mathematics)、[Markdown 扩展合同](https://tiptap.dev/docs/editor/markdown/guides/integrate-markdown-in-your-extension)、[KaTeX 0.19 说明](https://github.com/KaTeX/KaTeX/releases/tag/v0.19.0)。
 
 受管 image 可以携带可选的 `assetId`（字符串或 null），与 src 分开。DOM 使用 `data-asset-id` 保存身份，Host 可据此将展示地址替换为已接纳图片字节；本包不查资产库、不推断 URL 身份或执行接管。Markdown 的图片源地址仍由调用方准备，写回时的受管身份绑定由 Host 负责。
+
+`./references` 是仅依赖 schemas 的纯 JSON 链接/稳定引用变换入口，供 Backend 与 Revision 复用已准入 Pending 身份；它不加载 Tiptap、DOM 或路径解析。`assertPortableMarkdownDocument` 使用本包唯一 canonical schema 做严格结构校验，Backend 不应另外构造近似 schema。

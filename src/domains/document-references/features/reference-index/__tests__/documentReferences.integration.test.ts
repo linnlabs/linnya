@@ -30,6 +30,7 @@ describe('document reference business lifecycle', () => {
   it('follows stable identities across rename and moves, without leaking a cross-project title', () => {
     db.transaction(() => replace()).immediate();
     db.prepare('UPDATE workspace_nodes SET name = ?, project_id = ? WHERE id = ?').run('Renamed', 'p2', 'target');
+    expect(operations().listBacklinks('target')).toEqual([]);
     expect(operations().resolve({ sourceDocumentId: 'source', targetDocumentId: 'target' })).toEqual({ targetDocumentId: 'target', status: 'outside_project', title: null, nodeType: null });
     db.transaction(() => replace()).immediate();
     db.prepare('UPDATE workspace_nodes SET project_id = ? WHERE id = ?').run('p1', 'target');
