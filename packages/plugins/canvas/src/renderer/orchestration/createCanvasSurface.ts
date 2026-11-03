@@ -131,6 +131,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     async connect() { if (await finish()) await connections.select(await actions.connect()); },
     clipboard, discardDraft, hasDraft: computed(() => draftParticipants.some(participant => participant.readGeneration() !== null)), focus: viewport.focus, focusElements: viewport.focusElements,
     readPresentationStats: () => ({ ...kernel.readStats(), status: kernel.readRenderStatus() }),
+    readContentReadiness: (ids: readonly CanvasCardId[]) => raster.readReadiness(ids),
     selectionDescription: computed(() => describeCanvasSelection(session.state.snapshot.value?.elements ?? [], connections.selected.value ? [connections.selected.value.id] : selection.ids.value, ports.readDocumentTitles?.() ?? new Map())),
     clearFailure: state.clearFailure,
     retryDisplay() { state.clearFailure(); ports.retryContent?.(); raster.retry(); refreshView(); },
