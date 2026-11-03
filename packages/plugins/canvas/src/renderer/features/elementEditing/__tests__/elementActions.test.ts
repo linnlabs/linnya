@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CanvasCardIdSchema, CanvasElementSchema, type CanvasCard, type CanvasElement } from '@plugin/canvas/shared';
 import { buildCanvasDuplication } from '../../clipboard';
+import { buildDistributeCommands } from '../functions/buildCanvasDistributionCommands';
 import { buildAlignCommands, buildLayerCommands, buildLockCommands } from '../functions/buildCardLayoutCommands';
 
 const user = { kind: 'user', conversationId: null, runId: null };
@@ -36,7 +37,7 @@ describe('卡片编辑计划', () => {
     const first = card('c1', 20, 30, true), second = card('c2', 350, 80);
     const ids = [first.id, second.id];
     expect(buildLockCommands([first, second], ids).map(command => command.op === 'update' && command.patch.locked)).toEqual([true, true]);
-    expect(buildAlignCommands([first, second], ids, 'left')).toEqual([{ op: 'update', id: second.id, baseRevision: 1, patch: { x: 350 } }]);
+    expect(buildAlignCommands([first, second], ids, 'left')).toEqual([]);
     const layered = buildLayerCommands([first, second], [second.id], 'front');
     expect(layered[0]).toMatchObject({ op: 'update', id: second.id });
     expect(layered[0]?.op === 'update' && layered[0].patch.order).not.toBe(first.order);
@@ -45,4 +46,20 @@ describe('卡片编辑计划', () => {
     const cards = Array.from({ length: 501 }, (_, index) => card(`c${index + 1}`));
     expect(buildCanvasDuplication({ elements: cards, ids: cards.map(value => CanvasCardIdSchema.parse(value.id)), dx: 0, dy: 0, allocateReferenceId: () => 'new-ref' }).operations).toHaveLength(501);
   });
+});
+
+it('不同尺寸卡可对齐中心/右下边，并在保持端点与锁定卡的前提下按空隙分布', () => {
+  const first = { ...card('c1', 0, 0), width: 100, height: 50 };
+  const middle = { ...card('c2', 50, 10), width: 200, height: 100 };
+  const last = { ...card('c3', 700, 500), width: 50, height: 150 };
+  const locked = card('c4', -999, -999, true), elements = [first, middle, last, locked], ids = elements.map(card => card.id);
+  expect(buildAlignCommands(elements, ids, 'right')).toEqual([
+    { op: 'update', id: first.id, baseRevision: 1, patch: { x: 650 } },
+    { op: 'update', id: middle.id, baseRevision: 1, patch: { x: 550 } },
+  ]);
+  expect(buildAlignCommands(elements, ids, 'center-x').map(command => command.op === 'update' && command.patch.x)).toEqual([325, 275, 350]);
+  expect(buildAlignCommands(elements, ids, 'bottom').map(command => command.op === 'update' && command.patch.y)).toEqual([600, 550]);
+  expect(buildDistributeCommands(elements, ids, 'horizontal')).toEqual([{ op: 'update', id: middle.id, baseRevision: 1, patch: { x: 300 } }]);
+  expect(buildDistributeCommands(elements, ids, 'vertical')).toEqual([{ op: 'update', id: middle.id, baseRevision: 1, patch: { y: 225 } }]);
+  expect(locked).toMatchObject({ x: -999, y: -999, revision: 1 });
 });
