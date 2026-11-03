@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { canvasPluginMigrations, createCanvasDocumentRuntime, createCanvasBackendPlugin } from '@plugin/canvas/backend-test-support';
+import { canvasPluginMigrations, createCanvasDocumentRuntime, createCanvasBackendPlugin, readCanvasSelectionContext } from '@plugin/canvas/backend-test-support';
 import { createCanvasPlainTextDocument } from '@plugin/canvas/shared';
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema';
 import { WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/node-text-snapshot.schema';
@@ -12,6 +12,7 @@ import { installPluginHostTestRuntime, resetPluginHostTestRuntime } from 'src/pl
 import { backendPluginRegistry } from 'src/app-hosts/linnya/plugin-registry/registry';
 import { platformBackendPlugin } from 'src/app-hosts/linnya/plugin-registry/builtin/platform.backend';
 import { installBackendRendererIntegrationPort, clearBackendRendererIntegrationPortForTesting } from 'src/app-hosts/linnya/desktop-capabilities';
+import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 
 let db: Database.Database;
 let runtime: ReturnType<typeof createCanvasDocumentRuntime>;
@@ -20,7 +21,7 @@ const push = vi.fn();
 const text = (value: string) => ({ op: 'addText', content: createCanvasPlainTextDocument(value), width: 240, height: 120 });
 beforeEach(() => {
   db = new Database(':memory:'); db.pragma('foreign_keys = ON');
-  for (const ddl of [...CORE_SCHEMAS, ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS]) db.exec(ddl);
+  for (const ddl of [...CORE_SCHEMAS, ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS, ...CONVERSATION_SCHEMAS]) db.exec(ddl);
   for (const migration of canvasPluginMigrations) migration.up(db);
   installPluginHostTestRuntime({ installedPluginIds: ['platform', 'canvas'], enabledPluginIds: ['platform', 'canvas'] });
   backendPluginRegistry.register(platformBackendPlugin);
@@ -33,6 +34,35 @@ beforeEach(() => {
   });
   projectId = createProjectLifecycle(db).create({ name: '画布测试' });
   runtime = createCanvasDocumentRuntime(db);
+});
+it('refreshes a closed canvas from a single committed version and keeps the sent snapshot immutable', () => {
+  const id = runtime.create({ projectId, parentId: null, name: '发送.canvas' });
+  db.prepare('INSERT INTO conversations(conversation_id,created_at,last_event_at,project_id) VALUES (?,1,1,?)').run('chat', projectId);
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('旧正文')] });
+  runtime.close(id, 'view');
+  const first = readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], conversationId: 'chat' });
+  runtime.commit({ documentId: id, viewId: 'another', requestId: 'edit', operations: [{ op: 'update', id: 'c1', baseRevision: 1,
+    patch: { data: { contentVersion: 1, content: createCanvasPlainTextDocument('最新正文') } } }] });
+  const refreshed = readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], conversationId: 'chat' });
+  expect(refreshed.sequence).toBe(2); expect(refreshed.text).toContain('最新正文');
+  expect(first.text).toContain('旧正文'); expect(first.sequence).toBe(1);
+  expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], projectId: 'other-project' })).toThrow('其他项目');
+  expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], projectId: null })).toThrow('项目');
+  db.prepare('UPDATE conversations SET project_id = NULL WHERE conversation_id = ?').run('chat');
+  expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], conversationId: 'chat' })).toThrow('项目');
+});
+it('rejects missing selected cards instead of sending a stale stored reference', () => {
+  const id = runtime.create({ projectId, parentId: null, name: '删除.canvas' });
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('已选择')] });
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'delete', operations: [{ op: 'delete', id: 'c1' }] });
+  expect(() => readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'] })).toThrow('重新选择');
+});
+it('refreshes a partially deleted selection using only remaining committed cards', () => {
+  const id = runtime.create({ projectId, parentId: null, name: '部分.canvas' });
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('已删除'), text('仍存在')] });
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'delete', operations: [{ op: 'delete', id: 'c1' }] });
+  const context = readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1', 'c2'] });
+  expect(context.elementIds).toEqual(['c2']); expect(context.text).toContain('仍存在'); expect(context.text).not.toContain('已删除');
 });
 afterEach(async () => {
   runtime.dispose();

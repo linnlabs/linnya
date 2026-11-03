@@ -4,12 +4,13 @@ import { Application, Container, Graphics, NineSliceSprite, Rectangle, Sprite, T
 import {
   canvasBounds, canvasScreenToWorld, canvasWorldToScreen, readCanvasElementText,
   type CanvasCamera, type CanvasCard, type CanvasCardId, type CanvasColor,
-  type CanvasEdge, type CanvasElement, type CanvasPoint, type CanvasRectangle,
+  type CanvasEdge, type CanvasEdgeId, type CanvasElement, type CanvasPoint, type CanvasRectangle,
 } from '../../../../shared';
 import type { CanvasAppearance, CanvasKernel, CanvasKernelIntent, CanvasRasterTile } from '../../definitions/canvasKernel';
-import { canvasEdgePoints } from '../../geometry/canvasEdgeGeometry';
 import { installCanvasInteraction } from '../../interaction/installCanvasInteraction';
 import { CanvasMapLabels } from './CanvasMapLabels';
+import { CanvasLines } from './CanvasLines';
+import { selectExposedCanvasCards } from '../../geometry/selectExposedCanvasCards';
 
 interface CardView { readonly card: CanvasCard; readonly container: Container; readonly background: NineSliceSprite; readonly body: Container; readonly label: Text }
 interface BitmapEntry { readonly key: string; readonly resources: readonly { readonly texture: Texture; readonly bitmap: ImageBitmap }[]; readonly bytes: number }
@@ -35,6 +36,7 @@ interface KernelOptions {
   readonly resolution?: number;
   readonly bitmapBudgetBytes?: number;
   readonly onIntent?: (intent: CanvasKernelIntent) => void;
+  readonly readonly?: boolean;
 }
 
 /** Pixi 是唯一引擎依赖点；外部只看到 CanvasKernel 与业务快照。 */
@@ -51,7 +53,7 @@ export async function createPixiCanvasKernel(options: KernelOptions): Promise<Ca
 class PixiCanvasKernel implements CanvasKernel {
   readonly canvas: HTMLCanvasElement;
   private readonly world = new Container();
-  private readonly lineLayer = new Graphics();
+  private readonly lines = new CanvasLines();
   private readonly cardLayer = new Container();
   private readonly selectionLayer = new Graphics();
   private readonly backgrounds = { paper: makeBackground('paper'), card: makeBackground('card') };
@@ -66,6 +68,8 @@ class PixiCanvasKernel implements CanvasKernel {
   private overviewOrder: readonly CanvasCard[] = [];
   private edges: readonly CanvasEdge[] = [];
   private ordered: readonly CanvasCard[] = [];
+  private exposed: readonly CanvasCard[] = [];
+  private exposedIds = new Set<CanvasCardId>();
   private camera: CanvasCamera = { x: 0, y: 0, zoom: 1 };
   private appearance: CanvasAppearance = { dark: false, material: 'paper', overview: 'titles' };
   private bitmapBytes = 0;
@@ -82,10 +86,10 @@ class PixiCanvasKernel implements CanvasKernel {
     this.canvas.setAttribute('aria-label', '自由画布，按空格拖动平移，使用工具栏编辑所选卡片');
     this.canvas.style.cssText = 'display:block;touch-action:none;width:100%;height:100%';
     options.host.append(this.canvas);
-    this.world.addChild(this.lineLayer, this.cardLayer, this.selectionLayer);
-    this.app.stage.addChild(this.world, this.mapLabels.sprite);
+    this.world.addChild(this.cardLayer, this.selectionLayer);
+    this.app.stage.addChild(this.lines.below, this.world, this.lines.above, this.mapLabels.sprite);
     this.budget = options.bitmapBudgetBytes ?? 256 * 1024 * 1024;
-    this.removeInteraction = options.onIntent ? installCanvasInteraction(this, options.onIntent) : () => undefined;
+    this.removeInteraction = options.onIntent ? installCanvasInteraction(this, options.onIntent, { readonly: options.readonly }) : () => undefined;
   }
   private schedule(): void {
     if (this.scheduled || this.destroyed) return;
@@ -114,18 +118,18 @@ class PixiCanvasKernel implements CanvasKernel {
   private updateView(view: CardView): void {
     const { card, background, body, label, container } = view;
     container.position.set(card.x, card.y);
-    container.visible = this.visible(card);
+    container.visible = this.exposedIds.has(card.id);
     background.texture = this.backgrounds[this.appearance.material];
     background.width = card.width;
     background.height = card.height;
     background.tint = (this.appearance.dark ? DARK : LIGHT)[card.color];
-    label.resolution = Math.max(0.02, Math.min(2, this.camera.zoom * this.app.renderer.resolution));
-    label.text = readCanvasElementText(card).split('\n')[0].slice(0, this.camera.zoom < 0.3 ? 18 : 120) || '空白卡片';
+    // 近景身份牌必须复用纹理；连续缩放不能每个事件重新生成几百张文字纹理。
+    label.resolution = Math.max(1, this.app.renderer.resolution);
     label.style.fill = this.appearance.dark ? 0xe8e9e3 : 0x252c27;
     label.style.wordWrapWidth = Math.max(1, card.width - 28);
     const overview = card.type !== 'image' && this.camera.zoom < 0.3 && this.appearance.overview === 'titles';
-    label.style.fontSize = overview ? Math.min(120, 13 / this.camera.zoom) : 15;
-    label.style.wordWrap = !overview;
+    label.style.fontSize = 15;
+    label.style.wordWrap = true;
     label.visible = !overview && !this.bitmaps.has(card.id);
     body.visible = !overview && this.bitmaps.has(card.id);
     if (this.editingCard === card.id) { label.visible = false; body.visible = false; }
@@ -148,33 +152,16 @@ class PixiCanvasKernel implements CanvasKernel {
     }
   }
   private redrawEdges(): void {
-    this.lineLayer.clear();
-    for (const edge of this.edges) {
-      const points = canvasEdgePoints(edge, this.cards, this.camera.zoom);
-      const first = points[0];
-      if (!first) continue;
-      this.lineLayer.moveTo(first.x, first.y);
-      for (let i = 1; i < points.length; i++) this.lineLayer.lineTo(points[i].x, points[i].y);
-      this.lineLayer.stroke({ width: 1 / this.camera.zoom, color: this.appearance.dark ? 0xc7cec6 : 0x28352a, alpha: 0.28 });
-      if (edge.direction !== 'none' && points.length >= 2) {
-        this.drawArrow(points[points.length - 1], points[points.length - 2]);
-        if (edge.direction === 'both') this.drawArrow(points[0], points[1]);
-      }
-    }
-  }
-  private drawArrow(tip: CanvasPoint, previous: CanvasPoint): void {
-    const angle = Math.atan2(tip.y - previous.y, tip.x - previous.x);
-    const size = 6 / this.camera.zoom;
-    this.lineLayer.moveTo(tip.x - Math.cos(angle - 0.45) * size, tip.y - Math.sin(angle - 0.45) * size)
-      .lineTo(tip.x, tip.y).lineTo(tip.x - Math.cos(angle + 0.45) * size, tip.y - Math.sin(angle + 0.45) * size)
-      .stroke({ width: 1 / this.camera.zoom, color: this.appearance.dark ? 0xc7cec6 : 0x28352a, alpha: 0.5 });
+    this.lines.setElements(this.edges, this.cards);
   }
   private refreshCamera(styleChanged = false, edgesChanged = false): void {
     this.world.position.set(this.camera.x, this.camera.y);
     this.world.scale.set(this.camera.zoom);
+    this.exposed = selectExposedCanvasCards(this.ordered, this.camera, this.width, this.height);
+    this.exposedIds = new Set(this.exposed.map(card => card.id));
     for (const view of this.views.values()) {
       if (styleChanged) this.updateView(view);
-      else view.container.visible = this.visible(view.card);
+      else view.container.visible = this.exposedIds.has(view.card.id);
       if (view.container.visible && this.camera.zoom >= 0.3) {
         const entry = this.bitmaps.get(view.card.id);
         if (entry) { this.bitmaps.delete(view.card.id); this.bitmaps.set(view.card.id, entry); }
@@ -183,6 +170,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.updateLabels();
     if (styleChanged) this.redrawSelection();
     if (edgesChanged) this.redrawEdges();
+    this.lines.setCamera(this.camera, this.width, this.height, this.app.renderer.resolution);
     this.schedule();
   }
 
@@ -233,12 +221,16 @@ class PixiCanvasKernel implements CanvasKernel {
   setCamera(next: CanvasCamera): void {
     const zoom = Math.max(0.02, Math.min(4, next.zoom));
     const zoomChanged = zoom !== this.camera.zoom;
+    const lodChanged = (zoom < 0.15) !== (this.camera.zoom < 0.15) || (zoom < 0.3) !== (this.camera.zoom < 0.3);
     this.camera = { x: next.x, y: next.y, zoom };
-    this.refreshCamera(zoomChanged, zoomChanged);
+    // 大多数缩放帧只改相机；卡片外观只在明确的LOD边界变化。
+    this.refreshCamera(lodChanged);
+    if (zoomChanged) this.redrawSelection();
   }
   readCamera(): CanvasCamera { return { ...this.camera }; }
   setSelection(ids: readonly CanvasCardId[]): void {
     this.selected.clear(); ids.forEach((id) => this.selected.add(id));
+    this.lines.setSelection(ids);
     this.redrawSelection(); this.schedule();
   }
   readSelection(): readonly CanvasCardId[] { return [...this.selected]; }
@@ -309,12 +301,12 @@ class PixiCanvasKernel implements CanvasKernel {
   invalidateBitmaps(): void { for (const id of this.bitmaps.keys()) this.removeBitmap(id); this.schedule(); }
   setAppearance(next: CanvasAppearance): void {
     if (next.dark !== this.appearance.dark) this.invalidateBitmaps();
-    this.appearance = next; this.refreshCamera(true, true);
+    this.appearance = next; this.lines.setAppearance(next); this.refreshCamera(true);
   }
   resize(width: number, height: number, resolution?: number): void {
     this.width = width; this.height = height;
     this.app.renderer.resize(Math.max(1, width), Math.max(1, height), resolution);
-    this.refreshCamera();
+    this.refreshCamera(true);
   }
   fit(rectangles: readonly CanvasRectangle[]): void {
     const bounds = canvasBounds(rectangles);
@@ -331,6 +323,11 @@ class PixiCanvasKernel implements CanvasKernel {
     return null;
   }
   visibleCards(): readonly CanvasCard[] { return this.ordered.filter((card) => this.visible(card)); }
+  renderableCards(): readonly CanvasCard[] { return this.exposed; }
+  hitTestEdge(point: CanvasPoint): CanvasEdge | null { return this.lines.hitTest(point); }
+  setSelectedEdge(id: CanvasEdgeId | null): void { this.lines.setSelected(id); this.schedule(); }
+  setHoveredCard(id: CanvasCardId | null): void { this.lines.setHovered(id); this.schedule(); }
+  readEdgeGeometry(id: CanvasEdgeId) { return this.lines.readGeometry(id); }
   screenToWorld(point: CanvasPoint): CanvasPoint { return canvasScreenToWorld(point, this.camera); }
   worldToScreen(point: CanvasPoint): CanvasPoint { return canvasWorldToScreen(point, this.camera); }
   async captureImage(format: 'png' | 'jpeg', quality = 0.9): Promise<string> {
@@ -338,13 +335,15 @@ class PixiCanvasKernel implements CanvasKernel {
       quality, frame: new Rectangle(0, 0, this.width, this.height), resolution: this.app.renderer.resolution,
       clearColor: this.appearance.dark ? '#222723' : '#f2f3ee' });
   }
-  readStats() { return { cards: this.cards.size, edges: this.edges.length, bitmaps: this.bitmaps.size, bitmapBytes: this.bitmapBytes, renders: this.renders }; }
+  readStats() { return { cards: this.cards.size, edges: this.edges.length, bitmaps: this.bitmaps.size, bitmapBytes: this.bitmapBytes, renders: this.renders,
+    ...this.lines.readStats() }; }
   destroy(): void {
     this.destroyed = true;
     if (this.scheduled) cancelAnimationFrame(this.scheduled);
     this.removeInteraction();
     this.invalidateBitmaps();
     this.mapLabels.destroy();
+    this.lines.destroy();
     this.app.destroy({ removeView: true }, { children: true, texture: false });
     this.backgrounds.paper.destroy(true); this.backgrounds.card.destroy(true);
     this.views.clear(); this.cards.clear();

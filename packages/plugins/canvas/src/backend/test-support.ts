@@ -3,3 +3,4 @@ export { createEmptyCanvasDocument, readCanvasSnapshot, updateCanvasEditingClaim
 export { commitCanvasOperations } from './features/canvasCommit/orchestration/commitCanvasOperations';
 export { createCanvasDocumentRuntime } from './orchestration/createCanvasDocumentRuntime';
 export { createCanvasBackendPlugin } from './index';
+export { readCanvasSelectionContext } from './orchestration/readCanvasSelectionContext';

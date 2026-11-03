@@ -8,6 +8,12 @@
 
 `setRasterTiles` 接管同一卡片的可见纹理组；卡片可保持完整正文排版宽度，只上传可见横纵切片。`captureImage` 从同一场景输出指定物理比例的 PNG/JPEG，供后台导出使用，调用方保留快照序号并完成文件发布。
 
-远景标题在单个屏幕分辨率图层中按颜色、文档和面积优先避让。不能把文字字号放大成 `13 / zoom` 后仍用原始纹理分辨率；这会在低缩放下制造巨大文字纹理甚至 GPU OOM。近景文字位图走 DOM 光栅器；没有位图时保留标题身份牌。线条曲线自行计算有界均匀采样，避免渲染引擎的长曲线细分误差。
+远景标题在单个屏幕分辨率图层中按颜色、文档和面积优先避让。不能把文字字号放大成 `13 / zoom` 后仍用原始纹理分辨率；这会在低缩放下制造巨大文字纹理甚至 GPU OOM。近景文字位图走 DOM 光栅器；没有位图时保留标题身份牌。近景身份牌纹理也不能随每次缩放重建。
+
+线条纯几何来自 shared/geometry，前后台共用卡边裁切、同侧排开、迟滞与收敛曲线。Pixi 线适配使用静态世界 Mesh 和相机 uniform 保持 1 CSS px；远景直线与近景曲线缓存分开，缩放不反复 stroke 三角化。线层提供点击、高亮、端点、标签、纸面淡影和超过 3000 条可见线时的选中关系简化。`readEdgeGeometry` 给 DOM 交互实际排开后的坐标，不能由另一个表面猜曲线中点。
+
+`visibleCards` 保持视口相交的几何语义；`renderableCards` 只剔除被上层实体纸面完全遮挡的卡，服务渲染调度，不改变框选范围。阴影/圆角不是实体遮挡。
 
 验证：插件 typecheck、lint、test；真实 Electron 入口 `node packages/plugins/canvas/dev/probes/run-render-probe.mjs`。探针的三档场景验证几何、标题 LOD、线与平移，不代表完整业务 UI、全量正文位图吞吐和真实鼠标交互已验收。
+
+正式正文和产品调度的测量入口：`node packages/plugins/canvas/dev/probes/run-performance-probe.mjs`，真实显示窗口、原生 pointer/wheel、DPR 和实际帧间隔，输出三规模×均匀/聚簇结果。`CANVAS_PERFORMANCE_COUNTS=2500` 可定向复演。它输出证据，不自动宣称全部业务或硬件门槛通过；首次正文加载、停手清晰时限、输入回落和内存必须分别检查。

@@ -7,13 +7,14 @@ export const CANVAS_RENDER_CHANNELS = {
   request: 'canvas-render:request', response: 'canvas-render:response', ready: 'canvas-render:ready', cancel: 'canvas-render:cancel',
 } as const;
 const finite = z.number().finite();
+const resource = z.string().max(32 * 1024 * 1024).regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/);
 const common = {
   protocol: z.literal(CANVAS_RENDER_PROTOCOL), requestId: z.string().min(1),
   theme: z.enum(['light', 'dark']), dpr: finite.min(0.25).max(4),
   fontFamily: z.string().min(1).max(256), fontSize: finite.min(8).max(72),
   uiScale: finite.min(0.5).max(4).default(1),
+  assets: z.record(z.string(), resource).default({}),
 };
-const resource = z.string().max(32 * 1024 * 1024).regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/);
 export const CanvasMeasureRequestSchema = z.object({
   ...common, kind: z.literal('measure'), content: CanvasTextDocumentSchema, width: finite.positive().max(4096),
 }).strict();
@@ -28,7 +29,6 @@ export const CanvasRenderRequestSchema = z.object({
   region: z.object({ x: finite, y: finite, width: finite.positive(), height: finite.positive() }).strict().nullable(),
   format: z.enum(['png', 'jpeg']), quality: finite.min(0.1).max(1),
   material: z.enum(['paper', 'card']),
-  assets: z.record(z.string(), resource),
   documents: z.record(z.string(), z.object({ title: z.string(), image: resource.optional() }).strict()),
 }).strict().refine((request) => request.width * request.height * request.dpr ** 2 <= 16_777_216, { message: 'Canvas output exceeds pixel budget' });
 export const CanvasWorkerRequestSchema = z.union([CanvasMeasureRequestSchema, CanvasMeasureBatchRequestSchema, CanvasRenderRequestSchema]);
