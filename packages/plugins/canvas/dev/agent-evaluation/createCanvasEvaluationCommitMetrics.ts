@@ -4,6 +4,8 @@ import type { createCanvasSurface } from '../../src/renderer/orchestration/creat
 import type { CanvasRasterReadiness } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
 import { createCanvasDocumentPort } from '../../src/renderer/adapters/createCanvasDocumentPort';
 import { readCanvasEvaluationCommitScopes, type CanvasEvaluationCommitScope } from './readCanvasEvaluationCommitScopes';
+import { createCanvasEvaluationCommitFrameWindows } from './createCanvasEvaluationCommitFrameWindows';
+import type { createCanvasEvaluationFrameMetrics } from './createCanvasEvaluationFrameMetrics';
 
 type Surface = Awaited<ReturnType<typeof createCanvasSurface>>;
 interface FrameReceipt {
@@ -26,17 +28,20 @@ interface CommitFrame {
   readonly scope?: CanvasEvaluationCommitScope;
   readonly geometry?: FrameReceipt;
   readonly body?: BodyReceipt;
+  readonly frames?: ReturnType<ReturnType<typeof createCanvasEvaluationCommitFrameWindows>['finish']>;
   readonly error?: string;
 }
 
 /** 变化归属取正式delta；分别记录几何首帧与当前可见正文纹理真正draw后的观测上界。 */
-export function createCanvasEvaluationCommitMetrics(surface: Surface) {
+export function createCanvasEvaluationCommitMetrics(surface: Surface, frames: Pick<ReturnType<typeof createCanvasEvaluationFrameMetrics>, 'subscribe'>) {
   const rows = new Map<number, CommitFrame>(), scopes = new Map<number, CanvasEvaluationCommitScope>();
+  const windows = createCanvasEvaluationCommitFrameWindows(frames);
   let disposed = false, epoch = 0;
   const append = (row: CommitFrame, token: number) => {
     if (disposed || token !== epoch) return;
     const { scope, geometry, body, error, ...required } = row;
-    rows.set(row.event.sequence, { ...required, ...(scope ? { scope } : {}), ...(geometry ? { geometry } : {}), ...(body ? { body } : {}), ...(error === undefined ? {} : { error }) });
+    const terminal = row.status !== 'observing' && (row.status !== 'presented' || row.body?.status !== 'pending');
+    rows.set(row.event.sequence, { ...required, ...(scope ? { scope } : {}), ...(geometry ? { geometry } : {}), ...(body ? { body } : {}), ...(error === undefined ? {} : { error }), ...(terminal ? { frames: windows.finish(row.event.sequence) } : {}) });
     while (rows.size > 512) { const first = rows.keys().next(); if (!first.done) rows.delete(first.value); }
   };
   const frameReceipt = (event: CanvasChangedEvent, displayedSequence: number, drawCount: number): FrameReceipt => {
@@ -47,6 +52,7 @@ export function createCanvasEvaluationCommitMetrics(surface: Surface) {
   async function observe(event: CanvasChangedEvent) {
     if (event.documentId !== surface.session.state.snapshot.value?.documentId || rows.has(event.sequence)) return;
     const token = epoch, receivedAt = performance.timeOrigin + performance.now();
+    windows.begin(event.sequence, event.committedAt ?? receivedAt, event.committedAt === undefined ? 'push-received' : 'backend-commit');
     append({ event, receivedAt, status: 'observing' }, token);
     try {
       await surface.session.synchronize(event.sequence); await nextTick();
@@ -83,7 +89,7 @@ export function createCanvasEvaluationCommitMetrics(surface: Surface) {
       while (scopes.size > 512) { const first = scopes.keys().next(); if (!first.done) scopes.delete(first.value); }
     },
     read: () => ({ measurement: 'backend-transaction-return-to-observed-kernel-draw-upper-bound', bodyMeasurement: 'current-visible-body-revision-uploaded-and-drawn', rows: [...rows.values()] }),
-    reset() { epoch += 1; rows.clear(); scopes.clear(); },
-    dispose() { disposed = true; epoch += 1; unsubscribe(); },
+    reset() { epoch += 1; rows.clear(); scopes.clear(); windows.clear(); },
+    dispose() { disposed = true; epoch += 1; unsubscribe(); windows.dispose(); },
   };
 }

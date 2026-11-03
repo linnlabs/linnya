@@ -11,3 +11,5 @@
 `stats`另外保存正式canvas:changed事件到实际kernel draw计数增加的观测上界。只有Backend带committedAt的事件生成commitToFrameUpperBoundMs；记录sequence、来源、接收/绘制UTC时间与当时已显示序号。隐藏、关闭或超时分别保留明确状态，不用RAF回调数量冒充包含变化的绘制。此数据仍需独立硬件/锁屏证据才能作为原生性能验收。
 
 正式时延分为`geometry`和`body.frame`：前者只证明包含该序号的几何draw，后者还要求当前可见正文的相同环境/内容身份已上传且随后实际绘制，并等待精确倍率稳定。通过正式changes返回的delta逐sequence记录该批真实卡片ID/revision，不额外IPC读取或把整份snapshot差异算给一批；补拉只有snapshot时标记unattributed。`visibleBodyIds`是实际可见body交集，overview/thumbnail/outside均不冒充正文，隐藏、失败、5秒未完成和被后续版本替代保留各自事实。最终500卡指标必须核对交集数量和supersededCardIds，不能只用push总计数。
+
+每批`frames`只保存收到正式commit通知后、等待几何/正文完成期间的实际帧间隔。即使模型随后思考数分钟，这段工作窗也不会被全局34秒RAF环形缓存的空闲帧覆盖或稀释；无样本保留null，不能填成120FPS。单帧间隔可能跨过提交起点，因此这是明确标注的保守工作窗诊断。
