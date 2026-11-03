@@ -7,3 +7,5 @@
 可信runner带x-canvas-evaluation-token调用POST /invoke，Renderer以GET /next长轮询取schema命令并POST /result回传正式结果。相同编号同负载只投递一次，未确认的在途写不会因重试再次执行；结果未知时应恢复确认或结束该批，不猜测未提交。Renderer自己校验绑定项目，Node也拒绝跨项目mount。T9/T12批准仍通过真实产品按钮，桥不提供approve动作。
 
 启动前先吸收同一稳定实现，正常重启该工作目录的App并核对模型、Skill和实例身份。批次记录完整sourceRevision与batchId；运行期间冻结实现。结束后正常停止桥，检查index.html未留下临时标签。异常强制退出时先检查marker所属的本机进程与descriptor，不能批量删除其他任务标签或profile。
+
+`stats`另外保存正式canvas:changed事件到实际kernel draw计数增加的观测上界。只有Backend带committedAt的事件生成commitToFrameUpperBoundMs；记录sequence、来源、接收/绘制UTC时间与当时已显示序号。隐藏、关闭或超时分别保留明确状态，不用RAF回调数量冒充包含变化的绘制。此数据仍需独立硬件/锁屏证据才能作为原生性能验收。

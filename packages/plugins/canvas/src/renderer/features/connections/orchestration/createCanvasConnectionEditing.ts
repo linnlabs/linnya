@@ -1,10 +1,11 @@
 import { computed } from 'vue';
-import type { CanvasEdge, CanvasEdgeId, CanvasEndpoint, CanvasPatch, CanvasPoint } from '@plugin/canvas/shared';
+import type { CanvasCamera, CanvasEdge, CanvasEdgeId, CanvasEndpoint, CanvasPatch, CanvasPoint } from '@plugin/canvas/shared';
 import type { CanvasDocumentSession } from '../../canvasDocument';
 import type { CanvasConnectionKernel } from '../definitions/canvasConnections';
 import { buildCanvasConnectionReversal } from '../functions/buildCanvasConnectionReversal';
 import { createCanvasConnectionState } from '../store/createCanvasConnectionState';
 import { createCanvasEndpointGesture } from './createCanvasEndpointGesture';
+import { canvasConnectionToolbarPosition } from '../functions/canvasConnectionToolbarPosition';
 
 export function createCanvasConnectionEditing(session: CanvasDocumentSession, kernel: CanvasConnectionKernel, options: { finishText(): Promise<boolean>; createText(point: CanvasPoint, from: CanvasEndpoint): Promise<void>; clearCards(): void; report(failure: unknown): void }) {
   const state = createCanvasConnectionState();
@@ -31,6 +32,11 @@ export function createCanvasConnectionEditing(session: CanvasDocumentSession, ke
   }
   const gesture = createCanvasEndpointGesture({ session, kernel, state, report: options.report, createText: options.createText });
   return { state, selected, patch, saveLabel, geometry: () => { void session.state.snapshot.value; return selected.value ? kernel.readEdgeGeometry(selected.value.id) : null; },
+    toolbarPosition(input: { readonly geometry: NonNullable<ReturnType<CanvasConnectionKernel['readEdgeGeometry']>>; readonly camera: CanvasCamera; readonly size: { readonly width: number; readonly height: number }; readonly viewport: { readonly width: number; readonly height: number } }) {
+      const project = (point: CanvasPoint) => ({ x: input.camera.x + point.x * input.camera.zoom, y: input.camera.y + point.y * input.camera.zoom });
+      const midpoint = project(input.geometry.midpoint), cards = session.state.snapshot.value?.elements.flatMap(card => card.type === 'edge' ? [] : [{ ...project(card), width: card.width * input.camera.zoom, height: card.height * input.camera.zoom }]) ?? [];
+      return canvasConnectionToolbarPosition({ ...input, midpoint, cards, line: input.geometry.points.map(project), label: selected.value?.label ? { x: midpoint.x - 100, y: midpoint.y - 12, width: 200, height: 24 } : null });
+    },
     async select(id: CanvasEdgeId | null) {
       if (!(await options.finishText()) || !(await saveLabel())) return;
       state.select(id); kernel.setSelectedEdge(id); if (id) options.clearCards();

@@ -23,3 +23,8 @@ it('多图准备全部成功后一次提交与选择，任何一张失败不留�
   expect(f.commit.mock.calls[0]?.[0].operations).toMatchObject([{ op: 'addImage', width: 480, height: 240, x: 10, y: 20 }, { op: 'addImage', x: 34, y: 44 }]);
   expect(f.select).toHaveBeenCalledWith(['c1', 'c2']); f.creation.dispose(); await f.session.close();
 });
+it('文档选择器保留打开菜单时的位置，异步选文档不改成视口中心', async () => {
+  const f = await fixture(); await f.creation.showDocuments({ x: 410, y: 220 }); await f.creation.addDocument('target-document');
+  expect(f.commit.mock.calls[0]?.[0].operations).toMatchObject([{ op: 'addDocument', x: 410, y: 220 }]);
+  f.creation.dispose(); await f.session.close();
+});

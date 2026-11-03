@@ -6,14 +6,17 @@ import { CanvasEvaluationBridgeConnectionSchema, CanvasEvaluationCommandSchema, 
 import CanvasEvaluationHarness from './CanvasEvaluationHarness.vue';
 import type { createCanvasSurface } from '../../src/renderer/orchestration/createCanvasSurface';
 import { createCanvasEvaluationFrameMetrics } from './createCanvasEvaluationFrameMetrics';
+import { createCanvasEvaluationCommitMetrics } from './createCanvasEvaluationCommitMetrics';
 type Surface = Awaited<ReturnType<typeof createCanvasSurface>>;
 const parameters = new URL(import.meta.url).searchParams;
 const connection = CanvasEvaluationBridgeConnectionSchema.parse({ protocol: 1, host: '127.0.0.1', port: Number(parameters.get('port')), nonce: parameters.get('nonce'), projectId: parameters.get('projectId') });
 const base = `http://${connection.host}:${connection.port}`, headers = { 'content-type': 'application/json', 'x-canvas-evaluation-token': connection.nonce };
 let app: App | null = null, root: HTMLElement | null = null, surface: Surface | null = null, disposed = false;
 const metrics = createCanvasEvaluationFrameMetrics();
+let commits: ReturnType<typeof createCanvasEvaluationCommitMetrics> | null = null;
 const requireSurface = () => { if (!surface) throw new Error('验收画布尚未挂载'); return surface; };
 async function unmount(): Promise<void> {
+  commits?.dispose(); commits = null;
   await surface?.session.close(); app?.unmount(); root?.remove(); surface = null; app = null; root = null;
 }
 async function mount(documentId: string, projectId: string): Promise<unknown> {
@@ -24,6 +27,7 @@ async function mount(documentId: string, projectId: string): Promise<unknown> {
   await new Promise<void>((resolve, reject) => {
     app = createApp(CanvasEvaluationHarness, { documentId, projectId, onReady: (value: Surface) => { surface = value; resolve(); }, onFailure: (message: string) => reject(new Error(message)) }); app.mount(container);
   });
+  commits = createCanvasEvaluationCommitMetrics(requireSurface());
   return { viewId: requireSurface().session.viewId, snapshot: requireSurface().session.state.snapshot.value };
 }
 async function presented(value: Surface, previousRenders: number): Promise<{ readonly status: string; readonly renderedAt?: number }> {
@@ -50,10 +54,10 @@ async function execute(command: CanvasEvaluationCommand): Promise<unknown> {
       return { commit, frame, ...(frame.renderedAt === undefined ? {} : { requestToFrameMs: frame.renderedAt - requestedAt }), source: 'user' };
     }
     case 'read': return { snapshot: value.session.state.snapshot.value, draft: value.editor.state.draft.value, creationDraft: value.creation.state.draft.value, error: value.error.value, presentation: value.readPresentationStats() };
-    case 'edit': await value.editor.open(command.payload.elementId); return { viewId: value.session.viewId };
+    case 'edit': await value.focusElements([command.payload.elementId]); await value.edit(); return { viewId: value.session.viewId };
     case 'save': if (!(await value.editor.save(true))) throw new Error('草稿未保存'); return { snapshot: value.session.state.snapshot.value };
     case 'fit': if (command.payload.elementIds) value.locate(command.payload.elementIds); else value.fit(); return { camera: value.camera.value };
-    case 'stats': if (command.payload.reset) metrics.reset(); return { presentation: value.readPresentationStats(), frames: metrics.read(), sequence: value.session.state.snapshot.value?.sequence ?? null };
+    case 'stats': if (command.payload.reset) { metrics.reset(); commits?.reset(); } return { presentation: value.readPresentationStats(), frames: metrics.read(), commits: commits?.read() ?? null, sequence: value.session.state.snapshot.value?.sequence ?? null };
   }
 }
 function hostInstalled(): boolean {
