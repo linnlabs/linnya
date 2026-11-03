@@ -63,4 +63,13 @@ describe('slides-design Skill 产品合同', () => {
     expect(cultural).not.toContain('## 高密度页');
     expect(catalog).toContain('## 版式系统');
   });
+
+  it('专业研究风格有独立入口，并要求页型随内容变化而不是套模板', () => {
+    const body = parsed?.body ?? '';
+    const report = fs.readFileSync(path.join(skillRoot, 'references/style-consulting-report.md'), 'utf-8');
+
+    expect(body).toContain('references/style-consulting-report.md');
+    expect(report).toContain('## 不要做成一个模板');
+    expect(report).toContain('不要照抄本文的任何具体值');
+  });
 });
