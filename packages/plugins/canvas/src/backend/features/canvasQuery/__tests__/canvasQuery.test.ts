@@ -21,3 +21,15 @@ it('queries exact local identities, neighbors and available document titles with
   expect(JSON.stringify(queryCanvas(snapshot, context, { kind: 'show', value: 'c3', depth: 1 }))).not.toContain('private-target-id');
   expect(() => queryCanvas(snapshot, context, { kind: 'region', value: '不存在', depth: 1 })).toThrow('方位');
 });
+
+it('renders semantic scopes and includes free endpoints in whole-document framing', async () => {
+  const { readCanvasRenderRegion } = await import('../index');
+  const { canvasRenderRectangles } = await import('../../../../shared/rendering/functions/canvasRenderRectangles');
+  const snapshot = CanvasSnapshotSchema.parse({ schemaVersion: 1, documentId: 'canvas', sequence: 2, elements: [card('c1', 0, 0), card('c2', 500, 500),
+    { ...edge('e1', 'c1', 'c2'), from: { kind: 'point', x: 5000, y: 5000 }, to: { kind: 'point', x: 6000, y: 6000 } }] });
+  expect(readCanvasRenderRegion(snapshot, { elementIds: ['c2'] })).toEqual({ x: 500, y: 500, width: 100, height: 80 });
+  expect(() => readCanvasRenderRegion(snapshot, { elementIds: ['c9'] })).toThrow('canvas_element_not_found');
+  const bottomRight = readCanvasRenderRegion(snapshot, { region: '右下' });
+  expect(bottomRight && bottomRight.x + bottomRight.width).toBeGreaterThan(6000);
+  expect(canvasRenderRectangles(snapshot.elements)).toHaveLength(4);
+});

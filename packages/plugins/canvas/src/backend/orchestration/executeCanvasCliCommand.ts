@@ -7,7 +7,7 @@ import { CanvasCliFailure, type CanvasCliCommand } from '../features/canvasCli';
 import { readCanvasDocumentIdentity, readCanvasProjectionContext } from '../features/canvasDocument';
 import { readCanvasSnapshot } from '../features/canvasCommit';
 import { readCanvasAgentGroups, projectCanvasAgentGroup, findCanvasPendingApproval, readCanvasAgentRequestStatuses } from '../features/agentChanges';
-import { queryCanvas } from '../features/canvasQuery';
+import { queryCanvas, readCanvasRenderRegion } from '../features/canvasQuery';
 import { publishCanvasImage } from '../features/canvasExport';
 import { readCanvasHostDatabase } from '../functions/readCanvasHostContext';
 import { executeCanvasCliWrite } from './executeCanvasCliWrite';
@@ -19,7 +19,11 @@ export async function executeCanvasCliCommand(command: Exclude<CanvasCliCommand,
   const scope = resolveScope(command.path, context, conversationRoot);
   if (command.kind === 'apply' || command.kind === 'arrange') return executeCanvasCliWrite(command, scope, services);
   const snapshot = readCanvasSnapshot(scope.database, scope.documentId);
-  if (command.kind === 'check') return services.capabilities.computation.check(snapshot, context.signal);
+  if (command.kind === 'check') {
+    const result = await services.capabilities.computation.check(snapshot, context.signal);
+    context.signal.throwIfAborted(); readCanvasDocumentIdentity(scope.database, scope.documentId, scope.projectId);
+    return result;
+  }
   if (command.kind === 'groups') return {
     sequence: snapshot.sequence,
     groups: readCanvasAgentGroups(scope.database, scope.documentId).map(group => projectCanvasAgentGroup(group, findCanvasPendingApproval(scope.database, scope.documentId, group.id)?.approval ?? null, Date.now())).map((group, index) => ({ group: index + 1,
@@ -30,11 +34,13 @@ export async function executeCanvasCliCommand(command: Exclude<CanvasCliCommand,
   };
   if (command.kind === 'render') {
     const resources = await readCanvasRenderingResources({ database: scope.database, snapshot, signal: context.signal, covers: true });
+    const check = await services.capabilities.computation.check(snapshot, context.signal);
+    readCanvasDocumentIdentity(scope.database, scope.documentId, scope.projectId);
     const result = await services.capabilities.rendering.render(CanvasRenderRequestSchema.parse({ protocol: 1, requestId: randomUUID(), kind: 'render',
       snapshot, ...resources, theme: command.theme, width: command.width, height: command.height, dpr: 1,
-      fontFamily: CANVAS_DEFAULT_FONT_FAMILY, fontSize: CANVAS_DEFAULT_FONT_SIZE, format: command.format, quality: 0.9, material: 'paper', region: null }), context.signal);
-    const locator = await publishCanvasImage({ conversationRoot, bytes: result.bytes, format: result.format, signal: context.signal });
-    return { sequence: result.sequence, locator, width: result.width, height: result.height, format: result.format };
+      fontFamily: CANVAS_DEFAULT_FONT_FAMILY, fontSize: CANVAS_DEFAULT_FONT_SIZE, format: command.format, quality: 0.9, material: 'paper', region: readCanvasRenderRegion(snapshot, command) }), context.signal);
+    const locator = await publishCanvasImage({ conversationRoot, bytes: result.bytes, format: result.format, signal: context.signal, assertScope: () => { readCanvasDocumentIdentity(scope.database, scope.documentId, scope.projectId); } });
+    return { sequence: result.sequence, locator, width: result.width, height: result.height, format: result.format, check, checkScope: 'canvas' };
   }
   const projected = projectCanvasCliSnapshot(snapshot, services.referencesFor(scope.database), scope.readerId);
   return queryCanvas(projected, readCanvasProjectionContext(scope.database, snapshot), command);
