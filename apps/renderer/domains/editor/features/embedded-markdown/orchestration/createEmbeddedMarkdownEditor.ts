@@ -5,7 +5,7 @@ import type {
   EmbeddedMarkdownEditor,
   EmbeddedMarkdownEditorOptions,
 } from '@linnya/plugin-host-contract/renderer/embeddedMarkdownEditor';
-import { createMarkdownContentExtensions } from '../../../shared/markdown-content';
+import { createMarkdownDocumentExtensions } from '@linnya/markdown-document-core';
 
 /** 外部文档持有正文和保存生命周期；此入口只拥有一个可销毁的编辑表面。 */
 export function createEmbeddedMarkdownEditor(
@@ -13,7 +13,7 @@ export function createEmbeddedMarkdownEditor(
 ): EmbeddedMarkdownEditor {
   const editor = new Editor({
     element: options.element,
-    extensions: createMarkdownContentExtensions(),
+    extensions: createMarkdownDocumentExtensions(),
     editable: !options.readonly,
     editorProps: {
       attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label },

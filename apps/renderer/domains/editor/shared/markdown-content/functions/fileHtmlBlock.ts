@@ -1,17 +1,8 @@
-import { Node } from '@tiptap/core';
+import { MarkdownHtmlBlock } from '@linnya/markdown-document-core';
 import DOMPurify from 'dompurify';
 
-/** Markdown 的 HTML 块（包含注释）按原文保留；不能在编辑其他段落时被序列化器悄悄丢弃。 */
-export const FileHtmlBlock = Node.create({
-  name: 'fileHtmlBlock',
-  group: 'block',
-  atom: true,
-  addAttributes: () => ({ source: { default: '' } }),
-  parseHTML: () => [{ tag: 'div[data-file-html]', getAttrs: element => ({ source: element.getAttribute('data-file-html') }) }],
-  renderHTML: ({ node }) => ['div', { 'data-file-html': node.attrs.source }],
-  markdownTokenName: 'html',
-  parseMarkdown: (token, helpers) => helpers.createNode('fileHtmlBlock', { source: token.raw }),
-  renderMarkdown: node => typeof node.attrs?.source === 'string' ? node.attrs.source : '',
+/** HTML交互预览仍使用Host既有净化器，正文schema归portable core。 */
+export const FileHtmlBlock = MarkdownHtmlBlock.extend({
   addNodeView() {
     return ({ node }) => {
       const dom = document.createElement('div');
