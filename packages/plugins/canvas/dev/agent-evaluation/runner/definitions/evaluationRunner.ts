@@ -15,6 +15,7 @@ export const CanvasEvaluationRunnerConfigSchema = z
     imageCapability: z.enum(['vision', 'no-vision']),
     repetition: z.number().int().positive().default(1),
     evidenceMode: z.enum(['not-applicable', 'offline', 'network']).default('not-applicable'),
+  limitations: z.array(z.string().min(1)).default([]),
   })
   .strict();
 export type CanvasEvaluationRunnerConfig = z.infer<typeof CanvasEvaluationRunnerConfigSchema>;
