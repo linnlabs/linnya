@@ -74,5 +74,6 @@ export class CanvasBitmapCache {
     this.entries.set(id, { key, regions: [...retained?.regions ?? [], ...regions], bytes: (retained?.bytes ?? 0) + bytes }); this.bytes += bytes;
     this.options.changed(id); return true;
   }
-  readStats(): { readonly bitmaps: number; readonly bitmapBytes: number } { return { bitmaps: this.entries.size, bitmapBytes: this.bytes }; }
+  readStats() { return { bitmaps: this.entries.size, bitmapBytes: this.bytes, bitmapBudgetBytes: this.options.budget,
+    rasterTiles: [...this.entries.values()].reduce((sum, entry) => sum + entry.regions.length, 0) }; }
 }

@@ -37,3 +37,9 @@ WebGL适配器识别SwiftShader/llvmpipe软件绘图，交互模式自动将实�
 `CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_PERFORMANCE_COUNTS=250` 运行独立SwiftShader/offscreen降级冒烟，输出到单独的canvas-software-probe并明确validHardwareRun=false。它验证自动简化、实际分辨率与状态，不证明真实显卡帧率或手感。
 
 正文补图由独立microtask批次调度，不占纯绘制RAF闭包。正式可见表面在Page Visibility变成hidden时取消未完成paint，恢复visible后按当前需求重新准备；保留已有纹理，不将后台节流当正文失败。实际paint超时只记录可见性、连接状态、能力和尺寸，不记录正文或Host配置。离屏技术验证可显式关闭这一可见表面策略。
+
+`CanvasSpatialProjection`按512世界px维护卡片几何索引和有界世界格缓存，命中只查询所在格与长卡；长卡不为整篇正文登记数千空格。各格从上层向下扣纸面，拖动只使受影响格失效。已完全被现有上层纸面遮住的低层移动可保留精确投影；不能证明遮挡时立即重算。索引保存独立bounds，避免display对象原地移动后丢失旧几何。`preview-changed`只通知正文投影刷新，不表示已提交内容。
+
+线Mesh携带每条边的语义颜色索引，浅/深主题通过共享中间墨色palette切换uniform；默认中性线与独立选中高亮保持各自职责。不能只保存edge.color却把所有边绘为同一颜色。六色双主题、纸面淡影及拖动显露下层均有真实Electron像素断言。
+
+CI可用 `CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs` 后执行 `node packages/plugins/canvas/dev/probes/verify-counts.mjs`。后者对fixture独立线性可见/命中oracle、空间候选、可见片段、位图预算与队列峰值作确定性断言，并输出counts-summary.json；容量从正式公开stats读取，不按机器锁帧时。离屏输出明确不代表真实GPU性能验收。
