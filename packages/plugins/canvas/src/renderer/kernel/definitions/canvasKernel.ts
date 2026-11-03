@@ -2,7 +2,8 @@ import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasElement, CanvasPoint
 
 export type CanvasKernelIntent =
   | { readonly kind: 'select'; readonly ids: readonly CanvasCardId[]; readonly additive: boolean }
-  | { readonly kind: 'move'; readonly ids: readonly CanvasCardId[]; readonly dx: number; readonly dy: number }
+  | { readonly kind: 'move'; readonly ids: readonly CanvasCardId[]; readonly dx: number; readonly dy: number; readonly copy?: boolean }
+  | { readonly kind: 'editing'; readonly ids: readonly CanvasCardId[]; readonly active: boolean }
   | { readonly kind: 'open'; readonly id: CanvasCardId }
   | { readonly kind: 'context'; readonly point: CanvasPoint; readonly id: CanvasCardId | null }
   | { readonly kind: 'camera'; readonly camera: CanvasCamera };
@@ -17,6 +18,12 @@ export interface CanvasKernel {
   setCamera(camera: CanvasCamera): void;
   readCamera(): CanvasCamera;
   setSelection(ids: readonly CanvasCardId[]): void;
+  readSelection(): readonly CanvasCardId[];
+  setEditingCard(id: CanvasCardId | null): void;
+  hasBitmap(id: CanvasCardId, key: string): boolean;
+  setDragPreview(ids: readonly CanvasCardId[], dx: number, dy: number): void;
+  clearDragPreview(): void;
+  setBrush(rectangle: CanvasRectangle | null): void;
   setBitmap(id: CanvasCardId, revision: number, key: string, bitmap: ImageBitmap): boolean;
   invalidateBitmaps(): void;
   setAppearance(appearance: CanvasAppearance): void;
@@ -29,3 +36,6 @@ export interface CanvasKernel {
   readStats(): { readonly cards: number; readonly edges: number; readonly bitmaps: number; readonly bitmapBytes: number; readonly renders: number };
   destroy(): void;
 }
+
+export type CanvasInteractionKernel = Pick<CanvasKernel,
+  'canvas' | 'readCamera' | 'setCamera' | 'screenToWorld' | 'hitTest' | 'visibleCards' | 'readSelection' | 'setBrush' | 'setDragPreview' | 'clearDragPreview'>;

@@ -57,6 +57,9 @@ class PixiCanvasKernel implements CanvasKernel {
   private readonly cards = new Map<CanvasCardId, CanvasCard>();
   private readonly bitmaps = new Map<CanvasCardId, BitmapEntry>();
   private readonly selected = new Set<CanvasCardId>();
+  private readonly dragOriginals = new Map<CanvasCardId, CanvasCard>();
+  private brush: CanvasRectangle | null = null;
+  private editingCard: CanvasCardId | null = null;
   private readonly mapLabels = new CanvasMapLabels();
   private overviewOrder: readonly CanvasCard[] = [];
   private edges: readonly CanvasEdge[] = [];
@@ -75,7 +78,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute('role', 'application');
     this.canvas.setAttribute('aria-label', '自由画布，按空格拖动平移，使用工具栏编辑所选卡片');
-    this.canvas.style.cssText = 'display:block;touch-action:none;outline:none;width:100%;height:100%';
+    this.canvas.style.cssText = 'display:block;touch-action:none;width:100%;height:100%';
     options.host.append(this.canvas);
     this.world.addChild(this.lineLayer, this.cardLayer, this.selectionLayer);
     this.app.stage.addChild(this.world, this.mapLabels.sprite);
@@ -126,6 +129,7 @@ class PixiCanvasKernel implements CanvasKernel {
     body.visible = !overview && this.bitmaps.has(card.id);
     body.width = card.width;
     body.height = card.height;
+    if (this.editingCard === card.id) { label.visible = false; body.visible = false; }
     label.position.set(14, 12);
     // 地图标签只在确定的屏幕格中保留一个，避免一屏几千张纹理和文字重叠。
     if (this.camera.zoom < 0.15) { label.visible = false; if (card.type !== 'image') body.visible = false; container.alpha = this.selected.has(card.id) ? 1 : 0.6; }
@@ -137,6 +141,8 @@ class PixiCanvasKernel implements CanvasKernel {
   }
   private redrawSelection(): void {
     this.selectionLayer.clear();
+    if (this.brush) this.selectionLayer.rect(this.brush.x, this.brush.y, this.brush.width, this.brush.height)
+      .fill({ color: 0x347b45, alpha: 0.08 }).stroke({ width: 1 / this.camera.zoom, color: 0x347b45, alpha: 0.6 });
     for (const id of this.selected) {
       const card = this.cards.get(id);
       if (card) this.selectionLayer.roundRect(card.x, card.y, card.width, card.height, 4).stroke({ width: 1.5 / this.camera.zoom, color: 0x347b45 });
@@ -182,6 +188,7 @@ class PixiCanvasKernel implements CanvasKernel {
   }
 
   setElements(elements: readonly CanvasElement[]): void {
+    this.dragOriginals.clear();
     const nextCards = elements.filter((element): element is CanvasCard => element.type !== 'edge');
     const nextIds = new Set(nextCards.map((card) => card.id));
     for (const id of this.views.keys()) if (!nextIds.has(id)) this.removeView(id);
@@ -235,6 +242,40 @@ class PixiCanvasKernel implements CanvasKernel {
     this.selected.clear(); ids.forEach((id) => this.selected.add(id));
     this.redrawSelection(); this.schedule();
   }
+  readSelection(): readonly CanvasCardId[] { return [...this.selected]; }
+  hasBitmap(id: CanvasCardId, key: string): boolean { return this.bitmaps.get(id)?.key === key; }
+  setEditingCard(id: CanvasCardId | null): void {
+    const previous = this.editingCard; this.editingCard = id;
+    for (const target of [previous, id]) { if (target) { const view = this.views.get(target); if (view) this.updateView(view); } }
+    this.schedule();
+  }
+  setBrush(rectangle: CanvasRectangle | null): void { this.brush = rectangle; this.redrawSelection(); this.schedule(); }
+  setDragPreview(ids: readonly CanvasCardId[], dx: number, dy: number): void {
+    for (const id of ids) {
+      let view = this.views.get(id);
+      if (!view || view.card.locked) continue;
+      if (!this.dragOriginals.has(id)) {
+        this.dragOriginals.set(id, view.card);
+        // 只在手势开始时复制绘制投影，后续 pointermove 不逐卡分配对象。
+        const display = { ...view.card };
+        view = { ...view, card: display };
+        this.cards.set(id, display); this.views.set(id, view);
+      }
+      const original = this.dragOriginals.get(id);
+      if (!original) continue;
+      view.card.x = original.x + dx; view.card.y = original.y + dy;
+      view.container.position.set(view.card.x, view.card.y);
+    }
+    this.redrawEdges(); this.redrawSelection(); this.schedule();
+  }
+  clearDragPreview(): void {
+    for (const [id, card] of this.dragOriginals) {
+      const view = this.views.get(id);
+      this.cards.set(id, card);
+      if (view) { this.views.set(id, { ...view, card }); view.container.position.set(card.x, card.y); }
+    }
+    this.dragOriginals.clear(); this.redrawEdges(); this.redrawSelection(); this.schedule();
+  }
   setBitmap(id: CanvasCardId, revision: number, key: string, bitmap: ImageBitmap): boolean {
     const card = this.cards.get(id);
     if (!card || card.revision !== revision || this.destroyed) { bitmap.close(); return false; }
@@ -272,7 +313,8 @@ class PixiCanvasKernel implements CanvasKernel {
   }
   hitTest(point: CanvasPoint): CanvasCard | null {
     for (let i = this.ordered.length - 1; i >= 0; i--) {
-      const card = this.ordered[i];
+      const card = this.cards.get(this.ordered[i].id);
+      if (!card) continue;
       if (point.x >= card.x && point.x <= card.x + card.width && point.y >= card.y && point.y <= card.y + card.height) return card;
     }
     return null;
