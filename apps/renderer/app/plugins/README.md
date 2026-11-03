@@ -20,3 +20,5 @@ Host 挂载 namespace 不代表 ESM shim 已导出它们。发布验收要在真
 生命周期测试必须覆盖真实状态转换，而不是只断言函数调用：至少验证并发到达的安装与卸载快照按顺序生效、插件不会重复激活、后续快照不会因前次失败而丢失，以及激活失败后 contribution、CSS 和各业务 registry 能完整回滚。
 
 `documentTypePresentation` 是 Host 文档 UI 的窄展示装配：图标取已有文档类型贡献，恢复动作按正式 availability 状态选择启用插件或打开商店。App 将该能力注入 Editor 的 `DocumentTypePresentationPort`；只有用户点击动作才调用既有 store 流程，不开放插件任意启用 SDK，也不绕过 loader 操作 registry。
+
+详情档通过同一 `documentTypePresentation` 读取可选 readonlyPreviewComponent，Editor 获得延迟挂载回调，不解释文档正文 DTO。可用状态变化与弹层关闭负责卸载，组件自己拥有只读内容加载和资源释放。

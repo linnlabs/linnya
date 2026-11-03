@@ -14,7 +14,7 @@ function port() {
   const changed = { current: () => {} };
   const value: DocumentReferenceUiPort = { getProjectId: () => 'project', query: async () => [], resolve: vi.fn(async () => presentation), readCached: () => presentation,
     subscribe(_documentId, listener) { changed.current = listener; return () => { changed.current = () => {}; }; },
-    preview: vi.fn(async (): Promise<DocumentPreviewResult> => ({ documentId: 'target', title: 'Target', nodeType: 'document', status: 'ready', content: { revisionKey: '1', summary: 'Summary' } })), renderIcon: () => () => {}, recoveryAction: () => null, open: vi.fn(async () => {}), renderDetail: vi.fn(async () => () => {}), dispose: vi.fn(), report: vi.fn() };
+    preview: vi.fn(async (): Promise<DocumentPreviewResult> => ({ documentId: 'target', title: 'Target', nodeType: 'document', status: 'ready', content: { revisionKey: '1', summary: 'Summary' } })), renderIcon: () => () => {}, readDetailRenderer: () => null, recoveryAction: () => null, open: vi.fn(async () => {}), renderDetail: vi.fn(async () => () => {}), dispose: vi.fn(), report: vi.fn() };
   return { value, changed };
 }
 describe('document reference interaction', () => {
@@ -67,6 +67,16 @@ describe('document reference interaction', () => {
     view.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'Enter' }) }); expect(command).toHaveBeenCalledWith(candidate);
     view.onUpdate({ items: [], command }); expect(renderIcon.mock.results[0]?.value).toHaveBeenCalledOnce();
     view.onExit(); expect(document.querySelector('[role=listbox]')).toBeNull();
+  });
+
+  it('mounts a contributed readonly detail only on expansion and disposes it when leaving', async () => {
+    vi.useFakeTimers(); const f = port(); const dispose = vi.fn(); const mount = vi.fn(async (element: HTMLElement) => { element.textContent = 'Readonly pages'; return dispose; });
+    f.value.readDetailRenderer = () => mount;
+    const view = createDocumentReferenceNodeView('target', 'ref', f.value); document.body.append(view.dom);
+    view.dom.dispatchEvent(new MouseEvent('mouseenter')); await vi.advanceTimersByTimeAsync(400);
+    expect(mount).not.toHaveBeenCalled(); const popup = document.querySelector('.document-reference-preview'); popup?.dispatchEvent(new MouseEvent('mouseenter')); await Promise.resolve();
+    expect(document.body.textContent).toContain('Readonly pages'); expect(mount).toHaveBeenCalledOnce();
+    popup?.dispatchEvent(new MouseEvent('mouseleave')); await vi.advanceTimersByTimeAsync(200); expect(dispose).toHaveBeenCalledOnce(); view.destroy();
   });
 
 });
