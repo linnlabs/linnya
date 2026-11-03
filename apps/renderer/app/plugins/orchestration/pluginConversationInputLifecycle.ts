@@ -1,6 +1,7 @@
 import type {
   ConversationInputAccessoryContribution,
   ConversationReferenceProviderContribution,
+  ConversationReferenceKindContribution,
   PluginConversationInputContribution,
 } from '@plugin/renderer/conversationInputContribution';
 import {
@@ -78,7 +79,11 @@ export function registerPluginConversationInputContribution(
   const registeredAccessories: Array<{ readonly pluginId: string; readonly id: string }> = [];
   try {
     for (const kind of options.contribution.referenceKinds) {
-      registerConversationReferenceKind(kind);
+      const gatedKind: ConversationReferenceKindContribution = {
+        ...kind,
+        isAvailable: () => options.isPluginActive() && kind.isAvailable?.() !== false,
+      };
+      registerConversationReferenceKind(gatedKind);
       registeredKinds.push({ pluginId: kind.pluginId, kind: kind.kind });
     }
     for (const provider of options.contribution.referenceProviders) {

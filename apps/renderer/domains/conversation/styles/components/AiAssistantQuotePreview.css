@@ -134,3 +134,13 @@
   opacity: 1;
   pointer-events: auto;
 }
+
+.ai-assistant-quote-preview__pill-action {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}

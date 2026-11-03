@@ -138,3 +138,9 @@ Backend 的 `@plugin/backend/imageTranscoding` 是不透明内存图片转码窄
 - **门面不能只照顾当前插件**：比如本轮把图片资源解析、plugin runtime、workspace
   VFS 解析、structured context
   requirement 都做成通用门面。判断标准很简单：未来另一个重型插件能不能不改 Host 直接复用。
+
+## 可嵌入正文与外观分节
+
+`@plugin/renderer/embeddedMarkdownEditor` 提供独立 Markdown 表面：外层文档传入 JsonValue、容器和更新回调，取得读取/替换/只读/焦点/销毁句柄。它复用 Editor 的正文扩展，不持有 Workspace 文档会话、保存或状态。正文转换同样只返回 JSON/Markdown，非法节点和属性会拒绝。实现与验收见 [Editor 独立表面](../../../apps/renderer/domains/editor/features/embedded-markdown/README.md)。
+
+`@plugin/renderer/settingsContribution` 的 `registerAppearanceSection` 可在外观主题下面贡献一节。贡献声明 pluginId、局部 id、标题、顺序、组件和可用性；同一 owner/id 不得重复。组件只绘制内容，Settings 绘制分节壳。插件激活时注册、停用时精确注销自己的分节，不接管整张外观页。

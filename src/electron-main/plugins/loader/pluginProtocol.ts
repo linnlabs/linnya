@@ -233,6 +233,7 @@ const rendererHostShims = new Map<string, string>([
     'unregisterDocumentReferenceRuntimeHandler',
     'listDocumentReferenceRuntimeHandlers',
   ])],
+  ['/plugin-renderer/embeddedMarkdownEditor.js', buildNamedHostShim('@plugin/renderer/embeddedMarkdownEditor', ['createEmbeddedMarkdownEditor', 'parseEmbeddedMarkdown', 'serializeEmbeddedMarkdown'])],
   ['/plugin-renderer/exportArtifact.js', buildNamedHostShim('@plugin/renderer/exportArtifact', [
     'requestExportArtifactTarget',
   ])],
@@ -243,6 +244,10 @@ const rendererHostShims = new Map<string, string>([
   ['/plugin-renderer/referenceLinkUi.js', buildNamedHostShim('@plugin/renderer/referenceLinkUi', ['WorkspaceRefLink'])],
   ['/plugin-renderer/settingsContribution.js', buildNamedHostShim('@plugin/renderer/settingsContribution', [
     'clearSettingsContributionsForTest',
+    'clearAppearanceSectionsForTest',
+    'listAppearanceSections',
+    'registerAppearanceSection',
+    'unregisterAppearanceSection',
     'listSettingsContributions',
     'registerSettingsContribution',
     'unregisterSettingsContribution',

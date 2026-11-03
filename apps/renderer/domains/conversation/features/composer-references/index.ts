@@ -1,4 +1,5 @@
 export {
+  activateConversationReference,
   clearConversationReferenceKindsForTest,
   registerConversationReferenceKind,
   resolveConversationReferenceChipPresentation,
@@ -12,3 +13,4 @@ export {
   unregisterConversationReferenceProvider,
 } from './registry/conversationReferenceProviderRegistry';
 export { useComposerReferences } from './orchestration/useComposerReferences';
+export { prepareComposerReferences } from './orchestration/prepareComposerReferences';

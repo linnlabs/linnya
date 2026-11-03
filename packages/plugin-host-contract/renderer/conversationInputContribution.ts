@@ -67,14 +67,28 @@ export interface ConversationReferenceChipDescriptor {
 /**
  * 一个插件内的引用类型贡献。
  *
- * 首版只定义宿主标准 pill 已消费的展示与校验能力。点击导航和自定义组件
- * 等到出现真实消费者后再扩展，避免提前背负无实现的兼容契约。
+ * 标准 pill 展示、校验及显式点击动作；动态正文只在发送准备阶段解析一次。
  */
+export interface ConversationReferencePreparationContext {
+  readonly conversationId: string | null;
+  readonly signal: AbortSignal;
+}
+
+/** 已确认发送的正文快照；owner/kind/id 不允许刷新 provider 改写。 */
+export type ConversationReferencePreparedContent = Omit<ConversationReferenceInput, 'pluginId' | 'kind'>;
+
 export interface ConversationReferenceKindContribution {
   readonly pluginId: string;
   readonly kind: string;
   readonly chip: ConversationReferenceChipDescriptor;
   readonly isValid?: (reference: ConversationReferenceChipInput) => boolean;
+  readonly isAvailable?: () => boolean;
+  /** 发送前由 Host 等待；失败保留草稿，成功结果冻结进本次消息。 */
+  readonly prepareForSend?: (
+    reference: ConversationReferenceChipInput,
+    context: ConversationReferencePreparationContext,
+  ) => Promise<ConversationReferencePreparedContent>;
+  readonly onActivate?: (reference: ConversationReferenceChipInput) => void | Promise<void>;
 }
 
 /** Accessory 经宿主绑定 owner 后可新增的引用，不允许组件冒用其他插件身份。 */
