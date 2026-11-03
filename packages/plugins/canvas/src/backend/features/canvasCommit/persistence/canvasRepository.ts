@@ -5,7 +5,7 @@ import { CanvasCommitDeltaSchema, type CanvasSnapshot, type CanvasSource } from 
 import { CanvasCommitResultSchema, type CanvasCommitResult } from '../../../../shared/changeset/definitions/canvasCommands';
 import type { CanvasCommitPlan, CanvasCommitState, CanvasEditingClaim } from '../definitions/canvasCommit';
 
-const documentRowSchema = z.object({ schema_version: z.number().int(), sequence: z.number().int().nonnegative(), next_card: z.number().int().positive(), next_edge: z.number().int().positive() });
+const documentRowSchema = z.object({ schema_version: z.number().int(), sequence: z.number().int().nonnegative(), next_card: z.number().int().positive(), next_edge: z.number().int().positive(), maximum_revision: z.number().int().nonnegative() });
 const receiptRowSchema = z.object({ payload_hash: z.string(), result_json: z.string() });
 
 export function readCanvasSequence(database: Pick<CanvasDatabase, 'prepare'>, documentId: string): number {
@@ -19,7 +19,7 @@ export function createEmptyCanvasDocument(database: CanvasDatabase, documentId: 
 }
 
 export function readCanvasCommitState(database: Pick<CanvasDatabase, 'prepare'>, documentId: string): CanvasCommitState {
-  const raw = database.prepare('SELECT schema_version, sequence, next_card, next_edge FROM canvas_documents WHERE node_id = ?').get(documentId);
+  const raw = database.prepare('SELECT schema_version, sequence, next_card, next_edge, maximum_revision FROM canvas_documents WHERE node_id = ?').get(documentId);
   if (!raw) throw new Error('canvas_document_missing');
   const row = documentRowSchema.parse(raw);
   const decoded = decodeCanvasPersistedRows(database.prepare('SELECT element_id, element_json, field_versions_json, field_origins_json FROM canvas_elements WHERE node_id = ? ORDER BY element_id').all(documentId));
@@ -27,7 +27,7 @@ export function readCanvasCommitState(database: Pick<CanvasDatabase, 'prepare'>,
   const elements = decoded.rows;
   const guardSchema = z.object({ element_id: z.string(), origin: z.string(), revision: z.number() });
   const deletedOrigins = Object.fromEntries(database.prepare('SELECT element_id, origin, revision FROM canvas_history_guards WHERE node_id = ?').all(documentId).map(value => { const guard = guardSchema.parse(value); return [guard.element_id, { origin: guard.origin, revision: guard.revision }]; }));
-  return { deletedOrigins, sequence: row.sequence, nextCard: row.next_card, nextEdge: row.next_edge, elements };
+  return { deletedOrigins, maximumRevision: row.maximum_revision, sequence: row.sequence, nextCard: row.next_card, nextEdge: row.next_edge, elements };
 }
 
 export function readCanvasSnapshot(database: Pick<CanvasDatabase, 'prepare'>, documentId: string): CanvasSnapshot {
@@ -70,8 +70,11 @@ export function persistCanvasCommit(database: CanvasDatabase, input: {
       if (before) database.prepare('INSERT INTO canvas_history_guards (node_id, element_id, origin, revision) VALUES (?, ?, ?, ?) ON CONFLICT(node_id, element_id) DO UPDATE SET origin = excluded.origin, revision = excluded.revision').run(documentId, id, plan.origin, before.revision);
     }
   }
-  database.prepare('UPDATE canvas_documents SET sequence = ?, next_card = ?, next_edge = ? WHERE node_id = ?')
-    .run(plan.state.sequence, plan.state.nextCard, plan.state.nextEdge, documentId);
+  // 标量只增不减；guard/版本裁剪都不承担永久元素墓碑的职责。
+  const maximumRevision = plan.changes.reduce((maximum, change) => Math.max(maximum,
+    change.before?.revision ?? 0, change.after?.revision ?? 0), 0);
+  database.prepare('UPDATE canvas_documents SET sequence = ?, next_card = ?, next_edge = ?, maximum_revision = MAX(maximum_revision, ?) WHERE node_id = ?')
+    .run(plan.state.sequence, plan.state.nextCard, plan.state.nextEdge, maximumRevision, documentId);
   if (plan.changes.length > 0) {
     database.prepare('INSERT INTO canvas_changes (node_id, sequence, source_json, changes_json, created_at) VALUES (?, ?, ?, ?, ?)')
       .run(documentId, plan.state.sequence, JSON.stringify(input.source), JSON.stringify(plan.changes), input.now);

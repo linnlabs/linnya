@@ -5,6 +5,7 @@ import type {
   CanvasHistoryCreation, CanvasHistoryDeletion, CanvasHistoryEdit,
   CanvasHistoryReversalContext, CanvasHistoryReversalDecision, CanvasHistoryReversalInput, CanvasHistoryReversibleChange,
 } from '../definitions/canvasHistoryReversal';
+import { positionCanvasHistoryRestorations } from './positionCanvasHistoryRestorations';
 import { findProtectedCanvasHistoryCreations } from './findProtectedCanvasHistoryCreations';
 import { reverseCanvasHistoryCreation, reverseCanvasHistoryDeletion, reverseCanvasHistoryEdit } from './reverseCanvasHistoryRecords';
 
@@ -47,6 +48,7 @@ export function planCanvasHistoryReversal(input: CanvasHistoryReversalInput): Ca
   const deleted = { ...input.state.deletedOrigins };
   const changes: CanvasElementChange[] = [];
   const results: CanvasCommitPlan['results'] = [];
+  const restorationResults = new Map<CanvasElementId, number>();
   const records = [...input.entry.changes].reverse();
   const protectedCreations = findProtectedCanvasHistoryCreations(records, rows);
   const context: CanvasHistoryReversalContext = {
@@ -61,11 +63,13 @@ export function planCanvasHistoryReversal(input: CanvasHistoryReversalInput): Ca
     else rows.delete(record.id);
     if (decision.deletionGuard) deleted[record.id] = decision.deletionGuard;
     changes.push(decision.change);
+    if (isDeletion(record) && decision.row?.element.type !== 'edge') restorationResults.set(record.id, results.length - 1);
   }
-  validateCanvasGraph([...rows.values()].map(row => row.element));
+  const positioned = positionCanvasHistoryRestorations({ rows, changes, results, restorationResults, origin: input.origin });
+  validateCanvasGraph([...positioned.rows.values()].map(row => row.element));
   return {
-    origin: input.origin, changes, results, refs: {},
+    origin: input.origin, changes: positioned.changes, results: positioned.results, refs: {},
     retainedElements: records.flatMap(record => [record.before, record.after].flatMap(element => element ? [element] : [])),
-    state: { ...input.state, deletedOrigins: deleted, sequence: input.state.sequence + (changes.length ? 1 : 0), elements: [...rows.values()] },
+    state: { ...input.state, deletedOrigins: deleted, sequence: input.state.sequence + (changes.length ? 1 : 0), elements: [...positioned.rows.values()] },
   };
 }
