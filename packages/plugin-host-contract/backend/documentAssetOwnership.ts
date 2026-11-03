@@ -17,3 +17,8 @@ export declare function registerDocumentAssetOwnership(input: {
 export declare function listDocumentAssetByteFacts(input: {
   readonly database: unknown; readonly documentId: string; readonly assetIds: readonly string[];
 }): readonly import('@app/schemas').DocumentAssetByteFact[];
+
+/** 同步事务内接纳完整可达集合并释放其余文档归属；物理回收仍由Assets负责。 */
+export declare function reconcileDocumentAssetOwnership(input: {
+  readonly database: unknown; readonly documentId: string; readonly assetIds: readonly string[]; readonly usageHint: string;
+}): void;

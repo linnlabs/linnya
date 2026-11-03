@@ -2,3 +2,4 @@ export type { DocumentAssetOwnershipPort } from './definitions/documentAssetOwne
 export { createSqliteDocumentAssetOwnership } from './infrastructure/sqlite/createSqliteDocumentAssetOwnership';
 export { releaseDocumentAssetOwnership } from './infrastructure/sqlite/releaseDocumentAssetOwnership';
 export { registerDocumentAssetOwnership } from './infrastructure/sqlite/registerDocumentAssetOwnership';
+export { reconcileDocumentAssetOwnership } from './infrastructure/sqlite/reconcileDocumentAssetOwnership';
