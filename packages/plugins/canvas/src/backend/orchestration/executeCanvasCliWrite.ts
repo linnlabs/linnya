@@ -13,7 +13,8 @@ export async function executeCanvasCliWrite(command: Extract<CanvasCliCommand, {
   const payloadIdentity = JsonValueSchema.parse({ kind: 'canvas-cli', version: CANVAS_CLI_VERSION, operations });
   const document = services.runtimeFor(scope.database);
   const replay = document.editing.replayAgentRequest({ documentId: scope.documentId, requestId: command.requestId, actor: scope.actor, payloadIdentity });
-  if (replay) return projectCanvasAgentReceipt(replay);
+  // 诊断属于本次计算窗口；正式提交回执在重试时逐字段复用，绝不重算布局。
+  if (replay) return { ...projectCanvasAgentReceipt(replay), diagnostics: [] };
   const snapshot = document.read(scope.documentId, scope.projectId);
   const preparation = createCanvasWritePreparationPorts({ ...scope, snapshot, requestId: command.requestId, dryRun: command.dryRun,
     references: services.referencesFor(scope.database), capabilities: services.capabilities });
