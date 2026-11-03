@@ -32,8 +32,8 @@ describe('卡片编辑计划', () => {
     expect(layered[0]).toMatchObject({ op: 'update', id: second.id });
     expect(layered[0]?.op === 'update' && layered[0].patch.order).not.toBe(first.order);
   });
-  it('超过共同提交的业务上限时明确失败，不悄悄漏掉复制对象', () => {
+  it('大于500个元素的用户复制保持完整，不套用模型原始操作上限', () => {
     const cards = Array.from({ length: 501 }, (_, index) => card(`c${index + 1}`));
-    expect(() => buildCanvasDuplication(cards, cards.map(value => CanvasCardIdSchema.parse(value.id)), 0, 0)).toThrow('500');
+    expect(buildCanvasDuplication(cards, cards.map(value => CanvasCardIdSchema.parse(value.id)), 0, 0).operations).toHaveLength(501);
   });
 });

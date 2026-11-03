@@ -26,3 +26,5 @@ export type * from './workspaceNavigation';
 export type * from './workspaceRuntime';
 export type * from './embeddedMarkdownEditor';
 export type * from './documentPreview';
+
+export type * from './documentReferences';
