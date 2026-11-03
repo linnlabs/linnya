@@ -74,3 +74,12 @@ it('12000长链不耗尽调用栈；中断真实计算后下一请求保留自�
     expect(next.sequence).toBe(42); expect(next.operations.length).toBeGreaterThan(0);
   } finally { await runtime.dispose(); }
 }, 15000);
+it('check经同一真实计算worker读取精确快照，报告重叠而不移动卡片', async () => {
+  const snapshot = fixture(3), before = JSON.stringify(snapshot), runtime = createCanvasComputationRuntime({ workerPath });
+  try {
+    const result = await runtime.check(snapshot);
+    expect(result.sequence).toBe(41); expect(result.cardCount).toBe(3); expect(result.edgeCount).toBe(2);
+    expect(result.overlapCount).toBeGreaterThan(0); expect(result.overlaps.length).toBeGreaterThan(0);
+    expect(JSON.stringify(snapshot)).toBe(before);
+  } finally { await runtime.dispose(); }
+});
