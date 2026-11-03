@@ -30,6 +30,7 @@ import { createCanvasDraftDiscard } from './createCanvasDraftDiscard';
 import { createCanvasCardOpening } from './createCanvasCardOpening';
 import { createCanvasEditorNavigation } from './createCanvasEditorNavigation';
 import { installCanvasSurfaceDoubleClick } from './installCanvasSurfaceDoubleClick';
+import { canvasDraggedCopySource } from '../functions/canvasDraggedCopySource';
 
 /** 表面的组合根：只连接已提交文档、草稿、选择、kernel与Host端口。 */
 export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: CanvasSurfacePorts) {
@@ -87,15 +88,15 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   const createTree = async (kind: 'child' | 'sibling') => { if (!layout || !(await finish())) return; const plan = layout.planTree(selection.ids.value, kind); await createText(plan.point, '', plan.from, plan.options); };
   async function handleIntent(intent: CanvasKernelIntent) {
     switch (intent.kind) {
-      case 'preview-changed': refreshView(); return;
+      case 'preview-changed': state.advanceDisplay(); refreshView(); return;
       case 'hover': state.setHovered(intent.id); return;
       case 'render-status': state.setRenderNotice(intent.message); return;
       case 'select-edge': await connections.select(intent.id); return;
       case 'select': await select(intent.ids, intent.additive); return;
       case 'editing': await dragging.set(intent.ids, intent.active); return;
       case 'move':
-        if (intent.copy) { try { await actions.duplicate(selectCanvasSubgraph(session.state.snapshot.value?.elements ?? [], intent.ids), intent.dx, intent.dy); } finally { kernel.clearDragPreview(); await dragging.set(intent.ids, false); } }
-        else await movement.move(intent.ids, intent.dx, intent.dy); return;
+        if (intent.copy) { try { await actions.duplicate(canvasDraggedCopySource(selectCanvasSubgraph(session.state.snapshot.value?.elements ?? [], intent.ids), intent.positions, intent.dx, intent.dy), intent.dx, intent.dy); } finally { kernel.clearDragPreview(); await dragging.set(intent.ids, false); } }
+        else await movement.place(intent.ids, intent.positions); return;
       case 'open': await opening.open(intent.id); return;
       case 'camera': state.setCamera(intent.camera); refreshView(); return;
       case 'context': await viewport.selectContext(intent); state.setContext(intent); return;
@@ -109,7 +110,9 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   const draftParticipants = createCanvasRestoreDraftParticipants({ editor, creation, connections, report });
   const changedDraft = () => { setDirty(); state.clearFailure(); };
   const removeHistory = installCanvasHistoryRestore({ documentId: options.documentId, session, subscribe: ports.subscribeRestored, participants: draftParticipants, changed: changedDraft, report });
-  const selectedCards = computed(selected);
+  // kernel显示坐标不属于Vue状态；版本只触发单卡DOM投影读取，不复制整张场景。
+  const displayCard = (card: CanvasCard) => { void state.displayVersion.value; const position = kernel.readDisplayPosition(card.id); return position ? { ...card, ...position } : card; };
+  const selectedCards = computed(() => { const result = selected(); return result.length === 1 ? result.map(displayCard) : result; });
   const selectionStyle = computed(() => canvasSelectionToolbarStyle(canvasBounds(selectedCards.value), camera.value, options.host.clientWidth));
   const resizeStyle = computed(() => cardEditorStyle(resizing.state.preview.value ?? (selectedCards.value.length === 1 ? selectedCards.value[0] : undefined), camera.value));
   const viewport = createCanvasViewportCommands({ kernel, setCamera: state.setCamera, refresh: refreshView, cards, selected, elements: () => session.state.snapshot.value?.elements ?? [], select, selectEdge: connections.select });
@@ -127,17 +130,17 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   try { kernel.setAppearance(readAppearance()); await session.open(options.documentId); }
   catch (failure) { report(failure); }
   return {
-    session, editor, creation, readonly, integrityNotice: computed(() => canvasIntegrityNotice(session.state.snapshot.value)), renderNotice: state.renderNotice, layout, connections, selection, editingDraft: computed(() => Boolean(editor.state.draft.value || creation.state.draft.value)), setComposing: (value: boolean) => { creation.setComposing(value); editor.setComposing(value); }, captureInsertion: editable.captureInsertion, worldPoint: (point: CanvasPoint) => kernel.screenToWorld(point), centerPoint: () => kernel.screenToWorld({ x: options.host.clientWidth / 2, y: options.host.clientHeight / 2 }), camera, error, context, editorStyle: projection.style, resizeStyle, selectionStyle, selectedCards, hoveredCard: computed(() => cards().find(card => card.id === state.hoveredId.value) ?? null), actions, createText, select, color, remove, fit, zoom, undo, report,
+    session, editor, creation, readonly, integrityNotice: computed(() => canvasIntegrityNotice(session.state.snapshot.value)), renderNotice: state.renderNotice, layout, connections, selection, editingDraft: computed(() => Boolean(editor.state.draft.value || creation.state.draft.value)), setComposing: (value: boolean) => { creation.setComposing(value); editor.setComposing(value); }, captureInsertion: editable.captureInsertion, worldPoint: (point: CanvasPoint) => kernel.screenToWorld(point), centerPoint: () => kernel.screenToWorld({ x: options.host.clientWidth / 2, y: options.host.clientHeight / 2 }), camera, error, context, editorStyle: projection.style, resizeStyle, selectionStyle, selectedCards, hoveredCard: computed(() => { const card = cards().find(card => card.id === state.hoveredId.value); return card ? displayCard(card) : null; }), actions, createText, select, color, remove, fit, zoom, undo, report,
     async arrange(request: CanvasArrangeRequest['options']) { if (!layout || !(await finish())) return; await layout.run({ ...request, ...(selection.ids.value.length ? { elementIds: [...selection.ids.value] } : {}) }); layout.state.setDirection(request.direction); layout.state.setTreeKeyboard(request.algorithm === 'tree'); fit(Boolean(selection.ids.value.length)); },
     async connect() { if (await finish()) await connections.select(await actions.connect()); },
     clipboard, discardDraft, hasDraft: computed(() => draftParticipants.some(participant => participant.readGeneration() !== null)), focus: viewport.focus, focusElements: viewport.focusElements,
     readPresentationStats: () => ({ ...kernel.readStats(), status: kernel.readRenderStatus() }),
     readContentReadiness: (ids: readonly CanvasCardId[]) => raster.readReadiness(ids),
-    prepareDetail: raster.prepareEditing, setDetailVisible: state.setDetailVisible, navigate,
+    prepareDetail: (id: CanvasCardId) => { kernel.finishTransitions([id]); state.advanceDisplay(); return raster.prepareEditing(id); }, setDetailVisible: state.setDetailVisible, navigate,
     selectionDescription: computed(() => describeCanvasSelection(session.state.snapshot.value?.elements ?? [], connections.selected.value ? [connections.selected.value.id] : selection.ids.value, ports.readDocumentTitles?.() ?? new Map())),
     clearFailure: state.clearFailure,
     retryDisplay() { state.clearFailure(); ports.retryContent?.(); raster.retry(); refreshView(); },
-    resizeStart(event: PointerEvent) { if (readonly.value) return; const card = selectedCards.value[0]; if (card && selectedCards.value.length === 1) resizing.start(card, event, camera.value.zoom); },
+    resizeStart(event: PointerEvent) { if (readonly.value) return; const card = selectedCards.value[0]; if (card && selectedCards.value.length === 1) { kernel.finishTransitions([card.id]); const target = cards().find(item => item.id === card.id); if (target) resizing.start(target, event, camera.value.zoom); } },
     closeContext() { state.setContext(null); viewport.focus(); },
     contextStyle: computed(() => { const point = context.value?.point; const screen = point ? kernel.worldToScreen(point) : { x: 0, y: 0 }; return { left: `${Math.min(Math.max(8, screen.x), options.host.clientWidth - 180)}px`, top: `${Math.min(Math.max(8, screen.y), options.host.clientHeight - 320)}px` }; }),
     locate: viewport.locate,

@@ -113,6 +113,10 @@ Canvas表面、正文编辑器和历史预览统一读取Renderer UI公开的 `R
 
 默认模式Tab/Shift+Tab按卡片顺序阅读，首尾可退出到浏览器正常焦点顺序；Command/Control加方向键选择最近的对应方向卡片，读屏同时播报卡片世界位置。树模式Tab创建子节点保持不变。导航只平移显露目标，不改变缩放倍率，详见[键盘与可读选择](./src/renderer/features/accessibility/README.md)。
 
+Agent几何动效只消费正式增量中每张卡最后一次来源；用户提交、初次读取和日志缺口的全量快照不猜测动画。会话原子保存当前快照与有界的卡片来源事实，不为显示动效长期保留delta的旧正文。超过200张受影响Agent卡采用整批动效，连线不计入卡数。定位使用共享纯相机拟合与320ms飞行，用户按下指针立即停在当前相机。
+
+动画中开始拖动在真正越过3屏幕像素后冻结视觉起点，显示预览和最终绝对位置使用同一基准；松手按最新正式修订提交，不把delta再次叠到动画终点。Alt复制同样沿用视觉起点、保留最新内容。正文编辑、只读详情、缩放框及定位先完成目标卡的几何过渡，活DOM不会漂离纸面；单卡控制条跟随显示位置，多选不引入逐帧的大型DOM投影。
+
 ## 制品闭包
 
 `pnpm run smoke:plugin:canvas:artifact`先构建schemas和Canvas独立制品，再用临时隔离根验证checksum/content BOM、正式disk Backend加载、Skill/worker/migration发现、无数据库的CLI help、编译CLI真实只读SQLite与写入拒绝、编译Node计算worker及正式Host HiddenWorker的PNG/JPEG/取消/字体/标签/图片路径。临时制品根与数据库测试后删除；Canvas不进入默认官方发行目标。

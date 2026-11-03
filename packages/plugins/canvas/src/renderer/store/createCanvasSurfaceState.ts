@@ -8,8 +8,10 @@ export function createCanvasSurfaceState(): CanvasSurfaceState {
   const renderNotice = shallowRef<string | null>(null);
   const hoveredId = shallowRef<CanvasCardId | null>(null);
   const detailId = shallowRef<CanvasCardId | null>(null);
+  const displayVersion = shallowRef(0);
   const context = shallowRef<Parameters<CanvasSurfaceState['setContext']>[0]>(null);
-  return { camera: shallowReadonly(camera), error: shallowReadonly(error), context: shallowReadonly(context), renderNotice: shallowReadonly(renderNotice), hoveredId: shallowReadonly(hoveredId), detailId: shallowReadonly(detailId),
+  return { camera: shallowReadonly(camera), error: shallowReadonly(error), context: shallowReadonly(context), renderNotice: shallowReadonly(renderNotice), hoveredId: shallowReadonly(hoveredId), detailId: shallowReadonly(detailId), displayVersion: shallowReadonly(displayVersion),
+    advanceDisplay() { displayVersion.value += 1; },
     setDetailVisible(id, visible) { if (visible) detailId.value = id; else if (detailId.value === id) detailId.value = null; },
     setCamera(value) { camera.value = value; }, fail(message) { error.value = message; }, clearFailure() { error.value = null; }, setContext(value) { context.value = value; }, setRenderNotice(message) { renderNotice.value = message; }, setHovered(value) { hoveredId.value = value; } };
 }

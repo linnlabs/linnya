@@ -7,10 +7,11 @@ import { describeCanvasSelection } from '../../features/accessibility';
 const identity = { schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white', createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null }, createdAt: 0, updatedAt: 0 };
 it('搜索线标签可定位真实线几何并选择线，删除后的旧结果不会把视野重置', async () => {
   const edge = CanvasElementSchema.parse({ ...identity, id: 'e1', type: 'edge', from: { kind: 'point', x: 10, y: 20 }, to: { kind: 'point', x: 300, y: 80 }, direction: 'forward', lineStyle: 'straight', label: '证据' });
-  let camera: CanvasCamera = { x: 0, y: 0, zoom: 1 }, elements = [edge]; const fit = vi.fn(), selectEdge = vi.fn(async () => {}), select = vi.fn(async () => {});
-  const viewport = createCanvasViewportCommands({ kernel: { canvas: document.createElement('canvas'), fit, readCamera: () => camera, setCamera: value => { camera = value; }, readEdgeGeometry: () => ({ from: { x: 10, y: 20 }, to: { x: 300, y: 80 }, midpoint: { x: 155, y: 50 }, points: [{ x: 10, y: 20 }, { x: 300, y: 80 }], fromSide: null, toSide: null }) }, setCamera: () => {}, refresh: () => {}, cards: () => [], selected: () => [], elements: () => elements, select, selectEdge });
-  await viewport.focusElements([edge.id]); expect(selectEdge).toHaveBeenCalledWith('e1'); expect(select).not.toHaveBeenCalled(); expect(fit).toHaveBeenCalledWith([{ x: 10, y: 20, width: 1, height: 1 }, { x: 300, y: 80, width: 1, height: 1 }]);
-  elements = []; viewport.locate([edge.id]); expect(fit).toHaveBeenCalledOnce();
+  let camera: CanvasCamera = { x: 0, y: 0, zoom: 1 }, elements = [edge]; const fit = vi.fn(), animateCamera = vi.fn(), finishTransitions = vi.fn(), selectEdge = vi.fn(async () => {}), select = vi.fn(async () => {});
+  const canvas = document.createElement('canvas'); Object.defineProperties(canvas, { clientWidth: { value: 800 }, clientHeight: { value: 600 } });
+  const viewport = createCanvasViewportCommands({ kernel: { canvas, fit, animateCamera, finishTransitions, readCamera: () => camera, setCamera: value => { camera = value; }, readEdgeGeometry: () => ({ from: { x: 10, y: 20 }, to: { x: 300, y: 80 }, midpoint: { x: 155, y: 50 }, points: [{ x: 10, y: 20 }, { x: 300, y: 80 }], fromSide: null, toSide: null }) }, setCamera: () => {}, refresh: () => {}, cards: () => [], selected: () => [], elements: () => elements, select, selectEdge });
+  await viewport.focusElements([edge.id]); expect(selectEdge).toHaveBeenCalledWith('e1'); expect(select).not.toHaveBeenCalled(); expect(animateCamera).toHaveBeenCalledWith({ zoom: 1, x: 244.5, y: 249.5 }, 320); expect(fit).not.toHaveBeenCalled();
+  elements = []; viewport.locate([edge.id]); expect(animateCamera).toHaveBeenCalledOnce();
 });
 it('读屏摘要使用可访问文档标题与有界内容；保存中不能放弃草稿，确认后只清本地参与者', () => {
   const targetId = 'private-target-uuid';

@@ -4,6 +4,7 @@ import type { CanvasKernel, CanvasAppearance } from '../kernel';
 import type { CanvasDocumentSession } from '../features/canvasDocument';
 import type { useCanvasPreferencesStore } from '../features/materialSetting';
 import type { CanvasSurfacePorts } from '../definitions/canvasSurface';
+import { canvasProjectionMotion } from '../functions/canvasProjectionMotion';
 
 /** 已提交场景、当前身份、主题与窗口尺寸共同投影到kernel；不承担用户提交。 */
 export function installCanvasDisplayProjection(options: {
@@ -24,12 +25,13 @@ export function installCanvasDisplayProjection(options: {
       if (options.ports.readThumbnailCards) options.kernel.setThumbnailCards(options.ports.readThumbnailCards(cards)); options.raster.refresh();
     });
   });
-  const stopSnapshot = watch(options.session.state.snapshot, snapshot => {
-    if (!snapshot) return;
-    options.kernel.setElements(snapshot.elements); options.raster.refresh();
+  const stopSnapshot = watch(options.session.state.projection, projection => {
+    if (!projection) return;
+    const snapshot = projection.snapshot;
+    options.kernel.setElements(snapshot.elements, canvasProjectionMotion(projection)); options.raster.refresh();
     const cards = snapshot.elements.filter((element): element is CanvasCard => element.type !== 'edge');
     void options.ports.refreshReferences?.(cards).catch(options.report);
-  });
+  }, { flush: 'sync' });
   const appearance = () => { options.kernel.setAppearance(options.readAppearance()); options.refreshEditorInk?.(); options.raster.refresh(); };
   const stopAppearance = watch(() => options.preferences.preferences, appearance);
   const observer = new ResizeObserver(() => { options.kernel.resize(options.host.clientWidth, options.host.clientHeight, devicePixelRatio); options.raster.refresh(); }); observer.observe(options.host);

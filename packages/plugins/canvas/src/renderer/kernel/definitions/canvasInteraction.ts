@@ -1,4 +1,4 @@
-import type { CanvasCamera, CanvasCardId, CanvasEdgeId, CanvasPoint, CanvasRectangle } from '../../../shared';
+import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdgeId, CanvasPoint, CanvasRectangle } from '../../../shared';
 
 export interface CanvasInteractionPreferences { readonly wheelZoom: boolean; readonly snapping: boolean }
 export interface CanvasInteractionOptions { readonly readonly?: boolean; readonly readReadonly?: () => boolean; readonly readPreferences?: () => CanvasInteractionPreferences }
@@ -17,5 +17,6 @@ export interface CanvasPointerGesture {
   readonly selection: readonly CanvasCardId[];
   readonly additive: boolean;
   moved: boolean;
+  origins: readonly Pick<CanvasCard, 'id' | 'x' | 'y'>[] | null;
 }
 

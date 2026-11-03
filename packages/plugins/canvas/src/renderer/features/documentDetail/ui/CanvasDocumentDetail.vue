@@ -7,8 +7,7 @@
     tabindex="0"
     @pointerdown.stop
     @wheel.stop
-    @keydown.stop
-    @keydown.esc.prevent="close"
+    @keydown="keydown"
   >
     <header
       class="canvas-document-detail-header"
@@ -60,6 +59,11 @@ const style = computed(() => { const ink = readCanvasCardCssPalette(props.card.c
 let stopNavigation: (() => void) | null = null, theme: MutationObserver | null = null;
 const close = () => { emit('close'); props.port.focus(); };
 const open = async () => { await props.port.open(props.card); };
+const keydown = (event: KeyboardEvent) => {
+  // 正文保留原生选字与只读导航，画布搜索/加入对话仍由页面同一快捷键入口处理。
+  if (!event.isComposing && (event.metaKey || event.ctrlKey) && ['f', 'k'].includes(event.key.toLowerCase())) return;
+  event.stopPropagation(); if (!event.isComposing && event.key === 'Escape') { event.preventDefault(); close(); }
+};
 onMounted(() => {
   if (!body.value || !overlay.value) return;
   const root = overlay.value.ownerDocument.documentElement;
