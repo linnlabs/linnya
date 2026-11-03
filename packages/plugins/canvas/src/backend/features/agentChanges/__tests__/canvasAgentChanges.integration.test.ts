@@ -67,6 +67,24 @@ describe('Canvas durable Agent change groups', () => {
     const result = f.resolve(pending); expect(result.kind).toBe('committed'); expect(f.elements.map(element => element.id)).toEqual(['c20', 'c22']); expect(f.resolve(pending)).toEqual(result);
     expect(f.apply('A', [{ op: 'delete', id: 'c20' }, { op: 'delete', id: 'c21' }], 'pending')).toEqual(result); f.database.close();
   });
+  it('replays raw CLI append identity before re-normalizing the now-changed content', () => {
+    const f = fixture(); f.commit([add]); const actor: CanvasCommitActor = { source: { kind: 'agent', conversationId: 'A', runId: 'first' }, viewId: 'agent-first' };
+    const payloadIdentity = { operations: [{ op: 'append', id: 'c1', markdown: 'more' }], options: { dryRun: false } };
+    const request = { documentId: 'doc', requestId: 'append', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { data: { contentVersion: 1, content: createCanvasPlainTextDocument('Example more') } } }] };
+    const first = f.history.commitAgent({ request, actor, now: 1, payloadIdentity });
+    const second = f.history.replayAgentRequest({ documentId: 'doc', requestId: 'append', actor: { ...actor, viewId: 'agent-child', source: { ...actor.source, runId: 'child' } }, payloadIdentity }); expect(second).toEqual(first);
+    expect(f.history.commitAgent({ request: { ...request, operations: [{ op: 'update', id: 'c1', baseRevision: 2, patch: { data: { contentVersion: 1, content: createCanvasPlainTextDocument('Example more more') } } }] }, actor, now: 2, payloadIdentity })).toEqual(first);
+    expect(f.elements[0]).toMatchObject({ revision: 2, data: { content: createCanvasPlainTextDocument('Example more') } });
+    expect(() => f.history.replayAgentRequest({ documentId: 'doc', requestId: 'append', actor, payloadIdentity: { operations: [{ op: 'append', id: 'c1', markdown: 'different' }] } })).toThrow('request_id_payload_mismatch'); f.database.close();
+  });
+  it('replays pending and approval outcomes with the original raw request identity', () => {
+    const f = fixture(); f.commit(Array.from({ length: 20 }, () => add)); const actor: CanvasCommitActor = { source: { kind: 'agent', conversationId: 'A', runId: 'run' }, viewId: 'agent' };
+    const payloadIdentity = { operation: 'deleteMany', count: 20 };
+    const pending = f.history.commitAgent({ request: { documentId: 'doc', requestId: 'raw-pending', operations: Array.from({ length: 20 }, (_, i) => ({ op: 'delete', id: `c${i + 1}` })) }, actor, now: 1, payloadIdentity });
+    expect(f.history.replayAgentRequest({ documentId: 'doc', requestId: 'raw-pending', actor, payloadIdentity })).toEqual(pending); f.resolve(pending, 'deny');
+    expect(() => f.history.replayAgentRequest({ documentId: 'doc', requestId: 'raw-pending', actor, payloadIdentity })).toThrow('canvas_approval_denied');
+    expect(f.history.approvalResults('doc', 'A')[0]).toMatchObject({ requestId: 'raw-pending', status: 'denied', commit: null }); f.database.close();
+  });
   it('retains durable group identity through a real SQLite close and reopen', () => {
     const directory = mkdtempSync(join(tmpdir(), 'canvas-groups-')); const filename = join(directory, 'workspace.db');
     let database = new Database(filename);
