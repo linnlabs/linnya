@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { canvasPluginMigrations } from '../../../persistence/migrations';
 import { initializeCanvasDocument, readCanvasSnapshot, type CanvasCommitActor } from '../../canvasCommit';
 import { createCanvasHistoryRuntime } from '../../../orchestration/history/createCanvasHistoryRuntime';
+import { readCanvasAgentGroups, saveCanvasAgentGroup } from '..';
 import { createCanvasPlainTextDocument, type CanvasAgentCommitResult } from '../../../../shared';
 
 const add = { op: 'addText', content: createCanvasPlainTextDocument('Example'), width: 240, height: 120 };
@@ -34,6 +35,20 @@ describe('Canvas durable Agent change groups', () => {
     expect(group?.lastWriteAt).toBe(first.lastWriteAt); expect(group?.writing).toBe(false);
     expect(group?.outcomes).toEqual({ complete: true, skippedWrites: [{ requestId: 'stale', index: 0, id: 'c1', reason: 'stale_field', fields: ['color'] }] });
     f.restart(); expect(f.history.listGroups('doc', 10000)[0]?.outcomes).toEqual(group?.outcomes); f.database.close();
+  });
+  it('does not turn missing legacy outcome facts into a claim that no operations were skipped', () => {
+    const f = fixture(); f.apply('A', [add]); const stored = readCanvasAgentGroups(f.database, 'doc')[0]; if (!stored) throw new Error('missing group');
+    expect(stored.outcomes?.complete).toBe(true); saveCanvasAgentGroup(f.database, { ...stored, outcomes: undefined });
+    const group = f.history.listGroups('doc', 10000)[0]; expect(group?.outcomes).toEqual({ complete: false, skippedWrites: [] });
+    f.apply('A', update('red', 0)); expect(f.history.listGroups('doc', 10000)[0]?.outcomes.complete).toBe(false); f.database.close();
+  });
+  it('does not create a ghost or obstacle for an Agent card created and removed within the same group', () => {
+    const f = fixture(); f.history.registerView({ documentId: 'doc', viewId: 'view' });
+    f.apply('A', [add]); f.apply('A', [{ op: 'delete', id: 'c1' }]);
+    const group = f.history.listGroups('doc', 10000, 'view')[0];
+    expect(group).toMatchObject({ added: [], updated: [], deleted: [], changes: [], deletedCards: [], visibleDeletedCards: [] });
+    const preview = f.history.preview({ request: { documentId: 'doc', requestId: 'next', operations: [add] }, actor: { source: { kind: 'agent', conversationId: 'B', runId: 'b' }, viewId: 'b' }, now: 10001 });
+    expect(preview.changes[0]?.after).toMatchObject({ x: 0, y: 0 }); f.database.close();
   });
   it('keeps layout-only changes withdrawable without counting them as content review markers', () => {
     const f = fixture(); f.commit([add]); f.apply('A', [{ op: 'update', id: 'c1', baseRevision: 1, patch: { x: 40 } }]);

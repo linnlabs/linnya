@@ -1,0 +1,11 @@
+# Agent 改动审阅
+
+审阅状态属于当前画布表面，持久事实来自 Backend 的正式组 DTO。新实际写入默认替换当前显示组，旧组仍可在工具条选择及撤回；布局移动不进入内容角标或计数。
+
+公开 `projectCanvasReviewTargets` 按卡片 x、y 排序，保留已查看卡的导航位置。`projectCanvasReviewMarkers` 只显示当前组、未查看卡，缩放低于 0.3 时隐藏；删除框只消费该视图正式的 visibleDeletedCards。重新打开后，历史删除仍可从工具条列表定位和恢复，不画旧幽灵框。文档标题只能由调用方注入当前授权 documentTitles；缺失时显示通用“文档”，不展示内部身份。
+
+两个 UI 组件发出 `reveal(CanvasReviewTarget)`，只提供真实卡片身份及世界 bounds；Page 负责以最多 100% 的倍率飞行，活卡选择、删除卡只定位。Markers 可注入 viewport，方向提示只合并完全离屏的标记。`locate` 仅用于显式“查看整组”。Page/Surface 不属于本 feature。
+
+单卡与整组撤回共用正式写确认通道，结果按逐操作回执说明部分保留、未反转和附近恢复。撤回后“重做撤回”反转该撤回实际产生的用户步骤，并携带 expectedActionId；有后来用户动作或步骤已被消费时明确拒绝，不能撤掉别的动作。全跳过不提供重做。只读表面禁用变更按钮，阅读导航仍可用。
+
+组 skips 来自正式写结果与对应原操作字段；旧组缺记录明确显示“历史信息不全”。applied + later_fields_preserved 是部分成功。正文 sequence、当前内容相似度或按钮出现时长都不能替代事实或撤销栈顶身份。

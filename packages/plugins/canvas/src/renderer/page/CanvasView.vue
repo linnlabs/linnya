@@ -413,7 +413,7 @@ const detailTitle = computed(() => detailCard.value ? content?.documentTitles().
 watch(() => selection.value.join(','), () => { dismissedDetail.value = null; });
 const saving = computed(() => Boolean(surface.value?.editor.state.saving.value || surface.value?.creation.state.saving.value || surface.value?.session.mutationPending.value));
 const editorStyle = computed(() => surface.value?.editorStyle.value ?? { display: 'none' });
-const markers = computed(() => review.value && surface.value ? projectCanvasReviewMarkers(review.value.state.groups.value, surface.value.session.state.snapshot.value?.elements ?? [], camera.value, review.value.state.activeGroupId.value) : []);
+const markers = computed(() => review.value && surface.value ? projectCanvasReviewMarkers({ groups: review.value.state.groups.value, elements: surface.value.session.state.snapshot.value?.elements ?? [], camera: camera.value, activeId: review.value.state.activeGroupId.value }) : []);
 const shownError = computed(() => failure.value ?? surface.value?.creation.state.error.value ?? surface.value?.editor.state.error.value ?? surface.value?.session.state.error.value ?? surface.value?.error.value);
 const selectedColor = computed(() => surface.value?.selectedCards.value[0]?.color ?? 'white');
 const selectedImage = computed(() => { const selected = surface.value?.selectedCards.value; return selected?.length === 1 && selected[0]?.type === 'image' ? selected[0] : null; });
