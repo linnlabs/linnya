@@ -71,11 +71,13 @@ export const CanvasTextCardSchema = z.object({
     heightMode: z.enum(['auto', 'fixed']).default('auto'),
   }).strict(),
 }).strict();
+export const CanvasImageCropSchema = z.object({ x: finite.min(0).max(1), y: finite.min(0).max(1), width: finite.positive().max(1), height: finite.positive().max(1) }).strict()
+  .refine(crop => crop.x + crop.width <= 1 && crop.y + crop.height <= 1, '裁剪范围不能超出原图');
 export const CanvasImageCardSchema = z.object({
   ...card, type: z.literal('image'),
   data: z.object({
     assetId: z.string().min(1), caption: z.string(), alt: z.string(),
-    crop: z.object({ x: finite.min(0).max(1), y: finite.min(0).max(1), width: finite.positive().max(1), height: finite.positive().max(1) }).strict().nullable(),
+    crop: CanvasImageCropSchema.nullable(),
   }).strict(),
 }).strict();
 export const CanvasDocumentCardSchema = z.object({
