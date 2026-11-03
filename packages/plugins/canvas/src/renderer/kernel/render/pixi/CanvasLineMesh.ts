@@ -3,30 +3,42 @@ import type { CanvasCamera, CanvasEdge, CanvasPoint } from '../../../../shared';
 import type { CanvasEdgeGeometry } from '../../geometry/canvasEdgeGeometry';
 
 const vertex = `
+precision highp float;
 in vec2 aPosition;
 in vec2 aNormal;
 in vec2 aOffset;
 in float aSide;
+in float aDistance;
+in float aPattern;
 uniform vec3 uCamera;
-uniform vec2 uViewport;
+uniform mat3 uProjectionMatrix;
 uniform float uWidth;
 uniform float uFeather;
 out float vDistance;
+out float vLength;
+out float vPattern;
 void main() {
   float halfWidth = uWidth * 0.5 + uFeather;
   vec2 position = aPosition * uCamera.z + uCamera.xy + aOffset + aNormal * halfWidth;
-  gl_Position = vec4(position.x / uViewport.x * 2.0 - 1.0, 1.0 - position.y / uViewport.y * 2.0, 0.0, 1.0);
+  // Pixi projection 同时处理主窗口与离屏extract目标的Y方向，不能手写NDC翻转。
+  gl_Position = vec4((uProjectionMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
   vDistance = aSide * halfWidth;
+  vLength = aDistance * uCamera.z;
+  vPattern = aPattern;
 }`;
 const fragment = `
+precision highp float;
 in float vDistance;
-uniform vec3 uColor;
+in float vLength;
+in float vPattern;
+uniform vec3 uLineColor;
 uniform float uWidth;
 uniform float uFeather;
 out vec4 finalColor;
 void main() {
   float alpha = 1.0 - smoothstep(uWidth * 0.5, uWidth * 0.5 + uFeather, abs(vDistance));
-  finalColor = vec4(uColor * alpha, alpha);
+  if (vPattern > 0.5) alpha *= 1.0 - smoothstep(5.5, 6.0, mod(vLength, 10.0));
+  finalColor = vec4(uLineColor * alpha, alpha);
 }`;
 const program = GlProgram.from({ vertex, fragment, name: 'canvas-screen-width-line' });
 
@@ -34,8 +46,7 @@ const program = GlProgram.from({ vertex, fragment, name: 'canvas-screen-width-li
 export class CanvasLineMesh {
   private readonly uniforms = new UniformGroup({
     uCamera: { value: new Float32Array([0, 0, 1]), type: 'vec3<f32>' },
-    uViewport: { value: new Float32Array([1, 1]), type: 'vec2<f32>' },
-    uColor: { value: new Float32Array([0, 0, 0]), type: 'vec3<f32>' },
+    uLineColor: { value: new Float32Array([0, 0, 0]), type: 'vec3<f32>' },
     uWidth: { value: 1, type: 'f32' }, uFeather: { value: 0.5, type: 'f32' },
   });
   private readonly shader = new Shader({ glProgram: program, resources: { lineUniforms: this.uniforms } });
@@ -46,7 +57,8 @@ export class CanvasLineMesh {
   private empty(): Geometry {
     return new Geometry({ attributes: { aPosition: { buffer: new Float32Array(0), format: 'float32x2' },
       aNormal: { buffer: new Float32Array(0), format: 'float32x2' }, aOffset: { buffer: new Float32Array(0), format: 'float32x2' },
-      aSide: { buffer: new Float32Array(0), format: 'float32' } } });
+      aSide: { buffer: new Float32Array(0), format: 'float32' }, aDistance: { buffer: new Float32Array(0), format: 'float32' },
+      aPattern: { buffer: new Float32Array(0), format: 'float32' } } });
   }
   setGeometry(entries: readonly { readonly edge: CanvasEdge; readonly geometry: CanvasEdgeGeometry }[], cacheKey?: string): void {
     const cached = cacheKey ? this.cached.get(cacheKey) : undefined;
@@ -55,7 +67,8 @@ export class CanvasLineMesh {
       this.mesh.geometry = cached.geometry; this.mesh.visible = cached.visible; this.ownsGeometry = false; return;
     }
     const positions: number[] = [], normals: number[] = [], offsets: number[] = [], sides: number[] = [];
-    const line = (a: CanvasPoint, b: CanvasPoint, offsetA: CanvasPoint = { x: 0, y: 0 }, offsetB: CanvasPoint = { x: 0, y: 0 }) => {
+    const distances: number[] = [], patterns: number[] = [];
+    const line = (a: CanvasPoint, b: CanvasPoint, offsetA: CanvasPoint = { x: 0, y: 0 }, offsetB: CanvasPoint = { x: 0, y: 0 }, start = 0, dashed = false) => {
       const dx = b.x - a.x || offsetB.x - offsetA.x, dy = b.y - a.y || offsetB.y - offsetA.y;
       const length = Math.hypot(dx, dy);
       if (!length) return;
@@ -63,6 +76,7 @@ export class CanvasLineMesh {
         const point = endpoint ? b : a, offset = endpoint ? offsetB : offsetA;
         positions.push(point.x, point.y); normals.push(-dy / length * side, dx / length * side);
         offsets.push(offset.x, offset.y); sides.push(side);
+        distances.push(start + (endpoint ? length : 0)); patterns.push(dashed ? 1 : 0);
       }
     };
     const arrow = (tip: CanvasPoint, before: CanvasPoint) => {
@@ -73,7 +87,11 @@ export class CanvasLineMesh {
     };
     for (const { edge, geometry } of entries) {
       const { points } = geometry;
-      for (let i = 1; i < points.length; i++) line(points[i - 1], points[i]);
+      let distance = 0;
+      for (let i = 1; i < points.length; i++) {
+        line(points[i - 1], points[i], undefined, undefined, distance, edge.linePattern === 'dashed');
+        distance += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+      }
       if (edge.direction !== 'none' && points.length > 1) arrow(points[points.length - 1], points[points.length - 2]);
       if (edge.direction === 'both' && points.length > 1) arrow(points[0], points[1]);
     }
@@ -83,6 +101,8 @@ export class CanvasLineMesh {
       aNormal: { buffer: new Float32Array(normals), format: 'float32x2' },
       aOffset: { buffer: new Float32Array(offsets), format: 'float32x2' },
       aSide: { buffer: new Float32Array(sides), format: 'float32' },
+      aDistance: { buffer: new Float32Array(distances), format: 'float32' },
+      aPattern: { buffer: new Float32Array(patterns), format: 'float32' },
     } });
     this.mesh.visible = positions.length > 0;
     if (this.ownsGeometry) previous.destroy(true);
@@ -98,14 +118,13 @@ export class CanvasLineMesh {
     this.mesh.geometry = source.mesh.geometry;
     this.mesh.visible = source.mesh.visible; this.ownsGeometry = false;
   }
-  setCamera(camera: CanvasCamera, width: number, height: number, resolution: number): void {
+  setCamera(camera: CanvasCamera, resolution: number): void {
     this.uniforms.uniforms.uCamera.set([camera.x, camera.y, camera.zoom]);
-    this.uniforms.uniforms.uViewport.set([width, height]);
     this.uniforms.uniforms.uFeather = 0.5 / resolution;
     this.uniforms.update();
   }
   setColor(color: number, width = 1): void {
-    this.uniforms.uniforms.uColor.set([(color >> 16 & 255) / 255, (color >> 8 & 255) / 255, (color & 255) / 255]);
+    this.uniforms.uniforms.uLineColor.set([(color >> 16 & 255) / 255, (color >> 8 & 255) / 255, (color & 255) / 255]);
     this.uniforms.uniforms.uWidth = width; this.uniforms.update();
   }
   destroy(): void { this.clearCache(); if (this.ownsGeometry) this.mesh.geometry.destroy(true); this.mesh.destroy(); this.shader.destroy(false); }

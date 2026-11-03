@@ -15,6 +15,7 @@ async function run() {
   await app.whenReady();
   const win = new BrowserWindow({ show: false, width: 2400, height: 1200, webPreferences: { sandbox: true, contextIsolation: true,
     offscreen: true, backgroundThrottling: false, enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
+  win.webContents.on('console-message', details => { if (details.level === 'error' || details.level === 'warning') console.error(details.message); });
   try {
     await win.loadFile(path.join(output, 'index.html'));
     win.webContents.setZoomFactor(2);
@@ -57,7 +58,16 @@ async function run() {
       await writeFile(path.join(output, `${theme}-${material}-pixi.png`), pixi.toPNG());
       if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || inkIou < 0.95 || pixiIou < 0.95) throw new Error(`visual_content_mismatch:${JSON.stringify(report)}`);
     }
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports }, null, 2));
+    const line = z.object({ dpr: z.number(), image: z.string() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasLineVisualProbe()'));
+    const lineImage = nativeImage.createFromDataURL(line.image), linePixels = lineImage.toBitmap(), lineWidth = lineImage.getSize().width;
+    let dashInk = 0, dashGap = 0;
+    for (let x = Math.ceil(80 * line.dpr); x < Math.floor(250 * line.dpr); x++) {
+      const i = (Math.floor(350 * line.dpr) * lineWidth + x) * 4;
+      if (linePixels[i] < 230 && linePixels[i + 1] < 230 && linePixels[i + 2] < 230) dashInk++; else dashGap++;
+    }
+    await writeFile(path.join(output, 'lines.png'), lineImage.toPNG());
+    if (dashInk < 30 || dashGap < 30) throw new Error(`line_dash_is_not_rendered:${dashInk}:${dashGap}`);
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
 }

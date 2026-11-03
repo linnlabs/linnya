@@ -1,4 +1,4 @@
-import { CanvasCardSchema } from '../../src/shared';
+import { CanvasCardSchema, CanvasEdgeSchema } from '../../src/shared';
 import { CanvasRenderRequestSchema } from '../../src/shared/rendering';
 import { createCardSurface } from '../../src/renderer/hidden-render-worker/functions/createCardSurface';
 import { createHtmlCardRasterizer } from '../../src/renderer/capabilities/textRasterization';
@@ -64,3 +64,23 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card') {
     pixi: rectangle(kernelHost) };
 }
 Object.defineProperty(window, 'prepareCanvasVisualProbe', { value: prepare });
+
+async function lineVisual() {
+  previousKernel?.destroy(); document.body.replaceChildren();
+  const host = document.createElement('div'); host.style.cssText = 'width:900px;height:600px'; document.body.append(host);
+  const kernel = await createPixiCanvasKernel({ host, width: 900, height: 600, resolution: devicePixelRatio }); previousKernel = kernel;
+  const common = { schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white', createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0 };
+  const cards = [CanvasCardSchema.parse({ ...common, id: 'c1', type: 'text', x: 40, y: 60, width: 200, height: 180, parentId: null, data: { contentVersion: 1, content } }),
+    CanvasCardSchema.parse({ ...common, id: 'c2', type: 'text', x: 600, y: 60, width: 200, height: 180, parentId: null, data: { contentVersion: 1, content } })];
+  const selected = CanvasEdgeSchema.parse({ ...common, id: 'e1', type: 'edge', lineStyle: 'curve', linePattern: 'solid', direction: 'forward', label: '可选中的曲线',
+    from: { kind: 'card', cardId: cards[0].id, side: 'auto' }, to: { kind: 'card', cardId: cards[1].id, side: 'auto' } });
+  const dashed = CanvasEdgeSchema.parse({ ...common, id: 'e2', type: 'edge', lineStyle: 'straight', linePattern: 'dashed', direction: 'both', label: '',
+    from: { kind: 'point', x: 40, y: 350 }, to: { kind: 'point', x: 800, y: 350 } });
+  kernel.setElements([...cards, selected, dashed]); kernel.setSelectedEdge(selected.id);
+  const geometry = kernel.readEdgeGeometry(selected.id);
+  if (!geometry || kernel.hitTestEdge(geometry.midpoint)?.id !== selected.id || kernel.hitTestEdge({ x: geometry.midpoint.x, y: geometry.midpoint.y + 7 })?.id === selected.id) {
+    throw new Error('line_geometry_hit_range_mismatch');
+  }
+  return { dpr: devicePixelRatio, image: await kernel.captureImage('png') };
+}
+Object.defineProperty(window, 'prepareCanvasLineVisualProbe', { value: lineVisual });
