@@ -148,3 +148,5 @@ Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。
 `backend/conversationProjection` 只读取正式会话当前项目 ID，不存在或无项目返回 null。它不打开完整 EventStore、不读取消息或 metadata，发送准备等调用方据此重验会话项目，不能借当前界面项目补齐缺失归属。
 
 `renderer/documentReferences` 提供同项目文档候选及当前展示身份：候选按活动节点名称查询，选择后保存稳定 documentId；标题、类型、路径与插件可用状态在查询时读取。越界或已删除目标不返回标题/路径，插件停用单独标记。Editor 的 @ 与文档型插件的选文档界面共用此门面，不各自读取 Workspace 树或增加专用 IPC。
+
+`renderer/documentReferences.previewDocumentDeletionReferences` 返回完整 Workspace 删除范围之外、当前同项目活动来源的引用影响；只提供总数量及有界标题列表，供 Host 的统一删除确认使用。该提示不会建立文件锁或替代稳定节点身份的删除授权。

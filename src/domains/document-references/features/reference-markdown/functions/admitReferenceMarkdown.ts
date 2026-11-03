@@ -15,7 +15,8 @@ export function admitReferenceMarkdown(input: { readonly sourceDocumentId: strin
   const knownBindings = [...(input.baseline?.bindings ?? []), ...(input.baseline ? currentProjection?.baseline.bindings ?? [] : [])];
   const used = new Set<string>(); const bindings: DocumentReferenceMarkdownBinding[] = [];
   function resolve(nodes: readonly ReferenceJsonObject[], href: string): JsonValue {
-    const path = normalizedReferencePath(href); const label = nodes.map(node => typeof node.text === 'string' ? node.text : '').join('');
+    let path: string;
+    try { path = normalizedReferencePath(href); } catch (error) { if (error instanceof URIError) throw new ReferenceMarkdownError('reference_path_not_found'); throw error; } const label = nodes.map(node => typeof node.text === 'string' ? node.text : '').join('');
     const pathBindings = knownBindings.filter(binding => binding.path === path);
     const seen = pathBindings.filter(binding => binding.label === label);
     // 即使同一引用已在本次出现过，旧地址也先校验；复制不能绕过已读路径的身份变化。

@@ -11,3 +11,5 @@
 项目文档的稳定身份是节点 ID，项目归属是 `project_id`，虚拟地址是 VFS path。`workspace_nodes` 和 `workspace:/` 保留其已有存储与工具合同，不增加同义表、协议别名或运行时双读。路径相同不代表跨项目文档相同；Project ID 也不能用作宿主目录路径。
 
 项目生命周期不经过 `WorkspaceService`；该历史门面只提供节点树、文档活动和项目文档统计。跨项目节点转移使用 Project 的公开身份检查，不自行解释项目生命周期。修改前按具体能力阅读相邻 feature README。
+
+删除及删除前影响预览共用 [node-deletion](./node-deletion/README.md) 的活动子树查询；引用提醒由 Host 组合，不由 Workspace 读取引用表。

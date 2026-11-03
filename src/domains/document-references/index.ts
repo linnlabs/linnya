@@ -9,3 +9,5 @@ export { createDocumentReferenceMarkdownRuntime } from './features/reference-mar
 export { collectDocumentReferenceInputs } from './features/reference-markdown/functions/referenceContent';
 export { ReferenceMarkdownError } from './features/reference-markdown/definitions/referenceMarkdown';
 export type { ReferenceMarkdownPort, ReferenceMarkdownPrepared } from './features/reference-markdown/definitions/referenceMarkdown';
+
+export { readDocumentDeletionReferences } from './features/deletion-preview/functions/readDocumentDeletionReferences';
