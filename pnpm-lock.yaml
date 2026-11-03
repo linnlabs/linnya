@@ -89,6 +89,9 @@ importers:
       '@linnlabs/linnkit-provider-ai-sdk':
         specifier: workspace:*
         version: link:packages/linnkit-provider-ai-sdk
+      '@linnya/markdown-document-core':
+        specifier: workspace:*
+        version: link:packages/markdown-document-core
       '@linnya/provider-catalog':
         specifier: workspace:*
         version: link:packages/provider-catalog
@@ -750,6 +753,9 @@ importers:
       '@app/schemas':
         specifier: workspace:*
         version: link:../../schemas
+      '@linnya/markdown-document-core':
+        specifier: workspace:*
+        version: link:../../markdown-document-core
       fractional-indexing:
         specifier: 4.0.0
         version: 4.0.0

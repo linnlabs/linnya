@@ -29,7 +29,8 @@
     "@app/schemas": "workspace:*",
     "zod": "4.6.7",
     "fractional-indexing": "4.0.0",
-    "pixi.js": "8.22.0"
+    "pixi.js": "8.22.0",
+    "@linnya/markdown-document-core": "workspace:*"
   },
   "peerDependencies": {
     "@linnya/renderer-ui": "^3.0.0",

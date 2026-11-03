@@ -38,6 +38,9 @@ export const CanvasCommitRequestSchema = z.object({
   documentId: z.string().min(1), requestId: z.string().min(1).max(160),
   operations: z.array(CanvasCommandSchema).min(1).max(500),
 }).strict();
+export const CanvasRendererCommitRequestSchema = CanvasCommitRequestSchema.extend({
+  viewId: z.string().min(1), historyGroupId: z.string().min(1).optional(),
+});
 export const CanvasOperationResultSchema = z.object({
   index: z.number().int().nonnegative(), status: z.enum(['applied', 'skipped']),
   id: CanvasElementIdSchema.nullable(), reason: z.string().nullable(),
@@ -48,6 +51,7 @@ export const CanvasCommitResultSchema = z.object({
 }).strict();
 export type CanvasCommand = z.infer<typeof CanvasCommandSchema>;
 export type CanvasCommitRequest = z.infer<typeof CanvasCommitRequestSchema>;
+export type CanvasRendererCommitRequest = z.infer<typeof CanvasRendererCommitRequestSchema>;
 export type CanvasCommitResult = z.infer<typeof CanvasCommitResultSchema>;
 export type CanvasOperationResult = z.infer<typeof CanvasOperationResultSchema>;
 export type CanvasPatch = z.infer<typeof CanvasPatchSchema>;

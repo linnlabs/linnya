@@ -53,6 +53,7 @@ type RuntimePluginPackageDefinition = {
 };
 
 const RUNTIME_PLUGIN_PACKAGES: readonly RuntimePluginPackageDefinition[] = [
+  { id: 'canvas', packagePrefix: 'packages/plugins/canvas/src', rulePrefix: 'CANVAS-PKG' },
   {
     id: 'decision',
     packagePrefix: 'packages/plugins/decision/src',

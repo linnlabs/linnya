@@ -24,6 +24,9 @@
       "@linnya/citation-domain/markdown-reference": [
         "../../src/domains/citation/markdown-reference.ts"
       ],
+      "@linnya/markdown-document-core": [
+        "../../packages/markdown-document-core/src/index.ts"
+      ],
       "@linnya/markdown-domain/editing": [
         "../../src/domains/markdown/editing.ts"
       ],
@@ -59,6 +62,9 @@
       ],
       "@linnya/text-measurement-core": [
         "../../packages/text-measurement-core/src/index.ts"
+      ],
+      "@plugin/canvas/shared": [
+        "../../packages/plugins/canvas/src/shared/index.ts"
       ],
       "@plugin/mindmap/shared": [
         "../../packages/plugins/mindmap/src/shared/index.ts"
