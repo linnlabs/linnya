@@ -323,6 +323,75 @@ describe('Sandbox production scope', () => {
   });
 });
 
+describe('Sandbox production scope Utility 预热', () => {
+  afterEach(async () => {
+    await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })));
+  });
+
+  it('未开启预热时每轮现场 fork，结束后不常驻进程', async () => {
+    const storageRoot = await createStorageRoot();
+    const harness = createUtilityForkHarness(configureCompletingUtility);
+    const scope = createScope(storageRoot, harness.port);
+
+    await expect(scope.execute(createRequest())).resolves.toMatchObject({ success: true });
+    expect(harness.forkCount).toBe(1);
+    await scope.endOwnerAndWait();
+  });
+
+  it('首轮收口后预热一个 Utility，下一轮直接 start 并再补一个；owner 结束时退役', async () => {
+    const storageRoot = await createStorageRoot();
+    const harness = createUtilityForkHarness(configureCompletingUtility);
+    const scope = createScope(storageRoot, harness.port, undefined, { idleMs: 60_000 });
+
+    await expect(scope.execute(createRequest())).resolves.toMatchObject({ success: true });
+    expect(harness.forkCount).toBe(2);
+    expect(payloadKinds(harness.controllers[1])).toEqual([]);
+
+    await expect(scope.execute(createRequest())).resolves.toMatchObject({ success: true });
+    expect(harness.forkCount).toBe(3);
+    expect(payloadKinds(harness.controllers[1])).toEqual(['sandbox_start']);
+
+    await scope.endOwnerAndWait();
+    expect(payloadKinds(harness.controllers[2])).toEqual(['sandbox_owner_end']);
+    expect(await readdir(storageRoot)).toEqual([]);
+  });
+
+  it('预热的 Utility 在使用前退出时，本轮改为现场 fork，结果不受影响', async () => {
+    const storageRoot = await createStorageRoot();
+    const harness = createUtilityForkHarness(configureCompletingUtility);
+    const scope = createScope(storageRoot, harness.port, undefined, { idleMs: 60_000 });
+
+    await scope.execute(createRequest());
+    await flushMicrotasks();
+    harness.controllers[1]?.emitExit(1);
+
+    await expect(scope.execute(createRequest())).resolves.toMatchObject({ success: true });
+    expect(payloadKinds(harness.controllers[1])).toEqual([]);
+    expect(payloadKinds(harness.controllers[2])).toEqual(['sandbox_start']);
+    expect(harness.forkCount).toBe(4);
+    await scope.endOwnerAndWait();
+  });
+
+  it('预热的 Utility 空闲到期后按 owner end 退役，不再补充', async () => {
+    const storageRoot = await createStorageRoot();
+    const harness = createUtilityForkHarness(configureCompletingUtility);
+    const scope = createScope(storageRoot, harness.port, undefined, { idleMs: 20 });
+
+    await scope.execute(createRequest());
+    await waitForTimers(() => payloadKinds(harness.controllers[1]).includes('sandbox_owner_end'));
+
+    await scope.endOwnerAndWait();
+    expect(harness.forkCount).toBe(2);
+  });
+
+  it('预热空闲时长必须是正整数', async () => {
+    const storageRoot = await createStorageRoot();
+    const harness = createUtilityForkHarness(configureCompletingUtility);
+    expect(() => createScope(storageRoot, harness.port, undefined, { idleMs: 0 }))
+      .toThrow('sandbox utility prewarm idle time must be a positive safe integer');
+  });
+});
+
 interface FakeUtilityController {
   readonly process: SandboxUtilityProcessLike;
   readonly hostPayloads: readonly SandboxUtilityHostPayload[];
@@ -469,6 +538,7 @@ function createScope(
   storageRoot: string,
   utilityProcessFork: SandboxUtilityProcessForkPort,
   removeRunDirectory?: (runDirectory: string) => Promise<void>,
+  utilityPrewarm?: { readonly idleMs: number },
 ) {
   return createSandboxProductionScope({
     storageRoot,
@@ -482,7 +552,39 @@ function createScope(
     platformRuntime: { schema_version: 1, platform: 'darwin' },
     utilityProcessFork,
     ...(removeRunDirectory ? { removeRunDirectory } : {}),
+    ...(utilityPrewarm ? { utilityPrewarm } : {}),
   });
+}
+
+/** 正常完成 start、按 owner end 退出的 fake Utility，供预热用例复用。 */
+function configureCompletingUtility(controller: FakeUtilityController): void {
+  controller.onHostPayload(async payload => {
+    if (payload.kind === 'sandbox_start') {
+      await publishSandboxResultMailbox({
+        runDirectory: payload.runDirectory,
+        runToken: payload.runToken,
+        result: successfulEvaluation(),
+      });
+      controller.publishCompletedRun(payload.runToken);
+      controller.emitExit(0);
+    } else if (payload.kind === 'sandbox_owner_end') {
+      queueMicrotask(() => queueMicrotask(() => controller.emitExit(0)));
+    }
+  });
+  queueMicrotask(() => controller.publishReady());
+}
+
+function payloadKinds(controller: FakeUtilityController | undefined): string[] {
+  if (!controller) throw new Error('sandbox fake Utility was not created');
+  return controller.hostPayloads.map(payload => payload.kind);
+}
+
+async function waitForTimers(predicate: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (predicate()) return;
+    await new Promise<void>(resolve => setTimeout(resolve, 5));
+  }
+  throw new Error('sandbox production scope timer condition did not settle');
 }
 
 function createRequest(

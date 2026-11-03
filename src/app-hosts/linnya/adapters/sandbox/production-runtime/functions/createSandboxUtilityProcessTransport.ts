@@ -277,6 +277,10 @@ export function createSandboxUtilityProcessTransport(
       return ready.promise;
     },
 
+    isStartable(): boolean {
+      return !closed && !transportFailure && !ownerEndRequested && !startIntent;
+    },
+
     async sendStart(payload: SandboxUtilityStartPayload): Promise<void> {
       const parsed = parseSandboxUtilityHostPayload(payload);
       if (parsed.kind !== 'sandbox_start') {
