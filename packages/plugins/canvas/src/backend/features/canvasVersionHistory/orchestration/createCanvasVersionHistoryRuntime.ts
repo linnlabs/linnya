@@ -1,3 +1,4 @@
+import { createCanvasVersionMaintenance } from './createCanvasVersionMaintenance';
 import { planCanvasVersionCheckpoint } from '../functions/planCanvasVersionCheckpoint';
 import { z } from 'zod';
 import { DocumentHistoryError } from '@plugin/backend/documentHistory';
@@ -20,9 +21,6 @@ export interface CanvasCheckpointInput {
 export function createCanvasVersionHistoryRuntime(options: CanvasVersionHistoryOptions) {
   const repository = createCanvasVersionRepository(options.database), now = options.now ?? Date.now;
   const budgetBytes = options.budgetBytes ?? 100 * 1024 * 1024;
-  const timers = new Map<string, { idle: ReturnType<typeof setTimeout>; deadline: ReturnType<typeof setTimeout>; deadlineAt: number }>();
-  const maintenance = new Map<string, ReturnType<typeof setTimeout>>();
-  let stopped = false;
   function requiredHead(documentId: string) { const head = repository.readHead(documentId); if (!head) throw new DocumentHistoryError('history_unavailable'); return head; }
   function list(documentId: string): DocumentVersionSummary[] { const head = repository.readHead(documentId); return head ? repository.readSummaries(documentId, head) : []; }
   function retainedAssetIds(documentId: string): readonly string[] { return repository.retainedAssetIds(documentId); }
@@ -63,7 +61,6 @@ export function createCanvasVersionHistoryRuntime(options: CanvasVersionHistoryO
       return summarizeCanvasVersion(planned.record, true);
     }).immediate();
   }
-  function cancelTimers(documentId: string): void { const previous = timers.get(documentId); if (previous) { clearTimeout(previous.idle); clearTimeout(previous.deadline); timers.delete(documentId); } }
   function report(documentId: string, error: unknown): void { options.ports.reportFailure(documentId, error); }
   function notifyBudget(status: CanvasVersionBudgetStatus): void { try { options.ports.budgetChanged?.(status); } catch (error) { report(status.documentId, error); } }
   function compact(documentId: string): CanvasVersionBudgetStatus {
@@ -83,26 +80,6 @@ export function createCanvasVersionHistoryRuntime(options: CanvasVersionHistoryO
     }).immediate();
     const status = budgetStatus(documentId); notifyBudget(status); return status;
   }
-  function requestMaintenance(documentId: string): void {
-    if (stopped) return;
-    const previous = maintenance.get(documentId); if (previous) clearTimeout(previous);
-    const timer = setTimeout(() => { maintenance.delete(documentId); try { compact(documentId); } catch (error) { report(documentId, error); } }, 1000);
-    timer.unref(); maintenance.set(documentId, timer);
-  }
-  function flush(documentId: string, reason: 'idle' | 'interval' | 'close'): void {
-    cancelTimers(documentId);
-    try { if (!repository.readHead(documentId)) return; checkpoint({ documentId, reason }); requestMaintenance(documentId); } catch (error) { report(documentId, error); }
-  }
-  function schedule(documentId: string): void {
-    if (stopped) return;
-    const head = requiredHead(documentId); if (head.dirtySince === null) { cancelTimers(documentId); return; }
-    const previous = timers.get(documentId); if (previous) clearTimeout(previous.idle);
-    const idle = setTimeout(() => flush(documentId, 'idle'), Math.max(0, 30_000 - (now() - head.changedAt)));
-    const deadlineAt = head.dirtySince + 600_000;
-    if (previous && previous.deadlineAt !== deadlineAt) clearTimeout(previous.deadline);
-    const deadline = previous?.deadlineAt === deadlineAt ? previous.deadline : setTimeout(() => flush(documentId, 'interval'), Math.max(0, deadlineAt - now()));
-    idle.unref(); deadline.unref(); timers.set(documentId, { idle, deadline, deadlineAt });
-  }
   function recordCommit(history: CanvasHistoryCommitInput, input: { readonly beforeGroup?: boolean } = {}): (() => void) | undefined {
     if (!history.plan.changes.length) return undefined;
     const documentId = history.context.documentId;
@@ -116,7 +93,7 @@ export function createCanvasVersionHistoryRuntime(options: CanvasVersionHistoryO
     repository.writeHead(documentId, { ...head, sequence: history.plan.state.sequence, changedAt: history.context.now, dirtySince: inverse.length ? head.dirtySince ?? history.context.now : null, inverse: encoded, usedBytes, overBudgetBytes: Math.max(0, usedBytes - budgetBytes) });
     return () => {
       // 通知和计时失败发生在正式提交以后，只报告；不能把已保存内容说成保存失败。
-      try { schedule(documentId); if (input.beforeGroup) requestMaintenance(documentId); notifyBudget(budgetStatus(documentId)); } catch (error) { report(documentId, error); }
+      try { maintenance.schedule(documentId); if (input.beforeGroup) maintenance.requestMaintenance(documentId); notifyBudget(budgetStatus(documentId)); } catch (error) { report(documentId, error); }
     };
   }
   function assertCurrent(request: Pick<DocumentVersionRestoreRequest, 'documentId' | 'expectedCurrentVersionId'>): void { if (canvasVersionId(requiredHead(request.documentId).sequence) !== request.expectedCurrentVersionId) throw new DocumentHistoryError('version_conflict'); }
@@ -132,13 +109,7 @@ export function createCanvasVersionHistoryRuntime(options: CanvasVersionHistoryO
     if (!target) throw new DocumentHistoryError('version_not_found');
     return { snapshot: preview(request.documentId, request.versionId), target };
   }
-  function close(documentId: string): void { flush(documentId, 'close'); }
-  function dispose(): void {
-    stopped = true;
-    const documents = new Set([...timers.keys(), ...maintenance.keys(), ...repository.dirtyDocuments()]);
-    for (const timer of maintenance.values()) clearTimeout(timer); maintenance.clear();
-    for (const documentId of documents) { flush(documentId, 'close'); try { if (repository.readHead(documentId)) compact(documentId); } catch (error) { report(documentId, error); } }
-  }
-  for (const documentId of repository.dirtyDocuments()) schedule(documentId);
-  return { initialize, recordCommit, checkpoint, list, preview, prepareRestore, assertCurrent, compact, retainedAssetIds, budgetStatus, close, dispose };
+  const maintenance = createCanvasVersionMaintenance({ now, readHead: repository.readHead, dirtyDocuments: repository.dirtyDocuments,
+    checkpoint(documentId, reason) { checkpoint({ documentId, reason }); }, compact, reportFailure: report });
+  return { initialize, recordCommit, checkpoint, list, preview, prepareRestore, assertCurrent, compact, retainedAssetIds, budgetStatus, requestMaintenance: maintenance.requestMaintenance, close: maintenance.close, dispose: maintenance.dispose };
 }
