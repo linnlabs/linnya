@@ -7,8 +7,9 @@ import { CanvasLineMesh } from './CanvasLineMesh';
 
 interface Entry { readonly edge: CanvasEdge; readonly geometry: CanvasEdgeGeometry; readonly left: number; readonly right: number; readonly top: number; readonly bottom: number }
 function entryFor(edge: CanvasEdge, geometry: CanvasEdgeGeometry): Entry {
-  return { edge, geometry, left: Math.min(...geometry.points.map(point => point.x)), right: Math.max(...geometry.points.map(point => point.x)),
-    top: Math.min(...geometry.points.map(point => point.y)), bottom: Math.max(...geometry.points.map(point => point.y)) };
+  let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
+  for (const point of geometry.points) { left = Math.min(left, point.x); right = Math.max(right, point.x); top = Math.min(top, point.y); bottom = Math.max(bottom, point.y); }
+  return { edge, geometry, left, right, top, bottom };
 }
 const blend = (ink: number, background: number, amount: number) => {
   const channel = (shift: number) => Math.round((ink >> shift & 255) * amount + (background >> shift & 255) * (1 - amount));
@@ -36,6 +37,7 @@ export class CanvasLines {
   private layout: ReturnType<typeof createCanvasEdgeLayout> | undefined;
   private previewIds: ReadonlySet<CanvasEdgeId> | undefined;
   private movingDirty = false;
+  private previewState: { readonly cardIds: readonly CanvasCardId[]; readonly cards: ReadonlyMap<string, CanvasCard> } | undefined;
   private entries: readonly Entry[] = [];
   private selected: CanvasEdgeId | null = null;
   private selectedCards = new Set<CanvasCardId>();
@@ -60,7 +62,7 @@ export class CanvasLines {
     this.above.addChild(this.cardMask, this.ghostContainer, this.highlight.mesh, this.selectedLine.mesh, this.labels, this.endpoints);
   }
   setElements(edges: readonly CanvasEdge[], cards: ReadonlyMap<string, CanvasCard>, mask: readonly CanvasRectangle[]): void {
-    this.previewIds = undefined;
+    this.previewIds = undefined; this.previewState = undefined;
     this.layout = createCanvasEdgeLayout(edges, cards, 4, this.geometries); this.geometries = this.layout.read();
     this.entries = edges.map(edge => {
       const geometry = this.geometries.get(edge.id);
@@ -90,7 +92,13 @@ export class CanvasLines {
       this.previewIds = new Set(this.entries.filter(entry => [entry.edge.from, entry.edge.to].some(endpoint => endpoint.kind === 'card' && affectedCards.has(endpoint.cardId))).map(entry => entry.edge.id));
       this.key = '';
     }
-    const changed = new Set(this.layout.update(cards, cardIds, 4));
+    this.previewState = { cardIds, cards }; this.refreshPreviewGeometry(); this.setMask(mask); this.update();
+  }
+  private refreshPreviewGeometry(): void {
+    if (!this.layout || !this.previewState) return;
+    const { cards, cardIds } = this.previewState;
+    // 静态缓存覆盖最大倍率；拖动只需保持当前相机的1/4屏幕px误差，不能一律按4倍细分。
+    const changed = new Set(this.layout.update(cards, cardIds, this.camera.zoom));
     this.entries = this.entries.map(entry => {
       if (!changed.has(entry.edge.id)) return entry;
       const geometry = this.geometries.get(entry.edge.id); if (!geometry) throw new Error('canvas_edge_geometry_missing');
@@ -101,11 +109,12 @@ export class CanvasLines {
       const current = this.entries[index];
       return { ...current, geometry: { ...current.geometry, points: [current.geometry.from, current.geometry.to], midpoint: { x: (current.geometry.from.x + current.geometry.to.x) / 2, y: (current.geometry.from.y + current.geometry.to.y) / 2 } } };
     });
-    this.movingDirty = true; this.emphasisKey = ''; this.setMask(mask); this.update();
+    this.movingDirty = true; this.emphasisKey = '';
   }
   setCamera(camera: CanvasCamera, width: number, height: number, resolution: number): void {
+    const zoomChanged = this.camera.zoom !== camera.zoom;
     this.camera = camera; this.width = width; this.height = height; this.resolution = resolution;
-    if (this.previewIds) this.movingDirty = true;
+    if (this.previewIds) { if (zoomChanged) this.refreshPreviewGeometry(); this.movingDirty = true; }
     const far = camera.zoom < 0.15;
     if (far !== this.far) { this.far = far; this.key = ''; }
     this.update();

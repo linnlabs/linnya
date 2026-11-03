@@ -64,7 +64,11 @@ class CanvasRasterPresentation {
     return { card, key, jobKey: key + physicalWidth + JSON.stringify(regions), content, externalKey, scale, precise, dark: appearance.dark, regions };
   }
   private accept(demand: CanvasRasterDemand): boolean {
-    if (this.failed.get(demand.card.id) === demand.key || !demand.regions.length || this.pending.get(demand.card.id)?.key === demand.jobKey) return false;
+    const pending = this.pending.get(demand.card.id);
+    if (this.failed.get(demand.card.id) === demand.key || !demand.regions.length) return false;
+    // 相机/遮挡改变的是需求区域，不是卡内正文。保留同内容同采样的在途片，
+    // 接纳后只补最新缺片；否则每个pointer都会丢弃仍正确的paint结果并重复排版。
+    if (pending?.contentKey === demand.key && pending.scale === demand.scale) return false;
     if (this.pending.has(demand.card.id)) { this.queue.cancel(demand.card.id); this.pending.delete(demand.card.id); }
     return true;
   }
@@ -75,7 +79,7 @@ class CanvasRasterPresentation {
     }
     const completion: Promise<boolean> = this.queue.enqueue(demand.card.id, { card: demand.card, scale: demand.scale, dark: demand.dark, regions: demand.regions })
       .then(result => this.complete(demand, result, job));
-    const job: CanvasRasterPending = { key: demand.jobKey, completion }; this.pending.set(demand.card.id, job);
+    const job: CanvasRasterPending = { key: demand.jobKey, contentKey: demand.key, scale: demand.scale, completion }; this.pending.set(demand.card.id, job);
     return completion;
   }
   private complete(demand: CanvasRasterDemand, result: RasterQueueResult<CanvasCardRasterOutput>, job: CanvasRasterPending): boolean {

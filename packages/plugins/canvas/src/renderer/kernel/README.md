@@ -45,3 +45,7 @@ WebGL适配器识别SwiftShader/llvmpipe软件绘图，交互模式自动将实�
 CI可用 `CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs` 后执行 `node packages/plugins/canvas/dev/probes/verify-counts.mjs`。后者对fixture独立线性可见/命中oracle、空间候选、可见片段、位图预算与队列峰值作确定性断言，并输出counts-summary.json；容量从正式公开stats读取，不按机器锁帧时。离屏输出明确不代表真实GPU性能验收。
 
 `prepareEditing(id)`强制当前单卡按相机×实际DPR精确采样，等待位图接纳后返回ready；不受40张阈值或100ms闲时条件限制。已有exact缓存直接复用，能力或资源失败返回unavailable供DOM编辑继续降级。准备期间普通补图不替换该任务；主题/DPR/字体及字体平滑发生变化时，旧结果不能进入新环境。字体平滑只读staging计算CSS，不依赖Host私有设置属性。50张可见卡的即时进入编辑、精确像素与缓存复用在真实Electron门禁验证。
+
+拖动或平移改变需求区域时，同内容、同采样比例的在途正文片仍有效；先接纳它们，再补最新缺片。仅正文/环境/采样改变或卡退出需求时取消，避免每个pointer把仍正确的paint丢掉。拖动曲线按当前相机保持同一1/4屏幕px误差，缩放时重算当前关联曲线，不为每次移动一律生成最大4倍倍率的冗余顶点。
+
+`CANVAS_PERFORMANCE_CPU_PROFILE=1`可生成拖动CPU profile辅助定位；带Profiler的输出明确不计真实硬件基线，不能用它的时延作为性能验收结论。
