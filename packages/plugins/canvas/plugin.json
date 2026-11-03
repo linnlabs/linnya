@@ -39,7 +39,11 @@
     "canvas_elements",
     "canvas_changes",
     "canvas_requests",
-    "canvas_editing_claims"
+    "canvas_editing_claims",
+    "canvas_history_guards",
+    "canvas_agent_groups",
+    "canvas_pending_approvals",
+    "canvas_agent_requests"
   ],
   "ownedFileTypes": [
     {
@@ -52,6 +56,14 @@
     {
       "version": 1,
       "description": "Canvas current content and atomic editing"
+    },
+    {
+      "version": 2,
+      "description": "Separate monotonic field versions from logical undo origins"
+    },
+    {
+      "version": 3,
+      "description": "Durable conversation change groups and trusted UI approvals"
     }
   ]
 }

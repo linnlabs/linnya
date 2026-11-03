@@ -7,6 +7,7 @@ export interface CanvasPointerGesture {
   readonly camera: CanvasCamera;
   readonly id: CanvasCardId | null;
   readonly pan: boolean;
+  readonly locked: boolean;
   readonly selection: readonly CanvasCardId[];
   readonly additive: boolean;
   moved: boolean;

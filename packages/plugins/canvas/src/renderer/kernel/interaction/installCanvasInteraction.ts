@@ -27,7 +27,7 @@ class CanvasPointerInteraction {
     const world = this.kernel.screenToWorld(screen);
     const card = this.kernel.hitTest(world);
     this.active = { pointer: event.pointerId, screen, world, camera: this.kernel.readCamera(), id: card?.id ?? null,
-      pan: this.space || event.button === 1, selection: this.kernel.readSelection(), additive: event.shiftKey, moved: false };
+      pan: this.options.readonly === true || this.space || event.button === 1, locked: card?.locked ?? false, selection: this.kernel.readSelection(), additive: event.shiftKey, moved: false };
     this.canvas.setPointerCapture(event.pointerId); this.canvas.focus({ preventScroll: true });
     this.kernel.setBrush(null);
     if (!this.active.pan && card) this.onIntent({ kind: 'editing', ids: this.selectedIds(this.active), active: true });
@@ -43,12 +43,13 @@ class CanvasPointerInteraction {
       this.kernel.setCamera(camera); this.onIntent({ kind: 'camera', camera }); return;
     }
     const world = this.kernel.screenToWorld(current);
-    if (gesture.id) {
+    if (gesture.id && !gesture.locked) {
       const ids = this.selectedIds(gesture);
       this.onIntent({ kind: 'select', ids, additive: false });
       this.kernel.setDragPreview(ids, world.x - gesture.world.x, world.y - gesture.world.y);
       return;
     }
+    if (gesture.id) return;
     const rectangle = { x: Math.min(gesture.world.x, world.x), y: Math.min(gesture.world.y, world.y),
       width: Math.abs(world.x - gesture.world.x), height: Math.abs(world.y - gesture.world.y) };
     this.kernel.setBrush(rectangle);
@@ -62,7 +63,7 @@ class CanvasPointerInteraction {
     const gesture = this.active;
     if (!gesture || gesture.pointer !== event.pointerId) return;
     this.active = null; this.kernel.setBrush(null);
-    if (!gesture.pan && gesture.id && gesture.moved) {
+    if (!gesture.pan && gesture.id && !gesture.locked && gesture.moved) {
       const end = this.kernel.screenToWorld(this.point(event));
       this.onIntent({ kind: 'move', ids: this.selectedIds(gesture), dx: end.x - gesture.world.x, dy: end.y - gesture.world.y, copy: event.altKey });
       // 提交完成前保留编辑保护；feature 在真实提交/失败收口后释放。
@@ -90,9 +91,9 @@ class CanvasPointerInteraction {
     if (event.key === 'Escape' && this.active) { event.preventDefault(); this.cancel(); }
   };
   private keyUp = (event: KeyboardEvent) => { if (event.code === 'Space') this.space = false; };
-  private open = (event: MouseEvent) => { const card = this.kernel.hitTest(this.kernel.screenToWorld(this.point(event))); if (card) this.onIntent({ kind: 'open', id: card.id }); };
-  private context = (event: MouseEvent) => { event.preventDefault(); const world = this.kernel.screenToWorld(this.point(event)); this.onIntent({ kind: 'context', point: world, id: this.kernel.hitTest(world)?.id ?? null }); };
-  constructor(private readonly kernel: CanvasInteractionKernel, private readonly onIntent: (intent: CanvasKernelIntent) => void) {
+  private open = (event: MouseEvent) => { if (this.options.readonly) return; const card = this.kernel.hitTest(this.kernel.screenToWorld(this.point(event))); if (card) this.onIntent({ kind: 'open', id: card.id }); };
+  private context = (event: MouseEvent) => { if (this.options.readonly) return; event.preventDefault(); const world = this.kernel.screenToWorld(this.point(event)); this.onIntent({ kind: 'context', point: world, id: this.kernel.hitTest(world)?.id ?? null }); };
+  constructor(private readonly kernel: CanvasInteractionKernel, private readonly onIntent: (intent: CanvasKernelIntent) => void, private readonly options: { readonly readonly?: boolean }) {
     this.canvas = kernel.canvas;
   }
   install(): () => void {
@@ -109,6 +110,6 @@ class CanvasPointerInteraction {
   }
 }
 
-export function installCanvasInteraction(kernel: CanvasInteractionKernel, onIntent: (intent: CanvasKernelIntent) => void): () => void {
-  return new CanvasPointerInteraction(kernel, onIntent).install();
+export function installCanvasInteraction(kernel: CanvasInteractionKernel, onIntent: (intent: CanvasKernelIntent) => void, options: { readonly readonly?: boolean } = {}): () => void {
+  return new CanvasPointerInteraction(kernel, onIntent, options).install();
 }

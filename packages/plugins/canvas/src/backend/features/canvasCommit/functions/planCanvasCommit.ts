@@ -5,10 +5,13 @@ import {
 } from '../../../../shared';
 import type { CanvasCommand, CanvasOperationResult } from '../../../../shared/changeset/definitions/canvasCommands';
 import type { CanvasCommitActor, CanvasCommitPlan, CanvasCommitState, CanvasEditingClaim, CanvasElementChange, CanvasStoredElement } from '../definitions/canvasCommit';
+import type { CanvasRectangle } from '../../../../shared/geometry/definitions/canvasGeometry';
 import { findCanvasPlacement } from './findCanvasPlacement';
 import { validateCanvasGraph } from './validateCanvasGraph';
 
 interface WorkingPlan {
+  origin: string;
+  reservedRectangles: readonly CanvasRectangle[];
   elements: Map<CanvasElementId, CanvasStoredElement>;
   changes: CanvasElementChange[];
   results: CanvasOperationResult[];
@@ -32,8 +35,10 @@ function appendChange(plan: WorkingPlan, before: CanvasElement | null, after: Ca
   plan.changes.push({ id, before, after, fields });
   if (after) {
     const versions = { ...plan.elements.get(id)?.fieldVersions };
-    for (const field of fields) versions[field] = after.revision;
-    plan.elements.set(id, { element: after, fieldVersions: versions });
+    const origins = { ...plan.elements.get(id)?.fieldOrigins };
+    for (const field of fields) { versions[field] = after.revision; origins[field] = plan.origin; }
+    if (!before) { versions.$existence = after.revision; origins.$existence = plan.origin; }
+    plan.elements.set(id, { element: after, fieldVersions: versions, fieldOrigins: origins });
   } else plan.elements.delete(id);
 }
 
@@ -48,7 +53,7 @@ function createCard(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 'ad
   const cards = [...plan.elements.values()].flatMap(row => row.element.type === 'edge' ? [] : [row.element]);
   const position = plan.actor.source.kind === 'user' && command.x !== undefined && command.y !== undefined
     ? { x: command.x, y: command.y }
-    : findCanvasPlacement({ width: command.width, height: command.height, near: near?.type === 'edge' ? undefined : near, side: command.side ?? 'right', occupied: cards });
+    : findCanvasPlacement({ width: command.width, height: command.height, near: near?.type === 'edge' ? undefined : near, side: command.side ?? 'right', occupied: [...cards, ...plan.reservedRectangles] });
   const orders = [...plan.elements.values()].map(row => row.element.order).sort();
   const lastOrder = orders[orders.length - 1] ?? null;
   const data = command.op === 'addText' ? { contentVersion: 1, content: command.content } : command.data;
@@ -124,9 +129,9 @@ function mutateElement(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 
 
 export function planCanvasCommit(input: {
   readonly state: CanvasCommitState; readonly operations: readonly CanvasCommand[];
-  readonly actor: CanvasCommitActor; readonly claims: readonly CanvasEditingClaim[]; readonly now: number;
+  readonly actor: CanvasCommitActor; readonly origin: string; readonly claims: readonly CanvasEditingClaim[]; readonly now: number; readonly reservedRectangles?: readonly CanvasRectangle[];
 }): CanvasCommitPlan {
-  const plan: WorkingPlan = { elements: new Map(input.state.elements.map(row => [row.element.id, row])), changes: [], results: [], refs: {},
+  const plan: WorkingPlan = { reservedRectangles: input.reservedRectangles ?? [], origin: input.origin, elements: new Map(input.state.elements.map(row => [row.element.id, row])), changes: [], results: [], refs: {},
     nextCard: input.state.nextCard, nextEdge: input.state.nextEdge, actor: input.actor, claims: input.claims, now: input.now };
   for (const command of input.operations) {
     if (command.op === 'update' || command.op === 'delete') plan.results.push(mutateElement(plan, command));
@@ -136,6 +141,6 @@ export function planCanvasCommit(input: {
     }
   }
   validateCanvasGraph([...plan.elements.values()].map(row => row.element));
-  return { changes: plan.changes, results: plan.results, refs: plan.refs,
-    state: { sequence: input.state.sequence + (plan.changes.length > 0 ? 1 : 0), nextCard: plan.nextCard, nextEdge: plan.nextEdge, elements: [...plan.elements.values()] } };
+  return { origin: input.origin, changes: plan.changes, results: plan.results, refs: plan.refs,
+    state: { sequence: input.state.sequence + (plan.changes.length > 0 ? 1 : 0), nextCard: plan.nextCard, nextEdge: plan.nextEdge, elements: [...plan.elements.values()], deletedOrigins: input.state.deletedOrigins } };
 }

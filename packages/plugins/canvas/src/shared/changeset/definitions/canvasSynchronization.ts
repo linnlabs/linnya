@@ -19,6 +19,8 @@ export const CanvasEditingRequestSchema = z.object({
   documentId: z.string().min(1), viewId: z.string().min(1), elementId: CanvasElementIdSchema,
   fields: z.array(z.enum(['data', 'x', 'y', 'width', 'height'])),
 }).strict();
-export const CanvasReadRequestSchema = z.object({ documentId: z.string().min(1) }).strict();
+export const CanvasReadRequestSchema = z.object({ documentId: z.string().min(1), viewId: z.string().min(1).optional() }).strict();
+export const CanvasCloseRequestSchema = z.object({ documentId: z.string().min(1), viewId: z.string().min(1) }).strict();
 export const CanvasChangesRequestSchema = CanvasReadRequestSchema.extend({ afterSequence: z.number().int().nonnegative() });
 export const CANVAS_CHANGED_CHANNEL = 'canvas:changed';
+export const CANVAS_GROUPS_CHANGED_CHANNEL = 'canvas:groups-changed';

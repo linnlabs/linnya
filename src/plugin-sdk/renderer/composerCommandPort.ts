@@ -2,7 +2,7 @@
  * @file composerCommandPort.ts
  * @description 插件从页面交互操作 conversation composer 引用的窄门面。
  *
- * 这里只暴露引用增删命令，不暴露 composer store、编辑器实例或输入框模式控制。
+ * 这里只暴露引用增删与输入聚焦命令，不暴露 composer store、编辑器实例或输入框模式控制。
  * 真实实现由 app 层绑定 conversation feature。
  */
 
@@ -42,4 +42,8 @@ export function addComposerReference(input: ComposerCommandReferenceInput): stri
 
 export function removeComposerReference(referenceId: string): void {
   requireRendererComposerCommandPort().removeReference(referenceId);
+}
+
+export function focusComposerInput(): Promise<boolean> {
+  return requireRendererComposerCommandPort().focusInput();
 }

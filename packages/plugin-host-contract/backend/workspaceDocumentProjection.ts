@@ -30,3 +30,9 @@ export declare function readWorkspaceDocumentIdentity(
   db: Pick<PluginSqliteDatabaseLike, 'prepare'>,
   nodeId: string,
 ): WorkspaceDocumentIdentity | null;
+
+/** 活动文档的当前 VFS 地址；路径用于展示，稳定身份仍是 id。 */
+export declare function readWorkspaceDocumentLocation(
+  db: Pick<PluginSqliteDatabaseLike, 'prepare'>,
+  nodeId: string,
+): { readonly id: string; readonly projectId: string | null; readonly path: string; readonly nodeType: string } | null;

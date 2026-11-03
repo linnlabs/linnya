@@ -5,6 +5,8 @@ import { Markdown } from '@tiptap/markdown';
 import Image from '@tiptap/extension-image';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
+import { PortableSubscript, PortableSuperscript, PortableTextStyle, PortableColor, PortableHighlight } from '../definitions/portableMarks';
+import { PortableInlineMath, PortableBlockMath } from '../definitions/portableMathematics';
 import { DocumentReferenceNode } from '../definitions/documentReference';
 import { MarkdownHtmlBlock } from '../definitions/htmlBlock';
 
@@ -12,7 +14,8 @@ import { MarkdownHtmlBlock } from '../definitions/htmlBlock';
 export function createMarkdownDocumentExtensions(overrides: Extensions = []): Extensions {
   const replacements = new Map(overrides.map(extension => [extension.name, extension]));
   const base: Extensions = [
-    StarterKit.configure({ codeBlock: false, underline: false, trailingNode: false, link: { openOnClick: false } }),
+    StarterKit.configure({ codeBlock: false, trailingNode: false, link: { openOnClick: false } }),
+    PortableSubscript, PortableSuperscript, PortableTextStyle, PortableColor, PortableHighlight, PortableInlineMath, PortableBlockMath,
     CodeBlock, TableKit, Image, TaskList, TaskItem.configure({ nested: true }), MarkdownHtmlBlock, DocumentReferenceNode,
     Markdown.configure({ markedOptions: { gfm: true } }),
   ];

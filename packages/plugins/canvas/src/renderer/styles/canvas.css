@@ -116,3 +116,97 @@
   justify-content: space-between;
   gap: var(--space-4);
 }
+.canvas-agent-review {
+  position: absolute;
+  bottom: var(--space-3);
+  right: var(--space-3);
+  z-index: 12;
+  max-width: min(620px, 90%);
+  max-height: 35%;
+  overflow: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-default);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-footnote);
+}
+.canvas-agent-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-1);
+}
+.canvas-agent-group.active { background: var(--color-accent-bg-subtle); }
+.canvas-agent-group-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.canvas-agent-group-summary small {
+  display: block;
+  color: var(--color-text-secondary);
+}
+.canvas-agent-status {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+}
+.canvas-agent-status.writing { background: var(--color-accent); }
+.canvas-agent-counts { color: var(--color-text-secondary); }
+.canvas-review-markers { pointer-events: none; }
+.canvas-review-marker {
+  position: absolute;
+  z-index: 6;
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 2px solid var(--color-bg-default);
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+}
+.canvas-review-marker.updated { background: var(--color-warning); }
+.canvas-review-marker.deleted {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--color-error);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-error);
+  transform: none;
+}
+.canvas-card-resize-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 7;
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+.canvas-card-resize-handle {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid var(--color-accent);
+  border-radius: 2px;
+  background: var(--color-bg-default);
+  cursor: nwse-resize;
+  pointer-events: auto;
+}
+.canvas-context-menu {
+  position: absolute;
+  z-index: 20;
+}

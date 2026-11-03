@@ -1,4 +1,4 @@
-export type CanvasShortcut = 'delete' | 'edit' | 'escape' | 'all' | 'actual' | 'fit' | 'fit-selection' | 'zoom-in' | 'zoom-out' | 'left' | 'right' | 'up' | 'down';
+export type CanvasShortcut = 'delete' | 'edit' | 'escape' | 'all' | 'actual' | 'fit' | 'fit-selection' | 'zoom-in' | 'zoom-out' | 'undo' | 'redo' | 'duplicate' | 'left' | 'right' | 'up' | 'down';
 
 export function readCanvasShortcut(event: KeyboardEvent, editing: boolean): CanvasShortcut | null {
   if (event.isComposing) return null;
@@ -6,6 +6,8 @@ export function readCanvasShortcut(event: KeyboardEvent, editing: boolean): Canv
   if (editing) return null;
   if (event.metaKey || event.ctrlKey) {
     switch (event.key.toLowerCase()) {
+      case 'd': return 'duplicate';
+      case 'z': return event.shiftKey ? 'redo' : 'undo';
       case 'a': return 'all'; case '0': return 'actual'; case '1': return 'fit'; case '2': return 'fit-selection';
       case '+': case '=': return 'zoom-in'; case '-': return 'zoom-out'; default: return null;
     }

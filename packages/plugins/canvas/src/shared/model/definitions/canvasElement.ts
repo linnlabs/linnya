@@ -66,7 +66,10 @@ const card = {
 
 export const CanvasTextCardSchema = z.object({
   ...card, type: z.literal('text'),
-  data: z.object({ contentVersion: z.literal(1), content: CanvasTextDocumentSchema }).strict(),
+  data: z.object({ contentVersion: z.literal(1), content: CanvasTextDocumentSchema,
+    // 自动正文高度与用户固定高度必须能在关闭重开后区分。
+    heightMode: z.enum(['auto', 'fixed']).default('auto'),
+  }).strict(),
 }).strict();
 export const CanvasImageCardSchema = z.object({
   ...card, type: z.literal('image'),

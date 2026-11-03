@@ -19,7 +19,7 @@ async function fixture() {
     return { documentId: 'doc', requestId: input.requestId, sequence: snapshot.sequence, results: [{ index: 0, id: 'c1', status: 'applied', reason: null }], refs: {} };
   });
   const protection = vi.fn(async () => {});
-  const session = createCanvasDocumentSession({ read: async () => snapshot, changes: async () => ({ kind: 'snapshot', snapshot }), commit, editing: protection, subscribe: () => () => {} });
+  const session = createCanvasDocumentSession({ read: async () => snapshot, changes: async () => ({ kind: 'snapshot', snapshot }), commit, editing: protection, close: async () => {}, undo: async () => { throw new Error('not used'); }, subscribe: () => () => {} });
   await session.open('doc');
   const editor = createCanvasCardEditor(session);
   await editor.open(initial.id);
