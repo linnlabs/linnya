@@ -45,6 +45,7 @@ export class CanvasLines {
   private height = 1;
   private resolution = 1;
   private far = false;
+  private reduced = false;
   private key = '';
   private emphasisKey = '';
   private builds = 0;
@@ -109,6 +110,7 @@ export class CanvasLines {
     this.update();
   }
   setAppearance(appearance: CanvasAppearance): void { this.appearance = appearance; this.update(); }
+  setReduced(reduced: boolean): void { this.reduced = reduced; this.update(); }
   setSelection(cards: readonly CanvasCardId[]): void { this.selectedCards = new Set(cards); this.update(); }
   setSelected(id: CanvasEdgeId | null): void { this.selected = id; this.update(); }
   setHovered(id: CanvasCardId | null): void { if (this.hovered === id) return; this.hovered = id; this.update(); }
@@ -142,7 +144,8 @@ export class CanvasLines {
     for (const layer of [this.base, this.ghost, this.movingBase, this.movingGhost, this.highlight, this.selectedLine]) layer.setCamera(this.camera, this.resolution);
     this.cardMask.position.set(x, y); this.cardMask.scale.set(zoom);
     this.ghostArea.width = this.width; this.ghostArea.height = this.height;
-    this.ghostContainer.visible = zoom >= 0.3;
+    this.below.visible = !this.reduced || zoom >= 0.3;
+    this.ghostContainer.visible = !this.reduced && zoom >= 0.3;
     this.drawEndpoints(); this.drawLabels(visible);
   }
   private drawEndpoints(): void {

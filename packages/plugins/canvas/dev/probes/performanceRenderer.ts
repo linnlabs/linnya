@@ -57,7 +57,7 @@ async function prepare(count: number, clustered: boolean) {
   const cards = data.filter((element): element is CanvasCard => element.type !== 'edge');
   const started = performance.now(); kernel.setElements(data); kernel.fit(cards); presentation.refresh(); await nextFrame();
   return { installMs: performance.now() - started, dpr: devicePixelRatio, width: innerWidth, height: innerHeight,
-    count, clustered, camera: kernel.readCamera(), stats: kernel.readStats() };
+    count, clustered, camera: kernel.readCamera(), stats: kernel.readStats(), renderStatus: kernel.readRenderStatus(), resolution: kernel.readResolution() };
 }
 function start() {
   cancelAnimationFrame(collection); gaps = []; previous = 0;

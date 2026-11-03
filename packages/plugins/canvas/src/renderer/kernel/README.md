@@ -22,8 +22,14 @@
 
 内容owner可经 `setThumbnailCards` 指定远景保留画面的卡片，kernel不识别具体插件/文档类型。图片始终保留，普通文档默认标题；`rasterCards` 是当前真正需要正文位图的集合，前后台不能另猜远景规则。
 
+WebGL适配器识别SwiftShader/llvmpipe软件绘图，交互模式自动将实际分辨率限制为1、简化远景线与纸面淡影，并发送 `render-status` 的“性能受限”状态。`readResolution` 是正文光栅的目标比例；不能仍按窗口DPR生成高倍正文。后台出图明确使用 `renderingMode:'capture'`，保持请求DPR和图像合同，不静默降低导出质量。
+
+上下文丢失时保留元素和ImageBitmap，暂停绘制并报告恢复状态；此时或出图期间发生丢失，capture明确失败。Pixi恢复资源后重画同一内容。HTML-in-Canvas开关不可用时正式调度保留标题牌并报告正文能力不可用，不以空白图片冒充成功；真实禁用开关和context-loss像素恢复覆盖在visual probe。
+
 验证：插件 typecheck、lint、test；真实 Electron 入口 `node packages/plugins/canvas/dev/probes/run-render-probe.mjs`。探针的三档场景验证几何、标题 LOD、线与平移，不代表完整业务 UI、全量正文位图吞吐和真实鼠标交互已验收。
 
 正式正文和产品调度的测量入口：`node packages/plugins/canvas/dev/probes/run-performance-probe.mjs`，真实显示窗口、原生 pointer/wheel、DPR 和实际帧间隔，输出三规模×均匀/聚簇结果。`CANVAS_PERFORMANCE_COUNTS=2500` 可定向复演。它输出证据，不自动宣称全部业务或硬件门槛通过；首次正文加载、停手清晰时限、输入回落和内存必须分别检查。
 
 加 `CANVAS_PERFORMANCE_DRAG=1` 可测最多500张选中卡的正式pointer预览与松手intent（这里只测内核，不代替Host提交验收）。整条轨迹必须在窗口内，松手没有产生完整move intent则探针失败。报告记录源码commit/dirty、解锁状态/锁屏事件、实际显示器频率、热状态及原始帧间隔；不得四舍五入原始值后判断门槛。
+
+`CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_PERFORMANCE_COUNTS=250` 运行独立SwiftShader/offscreen降级冒烟，输出到单独的canvas-software-probe并明确validHardwareRun=false。它验证自动简化、实际分辨率与状态，不证明真实显卡帧率或手感。

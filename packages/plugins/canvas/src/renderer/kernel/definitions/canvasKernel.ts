@@ -8,7 +8,13 @@ export type CanvasKernelIntent =
   | { readonly kind: 'editing'; readonly ids: readonly CanvasCardId[]; readonly active: boolean }
   | { readonly kind: 'open'; readonly id: CanvasCardId }
   | { readonly kind: 'context'; readonly point: CanvasPoint; readonly id: CanvasCardId | null }
-  | { readonly kind: 'camera'; readonly camera: CanvasCamera };
+  | { readonly kind: 'camera'; readonly camera: CanvasCamera }
+  | ({ readonly kind: 'render-status' } & CanvasRenderStatus);
+export interface CanvasRenderStatus {
+  readonly limited: boolean;
+  readonly phase: 'ready' | 'restoring';
+  readonly message: string | null;
+}
 export interface CanvasAppearance {
   readonly dark: boolean;
   readonly material: 'paper' | 'card';
@@ -22,6 +28,8 @@ export interface CanvasKernel {
   setElements(elements: readonly CanvasElement[]): void;
   setCamera(camera: CanvasCamera): void;
   readCamera(): CanvasCamera;
+  readRenderStatus(): CanvasRenderStatus;
+  readResolution(): number;
   setSelection(ids: readonly CanvasCardId[]): void;
   readSelection(): readonly CanvasCardId[];
   setEditingCard(id: CanvasCardId | null): void;

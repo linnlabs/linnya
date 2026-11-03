@@ -19,7 +19,7 @@ async function executeCanvasWorkerRequest(request: CanvasWorkerRequest, signal: 
       if (request.kind === 'measureBatch') return { status: 'measuredBatch', requestId: request.requestId, cards: measured };
       return { status: 'measured', requestId: request.requestId, width: request.width, height: measured[0].height };
     }
-    const kernel = await createPixiCanvasKernel({ host: stage, width: request.width, height: request.height, resolution: request.dpr });
+    const kernel = await createPixiCanvasKernel({ host: stage, width: request.width, height: request.height, resolution: request.dpr, renderingMode: 'capture' });
     try {
       kernel.setElements(request.snapshot.elements);
       kernel.setDocumentTitles(new Map(Object.entries(request.documents).map(([id, presentation]) => [id, presentation.title])));

@@ -3,6 +3,7 @@ import { CanvasRenderRequestSchema } from '../../src/shared/rendering';
 import { createCardSurface } from '../../src/renderer/hidden-render-worker/functions/createCardSurface';
 import { createHtmlCardRasterizer } from '../../src/renderer/capabilities/textRasterization';
 import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/kernel';
+import { createCanvasRasterPresentation } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
 import '@linnya/markdown-document-core/style.css';
 
 const source = { kind: 'user', conversationId: null, runId: null };
@@ -130,3 +131,38 @@ async function thumbnailVisual() {
   return { titles, thumbnails, dpr: devicePixelRatio };
 }
 Object.defineProperty(window, 'prepareCanvasThumbnailVisualProbe', { value: thumbnailVisual });
+
+async function contextLossVisual() {
+  await prepare('light', 'paper'); const kernel = previousKernel; if (!kernel) throw new Error('context_fixture_missing');
+  const before = await kernel.captureImage('png'), beforeStats = kernel.readStats();
+  const gl = kernel.canvas.getContext('webgl2') ?? kernel.canvas.getContext('webgl'), extension = gl?.getExtension('WEBGL_lose_context');
+  if (!extension) throw new Error('context_loss_extension_unavailable');
+  const wait = async (phase: string) => {
+    const started = performance.now();
+    while (kernel.readRenderStatus().phase !== phase && performance.now() - started < 5000) await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    if (kernel.readRenderStatus().phase !== phase) throw new Error(`context_phase_not_reached:${phase}`);
+  };
+  extension.loseContext(); await wait('restoring');
+  let rejected = false; try { await kernel.captureImage('png'); } catch (error) { rejected = error instanceof Error && error.message === 'canvas_graphics_context_lost'; }
+  if (!rejected) throw new Error('lost_context_export_was_not_rejected');
+  extension.restoreContext(); await wait('ready');
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  return { before, after: await kernel.captureImage('png'), beforeStats, afterStats: kernel.readStats(), rejected };
+}
+Object.defineProperty(window, 'prepareCanvasContextLossVisualProbe', { value: contextLossVisual });
+
+async function unsupportedApiVisual() {
+  previousKernel?.destroy(); document.body.replaceChildren();
+  const host = document.createElement('div'), staging = document.createElement('div'); host.style.cssText = 'width:360px;height:240px'; document.body.append(host, staging);
+  const card = CanvasCardSchema.parse({ id: 'c1', type: 'text', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white',
+    createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, x: 0, y: 0, width: 300, height: 180, parentId: null, data: { contentVersion: 1, content } });
+  const kernel = await createPixiCanvasKernel({ host, width: 360, height: 240, resolution: devicePixelRatio }); previousKernel = kernel; kernel.setElements([card]);
+  const errors: string[] = [], raster = createCanvasRasterPresentation({ host: staging, kernel, readAppearance: () => ({ dark: false, material: 'paper', overview: 'titles' }), reportFailure: message => errors.push(message) });
+  try {
+    raster.refresh(); const started = performance.now();
+    while (!raster.readStats().failed && performance.now() - started < 3000) await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    if (!errors.includes('html_canvas_unavailable') || kernel.readStats().bitmaps !== 0) throw new Error(`unsupported_api_did_not_keep_identity:${errors}`);
+    return { image: await kernel.captureImage('png'), errors, stats: kernel.readStats() };
+  } finally { raster.dispose(); }
+}
+Object.defineProperty(window, 'prepareCanvasUnsupportedApiVisualProbe', { value: unsupportedApiVisual });
