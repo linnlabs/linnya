@@ -19,7 +19,7 @@ export function createCardSurface(card: CanvasCard, request: CanvasRenderRequest
   } else {
     const preview = request.documents[card.data.documentId];
     const title = document.createElement('p');
-    title.textContent = preview?.title ?? card.data.documentId;
+    title.textContent = preview?.title ?? '文档当前不可访问';
     element.append(title);
     if (preview?.image) { const image = document.createElement('img'); image.src = preview.image; image.style.width = '100%'; element.append(image); }
   }
