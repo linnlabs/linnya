@@ -14,11 +14,11 @@ async function run() {
     await win.loadFile(path.join(output, 'index.html'));
     const initial: unknown = await win.webContents.executeJavaScript('window.prepareVisibleUpdateProbe()');
     const reports: unknown[] = [];
-    for (const poll of [false, true]) {
+    for (const [poll, animate] of [[false, false], [true, false], [false, true]]) {
       const profile = process.env.CANVAS_VISIBLE_UPDATE_PROFILE === '1';
       if (profile) { win.webContents.debugger.attach('1.3'); await win.webContents.debugger.sendCommand('Profiler.enable'); await win.webContents.debugger.sendCommand('Profiler.start'); }
-      reports.push(await win.webContents.executeJavaScript(`window.updateVisibleUpdateProbe(${poll})`));
-      if (profile) { const data: unknown = await win.webContents.debugger.sendCommand('Profiler.stop'); await writeFile(path.join(output, `update-${poll ? 'polled' : 'unpolled'}.cpuprofile`), JSON.stringify(data)); win.webContents.debugger.detach(); }
+      reports.push(await win.webContents.executeJavaScript(`window.updateVisibleUpdateProbe(${poll},${animate})`));
+      if (profile) { const data: unknown = await win.webContents.debugger.sendCommand('Profiler.stop'); await writeFile(path.join(output, `update-${animate ? 'animated' : poll ? 'polled' : 'unpolled'}.cpuprofile`), JSON.stringify(data)); win.webContents.debugger.detach(); }
     }
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ sourceCommit: process.env.CANVAS_PROBE_SOURCE_COMMIT,
       sourceDirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', versions: process.versions, profile: 'offscreen-diagnostic', validHardwareRun: false, initial, reports }, null, 2));
