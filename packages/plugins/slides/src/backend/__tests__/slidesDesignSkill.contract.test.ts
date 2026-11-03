@@ -50,26 +50,33 @@ describe('slides-design Skill 产品合同', () => {
     expect(fs.existsSync(path.join(skillRoot, 'references/examples/complete-deck.js'))).toBe(true);
   });
 
-  it('两种人文风格各有导航入口，且互相指向对方', () => {
+  it('风格索引是唯一的风格入口，并指向每份指南与页型示例', () => {
     const body = parsed?.body ?? '';
+    const index = fs.readFileSync(path.join(skillRoot, 'references/styles.md'), 'utf-8');
+
+    expect(body).toContain('references/styles.md');
+    for (const guide of ['style-consulting-report', 'style-catalog-handout', 'style-cultural-imagery']) {
+      expect(index).toContain(`${guide}.md`);
+      expect(fs.existsSync(path.join(skillRoot, `references/${guide}.md`)), `${guide}.md missing`).toBe(true);
+    }
+    for (const example of ['style-consulting', 'style-catalog', 'style-cultural']) {
+      expect(index).toContain(`${example}.js`);
+      expect(fs.existsSync(path.join(skillRoot, `references/examples/${example}.js`)), `${example}.js missing`).toBe(true);
+    }
+    // 风格要靠判断而不是照抄：索引和研究风格指南都要明确说明。
+    expect(index).toContain('变化轴');
+    const report = fs.readFileSync(path.join(skillRoot, 'references/style-consulting-report.md'), 'utf-8');
+    expect(report).toContain('## 不要做成一个模板');
+    expect(report).toContain('不要照抄本文的任何具体值');
+  });
+
+  it('人文展示与图录阅读两份指南互相指向，图录的栅格规则只在图录指南里', () => {
     const cultural = fs.readFileSync(path.join(skillRoot, 'references/style-cultural-imagery.md'), 'utf-8');
     const catalog = fs.readFileSync(path.join(skillRoot, 'references/style-catalog-handout.md'), 'utf-8');
 
-    expect(body).toContain('references/style-cultural-imagery.md');
-    expect(body).toContain('references/style-catalog-handout.md');
     expect(cultural).toContain('style-catalog-handout.md');
     expect(catalog).toContain('style-cultural-imagery.md');
-    // 图录阅读稿的栅格和图注规则只属于一份指南，不在展示稿指南里重复。
     expect(cultural).not.toContain('## 高密度页');
     expect(catalog).toContain('## 版式系统');
-  });
-
-  it('专业研究风格有独立入口，并要求页型随内容变化而不是套模板', () => {
-    const body = parsed?.body ?? '';
-    const report = fs.readFileSync(path.join(skillRoot, 'references/style-consulting-report.md'), 'utf-8');
-
-    expect(body).toContain('references/style-consulting-report.md');
-    expect(report).toContain('## 不要做成一个模板');
-    expect(report).toContain('不要照抄本文的任何具体值');
   });
 });
