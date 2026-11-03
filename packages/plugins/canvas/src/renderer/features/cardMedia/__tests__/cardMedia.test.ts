@@ -6,7 +6,7 @@ import type { CanvasCardMediaPort } from '..';
 const image = { assetId: 'image-1', mediaType: 'image/png' as const, byteLength: 3, width: 1, height: 1, sha256: 'a'.repeat(64), dataUri: 'data:image/png;base64,YWJj' };
 function fixture() {
   const readImage = vi.fn(async () => image);
-  const port: CanvasCardMediaPort = { readImage, preview: async input => ({ documentId: input.documentId, title: null, nodeType: null, status: 'outside_project' }), projectId: () => 'project', openDocument: async () => {} };
+  const port: CanvasCardMediaPort = { readImage, reference: async documentId => ({ documentId, title: '文档', status: 'available', nodeType: 'markdown', path: 'workspace:/文档' }), subscribe: () => () => {}, subscribeAvailability: () => () => {}, preview: async input => ({ documentId: input.documentId, title: null, nodeType: null, status: 'outside_project' }), projectId: () => 'project', openDocument: async () => {} };
   return { content: createCanvasCardContent('doc', port), readImage };
 }
 const card = CanvasTextCardSchema.parse({ id: 'c1', type: 'text', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white', createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null }, createdAt: 0, updatedAt: 0, x: 0, y: 0, width: 280, height: 180, parentId: null, data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'image', attrs: { assetId: 'image-1', src: 'asset:image-1', alt: '', title: null } }] } } });

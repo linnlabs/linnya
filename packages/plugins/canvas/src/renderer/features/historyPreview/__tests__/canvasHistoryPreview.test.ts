@@ -14,7 +14,7 @@ function fixture(read: (documentId: string, versionId: string) => Promise<Canvas
     return { canvas: document.createElement('canvas'), setElements: state.installed, fit: vi.fn(), resize: vi.fn(), destroy: state.destroyed };
   });
   return createCanvasHistoryPreview({ host: document.createElement('div'), staging: document.createElement('div'), read,
-    createContent: () => ({ create: vi.fn(), stageImage: vi.fn(), resolveImageSource: vi.fn(), open: vi.fn(), documentTitles: () => new Map(), dispose: vi.fn() }),
+    createContent: () => ({ create: vi.fn(), stageImage: vi.fn(), resolveImageSource: vi.fn(), open: vi.fn(), documentTitles: () => new Map(), contentKey: () => '', refreshReferences: async () => {}, subscribe: () => () => {}, dispose: vi.fn() }),
   });
 }
 it('快速切换历史时旧读取不能覆盖最新版本，销毁只读资源', async () => {

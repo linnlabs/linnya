@@ -3,12 +3,14 @@ import type { DocumentImageAsset } from '@app/schemas';
 import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import type { CanvasCard } from '@plugin/canvas/shared';
 import type { CanvasCardContent, CanvasCardMediaPort } from '../definitions/cardMedia';
-import { createCanvasDocumentTitleState } from '../store/createCanvasDocumentTitleState';
+import { createCanvasReferenceMetadata } from './createCanvasReferenceMetadata';
+import { canvasReferencedDocuments } from '../functions/canvasReferencedDocuments';
+import { hydrateCanvasDocumentTags, hydrateCanvasManagedImages } from '../../cardRendering/content';
 
 const statuses = { deleted: '文档已删除', outside_project: '目标在其他项目，当前不可访问', plugin_unavailable: '需要启用或安装文档插件', preview_unavailable: '暂时没有可用预览', ready: '' };
 /** 内容投影只持有有界资源缓存；文档与图片的持久身份仍归各自owner。 */
 export function createCanvasCardContent(documentId: string, port: CanvasCardMediaPort): CanvasCardContent {
-  const titles = createCanvasDocumentTitleState();
+  const metadata = createCanvasReferenceMetadata(port);
   const images = new Map<string, DocumentImageAsset>();
   let imageBytes = 0, disposed = false;
   const stageImage = (asset: DocumentImageAsset) => {
@@ -33,7 +35,6 @@ export function createCanvasCardContent(documentId: string, port: CanvasCardMedi
     if (!projectId) throw new Error('没有当前项目，无法读取文档卡片');
     const result = await port.preview({ documentId: card.data.documentId, projectId, widthPx: Math.min(1600, Math.max(120, Math.round(card.width))), pixelRatio: 1 });
     if (disposed) throw new DOMException('Canvas media disposed', 'AbortError');
-    titles.install(card.data.documentId, result.status === 'ready' || result.status === 'plugin_unavailable' ? result.title : null);
     return result;
   }
   const resolveImageSource = async (source: string) => {
@@ -44,7 +45,13 @@ export function createCanvasCardContent(documentId: string, port: CanvasCardMedi
     stageImage, resolveImageSource,
     async create(card, signal) {
       const element = document.createElement('div'); element.className = 'markdown-document-content canvas-card-content';
-      if (card.type === 'text') { element.append(createMarkdownDocumentFragment(JsonValueSchema.parse(card.data.content), document)); await Promise.all(Array.from(element.querySelectorAll('img'), async img => { img.src = await resolveImageSource(img.getAttribute('src') ?? ''); })); signal.throwIfAborted(); }
+      if (card.type === 'text') {
+        element.append(createMarkdownDocumentFragment(JsonValueSchema.parse(card.data.content), document));
+        const assets: Record<string, string> = {}, presentations: Record<string, { title: string }> = {};
+        await Promise.all(Array.from(element.querySelectorAll('img'), async img => { const assetId = img.getAttribute('data-asset-id'); if (assetId) assets[assetId] = (await image(assetId)).dataUri; }));
+        await Promise.all(canvasReferencedDocuments(card).map(async id => { const reference = await metadata.read(id); if ((reference.status === 'available' || reference.status === 'plugin_unavailable') && reference.title) presentations[id] = { title: reference.title }; }));
+        signal.throwIfAborted(); hydrateCanvasManagedImages(element, assets); hydrateCanvasDocumentTags(element, presentations);
+      }
       if (card.type === 'image') {
         const asset = await image(card.data.assetId); signal.throwIfAborted();
         const img = document.createElement('img'); img.src = asset.dataUri; img.alt = card.data.alt; img.className = 'canvas-media-image';
@@ -69,7 +76,7 @@ export function createCanvasCardContent(documentId: string, port: CanvasCardMedi
       if (result.status !== 'ready' || !result.nodeType) throw new Error(statuses[result.status] || '文档不可打开');
       await port.openDocument(card.data.documentId, result.nodeType, result.title);
     },
-    documentTitles: () => titles.titles.value,
-    dispose() { disposed = true; images.clear(); imageBytes = 0; },
+    documentTitles: metadata.titles, contentKey: metadata.key, refreshReferences: metadata.refresh, subscribe: metadata.subscribe,
+    dispose() { disposed = true; metadata.dispose(); images.clear(); imageBytes = 0; },
   };
 }
