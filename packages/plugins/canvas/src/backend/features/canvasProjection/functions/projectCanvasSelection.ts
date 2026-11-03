@@ -1,8 +1,10 @@
-import type { CanvasCard, CanvasElementId, CanvasSnapshot } from '../../../../shared';
-import { projectCanvasCardBody, type CanvasProjectionContext } from './projectCanvasDocument';
+import type { CanvasCard } from '../../../../shared';
+import type { CanvasSelectionProjectionInput } from '../definitions/canvasProjection';
+import { projectCanvasCardBody } from './projectCanvasCardBody';
 
 /** 按一次提交快照冻结引用；正文预算用尽后列出紧凑摘要与继续读取方法。 */
-export function projectCanvasSelection(snapshot: CanvasSnapshot, elementIds: readonly CanvasElementId[], path: string, context: CanvasProjectionContext, format: 'context' | 'markdown' = 'context'): string {
+export function projectCanvasSelection(input: CanvasSelectionProjectionInput): string {
+  const { snapshot, elementIds, path, context, format = 'context' } = input;
   const selected = new Set<string>(elementIds);
   const cards = snapshot.elements.filter((element): element is CanvasCard => element.type !== 'edge' && selected.has(element.id))
     .sort((a, b) => a.y - b.y || a.x - b.x || a.id.localeCompare(b.id));

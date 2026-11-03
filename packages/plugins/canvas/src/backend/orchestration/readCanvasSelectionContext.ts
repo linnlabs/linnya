@@ -18,7 +18,7 @@ function readSelection(database: CanvasDatabase, input: ReturnType<typeof Canvas
   if (!remaining.length) throw new CanvasDocumentFailure('document_missing', '所选卡片已全部移除，请重新选择后发送');
   const context = CanvasSelectionContextSchema.parse({ documentId: input.documentId, sequence: snapshot.sequence,
     elementIds: remaining, path: location.path,
-    text: projectCanvasSelection(snapshot, remaining, location.path, readCanvasProjectionContext(database, snapshot), input.format),
+    text: projectCanvasSelection({ snapshot, elementIds: remaining, path: location.path, context: readCanvasProjectionContext(database, snapshot), format: input.format }),
   });
   return { context, snapshot };
 }
