@@ -35,6 +35,13 @@ describe('trusted Markdown document reference bindings', () => {
       const fresh = serializeMarkdownDocument(f.read().content); expect(() => f.write(text)).toThrow('改名'); expect(f.write(fresh).references[0]?.targetDocumentId).toBe('target');
     } finally { f.database.close(); }
   });
+  it('round-trips literal parentheses and percent signs in workspace document names', () => {
+    const f = fixture();
+    try {
+      f.database.prepare('UPDATE workspace_nodes SET name = ? WHERE id = ?').run('Notes (100%).md', 'target');
+      const text = serializeMarkdownDocument(f.read().content); expect(text).toContain('Notes%20%28100%25%29.md'); expect(f.write(text).references[0]?.targetDocumentId).toBe('target');
+    } finally { f.database.close(); }
+  });
   it('requires a trusted read for replacements containing prior tags and keeps reader scopes independent', () => {
     const f = fixture();
     try {
@@ -49,8 +56,11 @@ describe('trusted Markdown document reference bindings', () => {
       const text = serializeMarkdownDocument(f.read().content); const prepared = f.write(text);
       f.database.prepare('UPDATE workspace_nodes SET project_id = ? WHERE id = ?').run('other-project', 'target');
       expect(() => f.runtime.assertBindings({ sourceDocumentId: 'source', bindings: prepared.bindings })).toThrow('改名');
+      expect(() => f.write('Replacement before any new read')).toThrow('不能无损替换');
       const unavailable = f.read(); expect(unavailable.unprojectableReferenceIds).toEqual(['ref-1']); expect(JSON.stringify(unavailable.content)).not.toContain('Target Space');
       expect(() => f.write('Replace everything')).toThrow('不能无损替换');
+      const appended = f.runtime.admit({ ...f.identity, content: parseMarkdownDocument('Only new paragraph') }); expect(appended.references).toEqual([]);
+      expect(() => f.runtime.admit({ ...f.identity, content: parseMarkdownDocument(text) })).toThrow('改名');
     } finally { f.database.close(); }
   });
   it('resolves new links only in the current project and allocates independent IDs when copying a known tag', () => {
@@ -61,4 +71,18 @@ describe('trusted Markdown document reference bindings', () => {
       f.database.prepare('UPDATE workspace_nodes SET project_id = ? WHERE id = ?').run('other-project', 'target'); expect(() => f.runtime.admit({ ...f.identity, sourceKey: 'new', content: parseMarkdownDocument('[Target](workspace:/Target%20Space.md)') })).toThrow('同项目');
     } finally { f.database.close(); }
   });
+  it('records the delivered projection without re-reading and hydrates accepted proposals by stored identity', () => {
+    const f = fixture();
+    try {
+      const read = f.runtime.project({ sourceDocumentId: 'source', content: tagged });
+      const text = serializeMarkdownDocument(read.content);
+      f.database.prepare('UPDATE workspace_nodes SET name = ? WHERE id = ?').run('Renamed.md', 'target');
+      f.database.prepare('INSERT INTO workspace_nodes VALUES (?, ?, ?, ?, NULL, NULL, NULL, 1)').run('replacement', 'project', 'Target Space.md', 'document');
+      f.runtime.registerBindings({ ...f.identity, bindings: read.bindings, unprojectableReferenceIds: read.unprojectableReferenceIds });
+      expect(() => f.write(text)).toThrow('改名');
+      expect(f.runtime.hydrate({ content: parseMarkdownDocument(text), bindings: read.bindings })).toEqual(tagged);
+      expect(() => f.runtime.hydrate({ content: parseMarkdownDocument('[Other](workspace:/Target%20Space.md)'), bindings: read.bindings })).toThrow('同项目');
+    } finally { f.database.close(); }
+  });
+
 });

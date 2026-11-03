@@ -24,8 +24,27 @@ export function workspaceReferenceHref(node: ReferenceJsonObject): string | null
   return null;
 }
 export function normalizedReferencePath(href: string): string { return 'workspace:' + decodeURIComponent(href.slice('workspace:'.length)); }
-export function encodedReferencePath(path: string): string { return 'workspace:' + path.slice('workspace:'.length).split('/').map(segment => encodeURIComponent(segment)).join('/'); }
+export function encodedReferencePath(path: string): string { return 'workspace:' + path.slice('workspace:'.length).split('/').map(segment => encodeURIComponent(segment).replace(/[()]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase())).join('/'); }
 export function commonReferenceMarks(nodes: readonly ReferenceJsonObject[]): JsonValue[] {
   const first = nodes[0]; const marks = Array.isArray(first?.marks) ? first.marks : [];
   return marks.filter(mark => referenceObject(mark)?.type !== 'link' && nodes.every(node => Array.isArray(node.marks) && node.marks.some(other => JSON.stringify(other) === JSON.stringify(mark))));
+}
+
+/** 只处理解析器确认的 link marks；代码与裸字符串不会被重新解释。 */
+export function transformWorkspaceReferenceLinks(content: JsonValue, resolve: (nodes: readonly ReferenceJsonObject[], href: string) => JsonValue): JsonValue {
+  function transform(value: JsonValue): JsonValue {
+    const node = referenceObject(value); if (!node || node.type === 'codeBlock') return value;
+    const children = referenceChildren(node); if (!children) return node;
+    const next: JsonValue[] = [];
+    for (let index = 0; index < children.length; index += 1) {
+      const child = referenceObject(children[index]); const href = child ? workspaceReferenceHref(child) : null;
+      if (!child || !href) { next.push(transform(children[index])); continue; }
+      if (child.type !== 'text') throw new Error('A workspace reference link must contain text.');
+      const group = [child];
+      while (index + 1 < children.length) { const following = referenceObject(children[index + 1]); if (!following || following.type !== 'text' || workspaceReferenceHref(following) !== href) break; group.push(following); index += 1; }
+      next.push(resolve(group, href));
+    }
+    return { ...node, content: next };
+  }
+  return transform(content);
 }
