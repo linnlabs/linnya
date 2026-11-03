@@ -18,7 +18,7 @@ it('shows grouped sources with type icons, opens a source and supports the share
   const host = document.createElement('div');
   document.body.append(host);
   const pinia = createPinia();
-  const icon = defineComponent({ setup: () => () => h('svg', { 'data-type-icon': 'slides' }) });
+  const icon = () => h('svg', { 'data-type-icon': 'slides' });
   const app = createApp({
     render: () =>
       h(DocumentBacklinksPanel, {
