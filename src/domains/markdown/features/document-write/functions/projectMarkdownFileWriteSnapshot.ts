@@ -1,4 +1,5 @@
-import { createHash } from 'node:crypto';
+import { createMarkdownFileWriteSourceKey } from '../../../shared/markdownDocumentSourceKey';
+export { createMarkdownFileWriteSourceKey } from '../../../shared/markdownDocumentSourceKey';
 import {
   admitDocumentCitations,
   admitDocumentCitationNodeSnapshots,
@@ -19,14 +20,9 @@ export interface MarkdownFileWriteSnapshotInput {
   readonly versionNumber: number | null;
 }
 
-/** 正文相同不代表来源相同；完整结构、版本和 pending metadata 共同保护异步准备窗口。 */
-export function createMarkdownFileWriteSourceKey(input: MarkdownFileWriteSnapshotInput): string {
-  return createHash('sha256').update(JSON.stringify(input)).digest('hex');
-}
-
-export function projectMarkdownFileWriteSnapshot(input: MarkdownFileWriteSnapshotInput): MarkdownFileWriteSnapshot {
+export function projectMarkdownFileWriteSnapshot(input: MarkdownFileWriteSnapshotInput, projection?: { readonly content: MarkdownDocJson; readonly pendings?: readonly MarkdownPendingRevisionLike[] }): MarkdownFileWriteSnapshot {
   const current = buildMarkdownCitationReadProjection({
-    content: input.content, pendings: input.pendings, viewMode: 'preview',
+    content: projection?.content ?? input.content, pendings: projection?.pendings ?? input.pendings, viewMode: 'preview',
   });
   const toSources = (items: readonly DocumentCitationSource[]): CitationSource[] => items.flatMap(source => {
     if (source.sourceType === 'manual') return [];

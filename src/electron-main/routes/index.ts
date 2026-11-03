@@ -1,3 +1,4 @@
+import { bindMarkdownDocumentReferenceCapabilities } from 'src/app-hosts/linnya/application/markdown-document-references';
 import type { AuditControlPort } from 'src/domains/audit';
 import { readSourceCheckoutIdentity } from 'src/shared/runtime-paths/functions/readSourceCheckoutIdentity';
 import { realpathSync } from 'node:fs';
@@ -544,6 +545,7 @@ export async function configureRoutes(
     logger.info('[诊断] 即将调用 dbService.getDb()');
     const db = dbService.getDb();
     bindMarkdownDocumentImageOwnership(db);
+    bindMarkdownDocumentReferenceCapabilities(db);
     const workspaceRoot = getWorkspaceRoot();
     const appDataRoot = getAppDataPath();
     const { storeId: managedImageStoreId } = readManagedImageStoreBinding(db);

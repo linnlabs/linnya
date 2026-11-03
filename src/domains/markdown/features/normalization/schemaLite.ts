@@ -15,6 +15,7 @@ import type { MarkdownDocJson } from './types';
 import {
   MARKDOWN_CHART_FENCE_LANGUAGE,
   MarkdownAnnotationsSchema,
+  InlineDocumentReferenceAttrsSchema,
   MarkdownChartSpecSchema,
   MarkdownImageCaptionSchema,
 } from '@app/schemas';
@@ -41,6 +42,7 @@ const nodes: Record<string, NodeSpec> = {
       latexSource: { default: '' },
     },
   },
+  documentReference: { inline: true, group: 'inline', atom: true, selectable: true, marks: '_', attrs: { documentId: { validate: (value: unknown) => { InlineDocumentReferenceAttrsSchema.shape.documentId.parse(value); } }, referenceId: { validate: (value: unknown) => { InlineDocumentReferenceAttrsSchema.shape.referenceId.parse(value); } } } },
   citationNode: {
     inline: true,
     group: 'inline',

@@ -8,7 +8,7 @@ import {
   type MarkdownAnnotationCommentAdmitter,
 } from './blockEventToDocJson';
 import { normalizeParsedBlockEvents } from './normalizeBlockEvents';
-import { parseMarkdownToBlocksInNode } from './parserAdapterNode';
+import { parseMarkdownToBlocksInNode, parseMarkdownToBlocksInNodeSync } from './parserAdapterNode';
 import { validateMarkdownDocJson } from './schemaLite';
 import type { MarkdownDocJson, WasmBlockEventLike } from './types';
 
@@ -49,4 +49,12 @@ export async function importMarkdownToDocJson(
     docJson: validateMarkdownDocJson(rawDocJson),
     blockEvents
   };
+}
+
+/** 同步 VFS 只使用 Node WASM；结构准入仍走正式 normalize/convert/schema。 */
+export function importMarkdownToDocJsonSync(markdown: string): MarkdownImportResult {
+  const blockEvents = normalizeParsedBlockEvents(parseMarkdownToBlocksInNodeSync(markdown));
+  if (!blockEvents.length) return { docJson: null, blockEvents };
+  const document = convertBlockEventsToDocJson(blockEvents);
+  return { docJson: document ? validateMarkdownDocJson(document) : null, blockEvents };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseMarkdownDocument, serializeMarkdownDocument } from '../index';
+import { assertPortableMarkdownDocument, parseMarkdownDocument, serializeMarkdownDocument } from '../index';
 
 describe('portable Markdown document conversion', () => {
   it('无 DOM 的 Node 中保留标题、列表、行内格式和代码围栏', () => {
@@ -41,4 +41,10 @@ it('公式中的转义美元符号以及空/换行行内公式可逆', () => {
   expect(parseMarkdownDocument(serializeMarkdownDocument(content))).toEqual(content);
   const special: import('@app/schemas').JsonValue = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'inlineMath', attrs: { latex: '' } }, { type: 'inlineMath', attrs: { latex: 'a\nb' } }] }] };
   expect(parseMarkdownDocument(serializeMarkdownDocument(special))).toEqual(special);
+});
+
+it('Backend 严格入口使用同一 schema，拒绝不合法内容表达式和空引用身份', () => {
+  expect(() => assertPortableMarkdownDocument({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'heading', attrs: { level: 2 } }] }] })).toThrow();
+  expect(() => assertPortableMarkdownDocument({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'documentReference', attrs: { documentId: '', referenceId: null } }] }] })).toThrow();
+  expect(() => assertPortableMarkdownDocument(parseMarkdownDocument('Valid **document**'))).not.toThrow();
 });

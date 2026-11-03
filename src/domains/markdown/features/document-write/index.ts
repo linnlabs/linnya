@@ -25,3 +25,5 @@ export { prepareMarkdownFileWrite, projectMarkdownFileEditText } from './orchest
 export type { MarkdownFileWriteSnapshot } from './definitions/markdownFileWriteSnapshot';
 export { MarkdownFileWriteConflictError } from './definitions/markdownDocumentWrite';
 export { prepareMarkdownImageInput, type ResolveMarkdownImageSource } from './orchestration/prepareMarkdownImageInput';
+
+export { prepareMarkdownDocumentReferences } from './orchestration/prepareMarkdownDocumentReferences';

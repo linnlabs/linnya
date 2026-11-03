@@ -10,6 +10,8 @@ const extensions = createMarkdownDocumentExtensions();
 const schema = getSchema(extensions);
 const manager = new MarkdownManager({ extensions });
 
+export function assertPortableMarkdownDocument(content: JsonValue): void { assertMarkdownDocument(content, schema); }
+
 export function parseMarkdownDocument(markdown: string): JsonValue {
   const parsed = manager.parse(markdown);
   assertMarkdownDocument(parsed, schema);

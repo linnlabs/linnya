@@ -153,3 +153,16 @@ export async function parseMarkdownToBlocksInNode(markdown: string): Promise<Was
     ...normalizeBlockEvents(finalEvents)
   ];
 }
+
+/** Node target 在 require 时完成初始化；VFS 同步只读投影复用同一 Rust parser。 */
+export function parseMarkdownToBlocksInNodeSync(markdown: string): WasmBlockEventLike[] {
+  if (!markdown.trim()) return [];
+  const modulePath = resolveNodeParserModulePath();
+  const loaded: unknown = createRequire(modulePath)(modulePath);
+  const Parser = getConstructor(loaded, 'StreamingParser');
+  if (!Parser) throw new Error('Node parser-wasm must expose a synchronous StreamingParser.');
+  const parser = new Parser();
+  const chunk = parser.process_chunk(markdown); const final = parser.finalize_parsing();
+  if (chunk instanceof Promise || final instanceof Promise) throw new Error('Node parser-wasm returned an asynchronous result to the synchronous VFS projection.');
+  return [...normalizeBlockEvents(chunk), ...normalizeBlockEvents(final)];
+}

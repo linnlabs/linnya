@@ -20,6 +20,14 @@ function remapCopiedNode(node: ProseMirrorNode): ProseMirrorNode {
 }
 export function createDocumentReferenceExtension(port: DocumentReferenceUiPort = createDocumentReferenceUiPort()) {
   return DocumentReferenceNode.extend({
+    extendNodeSchema(extension) {
+      if (extension.name !== 'documentReference') return {};
+      return { documentReferenceMarkdown: (node: ProseMirrorNode) => {
+        const presentation = port.readCached(readDocumentReferenceAttrs(node.attrs).documentId);
+        if (!presentation) throw new Error('document_reference_projection_required');
+        return formatDocumentReferenceMarkdown(presentation);
+      } };
+    },
     renderText({ node }) { const presentation = port.readCached(readDocumentReferenceAttrs(node.attrs).documentId); return presentation ? formatDocumentReferenceMarkdown(presentation) : '文档'; },
     renderMarkdown(node) { const attrs = readDocumentReferenceAttrs(node.attrs); const presentation = port.readCached(attrs.documentId); if (!presentation) throw new Error('document_reference_projection_required'); return formatDocumentReferenceMarkdown(presentation); },
     onDestroy() { port.dispose(); },

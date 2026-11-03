@@ -377,6 +377,13 @@ const nodes: { [key: string]: NodeSerializer } = {
     const escaped = source.replace(/\$/g, '\\$')
     state.write(`$${escaped}$`)
   },
+  documentReference(state, node) {
+    const project = node.type.spec.documentReferenceMarkdown;
+    if (typeof project !== 'function') throw new Error('Document reference Markdown projection is not registered.');
+    const text: unknown = project(node);
+    if (typeof text !== 'string') throw new Error('Document reference Markdown projection must return text.');
+    state.write(text);
+  },
   citationNode(state, node) {
     // 编号是编辑器视图派生值；Markdown 必须投影稳定的 canonical ref。
     const ref = typeof node.attrs.ref === 'string' ? node.attrs.ref.trim() : ''
