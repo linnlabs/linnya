@@ -2,7 +2,7 @@ import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import { JsonValueSchema } from '@app/schemas';
 import type { CanvasCard } from '../../../shared';
 import type { CanvasWorkerRequest, CanvasRenderRequest } from '../../../shared/rendering';
-import { hydrateEmbeddedImages } from './hydrateEmbeddedImages';
+import { hydrateCanvasManagedImages, hydrateCanvasDocumentTags } from '../../features/cardRendering/content';
 
 export function createCardSurface(card: CanvasCard, request: CanvasRenderRequest): HTMLElement {
   const element = document.createElement('div');
@@ -11,7 +11,7 @@ export function createCardSurface(card: CanvasCard, request: CanvasRenderRequest
   installTypography(element, request);
   if (card.type === 'text') {
     element.append(createMarkdownDocumentFragment(JsonValueSchema.parse(card.data.content), document));
-    hydrateEmbeddedImages(element, request.assets);
+    hydrateCanvasManagedImages(element, request.assets); hydrateCanvasDocumentTags(element, request.documents);
   }
   else if (card.type === 'image') {
     const source = request.assets[card.data.assetId];

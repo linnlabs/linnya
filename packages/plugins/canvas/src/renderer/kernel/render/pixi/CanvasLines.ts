@@ -92,7 +92,7 @@ export class CanvasLines {
     this.base.setColor(blend(ink, background, amount));
     this.ghost.setColor(blend(ink, this.appearance.dark ? 0x323631 : 0xfbfaf5, 0.22 * 0.42));
     this.highlight.setColor(blend(ink, background, 0.55)); this.selectedLine.setColor(0x347b45, 1.5);
-    for (const layer of [this.base, this.ghost, this.highlight, this.selectedLine]) layer.setCamera(this.camera, this.width, this.height, this.resolution);
+    for (const layer of [this.base, this.ghost, this.highlight, this.selectedLine]) layer.setCamera(this.camera, this.resolution);
     this.cardMask.position.set(x, y); this.cardMask.scale.set(zoom);
     this.ghostContainer.visible = zoom >= 0.3;
     this.drawEndpoints(); this.drawLabels(visible);
