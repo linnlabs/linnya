@@ -16,6 +16,7 @@ export const hostRendererExternalUrls = Object.freeze({
   '@plugin/renderer/documentMutationPort': 'plugin://host/plugin-renderer/documentMutationPort.js',
   '@plugin/renderer/documentReferenceRuntimePort': 'plugin://host/plugin-renderer/documentReferenceRuntimePort.js',
   '@plugin/renderer/executionPresentation': 'plugin://host/plugin-renderer/executionPresentation.js',
+  '@plugin/renderer/embeddedMarkdownEditor': 'plugin://host/plugin-renderer/embeddedMarkdownEditor.js',
   '@plugin/renderer/exportArtifact': 'plugin://host/plugin-renderer/exportArtifact.js',
   '@plugin/renderer/imageAssetSource': 'plugin://host/plugin-renderer/imageAssetSource.js',
   '@plugin/renderer/interactiveTool': 'plugin://host/plugin-renderer/interactiveTool.js',
@@ -32,6 +33,7 @@ export const hostRendererExternalUrls = Object.freeze({
   '@plugin/renderer/structuredContextRequirementPort': 'plugin://host/plugin-renderer/structuredContextRequirementPort.js',
   '@plugin/renderer/toolRefreshPort': 'plugin://host/plugin-renderer/toolRefreshPort.js',
   '@plugin/renderer/workspaceNavigation': 'plugin://host/plugin-renderer/workspaceNavigation.js',
+  '@plugin/renderer/documentPreview': 'plugin://host/plugin-renderer/documentPreview.js',
   '@plugin/renderer/workspaceRuntime': 'plugin://host/plugin-renderer/workspaceRuntime.js',
   ...rendererUiExternalUrls,
 });

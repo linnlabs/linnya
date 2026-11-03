@@ -15,8 +15,10 @@ import * as appLocalization from '@app/localization';
 import * as aiInvocationPort from '@plugin/renderer/aiInvocationPort';
 import * as composerCommandPort from '@plugin/renderer/composerCommandPort';
 import * as conversationSubrunInvocationPort from '@plugin/renderer/conversationSubrunInvocationPort';
+import * as documentPreview from '@plugin/renderer/documentPreview';
 import * as documentMutationPort from '@plugin/renderer/documentMutationPort';
 import * as documentReferenceRuntimePort from '@plugin/renderer/documentReferenceRuntimePort';
+import * as embeddedMarkdownEditor from '@plugin/renderer/embeddedMarkdownEditor';
 import * as exportArtifact from '@plugin/renderer/exportArtifact';
 import * as imageAssetSource from '@plugin/renderer/imageAssetSource';
 import * as interactiveTool from '@plugin/renderer/interactiveTool';
@@ -77,8 +79,10 @@ export function installRendererPluginHostModules(): void {
       '@plugin/renderer/aiInvocationPort': aiInvocationPort,
       '@plugin/renderer/composerCommandPort': composerCommandPort,
       '@plugin/renderer/conversationSubrunInvocationPort': conversationSubrunInvocationPort,
+      '@plugin/renderer/documentPreview': documentPreview,
       '@plugin/renderer/documentMutationPort': documentMutationPort,
       '@plugin/renderer/documentReferenceRuntimePort': documentReferenceRuntimePort,
+      '@plugin/renderer/embeddedMarkdownEditor': embeddedMarkdownEditor,
       '@plugin/renderer/exportArtifact': exportArtifact,
       '@plugin/renderer/imageAssetSource': imageAssetSource,
       '@plugin/renderer/interactiveTool': interactiveTool,

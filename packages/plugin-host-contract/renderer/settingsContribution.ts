@@ -22,3 +22,18 @@ export declare function registerSettingsContribution(contribution: SettingsContr
 export declare function unregisterSettingsContribution(id: string): void;
 export declare function listSettingsContributions(): readonly SettingsContribution[];
 export declare function clearSettingsContributionsForTest(): void;
+
+/** 外观页内一节；组件只负责该节内容，页壳与分节标题由 Settings owner 绘制。 */
+export interface AppearanceSectionContribution {
+  readonly pluginId: string;
+  readonly id: string;
+  readonly title: string;
+  readonly order: number;
+  readonly component: Component;
+  readonly isAvailable?: () => boolean;
+}
+
+export declare function registerAppearanceSection(contribution: AppearanceSectionContribution): void;
+export declare function unregisterAppearanceSection(pluginId: string, id: string): void;
+export declare function listAppearanceSections(): readonly AppearanceSectionContribution[];
+export declare function clearAppearanceSectionsForTest(): void;

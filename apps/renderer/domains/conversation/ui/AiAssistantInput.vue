@@ -192,6 +192,7 @@ import {
   projectConversationInformation,
   useContextWindowUsagePresentation,
 } from '../features/context-window-usage';
+import { prepareComposerReferences } from '../features/composer-references';
 import { useHistoryListStore } from '../history/store/historyListStore';
 import { useUIStore } from '../../../shared/stores/ui';
 import {
@@ -219,6 +220,7 @@ const conversationState = useConversationState();
 const conversationSelectors = useConversationSelectors(conversationState);
 const historyListStore = useHistoryListStore();
 const composerReferences = useComposerReferences();
+let referencePreparation: AbortController | undefined;
 const modelCatalog = useModelCatalogReadModel();
 const modelPicker = useModelPickerReadModel();
 const modelBindings = useModelPurposeBindings();
@@ -641,15 +643,23 @@ const handleSubmit = async () => {
   // 在清空之前快照当前扩展与引用，确保结构化 userQuote 不因清空 composer 丢失。
   const extensionSnapshot = activeInputExtension.value;
   const conversationReferencesSnapshot = [...composerReferences.references.value];
-  const userQuotePayload = buildUserQuotePayloadFromConversationReferences(
-    conversationReferencesSnapshot
-  );
-  const extensionSubmitPayload: ConversationInputExtensionSubmitPayload = {
-    text: message,
-    references: conversationReferencesSnapshot,
-  };
-
+  const preparation = new AbortController();
+  referencePreparation = preparation;
   try {
+    const preparedReferences = await prepareComposerReferences({
+      references: conversationReferencesSnapshot,
+      conversationId,
+      signal: preparation.signal,
+      isCurrent: () => assistantStore.activeConversationId === conversationId
+        && activeInputExtension.value === extensionSnapshot
+        && composerReferences.references.value.length === conversationReferencesSnapshot.length
+        && composerReferences.references.value.every((reference, index) => reference.id === conversationReferencesSnapshot[index]?.id),
+    });
+    const userQuotePayload = buildUserQuotePayloadFromConversationReferences(preparedReferences);
+    const extensionSubmitPayload: ConversationInputExtensionSubmitPayload = {
+      text: message,
+      references: preparedReferences,
+    };
     if (extensionSnapshot) {
       await executeConversationInputExtensionSubmit({
         extension: extensionSnapshot,
@@ -668,8 +678,10 @@ const handleSubmit = async () => {
     }
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') return;
+    assistantStore.setError(error instanceof Error ? error.message : String(error));
     console.error('[AiAssistantInput] 发送消息失败:', error);
   } finally {
+    if (referencePreparation === preparation) referencePreparation = undefined;
     isSubmissionStarting.value = false;
   }
 };
@@ -715,6 +727,7 @@ watch(
 );
 
 watch(isInputDisabled, syncEditorEditable);
+watch(() => assistantStore.activeConversationId, () => referencePreparation?.abort());
 
 watch(activeInputExtension, (nextExtension, previousExtension) => {
   if (previousExtension && previousExtension.id !== nextExtension?.id) {
@@ -801,6 +814,7 @@ onMounted(() => {
 });
 // 组件销毁前销毁Tiptap编辑器
 onBeforeUnmount(() => {
+  referencePreparation?.abort();
   if (editor.value) {
     editor.value.destroy();
   }

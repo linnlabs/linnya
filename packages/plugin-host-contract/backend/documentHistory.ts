@@ -13,7 +13,14 @@ export declare class DocumentHistoryError extends Error {
 }
 
 /** 只返回身份集合；SQL、差分重建与内部必保依赖由文档类型拥有。 */
-export declare function planDocumentVersionRetention(rows: readonly DocumentVersionSummary[]): {
+export interface DocumentVersionRetentionBudget {
+  readonly budgetBytes: number;
+  /** 调用方算好包含历史资产的实际占用；共享字节只在其归属的一个版本计入。 */
+  readonly versionBytes: readonly { readonly versionId: string; readonly byteLength: number }[];
+}
+
+export declare function planDocumentVersionRetention(rows: readonly DocumentVersionSummary[], budget?: DocumentVersionRetentionBudget): {
   readonly keepVersionIds: readonly string[];
   readonly removeVersionIds: readonly string[];
+  readonly overBudgetBytes?: number;
 };

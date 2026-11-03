@@ -1,6 +1,7 @@
 /** 无 App 装配依赖，standalone reader 也可消费同一 Workspace owner。 */
 export {
   readWorkspaceDocumentMetadata,
+  readWorkspaceDocumentIdentity,
   listWorkspaceDocumentIds,
   touchWorkspaceDocument,
 } from 'src/features/workspace/infrastructure/sqlite/workspaceDocumentProjection';

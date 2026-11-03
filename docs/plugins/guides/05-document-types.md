@@ -65,3 +65,11 @@ Core Header 自动提供统一 More 入口和面板。未启用或缺少贡献�
 hook 实现侧的纪律：**不要从 `ToolContext` 公开插件专属 service 后门，也不要自建全局缓存实例**。Document hook 不经过 tool decorator；需要文档服务时，应基于 hook 收到的 `databaseService` / `workspaceService` 构造无状态服务，或消费插件自己的 runtime effect 绑定。能由同一 SQLite 与 workspace port 重新构造的轻量 document service 不属于 fallback；真正危险的是“绑定缺失就 new 一个全局单例并缓存”，那会制造双实例和状态分裂。
 
 平台 Markdown 遵守同一装配纪律：它是永久内建 provider，不是插件，但其 store/normalizer 也不进入 ToolContext。Host adapter 基于本次调用的正式数据库构造短生命周期 provider。`text/markdown` 预览无需也不得构造该 provider；只有正式文档节点身份或缺失路径的明确 Markdown 创建声明才进入有状态文档链。
+
+## 只读文档预览与稳定引用
+
+后端 hook 可贡献 `preview`：`getRevision` 返回正文 owner 的真实版本，`render` 返回按正式 schema 校验的封面图片、摘要与可选只读详情数据。Host 只做身份/项目检查、派生缓存和启停分发，不解释插件内部模型。Markdown 内建 provider 与 Slides 第一页 provider 已接入；类型查询经 `listDocumentPreviewTypes`，不能在 UI 硬编码类型集合。
+
+Backend 消费 `@plugin/backend/documentPreview.createDocumentPreviewReader(db)`，Renderer 消费同名窄门面的 `readDocumentPreview`。共同 DTO 在 `@app/schemas`，图片是受限 data URI，不公开磁盘路径。实现及边界见 [文档预览](../../../src/domains/document-preview/README.md)。
+
+文档卡片与行内标签把稳定目标 ID 登记进 Core [文档引用](../../../src/domains/document-references/README.md)。`@plugin/backend/documentReferences.replaceDocumentReferences` 必须加入正文当前同步事务；不能自行写 Core 引用表，也不能用路径替换身份。停用/卸载插件保留引用与文本快照。

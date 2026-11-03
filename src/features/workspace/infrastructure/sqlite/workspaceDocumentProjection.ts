@@ -76,3 +76,13 @@ export function touchWorkspaceDocument(
     );
   if (result.changes !== 1) throw new Error(`Workspace document not found: ${nodeId}`);
 }
+
+const identitySchema = z.object({ id: z.string(), project_id: z.string().nullable(), name: z.string(), type: z.string(), deleted_at: z.number().nullable() });
+
+/** 引用生命周期需要区分软删除与越界；调用方不读取 Workspace 内部表。 */
+export function readWorkspaceDocumentIdentity(db: WorkspaceProjectionDatabase, nodeId: string) {
+  const row = readStatement(db, 'SELECT id, project_id, name, type, deleted_at FROM workspace_nodes WHERE id = ?').get(nodeId);
+  if (row === undefined) return null;
+  const node = identitySchema.parse(row);
+  return { id: node.id, projectId: node.project_id, name: node.name, nodeType: node.type, deletedAt: node.deleted_at };
+}

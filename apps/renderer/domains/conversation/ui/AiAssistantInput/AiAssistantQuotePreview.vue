@@ -24,7 +24,18 @@
           class="ai-assistant-quote-preview__pill"
           :aria-label="chip.presentation.label"
         >
-          <span class="ai-assistant-quote-preview__pill-text">{{ chip.presentation.preview }}</span>
+          <button
+            v-if="chip.presentation.activate"
+            type="button"
+            class="ai-assistant-quote-preview__pill-text ai-assistant-quote-preview__pill-action"
+            @click="chip.presentation.activate()"
+          >
+            {{ chip.presentation.preview }}
+          </button>
+          <span
+            v-else
+            class="ai-assistant-quote-preview__pill-text"
+          >{{ chip.presentation.preview }}</span>
           <button
             type="button"
             class="ai-assistant-quote-preview__pill-close"

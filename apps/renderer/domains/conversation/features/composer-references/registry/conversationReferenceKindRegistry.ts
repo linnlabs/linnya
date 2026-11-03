@@ -6,6 +6,7 @@ import type {
 export interface ConversationReferenceChipPresentation {
   readonly label: string;
   readonly preview: string;
+  readonly activate?: () => Promise<void>;
 }
 
 const referenceKinds = new Map<string, ConversationReferenceKindContribution>();
@@ -36,6 +37,21 @@ export function unregisterConversationReferenceKind(pluginId: string, kind: stri
   return referenceKinds.delete(buildReferenceKindKey(pluginId, kind));
 }
 
+export function readConversationReferenceKind(
+  pluginId: string,
+  kind: string,
+): ConversationReferenceKindContribution {
+  const contribution = referenceKinds.get(buildReferenceKindKey(pluginId, kind));
+  if (!contribution || contribution.isAvailable?.() === false) {
+    throw new Error(`[composerReferences] 引用类型不可用: ${pluginId}:${kind}`);
+  }
+  return contribution;
+}
+
+export async function activateConversationReference(reference: ConversationReferenceChipInput): Promise<void> {
+  await readConversationReferenceKind(reference.pluginId, reference.kind).onActivate?.(reference);
+}
+
 export function resolveConversationReferenceChipPresentation(
   reference: ConversationReferenceChipInput,
 ): ConversationReferenceChipPresentation {
@@ -50,6 +66,7 @@ export function resolveConversationReferenceChipPresentation(
   return {
     label: contribution.chip.label(reference),
     preview: contribution.chip.preview(reference),
+    ...(contribution.onActivate ? { activate: () => activateConversationReference(reference) } : {}),
   };
 }
 

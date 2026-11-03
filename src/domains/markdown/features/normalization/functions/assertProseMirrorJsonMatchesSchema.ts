@@ -1,6 +1,5 @@
 import type { Schema } from 'prosemirror-model';
 
-import type { ProseMirrorJsonNode } from '../types';
 
 type SchemaTypeWithAttributes = {
   readonly spec: {
@@ -104,7 +103,7 @@ function assertNodeJson(value: unknown, schema: Schema, path: string): void {
  * `nodeFromJSON()` 会静默丢弃未知 attrs，单独调用它不构成严格校验。
  */
 export function assertProseMirrorJsonMatchesSchema(
-  docJson: ProseMirrorJsonNode,
+  docJson: unknown,
   schema: Schema
 ): void {
   assertNodeJson(docJson, schema, 'doc');
