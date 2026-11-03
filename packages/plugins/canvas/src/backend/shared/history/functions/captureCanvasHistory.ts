@@ -1,4 +1,4 @@
-import type { CanvasCommitPlan, CanvasCommitState } from '../../canvasCommit';
+import type { CanvasCommitPlan, CanvasCommitState } from '../../../features/canvasCommit';
 import type { CanvasHistoryEntry } from '../definitions/canvasHistory';
 
 export function captureCanvasHistory(before: CanvasCommitState, plan: CanvasCommitPlan, groupId: string | null = null): CanvasHistoryEntry {
@@ -19,7 +19,7 @@ export function mergeCanvasHistoryEntry(previous: CanvasHistoryEntry, next: Canv
   for (const change of next.changes) {
     const last = changes[changes.length - 1];
     if (last && last.id === change.id && last.after && change.before && change.after && change.fields.every(field => last.fields.includes(field) && last.afterOrigins[field] === change.beforeOrigins[field])) {
-      changes[changes.length - 1] = { ...last, after: change.after, afterOrigins: change.afterOrigins };
+      changes[changes.length - 1] = { ...last, after: change.after, afterOrigins: { ...last.afterOrigins, ...Object.fromEntries(change.fields.map(field => [field, change.afterOrigins[field]])) } };
     } else changes.push(change);
   }
   return { groupId: previous.groupId, changes };
