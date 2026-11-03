@@ -6,6 +6,7 @@ import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/ke
 import { createCanvasRasterPresentation } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
+import '../../src/renderer/styles/canvas.css';
 
 const source = { kind: 'user', conversationId: null, runId: null };
 const content = { type: 'doc', content: [
@@ -162,6 +163,7 @@ async function unsupportedApiVisual() {
   try {
     raster.refresh(); const started = performance.now();
     while (!raster.readStats().failed && performance.now() - started < 3000) await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    if (await raster.prepareEditing(card.id) !== 'unavailable') throw new Error('unsupported_api_locked_editing');
     if (!errors.includes('html_canvas_unavailable') || kernel.readStats().bitmaps !== 0) throw new Error(`unsupported_api_did_not_keep_identity:${errors}`);
     return { image: await kernel.captureImage('png'), errors, stats: kernel.readStats() };
   } finally { raster.dispose(); }
@@ -226,3 +228,38 @@ async function dragOcclusionVisual() {
   return { before, during, after: await kernel.captureImage('png'), dpr: devicePixelRatio };
 }
 Object.defineProperty(window, 'prepareCanvasDragOcclusionVisualProbe', { value: dragOcclusionVisual });
+
+async function prepareEditingVisual() {
+  previousKernel?.destroy(); document.body.replaceChildren(); document.body.style.fontFamily = 'system-ui';
+  const host = document.createElement('div'), staging = document.createElement('div'); host.style.cssText = 'width:900px;height:600px'; document.body.append(host, staging);
+  const kernel = await createPixiCanvasKernel({ host, width: 900, height: 600, resolution: devicePixelRatio }); previousKernel = kernel;
+  const short = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '中Aa' }] }] };
+  const cards = Array.from({ length: 50 }, (_, i) => CanvasCardSchema.parse({ id: `c${i + 1}`, type: 'text', schemaVersion: 1, revision: 1, order: 'a0',
+    locked: false, color: 'white', createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, x: (i % 10) * 90, y: Math.floor(i / 10) * 100,
+    width: 80, height: 80, parentId: null, data: { contentVersion: 1, content: short } }));
+  kernel.setElements(cards);
+  const errors: string[] = [], raster = createCanvasRasterPresentation({ host: staging, kernel, suspendWhenHidden: false,
+    readAppearance: () => ({ dark: false, material: 'paper', overview: 'titles' }), reportFailure: error => errors.push(error) });
+  try {
+    const status = await raster.prepareEditing(cards[0].id), before = raster.readStats().completed;
+    const again = await raster.prepareEditing(cards[0].id), after = raster.readStats().completed;
+    if (status !== 'ready' || again !== 'ready' || before !== after || errors.length || !kernel.hasBitmap(cards[0].id)) throw new Error('editing_exact_prepare_did_not_finish_or_reuse');
+    const inkHost = document.createElement('div'); document.body.append(inkHost);
+    const direct = createHtmlCardRasterizer({ host: inkHost });
+    try {
+      const request = CanvasRenderRequestSchema.parse({ protocol: 1, requestId: 'editing-exact', kind: 'render', theme: 'light', material: 'paper', fontFamily: 'system-ui', fontSize: 14,
+        dpr: devicePixelRatio, width: 900, height: 600, region: null, quality: 1, format: 'png', snapshot: { schemaVersion: 1, documentId: 'exact', sequence: 1, elements: [cards[0]] } });
+      const result = await direct.rasterize({ element: createCardSurface(cards[0], request), width: 80, height: 80, scale: devicePixelRatio });
+      const expected = new OffscreenCanvas(result.bitmap.width, result.bitmap.height), context = expected.getContext('2d'); if (!context) throw new Error('editing_oracle_context_missing');
+      context.fillStyle = '#fff'; context.fillRect(0, 0, expected.width, expected.height); context.drawImage(result.bitmap, 0, 0); result.bitmap.close();
+      const blob = await expected.convertToBlob({ type: 'image/png' });
+      const expectedUrl = await new Promise<string>(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob); });
+      const actual = await kernel.captureImage('png');
+      staging.style.setProperty('-webkit-font-smoothing', 'antialiased');
+      const smoothing = await raster.prepareEditing(cards[0].id);
+      if (smoothing !== 'ready' || raster.readStats().completed <= after) throw new Error('font_smoothing_did_not_invalidate_exact_bitmap');
+      return { status, again, before, after, expected: expectedUrl, actual, dpr: devicePixelRatio, visible: kernel.visibleCards().length, smoothing };
+    } finally { direct.dispose(); inkHost.remove(); }
+  } finally { raster.dispose(); }
+}
+Object.defineProperty(window, 'prepareCanvasEditingVisualProbe', { value: prepareEditingVisual });

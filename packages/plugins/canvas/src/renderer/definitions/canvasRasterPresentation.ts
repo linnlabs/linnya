@@ -18,6 +18,9 @@ export interface CanvasRasterDemand {
   readonly content: string;
   readonly externalKey: string;
   readonly scale: number;
+  readonly precise: boolean;
   readonly dark: boolean;
   readonly regions: readonly CanvasRectangle[];
 }
+
+export interface CanvasRasterPending { readonly key: string; readonly completion: Promise<boolean> }
