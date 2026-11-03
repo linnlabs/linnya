@@ -1,6 +1,7 @@
 import { Editor, type JSONContent } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import './renderer.css';
+import { probeKernel } from './kernelProbe';
 
 interface HtmlCanvasContext extends CanvasRenderingContext2D {
   drawElementImage(element: Element, x: number, y: number): void;
@@ -96,7 +97,15 @@ async function runCanvasProbe() {
     canvas.remove();
     reference.remove();
   }
+  const source = document.createElement('div');
+  document.body.append(source);
+  const kernelEditor = createEditor(samples[0].content, source);
+  let kernel: unknown;
+  try { kernel = await probeKernel(source); } catch (error) { kernel = { error: String(error) }; }
+  kernelEditor.destroy(); source.remove();
   return {
+    kernel,
+    kernelPassed: typeof kernel === 'object' && kernel !== null && !Reflect.has(kernel, 'error'),
     userAgent: navigator.userAgent,
     visibility: document.visibilityState,
     dpr: devicePixelRatio,
