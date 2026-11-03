@@ -49,3 +49,5 @@ CI可用 `CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes
 拖动或平移改变需求区域时，同内容、同采样比例的在途正文片仍有效；先接纳它们，再补最新缺片。仅正文/环境/采样改变或卡退出需求时取消，避免每个pointer把仍正确的paint丢掉。拖动曲线按当前相机保持同一1/4屏幕px误差，缩放时重算当前关联曲线，不为每次移动一律生成最大4倍倍率的冗余顶点。
 
 `CANVAS_PERFORMANCE_CPU_PROFILE=1`可生成拖动CPU profile辅助定位；带Profiler的输出明确不计真实硬件基线，不能用它的时延作为性能验收结论。
+
+macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事实；powerMonitor的idle只能作辅助。锁屏/未登录/非console用户在创建窗口前拒绝，报告仅保留boolean状态，不写用户身份。被拒绝的新运行写preflight.json并保留上一原始结果；此前仅powerMonitor校验的旧输出不能单独证明解锁态，不得作为正式基线。

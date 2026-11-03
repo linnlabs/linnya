@@ -1,6 +1,6 @@
 import { build } from 'esbuild';
 import electron from 'electron';
-import { mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, spawn } from 'node:child_process';
@@ -10,7 +10,6 @@ const probeRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(probeRoot, '../../../../..');
 const output = path.join(root, process.env.CANVAS_PERFORMANCE_SOFTWARE === '1' ? '_dev_data/canvas-software-probe' : process.env.CANVAS_PERFORMANCE_OFFSCREEN === '1' ? '_dev_data/canvas-counts-probe' : '_dev_data/canvas-performance-probe');
 await mkdir(output, { recursive: true });
-await rm(path.join(output, 'results.json'), { force: true });
 await buildProbeRenderer({ entry: path.join(probeRoot, 'performanceRenderer.ts'), root, output });
 await writeFile(path.join(output, 'index.html'), '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src data: blob:; font-src \'self\' data: blob:"><link rel="stylesheet" href="renderer.css"></head><body><script src="renderer.js"></script></body></html>');
 await build({ entryPoints: [path.join(probeRoot, 'performanceElectron.ts')], outfile: path.join(output, 'electron.cjs'),
