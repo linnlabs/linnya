@@ -134,6 +134,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     async arrange(request: CanvasArrangeRequest['options']) { if (!layout || !(await finish())) return; await layout.run({ ...request, ...(selection.ids.value.length ? { elementIds: [...selection.ids.value] } : {}) }); layout.state.setDirection(request.direction); layout.state.setTreeKeyboard(request.algorithm === 'tree'); fit(Boolean(selection.ids.value.length)); },
     async connect() { if (await finish()) await connections.select(await actions.connect()); },
     clipboard, discardDraft, hasDraft: computed(() => draftParticipants.some(participant => participant.readGeneration() !== null)), focus: viewport.focus, focusElements: viewport.focusElements,
+    readPresentationStats: () => ({ ...kernel.readStats(), status: kernel.readRenderStatus() }),
     selectionDescription: computed(() => describeCanvasSelection(session.state.snapshot.value?.elements ?? [], connections.selected.value ? [connections.selected.value.id] : selection.ids.value, ports.readDocumentTitles?.() ?? new Map())),
     clearFailure: state.clearFailure,
     retryDisplay() { state.clearFailure(); ports.retryContent?.(); raster.retry(); refreshView(); },
