@@ -208,6 +208,37 @@ function buildComparableUnits(spans: TextSpan[]): ComparableUnit[] {
   return units
 }
 
+/**
+ * Markdown 强调范围的首尾空白会被 canonical serializer 移到 delimiter 外面。
+ * 比较时使用同一边界语义；原始 marks 留给插入/接受，不改字节、位置或范围内部的格式。
+ */
+function projectComparisonMarks(units: ComparableUnit[]): MarkName[][] {
+  const marks = units.map(unit => [...unit.marks])
+  const emphasisMarks: readonly MarkName[] = ['bold', 'italic', 'strike']
+  const isWhitespace = (index: number): boolean => (
+    !units[index].inlineAtom && !units[index].citation && /^\s+$/u.test(units[index].text)
+  )
+  for (const mark of emphasisMarks) {
+    for (let start = 0; start < units.length;) {
+      if (!units[start].marks.includes(mark)) { start += 1; continue }
+      let end = start + 1
+      while (end < units.length && units[end].marks.includes(mark)) end += 1
+      let left = start
+      while (left < end && isWhitespace(left)) {
+        marks[left] = marks[left].filter(value => value !== mark)
+        left += 1
+      }
+      let right = end - 1
+      while (right >= left && isWhitespace(right)) {
+        marks[right] = marks[right].filter(value => value !== mark)
+        right -= 1
+      }
+      start = end
+    }
+  }
+  return marks
+}
+
 function encodeComparableUnits(
   originalUnits: ComparableUnit[],
   newUnits: ComparableUnit[]
@@ -296,6 +327,8 @@ function buildRichSegmentsFromComparableUnits(
   newUnits: ComparableUnit[]
 ): RichDiffSegment[] {
   const result: RichDiffSegment[] = []
+  const originalComparisonMarks = projectComparisonMarks(originalUnits)
+  const newComparisonMarks = projectComparisonMarks(newUnits)
   let originalCursor = 0
   let newCursor = 0
 
@@ -322,20 +355,22 @@ function buildRichSegmentsFromComparableUnits(
 
     const equalOriginalUnits = originalUnits.slice(originalCursor, originalCursor + unitCount)
     const equalNewUnits = newUnits.slice(newCursor, newCursor + unitCount)
+    const equalOriginalMarks = originalComparisonMarks.slice(originalCursor, originalCursor + unitCount)
+    const equalNewMarks = newComparisonMarks.slice(newCursor, newCursor + unitCount)
 
     let groupStart = 0
     while (groupStart < unitCount) {
       const oldUnit = equalOriginalUnits[groupStart]
       const newUnit = equalNewUnits[groupStart]
       const sameInline = inlineEqual(
-        oldUnit?.marks ?? [],
-        newUnit?.marks ?? [],
+        equalOriginalMarks[groupStart],
+        equalNewMarks[groupStart],
         oldUnit?.citation,
         newUnit?.citation
       )
       const currentSignature = buildDiffSignature(
-        oldUnit?.marks ?? [],
-        newUnit?.marks ?? [],
+        equalOriginalMarks[groupStart],
+        equalNewMarks[groupStart],
         oldUnit?.citation,
         newUnit?.citation
       )
@@ -345,14 +380,14 @@ function buildRichSegmentsFromComparableUnits(
         const oldNext = equalOriginalUnits[groupEnd]
         const newNext = equalNewUnits[groupEnd]
         const nextSameInline = inlineEqual(
-          oldNext?.marks ?? [],
-          newNext?.marks ?? [],
+          equalOriginalMarks[groupEnd],
+          equalNewMarks[groupEnd],
           oldNext?.citation,
           newNext?.citation
         )
         const nextSignature = buildDiffSignature(
-          oldNext?.marks ?? [],
-          newNext?.marks ?? [],
+          equalOriginalMarks[groupEnd],
+          equalNewMarks[groupEnd],
           oldNext?.citation,
           newNext?.citation
         )

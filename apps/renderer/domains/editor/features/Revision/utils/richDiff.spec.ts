@@ -14,6 +14,24 @@ import type { TextSpan } from '../protocol/revisionTextSpanTypes'
 
 describe('richDiff', () => {
   describe('computeRichDiff', () => {
+    it('仅强调边界空白的 marks 规范化不算修订，内部格式和真实空白改动仍可见', () => {
+      const normalized = computeRichDiff(
+        [{ text: ' alpha ', marks: ['bold', 'italic'] }],
+        [{ text: ' ', marks: [] }, { text: 'alpha', marks: ['bold', 'italic'] }, { text: ' ', marks: [] }],
+      )
+      expect(normalized.stats).toMatchObject({ insertCount: 0, deleteCount: 0 })
+      expect(normalized.segments.every(segment => segment.type === 'equal')).toBe(true)
+
+      const internalFormat = computeRichDiff(
+        [{ text: 'a b', marks: ['bold'] }],
+        [{ text: 'a', marks: ['bold'] }, { text: ' ', marks: [] }, { text: 'b', marks: ['bold'] }],
+      )
+      expect(internalFormat.stats).toMatchObject({ insertCount: 1, deleteCount: 1 })
+      expect(computeRichDiff([{ text: ' ', marks: ['code'] }], [{ text: ' ', marks: [] }]).stats)
+        .toMatchObject({ insertCount: 1, deleteCount: 1 })
+      expect(computeRichDiff([{ text: 'a b', marks: [] }], [{ text: 'a  b', marks: [] }]).stats.insertCount).toBe(1)
+    })
+
     // ==================== 基础用例 ====================
 
     it('应正确处理无变化的情况', () => {

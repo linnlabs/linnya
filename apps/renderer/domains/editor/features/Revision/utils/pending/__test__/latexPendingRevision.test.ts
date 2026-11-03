@@ -230,3 +230,20 @@ it.each([
   editor.state.doc.descendants(node => { if (node.type.name === 'inlineLatex') persisted.push(node.toJSON()); });
   expect(persisted).toEqual([{ type: 'inlineLatex', attrs: expect.objectContaining({ latexSource: 'E = mc^2' }), marks }]);
 });
+
+it('Markdown 把粗体边界空格移出时，真实公式修订预览只标文字改动', async () => {
+  const editor = createEditor();
+  const baseline = documentOf({ type: 'baseBlock', attrs: { id: 'spaced-paragraph', blockType: 'base' }, content: [
+    { type: 'text', text: '能量 ', marks: [{ type: 'bold' }] },
+    { type: 'inlineLatex', attrs: { id: 'spaced-formula', latexSource: 'E = mc^2' } },
+    { type: 'text', text: ' 公式原句', marks: [{ type: 'bold' }] },
+  ] });
+  const store = await open(editor, snapshot(baseline, 'update', '**能量** $E = mc^2$ **公式改句**'));
+  expect(store.getCanonicalSession('formula-root')?.diffStats).toMatchObject({ insertCount: 1, deleteCount: 1 });
+  editor.state.doc.descendants(node => {
+    if (node.marks.some(mark => mark.type.name === 'revisionMark')) {
+      expect(node.type.name).toBe('text');
+      expect(node.text?.trim()).not.toBe('');
+    }
+  });
+});
