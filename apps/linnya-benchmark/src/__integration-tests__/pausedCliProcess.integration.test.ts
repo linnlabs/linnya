@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   CONVERSATION_CONTROL_CONNECTION_FILE_ENV,
+  CONVERSATION_CONTROL_PROTOCOL_VERSION,
+  ConversationControlHandshakeResponseSchema,
   CONVERSATION_CONTROL_TOKEN_HEADER,
   ConversationControlCommandRequestSchema,
   ConversationControlConnectionDescriptorSchema,
@@ -14,6 +16,8 @@ import { createLinnyaCliProcessAdapter } from '../adapters/linnyaCliProcessAdapt
 import { slidesConsultingReferenceCase } from '../cases/slidesConsultingReference';
 import { runBenchmarkCli } from '../orchestration/runBenchmarkCli';
 import { createBenchmarkRegistry } from '../registry/createBenchmarkRegistry';
+
+const repoRoot = path.resolve(import.meta.dirname, '../../../..');
 
 describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
   it.each(['pause', 'command_approval'] as const)('真实 watch 在 %s 可操作等待时退出，保留报告且没有观察风暴', async waiting => {
@@ -31,13 +35,14 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
         const body: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
         let result: unknown;
         if (request.url?.endsWith('/handshake')) {
-          result = {
-            schema_version: 1, protocol_version: 7,
+          result = ConversationControlHandshakeResponseSchema.parse({
+            schema_version: 1, protocol_version: CONVERSATION_CONTROL_PROTOCOL_VERSION,
             app_instance_id: 'app-benchmark-pause', app_version: '0.0.38',
+            instance: { kind: 'source', source_root: repoRoot, branch: 'main', audit_level: 'off' },
             capabilities: ['send', 'status', 'messages'],
             limits: { max_request_bytes: 1_048_576, max_message_chars: 200_000,
               max_page_size: 200, min_watch_interval_ms: 1, max_watch_timeout_ms: 60_000 },
-          };
+          });
         } else {
           const command = ConversationControlCommandRequestSchema.parse(body);
           commands.push(command.command);
@@ -90,7 +95,7 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
       if (!address || typeof address === 'string') throw new Error('Missing bridge address');
       const connectionFile = path.join(temporaryRoot, 'connection.json');
       await writeFile(connectionFile, JSON.stringify(ConversationControlConnectionDescriptorSchema.parse({
-        protocol_version: 7, app_instance_id: 'app-benchmark-pause', pid: process.pid,
+        protocol_version: CONVERSATION_CONTROL_PROTOCOL_VERSION, app_instance_id: 'app-benchmark-pause', pid: process.pid,
         host: '127.0.0.1', port: address.port, session_token: token,
         created_at: Date.now(), updated_at: Date.now(),
       })), { mode: 0o600 });
@@ -100,7 +105,7 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
         registry: createBenchmarkRegistry([{ ...slidesConsultingReferenceCase,
           id: 'paused_case', timeoutMs: 15_000, inputs: [], promptTemplate: 'Test paused observation' }]),
         conversationCli: createLinnyaCliProcessAdapter({
-          repoRoot: path.resolve(import.meta.dirname, '../../../..'),
+          repoRoot,
           environment: { ...process.env, [CONVERSATION_CONTROL_CONNECTION_FILE_ENV]: connectionFile },
         }),
         reports: createFileBenchmarkReportWriter(path.join(temporaryRoot, 'reports')),
@@ -108,7 +113,7 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
       });
       expect(exitCode).toBe(3);
       expect(errors).toEqual([]);
-      expect(commands).toEqual(['send', 'status', 'status', 'messages']);
+      expect(commands, output.join('')).toEqual(['send', 'status', 'status', 'messages']);
       const result: unknown = JSON.parse(output.join(''));
       const outcome = waiting === 'pause' ? 'requires_recovery' : 'requires_command_approval';
       expect(result).toMatchObject({ ok: false, outcome });

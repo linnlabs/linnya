@@ -128,6 +128,20 @@ Linnkit 仓修复并通过不含源码 alias 的产物类型门禁后发布，Li
 
 测试应覆盖真实业务流程、合同和失败语义。不要用 README snapshot、CSS 数值快照或无业务意义的覆盖率测试代替行为验收。
 
+### 全量并发故障的对照
+
+排查默认并发失败时，在同一源码、Node 和依赖环境中顺序对照 `pnpm exec vitest run` 与
+`pnpm exec vitest run --maxWorkers=4`，分别保留每轮耗时、失败断言与资源采样；两轮测试不能互相争用资源。
+限定 worker 是诊断手段，不是通过全量门禁的替代办法。
+
+组合行为测试的静态依赖应在模块收集阶段加载，通过 owner 的正式 reset 和环境变量恢复隔离每例。
+不要把 Vite 首次转换整个依赖图的时间算成某个同步行为的响应预算；专门的冷启动/import 边界测试仍应保留原目标。
+不能用加大 timeout、删除断言或跳过测试掩盖资源争用。
+
+真实子进程夹具应等待 `close` 收齐 stdout/stderr，并保留退出信号、耗时和失败时的业务事实。
+恢复测试需要先确认 Runtime tool output，再与 UI projection 对照，避免把工具失败误判为投影失败。
+脚本化 CLI bridge 使用共享协议常量、严格 handshake schema 和匹配当前 checkout 的实例身份，不能手抄旧版 wire shape。
+
 ## 4. 构建
 
 ### 公共 CI 的执行与缓存

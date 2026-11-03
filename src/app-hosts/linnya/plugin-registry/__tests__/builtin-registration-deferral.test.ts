@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pluginIpcRuntimeMock = vi.hoisted(() => ({
   clearBackendPluginIpcHandlersForPlugin: vi.fn(),
@@ -12,6 +12,10 @@ vi.mock('@plugin/backend/pluginIpcRuntime', () => ({
   clearBackendPluginIpcHandlersForPlugin: pluginIpcRuntimeMock.clearBackendPluginIpcHandlersForPlugin,
   registerBackendPluginIpcHandler: pluginIpcRuntimeMock.registerBackendPluginIpcHandler,
 }));
+
+// 组合行为测试不测 Vite 冷编译耗时；依赖在收集阶段加载，每例通过正式 reset 隔离注册状态。
+import * as builtin from '../builtin';
+import * as runtime from '../pluginRuntimeState';
 
 const PLUGIN_ID = 'document-plugin-fixture';
 const SECOND_PLUGIN_ID = 'other-plugin-fixture';
@@ -95,43 +99,45 @@ function writeActivePlugin(pluginRoot: string, options: {
   return pluginDir;
 }
 
-async function enablePluginRuntime(): Promise<void> {
-  const runtime = await import('../pluginRuntimeState');
+function enablePluginRuntime(): void {
   runtime.setPluginRuntimeStateForTests({
     installedPluginIds: ['platform', PLUGIN_ID],
     enabledPluginIds: ['platform', PLUGIN_ID],
   });
 }
 
-afterEach(async () => {
+const pluginEnvironmentKeys = [
+  'LINNYA_PLUGIN_ROOT', 'LINNYA_PLUGIN_DIRECT_DIRS', 'LINNYA_PLUGIN_BACKEND_DIRECT_DIRS',
+  'LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT', 'LINNYA_BUNDLED_PLUGIN_ROOT',
+] as const;
+beforeEach(() => {
+  builtin.resetBackendPluginRegistrationForRuntimeChange();
+  runtime.clearPluginRuntimeStateForTests();
+  for (const key of pluginEnvironmentKeys) vi.stubEnv(key, undefined);
+});
+
+afterEach(() => {
   pluginIpcRuntimeMock.clearBackendPluginIpcHandlersForPlugin.mockClear();
   pluginIpcRuntimeMock.registerBackendPluginIpcHandler.mockClear();
-  const runtime = await import('../pluginRuntimeState');
   runtime.clearPluginRuntimeStateForTests();
-  vi.resetModules();
-  delete process.env.LINNYA_PLUGIN_ROOT;
-  delete process.env.LINNYA_PLUGIN_DIRECT_DIRS;
-  delete process.env.LINNYA_PLUGIN_BACKEND_DIRECT_DIRS;
-  delete process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT;
-  delete process.env.LINNYA_BUNDLED_PLUGIN_ROOT;
+  builtin.resetBackendPluginRegistrationForRuntimeChange();
+  vi.unstubAllEnvs();
   for (const tempRoot of tempRoots.splice(0)) {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
 });
 
 describe('generic backend plugin composition', () => {
-  it('treats a platform-only Core as a complete runtime when no plugin source is configured', async () => {
-    const builtin = await import('../builtin');
+  it('treats a platform-only Core as a complete runtime when no plugin source is configured', () => {
 
     expect(builtin.listRegisteredBackendPluginMetas().map((meta) => meta.id)).toEqual(['platform']);
     expect(builtin.getBuiltinBackendPluginRegistrationPhase()).toBe('complete');
   });
 
-  it('defers external code loading until an application version is available, then retries', async () => {
+  it('defers external code loading until an application version is available, then retries', () => {
     const pluginRoot = makeTempRoot();
     writeActivePlugin(pluginRoot);
     process.env.LINNYA_PLUGIN_ROOT = pluginRoot;
-    const builtin = await import('../builtin');
 
     expect(builtin.listRegisteredBackendPluginMetas().map((meta) => meta.id)).toEqual(['platform']);
     expect(builtin.getBuiltinBackendPluginRegistrationPhase()).toBe('platform-only');
@@ -148,11 +154,10 @@ describe('generic backend plugin composition', () => {
     expect(builtin.getBuiltinBackendPluginRegistrationPhase()).toBe('complete');
   });
 
-  it('loads a plugin from the backend-only direct directory without a Host identity branch', async () => {
+  it('loads a plugin from the backend-only direct directory without a Host identity branch', () => {
     const pluginDir = makeTempRoot();
     writePluginArtifact({ pluginDir });
     process.env.LINNYA_PLUGIN_BACKEND_DIRECT_DIRS = pluginDir;
-    const builtin = await import('../builtin');
 
     builtin.ensureBuiltinBackendPluginsRegistered({ applicationVersion: '0.0.38' });
 
@@ -162,12 +167,11 @@ describe('generic backend plugin composition', () => {
     )).toEqual([`${PLUGIN_ID}:declared`]);
   });
 
-  it('trusts Plugin CLI by explicit backend composition source instead of plugin id', async () => {
+  it('trusts Plugin CLI by explicit backend composition source instead of plugin id', () => {
     const pluginDir = makeTempRoot();
     writePluginArtifact({ pluginDir, withPluginCli: true });
     process.env.LINNYA_PLUGIN_BACKEND_DIRECT_DIRS = pluginDir;
-    const builtin = await import('../builtin');
-    await enablePluginRuntime();
+    enablePluginRuntime();
 
     builtin.ensureBuiltinBackendPluginsRegistered({ applicationVersion: '0.0.38' });
 
@@ -175,25 +179,23 @@ describe('generic backend plugin composition', () => {
       .toEqual([PLUGIN_ID]);
   });
 
-  it('rejects Plugin CLI from an untrusted generic direct directory', async () => {
+  it('rejects Plugin CLI from an untrusted generic direct directory', () => {
     const pluginDir = makeTempRoot();
     writePluginArtifact({ pluginDir, withPluginCli: true });
     process.env.LINNYA_PLUGIN_DIRECT_DIRS = pluginDir;
-    const builtin = await import('../builtin');
 
     expect(() => builtin.ensureBuiltinBackendPluginsRegistered({ applicationVersion: '0.0.38' }))
       .toThrow('只允许来自 Host 可信装配源');
   });
 
-  it('trusts an active Plugin CLI when its identity comes from the resolved bundled artifact root', async () => {
+  it('trusts an active Plugin CLI when its identity comes from the resolved bundled artifact root', () => {
     const pluginRoot = makeTempRoot();
     writeActivePlugin(pluginRoot, { withPluginCli: true });
     const bundledRoot = makeTempRoot();
     writePluginArtifact({ pluginDir: path.join(bundledRoot, 'release-plugin'), withPluginCli: true });
     process.env.LINNYA_PLUGIN_ROOT = pluginRoot;
     process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT = bundledRoot;
-    const builtin = await import('../builtin');
-    await enablePluginRuntime();
+    enablePluginRuntime();
 
     builtin.ensureBuiltinBackendPluginsRegistered({ applicationVersion: '0.0.38' });
 
@@ -201,12 +203,11 @@ describe('generic backend plugin composition', () => {
       .toEqual([PLUGIN_ID]);
   });
 
-  it('registers atomic IPC contributions through the platform registrar', async () => {
+  it('registers atomic IPC contributions through the platform registrar', () => {
     const pluginDir = makeTempRoot();
     writePluginArtifact({ pluginDir });
     process.env.LINNYA_PLUGIN_BACKEND_DIRECT_DIRS = pluginDir;
-    const builtin = await import('../builtin');
-    await enablePluginRuntime();
+    enablePluginRuntime();
     builtin.ensureBuiltinBackendPluginsRegistered({ applicationVersion: '0.0.38' });
 
     builtin.registerRegisteredBackendPluginIpcHandlers({});
@@ -215,24 +216,22 @@ describe('generic backend plugin composition', () => {
       .toHaveBeenCalledWith(PLUGIN_ID, `${PLUGIN_ID}:declared`, expect.any(Function));
   });
 
-  it('fails fast when an atomic IPC contribution registers an undeclared channel', async () => {
+  it('fails fast when an atomic IPC contribution registers an undeclared channel', () => {
     const pluginDir = makeTempRoot();
     writePluginArtifact({ pluginDir, ipcMode: 'undeclared' });
     process.env.LINNYA_PLUGIN_BACKEND_DIRECT_DIRS = pluginDir;
-    const builtin = await import('../builtin');
-    await enablePluginRuntime();
+    enablePluginRuntime();
     builtin.ensureBuiltinBackendPluginsRegistered({ applicationVersion: '0.0.38' });
 
     expect(() => builtin.registerRegisteredBackendPluginIpcHandlers({}))
       .toThrow(`IPC contribution 声明与注册不一致: ${PLUGIN_ID}`);
   });
 
-  it('fails fast when an atomic IPC contribution registers a handler for another plugin id', async () => {
+  it('fails fast when an atomic IPC contribution registers a handler for another plugin id', () => {
     const pluginDir = makeTempRoot();
     writePluginArtifact({ pluginDir, ipcMode: 'foreign-owner' });
     process.env.LINNYA_PLUGIN_BACKEND_DIRECT_DIRS = pluginDir;
-    const builtin = await import('../builtin');
-    await enablePluginRuntime();
+    enablePluginRuntime();
     builtin.ensureBuiltinBackendPluginsRegistered({ applicationVersion: '0.0.38' });
 
     expect(() => builtin.registerRegisteredBackendPluginIpcHandlers({}))
