@@ -1,10 +1,9 @@
-import { CanvasElementSchema, type CanvasElementId } from '../../../../shared';
+import type { CanvasElementId } from '../../../../shared';
 import type {
   CanvasHistoryCreation, CanvasHistoryDeletion, CanvasHistoryEdit,
   CanvasHistoryReversalContext, CanvasHistoryReversalDecision,
 } from '../definitions/canvasHistoryReversal';
 import { canvasHistoryDependenciesValid, canvasHistoryElementDependsOn } from './canvasHistoryDependencies';
-import { findCanvasRestorationPosition } from './findCanvasRestorationPosition';
 import { restoreCanvasHistoryFields } from './restoreCanvasHistoryFields';
 
 function claimedFields(id: CanvasElementId, context: CanvasHistoryReversalContext): readonly string[] {
@@ -43,17 +42,11 @@ export function reverseCanvasHistoryDeletion(
   const restored = restoreCanvasHistoryFields(record.before, null, record.fields, {
     source: context.actor.source, now: context.now, revision,
   });
-  const position = restored.type === 'edge' ? null : findCanvasRestorationPosition(restored,
-    [...context.rows.values()].flatMap(row => row.element.type === 'edge' ? [] : [row.element]));
-  const after = CanvasElementSchema.parse({ ...restored, ...position });
-  const moved = after.type !== 'edge' && restored.type !== 'edge' && (after.x !== restored.x || after.y !== restored.y);
-  const origins = { ...record.beforeOrigins };
-  if (moved) { origins.x = context.origin; origins.y = context.origin; }
-  const versions = Object.fromEntries(Object.keys(after).concat('$existence').map(field => [field, revision]));
+  const versions = Object.fromEntries(Object.keys(restored).concat('$existence').map(field => [field, revision]));
   return {
-    kind: 'applied', reason: moved ? 'restored_nearby' : null,
-    row: { element: after, fieldOrigins: origins, fieldVersions: versions },
-    change: { id: record.id, before: null, after, fields: Object.keys(after) },
+    kind: 'applied', reason: null,
+    row: { element: restored, fieldOrigins: { ...record.beforeOrigins }, fieldVersions: versions },
+    change: { id: record.id, before: null, after: restored, fields: Object.keys(restored) },
   };
 }
 
