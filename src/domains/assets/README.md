@@ -9,6 +9,9 @@ domain 只管理资源身份与可验证内容事实，不拥有项目侧栏、�
 ## 身份与归属是两层事实
 
 文档版本清理由插件判断自身历史可达性，通过 `@plugin/backend/documentAssetOwnership` 精确释放文档与资产的关联。
+正文需与新图片归属原子提交时，先用 `documentImageAsset.prepareImageBytes` 准备字节与媒体事实，
+再在正文同步事务里调用 `documentAssetOwnership.registerDocumentAssetOwnership`。准备阶段不建立文档归属；
+归属入口要求当前事务，不做文件 I/O、不自行提交。既有 `adopt*` 保留其立即接管的用例。
 Host 实现位于 `application/document-assets`，只删除指定 `document_asset_links`，不删除资产账本或物理文件，
 其他文档、项目和会话引用不受影响。插件须串行协调新资产接管、提交前复核和持久重试；
 详见 [文档历史](../document-history/README.md)。

@@ -11,6 +11,8 @@ export interface PluginDocumentImageAsset {
 }
 
 export interface PluginDocumentImageAssetRuntimePort {
+  /** 准备受管字节与媒体事实，不建立文档归属；归属由调用方提交事务登记。 */
+  prepareImageBytes(input: { readonly documentId: string; readonly bytes: Uint8Array }): Promise<PluginDocumentImageAsset>;
   adoptLocalImage(input: {
     readonly documentId: string;
     readonly sourcePath: string;

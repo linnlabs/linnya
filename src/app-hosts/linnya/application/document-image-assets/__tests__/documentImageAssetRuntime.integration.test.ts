@@ -14,6 +14,7 @@ import {
   createSqliteDocumentAssetOwnership,
   DocumentImageAssetRuntimeError,
 } from '../index';
+import { registerDocumentAssetOwnership } from '../../document-assets';
 
 const STORE_ID = '265a3086-9470-4e32-8262-3e281f748e2f';
 
@@ -75,6 +76,18 @@ describe('document image asset runtime', () => {
       ownership: createSqliteDocumentAssetOwnership(db),
     });
   }
+
+  it('准备图片不提前建立文档归属，归属与内容提交一起回滚或成功', async () => {
+    const runtime = createRuntime();
+    const prepared = await runtime.prepareImageBytes({ documentId: 'slides-1', bytes: await fsp.readFile(sourcePath) });
+    expect(db.prepare('SELECT * FROM document_asset_links').all()).toEqual([]);
+    const register = () => registerDocumentAssetOwnership({ database: db, documentId: 'slides-1', assetIds: [prepared.assetId], usageHint: 'image' });
+    expect(register).toThrow('transaction');
+    expect(() => db.transaction(() => { register(); throw new Error('content rejected'); })()).toThrow('content rejected');
+    expect(db.prepare('SELECT * FROM document_asset_links').all()).toEqual([]);
+    db.transaction(register)();
+    expect(await runtime.readOwnedImage({ documentId: 'slides-1', assetId: prepared.assetId })).toEqual(prepared);
+  });
 
   it('本地图片被文档接管后不再依赖原文件，并可按 durable ownership 重新读取', async () => {
     const runtime = createRuntime();

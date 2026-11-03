@@ -72,6 +72,7 @@ export function createDocumentImageAssetRuntime(
   }
 
   const runtime: PluginDocumentImageAssetRuntimePort = {
+    prepareImageBytes: input => runWithSafeFailure(() => readConcreteRuntime().prepareImageBytes(input)),
     adoptLocalImage: input =>
       runWithSafeFailure(() => readConcreteRuntime().adoptLocalImage(input)),
     adoptImageBytes: input =>
