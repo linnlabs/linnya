@@ -1,6 +1,8 @@
 export {
   CanvasEvaluationRunnerConfigSchema,
   CanvasEvaluationRunnerStateSchema,
+  CanvasEvaluationCollectionSchema,
+  CanvasEvaluationMessagesIndexSchema,
 } from './definitions/evaluationRunner';
 export type {
   CanvasEvaluationRunnerConfig,

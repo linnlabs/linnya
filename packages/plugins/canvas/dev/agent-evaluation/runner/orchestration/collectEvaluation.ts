@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import type { EvaluationRunnerPorts } from '../definitions/evaluationRunner';
+import {
+  CanvasEvaluationCollectionSchema,
+  type EvaluationRunnerPorts,
+} from '../definitions/evaluationRunner';
 import { readEvaluationSnapshot } from '../functions/readEvaluationSnapshot';
 import { createEvidenceStep, readRunnerState, writeEvidence } from '../adapters/evidenceFiles';
 import { collectEvaluationMessages } from './collectMessages';
@@ -74,7 +77,7 @@ export async function collectCanvasEvaluation(input: {
     sourceValid = false;
     errors.push(error instanceof Error ? error.message : String(error));
   }
-  const summary = {
+  const summary = CanvasEvaluationCollectionSchema.parse({
     sourceRevision: state.config.sourceRevision,
     batchId: state.config.batchId,
     collectedAt: Date.now(),
@@ -94,7 +97,7 @@ export async function collectCanvasEvaluation(input: {
           : state.config.taskId === 'T11'
             ? 'Real keyboard draft and edit claim evidence required'
             : null,
-  };
+  });
   await writeEvidence(directory, 'collection.json', summary);
   return { directory, ...summary };
 }

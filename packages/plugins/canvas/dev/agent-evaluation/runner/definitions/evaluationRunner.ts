@@ -15,7 +15,7 @@ export const CanvasEvaluationRunnerConfigSchema = z
     imageCapability: z.enum(['vision', 'no-vision']),
     repetition: z.number().int().positive().default(1),
     evidenceMode: z.enum(['not-applicable', 'offline', 'network']).default('not-applicable'),
-  limitations: z.array(z.string().min(1)).default([]),
+    limitations: z.array(z.string().min(1)).default([]),
   })
   .strict();
 export type CanvasEvaluationRunnerConfig = z.infer<typeof CanvasEvaluationRunnerConfigSchema>;
@@ -32,6 +32,29 @@ export const CanvasEvaluationRunnerStateSchema = z
   })
   .strict();
 export type CanvasEvaluationRunnerState = z.infer<typeof CanvasEvaluationRunnerStateSchema>;
+export const CanvasEvaluationCollectionSchema = z
+  .object({
+    sourceRevision: z.string(),
+    batchId: z.string(),
+    collectedAt: z.number(),
+    taskId: CanvasAgentTaskIdSchema,
+    conversationId: z.string(),
+    runId: z.string(),
+    errors: z.array(z.string()),
+    sourceValid: z.boolean(),
+    messagesComplete: z.boolean(),
+    evidenceComplete: z.boolean(),
+    scoring: z.literal('not-performed'),
+    manualActions: z.string().nullable(),
+  })
+  .strict();
+export const CanvasEvaluationMessagesIndexSchema = z
+  .object({
+    complete: z.boolean(),
+    reason: z.string().optional(),
+    files: z.array(z.string().regex(/^messages-\d+\.response\.json$/)),
+  })
+  .strict();
 export interface EvaluationCliInvocation {
   readonly repositoryRoot: string;
   readonly directory: string;

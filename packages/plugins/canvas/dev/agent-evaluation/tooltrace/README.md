@@ -15,3 +15,8 @@ dryRuns 与正式 attempts 分开保留，pending 仅证明校验接纳，commit
 
 图片链必须是同一模型 run 先实际 render，再 read_file 返回该 conversation
 locator 且 attachment_status=attached、MIME 为 image。runner 截图、其他 run 的读图、模型说“已检查”都不计。check 保留原始 sequence，后续草拟评测输入必须和 after 快照对齐。审批按钮、草稿键盘输入、人工语义、帧与 worker 性能均需另外的可信证据，不从 pending 或 CLI 耗时推算。
+
+同一入口的 `draft REQUEST.json NEW-DIR`
+从 runner 的 state、before、指定 collectionLabel 下的 audit/result/messages-index/after 原件生成草稿。request 包含 runDirectory、collectionLabel，可显式给 controlsFile、metricsFile。正式结束时间取 result.completed_at，源码无效、未知工具事实、最终 sequence 的 check 缺失、UI事实缺失或schema不符时仅产出 run.partial.json 与 diagnostics.json，不能误交评分。事实完整时才产出 run.json；review 始终留空，metrics 缺失留空，不填0冒充性能。
+
+独立 controlsFile 包含 scope（sourceRevision、batchId、documentId、conversationId、runId）、approvalShown、approvalDecision、editedCardId、evidenceFiles；这些值由可信观察者明确提供，不能由模型文本推断。metricsFile 使用同一scope，给出正式评测 metrics 与证据文件列表。证据路径按命令当前目录解释，建议绝对路径；所有文件必须真实存在，属于别题/别run的观测会被拒绝。dry-run/write按原始时间排序并保留phase；原始trace和诊断随草稿保留，人工语义审阅或修正需另留审阅证据，不能抹掉首败。
