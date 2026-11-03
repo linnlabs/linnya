@@ -191,3 +191,16 @@ it('revalidates the frozen project after asynchronous read-only computation', as
   await expect(executeCanvasCliCommand({ kind: 'check', path: 'workspace:/异步作用域.canvas' }, { hostContext: { databaseService: { getDb: () => db } },
     projectId, conversationId: 'chat', agentRunId: 'run', signal: new AbortController().signal }, '/unused', services)).rejects.toMatchObject({ code: 'outside_project' });
 });
+
+it('rejects an in-flight Agent write against a disposed runtime and accepts it only through the new instance', () => {
+  const id = runtime.create({ projectId, parentId: null, name: '重新启用.canvas' });
+  const oldEditing = runtime.editing;
+  const actor = { projectId, viewId: 'agent', source: { kind: 'agent' as const, conversationId: 'chat', runId: 'late' } };
+  const late = { actor, now: Date.now(), request: { documentId: id, requestId: 'late-write', operations: [text('旧计算结果')] } };
+  runtime.dispose();
+  expect(() => oldEditing.commitAgent(late)).toThrow('停用');
+  expect(db.prepare('SELECT sequence FROM canvas_documents WHERE node_id = ?').get(id)).toEqual({ sequence: 0 });
+  runtime = createCanvasDocumentRuntime(db);
+  expect(runtime.editing.commitAgent(late)).toMatchObject({ kind: 'committed', commit: { sequence: 1 } });
+  expect(runtime.read(id).elements).toHaveLength(1);
+});
