@@ -3,6 +3,8 @@ export * from './model/functions/readCanvasContent';
 export * from './model/functions/canvasCardSizing';
 export type * from './geometry/definitions/canvasGeometry';
 export { canvasBounds, canvasRectanglesOverlap, canvasScreenToWorld, canvasWorldToScreen } from './geometry/functions/canvasGeometry';
+export { layoutCanvasEdges, resolveCanvasEdgeGeometry } from './geometry/functions/canvasEdgeGeometry';
+export type { CanvasEdgeGeometry, CanvasEdgeSide } from './geometry/functions/canvasEdgeGeometry';
 
 export { CANVAS_PLUGIN_ID, CANVAS_DOCUMENT_TYPE, CANVAS_FILE_EXTENSION, canvasManifest, canvasPluginMeta } from './definitions/pluginMeta';
 export * from './changeset/definitions/canvasCommands';
