@@ -55,3 +55,7 @@ macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事
 光栅回执通过readCard读取当前display事实，不能为每张位图重新分配并扫描整张画布的visibleCards；环境身份校验也不应重复执行缺片矩形差。可见性仍由当前片段验证，旧内容或已退出视口的结果释放。
 
 `node packages/plugins/canvas/dev/probes/run-visibility-probe.mjs`需要已解锁桌面，使用与正式主窗口相同的backgroundThrottling设置，执行原生hide、隐藏期间更新正文、超过paint超时时间后show，并与全新前景绘图比较像素。锁屏在建窗前拒绝；该验证不作为帧率基线。
+
+`readReadiness(ids)`按当前环境、外部内容世代与可见缺片读取正文事实，不泄露正文缓存键。body只有在匹配位图已接纳、该卡可见且随后实际draw后才ready；进入/退出DOM编辑或重新进入视口也须等新draw。overview/thumbnail/outside分别报告，不能充当正文完成；complete要求非空可见交集全部body ready且无精确升级/隐藏暂停。内容序号的几何首帧由调用方另行关联，不能拿位图旧回执替代新提交的实际投影。
+
+地图标签按选中、染纸、文档与面积优先；选中变化只作稳定分区并更新相关卡的远景透明度。单卡编辑的精确采样在DOM接管前保持，普通补图不能立即降回档位；相机倍率/环境改变或离开需求后解除。Pixi stage不另作交互命中（eventMode:none），所有意图仍走原生DOM事件与唯一空间索引，参见[Pixi事件合同](https://pixijs.com/8.x/guides/components/events)。

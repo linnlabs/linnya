@@ -1,4 +1,4 @@
-import { CanvasCardSchema, CanvasEdgeSchema, readCanvasCardCssPalette, type CanvasColor } from '../../src/shared';
+import { CanvasCardSchema, CanvasCardIdSchema, CanvasEdgeSchema, readCanvasCardCssPalette, type CanvasColor } from '../../src/shared';
 import { CanvasRenderRequestSchema } from '../../src/shared/rendering';
 import { createCardSurface } from '../../src/renderer/hidden-render-worker/functions/createCardSurface';
 import { createHtmlCardRasterizer } from '../../src/renderer/capabilities/textRasterization';
@@ -190,6 +190,15 @@ async function mixedLodVisual(theme: 'light' | 'dark') {
     const frame = [{ x: 0, y: 0, width: 360, height: 500 }];
     if (kernel.readMissingBitmapRegions(card.id, 'bucket', frame, { scale: devicePixelRatio, exact: false }).length
       || !kernel.readMissingBitmapRegions(card.id, 'bucket', frame, { scale: devicePixelRatio, exact: true }).length) throw new Error('lod_coverage_mode_mismatch');
+    if (kernel.readRasterReceipt(card.id, 'bucket')?.rendered !== false) throw new Error('unrendered_bitmap_reported_ready');
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    if (!kernel.readRasterReceipt(card.id, 'bucket')?.rendered) throw new Error('drawn_bitmap_receipt_missing');
+    kernel.setEditingCard(card.id);
+    if (kernel.readRasterReceipt(card.id, 'bucket')?.rendered !== false) throw new Error('hidden_editor_bitmap_reported_drawn');
+    kernel.setEditingCard(null);
+    if (kernel.readRasterReceipt(card.id, 'bucket')?.rendered !== false) throw new Error('newly_visible_bitmap_reported_before_draw');
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    if (!kernel.readRasterReceipt(card.id, 'bucket')?.rendered) throw new Error('returned_bitmap_was_not_drawn');
     const actual = await kernel.captureImage('png'), bytes = kernel.readStats().bitmapBytes;
     if (bytes !== low.bitmap.width * low.bitmap.height * 4 + high.bitmap.width * high.bitmap.height * 4) throw new Error('cropped_source_memory_counted_more_than_once');
     kernel.invalidateBitmaps();
@@ -241,6 +250,7 @@ async function prepareEditingVisual() {
   const errors: string[] = [], raster = createCanvasRasterPresentation({ host: staging, kernel, suspendWhenHidden: false,
     readAppearance: () => ({ dark: false, material: 'paper', overview: 'titles' }), reportFailure: error => errors.push(error) });
   try {
+    if (raster.readReadiness([cards[0].id]).complete) throw new Error('unpainted_body_reported_ready');
     const status = await raster.prepareEditing(cards[0].id), before = raster.readStats().completed;
     const again = await raster.prepareEditing(cards[0].id), after = raster.readStats().completed;
     if (status !== 'ready' || again !== 'ready' || before !== after || errors.length || kernel.readStats().bitmaps === 0) throw new Error('editing_exact_prepare_did_not_finish_or_reuse');
@@ -255,6 +265,15 @@ async function prepareEditingVisual() {
       const blob = await expected.convertToBlob({ type: 'image/png' });
       const expectedUrl = await new Promise<string>(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob); });
       const actual = await kernel.captureImage('png');
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      const readiness = raster.readReadiness([cards[0].id]);
+      if (!readiness.complete || readiness.cards[0].mode !== 'body' || readiness.cards[0].status !== 'ready') throw new Error('actual_body_draw_receipt_missing');
+      if (raster.readReadiness([CanvasCardIdSchema.parse('c999')]).complete) throw new Error('absent_card_reported_body_ready');
+      kernel.setCamera({ x: 0, y: 0, zoom: 0.1 }); raster.refresh();
+      const overview = raster.readReadiness([cards[0].id]);
+      if (overview.complete || overview.cards[0].mode !== 'overview') throw new Error('overview_was_counted_as_body');
+      kernel.setCamera({ x: 0, y: 0, zoom: 1 });
+      await raster.prepareEditing(cards[0].id);
       staging.style.setProperty('-webkit-font-smoothing', 'antialiased');
       const smoothing = await raster.prepareEditing(cards[0].id);
       if (smoothing !== 'ready' || raster.readStats().completed <= after) throw new Error('font_smoothing_did_not_invalidate_exact_bitmap');
@@ -274,3 +293,19 @@ async function guidesVisual() {
   return { shown, hidden: await kernel.captureImage('png') };
 }
 Object.defineProperty(window, 'prepareCanvasGuidesVisualProbe', { value: guidesVisual });
+
+async function selectedMapVisual() {
+  previousKernel?.destroy(); document.body.replaceChildren();
+  const host = document.createElement('div'); host.style.cssText = 'width:900px;height:600px'; document.body.append(host);
+  const kernel = await createPixiCanvasKernel({ host, width: 900, height: 600, resolution: devicePixelRatio }); previousKernel = kernel;
+  const base = { schemaVersion: 1, revision: 1, order: 'a0', locked: false, createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0,
+    type: 'text', x: 0, y: 0, width: 1000, height: 300, parentId: null };
+  const white = CanvasCardSchema.parse({ ...base, id: 'c1', color: 'white', data: { contentVersion: 1,
+    content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'MapSelectedTarget' }] }] } } });
+  const red = CanvasCardSchema.parse({ ...base, id: 'c2', color: 'red', order: 'b0', data: { contentVersion: 1,
+    content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'RedPriority' }] }] } } });
+  kernel.setElements([white, red]); kernel.setCamera({ x: 100, y: 100, zoom: 0.1 });
+  const before = await kernel.captureImage('png'); kernel.setSelection([white.id]); const selected = await kernel.captureImage('png');
+  kernel.setElements([white]); return { before, selected, reference: await kernel.captureImage('png') };
+}
+Object.defineProperty(window, 'prepareCanvasSelectedMapVisualProbe', { value: selectedMapVisual });
