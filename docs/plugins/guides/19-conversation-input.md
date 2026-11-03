@@ -115,7 +115,7 @@ orchestration，让执行层基于自己的契约作决定。
 - `editorExtensions` 或任何 TipTap schema 扩展；
 - 完整 Conversation Input Extension；
 - 接管提交、执行态、cancel 或 Input Extension context bar；
-- 自定义 reference chip、chip 点击导航；
+- 自定义 reference chip；标准 chip 的显式点击动作见下文发送准备合同；
 - 宿主内部 table 输入扩展。
 
 原因不是口头权限约定，而是类型物理隔离：runtime 插件异步加载晚于编辑器构造，而 schema-bearing 扩展必须在构造期确定。平台内置 table
@@ -218,3 +218,15 @@ plugin 的 active 生命周期，不跟随“入口已被 import”或“contrib
 | registry 激活/停用事务       | `apps/renderer/app/plugins/registry.ts`                                             |
 | builtin 输入装配             | `apps/renderer/app/plugins/builtin/installBuiltinConversationInputContributions.ts` |
 | conversation workflow 示例   | 各插件的 `src/renderer/index.ts` contribution                                      |
+
+## 10. 动态引用的发送准备与点击
+
+引用 kind 可声明 `prepareForSend(reference, { conversationId, signal })`。宿主在点击发送后冻结输入会话和引用集合，等待各 kind 返回最新内容，再将结果冻结为本次 user_quote；同一引用 ID 与 owner/kind 保持不变。没有该回调的静态引用保留加入时的内容。
+
+Provider 不依赖文档页面是否打开；有未提交草稿时由文档 owner 的公开会话入口先保存，再读取明确版本。返回的 text、label、source 和 metadata 必须属于同一份事实快照。宿主不解释插件 metadata，也不改变已经发送的消息。
+
+失败会保留草稿并停止本次发送，不能静默回退旧正文。provider 必须观察 AbortSignal；宿主取消等待、切换输入会话、移除引用或停用插件后，不接纳旧结果。跨项目、目标删除等状态由 provider 明确处理并返回相应说明，不放宽读取范围。
+
+Kind 的可选 `onActivate` 只处理标准引用 chip 的点击导航；它不会修改 composer 或发起模型任务。动态插件的 kind 可用性由 Host active gate 统一控制，注册中途失败及停用仍使用原生命周期回滚。
+
+业务验证见 composer-references 的 `prepareComposerReferences.test.ts`，覆盖等待/版本冻结、失败保留、切换、取消、注销和真实响应式草稿。
