@@ -18,3 +18,5 @@ export * from './images/definitions/canvasImageRequests';
 export * from './context/definitions/canvasSelectionContext';
 export { searchCanvasElements } from './search/functions/searchCanvasElements';
 export type { CanvasSearchHit, CanvasSearchContext } from './search/definitions/canvasSearch';
+export { CanvasCheckReportSchema } from './query/definitions/canvasCheck';
+export type { CanvasCheckReport } from './query/definitions/canvasCheck';
