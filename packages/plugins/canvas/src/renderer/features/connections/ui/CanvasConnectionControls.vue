@@ -7,7 +7,7 @@
       class="canvas-connection-anchor"
       :style="pointStyle(anchor)"
       :aria-label="`从卡片${sideNames[anchor.side]}侧开始连线`"
-      @pointerdown.stop.prevent="editing.start($event, { kind: 'card', cardId: card.id, side: anchor.side }, anchor, null, 'to', card)"
+      @pointerdown.stop.prevent="editing.start({ kind: 'create', event: $event, from: { kind: 'card', cardId: card.id, side: anchor.side }, origin: anchor })"
     />
   </template>
   <div
@@ -78,7 +78,7 @@
       class="canvas-connection-endpoint"
       :style="pointStyle(geometry.from)"
       aria-label="移动连线起点"
-      @pointerdown.stop.prevent="editing.start($event, edge.to, geometry.to, edge, 'from')"
+      @pointerdown.stop.prevent="editing.start({ kind: 'reattach', event: $event, from: edge.to, origin: geometry.to, edge, field: 'from' })"
     />
     <button
       v-if="!edge.locked"
@@ -86,7 +86,7 @@
       class="canvas-connection-endpoint"
       :style="pointStyle(geometry.to)"
       aria-label="移动连线终点"
-      @pointerdown.stop.prevent="editing.start($event, edge.from, geometry.from, edge, 'to')"
+      @pointerdown.stop.prevent="editing.start({ kind: 'reattach', event: $event, from: edge.from, origin: geometry.from, edge, field: 'to' })"
     />
     <input
       v-if="editing.state.label.value"

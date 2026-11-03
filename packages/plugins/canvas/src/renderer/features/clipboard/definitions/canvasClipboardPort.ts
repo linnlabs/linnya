@@ -1,6 +1,7 @@
 import type { CanvasElement, CanvasElementId, CanvasPoint } from '@plugin/canvas/shared';
 export interface CanvasClipboardPort {
   canHandle(): boolean;
+  canWrite(): boolean;
   read(): readonly CanvasElement[];
   prepare(elementIds: readonly CanvasElementId[]): Promise<{ readonly elements: readonly CanvasElement[]; readonly text: string }>;
   pastePoint(): CanvasPoint;

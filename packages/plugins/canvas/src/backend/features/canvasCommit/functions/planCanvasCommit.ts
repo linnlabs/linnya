@@ -1,5 +1,3 @@
-import { assertPortableMarkdownDocument } from '@linnya/markdown-document-core';
-import { JsonValueSchema } from '@app/schemas';
 import { generateKeyBetween } from 'fractional-indexing';
 import {
   CanvasCardIdSchema, CanvasEdgeIdSchema, CanvasElementSchema,
@@ -69,7 +67,6 @@ function createCard(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 'ad
     width: command.width, height: command.height,
     parentId: command.parentId ? CanvasCardIdSchema.parse(resolveElementId(plan, command.parentId)) : null, data,
   });
-  if (element.type === 'text') assertPortableMarkdownDocument(JsonValueSchema.parse(element.data.content));
   appendChange(plan, null, element, Object.keys(element));
   if (command.ref) plan.refs[command.ref] = element.id;
   return element.id;
@@ -118,7 +115,6 @@ function mutateElement(plan: WorkingPlan, command: Extract<CanvasCommand, { op: 
     if (fields.some(field => (row.fieldVersions[field] ?? 0) > command.baseRevision)) return skip('stale_field');
     const after = CanvasElementSchema.parse({ ...current, ...command.patch,
       revision: current.revision + 1, updatedBy: plan.actor.source, updatedAt: plan.now });
-    if (after.type === 'text' && fields.includes('data')) assertPortableMarkdownDocument(JsonValueSchema.parse(after.data.content));
     appendChange(plan, current, after, fields);
   } else {
     if (command.baseRevision !== undefined && command.baseRevision !== current.revision) return skip('stale_element');

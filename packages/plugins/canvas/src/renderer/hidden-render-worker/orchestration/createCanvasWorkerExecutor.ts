@@ -1,5 +1,6 @@
 import type { CanvasWorkerRequest, CanvasWorkerResult } from '../../../shared/rendering';
 import type { CanvasCard } from '../../../shared';
+import { canvasRenderRectangles } from '../../../shared/rendering/functions/canvasRenderRectangles';
 import { createPixiCanvasKernel } from '../../kernel';
 import { createHtmlCardRasterizer, splitCardRasterRegions } from '../../capabilities/textRasterization';
 import { createCanvasCardRasterBatch } from '../../features/cardRendering';
@@ -27,7 +28,7 @@ async function executeCanvasWorkerRequest(input: CanvasWorkerRequest, signal: Ab
       kernel.setDocumentTitles(new Map(Object.entries(request.documents).map(([id, presentation]) => [id, presentation.title])));
       kernel.setThumbnailCards(new Set(request.snapshot.elements.filter((element): element is CanvasCard => element.type === 'document' && request.documents[element.data.documentId]?.keepThumbnail === true).map(card => card.id)));
       kernel.setAppearance({ dark: request.theme === 'dark', material: request.material, overview: 'titles' });
-      kernel.fit(request.region ? [request.region] : request.snapshot.elements.filter((element): element is CanvasCard => element.type !== 'edge'));
+      kernel.fit(request.region ? [request.region] : canvasRenderRectangles(request.snapshot.elements));
       const camera = kernel.readCamera();
       const cards = kernel.rasterCards();
       const renderBatch = createCanvasCardRasterBatch({ rasterizer, createContent: async card => createCardSurface(card, request) });

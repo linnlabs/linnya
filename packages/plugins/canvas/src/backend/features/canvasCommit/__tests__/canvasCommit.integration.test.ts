@@ -119,3 +119,48 @@ it('does not relocate a locked newly created card through the arrangement obstac
   expect(readCanvasSnapshot(database, 'canvas').elements.find(element => element.id === 'c1')).toMatchObject({ x: 0, y: 0, locked: true });
   database.close();
 });
+
+it('quarantines unknown elements and dependent edges without touching raw rows or permitting lossy writes', async () => {
+  const { readCanvasSynchronization } = await import('../index');
+  const database = fixture();
+  commitCanvasOperations({ database, actor: user, now: 1, request: { documentId: 'canvas', requestId: 'source', operations: [{ ...add('正常'), ref: '$a' }, { ...add('未来类型'), ref: '$b' }, { op: 'connect', from: '$a', to: '$b' }] } });
+  const raw = JSON.stringify({ type: 'future-widget', schemaVersion: 2, id: 'c2', extensionPayload: { preserve: ['不能丢失'] } });
+  database.prepare('UPDATE canvas_elements SET element_json = ? WHERE node_id = ? AND element_id = ?').run(raw, 'canvas', 'c2');
+  const snapshot = readCanvasSnapshot(database, 'canvas');
+  expect(snapshot.elements.map(element => element.id)).toEqual(['c1']);
+  expect(snapshot.integrity?.readOnly).toBe(true);
+  expect(snapshot.integrity?.issues.map(issue => issue.code)).toEqual(['unknown_element', 'dangling_edge']);
+  expect(() => commitCanvasOperations({ database, actor: user, now: 2, request: { documentId: 'canvas', requestId: 'lossy-save', operations: [add('不能覆写')] } })).toThrow('只读');
+  database.prepare('UPDATE canvas_changes SET changes_json = ? WHERE node_id = ?').run('not-json', 'canvas');
+  expect(readCanvasSynchronization(database, { documentId: 'canvas', afterSequence: 0 })).toMatchObject({ kind: 'snapshot', snapshot: { integrity: { readOnly: true } } });
+  expect(database.prepare('SELECT element_json FROM canvas_elements WHERE node_id = ? AND element_id = ?').get('canvas', 'c2')).toEqual({ element_json: raw });
+  database.close();
+});
+it('opens newer document versions read-only and isolates damaged content while retaining supported cards', () => {
+  const database = fixture();
+  commitCanvasOperations({ database, actor: user, now: 1, request: { documentId: 'canvas', requestId: 'source', operations: [add('正常'), add('损坏')] } });
+  database.prepare('UPDATE canvas_documents SET schema_version = 2 WHERE node_id = ?').run('canvas');
+  expect(readCanvasSnapshot(database, 'canvas')).toMatchObject({ elements: [{ id: 'c1' }, { id: 'c2' }], integrity: { readOnly: true, formatVersion: 2 } });
+  expect(() => commitCanvasOperations({ database, actor: agent, now: 2, request: { documentId: 'canvas', requestId: 'new-format-write', operations: [{ op: 'delete', id: 'c1' }] } })).toThrow('只读');
+  database.prepare('UPDATE canvas_documents SET schema_version = 1 WHERE node_id = ?').run('canvas');
+  database.prepare('UPDATE canvas_elements SET field_versions_json = ? WHERE element_id = ?').run('{broken', 'c2');
+  const snapshot = readCanvasSnapshot(database, 'canvas');
+  expect(snapshot.elements.map(element => element.id)).toEqual(['c1']); expect(snapshot.integrity?.issues[0]).toMatchObject({ elementId: 'c2', code: 'invalid_element' });
+  database.close();
+});
+
+it('rejects unmanaged inline images atomically and quarantines legacy external sources before display', () => {
+  const database = fixture();
+  const external = { type: 'doc', content: [{ type: 'image', attrs: { src: 'https://example.test/image.png' } }] };
+  expect(() => commitCanvasOperations({ database, actor: user, now: 1, request: { documentId: 'canvas', requestId: 'inline-image',
+    operations: [add('不应半提交'), { ...add(''), content: external }] } })).toThrow('接管');
+  expect(readCanvasSnapshot(database, 'canvas')).toMatchObject({ sequence: 0, elements: [] });
+  commitCanvasOperations({ database, actor: user, now: 2, request: { documentId: 'canvas', requestId: 'inline-image', operations: [add('原文')] } });
+  const card = readCanvasSnapshot(database, 'canvas').elements[0];
+  if (card.type !== 'text') throw new Error('Expected text');
+  const raw = JSON.stringify({ ...card, data: { ...card.data, content: external } });
+  database.prepare('UPDATE canvas_elements SET element_json = ? WHERE node_id = ? AND element_id = ?').run(raw, 'canvas', 'c1');
+  expect(readCanvasSnapshot(database, 'canvas')).toMatchObject({ elements: [], integrity: { readOnly: true, issues: [{ code: 'invalid_element' }] } });
+  expect(database.prepare('SELECT element_json FROM canvas_elements WHERE node_id = ?').get('canvas')).toEqual({ element_json: raw });
+  database.close();
+});

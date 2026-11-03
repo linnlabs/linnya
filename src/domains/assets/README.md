@@ -267,3 +267,5 @@ storage workflow 中明确统一的受管展示引用，而不是在读取端加
   仍使用受控物理路径服务本地展示，不能把它误当 Agent 合同。
 - `pathManager` 同时提供 AppData 和 Workspace 多种业务目录，是存量聚合点。asset
   domain 应只通过窄路径 port 消费已装配根，不继续把生命周期规则写回 pathManager。
+
+历史预算通过 `documentAssetOwnership.listDocumentAssetByteFacts` 读取仍归属本文档的实际字节事实，不让插件读取账本或物理路径。缺失归属或字节事实明确失败，不能以零字节继续裁剪。登记和精确释放仍使用调用方 SQLite 连接，版本重链与归属释放可以一起回滚。

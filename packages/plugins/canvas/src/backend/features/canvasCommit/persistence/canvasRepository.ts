@@ -1,12 +1,11 @@
+import { decodeCanvasPersistedRows, CanvasReadOnlyFormatError } from '../functions/decodeCanvasPersistedRows';
 import { z } from 'zod';
 import type { CanvasDatabase } from '../../../definitions/canvasDatabase';
-import { CanvasCommitDeltaSchema, CanvasElementSchema, type CanvasSnapshot, type CanvasSource } from '../../../../shared';
+import { CanvasCommitDeltaSchema, type CanvasSnapshot, type CanvasSource } from '../../../../shared';
 import { CanvasCommitResultSchema, type CanvasCommitResult } from '../../../../shared/changeset/definitions/canvasCommands';
 import type { CanvasCommitPlan, CanvasCommitState, CanvasEditingClaim } from '../definitions/canvasCommit';
 
-const documentRowSchema = z.object({ sequence: z.number().int().nonnegative(), next_card: z.number().int().positive(), next_edge: z.number().int().positive() });
-const elementRowSchema = z.object({ element_json: z.string(), field_versions_json: z.string(), field_origins_json: z.string() });
-const versionsSchema = z.record(z.string(), z.number().int().nonnegative());
+const documentRowSchema = z.object({ schema_version: z.number().int(), sequence: z.number().int().nonnegative(), next_card: z.number().int().positive(), next_edge: z.number().int().positive() });
 const receiptRowSchema = z.object({ payload_hash: z.string(), result_json: z.string() });
 
 export function readCanvasSequence(database: Pick<CanvasDatabase, 'prepare'>, documentId: string): number {
@@ -20,22 +19,26 @@ export function createEmptyCanvasDocument(database: CanvasDatabase, documentId: 
 }
 
 export function readCanvasCommitState(database: Pick<CanvasDatabase, 'prepare'>, documentId: string): CanvasCommitState {
-  const raw = database.prepare('SELECT sequence, next_card, next_edge FROM canvas_documents WHERE node_id = ?').get(documentId);
+  const raw = database.prepare('SELECT schema_version, sequence, next_card, next_edge FROM canvas_documents WHERE node_id = ?').get(documentId);
   if (!raw) throw new Error('canvas_document_missing');
   const row = documentRowSchema.parse(raw);
-  const elements = database.prepare('SELECT element_json, field_versions_json, field_origins_json FROM canvas_elements WHERE node_id = ? ORDER BY element_id').all(documentId)
-    .map(value => {
-      const stored = elementRowSchema.parse(value);
-      return { element: CanvasElementSchema.parse(JSON.parse(stored.element_json)), fieldVersions: versionsSchema.parse(JSON.parse(stored.field_versions_json)), fieldOrigins: z.record(z.string(), z.string()).parse(JSON.parse(stored.field_origins_json)) };
-    });
+  const decoded = decodeCanvasPersistedRows(database.prepare('SELECT element_id, element_json, field_versions_json, field_origins_json FROM canvas_elements WHERE node_id = ? ORDER BY element_id').all(documentId));
+  if (row.schema_version !== 1 || decoded.issues.length) throw new CanvasReadOnlyFormatError();
+  const elements = decoded.rows;
   const guardSchema = z.object({ element_id: z.string(), origin: z.string(), revision: z.number() });
   const deletedOrigins = Object.fromEntries(database.prepare('SELECT element_id, origin, revision FROM canvas_history_guards WHERE node_id = ?').all(documentId).map(value => { const guard = guardSchema.parse(value); return [guard.element_id, { origin: guard.origin, revision: guard.revision }]; }));
   return { deletedOrigins, sequence: row.sequence, nextCard: row.next_card, nextEdge: row.next_edge, elements };
 }
 
 export function readCanvasSnapshot(database: Pick<CanvasDatabase, 'prepare'>, documentId: string): CanvasSnapshot {
-  const state = readCanvasCommitState(database, documentId);
-  return { schemaVersion: 1, documentId, sequence: state.sequence, elements: state.elements.map(row => row.element) };
+  const raw = database.prepare('SELECT schema_version, sequence FROM canvas_documents WHERE node_id = ?').get(documentId);
+  if (!raw) throw new Error('canvas_document_missing');
+  const row = z.object({ schema_version: z.number().int(), sequence: z.number().int().nonnegative() }).parse(raw);
+  const decoded = decodeCanvasPersistedRows(database.prepare('SELECT element_id, element_json, field_versions_json, field_origins_json FROM canvas_elements WHERE node_id = ? ORDER BY element_id').all(documentId));
+  const issues = [...decoded.issues];
+  if (row.schema_version !== 1) issues.unshift({ elementId: null, code: 'future_format', message: '该画布格式与本版本不兼容，原始数据保留且禁止写入。' });
+  return { schemaVersion: 1, documentId, sequence: row.sequence, elements: decoded.rows.map(item => item.element),
+    ...(issues.length ? { integrity: { readOnly: true, formatVersion: row.schema_version, issues } } : {}) };
 }
 
 export function readCanvasReceipt(database: Pick<CanvasDatabase, 'prepare'>, input: {
@@ -106,10 +109,13 @@ export function updateCanvasEditingClaim(database: CanvasDatabase, input: {
 export function readCanvasSynchronization(database: Pick<CanvasDatabase, 'prepare'>, input: { readonly documentId: string; readonly afterSequence: number }): import('../../../../shared').CanvasSynchronization {
   const sequence = readCanvasSequence(database, input.documentId);
   const snapshot = () => ({ kind: 'snapshot' as const, snapshot: readCanvasSnapshot(database, input.documentId) });
-  if (input.afterSequence > sequence) return snapshot();
+  const format = z.object({ schema_version: z.number().int() }).parse(database.prepare('SELECT schema_version FROM canvas_documents WHERE node_id = ?').get(input.documentId));
+  if (format.schema_version !== 1 || input.afterSequence > sequence) return snapshot();
   const rows = database.prepare('SELECT sequence, source_json, changes_json FROM canvas_changes WHERE node_id = ? AND sequence > ? ORDER BY sequence').all(input.documentId, input.afterSequence);
   const schema = z.object({ sequence: z.number(), source_json: z.string(), changes_json: z.string() });
-  const commits = rows.map(value => { const row = schema.parse(value); return CanvasCommitDeltaSchema.parse({ sequence: row.sequence, source: JSON.parse(row.source_json), changes: JSON.parse(row.changes_json) }); });
+  let commits: z.infer<typeof CanvasCommitDeltaSchema>[];
+  try { commits = rows.map(value => { const row = schema.parse(value); return CanvasCommitDeltaSchema.parse({ sequence: row.sequence, source: JSON.parse(row.source_json), changes: JSON.parse(row.changes_json) }); }); }
+  catch (error) { if (!(error instanceof z.ZodError || error instanceof SyntaxError)) throw error; return snapshot(); }
   if (commits.length !== sequence - input.afterSequence || commits.some((commit, index) => commit.sequence !== input.afterSequence + index + 1)) return snapshot();
   return { kind: 'delta', documentId: input.documentId, fromSequence: input.afterSequence, sequence, commits };
 }

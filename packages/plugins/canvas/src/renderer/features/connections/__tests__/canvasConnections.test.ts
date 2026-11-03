@@ -16,7 +16,7 @@ async function fixture() {
   const target = document.createElement('button'), captured = new Set<number>(); document.body.append(target);
   target.setPointerCapture = id => { captured.add(id); }; target.releasePointerCapture = id => { captured.delete(id); }; target.hasPointerCapture = id => captured.has(id);
   const pointer = (type: string, x = 100, y = 200) => { const event = new MouseEvent(type, { button: 0, clientX: x, clientY: y }); Object.defineProperty(event, 'pointerId', { value: 1 }); return event; };
-  target.addEventListener('pointerdown', event => connection.start(event, edge.from, { x: 10, y: 20 }, edge, 'to'));
+  target.addEventListener('pointerdown', event => connection.start({ kind: 'reattach', event, from: edge.from, origin: { x: 10, y: 20 }, edge, field: 'to' }));
   return { connection, createText, session, editing, commit, commands, target, pointer, report, dispose: async () => { connection.dispose(); await session.close(); target.remove(); } };
 }
 afterEach(() => vi.useRealTimers());
@@ -26,7 +26,7 @@ it('连线标签保护续约，冲突保留草稿；取消释放字段不发旧�
   expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: ['label'] }));
   f.commit.mockRejectedValueOnce(new Error('revision_conflict')); expect(await f.connection.saveLabel()).toBe(false);
   expect(f.connection.state.label.value?.value).toBe('新标签'); expect(f.report).toHaveBeenCalledWith(expect.objectContaining({ message: 'revision_conflict' }));
-  f.connection.cancelLabel(); expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] })); await f.dispose();
+  f.connection.cancelLabel(); await vi.advanceTimersByTimeAsync(0); expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] })); await f.dispose();
 });
 it('拖端点冻结起始revision，Escape/失焦取消不提交，松手一次提交并释放保护', async () => {
   const f = await fixture(); f.target.dispatchEvent(f.pointer('pointerdown')); f.target.dispatchEvent(f.pointer('pointermove'));
@@ -38,7 +38,7 @@ it('拖端点冻结起始revision，Escape/失焦取消不提交，松手一次�
 });
 it('新连线拖到空白只开启本地文字草稿，不提前写入历史', async () => {
   const f = await fixture();
-  const target = f.target; target.addEventListener('pointerdown', event => f.connection.start(event, edge.from, { x: 10, y: 20 }));
+  const target = f.target; target.addEventListener('pointerdown', event => f.connection.start({ kind: 'create', event, from: edge.from, origin: { x: 10, y: 20 } }));
   target.dispatchEvent(f.pointer('pointerdown')); target.dispatchEvent(f.pointer('pointerup', 80, 90));
   expect(f.createText).toHaveBeenCalledExactlyOnceWith({ x: 80, y: 90 }, edge.from); expect(f.commit).not.toHaveBeenCalled(); await f.dispose();
 });

@@ -11,7 +11,7 @@ export function createCanvasTextCreation(session: CanvasDocumentSession, onCommi
     begin(point: CanvasPoint, from: CanvasEndpoint | null = null, text = '', arrangement: CanvasTextCreationDraft['arrangement'] = null) { state.begin({ ...canvasTextCreationRectangle(point, from), identity: crypto.randomUUID(), from, anchor: point, arrangement, content: createCanvasPlainTextDocument(text), editSequence: 0 }); },
     update(content: JsonValue) { state.update(CanvasTextDocumentSchema.parse(content)); },
     setComposing(value: boolean) { composing = value; },
-    measure(height: number) { state.measure(canvasAutomaticTextHeight(Math.ceil(height))); },
+    measure(height: number) { const draft = state.draft.value; if (draft) state.resize(canvasTextCreationRectangle(draft.anchor, draft.from, canvasAutomaticTextHeight(Math.ceil(height)))); },
     hasContent: () => state.draft.value ? canvasTextHasContent(state.draft.value.content) : false,
     async save(final: boolean): Promise<boolean> {
       if (pending) return pending;

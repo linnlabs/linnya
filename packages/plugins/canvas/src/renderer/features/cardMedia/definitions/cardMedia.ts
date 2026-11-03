@@ -1,5 +1,5 @@
 import type { DocumentImageAsset, DocumentPreviewRequest, DocumentPreviewResult, DocumentReferencePresentation, WorkspaceMutationEvent } from '@app/schemas';
-import type { CanvasCard } from '@plugin/canvas/shared';
+import type { CanvasCard, CanvasCardId } from '@plugin/canvas/shared';
 export interface CanvasCardMediaPort {
   readImage(documentId: string, assetId: string): Promise<DocumentImageAsset>;
   preview(input: DocumentPreviewRequest): Promise<DocumentPreviewResult>;
@@ -11,12 +11,16 @@ export interface CanvasCardMediaPort {
 }
 export interface CanvasCardContent {
   create(card: CanvasCard, signal: AbortSignal): Promise<HTMLElement>;
-  stageImage(asset: DocumentImageAsset): void;
+  stageImage(asset: DocumentImageAsset): Promise<void>;
+  releaseStagedImages(assetIds: readonly string[]): void;
   resolveImageSource(source: string): Promise<string>;
   open(card: CanvasCard): Promise<void>;
   documentTitles(): ReadonlyMap<string, string>;
   contentKey(card: CanvasCard): string;
   refreshReferences(cards: readonly CanvasCard[]): Promise<void>;
+  refreshVisible(cards: readonly CanvasCard[]): void;
+  thumbnailCards(cards: readonly CanvasCard[]): ReadonlySet<CanvasCardId>;
+  retry(): void;
   subscribe(listener: (failure: Error | null) => void): () => void;
   dispose(): void;
 }

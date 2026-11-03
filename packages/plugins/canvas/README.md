@@ -57,6 +57,10 @@ CLI 的 `payloadIdentity` 由可信编排从原始 operations/options 构造，�
 
 图片卡与正文插图只持久化受管 assetId/稳定 src。Renderer 从正式图片端口读取临时 bytes，用有界缓存投影为 data URI，避免 media 协议在 HTML 光栅时空白；异步准备图片不提前建立归属。文档卡经通用候选与 preview 门面读取当前项目标题、封面和不可用状态，打开仍走 Workspace 导航。搜索由 shared 纯函数同时供 Renderer/CLI 消费，不把内部文档 ID 当作可见正文。
 
+显示图片共享 `cardRendering/content.resolveCanvasDisplayImages`：串行解码并生成长边不超过2048的派生，原始资源不进入长期显示缓存；查看原图仍按需读取正式资产。图片归属和结构化正文不使用显示派生。可见文档预览最多4个并行，preview缓存按32 MiB/128项限制；远景仅按owner的 `overview:thumbnail` 声明保留小缩略，不推断具体插件或有图即缩略。标题、preview及在途结果随文档变更和插件可用性失效。
+
+Renderer只读降级同时关闭编辑器、插图锚点、拖动/缩放、菜单和快捷键写入口，释放字段声明但保留已有正文草稿。软件GPU或WebGL恢复提示独立于正文错误。历史预览为独立只读表面；恢复发起窗口的viewId通过通用 `historyClientSessionId` 冻结传递，不能选择其他窗口的撤销栈。
+
 加入对话使用一个 Canvas 选区引用；发送前先等待仍打开表面的草稿保存，再经 Backend 冻结一次最新提交内容。画布关闭后仍可刷新，失败不会回退加入时旧文字。引用记录文档和卡片身份，点击经通用 Workspace 导航打开并定位；同一选区通过通用 composer 去重键合并。复制含标签的子图时保留目标 documentId，但为每个新出现位置分配新的 referenceId，避免原子引用索引冲突。
 
 ## CLI 与自动布局
@@ -68,3 +72,9 @@ CLI 的 `payloadIdentity` 由可信编排从原始 operations/options 构造，�
 布局 `diagnostics` 描述本次计算窗口；命中正式请求回执时返回空诊断数组，提交序号、分配ID和逐操作结果仍复用原回执，不重新测量或运行布局。
 
 Standalone `entry.command` 只提供 read/show/find/neighbors/region/check，显式指定 `--project`，可传 `--database`，用只读连接消费相同查询规则。help 不加载原生数据库；该制品不装配写入协调器、Agent审批或历史运行态。Agent facade 拒绝上述独立宿主参数；render 继续复用 App 已注册的正式 Hidden Worker。
+
+## 格式与损坏隔离
+
+当前内容格式为1。读取时仅把可验证的元素交给显示投影；未知类型、非法正文/字段版本/排序、坏分组及依赖隔离卡片的线保留原始SQLite行，并返回 `integrity` 诊断。出现任何此类问题或更高格式版本时整张画布只读，当前提交、撤销、批准与恢复共享提交入口并拒绝写入，避免老版本剥离未来字段。隔离只影响展示，不写占位节点、不回存过滤后的快照。未来增加真正内容格式迁移时，必须先用版本历史保留迁移前状态。
+
+兼容策略参考 [Excalidraw对未知属性保留的修复](https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/CHANGELOG.md) 与 [tldraw的schema迁移owner约定](https://github.com/tldraw/tldraw/blob/main/packages/tlschema/README.md)；本插件以只读和原始行保留避免静默损失。

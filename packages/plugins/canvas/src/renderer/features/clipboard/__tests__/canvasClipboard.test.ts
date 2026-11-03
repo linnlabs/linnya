@@ -12,7 +12,7 @@ function fixture() {
   vi.stubGlobal('ClipboardItem', Item); vi.stubGlobal('Blob', NodeBlob);
   const write = vi.fn(async (items: Item[]) => { await Promise.all(items.flatMap(item => item.types.map(type => item.getType(type)))); contents = items; });
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write, read: async () => contents } });
-  const port: CanvasClipboardPort = { canHandle: () => true, read: () => [card], pastePoint: () => ({ x: 100, y: 100 }), prepare: async () => ({ elements: [card], text: '**粗体**' }), pasteElements: vi.fn(), pasteText: vi.fn(), pasteImages: vi.fn(), cut: vi.fn(), fail: vi.fn() };
+  const port: CanvasClipboardPort = { canHandle: () => true, canWrite: () => true, read: () => [card], pastePoint: () => ({ x: 100, y: 100 }), prepare: async () => ({ elements: [card], text: '**粗体**' }), pasteElements: vi.fn(), pasteText: vi.fn(), pasteImages: vi.fn(), cut: vi.fn(), fail: vi.fn() };
   const clipboard = installCanvasClipboard(document.createElement('div'), port);
   return { clipboard, port, write, contents: () => contents };
 }
@@ -28,4 +28,13 @@ it('复制读取失效或剪贴板拒绝时不删除原卡，关闭后等待中�
   await expect(f.clipboard.cut()).rejects.toThrow('画布已变化'); expect(f.port.cut).not.toHaveBeenCalled();
   let finish!: (value: { elements: readonly (typeof card)[]; text: string }) => void; f.port.prepare = () => new Promise(resolve => { finish = resolve; });
   const pending = f.clipboard.cut(); f.clipboard.dispose(); finish({ elements: [card], text: '最新' }); await pending; expect(f.port.cut).not.toHaveBeenCalled();
+});
+it('只读仍可复制，等待期间转只读的剪切只复制不删除，粘贴也不写入', async () => {
+  const f = fixture(); f.port.canWrite = () => false;
+  await f.clipboard.copy(); expect(f.write).toHaveBeenCalledOnce();
+  await expect(f.clipboard.cut()).rejects.toThrow('只读');
+  await expect(f.clipboard.paste()).rejects.toThrow('只读'); expect(f.port.cut).not.toHaveBeenCalled();
+  f.port.canWrite = () => true;
+  f.port.prepare = async () => { f.port.canWrite = () => false; return { elements: [card], text: '正文' }; };
+  await expect(f.clipboard.cut()).rejects.toThrow('原卡已保留'); expect(f.port.cut).not.toHaveBeenCalled(); f.clipboard.dispose();
 });

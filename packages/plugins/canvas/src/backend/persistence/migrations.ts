@@ -81,4 +81,22 @@ export const canvasPluginMigrations: readonly PluginMigrationDefinition[] = [{
     );
     CREATE INDEX canvas_agent_request_pending ON canvas_agent_requests(node_id, pending_id);`);
   },
+}, {
+  version: 4,
+  description: 'Reverse-field version history, anchors and soft retention budget',
+  up(database) {
+    database.exec(`CREATE TABLE canvas_versions (
+      node_id TEXT NOT NULL REFERENCES canvas_documents(node_id) ON DELETE CASCADE,
+      version_id TEXT NOT NULL, sequence INTEGER NOT NULL, created_at INTEGER NOT NULL,
+      schema_version INTEGER NOT NULL, previous_version_id TEXT, state_hash TEXT NOT NULL,
+      reverse_blob BLOB, anchor_blob BLOB, asset_ids_json TEXT NOT NULL, restored_from_json TEXT,
+      PRIMARY KEY(node_id, version_id), UNIQUE(node_id, sequence)
+    );
+    CREATE TABLE canvas_version_heads (
+      node_id TEXT PRIMARY KEY REFERENCES canvas_documents(node_id) ON DELETE CASCADE,
+      latest_version_id TEXT NOT NULL, head_sequence INTEGER NOT NULL, changed_at INTEGER NOT NULL,
+      dirty_since INTEGER, reverse_blob BLOB, bytes_since_anchor INTEGER NOT NULL DEFAULT 0,
+      used_bytes INTEGER NOT NULL DEFAULT 0, over_budget_bytes INTEGER NOT NULL DEFAULT 0
+    );`);
+  },
 }];

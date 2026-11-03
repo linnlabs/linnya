@@ -4,6 +4,7 @@ import type { CanvasDocumentPort, CanvasDocumentSession } from '../definitions/c
 import { createCanvasDocumentState } from '../store/createCanvasDocumentState';
 import { applyCanvasSynchronization } from '../functions/applyCanvasSynchronization';
 import { requireCanvasUserCommitApplied } from '../functions/requireCanvasUserCommitApplied';
+import { requireWritableCanvas } from '../functions/requireWritableCanvas';
 
 /** 一个表面拥有一个会话；Host file handler 在关闭前先等待该表面的保存屏障。 */
 export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDocumentSession {
@@ -15,6 +16,7 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
   let unsubscribe: (() => void) | null = null;
   const protections = new Map<CanvasElementId, Map<string, z.infer<typeof CanvasEditingRequestSchema>['fields']>>();
   let writes: Promise<unknown> = Promise.resolve();
+  let protectionWrites: Promise<void> = Promise.resolve();
   const requireDocument = () => {
     const current = state.snapshot.value;
     if (!current) throw new Error('Canvas document is not open');
@@ -50,7 +52,7 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
       synchronization = null; targetSequence = 0;
       protections.clear(); state.begin();
       try {
-        if (previousDocumentId) await port.close(previousDocumentId, viewId);
+        if (previousDocumentId) { await protectionWrites; await port.close(previousDocumentId, viewId); }
         if (token !== sessionId) return;
         // 先订阅再读快照，接住读取期间其他来源的提交；loading阶段只累计目标版本。
         unsubscribe = port.subscribe(event => {
@@ -72,10 +74,11 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
     },
     commit(operations: readonly CanvasCommand[], historyGroupId?: string) {
       const token = sessionId;
-      const document = requireDocument();
+      const document = requireWritableCanvas(state.snapshot.value);
       const requestId = crypto.randomUUID();
       const run = writes.then(async () => {
         if (token !== sessionId) throw new DOMException('Canvas session closed', 'AbortError');
+        requireWritableCanvas(state.snapshot.value);
         const result = await port.commit({ documentId: document.documentId, requestId, viewId, operations, ...(historyGroupId ? { historyGroupId } : {}) });
         if (token !== sessionId) throw new DOMException('Canvas committed after its surface closed', 'AbortError');
         await synchronize(result.sequence);
@@ -87,18 +90,26 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
       return run;
     },
     async protect(elementId: CanvasElementId, fields, owner) {
-      const document = requireDocument();
+      const token = sessionId;
+      const document = fields.length ? requireWritableCanvas(state.snapshot.value) : requireDocument();
       const owners = protections.get(elementId) ?? new Map<string, z.infer<typeof CanvasEditingRequestSchema>['fields']>();
       if (fields.length) owners.set(owner, fields); else owners.delete(owner);
       if (owners.size) protections.set(elementId, owners); else protections.delete(elementId);
-      await port.editing({ documentId: document.documentId, viewId, elementId, fields: [...new Set([...owners.values()].flat())] });
+      const run = protectionWrites.then(async () => {
+        if (token !== sessionId) return;
+        const current = protections.get(elementId);
+        await port.editing({ documentId: document.documentId, viewId, elementId, fields: [...new Set([...(current?.values() ?? [])].flat())] });
+      });
+      // 续约与释放使用同一串行通道，不能让迟到的旧续约在close后重新占用字段。
+      protectionWrites = run.catch(() => undefined); await run;
     },
     undo(direction) {
       const token = sessionId;
-      const document = requireDocument();
+      const document = requireWritableCanvas(state.snapshot.value);
       const requestId = crypto.randomUUID();
       const run = writes.then(async () => {
         if (token !== sessionId) throw new DOMException('Canvas session closed', 'AbortError');
+        requireWritableCanvas(state.snapshot.value);
         const result = await port.undo({ documentId: document.documentId, viewId, requestId, direction });
         if (token !== sessionId) throw new DOMException('Canvas session closed', 'AbortError');
         await synchronize(result.commit.sequence);
@@ -111,7 +122,7 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
       const documentId = state.snapshot.value?.documentId;
       sessionId += 1; unsubscribe?.(); unsubscribe = null;
       synchronization = null; targetSequence = 0; protections.clear(); state.clear();
-      if (documentId) await port.close(documentId, viewId);
+      if (documentId) { await protectionWrites; await port.close(documentId, viewId); }
     },
   };
 }
