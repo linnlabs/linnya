@@ -23,7 +23,9 @@
     "lint": "eslint src --max-warnings 0",
     "build:backend": "tsup --config tsup.plugin.config.ts",
     "build:renderer": "vite build --config vite.plugin.config.mts",
-    "build": "pnpm run build:backend && pnpm run build:renderer"
+    "build": "pnpm run build:backend && pnpm run build:renderer && pnpm run build:render-worker && pnpm run build:preload",
+    "build:render-worker": "vite build --config vite.render-worker.config.mts",
+    "build:preload": "esbuild src/backend/features/canvasRender/infrastructure/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/backend/render-worker-preload.cjs"
   },
   "dependencies": {
     "@app/schemas": "workspace:*",

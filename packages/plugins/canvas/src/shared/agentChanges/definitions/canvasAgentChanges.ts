@@ -9,6 +9,9 @@ export const CanvasPendingApprovalSchema = z.object({
   expectedRevisions: z.array(z.object({ id: CanvasElementIdSchema, revision: z.number().int().nonnegative() }).strict()),
   deletedUserCardCount: z.number().int().nonnegative(), movedUserCardCount: z.number().int().nonnegative(), createdAt: z.number().int().nonnegative(),
 }).strict();
+export const CanvasGroupsRequestSchema = z.object({ documentId: z.string().min(1), viewId: z.string().min(1).optional() }).strict();
+export const CanvasCloseGroupRequestSchema = z.object({ documentId: z.string().min(1), groupId: z.string().min(1) }).strict();
+export const CanvasReviewRequestSchema = z.object({ documentId: z.string().min(1), elementId: CanvasElementIdSchema, groupId: z.string().min(1).optional() }).strict();
 export const CanvasAgentGroupSchema = z.object({
   id: z.string().min(1), documentId: z.string().min(1), conversationId: z.string().nullable(), runIds: z.array(z.string()),
   createdAt: z.number().int().nonnegative(), lastWriteAt: z.number().int().nonnegative(), writing: z.boolean(),
