@@ -31,6 +31,14 @@ export async function readCanvasResources(input: { readonly database: CanvasData
     if (preview.status === 'ready' && preview.content?.image) documents[targetDocumentId] = { ...metadata, image: preview.content.image.dataUri, keepThumbnail: preview.content.overview === 'thumbnail' };
   }
   input.signal.throwIfAborted();
+  // 最后一项封面可能等待数百毫秒；投递前同步重验全部标题，不能泄漏期间移出项目的身份。
+  for (const targetDocumentId of Object.keys(documents)) {
+    const current = resolveDocumentReference(input.database, { sourceDocumentId: source.id, targetDocumentId });
+    const previous = documents[targetDocumentId];
+    const status = current.status === 'available' && current.nodeType !== null && !available.has(current.nodeType) ? 'plugin_unavailable' : current.status;
+    documents[targetDocumentId] = { title: current.title ?? '文档当前不可访问', status,
+      ...(status === 'available' && previous.status === 'available' ? { image: previous.image, keepThumbnail: previous.keepThumbnail } : {}) };
+  }
   return { assets, documents };
 }
 

@@ -4,7 +4,8 @@ import type { createHistoryPanelState } from '../store/historyPanelState';
 export function createHistoryPanelController(
   documentId: string,
   store: ReturnType<typeof createHistoryPanelState>,
-  port: HistoryPanelPort
+  port: HistoryPanelPort,
+  clientSessionId?: string
 ) {
   let generation = 0;
   async function load(
@@ -71,6 +72,7 @@ export function createHistoryPanelController(
           documentId,
           versionId: selectedId,
           expectedCurrentVersionId: current.versionId,
+          ...(clientSessionId === undefined ? {} : { clientSessionId }),
         });
         if (ticket !== generation) return;
         if (response.success) {

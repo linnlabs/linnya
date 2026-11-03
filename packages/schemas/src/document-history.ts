@@ -35,6 +35,8 @@ export const DocumentVersionRestoreRequestSchema = z.object({
   documentId: z.string().min(1),
   versionId: z.string().min(1),
   expectedCurrentVersionId: z.string().min(1),
+  /** 发起恢复的编辑会话；内容owner据此把恢复记入该会话的用户撤销栈。 */
+  clientSessionId: z.string().min(1).optional(),
 }).strict();
 
 export type DocumentVersionRestoreRequest = z.infer<typeof DocumentVersionRestoreRequestSchema>;

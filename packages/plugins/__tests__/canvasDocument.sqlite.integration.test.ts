@@ -173,3 +173,21 @@ it('holds images for durable pending approval and keeps the prior proposal when 
   runtime.editing.resolveApproval({ documentId: id, viewId: 'view', requestId: 'deny', pendingId: pending.approval.id, decision: 'deny' }, 3);
   expect(runtime.pendingAssetIds(id)).toEqual([]);
 });
+
+it('revalidates the frozen project after asynchronous read-only computation', async () => {
+  const { executeCanvasCliCommand } = await import('@plugin/canvas/backend-test-support');
+  const id = runtime.create({ projectId, parentId: null, name: '异步作用域.canvas' });
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'scope-source', operations: [text('不能越界返回')] });
+  const destination = createProjectLifecycle(db).create({ name: '移动目标' });
+  const unused = async () => { throw new Error('Unexpected capability'); };
+  const services: import('@plugin/canvas/backend-test-support').CanvasCliServices = {
+    runtimeFor: () => runtime, referencesFor: () => runtime.references,
+    capabilities: { measurement: { measure: unused, measureBatch: unused }, rendering: { render: unused }, computation: { layout: unused, dispose: async () => {},
+      async check() {
+        db.prepare('UPDATE workspace_nodes SET project_id = ? WHERE id = ?').run(destination, id);
+        return { sequence: 1, cardCount: 1, edgeCount: 0, overlapCount: 0, crossingCount: 0, overlaps: [], crossings: [], longEdges: [], outliers: [], note: '' };
+      } } },
+  };
+  await expect(executeCanvasCliCommand({ kind: 'check', path: 'workspace:/异步作用域.canvas' }, { hostContext: { databaseService: { getDb: () => db } },
+    projectId, conversationId: 'chat', agentRunId: 'run', signal: new AbortController().signal }, '/unused', services)).rejects.toMatchObject({ code: 'outside_project' });
+});

@@ -1,3 +1,4 @@
+import { CanvasCardIdSchema } from '../../../../shared/model/definitions/canvasElement';
 import { parseArgs } from 'node:util';
 import { CanvasArrangeOptionsSchema } from '../../../../shared/cli/definitions/canvasCli';
 import { CanvasCliFailure, type CanvasCliCommand } from '../definitions/canvasCliCommand';
@@ -8,7 +9,7 @@ export const CANVAS_CLI_HELP = {
     'neighbors <workspace:path> <cN> [--depth 1]', 'region <workspace:path> <方位>', 'check <workspace:path>', 'groups <workspace:path>',
     'apply <workspace:path> --ops-file batch.json --request-id stable-id [--dry-run]',
     'arrange <workspace:path> --request-id stable-id [--algorithm tree|grid|layered] [--scope c1,c2] [--direction right|down] [--columns 3] [--dry-run]',
-    'render <workspace:path> [--format png|jpeg] [--width 1440] [--height 900] [--theme light|dark]'],
+    'render <workspace:path> [--format png|jpeg] [--width 1440] [--height 900] [--theme light|dark] [--scope c1,c2 | --region 方位]'],
   note: '不是 JSON Canvas。先读取 Skill canvas；修改命令需要 requires_write_access。',
 };
 export function parseCanvasCli(argv: readonly string[]): CanvasCliCommand {
@@ -16,7 +17,7 @@ export function parseCanvasCli(argv: readonly string[]): CanvasCliCommand {
   const kind = argv[0];
   const optionTypes = kind === 'apply' ? { 'ops-file': 'string', 'request-id': 'string', 'dry-run': 'boolean' }
     : kind === 'arrange' ? { 'request-id': 'string', 'dry-run': 'boolean', algorithm: 'string', scope: 'string', groups: 'string', direction: 'string', columns: 'string' }
-      : kind === 'render' ? { format: 'string', width: 'string', height: 'string', theme: 'string' }
+      : kind === 'render' ? { format: 'string', width: 'string', height: 'string', theme: 'string', scope: 'string', region: 'string' }
         : kind === 'neighbors' ? { depth: 'string' } : {};
   const options: Record<string, { type: 'string' | 'boolean' }> = {};
   for (const [key, type] of Object.entries(optionTypes)) {
@@ -48,12 +49,16 @@ export function parseCanvasCli(argv: readonly string[]): CanvasCliCommand {
     return { kind, path, value, depth };
   }
   if (kind === 'render') {
-    const format = string('format', 'png'), theme = string('theme', 'light');
+    const format = string('format', 'jpeg'), theme = string('theme', 'light');
     const width = Number(string('width', '1440')), height = Number(string('height', '900'));
     if (format !== 'png' && format !== 'jpeg') throw new CanvasCliFailure('invalid_format', '--format 只支持 png/jpeg。');
     if (theme !== 'light' && theme !== 'dark') throw new CanvasCliFailure('invalid_theme', '--theme 只支持 light/dark。');
     if (![width, height].every(size => Number.isInteger(size) && size >= 1 && size <= 4096) || width * height > 16_777_216) throw new CanvasCliFailure('invalid_size', '输出尺寸须在 1–4096，且总像素不超过 16777216。');
-    return { kind, path, format, theme, width, height };
+    const elementIds = typeof parsed.values.scope === 'string' ? parsed.values.scope.split(',').map(id => CanvasCardIdSchema.parse(id)) : undefined;
+    const region = typeof parsed.values.region === 'string' ? parsed.values.region : undefined;
+    if (elementIds && region) throw new CanvasCliFailure('invalid_scope', '--scope与--region只能选一个。');
+    if (region && !['左上','上方','右上','左侧','正中','右侧','左下','下方','右下'].includes(region)) throw new CanvasCliFailure('invalid_region', '--region使用九宫格方位，如左上或正中。');
+    return { kind, path, format, theme, width, height, elementIds, region };
   }
   throw new CanvasCliFailure('unknown_command', `未知子命令 ${kind}；运行 linnya-canvas help。`);
 }

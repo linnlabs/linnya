@@ -156,3 +156,5 @@ Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。
 `subscribeWorkspaceMutations` 转发 Workspace 的正式跨进程 mutation stream，回调只接收 `@app/schemas` 的已验证事件，调用方关闭时取消订阅。引用或预览消费者可据稳定 ID 失效派生资源；不建立第二套 Canvas/标签事件总线，也不能用事件正文代替重新读取后的项目范围验证。
 
 `renderer/pluginRuntime` 只读查询插件 `enabled` / `disabled` / `missing` 并订阅变化；App 从既有 enabledPluginsStore 和文档类型 registry 投影，不向插件暴露 store。变化携带卸载前后相关 nodeType，引用消费者只失效相关身份与派生预览；调用方关闭时取消订阅。编译期解析复用 Renderer catalog 的 `@plugin/renderer/*` facade 目录，artifact 仍须同时登记 Host provider、external URL 与协议具名导出。
+
+`DocumentTypeContribution.historyClientSessionId(documentId)` 可在打开历史面板时提供当前文档编辑会话身份。Host 固定该身份并在用户确认恢复时通过通用 `clientSessionId` 字段透传；插件自己拥有会话注册及撤销栈，Core 不解释其格式。未提供回调或返回 null 时省略身份。
