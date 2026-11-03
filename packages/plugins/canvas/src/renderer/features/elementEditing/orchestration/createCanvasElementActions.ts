@@ -27,10 +27,6 @@ export function createCanvasElementActions(session: CanvasDocumentSession, selec
       const result = await session.commit([{ op: 'connect', ref: '$edge', from, to, label: '', direction: 'forward', lineStyle: 'curve', linePattern: 'solid' }]);
       return CanvasEdgeIdSchema.parse(result.refs.$edge);
     },
-    async resize(width: number, height: number) {
-      const card = elements().find(element => element.id === selection.read()[0]);
-      if (!card || card.type === 'edge' || card.locked || selection.read().length !== 1) return;
-      await session.commit([{ op: 'update', id: card.id, baseRevision: card.revision, patch: { width: Math.max(80, width), height: Math.max(60, height), ...(card.type === 'text' ? { data: { ...card.data, heightMode: 'fixed' } } : {}) } }]);
-    },
+
   };
 }

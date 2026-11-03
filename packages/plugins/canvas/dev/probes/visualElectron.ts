@@ -102,6 +102,16 @@ async function run() {
       if (counts[0] < 500 || counts[1] < 500 || (mode === 'titles' ? counts[2] !== 0 : counts[2] < 500)) throw new Error(`far_thumbnail_semantics_mismatch:${mode}:${counts}`);
       thumbReports.push({ mode, counts }); await writeFile(path.join(output, `thumbnail-${mode}.png`), image.toPNG());
     }
+    const lodReports = [];
+    for (const theme of ['light', 'dark']) {
+      const lod = z.object({ expected: z.string(), actual: z.string() }).parse(await win.webContents.executeJavaScript(`window.prepareCanvasMixedLodVisualProbe(${JSON.stringify(theme)})`));
+      const expected = nativeImage.createFromDataURL(lod.expected), actual = nativeImage.createFromDataURL(lod.actual), a = expected.toBitmap(), b = actual.toBitmap();
+      let union = 0, intersection = 0;
+      const ink = (pixels: Uint8Array, index: number) => theme === 'light' ? pixels[index] < 180 && pixels[index + 1] < 180 && pixels[index + 2] < 180 : pixels[index] > 150 && pixels[index + 1] > 150 && pixels[index + 2] > 150;
+      for (let index = 0; index < a.length; index += 4) { const aa = ink(a, index), bb = ink(b, index); if (aa || bb) union++; if (aa && bb) intersection++; }
+      if (union < 100 || intersection / union < 0.95) throw new Error(`mixed_lod_composite_mismatch:${theme}:${intersection / union}`);
+      lodReports.push({ theme, union, intersection, ratio: intersection / union }); await writeFile(path.join(output, `mixed-lod-${theme}.png`), actual.toPNG());
+    }
     const context = z.object({ before: z.string(), after: z.string(), rejected: z.boolean(), beforeStats: z.object({ cards: z.number(), bitmaps: z.number() }), afterStats: z.object({ cards: z.number(), bitmaps: z.number() }) })
       .parse(await win.webContents.executeJavaScript('window.prepareCanvasContextLossVisualProbe()'));
     const contextBefore = nativeImage.createFromDataURL(context.before).toBitmap(), contextAfterImage = nativeImage.createFromDataURL(context.after), contextAfter = contextAfterImage.toBitmap();
@@ -122,7 +132,7 @@ async function run() {
       await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());
     } finally { unsupported.destroy(); }
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap }, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk }, thumbnails: thumbReports,
-      contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
+      mixedLod: lodReports, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
 }

@@ -1,29 +1,16 @@
-import type { CanvasKeyboardActions } from '../definitions/canvasKeyboard';
+import type { CanvasKeyboardActions, CanvasShortcut } from '../definitions/canvasKeyboard';
+import { canvasArrowVectors } from '../definitions/canvasKeyboardBindings';
 import { readCanvasShortcut } from '../functions/readCanvasShortcut';
 export function createCanvasKeyboardHandler(actions: CanvasKeyboardActions) {
+  const move = (key: keyof typeof canvasArrowVectors, event: KeyboardEvent) => { const vector = canvasArrowVectors[key], step = event.shiftKey ? 10 : 1; return actions.move(actions.selection(), vector.x * step, vector.y * step); };
+  const handlers: Readonly<Record<CanvasShortcut, (event: KeyboardEvent) => void | Promise<void>>> = {
+    duplicate: () => actions.duplicate(), undo: () => actions.undo('undo'), redo: () => actions.undo('redo'), delete: () => actions.remove(), edit: () => actions.edit(), escape: () => actions.escape(),
+    'tree-child': () => actions.createTree?.('child'), 'tree-sibling': () => actions.createTree?.('sibling'), all: () => actions.select(actions.allIds()), actual: () => actions.zoom(1), fit: () => actions.fit(),
+    'fit-selection': () => actions.fit(true), 'zoom-in': () => actions.zoom(actions.zoomValue() * 1.25), 'zoom-out': () => actions.zoom(actions.zoomValue() / 1.25),
+    left: event => move('left', event), right: event => move('right', event), up: event => move('up', event), down: event => move('down', event),
+  };
   return async (event: KeyboardEvent) => {
     const command = readCanvasShortcut(event, actions.isEditing(), actions.treeMode?.() ?? false);
-    if (!command) return;
-    event.preventDefault();
-    switch (command) {
-      case 'duplicate': await actions.duplicate(); return;
-      case 'undo': await actions.undo('undo'); return;
-      case 'redo': await actions.undo('redo'); return;
-      case 'delete': await actions.remove(); return;
-      case 'edit': await actions.edit(); return;
-      case 'tree-child': await actions.createTree?.('child'); return;
-      case 'tree-sibling': await actions.createTree?.('sibling'); return;
-      case 'escape': await actions.escape(); return;
-      case 'all': await actions.select(actions.allIds()); return;
-      case 'actual': actions.zoom(1); return;
-      case 'fit': actions.fit(); return;
-      case 'fit-selection': actions.fit(true); return;
-      case 'zoom-in': actions.zoom(actions.zoomValue() * 1.25); return;
-      case 'zoom-out': actions.zoom(actions.zoomValue() / 1.25); return;
-      default: {
-        const step = event.shiftKey ? 10 : 1;
-        await actions.move(actions.selection(), command === 'left' ? -step : command === 'right' ? step : 0, command === 'up' ? -step : command === 'down' ? step : 0);
-      }
-    }
+    if (!command) return; event.preventDefault(); await handlers[command](event);
   };
 }

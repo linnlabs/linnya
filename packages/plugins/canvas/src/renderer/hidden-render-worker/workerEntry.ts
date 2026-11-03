@@ -2,6 +2,7 @@ import { CANVAS_RENDER_PROTOCOL, type CanvasRenderBridge, type CanvasWorkerResul
 import { createLatestRasterQueue } from '../capabilities/textRasterization';
 import { createCanvasWorkerExecutor } from './orchestration/createCanvasWorkerExecutor';
 import '@linnya/markdown-document-core/style.css';
+import '../features/cardRendering/styles/canvasCardInk.css';
 
 declare global { interface Window { __canvasRenderBridge: CanvasRenderBridge } }
 const bridge = window.__canvasRenderBridge;

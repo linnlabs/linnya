@@ -1,9 +1,9 @@
-import { invokeRendererPluginIpc } from '@plugin/renderer/pluginIpcClient';
-import { CANVAS_PLUGIN_ID, CanvasArrangeRequestSchema, CanvasArrangeResultSchema, CanvasCancelArrangementRequestSchema } from '@plugin/canvas/shared';
+import { CanvasArrangeRequestSchema, CanvasArrangeResultSchema, CanvasCancelArrangementRequestSchema } from '@plugin/canvas/shared';
 import type { CanvasArrangementPort } from '../features/layoutCommands';
+import { requestCanvasIpc, requestCanvasMutation } from './requestCanvasIpc';
 export function createCanvasArrangementPort(): CanvasArrangementPort {
   return {
-    async arrange(input) { const result = await invokeRendererPluginIpc<unknown>(CANVAS_PLUGIN_ID, 'canvas:arrange', CanvasArrangeRequestSchema.parse(input)); if (!result.success) throw new Error(result.error); return CanvasArrangeResultSchema.parse(result.data); },
-    async cancel(input) { const result = await invokeRendererPluginIpc<unknown>(CANVAS_PLUGIN_ID, 'canvas:cancel-arrange', CanvasCancelArrangementRequestSchema.parse(input)); if (!result.success) throw new Error(result.error); },
+    arrange: input => requestCanvasMutation('canvas:arrange', CanvasArrangeRequestSchema.parse(input), value => CanvasArrangeResultSchema.parse(value)),
+    async cancel(input) { await requestCanvasIpc('canvas:cancel-arrange', CanvasCancelArrangementRequestSchema.parse(input)); },
   };
 }

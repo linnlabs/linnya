@@ -63,6 +63,7 @@ export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCa
     update(content) { state.update(CanvasTextDocumentSchema.parse(content)); },
     measure(height) { state.measure(canvasAutomaticTextHeight(Math.ceil(height))); },
     setComposing(value) { composing = value; },
+    async suspend() { const draft = state.draft.value; if (draft) await release(draft.elementId); },
     dispose() { stopRenewal(); },
   };
 }

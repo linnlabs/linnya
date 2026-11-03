@@ -36,7 +36,7 @@ export function createCanvasCardRasterBatch(options: {
     let cursor = 0;
     return prepared.map(item => {
       if (item.kind === 'failed') return item;
-      const tiles = item.input.regions.map(region => ({ bitmap: rasters[cursor++].bitmap, ...region }));
+      const tiles = item.input.regions.map(region => ({ bitmap: rasters[cursor++].bitmap, scale: item.input.scale, ...region }));
       return { kind: 'ready', tiles };
     });
   };

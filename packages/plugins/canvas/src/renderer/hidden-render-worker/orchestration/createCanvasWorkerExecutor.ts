@@ -4,11 +4,13 @@ import { canvasRenderRectangles } from '../../../shared/rendering/functions/canv
 import { createPixiCanvasKernel } from '../../kernel';
 import { createHtmlCardRasterizer, splitCardRasterRegions } from '../../capabilities/textRasterization';
 import { createCanvasCardRasterBatch } from '../../features/cardRendering';
+import { resolveCanvasDisplayImages } from '../../features/cardRendering/content';
 import { createCardSurface } from '../functions/createCardSurface';
 import { createCanvasLayoutCache, measureCanvasCards, type CanvasLayoutCache } from '../functions/measureCanvasCards';
 
-async function executeCanvasWorkerRequest(request: CanvasWorkerRequest, signal: AbortSignal, cache: CanvasLayoutCache): Promise<CanvasWorkerResult> {
+async function executeCanvasWorkerRequest(input: CanvasWorkerRequest, signal: AbortSignal, cache: CanvasLayoutCache): Promise<CanvasWorkerResult> {
   signal.throwIfAborted();
+  const request: CanvasWorkerRequest = { ...input, assets: await resolveCanvasDisplayImages(input.assets, signal) };
   const stage = document.createElement('div');
   const staging = document.createElement('div');
   stage.style.cssText = 'position:fixed;left:0;top:0';

@@ -18,7 +18,8 @@ function center(endpoint: CanvasEndpoint, cards: ReadonlyMap<string, CanvasCard>
   if (endpoint.kind === 'point') return { x: endpoint.x, y: endpoint.y };
   throw new Error('canvas_edge_endpoint_missing');
 }
-function anchor(edgeId: CanvasEdgeId, endpoint: CanvasEndpoint, cards: ReadonlyMap<string, CanvasCard>, toward: CanvasPoint, previous: CanvasEdgeSide | null): Anchor {
+function anchor(endpoint: CanvasEndpoint, cards: ReadonlyMap<string, CanvasCard>, toward: CanvasPoint, options: { readonly edgeId: CanvasEdgeId; readonly previous: CanvasEdgeSide | null }): Anchor {
+  const { edgeId, previous } = options;
   const card = cardFor(endpoint, cards);
   if (!card && endpoint.kind === 'point') { const point = { x: endpoint.x, y: endpoint.y }; return { edgeId, origin: point, point, side: null, card, toward }; }
   if (!card) throw new Error('canvas_edge_card_missing');
@@ -33,8 +34,8 @@ function anchor(edgeId: CanvasEdgeId, endpoint: CanvasEndpoint, cards: ReadonlyM
   return { edgeId, origin: point, point, side, card, toward };
 }
 function anchors(edge: CanvasEdge, cards: ReadonlyMap<string, CanvasCard>, previous?: CanvasEdgeGeometry): EdgeAnchors {
-  const from = anchor(edge.id, edge.from, cards, center(edge.to, cards), previous?.fromSide ?? null);
-  const to = anchor(edge.id, edge.to, cards, center(edge.from, cards), previous?.toSide ?? null);
+  const from = anchor(edge.from, cards, center(edge.to, cards), { edgeId: edge.id, previous: previous?.fromSide ?? null });
+  const to = anchor(edge.to, cards, center(edge.from, cards), { edgeId: edge.id, previous: previous?.toSide ?? null });
   return { edge, from, to };
 }
 function anchorGroup(endpoint: Anchor): string | null { return endpoint.card && endpoint.side ? `${endpoint.card.id}:${endpoint.side}` : null; }

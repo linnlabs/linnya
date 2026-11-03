@@ -29,10 +29,11 @@
     <CanvasAgentReviewBar
       v-if="review"
       :review="review"
+      :readonly="readonly"
       @locate="surface?.locate($event)"
     />
     <CanvasConnectionControls
-      v-if="surface && !draft"
+      v-if="surface && !draft && !readonly"
       :editing="surface.connections"
       :card="surface.selectedCards.value.length === 1 ? surface.selectedCards.value[0] ?? null : null"
       :camera="camera"
@@ -48,12 +49,14 @@
       <ToolbarGroup>
         <ToolbarButton
           label="撤销 ⌘Z"
+          :disabled="readonly"
           @click="run(() => surface?.undo('undo'))"
         >
           <UndoIcon />
         </ToolbarButton>
         <ToolbarButton
           label="重做 ⇧⌘Z"
+          :disabled="readonly"
           @click="run(() => surface?.undo('redo'))"
         >
           <RedoIcon />
@@ -62,18 +65,21 @@
       <ToolbarGroup>
         <ToolbarButton
           label="新建文字卡"
+          :disabled="readonly"
           @click="run(() => surface?.createText())"
         >
           <TextIcon />
         </ToolbarButton>
         <ToolbarButton
           label="添加文档"
+          :disabled="readonly"
           @click="run(() => creation?.showDocuments())"
         >
           <DocumentAddIcon />
         </ToolbarButton>
         <ToolbarButton
           label="添加图片"
+          :disabled="readonly"
           @click="imagePicker?.click()"
         >
           <ImageIcon />
@@ -87,7 +93,7 @@
       </ToolbarGroup>
       <ToolbarGroup>
         <CanvasLayoutControls
-          v-if="surface.layout"
+          v-if="surface.layout && !readonly"
           :layout="surface.layout"
           :on-arrange="surface.arrange"
           :run="run"
@@ -145,6 +151,7 @@
       </ToolbarButton>
       <ToolbarButton
         label="创建副本 ⌘D"
+        :disabled="readonly"
         @click="run(() => surface?.actions.duplicate())"
       >
         <DuplicateIcon />
@@ -152,12 +159,14 @@
       <ToolbarButton
         v-if="selection.length === 2"
         label="连接两张卡"
+        :disabled="readonly"
         @click="run(() => surface?.connect())"
       >
         <LinkIcon />
       </ToolbarButton>
       <CustomSelect
         :model-value="selectedColor"
+        :disabled="readonly"
         :options="colors"
         title="卡片颜色"
         width="64px"
@@ -167,6 +176,7 @@
       />
       <CustomSelect
         :options="moreActions"
+        :disabled="readonly"
         placeholder="更多"
         title="更多卡片操作"
         width="58px"
@@ -176,7 +186,7 @@
       />
     </div>
     <div
-      v-if="surface && selection.length === 1 && !draft && !surface.selectedCards.value[0]?.locked"
+      v-if="surface && !readonly && selection.length === 1 && !draft && !surface.selectedCards.value[0]?.locked"
       class="canvas-card-resize-box"
       :style="surface.resizeStyle.value"
     >
@@ -228,7 +238,7 @@
       {{ surface.layout.state.diagnostics.value.map(item => item.message).join('；') }}
     </p>
     <CanvasDocumentPicker
-      v-if="creation"
+      v-if="creation && !readonly"
       :creation="creation"
     />
     <input
@@ -246,6 +256,18 @@
       alt="画布图片"
       @close="imagePreview = null"
     />
+    <div
+      v-if="surface?.integrityNotice.value || surface?.renderNotice.value"
+      class="canvas-read-notice"
+      role="status"
+    >
+      <p v-if="surface.integrityNotice.value">
+        {{ surface.integrityNotice.value }}
+      </p>
+      <p v-if="surface.renderNotice.value">
+        {{ surface.renderNotice.value }}
+      </p>
+    </div>
     <p
       v-if="shownError"
       class="canvas-status canvas-status-error"
@@ -253,6 +275,19 @@
     >
       {{ shownError }}
     </p>
+    <div
+      v-if="surface?.session.deliveryNotice.value"
+      class="canvas-read-notice"
+      role="alert"
+    >
+      {{ surface.session.deliveryNotice.value }}
+      <button
+        type="button"
+        @click="run(() => surface?.session.retryDelivery())"
+      >
+        重试确认
+      </button>
+    </div>
     <p
       v-else-if="!surface"
       class="canvas-status"
@@ -278,6 +313,7 @@ import { getActiveFileSession, markActiveFileDirty, getCurrentWorkspaceProjectId
 import { createEmbeddedMarkdownEditor } from '@plugin/renderer/embeddedMarkdownEditor';
 import { CanvasColorSchema } from '@plugin/canvas/shared';
 import { createCanvasSurface } from '../orchestration/createCanvasSurface';
+import { createCanvasPageCommands } from '../orchestration/createCanvasPageCommands';
 import { addCanvasSelectionReference, registerCanvasReferenceFocus } from '../features/conversationSelection';
 import { createCanvasSelectionReferencePort } from '../adapters/createCanvasSelectionReferencePort';
 import { readCanvasClipboard } from '../adapters/readCanvasSelectionContext';
@@ -302,6 +338,7 @@ const imagePreview = shallowRef<DocumentImageAsset | null>(null), failure = shal
 let destroyed = false, content: CanvasCardContent | null = null, removeMediaInput: (() => void) | null = null, removeReferenceFocus: (() => void) | null = null;
 const camera = computed(() => surface.value?.camera.value ?? { x: 0, y: 0, zoom: 1 });
 const selection = computed(() => surface.value?.selection.ids.value ?? []);
+const readonly = computed(() => surface.value?.readonly.value ?? true);
 const draft = computed(() => surface.value?.editingDraft.value);
 const saving = computed(() => Boolean(surface.value?.editor.state.saving.value || surface.value?.creation.state.saving.value));
 const editorStyle = computed(() => surface.value?.editorStyle.value ?? { display: 'none' });
@@ -309,31 +346,14 @@ const markers = computed(() => review.value && surface.value ? projectCanvasRevi
 const shownError = computed(() => failure.value ?? surface.value?.creation.state.error.value ?? surface.value?.editor.state.error.value ?? surface.value?.session.state.error.value ?? surface.value?.error.value);
 const selectedColor = computed(() => surface.value?.selectedCards.value[0]?.color ?? 'white');
 const moreActions = [{ value: 'lock', text: '锁定 / 解锁' }, { value: 'front', text: '置于顶层' }, { value: 'back', text: '置于底层' }, { value: 'left', text: '左对齐' }, { value: 'top', text: '顶部对齐' }, { value: 'grid', text: '网格排列' }, { value: 'delete', text: '删除' }];
-const contextActions = computed(() => selection.value.length ? [{ value: 'ai', text: '加入对话 ⌘K' }, { value: 'edit', text: '编辑或打开 ↩' }, { value: 'copy', text: '复制 ⌘C' }, { value: 'cut', text: '剪切 ⌘X' }, { value: 'duplicate', text: '创建副本 ⌘D' }, ...moreActions] : [{ value: 'paste', text: '粘贴 ⌘V' }, { value: 'new', text: '新建文字卡' }, { value: 'document', text: '添加文档…' }, { value: 'image', text: '添加图片…' }, { value: 'fit', text: '显示全部 ⌘1' }]);
+const writableContextActions = computed(() => selection.value.length ? [{ value: 'ai', text: '加入对话 ⌘K' }, { value: 'edit', text: '编辑或打开 ↩' }, { value: 'copy', text: '复制 ⌘C' }, { value: 'cut', text: '剪切 ⌘X' }, { value: 'duplicate', text: '创建副本 ⌘D' }, ...moreActions] : [{ value: 'paste', text: '粘贴 ⌘V' }, { value: 'new', text: '新建文字卡' }, { value: 'document', text: '添加文档…' }, { value: 'image', text: '添加图片…' }, { value: 'fit', text: '显示全部 ⌘1' }]);
+const contextActions = computed(() => readonly.value ? writableContextActions.value.filter(item => ['copy', 'ai', 'fit'].includes(item.value)) : writableContextActions.value);
 const colors = [{ value: 'white', text: '原色' }, { value: 'red', text: '红' }, { value: 'orange', text: '橙' }, { value: 'yellow', text: '黄' }, { value: 'green', text: '绿' }, { value: 'cyan', text: '青' }, { value: 'purple', text: '紫' }];
 const report = (error: unknown) => { failure.value = error instanceof Error ? error.message : String(error); };
 const run = async (action: () => Promise<unknown> | undefined) => { failure.value = null; surface.value?.clearFailure(); try { await action(); } catch (error) { report(error); } };
 const changeColor = (value: string | number | boolean) => run(() => surface.value?.color(CanvasColorSchema.parse(value)));
-const elementAction = (value: string | number | boolean) => run(async () => {
-  const current = surface.value; if (!current) return;
-  switch (value) {
-    case 'ai': await addToConversation(); break;
-    case 'new': await current.createText(current.context.value?.point); break;
-    case 'document': await creation.value?.showDocuments(); break;
-    case 'image': imagePicker.value?.click(); break;
-    case 'fit': current.fit(); break;
-    case 'edit': await current.edit(); break;
-    case 'duplicate': await current.actions.duplicate(); break;
-    case 'copy': await current.clipboard.copy(); break;
-    case 'cut': await current.clipboard.cut(); break;
-    case 'paste': await current.clipboard.paste(); break;
-    case 'lock': await current.actions.lock(); break;
-    case 'front': case 'back': await current.actions.layer(value); break;
-    case 'left': case 'top': case 'grid': await current.actions.align(value); break;
-    case 'delete': await current.remove(); break;
-  }
-  current.closeContext();
-});
+const menuCommand = createCanvasPageCommands({ readSurface: () => surface.value, addToConversation: () => addToConversation(), showDocuments: async () => { await creation.value?.showDocuments(); }, pickImages: () => imagePicker.value?.click() });
+const elementAction = (value: string | number | boolean) => run(() => menuCommand(value));
 const imageFiles = (event: Event) => { if (event.target instanceof HTMLInputElement) { const files = Array.from(event.target.files ?? []); event.target.value = ''; void run(() => creation.value?.importFiles(files)); } };
 const addToConversation = () => run(async () => {
   const current = surface.value, projectId = getCurrentWorkspaceProjectId(), documentId = current?.session.state.snapshot.value?.documentId;
@@ -352,7 +372,7 @@ onMounted(async () => {
   try {
     const mediaPort = createCanvasCardMediaPort(), cardContent = createCanvasCardContent(session.documentId, mediaPort); content = cardContent;
     const result = await createCanvasSurface({ host, editorHost: editorElement, stagingHost: rasterHost, documentId: session.documentId }, {
-      document: createCanvasDocumentPort(), arrangement: createCanvasArrangementPort(), createEditor: createEmbeddedMarkdownEditor, createContent: cardContent.create, readContentKey: cardContent.contentKey, readDocumentTitles: cardContent.documentTitles, refreshReferences: cardContent.refreshReferences, subscribeContent: cardContent.subscribe, resolveImageSource: cardContent.resolveImageSource,
+      document: createCanvasDocumentPort(), arrangement: createCanvasArrangementPort(), createEditor: createEmbeddedMarkdownEditor, createContent: cardContent.create, readContentKey: cardContent.contentKey, readDocumentTitles: cardContent.documentTitles, refreshReferences: cardContent.refreshReferences, refreshVisibleContent: cardContent.refreshVisible, readThumbnailCards: cardContent.thumbnailCards, retryContent: cardContent.retry, subscribeContent: cardContent.subscribe, resolveImageSource: cardContent.resolveImageSource,
       prepareClipboard: ids => readCanvasClipboard(session.documentId, ids),
       pasteImages: async (files, point) => { if (!creation.value) throw new Error('图片导入尚未就绪'); await creation.value.importFiles(files, point); },
       openCard: async card => { if (card.type === 'image') imagePreview.value = await mediaPort.readImage(session.documentId, card.data.assetId); else await cardContent.open(card); },
@@ -363,7 +383,7 @@ onMounted(async () => {
     surface.value = result; review.value = createCanvasAgentReview(result.session, createCanvasAgentReviewPort());
     creation.value = createCanvasCardCreation(result.session, createCanvasCardCreationPort(), result.centerPoint, result.select);
     search.value = createCanvasSearch(result.session, cardContent.documentTitles, result.locate);
-    removeMediaInput = installCanvasMediaInput({ stage: host, editor: editorElement, creation: creation.value, content: cardContent, captureInsertion: result.captureInsertion, worldPoint: result.worldPoint, report });
+    removeMediaInput = installCanvasMediaInput({ stage: host, editor: editorElement, creation: creation.value, content: cardContent, captureInsertion: result.captureInsertion, worldPoint: result.worldPoint, canWrite: () => !result.readonly.value, report });
     await review.value.refresh();
   } catch (error) { report(error); }
 });
