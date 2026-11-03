@@ -54,7 +54,7 @@ export function rendererStylesheetManifestPlugin(
 
   return {
     name: 'linnya-renderer-stylesheet-manifest',
-    generateBundle(_outputOptions, bundle) {
+    generateBundle: { order: 'post', handler(_outputOptions, bundle) {
       const outputBySource = new Map<string, string>();
       const cssAssets = Object.values(bundle).filter(
         (item): item is OutputAsset => item.type === 'asset' && item.fileName.endsWith('.css'),
@@ -63,6 +63,8 @@ export function rendererStylesheetManifestPlugin(
       for (const asset of cssAssets) {
         const sourcePaths = asset.originalFileNames
           .filter(filePath => filePath.endsWith('.css'))
+          // Vite合并样式可能使用style.css虚拟名；它仍需被下面的未声明资源检查拒绝。
+          .filter(filePath => fs.existsSync(filePath))
           .map(normalizeExistingPath);
         for (const sourcePath of sourcePaths) {
           if (outputBySource.has(sourcePath)) {
@@ -95,7 +97,7 @@ export function rendererStylesheetManifestPlugin(
         fileName: stylesheetManifestFileName,
         source: `${JSON.stringify(manifest, null, 2)}\n`,
       });
-    },
+    } },
   };
 }
 
