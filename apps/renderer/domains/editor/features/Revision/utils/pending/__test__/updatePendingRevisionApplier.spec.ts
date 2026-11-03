@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Node as ProseMirrorNode } from 'prosemirror-model'
 import { EditorState } from 'prosemirror-state'
 
 import { workspaceMarkdownSchemaLite } from 'src/domains/markdown'
@@ -119,6 +120,22 @@ function createTableRows() {
       schema.node('tableCell', { colwidth: [150] }, [makeCellContent('正文')]),
     ]),
   ]
+}
+
+function createRule(id: string) {
+  return workspaceMarkdownSchemaLite.nodes.horizontalRuleBlock.create({
+    id,
+    blockType: 'horizontalRule',
+  })
+}
+
+function createDocWithRule() {
+  const doc = createDoc()
+  return doc.copy(
+    doc.content.addToEnd(
+      workspaceMarkdownSchemaLite.node('rootBlock', { id: 'block-rule' }, [createRule('rule-1')])
+    )
+  )
 }
 
 describe('batchApplyUpdatePendingRevisions', () => {
@@ -433,4 +450,121 @@ describe('batchApplyUpdatePendingRevisions', () => {
     expect(editor.dispatchCount).toBe(1)
     expect(startRevision).toHaveBeenCalledTimes(2)
   })
+
+  it('replaces blocks with an atomic block resolution inside one dispatch and counts whole blocks', async () => {
+    const editor = createMockEditor(createDoc())
+    const startRevision = vi.fn()
+    vi.mocked(useRevisionStore).mockReturnValue({
+      startRevision,
+    } as unknown as ReturnType<typeof useRevisionStore>)
+
+    vi.mocked(resolvePendingMarkdownForSingleBlock).mockImplementation(async () => ({
+      kind: 'atomic-block',
+      source: 'runtime-single-block',
+      contentBlock: createRule('rule-new'),
+    }))
+
+    const result = await batchApplyNonInsertPendingRevisions(editor, [
+      {
+        id: 'upd-rule-1',
+        conversationId: 'conv-1',
+        blockId: 'block-1',
+        operation: 'update',
+        originalMarkdown: '',
+        newMarkdown: '---',
+        metadata: { operation: 'update' },
+        shouldRetry: false,
+      },
+      {
+        id: 'upd-rule-2',
+        conversationId: 'conv-1',
+        blockId: 'block-2',
+        operation: 'update',
+        originalMarkdown: '旧内容',
+        newMarkdown: '***',
+        metadata: { operation: 'update' },
+        shouldRetry: false,
+      },
+    ])
+
+    expect(result.map((detail) => [detail.id, detail.success])).toEqual([
+      ['upd-rule-1', true],
+      ['upd-rule-2', true],
+    ])
+    expect(editor.dispatchCount).toBe(1)
+    const contentTypes: string[] = []
+    editor.state.doc.forEach((root: ProseMirrorNode) => contentTypes.push(root.firstChild?.type.name ?? ''))
+    expect(contentTypes).toEqual(['horizontalRuleBlock', 'horizontalRuleBlock'])
+    expect(JSON.stringify(editor.state.doc.toJSON())).not.toContain('revisionMark')
+    expect(startRevision.mock.calls.map(([params]) => [params.blockId, params.diffStats])).toEqual([
+      ['block-1', { insertCount: 1, deleteCount: 0 }],
+      ['block-2', { insertCount: 1, deleteCount: 1 }],
+    ])
+  })
+
+  it.each([
+    ['parallel preparation', [], 'batchApplyUpdatePendingRevisions.prepare'],
+    // Several pendings on one block switch the batch to the serial path; the delete plan must match.
+    ['serial path', ['upd-a', 'upd-b'], 'batchApplyUpdatePendingRevisions'],
+  ] as const)(
+    'registers one whole-block deletion for an atomic delete target without touching the document (%s)',
+    async (_path, repeatedUpdateIds, resolveOperation) => {
+      const editor = createMockEditor(createDocWithRule())
+      const before = editor.state.doc
+      const startRevision = vi.fn()
+      vi.mocked(useRevisionStore).mockReturnValue({
+      startRevision,
+    } as unknown as ReturnType<typeof useRevisionStore>)
+      vi.mocked(resolvePendingMarkdownForSingleBlock).mockResolvedValue({
+        kind: 'content-block',
+        source: 'runtime-single-block',
+        contentType: 'baseBlock',
+        blockAttrs: {},
+        cleanMarkdown: '',
+        spans: [],
+      })
+
+      const result = await batchApplyNonInsertPendingRevisions(editor, [
+        {
+          id: 'del-rule',
+          conversationId: 'conv-1',
+          blockId: 'block-rule',
+          operation: 'delete',
+          originalMarkdown: '---',
+          newMarkdown: '',
+          metadata: { operation: 'delete' },
+          shouldRetry: false,
+        },
+        ...repeatedUpdateIds.map((id) => ({
+          id,
+          conversationId: 'conv-1',
+          blockId: 'block-1',
+          operation: 'update' as const,
+          originalMarkdown: '',
+          newMarkdown: '',
+          metadata: { operation: 'update' },
+          shouldRetry: false,
+        })),
+      ])
+
+      expect(result.every((detail) => detail.success)).toBe(true)
+      if (repeatedUpdateIds.length > 0) {
+        expect(resolvePendingMarkdownForSingleBlock).toHaveBeenCalledWith(
+          expect.anything(),
+          '',
+          expect.objectContaining({ operation: resolveOperation })
+        )
+      }
+      expect(editor.dispatchCount).toBe(0)
+      expect(editor.state.doc.eq(before)).toBe(true)
+      expect(startRevision).toHaveBeenCalledTimes(1)
+      expect(startRevision).toHaveBeenCalledWith({
+        blockId: 'block-rule',
+        revisionId: 'ai-del-rule',
+        operation: 'delete',
+        diffStats: { insertCount: 0, deleteCount: 1 },
+        createdAt: undefined,
+      })
+    }
+  )
 })

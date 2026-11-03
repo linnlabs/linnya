@@ -26,7 +26,7 @@ import { linearizeNode } from '../linearizeBlock'
 import { processCitationHydration } from './citationHydrationHelper'
 import { executePendingPlanToTr } from './pendingExecutionPlan'
 import {
-  buildDeleteExecutionPlan,
+  buildDeleteExecutionPlanForRootBlock,
   buildUpdateExecutionPlan,
 } from './pendingPlanBuilder'
 import {
@@ -271,7 +271,7 @@ async function prepareNonInsertRevision(
       }
 
       const plan = measurePreparedStageSync(perf, 'planMs', () =>
-        buildDeleteExecutionPlan(currentContent.spans)
+        buildDeleteExecutionPlanForRootBlock(currentRootBlockNode, currentContent.spans)
       )
       perf.planKind = plan.kind
 
@@ -602,7 +602,7 @@ async function batchApplyNonInsertPendingRevisionsSerial(
         initialBlockPos: blockPos,
         revisionId: `ai-${parsed.id}`,
         operation,
-        plan: buildDeleteExecutionPlan(currentContent.spans),
+        plan: buildDeleteExecutionPlanForRootBlock(currentRootBlockNode, currentContent.spans),
         perf: createPreparedRevisionPerf(parsed, operation),
       }
 

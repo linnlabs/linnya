@@ -1,7 +1,38 @@
+import { Schema } from 'prosemirror-model'
 import { describe, expect, it } from 'vitest'
 
 import { workspaceMarkdownSchemaLite } from 'src/domains/markdown'
-import { blockEventsToDocJson, buildTableRowsFromTableModel } from './index'
+import {
+  blockEventToRootBlockNode,
+  blockEventsToDocJson,
+  blockEventsToRootBlockNodes,
+  buildTableRowsFromTableModel,
+} from './index'
+
+/** 能表达段落、但没有 horizontalRuleBlock 的最小 Schema。 */
+const schemaWithoutHorizontalRule = new Schema({
+  nodes: {
+    doc: { content: 'rootBlock+' },
+    rootBlock: { content: 'baseBlock', attrs: { id: { default: '' } } },
+    baseBlock: {
+      content: 'inline*',
+      attrs: { id: { default: '' }, blockType: { default: 'base' } },
+    },
+    text: { group: 'inline' },
+  },
+})
+
+function withoutIds(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutIds)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => key !== 'id')
+        .map(([key, entry]) => [key, withoutIds(entry)])
+    )
+  }
+  return value
+}
 
 describe('markdownRuntime materializer', () => {
   it('folds HTML comments into the preceding root block annotations', () => {
@@ -187,5 +218,59 @@ describe('markdownRuntime materializer', () => {
         }),
       },
     ])
+  })
+
+  describe('horizontal rule', () => {
+    it('materializes HorizontalRuleBlock as rootBlock -> horizontalRuleBlock in both the document and single-block paths', () => {
+      const docJson = blockEventsToDocJson(
+        [
+          { block_type: 'BaseBlock', raw_content_fallback: '前文' },
+          { block_type: 'HorizontalRuleBlock' },
+          { block_type: 'BaseBlock', raw_content_fallback: '后文' },
+        ],
+        workspaceMarkdownSchemaLite
+      )
+
+      const roots = (docJson?.content ?? []) as Array<{
+        type: string
+        content?: Array<{ type: string; attrs?: Record<string, unknown>; content?: unknown[] }>
+      }>
+      expect(roots.map(root => [root.type, root.content?.[0]?.type])).toEqual([
+        ['rootBlock', 'baseBlock'],
+        ['rootBlock', 'horizontalRuleBlock'],
+        ['rootBlock', 'baseBlock'],
+      ])
+      expect(roots[1]?.content).toHaveLength(1)
+      expect(roots[1]?.content?.[0]).toMatchObject({
+        type: 'horizontalRuleBlock',
+        attrs: { blockType: 'horizontalRule' },
+      })
+      expect(roots[1]?.content?.[0]?.content).toBeUndefined()
+
+      const single = blockEventToRootBlockNode(
+        { block_type: 'HorizontalRuleBlock' },
+        workspaceMarkdownSchemaLite
+      )
+      expect(single?.type.name).toBe('rootBlock')
+      expect(single?.firstChild?.type.name).toBe('horizontalRuleBlock')
+      expect(single?.textContent).toBe('')
+      // 同一个事件在两条路径得到同一份结构，只有块身份不同。
+      expect(withoutIds(single?.toJSON())).toEqual(withoutIds(roots[1]))
+
+      const batch = blockEventsToRootBlockNodes(
+        [{ block_type: 'HorizontalRuleBlock' }],
+        workspaceMarkdownSchemaLite
+      )
+      expect(batch).toHaveLength(1)
+      expect(withoutIds(batch[0]?.toJSON())).toEqual(withoutIds(roots[1]))
+    })
+
+    it('fails explicitly instead of degrading to an empty paragraph when the schema has no horizontalRuleBlock', () => {
+      const event = { block_type: 'HorizontalRuleBlock' }
+
+      expect(() => blockEventsToDocJson([event], schemaWithoutHorizontalRule)).toThrow('水平分割线')
+      expect(() => blockEventToRootBlockNode(event, schemaWithoutHorizontalRule)).toThrow('水平分割线')
+      expect(() => blockEventsToRootBlockNodes([event], schemaWithoutHorizontalRule)).toThrow('水平分割线')
+    })
   })
 })

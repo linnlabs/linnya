@@ -66,6 +66,12 @@ export type PendingTopLevelBlockParseResult =
       model: PendingTableModel
     }
   | {
+      // 没有行内内容的整块（当前只有水平分割线）：节点由 markdownRuntime 物化，
+      // 调用方整块替换目标内容，不经过行内投影或文本 diff。
+      status: 'atomic-block'
+      event: BlockEventLike
+    }
+  | {
       status: 'empty'
     }
   | {
@@ -122,6 +128,11 @@ function hasMeaningfulStructuredContent(structuredContent: unknown): boolean {
 
 function isTableModelEvent(event: BlockEventLike): event is BlockEventLike & { attrs: PendingTableModel } {
   return event?.block_type === 'TableBlock' && isRecord(event.attrs)
+}
+
+/** 没有行内内容、由 materializer 整块物化的块事件（当前只有水平分割线）。 */
+function isAtomicBlockEvent(event: BlockEventLike): boolean {
+  return event.block_type === 'HorizontalRuleBlock'
 }
 
 export function isIgnorableBlockEvent(event: BlockEventLike): boolean {
@@ -351,6 +362,11 @@ export async function classifyPendingMarkdownTopLevelBlock(
       status: 'table',
       model: event.attrs,
     }
+  }
+
+  // 必须在行内投影之前分流：水平分割线没有文字，投影只会得到空结果并触发纯文本回退。
+  if (isAtomicBlockEvent(event)) {
+    return { status: 'atomic-block', event }
   }
 
   const block = mapBlockEventToPendingCanonicalBlock(event)

@@ -8,13 +8,15 @@
 
 import type { Editor } from '@tiptap/core'
 import type { Transaction } from 'prosemirror-state'
-import type { Node as ProseMirrorNode } from 'prosemirror-model'
+import type { Node as ProseMirrorNode, Schema } from 'prosemirror-model'
 import type { TextSpan } from '../../protocol/revisionTextSpanTypes'
 import { generateBlockId } from '../../../../../../shared/utils/idUtils'
 import {
+  blockEventsToRootBlockNodes,
   buildTableRowsFromInlineProjectionGrid,
   buildTableRowsFromTableModel as materializeTableRowsFromTableModel,
 } from '../../../../services/markdownRuntime'
+import type { BlockEventLike } from '../../../../services/markdownRuntime'
 import { attachCitationHydrationToProjection } from './citationHydrationHelper'
 import {
   classifyPendingMarkdownTable,
@@ -197,9 +199,20 @@ export interface PendingTableBlockResolution extends PendingMarkdownResolutionBa
   tableRowsResult: Exclude<PendingTableRowsBuildResult, { source: 'none' }>
 }
 
+/**
+ * 没有行内内容的整块（当前只有水平分割线）。
+ * 节点由 markdownRuntime 的 materializer 物化，与完整文档导入得到同一个 `horizontalRuleBlock`；
+ * 执行层整块替换目标 rootBlock 的内容，不经过行内 spans 或文本 diff。
+ */
+export interface PendingAtomicBlockResolution extends PendingMarkdownResolutionBase {
+  kind: 'atomic-block'
+  contentBlock: ProseMirrorNode
+}
+
 export type PendingMarkdownResolutionResult =
   | PendingContentBlockResolution
   | PendingTableBlockResolution
+  | PendingAtomicBlockResolution
 
 export function looksLikeTableMarkdown(markdown: string): boolean {
   if (!markdown.includes('|')) {
@@ -318,6 +331,16 @@ export async function buildTableRowsFromMarkdown(
   return { rows, source: 'pipe-table-fallback' }
 }
 
+/** 经 materializer 物化 `rootBlock -> 内容块`，只取内容块：目标 rootBlock 的身份与属性由调用方保留。 */
+function materializeAtomicContentBlock(schema: Schema, event: BlockEventLike): ProseMirrorNode {
+  const [rootBlock] = blockEventsToRootBlockNodes([event], schema)
+  const contentBlock = rootBlock?.firstChild
+  if (!contentBlock) {
+    throw new Error(`[PendingRevision] ${event.block_type} 没有物化出 rootBlock 内容块`)
+  }
+  return contentBlock
+}
+
 export async function resolvePendingMarkdownForSingleBlock(
   editor: Editor,
   markdown: string,
@@ -354,6 +377,14 @@ export async function resolvePendingMarkdownForSingleBlock(
           ? [{ text: runtimeClassification.block.cleanMarkdown, marks: [] }]
           : (runtimeClassification.block.inlineProjection?.spans ?? []),
       source: 'runtime-single-block',
+    }
+  }
+
+  if (runtimeClassification.status === 'atomic-block') {
+    return {
+      kind: 'atomic-block',
+      source: 'runtime-single-block',
+      contentBlock: materializeAtomicContentBlock(editor.state.schema, runtimeClassification.event),
     }
   }
 
@@ -599,18 +630,10 @@ export function convertBlockByRootPosInTr(
       return false
     }
 
-    const contentBlock = findContentBlockInRoot({
-      node: rootBlockNode,
-      pos: rootBlockPos,
-    }) as { node: ProseMirrorNode; pos: number } | null
-
-    if (!contentBlock) {
-      console.warn('[convertBlockByRootPosInTr] 未找到 contentBlock')
-      return false
-    }
-
-    const currentContentNode = contentBlock.node
-    const contentBlockPos = contentBlock.pos
+    // rootBlock 恰好包含一个内容块。这里不用面向光标定位的 findContentBlockInRoot 白名单：
+    // 它不含水平分割线等原子块，会让“当前内容是分割线”的 update 无法转换成文本块，预览静默丢失新内容。
+    const currentContentNode = rootBlockNode.child(0)
+    const contentBlockPos = rootBlockPos + 1
     const newNode = createConvertedContentBlockNode(currentContentNode, targetType, attrs)
 
     if (!newNode) {

@@ -1,3 +1,5 @@
+import type { Node as ProseMirrorNode } from 'prosemirror-model'
+
 import type { InsertedTextNewlineMode } from '../diffApplier'
 import { computeRichDiff } from '../richDiff'
 import type { TextSpan } from '../../protocol/revisionTextSpanTypes'
@@ -29,6 +31,19 @@ export function buildDeleteExecutionPlan(currentSpans: TextSpan[]): PendingExecu
   })
 }
 
+/**
+ * 删除目标是原子内容块（如水平分割线）时，没有行内文字可打删除标记：
+ * 文档保持不变，只登记一次整块删除，不能当作“内容已为空”而静默跳过。
+ */
+export function buildDeleteExecutionPlanForRootBlock(
+  rootBlock: ProseMirrorNode,
+  currentSpans: TextSpan[]
+): PendingExecutionPlan {
+  return rootBlock.firstChild?.isAtom
+    ? { kind: 'block-remove' }
+    : buildDeleteExecutionPlan(currentSpans)
+}
+
 export function buildInsertExecutionPlan(params: {
   resolution: PendingMarkdownResolutionResult
   currentSpans: TextSpan[]
@@ -40,6 +55,10 @@ export function buildInsertExecutionPlan(params: {
       kind: 'table-insert',
       tableRows: params.resolution.tableRowsResult.rows,
     }
+  }
+
+  if (params.resolution.kind === 'atomic-block') {
+    return { kind: 'block-replace', contentBlock: params.resolution.contentBlock }
   }
 
   const { spans, insertNewlineMode } = resolveContentSpansForPlan(
@@ -79,6 +98,10 @@ export async function buildUpdateExecutionPlan(params: {
         )
       ),
     }
+  }
+
+  if (params.resolution.kind === 'atomic-block') {
+    return { kind: 'block-replace', contentBlock: params.resolution.contentBlock }
   }
 
   const { spans, insertNewlineMode } = resolveContentSpansForPlan(

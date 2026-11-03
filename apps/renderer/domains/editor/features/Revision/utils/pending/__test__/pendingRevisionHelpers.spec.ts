@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Editor } from '@tiptap/core'
+import { Schema } from 'prosemirror-model'
 
 import { workspaceMarkdownSchemaLite } from 'src/domains/markdown'
 import type { MarkdownInlineProjection } from '../../../../../services/markdownRuntime/types'
@@ -27,6 +28,22 @@ import {
 
 function createSchemaOnlyEditor(): Editor {
   return { state: { schema: workspaceMarkdownSchemaLite } } as unknown as Editor
+}
+
+/** 能表达段落、但没有 horizontalRuleBlock 的最小 Schema。 */
+function createEditorWithoutHorizontalRule(): Editor {
+  const schema = new Schema({
+    nodes: {
+      doc: { content: 'rootBlock+' },
+      rootBlock: { content: 'baseBlock', attrs: { id: { default: '' } } },
+      baseBlock: {
+        content: 'inline*',
+        attrs: { id: { default: '' }, blockType: { default: 'base' } },
+      },
+      text: { group: 'inline' },
+    },
+  })
+  return { state: { schema } } as unknown as Editor
 }
 
 describe('detectBlockType', () => {
@@ -470,15 +487,54 @@ describe('resolvePendingMarkdownForSingleBlock', () => {
     expect(result.tableRowsResult.rows).toHaveLength(2)
   })
 
+  it('resolves a horizontal rule to a materialized block instead of inline spans', async () => {
+    vi.mocked(classifyPendingMarkdownTopLevelBlock).mockResolvedValue({
+      status: 'atomic-block',
+      event: { block_type: 'HorizontalRuleBlock' },
+    })
+
+    const result = await resolvePendingMarkdownForSingleBlock(
+      createSchemaOnlyEditor(),
+      '---',
+      { operation: 'testResolve', blockId: 'hr-atomic' }
+    )
+
+    expect(result.kind).toBe('atomic-block')
+    expect(result.source).toBe('runtime-single-block')
+    if (result.kind !== 'atomic-block') {
+      throw new Error('expected atomic-block resolution')
+    }
+    // 与完整文档导入同一个 materializer：rootBlock 的内容块，没有任何行内内容。
+    expect(result.contentBlock.type.name).toBe('horizontalRuleBlock')
+    expect(result.contentBlock.attrs).toMatchObject({ blockType: 'horizontalRule' })
+    expect(result.contentBlock.childCount).toBe(0)
+    expect(parsePendingMarkdownToInlineProjection).not.toHaveBeenCalled()
+  })
+
+  it('fails explicitly when the schema cannot materialize a horizontal rule, without a paragraph fallback', async () => {
+    vi.mocked(classifyPendingMarkdownTopLevelBlock).mockResolvedValue({
+      status: 'atomic-block',
+      event: { block_type: 'HorizontalRuleBlock' },
+    })
+
+    await expect(
+      resolvePendingMarkdownForSingleBlock(createEditorWithoutHorizontalRule(), '---', {
+        operation: 'testResolve',
+        blockId: 'hr-no-schema',
+      })
+    ).rejects.toThrow('水平分割线')
+    expect(parsePendingMarkdownToInlineProjection).not.toHaveBeenCalled()
+  })
+
   it('falls back to heuristic detection when runtime reports unsupported single-block types', async () => {
     vi.mocked(classifyPendingMarkdownTopLevelBlock).mockResolvedValue({
       status: 'unsupported-single-block',
-      blockType: 'HorizontalRuleBlock',
+      blockType: 'FootnoteDefinitionBlock',
     })
     parsePendingMarkdownToInlineProjection.mockResolvedValue({
-      fragments: [{ type: 'text', text: '---', marks: [] }],
-      spans: [{ text: '---', marks: [] }],
-      plainText: '---',
+      fragments: [{ type: 'text', text: '[^1]: 脚注', marks: [] }],
+      spans: [{ text: '[^1]: 脚注', marks: [] }],
+      plainText: '[^1]: 脚注',
       newlineMode: 'hardBreak',
       sourceBlockCount: 1,
       droppedBlockCount: 0,
@@ -486,21 +542,21 @@ describe('resolvePendingMarkdownForSingleBlock', () => {
 
     const result = await resolvePendingMarkdownForSingleBlock(
       { state: { schema: workspaceMarkdownSchemaLite } } as any,
-      '---',
-      { operation: 'testResolve', blockId: 'hr-fallback' }
+      '[^1]: 脚注',
+      { operation: 'testResolve', blockId: 'unsupported-fallback' }
     )
 
     expect(result).toEqual({
       kind: 'content-block',
       contentType: 'baseBlock',
       blockAttrs: {},
-      cleanMarkdown: '---',
-      spans: [{ text: '---', marks: [] }],
+      cleanMarkdown: '[^1]: 脚注',
+      spans: [{ text: '[^1]: 脚注', marks: [] }],
       source: 'heuristic-fallback',
     })
-    expect(parsePendingMarkdownToInlineProjection).toHaveBeenCalledWith('---', {
+    expect(parsePendingMarkdownToInlineProjection).toHaveBeenCalledWith('[^1]: 脚注', {
       operation: 'testResolve',
-      blockId: 'hr-fallback',
+      blockId: 'unsupported-fallback',
     })
   })
 })

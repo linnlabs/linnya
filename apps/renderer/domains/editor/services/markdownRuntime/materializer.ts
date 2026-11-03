@@ -300,18 +300,19 @@ export function blockEventsToDocJson(
     }
 
     if (typeName === 'HorizontalRuleBlock') {
+      // 水平分割线是没有行内内容的原子块：它不经过下面的行内投影，
+      // Schema 无法表达时也必须显式失败，不能降级成空段落。
       const hrType = schema.nodes.horizontalRuleBlock
-      if (hrType) {
-        const hrNode = hrType.create({
-          id: generateBlockId(),
-          blockType: 'horizontalRule',
-        })
-        const root = buildRootBlock(hrNode, schema)
-        if (root) {
-          rootBlocks.push(root.toJSON())
-          continue
-        }
+      if (!hrType) {
+        throw new Error('[MarkdownImport] 当前 Schema 不支持 horizontalRuleBlock，无法物化水平分割线')
       }
+      const root = buildRootBlock(
+        hrType.create({ id: generateBlockId(), blockType: 'horizontalRule' }),
+        schema
+      )
+      if (!root) throw new Error('[MarkdownImport] 无法创建水平分割线根块')
+      rootBlocks.push(root.toJSON())
+      continue
     }
 
     let codeLanguage = typeof event.language === 'string' ? event.language : ''

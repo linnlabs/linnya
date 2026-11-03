@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { parseMarkdownToBlockEvents } = vi.hoisted(() => ({
   parseMarkdownToBlockEvents: vi.fn(),
@@ -25,6 +25,10 @@ import {
 describe('pendingMarkdownRuntime', () => {
   beforeEach(() => {
     parseMarkdownToBlockEvents.mockReset()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('uses runtime inline projection for inlineLatex and hardBreak', async () => {
@@ -291,12 +295,9 @@ describe('pendingMarkdownRuntime', () => {
     })
   })
 
-  it('reports unsupported single-block types so callers can fall back heuristically', async () => {
-    parseMarkdownToBlockEvents.mockResolvedValue([
-      {
-        block_type: 'HorizontalRuleBlock',
-      },
-    ])
+  it('classifies a horizontal rule as an atomic block without inline projection or warnings', async () => {
+    parseMarkdownToBlockEvents.mockResolvedValue([{ block_type: 'HorizontalRuleBlock' }])
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     await expect(
       classifyPendingMarkdownTopLevelBlock('---', {
@@ -304,8 +305,66 @@ describe('pendingMarkdownRuntime', () => {
         blockId: 'hr-1',
       })
     ).resolves.toEqual({
+      status: 'atomic-block',
+      event: { block_type: 'HorizontalRuleBlock' },
+    })
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('still classifies a horizontal rule when the parser also emits ignorable empty blocks', async () => {
+    parseMarkdownToBlockEvents.mockResolvedValue([
+      { block_type: 'BaseBlock', raw_content_fallback: '  ' },
+      { block_type: 'HorizontalRuleBlock' },
+      { block_type: 'BaseBlock', structured_content: [{ type: 'hardBreak' }] },
+    ])
+
+    await expect(
+      classifyPendingMarkdownTopLevelBlock('\n---\n', {
+        operation: 'testTopLevelClassifier',
+        blockId: 'hr-2',
+      })
+    ).resolves.toEqual({
+      status: 'atomic-block',
+      event: { block_type: 'HorizontalRuleBlock' },
+    })
+  })
+
+  it('does not truncate a horizontal rule that sits next to other meaningful blocks', async () => {
+    parseMarkdownToBlockEvents.mockResolvedValue([
+      { block_type: 'HorizontalRuleBlock' },
+      {
+        block_type: 'BaseBlock',
+        structured_content: [{ type: 'text', text: '段落', marks: [] }],
+      },
+    ])
+
+    await expect(
+      classifyPendingMarkdownTopLevelBlock('---\n\n段落', {
+        operation: 'testTopLevelClassifier',
+        blockId: 'hr-3',
+      })
+    ).resolves.toEqual({
+      status: 'multiple-meaningful-blocks',
+      totalBlocks: 2,
+      blockTypes: ['HorizontalRuleBlock', 'BaseBlock'],
+    })
+  })
+
+  it('reports unsupported single-block types so callers can fall back heuristically', async () => {
+    parseMarkdownToBlockEvents.mockResolvedValue([
+      {
+        block_type: 'FootnoteDefinitionBlock',
+      },
+    ])
+
+    await expect(
+      classifyPendingMarkdownTopLevelBlock('[^1]: 脚注', {
+        operation: 'testTopLevelClassifier',
+        blockId: 'unsupported-1',
+      })
+    ).resolves.toEqual({
       status: 'unsupported-single-block',
-      blockType: 'HorizontalRuleBlock',
+      blockType: 'FootnoteDefinitionBlock',
     })
   })
 })

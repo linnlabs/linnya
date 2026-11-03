@@ -114,6 +114,7 @@ apps/renderer/domains/editor/services/markdownRuntime/
 - pending table、普通导入、其他程序性 materialization 复用同一套 row/cell builder
 - 完整 doc/rootBlock materialization 会把 fragments 中的 `link` 物化为正式 `link` mark，并保留 `href/title`；生产 Editor 通过 `marks/Link.ts` 消费同一合同
 - table 仍然保留 block 级 replace/history 语义特例，但这已经是执行层问题，不再是 materialization 分叉
+- `HorizontalRuleBlock` 物化为 `rootBlock -> horizontalRuleBlock`：完整文档与 Revision 单块路径走同一个分支（见下文 B''），它没有行内内容，从不进入 inline projection
 
 ## 统一调用链
 
@@ -146,6 +147,14 @@ parser 把围栏输出为完整 `CodeBlock` 事件；`chartEvent.ts` 是 rendere
 - 粘贴（`PlainTextMarkdownHandler`）、流式落块（`queueProcessor`）与 Revision 的图表计划都经过这里，不再各自把专属语言映射成 `codeBlock`。
 - `blockEventsToRootBlockNodes` 一次物化整批事件：要么全部成功，要么全部失败，诊断里的图表序号覆盖整批输入。
 
+### B''. 水平分割线
+
+parser 输出的 `HorizontalRuleBlock` 事件没有 `structured_content`，materializer 把它直接物化为 `rootBlock -> horizontalRuleBlock`：
+
+- 完整文档导入走 `blockEventsToDocJson`，粘贴走 `blockEventsToRootBlockNodes`；Revision 的 pending 单块路径同样调用 `blockEventsToRootBlockNodes([event], schema)` 并只取内容块，因此得到同一份结构。
+- 它不能经过 inline projection：投影结果为空，会逼调用方退回纯文本或空段落。pending 分类器因此在投影之前把单个 `HorizontalRuleBlock` 分流为整块（`atomic-block`），不是 `unsupported-single-block`。
+- Schema 无法表达时 materializer 显式抛错，不降级成空 `baseBlock`。
+
 ### C. 表格
 
 ```text
@@ -170,6 +179,7 @@ Markdown / TableBlock.attrs
 - `Revision pending` 不再维护私有 Markdown 解释器
 - pending 通过 runtime 消费 canonical block / inline projection / table materialization
 - `inlineLatex`、`hardBreak`、table cell materialization 已在这条链路统一
+- 水平分割线由 materializer 物化，Revision 只取内容块做整块替换/删除登记，不再拼装节点
 
 边界：
 
@@ -234,6 +244,7 @@ Markdown / TableBlock.attrs
   - `Markdown -> BlockEvent`
   - `structured_content -> inline projection`
   - table cell row/materialization
+  - 水平分割线：完整文档与 pending 单块同一份物化结果
   - pending 普通块 / autocomplete / paste / streaming 的主语义来源
 - **未承诺完全无特例**
   - `table block` 的 replace/history 仍是 schema 级特例
