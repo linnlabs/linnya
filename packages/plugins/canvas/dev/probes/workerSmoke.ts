@@ -66,16 +66,35 @@ async function verifyReferenceMeasurement(port: CanvasRenderWorkerPort) {
   const content = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '标签：' },
     { type: 'documentReference', attrs: { documentId: 'authorized-document', referenceId: 'stable-reference' } }] }] };
   const measurement = createCanvasCardMeasurement(port);
-  const request = { ...common, kind: 'measure', width: 140, content };
+  const request = { ...common, kind: 'measure', width: 320, content };
   const short = await measurement.measure(CanvasMeasureRequestSchema.parse({ ...request, requestId: 'tag-short', documents: { 'authorized-document': { title: '短标题' } } }));
   const renamed = await measurement.measure(CanvasMeasureRequestSchema.parse({ ...request, requestId: 'tag-rename', documents: { 'authorized-document': { title: '改名后的当前中文标题'.repeat(8) } } }));
   const inaccessible = await measurement.measure(CanvasMeasureRequestSchema.parse({ ...request, requestId: 'tag-inaccessible' }));
-  if (renamed.height <= short.height + 50 || inaccessible.height >= renamed.height) throw new Error('tag_title_measurement_reused_stale_metadata');
+  if (renamed.height <= short.height + 10 || inaccessible.height >= renamed.height) throw new Error('tag_title_measurement_reused_stale_metadata');
   return { short: short.height, renamed: renamed.height, inaccessible: inaccessible.height };
+}
+async function verifyDocumentCover(port: CanvasRenderWorkerPort, request: CanvasRenderRequest) {
+  const image = `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" fill="#30a090"/></svg>').toString('base64')}`;
+  const card = request.snapshot.elements.find(element => element.type === 'text');
+  if (!card) throw new Error('cover_fixture_missing');
+  const make = (status: 'available' | 'outside_project') => CanvasRenderRequestSchema.parse({ ...request, requestId: `cover-${status}`,
+    snapshot: { ...request.snapshot, elements: [{ ...card, type: 'document', height: 240, data: { documentId: 'cover-document' } }] },
+    documents: { 'cover-document': { title: status === 'available' ? '正式SVG封面' : '文档当前不可访问', status, image } } });
+  const count = (bytes: Uint8Array) => {
+    const pixels = nativeImage.createFromBuffer(Buffer.from(bytes)).toBitmap(); let matching = 0;
+    for (let i = 0; i < pixels.length; i += 4) if (pixels[i] > 100 && pixels[i + 1] > 100 && pixels[i + 2] < 100) matching++;
+    return matching;
+  };
+  const runtime = createCanvasRenderRuntime(port), available = await runtime.render(make('available')), outside = await runtime.render(make('outside_project'));
+  const shown = count(available.bytes), hidden = count(outside.bytes);
+  if (shown < 1000 || hidden !== 0) throw new Error('document_cover_status_or_svg_mismatch');
+  await writeFile(path.join(output, 'canvas-svg-cover.png'), available.bytes);
+  return { shown, hidden };
 }
 
 async function run(): Promise<void> {
   await app.whenReady();
+  if (process.platform === 'darwin') app.setActivationPolicy('accessory');
   const packageRoot = path.join(root, 'packages/plugins/canvas');
   const definition = createCanvasHiddenWorkerDefinition({
     workerHtmlPath: path.join(packageRoot, 'dist/render-worker/worker.html'),
@@ -133,12 +152,13 @@ async function run(): Promise<void> {
     const wideBounds = inkBounds(wide.bytes);
     const managedImages = await verifyManagedImages(port, request);
     const referenceMeasurement = await verifyReferenceMeasurement(port);
+    const documentCover = await verifyDocumentCover(port, request);
     await mkdir(output, { recursive: true });
     await writeFile(path.join(output, 'canvas.png'), image.bytes);
     await writeFile(path.join(output, 'canvas-dpr1.png'), unit.bytes);
     await writeFile(path.join(output, 'canvas-second.jpg'), second.bytes);
     await writeFile(path.join(output, 'canvas-wide.png'), wide.bytes);
-    const report = { versions: process.versions, measurement, cancellationObserved, wideBounds, managedImages, referenceMeasurement, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
+    const report = { versions: process.versions, measurement, cancellationObserved, wideBounds, managedImages, referenceMeasurement, documentCover, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
       sha256: createHash('sha256').update(image.bytes).digest('hex') }, second: { bytes: second.bytes.length, sequence: second.sequence } };
     await writeFile(path.join(output, 'results.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));

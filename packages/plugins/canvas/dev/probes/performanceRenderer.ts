@@ -70,7 +70,22 @@ function closeView() {
   kernel?.setCamera({ x: 30, y: 30, zoom: 0.6 }); presentation?.refresh();
   return { visible: kernel?.visibleCards().length, camera: kernel?.readCamera() };
 }
+async function waitForBody() {
+  const started = performance.now();
+  while (performance.now() - started < 5000) {
+    const stats = presentation?.readStats();
+    if (stats?.failed) return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats };
+    if (stats && !stats.pending && !stats.running) {
+      await nextFrame(); await nextFrame();
+      const after = presentation?.readStats();
+      if (after && !after.pending && !after.running) return { settled: true, ms: performance.now() - started, camera: kernel?.readCamera(), stats: after };
+    }
+    await nextFrame();
+  }
+  return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats: presentation?.readStats() };
+}
 Object.defineProperties(window, {
   prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start },
   finishCanvasPerformanceCollection: { value: finish }, closeCanvasPerformanceView: { value: closeView },
+  waitForCanvasPerformanceBody: { value: waitForBody },
 });

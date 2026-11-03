@@ -10,10 +10,11 @@ import type { CanvasAppearance, CanvasKernel, CanvasKernelIntent, CanvasRasterTi
 import { installCanvasInteraction } from '../../interaction/installCanvasInteraction';
 import { CanvasMapLabels } from './CanvasMapLabels';
 import { CanvasLines } from './CanvasLines';
-import { selectExposedCanvasCards } from '../../geometry/selectExposedCanvasCards';
+import { createCanvasVisibleRegionProjection, intersectCanvasRegion, subtractCanvasRegions } from '../../geometry/canvasVisibleRegions';
 
 interface CardView { readonly card: CanvasCard; readonly container: Container; readonly background: NineSliceSprite; readonly body: Container; readonly label: Text }
-interface BitmapEntry { readonly key: string; readonly resources: readonly { readonly texture: Texture; readonly bitmap: ImageBitmap }[]; readonly bytes: number }
+interface BitmapResource extends CanvasRectangle { readonly texture: Texture; readonly bitmap: ImageBitmap }
+interface BitmapEntry { readonly key: string; readonly resources: readonly BitmapResource[]; readonly bytes: number }
 const LIGHT: Record<CanvasColor, number> = { white: 0xfbfaf5, red: 0xf5e4e1, orange: 0xf7e9dc, yellow: 0xf6f0d8, green: 0xe6ecdf, cyan: 0xe1edf0, purple: 0xeee7ef };
 const DARK: Record<CanvasColor, number> = { white: 0x323631, red: 0x4a3634, orange: 0x493c30, yellow: 0x464331, green: 0x354534, cyan: 0x324447, purple: 0x423747 };
 
@@ -64,12 +65,15 @@ class PixiCanvasKernel implements CanvasKernel {
   private readonly dragOriginals = new Map<CanvasCardId, CanvasCard>();
   private brush: CanvasRectangle | null = null;
   private editingCard: CanvasCardId | null = null;
+  private documentTitles: ReadonlyMap<string, string> = new Map();
   private readonly mapLabels = new CanvasMapLabels();
   private overviewOrder: readonly CanvasCard[] = [];
   private edges: readonly CanvasEdge[] = [];
   private ordered: readonly CanvasCard[] = [];
   private exposed: readonly CanvasCard[] = [];
   private exposedIds = new Set<CanvasCardId>();
+  private visibleRegions: ReadonlyMap<CanvasCardId, readonly CanvasRectangle[]> = new Map();
+  private occlusionKey = '';
   private camera: CanvasCamera = { x: 0, y: 0, zoom: 1 };
   private appearance: CanvasAppearance = { dark: false, material: 'paper', overview: 'titles' };
   private bitmapBytes = 0;
@@ -130,7 +134,8 @@ class PixiCanvasKernel implements CanvasKernel {
     const overview = card.type !== 'image' && this.camera.zoom < 0.3 && this.appearance.overview === 'titles';
     label.style.fontSize = 15;
     label.style.wordWrap = true;
-    label.visible = !overview && !this.bitmaps.has(card.id);
+    const entry = this.bitmaps.get(card.id);
+    label.visible = !overview && this.titleExposed(card) && (!entry || subtractCanvasRegions(this.readVisibleCardRegions(card.id), entry.resources).length > 0);
     body.visible = !overview && this.bitmaps.has(card.id);
     if (this.editingCard === card.id) { label.visible = false; body.visible = false; }
     label.position.set(14, 12);
@@ -138,10 +143,15 @@ class PixiCanvasKernel implements CanvasKernel {
     if (this.camera.zoom < 0.15) { label.visible = false; if (card.type !== 'image') body.visible = false; container.alpha = this.selected.has(card.id) ? 1 : 0.6; }
     else container.alpha = 1;
   }
+  private titleExposed(card: CanvasCard): boolean {
+    const region = { x: 14, y: 12, width: Math.max(0, card.width - 28), height: Math.max(0, card.height - 12) };
+    return this.readVisibleCardRegions(card.id).some(visible => intersectCanvasRegion(region, visible) !== null);
+  }
   private updateLabels(): void {
     this.mapLabels.draw({ cards: this.overviewOrder, camera: this.camera, width: this.width, height: this.height,
-      dark: this.appearance.dark, visible: this.camera.zoom < 0.3 && this.appearance.overview === 'titles' });
+      dark: this.appearance.dark, visible: this.camera.zoom < 0.3 && this.appearance.overview === 'titles', readTitle: card => this.title(card) });
   }
+  private title(card: CanvasCard): string { return card.type === 'document' ? this.documentTitles.get(card.data.documentId) ?? '文档' : readCanvasElementText(card); }
   private redrawSelection(): void {
     this.selectionLayer.clear();
     if (this.brush) this.selectionLayer.rect(this.brush.x, this.brush.y, this.brush.width, this.brush.height)
@@ -157,11 +167,18 @@ class PixiCanvasKernel implements CanvasKernel {
   private refreshCamera(styleChanged = false, edgesChanged = false): void {
     this.world.position.set(this.camera.x, this.camera.y);
     this.world.scale.set(this.camera.zoom);
-    this.exposed = selectExposedCanvasCards(this.ordered, this.camera, this.width, this.height);
+    this.exposed = this.ordered.filter(card => this.readVisibleCardRegions(card.id).length > 0);
     this.exposedIds = new Set(this.exposed.map(card => card.id));
     for (const view of this.views.values()) {
       if (styleChanged) this.updateView(view);
-      else view.container.visible = this.exposedIds.has(view.card.id);
+      else {
+        view.container.visible = this.exposedIds.has(view.card.id);
+        if (view.container.visible) {
+          const entry = this.bitmaps.get(view.card.id);
+          const overview = view.card.type !== 'image' && this.camera.zoom < 0.3 && this.appearance.overview === 'titles';
+          view.label.visible = this.editingCard !== view.card.id && !overview && this.titleExposed(view.card) && (!entry || subtractCanvasRegions(this.readVisibleCardRegions(view.card.id), entry.resources).length > 0);
+        }
+      }
       if (view.container.visible && this.camera.zoom >= 0.3) {
         const entry = this.bitmaps.get(view.card.id);
         if (entry) { this.bitmaps.delete(view.card.id); this.bitmaps.set(view.card.id, entry); }
@@ -191,11 +208,13 @@ class PixiCanvasKernel implements CanvasKernel {
       }
       if (previous) {
         const view = { ...previous, card };
-        view.label.text = readCanvasElementText(card).split('\n')[0].slice(0, 120) || (card.type === 'image' ? '图片' : '空白卡片');
+        view.label.text = this.title(card).split('\n')[0].slice(0, 120) || (card.type === 'image' ? '图片' : '空白卡片');
         this.views.set(card.id, view);
       } else this.createView(card);
     }
     this.ordered = nextCards.sort((a, b) => a.order < b.order ? -1 : a.order > b.order ? 1 : 0);
+    const occlusionKey = JSON.stringify(this.ordered.map(card => [card.id, card.x, card.y, card.width, card.height, card.order]));
+    if (occlusionKey !== this.occlusionKey) { this.visibleRegions = createCanvasVisibleRegionProjection(this.ordered); this.occlusionKey = occlusionKey; }
     this.overviewOrder = nextCards.slice().sort((a, b) => Number(b.color !== 'white') - Number(a.color !== 'white')
       || Number(b.type === 'document') - Number(a.type === 'document') || b.width * b.height - a.width * a.height);
     for (let i = 0; i < this.ordered.length; i++) {
@@ -211,7 +230,7 @@ class PixiCanvasKernel implements CanvasKernel {
     const background = new NineSliceSprite({ texture: this.backgrounds[this.appearance.material], leftWidth: 8, rightWidth: 8, topHeight: 8, bottomHeight: 8 });
     const body = new Container();
     body.visible = false;
-    const label = new Text({ text: readCanvasElementText(card).split('\n')[0].slice(0, 120) || '空白卡片',
+    const label = new Text({ text: this.title(card).split('\n')[0].slice(0, 120) || '空白卡片',
       style: { fontFamily: 'system-ui', fontSize: 15, wordWrap: true, wordWrapWidth: Math.max(1, card.width - 28), breakWords: true } });
     container.addChild(background, body, label);
     this.cardLayer.addChild(container);
@@ -276,20 +295,26 @@ class PixiCanvasKernel implements CanvasKernel {
     const card = this.cards.get(id);
     if (!card || card.revision !== revision || this.destroyed) { tiles.forEach((tile) => tile.bitmap.close()); return false; }
     const previous = this.bitmaps.get(id);
-    if (previous?.key === key) { tiles.forEach((tile) => tile.bitmap.close()); return true; }
-    const bytes = tiles.reduce((total, tile) => total + tile.bitmap.width * tile.bitmap.height * 4, 0);
-    if (bytes > this.budget) { tiles.forEach((tile) => tile.bitmap.close()); return false; }
-    this.removeBitmap(id);
+    let retained = previous?.key === key ? previous : null;
+    const additions = tiles.filter(tile => {
+      if (retained && !subtractCanvasRegions([tile], retained.resources).length) { tile.bitmap.close(); return false; }
+      return true;
+    });
+    if (!additions.length) return true;
+    const bytes = additions.reduce((total, tile) => total + tile.bitmap.width * tile.bitmap.height * 4, 0);
+    if (bytes > this.budget) { additions.forEach((tile) => tile.bitmap.close()); return false; }
+    if (!retained || retained.bytes + bytes > this.budget) { this.removeBitmap(id); retained = null; }
+    else { this.bitmaps.delete(id); this.bitmaps.set(id, retained); }
     while (this.bitmapBytes + bytes > this.budget) {
       const oldest = this.bitmaps.keys().next();
       if (oldest.done) break;
       this.removeBitmap(oldest.value);
     }
-    const resources = tiles.map((tile) => ({ texture: Texture.from(tile.bitmap, true), bitmap: tile.bitmap }));
-    this.bitmaps.set(id, { key, resources, bytes }); this.bitmapBytes += bytes;
+    const resources = additions.map((tile) => ({ x: tile.x, y: tile.y, width: tile.width, height: tile.height, texture: Texture.from(tile.bitmap, true), bitmap: tile.bitmap }));
+    this.bitmaps.set(id, { key, resources: [...retained?.resources ?? [], ...resources], bytes: (retained?.bytes ?? 0) + bytes }); this.bitmapBytes += bytes;
     const view = this.views.get(id);
     if (view) {
-      tiles.forEach((tile, index) => {
+      additions.forEach((tile, index) => {
         const sprite = new Sprite(resources[index].texture);
         sprite.position.set(tile.x, tile.y); sprite.width = tile.width; sprite.height = tile.height;
         view.body.addChild(sprite);
@@ -324,9 +349,29 @@ class PixiCanvasKernel implements CanvasKernel {
   }
   visibleCards(): readonly CanvasCard[] { return this.ordered.filter((card) => this.visible(card)); }
   renderableCards(): readonly CanvasCard[] { return this.exposed; }
+  readVisibleCardRegions(id: CanvasCardId): readonly CanvasRectangle[] {
+    const card = this.cards.get(id);
+    if (!card) return [];
+    const regions = this.dragOriginals.has(id) ? [card] : this.visibleRegions.get(id) ?? [];
+    const viewport = { x: -this.camera.x / this.camera.zoom, y: -this.camera.y / this.camera.zoom,
+      width: this.width / this.camera.zoom, height: this.height / this.camera.zoom };
+    return regions.flatMap(region => {
+      const visible = intersectCanvasRegion(region, viewport);
+      return visible ? [{ x: visible.x - card.x, y: visible.y - card.y, width: visible.width, height: visible.height }] : [];
+    });
+  }
+  readMissingBitmapRegions(id: CanvasCardId, key: string, regions: readonly CanvasRectangle[]): readonly CanvasRectangle[] {
+    const entry = this.bitmaps.get(id);
+    return entry?.key === key ? subtractCanvasRegions(regions, entry.resources) : regions;
+  }
   hitTestEdge(point: CanvasPoint): CanvasEdge | null { return this.lines.hitTest(point); }
   setSelectedEdge(id: CanvasEdgeId | null): void { this.lines.setSelected(id); this.schedule(); }
   setHoveredCard(id: CanvasCardId | null): void { this.lines.setHovered(id); this.schedule(); }
+  setDocumentTitles(titles: ReadonlyMap<string, string>): void {
+    this.documentTitles = new Map(titles);
+    for (const view of this.views.values()) if (view.card.type === 'document') view.label.text = this.title(view.card).split('\n')[0].slice(0, 120);
+    this.updateLabels(); this.schedule();
+  }
   readEdgeGeometry(id: CanvasEdgeId) { return this.lines.readGeometry(id); }
   screenToWorld(point: CanvasPoint): CanvasPoint { return canvasScreenToWorld(point, this.camera); }
   worldToScreen(point: CanvasPoint): CanvasPoint { return canvasWorldToScreen(point, this.camera); }

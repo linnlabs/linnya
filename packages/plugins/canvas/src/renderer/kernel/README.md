@@ -12,7 +12,9 @@
 
 线条纯几何来自 shared/geometry，前后台共用卡边裁切、同侧排开、迟滞与收敛曲线。Pixi 线适配使用静态世界 Mesh 和相机 uniform 保持 1 CSS px；远景直线与近景曲线缓存分开，缩放不反复 stroke 三角化。线层提供点击、高亮、端点、标签、纸面淡影和超过 3000 条可见线时的选中关系简化。`readEdgeGeometry` 给 DOM 交互实际排开后的坐标，不能由另一个表面猜曲线中点。
 
-`visibleCards` 保持视口相交的几何语义；`renderableCards` 只剔除被上层实体纸面完全遮挡的卡，服务渲染调度，不改变框选范围。阴影/圆角不是实体遮挡。
+`visibleCards` 保持视口相交的几何语义。世界矩形差按位置/层级缓存，阴影与圆角只取保守内接纸面作遮挡；相机变化只裁视口。`readVisibleCardRegions` 返回仍可见的卡内局部条块，`renderableCards` 排除无可见片段的卡，不改变框选范围。`readMissingBitmapRegions` 使平移只补缺片，同键纹理按片段合并并仍受256MiB LRU预算约束。
+
+纸面淡影先把线层合成，再统一淡化；不能直接把不透明浅色线画在正文上（会擦断笔画），也不能每根线单独加透明度（交叉处会不断变深）。授权文档标题通过 setDocumentTitles 注入，缺失元数据一律显示通用“文档”，不显示内部身份。
 
 验证：插件 typecheck、lint、test；真实 Electron 入口 `node packages/plugins/canvas/dev/probes/run-render-probe.mjs`。探针的三档场景验证几何、标题 LOD、线与平移，不代表完整业务 UI、全量正文位图吞吐和真实鼠标交互已验收。
 
