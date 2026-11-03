@@ -227,21 +227,7 @@ class PixiCanvasKernel implements CanvasKernel {
     const nextIds = new Set(nextCards.map((card) => card.id));
     for (const id of this.views.keys()) if (!nextIds.has(id)) this.removeView(id);
     this.cards.clear();
-    for (const card of nextCards) {
-      this.cards.set(card.id, card);
-      const previous = this.views.get(card.id);
-      // 纯位置变化不重画正文；染纸会改变同色深墨，必须和尺寸/内容变化一起淘汰。
-      if (previous && previous.card.revision !== card.revision
-        && (previous.card.width !== card.width || previous.card.height !== card.height || previous.card.color !== card.color
-          || previous.card.type !== card.type || JSON.stringify(previous.card.data) !== JSON.stringify(card.data))) {
-        this.removeBitmap(card.id);
-      }
-      if (previous) {
-        const view = { ...previous, card };
-        view.label.text = this.title(card).split('\n')[0].slice(0, 120) || (card.type === 'image' ? '图片' : '空白卡片');
-        this.views.set(card.id, view);
-      } else this.createView(card);
-    }
+    for (const card of nextCards) this.installCard(card);
     this.ordered = nextCards.sort((a, b) => a.order < b.order ? -1 : a.order > b.order ? 1 : 0);
     const occlusionKey = JSON.stringify(this.ordered.map(card => [card.id, card.x, card.y, card.width, card.height, card.order]));
     if (occlusionKey !== this.occlusionKey) { this.visibleRegions = createCanvasVisibleRegionProjection(this.ordered); this.occlusionKey = occlusionKey; }
@@ -254,6 +240,22 @@ class PixiCanvasKernel implements CanvasKernel {
     }
     this.edges = elements.filter((element): element is CanvasEdge => element.type === 'edge');
     this.refreshCamera(true, true);
+  }
+
+  private installCard(card: CanvasCard): void {
+    this.cards.set(card.id, card);
+    const previous = this.views.get(card.id);
+    // 纯位置变化不重画正文；染纸会改变同色深墨，必须和尺寸/内容变化一起淘汰。
+    if (previous && previous.card.revision !== card.revision
+      && (previous.card.width !== card.width || previous.card.height !== card.height || previous.card.color !== card.color
+        || previous.card.type !== card.type || JSON.stringify(previous.card.data) !== JSON.stringify(card.data))) {
+      this.removeBitmap(card.id);
+    }
+    if (previous) {
+      const view = { ...previous, card };
+      view.label.text = this.title(card).split('\n')[0].slice(0, 120) || (card.type === 'image' ? '图片' : '空白卡片');
+      this.views.set(card.id, view);
+    } else this.createView(card);
   }
 
   private createView(card: CanvasCard): void {

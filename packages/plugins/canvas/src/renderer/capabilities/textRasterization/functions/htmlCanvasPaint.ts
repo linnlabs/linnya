@@ -16,7 +16,14 @@ export function waitForHtmlCanvasPaint(canvas: HTMLCanvasElement, draw: () => vo
     const cleanup = () => { clearTimeout(timer); canvas.removeEventListener('paint', onPaint); signal?.removeEventListener('abort', onAbort); };
     const onAbort = () => { cleanup(); reject(signal?.reason ?? new Error('raster_cancelled')); };
     const onPaint = () => { cleanup(); try { signal?.throwIfAborted(); draw(); resolve(); } catch (error) { reject(error); } };
-    const timer = setTimeout(() => { cleanup(); reject(new Error('raster_paint_timeout')); }, timeoutMs);
+    const timer = setTimeout(() => {
+      cleanup();
+      // 只记录能力和生命周期现场，不包含正文、图片地址或任何Host配置。
+      console.error('[Canvas] HTML paint timeout', { visibility: canvas.ownerDocument.visibilityState,
+        connected: canvas.isConnected, requestPaint: canRequest(canvas), width: canvas.width, height: canvas.height,
+        display: canvas.ownerDocument.defaultView?.getComputedStyle(canvas).display, timeoutMs });
+      reject(new Error('raster_paint_timeout'));
+    }, timeoutMs);
     canvas.addEventListener('paint', onPaint); signal?.addEventListener('abort', onAbort, { once: true });
     if (signal?.aborted) onAbort(); else if (canRequest(canvas)) canvas.requestPaint();
   });
