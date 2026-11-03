@@ -47,4 +47,15 @@ export const canvasPluginMigrations: readonly PluginMigrationDefinition[] = [{
       CREATE INDEX canvas_editing_claims_expiry ON canvas_editing_claims(node_id, expires_at);
     `);
   },
+}, {
+  version: 2,
+  description: 'Separate monotonic field versions from logical undo origins',
+  up(database) {
+    database.exec(`ALTER TABLE canvas_elements ADD COLUMN field_origins_json TEXT NOT NULL DEFAULT '{}';
+      CREATE TABLE canvas_history_guards (
+        node_id TEXT NOT NULL REFERENCES canvas_documents(node_id) ON DELETE CASCADE,
+        element_id TEXT NOT NULL, origin TEXT NOT NULL, revision INTEGER NOT NULL,
+        PRIMARY KEY(node_id, element_id)
+      );`);
+  },
 }];
