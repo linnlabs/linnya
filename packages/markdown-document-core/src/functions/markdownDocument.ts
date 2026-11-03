@@ -3,6 +3,7 @@ import { MarkdownManager } from '@tiptap/markdown';
 import { DOMSerializer } from '@tiptap/pm/model';
 import { JsonValueSchema, type JsonValue } from '@app/schemas';
 import { assertMarkdownDocument } from './assertMarkdownDocument';
+import { renderMarkdownMathematics } from './renderMarkdownMathematics';
 import { createMarkdownDocumentExtensions } from './createMarkdownDocumentExtensions';
 
 const extensions = createMarkdownDocumentExtensions();
@@ -27,5 +28,6 @@ export function createMarkdownDocumentFragment(content: JsonValue, document: Doc
   if (node.type !== schema.topNodeType) throw new Error('Markdown content must be a document');
   const fragment = document.createDocumentFragment();
   DOMSerializer.fromSchema(schema).serializeFragment(node.content, { document }, fragment);
+  renderMarkdownMathematics(fragment);
   return fragment;
 }
