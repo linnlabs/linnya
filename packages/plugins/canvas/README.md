@@ -104,3 +104,7 @@ Canvas表面、正文编辑器和历史预览统一读取Renderer UI公开的 `R
 `pnpm run smoke:plugin:canvas:artifact`先构建schemas和Canvas独立制品，再用临时隔离根验证checksum/content BOM、正式disk Backend加载、Skill/worker/migration发现、无数据库的CLI help、编译CLI真实只读SQLite与写入拒绝、编译Node计算worker及正式Host HiddenWorker的PNG/JPEG/取消/字体/标签/图片路径。临时制品根与数据库测试后删除；Canvas不进入默认官方发行目标。
 
 三个Node entry各有独立esbuild元数据，main/CLI/compute初始预算分别3/3.2/5 MiB。ELK只进入计算worker；main/CLI拒绝Pixi、Renderer和Host业务装配。CLI仅内联两个公开只读SDK入口，虚拟Host specifier不得留到独立进程；native模块保留懒加载并通过正式CJS Host白名单解析。公开barrel产生的空初始化闭包可保留，但输出AST必须证明未保留可执行写函数体。Renderer、HTML worker、CSS与字体引用均验证实际zip闭包，不把开发探针、元数据或源码混进制品。独立读取使用产品提供的Electron Node ABI，help也可由普通Node运行。
+
+交互显示与提交保持分离：吸附只在不超过3000个其他可见候选时开启，8屏幕像素阈值同时给出非持久参考线，Alt/取消/结束清除。连线卡身落点保存auto，16屏幕像素圆点保存固定边；开始抓手只影响临时新卡朝向，起点仍自动。上下文创建在打开选择器前冻结世界位置；文档选择和图片准备不会改成新的视口中心。对齐和等距分布跳过锁定卡，线菜单支持反转和端点导航。
+
+进入文字编辑时，低于30%先定位长卡顶部并放大到100%，随后等待正文当前倍率的精确位图接纳，再开启唯一DOM编辑器；切换选择或关闭会取消迟到的进入请求。精确位图能力失败时明确说明并继续正文编辑。线工具条按中点四方向和三档间距避让卡片、线与标签。

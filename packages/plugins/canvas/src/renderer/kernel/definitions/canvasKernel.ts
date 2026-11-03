@@ -10,7 +10,7 @@ export type CanvasKernelIntent =
   | { readonly kind: 'move'; readonly ids: readonly CanvasCardId[]; readonly dx: number; readonly dy: number; readonly copy?: boolean }
   | { readonly kind: 'editing'; readonly ids: readonly CanvasCardId[]; readonly active: boolean }
   | { readonly kind: 'open'; readonly id: CanvasCardId }
-  | { readonly kind: 'context'; readonly point: CanvasPoint; readonly id: CanvasCardId | null }
+  | { readonly kind: 'context'; readonly point: CanvasPoint; readonly id: CanvasCardId | null; readonly edgeId?: CanvasEdgeId | null }
   | { readonly kind: 'camera'; readonly camera: CanvasCamera }
   | ({ readonly kind: 'render-status' } & CanvasRenderStatus);
 export interface CanvasRenderStatus {
@@ -72,4 +72,4 @@ export interface CanvasKernel {
 }
 
 export type CanvasInteractionKernel = Pick<CanvasKernel,
-  'canvas' | 'readCamera' | 'setCamera' | 'screenToWorld' | 'hitTest' | 'hitTestEdge' | 'setHoveredCard' | 'visibleCards' | 'readSelection' | 'setBrush' | 'setDragPreview' | 'clearDragPreview'>;
+  'canvas' | 'readCamera' | 'setCamera' | 'screenToWorld' | 'hitTest' | 'hitTestEdge' | 'setHoveredCard' | 'visibleCards' | 'readSelection' | 'setBrush' | 'setGuides' | 'setDragPreview' | 'clearDragPreview'>;

@@ -51,3 +51,6 @@ export interface CanvasCommitContext {
   readonly now: number;
   readonly referenceBindings?: readonly import('@app/schemas').DocumentReferenceMarkdownBinding[];
 }
+export interface CanvasCommitPublication {
+  readonly committedAt: number;
+}

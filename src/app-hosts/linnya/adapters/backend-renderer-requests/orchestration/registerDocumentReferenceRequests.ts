@@ -1,6 +1,6 @@
 import { DocumentReferenceDeletionRequestSchema } from '@app/schemas';
 import { readWorkspaceDeletionReferencePreview } from '../../../application/workspace-node-deletion';
-import { queryDocumentReferenceCandidates, readDocumentReferencePresentation, type ReferenceQueryPort } from 'src/domains/document-references';
+import { readDocumentBacklinks, createDocumentReferenceOperations, queryDocumentReferenceCandidates, readDocumentReferencePresentation, type ReferenceQueryPort } from 'src/domains/document-references';
 import { readWorkspaceDocumentIdentity, readWorkspaceDocumentLocation, searchWorkspaceDocumentIdentities } from 'src/features/workspace/infrastructure/sqlite/workspaceDocumentProjection';
 import { getDocumentTypeBackendHook } from 'src/plugin-sdk/backend/documentTypeBackendHook';
 import type { BackendRuntimeOwner } from '../../../backend-runtime/orchestration/backendRuntimeOwner';
@@ -16,6 +16,7 @@ export function registerDocumentReferenceRequests(owner: BackendRuntimeOwner, re
     isDocumentTypeAvailable: nodeType => nodeType === 'document' || Boolean(getDocumentTypeBackendHook(nodeType)),
   };
   registry.handle('document-references:deletion-preview', value => readWorkspaceDeletionReferencePreview(db, DocumentReferenceDeletionRequestSchema.parse(value).nodeIds));
+  registry.handle('document-references:backlinks', value => readDocumentBacklinks(value, { read: port.read, listBacklinks: createDocumentReferenceOperations(db, port).listBacklinks }));
   registry.handle('document-references:search', value => queryDocumentReferenceCandidates(value, port));
   registry.handle('document-references:resolve', value => readDocumentReferencePresentation(value, port));
 }

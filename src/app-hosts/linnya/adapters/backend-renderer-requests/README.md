@@ -22,3 +22,5 @@ domain/feature 逐步归位的物理目录债务，不代表它们运行在 Main
 
 会话文件 `resolve/reveal` 也由 App Server 执行路径准入；`reveal` 在 conversation 删除屏障内通过窄
 Desktop file-reveal RPC 调用系统文件管理器，绝对路径不会返回 Renderer。
+
+文档引用请求由 document-references owner 处理；`document-references:backlinks` 与候选/身份解析采用相同 typed request 准入，当前项目校验先于已有反向索引读取。Preload、SDK、协议 shim 只透传该有界只读能力，不跨域查询正文或扩大插件管理权限。

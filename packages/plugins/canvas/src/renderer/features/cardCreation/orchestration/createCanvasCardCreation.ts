@@ -8,6 +8,7 @@ export function createCanvasCardCreation(session: CanvasDocumentSession, port: C
   const picker = createCanvasDocumentPickerState();
   const controller = new AbortController();
   let generation = 0;
+  let pickerPoint: CanvasPoint | null = null;
   const documentId = () => requireWritableCanvas(session.state.snapshot.value).documentId;
   const query = async (keyword: string) => {
     const token = ++generation; picker.start();
@@ -15,8 +16,8 @@ export function createCanvasCardCreation(session: CanvasDocumentSession, port: C
     catch (error) { if (token === generation) picker.fail(error instanceof Error ? error.message : String(error)); }
   };
   return { picker, query,
-    async showDocuments() { documentId(); picker.show(); await query(''); },
-    async addDocument(targetId: string, point = position()) {
+    async showDocuments(point = position()) { documentId(); pickerPoint = point; picker.show(); await query(''); },
+    async addDocument(targetId: string, point = pickerPoint ?? position()) {
       const result = await session.commit([{ op: 'addDocument', ref: '$document', width: 320, height: 240, x: point.x, y: point.y, data: { documentId: targetId } }]);
       const id = result.refs.$document; if (id) await select([CanvasCardIdSchema.parse(id)]); picker.close();
     },

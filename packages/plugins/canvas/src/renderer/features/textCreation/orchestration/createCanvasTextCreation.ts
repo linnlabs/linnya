@@ -28,7 +28,8 @@ export function createCanvasTextCreation(session: CanvasDocumentSession, onCommi
       pending = (async () => {
         try {
           const result = await commit([{ op: 'addText', ref: '$created', x: draft.x, y: draft.y, width: draft.width, height: draft.height, content: draft.content },
-            ...(draft.from ? [{ op: 'connect' as const, from: draft.from, to: '$created', direction: 'forward' as const, label: '', lineStyle: 'curve' as const, linePattern: 'solid' as const }] : [])], draft.identity, draft.arrangement);
+            // 抓手方向仅控制临时卡的边中点；新线起点仍自动选择，不固化抓手side。
+            ...(draft.from ? [{ op: 'connect' as const, from: draft.from.kind === 'card' ? { ...draft.from, side: 'auto' as const } : draft.from, to: '$created', direction: 'forward' as const, label: '', lineStyle: 'curve' as const, linePattern: 'solid' as const }] : [])], draft.identity, draft.arrangement);
           const id = CanvasCardIdSchema.parse(result.refs.$created);
           await adopt(draft, id, final); return true;
         } catch (failure) {

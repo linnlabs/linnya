@@ -4,6 +4,7 @@ import { CanvasCardIdSchema, CanvasEdgeSchema, CanvasTextCardSchema, type Canvas
 import type { CanvasInteractionOptions } from '../../definitions/canvasInteraction';
 import type { CanvasInteractionKernel, CanvasKernelIntent } from '../../definitions/canvasKernel';
 import { installCanvasInteraction } from '../installCanvasInteraction';
+import { createCanvasSnapTargets } from '../functions/canvasSnapping';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => cleanups.splice(0).forEach(cleanup => cleanup()));
@@ -16,10 +17,10 @@ function fixture(options: CanvasInteractionOptions = {}) {
   const cards = [0, 120].map((x, index) => CanvasTextCardSchema.parse({ schemaVersion: 1, id: `c${index + 1}`, type: 'text', revision: 0, order: String(index), locked: false, color: 'white', x, y: 0, width: 100, height: 50, parentId: null, createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null }, createdAt: 0, updatedAt: 0, data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [] }] } } }));
   let selected: readonly CanvasCardId[] = cards.map(card => card.id);
   let camera: CanvasCamera = { x: 0, y: 0, zoom: 1 };
-  const brush = vi.fn(), preview = vi.fn(), clear = vi.fn();
+  const brush = vi.fn(), preview = vi.fn(), clear = vi.fn(), guides = vi.fn();
   const edge = CanvasEdgeSchema.parse({ schemaVersion: 1, revision: 0, order: 'a0', locked: false, color: 'white', createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null }, createdAt: 0, updatedAt: 0, id: 'e1', type: 'edge', from: { kind: 'point', x: 0, y: 80 }, to: { kind: 'point', x: 220, y: 80 }, direction: 'forward', lineStyle: 'curve', label: '' });
   const hover = vi.fn();
-  const kernel: CanvasInteractionKernel = { canvas, readCamera: () => camera, setCamera: value => { camera = value; }, screenToWorld: point => ({ x: (point.x - camera.x) / camera.zoom, y: (point.y - camera.y) / camera.zoom }), readSelection: () => selected, hitTest: point => cards.find(card => point.x >= card.x && point.x <= card.x + card.width && point.y >= card.y && point.y <= card.y + card.height) ?? null, hitTestEdge: point => Math.abs(point.y - 80) < 5 ? edge : null, setHoveredCard: hover, visibleCards: () => cards, setBrush: brush, setDragPreview: preview, clearDragPreview: clear };
+  const kernel: CanvasInteractionKernel = { canvas, readCamera: () => camera, setCamera: value => { camera = value; }, screenToWorld: point => ({ x: (point.x - camera.x) / camera.zoom, y: (point.y - camera.y) / camera.zoom }), readSelection: () => selected, hitTest: point => cards.find(card => point.x >= card.x && point.x <= card.x + card.width && point.y >= card.y && point.y <= card.y + card.height) ?? null, hitTestEdge: point => Math.abs(point.y - 80) < 5 ? edge : null, setHoveredCard: hover, visibleCards: () => cards, setBrush: brush, setGuides: guides, setDragPreview: preview, clearDragPreview: clear };
   const intents: CanvasKernelIntent[] = [];
   const cleanup = installCanvasInteraction(kernel, intent => { intents.push(intent); if (intent.kind === 'select') selected = intent.additive ? [...selected, ...intent.ids] : intent.ids; }, options);
   cleanups.push(() => { cleanup(); canvas.remove(); });
@@ -27,7 +28,7 @@ function fixture(options: CanvasInteractionOptions = {}) {
     const event = new MouseEvent(type, { clientX: x, clientY: y, button: 0, bubbles: true, ...options });
     Object.defineProperty(event, 'pointerId', { value: 1 }); canvas.dispatchEvent(event);
   };
-  return { canvas, cards, intents, brush, preview, clear, pointer, selected: () => selected, kernel, hover };
+  return { canvas, cards, intents, brush, preview, clear, guides, pointer, selected: () => selected, kernel, hover };
 }
 
 describe('Canvas pointer gestures', () => {
@@ -84,8 +85,10 @@ describe('Canvas pointer gestures', () => {
     const f = fixture(); f.pointer('pointerdown', 10, 10); f.pointer('pointerup', 10, 10);
     f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 33, 10);
     expect(f.preview).toHaveBeenLastCalledWith([f.cards[0]?.id], 20, 0);
+    expect(f.guides.mock.calls.some(call => call[0].length > 0)).toBe(true);
     f.pointer('pointermove', 33, 10, { altKey: true });
     expect(f.preview).toHaveBeenLastCalledWith([f.cards[0]?.id], 23, 0);
+    expect(f.guides).toHaveBeenLastCalledWith([]);
     f.pointer('pointerup', 33, 10, { altKey: true });
     expect(f.intents).toContainEqual({ kind: 'move', ids: [f.cards[0]?.id], dx: 23, dy: 0, copy: true });
   });
@@ -103,5 +106,21 @@ describe('Canvas pointer gestures', () => {
     expect(f.intents.some(intent => intent.kind === 'move')).toBe(false); expect(f.clear).toHaveBeenCalled();
     const oldCamera = f.kernel.readCamera(); f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 40, 10); f.pointer('pointerup', 40, 10);
     expect(f.kernel.readCamera().x).toBe(oldCamera.x + 30);
+  });
+
+  it('超过3000个其他可见卡时整次禁用吸附，不对前3000张产生偏向', () => {
+    const f = fixture(), moving = f.cards[0]; if (!moving) throw new Error('missing fixture card');
+    const others = Array.from({ length: 3001 }, (_, index) => ({ ...moving, id: CanvasCardIdSchema.parse(`c${index + 2}`), x: 120 }));
+    expect(createCanvasSnapTargets([moving, ...others], [moving.id])).toBeNull();
+    expect(createCanvasSnapTargets([moving, ...others.slice(0, 3000)], [moving.id])).not.toBeNull();
+  });
+
+  it('右键连线保留线身份，hover只在命中变化时通知且离开后清理', () => {
+    const f = fixture(); f.pointer('pointermove', 20, 20); f.pointer('pointermove', 21, 20);
+    expect(f.intents.filter(intent => intent.kind === 'hover')).toEqual([{ kind: 'hover', id: 'c1' }]);
+    window.dispatchEvent(new Event('blur'));
+    expect(f.intents).toContainEqual({ kind: 'hover', id: null });
+    f.canvas.dispatchEvent(new MouseEvent('contextmenu', { clientX: 50, clientY: 80, cancelable: true }));
+    expect(f.intents).toContainEqual({ kind: 'context', point: { x: 50, y: 80 }, id: null, edgeId: 'e1' });
   });
 });

@@ -43,9 +43,10 @@
     <CanvasConnectionControls
       v-if="surface && !draft && !readonly"
       :editing="surface.connections"
-      :card="surface.selectedCards.value.length === 1 ? surface.selectedCards.value[0] ?? null : null"
+      :card="camera.zoom >= 0.3 ? surface.hoveredCard.value ?? (surface.selectedCards.value.length === 1 ? surface.selectedCards.value[0] ?? null : null) : null"
       :camera="camera"
       :run="run"
+      @locate="surface.locateEndpoint($event)"
       @focus-canvas="surface?.focus()"
     />
     <div
@@ -342,9 +343,10 @@ import { ToolbarButton, ToolbarGroup, CustomSelect, ImagePreviewModal, AlertDial
 import { TextIcon, FullscreenIcon, EditIcon, ZoomInIcon, ZoomOutIcon, UndoIcon, RedoIcon, DuplicateIcon, LinkIcon, DocumentAddIcon, ImageIcon, LinnyaIcon } from '@linnya/renderer-ui/icons';
 import { getActiveFileSession, markActiveFileDirty, getCurrentWorkspaceProjectId } from '@plugin/renderer/workspaceRuntime';
 import { createEmbeddedMarkdownEditor } from '@plugin/renderer/embeddedMarkdownEditor';
-import { CanvasColorSchema } from '@plugin/canvas/shared';
+import { CanvasColorSchema, type CanvasPoint } from '@plugin/canvas/shared';
 import { createCanvasSurface } from '../orchestration/createCanvasSurface';
 import { createCanvasPageCommands } from '../orchestration/createCanvasPageCommands';
+import { canvasCardMenuActions, canvasContextMenuActions } from '../functions/canvasMenuActions';
 import { addCanvasSelectionReference, registerCanvasReferenceFocus } from '../features/conversationSelection';
 import { createCanvasSelectionReferencePort } from '../adapters/createCanvasSelectionReferencePort';
 import { readCanvasClipboard } from '../adapters/readCanvasSelectionContext';
@@ -378,17 +380,17 @@ const editorStyle = computed(() => surface.value?.editorStyle.value ?? { display
 const markers = computed(() => review.value && surface.value ? projectCanvasReviewMarkers(review.value.state.groups.value, surface.value.session.state.snapshot.value?.elements ?? [], camera.value, review.value.state.activeGroupId.value) : []);
 const shownError = computed(() => failure.value ?? surface.value?.creation.state.error.value ?? surface.value?.editor.state.error.value ?? surface.value?.session.state.error.value ?? surface.value?.error.value);
 const selectedColor = computed(() => surface.value?.selectedCards.value[0]?.color ?? 'white');
-const moreActions = [{ value: 'lock', text: '锁定 / 解锁' }, { value: 'front', text: '置于顶层' }, { value: 'back', text: '置于底层' }, { value: 'left', text: '左对齐' }, { value: 'top', text: '顶部对齐' }, { value: 'grid', text: '网格排列' }, { value: 'delete', text: '删除' }];
-const writableContextActions = computed(() => selection.value.length ? [{ value: 'ai', text: '加入对话 ⌘K' }, { value: 'edit', text: '编辑或打开 ↩' }, { value: 'copy', text: '复制 ⌘C' }, { value: 'cut', text: '剪切 ⌘X' }, { value: 'duplicate', text: '创建副本 ⌘D' }, ...moreActions] : [{ value: 'paste', text: '粘贴 ⌘V' }, { value: 'new', text: '新建文字卡' }, { value: 'document', text: '添加文档…' }, { value: 'image', text: '添加图片…' }, { value: 'fit', text: '显示全部 ⌘1' }]);
-const contextActions = computed(() => readonly.value ? writableContextActions.value.filter(item => ['copy', 'ai', 'fit'].includes(item.value)) : writableContextActions.value);
+const moreActions = canvasCardMenuActions;
+const contextActions = computed(() => canvasContextMenuActions({ selectionCount: selection.value.length, edge: Boolean(surface.value?.connections.selected.value), readonly: readonly.value }));
 const colors = [{ value: 'white', text: '原色' }, { value: 'red', text: '红' }, { value: 'orange', text: '橙' }, { value: 'yellow', text: '黄' }, { value: 'green', text: '绿' }, { value: 'cyan', text: '青' }, { value: 'purple', text: '紫' }];
 const report = (error: unknown) => { failure.value = error instanceof Error ? error.message : String(error); };
 const run = async (action: () => Promise<unknown> | undefined) => { failure.value = null; surface.value?.clearFailure(); try { await action(); } catch (error) { report(error); } };
 const confirmDiscard = () => { discardVisible.value = false; void run(async () => { surface.value?.discardDraft(); }); };
 const changeColor = (value: string | number | boolean) => run(() => surface.value?.color(CanvasColorSchema.parse(value)));
-const menuCommand = createCanvasPageCommands({ readSurface: () => surface.value, addToConversation: () => addToConversation(), showDocuments: async () => { await creation.value?.showDocuments(); }, pickImages: () => imagePicker.value?.click() });
+let imagePoint: CanvasPoint | undefined;
+const menuCommand = createCanvasPageCommands({ readSurface: () => surface.value, addToConversation: () => addToConversation(), showDocuments: async point => { await creation.value?.showDocuments(point); }, pickImages: point => { imagePoint = point; imagePicker.value?.click(); } });
 const elementAction = (value: string | number | boolean) => run(() => menuCommand(value));
-const imageFiles = (event: Event) => { if (event.target instanceof HTMLInputElement) { const files = Array.from(event.target.files ?? []); event.target.value = ''; void run(() => creation.value?.importFiles(files)); } };
+const imageFiles = (event: Event) => { if (event.target instanceof HTMLInputElement) { const files = Array.from(event.target.files ?? []), point = imagePoint; imagePoint = undefined; event.target.value = ''; void run(() => creation.value?.importFiles(files, point)); } };
 const addToConversation = () => run(async () => {
   const current = surface.value, projectId = getCurrentWorkspaceProjectId(), documentId = current?.session.state.snapshot.value?.documentId;
   if (!current || !projectId || !documentId) throw new Error('当前画布没有可访问的项目');

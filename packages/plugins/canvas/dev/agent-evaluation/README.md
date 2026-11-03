@@ -1,0 +1,11 @@
+# Desktop 验收执行桥
+
+此目录只服务本机固定项目的真实Renderer验收，不进入生产入口或插件制品。Node桥只排队固定schema动作；用户来源提交、草稿、编辑声明和绘制仍由Renderer composition通过正式Host端口执行，没有SQL、任意JavaScript或模型自填用户身份入口。
+
+`bridge/runBridge.ts` 接受项目ID、当前Vite origin、该工作目录的index.html、一个尚不存在的connection.json。连接只绑定127.0.0.1；nonce只写0600 descriptor，不输出到普通日志。临时module脚本带独占marker，正常SIGINT/SIGTERM退出时仅移除自己的标签，保留期间其他HTML改动并删除自身descriptor。不要同时给同一HTML注入第二个桥。
+
+可信runner带x-canvas-evaluation-token调用POST /invoke，Renderer以GET /next长轮询取schema命令并POST /result回传正式结果。相同编号同负载只投递一次，未确认的在途写不会因重试再次执行；结果未知时应恢复确认或结束该批，不猜测未提交。Renderer自己校验绑定项目，Node也拒绝跨项目mount。T9/T12批准仍通过真实产品按钮，桥不提供approve动作。
+
+启动前先吸收同一稳定实现，正常重启该工作目录的App并核对模型、Skill和实例身份。批次记录完整sourceRevision与batchId；运行期间冻结实现。结束后正常停止桥，检查index.html未留下临时标签。异常强制退出时先检查marker所属的本机进程与descriptor，不能批量删除其他任务标签或profile。
+
+`stats`另外保存正式canvas:changed事件到实际kernel draw计数增加的观测上界。只有Backend带committedAt的事件生成commitToFrameUpperBoundMs；记录sequence、来源、接收/绘制UTC时间与当时已显示序号。隐藏、关闭或超时分别保留明确状态，不用RAF回调数量冒充包含变化的绘制。此数据仍需独立硬件/锁屏证据才能作为原生性能验收。

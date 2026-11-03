@@ -12,7 +12,9 @@
   </template>
   <div
     v-if="edge"
+    ref="bar"
     class="canvas-connection-bar"
+    :style="barStyle"
     role="toolbar"
     aria-label="所选连线"
     @pointerdown.stop
@@ -62,6 +64,25 @@
       @click="run(() => editing.patch(edge!, { locked: !edge!.locked }))"
     >
       {{ edge.locked ? '解锁' : '锁定' }}
+    </ToolbarButton>
+    <ToolbarButton
+      label="反转连线方向"
+      :disabled="edge.locked"
+      @click="run(editing.reverse)"
+    >
+      反转
+    </ToolbarButton>
+    <ToolbarButton
+      label="跳到连线起点"
+      @click="emit('locate', 'from')"
+    >
+      起点
+    </ToolbarButton>
+    <ToolbarButton
+      label="跳到连线终点"
+      @click="emit('locate', 'to')"
+    >
+      终点
     </ToolbarButton>
     <ToolbarButton
       label="删除连线"
@@ -115,18 +136,27 @@
   /></svg>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch, onBeforeUnmount } from 'vue';
 import { ToolbarButton, CustomSelect } from '@linnya/renderer-ui';
 import { CanvasEdgeSchema, CanvasColorSchema, type CanvasCamera, type CanvasCard, type CanvasPoint } from '@plugin/canvas/shared';
 import type { createCanvasConnectionEditing } from '../orchestration/createCanvasConnectionEditing';
 import { canvasConnectionAnchors } from '../functions/canvasConnectionAnchors';
 const props = defineProps<{ editing: ReturnType<typeof createCanvasConnectionEditing>; card: CanvasCard | null; camera: CanvasCamera; run: (action: () => Promise<unknown>) => Promise<void> }>();
-const emit = defineEmits<{ focusCanvas: [] }>();
+const emit = defineEmits<{ focusCanvas: []; locate: [which: 'from' | 'to'] }>();
+const bar = ref<HTMLElement | null>(null), barSize = ref({ width: 720, height: 44 });
+const observer = new ResizeObserver(entries => { const entry = entries[0]; if (entry) barSize.value = { width: entry.target.clientWidth, height: entry.target.clientHeight }; });
+watch(bar, value => { observer.disconnect(); if (value) observer.observe(value); });
+onBeforeUnmount(() => observer.disconnect());
 const edge = computed(() => props.editing.selected.value), labelInput = ref<HTMLInputElement | null>(null);
 const anchors = computed(() => props.card ? canvasConnectionAnchors(props.card) : []);
 const geometry = computed(() => { void props.camera; return props.editing.geometry(); });
 const project = (point: CanvasPoint) => ({ x: props.camera.x + point.x * props.camera.zoom, y: props.camera.y + point.y * props.camera.zoom });
 const pointStyle = (point: CanvasPoint) => { const screen = project(point); return { left: `${screen.x}px`, top: `${screen.y}px` }; };
+const barStyle = computed(() => {
+  const shape = geometry.value, host = bar.value?.parentElement; if (!shape || !host) return undefined;
+  const point = props.editing.toolbarPosition({ geometry: shape, camera: props.camera, size: barSize.value, viewport: { width: host.clientWidth, height: host.clientHeight } });
+  return { left: `${point.x}px`, top: `${point.y}px` };
+});
 const preview = computed(() => { const value = props.editing.state.preview.value; return value ? { from: project(value.from), to: project(value.to) } : null; });
 const sideNames = { top: '上', right: '右', bottom: '下', left: '左' };
 const directions = [{ value: 'none', text: '无箭头' }, { value: 'forward', text: '单向' }, { value: 'both', text: '双向' }], styles = [{ value: 'curve', text: '曲线' }, { value: 'straight', text: '直线' }], patterns = [{ value: 'solid', text: '实线' }, { value: 'dashed', text: '虚线' }];
