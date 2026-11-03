@@ -4,6 +4,8 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 
 框选加入Conversation后，引用chip通过通用kind挂载点按需读取当前已提交选区供只读hover预览；关闭释放实例，异步切项目不显示旧正文。点击先复核画布当前归属，再打开并定位仍存在的卡片。hover不保存编辑草稿，也不修改发送快照；发送继续通过`prepareForSend`等待草稿保存并读取最新内容。
 
+选中图片卡可打开[图片属性编辑](./src/renderer/features/imageEditing/README.md)，非破坏性裁剪、图注与替换保存为一次正式内容变更，并进入现有用户撤销链。
+
 ## 边界与入口
 
 - `shared/model` 拥有卡片、连线、正文及提交快照合同；类型来自唯一 schema。

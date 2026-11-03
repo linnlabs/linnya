@@ -160,6 +160,14 @@
         <EditIcon />
       </ToolbarButton>
       <ToolbarButton
+        v-if="selectedImage"
+        label="编辑图片（裁剪、图注、替换）"
+        :disabled="readonly || selectedImage.locked"
+        @click="editImage"
+      >
+        <ImageIcon />
+      </ToolbarButton>
+      <ToolbarButton
         label="创建副本 ⌘D"
         :disabled="readonly"
         @click="run(() => surface?.actions.duplicate())"
@@ -271,6 +279,10 @@
       alt="画布图片"
       @close="imagePreview = null"
     />
+    <CanvasImageEditingControls
+      v-if="imageEditing"
+      :editor="imageEditing"
+    />
     <div
       v-if="surface?.integrityNotice.value || surface?.renderNotice.value"
       class="canvas-read-notice"
@@ -362,6 +374,7 @@ import { createCanvasCardCreationPort } from '../adapters/createCanvasCardCreati
 import { createCanvasAgentReview, projectCanvasReviewMarkers, CanvasAgentReviewBar, CanvasReviewMarkers } from '../features/agentReview';
 import { createCanvasCardContent, type CanvasCardContent } from '../features/cardMedia';
 import { createCanvasCardCreation, installCanvasMediaInput, CanvasDocumentPicker } from '../features/cardCreation';
+import { createCanvasImageEditing, CanvasImageEditingControls } from '../features/imageEditing';
 import { createCanvasSearch, CanvasSearchPanel } from '../features/canvasSearch';
 import { CanvasConnectionControls } from '../features/connections';
 import { CanvasLayoutControls } from '../features/layoutCommands';
@@ -372,6 +385,7 @@ const stage = ref<HTMLElement | null>(null), editorHost = ref<HTMLElement | null
 const surface = shallowRef<Awaited<ReturnType<typeof createCanvasSurface>> | null>(null);
 const review = shallowRef<ReturnType<typeof createCanvasAgentReview> | null>(null);
 const creation = shallowRef<ReturnType<typeof createCanvasCardCreation> | null>(null);
+const imageEditing = shallowRef<ReturnType<typeof createCanvasImageEditing> | null>(null);
 const search = shallowRef<ReturnType<typeof createCanvasSearch> | null>(null);
 const wheelSuggestion = shallowRef<ReturnType<typeof installCanvasWheelSuggestion> | null>(null);
 const imagePreview = shallowRef<DocumentImageAsset | null>(null), failure = shallowRef<string | null>(null);
@@ -386,11 +400,13 @@ const editorStyle = computed(() => surface.value?.editorStyle.value ?? { display
 const markers = computed(() => review.value && surface.value ? projectCanvasReviewMarkers(review.value.state.groups.value, surface.value.session.state.snapshot.value?.elements ?? [], camera.value, review.value.state.activeGroupId.value) : []);
 const shownError = computed(() => failure.value ?? surface.value?.creation.state.error.value ?? surface.value?.editor.state.error.value ?? surface.value?.session.state.error.value ?? surface.value?.error.value);
 const selectedColor = computed(() => surface.value?.selectedCards.value[0]?.color ?? 'white');
+const selectedImage = computed(() => { const selected = surface.value?.selectedCards.value; return selected?.length === 1 && selected[0]?.type === 'image' ? selected[0] : null; });
 const moreActions = canvasCardMenuActions;
 const contextActions = computed(() => canvasContextMenuActions({ selectionCount: selection.value.length, edge: Boolean(surface.value?.connections.selected.value), readonly: readonly.value }));
 const colors = [{ value: 'white', text: '原色' }, { value: 'red', text: '红' }, { value: 'orange', text: '橙' }, { value: 'yellow', text: '黄' }, { value: 'green', text: '绿' }, { value: 'cyan', text: '青' }, { value: 'purple', text: '紫' }];
 const report = (error: unknown) => { failure.value = error instanceof Error ? error.message : String(error); };
 const run = async (action: () => Promise<unknown> | undefined) => { failure.value = null; surface.value?.clearFailure(); try { await action(); } catch (error) { report(error); } };
+const editImage = () => run(async () => { if (selectedImage.value) await imageEditing.value?.open(selectedImage.value.id); });
 const confirmDiscard = () => { discardVisible.value = false; void run(async () => { surface.value?.discardDraft(); }); };
 const changeColor = (value: string | number | boolean) => run(() => surface.value?.color(CanvasColorSchema.parse(value)));
 let imagePoint: CanvasPoint | undefined;
@@ -425,10 +441,11 @@ onMounted(async () => {
     surface.value = result; review.value = createCanvasAgentReview(result.session, createCanvasAgentReviewPort());
     wheelSuggestion.value = installCanvasWheelSuggestion(host);
     creation.value = createCanvasCardCreation(result.session, createCanvasCardCreationPort(), result.centerPoint, result.select);
+    imageEditing.value = createCanvasImageEditing(result.session, { readImage: mediaPort.readImage, prepare: creation.value.prepare });
     search.value = createCanvasSearch(result.session, cardContent.documentTitles, ids => { void run(() => result.focusElements(ids)); });
     removeMediaInput = installCanvasMediaInput({ stage: host, editor: editorElement, creation: creation.value, content: cardContent, captureInsertion: result.captureInsertion, worldPoint: result.worldPoint, canWrite: () => !result.readonly.value, report });
     await review.value.refresh();
   } catch (error) { report(error); }
 });
-onBeforeUnmount(() => { destroyed = true; wheelSuggestion.value?.dispose(); removeReferenceFocus?.(); removeMediaInput?.(); creation.value?.dispose(); review.value?.dispose(); surface.value?.destroy(); content?.dispose(); });
+onBeforeUnmount(() => { destroyed = true; wheelSuggestion.value?.dispose(); removeReferenceFocus?.(); removeMediaInput?.(); imageEditing.value?.dispose(); creation.value?.dispose(); review.value?.dispose(); surface.value?.destroy(); content?.dispose(); });
 </script>
