@@ -8,13 +8,16 @@ import { readNativeSessionState } from './readNativeSessionState';
 import { verifyCanvasMediaOverview } from './performanceMediaOverview';
 import { startCanvasZoomTrace } from './performanceZoomTrace';
 import { startCanvasPaintTrace } from './performancePaintTraceElectron';
+import { performance } from 'node:perf_hooks';
 
 const output = process.argv[2];
 if (!output) throw new Error('Performance output directory required');
 app.setPath('userData', path.join(output, 'profile'));
 const softwareProfile = process.env.CANVAS_PERFORMANCE_SOFTWARE === '1';
 const offscreenProfile = softwareProfile || process.env.CANVAS_PERFORMANCE_OFFSCREEN === '1';
-const paintDiagnostic = process.env.CANVAS_PERFORMANCE_PAINT_TRACE === '1';
+const zoomPaintDiagnostic = process.env.CANVAS_PERFORMANCE_ZOOM_PAINT_TRACE === '1';
+const paintDiagnostic = process.env.CANVAS_PERFORMANCE_PAINT_TRACE === '1' || zoomPaintDiagnostic;
+if (zoomPaintDiagnostic && process.env.CANVAS_PERFORMANCE_ZOOM_TRACE !== '1') throw new Error('zoom_paint_diagnostic_requires_chromium_trace');
 if (softwareProfile) { app.commandLine.appendSwitch('use-angle', 'swiftshader'); app.commandLine.appendSwitch('enable-unsafe-swiftshader'); }
 app.on('window-all-closed', () => {});
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -55,7 +58,7 @@ async function run() {
     for (const kind of kinds) for (const count of counts) for (const distribution of distributions) {
       const clustered = distribution === 'cluster';
       console.log(`Canvas formal body performance ${kind} ${count} ${clustered ? 'clustered' : 'uniform'}`);
-      const stopPaintTrace = paintDiagnostic ? await startCanvasPaintTrace(win.webContents, output, `${kind}-${count}-${distribution}`) : null;
+      const stopPaintTrace = paintDiagnostic && !zoomPaintDiagnostic ? await startCanvasPaintTrace(win.webContents, output, `${kind}-${count}-${distribution}`) : null;
       try {
         const resourceProfile = kind !== 'text' && process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1';
         if (resourceProfile) { win.webContents.debugger.attach('1.3'); await win.webContents.debugger.sendCommand('Profiler.enable'); await win.webContents.debugger.sendCommand('Profiler.start'); }
@@ -118,7 +121,7 @@ async function run() {
     const validHardwareRun = !offscreenProfile && validDesktopRun && displayQualified && !profiling;
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: kinds.every(kind => kind === 'text') ? 'production-dom-v5-body-baseline' : 'production-media-provider-v2-body-baseline', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE }, startedAt, endedAt: new Date().toISOString(),
       renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',
-      ...(paintDiagnostic ? { diagnostic: 'paint-trace' } : {}),
+      ...(paintDiagnostic ? { diagnostic: zoomPaintDiagnostic ? 'zoom-paint-trace' : 'paint-trace' } : {}),
       versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
       idleBefore, idleAfter, nativeSessionBefore, nativeSessionAfter, lockEvents, validHardwareRun, profiling, requireInternal120, displayQualified, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
       display: { label: display.label, internal: display.internal, scaleFactor: display.scaleFactor, displayFrequency: display.displayFrequency, bounds: display.bounds },
@@ -129,15 +132,23 @@ async function run() {
 }
 
 async function collectZoom(window: BrowserWindow, stem: string): Promise<unknown> {
-  const stopTrace = process.env.CANVAS_PERFORMANCE_ZOOM_TRACE === '1' ? await startCanvasZoomTrace(window, output, stem) : null;
+  const stopTrace = process.env.CANVAS_PERFORMANCE_ZOOM_TRACE === '1' ? await startCanvasZoomTrace(window, output, stem, zoomPaintDiagnostic) : null;
+  let stopPaint: (() => Promise<void>) | null = null;
+  const sent: { readonly index: number; readonly deltaY: number; readonly beforeEpochMs: number; readonly afterEpochMs: number }[] | null = zoomPaintDiagnostic ? [] : null;
   try {
+    if (zoomPaintDiagnostic) stopPaint = await startCanvasPaintTrace(window.webContents, output, `${stem}-zoom`);
     await window.webContents.executeJavaScript(stopTrace ? 'window.startCanvasPerformanceBaseline()' : 'window.startCanvasPerformanceCollection()');
     for (let i = 0; i < 100; i++) {
+      const beforeEpochMs = sent ? performance.timeOrigin + performance.now() : 0;
       window.webContents.sendInputEvent({ type: 'mouseWheel', x: 800, y: 480, deltaY: i < 50 ? -5 : 5,
         deltaX: 0, modifiers: ['control'], canScroll: true });
+      sent?.push({ index: i, deltaY: i < 50 ? -5 : 5, beforeEpochMs, afterEpochMs: performance.timeOrigin + performance.now() });
       await delay(20);
     }
     return await window.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
-  } finally { await stopTrace?.(); }
+  } finally {
+    try { if (sent) await writeFile(path.join(output, `${stem}-zoom-wheel-inputs.json`), JSON.stringify({ clock: 'node-performance.timeOrigin+now; compare with Renderer timeOrigin', sent }, null, 2)); }
+    finally { try { await stopPaint?.(); } finally { await stopTrace?.(); } }
+  }
 }
 void mkdir(output, { recursive: true }).then(run).then(() => app.exit(0), (error: unknown) => { console.error(error); app.exit(1); });
