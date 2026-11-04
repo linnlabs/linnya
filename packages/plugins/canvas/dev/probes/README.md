@@ -43,3 +43,7 @@ Dawn内部观测使用已核[Chromium150的明确类别映射](https://github.co
 scene视觉夹具只在自己的页面临时固定`performance.now`，按明确逻辑时间采样120ms纹理替换与160/200ms场景淡入。真实timer、RAF、Pixi、GPU和正文receipt不替换，采样前有界等待生产脉冲及实际主画布draw；首显必须为当前新像素且尚未完整，终点仍检查资源释放与完整draw。所有出口恢复原时钟。这样CI长暂停不会把64ms中间态推过终点，硬件性能探针仍使用真实时钟。做法参考[Playwright受控时钟](https://playwright.dev/docs/clock)，这里不模拟其timer/RAF调度。
 
 `CANVAS_PERFORMANCE_PAINT_TRACE=1`仅诊断Linux软件绘图的paint兑现：记录原生requestPaint、真实paint、drawElementImage、逐片复制和bitmap transfer的真实时钟及尺寸/片数/测高卡数，保留既有timeout白名单现场，不记录正文。原生this/重载参数/返回值/异常不变，finally恢复全部descriptor；不开启时不安装观察器，也不进入生产插件入口。输出固定为独立`_dev_data/canvas-paint-diagnostic/`，不会覆盖六行counts原件，结果明确diagnostic/profiling且无硬件资格。可配既有`CANVAS_PERFORMANCE_BODY_PROFILE=1`和单例筛选；单例只作诊断，完整六行门禁仍需原样通过，不能仅延长2000ms paint或5000ms等待时限。
+
+visible-update原默认保留color历史对照。`CANVAS_VISIBLE_UPDATE_CHANGE=text`切到独立`canvas-visible-text-update-probe`目录，固定r4首个500之前的逻辑状态：前50为20:NNN/rev21，其余为卡NNN/rev1，不额外执行20次warm写入；初始500当前body全部settled后一次改为21:NNN（6字符）、rev+1。固定高度、字体链、antialiased、1400×900/DPR2及逐数相机均匹配该场景。text默认仅polled-animated，`CANVAS_VISIBLE_UPDATE_CASE`可显式选择对照；500个animateIds走正式200ms batch。报告firstAny/allVisible/final当前revision实际draw和原始RAF间隔，仍无Backend及硬件资格。
+
+可叠加`CANVAS_PERFORMANCE_PAINT_TRACE=1 CANVAS_VISIBLE_UPDATE_TRACE=1`保存原生paint阶段和Chromium timeline/CPU ProfileChunks；此时不再同时启动独立Profiler。原Zoom录制路径和默认标记保持不变，正文更新使用独立visible-update标记。单独`CANVAS_VISIBLE_UPDATE_PROFILE=1`仍可输出CPU profile。所有录制均仅作根因诊断，不能代替实际App的500正文门槛。
