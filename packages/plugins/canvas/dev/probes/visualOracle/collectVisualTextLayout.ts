@@ -20,10 +20,18 @@ function union(rectangles: readonly VisualRect[]): VisualRect {
     height: Math.max(...rectangles.map(rect => rect.y + rect.height)) - y };
 }
 function readStyle(element: Element, root: HTMLElement, paper: VisualColor, computed: CSSStyleDeclaration, text: string) {
+  let fontLoaded: boolean;
+  try { fontLoaded = document.fonts.check(computed.font, text); }
+  catch (error) {
+    // 记录真实查询输入，不换字体/拼猜测fallback；定位后再按CSS FontFaceSet合同修正。
+    console.error('[canvas visual font-query]', JSON.stringify({ element: element.tagName, font: computed.font, fontFamily: computed.fontFamily,
+      fontSize: computed.fontSize, fontStyle: computed.fontStyle, fontWeight: computed.fontWeight, fontVariantNumeric: computed.fontVariantNumeric }));
+    throw error;
+  }
   return { font: computed.font, lineHeight: computed.lineHeight, letterSpacing: computed.letterSpacing, direction: computed.direction,
     fontFeatureSettings: computed.fontFeatureSettings, fontVariationSettings: computed.fontVariationSettings,
     transform: computed.transform, visibility: computed.visibility, color: rgb(computed.color), background: background(element, root, paper),
-    fontLoaded: document.fonts.check(computed.font, text) };
+    fontLoaded };
 }
 function firstLine(listItem: HTMLElement, origin: DOMRect): VisualRect {
   const walker = document.createTreeWalker(listItem, NodeFilter.SHOW_TEXT);

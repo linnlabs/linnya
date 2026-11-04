@@ -25,10 +25,12 @@ app.on('window-all-closed', () => {});
 
 async function evaluate(webContents: WebContents, expression: string): Promise<unknown> {
   console.log(`[canvas visual] ${expression}`);
+  // Blink的DOMException跨executeJavaScript可能只剩{}；原名/消息/栈先在Renderer日志落盘。
+  const observed = `(async()=>{try{return await (${expression});}catch(error){const detail=error instanceof Error||error instanceof DOMException?error.name+': '+error.message+'\\n'+(error.stack??''):String(error);console.error('[canvas visual renderer error]',detail);throw new Error(detail);}})()`;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let removeCrashListener = () => {};
   try {
-    return await Promise.race([webContents.executeJavaScript(expression), new Promise<never>((_, reject) => {
+    return await Promise.race([webContents.executeJavaScript(observed), new Promise<never>((_, reject) => {
       const gone = (_event: Event, details: RenderProcessGoneDetails) => reject(new Error(`visual_renderer_gone:${details.reason}:${details.exitCode}:${expression}`));
       webContents.once('render-process-gone', gone); removeCrashListener = () => { webContents.removeListener('render-process-gone', gone); };
       timer = setTimeout(() => reject(new Error(`visual_case_timeout:${expression}`)), 45000);
