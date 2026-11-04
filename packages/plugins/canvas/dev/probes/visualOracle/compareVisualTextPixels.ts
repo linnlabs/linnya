@@ -110,7 +110,7 @@ export function compareVisualTextPixels(reference: VisualImage, actual: VisualIm
     const bounds = pixelBounds(rect, layout.dpr, reference);
     if (bounds.left >= bounds.right || bounds.top >= bounds.bottom) return [];
     const facts = regionFacts({ reference, actual, mask, monochrome, rect, dpr: layout.dpr, foreground: grapheme.style.color, background: grapheme.style.background });
-    return [{ id: `${grapheme.id}:${index}`, text: grapheme.text, monochromeEligible: qualifiesMonochromeModel(grapheme), ...facts,
+    return [{ id: `${grapheme.id}:${index}`, text: grapheme.text, geometryKind: grapheme.geometryKind, monochromeEligible: qualifiesMonochromeModel(grapheme), ...facts,
       failures: reasons(facts, VISUAL_TEXT_LIMITS.graphemeResidualRatio) }];
   }));
   const lines = layout.lines.flatMap(line => {

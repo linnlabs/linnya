@@ -7,7 +7,8 @@ export function visualTextEnvironment(layout: VisualTextLayout) {
     graphemes: layout.graphemes.map(grapheme => {
       // 色纸/主题允许角色色变化；字体、内容、实际字簇几何与DPR必须和反例资格完全一致。
       const { font, lineHeight, letterSpacing, direction, fontFeatureSettings, fontVariationSettings, transform, visibility, fontLoaded } = grapheme.style;
-      return { text: grapheme.text, rects: grapheme.rects,
+      return { text: grapheme.text, geometryKind: grapheme.geometryKind, rects: grapheme.rects,
+        ...(grapheme.geometryKind === 'marker-gutter' ? { marker: grapheme.marker } : {}),
         style: { font, lineHeight, letterSpacing, direction, fontFeatureSettings, fontVariationSettings, transform, visibility, fontLoaded } };
     }) });
 }

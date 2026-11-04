@@ -11,7 +11,7 @@ function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | '
   const graphemes: VisualTextLayout['graphemes'] = [];
   tokens.forEach((text, index) => {
     const rect = { x: 12 + index * 34, y: 24, width: context.measureText(text).width, height: 30 };
-    graphemes.push({ id: String(index), text, rects: [rect], style: { font: '24px sans-serif', lineHeight: '30px', letterSpacing: 'normal',
+    graphemes.push({ id: String(index), text, geometryKind: 'range', rects: [rect], style: { font: '24px sans-serif', lineHeight: '30px', letterSpacing: 'normal',
       direction: 'ltr', fontFeatureSettings: 'normal', fontVariationSettings: 'normal', transform: 'none', visibility: 'visible',
       color: text === '红' ? [204, 0, 0] : [0, 0, 0], background: [255, 255, 255], fontLoaded: true } });
     if ((change === 'han' && index === 0) || (change === 'punctuation' && text === '、') || (change === 'emoji' && text === '🖼️')) return;
@@ -88,7 +88,7 @@ it.each(['swap', 'grayscale'] as const)('灰背景上的彩色字形%s质量/质
   }
   const rect = { x: 0, y: 0, width: 80, height: 64 };
   const layout: VisualTextLayout = { version: 1, dpr: 1, fontsStatus: 'loaded', width: 80,
-    graphemes: [{ id: 'emoji', text: '🖼️', rects: [rect], style: { font: '32px system-ui', lineHeight: '40px', letterSpacing: 'normal', direction: 'ltr',
+    graphemes: [{ id: 'emoji', text: '🖼️', geometryKind: 'range', rects: [rect], style: { font: '32px system-ui', lineHeight: '40px', letterSpacing: 'normal', direction: 'ltr',
       fontFeatureSettings: 'normal', fontVariationSettings: 'normal', transform: 'none', visibility: 'visible', color: [0, 0, 0], background: [128, 128, 128], fontLoaded: true } }],
     lines: [{ id: 'line:0', rect, graphemeIds: ['emoji'] }] };
   const result = compareVisualTextPixels(reference, actual, layout), emoji = result.graphemes[0];
