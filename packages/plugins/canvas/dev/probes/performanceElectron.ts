@@ -12,6 +12,7 @@ import { performance } from 'node:perf_hooks';
 import { startCanvasPerformanceInputTrace } from './performanceInputTraceElectron';
 import { createCanvasPerformanceFocusQualification } from './performanceFocusQualification';
 import { startCanvasPhaseTrace } from './canvasPhaseTrace';
+import { readCanvasPerformanceContextControl } from './performanceContextControl';
 
 const output = process.argv[2];
 if (!output) throw new Error('Performance output directory required');
@@ -23,8 +24,8 @@ const bodyDiagnostic = process.env.CANVAS_PERFORMANCE_BODY_TRACE === '1';
 const paintDiagnostic = process.env.CANVAS_PERFORMANCE_PAINT_TRACE === '1' || zoomPaintDiagnostic || bodyDiagnostic;
 const comparisonDiagnostic = process.env.CANVAS_PERFORMANCE_COMPARISON === '1';
 const inputDiagnostic = process.env.CANVAS_PERFORMANCE_INPUT_TRACE === '1';
-const stagingContextArm = z.enum(['A', 'B']).optional().parse(process.env.CANVAS_PERFORMANCE_STAGING_CONTEXT_CONTROL);
-if (stagingContextArm && !bodyDiagnostic) throw new Error('staging_context_control_requires_body_trace');
+const contextControl = readCanvasPerformanceContextControl({ staging: process.env.CANVAS_PERFORMANCE_STAGING_CONTEXT_CONTROL,
+  tile: process.env.CANVAS_PERFORMANCE_TILE_CONTEXT_CONTROL, bodyTrace: bodyDiagnostic });
 const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_ZOOM_TRACE === '1' || paintDiagnostic;
 if (bodyDiagnostic && (inputDiagnostic || ['CPU_PROFILE', 'BODY_PROFILE', 'RESOURCE_PROFILE', 'ZOOM_TRACE', 'ZOOM_PAINT_TRACE']
   .some(flag => process.env[`CANVAS_PERFORMANCE_${flag}`] === '1'))) throw new Error('body_trace_conflicting_recording');
@@ -82,7 +83,7 @@ async function run() {
       try {
         const resourceProfile = kind !== 'text' && process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1';
         if (resourceProfile) { win.webContents.debugger.attach('1.3'); await win.webContents.debugger.sendCommand('Profiler.enable'); await win.webContents.debugger.sendCommand('Profiler.start'); }
-        const contextArgument = stagingContextArm ? `,${JSON.stringify(stagingContextArm)}` : '';
+        const contextArgument = contextControl ? `,${JSON.stringify(contextControl)}` : '';
         const initial: unknown = await win.webContents.executeJavaScript(`window.prepareCanvasPerformanceProbe(${count},${clustered},${JSON.stringify(kind)}${contextArgument})`);
         progress.values.initial = initial;
         if (softwareProfile) {
@@ -136,13 +137,13 @@ async function run() {
         progress.stage = 'final-body-and-counts';
         await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
         const counts: unknown = await win.webContents.executeJavaScript('window.verifyCanvasDeterministicCounts()');
-        let contextControl: unknown;
-        if (stagingContextArm) {
-          contextStopped = true; contextControl = await finishStagingContextControl(win, `${kind}-${count}-${distribution}`);
-          if (!z.object({ effective: z.boolean() }).parse(contextControl).effective) throw new Error('staging_context_control_ineffective');
+        let contextFacts: unknown;
+        if (contextControl) {
+          contextStopped = true; contextFacts = await finishContextControl(win, `${kind}-${count}-${distribution}`);
+          if (!z.object({ effective: z.boolean() }).parse(contextFacts).effective) throw new Error(`${contextControl.kind}_context_control_ineffective`);
         }
         const report = { kind, count, clustered, initial, mediaOverview, pan, close, bodyBaseline, bodyLoad, bodySettled, zoom, zoomSettled, drag, counts, inputQualification: focus.read(),
-          ...(stagingContextArm ? { contextControl } : {}) };
+          ...(contextControl ? { contextControl: contextFacts } : {}) };
         reports.push(report); console.log(JSON.stringify(report));
       } catch (error) {
         focus.abort();
@@ -156,7 +157,7 @@ async function run() {
         throw error;
       } finally {
         focus.abort();
-        try { if (stagingContextArm && !contextStopped) { contextStopped = true; await finishStagingContextControl(win, `${kind}-${count}-${distribution}`); } }
+        try { if (contextControl && !contextStopped) { contextStopped = true; await finishContextControl(win, `${kind}-${count}-${distribution}`); } }
         finally { await stopPaintTrace?.(); }
       }
     }
@@ -169,7 +170,7 @@ async function run() {
     const validHardwareRun = !offscreenProfile && validDesktopRun && displayQualified && inputQualified && !profiling && !comparisonDiagnostic && !inputDiagnostic;
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: kinds.every(kind => kind === 'text') ? 'production-dom-v5-body-baseline' : 'production-media-provider-v2-body-baseline', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE }, startedAt, endedAt: new Date().toISOString(),
       renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',
-      ...(stagingContextArm ? { diagnostic: 'body-staging-context-control', stagingContextArm } : bodyDiagnostic ? { diagnostic: 'body-task-trace' } : inputDiagnostic ? { diagnostic: 'input-trace' } : comparisonDiagnostic ? { diagnostic: 'comparison' } : paintDiagnostic ? { diagnostic: zoomPaintDiagnostic ? 'zoom-paint-trace' : 'paint-trace' } : {}),
+      ...(contextControl ? { diagnostic: `body-${contextControl.kind}-context-control`, contextControl } : bodyDiagnostic ? { diagnostic: 'body-task-trace' } : inputDiagnostic ? { diagnostic: 'input-trace' } : comparisonDiagnostic ? { diagnostic: 'comparison' } : paintDiagnostic ? { diagnostic: zoomPaintDiagnostic ? 'zoom-paint-trace' : 'paint-trace' } : {}),
       versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
       idleBefore, idleAfter, nativeSessionBefore, nativeSessionAfter, lockEvents, validHardwareRun, profiling, requireInternal120, displayQualified, inputQualified, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
       display: { label: display.label, internal: display.internal, scaleFactor: display.scaleFactor, displayFrequency: display.displayFrequency, bounds: display.bounds },
@@ -184,9 +185,9 @@ async function run() {
   }
 }
 
-async function finishStagingContextControl(window: BrowserWindow, stem: string): Promise<unknown> {
-  const facts: unknown = await window.webContents.executeJavaScript('window.finishCanvasPerformanceStagingContextControl()');
-  await writeFile(path.join(output, `${stem}-context-control.json`), JSON.stringify(facts, null, 2));
+async function finishContextControl(window: BrowserWindow, stem: string): Promise<unknown> {
+  const facts: unknown = await window.webContents.executeJavaScript('window.finishCanvasPerformanceContextControl()');
+  await writeFile(path.join(output, `${stem}-${contextControl?.kind === 'tile' ? 'tile-' : ''}context-control.json`), JSON.stringify(facts, null, 2));
   return facts;
 }
 

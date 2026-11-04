@@ -5,19 +5,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, spawn } from 'node:child_process';
 import { buildProbeRenderer } from './build-probe-renderer.mjs';
+import { readCanvasPerformanceContextControl } from './performanceContextControl.ts';
 
 const probeRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(probeRoot, '../../../../..');
-const stagingContextArm = process.env.CANVAS_PERFORMANCE_STAGING_CONTEXT_CONTROL;
-if (stagingContextArm !== undefined && !['A', 'B'].includes(stagingContextArm)) throw new Error('staging_context_control_arm');
-if (stagingContextArm && process.env.CANVAS_PERFORMANCE_BODY_TRACE !== '1') throw new Error('staging_context_control_requires_body_trace');
-const output = path.join(root, stagingContextArm ? `_dev_data/canvas-body-context-${stagingContextArm}-diagnostic`
+const contextControl = readCanvasPerformanceContextControl({ staging: process.env.CANVAS_PERFORMANCE_STAGING_CONTEXT_CONTROL,
+  tile: process.env.CANVAS_PERFORMANCE_TILE_CONTEXT_CONTROL, bodyTrace: process.env.CANVAS_PERFORMANCE_BODY_TRACE === '1' });
+const output = path.join(root, contextControl ? `_dev_data/canvas-body-${contextControl.kind === 'tile' ? 'tile-' : ''}context-${contextControl.arm}-diagnostic`
   : process.env.CANVAS_PERFORMANCE_BODY_TRACE === '1' ? '_dev_data/canvas-body-task-diagnostic'
   : process.env.CANVAS_PERFORMANCE_INPUT_TRACE === '1' ? '_dev_data/canvas-input-diagnostic'
   : process.env.CANVAS_PERFORMANCE_ZOOM_PAINT_TRACE === '1' ? '_dev_data/canvas-zoom-paint-diagnostic'
   : process.env.CANVAS_PERFORMANCE_PAINT_TRACE === '1' ? '_dev_data/canvas-paint-diagnostic'
   : process.env.CANVAS_PERFORMANCE_SOFTWARE === '1' ? '_dev_data/canvas-software-probe' : process.env.CANVAS_PERFORMANCE_OFFSCREEN === '1' ? '_dev_data/canvas-counts-probe' : '_dev_data/canvas-performance-probe');
-if (stagingContextArm) {
+if (contextControl) {
   // A/B各自只运行一次；已有profile不能静默复用或覆盖首败。
   await mkdir(path.dirname(output), { recursive: true }); await mkdir(output);
 } else await mkdir(output, { recursive: true });

@@ -1,4 +1,4 @@
-export type CanvasStagingContextArm = 'A' | 'B';
+import type { CanvasPerformanceContextArm } from './performanceContextControl';
 
 interface ContextFact {
   readonly atMs: number;
@@ -8,7 +8,7 @@ interface ContextFact {
 }
 
 /** 仅固定夹具自己的staging；实验不能顺带切换Pixi、地图或逐片Offscreen目标。 */
-export function createCanvasStagingContextControl(arm: CanvasStagingContextArm) {
+export function createCanvasStagingContextControl(arm: CanvasPerformanceContextArm) {
   const prototype = HTMLCanvasElement.prototype;
   const descriptor = Object.getOwnPropertyDescriptor(prototype, 'getContext'), original: unknown = descriptor?.value;
   if (!descriptor || typeof original !== 'function') throw new Error('staging_context_native_method_missing');
