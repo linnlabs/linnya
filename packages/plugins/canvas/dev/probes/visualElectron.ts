@@ -1,3 +1,5 @@
+import { SampledVisualSchema, recordCanvasVisualFrame, visualFrameColor } from './visualFrameElectron';
+import { assertSoftwareVisualSampling, visualPixelOffset } from './visualSampling';
 import { verifyCanvasLineVisual } from './verifyCanvasLineVisual';
 import { readCanvasVisualDiagnostic, runCanvasSoftwareLineDiagnostic } from './visualDiagnostic';
 import { verifySceneVisual } from './sceneVisualElectron';
@@ -115,34 +117,37 @@ async function verifyGhostErasure(win: BrowserWindow) {
   return state.ghostErasure !== null && !result.pass && result.sourceInk >= 10;
 }
 
-const fadeState = z.object({ image: z.string(), dpr: z.number(), elapsed: z.number(), oldWidth: z.number(), blueWidth: z.number(), greenWidth: z.number(),
+const fadeState = SampledVisualSchema.extend({ image: z.string(), elapsed: z.number(), oldWidth: z.number(), blueWidth: z.number(), greenWidth: z.number(),
   rendered: z.boolean(), reduced: z.boolean(), stats: z.object({ fadingCards: z.number(), retiringBytes: z.number(), bitmapBytes: z.number(), bitmapBudgetBytes: z.number() }) });
 async function verifyFade(win: BrowserWindow) {
   win.webContents.debugger.attach('1.3');
   try {
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
-    const initial = fadeState.extend({ before: z.string() }).parse(await evaluate(win.webContents, 'window.beginCanvasFadeVisualProbe()'));
-    if (initial.stats.fadingCards !== 1 || initial.rendered || initial.oldWidth !== 50 || initial.stats.bitmapBytes !== 35000) throw new Error('real_texture_fade_did_not_start');
+    const initial = fadeState.extend({ before: z.string(), uploaded: z.object({ firstPresented: z.boolean(), rendered: z.boolean() }) }).parse(await evaluate(win.webContents, softwareProfile ? 'window.beginCanvasFadeVisualProbe(true)' : 'window.beginCanvasFadeVisualProbe()'));
+    if (softwareProfile) {
+      assertSoftwareVisualSampling(initial.sampling);
+      if (initial.reduced || initial.stats.fadingCards || initial.stats.retiringBytes || !initial.rendered || initial.oldWidth || initial.stats.bitmapBytes !== 28000
+        || initial.uploaded.firstPresented || initial.uploaded.rendered) throw new Error('software_texture_replacement_not_immediate_or_draw_not_observed');
+    } else if (initial.stats.fadingCards !== 1 || initial.rendered || initial.oldWidth !== 50 || initial.stats.bitmapBytes !== 35000) throw new Error('real_texture_fade_did_not_start');
+    await recordCanvasVisualFrame({ ...initial, data: initial.image }, output, 'fade-initial', softwareProfile);
     await new Promise(resolve => setTimeout(resolve, 40));
     const middle = fadeState.parse(await evaluate(win.webContents, 'window.readCanvasFadeVisualProbe()'));
-    const pixel = (url: string, dpr: number) => {
-      const image = nativeImage.createFromDataURL(url), bytes = image.toBitmap(), i = (Math.round(80 * dpr) * image.getSize().width + Math.round(100 * dpr)) * 4;
-      return { r: bytes[i + 2], g: bytes[i + 1], b: bytes[i] };
-    };
-    const mixed = pixel(middle.image, middle.dpr), midpointObserved = middle.stats.fadingCards > 0;
+    const middleFrame = await recordCanvasVisualFrame({ ...middle, data: middle.image }, output, 'fade-midpoint', softwareProfile);
+    const mixed = visualFrameColor(middleFrame, { x: 100, y: 80 }), midpointObserved = middle.stats.fadingCards > 0;
+    if (softwareProfile && (middle.stats.fadingCards || middle.stats.retiringBytes || !middle.rendered
+      || mixed.r !== 32 || mixed.g !== 48 || mixed.b !== 224)) throw new Error('software_texture_final_blue_pixels_missing');
     if (midpointObserved && (mixed.r < 50 || mixed.b < 60)) throw new Error(`fade_midpoint_pixels_missing:${JSON.stringify(mixed)}`);
-    await evaluate(win.webContents, 'window.replaceCanvasFadeVisualProbe()');
+    await evaluate(win.webContents, softwareProfile ? 'window.replaceCanvasFadeVisualProbe(true)' : 'window.replaceCanvasFadeVisualProbe()');
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     const reduced = fadeState.parse(await evaluate(win.webContents, 'window.finishCanvasFadePreferenceVisualProbe()'));
-    const green = pixel(reduced.image, reduced.dpr);
+    const reducedFrame = await recordCanvasVisualFrame({ ...reduced, data: reduced.image }, output, 'fade-reduced', softwareProfile);
+    const green = visualFrameColor(reducedFrame, { x: 100, y: 80 });
     if (!reduced.reduced || reduced.stats.fadingCards || reduced.stats.retiringBytes || !reduced.rendered || reduced.oldWidth || reduced.blueWidth
       || reduced.greenWidth !== 150 || reduced.stats.bitmapBytes !== 63000 || green.g < 190 || green.r > 45) throw new Error('reduced_motion_did_not_finish_actual_texture_fade');
     if (Math.max(initial.stats.bitmapBytes, middle.stats.bitmapBytes, reduced.stats.bitmapBytes) > initial.stats.bitmapBudgetBytes) throw new Error('fade_exceeded_bitmap_budget');
-    await writeFile(path.join(output, 'fade-midpoint.png'), nativeImage.createFromDataURL(middle.image).toPNG());
-    await writeFile(path.join(output, 'fade-reduced.png'), nativeImage.createFromDataURL(reduced.image).toPNG());
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
     const budget: unknown = await evaluate(win.webContents, 'window.prepareCanvasFadeBudgetVisualProbe()');
-    return { midpointObserved, mixed, green, oldAndNewBytes: initial.stats.bitmapBytes, reducedBytes: reduced.stats.bitmapBytes, reducedRendered: reduced.rendered, budget };
+    return { profile: softwareProfile ? 'software-immediate' : 'hardware-fade', sampling: initial.sampling, uploaded: initial.uploaded, midpointObserved, mixed, green, initialBytes: initial.stats.bitmapBytes, oldAndNewBytes: softwareProfile ? null : initial.stats.bitmapBytes, reducedBytes: reduced.stats.bitmapBytes, reducedRendered: reduced.rendered, budget };
   } finally { await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [] }); win.webContents.debugger.detach(); }
 }
 
@@ -157,7 +162,7 @@ async function run() {
     await win.loadFile(path.join(output, 'index.html'));
     win.webContents.setZoomFactor(2);
     if (diagnostic) {
-      await runCanvasSoftwareLineDiagnostic({ runLine: () => verifyCanvasLineVisual(win, output, evaluate),
+      await runCanvasSoftwareLineDiagnostic({ runLine: () => verifyCanvasLineVisual(win, output, evaluate, softwareProfile),
         writeEvidence: (name, facts) => writeFile(path.join(output, name), JSON.stringify(facts, null, 2)) });
       return;
     }
@@ -236,17 +241,18 @@ async function run() {
     }
     await writeFile(path.join(output, 'text-comparison-results.json'), JSON.stringify({ reports, failedCases, negatives: negativeQualification.pass }, null, 2));
     if (failedCases.length) throw new Error(`visual_content_mismatch:${JSON.stringify(failedCases)}`);
-    const { dashInk, dashGap, dashPeriodRatio, looseEndpoints } = await verifyCanvasLineVisual(win, output, evaluate);
-    const coloredLines = z.object({ light: z.string(), dark: z.string(), dpr: z.number(), colors: z.array(z.enum(['red', 'orange', 'yellow', 'green', 'cyan', 'purple'])) })
+    const { dashInk, dashGap, dashPeriodRatio, looseEndpoints } = await verifyCanvasLineVisual(win, output, evaluate, softwareProfile);
+    const coloredLines = SampledVisualSchema.extend({ light: z.string(), dark: z.string(), colors: z.array(z.enum(['red', 'orange', 'yellow', 'green', 'cyan', 'purple'])) })
       .parse(await evaluate(win.webContents, 'window.prepareCanvasLineColorsVisualProbe()'));
     const colorReports = [];
     for (const theme of ['light', 'dark'] as const) {
-      const image = nativeImage.createFromDataURL(coloredLines[theme]), pixels = image.toBitmap(), width = image.getSize().width, palette = readCanvasLinePalette(theme === 'dark');
+      const frame = await recordCanvasVisualFrame({ ...coloredLines, data: coloredLines[theme] }, output, `lines-colors-${theme}`, softwareProfile);
+      const image = frame.image, pixels = frame.pixels, palette = readCanvasLinePalette(theme === 'dark');
       for (const [index, color] of coloredLines.colors.entries()) {
         const expected = palette[color], r = expected >> 16 & 255, g = expected >> 8 & 255, b = expected & 255;
         let matching = 0;
         for (let x = 80 * coloredLines.dpr; x < 800 * coloredLines.dpr; x++) for (let y = (59 + index * 70) * coloredLines.dpr; y <= (61 + index * 70) * coloredLines.dpr; y++) {
-          const offset = (y * width + x) * 4;
+          const offset = visualPixelOffset(frame, { x, y });
           if (Math.abs(pixels[offset] - b) <= 4 && Math.abs(pixels[offset + 1] - g) <= 4 && Math.abs(pixels[offset + 2] - r) <= 4) matching++;
         }
         if (matching < 500) throw new Error(`edge_color_missing:${theme}:${color}:${matching}`);
@@ -254,42 +260,44 @@ async function run() {
       }
       await writeFile(path.join(output, `lines-colors-${theme}.png`), image.toPNG());
     }
-    const occlusion = z.object({ before: z.string(), during: z.string(), after: z.string(), dpr: z.number() })
+    const occlusion = SampledVisualSchema.extend({ before: z.string(), during: z.string(), after: z.string() })
       .parse(await evaluate(win.webContents, 'window.prepareCanvasDragOcclusionVisualProbe()'));
-    const magenta = (data: string) => {
-      const image = nativeImage.createFromDataURL(data), pixels = image.toBitmap(), width = image.getSize().width; let count = 0;
+    const magenta = async (data: string, name: string) => {
+      const frame = await recordCanvasVisualFrame({ ...occlusion, data }, output, `drag-${name}`, softwareProfile), pixels = frame.pixels; let count = 0;
       for (let y = 80 * occlusion.dpr; y < 200 * occlusion.dpr; y++) for (let x = 70 * occlusion.dpr; x < 300 * occlusion.dpr; x++) {
-        const offset = (y * width + x) * 4; if (pixels[offset + 2] > 170 && pixels[offset + 1] < 40 && pixels[offset] > 150) count++;
+        const offset = visualPixelOffset(frame, { x, y }); if (pixels[offset + 2] > 170 && pixels[offset + 1] < 40 && pixels[offset] > 150) count++;
       }
       return count;
     };
-    const dragOcclusion = { before: magenta(occlusion.before), during: magenta(occlusion.during), after: magenta(occlusion.after) };
+    const dragOcclusion = { before: await magenta(occlusion.before, 'before'), during: await magenta(occlusion.during, 'during'), after: await magenta(occlusion.after, 'after') };
     if (dragOcclusion.before || dragOcclusion.after || dragOcclusion.during < 1000) throw new Error(`drag_occlusion_stale:${JSON.stringify(dragOcclusion)}`);
     await writeFile(path.join(output, 'drag-revealed-body.png'), nativeImage.createFromDataURL(occlusion.during).toPNG());
-    const guides = z.object({ shown: z.string(), hidden: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasGuidesVisualProbe()'));
-    const greenPixels = (url: string) => {
-      const pixels = nativeImage.createFromDataURL(url).toBitmap(); let count = 0;
+    const guides = SampledVisualSchema.extend({ shown: z.string(), hidden: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasGuidesVisualProbe()'));
+    const greenPixels = async (data: string, name: string) => {
+      const { pixels } = await recordCanvasVisualFrame({ ...guides, data }, output, `guides-${name}`, softwareProfile); let count = 0;
       for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 1] > pixels[i + 2] + 20 && pixels[i + 1] > pixels[i] + 20) count++;
       return count;
     };
-    const snapGuides = { shown: greenPixels(guides.shown), hidden: greenPixels(guides.hidden) };
+    const snapGuides = { shown: await greenPixels(guides.shown, 'shown'), hidden: await greenPixels(guides.hidden, 'hidden') };
     if (snapGuides.shown < 1000 || snapGuides.hidden !== 0) throw new Error(`snap_guides_not_projected_or_cleared:${JSON.stringify(snapGuides)}`);
-    const map = z.object({ before: z.string(), after: z.string(), dpr: z.number(), dx: z.number(), dy: z.number() }).parse(await evaluate(win.webContents, 'window.prepareCanvasMapPanVisualProbe()'));
-    const mapBefore = nativeImage.createFromDataURL(map.before), mapAfter = nativeImage.createFromDataURL(map.after);
-    const beforePixels = mapBefore.toBitmap(), afterPixels = mapAfter.toBitmap(), mapSize = mapBefore.getSize();
+    const map = SampledVisualSchema.extend({ before: z.string(), after: z.string(), dx: z.number(), dy: z.number() }).parse(await evaluate(win.webContents, 'window.prepareCanvasMapPanVisualProbe()'));
+    const beforeFrame = await recordCanvasVisualFrame({ ...map, data: map.before }, output, 'map-before', softwareProfile);
+    const afterFrame = await recordCanvasVisualFrame({ ...map, data: map.after }, output, 'map-after', softwareProfile);
+    const mapBefore = beforeFrame.image, mapAfter = afterFrame.image, beforePixels = beforeFrame.pixels, afterPixels = afterFrame.pixels, mapSize = mapBefore.getSize();
     let mapInk = 0, mapPreserved = 0;
     for (let y = 0; y < mapSize.height - map.dy * map.dpr; y++) for (let x = 0; x < mapSize.width - map.dx * map.dpr; x++) {
-      const a = (y * mapSize.width + x) * 4, b = ((y + map.dy * map.dpr) * mapSize.width + x + map.dx * map.dpr) * 4;
+      const a = visualPixelOffset(beforeFrame, { x, y }), b = visualPixelOffset(afterFrame, { x: x + map.dx * map.dpr, y: y + map.dy * map.dpr });
       if (beforePixels[a] < 150 && beforePixels[a + 1] < 150 && beforePixels[a + 2] < 150) {
         mapInk++; if (afterPixels[b] < 150 && afterPixels[b + 1] < 150 && afterPixels[b + 2] < 150) mapPreserved++;
       }
     }
     if (mapInk < 100 || mapPreserved / mapInk < 0.95) throw new Error(`map_pan_labels_mismatch:${mapInk}:${mapPreserved}`);
     await writeFile(path.join(output, 'map-before.png'), mapBefore.toPNG()); await writeFile(path.join(output, 'map-after.png'), mapAfter.toPNG());
-    const selectedMap = z.object({ before: z.string(), selected: z.string(), reference: z.string() })
+    const selectedMap = SampledVisualSchema.extend({ before: z.string(), selected: z.string(), reference: z.string() })
       .parse(await evaluate(win.webContents, 'window.prepareCanvasSelectedMapVisualProbe()'));
-    const beforeMap = nativeImage.createFromDataURL(selectedMap.before).toBitmap(), chosenMap = nativeImage.createFromDataURL(selectedMap.selected).toBitmap();
-    const expectedMap = nativeImage.createFromDataURL(selectedMap.reference).toBitmap(); let selectedInk = 0, selectedIntersection = 0, selectedUnion = 0, selectionChanges = 0;
+    const beforeMap = (await recordCanvasVisualFrame({ ...selectedMap, data: selectedMap.before }, output, 'selected-map-before', softwareProfile)).pixels;
+    const chosenMap = (await recordCanvasVisualFrame({ ...selectedMap, data: selectedMap.selected }, output, 'selected-map-chosen', softwareProfile)).pixels;
+    const expectedMap = (await recordCanvasVisualFrame({ ...selectedMap, data: selectedMap.reference }, output, 'selected-map-reference', softwareProfile)).pixels; let selectedInk = 0, selectedIntersection = 0, selectedUnion = 0, selectionChanges = 0;
     for (let i = 0; i < expectedMap.length; i += 4) {
       const ink = (pixels: Uint8Array) => pixels[i] < 150 && pixels[i + 1] < 150 && pixels[i + 2] < 150;
       const expected = ink(expectedMap), actual = ink(chosenMap);
@@ -298,14 +306,15 @@ async function run() {
     }
     const selectedLabels = { selectedInk, selectionChanges, ratio: selectedIntersection / selectedUnion };
     if (selectedInk < 100 || selectionChanges < 100 || selectedLabels.ratio < 0.99) throw new Error(`selected_map_priority_missing:${JSON.stringify(selectedLabels)}`);
-    const thumbnails = z.object({ titles: z.string(), thumbnails: z.string(), dpr: z.number() }).parse(await evaluate(win.webContents, 'window.prepareCanvasThumbnailVisualProbe()'));
+    const thumbnails = SampledVisualSchema.extend({ titles: z.string(), thumbnails: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasThumbnailVisualProbe()'));
     const thumbReports = [];
     for (const mode of ['titles', 'thumbnails'] as const) {
-      const image = nativeImage.createFromDataURL(thumbnails[mode]), pixels = image.toBitmap(), size = image.getSize();
+      const frame = await recordCanvasVisualFrame({ ...thumbnails, data: thumbnails[mode] }, output, `thumbnail-${mode}`, softwareProfile);
+      const image = frame.image, pixels = frame.pixels;
       const counts = [100, 250, 400].map(left => {
         let count = 0;
         for (let y = 100 * thumbnails.dpr; y < 160 * thumbnails.dpr; y++) for (let x = left * thumbnails.dpr; x < (left + 100) * thumbnails.dpr; x++) {
-          const index = (y * size.width + x) * 4;
+          const index = visualPixelOffset(frame, { x, y });
           if (pixels[index + 2] > 170 && pixels[index + 1] < 160 && pixels[index] > 160) count++;
         }
         return count;
@@ -315,8 +324,10 @@ async function run() {
     }
     const lodReports = [];
     for (const theme of ['light', 'dark']) {
-      const lod = z.object({ expected: z.string(), actual: z.string() }).parse(await evaluate(win.webContents, `window.prepareCanvasMixedLodVisualProbe(${JSON.stringify(theme)})`));
-      const expected = nativeImage.createFromDataURL(lod.expected), actual = nativeImage.createFromDataURL(lod.actual), a = expected.toBitmap(), b = actual.toBitmap();
+      const lod = SampledVisualSchema.extend({ expected: z.string(), actual: z.string() }).parse(await evaluate(win.webContents, `window.prepareCanvasMixedLodVisualProbe(${JSON.stringify(theme)})`));
+      const reference = await recordCanvasVisualFrame({ ...lod, data: lod.expected }, output, `mixed-lod-${theme}-expected`, softwareProfile);
+      const target = await recordCanvasVisualFrame({ ...lod, data: lod.actual }, output, `mixed-lod-${theme}`, softwareProfile);
+      const actual = target.image, a = reference.pixels, b = target.pixels;
       let union = 0, intersection = 0;
       const ink = (pixels: Uint8Array, index: number) => theme === 'light' ? pixels[index] < 180 && pixels[index + 1] < 180 && pixels[index + 2] < 180 : pixels[index] > 150 && pixels[index + 1] > 150 && pixels[index + 2] > 150;
       for (let index = 0; index < a.length; index += 4) { const aa = ink(a, index), bb = ink(b, index); if (aa || bb) union++; if (aa && bb) intersection++; }
@@ -324,23 +335,28 @@ async function run() {
       lodReports.push({ theme, union, intersection, ratio: intersection / union }); await writeFile(path.join(output, `mixed-lod-${theme}.png`), actual.toPNG());
     }
     const fade = await verifyFade(win);
-    const scene = await verifySceneVisual(win, output, evaluate);
-    const context = z.object({ before: z.string(), after: z.string(), rejected: z.boolean(), beforeStats: z.object({ cards: z.number(), bitmaps: z.number() }), afterStats: z.object({ cards: z.number(), bitmaps: z.number() }) })
+    const scene = await verifySceneVisual(win, output, evaluate, softwareProfile);
+    const context = SampledVisualSchema.extend({ before: z.string(), after: z.string(), rejected: z.boolean(), beforeStats: z.object({ cards: z.number(), bitmaps: z.number() }), afterStats: z.object({ cards: z.number(), bitmaps: z.number() }) })
       .parse(await evaluate(win.webContents, 'window.prepareCanvasContextLossVisualProbe()'));
-    const contextBefore = nativeImage.createFromDataURL(context.before).toBitmap(), contextAfterImage = nativeImage.createFromDataURL(context.after), contextAfter = contextAfterImage.toBitmap();
+    const contextSource = await recordCanvasVisualFrame({ ...context, data: context.before }, output, 'context-before', softwareProfile);
+    const contextTarget = await recordCanvasVisualFrame({ ...context, data: context.after }, output, 'context-restored', softwareProfile);
+    const contextBefore = contextSource.pixels, contextAfterImage = contextTarget.image, contextAfter = contextTarget.pixels;
     let contextInk = 0, contextPreserved = 0;
     for (let index = 0; index < contextBefore.length; index += 4) if (contextBefore[index] < 180 && contextBefore[index + 1] < 180 && contextBefore[index + 2] < 180) {
       contextInk++; if (contextAfter[index] < 180 && contextAfter[index + 1] < 180 && contextAfter[index + 2] < 180) contextPreserved++;
     }
     if (contextInk < 100 || contextPreserved / contextInk < 0.95 || context.afterStats.cards !== context.beforeStats.cards || context.afterStats.bitmaps !== context.beforeStats.bitmaps) throw new Error('context_restore_content_missing');
     await writeFile(path.join(output, 'context-restored.png'), contextAfterImage.toPNG());
-    const editing = z.object({ expected: z.string(), actual: z.string(), dpr: z.number(), visible: z.number(), status: z.string(), again: z.string(), smoothing: z.string() })
+    const editing = SampledVisualSchema.extend({ expected: z.string(), actual: z.string(), visible: z.number(), status: z.string(), again: z.string(), smoothing: z.string() })
       .parse(await evaluate(win.webContents, 'window.prepareCanvasEditingVisualProbe()'));
     const editingExpected = nativeImage.createFromDataURL(editing.expected), expectedPixels = editingExpected.toBitmap();
-    const editingActual = nativeImage.createFromDataURL(editing.actual), actualPixels = editingActual.toBitmap(), editingWidth = editingExpected.getSize().width, actualWidth = editingActual.getSize().width;
+    const editingFrame = await recordCanvasVisualFrame({ ...editing, data: editing.actual }, output, 'editing-exact-actual', softwareProfile);
+    const editingActual = editingFrame.image, actualPixels = editingFrame.pixels, editingWidth = editingExpected.getSize().width;
+    if (editingWidth !== Math.round(80 * editing.dpr) || editingExpected.getSize().height !== Math.round(80 * editing.dpr)) throw new Error('editing_reference_sampling_mismatch');
+    const expectedFrame = { pixels: expectedPixels, width: editingWidth, height: editingExpected.getSize().height };
     let editingInk = 0, editingIntersection = 0, editingUnion = 0;
     for (let y = 8 * editing.dpr; y < editingWidth - 8 * editing.dpr; y++) for (let x = 8 * editing.dpr; x < editingWidth - 8 * editing.dpr; x++) {
-      const a = (y * editingWidth + x) * 4, b = (y * actualWidth + x) * 4;
+      const a = visualPixelOffset(expectedFrame, { x, y }), b = visualPixelOffset(editingFrame, { x, y });
       const expected = expectedPixels[a] < 180 && expectedPixels[a + 1] < 180 && expectedPixels[a + 2] < 180;
       const actual = actualPixels[b] < 180 && actualPixels[b + 1] < 180 && actualPixels[b + 2] < 180;
       if (expected) editingInk++; if (expected && actual) editingIntersection++; if (expected || actual) editingUnion++;
@@ -352,8 +368,9 @@ async function run() {
     let fallbackInk = 0;
     try {
       await unsupported.loadFile(path.join(output, 'index.html'));
-      const fallback = z.object({ image: z.string(), errors: z.array(z.string()) }).parse(await evaluate(unsupported.webContents, 'window.prepareCanvasUnsupportedApiVisualProbe()'));
-      const fallbackImage = nativeImage.createFromDataURL(fallback.image), pixels = fallbackImage.toBitmap();
+      const fallback = SampledVisualSchema.extend({ image: z.string(), errors: z.array(z.string()) }).parse(await evaluate(unsupported.webContents, 'window.prepareCanvasUnsupportedApiVisualProbe()'));
+      const fallbackFrame = await recordCanvasVisualFrame({ ...fallback, data: fallback.image }, output, 'api-unavailable-identity', softwareProfile);
+      const fallbackImage = fallbackFrame.image, pixels = fallbackFrame.pixels;
       for (let index = 0; index < pixels.length; index += 4) if (pixels[index] < 150 && pixels[index + 1] < 150 && pixels[index + 2] < 150) fallbackInk++;
       if (fallbackInk < 100) throw new Error('unsupported_api_identity_is_empty');
       await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());

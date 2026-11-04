@@ -1,3 +1,4 @@
+import { readCanvasVisualSampling, assertSoftwareVisualSampling } from './visualSampling';
 import { CanvasCardSchema, readCanvasCardPalette, type CanvasCard } from '../../src/shared';
 import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/kernel';
 import { createSceneVisualClock, type SceneVisualClock } from './sceneVisualClock';
@@ -61,7 +62,7 @@ async function sceneVisual(clock: SceneVisualClock) {
   if (kernel.readCamera().x || kernel.readCamera().y || kernel.readCamera().zoom !== 1 || kernel.readStats().cameraTransition) throw new Error('scene_finish_camera_not_synchronous');
   kernel.setElements([{ ...initial, revision: 5, x: 330 }], { animateIds: [initial.id] }); kernel.finishTransitions([initial.id]); await drawn();
   if (!kernel.readRasterReceipt(initial.id, 'red')?.rendered) throw new Error('scene_final_actual_draw_receipt_missing');
-  return { before, middle, after: await kernel.captureImage('png'), start, middlePosition, frozen, camera, dpr: devicePixelRatio, stats: kernel.readStats() };
+  return { before, middle, after: await kernel.captureImage('png'), start, middlePosition, frozen, camera, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive'), stats: kernel.readStats() };
 }
 async function sceneOpacityVisual(clock: SceneVisualClock) {
   const kernel = await setup(), bottom = card('c1', 20), top = { ...card('c2', 10, 20), width: 230, height: 170 };
@@ -84,7 +85,7 @@ async function sceneOpacityVisual(clock: SceneVisualClock) {
   await clock.until(() => !kernel.readStats().sceneTransitions && kernel.readStats().renders > removeDraw, 'scene_remove_completion_draw_missing');
   const revealed = await kernel.captureImage('png');
   if (old.width || kernel.readStats().sceneTransitions || kernel.readStats().bitmaps !== 1) throw new Error('scene_retired_bitmap_not_released');
-  return { initial, middle, opaque, removed, revealed, dpr: devicePixelRatio, stats: kernel.readStats(),
+  return { initial, middle, opaque, removed, revealed, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive'), stats: kernel.readStats(),
     logicalTimes: { initial: 0, middle: 64, opaque: 160, removed: 160, revealed: 280 } };
 }
 async function sceneMapVisual(clock: SceneVisualClock) {
@@ -98,7 +99,7 @@ async function sceneMapVisual(clock: SceneVisualClock) {
   await clock.until(() => !kernel.readStats().sceneTransitions && kernel.readStats().renders > retiringDraw + 2, 'scene_map_completion_draw_missing');
   const after = await kernel.captureImage('png');
   if (kernel.readStats().sceneTransitions || kernel.readStats().cards) throw new Error('scene_map_retirement_not_finished');
-  return { before, middle, after };
+  return { before, middle, after, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
 }
 async function identityInkVisual() {
   const kernel = await setup(), initial = CanvasCardSchema.parse({ ...card('c1', 20), width: 500,
@@ -106,14 +107,14 @@ async function identityInkVisual() {
   const samples = [];
   for (const dark of [false, true]) for (const color of ['white', 'green', 'purple'] as const) {
     kernel.setElements([{ ...initial, color }]); kernel.setAppearance({ dark, material: 'paper', overview: 'titles' });
-    samples.push({ dark, color, title: readCanvasCardPalette(color, dark).title, image: await kernel.captureImage('png') });
+    samples.push({ dark, color, title: readCanvasCardPalette(color, dark).title, image: await kernel.captureImage('png'), dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') });
   }
   return samples;
 }
 async function identityBoundsVisual() {
   const kernel = await setup(), initial = CanvasCardSchema.parse({ ...card('c1', 20), width: 80, height: 32,
     data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '😀中文'.repeat(1000) }] }] } } });
-  kernel.setElements([initial]); return { image: await kernel.captureImage('png'), dpr: devicePixelRatio };
+  kernel.setElements([initial]); return { image: await kernel.captureImage('png'), dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
 }
 async function bitmapAppendVisual() {
   const kernel = await setup(), initial = card('c1', 20); kernel.setElements([initial]);
@@ -126,13 +127,13 @@ async function bitmapAppendVisual() {
   const appended = kernel.readStats(); if (appended.fadingCards || appended.rasterTiles !== 2 || leftClosed || rightClosed) throw new Error('same_content_append_rebuilt_or_faded_existing_regions');
   await sleep(48); const after = await kernel.captureImage('png'); kernel.invalidateBitmaps();
   if (leftClosed !== 1 || rightClosed !== 1 || kernel.readStats().bitmapBytes || kernel.readStats().fadingCards) throw new Error('append_bitmap_ownership_not_closed_once');
-  return { before, after, appended, leftClosed, rightClosed };
+  return { before, after, appended, leftClosed, rightClosed, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
 }
 async function beginReducedScene() {
   disposeScene(); reducedClock = createSceneVisualClock();
   const kernel = await setup(), initial = card('c1', 20); kernel.setElements([initial]); await drawn();
   kernel.setElements([{ ...initial, revision: 2, x: 330 }], { animateIds: [initial.id] }); kernel.animateCamera({ x: 100, y: 60, zoom: 1.2 }, 320);
-  return { started: kernel.readStats().sceneTransitions, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+  return { started: kernel.readStats().sceneTransitions, cameraTransition: kernel.readStats().cameraTransition, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, sampling: readCanvasVisualSampling(kernel, 'interactive') };
 }
 async function firstBodyVisual(clock: SceneVisualClock) {
   const kernel = await setup(), initial = card('c1', 20); kernel.setElements([initial]);
@@ -148,7 +149,7 @@ async function firstBodyVisual(clock: SceneVisualClock) {
   const observedAt = performance.now(), first = kernel.readRasterReceipt(initial.id, 'current'), firstStats = kernel.readStats();
   const fadeImage = await kernel.captureImage('png');
   if (waitFailure || !first?.firstPresented || first.rendered || firstStats.fadingCards !== 1) return {
-    failure: 'new_visible_bitmap_draw_missing_first_receipt', fadeImage, dpr: devicePixelRatio,
+    failure: 'new_visible_bitmap_draw_missing_first_receipt', fadeImage, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive'),
     facts: { requestedAt, observedAt, elapsedMs: observedAt - requestedAt, waitFailure, uploaded, first, firstStats,
       afterCaptureAt: performance.now(), afterCaptureReceipt: kernel.readRasterReceipt(initial.id, 'current'), afterCaptureStats: kernel.readStats() },
   };
@@ -166,7 +167,7 @@ async function firstBodyVisual(clock: SceneVisualClock) {
   if (!sceneFirst?.firstPresented || sceneFirst.rendered || kernel.readStats().sceneTransitions !== 1) throw new Error('visible_scene_midpoint_receipt_mismatch');
   const sceneImage = await kernel.captureImage('png'), sceneDraw = kernel.readStats().renders; clock.advance(136);
   await clock.until(() => kernel.readStats().renders > sceneDraw && kernel.readRasterReceipt(initial.id, 'current')?.rendered === true, 'scene_settled_bitmap_draw_missing_receipt');
-  return { uploaded, first, complete, sceneStart, sceneFirst, sceneComplete: kernel.readRasterReceipt(initial.id, 'current'), fadeImage, sceneImage, dpr: devicePixelRatio,
+  return { uploaded, first, complete, sceneStart, sceneFirst, sceneComplete: kernel.readRasterReceipt(initial.id, 'current'), fadeImage, sceneImage, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive'),
     logicalTimes: { fadeFirst: 64, fadeComplete: 120, sceneFirst: 64, sceneComplete: 200 } };
 }
 async function documentMetadataVisual() {
@@ -181,7 +182,7 @@ async function documentMetadataVisual() {
   kernel.setThumbnailCards(new Set([documentCard.id])); await drawn(); const thumbnail = await kernel.captureImage('png');
   kernel.setThumbnailCards(new Set()); await drawn(); const identity = await kernel.captureImage('png');
   if (kernel.readStats().spatialCellBuilds !== cells) throw new Error('preview_preference_rebuilt_unchanged_geometry');
-  return { before, renamed, thumbnail, identity, dpr: devicePixelRatio };
+  return { before, renamed, thumbnail, identity, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
 }
 async function coldProjectionVisual() {
   const kernel = await setup(), first = card('c1', 250), second = card('c2', 480);
@@ -192,7 +193,67 @@ async function coldProjectionVisual() {
   const moved = { ...first, revision: 2, x: 40 }; kernel.setElements([moved, second]); await drawn();
   const after = kernel.captureImage('png'), current = kernel.readStats();
   if (current.renderableCards !== 2 || current.rasterCards !== 2 || kernel.readDisplayPosition(first.id)?.x !== 40) throw new Error('direct_move_culled_against_previous_display_position');
-  return { before, after: await after, initial, current, dpr: devicePixelRatio };
+  return { before, after: await after, initial, current, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
+}
+/** 软件交互的合同是即时终态；真实draw和资源归属仍须成立，不能把禁动画当跳过动画门。 */
+async function softwareSceneVisual(clock: SceneVisualClock) {
+  const kernel = await setup(), sampling = readCanvasVisualSampling(kernel, 'interactive');
+  assertSoftwareVisualSampling(sampling);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) throw new Error('software_scene_fixture_requires_no_preference');
+  const initial = card('c1', 20), red = bitmap('#e02020'), green = bitmap('#20c060'), cover = bitmap('#2030e0');
+  const ownerCloses = [red, green, cover].map(image => {
+    const close = image.close.bind(image); let count = 0;
+    image.close = () => { count++; close(); }; return () => count;
+  });
+  kernel.setElements([initial]); kernel.setBitmap(initial.id, 1, 'old', red);
+  await clock.until(() => kernel.readRasterReceipt(initial.id, 'old')?.rendered === true, 'software_old_body_actual_draw_missing');
+  const before = await kernel.captureImage('png'), beforeDraw = kernel.readStats().renders;
+  kernel.setBitmap(initial.id, 1, 'current', green);
+  const uploaded = kernel.readRasterReceipt(initial.id, 'current');
+  if (!uploaded || uploaded.firstPresented || uploaded.rendered || red.width || kernel.readStats().fadingCards || kernel.readStats().retiringBytes)
+    throw new Error('software_new_bitmap_not_immediate_or_upload_claimed_draw');
+  await clock.until(() => kernel.readStats().renders > beforeDraw && kernel.readRasterReceipt(initial.id, 'current')?.rendered === true,
+    'software_new_body_actual_draw_missing');
+  const first = kernel.readRasterReceipt(initial.id, 'current'), firstImage = await kernel.captureImage('png');
+  if (!first?.firstPresented || !first.rendered) throw new Error('software_actual_draw_did_not_finish_both_receipts');
+  const target = { ...initial, revision: 2, x: 330 }, moveDraw = kernel.readStats().renders;
+  kernel.setElements([target], { animateIds: [initial.id], batch: true });
+  if (kernel.readDisplayPosition(initial.id)?.x !== 330 || kernel.readStats().sceneTransitions) throw new Error('software_move_not_immediate');
+  await clock.until(() => kernel.readStats().renders > moveDraw, 'software_move_actual_draw_missing');
+  const moved = await kernel.captureImage('png');
+  kernel.setSelection([initial.id]); kernel.setDragPreview([initial.id], 15, 0); kernel.setElements([target, card('c2', 600)]);
+  const dragTarget = kernel.readDisplayPosition(initial.id)?.x;
+  if (dragTarget !== 345 || kernel.hitTest({ x: 360, y: 80 })?.id !== initial.id) throw new Error('software_drag_or_hit_test_failed');
+  kernel.clearDragPreview();
+  const finalTarget = kernel.readDisplayPosition(initial.id)?.x;
+  if (finalTarget !== 330) throw new Error('software_drag_cancel_ignored_current_target');
+  kernel.animateCamera({ x: 100, y: 60, zoom: 1.2 }, 320);
+  if (kernel.readCamera().x !== 100 || kernel.readStats().cameraTransition) throw new Error('software_camera_not_immediate');
+  kernel.setCamera({ x: 0, y: 0, zoom: 1 }); kernel.setSelection([]);
+  const top = { ...card('c3', 320, 20), order: 'c0', width: 230, height: 170 }, addDraw = kernel.readStats().renders;
+  kernel.setElements([target, top], { animateIds: [top.id] });
+  if (kernel.readStats().sceneTransitions || kernel.readVisibleCardRegions(initial.id).length || kernel.hitTest({ x: 360, y: 80 })?.id !== top.id)
+    throw new Error('software_added_card_not_immediately_opaque');
+  await clock.until(() => kernel.readStats().renders > addDraw, 'software_added_card_actual_draw_missing');
+  const opaque = await kernel.captureImage('png'); kernel.setBitmap(top.id, top.revision, 'cover', cover);
+  await clock.until(() => kernel.readRasterReceipt(top.id, 'cover')?.rendered === true, 'software_cover_actual_draw_missing');
+  const covered = await kernel.captureImage('png'), removeDraw = kernel.readStats().renders;
+  kernel.setElements([target], { animateIds: [top.id] });
+  if (kernel.readCard(top.id) || cover.width || kernel.readStats().sceneTransitions || kernel.readStats().bitmaps !== 1
+    || !kernel.readVisibleCardRegions(initial.id).length || kernel.hitTest({ x: 360, y: 80 })?.id !== initial.id) throw new Error('software_delete_retained_visual_or_owner');
+  await clock.until(() => kernel.readStats().renders > removeDraw, 'software_deleted_card_actual_draw_missing');
+  const revealed = await kernel.captureImage('png');
+  const map = CanvasCardSchema.parse({ ...initial, x: 0, width: 1000, height: 300,
+    data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'RetiringMapTitle' }] }] } } });
+  kernel.setElements([map]); kernel.setCamera({ x: 100, y: 100, zoom: 0.1 }); await drawn();
+  const mapBefore = await kernel.captureImage('png'), mapDraw = kernel.readStats().renders;
+  kernel.setElements([], { animateIds: [map.id] });
+  if (kernel.readStats().sceneTransitions || kernel.readStats().cards || kernel.readStats().bitmaps) throw new Error('software_map_retirement_not_immediate');
+  await clock.until(() => kernel.readStats().renders > mapDraw, 'software_map_removal_actual_draw_missing');
+  const mapAfter = await kernel.captureImage('png');
+  if ([red, green, cover].some(image => image.width) || ownerCloses.some(readCount => readCount() !== 1)) throw new Error('software_body_owners_not_closed_exactly_once');
+  return { sampling, dpr: sampling.resolution, before, firstImage, moved, opaque, covered, revealed, mapBefore, mapAfter, uploaded, first,
+    ownerCloses: ownerCloses.map(readCount => readCount()), stats: kernel.readStats(), dragTarget, finalTarget };
 }
 async function finishReducedScene() {
   const kernel = current, clock = reducedClock; if (!kernel || !clock) throw new Error('scene_fixture_missing');
@@ -201,7 +262,8 @@ async function finishReducedScene() {
     || kernel.readDisplayPosition(card('c1', 20).id)?.x !== 330 || kernel.readCamera().x !== 100) throw new Error('scene_reduced_motion_did_not_finish_actual_animation');
   const next = { ...card('c1', 20), x: 500, revision: 3 }; kernel.setElements([next], { animateIds: [next.id] });
   if (kernel.readDisplayPosition(next.id)?.x !== 500 || kernel.readStats().sceneTransitions) throw new Error('scene_reduced_motion_next_update_not_immediate');
-  const stats = kernel.readStats(); disposeScene(); return stats;
+  const stats = { ...kernel.readStats(), sampling: readCanvasVisualSampling(kernel, 'interactive') }; disposeScene(); return stats;
 }
 Object.defineProperties(window, { prepareCanvasSceneVisualProbe: { value: () => atSceneTime(sceneVisual) }, prepareCanvasSceneOpacityVisualProbe: { value: () => atSceneTime(sceneOpacityVisual) }, prepareCanvasSceneMapVisualProbe: { value: () => atSceneTime(sceneMapVisual) },
+  prepareCanvasSoftwareSceneProbe: { value: () => atSceneTime(softwareSceneVisual) },
   prepareCanvasIdentityInkProbe: { value: identityInkVisual }, prepareCanvasIdentityBoundsProbe: { value: identityBoundsVisual }, prepareCanvasBitmapAppendProbe: { value: bitmapAppendVisual }, prepareCanvasFirstBodyProbe: { value: () => atSceneTime(firstBodyVisual) }, prepareCanvasDocumentMetadataProbe: { value: documentMetadataVisual }, prepareCanvasColdProjectionProbe: { value: coldProjectionVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene }, disposeCanvasSceneProbe: { value: disposeScene } });

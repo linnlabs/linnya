@@ -1,3 +1,5 @@
+import { readCanvasVisualSampling, assertSoftwareVisualSampling } from './visualSampling';
+import { waitForCanvasPerformanceDraw } from './waitForCanvasPerformanceDraw';
 import './sceneVisualRenderer';
 import { CanvasCardSchema, CanvasCardIdSchema, CanvasEdgeSchema, readCanvasCardCssPalette, type CanvasColor, type CanvasCard } from '../../src/shared';
 import { CanvasRenderRequestSchema } from '../../src/shared/rendering';
@@ -128,9 +130,8 @@ async function lineVisual() {
     throw new Error('line_geometry_hit_range_mismatch');
   }
   const image = await kernel.captureImage('png'); kernel.setCamera({ x: 0, y: 0, zoom: 0.5 });
-  const half = await kernel.captureImage('png'), css = host.getBoundingClientRect();
-  return { dpr: devicePixelRatio, image, half, sampling: { mode: 'interactive', windowDpr: devicePixelRatio, resolution: kernel.readResolution(),
-    css: { width: css.width, height: css.height }, canvas: { width: kernel.canvas.width, height: kernel.canvas.height }, status: kernel.readRenderStatus() } };
+  const half = await kernel.captureImage('png');
+  return { dpr: kernel.readResolution(), image, half, sampling: readCanvasVisualSampling(kernel, 'interactive') };
 }
 Object.defineProperty(window, 'prepareCanvasLineVisualProbe', { value: lineVisual });
 
@@ -143,7 +144,7 @@ async function mapPanVisual() {
   kernel.setElements([card]); kernel.setCamera({ x: 100, y: 100, zoom: 0.1 });
   const before = await kernel.captureImage('png');
   kernel.setCamera({ x: 120, y: 110, zoom: 0.1 });
-  return { before, after: await kernel.captureImage('png'), dpr: devicePixelRatio, dx: 20, dy: 10 };
+  return { before, after: await kernel.captureImage('png'), dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive'), dx: 20, dy: 10 };
 }
 Object.defineProperty(window, 'prepareCanvasMapPanVisualProbe', { value: mapPanVisual });
 
@@ -162,7 +163,7 @@ async function thumbnailVisual() {
   for (const card of cards) kernel.setBitmap(card.id, card.revision, 'thumbnail', await createImageBitmap(picture));
   const titles = await kernel.captureImage('png'); kernel.setAppearance({ dark: false, material: 'paper', overview: 'thumbnails' });
   const thumbnails = await kernel.captureImage('png');
-  return { titles, thumbnails, dpr: devicePixelRatio };
+  return { titles, thumbnails, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
 }
 Object.defineProperty(window, 'prepareCanvasThumbnailVisualProbe', { value: thumbnailVisual });
 
@@ -181,7 +182,7 @@ async function contextLossVisual() {
   if (!rejected) throw new Error('lost_context_export_was_not_rejected');
   extension.restoreContext(); await wait('ready');
   await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-  return { before, after: await kernel.captureImage('png'), beforeStats, afterStats: kernel.readStats(), rejected };
+  return { before, after: await kernel.captureImage('png'), beforeStats, afterStats: kernel.readStats(), rejected, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'capture') };
 }
 Object.defineProperty(window, 'prepareCanvasContextLossVisualProbe', { value: contextLossVisual });
 
@@ -197,7 +198,7 @@ async function unsupportedApiVisual() {
     while (!raster.readStats().failed && performance.now() - started < 3000) await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
     if (await raster.prepareEditing(card.id) !== 'unavailable') throw new Error('unsupported_api_locked_editing');
     if (!errors.includes('html_canvas_unavailable') || kernel.readStats().bitmaps !== 0) throw new Error(`unsupported_api_did_not_keep_identity:${errors}`);
-    return { image: await kernel.captureImage('png'), errors, stats: kernel.readStats() };
+    return { image: await kernel.captureImage('png'), errors, stats: kernel.readStats(), dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
   } finally { raster.dispose(); }
 }
 Object.defineProperty(window, 'prepareCanvasUnsupportedApiVisualProbe', { value: unsupportedApiVisual });
@@ -236,7 +237,7 @@ async function mixedLodVisual(theme: 'light' | 'dark') {
     if (bytes !== low.bitmap.width * low.bitmap.height * 4 + high.bitmap.width * high.bitmap.height * 4) throw new Error('cropped_source_memory_counted_more_than_once');
     kernel.invalidateBitmaps();
     if (low.bitmap.width !== 0 || high.bitmap.width !== 0 || kernel.readStats().bitmapBytes !== 0) throw new Error('cropped_source_ownership_not_released');
-    return { expected: expected.toDataURL('image/png'), actual };
+    return { expected: expected.toDataURL('image/png'), actual, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'capture') };
   } finally { rasterizer.dispose(); staging.remove(); }
 }
 Object.defineProperty(window, 'prepareCanvasMixedLodVisualProbe', { value: mixedLodVisual });
@@ -251,7 +252,7 @@ async function lineColorsVisual() {
     from: { kind: 'point', x: 40, y: 60 + index * 70 }, to: { kind: 'point', x: 850, y: 60 + index * 70 } }));
   kernel.setElements(edges);
   const light = await kernel.captureImage('png'); kernel.setAppearance({ dark: true, material: 'paper', overview: 'titles' });
-  return { light, dark: await kernel.captureImage('png'), dpr: devicePixelRatio, colors };
+  return { light, dark: await kernel.captureImage('png'), dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive'), colors };
 }
 Object.defineProperty(window, 'prepareCanvasLineColorsVisualProbe', { value: lineColorsVisual });
 
@@ -267,7 +268,7 @@ async function dragOcclusionVisual() {
   context.fillStyle = '#e000cc'; context.fillRect(0, 0, 30, 18); kernel.setBitmap(bottom.id, bottom.revision, 'body', await createImageBitmap(picture));
   const before = await kernel.captureImage('png'); kernel.setDragPreview([top.id], 400, 0);
   const during = await kernel.captureImage('png'); kernel.clearDragPreview();
-  return { before, during, after: await kernel.captureImage('png'), dpr: devicePixelRatio };
+  return { before, during, after: await kernel.captureImage('png'), dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
 }
 Object.defineProperty(window, 'prepareCanvasDragOcclusionVisualProbe', { value: dragOcclusionVisual });
 
@@ -291,8 +292,8 @@ async function prepareEditingVisual() {
     const direct = createHtmlCardRasterizer({ host: inkHost });
     try {
       const request = CanvasRenderRequestSchema.parse({ protocol: 1, requestId: 'editing-exact', kind: 'render', theme: 'light', material: 'paper', fontFamily: 'system-ui', fontSize: 14,
-        dpr: devicePixelRatio, width: 900, height: 600, region: null, quality: 1, format: 'png', snapshot: { schemaVersion: 1, documentId: 'exact', sequence: 1, elements: [cards[0]] } });
-      const result = await direct.rasterize({ element: createCardSurface(cards[0], request), width: 80, height: 80, scale: devicePixelRatio });
+        dpr: kernel.readResolution(), width: 900, height: 600, region: null, quality: 1, format: 'png', snapshot: { schemaVersion: 1, documentId: 'exact', sequence: 1, elements: [cards[0]] } });
+      const result = await direct.rasterize({ element: createCardSurface(cards[0], request), width: 80, height: 80, scale: kernel.readResolution() });
       const expected = new OffscreenCanvas(result.bitmap.width, result.bitmap.height), context = expected.getContext('2d'); if (!context) throw new Error('editing_oracle_context_missing');
       context.fillStyle = '#fff'; context.fillRect(0, 0, expected.width, expected.height); context.drawImage(result.bitmap, 0, 0); result.bitmap.close();
       const blob = await expected.convertToBlob({ type: 'image/png' });
@@ -310,7 +311,7 @@ async function prepareEditingVisual() {
       staging.style.setProperty('-webkit-font-smoothing', 'antialiased');
       const smoothing = await raster.prepareEditing(cards[0].id);
       if (smoothing !== 'ready' || raster.readStats().completed <= after) throw new Error('font_smoothing_did_not_invalidate_exact_bitmap');
-      return { status, again, before, after, expected: expectedUrl, actual, dpr: devicePixelRatio, visible: kernel.visibleCards().length, smoothing };
+      return { status, again, before, after, expected: expectedUrl, actual, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive'), visible: kernel.visibleCards().length, smoothing };
     } finally { direct.dispose(); inkHost.remove(); }
   } finally {
     raster.dispose(); kernel.destroy(); previousKernel = null;
@@ -328,7 +329,7 @@ async function guidesVisual() {
   kernel.setCamera({ x: 40, y: 20, zoom: 0.5 });
   kernel.setGuides([{ from: { x: 100, y: 200 }, to: { x: 1100, y: 200 } }]);
   const shown = await kernel.captureImage('png'); kernel.setGuides([]);
-  return { shown, hidden: await kernel.captureImage('png') };
+  return { shown, hidden: await kernel.captureImage('png'), dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
 }
 Object.defineProperty(window, 'prepareCanvasGuidesVisualProbe', { value: guidesVisual });
 
@@ -344,7 +345,7 @@ async function selectedMapVisual() {
     content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'RedPriority' }] }] } } });
   kernel.setElements([white, red]); kernel.setCamera({ x: 100, y: 100, zoom: 0.1 });
   const before = await kernel.captureImage('png'); kernel.setSelection([white.id]); const selected = await kernel.captureImage('png');
-  kernel.setElements([white]); return { before, selected, reference: await kernel.captureImage('png') };
+  kernel.setElements([white]); return { before, selected, reference: await kernel.captureImage('png'), dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
 }
 Object.defineProperty(window, 'prepareCanvasSelectedMapVisualProbe', { value: selectedMapVisual });
 
@@ -354,7 +355,7 @@ function colorBitmap(width: number, height: number, color: string): ImageBitmap 
   const source = new OffscreenCanvas(width, height), context = source.getContext('2d'); if (!context) throw new Error('fade_context_missing');
   context.fillStyle = color; context.fillRect(0, 0, width, height); return source.transferToImageBitmap();
 }
-async function beginFadeVisual() {
+async function beginFadeVisual(software = false) {
   previousKernel?.destroy(); document.body.replaceChildren();
   const host = document.createElement('div'); document.body.append(host); host.style.cssText = 'width:400px;height:250px';
   const kernel = await createPixiCanvasKernel({ host, width: 400, height: 250, resolution: devicePixelRatio }); previousKernel = kernel;
@@ -363,24 +364,44 @@ async function beginFadeVisual() {
     data: { contentVersion: 1, content: { type: 'doc', content: [] } } });
   kernel.setElements([card]);
   const old = colorBitmap(50, 35, '#e02020'), blue = colorBitmap(100, 70, '#2030e0');
+  const oldDraw = kernel.readStats().renders;
   kernel.setRasterTiles(card.id, 1, 'old', [{ bitmap: old, x: 0, y: 0, width: 200, height: 140, scale: 0.25 }]);
   await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  if (software) await waitForCanvasPerformanceDraw(oldDraw, { now: () => performance.now(), readRenderCount: () => kernel.readStats().renders,
+    nextFrame: () => new Promise<void>(resolve => requestAnimationFrame(() => resolve())) });
   const before = await kernel.captureImage('png');
   fadeFixture = { kernel, card, old, blue, started: performance.now() };
+  const previousDraw = kernel.readStats().renders;
   kernel.setRasterTiles(card.id, 1, 'new', [{ bitmap: blue, x: 0, y: 0, width: 200, height: 140, scale: 0.5 }]);
-  return { before, ...await readFadeVisual() };
+  const uploaded = kernel.readRasterReceipt(card.id, 'new');
+  if (software) {
+    assertSoftwareVisualSampling(readCanvasVisualSampling(kernel, 'interactive'));
+    if (!uploaded || uploaded.firstPresented || uploaded.rendered || kernel.readStats().fadingCards || kernel.readStats().retiringBytes
+      || old.width || kernel.readStats().bitmapBytes !== 28000) throw new Error('software_replacement_not_immediate_or_upload_claimed_draw');
+    await waitForCanvasPerformanceDraw(previousDraw, { now: () => performance.now(), readRenderCount: () => kernel.readStats().renders,
+      nextFrame: () => new Promise<void>(resolve => requestAnimationFrame(() => resolve())) });
+    if (!kernel.readRasterReceipt(card.id, 'new')?.rendered) throw new Error('software_replacement_actual_draw_missing');
+  }
+  return { before, uploaded, ...await readFadeVisual() };
 }
 async function readFadeVisual() {
   const state = fadeFixture; if (!state) throw new Error('fade_fixture_missing');
-  return { image: await state.kernel.captureImage('png'), elapsed: performance.now() - state.started, dpr: devicePixelRatio,
+  return { image: await state.kernel.captureImage('png'), elapsed: performance.now() - state.started, dpr: state.kernel.readResolution(), sampling: readCanvasVisualSampling(state.kernel, 'interactive'),
     stats: state.kernel.readStats(), oldWidth: state.old.width, blueWidth: state.blue.width, greenWidth: state.green?.width ?? 0,
     rendered: state.kernel.readRasterReceipt(state.card.id, state.green ? 'green' : 'new')?.rendered ?? false,
     reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 }
-async function replaceFadeVisual() {
+async function replaceFadeVisual(software = false) {
   const state = fadeFixture; if (!state) throw new Error('fade_fixture_missing');
   state.green = colorBitmap(150, 105, '#20d030');
+  const previousDraw = state.kernel.readStats().renders;
   state.kernel.setRasterTiles(state.card.id, 1, 'green', [{ bitmap: state.green, x: 0, y: 0, width: 200, height: 140, scale: 0.75 }]);
+  if (software) {
+    assertSoftwareVisualSampling(readCanvasVisualSampling(state.kernel, 'interactive'));
+    if (state.old.width || state.blue.width || state.kernel.readStats().fadingCards || state.kernel.readStats().retiringBytes) throw new Error('software_second_replacement_retained_old_owners');
+    await waitForCanvasPerformanceDraw(previousDraw, { now: () => performance.now(), readRenderCount: () => state.kernel.readStats().renders,
+      nextFrame: () => new Promise<void>(resolve => requestAnimationFrame(() => resolve())) });
+  }
   return readFadeVisual();
 }
 async function finishFadePreferenceVisual() {
@@ -415,6 +436,6 @@ async function fadeBudgetVisual() {
   kernel.invalidateBitmaps();
   await new Promise<void>(resolve => setTimeout(resolve, 16));
   if (kernel.readStats().bitmapBytes || kernel.readStats().fadingCards || old.width || blue.width || green.width || replacing.width) throw new Error('cancelled_fade_left_native_bitmaps_or_timers');
-  return { during, reserved, cleared: kernel.readStats() };
+  return { during, reserved, cleared: kernel.readStats(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
 }
 Object.defineProperty(window, 'prepareCanvasFadeBudgetVisualProbe', { value: fadeBudgetVisual });
