@@ -1248,6 +1248,62 @@ describe('PptPlanTool', () => {
     ]);
   });
 
+  const look = {
+    presentation: 'workspace:/reports/储能.slides',
+    palette: { backgrounds: ['#FFFFFF'], ink: '#111111', accents: ['#E3332B'] },
+    fonts: ['Microsoft YaHei'],
+  };
+
+  it('resolves the cover version for look and shows palette and fonts', async () => {
+    const coordinator = makeMockCoordinator();
+    const inspectPresentation = vi.fn(async () => ({ versionId: 'ver-cover', totalSlideCount: 1 }));
+    const resolver = vi.fn(async () => ({ presentationId: 'pres-cover', path: '/reports/储能.slides' }));
+    const ctx = attachPresentationInspectTargetResolverToToolContext(
+      makeContext({ ...coordinator, inspectPresentation } as unknown as PresentationToolCoordinatorPort),
+      resolver,
+    );
+
+    const result = JSON.parse(await tool.run({
+      title: '储能',
+      visualDirection,
+      look,
+      pages: [{ title: '封面', content: '标题与副标题。' }],
+    }, ctx));
+
+    expect(resolver).toHaveBeenCalledWith({ path: '/reports/储能.slides' });
+    expect(inspectPresentation).toHaveBeenCalledWith(expect.objectContaining({
+      presentationId: 'pres-cover',
+      selection: { kind: 'single', slideNumber: 1 },
+    }));
+    expect(result.data.look).toEqual({
+      palette: look.palette,
+      fonts: look.fonts,
+      cover: { presentationId: 'pres-cover', versionId: 'ver-cover' },
+    });
+    expect(result.observation).toContain('配色：底色 #FFFFFF；文字 #111111；强调 #E3332B');
+    expect(result.observation).not.toContain('封面样张没能显示');
+  });
+
+  it('keeps the plan without a cover when the cover cannot be read', async () => {
+    const coordinator = makeMockCoordinator();
+    const inspectPresentation = vi.fn(async () => { throw new Error('PRESENTATION_BUILD_FAILED'); });
+    const ctx = attachPresentationInspectTargetResolverToToolContext(
+      makeContext({ ...coordinator, inspectPresentation } as unknown as PresentationToolCoordinatorPort),
+      vi.fn(async () => ({ presentationId: 'pres-cover' })),
+    );
+
+    const result = JSON.parse(await tool.run({
+      title: '储能',
+      visualDirection,
+      look,
+      pages: [{ title: '封面', content: '标题与副标题。' }],
+    }, ctx));
+
+    expect(result.data.look).toEqual({ palette: look.palette, fonts: look.fonts });
+    expect(result.observation).toContain('封面样张没能显示（PRESENTATION_BUILD_FAILED）');
+    expect(result.control.requireUser).toBe(true);
+  });
+
   it('returns validation error for malformed pages', async () => {
     await expectToolFailure(tool.run({
       title: 'Broken Outline',

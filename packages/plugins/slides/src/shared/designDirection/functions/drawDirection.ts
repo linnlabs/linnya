@@ -1,3 +1,4 @@
+import { IMAGELESS_IMAGE_STRATEGY_IDS } from '../definitions/directionContract';
 import type {
   ColorLogicId,
   DirectionAxisOption,
@@ -25,7 +26,7 @@ import {
 import { TECHNIQUE_CARDS } from '../pool/techniqueCards';
 
 /** 签池版本：卡片、轴或权重改动时递增，用于基准对账。 */
-export const DIRECTION_POOL_VERSION = '2026-11-04.1';
+export const DIRECTION_POOL_VERSION = '2026-11-04.2';
 
 /** 本机最近用过的方向，用来降权，避免同一个人连续拿到同一种手法。 */
 export interface DirectionHistory {
@@ -42,6 +43,8 @@ export interface DrawDirectionInput {
   readonly history?: DirectionHistory;
   /** 配置了生图模型时，“生成插画”才进入抽签。 */
   readonly imageModelAvailable?: boolean;
+  /** 稿子必须有图片：不发基本无图的图片策略，也不发只有这类策略的手法卡。 */
+  readonly requireImages?: boolean;
   /** 一次抽几张；同一批之间至少两个主轴不同。 */
   readonly count?: number;
   /** Agent 写明理由退回的手法，本次不再发出。 */
@@ -97,6 +100,7 @@ function drawOne(
     if (batchCardIds.has(candidate.id) || input.excludeCardIds?.includes(candidate.id)) return 0;
     const scenarioWeight = candidate.scenarios[input.scenario] ?? 0;
     if (scenarioWeight === 0) return 0;
+    if (!candidate.imageStrategies.some((id) => isImageStrategyAllowed(id, input))) return 0;
     return scenarioWeight
       * BOLDNESS_WEIGHTS[boldness][candidate.boldness - 1]!
       * historyFactor(candidate.id, history.cardIds);
@@ -106,7 +110,7 @@ function drawOne(
   const colorLogic = pickAxis(random, COLOR_LOGICS, card.colorLogics, (id) => ATTRACTOR_COLOR_LOGIC_FACTOR[id] ?? 1);
   const typeStrategy = pickAxis(random, TYPE_STRATEGIES, card.typeStrategies, () => 1);
   const imageStrategy = pickAxis(random, IMAGE_STRATEGIES, card.imageStrategies, (id) =>
-    id === 'generated-illustration' && input.imageModelAvailable !== true ? 0 : 1);
+    isImageStrategyAllowed(id, input) ? 1 : 0);
   if (colorLogic == null || typeStrategy == null || imageStrategy == null) return null;
 
   const hue = HUELESS_COLOR_LOGICS.includes(colorLogic.id)
@@ -129,6 +133,12 @@ function drawOne(
     imageStrategy,
     motif: pickMotif(random, input.motifs, usedMotifs),
   };
+}
+
+function isImageStrategyAllowed(id: ImageStrategyId, input: DrawDirectionInput): boolean {
+  if (id === 'generated-illustration' && input.imageModelAvailable !== true) return false;
+  if (input.requireImages === true && IMAGELESS_IMAGE_STRATEGY_IDS.includes(id)) return false;
+  return true;
 }
 
 function historyFactor(cardId: string, recent: readonly string[]): number {

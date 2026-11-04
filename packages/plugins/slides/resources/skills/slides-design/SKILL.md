@@ -4,7 +4,7 @@ description: Plan, create, edit, inspect, and visually verify Linnya Slides thro
 metadata:
   author: linnya
   pluginId: slides
-  version: "7.18"
+  version: "7.19"
 ---
 
 # Slides Design
@@ -13,7 +13,7 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 
 ## 先判断任务类型
 
-- 新建文稿，或重做整份文稿的叙事、页序、视觉系统：先提交逐页计划并等待批准。
+- 新建文稿，或重做整份文稿的叙事、页序、视觉系统：先做好封面，再提交带封面样张的逐页计划并等待批准。
 - 已有文稿的局部内容、数据或样式修改：理解相关 source 后直接修改，不重复审批。
 - 只查看、诊断或渲染：直接执行相应检查，不进入建稿审批。
 - 导出 PPTX：产品界面的“更多”菜单支持导出，但 Agent 当前没有可调用的 PPTX export 工具或 CLI 子命令。用户要求导出时说明界面入口；不要虚构命令、工具结果或文件地址。
@@ -24,23 +24,25 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 1. 根据需要，深入研究/搜索相关信息。
 2. 新建整份文稿，且用户没有指定风格、品牌、模板或参考稿时，先确定本稿的视觉方向：
    - 从研究材料里提炼 3–12 个具体视觉母题，每个附 0–1 的常见度（同类稿子人人都会用的接近 1）。母题要具体到能画出来，例如“饕餮纹的对称展开”“电芯的卷绕截面”，不要写“科技感”“高级感”。
-   - 若你有 `ppt_direction` 工具：传入场景和母题调用一次，按返回的手法、配色逻辑、主色相、字体与图片策略设计。手法明显不适合内容时，带 `rejected`（cardId 与一句理由）再调用一次；不要因为不熟悉就退回。
+   - 若你有 `ppt_direction` 工具：传入场景和母题调用一次，按返回的手法、配色逻辑、主色相、字体与图片策略设计。用户要求配图，或内容离不开图片（器物、人物、现场、实验装置）时传 `requireImages: true`。手法明显不适合内容时，带 `rejected`（cardId 与一句理由）再调用一次；不要因为不熟悉就退回。
    - 若无 `ppt_direction` 工具：按 [`styles.md`](./references/styles.md) 自行判断方向。
    - 编辑已有文稿、用户指定了风格或给了参考稿时，不调用 `ppt_direction`。
-3. 为了明确目的、受众、标题、视觉方向和逐页主要内容，向用户提交一份计划。视觉方向只回答三件事：`concept` 说明整稿遵循什么设计理念以及为什么，`composition` 说明构图、信息密度与页面节奏，`signature` 只声明一个整稿核心视觉记忆点。它不是最终 theme，不填写具体颜色值、字体名或逐页样式。
+3. 新建整份文稿时，先只做封面给用户看效果：定下全稿配色与字体并写进 `compose({ theme })`（调用过 `ppt_direction` 时同时写进 deck.js 顶部的 `direction` 对象，见“创建与编辑”第 4 步），用 `write_file` 写好封面这一页并构建成功，render 封面确认像素。封面就是正式稿的第 1 页，按正式质量做，批准后不重做。
+4. 向用户提交一份计划，明确目的、受众、标题、视觉方向、样子和逐页主要内容。视觉方向回答三件事：`concept` 说明整稿遵循什么设计理念以及为什么，`composition` 说明构图、信息密度与页面节奏，`signature` 只声明一个整稿核心视觉记忆点。
 - 拿到了 `ppt_direction` 的方向时，用自己的话把它写进这三项，不提方向是怎么来的。
-- 若你有 `ppt_plan` 工具：用它提交 `title`、可选 `audience`、`visualDirection: { concept, composition, signature }` 和逐页 `pages[{title, content}]`；页数由 `pages` 自动推导，不传 `pageCount`。
-- 若无 `ppt_plan` 工具：直接在对话中按相同结构输出标题、受众、三项视觉方向、总页数和逐页计划，不能省略视觉方向或改用另一套自由格式。
+- 若你有 `ppt_plan` 工具：用它提交 `title`、可选 `audience`、`visualDirection: { concept, composition, signature }`、`look: { presentation, palette, fonts }` 和逐页 `pages[{title, content}]`。`look.presentation` 是封面所在文稿的 locator，`palette`、`fonts` 与 `direction` 对象一致；卡片会显示真实封面、色块和字体。页数由 `pages` 自动推导，不传 `pageCount`。observation 说封面样张没能显示时，先修好封面再提交一次。
+- 若无 `ppt_plan` 工具：直接在对话中按相同结构输出标题、受众、三项视觉方向、配色与字体、总页数和逐页计划，并说明封面已写入哪个文稿；不能省略视觉方向或改用另一套自由格式。
 - 两种分支都必须停止建稿，等待用户明确批准。
-- 用户调整内容计划或视觉方向后，更新同一份计划并再次等待批准。
+- 用户调整内容计划或视觉方向后，先改封面、配色和字体，再更新同一份计划并再次等待批准。
+- 编辑已有文稿或局部改版不做封面样张，提交计划时不传 `look`。
 
 ### 创建与编辑
 1. 先了解现有材料与 source。普通文本部分读取使用 1-based 行号：`offset` 是起始行，`limit` 是最多行数；复制到 `edit_file.old_string` 时去掉展示行号与 `|`。只有显式 `view="document"` 的结构化读取才使用 `offset_chars/max_chars`。
 2. 按任务读取下表中的最少资源，了解Slides的语法。不要一次加载全部 reference。
 3. deck.js 用 plain JavaScript；顶层逐页 `createSlide()`，最终一次 `compose()`。系统分配编辑身份；保留已有源码标记、key 与 `manualEdits`。见 [`syntax.md`](./references/syntax.md)。
 4. 新建文稿或整体改版时，把用户已批准的 `visualDirection` 落实为页面设计，再确定颜色、字体和图表调色板并写进 `compose({ theme })`。`visualDirection` 约束方向，`theme` 保存实际视觉常量；后者是跨页一致性的唯一运行时依据，也是后续编辑读到的 `DECK_DESIGN` 的来源。判断依据见 [`design.md`](./references/design.md)。
-   调用过 `ppt_direction` 时，在 deck.js 顶部写一个 `direction` 对象：`drawId`、`cardId` 照抄返回值，`palette: { backgrounds, ink, accents }` 写全稿用到的背景色、正文墨色和强调色，`fonts` 写全稿用到的字体。颜色、字体和图表调色板都从它取值，并在 `compose({ theme: { ..., direction } })` 里声明。inspect 会按它逐页对照底色、字体和颜色（`direction_*`）；确实要加颜色或字体，先补进 `direction` 再用。
-5. 新建文稿使用 `write_file`，只传 `locator="workspace:/.../*.slides"`，不传 inode。
+   调用过 `ppt_direction` 时，在 deck.js 顶部写一个 `direction` 对象：`drawId`、`cardId` 照抄返回值，`palette: { backgrounds, ink, accents }` 写全稿用到的背景色、正文墨色和强调色，`fonts` 写全稿用到的字体，二者与用户批准的计划 `look` 一致。颜色、字体和图表调色板都从它取值，并在 `compose({ theme: { ..., direction } })` 里声明。inspect 会按它逐页对照底色、字体和颜色（`direction_*`）；确实要加颜色或字体，先补进 `direction` 再用。
+5. 新建文稿使用 `write_file`，只传 `locator="workspace:/.../*.slides"`，不传 inode。计划前已经写好封面时，批准后用 `edit_file` 加入其余页面，封面保留为第 1 页。
 6. 局部替换优先 `edit_file`；整体重写才用 `write_file`。示例文件都是独立 source 起点，不能直接互相拼接。同一份 Slides 的写操作必须串行。修改声明与引用时先用 `grep` 找全关联处；删除按“先移除引用、后删除声明”，新增按“先增加声明、后增加引用”，保证每次写入都是可编译状态。能由一段更大且唯一的 `old_string` 覆盖时，优先一次完成关联修改。
    长文稿不要在一次工具调用中生成全部页面：预计达到 10 页，或包含较多图表、SVG、Brush、图片等复杂页面时，按章节每批创建 3–5 页；复杂批次缩小到 1–2 页。第一批用 `write_file` 写入共享 theme、共享常量、首批完整页面和唯一的 `compose()`；后续用 `edit_file` 原子加入一批完整的顶层页面声明，并同步更新同一个 `compose({ slides })`。每批写入后先处理 observation 中的编译与文档诊断，恢复到可编译状态后才能继续下一批；不要逐页制造无谓版本，也不要在最后一次性重写已经成功的页面。最终仍按第 9–10 步做整稿验收。
 7. 写入失败时按模型可见的错误消息和恢复动作处理。写入成功后，先阅读 observation 中的 `自检`；若有 diagnostic，按其字符串 code、line 和 message 修复。同一输入、同一错误 code 或同一 Shell exit code 再次出现时，先改变失败原因再重试；等待、换目录或原样重放不会修复确定性失败。

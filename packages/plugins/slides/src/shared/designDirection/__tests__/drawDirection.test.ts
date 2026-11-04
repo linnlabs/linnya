@@ -96,6 +96,15 @@ describe('drawDirections', () => {
     }
   });
 
+  it('要求有图片时不发基本无图的策略', () => {
+    for (const scenario of DIRECTION_SCENARIOS) {
+      for (let index = 0; index < 200; index += 1) {
+        const draw = drawDirections({ scenario, motifs: MOTIFS, seed: `i${index}`, requireImages: true })[0]!;
+        expect(['diagram-only', 'typographic']).not.toContain(draw.imageStrategy.id);
+      }
+    }
+  });
+
   it('常见母题更少被挑中', () => {
     let common = 0;
     for (let index = 0; index < 1000; index += 1) {

@@ -79,7 +79,7 @@ shared/
   `shapeGeometry`、`slideRasterization` 等语义子入口。`import type` 可以使用稳定 barrel，但优先保持语义清楚。
 - 插件独占工具的 strict schema 由插件 shared 拥有。`pptInspectToolContract.ts` 是 `ppt_inspect` 参数、执行期结果和 Conversation 消息结果的唯一跨端 owner：backend producer parse 包含 `observationPreviewMeta` 的执行期 schema；该 meta 被 ToolNode 消费且不进入 Conversation 工具消息，Renderer projector parse 严格的 `data + observation` 消息 schema。两份结果合同复用相同 data/observation 定义，不维护兼容读取。可选 `focus` 只接纳至多四个 1-based 源码闭区间；完整 finding 与 focus 关系只进 observation，不进入卡片 data。业务投影规则见 [presentationInspection](../backend/features/presentationInspection/README.md)。
 - [`designDirection/`](./designDirection/README.md) 是 `ppt_direction` 参数与结果、方向池和 `theme.direction` 声明的唯一 owner；方向只约束表达方法，具体颜色与字体仍由 deck.js 的 `theme` 拥有。
-- `pptPlanToolContract.ts` 是 `ppt_plan` 参数与计划 data 的唯一跨端 owner。`pages` 是页数和顺序的唯一输入事实；backend 生成连续 `slideNumber` 与 `pageCount`。`visualDirection` 只审批整稿的设计理念、构图策略和唯一记忆点，不复制最终 deck.js 的颜色、字体或图表调色板。
+- `pptPlanToolContract.ts` 是 `ppt_plan` 参数与计划 data 的唯一跨端 owner。`pages` 是页数和顺序的唯一输入事实；backend 生成连续 `slideNumber` 与 `pageCount`。`visualDirection` 审批整稿的设计理念、构图策略和唯一记忆点。新建整稿时 `look` 给用户看样子：Agent 先只做封面一页，传入它的 locator、全稿配色与字体；backend 解析出封面所在文稿的当前成功版本写进 `look.cover`，Renderer 按该版本渲染第 1 页。配色与字体沿用 `designDirection` 的调色板与字体 schema，deck.js 的 `theme.direction` 照抄它们供 inspect 核对。封面版本读不到时只省略 `cover`，不挡审批。
 
 ## Public Barrel 规则
 

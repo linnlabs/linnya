@@ -3,7 +3,7 @@
  *
  * 新建整稿前为本稿发出一个视觉方向：手法、配色逻辑、主色相、字体策略、图片策略与内容母题。
  * 方向由程序按场景权重、本机历史降权与同质化吸引子降权随机给出，Agent 只负责把它落到内容上。
- * 用户界面上它只是“构思视觉方向”的一步，不出现抽签说法。
+ * 用户界面上它只是“找灵感”的一步，不出现抽签说法。
  */
 
 import { randomUUID } from 'node:crypto';
@@ -66,6 +66,10 @@ export class PptDirectionTool extends BaseTool {
           required: ['text', 'typicality'],
         },
       },
+      requireImages: {
+        type: 'boolean',
+        description: '用户要求配图，或内容离不开图片（器物、人物、现场、实验装置）时传 true；程序就不会发“只用图解”“以字为画”。',
+      },
       rejected: {
         type: 'array',
         maxItems: 5,
@@ -113,6 +117,7 @@ export class PptDirectionTool extends BaseTool {
     const [draw] = drawDirections({
       scenario: input.scenario,
       ...(input.boldness ? { boldness: input.boldness } : {}),
+      ...(input.requireImages === true ? { requireImages: true } : {}),
       motifs: input.motifs,
       seed,
       history,

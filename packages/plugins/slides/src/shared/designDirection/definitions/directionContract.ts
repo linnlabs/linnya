@@ -71,6 +71,9 @@ export const IMAGE_STRATEGY_IDS = [
 ] as const;
 export type ImageStrategyId = (typeof IMAGE_STRATEGY_IDS)[number];
 
+/** 画面里基本没有图片的策略；稿子必须有图片时不发。 */
+export const IMAGELESS_IMAGE_STRATEGY_IDS: readonly ImageStrategyId[] = ['diagram-only', 'typographic'];
+
 /** 1 稳妥：正式汇报也不会出错；2 适中；3 大胆：适合展示与分享。 */
 export type TechniqueBoldness = 1 | 2 | 3;
 
@@ -135,6 +138,8 @@ export const DirectionDrawRequestSchema = z.object({
   scenario: z.enum(DIRECTION_SCENARIOS),
   boldness: z.enum(DIRECTION_BOLDNESS).optional(),
   motifs: z.array(DirectionMotifSchema).min(3).max(12),
+  /** 用户要求配图，或内容离不开图片（器物、人物、现场、实验）时为 true：不发“只用图解”“以字为画”。 */
+  requireImages: z.boolean().optional(),
   /** 基准与复现专用；正常调用不传，由程序取随机种子。 */
   seed: z.string().trim().min(1).max(64).optional(),
   /** 上一次发出的手法确实不适合这份内容时，写明理由退回，程序换一张。 */
@@ -147,6 +152,18 @@ export type DirectionDrawRequest = z.infer<typeof DirectionDrawRequestSchema>;
 
 const HexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/u, '颜色必须是 #RRGGBB');
 
+/** 全稿用到的底色、正文墨色与强调色；计划卡展示它，deck.js 在 theme.direction 里照抄。 */
+export const DirectionPaletteSchema = z.object({
+  /** 页面背景色；第二个起可以是封面、章节页使用的反色底。 */
+  backgrounds: z.array(HexColorSchema).min(1).max(4),
+  ink: HexColorSchema,
+  accents: z.array(HexColorSchema).min(1).max(5),
+}).strict();
+export type DirectionPalette = z.infer<typeof DirectionPaletteSchema>;
+
+/** 全稿允许出现的字体族（PPTX 中可见的字体名）。 */
+export const DirectionFontsSchema = z.array(z.string().trim().min(1)).min(1).max(6);
+
 /**
  * deck.js 在 `compose({ theme: { direction } })` 里声明的方向。
  *
@@ -155,13 +172,7 @@ const HexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/u, '颜色必须是 #
 export const DirectionDeclarationSchema = z.object({
   drawId: z.string().trim().min(1).max(80),
   cardId: z.string().trim().min(1).max(80),
-  palette: z.object({
-    /** 页面背景色；第二个起可以是封面、章节页使用的反色底。 */
-    backgrounds: z.array(HexColorSchema).min(1).max(4),
-    ink: HexColorSchema,
-    accents: z.array(HexColorSchema).min(1).max(5),
-  }).strict(),
-  /** 全稿允许出现的字体族（PPTX 中可见的字体名）。 */
-  fonts: z.array(z.string().trim().min(1)).min(1).max(6),
+  palette: DirectionPaletteSchema,
+  fonts: DirectionFontsSchema,
 }).strict();
 export type DirectionDeclaration = z.infer<typeof DirectionDeclarationSchema>;
