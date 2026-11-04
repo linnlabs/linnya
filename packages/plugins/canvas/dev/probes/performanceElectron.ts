@@ -1,4 +1,4 @@
-import { app, BrowserWindow, powerMonitor, screen } from 'electron';
+import { app, BrowserWindow, powerMonitor, screen, type WebContents } from 'electron';
 import os from 'node:os';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -9,6 +9,7 @@ import { verifyCanvasMediaOverview } from './performanceMediaOverview';
 import { startCanvasZoomTrace } from './performanceZoomTrace';
 import { startCanvasPaintTrace } from './performancePaintTraceElectron';
 import { performance } from 'node:perf_hooks';
+import { startCanvasPerformanceInputTrace } from './performanceInputTraceElectron';
 
 const output = process.argv[2];
 if (!output) throw new Error('Performance output directory required');
@@ -18,6 +19,9 @@ const offscreenProfile = softwareProfile || process.env.CANVAS_PERFORMANCE_OFFSC
 const zoomPaintDiagnostic = process.env.CANVAS_PERFORMANCE_ZOOM_PAINT_TRACE === '1';
 const paintDiagnostic = process.env.CANVAS_PERFORMANCE_PAINT_TRACE === '1' || zoomPaintDiagnostic;
 const comparisonDiagnostic = process.env.CANVAS_PERFORMANCE_COMPARISON === '1';
+const inputDiagnostic = process.env.CANVAS_PERFORMANCE_INPUT_TRACE === '1';
+const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_ZOOM_TRACE === '1' || paintDiagnostic;
+if (inputDiagnostic && offscreenProfile) throw new Error('input_trace_requires_visible_window');
 if (zoomPaintDiagnostic && process.env.CANVAS_PERFORMANCE_ZOOM_TRACE !== '1') throw new Error('zoom_paint_diagnostic_requires_chromium_trace');
 if (softwareProfile) { app.commandLine.appendSwitch('use-angle', 'swiftshader'); app.commandLine.appendSwitch('enable-unsafe-swiftshader'); }
 app.on('window-all-closed', () => {});
@@ -49,68 +53,93 @@ async function run() {
   if (paintDiagnostic) win.webContents.on('console-message', event => {
     if (event.message.startsWith('[Canvas] HTML paint timeout')) console.error(event.message);
   });
+  let inputTrace: Awaited<ReturnType<typeof startCanvasPerformanceInputTrace>> | null = null;
+  let failed = false;
   try {
     await win.loadFile(path.join(output, 'index.html'));
+    if (inputDiagnostic) inputTrace = await startCanvasPerformanceInputTrace(win, output, profiling);
+    const send: WebContents['sendInputEvent'] = inputTrace ? inputTrace.send : input => win.webContents.sendInputEvent(input);
     const reports = [];
-    const counts = process.env.CANVAS_PERFORMANCE_COUNTS?.split(',').map(Number) ?? [250, 2500, 12000];
-    const kinds = z.array(z.enum(['text', 'image', 'document'])).parse(process.env.CANVAS_PERFORMANCE_KINDS?.split(',')
+    const counts = inputDiagnostic ? [2500] : process.env.CANVAS_PERFORMANCE_COUNTS?.split(',').map(Number) ?? [250, 2500, 12000];
+    const kinds = z.array(z.enum(['text', 'image', 'document'])).parse(inputDiagnostic ? ['image'] : process.env.CANVAS_PERFORMANCE_KINDS?.split(',')
       ?? (process.env.CANVAS_PERFORMANCE_MEDIA === '1' ? ['image', 'document'] : ['text']));
-    const distributions = z.array(z.enum(['uniform', 'cluster'])).parse(process.env.CANVAS_PERFORMANCE_DISTRIBUTIONS?.split(',') ?? ['uniform', 'cluster']);
+    const distributions = z.array(z.enum(['uniform', 'cluster'])).parse(inputDiagnostic ? ['uniform'] : process.env.CANVAS_PERFORMANCE_DISTRIBUTIONS?.split(',') ?? ['uniform', 'cluster']);
     for (const kind of kinds) for (const count of counts) for (const distribution of distributions) {
       const clustered = distribution === 'cluster';
       console.log(`Canvas formal body performance ${kind} ${count} ${clustered ? 'clustered' : 'uniform'}`);
       const stopPaintTrace = paintDiagnostic && !zoomPaintDiagnostic ? await startCanvasPaintTrace(win.webContents, output, `${kind}-${count}-${distribution}`) : null;
+      const progress: { stage: string; values: Record<string, unknown> } = { stage: 'prepare', values: {} };
       try {
         const resourceProfile = kind !== 'text' && process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1';
         if (resourceProfile) { win.webContents.debugger.attach('1.3'); await win.webContents.debugger.sendCommand('Profiler.enable'); await win.webContents.debugger.sendCommand('Profiler.start'); }
         const initial: unknown = await win.webContents.executeJavaScript(`window.prepareCanvasPerformanceProbe(${count},${clustered},${JSON.stringify(kind)})`);
+        progress.values.initial = initial;
         if (softwareProfile) {
           const reduced = z.object({ resolution: z.number(), renderStatus: z.object({ limited: z.boolean(), message: z.string().nullable() }) }).parse(initial);
           if (!reduced.renderStatus.limited || !reduced.renderStatus.message || reduced.resolution > 1) throw new Error('software_gpu_did_not_reduce_rendering');
         }
         let mediaOverview: unknown = null;
+        progress.stage = 'overview';
         if (kind !== 'text') {
           mediaOverview = await verifyCanvasMediaOverview({ window: win, output, kind, count, clustered, initial, resourceProfile });
         }
+        progress.values.mediaOverview = mediaOverview; progress.stage = 'pan';
         await delay(100);
         await win.webContents.executeJavaScript('window.startCanvasPerformanceCollection()');
-        win.webContents.sendInputEvent({ type: 'mouseDown', x: 800, y: 480, button: 'middle', clickCount: 1 });
-        for (let i = 0; i < 50; i++) { win.webContents.sendInputEvent({ type: 'mouseMove', x: 800 + i * 3, y: 480 + i }); await delay(20); }
-        win.webContents.sendInputEvent({ type: 'mouseUp', x: 947, y: 529, button: 'middle', clickCount: 1 });
+        send({ type: 'mouseDown', x: 800, y: 480, button: 'middle', clickCount: 1 });
+        for (let i = 0; i < 50; i++) { send({ type: 'mouseMove', x: 800 + i * 3, y: 480 + i }); await delay(20); }
+        send({ type: 'mouseUp', x: 947, y: 529, button: 'middle', clickCount: 1 });
         const pan: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
+        progress.values.pan = pan; progress.stage = 'body';
         if (process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1') { win.webContents.debugger.attach('1.3'); await win.webContents.debugger.sendCommand('Profiler.enable'); await win.webContents.debugger.sendCommand('Profiler.start'); }
         const bodyBaseline = z.number().parse(await win.webContents.executeJavaScript('window.startCanvasPerformanceBaseline()'));
+        progress.values.bodyBaseline = bodyBaseline;
         const close: unknown = await win.webContents.executeJavaScript('window.closeCanvasPerformanceView()');
+        progress.values.close = close;
         const bodySettled: unknown = await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
+        progress.values.bodySettled = bodySettled;
         const bodyLoad: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
+        progress.values.bodyLoad = bodyLoad;
         if (process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1') {
           const profile: unknown = await win.webContents.debugger.sendCommand('Profiler.stop');
           await writeFile(path.join(output, `${kind}-${count}-${clustered ? 'cluster' : 'uniform'}-body.cpuprofile`), JSON.stringify(profile)); win.webContents.debugger.detach();
         }
         await writeFile(path.join(output, `${kind === 'text' ? '' : kind + '-'}${count}-${clustered ? 'cluster' : 'uniform'}.png`), (await win.webContents.capturePage()).toPNG());
-        const zoom: unknown = await collectZoom(win, `${kind}-${count}-${distribution}`);
+        progress.stage = 'zoom';
+        const zoom: unknown = await collectZoom(win, `${kind}-${count}-${distribution}`, send);
+        progress.values.zoom = zoom;
         const zoomSettled: unknown = await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
+        progress.values.zoomSettled = zoomSettled;
         let drag: unknown;
-        if (process.env.CANVAS_PERFORMANCE_DRAG === '1') {
+        if (process.env.CANVAS_PERFORMANCE_DRAG === '1' || inputDiagnostic) {
+          progress.stage = 'drag-prepare';
           const target = z.object({ point: z.object({ x: z.number(), y: z.number() }), selected: z.number(), cardId: z.string() }).parse(await win.webContents.executeJavaScript('window.prepareCanvasPerformanceDrag(500)'));
+          progress.values.drag = { target }; progress.stage = 'drag';
           await win.webContents.executeJavaScript('window.startCanvasPerformanceCollection()');
           if (process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1') { win.webContents.debugger.attach('1.3'); await win.webContents.debugger.sendCommand('Profiler.enable'); await win.webContents.debugger.sendCommand('Profiler.start'); }
-          win.webContents.sendInputEvent({ type: 'mouseDown', x: Math.round(target.point.x), y: Math.round(target.point.y), button: 'left', clickCount: 1 });
-          for (let i = 0; i < 50; i++) { win.webContents.sendInputEvent({ type: 'mouseMove', x: Math.round(target.point.x + i * 2), y: Math.round(target.point.y + i) }); await delay(20); }
-          win.webContents.sendInputEvent({ type: 'mouseUp', x: Math.round(target.point.x + 98), y: Math.round(target.point.y + 49), button: 'left', clickCount: 1 });
+          send({ type: 'mouseDown', x: Math.round(target.point.x), y: Math.round(target.point.y), button: 'left', clickCount: 1 });
+          for (let i = 0; i < 50; i++) { send({ type: 'mouseMove', x: Math.round(target.point.x + i * 2), y: Math.round(target.point.y + i) }); await delay(20); }
+          send({ type: 'mouseUp', x: Math.round(target.point.x + 98), y: Math.round(target.point.y + 49), button: 'left', clickCount: 1 });
           if (process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1') {
             const profile: unknown = await win.webContents.debugger.sendCommand('Profiler.stop');
             await writeFile(path.join(output, `${kind === 'text' ? '' : kind + '-'}${count}-${clustered ? 'cluster' : 'uniform'}-drag.cpuprofile`), JSON.stringify(profile)); win.webContents.debugger.detach();
           }
           const frames: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
+          progress.values.drag = { target, frames };
           const intents = z.object({ movedCards: z.number(), selected: z.number() }).parse(await win.webContents.executeJavaScript('window.finishCanvasPerformanceDrag()'));
+          drag = { target, frames, intents }; progress.values.drag = drag;
           if (intents.movedCards !== target.selected) throw new Error(`native_drag_did_not_finish:${intents.movedCards}:${target.selected}`);
-          drag = { target, frames, intents };
         }
+        progress.stage = 'final-body-and-counts';
         await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
         const counts: unknown = await win.webContents.executeJavaScript('window.verifyCanvasDeterministicCounts()');
         const report = { kind, count, clustered, initial, mediaOverview, pan, close, bodyBaseline, bodyLoad, bodySettled, zoom, zoomSettled, drag, counts };
         reports.push(report); console.log(JSON.stringify(report));
+      } catch (error) {
+        await writeFile(path.join(output, `${kind}-${count}-${distribution}-failure-progress.json`), JSON.stringify({ kind, count, clustered, ...progress,
+          timeOrigin: performance.timeOrigin, failedAtMs: performance.now(),
+          error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : String(error) }, null, 2));
+        throw error;
       } finally { await stopPaintTrace?.(); }
     }
     const idleAfter = powerMonitor.getSystemIdleState(1), display = screen.getDisplayMatching(win.getBounds());
@@ -118,21 +147,25 @@ async function run() {
     const validDesktopRun = unlocked(idleAfter) && !lockEvents.some(event => event.event === 'lock')
       && (offscreenProfile || process.platform !== 'darwin' || nativeSessionAfter?.unlocked === true);
     const displayQualified = !requireInternal120 || display.id === targetDisplay?.id && display.internal && display.displayFrequency >= 119;
-    const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_ZOOM_TRACE === '1' || paintDiagnostic;
-    const validHardwareRun = !offscreenProfile && validDesktopRun && displayQualified && !profiling && !comparisonDiagnostic;
+    const validHardwareRun = !offscreenProfile && validDesktopRun && displayQualified && !profiling && !comparisonDiagnostic && !inputDiagnostic;
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: kinds.every(kind => kind === 'text') ? 'production-dom-v5-body-baseline' : 'production-media-provider-v2-body-baseline', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE }, startedAt, endedAt: new Date().toISOString(),
       renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',
-      ...(comparisonDiagnostic ? { diagnostic: 'comparison' } : paintDiagnostic ? { diagnostic: zoomPaintDiagnostic ? 'zoom-paint-trace' : 'paint-trace' } : {}),
+      ...(inputDiagnostic ? { diagnostic: 'input-trace' } : comparisonDiagnostic ? { diagnostic: 'comparison' } : paintDiagnostic ? { diagnostic: zoomPaintDiagnostic ? 'zoom-paint-trace' : 'paint-trace' } : {}),
       versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
       idleBefore, idleAfter, nativeSessionBefore, nativeSessionAfter, lockEvents, validHardwareRun, profiling, requireInternal120, displayQualified, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
       display: { label: display.label, internal: display.internal, scaleFactor: display.scaleFactor, displayFrequency: display.displayFrequency, bounds: display.bounds },
       gpu: await app.getGPUInfo('basic'), reports }, null, 2));
     if (!displayQualified) throw new Error('Native benchmark left its requested internal 120Hz display');
     if (!offscreenProfile && !validDesktopRun) throw new Error('Desktop locked during native performance benchmark');
-  } finally { win.destroy(); }
+  } catch (error) { failed = true; throw error; }
+  finally {
+    try { await inputTrace?.finish(); }
+    catch (error) { if (!failed) throw error; console.error('Input trace cleanup failed after original case failure', error); }
+    finally { win.destroy(); }
+  }
 }
 
-async function collectZoom(window: BrowserWindow, stem: string): Promise<unknown> {
+async function collectZoom(window: BrowserWindow, stem: string, send: WebContents['sendInputEvent']): Promise<unknown> {
   const stopTrace = process.env.CANVAS_PERFORMANCE_ZOOM_TRACE === '1' ? await startCanvasZoomTrace(window, output, stem, zoomPaintDiagnostic) : null;
   let stopPaint: (() => Promise<void>) | null = null;
   const sent: { readonly index: number; readonly deltaY: number; readonly beforeEpochMs: number; readonly afterEpochMs: number }[] | null = zoomPaintDiagnostic ? [] : null;
@@ -141,7 +174,7 @@ async function collectZoom(window: BrowserWindow, stem: string): Promise<unknown
     await window.webContents.executeJavaScript(stopTrace ? 'window.startCanvasPerformanceBaseline()' : 'window.startCanvasPerformanceCollection()');
     for (let i = 0; i < 100; i++) {
       const beforeEpochMs = sent ? performance.timeOrigin + performance.now() : 0;
-      window.webContents.sendInputEvent({ type: 'mouseWheel', x: 800, y: 480, deltaY: i < 50 ? -5 : 5,
+      send({ type: 'mouseWheel', x: 800, y: 480, deltaY: i < 50 ? -5 : 5,
         deltaX: 0, modifiers: ['control'], canScroll: true });
       sent?.push({ index: i, deltaY: i < 50 ? -5 : 5, beforeEpochMs, afterEpochMs: performance.timeOrigin + performance.now() });
       await delay(20);
