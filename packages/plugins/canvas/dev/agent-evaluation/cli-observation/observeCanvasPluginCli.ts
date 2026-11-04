@@ -19,13 +19,14 @@ export function observeCanvasPluginCli(original: PluginBackendContribution, obse
       const plan = preparation.plan;
       observation.ready(id);
       return { ...preparation, plan: { ...plan,
-        async execute(context) {
+        execute(context) {
           observation.execute(id, context);
-          let result: BackendPluginCliResult;
-          try { result = await plan.execute.call(plan, context); }
+          let execution: Promise<BackendPluginCliResult>;
+          try { execution = plan.execute.call(plan, context); }
           catch (error) { observation.threw(id, 'execute'); throw error; }
-          observation.result(id, 'execute', result);
-          return result;
+          // 回调先于Host随后安装的await收口，但返回原Promise，不新增业务Promise身份。
+          void execution.then(result => observation.result(id, 'execute', result), () => observation.threw(id, 'execute'));
+          return execution;
         },
       } };
     },

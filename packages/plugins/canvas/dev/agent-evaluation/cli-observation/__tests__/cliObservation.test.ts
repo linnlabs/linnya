@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { BackendPluginCliContribution, BackendPluginCliExecutionContext, BackendPluginCliPlan, BackendPluginCliResult } from '@plugin/backend/pluginCli';
@@ -30,14 +30,16 @@ it('封装一次正式execute，保this/参数/权限/原始响应/其余贡献�
   const f = fixture(), response = { exitCode: 8, stdout: '{"error":"失败"}\r\n\u0000', stderr: '原样 stderr\n' };
   const context = { conversationId: 'actual-conversation', agentRunId: 'actual-run', projectId: 'actual-project', signal: new AbortController().signal,
     get hostContext(): unknown { throw new Error('host_context_must_not_be_read'); } };
-  const execute = vi.fn(function (this: BackendPluginCliPlan, value: BackendPluginCliExecutionContext) { expect(this).toBe(plan); expect(value).toBe(context); return Promise.resolve(response); });
+  const originalPromise = Promise.resolve(response);
+  const execute = vi.fn(function (this: BackendPluginCliPlan, value: BackendPluginCliExecutionContext) { expect(this).toBe(plan); expect(value).toBe(context); return originalPromise; });
   const plan: BackendPluginCliPlan = { access, execute };
   const cli: BackendPluginCliContribution = { prepare(value) { expect(this).toBe(cli); expect(value).toBe(input); return { status: 'ready', plan }; } };
   const prepare = vi.spyOn(cli, 'prepare'), original = plugin(cli), observed = observeCanvasPluginCli(original, f.observation);
   for (const [key, value] of Object.entries(original)) if (key !== 'pluginCli') expect(Reflect.get(observed, key)).toBe(value);
   const prepared = observed.pluginCli?.prepare(input); expect(prepared?.status).toBe('ready');
   if (prepared?.status !== 'ready') throw new Error('expected_ready');
-  expect(prepared.plan.access).toBe(access); expect(await prepared.plan.execute(context)).toBe(response);
+  expect(prepared.plan.access).toBe(access); const execution = prepared.plan.execute(context);
+  expect(execution).toBe(originalPromise); expect(await execution).toBe(response);
   expect(prepare).toHaveBeenCalledTimes(1); expect(execute).toHaveBeenCalledTimes(1);
   f.observation.seal();
   expect(f.records().find(event => event.kind === 'execute-start')?.facts.identity).toEqual({ conversationId: 'actual-conversation', agentRunId: 'actual-run', projectId: 'actual-project' });
@@ -63,12 +65,29 @@ it('prepare与execute抛出原异常对象，观测写冲突既不覆盖业务�
   const second = observeCanvasPluginCli(plugin({ prepare: () => ({ status: 'ready', plan: { access, execute: () => Promise.reject(executeError) } }) }), f.observation);
   const prepared = second.pluginCli?.prepare(input); if (prepared?.status !== 'ready') throw new Error('expected_ready');
   await expect(prepared.plan.execute({ hostContext: null, signal: new AbortController().signal })).rejects.toBe(executeError);
+  const synchronous = observeCanvasPluginCli(plugin({ prepare: () => ({ status: 'ready', plan: { access, execute() { throw executeError; } } }) }), f.observation).pluginCli?.prepare(input);
+  if (synchronous?.status !== 'ready') throw new Error('expected_ready');
+  try { synchronous.plan.execute({ hostContext: null, signal: new AbortController().signal }); throw new Error('expected_sync_error'); } catch (error) { expect(error).toBe(executeError); }
   f.observation.seal(); expect(f.seal().status).toBe('complete');
   const failed = fixture(); writeFileSync(path.join(failed.directory, '000001.json'), 'do not overwrite');
   const response = { exitCode: 0, stdout: 'success\n', stderr: '' }; const completed = { status: 'completed', result: response } satisfies ReturnType<BackendPluginCliContribution['prepare']>;
   expect(observeCanvasPluginCli(plugin({ prepare: () => completed }), failed.observation).pluginCli?.prepare(input)).toBe(completed);
   failed.observation.seal(); expect(failed.seal()).toMatchObject({ status: 'partial', writeFailed: true });
   expect(readFileSync(path.join(failed.directory, '000001.json'), 'utf8')).toBe('do not overwrite');
+});
+
+it('原Promise拒绝时落证I/O失败只置partial，不替换原rejection或制造额外未处理拒绝', async () => {
+  const f = fixture(), error = new Error('original-rejection');
+  let reject: ((error: Error) => void) | undefined;
+  const originalPromise = new Promise<BackendPluginCliResult>((_resolve, fail) => { reject = fail; });
+  const prepared = observeCanvasPluginCli(plugin({ prepare: () => ({ status: 'ready', plan: { access, execute: () => originalPromise } }) }), f.observation).pluginCli?.prepare(input);
+  if (prepared?.status !== 'ready' || !reject) throw new Error('expected_ready');
+  const returned = prepared.plan.execute({ hostContext: null, signal: new AbortController().signal }); expect(returned).toBe(originalPromise);
+  rmSync(f.directory, { recursive: true }); reject(error);
+  await expect(returned).rejects.toBe(error);
+  // 让Node经过未处理拒绝检查；writer的I/O错误不可泄漏成另一个Promise rejection。
+  await new Promise<void>(resolve => setImmediate(resolve));
+  mkdirSync(f.directory); f.observation.seal(); expect(f.seal()).toMatchObject({ status: 'partial', writeFailed: true });
 });
 
 it('未执行plan、在途execute均partial；没有正常进程seal不能宣完整，不覆写已有session', async () => {
