@@ -7,10 +7,11 @@ export function compareVisualTextLayout(reference: VisualTextLayout, actual: Vis
     || Math.abs(reference.width - actual.width) * reference.dpr > VISUAL_TEXT_LIMITS.layoutPhysicalPx) failures.push('layout_environment');
   reference.graphemes.forEach((expected, index) => {
     const found = actual.graphemes[index];
-    if (!found || found.id !== expected.id || found.text !== expected.text || JSON.stringify(found.style) !== JSON.stringify(expected.style)
+    if (!found || found.id !== expected.id || found.text !== expected.text || found.geometryKind !== expected.geometryKind || JSON.stringify(found.style) !== JSON.stringify(expected.style)
       || !expected.style.fontLoaded || !found.style.fontLoaded || found.rects.length !== expected.rects.length) {
       failures.push(`layout_grapheme:${expected.id}`); return;
     }
+    if (expected.geometryKind === 'marker-gutter' && found.geometryKind === 'marker-gutter' && JSON.stringify(expected.marker) !== JSON.stringify(found.marker)) failures.push(`layout_marker:${expected.id}`);
     expected.rects.forEach((rect, rectIndex) => {
       const other = found.rects[rectIndex];
       if (Math.max(Math.abs(rect.x - other.x), Math.abs(rect.y - other.y), Math.abs(rect.width - other.width), Math.abs(rect.height - other.height))
