@@ -1,5 +1,5 @@
 export { VisualTextLayoutSchema, VisualNegativeSchema, VISUAL_NEGATIVES, VISUAL_TEXT_LIMITS } from './definitions';
-export type { VisualTextLayout, VisualNegative, VisualImage } from './definitions';
+export type { VisualTextLayout, VisualNegative, VisualImage, VisualDocumentVector } from './definitions';
 export { collectVisualTextLayout } from './collectVisualTextLayout';
 export { compareVisualTextLayout } from './compareVisualTextLayout';
 export { compareVisualTextPixels, visualImageFromBgra } from './compareVisualTextPixels';
@@ -10,3 +10,4 @@ export { qualifiesMonochromeModel, matchesMonochromePaint } from './monochromeTe
 export { readVisualFontFacts } from './readVisualFontFacts';
 export { meanChannelAlpha, coverageFacts, fixedReferenceLineCoverage } from './visualInkCoverage';
 export { readBitmapGhostPreservation } from './readBitmapGhostPreservation';
+export { qualifiesDocumentVector } from './documentVectorModel';

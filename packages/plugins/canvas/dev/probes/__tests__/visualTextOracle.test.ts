@@ -25,7 +25,7 @@ function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | '
   });
   if (change === 'clip') { context.fillStyle = '#fff'; context.fillRect(0, 39, canvas.width, canvas.height - 39); }
   const image: VisualImage = { width: canvas.width, height: canvas.height, rgba: new Uint8Array(context.getImageData(0, 0, canvas.width, canvas.height).data) };
-  return { image, layout: { version: 3, dpr: 1, fontsStatus: 'loaded', width: canvas.width, graphemes,
+  return { image, layout: { version: 4, dpr: 1, fontsStatus: 'loaded', width: canvas.width, graphemes, vectors: [],
     lines: [{ id: 'line:0', rect: { x: 12, y: 24, width: 1480, height: 30 }, graphemeIds: graphemes.map(grapheme => grapheme.id) }] } satisfies VisualTextLayout };
 }
 
@@ -122,7 +122,7 @@ it.each(['swap', 'grayscale'] as const)('灰背景上的彩色字形%s质量/质
     }
   }
   const rect = { x: 0, y: 0, width: 80, height: 64 };
-  const layout: VisualTextLayout = { version: 3, dpr: 1, fontsStatus: 'loaded', width: 80,
+  const layout: VisualTextLayout = { version: 4, dpr: 1, fontsStatus: 'loaded', width: 80, vectors: [],
     graphemes: [{ id: 'emoji', text: '🖼️', geometryKind: 'range', rects: [rect], style: {
       ...readVisualFontFacts({ font: '32px system-ui', fontFamily: 'system-ui', fontSize: '32px', fontStyle: 'normal', fontWeight: '400', fontStretch: '100%', fontVariantNumeric: 'normal' }),
       lineHeight: '40px', letterSpacing: 'normal', direction: 'ltr',
@@ -170,7 +170,7 @@ function structureFixture(mixed = false, grayForeground: 0 | 200 = 0) {
     paint(reference, 31, 34, [230, 250, 255]); paint(actual, 31, 34, [246, 212, 212]);
     graphemes.push({ ...base, geometryKind: 'range', id: 'red', text: '乙', rects: [{ x: 22, y: 0, width: 16, height }], style: { ...base.style, color: [204, 0, 0] } });
   }
-  const layout: VisualTextLayout = { version: 3, dpr: 1, fontsStatus: 'loaded', width, graphemes,
+  const layout: VisualTextLayout = { version: 4, dpr: 1, fontsStatus: 'loaded', width, graphemes, vectors: [],
     lines: [{ id: 'line', rect: { x: 0, y: 0, width, height }, graphemeIds: graphemes.map(glyph => glyph.id) }] };
   return { reference, actual, layout };
 }

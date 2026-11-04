@@ -12,6 +12,16 @@ export function visualTextEnvironment(layout: VisualTextLayout) {
         ...(grapheme.geometryKind === 'marker-gutter' ? { marker: grapheme.marker } : {}),
         style: { fontShorthand, fontFamily, fontSize, fontStyle, fontWeight, fontStretch, fontVariantNumeric, fontQuery, fontAvailable,
           lineHeight, letterSpacing, direction, fontFeatureSettings, fontVariationSettings, transform, visibility } };
+    }),
+    vectors: layout.vectors.map(vector => {
+      // 主题角色色可变，但真实路径/viewport/描边/变换身份必须和独立反例的reference一致。
+      const paintIdentity = (paint: typeof vector.paint) => {
+        const { fill, strokeWidth, strokeLinecap, strokeLinejoin, strokeDasharray, strokeDashoffset, vectorEffect, opacity, fillOpacity, strokeOpacity,
+          transform, visibility, filter, clipPath, maskImage } = paint;
+        return { fill, strokeWidth, strokeLinecap, strokeLinejoin, strokeDasharray, strokeDashoffset, vectorEffect, opacity, fillOpacity, strokeOpacity,
+          transform, visibility, filter, clipPath, maskImage };
+      };
+      return { ...vector, paint: paintIdentity(vector.paint), paths: vector.paths.map(path => ({ ...path, paint: paintIdentity(path.paint) })) };
     }) });
 }
 

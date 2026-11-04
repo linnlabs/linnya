@@ -6,7 +6,11 @@
 
 原生列表 `::marker` 不属于 DOM Text/Range。它以独立 `geometryKind: marker-gutter` 保存真实li/ul矩形、首行Range、computed padding-inline-start与`::marker`样式，推导浏览器分配的marker槽，不冒充逐字簇边界。本固定夹具只接受ltr/outside/disc，未知布局保持失败。槽内仍有独立非空、质量、质心、实色和AA结构判定；槽外严格检查不变，另以真实“缺marker”损坏验证。它不是按已失败像素坐标加白名单。
 
-layout元数据使用version3，区分Range与marker槽并记录真实字体长属性及availability query；早期version1/2原件不回填、不经双读fallback冒充新资格，复核时按其实际source commit解释。
+layout元数据使用version4，required `vectors` 独立于文字Range与marker槽；早期version1/2/3原件不回填、不经双读fallback冒充新资格，复核时按其实际source commit解释。
+
+唯一图形入口是正式文档标签的`[data-document-reference-icon] > svg[data-icon=document]`，由公开RendererUI DocumentIcon产生。collector记录真实SVG viewport的getBoundingClientRect、viewBox、子path身份及computed fill/stroke/width/transform/opacity等绘制属性，reference与每个真实paint clone逐项比较。它不冒充字簇，也不按旧失败像素位置推导区域。SVG [viewport与几何bbox](https://www.w3.org/TR/SVG/coords.html#BoundingBoxes)不是同一概念；这里使用实际DOM viewport，避免把路径形状当CSS排版盒。
+
+仅该已知24×24 viewBox、两条非空path、无fill、同角色色1单位round描边、无filter/mask/transform且不透明的真实图标获单色stroke→background模型资格。未知绘制属性保持失败/严格outside，不能因为某个SVG同样有AA就准入。图形像素独立接受原非空、质量比0.7–1.35、质心0.5物理像素、20%非AA结构、颜色8及90%角色内核/前景峰守卫；文字与图形重叠时未知/emoji仍严格优先。仅强资格图标的真实局部加入已有ROI，其他位置的outside通道8保持不变。缺图标、换蓝色、一物理像素位移均由独立真实raster源SVG损坏产生，必须分别由raster/Pixi的图形像素本身拒绝，不能只靠layout不同。旧Linux的15个outside红点仍按旧source保留，只有新metadata/真实采样能取得图形资格。
 
 原生`::marker`的`font-variant-numeric: tabular-nums`不能由CSS `font` shorthand表示，真实computed shorthand可以为空；[CSS Fonts规范](https://drafts.csswg.org/css-fonts-3/#font-prop)没有承诺所有长属性都可序列化为该简写。因此字体可用性查询始终从本元素的font-style/weight/size/family构成，原shorthand及variant/stretch等长属性仍保存，不使用shorthand或父字体回退。`fontAvailable`只是FontFaceSet查询事实，不能当作实际painted-face ID；同环境/字体样式资格与像素验证仍必须成立。
 
@@ -32,7 +36,7 @@ Windows Chromium 150 的系统 LCD 字体与透明 Canvas 的灰阶 AA 可以不
 
 当前候选界限由 `definitions.ts` 唯一拥有：排版误差0.125物理像素、前景与背景通道对比24、质心误差0.5物理像素、墨迹质量比0.7–1.35、字簇/行非AA结构残差0.2/0.05、实色通道差8及90%内核保留。数字在 GPU 采集前固定；Node 通过不表示 Windows 已校准。真实同环境正负例若失败，先留下完整证据并解释，不扩大界限制造通过。
 
-`applyVisualNegative.ts` 只损坏独立反例的实际光栅源 DOM，reference 和原正例 PNG 不改。固定反例是缺一个汉字、标点、emoji或列表marker，末行裁切，一物理像素位移，错误字号，红字变蓝、emoji换色/丢色，文字区域之外的黑条及整体opacity冲淡。`verifyVisualTextNegatives.ts` 要求每个反例分别被 raster/Pixi 的像素检查拒绝；metadata 不同不能代算像素拒绝。全部反例及正例的字体、DPR、内容与字形几何资格必须匹配。
+`applyVisualNegative.ts` 只损坏独立反例的实际光栅源 DOM，reference 和原正例 PNG 不改。固定反例是缺一个汉字、标点、emoji或列表marker，末行裁切，一物理像素位移，错误字号，红字变蓝、emoji换色/丢色，文字区域之外的黑条及整体opacity冲淡，另有缺文档SVG图标/图标换蓝/图标一物理像素位移。`verifyVisualTextNegatives.ts` 要求每个反例分别被 raster/Pixi 的像素检查拒绝；metadata 不同不能代算像素拒绝。全部反例及正例的字体、DPR、内容、字形及图形几何资格必须匹配。
 
 normal visual 先保存所有有效捕获的正负例 PNG、paint clone metadata 和逐区域报告，最后汇总 failedCases 失败；尺寸、范围、Renderer 退出或未知异常立即传播，不补空白。缺少新 metadata 的旧 PNG 只能诊断，不能补造合格结论。CPU Skia 的少量业务检查只验证拒绝规则，真实 Windows/DOM/GPU 资格来自独立采集结果。
 
