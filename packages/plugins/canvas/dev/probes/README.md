@@ -34,6 +34,8 @@ Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShade
 
 软件完整视觉路径仍执行线条、遮挡、地图、缩略偏好、冷开、身份牌、编辑/LOD/readiness与销毁等原功能门，按真实1x采样。软件fade/scene测试其正式即时合同：显式软件请求必须实际limited/resolution1/interactive，no-preference下新增立即不透明、移动与相机立即到目标、删除立即释放、无退休/fade层，旧ImageBitmap恰好关闭一次；上传不能作draw，实际draw后首显/settled必须同时成立，并验证真实像素、拖动/命中/取消及地图删除。硬件路径仍执行原中间alpha/过渡/首显和系统减动态门；共同静态断言不因软件分支而跳过。fade/scene/motion入口不全局改成capture，生产降级、绘制质量与视觉阈值均不改。
 
+淡入与首显夹具在替换前都必须观察旧内容键的正式`rendered`回执及实际主draw计数增长，保存`oldBaseline`。两个RAF或一次capture不能证明旧图此前已显示；生产实现会直接替换从未显示的旧纹理，因此它不应进入淡出旧图的断言。这里沿用5s等待边界，旧图真实显示后才开始原64ms/120ms逻辑进度；不把等待或capture当作成图回执。独立`fadeBudgetVisual`仅验证资源准入与关闭，不声明固定DPR/像素质量资格。
+
 `CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_VISUAL_DIAGNOSTIC=software-line`只运行固定的既有lineVisual及原虚线/端点断言，用于隔离软件交互采样合同。launcher与预构建Electron入口共用窄模式解析；未知模式或未声明软件环境立即拒绝，不允许环境变量指定JS。launcher用Node24内置type stripping读取无依赖纯模式入口。诊断首次创建独立`canvas-visual-software-line-diagnostic`目录，已存在则拒绝覆盖，profile也随该目录隔离。真实window DPR、Kernel resolution、canvas/CSS尺寸、render-status、两幅原PNG先落盘，再运行原断言，不能提前改采样制造绿。局部终态写`diagnostic-result.json`或`diagnostic-failure.json`，始终标记`fullSuite:false`/`hardwareQualification:false`，不生成完整suite的`results.json`；未设置诊断flag时原完整范围不变。
 
 正文完成等待保持5000ms时限及两个真实rAF确认。最终返回前重新读取失败、排队、运行、媒体资源、纹理过渡和当前正文readiness；两帧期间新出现的paint失败不能被先前空队列掩盖。近景文字和媒体共用正式当前内容键的readiness，旧正文receipt或尚未draw的新正文都不算完成；远景仍遵循既有地图/缩略图LOD，不强迫绘制不需要的正文。
