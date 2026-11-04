@@ -48,7 +48,7 @@ describe('Canvas complete historical restoration', () => {
     f.restore(target);
     expect(f.snapshot().elements[0]).toMatchObject({ id: 'c1', revision: deletedRevision + 1, createdBy: agent.source, updatedBy: user.source });
     const stale = f.history.commitAgent({ actor: agent, now: 201, request: { documentId: 'doc', requestId: 'old-write', operations: [{ op: 'update', id: 'c1', baseRevision: deletedRevision, patch: { color: 'red' } }] } });
-    expect(stale).toMatchObject({ kind: 'committed', commit: { results: [{ status: 'skipped', reason: 'stale_field' }] } });
+    expect(stale).toMatchObject({ kind: 'committed', commit: { results: [{ status: 'skipped', reason: 'stale_element' }] } });
     expect(f.snapshot().elements[0]).toMatchObject({ color: 'white' });
     expect(readCanvasCommitState(f.database, 'doc').maximumRevision).toBe(deletedRevision + 1);
   });

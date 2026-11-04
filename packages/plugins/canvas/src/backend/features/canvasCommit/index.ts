@@ -15,3 +15,5 @@ export { canvasSourceKey, canvasPayloadHash, canvasOperationsPayload } from './f
 export { CanvasReadOnlyFormatError, CanvasContentPolicyError } from './definitions/canvasContentFailure';
 export { validateCanvasPlanContent } from './functions/validateCanvasContent';
 export { releaseCanvasEditingClaims, pruneCanvasHistoryGuards } from './persistence/canvasRepository';
+
+export { readCanvasUpdateFieldUnits } from './functions/readCanvasUpdateFieldUnits';

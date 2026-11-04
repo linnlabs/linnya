@@ -73,10 +73,13 @@ describe('Canvas user undo and redo', () => {
     f.commit([{ op: 'delete', id: 'c1' }]);
     f.history.releaseView('view'); expect(f.database.prepare('SELECT count(*) AS n FROM canvas_history_guards WHERE element_id = ?').get('c1')).toEqual({ n: 0 }); f.database.close();
   });
-  it('keeps field versions stale after undo restores the old logical origin', () => {
-    const f = fixture(); f.commit([add]); f.commit([{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }]); f.undo();
-    const result = f.history.commit({ request: { documentId: 'doc', requestId: 'stale', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'green' } }] }, actor: { source: { kind: 'agent', conversationId: null, runId: null }, viewId: 'agent' }, now: 5 });
-    expect(result.results[0]).toMatchObject({ status: 'skipped', reason: 'stale_field' }); expect(f.elements[0]).toMatchObject({ color: 'white', revision: 3 }); f.database.close();
+  it('keeps body field versions stale after undo restores the old logical origin, while style writes remain LWW', () => {
+    const f = fixture(); f.commit([add]); f.commit([{ op: 'update', id: 'c1', baseRevision: 1, patch: { data: { contentVersion: 1, content: createCanvasPlainTextDocument('用户新正文') } } }]); f.undo();
+    const actor = { source: { kind: 'agent' as const, conversationId: null, runId: null }, viewId: 'agent' };
+    const result = f.history.commit({ request: { documentId: 'doc', requestId: 'stale', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { data: { contentVersion: 1, content: createCanvasPlainTextDocument('过期正文') } } }] }, actor, now: 5 });
+    expect(result.results[0]).toMatchObject({ status: 'skipped', reason: 'stale_field' }); expect(f.elements[0]).toMatchObject({ data: { content: createCanvasPlainTextDocument('Example') }, revision: 3 });
+    const style = f.history.commit({ request: { documentId: 'doc', requestId: 'style', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'green' } }] }, actor, now: 6 });
+    expect(style.results[0]?.status).toBe('applied'); expect(f.elements[0]).toMatchObject({ color: 'green' }); f.database.close();
   });
   it('publishes trusted context after atomic participants and recovers synchronization gaps with a snapshot', () => {
     const f = fixture(); const seen: string[] = [];

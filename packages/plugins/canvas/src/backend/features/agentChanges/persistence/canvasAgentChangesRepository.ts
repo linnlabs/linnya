@@ -4,6 +4,7 @@ import type { CanvasCommitResult } from '../../../../shared';
 import type { CanvasDatabase } from '../../../definitions/canvasDatabase';
 import { canvasSourceKey, type CanvasHistoryCommitInput } from '../../canvasCommit';
 import { captureCanvasHistory, mergeCanvasHistoryEntry } from '../../../shared/history';
+import { projectCanvasSkippedFieldWrites } from '../functions/projectCanvasSkippedFieldWrites';
 import { CanvasAgentGroupRecordSchema, CanvasPendingBatchSchema, type CanvasAgentGroupRecord, type CanvasPendingBatch } from '../definitions/canvasAgentChanges';
 
 type ReadDatabase = Pick<CanvasDatabase, 'prepare'>;
@@ -30,11 +31,7 @@ export function createCanvasAgentGroup(documentId: string, conversationId: strin
 /** 组事实与正文共同提交，不从有界同步日志推导。 */
 export function recordCanvasAgentCommit(database: ReadDatabase, input: CanvasHistoryCommitInput): void {
   if (input.context.actor.source.kind !== 'agent') return;
-  const skippedWrites = input.result.results.filter(result => result.status === 'skipped').map(result => {
-    const operation = input.operations?.[result.index];
-    const fields = operation?.op === 'update' ? Object.keys(operation.patch) : operation ? ['$entity'] : null;
-    return { requestId: input.context.requestId, index: result.index, id: result.id, reason: result.reason, fields };
-  });
+  const projection = projectCanvasSkippedFieldWrites(input.result), skippedWrites = projection.skippedWrites;
   if (!input.plan.changes.length && !skippedWrites.length) return;
   const { documentId, actor, now } = input.context;
   const previous = findCanvasAgentGroup(database, documentId, canvasSourceKey(actor)) ?? createCanvasAgentGroup(documentId, actor.source.conversationId, now);
@@ -45,7 +42,7 @@ export function recordCanvasAgentCommit(database: ReadDatabase, input: CanvasHis
   const runIds = actor.source.runId ? [...new Set([...previous.runIds, actor.source.runId])] : previous.runIds;
   const deletedAtSequence = { ...previous.deletedAtSequence };
   for (const change of input.plan.changes) { if (change.after) delete deletedAtSequence[change.id]; else deletedAtSequence[change.id] = input.plan.state.sequence; }
-  saveCanvasAgentGroup(database, { ...previous, outcomes: { ...outcomes, skippedWrites: [...outcomes.skippedWrites, ...skippedWrites] }, reviewedElementIds: previous.reviewedElementIds.filter(id => !input.plan.changes.some(change => change.id === id)), deletedAtSequence, entry: mergeCanvasHistoryEntry(previous.entry, entry), lastWriteAt: input.plan.changes.length ? now : previous.lastWriteAt, runIds, deletedUserCardIds: [...new Set([...previous.deletedUserCardIds, ...deletedUser])] });
+  saveCanvasAgentGroup(database, { ...previous, outcomes: { complete: outcomes.complete && projection.complete, skippedWrites: [...outcomes.skippedWrites, ...skippedWrites] }, reviewedElementIds: previous.reviewedElementIds.filter(id => !input.plan.changes.some(change => change.id === id)), deletedAtSequence, entry: mergeCanvasHistoryEntry(previous.entry, entry), lastWriteAt: input.plan.changes.length ? now : previous.lastWriteAt, runIds, deletedUserCardIds: [...new Set([...previous.deletedUserCardIds, ...deletedUser])] });
 }
 export function readCanvasPendingApproval(database: ReadDatabase, documentId: string, pendingId: string): CanvasPendingBatch | null {
   const raw = database.prepare('SELECT batch_json FROM canvas_pending_approvals WHERE node_id = ? AND pending_id = ?').get(documentId, pendingId);

@@ -3,7 +3,7 @@ import type { CanvasReviewTarget } from '../definitions/agentReview';
 
 const fieldLabels: Readonly<Record<string, string>> = {
   data: '文字或内容', color: '颜色', width: '宽度', height: '高度', locked: '锁定状态',
-  x: '横向位置', y: '纵向位置', order: '层级', parentId: '分组', $entity: '整张卡片',
+  x: '横向位置', y: '纵向位置', order: '层级', parentId: '分组', $entity: '整张卡片', $existence: '对象的存在状态',
   from: '起点', to: '终点', label: '连线文字', direction: '箭头', lineStyle: '曲直', linePattern: '线型',
 };
 export function canvasReviewFields(fields: readonly string[] | null): string {

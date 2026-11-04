@@ -4,6 +4,7 @@ import type {
   CanvasHistoryReversalContext, CanvasHistoryReversalDecision,
 } from '../definitions/canvasHistoryReversal';
 import { canvasHistoryDependenciesValid, canvasHistoryElementDependsOn } from './canvasHistoryDependencies';
+import { planCanvasHistoryEditFields, canvasHistoryFieldResultReason } from './planCanvasHistoryEditFields';
 import { restoreCanvasHistoryFields } from './restoreCanvasHistoryFields';
 
 function claimedFields(id: CanvasElementId, context: CanvasHistoryReversalContext): readonly string[] {
@@ -57,8 +58,10 @@ export function reverseCanvasHistoryEdit(
   const current = context.rows.get(record.id);
   if (!current) return { kind: 'skipped', reason: 'element_missing' };
   const claimed = claimedFields(record.id, context);
-  const fields = record.fields.filter(field => !claimed.includes(field) && current.fieldOrigins[field] === record.afterOrigins[field]);
-  if (!fields.length) return { kind: 'skipped', reason: 'later_fields_preserved' };
+  const fieldResults = planCanvasHistoryEditFields(record, current, claimed);
+  const fields = fieldResults.filter(field => field.status === 'applied').map(field => field.field);
+  const reason = canvasHistoryFieldResultReason(fieldResults);
+  if (!fields.length) return { kind: 'skipped', reason: reason ?? 'later_fields_preserved', fieldResults };
   const after = restoreCanvasHistoryFields(record.before, current.element, fields, {
     source: context.actor.source, now: context.now, revision: current.element.revision + 1,
   });
@@ -69,11 +72,11 @@ export function reverseCanvasHistoryEdit(
   const versions = { ...current.fieldVersions };
   // 逻辑来源回到被恢复的写入；版本仍单调增加，旧Agent不能因此重新获准覆盖。
   for (const field of fields) {
-    origins[field] = record.beforeOrigins[field] ?? 'baseline';
+    origins[field] = record.beforeOrigins[field];
     versions[field] = after.revision;
   }
   return {
-    kind: 'applied', reason: fields.length === record.fields.length ? null : 'later_fields_preserved',
+    kind: 'applied', reason, fieldResults,
     row: { element: after, fieldOrigins: origins, fieldVersions: versions },
     change: { id: record.id, before: current.element, after, fields },
   };

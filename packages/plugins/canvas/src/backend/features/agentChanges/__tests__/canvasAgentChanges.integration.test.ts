@@ -33,7 +33,7 @@ describe('Canvas durable Agent change groups', () => {
     f.apply('A', update('red', 0), 'stale'); f.apply('A', update('red', 0), 'stale');
     const group = f.history.listGroups('doc', 10000)[0];
     expect(group?.lastWriteAt).toBe(first.lastWriteAt); expect(group?.writing).toBe(false);
-    expect(group?.outcomes).toEqual({ complete: true, skippedWrites: [{ requestId: 'stale', index: 0, id: 'c1', reason: 'stale_field', fields: ['color'] }] });
+    expect(group?.outcomes).toEqual({ complete: true, skippedWrites: [{ requestId: 'stale', index: 0, id: 'c1', reason: 'stale_element', fields: ['color'] }] });
     f.restart(); expect(f.history.listGroups('doc', 10000)[0]?.outcomes).toEqual(group?.outcomes); f.database.close();
   });
   it('does not turn missing legacy outcome facts into a claim that no operations were skipped', () => {

@@ -8,7 +8,7 @@ export const CanvasAgentCardChangeSchema = z.object({
 export const CanvasGroupWriteOutcomesSchema = z.object({
   /** 旧组没有持久化逐操作结果时明确说明缺信息，不把“未记录”当作没有跳过。 */
   complete: z.boolean(),
-  skippedWrites: z.array(CanvasOperationResultSchema.omit({ status: true }).extend({ requestId: z.string(), fields: z.array(z.string()).nullable() })),
+  skippedWrites: z.array(CanvasOperationResultSchema.omit({ status: true, fieldResults: true }).extend({ requestId: z.string(), fields: z.array(z.string()).nullable() })),
 }).strict();
 
 export const CanvasPendingApprovalSchema = z.object({
