@@ -43,10 +43,14 @@ export async function verifySceneVisual(win: BrowserWindow, output: string, eval
     }
     await writeFile(path.join(output, 'identity-tiny-card.png'), boundsImage.toPNG());
     if (outsideInk) throw new Error(`identity_text_escaped_its_card:${outsideInk}`);
+    const append = z.object({ before: z.string(), after: z.string(), appended: z.object({ bitmapBytes: z.number(), fadingCards: z.number(), rasterTiles: z.number() }), leftClosed: z.number(), rightClosed: z.number() })
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasBitmapAppendProbe()'));
+    const oldPixel = pixel(append.before, opacity.dpr, 60, 80), keptPixel = pixel(append.after, opacity.dpr, 60, 80), addedPixel = pixel(append.after, opacity.dpr, 160, 80);
+    if (JSON.stringify(oldPixel) !== JSON.stringify(keptPixel) || addedPixel.g < 170 || append.leftClosed !== 1 || append.rightClosed !== 1) throw new Error('append_changed_old_pixels_or_lost_new_region');
     const began = z.object({ started: z.number(), reduced: z.boolean() }).parse(await evaluate(win.webContents, 'window.beginCanvasReducedSceneProbe()'));
     if (began.started !== 1 || began.reduced) throw new Error('scene_motion_was_not_running_before_system_preference_change');
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     const reduced: unknown = await evaluate(win.webContents, 'window.finishCanvasReducedSceneProbe()');
-    return { move: { start: move.start, middlePosition: move.middlePosition, frozen: move.frozen, camera: move.camera, stats: move.stats }, opacity: { initial, middle, opaque, removed, revealed }, mapInk, identityInk, outsideInk, reduced };
+    return { move: { start: move.start, middlePosition: move.middlePosition, frozen: move.frozen, camera: move.camera, stats: move.stats }, opacity: { initial, middle, opaque, removed, revealed }, mapInk, identityInk, outsideInk, append: { ...append.appended, oldPixel, keptPixel, addedPixel, leftClosed: append.leftClosed, rightClosed: append.rightClosed }, reduced };
   } finally { await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [] }); win.webContents.debugger.detach(); }
 }

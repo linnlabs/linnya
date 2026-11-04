@@ -20,8 +20,13 @@ async function run() {
   const unlocked = (state: string) => state === 'active' || state === 'idle';
   const idleBefore = powerMonitor.getSystemIdleState(1), thermalBefore = powerMonitor.getCurrentThermalState();
   const nativeSessionBefore = offscreenProfile ? null : readNativeSessionState();
-  const accepted = offscreenProfile || unlocked(idleBefore) && (process.platform !== 'darwin' || nativeSessionBefore?.unlocked === true);
-  await writeFile(path.join(output, 'preflight.json'), JSON.stringify({ time: new Date().toISOString(), accepted, idleBefore, nativeSessionBefore }, null, 2));
+  const requireInternal120 = !offscreenProfile && process.env.CANVAS_PERFORMANCE_INTERNAL_120 === '1';
+  const targetDisplay = requireInternal120 ? screen.getAllDisplays().find(display => display.internal && display.displayFrequency >= 119) : undefined;
+  const accepted = (offscreenProfile || unlocked(idleBefore) && (process.platform !== 'darwin' || nativeSessionBefore?.unlocked === true))
+    && (!requireInternal120 || targetDisplay !== undefined);
+  await writeFile(path.join(output, 'preflight.json'), JSON.stringify({ time: new Date().toISOString(), accepted, idleBefore, nativeSessionBefore, requireInternal120,
+    targetDisplay: targetDisplay ? { id: targetDisplay.id, internal: targetDisplay.internal, displayFrequency: targetDisplay.displayFrequency, bounds: targetDisplay.bounds } : null }, null, 2));
+  if (requireInternal120 && !targetDisplay) throw new Error('Native benchmark requires an active internal 120Hz display');
   if (!accepted) throw new Error('Native benchmark requires an actually unlocked console session');
   await rm(path.join(output, 'results.json'), { force: true });
   if (offscreenProfile && process.platform === 'darwin') app.setActivationPolicy('accessory');
@@ -29,7 +34,9 @@ async function run() {
   powerMonitor.on('lock-screen', () => lockEvents.push({ event: 'lock', time: new Date().toISOString() }));
   powerMonitor.on('unlock-screen', () => lockEvents.push({ event: 'unlock', time: new Date().toISOString() }));
   const startedAt = new Date().toISOString();
-  const win = new BrowserWindow({ show: !offscreenProfile, width: 1600, height: 968, useContentSize: true, title: 'Canvas native performance probe', webPreferences: { sandbox: true, contextIsolation: true, offscreen: offscreenProfile,
+  // 默认primary可能被用户外接屏改变；硬件基线显式钉住自己的120Hz窗口，不改系统显示设置。
+  const position = targetDisplay ? { x: targetDisplay.bounds.x + Math.max(0, Math.floor((targetDisplay.bounds.width - 1600) / 2)), y: targetDisplay.bounds.y + 32 } : {};
+  const win = new BrowserWindow({ ...position, show: !offscreenProfile, width: 1600, height: 968, useContentSize: true, title: 'Canvas native performance probe', webPreferences: { sandbox: true, contextIsolation: true, offscreen: offscreenProfile,
     backgroundThrottling: false, enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
   try {
     await win.loadFile(path.join(output, 'index.html'));
@@ -84,14 +91,16 @@ async function run() {
     const nativeSessionAfter = offscreenProfile ? null : readNativeSessionState();
     const validDesktopRun = unlocked(idleAfter) && !lockEvents.some(event => event.event === 'lock')
       && (offscreenProfile || process.platform !== 'darwin' || nativeSessionAfter?.unlocked === true);
+    const displayQualified = !requireInternal120 || display.id === targetDisplay?.id && display.internal && display.displayFrequency >= 119;
     const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1';
-    const validHardwareRun = !offscreenProfile && validDesktopRun && !profiling;
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: 'production-dom-v4', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1' }, startedAt, endedAt: new Date().toISOString(),
+    const validHardwareRun = !offscreenProfile && validDesktopRun && displayQualified && !profiling;
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: 'production-dom-v4', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE }, startedAt, endedAt: new Date().toISOString(),
       renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',
       versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
-      idleBefore, idleAfter, nativeSessionBefore, nativeSessionAfter, lockEvents, validHardwareRun, profiling, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
+      idleBefore, idleAfter, nativeSessionBefore, nativeSessionAfter, lockEvents, validHardwareRun, profiling, requireInternal120, displayQualified, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
       display: { label: display.label, internal: display.internal, scaleFactor: display.scaleFactor, displayFrequency: display.displayFrequency, bounds: display.bounds },
       gpu: await app.getGPUInfo('basic'), reports }, null, 2));
+    if (!displayQualified) throw new Error('Native benchmark left its requested internal 120Hz display');
     if (!offscreenProfile && !validDesktopRun) throw new Error('Desktop locked during native performance benchmark');
   } finally { win.destroy(); }
 }

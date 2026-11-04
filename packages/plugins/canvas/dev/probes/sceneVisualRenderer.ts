@@ -84,6 +84,19 @@ async function identityBoundsVisual() {
     data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '😀中文'.repeat(1000) }] }] } } });
   kernel.setElements([initial]); return { image: await kernel.captureImage('png'), dpr: devicePixelRatio };
 }
+async function bitmapAppendVisual() {
+  const kernel = await setup(), initial = card('c1', 20); kernel.setElements([initial]);
+  const left = bitmap('#e02020'), right = bitmap('#20c060'); let leftClosed = 0, rightClosed = 0;
+  const closeLeft = left.close.bind(left), closeRight = right.close.bind(right);
+  left.close = () => { leftClosed++; closeLeft(); }; right.close = () => { rightClosed++; closeRight(); };
+  kernel.setRasterTiles(initial.id, 1, 'same-content', [{ bitmap: left, x: 0, y: 0, width: 100, height: 140, scale: 1 }]); await drawn();
+  const before = await kernel.captureImage('png');
+  kernel.setRasterTiles(initial.id, 1, 'same-content', [{ bitmap: right, x: 100, y: 0, width: 100, height: 140, scale: 1 }]);
+  const appended = kernel.readStats(); if (appended.fadingCards || appended.rasterTiles !== 2 || leftClosed || rightClosed) throw new Error('same_content_append_rebuilt_or_faded_existing_regions');
+  await sleep(48); const after = await kernel.captureImage('png'); kernel.invalidateBitmaps();
+  if (leftClosed !== 1 || rightClosed !== 1 || kernel.readStats().bitmapBytes || kernel.readStats().fadingCards) throw new Error('append_bitmap_ownership_not_closed_once');
+  return { before, after, appended, leftClosed, rightClosed };
+}
 async function beginReducedScene() {
   const kernel = await setup(), initial = card('c1', 20); kernel.setElements([initial]); await drawn();
   kernel.setElements([{ ...initial, revision: 2, x: 330 }], { animateIds: [initial.id] }); kernel.animateCamera({ x: 100, y: 60, zoom: 1.2 }, 320);
@@ -98,4 +111,4 @@ async function finishReducedScene() {
   const stats = kernel.readStats(); kernel.destroy(); current = undefined; return stats;
 }
 Object.defineProperties(window, { prepareCanvasSceneVisualProbe: { value: sceneVisual }, prepareCanvasSceneOpacityVisualProbe: { value: sceneOpacityVisual }, prepareCanvasSceneMapVisualProbe: { value: sceneMapVisual },
-  prepareCanvasIdentityInkProbe: { value: identityInkVisual }, prepareCanvasIdentityBoundsProbe: { value: identityBoundsVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });
+  prepareCanvasIdentityInkProbe: { value: identityInkVisual }, prepareCanvasIdentityBoundsProbe: { value: identityBoundsVisual }, prepareCanvasBitmapAppendProbe: { value: bitmapAppendVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });
