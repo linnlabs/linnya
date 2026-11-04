@@ -70,6 +70,7 @@ export async function registerHiddenWorker(
     preloadPath: definition.preloadPath,
     partition: definition.partition,
     renderingMode: definition.renderingMode,
+    renderViewport: definition.renderViewport,
     createRequestPayload: (invocation) => ({
       requestId: invocation.requestId,
       payload: invocation.payload,

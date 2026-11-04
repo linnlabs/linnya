@@ -1,3 +1,5 @@
+import type { HiddenWorkerRenderViewport } from '@linnya/plugin-host-contract/backend/hiddenWorkerRuntime';
+
 export interface DesktopHiddenWorkerDescriptor {
   readonly id: string;
   readonly requestChannel: string;
@@ -8,6 +10,7 @@ export interface DesktopHiddenWorkerDescriptor {
   readonly partition?: string;
   /** 需要实际绘制的 worker 必须选择 offscreen；background 仅承诺排版。 */
   readonly renderingMode?: 'background' | 'offscreen';
+  readonly renderViewport?: HiddenWorkerRenderViewport;
   readonly cancelChannel?: string;
   readonly idleTimeoutMs?: number;
   readonly readyTimeoutMs?: number;
