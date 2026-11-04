@@ -14,6 +14,10 @@
 
 地图标题保留160 CSS px边界余量，同倍率小范围平移只移动投影纹理；倍率、标题、主题、内容或尺寸改变才重新排版。正文提取按卡片对象缓存，短标题宽度缓存有4096项上限。遮挡淡影的mask复用同一世界可见条块，不能把已经完全遮住的整卡继续叠画到stencil。
 
+标题候选为空时隐藏地图标题Sprite、清理已绘ID与投影身份，不上传整层透明Canvas。纯图片与文档缩略图仍由正文层绘制；重新进入非空候选时必须按当前标题重画，不能复用空层前的旧文字。该规则只判断明确的空候选数组，不扩大到其他裁切或降级场景。
+
+标题前缀与宽度拟合共用浏览器[`Intl.Segmenter`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Segmenter)的grapheme边界，保留ZWJ emoji、旗帜及组合音标。地图首行18组、近景首行120组的前缀按需迭代，不为五万字正文展开整篇字符数组；地图继续无省略号、近景与线标签继续使用省略号，既有缓存上限不变。
+
 线条纯几何来自 shared/geometry，前后台共用卡边裁切、同侧排开、迟滞与收敛曲线。Pixi 线适配使用静态世界 Mesh 和相机 uniform 保持 1 CSS px；远景直线与近景曲线缓存分开，缩放不反复 stroke 三角化。线层提供点击、高亮、端点、标签、纸面淡影和超过 3000 条可见线时的选中关系简化。`readEdgeGeometry` 给 DOM 交互实际排开后的坐标，不能由另一个表面猜曲线中点。
 
 拖动时关联边与静态线分层。`createCanvasEdgeLayout` 缓存端点分组，只更新移动卡的连接和同侧排开的邻线，未关联曲线保留原对象。Bézier按控制点凸包到弦段的1/4屏幕像素误差自适应细分，不能按一段长直线的长度生成上百个冗余点。world使用[Pixi RenderGroup](https://pixijs.com/8.x/guides/concepts/render-groups)使相机变换在GPU整组执行，保留图文缩略的原层级。
