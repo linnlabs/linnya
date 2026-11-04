@@ -223,7 +223,7 @@ Sharp 的公开入口可能是 JavaScript loader；PE 架构校验通过共享
 ## 并行 Desktop 回归
 
 完成 `pnpm run dev:electron --build-only` 后，macOS 可运行 `pnpm run test:development:parallel-desktop`。
-该 gate 用当前正式构建产物启动三个临时开发实例，覆盖 Renderer/API/Qdrant 端口、profile、CLI 描述、
+该 gate 用当前正式构建产物启动三个临时开发实例（其中两个直接在同一 checkout 设置独立实例根），覆盖 Renderer/API/Qdrant 端口、profile、CLI 描述、
 向量数据隔离、同目录单实例和独立退出；不读取开发者数据库或调用模型，结束后清理临时进程与文件。
 Windows 的 profile 与动态端口逻辑共用同一实现，仍需 Windows 真机验收；该 gate 不代替平台发布验收。
 

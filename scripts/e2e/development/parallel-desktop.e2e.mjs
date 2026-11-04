@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -38,11 +38,11 @@ async function waitFor(label, read, app, timeout = 60_000) {
   throw new Error(`${label} timed out\n${app?.output.slice(-8000) ?? ''}`);
 }
 
-function launch(directory, rendererUrl) {
+function launch(directory, rendererUrl, instanceRoot = directory) {
   const env = { ...process.env };
   // 准入与路径均使用正式开发默认值，不继承调用者可能指定的共享目标。
   for (const key of [
-    'LINNYA_API_PORT', 'LINNYA_WORKSPACE_DIR', 'LINNYA_CLI_CONNECTION_FILE',
+    'LINNYA_API_PORT', 'LINNYA_WORKSPACE_DIR', 'LINNYA_CLI_CONNECTION_FILE', 'LINNYA_DEV_INSTANCE_ROOT',
     'LINNYA_PLUGIN_ROOT', 'LINNYA_CONVERSATION_ROOT', 'ELECTRON_RUN_AS_NODE',
   ]) delete env[key];
   const child = spawn(electronPath, [
@@ -52,6 +52,7 @@ function launch(directory, rendererUrl) {
     env: {
       ...env, NODE_ENV: 'development', LINNYA_DEV_MODE: 'true', APP_VERSION: packageJson.version,
       VITE_DEV_SERVER_URL: rendererUrl,
+      ...(instanceRoot !== directory ? { LINNYA_DEV_INSTANCE_ROOT: instanceRoot } : {}),
       MODEL_REGISTRY_DEFAULTS_PATH: path.join(repositoryRoot,
         'src/domains/model-catalog/features/default-catalog/assets/default_models.json'),
       LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: pluginDirectories.join(path.delimiter),
@@ -59,7 +60,7 @@ function launch(directory, rendererUrl) {
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  const app = { child, directory, rendererUrl, output: '', exit: null, cdp: null, descendants: [] };
+  const app = { child, directory, instanceRoot, rendererUrl, output: '', exit: null, cdp: null, descendants: [] };
   app.exit = new Promise((resolve, reject) => {
     child.once('error', reject);
     child.once('exit', (code, signal) => resolve({ code, signal }));
@@ -119,7 +120,7 @@ async function connectPage(app) {
 }
 
 async function readDescriptor(app) {
-  return JSON.parse(await readFile(path.join(app.directory,
+  return JSON.parse(await readFile(path.join(app.instanceRoot,
     '_dev_electron/runtime/conversation-control-v1.json'), 'utf8'));
 }
 
@@ -156,12 +157,20 @@ try {
     }
     const renderer = await startRendererDevelopmentServer();
     renderers.push(renderer);
-    launch(directory, renderer.url);
+    launch(label === 'worktree-c' ? directory : repositoryRoot, renderer.url, directory);
   }
   const instances = [...applications];
   await Promise.all(instances.map(app => waitFor('Desktop ready', () => app.output.includes('[Desktop] ready'), app)));
   for (const app of instances) app.descendants = await readMacosDescendantInstances(app.child.pid);
   const descriptors = await Promise.all(instances.map(handshake));
+  for (const app of instances) {
+    assert.ok(app.output.includes(`profile=${path.join(app.instanceRoot, '_dev_electron')}`));
+    const dataRoot = path.join(app.instanceRoot, '_dev_data');
+    assert.ok(await readFile(path.join(dataRoot, '.linnya-development-data.json'), 'utf8'));
+    // 日志与配置必须跟随实例，而不是仅移动 workspace.sqlite。
+    assert.ok((await readdir(path.join(dataRoot, 'logs'))).some(name => name.endsWith('.log')));
+    assert.ok(app.output.includes(dataRoot));
+  }
   assert.equal(new Set(descriptors.map(descriptor => descriptor.port)).size, 3);
   assert.equal(new Set(descriptors.map(descriptor => descriptor.app_instance_id)).size, 3);
   assert.equal(new Set(renderers.map(renderer => renderer.url)).size, 3);
@@ -188,7 +197,7 @@ try {
     assert.deepEqual(body.result.collections.filter(item => item.name.startsWith('instance_')),
       [{ name: `instance_${index}` }]);
   }
-  const duplicate = launch(instances[0].directory, instances[0].rendererUrl);
+  const duplicate = launch(instances[0].directory, instances[0].rendererUrl, instances[0].instanceRoot);
   const duplicateExit = await Promise.race([duplicate.exit, pause(10_000).then(() => { throw new Error('duplicate did not exit'); })]);
   assert.equal(duplicateExit.code, 0);
   assert.ok(duplicate.output.includes('已有运行实例'));

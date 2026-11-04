@@ -28,7 +28,7 @@ Main 的 event-loop 响应性 monitor 同样由 App owner 创建和停止。它�
 
 生产 Main 只加载由精确 Electron Main Process 生成的 `main.jsc`；App Server 以固定随包 Node 直接执行 `app-server-entry.cjs`/`app-server-backend.cjs`。构建会主动删除旧 `ts-backend.js/.cjs/.jsc`，启动链没有同进程 fallback。Main 在创建业务窗口前等待 App Server 的真实 ready 事实；关闭 App、启动失败和 updater handoff 都通过同一 owner 收口 App Server 及其全部后代。
 
-源码开发按工作目录隔离 Electron profile，Main 在锁之前配置 `_dev_electron`，业务 `_dev_data` 保持原位。
+源码开发按工作目录隔离 Electron profile，Main 在锁之前配置 `_dev_electron`，业务 `_dev_data` 默认保持原位；`LINNYA_DEV_INSTANCE_ROOT` 同时移动两者和启动前 epoch 检查。
 Desktop 通过 bootstrap 一次传入当前 Renderer origin 和 API/Qdrant 动态端口请求；Backend 不自行读取
 Vite 环境或猜默认地址。详见[并行开发](../../../docs/development/env-local.md)。
 

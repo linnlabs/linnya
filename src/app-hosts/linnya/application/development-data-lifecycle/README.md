@@ -14,6 +14,8 @@ Catalog、Conversation、Knowledge、assets 和插件状态，因此不归属于
 主进程只在非打包且 `LINNYA_DEV_MODE=true`
 时调用准入，并且必须发生在业务服务初始化之前。非空目录缺 marker、marker 损坏或 epoch 不一致都会失败；启动链不自动迁移、不自动删除，也不按异常类型猜测兼容路径。
 
+Desktop 将已解析的开发实例根传给准入；设置 `LINNYA_DEV_INSTANCE_ROOT` 时只检查该实例的 `_dev_data`。reset 仍固定管理源码根的默认目录，不读取实例覆盖。
+
 当前 epoch 是 2：桌面 Host Schema 已从 v1-v60 历史升级链切换为 v61 当前事实基线。epoch 1
 目录必须整体隔离后重建，不能只修改 SQLite `user_version` 或局部清表。
 

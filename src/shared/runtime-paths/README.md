@@ -5,6 +5,8 @@
 `readSourceCheckoutIdentity` 接收调用方已确定的代码根，用 realpath 归一目录，读取当前分支用于诊断；没有 Git 分支时为 null。
 源码目录与 Workspace 数据根分开。CLI 按自己的入口定位代码根，Backend 按实际 bundle 定位；不能从会话 cwd 推断，不能用相同分支名代替目录校验。
 
+`resolveDevelopmentInstancePaths` 统一解析源码运行的 `LINNYA_DEV_INSTANCE_ROOT`：默认保持 checkout，覆盖后同时移动 `_dev_data` 与 `_dev_electron`，源码身份不变。Desktop、CLI Runtime 与源码 CLI 连接解析共用该函数；显式 Workspace、profile 和连接文件覆盖保持优先。
+
 最外层 Host 是路径的唯一解析者。Desktop 读取 Electron 的 `userData` / `documents`、开发根目录和 `LINNYA_WORKSPACE_DIR`；源码 CLI Runtime 使用仓库 `_dev_data` 并接受显式 `--workspace`。两者都生成并冻结 `RuntimePathRoots`，再把纯数据事实传给 App Server 和 Queue Worker。App Server、Worker 与业务 domain 不得再次加载 Electron、读取自己的 `cwd` 或用用户 Home 目录猜另一套路径。
 
 `workspaceRoot` 是整套数据工作区的物理根，可包含多个 Project；项目 ID、项目 VFS 地址与会话工作目录均不能作为这个参数。Project 生命周期见[Project domain](../../domains/projects/README.md)。

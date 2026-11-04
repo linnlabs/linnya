@@ -33,6 +33,7 @@ async function startNormalAppMode() {
     app,
     developmentMode: process.env.LINNYA_DEV_MODE === 'true',
     developmentRoot: process.cwd(),
+    developmentInstanceRootOverride: process.env.LINNYA_DEV_INSTANCE_ROOT,
   });
   if (developmentProfile && !process.env.LINNYA_CLI_CONNECTION_FILE) {
     const { CONVERSATION_CONTROL_CONNECTION_FILE_NAME } = require('@app/schemas');
@@ -63,8 +64,11 @@ async function startNormalAppMode() {
       const developmentDataLifecycle = createDevelopmentDataLifecycle({
         filesystem: createNodeDevelopmentDataFilesystem(),
       });
+      const { resolveDevelopmentInstancePaths } = require('../shared/runtime-paths');
       await developmentDataLifecycle.ensureReady({
-        developmentRoot: process.cwd(),
+        developmentRoot: resolveDevelopmentInstancePaths(
+          process.cwd(), process.env.LINNYA_DEV_INSTANCE_ROOT,
+        ).instanceRoot,
         appVersion: process.env.APP_VERSION || 'development',
       });
     }

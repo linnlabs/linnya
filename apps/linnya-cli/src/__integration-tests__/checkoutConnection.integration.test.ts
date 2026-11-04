@@ -71,6 +71,15 @@ describe('source checkout connection over real HTTP', () => {
     });
   });
 
+  it('一次性实例连接路径与 Desktop 一致，显式连接覆盖优先', async () => {
+    const source = await checkout();
+    expect(resolveConnectionFile({ LINNYA_DEV_INSTANCE_ROOT: './disposable' }, undefined, source.identity))
+      .toBe(path.join(source.root, 'disposable/_dev_electron/runtime', CONVERSATION_CONTROL_CONNECTION_FILE_NAME));
+    const explicit = path.join(source.root, 'explicit.json');
+    expect(resolveConnectionFile({ LINNYA_DEV_INSTANCE_ROOT: './disposable',
+      LINNYA_CLI_CONNECTION_FILE: explicit }, undefined, source.identity)).toBe(explicit);
+  });
+
   it('本目录未启动，即使用户级安装版连接有效也不回退', async () => {
     const source = await checkout();
     const home = path.join(source.root, 'home');

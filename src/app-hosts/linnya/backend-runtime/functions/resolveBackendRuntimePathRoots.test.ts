@@ -20,6 +20,26 @@ describe('resolveBackendRuntimePathRoots', () => {
     });
   });
 
+  it('一次性实例移动全部默认运行数据，并允许另设 Workspace', () => {
+    const input = {
+      developmentRoot: '/workspace/linnya',
+      userDataDirectory: '/disposable/_dev_electron',
+      documentsDirectory: '/documents',
+      developmentMode: true,
+      developmentInstanceRootOverride: '../disposable',
+    };
+    expect(resolveBackendRuntimePathRoots(input)).toMatchObject({
+      developmentRoot: '/workspace/linnya',
+      appDataRoot: '/workspace/disposable/_dev_data',
+      workspaceRoot: '/workspace/disposable/_dev_data',
+      profileRoot: '/disposable/_dev_electron',
+    });
+    expect(resolveBackendRuntimePathRoots({ ...input, workspaceRootOverride: './workspace' }))
+      .toMatchObject({ workspaceRoot: '/workspace/linnya/workspace', workspaceRootIsCustom: true });
+    expect(resolveBackendRuntimePathRoots({ ...input, developmentMode: false }))
+      .toMatchObject({ appDataRoot: '/disposable/_dev_electron/AIService', workspaceRoot: '/documents/Linnya' });
+  });
+
   it('生产态由 App Host 决定平台目录，并固定相对 Workspace 覆盖的解析基准', () => {
     expect(
       resolveBackendRuntimePathRoots({
