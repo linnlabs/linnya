@@ -16,7 +16,7 @@ metadata:
 - 只使用既有 read_file、write_file、shell、process、skill；没有 Canvas 专属模型工具。
 - 使用 `linnya-canvas`；它是当前 App 受管 Shell 的插件命令，不是普通终端的连接入口。
 - 创建输入文件及 apply、arrange、render 的 shell 调用必须设置 `requires_write_access: true`。
-- 查询使用 `workspace:/目录/文件.canvas`。操作 JSON、图片输入使用当前会话相对路径或 `conversation:/`。
+- 查询使用 `workspace:/目录/文件.canvas`。操作 JSON、图片输入使用相对于本次对话初始物理工作目录的路径或 `conversation:/`；不接受绝对物理路径。
 - `write_file`只写Workspace文档，不创建会话物理文件。Workspace与Shell工作目录不自动同步，不能把虚拟路径当作已存在的输入文件。
 - 不传数据库路径、项目ID、对话ID、批准标志、任意输出目录。身份与权限由 Host 提供。
 - Shell 返回 completed 仍须检查 `data.terminal.process_exit`；0 为成功，8 为 Canvas 参数或业务错误。
@@ -27,7 +27,7 @@ metadata:
 
 1. read_file 读取画布概览；或 `linnya-canvas read workspace:/讨论.canvas`。
 2. 全文修改前用 `show <画布路径> <cN>` 读取目标卡，记住其 revision。大画布概览会截断正文。
-3. 用 shell 在默认的本次对话物理工作目录创建 UTF-8 JSON 操作数组，按当前终端支持的写文件语法保存，再调用 apply。每批最多500个原始动作。
+3. 用 shell 在默认的本次对话物理工作目录创建 UTF-8 JSON 操作数组，按当前终端支持的写文件语法保存，再调用 apply。输入路径始终从该初始目录解析；若 shell 已 `cd` 到子目录，`--ops-file` 仍须包含从初始目录开始的子目录前缀，例如 `batches/action-001.json`，也可写 `conversation:/batches/action-001.json`。每批最多500个原始动作。
 4. 检查每项 applied/skipped 与原因。被锁定、正在编辑或字段版本过期的内容会保留。
 5. 必要时 check 检查重叠、交叉与离群；render 查看真实画面。不要把启发提示当成事实错误。
 
