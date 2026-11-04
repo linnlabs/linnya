@@ -55,3 +55,5 @@ HTTP 2xx 只证明请求已接纳，SDK 读取响应 body 失败时仍可能带 
 Linnkit 0.38 起，已知 HTTP/decoded 429 与限流 finish reason 额外投影 `retry_category: rate_limit`，模型坏工具参数与 SDK 已取得但正文为空的响应投影 `output`。类别来自本 feature 已解码的事实，不靠框架猜 Provider code；原有安全错误码、是否可重试保持不变，次数和等待策略仍由 Host 与 Linnkit 决定。
 
 已解码、无冲突 HTTP 状态的 `ECONNRESET` 显式归为 transport，保留原安全 `provider_stream_error` 与不可重试声明；不能因它带有结构化 code 就落入未知 Provider 类。原始错误文本不参与这条规则。
+
+SDK `interrupted` 表示没有供应商完成信号，投影为可重试 `provider_stream_interrupted`，并发布 `nonstandard_finish`。Adapter 不将部分输出当作成功；重试预算与片段撤回仍由 Linnkit 管理。

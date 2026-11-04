@@ -190,6 +190,8 @@ part 生命周期违规使用 `provider_stream_lifecycle_invalid`。Adapter 不�
 
 ## Provider 变更流程
 
+Google 当前固定 `4.0.94`。后续补丁的 Gemini 4 长输出自动续请求没有关闭开关，与当前单 attempt 的单请求合同不同；升级前需单独审核预算、审计与取消语义，不能作为普通补丁自动跟进。
+
 升级一个已有 Provider package 时：
 
 1. 只修改本 package manifest 中对应的精确版本；如果 factory API 改变，只修改对应

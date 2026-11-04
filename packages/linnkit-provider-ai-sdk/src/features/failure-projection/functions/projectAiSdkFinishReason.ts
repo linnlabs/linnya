@@ -116,6 +116,12 @@ export function projectAiSdkFinishReason(
         event: providerFailure('provider_finish_other'),
         raw_reason_category: rawReasonCategory,
       };
+    case 'interrupted':
+      // 缺少供应商完成信号不能视为成功；重试与已输出片段撤回仍由 Linnkit 决定。
+      return {
+        event: providerFailure('provider_stream_interrupted'),
+        raw_reason_category: rawReasonCategory,
+      };
     case 'error':
       return {
         event: providerFailure('provider_finish_error'),
