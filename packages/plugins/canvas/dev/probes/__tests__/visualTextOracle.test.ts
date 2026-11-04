@@ -5,20 +5,20 @@ import { compareVisualTextPixels, compareVisualTextLayout, qualifiesMonochromeMo
 
 // CPU Skia生成真实字形，只验证oracle规则；不能代替Electron的真实Range/Win AA资格与GPU负例。
 const tokens = ['中', ...Array.from({ length: 40 }, () => '文'), '、', '🖼️', '红'];
-function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | 'size' | 'color' | 'opacity') {
+function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | 'size' | 'color' | 'opacity', fontFamily = 'sans-serif') {
   const canvas = createCanvas(1600, 100), context = canvas.getContext('2d');
   context.fillStyle = '#fff'; context.fillRect(0, 0, canvas.width, canvas.height);
-  context.font = '24px sans-serif'; context.textBaseline = 'top';
+  context.font = `24px ${fontFamily}`; context.textBaseline = 'top';
   const graphemes: VisualTextLayout['graphemes'] = [];
   tokens.forEach((text, index) => {
     const rect = { x: 12 + index * 34, y: 24, width: context.measureText(text).width, height: 30 };
     graphemes.push({ id: String(index), text, geometryKind: 'range', rects: [rect], style: {
-      ...readVisualFontFacts({ font: '24px sans-serif', fontFamily: 'sans-serif', fontSize: '24px', fontStyle: 'normal', fontWeight: '400', fontStretch: '100%', fontVariantNumeric: 'normal' }),
+      ...readVisualFontFacts({ font: `24px ${fontFamily}`, fontFamily, fontSize: '24px', fontStyle: 'normal', fontWeight: '400', fontStretch: '100%', fontVariantNumeric: 'normal' }),
       lineHeight: '30px', letterSpacing: 'normal',
       direction: 'ltr', fontFeatureSettings: 'normal', fontVariationSettings: 'normal', transform: 'none', visibility: 'visible',
       color: text === '红' ? [204, 0, 0] : [0, 0, 0], background: [255, 255, 255], fontAvailable: true } });
     if ((change === 'han' && index === 0) || (change === 'punctuation' && text === '、') || (change === 'emoji' && text === '🖼️')) return;
-    context.font = change === 'size' ? '30px sans-serif' : '24px sans-serif';
+    context.font = `${change === 'size' ? 30 : 24}px ${fontFamily}`;
     context.fillStyle = text === '红' ? change === 'color' ? '#00c' : '#c00' : '#000';
     context.globalAlpha = change === 'opacity' ? 0.8 : 1;
     context.fillText(text, rect.x + (change === 'shift' ? 1 : 0), rect.y);
@@ -43,8 +43,14 @@ it.each(['han', 'punctuation', 'emoji', 'clip', 'shift', 'size', 'color', 'opaci
 });
 
 it('整体opacity .8虽然保留合理颜色混合，真实前景峰仍必须拒绝，不能冒充完成的文字', () => {
-  const source = fixture(), damaged = fixture('opacity'), result = compareVisualTextPixels(source.image, damaged.image, source.layout);
-  expect(result.graphemes.some(grapheme => grapheme.failures.includes('foreground_peak'))).toBe(true);
+  // 必须实际走准入的单色模型；未知sans-serif的严格拒绝不能代替这条回归。
+  const source = fixture(undefined, 'system-ui'), damaged = fixture('opacity', 'system-ui');
+  const result = compareVisualTextPixels(source.image, damaged.image, source.layout);
+  const han = result.graphemes.find(grapheme => grapheme.text === '中');
+  expect(han?.monochromeEligible).toBe(true);
+  expect(han?.coverage.model).toBe('rgb-alpha-mean');
+  expect(han?.foregroundPeakPresent).toBe(false);
+  expect(han?.failures).toContain('foreground_peak');
   expect(result.pass).toBe(false);
 });
 
