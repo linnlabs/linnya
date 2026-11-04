@@ -3,6 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
+import { verifyCanvasTitleBoundaryPixels } from './identityTitleBoundaryElectron';
 
 const output = process.argv[2]; if (!output) throw new Error('identity_atlas_output_required');
 app.setPath('userData', path.join(output, 'profile')); app.on('window-all-closed', () => {});
@@ -80,9 +81,10 @@ async function run() {
     if (!mapFacts.hidden || !mapFacts.currentPixelsMatch || !mapFacts.oldPixelsChanged || map.empty.overflow || map.restored.overflow
       || map.empty.events.some(event => event.kind === 'texture-upload')
       || map.restored.events.filter(event => event.kind === 'texture-upload' && event.sourceKind === 'canvas').length !== 1) throw new Error('empty_map_upload_or_stale_title_projection');
+    const titleBoundaries = await verifyCanvasTitleBoundaryPixels(win.webContents, output);
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ sourceCommit: process.env.CANVAS_PROBE_SOURCE_COMMIT,
       sourceDirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE,
-      validHardwareRun: false, versions: process.versions, reports, lifecycle, budget, map: mapFacts, lod: { visible: lod.visible, small: lod.small, panned: lod.panned, cleared: lod.cleared }, context: contextFacts }, null, 2));
+      validHardwareRun: false, versions: process.versions, reports, lifecycle, budget, titleBoundaries, map: mapFacts, lod: { visible: lod.visible, small: lod.small, panned: lod.panned, cleared: lod.cleared }, context: contextFacts }, null, 2));
     console.log(JSON.stringify({ reports, lifecycle, context: contextFacts }));
   } finally { win.destroy(); }
 }
