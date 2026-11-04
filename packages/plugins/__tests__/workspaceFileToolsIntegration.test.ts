@@ -36,6 +36,7 @@ import type {
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema';
 import { WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/node-text-snapshot.schema';
 import { ASSET_LEDGER_SCHEMAS } from 'src/domains/assets/features/asset-ledger/infrastructure/sqlite/schemas/assetLedger.schema';
+import { DOCUMENT_REFERENCE_SCHEMAS } from 'src/domains/document-references';
 import { MARKDOWN_DOCUMENT_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/document.schema';
 import { PENDING_REVISION_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/pending-revision.schema';
 import { IMAGE_BLOCK_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/image.schema';
@@ -371,6 +372,7 @@ class FakeStatement implements WorkspaceVfsStatement {
 }
 
 class FakeVfsDatabase implements WorkspaceVfsDatabase {
+  inTransaction = false;
   readonly nodes: WorkspaceNodeRow[] = [];
   readonly documentVersions: MarkdownVersionRow[] = [];
   readonly mindmapVersions: VersionRow[] = [];
@@ -382,9 +384,18 @@ class FakeVfsDatabase implements WorkspaceVfsDatabase {
     return new FakeStatement(sql, this);
   }
 
-  transaction(fn: () => void): (() => void) & { readonly immediate: () => void } {
-    // better-sqlite3 的事务既可直接调用，也可通过 immediate 启动。
-    return Object.assign(() => fn(), { immediate: fn });
+  transaction<T>(fn: () => T): (() => T) & { readonly immediate: () => T } {
+    const run = () => {
+      // 引用 owner 必须观察到调用方事务；嵌套调用和抛错都不能泄漏事务状态。
+      const previous = this.inTransaction;
+      this.inTransaction = true;
+      try {
+        return fn();
+      } finally {
+        this.inTransaction = previous;
+      }
+    };
+    return Object.assign(run, { immediate: run });
   }
 
   savePresentationDocument(row: PresentationDocumentRow): void {
@@ -570,6 +581,7 @@ function createMarkdownFileToolFixture(events: WorkspaceMutationEvent[]): {
     ...MARKDOWN_DOCUMENT_SCHEMAS,
     ...PENDING_REVISION_SCHEMAS,
     ...IMAGE_BLOCK_SCHEMAS,
+    ...DOCUMENT_REFERENCE_SCHEMAS,
   ]) {
     db.exec(statement);
   }
