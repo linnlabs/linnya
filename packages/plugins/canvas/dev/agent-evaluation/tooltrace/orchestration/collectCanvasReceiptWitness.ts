@@ -2,7 +2,11 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { CanvasAgentReceiptQueryResultSchema } from '@plugin/canvas/shared';
-import { CanvasEvaluationCollectionSchema, CanvasEvaluationRunnerStateSchema } from '../../runner';
+import {
+  CanvasEvaluationCollectionSchema,
+  CanvasEvaluationRunnerStateSchema,
+  assertEvaluationCollectionScope,
+} from '../../runner';
 import {
   CanvasReceiptWitnessRequestSchema,
   CanvasReceiptWitnessSchema,
@@ -24,15 +28,8 @@ export async function collectCanvasReceiptWitness(input: {
     collectionFile = path.join(root, request.collectionLabel, 'collection.json');
   const state = CanvasEvaluationRunnerStateSchema.parse(await readTraceJson(stateFile)),
     collection = CanvasEvaluationCollectionSchema.parse(await readTraceJson(collectionFile));
-  if (
-    !state.receipt ||
-    collection.conversationId !== state.receipt.conversation_id ||
-    collection.runId !== state.receipt.run_id ||
-    collection.sourceRevision !== state.config.sourceRevision ||
-    collection.batchId !== state.config.batchId ||
-    collection.taskId !== state.config.taskId
-  )
-    throw new Error('Receipt witness scope does not match collected run');
+  assertEvaluationCollectionScope(state, collection);
+  if (!state.receipt) throw new Error('Evaluation has no confirmed model receipt');
   const trace = await readCollectedCanvasToolTrace({
     directory: path.dirname(collectionFile),
     state,

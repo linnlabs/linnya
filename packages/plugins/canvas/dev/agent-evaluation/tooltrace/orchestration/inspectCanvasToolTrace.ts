@@ -17,7 +17,10 @@ export async function inspectCanvasToolTrace(input: {
       value: await readTraceJson(sourceFile),
     }))
   );
-  const facts = parseCanvasToolTrace({ scope: inspection.scope, audit, pages });
+  const continuationAudits = await Promise.all(
+    (inspection.continuationAuditFiles ?? []).map(file => readTraceJson(file))
+  );
+  const facts = parseCanvasToolTrace({ scope: inspection.scope, audit, continuationAudits, pages });
   await mkdir(input.outputDirectory, { mode: 0o700 });
   await writeTraceJson(path.join(input.outputDirectory, 'inspection.json'), inspection);
   await writeTraceJson(path.join(input.outputDirectory, 'trace.json'), facts);

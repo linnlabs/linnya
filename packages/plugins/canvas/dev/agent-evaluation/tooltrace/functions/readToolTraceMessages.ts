@@ -1,52 +1,29 @@
 import {
-  ConversationControlAuditResponseSchema,
   ConversationControlMessagesResponseSchema,
   type ConversationUiMessage,
 } from '@app/schemas';
 import type { CanvasToolTraceFacts } from '../definitions/canvasToolTrace';
+import { readAllowedCanvasTraceRuns } from './readAllowedCanvasTraceRuns';
 export interface CanvasTraceMessage {
   readonly message: ConversationUiMessage;
   readonly sourceFile: string;
 }
-const auditScope = ConversationControlAuditResponseSchema.pick({
-  schema_version: true,
-  command: true,
-  ok: true,
-  conversation_id: true,
-  requested_run_id: true,
-  completeness: true,
-  runs: true,
-}).strip();
 export function readToolTraceMessages(input: {
   readonly facts: CanvasToolTraceFacts;
   readonly audit: unknown;
+  readonly continuationAudits?: readonly unknown[];
   readonly pages: readonly { readonly sourceFile: string; readonly value: unknown }[];
 }) {
-  const audit = auditScope.safeParse(input.audit),
-    scope = input.facts.scope;
-  if (
-    !audit.success ||
-    audit.data.conversation_id !== scope.conversationId ||
-    audit.data.requested_run_id !== scope.rootRunId ||
-    !audit.data.runs.some(run => run.run_id === scope.rootRunId)
-  ) {
+  const scope = input.facts.scope,
+    allowed = readAllowedCanvasTraceRuns({ ...input, scope });
+  if (!allowed) {
     input.facts.needsReview = true;
     input.facts.diagnostics.push({
       code: 'audit_scope_invalid',
-      message: '审计不能证明本次模型run范围',
+      message: '审计不完整或不能证明本次全部模型run范围',
       sourceFile: 'audit',
     });
     return [];
-  }
-  const allowed = new Set([scope.rootRunId]);
-  for (let changed = true; changed; ) {
-    changed = false;
-    for (const run of audit.data.runs) {
-      if (run.parent_run_id && allowed.has(run.parent_run_id) && !allowed.has(run.run_id)) {
-        allowed.add(run.run_id);
-        changed = true;
-      }
-    }
   }
   const rows = new Map<string, CanvasTraceMessage>(),
     conflicts = new Set<string>();

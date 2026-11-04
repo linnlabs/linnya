@@ -6,6 +6,7 @@ import { readCanvasToolMessage } from './readCanvasToolMessage';
 export function parseCanvasToolTrace(input: {
   readonly scope: unknown;
   readonly audit: unknown;
+  readonly continuationAudits?: readonly unknown[];
   readonly pages: readonly { readonly sourceFile: string; readonly value: unknown }[];
 }) {
   const facts = CanvasToolTraceFactsSchema.parse({
