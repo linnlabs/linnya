@@ -101,7 +101,7 @@ it('binds computed new-card positions to local aliases despite another writer al
   const { CanvasElementIdSchema, CanvasLayoutResultSchema } = await import('../../../../shared');
   const database = fixture();
   const predictedId = CanvasElementIdSchema.parse('c1');
-  const bound = bindCanvasLayout(CanvasLayoutResultSchema.parse({ sequence: 1, operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { x: 1000, y: 1000 } }], diagnostics: [] }), { $new: predictedId });
+  const bound = bindCanvasLayout(CanvasLayoutResultSchema.pick({ operations: true }).parse({ operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { x: 1000, y: 1000 } }] }), { $new: predictedId });
   commitCanvasOperations({ database, actor: user, now: 1, request: { documentId: 'canvas', requestId: 'other-writer', operations: [add('用户先分配')] } });
   const result = commitCanvasOperations({ database, actor: agent, now: 2, request: { documentId: 'canvas', requestId: 'late-layout', operations: [{ ...add('Agent新卡'), ref: '$new' }, ...bound.operations], layoutGroups: bound.layoutGroups } });
   expect(result.refs.$new).toBe('c2');
