@@ -20,7 +20,8 @@
     "./identityAtlasElectron.ts",
     "./__tests__/visualTextOracle.test.ts",
     "./__tests__/visualDocumentVector.test.ts",
-    "./__tests__/visualDiagnostic.test.ts"
+    "./__tests__/visualDiagnostic.test.ts",
+    "./__tests__/visualSampling.test.ts"
   ],
   "exclude": []
 }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
-import { CanvasVisualSamplingSchema, readCanvasVisualSampling, assertVisualImageSampling, assertSoftwareVisualSampling, visualPixelOffset } from '../visualSampling';
+import { CanvasVisualSamplingSchema, readCanvasVisualSampling, assertVisualImageSampling, assertSoftwareVisualSampling, visualPixelOffset, visualCssPixelOffset } from '../visualSampling';
 
 const software = () => CanvasVisualSamplingSchema.parse({ mode: 'interactive', windowDpr: 2, resolution: 1, css: { width: 900, height: 600 },
   canvas: { width: 900, height: 600 }, status: { limited: true, phase: 'ready', message: 'software rendering' } });
@@ -43,4 +43,14 @@ it('capture即使1x/limited也不能冒软件interactive，实际2x或未降级�
   expect(() => assertSoftwareVisualSampling({ ...sampling, mode: 'capture' })).toThrow('visual_software_interactive_sampling_mismatch');
   expect(() => assertSoftwareVisualSampling({ ...sampling, resolution: 2 })).toThrow('visual_software_interactive_sampling_mismatch');
   expect(() => assertSoftwareVisualSampling({ ...sampling, status: { ...sampling.status, limited: false } })).toThrow('visual_software_interactive_sampling_mismatch');
+});
+
+it('同一CSS半像素图形点在1x取包含单元，2x仍保原位置，不能舍入到邻近背景', () => {
+  const one = { width: 3, height: 1, pixels: new Uint8Array([165, 123, 171, 255, 242, 243, 238, 255, 242, 243, 238, 255]) };
+  const two = { width: 6, height: 2, pixels: new Uint8Array(6 * 2 * 4) }; two.pixels.set([165, 123, 171, 255], 4);
+  const point = { x: 0.5, y: 0 };
+  const first = visualCssPixelOffset(one, point, 1), second = visualCssPixelOffset(two, point, 2);
+  expect(Array.from(one.pixels.slice(first, first + 4))).toEqual([165, 123, 171, 255]);
+  expect(Array.from(two.pixels.slice(second, second + 4))).toEqual([165, 123, 171, 255]);
+  expect(() => visualCssPixelOffset(one, { x: 3, y: 0 }, 1)).toThrow('visual_pixel_out_of_bounds');
 });

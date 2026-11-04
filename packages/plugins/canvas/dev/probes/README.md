@@ -30,7 +30,9 @@ DOM、位图、Pixi 三个对照区按同一字体和当前 DPR 比较。CI 桌�
 
 Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShader；六组计数从 `canvas-software-probe/results.json` 校验，视觉报告也标记软件渲染。独立制品 smoke 继承相同软件环境，保留 worker 的实际 GPU/版本/渲染配置原件。软件结果只证明功能与确定性工作量，不能用作硬件帧率资格。独立制品 smoke 在依赖及平台准备成功后继续运行，即使前面的绘制/视觉失败；任何失败步骤仍使作业失败，不用 `continue-on-error` 掩盖。
 
-静态DOM/位图/Pixi正文比较使用正式worker已有的`renderingMode: capture`，要求Kernel实际resolution与DOM/raster DPR一致、canvas真实物理尺寸匹配CSS卡框×DPR。采样事实先独立写出，失败也保留mode/resolution/物理尺寸/renderStatus；截图裁成2x不能把1x软件交互画布冒充2x质量。软件交互的1x降级继续由counts及既有冒烟验证；fade/scene/motion入口不全局改成capture，生产降级、绘制质量与视觉阈值均不改。
+静态DOM/位图/Pixi正文比较使用正式worker已有的`renderingMode: capture`，要求Kernel实际resolution与DOM/raster DPR一致、canvas真实物理尺寸匹配CSS卡框×DPR。采样事实先独立写出，失败也保留mode/resolution/物理尺寸/renderStatus；截图裁成2x不能把1x软件交互画布冒充2x质量。所有interactive helper分别保存真实window DPR、Kernel实际resolution、CSS/canvas/PNG尺寸和render-status；影像尺寸/字节、声明比例及取样坐标严格校验，越界不能以undefined/NaN冒充背景。编辑reference同样按实际目标resolution生成，不能拿窗口2x与软件1x比较。
+
+软件完整视觉路径仍执行线条、遮挡、地图、缩略偏好、冷开、身份牌、编辑/LOD/readiness与销毁等原功能门，按真实1x采样。软件fade/scene测试其正式即时合同：显式软件请求必须实际limited/resolution1/interactive，no-preference下新增立即不透明、移动与相机立即到目标、删除立即释放、无退休/fade层，旧ImageBitmap恰好关闭一次；上传不能作draw，实际draw后首显/settled必须同时成立，并验证真实像素、拖动/命中/取消及地图删除。硬件路径仍执行原中间alpha/过渡/首显和系统减动态门；共同静态断言不因软件分支而跳过。fade/scene/motion入口不全局改成capture，生产降级、绘制质量与视觉阈值均不改。
 
 `CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_VISUAL_DIAGNOSTIC=software-line`只运行固定的既有lineVisual及原虚线/端点断言，用于隔离软件交互采样合同。launcher与预构建Electron入口共用窄模式解析；未知模式或未声明软件环境立即拒绝，不允许环境变量指定JS。launcher用Node24内置type stripping读取无依赖纯模式入口。诊断首次创建独立`canvas-visual-software-line-diagnostic`目录，已存在则拒绝覆盖，profile也随该目录隔离。真实window DPR、Kernel resolution、canvas/CSS尺寸、render-status、两幅原PNG先落盘，再运行原断言，不能提前改采样制造绿。局部终态写`diagnostic-result.json`或`diagnostic-failure.json`，始终标记`fullSuite:false`/`hardwareQualification:false`，不生成完整suite的`results.json`；未设置诊断flag时原完整范围不变。
 

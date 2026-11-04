@@ -32,6 +32,10 @@ export function visualPixelOffset(frame: Required<ImageSize>, point: { readonly 
   if (!Number.isInteger(point.x) || !Number.isInteger(point.y) || point.x < 0 || point.y < 0 || point.x >= frame.width || point.y >= frame.height) throw new Error('visual_pixel_out_of_bounds');
   return (point.y * frame.width + point.x) * 4;
 }
+/** CSS点属于[floor(p),floor(p)+1)单元；不能在1x时把半像素箭头点舍入到相邻背景。 */
+export function visualCssPixelOffset(frame: Required<ImageSize>, point: { readonly x: number; readonly y: number }, resolution: number): number {
+  return visualPixelOffset(frame, { x: Math.floor(point.x * resolution), y: Math.floor(point.y * resolution) });
+}
 export function assertSoftwareVisualSampling(sampling: VisualSampling): void {
   if (sampling.mode !== 'interactive' || sampling.resolution !== 1 || !sampling.status.limited) throw new Error('visual_software_interactive_sampling_mismatch');
 }
