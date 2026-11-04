@@ -16,3 +16,6 @@ export {
   CanvasReceiptWitnessRequestSchema,
 } from './definitions/canvasReceiptWitness';
 export { collectCanvasReceiptWitness } from './orchestration/collectCanvasReceiptWitness';
+export { CanvasT13MetricsRequestSchema } from './definitions/canvasT13Metrics';
+export { buildCanvasT13Metrics } from './functions/buildCanvasT13Metrics';
+export { collectCanvasT13Metrics } from './orchestration/collectCanvasT13Metrics';

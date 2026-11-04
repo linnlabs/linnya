@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CanvasCheckReportSchema, CanvasCommitResultSchema } from '@plugin/canvas/shared';
+import { CanvasCheckReportSchema, CanvasCommitResultSchema, CanvasLayoutComputationSchema } from '@plugin/canvas/shared';
 export const CanvasTraceScopeSchema = z
   .object({
     conversationId: z.string(),
@@ -53,6 +53,12 @@ export const CanvasToolTraceFactsSchema = z
     ),
     attempts: z.array(CanvasTraceAttemptSchema),
     commits: z.array(CanvasCommitResultSchema),
+    layoutComputations: z.array(z.object({
+      computation: CanvasLayoutComputationSchema,
+      commitSequence: z.number().int().nonnegative(),
+      runId: z.string(), toolCallId: z.string(), sourceFile: z.string(), order: z.number(),
+    }).strict()),
+    layoutComputationGaps: z.array(z.object({ requestId: z.string(), sourceFile: z.string(), toolCallId: z.string() }).strict()),
     replays: z.array(
       z.object({ requestId: z.string(), toolCallId: z.string(), sourceFile: z.string() }).strict()
     ),
@@ -104,6 +110,7 @@ export interface CanvasTraceInvocation {
   readonly dryRun: boolean;
   readonly inputKey: string | null;
   readonly fingerprint: string | null;
+  readonly layoutRequested: boolean | null;
 }
 
 export interface CanvasTraceContext {
