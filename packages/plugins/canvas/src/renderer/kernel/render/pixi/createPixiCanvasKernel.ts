@@ -13,13 +13,14 @@ import { CanvasLines } from './CanvasLines';
 import { intersectCanvasRegion } from '../../geometry/canvasVisibleRegions';
 import { CanvasSpatialProjection } from '../../geometry/CanvasSpatialProjection';
 import { readCanvasGpuMode } from './readCanvasGpuMode';
-import { CanvasBitmapCache } from './CanvasBitmapCache';
+import type { CanvasBitmapCache } from './CanvasBitmapCache';
 import { CanvasSceneMotion, type CanvasMotionView } from './CanvasSceneMotion';
 import { planCanvasSceneMotion, resolveCanvasDisplayCard, canvasCardRasterChanged, type CanvasSceneMotionPlan } from '../../motion';
 import { canvasFitText } from '../../geometry/canvasFitText';
 import { canvasFitCamera } from '../../geometry/canvasFitCamera';
 import { warmCanvasGraphicsPipeline } from './warmCanvasGraphicsPipeline';
-import { CanvasIdentityAtlas, CanvasIdentityAtlasCapacityError } from './CanvasIdentityAtlas';
+import { CanvasIdentityAtlasCapacityError, type CanvasIdentityAtlas } from './CanvasIdentityAtlas';
+import { createCanvasCardTextureCaches } from './createCanvasCardTextureCaches';
 
 const TEXTURE_BUDGET_BYTES = 256 * 1024 * 1024;
 interface CardView extends CanvasMotionView { readonly background: NineSliceSprite; readonly body: Container; readonly label: Sprite;
@@ -116,18 +117,15 @@ class PixiCanvasKernel implements CanvasKernel {
   };
   private readonly software: boolean;
   private readonly notify?: (intent: CanvasKernelIntent) => void;
-  private renderStatus: CanvasRenderStatus = { limited: false, phase: 'ready', message: null };
   private contextLost = false;
   private contextGeneration = 0;
   private readonly loseContext = (event: Event) => {
     event.preventDefault(); this.contextLost = true; this.contextGeneration++;
-    this.renderStatus = { limited: true, phase: 'restoring', message: '图形渲染正在恢复，内容已保留' };
-    this.notify?.({ kind: 'render-status', ...this.renderStatus });
+    this.notify?.({ kind: 'render-status', ...this.readRenderStatus() });
   };
   private readonly restoreContext = () => {
     this.contextLost = false;
-    this.renderStatus = { limited: this.software, phase: 'ready', message: this.software ? '当前使用软件绘图，性能受限' : null };
-    this.refreshCamera(true); this.notify?.({ kind: 'render-status', ...this.renderStatus });
+    this.refreshCamera(true); this.notify?.({ kind: 'render-status', ...this.readRenderStatus() });
   };
   /** @canvasFrame 纯绘制闭包；内容排版和相机投影在明确的输入/异步批次阶段完成。 */
   private readonly renderFrame = () => {
@@ -146,9 +144,8 @@ class PixiCanvasKernel implements CanvasKernel {
     this.reduced = this.software && options.renderingMode !== 'capture'; this.notify = options.onIntent;
     if (this.reduced) app.renderer.resize(Math.max(1, width), Math.max(1, height), 1);
     this.lines.setReduced(this.reduced);
-    this.renderStatus = { limited: this.software, phase: 'ready', message: this.software ? '当前使用软件绘图，性能受限' : null };
     this.canvas.addEventListener('webglcontextlost', this.loseContext); this.canvas.addEventListener('webglcontextrestored', this.restoreContext);
-    queueMicrotask(() => { if (!this.destroyed) this.notify?.({ kind: 'render-status', ...this.renderStatus }); });
+    queueMicrotask(() => { if (!this.destroyed) this.notify?.({ kind: 'render-status', ...this.readRenderStatus() }); });
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute('role', 'application');
     this.canvas.setAttribute('aria-label', '自由画布，按空格拖动平移，使用工具栏编辑所选卡片');
@@ -156,13 +153,11 @@ class PixiCanvasKernel implements CanvasKernel {
     options.host.append(this.canvas);
     this.world.addChild(this.cardLayer, this.guideLayer, this.selectionLayer);
     this.app.stage.addChild(this.lines.below, this.world, this.lines.above, this.mapLabels.sprite);
-    this.identities = new CanvasIdentityAtlas({ budget: TEXTURE_BUDGET_BYTES, reserve: bytes => this.bitmaps.trimTo(TEXTURE_BUDGET_BYTES - bytes) });
-    this.bitmaps = new CanvasBitmapCache({ budget: options.bitmapBudgetBytes ?? TEXTURE_BUDGET_BYTES,
-      readAvailableBudget: () => TEXTURE_BUDGET_BYTES - this.identities.readBytes(),
-      reserveExternal: (incoming, current) => this.identities.trimTo(TEXTURE_BUDGET_BYTES - Math.min(options.bitmapBudgetBytes ?? TEXTURE_BUDGET_BYTES, current + incoming)),
+    const caches = createCanvasCardTextureCaches({ textureBudgetBytes: TEXTURE_BUDGET_BYTES, bitmapBudgetBytes: options.bitmapBudgetBytes ?? TEXTURE_BUDGET_BYTES,
       readRenderCount: () => this.renders, requestDraw: () => this.schedule(), changed: id => {
       const view = this.views.get(id); if (!this.destroyed && view) { this.updateView(view); this.schedule(); }
     } });
+    this.identities = caches.identities; this.bitmaps = caches.bitmaps;
     this.scene = new CanvasSceneMotion({ project: (ids, opacity, camera) => this.projectSceneMotion(ids, opacity, camera),
       removed: id => this.removeRetiringView(id), complete: id => { const view = this.views.get(id); if (view) view.visibleAfterRender = this.renders; },
       appeared: id => { const view = this.views.get(id); if (view) view.firstVisibleAfterRender = this.renders; },
@@ -173,10 +168,10 @@ class PixiCanvasKernel implements CanvasKernel {
   private schedule(): void {
     if (this.destroyed || this.contextLost) return;
     // 集中同步输入/同批异步回执的字串，不在RAF中逐卡排版或上传436份Canvas。
-    if (!this.identityPreparationPending) {
+    if (!this.identityPreparationPending && this.identities.needsPreparation(Math.max(1, this.app.renderer.resolution))) {
       this.identityPreparationPending = true; queueMicrotask(() => {
         this.identityPreparationPending = false;
-        if (!this.destroyed && !this.contextLost) this.prepareIdentities();
+        if (!this.destroyed && !this.contextLost && this.identities.needsPreparation(Math.max(1, this.app.renderer.resolution))) this.prepareIdentities();
       });
     }
     if (this.scheduled) return;
@@ -187,16 +182,14 @@ class PixiCanvasKernel implements CanvasKernel {
     catch (error) {
       if (error instanceof CanvasIdentityAtlasCapacityError) {
         this.identityCapacityLimited = true;
-        this.renderStatus = { limited: true, phase: 'ready', message: '当前身份牌预览超过纹理容量，请调整视口后重试；文档仍可编辑和保存。' };
-        this.notify?.({ kind: 'render-status', ...this.renderStatus });
+        this.notify?.({ kind: 'render-status', ...this.readRenderStatus() });
       }
       // 可见反馈不把失败伪装为成功，调用方仍得到原来的容量错误。
       throw error;
     }
     if (this.identityCapacityLimited) {
       this.identityCapacityLimited = false;
-      this.renderStatus = { limited: this.software, phase: 'ready', message: this.software ? '当前使用软件绘图，性能受限' : null };
-      this.notify?.({ kind: 'render-status', ...this.renderStatus });
+      this.notify?.({ kind: 'render-status', ...this.readRenderStatus() });
     }
   }
   private removeBitmap(id: CanvasCardId): void {
@@ -432,7 +425,11 @@ class PixiCanvasKernel implements CanvasKernel {
   }
 
   readCamera(): CanvasCamera { return { ...this.camera }; }
-  readRenderStatus(): CanvasRenderStatus { return { ...this.renderStatus }; }
+  readRenderStatus(): CanvasRenderStatus {
+    if (this.contextLost) return { limited: true, phase: 'restoring', message: '图形渲染正在恢复，内容已保留' };
+    if (this.identityCapacityLimited) return { limited: true, phase: 'ready', message: '当前身份牌预览超过纹理容量，请调整视口后重试；文档仍可编辑和保存。' };
+    return { limited: this.software, phase: 'ready', message: this.software ? '当前使用软件绘图，性能受限' : null };
+  }
   readResolution(): number { return this.app.renderer.resolution; }
   setSelection(ids: readonly CanvasCardId[]): void {
     if (ids.length === this.selected.size && ids.every(id => this.selected.has(id))) return;

@@ -23,6 +23,8 @@ export class CanvasIdentityAtlas {
   private readonly pending = new Set<Binding>();
   private readonly dirty = new Set<Page>();
   private resolution: number | null = null;
+  private workVersion = 0;
+  private capacityFailure: { readonly version: number; readonly error: CanvasIdentityAtlasCapacityError } | null = null;
   private bytes = 0;
   private uploads = 0;
   private readonly gutter = 2;
@@ -39,11 +41,13 @@ export class CanvasIdentityAtlas {
   setText(sprite: Sprite, text: string): void {
     const binding = this.bindings.get(sprite); if (!binding || binding.text === text) return;
     this.release(binding); binding.text = text;
+    this.workVersion++;
     if (binding.active) this.pending.add(binding);
   }
   setActive(sprite: Sprite, active: boolean): void {
     const binding = this.bindings.get(sprite); if (!binding || binding.active === active) return;
     binding.active = active;
+    this.workVersion++;
     if (binding.entry) binding.entry.page.active += active ? 1 : -1;
     if (active) this.pending.add(binding);
     else this.pending.delete(binding);
@@ -51,6 +55,7 @@ export class CanvasIdentityAtlas {
   remove(sprite: Sprite): void {
     const binding = this.bindings.get(sprite); if (!binding) return;
     this.release(binding); this.pending.delete(binding); this.bindings.delete(sprite);
+    this.workVersion++;
   }
   private detach(binding: Binding): void {
     const entry = binding.entry; if (!entry) return;
@@ -65,6 +70,7 @@ export class CanvasIdentityAtlas {
   private touch(page: Page): void { this.pages.delete(page); this.pages.add(page); }
   private destroyPage(page: Page): void {
     this.pages.delete(page); this.bytes -= page.bytes;
+    this.workVersion++;
     for (const entry of page.entries) {
       this.entries.delete(entry.key);
       for (const binding of [...entry.bindings]) this.detach(binding);
@@ -114,24 +120,35 @@ export class CanvasIdentityAtlas {
       page.entries.add(entry); this.entries.set(key, entry); this.dirty.add(page); return entry;
     });
   }
+  needsPreparation(resolution: number): boolean {
+    return this.resolution !== resolution || (this.capacityFailure ? this.capacityFailure.version !== this.workVersion : this.pending.size > 0);
+  }
   flush(resolution: number): void {
+    if (this.resolution === resolution && this.capacityFailure?.version === this.workVersion) throw this.capacityFailure.error;
     if (this.resolution !== resolution) {
       this.resolution = resolution;
+      this.workVersion++;
       for (const binding of this.bindings.values()) if (binding.active) {
         // DPR切换在同一准备批内替换，先解除旧页活动引用，避免临时双份挤破总预算。
         this.release(binding); this.pending.add(binding);
       }
     }
-    if (!this.pending.size) return;
+    if (!this.pending.size) { this.capacityFailure = null; return; }
     // 所有准备均在输入/异步工作批中完成；纯绘制RAF只消费已准备的页。
-    for (const binding of this.pending) {
-      if (!binding.active) continue;
-      const next = this.acquire(binding.text, resolution);
-      if (binding.entry !== next) {
-        this.release(binding); binding.entry = next; next.bindings.add(binding); next.page.active++;
-        binding.sprite.texture = next.texture;
+    try {
+      for (const binding of this.pending) {
+        if (!binding.active) continue;
+        const next = this.acquire(binding.text, resolution);
+        if (binding.entry !== next) {
+          this.release(binding); binding.entry = next; next.bindings.add(binding); next.page.active++;
+          binding.sprite.texture = next.texture;
+        }
       }
+    } catch (error) {
+      if (error instanceof CanvasIdentityAtlasCapacityError) this.capacityFailure = { version: this.workVersion, error };
+      throw error;
     }
+    this.capacityFailure = null;
     this.pending.clear();
     for (const page of this.dirty) { page.source.update(); this.uploads++; }
     this.dirty.clear();
@@ -142,6 +159,6 @@ export class CanvasIdentityAtlas {
     identityActiveLabels: [...this.pages].reduce((sum, page) => sum + page.active, 0) }; }
   destroy(): void {
     for (const page of [...this.pages]) this.destroyPage(page);
-    this.bindings.clear(); this.pending.clear(); this.dirty.clear();
+    this.bindings.clear(); this.pending.clear(); this.dirty.clear(); this.capacityFailure = null;
   }
 }

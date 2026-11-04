@@ -43,6 +43,15 @@ async function run() {
     await writeFile(path.join(output, 'hidden-lod.json'), JSON.stringify({ visible: lod.visible, small: lod.small, panned: lod.panned, cleared: lod.cleared }, null, 2));
     if (lod.visible.identityActiveLabels !== 2 || lod.small.identityActiveLabels || lod.panned.identityActiveLabels
       || lod.cleared.identityBytes) throw new Error('identity_hidden_lod_pins_or_redraws_pages');
+    const memory = z.object({ bodyBytes: z.number(), identityBytes: z.number() });
+    const budget = z.object({ total: z.number(), initial: memory, atlasWins: memory, bodyWins: memory, cleared: memory,
+      firstClosed: z.boolean(), secondClosed: z.boolean(), installed: z.boolean() })
+      .parse(await win.webContents.executeJavaScript('window.canvasIdentityAtlasSharedBudget()'));
+    await writeFile(path.join(output, 'shared-budget.json'), JSON.stringify(budget, null, 2));
+    if (budget.initial.bodyBytes !== 40000 || budget.atlasWins.bodyBytes || budget.atlasWins.identityBytes !== 2097152
+      || budget.bodyWins.bodyBytes !== 40000 || budget.bodyWins.identityBytes || !budget.installed || !budget.firstClosed || !budget.secondClosed
+      || budget.cleared.bodyBytes || budget.cleared.identityBytes
+      || [budget.initial, budget.atlasWins, budget.bodyWins].some(value => value.bodyBytes + value.identityBytes > budget.total)) throw new Error('identity_shared_budget_admission_or_release_failed');
     const context = z.object({ before: z.string(), image: z.string(), initial: z.unknown(), restored: z.unknown(), rejected: z.literal(true) })
       .parse(await win.webContents.executeJavaScript('window.canvasIdentityAtlasContext()'));
     const oldImage = nativeImage.createFromDataURL(context.before), restoredImage = nativeImage.createFromDataURL(context.image);
@@ -59,7 +68,7 @@ async function run() {
     if (!union || contextFacts.iou < 0.995) throw new Error('identity_context_restore_lost_current_title_pixels');
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ sourceCommit: process.env.CANVAS_PROBE_SOURCE_COMMIT,
       sourceDirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE,
-      validHardwareRun: false, versions: process.versions, reports, lifecycle, lod: { visible: lod.visible, small: lod.small, panned: lod.panned, cleared: lod.cleared }, context: contextFacts }, null, 2));
+      validHardwareRun: false, versions: process.versions, reports, lifecycle, budget, lod: { visible: lod.visible, small: lod.small, panned: lod.panned, cleared: lod.cleared }, context: contextFacts }, null, 2));
     console.log(JSON.stringify({ reports, lifecycle, context: contextFacts }));
   } finally { win.destroy(); }
 }

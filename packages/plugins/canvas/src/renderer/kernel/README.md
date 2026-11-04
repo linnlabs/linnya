@@ -92,7 +92,9 @@ body的`firstPresented`只表示当前正文键已有新像素在非零透明度
 
 `bitmapBudgetBytes`继续限制正文（包括退休层），默认256MiB。正文与身份牌另共用固定256MiB逻辑RGBA纹理估算上限：新页先准入并让正文LRU回收，正文接纳也扣除完整atlas页占用；不把空白槽、隐藏缓存或退休正文漏账。stats分别报告bitmapBytes、identityBytes、identityCanvasBytes和派生estimatedTextureBytes/textureBudgetBytes。CPU Canvas backing另列，不声称这些估算代表驱动或全进程物理内存。所有权与子框遵循[Pixi TextureSource/Texture](https://pixijs.com/8.x/guides/components/textures)，排版来自[固定8.22 CanvasTextGenerator](https://github.com/pixijs/pixijs/blob/v8.22.0/src/scene/text/canvas/CanvasTextGenerator.ts)。
 
-活动页本身超过总容量时明确拒绝分配，不隐藏/延迟正确标题或增加预算。容量异常经既有render-status显示后仍抛出，不能把绘制失败当保存失败或成功出图；视口变化后成功准备会清掉容量提示。该边界不影响Backend内容与保存，未证明可容纳的极端活动标题规模不能列入性能支持范围。低于.15的隐藏身份牌不登记活动引用，同倍率平移也遵循同一规则；identityActiveLabels供确定性工作量检查。
+活动页本身超过总容量时明确拒绝分配，不隐藏/延迟正确标题或增加预算。容量异常经既有render-status显示后仍抛出，不能把绘制失败当保存失败或成功出图；视口变化后成功准备会清掉容量提示。相同失败工作集不由纯draw任务无限重试，显式capture仍返回原错误；正文、可见性、DPR或资源变化才重新准备。该边界不影响Backend内容与保存，未证明可容纳的极端活动标题规模不能列入性能支持范围。低于.15的隐藏身份牌不登记活动引用，同倍率平移也遵循同一规则；identityActiveLabels供确定性工作量检查。
+
+`createCanvasCardTextureCaches`仅组合两个owner的预算准入，不拥有UI或GL。独立probe以相同组合入口、2MiB加20,000字节总预算和实际40,000字节ImageBitmap验证：atlas先让旧正文释放，隐藏atlas再让新正文接纳，最终两边都释放；不为测试扩张Kernel公共合同，也不需分配整份256MiB资源。
 
 同内容键下互不重叠的新增片段直接追加，保留已经显示的Sprite/Texture所有权，不为没有旧像素的新区域重建并淡入整张卡。只有没有在途替换时才走追加路径；相交采样升级、内容键切换及仍在进行的旧/新替换继续使用120ms流程。真实Electron门禁验证既有像素在追加前后完全一致、新区域可见、两张底图分别只关闭一次，内存仍计入原预算。
 

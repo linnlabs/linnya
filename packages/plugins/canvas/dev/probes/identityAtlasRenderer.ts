@@ -5,6 +5,7 @@ import { withCanvasIdentityTextRaster } from '../../src/renderer/kernel/render/p
 import { createPixiCanvasKernel } from '../../src/renderer/kernel';
 import { createVisibleUpdateFixture } from './visibleUpdateFixture';
 import { CanvasImageCardSchema } from '../../src/shared';
+import { createCanvasCardTextureCaches } from '../../src/renderer/kernel/render/pixi/createCanvasCardTextureCaches';
 
 const strings = ['中文身份牌：春江花月夜', 'office affinity ffi AV', 'e\u0301 A\u030a 组合附加符',
   '👨‍👩‍👧‍👦 🇨🇳 👍🏽 ❤️', 'العَرَبِيَّةُ لا سلام', 'नमस्ते दुनिया क्ष', '日本語かなカナ 한글', '末行边界　（）【】'];
@@ -61,12 +62,20 @@ async function lifecycle() {
     if (!recovered) throw new Error('identity_borrowed_canvas_not_reusable_after_failure');
     const constrained = new CanvasIdentityAtlas({ budget: 1, reserve() { throw new Error('identity_unadmitted_page_reached_reservation'); } });
     const tooLarge = constrained.create('预算在持有新页之前检查'); constrained.setActive(tooLarge, true);
-    let capacityRejected = false;
-    try { constrained.flush(1); }
-    catch (error) { if (!(error instanceof CanvasIdentityAtlasCapacityError)) throw error; capacityRejected = true; }
-    finally { constrained.remove(tooLarge); tooLarge.destroy(); constrained.destroy(); }
+    let capacityRejected = false, cachedFailure = false;
+    try {
+      let original: CanvasIdentityAtlasCapacityError | null = null;
+      try { constrained.flush(1); }
+      catch (error) { if (!(error instanceof CanvasIdentityAtlasCapacityError)) throw error; capacityRejected = true; original = error; }
+      if (constrained.needsPreparation(1)) throw new Error('identity_capacity_failure_retries_without_input');
+      try { constrained.flush(1); } catch (error) { if (error !== original) throw error; cachedFailure = true; }
+      if (!cachedFailure) throw new Error('identity_capacity_failure_became_capture_success');
+      constrained.setActive(tooLarge, false);
+      if (!constrained.needsPreparation(1)) throw new Error('identity_capacity_input_did_not_enable_recovery');
+      constrained.flush(1);
+    } finally { constrained.remove(tooLarge); tooLarge.destroy(); constrained.destroy(); }
     if (!capacityRejected || constrained.readBytes()) throw new Error('identity_over_budget_page_was_published');
-    return { reservations, oldDestroyed, destroyed, restoredDestroyed, capacityRejected, final: atlas.readStats() };
+    return { reservations, oldDestroyed, destroyed, restoredDestroyed, capacityRejected, cachedFailure, final: atlas.readStats() };
   } finally { atlas.destroy(); app.destroy(true, { children: true, texture: false }); }
 }
 
@@ -113,8 +122,34 @@ async function hiddenLod() {
   } finally { kernel.destroy(); host.remove(); }
 }
 
+async function sharedBudget() {
+  const total = 2 * 1024 * 1024 + 20000, app = new Application();
+  await app.init({ width: 200, height: 150, autoStart: false, preference: 'webgl' });
+  const caches = createCanvasCardTextureCaches({ textureBudgetBytes: total, bitmapBudgetBytes: 40000,
+    readRenderCount: () => 0, requestDraw() {}, changed() {} });
+  const body = new Container(), label = caches.identities.create('双向准入'); app.stage.addChild(body, label);
+  const source = new OffscreenCanvas(100, 100), context = source.getContext('2d'); if (!context) throw new Error('shared_budget_fixture_context_missing');
+  context.fillStyle = '#1256bb'; context.fillRect(0, 0, 100, 100);
+  const first = await createImageBitmap(source), second = await createImageBitmap(source), id = createVisibleUpdateFixture('text')[0].id;
+  const stats = () => ({ bodyBytes: caches.bitmaps.readStats().bitmapBytes, identityBytes: caches.identities.readBytes() });
+  const tile = (bitmap: ImageBitmap) => ({ bitmap, x: 0, y: 0, width: 100, height: 100, scale: 1 });
+  try {
+    caches.bitmaps.install(id, 'first', [tile(first)], body); const initial = stats();
+    caches.identities.setActive(label, true); caches.identities.flush(1); app.render(); const atlasWins = stats(), firstClosed = first.width === 0;
+    label.visible = false; caches.identities.setActive(label, false);
+    const installed = caches.bitmaps.install(id, 'second', [tile(second)], body); app.render(); const bodyWins = stats();
+    caches.bitmaps.clear(); caches.identities.remove(label); const cleared = stats();
+    return { total, initial, atlasWins, bodyWins, cleared, firstClosed, secondClosed: second.width === 0, installed };
+  } finally {
+    caches.bitmaps.clear(); caches.identities.destroy();
+    if (first.width) first.close(); if (second.width) second.close();
+    app.destroy(true, { children: true, texture: false });
+  }
+}
+
 Object.defineProperties(window, {
   canvasIdentityAtlasPixels: { value: pixels }, canvasIdentityAtlasLifecycle: { value: lifecycle },
   canvasIdentityAtlasContext: { value: contextRestoration },
   canvasIdentityAtlasHiddenLod: { value: hiddenLod },
+  canvasIdentityAtlasSharedBudget: { value: sharedBudget },
 });
