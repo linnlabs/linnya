@@ -6,6 +6,8 @@
 
 原生列表 `::marker` 不属于 DOM Text/Range。它以独立 `geometryKind: marker-gutter` 保存真实li/ul矩形、首行Range、computed padding-inline-start与`::marker`样式，推导浏览器分配的marker槽，不冒充逐字簇边界。本固定夹具只接受ltr/outside/disc，未知布局保持失败。槽内仍有独立非空、质量、质心、实色和AA结构判定；槽外严格检查不变，另以真实“缺marker”损坏验证。它不是按已失败像素坐标加白名单。
 
+layout元数据使用version2区分Range与marker槽；早期version1原件不回填、不经双读fallback冒充新资格，复核时按其实际source commit解释。
+
 `compareVisualTextPixels.ts` 保留局部墨迹、质量、质心与实色内核。所有正例都执行逐簇/逐行检查，即使旧 raw95 通过也不跳过。原 `inkIou`、`pixiIou`、raw95、尺寸、作者红色和 ghost 保留率继续输出；raw95 是原始诊断值，不是用户规定的 Windows 容差。
 
 AA 分类复用 [pixelmatch 7.1.0](https://github.com/mapbox/pixelmatch/tree/v7.1.0)，固定 threshold=0、includeAA=false，不采用其 .1 或 Playwright .2 默认颜色阈值。它的局部梯度判断只提供 AA 候选，不自动证明字体正确。非AA形状残差与通道差超过8的颜色残差均按前景 union 归一化，真实实色内核另行检查。文字 Range 外不享受 AA 豁免；RGB/alpha 通道差超过8即失败，不按白底面积稀释。Pixi 的范围沿既有正文比较原则排除独立纸边/阴影，正文范围内的空隙仍严格检查。

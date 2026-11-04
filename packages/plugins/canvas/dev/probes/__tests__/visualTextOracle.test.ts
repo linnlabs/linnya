@@ -21,7 +21,7 @@ function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | '
   });
   if (change === 'clip') { context.fillStyle = '#fff'; context.fillRect(0, 39, canvas.width, canvas.height - 39); }
   const image: VisualImage = { width: canvas.width, height: canvas.height, rgba: new Uint8Array(context.getImageData(0, 0, canvas.width, canvas.height).data) };
-  return { image, layout: { version: 1, dpr: 1, fontsStatus: 'loaded', width: canvas.width, graphemes,
+  return { image, layout: { version: 2, dpr: 1, fontsStatus: 'loaded', width: canvas.width, graphemes,
     lines: [{ id: 'line:0', rect: { x: 12, y: 24, width: 1480, height: 30 }, graphemeIds: graphemes.map(grapheme => grapheme.id) }] } satisfies VisualTextLayout };
 }
 
@@ -87,7 +87,7 @@ it.each(['swap', 'grayscale'] as const)('灰背景上的彩色字形%s质量/质
     }
   }
   const rect = { x: 0, y: 0, width: 80, height: 64 };
-  const layout: VisualTextLayout = { version: 1, dpr: 1, fontsStatus: 'loaded', width: 80,
+  const layout: VisualTextLayout = { version: 2, dpr: 1, fontsStatus: 'loaded', width: 80,
     graphemes: [{ id: 'emoji', text: '🖼️', geometryKind: 'range', rects: [rect], style: { font: '32px system-ui', lineHeight: '40px', letterSpacing: 'normal', direction: 'ltr',
       fontFeatureSettings: 'normal', fontVariationSettings: 'normal', transform: 'none', visibility: 'visible', color: [0, 0, 0], background: [128, 128, 128], fontLoaded: true } }],
     lines: [{ id: 'line:0', rect, graphemeIds: ['emoji'] }] };

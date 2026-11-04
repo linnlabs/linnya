@@ -12,7 +12,7 @@ const grapheme = z.discriminatedUnion('geometryKind', [
     firstLine: VisualRectSchema, paddingInlineStart: z.number().positive(), position: z.literal('outside'), listStyleType: z.literal('disc') }) }),
 ]);
 export const VisualTextLayoutSchema = z.object({
-  version: z.literal(1), dpr: z.number().positive(), fontsStatus: z.literal('loaded'), width: z.number().positive(),
+  version: z.literal(2), dpr: z.number().positive(), fontsStatus: z.literal('loaded'), width: z.number().positive(),
   graphemes: z.array(grapheme),
   lines: z.array(z.object({ id: z.string(), rect: VisualRectSchema, graphemeIds: z.array(z.string()) })),
 });

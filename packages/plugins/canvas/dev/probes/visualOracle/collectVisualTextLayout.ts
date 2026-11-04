@@ -81,6 +81,6 @@ export function collectVisualTextLayout(root: HTMLElement, paperCss: string): Vi
     if (line) { line.rect = union([line.rect, rect]); line.graphemeIds.push(grapheme.id); }
     else lines.push({ id: `line:${lines.length}`, rect: { ...rect }, graphemeIds: [grapheme.id] });
   }
-  return VisualTextLayoutSchema.parse({ version: 1, dpr: devicePixelRatio, fontsStatus: document.fonts.status,
+  return VisualTextLayoutSchema.parse({ version: 2, dpr: devicePixelRatio, fontsStatus: document.fonts.status,
     width: origin.width, graphemes, lines });
 }
