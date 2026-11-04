@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import type { WorkspaceMutationEvent } from '@app/schemas';
 import { ASSET_LEDGER_SCHEMAS } from 'src/domains/assets/features/asset-ledger/infrastructure/sqlite/schemas/assetLedger.schema';
+import { DOCUMENT_REFERENCE_SCHEMAS } from 'src/domains/document-references';
 import {
   MarkdownDocumentService,
   type MarkdownDocJson,
@@ -30,6 +31,7 @@ function createDb(): Database.Database {
     ...IMAGE_BLOCK_SCHEMAS,
     ...BLOCK_HISTORY_SCHEMAS,
     ...PENDING_REVISION_SCHEMAS,
+    ...DOCUMENT_REFERENCE_SCHEMAS,
   ]) {
     db.exec(statement);
   }
