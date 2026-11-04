@@ -1,6 +1,7 @@
 import { CanvasCommandSchema, createCanvasPlainTextDocument } from '@plugin/canvas/shared';
 import type { CanvasAgentTaskId } from '../definitions/canvasAgentEvaluation';
 import { canvasAgentTasks } from '../definitions/canvasAgentTasks';
+import { canvasResearchMaterials } from '../definitions/canvasResearchMaterials';
 
 export const architectureModules = ['Renderer', 'Navigation', 'Shell', 'Canvas', 'Editor', 'References', 'Assets', 'Persistence'] as const;
 export const architectureDependencies = [['Renderer', 'Navigation'], ['Navigation', 'Shell'], ['Shell', 'Canvas'], ['Shell', 'Editor'], ['Canvas', 'References'], ['Canvas', 'Assets'], ['Canvas', 'Persistence'], ['Editor', 'References'], ['Editor', 'Assets'], ['Editor', 'Persistence'], ['References', 'Persistence'], ['Assets', 'Persistence']] as const;
@@ -11,7 +12,9 @@ function card(text: string, index: number, x = index % 5 * 280, y = Math.floor(i
 }
 function documents(taskId: CanvasAgentTaskId) {
   if (taskId === 'T1') return Array.from({ length: 8 }, (_, index) => ({ key: `overview-${index + 1}`, filename: `项目资料${index + 1}.md`, text: `# 资料${index + 1}\n主题：${['用户体验', '协作流程', '数据可靠性'][index % 3]}\n事实F${index + 1}：${['新用户需要清楚的首次入口', '评审需要稳定身份和原始来源', '保存失败必须保留草稿'][index % 3]}。本资料的独特约束：样本${index + 1}来自独立访谈。` }));
-  if (taskId === 'T2') return Array.from({ length: 3 }, (_, index) => ({ key: `research-${index + 1}`, filename: `调研${index + 1}.md`, text: `# 调研${index + 1}\n议题：是否统一评审入口\n` + Array.from({ length: 6 }, (_, item) => `- R${index + 1}F${item + 1} ${item < 3 ? '支持' : '反对'}：样本${index * 6 + item + 1}${item < 3 ? '减少重复切换，保留来源可使复核更快' : '信息密度过高，初学者需要渐进展示'}；观察时长${item + 2}分钟，属于可用性观察，不是因果试验。`).join('\n') }));
+  if (taskId === 'T2') return canvasResearchMaterials.map((material, index) => ({ key: `research-${index + 1}`, filename: `调研${index + 1}.md`,
+    text: `# 调研${index + 1}：${material.title}\n议题：是否统一评审入口\n合成可用性观察，仅供固定评测，并非真实调研结果。观察对象是统一评审入口原型及其对照流程；每条为独立观察，不外推因果或总体比例。\n`
+      + material.observations.map((observation, item) => `- R${index + 1}F${item + 1} ${observation.stance}：${observation.text}`).join('\n') }));
   if (taskId === 'T4') return [{ key: 'process', filename: '申请流程.md', text: '# 申请流程\nS01接收申请→S02资料完整？\nS02是→S04资格审核；S02否→S03补充资料→S02。\nS04→S05满足规则？\nS05是→S06生成方案→S08人工复核→S09发送结果→S10归档。\nS05否→S07拒绝通知→S10归档。\n共10步，S02与S05是判断。保留编号。' }];
   if (taskId === 'T5') return [{ key: 'architecture', filename: 'README.md', text: '# 模块依赖\n模块：' + architectureModules.join('、') + '\nA→B表示A依赖B。仅有以下直接依赖：\n' + architectureDependencies.map(([from, to]) => `${from}→${to}`).join('\n') }];
   if (taskId === 'T8') return [

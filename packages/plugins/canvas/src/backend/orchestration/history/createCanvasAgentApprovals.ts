@@ -3,9 +3,9 @@ import { JsonValueSchema } from '@app/schemas';
 import { CanvasCommitRequestSchema, CanvasResolveApprovalRequestSchema, type CanvasAgentCommitResult, type CanvasApprovalResolution, type CanvasCommitResult, type CanvasResolveApprovalRequest } from '../../../shared';
 import type { CanvasDatabase } from '../../definitions/canvasDatabase';
 import { canvasPayloadHash, canvasSourceKey, canvasOperationsPayload, planCanvasCommit, validateCanvasPlanContent, readCanvasCommitState, readCanvasEditingClaims, readCanvasReceipt, type CanvasCommitActor, type CanvasHistoryCommitInput } from '../../features/canvasCommit';
-import { completeCanvasApproval, createCanvasAgentGroup, evaluateCanvasApproval, findCanvasAgentGroup, parseCanvasAgentReceiptResult, readCanvasAgentReceipt, readCanvasApprovalReceipt, readCanvasPendingApproval, saveCanvasAgentCommittedReceipt, readCanvasAgentRequestStatuses, saveCanvasAgentGroup, saveCanvasPendingApproval, clearCanvasPendingApproval, type CanvasPendingBatch } from '../../features/agentChanges';
+import { completeCanvasApproval, createCanvasAgentGroup, evaluateCanvasApproval, findCanvasAgentGroup, parseCanvasAgentReceiptResult, readCanvasAgentReceipt, readCanvasApprovalReceipt, readCanvasPendingApproval, saveCanvasAgentCommittedReceipt, readCanvasAgentRequestStatuses, saveCanvasAgentGroup, saveCanvasPendingApproval, clearCanvasPendingApproval, type CanvasPendingBatch, type CanvasAgentGroupStart } from '../../features/agentChanges';
 
-export function createCanvasAgentApprovals(options: { readonly database: CanvasDatabase; readonly commit: (input: { request: unknown; actor: CanvasCommitActor; now: number; onCommit?: (input: CanvasHistoryCommitInput) => void }) => CanvasCommitResult; readonly pruneGuards: (documentId: string) => void; readonly onPending?: (batch: CanvasPendingBatch) => void }) {
+export function createCanvasAgentApprovals(options: { readonly database: CanvasDatabase; readonly commit: (input: { request: unknown; actor: CanvasCommitActor; now: number; onCommit?: (input: CanvasHistoryCommitInput) => void }) => CanvasCommitResult; readonly pruneGuards: (documentId: string) => void; readonly onPending?: (batch: CanvasPendingBatch) => void; readonly groupStarted?: (input: CanvasAgentGroupStart) => void }) {
   function replayAgentRequest(input: { readonly documentId: string; readonly requestId: string; readonly actor: CanvasCommitActor; readonly payloadIdentity: unknown }): CanvasAgentCommitResult | undefined {
     if (input.actor.source.kind !== 'agent') throw new Error('canvas_agent_source_required');
     const receipt = readCanvasAgentReceipt(options.database, input.documentId, canvasSourceKey(input.actor), input.requestId);
@@ -39,6 +39,7 @@ export function createCanvasAgentApprovals(options: { readonly database: CanvasD
       if (!approval.reason) return { kind: 'ready' };
       const group = previous ?? createCanvasAgentGroup(request.documentId, input.actor.source.conversationId, input.now);
       saveCanvasAgentGroup(options.database, group);
+      if (!previous) options.groupStarted?.({ documentId: request.documentId, before: state, now: input.now });
       const changed = new Set(plan.changes.map(change => change.id));
       const expectedRevisions = state.elements.filter(row => changed.has(row.element.id)).map(row => ({ id: row.element.id, revision: row.element.revision }));
       const batch: CanvasPendingBatch = { actor: input.actor, request, sourceKey, payloadHash, approval: {

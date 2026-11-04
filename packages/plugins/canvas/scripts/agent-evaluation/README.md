@@ -16,6 +16,8 @@ run文件必须由可信runner收集before/after正式快照、结果同sequence
 
 每条记录必须标明sourceRevision（实际实现的完整Git SHA）与batchId。修复产品缺陷后另开整批，保留原批首败，不能用后来成功覆盖旧记录或把不同实现的成功题拼成一组。最终验收在冻结实现上跑完整13题；Backend启动及Skill发现证据随批保存。
 
+`fixtureVersion=1`是证据格式版本，不是资料文案修订号。T2来源修订`research-observations-v2`将旧版重复的两类表述改为三份合成调研的独立观察：单人复核、多人交接、恢复与资源限制。每份含不同的支持与反对观察，可忠实提炼十二至十八条发现；样本编号或观察时长本身不算不同发现。原任务、数量和人工不重复标准保持不变。输入资料由完整sourceRevision以及setup保存的fixture/原文共同追溯；旧预检证据保留，不以新资料解释旧结果。来源支持和发现去重仍需人工语义审阅，不能以字符串不同或自动结构通过代替。
+
 attempts的phase明确区分dry-run预检与write正式写入。首写指标只取第一个write；只有预检而没有正式写入不能算通过。预检没有request-id时如实记录null，正式write必须保留真实ID。两阶段因格式或语义失败而改载荷重提的真实修正都计入correctionRetries，预检成功、重复检查坐标和同请求网络重放本身不算修正。
 
 看图组controls.imageReadSequence必须来自实际Agent render→attached image read的配对事实，并等于after.sequence；看过旧版本后继续改图，必须再看最终版本，旧图不能证明最终画布质量。无此事实时填null并保持未验收。

@@ -21,10 +21,6 @@ export function findCanvasAgentGroup(database: ReadDatabase, documentId: string,
   const raw = database.prepare('SELECT record_json FROM canvas_agent_groups WHERE node_id = ? AND source_key = ?').get(documentId, sourceKey);
   return raw ? CanvasAgentGroupRecordSchema.parse(JSON.parse(jsonRow.parse(raw).record_json)) : null;
 }
-/** 首次归组的版本锚点只依赖身份存在性，不应为这个判断重复解析整组历史。 */
-export function hasCanvasAgentGroup(database: ReadDatabase, documentId: string, sourceKey: string): boolean {
-  return database.prepare('SELECT 1 FROM canvas_agent_groups WHERE node_id = ? AND source_key = ?').get(documentId, sourceKey) !== undefined;
-}
 export function saveCanvasAgentGroup(database: ReadDatabase, group: CanvasAgentGroupRecord): void {
   database.prepare('INSERT INTO canvas_agent_groups(node_id, group_id, source_key, record_json) VALUES (?, ?, ?, ?) ON CONFLICT(node_id, group_id) DO UPDATE SET record_json = excluded.record_json')
     .run(group.documentId, group.id, JSON.stringify(['agent', group.conversationId]), JSON.stringify(group));
@@ -33,12 +29,13 @@ export function createCanvasAgentGroup(documentId: string, conversationId: strin
   return { id: randomUUID(), documentId, conversationId, runIds: [], createdAt: now, lastWriteAt: now, entry: { changes: [], groupId: null }, reviewedElementIds: [], deletedUserCardIds: [], deletedAtSequence: {}, outcomes: { complete: true, skippedWrites: [] } };
 }
 /** 组事实与正文共同提交，不从有界同步日志推导。 */
-export function recordCanvasAgentCommit(database: ReadDatabase, input: CanvasHistoryCommitInput): void {
-  if (input.context.actor.source.kind !== 'agent') return;
+export function recordCanvasAgentCommit(database: ReadDatabase, input: CanvasHistoryCommitInput): boolean {
+  if (input.context.actor.source.kind !== 'agent') return false;
   const projection = projectCanvasSkippedFieldWrites(input.result), skippedWrites = projection.skippedWrites;
-  if (!input.plan.changes.length && !skippedWrites.length) return;
+  if (!input.plan.changes.length && !skippedWrites.length) return false;
   const { documentId, actor, now } = input.context;
-  const previous = findCanvasAgentGroup(database, documentId, canvasSourceKey(actor)) ?? createCanvasAgentGroup(documentId, actor.source.conversationId, now);
+  const existing = findCanvasAgentGroup(database, documentId, canvasSourceKey(actor));
+  const previous = existing ?? createCanvasAgentGroup(documentId, actor.source.conversationId, now);
   // 历史组没有该事实时只补之后的结果，不能声称此前没有跳过。
   const outcomes = previous.outcomes ?? { complete: false, skippedWrites: [] };
   const entry = captureCanvasHistory(input.before, input.plan);
@@ -47,6 +44,7 @@ export function recordCanvasAgentCommit(database: ReadDatabase, input: CanvasHis
   const deletedAtSequence = { ...previous.deletedAtSequence };
   for (const change of input.plan.changes) { if (change.after) delete deletedAtSequence[change.id]; else deletedAtSequence[change.id] = input.plan.state.sequence; }
   saveCanvasAgentGroup(database, { ...previous, outcomes: { complete: outcomes.complete && projection.complete, skippedWrites: [...outcomes.skippedWrites, ...skippedWrites] }, reviewedElementIds: previous.reviewedElementIds.filter(id => !input.plan.changes.some(change => change.id === id)), deletedAtSequence, entry: mergeCanvasHistoryEntry(previous.entry, entry), lastWriteAt: input.plan.changes.length ? now : previous.lastWriteAt, runIds, deletedUserCardIds: [...new Set([...previous.deletedUserCardIds, ...deletedUser])] });
+  return existing === null;
 }
 export function readCanvasPendingApproval(database: ReadDatabase, documentId: string, pendingId: string): CanvasPendingBatch | null {
   const raw = database.prepare('SELECT batch_json FROM canvas_pending_approvals WHERE node_id = ? AND pending_id = ?').get(documentId, pendingId);

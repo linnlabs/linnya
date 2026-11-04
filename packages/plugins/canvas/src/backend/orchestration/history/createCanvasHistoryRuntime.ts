@@ -2,7 +2,7 @@ import { CanvasCommitRequestSchema, CanvasUndoRequestSchema, type CanvasCommitRe
 import type { CanvasDatabase } from '../../definitions/canvasDatabase';
 import { commitCanvasOperations, commitCanvasTransition, planCanvasCommit, validateCanvasPlanContent, readCanvasCommitState, readCanvasEditingClaims, readCanvasSequence, type CanvasCommitActor, type CanvasCommitPorts, type CanvasHistoryCommitInput, type CanvasTransitionInput } from '../../features/canvasCommit';
 import type { CanvasHistoryEntry } from '../../shared/history/definitions/canvasHistory';
-import { canvasDeletionReservations, readCanvasAgentGroups, recordCanvasAgentCommit, reviewCanvasAgentElement } from '../../features/agentChanges';
+import { canvasDeletionReservations, readCanvasAgentGroups, recordCanvasAgentCommit, reviewCanvasAgentElement, type CanvasAgentGroupStart } from '../../features/agentChanges';
 import { createCanvasGroupReview } from './createCanvasGroupReview';
 import { createCanvasAgentApprovals } from './createCanvasAgentApprovals';
 import { captureCanvasHistory } from '../../shared/history/functions/captureCanvasHistory';
@@ -10,7 +10,7 @@ import { createCanvasUserHistoryState, appendCanvasUserHistory, traverseCanvasUs
 import { planCanvasHistoryReversal } from '../../shared/history/functions/planCanvasHistoryReversal';
 import { releaseCanvasEditingClaims, pruneCanvasHistoryGuards } from '../../features/canvasCommit';
 
-export function createCanvasHistoryRuntime(options: { readonly database: CanvasDatabase; readonly ports?: CanvasCommitPorts; readonly maxEntries?: number; readonly groupsChanged?: (documentId: string) => void; readonly pendingApproval?: (batch: import('../../features/agentChanges').CanvasPendingBatch) => void }) {
+export function createCanvasHistoryRuntime(options: { readonly database: CanvasDatabase; readonly ports?: CanvasCommitPorts; readonly maxEntries?: number; readonly groupsChanged?: (documentId: string) => void; readonly groupStarted?: (input: CanvasAgentGroupStart) => void; readonly pendingApproval?: (batch: import('../../features/agentChanges').CanvasPendingBatch) => void }) {
   function notifyGroups(documentId: string) {
     try { options.groupsChanged?.(documentId); } catch (error) { options.ports?.publicationFailed?.(error); }
   }
@@ -47,8 +47,9 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
   function historyPorts(input: { readonly historyGroupId?: string; readonly onCommit?: (history: CanvasHistoryCommitInput) => void; readonly beforeHistory?: (history: CanvasHistoryCommitInput) => void }): CanvasCommitPorts {
     return { ...options.ports, reservedRectangles, history(history) {
       input.beforeHistory?.(history);
+      const groupStarted = recordCanvasAgentCommit(options.database, history);
+      if (groupStarted) options.groupStarted?.({ documentId: history.context.documentId, before: history.before, now: history.context.now });
       const updateOuter = options.ports?.history?.(history);
-      recordCanvasAgentCommit(options.database, history);
       if (history.context.actor.source.kind === 'user') for (const change of history.plan.changes) reviewCanvasAgentElement(options.database, { documentId: history.context.documentId, elementId: change.id });
       input.onCommit?.(history);
       const updateOwn = recordUserHistory(history, input.historyGroupId ?? null);
@@ -95,7 +96,7 @@ export function createCanvasHistoryRuntime(options: { readonly database: CanvasD
     return entries.flatMap(entry => entry.changes.flatMap(change => [change.before, change.after].flatMap(element => element ? [element] : [])));
   }
   const review = createCanvasGroupReview({ ...options, status, pruneGuards, notifyGroups, recordUserHistory, viewBaseline: userState.viewBaseline });
-  const approvals = createCanvasAgentApprovals({ database: options.database, commit, pruneGuards, onPending: options.pendingApproval });
+  const approvals = createCanvasAgentApprovals({ database: options.database, commit, pruneGuards, onPending: options.pendingApproval, groupStarted: options.groupStarted });
   // 重启丢弃内存用户栈；遗留删除身份由下一次实际操作/视图释放回收，读取不写数据库。
   return { registerView, preview, retainedElements, commit, transition, undo, status, releaseView, ...review, replayAgentRequest: approvals.replayAgentRequest, approvalResults: approvals.approvalResults,
     commitAgent(input: Parameters<typeof approvals.commitAgent>[0]) { const result = approvals.commitAgent(input); const request = CanvasCommitRequestSchema.parse(input.request); notifyGroups(request.documentId); return result; },

@@ -4,7 +4,9 @@
 
 ## 提交与身份
 
-`recordCommit` 在当前内容的同一 SQLite 事务里接收标准 `CanvasHistoryCommitInput`，保存回到上个恢复点所需的字段值。失败抛错回滚整批；返回的 afterCommit 才设 timer 和发布预算状态。移动不会重复写未修改正文。开新 Agent 组时传 beforeGroup，使用 history.before 保存恢复点，不能读取已经更新的 current SQL 冒充开组前状态。
+`recordCommit` 在当前内容的同一 SQLite 事务里接收标准 `CanvasHistoryCommitInput`，保存回到上个恢复点所需的字段值。失败抛错回滚整批；返回的 afterCommit 才设 timer 和发布预算状态。移动不会重复写未修改正文。
+
+开组前恢复点由历史编排的 `groupStarted` 事件调用 `checkpoint`，只在 Agent 组真正新建并保存的同一事务内触发。普通提交使用 history.before；待审批使用尚未写入的严格状态。全跳过也可能正式建立结果组，必须保留该时刻的恢复点，不能等首次实际内容写入。审批替换、拒绝、重放及撤回后仍存在的老组不重复触发；失败则组与恢复点一起回滚。checkpoint 自己初始化尚无 head 的基线，不另猜历史事实；维护与通知仍由成功事务后的现有回调调度。
 
 版本身份为文档范围内的 canvas-version:sequence。未到恢复点时，列表有一个持久 current 内容对应的 live 元数据项；保存恢复点后仍是同一身份，不因 timer 导致无内容变化的恢复冲突。版本时间是实际内容提交时间，sequence 与版本身份、元素 revision 的职责分开。列表只读元数据列，不读取 BLOB。
 
