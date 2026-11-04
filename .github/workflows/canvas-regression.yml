@@ -50,6 +50,13 @@ jobs:
       - name: Prepare Linux offscreen display
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64 fonts-noto-cjk
+      - name: Prepare Linux Electron sandbox helper
+        if: runner.os == 'Linux'
+        # Raw Electron installs need the SUID helper: chromium/docs/linux/suid_sandbox_development.md.
+        run: |
+          sandbox_helper="$(node -e 'const path = require("node:path"); process.stdout.write(path.join(path.dirname(require("electron")), "chrome-sandbox"));')"
+          sudo chown root:root "$sandbox_helper"
+          sudo chmod 4755 "$sandbox_helper"
       - name: Check drawing workload on Linux
         if: runner.os == 'Linux'
         run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs

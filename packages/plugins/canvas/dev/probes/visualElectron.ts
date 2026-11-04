@@ -70,14 +70,30 @@ async function run() {
     const reports = [];
     for (const theme of ['light', 'dark']) for (const material of ['paper', 'card']) for (const color of material === 'paper' ? ['white', 'red', 'green'] : ['white']) {
       const state = prepared.parse(await evaluate(win.webContents, `window.prepareCanvasVisualProbe(${JSON.stringify(theme)},${JSON.stringify(material)},${JSON.stringify(color)})`));
-      const screenshot = nativeImage.createFromBuffer((await win.webContents.capturePage()).toPNG());
+      const captured = await win.webContents.capturePage();
+      const screenshot = nativeImage.createFromBuffer(captured.toPNG());
       const size = screenshot.getSize();
       const ratio = size.width / state.viewportWidth;
       const crop = (rect: z.infer<typeof rectangle>) => screenshot.crop({ x: Math.round(rect.x * ratio), y: Math.round(rect.y * ratio),
         width: Math.round(rect.width * ratio), height: Math.round(rect.height * ratio) });
       const dom = crop(state.reference); const raster = crop(state.raster); const pixi = crop(state.pixi);
       const a = dom.toBitmap(); const b = raster.toBitmap(); const c = pixi.toBitmap();
-      if (a.length !== b.length || a.length !== c.length || !a.length) throw new Error('visual_sizes_mismatch');
+      if (a.length !== b.length || a.length !== c.length || !a.length) {
+        // CI平台的DIP、PNG像素与裁切范围必须留下原件，不能仅凭长度差猜测字体或放宽对比。
+        const stem = `${theme}-${material}-${color}`;
+        await writeFile(path.join(output, `${stem}-sizes.json`), JSON.stringify({ state, ratio,
+          contentSize: win.getContentSize(), captured: { size: captured.getSize(), scales: captured.getScaleFactors() },
+          screenshot: { size, scales: screenshot.getScaleFactors() },
+          crops: { dom: { size: dom.getSize(), bytes: a.length }, raster: { size: raster.getSize(), bytes: b.length }, pixi: { size: pixi.getSize(), bytes: c.length } },
+        }, null, 2));
+        await Promise.all([
+          writeFile(path.join(output, `${stem}-capture.png`), captured.toPNG()),
+          writeFile(path.join(output, `${stem}-dom.png`), dom.toPNG()),
+          writeFile(path.join(output, `${stem}-raster.png`), raster.toPNG()),
+          writeFile(path.join(output, `${stem}-pixi.png`), pixi.toPNG()),
+        ]);
+        throw new Error('visual_sizes_mismatch');
+      }
       const width = dom.getSize().width;
       const ink = (pixels: Uint8Array, i: number) => theme === 'light' ? pixels[i] < 180 && pixels[i + 1] < 180 && pixels[i + 2] < 180
         : pixels[i] > 150 && pixels[i + 1] > 150 && pixels[i + 2] > 150;
