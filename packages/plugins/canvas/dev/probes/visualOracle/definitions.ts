@@ -2,6 +2,19 @@ import { z } from 'zod';
 
 export const VisualRectSchema = z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() });
 const color = z.tuple([z.number(), z.number(), z.number()]).readonly();
+export const VisualVectorPaintSchema = z.object({
+  fill: z.string(), stroke: z.string(), color, background: color,
+  strokeWidth: z.string(), strokeLinecap: z.string(), strokeLinejoin: z.string(), strokeDasharray: z.string(), strokeDashoffset: z.string(), vectorEffect: z.string(),
+  opacity: z.string(), fillOpacity: z.string(), strokeOpacity: z.string(),
+  transform: z.string(), visibility: z.string(), filter: z.string(), clipPath: z.string(), maskImage: z.string(),
+});
+export const VisualDocumentVectorSchema = z.object({
+  id: z.string(), geometryKind: z.literal('document-reference-icon'), rect: VisualRectSchema,
+  viewBox: VisualRectSchema, preserveAspectRatio: z.string().nullable(), transform: z.string().nullable(),
+  childNames: z.array(z.string()), paint: VisualVectorPaintSchema,
+  paths: z.array(z.object({ d: z.string().nullable(), transform: z.string().nullable(), paint: VisualVectorPaintSchema })),
+});
+export type VisualDocumentVector = z.infer<typeof VisualDocumentVectorSchema>;
 export const VisualFontFactsSchema = z.object({ fontShorthand: z.string(), fontFamily: z.string(), fontSize: z.string(), fontStyle: z.string(),
   fontWeight: z.string(), fontStretch: z.string(), fontVariantNumeric: z.string(), fontQuery: z.string(), fontAvailable: z.boolean() });
 const style = VisualFontFactsSchema.extend({ lineHeight: z.string(), letterSpacing: z.string(), direction: z.string(),
@@ -14,8 +27,9 @@ const grapheme = z.discriminatedUnion('geometryKind', [
     firstLine: VisualRectSchema, paddingInlineStart: z.number().positive(), position: z.literal('outside'), listStyleType: z.literal('disc') }) }),
 ]);
 export const VisualTextLayoutSchema = z.object({
-  version: z.literal(3), dpr: z.number().positive(), fontsStatus: z.literal('loaded'), width: z.number().positive(),
+  version: z.literal(4), dpr: z.number().positive(), fontsStatus: z.literal('loaded'), width: z.number().positive(),
   graphemes: z.array(grapheme),
+  vectors: z.array(VisualDocumentVectorSchema),
   lines: z.array(z.object({ id: z.string(), rect: VisualRectSchema, graphemeIds: z.array(z.string()) })),
 });
 export type VisualTextLayout = z.infer<typeof VisualTextLayoutSchema>;
@@ -44,7 +58,7 @@ export interface VisualCoverage {
   readonly actualCentroid: { readonly x: number; readonly y: number } | null;
   readonly positionDelta: number | null;
 }
-export const VISUAL_NEGATIVES = ['missing-han', 'missing-punctuation', 'missing-emoji', 'clip-last-line', 'shift-one-pixel', 'wrong-size', 'red-to-blue', 'emoji-hue', 'emoji-grayscale', 'non-text-stripe', 'missing-marker', 'text-opacity'] as const;
+export const VISUAL_NEGATIVES = ['missing-han', 'missing-punctuation', 'missing-emoji', 'clip-last-line', 'shift-one-pixel', 'wrong-size', 'red-to-blue', 'emoji-hue', 'emoji-grayscale', 'non-text-stripe', 'missing-marker', 'text-opacity', 'missing-document-icon', 'document-icon-color', 'document-icon-shift'] as const;
 export const VisualNegativeSchema = z.enum(VISUAL_NEGATIVES);
 export type VisualNegative = z.infer<typeof VisualNegativeSchema>;
 

@@ -1,9 +1,10 @@
 import { VISUAL_TEXT_LIMITS, type VisualTextLayout } from './definitions';
+import { qualifiesDocumentVector } from './documentVectorModel';
 
 /** 只比较事实，不移动图像来补偿错位，也不把元数据一致当作位图有字的证据。 */
 export function compareVisualTextLayout(reference: VisualTextLayout, actual: VisualTextLayout) {
   const failures: string[] = [];
-  if (reference.dpr !== actual.dpr || reference.graphemes.length !== actual.graphemes.length
+  if (reference.dpr !== actual.dpr || reference.graphemes.length !== actual.graphemes.length || reference.vectors.length !== actual.vectors.length
     || Math.abs(reference.width - actual.width) * reference.dpr > VISUAL_TEXT_LIMITS.layoutPhysicalPx) failures.push('layout_environment');
   reference.graphemes.forEach((expected, index) => {
     const found = actual.graphemes[index];
@@ -17,6 +18,16 @@ export function compareVisualTextLayout(reference: VisualTextLayout, actual: Vis
       if (Math.max(Math.abs(rect.x - other.x), Math.abs(rect.y - other.y), Math.abs(rect.width - other.width), Math.abs(rect.height - other.height))
         * reference.dpr > VISUAL_TEXT_LIMITS.layoutPhysicalPx) failures.push(`layout_bounds:${expected.id}`);
     });
+  });
+  reference.vectors.forEach((expected, index) => {
+    const found = actual.vectors[index];
+    if (!found || !qualifiesDocumentVector(expected) || !qualifiesDocumentVector(found)
+      || JSON.stringify({ ...expected, rect: null }) !== JSON.stringify({ ...found, rect: null })) {
+      failures.push(`layout_vector:${expected.id}`); return;
+    }
+    const rect = expected.rect, other = found.rect;
+    if (Math.max(Math.abs(rect.x - other.x), Math.abs(rect.y - other.y), Math.abs(rect.width - other.width), Math.abs(rect.height - other.height))
+      * reference.dpr > VISUAL_TEXT_LIMITS.layoutPhysicalPx) failures.push(`layout_vector_bounds:${expected.id}`);
   });
   return { pass: failures.length === 0, failures };
 }

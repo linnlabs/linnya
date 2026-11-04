@@ -1,5 +1,5 @@
 /// <reference lib="es2022.intl" />
-import { VisualTextLayoutSchema, type VisualColor, type VisualRect, type VisualTextLayout } from './definitions';
+import { VisualTextLayoutSchema, type VisualColor, type VisualRect, type VisualTextLayout, type VisualDocumentVector } from './definitions';
 import { readVisualFontFacts } from './readVisualFontFacts';
 
 function rgb(value: string): VisualColor {
@@ -61,6 +61,27 @@ function collectMarkers(root: HTMLElement, origin: DOMRect, paper: VisualColor):
   });
 }
 
+function readVectorPaint(element: Element, root: HTMLElement, paper: VisualColor): VisualDocumentVector['paint'] {
+  const style = getComputedStyle(element);
+  return { fill: style.fill, stroke: style.stroke, color: rgb(style.color), background: background(element, root, paper),
+    strokeWidth: style.strokeWidth, strokeLinecap: style.strokeLinecap, strokeLinejoin: style.strokeLinejoin,
+    strokeDasharray: style.strokeDasharray, strokeDashoffset: style.strokeDashoffset, vectorEffect: style.vectorEffect,
+    opacity: style.opacity, fillOpacity: style.fillOpacity, strokeOpacity: style.strokeOpacity,
+    transform: style.transform, visibility: style.visibility, filter: style.filter, clipPath: style.clipPath, maskImage: style.maskImage };
+}
+function collectDocumentVectors(root: HTMLElement, origin: DOMRect, paper: VisualColor): VisualTextLayout['vectors'] {
+  // 只读取正式标签图标；SVG viewport来自真实DOM，不把路径bbox或失败像素当排版槽。
+  return Array.from(root.querySelectorAll<SVGSVGElement>('[data-document-reference-icon] > svg[data-icon="document"]')).map((svg, index) => {
+    const viewBox = svg.viewBox.baseVal;
+    return { id: `document-icon:${index}`, geometryKind: 'document-reference-icon', rect: localRect(svg.getBoundingClientRect(), origin),
+      viewBox: { x: viewBox.x, y: viewBox.y, width: viewBox.width, height: viewBox.height },
+      preserveAspectRatio: svg.getAttribute('preserveAspectRatio'), transform: svg.getAttribute('transform'),
+      childNames: Array.from(svg.children, child => child.localName), paint: readVectorPaint(svg, root, paper),
+      paths: Array.from(svg.querySelectorAll<SVGPathElement>(':scope > path'), path => ({ d: path.getAttribute('d'),
+        transform: path.getAttribute('transform'), paint: readVectorPaint(path, root, paper) })) };
+  });
+}
+
 /** 只读真实排版；UTF-16索引来自Segmenter，emoji/连字不按等宽格或码点重排。 */
 export function collectVisualTextLayout(root: HTMLElement, paperCss: string): VisualTextLayout {
   if (!root.isConnected || document.fonts.status !== 'loaded') throw new Error('visual_layout_not_ready');
@@ -90,6 +111,6 @@ export function collectVisualTextLayout(root: HTMLElement, paperCss: string): Vi
     if (line) { line.rect = union([line.rect, rect]); line.graphemeIds.push(grapheme.id); }
     else lines.push({ id: `line:${lines.length}`, rect: { ...rect }, graphemeIds: [grapheme.id] });
   }
-  return VisualTextLayoutSchema.parse({ version: 3, dpr: devicePixelRatio, fontsStatus: document.fonts.status,
-    width: origin.width, graphemes, lines });
+  return VisualTextLayoutSchema.parse({ version: 4, dpr: devicePixelRatio, fontsStatus: document.fonts.status,
+    width: origin.width, graphemes, lines, vectors: collectDocumentVectors(root, origin, paper) });
 }

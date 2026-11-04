@@ -20,6 +20,15 @@ export function applyVisualNegative(root: HTMLElement, negative: VisualNegative,
     case 'emoji-hue': return alterGrapheme(root, text => text === '🖼️', 'filter:hue-rotate(180deg)');
     case 'emoji-grayscale': return alterGrapheme(root, text => text === '🖼️', 'filter:grayscale(1)');
     case 'text-opacity': root.style.opacity = '0.8'; return { opacity: 0.8 };
+    case 'missing-document-icon':
+    case 'document-icon-color':
+    case 'document-icon-shift': {
+      const icon = root.querySelector<SVGSVGElement>('[data-document-reference-icon] > svg[data-icon="document"]');
+      if (!icon) throw new Error('visual_negative_document_icon_missing');
+      if (negative === 'missing-document-icon') { icon.remove(); return { removed: 'DocumentIcon' }; }
+      if (negative === 'document-icon-color') { icon.style.color = '#0000cc'; return { color: '#0000cc' }; }
+      icon.style.transform = `translateX(${1 / reference.dpr}px)`; return { physicalDx: 1, target: 'DocumentIcon' };
+    }
     case 'missing-marker': {
       const list = root.querySelector('li'); if (!list) throw new Error('visual_negative_marker_missing');
       list.style.listStyleType = 'none'; return { listStyleType: 'none' };

@@ -57,6 +57,7 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', colo
   await document.fonts.ready;
   const paperColor = getComputedStyle(reference).backgroundColor;
   const referenceLayout = collectVisualTextLayout(reference, paperColor);
+  if (referenceLayout.vectors.length !== 1) throw new Error('visual_document_icon_fixture_missing');
   const sources = Array.from({ length: 8 }, () => createCardSurface(card, request));
   const mutation = negative ? sources.map(element => applyVisualNegative(element, negative, referenceLayout)) : null;
   const rasters = await rasterizer.rasterizeBatch(sources.map(element => ({ element, width: 360, height: 500, scale: devicePixelRatio })));
