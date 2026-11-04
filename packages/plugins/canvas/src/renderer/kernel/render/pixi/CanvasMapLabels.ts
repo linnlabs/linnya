@@ -1,6 +1,7 @@
 import { Sprite, Texture } from 'pixi.js';
 import { readCanvasCardCssPalette, readCanvasElementText, type CanvasCard } from '../../../../shared';
 import type { CanvasMapLabelsInput, CanvasMapLabelsProjection } from '../../definitions/canvasMapLabels';
+import { canvasTextGraphemes, canvasTitlePrefix } from '../../geometry/canvasTextGraphemes';
 
 /** 地图标签在屏幕分辨率的单一图层绘制，不生成 1/zoom 倍的巨型文字纹理。 */
 export class CanvasMapLabels {
@@ -34,11 +35,12 @@ export class CanvasMapLabels {
     return false;
   }
   private title(card: CanvasCard, readTitle: CanvasMapLabelsInput['readTitle'], fontSize: number): string {
-    const source = (readTitle?.(card) ?? readCanvasElementText(card)).split('\n')[0].slice(0, 18) || '空白卡片';
+    const source = canvasTitlePrefix(readTitle?.(card) ?? readCanvasElementText(card), 18) || '空白卡片';
     const titleKey = `${fontSize}:${source}`, existing = this.fittedTitles.get(titleKey);
     if (existing !== undefined) return existing;
-    let title = source;
-    while (title.length > 1 && this.context.measureText(title).width > 140) title = title.slice(0, -1);
+    const graphemes = Array.from(canvasTextGraphemes(source)); let title = source;
+    // 地图标签沿用不加省略号、至少保留一组字形的规则，裁尾也不能拆开组合序列。
+    while (graphemes.length > 1 && this.context.measureText(title).width > 140) { graphemes.pop(); title = graphemes.join(''); }
     // 标题缓存也要有界，不能随历史正文永久增长。
     if (this.fittedTitles.size >= 4096) this.fittedTitles.clear();
     this.fittedTitles.set(titleKey, title); return title;

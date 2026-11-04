@@ -17,6 +17,7 @@ import type { CanvasBitmapCache } from './CanvasBitmapCache';
 import { CanvasSceneMotion, type CanvasMotionView } from './CanvasSceneMotion';
 import { planCanvasSceneMotion, resolveCanvasDisplayCard, canvasCardRasterChanged, type CanvasSceneMotionPlan } from '../../motion';
 import { canvasFitText } from '../../geometry/canvasFitText';
+import { canvasTitlePrefix } from '../../geometry/canvasTextGraphemes';
 import { canvasFitCamera } from '../../geometry/canvasFitCamera';
 import { warmCanvasGraphicsPipeline } from './warmCanvasGraphicsPipeline';
 import { CanvasIdentityAtlasCapacityError, type CanvasIdentityAtlas } from './CanvasIdentityAtlas';
@@ -244,8 +245,7 @@ class PixiCanvasKernel implements CanvasKernel {
     return { x, y, width: card.width - x * 2, height: card.height - y * 2 };
   }
   private identityTitle(card: CanvasCard): string {
-    const title = this.title(card), lineEnd = title.indexOf('\n');
-    const source = Array.from(title.slice(0, Math.min(240, lineEnd < 0 ? title.length : lineEnd))).slice(0, 120).join('')
+    const source = canvasTitlePrefix(this.title(card), 120)
       || (card.type === 'image' ? '图片' : '空白卡片');
     const width = this.identityBounds(card).width, key = `${width}:${source}`, existing = this.identityTitles.get(key);
     if (existing !== undefined) return existing;
