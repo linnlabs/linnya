@@ -12,6 +12,8 @@ node packages/plugins/canvas/dev/probes/run-render-probe.mjs
 
 受管 worker 默认 `background` 模式仅承诺排版；需要实际后台绘制的 provider 声明 `renderingMode: 'offscreen'`。主窗口与 worker 共用 `CanvasDrawElement` 单一特性，renderer 仍要检测新旧 API。
 
+独立制品的 `run-worker-smoke.mjs` 在显式 `CANVAS_PERFORMANCE_SOFTWARE=1` 下使用 SwiftShader，与软件计数探针采用相同后端选择；默认路径不改。首次 worker 调用前保存 `canvas-worker-smoke/rendering-environment.json`，记录请求的绘图 profile、Electron/Chromium 版本与实际 GPU 信息，成功报告也携带该事实。该测试设置不关闭 sandbox，不进入生产窗口策略，不提供硬件帧率资格。
+
 2026-11-03 的 Electron 43.8.1 / Chromium 150 / macOS arm64 实测：普通隐藏 1×1 窗口可测高，但绘制结果完全透明；offscreen 窗口可测高、输出非空像素并成功上传 WebGL。两种窗口的默认 DPR 不同（普通 2、offscreen 1），因此业务请求必须传入目标 DPR，不能依赖窗口默认值。长卡这里只绘制 280×360 的可见框，没有分配全文纹理；不会据此宣称全量性能已通过。
 
 相关事实以 [Electron offscreen 文档](https://www.electronjs.org/docs/latest/tutorial/offscreen-rendering)和 [Chrome HTML-in-Canvas 文档](https://developer.chrome.com/docs/web-platform/html-in-canvas/2d)为参考，实际能力以本探针结果为准。

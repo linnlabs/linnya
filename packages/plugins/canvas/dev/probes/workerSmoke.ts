@@ -13,6 +13,12 @@ const root = process.argv[2];
 if (!root) throw new Error('Repository root required');
 const output = path.join(root, '_dev_data/canvas-worker-smoke');
 app.setPath('userData', path.join(output, 'profile'));
+const softwareProfile = process.env.CANVAS_PERFORMANCE_SOFTWARE === '1';
+// CI 没有可用硬件 WebGL 时显式选择与计数探针相同的软件后端，生产窗口不消费这个开关。
+if (softwareProfile) {
+  app.commandLine.appendSwitch('use-angle', 'swiftshader');
+  app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+}
 app.on('window-all-closed', () => {});
 const common = { protocol: 1, theme: 'light', dpr: 2, fontFamily: 'system-ui', fontSize: 14 };
 const content = { type: 'doc', content: [
@@ -147,6 +153,15 @@ async function verifyDocumentSummary(port: CanvasRenderWorkerPort, request: Canv
 async function run(): Promise<void> {
   await app.whenReady();
   if (process.platform === 'darwin') app.setActivationPolicy('accessory');
+  const rendering = {
+    profile: softwareProfile ? 'offscreen-swiftshader' : 'offscreen-default',
+    softwareRequested: softwareProfile, platform: process.platform, versions: process.versions,
+    features: app.getGPUFeatureStatus(), gpu: await app.getGPUInfo('basic'),
+  };
+  // 首次 worker RPC 失败也保留实际环境，不能只在最终成功报告中声明软件资格。
+  await mkdir(output, { recursive: true });
+  await writeFile(path.join(output, 'rendering-environment.json'), JSON.stringify(rendering, null, 2));
+  console.log(JSON.stringify({ workerSmokeRendering: rendering }));
   const packageRoot = process.argv[3] ?? path.join(root, 'packages/plugins/canvas');
   const definition = createCanvasHiddenWorkerDefinition({
     workerHtmlPath: path.join(packageRoot, 'dist/render-worker/worker.html'),
@@ -220,7 +235,7 @@ async function run(): Promise<void> {
     await writeFile(path.join(output, 'canvas-dpr1.png'), unit.bytes);
     await writeFile(path.join(output, 'canvas-second.jpg'), second.bytes);
     await writeFile(path.join(output, 'canvas-wide.png'), wide.bytes);
-    const report = { versions: process.versions, measurement, cancellationObserved, danglingEdgePixels, imageCrop, documentSummary, wideBounds, managedImages, referenceMeasurement, documentCover, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
+    const report = { rendering, versions: process.versions, measurement, cancellationObserved, danglingEdgePixels, imageCrop, documentSummary, wideBounds, managedImages, referenceMeasurement, documentCover, batch: { count: batch.length, ms: batchMs }, textBounds: { dpr1: bounds1, dpr2: bounds2 }, first: { bytes: image.bytes.length, size: decoded.getSize(), sequence: image.sequence,
       sha256: createHash('sha256').update(image.bytes).digest('hex') }, second: { bytes: second.bytes.length, sequence: second.sequence } };
     await writeFile(path.join(output, 'results.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));

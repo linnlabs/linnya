@@ -12,7 +12,7 @@ import { createCanvasVersionHistoryRuntime } from '../features/canvasVersionHist
 import { createCanvasVersionHistoryPorts } from '../adapters/createCanvasVersionHistoryPorts';
 import { createCanvasVersionActions } from './createCanvasVersionActions';
 import { readCanvasDocumentIdentity, CanvasDocumentFailure } from '../features/canvasDocument';
-import { findCanvasAgentGroup } from '../features/agentChanges';
+import { hasCanvasAgentGroup } from '../features/agentChanges';
 import { createCanvasTextSnapshots } from './createCanvasTextSnapshots';
 import { createCanvasDocumentCommitParticipants } from '../adapters/createCanvasDocumentCommitParticipants';
 import { readCanvasProjectionContext } from '../features/canvasDocument';
@@ -36,7 +36,7 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
     // CLI 的正文/图片准入可跨过停用时刻；最终事务统一拒绝旧运行态，不能只检查入口。
     participants: [{ commit() { assertActive(); } }, ...admission.participants],
     history(input) {
-      const beforeGroup = input.context.actor.source.kind === 'agent' && !findCanvasAgentGroup(database, input.context.documentId, canvasSourceKey(input.context.actor));
+      const beforeGroup = input.context.actor.source.kind === 'agent' && !hasCanvasAgentGroup(database, input.context.documentId, canvasSourceKey(input.context.actor));
       return versions.recordCommit(input, { beforeGroup });
     },
     publish(plan, context, publication) {

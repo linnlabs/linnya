@@ -21,6 +21,10 @@ export function findCanvasAgentGroup(database: ReadDatabase, documentId: string,
   const raw = database.prepare('SELECT record_json FROM canvas_agent_groups WHERE node_id = ? AND source_key = ?').get(documentId, sourceKey);
   return raw ? CanvasAgentGroupRecordSchema.parse(JSON.parse(jsonRow.parse(raw).record_json)) : null;
 }
+/** 首次归组的版本锚点只依赖身份存在性，不应为这个判断重复解析整组历史。 */
+export function hasCanvasAgentGroup(database: ReadDatabase, documentId: string, sourceKey: string): boolean {
+  return database.prepare('SELECT 1 FROM canvas_agent_groups WHERE node_id = ? AND source_key = ?').get(documentId, sourceKey) !== undefined;
+}
 export function saveCanvasAgentGroup(database: ReadDatabase, group: CanvasAgentGroupRecord): void {
   database.prepare('INSERT INTO canvas_agent_groups(node_id, group_id, source_key, record_json) VALUES (?, ?, ?, ?) ON CONFLICT(node_id, group_id) DO UPDATE SET record_json = excluded.record_json')
     .run(group.documentId, group.id, JSON.stringify(['agent', group.conversationId]), JSON.stringify(group));
