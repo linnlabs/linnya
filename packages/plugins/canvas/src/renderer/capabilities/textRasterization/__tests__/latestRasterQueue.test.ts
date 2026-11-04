@@ -3,16 +3,17 @@ import { createLatestRasterQueue } from '../functions/createLatestRasterQueue';
 
 describe('latest card raster queue', () => {
   it('缩放积压时有界，并释放已完成但被新版本替代的位图', async () => {
-    let release: (() => void) | undefined;
+    let release: (() => void) | undefined, started: (() => void) | undefined;
     const barrier = new Promise<void>((resolve) => { release = resolve; });
+    const executing = new Promise<void>(resolve => { started = resolve; });
     const disposed: number[] = [];
     const queue = createLatestRasterQueue({
       capacity: 3,
-      execute: async (value: number) => { await barrier; return value; },
+      execute: async (value: number) => { started?.(); await barrier; return value; },
       disposeResult: (value) => disposed.push(value),
     });
     const first = queue.enqueue('card', 0);
-    await Promise.resolve(); // 本场景验证运行中的旧版本，不只是尚未开始的排队替换。
+    await executing; // 验证真正运行中的旧版本，不用微任务次数猜测工作已经开始。
     const replaced = queue.enqueue('card', 1);
     const latest = queue.enqueue('card', 2);
     const other = Array.from({ length: 20 }, (_, i) => queue.enqueue(`other-${i}`, i + 10));
@@ -38,8 +39,10 @@ describe('latest card raster queue', () => {
     expect(await first).toEqual({ status: 'cancelled' });
     expect(await pending).toEqual({ status: 'cancelled' });
     expect((await queue.enqueue('bad', 3)).status).toBe('failed');
+    const closing = queue.enqueue('closing', 4);
     queue.dispose();
-    expect(await queue.enqueue('disposed', 4)).toEqual({ status: 'cancelled' });
+    expect(await closing).toEqual({ status: 'cancelled' });
+    expect(await queue.enqueue('disposed', 5)).toEqual({ status: 'cancelled' });
   });
   it('同一paint批次只取消旧卡结果，其余卡仍能完成', async () => {
     const batches: number[][] = [], released: number[] = [];
@@ -49,9 +52,9 @@ describe('latest card raster queue', () => {
       executeBatch: async (values: readonly number[]) => { batches.push([...values]); if (values.includes(3)) { started?.(); await barrier; } return values.map(value => value * 10); },
       disposeResult: value => released.push(value),
     });
-    const first = queue.enqueue('c0', 0); await Promise.resolve();
+    const first = queue.enqueue('c0', 0); await first;
     const one = queue.enqueue('c1', 1), removed = queue.enqueue('c2', 2), stale = queue.enqueue('c3', 3), four = queue.enqueue('c4', 4);
-    queue.cancel('c2'); await first; await executing; queue.cancel('c3'); release?.();
+    queue.cancel('c2'); await executing; queue.cancel('c3'); release?.();
     const results = await Promise.all([one, removed, stale, four]);
     expect(batches).toEqual([[0], [1, 3, 4]]);
     expect(results).toEqual([{ status: 'ready', value: 10 }, { status: 'cancelled' }, { status: 'cancelled' }, { status: 'ready', value: 40 }]);

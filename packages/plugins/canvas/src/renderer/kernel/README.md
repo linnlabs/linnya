@@ -92,6 +92,8 @@ body的`firstPresented`只表示当前正文键已有新像素在非零透明度
 
 身份牌由`CanvasIdentityAtlas`集中准备：仍使用固定Pixi8.22的root导出`CanvasTextGenerator`完成整串排版，不拆字，不改system-ui15、白字tint、DPR或世界坐标。生成器带`@internal`兼容性标记，因此只由一个窄适配器消费，升级依赖时须重过同机Pixi Text整串像素门禁。借来的Canvas同步复制到自有页后立即归还；frame为临时物理矩形，Texture子框按source.resolution换算为逻辑单位。每个输入/异步批次只更新脏页一次，纯绘制RAF不准备文字。
 
+身份牌准备使用独立task，不接在同步场景投影后的微任务链里；已兑现Promise或`queueMicrotask`都不会让浏览器处理输入/绘制。活动身份牌未准备完成前保留上一帧，取消过早安排的新场景draw；准备结束后才安排主画布RAF。准备失败仍安排清除旧像素的draw并传播原错误，销毁取消自有任务；显式出图继续同步准备，不把等待或失败当成成功。
+
 页有2物理px透明间隔，按完整1024×512或更大独立字符串页计账。可见缺图牌持有活动引用，正文覆盖后的视图仍可复用缓存；无活动引用的页可LRU淘汰，最后视图移除时整页释放。页面销毁会清掉所有绑定的子纹理，不能留下已释放source的Sprite；上下文恢复从保留的自有Canvas重传同一页。
 
 `bitmapBudgetBytes`继续限制正文（包括退休层），默认256MiB。正文与身份牌另共用固定256MiB逻辑RGBA纹理估算上限：新页先准入并让正文LRU回收，正文接纳也扣除完整atlas页占用；不把空白槽、隐藏缓存或退休正文漏账。stats分别报告bitmapBytes、identityBytes、identityCanvasBytes和派生estimatedTextureBytes/textureBudgetBytes。CPU Canvas backing另列，不声称这些估算代表驱动或全进程物理内存。所有权与子框遵循[Pixi TextureSource/Texture](https://pixijs.com/8.x/guides/components/textures)，排版来自[固定8.22 CanvasTextGenerator](https://github.com/pixijs/pixijs/blob/v8.22.0/src/scene/text/canvas/CanvasTextGenerator.ts)。

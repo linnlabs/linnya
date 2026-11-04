@@ -34,10 +34,16 @@ async function nearTitle(kind: string, source: string, expected: string, width: 
     const kernel = await createPixiCanvasKernel({ host, width: 1300, height: 120, resolution: 2 });
     try {
       const card = createVisibleUpdateFixture('text')[0], x = Math.min(14, width / 8);
-      kernel.setElements([{ ...card, x: 0, y: 0, width, height: 96, data: { ...card.data, content: createCanvasPlainTextDocument(source) } }]);
-      // schedule已登记主画布RAF；明确等它完成，不能把PNG异步编码当作真实draw等待。
-      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-      const image = await kernel.captureImage('png'), stats = kernel.readStats();
+      const initial = { ...card, x: 0, y: 0, width, height: 96, data: { ...card.data, content: createCanvasPlainTextDocument('已被新输入替换的标题') } };
+      kernel.setElements([initial]);
+      kernel.setElements([{ ...initial, revision: initial.revision + 1, data: { ...card.data, content: createCanvasPlainTextDocument(source) } }]);
+      // 准备是独立task，不能假定一个RAF后已经draw；也不能先capture同步flush掩盖空白首帧。
+      const started = performance.now(); let stats = kernel.readStats();
+      while (!stats.renders) {
+        if (performance.now() - started > 5000) throw new Error('identity_title_actual_draw_timeout');
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve())); stats = kernel.readStats();
+      }
+      const image = await kernel.captureImage('png');
       const text = new Text({ text: expected, resolution: 2, style: { fill: 0xffffff, fontFamily: 'system-ui', fontSize: 15, wordWrap: false } });
       text.tint = readCanvasCardPalette('white', false).title; text.position.set(x, 12); app.stage.addChild(text); app.render();
       return { kind, expected, image, reference: await app.renderer.extract.base64({ target: app.stage, frame: new Rectangle(0, 0, 1300, 120), resolution: 2 }),

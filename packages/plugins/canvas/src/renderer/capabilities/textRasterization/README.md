@@ -4,9 +4,11 @@
 
 DOM 安装后等待 fonts 和图片 decode。图片必须经内容 provider 从受管字节转成 blob/data URL；不放宽媒体协议 CORS。普通隐藏窗口可能成功触发 paint 却输出透明图，后台提供者必须选择已验证的 offscreen Host 能力。实验 API 不可用、paint 超时或中断时返回错误，由文档类型决定身份牌反馈，不伪造出图成功。
 
-`measureBatch` 先安装同批各自宽度的DOM，再集中读取高度，避免每张卡交替写入和读取布局。结果按请求顺序返回标准 settled result；某张图片解码失败不阻断其他正文，取消仍中止整批。正式正文调度一次至多32卡，共享一个staging和paint流程。
+`measureBatch` 先安装同批各自宽度的DOM，再集中读取高度，避免每张卡交替写入和读取布局。结果按请求顺序返回标准 settled result；某张图片解码失败不阻断其他正文，取消仍中止整批。复杂正文默认一次至多32卡，短纯文字按既有像素/DOM预算可至64卡；移动时分别降为16/32卡，共享一个staging和paint流程。
 
 `createLatestRasterQueue` 串行使用 staging DOM，默认至多一个运行批次和 64 个待处理项。同一任务批次先集中入队再开始paint，避免500张卡先单独画1张；支持当前视口优先级重排与移动时缩小批次，不能突破已声明上限。同一 key 的旧任务被替换；已完成的旧结果也会释放。调用方取消离屏请求，并对 dropped 结果按当前可见需求重新调度，不保留无限积压。
+
+每次drain在独立task执行，避免DOM创建/测高与场景投影、身份牌准备连成阻挡绘制的微任务链；不改变批次预算、优先级和最新内容判定。销毁取消尚未开始的任务，运行中的paint仍由原有AbortSignal收口。该边界遵循[HTML事件循环](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html)，不把Promise续体误当成让出主线程。
 
 `cardRasterKey` 覆盖正文修订、主题、DPR、材质、LOD、字体和界面缩放；业务应按实际影响区分正文与外框，材质只影响外框时复用正文。光栅器销毁后不再安装 DOM，返回的 bitmap 由接收者或队列释放。
 

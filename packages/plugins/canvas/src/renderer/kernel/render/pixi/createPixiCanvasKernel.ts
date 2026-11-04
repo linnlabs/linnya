@@ -78,7 +78,7 @@ class PixiCanvasKernel implements CanvasKernel {
   private readonly cards = new Map<CanvasCardId, CanvasCard>();
   private readonly bitmaps: CanvasBitmapCache;
   private readonly identities: CanvasIdentityAtlas;
-  private identityPreparationPending = false;
+  private identityPreparationTask: ReturnType<typeof setTimeout> | null = null;
   private identityCapacityLimited = false;
   private readonly scene: CanvasSceneMotion;
   private readonly retiringLabels = new Set<CanvasCardId>();
@@ -168,14 +168,25 @@ class PixiCanvasKernel implements CanvasKernel {
   }
   private schedule(): void {
     if (this.destroyed || this.contextLost) return;
-    // 集中同步输入/同批异步回执的字串，不在RAF中逐卡排版或上传436份Canvas。
-    if (!this.identityPreparationPending && this.identities.needsPreparation(Math.max(1, this.app.renderer.resolution))) {
-      this.identityPreparationPending = true; queueMicrotask(() => {
-        this.identityPreparationPending = false;
-        if (!this.destroyed && !this.contextLost && this.identities.needsPreparation(Math.max(1, this.app.renderer.resolution))) this.prepareIdentities();
-      });
+    if (this.identities.needsPreparation(Math.max(1, this.app.renderer.resolution))) {
+      // 新字串准备前保留上一帧，不能先画出没有身份牌的纸面。
+      // 独立task让同步投影、身份牌和正文准备之间有输入/绘制机会；微任务不会让出主线程。
+      if (this.scheduled) { cancelAnimationFrame(this.scheduled); this.scheduled = 0; }
+      if (this.identityPreparationTask === null) this.identityPreparationTask = setTimeout(() => {
+        try {
+          if (!this.destroyed && !this.contextLost && this.identities.needsPreparation(Math.max(1, this.app.renderer.resolution))) this.prepareIdentities();
+        } finally {
+          this.identityPreparationTask = null;
+          // 准备失败也须清掉已撤权/移除的旧像素；原错误继续抛出，不把失败当成成功出图。
+          this.scheduleDraw();
+        }
+      }, 0);
+      return;
     }
-    if (this.scheduled) return;
+    this.scheduleDraw();
+  }
+  private scheduleDraw(): void {
+    if (this.destroyed || this.contextLost || this.scheduled) return;
     this.scheduled = requestAnimationFrame(this.renderFrame);
   }
   private prepareIdentities(): void {
@@ -626,6 +637,7 @@ class PixiCanvasKernel implements CanvasKernel {
   destroy(): void {
     this.destroyed = true; this.scene.dispose();
     this.motionPreference.removeEventListener('change', this.motionChanged);
+    if (this.identityPreparationTask !== null) { clearTimeout(this.identityPreparationTask); this.identityPreparationTask = null; }
     if (this.scheduled) cancelAnimationFrame(this.scheduled);
     this.removeInteraction();
     this.canvas.removeEventListener('webglcontextlost', this.loseContext); this.canvas.removeEventListener('webglcontextrestored', this.restoreContext);

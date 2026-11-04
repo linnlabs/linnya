@@ -23,10 +23,11 @@ export function createLatestRasterQueue<I, O>(options: Execution<I, O> & {
   let running: readonly RasterJob<I, O>[] = [];
   let group: AbortController | null = null;
   let disposed = false, peakPending = 0, peakBatchSize = 0, completed = 0, discarded = 0;
-  let scheduled = false;
+  let scheduled: ReturnType<typeof setTimeout> | null = null;
   const scheduleDrain = () => {
-    if (scheduled || disposed) return;
-    scheduled = true; queueMicrotask(() => { scheduled = false; void drain(); });
+    if (scheduled !== null || disposed) return;
+    // DOM创建/测高不能接在同步场景投影和身份牌准备的微任务链后，形成一个连续长任务。
+    scheduled = setTimeout(() => { scheduled = null; void drain(); }, 0);
   };
   const abortGroupIfUnused = () => { if (running.length && running.every(job => job.controller.signal.aborted)) group?.abort(); };
   async function drain(): Promise<void> {
@@ -76,6 +77,7 @@ export function createLatestRasterQueue<I, O>(options: Execution<I, O> & {
     readStats() { return { pending: pending.size, running: running.length > 0, peakPending, peakBatchSize, capacity, batchSize, completed, discarded }; },
     dispose(): void {
       disposed = true; running.forEach(job => job.controller.abort()); group?.abort();
+      if (scheduled !== null) { clearTimeout(scheduled); scheduled = null; }
       for (const job of pending.values()) job.resolve({ status: 'cancelled' }); pending.clear();
     },
   };
