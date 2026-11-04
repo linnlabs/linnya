@@ -6,7 +6,10 @@ export const CANVAS_RENDER_WORKER_ID = 'canvas-render';
 export const CANVAS_RENDER_PROTOCOL = 1;
 export const CANVAS_RENDER_CHANNELS = {
   request: 'canvas-render:request', response: 'canvas-render:response', ready: 'canvas-render:ready', cancel: 'canvas-render:cancel',
+  viewport: 'canvas-render:viewport',
 } as const;
+/** 输出与隐藏窗口使用同一物理像素预算；分数DPR须先上取整再计量。 */
+export const CANVAS_RENDER_VIEWPORT_LIMITS = { maxWidth: 16384, maxHeight: 16384, maxPixels: 16_777_216 } as const;
 const finite = z.number().finite();
 const resource = z.string().max(32 * 1024 * 1024).regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/);
 const common = {
@@ -33,7 +36,7 @@ export const CanvasRenderRequestSchema = z.object({
   region: z.object({ x: finite, y: finite, width: finite.positive(), height: finite.positive() }).strict().nullable(),
   format: z.enum(['png', 'jpeg']), quality: finite.min(0.1).max(1),
   material: z.enum(['paper', 'card']),
-}).strict().refine((request) => request.width * request.height * request.dpr ** 2 <= 16_777_216, { message: 'Canvas output exceeds pixel budget' });
+}).strict().refine((request) => Math.ceil(request.width * request.dpr) * Math.ceil(request.height * request.dpr) <= CANVAS_RENDER_VIEWPORT_LIMITS.maxPixels, { message: 'Canvas output exceeds pixel budget' });
 export const CanvasWorkerRequestSchema = z.union([CanvasMeasureRequestSchema, CanvasMeasureBatchRequestSchema, CanvasRenderRequestSchema]);
 export const CanvasWorkerResultSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('measured'), requestId: z.string().min(1), width: finite.positive(), height: finite.positive() }).strict(),
@@ -60,5 +63,7 @@ export interface CanvasRenderBridge {
   setCancelHandler(handler: (requestId: string) => void): void;
   /** 只调整本 worker 的文档比例，不暴露 Electron 对象。 */
   setPixelRatio(ratio: number): void;
+  /** 仅当前串行任务可调整隐藏窗口，不能让排队请求抢改在途绘图的视口。 */
+  prepareViewport(size: { readonly width: number; readonly height: number }): Promise<void>;
   ready(): void;
 }

@@ -2,7 +2,7 @@
 
 内核消费 Canvas 元素快照，拥有场景、相机、命中、交互意图和绘制资源，不拥有保存、正文解析、Agent、Host store 或 Vue 状态。`index.ts` 只暴露 `CanvasKernel` 合同与创建入口。Pixi 仅出现在 `render/pixi`。
 
-`setElements` 安装已提交或由调用方明确管理的场景投影；`setSelection` 只更新选择。`worldToScreen` / `screenToWorld` 是 DOM 编辑表面定位的共同坐标真源。Pointer 意图由 `onIntent` 发给 feature，最终移动在松手时产生；保存、冲突校验、撤销和组合多选移动由调用方负责。
+`setElements(elements,{animateIds,batch})` 安装已提交或由调用方明确管理的场景投影；调用方根据正式提交来源选择动画ID，kernel不识别Agent。`setSelection` 只更新选择。`worldToScreen` / `screenToWorld` 是 DOM 编辑表面定位的共同坐标真源。Pointer 意图由 `onIntent` 发给 feature，最终移动在松手时产生；保存、冲突校验、撤销和组合多选移动由调用方负责。
 
 `setBitmap` 接管 ImageBitmap 的所有权；版本失效、重复缓存键、超预算或销毁都会负责关闭。位图资源有 256MiB 默认预算。纯移动不淘汰正文；染纸/主题切换必须刷新同色墨色，材质切换保留正文。字体、DPR、界面缩放和内容版本的组合键由光栅 capability 提供，调用方在这些条件变化时重新调度。
 
@@ -56,7 +56,7 @@ CI可用 `CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes
 
 生命周期参考[MapLibre栅格淡入](https://maplibre.org/maplibre-style-spec/layers/#raster-fade-duration)及其[零时长仍保留旧瓦片的问题](https://github.com/maplibre/maplibre-gl-js/issues/2445)：禁用动效也要释放退休资源，不能只把时长设零。系统偏好使用原生[MediaQueryList变化事件](https://developer.mozilla.org/en-US/docs/Web/API/MediaQueryList)，不修改拖动等功能本身。
 
-缩放中每50ms按当前视口重排待办，指针附近的可见正文优先；采样需求继续接纳最新缩放，不等鼠标释放。移动时单批接纳上限从32减半为16，可见正文超过1500张或进入降级时暂停缩放中补图，停手恢复。近景不超过40张的精确采样不再额外等待100ms；手动进入编辑的单卡任务优先于远处补图。
+缩放中每50ms按当前视口重排待办，指针附近的可见正文优先；采样需求继续接纳最新缩放，不等鼠标释放。复杂正文单批32张、移动时减半为16；短纯文字在同一64任务容量内按像素/DOM预算合批至64张，移动时减半至32，可见正文超过1500张或进入降级时暂停缩放中补图，停手恢复。近景不超过40张的精确采样不再额外等待100ms；手动进入编辑的单卡任务优先于远处补图。
 
 macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事实；powerMonitor的idle只能作辅助。锁屏/未登录/非console用户在创建窗口前拒绝，报告仅保留boolean状态，不写用户身份。被拒绝的新运行写preflight.json并保留上一原始结果；此前仅powerMonitor校验的旧输出不能单独证明解锁态，不得作为正式基线。
 
@@ -66,4 +66,22 @@ macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事
 
 `readReadiness(ids)`按当前环境、外部内容世代与可见缺片读取正文事实，不泄露正文缓存键。body只有在匹配位图已接纳、120ms替换已完成、该卡可见且随后实际draw后才ready；进入/退出DOM编辑或重新进入视口也须等新draw。overview/thumbnail/outside分别报告，不能充当正文完成；complete要求非空可见交集全部body ready且无精确升级/隐藏暂停。内容序号的几何首帧由调用方另行关联，不能拿位图旧回执替代新提交的实际投影。stats分别报告fadingCards/retiringBytes/retiringTiles，总rasterTiles包含退休层；停手清晰测量必须等待fade归零。
 
+body的`firstPresented`只表示当前正文键已有新像素在非零透明度下完成实际draw，可在仍缺其他片或仍淡入时成立。位图替换和scene淡入分别记录首次alpha大于零时的render下界，上传、alpha零帧和旧正文键不算首显；`ready`继续等待全部可见正文和过渡结束后的draw。调用方以本次变化卡及当前revision关联这两个阶段，不能用首显替代完整正文完成。
+
+授权文档标题按目标差量更新身份牌；内容相同的元数据通知不启动新draw。地图标题的内容不参与占位优先序，只有已显示的代表标签改名时才需重画。thumbnail偏好只改变相应卡片正文/身份牌可见性和标题候选，不改变几何或遮挡，不重新扫描空间投影。退回身份牌仍重新选择代表标签，之后相机改变会按最新候选排版。
+
 地图标签按选中、染纸、文档与面积优先；选中变化只作稳定分区并更新相关卡的远景透明度。单卡编辑的精确采样在DOM接管前保持，普通补图不能立即降回档位；相机倍率/环境改变或离开需求后解除。Pixi stage不另作交互命中（eventMode:none），所有意图仍走原生DOM事件与唯一空间索引，参见[Pixi事件合同](https://pixijs.com/8.x/guides/components/events)。
+
+场景显示与逻辑target分开：普通指定新增以96%大小淡入160ms，移动220ms，删除保留旧显示120ms；超过200个有效指定ID或显式batch时统一200ms淡入，避免逐卡飞行。删除的显示不再参与逻辑命中，仍持有的位图继续计入原有预算，退休后释放。透明新增阶段不扣除下层正文，地图标签跟随相同alpha。`sceneTransitions`和`cameraTransition`暴露实际未完成任务；正文回执还须等待场景过渡结束后的真正draw。
+
+`readDisplayPosition`返回当前视觉起点。真实拖动在阈值通过后冻结该起点，后续无关增量不重置预览，松手提交明确的绝对positions；取消恢复最新逻辑target。`finishTransitions(ids?)`同步到目标并刷新空间投影；编辑器和只读详情接管前使用它，正在编辑的卡不参与新动画。`animateCamera`默认320ms，用户相机输入从当前显示中断飞行；同值`setCamera`只取消任务，不额外重建投影。系统减少动态即时完成卡片、相机和纹理过渡，清理所有相关定时任务。
+
+`setRasterContentKey`用于不透明的外部内容/授权世代。世代变化立即释放当前卡的旧正文及退休纹理，不能把已失去访问权的封面或标签保留120ms淡出；普通采样升级才允许交叉淡入。
+
+相机中断和系统减少动态参考[tldraw公开动画合同](https://tldraw.dev/sdk-features/animation)：程序定位在用户平移/缩放时让位；shape与camera都必须消费减少动态偏好，不能只关闭相机动画。这里的过渡只修改显示投影，Canvas持久字段与撤销链不受动画tick影响。
+
+近景缺图身份牌使用卡内单行省略标题，按同一15px字体度量；不能把120字在窄卡内自动折成上百行并溢出纸面。小卡缩小内边距，高度不足一行时不画溢出字形。拟合结果有4096项上限，颜色通过GPU tint改变，避免染纸时重新生成每张身份牌的文字纹理；正文仍保留全部内容。80×32长中文/emoji卡片的真实像素门禁验证纸面之外无标题墨迹。
+
+同内容键下互不重叠的新增片段直接追加，保留已经显示的Sprite/Texture所有权，不为没有旧像素的新区域重建并淡入整张卡。只有没有在途替换时才走追加路径；相交采样升级、内容键切换及仍在进行的旧/新替换继续使用120ms流程。真实Electron门禁验证既有像素在追加前后完全一致、新区域可见、两张底图分别只关闭一次，内存仍计入原预算。
+
+线段四角使用[Pixi Geometry索引缓冲](https://pixijs.download/v8.22.0/docs/rendering.Geometry.html)共享给两个三角形，替代六份重复属性；法向量在每段只求一次。三角形覆盖、曲线细分误差、屏幕线宽、虚线相位及箭头保持同一几何，减少动态连线的CPU填充和GPU上传，不以降低线条质量换帧率。

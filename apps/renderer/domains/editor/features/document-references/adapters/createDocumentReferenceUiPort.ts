@@ -61,7 +61,7 @@ export function createDocumentReferenceUiPort(): DocumentReferenceUiPort {
       if (presentation.status !== 'available' || !presentation.nodeType) {
         showWorkspaceNotification(presentation.status === 'deleted' ? '引用的文档已删除' : presentation.status === 'outside_project' ? '文档在其他项目，当前不可访问' : '需要启用或安装对应插件后打开', 'info'); return;
       }
-      await getWorkspaceNavigationPort().openDocumentTarget({ documentId: presentation.documentId, projectId: projectId(), type: presentation.nodeType, displayName: presentation.title });
+      await getWorkspaceNavigationPort().openDocumentByNodeType({ documentId: presentation.documentId, projectId: projectId(), nodeType: presentation.nodeType, displayName: presentation.title });
     },
     readDetailRenderer(presentation) {
       if (presentation.status !== 'available' || !presentation.nodeType) return null;

@@ -16,11 +16,11 @@ const runtime = createCanvasComputationRuntime({ workerPath: path.join(packageRo
 try {
   const check = await runtime.check(snapshot); if (check.sequence !== 7 || !check.overlapCount) throw new Error('artifact_check_did_not_execute');
   for (const algorithm of ['tree', 'grid', 'layered'] as const) {
-    const result = await runtime.layout({ snapshot, algorithm, direction: 'right' });
-    if (result.sequence !== 7 || result.operations.length < 2 || result.operations.some(operation => operation.baseRevision !== 1)) throw new Error(`artifact_layout_missing:${algorithm}`);
+    const result = await runtime.layout({ requestId: `artifact-${algorithm}`, snapshot, algorithm, direction: 'right' });
+    if (result.computation.requestId !== `artifact-${algorithm}` || result.computation.sequence !== 7 || result.computation.executionMs <= 0 || result.sequence !== 7 || result.operations.length < 2 || result.operations.some(operation => operation.baseRevision !== 1)) throw new Error(`artifact_layout_missing:${algorithm}`);
   }
   const abort = new AbortController();
-  const cancelled = runtime.layout({ snapshot, algorithm: 'layered', direction: 'down' }, abort.signal).then(() => false, () => true); abort.abort();
+  const cancelled = runtime.layout({ requestId: 'artifact-cancel', snapshot, algorithm: 'layered', direction: 'down' }, abort.signal).then(() => false, () => true); abort.abort();
   if (!await cancelled || (await runtime.check(snapshot)).sequence !== 7) throw new Error('artifact_worker_cancel_or_recovery_failed');
   console.log('[canvas-artifact] isolated compiled check/tree/grid/ELK/cancel passed');
 } finally { await runtime.dispose(); }

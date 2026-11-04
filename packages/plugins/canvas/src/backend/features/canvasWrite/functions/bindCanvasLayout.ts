@@ -6,7 +6,7 @@ export function resolveCanvasLayoutOptions(options: CanvasArrangeOptions, refs: 
   const resolve = (id: string) => CanvasCardIdSchema.parse(id.startsWith('$') ? refs[id] : id);
   return CanvasLayoutOptionsSchema.parse({ ...options, elementIds: options.elementIds?.map(resolve), groups: options.groups?.map(group => group.map(resolve)) });
 }
-export function bindCanvasLayout(layout: CanvasLayoutResult, refs: Readonly<Record<string, CanvasElementId>>, groups: readonly (readonly string[])[] = []) {
+export function bindCanvasLayout(layout: Pick<CanvasLayoutResult, 'operations'>, refs: Readonly<Record<string, CanvasElementId>>, groups: readonly (readonly string[])[] = []) {
   const logical = new Map(Object.entries(refs).map(([ref, id]) => [id, ref]));
   const name = (id: string) => logical.get(CanvasCardIdSchema.parse(id)) ?? id;
   const moved = new Set<string>(layout.operations.map(move => move.id));

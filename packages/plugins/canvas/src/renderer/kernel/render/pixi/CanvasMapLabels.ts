@@ -10,6 +10,7 @@ export class CanvasMapLabels {
   private readonly texture: Texture;
   private projection: CanvasMapLabelsProjection | undefined;
   private readonly padding = 160;
+  private readonly drawn = new Set<CanvasCard['id']>();
   private readonly fittedTitles = new Map<string, string>();
 
   constructor() {
@@ -51,26 +52,31 @@ export class CanvasMapLabels {
       this.canvas.width = Math.max(1, renderWidth); this.canvas.height = Math.max(1, renderHeight);
     }
     const context = this.context;
-    context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    context.clearRect(0, 0, this.canvas.width, this.canvas.height); this.drawn.clear();
     const fontSize = camera.zoom < 0.15 ? 12 : 13;
     context.font = `${fontSize}px system-ui`;
     context.textBaseline = 'top';
     const occupied = new Set<string>();
     for (const card of input.cards) {
+      const opacity = input.readOpacity?.(card.id) ?? 1; if (opacity <= 0) continue;
       const x = card.x * camera.zoom + camera.x + this.padding;
       const y = card.y * camera.zoom + camera.y + this.padding;
       if (x > renderWidth || y > renderHeight || x + card.width * camera.zoom < 0 || y + card.height * camera.zoom < 0) continue;
       const key = `${Math.floor(x / 150)}:${Math.floor(y / 24)}`;
       if (occupied.has(key)) continue;
       occupied.add(key);
+      context.globalAlpha = opacity; this.drawn.add(card.id);
       context.fillStyle = readCanvasCardCssPalette(card.color, input.dark).title;
       context.fillText(this.title(card, input.readTitle, fontSize), x + 2, y + 2);
     }
+    context.globalAlpha = 1;
     this.texture.source.update();
     this.sprite.width = renderWidth; this.sprite.height = renderHeight;
     this.sprite.position.set(-this.padding, -this.padding);
     this.projection = { cards: input.cards, camera: { ...camera }, width, height, dark: input.dark };
   }
+
+  hasLabel(id: CanvasCard['id']): boolean { return this.drawn.has(id); }
 
   invalidate(): void { this.projection = undefined; }
 

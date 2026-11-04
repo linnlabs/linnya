@@ -10,4 +10,6 @@
 
 组 skips 来自正式写结果与对应原操作字段；旧组缺记录明确显示“历史信息不全”。applied + later_fields_preserved 是部分成功。正文 sequence、当前内容相似度或按钮出现时长都不能替代事实或撤销栈顶身份。
 
+公开样式资源为`styles/agentReview.css`，由插件Renderer contribution以显式`?url`入口登记，不在feature index隐式装入，独立制品同时验证CSS闭包。
+
 工厂第三参 beforeMutation 由表面注入现有正文/线标签保存屏障。仅撤回、重做撤回、允许批次在创建请求编号前等待；返回false则明确停止并保留草稿，失败重试不会继续写。拒绝批次、清角标、完成组只改组元数据，不触发保存。写请求一旦送入确认通道，其同编号重放不重复运行保存屏障。

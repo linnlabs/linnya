@@ -1,7 +1,8 @@
+import { JsonValueSchema } from '@app/schemas';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { canvasPluginMigrations, createCanvasDocumentRuntime, createCanvasBackendPlugin, readCanvasSelectionContext } from '@plugin/canvas/backend-test-support';
-import { CanvasAgentReceiptQueryResultSchema, createCanvasPlainTextDocument, encodeCanvasHistorySession } from '@plugin/canvas/shared';
+import { CanvasAgentReceiptQueryResultSchema, createCanvasPlainTextDocument, encodeCanvasHistorySession, CanvasCommitResultSchema, CanvasLayoutComputationSchema } from '@plugin/canvas/shared';
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema';
 import { WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/node-text-snapshot.schema';
 import { DOCUMENT_REFERENCE_SCHEMAS, createDocumentReferenceOperations } from 'src/domains/document-references';
@@ -134,20 +135,34 @@ it('runs the real semantic CLI against Host SQLite with frozen scope, idempotent
     expect(planned.status === 'ready' && planned.plan.access.conversationFiles).toBe('write');
     const created = await run(argv); expect(created.exitCode, created.stdout).toBe(0); expect(created.stdout).toContain('committed'); expect(created.stdout).not.toContain(id);
     expect(runtime.read(id).elements).toHaveLength(3); expect(measureCalls).toBe(1);
-    expect(await run(argv)).toEqual(created); expect(measureCalls).toBe(1);
     const beforeReceipt = runtime.read(id);
-    const receipt = CanvasAgentReceiptQueryResultSchema.parse(JSON.parse((await run(['receipt', 'workspace:/命令.canvas', 'create'])).stdout));
-    expect(receipt).toMatchObject({ documentId: 'workspace:/命令.canvas', receipt: { requestId: 'create', status: 'committed', commit: { documentId: 'workspace:/命令.canvas', sequence: beforeReceipt.sequence } } });
-    expect(receipt.receipt?.commit?.results).toEqual(JSON.parse(created.stdout).results);
-    expect(JSON.stringify(receipt)).not.toContain(id); expect(runtime.read(id)).toEqual(beforeReceipt);
+    const queriedReceipt = CanvasAgentReceiptQueryResultSchema.parse(JSON.parse((await run(['receipt', 'workspace:/命令.canvas', 'create'])).stdout));
+    expect(queriedReceipt).toMatchObject({ documentId: 'workspace:/命令.canvas', receipt: { requestId: 'create', status: 'committed', commit: { documentId: 'workspace:/命令.canvas', sequence: beforeReceipt.sequence } } });
+    expect(queriedReceipt.receipt?.commit?.results).toEqual(JSON.parse(created.stdout).results);
+    expect(JSON.stringify(queriedReceipt)).not.toContain(id); expect(runtime.read(id)).toEqual(beforeReceipt);
     const foreignReceipt = await executeCanvasCliCommand({ kind: 'receipt', path: 'workspace:/命令.canvas', requestId: 'create' }, { ...context, conversationId: 'another-chat' }, root, services);
     expect(foreignReceipt).toMatchObject({ receipt: null });
     expect(await run(['receipt', 'workspace:/命令.canvas', 'not-created'])).toMatchObject({ exitCode: 0, stdout: expect.stringContaining('"receipt":null') });
+    const receipt = CanvasCommitResultSchema.pick({ requestId: true, sequence: true, refs: true, results: true }).strip();
+    const createdValue: unknown = JSON.parse(created.stdout), retry = await run(argv);
+    expect(receipt.parse(JSON.parse(retry.stdout))).toEqual(receipt.parse(createdValue));
+    expect(JSON.parse(retry.stdout)).toMatchObject({ replayed: true, computation: null }); expect(measureCalls).toBe(1);
+    expect(createdValue).toMatchObject({ replayed: false, computation: { origin: 'node-worker', requestId: 'create', algorithm: 'tree' } });
+    const parseComputation = (value: unknown) => CanvasLayoutComputationSchema.parse(value);
+    const createdEnvelope = JsonValueSchema.parse(createdValue);
+    if (!createdEnvelope || typeof createdEnvelope !== 'object' || Array.isArray(createdEnvelope)) throw new Error('Expected CLI response');
+    expect(parseComputation(createdEnvelope.computation).executionMs).toBeGreaterThan(0);
+    const beforePreview = runtime.read(id);
+    const layoutPreview = await run(['arrange', 'workspace:/命令.canvas', '--request-id', 'timing-preview', '--algorithm', 'grid', '--dry-run']);
+    expect(layoutPreview.exitCode, layoutPreview.stdout).toBe(0);
+    expect(JSON.parse(layoutPreview.stdout)).toMatchObject({ status: 'dry-run', replayed: false, computation: { origin: 'node-worker', requestId: 'timing-preview', sequence: beforePreview.sequence, algorithm: 'grid' } });
+    expect(runtime.read(id)).toEqual(beforePreview);
     await writeFile(path.join(root, 'append.json'), JSON.stringify([{ op: 'update', id: 'c1', revision: runtime.read(id).elements.find(element => element.id === 'c1')!.revision, append: '只追加一次' }]));
     const append = ['apply', 'workspace:/命令.canvas', '--ops-file', 'append.json', '--request-id', 'append'];
     const first = await run(append); expect(first.exitCode).toBe(0);
     runtime.commit({ documentId: id, viewId: 'view', requestId: 'change-color', operations: [{ op: 'update', id: 'c1', baseRevision: runtime.read(id).elements.find(element => element.id === 'c1')!.revision, patch: { color: 'yellow' } }] });
-    expect(await run(append)).toEqual(first);
+    const appendReplay = await run(append); expect(receipt.parse(JSON.parse(appendReplay.stdout))).toEqual(receipt.parse(JSON.parse(first.stdout)));
+    expect(JSON.parse(appendReplay.stdout)).toMatchObject({ replayed: true, computation: null });
     const shown = await run(['show', 'workspace:/命令.canvas', 'c1']);
     expect(shown.exitCode).toBe(0); expect(shown.stdout.match(/只追加一次/g)).toHaveLength(1);
     expect((await run([...append, '--approved'])).exitCode).not.toBe(0);
@@ -165,7 +180,8 @@ it('runs the real semantic CLI against Host SQLite with frozen scope, idempotent
     expect(runtime.read(id)).toEqual(beforeDocument);
     const addedDocument = await run(documentArgs); expect(addedDocument.exitCode, addedDocument.stdout).toBe(0);
     expect(runtime.read(id).elements.filter(element => element.type === 'document')).toEqual([expect.objectContaining({ data: expect.objectContaining({ documentId: target.id }) })]);
-    expect(await run(documentArgs)).toEqual(addedDocument);
+    const documentReplay = await run(documentArgs); expect(receipt.parse(JSON.parse(documentReplay.stdout))).toEqual(receipt.parse(JSON.parse(addedDocument.stdout)));
+    expect(JSON.parse(documentReplay.stdout)).toMatchObject({ replayed: true, computation: null });
     const beforeInvalid = runtime.read(id);
     for (const document of ['workspace:/资料目录', 'workspace:/仅外部.md']) {
       await writeFile(path.join(root, 'invalid-document.json'), JSON.stringify([{ op: 'add', text: '整批不能落盘' }, { op: 'add', type: 'document', document }]));
@@ -267,4 +283,26 @@ it('confirms a lost restoration response without applying it twice and repeats o
   runtime.undo({ documentId: id, viewId: 'view', requestId: 'undo-after-restore', direction: 'undo' });
   runtime.undo({ documentId: id, viewId: 'view', requestId: 'undo-confirmed-restore', direction: 'undo' });
   expect(runtime.read(id).elements[0]).toMatchObject({ color: 'red' });
+});
+
+it('reports fresh Renderer arrangement computation and replays no-op receipts without pretending to recompute', async () => {
+  const { createCanvasArrangementRuntime, createCanvasComputationRuntime } = await import('@plugin/canvas/backend-test-support');
+  const path = await import('node:path');
+  const computation = createCanvasComputationRuntime({ workerPath: path.resolve('packages/plugins/canvas/dist/backend/canvas-computation-worker.cjs') });
+  const unused = async () => { throw new Error('Unexpected capability'); };
+  const arrangement = createCanvasArrangementRuntime(db, runtime, { computation, measurement: { measure: unused, measureBatch: unused }, rendering: { render: unused } });
+  const id = runtime.create({ projectId, parentId: null, name: '排布计时.canvas' });
+  runtime.commit({ documentId: id, viewId: 'view', requestId: 'seed-layout', operations: [text('第一张'), text('第二张')] });
+  try {
+    const input = { documentId: id, viewId: 'view', requestId: 'layout-first', options: { algorithm: 'grid' }, operations: [] };
+    const first = await arrangement.arrange(input);
+    expect(first).toMatchObject({ replayed: false, computation: { requestId: 'layout-first', algorithm: 'grid', origin: 'node-worker' } });
+    const after = runtime.read(id), noOpInput = { ...input, requestId: 'layout-noop' };
+    const noOp = await arrangement.arrange(noOpInput);
+    expect(noOp).toMatchObject({ replayed: false, computation: { requestId: 'layout-noop', sequence: after.sequence } });
+    expect(noOp.computation?.executionMs).toBeGreaterThan(0); expect(runtime.read(id)).toEqual(after);
+    const replay = await arrangement.arrange(noOpInput);
+    expect(replay).toEqual({ commit: noOp.commit, diagnostics: [], computation: null, replayed: true });
+    expect(runtime.read(id)).toEqual(after);
+  } finally { arrangement.dispose(); await computation.dispose(); }
 });

@@ -1,7 +1,7 @@
 import type { CanvasCard, CanvasCardId, CanvasPoint } from '@plugin/canvas/shared';
 import { cardRasterKey, createHtmlCardRasterizer, createLatestRasterQueue, splitCardRasterRegions,
   type RasterQueueResult } from '../capabilities/textRasterization';
-import { createCanvasCardRasterBatch, type CanvasCardRasterInput, type CanvasCardRasterOutput } from '../features/cardRendering';
+import { createCanvasCardRasterBatch, chooseCanvasRasterBatchSize, type CanvasCardRasterInput, type CanvasCardRasterOutput } from '../features/cardRendering';
 import type { CanvasRasterReadiness, CanvasRasterReadinessCard, CanvasRasterDemand, CanvasRasterIdentity, CanvasRasterFrame, CanvasRasterPending, CanvasRasterPresentationOptions } from '../definitions/canvasRasterPresentation';
 import { createCanvasRasterCadence } from '../functions/createCanvasRasterCadence';
 import { prioritizeCanvasRasterCards } from '../functions/prioritizeCanvasRasterCards';
@@ -41,8 +41,8 @@ class CanvasRasterPresentation {
     this.rasterizer = createHtmlCardRasterizer({ host: options.host });
     this.cadence = createCanvasRasterCadence(() => this.refresh());
     this.queue = createLatestRasterQueue<CanvasCardRasterInput, CanvasCardRasterOutput>({
-      batchSize: 32, executeBatch: createCanvasCardRasterBatch({ rasterizer: this.rasterizer, createContent: options.createContent }),
-      readBatchSize: () => this.cadence.moving() ? 16 : 32,
+      batchSize: 64, executeBatch: createCanvasCardRasterBatch({ rasterizer: this.rasterizer, createContent: options.createContent }),
+      readBatchSize: inputs => chooseCanvasRasterBatchSize(inputs, this.cadence.moving() || options.kernel.isMoving()),
       disposeResult: output => { if (output.kind === 'ready') for (const tile of output.tiles) tile.bitmap.close(); },
     });
     this.queueCapacity = this.queue.readStats().capacity;
@@ -122,6 +122,7 @@ class CanvasRasterPresentation {
   }
   private reconcileInterest(visible: readonly CanvasCard[]): boolean {
     const ids = new Set(visible.map(card => card.id));
+    for (const card of visible) this.options.kernel.setRasterContentKey(card.id, this.options.readContentKey?.(card) ?? '');
     for (const id of this.pending.keys()) if (!ids.has(id) && !this.preparingEdits.has(id)) { this.queue.cancel(id); this.pending.delete(id); }
     for (const id of this.preciseCards.keys()) if (!ids.has(id)) this.preciseCards.delete(id);
     if (this.cadence.paused(visible.length, this.options.kernel.readRenderStatus().limited)) {
@@ -169,6 +170,7 @@ class CanvasRasterPresentation {
     if (this.disposed || this.suspended()) return 'unavailable';
     const card = this.options.kernel.readCard(id);
     if (!card || !this.options.kernel.readVisibleCardRegions(id).length) return 'unavailable';
+    this.options.kernel.setRasterContentKey(id, this.options.readContentKey?.(card) ?? '');
     const demand = this.demand(card, { count: 1, font: this.fontKey(), precise: true });
     if (!demand.regions.length) { this.preciseCards.set(id, demand.key); return 'ready'; }
     if (this.failed.get(id) === demand.key) return 'unavailable';
@@ -203,10 +205,11 @@ class CanvasRasterPresentation {
     if (!targets.has(id)) return { id, revision: card.revision, mode: 'overview', status: 'not_required' };
     if (this.options.kernel.readCamera().zoom < 0.3) return { id, revision: card.revision, mode: 'thumbnail', status: 'not_required' };
     const demand = this.demand(card, frame);
-    if (this.failed.get(id) === demand.key) return { id, revision: card.revision, mode: 'body', status: 'failed' };
-    if (demand.regions.length) return { id, revision: card.revision, mode: 'body', status: 'pending' };
     const receipt = this.options.kernel.readRasterReceipt(id, demand.key);
-    return { id, revision: card.revision, mode: 'body', status: receipt?.rendered ? 'ready' : 'awaiting_draw' };
+    const body = { id, revision: card.revision, mode: 'body', firstPresented: receipt?.firstPresented ?? false } as const;
+    if (this.failed.get(id) === demand.key) return { ...body, status: 'failed' };
+    if (demand.regions.length) return { ...body, status: 'pending' };
+    return { ...body, status: receipt?.rendered ? 'ready' : 'awaiting_draw' };
   }
   retry(): void { this.failed.clear(); this.refresh(); }
   readStats() { return { ...this.queue.readStats(), failed: this.failed.size, refreshes: this.refreshes,

@@ -43,12 +43,18 @@
       v-if="review"
       :review="review"
       :markers="markers"
+      :viewport="viewport"
+      :readonly="readonly"
+      @reveal="revealReview"
     />
     <CanvasAgentReviewBar
       v-if="review"
       :review="review"
       :readonly="readonly"
+      :elements="elements"
+      :document-titles="documentTitles"
       @locate="surface?.locate($event)"
+      @reveal="revealReview"
     />
     <CanvasConnectionControls
       v-if="surface && !draft && !readonly"
@@ -58,6 +64,13 @@
       :run="run"
       @locate="surface.locateEndpoint($event)"
       @focus-canvas="surface?.focus()"
+    />
+    <CanvasConnectionLabelPreview
+      v-if="surface"
+      :editing="surface.connections"
+      :camera="camera"
+      :viewport="viewport"
+      @focus-canvas="surface.focus()"
     />
     <div
       v-if="surface"
@@ -132,14 +145,16 @@
         >
           <ZoomOutIcon />
         </ToolbarButton>
-        <button
-          type="button"
-          class="canvas-zoom-value"
-          title="缩放到100% ⌘0"
-          @click="surface.zoom(1)"
-        >
-          {{ Math.round(camera.zoom * 100) }}%
-        </button>
+        <CustomSelect
+          :model-value="camera.zoom"
+          :options="zoomOptions"
+          :placeholder="`${Math.round(camera.zoom * 100)}%`"
+          title="选择画布缩放比例"
+          width="82px"
+          min-width="82px"
+          variant="minimal"
+          @update:model-value="changeZoom"
+        />
         <ToolbarButton
           label="放大 ⌘+"
           @click="surface.zoom(camera.zoom * 1.25)"
@@ -373,7 +388,7 @@ import { CanvasColorSchema, type CanvasCardId, type CanvasPoint } from '@plugin/
 import { mountDocumentPreviewDetail } from '@plugin/renderer/documentPreview';
 import { createCanvasSurface } from '../orchestration/createCanvasSurface';
 import { createCanvasPageCommands } from '../orchestration/createCanvasPageCommands';
-import { canvasCardMenuActions, canvasContextMenuActions } from '../functions/canvasMenuActions';
+import { canvasCardMenuActions, canvasContextMenuActions, canvasColorMenuOptions } from '../functions/canvasMenuActions';
 import { addCanvasSelectionReference, registerCanvasReferenceFocus } from '../features/conversationSelection';
 import { createCanvasSelectionReferencePort } from '../adapters/createCanvasSelectionReferencePort';
 import { readCanvasClipboard } from '../adapters/readCanvasSelectionContext';
@@ -382,12 +397,12 @@ import { subscribeCanvasRestored } from '../adapters/subscribeCanvasRestored';
 import { createCanvasAgentReviewPort } from '../adapters/createCanvasAgentReviewPort';
 import { createCanvasCardMediaPort } from '../adapters/createCanvasCardMediaPort';
 import { createCanvasCardCreationPort } from '../adapters/createCanvasCardCreationPort';
-import { createCanvasAgentReview, projectCanvasReviewMarkers, CanvasAgentReviewBar, CanvasReviewMarkers } from '../features/agentReview';
+import { createCanvasAgentReview, projectCanvasReviewMarkers, CanvasAgentReviewBar, CanvasReviewMarkers, type CanvasReviewTarget } from '../features/agentReview';
 import { createCanvasCardContent, type CanvasCardContent } from '../features/cardMedia';
 import { createCanvasCardCreation, installCanvasMediaInput, CanvasDocumentPicker } from '../features/cardCreation';
 import { createCanvasImageEditing, CanvasImageEditingControls } from '../features/imageEditing';
 import { createCanvasSearch, CanvasSearchPanel } from '../features/canvasSearch';
-import { CanvasConnectionControls } from '../features/connections';
+import { CanvasConnectionControls, CanvasConnectionLabelPreview } from '../features/connections';
 import { CanvasLayoutControls } from '../features/layoutCommands';
 import { CanvasWheelSuggestion, installCanvasWheelSuggestion } from '../features/materialSetting';
 import { createCanvasArrangementPort } from '../adapters/createCanvasArrangementPort';
@@ -405,6 +420,9 @@ const detailPort = shallowRef<CanvasDocumentDetailPort | null>(null), detailProj
 const descriptionId = `canvas-description-${crypto.randomUUID()}`, discardVisible = ref(false);
 let destroyed = false, content: CanvasCardContent | null = null, removeMediaInput: (() => void) | null = null, removeReferenceFocus: (() => void) | null = null;
 const camera = computed(() => surface.value?.camera.value ?? { x: 0, y: 0, zoom: 1 });
+const viewport = computed(() => surface.value?.viewport.value ?? { width: 0, height: 0 });
+const elements = computed(() => surface.value?.session.state.snapshot.value?.elements ?? []);
+const documentTitles = computed(() => review.value ? content?.documentTitles() ?? new Map<string, string>() : new Map<string, string>());
 const selection = computed(() => surface.value?.selection.ids.value ?? []);
 const readonly = computed(() => surface.value?.readonly.value ?? true);
 const draft = computed(() => surface.value?.editingDraft.value);
@@ -413,18 +431,22 @@ const detailTitle = computed(() => detailCard.value ? content?.documentTitles().
 watch(() => selection.value.join(','), () => { dismissedDetail.value = null; });
 const saving = computed(() => Boolean(surface.value?.editor.state.saving.value || surface.value?.creation.state.saving.value || surface.value?.session.mutationPending.value));
 const editorStyle = computed(() => surface.value?.editorStyle.value ?? { display: 'none' });
-const markers = computed(() => review.value && surface.value ? projectCanvasReviewMarkers({ groups: review.value.state.groups.value, elements: surface.value.session.state.snapshot.value?.elements ?? [], camera: camera.value, activeId: review.value.state.activeGroupId.value }) : []);
+const markers = computed(() => review.value ? projectCanvasReviewMarkers({ groups: review.value.state.groups.value, elements: elements.value, camera: camera.value, activeId: review.value.state.activeGroupId.value, documentTitles: documentTitles.value }) : []);
 const shownError = computed(() => failure.value ?? surface.value?.creation.state.error.value ?? surface.value?.editor.state.error.value ?? surface.value?.session.state.error.value ?? surface.value?.error.value);
 const selectedColor = computed(() => surface.value?.selectedCards.value[0]?.color ?? 'white');
 const selectedImage = computed(() => { const selected = surface.value?.selectedCards.value; return selected?.length === 1 && selected[0]?.type === 'image' ? selected[0] : null; });
 const moreActions = canvasCardMenuActions;
 const contextActions = computed(() => canvasContextMenuActions({ selectionCount: selection.value.length, edge: Boolean(surface.value?.connections.selected.value), readonly: readonly.value }));
-const colors = [{ value: 'white', text: '原色' }, { value: 'red', text: '红' }, { value: 'orange', text: '橙' }, { value: 'yellow', text: '黄' }, { value: 'green', text: '绿' }, { value: 'cyan', text: '青' }, { value: 'purple', text: '紫' }];
+const colors = canvasColorMenuOptions.map(option => ({ value: option.color, text: option.text }));
+const zoomOptions = [{ value: 0.1, text: '10%' }, { value: 0.25, text: '25%' }, { value: 0.5, text: '50%' }, { value: 0.75, text: '75%' }, { value: 1, text: '100% ⌘0' }, { value: 1.5, text: '150%' }, { value: 2, text: '200%' }, { value: 4, text: '400%' }];
 const report = (error: unknown) => { failure.value = error instanceof Error ? error.message : String(error); };
 const run = async (action: () => Promise<unknown> | undefined) => { failure.value = null; surface.value?.clearFailure(); try { await action(); } catch (error) { report(error); } };
-const editImage = () => run(async () => { if (selectedImage.value) await imageEditing.value?.open(selectedImage.value.id); });
+const markCardViewed = (id: CanvasCardId) => { void review.value?.review(id); };
+const editImage = () => run(async () => { const card = selectedImage.value; if (card) { await imageEditing.value?.open(card.id); if (imageEditing.value?.state.draft.value?.asset) markCardViewed(card.id); } });
+const revealReview = (target: CanvasReviewTarget) => run(() => surface.value?.focusRectangle(target.bounds, target.kind === 'deleted' ? [] : [target.id]));
 const confirmDiscard = () => { discardVisible.value = false; void run(async () => { surface.value?.discardDraft(); }); };
 const changeColor = (value: string | number | boolean) => run(() => surface.value?.color(CanvasColorSchema.parse(value)));
+const changeZoom = (value: number) => { surface.value?.zoom(value); };
 let imagePoint: CanvasPoint | undefined;
 const menuCommand = createCanvasPageCommands({ readSurface: () => surface.value, addToConversation: () => addToConversation(), showDocuments: async point => { await creation.value?.showDocuments(point); }, pickImages: point => { imagePoint = point; imagePicker.value?.click(); } });
 const elementAction = (value: string | number | boolean) => run(() => menuCommand(value));
@@ -449,13 +471,13 @@ onMounted(async () => {
       document: createCanvasDocumentPort(), subscribeRestored: subscribeCanvasRestored, arrangement: createCanvasArrangementPort(), createEditor: createEmbeddedMarkdownEditor, createContent: cardContent.create, readContentKey: cardContent.contentKey, readDocumentTitles: cardContent.documentTitles, refreshReferences: cardContent.refreshReferences, refreshVisibleContent: cardContent.refreshVisible, readThumbnailCards: cardContent.thumbnailCards, retryContent: cardContent.retry, subscribeContent: cardContent.subscribe, resolveImageSource: cardContent.resolveImageSource,
       prepareClipboard: ids => readCanvasClipboard(session.documentId, ids),
       pasteImages: async (files, point) => { if (!creation.value) throw new Error('图片导入尚未就绪'); await creation.value.importFiles(files, point); },
-      openCard: async card => { if (card.type === 'image') imagePreview.value = await mediaPort.readImage(session.documentId, card.data.assetId); else await cardContent.open(card); },
+      openCard: async card => { if (card.type === 'image') { imagePreview.value = await mediaPort.readImage(session.documentId, card.data.assetId); markCardViewed(card.id); } else await cardContent.open(card, markCardViewed); }, cardOpened: markCardViewed,
       markDirty: dirty => { if (getActiveFileSession()?.documentId === session.documentId) markActiveFileDirty(dirty); },
     });
     if (destroyed) { result.destroy(); cardContent.dispose(); return; }
     removeReferenceFocus = registerCanvasReferenceFocus(session.documentId, async ids => { await result.select(ids); result.fit(true); });
-    surface.value = result; review.value = createCanvasAgentReview(result.session, createCanvasAgentReviewPort());
-    detailProjectId.value = mediaPort.projectId(); detailPort.value = { mount: mountDocumentPreviewDetail, prepare: result.prepareDetail, visible: result.setDetailVisible, navigate: result.navigate, focus: result.focus, open: card => run(() => cardContent.open(card)) };
+    surface.value = result; review.value = createCanvasAgentReview(result.session, createCanvasAgentReviewPort(), { beforeMutation: result.prepareMutation });
+    detailProjectId.value = mediaPort.projectId(); detailPort.value = { mount: mountDocumentPreviewDetail, prepare: result.prepareDetail, visible: result.setDetailVisible, navigate: result.navigate, focus: result.focus, open: card => run(() => cardContent.open(card, markCardViewed)) };
     wheelSuggestion.value = installCanvasWheelSuggestion(host);
     creation.value = createCanvasCardCreation(result.session, createCanvasCardCreationPort(), result.centerPoint, result.select);
     imageEditing.value = createCanvasImageEditing(result.session, { readImage: mediaPort.readImage, prepare: creation.value.prepare });

@@ -7,6 +7,7 @@ import { requireWritableCanvas } from '../functions/requireWritableCanvas';
 import { createCanvasMutationQueue } from './createCanvasMutationQueue';
 import { createCanvasEditingClaims } from './createCanvasEditingClaims';
 import type { CanvasConfirmedMutation } from '../definitions/canvasMutation';
+import { readCanvasProjectionChanges } from '../functions/readCanvasProjectionChanges';
 
 /** 一个表面拥有一个会话；Host file handler 在关闭前先等待该表面的保存屏障。 */
 export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDocumentSession {
@@ -48,7 +49,7 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
         const installed = requireDocument();
         const next = applyCanvasSynchronization(installed, update);
         if (next.sequence <= installed.sequence) throw new Error('Canvas synchronization made no progress');
-        state.install(next);
+        state.install(next, readCanvasProjectionChanges(update));
       }
     })().catch(error => {
       if (token === sessionId) state.fail(error instanceof Error ? error.message : String(error));

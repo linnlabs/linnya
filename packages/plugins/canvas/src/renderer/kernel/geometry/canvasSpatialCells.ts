@@ -1,6 +1,6 @@
 import type { CanvasCardId, CanvasRectangle } from '../../../shared';
 import type { CanvasSpatialCell, CanvasSpatialEntry } from '../definitions/canvasSpatialProjection';
-import { intersectCanvasRegion, subtractCanvasRegion } from './canvasVisibleRegions';
+import { intersectCanvasRegion, subtractCanvasCover } from './canvasVisibleRegions';
 
 export const canvasSpatialCellSize = 512;
 export function canvasSpatialCell(key: string, x: number, y: number): CanvasSpatialCell {
@@ -24,10 +24,10 @@ export function projectCanvasSpatialCell(cell: CanvasSpatialCell, large: Readonl
       const intersection = intersectCanvasRegion(region, bounds); return intersection ? [intersection] : [];
     });
     if (visible.length) result.set(entry.card.id, visible);
-    if (bounds.width <= 12 || bounds.height <= 12) continue;
+    if (!entry.opaque || bounds.width <= 12 || bounds.height <= 12) continue;
     // 阴影和圆角不遮挡正文，与静态投影使用同一个6px内接纸面合同。
     const cover = { x: bounds.x + 6, y: bounds.y + 6, width: bounds.width - 12, height: bounds.height - 12 };
-    uncovered = uncovered.flatMap(region => subtractCanvasRegion(region, cover));
+    uncovered = subtractCanvasCover(uncovered, cover);
     if (!uncovered.length) break;
   }
   return result;

@@ -38,8 +38,10 @@ it('真实worker三种排布都使用尺寸事实，并保留未选中、锁定�
   const runtime = createCanvasComputationRuntime({ workerPath });
   try {
     for (const algorithm of ['tree', 'grid', 'layered'] as const) {
-      const result = await runtime.layout({ snapshot: original, algorithm, direction: 'right', elementIds: targets, protectedElementIds: ['c6'] });
+      const result = await runtime.layout({ requestId: `scope-${algorithm}`, snapshot: original, algorithm, direction: 'right', elementIds: targets, protectedElementIds: ['c6'] });
       expect(result.sequence).toBe(41);
+      expect(result.computation).toMatchObject({ requestId: `scope-${algorithm}`, origin: 'node-worker', sequence: 41, algorithm });
+      expect(result.computation.executionMs).toBeGreaterThan(0);
       expect(result.operations.every(operation => operation.op === 'update' && operation.baseRevision === 7)).toBe(true);
       const after = applyPositions(original, result);
       for (const id of ['c6', 'c7', 'c8']) expect(after.find(element => element.id === id)).toEqual(original.elements.find(element => element.id === id));
@@ -56,7 +58,7 @@ it('有环与多父节点时保留图事实，只选择先到的树父节点', a
     from: { kind: 'card', cardId: cards[2].id, side: 'auto' }, to: { kind: 'card', cardId: cards[0].id, side: 'auto' } }));
   const runtime = createCanvasComputationRuntime({ workerPath });
   try {
-    const result = await runtime.layout({ snapshot, algorithm: 'tree', direction: 'down' });
+    const result = await runtime.layout({ requestId: 'tree-41', snapshot, algorithm: 'tree', direction: 'down' });
     expect(result.diagnostics.some(diagnostic => diagnostic.code === 'cycle_or_multiple_parents')).toBe(true);
     expect(result.operations.every(operation => operation.op === 'update' && Object.keys(operation.patch).every(key => key === 'x' || key === 'y'))).toBe(true);
     expect(snapshot.elements.filter(element => element.type === 'edge')).toHaveLength(3);
@@ -65,13 +67,13 @@ it('有环与多父节点时保留图事实，只选择先到的树父节点', a
 it('12000长链不耗尽调用栈；中断真实计算后下一请求保留自己的序号', async () => {
   const snapshot = fixture(12000), runtime = createCanvasComputationRuntime({ workerPath });
   try {
-    const result = await runtime.layout({ snapshot, algorithm: 'tree', direction: 'right' });
+    const result = await runtime.layout({ requestId: 'tree-41', snapshot, algorithm: 'tree', direction: 'right' });
     expect(result.operations.length).toBeGreaterThanOrEqual(11999);
     const controller = new AbortController();
-    const cancelled = runtime.layout({ snapshot, algorithm: 'layered', direction: 'right' }, controller.signal);
+    const cancelled = runtime.layout({ requestId: 'cancel-41', snapshot, algorithm: 'layered', direction: 'right' }, controller.signal);
     controller.abort(); await expect(cancelled).rejects.toBeDefined();
-    const next = await runtime.layout({ snapshot: { ...fixture(3), sequence: 42 }, algorithm: 'grid', direction: 'down' });
-    expect(next.sequence).toBe(42); expect(next.operations.length).toBeGreaterThan(0);
+    const next = await runtime.layout({ requestId: 'after-cancel-42', snapshot: { ...fixture(3), sequence: 42 }, algorithm: 'grid', direction: 'down' });
+    expect(next.sequence).toBe(42); expect(next.computation.requestId).toBe('after-cancel-42'); expect(next.computation.sequence).toBe(42); expect(next.operations.length).toBeGreaterThan(0);
   } finally { await runtime.dispose(); }
 }, 15000);
 it('check经同一真实计算worker读取精确快照，报告重叠而不移动卡片', async () => {

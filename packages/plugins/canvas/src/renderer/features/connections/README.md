@@ -9,3 +9,5 @@
 `reverse()` 先完成当前标签保存，再读取最新选中线修订并提交交换from/to。完整端点包含固定边或悬空坐标，不重建线身份，不改方向枚举、标签、颜色或线型；锁定线须先解锁。纯命令 `buildCanvasConnectionReversal` 从本feature index公开，不建立Agent坐标入口。
 
 `endpoint('from'|'to')` 只返回当前端点或null，不提交。Page/Surface据card端点定位稳定卡片ID，据point端点定位世界点；本feature不引入第二套相机导航或Host文档导航。右键/浮条可共用既有patch/remove/beginLabel和上述能力。
+
+Canvas命中连线后，唯一只读标签面板以Renderer UI DropdownPanel展示当前canonical全文，可滚动、选字复制，普通文本插值不解释HTML。位图的200px拟合不影响该全文。Canvas到面板的120ms越过间隙只保留连线身份，修改/删除立即读取最新事实，失焦和销毁释放计时；Esc关闭回焦画布，搜索及加入对话快捷键继续走Page统一入口。

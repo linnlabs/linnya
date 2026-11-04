@@ -37,13 +37,24 @@ try {
     const result = spawnSync(electron, [standaloneProbe, artifactRoot, database, mode], { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 ** 2 });
     if (result.error) throw result.error; if (result.stderr) process.stderr.write(result.stderr); return result;
   };
-  assert.equal(native('fixture').status, 0);
+  const fixture = native('fixture'); assert.equal(fixture.status, 0, fixture.stdout);
+  const originalCommit = JSON.parse(fixture.stdout.trim());
   const hash = async () => createHash('sha256').update(await readFile(database)).digest('hex');
   const before = await hash(), read = native('read');
-  assert.equal(read.status, 0, read.stdout); assert.equal(JSON.parse(read.stdout.trim()).sequence, 0); assert(read.stdout.includes('只读制品'));
+  assert.equal(read.status, 0, read.stdout); assert.equal(JSON.parse(read.stdout.trim()).sequence, 2); assert(read.stdout.includes('只读制品'));
+  const receipt = native('receipt'); assert.equal(receipt.status, 0, receipt.stdout);
+  assert.deepEqual(JSON.parse(receipt.stdout.trim()), { documentId: 'workspace:/只读制品.canvas', receipt: {
+    requestId: 'artifact-write', status: 'committed', pendingId: null, commit: originalCommit,
+  } });
+  for (const mode of ['receipt-other-conversation', 'receipt-missing']) {
+    const hidden = native(mode); assert.equal(hidden.status, 0, hidden.stdout);
+    assert.deepEqual(JSON.parse(hidden.stdout.trim()), { documentId: 'workspace:/只读制品.canvas', receipt: null });
+  }
+  const outside = native('receipt-other-project'); assert.equal(outside.status, 8, outside.stdout);
+  assert.equal(JSON.parse(outside.stdout.trim()).error.code, 'document_missing');
   const rejected = native('apply'); assert.equal(rejected.status, 8); assert.equal(JSON.parse(rejected.stdout.trim()).error.code, 'read_only');
   assert.equal(await hash(), before, 'compiled readonly CLI changed database bytes');
-  console.log('[canvas-artifact] compiled CLI actual readonly database and mutation refusal passed');
+  console.log('[canvas-artifact] compiled CLI original receipt, scope isolation, readonly database and mutation refusal passed');
   run(['packages/plugins/canvas/dev/probes/run-worker-smoke.mjs', artifactRoot]);
   console.log('[canvas-artifact] isolated backend/CLI/computation/HTML/preload/fonts/content passed');
 } finally { await rm(temporary, { recursive: true, force: true }); }

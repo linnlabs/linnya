@@ -9,3 +9,7 @@
 Worker 组合 entry 为 `backend/orchestration/canvasComputationWorker.ts`，从本 feature 的独立 `worker.ts` 公共入口执行，构建成独立 Node CJS 闭包；最多一个运行任务和8个待办。AbortSignal 终止真实计算，销毁会拒绝所有剩余任务。共同提交的外部500条预算由调用方负责，不能偷偷拆批冒充原子排布。
 
 验证：`canvasLayoutRuntime.integration.test.ts` 实际构建并启动 worker，覆盖三种算法的尺寸/范围/障碍、环、12000节点长链、取消后新快照。ELK 不用测试替身替换。
+
+真实Node执行结果带`computation`：正式requestId、计算快照sequence、algorithm、origin=node-worker及未舍入executionMs。计时只包住Worker内完整plan/算法await，含范围解析与组避让；不含排队、启动线程、模块导入或IPC。纯plan没有时钟，不伪造0。CLI/Renderer只透传本次真实计算；正式回执重试返回computation:null、replayed:true，预演仍实际计算但外层标dry-run，测量不写入文档或历史回执。
+
+`pnpm exec tsx packages/plugins/canvas/dev/probes/layoutTimingProbe.ts --count 300 --samples 5 --algorithm layered`收集独立真实Worker采样与P50；它是固定尺寸事实的技术fixture，不替代T13模型实际任务。T13应从正式CLI响应采同一computation字段，并排除null重放与失败项，不用shell总时长替代算法耗时。

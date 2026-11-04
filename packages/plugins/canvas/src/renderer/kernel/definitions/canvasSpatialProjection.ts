@@ -4,6 +4,7 @@ export interface CanvasSpatialEntry {
   card: CanvasCard;
   rank: number;
   bounds: CanvasRectangle;
+  readonly opaque: boolean;
   readonly keys: readonly string[];
 }
 export interface CanvasSpatialCell {

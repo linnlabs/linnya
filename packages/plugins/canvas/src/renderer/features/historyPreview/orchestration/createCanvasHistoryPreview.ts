@@ -10,6 +10,7 @@ export function createCanvasHistoryPreview(options: {
   readonly read: (documentId: string, versionId: string) => Promise<CanvasSnapshot>;
   readonly readBudget: (documentId: string) => Promise<CanvasVersionBudgetStatus>;
   readonly readAppearance: () => CanvasAppearance;
+  readonly observeResolution: (changed: () => void) => () => void;
   readonly createRaster: (options: { readonly kernel: CanvasKernel; readonly createContent: CanvasCardContent['create']; readonly readContentKey: CanvasCardContent['contentKey']; readonly readAppearance: () => CanvasAppearance; readonly reportFailure: (message: string) => void }) => { refresh(): void; dispose(): void };
 }) {
   const state = createCanvasHistoryPreviewState();
@@ -37,8 +38,10 @@ export function createCanvasHistoryPreview(options: {
         const stopContent = content.subscribe(failure => { if (failure) state.fail(failure.message); else { current.setDocumentTitles(content.documentTitles()); current.setThumbnailCards(content.thumbnailCards(cards)); refresh?.(); } });
         void content.refreshReferences(cards).catch(error => { if (token === generation) state.fail(error instanceof Error ? error.message : String(error)); });
         current.setAppearance(options.readAppearance()); current.setElements(snapshot.elements); current.fit(cards); refresh();
-        const resize = new ResizeObserver(() => { current.resize(options.host.clientWidth, options.host.clientHeight, devicePixelRatio); refresh?.(); }); resize.observe(options.host);
-        disposeView = () => { stopContent(); resize.disconnect(); raster.dispose(); content.dispose(); current.destroy(); };
+        const resized = () => { current.resize(options.host.clientWidth, options.host.clientHeight, devicePixelRatio); refresh?.(); };
+        const resize = new ResizeObserver(resized); resize.observe(options.host);
+        const stopResolution = options.observeResolution(resized);
+        disposeView = () => { stopContent(); resize.disconnect(); stopResolution(); raster.dispose(); content.dispose(); current.destroy(); };
         state.ready();
       } catch (error) { if (token === generation) state.fail(error instanceof Error ? error.message : String(error)); }
     },

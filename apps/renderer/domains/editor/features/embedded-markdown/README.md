@@ -4,6 +4,8 @@
 
 插件通过 `@plugin/renderer/embeddedMarkdownEditor` 的 `createEmbeddedMarkdownEditor` 创建一个绑定容器的句柄；输入/输出都是 `@app/schemas` 的 JsonValue。正文由生产 ProseMirror schema 严格校验，未知节点/marks/attrs 不会被静默丢弃。替换失败保留当前内容，程序替换不触发用户更新回调。外层关闭时必须 destroy 句柄。
 
+`onBlur`表示焦点离开整个挂载容器；标签等可聚焦NodeView之间的内部焦点转移不结束编辑。Host通过容器focusout观察这条边界，避免先清除外层草稿、卸载节点而吞掉标签的点击；从内部控件再离开容器仍会通知保存，销毁时先移除此通知。
+
 正文扩展由 `@linnya/markdown-document-core` 唯一提供，独立 Markdown 文件、嵌入表面与后台 Worker 共用标准 doc/paragraph 模型。嵌入表面使用相同的纯内容呈现，独立文件编辑器只在域内工厂补代码与 HTML NodeView。它不使用 Workspace rootBlock 身份或 Pending revision 协议。额外的通用正文能力先进入该 owner，不允许插件任意替换编辑器扩展。
 
 `parseEmbeddedMarkdown` / `serializeEmbeddedMarkdown` 在同一组扩展上转换，不创建 Editor 或挂载 DOM；Renderer 门面只转发 portable core；Backend 消费者直接消费该公开包，不能深导入 Renderer。

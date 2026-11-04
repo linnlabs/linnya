@@ -27,3 +27,19 @@ it('只刷新相关插件目标，重新启用和跨项目后标题/搜索同步
   f.reference.mockResolvedValueOnce(presentation('', 'outside_project')); f.rename(); await f.metadata.refresh([card]);
   expect(f.metadata.titles().has('target')).toBe(false); f.metadata.dispose(); f.rename(); expect(f.reference).toHaveBeenCalledTimes(3);
 });
+
+it('初开统一登记已知引用世代，分批身份返回不重新变代，移除引用会失效兴趣快照', async () => {
+  const cards = Array.from({ length: 18 }, (_, index) => CanvasDocumentCardSchema.parse({ ...card, id: `c${index + 1}`, data: { documentId: `target-${index}` } }));
+  const reference = vi.fn<CanvasCardMediaPort['reference']>(async documentId => ({ ...presentation('资料'), documentId }));
+  const port: CanvasCardMediaPort = { reference, readImage: vi.fn(), preview: vi.fn(), projectId: () => 'project', openDocument: vi.fn(), subscribe: () => () => {}, subscribeAvailability: () => () => {} };
+  const metadata = createCanvasReferenceMetadata(port);
+  try {
+    const loading = metadata.refresh(cards), generation = metadata.generation();
+    expect(cards.every(value => metadata.version(value.data.documentId) > 0)).toBe(true);
+    await loading;
+    expect(reference).toHaveBeenCalledTimes(18); expect(metadata.generation()).toBe(generation);
+    const first = cards[0]; if (!first) throw new Error('missing fixture');
+    await metadata.refresh([first]);
+    expect(metadata.generation()).toBeGreaterThan(generation); expect(metadata.version('target-17')).toBe(0);
+  } finally { metadata.dispose(); }
+});

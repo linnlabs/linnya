@@ -10,10 +10,14 @@ export class CanvasBitmapFades {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private enabled = true;
   constructor(private readonly options: { readonly resources: Pick<CanvasBitmapResources, 'release'>; readonly requestDraw: () => void;
-    readonly complete: (id: CanvasCardId) => void }) {}
+    readonly appeared: (id: CanvasCardId) => void; readonly complete: (id: CanvasCardId) => void }) {}
   private readonly pulse = () => {
     this.timer = undefined; const now = performance.now();
-    for (const [id, fade] of this.fades) { if (this.advance(fade, now)) this.finish(id); }
+    for (const [id, fade] of this.fades) {
+      const wasVisible = fade.target.alpha > 0, complete = this.advance(fade, now);
+      if (!wasVisible && fade.target.alpha > 0) this.options.appeared(id);
+      if (complete) this.finish(id);
+    }
     this.options.requestDraw(); this.schedule();
   };
   private schedule(): void { if (this.fades.size && this.timer === undefined) this.timer = setTimeout(this.pulse, 8); }
@@ -36,6 +40,7 @@ export class CanvasBitmapFades {
     const fade = this.fades.get(id); if (!fade) return;
     this.fades.delete(id);
     for (const previous of fade.previous) for (const region of previous.layer.regions) this.options.resources.release(region);
+    if (fade.target.alpha === 0) this.options.appeared(id);
     setCanvasBitmapLayerAlpha(fade.target, 1); this.options.complete(id);
     if (!this.fades.size) { clearTimeout(this.timer); this.timer = undefined; }
   }

@@ -18,6 +18,12 @@ export const HiddenWorkerDescriptorRpcSchema = z.object({
   preloadPath: AbsolutePathSchema,
   partition: NonEmptyStringSchema.optional(),
   renderingMode: z.enum(['background', 'offscreen']).optional(),
+  renderViewport: z.object({
+    channel: NonEmptyStringSchema,
+    maxWidth: PositiveIntegerSchema,
+    maxHeight: PositiveIntegerSchema,
+    maxPixels: PositiveIntegerSchema,
+  }).strict().optional(),
   cancelChannel: NonEmptyStringSchema.optional(),
   idleTimeoutMs: PositiveIntegerSchema.optional(),
   readyTimeoutMs: PositiveIntegerSchema.optional(),

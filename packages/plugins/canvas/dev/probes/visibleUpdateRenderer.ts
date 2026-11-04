@@ -9,7 +9,9 @@ const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() =>
 const source = { kind: 'agent', conversationId: 'visible-update-probe', runId: 'diagnostic' };
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
 let cards: CanvasCard[] = [], dispose = () => {};
-let apply: ((poll: boolean) => Promise<unknown>) | undefined;
+const paints: number[] = [];
+document.addEventListener('paint', () => paints.push(performance.now()), true);
+let apply: ((poll: boolean, animate: boolean) => Promise<unknown>) | undefined;
 
 async function prepare() {
   dispose(); document.body.replaceChildren(); document.body.style.cssText = 'margin:0;font-family:system-ui';
@@ -35,21 +37,22 @@ async function prepare() {
     }
   };
   kernel.setElements(cards); kernel.fit(cards); raster.refresh(); await settle(false);
-  apply = async poll => {
+  apply = async (poll, animate) => {
+    paints.length = 0;
     const started = performance.now(), previousDraw = kernel.readStats().renders;
     cards = cards.map(card => ({ ...card, revision: card.revision + 1, color: card.color === 'green' ? 'orange' : 'green' }));
-    kernel.setElements(cards); raster.refresh(); const projected = performance.now();
+    kernel.setElements(cards, animate ? { animateIds: ids } : {}); raster.refresh(); const projected = performance.now();
     await nextFrame(); const geometry = performance.now(); const settled = await settle(poll);
     const readiness = settled.readiness;
     if (kernel.readStats().renders <= previousDraw || readiness.cards.length !== 500 || readiness.cards.some(card => card.mode !== 'body' || card.status !== 'ready')) throw new Error('visible_update_body_not_drawn');
     return { measurement: 'kernel-input-to-current-body-draw', backendMeasured: false, validHardwareRun: false,
-      cards: cards.length, poll, polls: settled.polls, projectMs: projected - started, geometryMs: geometry - started,
-      bodyMs: performance.now() - started, scene: kernel.readStats(), queue: raster.readStats(), failures };
+      cards: cards.length, poll, animate, polls: settled.polls, projectMs: projected - started, geometryMs: geometry - started,
+      bodyMs: performance.now() - started, paints: paints.map(time => time - started), scene: kernel.readStats(), queue: raster.readStats(), failures };
   };
   dispose = () => { raster.dispose(); kernel.destroy(); apply = undefined; };
   return { viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio }, camera: kernel.readCamera(), scene: kernel.readStats(), queue: raster.readStats() };
 }
 Object.defineProperties(window, {
   prepareVisibleUpdateProbe: { value: prepare },
-  updateVisibleUpdateProbe: { value: (poll: boolean) => { if (!apply) throw new Error('visible_update_not_prepared'); return apply(poll); } },
+  updateVisibleUpdateProbe: { value: (poll: boolean, animate = false) => { if (!apply) throw new Error('visible_update_not_prepared'); return apply(poll, animate); } },
 });

@@ -56,12 +56,13 @@ uniform float uFeather;
 out vec4 finalColor;
 void main() {
   float alpha = 1.0 - smoothstep(uWidth * 0.5, uWidth * 0.5 + uFeather, abs(vDistance));
-  if (vPattern > 0.5) alpha *= 1.0 - smoothstep(5.5, 6.0, mod(vLength, 10.0));
+  if (vPattern > 0.5) alpha *= 1.0 - smoothstep(4.5, 5.0, mod(vLength, 9.0));
   finalColor = vec4(vColor * alpha, alpha);
 }`;
 const program = GlProgram.from({ vertex, fragment, name: 'canvas-screen-width-line' });
 const colorIndices: Readonly<Record<CanvasColor, number>> = { white: 0, red: 1, orange: 2, yellow: 3, green: 4, cyan: 5, purple: 6 };
-const lineVertices = [[0, 1], [0, -1], [1, 1], [1, 1], [0, -1], [1, -1]] as const;
+// 同一线段两三角共享四个顶点，避免拖动时重复填充/上传相同属性。
+const lineVertices = [[0, 1], [0, -1], [1, 1], [1, -1]] as const;
 
 /** 世界顶点只在内容/远景档变化时上传；相机与1 CSS像素宽度由 uniform 计算。 */
 export class CanvasLineMesh {
@@ -93,23 +94,27 @@ export class CanvasLineMesh {
     }
     const segments = entries.reduce((sum, entry) => sum + Math.max(0, entry.geometry.points.length - 1)
       + (entry.geometry.points.length > 1 ? entry.edge.direction === 'both' ? 4 : entry.edge.direction === 'none' ? 0 : 2 : 0), 0);
-    const positions = new Float32Array(segments * 12), normals = new Float32Array(segments * 12), offsets = new Float32Array(segments * 12);
-    const sides = new Float32Array(segments * 6), distances = new Float32Array(segments * 6), patterns = new Float32Array(segments * 6), colors = new Float32Array(segments * 6);
-    let cursor = 0;
+    const positions = new Float32Array(segments * 8), normals = new Float32Array(segments * 8), offsets = new Float32Array(segments * 8);
+    const sides = new Float32Array(segments * 4), distances = new Float32Array(segments * 4), patterns = new Float32Array(segments * 4), colors = new Float32Array(segments * 4);
+    const indices = new Uint32Array(segments * 6);
+    let cursor = 0, indexCursor = 0;
     const zero = { x: 0, y: 0 }, segment = { offsetA: zero, offsetB: zero, start: 0, dashed: false, colorIndex: 0 };
     const line = (a: CanvasPoint, b: CanvasPoint) => {
       const { offsetA, offsetB, start, dashed } = segment;
       const dx = b.x - a.x || offsetB.x - offsetA.x, dy = b.y - a.y || offsetB.y - offsetA.y;
       const length = Math.hypot(dx, dy);
       if (!length) return;
+      const normalX = -dy / length, normalY = dx / length, first = cursor;
       for (let index = 0; index < lineVertices.length; index++) {
         const endpoint = lineVertices[index][0], side = lineVertices[index][1];
         const point = endpoint ? b : a, offset = endpoint ? offsetB : offsetA;
         positions[cursor * 2] = point.x; positions[cursor * 2 + 1] = point.y;
-        normals[cursor * 2] = -dy / length * side; normals[cursor * 2 + 1] = dx / length * side;
+        normals[cursor * 2] = normalX * side; normals[cursor * 2 + 1] = normalY * side;
         offsets[cursor * 2] = offset.x; offsets[cursor * 2 + 1] = offset.y; sides[cursor] = side;
         distances[cursor] = start + (endpoint ? length : 0); patterns[cursor] = dashed ? 1 : 0; colors[cursor] = segment.colorIndex; cursor++;
       }
+      indices[indexCursor++] = first; indices[indexCursor++] = first + 1; indices[indexCursor++] = first + 2;
+      indices[indexCursor++] = first + 2; indices[indexCursor++] = first + 1; indices[indexCursor++] = first + 3;
     };
     const arrow = (tip: CanvasPoint, before: CanvasPoint) => {
       const angle = Math.atan2(tip.y - before.y, tip.x - before.x);
@@ -140,7 +145,7 @@ export class CanvasLineMesh {
       aDistance: { buffer: distances.subarray(0, cursor), format: 'float32' },
       aPattern: { buffer: patterns.subarray(0, cursor), format: 'float32' },
       aColorIndex: { buffer: colors.subarray(0, cursor), format: 'float32' },
-    } });
+    }, indexBuffer: indices.subarray(0, indexCursor) });
     this.mesh.visible = cursor > 0;
     if (this.ownsGeometry) previous.destroy(true);
     this.ownsGeometry = !cacheKey;

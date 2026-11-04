@@ -1,9 +1,10 @@
 import type { EmbeddedMarkdownEditor, EmbeddedMarkdownEditorOptions } from '@plugin/renderer/embeddedMarkdownEditor';
 import type { Ref } from 'vue';
-import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdgeId, CanvasElement, CanvasElementId, CanvasPoint } from '@plugin/canvas/shared';
+import type { CanvasCamera, CanvasCard, CanvasCardId, CanvasEdgeId, CanvasElement, CanvasElementId, CanvasPoint, CanvasRectangle } from '@plugin/canvas/shared';
 import type { CanvasDocumentPort } from '../features/canvasDocument';
 import type { CanvasArrangementPort } from '../features/layoutCommands';
 import type { CanvasRestoredMessage } from './canvasHistoryRestoration';
+export type CanvasViewportSize = Pick<CanvasRectangle, 'width' | 'height'>;
 
 export interface CanvasSurfaceOptions {
   readonly host: HTMLElement;
@@ -29,6 +30,7 @@ export interface CanvasSurfacePorts {
   prepareClipboard?(ids: readonly CanvasElementId[]): Promise<{ readonly elements: readonly CanvasElement[]; readonly text: string }>;
   pasteImages?(files: readonly File[], point: CanvasPoint): Promise<void>;
   openCard?(card: CanvasCard): Promise<void>;
+  cardOpened?(id: CanvasCardId): void;
   resolveImageSource?(source: string): Promise<string>;
 }
 export interface CanvasSurfaceState {
@@ -38,11 +40,16 @@ export interface CanvasSurfaceState {
   readonly renderNotice: Readonly<Ref<string | null>>;
   readonly hoveredId: Readonly<Ref<CanvasCardId | null>>;
   readonly detailId: Readonly<Ref<CanvasCardId | null>>;
+  readonly displayVersion: Readonly<Ref<number>>;
+  /** 当前表面CSS像素，不是世界坐标尺寸。 */
+  readonly viewport: Readonly<Ref<CanvasViewportSize>>;
   setCamera(camera: CanvasCamera): void;
   fail(message: string): void;
   clearFailure(): void;
   setContext(context: { readonly point: CanvasPoint; readonly id: CanvasCardId | null; readonly edgeId?: CanvasEdgeId | null } | null): void;
   setHovered(id: CanvasCardId | null): void;
   setDetailVisible(id: CanvasCardId, visible: boolean): void;
+  advanceDisplay(): void;
+  setViewport(value: CanvasViewportSize): void;
   setRenderNotice(message: string | null): void;
 }

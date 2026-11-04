@@ -2,7 +2,7 @@ import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import { JsonValueSchema } from '@app/schemas';
 import type { CanvasCard } from '../../../shared';
 import type { CanvasWorkerRequest, CanvasRenderRequest } from '../../../shared/rendering';
-import { hydrateCanvasManagedImages, hydrateCanvasDocumentTags, installCanvasCardInk, createCanvasImageSurface, createCanvasDocumentSurface } from '../../features/cardRendering/content';
+import { hydrateCanvasManagedImages, hydrateCanvasDocumentTags, installCanvasCardInk, createCanvasImageSurface, createCanvasDocumentSurface, projectCanvasDocumentSurface } from '../../features/cardRendering/content';
 
 export function createCardSurface(card: CanvasCard, request: CanvasRenderRequest): HTMLElement {
   const element = createSurfaceElement(card, request);
@@ -22,9 +22,7 @@ function createSurfaceElement(card: CanvasCard, request: CanvasRenderRequest): H
     return createCanvasImageSurface(card, source, document);
   }
   if (card.type === 'document') {
-    const preview = request.documents[card.data.documentId];
-    return createCanvasDocumentSurface(preview ? { ...preview,
-      status: preview.status && preview.status !== 'available' ? preview.status : preview.previewStatus ?? (preview.status === 'available' ? 'ready' : undefined) } : undefined, document);
+    return createCanvasDocumentSurface(projectCanvasDocumentSurface(request.documents[card.data.documentId]), document);
   }
   const element = document.createElement('div');
   element.style.cssText = 'box-sizing:border-box;padding:16px 18px 18px;width:100%;overflow-wrap:anywhere';

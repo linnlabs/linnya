@@ -11,3 +11,5 @@ Renderer 组合层调度只补当前世界可见片段中尚无纹理的部分�
 `resolveCanvasDisplayImages(assets, signal)` 为前台与隐藏 worker 生成长边不超过 2048 的受管显示源，原资产字节和正文 assetId/src 不改。先在 bitmap 层缩小再创建 DOM 图片；原图与派生 bitmap 在成功和失败时均关闭，同时只解码一张原图，避免绕过纹理预算。显示源缓存按 assetId 与内容 SHA-256 身份计入 32MiB 上限，取消后不开始后续图片；插件停用调用 clearCanvasDisplayImageCache。查看原图继续走 Host 原资产。
 
 墨色样式是公开资源 `styles/canvasCardInk.css`；正式 Renderer contribution 显式声明其 URL，隐藏 worker 与探针各自显式导入同一文件。函数入口不隐式注入样式，也不复制 fade 规则。
+
+短纯文字的合批按实际输出片段像素与DOM内容成本判断：额外扩展到64张时，累计不超过1Mi像素、512个普通段落/文字节点和16Ki字符；移动时容量与工作量减半。复杂正文、图片解码、公式和标签保持原32/16批次，不改变采样质量、单页4096边长、64任务容量或位图预算。这样小卡不必为每32张串行等待一次paint，也不会把64张复杂卡当作同一份轻量工作。

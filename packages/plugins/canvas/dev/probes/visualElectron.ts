@@ -1,3 +1,4 @@
+import { verifySceneVisual } from './sceneVisualElectron';
 import { readCanvasLinePalette } from '../../src/shared';
 import { app, BrowserWindow, nativeImage, type WebContents, type Event, type RenderProcessGoneDetails } from 'electron';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -112,13 +113,26 @@ async function run() {
       if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || inkIou < 0.95 || pixiIou < 0.95 || crossedText < 10 || ghostPreservation < 0.95
         || Math.min(authored.dom, authored.raster, authored.pixi) < 10) throw new Error(`visual_content_mismatch:${JSON.stringify(report)}`);
     }
-    const line = z.object({ dpr: z.number(), image: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasLineVisualProbe()'));
+    const line = z.object({ dpr: z.number(), image: z.string(), half: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasLineVisualProbe()'));
     const lineImage = nativeImage.createFromDataURL(line.image), linePixels = lineImage.toBitmap(), lineWidth = lineImage.getSize().width;
     let dashInk = 0, dashGap = 0;
     for (let x = Math.ceil(80 * line.dpr); x < Math.floor(250 * line.dpr); x++) {
       const i = (Math.floor(350 * line.dpr) * lineWidth + x) * 4;
       if (linePixels[i] < 230 && linePixels[i + 1] < 230 && linePixels[i + 2] < 230) dashInk++; else dashGap++;
     }
+    let dashRepeated = 0, dashSamples = 0;
+    for (let x = 80 * line.dpr; x < 250 * line.dpr; x++) {
+      const a = (Math.floor(350 * line.dpr) * lineWidth + x) * 4, b = a + 9 * line.dpr * 4;
+      if ((linePixels[a] < 230) === (linePixels[b] < 230)) dashRepeated++; dashSamples++;
+    }
+    if (dashRepeated / dashSamples < 0.99) throw new Error(`dash_screen_period_not_nine:${dashRepeated}:${dashSamples}`);
+    const looseEndpoints = [1, 0.5].map(zoom => {
+      const image = nativeImage.createFromDataURL(zoom === 1 ? line.image : line.half), pixels = image.toBitmap(), size = image.getSize();
+      const sample = (x: number, y: number) => { const i = (Math.round(y * line.dpr) * size.width + Math.round(x * line.dpr)) * 4; return [pixels[i + 2], pixels[i + 1], pixels[i]]; };
+      const center = sample(100 * zoom, 450 * zoom), rim = sample(100 * zoom + 3, 450 * zoom), arrow = sample(499 * zoom, 500 * zoom);
+      if (Math.max(...center) - Math.min(...center) > 8 || rim[1] >= center[1] - 8 || arrow[1] >= center[1] - 8) throw new Error(`loose_endpoint_hollow_or_screen_radius_missing:${zoom}:${center}:${rim}:${arrow}`);
+      return { zoom, center, rim, arrow };
+    });
     await writeFile(path.join(output, 'lines.png'), lineImage.toPNG());
     if (dashInk < 30 || dashGap < 30) throw new Error(`line_dash_is_not_rendered:${dashInk}:${dashGap}`);
     const coloredLines = z.object({ light: z.string(), dark: z.string(), dpr: z.number(), colors: z.array(z.enum(['red', 'orange', 'yellow', 'green', 'cyan', 'purple'])) })
@@ -208,6 +222,7 @@ async function run() {
       lodReports.push({ theme, union, intersection, ratio: intersection / union }); await writeFile(path.join(output, `mixed-lod-${theme}.png`), actual.toPNG());
     }
     const fade = await verifyFade(win);
+    const scene = await verifySceneVisual(win, output, evaluate);
     const context = z.object({ before: z.string(), after: z.string(), rejected: z.boolean(), beforeStats: z.object({ cards: z.number(), bitmaps: z.number() }), afterStats: z.object({ cards: z.number(), bitmaps: z.number() }) })
       .parse(await evaluate(win.webContents, 'window.prepareCanvasContextLossVisualProbe()'));
     const contextBefore = nativeImage.createFromDataURL(context.before).toBitmap(), contextAfterImage = nativeImage.createFromDataURL(context.after), contextAfter = contextAfterImage.toBitmap();
@@ -241,8 +256,8 @@ async function run() {
       if (fallbackInk < 100) throw new Error('unsupported_api_identity_is_empty');
       await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());
     } finally { unsupported.destroy(); }
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap, colors: colorReports }, dragOcclusion, snapGuides, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk, selectedLabels }, thumbnails: thumbReports,
-      mixedLod: lodReports, fade, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, reports, lines: { dashInk, dashGap, dashPeriodRatio: dashRepeated / dashSamples, looseEndpoints, colors: colorReports }, dragOcclusion, snapGuides, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk, selectedLabels }, thumbnails: thumbReports,
+      mixedLod: lodReports, fade, scene, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
 }

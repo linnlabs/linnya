@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { CanvasCheckReportSchema, CanvasLayoutResultSchema, CanvasLayoutOptionsSchema, CanvasSnapshotSchema } from '../../../shared';
 
 const layoutRequest = CanvasLayoutOptionsSchema.extend({
-  snapshot: CanvasSnapshotSchema, protectedElementIds: z.array(z.string()).readonly().optional(),
+  requestId: z.string().min(1).max(160), snapshot: CanvasSnapshotSchema, protectedElementIds: z.array(z.string()).readonly().optional(),
 });
 export const CanvasComputationWorkerRequestSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('layout'), request: layoutRequest }).strict(),

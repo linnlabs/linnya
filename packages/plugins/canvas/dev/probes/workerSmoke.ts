@@ -173,6 +173,13 @@ async function run(): Promise<void> {
     const decoded = nativeImage.createFromBuffer(Buffer.from(image.bytes));
     if (decoded.isEmpty() || decoded.getSize().width !== 1120 || decoded.getSize().height !== 800) throw new Error('worker_image_dimensions');
     const unit = await runtime.render({ ...request, requestId: 'render-dpr1', dpr: 1 });
+    // 先保存真实返回值，像素门禁失败也必须留下第一现场，不能靠重试覆盖空白原因。
+    await mkdir(output, { recursive: true });
+    await writeFile(path.join(output, 'canvas-dpr1-before-ink.png'), unit.bytes);
+    await writeFile(path.join(output, 'canvas-dpr2-before-ink.png'), image.bytes);
+    await writeFile(path.join(output, 'capture-before-ink.json'), JSON.stringify({ measurement, batchMs,
+      dpr1: { width: unit.width, height: unit.height, bytes: unit.bytes.length }, dpr2: { width: image.width, height: image.height, bytes: image.bytes.length },
+      request: { width: request.width, height: request.height, cardWidth: card.width, cardHeight: card.height, theme: request.theme } }, null, 2));
     const bounds1 = inkBounds(unit.bytes);
     const bounds2 = inkBounds(image.bytes);
     await mkdir(output, { recursive: true });

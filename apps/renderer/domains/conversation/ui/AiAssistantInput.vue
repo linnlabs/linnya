@@ -188,6 +188,7 @@ import {
 import { useConversationReferenceSuggestion } from '../features/reference-mention';
 import { useConversationModelSelection } from '../features/model-selection/orchestration/useConversationModelSelection';
 import { useConversationLocalization } from './useConversationLocalization';
+import { useConversationInputPlaceholder } from './composables/useConversationInputPlaceholder';
 import {
   ConversationImageAttachmentDraftStrip,
   ConversationImageAttachmentPicker,
@@ -580,6 +581,7 @@ const inputPlaceholder = computed(() => {
   }
   return conversationMessage('conversation.input.placeholder');
 });
+useConversationInputPlaceholder(inputPlaceholder, () => editor.value);
 
 const conversationModelSelection = useConversationModelSelection({
   modelCatalog,

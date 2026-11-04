@@ -12,7 +12,7 @@ export function createCanvasCardContent(documentId: string, port: CanvasCardMedi
   const metadata = createCanvasReferenceMetadata(port);
   const images = createCanvasImageSources(documentId, port);
   const listeners = new Set<(failure: Error | null) => void>(), changed = (failure: Error | null) => { for (const listener of listeners) listener(failure); };
-  const previews = createCanvasDocumentPreviews(port, metadata.version, changed);
+  const previews = createCanvasDocumentPreviews(port, metadata, changed);
   const stopMetadata = metadata.subscribe(failure => { previews.refresh(); changed(failure); });
   return {
     stageImage: images.stage, releaseStagedImages: images.release, resolveImageSource: images.resolve,
@@ -36,10 +36,12 @@ export function createCanvasCardContent(documentId: string, port: CanvasCardMedi
       }
       return element;
     },
-    async open(card) {
+    async open(card, opening) {
       if (card.type !== 'document') return;
       const result = await previews.read(card);
       if (result.status !== 'ready' || !result.nodeType) throw new Error(canvasDocumentPreviewMessage(result.status) || '文档不可打开');
+      // 身份已通过正式预览复核；在导航卸载当前表面前通知调用方记录已查看。
+      opening?.(card.id);
       await port.openDocument(card.data.documentId, result.nodeType, result.title);
     },
     documentTitles: metadata.titles, contentKey: card => `${metadata.key(card)}:${previews.key(card)}`,

@@ -12,6 +12,7 @@ import markdownStyles from '@linnya/markdown-document-core/style.css?url';
 import cardInkStyles from './features/cardRendering/styles/canvasCardInk.css?url';
 import cardMediaStyles from './features/cardRendering/styles/canvasMediaContent.css?url';
 import { clearCanvasDisplayImageCache } from './features/cardRendering/content';
+import canvasAgentReviewStyles from './features/agentReview/styles/agentReview.css?url';
 
 let stopPreferences: (() => void) | null = null;
 const modules = import.meta.glob<{ default: Component }>('./page/CanvasView.vue');
@@ -22,7 +23,7 @@ const CanvasView = defineAsyncComponent(async () => {
 });
 export const rendererPlugin: RendererPluginContribution = {
   meta: canvasPluginMeta,
-  stylesheets: [markdownStyles, canvasStyles, cardInkStyles, cardMediaStyles],
+  stylesheets: [markdownStyles, canvasStyles, cardInkStyles, cardMediaStyles, canvasAgentReviewStyles],
   conversationInput: { referenceKinds: [createCanvasSelectionReferenceKind(createCanvasSelectionReferencePort())], referenceProviders: [] },
   activate() {
     stopPreferences = persistCanvasPreferences();

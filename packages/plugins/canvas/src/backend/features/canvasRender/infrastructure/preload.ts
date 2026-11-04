@@ -53,6 +53,7 @@ const bridge: CanvasRenderBridge = {
     if (!Number.isFinite(ratio) || ratio < 0.25 || ratio > 4) throw new Error('Invalid canvas pixel ratio');
     webFrame.setZoomFactor(ratio / displayScale);
   },
+  async prepareViewport(size) { await ipcRenderer.invoke(CANVAS_RENDER_CHANNELS.viewport, size); },
   ready() { ipcRenderer.send(CANVAS_RENDER_CHANNELS.ready, { protocol: CANVAS_RENDER_PROTOCOL }); },
 };
 contextBridge.exposeInMainWorld('__canvasRenderBridge', bridge);

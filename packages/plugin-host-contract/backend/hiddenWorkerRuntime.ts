@@ -9,6 +9,18 @@ export interface HiddenWorkerResponseEnvelope<TResponse = unknown> {
 }
 
 /**
+ * 光栅Worker按串行任务以invoke(channel, {width,height})申请物理像素视口。
+ * 响应为{width,height,scaleFactor}：实际content CSS尺寸及窗口所属屏幕倍率。
+ * 窗口与屏幕换算仍由Desktop拥有；必须等响应后再调整绘图倍率并等待新帧。
+ */
+export interface HiddenWorkerRenderViewport {
+  readonly channel: string;
+  readonly maxWidth: number;
+  readonly maxHeight: number;
+  readonly maxPixels: number;
+}
+
+/**
  * 动态 worker registry 只能按字符串 id 寻址，因此其真实边界是 unknown。
  * definition 必须在 create/parse codec 内恢复领域类型，不能靠调用方泛型断言。
  */
@@ -22,6 +34,7 @@ interface HiddenWorkerDefinitionBase {
   readonly partition?: string;
   /** 需要实际绘制的 worker 必须选择 offscreen；background 仅承诺排版。 */
   readonly renderingMode?: 'background' | 'offscreen';
+  readonly renderViewport?: HiddenWorkerRenderViewport;
   readonly createRequestPayload: (request: unknown) => HiddenWorkerRequestEnvelope;
   readonly parseResponsePayload: (payload: unknown) => HiddenWorkerResponseEnvelope;
   readonly parseReadyPayload: (payload: unknown) => void;

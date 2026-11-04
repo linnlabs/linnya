@@ -6,12 +6,14 @@ import { buildCanvasConnectionReversal } from '../functions/buildCanvasConnectio
 import { createCanvasConnectionState } from '../store/createCanvasConnectionState';
 import { createCanvasEndpointGesture } from './createCanvasEndpointGesture';
 import { canvasConnectionToolbarPosition } from '../functions/canvasConnectionToolbarPosition';
+import { createCanvasConnectionLabelPreview } from './createCanvasConnectionLabelPreview';
 
-export function createCanvasConnectionEditing(session: CanvasDocumentSession, kernel: CanvasConnectionKernel, options: { finishText(): Promise<boolean>; createText(point: CanvasPoint, from: CanvasEndpoint): Promise<void>; clearCards(): void; report(failure: unknown): void }) {
+export function createCanvasConnectionEditing(session: CanvasDocumentSession, kernel: CanvasConnectionKernel, options: { finishText(): Promise<boolean>; createText(point: CanvasPoint, from: CanvasEndpoint): Promise<void>; clearCards(): void; report(failure: unknown): void; readDisplayVersion?(): number }) {
   const state = createCanvasConnectionState();
   let renewal: ReturnType<typeof setInterval> | null = null;
   let pendingLabel: Promise<boolean> | null = null;
   const selected = computed(() => session.state.snapshot.value?.elements.find((element): element is CanvasEdge => element.id === state.selectedId.value && element.type === 'edge') ?? null);
+  const labelPreview = createCanvasConnectionLabelPreview(id => session.state.snapshot.value?.elements.find((element): element is CanvasEdge => element.type === 'edge' && element.id === id) ?? null);
   const releaseLabel = async () => { if (renewal) clearInterval(renewal); renewal = null; const id = state.label.value?.edge.id; if (id) await session.protect(id, [], 'line-label'); };
   async function patch(edge: CanvasEdge, value: CanvasPatch) {
     if (edge.locked && value.locked !== false) throw new Error('请先解锁这条连线');
@@ -31,7 +33,7 @@ export function createCanvasConnectionEditing(session: CanvasDocumentSession, ke
     try { return await pendingLabel; } finally { pendingLabel = null; }
   }
   const gesture = createCanvasEndpointGesture({ session, kernel, state, report: options.report, createText: options.createText });
-  return { state, selected, patch, saveLabel, geometry: () => { void session.state.snapshot.value; return selected.value ? kernel.readEdgeGeometry(selected.value.id) : null; },
+  return { state, selected, patch, saveLabel, labelPreview, labelPoint: (id: CanvasEdgeId) => { void options.readDisplayVersion?.(); return kernel.readEdgeGeometry(id)?.midpoint ?? null; }, geometry: () => { void options.readDisplayVersion?.(); void session.state.snapshot.value; return selected.value ? kernel.readEdgeGeometry(selected.value.id) : null; },
     toolbarPosition(input: { readonly geometry: NonNullable<ReturnType<CanvasConnectionKernel['readEdgeGeometry']>>; readonly camera: CanvasCamera; readonly size: { readonly width: number; readonly height: number }; readonly viewport: { readonly width: number; readonly height: number } }) {
       const project = (point: CanvasPoint) => ({ x: input.camera.x + point.x * input.camera.zoom, y: input.camera.y + point.y * input.camera.zoom });
       const midpoint = project(input.geometry.midpoint), cards = session.state.snapshot.value?.elements.flatMap(card => card.type === 'edge' ? [] : [{ ...project(card), width: card.width * input.camera.zoom, height: card.height * input.camera.zoom }]) ?? [];
@@ -56,6 +58,6 @@ export function createCanvasConnectionEditing(session: CanvasDocumentSession, ke
     cancelLabel() { void releaseLabel().catch(options.report); state.endLabel(); },
     async suspend() { gesture.dispose(); await releaseLabel(); },
     start: gesture.start,
-    dispose() { gesture.dispose(); if (renewal) clearInterval(renewal); },
+    dispose() { labelPreview.dispose(); gesture.dispose(); if (renewal) clearInterval(renewal); },
   };
 }
