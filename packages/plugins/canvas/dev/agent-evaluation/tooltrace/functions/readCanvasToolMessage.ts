@@ -6,6 +6,8 @@ import { traceDiagnostic } from './traceDiagnostics';
 import { readCompleteShellOutput } from './readCompleteShellOutput';
 import { readLiteralCanvasCommands } from './readLiteralCanvasCommands';
 import { recordCanvasTraceResponse } from './recordCanvasTraceResponse';
+import { admitCanvasTraceResponse } from './admitCanvasTraceResponse';
+import { readAmbiguousCanvasResponseKinds } from './readAmbiguousCanvasResponseKinds';
 const attachedImage = z.object({
   source_kind: z.literal('conversation_file'),
   locator: z.string(),
@@ -90,7 +92,26 @@ export function readCanvasToolMessage(input: {
   }
   if (output.unknownLines)
     traceDiagnostic(context, 'shell_output_unknown_text', 'stdout含非正式单行JSON内容');
-  for (const value of output.objects) recordCanvasTraceResponse(context, matching, value);
+  const responses = output.objects.map(value => admitCanvasTraceResponse(value));
+  const ambiguous = readAmbiguousCanvasResponseKinds(commands.invocations, responses),
+    reported = new Set<string>();
+  for (const response of responses) {
+    if (
+      (response.kind === 'check' || response.kind === 'render') &&
+      ambiguous.has(response.kind) &&
+      matching.some(command => command.kind === response.kind)
+    ) {
+      if (!reported.has(response.kind))
+        traceDiagnostic(
+          context,
+          'response_target_ambiguous',
+          `${response.kind}输出缺文档身份，多目标或多条同类命令/响应不能唯一配对`
+        );
+      reported.add(response.kind);
+      continue;
+    }
+    recordCanvasTraceResponse(context, matching, response);
+  }
   if (!output.objects.length)
     traceDiagnostic(context, 'canvas_response_missing', 'Canvas调用缺少可接纳的正式响应');
 }

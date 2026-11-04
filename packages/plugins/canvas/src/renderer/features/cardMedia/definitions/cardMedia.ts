@@ -9,6 +9,11 @@ export interface CanvasCardMediaPort {
   projectId(): string | null;
   openDocument(documentId: string, nodeType: string, title: string | null): Promise<void>;
 }
+/** 单目标身份世代与整组变代计数；预览结果返回本身不改变身份世代。 */
+export interface CanvasDocumentReferenceVersions {
+  version(documentId: string): number;
+  generation(): number;
+}
 export interface CanvasCardContent {
   create(card: CanvasCard, signal: AbortSignal): Promise<HTMLElement>;
   stageImage(asset: DocumentImageAsset): Promise<void>;

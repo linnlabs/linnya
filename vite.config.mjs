@@ -7,6 +7,7 @@ import { createViteBundleTracePlugin } from './scripts/build/bundle-trace/adapte
 import { RENDERER_MODULE_RESOLUTION_CATALOG } from './scripts/build/renderer-module-resolution/definitions/rendererModuleResolutionCatalog.ts'
 import { projectRendererViteAliases } from './scripts/build/renderer-module-resolution/functions/projectRendererViteAliases.ts'
 import { discoverWorkspaceRendererOptimizeDependencies } from './scripts/development/features/plugin-renderer-dependency-optimization/functions/discoverWorkspaceRendererOptimizeDependencies.mjs'
+import { createRendererBootstrapHmrPlugin } from './scripts/development/features/renderer-bootstrap-hmr/createRendererBootstrapHmrPlugin.ts'
 
 const rendererAliases = projectRendererViteAliases(
   RENDERER_MODULE_RESOLUTION_CATALOG,
@@ -124,6 +125,7 @@ export default defineConfig(() => {
     vue(),
     wasm(),
     topLevelAwait(),
+    createRendererBootstrapHmrPlugin(import.meta.dirname),
     createViteBundleTracePlugin({
       buildTarget: 'desktop/renderer',
       repositoryRoot: import.meta.dirname,

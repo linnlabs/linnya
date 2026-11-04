@@ -35,12 +35,14 @@ export function createCanvasReferenceMetadata(port: CanvasCardMediaPort) {
   };
   const stop = port.subscribe(event => invalidate(canvasMutationTargets(event, [...versions.keys()])));
   const stopAvailability = port.subscribeAvailability(nodeTypes => invalidate([...versions.keys()].filter(id => { const presentation = values.get(id); return !presentation || presentation.nodeType !== null && nodeTypes.includes(presentation.nodeType); })));
-  return { read, version: (id: string) => versions.get(id) ?? 0, titles: () => titles.titles.value,
+  return { read, version: (id: string) => versions.get(id) ?? 0, generation: () => epoch, titles: () => titles.titles.value,
     key: (card: CanvasCard) => canvasReferencedDocuments(card).map(id => `${id}:${versions.get(id) ?? 0}`).join('|'),
     async refresh(cards: readonly CanvasCard[]) {
       const ids = [...new Set(cards.flatMap(canvasReferencedDocuments))]; let index = 0;
       const retained = new Set(ids);
-      for (const id of versions.keys()) if (!retained.has(id)) { versions.delete(id); values.delete(id); pending.delete(id); titles.install(id, null); }
+      for (const id of versions.keys()) if (!retained.has(id)) { versions.delete(id); epoch++; values.delete(id); pending.delete(id); titles.install(id, null); }
+      // 已知引用在启动并发读取前统一取得世代；逐项返回不应让整组兴趣反复变化。
+      for (const id of ids) if (!versions.has(id)) versions.set(id, ++epoch);
       await Promise.all(Array.from({ length: Math.min(8, ids.length) }, async () => { while (index < ids.length && !disposed) { const id = ids[index++]; if (id) await read(id); } }));
     },
     subscribe(listener: (failure: Error | null) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },

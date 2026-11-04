@@ -12,7 +12,7 @@ export function createCanvasCardContent(documentId: string, port: CanvasCardMedi
   const metadata = createCanvasReferenceMetadata(port);
   const images = createCanvasImageSources(documentId, port);
   const listeners = new Set<(failure: Error | null) => void>(), changed = (failure: Error | null) => { for (const listener of listeners) listener(failure); };
-  const previews = createCanvasDocumentPreviews(port, metadata.version, changed);
+  const previews = createCanvasDocumentPreviews(port, metadata, changed);
   const stopMetadata = metadata.subscribe(failure => { previews.refresh(); changed(failure); });
   return {
     stageImage: images.stage, releaseStagedImages: images.release, resolveImageSource: images.resolve,
