@@ -16,6 +16,10 @@ node packages/plugins/canvas/dev/probes/run-render-probe.mjs
 
 相关事实以 [Electron offscreen 文档](https://www.electronjs.org/docs/latest/tutorial/offscreen-rendering)和 [Chrome HTML-in-Canvas 文档](https://developer.chrome.com/docs/web-platform/html-in-canvas/2d)为参考，实际能力以本探针结果为准。
 
+DOM、位图、Pixi 三个对照区按同一字体和当前 DPR 比较。截图通过[Electron Debugger](https://github.com/electron/electron/blob/v43.8.1/docs/api/debugger.md)调用 `Page.captureScreenshot` 的完整区域能力，不依赖 CI 桌面能容纳整个窗口；CSS rect 先按窗口缩放换算成 DIP，再核对返回 PNG 的完整物理尺寸。[Chromium 150 的截图实现](https://github.com/chromium/chromium/blob/150.0.7871.250/content/browser/devtools/protocol/page_handler.cc)负责临时扩大截取表面并恢复视图，探针不移动正文、不补空白、不降低 DPR 或内容对比阈值。范围或像素尺寸不匹配时保存原始 PNG 与尺寸事实并失败。
+
+Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShader；六组计数从 `canvas-software-probe/results.json` 校验，视觉报告也标记软件渲染。软件结果只证明功能与确定性工作量，不能用作硬件帧率资格。独立制品 smoke 在依赖及平台准备成功后继续运行，即使前面的绘制/视觉失败；任何失败步骤仍使作业失败，不用 `continue-on-error` 掩盖。
+
 `node packages/plugins/canvas/dev/probes/run-visible-update-probe.mjs` 聚焦500张当前视口正文的冷更与实际绘制，先等待初始正文完整，再分别对比是否逐帧读取readiness；`CANVAS_VISIBLE_UPDATE_PROFILE=1`输出CPU profile。固定场景为25×20张88×72卡、104×88间隔、1400×900视口及DPR2，记录实际相机/视口，方便与产品表面对照。它只测kernel输入到当前正文已上传并实际绘制，明确不包含Backend提交，也始终标记offscreen diagnostic，不能代替正式Agent链或硬件验收。
 
 硬件基线用`CANVAS_PERFORMANCE_INTERNAL_120=1`将探针窗口固定在活动的内建120Hz屏幕，并在开始/结束验证实际目标。外接屏改变primary不能静默改变基线；找不到目标或运行中移出目标则该次不具备硬件基线资格。报告保留当前commit、dirty与Renderer tree，只有计时后端变化时也能明确Renderer代码是否一致。此选项只定位探针窗口，不修改系统显示设置。
