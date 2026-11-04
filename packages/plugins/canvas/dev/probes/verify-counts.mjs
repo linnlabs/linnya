@@ -15,7 +15,7 @@ const settledSchema = z.object({ settled: z.literal(true), stats: queueSchema })
 const countsSchema = z.object({ expectedVisibleIds: z.array(z.string()), actualVisibleIds: z.array(z.string()),
   hits: z.array(z.object({ expected: z.string().nullable(), actual: z.string().nullable(), candidates: integer })),
   invalidRegions: integer, visibleRegions: integer, scene: sceneSchema, queue: queueSchema });
-const reportSchema = z.object({ fixtureVersion: z.literal('production-dom-v4'), source: z.object({ commit: z.string(), dirty: z.boolean() }),
+const reportSchema = z.object({ fixtureVersion: z.literal('production-dom-v5-body-baseline'), source: z.object({ commit: z.string(), dirty: z.boolean() }),
   renderingProfile: z.enum(['offscreen-counts', 'offscreen-swiftshader', 'visible-hardware']),
   reports: z.array(z.object({ count: z.number().int().positive(), clustered: z.boolean(), counts: countsSchema,
     bodySettled: settledSchema, zoomSettled: settledSchema,

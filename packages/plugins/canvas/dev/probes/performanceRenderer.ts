@@ -37,7 +37,7 @@ let presentation: Presentation | null = null;
 let media: Awaited<ReturnType<typeof canvasPerformanceMediaFixture>> | null = null;
 let stopMedia: (() => void) | undefined;
 let collection = 0;
-let previous = 0;
+let previous: number | null = null;
 let gaps: number[] = [];
 let failures: string[] = [];
 let elements: readonly CanvasElement[] = [];
@@ -75,11 +75,12 @@ async function prepare(count: number, clustered: boolean, kind: CanvasPerformanc
   return { installMs: performance.now() - started, dpr: devicePixelRatio, width: innerWidth, height: innerHeight,
     count, clustered, kind, resource: media.readStats(), camera: kernel.readCamera(), stats: kernel.readStats(), renderStatus: kernel.readRenderStatus(), resolution: kernel.readResolution() };
 }
-function start() {
-  cancelAnimationFrame(collection); gaps = []; previous = 0;
-  const frame = (time: number) => { if (previous) gaps.push(time - previous); previous = time; collection = requestAnimationFrame(frame); };
+function start(baseline?: (time: number) => void) {
+  cancelAnimationFrame(collection); gaps = []; previous = null;
+  const frame = (time: number) => { if (previous !== null) gaps.push(time - previous); else baseline?.(time); previous = time; collection = requestAnimationFrame(frame); };
   collection = requestAnimationFrame(frame);
 }
+function startBaseline(): Promise<number> { return new Promise(resolve => start(resolve)); }
 function finish() {
   cancelAnimationFrame(collection); collection = 0;
   const sorted = gaps.slice().sort((a, b) => a - b);
@@ -135,7 +136,7 @@ async function prepareDrag(selectedCount: number) {
   return { point: target.point, selected: selected.length, cardId: top.id };
 }
 Object.defineProperties(window, {
-  prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start },
+  prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start }, startCanvasPerformanceBaseline: { value: startBaseline },
   finishCanvasPerformanceCollection: { value: finish }, closeCanvasPerformanceView: { value: closeView },
   waitForCanvasPerformanceBody: { value: waitForBody }, readCanvasPerformanceMedia: { value: () => media?.readStats() },
   captureCanvasPerformanceFrame: { value: () => { if (!kernel) throw new Error('probe_not_prepared'); return kernel.captureImage('png'); } },
