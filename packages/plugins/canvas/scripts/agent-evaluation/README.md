@@ -14,6 +14,10 @@ run文件必须由可信runner收集before/after正式快照、结果同sequence
 
 每条记录必须标明sourceRevision（实际实现的完整Git SHA）与batchId。修复产品缺陷后另开整批，保留原批首败，不能用后来成功覆盖旧记录或把不同实现的成功题拼成一组。最终验收在冻结实现上跑完整13题；Backend启动及Skill发现证据随批保存。
 
+attempts的phase明确区分dry-run预检与write正式写入。首写指标只取第一个write；只有预检而没有正式写入不能算通过。预检没有request-id时如实记录null，正式write必须保留真实ID。两阶段因格式或语义失败而改载荷重提的真实修正都计入correctionRetries，预检成功、重复检查坐标和同请求网络重放本身不算修正。
+
+看图组controls.imageReadSequence必须来自实际Agent render→attached image read的配对事实，并等于after.sequence；看过旧版本后继续改图，必须再看最终版本，旧图不能证明最终画布质量。无此事实时填null并保持未验收。
+
 T13分开记录模型端到端耗时、Worker内布局P50、后端提交到包含变化帧的P95、相邻帧P95/最慢帧及平均fps。300新卡局部布局按<=500档要求Worker P50<=200ms；提交到画面P95<=300ms，上限档平均>=45fps/最慢帧<=50ms。9/17ms是Agent更新目标及回归基线，须另报，不能以50ms绝对门槛取代。不能用工具总耗时替代Worker耗时，也不能用共享CI或模型推理时长冒充固定真机性能。
 
 T9需UI允许后检查；T12需UI拒绝后检查，CLI参数不能伪造批准。T11在模型操作期间为X正文登记并续订真实声明、保留草稿，终态后释放。审批和等待用户动作的时间单列，不计入Worker/帧指标。

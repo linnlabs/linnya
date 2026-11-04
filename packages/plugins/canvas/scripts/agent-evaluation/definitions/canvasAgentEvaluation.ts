@@ -11,6 +11,11 @@ export interface CanvasAgentTask {
   readonly automatic: readonly string[];
   readonly review: readonly string[];
 }
+const attempt = { validationAccepted: z.boolean(), correction: z.boolean(), responseFile: z.string().min(1) };
+export const CanvasAgentEvaluationAttemptSchema = z.discriminatedUnion('phase', [
+  z.object({ ...attempt, phase: z.literal('write'), requestId: z.string().min(1) }).strict(),
+  z.object({ ...attempt, phase: z.literal('dry-run'), requestId: z.string().min(1).nullable() }).strict(),
+]);
 /** 输入由可信验收runner收集，不接纳模型自己报告的成功/点击/计时。 */
 export const CanvasAgentEvaluationRunSchema = z.object({
   fixtureVersion: z.literal(1), taskId: CanvasAgentTaskIdSchema,
@@ -20,9 +25,9 @@ export const CanvasAgentEvaluationRunSchema = z.object({
   startedAt: z.number().nonnegative(), finishedAt: z.number().nonnegative(),
   before: CanvasSnapshotSchema, after: CanvasSnapshotSchema, check: CanvasCheckReportSchema,
   documentIds: z.record(z.string(), z.string()).default({}),
-  attempts: z.array(z.object({ requestId: z.string(), validationAccepted: z.boolean(), correction: z.boolean(), responseFile: z.string().min(1) }).strict()),
+  attempts: z.array(CanvasAgentEvaluationAttemptSchema),
   commits: z.array(CanvasCommitResultSchema),
-  controls: z.object({ approvalShown: z.boolean(), approvalDecision: z.enum(['allow', 'deny']).nullable(), editedCardId: z.string().nullable(), renderCount: z.number().int().nonnegative(), imageReadCount: z.number().int().nonnegative() }).strict(),
+  controls: z.object({ approvalShown: z.boolean(), approvalDecision: z.enum(['allow', 'deny']).nullable(), editedCardId: z.string().nullable(), renderCount: z.number().int().nonnegative(), imageReadCount: z.number().int().nonnegative(), imageReadSequence: z.number().int().nonnegative().nullable() }).strict(),
   metrics: z.object({ layoutWorkerP50Ms: z.number().nonnegative().optional(), commitToFrameP95Ms: z.number().nonnegative().optional(), averageFps: z.number().nonnegative().optional(), frameP95Ms: z.number().nonnegative().optional(), worstFrameMs: z.number().nonnegative().optional() }).strict(),
   evidenceFiles: z.array(z.string().min(1)).min(1),
   review: z.object({ approved: z.boolean(), reviewer: z.string().min(1), notes: z.string().min(1) }).strict().optional(),
