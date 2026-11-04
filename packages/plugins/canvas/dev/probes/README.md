@@ -26,6 +26,8 @@ DOM、位图、Pixi 三个对照区按同一字体和当前 DPR 比较。CI 桌�
 
 内容视口使用 [VisualViewport 的分数 CSS 尺寸](https://drafts.csswg.org/cssom-view/#dom-visualviewport-width)与 pageLeft/pageTop；不使用整数 clientWidth/clientHeight。Windows 原生滚动条在页面缩放后可占半个 CSS 像素，整数 API 会把末块实际可见的最后一列/行误判为越界；保持分数尺寸后仍严格核对完整物理像素，不放宽范围检查。
 
+完整截图窗口另由 Electron [client-area bounds](https://www.electronjs.org/docs/latest/api/base-window#wingetcontentbounds)除以[实际网页zoom](https://www.electronjs.org/docs/latest/api/web-contents#contentsgetzoomfactor)取得CSS尺寸，再结合当前DPR严格核对PNG物理大小。DOM整数innerWidth/innerHeight只作观测，不能用来推断奇数DIP窗口在2倍zoom下的半CSS像素。每块在验证前保存DOM视口、native contentSize/contentBounds、capture前后zoom与实际PNG尺寸；缺少这些事实的历史Linux截图不能补造新口径资格。仍拒绝任何尺寸或字节不符，不接受任意更大的截图。
+
 Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShader；六组计数从 `canvas-software-probe/results.json` 校验，视觉报告也标记软件渲染。独立制品 smoke 继承相同软件环境，保留 worker 的实际 GPU/版本/渲染配置原件。软件结果只证明功能与确定性工作量，不能用作硬件帧率资格。独立制品 smoke 在依赖及平台准备成功后继续运行，即使前面的绘制/视觉失败；任何失败步骤仍使作业失败，不用 `continue-on-error` 掩盖。
 
 正文完成等待保持5000ms时限及两个真实rAF确认。最终返回前重新读取失败、排队、运行、媒体资源、纹理过渡和当前正文readiness；两帧期间新出现的paint失败不能被先前空队列掩盖。近景文字和媒体共用正式当前内容键的readiness，旧正文receipt或尚未draw的新正文都不算完成；远景仍遵循既有地图/缩略图LOD，不强迫绘制不需要的正文。

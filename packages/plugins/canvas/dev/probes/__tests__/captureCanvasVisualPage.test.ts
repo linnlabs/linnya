@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { captureCanvasVisualPage } from '../captureCanvasVisualPage';
+import { captureCanvasVisualPage, withNativeVisualViewport } from '../captureCanvasVisualPage';
 
 type CapturePort = Parameters<typeof captureCanvasVisualPage>[0];
 const rectangles = [
@@ -12,8 +12,8 @@ function fillPixel(pixels: Buffer, offset: number, x: number, y: number) {
   pixels.set([x + 1, y + 1, 7, 255], offset);
 }
 
-function clippedPage(dpr: number, content = { width: 4, height: 3 }) {
-  const viewport = { scrollX: 2, scrollY: 1, ...content, windowWidth: 6, windowHeight: 5, dpr };
+function clippedPage(dpr: number, content = { width: 4, height: 3 }, window = { width: 6, height: 5 }) {
+  const viewport = { scrollX: 2, scrollY: 1, ...content, windowWidth: window.width, windowHeight: window.height, dpr };
   const requested: { x: number; y: number }[] = [];
   const port: CapturePort = {
     async readViewport() { return { ...viewport }; },
@@ -64,13 +64,36 @@ it('保留原生滚动条的半CSS像素视口，双轴末块复制实际最后�
   expect(page.viewport).toMatchObject({ scrollX: 2, scrollY: 1 });
 });
 
-it.each(['width', 'bytes'] as const)('真实截屏%s不符立即失败并恢复原滚动，不填空白或重试', async mismatch => {
+it('native client DIP与实际zoom保留完整窗口的半CSS像素，逐块复制仍严格完整', async () => {
+  const page = clippedPage(2, { width: 4.5, height: 3.5 }, { width: 6.5, height: 5.5 });
+  const domIntegers = (viewport: Awaited<ReturnType<CapturePort['readViewport']>>) => ({ ...viewport,
+    windowWidth: Math.floor(viewport.windowWidth), windowHeight: Math.floor(viewport.windowHeight) });
+  const wrongPort: CapturePort = { ...page.port,
+    async readViewport() { return domIntegers(await page.port.readViewport()); },
+    async scrollTo(x, y) { return domIntegers(await page.port.scrollTo(x, y)); },
+  };
+  await expect(captureCanvasVisualPage(wrongPort, { rectangles, dpr: 2 })).rejects.toThrow('visual_capture_tile_mismatch');
+  const native = { contentBounds: { x: 0, y: 0, width: 13, height: 11 }, zoomFactor: 2 };
+  const result = await captureCanvasVisualPage({ ...wrongPort,
+    async readViewport() { return withNativeVisualViewport(await wrongPort.readViewport(), native); },
+    async scrollTo(x, y) { return withNativeVisualViewport(await wrongPort.scrollTo(x, y), native); },
+  }, { rectangles, dpr: 2 });
+  const expected = Buffer.alloc(result.width * result.height * 4);
+  for (let y = 0; y < result.height; y++) for (let x = 0; x < result.width; x++) fillPixel(expected, (y * result.width + x) * 4, x, y);
+  expect(result.pixels).toEqual(expected);
+  expect(result.tiles[0]).toMatchObject({ capturedSize: { width: 13, height: 11 }, viewport: { windowWidth: 6.5, windowHeight: 5.5 } });
+  expect(page.viewport).toMatchObject({ scrollX: 2, scrollY: 1 });
+});
+
+it.each(['narrower', 'wider', 'bytes'] as const)('真实截屏%s不符立即失败并恢复原滚动，不接受更大图或填空白', async mismatch => {
   const page = clippedPage(2);
   let captures = 0;
   const port: CapturePort = { ...page.port, async capture() {
     captures++;
     const image = await page.port.capture();
-    return mismatch === 'width' ? { ...image, width: image.width - 1 } : { ...image, pixels: image.pixels.subarray(4) };
+    if (mismatch === 'bytes') return { ...image, pixels: image.pixels.subarray(4) };
+    const width = image.width + (mismatch === 'wider' ? 1 : -1);
+    return { ...image, width, pixels: Buffer.alloc(width * image.height * 4) };
   } };
   await expect(captureCanvasVisualPage(port, { rectangles, dpr: 2 })).rejects.toThrow('visual_capture_tile_mismatch');
   expect(captures).toBe(1); expect(page.viewport).toMatchObject({ scrollX: 2, scrollY: 1 });
