@@ -1,6 +1,6 @@
 import type { HiddenWorkerDefinition } from '@plugin/backend/hiddenWorkerRuntime';
 import {
-  CANVAS_RENDER_CHANNELS, CANVAS_RENDER_PROTOCOL, CANVAS_RENDER_WORKER_ID,
+  CANVAS_RENDER_CHANNELS, CANVAS_RENDER_PROTOCOL, CANVAS_RENDER_WORKER_ID, CANVAS_RENDER_VIEWPORT_LIMITS,
   CanvasWorkerRequestSchema, CanvasWorkerResponseSchema, CanvasWorkerReadySchema,
 } from '../../../../shared/rendering';
 
@@ -14,6 +14,7 @@ export function createCanvasHiddenWorkerDefinition(paths: {
     readyChannel: CANVAS_RENDER_CHANNELS.ready, cancelChannel: CANVAS_RENDER_CHANNELS.cancel,
     workerHtmlPath: paths.workerHtmlPath, preloadPath: paths.preloadPath,
     renderingMode: 'offscreen', partition: 'hidden-worker:canvas-render',
+    renderViewport: { channel: CANVAS_RENDER_CHANNELS.viewport, ...CANVAS_RENDER_VIEWPORT_LIMITS },
     readyTimeoutMs: 15000, requestTimeoutMs: 30000, idleTimeoutMs: 5 * 60 * 1000,
     createRequestPayload(value) {
       const request = CanvasWorkerRequestSchema.parse(value);

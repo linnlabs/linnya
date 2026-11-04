@@ -1,4 +1,4 @@
-import { CANVAS_RENDER_PROTOCOL, type CanvasRenderBridge, type CanvasWorkerResult, type CanvasWorkerRequest } from '../../shared/rendering';
+import { CANVAS_RENDER_PROTOCOL, canvasWorkerViewport, type CanvasRenderBridge, type CanvasWorkerResult, type CanvasWorkerRequest } from '../../shared/rendering';
 import { createLatestRasterQueue } from '../capabilities/textRasterization';
 import { createCanvasWorkerExecutor } from './orchestration/createCanvasWorkerExecutor';
 import '@linnya/markdown-document-core/style.css';
@@ -12,6 +12,8 @@ if (!bridge) throw new Error('Canvas render preload is missing');
 const queue = createLatestRasterQueue({
   capacity: 8,
   execute: async (request: CanvasWorkerRequest, signal) => {
+    await bridge.prepareViewport(canvasWorkerViewport(request));
+    signal.throwIfAborted();
     bridge.setPixelRatio(request.dpr);
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     return execute(request, signal);
