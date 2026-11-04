@@ -54,10 +54,15 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
         if (next.sequence <= installed.sequence) throw new Error('Canvas synchronization made no progress');
         state.install(next, readCanvasProjectionChanges(update));
       }
-    })().catch(error => {
-      if (token === sessionId) state.fail(error instanceof Error ? error.message : String(error));
+    })().then(() => {
+      if (token !== sessionId) return;
+      synchronization = null;
+      // loop返回到Promise结算之间仍可能接到推送；交回通道前再追目标，不能漏掉最后一批。
+      if (requireDocument().sequence < targetSequence) return synchronize(targetSequence);
+    }, error => {
+      if (token === sessionId) { synchronization = null; state.fail(error instanceof Error ? error.message : String(error)); }
       throw error;
-    }).finally(() => { if (token === sessionId) synchronization = null; });
+    });
     return synchronization;
   };
   return {

@@ -94,6 +94,18 @@ describe('Canvas document session', () => {
     } finally { vi.useRealTimers(); await f.session.close(); }
   });
 
+  it('场景安装后同轮微任务收到更高序号，提交确认仍追平目标而不漏掉末次推送', async () => {
+    const f = fixture(); await f.session.open('doc');
+    const stop = watch(f.session.state.projection, value => {
+      if (value?.snapshot.sequence === 1) queueMicrotask(() => f.push(2));
+    }, { flush: 'sync' });
+    try {
+      await f.session.commit([{ op: 'addText', width: 280, height: 180, content: { type: 'doc', content: [{ type: 'paragraph', content: [] }] } }]);
+      expect(f.session.state.snapshot.value?.sequence).toBe(2);
+      expect(f.changes.mock.calls).toEqual([['doc', 0], ['doc', 1]]);
+    } finally { stop(); await f.session.close(); }
+  });
+
   it('A→B→A 的旧异步响应不能装进新的文档会话', async () => {
     const f = fixture();
     let finishOld: ((value: CanvasSnapshot) => void) | undefined;
