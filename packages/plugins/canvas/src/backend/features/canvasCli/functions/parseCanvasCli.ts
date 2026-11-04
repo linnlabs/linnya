@@ -6,7 +6,7 @@ import { CanvasCliFailure, type CanvasCliCommand } from '../definitions/canvasCl
 export const CANVAS_CLI_HELP = {
   version: 1, command: 'linnya-canvas',
   usage: ['read <workspace:path>', 'show <workspace:path> <cN>', 'find <workspace:path> <text>',
-    'neighbors <workspace:path> <cN> [--depth 1]', 'region <workspace:path> <方位>', 'check <workspace:path>', 'groups <workspace:path>',
+    'neighbors <workspace:path> <cN> [--depth 1]', 'region <workspace:path> <方位>', 'check <workspace:path>', 'groups <workspace:path>', 'receipt <workspace:path> <request-id>',
     'apply <workspace:path> --ops-file batch.json --request-id stable-id [--dry-run]',
     'arrange <workspace:path> --request-id stable-id [--algorithm tree|grid|layered] [--scope c1,c2] [--direction right|down] [--columns 3] [--dry-run]',
     'render <workspace:path> [--format png|jpeg] [--width 1440] [--height 900] [--theme light|dark] [--scope c1,c2 | --region 方位]'],
@@ -20,6 +20,7 @@ const commands: Readonly<Record<string, CommandParser>> = {
   read: { arity: 1, options: {}, parse: ({ path }) => ({ kind: 'read', path }) },
   check: { arity: 1, options: {}, parse: ({ path }) => ({ kind: 'check', path }) },
   groups: { arity: 1, options: {}, parse: ({ path }) => ({ kind: 'groups', path }) },
+  receipt: { arity: 2, options: {}, parse: ({ path, value }) => { if (!value?.trim()) throw new CanvasCliFailure('missing_argument', '缺少原始 request-id。'); return { kind: 'receipt', path, requestId: value }; } },
   show: { arity: 2, options: {}, parse: input => parseQuery('show', input) },
   find: { arity: 2, options: {}, parse: input => parseQuery('find', input) },
   region: { arity: 2, options: {}, parse: input => parseQuery('region', input) },
@@ -30,10 +31,11 @@ const commands: Readonly<Record<string, CommandParser>> = {
   render: { arity: 1, options: { format: { type: 'string' }, width: { type: 'string' }, height: { type: 'string' }, theme: { type: 'string' }, scope: { type: 'string' }, region: { type: 'string' } }, parse: parseRender },
 };
 export function parseCanvasCli(argv: readonly string[]): CanvasCliCommand {
-  if (!argv.length || argv[0] === '--help' || argv[0] === 'help') return { kind: 'help' };
+  if (!argv.length || argv[0] === '--help' || argv[0] === '-h' || argv[0] === 'help') return { kind: 'help' };
   const kind = argv[0], definition = commands[kind];
   if (!Object.prototype.hasOwnProperty.call(commands, kind)) throw new CanvasCliFailure('unknown_command', `未知子命令 ${kind}；运行 linnya-canvas help。`);
-  const parsed = parseArgs({ args: [...argv.slice(1)], options: definition.options, allowPositionals: true, strict: true });
+  const parsed = parseArgs({ args: [...argv.slice(1)], options: { ...definition.options, help: { type: 'boolean', short: 'h' } }, allowPositionals: true, strict: true });
+  if (parsed.values.help === true) return { kind: 'help' };
   const path = parsed.positionals[0];
   if (!path?.startsWith('workspace:')) throw new CanvasCliFailure('invalid_path', '请使用 workspace:/目录/画布.canvas；不接受磁盘路径。');
   if (parsed.positionals.length !== definition.arity) throw new CanvasCliFailure('invalid_arguments', `参数数量不正确；请运行 linnya-canvas help 查看 ${kind} 用法。`);
@@ -54,8 +56,9 @@ function parseQuery(kind: 'show' | 'find' | 'neighbors' | 'region', input: CliAr
 function parseArrangement({ path, flags }: CliArguments): CanvasCliCommand {
   return { kind: 'arrange', path, requestId: requiredFlag(flags, 'request-id'), dryRun: flags['dry-run'] === true,
     options: CanvasArrangeOptionsSchema.parse({ algorithm: stringFlag(flags, 'algorithm', 'tree'), direction: stringFlag(flags, 'direction', 'right'),
-      elementIds: typeof flags.scope === 'string' ? flags.scope.split(',') : undefined,
-      columns: flags.columns === undefined ? undefined : Number(flags.columns), groups: typeof flags.groups === 'string' ? flags.groups.split(';').map(group => group.split(',')) : undefined }) };
+      ...(typeof flags.scope === 'string' ? { elementIds: flags.scope.split(',') } : {}),
+      ...(typeof flags.columns === 'string' ? { columns: Number(flags.columns) } : {}),
+      ...(typeof flags.groups === 'string' ? { groups: flags.groups.split(';').map(group => group.split(',')) } : {}) }) };
 }
 function parseRender({ path, flags }: CliArguments): CanvasCliCommand {
   const format = stringFlag(flags, 'format', 'jpeg'), theme = stringFlag(flags, 'theme', 'light');

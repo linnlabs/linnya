@@ -35,6 +35,7 @@ metadata:
 
 - 每个逻辑写动作使用新的 request-id；响应丢失的重试复用原ID与原始数组。
 - 不同ID的相同新增内容会创建不同卡，程序不会按正文猜重复。
+- 若输出经过管道筛选或响应丢失，用`receipt <画布路径> <原request-id>`只读查询原始回执；不要换新ID再写一次来猜是否成功。提交回执保留逐项结果，不能用当前画面代替。
 - `--dry-run` 校验、真实测高并给出预测，不写入；正式ID与位置以提交回执为准。
 - 新卡用 `$name` 临时ref互相引用，提交后用回执refs取得真实cN/eN。不要猜下一个ID。
 - 文字写Markdown；只选颜色white/red/orange/yellow/green/cyan/purple；不写坐标、字体或色值。
@@ -75,6 +76,7 @@ metadata:
 - `neighbors <画布路径> <cN> --depth 2`：相邻卡与连接。
 - `region <画布路径> 左上`：九宫格区域；也支持上方/右上/左侧/正中/右侧/左下/下方/右下。
 - `check <画布路径>`：共享正式曲线几何的检查；不移动任何卡。
+- `receipt <画布路径> <request-id>`：只读查询当前对话的持久回执，含pending/committed/denied等状态；未找到返回null，不触发提交或批准。
 - `render <画布路径> --format png --width 1440 --height 900 --theme light`：返回单次提交版本的图像locator。
 - render在画布未打开时也可运行；用read_file读取返回的conversation:图像，不传图片inode或字符窗口。
 - 图片/文档封面不可用时会明确报告。画布中的画布卡只显示身份牌，避免递归展开。

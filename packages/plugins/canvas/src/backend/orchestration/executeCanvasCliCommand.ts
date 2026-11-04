@@ -5,8 +5,8 @@ import { CanvasRenderRequestSchema } from '../../shared/rendering';
 import { CANVAS_DEFAULT_FONT_FAMILY, CANVAS_DEFAULT_FONT_SIZE } from '../../shared/rendering/definitions/canvasTypography';
 import { CanvasCliFailure, type CanvasCliCommand } from '../features/canvasCli';
 import { readCanvasDocumentIdentity, readCanvasProjectionContext } from '../features/canvasDocument';
-import { readCanvasSnapshot } from '../features/canvasCommit';
-import { readCanvasAgentGroups, projectCanvasAgentGroup, findCanvasPendingApproval, readCanvasAgentRequestStatuses } from '../features/agentChanges';
+import { canvasSourceKey, readCanvasSnapshot } from '../features/canvasCommit';
+import { readCanvasAgentGroups, projectCanvasAgentGroup, findCanvasPendingApproval, readCanvasAgentRequestStatuses, readCanvasAgentRequestStatus, projectCanvasAgentReceiptQuery } from '../features/agentChanges';
 import { queryCanvas, readCanvasRenderRegion } from '../features/canvasQuery';
 import { publishCanvasImage } from '../features/canvasExport';
 import { readCanvasHostDatabase } from '../functions/readCanvasHostContext';
@@ -18,6 +18,7 @@ import type { CanvasCliScope, CanvasCliServices } from './definitions/canvasCliE
 export async function executeCanvasCliCommand(command: Exclude<CanvasCliCommand, { kind: 'help' }>, context: BackendPluginCliExecutionContext, conversationRoot: string, services: CanvasCliServices) {
   const scope = resolveScope(command.path, context, conversationRoot);
   if (command.kind === 'apply' || command.kind === 'arrange') return executeCanvasCliWrite(command, scope, services);
+  if (command.kind === 'receipt') return projectCanvasAgentReceiptQuery(command.path, readCanvasAgentRequestStatus(scope.database, scope.documentId, canvasSourceKey(scope.actor), command.requestId));
   const snapshot = readCanvasSnapshot(scope.database, scope.documentId);
   if (command.kind === 'check') {
     const result = await services.capabilities.computation.check(snapshot, context.signal);

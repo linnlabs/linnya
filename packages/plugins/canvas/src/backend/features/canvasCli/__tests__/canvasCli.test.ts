@@ -2,6 +2,11 @@ import { expect, it } from 'vitest';
 import { CanvasCliBatchSchema } from '../../../../shared/cli/definitions/canvasCli';
 import { parseCanvasCli } from '../functions/parseCanvasCli';
 
+it('子命令help不要求文档路径或写参数，也不会进入写流程', () => {
+  for (const argv of [['arrange', '--help'], ['apply', '-h'], ['render', 'workspace:/讨论.canvas', '--help'], ['-h']]) expect(parseCanvasCli(argv)).toEqual({ kind: 'help' });
+  expect(() => parseCanvasCli(['unknown-command', '--help'])).toThrow('未知子命令');
+});
+
 it('requires explicit stable mutation IDs and keeps Agent-only paths and options narrow', () => {
   expect(parseCanvasCli(['apply', 'workspace:/讨论.canvas', '--ops-file', 'batch.json', '--request-id', 'retry-1', '--dry-run'])).toMatchObject({ kind: 'apply', requestId: 'retry-1', dryRun: true });
   expect(() => parseCanvasCli(['apply', 'workspace:/讨论.canvas', '--ops-file', 'batch.json'])).toThrow('request-id');

@@ -7,9 +7,12 @@ export type CanvasCliCommand =
   | { readonly kind: 'read'; readonly path: string }
   | { readonly kind: 'check'; readonly path: string }
   | { readonly kind: 'groups'; readonly path: string }
+  | { readonly kind: 'receipt'; readonly path: string; readonly requestId: string }
   | { readonly kind: 'show' | 'find' | 'neighbors' | 'region'; readonly path: string; readonly value: string; readonly depth: number }
   | { readonly kind: 'render'; readonly path: string; readonly format: 'png' | 'jpeg'; readonly width: number; readonly height: number; readonly theme: 'light' | 'dark'; readonly elementIds?: readonly string[]; readonly region?: string };
 
 export class CanvasCliFailure extends Error {
   constructor(readonly code: string, message: string, readonly operation?: number, readonly field?: string) { super(message); this.name = 'CanvasCliFailure'; }
 }
+export type CanvasStandaloneReadCommand = Extract<CanvasCliCommand, { kind: 'read' | 'show' | 'find' | 'neighbors' | 'region' | 'check' }>
+  | (Extract<CanvasCliCommand, { kind: 'receipt' }> & { readonly conversationId: string });

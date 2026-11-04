@@ -56,3 +56,5 @@ export const CanvasAgentRequestStatusSchema = z.object({
   pendingId: z.string().nullable(), commit: CanvasCommitResultSchema.nullable(),
 }).strict();
 export type CanvasAgentRequestStatus = z.infer<typeof CanvasAgentRequestStatusSchema>;
+export const CanvasAgentReceiptQueryResultSchema = z.object({ documentId: z.string(), receipt: CanvasAgentRequestStatusSchema.nullable() }).strict();
+export type CanvasAgentReceiptQueryResult = z.infer<typeof CanvasAgentReceiptQueryResultSchema>;

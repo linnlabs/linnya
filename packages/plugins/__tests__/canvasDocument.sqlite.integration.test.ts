@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { canvasPluginMigrations, createCanvasDocumentRuntime, createCanvasBackendPlugin, readCanvasSelectionContext } from '@plugin/canvas/backend-test-support';
-import { createCanvasPlainTextDocument, encodeCanvasHistorySession } from '@plugin/canvas/shared';
+import { CanvasAgentReceiptQueryResultSchema, createCanvasPlainTextDocument, encodeCanvasHistorySession } from '@plugin/canvas/shared';
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema';
 import { WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/node-text-snapshot.schema';
 import { DOCUMENT_REFERENCE_SCHEMAS, createDocumentReferenceOperations } from 'src/domains/document-references';
@@ -135,6 +135,14 @@ it('runs the real semantic CLI against Host SQLite with frozen scope, idempotent
     const created = await run(argv); expect(created.exitCode, created.stdout).toBe(0); expect(created.stdout).toContain('committed'); expect(created.stdout).not.toContain(id);
     expect(runtime.read(id).elements).toHaveLength(3); expect(measureCalls).toBe(1);
     expect(await run(argv)).toEqual(created); expect(measureCalls).toBe(1);
+    const beforeReceipt = runtime.read(id);
+    const receipt = CanvasAgentReceiptQueryResultSchema.parse(JSON.parse((await run(['receipt', 'workspace:/命令.canvas', 'create'])).stdout));
+    expect(receipt).toMatchObject({ documentId: 'workspace:/命令.canvas', receipt: { requestId: 'create', status: 'committed', commit: { documentId: 'workspace:/命令.canvas', sequence: beforeReceipt.sequence } } });
+    expect(receipt.receipt?.commit?.results).toEqual(JSON.parse(created.stdout).results);
+    expect(JSON.stringify(receipt)).not.toContain(id); expect(runtime.read(id)).toEqual(beforeReceipt);
+    const foreignReceipt = await executeCanvasCliCommand({ kind: 'receipt', path: 'workspace:/命令.canvas', requestId: 'create' }, { ...context, conversationId: 'another-chat' }, root, services);
+    expect(foreignReceipt).toMatchObject({ receipt: null });
+    expect(await run(['receipt', 'workspace:/命令.canvas', 'not-created'])).toMatchObject({ exitCode: 0, stdout: expect.stringContaining('"receipt":null') });
     await writeFile(path.join(root, 'append.json'), JSON.stringify([{ op: 'update', id: 'c1', revision: runtime.read(id).elements.find(element => element.id === 'c1')!.revision, append: '只追加一次' }]));
     const append = ['apply', 'workspace:/命令.canvas', '--ops-file', 'append.json', '--request-id', 'append'];
     const first = await run(append); expect(first.exitCode).toBe(0);
@@ -173,12 +181,18 @@ it('reads standalone queries from a genuinely read-only connection without creat
   const directory = await mkdtemp(path.join(tmpdir(), 'canvas-readonly-')); const file = path.join(directory, 'workspace.sqlite');
   const id = runtime.create({ projectId, parentId: null, name: '只读.canvas' });
   runtime.commit({ documentId: id, viewId: 'view', requestId: 'readonly-source', operations: [text('可读不可写')] });
+  const agent = runtime.editing.commitAgent({ request: { documentId: id, requestId: 'readonly-receipt', operations: [text('原始Agent回执')] }, actor: { projectId, viewId: 'agent', source: { kind: 'agent', conversationId: 'chat', runId: 'run' } }, now: Date.now() });
+  if (agent.kind !== 'committed') throw new Error('expected committed fixture');
   await db.backup(file);
   const reader = new Database(file, { readonly: true, fileMustExist: true });
   try {
     expect(() => reader.prepare('DELETE FROM canvas_elements').run()).toThrow();
-    expect(readCanvasStandalone(reader, projectId, { kind: 'read', path: 'workspace:/只读.canvas' })).toMatchObject({ sequence: 1, text: expect.stringContaining('可读不可写') });
-    expect(readCanvasStandalone(reader, projectId, { kind: 'check', path: 'workspace:/只读.canvas' })).toMatchObject({ sequence: 1 });
+    expect(readCanvasStandalone(reader, projectId, { kind: 'read', path: 'workspace:/只读.canvas' })).toMatchObject({ sequence: 2, text: expect.stringContaining('可读不可写') });
+    expect(readCanvasStandalone(reader, projectId, { kind: 'check', path: 'workspace:/只读.canvas' })).toMatchObject({ sequence: 2 });
+    const receipt = CanvasAgentReceiptQueryResultSchema.parse(readCanvasStandalone(reader, projectId, { kind: 'receipt', path: 'workspace:/只读.canvas', conversationId: 'chat', requestId: 'readonly-receipt' }));
+    expect(receipt.receipt?.commit).toEqual({ ...agent.commit, documentId: 'workspace:/只读.canvas' });
+    expect(readCanvasStandalone(reader, projectId, { kind: 'receipt', path: 'workspace:/只读.canvas', conversationId: 'other-chat', requestId: 'readonly-receipt' })).toMatchObject({ receipt: null });
+    expect(() => readCanvasStandalone(reader, 'other-project', { kind: 'receipt', path: 'workspace:/只读.canvas', conversationId: 'chat', requestId: 'readonly-receipt' })).toThrow();
   } finally { reader.close(); await rm(directory, { recursive: true, force: true }); }
 });
 
