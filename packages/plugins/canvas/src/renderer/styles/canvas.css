@@ -60,6 +60,7 @@
   transform-origin: 0 0;
   font-size: 14px;
   line-height: 1.7;
+  background: var(--canvas-card-paper-color);
 }
 .canvas-editor-overlay .tiptap {
   min-height: 1em;
@@ -78,6 +79,7 @@
   transform-origin: 0 0;
   font-size: 14px;
   line-height: 1.7;
+  background: var(--canvas-card-paper-color);
 }
 .canvas-document-detail-header {
   display: flex;

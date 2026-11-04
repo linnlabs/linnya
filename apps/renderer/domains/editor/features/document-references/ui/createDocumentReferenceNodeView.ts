@@ -44,6 +44,8 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
     close();
     const panel = document.createElement('section');
     panel.className = 'document-reference-preview'; panel.setAttribute('aria-label', '文档预览');
+    // 预览正文不是可编辑区；点击段落/空白也要把焦点落在所属浮层，不能退到body。
+    panel.tabIndex = -1;
     let pointerInPanel = false;
     let expandDetail: (() => void) | null = null;
     panel.addEventListener('mouseenter', () => { pointerInPanel = true; if (timer) clearTimeout(timer); expandDetail?.(); });
