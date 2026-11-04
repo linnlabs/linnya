@@ -20,6 +20,7 @@ metadata:
 - 不传数据库路径、项目ID、对话ID、批准标志、任意输出目录。身份与权限由 Host 提供。
 - Shell 返回 completed 仍须检查 `data.terminal.process_exit`；0 为成功，8 为 Canvas 参数或业务错误。
 - stdout 只有 JSON。长命令若返回 process handle，用 process 等待；不要重复发新写请求。
+- apply、arrange及其dry-run的完整JSON响应是逐项判断与修正的依据。不要先用管道过滤stdout；需要摘要时先保留完整响应，再解释结果。失败响应也要保留，不能只记录成功回执。
 
 ## 推荐流程
 
@@ -35,7 +36,7 @@ metadata:
 
 - 每个逻辑写动作使用新的 request-id；响应丢失的重试复用原ID与原始数组。
 - 不同ID的相同新增内容会创建不同卡，程序不会按正文猜重复。
-- 若输出经过管道筛选或响应丢失，用`receipt <画布路径> <原request-id>`只读查询原始回执；不要换新ID再写一次来猜是否成功。提交回执保留逐项结果，不能用当前画面代替。
+- 若输出经过管道筛选或响应丢失，用`receipt <画布路径> <原request-id>`只读查询原始回执；不要换新ID再写一次来猜是否成功。提交回执保留逐项结果，不能用当前画面代替；查不到回执也不能证明原请求未尝试或未失败。
 - `--dry-run` 校验、真实测高并给出预测，不写入；正式ID与位置以提交回执为准。
 - 新卡用 `$name` 临时ref互相引用，提交后用回执refs取得真实cN/eN。不要猜下一个ID。
 - 文字写Markdown；只选颜色white/red/orange/yellow/green/cyan/purple；不写坐标、字体或色值。
