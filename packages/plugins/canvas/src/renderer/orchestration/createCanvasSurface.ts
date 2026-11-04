@@ -31,6 +31,7 @@ import { createCanvasCardOpening } from './createCanvasCardOpening';
 import { createCanvasEditorNavigation } from './createCanvasEditorNavigation';
 import { installCanvasSurfaceDoubleClick } from './installCanvasSurfaceDoubleClick';
 import { canvasDraggedCopySource } from '../functions/canvasDraggedCopySource';
+import { createCanvasTreeCreation } from './createCanvasTreeCreation';
 
 /** 表面的组合根：只连接已提交文档、草稿、选择、kernel与Host端口。 */
 export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: CanvasSurfacePorts) {
@@ -57,7 +58,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     onBlur: () => { void save(true).then(setDirty).catch(report); },
   });
   const cards = () => session.state.snapshot.value?.elements.filter((element): element is CanvasCard => element.type !== 'edge') ?? [];
-  const creation = createCanvasTextCreation(session, async (id, continueEditing, readRemaining, historyGroupId) => { selection.select([id]); kernel.setSelection([id]); if (continueEditing) { await editor.open(id, historyGroupId); const remaining = readRemaining(); if (remaining) { editor.update(JsonValueSchema.parse(remaining)); editor.measure(creation.state.draft.value?.height ?? 64); } } },
+  const creation = createCanvasTextCreation(session, async (id, continueEditing, readRemaining, historyGroupId) => { selection.select([id]); kernel.setSelection([id]); if (creation.state.draft.value?.arrangement) viewport.reveal(id); if (continueEditing) { await editor.open(id, historyGroupId); const remaining = readRemaining(); if (remaining) { editor.update(JsonValueSchema.parse(remaining)); editor.measure(creation.state.draft.value?.height ?? 64); } } },
     (operations, historyGroupId, arrangement) => { if (!arrangement) return session.commit(operations, historyGroupId); if (!layout) throw new Error('当前表面未配置自动排布'); return layout.run(arrangement, operations, historyGroupId); });
   const selected = () => cards().filter(card => selection.ids.value.includes(card.id));
   const setDirty = () => {
@@ -77,7 +78,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     return true;
   }
   const select = async (ids: readonly CanvasCardId[], additive = false) => { await trySelect(ids, additive); };
-  const connections = createCanvasConnectionEditing(session, kernel, { finishText: finish, createText: (point, from) => createText(point, '', from), clearCards: () => { selection.select([]); kernel.setSelection([]); }, report, readDisplayVersion: () => state.displayVersion.value });
+  const connections = createCanvasConnectionEditing(session, kernel, { finishText: finish, createText: async (point, from) => { await createText(point, '', from); }, clearCards: () => { selection.select([]); kernel.setSelection([]); }, report, readDisplayVersion: () => state.displayVersion.value });
   const stopReadonly = installCanvasReadonlyProjection({ readonly, editable, clearPreview: () => kernel.clearDragPreview(), cancelResize: resizing.dispose, suspendEditor: editor.suspend, suspendConnections: connections.suspend, cancelDrag: dragging.cancel, cancelLayout: async () => { await layout?.cancel(); }, report });
   const actions = createCanvasElementActions(session, { read: () => selection.ids.value, select });
   async function createText(point?: CanvasPoint, text = '', from: CanvasEndpoint | null = null, arrangement: CanvasArrangeRequest['options'] | null = null) {
@@ -85,9 +86,10 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
     requireWritableCanvas(session.state.snapshot.value);
     if (!(await finish()) || !(await connections.saveLabel())) return;
     const target = point ?? kernel.screenToWorld({ x: options.host.clientWidth / 2 - 140, y: options.host.clientHeight / 2 - 90 });
-    selection.select([]); kernel.setSelection([]); await connections.select(null); creation.begin(target, from, text, arrangement); setDirty();
+    selection.select([]); kernel.setSelection([]); await connections.select(null); const draft = creation.begin(target, from, text, arrangement); setDirty(); return draft;
   }
-  const createTree = async (kind: 'child' | 'sibling') => { if (!layout || !(await finish())) return; const plan = layout.planTree(selection.ids.value, kind); await createText(plan.point, '', plan.from, plan.options); };
+  const createTree = createCanvasTreeCreation({ finish, plan: kind => layout?.planTree(selection.ids.value, kind) ?? null,
+    create: plan => createText(plan.point, '', plan.from, plan.options), reveal: rectangle => viewport.revealRectangle(rectangle) });
   async function handleIntent(intent: CanvasKernelIntent) {
     switch (intent.kind) {
       case 'preview-changed': state.advanceDisplay(); refreshView(); return;
@@ -106,8 +108,8 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   }
   const projection = installCanvasEditorProjection({ host: options.editorHost, editor, creation, editable, kernel, camera, detailId: state.detailId, cards, setDirty, refresh: refreshView });
   const stopDisplay = installCanvasDisplayProjection({ host: options.host, session, kernel, raster: { refresh: refreshView }, preferences, readAppearance, ports, report, refreshEditorInk: projection.refreshInk, viewportChanged: state.setViewport });
-  const stopDoubleClick = installCanvasSurfaceDoubleClick({ host: options.host, kernel, readonly: () => readonly.value, create: createText, label: async id => { await connections.select(id); await connections.beginLabel(); }, report });
-  const clipboard = installCanvasSurfaceClipboard({ host: options.host, kernel, session, ports, actions, canHandle: () => !editor.state.draft.value && !creation.state.draft.value, selection: () => selection.ids.value, contextPoint: () => context.value?.point, select, createText, report });
+  const stopDoubleClick = installCanvasSurfaceDoubleClick({ host: options.host, kernel, readonly: () => readonly.value, create: async point => { await createText(point); }, label: async id => { await connections.select(id); await connections.beginLabel(); }, report });
+  const clipboard = installCanvasSurfaceClipboard({ host: options.host, kernel, session, ports, actions, canHandle: () => !editor.state.draft.value && !creation.state.draft.value, selection: () => selection.ids.value, contextPoint: () => context.value?.point, select, createText: async (point, text) => { await createText(point, text); }, report });
   const removeSave = registerCanvasSaveParticipant({ documentId: options.documentId, save });
   const draftParticipants = createCanvasRestoreDraftParticipants({ editor, creation, connections, report });
   const changedDraft = () => { setDirty(); state.clearFailure(); };
