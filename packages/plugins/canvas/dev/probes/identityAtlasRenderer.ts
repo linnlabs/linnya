@@ -2,6 +2,8 @@ import 'pixi.js/unsafe-eval';
 import { Application, Container, Rectangle, Text, Texture } from 'pixi.js';
 import { CanvasIdentityAtlas } from '../../src/renderer/kernel/render/pixi/CanvasIdentityAtlas';
 import { withCanvasIdentityTextRaster } from '../../src/renderer/kernel/render/pixi/canvasIdentityTextRaster';
+import { createPixiCanvasKernel } from '../../src/renderer/kernel';
+import { createVisibleUpdateFixture } from './visibleUpdateFixture';
 
 const strings = ['中文身份牌：春江花月夜', 'office affinity ffi AV', 'e\u0301 A\u030a 组合附加符',
   '👨‍👩‍👧‍👦 🇨🇳 👍🏽 ❤️', 'العَرَبِيَّةُ لا سلام', 'नमस्ते दुनिया क्ष', '日本語かなカナ 한글', '末行边界　（）【】'];
@@ -60,6 +62,34 @@ async function lifecycle() {
   } finally { atlas.destroy(); app.destroy(true, { children: true, texture: false }); }
 }
 
+async function contextRestoration() {
+  const host = document.createElement('div'); host.style.cssText = 'width:360px;height:240px'; document.body.append(host);
+  const kernel = await createPixiCanvasKernel({ host, width: 360, height: 240, resolution: 2 });
+  try {
+    kernel.setElements(createVisibleUpdateFixture('text').slice(0, 1));
+    const wait = async (ready: () => boolean, code: string) => {
+      const started = performance.now();
+      while (!ready()) {
+        if (performance.now() - started > 5000) throw new Error(code);
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      }
+    };
+    await wait(() => kernel.readStats().renders > 0, 'identity_context_initial_draw_missing');
+    const before = await kernel.captureImage('png'), initial = kernel.readStats();
+    if (initial.bitmaps || initial.identityPages !== 1) throw new Error('identity_context_fixture_included_body');
+    const gl = kernel.canvas.getContext('webgl2') ?? kernel.canvas.getContext('webgl'), extension = gl?.getExtension('WEBGL_lose_context');
+    if (!extension) throw new Error('identity_context_extension_unavailable');
+    extension.loseContext(); await wait(() => kernel.readRenderStatus().phase === 'restoring', 'identity_context_loss_not_observed');
+    let rejected = false;
+    try { await kernel.captureImage('png'); } catch (error) { rejected = error instanceof Error && error.message === 'canvas_graphics_context_lost'; }
+    if (!rejected) throw new Error('identity_lost_context_capture_was_not_rejected');
+    extension.restoreContext();
+    await wait(() => kernel.readRenderStatus().phase === 'ready' && kernel.readStats().renders > initial.renders, 'identity_context_restore_draw_missing');
+    return { before, image: await kernel.captureImage('png'), initial, restored: kernel.readStats(), rejected };
+  } finally { kernel.destroy(); host.remove(); }
+}
+
 Object.defineProperties(window, {
   canvasIdentityAtlasPixels: { value: pixels }, canvasIdentityAtlasLifecycle: { value: lifecycle },
+  canvasIdentityAtlasContext: { value: contextRestoration },
 });

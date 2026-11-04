@@ -36,10 +36,24 @@ async function run() {
       if (!union || report.iou < 0.995 || report.normalizedAlphaError > 0.01) throw new Error('identity_atlas_whole_string_pixels_changed');
     }
     const lifecycle: unknown = await win.webContents.executeJavaScript('window.canvasIdentityAtlasLifecycle()');
+    const context = z.object({ before: z.string(), image: z.string(), initial: z.unknown(), restored: z.unknown(), rejected: z.literal(true) })
+      .parse(await win.webContents.executeJavaScript('window.canvasIdentityAtlasContext()'));
+    const oldImage = nativeImage.createFromDataURL(context.before), restoredImage = nativeImage.createFromDataURL(context.image);
+    await writeFile(path.join(output, 'context-before.png'), oldImage.toPNG());
+    await writeFile(path.join(output, 'context-restored.png'), restoredImage.toPNG());
+    const a = oldImage.toBitmap(), b = restoredImage.toBitmap(); let intersection = 0, union = 0;
+    if (a.length !== b.length) throw new Error('identity_context_capture_size_changed');
+    for (let i = 0; i < a.length; i += 4) {
+      const oldInk = a[i] < 150 && a[i + 1] < 150 && a[i + 2] < 150, newInk = b[i] < 150 && b[i + 1] < 150 && b[i + 2] < 150;
+      if (oldInk && newInk) intersection++; if (oldInk || newInk) union++;
+    }
+    const contextFacts = { initial: context.initial, restored: context.restored, rejected: context.rejected, intersection, union, iou: intersection / union };
+    await writeFile(path.join(output, 'context-pixels.json'), JSON.stringify(contextFacts, null, 2));
+    if (!union || contextFacts.iou < 0.995) throw new Error('identity_context_restore_lost_current_title_pixels');
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ sourceCommit: process.env.CANVAS_PROBE_SOURCE_COMMIT,
       sourceDirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE,
-      validHardwareRun: false, versions: process.versions, reports, lifecycle }, null, 2));
-    console.log(JSON.stringify({ reports, lifecycle }));
+      validHardwareRun: false, versions: process.versions, reports, lifecycle, context: contextFacts }, null, 2));
+    console.log(JSON.stringify({ reports, lifecycle, context: contextFacts }));
   } finally { win.destroy(); }
 }
 void run().then(() => app.exit(0), (error: unknown) => { console.error(error); app.exit(1); });
