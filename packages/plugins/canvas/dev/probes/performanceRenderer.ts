@@ -10,6 +10,7 @@ import { createCanvasPerformanceInputTrace } from './performanceInputTrace';
 import { createCanvasDocumentFocusSpan } from './performanceFocusQualification';
 import { createCanvasStagingContextControl } from './performanceStagingContextControl';
 import { createCanvasTileContextControl } from './performanceTileContextControl';
+import { createCanvasCombinedContextControl } from './performanceCombinedContextControl';
 import type { CanvasPerformanceContextControl } from './performanceContextControl';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
@@ -56,7 +57,7 @@ let paintTrace: ReturnType<typeof createCanvasPerformancePaintTrace> | null = nu
 let inputTrace: ReturnType<typeof createCanvasPerformanceInputTrace> | null = null;
 let focusSpan: ReturnType<typeof createCanvasDocumentFocusSpan> | null = null;
 let bodyTrace: { readonly marks: { readonly name: string; readonly atMs: number; readonly rafTimestamp?: number }[] } | null = null;
-let contextControl: ReturnType<typeof createCanvasStagingContextControl> | ReturnType<typeof createCanvasTileContextControl> | null = null;
+let contextControl: ReturnType<typeof createCanvasStagingContextControl> | ReturnType<typeof createCanvasTileContextControl> | ReturnType<typeof createCanvasCombinedContextControl> | null = null;
 const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
 
@@ -75,7 +76,8 @@ async function prepare(count: number, clustered: boolean, kind: CanvasPerformanc
   const staging = document.createElement('div'); staging.className = 'canvas-raster-staging';
   // hook先于本轮任何Canvas创建；只有明确的一种实验变量生效。
   if (control) contextControl = control.kind === 'staging'
-    ? createCanvasStagingContextControl(control.arm) : createCanvasTileContextControl(staging, control.arm);
+    ? createCanvasStagingContextControl(control.arm) : control.kind === 'tile'
+      ? createCanvasTileContextControl(staging, control.arm) : createCanvasCombinedContextControl(staging, control.arm);
   document.body.append(host, staging); failures = [];
   const openingStarted = performance.now();
   kernel = await createPixiCanvasKernel({ host, resolution: devicePixelRatio, onIntent: (intent) => {

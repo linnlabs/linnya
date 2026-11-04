@@ -25,7 +25,7 @@ const paintDiagnostic = process.env.CANVAS_PERFORMANCE_PAINT_TRACE === '1' || zo
 const comparisonDiagnostic = process.env.CANVAS_PERFORMANCE_COMPARISON === '1';
 const inputDiagnostic = process.env.CANVAS_PERFORMANCE_INPUT_TRACE === '1';
 const contextControl = readCanvasPerformanceContextControl({ staging: process.env.CANVAS_PERFORMANCE_STAGING_CONTEXT_CONTROL,
-  tile: process.env.CANVAS_PERFORMANCE_TILE_CONTEXT_CONTROL, bodyTrace: bodyDiagnostic });
+  tile: process.env.CANVAS_PERFORMANCE_TILE_CONTEXT_CONTROL, combined: process.env.CANVAS_PERFORMANCE_COMBINED_CONTEXT_CONTROL, bodyTrace: bodyDiagnostic });
 const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_ZOOM_TRACE === '1' || paintDiagnostic;
 if (bodyDiagnostic && (inputDiagnostic || ['CPU_PROFILE', 'BODY_PROFILE', 'RESOURCE_PROFILE', 'ZOOM_TRACE', 'ZOOM_PAINT_TRACE']
   .some(flag => process.env[`CANVAS_PERFORMANCE_${flag}`] === '1'))) throw new Error('body_trace_conflicting_recording');
@@ -187,7 +187,7 @@ async function run() {
 
 async function finishContextControl(window: BrowserWindow, stem: string): Promise<unknown> {
   const facts: unknown = await window.webContents.executeJavaScript('window.finishCanvasPerformanceContextControl()');
-  await writeFile(path.join(output, `${stem}-${contextControl?.kind === 'tile' ? 'tile-' : ''}context-control.json`), JSON.stringify(facts, null, 2));
+  await writeFile(path.join(output, `${stem}-${contextControl && contextControl.kind !== 'staging' ? contextControl.kind + '-' : ''}context-control.json`), JSON.stringify(facts, null, 2));
   return facts;
 }
 

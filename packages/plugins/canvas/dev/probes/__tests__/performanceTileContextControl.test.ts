@@ -56,9 +56,9 @@ beforeEach(() => {
 afterEach(() => { control?.finish(); control = null; vi.unstubAllGlobals(); });
 
 it('同一typed合同拒绝混合变量；A保原调用，B只改候选首次hint且以实际source/copy/transfer自证', () => {
-  expect(readCanvasPerformanceContextControl({ staging: undefined, tile: undefined, bodyTrace: false })).toBeNull();
-  expect(() => readCanvasPerformanceContextControl({ staging: 'A', tile: 'B', bodyTrace: true })).toThrow('conflicting');
-  expect(() => readCanvasPerformanceContextControl({ staging: undefined, tile: 'B', bodyTrace: false })).toThrow('requires_body');
+  expect(readCanvasPerformanceContextControl({ staging: undefined, tile: undefined, combined: undefined, bodyTrace: false })).toBeNull();
+  expect(() => readCanvasPerformanceContextControl({ staging: 'A', tile: 'B', combined: undefined, bodyTrace: true })).toThrow('conflicting');
+  expect(() => readCanvasPerformanceContextControl({ staging: undefined, tile: 'B', combined: undefined, bodyTrace: false })).toThrow('requires_body');
   const htmlMethod = Canvas.prototype.getContext;
   for (const arm of ['A', 'B'] as const) {
     const { host, staging } = fixture(); control = createCanvasTileContextControl(host, arm);
