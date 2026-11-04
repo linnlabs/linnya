@@ -1,6 +1,8 @@
-interface DrawableContext extends CanvasRenderingContext2D { drawElementImage(element: Element, x: number, y: number): void }
+import type { HtmlElementImageCanvas, HtmlElementImageContext } from '../definitions/htmlCanvasElementImage';
+
 interface PaintCanvas extends HTMLCanvasElement { requestPaint(): void }
-export function canDrawHtmlElement(context: CanvasRenderingContext2D): context is DrawableContext { return typeof Reflect.get(context, 'drawElementImage') === 'function'; }
+export function canCaptureHtmlElement(canvas: HTMLCanvasElement): canvas is HtmlElementImageCanvas { return typeof Reflect.get(canvas, 'captureElementImage') === 'function'; }
+export function canDrawHtmlElement(context: OffscreenCanvasRenderingContext2D): context is HtmlElementImageContext { return typeof Reflect.get(context, 'drawElementImage') === 'function'; }
 function canRequest(canvas: HTMLCanvasElement): canvas is PaintCanvas { return typeof Reflect.get(canvas, 'requestPaint') === 'function'; }
 export async function waitForRasterFonts(document: Document, signal?: AbortSignal): Promise<void> {
   signal?.throwIfAborted(); await document.fonts.ready;
@@ -26,7 +28,8 @@ export function waitForHtmlCanvasPaint(canvas: HTMLCanvasElement, draw: () => vo
       cleanup();
       // 只记录能力和生命周期现场，不包含正文、图片地址或任何Host配置。
       console.error('[Canvas] HTML paint timeout', { visibility: canvas.ownerDocument.visibilityState,
-        connected: canvas.isConnected, requestPaint: canRequest(canvas), width: canvas.width, height: canvas.height,
+        connected: canvas.isConnected, requestPaint: canRequest(canvas), htmlBitmapWidth: canvas.width, htmlBitmapHeight: canvas.height,
+        cssWidth: canvas.style.width, cssHeight: canvas.style.height,
         display: canvas.ownerDocument.defaultView?.getComputedStyle(canvas).display, timeoutMs });
       reject(new Error('raster_paint_timeout'));
     }, timeoutMs);

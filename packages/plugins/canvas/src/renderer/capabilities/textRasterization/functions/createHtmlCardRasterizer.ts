@@ -17,6 +17,7 @@ export function createHtmlCardRasterizer(options: {
   // opacity:0 会在部分Chromium破坏paint记录，staging由使用方放在底层。
   canvas.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:-1'; options.host.append(canvas);
   let disposed = false;
+  let atlas: OffscreenCanvas | null = null;
   const lifetime = new AbortController();
   const activeSignal = (signal?: AbortSignal) => signal ? AbortSignal.any([lifetime.signal, signal]) : lifetime.signal;
   async function measureBatch(requests: readonly { readonly element: HTMLElement; readonly width: number }[], signal?: AbortSignal): Promise<readonly PromiseSettledResult<number>[]> {
@@ -39,7 +40,11 @@ export function createHtmlCardRasterizer(options: {
   async function batch(requests: readonly CardRasterRequest[], signal?: AbortSignal) {
     if (disposed) throw new Error('rasterizer_disposed');
     const active = activeSignal(signal);
-    const results = await rasterizeHtmlBatch({ canvas, viewport, requests, signal: active, maxEdge: options.maxTextureEdge ?? 4096, timeoutMs: options.timeoutMs ?? 2000 });
+    active.throwIfAborted();
+    if (!requests.length) return [];
+    // measure-only保持纯DOM；首次出图才转移一次，快照只能在同placeholder的context重放。
+    atlas ??= canvas.transferControlToOffscreen();
+    const results = await rasterizeHtmlBatch({ canvas, atlas, viewport, requests, signal: active, maxEdge: options.maxTextureEdge ?? 4096, timeoutMs: options.timeoutMs ?? 2000 });
     if (active.aborted || disposed) { results.forEach(result => result.bitmap.close()); active.throwIfAborted(); throw new Error('rasterizer_disposed'); }
     return results;
   }
@@ -48,6 +53,10 @@ export function createHtmlCardRasterizer(options: {
     measureBatch,
     async rasterize(request, signal) { return (await batch([request], signal))[0]; },
     rasterizeBatch: batch,
-    dispose() { disposed = true; lifetime.abort(new Error('rasterizer_disposed')); canvas.remove(); },
+    dispose() {
+      disposed = true; lifetime.abort(new Error('rasterizer_disposed'));
+      if (atlas) { atlas.width = 0; atlas.height = 0; atlas = null; }
+      canvas.remove();
+    },
   };
 }
