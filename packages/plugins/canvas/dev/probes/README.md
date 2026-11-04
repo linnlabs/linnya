@@ -32,6 +32,8 @@ Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShade
 
 静态DOM/位图/Pixi正文比较使用正式worker已有的`renderingMode: capture`，要求Kernel实际resolution与DOM/raster DPR一致、canvas真实物理尺寸匹配CSS卡框×DPR。采样事实先独立写出，失败也保留mode/resolution/物理尺寸/renderStatus；截图裁成2x不能把1x软件交互画布冒充2x质量。软件交互的1x降级继续由counts及既有冒烟验证；fade/scene/motion入口不全局改成capture，生产降级、绘制质量与视觉阈值均不改。
 
+`CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_VISUAL_DIAGNOSTIC=software-line`只运行固定的既有lineVisual及原虚线/端点断言，用于隔离软件交互采样合同。launcher与预构建Electron入口共用窄模式解析；未知模式或未声明软件环境立即拒绝，不允许环境变量指定JS。launcher用Node24内置type stripping读取无依赖纯模式入口。诊断首次创建独立`canvas-visual-software-line-diagnostic`目录，已存在则拒绝覆盖，profile也随该目录隔离。真实window DPR、Kernel resolution、canvas/CSS尺寸、render-status、两幅原PNG先落盘，再运行原断言，不能提前改采样制造绿。局部终态写`diagnostic-result.json`或`diagnostic-failure.json`，始终标记`fullSuite:false`/`hardwareQualification:false`，不生成完整suite的`results.json`；未设置诊断flag时原完整范围不变。
+
 正文完成等待保持5000ms时限及两个真实rAF确认。最终返回前重新读取失败、排队、运行、媒体资源、纹理过渡和当前正文readiness；两帧期间新出现的paint失败不能被先前空队列掩盖。近景文字和媒体共用正式当前内容键的readiness，旧正文receipt或尚未draw的新正文都不算完成；远景仍遵循既有地图/缩略图LOD，不强迫绘制不需要的正文。
 
 performance初始化先保存安装前的Kernel实际renders，再等待该计数增加；身份牌的独立准备task可能跨过第一rAF，不能把回调发生当成首画。等待使用既有5s完成边界且超时失败，不调用capture强制准备或draw。installMs与包含初始化/预热的firstFrameMs均计入这段真实等待；它只证明几何首画，当前正文完整仍由独立readiness与实际draw门判断。

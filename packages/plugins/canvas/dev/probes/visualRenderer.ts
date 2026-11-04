@@ -128,7 +128,9 @@ async function lineVisual() {
     throw new Error('line_geometry_hit_range_mismatch');
   }
   const image = await kernel.captureImage('png'); kernel.setCamera({ x: 0, y: 0, zoom: 0.5 });
-  return { dpr: devicePixelRatio, image, half: await kernel.captureImage('png') };
+  const half = await kernel.captureImage('png'), css = host.getBoundingClientRect();
+  return { dpr: devicePixelRatio, image, half, sampling: { mode: 'interactive', windowDpr: devicePixelRatio, resolution: kernel.readResolution(),
+    css: { width: css.width, height: css.height }, canvas: { width: kernel.canvas.width, height: kernel.canvas.height }, status: kernel.readRenderStatus() } };
 }
 Object.defineProperty(window, 'prepareCanvasLineVisualProbe', { value: lineVisual });
 
