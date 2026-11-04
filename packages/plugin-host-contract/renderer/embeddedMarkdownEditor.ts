@@ -11,6 +11,7 @@ export interface EmbeddedMarkdownEditorOptions {
   readonly label: string;
   readonly readonly?: boolean;
   readonly onUpdate: (content: JsonValue) => void;
+  /** 焦点离开整个表面及其显式拥有的浮层时通知；内部NodeView转移不结束编辑。 */
   readonly onBlur?: () => void;
   /** 临时显示源由调用方解析；结构化正文仍保留原始稳定src。 */
   readonly resolveImageSource?: (source: string) => Promise<string>;
