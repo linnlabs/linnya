@@ -427,7 +427,7 @@ class PixiCanvasKernel implements CanvasKernel {
   readCamera(): CanvasCamera { return { ...this.camera }; }
   readRenderStatus(): CanvasRenderStatus {
     if (this.contextLost) return { limited: true, phase: 'restoring', message: '图形渲染正在恢复，内容已保留' };
-    if (this.identityCapacityLimited) return { limited: true, phase: 'ready', message: '当前身份牌预览超过纹理容量，请调整视口后重试；文档仍可编辑和保存。' };
+    if (this.identityCapacityLimited) return { limited: true, phase: 'ready', message: '当前视图的卡片标题暂时无法全部显示，请放大或移动画布后重试；文档仍可编辑和保存。' };
     return { limited: this.software, phase: 'ready', message: this.software ? '当前使用软件绘图，性能受限' : null };
   }
   readResolution(): number { return this.app.renderer.resolution; }
