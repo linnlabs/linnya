@@ -15,3 +15,5 @@
 每批`frames`只保存收到正式commit通知后、等待几何/正文完成期间的实际帧间隔。即使模型随后思考数分钟，这段工作窗也不会被全局34秒RAF环形缓存的空闲帧覆盖或稀释；无样本保留null，不能填成120FPS。单帧间隔可能跨过提交起点，因此这是明确标注的保守工作窗诊断。
 
 初开没有commit事件，可信客户端可用typed只读`readiness`读取指定卡片的实际mode/status/revision、正式draw计数与Renderer UTC时刻，并记录当时相机、屏幕DPR、页面可见性和主题/字体环境。此状态复用正式Surface的当前内容与排版环境校验，不暴露正文key；overview/outside不冒充body。客户端核对返回documentId仍为固定挂载文档，再记录mount请求到实际首个body与全部可见body终态的观测上界，包含HTTP桥等待，不能当作纯kernel耗时。没有可见body、隐藏、失败或超时必须保留状态，不能填0或只用renders判成功。
+
+Agent正文观测分别保存`body.firstVisible`（首个当前修订新纹理alpha>0实际draw）、`body.allVisible`（全部当前可见目标均首显）和`body.frame`（全部可见正文/fade/scene稳定后的draw）。每个首显时刻保留当时的可见和已展示ID集合，≤50/500批不能用第一张卡的时间冒充整批。目标被更新到更晚修订标为incomplete并保留superseded，不能以更晚正文ready代替该次写入。可信性能门禁只在目标修订、实际交集、superseded为空和终态均满足后释放下一轮。
