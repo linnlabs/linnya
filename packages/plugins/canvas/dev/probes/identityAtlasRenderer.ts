@@ -6,6 +6,8 @@ import { createPixiCanvasKernel } from '../../src/renderer/kernel';
 import { createVisibleUpdateFixture } from './visibleUpdateFixture';
 import { CanvasImageCardSchema } from '../../src/shared';
 import { createCanvasCardTextureCaches } from '../../src/renderer/kernel/render/pixi/createCanvasCardTextureCaches';
+import { CanvasMapLabels } from '../../src/renderer/kernel/render/pixi/CanvasMapLabels';
+import { createCanvasPerformancePaintTrace } from './performancePaintTrace';
 
 const strings = ['中文身份牌：春江花月夜', 'office affinity ffi AV', 'e\u0301 A\u030a 组合附加符',
   '👨‍👩‍👧‍👦 🇨🇳 👍🏽 ❤️', 'العَرَبِيَّةُ لا سلام', 'नमस्ते दुनिया क्ष', '日本語かなカナ 한글', '末行边界　（）【】'];
@@ -147,9 +149,34 @@ async function sharedBudget() {
   }
 }
 
+async function emptyMap() {
+  const app = new Application();
+  await app.init({ width: 300, height: 150, autoStart: false, preference: 'webgl', backgroundAlpha: 0 });
+  const map = new CanvasMapLabels(), reference = new CanvasMapLabels(), cards = createVisibleUpdateFixture('text').slice(0, 1);
+  let title = '旧标题：春江花月夜', trace: ReturnType<typeof createCanvasPerformancePaintTrace> | null = null;
+  const input = (entries: typeof cards, zoom = 0.1) => ({ cards: entries, camera: { x: 20, y: 20, zoom }, width: 300, height: 150,
+    dark: false, visible: true, readTitle: () => title });
+  try {
+    app.stage.addChild(map.sprite); map.draw(input(cards)); app.render();
+    const before = await app.renderer.extract.base64({ target: app.stage, frame: new Rectangle(0, 0, 300, 150) });
+    trace = createCanvasPerformancePaintTrace();
+    for (let i = 0; i < 10; i++) { map.draw(input([], 0.1 + i * 0.001)); app.render(); }
+    const empty = trace.finish(); trace = null;
+    const hidden = !map.sprite.visible && !map.hasLabel(cards[0].id);
+    title = '新标题：不同字样';
+    trace = createCanvasPerformancePaintTrace(); map.draw(input(cards)); app.render();
+    const restored = trace.finish(); trace = null;
+    const image = await app.renderer.extract.base64({ target: app.stage, frame: new Rectangle(0, 0, 300, 150) });
+    map.sprite.visible = false; app.stage.addChild(reference.sprite); reference.draw(input(cards)); app.render();
+    const expected = await app.renderer.extract.base64({ target: app.stage, frame: new Rectangle(0, 0, 300, 150) });
+    return { before, image, expected, hidden, empty, restored };
+  } finally { trace?.finish(); map.destroy(); reference.destroy(); app.destroy(true, { children: true, texture: false }); }
+}
+
 Object.defineProperties(window, {
   canvasIdentityAtlasPixels: { value: pixels }, canvasIdentityAtlasLifecycle: { value: lifecycle },
   canvasIdentityAtlasContext: { value: contextRestoration },
   canvasIdentityAtlasHiddenLod: { value: hiddenLod },
   canvasIdentityAtlasSharedBudget: { value: sharedBudget },
+  canvasEmptyMapLabels: { value: emptyMap },
 });

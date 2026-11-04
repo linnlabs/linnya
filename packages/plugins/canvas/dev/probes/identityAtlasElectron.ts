@@ -2,6 +2,7 @@ import { app, BrowserWindow, nativeImage } from 'electron';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
+import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
 
 const output = process.argv[2]; if (!output) throw new Error('identity_atlas_output_required');
 app.setPath('userData', path.join(output, 'profile')); app.on('window-all-closed', () => {});
@@ -10,7 +11,7 @@ const pixels = z.object({ resolution: z.number(), zoom: z.number(), strings: z.a
 async function run() {
   await app.whenReady(); if (process.platform === 'darwin') app.setActivationPolicy('accessory');
   const win = new BrowserWindow({ show: false, width: 1400, height: 900,
-    webPreferences: { offscreen: true, backgroundThrottling: false, sandbox: true, contextIsolation: true } });
+    webPreferences: { offscreen: true, backgroundThrottling: false, sandbox: true, contextIsolation: true, enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
   try {
     win.webContents.on('console-message', details => { if (details.level === 'error') console.error(details.message); });
     await win.loadFile(path.join(output, 'index.html'));
@@ -66,9 +67,22 @@ async function run() {
     const contextFacts = { initial: context.initial, restored: context.restored, rejected: context.rejected, intersection, union, iou: intersection / union };
     await writeFile(path.join(output, 'context-pixels.json'), JSON.stringify(contextFacts, null, 2));
     if (!union || contextFacts.iou < 0.995) throw new Error('identity_context_restore_lost_current_title_pixels');
+    const observation = z.object({ overflow: z.number(), events: z.array(z.object({ kind: z.string(), sourceKind: z.string().optional() }).passthrough()) }).passthrough();
+    const map = z.object({ before: z.string(), image: z.string(), expected: z.string(), hidden: z.boolean(), empty: observation, restored: observation })
+      .parse(await win.webContents.executeJavaScript('window.canvasEmptyMapLabels()'));
+    const oldMap = nativeImage.createFromDataURL(map.before), newMap = nativeImage.createFromDataURL(map.image), expectedMap = nativeImage.createFromDataURL(map.expected);
+    await writeFile(path.join(output, 'map-empty-before.png'), oldMap.toPNG());
+    await writeFile(path.join(output, 'map-empty-restored.png'), newMap.toPNG());
+    await writeFile(path.join(output, 'map-empty-expected.png'), expectedMap.toPNG());
+    const mapFacts = { hidden: map.hidden, empty: map.empty, restored: map.restored,
+      currentPixelsMatch: newMap.toBitmap().equals(expectedMap.toBitmap()), oldPixelsChanged: !oldMap.toBitmap().equals(newMap.toBitmap()) };
+    await writeFile(path.join(output, 'map-empty-facts.json'), JSON.stringify(mapFacts, null, 2));
+    if (!mapFacts.hidden || !mapFacts.currentPixelsMatch || !mapFacts.oldPixelsChanged || map.empty.overflow || map.restored.overflow
+      || map.empty.events.some(event => event.kind === 'texture-upload')
+      || map.restored.events.filter(event => event.kind === 'texture-upload' && event.sourceKind === 'canvas').length !== 1) throw new Error('empty_map_upload_or_stale_title_projection');
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ sourceCommit: process.env.CANVAS_PROBE_SOURCE_COMMIT,
       sourceDirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE,
-      validHardwareRun: false, versions: process.versions, reports, lifecycle, budget, lod: { visible: lod.visible, small: lod.small, panned: lod.panned, cleared: lod.cleared }, context: contextFacts }, null, 2));
+      validHardwareRun: false, versions: process.versions, reports, lifecycle, budget, map: mapFacts, lod: { visible: lod.visible, small: lod.small, panned: lod.panned, cleared: lod.cleared }, context: contextFacts }, null, 2));
     console.log(JSON.stringify({ reports, lifecycle, context: contextFacts }));
   } finally { win.destroy(); }
 }

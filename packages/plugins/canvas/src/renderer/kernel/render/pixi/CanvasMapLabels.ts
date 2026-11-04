@@ -43,9 +43,17 @@ export class CanvasMapLabels {
     if (this.fittedTitles.size >= 4096) this.fittedTitles.clear();
     this.fittedTitles.set(titleKey, title); return title;
   }
+  private needsRedraw(input: CanvasMapLabelsInput): boolean {
+    this.sprite.visible = input.visible && input.cards.length > 0;
+    if (!input.cards.length) {
+      // 纯图片/缩略图没有标题候选，不能每次缩放上传整张透明屏幕纹理。
+      // 清投影身份，回到非空时即使复用旧cards数组也必须重画当前文字。
+      this.drawn.clear(); this.projection = undefined; return false;
+    }
+    return input.visible && !this.panCachedProjection(input);
+  }
   draw(input: CanvasMapLabelsInput): void {
-    this.sprite.visible = input.visible;
-    if (!input.visible || this.panCachedProjection(input)) return;
+    if (!this.needsRedraw(input)) return;
     const { width, height, camera } = input;
     const renderWidth = width + this.padding * 2, renderHeight = height + this.padding * 2;
     if (this.canvas.width !== renderWidth || this.canvas.height !== renderHeight) {
