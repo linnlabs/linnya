@@ -16,4 +16,8 @@ DOM 安装后等待 fonts 和图片 decode。图片必须经内容 provider 从�
 
 `rasterizeBatch` 将同批可见片段装入最长边4096的 paint atlas，再通过独立 OffscreenCanvas 裁出每个 ImageBitmap，防止小碎片保留整页底图。队列的 executeBatch 仍只有一个运行批次；同批一张卡取消只释放它的结果，其他卡继续完成。销毁会中断 paint 等待。
 
+测高只安装与读取DOM；实例首次非空光栅请求才将staging canvas唯一转移到同placeholder的Offscreen atlas，不创建HTMLCanvas2D context。真实onpaint捕获直属viewport的ElementImage，在同身份的Offscreen2D重放；[Chromium150要求同canvas身份](https://github.com/chromium/chromium/blob/150.0.7871.250/third_party/blink/renderer/core/html/canvas/canvas_rendering_context.cc#L145)，不能把快照直接交任意独立tile或将Element直接交Offscreen。每页快照在全部裁片结束或失败/取消后显式close；已交付的独立bitmap仍由原消费者关闭，销毁staging只中断本实例并清空atlas backing。
+
+转移后HTML bitmap尺寸setter不可调用，当前输出尺寸由Offscreen backing拥有，HTML与viewport CSS仍保持原排版宽高。原生paint record按目的backing与CSS的比率重放，CTM保持identity，不再次乘DPR；快照width/height和异步placeholder intrinsic尺寸都不能代替实际atlas输出尺寸。CPU hint、画质、纹理/队列预算和paint超时不因这条路径改变；能力缺失仍明确失败，不保留旧光栅fallback。该路径避免HTMLCanvas2D自己的FinalizeFrame限流器，但placeholder仍会提交合成资源，不能据此承诺没有GPU等待。旧dev paint/context诊断中HTML2D draw和HTML intrinsic宽高不再代表atlas，采样新路径时须按实际Offscreen记录解释。
+
 同 runner/DPR 的正文视觉 gate：`node packages/plugins/canvas/dev/probes/run-visual-probe.mjs`。实时 DOM、HTML 光栅、Pixi 三者都使用正式正文 fragment、CSS 和 system-ui 字体，覆盖中文、Emoji、列表、行内格式、引用、代码与表格，以及两主题/两材质。原墨迹交并比及raw95继续保留为诊断；Windows LCD与透明bitmap灰阶AA的资格、真实逐字簇/行边界和损坏反例由唯一的[开发视觉oracle](../../../../dev/probes/visualOracle/README.md)定义，不以降低旧阈值或修改生产样式制造通过。它检查正文缺失、截断、错位和颜色，排除独立材质外框，不锁定外观布局；输出只在 `_dev_data/canvas-visual-probe/`。
