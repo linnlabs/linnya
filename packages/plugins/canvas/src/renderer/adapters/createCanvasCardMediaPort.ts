@@ -19,6 +19,6 @@ export function createCanvasCardMediaPort(projectId = getCurrentWorkspaceProject
     subscribe: subscribeWorkspaceMutations,
     subscribeAvailability: listener => subscribeRendererPluginAvailability(changes => listener(changes.flatMap(change => change.documentNodeTypes))),
     projectId: () => projectId,
-    openDocument: (documentId, type, displayName) => getWorkspaceNavigationPort().openDocument({ documentId, type, displayName, projectId }),
+    openDocument: (documentId, nodeType, displayName) => getWorkspaceNavigationPort().openDocumentByNodeType({ documentId, nodeType, displayName, projectId }),
   };
 }

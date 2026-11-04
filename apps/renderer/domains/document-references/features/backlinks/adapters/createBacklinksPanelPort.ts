@@ -18,10 +18,10 @@ export function createBacklinksPanelPort(projectId: string): BacklinksPanelPort 
         (current.status !== 'available' && current.status !== 'plugin_unavailable')
       )
         throw new Error('Backlink source is no longer accessible');
-      await getWorkspaceNavigationPort().openDocumentTarget({
+      await getWorkspaceNavigationPort().openDocumentByNodeType({
         projectId,
         documentId: current.documentId,
-        type: current.nodeType,
+        nodeType: current.nodeType,
         displayName: current.title,
       });
     },

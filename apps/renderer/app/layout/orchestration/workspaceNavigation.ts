@@ -20,7 +20,7 @@ import type {
 } from '@/shared/ports/workspaceNavigationPort';
 import { getDocumentSurfaceRuntimePort } from '@/shared/ports/documentSurfaceRuntimePort';
 import { activateFileSession, getActiveFileSession, saveDeactivateThen } from '@/domains/workspace/services/file-manager';
-import { getDocumentRuntimeLoaderByActiveType, getDocumentTypeByActiveType } from '@/app/plugins/registry';
+import { getDocumentRuntimeLoaderByActiveType, getDocumentTypeByActiveType, getDocumentTypeByNodeType } from '@/app/plugins/registry';
 import type {
   DocumentRuntimeLoaderContribution,
   DocumentRuntimeLoadRequest,
@@ -215,7 +215,7 @@ async function saveCurrentSessionBeforeReplacingSurface(
 }
 
 export function createWorkspaceNavigation(): WorkspaceNavigationPort {
-  return {
+  const port: WorkspaceNavigationPort = {
     async openWorkspace(scope) {
       const layoutStore = useLayoutStore();
       const navigationScope = useNavigationScope();
@@ -301,6 +301,13 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
         setWorkspaceView({ kind: 'linnya-assistant' });
         layoutStore.openChatWorkspace();
       });
+    },
+
+    async openDocumentByNodeType({ nodeType, ...request }) {
+      const documentType = getDocumentTypeByNodeType(nodeType);
+      if (!documentType) throw new Error(`[workspaceNavigation] unsupported document node type: ${nodeType}`);
+      // 引用只知道持久nodeType；复用正式打开链，仍等待旧文档保存并核对插件可用性。
+      await port.openDocumentTarget({ ...request, type: documentType.activeDocumentType });
     },
 
     async openDocumentTarget(request) {
@@ -547,4 +554,5 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
     },
 
   };
+  return port;
 }
