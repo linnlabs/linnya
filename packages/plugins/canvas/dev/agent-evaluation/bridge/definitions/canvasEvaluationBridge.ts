@@ -11,6 +11,7 @@ export const CanvasEvaluationCommandSchema = z.discriminatedUnion('kind', [
   z.object({ id: z.string().uuid(), kind: z.literal('save'), payload: empty }).strict(),
   z.object({ id: z.string().uuid(), kind: z.literal('fit'), payload: z.object({ elementIds: z.array(CanvasElementIdSchema).optional() }).strict() }).strict(),
   z.object({ id: z.string().uuid(), kind: z.literal('stats'), payload: z.object({ reset: z.boolean().optional() }).strict() }).strict(),
+  z.object({ id: z.string().uuid(), kind: z.literal('readiness'), payload: z.object({ elementIds: z.array(CanvasCardIdSchema) }).strict() }).strict(),
   z.object({ id: z.string().uuid(), kind: z.literal('unmount'), payload: empty }).strict(),
 ]);
 export type CanvasEvaluationCommand = z.infer<typeof CanvasEvaluationCommandSchema>;

@@ -13,3 +13,5 @@
 正式时延分为`geometry`和`body.frame`：前者只证明包含该序号的几何draw，后者还要求当前可见正文的相同环境/内容身份已上传且随后实际绘制，并等待精确倍率稳定。通过正式changes返回的delta逐sequence记录该批真实卡片ID/revision，不额外IPC读取或把整份snapshot差异算给一批；补拉只有snapshot时标记unattributed。`visibleBodyIds`是实际可见body交集，overview/thumbnail/outside均不冒充正文，隐藏、失败、5秒未完成和被后续版本替代保留各自事实。最终500卡指标必须核对交集数量和supersededCardIds，不能只用push总计数。
 
 每批`frames`只保存收到正式commit通知后、等待几何/正文完成期间的实际帧间隔。即使模型随后思考数分钟，这段工作窗也不会被全局34秒RAF环形缓存的空闲帧覆盖或稀释；无样本保留null，不能填成120FPS。单帧间隔可能跨过提交起点，因此这是明确标注的保守工作窗诊断。
+
+初开没有commit事件，可信客户端可用typed只读`readiness`读取指定卡片的实际mode/status/revision、正式draw计数与Renderer UTC时刻，并记录当时相机、屏幕DPR、页面可见性和主题/字体环境。此状态复用正式Surface的当前内容与排版环境校验，不暴露正文key；overview/outside不冒充body。客户端核对返回documentId仍为固定挂载文档，再记录mount请求到实际首个body与全部可见body终态的观测上界，包含HTTP桥等待，不能当作纯kernel耗时。没有可见body、隐藏、失败或超时必须保留状态，不能填0或只用renders判成功。

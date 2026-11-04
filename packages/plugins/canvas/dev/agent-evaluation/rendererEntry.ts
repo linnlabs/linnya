@@ -1,5 +1,6 @@
 import { createApp, nextTick, type App } from 'vue';
 import { JsonValueSchema } from '@app/schemas';
+import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
 import type { CanvasSynchronization } from '@plugin/canvas/shared';
 import { readDocumentReference } from '@plugin/renderer/documentReferences';
 import { readRendererPluginAvailability } from '@plugin/renderer/pluginRuntime';
@@ -63,6 +64,14 @@ async function execute(command: CanvasEvaluationCommand): Promise<unknown> {
     case 'save': if (!(await value.editor.save(true))) throw new Error('草稿未保存'); return { snapshot: value.session.state.snapshot.value };
     case 'fit': if (command.payload.elementIds) value.locate(command.payload.elementIds); else value.fit(); return { camera: value.camera.value };
     case 'stats': if (command.payload.reset) { metrics.reset(); commits?.reset(); } return { presentation: value.readPresentationStats(), layout: readCanvasEvaluationLayout(root), frames: metrics.read(), commits: commits?.read() ?? null, sequence: value.session.state.snapshot.value?.sequence ?? null };
+    case 'readiness': {
+      const style = getComputedStyle(document.body);
+      return { documentId: value.session.state.snapshot.value?.documentId ?? null, sequence: value.session.state.snapshot.value?.sequence ?? null,
+        readiness: value.readContentReadiness(command.payload.elementIds), renders: value.readPresentationStats().renders, observedAt: performance.timeOrigin + performance.now(),
+        environment: { camera: value.camera.value, screenPixelRatio: window.devicePixelRatio, visibilityState: document.visibilityState,
+          theme: document.documentElement.getAttribute(RENDERER_UI_THEME_ATTRIBUTE), fontFamily: style.fontFamily, fontSmoothing: style.getPropertyValue('-webkit-font-smoothing') },
+      };
+    }
   }
 }
 function hostInstalled(): boolean {
