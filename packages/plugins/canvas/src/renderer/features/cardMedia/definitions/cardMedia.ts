@@ -14,6 +14,9 @@ export interface CanvasDocumentReferenceVersions {
   version(documentId: string): number;
   generation(): number;
 }
+export type CanvasReferenceMetadataChange =
+  | { readonly kind: 'resolved' | 'invalidated' }
+  | { readonly kind: 'failed'; readonly error: Error };
 export interface CanvasCardContent {
   create(card: CanvasCard, signal: AbortSignal): Promise<HTMLElement>;
   stageImage(asset: DocumentImageAsset): Promise<void>;
