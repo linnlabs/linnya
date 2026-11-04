@@ -80,12 +80,11 @@ export function createCanvasVersionHistoryRuntime(options: CanvasVersionHistoryO
     }).immediate();
     const status = budgetStatus(documentId); notifyBudget(status); return status;
   }
-  function recordCommit(history: CanvasHistoryCommitInput, input: { readonly beforeGroup?: boolean } = {}): (() => void) | undefined {
+  function recordCommit(history: CanvasHistoryCommitInput): (() => void) | undefined {
     if (!history.plan.changes.length) return undefined;
     const documentId = history.context.documentId;
     const before = { schemaVersion: 1, documentId, sequence: history.before.sequence, elements: history.before.elements.map(row => row.element) } satisfies CanvasSnapshot;
     initialize(documentId, history.context.now, before);
-    if (input.beforeGroup) checkpoint({ documentId, reason: 'agent-group', now: history.context.now, snapshot: before });
     const head = requiredHead(documentId); if (head.sequence !== history.before.sequence) throw new DocumentHistoryError('version_conflict');
     const inverse = mergeCanvasVersionHead(decodeCanvasVersionInverse(head.inverse), history.plan.changes);
     const encoded = inverse.length ? encodeCanvasVersion(inverse) : null;
@@ -93,7 +92,7 @@ export function createCanvasVersionHistoryRuntime(options: CanvasVersionHistoryO
     repository.writeHead(documentId, { ...head, sequence: history.plan.state.sequence, changedAt: history.context.now, dirtySince: inverse.length ? head.dirtySince ?? history.context.now : null, inverse: encoded, usedBytes, overBudgetBytes: Math.max(0, usedBytes - budgetBytes) });
     return () => {
       // 通知和计时失败发生在正式提交以后，只报告；不能把已保存内容说成保存失败。
-      try { maintenance.schedule(documentId); if (input.beforeGroup) maintenance.requestMaintenance(documentId); notifyBudget(budgetStatus(documentId)); } catch (error) { report(documentId, error); }
+      try { maintenance.schedule(documentId); notifyBudget(budgetStatus(documentId)); } catch (error) { report(documentId, error); }
     };
   }
   function assertCurrent(request: Pick<DocumentVersionRestoreRequest, 'documentId' | 'expectedCurrentVersionId'>): void { if (canvasVersionId(requiredHead(request.documentId).sequence) !== request.expectedCurrentVersionId) throw new DocumentHistoryError('version_conflict'); }

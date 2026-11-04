@@ -6,13 +6,12 @@ import {
   type CanvasSnapshot, type CanvasUndoRequest, type CanvasCommitRequest, CANVAS_HISTORY_BUDGET_CHANNEL, CANVAS_RESTORED_CHANNEL,
 } from '../../shared';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
-import { initializeCanvasDocument, readCanvasSnapshot, canvasSourceKey, readCanvasSynchronization, updateCanvasEditingClaim } from '../features/canvasCommit';
+import { initializeCanvasDocument, readCanvasSnapshot, readCanvasSynchronization, updateCanvasEditingClaim } from '../features/canvasCommit';
 import { createCanvasHistoryRuntime } from './history/createCanvasHistoryRuntime';
 import { createCanvasVersionHistoryRuntime } from '../features/canvasVersionHistory';
 import { createCanvasVersionHistoryPorts } from '../adapters/createCanvasVersionHistoryPorts';
 import { createCanvasVersionActions } from './createCanvasVersionActions';
 import { readCanvasDocumentIdentity, CanvasDocumentFailure } from '../features/canvasDocument';
-import { hasCanvasAgentGroup } from '../features/agentChanges';
 import { createCanvasTextSnapshots } from './createCanvasTextSnapshots';
 import { createCanvasDocumentCommitParticipants } from '../adapters/createCanvasDocumentCommitParticipants';
 import { readCanvasProjectionContext } from '../features/canvasDocument';
@@ -31,14 +30,15 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
   const admission = createCanvasDocumentCommitParticipants(database, references);
   const editing: ReturnType<typeof createCanvasHistoryRuntime> = createCanvasHistoryRuntime({ database,
     pendingApproval(batch) { assertActive(); admission.pendingApproval(batch); },
+    groupStarted({ documentId, before, now }) {
+      versions.checkpoint({ documentId, reason: 'agent-group', now,
+        snapshot: { schemaVersion: 1, documentId, sequence: before.sequence, elements: before.elements.map(row => row.element) } });
+    },
     groupsChanged(documentId) { versions.requestMaintenance(documentId); broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_GROUPS_CHANGED_CHANNEL, { documentId }); },
     ports: {
     // CLI 的正文/图片准入可跨过停用时刻；最终事务统一拒绝旧运行态，不能只检查入口。
     participants: [{ commit() { assertActive(); } }, ...admission.participants],
-    history(input) {
-      const beforeGroup = input.context.actor.source.kind === 'agent' && !hasCanvasAgentGroup(database, input.context.documentId, canvasSourceKey(input.context.actor));
-      return versions.recordCommit(input, { beforeGroup });
-    },
+    history: versions.recordCommit,
     publish(plan, context, publication) {
       const node = readCanvasDocumentIdentity(database, context.documentId);
       textSnapshots.schedule(context.documentId);

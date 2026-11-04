@@ -2,8 +2,15 @@ import { z } from 'zod';
 import { CanvasCommitRequestSchema, CanvasElementIdSchema, CanvasPendingApprovalSchema, CanvasSourceSchema, CanvasGroupWriteOutcomesSchema } from '../../../../shared';
 import { CanvasHistoryEntrySchema } from '../../../shared/history';
 import type { CanvasDatabase } from '../../../definitions/canvasDatabase';
+import type { CanvasCommitState } from '../../canvasCommit';
 
 export type CanvasAgentReceiptDatabase = Pick<CanvasDatabase, 'prepare'>;
+/** 只由实际新建持久组触发；before可早于当前已落SQL的内容，不能再从current猜开组状态。 */
+export interface CanvasAgentGroupStart {
+  readonly documentId: string;
+  readonly before: CanvasCommitState;
+  readonly now: number;
+}
 
 export const CanvasAgentGroupRecordSchema = z.object({
   id: z.string(), documentId: z.string(), conversationId: z.string().nullable(), runIds: z.array(z.string()),

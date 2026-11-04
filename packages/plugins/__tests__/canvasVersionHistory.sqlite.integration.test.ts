@@ -28,6 +28,7 @@ import { clearBackendRendererIntegrationPortForTesting, installBackendRendererIn
 let root: string, appDataRoot: string, workspaceRoot: string, filename: string, projectId: string, caseDirectory: string;
 let database: Database.Database;
 let runtime: ReturnType<typeof createCanvasDocumentRuntime>;
+let publishPluginRendererPush: ReturnType<typeof vi.fn>;
 const text = (value: string) => ({ op: 'addText', width: 240, height: 120, content: createCanvasPlainTextDocument(value) });
 const image = (assetId: string) => ({ op: 'addImage', width: 240, height: 120, data: { assetId, caption: '', alt: '', crop: null } });
 function viewIdFor(documentId: string): string { return `view:${documentId}`; }
@@ -62,9 +63,10 @@ beforeEach(async () => {
   for (const migration of canvasPluginMigrations) migration.up(database);
   installPluginHostTestRuntime({ installedPluginIds: ['platform', 'canvas'], enabledPluginIds: ['platform', 'canvas'] });
   backendPluginRegistry.register(platformBackendPlugin); backendPluginRegistry.register(createCanvasBackendPlugin(), { allowPluginCli: true });
+  publishPluginRendererPush = vi.fn(() => { expect(database.inTransaction).toBe(false); });
   installBackendRendererIntegrationPort({ connectModelCatalogUpdates: async () => () => undefined,
     publishIngestionStatus: vi.fn(), queueJobPresentationPublisher: { publishProgress: vi.fn(), publishCompletion: vi.fn(), publishFailure: vi.fn() },
-    publishKnowledgeGraphProgress: vi.fn(), publishTranscriptionProgress: vi.fn(), publishWorkspaceMutation: vi.fn(), publishPluginRendererPush: vi.fn(), publishTodosChanged: vi.fn(), publishModelsChanged: vi.fn(), publishPluginsChanged: vi.fn(),
+    publishKnowledgeGraphProgress: vi.fn(), publishTranscriptionProgress: vi.fn(), publishWorkspaceMutation: vi.fn(), publishPluginRendererPush, publishTodosChanged: vi.fn(), publishModelsChanged: vi.fn(), publishPluginsChanged: vi.fn(),
   });
   projectId = createProjectLifecycle(database).create({ name: '历史集成' });
   runtime = createCanvasDocumentRuntime(database);
@@ -176,4 +178,73 @@ it('does not let an open Agent group withdraw past a user restore or accept its 
   expect(runtime.project(id)).toContain('Agent正文');
   runtime.undo({ documentId: id, viewId: viewIdFor(id), requestId: 'redo-after-skipped-withdrawal', direction: 'redo' }); expect(runtime.read(id).elements[0]).toMatchObject({ color: 'white' });
   expect(runtime.project(id)).toContain('用户正文');
+});
+
+it.each(['allow', 'deny', 'replace'] as const)('anchors the actual group start before pending approval and does not repeat it on %s', async decision => {
+  const id = createCanvas('待审批组.canvas'); commit(id, Array.from({ length: 20 }, (_, index) => text(`用户原卡${index}`)));
+  const before = runtime.read(id), original = await latest(id);
+  const actor = { projectId, viewId: 'agent', source: { kind: 'agent' as const, conversationId: 'approval-chat', runId: 'approval-run' } };
+  const operations = before.elements.map(element => ({ op: 'delete', id: element.id }));
+  const pending = runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'first-pending', operations } });
+  if (pending.kind !== 'pending') throw new Error('Expected actual pending approval');
+  expect(runtime.read(id)).toEqual(before);
+  // 让current前进，才能区分持久恢复点和列表临时投影的live项。
+  commit(id, [text('审批期间的用户新卡')]); const intermediate = await latest(id);
+  expect(runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'first-pending', operations } })).toEqual(pending);
+  expect((await runtime.history.list(id)).map(row => row.versionId)).toContain(original.versionId);
+  expect(await runtime.history.preview(id, original.versionId)).toEqual(before);
+  if (decision === 'replace') {
+    const replacement = runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'replacement-pending', operations } });
+    if (replacement.kind !== 'pending') throw new Error('Expected replacement approval');
+    expect(replacement.approval.groupId).toBe(pending.approval.groupId);
+    expect(() => runtime.editing.resolveApproval({ documentId: id, viewId: viewIdFor(id), requestId: randomUUID(), pendingId: pending.approval.id, decision: 'allow' }, Date.now())).toThrow('canvas_approval_expired');
+    runtime.editing.resolveApproval({ documentId: id, viewId: viewIdFor(id), requestId: randomUUID(), pendingId: replacement.approval.id, decision: 'deny' }, Date.now());
+  } else {
+    runtime.editing.resolveApproval({ documentId: id, viewId: viewIdFor(id), requestId: randomUUID(), pendingId: pending.approval.id, decision }, Date.now());
+  }
+  expect(runtime.read(id).elements).toHaveLength(decision === 'allow' ? 1 : 21);
+  commit(id, [{ op: 'update', id: 'c21', baseRevision: 1, patch: { color: 'cyan' } }]);
+  const versions = await runtime.history.list(id);
+  expect(versions.map(row => row.versionId)).toContain(original.versionId);
+  expect(versions.map(row => row.versionId)).not.toContain(intermediate.versionId);
+  expect(runtime.editing.listGroups(id, Date.now()).map(group => group.id)).toEqual([pending.approval.groupId]);
+});
+
+it('anchors an all-skipped new group once and does not treat a withdrawn empty old group as new', async () => {
+  const id = createCanvas('全保留组.canvas'); commit(id, [text('用户原文')]);
+  const before = runtime.read(id), original = await latest(id);
+  const actor = { projectId, viewId: 'agent', source: { kind: 'agent' as const, conversationId: 'skip-chat', runId: 'skip-run' } };
+  runtime.protect({ documentId: id, viewId: 'other-editor', elementId: 'c1', fields: ['data'] });
+  const skipped = runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'protected-write', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { data: { contentVersion: 1, content: createCanvasPlainTextDocument('Agent首尝试') } } }] } });
+  expect(skipped).toMatchObject({ kind: 'committed', commit: { sequence: before.sequence, results: [{ status: 'skipped', reason: 'user_editing' }] } });
+  const group = runtime.editing.listGroups(id, Date.now())[0]; if (!group) throw new Error('Missing skipped group');
+  runtime.protect({ documentId: id, viewId: 'other-editor', elementId: 'c1', fields: [] });
+  commit(id, [text('用户后加')]); const intermediate = await latest(id);
+  expect((await runtime.history.list(id)).map(row => row.versionId)).toContain(original.versionId);
+  expect(await runtime.history.preview(id, original.versionId)).toEqual(before);
+  runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'first-success', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { data: { contentVersion: 1, content: createCanvasPlainTextDocument('Agent成功') } } }] } });
+  expect((await runtime.history.list(id)).map(row => row.versionId)).not.toContain(intermediate.versionId);
+  runtime.editing.withdraw({ documentId: id, viewId: viewIdFor(id), groupId: group.id, requestId: 'withdraw-success' }, Date.now());
+  const afterWithdrawal = await latest(id), current = runtime.read(id).elements.find(element => element.id === 'c1');
+  if (!current) throw new Error('Missing restored card');
+  runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'same-group-after-withdraw', operations: [{ op: 'update', id: 'c1', baseRevision: current.revision, patch: { color: 'red' } }] } });
+  expect((await runtime.history.list(id)).map(row => row.versionId)).not.toContain(afterWithdrawal.versionId);
+  expect(runtime.editing.listGroups(id, Date.now()).map(row => row.id)).toEqual([group.id]);
+});
+
+it.each(['pending', 'commit'] as const)('rolls a new %s group, its pre-group checkpoint and notifications back together', async mode => {
+  const id = createCanvas('新组事务失败.canvas'); commit(id, Array.from({ length: mode === 'pending' ? 20 : 1 }, (_, index) => text(`用户原卡${index}`)));
+  const before = runtime.read(id), original = await latest(id), versions = await runtime.history.list(id);
+  const actor = { projectId, viewId: 'agent', source: { kind: 'agent' as const, conversationId: 'rollback-chat', runId: 'rollback-run' } };
+  const operations = mode === 'pending' ? before.elements.map(element => ({ op: 'delete', id: element.id })) : [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }];
+  const table = mode === 'pending' ? 'canvas_pending_approvals' : 'canvas_agent_requests';
+  database.exec(`CREATE TRIGGER fail_new_canvas_group BEFORE INSERT ON ${table} BEGIN SELECT RAISE(ABORT, 'new group transaction failed'); END`);
+  publishPluginRendererPush.mockClear();
+  try {
+    expect(() => runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'failed-new-group', operations } })).toThrow('new group transaction failed');
+    expect(runtime.read(id)).toEqual(before); expect(await runtime.history.list(id)).toEqual(versions);
+    expect(runtime.editing.listGroups(id, Date.now())).toEqual([]); expect(publishPluginRendererPush).not.toHaveBeenCalled();
+  } finally { database.exec('DROP TRIGGER fail_new_canvas_group'); }
+  commit(id, [text('失败后的用户新卡')]);
+  expect((await runtime.history.list(id)).map(row => row.versionId)).not.toContain(original.versionId);
 });

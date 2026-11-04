@@ -24,7 +24,7 @@ function fixture(filename = ':memory:', budgetBytes?: number) {
     initializeCanvasDocument(database, 'doc');
   }
   const snapshot = (): CanvasSnapshot => { const state = readCanvasCommitState(database, 'doc'); return { schemaVersion: 1, documentId: 'doc', sequence: state.sequence, elements: state.elements.map(row => row.element) }; };
-  const facts = new Map<string, number>(), failures = vi.fn(), reconcile = vi.fn(); let notificationFailure = false; let releaseFailure = false, crashed = false, beforeGroup = false; let restoredFrom: DocumentVersionSummary['restoredFrom'];
+  const facts = new Map<string, number>(), failures = vi.fn(), reconcile = vi.fn(); let notificationFailure = false; let releaseFailure = false, crashed = false; let restoredFrom: DocumentVersionSummary['restoredFrom'];
   let editing: ReturnType<typeof createCanvasHistoryRuntime>;
   const versions = createCanvasVersionHistoryRuntime({ database, budgetBytes, ports: {
     readSnapshot: snapshot,
@@ -32,15 +32,16 @@ function fixture(filename = ':memory:', budgetBytes?: number) {
     assetByteFacts: (_documentId, assetIds) => assetIds.map(assetId => { const byteLength = facts.get(assetId); if (byteLength === undefined) throw new Error('Missing byte fact'); return { assetId, byteLength }; }),
     reconcileHistoryAssets: (_documentId, assetIds) => { if (releaseFailure) throw new Error('Ownership failed'); reconcile(assetIds); }, reportFailure: failures, budgetChanged() { if (notificationFailure) throw new Error('Broadcast failed'); },
   } });
-  editing = createCanvasHistoryRuntime({ database, ports: { history(input) {
-    expect(database.inTransaction).toBe(true); const afterCommit = versions.recordCommit(input, { beforeGroup });
+  editing = createCanvasHistoryRuntime({ database,
+    groupStarted({ documentId, before, now }) { versions.checkpoint({ documentId, reason: 'agent-group', now, snapshot: { schemaVersion: 1, documentId, sequence: before.sequence, elements: before.elements.map(row => row.element) } }); },
+    ports: { history(input) {
+    expect(database.inTransaction).toBe(true); const afterCommit = versions.recordCommit(input);
     if (restoredFrom) versions.checkpoint({ documentId: 'doc', reason: 'restore', snapshot: { schemaVersion: 1, documentId: 'doc', sequence: input.plan.state.sequence, elements: input.plan.state.elements.map(row => row.element) }, restoredFrom });
     return afterCommit;
   } } });
   versions.initialize('doc', Date.now());
-  function commit(operations: unknown[], options: { actor?: CanvasCommitActor; beforeGroup?: boolean } = {}) {
-    beforeGroup = options.beforeGroup ?? false;
-    try { return editing.commit({ request: { documentId: 'doc', requestId: randomUUID(), operations }, actor: options.actor ?? user, now: Date.now() }); } finally { beforeGroup = false; }
+  function commit(operations: unknown[], options: { actor?: CanvasCommitActor } = {}) {
+    return editing.commit({ request: { documentId: 'doc', requestId: randomUUID(), operations }, actor: options.actor ?? user, now: Date.now() });
   }
   function update(patch: unknown) { const current = snapshot().elements.find(element => element.id === 'c1'); if (!current) throw new Error('Missing c1'); return commit([{ op: 'update', id: 'c1', baseRevision: current.revision, patch }]); }
   function checkpoint() { return versions.checkpoint({ documentId: 'doc', reason: 'close' }); }
@@ -77,7 +78,7 @@ describe('Canvas durable reverse-field version history', () => {
   });
   it('checkpoints exactly before an Agent group writes, using history.before even though current SQL was already updated', () => {
     const f = fixture(); f.commit([add]); const before = f.snapshot();
-    f.commit([{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'yellow' } }], { beforeGroup: true, actor: { source: { kind: 'agent', conversationId: 'conversation', runId: 'run' }, viewId: 'agent' } });
+    f.commit([{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'yellow' } }], { actor: { source: { kind: 'agent', conversationId: 'conversation', runId: 'run' }, viewId: 'agent' } });
     const prior = f.versions.list('doc').find(row => row.order === before.sequence + 1); if (!prior) throw new Error('No pre-Agent checkpoint');
     expect(f.versions.preview('doc', prior.versionId)).toEqual(before); expect(f.snapshot().elements[0]).toMatchObject({ color: 'yellow' });
   });
