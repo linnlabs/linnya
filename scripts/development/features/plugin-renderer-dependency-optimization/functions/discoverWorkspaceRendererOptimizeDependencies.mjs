@@ -67,19 +67,23 @@ function readRendererOptimizeDependencies(packageJson, packageJsonPath) {
 }
 
 /**
- * 收集 workspace 插件主动声明的 Renderer 依赖预构建输入。
+ * 收集 workspace package 主动声明的 Renderer 依赖预构建输入。
  *
  * 中文说明：Vite 无法总是在启动时发现运行期动态 import 的插件入口，因此插件 owner
  * 必须声明确实需要提前优化的包；Host 只消费通用元数据，不维护插件 ID 或实现依赖清单。
  */
 export function discoverWorkspaceRendererOptimizeDependencies(repositoryRoot = process.cwd()) {
-  const pluginsRoot = path.join(repositoryRoot, 'packages', 'plugins');
-  if (!fs.existsSync(pluginsRoot)) return [];
+  // 与 pnpm-workspace.yaml 的两层 package owner 对齐，包含共享 parser 与动态插件。
+  const packageRoots = ['packages', 'packages/plugins'].flatMap(relativeRoot => {
+    const root = path.join(repositoryRoot, relativeRoot);
+    return fs.readdirSync(root, { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => path.join(root, entry.name));
+  });
 
   const dependencies = new Set();
-  for (const entry of fs.readdirSync(pluginsRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const packageJsonPath = path.join(pluginsRoot, entry.name, 'package.json');
+  for (const packageRoot of packageRoots) {
+    const packageJsonPath = path.join(packageRoot, 'package.json');
     if (!fs.existsSync(packageJsonPath)) continue;
 
     const packageJson = readJson(packageJsonPath);
@@ -89,10 +93,12 @@ export function discoverWorkspaceRendererOptimizeDependencies(repositoryRoot = p
       const dependencyName = packageNameFromSpecifier(specifier);
       if (!dependencyName || !declaredDependencyNames.has(dependencyName)) {
         throw new Error(
-          `${packageJsonPath}: Renderer 优化项 ${specifier} 必须由插件自己的依赖字段声明`
+          `${packageJsonPath}: Renderer 优化项 ${specifier} 必须由 package 自己的依赖字段声明`
         );
       }
-      dependencies.add(specifier);
+      // Vite 的裸 include 从 Host 根解析；pnpm 下必须以声明者的 node_modules 定位。
+      // 保留目录入口让 Vite 自己选择 browser/module/exports，不用 Node require 条件替代。
+      dependencies.add(path.join(packageRoot, 'node_modules', specifier).split(path.sep).join('/'));
     }
   }
 

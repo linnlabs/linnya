@@ -94,7 +94,7 @@ export type AiSdkLanguageDiagnostic =
       readonly request_fingerprint?: string;
       readonly capability_id: AiSdkInferenceCapabilityId;
       readonly surface: AiSdkInferenceSurface;
-      readonly finish_reason: 'error' | 'other';
+      readonly finish_reason: 'error' | 'other' | 'interrupted';
       readonly raw_finish_reason_category: string;
       readonly projected_event_type: 'finish' | 'failure';
       readonly projected_code?: string;

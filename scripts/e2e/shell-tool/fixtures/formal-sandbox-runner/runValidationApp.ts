@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { app } from 'electron';
+import { requireFixtureAbsolutePath } from '../../harness/requireFixtureEnvironment';
 
 import type {
   SandboxRunnerRequest,
@@ -22,8 +23,8 @@ import {
 } from '../../../../../src/infra/adapters/local-process-runtime/windows/definitions/windowsNativeRuntimeManifest';
 import { pptComposeProfile } from '@plugin/slides/backend-sandbox';
 
-const RESULT_PATH = process.env.LINNYA_FORMAL_SANDBOX_RESULT_PATH;
-const STORAGE_ROOT = process.env.LINNYA_FORMAL_SANDBOX_STORAGE_ROOT;
+const RESULT_PATH = requireFixtureAbsolutePath('LINNYA_FORMAL_SANDBOX_RESULT_PATH');
+const STORAGE_ROOT = requireFixtureAbsolutePath('LINNYA_FORMAL_SANDBOX_STORAGE_ROOT');
 const RUN_MODE = process.env.LINNYA_FORMAL_SANDBOX_MODE ?? 'suite';
 const SOURCE_SENTINEL = 'LINNYA_PRIVATE_SOURCE_SENTINEL_9f7c6a';
 const HEAP_PRESSURE_SOURCE = [
@@ -33,13 +34,6 @@ const HEAP_PRESSURE_SOURCE = [
   '}',
   'return retained.length;',
 ].join('\n');
-
-if (!RESULT_PATH || !path.isAbsolute(RESULT_PATH)) {
-  throw new Error('LINNYA_FORMAL_SANDBOX_RESULT_PATH must be an absolute path');
-}
-if (!STORAGE_ROOT || !path.isAbsolute(STORAGE_ROOT)) {
-  throw new Error('LINNYA_FORMAL_SANDBOX_STORAGE_ROOT must be an absolute path');
-}
 
 function publishResult(value: unknown): void {
   const pendingPath = `${RESULT_PATH}.${process.pid}.pending`;

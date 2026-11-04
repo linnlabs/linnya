@@ -1,3 +1,4 @@
+import { ProcessOutputCursorSchema } from '@app/schemas/commands';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { promises as fsp } from 'node:fs';
@@ -50,13 +51,15 @@ import { defaultToolRuntimePort } from '../../../../../src/app-hosts/linnya/adap
 import { createLinnyaChildRunInvoker } from '../../../../../src/app-hosts/linnya/adapters/child-runs/childRunInvokerFactory';
 import { createRegisteredChildRunInvoker } from '../../../../../src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
 import {
+  readWindowRefresh,
+  readRunFinalAnswer,
   readAfter,
   readAround,
   readBefore,
   readSubrunTrace,
   readTail,
   readTurnIndex,
-} from '../../../../../src/app-hosts/linnya/adapters/persistence/event-store/ui-projection';
+} from '../../../../../src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import { createProductionE2eCommandPermissionSettings } from '../../harness/createProductionE2eCommandPermissionSettings';
 import { installProductionE2eRuntimePathRoots } from '../../harness/installProductionE2eRuntimePathRoots';
 import { parseCommandOutputArtifactManifest } from '../../../../../src/domains/commands/definitions/commandOutputArtifact';
@@ -219,7 +222,7 @@ export async function runProductionChildAgentScenario(input: {
   installProductionE2eRuntimePathRoots({ runRoot: input.runRoot, appDataRoot });
   await fsp.mkdir(appDataRoot, { recursive: true });
   const databaseService = new DatabaseService(databasePath);
-  databaseService.initialize({ lifecycleBootstrap: bootstrapBuiltinPluginLifecycle });
+  databaseService.initialize({ lifecycleBootstrap: db => bootstrapBuiltinPluginLifecycle(db, app.getVersion()) });
   const db = databaseService.getDb();
   setPluginRuntimeDatabase(db);
   const eventStore = new SQLiteEventStore(db);
@@ -289,13 +292,15 @@ export async function runProductionChildAgentScenario(input: {
     commandRuntime: commandRuntimes.child,
   });
   const historyRepository = new HistoryRepository(eventStore, {
+    readWindowRefresh: (conversationId, query) => readWindowRefresh(db, conversationId, query),
+    readRunFinalAnswer: (conversationId, runId) => readRunFinalAnswer(db, conversationId, runId),
     readTail: (conversationId, limit) => readTail(db, conversationId, limit),
     readBefore: (conversationId, cursor, limit) => readBefore(db, conversationId, cursor, limit),
     readAfter: (conversationId, cursor, limit) => readAfter(db, conversationId, cursor, limit),
-    readAround: (conversationId, anchorMessageId, before, after) => (
-      readAround(db, conversationId, anchorMessageId, before, after)
+    readAround: (conversationId, anchorMessageId, limit) => (
+      readAround(db, conversationId, anchorMessageId, limit)
     ),
-    readTurnIndex: (conversationId, options) => readTurnIndex(db, conversationId, options),
+    readTurnIndex: conversationId => readTurnIndex(db, conversationId),
     readSubrunTrace: (conversationId, parentToolCallId, subrunId, options) => (
       readSubrunTrace(db, conversationId, parentToolCallId, subrunId, options)
     ),
@@ -327,7 +332,7 @@ export async function runProductionChildAgentScenario(input: {
     commandCardSettlements: commandScope.conversationCardSettlementDeletion,
     stopFlowAndWait: conversationId => orchestrator.stopConversationActivityAndWait(conversationId),
   });
-  const historyService = new HistoryService(historyRepository, deletion);
+  const historyService = new HistoryService(historyRepository, deletion, deletion);
   const httpApp = express();
   httpApp.use('/api/v1/conversation', createHistoryRouter(historyService));
   const server = http.createServer(httpApp);
@@ -404,7 +409,10 @@ export async function runProductionChildAgentScenario(input: {
     assert(trace.events.every(event => event.subrun_id === childRunId));
     const childDecisionIds = trace.events
       .filter(event => event.kind === 'tool_call_decision')
-      .flatMap(event => event.tool_calls.map(call => call.tool_call_id));
+      .flatMap(event => {
+        assert(event.tool_calls, 'tool decision must include its calls');
+        return event.tool_calls.map(call => call.tool_call_id);
+      });
     assert.deepEqual(childDecisionIds, [
       CHILD_AGENT_TOOL_CALL_IDS.childShell,
       CHILD_AGENT_TOOL_CALL_IDS.childWait,
@@ -455,6 +463,7 @@ export async function runProductionChildAgentScenario(input: {
       ...(window.prev_cursor !== undefined ? { prev_cursor: window.prev_cursor } : {}),
       ...(window.next_cursor !== undefined ? { next_cursor: window.next_cursor } : {}),
       revision: window.revision,
+      latest_context_usage: window.latest_context_usage,
     });
     const commandCards = rendererProjection.aggregatedMessages.filter(message => (
       message.type === 'tool_calls'
@@ -462,11 +471,13 @@ export async function runProductionChildAgentScenario(input: {
       && message.toolPresentation.data['kind'] === 'command_execution'
     ));
     assert.equal(commandCards.length, 1, 'root shell/wait must aggregate without absorbing child trace');
-    const rootCardData = commandCards[0]?.toolPresentation?.data;
+    const rootCard = commandCards[0];
+    assert(rootCard?.type === 'tool_calls');
+    const rootCardData = rootCard.toolPresentation?.data;
     assert(isRecord(rootCardData));
     assert.equal(rootCardData['source'], 'shell');
     assert.equal(rootCardData['state'], 'running');
-    assert.equal(typeof rootCardData['observation'], 'string');
+    assert(typeof rootCardData['observation'] === 'string');
     assert(rootCardData['observation'].includes(ROOT_EXPECTED_TICK));
     assert(!rootCardData['observation'].includes(CHILD_EXPECTED_START));
     assert.equal(
@@ -500,7 +511,7 @@ export async function runProductionChildAgentScenario(input: {
     const oldHandle = await commandScope.shellToolRuntime.executeProcess({
       arguments: {
         process_handle: rootProcessHandle,
-        action: { type: 'poll', cursor: 0 },
+        action: { type: 'poll', cursor: ProcessOutputCursorSchema.parse(0) },
       },
       conversationId: CommandConversationIdSchema.parse(CONVERSATION_ID),
       agentRunId: rootRunId,

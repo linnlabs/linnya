@@ -72,6 +72,7 @@ import { ConfigurationError } from '../errors';
 import {
   createRuntimePathRoots,
   readInstalledRuntimePathRoots,
+  resolveDevelopmentInstancePaths,
   type RuntimePathRoots,
 } from '../runtime-paths';
 import { sanitizePathSegment } from './pathSanitizer';
@@ -104,7 +105,9 @@ function requireRuntimePathRoots(): RuntimePathRoots {
   // disposable `_dev_data`；生产运行域缺少显式事实必须失败，不能另开一套用户数据。
   if (process.env.LINNYA_DEV_MODE === 'true' || process.env.NODE_ENV === 'test') {
     const developmentRoot = path.resolve(process.cwd());
-    const developmentDataRoot = path.join(developmentRoot, '_dev_data');
+    const developmentDataRoot = resolveDevelopmentInstancePaths(
+      developmentRoot, process.env.LINNYA_DEV_INSTANCE_ROOT,
+    ).appDataRoot;
     const workspaceRootOverride = process.env.LINNYA_WORKSPACE_DIR?.trim();
     return createRuntimePathRoots({
       developmentRoot,

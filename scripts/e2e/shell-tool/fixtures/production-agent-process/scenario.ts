@@ -42,13 +42,15 @@ import { defaultToolRuntimePort } from '../../../../../src/app-hosts/linnya/adap
 import { createLinnyaChildRunInvoker } from '../../../../../src/app-hosts/linnya/adapters/child-runs/childRunInvokerFactory';
 import { createRegisteredChildRunInvoker } from '../../../../../src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
 import {
+  readWindowRefresh,
+  readRunFinalAnswer,
   readAfter,
   readAround,
   readBefore,
   readSubrunTrace,
   readTail,
   readTurnIndex,
-} from '../../../../../src/app-hosts/linnya/adapters/persistence/event-store/ui-projection';
+} from '../../../../../src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import { parseCommandOutputArtifactManifest } from '../../../../../src/domains/commands/definitions/commandOutputArtifact';
 import { setPluginRuntimeDatabase } from '../../../../../src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import { bootstrapBuiltinPluginLifecycle } from '../../../../../src/app-hosts/linnya/plugin-registry/builtin';
@@ -141,7 +143,7 @@ export async function runProductionAgentProcessScenario(input: {
   installProductionE2eRuntimePathRoots({ runRoot: input.runRoot, appDataRoot });
   await fsp.mkdir(appDataRoot, { recursive: true });
   const databaseService = new DatabaseService(databasePath);
-  databaseService.initialize({ lifecycleBootstrap: bootstrapBuiltinPluginLifecycle });
+  databaseService.initialize({ lifecycleBootstrap: db => bootstrapBuiltinPluginLifecycle(db, app.getVersion()) });
   const db = databaseService.getDb();
   setPluginRuntimeDatabase(db);
   const eventStore = new SQLiteEventStore(db);
@@ -226,13 +228,15 @@ export async function runProductionAgentProcessScenario(input: {
     commandRuntime: commandRuntimes.child,
   });
   const historyRepository = new HistoryRepository(eventStore, {
+    readWindowRefresh: (conversationId, query) => readWindowRefresh(db, conversationId, query),
+    readRunFinalAnswer: (conversationId, runId) => readRunFinalAnswer(db, conversationId, runId),
     readTail: (conversationId, limit) => readTail(db, conversationId, limit),
     readBefore: (conversationId, cursor, limit) => readBefore(db, conversationId, cursor, limit),
     readAfter: (conversationId, cursor, limit) => readAfter(db, conversationId, cursor, limit),
-    readAround: (conversationId, anchorMessageId, before, after) => (
-      readAround(db, conversationId, anchorMessageId, before, after)
+    readAround: (conversationId, anchorMessageId, limit) => (
+      readAround(db, conversationId, anchorMessageId, limit)
     ),
-    readTurnIndex: (conversationId, options) => readTurnIndex(db, conversationId, options),
+    readTurnIndex: conversationId => readTurnIndex(db, conversationId),
     readSubrunTrace: (conversationId, parentToolCallId, subrunId, options) => (
       readSubrunTrace(db, conversationId, parentToolCallId, subrunId, options)
     ),
@@ -326,6 +330,7 @@ export async function runProductionAgentProcessScenario(input: {
       ...(window.prev_cursor !== undefined ? { prev_cursor: window.prev_cursor } : {}),
       ...(window.next_cursor !== undefined ? { next_cursor: window.next_cursor } : {}),
       revision: window.revision,
+      latest_context_usage: window.latest_context_usage,
     });
     const cards = rendererProjection.aggregatedMessages.filter(message => (
       message.type === 'tool_calls'
@@ -344,7 +349,7 @@ export async function runProductionAgentProcessScenario(input: {
     assert(isRecord(cardData['terminal']));
     assert.equal(cardData['terminal']['outcome'], 'terminated');
     assert.equal(cardData['terminal']['reason'], 'cancelled');
-    assert.equal(typeof cardData['observation'], 'string');
+    assert(typeof cardData['observation'] === 'string');
     assert(
       !cardData['observation'].includes('command_control:'),
       'renderer command card must not expose the Agent-only control protocol',
@@ -409,6 +414,7 @@ export async function runProductionAgentProcessScenario(input: {
       assert.equal(event.lane, 'auxiliary');
       assert.equal(event.visibility, 'none');
       if (event.type !== 'audit_envelope') continue;
+      assert(event.envelope.scope, 'command audit must have an execution scope');
       assert.equal(event.envelope.scope.conversationId, CONVERSATION_ID);
       assert.equal(
         event.envelope.scope.metadata?.['command_execution_id'],

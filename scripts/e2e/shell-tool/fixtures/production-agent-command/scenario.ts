@@ -45,13 +45,15 @@ import {
   createRegisteredChildRunInvoker,
 } from '../../../../../src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
 import {
+  readWindowRefresh,
+  readRunFinalAnswer,
   readAfter,
   readAround,
   readBefore,
   readSubrunTrace,
   readTail,
   readTurnIndex,
-} from '../../../../../src/app-hosts/linnya/adapters/persistence/event-store/ui-projection';
+} from '../../../../../src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import {
   parseCommandOutputArtifactManifest,
 } from '../../../../../src/domains/commands/definitions/commandOutputArtifact';
@@ -137,7 +139,7 @@ async function pathExists(candidate: string): Promise<boolean> {
 }
 
 function quoteForPosixShell(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`;
+  return `'${value.split("'").join("'\\''")}'`;
 }
 
 function collectObjectKeys(value: unknown, keys: Set<string>): void {
@@ -241,7 +243,7 @@ async function findRawOutputArtifact(input: {
   assert(matched);
   assert.equal(matched.manifest.mode, 'pipe');
   if (matched.manifest.mode !== 'pipe') throw new Error('expected pipe raw artifact');
-  return matched;
+  return { filePath: matched.filePath, manifest: matched.manifest };
 }
 
 async function readMatchingToolOutputTexts(input: {
@@ -295,7 +297,7 @@ export async function runProductionAgentCommandScenario(input: {
   installProductionE2eRuntimePathRoots({ runRoot: input.runRoot, appDataRoot });
   await fsp.mkdir(appDataRoot, { recursive: true });
   const databaseService = new DatabaseService(databasePath);
-  databaseService.initialize({ lifecycleBootstrap: bootstrapBuiltinPluginLifecycle });
+  databaseService.initialize({ lifecycleBootstrap: db => bootstrapBuiltinPluginLifecycle(db, app.getVersion()) });
   const db = databaseService.getDb();
   setPluginRuntimeDatabase(db);
   const eventStore = new SQLiteEventStore(db);
@@ -423,13 +425,15 @@ export async function runProductionAgentCommandScenario(input: {
       path.join(appDataRoot, 'command-permission-settings.json'),
     );
   const historyRepository = new HistoryRepository(eventStore, {
+    readWindowRefresh: (conversationId, query) => readWindowRefresh(db, conversationId, query),
+    readRunFinalAnswer: (conversationId, runId) => readRunFinalAnswer(db, conversationId, runId),
     readTail: (conversationId, limit) => readTail(db, conversationId, limit),
     readBefore: (conversationId, cursor, limit) => readBefore(db, conversationId, cursor, limit),
     readAfter: (conversationId, cursor, limit) => readAfter(db, conversationId, cursor, limit),
-    readAround: (conversationId, anchorMessageId, before, after) => (
-      readAround(db, conversationId, anchorMessageId, before, after)
+    readAround: (conversationId, anchorMessageId, limit) => (
+      readAround(db, conversationId, anchorMessageId, limit)
     ),
-    readTurnIndex: (conversationId, options) => readTurnIndex(db, conversationId, options),
+    readTurnIndex: conversationId => readTurnIndex(db, conversationId),
     readSubrunTrace: (conversationId, parentToolCallId, subrunId, options) => (
       readSubrunTrace(db, conversationId, parentToolCallId, subrunId, options)
     ),
@@ -519,6 +523,7 @@ export async function runProductionAgentCommandScenario(input: {
       ...(window.prev_cursor !== undefined ? { prev_cursor: window.prev_cursor } : {}),
       ...(window.next_cursor !== undefined ? { next_cursor: window.next_cursor } : {}),
       revision: window.revision,
+      latest_context_usage: window.latest_context_usage,
     });
     const commandMessages = rendererProjection.aggregatedMessages.filter(message => (
       message.type === 'tool_calls'
@@ -549,7 +554,7 @@ export async function runProductionAgentCommandScenario(input: {
     assert(isRecord(commandPresentation));
     assert.equal(commandPresentation['state'], 'completed');
     assert.equal(commandPresentation['source'], 'shell');
-    assert.equal(typeof commandPresentation['observation'], 'string');
+    assert(typeof commandPresentation['observation'] === 'string');
     assert(commandPresentation['observation'].includes(EXPECTED_STDOUT));
     for (const forbidden of FORBIDDEN_PROJECTED_OUTPUT) {
       assert(
@@ -564,8 +569,10 @@ export async function runProductionAgentCommandScenario(input: {
     const artifactFiles = await listFilesRecursively(artifactRoot);
     const toolOutputFiles = await listFilesRecursively(toolOutputRoot);
     for (const rejectedMessage of rejectedShellMessages) {
-      const rejectedToolCallId = rejectedMessage.payload?.['tool_call_id'];
-      assert.equal(typeof rejectedToolCallId, 'string');
+      assert(rejectedMessage.message_type === 'tool_calls');
+      const rejectedToolCallId = rejectedMessage.payload.tool_call_id;
+      assert(typeof rejectedToolCallId === 'string');
+      assert(rejectedMessage.run_id, 'rejected tool must retain its run identity');
       const rejectedArtifacts = await findRawOutputArtifacts({
         artifactRoot,
         conversationId: CONVERSATION_ID,
@@ -588,6 +595,7 @@ export async function runProductionAgentCommandScenario(input: {
         `rejected cwd must not create ToolOutput: ${rejectedToolCallId}`,
       );
     }
+    assert(shellMessage.run_id, 'shell tool must retain its run identity');
     const rawArtifact = await findRawOutputArtifact({
       artifactRoot,
       conversationId: CONVERSATION_ID,
@@ -640,6 +648,7 @@ export async function runProductionAgentCommandScenario(input: {
       assert.equal(event.lane, 'auxiliary');
       assert.equal(event.visibility, 'none');
       if (event.type !== 'audit_envelope') continue;
+      assert(event.envelope.scope, 'command audit must have an execution scope');
       assert.equal(event.envelope.scope.conversationId, CONVERSATION_ID);
       assert.equal(event.envelope.scope.runId, shellMessage.run_id);
       assert.equal(event.envelope.scope.toolCallId, TOOL_CALL_ID);

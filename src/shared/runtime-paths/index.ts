@@ -1,3 +1,4 @@
+export { resolveDevelopmentInstancePaths } from './functions/resolveDevelopmentInstancePaths';
 export type { RuntimePathRoots } from './definitions/runtimePathRoots';
 export { createRuntimePathRoots } from './functions/createRuntimePathRoots';
 export {

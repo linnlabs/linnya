@@ -2,6 +2,10 @@
 
 ## 0.1.0
 
+- 升级 AI SDK Core 至 `7.0.162` 与同批 Provider 补丁；Google 保留 `4.0.94`，
+  因后续版本的 Gemini 4 自动续请求会改变单 attempt 请求边界，需单独审核。
+  新增 `interrupted` 的可重试失败与安全诊断投影，保留 Linnkit 的重试预算所有权。
+
 - 接入正式 Linnkit 0.41.0 与 Zod 4 合同；peer 最低兼容系列改为 0.41，
   packed CJS/ESM 与 Provider 两轮工具闭环仍由独立产物验收。
 

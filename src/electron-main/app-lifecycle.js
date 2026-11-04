@@ -88,6 +88,7 @@ const runtimePathRoots = installRuntimePathRoots(resolveBackendRuntimePathRoots(
   documentsDirectory: app.getPath('documents'),
   developmentMode: process.env.LINNYA_DEV_MODE === 'true',
   workspaceRootOverride: process.env.LINNYA_WORKSPACE_DIR,
+  developmentInstanceRootOverride: process.env.LINNYA_DEV_INSTANCE_ROOT,
 }));
 
 // 设置日志文件路径

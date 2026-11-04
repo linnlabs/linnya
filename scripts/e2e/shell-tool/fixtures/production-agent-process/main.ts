@@ -2,37 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { app } from 'electron';
+import { requireFixtureAbsolutePath, requireFixtureEnvironment } from '../../harness/requireFixtureEnvironment';
 
-const resultPath = process.env.LINNYA_AGENT_PROCESS_RESULT_PATH;
-const runRoot = process.env.LINNYA_AGENT_PROCESS_RUN_ROOT;
-const command = process.env.LINNYA_AGENT_PROCESS_COMMAND;
-const expectedStart = process.env.LINNYA_AGENT_PROCESS_EXPECTED_START;
-const expectedTick = process.env.LINNYA_AGENT_PROCESS_EXPECTED_TICK;
-const expectedInteractionPrompt = process.env.LINNYA_AGENT_PROCESS_EXPECTED_INTERACTION_PROMPT;
-const expectedInteractionStdin = process.env.LINNYA_AGENT_PROCESS_EXPECTED_INTERACTION_STDIN;
-const observationReadyPath = process.env.LINNYA_AGENT_PROCESS_OBSERVATION_READY_PATH;
-const workDirectoryHandshakePath = process.env.LINNYA_AGENT_PROCESS_WORK_DIRECTORY_HANDSHAKE_PATH;
+const resultPath = requireFixtureAbsolutePath('LINNYA_AGENT_PROCESS_RESULT_PATH');
+const runRoot = requireFixtureAbsolutePath('LINNYA_AGENT_PROCESS_RUN_ROOT');
+const command = requireFixtureEnvironment('LINNYA_AGENT_PROCESS_COMMAND');
+const expectedStart = requireFixtureEnvironment('LINNYA_AGENT_PROCESS_EXPECTED_START');
+const expectedTick = requireFixtureEnvironment('LINNYA_AGENT_PROCESS_EXPECTED_TICK');
+const expectedInteractionPrompt = requireFixtureEnvironment('LINNYA_AGENT_PROCESS_EXPECTED_INTERACTION_PROMPT');
+const expectedInteractionStdin = requireFixtureEnvironment('LINNYA_AGENT_PROCESS_EXPECTED_INTERACTION_STDIN');
+const observationReadyPath = requireFixtureAbsolutePath('LINNYA_AGENT_PROCESS_OBSERVATION_READY_PATH');
+const workDirectoryHandshakePath = requireFixtureAbsolutePath('LINNYA_AGENT_PROCESS_WORK_DIRECTORY_HANDSHAKE_PATH');
 const replayTerminalHandle = process.env.LINNYA_AGENT_PROCESS_REPLAY_TERMINAL_HANDLE === '1';
-
-if (!resultPath || !path.isAbsolute(resultPath)) {
-  throw new Error('LINNYA_AGENT_PROCESS_RESULT_PATH must be an absolute path');
-}
-if (!runRoot || !path.isAbsolute(runRoot)) {
-  throw new Error('LINNYA_AGENT_PROCESS_RUN_ROOT must be an absolute path');
-}
-if (
-  !command
-  || !expectedStart
-  || !expectedTick
-  || !expectedInteractionPrompt
-  || !expectedInteractionStdin
-  || !observationReadyPath
-  || !path.isAbsolute(observationReadyPath)
-  || !workDirectoryHandshakePath
-  || !path.isAbsolute(workDirectoryHandshakePath)
-) {
-  throw new Error('production Agent process command markers are required');
-}
 
 const userDataRoot = path.join(runRoot, 'electron-user-data');
 const workspaceRoot = path.join(runRoot, 'workspace');

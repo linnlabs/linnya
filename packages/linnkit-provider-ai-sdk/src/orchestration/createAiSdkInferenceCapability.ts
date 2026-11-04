@@ -391,7 +391,7 @@ export function createAiSdkInferenceCapability(
                   part.rawFinishReason
                 );
                 events.push(projection.event);
-                if (part.finishReason === 'error' || part.finishReason === 'other') {
+                if (part.finishReason === 'error' || part.finishReason === 'other' || part.finishReason === 'interrupted') {
                   dependencies.diagnostic_sink?.publish({
                     type: 'nonstandard_finish',
                     ...diagnosticContext,

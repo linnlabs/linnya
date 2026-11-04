@@ -11,6 +11,13 @@ describe('projectAiSdkFinishReason', () => {
     expect(projectAiSdkFinishReason(finishReason, rawFinishReason).event).toEqual(event);
   });
 
+  it('缺少供应商完成信号是可重试失败，不生成成功终态', () => {
+    expect(projectAiSdkFinishReason('interrupted', undefined)).toEqual({
+      event: { type: 'failure', kind: 'provider', code: 'provider_stream_interrupted', retryable: true },
+      raw_reason_category: 'none',
+    });
+  });
+
   it('把兼容 Responses 网关的 max_tokens 别名投影为 length', () => {
     expect(projectAiSdkFinishReason('other', 'max_tokens')).toEqual({
       event: { type: 'finish', reason: 'length' },

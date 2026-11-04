@@ -47,6 +47,20 @@
     "lint:fix": "eslint . --cache --fix",
     "prepublishOnly": "pnpm run build"
   },
+  "linnya": {
+    "development": {
+      "rendererOptimizeDependencies": [
+        "markdown-it-footnote",
+        "markdown-it-ins",
+        "markdown-it-mark",
+        "markdown-it-sub",
+        "markdown-it-sup",
+        "markdown-it-task-checkbox",
+        "markdown-it-container",
+        "markdown-it-ts"
+      ]
+    }
+  },
   "dependencies": {
     "markdown-it-container": "^4.0.0",
     "markdown-it-footnote": "^4.0.0",

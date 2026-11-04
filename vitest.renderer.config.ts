@@ -1,71 +1,36 @@
-import path from 'node:path';
-
+import rootConfig from './vitest.config';
 import vue from '@vitejs/plugin-vue';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
-import {
-  RENDERER_MODULE_RESOLUTION_CATALOG,
-} from './scripts/build/renderer-module-resolution/definitions/rendererModuleResolutionCatalog.js';
-import {
-  projectRendererViteAliases,
-  type RendererViteAlias,
-} from './scripts/build/renderer-module-resolution/functions/projectRendererViteAliases.js';
-
-const repositoryRoot = import.meta.dirname;
-
-/**
- * 这些入口只服务跨边界集成测试，不属于生产 Renderer profile。
- * 测试若需要新增 Host 源码入口，必须在这里逐条说明，禁止扩回宽泛 backend alias。
- */
-const RENDERER_TEST_SUPPORT_ALIASES: readonly RendererViteAlias[] = [
-  // Markdown/插件 schema conformance 会加载版本仓储；仅接入无 IO 的历史规则，不扩宽 backend alias。
-  {
-    find: /^src\/domains\/document-history$/u,
-    replacement: path.resolve(repositoryRoot, 'src/domains/document-history/index.ts'),
-  },
-  {
-    find: /^@plugin\/backend\/documentHistory$/u,
-    replacement: path.resolve(repositoryRoot, 'src/plugin-sdk/backend/documentHistory.ts'),
-  },
-  {
-    find: /^@plugin\/(mindmap|slides)\/renderer$/u,
-    replacement: path.resolve(repositoryRoot, 'packages/plugins/$1/src/renderer/index.ts'),
-  },
-  {
-    find: /^src\/app-hosts\/(.+)$/u,
-    replacement: path.resolve(repositoryRoot, 'src/app-hosts/$1'),
-  },
-  {
-    find: /^src\/domains\/markdown$/u,
-    replacement: path.resolve(repositoryRoot, 'src/domains/markdown/index.ts'),
-  },
-];
+import { RENDERER_MODULE_RESOLUTION_CATALOG } from './scripts/build/renderer-module-resolution/definitions/rendererModuleResolutionCatalog.js';
+import { projectRendererViteAliases } from './scripts/build/renderer-module-resolution/functions/projectRendererViteAliases.js';
+import { RENDERER_HOST_INTEGRATION_TESTS, RENDERER_TEST_INCLUDE } from './scripts/test-runner/definitions/rendererTestScope';
 
 export default defineConfig({
-  plugins: [vue()],
   test: {
-    globals: true,
-    environment: 'node',
-    include: [
-      'apps/renderer/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-      'packages/renderer-ui/**/*.{test,spec}.{ts,tsx}',
-      'packages/plugins/mindmap/src/renderer/**/*.{test,spec}.{ts,tsx}',
-      'packages/plugins/slides/src/renderer/**/*.{test,spec}.{ts,tsx}',
-      'scripts/build/renderer-module-resolution/**/*.{test,spec}.ts',
-    ],
-    exclude: [
-      '**/node_modules/**',
-      '**/dist/**',
-    ],
-  },
-  resolve: {
-    alias: [
-      ...projectRendererViteAliases(
-        RENDERER_MODULE_RESOLUTION_CATALOG,
-        repositoryRoot,
-        'vitest',
-      ),
-      ...RENDERER_TEST_SUPPORT_ALIASES,
+    projects: [
+      {
+        extends: false,
+        plugins: [vue()],
+        resolve: {
+          alias: projectRendererViteAliases(RENDERER_MODULE_RESOLUTION_CATALOG, import.meta.dirname, 'vitest'),
+        },
+        test: {
+          name: 'renderer', globals: true, environment: 'node',
+          include: RENDERER_TEST_INCLUDE,
+          exclude: [...configDefaults.exclude, ...RENDERER_HOST_INTEGRATION_TESTS],
+        },
+      },
+      {
+        // 只让已登记的跨层合同测试复用全仓 resolver，生产目录没有新增别名。
+        extends: false,
+        plugins: [vue()],
+        resolve: rootConfig.resolve,
+        test: {
+          name: 'renderer-host-integration', globals: true, environment: 'node',
+          include: RENDERER_HOST_INTEGRATION_TESTS,
+        },
+      },
     ],
   },
 });

@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { createRuntimePathRoots, type RuntimePathRoots } from '../../../../shared/runtime-paths';
+import { createRuntimePathRoots, resolveDevelopmentInstancePaths, type RuntimePathRoots } from '../../../../shared/runtime-paths';
 
 export interface BackendRuntimePathRootInput {
   readonly developmentRoot: string;
@@ -8,6 +8,7 @@ export interface BackendRuntimePathRootInput {
   readonly documentsDirectory: string;
   readonly developmentMode: boolean;
   readonly workspaceRootOverride?: string;
+  readonly developmentInstanceRootOverride?: string;
 }
 
 /**
@@ -18,7 +19,9 @@ export function resolveBackendRuntimePathRoots(
   input: BackendRuntimePathRootInput
 ): RuntimePathRoots {
   const developmentRoot = path.resolve(input.developmentRoot);
-  const developmentDataRoot = path.join(developmentRoot, '_dev_data');
+  const developmentDataRoot = resolveDevelopmentInstancePaths(
+    developmentRoot, input.developmentInstanceRootOverride,
+  ).appDataRoot;
   const workspaceRootOverride = input.workspaceRootOverride?.trim();
 
   return createRuntimePathRoots({

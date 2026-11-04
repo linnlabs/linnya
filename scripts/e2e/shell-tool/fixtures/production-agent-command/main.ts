@@ -2,16 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { app } from 'electron';
+import { requireFixtureAbsolutePath } from '../../harness/requireFixtureEnvironment';
 
-const resultPath = process.env.LINNYA_AGENT_COMMAND_RESULT_PATH;
-const runRoot = process.env.LINNYA_AGENT_COMMAND_RUN_ROOT;
-
-if (!resultPath || !path.isAbsolute(resultPath)) {
-  throw new Error('LINNYA_AGENT_COMMAND_RESULT_PATH must be an absolute path');
-}
-if (!runRoot || !path.isAbsolute(runRoot)) {
-  throw new Error('LINNYA_AGENT_COMMAND_RUN_ROOT must be an absolute path');
-}
+const resultPath = requireFixtureAbsolutePath('LINNYA_AGENT_COMMAND_RESULT_PATH');
+const runRoot = requireFixtureAbsolutePath('LINNYA_AGENT_COMMAND_RUN_ROOT');
 
 // pathManager 会在模块首次加载时缓存路径，因此隔离必须发生在动态导入生产模块之前。
 const userDataRoot = path.join(runRoot, 'electron-user-data');

@@ -75,6 +75,19 @@ Backend 只接纳当前 Host 传入的精确开发页面 origin，
 
 升级到该机制后，需要正常退出旧开发会话，再在各目录重新启动；源码合并不会自动替换正在运行的 Backend。
 
+## 同一源码目录的一次性验收
+
+启动 Desktop 或 CLI Runtime 时设置 `LINNYA_DEV_INSTANCE_ROOT`，即可把该实例默认的
+`_dev_data/` 和 `_dev_electron/` 一起放到指定目录下，无需另建 worktree。相对路径以源码根
+解析；源码、构建产物与插件开发入口仍来自当前 checkout。CLI 连接同一实例时传入相同变量，
+默认连接文件也随 profile 移动。源码 CLI 不自动加载 dotenv，命令行环境需显式传入该变量。
+
+`LINNYA_WORKSPACE_DIR`（或 Runtime 的 `--workspace`）仍可单独覆盖 Workspace；
+Electron `--user-data-dir` 和 `LINNYA_CLI_CONNECTION_FILE` 的显式覆盖也保持优先。
+完整隔离验收应移除旧的路径覆盖，或把它们都指向本次专用目录。生产包不使用实例根开关。
+数据 epoch 检查跟随实例根，不读取原 checkout 的开发数据。`dev:data:reset` 仍只管理源码根
+默认的 `_dev_data`，不清理一次性实例；先正常退出实例，再回收专用目录。
+
 ## 运行中切换审计
 
 使用 `pnpm linnya:cli audit level behavior`，可选 `off / behavior / response / stream`；不传档位显示当前值。
