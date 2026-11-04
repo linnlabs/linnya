@@ -19,5 +19,8 @@ it('出图预算计量取整后的真实像素，不让分数DPR超过资源上�
     width: 4096, height: 4096, dpr: 1, region: null, format: 'png', quality: 1, material: 'paper' };
   const valid = CanvasRenderRequestSchema.parse(request);
   expect(canvasWorkerViewport(valid)).toEqual({ width: 4096, height: 4096 });
-  expect(CanvasRenderRequestSchema.safeParse({ ...request, dpr: 1.00001 }).success).toBe(false);
+  // 未取整面积仍在预算内，但真实整数像素4097×4096已经越界。
+  const fractional = { ...request, height: 4095, dpr: 1.0001 };
+  expect(fractional.width * fractional.height * fractional.dpr ** 2).toBeLessThan(16_777_216);
+  expect(CanvasRenderRequestSchema.safeParse(fractional).success).toBe(false);
 });
