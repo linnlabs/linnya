@@ -28,8 +28,9 @@ function filesBelow(directory: string, relative = ''): string[] {
 export async function prepareCanvasCliObservation(input: Preparation) {
   const production = path.resolve(input.productionPluginDirectory), output = path.resolve(input.outputDirectory);
   if (!path.isAbsolute(input.evidenceDirectory) || existsSync(input.evidenceDirectory)) throw new Error('cli_observation_requires_fresh_absolute_evidence_directory');
-  const originalFiles = ['plugin.json', ...filesBelow(path.join(production, 'dist')).map(file => path.join('dist', file)),
-    ...filesBelow(path.join(production, 'resources')).map(file => path.join('resources', file))].sort();
+  // 清单统一用POSIX相对路径；Windows的原生分隔符不能改变index识别或封存协议。
+  const originalFiles = ['plugin.json', ...filesBelow(path.join(production, 'dist')).map(file => 'dist/' + file.split(path.sep).join('/')),
+    ...filesBelow(path.join(production, 'resources')).map(file => 'resources/' + file.split(path.sep).join('/'))].sort();
   const payloads = originalFiles.map(file => {
     const bytes = readFileSync(path.join(production, file));
     return { originalPath: file, observedPath: file === 'dist/backend/index.cjs' ? 'dist/backend/index.production.cjs' : file,

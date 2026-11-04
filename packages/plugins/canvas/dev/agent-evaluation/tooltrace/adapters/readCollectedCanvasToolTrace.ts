@@ -47,6 +47,7 @@ export async function readCollectedCanvasToolTrace(input: {
   });
   return {
     facts,
+    audit: audits[0], continuationAudits: audits.slice(1),
     evidenceFiles: [indexFile, ...auditFiles, ...files, ...continuationEvidence],
   };
 }

@@ -15,3 +15,9 @@ wrapper 只注册一次 process exit 同步 seal。session 的 PID 必须对应�
 构建复制 plugin.json、完整 dist 和 resources，逐文件记录原件/目标路径、字节与 SHA256。原 index.cjs 字节不变改名为同目录 index.production.cjs，避免生产模块的 __dirname 与 Worker/资源路径漂移；wrapper 的 typed 原源入口由唯一 esbuild resolve 规则外置到此 CJS，不重复 bundle 生产 backend。其他模块导出由 export-star 保留，包括原 createCanvasBackendPlugin 工厂。实际 Host disk loader 优先选择 named backendPlugin，不调用工厂。build manifest 保存 wrapper SHA、原 Backend SHA、原件映射 SHA 与 metafile；compiled payload 映射全部复核，不把外壳 index 冒充原 index 未变。
 
 安装必须在专用 App 正常退出后另行明确授权。先核实际安装目录、原 index 和完整编译载荷哈希/来源，保存原件及安装清单；只将已审 wrapper 与 byte-exact index.production.cjs 放入原 backend 目录，其他载荷不动。启动后核实际 Host 已选择该 named contribution、原 Backend SHA、session 身份与其余入口/资源路径；Host有自己的失败版本回滚，App启动成功不能代替本次外壳装载资格。结束任务后正常退出取得 seal，再核全部原件哈希；回滚只恢复原 index 字节并移除本次独占 sidecar，核其余文件哈希与原清单一致。没有独立安装授权不得操作运行中的 Editor 或现有插件目录，不能以开发包复制代替用户验收。
+
+`readSealedCanvasCliObservation` 是此 owner 的只读封存入口。它接受目录与可信安装 activationFile，不接受模型提供的身份或性能数值。activation 必须来自实际正常启动后的 Host 装载核对，绑定 Backend PID、原编译 Backend/外壳/全载荷映射 SHA、准备包与证据目录、正式生产 build 见证及其 SHA。build 见证包含真实命令、成功退出、日志文件/SHA、干净源版本、对应原编译 Backend SHA，以及已归档的 producer 源文件目录；这些由可信构建/安装 runner 采集，不能手填配置字符串冒证明。
+
+读取器重新核验全部 seal 文件字节与 SHA，解析同一份已验字节，要求调用阶段、事件编号、时钟、终态和完整计数闭合；再核原编译模块、wrapper、全部原载荷映射、正式 build 日志与六个已审 producer 源文件指纹。当前固定源与指纹在 `definitions/sealedObservation.ts`；未知新源不会自动放行。公开 DTO 留在 `definitions.ts`，没有 SQL、ops 载荷读取、业务重放或 Worker 调用。
+
+在这一强源合同下，executeCanvasCliWrite 的完整 committed 响应只有明确 replayed=false 且 computation=null 才能证明本次没有 prepared.arrange：其有 arrange 分支必 await 正式 Worker，Worker response schema 强制非 null computation，即使布局 unchanged 也保留计时。该 iff 只适用于已核原 producer 和真实编译 SHA；缺字段、receipt、重放、dry-run、pending、失败或未知响应不能套用。后续源必须另审与已核 producer 的字节关系，不能扩大成任意版本 null 的默认语义。

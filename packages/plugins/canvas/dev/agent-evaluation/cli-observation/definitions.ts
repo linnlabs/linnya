@@ -1,4 +1,13 @@
 import type { BackendPluginCliContribution, BackendPluginCliExecutionContext, BackendPluginCliResult } from '@plugin/backend/pluginCli';
+import type { z } from 'zod';
+import type { CanvasCliObservationActivationSchema, CanvasCliObservationSessionSchema } from './definitions/sealedObservation';
+
+export type Missing = { readonly state: 'absent' | 'ambiguous' | 'not-applicable'; readonly value: null };
+export interface CanvasCliRequestIdentity {
+  readonly requestId: { readonly state: 'explicit'; readonly value: string } | Missing;
+  readonly dryRun: { readonly state: 'explicit'; readonly value: true } | { readonly state: 'absent'; readonly value: false }
+    | { readonly state: 'ambiguous' | 'not-applicable'; readonly value: null };
+}
 
 export type CliPreparationInput = Parameters<BackendPluginCliContribution['prepare']>[0];
 
@@ -27,4 +36,21 @@ export interface CanvasCliObservation {
   result(id: number, stage: 'prepare' | 'execute', result: BackendPluginCliResult): void;
   threw(id: number, stage: 'prepare' | 'execute'): void;
   seal(exitCode?: number): void;
+}
+
+export interface CanvasObservedCliInput extends CanvasCliRequestIdentity {
+  readonly invocationId: string; readonly command: string | null; readonly locator: string | null;
+  readonly managedOpsPath: string | null; readonly opsPathOutsideConversation: boolean;
+}
+export interface CanvasObservedCliInvocation {
+  readonly origin: 'backend-cli-observation'; readonly recordingId: number; readonly invocationId: string;
+  readonly input: CanvasObservedCliInput; readonly preparedAt: number; readonly startedAt: number | null; readonly finishedAt: number;
+  readonly stage: 'prepare' | 'execute'; readonly identity: CanvasCliExecutionIdentity | null;
+  readonly result: BackendPluginCliResult | null; readonly threw: boolean; readonly sourceFiles: readonly string[];
+}
+export interface CanvasSealedCliObservation {
+  readonly activation: z.infer<typeof CanvasCliObservationActivationSchema>;
+  readonly session: z.infer<typeof CanvasCliObservationSessionSchema>;
+  readonly finishedAt: number; readonly invocations: readonly CanvasObservedCliInvocation[]; readonly evidenceFiles: readonly string[];
+  readonly producerContract: 'source61-fresh-committed-null-iff-no-arrange';
 }

@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { parseArgs } from 'node:util';
 import type { BackendPluginCliContribution, BackendPluginCliExecutionContext, BackendPluginCliPlan, BackendPluginCliResult } from '@plugin/backend/pluginCli';
 import type { PluginBackendContribution } from '@plugin/backend/pluginContribution';
 import { z } from 'zod';
@@ -50,6 +51,15 @@ it('封装一次正式execute，保this/参数/权限/原始响应/其余贡献�
 });
 
 it('请求身份只接受明确参数，重复/缺值/被其它选项消费保持缺证，--以后不猜flag', () => {
+  for (const tail of [['--request-id', ' raw id ', '--dry-run'], ['--request-id=a=b'], ['--request-id=-negative']]) {
+    const argv = ['apply', 'workspace:/fixture.canvas', ...tail];
+    const actual = parseArgs({ args: argv.slice(1), allowPositionals: true,
+      options: { 'request-id': { type: 'string' }, 'dry-run': { type: 'boolean' } } });
+    expect(readCanvasCliRequestIdentity(argv).requestId).toEqual({ state: 'explicit', value: actual.values['request-id'] });
+    expect(readCanvasCliRequestIdentity(argv).dryRun.value).toBe(actual.values['dry-run'] === true);
+  }
+  expect(parseArgs({ args: ['--request-id', 'a', '--request-id=b'], options: { 'request-id': { type: 'string' } } }).values['request-id']).toBe('b');
+  expect(() => parseArgs({ args: ['--dry-run=false'], options: { 'dry-run': { type: 'boolean' } } })).toThrow();
   expect(readCanvasCliRequestIdentity(['arrange', 'workspace:/fixture.canvas', '--request-id=a=b'])).toEqual({ requestId: { state: 'explicit', value: 'a=b' }, dryRun: { state: 'absent', value: false } });
   for (const tail of [['--request-id'], ['--request-id', 'a', '--request-id=b'], ['--ops-file', '--request-id=a']])
     expect(readCanvasCliRequestIdentity(['apply', 'workspace:/fixture.canvas', ...tail]).requestId).toEqual({ state: 'ambiguous', value: null });

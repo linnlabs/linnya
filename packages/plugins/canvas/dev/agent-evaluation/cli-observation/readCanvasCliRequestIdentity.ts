@@ -1,9 +1,4 @@
-type Missing = { readonly state: 'absent' | 'ambiguous' | 'not-applicable'; readonly value: null };
-export interface CanvasCliRequestIdentity {
-  readonly requestId: { readonly state: 'explicit'; readonly value: string } | Missing;
-  readonly dryRun: { readonly state: 'explicit' | 'absent'; readonly value: boolean }
-    | { readonly state: 'ambiguous' | 'not-applicable'; readonly value: null };
-}
+import type { CanvasCliRequestIdentity } from './definitions';
 
 /** 只摘取两个验收身份参数，不重复领域校验，也不把有歧义的argv猜成实际请求。 */
 export function readCanvasCliRequestIdentity(argv: readonly string[]): CanvasCliRequestIdentity {

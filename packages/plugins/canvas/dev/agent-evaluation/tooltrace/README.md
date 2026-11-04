@@ -48,3 +48,9 @@ Worker样本只取正式committed响应中显式replayed:false的共享computati
 布局需求使用真实CLI合同：独立arrange明确需要；apply只从已保存的quoted here-doc JSON按唯一CanvasCliBatchSchema识别末尾op:arrange，不存在shell --arrange标记。未见/不合法的payload为unknown，不能解释为没有布局；只有明确合法且无arrange的批次才是false。unknown且无权威computation同样形成T13计时覆盖缺口；这个缺口不改变其它任务的首写/修正事实，也不从磁盘补读可能已变更的模型ops文件。
 
 confirmed请求与实际变化分开：正式results存在applied才需要对应delta/draw；unchanged布局产生的空operations、或全skipped请求不推进sequence，不能把它们与同序列较早真实delta冲突配对，也不造0ms帧。其明确非重放Worker计算仍保留在原样本N中；只有no-op而无实际draw样本仍缺性能证据。correction_unknown仅说明尝试的修正次数不明，原facts.needsReview和draft诊断保留；metrics可独立复算完整的Worker/draw事实。仅这一明确code不单独阻塞性能，其它归属、原输出、计时、收集完整性缺口仍阻塞。
+
+T13 metrics request 可显式提供 `cliObservation`，包含 directory 与 activationFile，选择独立的 Backend CLI 观测外壳来源。其公开封存读取合同见 [CLI 原始响应外壳](../cli-observation/README.md)。原 seal/全部原件 SHA、正式 build 与已核 producer 源指纹、实际原 Backend/外壳 SHA、Host 装载 PID和时窗必须闭合；声明此来源后缺证即拒绝，不回退 Shell 摘要或持久 receipt。
+
+collector 复用官方 audit 的 root/parent run 图，以 execute 的 Host 冻结 project/conversation/run 与原 argv 目标/requestId/dryRun 绑定实际响应。prepare completed 没有执行身份，仍列 unattributed。只从完整 fresh committed 响应接纳真实 computation；源合同确认的 apply fresh-null 明确不需要本次布局计时，arrange null、缺字段或 freshness 不明仍留 coverage gap。replay、dry-run、pending、失败与未知结果保留原分类/未知，不制造0ms Worker样本，也不再调用 Worker或读取ops载荷。
+
+新 ledger 使用 `origin:backend-cli-observation`、invocationId、实际 run 与原件路径，绝不伪造 toolCallId。量化提交来源与原真实 delta/revision/post-zero draw/完整帧窗口联结，帧和阈值规则不变。`metrics.json.measurement` 明确标识“带观测外壳的实际任务、同步I/O保守延迟”，不能当无观测 Native10/40 基线。原 `trace.json`、mixed-shell/unknown、layout gaps 与语义 needsReview 不修改，draft 原诊断仍可阻塞整题；新测量事实完整只证明该量化来源，不能宣称原工具语义已完整。`cli-observation-ledger.json` 单独保留接纳、fresh-null 与排除来源，`metrics-facts.json` 同时保留原语义诊断。
