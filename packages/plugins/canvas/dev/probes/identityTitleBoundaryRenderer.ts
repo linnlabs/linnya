@@ -33,6 +33,8 @@ async function nearTitle(kind: string, source: string, expected: string, width: 
     try {
       const card = createVisibleUpdateFixture('text')[0], x = Math.min(14, width / 8);
       kernel.setElements([{ ...card, x: 0, y: 0, width, height: 96, data: { ...card.data, content: createCanvasPlainTextDocument(source) } }]);
+      // schedule已登记主画布RAF；明确等它完成，不能把PNG异步编码当作真实draw等待。
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
       const image = await kernel.captureImage('png'), stats = kernel.readStats();
       const text = new Text({ text: expected, resolution: 2, style: { fill: 0xffffff, fontFamily: 'system-ui', fontSize: 15, wordWrap: false } });
       text.tint = readCanvasCardPalette('white', false).title; text.position.set(x, 12); app.stage.addChild(text); app.render();
