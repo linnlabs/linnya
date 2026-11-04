@@ -8,7 +8,7 @@ export function createCanvasDocumentPreviews(port: CanvasCardMediaPort, version:
   const cache = new Map<string, { readonly result: DocumentPreviewResult; readonly bytes: number }>(), pending = new Map<string, Promise<DocumentPreviewResult>>(), failed = new Set<string>();
   const presentations = new Map<string, { readonly version: number; readonly keep: boolean; readonly revision: string }>();
   const visited = new Set<string>();
-  let latest: readonly DocumentCard[] = [], interest = '', bytes = 0, disposed = false;
+  let latest: readonly DocumentCard[] = [], bytes = 0, disposed = false;
   const width = (card: DocumentCard) => Math.min(1600, Math.max(120, Math.round(card.width)));
   const key = (card: DocumentCard) => JSON.stringify([port.projectId(), card.data.documentId, version(card.data.documentId), width(card)]);
   function pump(): void {
@@ -42,7 +42,13 @@ export function createCanvasDocumentPreviews(port: CanvasCardMediaPort, version:
   }
   return { read,
     setCards(cards: readonly CanvasCard[]) { const ids = new Set(cards.flatMap(card => card.type === 'document' ? [card.data.documentId] : [])); for (const id of presentations.keys()) if (!ids.has(id)) presentations.delete(id); },
-    refreshVisible(cards: readonly CanvasCard[]) { latest = cards.filter((card): card is DocumentCard => card.type === 'document'); const next = JSON.stringify(latest.map(key)); if (next !== interest) { interest = next; visited.clear(); } pump(); },
+    refreshVisible(cards: readonly CanvasCard[]) {
+      latest = cards.filter((card): card is DocumentCard => card.type === 'document');
+      const interest = new Set(latest.map(key));
+      // 单个目标取得新身份时，只失效它自己的旧键；清空整批会让128项LRU反复预读前缀，饿死后续文档。
+      for (const identity of visited) if (!interest.has(identity)) visited.delete(identity);
+      pump();
+    },
     refresh() { pump(); },
     key(card: CanvasCard) { return card.type === 'document' ? presentations.get(card.data.documentId)?.revision ?? '' : ''; },
     thumbnails(cards: readonly CanvasCard[]): ReadonlySet<CanvasCardId> { return new Set(cards.flatMap(card => { if (card.type !== 'document') return []; const presentation = presentations.get(card.data.documentId); return presentation?.keep && presentation.version === version(card.data.documentId) ? [card.id] : []; })); },
