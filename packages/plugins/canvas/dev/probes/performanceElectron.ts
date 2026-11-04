@@ -72,10 +72,15 @@ async function run() {
       for (let i = 0; i < 50; i++) { win.webContents.sendInputEvent({ type: 'mouseMove', x: 800 + i * 3, y: 480 + i }); await delay(20); }
       win.webContents.sendInputEvent({ type: 'mouseUp', x: 947, y: 529, button: 'middle', clickCount: 1 });
       const pan: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
+      if (process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1') { win.webContents.debugger.attach('1.3'); await win.webContents.debugger.sendCommand('Profiler.enable'); await win.webContents.debugger.sendCommand('Profiler.start'); }
       const close: unknown = await win.webContents.executeJavaScript('window.closeCanvasPerformanceView()');
       await win.webContents.executeJavaScript('window.startCanvasPerformanceCollection()');
       const bodySettled: unknown = await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
       const bodyLoad: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
+      if (process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1') {
+        const profile: unknown = await win.webContents.debugger.sendCommand('Profiler.stop');
+        await writeFile(path.join(output, `${kind}-${count}-${clustered ? 'cluster' : 'uniform'}-body.cpuprofile`), JSON.stringify(profile)); win.webContents.debugger.detach();
+      }
       await writeFile(path.join(output, `${kind === 'text' ? '' : kind + '-'}${count}-${clustered ? 'cluster' : 'uniform'}.png`), (await win.webContents.capturePage()).toPNG());
       await win.webContents.executeJavaScript('window.startCanvasPerformanceCollection()');
       for (let i = 0; i < 100; i++) { win.webContents.sendInputEvent({ type: 'mouseWheel', x: 800, y: 480,
@@ -109,7 +114,7 @@ async function run() {
     const validDesktopRun = unlocked(idleAfter) && !lockEvents.some(event => event.event === 'lock')
       && (offscreenProfile || process.platform !== 'darwin' || nativeSessionAfter?.unlocked === true);
     const displayQualified = !requireInternal120 || display.id === targetDisplay?.id && display.internal && display.displayFrequency >= 119;
-    const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1';
+    const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1';
     const validHardwareRun = !offscreenProfile && validDesktopRun && displayQualified && !profiling;
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: kinds.every(kind => kind === 'text') ? 'production-dom-v4' : 'production-media-provider-v1', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE }, startedAt, endedAt: new Date().toISOString(),
       renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',

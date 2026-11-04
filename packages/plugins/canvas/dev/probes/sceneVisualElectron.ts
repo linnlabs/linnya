@@ -54,10 +54,18 @@ export async function verifySceneVisual(win: BrowserWindow, output: string, eval
     if (fadePixel.g <= 32 || scenePixel.g <= 0) throw new Error('first_body_receipt_has_no_visible_current_pixels');
     await writeFile(path.join(output, 'first-body-fade.png'), nativeImage.createFromDataURL(firstBody.fadeImage).toPNG());
     await writeFile(path.join(output, 'first-body-scene.png'), nativeImage.createFromDataURL(firstBody.sceneImage).toPNG());
+    const metadata = z.object({ before: z.string(), renamed: z.string(), thumbnail: z.string(), identity: z.string(), dpr: z.number() })
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasDocumentMetadataProbe()'));
+    const oldInk = darkness(metadata.before), newInk = darkness(metadata.renamed), thumbnailPixel = pixel(metadata.thumbnail, metadata.dpr, 32, 32), identityPixel = pixel(metadata.identity, metadata.dpr, 32, 32);
+    await writeFile(path.join(output, 'document-metadata-renamed.png'), nativeImage.createFromDataURL(metadata.renamed).toPNG());
+    await writeFile(path.join(output, 'document-metadata-thumbnail.png'), nativeImage.createFromDataURL(metadata.thumbnail).toPNG());
+    await writeFile(path.join(output, 'document-metadata-identity.png'), nativeImage.createFromDataURL(metadata.identity).toPNG());
+    // 返回身份牌后采样点可能落在新标题字形上；应确认绿色封面消失，不能强求这里是白纸。
+    if (newInk <= oldInk * 2 || thumbnailPixel.g < 170 || thumbnailPixel.r > 160 || identityPixel.g - identityPixel.r > 20) throw new Error(`document_metadata_or_thumbnail_pixels_stale:${JSON.stringify({ oldInk, newInk, thumbnailPixel, identityPixel })}`);
     const began = z.object({ started: z.number(), reduced: z.boolean() }).parse(await evaluate(win.webContents, 'window.beginCanvasReducedSceneProbe()'));
     if (began.started !== 1 || began.reduced) throw new Error('scene_motion_was_not_running_before_system_preference_change');
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     const reduced: unknown = await evaluate(win.webContents, 'window.finishCanvasReducedSceneProbe()');
-    return { move: { start: move.start, middlePosition: move.middlePosition, frozen: move.frozen, camera: move.camera, stats: move.stats }, opacity: { initial, middle, opaque, removed, revealed }, mapInk, identityInk, outsideInk, append: { ...append.appended, oldPixel, keptPixel, addedPixel, leftClosed: append.leftClosed, rightClosed: append.rightClosed }, firstBody: { uploaded: firstBody.uploaded, first: firstBody.first, complete: firstBody.complete, sceneStart: firstBody.sceneStart, sceneFirst: firstBody.sceneFirst, fadePixel, scenePixel }, reduced };
+    return { move: { start: move.start, middlePosition: move.middlePosition, frozen: move.frozen, camera: move.camera, stats: move.stats }, opacity: { initial, middle, opaque, removed, revealed }, mapInk, identityInk, outsideInk, append: { ...append.appended, oldPixel, keptPixel, addedPixel, leftClosed: append.leftClosed, rightClosed: append.rightClosed }, firstBody: { uploaded: firstBody.uploaded, first: firstBody.first, complete: firstBody.complete, sceneStart: firstBody.sceneStart, sceneFirst: firstBody.sceneFirst, fadePixel, scenePixel }, metadata: { oldInk, newInk, thumbnailPixel, identityPixel }, reduced };
   } finally { await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [] }); win.webContents.debugger.detach(); }
 }

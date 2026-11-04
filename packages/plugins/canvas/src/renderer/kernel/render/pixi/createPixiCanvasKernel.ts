@@ -533,16 +533,34 @@ class PixiCanvasKernel implements CanvasKernel {
   setSelectedEdge(id: CanvasEdgeId | null): void { this.lines.setSelected(id); this.schedule(); }
   setHoveredCard(id: CanvasCardId | null): void { this.lines.setHovered(id); this.schedule(); }
   setDocumentTitles(titles: ReadonlyMap<string, string>): void {
+    const changed = new Set<string>();
+    for (const [id, title] of this.documentTitles) if (titles.get(id) !== title) changed.add(id);
+    for (const [id, title] of titles) if (this.documentTitles.get(id) !== title) changed.add(id);
+    if (!changed.size) return;
     this.documentTitles = new Map(titles);
-    this.mapLabels.invalidate();
-    for (const view of this.views.values()) if (view.card.type === 'document') view.label.text = this.identityTitle(view.card);
-    this.updateLabels(); this.schedule();
+    let mapChanged = false, sceneChanged = false;
+    // 逐条授权元数据返回时只更新对应身份牌，不能为一张标题重新裁切2500份文本。
+    for (const views of [this.views, this.retiringViews]) for (const [id, view] of views) {
+      if (view.card.type !== 'document' || !changed.has(view.card.data.documentId)) continue;
+      view.label.text = this.identityTitle(view.card); sceneChanged ||= view.container.visible && view.label.visible;
+      mapChanged ||= this.mapLabels.hasLabel(id);
+    }
+    // 标题不参与地图占位优先序；未实际绘制的候选改名不会改变现有代表标签。
+    if (mapChanged) { this.mapLabels.invalidate(); this.updateLabels(); }
+    if (mapChanged || sceneChanged) this.schedule();
   }
   setThumbnailCards(ids: ReadonlySet<CanvasCardId>): void {
-    if (ids.size === this.thumbnailCards.size && [...ids].every(id => this.thumbnailCards.has(id))) return;
+    const changed = new Set<CanvasCardId>();
+    for (const id of this.thumbnailCards) if (!ids.has(id)) changed.add(id);
+    for (const id of ids) if (!this.thumbnailCards.has(id)) changed.add(id);
+    if (!changed.size) return;
+    const mapChanged = [...changed].some(id => !ids.has(id) || this.mapLabels.hasLabel(id));
     this.thumbnailCards = new Set(ids);
+    // 缩略偏好不改变位置或遮挡；仅重投影变化卡的正文/身份牌可见性。
+    for (const id of changed) { const view = this.views.get(id); if (view) this.updateView(view); }
     this.refreshTitleOrder();
-    this.refreshCamera(true);
+    if (mapChanged) { this.mapLabels.invalidate(); this.updateLabels(); }
+    this.schedule();
   }
   readEdgeGeometry(id: CanvasEdgeId) { return this.lines.readGeometry(id); }
   screenToWorld(point: CanvasPoint): CanvasPoint { return canvasScreenToWorld(point, this.camera); }
