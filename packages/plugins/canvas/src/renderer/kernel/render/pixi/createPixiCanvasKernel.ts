@@ -18,6 +18,7 @@ import { CanvasSceneMotion, type CanvasMotionView } from './CanvasSceneMotion';
 import { planCanvasSceneMotion, resolveCanvasDisplayCard, canvasCardRasterChanged, type CanvasSceneMotionPlan } from '../../motion';
 import { canvasFitText } from '../../geometry/canvasFitText';
 import { canvasFitCamera } from '../../geometry/canvasFitCamera';
+import { warmCanvasGraphicsPipeline } from './warmCanvasGraphicsPipeline';
 
 interface CardView extends CanvasMotionView { readonly background: NineSliceSprite; readonly body: Container; readonly label: Text;
   visibleAfterRender: number; firstVisibleAfterRender: number; rasterContentKey: string | undefined }
@@ -55,6 +56,8 @@ export async function createPixiCanvasKernel(options: KernelOptions): Promise<Ca
   const height = options.height ?? options.host.clientHeight;
   await app.init({ canvas, width: Math.max(1, width), height: Math.max(1, height), resolution: options.resolution ?? devicePixelRatio,
     autoDensity: true, autoStart: false, preference: 'webgl', antialias: true, backgroundAlpha: 0 });
+  try { warmCanvasGraphicsPipeline(app.renderer); }
+  catch (error) { app.destroy(true, { children: true, texture: true, textureSource: true }); throw error; }
   return new PixiCanvasKernel(app, options, width, height);
 }
 
