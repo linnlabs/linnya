@@ -48,8 +48,18 @@ export async function verifySceneVisual(win: BrowserWindow, output: string, eval
     const oldPixel = pixel(append.before, opacity.dpr, 60, 80), keptPixel = pixel(append.after, opacity.dpr, 60, 80), addedPixel = pixel(append.after, opacity.dpr, 160, 80);
     if (JSON.stringify(oldPixel) !== JSON.stringify(keptPixel) || addedPixel.g < 170 || append.leftClosed !== 1 || append.rightClosed !== 1) throw new Error('append_changed_old_pixels_or_lost_new_region');
     const receipt = z.object({ firstPresented: z.boolean(), rendered: z.boolean(), acceptedAfterRender: z.number() });
+    const firstBodyRaw = await evaluate(win.webContents, 'window.prepareCanvasFirstBodyProbe()');
+    const failedFirstBody = z.object({ failure: z.literal('new_visible_bitmap_draw_missing_first_receipt'),
+      fadeImage: z.string(), dpr: z.number(), facts: z.unknown() }).safeParse(firstBodyRaw);
+    if (failedFirstBody.success) {
+      // 先保留真实像素与计数现场，再使同一断言失败；不能只留下两次rAF的假设。
+      await writeFile(path.join(output, 'first-body-failure.png'), nativeImage.createFromDataURL(failedFirstBody.data.fadeImage).toPNG());
+      await writeFile(path.join(output, 'first-body-failure.json'), JSON.stringify({ failure: failedFirstBody.data.failure,
+        dpr: failedFirstBody.data.dpr, facts: failedFirstBody.data.facts }, null, 2));
+      throw new Error(failedFirstBody.data.failure);
+    }
     const firstBody = z.object({ uploaded: receipt, first: receipt, complete: receipt, sceneStart: receipt, sceneFirst: receipt,
-      fadeImage: z.string(), sceneImage: z.string(), dpr: z.number() }).parse(await evaluate(win.webContents, 'window.prepareCanvasFirstBodyProbe()'));
+      fadeImage: z.string(), sceneImage: z.string(), dpr: z.number() }).parse(firstBodyRaw);
     const fadePixel = pixel(firstBody.fadeImage, firstBody.dpr, 60, 80), scenePixel = pixel(firstBody.sceneImage, firstBody.dpr, 60, 80);
     if (fadePixel.g <= 32 || scenePixel.g <= 0) throw new Error('first_body_receipt_has_no_visible_current_pixels');
     await writeFile(path.join(output, 'first-body-fade.png'), nativeImage.createFromDataURL(firstBody.fadeImage).toPNG());

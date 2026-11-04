@@ -108,12 +108,18 @@ async function beginReducedScene() {
 async function firstBodyVisual() {
   const kernel = await setup(), initial = card('c1', 20); kernel.setElements([initial]);
   kernel.setBitmap(initial.id, 1, 'old', bitmap('#e02020')); await drawn();
+  const requestedAt = performance.now();
   kernel.setBitmap(initial.id, 1, 'current', bitmap('#20c060'));
   const uploaded = kernel.readRasterReceipt(initial.id, 'current');
   if (!uploaded || uploaded.firstPresented || uploaded.rendered || kernel.readRasterReceipt(initial.id, 'old')) throw new Error('uploaded_or_old_bitmap_claimed_current_body_draw');
   await drawn();
-  const first = kernel.readRasterReceipt(initial.id, 'current'), fadeImage = await kernel.captureImage('png');
-  if (!first?.firstPresented) throw new Error('new_visible_bitmap_draw_missing_first_receipt');
+  const observedAt = performance.now(), first = kernel.readRasterReceipt(initial.id, 'current'), firstStats = kernel.readStats();
+  const fadeImage = await kernel.captureImage('png');
+  if (!first?.firstPresented) return {
+    failure: 'new_visible_bitmap_draw_missing_first_receipt', fadeImage, dpr: devicePixelRatio,
+    facts: { requestedAt, observedAt, elapsedMs: observedAt - requestedAt, uploaded, first, firstStats,
+      afterCaptureAt: performance.now(), afterCaptureReceipt: kernel.readRasterReceipt(initial.id, 'current'), afterCaptureStats: kernel.readStats() },
+  };
   kernel.finishTransitions(); await drawn();
   const complete = kernel.readRasterReceipt(initial.id, 'current');
   if (!complete?.rendered || !complete.firstPresented) throw new Error('settled_bitmap_draw_missing_receipt');
