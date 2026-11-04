@@ -120,7 +120,6 @@ function callout(slide, kind, label, body, x, y, w) {
   const ty = y + (h - textH) / 2;
   slide.add(
     rect(x, y, w, h, C.warnBg),
-    rect(x, y, 0.05, h, C.warn),
     text(label, { x: x + 0.2, y: ty, w: labelW, size: size, color: C.warn, bold: true }),
     text(body, { x: x + 0.2 + labelW, y: ty, w: avail + 0.15, size: size, color: C.navy }),
   );
@@ -183,8 +182,7 @@ const findings = [
 findings.forEach(function (f, i) {
   const x = L + i * 4.1;
   s1.add(
-    rect(x, 1.95, 3.95, 3.5, C.pale),
-    rect(x, 1.95, 3.95, 0.05, C.blue),
+    rect(x, 1.95, 3.95, 0.012, C.navy),
     text(f[0], { x: x + 0.25, y: 2.15, w: 1.2, size: 30, color: C.blue, bold: true }),
     text(f[1], { x: x + 0.25, y: 2.95, w: 3.5, size: 16, color: C.navy, bold: true }),
     text(f[2], { x: x + 0.25, y: 3.75, w: 3.5, size: 12, lh: 1.55 }),

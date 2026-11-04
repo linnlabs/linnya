@@ -73,6 +73,27 @@ describe('slides-design Skill 产品合同', () => {
     expect(report).toContain('不低于 8pt');
   });
 
+  it('真实试跑反复出现的审美问题写进设计规则，示例本身也不示范这些写法', () => {
+    const design = fs.readFileSync(path.join(skillRoot, 'references/design.md'), 'utf-8');
+    const syntax = fs.readFileSync(path.join(skillRoot, 'references/syntax.md'), 'utf-8');
+    const cultural = fs.readFileSync(path.join(skillRoot, 'references/style-cultural-imagery.md'), 'utf-8');
+    // 表格默认灰表头白底不跟主题；卡片侧边色条是 AI 模板感；字少的稿子页数要多。
+    expect(design).toContain('**表格默认样式**');
+    expect(syntax).toContain('不跟随主题和页面底色');
+    expect(design).toContain('左侧加一条竖色条');
+    expect(design).toContain('字越少，页数越多');
+    expect(cultural).toContain('30 页以上');
+    // 风格示例不画贴在卡片一侧的细色条（宽或高不超过 0.06in 且另一边小于 2in 的实心矩形）。
+    for (const stem of ['style-consulting', 'style-catalog', 'style-cultural']) {
+      const source = fs.readFileSync(path.join(skillRoot, `references/examples/${stem}.js`), 'utf-8');
+      for (const match of source.matchAll(/rect\([^,]+,[^,]+,\s*([\d.]+),\s*([\d.]+),/g)) {
+        const w = Number(match[1]);
+        const h = Number(match[2]);
+        expect(w <= 0.06 && h > 0.3, `${stem}.js 有竖色条: ${match[0]}`).toBe(false);
+      }
+    }
+  });
+
   it('人文展示与图录阅读两份指南互相指向，图录的栅格规则只在图录指南里', () => {
     const cultural = fs.readFileSync(path.join(skillRoot, 'references/style-cultural-imagery.md'), 'utf-8');
     const catalog = fs.readFileSync(path.join(skillRoot, 'references/style-catalog-handout.md'), 'utf-8');

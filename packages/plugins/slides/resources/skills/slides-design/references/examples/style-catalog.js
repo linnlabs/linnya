@@ -77,7 +77,6 @@ s1.add(
   }),
   text("传世汝窑不足百件，窑址却出土了以吨计的标本，这种反差是理解汝窑的入口。", { x: colX(7), y: 3.6, w: span(5), size: 12, lh: 1.75 }),
   rect(colX(7), 5.3, span(5), 0.9, "#E7EDEA"),
-  rect(colX(7), 5.3, 0.05, 0.9, ACCENT),
   text("辨识要点", { x: colX(7) + 0.25, y: 5.42, w: 1.5, size: 9, color: ACCENT }),
   text("天青釉、香灰胎、芝麻钉三者齐备。", { x: colX(7) + 0.25, y: 5.72, w: span(5) - 0.4, size: 12 }),
 );

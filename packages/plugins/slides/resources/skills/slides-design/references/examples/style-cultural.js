@@ -126,7 +126,6 @@ const s2 = createSlide({ background: { color: PAPER } });
 s2.add(
   text("黑盏白沫", { x: 0.9, y: 0.7, w: 5, size: 30 }),
   text("宋人点茶，茶汤要白，盏要黑。福建建窑烧的黑釉盏胎厚、保温久，是斗茶时最受欢迎的盏。", { x: 0.9, y: 1.6, w: 4.6, size: 12, lh: 1.75 }),
-  rect(0.9, 3.4, 0.04, 1.4, SEAL),
   text("建安所造者绀黑，纹如兔毫，其坯微厚，熁之久热难冷，最为要用。", { x: 1.2, y: 3.4, w: 4.2, size: 15, font: KAI, lh: 1.8 }),
   text("蔡襄《茶录》，北宋", { x: 1.2, y: 5.0, w: 4.2, size: 9.5, color: MUTED, font: KAI }),
   text("一盏千年", { x: 12.1, y: 0.8, h: 2.6, size: 18, color: MUTED, font: KAI, writingMode: "vertical-rl" }),
