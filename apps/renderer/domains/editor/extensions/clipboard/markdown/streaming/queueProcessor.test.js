@@ -187,9 +187,10 @@ describe('queueProcessor - TableBlock integration', () => {
       expect.objectContaining({
         type: 'inlineLatex',
         attrs: expect.objectContaining({ latexSource: 'x+y' }),
-        content: [],
         marks: [],
       })
     );
+    // 公式是叶节点；schema.create的null与空数组都表示无子节点，不锁定stub的入参表达。
+    expect(dataContentBlock.content[2].content ?? []).toEqual([]);
   });
 });
