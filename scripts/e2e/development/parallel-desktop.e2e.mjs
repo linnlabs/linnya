@@ -89,6 +89,10 @@ async function connectPage(app) {
   const pending = new Map();
   socket.addEventListener('message', event => {
     const message = JSON.parse(event.data);
+    if (message.method === 'Runtime.exceptionThrown'
+      || (message.method === 'Runtime.consoleAPICalled' && message.params.type === 'error')) {
+      app.output += `\n[Renderer] ${JSON.stringify(message.params)}\n`;
+    }
     const request = pending.get(message.id);
     if (!request) return;
     pending.delete(message.id);
@@ -116,6 +120,7 @@ async function connectPage(app) {
     },
   };
   app.cdp = cdp;
+  await cdp.send('Runtime.enable');
   return cdp;
 }
 
@@ -184,6 +189,24 @@ try {
   for (let index = 0; index < instances.length; index++) {
     const app = instances[index];
     await waitFor('Vue mounted', () => app.cdp.evaluate('document.querySelector("#app")?.childElementCount > 0'), app);
+    if (index === 0) {
+      const firstLoad = await app.cdp.evaluate(`(async () => {
+        window.__developmentFirstLoadMarker = 'keep-page';
+        const parser = await import('/packages/stream-markdown-parser/src/index.ts');
+        const html = parser.getMarkdown().render('# Warm Markdown');
+        const plugin = await import('/packages/plugins/mindmap/src/renderer/index.ts');
+        const imageExport = await import('/packages/plugins/mindmap/src/renderer/shared/utils/export/index.ts');
+        return { markdown: html.includes('<h1>Warm Markdown</h1>'),
+          plugin: plugin.mindmapRendererPlugin.meta.id,
+          imageExport: typeof imageExport.exportPng };
+      })()`);
+      assert.equal(firstLoad.markdown, true);
+      assert.equal(firstLoad.plugin, 'mindmap');
+      assert.equal(firstLoad.imageExport, 'function');
+      // 依赖预构建迟到曾触发整页刷新；首次动态加载后仍须保留同一页面。
+      await pause(1_000);
+      assert.equal(await app.cdp.evaluate('window.__developmentFirstLoadMarker'), 'keep-page');
+    }
     assert.equal(await app.cdp.evaluate('localStorage.getItem("parallel-instance")'), null);
     await app.cdp.evaluate(`localStorage.setItem('parallel-instance', '${index}')`);
     const response = await fetch(`${qdrantUrls[index]}/collections/instance_${index}`, {
@@ -207,7 +230,7 @@ try {
   assert.equal((await fetch(`${qdrantUrls[1]}/readyz`)).status, 200);
   await Promise.all(instances.slice(1).map(closeApp));
   console.info(JSON.stringify({ success: true, desktopInstances: 3, rendererOrigins: renderers.map(item => item.url),
-    apiPorts: descriptors.map(item => item.port), qdrantUrls, duplicateRejected: true, independentShutdown: true }));
+    apiPorts: descriptors.map(item => item.port), qdrantUrls, duplicateRejected: true, independentShutdown: true, markdownAndMindmapFirstLoad: true }));
 } catch (error) {
   console.error(error);
   // 诊断保存在运行目录外；finally 仍回收临时数据库与 profile。

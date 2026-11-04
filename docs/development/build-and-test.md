@@ -56,7 +56,8 @@ macOS 的 `test:shell-tool:production-command-approval-dom` 使用真实 Rendere
 产物和生产锁。不能只通过依赖覆盖声明兼容；运行合同与独立打包消费门禁都必须通过。
 
 开发入口按依赖图并行准备 runtime、WASM、资源和 workspace package。每个长期 watcher 只执行一次首次构建；
-收到本轮成功事件、完成资源复制和 Backend/原生依赖门禁后才启动 Electron。Vite 在自己的依赖就绪后提前启动并预热入口。
+收到本轮成功事件、完成资源复制和 Backend/原生依赖门禁后才启动 Electron。Vite 在自己的依赖就绪后提前启动并预热入口。workspace package 的额外预热依赖由各自 manifest 声明，
+从声明者的 `node_modules` 解析；不要把裸包名加到根 include 或在根补装包来掩盖 pnpm owner 边界。
 开发会话退出或首次构建失败时，统一关闭本次创建的进程和 Vite。只验证准备阶段、不打开应用可运行
 `pnpm run dev:electron --build-only`；多 worktree 可同时运行相同命令，隔离规则见[开发配置](./env-local.md)。具体职责见 [build-session](../../scripts/development/features/build-session/README.md)。
 
