@@ -20,3 +20,7 @@ locator 且 attachment_status=attached、MIME 为 image。runner 截图、其他
 从 runner 的 state、before、指定 collectionLabel 下的 audit/result/messages-index/after 原件生成草稿。request 包含 runDirectory、collectionLabel，可显式给 controlsFile、metricsFile。正式结束时间取 result.completed_at，源码无效、未知工具事实、最终 sequence 的 check 缺失、UI事实缺失或schema不符时仅产出 run.partial.json 与 diagnostics.json，不能误交评分。事实完整时才产出 run.json；review 始终留空，metrics 缺失留空，不填0冒充性能。
 
 独立 controlsFile 包含 scope（sourceRevision、batchId、documentId、conversationId、runId）、approvalShown、approvalDecision、editedCardId、evidenceFiles；这些值由可信观察者明确提供，不能由模型文本推断。metricsFile 使用同一scope，给出正式评测 metrics 与证据文件列表。证据路径按命令当前目录解释，建议绝对路径；所有文件必须真实存在，属于别题/别run的观测会被拒绝。dry-run/write按原始时间排序并保留phase；原始trace和诊断随草稿保留，人工语义审阅或修正需另留审阅证据，不能抹掉首败。
+
+最终attempt合同区分write与dry-run：write编号必填，dry-run允许原始编号为空；不会给预检臆造编号。controls.imageReadSequence从最后一次模型实际读图及其先前render的正式关联取得；无读图为null，关联事实缺失则partial。它可能小于after.sequence，评分会将旧图判断为未检查最终状态，不能为了通过门槛挑选其他旧读图或把runner读图计入。
+
+契约测试中的可控完整输入仅验证草稿装配与评分门槛，不是实际模型评测证据；真实run仍须保留原始工具消息、UI见证与完整失败记录。
