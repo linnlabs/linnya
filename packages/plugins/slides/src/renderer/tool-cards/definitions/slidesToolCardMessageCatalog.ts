@@ -4,6 +4,10 @@ import type {
 } from '@app/localization';
 
 export type SlidesToolCardMessageKey =
+  | 'slides.tool.title.direction'
+  | 'slides.tool.compact.direction'
+  | 'slides.tool.direction.loading'
+  | 'slides.tool.direction.error'
   | 'slides.tool.title.inspect'
   | 'slides.tool.title.inspectNamed'
   | 'slides.tool.title.export'
@@ -53,6 +57,10 @@ export type SlidesToolCardMessageResolver = (
 ) => string;
 
 export const SLIDES_TOOL_CARD_MESSAGE_FALLBACKS = {
+  'slides.tool.title.direction': '构思视觉方向',
+  'slides.tool.compact.direction': '构思视觉方向',
+  'slides.tool.direction.loading': '正在构思视觉方向...',
+  'slides.tool.direction.error': '视觉方向没有生成，Agent 会按常规方式继续。',
   'slides.tool.title.inspect': '检查演示文稿',
   'slides.tool.title.inspectNamed': '检查演示文稿 · {title}',
   'slides.tool.title.export': '导出 PPTX',
@@ -102,6 +110,10 @@ export const SLIDES_TOOL_CARD_MESSAGE_CATALOG: MessageCatalogContribution = {
   catalogs: {
     'zh-CN': SLIDES_TOOL_CARD_MESSAGE_FALLBACKS,
     'en-US': {
+      'slides.tool.title.direction': 'Shaping the visual direction',
+      'slides.tool.compact.direction': 'Shape visual direction',
+      'slides.tool.direction.loading': 'Shaping the visual direction...',
+      'slides.tool.direction.error': 'No visual direction was produced. The Agent will continue as usual.',
       'slides.tool.title.inspect': 'Inspect presentation',
       'slides.tool.title.inspectNamed': 'Inspect presentation · {title}',
       'slides.tool.title.export': 'Export PPTX',

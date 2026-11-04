@@ -42,6 +42,12 @@ export type AestheticLintCode =
   | 'font_style_substituted'
   /** 生成稿声明的字体在目标放映环境中不存在，打开时会被替换并重新断行 */
   | 'font_not_deliverable'
+  /** 生成稿页面底色不在 theme.direction 声明的颜色里 */
+  | 'direction_background_off'
+  /** 生成稿用了 theme.direction 没有声明的字体 */
+  | 'direction_font_undeclared'
+  /** 生成稿出现了与 theme.direction 调色板色相都不相近的彩色 */
+  | 'direction_color_off_palette'
   /** P1 Tier-1：非全幅元素贴近画布边缘（< 0.3"），可能压迫视觉留白 */
   | 'element_edge_margin'
   /** P1 Tier-1：单页非中性主色 hue 簇 > 4，色彩使用过散 */

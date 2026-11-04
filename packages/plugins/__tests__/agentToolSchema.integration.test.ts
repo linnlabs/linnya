@@ -23,6 +23,7 @@ const TOOL_NAMES = [
   'write_file',
   'process',
   'ppt_inspect',
+  'ppt_direction',
 ];
 const route: AiSdkInferenceRoute = {
   model_id: 'workspace-codec-fixture',

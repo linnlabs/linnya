@@ -1,4 +1,7 @@
 export {
+  PptDirectionTool,
+} from '../tools/PptDirectionTool';
+export {
   PptPlanTool,
 } from '../tools/PptPlanTool';
 export {

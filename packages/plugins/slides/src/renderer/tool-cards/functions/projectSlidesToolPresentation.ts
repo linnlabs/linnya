@@ -14,6 +14,7 @@ import {
   type SlidesToolCardMessageKey,
 } from '../definitions/slidesToolCardMessageCatalog';
 import type {
+  SlidesDirectionPresentationData,
   SlidesExportPresentationData,
   SlidesInspectPresentationData,
   PresentationPageSummary,
@@ -152,6 +153,15 @@ function exportTitle(fileName: string | null): ToolTitleDescriptor {
     text: fileName
       ? localizedText('slides.tool.title.exportNamed', { fileName })
       : localizedText('slides.tool.title.export'),
+  };
+}
+
+export function projectSlidesDirectionPresentation(
+  _input: ToolPresentationProjectorInput,
+): ToolPresentationProjection<SlidesDirectionPresentationData> {
+  return {
+    data: { kind: 'direction' },
+    title: { text: localizedText('slides.tool.title.direction') },
   };
 }
 

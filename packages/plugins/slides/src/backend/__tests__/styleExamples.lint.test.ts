@@ -54,15 +54,22 @@ async function renderSource(stem: string, source: string) {
     ? { width: layout.width, height: layout.height }
     : { width: 10, height: 5.625 };
   const model = new RenderModelMapper().fromGeneratedDeck(stem, 1, stem, deckSpec, size);
-  const findings = collectFindings(evaluateQualityAnalysis(model, { fontTarget: 'office' }), buildSceneGraph(model), []);
-  return { model, findings };
+  const direction = deckSpec.theme?.direction;
+  const findings = collectFindings(
+    evaluateQualityAnalysis(model, { fontTarget: 'office', ...(direction ? { direction } : {}) }),
+    buildSceneGraph(model),
+    [],
+  );
+  return { model, findings, direction };
 }
 
 describe('slides-design 风格页型示例', () => {
   for (const stem of STYLE_EXAMPLES) {
     it(`${stem}.js 编译通过，且渲染后没有 P0 / P1 排版问题`, async () => {
-      const { model, findings } = await renderExample(stem);
+      const { model, findings, direction } = await renderExample(stem);
       expect(model.slides.length).toBeGreaterThanOrEqual(3);
+      // 示例示范从 direction 读颜色和字体；声明必须穿过编译进入 DeckSpec，并且全稿贯彻。
+      expect(direction?.cardId).toBe('example');
       const blocking = findings
         .map(finding => ({ finding, priority: classifyDiagnosticPriority(finding) }))
         .filter(({ priority }) => priority === 'P0' || priority === 'P1')

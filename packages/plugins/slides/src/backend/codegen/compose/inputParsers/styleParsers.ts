@@ -11,6 +11,7 @@ import type {
   TextStyle,
   ThemeSpec,
 } from '@plugin/slides/shared';
+import { DirectionDeclarationSchema } from '@plugin/slides/shared/designDirection';
 import {
   isFontDeliveryTarget,
   normalizeGradientPaint,
@@ -37,6 +38,7 @@ export type ThemeInput = {
     palette?: string[];
   };
   logo?: string;
+  direction?: unknown;
 };
 
 export function parseTextStyle(value: unknown): TextStyle | null {
@@ -404,6 +406,16 @@ export function readThemeSpecInput(
       return { error: 'theme.logo 必须是非空字符串。' };
     }
     theme.logo = value.logo;
+  }
+
+  if (value.direction != null) {
+    const direction = DirectionDeclarationSchema.safeParse(value.direction);
+    if (!direction.success) {
+      const issue = direction.error.issues[0];
+      const path = issue?.path.length ? `.${issue.path.join('.')}` : '';
+      return { error: `theme.direction${path} 不合法：${issue?.message ?? '格式错误'}` };
+    }
+    theme.direction = direction.data;
   }
 
   const normalizedTheme = normalizeThemeSpecColors(theme);

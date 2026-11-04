@@ -255,6 +255,8 @@ export interface SlideInfo {
   layoutName?: string;
   /** slide OOXML 背景；未显式设置时为空，由主题/默认白色补齐。 */
   backgroundPaint?: Paint;
+  /** 页面背景铺了图片；此时底色无法用一个颜色描述。 */
+  backgroundImage?: boolean;
   elements: SlideElementInfo[];
 }
 

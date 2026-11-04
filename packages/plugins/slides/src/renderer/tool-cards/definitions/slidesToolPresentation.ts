@@ -29,6 +29,11 @@ export interface SlidesInspectPresentationData {
   readonly pages: readonly PresentationPageSummary[];
 }
 
+/** 视觉方向只在 Agent 侧使用；卡片只说明这一步在做什么，不展示方向来源。 */
+export interface SlidesDirectionPresentationData {
+  readonly kind: 'direction';
+}
+
 export interface SlidesExportPresentationData {
   readonly kind: 'export';
   readonly presentationId: string | null;

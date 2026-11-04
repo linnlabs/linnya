@@ -25,6 +25,7 @@ shared/
 ├── mathFormula/                      # 原生公式 durable source、SVG metrics 与稳定错误码
 ├── slideRasterization/               # 单页 raster request/profile/result/error 纯合同
 ├── presentationExport/               # 三格式请求联合、默认值、artifact 描述与 parser
+├── designDirection/                  # 新建整稿的视觉方向：方向池、发放规则、ppt_direction 与 theme.direction 合同
 ├── pptPlanToolContract.ts             # ppt_plan 参数、视觉方向与跨端计划数据合同
 ├── pptInspectToolContract.ts          # ppt_inspect 严格参数、最小 data 与结果合同
 ├── spatialTypes.ts                   # 空间关系 DTO
@@ -77,6 +78,7 @@ shared/
 - renderer / worker 的 value import 禁止指向 `@plugin/slides/shared` 根桶；只能使用 `pluginMeta`、`renderModel`、
   `shapeGeometry`、`slideRasterization` 等语义子入口。`import type` 可以使用稳定 barrel，但优先保持语义清楚。
 - 插件独占工具的 strict schema 由插件 shared 拥有。`pptInspectToolContract.ts` 是 `ppt_inspect` 参数、执行期结果和 Conversation 消息结果的唯一跨端 owner：backend producer parse 包含 `observationPreviewMeta` 的执行期 schema；该 meta 被 ToolNode 消费且不进入 Conversation 工具消息，Renderer projector parse 严格的 `data + observation` 消息 schema。两份结果合同复用相同 data/observation 定义，不维护兼容读取。可选 `focus` 只接纳至多四个 1-based 源码闭区间；完整 finding 与 focus 关系只进 observation，不进入卡片 data。业务投影规则见 [presentationInspection](../backend/features/presentationInspection/README.md)。
+- [`designDirection/`](./designDirection/README.md) 是 `ppt_direction` 参数与结果、方向池和 `theme.direction` 声明的唯一 owner；方向只约束表达方法，具体颜色与字体仍由 deck.js 的 `theme` 拥有。
 - `pptPlanToolContract.ts` 是 `ppt_plan` 参数与计划 data 的唯一跨端 owner。`pages` 是页数和顺序的唯一输入事实；backend 生成连续 `slideNumber` 与 `pageCount`。`visualDirection` 只审批整稿的设计理念、构图策略和唯一记忆点，不复制最终 deck.js 的颜色、字体或图表调色板。
 
 ## Public Barrel 规则

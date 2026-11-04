@@ -207,6 +207,7 @@ function normalizeEvidenceNodes(
     case 'font_inventory':
     case 'font_resolution':
     case 'font_delivery':
+    case 'direction_carry_through':
     case 'color_palette':
     case 'hue_drift':
     case 'slide_similarity':
@@ -274,6 +275,7 @@ function collectEvidenceNodeIds(evidence: DiagnosticEvidence): string[] {
     case 'font_inventory':
     case 'font_resolution':
     case 'font_delivery':
+    case 'direction_carry_through':
     case 'color_palette':
     case 'hue_drift':
     case 'slide_similarity':

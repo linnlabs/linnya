@@ -9,6 +9,7 @@ import {
   type SlidesToolCardMessageKey,
 } from './definitions/slidesToolCardMessageCatalog';
 import {
+  projectSlidesDirectionPresentation,
   projectSlidesExportPresentation,
   projectSlidesInspectPresentation,
   projectSlidesPlanPresentation,
@@ -20,11 +21,20 @@ function compactStep(key: SlidesToolCardMessageKey): ToolCompactStepProjector {
   });
 }
 
+const PresentationDirectionCard = defineAsyncComponent(() => import('./presentation/PresentationDirectionCard.vue'));
 const PresentationActionCard = defineAsyncComponent(() => import('./presentation/PresentationActionCard.vue'));
 const PresentationInspectCard = defineAsyncComponent(() => import('./presentation/PresentationInspectCard.vue'));
 const PptPlanApprovalCard = defineAsyncComponent(() => import('./presentation/PptPlanApprovalCard.vue'));
 
 export const presentationToolConfigs: Record<string, ToolUiConfig> = {
+  'ppt_direction': {
+    component: PresentationDirectionCard,
+    icon: ReadIcon,
+    presentation: projectSlidesDirectionPresentation,
+    compactStep: compactStep('slides.tool.compact.direction'),
+    layout: { fullWidth: true },
+  },
+
   'ppt_plan': {
     component: PptPlanApprovalCard,
     presentation: projectSlidesPlanPresentation,

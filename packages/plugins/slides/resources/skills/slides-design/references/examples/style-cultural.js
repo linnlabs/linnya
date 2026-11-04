@@ -3,18 +3,26 @@
 // 对应风格指南：style-cultural-imagery.md。
 // 语法与机械做法重点：书法大字与去背实物的位置关系（实物压住大字边缘）、器物落影的径向渐变椭圆、
 // 朱印（Frame 加居中 Text）、原生竖排小字、墨色页与宣纸页的节奏。
-// 配色、字号和版面是这份示例的一次性选择，不是默认风格；换题材时这些都要换。
+// 颜色和字体都从顶部的 direction 读取，这里填的是中性占位值，不是推荐配色；
+// 实际取值来自本稿的视觉方向。字号和版面也是一次性选择，换题材时要换。
 
 const PW = 13.333;
 const PH = 7.5;
 
-const INK = "#1B1612";
-const PAPER = "#EEE7D8";
-const CREAM = "#EDE3D1";
-const MUTED = "#8B7F6E";
-const SEAL = "#A33A2C";
-const SERIF = "SimSun";
-const KAI = "KaiTi";
+const direction = {
+  drawId: "example",
+  cardId: "example",
+  palette: { backgrounds: ["#EFEFEC", "#1C1C1C"], ink: "#1C1C1C", accents: ["#6A6A6A"] },
+  fonts: ["SimSun", "KaiTi", "STXingkai"],
+};
+const INK = direction.palette.ink;
+const PAPER = direction.palette.backgrounds[0];
+const CREAM = "#E6E6E3";
+const MUTED = "#8A8A8A";
+const SEAL = direction.palette.accents[0];
+const SERIF = direction.fonts[0];
+const KAI = direction.fonts[1];
+const BRUSH = direction.fonts[2];
 
 // Text 自带约 0.1in 的左右内边距和 0.05in 的上内边距；整体外扩，让文字边缘落在给定坐标上。
 function text(content, o) {
@@ -78,7 +86,7 @@ function seal(char, x, y, size) {
   f.w = size;
   f.h = size;
   const t = createText(char);
-  t.fontFamily = "STXingkai";
+  t.fontFamily = BRUSH;
   t.fontSize = size * 40;
   t.color = PAPER;
   f.add(t);
@@ -92,9 +100,9 @@ const s1 = createSlide({
       type: "radial",
       center: { x: 0.7, y: 0.5 },
       stops: [
-        { color: "#2E2419", position: 0 },
-        { color: "#1A1512", position: 0.6 },
-        { color: "#161210", position: 1 },
+        { color: "#2A2A2A", position: 0 },
+        { color: "#1B1B1B", position: 0.6 },
+        { color: "#151515", position: 1 },
       ],
     },
   },
@@ -106,7 +114,7 @@ glyph.x = 0.85;
 glyph.y = 0.7;
 glyph.w = 3.2;
 glyph.h = 4.2;
-const vessel = createShape({ geometry: "ellipse", fill: "#2F4A63" });
+const vessel = createShape({ geometry: "ellipse", fill: "#4A4A4A" });
 vessel.position = "absolute";
 vessel.x = 5.6;
 vessel.y = 1.6;
@@ -117,7 +125,7 @@ s1.add(
   groundShadow(6.2, 4.3, 5.6, 0.8, 0.75),
   vessel,
   text("中国茶事", { x: 0.95, y: 5.3, w: 5, size: 34, color: CREAM }),
-  text("从唐人煎茶，到宋人点茶，到明清的一壶散茶。", { x: 0.98, y: 6.3, w: 7, size: 15, color: "#A39684", font: KAI }),
+  text("从唐人煎茶，到宋人点茶，到明清的一壶散茶。", { x: 0.98, y: 6.3, w: 7, size: 15, color: "#A0A0A0", font: KAI }),
   seal("茶", 4.7, 5.45, 0.5),
 );
 
@@ -129,7 +137,7 @@ s2.add(
   text("建安所造者绀黑，纹如兔毫，其坯微厚，熁之久热难冷，最为要用。", { x: 1.2, y: 3.4, w: 4.2, size: 15, font: KAI, lh: 1.8 }),
   text("蔡襄《茶录》，北宋", { x: 1.2, y: 5.0, w: 4.2, size: 9.5, color: MUTED, font: KAI }),
   text("一盏千年", { x: 12.1, y: 0.8, h: 2.6, size: 18, color: MUTED, font: KAI, writingMode: "vertical-rl" }),
-  rect(6.2, 1.0, 5.4, 4.8, "#D9CFBA"),
+  rect(6.2, 1.0, 5.4, 4.8, "#D6D6D6"),
 );
 
 // slide 3 — 章节页：墨色底、一个大字、一条图带，给节奏换气
@@ -139,19 +147,19 @@ const s3 = createSlide({
       type: "radial",
       center: { x: 0.7, y: 0.5 },
       stops: [
-        { color: "#2E2419", position: 0 },
-        { color: "#1A1512", position: 0.6 },
-        { color: "#161210", position: 1 },
+        { color: "#2A2A2A", position: 0 },
+        { color: "#1B1B1B", position: 0.6 },
+        { color: "#151515", position: 1 },
       ],
     },
   },
 });
 s3.add(
   text("贰", { x: 0.95, y: 0.8, w: 1.2, size: 30, color: SEAL, font: KAI }),
-  text("宋", { x: 0.95, y: 1.5, w: 1.2, size: 15, color: "#A39684", font: KAI }),
-  rect(0, 2.9, PW, 1.7, "#3A3026"),
+  text("宋", { x: 0.95, y: 1.5, w: 1.2, size: 15, color: "#A0A0A0", font: KAI }),
+  rect(0, 2.9, PW, 1.7, "#333333"),
   text("一盏白沫", { x: 0.95, y: 5.1, w: 8, size: 30, color: CREAM }),
-  text("茶末入盏，注水，用茶筅击出一层汤花。", { x: 0.98, y: 5.85, w: 8, size: 15, color: "#A39684", font: KAI }),
+  text("茶末入盏，注水，用茶筅击出一层汤花。", { x: 0.98, y: 5.85, w: 8, size: 15, color: "#A0A0A0", font: KAI }),
 );
 
 compose({
@@ -161,5 +169,6 @@ compose({
   theme: {
     colors: { accent1: SEAL, accent2: MUTED, background: PAPER, text: INK, muted: MUTED },
     fonts: { major: SERIF, minor: KAI },
+    direction,
   },
 });

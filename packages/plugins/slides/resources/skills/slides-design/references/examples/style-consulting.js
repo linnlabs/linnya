@@ -3,26 +3,33 @@
 // 对应风格指南：style-consulting-report.md。
 // 语法与机械做法重点：文本框内边距补偿、手排表格（按内容分列宽）、polygon 箭头段、
 // 按行数估高并垂直居中的提示条，以及五种不同的页型。
-// 配色、字号和版面是这份示例的一次性选择，不是默认风格；换题材时这些都要换。
+// 颜色和字体都从顶部的 direction 读取，这里填的是中性占位值，不是推荐配色；
+// 实际取值来自本稿的视觉方向。字号和版面也是一次性选择，换题材时要换。
 
 const PW = 13.333;
 const PH = 7.5;
 const L = 0.6;
 const CW = 12.13;
 
-const C = {
-  navy: "#1B2A41",
-  blue: "#2F6DB5",
-  tint: "#E4ECF6",
-  pale: "#F4F6F9",
-  line: "#CBD3DC",
-  grey: "#5E6872",
-  ink: "#1E2730",
-  warn: "#B7791F",
-  warnBg: "#FBF4E6",
-  white: "#FFFFFF",
+const direction = {
+  drawId: "example",
+  cardId: "example",
+  palette: { backgrounds: ["#FFFFFF"], ink: "#1F1F1F", accents: ["#2B2B2B", "#5A5A5A", "#7A7A7A"] },
+  fonts: ["Microsoft YaHei"],
 };
-const FONT = "Microsoft YaHei";
+const C = {
+  navy: direction.palette.accents[0],
+  blue: direction.palette.accents[1],
+  tint: "#ECECEC",
+  pale: "#F5F5F5",
+  line: "#CFCFCF",
+  grey: "#666666",
+  ink: direction.palette.ink,
+  warn: direction.palette.accents[2],
+  warnBg: "#F2F2F2",
+  white: direction.palette.backgrounds[0],
+};
+const FONT = direction.fonts[0];
 
 // Text 自带约 0.1in 的左右内边距和 0.05in 的上内边距；整体外扩，让文字边缘落在给定坐标上。
 function text(content, o) {
@@ -190,7 +197,7 @@ findings.forEach(function (f, i) {
 });
 s1.add(
   rect(L, 5.75, CW, 0.62, C.navy),
-  text("建议", { x: L + 0.25, y: 5.97, w: 0.8, size: 12, color: "#A9BED8", bold: true }),
+  text("建议", { x: L + 0.25, y: 5.97, w: 0.8, size: 12, color: "#BDBDBD", bold: true }),
   text("优先尽调可靠性关键件与可复用交付；整机条件式关注；模型与数据保留长期选择权。", { x: L + 1.1, y: 5.95, w: CW - 1.3, size: 13, color: C.white, bold: true }),
 );
 
@@ -212,7 +219,7 @@ s2.add(chart);
 s2.add(text("图表 2　机会池从客户愿意付费的任务出发", { x: 7.0, y: 1.9, w: 5.7, size: 12, color: C.navy, bold: true }));
 const funnel = [
   { t: "任务工位 × 可服务比例 × 年度付费", w: 5.6, bg: C.tint, fg: C.navy },
-  { t: "可技术覆盖", w: 4.6, bg: "#9DB9DB", fg: C.navy },
+  { t: "可技术覆盖", w: 4.6, bg: "#B0B0B0", fg: C.navy },
   { t: "可经济覆盖", w: 3.6, bg: C.blue, fg: C.white },
   { t: "可商业取得", w: 2.6, bg: C.navy, fg: C.white },
 ];
@@ -263,8 +270,8 @@ kpis.forEach(function (k, i) {
 const s5 = createSlide({ background: { color: C.white } });
 chrome(s5, "真实应用证据", "客户已验证指定工序，尚未公开完整的替人经济账", "图片：此处写明拍摄对象、版权方与许可，例如“某某，CC BY 4.0”。无关对象的图写“示意”。", 5);
 // 真实稿件在这里用 createImage 放现场照片；示例用色块占位，避免依赖外部文件。
-const photoA = rect(L, 1.95, 5.6, 3.15, "#C9D3DE");
-const photoB = rect(L + 5.8, 1.95, 3.2, 3.15, "#D8DFE7");
+const photoA = rect(L, 1.95, 5.6, 3.15, "#D3D3D3");
+const photoB = rect(L + 5.8, 1.95, 3.2, 3.15, "#DFDFDF");
 s5.add(
   photoA,
   photoB,
@@ -285,6 +292,7 @@ compose({
   theme: {
     colors: { accent1: C.navy, accent2: C.blue, background: C.white, text: C.ink, muted: C.grey },
     fonts: { major: FONT, minor: FONT },
-    chart: { palette: [C.navy, C.blue, "#9DB9DB", C.line] },
+    chart: { palette: [C.navy, C.blue, "#B0B0B0", C.line] },
+    direction,
   },
 });

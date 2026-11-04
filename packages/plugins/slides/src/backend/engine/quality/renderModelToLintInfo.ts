@@ -36,6 +36,8 @@ export function renderModelToLintInfo(model: PresentationRenderModel): Presentat
     },
     slides: model.slides.map((slide) => ({
       number: slide.index + 1,
+      ...(slide.background?.paint ? { backgroundPaint: slide.background.paint } : {}),
+      ...(slide.background?.imageSrc ? { backgroundImage: true } : {}),
       elements: renderNodesToElementInfo(slide.elements),
     })),
     /* lint 不依赖 theme / masters，给空值即可 */
@@ -90,6 +92,7 @@ function renderNodeToElementInfo(node: RenderNode, parentNodeId?: string): Slide
   if (node.kind === 'shape') {
     const fillColor = extractSolidFill(node.fill);
     if (fillColor) info.fill = fillColor;
+    if (node.fill) info.shapeVisual = { paint: node.fill };
     /* shape 内嵌文本也需要文字溢出检测 */
     if (node.innerText) {
       const textInfo = buildTextInfo(node.innerText.paragraphs, {

@@ -1,5 +1,6 @@
 import type { FontDeliveryTarget } from '../fontDelivery';
 import type { ThemeChartSpec } from './themeChart';
+import type { DirectionDeclaration } from '../designDirection/definitions/directionContract';
 
 export interface ThemeSpec {
   colors?: Record<string, string>;
@@ -11,4 +12,6 @@ export interface ThemeSpec {
   fontTarget?: FontDeliveryTarget;
   chart?: ThemeChartSpec;
   logo?: string;
+  /** 本稿声明的视觉方向；只供 inspect 逐页对照是否贯彻，不写入 PPTX。 */
+  direction?: DirectionDeclaration;
 }

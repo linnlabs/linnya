@@ -57,6 +57,8 @@ import {
   lintWhitespace,
 } from './aesthetic/lintRules.js';
 import { analyzeSlideRepetition } from './aesthetic/repetition.js';
+import type { DirectionDeclaration } from '@plugin/slides/shared/designDirection';
+import { lintDirectionCarryThrough } from './aesthetic/directionRules.js';
 import { computeMetrics } from './aesthetic/metrics.js';
 import type {
   AestheticLintIssue,
@@ -74,6 +76,8 @@ export type {
 export interface AestheticLintOptions {
   /** 生成稿的字体目标环境；留空时不检查字体可交付性。 */
   readonly fontTarget?: FontDeliveryTarget;
+  /** 生成稿在 theme.direction 声明的视觉方向；留空时不检查方向贯彻。 */
+  readonly direction?: DirectionDeclaration;
 }
 
 export class AestheticLint {
@@ -116,6 +120,7 @@ export class AestheticLint {
     aesthetic.push(...lintFontDelivery(info, options.fontTarget));
     aesthetic.push(...lintFontStyleSubstitution(info));
     aesthetic.push(...lintPrimaryHueDrift(slidePrimaryHues));
+    aesthetic.push(...lintDirectionCarryThrough(info, options.direction));
     const repetition = analyzeSlideRepetition(info);
     aesthetic.push(...repetition.issues);
 

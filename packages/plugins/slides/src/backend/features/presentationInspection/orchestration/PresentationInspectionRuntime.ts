@@ -64,6 +64,7 @@ export class PresentationInspectionRuntime {
         ...(request.focus && request.focus.length > 0 ? { focus: request.focus } : {}),
         ...(sourceLocations ? { sourceLocations } : {}),
         ...(snapshot.fontTarget ? { fontTarget: snapshot.fontTarget } : {}),
+        ...(snapshot.direction ? { direction: snapshot.direction } : {}),
       },
     );
 

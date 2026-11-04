@@ -94,6 +94,40 @@ describe('PresentationRepository current materialization and source revisions', 
     repo = new PresentationRepository(db);
   });
 
+  it('按新建时间由近到远列出声明过 theme.direction 的方向，未声明的稿子不计', async () => {
+    const decks: Array<[string, string | null, number]> = [
+      ['deck-old', 'risograph', 100],
+      ['deck-plain', null, 200],
+      ['deck-new', 'museum-label', 300],
+    ];
+    for (const [nodeId, cardId, createdAt] of decks) {
+      insertWorkspaceNode(db, nodeId);
+      const deck = makeDeckSpec(nodeId);
+      if (cardId) {
+        deck.theme = {
+          direction: {
+            drawId: `${nodeId}-1`,
+            cardId,
+            palette: { backgrounds: ['#F2E6D0'], ink: '#1A1A1A', accents: ['#E8442E'] },
+            fonts: ['Georgia'],
+          },
+        };
+      }
+      await repo.createPresentation(nodeId, deck, {
+        pptxBuffer: Buffer.from('pptx'),
+        deckSource: SOURCE_V1,
+        origin: 'codegen',
+      });
+      db.prepare('UPDATE presentation_documents SET created_at = ? WHERE node_id = ?').run(createdAt, nodeId);
+    }
+
+    await expect(repo.listRecentDirectionUses(10)).resolves.toEqual([
+      { cardId: 'museum-label', accent: '#E8442E' },
+      { cardId: 'risograph', accent: '#E8442E' },
+    ]);
+    await expect(repo.listRecentDirectionUses(1)).resolves.toHaveLength(1);
+  });
+
   it('原子创建 current document、首个 checkpoint 与源码文本快照', async () => {
     insertWorkspaceNode(db, 'deck-1');
     const result = await repo.createPresentation('deck-1', makeDeckSpec('Revision 1'), {

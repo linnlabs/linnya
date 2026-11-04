@@ -3,7 +3,8 @@
 // 对应风格指南：style-catalog-handout.md。
 // 语法与机械做法重点：12 栏网格的坐标换算、编号图版与统一格式的图注、
 // 用 Text 加细线手排的年表与对照表、图文对页与图录页两种页型，以及器物对照的图卡页。
-// 配色、字号和版面是这份示例的一次性选择，不是默认风格；换题材时这些都要换。
+// 颜色和字体都从顶部的 direction 读取，这里填的是中性占位值，不是推荐配色；
+// 实际取值来自本稿的视觉方向。字号和版面也是一次性选择，换题材时要换。
 
 const PW = 13.333;
 const PH = 7.5;
@@ -11,13 +12,19 @@ const M = 0.75;
 const GAP = 0.25;
 const COL = (PW - 2 * M - 11 * GAP) / 12;
 
-const PAPER = "#F7F3EA";
-const INK = "#1E1C19";
-const MUTED = "#5F594E";
-const RULE = "#D5CDBC";
-const ACCENT = "#54726B";
-const SERIF = "SimSun";
-const KAI = "KaiTi";
+const direction = {
+  drawId: "example",
+  cardId: "example",
+  palette: { backgrounds: ["#F4F4F2"], ink: "#1F1F1F", accents: ["#6E6E6E", "#8C8C8C"] },
+  fonts: ["SimSun", "KaiTi"],
+};
+const PAPER = direction.palette.backgrounds[0];
+const INK = direction.palette.ink;
+const MUTED = "#5E5E5E";
+const RULE = "#D4D4D4";
+const ACCENT = direction.palette.accents[0];
+const SERIF = direction.fonts[0];
+const KAI = direction.fonts[1];
 
 // 第 c 栏（从 0 起）的左边缘，以及跨 n 栏的宽度。所有元素的左右边线都落在栏线上。
 function colX(c) { return M + c * (COL + GAP); }
@@ -70,13 +77,13 @@ head(s1, "汝窑　RU WARE", "宋代五大名窑　五窑之一", "01");
 s1.add(
   text("汝窑：为宫廷烧了二十年的天青", { x: M, y: 0.92, w: 11, h: 0.62, size: 25, lh: 1.2 }),
   // 真实稿件在此用 createImage 放图版；示例用色块占位，避免依赖外部文件。
-  rect(colX(0), 1.78, span(7), 4.2, "#C9D6D1"),
+  rect(colX(0), 1.78, span(7), 4.2, "#D6D6D6"),
   caption("图 1", "天青釉洗　北宋　某某博物馆", colX(0), 6.1, span(7)),
   text("北宋晚期，盛烧约 1086—1106 年，窑址在河南宝丰清凉寺。釉薄而润，开片细碎，香灰色胎，满釉裹足，底留芝麻状支钉痕。", {
     x: colX(7), y: 1.78, w: span(5), size: 12, lh: 1.75,
   }),
   text("传世汝窑不足百件，窑址却出土了以吨计的标本，这种反差是理解汝窑的入口。", { x: colX(7), y: 3.6, w: span(5), size: 12, lh: 1.75 }),
-  rect(colX(7), 5.3, span(5), 0.9, "#E7EDEA"),
+  rect(colX(7), 5.3, span(5), 0.9, "#ECECEC"),
   text("辨识要点", { x: colX(7) + 0.25, y: 5.42, w: 1.5, size: 9, color: ACCENT }),
   text("天青釉、香灰胎、芝麻钉三者齐备。", { x: colX(7) + 0.25, y: 5.72, w: span(5) - 0.4, size: 12 }),
 );
@@ -84,11 +91,11 @@ s1.add(
 // slide 2 — 图录页：一张主图加三张编号小图
 const s2 = createSlide({ background: { color: PAPER } });
 head(s2, "图录　PLATES", "宋代五大名窑", "02");
-s2.add(text("五窑图录", { x: M, y: 0.92, w: 11, h: 0.62, size: 25, lh: 1.2 }), rect(colX(0), 1.78, span(6), 4.4, "#C9D6D1"), caption("图 2", "汝窑天青釉洗　北宋", colX(0), 6.3, span(6)));
+s2.add(text("五窑图录", { x: M, y: 0.92, w: 11, h: 0.62, size: 25, lh: 1.2 }), rect(colX(0), 1.78, span(6), 4.4, "#D6D6D6"), caption("图 2", "汝窑天青釉洗　北宋", colX(0), 6.3, span(6)));
 ["官窑粉青釉盘", "哥窑青釉笔洗", "钧窑玫瑰紫釉洗"].forEach(function (name, i) {
   const y = 1.78 + i * 1.5;
   s2.add(
-    rect(colX(6), y, span(3), 1.18, "#D8DFE0"),
+    rect(colX(6), y, span(3), 1.18, "#DEDEDE"),
     caption("图 " + (3 + i), name, colX(6), y + 1.22, span(3)),
     text("一句话说明这件器物与上一件的区别。", { x: colX(9), y: y, w: span(3), size: 11, lh: 1.6 }),
   );
@@ -145,9 +152,9 @@ const s5 = createSlide({ background: { color: PAPER } });
 head(s5, "对照　COMPARISON", "宋代五大名窑", "05");
 s5.add(text("看釉看片：三窑放在一起比", { x: M, y: 0.92, w: 11, h: 0.62, size: 25, lh: 1.2 }));
 const cards = [
-  ["汝窑", "天青釉，薄而润，开片细碎", "#9FB3AE"],
-  ["官窑", "粉青厚釉，大开片如冰裂", "#B9B7A6"],
-  ["哥窑", "米黄灰青，金丝铁线", "#B7A78C"],
+  ["汝窑", "天青釉，薄而润，开片细碎", "#B5B5B5"],
+  ["官窑", "粉青厚釉，大开片如冰裂", "#C2C2C2"],
+  ["哥窑", "米黄灰青，金丝铁线", "#A8A8A8"],
 ];
 cards.forEach(function (c, i) {
   const x = colX(i * 4);
@@ -164,7 +171,7 @@ cards.forEach(function (c, i) {
       ] },
     }),
     text(c[0], { x: x + 0.3, y: 5.3, w: w - 0.6, size: 20, color: "#FFFFFF" }),
-    text(c[1], { x: x + 0.3, y: 5.82, w: w - 0.6, size: 11.5, color: "#E9E4DA", lh: 1.45 }),
+    text(c[1], { x: x + 0.3, y: 5.82, w: w - 0.6, size: 11.5, color: "#E6E6E6", lh: 1.45 }),
   );
 });
 s5.add(text("图片：此处写明器物名称、藏地与图片许可。", { x: M, y: 6.62, w: 8, size: 9, color: MUTED }));
@@ -174,7 +181,8 @@ compose({
   layout: { width: PW, height: PH, unit: "in" },
   slides: [s1, s2, s3, s4, s5],
   theme: {
-    colors: { accent1: ACCENT, accent2: "#9E3B2A", background: PAPER, text: INK, muted: MUTED },
+    colors: { accent1: ACCENT, accent2: direction.palette.accents[1], background: PAPER, text: INK, muted: MUTED },
     fonts: { major: SERIF, minor: KAI },
+    direction,
   },
 });

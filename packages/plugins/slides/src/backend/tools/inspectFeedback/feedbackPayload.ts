@@ -33,6 +33,8 @@ export interface BuildToolFeedbackPayloadOptions {
   focus?: PresentationInspectionFeedbackOptions['focus'];
   /** 生成稿的字体目标环境；留空时不检查字体可交付性。 */
   fontTarget?: PresentationInspectionFeedbackOptions['fontTarget'];
+  /** 生成稿声明的视觉方向；留空时不检查方向贯彻。 */
+  direction?: PresentationInspectionFeedbackOptions['direction'];
   spatialAnalyzer: Pick<SlidesEngineExecutionAdapter, 'analyzeSpatial'>;
 }
 
@@ -44,7 +46,10 @@ export async function buildToolFeedbackPayload(
   options: BuildToolFeedbackPayloadOptions,
   changedSlides?: number[],
 ): Promise<DiagnosticToolFeedbackPayload> {
-  const qualityAnalysis = evaluateQualityAnalysis(renderModel, { fontTarget: options.fontTarget });
+  const qualityAnalysis = evaluateQualityAnalysis(renderModel, {
+    fontTarget: options.fontTarget,
+    direction: options.direction,
+  });
 
   if (options.includeHeuristics) {
     const lintInfo = renderModelToLintInfo(renderModel);

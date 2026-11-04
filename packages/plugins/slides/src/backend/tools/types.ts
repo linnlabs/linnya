@@ -179,6 +179,8 @@ export interface PresentationToolCoordinatorPort {
   export(nodeId: string): Promise<ExportedPresentationFile>;
   /** 查询演示文稿的来源类型（generated / imported / patched）。 */
   getSourceKind(nodeId: string): Promise<PresentationSourceKind>;
+  /** 本机最近新建文稿声明过的方向，由近到远；用于新方向降权。 */
+  listRecentDirectionUses?(limit: number): Promise<readonly { readonly cardId: string; readonly accent?: string }[]>;
   /** deck.js source-level 工具共享能力。 */
   getCodegenPresentationService(): CodegenPresentationServicePort;
 }

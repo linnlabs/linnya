@@ -28,7 +28,7 @@ backend/
 ├── sandbox/                 # ppt_compose profile、代码插桩、codegen typecheck
 ├── toolClasses/             # 工具类导出入口
 ├── toolContext/             # Slides tool context decorator
-└── tools/                   # ppt_plan / ppt_inspect、inspect feedback，以及未向 Agent 暴露的 legacy export 实现
+└── tools/                   # ppt_direction / ppt_plan / ppt_inspect、inspect feedback，以及未向 Agent 暴露的 legacy export 实现
 ```
 
 Persistence migration v10 upgrades existing current generated DeckSpecs from the former Flex

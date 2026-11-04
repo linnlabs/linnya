@@ -563,6 +563,7 @@ function expectInspectDataToBeSlim(data: unknown): void {
 describe('presentationToolClasses', () => {
   it('registers only the codegen-first presentation tool surface', () => {
     expect(createSlidesBackendToolClasses().map((ToolClass) => new ToolClass().name)).toEqual([
+      'ppt_direction',
       'ppt_plan',
       'ppt_inspect',
       'ppt_export',

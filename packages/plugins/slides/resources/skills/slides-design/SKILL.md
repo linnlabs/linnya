@@ -4,7 +4,7 @@ description: Plan, create, edit, inspect, and visually verify Linnya Slides thro
 metadata:
   author: linnya
   pluginId: slides
-  version: "7.17"
+  version: "7.18"
 ---
 
 # Slides Design
@@ -22,7 +22,13 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 
 ### 调研与计划
 1. 根据需要，深入研究/搜索相关信息。
-2. 为了明确目的、受众、标题、视觉方向和逐页主要内容，向用户提交一份计划。视觉方向只回答三件事：`concept` 说明整稿遵循什么设计理念以及为什么，`composition` 说明构图、信息密度与页面节奏，`signature` 只声明一个整稿核心视觉记忆点。它不是最终 theme，不填写具体颜色值、字体名或逐页样式。
+2. 新建整份文稿，且用户没有指定风格、品牌、模板或参考稿时，先确定本稿的视觉方向：
+   - 从研究材料里提炼 3–12 个具体视觉母题，每个附 0–1 的常见度（同类稿子人人都会用的接近 1）。母题要具体到能画出来，例如“饕餮纹的对称展开”“电芯的卷绕截面”，不要写“科技感”“高级感”。
+   - 若你有 `ppt_direction` 工具：传入场景和母题调用一次，按返回的手法、配色逻辑、主色相、字体与图片策略设计。手法明显不适合内容时，带 `rejected`（cardId 与一句理由）再调用一次；不要因为不熟悉就退回。
+   - 若无 `ppt_direction` 工具：按 [`styles.md`](./references/styles.md) 自行判断方向。
+   - 编辑已有文稿、用户指定了风格或给了参考稿时，不调用 `ppt_direction`。
+3. 为了明确目的、受众、标题、视觉方向和逐页主要内容，向用户提交一份计划。视觉方向只回答三件事：`concept` 说明整稿遵循什么设计理念以及为什么，`composition` 说明构图、信息密度与页面节奏，`signature` 只声明一个整稿核心视觉记忆点。它不是最终 theme，不填写具体颜色值、字体名或逐页样式。
+- 拿到了 `ppt_direction` 的方向时，用自己的话把它写进这三项，不提方向是怎么来的。
 - 若你有 `ppt_plan` 工具：用它提交 `title`、可选 `audience`、`visualDirection: { concept, composition, signature }` 和逐页 `pages[{title, content}]`；页数由 `pages` 自动推导，不传 `pageCount`。
 - 若无 `ppt_plan` 工具：直接在对话中按相同结构输出标题、受众、三项视觉方向、总页数和逐页计划，不能省略视觉方向或改用另一套自由格式。
 - 两种分支都必须停止建稿，等待用户明确批准。
@@ -33,6 +39,7 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 2. 按任务读取下表中的最少资源，了解Slides的语法。不要一次加载全部 reference。
 3. deck.js 用 plain JavaScript；顶层逐页 `createSlide()`，最终一次 `compose()`。系统分配编辑身份；保留已有源码标记、key 与 `manualEdits`。见 [`syntax.md`](./references/syntax.md)。
 4. 新建文稿或整体改版时，把用户已批准的 `visualDirection` 落实为页面设计，再确定颜色、字体和图表调色板并写进 `compose({ theme })`。`visualDirection` 约束方向，`theme` 保存实际视觉常量；后者是跨页一致性的唯一运行时依据，也是后续编辑读到的 `DECK_DESIGN` 的来源。判断依据见 [`design.md`](./references/design.md)。
+   调用过 `ppt_direction` 时，在 deck.js 顶部写一个 `direction` 对象：`drawId`、`cardId` 照抄返回值，`palette: { backgrounds, ink, accents }` 写全稿用到的背景色、正文墨色和强调色，`fonts` 写全稿用到的字体。颜色、字体和图表调色板都从它取值，并在 `compose({ theme: { ..., direction } })` 里声明。inspect 会按它逐页对照底色、字体和颜色（`direction_*`）；确实要加颜色或字体，先补进 `direction` 再用。
 5. 新建文稿使用 `write_file`，只传 `locator="workspace:/.../*.slides"`，不传 inode。
 6. 局部替换优先 `edit_file`；整体重写才用 `write_file`。示例文件都是独立 source 起点，不能直接互相拼接。同一份 Slides 的写操作必须串行。修改声明与引用时先用 `grep` 找全关联处；删除按“先移除引用、后删除声明”，新增按“先增加声明、后增加引用”，保证每次写入都是可编译状态。能由一段更大且唯一的 `old_string` 覆盖时，优先一次完成关联修改。
    长文稿不要在一次工具调用中生成全部页面：预计达到 10 页，或包含较多图表、SVG、Brush、图片等复杂页面时，按章节每批创建 3–5 页；复杂批次缩小到 1–2 页。第一批用 `write_file` 写入共享 theme、共享常量、首批完整页面和唯一的 `compose()`；后续用 `edit_file` 原子加入一批完整的顶层页面声明，并同步更新同一个 `compose({ slides })`。每批写入后先处理 observation 中的编译与文档诊断，恢复到可编译状态后才能继续下一批；不要逐页制造无谓版本，也不要在最后一次性重写已经成功的页面。最终仍按第 9–10 步做整稿验收。
@@ -79,7 +86,7 @@ presentation-owned 资产。
 | 做叙事、视觉系统、页面节奏判断 | [`design.md`](./references/design.md) | 设计建议，不是 lint 合同 |
 | 确认某个能力具体怎么写 | [`examples/`](./references/examples/) 中覆盖该能力的 `.js` | 能力示范 |
 | 调用 CLI、读 JSON/图片 locator | [`cli.md`](./references/cli.md) | Agent CLI 合同 |
-| 选择风格或看某类稿子的做法（研究咨询、图录阅读、人文展示等） | [`styles.md`](./references/styles.md) | 风格索引，按场景指向指南与页型示例 |
+| 看某类稿子的页型与机械做法（研究咨询、图录阅读、人文展示等） | [`styles.md`](./references/styles.md) | 场景索引，按场景指向指南与页型示例；颜色和字体来自本稿的视觉方向，不从指南或示例取 |
 
 示例按能力而非页面类型划分：结构与节奏看
 [`cover-variants.js`](./references/examples/cover-variants.js)、[`card-grid.js`](./references/examples/card-grid.js)、
@@ -101,7 +108,7 @@ presentation-owned 资产。
 验收按“收齐同范围证据 → 合并根因修改 → 新版本复验”推进。`ppt_inspect` 单次最多十页，超出会返回 `PPT_INSPECT_SCOPE_REQUIRED` 与建议范围；必须分批覆盖请求页面。`coverage=partial` 的计数只代表所查页，不能据此前几页结果宣称整稿通过。连续两轮同范围的 P0/P1 问题没有实质改善时改变修复方法，三轮仍无进展则保留可用成果并说明具体阻碍、未验收页和需要的决定；不能继续无依据微调或声称已完成。最终版本的必要检查完成后立即交付。
 
 - 内容与用户批准的计划或局部修改要求一致；事实和来源没有被臆造。
-- 新建或整体改版的文稿在 `compose({ theme })` 中声明了视觉系统。
+- 新建或整体改版的文稿在 `compose({ theme })` 中声明了视觉系统；调用过 `ppt_direction` 的稿子同时声明了 `theme.direction`，inspect 的 `direction_background_off` 与 `direction_font_undeclared` 已处理或有明确理由保留。
 - 最终内容已核对语言一致性与单位表达，尤其区分百分比、百分点和其他容易混淆的口径。
 - 写入 observation 中没有未处理的 error；inspect 的 `buildStatus` 可用，findings 已结合证据和设计意图逐项判断。
 - 需要视觉确认的页面已经按最终 revision 的策略 render 并检查，而不是只凭 source 猜效果，也不是沿用较早 revision 的截图。

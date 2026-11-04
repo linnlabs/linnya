@@ -43,6 +43,7 @@ import { PptPresentationQueryService } from '../engine/coordinator/PptPresentati
 import { createSlidesEngineExecutionContext } from '../engine/types';
 import type { SlidesEngineExecutionAdapter } from '../engine/types';
 import { buildToolFeedbackPayloadAsync } from '@plugin/slides/backend-tools';
+import { resolveDeckDirection } from '@plugin/slides/shared/designDirection';
 import { resolveDeckFontDeliveryTarget } from '@plugin/slides/shared/fontDelivery';
 import { PresentationQueryRuntime } from './presentationQueryRuntime';
 import {
@@ -243,6 +244,7 @@ export class PptCoordinator {
             snapshot.renderModel.sourceKind,
             snapshot.version.deckSpec.theme,
           ),
+          direction: resolveDeckDirection(snapshot.renderModel.sourceKind, snapshot.version.deckSpec.theme),
         };
       },
       loadSourceLocations: async renderModel => {
@@ -279,6 +281,7 @@ export class PptCoordinator {
             ...(options.focus ? { focus: options.focus } : {}),
             ...(options.sourceLocations ? { sourceLocations: options.sourceLocations } : {}),
             ...(options.fontTarget ? { fontTarget: options.fontTarget } : {}),
+            ...(options.direction ? { direction: options.direction } : {}),
             spatialAnalyzer: this.engine,
           }
         ),
@@ -355,6 +358,11 @@ export class PptCoordinator {
   }
 
   /** 查询演示文稿的来源类型 */
+  /** 本机最近新建文稿声明过的方向，由近到远；仓库不支持时为空。 */
+  async listRecentDirectionUses(limit: number): Promise<readonly import('../persistence').PresentationDirectionUse[]> {
+    return (await this.presentationRepo.listRecentDirectionUses?.(limit)) ?? [];
+  }
+
   async getSourceKind(nodeId: string): Promise<import('./types.js').PresentationSourceKind> {
     return this.queryRuntime.getSourceKind(nodeId);
   }

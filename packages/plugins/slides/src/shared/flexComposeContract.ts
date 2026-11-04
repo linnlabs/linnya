@@ -186,6 +186,25 @@ export interface LayoutThemeInput {
   chart?: {
     palette: [string, ...string[]];
   };
+  /** 本稿声明的视觉方向，供 inspect 逐页对照；不影响渲染与导出。 */
+  direction?: LayoutDirectionInput;
+}
+
+export interface LayoutDirectionInput {
+  /** 照抄 ppt_direction 返回的 drawId。 */
+  drawId: string;
+  /** 照抄 ppt_direction 返回的 cardId。 */
+  cardId: string;
+  palette: {
+    /** 页面背景色（#RRGGBB）；第二个起可以是封面、章节页使用的反色底。 */
+    backgrounds: string[];
+    /** 正文墨色（#RRGGBB）。 */
+    ink: string;
+    /** 强调色（#RRGGBB），图表系列色也从这里取。 */
+    accents: string[];
+  };
+  /** 全稿实际使用的字体族，与文字的 fontFamily 写法一致。 */
+  fonts: string[];
 }
 
 export interface FlexProps {

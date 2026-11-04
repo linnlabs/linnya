@@ -176,6 +176,16 @@ export const FontDeliveryEvidenceSchema = z.object({
   firstAffectedSlide: z.number().int().positive(),
 }).strict();
 
+/** 生成稿在 theme.direction 声明的方向与实际页面不一致。declared/observed 都是可直接对照的值。 */
+export const DirectionCarryThroughEvidenceSchema = z.object({
+  kind: z.literal('direction_carry_through'),
+  aspect: z.enum(['background', 'font', 'color']),
+  cardId: z.string().trim().min(1),
+  declared: z.array(z.string().trim().min(1)).min(1),
+  observed: z.array(z.string().trim().min(1)).min(1),
+  firstAffectedSlide: z.number().int().positive(),
+}).strict();
+
 export const ColorPaletteEvidenceSchema = z.object({
   kind: z.literal('color_palette'),
   hueClusterCount: z.number().int().nonnegative(),
@@ -318,6 +328,7 @@ export const DIAGNOSTIC_EVIDENCE_SCHEMAS = {
   font_inventory: FontInventoryEvidenceSchema,
   font_resolution: FontResolutionEvidenceSchema,
   font_delivery: FontDeliveryEvidenceSchema,
+  direction_carry_through: DirectionCarryThroughEvidenceSchema,
   color_palette: ColorPaletteEvidenceSchema,
   hue_drift: HueDriftEvidenceSchema,
   color_contrast: ColorContrastEvidenceSchema,

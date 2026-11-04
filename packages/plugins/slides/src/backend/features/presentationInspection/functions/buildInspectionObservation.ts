@@ -353,6 +353,8 @@ function formatEvidence(
       return `difference=${evidence.difference} script=${evidence.script} family=${evidence.requestedFamily}->${evidence.resolvedFamily} style=${evidence.requestedStyle}->${evidence.resolvedStyle} resolution=${evidence.resolution} runs=${evidence.runCount} firstSlide=${evidence.firstAffectedSlide}`;
     case 'font_delivery':
       return `target=${evidence.target} family=${evidence.requestedFamily} script=${evidence.script} alternatives=${evidence.alternatives.join(',')} runs=${evidence.runCount} firstSlide=${evidence.firstAffectedSlide}`;
+    case 'direction_carry_through':
+      return `aspect=${evidence.aspect} card=${evidence.cardId} declared=${evidence.declared.join(',')} observed=${evidence.observed.join(',')} firstSlide=${evidence.firstAffectedSlide}`;
     case 'color_palette':
       return `hueClusters=${evidence.hueClusterCount}/${evidence.limit} colors=${evidence.sampleColors.join(',')} samples=${evidence.sampleCount}`;
     case 'hue_drift':
@@ -404,6 +406,7 @@ function collectEvidenceNodes(evidence: DiagnosticEvidence): DiagnosticNodeRef[]
     case 'font_inventory':
     case 'font_resolution':
     case 'font_delivery':
+    case 'direction_carry_through':
     case 'color_palette':
     case 'hue_drift':
     case 'slide_similarity':

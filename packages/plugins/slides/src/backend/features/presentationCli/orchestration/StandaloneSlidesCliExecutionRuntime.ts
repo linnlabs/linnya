@@ -2,6 +2,7 @@ import type { Database } from 'better-sqlite3';
 import { createDocumentImageAssetRuntime } from '@plugin/backend/documentImageAsset';
 import { createDocumentSvgAssetRuntime } from '@plugin/backend/documentSvgAsset';
 import { SlideMarkerIndex } from '@plugin/slides/shared/documentSource/slideMarkerIndex';
+import { resolveDeckDirection } from '@plugin/slides/shared/designDirection';
 import { resolveDeckFontDeliveryTarget } from '@plugin/slides/shared/fontDelivery';
 import type {
   PresentationInspectionRequest,
@@ -90,6 +91,7 @@ export class StandaloneSlidesCliExecutionRuntime implements SlidesCliExecutionPo
         manualEditWarnings: snapshot.document.deckSpec.manualEditWarnings,
         renderModel,
         fontTarget: resolveDeckFontDeliveryTarget(renderModel.sourceKind, snapshot.document.deckSpec.theme),
+        direction: resolveDeckDirection(renderModel.sourceKind, snapshot.document.deckSpec.theme),
       }),
       loadSourceLocations: async () =>
         buildSourceLocationMap({
@@ -113,6 +115,7 @@ export class StandaloneSlidesCliExecutionRuntime implements SlidesCliExecutionPo
             ...(options.focus ? { focus: options.focus } : {}),
             ...(options.sourceLocations ? { sourceLocations: options.sourceLocations } : {}),
             ...(options.fontTarget ? { fontTarget: options.fontTarget } : {}),
+            ...(options.direction ? { direction: options.direction } : {}),
             spatialAnalyzer: {
               analyzeSpatial: async ({ slideNodes }) =>
                 this.spatialAnalyzer.analyze([...slideNodes]),
