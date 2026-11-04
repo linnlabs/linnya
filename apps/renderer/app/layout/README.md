@@ -14,6 +14,8 @@
 
 导航上下文通过 [`app/navigation`](../navigation/README.md) 的公开入口读取与切换，内部状态属于 `app/store`。这里的 Workspace stage、pane 与导航端口是应用界面名称，不代表 Runtime 数据工作区。
 
+文档引用持有Workspace的`nodeType`，与界面注册的`activeDocumentType`不是同一个名称空间。引用、反向链接和插件文档卡通过`openDocumentByNodeType`交给Host registry映射，再复用`openDocumentTarget`的保存、停用、挂载与可用性检查。`openDocument`和`openDocumentTarget`的`type`只接受界面类型，不尝试另一种身份回退。
+
 ## 当前目录
 
 ```text

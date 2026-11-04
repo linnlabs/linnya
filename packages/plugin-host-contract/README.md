@@ -53,6 +53,8 @@ Host 在插件 Backend 初始化前完成数据库准入；插件文档操作直
 
 Renderer 文档保存 handler 拥有本类型的 dirty 状态：只在确认当前草稿全部落库后清除。Host 不根据 handler 返回成功无条件清除 dirty；保存期间的新输入必须继续保持 dirty，导航离开前再次确认已落库。合同见 [`renderer/workspaceRuntime.ts`](./renderer/workspaceRuntime.ts)。
 
+`WorkspaceNavigationPort.openDocumentByNodeType`接受引用持有的持久`nodeType`，Host按已注册owner映射到界面`activeDocumentType`再进入同一正式导航链。旧`openDocument`/`openDocumentTarget`的`type`仍仅表示界面类型，调用方不能把二者混用；未知或停用owner明确拒绝，不能猜测Markdown等默认类型。
+
 ## 4. Conversation 扩展
 
 `ConversationAgentChoiceContribution.disabled` 只限制新的菜单选择；贡献仍保留在列表中，

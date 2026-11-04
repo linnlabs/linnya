@@ -43,7 +43,7 @@ export function installBuiltinConversationInputContributions(): void {
 
   registerConversationReferenceKind(createWorkspaceDocumentReferenceKind({
     currentProjectId: () => navigationScope.currentProjectId, read: readDocumentReference,
-    async open(presentation, projectId) { if (presentation.nodeType) await getWorkspaceNavigationPort().openDocumentTarget({ documentId: presentation.documentId, projectId, type: presentation.nodeType, displayName: presentation.title }); },
+    async open(presentation, projectId) { if (presentation.nodeType) await getWorkspaceNavigationPort().openDocumentByNodeType({ documentId: presentation.documentId, projectId, nodeType: presentation.nodeType, displayName: presentation.title }); },
   }));
 
   registerConversationReferenceProvider(createWorkspaceDocumentReferenceProvider({
