@@ -14,7 +14,7 @@ export function createCanvasTextCreation(session: CanvasDocumentSession, onCommi
     await onCommitted(id, !final || remaining() !== null, remaining, draft.identity); state.clear();
   };
   return { state,
-    begin(point: CanvasPoint, from: CanvasEndpoint | null = null, text = '', arrangement: CanvasTextCreationDraft['arrangement'] = null) { state.begin({ ...canvasTextCreationRectangle(point, from), identity: crypto.randomUUID(), from, anchor: point, arrangement, content: createCanvasPlainTextDocument(text), editSequence: 0 }); },
+    begin(point: CanvasPoint, from: CanvasEndpoint | null = null, text = '', arrangement: CanvasTextCreationDraft['arrangement'] = null) { const draft = { ...canvasTextCreationRectangle(point, from), identity: crypto.randomUUID(), from, anchor: point, arrangement, content: createCanvasPlainTextDocument(text), editSequence: 0 }; state.begin(draft); return draft; },
     update(content: JsonValue) { state.update(CanvasTextDocumentSchema.parse(content)); },
     setComposing(value: boolean) { composing = value; },
     measure(height: number) { const draft = state.draft.value; if (draft) state.resize(canvasTextCreationRectangle(draft.anchor, draft.from, canvasAutomaticTextHeight(Math.ceil(height)))); },
