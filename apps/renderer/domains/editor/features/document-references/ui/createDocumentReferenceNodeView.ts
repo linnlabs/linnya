@@ -1,9 +1,10 @@
 import { createVNode, render } from 'vue';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
 import type { DocumentReferenceUiPort } from '../definitions/documentReferenceUi';
+import type { RegisterEditorFocusPortal } from '@/domains/editor/shared/focus';
 
 /** DOM 仅展示与转发交互；身份和正文始终通过只读 port 解析。 */
-export function createDocumentReferenceNodeView(documentId: string, referenceId: string, port: DocumentReferenceUiPort) {
+export function createDocumentReferenceNodeView(documentId: string, referenceId: string, port: DocumentReferenceUiPort, registerFocusPortal?: RegisterEditorFocusPortal) {
   const dom = document.createElement('span');
   dom.className = 'markdown-document-reference';
   dom.contentEditable = 'false';
@@ -20,7 +21,14 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
   let timer: ReturnType<typeof setTimeout> | undefined;
   let popup: HTMLElement | null = null;
   let disposeDetail: (() => void) | undefined;
-  function close() { if (timer) clearTimeout(timer); popup?.remove(); popup = null; disposeDetail?.(); disposeDetail = undefined; }
+  let releaseFocus: (() => void) | undefined;
+  function close() {
+    if (timer) clearTimeout(timer);
+    const release = releaseFocus, panel = popup, detail = disposeDetail;
+    releaseFocus = undefined; popup = null; disposeDetail = undefined;
+    // 保存回调可以同步销毁NodeView；先交出资源，不能重入释放同一详情。
+    release?.(); panel?.remove(); detail?.();
+  }
   async function refresh() {
     const generation = ++refreshGeneration;
     const result = await port.resolve(documentId);
@@ -45,6 +53,7 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
     panel.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - 360))}px`;
     panel.style.top = `${Math.max(8, Math.min(bounds.bottom + 8, window.innerHeight - 240))}px`;
     document.body.append(panel); popup = panel;
+    releaseFocus = registerFocusPortal?.(panel);
     const recovery = port.recoveryAction(info);
     if (recovery) {
       const action = document.createElement('button'); action.type = 'button'; action.textContent = recovery.label;

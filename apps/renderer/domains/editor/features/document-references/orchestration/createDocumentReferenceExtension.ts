@@ -8,6 +8,7 @@ import { createDocumentReferenceUiPort } from '../adapters/createDocumentReferen
 import { formatDocumentReferenceMarkdown, readDocumentReferenceAttrs } from '../functions/documentReferenceMarkdown';
 import { createDocumentReferenceNodeView } from '../ui/createDocumentReferenceNodeView';
 import { createDocumentReferenceSuggestionView } from '../ui/createDocumentReferenceSuggestionView';
+import type { RegisterEditorFocusPortal } from '@/domains/editor/shared/focus';
 import '@linnya/markdown-document-core/style.css';
 import '../ui/documentReferences.css';
 
@@ -18,7 +19,7 @@ function remapCopiedNode(node: ProseMirrorNode): ProseMirrorNode {
   const children: ProseMirrorNode[] = []; node.content.forEach(child => children.push(remapCopiedNode(child)));
   return node.copy(Fragment.fromArray(children));
 }
-export function createDocumentReferenceExtension(port: DocumentReferenceUiPort = createDocumentReferenceUiPort()) {
+export function createDocumentReferenceExtension(port: DocumentReferenceUiPort = createDocumentReferenceUiPort(), registerFocusPortal?: RegisterEditorFocusPortal) {
   return DocumentReferenceNode.extend({
     extendNodeSchema(extension) {
       if (extension.name !== 'documentReference') return {};
@@ -31,7 +32,7 @@ export function createDocumentReferenceExtension(port: DocumentReferenceUiPort =
     renderText({ node }) { const presentation = port.readCached(readDocumentReferenceAttrs(node.attrs).documentId); return presentation ? formatDocumentReferenceMarkdown(presentation) : '文档'; },
     renderMarkdown(node) { const attrs = readDocumentReferenceAttrs(node.attrs); const presentation = port.readCached(attrs.documentId); if (!presentation) throw new Error('document_reference_projection_required'); return formatDocumentReferenceMarkdown(presentation); },
     onDestroy() { port.dispose(); },
-    addNodeView() { return ({ node }) => { const attrs = readDocumentReferenceAttrs(node.attrs); return createDocumentReferenceNodeView(attrs.documentId, attrs.referenceId, port); }; },
+    addNodeView() { return ({ node }) => { const attrs = readDocumentReferenceAttrs(node.attrs); return createDocumentReferenceNodeView(attrs.documentId, attrs.referenceId, port, registerFocusPortal); }; },
     addProseMirrorPlugins() {
       return [
         new Plugin({ props: { transformPasted(slice) { const children: ProseMirrorNode[] = []; slice.content.forEach(node => children.push(remapCopiedNode(node))); return new Slice(Fragment.fromArray(children), slice.openStart, slice.openEnd); } } }),

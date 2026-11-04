@@ -12,6 +12,7 @@ import { createMarkdownDocumentExtensions } from '@linnya/markdown-document-core
 import { createDocumentReferenceExtension } from '@/domains/editor/features/document-references';
 import { createEmbeddedMarkdownSpaceInput } from './createEmbeddedMarkdownSpaceInput';
 import { installEmbeddedMarkdownNavigation } from './installEmbeddedMarkdownNavigation';
+import { createEditorFocusBoundary } from '@/domains/editor/shared/focus';
 
 /** 外部文档持有正文和保存生命周期；此入口只拥有一个可销毁的编辑表面。 */
 export function createEmbeddedMarkdownEditor(
@@ -21,16 +22,16 @@ export function createEmbeddedMarkdownEditor(
   const space = createEmbeddedMarkdownSpaceInput();
   let navigation: ReturnType<typeof installEmbeddedMarkdownNavigation> | null = null;
   const cancelInsertions = () => { for (const insertion of [...insertions]) insertion.cancel(); };
+  const focus = createEditorFocusBoundary(options.element, () => options.onBlur?.());
   const editor = new Editor({
     element: options.element,
-    extensions: createMarkdownDocumentExtensions([createEmbeddedMarkdownImage(options), createDocumentReferenceExtension()]),
+    extensions: createMarkdownDocumentExtensions([createEmbeddedMarkdownImage(options), createDocumentReferenceExtension(undefined, focus.registerPortal)]),
     editable: !options.readonly,
     editorProps: {
       attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label },
       handleTextInput: (view, _from, _to, text) => space.capture(view, text),
     },
     onUpdate: () => options.onUpdate(JsonValueSchema.parse(editor.getJSON())),
-    onBlur: () => options.onBlur?.(),
     onTransaction: ({ transaction }) => space.record(transaction),
   });
   const replaceContent = (content: JsonValue): void => {
@@ -47,6 +48,7 @@ export function createEmbeddedMarkdownEditor(
   try {
     replaceContent(options.content);
   } catch (error) {
+    focus.destroy();
     editor.destroy();
     throw error;
   }
@@ -68,6 +70,6 @@ export function createEmbeddedMarkdownEditor(
     },
     setEditable: editable => { if (!editable) { cancelInsertions(); navigation?.cancel(); } editor.setEditable(editable); },
     focus: () => { editor.commands.focus(); },
-    destroy: () => { navigation?.dispose(); cancelInsertions(); editor.destroy(); },
+    destroy: () => { focus.destroy(); navigation?.dispose(); cancelInsertions(); editor.destroy(); },
   };
 }

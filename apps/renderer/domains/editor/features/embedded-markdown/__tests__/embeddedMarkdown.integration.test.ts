@@ -8,10 +8,10 @@ afterEach(() => { for (const cleanup of cleanups.splice(0)) cleanup(); });
 function mount(content: string) {
   const element = document.createElement('div');
   document.body.append(element);
-  const onUpdate = vi.fn();
-  const handle = createEmbeddedMarkdownEditor({ element, label: '正文', content: parseEmbeddedMarkdown(content), onUpdate });
+  const onUpdate = vi.fn(), onBlur = vi.fn();
+  const handle = createEmbeddedMarkdownEditor({ element, label: '正文', content: parseEmbeddedMarkdown(content), onUpdate, onBlur });
   cleanups.push(() => { handle.destroy(); element.remove(); });
-  return { handle, element, onUpdate };
+  return { handle, element, onUpdate, onBlur };
 }
 
 describe('embedded Markdown surface', () => {
@@ -56,5 +56,19 @@ describe('embedded Markdown surface', () => {
     handle.setEditable(true);
     expect(element.querySelector('[contenteditable="true"]')).not.toBeNull();
     expect(handle.readMarkdown()).toContain('第一项');
+  });
+
+  it('焦点移入表面内的标签控件不结束编辑，从该控件移到外部才通知保存', () => {
+    const { handle, element, onUpdate, onBlur } = mount('保留当前草稿');
+    const editable = element.querySelector('[contenteditable="true"]');
+    if (!(editable instanceof HTMLElement)) throw new Error('Editor DOM is missing');
+    const internal = document.createElement('button'), external = document.createElement('button');
+    element.append(internal); document.body.append(external); cleanups.push(() => external.remove());
+    editable.focus(); internal.focus();
+    expect(onBlur).not.toHaveBeenCalled(); expect(onUpdate).not.toHaveBeenCalled();
+    expect(handle.readMarkdown()).toBe('保留当前草稿');
+    external.focus(); expect(onBlur).toHaveBeenCalledOnce();
+    internal.focus(); handle.destroy(); external.focus();
+    expect(onBlur).toHaveBeenCalledOnce();
   });
 });
