@@ -18,5 +18,7 @@ it('两个可见目标必须都展示目标修订；首张、远景、离屏和�
   const newer: CanvasRasterReadiness = { ...both, complete: true, cards: both.cards.map(card => card.id === second ? { ...card, revision: 3 } : card) };
   const superseded = readCanvasEvaluationBodyPresentation(newer, revisions);
   expect(superseded.allVisiblePresented).toBe(false); expect(superseded.supersededCardIds).toEqual([second]);
+  const deleted: CanvasRasterReadiness = { ...both, cards: both.cards.map((card): CanvasRasterReadiness['cards'][number] => card.id === second ? { id: second, mode: 'outside', revision: null, status: 'not_required' } : card) };
+  expect(readCanvasEvaluationBodyPresentation(deleted, revisions).supersededCardIds).toEqual([second]);
   expect(readCanvasEvaluationBodyPresentation({ ...both, suspended: true }, revisions).allVisiblePresented).toBe(false);
 });
