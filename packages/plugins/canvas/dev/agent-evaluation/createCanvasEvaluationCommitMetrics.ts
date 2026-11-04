@@ -1,36 +1,14 @@
 import { nextTick } from 'vue';
-import type { CanvasCardId, CanvasChangedEvent, CanvasSynchronization } from '@plugin/canvas/shared';
+import type { CanvasChangedEvent, CanvasSynchronization } from '@plugin/canvas/shared';
 import type { createCanvasSurface } from '../../src/renderer/orchestration/createCanvasSurface';
-import type { CanvasRasterReadiness } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
 import { createCanvasDocumentPort } from '../../src/renderer/adapters/createCanvasDocumentPort';
 import { readCanvasEvaluationCommitScopes, type CanvasEvaluationCommitScope } from './readCanvasEvaluationCommitScopes';
 import { createCanvasEvaluationCommitFrameWindows } from './createCanvasEvaluationCommitFrameWindows';
 import type { createCanvasEvaluationFrameMetrics } from './createCanvasEvaluationFrameMetrics';
+import { readCanvasEvaluationBodyPresentation, sameCanvasEvaluationBodyIds } from './readCanvasEvaluationBodyPresentation';
+import type { BodyFrameReceipt, BodyReceipt, CommitFrame, FrameReceipt } from './definitions/canvasEvaluationCommitMetrics';
 
 type Surface = Awaited<ReturnType<typeof createCanvasSurface>>;
-interface FrameReceipt {
-  readonly observedAt: number;
-  readonly displayedSequence: number;
-  readonly drawCount: number;
-  readonly commitToFrameUpperBoundMs?: number;
-}
-interface BodyReceipt {
-  readonly status: 'ready' | 'pending' | 'failed' | 'incomplete' | 'no-visible-body' | 'unattributed' | 'not-required';
-  readonly visibleBodyIds: readonly CanvasCardId[];
-  readonly readiness?: CanvasRasterReadiness;
-  readonly frame?: FrameReceipt;
-  readonly supersededCardIds?: readonly CanvasCardId[];
-}
-interface CommitFrame {
-  readonly event: CanvasChangedEvent;
-  readonly receivedAt: number;
-  readonly status: 'observing' | 'presented' | 'not-visible' | 'not-presented' | 'closed' | 'failed';
-  readonly scope?: CanvasEvaluationCommitScope;
-  readonly geometry?: FrameReceipt;
-  readonly body?: BodyReceipt;
-  readonly frames?: ReturnType<ReturnType<typeof createCanvasEvaluationCommitFrameWindows>['finish']>;
-  readonly error?: string;
-}
 
 /** 变化归属取正式delta；分别记录几何首帧与当前可见正文纹理真正draw后的观测上界。 */
 export function createCanvasEvaluationCommitMetrics(surface: Surface, frames: Pick<ReturnType<typeof createCanvasEvaluationFrameMetrics>, 'subscribe'>) {
@@ -59,6 +37,7 @@ export function createCanvasEvaluationCommitMetrics(surface: Surface, frames: Pi
       const scope = scopes.get(event.sequence), baseline = surface.readPresentationStats().renders, started = performance.now();
       const changedIds = scope?.cards.map(card => card.id) ?? [], revisions = new Map(scope?.cards.map(card => [card.id, card.revision]) ?? []);
       let geometry: FrameReceipt | undefined;
+      let firstVisible: BodyFrameReceipt | undefined, allVisible: BodyFrameReceipt | undefined;
       const poll = () => {
         if (disposed || token !== epoch) return;
         if (document.visibilityState !== 'visible') { append({ event, receivedAt, scope, status: 'not-visible', geometry }, token); return; }
@@ -72,11 +51,14 @@ export function createCanvasEvaluationCommitMetrics(surface: Surface, frames: Pi
         if (!scope) { append({ event, receivedAt, status: 'presented', geometry, body: { status: 'unattributed', visibleBodyIds: [] } }, token); return; }
         if (!scope.cards.length) { append({ event, receivedAt, scope, status: 'presented', geometry, body: { status: 'not-required', visibleBodyIds: [] } }, token); return; }
         const readiness = surface.readContentReadiness(changedIds);
-        const visibleBodyIds = readiness.cards.flatMap(card => card.mode === 'body' ? [card.id] : []);
-        const supersededCardIds = readiness.cards.flatMap(card => { const expected = revisions.get(card.id); return expected !== undefined && card.revision !== null && card.revision > expected ? [card.id] : []; });
-        const terminal = readiness.complete || visibleBodyIds.length === 0 || readiness.cards.some(card => card.status === 'failed') || performance.now() - started >= 5000;
-        const status: BodyReceipt['status'] = readiness.complete ? 'ready' : !visibleBodyIds.length ? 'no-visible-body' : readiness.cards.some(card => card.status === 'failed') ? 'failed' : terminal ? 'incomplete' : 'pending';
-        append({ event, receivedAt, scope, status: 'presented', geometry, body: { status, visibleBodyIds, readiness, supersededCardIds, ...(readiness.complete ? { frame: frameReceipt(event, sequence, stats.renders) } : {}) } }, token);
+        const { visibleBodyIds, presentedBodyIds, supersededCardIds, allVisiblePresented } = readCanvasEvaluationBodyPresentation(readiness, revisions);
+        if (!firstVisible && presentedBodyIds.length) firstVisible = { ...frameReceipt(event, sequence, stats.renders), visibleBodyIds, presentedBodyIds };
+        if (!allVisiblePresented) allVisible = undefined;
+        else if (!allVisible || !sameCanvasEvaluationBodyIds(allVisible.visibleBodyIds, visibleBodyIds)) allVisible = { ...frameReceipt(event, sequence, stats.renders), visibleBodyIds, presentedBodyIds };
+        const ready = readiness.complete && allVisiblePresented && supersededCardIds.length === 0;
+        const terminal = ready || supersededCardIds.length > 0 || visibleBodyIds.length === 0 || readiness.cards.some(card => card.status === 'failed') || performance.now() - started >= 5000;
+        const status: BodyReceipt['status'] = ready ? 'ready' : !visibleBodyIds.length ? 'no-visible-body' : readiness.cards.some(card => card.status === 'failed') ? 'failed' : terminal ? 'incomplete' : 'pending';
+        append({ event, receivedAt, scope, status: 'presented', geometry, body: { status, visibleBodyIds, readiness, supersededCardIds, ...(firstVisible ? { firstVisible } : {}), ...(allVisible ? { allVisible } : {}), ...(ready ? { frame: frameReceipt(event, sequence, stats.renders) } : {}) } }, token);
         if (!terminal) requestAnimationFrame(poll);
       };
       requestAnimationFrame(poll);
