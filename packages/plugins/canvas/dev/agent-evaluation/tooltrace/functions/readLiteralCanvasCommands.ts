@@ -50,10 +50,12 @@ export function readLiteralCanvasCommands(
   cwd: string
 ) {
   const invocations: CanvasTraceInvocation[] = [];
+  const receiptInvocations: CanvasTraceInvocation[] = [];
   let delimiter: string | null = null,
     file: string | null = null,
     body: string[] = [],
-    ambiguous = false;
+    ambiguous = false,
+    controlFlow = false;
   for (const line of command.split('\n')) {
     if (delimiter !== null) {
       if (line.trim() === delimiter) {
@@ -74,9 +76,25 @@ export function readLiteralCanvasCommands(
       }
       continue;
     }
-    if (/^\s*(?:if|then|else|fi|for|while|until|do|done|case|esac|function)\b/.test(line))
+    if (/^\s*(?:(?:if|then|elif|else|fi|for|while|until|select|do|done|case|esac|function)\b|[\w-]+\s*\(\)|[{}()])/.test(line)) {
       ambiguous = true;
+      controlFlow = true;
+    }
     const invocation = readInvocation(line, files, cwd);
+    // 管道后的摘要不能证明结果，但管道前完整字面命令可以证明该run请求过这个编号。
+    // 不解释控制流、不读here-doc正文、不接纳变量或重定向前缀。
+    const receipt =
+      invocation ??
+      (line.includes('|')
+        ? readInvocation(line.slice(0, line.indexOf('|')).trim(), files, cwd)
+        : null);
+    if (
+      receipt &&
+      !receipt.dryRun &&
+      receipt.requestId &&
+      (receipt.kind === 'apply' || receipt.kind === 'arrange')
+    )
+      receiptInvocations.push(receipt);
     if (invocation) invocations.push(invocation);
     else {
       if (line.trim() && !line.trim().startsWith('#')) {
@@ -85,5 +103,9 @@ export function readLiteralCanvasCommands(
       }
     }
   }
-  return { invocations, ambiguous: ambiguous || delimiter !== null };
+  return {
+    invocations,
+    receiptInvocations: controlFlow || delimiter !== null ? [] : receiptInvocations,
+    ambiguous: ambiguous || delimiter !== null,
+  };
 }

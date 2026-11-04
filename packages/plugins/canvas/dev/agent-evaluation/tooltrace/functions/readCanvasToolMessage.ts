@@ -56,6 +56,17 @@ export function readCanvasToolMessage(input: {
     return;
   }
   const commands = readLiteralCanvasCommands(args.data.command, input.files, args.data.cwd ?? '.');
+  if (payload.phase === 'complete')
+    for (const command of commands.receiptInvocations) {
+      if (command.requestId && context.facts.scope.locators.includes(command.target))
+        context.facts.requests.push({
+          requestId: command.requestId,
+          runId: context.runId,
+          toolCallId: context.toolCallId,
+          sourceFile: context.sourceFile,
+          order: context.order,
+        });
+    }
   const matching = commands.invocations.filter(command =>
     context.facts.scope.locators.includes(command.target)
   );

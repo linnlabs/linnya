@@ -10,3 +10,9 @@ export {
 } from './definitions/traceDraft';
 export { buildCanvasRunDraft } from './functions/buildCanvasRunDraft';
 export { draftCanvasEvaluationRun } from './orchestration/draftCanvasEvaluationRun';
+
+export {
+  CanvasReceiptWitnessSchema,
+  CanvasReceiptWitnessRequestSchema,
+} from './definitions/canvasReceiptWitness';
+export { collectCanvasReceiptWitness } from './orchestration/collectCanvasReceiptWitness';

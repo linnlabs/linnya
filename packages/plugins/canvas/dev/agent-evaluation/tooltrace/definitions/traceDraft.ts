@@ -11,6 +11,7 @@ export interface CanvasRunDraftInput {
   readonly evidenceFiles: readonly string[];
   readonly controls?: unknown;
   readonly metrics?: unknown;
+  readonly receiptWitness?: unknown;
 }
 
 export const CanvasTraceDraftRequestSchema = z
@@ -19,6 +20,7 @@ export const CanvasTraceDraftRequestSchema = z
     collectionLabel: z.string().regex(/^[a-zA-Z0-9-]+$/),
     controlsFile: z.string().min(1).optional(),
     metricsFile: z.string().min(1).optional(),
+    receiptWitnessFile: z.string().min(1).optional(),
   })
   .strict();
 

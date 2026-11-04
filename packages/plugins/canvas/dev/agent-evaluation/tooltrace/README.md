@@ -24,3 +24,12 @@ locator 且 attachment_status=attached、MIME 为 image。runner 截图、其他
 最终attempt合同区分write与dry-run：write编号必填，dry-run允许原始编号为空；不会给预检臆造编号。controls.imageReadSequence从最后一次模型实际读图及其先前render的正式关联取得；无读图为null，关联事实缺失则partial。它可能小于after.sequence，评分会将旧图判断为未检查最终状态，不能为了通过门槛挑选其他旧读图或把runner读图计入。
 
 契约测试中的可控完整输入仅验证草稿装配与评分门槛，不是实际模型评测证据；真实run仍须保留原始工具消息、UI见证与完整失败记录。
+
+`receipts REQUEST.json NEW-DIR`
+通过正式独立只读CLI补采持久回执。request包含runDirectory、collectionLabel、artifactRoot（已构建插件目录）、databasePath（显式只读SQLite路径）、requestIds。collector先从该collection的正式audit/messages重新证明run归属与字面请求编号，未证明的编号在启动CLI前拒绝；不会因为操作者手填编号就把同会话其他run算入本次。here-doc正文、控制流、变量编号和dry-run不能作为正式写编号证据。直接字面命令的stdout被后续管道过滤时，`trace.requests`只记录请求身份，不推断attempt、校验或修正。
+
+采集器使用当前Host的Electron
+ABI和正式Host模块解析，固定调用`--database … --project … --conversation … receipt … …`，不启动App写运行态或BrowserWindow。每个查询的参数、完整stdout/stderr、退出结果与已解析原件保留在权限受限的新目录；原件不可覆盖。见证记录实际CLI文件SHA256和Host目录，不能将此哈希冒充模型运行时的源码版本。
+
+draft
+request可额外传receiptWitnessFile。装配时再次对照本次解析的`trace.requests`验证编号，并校验sourceRevision、batch、run、conversation、project、文档路径与回执编号。只把committed回执作为权威commit补充；pending、缺失或无效响应不会伪造执行，旧回执缺字段细节保持未知。原始trace.json与receipt见证分别保留，run草稿的commits是两者的接纳结果。成功回执不能恢复已丢失的失败次数或correction，原始needsReview/diagnostics不会被清除，人工/UI/性能事实仍需独立证据。

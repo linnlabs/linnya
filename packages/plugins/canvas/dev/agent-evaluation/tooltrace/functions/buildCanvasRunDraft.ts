@@ -1,5 +1,6 @@
 import { CanvasAgentEvaluationRunSchema } from '../../../../scripts/agent-evaluation';
 import type { CanvasRunDraftInput } from '../definitions/traceDraft';
+import { admitCanvasReceiptWitness } from './admitCanvasReceiptWitness';
 import { readCanvasImageReadSequence } from './readCanvasImageReadSequence';
 import { admitCanvasDraftSource } from './admitCanvasDraftSource';
 import { admitCanvasDraftWitnesses, readCanvasDraftFinishedAt } from './admitCanvasDraftEvidence';
@@ -7,14 +8,21 @@ import { admitCanvasDraftWitnesses, readCanvasDraftFinishedAt } from './admitCan
 /** 缺事实就产出partial，不把人工动作、未知纠错或未完成run补成成功。 */
 export function buildCanvasRunDraft(input: CanvasRunDraftInput) {
   const { state, collection, before, after, scope, startedAt } = admitCanvasDraftSource(input);
+  const receipts = admitCanvasReceiptWitness({
+      value: input.receiptWitness,
+      facts: input.facts,
+      scope,
+      projectId: state.projectId,
+    }),
+    facts = receipts.facts;
   const config = state.config,
     diagnostics: string[] = [];
   if (!collection.sourceValid || !collection.messagesComplete || !collection.evidenceComplete)
     diagnostics.push('collection_incomplete_or_source_changed');
-  if (input.facts.needsReview) diagnostics.push('tooltrace_needs_review');
+  if (facts.needsReview) diagnostics.push('tooltrace_needs_review');
   const finishedAt = readCanvasDraftFinishedAt(input.result, scope);
   if (finishedAt === undefined) diagnostics.push('run_terminal_result_missing');
-  const check = [...input.facts.checks]
+  const check = [...facts.checks]
     .reverse()
     .find(value => value.report.sequence === after.sequence)?.report;
   if (!check) diagnostics.push('final_sequence_check_missing');
@@ -24,11 +32,11 @@ export function buildCanvasRunDraft(input: CanvasRunDraftInput) {
     scope,
   });
   if (!controls) diagnostics.push('trusted_ui_controls_missing');
-  const imageReadSequence = readCanvasImageReadSequence(input.facts);
+  const imageReadSequence = readCanvasImageReadSequence(facts);
   if (imageReadSequence === undefined) diagnostics.push('image_read_render_link_missing');
   const attempts = [
-    ...input.facts.attempts.map(value => ({ ...value, phase: 'write' })),
-    ...input.facts.dryRuns.map(value => ({ ...value, phase: 'dry-run' })),
+    ...facts.attempts.map(value => ({ ...value, phase: 'write' })),
+    ...facts.dryRuns.map(value => ({ ...value, phase: 'dry-run' })),
   ]
     .sort((a, b) => a.order - b.order)
     .map(value => ({
@@ -54,18 +62,19 @@ export function buildCanvasRunDraft(input: CanvasRunDraftInput) {
     check,
     documentIds: state.documentIds,
     attempts,
-    commits: input.facts.commits,
+    commits: facts.commits,
     controls: controls && {
       approvalShown: controls.approvalShown,
       approvalDecision: controls.approvalDecision,
       editedCardId: controls.editedCardId,
-      renderCount: input.facts.renders.length,
-      imageReadCount: input.facts.imageReads.length,
+      renderCount: facts.renders.length,
+      imageReadCount: facts.imageReads.length,
       imageReadSequence: imageReadSequence ?? null,
     },
     metrics: metrics?.metrics ?? {},
     evidenceFiles: [
       ...input.evidenceFiles,
+      ...receipts.evidenceFiles,
       ...(controls?.evidenceFiles ?? []),
       ...(metrics?.evidenceFiles ?? []),
     ],

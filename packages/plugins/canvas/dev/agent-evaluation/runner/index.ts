@@ -6,6 +6,7 @@ export {
 } from './definitions/evaluationRunner';
 export type {
   CanvasEvaluationRunnerConfig,
+  CanvasEvaluationRunnerState,
   EvaluationRunnerPorts,
 } from './definitions/evaluationRunner';
 export { setupCanvasEvaluation } from './orchestration/setupEvaluation';
