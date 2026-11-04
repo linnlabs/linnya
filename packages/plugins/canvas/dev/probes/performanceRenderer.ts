@@ -4,6 +4,7 @@ import { createCanvasRasterPresentation } from '../../src/renderer/orchestration
 import { canvasPerformanceMediaFixture, type CanvasPerformanceKind } from './performanceMediaFixture';
 import { createCanvasZoomTimeline } from './performanceZoomTimeline';
 import { createCanvasPerformancePaintTrace } from './performancePaintTrace';
+import { waitForCanvasPerformanceBody } from './waitForCanvasPerformanceBody';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
@@ -98,26 +99,19 @@ function closeView() {
   return { visible: kernel?.visibleCards().length, camera: kernel?.readCamera() };
 }
 async function waitForBody() {
-  const started = performance.now();
-  while (performance.now() - started < 5000) {
-    const stats = presentation?.readStats();
-    if (stats?.failed) return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats, media: media?.readStats() };
-    if (mediaResourcesIdle() && stats && !stats.pending && !stats.running && !kernel?.readStats().fadingCards && mediaPresentationReady()) {
-      await nextFrame(); await nextFrame();
-      const after = presentation?.readStats();
-      if (mediaResourcesIdle() && after && !after.pending && !after.running && !kernel?.readStats().fadingCards && mediaPresentationReady()) return { settled: true, ms: performance.now() - started, camera: kernel?.readCamera(), stats: after, media: media?.readStats() };
-    }
-    await nextFrame();
-  }
-  return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats: presentation?.readStats(), media: media?.readStats() };
+  const { settled, ms, snapshot } = await waitForCanvasPerformanceBody({ now: () => performance.now(), nextFrame,
+    readSnapshot: () => ({ stats: presentation?.readStats(), camera: kernel?.readCamera(), media: media?.readStats(),
+      resourcesIdle: mediaResourcesIdle(), fadingCards: kernel?.readStats().fadingCards ?? 0, presentationReady: bodyPresentationReady() }) });
+  return { settled, ms, camera: snapshot.camera, stats: snapshot.stats, media: snapshot.media };
 }
 function mediaResourcesIdle(): boolean {
   const active = media?.readStats().active;
   return !active || active.image + active.preview + active.reference === 0;
 }
-function mediaPresentationReady(): boolean {
-  if (!media?.content || !kernel || !presentation) return true;
+function bodyPresentationReady(): boolean {
+  if (!kernel || !presentation) return false;
   if (kernel.readCamera().zoom >= 0.3) return presentation.readReadiness(kernel.rasterCards().map(card => card.id)).complete;
+  if (!media?.content) return true;
   // 资源响应已返回不代表最后一批通知已投影；按夹具owner事实等齐应显示的缩略图。
   const expected = kernel.renderableCards().filter(card => media?.expectedThumbnails.has(card.id)).length;
   const stats = kernel.readStats(); return stats.rasterCards === expected && stats.bitmaps >= expected;
