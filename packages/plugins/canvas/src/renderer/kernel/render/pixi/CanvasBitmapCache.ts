@@ -1,7 +1,7 @@
 import type { Container } from 'pixi.js';
 import type { CanvasCardId, CanvasRectangle } from '../../../../shared';
 import type { CanvasRasterTile } from '../../definitions/canvasKernel';
-import { subtractCanvasRegions } from '../../geometry/canvasVisibleRegions';
+import { intersectCanvasRegion, subtractCanvasRegions } from '../../geometry/canvasVisibleRegions';
 import { selectCanvasRasterCoverage } from '../../geometry/selectCanvasRasterCoverage';
 import { CanvasBitmapResources, type CanvasBitmapLayer, type CanvasBitmapRegion } from './canvasBitmapResources';
 import { CanvasBitmapFades } from './CanvasBitmapFades';
@@ -50,6 +50,10 @@ export class CanvasBitmapCache {
     return previous.regions.flatMap(region => subtractCanvasRegions([region], additions.filter(tile => tile.scale > region.scale))
       .map(frame => { const next = this.resources.region(region.owner, frame, region.scale); body.addChild(next.sprite); return next; }));
   }
+  private appendable(id: CanvasCardId, previous: Entry | undefined, key: string, additions: readonly CanvasRasterTile[]): Entry | undefined {
+    if (previous?.key !== key || this.fades.has(id)) return undefined;
+    return additions.every(tile => previous.regions.every(region => !intersectCanvasRegion(tile, region))) ? previous : undefined;
+  }
   install(id: CanvasCardId, key: string, tiles: readonly CanvasRasterTile[], body: Container): boolean {
     const existing = this.entries.get(id), same = existing?.key === key ? existing : undefined;
     const additions = tiles.filter(tile => {
@@ -60,13 +64,17 @@ export class CanvasBitmapCache {
     const bytes = additions.reduce((sum, tile) => sum + tile.bitmap.width * tile.bitmap.height * 4, 0);
     if (bytes > this.options.budget) { additions.forEach(tile => tile.bitmap.close()); return false; }
     this.reserve(bytes, id);
-    const previous = this.entries.get(id), regions = this.retained(previous, key, additions, body);
+    const previous = this.entries.get(id);
+    // 同一正文的未见区域没有旧像素可替换；保留既有Sprite，不能每补一条就重建并淡入整张卡。
+    const append = this.appendable(id, previous, key, additions);
+    const regions = append ? [...append.regions] : this.retained(previous, key, additions, body);
     for (const tile of additions) {
       const owner = this.resources.create(tile), region = this.resources.region(owner, tile, tile.scale);
       body.addChild(region.sprite); regions.push(region);
     }
     const next = { key, regions, alpha: 1, acceptedAfterRender: this.options.readRenderCount() };
     this.entries.delete(id); this.entries.set(id, next);
+    if (append) { this.options.changed(id); return true; }
     // 首图未实际显示时直接接纳新图；不能为未见过的旧片制造一次模糊飞入。
     const displayed = previous && (this.fades.has(id) || this.options.readRenderCount() > previous.acceptedAfterRender) ? previous : undefined;
     this.fades.start(id, displayed, next);
