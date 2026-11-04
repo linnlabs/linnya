@@ -342,10 +342,13 @@ class PixiCanvasKernel implements CanvasKernel {
     if (previous) {
       previous.card = display;
       previous.label.text = this.identityTitle(card);
-    } else this.createView(display);
+    }
+    // 可见片段会按container的当前显示姿态裁切；首次创建/直接移动必须先摆好位置。
+    // 不能等projectCards之后的updateView才应用，否则新卡会被旧(0,0)边界误裁掉。
+    this.scene.apply(previous ?? this.createView(display));
   }
 
-  private createView(card: CanvasCard): void {
+  private createView(card: CanvasCard): CardView {
     const container = new Container();
     const background = new NineSliceSprite({ texture: this.backgrounds[this.appearance.material], leftWidth: 8, rightWidth: 8, topHeight: 8, bottomHeight: 8 });
     const body = new Container();
@@ -354,7 +357,8 @@ class PixiCanvasKernel implements CanvasKernel {
       style: { fill: 0xffffff, fontFamily: 'system-ui', fontSize: 15, wordWrap: false } });
     container.addChild(background, body, label);
     this.cardLayer.addChild(container);
-    this.views.set(card.id, { card, container, background, body, label, visibleAfterRender: this.renders, firstVisibleAfterRender: this.renders, rasterContentKey: undefined, lodAlpha: 1 });
+    const view: CardView = { card, container, background, body, label, visibleAfterRender: this.renders, firstVisibleAfterRender: this.renders, rasterContentKey: undefined, lodAlpha: 1 };
+    this.views.set(card.id, view); return view;
   }
 
   private updateCameraState(next: CanvasCamera): void {
