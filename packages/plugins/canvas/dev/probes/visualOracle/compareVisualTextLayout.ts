@@ -8,7 +8,7 @@ export function compareVisualTextLayout(reference: VisualTextLayout, actual: Vis
   reference.graphemes.forEach((expected, index) => {
     const found = actual.graphemes[index];
     if (!found || found.id !== expected.id || found.text !== expected.text || found.geometryKind !== expected.geometryKind || JSON.stringify(found.style) !== JSON.stringify(expected.style)
-      || !expected.style.fontLoaded || !found.style.fontLoaded || found.rects.length !== expected.rects.length) {
+      || !expected.style.fontAvailable || !found.style.fontAvailable || found.rects.length !== expected.rects.length) {
       failures.push(`layout_grapheme:${expected.id}`); return;
     }
     if (expected.geometryKind === 'marker-gutter' && found.geometryKind === 'marker-gutter' && JSON.stringify(expected.marker) !== JSON.stringify(found.marker)) failures.push(`layout_marker:${expected.id}`);

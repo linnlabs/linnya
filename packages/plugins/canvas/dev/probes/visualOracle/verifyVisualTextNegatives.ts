@@ -6,10 +6,12 @@ export function visualTextEnvironment(layout: VisualTextLayout) {
   return JSON.stringify({ dpr: layout.dpr, width: layout.width,
     graphemes: layout.graphemes.map(grapheme => {
       // 色纸/主题允许角色色变化；字体、内容、实际字簇几何与DPR必须和反例资格完全一致。
-      const { font, lineHeight, letterSpacing, direction, fontFeatureSettings, fontVariationSettings, transform, visibility, fontLoaded } = grapheme.style;
+      const { fontShorthand, fontFamily, fontSize, fontStyle, fontWeight, fontStretch, fontVariantNumeric, fontQuery, fontAvailable,
+        lineHeight, letterSpacing, direction, fontFeatureSettings, fontVariationSettings, transform, visibility } = grapheme.style;
       return { text: grapheme.text, geometryKind: grapheme.geometryKind, rects: grapheme.rects,
         ...(grapheme.geometryKind === 'marker-gutter' ? { marker: grapheme.marker } : {}),
-        style: { font, lineHeight, letterSpacing, direction, fontFeatureSettings, fontVariationSettings, transform, visibility, fontLoaded } };
+        style: { fontShorthand, fontFamily, fontSize, fontStyle, fontWeight, fontStretch, fontVariantNumeric, fontQuery, fontAvailable,
+          lineHeight, letterSpacing, direction, fontFeatureSettings, fontVariationSettings, transform, visibility } };
     }) });
 }
 

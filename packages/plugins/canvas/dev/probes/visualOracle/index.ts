@@ -7,3 +7,4 @@ export { applyVisualNegative } from './applyVisualNegative';
 export { evaluateVisualTextOracle } from './evaluateVisualTextOracle';
 export { verifyVisualTextNegatives, visualTextEnvironment } from './verifyVisualTextNegatives';
 export { qualifiesMonochromeModel, matchesMonochromePaint } from './monochromeTextModel';
+export { readVisualFontFacts } from './readVisualFontFacts';
