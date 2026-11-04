@@ -46,7 +46,8 @@ metadata:
 - 新增只找空位，不挪动既有卡。near/after/in用于附近定位，side可right/left/top/bottom。
 - parentId预留分组，**不是树父子**。树父子通过connect表达。
 - update必须带show读到的revision；text替换全文，append只追加新Markdown块并保留原节点。
-- 文档卡用type=document及document=workspace:路径；图片卡用type=image及file=会话文件。
+- 修改已有线的label/direction/lineStyle/linePattern同样用update，保留原eN和端点；direction可none/forward/both，lineStyle可curve/straight，linePattern可solid/dashed。样式后写生效，标签仍按读取版本保护；不要为改样式断开重连。
+- 文档卡用type=document及document=workspace:路径，不接受text字段，显示内容来自真实来源；文字结论另建文字卡。图片卡用type=image及file=会话文件。
 - 行内图片可引用会话文件；远程图先下载到会话目录。CLI不自行联网。
 - 文档标签用标准Markdown链接，例如`[资料](workspace:/资料.md)`；提交时转换成稳定身份。
 - 读取后引用目标改名、移动或同路径被替换会拒绝旧写；重新show后重试。
@@ -63,7 +64,7 @@ metadata:
 - grid支持`--columns 3`；layered使用ELK分层。方向为`--direction right|down`。
 - 未指定scope代表整张画布。整理新增卡时明确写它们的ref/ID，避免挪动原卡。
 - apply末尾也可放一个arrange，elementIds可含本批ref；新增、连接与排布仍一次原子提交。
-- groups可把多个集合分开排，不建立二阶段的分组实体。锁定/编辑中的位置不会被挪动。
+- groups是二维ID/ref数组，每组直接是一个数组，例如`[["$a","$b"],["$c"]]`，不是带elementIds或columns的对象数组；columns对整次grid生效。groups只把多个集合分开排，不建立二阶段的分组实体。锁定/编辑中的位置不会被挪动。
 
 ## 用户确认与撤回
 

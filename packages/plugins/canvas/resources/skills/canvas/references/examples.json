@@ -2,5 +2,5 @@
   {"op":"add","ref":"$scene","text":"## 场景一\n雨夜进门。","color":"white"},
   {"op":"add","ref":"$clue","text":"账本少了一页。","after":"$scene","color":"yellow"},
   {"op":"connect","from":"$scene","to":"$clue","label":"发现"},
-  {"op":"arrange","algorithm":"tree","elementIds":["$scene","$clue"],"direction":"right"}
+  {"op":"arrange","algorithm":"tree","elementIds":["$scene","$clue"],"groups":[["$scene","$clue"]],"direction":"right"}
 ]

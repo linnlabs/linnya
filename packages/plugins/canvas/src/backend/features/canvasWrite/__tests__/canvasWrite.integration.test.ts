@@ -58,3 +58,54 @@ it('CLI预检与正式图片写入使用同一转正宽高，不按编码宽高�
   }
   expect(dryRuns).toEqual([true, false]);
 });
+
+it('CLI原位改线保留身份和端点，样式后写生效但不覆盖用户新标签；省略样式不注入创建默认值', async () => {
+  const db = new Database(':memory:');
+  try {
+    db.exec('CREATE TABLE workspace_nodes(id TEXT PRIMARY KEY)');
+    for (const migration of canvasPluginMigrations) migration.up(db);
+    db.prepare('INSERT INTO workspace_nodes VALUES (?)').run('canvas'); initializeCanvasDocument(db, 'canvas');
+    const user = { viewId: 'user', source: { kind: 'user', conversationId: null, runId: null } } as const;
+    const agent = { viewId: 'agent', source: { kind: 'agent', conversationId: 'chat', runId: 'run' } } as const;
+    commitCanvasOperations({ database: db, actor: user, now: 1, request: { documentId: 'canvas', requestId: 'seed', operations: [
+      { op: 'addText', ref: '$a', width: 240, height: 120, content: createCanvasPlainTextDocument('起点') },
+      { op: 'addText', ref: '$b', width: 240, height: 120, content: createCanvasPlainTextDocument('终点') },
+      { op: 'connect', from: '$a', to: '$b', label: '初始标签', direction: 'forward', lineStyle: 'curve', linePattern: 'solid' },
+    ] } });
+    const before = readCanvasSnapshot(db, 'canvas'), edge = before.elements.find(element => element.type === 'edge');
+    if (!edge) throw new Error('Missing seeded edge');
+    const ports: CanvasWritePorts = {
+      parseText: async () => { throw new Error('改线不解析正文'); }, resolveDocument: async () => { throw new Error('改线不解析文档'); },
+      prepareImage: async () => { throw new Error('改线不准入图片'); }, measure: async () => { throw new Error('改线不重新测高'); },
+    };
+    const prepared = await prepareCanvasWrite({ snapshot: before, dryRun: false, signal: new AbortController().signal,
+      operations: CanvasCliBatchSchema.parse([{ op: 'update', id: edge.id, revision: edge.revision,
+        label: '旧代理标签', direction: 'both', lineStyle: 'straight', linePattern: 'dashed' }]) }, ports);
+    // 准备与提交之间用户只改标签；复用共同提交的字段规则，不另造CLI冲突策略。
+    commitCanvasOperations({ database: db, actor: user, now: 2, request: { documentId: 'canvas', requestId: 'user-label',
+      operations: [{ op: 'update', id: edge.id, baseRevision: edge.revision, patch: { label: '用户新标签' } }] } });
+    const result = commitCanvasOperations({ database: db, actor: agent, now: 3,
+      request: { documentId: 'canvas', requestId: 'edge-style', operations: prepared.operations } });
+    expect(result.results[0]?.fieldResults?.filter(field => field.status === 'skipped'))
+      .toEqual([{ field: 'label', status: 'skipped', reason: 'stale_field' }]);
+    const styled = readCanvasSnapshot(db, 'canvas'), same = styled.elements.find(element => element.type === 'edge');
+    if (!same) throw new Error('Missing updated edge');
+    expect(same).toMatchObject({ id: edge.id, from: edge.from, to: edge.to, label: '用户新标签', direction: 'both', lineStyle: 'straight', linePattern: 'dashed' });
+    const labelOnly = await prepareCanvasWrite({ snapshot: styled, dryRun: false, signal: new AbortController().signal,
+      operations: CanvasCliBatchSchema.parse([{ op: 'update', id: same.id, revision: same.revision, label: '核对标签' }]) }, ports);
+    commitCanvasOperations({ database: db, actor: agent, now: 4,
+      request: { documentId: 'canvas', requestId: 'label-only', operations: labelOnly.operations } });
+    const latest = readCanvasSnapshot(db, 'canvas');
+    expect(latest.elements.filter(element => element.type === 'edge')).toMatchObject([
+      { id: edge.id, from: edge.from, to: edge.to, label: '核对标签', direction: 'both', lineStyle: 'straight', linePattern: 'dashed' },
+    ]);
+    const card = latest.elements.find(element => element.type === 'text');
+    if (!card) throw new Error('Missing seeded text card');
+    await expect(prepareCanvasWrite({ snapshot: latest, dryRun: false, signal: new AbortController().signal,
+      operations: CanvasCliBatchSchema.parse([
+        { op: 'update', id: edge.id, revision: same.revision, label: '不能半写入' },
+        { op: 'update', id: card.id, revision: card.revision, linePattern: 'solid' },
+      ]) }, ports)).rejects.toMatchObject({ code: 'wrong_element_type', operation: 1 });
+    expect(readCanvasSnapshot(db, 'canvas')).toEqual(latest);
+  } finally { db.close(); }
+});

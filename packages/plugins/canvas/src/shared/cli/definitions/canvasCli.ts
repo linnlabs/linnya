@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CanvasColorSchema } from '../../model/definitions/canvasElement';
+import { CanvasColorSchema, CanvasEdgeSchema } from '../../model/definitions/canvasElement';
 import { CanvasArrangementOptionsSchema, CanvasLayoutTargetSchema } from '../../layout/definitions/canvasLayout';
 
 export const CANVAS_CLI_VERSION = 1;
@@ -18,11 +18,14 @@ export const CanvasCliOperationSchema = z.union([
   z.object({ op: z.literal('update'), id, revision: z.number().int().positive(), text: z.string().optional(), append: z.string().optional(),
     color: CanvasColorSchema.optional(), locked: z.boolean().optional(), width: z.number().finite().positive().max(4096).optional(),
     caption: z.string().optional(), alt: z.string().optional(), label: z.string().optional(),
+    direction: CanvasEdgeSchema.shape.direction.optional(), lineStyle: CanvasEdgeSchema.shape.lineStyle.optional(),
+    // solid只在新建时缺省；更新未给虚实字段时必须保留现有样式。
+    linePattern: CanvasEdgeSchema.shape.linePattern.unwrap().optional(),
   }).strict().refine(value => value.text === undefined || value.append === undefined, 'text 与 append 不能同时使用')
     .refine(value => Object.keys(value).some(key => !['op', 'id', 'revision'].includes(key)), '至少给出一个要修改的字段'),
   z.object({ op: z.literal('delete'), id, revision: z.number().int().positive().optional() }).strict(),
-  z.object({ op: z.literal('connect'), ref: placement.ref, from: CanvasLayoutTargetSchema, to: CanvasLayoutTargetSchema, label: z.string().default(''), direction: z.enum(['none', 'forward', 'both']).default('forward'),
-    lineStyle: z.enum(['curve', 'straight']).default('curve'), linePattern: z.enum(['solid', 'dashed']).default('solid'),
+  z.object({ op: z.literal('connect'), ref: placement.ref, from: CanvasLayoutTargetSchema, to: CanvasLayoutTargetSchema, label: z.string().default(''), direction: CanvasEdgeSchema.shape.direction.default('forward'),
+    lineStyle: CanvasEdgeSchema.shape.lineStyle.default('curve'), linePattern: CanvasEdgeSchema.shape.linePattern,
   }).strict(),
   z.object({ op: z.literal('disconnect'), id: z.string().regex(/^e[1-9]\d*$/), revision: z.number().int().positive().optional() }).strict(),
   CanvasArrangeOptionsSchema.extend({ op: z.literal('arrange') }),
