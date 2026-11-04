@@ -5,7 +5,7 @@ import type { CanvasRasterReadiness } from '../../src/renderer/orchestration/cre
 export function readCanvasEvaluationBodyPresentation(readiness: CanvasRasterReadiness, revisions: ReadonlyMap<CanvasCardId, number>) {
   const visible = readiness.cards.filter(card => card.mode === 'body');
   const presented = visible.filter(card => card.revision === revisions.get(card.id) && card.firstPresented);
-  const superseded = readiness.cards.filter(card => { const expected = revisions.get(card.id); return expected !== undefined && card.revision !== null && card.revision > expected; });
+  const superseded = readiness.cards.filter(card => { const expected = revisions.get(card.id); return expected !== undefined && (card.revision === null || card.revision > expected); });
   return { visibleBodyIds: visible.map(card => card.id), presentedBodyIds: presented.map(card => card.id), supersededCardIds: superseded.map(card => card.id),
     allVisiblePresented: !readiness.suspended && visible.length > 0 && visible.length === presented.length };
 }
