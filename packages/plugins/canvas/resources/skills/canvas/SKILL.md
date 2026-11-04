@@ -31,6 +31,8 @@ metadata:
 4. 检查每项 applied/skipped 与原因。被锁定、正在编辑或字段版本过期的内容会保留。
 5. 必要时 check 检查重叠、交叉与离群；render 查看真实画面。不要把启发提示当成事实错误。
 
+依据文档建图时，结论须忠于所连来源；推断和假设明确标出，不把相关性改写成因果或首要原因。批量卡片各自承担不同信息，不用仅改编号的重复句或空占位凑节点。
+
 ## 写入
 
 `linnya-canvas apply workspace:/讨论.canvas --ops-file batch.json --request-id action-001`
