@@ -4,7 +4,7 @@ description: Plan, create, edit, inspect, and visually verify Linnya Slides thro
 metadata:
   author: linnya
   pluginId: slides
-  version: "7.19"
+  version: "7.20"
 ---
 
 # Slides Design
@@ -89,6 +89,7 @@ presentation-owned 资产。
 | 确认某个能力具体怎么写 | [`examples/`](./references/examples/) 中覆盖该能力的 `.js` | 能力示范 |
 | 调用 CLI、读 JSON/图片 locator | [`cli.md`](./references/cli.md) | Agent CLI 合同 |
 | 看某类稿子的页型与机械做法（研究咨询、图录阅读、人文展示等） | [`styles.md`](./references/styles.md) | 场景索引，按场景指向指南与页型示例；颜色和字体来自本稿的视觉方向，不从指南或示例取 |
+| 确定要什么图和素材、去哪找、怎么记许可 | [`assets.md`](./references/assets.md) | 素材参考，按题材列出 |
 
 示例按能力而非页面类型划分：结构与节奏看
 [`cover-variants.js`](./references/examples/cover-variants.js)、[`card-grid.js`](./references/examples/card-grid.js)、

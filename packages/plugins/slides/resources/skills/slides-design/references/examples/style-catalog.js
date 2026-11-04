@@ -59,8 +59,8 @@ function rect(x, y, w, h, fill) {
 
 function head(slide, left, right, folio) {
   slide.add(
-    text(left, { x: M, y: 0.45, w: 6, size: 9, color: MUTED }),
-    text(right, { x: PW - M - 6, y: 0.45, w: 6, size: 9, color: MUTED, align: "right" }),
+    text(left, { x: M, y: 0.45, w: 6, size: 9, color: MUTED, role: "label" }),
+    text(right, { x: PW - M - 6, y: 0.45, w: 6, size: 9, color: MUTED, align: "right", role: "label" }),
     rect(M, 0.76, PW - 2 * M, 0.008, RULE),
     text(folio, { x: PW - M - 0.8, y: 7.05, w: 0.8, size: 9, color: MUTED, align: "right", role: "page-number" }),
   );
@@ -68,7 +68,7 @@ function head(slide, left, right, folio) {
 
 // 图注格式全稿一致：编号、名称、年代、藏地。
 function caption(num, rest, x, y, w) {
-  return text(num + "　" + rest, { x: x, y: y, w: w, size: 9, color: MUTED, font: KAI, lh: 1.45 });
+  return text(num + "　" + rest, { x: x, y: y, w: w, size: 9, color: MUTED, font: KAI, lh: 1.45, role: "caption" });
 }
 
 // slide 1 — 图文对页：左 7 栏主图，右 5 栏正文
@@ -84,7 +84,7 @@ s1.add(
   }),
   text("传世汝窑不足百件，窑址却出土了以吨计的标本，这种反差是理解汝窑的入口。", { x: colX(7), y: 3.6, w: span(5), size: 12, lh: 1.75 }),
   rect(colX(7), 5.3, span(5), 0.9, "#ECECEC"),
-  text("辨识要点", { x: colX(7) + 0.25, y: 5.42, w: 1.5, size: 9, color: ACCENT }),
+  text("辨识要点", { x: colX(7) + 0.25, y: 5.42, w: 1.5, size: 9, color: ACCENT, role: "label" }),
   text("天青釉、香灰胎、芝麻钉三者齐备。", { x: colX(7) + 0.25, y: 5.72, w: span(5) - 0.4, size: 12 }),
 );
 
@@ -97,7 +97,7 @@ s2.add(text("五窑图录", { x: M, y: 0.92, w: 11, h: 0.62, size: 25, lh: 1.2 }
   s2.add(
     rect(colX(6), y, span(3), 1.18, "#DEDEDE"),
     caption("图 " + (3 + i), name, colX(6), y + 1.22, span(3)),
-    text("一句话说明这件器物与上一件的区别。", { x: colX(9), y: y, w: span(3), size: 11, lh: 1.6 }),
+    text("一句话说明这件器物与上一件的区别。", { x: colX(9), y: y, w: span(3), size: 12, lh: 1.6 }),
   );
 });
 
@@ -117,7 +117,7 @@ s3.add(rect(M, 1.85, PW - 2 * M, 0.012, INK));
 years.forEach(function (r, i) {
   const y = 2.05 + i * 0.62;
   r.forEach(function (cell, j) {
-    s3.add(text(cell, { x: xs[j], y: y, w: ws[j], size: j === 0 ? 13 : 11.5, color: j === 1 || j === 3 ? MUTED : INK, lh: 1.4 }));
+    s3.add(text(cell, { x: xs[j], y: y, w: ws[j], size: j === 0 ? 13 : 12, color: j === 1 || j === 3 ? MUTED : INK, lh: 1.4 }));
   });
   s3.add(rect(M, y + 0.5, PW - 2 * M, 0.008, RULE));
 });
@@ -141,7 +141,7 @@ kilns.forEach(function (k, j) {
 dims.forEach(function (r, i) {
   const y = 2.2 + i * 0.7;
   r.forEach(function (cell, j) {
-    s4.add(text(cell, { x: cx[j], y: y, w: cwid[j], size: j === 0 ? 9 : 11.5, color: j === 0 ? MUTED : INK }));
+    s4.add(text(cell, { x: cx[j], y: y, w: cwid[j], size: j === 0 ? 9 : 12, color: j === 0 ? MUTED : INK, ...(j === 0 ? { role: "label" } : {}) }));
   });
   s4.add(rect(M, y + 0.55, PW - 2 * M, 0.008, RULE));
 });
@@ -171,10 +171,10 @@ cards.forEach(function (c, i) {
       ] },
     }),
     text(c[0], { x: x + 0.3, y: 5.3, w: w - 0.6, size: 20, color: "#FFFFFF" }),
-    text(c[1], { x: x + 0.3, y: 5.82, w: w - 0.6, size: 11.5, color: "#E6E6E6", lh: 1.45 }),
+    text(c[1], { x: x + 0.3, y: 5.82, w: w - 0.6, size: 12, color: "#E6E6E6", lh: 1.45 }),
   );
 });
-s5.add(text("图片：此处写明器物名称、藏地与图片许可。", { x: M, y: 6.62, w: 8, size: 9, color: MUTED }));
+s5.add(text("图片：此处写明器物名称、藏地与图片许可。", { x: M, y: 6.62, w: 8, size: 9, color: MUTED, role: "source" }));
 
 compose({
   title: "Catalog Handout · Runnable Example",
@@ -183,6 +183,7 @@ compose({
   theme: {
     colors: { accent1: ACCENT, accent2: direction.palette.accents[1], background: PAPER, text: INK, muted: MUTED },
     fonts: { major: SERIF, minor: KAI },
+    reading: "read",
     direction,
   },
 });

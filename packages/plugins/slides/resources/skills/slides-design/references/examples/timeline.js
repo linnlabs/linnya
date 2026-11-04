@@ -105,6 +105,8 @@ compose({
   title: "Timeline · Runnable Template",
   slides: [slide],
   theme: {
+    // 经营复盘发出去读：reading 决定 inspect 的字号下限。
+    reading: "read",
     colors: { accent1: accent, background: "#FFFFFF", text: "#101820", muted: "#6B7480" },
   },
 });

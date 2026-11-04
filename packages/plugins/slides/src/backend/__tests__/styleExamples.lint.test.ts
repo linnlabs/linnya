@@ -13,6 +13,7 @@ import {
 } from '@plugin/slides/backend-codegen';
 import { pptComposeProfile, readPptComposeRawPayload } from '@plugin/slides/backend-sandbox';
 import { RenderModelMapper } from '../engine/parser/RenderModelMapper';
+import { resolveDeckReadingMode } from '@plugin/slides/shared/readingMode';
 import { classifyDiagnosticPriority } from '../engine/quality/definitions';
 import { collectFindings, evaluateQualityAnalysis } from '../tools/inspectFeedback/diagnostics';
 import { buildSceneGraph } from '../tools/inspectFeedback/sceneGraph';
@@ -55,8 +56,9 @@ async function renderSource(stem: string, source: string) {
     : { width: 10, height: 5.625 };
   const model = new RenderModelMapper().fromGeneratedDeck(stem, 1, stem, deckSpec, size);
   const direction = deckSpec.theme?.direction;
+  const readingMode = resolveDeckReadingMode('generated', deckSpec.theme);
   const findings = collectFindings(
-    evaluateQualityAnalysis(model, { fontTarget: 'office', ...(direction ? { direction } : {}) }),
+    evaluateQualityAnalysis(model, { fontTarget: 'office', readingMode, ...(direction ? { direction } : {}) }),
     buildSceneGraph(model),
     [],
   );

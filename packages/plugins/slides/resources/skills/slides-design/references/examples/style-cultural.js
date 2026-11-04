@@ -38,6 +38,7 @@ function text(content, o) {
   n.lineHeight = o.lh || 1.5;
   if (o.align) n.textAlign = o.align;
   if (o.writingMode) n.writingMode = o.writingMode;
+  if (o.role) n.role = o.role;
   return n;
 }
 
@@ -133,9 +134,9 @@ s1.add(
 const s2 = createSlide({ background: { color: PAPER } });
 s2.add(
   text("黑盏白沫", { x: 0.9, y: 0.7, w: 5, size: 30 }),
-  text("宋人点茶，茶汤要白，盏要黑。福建建窑烧的黑釉盏胎厚、保温久，是斗茶时最受欢迎的盏。", { x: 0.9, y: 1.6, w: 4.6, size: 12, lh: 1.75 }),
+  text("宋人点茶，茶汤要白，盏要黑。福建建窑烧的黑釉盏胎厚、保温久，是斗茶时最受欢迎的盏。", { x: 0.9, y: 1.6, w: 4.6, size: 14, lh: 1.75 }),
   text("建安所造者绀黑，纹如兔毫，其坯微厚，熁之久热难冷，最为要用。", { x: 1.2, y: 3.4, w: 4.2, size: 15, font: KAI, lh: 1.8 }),
-  text("蔡襄《茶录》，北宋", { x: 1.2, y: 5.0, w: 4.2, size: 9.5, color: MUTED, font: KAI }),
+  text("蔡襄《茶录》，北宋", { x: 1.2, y: 5.0, w: 4.2, size: 9.5, color: MUTED, font: KAI, role: "source" }),
   text("一盏千年", { x: 12.1, y: 0.8, h: 2.6, size: 18, color: MUTED, font: KAI, writingMode: "vertical-rl" }),
   rect(6.2, 1.0, 5.4, 4.8, "#D6D6D6"),
 );
@@ -169,6 +170,7 @@ compose({
   theme: {
     colors: { accent1: SEAL, accent2: MUTED, background: PAPER, text: INK, muted: MUTED },
     fonts: { major: SERIF, minor: KAI },
+    reading: "mixed",
     direction,
   },
 });

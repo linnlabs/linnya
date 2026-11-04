@@ -58,6 +58,7 @@ import {
 } from './aesthetic/lintRules.js';
 import { analyzeSlideRepetition } from './aesthetic/repetition.js';
 import type { DirectionDeclaration } from '@plugin/slides/shared/designDirection';
+import type { ReadingMode } from '@plugin/slides/shared/readingMode';
 import { lintDirectionCarryThrough } from './aesthetic/directionRules.js';
 import { computeMetrics } from './aesthetic/metrics.js';
 import type {
@@ -78,6 +79,8 @@ export interface AestheticLintOptions {
   readonly fontTarget?: FontDeliveryTarget;
   /** 生成稿在 theme.direction 声明的视觉方向；留空时不检查方向贯彻。 */
   readonly direction?: DirectionDeclaration;
+  /** 生成稿的阅读方式，决定字号下限；导入稿和改稿留空，沿用固定下限。 */
+  readonly readingMode?: ReadingMode;
 }
 
 export class AestheticLint {
@@ -99,7 +102,7 @@ export class AestheticLint {
       aesthetic.push(...lintElementCount(slide.number, positioned));
       aesthetic.push(...lintVisualAnchor(slide.number, info.slideSize, positioned));
       /* P1 Tier-1：纯数值、零语义依赖 */
-      aesthetic.push(...lintFontSizeFloor(slide.number, positioned));
+      aesthetic.push(...lintFontSizeFloor(slide.number, info.slideSize, positioned, options.readingMode));
       aesthetic.push(...lintFontSizeTiers(slide.number, positioned));
       aesthetic.push(...lintEdgeMargins(slide.number, info.slideSize, positioned));
       /* P1 Tier-1：颜色 / fit 通道 */

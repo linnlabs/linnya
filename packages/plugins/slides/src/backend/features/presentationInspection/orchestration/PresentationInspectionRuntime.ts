@@ -65,6 +65,7 @@ export class PresentationInspectionRuntime {
         ...(sourceLocations ? { sourceLocations } : {}),
         ...(snapshot.fontTarget ? { fontTarget: snapshot.fontTarget } : {}),
         ...(snapshot.direction ? { direction: snapshot.direction } : {}),
+        ...(snapshot.readingMode ? { readingMode: snapshot.readingMode } : {}),
       },
     );
 

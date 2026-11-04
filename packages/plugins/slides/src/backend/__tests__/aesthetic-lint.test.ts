@@ -598,6 +598,57 @@ describe('AestheticLint', () => {
 
       expect(report.aesthetic.find((issue) => issue.code === 'font_size_below_floor')).toBeUndefined();
     });
+
+    describe('reading mode floors for generated decks', () => {
+      function textInfo(width: number, fontSize: number, semanticRole?: string): PresentationInfo {
+        return makeInfo({
+          slideSize: { width, height: width * 9 / 16 },
+          slides: [{
+            number: 1,
+            elements: [{
+              name: 'Text',
+              type: 'text',
+              text: '正文',
+              ...(semanticRole ? { semanticRole } : {}),
+              position: { x: 1, y: 1, w: 6, h: 1 },
+              paragraphs: [{ runs: [{ text: '正文', fontSize }] }],
+            }],
+          }],
+        });
+      }
+      const floorOf = (report: ReturnType<typeof lint.lint>) =>
+        report.aesthetic.find((issue) => issue.code === 'font_size_below_floor');
+
+      it('requires 14pt body text on a 13.333in mixed deck', () => {
+        const report = lint.lint(textInfo(13.333, 12), { readingMode: 'mixed' });
+        expect(floorOf(report)?.evidence).toMatchObject({ threshold: 14, actual: 12 });
+        expect(floorOf(lint.lint(textInfo(13.333, 14), { readingMode: 'mixed' }))).toBeUndefined();
+      });
+
+      it('scales the floor with slide width', () => {
+        const report = lint.lint(textInfo(10, 10), { readingMode: 'mixed' });
+        expect(floorOf(report)?.evidence).toMatchObject({ threshold: 10.5 });
+        expect(floorOf(lint.lint(textInfo(10, 10.5), { readingMode: 'mixed' }))).toBeUndefined();
+      });
+
+      it('uses the caption and chrome tiers by role', () => {
+        expect(floorOf(lint.lint(textInfo(13.333, 10, 'caption'), { readingMode: 'mixed' }))).toBeUndefined();
+        expect(floorOf(lint.lint(textInfo(13.333, 10, 'label'), { readingMode: 'mixed' }))).toBeUndefined();
+        expect(floorOf(lint.lint(textInfo(13.333, 9, 'label'), { readingMode: 'mixed' }))?.evidence)
+          .toMatchObject({ threshold: 10 });
+        expect(floorOf(lint.lint(textInfo(13.333, 8, 'source'), { readingMode: 'mixed' }))).toBeUndefined();
+      });
+
+      it('applies the mode that the deck declares', () => {
+        expect(floorOf(lint.lint(textInfo(13.333, 16), { readingMode: 'present' }))?.evidence)
+          .toMatchObject({ threshold: 18 });
+        expect(floorOf(lint.lint(textInfo(13.333, 12), { readingMode: 'read' }))).toBeUndefined();
+      });
+
+      it('keeps the fixed floor when no reading mode is passed (imported decks)', () => {
+        expect(floorOf(lint.lint(textInfo(13.333, 12)))).toBeUndefined();
+      });
+    });
   });
 
   describe('font size tiers (Tier-1 Rule 3)', () => {

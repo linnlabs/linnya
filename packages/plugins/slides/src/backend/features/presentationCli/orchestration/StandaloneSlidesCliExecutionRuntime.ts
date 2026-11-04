@@ -3,6 +3,7 @@ import { createDocumentImageAssetRuntime } from '@plugin/backend/documentImageAs
 import { createDocumentSvgAssetRuntime } from '@plugin/backend/documentSvgAsset';
 import { SlideMarkerIndex } from '@plugin/slides/shared/documentSource/slideMarkerIndex';
 import { resolveDeckDirection } from '@plugin/slides/shared/designDirection';
+import { resolveDeckReadingMode } from '@plugin/slides/shared/readingMode';
 import { resolveDeckFontDeliveryTarget } from '@plugin/slides/shared/fontDelivery';
 import type {
   PresentationInspectionRequest,
@@ -92,6 +93,7 @@ export class StandaloneSlidesCliExecutionRuntime implements SlidesCliExecutionPo
         renderModel,
         fontTarget: resolveDeckFontDeliveryTarget(renderModel.sourceKind, snapshot.document.deckSpec.theme),
         direction: resolveDeckDirection(renderModel.sourceKind, snapshot.document.deckSpec.theme),
+        readingMode: resolveDeckReadingMode(renderModel.sourceKind, snapshot.document.deckSpec.theme),
       }),
       loadSourceLocations: async () =>
         buildSourceLocationMap({
@@ -116,6 +118,7 @@ export class StandaloneSlidesCliExecutionRuntime implements SlidesCliExecutionPo
             ...(options.sourceLocations ? { sourceLocations: options.sourceLocations } : {}),
             ...(options.fontTarget ? { fontTarget: options.fontTarget } : {}),
             ...(options.direction ? { direction: options.direction } : {}),
+            ...(options.readingMode ? { readingMode: options.readingMode } : {}),
             spatialAnalyzer: {
               analyzeSpatial: async ({ slideNodes }) =>
                 this.spatialAnalyzer.analyze([...slideNodes]),

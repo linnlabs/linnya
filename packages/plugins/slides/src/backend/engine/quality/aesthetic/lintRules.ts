@@ -31,12 +31,15 @@ import {
 import { clusterByGranularity, findContainingShape } from './elementUtils.js';
 import { buildDiagnosticNodeRef } from '../functions/buildDiagnosticNodeRef.js';
 import type { ChromaticSample } from './colorSampling.js';
+import type { ReadingMode } from '@plugin/slides/shared/readingMode';
 import {
   EDGE_MARGIN_MIN_IN,
   FONT_FAMILY_COUNT_PER_SCRIPT_LIMIT,
   FONT_SIZE_ANNOTATION_RECOMMENDED_FLOOR_PT,
   FONT_SIZE_NEAR_UNREADABLE_PT,
   FONT_SIZE_RECOMMENDED_FLOOR_PT,
+  READING_MODE_FONT_FLOOR_REFERENCE_WIDTH_IN,
+  READING_MODE_FONT_FLOORS_PT,
   FONT_SIZE_TIER_GRANULARITY_PT,
   FONT_SIZE_TIER_LIMIT,
   FULL_BLEED_RATIO,
@@ -443,12 +446,16 @@ export function lintVisualAnchor(
 // ─── P1 Tier-1: Font Size Floor ─────────────────────────────────────────────
 /**
  * 检查实际 run 的最小字号；旧输入没有 paragraphs 时才退回元素摘要字号。
- * near-unreadable 阈值对所有角色一致，annotation/source/caption/axis-label 使用更低的
- * 建议下限，避免用正文规则机械要求脚注。
+ * near-unreadable 阈值对所有角色一致。
+ *
+ * 生成稿传入阅读方式：正文、图注标签、脚注来源三档下限按阅读方式取值，再按页宽折算。
+ * 导入稿和改稿不传，沿用固定下限，避免催 Agent 改作者原有字号。
  */
 export function lintFontSizeFloor(
   slideNumber: number,
+  slideSize: { width: number },
   elements: SlideElementInfo[],
+  readingMode?: ReadingMode,
 ): AestheticLintIssue[] {
   const issues: AestheticLintIssue[] = [];
   for (const element of elements) {
@@ -456,7 +463,9 @@ export function lintFontSizeFloor(
     const sizes = collectElementFontSizes(element);
     if (sizes.length === 0) continue;
     const size = Math.min(...sizes);
-    const recommendedFloor = resolveRecommendedFontFloor(element.semanticRole);
+    const recommendedFloor = readingMode
+      ? resolveReadingModeFontFloor(element.semanticRole, readingMode, slideSize.width)
+      : resolveRecommendedFontFloor(element.semanticRole);
 
     if (size < FONT_SIZE_NEAR_UNREADABLE_PT) {
       issues.push({
@@ -501,7 +510,9 @@ export function lintFontSizeFloor(
   return issues;
 }
 
-const SMALL_TEXT_ROLES = new Set(['annotation', 'axis-label', 'caption', 'footnote', 'source']);
+const SMALL_TEXT_ROLES = new Set(['annotation', 'axis-label', 'caption', 'footnote', 'label', 'source']);
+const CAPTION_TEXT_ROLES = new Set(['annotation', 'axis-label', 'caption', 'label']);
+const CHROME_TEXT_ROLES = new Set(['footnote', 'page-number', 'source']);
 
 function collectElementFontSizes(element: SlideElementInfo): number[] {
   const runSizes = element.paragraphs
@@ -519,6 +530,21 @@ function resolveRecommendedFontFloor(semanticRole: string | undefined): number {
   return semanticRole != null && SMALL_TEXT_ROLES.has(semanticRole.trim().toLowerCase())
     ? FONT_SIZE_ANNOTATION_RECOMMENDED_FLOOR_PT
     : FONT_SIZE_RECOMMENDED_FLOOR_PT;
+}
+
+function resolveReadingModeFontFloor(
+  semanticRole: string | undefined,
+  readingMode: ReadingMode,
+  slideWidthIn: number,
+): number {
+  const floors = READING_MODE_FONT_FLOORS_PT[readingMode];
+  const role = semanticRole?.trim().toLowerCase() ?? '';
+  const base = CHROME_TEXT_ROLES.has(role)
+    ? floors.chrome
+    : CAPTION_TEXT_ROLES.has(role) ? floors.caption : floors.body;
+  const scale = slideWidthIn > 0 ? slideWidthIn / READING_MODE_FONT_FLOOR_REFERENCE_WIDTH_IN : 1;
+  // 折算到 0.25pt，避免 13.33 与 13.333 这类页宽差异产生 13.99pt 之类的阈值。
+  return Math.round(base * scale * 4) / 4;
 }
 
 // ─── P1 Tier-1: Font Size Tiers ─────────────────────────────────────────────

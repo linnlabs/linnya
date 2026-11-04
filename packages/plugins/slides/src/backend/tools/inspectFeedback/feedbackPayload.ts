@@ -35,6 +35,8 @@ export interface BuildToolFeedbackPayloadOptions {
   fontTarget?: PresentationInspectionFeedbackOptions['fontTarget'];
   /** 生成稿声明的视觉方向；留空时不检查方向贯彻。 */
   direction?: PresentationInspectionFeedbackOptions['direction'];
+  /** 生成稿的阅读方式；留空时字号沿用固定下限。 */
+  readingMode?: PresentationInspectionFeedbackOptions['readingMode'];
   spatialAnalyzer: Pick<SlidesEngineExecutionAdapter, 'analyzeSpatial'>;
 }
 
@@ -49,6 +51,7 @@ export async function buildToolFeedbackPayload(
   const qualityAnalysis = evaluateQualityAnalysis(renderModel, {
     fontTarget: options.fontTarget,
     direction: options.direction,
+    readingMode: options.readingMode,
   });
 
   if (options.includeHeuristics) {

@@ -14,7 +14,7 @@ const ACTION_BY_CODE = {
   zero_sized_renderable: '为可渲染节点提供有效宽高',
   layout_constraint_compressed: '修正父级约束或节点声明尺寸，避免非预期压缩',
   descendant_outside_computed_parent: '修正父容器尺寸或后代定位关系',
-  font_size_below_floor: '提高字号或减少同一区域文字量',
+  font_size_below_floor: '提高字号；放不下就拆页，不删要点。图注、标签写 role: "caption" 或 "label"',
   font_size_tier_overload: '合并相近字号层级，收敛排版层次',
   font_family_inconsistent: '复核字体使用并收敛非必要字体族',
   font_unresolved: '改用可用字体或补齐字体资源',

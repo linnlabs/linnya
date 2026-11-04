@@ -344,6 +344,7 @@ createTable({
 - `colors`：字符串键值对，常用键为 `accent1`、`accent2`、`accent3`、`background`、`text`、`muted`；
 - `fonts`：`{ major, minor }`，**两者必须同时提供**，只给一个会报错；
 - `chart`：`{ palette: [...] }`，见 §9；
+- `reading`：阅读方式，`'present' | 'mixed' | 'read'`，缺省 `mixed`。只决定 inspect 的字号下限，不影响渲染和导出；取值依据见 [`design.md`](./design.md#先定视觉系统再写页面)。
 
 `theme.logo` 当前虽可能被旧 parser 接受，但没有进入预览/PPTX 的稳定渲染消费链，因此不是公开视觉能力。Logo 请作为真实 Image 节点放进需要的页面；不要写一个不会显示的 theme 字段。
 
@@ -367,7 +368,7 @@ createTable({
 - 线性渐变优先使用 `direction`，例如 `to-bottom` 表示向下；与 `angle` 二选一。角度为 0° →、90° ↓、180° ←、270° ↑，顺时针，**不是 CSS 角度**。斜向例子 `angle: 30` 从右方向下旋转；非正方形会按 OOXML scaled 语义进一步受宽高比缩放。
 - 每页必须在顶层显式调用一次 `createSlide()`，按源码顺序传入 compose。不要在 helper、循环或条件中创建页；分页读取、搜索和源码定位依赖每页对应的源码行区间。helper 可复用页内节点。
 
-Shape/Image 可声明 `role: "background" | "decoration"` 表达构图意图，并用 `bleed` 指定允许越出画布的英寸数。角色不改变图片 `decorative` 的无障碍语义。Text 的辅助信息可用 `role: "footnote" | "source" | "page-number"`，避免占用正文的字体层级统计。
+Shape/Image 可声明 `role: "background" | "decoration"` 表达构图意图，并用 `bleed` 指定允许越出画布的英寸数。角色不改变图片 `decorative` 的无障碍语义。Text 的辅助信息可用 `role: "footnote" | "source" | "page-number"`，避免占用正文的字体层级统计；图注和图上标签用 `role: "caption" | "label"`。inspect 按角色取字号下限：脚注、来源、页码最低，图注、标签其次，不写角色按正文。
 
 ### 页面身份规则
 

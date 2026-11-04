@@ -278,7 +278,7 @@ function collectElements(
   if (element) {
     if ('role' in node && node.role != null) {
       const roles = node._type === 'Text'
-        ? ['footnote', 'source', 'page-number'] : ['background', 'decoration'];
+        ? ['footnote', 'source', 'page-number', 'caption', 'label'] : ['background', 'decoration'];
       if (!roles.includes(node.role)) throw new FlexComposeContractError(`节点 role 必须使用当前节点允许的语义角色。`);
       element._semanticRole = node.role;
     }

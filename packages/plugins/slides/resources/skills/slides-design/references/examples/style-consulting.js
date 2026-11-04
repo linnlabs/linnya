@@ -93,7 +93,7 @@ function textWidth(str, size) {
 
 function chrome(slide, section, title, source, page) {
   slide.add(
-    text(section, { x: L, y: 0.36, w: 7, size: 10.5, color: C.blue, bold: true }),
+    text(section, { x: L, y: 0.36, w: 7, size: 10.5, color: C.blue, bold: true, role: "label" }),
     text(title, { x: L, y: 0.68, w: CW, h: 0.9, size: 24, color: C.navy, bold: true, lh: 1.2 }),
     rect(L, 1.62, CW, 0.012, C.line),
     rect(L, 1.6, 1.3, 0.04, C.blue),
@@ -108,7 +108,7 @@ function chrome(slide, section, title, source, page) {
  * kind "bar" 是带底色的条，"tag" 是行内标签。别在每页都用，也别总放在同一个位置。
  */
 function callout(slide, kind, label, body, x, y, w) {
-  const size = 11.5;
+  const size = 12;
   const lineH = (size * 1.35) / 72;
   const labelW = 0.62;
   const avail = w - labelW - 0.55;
@@ -118,7 +118,7 @@ function callout(slide, kind, label, body, x, y, w) {
     const rowH = Math.max(textH, 0.3);
     slide.add(
       rect(x, y + (rowH - 0.28) / 2, 0.52, 0.28, C.warn),
-      text(label, { x: x, y: y + (rowH - 0.28) / 2 + 0.035, w: 0.52, size: 11, color: C.white, bold: true, align: "center" }),
+      text(label, { x: x, y: y + (rowH - 0.28) / 2 + 0.035, w: 0.52, size: 11, color: C.white, bold: true, align: "center", role: "label" }),
       text(body, { x: x + 0.7, y: y + (rowH - textH) / 2, w: w - 0.7, size: size, color: C.navy }),
     );
     return rowH;
@@ -127,7 +127,7 @@ function callout(slide, kind, label, body, x, y, w) {
   const ty = y + (h - textH) / 2;
   slide.add(
     rect(x, y, w, h, C.warnBg),
-    text(label, { x: x + 0.2, y: ty, w: labelW, size: size, color: C.warn, bold: true }),
+    text(label, { x: x + 0.2, y: ty, w: labelW, size: size, color: C.warn, bold: true, role: "label" }),
     text(body, { x: x + 0.2 + labelW, y: ty, w: avail + 0.15, size: size, color: C.navy }),
   );
   return h;
@@ -276,9 +276,9 @@ s5.add(
   photoA,
   photoB,
   rect(L, 4.78, 5.6, 0.32, C.navy),
-  text("现场 A · 拍摄对象与版权方", { x: L + 0.1, y: 4.85, w: 5.4, size: 10, color: C.white }),
+  text("现场 A · 拍摄对象与版权方", { x: L + 0.1, y: 4.85, w: 5.4, size: 10, color: C.white, role: "caption" }),
   rect(L + 5.8, 4.78, 3.2, 0.32, C.navy),
-  text("现场 B · 示意", { x: L + 5.9, y: 4.85, w: 3.0, size: 10, color: C.white }),
+  text("现场 B · 示意", { x: L + 5.9, y: 4.85, w: 3.0, size: 10, color: C.white, role: "caption" }),
   text("两个案例，都是限定工序", { x: 9.9, y: 1.95, w: 2.83, size: 15, color: C.navy, bold: true }),
   text("案例一：试点十个月，辅助生产超过 9 万个零件。\n案例二：多年按任务收费协议，搬箱超过 10 万次。", { x: 9.9, y: 2.5, w: 2.83, size: 12, lh: 1.6 }),
   text("边界：均不等于通用或整线无人化。", { x: L, y: 5.4, w: 9, size: 12.5, color: C.blue, bold: true }),
@@ -293,6 +293,7 @@ compose({
     colors: { accent1: C.navy, accent2: C.blue, background: C.white, text: C.ink, muted: C.grey },
     fonts: { major: FONT, minor: FONT },
     chart: { palette: [C.navy, C.blue, "#B0B0B0", C.line] },
+    reading: "read",
     direction,
   },
 });

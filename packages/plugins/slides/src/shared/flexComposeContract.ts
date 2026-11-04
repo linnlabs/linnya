@@ -188,6 +188,12 @@ export interface LayoutThemeInput {
   };
   /** 本稿声明的视觉方向，供 inspect 逐页对照；不影响渲染与导出。 */
   direction?: LayoutDirectionInput;
+  /**
+   * 阅读方式，决定 inspect 的字号下限（13.333in 宽为基准，按页宽折算）：
+   * `present` 讲的稿，正文 ≥ 18pt；`mixed` 混合（缺省），正文 ≥ 14pt；`read` 读的稿，正文 ≥ 12pt。
+   * 不影响渲染与导出。
+   */
+  reading?: 'present' | 'mixed' | 'read';
 }
 
 export interface LayoutDirectionInput {
@@ -391,8 +397,12 @@ export type LayoutHStackNode = LayoutViewNode;
  * 使用固定盒宽并自动换行；绝对定位且没有横向约束时，盒宽跟随内容，只响应显式换行符。
  */
 export interface LayoutTextConfig extends FlexProps, LayoutAuthoringTargetConfig {
-  /** 页边辅助信息，不计入正文的字体层级与字体族数量。 */
-  role?: 'footnote' | 'source' | 'page-number';
+  /**
+   * 文字角色，决定 inspect 用哪一档字号下限。
+   * `footnote` / `source` / `page-number`：页边辅助信息，不计入正文的字体层级与字体族数量；
+   * `caption` / `label`：图注、图上标签等小字说明。不写按正文检查。
+   */
+  role?: 'footnote' | 'source' | 'page-number' | 'caption' | 'label';
   content?: string | LayoutTextRun[];
   fontSize?: number;
   fontWeight?: 'bold' | 'normal' | number;

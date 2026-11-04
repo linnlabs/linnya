@@ -43,7 +43,7 @@ function makeEvenCard(index, headline, detail) {
   headlineText.height = 0.34;
 
   const detailText = createText(detail);
-  detailText.fontSize = 8.5;
+  detailText.fontSize = 9;
   detailText.color = slate;
   detailText.lineHeight = 1.4;
   detailText.flex = 1;
@@ -90,6 +90,7 @@ const weightedSlide = createSlide({ background: { color: "#FFFFFF" } });
 
 const weightedEyebrow = createText("经营概览 · FY2025 Q4");
 weightedEyebrow.fontSize = 8.5;
+weightedEyebrow.role = "label";
 weightedEyebrow.color = slate;
 weightedEyebrow.letterSpacing = 1.5;
 weightedEyebrow.height = 0.22;
@@ -174,6 +175,7 @@ function makeStageCard(tag, timeframe, goal, detail, barColor) {
 
   const timeframeText = createText(timeframe);
   timeframeText.fontSize = 8;
+  timeframeText.role = "label";
   timeframeText.color = slate;
   timeframeText.height = 0.2;
 
@@ -186,7 +188,7 @@ function makeStageCard(tag, timeframe, goal, detail, barColor) {
   goalText.marginTop = 0.1;
 
   const detailText = createText(detail);
-  detailText.fontSize = 8;
+  detailText.fontSize = 9;
   detailText.color = slate;
   detailText.lineHeight = 1.42;
   detailText.flex = 1;
@@ -291,6 +293,8 @@ compose({
   title: "卡片行版式对照",
   slides: [evenSlide, weightedSlide, stageSlide, brokenSlide],
   theme: {
+    // 经营复盘发出去读：reading 决定 inspect 的字号下限。
+    reading: "read",
     colors: { accent1: teal, accent2: amber, background: "#FFFFFF", text: ink, muted: slate },
   },
 });

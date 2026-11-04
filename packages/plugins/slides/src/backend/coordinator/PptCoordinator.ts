@@ -44,6 +44,7 @@ import { createSlidesEngineExecutionContext } from '../engine/types';
 import type { SlidesEngineExecutionAdapter } from '../engine/types';
 import { buildToolFeedbackPayloadAsync } from '@plugin/slides/backend-tools';
 import { resolveDeckDirection } from '@plugin/slides/shared/designDirection';
+import { resolveDeckReadingMode } from '@plugin/slides/shared/readingMode';
 import { resolveDeckFontDeliveryTarget } from '@plugin/slides/shared/fontDelivery';
 import { PresentationQueryRuntime } from './presentationQueryRuntime';
 import {
@@ -245,6 +246,7 @@ export class PptCoordinator {
             snapshot.version.deckSpec.theme,
           ),
           direction: resolveDeckDirection(snapshot.renderModel.sourceKind, snapshot.version.deckSpec.theme),
+          readingMode: resolveDeckReadingMode(snapshot.renderModel.sourceKind, snapshot.version.deckSpec.theme),
         };
       },
       loadSourceLocations: async renderModel => {
@@ -282,6 +284,7 @@ export class PptCoordinator {
             ...(options.sourceLocations ? { sourceLocations: options.sourceLocations } : {}),
             ...(options.fontTarget ? { fontTarget: options.fontTarget } : {}),
             ...(options.direction ? { direction: options.direction } : {}),
+            ...(options.readingMode ? { readingMode: options.readingMode } : {}),
             spatialAnalyzer: this.engine,
           }
         ),

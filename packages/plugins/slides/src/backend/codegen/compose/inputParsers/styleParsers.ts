@@ -12,6 +12,7 @@ import type {
   ThemeSpec,
 } from '@plugin/slides/shared';
 import { DirectionDeclarationSchema } from '@plugin/slides/shared/designDirection';
+import { isReadingMode } from '@plugin/slides/shared/readingMode';
 import {
   isFontDeliveryTarget,
   normalizeGradientPaint,
@@ -39,6 +40,7 @@ export type ThemeInput = {
   };
   logo?: string;
   direction?: unknown;
+  reading?: unknown;
 };
 
 export function parseTextStyle(value: unknown): TextStyle | null {
@@ -406,6 +408,13 @@ export function readThemeSpecInput(
       return { error: 'theme.logo 必须是非空字符串。' };
     }
     theme.logo = value.logo;
+  }
+
+  if (value.reading != null) {
+    if (!isReadingMode(value.reading)) {
+      return { error: "theme.reading 只能是 'present'、'mixed' 或 'read'。" };
+    }
+    theme.reading = value.reading;
   }
 
   if (value.direction != null) {

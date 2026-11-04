@@ -70,7 +70,7 @@ describe('slides-design Skill 产品合同', () => {
     expect(report).toContain('不要照抄本文的任何具体值');
     // 咨询稿信息密、最容易压字号：下限与对应 inspect 代码必须写在本指南里，不能只留在通用 design.md。
     expect(report).toContain('font_size_below_floor');
-    expect(report).toContain('不低于 8pt');
+    expect(report).toContain('不低于 9pt');
   });
 
   it('真实试跑反复出现的审美问题写进设计规则，示例本身也不示范这些写法', () => {
