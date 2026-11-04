@@ -70,4 +70,6 @@ paint诊断另记录真实WebGL1/2的texImage2D/texSubImage2D原调用：区分C
 
 `node packages/plugins/canvas/dev/probes/run-identity-atlas-probe.mjs`验证身份牌图集和同机原Pixi Text：中文、ZWJ emoji、RTL、组合符、连字与Indic整串，在DPR1/2及分数世界缩放下比较真实RGBA墨迹，保存双方PNG后才按IoU≥.995/归一alpha误差≤.01断言。另验证同串共享、单页预算下DPR替换、隐藏页淘汰后复用、最后视图释放及生成器消费失败后的资源归还。它是独立功能像素门禁，不作帧率验收。原完整visual probe继续验证内核fallback、contextloss、正文实际draw/淡入与裁切。
 
+同一入口另以真实MapLabels/Kernel验证18/120个grapheme边界与宽度省略：已知完整emoji/ZWJ/音标前缀交给独立浏览器Canvas或原Pixi Text作参考，不调用被测prefix/fitting生成期望值。先保双方PNG及实际尺寸，再沿用IoU≥.995墨迹门；近景确认body为零且实际draw后身份牌存在，不以纯字符串结果代替GPU接线。
+
 `CANVAS_PERFORMANCE_ZOOM_PAINT_TRACE=1 CANVAS_PERFORMANCE_ZOOM_TRACE=1`仅在正式100×20ms缩放段安装paint/GL来源分类，输出独立`canvas-zoom-paint-diagnostic`，不让2500张全景初载占满事件上限。开启后明确diagnostic/profiling且无硬件资格；事件仍有16384上限，overflow非零不能宣称完整分账。详帧增加实际camera、可见卡数、identityBytes与队列请求量；逐wheel保存Node发送区间和Renderer实际收到的同钟时间，不能用末端资源快照推峰期。trace不启用Screenshot，录制期间不截图；测量前既有PNG步骤和所有原动作不改。原默认Native入口及普通ZOOM_TRACE观察字段不变。
