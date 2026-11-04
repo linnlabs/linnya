@@ -1,6 +1,63 @@
 import { expect, it } from 'vitest';
-import { evaluateCanvasAgentRun } from '../../../../scripts/agent-evaluation';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { CanvasCommandSchema, createCanvasPlainTextDocument, type CanvasSnapshot } from '../../../../src/shared';
+import { planCanvasCommit } from '../../../../src/backend/features/canvasCommit';
+import { checkCanvas } from '../../../../src/backend/features/canvasQuery';
+import { evaluateCanvasAgentRun, createCanvasAgentFixture } from '../../../../scripts/agent-evaluation';
+import { setupCanvasEvaluation, type EvaluationRunnerPorts } from '../../runner';
+import { readRunnerState } from '../../runner/adapters/evidenceFiles';
 import { parseCanvasToolTrace, buildCanvasRunDraft } from '../index';
+
+it('T1正式setup的8份资料经过draft评分仍是8份，缺失、多余和错key不被过滤成成功', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'canvas-overview-draft-'));
+  const source = input(), directory = path.join(root, 'run');
+  let created = 0;
+  const ports: EvaluationRunnerPorts = {
+    async verifyRevision() {},
+    async bridge() { throw new Error('This source admission test does not mount a Renderer'); },
+    async cli(request) {
+      if (request.args[0] === 'projects') return { exitCode: 0, value: { schema_version: 1, ok: true, command: 'projects', action: 'create', project: {
+        project_id: 'project', name: 'overview', description: null, icon: null, system_role: null, created_at: 1, updated_at: 1, can_delete: true,
+      } } };
+      if (request.args[0] === 'tools') return { exitCode: 0, value: { ok: true, tool: { payload: { status: 'success', data: {
+        documentId: ++created === 9 ? 'doc' : `source-${created}`,
+      } } } } };
+      return { exitCode: 0, value: { ok: true } };
+    },
+  };
+  try {
+    await setupCanvasEvaluation({ config: { ...source.state.config, repositoryRoot: path.join(root, 'source') }, outputDirectory: directory, ports });
+    const state = await readRunnerState(directory);
+    expect(created).toBe(9); expect(state.documentId).toBe('doc');
+    expect(Object.keys(state.documentIds)).toHaveLength(8); expect(state.documentIds).not.toHaveProperty('canvas');
+    const material = createCanvasAgentFixture('T1').documents;
+    const operations = [
+      ...material.map((document, index) => CanvasCommandSchema.parse({ op: 'addDocument', ref: `$document${index}`, width: 240, height: 120,
+        x: index % 3 * 700, y: Math.floor(index / 3) * 200, data: { documentId: state.documentIds[document.key] } })),
+      ...Array.from({ length: 3 }, (_, index) => CanvasCommandSchema.parse({ op: 'addText', ref: `$conclusion${index}`, width: 240, height: 120,
+        x: index * 700 + 300, y: 0, content: createCanvasPlainTextDocument(`主题${index + 1}结论`) })),
+      ...material.map((_document, index) => CanvasCommandSchema.parse({ op: 'connect', from: `$document${index}`, to: `$conclusion${index % 3}` })),
+    ];
+    const plan = planCanvasCommit({ state: { sequence: 0, maximumRevision: 0, nextCard: 1, nextEdge: 1, elements: [], deletedOrigins: {} },
+      operations, actor: { viewId: 'fixture', source: { kind: 'user', conversationId: null, runId: null } }, origin: 'test', claims: [], now: 1 });
+    const after: CanvasSnapshot = { schemaVersion: 1, documentId: state.documentId, sequence: plan.state.sequence, elements: plan.state.elements.map(row => row.element) };
+    const check = source.facts.checks[0]; if (!check) throw new Error('Missing test check');
+    const draft = buildCanvasRunDraft({ ...source, after, state: { ...source.state, ...state, phase: 'started', receipt: source.state.receipt, startedAt: 100 },
+      facts: { ...source.facts, checks: [{ ...check, report: checkCanvas(after) }] } });
+    expect(draft.kind).toBe('ready-for-review');
+    if (draft.kind !== 'ready-for-review') throw new Error(draft.diagnostics.join('\n'));
+    expect(evaluateCanvasAgentRun(draft.run)).toMatchObject({ status: 'needs_review', failures: [] });
+    const identities = draft.run.documentIds;
+    for (const documentIds of [
+      Object.fromEntries(Object.entries(identities).filter(([key]) => key !== 'overview-8')),
+      { ...identities, extra: 'source-extra' },
+      Object.fromEntries(Object.entries(identities).map(([key, value]) => [key === 'overview-8' ? 'unexpected' : key, value])),
+      { ...identities, 'overview-8': state.documentId },
+    ]) expect(evaluateCanvasAgentRun({ ...draft.run, documentIds }).failures).toContainEqual(expect.objectContaining({ rule: '8-documents' }));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 const scope = {
   sourceRevision: 'a'.repeat(40),

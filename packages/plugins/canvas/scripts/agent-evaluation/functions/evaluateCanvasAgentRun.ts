@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { readCanvasElementText } from '@plugin/canvas/shared';
 import { CanvasAgentEvaluationRunSchema, type CanvasAgentEvaluationRun, type CanvasAgentAssertion, type CanvasAgentTaskId } from '../definitions/canvasAgentEvaluation';
 import { canvasAgentTasks } from '../definitions/canvasAgentTasks';
+import { createCanvasAgentFixture } from './createCanvasAgentFixture';
 import { assertion, architectureCorrect, cards, evidenceLinked, linked, originalCardsUnchanged, pendingTargetsCorrect, sceneSequence, treeDepth } from './canvasAgentAssertions';
 
 const taskEvaluators: Record<CanvasAgentTaskId, (run: CanvasAgentEvaluationRun) => CanvasAgentAssertion[]> = {
@@ -10,7 +11,10 @@ const taskEvaluators: Record<CanvasAgentTaskId, (run: CanvasAgentEvaluationRun) 
     const check = run.check;
     const zeroOverlap = assertion('zero-overlap', check.overlapCount === 0, `overlaps=${check.overlapCount}`);
     const ids = Object.values(run.documentIds), documents = after.filter(card => card.type === 'document'), conclusions = after.filter(card => card.type === 'text');
-      return [assertion('8-documents', ids.length === 8 && ids.every(id => documents.some(card => card.data.documentId === id)), `expected=${ids.length}, actual=${documents.length}`), assertion('document-conclusion-links', documents.every(card => conclusions.some(conclusion => linked(run.after, card.id, conclusion.id))), '每文档指向结论'), zeroOverlap];
+    const expectedKeys = createCanvasAgentFixture('T1').documents.map(document => document.key).sort();
+    const sourcesMatch = isDeepStrictEqual(Object.keys(run.documentIds).sort(), expectedKeys)
+      && new Set(ids).size === 8 && !ids.includes(run.after.documentId);
+      return [assertion('8-documents', sourcesMatch && documents.length === 8 && ids.every(id => documents.some(card => card.data.documentId === id)), `sources=${ids.length}, documentCards=${documents.length}`), assertion('document-conclusion-links', documents.every(card => conclusions.some(conclusion => linked(run.after, card.id, conclusion.id))), '每文档指向结论'), zeroOverlap];
   },
   T2(run) {
     const after = cards(run.after);
