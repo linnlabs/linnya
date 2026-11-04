@@ -54,28 +54,32 @@
           >
           <output>{{ Math.round(insets[side.id]) }}%</output>
         </label>
-        <button
-          type="button"
+        <BaseButton
+          variant="secondary"
+          :disabled="editor.state.busy.value"
           @click="editor.state.patch({ crop: null })"
         >
           恢复完整原图
-        </button>
-        <label>图注<input
-          type="text"
-          :value="draft.data.caption"
-          @input="text('caption', $event)"
-        ></label>
-        <label>替代文字<input
-          type="text"
-          :value="draft.data.alt"
-          @input="text('alt', $event)"
-        ></label>
-        <button
-          type="button"
+        </BaseButton>
+        <label>图注<CustomTextInput
+          class="canvas-image-edit-text"
+          :model-value="draft.data.caption"
+          :disabled="editor.state.busy.value"
+          @update:model-value="editor.state.patch({ caption: $event })"
+        /></label>
+        <label>替代文字<CustomTextInput
+          class="canvas-image-edit-text"
+          :model-value="draft.data.alt"
+          :disabled="editor.state.busy.value"
+          @update:model-value="editor.state.patch({ alt: $event })"
+        /></label>
+        <BaseButton
+          variant="secondary"
+          :disabled="editor.state.busy.value"
           @click="picker?.click()"
         >
           替换图片
-        </button>
+        </BaseButton>
         <input
           ref="picker"
           type="file"
@@ -97,27 +101,29 @@
         role="status"
       >
         {{ editor.deliveryNotice.value }}
-        <button
-          type="button"
+        <BaseButton
+          variant="secondary"
           @click="editor.retryDelivery()"
         >
           重试确认
-        </button>
+        </BaseButton>
       </p>
-      <button
-        type="button"
-        :disabled="editor.state.busy.value"
-        @click="editor.dismiss()"
-      >
-        取消
-      </button>
-      <button
-        type="button"
-        :disabled="editor.state.busy.value || !draft?.asset"
-        @click="editor.apply()"
-      >
-        保存
-      </button>
+      <div class="canvas-image-edit-actions">
+        <BaseButton
+          variant="secondary"
+          :disabled="editor.state.busy.value"
+          @click="editor.dismiss()"
+        >
+          取消
+        </BaseButton>
+        <BaseButton
+          variant="primary"
+          :disabled="editor.state.busy.value || !draft?.asset"
+          @click="editor.apply()"
+        >
+          保存
+        </BaseButton>
+      </div>
     </template>
   </Modal>
   <p
@@ -129,7 +135,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { Modal } from '@linnya/renderer-ui';
+import { Modal, BaseButton, CustomTextInput } from '@linnya/renderer-ui';
 import type { createCanvasImageEditing } from '../orchestration/createCanvasImageEditing';
 import { createCanvasImageCropGesture } from '../orchestration/createCanvasImageCropGesture';
 import { canvasImageCropInset, fullCanvasImageCrop } from '../functions/canvasImageCrop';
@@ -141,7 +147,6 @@ const cropStyle = computed(() => ({ left: `${crop.value.x * 100}%`, top: `${crop
 const insets = computed(() => ({ left: crop.value.x * 100, top: crop.value.y * 100, right: (1 - crop.value.x - crop.value.width) * 100, bottom: (1 - crop.value.y - crop.value.height) * 100 }));
 const sides = [{ id: 'left', label: '左' }, { id: 'top', label: '上' }, { id: 'right', label: '右' }, { id: 'bottom', label: '下' }] as const;
 function inset(side: typeof sides[number]['id'], event: Event) { if (event.target instanceof HTMLInputElement) props.editor.state.patch({ crop: canvasImageCropInset(crop.value, side, event.target.valueAsNumber) }); }
-function text(key: 'caption' | 'alt', event: Event) { if (event.target instanceof HTMLInputElement) props.editor.state.patch({ [key]: event.target.value }); }
 function replace(event: Event) { if (event.target instanceof HTMLInputElement) { const file = event.target.files?.[0]; event.target.value = ''; if (file) void props.editor.replace(file); } }
 onBeforeUnmount(gesture.dispose);
 </script>
