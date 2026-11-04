@@ -1,6 +1,6 @@
 import { JsonValueSchema } from '@app/schemas';
 import { assertPortableMarkdownDocument } from '@linnya/markdown-document-core';
-import type { CanvasContentNode, CanvasTextDocument } from '../../../../shared';
+import type { CanvasCommand, CanvasContentNode, CanvasTextDocument } from '../../../../shared';
 import type { CanvasCommitPlan } from '../definitions/canvasCommit';
 import { CanvasContentPolicyError } from '../definitions/canvasContentFailure';
 
@@ -15,6 +15,11 @@ export function validateCanvasTextContent(content: CanvasTextDocument): void {
     for (const child of node.content ?? []) visit(child);
   }
   visit(content);
+}
+/** 原始命令正文即使之后因租约/旧实例跳过，也不能把坏格式洗成合法批次。 */
+export function validateCanvasCommandContent(command: CanvasCommand): void {
+  if (command.op === 'addText') validateCanvasTextContent(command.content);
+  if (command.op === 'update' && command.patch.data && 'content' in command.patch.data) validateCanvasTextContent(command.patch.data.content);
 }
 /** 恢复/撤回也经共同提交，不让可信历史绕过当前正文合同。 */
 export function validateCanvasPlanContent(plan: CanvasCommitPlan): void {

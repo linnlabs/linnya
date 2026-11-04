@@ -87,6 +87,15 @@ describe('Canvas document session', () => {
     await f.session.close();
   });
 
+  it('同一operation部分字段成功先接纳实际提交，再明确拒绝全成功以保留调用方草稿', async () => {
+    const f = fixture(); await f.session.open('doc');
+    const commit = f.commit.getMockImplementation(); if (!commit) throw new Error('fixture commit missing');
+    f.commit.mockImplementationOnce(async input => ({ ...await commit(input), results: [{ index: 0, status: 'applied', id: null, reason: 'partial_fields_skipped', fieldResults: [{ field: 'color', status: 'applied', reason: null }, { field: 'data', status: 'skipped', reason: 'stale_field' }] }] }));
+    await expect(f.session.commit([{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red', data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [] }] } } } }])).rejects.toMatchObject({ name: 'Error', result: { sequence: 1 } });
+    expect(f.session.state.snapshot.value?.sequence).toBe(1);
+    expect(f.session.mutationPending.value).toBe(false);
+    await f.session.close();
+  });
   it('读到兼容性只读快照后不发送写入或续约，已有保护仍能释放', async () => {
     const f = fixture(); await f.session.open('doc');
     const id = (await import('@plugin/canvas/shared')).CanvasCardIdSchema.parse('c1');

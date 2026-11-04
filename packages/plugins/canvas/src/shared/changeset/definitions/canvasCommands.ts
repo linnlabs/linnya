@@ -51,9 +51,14 @@ export const CanvasCommitRequestSchema = z.object({
 export const CanvasRendererCommitRequestSchema = CanvasCommitRequestSchema.omit({ referenceBindings: true, layoutGroups: true, payloadIdentity: true }).extend({
   viewId: z.string().min(1), historyGroupId: z.string().min(1).optional(),
 }).refine(request => request.operations.length > 0, '界面提交至少包含一个动作');
+export const CanvasOperationFieldResultSchema = z.object({
+  field: z.string().min(1), status: z.enum(['applied', 'skipped']), reason: z.string().nullable(),
+}).strict();
 export const CanvasOperationResultSchema = z.object({
   index: z.number().int().nonnegative(), status: z.enum(['applied', 'skipped']),
   id: CanvasElementIdSchema.nullable(), reason: z.string().nullable(),
+  // 缺省表示旧回执或该类历史结果未记录字段细节，不能解释成没有跳过。
+  fieldResults: z.array(CanvasOperationFieldResultSchema).optional(),
 }).strict();
 export const CanvasCommitResultSchema = z.object({
   documentId: z.string(), requestId: z.string(), sequence: z.number().int().nonnegative(),
@@ -63,5 +68,6 @@ export type CanvasCommand = z.infer<typeof CanvasCommandSchema>;
 export type CanvasCommitRequest = z.infer<typeof CanvasCommitRequestSchema>;
 export type CanvasRendererCommitRequest = z.infer<typeof CanvasRendererCommitRequestSchema>;
 export type CanvasCommitResult = z.infer<typeof CanvasCommitResultSchema>;
+export type CanvasOperationFieldResult = z.infer<typeof CanvasOperationFieldResultSchema>;
 export type CanvasOperationResult = z.infer<typeof CanvasOperationResultSchema>;
 export type CanvasPatch = z.infer<typeof CanvasPatchSchema>;
