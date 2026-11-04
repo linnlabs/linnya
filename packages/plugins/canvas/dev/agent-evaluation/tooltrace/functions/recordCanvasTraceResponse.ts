@@ -43,7 +43,7 @@ function recordCommitted(
   }
   context.facts.commits.push(commit);
   const computation = response.value.computation;
-  if (command.layoutRequested && !computation && response.value.replayed !== true)
+  if (command.layoutRequested !== false && !computation && response.value.replayed !== true)
     context.facts.layoutComputationGaps.push({ requestId: commit.requestId, sourceFile: context.sourceFile, toolCallId: context.toolCallId });
   if (computation) {
     // 只保留正式原响应的真实Worker时间；持久receipt或缺省replayed不能补造本次计算。

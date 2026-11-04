@@ -110,7 +110,7 @@ export interface CanvasTraceInvocation {
   readonly dryRun: boolean;
   readonly inputKey: string | null;
   readonly fingerprint: string | null;
-  readonly layoutRequested: boolean;
+  readonly layoutRequested: boolean | null;
 }
 
 export interface CanvasTraceContext {

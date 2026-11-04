@@ -44,3 +44,5 @@ check/render输出没有文档身份，因此只在该工具调用目标唯一�
 Worker样本只取正式committed响应中显式replayed:false的共享computation合同，requestId必须对应当前请求；dry-run、失败、重放和旧响应缺字段不计。输出保留原executionMs及样本N，以排序下标floor((N-1)*q)计算P50/P95；空集合没有0或伪造样本。每批只接受一次实际fit、零场景动画后renders增加、准确目标revision与完整UTC frame-window。commit到draw保留包含导航/轮询/HTTP的保守上界；overview/thumbnail几何与实际body交集分开，不宣称全部正文完成。相邻RAF间隔只取真实工作窗的完整相交帧，重叠窗口按同一绝对时刻去重，冲突或retention不完整保留partial；不将模型等待当fps、不平均各窗口fps。
 
 完整事实输出metrics.json（沿用draft的metricsFile合同）、metrics-facts.json与diagnostics.json；事实不足仅metrics.partial.json，使用partialMetrics而非正式metrics字段，不能交给draft。已请求排布但正式响应缺计时的覆盖缺口不能被其它成功样本掩盖。慢但完整的样本仍原样写正式指标，是否达到Worker/提交到帧/平均fps/最慢帧门槛只由scripts/agent-evaluation的唯一assess判断。9/17ms目标与帧原值另报，collector不复制第二套通过规则；有限样本不声称稳定总体P95。所有输入只读，新输出目录拒覆盖，不生成review或调用模型、bridge、数据库。
+
+布局需求使用真实CLI合同：独立arrange明确需要；apply只从已保存的quoted here-doc JSON按唯一CanvasCliBatchSchema识别末尾op:arrange，不存在shell --arrange标记。未见/不合法的payload为unknown，不能解释为没有布局；只有明确合法且无arrange的批次才是false。unknown且无权威computation同样形成T13计时覆盖缺口；这个缺口不改变其它任务的首写/修正事实，也不从磁盘补读可能已变更的模型ops文件。

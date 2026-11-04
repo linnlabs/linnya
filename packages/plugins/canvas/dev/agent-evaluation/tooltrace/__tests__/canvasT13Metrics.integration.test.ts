@@ -6,6 +6,9 @@ import path from 'node:path';
 import { CanvasCommandSchema, createCanvasPlainTextDocument, type CanvasSnapshot } from '../../../../src/shared';
 import { planCanvasCommit } from '../../../../src/backend/features/canvasCommit';
 import { createCanvasAgentFixture } from '../../../../scripts/agent-evaluation';
+import { CanvasCliBatchSchema } from '../../../../src/shared/cli/definitions/canvasCli';
+import { parseCanvasCli } from '../../../../src/backend/features/canvasCli';
+import { readLiteralCanvasCommands } from '../functions/readLiteralCanvasCommands';
 import { collectCanvasT13Metrics, parseCanvasToolTrace, buildCanvasT13Metrics, CanvasTraceMetricsEvidenceSchema } from '../index';
 import { readCanvasT13Observations } from '../adapters/readCanvasT13Observations';
 import type { CanvasEvaluationCommand } from '../../bridge/definitions/canvasEvaluationBridge';
@@ -27,14 +30,20 @@ async function fixture() {
   for (let batch = 0; batch < 2; batch++) {
     const computation = { origin: 'node-worker', requestId: `layout-${batch}`, sequence: state.sequence, algorithm: 'grid', executionMs: 400 + batch * 200 };
     const operations = Array.from({ length: 150 }, (_, index) => CanvasCommandSchema.parse({ op: 'addText',
-      width: 240, height: 120,
+      ref: `$n${batch * 150 + index}`, width: 240, height: 120,
       content: createCanvasPlainTextDocument(`本批发现 ${batch * 150 + index}`) }));
     const planned = planCanvasCommit({ state, actor: { ...actor, source: { kind: 'agent', conversationId: 'conv', runId: 'run' } },
       operations, claims: [], origin: `agent-${batch}`, now: 2 });
     state = planned.state;
     const commit = { documentId: 'doc', requestId: computation.requestId, sequence: state.sequence, refs: planned.refs, results: planned.results };
     outputs.push({ ...commit, status: 'committed', computation, replayed: false });
-    commands.push(`linnya-canvas apply workspace:/T13.canvas --ops-file ops-${batch}.json --arrange grid --request-id layout-${batch}`);
+    const input = [...Array.from({ length: 150 }, (_, index) => ({ op: 'add', ref: `$n${batch * 150 + index}`,
+      text: `本批发现 ${batch * 150 + index}`, width: 240 })),
+      { op: 'arrange', algorithm: 'grid', elementIds: Array.from({ length: 150 }, (_, index) => `$n${batch * 150 + index}`) }];
+    CanvasCliBatchSchema.parse(input);
+    const argv = ['apply', 'workspace:/T13.canvas', '--ops-file', `ops-${batch}.json`, '--request-id', `layout-${batch}`];
+    expect(parseCanvasCli(argv).kind).toBe('apply');
+    commands.push(`cat > ops-${batch}.json <<'OPS'\n${JSON.stringify(input)}\nOPS\nlinnya-canvas ${argv.join(' ')}`);
     rows.push({ event: { documentId: 'doc', sequence: state.sequence, committedAt: 1000 + batch * 200, sourceKind: 'agent' },
       scope: { sequence: state.sequence, cards: planned.changes.flatMap(change => change.after && change.after.type !== 'edge'
         ? [{ id: change.after.id, revision: change.after.revision }] : []), deletedCardIds: [] } });
@@ -225,5 +234,40 @@ it('动画未结束时readiness后才draw到zero，旧readiness计数不能冒�
     const actualZeroBeforeDraw = { ...zeroStats, value: { ...zeroStats.value, presentation: { sceneTransitions: 0, renders: 1 } } };
     expect(buildCanvasT13Metrics({ ...data.input, exchanges: [...exchanges, actualZeroBeforeDraw],
       observations: [{ ...observation, fit, samples: [early, last] }, data.input.observations[1]] }).kind).toBe('complete');
+  } finally { await rm(data.root, { recursive: true, force: true }); }
+});
+
+it('正式apply批末arrange、独立arrange和未知ops文件按实际合同判定计时覆盖，未知不等于无布局', async () => {
+  const data = await fixture();
+  try {
+    const original = data.messages[0].payload.args.command;
+    expect(readLiteralCanvasCommands(original, new Map(), '.').invocations[0]?.layoutRequested).toBe(true);
+    const arrange = ['arrange', 'workspace:/T13.canvas', '--request-id', 'standalone', '--algorithm', 'grid', '--scope', 'c2001,c2002'];
+    expect(parseCanvasCli(arrange).kind).toBe('arrange');
+    expect(readLiteralCanvasCommands('linnya-canvas ' + arrange.join(' '), new Map(), '.').invocations[0]?.layoutRequested).toBe(true);
+    const standalone = { status: 'committed', requestId: 'standalone', sequence: data.input.after.sequence + 1, refs: {},
+      results: [{ index: 0, status: 'applied', id: 'c2001', reason: null }, { index: 1, status: 'applied', id: 'c2002', reason: null }],
+      computation: { origin: 'node-worker', requestId: 'standalone', sequence: data.input.after.sequence, algorithm: 'grid', executionMs: 50 }, replayed: false };
+    const message = data.messages[0];
+    const standaloneFacts = parseCanvasToolTrace({ scope: data.facts.scope, audit: data.audit,
+      pages: [{ sourceFile: 'messages.json', value: { ...data.page, messages: [{ ...message, payload: { ...message.payload,
+        args: { command: 'linnya-canvas ' + arrange.join(' ') },
+        data: { ...message.payload.data, presentationText: 'stdout:\n' + JSON.stringify(standalone) } } }] } }] });
+    expect(standaloneFacts.layoutComputations).toHaveLength(1); expect(standaloneFacts.layoutComputationGaps).toHaveLength(0);
+    const line = original.split('\n').slice(-1)[0], payload = original.split('\n')[1];
+    if (!payload) throw new Error('Fixture quoted ops missing');
+    const raw: unknown = JSON.parse(payload), operations = CanvasCliBatchSchema.parse(raw).filter(operation => operation.op !== 'arrange');
+    const withoutArrange = `cat > ops-0.json <<'OPS'\n${JSON.stringify(operations)}\nOPS\n${line}`;
+    for (const [command, expected] of [[original, true], [line, null], [withoutArrange, false]] as const) {
+      expect(readLiteralCanvasCommands(command, new Map(), '.').invocations[0]?.layoutRequested).toBe(expected);
+      const messages = data.messages.map((message, index) => index ? message : { ...message, payload: { ...message.payload,
+        args: { command }, data: { ...message.payload.data, presentationText: 'stdout:\n' + JSON.stringify({ ...data.outputs[0], computation: undefined }) } } });
+      const facts = parseCanvasToolTrace({ scope: data.facts.scope, audit: data.audit,
+        pages: [{ sourceFile: 'messages.json', value: { ...data.page, messages } }] });
+      expect(facts.needsReview).toBe(false);
+      expect(facts.layoutComputations).toHaveLength(1);
+      expect(facts.layoutComputationGaps).toHaveLength(expected === false ? 0 : 1);
+      expect(buildCanvasT13Metrics({ ...data.input, facts }).kind).toBe(expected === false ? 'complete' : 'needs-evidence');
+    }
   } finally { await rm(data.root, { recursive: true, force: true }); }
 });

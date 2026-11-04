@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { CanvasTraceInvocation } from '../definitions/canvasToolTrace';
+import { CanvasCliBatchSchema } from '../../../../src/shared/cli/definitions/canvasCli';
 const argument = `(?:"([^"$\\x60]*)"|'([^']*)'|([^\\s"']+))`;
 function literalOption(line: string, option: string): string | null {
   const match = new RegExp(`(?:^|\\s)${option}\\s+${argument}(?=\\s|$)`).exec(line);
@@ -7,6 +8,16 @@ function literalOption(line: string, option: string): string | null {
 }
 function fingerprint(value: string): string {
   return createHash('sha256').update(value).digest('hex');
+}
+function requestedLayout(kind: CanvasTraceInvocation['kind'], payload: string | undefined): boolean | null {
+  if (kind === 'arrange') return true;
+  if (kind !== 'apply') return false;
+  if (payload === undefined) return null;
+  // apply的排布是正式JSON批末尾的operation；未知文件不能当作明确没有布局。
+  let value: unknown;
+  try { value = JSON.parse(payload); } catch { return null; }
+  const parsed = CanvasCliBatchSchema.safeParse(value);
+  return parsed.success ? parsed.data.some(operation => operation.op === 'arrange') : null;
 }
 function readInvocation(
   line: string,
@@ -39,7 +50,7 @@ function readInvocation(
     target,
     requestId: literalOption(line, '--request-id'),
     dryRun: /(?:^|\s)--dry-run(?:\s|$)/.test(line),
-    layoutRequested: kind === 'arrange' || /(?:^|\s)--arrange(?:\s|$)/.test(line),
+    layoutRequested: requestedLayout(kind, payload),
     inputKey,
     fingerprint: payload === undefined ? null : fingerprint(payload),
   };
