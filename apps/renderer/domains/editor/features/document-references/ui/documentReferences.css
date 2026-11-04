@@ -4,13 +4,13 @@
 .document-reference-preview,
 .document-reference-suggestions {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
   width: 22rem;
   max-height: min(32rem, 80vh);
   overflow: auto;
-  padding: 0.75rem;
+  padding: var(--space-3);
   border: var(--border-width-hairline) solid var(--color-border-default);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   background: var(--color-bg-elevated);
   color: var(--color-text-primary);
   box-shadow: var(--shadow-floating-panel);
@@ -44,7 +44,7 @@
   border: 0;
   background: transparent;
   color: inherit;
-  padding: 0.4rem;
+  padding: var(--space-1-5);
 }
 .document-reference-suggestions [aria-selected='true'] {
   background: var(--color-bg-subtle);
@@ -55,7 +55,7 @@
   width: 16px;
   height: 16px;
   flex: none;
-  margin-inline-end: 6px;
+  margin-inline-end: var(--space-1-5);
 }
 .document-reference-candidate-icon svg {
   width: 100%;
