@@ -3,6 +3,7 @@ import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/ke
 import { createCanvasRasterPresentation } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
 import { canvasPerformanceMediaFixture, type CanvasPerformanceKind } from './performanceMediaFixture';
 import { createCanvasZoomTimeline } from './performanceZoomTimeline';
+import { createCanvasPerformancePaintTrace } from './performancePaintTrace';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
@@ -44,6 +45,7 @@ let failures: string[] = [];
 let elements: readonly CanvasElement[] = [];
 let movedCards = 0;
 let zoomTimeline: ReturnType<typeof createCanvasZoomTimeline> | null = null;
+let paintTrace: ReturnType<typeof createCanvasPerformancePaintTrace> | null = null;
 const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
 
@@ -140,6 +142,8 @@ async function prepareDrag(selectedCount: number) {
   return { point: target.point, selected: selected.length, cardId: top.id };
 }
 Object.defineProperties(window, {
+  beginCanvasPerformancePaintTrace: { value: () => { paintTrace?.finish(); paintTrace = createCanvasPerformancePaintTrace(); } },
+  finishCanvasPerformancePaintTrace: { value: () => { const result = paintTrace?.finish(); paintTrace = null; return result; } },
   startCanvasPerformanceZoomTrace: { value: () => {
     zoomTimeline = createCanvasZoomTimeline(() => {
       if (!kernel || !presentation || !media) throw new Error('probe_not_prepared');
