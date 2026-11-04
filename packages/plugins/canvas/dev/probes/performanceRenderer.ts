@@ -48,7 +48,7 @@ const appearance = { dark: false, material: 'paper', overview: 'titles' } as con
 async function prepare(count: number, clustered: boolean, kind: CanvasPerformanceKind = 'text') {
   stopMedia?.(); media?.content?.dispose(); presentation?.dispose(); kernel?.destroy();
   document.body.replaceChildren(); document.body.style.cssText = 'margin:0;font-family:system-ui;background:#f1f3ed';
-  const host = document.createElement('div'); host.style.cssText = 'position:fixed;inset:0';
+  const host = document.createElement('div'); host.style.cssText = 'position:fixed;inset:0;background:#f1f3ed';
   const staging = document.createElement('div'); staging.className = 'canvas-raster-staging';
   document.body.append(host, staging); failures = [];
   kernel = await createPixiCanvasKernel({ host, resolution: devicePixelRatio, onIntent: (intent) => {
@@ -138,6 +138,7 @@ Object.defineProperties(window, {
   prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start },
   finishCanvasPerformanceCollection: { value: finish }, closeCanvasPerformanceView: { value: closeView },
   waitForCanvasPerformanceBody: { value: waitForBody }, readCanvasPerformanceMedia: { value: () => media?.readStats() },
+  captureCanvasPerformanceFrame: { value: () => { if (!kernel) throw new Error('probe_not_prepared'); return kernel.captureImage('png'); } },
   prepareCanvasPerformanceDrag: { value: prepareDrag }, finishCanvasPerformanceDrag: { value: () => { const result = { movedCards, selected: kernel?.readSelection().length }; kernel?.clearDragPreview(); presentation?.refresh(); return result; } },
 });
 
