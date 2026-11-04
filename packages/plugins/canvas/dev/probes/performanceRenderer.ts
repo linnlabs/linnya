@@ -8,6 +8,7 @@ import { waitForCanvasPerformanceBody } from './waitForCanvasPerformanceBody';
 import { waitForCanvasPerformanceDraw } from './waitForCanvasPerformanceDraw';
 import { createCanvasPerformanceInputTrace } from './performanceInputTrace';
 import { createCanvasDocumentFocusSpan } from './performanceFocusQualification';
+import { createCanvasStagingContextControl, type CanvasStagingContextArm } from './performanceStagingContextControl';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
@@ -53,6 +54,7 @@ let paintTrace: ReturnType<typeof createCanvasPerformancePaintTrace> | null = nu
 let inputTrace: ReturnType<typeof createCanvasPerformanceInputTrace> | null = null;
 let focusSpan: ReturnType<typeof createCanvasDocumentFocusSpan> | null = null;
 let bodyTrace: { readonly marks: { readonly name: string; readonly atMs: number; readonly rafTimestamp?: number }[] } | null = null;
+let contextControl: ReturnType<typeof createCanvasStagingContextControl> | null = null;
 const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
 
@@ -63,9 +65,12 @@ function markBody(name: 'baseline' | 'close-start' | 'close-return' | 'wait-star
   bodyTrace.marks.push({ name: ownedName, atMs, ...(rafTimestamp === undefined ? {} : { rafTimestamp }) });
 }
 
-async function prepare(count: number, clustered: boolean, kind: CanvasPerformanceKind = 'text') {
+async function prepare(count: number, clustered: boolean, kind: CanvasPerformanceKind = 'text', contextArm?: CanvasStagingContextArm) {
+  contextControl?.finish(); contextControl = null;
   stopMedia?.(); media?.content?.dispose(); presentation?.dispose(); kernel?.destroy();
   document.body.replaceChildren(); document.body.style.cssText = 'margin:0;font-family:system-ui;background:#f1f3ed';
+  // hook先于本轮任何Canvas创建；后设hint可能命中已建context，不能拿来当B臂。
+  if (contextArm) contextControl = createCanvasStagingContextControl(contextArm);
   const host = document.createElement('div'); host.style.cssText = 'position:fixed;inset:0;background:#f1f3ed';
   const staging = document.createElement('div'); staging.className = 'canvas-raster-staging';
   document.body.append(host, staging); failures = [];
@@ -170,6 +175,7 @@ async function prepareDrag(selectedCount: number) {
   return { point: target.point, selected: selected.length, cardId: top.id };
 }
 Object.defineProperties(window, {
+  finishCanvasPerformanceStagingContextControl: { value: () => { const result = contextControl?.finish(); contextControl = null; return result; } },
   beginCanvasPerformanceInputTrace: { value: () => {
     inputTrace?.finish(); inputTrace = createCanvasPerformanceInputTrace({ readCanvas: () => kernel?.canvas ?? null,
       readState: point => {
