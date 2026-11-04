@@ -151,3 +151,75 @@ it('marker的真实tabular-nums使shorthand为空时，availability query仍来�
   const italic = readVisualFontFacts({ font: '', fontFamily: 'DifferentFont', fontSize: '18px', fontStyle: 'italic', fontWeight: '700', fontStretch: '100%', fontVariantNumeric: 'tabular-nums' });
   expect(italic.fontQuery).toBe('italic 700 18px DifferentFont');
 });
+
+/** 固定色段只检验统计单位；不是字体rasterizer，也不充当真实DOM/GPU正例。 */
+function structureFixture(mixed = false, grayForeground: 0 | 200 = 0) {
+  const width = mixed ? 40 : 20, height = 14, rgba = new Uint8Array(width * height * 4).fill(255);
+  const reference: VisualImage = { width, height, rgba }, actual = structuredClone(reference);
+  const paint = (image: VisualImage, left: number, right: number, color: readonly number[], top = 3, bottom = 11) => {
+    for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) image.rgba.set([...color, 255], (y * width + x) * 4);
+  };
+  paint(reference, 6, 13, [grayForeground, grayForeground, grayForeground]); paint(actual, 6, 13, [grayForeground, grayForeground, grayForeground]);
+  // 保持两侧fringe对称，只改变LCD/gray通道分布，不把真实质心位移混进结构单位测试。
+  for (const left of [3, 13]) { paint(reference, left, left + 3, [210, 250, 255], 5, 9); paint(actual, left, left + 3, [238, 238, 238], 5, 9); }
+  const base = fixture(undefined, 'system-ui').layout.graphemes[0];
+  const graphemes: VisualTextLayout['graphemes'] = [{ ...base, geometryKind: 'range', id: 'black', text: '甲', rects: [{ x: 0, y: 0, width: 16, height }],
+    style: { ...base.style, color: [grayForeground, grayForeground, grayForeground] } }];
+  if (mixed) {
+    paint(reference, 24, 31, [204, 0, 0]); paint(actual, 24, 31, [204, 0, 0]);
+    paint(reference, 31, 34, [230, 250, 255]); paint(actual, 31, 34, [246, 212, 212]);
+    graphemes.push({ ...base, geometryKind: 'range', id: 'red', text: '乙', rects: [{ x: 22, y: 0, width: 16, height }], style: { ...base.style, color: [204, 0, 0] } });
+  }
+  const layout: VisualTextLayout = { version: 3, dpr: 1, fontsStatus: 'loaded', width, graphemes,
+    lines: [{ id: 'line', rect: { x: 0, y: 0, width, height }, graphemeIds: graphemes.map(glyph => glyph.id) }] };
+  return { reference, actual, layout };
+}
+
+it.each([0, 200] as const)('合格LCD fringe与gray按同一平均覆盖判形状，前景%d也保留原24对比单位', foreground => {
+  const source = structureFixture(false, foreground), result = compareVisualTextPixels(source.reference, source.actual, source.layout), line = result.lines[0];
+  expect(result.oracleRevision).toBe(3); expect(result.pass).toBe(true);
+  expect(line.residual).toBeGreaterThan(0); expect(line.residualRatio).toBeGreaterThan(0.05);
+  expect(line.structure.model).toBe('per-pixel-qualified-rgb-mean'); expect(line.structure.residual).toBe(0);
+  expect(line.structure.union).toBe(56); expect(line.structure.union).toBeLessThan(line.union);
+});
+
+it('同行不同作者颜色分别用自己的fg/bg模型，不把首个黑字的alpha套给红字', () => {
+  const source = structureFixture(true), result = compareVisualTextPixels(source.reference, source.actual, source.layout);
+  expect(result.pass).toBe(true); expect(result.graphemes).toHaveLength(2);
+  expect(result.lines[0].structure.residual).toBe(0);
+});
+
+it('真实字形被横向擦笔画，即使背景alpha0符合fg/bg模型，结构判定自身也必须拒绝', () => {
+  const source = fixture(undefined, 'system-ui'), actual = structuredClone(source.image), glyph = source.layout.graphemes[0], rect = glyph.rects[0];
+  const middle = Math.floor(rect.y + rect.height / 2), erasedInk: number[] = [];
+  for (let y = middle - 2; y <= middle + 2; y++) for (let x = Math.floor(rect.x); x < Math.ceil(rect.x + rect.width); x++) {
+    const offset = (y * actual.width + x) * 4;
+    if (source.image.rgba[offset] < 231) erasedInk.push(offset);
+    actual.rgba.set([255, 255, 255, 255], offset);
+  }
+  const layout: VisualTextLayout = { ...source.layout, graphemes: [glyph], lines: [{ id: 'one-han', rect, graphemeIds: [glyph.id] }] };
+  const result = compareVisualTextPixels(source.image, actual, layout), line = result.lines[0];
+  expect(result.graphemes[0].monochromeEligible).toBe(true); expect(erasedInk.length).toBeGreaterThan(0);
+  expect(erasedInk.every(offset => matchesMonochromePaint(source.image.rgba, actual.rgba, offset, glyph.style.color, glyph.style.background))).toBe(true);
+  expect(line.structure.modeledPixels).toBeGreaterThan(0); expect(line.structure.residualRatio).toBeGreaterThan(0.05);
+  expect(line.failures).toContain('non_aa_residual'); expect(result.pass).toBe(false);
+});
+
+it('无资格重叠字簇不能借已知邻字的RGB平均模型豁免差异', () => {
+  for (const text of ['🖼️', '未知']) {
+    const source = structureFixture(), base = source.layout.graphemes[0];
+    source.layout.graphemes.push({ ...base, geometryKind: 'range', id: 'strict', text, rects: [{ x: 3, y: 5, width: 3, height: 4 }],
+      style: { ...base.style, fontFamily: text === '未知' ? 'unknown-font' : 'system-ui' } });
+    source.layout.lines[0].graphemeIds.push('strict');
+    const result = compareVisualTextPixels(source.reference, source.actual, source.layout);
+    expect(result.pass).toBe(false); expect(result.lines[0].structure.residual).toBeGreaterThan(0);
+    expect(result.graphemes.find(glyph => glyph.sourceId === 'strict')?.monochromeEligible).toBe(false);
+  }
+});
+
+it('已知单色字体的小标点整擦仍由非空/质量和结构规则拒绝', () => {
+  const source = fixture(undefined, 'system-ui'), actual = fixture('punctuation', 'system-ui');
+  const result = compareVisualTextPixels(source.image, actual.image, source.layout), punctuation = result.graphemes.find(glyph => glyph.text === '、');
+  expect(punctuation?.monochromeEligible).toBe(true); expect(punctuation?.failures).toContain('missing_ink');
+  expect(punctuation?.structure.residual).toBeGreaterThan(0); expect(result.pass).toBe(false);
+});

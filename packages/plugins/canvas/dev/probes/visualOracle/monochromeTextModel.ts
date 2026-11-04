@@ -1,4 +1,5 @@
 import { VISUAL_TEXT_LIMITS, type VisualColor, type VisualTextLayout } from './definitions';
+import { meanChannelAlpha } from './visualInkCoverage';
 
 type Grapheme = VisualTextLayout['graphemes'][number];
 const potentialColorSequence = /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Emoji_Modifier}|[\u200d\u20e3\ufe0e\ufe0f\u{E0020}-\u{E007F}]/u;
@@ -22,4 +23,12 @@ export function matchesMonochromePaint(reference: Uint8Array, actual: Uint8Array
   return vector.every((value, channel) => reference[offset + channel] >= Math.min(foreground[channel], background[channel]) - VISUAL_TEXT_LIMITS.solidColorDelta
     && reference[offset + channel] <= Math.max(foreground[channel], background[channel]) + VISUAL_TEXT_LIMITS.solidColorDelta
     && Math.abs(actual[offset + channel] - background[channel] - alpha * value) <= VISUAL_TEXT_LIMITS.solidColorDelta);
+}
+
+/** RGB平均alpha转回原对比单位；不能直接乘255把低对比文字的24门槛偷偷改掉。 */
+export function monochromeStructureContrast(reference: Uint8Array, actual: Uint8Array, offset: number, foreground: VisualColor, background: VisualColor) {
+  if (!matchesMonochromePaint(reference, actual, offset, foreground, background)) return null;
+  const contrast = Math.max(...foreground.map((value, channel) => Math.abs(value - background[channel])));
+  return { reference: meanChannelAlpha(reference, offset, foreground, background) * contrast,
+    actual: meanChannelAlpha(actual, offset, foreground, background) * contrast };
 }

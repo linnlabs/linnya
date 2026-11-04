@@ -23,6 +23,20 @@ export type VisualRect = z.infer<typeof VisualRectSchema>;
 export type VisualColor = readonly [number, number, number];
 export interface VisualImage { readonly width: number; readonly height: number; readonly rgba: Uint8Array }
 export interface VisualInkMoment { mass: number; x: number; y: number }
+export interface VisualMonochromePixels {
+  readonly legacyMask: Uint8Array;
+  /** 正数是同一fg/bg模型身份，0未准入，-1表示冲突或严格字簇覆盖。 */
+  readonly structureOwner: Int32Array;
+  readonly referenceContrast: Float64Array;
+  readonly actualContrast: Float64Array;
+}
+export interface VisualStructureFacts {
+  readonly model: 'per-pixel-qualified-rgb-mean';
+  readonly union: number;
+  readonly residual: number;
+  readonly residualRatio: number;
+  readonly modeledPixels: number;
+}
 export interface VisualCoverage {
   readonly model: 'contrast-max' | 'rgb-alpha-mean' | 'fixed-reference-glyph-weights';
   readonly referenceMass: number; readonly actualMass: number; readonly massRatio: number;
