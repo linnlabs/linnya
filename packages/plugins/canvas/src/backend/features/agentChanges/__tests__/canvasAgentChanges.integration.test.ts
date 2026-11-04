@@ -70,6 +70,46 @@ describe('Canvas durable Agent change groups', () => {
     f.withdraw(group.id); expect(f.elements[0]).toMatchObject({ color: 'green', x: 0 });
     f.apply('A', update('red', 5)); f.commit(update('purple', 6)); f.withdraw(group.id); expect(f.elements[0]).toMatchObject({ color: 'purple' }); f.database.close();
   });
+  it('bounds repeated multi-card body history while preserving intervening foreign edits after reload and withdrawal', () => {
+    const f = fixture(); f.commit([add, add, add]);
+    const body = (text: string) => ({ contentVersion: 1, heightMode: 'auto', content: createCanvasPlainTextDocument(text) });
+    for (let round = 0; round < 12; round++) {
+      f.apply('A', f.elements.map(element => ({ op: 'update', id: element.id, baseRevision: element.revision, patch: { data: body(`A-${round}-${element.id}`) } })));
+      if (round === 5) {
+        f.apply('B', f.elements.filter(element => element.id !== 'c3').map(element => ({ op: 'update', id: element.id, baseRevision: element.revision,
+          patch: element.id === 'c1' ? { data: body('B正文') } : { color: 'green' } })));
+      }
+    }
+    const stored = readCanvasAgentGroups(f.database, 'doc').find(group => group.conversationId === 'A');
+    if (!stored) throw new Error('missing group');
+    // 连续更新只保留每卡一段；两张被外部写过的卡各保留介入前后两段，不随保存次数增长。
+    expect(stored.entry.changes).toHaveLength(5);
+    const before = f.elements.map(element => ({ id: element.id, data: 'data' in element ? element.data : null, color: element.color }));
+    f.restart(); f.withdraw(stored.id);
+    const expected = [
+      { id: 'c1', data: body('B正文'), color: 'white' },
+      { id: 'c2', data: body('Example'), color: 'green' },
+      { id: 'c3', data: body('Example'), color: 'white' },
+    ];
+    const values = () => f.elements.map(element => ({ id: element.id, data: 'data' in element ? element.data : null, color: element.color }));
+    expect(values()).toEqual(expected);
+    f.history.undo({ documentId: 'doc', viewId: 'view', requestId: 'undo-batch-withdrawal', direction: 'undo' }, 100);
+    expect(values()).toEqual(before);
+    f.history.undo({ documentId: 'doc', viewId: 'view', requestId: 'redo-batch-withdrawal', direction: 'redo' }, 101);
+    expect(values()).toEqual(expected); f.database.close();
+  });
+  it('keeps structure changes between batch edits and withdraws the graph without changing existing identities', () => {
+    const f = fixture(); f.commit([add, add]);
+    const edits = (color: string) => f.elements.filter(element => element.type !== 'edge').map(element => ({ op: 'update', id: element.id, baseRevision: element.revision, patch: { color } }));
+    f.apply('A', edits('red'));
+    f.apply('A', [{ ...add, ref: '$child' }, { op: 'connect', from: 'c1', to: '$child' }]);
+    f.apply('A', edits('yellow'));
+    const group = readCanvasAgentGroups(f.database, 'doc').find(candidate => candidate.conversationId === 'A');
+    if (!group) throw new Error('missing group');
+    expect(group.entry.changes.filter(change => change.id === 'c1')).toHaveLength(2);
+    f.withdraw(group.id);
+    expect(f.elements.map(element => ({ id: element.id, color: element.color }))).toEqual([{ id: 'c1', color: 'white' }, { id: 'c2', color: 'white' }]); f.database.close();
+  });
   it('keeps an Agent creation completely unchanged after another source edits or links it', () => {
     const f = fixture(); f.apply('A', [add]); f.apply('B', update('green', 1)); f.apply('A', [{ op: 'update', id: 'c1', baseRevision: 2, patch: { x: 20 } }]);
     const group = f.history.listGroups('doc', 1).find(group => group.conversationId === 'A'); if (!group) throw new Error('missing group');
