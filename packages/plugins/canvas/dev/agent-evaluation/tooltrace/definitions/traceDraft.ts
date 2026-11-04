@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { CanvasToolTraceFacts } from './canvasToolTrace';
 import { CanvasEvaluationWitnessScopeSchema } from '../../definitions/canvasEvaluationWitness';
+import { CanvasObservedCliMeasurementLabelSchema } from './canvasObservedCliMeasurements';
 export {
   CanvasEvaluationWitnessScopeSchema as CanvasTraceWitnessScopeSchema,
   CanvasEvaluationControlsEvidenceSchema as CanvasTraceControlsEvidenceSchema,
@@ -35,6 +36,7 @@ export const CanvasTraceMetricsEvidenceSchema = z
   .object({
     scope: CanvasEvaluationWitnessScopeSchema,
     metrics: z.unknown(),
+    measurement: CanvasObservedCliMeasurementLabelSchema.optional(),
     evidenceFiles: z.array(z.string().min(1)).min(1),
   })
   .strict();

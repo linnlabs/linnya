@@ -6,6 +6,8 @@ import { CanvasT13ObservationSchema, CanvasT13ProtocolSchema, CanvasT13SummarySc
 import { admitCanvasDraftSource } from './admitCanvasDraftSource';
 import { readCanvasDraftFinishedAt } from './admitCanvasDraftEvidence';
 import { admitCanvasT13Observation, CanvasT13EvidenceError } from './admitCanvasT13Observation';
+import type { CanvasSealedCliObservation } from '../../cli-observation';
+import { admitCanvasObservedCliMeasurements } from './admitCanvasObservedCliMeasurements';
 
 const percentile = (values: readonly number[], fraction: number) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -18,6 +20,7 @@ export function buildCanvasT13Metrics(input: {
   readonly result: unknown; readonly facts: CanvasToolTraceFacts; readonly protocol: unknown; readonly summary: unknown;
   readonly observations: readonly unknown[]; readonly exchanges: readonly CanvasT13BridgeExchange[];
   readonly evidenceFiles: readonly string[]; readonly diagnostics: readonly string[];
+  readonly cliObservation?: CanvasSealedCliObservation; readonly audit?: unknown; readonly continuationAudits?: readonly unknown[];
 }) {
   const source = admitCanvasDraftSource({ ...input, evidenceFiles: input.evidenceFiles });
   const { state, collection, scope, before, after, startedAt } = source;
@@ -30,12 +33,16 @@ export function buildCanvasT13Metrics(input: {
     throw new Error('T13 observer belongs to another frozen evaluation');
   const diagnostics = [...input.diagnostics];
   const finishedAt = readCanvasDraftFinishedAt(input.result, { ...scope, runId: source.finalRunId });
+  const cli = input.cliObservation && finishedAt !== undefined ? admitCanvasObservedCliMeasurements({ observation: input.cliObservation,
+    scope: input.facts.scope, projectId: state.projectId, sourceRevision: scope.sourceRevision, audit: input.audit,
+    continuationAudits: input.continuationAudits, startedAt, finishedAt }) : undefined;
+  if (cli) diagnostics.push(...cli.diagnostics);
   if (finishedAt === undefined || summary.terminalObservedAt === null
     || finishedAt > summary.endedAt || protocol.startedAt > startedAt) diagnostics.push('observer_run_window_incomplete');
   const onlyAttemptUncertainty = input.facts.needsReview && input.facts.diagnostics.length > 0
     && input.facts.diagnostics.every(diagnostic => diagnostic.code === 'correction_unknown');
   if (!collection.sourceValid || !collection.messagesComplete || !collection.evidenceComplete
-    || (input.facts.needsReview && !onlyAttemptUncertainty))
+    || (!input.cliObservation && input.facts.needsReview && !onlyAttemptUncertainty))
     diagnostics.push('formal_collection_or_tooltrace_incomplete');
   const originalIds = new Set(before.elements.map(element => element.id));
   const original = input.exchanges.filter(exchange => exchange.command.kind === 'read').some(exchange => {
@@ -58,7 +65,13 @@ export function buildCanvasT13Metrics(input: {
     diagnostics.push('observer_delta_ledger_incomplete');
   const samples: ReturnType<typeof admitCanvasT13Observation>[] = [];
   // 正式Core只有applied才append变化；empty/all-skipped确认请求不会推进sequence或publish delta。
-  const actualChanges = input.facts.commits.filter(commit => commit.results.some(result => result.status === 'applied'));
+  // 显式选择封存CLI来源时不回退旧Shell/receipt；原trace与draft的语义待审仍单独保留。
+  const confirmed = input.cliObservation ? cli?.commits ?? [] : input.facts.commits;
+  for (const commit of cli?.commits ?? []) {
+    const original = input.facts.commits.find(value => value.requestId === commit.requestId);
+    if (original && !isDeepStrictEqual(original, commit)) diagnostics.push(`cli_tooltrace_commit_conflict:${commit.requestId}`);
+  }
+  const actualChanges = confirmed.filter(commit => commit.results.some(result => result.status === 'applied'));
   for (const observation of observations) {
     const commits = actualChanges.filter(commit => commit.sequence === observation.sequence);
     if (commits.length !== 1 || finishedAt === undefined) { diagnostics.push(`commit_not_uniquely_attributed:${observation.sequence}`); continue; }
@@ -75,9 +88,9 @@ export function buildCanvasT13Metrics(input: {
   for (const card of after.elements.filter(element => element.type !== 'edge' && !originalIds.has(element.id)))
     if (!samples.some(sample => sample.targets.some(target => target.id === card.id && target.revision === card.revision)))
       diagnostics.push(`final_card_revision_unobserved:${card.id}`);
-  const worker = input.facts.layoutComputations;
+  const worker = input.cliObservation ? cli?.layoutComputations ?? [] : input.facts.layoutComputations;
   if (!worker.length) diagnostics.push('node_worker_samples_missing');
-  if (input.facts.layoutComputationGaps.length) diagnostics.push('node_worker_sample_coverage_incomplete');
+  if (!input.cliObservation && input.facts.layoutComputationGaps.length) diagnostics.push('node_worker_sample_coverage_incomplete');
   const frames = new Map<number, CanvasT13FrameSample>();
   for (const sample of samples) for (const frame of sample.frameWindow.frames.samples) {
     const previous = frames.get(frame.at);
@@ -91,16 +104,22 @@ export function buildCanvasT13Metrics(input: {
     averageFps: total ? intervals.length * 1000 / total : undefined,
     frameP95Ms: percentile(intervals.map(sample => sample.interval), .95),
     worstFrameMs: percentile(intervals.map(sample => sample.interval), 1) };
-  const evidenceFiles = [...new Set([...input.evidenceFiles, ...samples.flatMap(sample => sample.evidenceFiles)])];
+  const evidenceFiles = [...new Set([...input.evidenceFiles, ...(cli?.evidenceFiles ?? []), ...samples.flatMap(sample => sample.evidenceFiles)])];
   return { kind: diagnostics.length ? 'needs-evidence' as const : 'complete' as const,
-    witness: { scope, metrics, evidenceFiles }, diagnostics,
+    witness: { scope, metrics, evidenceFiles, ...(cli ? { measurement: cli.label } : {}) }, diagnostics,
     facts: { scope, measurement: protocol.measurement, body: protocol.body, computedMetrics: metrics, initialEnvironment: protocol.naturalEnvironment,
       attemptDiagnostics: input.facts.diagnostics.filter(diagnostic => diagnostic.code === 'correction_unknown'),
-      confirmedRequests: input.facts.commits.map(commit => ({ requestId: commit.requestId, sequence: commit.sequence,
+      measurementSource: cli?.label ?? { origin: 'formal-tooltrace' },
+      originalToolTraceReview: { needsReview: input.facts.needsReview, diagnostics: input.facts.diagnostics,
+        layoutComputationGaps: input.facts.layoutComputationGaps },
+      ...(cli ? { cliObservationLedger: cli } : {}),
+      confirmedRequests: confirmed.map(commit => ({ requestId: commit.requestId, sequence: commit.sequence,
         actualChanges: commit.results.some(result => result.status === 'applied') })),
       quantile: 'sorted-floor((N-1)*q)', workerSampleCount: worker.length, workerSamples: worker,
       commitSampleCount: samples.length, commitSamples: samples, frameSampleCount: intervals.length, frameSamples: intervals,
       limitations: ['N是本次实际样本，不宣称稳定总体P95', 'commit到post-fit实际draw是含导航/轮询/HTTP的保守上界',
         'overview/thumbnail几何与当前正文交集分开，不能称全部正文完成', '相交帧保留完整边界间隔，重叠窗口按绝对时刻去重',
-        '9/17ms目标与实际帧原值另报，不在collector复制通过规则', '本模块不替代屏幕/焦点/温度/同源的独立真机资格'] } };
+        '9/17ms目标与实际帧原值另报，不在collector复制通过规则', '本模块不替代屏幕/焦点/温度/同源的独立真机资格',
+        ...(cli ? ['带观测外壳的实际任务：同步证据I/O可能延迟AppServer/SSE，时延只作保守上界，不作为无观测Native10/40基线',
+          'CLI测量证据完整不清除原tooltrace/draft语义needsReview'] : [])] } };
 }

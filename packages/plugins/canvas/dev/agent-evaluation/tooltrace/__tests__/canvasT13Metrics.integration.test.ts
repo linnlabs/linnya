@@ -14,12 +14,15 @@ import { collectCanvasT13Metrics, parseCanvasToolTrace, buildCanvasT13Metrics, C
 import { readCanvasT13Observations } from '../adapters/readCanvasT13Observations';
 import type { CanvasEvaluationCommand } from '../../bridge/definitions/canvasEvaluationBridge';
 import { CanvasT13ObservationSchema, CanvasT13FrameWindowSchema, CanvasT13ProtocolSchema, CanvasT13SummarySchema } from '../definitions/canvasT13Metrics';
+import { CANVAS_CLI_FROZEN_PRODUCER_SOURCE, readSealedCanvasCliObservation } from '../../cli-observation';
+import { createSealedObservationFixture } from '../../cli-observation/__tests__/sealedObservation.fixture';
+import { admitCanvasObservedCliMeasurements } from '../functions/admitCanvasObservedCliMeasurements';
 
-async function fixture() {
+async function fixture(sourceRevision = 'a'.repeat(40)) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'canvas-t13-metrics-'));
   const run = path.join(root, 'run'), collectionDirectory = path.join(run, 'final'), observer = path.join(root, 'observer');
   await mkdir(collectionDirectory, { recursive: true }); await mkdir(observer);
-  const scope = { sourceRevision: 'a'.repeat(40), batchId: 'batch', documentId: 'doc', conversationId: 'conv', runId: 'run' };
+  const scope = { sourceRevision, batchId: 'batch', documentId: 'doc', conversationId: 'conv', runId: 'run' };
   const actor = { viewId: 'test', source: { kind: 'user', conversationId: null, runId: null } } as const;
   let state = planCanvasCommit({ state: { sequence: 0, maximumRevision: 0, nextCard: 1, nextEdge: 1, elements: [], deletedOrigins: {} },
     actor, operations: [], claims: [], origin: 'seed', now: 1 }).state;
@@ -140,6 +143,84 @@ it('正式2000→2300双批原件闭合；重叠RAF去重、慢Worker/帧保真�
     expect(derived).toMatchObject({ workerSampleCount: 2, commitSampleCount: 2, frameSampleCount: 4 });
     await expect(collectCanvasT13Metrics({ request: { runDirectory: data.run, collectionLabel: 'final', observationDirectory: data.observer }, outputDirectory })).rejects.toThrow();
   } finally { await rm(data.root, { recursive: true, force: true }); }
+});
+
+it('封存Host响应独立接纳纯add fresh-null与后续真实布局；混合Shell原诊断/draft待审不被洗掉', async () => {
+  const data = await fixture(CANVAS_CLI_FROZEN_PRODUCER_SOURCE), cli = createSealedObservationFixture(data.root);
+  try {
+    cli.record({ argv: ['apply', 'workspace:/T13.canvas', '--request-id', 'layout-0', '--dry-run'], at: 850, until: 851,
+      prepareOnly: true, exitCode: 8, response: { error: { code: 'invalid_operations', message: 'no frozen run' } } });
+    for (const [index, output] of data.outputs.entries()) cli.record({ argv: ['apply', 'workspace:/T13.canvas', '--ops-file', `ops-${index}.json`, '--request-id', output.requestId],
+      at: 950 + index * 200, until: 1010 + index * 200, response: { ...output, computation: null } });
+    const computation = { origin: 'node-worker', requestId: 'separate-arrange', sequence: data.input.after.sequence, algorithm: 'grid', executionMs: 600 };
+    const arranged = { status: 'committed', requestId: computation.requestId, sequence: data.input.after.sequence, refs: {}, results: [], computation, replayed: false };
+    cli.record({ argv: ['arrange', 'workspace:/T13.canvas', '--request-id=separate-arrange'], at: 1250, until: 1300, response: arranged,
+      identity: { conversationId: 'conv', agentRunId: 'child', projectId: 'project' } });
+    cli.record({ argv: ['arrange', 'workspace:/T13.canvas', '--request-id', 'foreign'], at: 1320, until: 1330,
+      response: { ...arranged, requestId: 'foreign', computation: { ...computation, requestId: 'foreign', executionMs: 99999 } },
+      identity: { conversationId: 'conv', agentRunId: 'other-root', projectId: 'project' } });
+    cli.seal();
+    const audit = { ...data.audit, runs: [...data.audit.runs, { ...data.audit.runs[0], run_id: 'child', parent_run_id: 'run' }] };
+    const messages = data.messages.map(message => ({ ...message, payload: { ...message.payload,
+      args: { command: message.payload.args.command.split('\n').slice(-1)[0] + ' | python3 filter.py' } } }));
+    const page = { ...data.page, messages };
+    await writeFile(path.join(data.run, 'final/audit.response.json'), JSON.stringify(audit));
+    await writeFile(path.join(data.run, 'final/messages-1.response.json'), JSON.stringify(page));
+    const facts = parseCanvasToolTrace({ scope: data.facts.scope, audit, pages: [{ sourceFile: path.join(data.run, 'final/messages-1.response.json'), value: page }] });
+    expect(facts.needsReview).toBe(true); expect(facts.diagnostics.some(value => value.code === 'shell_dynamic_command')).toBe(true);
+    const original = structuredClone(facts), outputDirectory = path.join(data.root, 'cli-metrics');
+    const collected = await collectCanvasT13Metrics({ request: { runDirectory: data.run, collectionLabel: 'final', observationDirectory: data.observer,
+      cliObservation: { directory: cli.directory, activationFile: cli.activationFile } }, outputDirectory });
+    expect(collected.kind).toBe('complete');
+    const witness = CanvasTraceMetricsEvidenceSchema.parse(JSON.parse(await readFile(collected.metricsFile, 'utf8')));
+    expect(witness).toMatchObject({ measurement: { origin: 'backend-cli-observation', performanceQualification: 'observed-task-conservative-latency-only' },
+      metrics: { layoutWorkerP50Ms: 600, commitToFrameP95Ms: 510 } });
+    const observation = await readSealedCanvasCliObservation(cli), metrics = buildCanvasT13Metrics({ ...data.input, facts, audit, cliObservation: observation });
+    expect(metrics.facts).toMatchObject({ workerSampleCount: 1, commitSampleCount: 2, originalToolTraceReview: { needsReview: true },
+      cliObservationLedger: { freshWithoutLayout: [{ requestId: 'layout-0' }, { requestId: 'layout-1' }] } });
+    expect(metrics.facts.workerSamples[0]).toMatchObject({ origin: 'backend-cli-observation', runId: 'child', invocationId: 'cli-4' });
+    expect(metrics.facts.workerSamples[0]).not.toHaveProperty('toolCallId'); expect(facts).toEqual(original);
+    const missingFrames = buildCanvasT13Metrics({ ...data.input, facts, audit, cliObservation: observation,
+      exchanges: data.input.exchanges.filter(value => value.command.kind !== 'frame-window') });
+    expect(missingFrames.kind).toBe('needs-evidence'); expect(missingFrames.diagnostics.some(value => value.startsWith('raw_frame_window_proof_missing'))).toBe(true);
+    expect(buildCanvasRunDraft({ ...data.input, facts, metrics: witness }).diagnostics).toContain('tooltrace_needs_review');
+    const savedTrace: unknown = JSON.parse(await readFile(path.join(outputDirectory, 'trace.json'), 'utf8'));
+    expect(savedTrace).toMatchObject({ needsReview: true, diagnostics: facts.diagnostics });
+  } finally { cli.restoreClock(); await rm(data.root, { recursive: true, force: true }); }
+});
+
+it('封存测量拒绝错scope/歧义/缺计时；replay、dry-run和未知失败不推断成fresh-null', async () => {
+  const data = await fixture(CANVAS_CLI_FROZEN_PRODUCER_SOURCE), cli = createSealedObservationFixture(data.root);
+  try {
+    const output = data.outputs[0];
+    cli.record({ argv: ['arrange', 'workspace:/T13.canvas', '--request-id', output.requestId], at: 950, until: 960,
+      response: { ...output, computation: null } });
+    cli.record({ argv: ['apply', 'workspace:/T13.canvas', '--request-id', 'missing'], at: 970, until: 980,
+      response: { status: 'committed', requestId: 'missing', sequence: output.sequence, refs: {}, results: [], replayed: false } });
+    cli.record({ argv: ['apply', 'workspace:/T13.canvas', '--request-id', 'replay'], at: 990, until: 1000,
+      response: { ...output, requestId: 'replay', computation: null, replayed: true } });
+    cli.record({ argv: ['apply', 'workspace:/T13.canvas', '--request-id', 'dry', '--dry-run'], at: 1010, until: 1020,
+      response: { status: 'dry-run', tentative: true, results: [] } });
+    cli.record({ argv: ['apply', 'workspace:/T13.canvas', '--request-id', 'failed'], at: 1030, until: 1040,
+      exitCode: 8, response: { error: { code: 'operation_failed', message: 'unknown stage' } } });
+    cli.record({ argv: ['apply', 'workspace:/T13.canvas', '--request-id', 'a', '--request-id', 'b'], at: 1050, until: 1060,
+      response: { ...output, requestId: 'b', computation: null } });
+    cli.record({ argv: ['apply', 'workspace:/T13.canvas', '--request-id', 'old-response'], at: 1070, until: 1080,
+      response: { status: 'committed', requestId: 'old-response', sequence: output.sequence, refs: {}, results: [], computation: null } });
+    cli.seal(); const observation = await readSealedCanvasCliObservation(cli);
+    const argumentsForAdmission = { observation, scope: data.facts.scope, audit: data.audit, projectId: 'project', sourceRevision: CANVAS_CLI_FROZEN_PRODUCER_SOURCE, startedAt: 900, finishedAt: 1900 };
+    const measured = admitCanvasObservedCliMeasurements(argumentsForAdmission);
+    expect(measured.layoutComputations).toEqual([]); expect(measured.freshWithoutLayout).toEqual([]);
+    expect(measured.diagnostics).toEqual(expect.arrayContaining(['cli_computation_coverage_missing:layout-0', 'cli_computation_coverage_missing:missing', 'cli_request_flags_ambiguous:6', 'cli_freshness_missing:old-response']));
+    expect(measured.excluded.map(value => value.reason)).toEqual(expect.arrayContaining(['replayed-no-new-computation', 'dry-run', 'failed-response-layout-unknown']));
+    const wrongSource = admitCanvasObservedCliMeasurements({ ...argumentsForAdmission, sourceRevision: 'c'.repeat(40) });
+    expect(wrongSource.commits).toEqual([]); expect(wrongSource.diagnostics).toContain('cli_observer_source_or_window_mismatch');
+    const wrongGraph = admitCanvasObservedCliMeasurements({ ...argumentsForAdmission, audit: { ...data.audit, requested_run_id: 'other-root' } });
+    expect(wrongGraph.commits).toEqual([]); expect(wrongGraph.diagnostics).toContain('cli_official_run_graph_incomplete');
+    expect(admitCanvasObservedCliMeasurements({ ...argumentsForAdmission, projectId: 'wrong-project' }).commits).toEqual([]);
+    const metrics = buildCanvasT13Metrics({ ...data.input, audit: data.audit, cliObservation: observation });
+    expect(metrics.kind).toBe('needs-evidence'); expect(metrics.witness.metrics.layoutWorkerP50Ms).toBeUndefined();
+  } finally { cli.restoreClock(); await rm(data.root, { recursive: true, force: true }); }
 });
 
 it('正式unchanged布局与全skip确认请求同seq不抢实际delta，保留Worker计算但不制造draw', async () => {

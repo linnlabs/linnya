@@ -10,6 +10,7 @@ const environment = z.object({ camera, visibilityState: z.enum(['visible', 'hidd
 export const CanvasT13MetricsRequestSchema = z.object({
   runDirectory: z.string().min(1), collectionLabel: z.string().regex(/^[a-zA-Z0-9-]+$/),
   observationDirectory: z.string().min(1),
+  cliObservation: z.object({ directory: z.string().min(1), activationFile: z.string().min(1) }).strict().optional(),
 }).strict();
 export const CanvasT13ProtocolSchema = z.object({
   sourceRevision: z.string().regex(/^[a-f0-9]{40}$/), batchId: z.string(), projectId: z.string(),
