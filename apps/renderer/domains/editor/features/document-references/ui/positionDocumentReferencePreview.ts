@@ -1,4 +1,12 @@
-import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
+import {
+  autoUpdate,
+  computePosition,
+  flip,
+  offset,
+  shift,
+  size,
+  type Placement,
+} from '@floating-ui/dom';
 
 /** 挂载期间跟随真实DOM尺寸；异步封面/详情不能继续使用打开前估算的高度。 */
 export function positionDocumentReferencePreview(input: {
@@ -8,12 +16,13 @@ export function positionDocumentReferencePreview(input: {
 }) {
   let disposed = false,
     generation = 0;
+  let placement: Placement = 'bottom-start';
   input.panel.style.visibility = 'hidden';
   const update = () => {
     const current = ++generation;
     void computePosition(input.reference, input.panel, {
       strategy: 'fixed',
-      placement: 'bottom-start',
+      placement,
       middleware: [
         offset(8),
         flip({ padding: 8 }),
@@ -34,8 +43,11 @@ export function positionDocumentReferencePreview(input: {
         }),
       ],
     })
-      .then(({ x, y }) => {
+      .then(({ x, y, placement: nextPlacement }) => {
         if (disposed || current !== generation) return;
+        // 展开会缩短封面：沿用已成功的一侧，避免控件跨过锚点从鼠标下跳走。
+        // flip仍可在这侧空间不足时选择新位置，并由size约束视口。
+        placement = nextPlacement;
         Object.assign(input.panel.style, { left: `${x}px`, top: `${y}px`, visibility: 'visible' });
       })
       .catch(error => {
