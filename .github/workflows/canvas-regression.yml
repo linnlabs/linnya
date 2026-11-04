@@ -80,7 +80,7 @@ jobs:
         run: node packages/plugins/canvas/dev/probes/run-visual-probe.mjs
       - name: Verify isolated Canvas artifact on Linux
         if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' && steps.linux-display.outcome == 'success' && steps.linux-sandbox.outcome == 'success' }}
-        run: xvfb-run -a pnpm run smoke:plugin:canvas:artifact
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 pnpm run smoke:plugin:canvas:artifact
       - name: Verify isolated Canvas artifact on macOS and Windows
         if: ${{ !cancelled() && runner.os != 'Linux' && steps.dependencies.outcome == 'success' }}
         run: pnpm run smoke:plugin:canvas:artifact
@@ -94,5 +94,7 @@ jobs:
             _dev_data/canvas-software-probe/results.json
             _dev_data/canvas-visual-probe/*.json
             _dev_data/canvas-visual-probe/*.png
+            _dev_data/canvas-worker-smoke/*.json
+            _dev_data/canvas-worker-smoke/*.png
           if-no-files-found: warn
           retention-days: 7

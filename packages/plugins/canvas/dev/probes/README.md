@@ -16,9 +16,11 @@ node packages/plugins/canvas/dev/probes/run-render-probe.mjs
 
 相关事实以 [Electron offscreen 文档](https://www.electronjs.org/docs/latest/tutorial/offscreen-rendering)和 [Chrome HTML-in-Canvas 文档](https://developer.chrome.com/docs/web-platform/html-in-canvas/2d)为参考，实际能力以本探针结果为准。
 
-DOM、位图、Pixi 三个对照区按同一字体和当前 DPR 比较。截图通过[Electron Debugger](https://github.com/electron/electron/blob/v43.8.1/docs/api/debugger.md)调用 `Page.captureScreenshot` 的完整区域能力，不依赖 CI 桌面能容纳整个窗口；CSS rect 先按窗口缩放换算成 DIP，再核对返回 PNG 的完整物理尺寸。[Chromium 150 的截图实现](https://github.com/chromium/chromium/blob/150.0.7871.250/content/browser/devtools/protocol/page_handler.cc)负责临时扩大截取表面并恢复视图，探针不移动正文、不补空白、不降低 DPR 或内容对比阈值。范围或像素尺寸不匹配时保存原始 PNG 与尺寸事实并失败。
+DOM、位图、Pixi 三个对照区按同一字体和当前 DPR 比较。CI 桌面不一定容纳整个对照区，因此保持原排版与窗口尺寸，按实际可见内容视口滚动并等待真实绘制，再用 [Electron 43 的 capturePage](https://github.com/electron/electron/blob/v43.8.1/docs/api/web-contents.md#contentscapturepagerect-opts) 逐块截取。每块按实际滚动位置（包括末块被浏览器限制的位置）和 DPR 直接复制物理像素，排除滚动条，要求完整覆盖；所有出口恢复原滚动位置。每块原始 PNG、视口/尺寸事实及完整拼接图均保存，范围或尺寸不匹配即失败，不补空白、不插值、不降低 DPR 或内容对比阈值。
 
-Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShader；六组计数从 `canvas-software-probe/results.json` 校验，视觉报告也标记软件渲染。软件结果只证明功能与确定性工作量，不能用作硬件帧率资格。独立制品 smoke 在依赖及平台准备成功后继续运行，即使前面的绘制/视觉失败；任何失败步骤仍使作业失败，不用 `continue-on-error` 掩盖。
+不使用 CDP 的 `captureBeyondViewport`：其 [Chromium 150 实现](https://github.com/chromium/chromium/blob/150.0.7871.250/content/browser/devtools/protocol/page_handler.cc)会临时启用设备模拟并改变截取表面，已在真实对照中造成 HTML-in-Canvas/WebGL 图层丢失。这里的滚动只改变静态页面的可见区域，不重新生成正文、调整布局或改变被测质量。
+
+Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShader；六组计数从 `canvas-software-probe/results.json` 校验，视觉报告也标记软件渲染。独立制品 smoke 继承相同软件环境，保留 worker 的实际 GPU/版本/渲染配置原件。软件结果只证明功能与确定性工作量，不能用作硬件帧率资格。独立制品 smoke 在依赖及平台准备成功后继续运行，即使前面的绘制/视觉失败；任何失败步骤仍使作业失败，不用 `continue-on-error` 掩盖。
 
 `node packages/plugins/canvas/dev/probes/run-visible-update-probe.mjs` 聚焦500张当前视口正文的冷更与实际绘制，先等待初始正文完整，再分别对比是否逐帧读取readiness；`CANVAS_VISIBLE_UPDATE_PROFILE=1`输出CPU profile。固定场景为25×20张88×72卡、104×88间隔、1400×900视口及DPR2，记录实际相机/视口，方便与产品表面对照。它只测kernel输入到当前正文已上传并实际绘制，明确不包含Backend提交，也始终标记offscreen diagnostic，不能代替正式Agent链或硬件验收。
 

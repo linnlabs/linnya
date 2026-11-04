@@ -9,6 +9,9 @@ import { captureCanvasVisualPage } from './captureCanvasVisualPage';
 
 const rectangle = z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() });
 const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(), dpr: z.number(), reference: rectangle, raster: rectangle, pixi: rectangle, ghostY: z.number(), measuredHeights: z.array(z.number().nullable()) });
+const visualViewport = z.object({ scrollX: z.number(), scrollY: z.number(), width: z.number().positive(), height: z.number().positive(),
+  windowWidth: z.number().positive(), windowHeight: z.number().positive(), dpr: z.number().positive() });
+const viewportExpression = '({scrollX,scrollY,width:document.documentElement.clientWidth,height:document.documentElement.clientHeight,windowWidth:innerWidth,windowHeight:innerHeight,dpr:devicePixelRatio})';
 const output = process.argv[2];
 if (!output) throw new Error('Visual output directory required');
 app.setPath('userData', path.join(output, 'profile'));
@@ -27,6 +30,34 @@ async function evaluate(webContents: WebContents, expression: string): Promise<u
       timer = setTimeout(() => reject(new Error(`visual_case_timeout:${expression}`)), 45000);
     })]);
   } finally { clearTimeout(timer); removeCrashListener(); }
+}
+
+async function captureComparison(win: BrowserWindow, state: z.infer<typeof prepared>, stem: string) {
+  let tileIndex = 0;
+  let viewport = visualViewport.parse(await evaluate(win.webContents, viewportExpression));
+  const captured = await captureCanvasVisualPage({
+    async readViewport() { return viewport; },
+    async scrollTo(x, y) {
+      // 两次真实rAF让滚动后的静态图层完成绘制；读取实际位置，不能假设末块没有被浏览器clamp。
+      viewport = visualViewport.parse(await evaluate(win.webContents, `(async()=>{scrollTo({left:${x},top:${y},behavior:'instant'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));return ${viewportExpression}})()`));
+      return viewport;
+    },
+    async capture() {
+      const png = (await win.webContents.capturePage()).toPNG();
+      const tile = `${stem}-tile-${tileIndex++}`;
+      await writeFile(path.join(output, `${tile}.png`), png);
+      // PNG解码为唯一物理像素表示，避免NativeImage的DIP/多scale表示影响后续裁切。
+      const image = nativeImage.createFromBuffer(png);
+      const result = { ...image.getSize(), pixels: image.toBitmap() };
+      await writeFile(path.join(output, `${tile}.json`), JSON.stringify({ viewport, size: image.getSize(), bytes: result.pixels.length }, null, 2));
+      return result;
+    },
+  }, { rectangles: [state.reference, state.raster, state.pixi], dpr: state.dpr });
+  const screenshot = nativeImage.createFromBitmap(captured.pixels, { width: captured.width, height: captured.height });
+  const facts = { state, ratio: state.dpr, contentSize: win.getContentSize(), region: captured.region, tiles: captured.tiles, expectedSize: captured.expectedSize };
+  await writeFile(path.join(output, `${stem}-capture.json`), JSON.stringify(facts, null, 2));
+  await writeFile(path.join(output, `${stem}-capture.png`), screenshot.toPNG());
+  return { screenshot, facts };
 }
 
 const fadeState = z.object({ image: z.string(), dpr: z.number(), elapsed: z.number(), oldWidth: z.number(), blueWidth: z.number(), greenWidth: z.number(),
@@ -73,27 +104,22 @@ async function run() {
     const reports = [];
     for (const theme of ['light', 'dark']) for (const material of ['paper', 'card']) for (const color of material === 'paper' ? ['white', 'red', 'green'] : ['white']) {
       const state = prepared.parse(await evaluate(win.webContents, `window.prepareCanvasVisualProbe(${JSON.stringify(theme)},${JSON.stringify(material)},${JSON.stringify(color)})`));
-      const captured = await captureCanvasVisualPage(win.webContents.debugger, {
-        rectangles: [state.reference, state.raster, state.pixi], zoomFactor: win.webContents.getZoomFactor(), dpr: state.dpr,
-      });
-      const screenshot = nativeImage.createFromBuffer(captured.png);
+      const { screenshot, facts } = await captureComparison(win, state, `${theme}-${material}-${color}`);
       const size = screenshot.getSize();
       const ratio = state.dpr;
       const crop = (rect: z.infer<typeof rectangle>) => screenshot.crop({ x: Math.round(rect.x * ratio), y: Math.round(rect.y * ratio),
         width: Math.round(rect.width * ratio), height: Math.round(rect.height * ratio) });
       const dom = crop(state.reference); const raster = crop(state.raster); const pixi = crop(state.pixi);
       const a = dom.toBitmap(); const b = raster.toBitmap(); const c = pixi.toBitmap();
-      if (size.width !== captured.expectedSize.width || size.height !== captured.expectedSize.height
+      if (size.width !== facts.expectedSize.width || size.height !== facts.expectedSize.height
         || a.length !== b.length || a.length !== c.length || a.length !== Math.round(state.reference.width * ratio) * Math.round(state.reference.height * ratio) * 4) {
         // CI平台的DIP、PNG像素与裁切范围必须留下原件，不能仅凭长度差猜测字体或放宽对比。
         const stem = `${theme}-${material}-${color}`;
-        await writeFile(path.join(output, `${stem}-sizes.json`), JSON.stringify({ state, ratio,
-          contentSize: win.getContentSize(), captured: { clip: captured.clip, expectedSize: captured.expectedSize },
+        await writeFile(path.join(output, `${stem}-sizes.json`), JSON.stringify({ ...facts,
           screenshot: { size, scales: screenshot.getScaleFactors() },
           crops: { dom: { size: dom.getSize(), bytes: a.length }, raster: { size: raster.getSize(), bytes: b.length }, pixi: { size: pixi.getSize(), bytes: c.length } },
         }, null, 2));
         await Promise.all([
-          writeFile(path.join(output, `${stem}-capture.png`), captured.png),
           writeFile(path.join(output, `${stem}-dom.png`), dom.toPNG()),
           writeFile(path.join(output, `${stem}-raster.png`), raster.toPNG()),
           writeFile(path.join(output, `${stem}-pixi.png`), pixi.toPNG()),
