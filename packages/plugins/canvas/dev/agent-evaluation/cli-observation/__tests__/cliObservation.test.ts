@@ -7,6 +7,7 @@ import type { PluginBackendContribution } from '@plugin/backend/pluginContributi
 import { z } from 'zod';
 import { createCanvasCliObservation } from '../createCanvasCliObservation';
 import { observeCanvasPluginCli } from '../observeCanvasPluginCli';
+import { readCanvasCliRequestIdentity } from '../readCanvasCliRequestIdentity';
 
 const directories: string[] = [];
 afterEach(() => { for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true }); });
@@ -23,7 +24,7 @@ function plugin(cli: BackendPluginCliContribution): PluginBackendContribution {
   return { meta: { id: 'canvas', name: 'Canvas', version: '0.1.0', description: 'fixture', developer: 'Linnya', builtin: true }, pluginCli: cli,
     runtimeEffects: [{ id: 'original-lifecycle', activate: vi.fn(), deactivate: vi.fn() }], ownedTables: ['fixture'], rendererPush: { channels: ['fixture'] }, hiddenWorkers: [] };
 }
-const input = { argv: ['apply', 'workspace:/fixture.canvas', '--ops-file', 'batch.json'], invocationId: 'invocation-1', conversationRoot: '/conversation' };
+const input = { argv: ['apply', 'workspace:/fixture.canvas', '--ops-file', 'batch.json', '--request-id', ' raw-request ', '--dry-run'], invocationId: 'invocation-1', conversationRoot: '/conversation' };
 const access: BackendPluginCliPlan['access'] = { internalDataAccess: 'required', conversationFiles: 'write', externalFiles: 'denied', network: 'denied', guiControl: 'denied', localIpcControl: 'denied' };
 
 it('封装一次正式execute，保this/参数/权限/原始响应/其余贡献引用，不读取hostContext', async () => {
@@ -42,9 +43,25 @@ it('封装一次正式execute，保this/参数/权限/原始响应/其余贡献�
   expect(execution).toBe(originalPromise); expect(await execution).toBe(response);
   expect(prepare).toHaveBeenCalledTimes(1); expect(execute).toHaveBeenCalledTimes(1);
   f.observation.seal();
+  expect(f.records()[0].facts.input).toMatchObject({ requestId: { state: 'explicit', value: ' raw-request ' }, dryRun: { state: 'explicit', value: true } });
   expect(f.records().find(event => event.kind === 'execute-start')?.facts.identity).toEqual({ conversationId: 'actual-conversation', agentRunId: 'actual-run', projectId: 'actual-project' });
   expect(f.records().find(event => event.kind === 'execute-result')?.facts.result).toEqual(response);
   expect(f.seal().status).toBe('complete'); expect(statSync(path.join(f.directory, 'session.json')).mode & 0o777).toBe(0o600);
+});
+
+it('请求身份只接受明确参数，重复/缺值/被其它选项消费保持缺证，--以后不猜flag', () => {
+  expect(readCanvasCliRequestIdentity(['arrange', 'workspace:/fixture.canvas', '--request-id=a=b'])).toEqual({ requestId: { state: 'explicit', value: 'a=b' }, dryRun: { state: 'absent', value: false } });
+  for (const tail of [['--request-id'], ['--request-id', 'a', '--request-id=b'], ['--ops-file', '--request-id=a']])
+    expect(readCanvasCliRequestIdentity(['apply', 'workspace:/fixture.canvas', ...tail]).requestId).toEqual({ state: 'ambiguous', value: null });
+  for (const tail of [['--dry-run=false'], ['--dry-run', '--dry-run'], ['--ops-file', '--dry-run']])
+    expect(readCanvasCliRequestIdentity(['apply', 'workspace:/fixture.canvas', ...tail]).dryRun).toEqual({ state: 'ambiguous', value: null });
+  expect(readCanvasCliRequestIdentity(['apply', 'workspace:/fixture.canvas', '--', '--request-id', 'not-an-option', '--dry-run'])).toEqual({ requestId: { state: 'absent', value: null }, dryRun: { state: 'absent', value: false } });
+  expect(readCanvasCliRequestIdentity(['find', 'workspace:/fixture.canvas', '--request-id=search-text']).requestId).toEqual({ state: 'not-applicable', value: null });
+});
+
+it('专属Canvas开发资格缺CLI明确失败，不返回无观测原件', () => {
+  const f = fixture(), original = plugin({ prepare: () => ({ status: 'completed', result: { exitCode: 0, stdout: '', stderr: '' } }) });
+  expect(() => observeCanvasPluginCli({ ...original, pluginCli: undefined }, f.observation)).toThrow('canvas_cli_observation_missing_cli');
 });
 
 it('prepare completed原对象直接返回，未冻结身份不推断run，不保存搜索词或外部ops路径', () => {

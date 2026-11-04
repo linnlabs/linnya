@@ -5,7 +5,8 @@ import type { CanvasCliObservation } from './definitions';
 /** 开发验收外壳只装饰公开CLI；不重新创建插件，也不接管任何运行态生命周期。 */
 export function observeCanvasPluginCli(original: PluginBackendContribution, observation: CanvasCliObservation): PluginBackendContribution {
   const cli = original.pluginCli;
-  if (!cli) return original;
+  // 本入口只为Canvas CLI验收，缺目标能力必须在开发预装载资格失败，不能冒成功外壳。
+  if (!cli) throw new Error('canvas_cli_observation_missing_cli');
   return { ...original, pluginCli: {
     prepare(input) {
       const id = observation.start(input);

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -33,5 +33,13 @@ if(a.result!==b.result)throw Error('result_changed');if(original.originalDirecto
 process.stdout.write('references-preserved');`, output], { encoding: 'utf8' });
     expect(stdout).toBe('references-preserved');
     const seal: unknown = JSON.parse(readFileSync(path.join(evidence, 'seal.json'), 'utf8')); expect(seal).toMatchObject({ status: 'complete', exitCode: 0, invocations: 1 });
+    writeFileSync(path.join(production, 'dist/backend/index.cjs'), original.replace('pluginCli:cli,', ''));
+    const missingOutput = path.join(root, 'without-cli'), missingEvidence = path.join(root, 'without-cli-evidence');
+    await prepareCanvasCliObservation({ productionPluginDirectory: production, outputDirectory: missingOutput, evidenceDirectory: missingEvidence,
+      productionSourceRevision: 'a'.repeat(40), observationSourceRevision: 'b'.repeat(40) });
+    const rejected = spawnSync(process.execPath, ['-e', 'require(process.argv[1])', path.join(missingOutput, 'dist/backend/index.cjs')], { encoding: 'utf8' });
+    expect(rejected.status).toBe(1); expect(rejected.stderr).toContain('canvas_cli_observation_missing_cli');
+    const rejectedSeal: unknown = JSON.parse(readFileSync(path.join(missingEvidence, 'seal.json'), 'utf8'));
+    expect(rejectedSeal).toMatchObject({ status: 'partial', exitCode: 1 });
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

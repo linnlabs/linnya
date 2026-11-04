@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { BackendPluginCliExecutionContext } from '@plugin/backend/pluginCli';
 import type { CanvasCliExecutionIdentity, CanvasCliObservation, CanvasCliObservationBuild, CliPreparationInput } from './definitions';
+import { readCanvasCliRequestIdentity } from './readCanvasCliRequestIdentity';
 
 const commands = new Set(['read', 'show', 'find', 'neighbors', 'region', 'check', 'groups', 'receipt', 'apply', 'arrange', 'render', 'help', '--help', '-h']);
 
@@ -19,6 +20,7 @@ function inputIdentity(input: CliPreparationInput) {
     // 不保存搜索词、未知参数、外部路径或ops正文，也不调用领域parser第二次。
     managedOpsPath,
     opsPathOutsideConversation: rawOpsPath !== undefined && managedOpsPath === null,
+    ...readCanvasCliRequestIdentity(input.argv),
   };
 }
 
