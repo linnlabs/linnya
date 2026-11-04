@@ -42,6 +42,11 @@ describe('Agent 逐卡审阅投影', () => {
     expect(canvasReviewReason('element_locked')).toBe('卡片已锁定');
     expect(canvasReviewReason('stale_layout_size')).toBe('测量后卡片尺寸已改变');
   });
+  it('测高依赖导致部分保留时逐字段说明，不把成功颜色或跳过正文隐去', () => {
+    const result = projectCanvasWithdrawalSummary({ documentId: 'doc', requestId: 'withdraw', sequence: 4, refs: {}, results: [{ id: card('c1', 0).id, index: 0, status: 'applied', reason: 'dependent_field_changed', fieldResults: [{ field: 'data', status: 'skipped', reason: 'dependent_field_changed' }, { field: 'height', status: 'skipped', reason: 'later_fields_preserved' }, { field: 'color', status: 'applied', reason: null }] }] }, [card('c1', 0)]);
+    expect(result).toMatchObject({ applied: 1, skipped: 0, retained: 2, canRedo: true });
+    expect(result.details.join(' ')).toContain('文字或内容'); expect(result.details.join(' ')).toContain('高度'); expect(result.details.join(' ')).toContain('维持内容与尺寸一致');
+  });
   it('部分成功和完整跳过分别说明，保留后写不能假报为全部失败', () => {
     const result = projectCanvasWithdrawalSummary({ documentId: 'doc', requestId: 'withdraw', sequence: 4, refs: {}, results: [{ id: card('c1', 0).id, index: 0, status: 'applied', reason: 'later_fields_preserved' }, { id: card('c2', 0).id, index: 1, status: 'skipped', reason: 'later_use_preserved' }] }, [card('c1', 0), card('c2', 0)]);
     expect(result).toMatchObject({ applied: 1, skipped: 1, retained: 2, canRedo: true, actionId: 'withdraw' });

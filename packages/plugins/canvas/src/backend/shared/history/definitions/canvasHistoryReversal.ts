@@ -1,4 +1,4 @@
-import type { CanvasElement, CanvasElementId, CanvasSource } from '../../../../shared';
+import type { CanvasElement, CanvasElementId, CanvasSource, CanvasOperationFieldResult } from '../../../../shared';
 import type {
   CanvasCommitActor, CanvasCommitState, CanvasEditingClaim, CanvasElementChange, CanvasStoredElement,
 } from '../../../features/canvasCommit';
@@ -27,12 +27,13 @@ export type CanvasHistoryDeletion = CanvasHistoryChange & { before: CanvasElemen
 export type CanvasHistoryEdit = CanvasHistoryChange & { before: CanvasElement; after: CanvasElement };
 export type CanvasHistoryReversibleChange = CanvasHistoryCreation | CanvasHistoryDeletion | CanvasHistoryEdit;
 export type CanvasHistoryReversalDecision =
-  | { readonly kind: 'skipped'; readonly reason: string }
+  | { readonly kind: 'skipped'; readonly reason: string; readonly fieldResults?: readonly CanvasOperationFieldResult[] }
   | {
     readonly kind: 'applied';
     readonly row: CanvasStoredElement | null;
     readonly change: CanvasElementChange;
     readonly reason: string | null;
+    readonly fieldResults?: readonly CanvasOperationFieldResult[];
     readonly deletionGuard?: CanvasCommitState['deletedOrigins'][string];
   };
 export interface CanvasHistoryRestorationMetadata {

@@ -57,7 +57,7 @@ export function planCanvasHistoryReversal(input: CanvasHistoryReversalInput): Ca
   };
   for (const record of dependencyOrder(records)) {
     const decision = reverseRecord(record, context, protectedCreations);
-    results.push({ index: results.length, id: record.id, status: decision.kind, reason: decision.reason });
+    results.push({ index: results.length, id: record.id, status: decision.kind, reason: decision.reason, ...(decision.fieldResults ? { fieldResults: [...decision.fieldResults] } : {}) });
     if (decision.kind === 'skipped') continue;
     if (decision.row) rows.set(record.id, decision.row);
     else rows.delete(record.id);
