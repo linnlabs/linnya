@@ -2,6 +2,7 @@ import { createVNode, render } from 'vue';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
 import type { DocumentReferenceUiPort } from '../definitions/documentReferenceUi';
 import type { RegisterEditorFocusPortal } from '@/domains/editor/shared/focus';
+import { positionDocumentReferencePreview } from './positionDocumentReferencePreview';
 
 /** DOM 仅展示与转发交互；身份和正文始终通过只读 port 解析。 */
 export function createDocumentReferenceNodeView(documentId: string, referenceId: string, port: DocumentReferenceUiPort, registerFocusPortal?: RegisterEditorFocusPortal) {
@@ -22,12 +23,13 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
   let popup: HTMLElement | null = null;
   let disposeDetail: (() => void) | undefined;
   let releaseFocus: (() => void) | undefined;
+  let stopPosition: (() => void) | undefined;
   function close() {
     if (timer) clearTimeout(timer);
-    const release = releaseFocus, panel = popup, detail = disposeDetail;
-    releaseFocus = undefined; popup = null; disposeDetail = undefined;
+    const release = releaseFocus, panel = popup, detail = disposeDetail, stop = stopPosition;
+    releaseFocus = undefined; popup = null; disposeDetail = undefined; stopPosition = undefined;
     // 保存回调可以同步销毁NodeView；先交出资源，不能重入释放同一详情。
-    release?.(); panel?.remove(); detail?.();
+    stop?.(); release?.(); panel?.remove(); detail?.();
   }
   async function refresh() {
     const generation = ++refreshGeneration;
@@ -51,10 +53,8 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
     panel.addEventListener('mouseenter', () => { pointerInPanel = true; if (timer) clearTimeout(timer); expandDetail?.(); });
     panel.addEventListener('mouseleave', () => { pointerInPanel = false; timer = setTimeout(close, 200); });
     const title = document.createElement('strong'); title.textContent = dom.textContent; panel.append(title);
-    const bounds = dom.getBoundingClientRect();
-    panel.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - 360))}px`;
-    panel.style.top = `${Math.max(8, Math.min(bounds.bottom + 8, window.innerHeight - 240))}px`;
     document.body.append(panel); popup = panel;
+    stopPosition = positionDocumentReferencePreview({ reference: dom, panel, report: port.report });
     releaseFocus = registerFocusPortal?.(panel);
     const recovery = port.recoveryAction(info);
     if (recovery) {
@@ -79,7 +79,6 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
         void renderDetail(content).then(dispose => {
           if (destroyed || popup !== panel) { dispose(); return; }
           disposeDetail = dispose; expand.remove();
-          panel.style.top = `${Math.max(8, Math.min(bounds.bottom + 8, window.innerHeight - panel.getBoundingClientRect().height - 8))}px`;
         }).catch(error => { loading = false; content.remove(); port.report(error); });
       };
       expand.onclick = expandDetail; panel.append(expand);
