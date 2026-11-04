@@ -8,6 +8,7 @@ import { CanvasImageCardSchema } from '../../src/shared';
 import { createCanvasCardTextureCaches } from '../../src/renderer/kernel/render/pixi/createCanvasCardTextureCaches';
 import { CanvasMapLabels } from '../../src/renderer/kernel/render/pixi/CanvasMapLabels';
 import { createCanvasPerformancePaintTrace } from './performancePaintTrace';
+import { collectCanvasTitleBoundaryPixels } from './identityTitleBoundaryRenderer';
 
 const strings = ['中文身份牌：春江花月夜', 'office affinity ffi AV', 'e\u0301 A\u030a 组合附加符',
   '👨‍👩‍👧‍👦 🇨🇳 👍🏽 ❤️', 'العَرَبِيَّةُ لا سلام', 'नमस्ते दुनिया क्ष', '日本語かなカナ 한글', '末行边界　（）【】'];
@@ -179,4 +180,5 @@ Object.defineProperties(window, {
   canvasIdentityAtlasHiddenLod: { value: hiddenLod },
   canvasIdentityAtlasSharedBudget: { value: sharedBudget },
   canvasEmptyMapLabels: { value: emptyMap },
+  canvasTitleBoundaryPixels: { value: collectCanvasTitleBoundaryPixels },
 });
