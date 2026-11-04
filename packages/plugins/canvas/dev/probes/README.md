@@ -22,6 +22,8 @@ DOM、位图、Pixi 三个对照区按同一字体和当前 DPR 比较。CI 桌�
 
 不使用 CDP 的 `captureBeyondViewport`：其 [Chromium 150 实现](https://github.com/chromium/chromium/blob/150.0.7871.250/content/browser/devtools/protocol/page_handler.cc)会临时启用设备模拟并改变截取表面，已在真实对照中造成 HTML-in-Canvas/WebGL 图层丢失。这里的滚动只改变静态页面的可见区域，不重新生成正文、调整布局或改变被测质量。
 
+内容视口使用 [VisualViewport 的分数 CSS 尺寸](https://drafts.csswg.org/cssom-view/#dom-visualviewport-width)与 pageLeft/pageTop；不使用整数 clientWidth/clientHeight。Windows 原生滚动条在页面缩放后可占半个 CSS 像素，整数 API 会把末块实际可见的最后一列/行误判为越界；保持分数尺寸后仍严格核对完整物理像素，不放宽范围检查。
+
 Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShader；六组计数从 `canvas-software-probe/results.json` 校验，视觉报告也标记软件渲染。独立制品 smoke 继承相同软件环境，保留 worker 的实际 GPU/版本/渲染配置原件。软件结果只证明功能与确定性工作量，不能用作硬件帧率资格。独立制品 smoke 在依赖及平台准备成功后继续运行，即使前面的绘制/视觉失败；任何失败步骤仍使作业失败，不用 `continue-on-error` 掩盖。
 
 `node packages/plugins/canvas/dev/probes/run-visible-update-probe.mjs` 聚焦500张当前视口正文的冷更与实际绘制，先等待初始正文完整，再分别对比是否逐帧读取readiness；`CANVAS_VISIBLE_UPDATE_PROFILE=1`输出CPU profile。固定场景为25×20张88×72卡、104×88间隔、1400×900视口及DPR2，记录实际相机/视口，方便与产品表面对照。它只测kernel输入到当前正文已上传并实际绘制，明确不包含Backend提交，也始终标记offscreen diagnostic，不能代替正式Agent链或硬件验收。
