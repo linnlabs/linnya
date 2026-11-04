@@ -27,7 +27,7 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
    - 若你有 `ppt_direction` 工具：传入场景和母题调用一次，按返回的手法、配色逻辑、主色相、字体与图片策略设计。用户要求配图，或内容离不开图片（器物、人物、现场、实验装置）时传 `requireImages: true`。手法明显不适合内容时，带 `rejected`（cardId 与一句理由）再调用一次；不要因为不熟悉就退回。
    - 若无 `ppt_direction` 工具：按 [`styles.md`](./references/styles.md) 自行判断方向。
    - 编辑已有文稿、用户指定了风格或给了参考稿时，不调用 `ppt_direction`。
-3. 新建整份文稿时，先只做封面给用户看效果：定下全稿配色与字体并写进 `compose({ theme })`（调用过 `ppt_direction` 时同时写进 deck.js 顶部的 `direction` 对象，见“创建与编辑”第 4 步），用 `write_file` 写好封面这一页并构建成功，render 封面确认像素。封面就是正式稿的第 1 页，按正式质量做，批准后不重做。
+3. 新建整份文稿时，先只做封面给用户看效果：定下全稿配色、字体和阅读方式（按场合定，见 design.md 视觉系统第 5 项）并写进 `compose({ theme })`（调用过 `ppt_direction` 时同时写进 deck.js 顶部的 `direction` 对象，见“创建与编辑”第 4 步），用 `write_file` 写好封面这一页并构建成功，render 封面确认像素。封面就是正式稿的第 1 页，按正式质量做，批准后不重做。
 4. 向用户提交一份计划，明确目的、受众、标题、视觉方向、样子和逐页主要内容。视觉方向回答三件事：`concept` 说明整稿遵循什么设计理念以及为什么，`composition` 说明构图、信息密度与页面节奏，`signature` 只声明一个整稿核心视觉记忆点。
 - 拿到了 `ppt_direction` 的方向时，用自己的话把它写进这三项，不提方向是怎么来的。
 - 若你有 `ppt_plan` 工具：用它提交 `title`、可选 `audience`、`visualDirection: { concept, composition, signature }`、`look: { presentation, palette, fonts }` 和逐页 `pages[{title, content}]`。`look.presentation` 是封面所在文稿的 locator，`palette`、`fonts` 与 `direction` 对象一致；卡片会显示真实封面、色块和字体。页数由 `pages` 自动推导，不传 `pageCount`。observation 说封面样张没能显示时，先修好封面再提交一次。
@@ -109,6 +109,8 @@ presentation-owned 资产。
 长任务使用 `task_write` 记录当前阶段（调研/建稿/验收）、下一批页面与可验证的退出条件。每个建稿批次和验收轮次只更新一次进度：页数、当前 versionId、已查页范围、未解决的 P0/P1。调研形成足以支撑逐页计划的证据后进入建稿；计划内页面完整且可编译后进入验收。不要用增加版本或工具调用次数充当进展。
 
 验收按“收齐同范围证据 → 合并根因修改 → 新版本复验”推进。`ppt_inspect` 单次最多十页，超出会返回 `PPT_INSPECT_SCOPE_REQUIRED` 与建议范围；必须分批覆盖请求页面。`coverage=partial` 的计数只代表所查页，不能据此前几页结果宣称整稿通过。连续两轮同范围的 P0/P1 问题没有实质改善时改变修复方法，三轮仍无进展则保留可用成果并说明具体阻碍、未验收页和需要的决定；不能继续无依据微调或声称已完成。最终版本的必要检查完成后立即交付。
+
+审美上的打磨（P2、间距、配色微调这类不影响能否读懂的问题）在整稿最终 render 看完后只做一轮：把要改的页一次改完，重新 render 这些页看一次，就交付。同一页不要反复“渲染 → 看图 → 改一处”；看完一页又想改，就记下来和其他页合并进这一轮。
 
 - 内容与用户批准的计划或局部修改要求一致；事实和来源没有被臆造。
 - 新建或整体改版的文稿在 `compose({ theme })` 中声明了视觉系统；调用过 `ppt_direction` 的稿子同时声明了 `theme.direction`，inspect 的 `direction_background_off` 与 `direction_font_undeclared` 已处理或有明确理由保留。
