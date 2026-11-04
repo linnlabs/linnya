@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { watch } from 'vue';
 import type { CanvasCommitResult, CanvasSnapshot, CanvasSynchronization } from '@plugin/canvas/shared';
 import { createCanvasDocumentSession } from '..';
 import type { CanvasDocumentPort } from '..';
@@ -43,6 +44,54 @@ describe('Canvas document session', () => {
     await f.session.protect(id, [], 'drag');
     expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] }));
     await f.session.close();
+  });
+
+  it('已校验响应等待场景安装时保留提交屏障，并在同一同步流程追平新推送', async () => {
+    const f = fixture(); await f.session.open('doc');
+    const started = Promise.withResolvers<void>(), response = Promise.withResolvers<CanvasSynchronization>();
+    f.changes.mockImplementationOnce(() => { started.resolve(); return response.promise; });
+    const installed: number[] = [];
+    const stop = watch(f.session.state.projection, value => { if (value) installed.push(value.snapshot.sequence); }, { flush: 'sync' });
+    vi.useFakeTimers();
+    try {
+      let confirmed = false;
+      const pending = f.session.commit([{ op: 'addText', width: 280, height: 180, content: { type: 'doc', content: [{ type: 'paragraph', content: [] }] } }]).then(() => { confirmed = true; });
+      await started.promise;
+      response.resolve({ kind: 'snapshot', snapshot: snapshot('doc', 1) });
+      // 与会话等待同一个端口响应；回调已登记task，但尚未执行场景安装。
+      await response.promise;
+      expect(f.session.state.snapshot.value?.sequence).toBe(0);
+      expect(f.session.mutationPending.value).toBe(true); expect(confirmed).toBe(false);
+      f.push(2); expect(f.changes).toHaveBeenCalledTimes(1);
+      await vi.runAllTimersAsync(); await pending;
+      expect(installed).toEqual([1, 2]);
+      expect(f.changes.mock.calls).toEqual([['doc', 0], ['doc', 1]]);
+      expect(f.session.state.snapshot.value?.sequence).toBe(2);
+      expect(f.session.mutationPending.value).toBe(false); expect(confirmed).toBe(true);
+    } finally { stop(); vi.useRealTimers(); await f.session.close(); }
+  });
+
+  it('等待安装期间close与A→B→A使旧世代失效，旧结算不清掉新同步', async () => {
+    const f = fixture(); await f.session.open('doc');
+    const oldResponse = Promise.withResolvers<CanvasSynchronization>();
+    f.changes.mockReturnValueOnce(oldResponse.promise);
+    vi.useFakeTimers();
+    try {
+      const old = f.session.synchronize(1);
+      oldResponse.resolve({ kind: 'snapshot', snapshot: snapshot('doc', 1) }); await oldResponse.promise;
+      await f.session.close(); await f.session.open('b'); await f.session.open('doc');
+      const currentResponse = Promise.withResolvers<CanvasSynchronization>();
+      f.changes.mockReturnValueOnce(currentResponse.promise);
+      const current = f.session.synchronize(2);
+      await vi.runAllTimersAsync(); await old;
+      expect(f.session.state.snapshot.value).toEqual(snapshot('doc'));
+      expect(f.session.state.phase.value).toBe('ready');
+      expect(f.session.synchronize(3)).toBe(current);
+      currentResponse.resolve({ kind: 'snapshot', snapshot: snapshot('doc', 3) }); await currentResponse.promise;
+      await vi.runAllTimersAsync(); await current;
+      expect(f.session.state.snapshot.value).toEqual(snapshot('doc', 3));
+      expect(f.changes).toHaveBeenCalledTimes(2);
+    } finally { vi.useRealTimers(); await f.session.close(); }
   });
 
   it('A→B→A 的旧异步响应不能装进新的文档会话', async () => {

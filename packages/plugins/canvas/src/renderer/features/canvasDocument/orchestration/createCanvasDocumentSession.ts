@@ -45,6 +45,9 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
         const current = requireDocument();
         if (current.sequence >= targetSequence) return;
         const update = await port.changes(current.documentId, current.sequence);
+        // port已完成DTO校验；整代场景投影另起task，避免解码与同步Vue/kernel更新挤在同一长任务。
+        // 短task自然结算，关闭只使世代失效；清掉timer反而会让旧同步的等待者永久挂起。
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
         if (token !== sessionId) return;
         const installed = requireDocument();
         const next = applyCanvasSynchronization(installed, update);
