@@ -6,6 +6,7 @@ import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/des
 import { z } from 'zod';
 import { readNativeSessionState } from './readNativeSessionState';
 import { verifyCanvasMediaOverview } from './performanceMediaOverview';
+import { startCanvasZoomTrace } from './performanceZoomTrace';
 
 const output = process.argv[2];
 if (!output) throw new Error('Performance output directory required');
@@ -76,10 +77,7 @@ async function run() {
         await writeFile(path.join(output, `${kind}-${count}-${clustered ? 'cluster' : 'uniform'}-body.cpuprofile`), JSON.stringify(profile)); win.webContents.debugger.detach();
       }
       await writeFile(path.join(output, `${kind === 'text' ? '' : kind + '-'}${count}-${clustered ? 'cluster' : 'uniform'}.png`), (await win.webContents.capturePage()).toPNG());
-      await win.webContents.executeJavaScript('window.startCanvasPerformanceCollection()');
-      for (let i = 0; i < 100; i++) { win.webContents.sendInputEvent({ type: 'mouseWheel', x: 800, y: 480,
-        deltaY: i < 50 ? -5 : 5, deltaX: 0, modifiers: ['control'], canScroll: true }); await delay(20); }
-      const zoom: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
+      const zoom: unknown = await collectZoom(win, `${kind}-${count}-${distribution}`);
       const zoomSettled: unknown = await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
       let drag: unknown;
       if (process.env.CANVAS_PERFORMANCE_DRAG === '1') {
@@ -108,7 +106,7 @@ async function run() {
     const validDesktopRun = unlocked(idleAfter) && !lockEvents.some(event => event.event === 'lock')
       && (offscreenProfile || process.platform !== 'darwin' || nativeSessionAfter?.unlocked === true);
     const displayQualified = !requireInternal120 || display.id === targetDisplay?.id && display.internal && display.displayFrequency >= 119;
-    const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1';
+    const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_ZOOM_TRACE === '1';
     const validHardwareRun = !offscreenProfile && validDesktopRun && displayQualified && !profiling;
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: kinds.every(kind => kind === 'text') ? 'production-dom-v5-body-baseline' : 'production-media-provider-v2-body-baseline', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE }, startedAt, endedAt: new Date().toISOString(),
       renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',
@@ -119,5 +117,18 @@ async function run() {
     if (!displayQualified) throw new Error('Native benchmark left its requested internal 120Hz display');
     if (!offscreenProfile && !validDesktopRun) throw new Error('Desktop locked during native performance benchmark');
   } finally { win.destroy(); }
+}
+
+async function collectZoom(window: BrowserWindow, stem: string): Promise<unknown> {
+  const stopTrace = process.env.CANVAS_PERFORMANCE_ZOOM_TRACE === '1' ? await startCanvasZoomTrace(window, output, stem) : null;
+  try {
+    await window.webContents.executeJavaScript(stopTrace ? 'window.startCanvasPerformanceBaseline()' : 'window.startCanvasPerformanceCollection()');
+    for (let i = 0; i < 100; i++) {
+      window.webContents.sendInputEvent({ type: 'mouseWheel', x: 800, y: 480, deltaY: i < 50 ? -5 : 5,
+        deltaX: 0, modifiers: ['control'], canScroll: true });
+      await delay(20);
+    }
+    return await window.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
+  } finally { await stopTrace?.(); }
 }
 void mkdir(output, { recursive: true }).then(run).then(() => app.exit(0), (error: unknown) => { console.error(error); app.exit(1); });

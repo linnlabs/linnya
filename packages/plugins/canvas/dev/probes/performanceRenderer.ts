@@ -2,6 +2,7 @@ import { CanvasCardSchema, CanvasEdgeSchema, type CanvasCard, type CanvasElement
 import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/kernel';
 import { createCanvasRasterPresentation } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
 import { canvasPerformanceMediaFixture, type CanvasPerformanceKind } from './performanceMediaFixture';
+import { createCanvasZoomTimeline } from './performanceZoomTimeline';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
@@ -42,6 +43,7 @@ let gaps: number[] = [];
 let failures: string[] = [];
 let elements: readonly CanvasElement[] = [];
 let movedCards = 0;
+let zoomTimeline: ReturnType<typeof createCanvasZoomTimeline> | null = null;
 const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
 
@@ -79,7 +81,7 @@ async function prepare(count: number, clustered: boolean, kind: CanvasPerformanc
 }
 function start(baseline?: (time: number) => void) {
   cancelAnimationFrame(collection); gaps = []; previous = null;
-  const frame = (time: number) => { if (previous !== null) gaps.push(time - previous); else baseline?.(time); previous = time; collection = requestAnimationFrame(frame); };
+  const frame = (time: number) => { zoomTimeline?.frame(time); if (previous !== null) gaps.push(time - previous); else baseline?.(time); previous = time; collection = requestAnimationFrame(frame); };
   collection = requestAnimationFrame(frame);
 }
 function startBaseline(): Promise<number> { return new Promise(resolve => start(resolve)); }
@@ -138,6 +140,16 @@ async function prepareDrag(selectedCount: number) {
   return { point: target.point, selected: selected.length, cardId: top.id };
 }
 Object.defineProperties(window, {
+  startCanvasPerformanceZoomTrace: { value: () => {
+    zoomTimeline = createCanvasZoomTimeline(() => {
+      if (!kernel || !presentation || !media) throw new Error('probe_not_prepared');
+      const scene = kernel.readStats(), queue = presentation.readStats(), active = media.readStats().active;
+      return { renders: scene.renders, rasterCards: scene.rasterCards, bitmaps: scene.bitmaps, bitmapBytes: scene.bitmapBytes,
+        fadingCards: scene.fadingCards, pending: queue.pending, running: queue.running, completed: queue.completed,
+        activeImages: active.image, activePreviews: active.preview, activeReferences: active.reference };
+    });
+  } },
+  finishCanvasPerformanceZoomTrace: { value: () => { const result = zoomTimeline?.finish(); zoomTimeline = null; return result; } },
   prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start }, startCanvasPerformanceBaseline: { value: startBaseline },
   finishCanvasPerformanceCollection: { value: finish }, closeCanvasPerformanceView: { value: closeView },
   waitForCanvasPerformanceBody: { value: waitForBody }, readCanvasPerformanceMedia: { value: () => media?.readStats() },
