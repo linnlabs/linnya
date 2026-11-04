@@ -3,16 +3,17 @@ import { randomUUID } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { CanvasCommandSchema, createCanvasPlainTextDocument, type CanvasSnapshot } from '../../../../src/shared';
+import { CanvasCardIdSchema, CanvasCommandSchema, createCanvasPlainTextDocument, type CanvasSnapshot } from '../../../../src/shared';
 import { planCanvasCommit } from '../../../../src/backend/features/canvasCommit';
 import { createCanvasAgentFixture } from '../../../../scripts/agent-evaluation';
 import { CanvasCliBatchSchema } from '../../../../src/shared/cli/definitions/canvasCli';
 import { parseCanvasCli } from '../../../../src/backend/features/canvasCli';
+import { planCanvasLayout } from '../../../../src/backend/features/canvasLayoutRun';
 import { readLiteralCanvasCommands } from '../functions/readLiteralCanvasCommands';
-import { collectCanvasT13Metrics, parseCanvasToolTrace, buildCanvasT13Metrics, CanvasTraceMetricsEvidenceSchema } from '../index';
+import { collectCanvasT13Metrics, parseCanvasToolTrace, buildCanvasT13Metrics, CanvasTraceMetricsEvidenceSchema, buildCanvasRunDraft } from '../index';
 import { readCanvasT13Observations } from '../adapters/readCanvasT13Observations';
 import type { CanvasEvaluationCommand } from '../../bridge/definitions/canvasEvaluationBridge';
-import { CanvasT13ObservationSchema, CanvasT13FrameWindowSchema, CanvasT13ProtocolSchema } from '../definitions/canvasT13Metrics';
+import { CanvasT13ObservationSchema, CanvasT13FrameWindowSchema, CanvasT13ProtocolSchema, CanvasT13SummarySchema } from '../definitions/canvasT13Metrics';
 
 async function fixture() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'canvas-t13-metrics-'));
@@ -122,7 +123,7 @@ async function fixture() {
   }
   const summary = { ...scope, endedAt: 2000, terminalObservedAt: 1950, sampleCount: observations.length };
   await save(path.join(observer, 'protocol.json'), protocol); await save(path.join(observer, 'summary.json'), summary);
-  return { root, run, observer, facts, outputs, messages, audit, page, input: { state: runnerState, collection: collectionFields,
+  return { root, run, observer, facts, outputs, messages, audit, page, commitState: state, input: { state: runnerState, collection: collectionFields,
     before, after, result, facts, ...await readCanvasT13Observations(observer) } };
 }
 
@@ -138,6 +139,71 @@ it('正式2000→2300双批原件闭合；重叠RAF去重、慢Worker/帧保真�
     const derived: unknown = JSON.parse(await readFile(path.join(outputDirectory, 'metrics-facts.json'), 'utf8'));
     expect(derived).toMatchObject({ workerSampleCount: 2, commitSampleCount: 2, frameSampleCount: 4 });
     await expect(collectCanvasT13Metrics({ request: { runDirectory: data.run, collectionLabel: 'final', observationDirectory: data.observer }, outputDirectory })).rejects.toThrow();
+  } finally { await rm(data.root, { recursive: true, force: true }); }
+});
+
+it('正式unchanged布局与全skip确认请求同seq不抢实际delta，保留Worker计算但不制造draw', async () => {
+  const data = await fixture();
+  try {
+    const layout = await planCanvasLayout({ snapshot: data.input.after, requestId: 'noop', algorithm: 'grid', direction: 'right', elementIds: [CanvasCardIdSchema.parse('c1')] },
+      async () => { throw new Error('Grid must not invoke ELK'); });
+    expect(layout.operations).toEqual([]); expect(layout.diagnostics.some(diagnostic => diagnostic.code === 'unchanged')).toBe(true);
+    const actor = { viewId: 'view', source: { kind: 'agent', conversationId: 'conv', runId: 'run' } } as const;
+    const empty = planCanvasCommit({ state: data.commitState, operations: layout.operations, actor, origin: 'noop', claims: [], now: 2 });
+    expect(empty.changes).toEqual([]); expect(empty.state.sequence).toBe(data.input.after.sequence);
+    const card = data.input.after.elements.find(card => card.id === 'c1');
+    if (!card || card.type !== 'text') throw new Error('Fixed c1 missing');
+    const skipped = planCanvasCommit({ state: data.commitState, operations: [{ op: 'update', id: card.id, baseRevision: card.revision,
+      patch: { data: { ...card.data, content: createCanvasPlainTextDocument('用户正在编辑，拒绝本次正文') } } }],
+      actor, origin: 'blocked', claims: [{ elementId: card.id, fields: ['data'] }], now: 2 });
+    expect(skipped.changes).toEqual([]); expect(skipped.results[0]).toMatchObject({ status: 'skipped', reason: 'user_editing' });
+    const computation = { origin: 'node-worker', requestId: 'noop', sequence: data.input.after.sequence, algorithm: 'grid', executionMs: 25 };
+    const response = { status: 'committed', requestId: 'noop', sequence: empty.state.sequence, refs: empty.refs, results: empty.results, computation, replayed: false };
+    const base = data.messages[0];
+    const noopMessage = { ...base, message_id: 'noop', sort_seq: 3, payload: { ...base.payload, tool_call_id: 'noop',
+      args: { command: 'linnya-canvas arrange workspace:/T13.canvas --request-id noop --algorithm grid --scope c1' },
+      data: { ...base.payload.data, presentationText: 'stdout:\n' + JSON.stringify(response) } } };
+    const blockedMessage = { ...base, message_id: 'blocked', sort_seq: 4, payload: { ...base.payload, tool_call_id: 'blocked',
+      args: { command: `cat > blocked.json <<'OPS'\n${JSON.stringify([{ op: 'update', id: 'c1', revision: card.revision, text: '拒绝本次正文' }])}\nOPS\nlinnya-canvas apply workspace:/T13.canvas --ops-file blocked.json --request-id blocked` },
+      data: { ...base.payload.data, presentationText: 'stdout:\n' + JSON.stringify({ status: 'committed', requestId: 'blocked',
+        sequence: skipped.state.sequence, refs: skipped.refs, results: skipped.results, computation: null, replayed: false }) } } };
+    const facts = parseCanvasToolTrace({ scope: data.facts.scope, audit: data.audit,
+      pages: [{ sourceFile: 'messages.json', value: { ...data.page, messages: [...data.messages, noopMessage, blockedMessage] } }] });
+    const result = buildCanvasT13Metrics({ ...data.input, facts });
+    expect(result.kind).toBe('complete'); expect(result.facts).toMatchObject({ workerSampleCount: 3, commitSampleCount: 2, frameSampleCount: 4 });
+    expect(result.facts.confirmedRequests).toContainEqual({ requestId: 'noop', sequence: data.input.after.sequence, actualChanges: false });
+    expect(result.facts.confirmedRequests).toContainEqual({ requestId: 'blocked', sequence: data.input.after.sequence, actualChanges: false });
+    const onlyNoop = parseCanvasToolTrace({ scope: data.facts.scope, audit: data.audit, pages: [{ sourceFile: 'messages.json', value: { ...data.page, messages: [{ ...noopMessage,
+      payload: { ...noopMessage.payload, data: { ...noopMessage.payload.data, presentationText: 'stdout:\n' + JSON.stringify({ ...response,
+        sequence: data.input.before.sequence, computation: { ...computation, sequence: data.input.before.sequence } }) } } }] } }] });
+    const noDraw = buildCanvasT13Metrics({ ...data.input, facts: onlyNoop, after: data.input.before,
+      observations: [], summary: { ...CanvasT13SummarySchema.parse(data.input.summary), sampleCount: 0 } });
+    expect(noDraw.kind).toBe('needs-evidence'); expect(noDraw.facts.workerSampleCount).toBe(1);
+    expect(noDraw.facts.commitSampleCount).toBe(0); expect(noDraw.witness.metrics.averageFps).toBeUndefined();
+  } finally { await rm(data.root, { recursive: true, force: true }); }
+});
+
+it('真实失败前史留下correction_unknown，性能事实可独立完整而draft仍需纠错证据', async () => {
+  const data = await fixture();
+  try {
+    const base = data.messages[0], line = base.payload.args.command.split('\n').slice(-1)[0];
+    const rejected = { ...base, message_id: 'failed-before', sort_seq: 1, timestamp: 940, payload: { ...base.payload,
+      started_at: 930, completed_at: 940, tool_call_id: 'failed-before',
+      args: { command: 'linnya-canvas apply workspace:/T13.canvas --ops-file ops-0.json --request-id failed-before' },
+      data: { ...base.payload.data, presentationText: 'stdout:\n' + JSON.stringify({ error: { code: 'invalid_operations', message: '不合法批次' } }) } } };
+    const messages = [rejected, { ...base, sort_seq: 2, payload: { ...base.payload, args: { command: line } } }, { ...data.messages[1], sort_seq: 3 }];
+    const facts = parseCanvasToolTrace({ scope: data.facts.scope, audit: data.audit,
+      pages: [{ sourceFile: 'messages.json', value: { ...data.page, messages } }] });
+    expect(facts.needsReview).toBe(true); expect(facts.diagnostics.every(diagnostic => diagnostic.code === 'correction_unknown')).toBe(true);
+    const metrics = buildCanvasT13Metrics({ ...data.input, facts });
+    expect(metrics.kind).toBe('complete'); expect(metrics.facts.attemptDiagnostics.length).toBeGreaterThan(0);
+    expect(buildCanvasRunDraft({ ...data.input, facts }).diagnostics).toContain('tooltrace_needs_review');
+    const unknownOutput = [...messages];
+    unknownOutput[1] = { ...messages[1], payload: { ...messages[1].payload, data: { ...base.payload.data,
+      presentationText: base.payload.data.presentationText + '\nunknown output' } } };
+    const unknown = parseCanvasToolTrace({ scope: data.facts.scope, audit: data.audit,
+      pages: [{ sourceFile: 'messages.json', value: { ...data.page, messages: unknownOutput } }] });
+    expect(buildCanvasT13Metrics({ ...data.input, facts: unknown }).diagnostics).toContain('formal_collection_or_tooltrace_incomplete');
   } finally { await rm(data.root, { recursive: true, force: true }); }
 });
 

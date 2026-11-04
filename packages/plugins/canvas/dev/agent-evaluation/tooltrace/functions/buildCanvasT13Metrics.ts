@@ -32,7 +32,10 @@ export function buildCanvasT13Metrics(input: {
   const finishedAt = readCanvasDraftFinishedAt(input.result, { ...scope, runId: source.finalRunId });
   if (finishedAt === undefined || summary.terminalObservedAt === null
     || finishedAt > summary.endedAt || protocol.startedAt > startedAt) diagnostics.push('observer_run_window_incomplete');
-  if (!collection.sourceValid || !collection.messagesComplete || !collection.evidenceComplete || input.facts.needsReview)
+  const onlyAttemptUncertainty = input.facts.needsReview && input.facts.diagnostics.length > 0
+    && input.facts.diagnostics.every(diagnostic => diagnostic.code === 'correction_unknown');
+  if (!collection.sourceValid || !collection.messagesComplete || !collection.evidenceComplete
+    || (input.facts.needsReview && !onlyAttemptUncertainty))
     diagnostics.push('formal_collection_or_tooltrace_incomplete');
   const originalIds = new Set(before.elements.map(element => element.id));
   const original = input.exchanges.filter(exchange => exchange.command.kind === 'read').some(exchange => {
@@ -54,8 +57,10 @@ export function buildCanvasT13Metrics(input: {
   if (summary.sampleCount !== observations.length || new Set(observations.map(value => value.sequence)).size !== observations.length)
     diagnostics.push('observer_delta_ledger_incomplete');
   const samples: ReturnType<typeof admitCanvasT13Observation>[] = [];
+  // 正式Core只有applied才append变化；empty/all-skipped确认请求不会推进sequence或publish delta。
+  const actualChanges = input.facts.commits.filter(commit => commit.results.some(result => result.status === 'applied'));
   for (const observation of observations) {
-    const commits = input.facts.commits.filter(commit => commit.sequence === observation.sequence);
+    const commits = actualChanges.filter(commit => commit.sequence === observation.sequence);
     if (commits.length !== 1 || finishedAt === undefined) { diagnostics.push(`commit_not_uniquely_attributed:${observation.sequence}`); continue; }
     try { samples.push(admitCanvasT13Observation({ observation, commit: commits[0], originalIds,
       exchanges: input.exchanges, startedAt, finishedAt })); }
@@ -64,7 +69,7 @@ export function buildCanvasT13Metrics(input: {
       diagnostics.push(`${error.message}:${observation.sequence}`);
     }
   }
-  const committed = input.facts.commits.filter(commit => commit.sequence > before.sequence);
+  const committed = actualChanges.filter(commit => commit.sequence > before.sequence);
   if (!committed.length || committed.some(commit => !samples.some(sample => sample.requestId === commit.requestId)))
     diagnostics.push('actual_commit_observation_missing');
   for (const card of after.elements.filter(element => element.type !== 'edge' && !originalIds.has(element.id)))
@@ -90,6 +95,9 @@ export function buildCanvasT13Metrics(input: {
   return { kind: diagnostics.length ? 'needs-evidence' as const : 'complete' as const,
     witness: { scope, metrics, evidenceFiles }, diagnostics,
     facts: { scope, measurement: protocol.measurement, body: protocol.body, computedMetrics: metrics, initialEnvironment: protocol.naturalEnvironment,
+      attemptDiagnostics: input.facts.diagnostics.filter(diagnostic => diagnostic.code === 'correction_unknown'),
+      confirmedRequests: input.facts.commits.map(commit => ({ requestId: commit.requestId, sequence: commit.sequence,
+        actualChanges: commit.results.some(result => result.status === 'applied') })),
       quantile: 'sorted-floor((N-1)*q)', workerSampleCount: worker.length, workerSamples: worker,
       commitSampleCount: samples.length, commitSamples: samples, frameSampleCount: intervals.length, frameSamples: intervals,
       limitations: ['N是本次实际样本，不宣称稳定总体P95', 'commit到post-fit实际draw是含导航/轮询/HTTP的保守上界',
