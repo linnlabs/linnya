@@ -65,3 +65,5 @@ paint诊断另记录真实WebGL1/2的texImage2D/texSubImage2D原调用：区分C
 `CANVAS_VISIBLE_UPDATE_CHANGE=identity-control CANVAS_VISIBLE_IDENTITY_ARM=changing|stable`是独立两臂实验，各用`canvas-visible-identity-<arm>-probe`目录和profile。相同before为500张两段20:NNN正文、rev1；两臂先实际绘制全部旧身份牌再补齐旧body，显式共同glyph预热。after均为rev2且第二段21:NNN，changing首段也变21，stable首段保留20；唯一主变量为身份牌首行是否改变。固定高度、字体、相机、DPR、500个Agent动画ID和绘制门禁均相同，另存before/after图片与每卡下段实际像素变化、首行变更计数及上传分类。此warm夹具不代表r4原始单行状态或实际App性能；默认color/text入口不加此预热。
 
 `node packages/plugins/canvas/dev/probes/run-identity-atlas-probe.mjs`验证身份牌图集和同机原Pixi Text：中文、ZWJ emoji、RTL、组合符、连字与Indic整串，在DPR1/2及分数世界缩放下比较真实RGBA墨迹，保存双方PNG后才按IoU≥.995/归一alpha误差≤.01断言。另验证同串共享、单页预算下DPR替换、隐藏页淘汰后复用、最后视图释放及生成器消费失败后的资源归还。它是独立功能像素门禁，不作帧率验收。原完整visual probe继续验证内核fallback、contextloss、正文实际draw/淡入与裁切。
+
+`CANVAS_PERFORMANCE_ZOOM_PAINT_TRACE=1 CANVAS_PERFORMANCE_ZOOM_TRACE=1`仅在正式100×20ms缩放段安装paint/GL来源分类，输出独立`canvas-zoom-paint-diagnostic`，不让2500张全景初载占满事件上限。开启后明确diagnostic/profiling且无硬件资格；事件仍有16384上限，overflow非零不能宣称完整分账。详帧增加实际camera、可见卡数、identityBytes与队列请求量；逐wheel保存Node发送区间和Renderer实际收到的同钟时间，不能用末端资源快照推峰期。trace不启用Screenshot，录制期间不截图；测量前既有PNG步骤和所有原动作不改。原默认Native入口及普通ZOOM_TRACE观察字段不变。

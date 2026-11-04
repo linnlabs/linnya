@@ -138,14 +138,16 @@ async function prepareDrag(selectedCount: number) {
 Object.defineProperties(window, {
   beginCanvasPerformancePaintTrace: { value: () => { paintTrace?.finish(); paintTrace = createCanvasPerformancePaintTrace(); } },
   finishCanvasPerformancePaintTrace: { value: () => { const result = paintTrace?.finish(); paintTrace = null; return result; } },
-  startCanvasPerformanceZoomTrace: { value: () => {
+  startCanvasPerformanceZoomTrace: { value: (detailed = false) => {
     zoomTimeline = createCanvasZoomTimeline(() => {
       if (!kernel || !presentation || !media) throw new Error('probe_not_prepared');
       const scene = kernel.readStats(), queue = presentation.readStats(), active = media.readStats().active;
       return { renders: scene.renders, rasterCards: scene.rasterCards, bitmaps: scene.bitmaps, bitmapBytes: scene.bitmapBytes,
         fadingCards: scene.fadingCards, pending: queue.pending, running: queue.running, completed: queue.completed,
-        activeImages: active.image, activePreviews: active.preview, activeReferences: active.reference };
-    });
+        activeImages: active.image, activePreviews: active.preview, activeReferences: active.reference,
+        ...(detailed ? { camera: kernel.readCamera(), viewportCards: scene.viewportCards, identityBytes: scene.identityBytes,
+          requestedTiles: queue.requestedTiles, requestedPixels: queue.requestedPixels, discarded: queue.discarded } : {}) };
+    }, 'zoom', detailed);
   } },
   finishCanvasPerformanceZoomTrace: { value: () => { const result = zoomTimeline?.finish(); zoomTimeline = null; return result; } },
   prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start }, startCanvasPerformanceBaseline: { value: startBaseline },
