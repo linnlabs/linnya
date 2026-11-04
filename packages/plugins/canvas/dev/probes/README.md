@@ -39,3 +39,5 @@ node packages/plugins/canvas/dev/probes/run-render-probe.mjs
 Dawn内部观测使用已核[Chromium150的明确类别映射](https://github.com/chromium/chromium/blob/150.0.7871.250/gpu/command_buffer/service/dawn_platform.cc#L225)`disabled-by-default-gpu.dawn`。报告保留安装版本`getCategories()`原件和该类别是否存在；缺失时不换成其他类别或改变GPU后端。
 
 每段报告同时保存既有采集器的`frameIntervalsMs`原始间隔，不新增逐帧工作。平均、p95和最大值不足以证明常用档掉帧比例；验收需明确60Hz的16.667ms参考、超时间隔占比，以及长停顿漏掉的参考帧机会，另保留实际120Hz参考结果。历史缺原始间隔的报告不能反推这些比例。
+
+scene视觉夹具只在自己的页面临时固定`performance.now`，按明确逻辑时间采样120ms纹理替换与160/200ms场景淡入。真实timer、RAF、Pixi、GPU和正文receipt不替换，采样前有界等待生产脉冲及实际主画布draw；首显必须为当前新像素且尚未完整，终点仍检查资源释放与完整draw。所有出口恢复原时钟。这样CI长暂停不会把64ms中间态推过终点，硬件性能探针仍使用真实时钟。做法参考[Playwright受控时钟](https://playwright.dev/docs/clock)，这里不模拟其timer/RAF调度。
