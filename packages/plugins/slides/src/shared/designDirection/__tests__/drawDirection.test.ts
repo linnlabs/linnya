@@ -63,6 +63,13 @@ describe('drawDirections', () => {
     expect(navy / runs).toBeLessThan(0.08);
   });
 
+  it('投研汇报类稿子不发粉色系色相', () => {
+    for (let index = 0; index < 1000; index += 1) {
+      const draw = drawDirections({ scenario: 'business', motifs: MOTIFS, seed: `pink-${index}` })[0]!;
+      expect([10, 11]).not.toContain(draw.hue?.bin);
+    }
+  });
+
   it('本机最近用过的手法会被降权', () => {
     const recent = 'data-journalism';
     let hits = 0;

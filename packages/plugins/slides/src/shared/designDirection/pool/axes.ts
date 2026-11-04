@@ -66,6 +66,15 @@ export const ATTRACTOR_COLOR_LOGIC_FACTOR: Readonly<Partial<Record<ColorLogicId,
   'paper-ink': 0.5,
 };
 
+/**
+ * 色相与场景的适配：投研、汇报这类稿子不发粉色系（梅紫、胭脂），紫色降权；学术稿粉色系降权。
+ * 键是 HUE_BINS 的 bin，未列出的按 1。
+ */
+export const SCENARIO_HUE_FACTORS: Readonly<Partial<Record<DirectionScenario, Readonly<Partial<Record<number, number>>>>>> = {
+  business: { 9: 0.3, 10: 0, 11: 0 },
+  academic: { 10: 0.3, 11: 0.3 },
+};
+
 export const DEFAULT_BOLDNESS_BY_SCENARIO: Readonly<Record<DirectionScenario, DirectionBoldness>> = {
   business: 'steady',
   academic: 'steady',

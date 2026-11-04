@@ -21,12 +21,13 @@ import {
   HUE_BINS,
   HUELESS_COLOR_LOGICS,
   IMAGE_STRATEGIES,
+  SCENARIO_HUE_FACTORS,
   TYPE_STRATEGIES,
 } from '../pool/axes';
 import { TECHNIQUE_CARDS } from '../pool/techniqueCards';
 
 /** 签池版本：卡片、轴或权重改动时递增，用于基准对账。 */
-export const DIRECTION_POOL_VERSION = '2026-11-04.2';
+export const DIRECTION_POOL_VERSION = '2026-11-04.3';
 
 /** 本机最近用过的方向，用来降权，避免同一个人连续拿到同一种手法。 */
 export interface DirectionHistory {
@@ -116,7 +117,8 @@ function drawOne(
   const hue = HUELESS_COLOR_LOGICS.includes(colorLogic.id)
     ? null
     : pickWeighted(random, HUE_BINS, (bin) =>
-        (ATTRACTOR_HUE_BINS.includes(bin.bin) ? ATTRACTOR_HUE_FACTOR : 1)
+        (SCENARIO_HUE_FACTORS[input.scenario]?.[bin.bin] ?? 1)
+        * (ATTRACTOR_HUE_BINS.includes(bin.bin) ? ATTRACTOR_HUE_FACTOR : 1)
         * (history.hueBins.slice(0, RECENT_HUE_WINDOW).includes(bin.bin) ? RECENT_HUE_FACTOR : 1)
         * (batch.some((draw) => draw.hue?.bin === bin.bin) ? 0.2 : 1));
 
