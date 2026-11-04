@@ -61,4 +61,3 @@ export function connectCanvasCards(plan: CanvasWorkingPlan, command: Extract<Can
   }
   return id;
 }
-

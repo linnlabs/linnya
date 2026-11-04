@@ -19,4 +19,3 @@ export interface CanvasPointerGesture {
   moved: boolean;
   origins: readonly Pick<CanvasCard, 'id' | 'x' | 'y'>[] | null;
 }
-

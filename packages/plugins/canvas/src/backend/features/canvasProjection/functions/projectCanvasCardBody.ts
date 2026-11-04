@@ -34,4 +34,3 @@ export function listCanvasContentReferencedDocuments(content: CanvasContentNode)
 export function listCanvasReferencedDocuments(elements: readonly CanvasElement[]): string[] {
   return [...new Set(elements.flatMap(element => element.type === 'document' ? [element.data.documentId] : element.type === 'text' ? listCanvasContentReferencedDocuments(element.data.content) : []))];
 }
-
