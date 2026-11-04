@@ -10,8 +10,8 @@ import { readCanvasPerformanceContextControl } from './performanceContextControl
 const probeRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(probeRoot, '../../../../..');
 const contextControl = readCanvasPerformanceContextControl({ staging: process.env.CANVAS_PERFORMANCE_STAGING_CONTEXT_CONTROL,
-  tile: process.env.CANVAS_PERFORMANCE_TILE_CONTEXT_CONTROL, bodyTrace: process.env.CANVAS_PERFORMANCE_BODY_TRACE === '1' });
-const output = path.join(root, contextControl ? `_dev_data/canvas-body-${contextControl.kind === 'tile' ? 'tile-' : ''}context-${contextControl.arm}-diagnostic`
+  tile: process.env.CANVAS_PERFORMANCE_TILE_CONTEXT_CONTROL, combined: process.env.CANVAS_PERFORMANCE_COMBINED_CONTEXT_CONTROL, bodyTrace: process.env.CANVAS_PERFORMANCE_BODY_TRACE === '1' });
+const output = path.join(root, contextControl ? `_dev_data/canvas-body-${contextControl.kind !== 'staging' ? contextControl.kind + '-' : ''}context-${contextControl.arm}-diagnostic`
   : process.env.CANVAS_PERFORMANCE_BODY_TRACE === '1' ? '_dev_data/canvas-body-task-diagnostic'
   : process.env.CANVAS_PERFORMANCE_INPUT_TRACE === '1' ? '_dev_data/canvas-input-diagnostic'
   : process.env.CANVAS_PERFORMANCE_ZOOM_PAINT_TRACE === '1' ? '_dev_data/canvas-zoom-paint-diagnostic'
