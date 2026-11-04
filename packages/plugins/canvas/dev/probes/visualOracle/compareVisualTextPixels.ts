@@ -1,6 +1,6 @@
 import pixelmatch from 'pixelmatch';
-import { VISUAL_TEXT_LIMITS, type VisualColor, type VisualImage, type VisualRect, type VisualTextLayout, type VisualInkMoment } from './definitions';
-import { matchesMonochromePaint, qualifiesMonochromeModel } from './monochromeTextModel';
+import { VISUAL_TEXT_LIMITS, type VisualColor, type VisualImage, type VisualRect, type VisualTextLayout, type VisualInkMoment, type VisualMonochromePixels, type VisualStructureFacts } from './definitions';
+import { matchesMonochromePaint, qualifiesMonochromeModel, monochromeStructureContrast } from './monochromeTextModel';
 import { coverageFacts, meanChannelAlpha, fixedReferenceLineCoverage } from './visualInkCoverage';
 
 /** Electron NativeImage明确返回BGRA；pixelmatch要求RGBA，不能把红/蓝颠倒后声称颜色通过。 */
@@ -38,30 +38,49 @@ function outsideTextFacts(reference: VisualImage, actual: VisualImage, layout: V
   }
   return { pass: differing === 0, checked, differing, region };
 }
-function monochromeMask(reference: VisualImage, actual: VisualImage, layout: VisualTextLayout) {
+function monochromePixels(reference: VisualImage, actual: VisualImage, layout: VisualTextLayout): VisualMonochromePixels {
   const allowed = new Uint8Array(reference.width * reference.height), forbidden = new Uint8Array(allowed.length);
+  const structureOwner = new Int32Array(allowed.length), referenceContrast = new Float64Array(allowed.length), actualContrast = new Float64Array(allowed.length);
+  const paints = new Map<string, number>();
   for (const grapheme of layout.graphemes.filter(item => /\S/u.test(item.text))) for (const rect of grapheme.rects) {
     const bounds = pixelBounds(rect, layout.dpr, reference), eligible = qualifiesMonochromeModel(grapheme);
+    const paint = `${grapheme.style.color.join(',')}:${grapheme.style.background.join(',')}`;
+    let owner = paints.get(paint);
+    if (owner === undefined) { owner = paints.size + 1; paints.set(paint, owner); }
     for (let y = bounds.top; y < bounds.bottom; y++) for (let x = bounds.left; x < bounds.right; x++) {
       const index = y * reference.width + x;
-      if (!eligible) forbidden[index] = 1;
-      else if (matchesMonochromePaint(reference.rgba, actual.rgba, index * 4, grapheme.style.color, grapheme.style.background)) allowed[index] = 1;
+      if (!eligible) { forbidden[index] = 1; structureOwner[index] = -1; continue; }
+      const pair = monochromeStructureContrast(reference.rgba, actual.rgba, index * 4, grapheme.style.color, grapheme.style.background);
+      if (pair) allowed[index] = 1;
+      // 同一像素的重叠Range只准入一致paint；不能挑一个有利的fg/bg解释混色或未知内容。
+      if (!pair || structureOwner[index] !== 0 && structureOwner[index] !== owner) structureOwner[index] = -1;
+      else { structureOwner[index] = owner; referenceContrast[index] = pair.reference; actualContrast[index] = pair.actual; }
     }
   }
   // 真实Range可重叠；彩色/未知字簇优先禁止，不得借邻字的单色资格蒙混过关。
   for (let index = 0; index < allowed.length; index++) if (forbidden[index]) allowed[index] = 0;
-  return allowed;
+  return { legacyMask: allowed, structureOwner, referenceContrast, actualContrast };
 }
 function regionFacts(input: { reference: VisualImage; actual: VisualImage; mask: Uint8Array; rect: VisualRect;
-  dpr: number; foreground: VisualColor; background: VisualColor; monochrome: Uint8Array; projectAlpha: boolean }) {
+  dpr: number; foreground: VisualColor; background: VisualColor; monochrome: VisualMonochromePixels; projectAlpha: boolean }) {
   const { reference, actual, mask, foreground, background } = input, bounds = pixelBounds(input.rect, input.dpr, reference);
   let referenceMass = 0, actualMass = 0, referenceX = 0, referenceY = 0, actualX = 0, actualY = 0;
   const referenceCoverage: VisualInkMoment = { mass: 0, x: 0, y: 0 }, actualCoverage: VisualInkMoment = { mass: 0, x: 0, y: 0 };
   let union = 0, residual = 0, nonAaColor = 0, meaningfulNonAaColor = 0, modeledLcdColor = 0, solid = 0, solidPreserved = 0, solidRolePreserved = 0, actualSolid = 0;
+  let structureUnion = 0, structureResidual = 0, modeledPixels = 0;
   for (let y = bounds.top; y < bounds.bottom; y++) for (let x = bounds.left; x < bounds.right; x++) {
     const i = (y * reference.width + x) * 4, a = distance(reference.rgba, i, background), b = distance(actual.rgba, i, background);
     const referenceInk = a > VISUAL_TEXT_LIMITS.contrastFloor, actualInk = b > VISUAL_TEXT_LIMITS.contrastFloor;
-    const modeled = input.monochrome[i / 4] !== 0 && (!input.projectAlpha || matchesMonochromePaint(reference.rgba, actual.rgba, i, foreground, background));
+    const modeled = input.monochrome.legacyMask[i / 4] !== 0 && (!input.projectAlpha || matchesMonochromePaint(reference.rgba, actual.rgba, i, foreground, background));
+    const structureModeled = input.monochrome.structureOwner[i / 4] > 0;
+    const referenceShape = (structureModeled ? input.monochrome.referenceContrast[i / 4] : a) > VISUAL_TEXT_LIMITS.contrastFloor;
+    const actualShape = (structureModeled ? input.monochrome.actualContrast[i / 4] : b) > VISUAL_TEXT_LIMITS.contrastFloor;
+    if (structureModeled) modeledPixels++;
+    if (referenceShape || actualShape) {
+      structureUnion++;
+      if (mask[i + 3] && (referenceShape !== actualShape
+        || channelDelta(reference.rgba, actual.rgba, i) > VISUAL_TEXT_LIMITS.solidColorDelta && !structureModeled)) structureResidual++;
+    }
     if (referenceInk) { const mass = a / 255; referenceMass += mass; referenceX += x * mass; referenceY += y * mass; }
     if (actualInk) { const mass = b / 255; actualMass += mass; actualX += x * mass; actualY += y * mass; }
     if (referenceInk) {
@@ -92,7 +111,7 @@ function regionFacts(input: { reference: VisualImage; actual: VisualImage; mask:
       solid++;
       const exact = distance(actual.rgba, i, foreground) <= VISUAL_TEXT_LIMITS.solidColorDelta;
       if (exact) solidPreserved++;
-      if (actualInk && (exact || input.monochrome[i / 4] !== 0 && matchesMonochromePaint(reference.rgba, actual.rgba, i, foreground, background))) solidRolePreserved++;
+      if (actualInk && (exact || input.monochrome.legacyMask[i / 4] !== 0 && matchesMonochromePaint(reference.rgba, actual.rgba, i, foreground, background))) solidRolePreserved++;
     }
     if (actualInk && distance(actual.rgba, i, foreground) <= VISUAL_TEXT_LIMITS.solidColorDelta) actualSolid++;
   }
@@ -103,7 +122,9 @@ function regionFacts(input: { reference: VisualImage; actual: VisualImage; mask:
     solid, solidPreserved, solidCoverage: solid ? solidPreserved / solid : null,
     solidRolePreserved, solidRoleCoverage: solid ? solidRolePreserved / solid : null,
     actualSolid, foregroundPeakPresent: solid === 0 || actualSolid > 0,
-    coverage: coverageFacts(referenceCoverage, actualCoverage, input.projectAlpha ? 'rgb-alpha-mean' : 'contrast-max') };
+    coverage: coverageFacts(referenceCoverage, actualCoverage, input.projectAlpha ? 'rgb-alpha-mean' : 'contrast-max'),
+    structure: { model: 'per-pixel-qualified-rgb-mean', union: structureUnion, residual: structureResidual,
+      residualRatio: structureUnion ? structureResidual / structureUnion : 1, modeledPixels } satisfies VisualStructureFacts };
 }
 function reasons(facts: ReturnType<typeof regionFacts>, maximumResidualRatio: number): string[] {
   const failures: string[] = [];
@@ -111,7 +132,7 @@ function reasons(facts: ReturnType<typeof regionFacts>, maximumResidualRatio: nu
   if (facts.actualMass === 0) failures.push('missing_ink');
   if (facts.coverage.massRatio < VISUAL_TEXT_LIMITS.massRatioMin || facts.coverage.massRatio > VISUAL_TEXT_LIMITS.massRatioMax) failures.push('ink_mass');
   if (facts.coverage.positionDelta === null || facts.coverage.positionDelta > VISUAL_TEXT_LIMITS.centroidPhysicalPx) failures.push('ink_position');
-  if (facts.residualRatio > maximumResidualRatio) failures.push('non_aa_residual');
+  if (facts.structure.residualRatio > maximumResidualRatio) failures.push('non_aa_residual');
   if (facts.solidRoleCoverage !== null && facts.solidRoleCoverage < VISUAL_TEXT_LIMITS.solidCoverage) failures.push('solid_color');
   if (!facts.foregroundPeakPresent) failures.push('foreground_peak');
   return failures;
@@ -124,7 +145,7 @@ export function compareVisualTextPixels(reference: VisualImage, actual: VisualIm
   const mask = new Uint8Array(reference.rgba.length);
   const nonAaPixels = pixelmatch(reference.rgba, actual.rgba, mask, reference.width, reference.height,
     { threshold: 0, includeAA: false, diffMask: true });
-  const monochrome = monochromeMask(reference, actual, layout);
+  const monochrome = monochromePixels(reference, actual, layout);
   const graphemes = layout.graphemes.filter(grapheme => /\S/u.test(grapheme.text)).flatMap(grapheme => grapheme.rects.flatMap((rect, index) => {
     const bounds = pixelBounds(rect, layout.dpr, reference);
     if (bounds.left >= bounds.right || bounds.top >= bounds.bottom) return [];
@@ -143,5 +164,5 @@ export function compareVisualTextPixels(reference: VisualImage, actual: VisualIm
   });
   const outsideText = outsideTextFacts(reference, actual, layout, options.pixi === true);
   return { pass: outsideText.pass && graphemes.length > 0 && lines.length > 0 && [...graphemes, ...lines].every(region => region.failures.length === 0),
-    oracleRevision: 2, nonAaPixels, limits: VISUAL_TEXT_LIMITS, outsideText, graphemes, lines };
+    oracleRevision: 3, nonAaPixels, limits: VISUAL_TEXT_LIMITS, outsideText, graphemes, lines };
 }

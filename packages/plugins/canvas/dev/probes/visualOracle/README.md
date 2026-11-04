@@ -20,6 +20,10 @@ AA 分类复用 [pixelmatch 7.1.0](https://github.com/mapbox/pixelmatch/tree/v7.
 
 comparison `oracleRevision: 2` 将统计模型分型：旧referenceMass/actualMass/massRatio/centroidDelta仍是原max-channel值，只作原始诊断；新`coverage`对合格单色字簇使用所有有效RGB通道的归一化alpha平均，未知/彩色字簇维持原contrast-max。行位置固定同一reference字簇权重，actual覆盖率变化不能把两列文字重新加权；没有图像移动、重对齐或滤镜。Microsoft [DirectWrite模式合同](https://learn.microsoft.com/en-us/windows/win32/api/dwrite_1/ne-dwrite_1-dwrite_text_antialias_mode)明确LCD逐RGB覆盖与透明中间位图单alpha灰阶的区别；平均alpha是本oracle的跨模式统计权重，不声称重建Skia/ClearType rasterizer。
 
+`oracleRevision: 3` 让结构决策也遵循同一逐像素资格：`structure.model`明确标为`per-pixel-qualified-rgb-mean`，只有已获单色资格且同源paint模型成立时，使用RGB平均alpha乘fg/bg最大通道对比，再与原24比较；未知、彩色、重叠冲突仍用严格max。每个像素只取一致的fg/bg身份，不能用首字颜色解释整行，也不能重复累加重叠Range稀释分母。行/簇的5%/20%结构门仅改读新`structure`，旧union/residual/residualRatio与max质量字段完整保留，不改旧原件或阈值。合法LCD弱fringe不再因单一通道跨24被误作缺笔画；真实reference墨迹被擦成背景仍是两侧ink不一致，即使alpha0符合paint线也必须接受非AA结构拒绝。颜色8、实色/峰值、质量/位置、文字范围外检查均不变。
+
+Node回归同时覆盖合法fringe的黑/低对比前景、同行不同作者色、真实CPU字形横向擦笔画、已知字体小标点整擦、未知字体/emoji重叠禁止与既有全部损坏。色段矩阵只验证统计单位，不冒充真实字体/DOM/GPU资格；真实正负例仍须在相同字体/DPR环境重新验证。
+
 作者色同时保存旧same-pixel `solidCoverage`；新`solidRoleCoverage`仍要求≥0.9，但验证的是reference core处actual仍有墨迹且颜色与原fg→bg线兼容，不能把正确AA覆盖变动误叫换色。reference有实色核时actual也必须仍出现真实fg实色峰，整体opacity0.8冲淡必须被这一峰值守卫拒绝。非AA结构/颜色残差、覆盖质量、逐簇位置、未知/emoji严格颜色检查均不能绕过，阈值没有扩大。
 
 ghost守卫只验证线没有擦掉已经正确的body bitmap，以同一灰阶raster为源检查Kernel目标，原DOM `ghostPreservation`继续输出（其中含DOM↔gray AA差）。独立控制只给Kernel的body副本横向擦字，raster基线不动；必须由ghost守卫自己拒绝，不借文字oracle的失败。DOM与body位图排版/质量仍由前述oracle把关。
