@@ -11,7 +11,9 @@ import { VisualTextLayoutSchema, VisualNegativeSchema, evaluateVisualTextOracle,
 const rectangle = z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() });
 const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(), dpr: z.number(), reference: rectangle, raster: rectangle, pixi: rectangle, ghostY: z.number(), measuredHeights: z.array(z.number().nullable()),
   textLayout: z.object({ reference: VisualTextLayoutSchema, rasters: z.array(VisualTextLayoutSchema) }),
-  negative: VisualNegativeSchema.nullable(), mutation: z.array(z.unknown()).nullable(), ghostErasure: z.object({ fromY: z.number(), toY: z.number() }).nullable() });
+  negative: VisualNegativeSchema.nullable(), mutation: z.array(z.unknown()).nullable(), ghostErasure: z.object({ fromY: z.number(), toY: z.number() }).nullable(),
+  kernelCapture: z.object({ mode: z.literal('capture'), resolution: z.number().positive(), canvas: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }),
+    status: z.object({ limited: z.boolean(), phase: z.enum(['ready', 'restoring']), message: z.string().nullable() }) }) });
 const visualViewport = z.object({ scrollX: z.number(), scrollY: z.number(), width: z.number().positive(), height: z.number().positive(),
   innerWidth: z.number().positive(), innerHeight: z.number().positive(), dpr: z.number().positive() });
 const nativeCaptureWindow = z.object({ contentSize: z.tuple([z.number().positive(), z.number().positive()]),
@@ -41,6 +43,10 @@ async function evaluate(webContents: WebContents, expression: string): Promise<u
 }
 
 async function captureComparison(win: BrowserWindow, state: z.infer<typeof prepared>, stem: string) {
+  await writeFile(path.join(output, `${stem}-kernel-capture.json`), JSON.stringify({ dpr: state.dpr, pixi: state.pixi, kernelCapture: state.kernelCapture }, null, 2));
+  // PNG裁切尺寸不能证明Kernel真的以同DPR绘制；1x画布在截图里放大成2x仍是不合格输入。
+  if (state.kernelCapture.resolution !== state.dpr || state.kernelCapture.canvas.width !== Math.round(state.pixi.width * state.dpr)
+    || state.kernelCapture.canvas.height !== Math.round(state.pixi.height * state.dpr)) throw new Error('visual_kernel_capture_sampling_mismatch');
   let tileIndex = 0;
   const readNative = () => nativeCaptureWindow.parse({ contentSize: win.getContentSize(), contentBounds: win.getContentBounds(), zoomFactor: win.webContents.getZoomFactor() });
   const observe = (dom: unknown) => {

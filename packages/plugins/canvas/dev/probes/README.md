@@ -30,6 +30,8 @@ DOM、位图、Pixi 三个对照区按同一字体和当前 DPR 比较。CI 桌�
 
 Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShader；六组计数从 `canvas-software-probe/results.json` 校验，视觉报告也标记软件渲染。独立制品 smoke 继承相同软件环境，保留 worker 的实际 GPU/版本/渲染配置原件。软件结果只证明功能与确定性工作量，不能用作硬件帧率资格。独立制品 smoke 在依赖及平台准备成功后继续运行，即使前面的绘制/视觉失败；任何失败步骤仍使作业失败，不用 `continue-on-error` 掩盖。
 
+静态DOM/位图/Pixi正文比较使用正式worker已有的`renderingMode: capture`，要求Kernel实际resolution与DOM/raster DPR一致、canvas真实物理尺寸匹配CSS卡框×DPR。采样事实先独立写出，失败也保留mode/resolution/物理尺寸/renderStatus；截图裁成2x不能把1x软件交互画布冒充2x质量。软件交互的1x降级继续由counts及既有冒烟验证；fade/scene/motion入口不全局改成capture，生产降级、绘制质量与视觉阈值均不改。
+
 正文完成等待保持5000ms时限及两个真实rAF确认。最终返回前重新读取失败、排队、运行、媒体资源、纹理过渡和当前正文readiness；两帧期间新出现的paint失败不能被先前空队列掩盖。近景文字和媒体共用正式当前内容键的readiness，旧正文receipt或尚未draw的新正文都不算完成；远景仍遵循既有地图/缩略图LOD，不强迫绘制不需要的正文。
 
 `node packages/plugins/canvas/dev/probes/run-visible-update-probe.mjs` 聚焦500张当前视口正文的冷更与实际绘制，先等待初始正文完整，再分别对比是否逐帧读取readiness；`CANVAS_VISIBLE_UPDATE_PROFILE=1`输出CPU profile。固定场景为25×20张88×72卡、104×88间隔、1400×900视口及DPR2，记录实际相机/视口，方便与产品表面对照。它只测kernel输入到当前正文已上传并实际绘制，明确不包含Backend提交，也始终标记offscreen diagnostic，不能代替正式Agent链或硬件验收。

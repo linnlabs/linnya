@@ -75,7 +75,9 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', colo
   const kernelHost = document.createElement('div');
   kernelHost.style.cssText = 'position:absolute;left:820px;top:20px;width:360px;height:500px';
   document.body.append(kernelHost);
-  const kernel = await createPixiCanvasKernel({ host: kernelHost, width: 360, height: 500, resolution: devicePixelRatio });
+  // 静态质量比较与正式worker使用同一capture合同；软件交互降级另由counts/冒烟验证。
+  const renderingMode = 'capture';
+  const kernel = await createPixiCanvasKernel({ host: kernelHost, width: 360, height: 500, resolution: devicePixelRatio, renderingMode });
   previousKernel = kernel;
   const paragraph = reference.querySelector('p');
   if (!paragraph) throw new Error('visual_text_fixture_missing');
@@ -100,7 +102,8 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', colo
   await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   const rectangle = (element: HTMLElement) => { const { x, y, width, height } = element.getBoundingClientRect(); return { x, y, width, height }; };
   return { viewportWidth: innerWidth, viewportHeight: innerHeight, dpr: devicePixelRatio, reference: rectangle(reference), raster: rectangle(canvas),
-    pixi: rectangle(kernelHost), ghostY, measuredHeights, textLayout: { reference: referenceLayout, rasters: rasterLayouts }, negative: negative ?? null, mutation, ghostErasure };
+    pixi: rectangle(kernelHost), ghostY, measuredHeights, textLayout: { reference: referenceLayout, rasters: rasterLayouts }, negative: negative ?? null, mutation, ghostErasure,
+    kernelCapture: { mode: renderingMode, resolution: kernel.readResolution(), canvas: { width: kernel.canvas.width, height: kernel.canvas.height }, status: kernel.readRenderStatus() } };
 }
 Object.defineProperty(window, 'prepareCanvasVisualProbe', { value: prepare });
 Object.defineProperty(window, 'prepareCanvasGhostEraseProbe', { value: () => prepare('light', 'paper', 'white', undefined, true) });
