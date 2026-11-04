@@ -11,9 +11,20 @@ import { hydrateCanvasDocumentTags, hydrateCanvasManagedImages, createCanvasImag
 export function createCanvasCardContent(documentId: string, port: CanvasCardMediaPort): CanvasCardContent {
   const metadata = createCanvasReferenceMetadata(port);
   const images = createCanvasImageSources(documentId, port);
-  const listeners = new Set<(failure: Error | null) => void>(), changed = (failure: Error | null) => { for (const listener of listeners) listener(failure); };
+  const listeners = new Set<(failure: Error | null) => void>(), notify = (failure: Error | null) => { for (const listener of listeners) listener(failure); };
+  let frame: number | null = null;
+  const cancelFrame = () => { if (frame !== null) cancelAnimationFrame(frame); frame = null; };
+  const changed = (failure: Error | null) => {
+    if (failure) { notify(failure); return; }
+    // 资源读取继续推进；同帧已完成事实一起刷新，避免每份预览都扫描整张画布。
+    if (frame === null) frame = requestAnimationFrame(() => { frame = null; notify(null); });
+  };
   const previews = createCanvasDocumentPreviews(port, metadata, changed);
-  const stopMetadata = metadata.subscribe(failure => { previews.refresh(); changed(failure); });
+  const stopMetadata = metadata.subscribe(change => {
+    if (change.kind === 'invalidated') { cancelFrame(); notify(null); }
+    else changed(change.kind === 'failed' ? change.error : null);
+    previews.refresh();
+  });
   return {
     stageImage: images.stage, releaseStagedImages: images.release, resolveImageSource: images.resolve,
     async create(card, signal) {
@@ -47,6 +58,6 @@ export function createCanvasCardContent(documentId: string, port: CanvasCardMedi
     documentTitles: metadata.titles, contentKey: card => `${metadata.key(card)}:${previews.key(card)}`,
     refreshReferences: async cards => { previews.setCards(cards); await metadata.refresh(cards); }, refreshVisible: previews.refreshVisible, thumbnailCards: previews.thumbnails, retry: previews.retry,
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    dispose() { stopMetadata(); metadata.dispose(); previews.dispose(); images.dispose(); listeners.clear(); },
+    dispose() { cancelFrame(); stopMetadata(); metadata.dispose(); previews.dispose(); images.dispose(); listeners.clear(); },
   };
 }
