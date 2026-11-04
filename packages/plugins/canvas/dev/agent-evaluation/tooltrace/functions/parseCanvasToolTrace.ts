@@ -12,6 +12,7 @@ export function parseCanvasToolTrace(input: {
     scope: CanvasTraceScopeSchema.parse(input.scope),
     needsReview: false,
     diagnostics: [],
+    requests: [],
     attempts: [],
     commits: [],
     replays: [],

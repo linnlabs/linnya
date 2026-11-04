@@ -39,6 +39,17 @@ export const CanvasToolTraceFactsSchema = z
     scope: CanvasTraceScopeSchema,
     needsReview: z.boolean(),
     diagnostics: z.array(CanvasTraceDiagnosticSchema),
+    requests: z.array(
+      z
+        .object({
+          requestId: z.string(),
+          runId: z.string(),
+          toolCallId: z.string(),
+          sourceFile: z.string(),
+          order: z.number(),
+        })
+        .strict()
+    ),
     attempts: z.array(CanvasTraceAttemptSchema),
     commits: z.array(CanvasCommitResultSchema),
     replays: z.array(

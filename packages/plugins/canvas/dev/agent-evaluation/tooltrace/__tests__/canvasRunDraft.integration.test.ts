@@ -163,6 +163,62 @@ it('retains incomplete facts as a partial instead of turning unknown UI or stale
   );
 });
 
+it('有当前run字面编号的只读回执只补commit，过滤stdout仍须复核且不补attempts或分数', () => {
+  const source = input();
+  source.facts.needsReview = true;
+  source.facts.requests.push({
+    requestId: 'literal',
+    runId: 'run',
+    toolCallId: 'call',
+    sourceFile: 'messages.json',
+    order: 2,
+  });
+  const draft = buildCanvasRunDraft({
+    ...source,
+    receiptWitness: {
+      scope,
+      projectId: 'project',
+      documentPath: 'workspace:/T1.canvas',
+      reader: { cliEntry: '/artifact/cli.cjs', sha256: 'b'.repeat(64), hostAppRoot: '/source' },
+      complete: true,
+      queries: [
+        {
+          requestId: 'literal',
+          exitCode: 0,
+          responseFile: '/receipt.json',
+          failure: null,
+          response: {
+            documentId: 'workspace:/T1.canvas',
+            receipt: {
+              requestId: 'literal',
+              status: 'committed',
+              pendingId: null,
+              commit: {
+                documentId: 'workspace:/T1.canvas',
+                requestId: 'literal',
+                sequence: 1,
+                refs: {},
+                results: [],
+              },
+            },
+          },
+        },
+      ],
+      evidenceFiles: ['/receipt.json'],
+    },
+  });
+  expect(draft.kind).toBe('needs-evidence');
+  if (draft.kind !== 'needs-evidence') throw new Error('Unknown stdout must remain partial');
+  expect(draft.partial.commits).toEqual([
+    { documentId: 'doc', requestId: 'literal', sequence: 1, refs: {}, results: [] },
+  ]);
+  expect(draft.partial.attempts).toEqual([]);
+  expect(draft.partial.review).toBeUndefined();
+  expect(draft.partial.metrics).toEqual({});
+  expect(draft.partial.evidenceFiles).toContain('/receipt.json');
+  expect(draft.diagnostics).toContain('tooltrace_needs_review');
+});
+
 it('rejects borrowed scope and snapshots rather than projecting another task as this result', () => {
   const source = input();
   expect(() =>
@@ -210,33 +266,123 @@ it('keeps dry-run identity absence and chronological phases visible in partial e
 });
 it('正式write与无编号dry-run完整事实可生成run.json草稿，保留首败而不填写人工评分', () => {
   const source = input();
-  const event = { toolCallId: 'write', sourceFile: 'messages.json', runId: 'run', order: 3, kind: 'apply' as const, outcome: 'committed' as const, validationAccepted: true, correction: false, fingerprint: 'verified-literal-content', inputKey: 'ops.json' };
-  source.facts.dryRuns.push({ ...event, order: 1, requestId: null, outcome: 'rejected', validationAccepted: false });
-  source.facts.dryRuns.push({ ...event, order: 2, requestId: null, outcome: 'previewed', correction: true });
+  const event = {
+    toolCallId: 'write',
+    sourceFile: 'messages.json',
+    runId: 'run',
+    order: 3,
+    kind: 'apply' as const,
+    outcome: 'committed' as const,
+    validationAccepted: true,
+    correction: false,
+    fingerprint: 'verified-literal-content',
+    inputKey: 'ops.json',
+  };
+  source.facts.dryRuns.push({
+    ...event,
+    order: 1,
+    requestId: null,
+    outcome: 'rejected',
+    validationAccepted: false,
+  });
+  source.facts.dryRuns.push({
+    ...event,
+    order: 2,
+    requestId: null,
+    outcome: 'previewed',
+    correction: true,
+  });
   source.facts.attempts.push({ ...event, requestId: 'real-write' });
-  source.facts.commits.push({ documentId: 'doc', requestId: 'real-write', sequence: 1, refs: {}, results: [] });
+  source.facts.commits.push({
+    documentId: 'doc',
+    requestId: 'real-write',
+    sequence: 1,
+    refs: {},
+    results: [],
+  });
   const draft = buildCanvasRunDraft(source);
   expect(draft.kind).toBe('ready-for-review');
   if (draft.kind !== 'ready-for-review') throw new Error(draft.diagnostics.join('\n'));
-  expect(draft.run.attempts.map(attempt => [attempt.phase, attempt.requestId, attempt.validationAccepted, attempt.correction])).toEqual([['dry-run', null, false, false], ['dry-run', null, true, true], ['write', 'real-write', true, false]]);
+  expect(
+    draft.run.attempts.map(attempt => [
+      attempt.phase,
+      attempt.requestId,
+      attempt.validationAccepted,
+      attempt.correction,
+    ])
+  ).toEqual([
+    ['dry-run', null, false, false],
+    ['dry-run', null, true, true],
+    ['write', 'real-write', true, false],
+  ]);
   expect(draft.run.controls.imageReadSequence).toBeNull();
-  expect(evaluateCanvasAgentRun(draft.run)).toMatchObject({ firstSubmissionAccepted: true, correctionRetries: 1 });
-  expect(draft.run.review).toBeUndefined(); expect(draft.run.metrics).toEqual({});
+  expect(evaluateCanvasAgentRun(draft.run)).toMatchObject({
+    firstSubmissionAccepted: true,
+    correctionRetries: 1,
+  });
+  expect(draft.run.review).toBeUndefined();
+  expect(draft.run.metrics).toEqual({});
 });
 it('实际读图必须对应先前的同工具render，保留最后读图序号而不强改成after', () => {
-  const source = input(); source.state.config.imageCapability = 'vision';
-  source.facts.renders.push({ sequence: 1, locator: 'conversation:/image-1.png', runId: 'run', toolCallId: 'render-1', sourceFile: 'messages.json', order: 2 });
-  source.facts.imageReads.push({ locator: 'conversation:/image-1.png', renderToolCallId: 'render-1', toolCallId: 'read-1', sourceFile: 'messages.json', order: 3 });
+  const source = input();
+  source.state.config.imageCapability = 'vision';
+  source.facts.renders.push({
+    sequence: 1,
+    locator: 'conversation:/image-1.png',
+    runId: 'run',
+    toolCallId: 'render-1',
+    sourceFile: 'messages.json',
+    order: 2,
+  });
+  source.facts.imageReads.push({
+    locator: 'conversation:/image-1.png',
+    renderToolCallId: 'render-1',
+    toolCallId: 'read-1',
+    sourceFile: 'messages.json',
+    order: 3,
+  });
   const latest = buildCanvasRunDraft(source);
   expect(latest.kind).toBe('ready-for-review');
   if (latest.kind !== 'ready-for-review') throw new Error(latest.diagnostics.join('\n'));
-  expect(latest.run.controls).toMatchObject({ renderCount: 1, imageReadCount: 1, imageReadSequence: 1 });
-  expect(evaluateCanvasAgentRun(latest.run).checks.find(check => check.rule === 'actual-render-and-read')?.passed).toBe(true);
-  const laterSnapshot = buildCanvasRunDraft({ ...source, after: { ...source.after, sequence: 2 }, facts: { ...source.facts, checks: source.facts.checks.map(check => ({ ...check, report: { ...check.report, sequence: 2 } })) } });
+  expect(latest.run.controls).toMatchObject({
+    renderCount: 1,
+    imageReadCount: 1,
+    imageReadSequence: 1,
+  });
+  expect(
+    evaluateCanvasAgentRun(latest.run).checks.find(check => check.rule === 'actual-render-and-read')
+      ?.passed
+  ).toBe(true);
+  const laterSnapshot = buildCanvasRunDraft({
+    ...source,
+    after: { ...source.after, sequence: 2 },
+    facts: {
+      ...source.facts,
+      checks: source.facts.checks.map(check => ({
+        ...check,
+        report: { ...check.report, sequence: 2 },
+      })),
+    },
+  });
   expect(laterSnapshot.kind).toBe('ready-for-review');
-  if (laterSnapshot.kind !== 'ready-for-review') throw new Error(laterSnapshot.diagnostics.join('\n'));
-  expect(laterSnapshot.run.after.sequence).toBe(2); expect(laterSnapshot.run.controls.imageReadSequence).toBe(1);
-  expect(evaluateCanvasAgentRun(laterSnapshot.run).checks.find(check => check.rule === 'actual-render-and-read')?.passed).toBe(false);
-  source.facts.imageReads.push({ locator: 'conversation:/missing-render.png', renderToolCallId: 'missing', toolCallId: 'read-unknown', sourceFile: 'messages.json', order: 4 });
-  expect(buildCanvasRunDraft(source)).toMatchObject({ kind: 'needs-evidence', diagnostics: expect.arrayContaining(['image_read_render_link_missing']) });
+  if (laterSnapshot.kind !== 'ready-for-review')
+    throw new Error(laterSnapshot.diagnostics.join('\n'));
+  expect(laterSnapshot.run.after.sequence).toBe(2);
+  expect(laterSnapshot.run.controls.imageReadSequence).toBe(1);
+  expect(
+    evaluateCanvasAgentRun(laterSnapshot.run).checks.find(
+      check => check.rule === 'actual-render-and-read'
+    )?.passed
+  ).toBe(false);
+  source.facts.imageReads.push({
+    locator: 'conversation:/missing-render.png',
+    renderToolCallId: 'missing',
+    toolCallId: 'read-unknown',
+    sourceFile: 'messages.json',
+    order: 4,
+  });
+  expect(buildCanvasRunDraft(source)).toMatchObject({
+    kind: 'needs-evidence',
+    diagnostics: expect.arrayContaining(['image_read_render_link_missing']),
+  });
 });

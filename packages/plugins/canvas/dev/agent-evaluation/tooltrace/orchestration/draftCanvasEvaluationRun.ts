@@ -29,17 +29,22 @@ export async function draftCanvasEvaluationRun(input: {
   const beforeFile = path.join(root, 'before.json'),
     afterFile = path.join(collectionDirectory, 'after.json'),
     resultFile = path.join(collectionDirectory, 'result.response.json');
-  const [audit, pages, before, after, result, controls, metrics] = await Promise.all([
-    readTraceJson(auditFile),
-    Promise.all(
-      messageFiles.map(async sourceFile => ({ sourceFile, value: await readTraceJson(sourceFile) }))
-    ),
-    readTraceJson(beforeFile),
-    readTraceJson(afterFile),
-    readTraceJson(resultFile),
-    request.controlsFile ? readTraceJson(request.controlsFile) : undefined,
-    request.metricsFile ? readTraceJson(request.metricsFile) : undefined,
-  ]);
+  const [audit, pages, before, after, result, controls, metrics, receiptWitness] =
+    await Promise.all([
+      readTraceJson(auditFile),
+      Promise.all(
+        messageFiles.map(async sourceFile => ({
+          sourceFile,
+          value: await readTraceJson(sourceFile),
+        }))
+      ),
+      readTraceJson(beforeFile),
+      readTraceJson(afterFile),
+      readTraceJson(resultFile),
+      request.controlsFile ? readTraceJson(request.controlsFile) : undefined,
+      request.metricsFile ? readTraceJson(request.metricsFile) : undefined,
+      request.receiptWitnessFile ? readTraceJson(request.receiptWitnessFile) : undefined,
+    ]);
   const facts = parseCanvasToolTrace({
     scope: {
       conversationId: state.receipt.conversation_id,
@@ -61,6 +66,7 @@ export async function draftCanvasEvaluationRun(input: {
     ...messageFiles,
     ...(request.controlsFile ? [request.controlsFile] : []),
     ...(request.metricsFile ? [request.metricsFile] : []),
+    ...(request.receiptWitnessFile ? [request.receiptWitnessFile] : []),
   ];
   const draft = buildCanvasRunDraft({
     state,
@@ -72,6 +78,7 @@ export async function draftCanvasEvaluationRun(input: {
     evidenceFiles,
     controls,
     metrics,
+    receiptWitness,
   });
   const artifact = draft.kind === 'ready-for-review' ? draft.run : draft.partial;
   await Promise.all(artifact.evidenceFiles.map(file => access(file)));
