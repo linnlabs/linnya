@@ -19,6 +19,7 @@ export function applyVisualNegative(root: HTMLElement, negative: VisualNegative,
     case 'missing-emoji': return alterGrapheme(root, text => text === '🖼️', 'visibility:hidden');
     case 'emoji-hue': return alterGrapheme(root, text => text === '🖼️', 'filter:hue-rotate(180deg)');
     case 'emoji-grayscale': return alterGrapheme(root, text => text === '🖼️', 'filter:grayscale(1)');
+    case 'text-opacity': root.style.opacity = '0.8'; return { opacity: 0.8 };
     case 'missing-marker': {
       const list = root.querySelector('li'); if (!list) throw new Error('visual_negative_marker_missing');
       list.style.listStyleType = 'none'; return { listStyleType: 'none' };

@@ -22,7 +22,15 @@ export type VisualTextLayout = z.infer<typeof VisualTextLayoutSchema>;
 export type VisualRect = z.infer<typeof VisualRectSchema>;
 export type VisualColor = readonly [number, number, number];
 export interface VisualImage { readonly width: number; readonly height: number; readonly rgba: Uint8Array }
-export const VISUAL_NEGATIVES = ['missing-han', 'missing-punctuation', 'missing-emoji', 'clip-last-line', 'shift-one-pixel', 'wrong-size', 'red-to-blue', 'emoji-hue', 'emoji-grayscale', 'non-text-stripe', 'missing-marker'] as const;
+export interface VisualInkMoment { mass: number; x: number; y: number }
+export interface VisualCoverage {
+  readonly model: 'contrast-max' | 'rgb-alpha-mean' | 'fixed-reference-glyph-weights';
+  readonly referenceMass: number; readonly actualMass: number; readonly massRatio: number;
+  readonly referenceCentroid: { readonly x: number; readonly y: number } | null;
+  readonly actualCentroid: { readonly x: number; readonly y: number } | null;
+  readonly positionDelta: number | null;
+}
+export const VISUAL_NEGATIVES = ['missing-han', 'missing-punctuation', 'missing-emoji', 'clip-last-line', 'shift-one-pixel', 'wrong-size', 'red-to-blue', 'emoji-hue', 'emoji-grayscale', 'non-text-stripe', 'missing-marker', 'text-opacity'] as const;
 export const VisualNegativeSchema = z.enum(VISUAL_NEGATIVES);
 export type VisualNegative = z.infer<typeof VisualNegativeSchema>;
 

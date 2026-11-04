@@ -6,12 +6,12 @@ import path from 'node:path';
 import { z } from 'zod';
 import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
 import { captureCanvasVisualPage, withNativeVisualViewport } from './captureCanvasVisualPage';
-import { VisualTextLayoutSchema, VisualNegativeSchema, evaluateVisualTextOracle, verifyVisualTextNegatives, visualImageFromBgra, visualTextEnvironment } from './visualOracle';
+import { VisualTextLayoutSchema, VisualNegativeSchema, evaluateVisualTextOracle, verifyVisualTextNegatives, visualImageFromBgra, visualTextEnvironment, readBitmapGhostPreservation } from './visualOracle';
 
 const rectangle = z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() });
 const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(), dpr: z.number(), reference: rectangle, raster: rectangle, pixi: rectangle, ghostY: z.number(), measuredHeights: z.array(z.number().nullable()),
   textLayout: z.object({ reference: VisualTextLayoutSchema, rasters: z.array(VisualTextLayoutSchema) }),
-  negative: VisualNegativeSchema.nullable(), mutation: z.array(z.unknown()).nullable() });
+  negative: VisualNegativeSchema.nullable(), mutation: z.array(z.unknown()).nullable(), ghostErasure: z.object({ fromY: z.number(), toY: z.number() }).nullable() });
 const visualViewport = z.object({ scrollX: z.number(), scrollY: z.number(), width: z.number().positive(), height: z.number().positive(),
   innerWidth: z.number().positive(), innerHeight: z.number().positive(), dpr: z.number().positive() });
 const nativeCaptureWindow = z.object({ contentSize: z.tuple([z.number().positive(), z.number().positive()]),
@@ -92,6 +92,20 @@ async function verifyTextNegatives(win: BrowserWindow) {
   return result;
 }
 
+async function verifyGhostErasure(win: BrowserWindow) {
+  const state = prepared.parse(await evaluate(win.webContents, 'window.prepareCanvasGhostEraseProbe()'));
+  const { screenshot } = await captureComparison(win, state, 'negative-ghost-erasure');
+  const images = [];
+  for (const [name, rect] of [['raster', state.raster], ['pixi', state.pixi]] as const) {
+    const image = screenshot.crop({ x: Math.round(rect.x * state.dpr), y: Math.round(rect.y * state.dpr), width: Math.round(rect.width * state.dpr), height: Math.round(rect.height * state.dpr) });
+    await writeFile(path.join(output, `negative-ghost-erasure-${name}.png`), image.toPNG());
+    images.push(visualImageFromBgra(image.toBitmap(), image.getSize().width, image.getSize().height));
+  }
+  const result = readBitmapGhostPreservation(images[0], images[1], { theme: 'light', dpr: state.dpr, ghostY: state.ghostY });
+  await writeFile(path.join(output, 'negative-ghost-erasure.json'), JSON.stringify({ ...result, actualErasure: state.ghostErasure, expected: 'ghost_guard_itself_must_reject' }, null, 2));
+  return state.ghostErasure !== null && !result.pass && result.sourceInk >= 10;
+}
+
 const fadeState = z.object({ image: z.string(), dpr: z.number(), elapsed: z.number(), oldWidth: z.number(), blueWidth: z.number(), greenWidth: z.number(),
   rendered: z.boolean(), reduced: z.boolean(), stats: z.object({ fadingCards: z.number(), retiringBytes: z.number(), bitmapBytes: z.number(), bitmapBudgetBytes: z.number() }) });
 async function verifyFade(win: BrowserWindow) {
@@ -135,8 +149,10 @@ async function run() {
     win.webContents.setZoomFactor(2);
     // 所有正例都经过局部检查，即使raw95已通过也不绕开单字/标点缺失检测。
     const negativeQualification = await verifyTextNegatives(win);
+    const ghostNegativeRejected = await verifyGhostErasure(win);
     const reports = [];
     const failedCases = negativeQualification.reports.filter(report => !report.qualifiedEnvironment || !report.rasterRejected || !report.pixiRejected).map(report => `negative:${report.negative}`);
+    if (!ghostNegativeRejected) failedCases.push('negative:ghost-erasure');
     for (const theme of ['light', 'dark']) for (const material of ['paper', 'card']) for (const color of material === 'paper' ? ['white', 'red', 'green'] : ['white']) {
       const state = prepared.parse(await evaluate(win.webContents, `window.prepareCanvasVisualProbe(${JSON.stringify(theme)},${JSON.stringify(material)},${JSON.stringify(color)})`));
       const { screenshot, facts } = await captureComparison(win, state, `${theme}-${material}-${color}`);
@@ -191,15 +207,17 @@ async function run() {
       const imageHeight = dom.getSize().height;
       const textOracle = evaluateVisualTextOracle({ reference: visualImageFromBgra(a, width, imageHeight), raster: visualImageFromBgra(b, width, imageHeight),
         pixi: visualImageFromBgra(c, width, imageHeight), layout: state.textLayout });
+      const bitmapGhost = readBitmapGhostPreservation(visualImageFromBgra(b, width, imageHeight), visualImageFromBgra(c, width, imageHeight),
+        { theme: theme === 'light' ? 'light' : 'dark', dpr: state.dpr, ghostY: state.ghostY });
       const qualifiedEnvironment = visualTextEnvironment(state.textLayout.reference) === negativeQualification.referenceEnvironment;
       const report = { theme, material, color, dpr: state.dpr, size: dom.getSize(), referenceInk, rasterInk, pixiInk, inkIou, pixiIou, crossedText, ghostPreservation,
-        measuredHeights: state.measuredHeights, authored, raw95: inkIou >= 0.95 && pixiIou >= 0.95, textOraclePass: textOracle.pass, qualifiedEnvironment };
+        measuredHeights: state.measuredHeights, authored, raw95: inkIou >= 0.95 && pixiIou >= 0.95, textOraclePass: textOracle.pass, qualifiedEnvironment, bitmapGhost };
       reports.push(report);
       await writeFile(path.join(output, `${theme}-${material}-${color}-text-oracle.json`), JSON.stringify({ report, textOracle, negativeQualification: negativeQualification.pass }, null, 2));
       await writeFile(path.join(output, `${theme}-${material}-${color}-dom.png`), dom.toPNG());
       await writeFile(path.join(output, `${theme}-${material}-${color}-raster.png`), raster.toPNG());
       await writeFile(path.join(output, `${theme}-${material}-${color}-pixi.png`), pixi.toPNG());
-      if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || !textOracle.pass || !negativeQualification.pass || !qualifiedEnvironment || crossedText < 10 || ghostPreservation < 0.95
+      if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || !textOracle.pass || !negativeQualification.pass || !qualifiedEnvironment || crossedText < 10 || !bitmapGhost.pass
         || Math.min(authored.dom, authored.raster, authored.pixi) < 10) failedCases.push(`${theme}-${material}-${color}`);
     }
     await writeFile(path.join(output, 'text-comparison-results.json'), JSON.stringify({ reports, failedCases, negatives: negativeQualification.pass }, null, 2));

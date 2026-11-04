@@ -32,7 +32,7 @@ const content = { type: 'doc', content: [
 ] };
 
 let previousKernel: CanvasKernel | null = null;
-async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', color: CanvasColor = 'white', negative?: VisualNegative) {
+async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', color: CanvasColor = 'white', negative?: VisualNegative, eraseGhost = false) {
   previousKernel?.destroy(); previousKernel = null;
   document.body.replaceChildren();
   document.body.style.cssText = 'margin:0;background:#888';
@@ -85,14 +85,25 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', colo
     lineStyle: 'straight', direction: 'none', label: '' });
   kernel.setElements([card, ghost]);
   kernel.setAppearance({ dark: theme === 'dark', material, overview: 'titles' });
-  kernel.setBitmap(card.id, card.revision, 'visual', await createImageBitmap(rasters[0].bitmap));
+  let bodyBitmap = await createImageBitmap(rasters[0].bitmap);
+  const ghostErasure = eraseGhost ? { fromY: Math.floor((ghostY - 2) * devicePixelRatio), toY: Math.ceil((ghostY + 2) * devicePixelRatio) } : null;
+  if (ghostErasure) {
+    // 独立控制只损坏真正交给Kernel的body副本；旁边的raster基线必须保持正确。
+    const damaged = new OffscreenCanvas(bodyBitmap.width, bodyBitmap.height), target = damaged.getContext('2d');
+    if (!target) throw new Error('ghost_negative_context_missing');
+    target.drawImage(bodyBitmap, 0, 0); target.fillStyle = background;
+    target.fillRect(0, ghostErasure.fromY, damaged.width, ghostErasure.toY - ghostErasure.fromY);
+    bodyBitmap.close(); bodyBitmap = damaged.transferToImageBitmap();
+  }
+  kernel.setBitmap(card.id, card.revision, 'visual', bodyBitmap);
   rasters.forEach(result => result.bitmap.close()); rasterizer.dispose(); staging.remove();
   await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   const rectangle = (element: HTMLElement) => { const { x, y, width, height } = element.getBoundingClientRect(); return { x, y, width, height }; };
   return { viewportWidth: innerWidth, viewportHeight: innerHeight, dpr: devicePixelRatio, reference: rectangle(reference), raster: rectangle(canvas),
-    pixi: rectangle(kernelHost), ghostY, measuredHeights, textLayout: { reference: referenceLayout, rasters: rasterLayouts }, negative: negative ?? null, mutation };
+    pixi: rectangle(kernelHost), ghostY, measuredHeights, textLayout: { reference: referenceLayout, rasters: rasterLayouts }, negative: negative ?? null, mutation, ghostErasure };
 }
 Object.defineProperty(window, 'prepareCanvasVisualProbe', { value: prepare });
+Object.defineProperty(window, 'prepareCanvasGhostEraseProbe', { value: () => prepare('light', 'paper', 'white', undefined, true) });
 
 async function lineVisual() {
   previousKernel?.destroy(); document.body.replaceChildren();

@@ -2,11 +2,13 @@ import { VISUAL_TEXT_LIMITS, type VisualColor, type VisualTextLayout } from './d
 
 type Grapheme = VisualTextLayout['graphemes'][number];
 const potentialColorSequence = /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Emoji_Modifier}|[\u200d\u20e3\ufe0e\ufe0f\u{E0020}-\u{E007F}]/u;
+// 只收本正式fixture的精确CSS family；来源分别为请求system-ui、core pre/code、KaTeX0.18.10。
+const fixtureFamilies = new Set(['system-ui', 'monospace', 'KaTeX_Math', 'KaTeX_Main, math, "Times New Roman", serif']);
 
-/** 资格只覆盖本固定system-ui普通文字。整簇排除emoji/旗帜/ZWJ/VS/keycap，不按单码点猜。 */
+/** 资格只覆盖固定fixture的已知family普通文字；未知/潜彩字簇仍禁止，不按单码点猜。 */
 export function qualifiesMonochromeModel(grapheme: Grapheme): boolean {
   return /\S/u.test(grapheme.text) && !potentialColorSequence.test(grapheme.text)
-    && grapheme.style.fontFamily === 'system-ui' && grapheme.style.fontAvailable
+    && fixtureFamilies.has(grapheme.style.fontFamily) && grapheme.style.fontAvailable
     && grapheme.style.visibility === 'visible' && grapheme.style.transform === 'none';
 }
 

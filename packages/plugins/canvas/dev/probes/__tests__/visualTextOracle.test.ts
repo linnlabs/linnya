@@ -1,10 +1,11 @@
 import { createCanvas } from '@napi-rs/canvas';
 import { expect, it } from 'vitest';
-import { compareVisualTextPixels, compareVisualTextLayout, qualifiesMonochromeModel, matchesMonochromePaint, readVisualFontFacts, type VisualImage, type VisualTextLayout } from '../visualOracle';
+import { compareVisualTextPixels, compareVisualTextLayout, qualifiesMonochromeModel, matchesMonochromePaint, readVisualFontFacts,
+  coverageFacts, fixedReferenceLineCoverage, meanChannelAlpha, readBitmapGhostPreservation, type VisualImage, type VisualTextLayout } from '../visualOracle';
 
 // CPU Skia生成真实字形，只验证oracle规则；不能代替Electron的真实Range/Win AA资格与GPU负例。
 const tokens = ['中', ...Array.from({ length: 40 }, () => '文'), '、', '🖼️', '红'];
-function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | 'size' | 'color') {
+function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | 'size' | 'color' | 'opacity') {
   const canvas = createCanvas(1600, 100), context = canvas.getContext('2d');
   context.fillStyle = '#fff'; context.fillRect(0, 0, canvas.width, canvas.height);
   context.font = '24px sans-serif'; context.textBaseline = 'top';
@@ -19,6 +20,7 @@ function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | '
     if ((change === 'han' && index === 0) || (change === 'punctuation' && text === '、') || (change === 'emoji' && text === '🖼️')) return;
     context.font = change === 'size' ? '30px sans-serif' : '24px sans-serif';
     context.fillStyle = text === '红' ? change === 'color' ? '#00c' : '#c00' : '#000';
+    context.globalAlpha = change === 'opacity' ? 0.8 : 1;
     context.fillText(text, rect.x + (change === 'shift' ? 1 : 0), rect.y);
   });
   if (change === 'clip') { context.fillStyle = '#fff'; context.fillRect(0, 39, canvas.width, canvas.height - 39); }
@@ -33,11 +35,36 @@ it('相同实际CPU字形通过每簇和行检查，报告保留墨迹分母与�
   expect(result.graphemes.every(grapheme => grapheme.union > 0 && grapheme.residual === 0)).toBe(true);
 });
 
-it.each(['han', 'punctuation', 'emoji', 'clip', 'shift', 'size', 'color'] as const)('真实字形损坏%s即使白底巨大也拒绝，metadata一致不能替像素通过', change => {
+it.each(['han', 'punctuation', 'emoji', 'clip', 'shift', 'size', 'color', 'opacity'] as const)('真实字形损坏%s即使白底巨大也拒绝，metadata一致不能替像素通过', change => {
   const source = fixture(), damaged = fixture(change);
   const result = compareVisualTextPixels(source.image, damaged.image, source.layout);
   expect(result.pass).toBe(false);
   expect(result.graphemes.some(grapheme => grapheme.failures.length > 0)).toBe(true);
+});
+
+it('整体opacity .8虽然保留合理颜色混合，真实前景峰仍必须拒绝，不能冒充完成的文字', () => {
+  const source = fixture(), damaged = fixture('opacity'), result = compareVisualTextPixels(source.image, damaged.image, source.layout);
+  expect(result.graphemes.some(grapheme => grapheme.failures.includes('foreground_peak'))).toBe(true);
+  expect(result.pass).toBe(false);
+});
+
+it('RGB平均覆盖与固定reference行权重分开统计位置，真实1px位移仍保留1px', () => {
+  expect(meanChannelAlpha(new Uint8Array([0, 127, 255, 255]), 0, [0, 0, 0], [255, 255, 255])).toBeCloseTo(0.5, 2);
+  const a = coverageFacts({ mass: 10, x: 0, y: 0 }, { mass: 8, x: 0, y: 0 }, 'rgb-alpha-mean');
+  const b = coverageFacts({ mass: 10, x: 1000, y: 0 }, { mass: 10, x: 1000, y: 0 }, 'rgb-alpha-mean');
+  const line = fixedReferenceLineCoverage([{ coverage: a }, { coverage: b }]);
+  expect(line.positionDelta).toBe(0); expect(line.massRatio).toBe(0.9);
+  const moved = fixedReferenceLineCoverage([{ coverage: { ...a, actualCentroid: { x: 1, y: 0 } } }, { coverage: { ...b, actualCentroid: { x: 101, y: 0 } } }]);
+  expect(moved.positionDelta).toBe(1);
+});
+
+it('ghost守卫本身拒绝正确body位图在目标横条被擦字，不借DOM AA或另一oracle的失败', () => {
+  const source = fixture().image, target = structuredClone(source);
+  for (let y = 35; y <= 37; y++) for (let x = 0; x < target.width; x++) target.rgba.set([255, 255, 255, 255], (y * target.width + x) * 4);
+  const same = readBitmapGhostPreservation(source, source, { theme: 'light', dpr: 1, ghostY: 36 });
+  const damaged = readBitmapGhostPreservation(source, target, { theme: 'light', dpr: 1, ghostY: 36 });
+  expect(same.pass).toBe(true); expect(same.preservation).toBe(1);
+  expect(damaged.sourceInk).toBeGreaterThan(10); expect(damaged.preservation).toBe(0); expect(damaged.pass).toBe(false);
 });
 
 it('单标点丢失可保留全图raw墨迹95，但必须由该字簇非空/质量规则独立拒绝', () => {
