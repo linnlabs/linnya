@@ -20,6 +20,7 @@ let commits: ReturnType<typeof createCanvasEvaluationCommitMetrics> | null = nul
 const requireSurface = () => { if (!surface) throw new Error('验收画布尚未挂载'); return surface; };
 async function unmount(): Promise<void> {
   commits?.dispose(); commits = null;
+  metrics.reset();
   await surface?.session.close(); app?.unmount(); root?.remove(); surface = null; app = null; root = null;
 }
 async function mount(documentId: string, projectId: string): Promise<unknown> {
@@ -65,9 +66,11 @@ async function execute(command: CanvasEvaluationCommand): Promise<unknown> {
     case 'fit': {
       if (command.payload.elementIds) value.locate(command.payload.elementIds); else value.fit();
       // 必须在同一任务读相机与draw基线；相机更新本身不证明新视野已经绘制。
-      return { camera: value.camera.value, renders: value.readPresentationStats().renders, observedAt: performance.timeOrigin + performance.now() };
+      const presentation = value.readPresentationStats();
+      return { camera: value.camera.value, renders: presentation.renders, sceneTransitions: presentation.sceneTransitions, observedAt: performance.timeOrigin + performance.now() };
     }
     case 'stats': if (command.payload.reset) { metrics.reset(); commits?.reset(); } return { presentation: value.readPresentationStats(), layout: readCanvasEvaluationLayout(root), frames: metrics.read(), commits: commits?.read() ?? null, sequence: value.session.state.snapshot.value?.sequence ?? null };
+    case 'frame-window': return { documentId: value.session.state.snapshot.value?.documentId ?? null, frames: metrics.readWindow(command.payload.since, command.payload.until) };
     case 'readiness': {
       const style = getComputedStyle(document.body);
       return { documentId: value.session.state.snapshot.value?.documentId ?? null, sequence: value.session.state.snapshot.value?.sequence ?? null,
