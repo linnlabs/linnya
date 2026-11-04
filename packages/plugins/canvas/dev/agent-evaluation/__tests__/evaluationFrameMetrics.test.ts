@@ -2,10 +2,10 @@ import { expect, it, vi } from 'vitest';
 import { createCanvasEvaluationFrameMetrics } from '../createCanvasEvaluationFrameMetrics';
 
 function fixture() {
-  let now = 0, nextId = 0;
+  let now = 0, nextId = 0, visible = true;
   const callbacks = new Map<number, FrameRequestCallback>();
   vi.stubGlobal('performance', { timeOrigin: 0, now: () => now });
-  vi.stubGlobal('document', { visibilityState: 'visible', hasFocus: () => true });
+  vi.stubGlobal('document', { get visibilityState() { return visible ? 'visible' : 'hidden'; }, hasFocus: () => visible });
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
     const id = ++nextId; callbacks.set(id, callback); return id;
   });
@@ -15,7 +15,7 @@ function fixture() {
     now = at;
     const pending = [...callbacks.values()]; callbacks.clear();
     for (const callback of pending) callback(at);
-  }, dispose() { metrics.dispose(); vi.unstubAllGlobals(); } };
+  }, setVisible(value: boolean) { visible = value; }, dispose() { metrics.dispose(); vi.unstubAllGlobals(); } };
 }
 
 it('初始化空帧和首个RAF之前没有真实基线的区间不能称完整工作窗', () => {
@@ -58,5 +58,21 @@ it('reset后先建立真实interval再开始下一提交，旧窗口丢失不能
     f.step(132);
     expect(f.metrics.readWindow(125, 130)).toMatchObject({ retentionComplete: true,
       samples: [{ at: 132, interval: 8 }] });
+  } finally { f.dispose(); }
+});
+
+it('真实hidden断点使跨洞窗口不完整，保留raw且满ring淘汰不能退回有效边界', () => {
+  const f = fixture();
+  try {
+    f.step(100); f.step(110); f.setVisible(false); f.step(120);
+    f.setVisible(true); f.step(200); f.step(210);
+    expect(f.metrics.readWindow(105, 205)).toMatchObject({ retentionComplete: false, retainedSince: 120,
+      focused: true, samples: [{ at: 110, interval: 10 }, { at: 210, interval: 10 }] });
+    expect(f.metrics.readWindow(205, 208).retentionComplete).toBe(true);
+    for (let at = 211; at <= 4350; at++) f.step(at);
+    f.setVisible(false); f.step(5000); f.setVisible(true); f.step(5100); f.step(5110);
+    expect(f.metrics.readWindow(4345, 5105)).toMatchObject({ retainedSince: 5000, retentionComplete: false });
+    f.step(5120);
+    expect(f.metrics.readWindow(5115, 5118).retentionComplete).toBe(true);
   } finally { f.dispose(); }
 });

@@ -102,6 +102,13 @@ export function admitCanvasT13Observation(input: {
   // 独立复核实际边界，不能只信上游填入的retentionComplete或capturedThrough。
   requireEvidence(!!firstFrame && !!lastFrame && firstFrame.at - firstFrame.interval <= frames.since
     && lastFrame.at >= frames.until, 'frame_window_boundaries_missing');
+  requireEvidence(frames.samples.every((sample, index) => {
+    const previous = frames.samples[index - 1];
+    if (!previous) return true;
+    // UTC加法与相减只容IEEE表示量级舍入，绝非允许真实采样洞的毫秒质量容差。
+    const rounding = 2 * Number.EPSILON * Math.max(1, Math.abs(previous.at), Math.abs(sample.at), Math.abs(sample.interval));
+    return Math.abs((sample.at - previous.at) - sample.interval) <= rounding;
+  }), 'frame_window_chain_missing');
   return { sequence: commit.sequence, requestId: commit.requestId, committedAt,
     observedAt: receipt.observedAt, receivedAt: receipt.receivedAt,
     commitToFrameUpperBoundMs: receipt.receivedAt - committedAt, targets, cards,

@@ -16,12 +16,16 @@ export function createCanvasEvaluationFrameMetrics() {
     if (disposed) return;
     if (document.visibilityState === 'visible') {
       if (previous !== null) {
-        if (count === times.length) retainedSince = performance.timeOrigin + times[index];
+        if (count === times.length) retainedSince = Math.max(retainedSince, performance.timeOrigin + times[index]);
         const interval = time - previous; times[index] = time; intervals[index] = interval; index = (index + 1) % times.length; count = Math.min(count + 1, times.length);
         for (const listener of listeners) listener({ at: performance.timeOrigin + time, interval });
       }
       previous = time;
-    } else previous = null;
+    } else {
+      previous = null;
+      // 隐藏期间没有完整RAF链；保留旧raw供诊断，但有效边界不能被后续ring淘汰退回。
+      retainedSince = Math.max(retainedSince, performance.timeOrigin + time);
+    }
     frame = requestAnimationFrame(sample);
   };
   frame = requestAnimationFrame(sample);

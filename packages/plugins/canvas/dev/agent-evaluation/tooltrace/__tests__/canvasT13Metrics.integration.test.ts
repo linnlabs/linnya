@@ -303,16 +303,23 @@ it('动画未结束时readiness后才draw到zero，旧readiness计数不能冒�
   } finally { await rm(data.root, { recursive: true, force: true }); }
 });
 
-it('上游complete标志不能代替实际首尾interval覆盖或真实焦点，原始证据不足则partial', async () => {
+it('上游complete不能代替首尾、连续链与焦点，只有IEEE量级舍入不构成采样洞', async () => {
   const data = await fixture();
   try {
-    const observation = CanvasT13ObservationSchema.parse(data.input.observations[0]);
-    if (!observation.frameWindow) throw new Error('Fixture window missing');
-    const original = observation.frameWindow;
-    for (const edge of ['head', 'tail', 'focus']) {
-      const samples = original.frames.samples.map((sample, index, all) => edge === 'head' && index === 0
-        ? { ...sample, interval: sample.interval - 1 }
-        : edge === 'tail' && index === all.length - 1 ? { ...sample, at: sample.at - 1 } : sample);
+    for (const edge of ['head', 'tail', 'focus', 'gap', 'overlap', 'roundoff']) {
+      const observationIndex = edge === 'roundoff' ? 1 : 0;
+      const observation = CanvasT13ObservationSchema.parse(data.input.observations[observationIndex]);
+      if (!observation.frameWindow) throw new Error('Fixture window missing');
+      const original = observation.frameWindow;
+      const samples = original.frames.samples.map((sample, index, all) => {
+        if (edge === 'head' && index === 0) return { ...sample, interval: sample.interval - 1 };
+        if (edge === 'tail' && index === all.length - 1) return { ...sample, at: sample.at - 1 };
+        if (edge === 'gap' && index === 1) return { ...sample, interval: sample.interval - 1 };
+        if (edge === 'overlap' && index === 1) return { ...sample, interval: sample.interval + 1 };
+        // 只扰动第二窗独有的尾interval；跨窗同一at的冲突仍必须严格拒绝。
+        if (edge === 'roundoff' && index === all.length - 1) return { ...sample, interval: sample.interval + Number.EPSILON * sample.at };
+        return sample;
+      });
       const frameWindow = { ...original, frames: { ...original.frames, samples, focused: edge !== 'focus' } };
       const exchanges = data.input.exchanges.map(exchange => {
         const parsed = CanvasT13FrameWindowSchema.safeParse(exchange.value);
@@ -320,9 +327,10 @@ it('上游complete标志不能代替实际首尾interval覆盖或真实焦点，
           ? { ...exchange, value: frameWindow } : exchange;
       });
       const result = buildCanvasT13Metrics({ ...data.input,
-        observations: [{ ...observation, frameWindow }, data.input.observations[1]], exchanges });
-      expect(result.kind).toBe('needs-evidence');
-      expect(result.diagnostics).toContain(edge === 'focus' ? 'frame_window_incomplete:5' : 'frame_window_boundaries_missing:5');
+        observations: data.input.observations.map((value, index) => index === observationIndex ? { ...observation, frameWindow } : value), exchanges });
+      expect(result.kind).toBe(edge === 'roundoff' ? 'complete' : 'needs-evidence');
+      if (edge !== 'roundoff') expect(result.diagnostics).toContain(edge === 'focus' ? 'frame_window_incomplete:5'
+        : edge === 'gap' || edge === 'overlap' ? 'frame_window_chain_missing:5' : 'frame_window_boundaries_missing:5');
     }
   } finally { await rm(data.root, { recursive: true, force: true }); }
 });
