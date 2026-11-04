@@ -1,6 +1,7 @@
 const bundledWorkspaceDependencyNames = Object.freeze([
   '@linnlabs/linnkit-provider-ai-sdk',
   '@linnya/provider-catalog',
+  '@linnya/markdown-document-core',
   '@linnya/renderer-ui',
   'parser-wasm',
 ]);

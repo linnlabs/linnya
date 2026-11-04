@@ -5,6 +5,7 @@ import { projectProductionPackageManifest } from './productionPackageManifest.mj
 const workspaceDependencies = {
   '@linnlabs/linnkit-provider-ai-sdk': 'workspace:*',
   '@linnya/provider-catalog': 'workspace:*',
+  '@linnya/markdown-document-core': 'workspace:*',
   '@linnya/renderer-ui': 'workspace:*',
   'parser-wasm': 'workspace:*',
 } as const;
