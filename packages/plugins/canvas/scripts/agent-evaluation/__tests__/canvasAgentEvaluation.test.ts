@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { CanvasCommandSchema, createCanvasPlainTextDocument, type CanvasSnapshot } from '../../../src/shared';
+import { CanvasCommandSchema, createCanvasPlainTextDocument, readCanvasElementText, type CanvasSnapshot } from '../../../src/shared';
 import { checkCanvas } from '../../../src/backend/features/canvasQuery';
 import { planCanvasCommit, type CanvasCommitState } from '../../../src/backend/features/canvasCommit';
 import { createCanvasAgentFixture } from '../functions/createCanvasAgentFixture';
@@ -14,6 +14,50 @@ function evidence(taskId: string, before: CanvasSnapshot, after: CanvasSnapshot)
     startedAt: 100, finishedAt: 200, before, after, check: checkCanvas(after), documentIds: {}, attempts: [{ phase: 'write', requestId: 'write1', validationAccepted: true, correction: false, responseFile: 'response.json' }], commits: [],
     controls: { approvalShown: false, approvalDecision: null, editedCardId: null, renderCount: 0, imageReadCount: 0, imageReadSequence: null }, metrics: {}, evidenceFiles: ['trace.json'] };
 }
+function reviewedResearchGraph() {
+  const headings = ['发现总览', '支持分组说明', '反对分组说明'];
+  const operations = [
+    ...Array.from({ length: 3 }, (_, index) => CanvasCommandSchema.parse({ op: 'addDocument', ref: `$source${index}`, width: 240, height: 120, data: { documentId: `research-${index}` } })),
+    ...headings.map(text => CanvasCommandSchema.parse({ op: 'addText', width: 240, height: 120, content: createCanvasPlainTextDocument(text) })),
+    ...Array.from({ length: 18 }, (_, index) => [
+      CanvasCommandSchema.parse({ op: 'addText', ref: `$finding${index}`, width: 240, height: 120, content: createCanvasPlainTextDocument(`独立观察${index}`) }),
+      CanvasCommandSchema.parse({ op: 'connect', from: `$finding${index}`, to: `$source${index % 3}` }),
+    ]).flat(),
+  ];
+  const plan = planCanvasCommit({ state: empty, operations, actor, origin: 'research', claims: [], now: 2 });
+  const after = snapshot(plan.state);
+  const organizationCards = headings.map(reason => {
+    const card = after.elements.find(element => element.type === 'text' && readCanvasElementText(element) === reason);
+    if (!card) throw new Error('Missing research organization fixture');
+    return { id: card.id, reason: `版面组织用途：${reason}，不增加独立观察` };
+  });
+  const review = { approved: true, reviewer: 'research reviewer', notes: '逐一核对所有发现和组织卡的语义、去重及来源', taskFacts: { taskId: 'T2', organizationCards } };
+  return { after, review, run: { ...evidence('T2', snapshot(empty), after), review } };
+}
+it('T2只排除明确审定的组织卡，18条真实发现仍逐一检查来源，漏线不能被当作标题忽略', () => {
+  const { after, review, run } = reviewedResearchGraph();
+  expect(evaluateCanvasAgentRun({ ...run, review: { approved: true, reviewer: review.reviewer, notes: review.notes } }).failures)
+    .toContainEqual(expect.objectContaining({ rule: '12-18-findings', detail: 'findings=21' }));
+  expect(evaluateCanvasAgentRun(run)).toMatchObject({ status: 'passed', failures: [] });
+  const edge = after.elements.find(element => element.type === 'edge');
+  if (!edge) throw new Error('Missing research source edge');
+  const unlinked = { ...after, elements: after.elements.filter(element => element.id !== edge.id) };
+  expect(evaluateCanvasAgentRun({ ...run, after: unlinked, check: checkCanvas(unlinked) }).failures)
+    .toContainEqual(expect.objectContaining({ rule: 'finding-source-links' }));
+  expect(evaluateCanvasAgentRun({ ...run, review: { ...review, approved: false } }).status).toBe('needs_review');
+});
+it('T2组织卡审阅不能排除重复身份、不存在或非文字卡，也不能挪到别题', () => {
+  const { after, review, run } = reviewedResearchGraph();
+  const document = after.elements.find(element => element.type === 'document');
+  if (!document) throw new Error('Missing research source document');
+  for (const organizationCards of [
+    [review.taskFacts.organizationCards[0], review.taskFacts.organizationCards[0]],
+    [{ id: 'c9999', reason: '不存在的标题' }],
+    [{ id: document.id, reason: '不能把来源文档排除' }],
+    [{ id: review.taskFacts.organizationCards[0].id, reason: '   ' }],
+  ]) expect(() => evaluateCanvasAgentRun({ ...run, review: { ...review, taskFacts: { taskId: 'T2', organizationCards } } })).toThrow();
+  expect(() => evaluateCanvasAgentRun({ ...run, taskId: 'T1' })).toThrow('只适用于T2');
+});
 it('scores a real scene/dialogue graph and rejects a result that silently rewrites an original scene', () => {
   const fixture = createCanvasAgentFixture('T7');
   const initial = planCanvasCommit({ state: empty, operations: fixture.userSeedOperations, actor, origin: 'seed', claims: [], now: 1 });

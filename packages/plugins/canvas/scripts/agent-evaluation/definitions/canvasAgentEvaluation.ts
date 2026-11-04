@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CanvasSnapshotSchema, CanvasCommitResultSchema, CanvasCheckReportSchema } from '@plugin/canvas/shared';
+import { CanvasCardIdSchema, CanvasSnapshotSchema, CanvasCommitResultSchema, CanvasCheckReportSchema } from '@plugin/canvas/shared';
 
 export const canvasAgentTaskIds = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12', 'T13'] as const;
 export const CanvasAgentTaskIdSchema = z.enum(canvasAgentTaskIds);
@@ -16,6 +16,11 @@ export const CanvasAgentEvaluationAttemptSchema = z.discriminatedUnion('phase', 
   z.object({ ...attempt, phase: z.literal('write'), requestId: z.string().min(1) }).strict(),
   z.object({ ...attempt, phase: z.literal('dry-run'), requestId: z.string().min(1).nullable() }).strict(),
 ]);
+const CanvasT2ReviewFactsSchema = z.object({
+  taskId: z.literal('T2'),
+  organizationCards: z.array(z.object({ id: CanvasCardIdSchema, reason: z.string().trim().min(1) }).strict())
+    .refine(cards => new Set(cards.map(card => card.id)).size === cards.length, '组织卡身份不得重复'),
+}).strict();
 /** 输入由可信验收runner收集，不接纳模型自己报告的成功/点击/计时。 */
 export const CanvasAgentEvaluationRunSchema = z.object({
   fixtureVersion: z.literal(1), taskId: CanvasAgentTaskIdSchema,
@@ -31,7 +36,16 @@ export const CanvasAgentEvaluationRunSchema = z.object({
   controls: z.object({ approvalShown: z.boolean(), approvalDecision: z.enum(['allow', 'deny']).nullable(), editedCardId: z.string().nullable(), renderCount: z.number().int().nonnegative(), imageReadCount: z.number().int().nonnegative(), imageReadSequence: z.number().int().nonnegative().nullable() }).strict(),
   metrics: z.object({ layoutWorkerP50Ms: z.number().nonnegative().optional(), commitToFrameP95Ms: z.number().nonnegative().optional(), averageFps: z.number().nonnegative().optional(), frameP95Ms: z.number().nonnegative().optional(), worstFrameMs: z.number().nonnegative().optional() }).strict(),
   evidenceFiles: z.array(z.string().min(1)).min(1),
-  review: z.object({ approved: z.boolean(), reviewer: z.string().min(1), notes: z.string().min(1) }).strict().optional(),
-}).strict().refine(run => run.finishedAt >= run.startedAt, '完成时间必须不早于开始时间').refine(run => run.check.sequence === run.after.sequence, 'check必须对应结果快照的同一sequence');
+  review: z.object({ approved: z.boolean(), reviewer: z.string().min(1), notes: z.string().min(1), taskFacts: CanvasT2ReviewFactsSchema.optional() }).strict().optional(),
+}).strict().refine(run => run.finishedAt >= run.startedAt, '完成时间必须不早于开始时间').refine(run => run.check.sequence === run.after.sequence, 'check必须对应结果快照的同一sequence')
+  .superRefine((run, context) => {
+    const facts = run.review?.taskFacts;
+    if (!facts) return;
+    if (run.taskId !== facts.taskId) context.addIssue({ code: 'custom', path: ['review', 'taskFacts', 'taskId'], message: '组织卡审阅只适用于T2' });
+    const textIds = new Set(run.after.elements.filter(element => element.type === 'text').map(element => element.id));
+    facts.organizationCards.forEach((card, index) => {
+      if (!textIds.has(card.id)) context.addIssue({ code: 'custom', path: ['review', 'taskFacts', 'organizationCards', index, 'id'], message: '组织卡必须是结果快照中真实存在的文字卡' });
+    });
+  });
 export type CanvasAgentEvaluationRun = z.infer<typeof CanvasAgentEvaluationRunSchema>;
 export interface CanvasAgentAssertion { readonly rule: string; readonly passed: boolean; readonly detail: string }

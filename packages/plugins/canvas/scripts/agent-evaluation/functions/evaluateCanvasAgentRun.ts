@@ -18,7 +18,9 @@ const taskEvaluators: Record<CanvasAgentTaskId, (run: CanvasAgentEvaluationRun) 
   },
   T2(run) {
     const after = cards(run.after);
-    const findings = after.filter(card => card.type === 'text'), documents = after.filter(card => card.type === 'document');
+    // 标题/分组说明不是独立发现；只排除可信审阅明确说明的卡，不能用有无来源线猜角色。
+    const organizations = new Set(run.review?.taskFacts?.organizationCards.map(card => card.id) ?? []);
+    const findings = after.filter(card => card.type === 'text' && !organizations.has(card.id)), documents = after.filter(card => card.type === 'document');
       return [assertion('12-18-findings', findings.length >= 12 && findings.length <= 18, `findings=${findings.length}`), assertion('finding-source-links', findings.every(card => documents.some(document => linked(run.after, card.id, document.id))), '每发现指向来源')];
   },
   T3(run) {
