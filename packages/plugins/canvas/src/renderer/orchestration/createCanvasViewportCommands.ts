@@ -9,6 +9,7 @@ export function createCanvasViewportCommands(options: {
   readonly select: (ids: readonly CanvasCardId[]) => Promise<boolean>; readonly selectEdge: (id: Extract<CanvasElement, { type: 'edge' }>['id']) => Promise<boolean>;
 }) {
   const update = () => { options.setCamera(options.kernel.readCamera()); options.refresh(); };
+  const revealRectangle = (card: CanvasRectangle) => { options.kernel.setCamera(canvasRevealCardCamera({ card, camera: options.kernel.readCamera(), width: options.kernel.canvas.clientWidth, height: options.kernel.canvas.clientHeight })); update(); };
   const fly = (rectangles: readonly CanvasRectangle[]) => { const camera = canvasFitCamera(rectangles, { width: options.kernel.canvas.clientWidth, height: options.kernel.canvas.clientHeight }); if (camera) { options.kernel.animateCamera(camera, 320); update(); } };
   const locate = (ids: readonly CanvasElementId[]) => {
     options.kernel.finishTransitions(canvasFocusCardIds(options.elements(), ids));
@@ -18,8 +19,8 @@ export function createCanvasViewportCommands(options: {
     });
     fly(rectangles);
   };
-  return { locate,
-    reveal(id: CanvasCardId) { const card = options.cards().find(candidate => candidate.id === id); if (!card) return; options.kernel.finishTransitions([id]); options.kernel.setCamera(canvasRevealCardCamera({ card, camera: options.kernel.readCamera(), width: options.kernel.canvas.clientWidth, height: options.kernel.canvas.clientHeight })); update(); },
+  return { locate, revealRectangle,
+    reveal(id: CanvasCardId) { const card = options.cards().find(candidate => candidate.id === id); if (!card) return; options.kernel.finishTransitions([id]); revealRectangle(card); },
     async selectContext(input: { readonly id: CanvasCardId | null; readonly edgeId?: Extract<CanvasElement, { type: 'edge' }>['id'] | null }) {
       if (input.edgeId) return options.selectEdge(input.edgeId);
       if (input.id && !options.selected().some(card => card.id === input.id)) return options.select([input.id]);
