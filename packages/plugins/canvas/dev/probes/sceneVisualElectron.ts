@@ -10,17 +10,19 @@ export async function verifySceneVisual(win: BrowserWindow, output: string, eval
     const images = z.object({ before: z.string(), middle: z.string(), after: z.string(), dpr: z.number() });
     const move = images.passthrough().parse(await evaluate(win.webContents, 'window.prepareCanvasSceneVisualProbe()'));
     const opacity = z.object({ initial: z.string(), middle: z.string(), opaque: z.string(), removed: z.string(), revealed: z.string(), dpr: z.number() })
-      .parse(await evaluate(win.webContents, 'window.prepareCanvasSceneOpacityVisualProbe()'));
+      .passthrough().parse(await evaluate(win.webContents, 'window.prepareCanvasSceneOpacityVisualProbe()'));
     const pixel = (url: string, dpr: number, x: number, y: number) => {
       const image = nativeImage.createFromDataURL(url), bytes = image.toBitmap(), i = (Math.round(y * dpr) * image.getSize().width + Math.round(x * dpr)) * 4;
       return { r: bytes[i + 2], g: bytes[i + 1], b: bytes[i] };
     };
     const initial = pixel(opacity.initial, opacity.dpr, 100, 100), middle = pixel(opacity.middle, opacity.dpr, 100, 100), opaque = pixel(opacity.opaque, opacity.dpr, 100, 100);
     const removed = pixel(opacity.removed, opacity.dpr, 100, 100), revealed = pixel(opacity.revealed, opacity.dpr, 100, 100);
-    if (initial.r < 180 || initial.b < 180 || initial.g > 80 || middle.g <= initial.g || middle.g >= opaque.g
-      || opaque.g < 230 || removed.g < 150 || removed.r > 100 || revealed.r < 180 || revealed.b < 180 || revealed.g > 50) throw new Error(`scene_actual_alpha_pixels_mismatch:${JSON.stringify({ initial, middle, opaque, removed, revealed })}`);
     for (const name of ['before', 'middle', 'after'] as const) await writeFile(path.join(output, `scene-move-${name}.png`), nativeImage.createFromDataURL(move[name]).toPNG());
     for (const name of ['initial', 'middle', 'opaque', 'removed', 'revealed'] as const) await writeFile(path.join(output, `scene-opacity-${name}.png`), nativeImage.createFromDataURL(opacity[name]).toPNG());
+    await writeFile(path.join(output, 'scene-opacity.json'), JSON.stringify({ initial, middle, opaque, removed, revealed,
+      logicalTimes: opacity.logicalTimes, stats: opacity.stats, dpr: opacity.dpr }, null, 2));
+    if (initial.r < 180 || initial.b < 180 || initial.g > 80 || middle.g <= initial.g || middle.g >= opaque.g
+      || opaque.g < 230 || removed.g < 150 || removed.r > 100 || revealed.r < 180 || revealed.b < 180 || revealed.g > 50) throw new Error(`scene_actual_alpha_pixels_mismatch:${JSON.stringify({ initial, middle, opaque, removed, revealed })}`);
     const map = z.object({ before: z.string(), middle: z.string(), after: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasSceneMapVisualProbe()'));
     const darkness = (url: string) => { const pixels = nativeImage.createFromDataURL(url).toBitmap(); let sum = 0;
       for (let i = 0; i < pixels.length; i += 4) sum += Math.max(0, 180 - Math.max(pixels[i], pixels[i + 1], pixels[i + 2])); return sum; };
@@ -58,12 +60,16 @@ export async function verifySceneVisual(win: BrowserWindow, output: string, eval
         dpr: failedFirstBody.data.dpr, facts: failedFirstBody.data.facts }, null, 2));
       throw new Error(failedFirstBody.data.failure);
     }
-    const firstBody = z.object({ uploaded: receipt, first: receipt, complete: receipt, sceneStart: receipt, sceneFirst: receipt,
-      fadeImage: z.string(), sceneImage: z.string(), dpr: z.number() }).parse(firstBodyRaw);
+    const firstBody = z.object({ uploaded: receipt, first: receipt, complete: receipt, sceneStart: receipt, sceneFirst: receipt, sceneComplete: receipt,
+      fadeImage: z.string(), sceneImage: z.string(), dpr: z.number(), logicalTimes: z.unknown() }).parse(firstBodyRaw);
     const fadePixel = pixel(firstBody.fadeImage, firstBody.dpr, 60, 80), scenePixel = pixel(firstBody.sceneImage, firstBody.dpr, 60, 80);
-    if (fadePixel.g <= 32 || scenePixel.g <= 0) throw new Error('first_body_receipt_has_no_visible_current_pixels');
     await writeFile(path.join(output, 'first-body-fade.png'), nativeImage.createFromDataURL(firstBody.fadeImage).toPNG());
     await writeFile(path.join(output, 'first-body-scene.png'), nativeImage.createFromDataURL(firstBody.sceneImage).toPNG());
+    await writeFile(path.join(output, 'first-body-receipts.json'), JSON.stringify({ uploaded: firstBody.uploaded, first: firstBody.first,
+      complete: firstBody.complete, sceneStart: firstBody.sceneStart, sceneFirst: firstBody.sceneFirst, sceneComplete: firstBody.sceneComplete,
+      fadePixel, scenePixel, logicalTimes: firstBody.logicalTimes }, null, 2));
+    if (fadePixel.g <= 32 || scenePixel.g <= 0 || !firstBody.first.firstPresented || firstBody.first.rendered
+      || !firstBody.complete.rendered || !firstBody.sceneFirst.firstPresented || firstBody.sceneFirst.rendered || !firstBody.sceneComplete.rendered) throw new Error('first_body_receipt_has_no_visible_current_pixels');
     const metadata = z.object({ before: z.string(), renamed: z.string(), thumbnail: z.string(), identity: z.string(), dpr: z.number() })
       .parse(await evaluate(win.webContents, 'window.prepareCanvasDocumentMetadataProbe()'));
     const oldInk = darkness(metadata.before), newInk = darkness(metadata.renamed), thumbnailPixel = pixel(metadata.thumbnail, metadata.dpr, 32, 32), identityPixel = pixel(metadata.identity, metadata.dpr, 32, 32);
@@ -83,5 +89,8 @@ export async function verifySceneVisual(win: BrowserWindow, output: string, eval
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     const reduced: unknown = await evaluate(win.webContents, 'window.finishCanvasReducedSceneProbe()');
     return { move: { start: move.start, middlePosition: move.middlePosition, frozen: move.frozen, camera: move.camera, stats: move.stats }, opacity: { initial, middle, opaque, removed, revealed }, mapInk, identityInk, outsideInk, append: { ...append.appended, oldPixel, keptPixel, addedPixel, leftClosed: append.leftClosed, rightClosed: append.rightClosed }, firstBody: { uploaded: firstBody.uploaded, first: firstBody.first, complete: firstBody.complete, sceneStart: firstBody.sceneStart, sceneFirst: firstBody.sceneFirst, fadePixel, scenePixel }, metadata: { oldInk, newInk, thumbnailPixel, identityPixel }, cold: { initial: cold.initial, current: cold.current, initialCardPixel, movedCardPixel }, reduced };
-  } finally { await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [] }); win.webContents.debugger.detach(); }
+  } finally {
+    try { await evaluate(win.webContents, 'window.disposeCanvasSceneProbe()'); }
+    finally { await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [] }); win.webContents.debugger.detach(); }
+  }
 }
