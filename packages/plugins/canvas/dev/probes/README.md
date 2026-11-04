@@ -2,6 +2,8 @@
 
 本入口验证真实 Electron 的 HTML-in-Canvas 排版、绘制与 WebGL 上传，不参与插件发布。它使用真实 Tiptap 文档树、Editor 排版 token、中文/拉丁文字/粗体/列表与约五万字长卡，不把手画文字当作 DOM 光栅化证据。
 
+DOM/bitmap 的 Windows LCD 与灰阶 AA 区分、真实逐字簇/行边界、原 raw 指标和损坏反例门禁由 [文字视觉 oracle](./visualOracle/README.md) 拥有。旧 PNG 没有新 metadata 时只保留诊断，不补造通过。
+
 从仓库根完成冻结安装后运行：
 
 ```bash

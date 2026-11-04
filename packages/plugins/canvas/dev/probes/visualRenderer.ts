@@ -9,6 +9,7 @@ import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
 import '../../src/renderer/styles/canvas.css';
+import { applyVisualNegative, collectVisualTextLayout, type VisualNegative } from './visualOracle';
 
 const source = { kind: 'user', conversationId: null, runId: null };
 const content = { type: 'doc', content: [
@@ -31,7 +32,7 @@ const content = { type: 'doc', content: [
 ] };
 
 let previousKernel: CanvasKernel | null = null;
-async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', color: CanvasColor = 'white') {
+async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', color: CanvasColor = 'white', negative?: VisualNegative) {
   previousKernel?.destroy(); previousKernel = null;
   document.body.replaceChildren();
   document.body.style.cssText = 'margin:0;background:#888';
@@ -53,7 +54,16 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', colo
   const measuredHeights = measurements.map(result => result.status === 'fulfilled' ? result.value : null);
   if (measurements[0].status !== 'fulfilled' || measurements[1].status !== 'fulfilled' || measurements[2].status !== 'fulfilled'
     || measurements[3].status !== 'rejected' || measurements[0].value <= measurements[2].value || measurements[0].value < measurements[1].value) throw new Error('batch_measurement_width_or_failure_isolation_mismatch');
-  const rasters = await rasterizer.rasterizeBatch(Array.from({ length: 8 }, () => ({ element: createCardSurface(card, request), width: 360, height: 500, scale: devicePixelRatio })));
+  await document.fonts.ready;
+  const paperColor = getComputedStyle(reference).backgroundColor;
+  const referenceLayout = collectVisualTextLayout(reference, paperColor);
+  const sources = Array.from({ length: 8 }, () => createCardSurface(card, request));
+  const mutation = negative ? sources.map(element => applyVisualNegative(element, negative, referenceLayout)) : null;
+  const rasters = await rasterizer.rasterizeBatch(sources.map(element => ({ element, width: 360, height: 500, scale: devicePixelRatio })));
+  // 返回时真实paint源clone仍在staging；在dispose之前读它们，不用另造“近似相同”的测量DOM。
+  const paintedSources = Array.from(staging.querySelectorAll<HTMLElement>('.markdown-document-content'));
+  if (paintedSources.length !== sources.length) throw new Error('visual_painted_source_count_mismatch');
+  const rasterLayouts = paintedSources.map(element => collectVisualTextLayout(element, paperColor));
   const raster = rasters[7];
   const canvas = document.createElement('canvas');
   canvas.style.cssText = `position:absolute;left:420px;top:20px;width:360px;height:500px;background:${background}`;
@@ -80,7 +90,7 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', colo
   await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   const rectangle = (element: HTMLElement) => { const { x, y, width, height } = element.getBoundingClientRect(); return { x, y, width, height }; };
   return { viewportWidth: innerWidth, viewportHeight: innerHeight, dpr: devicePixelRatio, reference: rectangle(reference), raster: rectangle(canvas),
-    pixi: rectangle(kernelHost), ghostY, measuredHeights };
+    pixi: rectangle(kernelHost), ghostY, measuredHeights, textLayout: { reference: referenceLayout, rasters: rasterLayouts }, negative: negative ?? null, mutation };
 }
 Object.defineProperty(window, 'prepareCanvasVisualProbe', { value: prepare });
 

@@ -15,7 +15,8 @@
     "./visibilityRenderer.ts",
     "./visibilityElectron.ts",
     "./visibleUpdateRenderer.ts",
-    "./visibleUpdateElectron.ts"
+    "./visibleUpdateElectron.ts",
+    "./__tests__/visualTextOracle.test.ts"
   ],
   "exclude": []
 }

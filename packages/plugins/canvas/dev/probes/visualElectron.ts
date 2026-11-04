@@ -6,9 +6,12 @@ import path from 'node:path';
 import { z } from 'zod';
 import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
 import { captureCanvasVisualPage } from './captureCanvasVisualPage';
+import { VisualTextLayoutSchema, VisualNegativeSchema, evaluateVisualTextOracle, verifyVisualTextNegatives, visualImageFromBgra, visualTextEnvironment } from './visualOracle';
 
 const rectangle = z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() });
-const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(), dpr: z.number(), reference: rectangle, raster: rectangle, pixi: rectangle, ghostY: z.number(), measuredHeights: z.array(z.number().nullable()) });
+const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(), dpr: z.number(), reference: rectangle, raster: rectangle, pixi: rectangle, ghostY: z.number(), measuredHeights: z.array(z.number().nullable()),
+  textLayout: z.object({ reference: VisualTextLayoutSchema, rasters: z.array(VisualTextLayoutSchema) }),
+  negative: VisualNegativeSchema.nullable(), mutation: z.array(z.unknown()).nullable() });
 const visualViewport = z.object({ scrollX: z.number(), scrollY: z.number(), width: z.number().positive(), height: z.number().positive(),
   windowWidth: z.number().positive(), windowHeight: z.number().positive(), dpr: z.number().positive() });
 // clientWidth/Height是整数；Windows原生滚动条在页面缩放后可占半个CSS像素，必须保留真实分数视口。
@@ -61,6 +64,22 @@ async function captureComparison(win: BrowserWindow, state: z.infer<typeof prepa
   return { screenshot, facts };
 }
 
+async function verifyTextNegatives(win: BrowserWindow) {
+  const result = await verifyVisualTextNegatives(async negative => {
+    const state = prepared.parse(await evaluate(win.webContents, `window.prepareCanvasVisualProbe('light','paper','white',${JSON.stringify(negative)})`));
+    const { screenshot } = await captureComparison(win, state, `negative-${negative}`);
+    const crop = async (name: string, rect: z.infer<typeof rectangle>) => {
+      const image = screenshot.crop({ x: Math.round(rect.x * state.dpr), y: Math.round(rect.y * state.dpr),
+        width: Math.round(rect.width * state.dpr), height: Math.round(rect.height * state.dpr) });
+      await writeFile(path.join(output, `negative-${negative}-${name}.png`), image.toPNG());
+      const size = image.getSize(); return visualImageFromBgra(image.toBitmap(), size.width, size.height);
+    };
+    return { reference: await crop('dom', state.reference), raster: await crop('raster', state.raster), pixi: await crop('pixi', state.pixi), layout: state.textLayout };
+  });
+  await writeFile(path.join(output, 'text-oracle-negatives.json'), JSON.stringify(result, null, 2));
+  return result;
+}
+
 const fadeState = z.object({ image: z.string(), dpr: z.number(), elapsed: z.number(), oldWidth: z.number(), blueWidth: z.number(), greenWidth: z.number(),
   rendered: z.boolean(), reduced: z.boolean(), stats: z.object({ fadingCards: z.number(), retiringBytes: z.number(), bitmapBytes: z.number(), bitmapBudgetBytes: z.number() }) });
 async function verifyFade(win: BrowserWindow) {
@@ -102,7 +121,10 @@ async function run() {
   try {
     await win.loadFile(path.join(output, 'index.html'));
     win.webContents.setZoomFactor(2);
+    // 所有正例都经过局部检查，即使raw95已通过也不绕开单字/标点缺失检测。
+    const negativeQualification = await verifyTextNegatives(win);
     const reports = [];
+    const failedCases = negativeQualification.reports.filter(report => !report.qualifiedEnvironment || !report.rasterRejected || !report.pixiRejected).map(report => `negative:${report.negative}`);
     for (const theme of ['light', 'dark']) for (const material of ['paper', 'card']) for (const color of material === 'paper' ? ['white', 'red', 'green'] : ['white']) {
       const state = prepared.parse(await evaluate(win.webContents, `window.prepareCanvasVisualProbe(${JSON.stringify(theme)},${JSON.stringify(material)},${JSON.stringify(color)})`));
       const { screenshot, facts } = await captureComparison(win, state, `${theme}-${material}-${color}`);
@@ -154,14 +176,22 @@ async function run() {
       const inkIou = intersection / union;
       const pixiIou = pixiIntersection / pixiUnion;
       const ghostPreservation = preservedText / crossedText;
-      const report = { theme, material, color, dpr: state.dpr, size: dom.getSize(), referenceInk, rasterInk, pixiInk, inkIou, pixiIou, crossedText, ghostPreservation, measuredHeights: state.measuredHeights, authored };
+      const imageHeight = dom.getSize().height;
+      const textOracle = evaluateVisualTextOracle({ reference: visualImageFromBgra(a, width, imageHeight), raster: visualImageFromBgra(b, width, imageHeight),
+        pixi: visualImageFromBgra(c, width, imageHeight), layout: state.textLayout });
+      const qualifiedEnvironment = visualTextEnvironment(state.textLayout.reference) === negativeQualification.referenceEnvironment;
+      const report = { theme, material, color, dpr: state.dpr, size: dom.getSize(), referenceInk, rasterInk, pixiInk, inkIou, pixiIou, crossedText, ghostPreservation,
+        measuredHeights: state.measuredHeights, authored, raw95: inkIou >= 0.95 && pixiIou >= 0.95, textOraclePass: textOracle.pass, qualifiedEnvironment };
       reports.push(report);
+      await writeFile(path.join(output, `${theme}-${material}-${color}-text-oracle.json`), JSON.stringify({ report, textOracle, negativeQualification: negativeQualification.pass }, null, 2));
       await writeFile(path.join(output, `${theme}-${material}-${color}-dom.png`), dom.toPNG());
       await writeFile(path.join(output, `${theme}-${material}-${color}-raster.png`), raster.toPNG());
       await writeFile(path.join(output, `${theme}-${material}-${color}-pixi.png`), pixi.toPNG());
-      if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || inkIou < 0.95 || pixiIou < 0.95 || crossedText < 10 || ghostPreservation < 0.95
-        || Math.min(authored.dom, authored.raster, authored.pixi) < 10) throw new Error(`visual_content_mismatch:${JSON.stringify(report)}`);
+      if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || !textOracle.pass || !negativeQualification.pass || !qualifiedEnvironment || crossedText < 10 || ghostPreservation < 0.95
+        || Math.min(authored.dom, authored.raster, authored.pixi) < 10) failedCases.push(`${theme}-${material}-${color}`);
     }
+    await writeFile(path.join(output, 'text-comparison-results.json'), JSON.stringify({ reports, failedCases, negatives: negativeQualification.pass }, null, 2));
+    if (failedCases.length) throw new Error(`visual_content_mismatch:${JSON.stringify(failedCases)}`);
     const line = z.object({ dpr: z.number(), image: z.string(), half: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasLineVisualProbe()'));
     const lineImage = nativeImage.createFromDataURL(line.image), linePixels = lineImage.toBitmap(), lineWidth = lineImage.getSize().width;
     let dashInk = 0, dashGap = 0;
