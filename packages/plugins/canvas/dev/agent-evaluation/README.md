@@ -12,7 +12,7 @@
 
 正式时延分为`geometry`和`body.frame`：前者只证明包含该序号的几何draw，后者还要求当前可见正文的相同环境/内容身份已上传且随后实际绘制，并等待精确倍率稳定。通过正式changes返回的delta逐sequence记录该批真实卡片ID/revision，不额外IPC读取或把整份snapshot差异算给一批；补拉只有snapshot时标记unattributed。`visibleBodyIds`是实际可见body交集，overview/thumbnail/outside均不冒充正文，隐藏、失败、5秒未完成和被后续版本替代保留各自事实。最终500卡指标必须核对交集数量和supersededCardIds，不能只用push总计数。
 
-每批`frames`只保存收到正式commit通知后、等待几何/正文完成期间的实际帧间隔。即使模型随后思考数分钟，这段工作窗也不会被全局34秒RAF环形缓存的空闲帧覆盖或稀释；无样本保留null，不能填成120FPS。单帧间隔可能跨过提交起点，因此这是明确标注的保守工作窗诊断。
+每批`row.frames`是实时订阅诊断：只保存收到正式commit通知后、终态回调结束订阅前已完成的帧间隔，不回溯此前的跨commit首帧，也可能缺少终态之后才完成的跨尾帧。因此不能用它判定正式40轮的完整工作窗FPS/P95/最慢帧。正式帧指标通过下述`frame-window`固定查询`[committedAt, body.frame.observedAt]`，等真实首尾完整interval齐全后再保存证据、reset与释放下一轮；没有强制draw或把晚到空闲帧扩大进统计窗。原实时诊断仍保留，无样本为null，不填120FPS。
 
 初开没有commit事件，可信客户端可用typed只读`readiness`读取指定卡片的实际mode/status/revision、正式draw计数与Renderer UTC时刻，并记录当时相机、屏幕DPR、页面可见性和主题/字体环境。此状态复用正式Surface的当前内容与排版环境校验，不暴露正文key；overview/outside不冒充body。客户端核对返回documentId仍为固定挂载文档，再记录mount请求到实际首个body与全部可见body终态的观测上界，包含HTTP桥等待，不能当作纯kernel耗时。没有可见body、隐藏、失败或超时必须保留状态，不能填0或只用renders判成功。
 
@@ -22,4 +22,4 @@ T13预先固定视口观测协议：先保留旧2000卡fit后的自然视口事�
 
 无选区的“显示全部”同步完成当前卡片动效，再fit；响应从同次stats读取`sceneTransitions`。若这一同步baseline已为0，则此后的`renders>baseline`且目标当前revision/可见性正确，已能证明归零之后实际draw，不再要求静止引擎额外画一帧。若baseline非0，仍须保留之后归零的观测基线，再等待真实draw；不能用首次HTTP读到0之前的绘制猜测先后。带elementIds的定位可能保留其他卡动效，不套用全图fit的0假设。
 
-`frame-window`只读查询显式UTC `since`至`until`，复用4096条有界RAF样本，不启动新计时器或绘制。T13按本次delta/fit至确认变化后的实际draw观测时刻查询；不能用此前已结束的`no-visible-body`提交工作窗代替。返回原始UTC帧时刻；主统计取与工作窗相交的完整间隔，并列出`boundarySamples`，以免剔除跨起点首帧时漏掉真正卡顿。它是保守完整帧统计，可能包含首尾少量窗外时间；另列`contained`仅供诊断，不能用它隐藏边界长帧。`retentionComplete=false`说明窗口被重置、淘汰或尚未采到终点的帧边界，不能将剩余样本当作完整工作窗；无样本保留null。缓存随挂载生命周期清空，返回文档身份须与当前固定文档相同；页面可见/锁屏资格仍独立记录，RAF帧间隔不冒充GPU实际draw时间。
+`frame-window`只读查询显式UTC `since`至`until`，复用4096条有界RAF样本，不启动新计时器或绘制。T13按本次delta/fit至确认变化后的实际draw观测时刻查询；不能用此前已结束的`no-visible-body`提交工作窗代替。返回原始UTC帧时刻；主统计取与工作窗相交的完整间隔，并列出`boundarySamples`，以免剔除跨起点首帧时漏掉真正卡顿。它是保守完整帧统计，可能包含首尾少量窗外时间；另列`contained`仅供诊断，不能用它隐藏边界长帧。`retentionComplete`同时要求真实首sample起点不晚于since、末sample终点不早于until；初始化首个RAF之前、空样本、窗口被reset/淘汰或尾帧未完成都保持false。隐藏会推进有效retention边界且不回退，旧raw仍供诊断，不能把隐藏前后的不连续interval合称完整窗口。collector独立复核相邻链无洞或重叠，只容`2*Number.EPSILON*最大数值量级`的IEEE表示舍入，不是可调的毫秒质量容差。采集端可在原边界不变的前提下有界只读轮询，晚RAF只闭合端点，不改变统计窗；超时保留缺证据。缓存随挂载生命周期清空，返回文档身份须与当前固定文档相同；页面可见/锁屏资格仍独立记录，RAF帧间隔不冒充GPU实际draw时间。

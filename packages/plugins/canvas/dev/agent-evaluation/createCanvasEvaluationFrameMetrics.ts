@@ -16,12 +16,16 @@ export function createCanvasEvaluationFrameMetrics() {
     if (disposed) return;
     if (document.visibilityState === 'visible') {
       if (previous !== null) {
-        if (count === times.length) retainedSince = performance.timeOrigin + times[index];
+        if (count === times.length) retainedSince = Math.max(retainedSince, performance.timeOrigin + times[index]);
         const interval = time - previous; times[index] = time; intervals[index] = interval; index = (index + 1) % times.length; count = Math.min(count + 1, times.length);
         for (const listener of listeners) listener({ at: performance.timeOrigin + time, interval });
       }
       previous = time;
-    } else previous = null;
+    } else {
+      previous = null;
+      // 隐藏期间没有完整RAF链；保留旧raw供诊断，但有效边界不能被后续ring淘汰退回。
+      retainedSince = Math.max(retainedSince, performance.timeOrigin + time);
+    }
     frame = requestAnimationFrame(sample);
   };
   frame = requestAnimationFrame(sample);
@@ -38,8 +42,11 @@ export function createCanvasEvaluationFrameMetrics() {
       const samples = recorded.filter(sample => sample.at > since && sample.at - sample.interval < until);
       const contained = samples.filter(sample => sample.at - sample.interval >= since && sample.at <= until);
       const capturedThrough = recorded.length ? recorded[recorded.length - 1].at : retainedSince;
+      const first = samples[0], last = samples[samples.length - 1];
+      // reset时刻不等于首个RAF基线；元数据已覆盖时段，也可能仍缺真正跨首尾的完整interval。
+      const boundariesCovered = !!first && !!last && first.at - first.interval <= since && last.at >= until;
       return { kind: 'animation-frame-callbacks-in-explicit-window', since, until, observedAt, retainedSince,
-        capturedThrough, retentionComplete: !disposed && since >= retainedSince && until <= capturedThrough,
+        capturedThrough, retentionComplete: !disposed && since >= retainedSince && until <= capturedThrough && boundariesCovered,
         visibility: document.visibilityState, focused: document.hasFocus(), ...summarize(samples),
         boundarySamples: samples.filter(sample => sample.at - sample.interval < since || sample.at > until), contained: summarize(contained) };
     },
