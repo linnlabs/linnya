@@ -13,7 +13,7 @@ export function createCanvasDocumentSurface(presentation: CanvasDocumentSurfaceP
   const available = presentation !== undefined && (presentation.status === undefined || presentation.status === 'ready');
   if (available && presentation.image) {
     const image = document.createElement('img'); image.src = presentation.image; image.alt = presentation.title ?? ''; element.append(image);
-  } else if (available && presentation.summary) {
+  } else if ((available || presentation?.status === 'plugin_unavailable') && presentation.summary) {
     const summary = document.createElement('p'); summary.className = 'canvas-document-summary'; summary.textContent = presentation.summary; element.append(summary);
   }
   const message = presentation?.status && canvasDocumentPreviewMessage(presentation.status);

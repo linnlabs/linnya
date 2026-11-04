@@ -5,4 +5,5 @@ export { resolveCanvasDisplayImages, clearCanvasDisplayImageCache } from './func
 
 export { createCanvasImageSurface } from './functions/createCanvasImageSurface';
 export { createCanvasDocumentSurface, canvasDocumentPreviewMessage } from './functions/createCanvasDocumentSurface';
+export { projectCanvasDocumentSurface } from './functions/projectCanvasDocumentSurface';
 export type { CanvasDocumentSurfacePresentation } from './definitions/canvasDocumentSurface';

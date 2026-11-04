@@ -121,6 +121,8 @@ Agent几何动效只消费正式增量中每张卡最后一次来源；用户提
 
 ## 制品闭包
 
+独立只读CLI还支持按显式项目、对话和request-id读取持久回执。它与App facade复用`agentChanges/queries.ts`；正式制品门禁仅允许该只读闭包，仍禁止审批、写入与历史运行态进入CLI。查看回执不重新执行原命令，也不推测已丢失的模型输出。
+
 `pnpm run smoke:plugin:canvas:artifact`先构建schemas和Canvas独立制品，再用临时隔离根验证checksum/content BOM、正式disk Backend加载、Skill/worker/migration发现、无数据库的CLI help、编译CLI真实只读SQLite与写入拒绝、编译Node计算worker及正式Host HiddenWorker的PNG/JPEG/取消/字体/标签/图片路径。临时制品根与数据库测试后删除；Canvas不进入默认官方发行目标。
 
 三个Node entry各有独立esbuild元数据，main/CLI/compute初始预算分别3/3.2/5 MiB。ELK只进入计算worker；main/CLI拒绝Pixi、Renderer和Host业务装配。CLI仅内联两个公开只读SDK入口，虚拟Host specifier不得留到独立进程；native模块保留懒加载并通过正式CJS Host白名单解析。公开barrel产生的空初始化闭包可保留，但输出AST必须证明未保留可执行写函数体。Renderer、HTML worker、CSS与字体引用均验证实际zip闭包，不把开发探针、元数据或源码混进制品。独立读取使用产品提供的Electron Node ABI，help也可由普通Node运行。

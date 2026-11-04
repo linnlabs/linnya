@@ -40,3 +40,8 @@ it('权限状态优先于迟到预览，不可访问卡和缺失metadata不泄�
   const missing = createCardSurface(card, request);
   expect(missing.textContent).toContain('文档当前不可访问'); expect(missing.textContent).not.toContain('internal-target-id');
 });
+it('停用插件显示当前授权文本快照及恢复提示，仍不显示旧封面', () => {
+  const element = createCardSurface(card, { ...request, documents: { 'internal-target-id': { title: '仍在项目中的文档', status: 'plugin_unavailable', previewStatus: 'plugin_unavailable', summary: '已保存的文本快照', image: 'data:image/png;base64,YWJj' } } });
+  expect(element.querySelector('.canvas-document-summary')?.textContent).toBe('已保存的文本快照');
+  expect(element.querySelector('img')).toBeNull(); expect(element.textContent).toContain('启用或安装');
+});
