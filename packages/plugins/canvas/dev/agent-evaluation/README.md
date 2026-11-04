@@ -20,4 +20,6 @@ Agent正文观测分别保存`body.firstVisible`（首个当前修订新纹理al
 
 T13预先固定视口观测协议：先保留旧2000卡fit后的自然视口事实；每个正式Agent delta只调用一次既有“显示全部”，不改fixture、提示或持久数据。`fit`在任何await之前返回更新后的相机、draw计数与Renderer UTC；该计数只作等待基线。新增ID当前revision必须全部非outside、sceneTransitions归零，并且在归零观测之后再有一次真实draw，才记录从Backend committedAt到该观测的保守上界，明确包括导航与HTTP开销、实际LOD和可见交集。overview geometry不冒充body，缺少正文要求或可见变化分别保留未要求/缺证；独立50/500正文批不能替T13填值。每批保留真实样本数，N=1只报告该次样本及工作窗帧分位，不称稳定总体P95。
 
+无选区的“显示全部”同步完成当前卡片动效，再fit；响应从同次stats读取`sceneTransitions`。若这一同步baseline已为0，则此后的`renders>baseline`且目标当前revision/可见性正确，已能证明归零之后实际draw，不再要求静止引擎额外画一帧。若baseline非0，仍须保留之后归零的观测基线，再等待真实draw；不能用首次HTTP读到0之前的绘制猜测先后。带elementIds的定位可能保留其他卡动效，不套用全图fit的0假设。
+
 `frame-window`只读查询显式UTC `since`至`until`，复用4096条有界RAF样本，不启动新计时器或绘制。T13按本次delta/fit至确认变化后的实际draw观测时刻查询；不能用此前已结束的`no-visible-body`提交工作窗代替。返回原始UTC帧时刻；主统计取与工作窗相交的完整间隔，并列出`boundarySamples`，以免剔除跨起点首帧时漏掉真正卡顿。它是保守完整帧统计，可能包含首尾少量窗外时间；另列`contained`仅供诊断，不能用它隐藏边界长帧。`retentionComplete=false`说明窗口被重置、淘汰或尚未采到终点的帧边界，不能将剩余样本当作完整工作窗；无样本保留null。缓存随挂载生命周期清空，返回文档身份须与当前固定文档相同；页面可见/锁屏资格仍独立记录，RAF帧间隔不冒充GPU实际draw时间。
