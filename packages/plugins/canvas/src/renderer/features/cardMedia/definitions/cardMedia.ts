@@ -1,5 +1,7 @@
 import type { DocumentImageAsset, DocumentPreviewRequest, DocumentPreviewResult, DocumentReferencePresentation, WorkspaceMutationEvent } from '@app/schemas';
 import type { CanvasCard, CanvasCardId } from '@plugin/canvas/shared';
+/** 成功资源在短任务窗口合批，给120Hz场景留一帧内的通知预算；不在绘制RAF中编排。 */
+export const CANVAS_CONTENT_NOTIFICATION_INTERVAL_MS = 8;
 export interface CanvasCardMediaPort {
   readImage(documentId: string, assetId: string): Promise<DocumentImageAsset>;
   preview(input: DocumentPreviewRequest): Promise<DocumentPreviewResult>;
