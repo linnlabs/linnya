@@ -5,7 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
-import { captureCanvasVisualPage } from './captureCanvasVisualPage';
+import { captureCanvasVisualPage, withNativeVisualViewport } from './captureCanvasVisualPage';
 import { VisualTextLayoutSchema, VisualNegativeSchema, evaluateVisualTextOracle, verifyVisualTextNegatives, visualImageFromBgra, visualTextEnvironment } from './visualOracle';
 
 const rectangle = z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() });
@@ -13,9 +13,11 @@ const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(
   textLayout: z.object({ reference: VisualTextLayoutSchema, rasters: z.array(VisualTextLayoutSchema) }),
   negative: VisualNegativeSchema.nullable(), mutation: z.array(z.unknown()).nullable() });
 const visualViewport = z.object({ scrollX: z.number(), scrollY: z.number(), width: z.number().positive(), height: z.number().positive(),
-  windowWidth: z.number().positive(), windowHeight: z.number().positive(), dpr: z.number().positive() });
+  innerWidth: z.number().positive(), innerHeight: z.number().positive(), dpr: z.number().positive() });
+const nativeCaptureWindow = z.object({ contentSize: z.tuple([z.number().positive(), z.number().positive()]),
+  contentBounds: rectangle.extend({ width: z.number().positive(), height: z.number().positive() }), zoomFactor: z.number().positive() });
 // clientWidth/Height是整数；Windows原生滚动条在页面缩放后可占半个CSS像素，必须保留真实分数视口。
-const viewportExpression = '({scrollX:visualViewport.pageLeft,scrollY:visualViewport.pageTop,width:visualViewport.width,height:visualViewport.height,windowWidth:innerWidth,windowHeight:innerHeight,dpr:devicePixelRatio})';
+const viewportExpression = '({scrollX:visualViewport.pageLeft,scrollY:visualViewport.pageTop,width:visualViewport.width,height:visualViewport.height,innerWidth,innerHeight,dpr:devicePixelRatio})';
 const output = process.argv[2];
 if (!output) throw new Error('Visual output directory required');
 app.setPath('userData', path.join(output, 'profile'));
@@ -40,27 +42,35 @@ async function evaluate(webContents: WebContents, expression: string): Promise<u
 
 async function captureComparison(win: BrowserWindow, state: z.infer<typeof prepared>, stem: string) {
   let tileIndex = 0;
-  let viewport = visualViewport.parse(await evaluate(win.webContents, viewportExpression));
+  const readNative = () => nativeCaptureWindow.parse({ contentSize: win.getContentSize(), contentBounds: win.getContentBounds(), zoomFactor: win.webContents.getZoomFactor() });
+  const observe = (dom: unknown) => {
+    const domViewport = visualViewport.parse(dom), nativeWindow = readNative();
+    return { domViewport, nativeWindow, viewport: withNativeVisualViewport(domViewport, nativeWindow) };
+  };
+  let observation = observe(await evaluate(win.webContents, viewportExpression));
   const captured = await captureCanvasVisualPage({
-    async readViewport() { return viewport; },
+    async readViewport() { return observation.viewport; },
     async scrollTo(x, y) {
       // 两次真实rAF让滚动后的静态图层完成绘制；读取实际位置，不能假设末块没有被浏览器clamp。
-      viewport = visualViewport.parse(await evaluate(win.webContents, `(async()=>{scrollTo({left:${x},top:${y},behavior:'instant'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));return ${viewportExpression}})()`));
-      return viewport;
+      observation = observe(await evaluate(win.webContents, `(async()=>{scrollTo({left:${x},top:${y},behavior:'instant'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));return ${viewportExpression}})()`));
+      return observation.viewport;
     },
     async capture() {
+      const before = observation;
       const png = (await win.webContents.capturePage()).toPNG();
       const tile = `${stem}-tile-${tileIndex++}`;
       await writeFile(path.join(output, `${tile}.png`), png);
       // PNG解码为唯一物理像素表示，避免NativeImage的DIP/多scale表示影响后续裁切。
       const image = nativeImage.createFromBuffer(png);
       const result = { ...image.getSize(), pixels: image.toBitmap() };
-      await writeFile(path.join(output, `${tile}.json`), JSON.stringify({ viewport, size: image.getSize(), bytes: result.pixels.length }, null, 2));
+      // 在严格拼接检查之前保存同一次capture的native身份；失败也不能丢掉推导依据。
+      await writeFile(path.join(output, `${tile}.json`), JSON.stringify({ viewport: before.viewport, domViewport: before.domViewport,
+        nativeWindowBefore: before.nativeWindow, nativeWindowAfter: readNative(), size: image.getSize(), bytes: result.pixels.length }, null, 2));
       return result;
     },
   }, { rectangles: [state.reference, state.raster, state.pixi], dpr: state.dpr });
   const screenshot = nativeImage.createFromBitmap(captured.pixels, { width: captured.width, height: captured.height });
-  const facts = { state, ratio: state.dpr, contentSize: win.getContentSize(), region: captured.region, tiles: captured.tiles, expectedSize: captured.expectedSize };
+  const facts = { state, ratio: state.dpr, ...readNative(), region: captured.region, tiles: captured.tiles, expectedSize: captured.expectedSize };
   await writeFile(path.join(output, `${stem}-capture.json`), JSON.stringify(facts, null, 2));
   await writeFile(path.join(output, `${stem}-capture.png`), screenshot.toPNG());
   return { screenshot, facts };

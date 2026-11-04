@@ -20,6 +20,15 @@ interface VisualCaptureInput {
   readonly dpr: number;
 }
 
+/** client area是未受网页zoom取整的DIP；不能用DOM整数innerWidth代表完整PNG大小。 */
+export function withNativeVisualViewport(viewport: Omit<VisualViewport, 'windowWidth' | 'windowHeight'>, native: {
+  readonly contentBounds: Rectangle;
+  readonly zoomFactor: number;
+}): VisualViewport {
+  return { ...viewport, windowWidth: native.contentBounds.width / native.zoomFactor,
+    windowHeight: native.contentBounds.height / native.zoomFactor };
+}
+
 function copyTile(input: { readonly image: VisualPixels; readonly viewport: VisualViewport; readonly target: Rectangle; readonly output: VisualPixels; readonly dpr: number }) {
   const { image, viewport, target, output, dpr } = input;
   const destination = { x: Math.round(target.x * dpr), y: Math.round(target.y * dpr),
@@ -51,7 +60,8 @@ export async function captureCanvasVisualPage(port: VisualCapturePort, input: Vi
   try {
     for (let y = 0; y < region.height; y += initial.height) for (let x = 0; x < region.width; x += initial.width) {
       const viewport = await port.scrollTo(x, y);
-      if (viewport.width !== initial.width || viewport.height !== initial.height || viewport.dpr !== input.dpr)
+      if (viewport.width !== initial.width || viewport.height !== initial.height || viewport.dpr !== input.dpr
+        || viewport.windowWidth !== initial.windowWidth || viewport.windowHeight !== initial.windowHeight)
         throw new Error('visual_capture_environment_changed');
       const tile = copyTile({ image: await port.capture(), viewport, output, dpr: input.dpr,
         target: { x, y, width: Math.min(initial.width, region.width - x), height: Math.min(initial.height, region.height - y) } });
