@@ -9,7 +9,7 @@ Renderer 插件运行时属于 app-level orchestration：它连接主进程提�
 - 前一次同步失败只影响对应调用方，不能阻断后续快照。诊断状态按真正开始执行的同步编号，不允许并发任务互相覆盖。
 - `registry.ts` 只负责 contribution 注册、激活状态和各窄 registry 的一致提交/回滚，不负责协调多个外部同步请求。
 - 插件 `activate` / `deactivate` 只能在 loader 的串行同步范围内执行。UI 和具体 domain 不得直接操作 registry 生命周期。
-- 内置Host port装配以页面为生命周期，`builtin/index.ts`是开发HMR边界；该模块及传播到它的依赖更新会整页重载，重建全部port与registry。不能只跳过重复注册而保留旧adapter，也不能调用测试清理门面模拟产品dispose。修改这些装配依赖前先保存草稿；普通组件仍保留自己的HMR边界。
+- 内置Host port装配以页面为生命周期；开发服务器在热更新将重执行`App.vue`时，先整页重载以重建全部port与registry。不能只跳过重复注册而保留旧adapter，也不能调用测试清理门面模拟产品dispose。修改这些装配依赖前先保存草稿；普通组件与CSS仍保留自己的HMR边界，规则见[开发启动热更新](../../../../scripts/development/features/renderer-bootstrap-hmr/README.md)。
 
 ## 测试要求
 
