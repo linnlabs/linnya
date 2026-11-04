@@ -234,7 +234,7 @@ export async function runCurrentHostCliCorpusScenario(input: {
   installProductionE2eRuntimePathRoots({ runRoot: input.runRoot, appDataRoot });
   await fsp.mkdir(appDataRoot, { recursive: true });
   const databaseService = new DatabaseService(path.join(input.runRoot, 'workspace.sqlite'));
-  databaseService.initialize({ lifecycleBootstrap: bootstrapBuiltinPluginLifecycle });
+  databaseService.initialize({ lifecycleBootstrap: db => bootstrapBuiltinPluginLifecycle(db, app.getVersion()) });
   const db = databaseService.getDb();
   const eventStore = new SQLiteEventStore(db);
   const lifecycle = createConversationRouteLifecycle({

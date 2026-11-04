@@ -2,39 +2,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { app } from 'electron';
+import { requireFixtureAbsolutePath, requireFixtureEnvironment } from '../../harness/requireFixtureEnvironment';
 
-const resultPath = process.env.LINNYA_CHILD_AGENT_RESULT_PATH;
-const runRoot = process.env.LINNYA_CHILD_AGENT_RUN_ROOT;
-const rootCommand = process.env.LINNYA_CHILD_AGENT_ROOT_COMMAND;
-const childCommand = process.env.LINNYA_CHILD_AGENT_CHILD_COMMAND;
-const handshakePath = process.env.LINNYA_CHILD_AGENT_HANDSHAKE_PATH;
-const overlapObservedPath = process.env.LINNYA_CHILD_AGENT_OVERLAP_OBSERVED_PATH;
-const rootReadyPath = process.env.LINNYA_CHILD_AGENT_ROOT_READY_PATH;
-const deleteReadyPath = process.env.LINNYA_CHILD_AGENT_DELETE_READY_PATH;
-const controllerDonePath = process.env.LINNYA_CHILD_AGENT_CONTROLLER_DONE_PATH;
-
-if (!resultPath || !path.isAbsolute(resultPath)) {
-  throw new Error('LINNYA_CHILD_AGENT_RESULT_PATH must be an absolute path');
-}
-if (!runRoot || !path.isAbsolute(runRoot)) {
-  throw new Error('LINNYA_CHILD_AGENT_RUN_ROOT must be an absolute path');
-}
-if (
-  !rootCommand
-  || !childCommand
-  || !handshakePath
-  || !path.isAbsolute(handshakePath)
-  || !overlapObservedPath
-  || !path.isAbsolute(overlapObservedPath)
-  || !rootReadyPath
-  || !path.isAbsolute(rootReadyPath)
-  || !deleteReadyPath
-  || !path.isAbsolute(deleteReadyPath)
-  || !controllerDonePath
-  || !path.isAbsolute(controllerDonePath)
-) {
-  throw new Error('production child Agent E2E commands and handshake paths are required');
-}
+const resultPath = requireFixtureAbsolutePath('LINNYA_CHILD_AGENT_RESULT_PATH');
+const runRoot = requireFixtureAbsolutePath('LINNYA_CHILD_AGENT_RUN_ROOT');
+const rootCommand = requireFixtureEnvironment('LINNYA_CHILD_AGENT_ROOT_COMMAND');
+const childCommand = requireFixtureEnvironment('LINNYA_CHILD_AGENT_CHILD_COMMAND');
+const handshakePath = requireFixtureAbsolutePath('LINNYA_CHILD_AGENT_HANDSHAKE_PATH');
+const overlapObservedPath = requireFixtureAbsolutePath('LINNYA_CHILD_AGENT_OVERLAP_OBSERVED_PATH');
+const rootReadyPath = requireFixtureAbsolutePath('LINNYA_CHILD_AGENT_ROOT_READY_PATH');
+const deleteReadyPath = requireFixtureAbsolutePath('LINNYA_CHILD_AGENT_DELETE_READY_PATH');
+const controllerDonePath = requireFixtureAbsolutePath('LINNYA_CHILD_AGENT_CONTROLLER_DONE_PATH');
 
 const userDataRoot = path.join(runRoot, 'electron-user-data');
 const workspaceRoot = path.join(runRoot, 'workspace');

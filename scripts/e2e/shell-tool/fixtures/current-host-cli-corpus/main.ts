@@ -2,16 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { app } from 'electron';
+import { requireFixtureAbsolutePath } from '../../harness/requireFixtureEnvironment';
 
-const resultPath = process.env.LINNYA_HOST_CLI_CORPUS_RESULT_PATH;
-const runRoot = process.env.LINNYA_HOST_CLI_CORPUS_RUN_ROOT;
-
-if (!resultPath || !path.isAbsolute(resultPath)) {
-  throw new Error('LINNYA_HOST_CLI_CORPUS_RESULT_PATH must be an absolute path');
-}
-if (!runRoot || !path.isAbsolute(runRoot)) {
-  throw new Error('LINNYA_HOST_CLI_CORPUS_RUN_ROOT must be an absolute path');
-}
+const resultPath = requireFixtureAbsolutePath('LINNYA_HOST_CLI_CORPUS_RESULT_PATH');
+const runRoot = requireFixtureAbsolutePath('LINNYA_HOST_CLI_CORPUS_RUN_ROOT');
 
 app.setPath('userData', path.join(runRoot, 'electron-user-data'));
 process.env.LINNYA_WORKSPACE_DIR = path.join(runRoot, 'workspace');

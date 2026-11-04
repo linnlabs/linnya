@@ -143,6 +143,8 @@
     }
   },
   "include": [
+    "scripts/e2e/shell-tool/fixtures/**/*.ts",
+    "scripts/e2e/shell-tool/harness/**/*.ts",
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.tsx",

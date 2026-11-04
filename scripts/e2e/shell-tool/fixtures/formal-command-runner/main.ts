@@ -2,8 +2,10 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { app } from 'electron';
+import { requireFixtureAbsolutePath } from '../../harness/requireFixtureEnvironment';
 
 import {
+  CommandExecutionIdentitySchema,
   parseCommandRunnerEvent,
   parseCommandRunnerRequest,
   type CommandExecutionTerminalV1,
@@ -15,19 +17,12 @@ import { createElectronCommandRunnerProcessPort } from '../../../../../src/elect
 
 declare const LINNYA_EXPECTED_WINDOWS_NATIVE_RUNTIME_VERSION: string;
 
-const RESULT_PATH = process.env.LINNYA_FORMAL_RUNNER_RESULT_PATH;
-const RUN_CWD = process.env.LINNYA_FORMAL_RUNNER_CWD;
+const RESULT_PATH = requireFixtureAbsolutePath('LINNYA_FORMAL_RUNNER_RESULT_PATH');
+const RUN_CWD = requireFixtureAbsolutePath('LINNYA_FORMAL_RUNNER_CWD');
 const RUN_MODE = process.env.LINNYA_FORMAL_RUNNER_MODE ?? 'settlement';
 const CRASH_RUN_TOKEN = process.env.LINNYA_FORMAL_RUNNER_CRASH_TOKEN;
 const EXPECTED_OUTPUT = 'formal-adapter-output';
 const SCENARIO_DEADLINE_MS = 30_000;
-
-if (!RESULT_PATH || !path.isAbsolute(RESULT_PATH)) {
-  throw new Error('LINNYA_FORMAL_RUNNER_RESULT_PATH must be an absolute path');
-}
-if (!RUN_CWD || !path.isAbsolute(RUN_CWD)) {
-  throw new Error('LINNYA_FORMAL_RUNNER_CWD must be an absolute path');
-}
 
 interface Deferred<T> {
   readonly promise: Promise<T>;
@@ -70,14 +65,14 @@ function appendStage(stage: string): void {
 }
 
 function createIdentity(): CommandExecutionIdentity {
-  return {
+  return CommandExecutionIdentitySchema.parse({
     conversation_id: 'formal-command-runner-conversation',
     agent_run_id: 'formal-command-runner-agent-run',
     origin_tool_call_id: 'formal-command-runner-tool-call',
     command_execution_id: `command_execution_${randomUUID()}`,
     owner_generation_id: `command_owner_${randomUUID()}`,
     created_at_ms: Date.now(),
-  };
+  });
 }
 
 function stringEnvironment(): Record<string, string> {
@@ -146,7 +141,7 @@ function createStartRequest(command: string, mode: 'pipe' | 'pty' = 'pipe') {
     lifecycle_policy: 'terminate_with_run' as const,
     hard_timeout_ms: 30_000,
   };
-  return parseCommandRunnerRequest({
+  const request = parseCommandRunnerRequest({
     protocol_version: 1,
     kind: 'command_runner_start',
     launch: mode === 'pipe'
@@ -164,6 +159,8 @@ function createStartRequest(command: string, mode: 'pipe' | 'pty' = 'pipe') {
           terminal_size: { columns: 90, rows: 30 },
         },
   });
+  if (request.kind !== 'command_runner_start') throw new Error('fixture must create a start request');
+  return request;
 }
 
 interface ObservedElectronProcess {
@@ -316,6 +313,9 @@ async function runScenario(input: {
   }
   const terminalEvent = await terminal.promise;
   await closed.promise;
+  if (terminalEvent.terminal.outcome !== 'execution_ended') {
+    throw new Error(`runner failed: ${JSON.stringify(terminalEvent.terminal.failure)}`);
+  }
 
   return {
     name: input.name,
@@ -333,11 +333,11 @@ async function runScenario(input: {
 }
 
 function quotePosixLiteral(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`;
+  return `'${value.split("'").join("'\\''")}'`;
 }
 
 function quotePowerShellLiteral(value: string): string {
-  return `'${value.replaceAll("'", "''")}'`;
+  return `'${value.split("'").join("''")}'`;
 }
 
 function createUtilityCrashCommand(runToken: string): {

@@ -1,16 +1,13 @@
 import { promises as fsp } from 'node:fs';
 
 import { app } from 'electron';
+import { requireFixtureEnvironment } from '../../harness/requireFixtureEnvironment';
 
 import { createElectronSandboxUtilityProcessFork } from '../../../../../src/electron-main/sandbox-runtime/production-runtime/functions/createElectronSandboxUtilityProcessFork';
 import { createElectronCommandRunnerProcessPort } from '../../../../../src/electron-main/commands/runner-runtime/createElectronCommandRunnerProcessPort';
 
-const resultPath = process.env['LINNYA_INTERNAL_STDIN_RESULT_PATH'];
-const utilityPath = process.env['LINNYA_INTERNAL_STDIN_UTILITY_PATH'];
-
-if (!resultPath || !utilityPath) {
-  throw new Error('internal child stdin isolation fixture paths are required');
-}
+const resultPath = requireFixtureEnvironment('LINNYA_INTERNAL_STDIN_RESULT_PATH');
+const utilityPath = requireFixtureEnvironment('LINNYA_INTERNAL_STDIN_UTILITY_PATH');
 
 async function publishResult(result: Readonly<Record<string, unknown>>): Promise<void> {
   const pendingPath = `${resultPath}.${process.pid}.pending`;
@@ -27,9 +24,7 @@ async function run(): Promise<void> {
       environment: {},
     });
     child.onMessage(resolve);
-    child.onceError((type, location) => {
-      reject(new Error(`sandbox utility fatal error: ${type} at ${location}`));
-    });
+    child.onceError(reject);
     child.onceExit((exitCode) => {
       if (exitCode !== 0) reject(new Error(`sandbox utility exited with ${exitCode}`));
     });

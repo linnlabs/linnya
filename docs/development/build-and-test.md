@@ -125,7 +125,8 @@ Vitest 不自动沿用 `.gitignore`，新增源码根或生成目录时必须同
 
 公共源码净化门禁使用 `pnpm run guard:public-source-sanitization`。它扫描 Git 已跟踪和未忽略的候选文本文件，拒绝开发者用户目录、机器卷、盘符根开发 checkout、父级个人工作区路径、macOS 用户临时目录、绝对符号链接和已退役产品身份；文档与测试只能使用 `name`、`example`、`${变量}` 或 `<用户名>` 一类明确占位符，门禁本身不得记录真实用户名、本机路径或旧名称字面量。
 
-全仓仍有来自渐进式 JavaScript/TypeScript 迁移的存量类型错误。`guard:tsc-baseline` 将错误总数与 `.baseline/typescript-errors.txt` 对比，只允许减少、不允许增加，并在公共 CI 执行；错误减少后运行 `pnpm run guard:tsc-baseline:update` 收紧基线。这个债务门禁不能代替改动 owner 的严格 typecheck，新代码不得以“总数没有增加”为理由引入新的类型问题。
+全仓仍有来自渐进式 JavaScript/TypeScript 迁移的存量类型错误。`guard:tsc-baseline` 将错误总数与 `.baseline/typescript-errors.txt` 对比，只允许减少、不允许增加，并在公共 CI 执行；错误减少后运行 `pnpm run guard:tsc-baseline:update` 收紧基线。Shell E2E 的 `fixtures/` 与 `harness/` 已纳入根 TypeScript 发现范围，并在同一门禁中强制零错误；
+其错误不能被其他模块的基线下降抵消，也不能通过更新基线接纳。这个债务门禁不能代替改动 owner 的严格 typecheck，新代码不得以“总数没有增加”为理由引入新的类型问题。
 
 依赖升级后若大量错误集中在命名空间类型、公开导出或推断链上，应先验证实际 npm 包的声明产物，
 不能直接调高或重建基线把依赖回归记成存量债。Linnkit 只使用已发布的精确版本；声明问题在独立
