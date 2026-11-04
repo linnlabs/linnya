@@ -39,6 +39,7 @@ function readInvocation(
     target,
     requestId: literalOption(line, '--request-id'),
     dryRun: /(?:^|\s)--dry-run(?:\s|$)/.test(line),
+    layoutRequested: kind === 'arrange' || /(?:^|\s)--arrange(?:\s|$)/.test(line),
     inputKey,
     fingerprint: payload === undefined ? null : fingerprint(payload),
   };

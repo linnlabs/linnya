@@ -16,6 +16,8 @@ export function parseCanvasToolTrace(input: {
     requests: [],
     attempts: [],
     commits: [],
+    layoutComputations: [],
+    layoutComputationGaps: [],
     replays: [],
     dryRuns: [],
     checks: [],

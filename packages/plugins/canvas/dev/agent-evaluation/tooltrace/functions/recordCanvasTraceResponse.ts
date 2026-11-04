@@ -42,6 +42,17 @@ function recordCommitted(
     return;
   }
   context.facts.commits.push(commit);
+  const computation = response.value.computation;
+  if (command.layoutRequested && !computation && response.value.replayed !== true)
+    context.facts.layoutComputationGaps.push({ requestId: commit.requestId, sourceFile: context.sourceFile, toolCallId: context.toolCallId });
+  if (computation) {
+    // 只保留正式原响应的真实Worker时间；持久receipt或缺省replayed不能补造本次计算。
+    if (response.value.replayed !== false || computation.requestId !== commit.requestId
+      || computation.sequence > commit.sequence) {
+      traceDiagnostic(context, 'layout_computation_unattributed', 'Worker计时缺少非重放事实或不能归属本次请求/序列');
+    } else context.facts.layoutComputations.push({ computation, commitSequence: commit.sequence,
+      runId: context.runId, toolCallId: context.toolCallId, sourceFile: context.sourceFile, order: context.order });
+  }
   if (
     context.facts.attempts.some(
       event => event.requestId === commit.requestId && event.outcome === 'pending'

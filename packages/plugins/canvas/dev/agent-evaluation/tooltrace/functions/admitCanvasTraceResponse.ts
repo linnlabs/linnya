@@ -3,10 +3,13 @@ import {
   CanvasCommitResultSchema,
   CanvasOperationResultSchema,
   CanvasCheckReportSchema,
+  CanvasLayoutComputationSchema,
 } from '@plugin/canvas/shared';
 const commit = CanvasCommitResultSchema.omit({ documentId: true })
   .extend({
     status: z.literal('committed'),
+    computation: CanvasLayoutComputationSchema.nullable().optional(),
+    replayed: z.boolean().optional(),
   })
   .strip();
 const pending = z.object({
