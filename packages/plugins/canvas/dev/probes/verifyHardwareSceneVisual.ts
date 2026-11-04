@@ -37,16 +37,20 @@ async function verifyHardwareBodyReceipts(win: BrowserWindow, output: string, ev
     await writeFile(path.join(output, 'first-body-failure.json'), JSON.stringify({ failure: failed.data.failure, dpr: failed.data.dpr, facts: failed.data.facts }, null, 2));
     throw new Error(failed.data.failure);
   }
-  const body = SampledVisualSchema.extend({ uploaded: receipt, first: receipt, complete: receipt, sceneStart: receipt, sceneFirst: receipt, sceneComplete: receipt,
+  const body = SampledVisualSchema.extend({ oldBaseline: z.object({ previousRenders: z.number(), renders: z.number(), receipt }),
+    uploaded: receipt, first: receipt, complete: receipt, sceneStart: receipt, sceneFirst: receipt, sceneComplete: receipt,
     fadeImage: z.string(), sceneImage: z.string(), logicalTimes: z.unknown() }).parse(raw);
+  if (!body.oldBaseline.receipt.rendered || !body.oldBaseline.receipt.firstPresented
+    || body.oldBaseline.renders <= body.oldBaseline.previousRenders || body.oldBaseline.renders <= body.oldBaseline.receipt.acceptedAfterRender)
+    throw new Error('old_visible_bitmap_actual_draw_baseline_missing');
   const fade = await recordCanvasVisualFrame({ ...body, data: body.fadeImage }, output, 'first-body-fade');
   const scene = await recordCanvasVisualFrame({ ...body, data: body.sceneImage }, output, 'first-body-scene');
   const fadePixel = visualFrameColor(fade, { x: 60, y: 80 }), scenePixel = visualFrameColor(scene, { x: 60, y: 80 });
-  await writeFile(path.join(output, 'first-body-receipts.json'), JSON.stringify({ uploaded: body.uploaded, first: body.first, complete: body.complete,
+  await writeFile(path.join(output, 'first-body-receipts.json'), JSON.stringify({ oldBaseline: body.oldBaseline, uploaded: body.uploaded, first: body.first, complete: body.complete,
     sceneStart: body.sceneStart, sceneFirst: body.sceneFirst, sceneComplete: body.sceneComplete, fadePixel, scenePixel, logicalTimes: body.logicalTimes }, null, 2));
   if (fadePixel.g <= 32 || scenePixel.g <= 0 || !body.first.firstPresented || body.first.rendered
     || !body.complete.rendered || !body.sceneFirst.firstPresented || body.sceneFirst.rendered || !body.sceneComplete.rendered) throw new Error('first_body_receipt_has_no_visible_current_pixels');
-  return { uploaded: body.uploaded, first: body.first, complete: body.complete, sceneStart: body.sceneStart, sceneFirst: body.sceneFirst, fadePixel, scenePixel };
+  return { oldBaseline: body.oldBaseline, uploaded: body.uploaded, first: body.first, complete: body.complete, sceneStart: body.sceneStart, sceneFirst: body.sceneFirst, fadePixel, scenePixel };
 }
 export async function verifyHardwareSceneVisual(win: BrowserWindow, output: string, evaluate: Evaluate) {
   return { ...await verifyHardwareMotion(win, output, evaluate), firstBody: await verifyHardwareBodyReceipts(win, output, evaluate) };

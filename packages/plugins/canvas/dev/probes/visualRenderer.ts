@@ -366,9 +366,13 @@ async function beginFadeVisual(software = false) {
   const old = colorBitmap(50, 35, '#e02020'), blue = colorBitmap(100, 70, '#2030e0');
   const oldDraw = kernel.readStats().renders;
   kernel.setRasterTiles(card.id, 1, 'old', [{ bitmap: old, x: 0, y: 0, width: 200, height: 140, scale: 0.25 }]);
-  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-  if (software) await waitForCanvasPerformanceDraw(oldDraw, { now: () => performance.now(), readRenderCount: () => kernel.readStats().renders,
-    nextFrame: () => new Promise<void>(resolve => requestAnimationFrame(() => resolve())) });
+  const drawStarted = performance.now();
+  // 硬件和软件都先证实旧正文已draw；capture不能替这一步制造可淡出的旧图。
+  while (kernel.readStats().renders <= oldDraw || kernel.readRasterReceipt(card.id, 'old')?.rendered !== true) {
+    if (performance.now() - drawStarted >= 5000) throw new Error('fade_old_body_actual_draw_missing');
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  }
+  const oldBaseline = { previousRenders: oldDraw, renders: kernel.readStats().renders, receipt: kernel.readRasterReceipt(card.id, 'old') };
   const before = await kernel.captureImage('png');
   fadeFixture = { kernel, card, old, blue, started: performance.now() };
   const previousDraw = kernel.readStats().renders;
@@ -382,7 +386,7 @@ async function beginFadeVisual(software = false) {
       nextFrame: () => new Promise<void>(resolve => requestAnimationFrame(() => resolve())) });
     if (!kernel.readRasterReceipt(card.id, 'new')?.rendered) throw new Error('software_replacement_actual_draw_missing');
   }
-  return { before, uploaded, ...await readFadeVisual() };
+  return { before, oldBaseline, uploaded, ...await readFadeVisual() };
 }
 async function readFadeVisual() {
   const state = fadeFixture; if (!state) throw new Error('fade_fixture_missing');

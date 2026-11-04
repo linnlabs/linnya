@@ -123,7 +123,12 @@ async function verifyFade(win: BrowserWindow) {
   win.webContents.debugger.attach('1.3');
   try {
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
-    const initial = fadeState.extend({ before: z.string(), uploaded: z.object({ firstPresented: z.boolean(), rendered: z.boolean() }) }).parse(await evaluate(win.webContents, softwareProfile ? 'window.beginCanvasFadeVisualProbe(true)' : 'window.beginCanvasFadeVisualProbe()'));
+    const initial = fadeState.extend({ before: z.string(), oldBaseline: z.object({ previousRenders: z.number(), renders: z.number(),
+      receipt: z.object({ firstPresented: z.boolean(), rendered: z.boolean(), acceptedAfterRender: z.number() }) }),
+      uploaded: z.object({ firstPresented: z.boolean(), rendered: z.boolean() }) }).parse(await evaluate(win.webContents, softwareProfile ? 'window.beginCanvasFadeVisualProbe(true)' : 'window.beginCanvasFadeVisualProbe()'));
+    if (!initial.oldBaseline.receipt.rendered || !initial.oldBaseline.receipt.firstPresented
+      || initial.oldBaseline.renders <= initial.oldBaseline.previousRenders || initial.oldBaseline.renders <= initial.oldBaseline.receipt.acceptedAfterRender)
+      throw new Error('fade_old_body_actual_draw_baseline_missing');
     if (softwareProfile) {
       assertSoftwareVisualSampling(initial.sampling);
       if (initial.reduced || initial.stats.fadingCards || initial.stats.retiringBytes || !initial.rendered || initial.oldWidth || initial.stats.bitmapBytes !== 28000
@@ -147,7 +152,7 @@ async function verifyFade(win: BrowserWindow) {
     if (Math.max(initial.stats.bitmapBytes, middle.stats.bitmapBytes, reduced.stats.bitmapBytes) > initial.stats.bitmapBudgetBytes) throw new Error('fade_exceeded_bitmap_budget');
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
     const budget: unknown = await evaluate(win.webContents, 'window.prepareCanvasFadeBudgetVisualProbe()');
-    return { profile: softwareProfile ? 'software-immediate' : 'hardware-fade', sampling: initial.sampling, uploaded: initial.uploaded, midpointObserved, mixed, green, initialBytes: initial.stats.bitmapBytes, oldAndNewBytes: softwareProfile ? null : initial.stats.bitmapBytes, reducedBytes: reduced.stats.bitmapBytes, reducedRendered: reduced.rendered, budget };
+    return { profile: softwareProfile ? 'software-immediate' : 'hardware-fade', sampling: initial.sampling, oldBaseline: initial.oldBaseline, uploaded: initial.uploaded, midpointObserved, mixed, green, initialBytes: initial.stats.bitmapBytes, oldAndNewBytes: softwareProfile ? null : initial.stats.bitmapBytes, reducedBytes: reduced.stats.bitmapBytes, reducedRendered: reduced.rendered, budget };
   } finally { await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [] }); win.webContents.debugger.detach(); }
 }
 

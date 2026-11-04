@@ -137,7 +137,12 @@ async function beginReducedScene() {
 }
 async function firstBodyVisual(clock: SceneVisualClock) {
   const kernel = await setup(), initial = card('c1', 20); kernel.setElements([initial]);
-  kernel.setBitmap(initial.id, 1, 'old', bitmap('#e02020')); await drawn();
+  const previousRenders = kernel.readStats().renders;
+  kernel.setBitmap(initial.id, 1, 'old', bitmap('#e02020'));
+  // 未实际显示过的旧纹理按生产合同直接替换；两次RAF不能建立淡入测试的前提。
+  await clock.until(() => kernel.readStats().renders > previousRenders && kernel.readRasterReceipt(initial.id, 'old')?.rendered === true,
+    'old_visible_bitmap_actual_draw_missing');
+  const oldBaseline = { previousRenders, renders: kernel.readStats().renders, receipt: kernel.readRasterReceipt(initial.id, 'old') };
   const requestedAt = performance.now();
   kernel.setBitmap(initial.id, 1, 'current', bitmap('#20c060'));
   const uploaded = kernel.readRasterReceipt(initial.id, 'current');
@@ -150,7 +155,7 @@ async function firstBodyVisual(clock: SceneVisualClock) {
   const fadeImage = await kernel.captureImage('png');
   if (waitFailure || !first?.firstPresented || first.rendered || firstStats.fadingCards !== 1) return {
     failure: 'new_visible_bitmap_draw_missing_first_receipt', fadeImage, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive'),
-    facts: { requestedAt, observedAt, elapsedMs: observedAt - requestedAt, waitFailure, uploaded, first, firstStats,
+    facts: { oldBaseline, requestedAt, observedAt, elapsedMs: observedAt - requestedAt, waitFailure, uploaded, first, firstStats,
       afterCaptureAt: performance.now(), afterCaptureReceipt: kernel.readRasterReceipt(initial.id, 'current'), afterCaptureStats: kernel.readStats() },
   };
   const fadeDraw = kernel.readStats().renders; clock.advance(56);
@@ -167,7 +172,7 @@ async function firstBodyVisual(clock: SceneVisualClock) {
   if (!sceneFirst?.firstPresented || sceneFirst.rendered || kernel.readStats().sceneTransitions !== 1) throw new Error('visible_scene_midpoint_receipt_mismatch');
   const sceneImage = await kernel.captureImage('png'), sceneDraw = kernel.readStats().renders; clock.advance(136);
   await clock.until(() => kernel.readStats().renders > sceneDraw && kernel.readRasterReceipt(initial.id, 'current')?.rendered === true, 'scene_settled_bitmap_draw_missing_receipt');
-  return { uploaded, first, complete, sceneStart, sceneFirst, sceneComplete: kernel.readRasterReceipt(initial.id, 'current'), fadeImage, sceneImage, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive'),
+  return { oldBaseline, uploaded, first, complete, sceneStart, sceneFirst, sceneComplete: kernel.readRasterReceipt(initial.id, 'current'), fadeImage, sceneImage, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive'),
     logicalTimes: { fadeFirst: 64, fadeComplete: 120, sceneFirst: 64, sceneComplete: 200 } };
 }
 async function documentMetadataVisual() {
