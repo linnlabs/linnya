@@ -1,4 +1,4 @@
-import { Application, Rectangle, Sprite, Text, Texture } from 'pixi.js';
+import { Application, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import { createPixiCanvasKernel } from '../../src/renderer/kernel';
 import { CanvasMapLabels } from '../../src/renderer/kernel/render/pixi/CanvasMapLabels';
 import { createCanvasPlainTextDocument, readCanvasCardCssPalette, readCanvasCardPalette } from '../../src/shared';
@@ -27,6 +27,8 @@ async function mapPrefix() {
 async function nearTitle(kind: string, source: string, expected: string, width: number) {
   const app = new Application();
   await app.init({ width: 1300, height: 120, resolution: 2, autoStart: false, preference: 'webgl', backgroundColor: 0xffffff });
+  // container extract不包含renderer的clearColor；参考必须真正画同一白纸面，避免AA墨迹阈值比较透明边缘。
+  const background = new Graphics().rect(0, 0, 1300, 120).fill(0xffffff); app.stage.addChild(background);
   const host = document.createElement('div'); host.style.cssText = 'width:1300px;height:120px'; document.body.append(host);
   try {
     const kernel = await createPixiCanvasKernel({ host, width: 1300, height: 120, resolution: 2 });
@@ -41,7 +43,7 @@ async function nearTitle(kind: string, source: string, expected: string, width: 
       return { kind, expected, image, reference: await app.renderer.extract.base64({ target: app.stage, frame: new Rectangle(0, 0, 1300, 120), resolution: 2 }),
         mode: 'ink', region: { x: 0, y: 20, width: Math.ceil(width * 2), height: 80 }, stats };
     } finally { kernel.destroy(); }
-  } finally { host.remove(); app.destroy(true, { children: true, texture: false }); }
+  } finally { background.destroy(); host.remove(); app.destroy(true, { children: true, texture: false }); }
 }
 
 /** 真实Kernel与独立原生整串参考；覆盖计数边界和宽度省略，而非重写Unicode/font engine。 */
