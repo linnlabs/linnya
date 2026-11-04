@@ -38,7 +38,7 @@ it('固定body阶段的超时事实与原始trace独立保存，不覆盖其它�
   const order: string[] = [];
   vi.mocked(contentTracing.getCategories).mockResolvedValue([]);
   vi.mocked(contentTracing.startRecording).mockImplementation(async () => { order.push('record'); });
-  vi.mocked(contentTracing.getTraceBufferUsage).mockResolvedValue({ percentFull: 0.1, eventCount: 23 });
+  vi.mocked(contentTracing.getTraceBufferUsage).mockResolvedValue({ percentage: 0.1, value: 23 });
   vi.mocked(contentTracing.stopRecording).mockImplementation(async file => {
     if (!file) throw new Error('missing_test_trace_path');
     order.push('stop'); await writeFile(file, 'raw-body-trace'); return file;
