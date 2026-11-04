@@ -76,7 +76,11 @@ export function readLiteralCanvasCommands(
       }
       continue;
     }
-    if (/^\s*(?:(?:if|then|elif|else|fi|for|while|until|select|do|done|case|esac|function)\b|[\w-]+\s*\(\)|[{}()])/.test(line)) {
+    if (
+      /^\s*(?:(?:if|then|elif|else|fi|for|while|until|select|do|done|case|esac|function)\b|[\w-]+\s*\(\)|[{}()])/.test(
+        line
+      )
+    ) {
       ambiguous = true;
       controlFlow = true;
     }

@@ -2,6 +2,7 @@ import { setTimeout } from 'node:timers/promises';
 import { ConversationControlStatusResponseSchema } from '@app/schemas';
 import type { EvaluationRunnerPorts } from '../definitions/evaluationRunner';
 import { createEvidenceStep, readRunnerState, writeEvidence } from '../adapters/evidenceFiles';
+import { readEvaluationRunReceipts } from '../functions/readEvaluationRunReceipts';
 export async function waitCanvasEvaluation(input: {
   readonly directory: string;
   readonly label: string;
@@ -12,6 +13,8 @@ export async function waitCanvasEvaluation(input: {
     throw new Error('Timeout must be an integer of at least 1000ms');
   const state = await readRunnerState(input.directory);
   if (!state.receipt) throw new Error('No confirmed model run');
+  const [first] = readEvaluationRunReceipts(state),
+    active = state.continuations?.[0]?.receipt ?? first;
   await input.ports.verifyRevision(state.config.repositoryRoot, state.config.sourceRevision);
   const directory = await createEvidenceStep(input.directory, input.label),
     deadline = Date.now() + input.timeoutMs;
@@ -21,7 +24,7 @@ export async function waitCanvasEvaluation(input: {
       repositoryRoot: state.config.repositoryRoot,
       directory,
       label: `status-${++index}`,
-      args: ['status', state.receipt.conversation_id, '--run', state.receipt.run_id],
+      args: ['status', active.conversation_id, '--run', active.run_id],
     });
     if (response.exitCode !== 0)
       throw new Error('Status CLI failed; inspect the retained raw evidence');

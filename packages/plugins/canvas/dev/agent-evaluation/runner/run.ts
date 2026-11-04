@@ -5,6 +5,7 @@ import {
   startCanvasEvaluation,
   collectCanvasEvaluation,
   waitCanvasEvaluation,
+  continueCanvasApprovalEvaluation,
   type EvaluationRunnerPorts,
 } from './index';
 import { readEvidence } from './adapters/evidenceFiles';
@@ -20,7 +21,7 @@ const [command, directory, argument] = process.argv.slice(2);
 async function run(): Promise<unknown> {
   if (!command || !directory)
     throw new Error(
-      'Usage: run.ts setup CONFIG NEW-DIR | attach RUN-DIR CONNECTION | start RUN-DIR | collect RUN-DIR NEW-LABEL | wait RUN-DIR NEW-LABEL [TIMEOUT-MS]'
+      'Usage: run.ts setup CONFIG NEW-DIR | attach RUN-DIR CONNECTION | start RUN-DIR | continue-approval RUN-DIR CONTROLS.json | collect RUN-DIR NEW-LABEL | wait RUN-DIR NEW-LABEL [TIMEOUT-MS]'
     );
   if (command === 'configs' && argument)
     return prepareCanvasEvaluationConfigs({
@@ -36,6 +37,8 @@ async function run(): Promise<unknown> {
   if (command === 'attach' && argument)
     return attachCanvasEvaluation({ directory, connectionFile: argument, ports });
   if (command === 'start') return startCanvasEvaluation({ directory, ports });
+  if (command === 'continue-approval' && argument)
+    return continueCanvasApprovalEvaluation({ directory, controlsFile: argument, ports });
   if (command === 'collect' && argument)
     return collectCanvasEvaluation({ directory, label: argument, ports });
   if (command === 'wait' && argument)

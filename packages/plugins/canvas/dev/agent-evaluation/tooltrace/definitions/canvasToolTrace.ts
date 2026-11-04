@@ -4,6 +4,7 @@ export const CanvasTraceScopeSchema = z
   .object({
     conversationId: z.string(),
     rootRunId: z.string(),
+    continuationRunIds: z.array(z.string().min(1)).max(1).optional(),
     documentId: z.string(),
     locators: z.array(z.string().startsWith('workspace:')).min(1),
   })

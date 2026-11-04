@@ -89,6 +89,8 @@ describe('document reference interaction', () => {
     };
     const view = createDocumentReferenceNodeView('target', 'ref', f.value, focus.registerPortal); host.append(view.dom); view.dom.focus();
     view.dom.dispatchEvent(new MouseEvent('mouseenter')); await vi.advanceTimersByTimeAsync(400);
+    const panel = document.querySelector<HTMLElement>('.document-reference-preview'); if (!panel) throw new Error('Preview is missing');
+    panel.focus(); expect(document.activeElement).toBe(panel); expect(leave).not.toHaveBeenCalled();
     const expand = document.querySelector<HTMLButtonElement>('.document-reference-preview button');
     if (!expand) throw new Error('Preview expansion is missing');
     expand.focus(); expect(leave).not.toHaveBeenCalled(); expand.click(); await Promise.resolve();
