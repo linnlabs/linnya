@@ -51,11 +51,13 @@ async function prepare(count: number, clustered: boolean, kind: CanvasPerformanc
   const host = document.createElement('div'); host.style.cssText = 'position:fixed;inset:0;background:#f1f3ed';
   const staging = document.createElement('div'); staging.className = 'canvas-raster-staging';
   document.body.append(host, staging); failures = [];
+  const openingStarted = performance.now();
   kernel = await createPixiCanvasKernel({ host, resolution: devicePixelRatio, onIntent: (intent) => {
     if (intent.kind === 'camera' || intent.kind === 'preview-changed') { media?.content?.refreshVisible(kernel?.renderableCards() ?? []); presentation?.refresh(); }
     if (intent.kind === 'select') kernel?.setSelection(intent.ids);
     if (intent.kind === 'move') movedCards = intent.ids.length;
   } });
+  const kernelReadyMs = performance.now() - openingStarted;
   media = await canvasPerformanceMediaFixture(fixture(count, clustered), kind); const data = media.elements;
   presentation = createCanvasRasterPresentation({ host: staging, kernel, createContent: media.content?.create, readContentKey: media.content?.contentKey, suspendWhenHidden: false, readAppearance: () => appearance, reportFailure: (message) => failures.push(message) });
   elements = data; movedCards = 0;
@@ -72,7 +74,7 @@ async function prepare(count: number, clustered: boolean, kind: CanvasPerformanc
   const started = performance.now(); kernel.setElements(data); kernel.fit(cards);
   void media.content?.refreshReferences(cards).catch(error => failures.push(String(error)));
   media.content?.refreshVisible(kernel.renderableCards()); presentation.refresh(); await nextFrame();
-  return { installMs: performance.now() - started, dpr: devicePixelRatio, width: innerWidth, height: innerHeight,
+  return { installMs: performance.now() - started, kernelReadyMs, firstFrameMs: performance.now() - openingStarted, dpr: devicePixelRatio, width: innerWidth, height: innerHeight,
     count, clustered, kind, resource: media.readStats(), camera: kernel.readCamera(), stats: kernel.readStats(), renderStatus: kernel.readRenderStatus(), resolution: kernel.readResolution() };
 }
 function start(baseline?: (time: number) => void) {

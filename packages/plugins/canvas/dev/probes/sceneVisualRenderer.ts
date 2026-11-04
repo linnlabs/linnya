@@ -17,7 +17,10 @@ let current: CanvasKernel | undefined;
 async function setup() {
   current?.destroy(); document.body.replaceChildren();
   const host = document.createElement('div'); host.style.cssText = 'width:700px;height:300px'; document.body.append(host);
-  current = await createPixiCanvasKernel({ host, width: 700, height: 300, resolution: devicePixelRatio }); return current;
+  current = await createPixiCanvasKernel({ host, width: 700, height: 300, resolution: devicePixelRatio });
+  const initial = current.readStats();
+  if (initial.renders || initial.cards || initial.bitmaps) throw new Error('startup_warm_counted_as_visible_scene_or_body_draw');
+  return current;
 }
 async function sceneVisual() {
   const kernel = await setup(), initial = card('c1', 20), target = { ...initial, x: 330, revision: 2 };
