@@ -55,7 +55,7 @@ describe('plugin host contract type source', () => {
   it.each(pluginIds)('does not revive %s SDK mirror host-types', (pluginId) => {
     const allowedHostTypes = pluginId === 'sheet'
       ? ['host-types/renderer/sheetEngine.d.ts', 'host-types/rendererEnv.d.ts']
-      : pluginId === 'decision'
+      : pluginId === 'decision' || pluginId === 'canvas'
         ? []
         : ['host-types/rendererEnv.d.ts'];
 
