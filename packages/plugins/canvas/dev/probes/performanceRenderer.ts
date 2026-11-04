@@ -7,6 +7,7 @@ import { createCanvasPerformancePaintTrace } from './performancePaintTrace';
 import { waitForCanvasPerformanceBody } from './waitForCanvasPerformanceBody';
 import { waitForCanvasPerformanceDraw } from './waitForCanvasPerformanceDraw';
 import { createCanvasPerformanceInputTrace } from './performanceInputTrace';
+import { createCanvasDocumentFocusSpan } from './performanceFocusQualification';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
@@ -50,6 +51,7 @@ let movedCards = 0;
 let zoomTimeline: ReturnType<typeof createCanvasZoomTimeline> | null = null;
 let paintTrace: ReturnType<typeof createCanvasPerformancePaintTrace> | null = null;
 let inputTrace: ReturnType<typeof createCanvasPerformanceInputTrace> | null = null;
+let focusSpan: ReturnType<typeof createCanvasDocumentFocusSpan> | null = null;
 const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
 
@@ -89,16 +91,19 @@ async function prepare(count: number, clustered: boolean, kind: CanvasPerformanc
     count, clustered, kind, resource: media.readStats(), camera: kernel.readCamera(), stats: kernel.readStats(), renderStatus: kernel.readRenderStatus(), resolution: kernel.readResolution() };
 }
 function start(baseline?: (time: number) => void) {
+  focusSpan?.finish(); focusSpan = createCanvasDocumentFocusSpan();
   cancelAnimationFrame(collection); gaps = []; previous = null;
   const frame = (time: number) => { zoomTimeline?.frame(time); if (previous !== null) gaps.push(time - previous); else baseline?.(time); previous = time; collection = requestAnimationFrame(frame); };
   collection = requestAnimationFrame(frame);
+  return { documentFocus: focusSpan.start };
 }
 function startBaseline(): Promise<number> { return new Promise(resolve => start(resolve)); }
 function finish() {
   cancelAnimationFrame(collection); collection = 0;
+  const documentFocus = focusSpan?.finish(); focusSpan = null;
   const sorted = gaps.slice().sort((a, b) => a - b);
   return { frames: gaps.length, frameIntervalsMs: gaps, elapsedMs: gaps.reduce((sum, gap) => sum + gap, 0), frameP95: sorted[Math.floor(sorted.length * 0.95)],
-    worstFrame: sorted[sorted.length - 1], camera: kernel?.readCamera(), scene: kernel?.readStats(), queue: presentation?.readStats(), media: media?.readStats(), failures };
+    worstFrame: sorted[sorted.length - 1], camera: kernel?.readCamera(), scene: kernel?.readStats(), queue: presentation?.readStats(), media: media?.readStats(), failures, documentFocus };
 }
 function closeView() {
   kernel?.setCamera({ x: 30, y: 30, zoom: 0.6 }); media?.content?.refreshVisible(kernel?.renderableCards() ?? []); presentation?.refresh();
