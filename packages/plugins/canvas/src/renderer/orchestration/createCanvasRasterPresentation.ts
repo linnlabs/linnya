@@ -205,10 +205,11 @@ class CanvasRasterPresentation {
     if (!targets.has(id)) return { id, revision: card.revision, mode: 'overview', status: 'not_required' };
     if (this.options.kernel.readCamera().zoom < 0.3) return { id, revision: card.revision, mode: 'thumbnail', status: 'not_required' };
     const demand = this.demand(card, frame);
-    if (this.failed.get(id) === demand.key) return { id, revision: card.revision, mode: 'body', status: 'failed' };
-    if (demand.regions.length) return { id, revision: card.revision, mode: 'body', status: 'pending' };
     const receipt = this.options.kernel.readRasterReceipt(id, demand.key);
-    return { id, revision: card.revision, mode: 'body', status: receipt?.rendered ? 'ready' : 'awaiting_draw' };
+    const body = { id, revision: card.revision, mode: 'body', firstPresented: receipt?.firstPresented ?? false } as const;
+    if (this.failed.get(id) === demand.key) return { ...body, status: 'failed' };
+    if (demand.regions.length) return { ...body, status: 'pending' };
+    return { ...body, status: receipt?.rendered ? 'ready' : 'awaiting_draw' };
   }
   retry(): void { this.failed.clear(); this.refresh(); }
   readStats() { return { ...this.queue.readStats(), failed: this.failed.size, refreshes: this.refreshes,

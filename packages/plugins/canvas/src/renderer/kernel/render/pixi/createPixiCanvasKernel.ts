@@ -19,7 +19,8 @@ import { planCanvasSceneMotion, resolveCanvasDisplayCard, canvasCardRasterChange
 import { canvasFitText } from '../../geometry/canvasFitText';
 import { canvasFitCamera } from '../../geometry/canvasFitCamera';
 
-interface CardView extends CanvasMotionView { readonly background: NineSliceSprite; readonly body: Container; readonly label: Text; visibleAfterRender: number; rasterContentKey: string | undefined }
+interface CardView extends CanvasMotionView { readonly background: NineSliceSprite; readonly body: Container; readonly label: Text;
+  visibleAfterRender: number; firstVisibleAfterRender: number; rasterContentKey: string | undefined }
 
 function makeBackground(material: 'paper' | 'card'): Texture {
   const canvas = document.createElement('canvas');
@@ -152,6 +153,7 @@ class PixiCanvasKernel implements CanvasKernel {
     } });
     this.scene = new CanvasSceneMotion({ project: (ids, opacity, camera) => this.projectSceneMotion(ids, opacity, camera),
       removed: id => this.removeRetiringView(id), complete: id => { const view = this.views.get(id); if (view) view.visibleAfterRender = this.renders; },
+      appeared: id => { const view = this.views.get(id); if (view) view.firstVisibleAfterRender = this.renders; },
       camera: camera => this.updateCameraState(camera) });
     this.motionChanged(); this.motionPreference.addEventListener('change', this.motionChanged);
     this.removeInteraction = options.onIntent ? installCanvasInteraction(this, options.onIntent, { readonly: options.readonly, readReadonly: options.readReadonly, readPreferences: options.readInteractionPreferences }) : () => undefined;
@@ -196,7 +198,7 @@ class PixiCanvasKernel implements CanvasKernel {
     label.visible = !overview && this.titleExposed(card) && !this.bitmaps.covers(card.id, this.readVisibleCardRegions(card.id));
     body.visible = !overview && this.bitmaps.has(card.id);
     if (this.editingCard === card.id) { label.visible = false; body.visible = false; }
-    if (!wasVisible && container.visible && body.visible) view.visibleAfterRender = this.renders;
+    if (!wasVisible && container.visible && body.visible) { view.visibleAfterRender = this.renders; view.firstVisibleAfterRender = this.renders; }
     const bounds = this.identityBounds(card); label.position.set(bounds.x, bounds.y);
     // 地图标签只在确定的屏幕格中保留一个，避免一屏几千张纹理和文字重叠。
     view.lodAlpha = this.camera.zoom < 0.15 && !this.selected.has(card.id) ? 0.6 : 1;
@@ -275,7 +277,7 @@ class PixiCanvasKernel implements CanvasKernel {
       else {
         const wasVisible = view.container.visible;
         view.container.visible = this.exposedIds.has(view.card.id);
-        if (!wasVisible && view.container.visible) view.visibleAfterRender = this.renders;
+        if (!wasVisible && view.container.visible) { view.visibleAfterRender = this.renders; view.firstVisibleAfterRender = this.renders; }
         if (view.container.visible) {
           const overview = !this.keepsThumbnail(view.card) && this.camera.zoom < 0.3 && this.appearance.overview === 'titles';
           view.label.visible = this.editingCard !== view.card.id && !overview && this.titleExposed(view.card) && !this.bitmaps.covers(view.card.id, this.readVisibleCardRegions(view.card.id));
@@ -352,7 +354,7 @@ class PixiCanvasKernel implements CanvasKernel {
       style: { fill: 0xffffff, fontFamily: 'system-ui', fontSize: 15, wordWrap: false } });
     container.addChild(background, body, label);
     this.cardLayer.addChild(container);
-    this.views.set(card.id, { card, container, background, body, label, visibleAfterRender: this.renders, rasterContentKey: undefined, lodAlpha: 1 });
+    this.views.set(card.id, { card, container, background, body, label, visibleAfterRender: this.renders, firstVisibleAfterRender: this.renders, rasterContentKey: undefined, lodAlpha: 1 });
   }
 
   private updateCameraState(next: CanvasCamera): void {
@@ -404,11 +406,15 @@ class PixiCanvasKernel implements CanvasKernel {
     // 内容/授权世代改变不是采样升级，旧封面和标签不能在新世代继续淡出。
     view.rasterContentKey = key; this.removeBitmap(id); this.schedule();
   }
-  readRasterReceipt(id: CanvasCardId, key: string): { readonly acceptedAfterRender: number; readonly rendered: boolean } | null {
+  readRasterReceipt(id: CanvasCardId, key: string): { readonly acceptedAfterRender: number; readonly firstPresented: boolean; readonly rendered: boolean } | null {
     const accepted = this.bitmaps.readReceipt(id, key), view = this.views.get(id);
     if (accepted === null || !view) return null;
-    const acceptedAfterRender = Math.max(accepted, view.visibleAfterRender);
-    return { acceptedAfterRender, rendered: !this.contextLost && !this.bitmaps.isFading(id) && !this.scene.has(id) && view.container.visible && view.body.visible && this.renders > acceptedAfterRender };
+    const acceptedAfterRender = Math.max(accepted.acceptedAfterRender, view.visibleAfterRender);
+    const visible = !this.contextLost && view.container.visible && view.body.visible && view.container.alpha > 0;
+    // 首显只认可新层alpha真正大于0后完成的draw；alpha0首帧及仅上传纹理均不能作证。
+    const firstPresented = visible && accepted.firstVisibleAfterRender !== null && this.renders > Math.max(accepted.firstVisibleAfterRender, view.firstVisibleAfterRender);
+    return { acceptedAfterRender, firstPresented,
+      rendered: visible && !this.bitmaps.isFading(id) && !this.scene.has(id) && this.renders > acceptedAfterRender };
   }
   setEditingCard(id: CanvasCardId | null): void {
     if (id) this.finishTransitions([id]);

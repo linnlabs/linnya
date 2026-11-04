@@ -10,9 +10,9 @@ const card = (x = 0) => CanvasCardSchema.parse({ id: 'c1', type: 'text', schemaV
   data: { contentVersion: 1, content: { type: 'doc', content: [] } } });
 function setup(initial: CanvasCard) {
   const view: CanvasMotionView = { card: { ...initial }, container: new Container(), lodAlpha: 1 };
-  const removed = vi.fn(), complete = vi.fn(), project = vi.fn(); let camera: CanvasCamera = { x: 0, y: 0, zoom: 1 };
-  const scene = new CanvasSceneMotion({ removed, complete, project, camera: next => { camera = next; } }); scene.apply(view);
-  return { view, scene, removed, complete, project, camera: () => camera };
+  const removed = vi.fn(), complete = vi.fn(), project = vi.fn(), appeared = vi.fn(); let camera: CanvasCamera = { x: 0, y: 0, zoom: 1 };
+  const scene = new CanvasSceneMotion({ removed, complete, project, appeared, camera: next => { camera = next; } }); scene.apply(view);
+  return { view, scene, removed, complete, project, appeared, camera: () => camera };
 }
 afterEach(() => { vi.useRealTimers(); });
 it('移动以当前显示接续，finish同步到目标，拖动冻结当前视觉而不修改提交事实', () => {
@@ -34,8 +34,8 @@ it('新增160ms从96%淡入，删除120ms保留姿态后释放，减少动效立
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
   const initial = card(), state = setup(initial);
   state.scene.start({ id: initial.id, kind: 'add', durationMs: 160 }, state.view, initial, performance.now());
-  expect(state.view.container.scale.x).toBe(0.96); expect(state.view.container.alpha).toBe(0); expect(state.scene.opaque(initial.id)).toBe(false);
-  vi.advanceTimersByTime(80); expect(state.view.container.scale.x).toBeGreaterThan(0.96); expect(state.view.container.alpha).toBe(0.5);
+  expect(state.view.container.scale.x).toBe(0.96); expect(state.view.container.alpha).toBe(0); expect(state.appeared).not.toHaveBeenCalled(); expect(state.scene.opaque(initial.id)).toBe(false);
+  vi.advanceTimersByTime(80); expect(state.view.container.scale.x).toBeGreaterThan(0.96); expect(state.view.container.alpha).toBe(0.5); expect(state.appeared).toHaveBeenCalledExactlyOnceWith(initial.id);
   state.scene.setEnabled(false); expect(state.view.container.alpha).toBe(1); expect(state.view.container.scale.x).toBe(1); expect(state.scene.opaque(initial.id)).toBe(true);
   state.scene.setEnabled(true); state.scene.start({ id: initial.id, kind: 'remove', durationMs: 120 }, state.view, undefined, performance.now());
   vi.advanceTimersByTime(56); expect(state.removed).not.toHaveBeenCalled(); expect(state.view.container.alpha).toBeLessThan(1);

@@ -6,7 +6,7 @@ import { selectCanvasRasterCoverage } from '../../geometry/selectCanvasRasterCov
 import { CanvasBitmapResources, type CanvasBitmapLayer, type CanvasBitmapRegion } from './canvasBitmapResources';
 import { CanvasBitmapFades } from './CanvasBitmapFades';
 
-interface Entry extends CanvasBitmapLayer { readonly key: string; acceptedAfterRender: number }
+interface Entry extends CanvasBitmapLayer { readonly key: string; acceptedAfterRender: number; firstVisibleAfterRender: number | null }
 
 /** 当前采样与120ms退休层共用唯一位图owner及同一个有界LRU预算。 */
 export class CanvasBitmapCache {
@@ -15,7 +15,8 @@ export class CanvasBitmapCache {
   private readonly fades;
   constructor(private readonly options: { readonly budget: number; readonly changed: (id: CanvasCardId) => void;
     readonly requestDraw: () => void; readonly readRenderCount: () => number }) {
-    this.fades = new CanvasBitmapFades({ resources: this.resources, requestDraw: options.requestDraw, complete: id => {
+    this.fades = new CanvasBitmapFades({ resources: this.resources, requestDraw: options.requestDraw,
+      appeared: id => { const entry = this.entries.get(id); if (entry) entry.firstVisibleAfterRender = options.readRenderCount(); }, complete: id => {
       const entry = this.entries.get(id); if (entry) { entry.acceptedAfterRender = options.readRenderCount(); options.changed(id); }
     } });
   }
@@ -72,17 +73,19 @@ export class CanvasBitmapCache {
       const owner = this.resources.create(tile), region = this.resources.region(owner, tile, tile.scale);
       body.addChild(region.sprite); regions.push(region);
     }
-    const next = { key, regions, alpha: 1, acceptedAfterRender: this.options.readRenderCount() };
+    const next: Entry = { key, regions, alpha: 1, acceptedAfterRender: this.options.readRenderCount(),
+      firstVisibleAfterRender: append?.firstVisibleAfterRender ?? this.options.readRenderCount() };
     this.entries.delete(id); this.entries.set(id, next);
     if (append) { this.options.changed(id); return true; }
     // 首图未实际显示时直接接纳新图；不能为未见过的旧片制造一次模糊飞入。
     const displayed = previous && (this.fades.has(id) || this.options.readRenderCount() > previous.acceptedAfterRender) ? previous : undefined;
     this.fades.start(id, displayed, next);
+    if (this.fades.has(id)) next.firstVisibleAfterRender = null;
     if (!this.fades.has(id) && previous) for (const region of previous.regions) this.resources.release(region);
     this.options.changed(id); return true;
   }
-  readReceipt(id: CanvasCardId, key: string): number | null {
-    const entry = this.entries.get(id); return entry?.key === key ? entry.acceptedAfterRender : null;
+  readReceipt(id: CanvasCardId, key: string): { readonly acceptedAfterRender: number; readonly firstVisibleAfterRender: number | null } | null {
+    const entry = this.entries.get(id); return entry?.key === key ? entry : null;
   }
   isFading(id: CanvasCardId): boolean { return this.fades.has(id); }
   readStats() {

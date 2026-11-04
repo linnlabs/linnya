@@ -66,6 +66,8 @@ macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事
 
 `readReadiness(ids)`按当前环境、外部内容世代与可见缺片读取正文事实，不泄露正文缓存键。body只有在匹配位图已接纳、120ms替换已完成、该卡可见且随后实际draw后才ready；进入/退出DOM编辑或重新进入视口也须等新draw。overview/thumbnail/outside分别报告，不能充当正文完成；complete要求非空可见交集全部body ready且无精确升级/隐藏暂停。内容序号的几何首帧由调用方另行关联，不能拿位图旧回执替代新提交的实际投影。stats分别报告fadingCards/retiringBytes/retiringTiles，总rasterTiles包含退休层；停手清晰测量必须等待fade归零。
 
+body的`firstPresented`只表示当前正文键已有新像素在非零透明度下完成实际draw，可在仍缺其他片或仍淡入时成立。位图替换和scene淡入分别记录首次alpha大于零时的render下界，上传、alpha零帧和旧正文键不算首显；`ready`继续等待全部可见正文和过渡结束后的draw。调用方以本次变化卡及当前revision关联这两个阶段，不能用首显替代完整正文完成。
+
 地图标签按选中、染纸、文档与面积优先；选中变化只作稳定分区并更新相关卡的远景透明度。单卡编辑的精确采样在DOM接管前保持，普通补图不能立即降回档位；相机倍率/环境改变或离开需求后解除。Pixi stage不另作交互命中（eventMode:none），所有意图仍走原生DOM事件与唯一空间索引，参见[Pixi事件合同](https://pixijs.com/8.x/guides/components/events)。
 
 场景显示与逻辑target分开：普通指定新增以96%大小淡入160ms，移动220ms，删除保留旧显示120ms；超过200个有效指定ID或显式batch时统一200ms淡入，避免逐卡飞行。删除的显示不再参与逻辑命中，仍持有的位图继续计入原有预算，退休后释放。透明新增阶段不扣除下层正文，地图标签跟随相同alpha。`sceneTransitions`和`cameraTransition`暴露实际未完成任务；正文回执还须等待场景过渡结束后的真正draw。

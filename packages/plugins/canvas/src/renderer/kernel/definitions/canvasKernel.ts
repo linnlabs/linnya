@@ -45,7 +45,7 @@ export interface CanvasKernel {
   readSelection(): readonly CanvasCardId[];
   setEditingCard(id: CanvasCardId | null): void;
   hasBitmap(id: CanvasCardId, key: string): boolean;
-  readRasterReceipt(id: CanvasCardId, key: string): { readonly acceptedAfterRender: number; readonly rendered: boolean } | null;
+  readRasterReceipt(id: CanvasCardId, key: string): { readonly acceptedAfterRender: number; readonly firstPresented: boolean; readonly rendered: boolean } | null;
   setDragPreview(ids: readonly CanvasCardId[], dx: number, dy: number): void;
   clearDragPreview(): void;
   setBrush(rectangle: CanvasRectangle | null): void;

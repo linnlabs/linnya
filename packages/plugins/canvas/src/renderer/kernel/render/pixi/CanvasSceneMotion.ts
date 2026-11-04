@@ -22,6 +22,7 @@ export class CanvasSceneMotion {
   constructor(private readonly options: {
     readonly project: (ids: readonly CanvasCardId[], opacityChanged: boolean, cameraChanged: boolean) => void;
     readonly removed: (id: CanvasCardId) => void; readonly complete: (id: CanvasCardId) => void;
+    readonly appeared: (id: CanvasCardId) => void;
     readonly camera: (camera: CanvasCamera) => void;
   }) {}
   apply(view: CanvasMotionView): void {
@@ -33,7 +34,7 @@ export class CanvasSceneMotion {
     this.cards.delete(plan.id); this.translucent.delete(plan.id);
     if (!this.enabled) {
       if (plan.kind === 'remove') this.options.removed(plan.id);
-      else { if (target) { view.card.x = target.x; view.card.y = target.y; } this.apply(view); this.options.complete(plan.id); }
+      else { if (view.container.alpha === 0) this.options.appeared(plan.id); if (target) { view.card.x = target.x; view.card.y = target.y; } this.apply(view); this.options.complete(plan.id); }
       return;
     }
     const appearing = plan.kind === 'add' || plan.kind === 'batch';
@@ -55,14 +56,16 @@ export class CanvasSceneMotion {
   private end(id: CanvasCardId, node: CardMotion): void {
     this.cards.delete(id); this.translucent.delete(id);
     if (node.kind === 'remove') this.options.removed(id);
-    else { node.view.card.x = node.toX; node.view.card.y = node.toY; this.apply(node.view); this.options.complete(id); }
+    else { if (node.alpha === 0) this.options.appeared(id); node.view.card.x = node.toX; node.view.card.y = node.toY; this.apply(node.view); this.options.complete(id); }
   }
   private readonly pulse = () => {
     this.timer = undefined; this.changed.length = 0;
     const now = performance.now(); let opacityChanged = false;
     for (const [id, node] of this.cards) {
       if (node.kind !== 'remove' && (node.kind === 'move' || node.kind === 'add')) this.changed.push(id);
-      if (this.advance(node, now)) { this.end(id, node); opacityChanged = true; }
+      const wasVisible = node.alpha > 0, complete = this.advance(node, now);
+      if (!wasVisible && node.alpha > 0) this.options.appeared(id);
+      if (complete) { this.end(id, node); opacityChanged = true; }
     }
     const cameraChanged = this.advanceCamera(now);
     this.options.project(this.changed, opacityChanged, cameraChanged); this.schedule();
@@ -98,6 +101,7 @@ export class CanvasSceneMotion {
       const node = this.cards.get(id); if (!node) continue;
       if (node.kind === 'remove') { this.end(id, node); continue; }
       this.cards.delete(id); this.translucent.delete(id);
+      if (node.alpha === 0) this.options.appeared(id);
       node.view.card.x = node.view.container.x; node.view.card.y = node.view.container.y;
       this.apply(node.view); this.changed.push(id); this.options.complete(id);
     }

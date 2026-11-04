@@ -102,6 +102,27 @@ async function beginReducedScene() {
   kernel.setElements([{ ...initial, revision: 2, x: 330 }], { animateIds: [initial.id] }); kernel.animateCamera({ x: 100, y: 60, zoom: 1.2 }, 320);
   return { started: kernel.readStats().sceneTransitions, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 }
+async function firstBodyVisual() {
+  const kernel = await setup(), initial = card('c1', 20); kernel.setElements([initial]);
+  kernel.setBitmap(initial.id, 1, 'old', bitmap('#e02020')); await drawn();
+  kernel.setBitmap(initial.id, 1, 'current', bitmap('#20c060'));
+  const uploaded = kernel.readRasterReceipt(initial.id, 'current');
+  if (!uploaded || uploaded.firstPresented || uploaded.rendered || kernel.readRasterReceipt(initial.id, 'old')) throw new Error('uploaded_or_old_bitmap_claimed_current_body_draw');
+  await drawn();
+  const first = kernel.readRasterReceipt(initial.id, 'current'), fadeImage = await kernel.captureImage('png');
+  if (!first?.firstPresented) throw new Error('new_visible_bitmap_draw_missing_first_receipt');
+  kernel.finishTransitions(); await drawn();
+  const complete = kernel.readRasterReceipt(initial.id, 'current');
+  if (!complete?.rendered || !complete.firstPresented) throw new Error('settled_bitmap_draw_missing_receipt');
+  const target = { ...initial, revision: 2 };
+  kernel.setElements([target], { animateIds: [initial.id], batch: true });
+  const sceneStart = kernel.readRasterReceipt(initial.id, 'current');
+  if (sceneStart?.firstPresented || sceneStart?.rendered) throw new Error('alpha_zero_scene_claimed_body_visible');
+  await drawn(); const sceneFirst = kernel.readRasterReceipt(initial.id, 'current');
+  if (!sceneFirst?.firstPresented) throw new Error('visible_scene_draw_missing_first_receipt');
+  const sceneImage = await kernel.captureImage('png'); kernel.finishTransitions(); await drawn();
+  return { uploaded, first, complete, sceneStart, sceneFirst, fadeImage, sceneImage, dpr: devicePixelRatio };
+}
 async function finishReducedScene() {
   const kernel = current; if (!kernel) throw new Error('scene_fixture_missing'); await sleep(16);
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches || kernel.readStats().sceneTransitions || kernel.readStats().cameraTransition
@@ -111,4 +132,4 @@ async function finishReducedScene() {
   const stats = kernel.readStats(); kernel.destroy(); current = undefined; return stats;
 }
 Object.defineProperties(window, { prepareCanvasSceneVisualProbe: { value: sceneVisual }, prepareCanvasSceneOpacityVisualProbe: { value: sceneOpacityVisual }, prepareCanvasSceneMapVisualProbe: { value: sceneMapVisual },
-  prepareCanvasIdentityInkProbe: { value: identityInkVisual }, prepareCanvasIdentityBoundsProbe: { value: identityBoundsVisual }, prepareCanvasBitmapAppendProbe: { value: bitmapAppendVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });
+  prepareCanvasIdentityInkProbe: { value: identityInkVisual }, prepareCanvasIdentityBoundsProbe: { value: identityBoundsVisual }, prepareCanvasBitmapAppendProbe: { value: bitmapAppendVisual }, prepareCanvasFirstBodyProbe: { value: firstBodyVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });
