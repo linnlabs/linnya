@@ -47,7 +47,7 @@ jobs:
         run: pnpm exec vitest run packages/plugins/__tests__/canvasDocument.sqlite.integration.test.ts packages/plugins/__tests__/canvasVersionHistory.sqlite.integration.test.ts
       - name: Prepare Linux offscreen display
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64 fonts-noto-cjk
       - name: Check drawing workload on Linux
         if: runner.os == 'Linux'
         run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
@@ -56,3 +56,26 @@ jobs:
         run: pnpm exec cross-env CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
       - name: Verify drawing counts and bounded resources
         run: node packages/plugins/canvas/dev/probes/verify-counts.mjs
+      - name: Compare DOM and bitmap content on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a node packages/plugins/canvas/dev/probes/run-visual-probe.mjs
+      - name: Compare DOM and bitmap content on macOS and Windows
+        if: runner.os != 'Linux'
+        run: node packages/plugins/canvas/dev/probes/run-visual-probe.mjs
+      - name: Verify isolated Canvas artifact on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm run smoke:plugin:canvas:artifact
+      - name: Verify isolated Canvas artifact on macOS and Windows
+        if: runner.os != 'Linux'
+        run: pnpm run smoke:plugin:canvas:artifact
+      - name: Retain drawing and visual evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: canvas-evidence-${{ matrix.os }}
+          path: |
+            _dev_data/canvas-counts-probe/results.json
+            _dev_data/canvas-visual-probe/*.json
+            _dev_data/canvas-visual-probe/*.png
+          if-no-files-found: warn
+          retention-days: 7

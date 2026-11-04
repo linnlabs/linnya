@@ -34,7 +34,9 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 
 插件自身提供 typecheck、test、lint、build 入口。测试覆盖真实提交/重开、失败回滚、并发/撤回与插件生命周期；技术探针放在 `dev/probes`，本地结果不成为构建依赖。插件不属于默认官方发行目标。
 
-[Canvas Regression](../../../.github/workflows/canvas-regression.yml) 在 macOS、Windows、Linux 分别验证业务结果与离屏绘制的确定性工作量；Linux不代表新增Desktop发行平台。共享CI不比较帧耗时，也不能代替真实GPU、输入法和屏幕交互验收。固定模型任务与完整证据的评分入口见 [Agent验收](./scripts/agent-evaluation/README.md)；模型评测与无凭据CI分开运行。
+[Canvas Regression](../../../.github/workflows/canvas-regression.yml) 在 macOS、Windows、Linux 分别验证业务结果、离屏绘制的确定性工作量、同机DOM与位图内容以及独立Canvas制品闭包，并保留合成图像证据。Linux不代表新增Desktop发行平台，制品验收也不会改变官方发行目标。共享CI不比较帧耗时，也不能代替真实GPU、输入法和屏幕交互验收。固定模型任务与完整证据的评分入口见 [Agent验收](./scripts/agent-evaluation/README.md)；模型评测与无凭据CI分开运行。
+
+Host侧集成测试会运行实际Canvas计算Worker，须先完成插件的backend构建；其他CI job的构建产物不能代替当前job的依赖准备。
 
 ## Renderer
 
