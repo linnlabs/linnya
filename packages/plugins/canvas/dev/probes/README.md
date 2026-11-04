@@ -35,3 +35,5 @@ node packages/plugins/canvas/dev/probes/run-render-probe.mjs
 近景首次补图先启动采集并等待采集器自己的首个真实rAF建立基准，再调用closeView；不能把窗口开在定位之后，漏掉首次Graphics编译帧。该口径使用`production-dom-v5-body-baseline` / `production-media-provider-v2-body-baseline`；历史v4/v1原始证据保留，不混为同一冷补图基线。`CANVAS_PERFORMANCE_DISTRIBUTIONS=cluster`可缩小诊断窗口，CI仍强制六行齐全。
 
 `CANVAS_PERFORMANCE_ZOOM_TRACE=1`仅诊断明确缩放故障：保存Electron43的Chromium trace（CPU ProfileChunks、GC、渲染/GPU轨道和UserTiming），以及同阶段逐rAF时间、实际draw和资源/队列计数。仅此模式安装观察器并在真实rAF基准后发送滚轮；输出永远取消硬件基线资格。GPU轨道或采样不足时如实保留限制，不能把host调用耗时视作GPU执行。实现比照[Electron43 contentTracing](https://github.com/electron/electron/blob/v43.8.1/docs/api/content-tracing.md)及[Playwright的CPU/timeline类别](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/chromium/crBrowser.ts)。
+
+每段报告同时保存既有采集器的`frameIntervalsMs`原始间隔，不新增逐帧工作。平均、p95和最大值不足以证明常用档掉帧比例；验收需明确60Hz的16.667ms参考、超时间隔占比，以及长停顿漏掉的参考帧机会，另保留实际120Hz参考结果。历史缺原始间隔的报告不能反推这些比例。

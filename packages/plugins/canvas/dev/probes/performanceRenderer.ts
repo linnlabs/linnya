@@ -88,7 +88,7 @@ function startBaseline(): Promise<number> { return new Promise(resolve => start(
 function finish() {
   cancelAnimationFrame(collection); collection = 0;
   const sorted = gaps.slice().sort((a, b) => a - b);
-  return { frames: gaps.length, elapsedMs: gaps.reduce((sum, gap) => sum + gap, 0), frameP95: sorted[Math.floor(sorted.length * 0.95)],
+  return { frames: gaps.length, frameIntervalsMs: gaps, elapsedMs: gaps.reduce((sum, gap) => sum + gap, 0), frameP95: sorted[Math.floor(sorted.length * 0.95)],
     worstFrame: sorted[sorted.length - 1], camera: kernel?.readCamera(), scene: kernel?.readStats(), queue: presentation?.readStats(), media: media?.readStats(), failures };
 }
 function closeView() {
