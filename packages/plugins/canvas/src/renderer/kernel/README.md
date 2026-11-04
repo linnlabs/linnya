@@ -86,6 +86,16 @@ body的`firstPresented`只表示当前正文键已有新像素在非零透明度
 
 近景缺图身份牌使用卡内单行省略标题，按同一15px字体度量；不能把120字在窄卡内自动折成上百行并溢出纸面。小卡缩小内边距，高度不足一行时不画溢出字形。拟合结果有4096项上限，颜色通过GPU tint改变，避免染纸时重新生成每张身份牌的文字纹理；正文仍保留全部内容。80×32长中文/emoji卡片的真实像素门禁验证纸面之外无标题墨迹。
 
+身份牌由`CanvasIdentityAtlas`集中准备：仍使用固定Pixi8.22的root导出`CanvasTextGenerator`完成整串排版，不拆字，不改system-ui15、白字tint、DPR或世界坐标。生成器带`@internal`兼容性标记，因此只由一个窄适配器消费，升级依赖时须重过同机Pixi Text整串像素门禁。借来的Canvas同步复制到自有页后立即归还；frame为临时物理矩形，Texture子框按source.resolution换算为逻辑单位。每个输入/异步批次只更新脏页一次，纯绘制RAF不准备文字。
+
+页有2物理px透明间隔，按完整1024×512或更大独立字符串页计账。可见缺图牌持有活动引用，正文覆盖后的视图仍可复用缓存；无活动引用的页可LRU淘汰，最后视图移除时整页释放。页面销毁会清掉所有绑定的子纹理，不能留下已释放source的Sprite；上下文恢复从保留的自有Canvas重传同一页。
+
+`bitmapBudgetBytes`继续限制正文（包括退休层），默认256MiB。正文与身份牌另共用固定256MiB逻辑RGBA纹理估算上限：新页先准入并让正文LRU回收，正文接纳也扣除完整atlas页占用；不把空白槽、隐藏缓存或退休正文漏账。stats分别报告bitmapBytes、identityBytes、identityCanvasBytes和派生estimatedTextureBytes/textureBudgetBytes。CPU Canvas backing另列，不声称这些估算代表驱动或全进程物理内存。所有权与子框遵循[Pixi TextureSource/Texture](https://pixijs.com/8.x/guides/components/textures)，排版来自[固定8.22 CanvasTextGenerator](https://github.com/pixijs/pixijs/blob/v8.22.0/src/scene/text/canvas/CanvasTextGenerator.ts)。
+
+活动页本身超过总容量时明确拒绝分配，不隐藏/延迟正确标题或增加预算。容量异常经既有render-status显示后仍抛出，不能把绘制失败当保存失败或成功出图；视口变化后成功准备会清掉容量提示。相同失败工作集不由纯draw任务无限重试，显式capture仍返回原错误；正文、可见性、DPR或资源变化才重新准备。该边界不影响Backend内容与保存，未证明可容纳的极端活动标题规模不能列入性能支持范围。低于.15的隐藏身份牌不登记活动引用，同倍率平移也遵循同一规则；identityActiveLabels供确定性工作量检查。
+
+`createCanvasCardTextureCaches`仅组合两个owner的预算准入，不拥有UI或GL。独立probe以相同组合入口、2MiB加20,000字节总预算和实际40,000字节ImageBitmap验证：atlas先让旧正文释放，隐藏atlas再让新正文接纳，最终两边都释放；不为测试扩张Kernel公共合同，也不需分配整份256MiB资源。
+
 同内容键下互不重叠的新增片段直接追加，保留已经显示的Sprite/Texture所有权，不为没有旧像素的新区域重建并淡入整张卡。只有没有在途替换时才走追加路径；相交采样升级、内容键切换及仍在进行的旧/新替换继续使用120ms流程。真实Electron门禁验证既有像素在追加前后完全一致、新区域可见、两张底图分别只关闭一次，内存仍计入原预算。
 
 线段四角使用[Pixi Geometry索引缓冲](https://pixijs.download/v8.22.0/docs/rendering.Geometry.html)共享给两个三角形，替代六份重复属性；法向量在每段只求一次。三角形覆盖、曲线细分误差、屏幕线宽、虚线相位及箭头保持同一几何，减少动态连线的CPU填充和GPU上传，不以降低线条质量换帧率。

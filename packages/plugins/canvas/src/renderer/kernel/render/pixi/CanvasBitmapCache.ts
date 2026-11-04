@@ -14,7 +14,8 @@ export class CanvasBitmapCache {
   private readonly resources = new CanvasBitmapResources();
   private readonly fades;
   constructor(private readonly options: { readonly budget: number; readonly changed: (id: CanvasCardId) => void;
-    readonly requestDraw: () => void; readonly readRenderCount: () => number }) {
+    readonly requestDraw: () => void; readonly readRenderCount: () => number; readonly readAvailableBudget?: () => number;
+    readonly reserveExternal?: (incomingBytes: number, currentBytes: number) => void }) {
     this.fades = new CanvasBitmapFades({ resources: this.resources, requestDraw: options.requestDraw,
       appeared: id => { const entry = this.entries.get(id); if (entry) entry.firstVisibleAfterRender = options.readRenderCount(); }, complete: id => {
       const entry = this.entries.get(id); if (entry) { entry.acceptedAfterRender = options.readRenderCount(); options.changed(id); }
@@ -36,14 +37,16 @@ export class CanvasBitmapCache {
     this.entries.delete(id); this.options.changed(id);
   }
   clear(): void { for (const id of this.entries.keys()) this.remove(id); }
-  private reserve(bytes: number, current: CanvasCardId): void {
-    while (this.resources.readBytes() + bytes > this.options.budget) {
+  private availableBudget(): number { return Math.min(this.options.budget, this.options.readAvailableBudget?.() ?? this.options.budget); }
+  trimTo(bytes: number): void { this.reserve(0, undefined, bytes); }
+  private reserve(bytes: number, current?: CanvasCardId, limit = this.availableBudget()): void {
+    while (this.resources.readBytes() + bytes > limit) {
       // 先结束退休层，再淘汰不相关卡；旧/新双份资源绝不突破原预算。
       if (this.fades.finishOldest()) continue;
       let candidate: CanvasCardId | undefined;
       for (const id of this.entries.keys()) if (id !== current) { candidate = id; break; }
       if (candidate !== undefined) this.remove(candidate);
-      else { this.remove(current); break; }
+      else { if (current) this.remove(current); break; }
     }
   }
   private retained(previous: Entry | undefined, key: string, additions: readonly CanvasRasterTile[], body: Container): CanvasBitmapRegion[] {
@@ -63,7 +66,9 @@ export class CanvasBitmapCache {
     });
     if (!additions.length) return true;
     const bytes = additions.reduce((sum, tile) => sum + tile.bitmap.width * tile.bitmap.height * 4, 0);
-    if (bytes > this.options.budget) { additions.forEach(tile => tile.bitmap.close()); return false; }
+    // 正文也可回收未显示的身份牌页；不能让旧页占满共享预算后永久拒绝新正文。
+    this.options.reserveExternal?.(bytes, this.resources.readBytes());
+    if (bytes > this.availableBudget()) { additions.forEach(tile => tile.bitmap.close()); return false; }
     this.reserve(bytes, id);
     const previous = this.entries.get(id);
     // 同一正文的未见区域没有旧像素可替换；保留既有Sprite，不能每补一条就重建并淡入整张卡。

@@ -2,7 +2,8 @@ import { createPixiCanvasKernel } from '../../src/renderer/kernel';
 import { createCanvasRasterPresentation } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
 import { createCanvasPerformancePaintTrace } from './performancePaintTrace';
 import { createCanvasZoomTimeline, type CanvasZoomTraceState } from './performanceZoomTimeline';
-import { changeVisibleUpdateFixture, createVisibleUpdateFixture, VISIBLE_UPDATE_TEXT_FONT, type VisibleUpdateChange } from './visibleUpdateFixture';
+import { readCanvasElementText } from '../../src/shared';
+import { changeVisibleUpdateFixture, createVisibleUpdateFixture, visibleUpdateChangedFirstLines, VISIBLE_UPDATE_TEXT_FONT, type VisibleUpdateChange, type VisibleIdentityArm } from './visibleUpdateFixture';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/styles/canvas.css';
@@ -18,11 +19,12 @@ const paints: number[] = [];
 document.addEventListener('paint', () => paints.push(performance.now()), true);
 let apply: ((poll: boolean, animate: boolean) => Promise<unknown>) | undefined;
 
-async function prepare(change: VisibleUpdateChange = 'color') {
-  dispose(); document.body.replaceChildren(); document.body.style.cssText = change === 'text'
+async function prepare(change: VisibleUpdateChange = 'color', identityArm: VisibleIdentityArm | null = null) {
+  if (change === 'identity-control' && identityArm === null) throw new Error('identity_control_arm_required');
+  dispose(); document.body.replaceChildren(); document.body.style.cssText = change !== 'color'
     ? `margin:0;font-family:${VISIBLE_UPDATE_TEXT_FONT};-webkit-font-smoothing:antialiased` : 'margin:0;font-family:system-ui';
   const host = document.createElement('div'), staging = document.createElement('div');
-  if (change === 'text') staging.className = 'canvas-raster-staging';
+  if (change !== 'color') staging.className = 'canvas-raster-staging';
   host.style.cssText = 'position:fixed;inset:0'; document.body.append(host, staging);
   const kernel = await createPixiCanvasKernel({ host, resolution: devicePixelRatio });
   const failures: string[] = [], raster = createCanvasRasterPresentation({ host: staging, kernel, suspendWhenHidden: false,
@@ -46,9 +48,17 @@ async function prepare(change: VisibleUpdateChange = 'color') {
       }
     }
   };
-  kernel.setElements(cards); kernel.fit(cards); raster.refresh(); await settle(false);
+  kernel.setElements(cards); kernel.fit(cards);
+  let identityWarm: { readonly renders: number; readonly bitmaps: number } | null = null;
+  if (change === 'identity-control') {
+    const started = performance.now();
+    do { await nextFrame(); if (performance.now() - started > 10000) throw new Error('identity_control_seed_labels_not_drawn'); } while (!kernel.readStats().renders);
+    const stats = kernel.readStats(); identityWarm = { renders: stats.renders, bitmaps: stats.bitmaps };
+    if (stats.bitmaps || stats.renderableCards !== 500) throw new Error('identity_control_seed_warm_included_body_or_missing_cards');
+  }
+  raster.refresh(); await settle(false);
   const expectedCamera = { x: 92.52293577981652, y: 40, zoom: 0.4701834862385321 }, camera = kernel.readCamera();
-  if (change === 'text' && (innerWidth !== 1400 || innerHeight !== 900 || devicePixelRatio !== 2
+  if (change !== 'color' && (innerWidth !== 1400 || innerHeight !== 900 || devicePixelRatio !== 2
     || Math.abs(camera.x - expectedCamera.x) > 1e-9 || Math.abs(camera.y - expectedCamera.y) > 1e-9 || Math.abs(camera.zoom - expectedCamera.zoom) > 1e-12)) throw new Error('visible_text_fixture_environment_does_not_match_r4');
   readTraceState = () => {
     const scene = kernel.readStats(), queue = raster.readStats();
@@ -63,7 +73,9 @@ async function prepare(change: VisibleUpdateChange = 'color') {
     await nextFrame();
     const started = performance.now(), previousDraw = kernel.readStats().renders;
     if (timeline) performance.mark('canvas-probe:visible-update-input');
-    cards = changeVisibleUpdateFixture(cards, change, ++round);
+    const before = cards; cards = changeVisibleUpdateFixture(cards, change, ++round, identityArm);
+    const changedFirstLines = change === 'identity-control' ? visibleUpdateChangedFirstLines(before, cards) : null;
+    if (change === 'identity-control' && changedFirstLines !== (identityArm === 'stable' ? 0 : 500)) throw new Error('identity_control_did_not_isolate_first_line');
     const revisions = new Map(cards.map(card => [card.id, card.revision]));
     kernel.setElements(cards, animate ? { animateIds: ids } : {}); raster.refresh(); const projected = performance.now();
     do { await nextFrame(); if (performance.now() - started > 10000) throw new Error('visible_update_geometry_draw_missing'); } while (kernel.readStats().renders <= previousDraw);
@@ -72,7 +84,8 @@ async function prepare(change: VisibleUpdateChange = 'color') {
     if (kernel.readStats().renders <= previousDraw || readiness.cards.length !== 500
       || readiness.cards.some(card => card.mode !== 'body' || card.status !== 'ready' || card.revision !== revisions.get(card.id))) throw new Error('visible_update_body_not_drawn');
     return { measurement: 'kernel-input-to-current-body-draw', backendMeasured: false, validHardwareRun: false,
-      diagnostic: 'isolated-renderer-current-new-body', change, textRound: change === 'text' ? round : null,
+      diagnostic: 'isolated-renderer-current-new-body', change, identityArm, changedFirstLines, textRound: change === 'color' ? null : round,
+      ...(change === 'identity-control' ? { firstLines: cards.map(card => readCanvasElementText(card).split('\n')[0]) } : {}),
       cards: cards.length, poll, animate, polls: settled.polls, projectMs: projected - started, geometryMs: geometry - started,
       firstAnyMs: settled.firstAnyMs, allVisibleMs: settled.allVisibleMs, firstPresentationObserved: poll,
       bodyMs: performance.now() - started, timeOrigin: performance.timeOrigin, inputAt: started, frameIntervalsMs,
@@ -80,7 +93,10 @@ async function prepare(change: VisibleUpdateChange = 'color') {
   };
   dispose = () => { frameCollector = null; timeline?.finish(); timeline = null; paintTrace?.finish(); paintTrace = null;
     raster.dispose(); kernel.destroy(); apply = undefined; capture = undefined; readTraceState = undefined; };
-  return { change, fixture: change === 'text' ? 'r4-before-round21-first500-logical-state-no-20-warm-writes' : 'historical-color-update',
+  return { change, identityArm, identityWarm,
+    ...(change === 'identity-control' ? { firstLines: cards.map(card => readCanvasElementText(card).split('\n')[0]) } : {}),
+    fixture: change === 'identity-control' ? 'two-paragraphs-common500-glyph-warm-first-line-control'
+    : change === 'text' ? 'r4-before-round21-first500-logical-state-no-20-warm-writes' : 'historical-color-update',
     viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio }, fontFamily: getComputedStyle(staging).fontFamily,
     fontSmoothing: getComputedStyle(staging).getPropertyValue('-webkit-font-smoothing'), camera: kernel.readCamera(), scene: kernel.readStats(), queue: raster.readStats() };
 }
