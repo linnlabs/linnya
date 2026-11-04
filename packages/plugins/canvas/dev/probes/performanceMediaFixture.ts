@@ -1,5 +1,5 @@
 import type { DocumentImageAsset, DocumentPreviewResult, DocumentReferencePresentation } from '@app/schemas';
-import { CanvasCardSchema, type CanvasElement } from '../../src/shared';
+import { CanvasCardSchema, type CanvasCardId, type CanvasElement } from '../../src/shared';
 import { createCanvasCardContent, type CanvasCardMediaPort } from '../../src/renderer/features/cardMedia';
 
 export type CanvasPerformanceKind = 'text' | 'image' | 'document';
@@ -51,7 +51,9 @@ export async function canvasPerformanceMediaFixture(elements: readonly CanvasEle
       ? { assetId: 'fixed-managed-raster', caption: `受管图片 ${element.id}`, alt: '蓝橙双色固定显示派生', crop: null }
       : { documentId: `authorized-document-${element.id.slice(1)}` } });
   });
-  return { elements: data, content: kind === 'text' ? null : createCanvasCardContent('media-performance-canvas', port),
+  const expectedThumbnails = new Set<CanvasCardId>(data.flatMap(element => element.type === 'image'
+    || element.type === 'document' && Number(element.id.slice(1)) % 2 === 0 ? [element.id] : []));
+  return { elements: data, expectedThumbnails, content: kind === 'text' ? null : createCanvasCardContent('media-performance-canvas', port),
     readStats: () => ({ kind, reads: { ...reads }, active: { ...active }, peak: { ...peak }, distinctPreviewDocuments: perDocument.size,
       maximumReadsPerDocument: Math.max(0, ...perDocument.values()), width: asset?.displayWidth ?? 0, height: asset?.displayHeight ?? 0 }) };
 }
