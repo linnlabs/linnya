@@ -53,13 +53,16 @@ function message(
   };
 }
 function shell(order: number, command: string, output: unknown) {
+  return shellOutputs(order, command, [output]);
+}
+function shellOutputs(order: number, command: string, outputs: readonly unknown[]) {
   return message(
     order,
     'shell',
     { command },
     {
       status: 'completed',
-      presentationText: 'stdout:\n' + JSON.stringify(output),
+      presentationText: 'stdout:\n' + outputs.map(output => JSON.stringify(output)).join('\n'),
       display: {
         mode: 'pipe',
         coverage: 'complete',
@@ -105,6 +108,116 @@ const literal = (payload: string, command: string) =>
   `cat > ops.json <<'JSON'\n${payload}\nJSON\n${command}`;
 
 describe('trusted Canvas tool trace', () => {
+  it('同一shell多目标的无身份check/render不归到目标画布，读Other图片不贡献最终看图序号', () => {
+    const check = {
+      sequence: 2,
+      cardCount: 0,
+      edgeCount: 0,
+      overlapCount: 0,
+      crossingCount: 0,
+      overlaps: [],
+      crossings: [],
+      longEdges: [],
+      outliers: [],
+      note: 'formal check',
+    };
+    const render = {
+      sequence: 2,
+      locator: 'conversation:/Other.png',
+      width: 100,
+      height: 100,
+      format: 'png',
+    };
+    const facts = parse([
+      shellOutputs(
+        1,
+        'linnya-canvas check workspace:/T1.canvas\nlinnya-canvas check workspace:/Other.canvas\nlinnya-canvas render workspace:/T1.canvas\nlinnya-canvas render workspace:/Other.canvas',
+        [
+          { ...check, sequence: 1 },
+          check,
+          { ...render, sequence: 1, locator: 'conversation:/T1-old.png' },
+          render,
+        ]
+      ),
+      message(
+        2,
+        'read_file',
+        { locator: render.locator },
+        {
+          source_kind: 'conversation_file',
+          locator: render.locator,
+          content_type: 'image/png',
+          attachment_status: 'attached',
+        }
+      ),
+    ]);
+    expect(facts.needsReview).toBe(true);
+    expect(facts.diagnostics.map(diagnostic => diagnostic.code)).toEqual([
+      'response_target_ambiguous',
+      'response_target_ambiguous',
+    ]);
+    expect(facts.checks).toEqual([]);
+    expect(facts.renders).toEqual([]);
+    expect(facts.imageReads).toEqual([]);
+  });
+  it('同目标单次check加单次render仍按类型唯一归属，可接纳实际读图；同类重复响应则待复核', () => {
+    const check = {
+      sequence: 2,
+      cardCount: 0,
+      edgeCount: 0,
+      overlapCount: 0,
+      crossingCount: 0,
+      overlaps: [],
+      crossings: [],
+      longEdges: [],
+      outliers: [],
+      note: 'formal check',
+    };
+    const render = {
+      sequence: 2,
+      locator: 'conversation:/target.png',
+      width: 100,
+      height: 100,
+      format: 'png',
+    };
+    const command =
+      'linnya-canvas check workspace:/T1.canvas\nlinnya-canvas render workspace:/T1.canvas';
+    const facts = parse([
+      shellOutputs(1, command, [check, render]),
+      message(
+        2,
+        'read_file',
+        { locator: render.locator },
+        {
+          source_kind: 'conversation_file',
+          locator: render.locator,
+          content_type: 'image/png',
+          attachment_status: 'attached',
+        }
+      ),
+    ]);
+    expect(facts.needsReview).toBe(false);
+    expect(facts.checks).toHaveLength(1);
+    expect(facts.renders).toHaveLength(1);
+    expect(facts.imageReads).toHaveLength(1);
+    const repeated = parse([
+      shellOutputs(1, 'linnya-canvas render workspace:/T1.canvas', [
+        render,
+        { ...render, locator: 'conversation:/extra.png' },
+      ]),
+    ]);
+    expect(repeated.needsReview).toBe(true);
+    expect(repeated.renders).toEqual([]);
+    const missing = parse([
+      shellOutputs(
+        1,
+        'linnya-canvas render workspace:/T1.canvas\nlinnya-canvas render workspace:/T1.canvas',
+        [render]
+      ),
+    ]);
+    expect(missing.needsReview).toBe(true);
+    expect(missing.renders).toEqual([]);
+  });
   it('separates dry-run corrections, actual writes and stable-ID replay without counting preview as commit', () => {
     const facts = parse([
       shell(

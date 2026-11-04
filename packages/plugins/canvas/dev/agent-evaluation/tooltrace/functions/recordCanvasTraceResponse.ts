@@ -1,9 +1,9 @@
 import { CanvasCommitResultSchema } from '@plugin/canvas/shared';
 import type { CanvasTraceContext, CanvasTraceInvocation } from '../definitions/canvasToolTrace';
-import { admitCanvasTraceResponse } from './admitCanvasTraceResponse';
+import type { CanvasTraceResponse } from './admitCanvasTraceResponse';
 import { traceDiagnostic } from './traceDiagnostics';
 import { acceptsCanvasTraceError, recordTraceAttempt } from './recordTraceAttempt';
-type Response = ReturnType<typeof admitCanvasTraceResponse>;
+type Response = CanvasTraceResponse;
 function commandFor(
   context: CanvasTraceContext,
   commands: readonly CanvasTraceInvocation[],
@@ -53,9 +53,8 @@ function recordCommitted(
 export function recordCanvasTraceResponse(
   context: CanvasTraceContext,
   commands: readonly CanvasTraceInvocation[],
-  value: unknown
+  response: CanvasTraceResponse
 ): void {
-  const response = admitCanvasTraceResponse(value);
   if (response.kind === 'unknown') {
     traceDiagnostic(context, 'output_unknown', 'Canvas输出不符合已支持的正式响应schema');
     return;

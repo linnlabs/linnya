@@ -45,3 +45,4 @@ export function admitCanvasTraceResponse(value: unknown) {
   if (rendered.success) return { kind: 'render', value: rendered.data } as const;
   return { kind: 'unknown' } as const;
 }
+export type CanvasTraceResponse = ReturnType<typeof admitCanvasTraceResponse>;
