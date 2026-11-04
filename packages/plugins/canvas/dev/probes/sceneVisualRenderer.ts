@@ -123,6 +123,20 @@ async function firstBodyVisual() {
   const sceneImage = await kernel.captureImage('png'); kernel.finishTransitions(); await drawn();
   return { uploaded, first, complete, sceneStart, sceneFirst, fadeImage, sceneImage, dpr: devicePixelRatio };
 }
+async function documentMetadataVisual() {
+  const kernel = await setup(), documentCard = CanvasCardSchema.parse({ ...card('c1', 20), type: 'document', data: { documentId: 'authorized' } });
+  kernel.setElements([documentCard]); kernel.setBitmap(documentCard.id, 1, 'cover', bitmap('#20c060'));
+  kernel.setCamera({ x: 20, y: 20, zoom: 0.1 }); kernel.setDocumentTitles(new Map([['authorized', 'A']])); await drawn();
+  const before = await kernel.captureImage('png'); kernel.setDocumentTitles(new Map([['authorized', 'MMMMMMMM']])); await drawn();
+  const renamed = await kernel.captureImage('png'), renders = kernel.readStats().renders;
+  kernel.setDocumentTitles(new Map([['authorized', 'MMMMMMMM']])); await drawn();
+  if (kernel.readStats().renders !== renders) throw new Error('unchanged_authorized_titles_scheduled_another_draw');
+  const cells = kernel.readStats().spatialCellBuilds;
+  kernel.setThumbnailCards(new Set([documentCard.id])); await drawn(); const thumbnail = await kernel.captureImage('png');
+  kernel.setThumbnailCards(new Set()); await drawn(); const identity = await kernel.captureImage('png');
+  if (kernel.readStats().spatialCellBuilds !== cells) throw new Error('preview_preference_rebuilt_unchanged_geometry');
+  return { before, renamed, thumbnail, identity, dpr: devicePixelRatio };
+}
 async function finishReducedScene() {
   const kernel = current; if (!kernel) throw new Error('scene_fixture_missing'); await sleep(16);
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches || kernel.readStats().sceneTransitions || kernel.readStats().cameraTransition
@@ -132,4 +146,4 @@ async function finishReducedScene() {
   const stats = kernel.readStats(); kernel.destroy(); current = undefined; return stats;
 }
 Object.defineProperties(window, { prepareCanvasSceneVisualProbe: { value: sceneVisual }, prepareCanvasSceneOpacityVisualProbe: { value: sceneOpacityVisual }, prepareCanvasSceneMapVisualProbe: { value: sceneMapVisual },
-  prepareCanvasIdentityInkProbe: { value: identityInkVisual }, prepareCanvasIdentityBoundsProbe: { value: identityBoundsVisual }, prepareCanvasBitmapAppendProbe: { value: bitmapAppendVisual }, prepareCanvasFirstBodyProbe: { value: firstBodyVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });
+  prepareCanvasIdentityInkProbe: { value: identityInkVisual }, prepareCanvasIdentityBoundsProbe: { value: identityBoundsVisual }, prepareCanvasBitmapAppendProbe: { value: bitmapAppendVisual }, prepareCanvasFirstBodyProbe: { value: firstBodyVisual }, prepareCanvasDocumentMetadataProbe: { value: documentMetadataVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });
