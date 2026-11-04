@@ -62,7 +62,11 @@ async function execute(command: CanvasEvaluationCommand): Promise<unknown> {
     case 'read': return { snapshot: value.session.state.snapshot.value, draft: value.editor.state.draft.value, creationDraft: value.creation.state.draft.value, error: value.error.value, presentation: value.readPresentationStats() };
     case 'edit': await value.focusElements([command.payload.elementId]); await value.edit(); return { viewId: value.session.viewId };
     case 'save': if (!(await value.editor.save(true))) throw new Error('草稿未保存'); return { snapshot: value.session.state.snapshot.value };
-    case 'fit': if (command.payload.elementIds) value.locate(command.payload.elementIds); else value.fit(); return { camera: value.camera.value };
+    case 'fit': {
+      if (command.payload.elementIds) value.locate(command.payload.elementIds); else value.fit();
+      // 必须在同一任务读相机与draw基线；相机更新本身不证明新视野已经绘制。
+      return { camera: value.camera.value, renders: value.readPresentationStats().renders, observedAt: performance.timeOrigin + performance.now() };
+    }
     case 'stats': if (command.payload.reset) { metrics.reset(); commits?.reset(); } return { presentation: value.readPresentationStats(), layout: readCanvasEvaluationLayout(root), frames: metrics.read(), commits: commits?.read() ?? null, sequence: value.session.state.snapshot.value?.sequence ?? null };
     case 'readiness': {
       const style = getComputedStyle(document.body);
