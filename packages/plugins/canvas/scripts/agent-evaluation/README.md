@@ -12,6 +12,8 @@ run文件必须由可信runner收集before/after正式快照、结果同sequence
 
 `run.ts summarize <目录> <新summary.json>` 递归接纳名为run.json的记录并重算每题断言。缺少任务/重复、重复身份、待人工结论及仅离线T8均不能冒充整组达标；汇总保留每次失败和证据位置。
 
+正式组额外列出`nonNetworkTasks`：T8的offline或未声明联网模式只属于来源结构基线，即使其余12题使完成率达到85%，整组也不获得正式联网验收资格。原完成率与失败记录照常保留，不把离线资料伪装为模型真正访问官方页面。
+
 每条记录必须标明sourceRevision（实际实现的完整Git SHA）与batchId。修复产品缺陷后另开整批，保留原批首败，不能用后来成功覆盖旧记录或把不同实现的成功题拼成一组。最终验收在冻结实现上跑完整13题；Backend启动及Skill发现证据随批保存。
 
 attempts的phase明确区分dry-run预检与write正式写入。首写指标只取第一个write；只有预检而没有正式写入不能算通过。预检没有request-id时如实记录null，正式write必须保留真实ID。两阶段因格式或语义失败而改载荷重提的真实修正都计入correctionRetries，预检成功、重复检查坐标和同请求网络重放本身不算修正。
