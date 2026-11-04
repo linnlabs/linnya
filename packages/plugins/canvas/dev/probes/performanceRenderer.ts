@@ -5,6 +5,7 @@ import { canvasPerformanceMediaFixture, type CanvasPerformanceKind } from './per
 import { createCanvasZoomTimeline } from './performanceZoomTimeline';
 import { createCanvasPerformancePaintTrace } from './performancePaintTrace';
 import { waitForCanvasPerformanceBody } from './waitForCanvasPerformanceBody';
+import { waitForCanvasPerformanceDraw } from './waitForCanvasPerformanceDraw';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
@@ -76,9 +77,11 @@ async function prepare(count: number, clustered: boolean, kind: CanvasPerformanc
     });
   });
   stopMedia = () => { disposed = true; unsubscribe?.(); };
-  const started = performance.now(); kernel.setElements(data); kernel.fit(cards);
+  const preparedKernel = kernel, started = performance.now(), previousRenders = preparedKernel.readStats().renders;
+  kernel.setElements(data); kernel.fit(cards);
   void media.content?.refreshReferences(cards).catch(error => failures.push(String(error)));
-  media.content?.refreshVisible(kernel.renderableCards()); presentation.refresh(); await nextFrame();
+  media.content?.refreshVisible(kernel.renderableCards()); presentation.refresh();
+  await waitForCanvasPerformanceDraw(previousRenders, { readRenderCount: () => preparedKernel.readStats().renders, now: () => performance.now(), nextFrame });
   return { installMs: performance.now() - started, kernelReadyMs, firstFrameMs: performance.now() - openingStarted, dpr: devicePixelRatio, width: innerWidth, height: innerHeight,
     count, clustered, kind, resource: media.readStats(), camera: kernel.readCamera(), stats: kernel.readStats(), renderStatus: kernel.readRenderStatus(), resolution: kernel.readResolution() };
 }
