@@ -83,6 +83,9 @@ describe('slides-design Skill 产品合同', () => {
     expect(design).toContain('左侧加一条竖色条');
     expect(design).toContain('字越少，页数越多');
     expect(cultural).toContain('30 页以上');
+    const catalog = fs.readFileSync(path.join(skillRoot, 'references/style-catalog-handout.md'), 'utf-8');
+    expect(catalog).toContain('器物对照先给图');
+    expect(design).toContain('**对比只给一张表**');
     // 风格示例不画贴在卡片一侧的细色条（宽或高不超过 0.06in 且另一边小于 2in 的实心矩形）。
     for (const stem of ['style-consulting', 'style-catalog', 'style-cultural']) {
       const source = fs.readFileSync(path.join(skillRoot, `references/examples/${stem}.js`), 'utf-8');

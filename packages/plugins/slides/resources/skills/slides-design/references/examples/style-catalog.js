@@ -1,8 +1,8 @@
-// Runnable 4-slide deck.js example. Use as standalone source; do not concatenate with another example.
+// Runnable 5-slide deck.js example. Use as standalone source; do not concatenate with another example.
 //
 // 对应风格指南：style-catalog-handout.md。
 // 语法与机械做法重点：12 栏网格的坐标换算、编号图版与统一格式的图注、
-// 用 Text 加细线手排的年表与对照表、图文对页与图录页两种页型。
+// 用 Text 加细线手排的年表与对照表、图文对页与图录页两种页型，以及器物对照的图卡页。
 // 配色、字号和版面是这份示例的一次性选择，不是默认风格；换题材时这些都要换。
 
 const PW = 13.333;
@@ -139,10 +139,40 @@ dims.forEach(function (r, i) {
   s4.add(rect(M, y + 0.55, PW - 2 * M, 0.008, RULE));
 });
 
+// slide 5 — 图卡对照：器物对照先给图。每张图下半部叠一层由透明到不透明的黑色渐变，
+// 名称和一句特征写在渐变上；一页放三到四张，器物多就拆成两页，表格只留给图上放不下的细节。
+const s5 = createSlide({ background: { color: PAPER } });
+head(s5, "对照　COMPARISON", "宋代五大名窑", "05");
+s5.add(text("看釉看片：三窑放在一起比", { x: M, y: 0.92, w: 11, h: 0.62, size: 25, lh: 1.2 }));
+const cards = [
+  ["汝窑", "天青釉，薄而润，开片细碎", "#9FB3AE"],
+  ["官窑", "粉青厚釉，大开片如冰裂", "#B9B7A6"],
+  ["哥窑", "米黄灰青，金丝铁线", "#B7A78C"],
+];
+cards.forEach(function (c, i) {
+  const x = colX(i * 4);
+  const w = span(4);
+  // 真实稿件在这里用 createImage({ ..., fitMode: "cover" }) 放器物照片；示例用色块占位。
+  s5.add(
+    rect(x, 1.85, w, 4.6, c[2]),
+    createShape({
+      position: "absolute", x: x, y: 1.85 + 4.6 * 0.45, width: w, height: 4.6 * 0.55,
+      fill: { type: "linear", direction: "to-bottom", stops: [
+        { color: "#000000", position: 0, opacity: 0 },
+        { color: "#000000", position: 0.6, opacity: 0.55 },
+        { color: "#000000", position: 1, opacity: 0.85 },
+      ] },
+    }),
+    text(c[0], { x: x + 0.3, y: 5.3, w: w - 0.6, size: 20, color: "#FFFFFF" }),
+    text(c[1], { x: x + 0.3, y: 5.82, w: w - 0.6, size: 11.5, color: "#E9E4DA", lh: 1.45 }),
+  );
+});
+s5.add(text("图片：此处写明器物名称、藏地与图片许可。", { x: M, y: 6.62, w: 8, size: 9, color: MUTED }));
+
 compose({
   title: "Catalog Handout · Runnable Example",
   layout: { width: PW, height: PH, unit: "in" },
-  slides: [s1, s2, s3, s4],
+  slides: [s1, s2, s3, s4, s5],
   theme: {
     colors: { accent1: ACCENT, accent2: "#9E3B2A", background: PAPER, text: INK, muted: MUTED },
     fonts: { major: SERIF, minor: KAI },
