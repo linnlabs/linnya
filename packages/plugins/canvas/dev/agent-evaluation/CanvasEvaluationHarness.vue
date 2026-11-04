@@ -24,6 +24,8 @@
     <CanvasAgentReviewBar
       v-if="review"
       :review="review"
+      :elements="elements"
+      :document-titles="documentTitles"
       @locate="surface?.locate($event)"
     />
     <p
@@ -42,7 +44,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { createEmbeddedMarkdownEditor } from '@plugin/renderer/embeddedMarkdownEditor';
 import type { CanvasSynchronization } from '@plugin/canvas/shared';
 import { createCanvasSurface } from '../../src/renderer/orchestration/createCanvasSurface';
@@ -58,6 +60,9 @@ const emit = defineEmits<{ ready: [surface: Awaited<ReturnType<typeof createCanv
 const stage = ref<HTMLElement | null>(null), editor = ref<HTMLElement | null>(null), staging = ref<HTMLElement | null>(null);
 const surface = shallowRef<Awaited<ReturnType<typeof createCanvasSurface>> | null>(null), review = shallowRef<ReturnType<typeof createCanvasAgentReview> | null>(null);
 const dirty = ref(false), failure = ref<string | null>(null); let content: CanvasCardContent | null = null, disposed = false;
+// 与正式CanvasView相同，控件用完整快照解释跳过项；空默认值会把仍存在的卡误称已删除。
+const elements = computed(() => surface.value?.session.state.snapshot.value?.elements ?? []);
+const documentTitles = computed(() => surface.value ? content?.documentTitles() : undefined);
 onMounted(async () => {
   const host = stage.value, editorHost = editor.value, stagingHost = staging.value;
   if (!host || !editorHost || !stagingHost) return;
