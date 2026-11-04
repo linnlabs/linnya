@@ -23,3 +23,5 @@ conformance 与真实 parser→Revision→节点物化共同验收。
 
 预览浮层挂载后由已有Floating
 UI的fixed定位、flip/shift与size约束管理，autoUpdate跟随异步封面/详情增高、滚动、视口改变与宿主transform移动。可用宽高与既有尺寸上限共同约束面板，内容在面板内滚动，不能让恢复、展开或只读翻页操作落到屏幕外。关闭先释放观察/RAF与在途定位，再交还焦点边界和详情，晚到结果不能修改旧浮层。定位能力只属于此NodeView，无产品类型特判或全局注册。参考官方[尺寸约束](https://floating-ui.com/docs/size)和[自动更新生命周期](https://floating-ui.com/docs/autoupdate)。
+
+异步封面与展开详情高度不同，重定位沿用上一次成功placement作为偏好；同侧仍放得下时不能因内容缩短而跨锚点跳位，把鼠标下的操作移走。窗口空间变化使该侧无法容纳时仍由flip/size重新选择并约束位置。

@@ -167,6 +167,43 @@ it('边缘与小窗变化保持只读翻页控件可达，宿主transform式移�
     stop();
   }
 });
+it('异步长封面翻到标签上方后，移入展开使内容缩短也保留原侧与鼠标位置；空间不足才翻转', async () => {
+  const f = layout(),
+    report = vi.fn(),
+    stop = positionDocumentReferencePreview({ reference: f.reference, panel: f.panel, report });
+  try {
+    // 缓存封面可以在首次异步定位完成前到达，必须按它的真实高度选侧。
+    await Promise.resolve();
+    f.content.height = 512;
+    ObservedResize.resized(f.panel);
+    await vi.advanceTimersByTimeAsync(20);
+    inViewport(f.panel, f.viewport);
+    const before = f.measure(),
+      pointer = { x: before.left + 30, y: before.bottom - 20 };
+    expect(before.bottom).toBeLessThanOrEqual(f.anchor.y);
+    f.panel.addEventListener('mouseenter', () => {
+      f.content.height = 180;
+      ObservedResize.resized(f.panel);
+    });
+    f.panel.dispatchEvent(new MouseEvent('mouseenter', { clientX: pointer.x, clientY: pointer.y }));
+    await vi.advanceTimersByTimeAsync(20);
+    const expanded = f.measure();
+    expect(expanded.bottom).toBeLessThanOrEqual(f.anchor.y);
+    expect(pointer.x).toBeGreaterThanOrEqual(expanded.left);
+    expect(pointer.x).toBeLessThanOrEqual(expanded.right);
+    expect(pointer.y).toBeGreaterThanOrEqual(expanded.top);
+    expect(pointer.y).toBeLessThanOrEqual(expanded.bottom);
+    f.viewport.height = 220;
+    f.anchor.y = 8;
+    window.dispatchEvent(new Event('resize'));
+    await vi.advanceTimersByTimeAsync(20);
+    inViewport(f.panel, f.viewport);
+    expect(f.measure().top).toBeGreaterThanOrEqual(f.anchor.y + f.anchor.height);
+    expect(report).not.toHaveBeenCalled();
+  } finally {
+    stop();
+  }
+});
 it('关闭先停止观察与RAF，迟到的定位计算不修改已销毁浮层', async () => {
   const f = layout(),
     report = vi.fn(),
