@@ -27,3 +27,5 @@ node packages/plugins/canvas/dev/probes/run-render-probe.mjs
 每组先要求全局视口实际包含2500卡、当前资源与正文队列完成、250ms无持续重取及画面含固定图像的真实像素，随后走相同原生pan/zoom/500卡拖动。报告保留readImage/reference/preview次数、峰值并发、单目标最大重读次数与settled后计数；失败前也先写overview-settle现场，禁止只留Zod断言或成功API。预算和LOD来自生产代码，探针不覆盖它们。
 
 `CANVAS_PERFORMANCE_BODY_PROFILE=1`将V8采样区间固定为近景定位请求前到首次正文完成后的收集结束，用于归因初次补图尖峰；另存`*-body.cpuprofile`。与拖动CPU采样一样，开启后`validHardwareRun=false`，不能以诊断采样代替无观测器的硬件门槛。
+
+`CANVAS_PERFORMANCE_RESOURCE_PROFILE=1`仅为媒体初次资源接纳到全局正文完成的区间保存`*-resources.cpuprofile`；未收敛也先保存采样与状态再失败。此诊断同样取消硬件基线资格。
