@@ -6,7 +6,7 @@ interface Entry { readonly key: string; readonly page: Page; readonly texture: T
 interface Page {
   readonly canvas: HTMLCanvasElement; readonly context: CanvasRenderingContext2D; readonly source: CanvasSource;
   readonly entries: Set<Entry>; readonly resolution: number; readonly bytes: number;
-  x: number; y: number; rowHeight: number; active: number;
+  x: number; y: number; rowHeight: number; active: number; references: number;
 }
 
 export class CanvasIdentityAtlasCapacityError extends Error {
@@ -59,13 +59,13 @@ export class CanvasIdentityAtlas {
   }
   private detach(binding: Binding): void {
     const entry = binding.entry; if (!entry) return;
-    entry.bindings.delete(binding); if (binding.active) entry.page.active--;
+    entry.bindings.delete(binding); entry.page.references--; if (binding.active) entry.page.active--;
     binding.entry = null; binding.sprite.texture = Texture.EMPTY;
   }
   private release(binding: Binding): void {
     const page = binding.entry?.page; this.detach(binding);
     // 隐藏的活视图仍可复用整页；最后一个视图离开后没有保留过往标题的理由。
-    if (page && [...page.entries].every(entry => !entry.bindings.size)) this.destroyPage(page);
+    if (page && page.references === 0) this.destroyPage(page);
   }
   private touch(page: Page): void { this.pages.delete(page); this.pages.add(page); }
   private destroyPage(page: Page): void {
@@ -73,6 +73,7 @@ export class CanvasIdentityAtlas {
     this.workVersion++;
     for (const entry of page.entries) {
       this.entries.delete(entry.key);
+      // 淘汰隐藏页也会解除仍存在的视图；直接detach，不能经release递归销毁同一页。
       for (const binding of [...entry.bindings]) this.detach(binding);
       entry.texture.destroy(false);
     }
@@ -92,7 +93,7 @@ export class CanvasIdentityAtlas {
     const canvas = document.createElement('canvas'); canvas.width = pageWidth; canvas.height = pageHeight;
     const context = canvas.getContext('2d'); if (!context) throw new Error('canvas_2d_unavailable');
     const source = new CanvasSource({ resource: canvas, resolution, alphaMode: 'premultiply-alpha-on-upload' });
-    const page: Page = { canvas, context, source, entries: new Set(), resolution, bytes, x: 0, y: 0, rowHeight: 0, active: 0 };
+    const page: Page = { canvas, context, source, entries: new Set(), resolution, bytes, x: 0, y: 0, rowHeight: 0, active: 0, references: 0 };
     this.bytes += bytes; this.pages.add(page); return page;
   }
   private position(width: number, height: number, resolution: number): { readonly page: Page; readonly x: number; readonly y: number } {
@@ -140,7 +141,8 @@ export class CanvasIdentityAtlas {
         if (!binding.active) continue;
         const next = this.acquire(binding.text, resolution);
         if (binding.entry !== next) {
-          this.release(binding); binding.entry = next; next.bindings.add(binding); next.page.active++;
+          // 页内总引用仅在这一个attach点和detach更新，包含隐藏视图；active仍单独决定预算回收。
+          this.release(binding); binding.entry = next; next.bindings.add(binding); next.page.references++; next.page.active++;
           binding.sprite.texture = next.texture;
         }
       }
