@@ -15,7 +15,9 @@
     "./visibilityRenderer.ts",
     "./visibilityElectron.ts",
     "./visibleUpdateRenderer.ts",
-    "./visibleUpdateElectron.ts"
+    "./visibleUpdateElectron.ts",
+    "./identityAtlasRenderer.ts",
+    "./identityAtlasElectron.ts"
   ],
   "exclude": []
 }

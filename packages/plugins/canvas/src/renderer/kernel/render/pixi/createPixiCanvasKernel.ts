@@ -1,6 +1,6 @@
 // Pixi 的静态 uniform polyfill 支持严格 CSP；不放开 script-src unsafe-eval。
 import 'pixi.js/unsafe-eval';
-import { Application, Container, Graphics, NineSliceSprite, Rectangle, Text, Texture } from 'pixi.js';
+import { Application, Container, Graphics, NineSliceSprite, Rectangle, Texture, type Sprite } from 'pixi.js';
 import {
   canvasScreenToWorld, canvasWorldToScreen, readCanvasElementText, readCanvasCardPalette,
   type CanvasCamera, type CanvasCard, type CanvasCardId,
@@ -19,8 +19,10 @@ import { planCanvasSceneMotion, resolveCanvasDisplayCard, canvasCardRasterChange
 import { canvasFitText } from '../../geometry/canvasFitText';
 import { canvasFitCamera } from '../../geometry/canvasFitCamera';
 import { warmCanvasGraphicsPipeline } from './warmCanvasGraphicsPipeline';
+import { CanvasIdentityAtlas } from './CanvasIdentityAtlas';
 
-interface CardView extends CanvasMotionView { readonly background: NineSliceSprite; readonly body: Container; readonly label: Text;
+const TEXTURE_BUDGET_BYTES = 256 * 1024 * 1024;
+interface CardView extends CanvasMotionView { readonly background: NineSliceSprite; readonly body: Container; readonly label: Sprite;
   visibleAfterRender: number; firstVisibleAfterRender: number; rasterContentKey: string | undefined }
 
 function makeBackground(material: 'paper' | 'card'): Texture {
@@ -73,6 +75,8 @@ class PixiCanvasKernel implements CanvasKernel {
   private readonly views = new Map<CanvasCardId, CardView>();
   private readonly cards = new Map<CanvasCardId, CanvasCard>();
   private readonly bitmaps: CanvasBitmapCache;
+  private readonly identities: CanvasIdentityAtlas;
+  private identityPreparationPending = false;
   private readonly scene: CanvasSceneMotion;
   private readonly retiringLabels = new Set<CanvasCardId>();
   private readonly retiringViews = new Map<CanvasCardId, CardView>();
@@ -151,7 +155,11 @@ class PixiCanvasKernel implements CanvasKernel {
     options.host.append(this.canvas);
     this.world.addChild(this.cardLayer, this.guideLayer, this.selectionLayer);
     this.app.stage.addChild(this.lines.below, this.world, this.lines.above, this.mapLabels.sprite);
-    this.bitmaps = new CanvasBitmapCache({ budget: options.bitmapBudgetBytes ?? 256 * 1024 * 1024, readRenderCount: () => this.renders, requestDraw: () => this.schedule(), changed: id => {
+    this.identities = new CanvasIdentityAtlas({ budget: TEXTURE_BUDGET_BYTES, reserve: bytes => this.bitmaps.trimTo(TEXTURE_BUDGET_BYTES - bytes) });
+    this.bitmaps = new CanvasBitmapCache({ budget: options.bitmapBudgetBytes ?? TEXTURE_BUDGET_BYTES,
+      readAvailableBudget: () => TEXTURE_BUDGET_BYTES - this.identities.readBytes(),
+      reserveExternal: (incoming, current) => this.identities.trimTo(TEXTURE_BUDGET_BYTES - Math.min(options.bitmapBudgetBytes ?? TEXTURE_BUDGET_BYTES, current + incoming)),
+      readRenderCount: () => this.renders, requestDraw: () => this.schedule(), changed: id => {
       const view = this.views.get(id); if (!this.destroyed && view) { this.updateView(view); this.schedule(); }
     } });
     this.scene = new CanvasSceneMotion({ project: (ids, opacity, camera) => this.projectSceneMotion(ids, opacity, camera),
@@ -162,7 +170,15 @@ class PixiCanvasKernel implements CanvasKernel {
     this.removeInteraction = options.onIntent ? installCanvasInteraction(this, options.onIntent, { readonly: options.readonly, readReadonly: options.readReadonly, readPreferences: options.readInteractionPreferences }) : () => undefined;
   }
   private schedule(): void {
-    if (this.scheduled || this.destroyed || this.contextLost) return;
+    if (this.destroyed || this.contextLost) return;
+    // 集中同步输入/同批异步回执的字串，不在RAF中逐卡排版或上传436份Canvas。
+    if (!this.identityPreparationPending) {
+      this.identityPreparationPending = true; queueMicrotask(() => {
+        this.identityPreparationPending = false;
+        if (!this.destroyed && !this.contextLost) this.identities.flush(Math.max(1, this.app.renderer.resolution));
+      });
+    }
+    if (this.scheduled) return;
     this.scheduled = requestAnimationFrame(this.renderFrame);
   }
   private removeBitmap(id: CanvasCardId): void {
@@ -172,12 +188,13 @@ class PixiCanvasKernel implements CanvasKernel {
     this.scene.forget(id); this.dragOriginals.delete(id);
     this.removeBitmap(id);
     const view = this.views.get(id);
-    if (view) view.container.destroy({ children: true, texture: false });
+    if (view) { this.identities.remove(view.label); view.container.destroy({ children: true, texture: false }); }
     this.views.delete(id);
   }
   private removeRetiringView(id: CanvasCardId): void {
     const view = this.retiringViews.get(id); if (!view) return;
-    this.retiringViews.delete(id); this.retiringLabels.delete(id); this.refreshTitleOrder(); this.removeBitmap(id); view.container.destroy({ children: true, texture: false });
+    this.retiringViews.delete(id); this.retiringLabels.delete(id); this.refreshTitleOrder(); this.removeBitmap(id);
+    this.identities.remove(view.label); view.container.destroy({ children: true, texture: false });
   }
   private visible(card: CanvasCard): boolean {
     return card.x * this.camera.zoom + this.camera.x <= this.width && (card.x + card.width) * this.camera.zoom + this.camera.x >= 0
@@ -193,14 +210,13 @@ class PixiCanvasKernel implements CanvasKernel {
     const palette = readCanvasCardPalette(card.color, this.appearance.dark);
     background.tint = palette.paper;
     // 近景身份牌必须复用纹理；连续缩放不能每个事件重新生成几百张文字纹理。
-    label.resolution = Math.max(1, this.app.renderer.resolution);
     // 字形始终烘为白色，纸色/主题通过GPU tint改变深墨；否则500次染纸会重建500张字形纹理。
     label.tint = palette.title;
     const overview = !this.keepsThumbnail(card) && this.camera.zoom < 0.3 && this.appearance.overview === 'titles';
-    label.style.fontSize = 15;
     label.visible = !overview && this.titleExposed(card) && !this.bitmaps.covers(card.id, this.readVisibleCardRegions(card.id));
     body.visible = !overview && this.bitmaps.has(card.id);
     if (this.editingCard === card.id) { label.visible = false; body.visible = false; }
+    this.identities.setActive(label, container.visible && label.visible);
     if (!wasVisible && container.visible && body.visible) { view.visibleAfterRender = this.renders; view.firstVisibleAfterRender = this.renders; }
     const bounds = this.identityBounds(card); label.position.set(bounds.x, bounds.y);
     // 地图标签只在确定的屏幕格中保留一个，避免一屏几千张纹理和文字重叠。
@@ -289,6 +305,7 @@ class PixiCanvasKernel implements CanvasKernel {
       if (view.container.visible && this.camera.zoom >= 0.3) {
         this.bitmaps.touch(view.card.id);
       }
+      this.identities.setActive(view.label, view.container.visible && view.label.visible);
     }
   }
 
@@ -344,7 +361,7 @@ class PixiCanvasKernel implements CanvasKernel {
     if (previous && canvasCardRasterChanged(previous.card, card)) this.removeBitmap(card.id);
     if (previous) {
       previous.card = display;
-      previous.label.text = this.identityTitle(card);
+      this.identities.setText(previous.label, this.identityTitle(card));
     }
     // 可见片段会按container的当前显示姿态裁切；首次创建/直接移动必须先摆好位置。
     // 不能等projectCards之后的updateView才应用，否则新卡会被旧(0,0)边界误裁掉。
@@ -356,8 +373,7 @@ class PixiCanvasKernel implements CanvasKernel {
     const background = new NineSliceSprite({ texture: this.backgrounds[this.appearance.material], leftWidth: 8, rightWidth: 8, topHeight: 8, bottomHeight: 8 });
     const body = new Container();
     body.visible = false;
-    const label = new Text({ text: this.identityTitle(card),
-      style: { fill: 0xffffff, fontFamily: 'system-ui', fontSize: 15, wordWrap: false } });
+    const label = this.identities.create(this.identityTitle(card));
     container.addChild(background, body, label);
     this.cardLayer.addChild(container);
     const view: CardView = { card, container, background, body, label, visibleAfterRender: this.renders, firstVisibleAfterRender: this.renders, rasterContentKey: undefined, lodAlpha: 1 };
@@ -549,7 +565,7 @@ class PixiCanvasKernel implements CanvasKernel {
     // 逐条授权元数据返回时只更新对应身份牌，不能为一张标题重新裁切2500份文本。
     for (const views of [this.views, this.retiringViews]) for (const [id, view] of views) {
       if (view.card.type !== 'document' || !changed.has(view.card.data.documentId)) continue;
-      view.label.text = this.identityTitle(view.card); sceneChanged ||= view.container.visible && view.label.visible;
+      this.identities.setText(view.label, this.identityTitle(view.card)); sceneChanged ||= view.container.visible && view.label.visible;
       mapChanged ||= this.mapLabels.hasLabel(id);
     }
     // 标题不参与地图占位优先序；未实际绘制的候选改名不会改变现有代表标签。
@@ -574,6 +590,7 @@ class PixiCanvasKernel implements CanvasKernel {
   worldToScreen(point: CanvasPoint): CanvasPoint { return canvasWorldToScreen(point, this.camera); }
   async captureImage(format: 'png' | 'jpeg', quality = 0.9): Promise<string> {
     if (this.contextLost) throw new Error('canvas_graphics_context_lost');
+    this.identities.flush(Math.max(1, this.app.renderer.resolution));
     const generation = this.contextGeneration;
     const result = await this.app.renderer.extract.base64({ target: this.app.stage, format: format === 'jpeg' ? 'jpg' : 'png',
       quality, frame: new Rectangle(0, 0, this.width, this.height), resolution: this.app.renderer.resolution,
@@ -581,7 +598,13 @@ class PixiCanvasKernel implements CanvasKernel {
     if (this.contextLost || generation !== this.contextGeneration) throw new Error('canvas_graphics_context_lost');
     return result;
   }
-  readStats() { return { viewportCards: this.visibleCards().length, renderableCards: this.exposed.length, rasterCards: this.rasterCards().length, cards: this.cards.size, edges: this.edges.length, renders: this.renders, ...this.bitmaps.readStats(), ...this.scene.readStats(), ...this.lines.readStats(), ...this.spatial.readStats() }; }
+  readStats() {
+    const bitmaps = this.bitmaps.readStats(), identities = this.identities.readStats();
+    return { viewportCards: this.visibleCards().length, renderableCards: this.exposed.length, rasterCards: this.rasterCards().length,
+      cards: this.cards.size, edges: this.edges.length, renders: this.renders, ...bitmaps, ...identities,
+      estimatedTextureBytes: bitmaps.bitmapBytes + identities.identityBytes, textureBudgetBytes: TEXTURE_BUDGET_BYTES,
+      ...this.scene.readStats(), ...this.lines.readStats(), ...this.spatial.readStats() };
+  }
   destroy(): void {
     this.destroyed = true; this.scene.dispose();
     this.motionPreference.removeEventListener('change', this.motionChanged);
@@ -589,7 +612,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.removeInteraction();
     this.canvas.removeEventListener('webglcontextlost', this.loseContext); this.canvas.removeEventListener('webglcontextrestored', this.restoreContext);
     this.canvas.remove();
-    this.invalidateBitmaps(); this.mapLabels.destroy(); this.lines.destroy();
+    this.invalidateBitmaps(); this.identities.destroy(); this.mapLabels.destroy(); this.lines.destroy();
     this.views.clear(); this.retiringViews.clear(); this.retiringLabels.clear(); this.identityTitles.clear(); this.cards.clear(); this.targets.clear();
     // HTML paint事件兑现的Promise仍在Chromium原生paint回调的微任务中。
     // 此时WEBGL_lose_context会使Renderer进程崩溃；下一task完整释放GPU，逻辑关闭立即生效。
