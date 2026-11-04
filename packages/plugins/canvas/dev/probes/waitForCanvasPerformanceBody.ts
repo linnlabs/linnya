@@ -16,11 +16,11 @@ export async function waitForCanvasPerformanceBody<Snapshot extends BodySnapshot
   readonly readSnapshot: () => Snapshot;
   readonly now: () => number;
   readonly nextFrame: () => Promise<unknown>;
-}) {
+}, maximumWaitMs = 5000) {
   const started = ports.now();
   const result = (settled: boolean, snapshot: Snapshot) => ({ settled, ms: ports.now() - started, snapshot });
   let snapshot = ports.readSnapshot();
-  while (ports.now() - started < 5000) {
+  while (ports.now() - started < maximumWaitMs) {
     if (snapshot.stats?.failed) return result(false, snapshot);
     if (ready(snapshot)) {
       await ports.nextFrame(); await ports.nextFrame();

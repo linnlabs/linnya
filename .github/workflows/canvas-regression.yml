@@ -62,16 +62,16 @@ jobs:
         run: pnpm exec vitest run packages/plugins/__tests__/canvasDocument.sqlite.integration.test.ts packages/plugins/__tests__/canvasVersionHistory.sqlite.integration.test.ts
       - name: Check drawing workload on Linux
         if: runner.os == 'Linux'
-        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_PERFORMANCE_DETERMINISTIC=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
       - name: Check drawing workload on macOS and Windows
         if: runner.os != 'Linux'
-        run: pnpm exec cross-env CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
+        run: pnpm exec cross-env CANVAS_PERFORMANCE_OFFSCREEN=1 CANVAS_PERFORMANCE_DETERMINISTIC=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
       - name: Verify software drawing counts and bounded resources on Linux
         if: runner.os == 'Linux'
-        run: node packages/plugins/canvas/dev/probes/verify-counts.mjs _dev_data/canvas-software-probe/results.json
+        run: node packages/plugins/canvas/dev/probes/verify-counts.mjs _dev_data/canvas-deterministic-counts-probe/results.json --deterministic
       - name: Verify drawing counts and bounded resources on macOS and Windows
         if: runner.os != 'Linux'
-        run: node packages/plugins/canvas/dev/probes/verify-counts.mjs
+        run: node packages/plugins/canvas/dev/probes/verify-counts.mjs _dev_data/canvas-deterministic-counts-probe/results.json --deterministic
       - name: Compare DOM and bitmap content on Linux
         if: runner.os == 'Linux'
         run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 node packages/plugins/canvas/dev/probes/run-visual-probe.mjs
@@ -96,6 +96,12 @@ jobs:
           path: |
             _dev_data/canvas-counts-probe/results.json
             _dev_data/canvas-software-probe/results.json
+            _dev_data/canvas-deterministic-counts-probe/*.json
+            _dev_data/canvas-deterministic-counts-probe/*.png
+            _dev_data/canvas-deterministic-counts-probe/renderer.js
+            _dev_data/canvas-deterministic-counts-probe/electron.cjs
+            _dev_data/canvas-deterministic-counts-probe/renderer.css
+            _dev_data/canvas-deterministic-counts-probe/index.html
             _dev_data/canvas-visual-probe/*.json
             _dev_data/canvas-visual-probe/*.png
             _dev_data/canvas-worker-smoke/*.json

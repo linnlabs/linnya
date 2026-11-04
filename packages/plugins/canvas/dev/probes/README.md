@@ -30,7 +30,9 @@ DOM、位图、Pixi 三个对照区按同一字体和当前 DPR 比较。CI 桌�
 
 完整截图窗口另由 Electron [client-area bounds](https://www.electronjs.org/docs/latest/api/base-window#wingetcontentbounds)除以[实际网页zoom](https://www.electronjs.org/docs/latest/api/web-contents#contentsgetzoomfactor)取得CSS尺寸，再结合当前DPR严格核对PNG物理大小。DOM整数innerWidth/innerHeight只作观测，不能用来推断奇数DIP窗口在2倍zoom下的半CSS像素。每块在验证前保存DOM视口、native contentSize/contentBounds、capture前后zoom与实际PNG尺寸；缺少这些事实的历史Linux截图不能补造新口径资格。仍拒绝任何尺寸或字节不符，不接受任意更大的截图。
 
-Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShader；六组计数从 `canvas-software-probe/results.json` 校验，视觉报告也标记软件渲染。独立制品 smoke 继承相同软件环境，保留 worker 的实际 GPU/版本/渲染配置原件。软件结果只证明功能与确定性工作量，不能用作硬件帧率资格。独立制品 smoke 在依赖及平台准备成功后继续运行，即使前面的绘制/视觉失败；任何失败步骤仍使作业失败，不用 `continue-on-error` 掩盖。
+Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShader，视觉报告也标记软件渲染。独立制品 smoke 继承相同软件环境，保留 worker 的实际 GPU/版本/渲染配置原件。软件结果只证明功能与确定性工作量，不能用作硬件帧率资格。独立制品 smoke 在依赖及平台准备成功后继续运行，即使前面的绘制/视觉失败；任何失败步骤仍使作业失败，不用 `continue-on-error` 掩盖。
+
+三平台CI的完整六组计数显式设置`CANVAS_PERFORMANCE_DETERMINISTIC=1`，同时保留Linux的软件profile及macOS/Windows的离屏profile，输出独立`canvas-deterministic-counts-probe`目录，已有目录拒绝覆盖。它不能混入Native计时、录制、媒体或过滤后的子集。共享runner验证相同夹具、视口、相机、LOD、计数与资源完成事实；只把正文完成观察预算设为30秒，记录实际等待时间和是否超过原5秒参考。真实rAF迟到仍计入原始毫秒，不插补时间；CI作业仍有独立总时限。必须在原cold视口得到当前正文实际draw并经两帧复核，不能借后续zoom、capture或重建补称完成。`verify-counts.mjs`使用`--deterministic`要求该profile明确存在且无硬件计时资格；原完整六行、零失败、可见/命中oracle、队列/纹理/位图预算均继续硬判。30秒不是产品性能承诺，旧5秒失败原件保持；真实paint失败或观察预算内未完成仍失败。Native默认5秒、生产单次paint超时、视觉/像素规则及实际App首开和提交到画面的计时门均不受此模式影响。
 
 静态DOM/位图/Pixi正文比较使用正式worker已有的`renderingMode: capture`，要求Kernel实际resolution与DOM/raster DPR一致、canvas真实物理尺寸匹配CSS卡框×DPR。采样事实先独立写出，失败也保留mode/resolution/物理尺寸/renderStatus；截图裁成2x不能把1x软件交互画布冒充2x质量。所有interactive helper分别保存真实window DPR、Kernel实际resolution、CSS/canvas/PNG尺寸和render-status；影像尺寸/字节、声明比例及取样坐标严格校验，越界不能以undefined/NaN冒充背景。编辑reference同样按实际目标resolution生成，不能拿窗口2x与软件1x比较。
 
@@ -40,7 +42,7 @@ Linux CI 显式使用已有 `CANVAS_PERFORMANCE_SOFTWARE=1` 路径和 SwiftShade
 
 `CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_VISUAL_DIAGNOSTIC=software-line`只运行固定的既有lineVisual及原虚线/端点断言，用于隔离软件交互采样合同。launcher与预构建Electron入口共用窄模式解析；未知模式或未声明软件环境立即拒绝，不允许环境变量指定JS。launcher用Node24内置type stripping读取无依赖纯模式入口。诊断首次创建独立`canvas-visual-software-line-diagnostic`目录，已存在则拒绝覆盖，profile也随该目录隔离。真实window DPR、Kernel resolution、canvas/CSS尺寸、render-status、两幅原PNG先落盘，再运行原断言，不能提前改采样制造绿。局部终态写`diagnostic-result.json`或`diagnostic-failure.json`，始终标记`fullSuite:false`/`hardwareQualification:false`，不生成完整suite的`results.json`；未设置诊断flag时原完整范围不变。
 
-正文完成等待保持5000ms时限及两个真实rAF确认。最终返回前重新读取失败、排队、运行、媒体资源、纹理过渡和当前正文readiness；两帧期间新出现的paint失败不能被先前空队列掩盖。近景文字和媒体共用正式当前内容键的readiness，旧正文receipt或尚未draw的新正文都不算完成；远景仍遵循既有地图/缩略图LOD，不强迫绘制不需要的正文。
+默认正文完成等待保持5000ms观察预算及两个真实rAF确认。最终返回前重新读取失败、排队、运行、媒体资源、纹理过渡和当前正文readiness；两帧期间新出现的paint失败不能被先前空队列掩盖。近景文字和媒体共用正式当前内容键的readiness，旧正文receipt或尚未draw的新正文都不算完成；远景仍遵循既有地图/缩略图LOD，不强迫绘制不需要的正文。
 
 performance初始化先保存安装前的Kernel实际renders，再等待该计数增加；身份牌的独立准备task可能跨过第一rAF，不能把回调发生当成首画。等待使用既有5s完成边界且超时失败，不调用capture强制准备或draw。installMs与包含初始化/预热的firstFrameMs均计入这段真实等待；它只证明几何首画，当前正文完整仍由独立readiness与实际draw门判断。
 

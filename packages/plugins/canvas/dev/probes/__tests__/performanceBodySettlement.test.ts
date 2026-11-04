@@ -5,11 +5,11 @@ function fixture(onFrame: (frame: number) => void = () => undefined) {
   let frame = 0;
   const state = { stats: { failed: 0, pending: 0, running: false }, resourcesIdle: true, fadingCards: 0,
     presentationReady: true, revision: 1, receiptRevision: 1 };
-  const wait = () => waitForCanvasPerformanceBody({
+  const wait = (maximumWaitMs?: number) => waitForCanvasPerformanceBody({
     now: () => frame * 16,
     async nextFrame() { frame++; onFrame(frame); },
     readSnapshot: () => ({ ...state, stats: { ...state.stats } }),
-  });
+  }, maximumWaitMs);
   return { state, wait, readFrame: () => frame };
 }
 
@@ -53,5 +53,23 @@ describe('performance body settlement across asynchronous paint and draw', () =>
     const missing = fixture(); missing.state.presentationReady = false;
     const result = await missing.wait();
     expect(result).toMatchObject({ settled: false, ms: 5008, snapshot: { presentationReady: false } });
+  });
+
+  it('显式确定性等待保留同一当前正文事实，五秒后仍可等待真实就绪且不丢两帧确认', async () => {
+    const test = fixture(frame => {
+      if (frame === 400) { test.state.stats.pending = 0; test.state.stats.running = false; test.state.presentationReady = true; }
+    });
+    test.state.stats.pending = 12; test.state.stats.running = true; test.state.presentationReady = false;
+    expect(await test.wait(30000)).toMatchObject({ settled: true, ms: 6432,
+      snapshot: { stats: { failed: 0, pending: 0, running: false }, revision: 1, receiptRevision: 1 } });
+    expect(test.readFrame()).toBe(402);
+  });
+
+  it('更长观察预算仍拒绝真实paint失败和一直未draw的正文', async () => {
+    const failed = fixture(frame => { if (frame === 400) failed.state.stats.failed = 1; });
+    failed.state.presentationReady = false;
+    expect(await failed.wait(30000)).toMatchObject({ settled: false, ms: 6400, snapshot: { stats: { failed: 1 } } });
+    const missing = fixture(); missing.state.presentationReady = false;
+    expect(await missing.wait(30000)).toMatchObject({ settled: false, ms: 30000, snapshot: { presentationReady: false } });
   });
 });

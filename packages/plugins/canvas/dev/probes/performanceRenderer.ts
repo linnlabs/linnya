@@ -140,11 +140,11 @@ function closeView() {
   markBody('close-return');
   return { visible: kernel?.visibleCards().length, camera: kernel?.readCamera() };
 }
-async function waitForBody() {
+async function waitForBody(maximumWaitMs = 5000) {
   markBody('wait-start');
   const { settled, ms, snapshot } = await waitForCanvasPerformanceBody({ now: () => performance.now(), nextFrame,
     readSnapshot: () => ({ stats: presentation?.readStats(), camera: kernel?.readCamera(), media: media?.readStats(),
-      resourcesIdle: mediaResourcesIdle(), fadingCards: kernel?.readStats().fadingCards ?? 0, presentationReady: bodyPresentationReady() }) });
+      resourcesIdle: mediaResourcesIdle(), fadingCards: kernel?.readStats().fadingCards ?? 0, presentationReady: bodyPresentationReady() }) }, maximumWaitMs);
   markBody('wait-return');
   return { settled, ms, camera: snapshot.camera, stats: snapshot.stats, media: snapshot.media };
 }

@@ -13,10 +13,13 @@ import { startCanvasPerformanceInputTrace } from './performanceInputTraceElectro
 import { createCanvasPerformanceFocusQualification } from './performanceFocusQualification';
 import { startCanvasPhaseTrace } from './canvasPhaseTrace';
 import { readCanvasPerformanceContextControl } from './performanceContextControl';
+import { readCanvasDeterministicCounts } from './performanceDeterministicCounts';
 
 const output = process.argv[2];
 if (!output) throw new Error('Performance output directory required');
 app.setPath('userData', path.join(output, 'profile'));
+const deterministicCounts = readCanvasDeterministicCounts(process.env);
+const bodyWaitExpression = deterministicCounts ? `window.waitForCanvasPerformanceBody(${deterministicCounts.bodyWaitBudgetMs})` : 'window.waitForCanvasPerformanceBody()';
 const softwareProfile = process.env.CANVAS_PERFORMANCE_SOFTWARE === '1';
 const offscreenProfile = softwareProfile || process.env.CANVAS_PERFORMANCE_OFFSCREEN === '1';
 const zoomPaintDiagnostic = process.env.CANVAS_PERFORMANCE_ZOOM_PAINT_TRACE === '1';
@@ -110,7 +113,7 @@ async function run() {
         const zoom: unknown = await collectZoom(win, `${kind}-${count}-${distribution}`, send, () => focus.begin('zoom'));
         progress.values.zoom = zoom;
         focus.finish(zoom);
-        const zoomSettled: unknown = await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
+        const zoomSettled: unknown = await win.webContents.executeJavaScript(bodyWaitExpression);
         progress.values.zoomSettled = zoomSettled;
         let drag: unknown;
         if (process.env.CANVAS_PERFORMANCE_DRAG === '1' || inputDiagnostic) {
@@ -135,7 +138,7 @@ async function run() {
           if (intents.movedCards !== target.selected) throw new Error(`native_drag_did_not_finish:${intents.movedCards}:${target.selected}`);
         }
         progress.stage = 'final-body-and-counts';
-        await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
+        await win.webContents.executeJavaScript(bodyWaitExpression);
         const counts: unknown = await win.webContents.executeJavaScript('window.verifyCanvasDeterministicCounts()');
         let contextFacts: unknown;
         if (contextControl) {
@@ -170,6 +173,7 @@ async function run() {
     const validHardwareRun = !offscreenProfile && validDesktopRun && displayQualified && inputQualified && !profiling && !comparisonDiagnostic && !inputDiagnostic;
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: kinds.every(kind => kind === 'text') ? 'production-dom-v5-body-baseline' : 'production-media-provider-v2-body-baseline', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE }, startedAt, endedAt: new Date().toISOString(),
       renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',
+      ...(deterministicCounts ? { verificationProfile: deterministicCounts } : {}),
       ...(contextControl ? { diagnostic: `body-${contextControl.kind}-context-control`, contextControl } : bodyDiagnostic ? { diagnostic: 'body-task-trace' } : inputDiagnostic ? { diagnostic: 'input-trace' } : comparisonDiagnostic ? { diagnostic: 'comparison' } : paintDiagnostic ? { diagnostic: zoomPaintDiagnostic ? 'zoom-paint-trace' : 'paint-trace' } : {}),
       versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
       idleBefore, idleAfter, nativeSessionBefore, nativeSessionAfter, lockEvents, validHardwareRun, profiling, requireInternal120, displayQualified, inputQualified, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
@@ -203,7 +207,8 @@ async function collectBody(window: BrowserWindow, stem: string, progress: Record
     const bodyBaseline = z.number().parse(await window.webContents.executeJavaScript(bodyDiagnostic ? 'window.startCanvasPerformanceBaseline(true)' : 'window.startCanvasPerformanceBaseline()'));
     progress.bodyBaseline = bodyBaseline;
     const close: unknown = await window.webContents.executeJavaScript('window.closeCanvasPerformanceView()'); progress.close = close;
-    const bodySettled: unknown = await window.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()'); progress.bodySettled = bodySettled;
+    // 确定性模式保持原cold相机/LOD等待真实draw，不用后续zoom或capture补称初始完成。
+    const bodySettled: unknown = await window.webContents.executeJavaScript(bodyWaitExpression); progress.bodySettled = bodySettled;
     const bodyLoad: unknown = await window.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()'); progress.bodyLoad = bodyLoad;
     if (process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1') {
       const profile: unknown = await window.webContents.debugger.sendCommand('Profiler.stop');
