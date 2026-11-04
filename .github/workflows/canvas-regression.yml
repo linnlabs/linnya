@@ -39,6 +39,8 @@ jobs:
         run: pnpm --filter @plugin/canvas typecheck
       - name: Check Canvas architecture and frame closure
         run: pnpm exec tsx packages/plugins/canvas/scripts/guard.ts
+      - name: Build schemas for browser subpath imports
+        run: pnpm run build:schemas
       - name: Build the actual computation worker
         run: pnpm --filter @plugin/canvas build:backend
       - name: Run Canvas business cases
