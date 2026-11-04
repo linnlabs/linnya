@@ -1,6 +1,7 @@
 import { CanvasCardSchema, CanvasEdgeSchema, type CanvasCard, type CanvasElement } from '../../src/shared';
 import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/kernel';
 import { createCanvasRasterPresentation } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
+import { canvasPerformanceMediaFixture, type CanvasPerformanceKind } from './performanceMediaFixture';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
@@ -33,6 +34,8 @@ function fixture(count: number, clustered: boolean): CanvasElement[] {
 type Presentation = ReturnType<typeof createCanvasRasterPresentation>;
 let kernel: CanvasKernel | null = null;
 let presentation: Presentation | null = null;
+let media: Awaited<ReturnType<typeof canvasPerformanceMediaFixture>> | null = null;
+let stopMedia: (() => void) | undefined;
 let collection = 0;
 let previous = 0;
 let gaps: number[] = [];
@@ -42,24 +45,35 @@ let movedCards = 0;
 const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
 
-async function prepare(count: number, clustered: boolean) {
-  presentation?.dispose(); kernel?.destroy();
+async function prepare(count: number, clustered: boolean, kind: CanvasPerformanceKind = 'text') {
+  stopMedia?.(); media?.content?.dispose(); presentation?.dispose(); kernel?.destroy();
   document.body.replaceChildren(); document.body.style.cssText = 'margin:0;font-family:system-ui;background:#f1f3ed';
   const host = document.createElement('div'); host.style.cssText = 'position:fixed;inset:0';
   const staging = document.createElement('div'); staging.className = 'canvas-raster-staging';
   document.body.append(host, staging); failures = [];
   kernel = await createPixiCanvasKernel({ host, resolution: devicePixelRatio, onIntent: (intent) => {
-    if (intent.kind === 'camera' || intent.kind === 'preview-changed') presentation?.refresh();
+    if (intent.kind === 'camera' || intent.kind === 'preview-changed') { media?.content?.refreshVisible(kernel?.renderableCards() ?? []); presentation?.refresh(); }
     if (intent.kind === 'select') kernel?.setSelection(intent.ids);
     if (intent.kind === 'move') movedCards = intent.ids.length;
   } });
-  presentation = createCanvasRasterPresentation({ host: staging, kernel, suspendWhenHidden: false, readAppearance: () => appearance, reportFailure: (message) => failures.push(message) });
-  const data = fixture(count, clustered);
+  media = await canvasPerformanceMediaFixture(fixture(count, clustered), kind); const data = media.elements;
+  presentation = createCanvasRasterPresentation({ host: staging, kernel, createContent: media.content?.create, readContentKey: media.content?.contentKey, suspendWhenHidden: false, readAppearance: () => appearance, reportFailure: (message) => failures.push(message) });
   elements = data; movedCards = 0;
   const cards = data.filter((element): element is CanvasCard => element.type !== 'edge');
-  const started = performance.now(); kernel.setElements(data); kernel.fit(cards); presentation.refresh(); await nextFrame();
+  let scheduled = false, disposed = false;
+  const unsubscribe = media.content?.subscribe(failure => {
+    if (failure) { failures.push(failure.message); return; }
+    if (scheduled) return; scheduled = true; queueMicrotask(() => {
+      scheduled = false; if (disposed || !kernel || !media?.content) return;
+      kernel.setDocumentTitles(media.content.documentTitles()); kernel.setThumbnailCards(media.content.thumbnailCards(cards)); media.content.refreshVisible(kernel.renderableCards()); presentation?.refresh();
+    });
+  });
+  stopMedia = () => { disposed = true; unsubscribe?.(); };
+  const started = performance.now(); kernel.setElements(data); kernel.fit(cards);
+  void media.content?.refreshReferences(cards).catch(error => failures.push(String(error)));
+  media.content?.refreshVisible(kernel.renderableCards()); presentation.refresh(); await nextFrame();
   return { installMs: performance.now() - started, dpr: devicePixelRatio, width: innerWidth, height: innerHeight,
-    count, clustered, camera: kernel.readCamera(), stats: kernel.readStats(), renderStatus: kernel.readRenderStatus(), resolution: kernel.readResolution() };
+    count, clustered, kind, resource: media.readStats(), camera: kernel.readCamera(), stats: kernel.readStats(), renderStatus: kernel.readRenderStatus(), resolution: kernel.readResolution() };
 }
 function start() {
   cancelAnimationFrame(collection); gaps = []; previous = 0;
@@ -70,25 +84,27 @@ function finish() {
   cancelAnimationFrame(collection); collection = 0;
   const sorted = gaps.slice().sort((a, b) => a - b);
   return { frames: gaps.length, elapsedMs: gaps.reduce((sum, gap) => sum + gap, 0), frameP95: sorted[Math.floor(sorted.length * 0.95)],
-    worstFrame: sorted[sorted.length - 1], camera: kernel?.readCamera(), scene: kernel?.readStats(), queue: presentation?.readStats(), failures };
+    worstFrame: sorted[sorted.length - 1], camera: kernel?.readCamera(), scene: kernel?.readStats(), queue: presentation?.readStats(), media: media?.readStats(), failures };
 }
 function closeView() {
-  kernel?.setCamera({ x: 30, y: 30, zoom: 0.6 }); presentation?.refresh();
+  kernel?.setCamera({ x: 30, y: 30, zoom: 0.6 }); media?.content?.refreshVisible(kernel?.renderableCards() ?? []); presentation?.refresh();
   return { visible: kernel?.visibleCards().length, camera: kernel?.readCamera() };
 }
 async function waitForBody() {
   const started = performance.now();
   while (performance.now() - started < 5000) {
     const stats = presentation?.readStats();
-    if (stats?.failed) return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats };
-    if (stats && !stats.pending && !stats.running && !kernel?.readStats().fadingCards) {
+    if (stats?.failed) return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats, media: media?.readStats() };
+    const active = media?.readStats().active;
+    const resourcesReady = !active || !active.image && !active.preview && !active.reference;
+    if (resourcesReady && stats && !stats.pending && !stats.running && !kernel?.readStats().fadingCards) {
       await nextFrame(); await nextFrame();
       const after = presentation?.readStats();
-      if (after && !after.pending && !after.running && !kernel?.readStats().fadingCards) return { settled: true, ms: performance.now() - started, camera: kernel?.readCamera(), stats: after };
+      if (after && !after.pending && !after.running && !kernel?.readStats().fadingCards) return { settled: true, ms: performance.now() - started, camera: kernel?.readCamera(), stats: after, media: media?.readStats() };
     }
     await nextFrame();
   }
-  return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats: presentation?.readStats() };
+  return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats: presentation?.readStats(), media: media?.readStats() };
 }
 async function prepareDrag(selectedCount: number) {
   if (!kernel) throw new Error('probe_not_prepared');
@@ -112,7 +128,7 @@ async function prepareDrag(selectedCount: number) {
 Object.defineProperties(window, {
   prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start },
   finishCanvasPerformanceCollection: { value: finish }, closeCanvasPerformanceView: { value: closeView },
-  waitForCanvasPerformanceBody: { value: waitForBody },
+  waitForCanvasPerformanceBody: { value: waitForBody }, readCanvasPerformanceMedia: { value: () => media?.readStats() },
   prepareCanvasPerformanceDrag: { value: prepareDrag }, finishCanvasPerformanceDrag: { value: () => { const result = { movedCards, selected: kernel?.readSelection().length }; kernel?.clearDragPreview(); presentation?.refresh(); return result; } },
 });
 
