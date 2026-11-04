@@ -41,3 +41,5 @@ Dawn内部观测使用已核[Chromium150的明确类别映射](https://github.co
 每段报告同时保存既有采集器的`frameIntervalsMs`原始间隔，不新增逐帧工作。平均、p95和最大值不足以证明常用档掉帧比例；验收需明确60Hz的16.667ms参考、超时间隔占比，以及长停顿漏掉的参考帧机会，另保留实际120Hz参考结果。历史缺原始间隔的报告不能反推这些比例。
 
 scene视觉夹具只在自己的页面临时固定`performance.now`，按明确逻辑时间采样120ms纹理替换与160/200ms场景淡入。真实timer、RAF、Pixi、GPU和正文receipt不替换，采样前有界等待生产脉冲及实际主画布draw；首显必须为当前新像素且尚未完整，终点仍检查资源释放与完整draw。所有出口恢复原时钟。这样CI长暂停不会把64ms中间态推过终点，硬件性能探针仍使用真实时钟。做法参考[Playwright受控时钟](https://playwright.dev/docs/clock)，这里不模拟其timer/RAF调度。
+
+`CANVAS_PERFORMANCE_PAINT_TRACE=1`仅诊断Linux软件绘图的paint兑现：记录原生requestPaint、真实paint、drawElementImage、逐片复制和bitmap transfer的真实时钟及尺寸/片数/测高卡数，保留既有timeout白名单现场，不记录正文。原生this/重载参数/返回值/异常不变，finally恢复全部descriptor；不开启时不安装观察器，也不进入生产插件入口。输出固定为独立`_dev_data/canvas-paint-diagnostic/`，不会覆盖六行counts原件，结果明确diagnostic/profiling且无硬件资格。可配既有`CANVAS_PERFORMANCE_BODY_PROFILE=1`和单例筛选；单例只作诊断，完整六行门禁仍需原样通过，不能仅延长2000ms paint或5000ms等待时限。
