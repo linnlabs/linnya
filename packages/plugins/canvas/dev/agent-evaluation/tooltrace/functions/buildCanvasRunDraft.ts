@@ -1,5 +1,6 @@
 import { CanvasAgentEvaluationRunSchema } from '../../../../scripts/agent-evaluation';
 import type { CanvasRunDraftInput } from '../definitions/traceDraft';
+import { readCanvasImageReadSequence } from './readCanvasImageReadSequence';
 import { admitCanvasDraftSource } from './admitCanvasDraftSource';
 import { admitCanvasDraftWitnesses, readCanvasDraftFinishedAt } from './admitCanvasDraftEvidence';
 
@@ -23,6 +24,8 @@ export function buildCanvasRunDraft(input: CanvasRunDraftInput) {
     scope,
   });
   if (!controls) diagnostics.push('trusted_ui_controls_missing');
+  const imageReadSequence = readCanvasImageReadSequence(input.facts);
+  if (imageReadSequence === undefined) diagnostics.push('image_read_render_link_missing');
   const attempts = [
     ...input.facts.attempts.map(value => ({ ...value, phase: 'write' })),
     ...input.facts.dryRuns.map(value => ({ ...value, phase: 'dry-run' })),
@@ -58,6 +61,7 @@ export function buildCanvasRunDraft(input: CanvasRunDraftInput) {
       editedCardId: controls.editedCardId,
       renderCount: input.facts.renders.length,
       imageReadCount: input.facts.imageReads.length,
+      imageReadSequence: imageReadSequence ?? null,
     },
     metrics: metrics?.metrics ?? {},
     evidenceFiles: [
