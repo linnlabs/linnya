@@ -187,7 +187,8 @@ describe('queueProcessor - TableBlock integration', () => {
       expect.objectContaining({
         type: 'inlineLatex',
         attrs: expect.objectContaining({ latexSource: 'x+y' }),
-        content: [],
+        // 公式是叶节点，正式 materializer 显式传 null，不包含文本子节点。
+        content: null,
         marks: [],
       })
     );

@@ -110,6 +110,11 @@ Sandbox 的跨平台打包验收入口是 `test:shell-tool:formal-electron-sandb
 从而运行整个测试发现范围。需要预览命中文件时使用 `pnpm exec vitest list <test-file> --filesOnly`，
 该命令只列出文件，不执行测试。
 
+`pnpm run test:renderer` 同时运行两个互斥 project：`renderer` 只消费生产 Renderer catalog；
+`renderer-host-integration` 复用根配置，覆盖真实 Markdown schema、normalization 与插件 manifest
+对照。跨层文件在 `scripts/test-runner/definitions/rendererTestScope.ts` 显式登记，不放宽生产 alias。
+可用 `--project renderer` 或 `--project renderer-host-integration` 定向验证；两类都属于正式 Renderer gate。
+
 根 Vitest 配置只从 `src/`、`apps/`、`packages/` 和 `scripts/` 发现测试，并排除依赖、
 构建输出、运行数据和临时目录；`_dev_data/` 中的冻结源码与 benchmark 产物不属于当前测试集。
 Vitest 不自动沿用 `.gitignore`，新增源码根或生成目录时必须同时检查发现边界。正式源码内的

@@ -60,7 +60,7 @@
     - `apps/renderer/**/*.ts|vue`（以及 `apps/renderer/global-frontend-modules.d.ts`）
 - **渲染进程也有自己的 tsconfig**：`apps/renderer/tsconfig.json`
   - 它继承无 paths/include 的 `tsconfig.bundler-base.json` 与 generated Renderer paths，不再继承 Host 的混合 aliases
-  - 生产 profile 排除 test/spec/bench；跨层 parity 测试继续由根 aggregate tsc 检查，并通过 `vitest.renderer.config.ts` 使用 Renderer runtime resolver 执行
+  - 生产 profile 排除 test/spec/bench；跨层 parity 测试继续由根 aggregate tsc 检查，并由 `vitest.renderer.config.ts` 的 `renderer-host-integration` project 复用根 Vitest resolver 执行；纯 UI 测试的 `renderer` project 只使用 Renderer catalog
 
 维护规则：
 
