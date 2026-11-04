@@ -6,6 +6,8 @@ DOM 安装后等待 fonts 和图片 decode。图片必须经内容 provider 从�
 
 `measureBatch` 先安装同批各自宽度的DOM，再集中读取高度，避免每张卡交替写入和读取布局。结果按请求顺序返回标准 settled result；某张图片解码失败不阻断其他正文，取消仍中止整批。复杂正文默认一次至多32卡，短纯文字按既有像素/DOM预算可至64卡；移动时分别降为16/32卡，共享一个staging和paint流程。
 
+字体等待在本批DOM全部安装后只读取一次，再由每张卡独立等待自身图片与测高。Chromium150的[已完成字体ready getter](https://github.com/chromium/chromium/blob/150.0.7871.250/third_party/blink/renderer/core/css/font_face_set_document.cc#L117)仍可能同步更新样式和布局，逐卡读取会重复这项工作；该Promise只在当前批次共享，不能跨批缓存而漏掉后续DOM触发的新字体加载。空测量批不读取字体，仍复核取消；已开始的图片decode不可取消，settle后沿原信号拒绝整批。光栅页仍通过同一准备流程等待字体及图片后才paint与裁独立tile，不改变媒体协议、超时或画质。
+
 `createLatestRasterQueue` 串行使用 staging DOM，默认至多一个运行批次和 64 个待处理项。同一任务批次先集中入队再开始paint，避免500张卡先单独画1张；支持当前视口优先级重排与移动时缩小批次，不能突破已声明上限。同一 key 的旧任务被替换；已完成的旧结果也会释放。调用方取消离屏请求，并对 dropped 结果按当前可见需求重新调度，不保留无限积压。
 
 每次drain在独立task执行，避免DOM创建/测高与场景投影、身份牌准备连成阻挡绘制的微任务链；不改变批次预算、优先级和最新内容判定。销毁取消尚未开始的任务，运行中的paint仍由原有AbortSignal收口。该边界遵循[HTML事件循环](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html)，不把Promise续体误当成让出主线程。
