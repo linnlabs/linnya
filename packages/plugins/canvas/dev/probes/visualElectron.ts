@@ -1,3 +1,5 @@
+import { verifyCanvasLineVisual } from './verifyCanvasLineVisual';
+import { readCanvasVisualDiagnostic, runCanvasSoftwareLineDiagnostic } from './visualDiagnostic';
 import { verifySceneVisual } from './sceneVisualElectron';
 import { readCanvasLinePalette } from '../../src/shared';
 import { app, BrowserWindow, nativeImage, type WebContents, type Event, type RenderProcessGoneDetails } from 'electron';
@@ -24,6 +26,7 @@ const output = process.argv[2];
 if (!output) throw new Error('Visual output directory required');
 app.setPath('userData', path.join(output, 'profile'));
 const softwareProfile = process.env.CANVAS_PERFORMANCE_SOFTWARE === '1';
+const diagnostic = readCanvasVisualDiagnostic(process.env.CANVAS_VISUAL_DIAGNOSTIC, softwareProfile);
 if (softwareProfile) { app.commandLine.appendSwitch('use-angle', 'swiftshader'); app.commandLine.appendSwitch('enable-unsafe-swiftshader'); }
 app.on('window-all-closed', () => {});
 
@@ -153,6 +156,11 @@ async function run() {
   try {
     await win.loadFile(path.join(output, 'index.html'));
     win.webContents.setZoomFactor(2);
+    if (diagnostic) {
+      await runCanvasSoftwareLineDiagnostic({ runLine: () => verifyCanvasLineVisual(win, output, evaluate),
+        writeEvidence: (name, facts) => writeFile(path.join(output, name), JSON.stringify(facts, null, 2)) });
+      return;
+    }
     // 所有正例都经过局部检查，即使raw95已通过也不绕开单字/标点缺失检测。
     const negativeQualification = await verifyTextNegatives(win);
     const ghostNegativeRejected = await verifyGhostErasure(win);
@@ -228,28 +236,7 @@ async function run() {
     }
     await writeFile(path.join(output, 'text-comparison-results.json'), JSON.stringify({ reports, failedCases, negatives: negativeQualification.pass }, null, 2));
     if (failedCases.length) throw new Error(`visual_content_mismatch:${JSON.stringify(failedCases)}`);
-    const line = z.object({ dpr: z.number(), image: z.string(), half: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasLineVisualProbe()'));
-    const lineImage = nativeImage.createFromDataURL(line.image), linePixels = lineImage.toBitmap(), lineWidth = lineImage.getSize().width;
-    let dashInk = 0, dashGap = 0;
-    for (let x = Math.ceil(80 * line.dpr); x < Math.floor(250 * line.dpr); x++) {
-      const i = (Math.floor(350 * line.dpr) * lineWidth + x) * 4;
-      if (linePixels[i] < 230 && linePixels[i + 1] < 230 && linePixels[i + 2] < 230) dashInk++; else dashGap++;
-    }
-    let dashRepeated = 0, dashSamples = 0;
-    for (let x = 80 * line.dpr; x < 250 * line.dpr; x++) {
-      const a = (Math.floor(350 * line.dpr) * lineWidth + x) * 4, b = a + 9 * line.dpr * 4;
-      if ((linePixels[a] < 230) === (linePixels[b] < 230)) dashRepeated++; dashSamples++;
-    }
-    if (dashRepeated / dashSamples < 0.99) throw new Error(`dash_screen_period_not_nine:${dashRepeated}:${dashSamples}`);
-    const looseEndpoints = [1, 0.5].map(zoom => {
-      const image = nativeImage.createFromDataURL(zoom === 1 ? line.image : line.half), pixels = image.toBitmap(), size = image.getSize();
-      const sample = (x: number, y: number) => { const i = (Math.round(y * line.dpr) * size.width + Math.round(x * line.dpr)) * 4; return [pixels[i + 2], pixels[i + 1], pixels[i]]; };
-      const center = sample(100 * zoom, 450 * zoom), rim = sample(100 * zoom + 3, 450 * zoom), arrow = sample(499 * zoom, 500 * zoom);
-      if (Math.max(...center) - Math.min(...center) > 8 || rim[1] >= center[1] - 8 || arrow[1] >= center[1] - 8) throw new Error(`loose_endpoint_hollow_or_screen_radius_missing:${zoom}:${center}:${rim}:${arrow}`);
-      return { zoom, center, rim, arrow };
-    });
-    await writeFile(path.join(output, 'lines.png'), lineImage.toPNG());
-    if (dashInk < 30 || dashGap < 30) throw new Error(`line_dash_is_not_rendered:${dashInk}:${dashGap}`);
+    const { dashInk, dashGap, dashPeriodRatio, looseEndpoints } = await verifyCanvasLineVisual(win, output, evaluate);
     const coloredLines = z.object({ light: z.string(), dark: z.string(), dpr: z.number(), colors: z.array(z.enum(['red', 'orange', 'yellow', 'green', 'cyan', 'purple'])) })
       .parse(await evaluate(win.webContents, 'window.prepareCanvasLineColorsVisualProbe()'));
     const colorReports = [];
@@ -371,7 +358,7 @@ async function run() {
       if (fallbackInk < 100) throw new Error('unsupported_api_identity_is_empty');
       await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());
     } finally { unsupported.destroy(); }
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, renderingProfile: softwareProfile ? 'offscreen-swiftshader' : 'offscreen', reports, lines: { dashInk, dashGap, dashPeriodRatio: dashRepeated / dashSamples, looseEndpoints, colors: colorReports }, dragOcclusion, snapGuides, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk, selectedLabels }, thumbnails: thumbReports,
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, renderingProfile: softwareProfile ? 'offscreen-swiftshader' : 'offscreen', reports, lines: { dashInk, dashGap, dashPeriodRatio, looseEndpoints, colors: colorReports }, dragOcclusion, snapGuides, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk, selectedLabels }, thumbnails: thumbReports,
       mixedLod: lodReports, fade, scene, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
     console.log(JSON.stringify(reports, null, 2));
   } finally { win.destroy(); }
