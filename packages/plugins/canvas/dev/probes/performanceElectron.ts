@@ -17,6 +17,7 @@ const softwareProfile = process.env.CANVAS_PERFORMANCE_SOFTWARE === '1';
 const offscreenProfile = softwareProfile || process.env.CANVAS_PERFORMANCE_OFFSCREEN === '1';
 const zoomPaintDiagnostic = process.env.CANVAS_PERFORMANCE_ZOOM_PAINT_TRACE === '1';
 const paintDiagnostic = process.env.CANVAS_PERFORMANCE_PAINT_TRACE === '1' || zoomPaintDiagnostic;
+const comparisonDiagnostic = process.env.CANVAS_PERFORMANCE_COMPARISON === '1';
 if (zoomPaintDiagnostic && process.env.CANVAS_PERFORMANCE_ZOOM_TRACE !== '1') throw new Error('zoom_paint_diagnostic_requires_chromium_trace');
 if (softwareProfile) { app.commandLine.appendSwitch('use-angle', 'swiftshader'); app.commandLine.appendSwitch('enable-unsafe-swiftshader'); }
 app.on('window-all-closed', () => {});
@@ -118,10 +119,10 @@ async function run() {
       && (offscreenProfile || process.platform !== 'darwin' || nativeSessionAfter?.unlocked === true);
     const displayQualified = !requireInternal120 || display.id === targetDisplay?.id && display.internal && display.displayFrequency >= 119;
     const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_ZOOM_TRACE === '1' || paintDiagnostic;
-    const validHardwareRun = !offscreenProfile && validDesktopRun && displayQualified && !profiling;
+    const validHardwareRun = !offscreenProfile && validDesktopRun && displayQualified && !profiling && !comparisonDiagnostic;
     await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: kinds.every(kind => kind === 'text') ? 'production-dom-v5-body-baseline' : 'production-media-provider-v2-body-baseline', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE }, startedAt, endedAt: new Date().toISOString(),
       renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',
-      ...(paintDiagnostic ? { diagnostic: zoomPaintDiagnostic ? 'zoom-paint-trace' : 'paint-trace' } : {}),
+      ...(comparisonDiagnostic ? { diagnostic: 'comparison' } : paintDiagnostic ? { diagnostic: zoomPaintDiagnostic ? 'zoom-paint-trace' : 'paint-trace' } : {}),
       versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
       idleBefore, idleAfter, nativeSessionBefore, nativeSessionAfter, lockEvents, validHardwareRun, profiling, requireInternal120, displayQualified, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),
       display: { label: display.label, internal: display.internal, scaleFactor: display.scaleFactor, displayFrequency: display.displayFrequency, bounds: display.bounds },
