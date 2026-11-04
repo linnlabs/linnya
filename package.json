@@ -213,7 +213,7 @@
     "benchmark:web:search-free": "tsx scripts/benchmark/web-reliability/free-search-runner.ts",
     "test:plugin:mindmap": "vitest run packages/plugins/mindmap/src",
     "test:plugin:slides": "vitest run packages/plugins/slides/src",
-    "test:workspace-plugins": "pnpm --filter './packages/plugins/*' --if-present run test",
+    "test:workspace-plugins": "pnpm --workspace-concurrency=1 --filter './packages/plugins/*' --if-present run test",
     "harness:plugin:slides": "pnpm --dir packages/plugins/slides run harness",
     "slides:cli": "pnpm --dir packages/plugins/slides run cli",
     "test:watch": "vitest",
