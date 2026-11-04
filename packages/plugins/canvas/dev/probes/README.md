@@ -2,6 +2,8 @@
 
 本入口验证真实 Electron 的 HTML-in-Canvas 排版、绘制与 WebGL 上传，不参与插件发布。它使用真实 Tiptap 文档树、Editor 排版 token、中文/拉丁文字/粗体/列表与约五万字长卡，不把手画文字当作 DOM 光栅化证据。
 
+阶段录制显式包含`blink`类别，用于观察脚本返回后的Canvas帧收口与GPU背压；只有GPU等待记录不足以证明具体上层触发点。缓冲未满也不能单独证明无丢失，分析须同时核对原生UserTiming结束标记、CPU覆盖、完整JSON与paint事件溢出；不据此扩大正文等待门槛。
+
 DOM/bitmap 的 Windows LCD 与灰阶 AA 区分、真实逐字簇/行边界、原 raw 指标和损坏反例门禁由 [文字视觉 oracle](./visualOracle/README.md) 拥有。旧 PNG 没有新 metadata 时只保留诊断，不补造通过。
 
 从仓库根完成冻结安装后运行：

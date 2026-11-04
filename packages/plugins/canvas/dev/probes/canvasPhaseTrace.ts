@@ -7,7 +7,7 @@ const dawnCategory = 'disabled-by-default-gpu.dawn';
 const categories = ['devtools.timeline', 'disabled-by-default-devtools.timeline',
   'disabled-by-default-devtools.timeline.frame', 'disabled-by-default-devtools.timeline.stack',
   'disabled-by-default-v8.cpu_profiler', 'v8', 'v8.execute', 'blink.user_timing',
-  'toplevel', 'gpu', dawnCategory, 'cc', 'viz', 'renderer.scheduler'];
+  'toplevel', 'gpu', dawnCategory, 'blink', 'cc', 'viz', 'renderer.scheduler'];
 
 /** 固定阶段诊断共用原有录制/清理合同；业务动作与观察API仍由各入口拥有。 */
 export async function startCanvasPhaseTrace(options: {
