@@ -1,5 +1,5 @@
 import type { CardRasterizer, CardRasterRequest } from '../definitions/cardRasterization';
-import { prepareRasterDom } from './htmlCanvasPaint';
+import { prepareRasterImages, waitForRasterFonts } from './htmlCanvasPaint';
 import { rasterizeHtmlBatch } from './rasterizeHtmlBatch';
 
 /** 只消费正式正文DOM；同一实例由有界队列串行使用，既可测量也可单页批量光栅。 */
@@ -28,8 +28,12 @@ export function createHtmlCardRasterizer(options: {
       source.append(request.element.cloneNode(true)); return source;
     });
     viewport.replaceChildren(...sources); viewport.style.width = `${Math.max(1, ...requests.map(request => request.width))}px`; viewport.style.height = 'auto';
-    // 同批先安装全部DOM，再集中读取几何；图片失败仍按卡返回，不能牵连其他正文。
-    const values = await Promise.allSettled(sources.map(async source => { await prepareRasterDom(source, active); return source.getBoundingClientRect().height; }));
+    // ready getter本身会同步刷新布局；只在整批DOM安装后读取一次，不跨批缓存。
+    const fontsReady = sources.length ? waitForRasterFonts(document, active) : Promise.resolve();
+    // 图片仍各自准备并按卡返回失败，不能因一张坏图牵连整批正文。
+    const values = await Promise.allSettled(sources.map(async source => {
+      await fontsReady; await prepareRasterImages(source, active); return source.getBoundingClientRect().height;
+    }));
     active.throwIfAborted(); return values;
   }
   async function batch(requests: readonly CardRasterRequest[], signal?: AbortSignal) {

@@ -2,14 +2,20 @@ interface DrawableContext extends CanvasRenderingContext2D { drawElementImage(el
 interface PaintCanvas extends HTMLCanvasElement { requestPaint(): void }
 export function canDrawHtmlElement(context: CanvasRenderingContext2D): context is DrawableContext { return typeof Reflect.get(context, 'drawElementImage') === 'function'; }
 function canRequest(canvas: HTMLCanvasElement): canvas is PaintCanvas { return typeof Reflect.get(canvas, 'requestPaint') === 'function'; }
-export async function prepareRasterDom(element: HTMLElement, signal?: AbortSignal): Promise<void> {
-  signal?.throwIfAborted(); await element.ownerDocument.fonts.ready;
+export async function waitForRasterFonts(document: Document, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted(); await document.fonts.ready;
+}
+export async function prepareRasterImages(element: HTMLElement, signal?: AbortSignal): Promise<void> {
   await Promise.all(Array.from(element.querySelectorAll('img'), async image => {
     const source = image.currentSrc || image.src;
     if (source && !source.startsWith('blob:') && !source.startsWith('data:')) throw new Error('raster_image_requires_managed_bytes');
     if (source) await image.decode();
   }));
   signal?.throwIfAborted();
+}
+export async function prepareRasterDom(element: HTMLElement, signal?: AbortSignal): Promise<void> {
+  await waitForRasterFonts(element.ownerDocument, signal);
+  await prepareRasterImages(element, signal);
 }
 export function waitForHtmlCanvasPaint(canvas: HTMLCanvasElement, draw: () => void, timeoutMs: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
