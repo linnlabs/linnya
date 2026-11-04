@@ -98,6 +98,8 @@ body的`firstPresented`只表示当前正文键已有新像素在非零透明度
 
 页有2物理px透明间隔，按完整1024×512或更大独立字符串页计账。可见缺图牌持有活动引用，正文覆盖后的视图仍可复用缓存；无活动引用的页可LRU淘汰，最后视图移除时整页释放。页面销毁会清掉所有绑定的子纹理，不能留下已释放source的Sprite；上下文恢复从保留的自有Canvas重传同一页。
 
+页内所有绑定（含隐藏视图）的合计引用只由同一owner的attach/detach同步维护，末次释放以O(1)判定；不能在每张卡改名时复制并扫描整页entry。活动引用仍独立决定预算淘汰：隐藏页即使还有绑定也可回收，销页直接detach全部视图，不经release递归销毁。此边界与[Pixi8.22文字资源引用计数](https://github.com/pixijs/pixijs/blob/v8.22.0/src/scene/text/shared/AbstractTextSystem.ts)的末引用释放原则一致，不引入延迟退休或另一份资源所有权。
+
 `bitmapBudgetBytes`继续限制正文（包括退休层），默认256MiB。正文与身份牌另共用固定256MiB逻辑RGBA纹理估算上限：新页先准入并让正文LRU回收，正文接纳也扣除完整atlas页占用；不把空白槽、隐藏缓存或退休正文漏账。stats分别报告bitmapBytes、identityBytes、identityCanvasBytes和派生estimatedTextureBytes/textureBudgetBytes。CPU Canvas backing另列，不声称这些估算代表驱动或全进程物理内存。所有权与子框遵循[Pixi TextureSource/Texture](https://pixijs.com/8.x/guides/components/textures)，排版来自[固定8.22 CanvasTextGenerator](https://github.com/pixijs/pixijs/blob/v8.22.0/src/scene/text/canvas/CanvasTextGenerator.ts)。
 
 活动页本身超过总容量时明确拒绝分配，不隐藏/延迟正确标题或增加预算。容量异常经既有render-status显示后仍抛出，不能把绘制失败当保存失败或成功出图；视口变化后成功准备会清掉容量提示。相同失败工作集不由纯draw任务无限重试，显式capture仍返回原错误；正文、可见性、DPR或资源变化才重新准备。该边界不影响Backend内容与保存，未证明可容纳的极端活动标题规模不能列入性能支持范围。低于.15的隐藏身份牌不登记活动引用，同倍率平移也遵循同一规则；identityActiveLabels供确定性工作量检查。
