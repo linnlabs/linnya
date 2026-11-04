@@ -73,6 +73,7 @@ import { createBacklinksPanelState } from '../store/backlinksPanelState';
 import { createBacklinksPanelController } from '../orchestration/createBacklinksPanelController';
 import { createBacklinksPanelPort } from '../adapters/createBacklinksPanelPort';
 import { useBacklinksMessages } from '../locales/backlinksMessages';
+import './documentBacklinksPanel.css';
 const props = defineProps<{
   documentId: string;
   projectId: string;
@@ -90,48 +91,3 @@ const controller = createBacklinksPanelController(
 void controller.load();
 onBeforeUnmount(controller.close);
 </script>
-<style scoped>
-.document-backlinks-panel {
-  padding: 12px 4px;
-}
-.document-backlinks-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--color-text-secondary);
-}
-.document-backlinks-list {
-  list-style: none;
-  padding: 0;
-}
-.document-backlinks-list button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px;
-  text-align: left;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-text-primary);
-  cursor: pointer;
-}
-.document-backlinks-list button:hover {
-  background: var(--color-bg-subtle);
-}
-.document-backlinks-list button:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-}
-.document-backlinks-list small {
-  margin-left: auto;
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-}
-.document-backlinks-icon {
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
-}
-</style>
