@@ -14,11 +14,16 @@ interface TileContextFact {
   drawArguments?: readonly (number | null)[]; bitmapWidth?: number; bitmapHeight?: number;
   error?: { readonly stage: string; readonly message: string };
 }
+interface UnchangedContextFact {
+  readonly atMs: number; readonly width: number; readonly height: number;
+  actual: CanvasRenderingContext2DSettings | null; error?: string;
+}
 
 /** 固定text夹具的事后归属自证，不是生产级的先验Offscreen隔离。 */
 export function createCanvasTileContextControl(host: HTMLElement, arm: CanvasPerformanceContextArm) {
   const restore: (() => void)[] = [], seen = new WeakSet<OffscreenCanvas>();
   const targets = new WeakMap<OffscreenCanvas, TileContextFact>(), contexts: TileContextFact[] = [];
+  const unchangedContexts: UnchangedContextFact[] = [];
   const installedAtMs = performance.now();
   let staging: HTMLCanvasElement | null = null, stagingChanged = false, uncontrolledCopies = 0, overflow = 0;
   const readStaging = () => {
@@ -44,12 +49,23 @@ export function createCanvasTileContextControl(host: HTMLElement, arm: CanvasPer
     observe(OffscreenCanvas.prototype, 'getContext', (call, context, args) => {
       if (!(context instanceof OffscreenCanvas) || args[0] !== '2d' || seen.has(context)) return call(args);
       seen.add(context);
+      const settings = typeof args[1] === 'object' && args[1] !== null ? args[1] : {};
+      // Pixi字体测量本来就显式true；两臂都原样传递，不把不改变的调用混成tile候选。
+      if (Reflect.get(settings, 'willReadFrequently') === true) {
+        if (contexts.length + unchangedContexts.length >= 16384) { overflow++; return call(args); }
+        const fact: UnchangedContextFact = { atMs: performance.now(), width: context.width, height: context.height, actual: null };
+        unchangedContexts.push(fact);
+        try {
+          const result = call(args);
+          fact.actual = result instanceof OffscreenCanvasRenderingContext2D && canReadAttributes(result) ? result.getContextAttributes() : null;
+          return result;
+        } catch (error) { fact.error = error instanceof Error ? error.message : String(error); throw error; }
+      }
       if (!readStaging()) return call(args);
-      if (contexts.length >= 16384) { overflow++; return call(args); }
+      if (contexts.length + unchangedContexts.length >= 16384) { overflow++; return call(args); }
       const fact: TileContextFact = { id: contexts.length + 1, atMs: performance.now(), width: context.width, height: context.height,
         settingsProvided: args[1] !== undefined, actual: null, copyCalls: 0, stagingCopies: 0, copyCompleted: 0, transfers: 0, transferCompleted: 0, ordered: true };
       targets.set(context, fact); contexts.push(fact);
-      const settings = typeof args[1] === 'object' && args[1] !== null ? args[1] : {};
       const forwarded = arm === 'B' ? [args[0], { ...settings, willReadFrequently: true }, ...args.slice(2)] : args;
       try {
         const result = call(forwarded);
@@ -87,7 +103,7 @@ export function createCanvasTileContextControl(host: HTMLElement, arm: CanvasPer
       dispose();
       return { diagnostic: 'tile-context-control', arm, clock: 'unmodified-performance.now', timeOrigin: performance.timeOrigin,
         installedAtMs, requestedWillReadFrequently: arm === 'B', stagingCanvases: staging ? 1 : 0,
-        stagingChanged, uncontrolledCopies, overflow, descriptorsRestored: true, contexts,
+        stagingChanged, uncontrolledCopies, overflow, descriptorsRestored: true, contexts, unchangedContexts,
         effective: !!staging && !stagingChanged && !uncontrolledCopies && !overflow && contexts.length > 0 && contexts.every(fact =>
           fact.actual?.willReadFrequently === (arm === 'B') && !fact.error && fact.ordered
           && fact.copyCalls === 1 && fact.stagingCopies === 1 && fact.copyCompleted === 1 && fact.transfers === 1 && fact.transferCompleted === 1) };

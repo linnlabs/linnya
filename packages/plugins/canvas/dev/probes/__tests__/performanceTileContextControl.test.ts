@@ -62,6 +62,9 @@ it('同一typed合同拒绝混合变量；A保原调用，B只改候选首次hin
   const htmlMethod = Canvas.prototype.getContext;
   for (const arm of ['A', 'B'] as const) {
     const { host, staging } = fixture(); control = createCanvasTileContextControl(host, arm);
+    const measuring = new Tile(0, 0), originalSettings = { willReadFrequently: true };
+    expect(measuring.getContext('2d', originalSettings)?.canvas).toBe(measuring);
+    expect(measuring.calls[0][1]).toBe(originalSettings);
     const target = new Tile(20, 30), settings = { alpha: false, colorSpace: 'display-p3' };
     const context = target.getContext('2d', settings); if (!context) throw new Error('test_context_missing');
     expect(target.calls[0]).toEqual(['2d', arm === 'A' ? settings : { ...settings, willReadFrequently: true }]);
@@ -73,7 +76,8 @@ it('同一typed合同拒绝混合变量；A保原调用，B只改候选首次hin
     expect(context.calls[0][0]).toBe(staging);
     expect(new Tile(1, 1).getContext('webgl2')).toBeNull();
     expect(control.finish()).toMatchObject({ effective: true, uncontrolledCopies: 0, descriptorsRestored: true,
-      contexts: [{ actual: { alpha: false, colorSpace: 'display-p3', willReadFrequently: arm === 'B' }, copyCompleted: 1, transferCompleted: 1 }] });
+      contexts: [{ actual: { alpha: false, colorSpace: 'display-p3', willReadFrequently: arm === 'B' }, copyCompleted: 1, transferCompleted: 1 }],
+      unchangedContexts: [{ width: 0, height: 0, actual: { willReadFrequently: true } }] });
     expect(Canvas.prototype.getContext).toBe(htmlMethod);
   }
 });
@@ -88,10 +92,10 @@ it('其它来源、未完成链、旧context忽略hint和未受控copy都明确�
       Object.defineProperty(existing, 'getContextAttributes', { value: undefined });
     }
     control = createCanvasTileContextControl(host, 'B');
-    const context = target.getContext('2d'); if (!context) throw new Error('test_context_missing');
+    const context = target.getContext('2d', { willReadFrequently: false }); if (!context) throw new Error('test_context_missing');
     context.drawImage(mismatch === 'other-source' ? document.createElement('canvas') : staging, 0, 0);
     if (mismatch !== 'unfinished') target.transferToImageBitmap();
-    const facts = control.finish(); expect(facts.effective).toBe(false);
+    const facts = control.finish(); expect(facts.effective).toBe(false); expect(facts.contexts).toHaveLength(1);
     if (mismatch === 'missing-attributes') expect(facts.contexts[0].actual).toBeNull();
   }
   const host = document.createElement('div'), staging = document.createElement('canvas'); staging.setAttribute('content', 'drawable');
@@ -99,6 +103,10 @@ it('其它来源、未完成链、旧context忽略hint和未受控copy都明确�
   const target = new Tile(20, 30), context = target.getContext('2d'); if (!context) throw new Error('test_context_missing');
   host.append(staging); context.drawImage(staging, 0, 0); target.transferToImageBitmap();
   expect(control.finish()).toMatchObject({ effective: false, uncontrolledCopies: 1, contexts: [] });
+  const next = fixture(); control = createCanvasTileContextControl(next.host, 'B');
+  const alreadyTrue = new Tile(20, 30), trueContext = alreadyTrue.getContext('2d', { willReadFrequently: true });
+  trueContext?.drawImage(next.staging, 0, 0); alreadyTrue.transferToImageBitmap();
+  expect(control.finish()).toMatchObject({ effective: false, uncontrolledCopies: 1, contexts: [], unchangedContexts: [{ actual: { willReadFrequently: true } }] });
 });
 
 it('原生异常保身份，paint先卸载后control逆序还原；安装中断也不残留自有wrapper', () => {
