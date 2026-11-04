@@ -213,7 +213,7 @@ it('有当前run字面编号的只读回执只补commit，过滤stdout仍须复�
     { documentId: 'doc', requestId: 'literal', sequence: 1, refs: {}, results: [] },
   ]);
   expect(draft.partial.attempts).toEqual([]);
-  expect(draft.partial.review).toBeUndefined();
+  expect('review' in draft.partial).toBe(false);
   expect(draft.partial.metrics).toEqual({});
   expect(draft.partial.evidenceFiles).toContain('/receipt.json');
   expect(draft.diagnostics).toContain('tooltrace_needs_review');
