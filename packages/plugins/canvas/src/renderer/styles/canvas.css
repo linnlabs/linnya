@@ -456,9 +456,15 @@
   align-items: center;
   gap: var(--space-2);
 }
-.canvas-image-edit-fields input {
+.canvas-image-edit-fields input[type="range"],
+.canvas-image-edit-text {
   flex: 1;
   min-width: 0;
+}
+.canvas-image-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 .canvas-image-edit-fields output {
   min-width: 4ch;
