@@ -52,8 +52,16 @@ let zoomTimeline: ReturnType<typeof createCanvasZoomTimeline> | null = null;
 let paintTrace: ReturnType<typeof createCanvasPerformancePaintTrace> | null = null;
 let inputTrace: ReturnType<typeof createCanvasPerformanceInputTrace> | null = null;
 let focusSpan: ReturnType<typeof createCanvasDocumentFocusSpan> | null = null;
+let bodyTrace: { readonly marks: { readonly name: string; readonly atMs: number; readonly rafTimestamp?: number }[] } | null = null;
 const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
+
+function markBody(name: 'baseline' | 'close-start' | 'close-return' | 'wait-start' | 'wait-return' | 'finish', rafTimestamp?: number): void {
+  if (!bodyTrace) return;
+  const atMs = performance.now(), ownedName = `canvas-body:${name}`;
+  performance.mark(ownedName, { startTime: atMs });
+  bodyTrace.marks.push({ name: ownedName, atMs, ...(rafTimestamp === undefined ? {} : { rafTimestamp }) });
+}
 
 async function prepare(count: number, clustered: boolean, kind: CanvasPerformanceKind = 'text') {
   stopMedia?.(); media?.content?.dispose(); presentation?.dispose(); kernel?.destroy();
@@ -97,22 +105,37 @@ function start(baseline?: (time: number) => void) {
   collection = requestAnimationFrame(frame);
   return { documentFocus: focusSpan.start };
 }
-function startBaseline(): Promise<number> { return new Promise(resolve => start(resolve)); }
+function startBaseline(traceBody = false): Promise<number> {
+  if (!traceBody) return new Promise(resolve => start(resolve));
+  bodyTrace = { marks: [] };
+  return new Promise(resolve => start(time => { markBody('baseline', time); resolve(time); }));
+}
 function finish() {
   cancelAnimationFrame(collection); collection = 0;
   const documentFocus = focusSpan?.finish(); focusSpan = null;
   const sorted = gaps.slice().sort((a, b) => a - b);
-  return { frames: gaps.length, frameIntervalsMs: gaps, elapsedMs: gaps.reduce((sum, gap) => sum + gap, 0), frameP95: sorted[Math.floor(sorted.length * 0.95)],
+  const result = { frames: gaps.length, frameIntervalsMs: gaps, elapsedMs: gaps.reduce((sum, gap) => sum + gap, 0), frameP95: sorted[Math.floor(sorted.length * 0.95)],
     worstFrame: sorted[sorted.length - 1], camera: kernel?.readCamera(), scene: kernel?.readStats(), queue: presentation?.readStats(), media: media?.readStats(), failures, documentFocus };
+  if (!bodyTrace) return result;
+  markBody('finish');
+  const bodyClock = { clock: 'unmodified-performance.now', timeOrigin: performance.timeOrigin, marks: bodyTrace.marks };
+  // trace已接收UserTiming事件；只清理由本段创建的有限标记，不影响其它夹具或产品观测。
+  for (const mark of bodyTrace.marks) performance.clearMarks(mark.name);
+  bodyTrace = null;
+  return { ...result, bodyClock };
 }
 function closeView() {
+  markBody('close-start');
   kernel?.setCamera({ x: 30, y: 30, zoom: 0.6 }); media?.content?.refreshVisible(kernel?.renderableCards() ?? []); presentation?.refresh();
+  markBody('close-return');
   return { visible: kernel?.visibleCards().length, camera: kernel?.readCamera() };
 }
 async function waitForBody() {
+  markBody('wait-start');
   const { settled, ms, snapshot } = await waitForCanvasPerformanceBody({ now: () => performance.now(), nextFrame,
     readSnapshot: () => ({ stats: presentation?.readStats(), camera: kernel?.readCamera(), media: media?.readStats(),
       resourcesIdle: mediaResourcesIdle(), fadingCards: kernel?.readStats().fadingCards ?? 0, presentationReady: bodyPresentationReady() }) });
+  markBody('wait-return');
   return { settled, ms, camera: snapshot.camera, stats: snapshot.stats, media: snapshot.media };
 }
 function mediaResourcesIdle(): boolean {

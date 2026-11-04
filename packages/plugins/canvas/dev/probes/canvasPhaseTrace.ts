@@ -9,9 +9,9 @@ const categories = ['devtools.timeline', 'disabled-by-default-devtools.timeline'
   'disabled-by-default-v8.cpu_profiler', 'v8', 'v8.execute', 'blink.user_timing',
   'toplevel', 'gpu', dawnCategory, 'cc', 'viz', 'renderer.scheduler'];
 
-/** 两个dev诊断共用原有录制/清理合同；业务动作与观察API仍由各固定入口拥有。 */
+/** 固定阶段诊断共用原有录制/清理合同；业务动作与观察API仍由各入口拥有。 */
 export async function startCanvasPhaseTrace(options: {
-  readonly output: string; readonly stem: string; readonly phase: 'zoom' | 'visible-update';
+  readonly output: string; readonly stem: string; readonly phase: 'zoom' | 'visible-update' | 'body';
   readonly start: () => Promise<unknown>; readonly finish: () => Promise<unknown>;
 }) {
   const traceFile = path.join(options.output, `${options.stem}-${options.phase}.trace.json`);

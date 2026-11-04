@@ -8,7 +8,8 @@ import { buildProbeRenderer } from './build-probe-renderer.mjs';
 
 const probeRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(probeRoot, '../../../../..');
-const output = path.join(root, process.env.CANVAS_PERFORMANCE_INPUT_TRACE === '1' ? '_dev_data/canvas-input-diagnostic'
+const output = path.join(root, process.env.CANVAS_PERFORMANCE_BODY_TRACE === '1' ? '_dev_data/canvas-body-task-diagnostic'
+  : process.env.CANVAS_PERFORMANCE_INPUT_TRACE === '1' ? '_dev_data/canvas-input-diagnostic'
   : process.env.CANVAS_PERFORMANCE_ZOOM_PAINT_TRACE === '1' ? '_dev_data/canvas-zoom-paint-diagnostic'
   : process.env.CANVAS_PERFORMANCE_PAINT_TRACE === '1' ? '_dev_data/canvas-paint-diagnostic'
   : process.env.CANVAS_PERFORMANCE_SOFTWARE === '1' ? '_dev_data/canvas-software-probe' : process.env.CANVAS_PERFORMANCE_OFFSCREEN === '1' ? '_dev_data/canvas-counts-probe' : '_dev_data/canvas-performance-probe');
