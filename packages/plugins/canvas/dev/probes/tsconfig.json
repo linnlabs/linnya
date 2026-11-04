@@ -17,7 +17,8 @@
     "./visibleUpdateRenderer.ts",
     "./visibleUpdateElectron.ts",
     "./identityAtlasRenderer.ts",
-    "./identityAtlasElectron.ts"
+    "./identityAtlasElectron.ts",
+    "./__tests__/visualTextOracle.test.ts"
   ],
   "exclude": []
 }
