@@ -34,6 +34,13 @@ it('routes only frozen-project typed operations, confirms retries once, and remo
     const delivered: unknown = await (await fetch(base + '/next', { headers })).json();
     expect(CanvasEvaluationCommandSchema.parse(delivered)).toEqual(following);
     await post('/result', { id: following.id, ok: true, value: null }); await read;
+    const readiness = CanvasEvaluationCommandSchema.parse({ id: randomUUID(), kind: 'readiness', payload: { elementIds: ['c1'] } });
+    const pendingReadiness = post('/invoke', readiness);
+    expect(CanvasEvaluationCommandSchema.parse(await (await fetch(base + '/next', { headers })).json())).toEqual(readiness);
+    const visible = { documentId: 'doc', sequence: 1, renders: 3, observedAt: 1000,
+      readiness: { cards: [{ id: 'c1', revision: 2, mode: 'body', status: 'ready' }], complete: true, suspended: false, precisionSettling: false } };
+    await post('/result', { id: readiness.id, ok: true, value: visible });
+    expect(CanvasEvaluationResultSchema.parse(await (await pendingReadiness).json())).toEqual({ id: readiness.id, ok: true, value: visible });
     const current = await readFile(html, 'utf8');
     await writeFile(html, current.replace('</body>', '<aside>User change</aside></body>'));
   } finally {
