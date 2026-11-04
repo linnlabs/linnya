@@ -3,9 +3,29 @@ interface PaintTraceEvent {
   readonly width?: number; readonly height?: number; readonly cssWidth?: string; readonly cssHeight?: string;
   readonly fragments?: number; readonly measuredCards?: number; readonly durationMs?: number; readonly completed?: boolean;
   readonly targetWidth?: number; readonly targetHeight?: number;
+  readonly api?: 'webgl1' | 'webgl2'; readonly method?: string; readonly startedAtMs?: number;
+  readonly sourceKind?: string; readonly sourceWidth?: number; readonly sourceHeight?: number;
   readonly timeout?: Readonly<Record<string, string | number | boolean | null>>;
 }
 interface CanvasPaintIdentity { readonly id: number; measuredCards: number; requestId: number }
+
+/** 只识别原调用已提供的source和尺寸，不访问像素或假定WebGL2使用WebGL1的重载位置。 */
+export function canvasTextureUploadFacts(method: 'texImage2D' | 'texSubImage2D', args: readonly unknown[]) {
+  const index = method === 'texImage2D' && args.length === 6 ? 5 : method === 'texSubImage2D' && args.length === 7 ? 6 : 8;
+  const source = args[index];
+  let sourceKind = 'unknown', sourceWidth: number | undefined, sourceHeight: number | undefined;
+  if (source === null) sourceKind = 'null-allocation';
+  else if (typeof source === 'number') sourceKind = 'buffer-offset';
+  else if (ArrayBuffer.isView(source)) sourceKind = 'typed-array';
+  else if (typeof HTMLCanvasElement !== 'undefined' && source instanceof HTMLCanvasElement) { sourceKind = 'canvas'; sourceWidth = source.width; sourceHeight = source.height; }
+  else if (typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap) { sourceKind = 'image-bitmap'; sourceWidth = source.width; sourceHeight = source.height; }
+  else if (typeof OffscreenCanvas !== 'undefined' && source instanceof OffscreenCanvas) { sourceKind = 'offscreen-canvas'; sourceWidth = source.width; sourceHeight = source.height; }
+  const widthIndex = method === 'texImage2D' ? 3 : 4;
+  const argumentWidth = args[widthIndex], argumentHeight = args[widthIndex + 1];
+  const width = args.length >= 9 && typeof argumentWidth === 'number' ? argumentWidth : sourceWidth;
+  const height = args.length >= 9 && typeof argumentHeight === 'number' ? argumentHeight : sourceHeight;
+  return { method, sourceKind, sourceWidth, sourceHeight, width, height };
+}
 
 /** 仅诊断入口安装：保留原生调用、this、重载参数、返回值和异常，不驱动任何paint。 */
 export function createCanvasPerformancePaintTrace() {
@@ -75,6 +95,14 @@ export function createCanvasPerformancePaintTrace() {
       const value = copies.get(context);
       return value ? timed('transfer', { canvasId: value.id, requestId: value.requestId, width: context.width, height: context.height }, call) : call();
     });
+    for (const prototype of [WebGLRenderingContext.prototype, WebGL2RenderingContext.prototype]) {
+      for (const method of ['texImage2D', 'texSubImage2D'] as const) observe(prototype, method, (call, context, args) => {
+        const startedAtMs = performance.now(), facts = canvasTextureUploadFacts(method, args);
+        const api = context instanceof WebGL2RenderingContext ? 'webgl2' : 'webgl1'; let completed = false;
+        try { const value = call(); completed = true; return value; }
+        finally { record('texture-upload', { ...facts, api, startedAtMs, durationMs: performance.now() - startedAtMs, completed }); }
+      });
+    }
     const original = console.error;
     console.error = (...args: unknown[]) => {
       if (args[0] === '[Canvas] HTML paint timeout') {

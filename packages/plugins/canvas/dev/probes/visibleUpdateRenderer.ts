@@ -1,58 +1,95 @@
-import { CanvasCardSchema, type CanvasCard } from '../../src/shared';
 import { createPixiCanvasKernel } from '../../src/renderer/kernel';
 import { createCanvasRasterPresentation } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
+import { createCanvasPerformancePaintTrace } from './performancePaintTrace';
+import { createCanvasZoomTimeline, type CanvasZoomTraceState } from './performanceZoomTimeline';
+import { changeVisibleUpdateFixture, createVisibleUpdateFixture, VISIBLE_UPDATE_TEXT_FONT, type VisibleUpdateChange } from './visibleUpdateFixture';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/styles/canvas.css';
 
-const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-const source = { kind: 'agent', conversationId: 'visible-update-probe', runId: 'diagnostic' };
+let timeline: ReturnType<typeof createCanvasZoomTimeline> | null = null;
+let frameCollector: ((timestamp: number) => void) | null = null;
+const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(timestamp => { timeline?.frame(timestamp); frameCollector?.(timestamp); resolve(); }));
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
-let cards: CanvasCard[] = [], dispose = () => {};
+let cards: ReturnType<typeof createVisibleUpdateFixture> = [], dispose = () => {};
+let paintTrace: ReturnType<typeof createCanvasPerformancePaintTrace> | null = null;
+let readTraceState: (() => CanvasZoomTraceState) | undefined, capture: (() => Promise<string>) | undefined;
 const paints: number[] = [];
 document.addEventListener('paint', () => paints.push(performance.now()), true);
 let apply: ((poll: boolean, animate: boolean) => Promise<unknown>) | undefined;
 
-async function prepare() {
-  dispose(); document.body.replaceChildren(); document.body.style.cssText = 'margin:0;font-family:system-ui';
+async function prepare(change: VisibleUpdateChange = 'color') {
+  dispose(); document.body.replaceChildren(); document.body.style.cssText = change === 'text'
+    ? `margin:0;font-family:${VISIBLE_UPDATE_TEXT_FONT};-webkit-font-smoothing:antialiased` : 'margin:0;font-family:system-ui';
   const host = document.createElement('div'), staging = document.createElement('div');
+  if (change === 'text') staging.className = 'canvas-raster-staging';
   host.style.cssText = 'position:fixed;inset:0'; document.body.append(host, staging);
   const kernel = await createPixiCanvasKernel({ host, resolution: devicePixelRatio });
   const failures: string[] = [], raster = createCanvasRasterPresentation({ host: staging, kernel, suspendWhenHidden: false,
     readAppearance: () => appearance, reportFailure: message => failures.push(message) });
-  cards = Array.from({ length: 500 }, (_, i) => CanvasCardSchema.parse({ id: `c${i + 1}`, type: 'text', schemaVersion: 1, revision: 1,
-    order: String(i).padStart(6, '0'), x: i % 25 * 104, y: Math.floor(i / 25) * 88, width: 88, height: 72,
-    locked: false, color: 'white', parentId: null, createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0,
-    data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: `卡 ${String(i + 1).padStart(3, '0')}` }] }] } } }));
+  cards = createVisibleUpdateFixture(change); let round = 20;
   const ids = cards.map(card => card.id);
-  const settle = async (poll: boolean) => {
-    const started = performance.now(); let polls = 0;
+  const settle = async (poll: boolean, started = performance.now()) => {
+    let polls = 0, firstAnyMs: number | null = null, allVisibleMs: number | null = null;
+    const observed = () => {
+      const readiness = raster.readReadiness(ids);
+      if (poll && readiness.cards.some(card => card.mode === 'body' && card.firstPresented) && firstAnyMs === null) firstAnyMs = performance.now() - started;
+      if (poll && readiness.cards.length === 500 && readiness.cards.every(card => card.mode === 'body' && card.firstPresented) && allVisibleMs === null) allVisibleMs = performance.now() - started;
+      return readiness;
+    };
     for (;;) {
-      await nextFrame(); if (poll) { raster.readReadiness(ids); polls++; }
+      await nextFrame(); if (poll) { observed(); polls++; }
       const stats = raster.readStats(); if (stats.failed || performance.now() - started > 10000) throw new Error(`visible_update_did_not_settle:${JSON.stringify({ stats, failures })}`);
       if (!stats.running && !stats.pending) {
-        await nextFrame(); const readiness = raster.readReadiness(ids);
-        if (readiness.complete) return { polls, readiness };
+        await nextFrame(); const readiness = observed();
+        if (readiness.complete) return { polls, readiness, firstAnyMs, allVisibleMs };
       }
     }
   };
   kernel.setElements(cards); kernel.fit(cards); raster.refresh(); await settle(false);
-  apply = async (poll, animate) => {
-    paints.length = 0;
-    const started = performance.now(), previousDraw = kernel.readStats().renders;
-    cards = cards.map(card => ({ ...card, revision: card.revision + 1, color: card.color === 'green' ? 'orange' : 'green' }));
-    kernel.setElements(cards, animate ? { animateIds: ids } : {}); raster.refresh(); const projected = performance.now();
-    await nextFrame(); const geometry = performance.now(); const settled = await settle(poll);
-    const readiness = settled.readiness;
-    if (kernel.readStats().renders <= previousDraw || readiness.cards.length !== 500 || readiness.cards.some(card => card.mode !== 'body' || card.status !== 'ready')) throw new Error('visible_update_body_not_drawn');
-    return { measurement: 'kernel-input-to-current-body-draw', backendMeasured: false, validHardwareRun: false,
-      cards: cards.length, poll, animate, polls: settled.polls, projectMs: projected - started, geometryMs: geometry - started,
-      bodyMs: performance.now() - started, paints: paints.map(time => time - started), scene: kernel.readStats(), queue: raster.readStats(), failures };
+  const expectedCamera = { x: 92.52293577981652, y: 40, zoom: 0.4701834862385321 }, camera = kernel.readCamera();
+  if (change === 'text' && (innerWidth !== 1400 || innerHeight !== 900 || devicePixelRatio !== 2
+    || Math.abs(camera.x - expectedCamera.x) > 1e-9 || Math.abs(camera.y - expectedCamera.y) > 1e-9 || Math.abs(camera.zoom - expectedCamera.zoom) > 1e-12)) throw new Error('visible_text_fixture_environment_does_not_match_r4');
+  readTraceState = () => {
+    const scene = kernel.readStats(), queue = raster.readStats();
+    return { renders: scene.renders, rasterCards: scene.rasterCards, bitmaps: scene.bitmaps, bitmapBytes: scene.bitmapBytes,
+      fadingCards: scene.fadingCards, pending: queue.pending, running: queue.running, completed: queue.completed,
+      activeImages: 0, activePreviews: 0, activeReferences: 0 };
   };
-  dispose = () => { raster.dispose(); kernel.destroy(); apply = undefined; };
-  return { viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio }, camera: kernel.readCamera(), scene: kernel.readStats(), queue: raster.readStats() };
+  capture = () => kernel.captureImage('png');
+  apply = async (poll, animate) => {
+    paints.length = 0; const frameIntervalsMs: number[] = []; let lastFrame: number | null = null;
+    frameCollector = timestamp => { if (lastFrame !== null) frameIntervalsMs.push(timestamp - lastFrame); lastFrame = timestamp; };
+    await nextFrame();
+    const started = performance.now(), previousDraw = kernel.readStats().renders;
+    if (timeline) performance.mark('canvas-probe:visible-update-input');
+    cards = changeVisibleUpdateFixture(cards, change, ++round);
+    const revisions = new Map(cards.map(card => [card.id, card.revision]));
+    kernel.setElements(cards, animate ? { animateIds: ids } : {}); raster.refresh(); const projected = performance.now();
+    do { await nextFrame(); if (performance.now() - started > 10000) throw new Error('visible_update_geometry_draw_missing'); } while (kernel.readStats().renders <= previousDraw);
+    const geometry = performance.now(); const settled = await settle(poll, started); frameCollector = null;
+    const readiness = settled.readiness;
+    if (kernel.readStats().renders <= previousDraw || readiness.cards.length !== 500
+      || readiness.cards.some(card => card.mode !== 'body' || card.status !== 'ready' || card.revision !== revisions.get(card.id))) throw new Error('visible_update_body_not_drawn');
+    return { measurement: 'kernel-input-to-current-body-draw', backendMeasured: false, validHardwareRun: false,
+      diagnostic: 'isolated-renderer-current-new-body', change, textRound: change === 'text' ? round : null,
+      cards: cards.length, poll, animate, polls: settled.polls, projectMs: projected - started, geometryMs: geometry - started,
+      firstAnyMs: settled.firstAnyMs, allVisibleMs: settled.allVisibleMs, firstPresentationObserved: poll,
+      bodyMs: performance.now() - started, timeOrigin: performance.timeOrigin, inputAt: started, frameIntervalsMs,
+      paints: paints.map(time => time - started), scene: kernel.readStats(), queue: raster.readStats(), failures };
+  };
+  dispose = () => { frameCollector = null; timeline?.finish(); timeline = null; paintTrace?.finish(); paintTrace = null;
+    raster.dispose(); kernel.destroy(); apply = undefined; capture = undefined; readTraceState = undefined; };
+  return { change, fixture: change === 'text' ? 'r4-before-round21-first500-logical-state-no-20-warm-writes' : 'historical-color-update',
+    viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio }, fontFamily: getComputedStyle(staging).fontFamily,
+    fontSmoothing: getComputedStyle(staging).getPropertyValue('-webkit-font-smoothing'), camera: kernel.readCamera(), scene: kernel.readStats(), queue: raster.readStats() };
 }
 Object.defineProperties(window, {
   prepareVisibleUpdateProbe: { value: prepare },
   updateVisibleUpdateProbe: { value: (poll: boolean, animate = false) => { if (!apply) throw new Error('visible_update_not_prepared'); return apply(poll, animate); } },
+  beginCanvasPerformancePaintTrace: { value: () => { paintTrace?.finish(); paintTrace = createCanvasPerformancePaintTrace(); } },
+  finishCanvasPerformancePaintTrace: { value: () => { const result = paintTrace?.finish(); paintTrace = null; return result; } },
+  startVisibleUpdateTrace: { value: () => { if (!readTraceState) throw new Error('visible_update_not_prepared'); timeline = createCanvasZoomTimeline(readTraceState, 'visible-update'); } },
+  finishVisibleUpdateTrace: { value: () => { const result = timeline?.finish(); timeline = null; return result; } },
+  captureVisibleUpdateProbe: { value: () => { if (!capture) throw new Error('visible_update_not_prepared'); return capture(); } },
 });
