@@ -6,6 +6,7 @@ import { createCanvasZoomTimeline } from './performanceZoomTimeline';
 import { createCanvasPerformancePaintTrace } from './performancePaintTrace';
 import { waitForCanvasPerformanceBody } from './waitForCanvasPerformanceBody';
 import { waitForCanvasPerformanceDraw } from './waitForCanvasPerformanceDraw';
+import { createCanvasPerformanceInputTrace } from './performanceInputTrace';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
@@ -48,6 +49,7 @@ let elements: readonly CanvasElement[] = [];
 let movedCards = 0;
 let zoomTimeline: ReturnType<typeof createCanvasZoomTimeline> | null = null;
 let paintTrace: ReturnType<typeof createCanvasPerformancePaintTrace> | null = null;
+let inputTrace: ReturnType<typeof createCanvasPerformanceInputTrace> | null = null;
 const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 const appearance = { dark: false, material: 'paper', overview: 'titles' } as const;
 
@@ -59,6 +61,7 @@ async function prepare(count: number, clustered: boolean, kind: CanvasPerformanc
   document.body.append(host, staging); failures = [];
   const openingStarted = performance.now();
   kernel = await createPixiCanvasKernel({ host, resolution: devicePixelRatio, onIntent: (intent) => {
+    inputTrace?.intent(intent);
     if (intent.kind === 'camera' || intent.kind === 'preview-changed') { media?.content?.refreshVisible(kernel?.renderableCards() ?? []); presentation?.refresh(); }
     if (intent.kind === 'select') kernel?.setSelection(intent.ids);
     if (intent.kind === 'move') movedCards = intent.ids.length;
@@ -139,6 +142,18 @@ async function prepareDrag(selectedCount: number) {
   return { point: target.point, selected: selected.length, cardId: top.id };
 }
 Object.defineProperties(window, {
+  beginCanvasPerformanceInputTrace: { value: () => {
+    inputTrace?.finish(); inputTrace = createCanvasPerformanceInputTrace({ readCanvas: () => kernel?.canvas ?? null,
+      readState: point => {
+        const focus = { document: document.hasFocus(), activeIsMainCanvas: document.activeElement === kernel?.canvas };
+        if (!kernel) return { focus, prepared: false };
+        const hit = point ? kernel.hitTest(kernel.screenToWorld(point)) : null, selection = kernel.readSelection();
+        const receiptIds = hit ? [hit.id] : selection.slice(0, 1);
+        return { focus, camera: kernel.readCamera(), selection, hitId: hit?.id ?? null, renders: kernel.readStats().renders,
+          currentReceipt: presentation?.readReadiness(receiptIds) ?? null };
+      } });
+  } },
+  finishCanvasPerformanceInputTrace: { value: () => { const result = inputTrace?.finish(); inputTrace = null; return result; } },
   beginCanvasPerformancePaintTrace: { value: () => { paintTrace?.finish(); paintTrace = createCanvasPerformancePaintTrace(); } },
   finishCanvasPerformancePaintTrace: { value: () => { const result = paintTrace?.finish(); paintTrace = null; return result; } },
   startCanvasPerformanceZoomTrace: { value: (detailed = false) => {
