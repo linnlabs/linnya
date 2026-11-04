@@ -3,11 +3,11 @@ import path from 'node:path';
 import {
   CanvasEvaluationRunnerStateSchema,
   CanvasEvaluationCollectionSchema,
-  CanvasEvaluationMessagesIndexSchema,
+  readEvaluationRunReceipts,
 } from '../../runner';
 import { CanvasTraceDraftRequestSchema } from '../definitions/traceDraft';
 import { buildCanvasRunDraft } from '../functions/buildCanvasRunDraft';
-import { parseCanvasToolTrace } from '../functions/parseCanvasToolTrace';
+import { readCollectedCanvasToolTrace } from '../adapters/readCollectedCanvasToolTrace';
 import { readTraceJson, writeTraceJson } from '../adapters/traceFiles';
 
 export async function draftCanvasEvaluationRun(input: {
@@ -22,49 +22,41 @@ export async function draftCanvasEvaluationRun(input: {
   const state = CanvasEvaluationRunnerStateSchema.parse(await readTraceJson(stateFile));
   const collection = CanvasEvaluationCollectionSchema.parse(await readTraceJson(collectionFile));
   if (!state.receipt) throw new Error('Evaluation has no confirmed model receipt');
-  const indexFile = path.join(collectionDirectory, 'messages-index.json');
-  const index = CanvasEvaluationMessagesIndexSchema.parse(await readTraceJson(indexFile));
-  const messageFiles = index.files.map(file => path.join(collectionDirectory, file));
-  const auditFile = path.join(collectionDirectory, 'audit.response.json');
+  const receipts = readEvaluationRunReceipts(state);
+  const controlsFile = request.controlsFile ?? state.continuations?.[0]?.witnessFile;
+  const resultFiles = receipts.map((_receipt, index) =>
+    path.join(
+      collectionDirectory,
+      index === 0 ? 'result.response.json' : `continuation-${index}-result.response.json`
+    )
+  );
   const beforeFile = path.join(root, 'before.json'),
     afterFile = path.join(collectionDirectory, 'after.json'),
-    resultFile = path.join(collectionDirectory, 'result.response.json');
-  const [audit, pages, before, after, result, controls, metrics, receiptWitness] =
-    await Promise.all([
-      readTraceJson(auditFile),
-      Promise.all(
-        messageFiles.map(async sourceFile => ({
-          sourceFile,
-          value: await readTraceJson(sourceFile),
-        }))
-      ),
-      readTraceJson(beforeFile),
-      readTraceJson(afterFile),
-      readTraceJson(resultFile),
-      request.controlsFile ? readTraceJson(request.controlsFile) : undefined,
-      request.metricsFile ? readTraceJson(request.metricsFile) : undefined,
-      request.receiptWitnessFile ? readTraceJson(request.receiptWitnessFile) : undefined,
-    ]);
-  const facts = parseCanvasToolTrace({
-    scope: {
-      conversationId: state.receipt.conversation_id,
-      rootRunId: state.receipt.run_id,
-      documentId: state.documentId,
-      locators: [`workspace:/${state.config.taskId}.canvas`],
-    },
-    audit,
-    pages,
-  });
+    resultFile = path.join(
+      collectionDirectory,
+      receipts.length === 1
+        ? 'result.response.json'
+        : `continuation-${receipts.length - 1}-result.response.json`
+    );
+  const [trace, before, after, result, controls, metrics, receiptWitness] = await Promise.all([
+    readCollectedCanvasToolTrace({ directory: collectionDirectory, state }),
+    readTraceJson(beforeFile),
+    readTraceJson(afterFile),
+    readTraceJson(resultFile),
+    controlsFile ? readTraceJson(controlsFile) : undefined,
+    request.metricsFile ? readTraceJson(request.metricsFile) : undefined,
+    request.receiptWitnessFile ? readTraceJson(request.receiptWitnessFile) : undefined,
+  ]);
+  const facts = trace.facts;
   const evidenceFiles = [
     stateFile,
     collectionFile,
-    indexFile,
-    auditFile,
     beforeFile,
     afterFile,
     resultFile,
-    ...messageFiles,
-    ...(request.controlsFile ? [request.controlsFile] : []),
+    ...trace.evidenceFiles,
+    ...resultFiles,
+    ...(controlsFile ? [controlsFile] : []),
     ...(request.metricsFile ? [request.metricsFile] : []),
     ...(request.receiptWitnessFile ? [request.receiptWitnessFile] : []),
   ];

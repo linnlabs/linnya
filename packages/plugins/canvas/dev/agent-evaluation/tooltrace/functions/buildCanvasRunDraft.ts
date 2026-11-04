@@ -7,7 +7,8 @@ import { admitCanvasDraftWitnesses, readCanvasDraftFinishedAt } from './admitCan
 
 /** 缺事实就产出partial，不把人工动作、未知纠错或未完成run补成成功。 */
 export function buildCanvasRunDraft(input: CanvasRunDraftInput) {
-  const { state, collection, before, after, scope, startedAt } = admitCanvasDraftSource(input);
+  const { state, collection, before, after, scope, startedAt, finalRunId } =
+    admitCanvasDraftSource(input);
   const receipts = admitCanvasReceiptWitness({
       value: input.receiptWitness,
       facts: input.facts,
@@ -20,7 +21,7 @@ export function buildCanvasRunDraft(input: CanvasRunDraftInput) {
   if (!collection.sourceValid || !collection.messagesComplete || !collection.evidenceComplete)
     diagnostics.push('collection_incomplete_or_source_changed');
   if (facts.needsReview) diagnostics.push('tooltrace_needs_review');
-  const finishedAt = readCanvasDraftFinishedAt(input.result, scope);
+  const finishedAt = readCanvasDraftFinishedAt(input.result, { ...scope, runId: finalRunId });
   if (finishedAt === undefined) diagnostics.push('run_terminal_result_missing');
   const check = [...facts.checks]
     .reverse()

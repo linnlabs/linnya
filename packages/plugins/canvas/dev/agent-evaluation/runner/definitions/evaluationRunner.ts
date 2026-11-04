@@ -29,6 +29,21 @@ export const CanvasEvaluationRunnerStateSchema = z
     connectionFile: z.string().optional(),
     receipt: ConversationControlAcceptedReceiptSchema.optional(),
     startedAt: z.number().optional(),
+    continuations: z
+      .array(
+        z
+          .object({
+            step: z.literal('approval-continuation'),
+            decision: z.enum(['allow', 'deny']),
+            witnessFile: z.string().min(1),
+            priorStatusFile: z.string().min(1),
+            startedAt: z.number(),
+            receipt: ConversationControlAcceptedReceiptSchema,
+          })
+          .strict()
+      )
+      .max(1)
+      .optional(),
   })
   .strict();
 export type CanvasEvaluationRunnerState = z.infer<typeof CanvasEvaluationRunnerStateSchema>;
@@ -46,6 +61,7 @@ export const CanvasEvaluationCollectionSchema = z
     evidenceComplete: z.boolean(),
     scoring: z.literal('not-performed'),
     manualActions: z.string().nullable(),
+    continuationRunIds: z.array(z.string().min(1)).max(1).optional(),
   })
   .strict();
 export const CanvasEvaluationMessagesIndexSchema = z
@@ -55,6 +71,7 @@ export const CanvasEvaluationMessagesIndexSchema = z
     files: z.array(z.string().regex(/^messages-\d+\.response\.json$/)),
   })
   .strict();
+export type CanvasEvaluationCollection = z.infer<typeof CanvasEvaluationCollectionSchema>;
 export interface EvaluationCliInvocation {
   readonly repositoryRoot: string;
   readonly directory: string;

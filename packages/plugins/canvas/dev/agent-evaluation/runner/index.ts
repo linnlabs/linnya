@@ -15,3 +15,7 @@ export { startCanvasEvaluation } from './orchestration/startEvaluation';
 export { collectCanvasEvaluation } from './orchestration/collectEvaluation';
 export { waitCanvasEvaluation } from './orchestration/waitEvaluation';
 export { prepareCanvasEvaluationConfigs } from './orchestration/prepareConfigs';
+export { continueCanvasApprovalEvaluation } from './orchestration/continueApprovalEvaluation';
+export { readEvaluationRunReceipts } from './functions/readEvaluationRunReceipts';
+export { assertEvaluationCollectionScope } from './functions/assertEvaluationCollectionScope';
+export { readEvaluationContinuationEvidence } from './adapters/readContinuationEvidence';

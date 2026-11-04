@@ -33,3 +33,6 @@ ABI和正式Host模块解析，固定调用`--database … --project … --conve
 
 draft
 request可额外传receiptWitnessFile。装配时再次对照本次解析的`trace.requests`验证编号，并校验sourceRevision、batch、run、conversation、project、文档路径与回执编号。只把committed回执作为权威commit补充；pending、缺失或无效响应不会伪造执行，旧回执缺字段细节保持未知。原始trace.json与receipt见证分别保留，run草稿的commits是两者的接纳结果。成功回执不能恢复已丢失的失败次数或correction，原始needsReview/diagnostics不会被清除，人工/UI/性能事实仍需独立证据。
+
+T9/T12审批通知续轮由runner确认并单独存档。草拟时重新核对UI见证、固定任务决定、原run完成状态与同conversation官方send回执；原root与显式续轮都须有完整audit，同会话其他root不得混入。消息按conversation
+sort_seq统一排序，首run的pending/失败与correction不会重置；UI执行的回执只补commit。完成时间取最后续轮，before/startedAt和UI见证scope仍锚首次run。request未另给controlsFile时复用续轮保存的UI见证；人工评分和性能依旧留空。

@@ -6,6 +6,7 @@ import {
 import { readEvaluationSnapshot } from '../functions/readEvaluationSnapshot';
 import { createEvidenceStep, readRunnerState, writeEvidence } from '../adapters/evidenceFiles';
 import { collectEvaluationMessages } from './collectMessages';
+import { readEvaluationRunReceipts } from '../functions/readEvaluationRunReceipts';
 
 export async function collectCanvasEvaluation(input: {
   readonly directory: string;
@@ -28,6 +29,7 @@ export async function collectCanvasEvaluation(input: {
     errors.push(error instanceof Error ? error.message : String(error));
   }
   const { conversation_id: conversationId, run_id: runId } = state.receipt;
+  const receipts = readEvaluationRunReceipts(state);
   const cli = async (label: string, args: readonly string[]) => {
     const response = await input.ports.cli({
       repositoryRoot: state.config.repositoryRoot,
@@ -38,9 +40,12 @@ export async function collectCanvasEvaluation(input: {
     if (response.exitCode !== 0) throw new Error(`${label} CLI exited ${response.exitCode}`);
   };
   const results = await Promise.allSettled([
-    cli('status', ['status', conversationId, '--run', runId]),
-    cli('audit', ['audit', conversationId, '--run', runId]),
-    cli('result', ['result', conversationId, '--run', runId]),
+    ...receipts.flatMap((receipt, index) => {
+      const prefix = index === 0 ? '' : `continuation-${index}-`;
+      return ['status', 'audit', 'result'].map(command =>
+        cli(prefix + command, [command, conversationId, '--run', receipt.run_id])
+      );
+    }),
     (async () => {
       messagesComplete = await collectEvaluationMessages({
         conversationId,
@@ -84,6 +89,9 @@ export async function collectCanvasEvaluation(input: {
     taskId: state.config.taskId,
     conversationId,
     runId,
+    ...(receipts.length > 1
+      ? { continuationRunIds: receipts.slice(1).map(receipt => receipt.run_id) }
+      : {}),
     errors,
     sourceValid,
     messagesComplete,
