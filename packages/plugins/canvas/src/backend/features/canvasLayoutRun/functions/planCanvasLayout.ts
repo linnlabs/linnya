@@ -1,5 +1,5 @@
 import type { CanvasCard, CanvasLayoutDiagnostic, CanvasLayoutRequest, CanvasLayoutResult, CanvasRectangle } from '../../../../shared';
-import type { CanvasLayoutAlgorithm, CanvasLayoutPosition } from '../definitions/canvasLayoutPlan';
+import type { CanvasLayoutAlgorithm, CanvasLayoutPosition, CanvasLayoutPlan } from '../definitions/canvasLayoutPlan';
 import { resolveCanvasLayoutScope } from './resolveCanvasLayoutScope';
 import { layoutCanvasGrid } from './layoutCanvasGrid';
 import { layoutCanvasTree } from './layoutCanvasTree';
@@ -22,7 +22,7 @@ function resolveCanvasLayoutGroups(cards: readonly CanvasCard[], requested: Canv
   if (rest.length) groups.push(rest);
   return groups;
 }
-export async function planCanvasLayout(request: CanvasLayoutRequest, layered: CanvasLayoutAlgorithm): Promise<CanvasLayoutResult> {
+export async function planCanvasLayout(request: CanvasLayoutRequest, layered: CanvasLayoutAlgorithm): Promise<CanvasLayoutPlan> {
   const scope = resolveCanvasLayoutScope(request);
   const diagnostics: CanvasLayoutDiagnostic[] = [...scope.diagnostics];
   const groups = resolveCanvasLayoutGroups(scope.cards, request.groups);

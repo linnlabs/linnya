@@ -54,8 +54,9 @@ function parseQuery(kind: 'show' | 'find' | 'neighbors' | 'region', input: CliAr
 function parseArrangement({ path, flags }: CliArguments): CanvasCliCommand {
   return { kind: 'arrange', path, requestId: requiredFlag(flags, 'request-id'), dryRun: flags['dry-run'] === true,
     options: CanvasArrangeOptionsSchema.parse({ algorithm: stringFlag(flags, 'algorithm', 'tree'), direction: stringFlag(flags, 'direction', 'right'),
-      elementIds: typeof flags.scope === 'string' ? flags.scope.split(',') : undefined,
-      columns: flags.columns === undefined ? undefined : Number(flags.columns), groups: typeof flags.groups === 'string' ? flags.groups.split(';').map(group => group.split(',')) : undefined }) };
+      ...(typeof flags.scope === 'string' ? { elementIds: flags.scope.split(',') } : {}),
+      ...(typeof flags.columns === 'string' ? { columns: Number(flags.columns) } : {}),
+      ...(typeof flags.groups === 'string' ? { groups: flags.groups.split(';').map(group => group.split(',')) } : {}) }) };
 }
 function parseRender({ path, flags }: CliArguments): CanvasCliCommand {
   const format = stringFlag(flags, 'format', 'jpeg'), theme = stringFlag(flags, 'theme', 'light');

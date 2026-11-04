@@ -9,6 +9,13 @@ interface Job {
   readonly reject: (error: unknown) => void;
   readonly removeAbort: () => void;
 }
+function matchesRequest(request: CanvasComputationRequest, response: CanvasComputationResponse): boolean {
+  const sequence = request.kind === 'layout' ? request.request.snapshot.sequence : request.snapshot.sequence;
+  if (response.kind !== request.kind || response.result.sequence !== sequence) return false;
+  if (response.kind !== 'layout' || request.kind !== 'layout') return true;
+  const execution = response.result.computation;
+  return execution.requestId === request.request.requestId && execution.sequence === sequence && execution.algorithm === request.request.algorithm;
+}
 /** 一次只有一个真实worker；取消终止计算，待办有界，不让ELK占住Backend事件循环。 */
 export function createCanvasComputationRuntime(options: { readonly workerPath: string; readonly timeoutMs?: number }): CanvasComputationRuntime {
   const pending: Job[] = [];
@@ -30,7 +37,7 @@ export function createCanvasComputationRuntime(options: { readonly workerPath: s
       try {
         const response = CanvasComputationWorkerResponseSchema.parse(value);
         if (response.status === 'failed') settle(null, new Error(response.message));
-        else if (response.response.kind !== job.request.kind || response.response.result.sequence !== (job.request.kind === 'layout' ? job.request.request.snapshot.sequence : job.request.snapshot.sequence)) settle(null, new Error('canvas_computation_identity_mismatch'));
+        else if (!matchesRequest(job.request, response.response)) settle(null, new Error('canvas_computation_identity_mismatch'));
         else settle(response.response);
       } catch (error) { settle(null, error); }
     });

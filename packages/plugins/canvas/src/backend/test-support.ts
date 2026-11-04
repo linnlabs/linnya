@@ -9,3 +9,4 @@ export { createCanvasComputationRuntime } from './capabilities/canvasComputation
 export type { CanvasCliServices } from './orchestration/definitions/canvasCliExecution';
 export { createCanvasPluginCli, formatCanvasCliInputError } from './features/canvasCli';
 export { readCanvasStandalone } from './orchestration/readCanvasStandalone';
+export { createCanvasArrangementRuntime } from './orchestration/createCanvasArrangementRuntime';

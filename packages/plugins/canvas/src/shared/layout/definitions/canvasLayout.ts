@@ -11,6 +11,7 @@ export const CanvasArrangementOptionsSchema = z.object({
 export const CanvasLayoutOptionsSchema = CanvasArrangementOptionsSchema.extend({ elementIds: z.array(CanvasCardIdSchema).optional(), groups: z.array(z.array(CanvasCardIdSchema).min(1)).optional() });
 export type CanvasLayoutOptions = z.infer<typeof CanvasLayoutOptionsSchema>;
 export interface CanvasLayoutRequest extends CanvasLayoutOptions {
+  readonly requestId: string;
   readonly snapshot: CanvasSnapshot;
   /** 只排除实际占用位置/尺寸字段的卡；最终提交仍须重验租约和baseRevision。 */
   readonly protectedElementIds?: readonly string[];
@@ -24,14 +25,20 @@ export const CanvasLayoutMoveSchema = z.object({
   op: z.literal('update'), id: CanvasCardIdSchema, baseRevision: z.number().int().nonnegative(),
   patch: z.object({ x: z.number().finite(), y: z.number().finite() }).strict(),
 }).strict();
+export const CanvasLayoutComputationSchema = z.object({
+  origin: z.literal('node-worker'), requestId: z.string().min(1).max(160), sequence: z.number().int().nonnegative(),
+  algorithm: CanvasArrangementOptionsSchema.shape.algorithm.unwrap(), executionMs: z.number().finite().nonnegative(),
+}).strict();
+export type CanvasLayoutComputation = z.infer<typeof CanvasLayoutComputationSchema>;
 export const CanvasLayoutResultSchema = z.object({
   sequence: z.number().int().nonnegative(), operations: z.array(CanvasLayoutMoveSchema), diagnostics: z.array(CanvasLayoutDiagnosticSchema),
+  computation: CanvasLayoutComputationSchema,
 }).strict();
 export type CanvasLayoutResult = z.infer<typeof CanvasLayoutResultSchema>;
 export const CanvasArrangeRequestSchema = z.object({
   documentId: z.string().min(1), viewId: z.string().min(1), requestId: z.string().min(1).max(160),
   options: CanvasArrangementOptionsSchema, operations: z.array(CanvasCommandSchema).default([]), historyGroupId: z.string().min(1).optional(),
 }).strict();
-export const CanvasArrangeResultSchema = z.object({ commit: CanvasCommitResultSchema, diagnostics: z.array(CanvasLayoutDiagnosticSchema) }).strict();
+export const CanvasArrangeResultSchema = z.object({ commit: CanvasCommitResultSchema, diagnostics: z.array(CanvasLayoutDiagnosticSchema), computation: CanvasLayoutComputationSchema.nullable(), replayed: z.boolean() }).strict();
 export const CanvasCancelArrangementRequestSchema = z.object({ documentId: z.string().min(1), viewId: z.string().min(1), requestId: z.string().min(1).max(160) }).strict();
 export type CanvasArrangeRequest = z.infer<typeof CanvasArrangeRequestSchema>;
