@@ -11,7 +11,8 @@ const rectangle = z.object({ x: z.number(), y: z.number(), width: z.number(), he
 const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(), dpr: z.number(), reference: rectangle, raster: rectangle, pixi: rectangle, ghostY: z.number(), measuredHeights: z.array(z.number().nullable()) });
 const visualViewport = z.object({ scrollX: z.number(), scrollY: z.number(), width: z.number().positive(), height: z.number().positive(),
   windowWidth: z.number().positive(), windowHeight: z.number().positive(), dpr: z.number().positive() });
-const viewportExpression = '({scrollX,scrollY,width:document.documentElement.clientWidth,height:document.documentElement.clientHeight,windowWidth:innerWidth,windowHeight:innerHeight,dpr:devicePixelRatio})';
+// clientWidth/Height是整数；Windows原生滚动条在页面缩放后可占半个CSS像素，必须保留真实分数视口。
+const viewportExpression = '({scrollX:visualViewport.pageLeft,scrollY:visualViewport.pageTop,width:visualViewport.width,height:visualViewport.height,windowWidth:innerWidth,windowHeight:innerHeight,dpr:devicePixelRatio})';
 const output = process.argv[2];
 if (!output) throw new Error('Visual output directory required');
 app.setPath('userData', path.join(output, 'profile'));

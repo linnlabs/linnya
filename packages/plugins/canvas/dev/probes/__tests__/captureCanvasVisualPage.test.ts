@@ -12,14 +12,14 @@ function fillPixel(pixels: Buffer, offset: number, x: number, y: number) {
   pixels.set([x + 1, y + 1, 7, 255], offset);
 }
 
-function clippedPage(dpr: number) {
-  const viewport = { scrollX: 2, scrollY: 1, width: 4, height: 3, windowWidth: 6, windowHeight: 5, dpr };
+function clippedPage(dpr: number, content = { width: 4, height: 3 }) {
+  const viewport = { scrollX: 2, scrollY: 1, ...content, windowWidth: 6, windowHeight: 5, dpr };
   const requested: { x: number; y: number }[] = [];
   const port: CapturePort = {
     async readViewport() { return { ...viewport }; },
     async scrollTo(x, y) {
       requested.push({ x, y });
-      viewport.scrollX = Math.min(6, Math.max(0, x)); viewport.scrollY = Math.min(4, Math.max(0, y));
+      viewport.scrollX = Math.min(10 - viewport.width, Math.max(0, x)); viewport.scrollY = Math.min(7 - viewport.height, Math.max(0, y));
       return { ...viewport };
     },
     async capture() {
@@ -45,6 +45,22 @@ it.each([1, 1.25, 2, 4])('真实滚动片段完整覆盖三幅正文，DPR%s末�
   expect(result.tiles).toHaveLength(9);
   expect(page.requested.slice(-2)).toEqual([{ x: 8, y: 6 }, { x: 2, y: 1 }]);
   expect(result.tiles[result.tiles.length - 1]?.viewport).toMatchObject({ scrollX: 6, scrollY: 4 });
+  expect(page.viewport).toMatchObject({ scrollX: 2, scrollY: 1 });
+});
+
+it('保留原生滚动条的半CSS像素视口，双轴末块复制实际最后一行/列而不补空白', async () => {
+  const page = clippedPage(2, { width: 4.5, height: 3.5 });
+  const rounded = (viewport: Awaited<ReturnType<CapturePort['readViewport']>>) => ({ ...viewport, width: Math.floor(viewport.width), height: Math.floor(viewport.height) });
+  // 真实Windows的clientWidth=504，而scrollMax=675.5，实际内容宽为504.5；整数API丢了一列。
+  await expect(captureCanvasVisualPage({ ...page.port,
+    async readViewport() { return rounded(await page.port.readViewport()); },
+    async scrollTo(x, y) { return rounded(await page.port.scrollTo(x, y)); },
+  }, { rectangles, dpr: 2 })).rejects.toThrow('visual_capture_tile_mismatch');
+  const result = await captureCanvasVisualPage(page.port, { rectangles, dpr: 2 });
+  const expected = Buffer.alloc(result.width * result.height * 4);
+  for (let y = 0; y < result.height; y++) for (let x = 0; x < result.width; x++) fillPixel(expected, (y * result.width + x) * 4, x, y);
+  expect(result.pixels).toEqual(expected);
+  expect(result.tiles[result.tiles.length - 1]).toMatchObject({ viewport: { scrollX: 5.5, scrollY: 3.5 }, destination: { x: 18, y: 7, width: 2, height: 7 } });
   expect(page.viewport).toMatchObject({ scrollX: 2, scrollY: 1 });
 });
 
