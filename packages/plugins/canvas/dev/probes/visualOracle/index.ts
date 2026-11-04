@@ -6,3 +6,4 @@ export { compareVisualTextPixels, visualImageFromBgra } from './compareVisualTex
 export { applyVisualNegative } from './applyVisualNegative';
 export { evaluateVisualTextOracle } from './evaluateVisualTextOracle';
 export { verifyVisualTextNegatives, visualTextEnvironment } from './verifyVisualTextNegatives';
+export { qualifiesMonochromeModel, matchesMonochromePaint } from './monochromeTextModel';

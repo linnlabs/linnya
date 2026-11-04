@@ -1,6 +1,6 @@
 import { createCanvas } from '@napi-rs/canvas';
 import { expect, it } from 'vitest';
-import { compareVisualTextPixels, compareVisualTextLayout, type VisualImage, type VisualTextLayout } from '../visualOracle';
+import { compareVisualTextPixels, compareVisualTextLayout, qualifiesMonochromeModel, matchesMonochromePaint, type VisualImage, type VisualTextLayout } from '../visualOracle';
 
 // CPU Skia生成真实字形，只验证oracle规则；不能代替Electron的真实Range/Win AA资格与GPU负例。
 const tokens = ['中', ...Array.from({ length: 40 }, () => '文'), '、', '🖼️', '红'];
@@ -67,4 +67,42 @@ it('文字ROI之外的黑条仍须拒绝；白底与相同文字不能掩掉非A
   const pixi = compareVisualTextPixels(source.image, damaged, source.layout, { pixi: true });
   expect(raster.outsideText.differing).toBeGreaterThan(0); expect(raster.pass).toBe(false);
   expect(pixi.outsideText.differing).toBeGreaterThan(0); expect(pixi.pass).toBe(false);
+});
+
+it.each(['swap', 'grayscale'] as const)('灰背景上的彩色字形%s质量/质心不变，也必须由非AA颜色残差拒绝', damage => {
+  const glyph = createCanvas(80, 64), shape = glyph.getContext('2d');
+  shape.font = '32px sans-serif'; shape.textBaseline = 'top'; shape.fillText('🖼️', 10, 8);
+  // 用真实CPU字形alpha承载双色，确保任何平台的fallback字体都能复演“无CSS灰色核”的颜色盲区。
+  const colors = shape.createLinearGradient(0, 0, 80, 0); colors.addColorStop(0, '#f0640a'); colors.addColorStop(1, '#0a64f0');
+  shape.globalCompositeOperation = 'source-in'; shape.fillStyle = colors; shape.fillRect(0, 0, 80, 64);
+  const canvas = createCanvas(80, 64), context = canvas.getContext('2d');
+  context.fillStyle = '#808080'; context.fillRect(0, 0, 80, 64); context.drawImage(glyph, 0, 0);
+  const reference: VisualImage = { width: 80, height: 64, rgba: new Uint8Array(context.getImageData(0, 0, 80, 64).data) };
+  const actual = structuredClone(reference);
+  for (let i = 0; i < actual.rgba.length; i += 4) {
+    if (damage === 'swap') { const red = actual.rgba[i]; actual.rgba[i] = actual.rgba[i + 2]; actual.rgba[i + 2] = red; }
+    else {
+      const gray = 128 - Math.max(Math.abs(actual.rgba[i] - 128), Math.abs(actual.rgba[i + 1] - 128), Math.abs(actual.rgba[i + 2] - 128));
+      actual.rgba.set([gray, gray, gray], i);
+    }
+  }
+  const rect = { x: 0, y: 0, width: 80, height: 64 };
+  const layout: VisualTextLayout = { version: 1, dpr: 1, fontsStatus: 'loaded', width: 80,
+    graphemes: [{ id: 'emoji', text: '🖼️', rects: [rect], style: { font: '32px system-ui', lineHeight: '40px', letterSpacing: 'normal', direction: 'ltr',
+      fontFeatureSettings: 'normal', fontVariationSettings: 'normal', transform: 'none', visibility: 'visible', color: [0, 0, 0], background: [128, 128, 128], fontLoaded: true } }],
+    lines: [{ id: 'line:0', rect, graphemeIds: ['emoji'] }] };
+  const result = compareVisualTextPixels(reference, actual, layout), emoji = result.graphemes[0];
+  expect(emoji.massRatio).toBe(1); expect(emoji.centroidDelta).toBe(0); expect(emoji.solid).toBe(0);
+  expect(emoji.meaningfulNonAaColor).toBeGreaterThan(0); expect(result.pass).toBe(false);
+  expect(emoji.modeledLcdColor).toBe(0); expect(emoji.monochromeEligible).toBe(false);
+});
+
+it('单色资格按完整字簇排除emoji/组合旗帜/keycap/ZWJ，未知字体不获灰阶模型豁免', () => {
+  const { layout } = fixture(), glyph = layout.graphemes[0]; glyph.style.font = '24px system-ui';
+  expect(qualifiesMonochromeModel(glyph)).toBe(true);
+  for (const text of ['🖼️', '🇹🇼', '1️⃣', '👨‍👩‍👧‍👦', '©️']) expect(qualifiesMonochromeModel({ ...glyph, text })).toBe(false);
+  expect(qualifiesMonochromeModel({ ...glyph, style: { ...glyph.style, font: '24px unknown-font' } })).toBe(false);
+  const reference = new Uint8Array([50, 80, 110, 255]);
+  expect(matchesMonochromePaint(reference, new Uint8Array([80, 80, 80, 255]), 0, [0, 0, 0], [255, 255, 255])).toBe(true);
+  expect(matchesMonochromePaint(reference, new Uint8Array([80, 0, 180, 255]), 0, [0, 0, 0], [255, 255, 255])).toBe(false);
 });

@@ -1,11 +1,11 @@
 import type { VisualNegative, VisualTextLayout } from './definitions';
 
-function hideGrapheme(root: HTMLElement, match: (text: string) => boolean) {
+function alterGrapheme(root: HTMLElement, match: (text: string) => boolean, style: string) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
   for (let node = walker.nextNode(); node; node = walker.nextNode()) for (const segment of segmenter.segment(node.textContent ?? '')) {
     if (!match(segment.segment)) continue;
     const range = document.createRange(); range.setStart(node, segment.index); range.setEnd(node, segment.index + segment.segment.length);
-    const hidden = document.createElement('span'); hidden.style.visibility = 'hidden'; range.surroundContents(hidden);
+    const altered = document.createElement('span'); altered.style.cssText = style; range.surroundContents(altered);
     return { grapheme: segment.segment, utf16Index: segment.index };
   }
   throw new Error('visual_negative_grapheme_missing');
@@ -14,9 +14,11 @@ function hideGrapheme(root: HTMLElement, match: (text: string) => boolean) {
 /** 只改变独立negative的真实raster源DOM；原reference、PNG和生产样式都不动。 */
 export function applyVisualNegative(root: HTMLElement, negative: VisualNegative, reference: VisualTextLayout) {
   switch (negative) {
-    case 'missing-han': return hideGrapheme(root, text => text === '中');
-    case 'missing-punctuation': return hideGrapheme(root, text => text === '、');
-    case 'missing-emoji': return hideGrapheme(root, text => text === '🖼️');
+    case 'missing-han': return alterGrapheme(root, text => text === '中', 'visibility:hidden');
+    case 'missing-punctuation': return alterGrapheme(root, text => text === '、', 'visibility:hidden');
+    case 'missing-emoji': return alterGrapheme(root, text => text === '🖼️', 'visibility:hidden');
+    case 'emoji-hue': return alterGrapheme(root, text => text === '🖼️', 'filter:hue-rotate(180deg)');
+    case 'emoji-grayscale': return alterGrapheme(root, text => text === '🖼️', 'filter:grayscale(1)');
     case 'clip-last-line': {
       const last = reference.lines[reference.lines.length - 1];
       if (!last) throw new Error('visual_negative_line_missing');
