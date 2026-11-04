@@ -164,13 +164,16 @@ it('restores stable historical tags across project moves and reused names withou
 it('does not let an open Agent group withdraw past a user restore or accept its old card revision', async () => {
   const id = createCanvas('组边界.canvas'); commit(id, [text('用户正文')]); checkpoint(id); const target = await latest(id);
   const actor = { projectId, viewId: 'agent', source: { kind: 'agent' as const, conversationId: 'chat', runId: 'run' } };
-  runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'agent-red', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }] } });
+  runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'agent-red', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red', data: { contentVersion: 1, content: createCanvasPlainTextDocument('Agent正文') } } }] } });
   const group = runtime.editing.listGroups(id, Date.now())[0]; if (!group) throw new Error('Missing Agent group');
   await restore(id, target.versionId); const afterRestore = runtime.read(id);
   const withdrawal = runtime.editing.withdraw({ documentId: id, viewId: viewIdFor(id), groupId: group.id, requestId: 'withdraw-after-restore' }, Date.now());
   expect(withdrawal.commit.results.every(result => result.status === 'skipped')).toBe(true); expect(runtime.read(id)).toEqual(afterRestore);
-  const stale = runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'old-revision', operations: [{ op: 'update', id: 'c1', baseRevision: 2, patch: { color: 'purple' } }] } });
+  // 颜色是LWW；旧读保护必须用确实被恢复覆盖的正文，不能用样式字段冒充冲突。
+  const stale = runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'old-revision', operations: [{ op: 'update', id: 'c1', baseRevision: 2, patch: { data: { contentVersion: 1, content: createCanvasPlainTextDocument('旧读写回') } } }] } });
   expect(stale).toMatchObject({ kind: 'committed', commit: { results: [{ status: 'skipped', reason: 'stale_field' }] } });
   runtime.undo({ documentId: id, viewId: viewIdFor(id), requestId: 'undo-after-skipped-withdrawal', direction: 'undo' }); expect(runtime.read(id).elements[0]).toMatchObject({ color: 'red' });
+  expect(runtime.project(id)).toContain('Agent正文');
   runtime.undo({ documentId: id, viewId: viewIdFor(id), requestId: 'redo-after-skipped-withdrawal', direction: 'redo' }); expect(runtime.read(id).elements[0]).toMatchObject({ color: 'white' });
+  expect(runtime.project(id)).toContain('用户正文');
 });
