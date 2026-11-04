@@ -24,6 +24,7 @@ export const CanvasAgentEvaluationRunSchema = z.object({
   imageCapability: z.enum(['vision', 'no-vision']), evidenceMode: z.enum(['not-applicable', 'offline', 'network']).default('not-applicable'), repetition: z.number().int().positive(),
   startedAt: z.number().nonnegative(), finishedAt: z.number().nonnegative(),
   before: CanvasSnapshotSchema, after: CanvasSnapshotSchema, check: CanvasCheckReportSchema,
+  /** 仅为固定输入资料的key→稳定ID；目标Canvas身份由before/after.documentId单独提供。 */
   documentIds: z.record(z.string(), z.string()).default({}),
   attempts: z.array(CanvasAgentEvaluationAttemptSchema),
   commits: z.array(CanvasCommitResultSchema),

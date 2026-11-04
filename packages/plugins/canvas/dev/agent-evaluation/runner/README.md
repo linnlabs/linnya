@@ -10,6 +10,7 @@ HTTP 桥，不访问业务 SQL，不注入 JavaScript、不批准大改、不生
   只准备模型×13题配置。matrix 的 base 包含 repositoryRoot、完整40位 sourceRevision、batchId、repetition；models 每项仅包含 modelConfigId、model 的 provider/model/version 和 imageCapability；t8EvidenceMode 显式指定 network 或 offline。不能给密钥字段。该命令不调用模型、不创建业务数据。
 - `setup CONFIG.json NEW-RUN-DIR`
   核对冻结实现，保存 doctor/models 原始事实，用官方 projects/create 为本题建独立项目，通过 write_file 建固定资料和空 Canvas。保存实际稳定ID与原始请求/响应。由 UI 为这个项目正常启动桥后，继续 attach。
+  `state.documentId`单独保存目标Canvas；`state.documentIds`只保存固定资料。T1必须恰有题目声明的8个资料key、8个不同稳定ID，不能把Canvas、自选第九份资料或重复ID混入来源。
 - `attach RUN-DIR CONNECTION.json`
   验证桥绑定同项目，正式 mount；按最多500条通过 Renderer 用户提交播种，确认每条 applied；fit 后读取 before-setup。T11进入 X 的正式编辑会话，此后由真实键盘留下草稿，runner不伪造输入。
 - `start RUN-DIR` 保存发送前真实快照、草稿和统计起点，用配置的模型与 high

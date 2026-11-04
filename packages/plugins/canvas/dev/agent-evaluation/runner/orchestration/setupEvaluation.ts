@@ -89,7 +89,8 @@ export async function setupCanvasEvaluation(input: {
       documentId: documentIds[document.key],
     });
   }
-  const documentId = documentIds.canvas;
+  // 目标画布已有独立身份；资料集合只保存题目输入，不能把画布当第九份来源。
+  const { canvas: documentId, ...sourceDocumentIds } = documentIds;
   if (!documentId) throw new Error('Canvas document identity is missing');
   const goal =
     config.taskId === 'T8' && config.evidenceMode === 'offline'
@@ -109,7 +110,7 @@ export async function setupCanvasEvaluation(input: {
     config,
     projectId,
     documentId,
-    documentIds,
+    documentIds: sourceDocumentIds,
     phase: 'setup',
   });
   return {
