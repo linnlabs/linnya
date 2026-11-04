@@ -77,6 +77,13 @@ watch 的观察超时不会停止后端；自然完成验证仍应记录平台�
 按冻结 manifest 执行版本 1 的 D0 调查、R0 初评、D1 一次修订、R1 终评，或版本 2 的调查、写前复核、补查成稿、两个并行后审、一次修订；支持各版本有序子集。它重用真实 CLI，不复用 case 的取消预算；同一输出目录保留运行身份，不因观察超时重新发送。材料通过正式 Workspace 当前投影交接，取得失败、截断、版本变化和语义未评价分别记录。输入字段、显式恢复、scope 限制和输出布局见
 [Research Workflow owner](./src/features/research-workflow/README.md)。
 
+### Slides 设计基准批次
+
+`pnpm benchmark:slides-design --manifest <文件> --output <目录>`
+按 manifest 把每份简报跑若干次，每次一个新项目，可续跑；`pnpm benchmark:slides-design:analyze --batch <目录>`
+再出样张与结构统计。Runner 本身不读数据库，分析脚本只读。见
+[Slides design batch owner](./src/features/slides-design-batch/README.md)。
+
 ### 受控研究 Agent 工程入口
 
 `research_v1` 是前端“研究”与 CLI 共用的主研究 Agent 入口；角色与研究 Skill 独立演进，当前内置版本以
