@@ -6,7 +6,7 @@ const potentialColorSequence = /\p{Extended_Pictographic}|\p{Emoji_Presentation}
 /** 资格只覆盖本固定system-ui普通文字。整簇排除emoji/旗帜/ZWJ/VS/keycap，不按单码点猜。 */
 export function qualifiesMonochromeModel(grapheme: Grapheme): boolean {
   return /\S/u.test(grapheme.text) && !potentialColorSequence.test(grapheme.text)
-    && /(?:^|\s)system-ui(?:,|$)/u.test(grapheme.style.font) && grapheme.style.fontLoaded
+    && grapheme.style.fontFamily === 'system-ui' && grapheme.style.fontAvailable
     && grapheme.style.visibility === 'visible' && grapheme.style.transform === 'none';
 }
 

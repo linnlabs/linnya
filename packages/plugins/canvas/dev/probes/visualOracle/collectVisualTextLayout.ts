@@ -1,5 +1,6 @@
 /// <reference lib="es2022.intl" />
 import { VisualTextLayoutSchema, type VisualColor, type VisualRect, type VisualTextLayout } from './definitions';
+import { readVisualFontFacts } from './readVisualFontFacts';
 
 function rgb(value: string): VisualColor {
   const channels = value.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
@@ -20,18 +21,18 @@ function union(rectangles: readonly VisualRect[]): VisualRect {
     height: Math.max(...rectangles.map(rect => rect.y + rect.height)) - y };
 }
 function readStyle(element: Element, root: HTMLElement, paper: VisualColor, computed: CSSStyleDeclaration, text: string) {
-  let fontLoaded: boolean;
-  try { fontLoaded = document.fonts.check(computed.font, text); }
+  const font = readVisualFontFacts(computed);
+  let fontAvailable: boolean;
+  try { fontAvailable = document.fonts.check(font.fontQuery, text); }
   catch (error) {
     // 记录真实查询输入，不换字体/拼猜测fallback；定位后再按CSS FontFaceSet合同修正。
-    console.error('[canvas visual font-query]', JSON.stringify({ element: element.tagName, font: computed.font, fontFamily: computed.fontFamily,
-      fontSize: computed.fontSize, fontStyle: computed.fontStyle, fontWeight: computed.fontWeight, fontVariantNumeric: computed.fontVariantNumeric }));
+    console.error('[canvas visual font-query]', JSON.stringify({ element: element.tagName, ...font }));
     throw error;
   }
-  return { font: computed.font, lineHeight: computed.lineHeight, letterSpacing: computed.letterSpacing, direction: computed.direction,
+  return { ...font, lineHeight: computed.lineHeight, letterSpacing: computed.letterSpacing, direction: computed.direction,
     fontFeatureSettings: computed.fontFeatureSettings, fontVariationSettings: computed.fontVariationSettings,
     transform: computed.transform, visibility: computed.visibility, color: rgb(computed.color), background: background(element, root, paper),
-    fontLoaded };
+    fontAvailable };
 }
 function firstLine(listItem: HTMLElement, origin: DOMRect): VisualRect {
   const walker = document.createTreeWalker(listItem, NodeFilter.SHOW_TEXT);
@@ -89,6 +90,6 @@ export function collectVisualTextLayout(root: HTMLElement, paperCss: string): Vi
     if (line) { line.rect = union([line.rect, rect]); line.graphemeIds.push(grapheme.id); }
     else lines.push({ id: `line:${lines.length}`, rect: { ...rect }, graphemeIds: [grapheme.id] });
   }
-  return VisualTextLayoutSchema.parse({ version: 2, dpr: devicePixelRatio, fontsStatus: document.fonts.status,
+  return VisualTextLayoutSchema.parse({ version: 3, dpr: devicePixelRatio, fontsStatus: document.fonts.status,
     width: origin.width, graphemes, lines });
 }

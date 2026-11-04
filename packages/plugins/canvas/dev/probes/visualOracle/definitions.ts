@@ -2,9 +2,11 @@ import { z } from 'zod';
 
 export const VisualRectSchema = z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() });
 const color = z.tuple([z.number(), z.number(), z.number()]).readonly();
-const style = z.object({ font: z.string(), lineHeight: z.string(), letterSpacing: z.string(), direction: z.string(),
+export const VisualFontFactsSchema = z.object({ fontShorthand: z.string(), fontFamily: z.string(), fontSize: z.string(), fontStyle: z.string(),
+  fontWeight: z.string(), fontStretch: z.string(), fontVariantNumeric: z.string(), fontQuery: z.string(), fontAvailable: z.boolean() });
+const style = VisualFontFactsSchema.extend({ lineHeight: z.string(), letterSpacing: z.string(), direction: z.string(),
   fontFeatureSettings: z.string(), fontVariationSettings: z.string(), transform: z.string(), visibility: z.string(),
-  color, background: color, fontLoaded: z.boolean() });
+  color, background: color });
 const glyph = { id: z.string(), text: z.string(), rects: z.array(VisualRectSchema), style };
 const grapheme = z.discriminatedUnion('geometryKind', [
   z.object({ ...glyph, geometryKind: z.literal('range') }),
@@ -12,7 +14,7 @@ const grapheme = z.discriminatedUnion('geometryKind', [
     firstLine: VisualRectSchema, paddingInlineStart: z.number().positive(), position: z.literal('outside'), listStyleType: z.literal('disc') }) }),
 ]);
 export const VisualTextLayoutSchema = z.object({
-  version: z.literal(2), dpr: z.number().positive(), fontsStatus: z.literal('loaded'), width: z.number().positive(),
+  version: z.literal(3), dpr: z.number().positive(), fontsStatus: z.literal('loaded'), width: z.number().positive(),
   graphemes: z.array(grapheme),
   lines: z.array(z.object({ id: z.string(), rect: VisualRectSchema, graphemeIds: z.array(z.string()) })),
 });

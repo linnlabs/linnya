@@ -1,6 +1,6 @@
 import { createCanvas } from '@napi-rs/canvas';
 import { expect, it } from 'vitest';
-import { compareVisualTextPixels, compareVisualTextLayout, qualifiesMonochromeModel, matchesMonochromePaint, type VisualImage, type VisualTextLayout } from '../visualOracle';
+import { compareVisualTextPixels, compareVisualTextLayout, qualifiesMonochromeModel, matchesMonochromePaint, readVisualFontFacts, type VisualImage, type VisualTextLayout } from '../visualOracle';
 
 // CPU Skia生成真实字形，只验证oracle规则；不能代替Electron的真实Range/Win AA资格与GPU负例。
 const tokens = ['中', ...Array.from({ length: 40 }, () => '文'), '、', '🖼️', '红'];
@@ -11,9 +11,11 @@ function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | '
   const graphemes: VisualTextLayout['graphemes'] = [];
   tokens.forEach((text, index) => {
     const rect = { x: 12 + index * 34, y: 24, width: context.measureText(text).width, height: 30 };
-    graphemes.push({ id: String(index), text, geometryKind: 'range', rects: [rect], style: { font: '24px sans-serif', lineHeight: '30px', letterSpacing: 'normal',
+    graphemes.push({ id: String(index), text, geometryKind: 'range', rects: [rect], style: {
+      ...readVisualFontFacts({ font: '24px sans-serif', fontFamily: 'sans-serif', fontSize: '24px', fontStyle: 'normal', fontWeight: '400', fontStretch: '100%', fontVariantNumeric: 'normal' }),
+      lineHeight: '30px', letterSpacing: 'normal',
       direction: 'ltr', fontFeatureSettings: 'normal', fontVariationSettings: 'normal', transform: 'none', visibility: 'visible',
-      color: text === '红' ? [204, 0, 0] : [0, 0, 0], background: [255, 255, 255], fontLoaded: true } });
+      color: text === '红' ? [204, 0, 0] : [0, 0, 0], background: [255, 255, 255], fontAvailable: true } });
     if ((change === 'han' && index === 0) || (change === 'punctuation' && text === '、') || (change === 'emoji' && text === '🖼️')) return;
     context.font = change === 'size' ? '30px sans-serif' : '24px sans-serif';
     context.fillStyle = text === '红' ? change === 'color' ? '#00c' : '#c00' : '#000';
@@ -21,7 +23,7 @@ function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | '
   });
   if (change === 'clip') { context.fillStyle = '#fff'; context.fillRect(0, 39, canvas.width, canvas.height - 39); }
   const image: VisualImage = { width: canvas.width, height: canvas.height, rgba: new Uint8Array(context.getImageData(0, 0, canvas.width, canvas.height).data) };
-  return { image, layout: { version: 2, dpr: 1, fontsStatus: 'loaded', width: canvas.width, graphemes,
+  return { image, layout: { version: 3, dpr: 1, fontsStatus: 'loaded', width: canvas.width, graphemes,
     lines: [{ id: 'line:0', rect: { x: 12, y: 24, width: 1480, height: 30 }, graphemeIds: graphemes.map(grapheme => grapheme.id) }] } satisfies VisualTextLayout };
 }
 
@@ -55,7 +57,7 @@ it('未加载字体或一物理像素排版差异没有环境资格，不能靠�
   const { layout } = fixture(), changed = structuredClone(layout);
   changed.graphemes[0].rects[0].x += 1;
   expect(compareVisualTextLayout(layout, changed).pass).toBe(false);
-  changed.graphemes[0].rects[0].x -= 1; changed.graphemes[0].style.fontLoaded = false;
+  changed.graphemes[0].rects[0].x -= 1; changed.graphemes[0].style.fontAvailable = false;
   expect(compareVisualTextLayout(layout, changed).pass).toBe(false);
 });
 
@@ -87,9 +89,11 @@ it.each(['swap', 'grayscale'] as const)('灰背景上的彩色字形%s质量/质
     }
   }
   const rect = { x: 0, y: 0, width: 80, height: 64 };
-  const layout: VisualTextLayout = { version: 2, dpr: 1, fontsStatus: 'loaded', width: 80,
-    graphemes: [{ id: 'emoji', text: '🖼️', geometryKind: 'range', rects: [rect], style: { font: '32px system-ui', lineHeight: '40px', letterSpacing: 'normal', direction: 'ltr',
-      fontFeatureSettings: 'normal', fontVariationSettings: 'normal', transform: 'none', visibility: 'visible', color: [0, 0, 0], background: [128, 128, 128], fontLoaded: true } }],
+  const layout: VisualTextLayout = { version: 3, dpr: 1, fontsStatus: 'loaded', width: 80,
+    graphemes: [{ id: 'emoji', text: '🖼️', geometryKind: 'range', rects: [rect], style: {
+      ...readVisualFontFacts({ font: '32px system-ui', fontFamily: 'system-ui', fontSize: '32px', fontStyle: 'normal', fontWeight: '400', fontStretch: '100%', fontVariantNumeric: 'normal' }),
+      lineHeight: '40px', letterSpacing: 'normal', direction: 'ltr',
+      fontFeatureSettings: 'normal', fontVariationSettings: 'normal', transform: 'none', visibility: 'visible', color: [0, 0, 0], background: [128, 128, 128], fontAvailable: true } }],
     lines: [{ id: 'line:0', rect, graphemeIds: ['emoji'] }] };
   const result = compareVisualTextPixels(reference, actual, layout), emoji = result.graphemes[0];
   expect(emoji.massRatio).toBe(1); expect(emoji.centroidDelta).toBe(0); expect(emoji.solid).toBe(0);
@@ -98,11 +102,19 @@ it.each(['swap', 'grayscale'] as const)('灰背景上的彩色字形%s质量/质
 });
 
 it('单色资格按完整字簇排除emoji/组合旗帜/keycap/ZWJ，未知字体不获灰阶模型豁免', () => {
-  const { layout } = fixture(), glyph = layout.graphemes[0]; glyph.style.font = '24px system-ui';
+  const { layout } = fixture(), glyph = layout.graphemes[0]; glyph.style.fontFamily = 'system-ui';
   expect(qualifiesMonochromeModel(glyph)).toBe(true);
   for (const text of ['🖼️', '🇹🇼', '1️⃣', '👨‍👩‍👧‍👦', '©️']) expect(qualifiesMonochromeModel({ ...glyph, text })).toBe(false);
-  expect(qualifiesMonochromeModel({ ...glyph, style: { ...glyph.style, font: '24px unknown-font' } })).toBe(false);
+  expect(qualifiesMonochromeModel({ ...glyph, style: { ...glyph.style, fontFamily: 'unknown-font' } })).toBe(false);
   const reference = new Uint8Array([50, 80, 110, 255]);
   expect(matchesMonochromePaint(reference, new Uint8Array([80, 80, 80, 255]), 0, [0, 0, 0], [255, 255, 255])).toBe(true);
   expect(matchesMonochromePaint(reference, new Uint8Array([80, 0, 180, 255]), 0, [0, 0, 0], [255, 255, 255])).toBe(false);
+});
+
+it('marker的真实tabular-nums使shorthand为空时，availability query仍来自本元素长属性', () => {
+  const marker = readVisualFontFacts({ font: '', fontFamily: 'system-ui', fontSize: '14px', fontStyle: 'normal', fontWeight: '400', fontStretch: '100%', fontVariantNumeric: 'tabular-nums' });
+  expect(marker.fontShorthand).toBe(''); expect(marker.fontVariantNumeric).toBe('tabular-nums');
+  expect(marker.fontQuery).toBe('normal 400 14px system-ui');
+  const italic = readVisualFontFacts({ font: '', fontFamily: 'DifferentFont', fontSize: '18px', fontStyle: 'italic', fontWeight: '700', fontStretch: '100%', fontVariantNumeric: 'tabular-nums' });
+  expect(italic.fontQuery).toBe('italic 700 18px DifferentFont');
 });

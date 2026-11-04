@@ -6,7 +6,9 @@
 
 原生列表 `::marker` 不属于 DOM Text/Range。它以独立 `geometryKind: marker-gutter` 保存真实li/ul矩形、首行Range、computed padding-inline-start与`::marker`样式，推导浏览器分配的marker槽，不冒充逐字簇边界。本固定夹具只接受ltr/outside/disc，未知布局保持失败。槽内仍有独立非空、质量、质心、实色和AA结构判定；槽外严格检查不变，另以真实“缺marker”损坏验证。它不是按已失败像素坐标加白名单。
 
-layout元数据使用version2区分Range与marker槽；早期version1原件不回填、不经双读fallback冒充新资格，复核时按其实际source commit解释。
+layout元数据使用version3，区分Range与marker槽并记录真实字体长属性及availability query；早期version1/2原件不回填、不经双读fallback冒充新资格，复核时按其实际source commit解释。
+
+原生`::marker`的`font-variant-numeric: tabular-nums`不能由CSS `font` shorthand表示，真实computed shorthand可以为空；[CSS Fonts规范](https://drafts.csswg.org/css-fonts-3/#font-prop)没有承诺所有长属性都可序列化为该简写。因此字体可用性查询始终从本元素的font-style/weight/size/family构成，原shorthand及variant/stretch等长属性仍保存，不使用shorthand或父字体回退。`fontAvailable`只是FontFaceSet查询事实，不能当作实际painted-face ID；同环境/字体样式资格与像素验证仍必须成立。
 
 `compareVisualTextPixels.ts` 保留局部墨迹、质量、质心与实色内核。所有正例都执行逐簇/逐行检查，即使旧 raw95 通过也不跳过。原 `inkIou`、`pixiIou`、raw95、尺寸、作者红色和 ghost 保留率继续输出；raw95 是原始诊断值，不是用户规定的 Windows 容差。
 
