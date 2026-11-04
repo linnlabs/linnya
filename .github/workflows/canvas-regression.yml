@@ -34,7 +34,20 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - name: Install dependencies
+        id: dependencies
         run: pnpm install --frozen-lockfile
+      - name: Prepare Linux offscreen display
+        id: linux-display
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' }}
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64 fonts-noto-cjk
+      - name: Prepare Linux Electron sandbox helper
+        id: linux-sandbox
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' }}
+        # Raw Electron installs need the SUID helper: chromium/docs/linux/suid_sandbox_development.md.
+        run: |
+          sandbox_helper="$(node -e 'const path = require("node:path"); process.stdout.write(path.join(path.dirname(require("electron")), "chrome-sandbox"));')"
+          sudo chown root:root "$sandbox_helper"
+          sudo chmod 4755 "$sandbox_helper"
       - name: Typecheck Canvas
         run: pnpm --filter @plugin/canvas typecheck
       - name: Check Canvas architecture and frame closure
@@ -47,35 +60,29 @@ jobs:
         run: pnpm --filter @plugin/canvas test
       - name: Run actual Host persistence and restoration cases
         run: pnpm exec vitest run packages/plugins/__tests__/canvasDocument.sqlite.integration.test.ts packages/plugins/__tests__/canvasVersionHistory.sqlite.integration.test.ts
-      - name: Prepare Linux offscreen display
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64 fonts-noto-cjk
-      - name: Prepare Linux Electron sandbox helper
-        if: runner.os == 'Linux'
-        # Raw Electron installs need the SUID helper: chromium/docs/linux/suid_sandbox_development.md.
-        run: |
-          sandbox_helper="$(node -e 'const path = require("node:path"); process.stdout.write(path.join(path.dirname(require("electron")), "chrome-sandbox"));')"
-          sudo chown root:root "$sandbox_helper"
-          sudo chmod 4755 "$sandbox_helper"
       - name: Check drawing workload on Linux
         if: runner.os == 'Linux'
-        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
       - name: Check drawing workload on macOS and Windows
         if: runner.os != 'Linux'
         run: pnpm exec cross-env CANVAS_PERFORMANCE_OFFSCREEN=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
-      - name: Verify drawing counts and bounded resources
+      - name: Verify software drawing counts and bounded resources on Linux
+        if: runner.os == 'Linux'
+        run: node packages/plugins/canvas/dev/probes/verify-counts.mjs _dev_data/canvas-software-probe/results.json
+      - name: Verify drawing counts and bounded resources on macOS and Windows
+        if: runner.os != 'Linux'
         run: node packages/plugins/canvas/dev/probes/verify-counts.mjs
       - name: Compare DOM and bitmap content on Linux
         if: runner.os == 'Linux'
-        run: xvfb-run -a node packages/plugins/canvas/dev/probes/run-visual-probe.mjs
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 node packages/plugins/canvas/dev/probes/run-visual-probe.mjs
       - name: Compare DOM and bitmap content on macOS and Windows
         if: runner.os != 'Linux'
         run: node packages/plugins/canvas/dev/probes/run-visual-probe.mjs
       - name: Verify isolated Canvas artifact on Linux
-        if: runner.os == 'Linux'
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' && steps.linux-display.outcome == 'success' && steps.linux-sandbox.outcome == 'success' }}
         run: xvfb-run -a pnpm run smoke:plugin:canvas:artifact
       - name: Verify isolated Canvas artifact on macOS and Windows
-        if: runner.os != 'Linux'
+        if: ${{ !cancelled() && runner.os != 'Linux' && steps.dependencies.outcome == 'success' }}
         run: pnpm run smoke:plugin:canvas:artifact
       - name: Retain drawing and visual evidence
         if: always()
@@ -84,6 +91,7 @@ jobs:
           name: canvas-evidence-${{ matrix.os }}
           path: |
             _dev_data/canvas-counts-probe/results.json
+            _dev_data/canvas-software-probe/results.json
             _dev_data/canvas-visual-probe/*.json
             _dev_data/canvas-visual-probe/*.png
           if-no-files-found: warn
