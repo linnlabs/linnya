@@ -38,8 +38,11 @@ export function createCanvasEvaluationFrameMetrics() {
       const samples = recorded.filter(sample => sample.at > since && sample.at - sample.interval < until);
       const contained = samples.filter(sample => sample.at - sample.interval >= since && sample.at <= until);
       const capturedThrough = recorded.length ? recorded[recorded.length - 1].at : retainedSince;
+      const first = samples[0], last = samples[samples.length - 1];
+      // reset时刻不等于首个RAF基线；元数据已覆盖时段，也可能仍缺真正跨首尾的完整interval。
+      const boundariesCovered = !!first && !!last && first.at - first.interval <= since && last.at >= until;
       return { kind: 'animation-frame-callbacks-in-explicit-window', since, until, observedAt, retainedSince,
-        capturedThrough, retentionComplete: !disposed && since >= retainedSince && until <= capturedThrough,
+        capturedThrough, retentionComplete: !disposed && since >= retainedSince && until <= capturedThrough && boundariesCovered,
         visibility: document.visibilityState, focused: document.hasFocus(), ...summarize(samples),
         boundarySamples: samples.filter(sample => sample.at - sample.interval < since || sample.at > until), contained: summarize(contained) };
     },

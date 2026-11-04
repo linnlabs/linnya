@@ -303,6 +303,30 @@ it('动画未结束时readiness后才draw到zero，旧readiness计数不能冒�
   } finally { await rm(data.root, { recursive: true, force: true }); }
 });
 
+it('上游complete标志不能代替实际首尾interval覆盖或真实焦点，原始证据不足则partial', async () => {
+  const data = await fixture();
+  try {
+    const observation = CanvasT13ObservationSchema.parse(data.input.observations[0]);
+    if (!observation.frameWindow) throw new Error('Fixture window missing');
+    const original = observation.frameWindow;
+    for (const edge of ['head', 'tail', 'focus']) {
+      const samples = original.frames.samples.map((sample, index, all) => edge === 'head' && index === 0
+        ? { ...sample, interval: sample.interval - 1 }
+        : edge === 'tail' && index === all.length - 1 ? { ...sample, at: sample.at - 1 } : sample);
+      const frameWindow = { ...original, frames: { ...original.frames, samples, focused: edge !== 'focus' } };
+      const exchanges = data.input.exchanges.map(exchange => {
+        const parsed = CanvasT13FrameWindowSchema.safeParse(exchange.value);
+        return exchange.command.kind === 'frame-window' && parsed.success && parsed.data.frames.until === original.frames.until
+          ? { ...exchange, value: frameWindow } : exchange;
+      });
+      const result = buildCanvasT13Metrics({ ...data.input,
+        observations: [{ ...observation, frameWindow }, data.input.observations[1]], exchanges });
+      expect(result.kind).toBe('needs-evidence');
+      expect(result.diagnostics).toContain(edge === 'focus' ? 'frame_window_incomplete:5' : 'frame_window_boundaries_missing:5');
+    }
+  } finally { await rm(data.root, { recursive: true, force: true }); }
+});
+
 it('正式apply批末arrange、独立arrange和未知ops文件按实际合同判定计时覆盖，未知不等于无布局', async () => {
   const data = await fixture();
   try {

@@ -93,11 +93,15 @@ export function admitCanvasT13Observation(input: {
   });
   requireEvidence(windows.length === 1 && frameWindow.documentId === commit.documentId, 'raw_frame_window_proof_missing');
   const frames = frameWindow.frames;
-  requireEvidence(frames.retentionComplete && frames.visibility === 'visible' && frames.since === committedAt
+  requireEvidence(frames.retentionComplete && frames.visibility === 'visible' && frames.focused && frames.since === committedAt
     && frames.until === receipt.observedAt && frames.since >= frames.retainedSince && frames.until <= frames.capturedThrough,
     'frame_window_incomplete');
   requireEvidence(frames.samples.length > 0 && frames.samples.every(sample => sample.at > frames.since
     && sample.at - sample.interval < frames.until), 'frame_samples_missing_or_outside_window');
+  const firstFrame = frames.samples[0], lastFrame = frames.samples[frames.samples.length - 1];
+  // 独立复核实际边界，不能只信上游填入的retentionComplete或capturedThrough。
+  requireEvidence(!!firstFrame && !!lastFrame && firstFrame.at - firstFrame.interval <= frames.since
+    && lastFrame.at >= frames.until, 'frame_window_boundaries_missing');
   return { sequence: commit.sequence, requestId: commit.requestId, committedAt,
     observedAt: receipt.observedAt, receivedAt: receipt.receivedAt,
     commitToFrameUpperBoundMs: receipt.receivedAt - committedAt, targets, cards,
