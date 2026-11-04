@@ -47,3 +47,5 @@ scene视觉夹具只在自己的页面临时固定`performance.now`，按明确�
 visible-update原默认保留color历史对照。`CANVAS_VISIBLE_UPDATE_CHANGE=text`切到独立`canvas-visible-text-update-probe`目录，固定r4首个500之前的逻辑状态：前50为20:NNN/rev21，其余为卡NNN/rev1，不额外执行20次warm写入；初始500当前body全部settled后一次改为21:NNN（6字符）、rev+1。固定高度、字体链、antialiased、1400×900/DPR2及逐数相机均匹配该场景。text默认仅polled-animated，`CANVAS_VISIBLE_UPDATE_CASE`可显式选择对照；500个animateIds走正式200ms batch。报告firstAny/allVisible/final当前revision实际draw和原始RAF间隔，仍无Backend及硬件资格。
 
 可叠加`CANVAS_PERFORMANCE_PAINT_TRACE=1 CANVAS_VISIBLE_UPDATE_TRACE=1`保存原生paint阶段和Chromium timeline/CPU ProfileChunks；此时不再同时启动独立Profiler。原Zoom录制路径和默认标记保持不变，正文更新使用独立visible-update标记。单独`CANVAS_VISIBLE_UPDATE_PROFILE=1`仍可输出CPU profile。所有录制均仅作根因诊断，不能代替实际App的500正文门槛。
+
+paint诊断另记录真实WebGL1/2的texImage2D/texSubImage2D原调用：区分Canvas身份牌与ImageBitmap正文来源、源/上传物理尺寸和时间，不读取像素。typed-array/null分配/buffer-offset分别保留，未识别源明确unknown；不同重载参数原样转发，停止时恢复原descriptor。host调用耗时仍不代表GPU执行，须与同钟GpuMain命令及呈现等待对照；overflow非零时不能把记录当作完整分账。
