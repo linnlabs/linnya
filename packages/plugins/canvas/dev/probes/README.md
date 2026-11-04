@@ -80,6 +80,8 @@ scene视觉夹具只在自己的页面临时固定`performance.now`，按明确�
 
 `CANVAS_PERFORMANCE_COMBINED_CONTEXT_CONTROL=A|B`在同一`SOFTWARE=1 BODY_TRACE=1`固定正文诊断中，使用独立`canvas-body-staging-and-tile-context-A-diagnostic`与`-B-`目录/profile，同时控制staging和独立tile的首次2d hint。A两端保原参数，B两端标准hint为true，Pixi原本true的测量调用仍不变；三个control flags互斥，默认不安装。组合只编排现有两个owner，先安装staging再tile；tile部分安装失败先由自身清理，再还原staging并保留原异常。BODY仍先收paint，随后组合按tile→staging逆序恢复，任一子资格无效则组合无效。两份子facts嵌在`*-staging-and-tile-context-control.json`中，各自保留实际attrs、归属、overflow和同钟；只有两份都有效才能用于组合对照。它只检验同时提示能否减少源图读回等待，HTML-in-Canvas仍可能保留SharedImage，不能从hint推断资源provider或零GPU依赖；不改变原5秒、像素、预算、生命周期或完整六行门，不把正文完成冒充像素/Native通过。
 
+未安装control owner的收口结果明确为`null`，只表示未安装、不提供资格；原安装异常仍由failure-progress与原throw保留，不用伪造facts覆盖它。
+
 Offscreen真实属性使用[Chromium150 IDL](https://github.com/chromium/chromium/blob/150.0.7871.250/third_party/blink/renderer/modules/canvas/offscreencanvas2d/offscreen_canvas_rendering_context_2d.idl)中的`getContextAttributes`；该能力在同版[运行时合同](https://github.com/chromium/chromium/blob/150.0.7871.250/third_party/blink/renderer/platform/runtime_enabled_features.json5)已为stable。当前TypeScript DOM库尚缺此签名，因此只通过窄能力判断消费；实际方法缺失则保留null并拒绝资格，不猜测属性，也不新增启用开关。
 
 visible-update原默认保留color历史对照。`CANVAS_VISIBLE_UPDATE_CHANGE=text`切到独立`canvas-visible-text-update-probe`目录，固定r4首个500之前的逻辑状态：前50为20:NNN/rev21，其余为卡NNN/rev1，不额外执行20次warm写入；初始500当前body全部settled后一次改为21:NNN（6字符）、rev+1。固定高度、字体链、antialiased、1400×900/DPR2及逐数相机均匹配该场景。text默认仅polled-animated，`CANVAS_VISIBLE_UPDATE_CASE`可显式选择对照；500个animateIds走正式200ms batch。报告firstAny/allVisible/final当前revision实际draw和原始RAF间隔，仍无Backend及硬件资格。

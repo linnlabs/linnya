@@ -180,7 +180,7 @@ async function prepareDrag(selectedCount: number) {
   return { point: target.point, selected: selected.length, cardId: top.id };
 }
 Object.defineProperties(window, {
-  finishCanvasPerformanceContextControl: { value: () => { const result = contextControl?.finish(); contextControl = null; return result; } },
+  finishCanvasPerformanceContextControl: { value: () => { const owner = contextControl; contextControl = null; return owner ? owner.finish() : null; } },
   beginCanvasPerformanceInputTrace: { value: () => {
     inputTrace?.finish(); inputTrace = createCanvasPerformanceInputTrace({ readCanvas: () => kernel?.canvas ?? null,
       readState: point => {
