@@ -20,6 +20,11 @@
   max-height: 14rem;
   object-fit: contain;
 }
+.document-reference-preview {
+  box-sizing: border-box;
+  max-width: var(--document-reference-available-width, calc(100vw - 1rem));
+  max-height: min(32rem, 80vh, var(--document-reference-available-height, 80vh));
+}
 .document-reference-preview p {
   white-space: pre-wrap;
   max-height: 8rem;
