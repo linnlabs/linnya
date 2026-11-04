@@ -78,6 +78,10 @@ jobs:
       - name: Compare DOM and bitmap content on macOS and Windows
         if: runner.os != 'Linux'
         run: node packages/plugins/canvas/dev/probes/run-visual-probe.mjs
+      - name: Diagnose Linux large-cluster paint lifecycle independently
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' && steps.linux-display.outcome == 'success' && steps.linux-sandbox.outcome == 'success' }}
+        # 单例诊断保留失败现场；不替代上面的六组计数，也不提供硬件性能资格。
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_PERFORMANCE_COUNTS=12000 CANVAS_PERFORMANCE_DISTRIBUTIONS=cluster CANVAS_PERFORMANCE_PAINT_TRACE=1 CANVAS_PERFORMANCE_BODY_PROFILE=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
       - name: Verify isolated Canvas artifact on Linux
         if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' && steps.linux-display.outcome == 'success' && steps.linux-sandbox.outcome == 'success' }}
         run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 pnpm run smoke:plugin:canvas:artifact
@@ -96,5 +100,7 @@ jobs:
             _dev_data/canvas-visual-probe/*.png
             _dev_data/canvas-worker-smoke/*.json
             _dev_data/canvas-worker-smoke/*.png
+            _dev_data/canvas-paint-diagnostic/*.json
+            _dev_data/canvas-paint-diagnostic/*.cpuprofile
           if-no-files-found: warn
           retention-days: 7
