@@ -1,6 +1,6 @@
 import type { CanvasCard, CanvasCardId, CanvasPoint, CanvasRectangle } from '../../../shared';
 import type { CanvasSpatialCell, CanvasSpatialEntry, CanvasSpatialProjectionStats } from '../definitions/canvasSpatialProjection';
-import { intersectCanvasRegion, subtractCanvasRegion } from './canvasVisibleRegions';
+import { intersectCanvasRegion, subtractCanvasCover } from './canvasVisibleRegions';
 import { canvasSpatialCell, canvasSpatialCellSize, canvasSpatialKeys, projectCanvasSpatialCell } from './canvasSpatialCells';
 import { mergeCanvasRegionFragments } from './mergeCanvasRegionFragments';
 
@@ -57,7 +57,7 @@ export class CanvasSpatialProjection {
       const cover = this.entries.get(id);
       if (!cover || !cover.opaque || cover.rank <= entry.rank || cover.bounds.width <= 12 || cover.bounds.height <= 12) continue;
       const paper = { x: cover.bounds.x + 6, y: cover.bounds.y + 6, width: cover.bounds.width - 12, height: cover.bounds.height - 12 };
-      visible = visible.flatMap(region => subtractCanvasRegion(region, paper));
+      visible = subtractCanvasCover(visible, paper);
       if (!visible.length) return;
     }
     this.cache.delete(cell.key);

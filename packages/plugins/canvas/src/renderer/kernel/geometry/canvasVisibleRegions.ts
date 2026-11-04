@@ -8,6 +8,9 @@ export function intersectCanvasRegion(a: CanvasRectangle, b: CanvasRectangle): C
 export function subtractCanvasRegion(source: CanvasRectangle, cover: CanvasRectangle): readonly CanvasRectangle[] {
   const overlap = intersectCanvasRegion(source, cover);
   if (!overlap) return [source];
+  return splitCanvasIntersection(source, overlap);
+}
+function splitCanvasIntersection(source: CanvasRectangle, overlap: CanvasRectangle): CanvasRectangle[] {
   const result: CanvasRectangle[] = [];
   if (overlap.y > source.y) result.push({ x: source.x, y: source.y, width: source.width, height: overlap.y - source.y });
   if (overlap.y + overlap.height < source.y + source.height) result.push({ x: source.x, y: overlap.y + overlap.height, width: source.width, height: source.y + source.height - overlap.y - overlap.height });
@@ -15,10 +18,21 @@ export function subtractCanvasRegion(source: CanvasRectangle, cover: CanvasRecta
   if (overlap.x + overlap.width < source.x + source.width) result.push({ x: overlap.x + overlap.width, y: overlap.y, width: source.x + source.width - overlap.x - overlap.width, height: overlap.height });
   return result;
 }
+/** 无交集不生成临时数组；密集卡片的遮挡证明常反复检查同一批剩余边角。 */
+export function subtractCanvasCover(regions: readonly CanvasRectangle[], cover: CanvasRectangle): readonly CanvasRectangle[] {
+  let result: CanvasRectangle[] | undefined;
+  for (let index = 0; index < regions.length; index++) {
+    const region = regions[index], overlap = intersectCanvasRegion(region, cover);
+    if (!overlap) { result?.push(region); continue; }
+    result ??= regions.slice(0, index);
+    result.push(...splitCanvasIntersection(region, overlap));
+  }
+  return result ?? regions;
+}
 export function subtractCanvasRegions(regions: readonly CanvasRectangle[], covers: readonly CanvasRectangle[]): readonly CanvasRectangle[] {
   let result = regions;
   for (const cover of covers) {
-    result = result.flatMap(region => subtractCanvasRegion(region, cover));
+    result = subtractCanvasCover(result, cover);
     if (!result.length) break;
   }
   return result;
