@@ -19,7 +19,7 @@ import { planCanvasSceneMotion, resolveCanvasDisplayCard, canvasCardRasterChange
 import { canvasFitText } from '../../geometry/canvasFitText';
 import { canvasFitCamera } from '../../geometry/canvasFitCamera';
 import { warmCanvasGraphicsPipeline } from './warmCanvasGraphicsPipeline';
-import { CanvasIdentityAtlas } from './CanvasIdentityAtlas';
+import { CanvasIdentityAtlas, CanvasIdentityAtlasCapacityError } from './CanvasIdentityAtlas';
 
 const TEXTURE_BUDGET_BYTES = 256 * 1024 * 1024;
 interface CardView extends CanvasMotionView { readonly background: NineSliceSprite; readonly body: Container; readonly label: Sprite;
@@ -77,6 +77,7 @@ class PixiCanvasKernel implements CanvasKernel {
   private readonly bitmaps: CanvasBitmapCache;
   private readonly identities: CanvasIdentityAtlas;
   private identityPreparationPending = false;
+  private identityCapacityLimited = false;
   private readonly scene: CanvasSceneMotion;
   private readonly retiringLabels = new Set<CanvasCardId>();
   private readonly retiringViews = new Map<CanvasCardId, CardView>();
@@ -175,11 +176,28 @@ class PixiCanvasKernel implements CanvasKernel {
     if (!this.identityPreparationPending) {
       this.identityPreparationPending = true; queueMicrotask(() => {
         this.identityPreparationPending = false;
-        if (!this.destroyed && !this.contextLost) this.identities.flush(Math.max(1, this.app.renderer.resolution));
+        if (!this.destroyed && !this.contextLost) this.prepareIdentities();
       });
     }
     if (this.scheduled) return;
     this.scheduled = requestAnimationFrame(this.renderFrame);
+  }
+  private prepareIdentities(): void {
+    try { this.identities.flush(Math.max(1, this.app.renderer.resolution)); }
+    catch (error) {
+      if (error instanceof CanvasIdentityAtlasCapacityError) {
+        this.identityCapacityLimited = true;
+        this.renderStatus = { limited: true, phase: 'ready', message: '当前身份牌预览超过纹理容量，请调整视口后重试；文档仍可编辑和保存。' };
+        this.notify?.({ kind: 'render-status', ...this.renderStatus });
+      }
+      // 可见反馈不把失败伪装为成功，调用方仍得到原来的容量错误。
+      throw error;
+    }
+    if (this.identityCapacityLimited) {
+      this.identityCapacityLimited = false;
+      this.renderStatus = { limited: this.software, phase: 'ready', message: this.software ? '当前使用软件绘图，性能受限' : null };
+      this.notify?.({ kind: 'render-status', ...this.renderStatus });
+    }
   }
   private removeBitmap(id: CanvasCardId): void {
     this.bitmaps.remove(id);
@@ -213,16 +231,20 @@ class PixiCanvasKernel implements CanvasKernel {
     // 字形始终烘为白色，纸色/主题通过GPU tint改变深墨；否则500次染纸会重建500张字形纹理。
     label.tint = palette.title;
     const overview = !this.keepsThumbnail(card) && this.camera.zoom < 0.3 && this.appearance.overview === 'titles';
-    label.visible = !overview && this.titleExposed(card) && !this.bitmaps.covers(card.id, this.readVisibleCardRegions(card.id));
+    label.visible = this.identityVisible(card);
     body.visible = !overview && this.bitmaps.has(card.id);
-    if (this.editingCard === card.id) { label.visible = false; body.visible = false; }
+    if (this.editingCard === card.id) body.visible = false;
     this.identities.setActive(label, container.visible && label.visible);
     if (!wasVisible && container.visible && body.visible) { view.visibleAfterRender = this.renders; view.firstVisibleAfterRender = this.renders; }
     const bounds = this.identityBounds(card); label.position.set(bounds.x, bounds.y);
     // 地图标签只在确定的屏幕格中保留一个，避免一屏几千张纹理和文字重叠。
     view.lodAlpha = this.camera.zoom < 0.15 && !this.selected.has(card.id) ? 0.6 : 1;
-    if (this.camera.zoom < 0.15) label.visible = false;
     this.scene.apply(view);
+  }
+  private identityVisible(card: CanvasCard): boolean {
+    const overview = !this.keepsThumbnail(card) && this.camera.zoom < 0.3 && this.appearance.overview === 'titles';
+    return this.camera.zoom >= 0.15 && this.editingCard !== card.id && !overview && this.titleExposed(card)
+      && !this.bitmaps.covers(card.id, this.readVisibleCardRegions(card.id));
   }
   private identityBounds(card: CanvasCard): CanvasRectangle {
     const x = Math.min(14, card.width / 8), y = Math.min(12, card.height / 8);
@@ -298,8 +320,7 @@ class PixiCanvasKernel implements CanvasKernel {
         view.container.visible = this.exposedIds.has(view.card.id);
         if (!wasVisible && view.container.visible) { view.visibleAfterRender = this.renders; view.firstVisibleAfterRender = this.renders; }
         if (view.container.visible) {
-          const overview = !this.keepsThumbnail(view.card) && this.camera.zoom < 0.3 && this.appearance.overview === 'titles';
-          view.label.visible = this.editingCard !== view.card.id && !overview && this.titleExposed(view.card) && !this.bitmaps.covers(view.card.id, this.readVisibleCardRegions(view.card.id));
+          view.label.visible = this.identityVisible(view.card);
         }
       }
       if (view.container.visible && this.camera.zoom >= 0.3) {
@@ -590,7 +611,7 @@ class PixiCanvasKernel implements CanvasKernel {
   worldToScreen(point: CanvasPoint): CanvasPoint { return canvasWorldToScreen(point, this.camera); }
   async captureImage(format: 'png' | 'jpeg', quality = 0.9): Promise<string> {
     if (this.contextLost) throw new Error('canvas_graphics_context_lost');
-    this.identities.flush(Math.max(1, this.app.renderer.resolution));
+    this.prepareIdentities();
     const generation = this.contextGeneration;
     const result = await this.app.renderer.extract.base64({ target: this.app.stage, format: format === 'jpeg' ? 'jpg' : 'png',
       quality, frame: new Rectangle(0, 0, this.width, this.height), resolution: this.app.renderer.resolution,

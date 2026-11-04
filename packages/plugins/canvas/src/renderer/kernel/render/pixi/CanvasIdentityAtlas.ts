@@ -9,6 +9,12 @@ interface Page {
   x: number; y: number; rowHeight: number; active: number;
 }
 
+export class CanvasIdentityAtlasCapacityError extends Error {
+  constructor(readonly budgetBytes: number, readonly currentBytes: number, readonly requestedBytes: number) {
+    super('canvas_identity_atlas_budget_exceeded'); this.name = 'CanvasIdentityAtlasCapacityError';
+  }
+}
+
 /** 整串浏览器/Pixi排版、世界坐标Sprite；一页只有一个source和明确的末次释放。 */
 export class CanvasIdentityAtlas {
   private readonly bindings = new Map<Sprite, Binding>();
@@ -75,7 +81,7 @@ export class CanvasIdentityAtlas {
   private createPage(width: number, height: number, resolution: number): Page {
     const pageWidth = Math.max(1024, width), pageHeight = Math.max(512, height), bytes = pageWidth * pageHeight * 4;
     this.trimTo(this.options.budget - bytes);
-    if (this.bytes + bytes > this.options.budget) throw new Error('canvas_identity_atlas_budget_exceeded');
+    if (this.bytes + bytes > this.options.budget) throw new CanvasIdentityAtlasCapacityError(this.options.budget, this.bytes, bytes);
     this.options.reserve(this.bytes + bytes);
     const canvas = document.createElement('canvas'); canvas.width = pageWidth; canvas.height = pageHeight;
     const context = canvas.getContext('2d'); if (!context) throw new Error('canvas_2d_unavailable');
@@ -132,7 +138,8 @@ export class CanvasIdentityAtlas {
   }
   readBytes(): number { return this.bytes; }
   readStats() { return { identityPages: this.pages.size, identityEntries: this.entries.size,
-    identityBytes: this.bytes, identityCanvasBytes: this.bytes, identityPageUpdates: this.uploads }; }
+    identityBytes: this.bytes, identityCanvasBytes: this.bytes, identityPageUpdates: this.uploads,
+    identityActiveLabels: [...this.pages].reduce((sum, page) => sum + page.active, 0) }; }
   destroy(): void {
     for (const page of [...this.pages]) this.destroyPage(page);
     this.bindings.clear(); this.pending.clear(); this.dirty.clear();

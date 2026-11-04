@@ -78,7 +78,7 @@ export interface CanvasKernel {
     readonly sceneTransitions: number; readonly cameraTransition: boolean;
     readonly viewportCards: number; readonly renderableCards: number; readonly rasterCards: number;
     readonly identityPages: number; readonly identityEntries: number; readonly identityBytes: number; readonly identityCanvasBytes: number;
-    readonly identityPageUpdates: number; readonly estimatedTextureBytes: number; readonly textureBudgetBytes: number;
+    readonly identityPageUpdates: number; readonly identityActiveLabels: number; readonly estimatedTextureBytes: number; readonly textureBudgetBytes: number;
     readonly lineMeshBuilds: number; readonly visibleEdges: number };
   destroy(): void;
 }

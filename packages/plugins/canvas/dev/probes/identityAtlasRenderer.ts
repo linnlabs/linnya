@@ -1,9 +1,10 @@
 import 'pixi.js/unsafe-eval';
 import { Application, Container, Rectangle, Text, Texture } from 'pixi.js';
-import { CanvasIdentityAtlas } from '../../src/renderer/kernel/render/pixi/CanvasIdentityAtlas';
+import { CanvasIdentityAtlas, CanvasIdentityAtlasCapacityError } from '../../src/renderer/kernel/render/pixi/CanvasIdentityAtlas';
 import { withCanvasIdentityTextRaster } from '../../src/renderer/kernel/render/pixi/canvasIdentityTextRaster';
 import { createPixiCanvasKernel } from '../../src/renderer/kernel';
 import { createVisibleUpdateFixture } from './visibleUpdateFixture';
+import { CanvasImageCardSchema } from '../../src/shared';
 
 const strings = ['中文身份牌：春江花月夜', 'office affinity ffi AV', 'e\u0301 A\u030a 组合附加符',
   '👨‍👩‍👧‍👦 🇨🇳 👍🏽 ❤️', 'العَرَبِيَّةُ لا سلام', 'नमस्ते दुनिया क्ष', '日本語かなカナ 한글', '末行边界　（）【】'];
@@ -58,7 +59,14 @@ async function lifecycle() {
     if (!caught) throw new Error('identity_raster_consumer_failure_swallowed');
     const recovered = withCanvasIdentityTextRaster('失败后仍可借用', 2, raster => raster.width > 0);
     if (!recovered) throw new Error('identity_borrowed_canvas_not_reusable_after_failure');
-    return { reservations, oldDestroyed, destroyed, restoredDestroyed, final: atlas.readStats() };
+    const constrained = new CanvasIdentityAtlas({ budget: 1, reserve() { throw new Error('identity_unadmitted_page_reached_reservation'); } });
+    const tooLarge = constrained.create('预算在持有新页之前检查'); constrained.setActive(tooLarge, true);
+    let capacityRejected = false;
+    try { constrained.flush(1); }
+    catch (error) { if (!(error instanceof CanvasIdentityAtlasCapacityError)) throw error; capacityRejected = true; }
+    finally { constrained.remove(tooLarge); tooLarge.destroy(); constrained.destroy(); }
+    if (!capacityRejected || constrained.readBytes()) throw new Error('identity_over_budget_page_was_published');
+    return { reservations, oldDestroyed, destroyed, restoredDestroyed, capacityRejected, final: atlas.readStats() };
   } finally { atlas.destroy(); app.destroy(true, { children: true, texture: false }); }
 }
 
@@ -89,7 +97,24 @@ async function contextRestoration() {
   } finally { kernel.destroy(); host.remove(); }
 }
 
+async function hiddenLod() {
+  const host = document.createElement('div'); host.style.cssText = 'width:360px;height:240px'; document.body.append(host);
+  const kernel = await createPixiCanvasKernel({ host, width: 360, height: 240, resolution: 2 });
+  try {
+    const text = createVisibleUpdateFixture('text')[0], image = CanvasImageCardSchema.parse({ ...text, id: 'c2', type: 'image', x: 110,
+      data: { assetId: 'identity-lod-probe', alt: '图片身份牌', caption: '', crop: null } });
+    kernel.setAppearance({ dark: false, material: 'paper', overview: 'thumbnails' }); kernel.setElements([text, image]);
+    await kernel.captureImage('png'); const visible = kernel.readStats();
+    kernel.setCamera({ x: 20, y: 20, zoom: 0.1 }); const smallImage = await kernel.captureImage('png'), small = kernel.readStats();
+    // 同一低倍率的pan走非style路径，也不能重新打开已经隐藏的身份牌。
+    kernel.setCamera({ x: 21, y: 21, zoom: 0.1 }); await kernel.captureImage('png'); const panned = kernel.readStats();
+    kernel.setElements([]); await kernel.captureImage('png'); const cleared = kernel.readStats();
+    return { visible, small, panned, cleared, smallImage };
+  } finally { kernel.destroy(); host.remove(); }
+}
+
 Object.defineProperties(window, {
   canvasIdentityAtlasPixels: { value: pixels }, canvasIdentityAtlasLifecycle: { value: lifecycle },
   canvasIdentityAtlasContext: { value: contextRestoration },
+  canvasIdentityAtlasHiddenLod: { value: hiddenLod },
 });

@@ -92,6 +92,8 @@ body的`firstPresented`只表示当前正文键已有新像素在非零透明度
 
 `bitmapBudgetBytes`继续限制正文（包括退休层），默认256MiB。正文与身份牌另共用固定256MiB逻辑RGBA纹理估算上限：新页先准入并让正文LRU回收，正文接纳也扣除完整atlas页占用；不把空白槽、隐藏缓存或退休正文漏账。stats分别报告bitmapBytes、identityBytes、identityCanvasBytes和派生estimatedTextureBytes/textureBudgetBytes。CPU Canvas backing另列，不声称这些估算代表驱动或全进程物理内存。所有权与子框遵循[Pixi TextureSource/Texture](https://pixijs.com/8.x/guides/components/textures)，排版来自[固定8.22 CanvasTextGenerator](https://github.com/pixijs/pixijs/blob/v8.22.0/src/scene/text/canvas/CanvasTextGenerator.ts)。
 
+活动页本身超过总容量时明确拒绝分配，不隐藏/延迟正确标题或增加预算。容量异常经既有render-status显示后仍抛出，不能把绘制失败当保存失败或成功出图；视口变化后成功准备会清掉容量提示。该边界不影响Backend内容与保存，未证明可容纳的极端活动标题规模不能列入性能支持范围。低于.15的隐藏身份牌不登记活动引用，同倍率平移也遵循同一规则；identityActiveLabels供确定性工作量检查。
+
 同内容键下互不重叠的新增片段直接追加，保留已经显示的Sprite/Texture所有权，不为没有旧像素的新区域重建并淡入整张卡。只有没有在途替换时才走追加路径；相交采样升级、内容键切换及仍在进行的旧/新替换继续使用120ms流程。真实Electron门禁验证既有像素在追加前后完全一致、新区域可见、两张底图分别只关闭一次，内存仍计入原预算。
 
 线段四角使用[Pixi Geometry索引缓冲](https://pixijs.download/v8.22.0/docs/rendering.Geometry.html)共享给两个三角形，替代六份重复属性；法向量在每段只求一次。三角形覆盖、曲线细分误差、屏幕线宽、虚线相位及箭头保持同一几何，减少动态连线的CPU填充和GPU上传，不以降低线条质量换帧率。
