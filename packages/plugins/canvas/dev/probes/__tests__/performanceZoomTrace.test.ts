@@ -6,11 +6,12 @@ import { expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { startCanvasZoomTrace } from '../performanceZoomTrace';
 
-vi.mock('electron', () => ({ contentTracing: { startRecording: vi.fn(), stopRecording: vi.fn(), getTraceBufferUsage: vi.fn() } }));
+vi.mock('electron', () => ({ contentTracing: { getCategories: vi.fn(), startRecording: vi.fn(), stopRecording: vi.fn(), getTraceBufferUsage: vi.fn() } }));
 
 it.each(['start', 'finish'])('Renderer在%s拒绝时仍结束录制并保留原始trace和失败事实', async phase => {
   const output = await mkdtemp(path.join(os.tmpdir(), 'canvas-zoom-trace-'));
   const failure = new Error(`renderer_${phase}_failed`);
+  vi.mocked(contentTracing.getCategories).mockResolvedValue([]);
   vi.mocked(contentTracing.startRecording).mockResolvedValue(undefined);
   vi.mocked(contentTracing.stopRecording).mockImplementation(async file => {
     if (!file) throw new Error('missing_test_trace_path');
