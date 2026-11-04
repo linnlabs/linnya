@@ -4,6 +4,8 @@
 
 `setElements(elements,{animateIds,batch})` 安装已提交或由调用方明确管理的场景投影；调用方根据正式提交来源选择动画ID，kernel不识别Agent。`setSelection` 只更新选择。`worldToScreen` / `screenToWorld` 是 DOM 编辑表面定位的共同坐标真源。Pointer 意图由 `onIntent` 发给 feature，最终移动在松手时产生；保存、冲突校验、撤销和组合多选移动由调用方负责。
 
+整代元素安装期间，位图owner仍同步取消过渡、释放纹理和关闭失效ImageBitmap；资源变化回调只在该同步作用域内省去对旧view的重复投影，末尾统一完成新代的可见性、样式和绘制安排。作用域由finally释放，独立内容失效、预算回收和fade完成仍立即更新视图。首次创建/直接移动仍先应用显示位置再计算可见片段，避免旧container边界裁掉新卡。
+
 `setBitmap` 接管 ImageBitmap 的所有权；版本失效、重复缓存键、超预算或销毁都会负责关闭。位图资源有 256MiB 默认预算。纯移动不淘汰正文；染纸/主题切换必须刷新同色墨色，材质切换保留正文。字体、DPR、界面缩放和内容版本的组合键由光栅 capability 提供，调用方在这些条件变化时重新调度。
 
 `setRasterTiles` 接管同一卡片的可见纹理组；卡片可保持完整正文排版宽度，只上传可见横纵切片。`captureImage` 从同一场景输出指定物理比例的 PNG/JPEG，供后台导出使用，调用方保留快照序号并完成文件发布。
@@ -16,7 +18,7 @@
 
 标题候选为空时隐藏地图标题Sprite、清理已绘ID与投影身份，不上传整层透明Canvas。纯图片与文档缩略图仍由正文层绘制；重新进入非空候选时必须按当前标题重画，不能复用空层前的旧文字。该规则只判断明确的空候选数组，不扩大到其他裁切或降级场景。
 
-标题前缀与宽度拟合共用浏览器[`Intl.Segmenter`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Segmenter)的grapheme边界，保留ZWJ emoji、旗帜及组合音标。地图首行18组、近景首行120组的前缀按需迭代，不为五万字正文展开整篇字符数组；地图继续无省略号、近景与线标签继续使用省略号，既有缓存上限不变。
+标题前缀与宽度拟合共用浏览器[`Intl.Segmenter`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Segmenter)的grapheme边界，保留ZWJ emoji、旗帜及组合音标。UTF-16长度已不超过18/120上限且没有换行的完整短标题直接保留原串，因为grapheme数不会超过UTF-16长度；其余地图首行18组、近景首行120组的前缀仍按需迭代，不为五万字正文展开整篇字符数组；地图继续无省略号、近景与线标签继续使用省略号，既有缓存上限不变。
 
 线条纯几何来自 shared/geometry，前后台共用卡边裁切、同侧排开、迟滞与收敛曲线。Pixi 线适配使用静态世界 Mesh 和相机 uniform 保持 1 CSS px；远景直线与近景曲线缓存分开，缩放不反复 stroke 三角化。线层提供点击、高亮、端点、标签、纸面淡影和超过 3000 条可见线时的选中关系简化。`readEdgeGeometry` 给 DOM 交互实际排开后的坐标，不能由另一个表面猜曲线中点。
 
@@ -40,7 +42,7 @@ WebGL适配器识别SwiftShader/llvmpipe软件绘图，交互模式自动将实�
 
 `CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_PERFORMANCE_COUNTS=250` 运行独立SwiftShader/offscreen降级冒烟，输出到单独的canvas-software-probe并明确validHardwareRun=false。它验证自动简化、实际分辨率与状态，不证明真实显卡帧率或手感。
 
-正文补图由独立microtask批次调度，不占纯绘制RAF闭包。正式可见表面在Page Visibility变成hidden时取消未完成paint，恢复visible后按当前需求重新准备；保留已有纹理，不将后台节流当正文失败。实际paint超时只记录可见性、连接状态、能力和尺寸，不记录正文或Host配置。离屏技术验证可显式关闭这一可见表面策略。
+正文补图由独立task批次调度，不占纯绘制RAF闭包。正式可见表面在Page Visibility变成hidden时取消未完成paint，恢复visible后按当前需求重新准备；保留已有纹理，不将后台节流当正文失败。实际paint超时只记录可见性、连接状态、能力和尺寸，不记录正文或Host配置。离屏技术验证可显式关闭这一可见表面策略。
 
 `CanvasSpatialProjection`按512世界px维护卡片几何索引和有界世界格缓存，命中只查询所在格与长卡；长卡不为整篇正文登记数千空格。各格从上层向下扣纸面，拖动只使受影响格失效。已完全被现有上层纸面遮住的低层移动可保留精确投影；不能证明遮挡时立即重算。索引保存独立bounds，避免display对象原地移动后丢失旧几何。`preview-changed`只通知正文投影刷新，不表示已提交内容。
 

@@ -75,6 +75,7 @@ class PixiCanvasKernel implements CanvasKernel {
   private guides: readonly CanvasGuide[] = [];
   private readonly backgrounds = { paper: makeBackground('paper'), card: makeBackground('card') };
   private readonly views = new Map<CanvasCardId, CardView>();
+  private installingElements = false;
   private readonly cards = new Map<CanvasCardId, CanvasCard>();
   private readonly bitmaps: CanvasBitmapCache;
   private readonly identities: CanvasIdentityAtlas;
@@ -156,6 +157,8 @@ class PixiCanvasKernel implements CanvasKernel {
     this.app.stage.addChild(this.lines.below, this.world, this.lines.above, this.mapLabels.sprite);
     const caches = createCanvasCardTextureCaches({ textureBudgetBytes: TEXTURE_BUDGET_BYTES, bitmapBudgetBytes: options.bitmapBudgetBytes ?? TEXTURE_BUDGET_BYTES,
       readRenderCount: () => this.renders, requestDraw: () => this.schedule(), changed: id => {
+      // 整代安装会在末尾统一投影；资源仍已同步释放，此时不必再投影尚未换新的旧view。
+      if (this.installingElements) return;
       const view = this.views.get(id); if (!this.destroyed && view) { this.updateView(view); this.schedule(); }
     } });
     this.identities = caches.identities; this.bitmaps = caches.bitmaps;
@@ -340,26 +343,32 @@ class PixiCanvasKernel implements CanvasKernel {
     const plans = planCanvasSceneMotion({ before: this.targets, after: nextCards, animateIds: options.animateIds ?? [], batch: options.batch, protectedIds });
     const byId = new Map(plans.map(plan => [plan.id, plan]));
     const nextIds = new Set(nextCards.map(card => card.id));
-    for (const id of this.views.keys()) if (!nextIds.has(id)) this.removeOrRetire(id, byId.get(id));
-    this.cards.clear();
-    for (const card of nextCards) {
-      if (this.retiringViews.has(card.id)) this.scene.finish([card.id]);
-      this.installCard(card, byId.get(card.id));
+    this.installingElements = true;
+    try {
+      for (const id of this.views.keys()) if (!nextIds.has(id)) this.removeOrRetire(id, byId.get(id));
+      this.cards.clear();
+      for (const card of nextCards) {
+        if (this.retiringViews.has(card.id)) this.scene.finish([card.id]);
+        this.installCard(card, byId.get(card.id));
+      }
+      this.targets = new Map(nextCards.map(card => [card.id, card]));
+      this.ordered = nextCards.sort((a, b) => a.order < b.order ? -1 : a.order > b.order ? 1 : 0);
+      const started = performance.now();
+      for (const plan of plans) {
+        if (plan.kind === 'remove') continue;
+        const view = this.views.get(plan.id), target = this.targets.get(plan.id);
+        if (view) this.scene.start(plan, view, target, started);
+      }
+      this.spatial.setTranslucent(this.scene.translucentIds()); this.spatial.setCards(this.displayCards());
+      this.overviewOrder = nextCards.slice().sort((a, b) => Number(b.color !== 'white') - Number(a.color !== 'white')
+        || Number(b.type === 'document') - Number(a.type === 'document') || b.width * b.height - a.width * a.height);
+      this.refreshOverviewCards(); this.orderViews();
+      this.edges = elements.filter((element): element is CanvasEdge => element.type === 'edge');
+      this.refreshCamera(true, true);
+    } finally {
+      // 独立失效/预算回收仍须立即更新可见性，不能被异常留下的作用域吞掉。
+      this.installingElements = false;
     }
-    this.targets = new Map(nextCards.map(card => [card.id, card]));
-    this.ordered = nextCards.sort((a, b) => a.order < b.order ? -1 : a.order > b.order ? 1 : 0);
-    const started = performance.now();
-    for (const plan of plans) {
-      if (plan.kind === 'remove') continue;
-      const view = this.views.get(plan.id), target = this.targets.get(plan.id);
-      if (view) this.scene.start(plan, view, target, started);
-    }
-    this.spatial.setTranslucent(this.scene.translucentIds()); this.spatial.setCards(this.displayCards());
-    this.overviewOrder = nextCards.slice().sort((a, b) => Number(b.color !== 'white') - Number(a.color !== 'white')
-      || Number(b.type === 'document') - Number(a.type === 'document') || b.width * b.height - a.width * a.height);
-    this.refreshOverviewCards(); this.orderViews();
-    this.edges = elements.filter((element): element is CanvasEdge => element.type === 'edge');
-    this.refreshCamera(true, true);
   }
   private displayCards(): CanvasCard[] { return this.ordered.flatMap(card => { const display = this.cards.get(card.id); return display ? [display] : []; }); }
   private orderViews(): void {
