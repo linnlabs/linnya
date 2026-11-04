@@ -67,7 +67,7 @@ export async function createCanvasSurface(options: CanvasSurfaceOptions, ports: 
   const save = async (final: boolean) => { if (!(await creation.save(final))) return false; const saved = await editor.save(final); setDirty(); return saved; };
   const movement = createCanvasCardMovement(session, async ids => { kernel.clearDragPreview(); await dragging.set(ids, false); });
   const finish = async () => { await movement.flush(); return save(true); };
-  const opening = createCanvasCardOpening({ kernel, readCard: id => cards().find(card => card.id === id), finish, cameraChanged: () => { state.setCamera(kernel.readCamera()); refreshView(); }, prepare: raster.prepareEditing, openText: (id, signal) => editor.open(id, undefined, signal), openMedia: card => ports.openCard?.(card), opened: ports.cardOpened, unavailable: () => state.setRenderNotice('当前无法生成精确预览，已继续使用正文编辑器。') });
+  const opening = createCanvasCardOpening({ kernel, readCard: id => cards().find(card => card.id === id), finish, cameraChanged: () => { state.setCamera(kernel.readCamera()); refreshView(); }, prepare: id => raster.prepareEditing(id), openText: (id, signal) => editor.open(id, undefined, signal), openMedia: card => ports.openCard?.(card), opened: ports.cardOpened, unavailable: () => state.setRenderNotice('当前无法生成精确预览，已继续使用正文编辑器。') });
   async function trySelect(ids: readonly CanvasCardId[], additive = false) {
     opening.cancel();
     if (!(await finish())) return false;
