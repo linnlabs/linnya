@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { CanvasCommitResultSchema, type CanvasCommitResult } from '../../../../shared';
+import type { CanvasCommitResult } from '../../../../shared';
 import type { CanvasDatabase } from '../../../definitions/canvasDatabase';
 import { canvasSourceKey, type CanvasHistoryCommitInput } from '../../canvasCommit';
 import { captureCanvasHistory, mergeCanvasHistoryEntry } from '../../../shared/history';
@@ -10,7 +10,6 @@ import { CanvasAgentGroupRecordSchema, CanvasPendingBatchSchema, type CanvasAgen
 type ReadDatabase = Pick<CanvasDatabase, 'prepare'>;
 const jsonRow = z.object({ record_json: z.string() });
 const pendingRow = z.object({ batch_json: z.string() });
-const receiptSchema = z.object({ payload_hash: z.string(), status: z.enum(['pending', 'committed', 'denied', 'replaced', 'withdrawn', 'closed']), pending_id: z.string().nullable(), result_json: z.string().nullable() });
 export function readCanvasAgentGroup(database: ReadDatabase, documentId: string, groupId: string): CanvasAgentGroupRecord | null {
   const raw = database.prepare('SELECT record_json FROM canvas_agent_groups WHERE node_id = ? AND group_id = ?').get(documentId, groupId);
   return raw ? CanvasAgentGroupRecordSchema.parse(JSON.parse(jsonRow.parse(raw).record_json)) : null;
@@ -62,21 +61,12 @@ export function saveCanvasPendingApproval(database: ReadDatabase, batch: CanvasP
   database.prepare('INSERT INTO canvas_pending_approvals(node_id, pending_id, group_id, batch_json) VALUES (?, ?, ?, ?)').run(batch.request.documentId, batch.approval.id, batch.approval.groupId, JSON.stringify(batch));
   database.prepare('INSERT INTO canvas_agent_requests(node_id, source_key, request_id, payload_hash, status, pending_id) VALUES (?, ?, ?, ?, ?, ?)').run(batch.request.documentId, batch.sourceKey, batch.request.requestId, batch.payloadHash, 'pending', batch.approval.id);
 }
-export function readCanvasAgentReceipt(database: ReadDatabase, documentId: string, sourceKey: string, requestId: string) {
-  const raw = database.prepare('SELECT payload_hash, status, pending_id, result_json FROM canvas_agent_requests WHERE node_id = ? AND source_key = ? AND request_id = ?').get(documentId, sourceKey, requestId);
-  return raw ? receiptSchema.parse(raw) : null;
-}
-export function readCanvasApprovalReceipt(database: ReadDatabase, documentId: string, pendingId: string) {
-  const raw = database.prepare('SELECT payload_hash, status, pending_id, result_json FROM canvas_agent_requests WHERE node_id = ? AND pending_id = ?').get(documentId, pendingId);
-  return raw ? receiptSchema.parse(raw) : null;
-}
 export function completeCanvasApproval(database: ReadDatabase, batch: CanvasPendingBatch, result: CanvasCommitResult): void {
   database.prepare('UPDATE canvas_agent_requests SET status = ?, result_json = ? WHERE node_id = ? AND source_key = ? AND request_id = ?').run('committed', JSON.stringify(result), batch.request.documentId, batch.sourceKey, batch.request.requestId);
   database.prepare('DELETE FROM canvas_pending_approvals WHERE node_id = ? AND pending_id = ?').run(batch.request.documentId, batch.approval.id);
   const group = readCanvasAgentGroup(database, batch.request.documentId, batch.approval.groupId);
   if (group) saveCanvasAgentGroup(database, { ...group, deletedUserCardIds: [] });
 }
-export function parseCanvasAgentReceiptResult(serialized: string): CanvasCommitResult { return CanvasCommitResultSchema.parse(JSON.parse(serialized)); }
 export function deleteCanvasAgentGroup(database: ReadDatabase, documentId: string, groupId: string): void {
   clearCanvasPendingApproval(database, documentId, groupId, 'closed');
   database.prepare('DELETE FROM canvas_agent_groups WHERE node_id = ? AND group_id = ?').run(documentId, groupId);
@@ -91,12 +81,6 @@ export function reviewCanvasAgentElement(database: ReadDatabase, input: { readon
 /** 原始 CLI 身份和正文提交共同保存，append 重试不能先重新计算第二次正文。 */
 export function saveCanvasAgentCommittedReceipt(database: ReadDatabase, input: { readonly documentId: string; readonly sourceKey: string; readonly requestId: string; readonly payloadHash: string; readonly result: CanvasCommitResult }): void {
   database.prepare('INSERT INTO canvas_agent_requests(node_id, source_key, request_id, payload_hash, status, result_json) VALUES (?, ?, ?, ?, ?, ?)').run(input.documentId, input.sourceKey, input.requestId, input.payloadHash, 'committed', JSON.stringify(input.result));
-}
-export function readCanvasAgentRequestStatuses(database: ReadDatabase, documentId: string, conversationId: string | null): import('../../../../shared').CanvasAgentRequestStatus[] {
-  return database.prepare('SELECT request_id, payload_hash, status, pending_id, result_json FROM canvas_agent_requests WHERE node_id = ? AND source_key = ? AND pending_id IS NOT NULL ORDER BY rowid DESC LIMIT 50').all(documentId, JSON.stringify(['agent', conversationId])).map(raw => {
-    const row = receiptSchema.extend({ request_id: z.string() }).parse(raw);
-    return { requestId: row.request_id, status: row.status, pendingId: row.pending_id, commit: row.result_json ? parseCanvasAgentReceiptResult(row.result_json) : null };
-  });
 }
 
 export function readCanvasPendingBatches(database: CanvasDatabase, documentId: string): CanvasPendingBatch[] {

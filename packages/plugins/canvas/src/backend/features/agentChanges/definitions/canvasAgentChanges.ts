@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { CanvasCommitRequestSchema, CanvasElementIdSchema, CanvasPendingApprovalSchema, CanvasSourceSchema, CanvasGroupWriteOutcomesSchema } from '../../../../shared';
 import { CanvasHistoryEntrySchema } from '../../../shared/history';
+import type { CanvasDatabase } from '../../../definitions/canvasDatabase';
+
+export type CanvasAgentReceiptDatabase = Pick<CanvasDatabase, 'prepare'>;
 
 export const CanvasAgentGroupRecordSchema = z.object({
   id: z.string(), documentId: z.string(), conversationId: z.string().nullable(), runIds: z.array(z.string()),

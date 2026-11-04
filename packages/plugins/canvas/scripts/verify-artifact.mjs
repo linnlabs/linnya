@@ -20,7 +20,8 @@ assert(!files.some(file => /(?:^|\/)(?:src|dev|scripts|node_modules|\.metadata|_
 const normalize = value => value.replaceAll('\\', '/');
 const isBuiltin = value => builtinModules.includes(value) || builtinModules.includes(value.replace(/^node:/, ''));
 const forbiddenShared = input => /(?:^|\/)elkjs(?:@|\/)|(?:^|\/)pixi(?:\.js|@)|\/src\/renderer\/|\/apps\/renderer\/|\/src\/app-hosts\//.test(input);
-const forbiddenCli = input => /\/src\/backend\/(?:features\/(?:agentChanges|canvasWrite|canvasUndoHistory|canvasVersionHistory|canvasVersionRestore|canvasExport)\/|orchestration\/(?:createCanvasDocumentRuntime|executeCanvasCliWrite|history)\b)/.test(input);
+const readonlyReceipt = input => /\/src\/backend\/features\/agentChanges\/(?:queries\.ts|persistence\/readCanvasAgentReceipts\.ts)$/.test(input);
+const forbiddenCli = input => !readonlyReceipt(input) && /\/src\/backend\/(?:features\/(?:agentChanges|canvasWrite|canvasUndoHistory|canvasVersionHistory|canvasVersionRestore|canvasExport)\/|orchestration\/(?:createCanvasDocumentRuntime|executeCanvasCliWrite|history)\b)/.test(input);
 const mutationOnly = input => /\/src\/backend\/features\/canvasCommit\/(?:orchestration\/commitCanvasOperations|functions\/(?:planCanvasCommit|createCanvasElements|mutateCanvasElement|canvasPlanChanges|findCanvasPlacement|clearCanvasLayoutObstacles))\.ts$/.test(input);
 const bundleReports = [];
 function declaredFunctions(source) {
