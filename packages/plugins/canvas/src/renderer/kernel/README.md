@@ -70,6 +70,10 @@ body的`firstPresented`只表示当前正文键已有新像素在非零透明度
 
 授权文档标题按目标差量更新身份牌；内容相同的元数据通知不启动新draw。地图标题的内容不参与占位优先序，只有已显示的代表标签改名时才需重画。thumbnail偏好只改变相应卡片正文/身份牌可见性和标题候选，不改变几何或遮挡，不重新扫描空间投影。退回身份牌仍重新选择代表标签，之后相机改变会按最新候选排版。
 
+初始化对1×1独立RenderTexture执行一次真实`no-batch`Graphics绘制，提前完成首次Graphics程序绑定；这部分成本进入开图耗时，不计主画布renders或正文receipt。临时Graphics/目标在成功和失败时均释放，保留共享白纹理。[Pixi prepare](https://github.com/pixijs/pixijs/blob/v8.22.0/src/prepare/PrepareUpload.ts#L71)仅上传几何/纹理，实际程序绑定发生在[Graphics adaptor](https://github.com/pixijs/pixijs/blob/v8.22.0/src/scene/graphics/gl/GlGraphicsAdaptor.ts#L81)；单小矩形默认batch不能代替这条路径。
+
+同次离屏绘制包含近景连线使用的AlphaFilter合成程序；只预热Graphics会把首次阻塞留在filter程序。临时filter单独destroy但不销毁共享program，成功和异常路径均释放，不修改实际连线滤镜或透明度。
+
 地图标签按选中、染纸、文档与面积优先；选中变化只作稳定分区并更新相关卡的远景透明度。单卡编辑的精确采样在DOM接管前保持，普通补图不能立即降回档位；相机倍率/环境改变或离开需求后解除。Pixi stage不另作交互命中（eventMode:none），所有意图仍走原生DOM事件与唯一空间索引，参见[Pixi事件合同](https://pixijs.com/8.x/guides/components/events)。
 
 场景显示与逻辑target分开：普通指定新增以96%大小淡入160ms，移动220ms，删除保留旧显示120ms；超过200个有效指定ID或显式batch时统一200ms淡入，避免逐卡飞行。删除的显示不再参与逻辑命中，仍持有的位图继续计入原有预算，退休后释放。透明新增阶段不扣除下层正文，地图标签跟随相同alpha。`sceneTransitions`和`cameraTransition`暴露实际未完成任务；正文回执还须等待场景过渡结束后的真正draw。

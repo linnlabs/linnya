@@ -19,4 +19,3 @@ export function appendCanvasPlanChange(plan: CanvasWorkingPlan, before: CanvasEl
     plan.elements.set(id, { element: after, fieldVersions: versions, fieldOrigins: origins });
   } else plan.elements.delete(id);
 }
-

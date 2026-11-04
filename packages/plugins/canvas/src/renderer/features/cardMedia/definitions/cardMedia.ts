@@ -1,5 +1,14 @@
 import type { DocumentImageAsset, DocumentPreviewRequest, DocumentPreviewResult, DocumentReferencePresentation, WorkspaceMutationEvent } from '@app/schemas';
 import type { CanvasCard, CanvasCardId } from '@plugin/canvas/shared';
+/** 成功资源在短任务窗口合批，给120Hz场景留一帧内的通知预算；不在绘制RAF中编排。 */
+export const CANVAS_CONTENT_NOTIFICATION_INTERVAL_MS = 8;
+export const CANVAS_DOCUMENT_PREVIEW_CONCURRENCY = 4;
+export type CanvasPreviewReadPurpose = 'foreground' | 'prefetch';
+export interface CanvasPreviewReadWaiter {
+  readonly purpose: CanvasPreviewReadPurpose;
+  readonly resolve: () => void;
+  readonly reject: (error: Error) => void;
+}
 export interface CanvasCardMediaPort {
   readImage(documentId: string, assetId: string): Promise<DocumentImageAsset>;
   preview(input: DocumentPreviewRequest): Promise<DocumentPreviewResult>;
@@ -14,6 +23,9 @@ export interface CanvasDocumentReferenceVersions {
   version(documentId: string): number;
   generation(): number;
 }
+export type CanvasReferenceMetadataChange =
+  | { readonly kind: 'resolved' | 'invalidated' }
+  | { readonly kind: 'failed'; readonly error: Error };
 export interface CanvasCardContent {
   create(card: CanvasCard, signal: AbortSignal): Promise<HTMLElement>;
   stageImage(asset: DocumentImageAsset): Promise<void>;

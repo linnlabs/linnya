@@ -34,4 +34,3 @@ export function readCanvasClipboard(database: CanvasDatabase, value: unknown) {
   const selected = new Set<string>(context.elementIds);
   return CanvasClipboardSchema.parse({ ...context, elements: snapshot.elements.filter(element => selected.has(element.id)) });
 }
-

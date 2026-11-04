@@ -1,15 +1,15 @@
 import type { DocumentReferencePresentation } from '@app/schemas';
 import type { CanvasCard } from '@plugin/canvas/shared';
-import type { CanvasCardMediaPort } from '../definitions/cardMedia';
+import type { CanvasCardMediaPort, CanvasReferenceMetadataChange } from '../definitions/cardMedia';
 import { canvasMutationTargets, canvasReferencedDocuments } from '../functions/canvasReferencedDocuments';
 import { createCanvasDocumentTitleState } from '../store/createCanvasDocumentTitleState';
 
 /** 当前引用身份与失效世代。旧异步结果既不能写回标题，也不能落成新位图。 */
 export function createCanvasReferenceMetadata(port: CanvasCardMediaPort) {
   const titles = createCanvasDocumentTitleState(), values = new Map<string, DocumentReferencePresentation>(), versions = new Map<string, number>();
-  const pending = new Map<string, Promise<DocumentReferencePresentation>>(), listeners = new Set<(failure: Error | null) => void>();
+  const pending = new Map<string, Promise<DocumentReferencePresentation>>(), listeners = new Set<(change: CanvasReferenceMetadataChange) => void>();
   let disposed = false, epoch = 0;
-  const changed = (failure: Error | null = null) => { for (const listener of listeners) listener(failure); };
+  const changed = (change: CanvasReferenceMetadataChange = { kind: 'resolved' }) => { for (const listener of listeners) listener(change); };
   async function read(id: string): Promise<DocumentReferencePresentation> {
     const cached = values.get(id); if (cached) return cached;
     const running = pending.get(id); if (running) return running;
@@ -29,9 +29,9 @@ export function createCanvasReferenceMetadata(port: CanvasCardMediaPort) {
       if (!versions.has(id)) continue;
       versions.set(id, ++epoch); values.delete(id); pending.delete(id); titles.install(id, null);
       invalidated = true;
-      void read(id).catch(failure => { if (!disposed) changed(failure instanceof Error ? failure : new Error(String(failure))); });
+      void read(id).catch(failure => { if (!disposed) changed({ kind: 'failed', error: failure instanceof Error ? failure : new Error(String(failure)) }); });
     }
-    if (invalidated) changed();
+    if (invalidated) changed({ kind: 'invalidated' });
   };
   const stop = port.subscribe(event => invalidate(canvasMutationTargets(event, [...versions.keys()])));
   const stopAvailability = port.subscribeAvailability(nodeTypes => invalidate([...versions.keys()].filter(id => { const presentation = values.get(id); return !presentation || presentation.nodeType !== null && nodeTypes.includes(presentation.nodeType); })));
@@ -45,7 +45,7 @@ export function createCanvasReferenceMetadata(port: CanvasCardMediaPort) {
       for (const id of ids) if (!versions.has(id)) versions.set(id, ++epoch);
       await Promise.all(Array.from({ length: Math.min(8, ids.length) }, async () => { while (index < ids.length && !disposed) { const id = ids[index++]; if (id) await read(id); } }));
     },
-    subscribe(listener: (failure: Error | null) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    subscribe(listener: (change: CanvasReferenceMetadataChange) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     dispose() { disposed = true; stop(); stopAvailability(); listeners.clear(); pending.clear(); values.clear(); versions.clear(); },
   };
 }

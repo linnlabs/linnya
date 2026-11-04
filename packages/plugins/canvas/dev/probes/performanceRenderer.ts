@@ -37,7 +37,7 @@ let presentation: Presentation | null = null;
 let media: Awaited<ReturnType<typeof canvasPerformanceMediaFixture>> | null = null;
 let stopMedia: (() => void) | undefined;
 let collection = 0;
-let previous = 0;
+let previous: number | null = null;
 let gaps: number[] = [];
 let failures: string[] = [];
 let elements: readonly CanvasElement[] = [];
@@ -48,14 +48,16 @@ const appearance = { dark: false, material: 'paper', overview: 'titles' } as con
 async function prepare(count: number, clustered: boolean, kind: CanvasPerformanceKind = 'text') {
   stopMedia?.(); media?.content?.dispose(); presentation?.dispose(); kernel?.destroy();
   document.body.replaceChildren(); document.body.style.cssText = 'margin:0;font-family:system-ui;background:#f1f3ed';
-  const host = document.createElement('div'); host.style.cssText = 'position:fixed;inset:0';
+  const host = document.createElement('div'); host.style.cssText = 'position:fixed;inset:0;background:#f1f3ed';
   const staging = document.createElement('div'); staging.className = 'canvas-raster-staging';
   document.body.append(host, staging); failures = [];
+  const openingStarted = performance.now();
   kernel = await createPixiCanvasKernel({ host, resolution: devicePixelRatio, onIntent: (intent) => {
     if (intent.kind === 'camera' || intent.kind === 'preview-changed') { media?.content?.refreshVisible(kernel?.renderableCards() ?? []); presentation?.refresh(); }
     if (intent.kind === 'select') kernel?.setSelection(intent.ids);
     if (intent.kind === 'move') movedCards = intent.ids.length;
   } });
+  const kernelReadyMs = performance.now() - openingStarted;
   media = await canvasPerformanceMediaFixture(fixture(count, clustered), kind); const data = media.elements;
   presentation = createCanvasRasterPresentation({ host: staging, kernel, createContent: media.content?.create, readContentKey: media.content?.contentKey, suspendWhenHidden: false, readAppearance: () => appearance, reportFailure: (message) => failures.push(message) });
   elements = data; movedCards = 0;
@@ -72,14 +74,15 @@ async function prepare(count: number, clustered: boolean, kind: CanvasPerformanc
   const started = performance.now(); kernel.setElements(data); kernel.fit(cards);
   void media.content?.refreshReferences(cards).catch(error => failures.push(String(error)));
   media.content?.refreshVisible(kernel.renderableCards()); presentation.refresh(); await nextFrame();
-  return { installMs: performance.now() - started, dpr: devicePixelRatio, width: innerWidth, height: innerHeight,
+  return { installMs: performance.now() - started, kernelReadyMs, firstFrameMs: performance.now() - openingStarted, dpr: devicePixelRatio, width: innerWidth, height: innerHeight,
     count, clustered, kind, resource: media.readStats(), camera: kernel.readCamera(), stats: kernel.readStats(), renderStatus: kernel.readRenderStatus(), resolution: kernel.readResolution() };
 }
-function start() {
-  cancelAnimationFrame(collection); gaps = []; previous = 0;
-  const frame = (time: number) => { if (previous) gaps.push(time - previous); previous = time; collection = requestAnimationFrame(frame); };
+function start(baseline?: (time: number) => void) {
+  cancelAnimationFrame(collection); gaps = []; previous = null;
+  const frame = (time: number) => { if (previous !== null) gaps.push(time - previous); else baseline?.(time); previous = time; collection = requestAnimationFrame(frame); };
   collection = requestAnimationFrame(frame);
 }
+function startBaseline(): Promise<number> { return new Promise(resolve => start(resolve)); }
 function finish() {
   cancelAnimationFrame(collection); collection = 0;
   const sorted = gaps.slice().sort((a, b) => a - b);
@@ -95,16 +98,25 @@ async function waitForBody() {
   while (performance.now() - started < 5000) {
     const stats = presentation?.readStats();
     if (stats?.failed) return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats, media: media?.readStats() };
-    const active = media?.readStats().active;
-    const resourcesReady = !active || !active.image && !active.preview && !active.reference;
-    if (resourcesReady && stats && !stats.pending && !stats.running && !kernel?.readStats().fadingCards) {
+    if (mediaResourcesIdle() && stats && !stats.pending && !stats.running && !kernel?.readStats().fadingCards && mediaPresentationReady()) {
       await nextFrame(); await nextFrame();
       const after = presentation?.readStats();
-      if (after && !after.pending && !after.running && !kernel?.readStats().fadingCards) return { settled: true, ms: performance.now() - started, camera: kernel?.readCamera(), stats: after, media: media?.readStats() };
+      if (mediaResourcesIdle() && after && !after.pending && !after.running && !kernel?.readStats().fadingCards && mediaPresentationReady()) return { settled: true, ms: performance.now() - started, camera: kernel?.readCamera(), stats: after, media: media?.readStats() };
     }
     await nextFrame();
   }
   return { settled: false, ms: performance.now() - started, camera: kernel?.readCamera(), stats: presentation?.readStats(), media: media?.readStats() };
+}
+function mediaResourcesIdle(): boolean {
+  const active = media?.readStats().active;
+  return !active || active.image + active.preview + active.reference === 0;
+}
+function mediaPresentationReady(): boolean {
+  if (!media?.content || !kernel || !presentation) return true;
+  if (kernel.readCamera().zoom >= 0.3) return presentation.readReadiness(kernel.rasterCards().map(card => card.id)).complete;
+  // 资源响应已返回不代表最后一批通知已投影；按夹具owner事实等齐应显示的缩略图。
+  const expected = kernel.renderableCards().filter(card => media?.expectedThumbnails.has(card.id)).length;
+  const stats = kernel.readStats(); return stats.rasterCards === expected && stats.bitmaps >= expected;
 }
 async function prepareDrag(selectedCount: number) {
   if (!kernel) throw new Error('probe_not_prepared');
@@ -126,9 +138,10 @@ async function prepareDrag(selectedCount: number) {
   return { point: target.point, selected: selected.length, cardId: top.id };
 }
 Object.defineProperties(window, {
-  prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start },
+  prepareCanvasPerformanceProbe: { value: prepare }, startCanvasPerformanceCollection: { value: start }, startCanvasPerformanceBaseline: { value: startBaseline },
   finishCanvasPerformanceCollection: { value: finish }, closeCanvasPerformanceView: { value: closeView },
   waitForCanvasPerformanceBody: { value: waitForBody }, readCanvasPerformanceMedia: { value: () => media?.readStats() },
+  captureCanvasPerformanceFrame: { value: () => { if (!kernel) throw new Error('probe_not_prepared'); return kernel.captureImage('png'); } },
   prepareCanvasPerformanceDrag: { value: prepareDrag }, finishCanvasPerformanceDrag: { value: () => { const result = { movedCards, selected: kernel?.readSelection().length }; kernel?.clearDragPreview(); presentation?.refresh(); return result; } },
 });
 

@@ -32,7 +32,7 @@ const taskEvaluators: Record<CanvasAgentTaskId, (run: CanvasAgentEvaluationRun) 
       return [assertion('10-steps', after.length === 10, `cards=${after.length}`), assertion('yes-no-branches', branches.every(card => card && ['是', '否'].every(label => labels(card.id).includes(label))), 'S02/S05各有是/否出口'), assertion('crossings<=2', check.crossingCount <= 2, `crossings=${check.crossingCount}`), zeroOverlap];
   },
   T5(run) {
-    
+
     return [assertion('exact-dependencies', architectureCorrect(run), '8模块与12条固定有向依赖')];
   },
   T6(run) {
@@ -47,7 +47,7 @@ const taskEvaluators: Record<CanvasAgentTaskId, (run: CanvasAgentEvaluationRun) 
     return [assertion('original-scenes-unchanged', before.length === 12 && originalCardsUnchanged(run), '原卡正文/revision完整不变'), assertion('12-dialogues-linked', added.length === 12 && before.every(card => added.some(dialogue => linked(run.after, card.id, dialogue.id))), `added=${added.length}`)];
   },
   T8(run) {
-    
+
     return [assertion('cited-evidence-to-problem', evidenceLinked(run), '每个新增证据卡有https来源且指向问题')];
   },
   T9(run) {

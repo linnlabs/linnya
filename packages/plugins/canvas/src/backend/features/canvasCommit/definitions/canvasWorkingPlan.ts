@@ -17,4 +17,3 @@ export interface CanvasWorkingPlan {
   claims: readonly CanvasEditingClaim[];
   now: number;
 }
-

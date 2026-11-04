@@ -17,7 +17,10 @@ let current: CanvasKernel | undefined;
 async function setup() {
   current?.destroy(); document.body.replaceChildren();
   const host = document.createElement('div'); host.style.cssText = 'width:700px;height:300px'; document.body.append(host);
-  current = await createPixiCanvasKernel({ host, width: 700, height: 300, resolution: devicePixelRatio }); return current;
+  current = await createPixiCanvasKernel({ host, width: 700, height: 300, resolution: devicePixelRatio });
+  const initial = current.readStats();
+  if (initial.renders || initial.cards || initial.bitmaps) throw new Error('startup_warm_counted_as_visible_scene_or_body_draw');
+  return current;
 }
 async function sceneVisual() {
   const kernel = await setup(), initial = card('c1', 20), target = { ...initial, x: 330, revision: 2 };
@@ -137,6 +140,17 @@ async function documentMetadataVisual() {
   if (kernel.readStats().spatialCellBuilds !== cells) throw new Error('preview_preference_rebuilt_unchanged_geometry');
   return { before, renamed, thumbnail, identity, dpr: devicePixelRatio };
 }
+async function coldProjectionVisual() {
+  const kernel = await setup(), first = card('c1', 250), second = card('c2', 480);
+  kernel.setElements([first, second]);
+  const initial = kernel.readStats();
+  if (initial.viewportCards !== 2 || initial.renderableCards !== 2 || initial.rasterCards !== 2) throw new Error('cold_cards_culled_before_initial_display_positions');
+  kernel.setBitmap(first.id, first.revision, 'green', bitmap('#20c060')); await drawn(); const before = await kernel.captureImage('png');
+  const moved = { ...first, revision: 2, x: 40 }; kernel.setElements([moved, second]); await drawn();
+  const after = kernel.captureImage('png'), current = kernel.readStats();
+  if (current.renderableCards !== 2 || current.rasterCards !== 2 || kernel.readDisplayPosition(first.id)?.x !== 40) throw new Error('direct_move_culled_against_previous_display_position');
+  return { before, after: await after, initial, current, dpr: devicePixelRatio };
+}
 async function finishReducedScene() {
   const kernel = current; if (!kernel) throw new Error('scene_fixture_missing'); await sleep(16);
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches || kernel.readStats().sceneTransitions || kernel.readStats().cameraTransition
@@ -146,4 +160,4 @@ async function finishReducedScene() {
   const stats = kernel.readStats(); kernel.destroy(); current = undefined; return stats;
 }
 Object.defineProperties(window, { prepareCanvasSceneVisualProbe: { value: sceneVisual }, prepareCanvasSceneOpacityVisualProbe: { value: sceneOpacityVisual }, prepareCanvasSceneMapVisualProbe: { value: sceneMapVisual },
-  prepareCanvasIdentityInkProbe: { value: identityInkVisual }, prepareCanvasIdentityBoundsProbe: { value: identityBoundsVisual }, prepareCanvasBitmapAppendProbe: { value: bitmapAppendVisual }, prepareCanvasFirstBodyProbe: { value: firstBodyVisual }, prepareCanvasDocumentMetadataProbe: { value: documentMetadataVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });
+  prepareCanvasIdentityInkProbe: { value: identityInkVisual }, prepareCanvasIdentityBoundsProbe: { value: identityBoundsVisual }, prepareCanvasBitmapAppendProbe: { value: bitmapAppendVisual }, prepareCanvasFirstBodyProbe: { value: firstBodyVisual }, prepareCanvasDocumentMetadataProbe: { value: documentMetadataVisual }, prepareCanvasColdProjectionProbe: { value: coldProjectionVisual }, beginCanvasReducedSceneProbe: { value: beginReducedScene }, finishCanvasReducedSceneProbe: { value: finishReducedScene } });

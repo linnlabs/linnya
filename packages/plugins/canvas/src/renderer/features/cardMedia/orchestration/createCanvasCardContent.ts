@@ -1,6 +1,7 @@
 import { JsonValueSchema } from '@app/schemas';
 import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import type { CanvasCardContent, CanvasCardMediaPort } from '../definitions/cardMedia';
+import { CANVAS_CONTENT_NOTIFICATION_INTERVAL_MS } from '../definitions/cardMedia';
 import { createCanvasReferenceMetadata } from './createCanvasReferenceMetadata';
 import { createCanvasImageSources } from './createCanvasImageSources';
 import { createCanvasDocumentPreviews } from './createCanvasDocumentPreviews';
@@ -11,9 +12,20 @@ import { hydrateCanvasDocumentTags, hydrateCanvasManagedImages, createCanvasImag
 export function createCanvasCardContent(documentId: string, port: CanvasCardMediaPort): CanvasCardContent {
   const metadata = createCanvasReferenceMetadata(port);
   const images = createCanvasImageSources(documentId, port);
-  const listeners = new Set<(failure: Error | null) => void>(), changed = (failure: Error | null) => { for (const listener of listeners) listener(failure); };
+  const listeners = new Set<(failure: Error | null) => void>(), notify = (failure: Error | null) => { for (const listener of listeners) listener(failure); };
+  let notification: ReturnType<typeof setTimeout> | null = null;
+  const cancelNotification = () => { if (notification !== null) clearTimeout(notification); notification = null; };
+  const changed = (failure: Error | null) => {
+    if (failure) { notify(failure); return; }
+    // 资源读取继续推进；短工作任务合并完成事实，正文计算始终留在绘制RAF之外。
+    if (notification === null) notification = setTimeout(() => { notification = null; notify(null); }, CANVAS_CONTENT_NOTIFICATION_INTERVAL_MS);
+  };
   const previews = createCanvasDocumentPreviews(port, metadata, changed);
-  const stopMetadata = metadata.subscribe(failure => { previews.refresh(); changed(failure); });
+  const stopMetadata = metadata.subscribe(change => {
+    if (change.kind === 'invalidated') { cancelNotification(); notify(null); }
+    else changed(change.kind === 'failed' ? change.error : null);
+    previews.refresh();
+  });
   return {
     stageImage: images.stage, releaseStagedImages: images.release, resolveImageSource: images.resolve,
     async create(card, signal) {
@@ -47,6 +59,6 @@ export function createCanvasCardContent(documentId: string, port: CanvasCardMedi
     documentTitles: metadata.titles, contentKey: card => `${metadata.key(card)}:${previews.key(card)}`,
     refreshReferences: async cards => { previews.setCards(cards); await metadata.refresh(cards); }, refreshVisible: previews.refreshVisible, thumbnailCards: previews.thumbnails, retry: previews.retry,
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    dispose() { stopMetadata(); metadata.dispose(); previews.dispose(); images.dispose(); listeners.clear(); },
+    dispose() { cancelNotification(); stopMetadata(); metadata.dispose(); previews.dispose(); images.dispose(); listeners.clear(); },
   };
 }

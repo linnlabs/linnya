@@ -5,6 +5,7 @@ import path from 'node:path';
 import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
 import { z } from 'zod';
 import { readNativeSessionState } from './readNativeSessionState';
+import { verifyCanvasMediaOverview } from './performanceMediaOverview';
 
 const output = process.argv[2];
 if (!output) throw new Error('Performance output directory required');
@@ -44,8 +45,12 @@ async function run() {
     const counts = process.env.CANVAS_PERFORMANCE_COUNTS?.split(',').map(Number) ?? [250, 2500, 12000];
     const kinds = z.array(z.enum(['text', 'image', 'document'])).parse(process.env.CANVAS_PERFORMANCE_KINDS?.split(',')
       ?? (process.env.CANVAS_PERFORMANCE_MEDIA === '1' ? ['image', 'document'] : ['text']));
-    for (const kind of kinds) for (const count of counts) for (const clustered of [false, true]) {
+    const distributions = z.array(z.enum(['uniform', 'cluster'])).parse(process.env.CANVAS_PERFORMANCE_DISTRIBUTIONS?.split(',') ?? ['uniform', 'cluster']);
+    for (const kind of kinds) for (const count of counts) for (const distribution of distributions) {
+      const clustered = distribution === 'cluster';
       console.log(`Canvas formal body performance ${kind} ${count} ${clustered ? 'clustered' : 'uniform'}`);
+      const resourceProfile = kind !== 'text' && process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1';
+      if (resourceProfile) { win.webContents.debugger.attach('1.3'); await win.webContents.debugger.sendCommand('Profiler.enable'); await win.webContents.debugger.sendCommand('Profiler.start'); }
       const initial: unknown = await win.webContents.executeJavaScript(`window.prepareCanvasPerformanceProbe(${count},${clustered},${JSON.stringify(kind)})`);
       if (softwareProfile) {
         const reduced = z.object({ resolution: z.number(), renderStatus: z.object({ limited: z.boolean(), message: z.string().nullable() }) }).parse(initial);
@@ -53,18 +58,7 @@ async function run() {
       }
       let mediaOverview: unknown = null;
       if (kind !== 'text') {
-        const overviewState: unknown = await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
-        await writeFile(path.join(output, `${kind}-${count}-${clustered ? 'cluster' : 'uniform'}-overview-settle.json`), JSON.stringify({ initial, overviewState }, null, 2));
-        const settled = z.object({ settled: z.literal(true) }).passthrough().parse(overviewState);
-        const scene = z.object({ scene: z.object({ viewportCards: z.literal(count) }) }).passthrough().parse(await win.webContents.executeJavaScript('window.verifyCanvasDeterministicCounts()'));
-        const before: unknown = await win.webContents.executeJavaScript('window.readCanvasPerformanceMedia()'); await delay(250);
-        const after: unknown = await win.webContents.executeJavaScript('window.readCanvasPerformanceMedia()');
-        if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error('settled_media_continues_refetching');
-        const image = await win.webContents.capturePage(), pixels = image.toBitmap(); let patternPixels = 0;
-        for (let i = 0; i < pixels.length; i += 4) if (Math.abs(pixels[i] - 184) < 5 && Math.abs(pixels[i + 1] - 120) < 5 && Math.abs(pixels[i + 2] - 20) < 5) patternPixels++;
-        if (patternPixels < 1000) throw new Error('media_overview_has_no_actual_thumbnail_pixels');
-        await writeFile(path.join(output, `${kind}-${count}-${clustered ? 'cluster' : 'uniform'}-overview.png`), image.toPNG());
-        mediaOverview = { settled, scene, before, after, patternPixels };
+        mediaOverview = await verifyCanvasMediaOverview({ window: win, output, kind, count, clustered, initial, resourceProfile });
       }
       await delay(100);
       await win.webContents.executeJavaScript('window.startCanvasPerformanceCollection()');
@@ -73,8 +67,8 @@ async function run() {
       win.webContents.sendInputEvent({ type: 'mouseUp', x: 947, y: 529, button: 'middle', clickCount: 1 });
       const pan: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
       if (process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1') { win.webContents.debugger.attach('1.3'); await win.webContents.debugger.sendCommand('Profiler.enable'); await win.webContents.debugger.sendCommand('Profiler.start'); }
+      const bodyBaseline = z.number().parse(await win.webContents.executeJavaScript('window.startCanvasPerformanceBaseline()'));
       const close: unknown = await win.webContents.executeJavaScript('window.closeCanvasPerformanceView()');
-      await win.webContents.executeJavaScript('window.startCanvasPerformanceCollection()');
       const bodySettled: unknown = await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
       const bodyLoad: unknown = await win.webContents.executeJavaScript('window.finishCanvasPerformanceCollection()');
       if (process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1') {
@@ -106,7 +100,7 @@ async function run() {
       }
       await win.webContents.executeJavaScript('window.waitForCanvasPerformanceBody()');
       const counts: unknown = await win.webContents.executeJavaScript('window.verifyCanvasDeterministicCounts()');
-      const report = { kind, count, clustered, initial, mediaOverview, pan, close, bodyLoad, bodySettled, zoom, zoomSettled, drag, counts };
+      const report = { kind, count, clustered, initial, mediaOverview, pan, close, bodyBaseline, bodyLoad, bodySettled, zoom, zoomSettled, drag, counts };
       reports.push(report); console.log(JSON.stringify(report));
     }
     const idleAfter = powerMonitor.getSystemIdleState(1), display = screen.getDisplayMatching(win.getBounds());
@@ -114,9 +108,9 @@ async function run() {
     const validDesktopRun = unlocked(idleAfter) && !lockEvents.some(event => event.event === 'lock')
       && (offscreenProfile || process.platform !== 'darwin' || nativeSessionAfter?.unlocked === true);
     const displayQualified = !requireInternal120 || display.id === targetDisplay?.id && display.internal && display.displayFrequency >= 119;
-    const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1';
+    const profiling = process.env.CANVAS_PERFORMANCE_CPU_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_BODY_PROFILE === '1' || process.env.CANVAS_PERFORMANCE_RESOURCE_PROFILE === '1';
     const validHardwareRun = !offscreenProfile && validDesktopRun && displayQualified && !profiling;
-    await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: kinds.every(kind => kind === 'text') ? 'production-dom-v4' : 'production-media-provider-v1', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE }, startedAt, endedAt: new Date().toISOString(),
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixtureVersion: kinds.every(kind => kind === 'text') ? 'production-dom-v5-body-baseline' : 'production-media-provider-v2-body-baseline', source: { commit: process.env.CANVAS_PROBE_SOURCE_COMMIT, dirty: process.env.CANVAS_PROBE_SOURCE_DIRTY === '1', rendererTree: process.env.CANVAS_PROBE_RENDERER_TREE }, startedAt, endedAt: new Date().toISOString(),
       renderingProfile: softwareProfile ? 'offscreen-swiftshader' : offscreenProfile ? 'offscreen-counts' : 'visible-hardware',
       versions: process.versions, platform: process.platform, arch: process.arch, cpu: os.cpus()[0].model,
       idleBefore, idleAfter, nativeSessionBefore, nativeSessionAfter, lockEvents, validHardwareRun, profiling, requireInternal120, displayQualified, thermalBefore, thermalAfter: powerMonitor.getCurrentThermalState(),

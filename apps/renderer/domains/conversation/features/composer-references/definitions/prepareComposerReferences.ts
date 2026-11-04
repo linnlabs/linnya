@@ -8,4 +8,3 @@ export interface PrepareComposerReferencesOptions {
   /** 输入框切换、引用移除或组件关闭后，旧准备结果不得再发送。 */
   readonly isCurrent: () => boolean;
 }
-

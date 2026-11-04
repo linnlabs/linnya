@@ -18,6 +18,7 @@ import { CanvasSceneMotion, type CanvasMotionView } from './CanvasSceneMotion';
 import { planCanvasSceneMotion, resolveCanvasDisplayCard, canvasCardRasterChanged, type CanvasSceneMotionPlan } from '../../motion';
 import { canvasFitText } from '../../geometry/canvasFitText';
 import { canvasFitCamera } from '../../geometry/canvasFitCamera';
+import { warmCanvasGraphicsPipeline } from './warmCanvasGraphicsPipeline';
 
 interface CardView extends CanvasMotionView { readonly background: NineSliceSprite; readonly body: Container; readonly label: Text;
   visibleAfterRender: number; firstVisibleAfterRender: number; rasterContentKey: string | undefined }
@@ -55,6 +56,8 @@ export async function createPixiCanvasKernel(options: KernelOptions): Promise<Ca
   const height = options.height ?? options.host.clientHeight;
   await app.init({ canvas, width: Math.max(1, width), height: Math.max(1, height), resolution: options.resolution ?? devicePixelRatio,
     autoDensity: true, autoStart: false, preference: 'webgl', antialias: true, backgroundAlpha: 0 });
+  try { warmCanvasGraphicsPipeline(app.renderer); }
+  catch (error) { app.destroy(true, { children: true, texture: true, textureSource: true }); throw error; }
   return new PixiCanvasKernel(app, options, width, height);
 }
 
@@ -342,10 +345,13 @@ class PixiCanvasKernel implements CanvasKernel {
     if (previous) {
       previous.card = display;
       previous.label.text = this.identityTitle(card);
-    } else this.createView(display);
+    }
+    // 可见片段会按container的当前显示姿态裁切；首次创建/直接移动必须先摆好位置。
+    // 不能等projectCards之后的updateView才应用，否则新卡会被旧(0,0)边界误裁掉。
+    this.scene.apply(previous ?? this.createView(display));
   }
 
-  private createView(card: CanvasCard): void {
+  private createView(card: CanvasCard): CardView {
     const container = new Container();
     const background = new NineSliceSprite({ texture: this.backgrounds[this.appearance.material], leftWidth: 8, rightWidth: 8, topHeight: 8, bottomHeight: 8 });
     const body = new Container();
@@ -354,7 +360,8 @@ class PixiCanvasKernel implements CanvasKernel {
       style: { fill: 0xffffff, fontFamily: 'system-ui', fontSize: 15, wordWrap: false } });
     container.addChild(background, body, label);
     this.cardLayer.addChild(container);
-    this.views.set(card.id, { card, container, background, body, label, visibleAfterRender: this.renders, firstVisibleAfterRender: this.renders, rasterContentKey: undefined, lodAlpha: 1 });
+    const view: CardView = { card, container, background, body, label, visibleAfterRender: this.renders, firstVisibleAfterRender: this.renders, rasterContentKey: undefined, lodAlpha: 1 };
+    this.views.set(card.id, view); return view;
   }
 
   private updateCameraState(next: CanvasCamera): void {

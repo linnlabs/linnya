@@ -62,10 +62,16 @@ export async function verifySceneVisual(win: BrowserWindow, output: string, eval
     await writeFile(path.join(output, 'document-metadata-identity.png'), nativeImage.createFromDataURL(metadata.identity).toPNG());
     // 返回身份牌后采样点可能落在新标题字形上；应确认绿色封面消失，不能强求这里是白纸。
     if (newInk <= oldInk * 2 || thumbnailPixel.g < 170 || thumbnailPixel.r > 160 || identityPixel.g - identityPixel.r > 20) throw new Error(`document_metadata_or_thumbnail_pixels_stale:${JSON.stringify({ oldInk, newInk, thumbnailPixel, identityPixel })}`);
+    const cold = z.object({ before: z.string(), after: z.string(), dpr: z.number(), initial: z.object({ renderableCards: z.literal(2), rasterCards: z.literal(2) }), current: z.object({ renderableCards: z.literal(2), rasterCards: z.literal(2) }) })
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasColdProjectionProbe()'));
+    const initialCardPixel = pixel(cold.before, cold.dpr, 350, 100), movedCardPixel = pixel(cold.after, cold.dpr, 140, 100);
+    if (initialCardPixel.g < 170 || initialCardPixel.r > 100 || movedCardPixel.g < 170 || movedCardPixel.r > 100) throw new Error('cold_or_directly_moved_bitmap_not_actually_drawn');
+    await writeFile(path.join(output, 'cold-projection-initial.png'), nativeImage.createFromDataURL(cold.before).toPNG());
+    await writeFile(path.join(output, 'cold-projection-moved.png'), nativeImage.createFromDataURL(cold.after).toPNG());
     const began = z.object({ started: z.number(), reduced: z.boolean() }).parse(await evaluate(win.webContents, 'window.beginCanvasReducedSceneProbe()'));
     if (began.started !== 1 || began.reduced) throw new Error('scene_motion_was_not_running_before_system_preference_change');
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     const reduced: unknown = await evaluate(win.webContents, 'window.finishCanvasReducedSceneProbe()');
-    return { move: { start: move.start, middlePosition: move.middlePosition, frozen: move.frozen, camera: move.camera, stats: move.stats }, opacity: { initial, middle, opaque, removed, revealed }, mapInk, identityInk, outsideInk, append: { ...append.appended, oldPixel, keptPixel, addedPixel, leftClosed: append.leftClosed, rightClosed: append.rightClosed }, firstBody: { uploaded: firstBody.uploaded, first: firstBody.first, complete: firstBody.complete, sceneStart: firstBody.sceneStart, sceneFirst: firstBody.sceneFirst, fadePixel, scenePixel }, metadata: { oldInk, newInk, thumbnailPixel, identityPixel }, reduced };
+    return { move: { start: move.start, middlePosition: move.middlePosition, frozen: move.frozen, camera: move.camera, stats: move.stats }, opacity: { initial, middle, opaque, removed, revealed }, mapInk, identityInk, outsideInk, append: { ...append.appended, oldPixel, keptPixel, addedPixel, leftClosed: append.leftClosed, rightClosed: append.rightClosed }, firstBody: { uploaded: firstBody.uploaded, first: firstBody.first, complete: firstBody.complete, sceneStart: firstBody.sceneStart, sceneFirst: firstBody.sceneFirst, fadePixel, scenePixel }, metadata: { oldInk, newInk, thumbnailPixel, identityPixel }, cold: { initial: cold.initial, current: cold.current, initialCardPixel, movedCardPixel }, reduced };
   } finally { await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [] }); win.webContents.debugger.detach(); }
 }

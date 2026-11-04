@@ -15,8 +15,9 @@ metadata:
 
 - 只使用既有 read_file、write_file、shell、process、skill；没有 Canvas 专属模型工具。
 - 使用 `linnya-canvas`；它是当前 App 受管 Shell 的插件命令，不是普通终端的连接入口。
-- apply、arrange、render 的 shell 调用必须设置 `requires_write_access: true`。
+- 创建输入文件及 apply、arrange、render 的 shell 调用必须设置 `requires_write_access: true`。
 - 查询使用 `workspace:/目录/文件.canvas`。操作 JSON、图片输入使用当前会话相对路径或 `conversation:/`。
+- `write_file`只写Workspace文档，不创建会话物理文件。Workspace与Shell工作目录不自动同步，不能把虚拟路径当作已存在的输入文件。
 - 不传数据库路径、项目ID、对话ID、批准标志、任意输出目录。身份与权限由 Host 提供。
 - Shell 返回 completed 仍须检查 `data.terminal.process_exit`；0 为成功，8 为 Canvas 参数或业务错误。
 - stdout 只有 JSON。长命令若返回 process handle，用 process 等待；不要重复发新写请求。
@@ -26,9 +27,11 @@ metadata:
 
 1. read_file 读取画布概览；或 `linnya-canvas read workspace:/讨论.canvas`。
 2. 全文修改前用 `show <画布路径> <cN>` 读取目标卡，记住其 revision。大画布概览会截断正文。
-3. 用 write_file 在会话内写 UTF-8 JSON 操作数组，再调用 apply。每批最多500个原始动作。
+3. 用 shell 在默认的本次对话物理工作目录创建 UTF-8 JSON 操作数组，按当前终端支持的写文件语法保存，再调用 apply。每批最多500个原始动作。
 4. 检查每项 applied/skipped 与原因。被锁定、正在编辑或字段版本过期的内容会保留。
 5. 必要时 check 检查重叠、交叉与离群；render 查看真实画面。不要把启发提示当成事实错误。
+
+依据文档建图时，结论须忠于所连来源；推断和假设明确标出，不把相关性改写成因果或首要原因。批量卡片各自承担不同信息，不用仅改编号的重复句或空占位凑节点。
 
 ## 写入
 
