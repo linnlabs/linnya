@@ -28,7 +28,7 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
    - 若无 `ppt_direction` 工具：按 [`styles.md`](./references/styles.md) 自行判断方向。
    - 编辑已有文稿、用户指定了风格或给了参考稿时，不调用 `ppt_direction`。
 3. 新建整份文稿时，先只做封面给用户看效果：定下全稿配色、字体和阅读方式（按场合定，见 design.md 视觉系统第 5 项）并写进 `compose({ theme })`（调用过 `ppt_direction` 时同时写进 deck.js 顶部的 `direction` 对象，见“创建与编辑”第 4 步），用 `write_file` 写好封面这一页并构建成功，render 封面确认像素。封面就是正式稿的第 1 页，按正式质量做，批准后不重做。
-4. 向用户提交一份计划，明确目的、受众、标题、视觉方向、样子和逐页主要内容。视觉方向回答三件事：`concept` 说明整稿遵循什么设计理念以及为什么，`composition` 说明构图、信息密度与页面节奏，`signature` 只声明一个整稿核心视觉记忆点。
+4. 向用户提交一份计划，明确目的、受众、标题、视觉方向、样子和逐页主要内容。视觉方向回答三件事：`concept` 说明整稿遵循什么设计理念以及为什么，`composition` 说明构图、信息密度与页面节奏，`signature` 只声明一个整稿核心视觉记忆点。逐页内容里用一句话写明这一页的视觉主角，例如“何尊内底铭文拓片”“三条限制因素曲线并排”；并列的一组页各写各的看点，不写成同一句。
 - 拿到了 `ppt_direction` 的方向时，用自己的话把它写进这三项，不提方向是怎么来的。
 - 若你有 `ppt_plan` 工具：用它提交 `title`、可选 `audience`、`visualDirection: { concept, composition, signature }`、`look: { presentation, palette, fonts }` 和逐页 `pages[{title, content}]`。`look.presentation` 是封面所在文稿的 locator，`palette`、`fonts` 与 `direction` 对象一致；卡片会显示真实封面、色块和字体。页数由 `pages` 自动推导，不传 `pageCount`。observation 说封面样张没能显示时，先修好封面再提交一次。
 - 若无 `ppt_plan` 工具：直接在对话中按相同结构输出标题、受众、三项视觉方向、配色与字体、总页数和逐页计划，并说明封面已写入哪个文稿；不能省略视觉方向或改用另一套自由格式。
