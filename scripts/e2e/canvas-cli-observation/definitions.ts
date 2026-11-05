@@ -15,5 +15,6 @@ export const PreparedSmokeSchema = z.object({ request: SmokeRequestSchema, sourc
   instanceRoot: file, rendererDirectory: file, loaderSourceSha256: sha }).strict();
 export type PreparedSmoke = z.infer<typeof PreparedSmokeSchema>;
 export const ProcessInstanceSchema = z.object({ pid: z.number().int().positive(), startedAt: z.string(), command: z.string() });
+export type ProcessInstance = z.infer<typeof ProcessInstanceSchema>;
 export const ProcessInstancesSchema = z.array(ProcessInstanceSchema);
 export const PayloadsSchema = z.object({ payloads: z.array(z.object({ originalPath: file, observedPath: file, sha256: sha })) });

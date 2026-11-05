@@ -9,11 +9,12 @@ import { preview } from 'vite';
 import { z } from 'zod';
 import { loadBackendPluginsFromDisk } from '../../../src/electron-main/plugins/loader/diskPluginLoader';
 import { readMacosDescendantInstances, isSameMacosProcessInstanceAlive } from '../shell-tool/harness/macosElectronProcessObservation.mjs';
+import { readMacosProcessInstance } from '../shell-tool/harness/productionAgentProcessTree.mjs';
 import { readSealedCanvasCliObservation, prepareCanvasCliObservation, CANVAS_CLI_FROZEN_PRODUCER_SOURCE,
   CANVAS_CLI_PRODUCER_FILES, CanvasCliProductionBuildSchema, CanvasCliObservationActivationSchema,
   CanvasCliObservationSessionSchema } from '../../../packages/plugins/canvas/dev/agent-evaluation/cli-observation';
-import { BuildRecordSchema, CpuProofSchema, PayloadsSchema, PreparedSmokeSchema, ProcessInstancesSchema, SmokeRequestSchema,
-  type PreparedSmoke, type SmokeRequest } from './definitions';
+import { BuildRecordSchema, CpuProofSchema, PayloadsSchema, PreparedSmokeSchema, ProcessInstanceSchema, ProcessInstancesSchema, SmokeRequestSchema,
+  type PreparedSmoke, type ProcessInstance, type SmokeRequest } from './definitions';
 
 const ownerRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const loaderSource = path.join(ownerRoot, 'src/electron-main/plugins/loader/diskPluginLoader.ts');
@@ -24,6 +25,11 @@ const digest = (file: string) => hash(readFileSync(file));
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 function record(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null; }
 function git(root: string, ...args: string[]) { return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim(); }
+async function signalObservedProcess(instance: ProcessInstance, signal: 'SIGTERM' | 'SIGKILL') {
+  if (!await isSameMacosProcessInstanceAlive(instance)) return;
+  try { process.kill(instance.pid, signal); }
+  catch (error) { if (!(error instanceof Error) || Reflect.get(error, 'code') !== 'ESRCH') throw error; }
+}
 
 /** App级组合根验证真实Host loader；插件dev不反向依赖Host内部。此处不调用CLI或工厂。 */
 function verifyCpuLoad(artifact: string, outputFile: string, appVersion: string) {
@@ -133,72 +139,97 @@ async function launch(value: PreparedSmoke) {
   const server = await preview({ configFile: path.join(value.request.repositoryRoot, 'vite.config.mjs'), root: value.request.repositoryRoot,
     build: { outDir: value.rendererDirectory }, preview: { host: '127.0.0.1', port: 0, proxy: {},
       headers: { 'Cross-Origin-Embedder-Policy': 'require-corp', 'Cross-Origin-Opener-Policy': 'same-origin' } } });
-  const address = server.httpServer.address(); assert.ok(address && typeof address !== 'string');
-  const origin = `http://127.0.0.1:${address.port}`, env = { ...process.env };
-  for (const key of ['LINNYA_API_PORT', 'LINNYA_WORKSPACE_DIR', 'LINNYA_CLI_CONNECTION_FILE', 'LINNYA_PLUGIN_ROOT',
-    'LINNYA_CONVERSATION_ROOT', 'ELECTRON_RUN_AS_NODE', 'LINNYA_BUNDLED_PLUGIN_ROOT', 'LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT']) delete env[key];
-  const appVersion = z.object({ version: z.string() }).parse(readJson(path.join(value.request.repositoryRoot, 'package.json'))).version;
-  const command = [path.join(value.request.repositoryRoot, 'dist/main/main.cjs')];
-  writeFileSync(appLog, '', { flag: 'wx', mode: 0o600 });
-  const app = spawn(electron, command, { cwd: value.request.repositoryRoot, env: { ...env, NODE_ENV: 'development', LINNYA_DEV_MODE: 'true',
-    APP_VERSION: appVersion, LINNYA_DEV_INSTANCE_ROOT: value.instanceRoot, VITE_DEV_SERVER_URL: origin,
-    MODEL_REGISTRY_DEFAULTS_PATH: path.join(value.request.repositoryRoot, 'src/domains/model-catalog/features/default-catalog/assets/default_models.json'),
-    LINNYA_API_PORT: '0', LINNYA_DISABLE_UPDATE_CHECKS: '1', LINNYA_PLUGIN_SEED_BUNDLED: '0',
-    LINNYA_PLUGIN_BACKEND_LOADING: 'disk-only', LINNYA_PLUGIN_RENDERER_BUNDLE: 'disk',
-    LINNYA_PLUGIN_DIRECT_DIRS: value.installedArtifact, LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: value.installedArtifact }, stdio: ['ignore', 'pipe', 'pipe'] });
-  assert.ok(app.pid); const mainPid = app.pid;
-  const exit = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
-    app.once('error', reject); app.once('exit', (code, signal) => resolve({ code, signal }));
-  });
-  void exit.catch(() => {});
-  for (const stream of [app.stdout, app.stderr]) stream.on('data', (bytes: Buffer) => appendFileSync(appLog, bytes));
-  save(path.join(root, 'launch.json'), { command: [electron, ...command], mainPid, origin, instanceRoot: value.instanceRoot,
-    pluginDirectory: value.installedArtifact, startedAt: Date.now(), appLog, modelsRequested: 0 });
   try {
-    const deadline = Date.now() + 60_000; let observedAt = 0, backendPid = 0;
-    while (Date.now() < deadline) {
-      assert.equal(app.exitCode, null, 'App exited before activation');
-      const text = readFileSync(appLog, 'utf8'), match = text.match(/App Server ready\. (\{"pid":\d+,"apiPort":\d+\})/);
-      if (match && text.includes('[Desktop] ready') && text.includes(`[plugin-loader] Loaded backend plugin canvas@0.1.0 from ${value.installedArtifact}/dist/backend/index.cjs`)) {
-        backendPid = z.object({ pid: z.number().int().positive() }).parse(JSON.parse(match[1])).pid;
-        observedAt = Date.now(); break;
+    const address = server.httpServer.address(); assert.ok(address && typeof address !== 'string');
+    const origin = `http://127.0.0.1:${address.port}`, env = { ...process.env };
+    for (const key of ['LINNYA_API_PORT', 'LINNYA_WORKSPACE_DIR', 'LINNYA_CLI_CONNECTION_FILE', 'LINNYA_PLUGIN_ROOT',
+      'LINNYA_CONVERSATION_ROOT', 'ELECTRON_RUN_AS_NODE', 'LINNYA_BUNDLED_PLUGIN_ROOT', 'LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT']) delete env[key];
+    const appVersion = z.object({ version: z.string() }).parse(readJson(path.join(value.request.repositoryRoot, 'package.json'))).version;
+    const command = [path.join(value.request.repositoryRoot, 'dist/main/main.cjs')];
+    writeFileSync(appLog, '', { flag: 'wx', mode: 0o600 });
+    const app = spawn(electron, command, { cwd: value.request.repositoryRoot, env: { ...env, NODE_ENV: 'development', LINNYA_DEV_MODE: 'true',
+      APP_VERSION: appVersion, LINNYA_DEV_INSTANCE_ROOT: value.instanceRoot, VITE_DEV_SERVER_URL: origin,
+      MODEL_REGISTRY_DEFAULTS_PATH: path.join(value.request.repositoryRoot, 'src/domains/model-catalog/features/default-catalog/assets/default_models.json'),
+      LINNYA_API_PORT: '0', LINNYA_DISABLE_UPDATE_CHECKS: '1', LINNYA_PLUGIN_SEED_BUNDLED: '0',
+      LINNYA_PLUGIN_BACKEND_LOADING: 'disk-only', LINNYA_PLUGIN_RENDERER_BUNDLE: 'disk',
+      LINNYA_PLUGIN_DIRECT_DIRS: value.installedArtifact, LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: value.installedArtifact }, stdio: ['ignore', 'pipe', 'pipe'] });
+    assert.ok(app.pid); const mainPid = app.pid;
+    const exit = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
+      app.once('error', reject); app.once('exit', (code, signal) => resolve({ code, signal }));
+    });
+    void exit.catch(() => {});
+    for (const stream of [app.stdout, app.stderr]) stream.on('data', (bytes: Buffer) => appendFileSync(appLog, bytes));
+    const owned = new Map<string, ProcessInstance>();
+    let main: ProcessInstance | null = null;
+    // 与正式startup-failure gate相同：Main退出前冻结实际后代，重挂父进程后仍按原身份收口。
+    const rememberOwned = async () => {
+      if (!main || !await isSameMacosProcessInstanceAlive(main)) return;
+      for (const row of ProcessInstancesSchema.parse(await readMacosDescendantInstances(main.pid)))
+        owned.set(`${row.pid}:${row.startedAt}:${row.command}`, row);
+    };
+    try {
+      main = ProcessInstanceSchema.parse(await readMacosProcessInstance(mainPid));
+      save(path.join(root, 'launch.json'), { command: [electron, ...command], mainPid, origin, instanceRoot: value.instanceRoot,
+        pluginDirectory: value.installedArtifact, startedAt: Date.now(), appLog, modelsRequested: 0 });
+      const deadline = Date.now() + 60_000; let observedAt = 0, backendPid = 0;
+      while (Date.now() < deadline) {
+        assert.equal(app.exitCode, null, 'App exited before activation');
+        assert.equal(app.signalCode, null, 'App exited before activation');
+        await rememberOwned();
+        const text = readFileSync(appLog, 'utf8'), match = text.match(/App Server ready\. (\{"pid":\d+,"apiPort":\d+\})/);
+        if (match && text.includes('[Desktop] ready') && text.includes(`[plugin-loader] Loaded backend plugin canvas@0.1.0 from ${value.installedArtifact}/dist/backend/index.cjs`)) {
+          backendPid = z.object({ pid: z.number().int().positive() }).parse(JSON.parse(match[1])).pid;
+          observedAt = Date.now(); break;
+        }
+        await pause(100);
       }
-      await pause(100);
+      assert.ok(backendPid, 'N0 Host activation timed out');
+      const descendants = [...owned.values()];
+      assert.ok(descendants.some(row => row.pid === backendPid));
+      save(path.join(root, 'owned-processes.json'), { mainPid, descendants });
+      const session = CanvasCliObservationSessionSchema.parse(readJson(path.join(value.evidenceDirectory, 'session.json')));
+      assert.equal(session.pid, backendPid); assert.equal(session.originalBackendSha256, value.originalBackendSha256);
+      assert.equal(digest(path.join(value.installedArtifact, 'dist/backend/index.cjs')), value.wrapperSha256);
+      assert.equal(digest(path.join(value.installedArtifact, 'dist/backend/index.production.cjs')), value.originalBackendSha256);
+      const activationFile = path.join(root, 'activation.json');
+      save(activationFile, CanvasCliObservationActivationSchema.parse({ schemaVersion: 1, kind: 'canvas-cli-observation-activation',
+        backendPid, observedAt, evidenceDirectory: value.evidenceDirectory, preparedArtifactDirectory: value.preparedArtifact,
+        productionBuildProvenanceFile: value.buildFile, productionBuildProvenanceSha256: value.buildSha256,
+        productionSourceRevision: value.sourceRevision, observationSourceRevision: value.observationSourceRevision,
+        originalBackendSha256: value.originalBackendSha256, payloadManifestSha256: value.payloadManifestSha256,
+        wrapperSha256: value.wrapperSha256, namedBackendPluginSelected: cpu.namedBackendPluginSelected,
+        nonCliReferencesPreserved: cpu.nonCliReferencesPreserved }));
+      console.log(JSON.stringify({ readyForNativeCmdQ: true, mainPid, backendPid, outputDirectory: root, modelsRequested: 0 }));
+      while (app.exitCode === null && app.signalCode === null) { await rememberOwned(); await pause(100); }
+      const ended = await exit; assert.equal(ended.code, 0); assert.equal(ended.signal, null);
+      const allDescendants = [...owned.values()];
+      const end = Date.now() + 15_000;
+      while (Date.now() < end && (await Promise.all(allDescendants.map(isSameMacosProcessInstanceAlive))).some(Boolean)) await pause(100);
+      assert.ok((await Promise.all(allDescendants.map(isSameMacosProcessInstanceAlive))).every(alive => !alive), 'owned descendants remain');
+      const sealed = await readSealedCanvasCliObservation({ directory: value.evidenceDirectory, activationFile });
+      assert.equal(sealed.invocations.length, 0);
+      const restored = restoreInstalled(value);
+      save(path.join(root, 'qualification.json'), { kind: 'N0-load-normal-exit-seal-only', status: 'passed', exit: ended,
+        backendPid, mainPid, sealedInvocations: sealed.invocations.length, ...restored, ownedDescendantsAlive: 0,
+        modelsRequested: 0, cliPrepareOrExecuteProven: false, performanceProven: false, sourceRevision: value.sourceRevision,
+        evidenceFiles: sealed.evidenceFiles, appLogSha256: digest(appLog), completedAt: Date.now() });
+      console.log(JSON.stringify({ N0Passed: true, modelsRequested: 0, qualification: path.join(root, 'qualification.json') }));
+    } catch (error) {
+      // 沿用parallel-desktop失败收口：只清已冻结且PID/start/command仍相同的本轮实例。
+      await rememberOwned();
+      if (main) await signalObservedProcess(main, 'SIGTERM');
+      await Promise.race([exit, pause(5000)]);
+      const identities = [...(main ? [main] : []), ...owned.values()];
+      for (const row of [...identities].reverse()) await signalObservedProcess(row, 'SIGKILL');
+      const end = Date.now() + 10_000;
+      while (Date.now() < end && (await Promise.all(identities.map(isSameMacosProcessInstanceAlive))).some(Boolean)) await pause(100);
+      const alive = await Promise.all(identities.map(isSameMacosProcessInstanceAlive));
+      save(path.join(root, 'failed-cleanup.json'), { status: 'failed', originalFailure: String(error), identities,
+        remainingOwned: identities.filter((_, index) => alive[index]), mainIdentityObserved: main !== null,
+        normalExitQualification: false, evidenceRetained: true });
+      if (alive.some(Boolean)) throw new Error(`Owned processes remain after failed N0 cleanup; original failure: ${String(error)}`);
+      throw error;
     }
-    assert.ok(backendPid, 'N0 Host activation timed out');
-    const descendants = ProcessInstancesSchema.parse(await readMacosDescendantInstances(mainPid));
-    assert.ok(descendants.some(row => row.pid === backendPid));
-    save(path.join(root, 'owned-processes.json'), { mainPid, descendants });
-    const session = CanvasCliObservationSessionSchema.parse(readJson(path.join(value.evidenceDirectory, 'session.json')));
-    assert.equal(session.pid, backendPid); assert.equal(session.originalBackendSha256, value.originalBackendSha256);
-    assert.equal(digest(path.join(value.installedArtifact, 'dist/backend/index.cjs')), value.wrapperSha256);
-    assert.equal(digest(path.join(value.installedArtifact, 'dist/backend/index.production.cjs')), value.originalBackendSha256);
-    const activationFile = path.join(root, 'activation.json');
-    save(activationFile, CanvasCliObservationActivationSchema.parse({ schemaVersion: 1, kind: 'canvas-cli-observation-activation',
-      backendPid, observedAt, evidenceDirectory: value.evidenceDirectory, preparedArtifactDirectory: value.preparedArtifact,
-      productionBuildProvenanceFile: value.buildFile, productionBuildProvenanceSha256: value.buildSha256,
-      productionSourceRevision: value.sourceRevision, observationSourceRevision: value.observationSourceRevision,
-      originalBackendSha256: value.originalBackendSha256, payloadManifestSha256: value.payloadManifestSha256,
-      wrapperSha256: value.wrapperSha256, namedBackendPluginSelected: cpu.namedBackendPluginSelected,
-      nonCliReferencesPreserved: cpu.nonCliReferencesPreserved }));
-    console.log(JSON.stringify({ readyForNativeCmdQ: true, mainPid, backendPid, outputDirectory: root, modelsRequested: 0 }));
-    const ended = await exit; assert.equal(ended.code, 0); assert.equal(ended.signal, null);
-    const end = Date.now() + 15_000;
-    while (Date.now() < end && (await Promise.all(descendants.map(isSameMacosProcessInstanceAlive))).some(Boolean)) await pause(100);
-    assert.ok((await Promise.all(descendants.map(isSameMacosProcessInstanceAlive))).every(alive => !alive), 'owned descendants remain');
-    const sealed = await readSealedCanvasCliObservation({ directory: value.evidenceDirectory, activationFile });
-    assert.equal(sealed.invocations.length, 0);
-    const restored = restoreInstalled(value);
-    save(path.join(root, 'qualification.json'), { kind: 'N0-load-normal-exit-seal-only', status: 'passed', exit: ended,
-      backendPid, mainPid, sealedInvocations: sealed.invocations.length, ...restored, ownedDescendantsAlive: 0,
-      modelsRequested: 0, cliPrepareOrExecuteProven: false, performanceProven: false, sourceRevision: value.sourceRevision,
-      evidenceFiles: sealed.evidenceFiles, appLogSha256: digest(appLog), completedAt: Date.now() });
-    console.log(JSON.stringify({ N0Passed: true, modelsRequested: 0, qualification: path.join(root, 'qualification.json') }));
-  } catch (error) {
-    // 启动/核验失败只终止本次spawn的Main，保留partial证据，绝不把信号退出当正常封存。
-    if (app.exitCode === null && app.signalCode === null) app.kill('SIGTERM');
-    await exit;
-    throw error;
   } finally { await server.close(); }
 }
 

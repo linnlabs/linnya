@@ -24,6 +24,8 @@ wrapper 只注册一次 process exit 同步 seal。session 的 PID 必须对应�
 
 App级 [N0 装载验收入口](../../../../../../scripts/e2e/canvas-cli-observation/run.ts) 只提供固定 prepare/launch 两步。prepare 的请求合同见其相邻 definitions；它核对已有正式 source61 build 成功原件、完整编译哈希、干净冻结源码及六份 producer，复制独立制品和无旧桥标签的既有生产 Renderer，再通过真实 Host disk loader 核 compiled-module 引用。CPU预装载与实际App使用不同外壳和证据目录，不能消耗后复用同一路径。新的产物目录必须不存在，不触碰原编译包、运行数据或已配置模型。
 
+CPU与实际App外壳使用同一源码构建，注入的evidenceDirectory不同，因此wrapper字节/hash也不同，不能声称两个wrapper byte-identical。CPU loader源码须逐字核对冻结61，只证明actual compiled Canvas模块的引用；真正compiled Host选中该named contribution须由后续实际App日志、Backend PID及session补齐。失败清理沿用既有parallel-desktop/startup-failure gate的实例冻结方法，只终止本轮实际观察且PID、启动时间与命令仍相同的Main/后代，确认owned0并保留partial原件，不把信号退出升级为正常封存。
+
 只有拿到独立原生窗口时才运行 launch。它沿用 parallel-desktop gate 的正式 Main、instanceRoot 与进程归属观察机制，使用 fresh profile 和 direct artifact；不挂画布、不调用模型或 CLI、不制造执行context。实际 loader 日志、Backend PID及session闭合后写 activation，等待真实 CmdQ；正常退出、完整 seal 和所有后代退出后才调用读取器，要求 invocations=0，随后仅恢复安装副本的原index并移除自己的sidecar，逐项复核原载荷。只读封存用的 prepared artifact 保留完整原外壳，不随安装副本回滚。
 
 此N0仅证明实际装载、封存和回滚，不能证明CLI execute、模型run归属或T13性能。正式build证书保留原日志明确打印的build子命令；原成功见证文件的mtime只是完成时间的保守上界，原见证另行完整保留。启动失败或信号退出保留partial，不生成通过结论；不将程序关停代替原生正常退出。
