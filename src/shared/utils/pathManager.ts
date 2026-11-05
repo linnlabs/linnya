@@ -22,7 +22,8 @@
  *   - Windows：`C:\\Users\\<用户名>\\AppData\\Local\\<应用>\\Workspace`（Local，不用 Roaming）
  * - 数据库、受管文件、会话附件与工作目录、知识库、日志都在这个目录里，可整体备份或搬走；
  *   浏览器 profile、凭据与主进程设置（electron-store `config.json`）在 Electron `userData`，不属于它。
- * - `LINNYA_WORKSPACE_DIR` / CLI `--workspace` 只移动 Workspace Root，AppData Root 不变。
+ * - `LINNYA_WORKSPACE_DIR` / CLI `--workspace` 只移动 Workspace Root（数据库、项目资源、模型配置、知识库、日志随之移动），
+ *   AppData Root 不变（会话附件、`config/`、`skills/` 仍在原处；`assets.local_path` 相对它解析）。
  *
  * 重要约定：
  * - 项目资源、录音、本地模型和知识库位于 Workspace Root 下；生成图片由调用方放入 conversation 工作目录。
@@ -46,7 +47,7 @@
  *   - `originals/`：PDF 原始文件仓储，用于 partial 续跑失败页
  *   - `BM25Indices/`：BM25 索引目录
  *   - `pipeline/`：任务流水线数据目录
- * - （AppData 下另有 `ConversationAttachments/` 会话附件副本与 `logs/`）
+ * - （AppData Root 下另有 `ConversationAttachments/` 会话附件副本；默认与 Workspace Root 是同一目录）
  *
  * @function getAppDataPath(): string
  * - 核心逻辑：从宿主安装的只读路径事实返回 AppData Root，不探测 Electron。
@@ -362,7 +363,7 @@ export function getPipelinePath(): string {
  *
  * 目录位置：位于 Workspace Root 下的 `workspace/` 子目录
  * - 开发：`<项目根>/_dev_data/workspace`
- * - 生产：`<用户文档>/Linnya/workspace`
+ * - 生产：`<数据根>/workspace`（数据根见文件头；自定义 Workspace Root 时随之移动）
  *
  * @returns 工作区数据目录的绝对路径
  */
@@ -410,7 +411,7 @@ export function getWebReadConfigPath(): string {
  *
  * 目录位置：`logs/`（位于 Workspace Root 下）。创建失败会中止启动，不改写到 cwd。
  * - 开发：`<项目根>/_dev_data/logs`
- * - 生产：`<用户文档>/Linnya/logs`
+ * - 生产：`<数据根>/logs`
  */
 export function getLogDirectory(): string {
   const workspaceRoot = getWorkspaceRoot();
@@ -430,7 +431,7 @@ export function getLogDirectory(): string {
  *
  * 目录位置：位于 Workspace Root 下的 `temp/` 子目录
  * - 开发：`<项目根>/_dev_data/temp`
- * - 生产：`<用户文档>/Linnya/temp`
+ * - 生产：`<数据根>/temp`
  *
  * @returns 临时文件目录的绝对路径
  */
