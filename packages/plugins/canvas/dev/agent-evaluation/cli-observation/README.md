@@ -21,3 +21,9 @@ wrapper 只注册一次 process exit 同步 seal。session 的 PID 必须对应�
 读取器重新核验全部 seal 文件字节与 SHA，解析同一份已验字节，要求调用阶段、事件编号、时钟、终态和完整计数闭合；再核原编译模块、wrapper、全部原载荷映射、正式 build 日志与六个已审 producer 源文件指纹。当前固定源与指纹在 `definitions/sealedObservation.ts`；未知新源不会自动放行。公开 DTO 留在 `definitions.ts`，没有 SQL、ops 载荷读取、业务重放或 Worker 调用。
 
 在这一强源合同下，executeCanvasCliWrite 的完整 committed 响应只有明确 replayed=false 且 computation=null 才能证明本次没有 prepared.arrange：其有 arrange 分支必 await 正式 Worker，Worker response schema 强制非 null computation，即使布局 unchanged 也保留计时。该 iff 只适用于已核原 producer 和真实编译 SHA；缺字段、receipt、重放、dry-run、pending、失败或未知响应不能套用。后续源必须另审与已核 producer 的字节关系，不能扩大成任意版本 null 的默认语义。
+
+App级 [N0 装载验收入口](../../../../../../scripts/e2e/canvas-cli-observation/run.ts) 只提供固定 prepare/launch 两步。prepare 的请求合同见其相邻 definitions；它核对已有正式 source61 build 成功原件、完整编译哈希、干净冻结源码及六份 producer，复制独立制品和无旧桥标签的既有生产 Renderer，再通过真实 Host disk loader 核 compiled-module 引用。CPU预装载与实际App使用不同外壳和证据目录，不能消耗后复用同一路径。新的产物目录必须不存在，不触碰原编译包、运行数据或已配置模型。
+
+只有拿到独立原生窗口时才运行 launch。它沿用 parallel-desktop gate 的正式 Main、instanceRoot 与进程归属观察机制，使用 fresh profile 和 direct artifact；不挂画布、不调用模型或 CLI、不制造执行context。实际 loader 日志、Backend PID及session闭合后写 activation，等待真实 CmdQ；正常退出、完整 seal 和所有后代退出后才调用读取器，要求 invocations=0，随后仅恢复安装副本的原index并移除自己的sidecar，逐项复核原载荷。只读封存用的 prepared artifact 保留完整原外壳，不随安装副本回滚。
+
+此N0仅证明实际装载、封存和回滚，不能证明CLI execute、模型run归属或T13性能。正式build证书保留原日志明确打印的build子命令；原成功见证文件的mtime只是完成时间的保守上界，原见证另行完整保留。启动失败或信号退出保留partial，不生成通过结论；不将程序关停代替原生正常退出。

@@ -3,15 +3,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, w
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
-import type { CanvasCliObservationBuild } from './definitions';
-
-interface Preparation {
-  readonly productionPluginDirectory: string;
-  readonly outputDirectory: string;
-  readonly evidenceDirectory: string;
-  readonly productionSourceRevision: string;
-  readonly observationSourceRevision: string;
-}
+import type { CanvasCliObservationBuild, CanvasCliObservationPreparation } from './definitions';
 
 function sha256(value: string | Uint8Array): string { return createHash('sha256').update(value).digest('hex'); }
 
@@ -25,7 +17,7 @@ function filesBelow(directory: string, relative = ''): string[] {
 }
 
 /** 只生成独立开发制品；不覆写原plugin、不安装、不启动Backend或Worker。 */
-export async function prepareCanvasCliObservation(input: Preparation) {
+export async function prepareCanvasCliObservation(input: CanvasCliObservationPreparation) {
   const production = path.resolve(input.productionPluginDirectory), output = path.resolve(input.outputDirectory);
   if (!path.isAbsolute(input.evidenceDirectory) || existsSync(input.evidenceDirectory)) throw new Error('cli_observation_requires_fresh_absolute_evidence_directory');
   // 清单统一用POSIX相对路径；Windows的原生分隔符不能改变index识别或封存协议。
