@@ -791,7 +791,7 @@ describe('current window conditional refresh', () => {
     const prepare = db.prepare.bind(db);
     let committed = false;
     const hook = vi.spyOn(db, 'prepare').mockImplementation(sql => {
-      if (!committed && sql.includes('SELECT * FROM conversation_ui_messages')) {
+      if (!committed && sql.includes('FROM conversation_ui_messages')) {
         committed = true;
         writer.transaction(() => {
           writer.prepare("UPDATE conversation_ui_projection_state SET revision = 2 WHERE conversation_id = 'snapshot'").run();
