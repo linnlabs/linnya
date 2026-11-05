@@ -13,27 +13,23 @@
  * - App Server 与 Worker 只接收冻结后的路径事实，不根据自己的 cwd 猜用户数据目录；
  * - 仅源码开发和测试运行域允许在启动事实尚未安装时使用仓库 `_dev_data`。
  *
- * 应用数据根目录（App Data Root）规则：
- * - 开发模式：位于项目根目录下的 `_dev_data`。
+ * 用户数据根规则（开发与正式版布局相同：AppData Root 与默认 Workspace Root 是同一个目录）：
+ * - 开发模式：实例目录下的 `_dev_data`。
  *   - macOS 示例：`/Users/<用户名>/code/Linnya/_dev_data`
  *   - Windows 示例：`C:\\Users\\<用户名>\\code\\Linnya\\_dev_data`
- * - 生产模式：Desktop Host 传入 `path.join(app.getPath('userData'), 'AIService')`
- *   - macOS 示例：`/Users/<用户名>/Library/Application Support/<AppName>/AIService`
- *   - Windows 示例：`C:\\Users\\<用户名>\\AppData\\Roaming\\<AppName>\\AIService`
- *
- * 工作区根目录（Workspace Root）规则（用户可迁移数据集中处）：
- * - 默认在开发模式与 AppData 的 dev 路径一致：`<ProjectRoot>/_dev_data`
- * - 默认在生产模式使用 Desktop Host 传入的系统“文档”目录：
- *   `path.join(app.getPath('documents'), 'Linnya')`
- * - 支持后续通过占位 API 设置为自定义路径（当前仅内存生效、持久化留待 UI 实现）。
+ * - 正式版：Desktop Host 用 `resolveProductionDataRoot` 按平台解析后传入。
+ *   - macOS：`/Users/<用户名>/Library/Application Support/<应用>/Workspace`
+ *   - Windows：`C:\\Users\\<用户名>\\AppData\\Local\\<应用>\\Workspace`（Local，不用 Roaming）
+ * - 数据库、受管文件、会话附件与工作目录、知识库、日志都在这个目录里，可整体备份或搬走；
+ *   浏览器 profile、凭据与主进程设置（electron-store `config.json`）在 Electron `userData`，不属于它。
+ * - `LINNYA_WORKSPACE_DIR` / CLI `--workspace` 只移动 Workspace Root，AppData Root 不变。
  *
  * 重要约定：
  * - 项目资源、录音、本地模型和知识库位于 Workspace Root 下；生成图片由调用方放入 conversation 工作目录。
  * - 用户通过对话粘贴、拖拽或“添加附件”导入的文件是明确例外：副本位于 AppData
  *   `ConversationAttachments/`，不自动成为项目资源。该生命周期由 conversation attachment domain 管理。
  * - 用户在消息中直接输入的真实路径不属于上传，不复制也不改写路径。
- * - AppData 还用于会话附件副本、凭据、缓存和其他不可迁移或偏系统的数据；诊断日志由
- *   `getLogDirectory()` 统一放在 Workspace Root 下。
+ * - 诊断日志由 `getLogDirectory()` 统一放在 Workspace Root 下。
  * - 跨平台拼接使用 Node.js 内置 `path`，不直接写硬编码分隔符。
  * - Electron `app.getPath(...)` 只能由 Desktop Host 调用，不能进入共享后端模块。
  *
@@ -57,7 +53,7 @@
  * - 核心逻辑：从宿主安装的只读路径事实返回 AppData Root，不探测 Electron。
  *
  * @function getWorkspaceRoot(): string
- * - 返回当前工作区根目录。默认遵循上述规则；支持通过 `setWorkspaceRoot` 临时重定向。
+ * - 返回当前工作区根目录。默认遵循上述规则；测试可通过 `setWorkspaceRoot` 在进程内临时重定向。
  *
  * @function setWorkspaceRoot(newRoot: string): string
  * - 设置自定义工作区根目录（占位：当前仅内存生效）。
@@ -154,7 +150,8 @@ export function getWorkspaceRoot(): string {
 }
 
 /**
- * 设置自定义 Workspace Root（占位：当前仅内存生效，未做持久化）
+ * 测试接缝：在当前进程内把 Workspace Root 临时指向另一个目录，不持久化。
+ * 产品没有“更换数据位置”入口；正式运行的位置只来自宿主安装的路径事实。
  */
 export function setWorkspaceRoot(newRoot: string): string {
   if (!newRoot || typeof newRoot !== 'string') {
@@ -171,13 +168,6 @@ export function setWorkspaceRoot(newRoot: string): string {
     console.error(`[PATH] ${errorMessage}`);
     throw new ConfigurationError(errorMessage);
   }
-}
-
-/**
- * 是否已经设置了自定义 Workspace Root（含环境变量覆盖）
- */
-export function hasCustomWorkspaceRoot(): boolean {
-  return getWorkspaceRootState().isCustom || requireRuntimePathRoots().workspaceRootIsCustom;
 }
 
 /**
@@ -234,8 +224,8 @@ export function getProjectRoot(): string {
  *   - macOS：`/Users/<用户名>/code/Linnya/_dev_data`
  *   - Windows：`C:\\Users\\<用户名>\\code\\Linnya\\_dev_data`
  * - 生产（由 Desktop Host 传入）
- *   - macOS：`/Users/<用户名>/Library/Application Support/<AppName>/AIService`
- *   - Windows：`C:\\Users\\<用户名>\\AppData\\Roaming\\<AppName>\\AIService`
+ *   - macOS：`/Users/<用户名>/Library/Application Support/<应用>/Workspace`
+ *   - Windows：`C:\\Users\\<用户名>\\AppData\\Local\\<应用>\\Workspace`
  */
 export function getAppDataPath(): string {
   try {
@@ -727,7 +717,7 @@ export function getConversationToolOutputBlobDirPath(params: {
  *
  * 目录位置：位于 AppData 下的 `skills/` 子目录
  * - 开发：`<项目根>/_dev_data/skills`
- * - 生产：`<userData>/AIService/skills`（由 Desktop Host 传入）
+ * - 正式版：`<用户数据根>/skills`（由 Desktop Host 传入）
  *
  * 中文备注：
  * - Skill 是"用户安装的能力扩展"，属于应用配置而非用户文档，因此放在 AppData 而非 Workspace Root；
@@ -738,48 +728,12 @@ export function getSkillsPath(): string {
   return getAndCreateSubDirectory('skills');
 }
 
-/**
- * 占位：生成工作区迁移计划（仅返回会涉及的路径，不执行操作）
- */
-export type WorkspaceMigrationPlan = {
-  sourceRoot: string;
-  targetRoot: string;
-  items: string[];
-};
-
-export function prepareWorkspaceMigration(targetRoot: string): WorkspaceMigrationPlan {
-  const sourceRoot = getWorkspaceRoot();
-  const plan: WorkspaceMigrationPlan = {
-    sourceRoot,
-    targetRoot,
-    items: [
-      'ResourceLibrary',
-      'ManagedAssets',
-      'DocumentMedia',
-      'AudioRecordings',
-      'Uploads',
-      'Models',
-      path.join('KnowledgeBase'),
-    ],
-  };
-  return plan;
-}
-
-/**
- * 占位：执行工作区迁移（当前未实现，后续由 UI 触发并展示进度）
- */
-export async function performWorkspaceMigration(_targetRoot: string): Promise<void> {
-  console.warn('[PATH] performWorkspaceMigration is a placeholder and not implemented yet.');
-  throw new Error('Workspace migration UI/logic not implemented yet.');
-}
-
 // 导出 pathManager 对象：作为历史代码的聚合入口（避免到处改 import）
 export const pathManager = {
   getProjectRoot,
   getAppDataPath,
   getWorkspaceRoot,
   setWorkspaceRoot,
-  hasCustomWorkspaceRoot,
   resetWorkspaceRootToDefault,
   getDocumentsPath,
   getResourceLibraryPath,
@@ -818,6 +772,4 @@ export const pathManager = {
   getConversationToolOutputBlobsPath,
   getConversationToolOutputBlobDirPath,
   getSkillsPath,
-  prepareWorkspaceMigration,
-  performWorkspaceMigration,
 };

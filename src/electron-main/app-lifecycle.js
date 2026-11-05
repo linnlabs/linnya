@@ -40,7 +40,7 @@ import {
 import { resolveAppServerBundleDirectory } from '../app-hosts/linnya/app-server-runtime/functions/resolveAppServerBundleDirectory.ts';
 import { createHostProcessEnvironment } from '../infra/adapters/command-runtime/environment/index.ts';
 import { createNodeEventLoopResponsivenessMonitor } from '../infra/observability/event-loop/index.ts';
-import { installRuntimePathRoots } from '../shared/runtime-paths/index.ts';
+import { installRuntimePathRoots, resolveProductionDataRoot } from '../shared/runtime-paths/index.ts';
 import { installDistributionIdentity } from '../shared/distribution-identity/index.ts';
 import { resolveElectronDistributionIdentity } from './distribution/index.ts';
 import { resolveAppVersion } from './app-lifecycle/functions/resolveAppVersion.ts';
@@ -85,7 +85,13 @@ const runtimePathRoots = installRuntimePathRoots(resolveBackendRuntimePathRoots(
     ? path.join(process.resourcesPath, 'app.asar.unpacked')
     : process.cwd(),
   userDataDirectory: app.getPath('userData'),
-  documentsDirectory: app.getPath('documents'),
+  productionDataRoot: resolveProductionDataRoot({
+    platform: process.platform,
+    userDataDirectory: app.getPath('userData'),
+    homeDirectory: app.getPath('home'),
+    localAppDataDirectory: process.env.LOCALAPPDATA,
+    xdgDataHome: process.env.XDG_DATA_HOME,
+  }),
   developmentMode: process.env.LINNYA_DEV_MODE === 'true',
   workspaceRootOverride: process.env.LINNYA_WORKSPACE_DIR,
   developmentInstanceRootOverride: process.env.LINNYA_DEV_INSTANCE_ROOT,

@@ -280,8 +280,9 @@ function openNodeDatabase(options = {}) {
 function resolveConversationWorkDirectory(conversationId) {
   const digest = createHash('sha256').update(conversationId, 'utf8').digest('hex');
   return join(
+    // 正式布局（LINNYA_DEV_MODE=false）下 AppData 是 macOS 的 userData/Workspace。
     userDataRoot,
-    'AIService',
+    'Workspace',
     'ConversationWorkDirectories',
     'v1',
     'workspaces',
@@ -319,7 +320,7 @@ function seedConversations(projectId) {
       const relativeResourcePath = `${sha256.slice(0, 2)}/${sha256}.png`;
       const localPath = join(
         userDataRoot,
-        'AIService',
+        'Workspace',
         'ConversationAttachments',
         'v2',
         'stores',
