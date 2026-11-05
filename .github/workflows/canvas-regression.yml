@@ -78,6 +78,13 @@ jobs:
       - name: Compare DOM and bitmap content on macOS and Windows
         if: runner.os != 'Linux'
         run: node packages/plugins/canvas/dev/probes/run-visual-probe.mjs
+      - name: Verify identity and overview label pixels on Linux
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' && steps.linux-display.outcome == 'success' && steps.linux-sandbox.outcome == 'success' }}
+        # 身份牌与远景标签是独立像素门；前面的视觉失败仍须保留本门原件。
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 node packages/plugins/canvas/dev/probes/run-identity-atlas-probe.mjs
+      - name: Verify identity and overview label pixels on macOS and Windows
+        if: ${{ !cancelled() && runner.os != 'Linux' && steps.dependencies.outcome == 'success' }}
+        run: node packages/plugins/canvas/dev/probes/run-identity-atlas-probe.mjs
       - name: Diagnose Linux large-cluster paint lifecycle independently
         if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' && steps.linux-display.outcome == 'success' && steps.linux-sandbox.outcome == 'success' }}
         # 单例诊断保留失败现场；不替代上面的六组计数，也不提供硬件性能资格。
@@ -104,6 +111,8 @@ jobs:
             _dev_data/canvas-deterministic-counts-probe/index.html
             _dev_data/canvas-visual-probe/*.json
             _dev_data/canvas-visual-probe/*.png
+            _dev_data/canvas-identity-atlas-probe/*.json
+            _dev_data/canvas-identity-atlas-probe/*.png
             _dev_data/canvas-worker-smoke/*.json
             _dev_data/canvas-worker-smoke/*.png
             _dev_data/canvas-paint-diagnostic/*.json
