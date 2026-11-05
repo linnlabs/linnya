@@ -14,6 +14,6 @@
 
 异步插图可调用 `captureInsertion()` 保存一个随正文事务映射的插入锚点，准备完成后一次插入结构化节点。替换正文或销毁表面会取消未完成锚点，不能把迟到的图片插入下一份文档。`insertContent` 与锚点插入都先做同源严格 schema 校验。`resolveImageSource` 只把持久 src 投影为临时可显示地址，NodeView 不改 JSON；图片身份继续由调用方的资产归属与提交事务拥有。
 
-外层视口可通过可选`onNavigate`接收正文内捏合/Cmd滚轮与空格/中键拖动意图。普通滚动停留在正文内，拖动不转移焦点或结束编辑。Space正常输入立即发生；仅在真实拖动超过3屏幕像素时，把这次按住Space产生的事务步骤映射穿过后续输入后反转，不调用全局undo、不替换整个文档、不延迟键盘输入。重复Space、替换选区和Markdown输入规则属于该次输入；IME开始、切卡、只读切换与销毁会释放临时手势。
+外层视口可通过可选`onNavigate`接收正文内捏合/Cmd滚轮与空格/中键拖动意图。普通滚动停留在正文内，拖动不转移焦点或结束编辑。Space正常输入立即发生；仅在真实拖动达到3屏幕像素时，把这次按住Space产生的事务步骤映射穿过后续输入后反转，不调用全局undo、不替换整个文档、不延迟键盘输入。重复Space、替换选区和Markdown输入规则属于该次输入；平移开始后，本次仍按住的Space默认输入被取消，直到Space松开，先松鼠标也不恢复重复输入。未达到拖动阈值的长按仍正常输入；IME开始、切卡、只读切换与销毁会释放临时手势。
 
 按键/指针状态参考[tldraw input handling](https://tldraw.dev/sdk-features/input-handling)，正文内部使用ProseMirror公开Step/Mapping处理位置，插件合同不暴露Editor或ProseMirror对象。

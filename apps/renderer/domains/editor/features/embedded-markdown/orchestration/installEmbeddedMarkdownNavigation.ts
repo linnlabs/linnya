@@ -5,7 +5,8 @@ import type { createEmbeddedMarkdownSpaceInput } from './createEmbeddedMarkdownS
 export function installEmbeddedMarkdownNavigation(options: { readonly element: HTMLElement; readonly editor: Editor; readonly space: ReturnType<typeof createEmbeddedMarkdownSpaceInput>; readonly navigate: (intent: EmbeddedMarkdownNavigationIntent) => void }) {
   const { element, editor, space, navigate } = options;
   let active: { readonly pointer: number; readonly x: number; readonly y: number; lastX: number; lastY: number; moved: boolean } | null = null;
-  const cancel = () => { const gesture = active; active = null; space.reset(); if (gesture && element.hasPointerCapture(gesture.pointer)) element.releasePointerCapture(gesture.pointer); };
+  const endPointer = () => { const gesture = active; active = null; if (gesture && element.hasPointerCapture(gesture.pointer)) element.releasePointerCapture(gesture.pointer); };
+  const cancel = () => { endPointer(); space.reset(); };
   const down = (event: PointerEvent) => {
     if (!(space.held && event.button === 0 || event.button === 1) || editor.view.composing) return;
     event.preventDefault(); event.stopPropagation();
@@ -18,9 +19,17 @@ export function installEmbeddedMarkdownNavigation(options: { readonly element: H
     if (!gesture.moved) { space.revert(editor.view); gesture.moved = true; }
     navigate({ kind: 'pan', dx: event.clientX - gesture.lastX, dy: event.clientY - gesture.lastY }); gesture.lastX = event.clientX; gesture.lastY = event.clientY;
   };
-  const up = (event: PointerEvent) => { if (event.pointerId !== active?.pointer) return; event.preventDefault(); event.stopPropagation(); cancel(); };
+  const up = (event: PointerEvent) => { if (event.pointerId !== active?.pointer) return; event.preventDefault(); event.stopPropagation(); endPointer(); };
   const wheel = (event: WheelEvent) => { if (!event.ctrlKey && !event.metaKey) return; event.preventDefault(); event.stopPropagation(); navigate({ kind: 'zoom', clientX: event.clientX, clientY: event.clientY, deltaY: event.deltaY }); };
-  const keyDown = (event: KeyboardEvent) => { if (event.isComposing) return; if (event.code === 'Space') space.hold(); if (event.key === 'Escape' && active) { event.preventDefault(); event.stopPropagation(); cancel(); } };
+  const keyDown = (event: KeyboardEvent) => {
+    if (event.isComposing) return;
+    if (event.code === 'Space') {
+      space.hold();
+      // 先取消原生默认输入，避免回滚之后的长按重复继续产生新的正文事务。
+      if (space.consumed) { event.preventDefault(); event.stopPropagation(); }
+    }
+    if (event.key === 'Escape' && active) { event.preventDefault(); event.stopPropagation(); cancel(); }
+  };
   const keyUp = (event: KeyboardEvent) => { if (event.code === 'Space') space.reset(); };
   element.addEventListener('pointerdown', down, true); element.addEventListener('pointermove', move, true); element.addEventListener('pointerup', up, true); element.addEventListener('pointercancel', cancel);
   element.addEventListener('wheel', wheel, { passive: false, capture: true }); element.addEventListener('compositionstart', cancel);

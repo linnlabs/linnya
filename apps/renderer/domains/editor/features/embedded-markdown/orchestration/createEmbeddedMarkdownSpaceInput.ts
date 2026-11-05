@@ -7,11 +7,12 @@ import { revertEmbeddedMarkdownSpaceInput } from '../functions/revertEmbeddedMar
 import { appendEmbeddedMarkdownMapping } from '../functions/appendEmbeddedMarkdownMapping';
 
 export function createEmbeddedMarkdownSpaceInput() {
-  let held = false, awaiting: Node | null = null;
+  let held = false, consumed = false, awaiting: Node | null = null;
   const inputs: EmbeddedMarkdownSpaceInput[] = [];
-  const reset = () => { held = false; awaiting = null; inputs.length = 0; };
+  const reset = () => { held = false; consumed = false; awaiting = null; inputs.length = 0; };
   return {
     get held() { return held; },
+    get consumed() { return consumed; },
     hold() { held = true; }, reset,
     capture(view: EditorView, text: string) { awaiting = held && !view.composing && text === ' ' ? view.state.doc : null; return false; },
     record(transaction: Transaction) {
@@ -21,6 +22,8 @@ export function createEmbeddedMarkdownSpaceInput() {
       awaiting = null;
     },
     revert(view: EditorView) {
+      // 平移消费的是本次按住Space的整段输入；鼠标先松开也不能让其重复按键重新写入正文。
+      consumed = held;
       const transaction = revertEmbeddedMarkdownSpaceInput(view.state, inputs); awaiting = null; inputs.length = 0;
       if (transaction) view.dispatch(transaction);
     },
