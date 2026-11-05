@@ -70,6 +70,8 @@ metadata:
 - grid支持`--columns 3`；layered使用ELK分层。方向为`--direction right|down`。
 - 未指定scope代表整张画布。整理新增卡时明确写它们的ref/ID，避免挪动原卡。
 - apply末尾也可放一个arrange，elementIds可含本批ref；新增、连接与排布仍一次原子提交。
+- 批量新增后需要局部排布时，优先把arrange放在同批末尾，并用elementIds明确本批ref。500条限制按原始CLI动作计算，arrange本身算一条；例如300次add加一次arrange共301条，布局展开的坐标更新仍在同一事务内。
+- 不带布局的大批新增可能沿默认空位搜索形成长横排；“显示全部”受最小缩放约束，未必能同时展示全部卡。新增与局部布局同批提交可避免这种暂态长横排。
 - groups是二维ID/ref数组，每组直接是一个数组，例如`[["$a","$b"],["$c"]]`，不是带elementIds或columns的对象数组；columns对整次grid生效。groups只把多个集合分开排，不建立二阶段的分组实体。锁定/编辑中的位置不会被挪动。
 
 ## 用户确认与撤回

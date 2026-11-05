@@ -2,6 +2,8 @@
 
 一批最多500个原始动作；临时ref以`$`和字母开头。字段严格校验，未知字段不会被忽略。
 
+arrange算一个原始动作，其展开的坐标更新不另占原始动作配额。300次add加末尾一次arrange共301个动作，可在同一事务中新增并整理本批ref，避免先保存长横排再单独排布。局部排布仍须显式限定新卡的elementIds，保留旧卡位置。
+
 | op | 主要字段 |
 | --- | --- |
 | add | text，或type=document+document，或type=image+file；可选ref/near/after/in/side/width/color |

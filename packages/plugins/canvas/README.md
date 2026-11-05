@@ -93,6 +93,8 @@ Renderer只读降级同时关闭编辑器、插图锚点、拖动/缩放、菜�
 
 布局与检查在独立 Node worker 内执行，ELK 仅进入计算 worker 制品。取消、关闭视图和停用插件会终止未提交计算；最终提交保留已完成事实。新卡预测ID在进入事务前反绑本批临时名字，因此其他来源先分配同号卡也不会改错对象。期间尺寸改变、锁定、编辑声明及新增障碍按最新内容复核；布局只平移实际成功的目标组，不移动用户新增卡。
 
+CLI每批最多500个原始动作；末尾arrange计一个动作，展开的坐标更新仍与新增、连接共用一次原子提交，不受另一份500条展开更新限制。批量新增并整理时，elementIds明确限定本批ref，避免先提交默认空位搜索产生的长横排；“显示全部”保持最小2%缩放，不能保证这种长横排全部进入视口。
+
 布局 `diagnostics` 描述本次计算窗口；命中正式请求回执时返回空诊断数组，提交序号、分配ID和逐操作结果仍复用原回执，不重新测量或运行布局。
 
 Standalone `entry.command` 只提供 read/show/find/neighbors/region/check/receipt，显式指定 `--project`，可传 `--database`，用只读连接消费相同查询规则；receipt还需显式 `--conversation`。help 不加载原生数据库；该制品不装配写入协调器、Agent审批或历史运行态，groups只在App facade提供。Agent facade 拒绝上述独立宿主参数；修改和render使用App，render继续复用已注册的正式 Hidden Worker。
