@@ -14,3 +14,4 @@ export {
 } from './registry/conversationReferenceProviderRegistry';
 export { useComposerReferences } from './orchestration/useComposerReferences';
 export { prepareComposerReferences } from './orchestration/prepareComposerReferences';
+export { prepareComposerReferencesForSubmit } from './orchestration/prepareComposerReferencesForSubmit';

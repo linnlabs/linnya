@@ -179,6 +179,7 @@ Accessory 或插件贡献点。它读取正式 `user_input.metadata.context_usag
 - **插件**通过 `RendererPluginContribution.conversationInput`（`PluginConversationInputContribution`，仅 `referenceKinds` + `referenceProviders` + 运行期 `accessories`）声明，由 runtime loader 自动注册 / 失败回滚 / 禁用卸载，**镜像 `toolCards` 范式但不逐行照抄**。
 - **激活事务**：登记时只保存声明；`activate` 前事务注册 kind / provider / accessory，但统一叠加 active gate，异步 activate 期间保持不可用（active gate 必须显式订阅 renderer registry revision，不能只闭包读非响应式 Set）。`activate` 失败立即回滚全部输入贡献；`deactivate` 只有在插件自身清理成功后才清该插件未发送的 draft references 并注销注册，失败则维持原 active 事实。禁用后 contribution 声明留在 registry，重新启用无需再次 import 插件入口。
 - **状态归属**：composer reference 状态在 feature 自有 store（`composer-references/store`），避免生命周期窄入口反向加载整个 assistant / workspace / AI 聚合链。
+- **发送前准备失败**：保留草稿和所有引用，不回退旧正文、不启动发送；通过既有 client-notices 呈现安全的 `reference_preparation_failed` 原因。准备期固定会话及 Workspace 草稿身份，切换后的取消或晚到失败不能写入新输入。
 
 ---
 

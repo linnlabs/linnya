@@ -6,7 +6,7 @@ export const ConversationClientNoticeCommandSchema = z.object({
   observed_at: z.number().finite().nonnegative(),
   error_kind: z.enum(['connection', 'http', 'projection', 'control', 'validation', 'annotation', 'unknown']),
   operation: z.enum(['send', 'continue', 'pause', 'cancel', 'load', 'annotation', 'select_agent', 'validate']),
-  reason_code: z.enum(['missing_project', 'legacy_research_unavailable', 'missing_conversation', 'missing_message', 'agent_choice_not_saved', 'missing_context']).optional(),
+  reason_code: z.enum(['missing_project', 'legacy_research_unavailable', 'missing_conversation', 'missing_message', 'agent_choice_not_saved', 'missing_context', 'reference_preparation_failed']).optional(),
   http_status: z.number().int().min(400).max(599).optional(),
 }).strict();
 export type ConversationClientNoticeCommand = z.infer<typeof ConversationClientNoticeCommandSchema>;
