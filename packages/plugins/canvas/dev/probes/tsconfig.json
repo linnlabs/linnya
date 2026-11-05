@@ -21,7 +21,8 @@
     "./__tests__/visualTextOracle.test.ts",
     "./__tests__/visualDocumentVector.test.ts",
     "./__tests__/visualDiagnostic.test.ts",
-    "./__tests__/visualSampling.test.ts"
+    "./__tests__/visualSampling.test.ts",
+    "./__tests__/canvasTitleInk.test.ts"
   ],
   "exclude": []
 }
