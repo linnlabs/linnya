@@ -19,7 +19,7 @@ metadata:
 - 查询使用 `workspace:/目录/文件.canvas`。操作 JSON、图片输入使用相对于本次对话初始物理工作目录的路径或 `conversation:/`；不接受绝对物理路径。
 - `write_file`只写Workspace文档，不创建会话物理文件。Workspace与Shell工作目录不自动同步，不能把虚拟路径当作已存在的输入文件。
 - 不传数据库路径、项目ID、对话ID、批准标志、任意输出目录。身份与权限由 Host 提供。
-- Shell 返回 completed 仍须检查 `data.terminal.process_exit`；0 为成功，8 为 Canvas 参数或业务错误。
+- Shell 控制首行 `command_control.terminal` 的 `outcome=exited`、`exitCode=0` 只表示进程正常退出；还须完整读取 CLI JSON 判断操作结果，8 为 Canvas 参数或业务错误。completed 不等于业务成功，管道最后一个进程退出0也可能掩盖前段CLI失败。
 - stdout 只有 JSON。长命令若返回 process handle，用 process 等待；不要重复发新写请求。
 - apply、arrange及其dry-run的完整JSON响应是逐项判断与修正的依据。不要先用管道过滤stdout；需要摘要时先保留完整响应，再解释结果。失败响应也要保留，不能只记录成功回执。
 
@@ -28,12 +28,15 @@ metadata:
 1. read_file 读取画布概览；或 `linnya-canvas read workspace:/讨论.canvas`。
 2. 全文修改前用 `show <画布路径> <cN>` 读取目标卡，记住其 revision。大画布概览会截断正文。
 3. 用 shell 在默认的本次对话物理工作目录创建 UTF-8 JSON 操作数组，按当前终端支持的写文件语法保存，再调用 apply。输入路径始终从该初始目录解析；若 shell 已 `cd` 到子目录，`--ops-file` 仍须包含从初始目录开始的子目录前缀，例如 `batches/action-001.json`，也可写 `conversation:/batches/action-001.json`。每批最多500个原始动作。
-4. 检查每项 applied/skipped 与原因。被锁定、正在编辑或字段版本过期的内容会保留。
-5. 必要时 check 检查重叠、交叉与离群；render 查看真实画面。不要把启发提示当成事实错误。
+4. 批量新增、排布或使用不熟悉的动作时，先 dry-run 并检查完整响应；通过后 apply 提交同一份文件，arrange 沿用同一组参数。修改载荷或参数后重新预检，避免把旧预测用于新的操作。
+5. 检查每项 applied/skipped 与原因。被锁定、正在编辑或字段版本过期的内容会保留。
+6. 必要时 check 检查重叠、交叉与离群；render 查看真实画面。不要把启发提示当成事实错误。
 
 支持读图的模型在完成画布创建、编辑或排布任务前，应 render 并用 read_file 查看最终状态；仅生成图片不等于看过图片。用户拒绝写入后也要据实际保留的画面核对结果，不能把待确认方案当成已完成。无法读图时说明这一限制，不声称已做视觉检查。
 
 依据文档建图时，结论须忠于所连来源；推断和假设明确标出，不把相关性改写成因果或首要原因。批量卡片各自承担不同信息，不用仅改编号的重复句或空占位凑节点。
+
+基于来源续写或写对白时，遵守既定角色关系、当时已知信息和事件先后；可以创作不冲突的草稿细节，不把后续事件写成已经发生。任务要求当前或截至某日的联网现状时，核对该时点的真实覆盖范围，区分发布时间、事实生效时间与查阅时间；历史公告、计划或示例不能直接当作目标时点的完整覆盖证据。覆盖缺口继续检索，确实无法补齐则明确说明未完成。
 
 ## 写入
 
@@ -44,6 +47,7 @@ metadata:
 - 若输出经过管道筛选或响应丢失，用`receipt <画布路径> <原request-id>`只读查询原始回执；不要换新ID再写一次来猜是否成功。提交回执保留逐项结果，不能用当前画面代替；查不到回执也不能证明原请求未尝试或未失败。
 - `--dry-run` 校验、真实测高并给出预测，不写入；正式ID与位置以提交回执为准。
 - 新卡用 `$name` 临时ref互相引用，提交后用回执refs取得真实cN/eN。不要猜下一个ID。
+- 操作判别字段是op，update/delete/disconnect用id指定已有对象；其余字段按[操作与示例](references/operations.md)和[可解析数组](references/examples.json)填写，不套用其他画布API的action/target字段。
 - 文字写Markdown；只选颜色white/red/orange/yellow/green/cyan/purple；不写坐标、字体或色值。
 - 新增只找空位，不挪动既有卡。near/after/in用于附近定位，side可right/left/top/bottom。
 - parentId预留分组，**不是树父子**。树父子通过connect表达。
