@@ -18,7 +18,7 @@ The 0.1.0 desktop release bundles Slides. Mindmap and experimental Decision sour
 
 Linnya Slides is the first open-source AI presentation system that draws high-fidelity slides from code and exports them as genuinely editable PPTX. It maintains a readable, iteratable `deck.js` source, compiles it into PowerPoint objects, and keeps preview and export on the same document model. This is not HTML-to-PPT or image-to-PPT.
 
-![A four-slide presentation created with Linnya Slides](docs/media/slides-showcase.png)
+![Six presentations created with Linnya Slides](docs/media/slides-showcase.jpg)
 
 ## What is in this repository
 
