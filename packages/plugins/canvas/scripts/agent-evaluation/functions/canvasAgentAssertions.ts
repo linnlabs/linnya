@@ -6,7 +6,9 @@ import { architectureDependencies, architectureModules } from './createCanvasAge
 export function assertion(rule: string, passed: boolean, detail: string): CanvasAgentAssertion { return { rule, passed, detail }; }
 export function cards(snapshot: CanvasSnapshot): CanvasCard[] { return snapshot.elements.filter((element): element is CanvasCard => element.type !== 'edge'); }
 export function linked(snapshot: CanvasSnapshot, from: string, to: string): boolean {
-  return snapshot.elements.some(element => element.type === 'edge' && element.from.kind === 'card' && element.from.cardId === from && element.to.kind === 'card' && element.to.cardId === to);
+  // 正式forward箭头在to端；none无箭头、both多出反向语义，均不能满足任务明确要求的A→B。
+  // 曲直、虚实与固定边只影响显示；反转由交换完整from/to表达，不能按卡片位置猜方向。
+  return snapshot.elements.some(element => element.type === 'edge' && element.direction === 'forward' && element.from.kind === 'card' && element.from.cardId === from && element.to.kind === 'card' && element.to.cardId === to);
 }
 export function originalCardsUnchanged(run: CanvasAgentEvaluationRun, positionalOnly = false): boolean {
   const after = new Map(run.after.elements.map(element => [element.id, element]));

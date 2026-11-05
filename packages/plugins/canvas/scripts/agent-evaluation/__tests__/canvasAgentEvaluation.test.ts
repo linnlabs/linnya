@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
-import { CanvasCommandSchema, createCanvasPlainTextDocument, readCanvasElementText, type CanvasSnapshot } from '../../../src/shared';
+import { CanvasCommandSchema, createCanvasPlainTextDocument, readCanvasElementText, type CanvasPatch, type CanvasSnapshot } from '../../../src/shared';
 import { checkCanvas } from '../../../src/backend/features/canvasQuery';
 import { planCanvasCommit, type CanvasCommitState } from '../../../src/backend/features/canvasCommit';
-import { createCanvasAgentFixture } from '../functions/createCanvasAgentFixture';
+import { architectureDependencies, architectureModules, createCanvasAgentFixture } from '../functions/createCanvasAgentFixture';
 import { evaluateCanvasAgentRun } from '../functions/evaluateCanvasAgentRun';
 import { summarizeCanvasAgentRuns } from '../functions/summarizeCanvasAgentRuns';
 
@@ -33,6 +33,47 @@ function reviewedResearchGraph() {
   });
   const review = { approved: true, reviewer: 'research reviewer', notes: '逐一核对所有发现和组织卡的语义、去重及来源', taskFacts: { taskId: 'T2', organizationCards } };
   return { after, review, run: { ...evidence('T2', snapshot(empty), after), review } };
+}
+function directedTaskGraph(taskId: 'T5' | 'T6') {
+  const names = taskId === 'T5' ? [...architectureModules] : createCanvasAgentFixture('T6').documents[0].text.split('\n').slice(1);
+  const dependencies = taskId === 'T5' ? architectureDependencies.map(([from, to]) => [architectureModules.indexOf(from), architectureModules.indexOf(to)])
+    : names.slice(1).map((_, index) => [index, index + 1]);
+  const operations = [
+    ...names.map((name, index) => CanvasCommandSchema.parse({ op: 'addText', ref: `$node${index}`, width: 240, height: 120,
+      x: taskId === 'T5' ? (names.length - index) * 280 : Math.floor(index / 4) * 600, y: taskId === 'T5' ? 0 : index % 4 * 180,
+      content: createCanvasPlainTextDocument(name) })),
+    ...dependencies.map(([from, to]) => CanvasCommandSchema.parse({ op: 'connect', from: `$node${from}`, to: `$node${to}` })),
+  ];
+  const plan = planCanvasCommit({ state: empty, operations, actor, origin: taskId, claims: [], now: 2 });
+  const after = snapshot(plan.state), edge = after.elements.find(element => element.type === 'edge');
+  if (!edge || edge.from.kind !== 'card' || edge.to.kind !== 'card') throw new Error('Missing directed task card endpoints');
+  const from = edge.from, to = edge.to;
+  const run = evidence(taskId, snapshot(empty), after);
+  return { run, edge, from, to, update(patch: CanvasPatch) {
+    const changed = planCanvasCommit({ state: plan.state, actor, origin: 'change-edge', claims: [], now: 3,
+      operations: [CanvasCommandSchema.parse({ op: 'update', id: edge.id, baseRevision: edge.revision, patch })] });
+    const next = snapshot(changed.state);
+    return { ...run, after: next, check: checkCanvas(next) };
+  } };
+}
+for (const [taskId, rule] of [['T5', 'exact-dependencies'], ['T6', '12-ordered-scenes']] as const) {
+  it(`${taskId}实际单向箭头保留依赖或场景顺序，样式与固定边不改变方向`, () => {
+    const graph = directedTaskGraph(taskId);
+    expect(evaluateCanvasAgentRun(graph.run).failures).toEqual([]);
+    for (const lineStyle of ['curve', 'straight'] as const) for (const linePattern of ['solid', 'dashed'] as const) {
+      const after = graph.update({ lineStyle, linePattern, from: { ...graph.from, side: 'left' }, to: { ...graph.to, side: 'right' } });
+      expect(evaluateCanvasAgentRun(after).failures).toEqual([]);
+    }
+  });
+  it.each(['none', 'both'] as const)(`${taskId}不能把同一对卡的%s线当成要求的有向线`, direction => {
+    const graph = directedTaskGraph(taskId);
+    expect(evaluateCanvasAgentRun(graph.update({ direction })).failures).toContainEqual(expect.objectContaining({ rule }));
+  });
+  it(`${taskId}交换完整端点会反向，不能按卡片位置或线型猜成正确方向`, () => {
+    const graph = directedTaskGraph(taskId);
+    expect(evaluateCanvasAgentRun(graph.update({ from: graph.edge.to, to: graph.edge.from, lineStyle: 'straight', linePattern: 'dashed' })).failures)
+      .toContainEqual(expect.objectContaining({ rule }));
+  });
 }
 it('T2只排除明确审定的组织卡，18条真实发现仍逐一检查来源，漏线不能被当作标题忽略', () => {
   const { after, review, run } = reviewedResearchGraph();
