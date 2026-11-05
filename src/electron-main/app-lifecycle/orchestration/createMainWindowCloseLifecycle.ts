@@ -17,20 +17,33 @@ export function createMainWindowCloseLifecycle(
   async function closeOnce(intent: MainWindowCloseIntent): Promise<MainWindowCloseOutcome> {
     // 安装更新前，更新入口已经列出全部运行中任务并取得确认（含确认后新出现的任务）；
     // 这里再问一次只会让用户对同一件事回答两遍。
-    if (intent === 'install_update') {
-      await ports.prepareRendererForClose();
-      return 'ready_to_quit';
-    }
-    const currentActivity = ports.hasExecutingCommands();
-    const hasExecutingCommands = typeof currentActivity === 'boolean'
-      ? currentActivity
-      : await currentActivity;
-    if (hasExecutingCommands) {
-      const decision = await ports.requestExecutingCommandsDecision(intent);
-      if (decision === 'return') return 'kept_open';
+    if (intent === 'ordinary_exit' && !ports.isBackendUnavailable()) {
+      let hasExecutingCommands = false;
+      try {
+        const currentActivity = ports.hasExecutingCommands();
+        hasExecutingCommands = typeof currentActivity === 'boolean'
+          ? currentActivity
+          : await currentActivity;
+      } catch (error: unknown) {
+        // RPC 超时不等于 Backend 已退出；只有监督器确认退出时才无需询问活动状态。
+        if (!ports.isBackendUnavailable()) {
+          const decision = await ports.requestPreparationFailureDecision({ stage: 'activity_query', intent, error });
+          if (decision === 'return') return 'kept_open';
+        }
+      }
+      if (hasExecutingCommands) {
+        const decision = await ports.requestExecutingCommandsDecision(intent);
+        if (decision === 'return') return 'kept_open';
+      }
     }
 
-    await ports.prepareRendererForClose();
+    try {
+      await ports.prepareRendererForClose();
+    } catch (error: unknown) {
+      // 已退出的 Backend 也可能让文档保存失败，不能以“无任务”为由静默丢弃未保存修改。
+      const decision = await ports.requestPreparationFailureDecision({ stage: 'renderer_save', intent, error });
+      if (decision === 'return') return 'kept_open';
+    }
     return 'ready_to_quit';
   }
 

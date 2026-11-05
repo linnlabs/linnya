@@ -7,7 +7,7 @@ adapter 不读取 PATH、不使用 `process.execPath` fallback，也不认识 El
 启动它的 Desktop Main 或 CLI Runtime 是唯一 process owner。正常退出先发 `shutdown` 并等待确认；parent 消失时 child 通过 pipe 和 bootstrap parent identity 进入同一收口。stdout 只解析有界控制帧，普通日志从 stderr 上报；Command stdout/PTY 不经过此 adapter。
 
 `waitForExit()` 只在 `start()` 后可用，并返回真实 code、signal 与是否由宿主 shutdown 发起。CLI Runtime
-用它把运行期 child 崩溃投影为失败；正常 shutdown 仍以业务 owner 的收口屏障为准，不能只看进程消失。
+用它把运行期 child 崩溃投影为失败；Desktop App owner 用它维护关闭/更新所需的已退出事实。正常 shutdown 仍以业务 owner 的收口屏障为准，不能只看进程消失。
 正常 shutdown 还要求 child 以退出码 0 自然结束；收到业务 ACK 后仍需信号终止的进程不能报告成功。
 启动管道只在真实 `spawn` 后写入；启动失败与正常退出都以 `close` 收口，保留原始启动错误，
 不让不存在的 executable/cwd 再产生未捕获 EPIPE 或无限等待退出。

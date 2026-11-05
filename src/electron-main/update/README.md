@@ -26,6 +26,8 @@
 
 `install({ confirmedActivityKeys })` 先读取 App Server 活动快照（前台 Agent 运行、执行中的命令、知识库导入）。出现确认时没有的任务 key 就返回 `confirmation_required`，Renderer 列出任务让用户选择“暂停任务并更新”或“暂不更新”；确认后再次请求，期间新出现的任务会重新询问。确认后先暂停 Agent 运行（重启后可在原对话继续），再交给 App shutdown owner 保存文档、收口资源并以 `restart` 模式 handoff。普通退出时的顺带安装（`install_on_exit`，不重新打开）也由 shutdown owner 决定，见 [App 生命周期](../app-lifecycle/README.md)。
 
+只有 App owner 已确认 Backend 退出时才提供空活动快照；查询超时等失败返回明确的安装失败，不能假装无任务跳过确认。保存失败交由同一关闭确认框处理，用户返回时保持窗口和已下载状态；明确放弃未保存修改后才继续原有收口链。
+
 macOS 需要在“应用程序”文件夹中运行才能原地替换，否则不下载并提示移动。Squirrel.Mac 在 handoff 后才取包校验签名，失败时不会退出，handoff 设有 90 秒兜底退出，旧版本保持可用。
 
 下载完成时把目标版本写入 `config.json` 的 `appUpdate.pendingInstallVersion`；下次启动若已是该版本，Renderer 显示一次“已更新到 x.y.z”。

@@ -82,6 +82,26 @@ describe('Node App Server process supervisor', () => {
     expect(stderr.join('')).toContain('fixture-rpc-handler-aborted');
   });
 
+  it('真实 child 运行期被强杀时报告意外退出，随后的 shutdown 不再请求已死 Backend', async () => {
+    const supervisor = createNodeAppServerProcessSupervisor({
+      launch: {
+        executablePath: process.execPath,
+        entryPath: fixturePath,
+        workingDirectory: repositoryRoot,
+        environment: collectTestEnvironment(),
+        bootstrapBytes: encodeAppServerBootstrap(createBootstrap()),
+      },
+      rpcHandlers: new Map([
+        ['desktop.fixture.echo', () => ({ acknowledged: true })],
+      ]),
+    });
+    const identity = await supervisor.start();
+    process.kill(identity.pid, 'SIGKILL');
+    await expect(supervisor.waitForExit()).resolves.toMatchObject({ expected: false });
+    await expect(supervisor.request('backend.fixture.echo', null)).rejects.toThrow('已经退出');
+    await expect(supervisor.shutdown()).resolves.toBeUndefined();
+  });
+
   it('业务已确认关停但仍需终止残留 child 时，不得报告正常退出', async () => {
     const supervisor = createNodeAppServerProcessSupervisor({
       launch: {

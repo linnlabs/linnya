@@ -65,6 +65,28 @@ async function requestExecutingCommandsCloseDecision() {
   return result.response === 1 ? 'stop_and_close' : 'return';
 }
 
+async function requestClosePreparationFailureDecision({ stage, intent, error }) {
+  console.error(`[Main Process] 关闭准备失败 (${stage}):`, error);
+  const targetWindow = readLiveMainWindow();
+  const options = {
+    type: 'warning',
+    title: stage === 'activity_query' ? '无法确认运行中的任务' : '文档保存未完成',
+    message: stage === 'activity_query' ? '无法确认有没有正在运行的任务，仍要退出吗？' : '当前修改未能保存，仍要继续吗？',
+    detail: stage === 'activity_query'
+      ? '退出将停止当前任务及其全部子进程。你可以返回后重试。'
+      : '继续将丢失尚未保存的修改。你可以返回后重试保存。',
+    buttons: ['返回', intent === 'install_update' ? '仍要重启更新' : '仍要退出'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  };
+  // Cmd+Q 也可能发生在窗口已销毁后，此时由 App 级对话框承接同一退出决定。
+  const result = targetWindow
+    ? await dialog.showMessageBox(targetWindow, options)
+    : await dialog.showMessageBox(options);
+  return result.response === 1 ? 'close_anyway' : 'return';
+}
+
 function prepareRendererForClose() {
   const targetWindow = readLiveMainWindow();
   if (!targetWindow || targetWindow.webContents.isDestroyed()) {
@@ -104,8 +126,10 @@ function installWindowCloseProtocol() {
 }
 
 function configureMainWindowCloseLifecycle({
+  isBackendUnavailable = () => false,
   hasExecutingCommands,
   requestExecutingCommandsDecision = requestExecutingCommandsCloseDecision,
+  requestPreparationFailureDecision = requestClosePreparationFailureDecision,
   requestShutdown = async () => {
     const result = await prepareMainWindowForAppShutdown('ordinary_exit');
     if (result === 'ready_to_quit') {
@@ -122,9 +146,11 @@ function configureMainWindowCloseLifecycle({
   canAcceptWindowRequest = canAcceptWindowRequests;
   readWindowClosePermission = isWindowClosePermitted;
   mainWindowCloseLifecycle = createMainWindowCloseLifecycle({
+    isBackendUnavailable,
     hasExecutingCommands,
     // 生产默认使用上面的 native dialog；显式 port 只让真实 Electron E2E 确定性驱动同一关闭链。
     requestExecutingCommandsDecision,
+    requestPreparationFailureDecision,
     prepareRendererForClose,
   });
 }

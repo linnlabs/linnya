@@ -135,6 +135,8 @@ export function initialize() {
   mainEventLoopResponsiveness.start();
   
   let appServerRuntime;
+  // 此事实只由 supervisor 的真实退出通知写入，RPC 超时不能把仍存活的任务视为已结束。
+  let appServerExited = false;
   const appShutdownLifecycle = createAppShutdownLifecycle({
     prepareAppShutdown: prepareMainWindowForAppShutdown,
     commitWindowClosePermission: permitMainWindowCloseForAppShutdown,
@@ -175,6 +177,7 @@ export function initialize() {
 
   // 关闭确认使用动态后端引用，因此生命周期可以在启动初期就接管菜单退出和重开窗口闸门。
   configureMainWindowCloseLifecycle({
+    isBackendUnavailable: () => appServerExited,
     hasExecutingCommands: async () => (
       appServerRuntime
         ? (await appServerRuntime.activity.read()).hasExecutingCommands
@@ -189,7 +192,7 @@ export function initialize() {
   initializeAppUpdates({
     distributionIdentity,
     currentVersion: applicationVersion,
-    readActivityPort: () => appServerRuntime?.activity,
+    readActivityPort: () => appServerExited ? undefined : appServerRuntime?.activity,
     requestInstall: () => appShutdownLifecycle.requestInstallUpdate(),
   });
   
@@ -348,7 +351,12 @@ export function initialize() {
         backendStderrSink: process.stderr,
         onAsyncFailure: error => logger.error('[App Server] 异步 Desktop RPC 失败', error),
       });
-      appServerIdentity = await appServerRuntime.start();
+      const startup = appServerRuntime.start();
+      void appServerRuntime.process.waitForExit().then(exit => {
+        appServerExited = true;
+        if (!exit.expected) logger.error('[App Server] 后台进程意外退出', exit);
+      });
+      appServerIdentity = await startup;
       logger.info('✅ [APP-LIFECYCLE] STEP 1 (END) | App Server ready.', {
         pid: appServerIdentity.pid,
         apiPort: appServerIdentity.apiPort,
