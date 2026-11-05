@@ -8,6 +8,8 @@
 
 UI 仅呈现消息列表中的无背景文字。文案通过 [error-surface](../error-surface/README.md) 的公开函数统一选择：明确的业务原因直接显示操作指引；其余提示说明失败操作，再补充已知原因或重试建议。HTTP 状态用于解释权限、限流、超时等原因，原因未知时不猜测网络或模型故障。
 
+发送前引用读取失败由 composer-references 的 `prepareComposerReferencesForSubmit` 报告为 `send / reference_preparation_failed`，明确说明消息未发送、草稿和引用仍保留；不回退加入引用时的旧正文。准备开始时固定草稿身份，切换项目、草稿或会话后的取消及晚到失败不归入新输入，也不为错误提前创建 Conversation。
+
 来源和错误记录自身的投递状态只保留在 metadata / outbox 中，不把“客户端报告”“尚未同步”或 HTTP 编号拼进错误正文，避免让用户误认为是消息或任务状态。本地、已接纳和历史重载使用相同文案。错误不进入对话内容/模型上下文，不据此宣称 Agent 已暂停或恢复，也不宣称错误记录已经同步。原始 Provider body、凭据、stack 不进入 API 或本地持久 outbox。
 
 历史窗口读取失败由 message-window 持有当前状态，不创建持久 notice；成功接纳或下一次请求时清除。旧版本已保存的 `operation=load` 记录仍可内部读取，但在统一消息可见性规则和本地 outbox 展示中隐藏，不计入空态内容，不修改数据库或分页游标。

@@ -139,7 +139,7 @@
 
 <script setup lang="ts">
 import { registerComposerInputFocus } from '../features/composer-focus';
-import { captureConversationClientNotice } from '../features/client-notices';
+import { captureConversationClientNotice, currentClientNoticeDraftKey } from '../features/client-notices';
 import { computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { Editor as TiptapEditor, EditorContent } from '@tiptap/vue-3';
 import type { Content, Editor as TiptapCoreEditor } from '@tiptap/core';
@@ -204,7 +204,7 @@ import {
   projectConversationInformation,
   useContextWindowUsagePresentation,
 } from '../features/context-window-usage';
-import { prepareComposerReferences } from '../features/composer-references';
+import { prepareComposerReferencesForSubmit } from '../features/composer-references';
 import { useHistoryListStore } from '../history/store/historyListStore';
 import { useUIStore } from '../../../shared/stores/ui';
 import {
@@ -665,7 +665,7 @@ const handleSubmit = async () => {
   const preparation = new AbortController();
   referencePreparation = preparation;
   try {
-    const preparedReferences = await prepareComposerReferences({
+    const preparedReferences = await prepareComposerReferencesForSubmit({
       references: conversationReferencesSnapshot,
       conversationId, projectId,
       signal: preparation.signal,
@@ -675,6 +675,7 @@ const handleSubmit = async () => {
         && composerReferences.references.value.length === conversationReferencesSnapshot.length
         && composerReferences.references.value.every((reference, index) => reference.id === conversationReferencesSnapshot[index]?.id),
     });
+    if (preparedReferences === null) return;
     const userQuotePayload = buildUserQuotePayloadFromConversationReferences(preparedReferences);
     const extensionSubmitPayload: ConversationInputExtensionSubmitPayload = {
       text: message,
@@ -747,7 +748,10 @@ watch(
 );
 
 watch(isInputDisabled, syncEditorEditable);
-watch(() => assistantStore.activeConversationId, () => referencePreparation?.abort());
+watch(
+  () => [assistantStore.activeConversationId, currentClientNoticeDraftKey()],
+  () => referencePreparation?.abort(),
+);
 
 watch(activeInputExtension, (nextExtension, previousExtension) => {
   if (previousExtension && previousExtension.id !== nextExtension?.id) {
