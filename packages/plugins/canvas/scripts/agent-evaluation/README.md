@@ -24,7 +24,7 @@ T2的12至18条计数针对发现，不把总标题和支持/反对分组说明�
 
 attempts的phase明确区分dry-run预检与write正式写入。首写指标只取第一个write；只有预检而没有正式写入不能算通过。预检没有request-id时如实记录null，正式write必须保留真实ID。两阶段因格式或语义失败而改载荷重提的真实修正都计入correctionRetries，预检成功、重复检查坐标和同请求网络重放本身不算修正。
 
-看图组controls.imageReadSequence必须来自实际Agent render→attached image read的配对事实，并等于after.sequence；看过旧版本后继续改图，必须再看最终版本，旧图不能证明最终画布质量。无此事实时填null并保持未验收。
+看图组controls.imageReadSequence必须来自同一实际Agent run先render、后成功read_file读取该conversation locator的配对事实，并等于after.sequence。attachment_status为attached或already_attached均表示图片在当前run上下文可用：前者为本次附加，后者由正式Host确认相同内容的附件仍在working history中；该指标不代表Provider新增消费。not_delivered不算。看过旧版本后继续改图，必须读取最终render返回的locator，不能只取旧render/read配对冒充最终检查。无此事实时填null并保持未验收。
 
 T13分开记录模型端到端耗时、Worker内布局P50、后端提交到包含变化帧的P95、相邻帧P95/最慢帧及平均fps。300新卡局部布局按<=500档要求Worker P50<=200ms；提交到画面P95<=300ms，上限档平均>=45fps/最慢帧<=50ms。9/17ms是Agent更新目标及回归基线，须另报，不能以50ms绝对门槛取代。不能用工具总耗时替代Worker耗时，也不能用共享CI或模型推理时长冒充固定真机性能。
 

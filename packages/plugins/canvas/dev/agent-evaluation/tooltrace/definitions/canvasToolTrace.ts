@@ -93,6 +93,7 @@ export const CanvasToolTraceFactsSchema = z
       z
         .object({
           locator: z.string(),
+          attachmentStatus: z.enum(['attached', 'already_attached']),
           renderToolCallId: z.string(),
           toolCallId: z.string(),
           sourceFile: z.string(),

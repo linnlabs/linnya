@@ -8,14 +8,15 @@ import { readLiteralCanvasCommands } from './readLiteralCanvasCommands';
 import { recordCanvasTraceResponse } from './recordCanvasTraceResponse';
 import { admitCanvasTraceResponse } from './admitCanvasTraceResponse';
 import { readAmbiguousCanvasResponseKinds } from './readAmbiguousCanvasResponseKinds';
-const attachedImage = z.object({
+const availableImage = z.object({
   source_kind: z.literal('conversation_file'),
   locator: z.string(),
   content_type: z.string().startsWith('image/'),
-  attachment_status: z.literal('attached'),
+  attachment_status: z.enum(['attached', 'already_attached']),
 });
 function recordImageRead(context: CanvasTraceContext, data: unknown) {
-  const image = attachedImage.safeParse(data);
+  // 去重是正式 Host 对当前 run 上下文的确认；不重复附加不代表没有收到图片。
+  const image = availableImage.safeParse(data);
   if (!image.success) return;
   const render = [...context.facts.renders]
     .reverse()
@@ -28,6 +29,7 @@ function recordImageRead(context: CanvasTraceContext, data: unknown) {
   if (render)
     context.facts.imageReads.push({
       locator: image.data.locator,
+      attachmentStatus: image.data.attachment_status,
       renderToolCallId: render.toolCallId,
       toolCallId: context.toolCallId,
       sourceFile: context.sourceFile,

@@ -393,6 +393,7 @@ it('实际读图必须对应先前的同工具render，保留最后读图序号�
   });
   source.facts.imageReads.push({
     locator: 'conversation:/image-1.png',
+    attachmentStatus: 'attached',
     renderToolCallId: 'render-1',
     toolCallId: 'read-1',
     sourceFile: 'messages.json',
@@ -433,6 +434,7 @@ it('实际读图必须对应先前的同工具render，保留最后读图序号�
   ).toBe(false);
   source.facts.imageReads.push({
     locator: 'conversation:/missing-render.png',
+    attachmentStatus: 'attached',
     renderToolCallId: 'missing',
     toolCallId: 'read-unknown',
     sourceFile: 'messages.json',
