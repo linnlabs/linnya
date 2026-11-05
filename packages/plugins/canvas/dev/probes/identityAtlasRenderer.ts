@@ -9,6 +9,7 @@ import { createCanvasCardTextureCaches } from '../../src/renderer/kernel/render/
 import { CanvasMapLabels } from '../../src/renderer/kernel/render/pixi/CanvasMapLabels';
 import { createCanvasPerformancePaintTrace } from './performancePaintTrace';
 import { collectCanvasTitleBoundaryPixels } from './identityTitleBoundaryRenderer';
+import { readCanvasVisualSampling } from './visualSampling';
 
 const strings = ['中文身份牌：春江花月夜', 'office affinity ffi AV', 'e\u0301 A\u030a 组合附加符',
   '👨‍👩‍👧‍👦 🇨🇳 👍🏽 ❤️', 'العَرَبِيَّةُ لا سلام', 'नमस्ते दुनिया क्ष', '日本語かなカナ 한글', '末行边界　（）【】'];
@@ -30,7 +31,7 @@ async function pixels(resolution: number, zoom: number) {
     atlas.flush(resolution); app.render();
     const reference = await app.renderer.extract.base64({ target: app.stage, frame: new Rectangle(0, 0, 600, 800), resolution });
     const image = await app.renderer.extract.base64({ target: app.stage, frame: new Rectangle(640, 0, 600, 800), resolution });
-    return { resolution, zoom, strings, reference, image, stats: atlas.readStats() };
+    return { resolution, applicationResolution: app.renderer.resolution, zoom, strings, reference, image, stats: atlas.readStats() };
   } finally { atlas.destroy(); app.destroy(true, { children: true, texture: false }); }
 }
 
@@ -84,7 +85,8 @@ async function lifecycle() {
 
 async function contextRestoration() {
   const host = document.createElement('div'); host.style.cssText = 'width:360px;height:240px'; document.body.append(host);
-  const kernel = await createPixiCanvasKernel({ host, width: 360, height: 240, resolution: 2 });
+  // 静态身份牌质量沿正式capture合同保留2x；软件interactive的1x降级由原visual/counts另验。
+  const kernel = await createPixiCanvasKernel({ host, width: 360, height: 240, resolution: 2, renderingMode: 'capture' });
   try {
     kernel.setElements(createVisibleUpdateFixture('text').slice(0, 1));
     const wait = async (ready: () => boolean, code: string) => {
@@ -105,13 +107,14 @@ async function contextRestoration() {
     if (!rejected) throw new Error('identity_lost_context_capture_was_not_rejected');
     extension.restoreContext();
     await wait(() => kernel.readRenderStatus().phase === 'ready' && kernel.readStats().renders > initial.renders, 'identity_context_restore_draw_missing');
-    return { before, image: await kernel.captureImage('png'), initial, restored: kernel.readStats(), rejected };
+    return { before, image: await kernel.captureImage('png'), initial, restored: kernel.readStats(), rejected,
+      dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'capture') };
   } finally { kernel.destroy(); host.remove(); }
 }
 
 async function hiddenLod() {
   const host = document.createElement('div'); host.style.cssText = 'width:360px;height:240px'; document.body.append(host);
-  const kernel = await createPixiCanvasKernel({ host, width: 360, height: 240, resolution: 2 });
+  const kernel = await createPixiCanvasKernel({ host, width: 360, height: 240, resolution: 2, renderingMode: 'capture' });
   try {
     const text = createVisibleUpdateFixture('text')[0], image = CanvasImageCardSchema.parse({ ...text, id: 'c2', type: 'image', x: 110,
       data: { assetId: 'identity-lod-probe', alt: '图片身份牌', caption: '', crop: null } });
@@ -121,7 +124,7 @@ async function hiddenLod() {
     // 同一低倍率的pan走非style路径，也不能重新打开已经隐藏的身份牌。
     kernel.setCamera({ x: 21, y: 21, zoom: 0.1 }); await kernel.captureImage('png'); const panned = kernel.readStats();
     kernel.setElements([]); await kernel.captureImage('png'); const cleared = kernel.readStats();
-    return { visible, small, panned, cleared, smallImage };
+    return { visible, small, panned, cleared, smallImage, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'capture') };
   } finally { kernel.destroy(); host.remove(); }
 }
 

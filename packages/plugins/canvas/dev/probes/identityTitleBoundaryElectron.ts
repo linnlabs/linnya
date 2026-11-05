@@ -4,7 +4,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import { MapLabelPlacementEvidenceSchema } from './mapLabelPlacementDefinitions';
 import { canvasTitleInkMinimumIou, compareCanvasTitleInk } from './visualOracle/compareCanvasTitleInk';
-import { assertVisualImageSampling } from './visualSampling';
+import { CanvasVisualSamplingSchema, assertVisualImageSampling } from './visualSampling';
 
 function checkedCrop(image: Electron.NativeImage, region: { x: number; y: number; width: number; height: number }) {
   const size = image.getSize();
@@ -18,7 +18,7 @@ function checkedCrop(image: Electron.NativeImage, region: { x: number; y: number
 export async function verifyCanvasTitleBoundaryPixels(contents: { executeJavaScript(code: string): Promise<unknown> }, output: string) {
   const cases = z.array(z.object({ kind: z.string(), expected: z.string(), image: z.string(), reference: z.string(), mode: z.enum(['alpha', 'ink']),
     region: z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() }), stats: z.object({ bitmaps: z.number(), renders: z.number(), identityEntries: z.number() }).optional(),
-    labelPlacement: MapLabelPlacementEvidenceSchema.optional() }))
+    sampling: CanvasVisualSamplingSchema.optional(), labelPlacement: MapLabelPlacementEvidenceSchema.optional() }))
     .parse(await contents.executeJavaScript('window.canvasTitleBoundaryPixels()'));
   const reports = [];
   for (const entry of cases) {
@@ -30,8 +30,14 @@ export async function verifyCanvasTitleBoundaryPixels(contents: { executeJavaScr
     if (images && entry.labelPlacement) {
       await writeFile(path.join(output, `${entry.kind}-kernel-raw.png`), images.raw.toPNG());
       await writeFile(path.join(output, `${entry.kind}-missing-column-negative.png`), images.negative.toPNG());
-      await writeFile(path.join(output, `${entry.kind}-sampling.json`), JSON.stringify(entry.labelPlacement.sampling, null, 2));
-      for (const image of [actual, expected, images.raw, images.negative]) assertVisualImageSampling({ ...image.getSize(), pixels: image.toBitmap() }, entry.labelPlacement.sampling);
+    }
+    const sampling = entry.labelPlacement ? entry.labelPlacement.sampling : entry.sampling;
+    if (entry.mode === 'ink' && !sampling) throw new Error(`identity_title_capture_sampling_missing:${entry.kind}`);
+    if (sampling) {
+      await writeFile(path.join(output, `${entry.kind}-sampling.json`), JSON.stringify(sampling, null, 2));
+      for (const image of images ? [actual, expected, images.raw, images.negative] : [actual, expected])
+        assertVisualImageSampling({ ...image.getSize(), pixels: image.toBitmap() }, sampling);
+      if (sampling.mode !== 'capture' || sampling.resolution !== 2) throw new Error(`identity_title_capture_quality_mismatch:${entry.kind}`);
     }
     if (actual.getSize().width !== expected.getSize().width || actual.getSize().height !== expected.getSize().height) throw new Error('title_boundary_capture_size_mismatch');
     const a = checkedCrop(actual, entry.region), b = checkedCrop(expected, entry.region);
@@ -56,7 +62,7 @@ export async function verifyCanvasTitleBoundaryPixels(contents: { executeJavaScr
         || facts.stats.sceneTransitions || facts.stats.cameraTransition) throw new Error(`map_placement_pixels_or_missing_column_oracle_failed:${entry.kind}`);
     }
     const report = { kind: entry.kind, expected: entry.expected, region: entry.region, actualSize: actual.getSize(), referenceSize: expected.getSize(),
-      ...ink, stats: entry.stats, placement };
+      ...ink, stats: entry.stats, sampling, placement };
     reports.push(report); await writeFile(path.join(output, `${entry.kind}-pixels.json`), JSON.stringify(report, null, 2));
     if (!ink.union || report.iou < canvasTitleInkMinimumIou || (entry.stats && (entry.stats.bitmaps || !entry.stats.renders || entry.stats.identityEntries !== 1))) throw new Error(`title_boundary_grapheme_pixels_changed:${entry.kind}`);
   }
