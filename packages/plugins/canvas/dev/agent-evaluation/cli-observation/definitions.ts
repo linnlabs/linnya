@@ -29,6 +29,14 @@ export interface CanvasCliObservationBuild extends CanvasCliObservationProvenanc
   readonly evidenceDirectory: string;
 }
 
+export interface CanvasCliObservationPreparation {
+  readonly productionPluginDirectory: string;
+  readonly outputDirectory: string;
+  readonly evidenceDirectory: string;
+  readonly productionSourceRevision: string;
+  readonly observationSourceRevision: string;
+}
+
 export interface CanvasCliObservation {
   start(input: CliPreparationInput): number;
   ready(id: number): void;
