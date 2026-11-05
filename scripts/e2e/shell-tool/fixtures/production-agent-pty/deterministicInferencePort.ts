@@ -211,7 +211,7 @@ export function createDeterministicAgentPtyInferencePort(input: {
           id: SUBMIT_TOOL_CALL_ID,
           name: 'process',
           arguments: {
-            process_handle: processHandle,
+            process_handle: requireProcessHandle(),
             action: { type: 'submit', input: input.submittedValue },
           },
           nextPhase: 'submit_result',
@@ -241,7 +241,7 @@ export function createDeterministicAgentPtyInferencePort(input: {
           id: SUBMIT_TOOL_CALL_ID,
           name: 'process',
           arguments: {
-            process_handle: processHandle,
+            process_handle: requireProcessHandle(),
             action: { type: 'submit', input: input.submittedValue },
           },
           nextPhase: 'submit_result',
@@ -280,7 +280,7 @@ export function createDeterministicAgentPtyInferencePort(input: {
           id: RESIZE_TOOL_CALL_ID,
           name: 'process',
           arguments: {
-            process_handle: processHandle,
+            process_handle: requireProcessHandle(),
             action: { type: 'resize', columns: 100, rows: 31 },
           },
           nextPhase: 'resize_result',
@@ -319,7 +319,7 @@ export function createDeterministicAgentPtyInferencePort(input: {
           id: EOF_TOOL_CALL_ID,
           name: 'process',
           arguments: {
-            process_handle: processHandle,
+            process_handle: requireProcessHandle(),
             action: { type: 'eof' },
           },
           nextPhase: 'eof_result',
@@ -367,8 +367,8 @@ export function createDeterministicAgentPtyInferencePort(input: {
           id: TERMINAL_REPLAY_TOOL_CALL_ID,
           name: 'process',
           arguments: {
-            process_handle: processHandle,
-            action: { type: 'poll', cursor: observationCursor },
+            process_handle: requireProcessHandle(),
+            action: { type: 'poll', cursor: requireObservationCursor() },
           },
           nextPhase: 'terminal_replay_result',
         });

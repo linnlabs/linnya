@@ -38,10 +38,22 @@ import { resetOutlinePresence } from '../features/outline/store/useOutlineRuntim
 export async function loadDocumentFromDatabase({ editor, stores, documentId, documentName, throwIfCancelled }) {
   const { fileStore, notificationStore, annotationStore: annotationStoreRef } = stores;
   const editorDocumentSettings = useEditorDocumentSettingsStore();
+  const scheduleCharacterCount = () => {
+    const idle = typeof requestIdleCallback === 'function' ? requestIdleCallback : setTimeout;
+    idle(() => {
+      if (!editor.isDestroyed && fileStore.currentFilePath === documentId) {
+        editorDocumentSettings.setCharacterCount(countTextUnitsZhEn(editor.getText()));
+      }
+    });
+  };
   const session = beginMarkdownDocumentSession(editor, documentId, {
     setDirty: dirty => fileStore.setDirty(dirty),
     reportError: error => notificationStore.show(error instanceof Error ? error.message : String(error), 'error', 0),
-    onSnapshotInstalled: () => annotationStoreRef.value?.loadAnnotations(),
+    onSnapshotInstalled: () => {
+      annotationStoreRef.value?.loadAnnotations();
+      // 原子安装快照不触发输入 update；接受/拒绝修订和刷新也须同步展示字数。
+      scheduleCharacterCount();
+    },
     // 每次完整快照都使用同一安装策略，刷新/提交后也不能瞬间水合整个大文档。
     loadBaseline: document => {
       const content = document.toJSON();
@@ -66,12 +78,6 @@ export async function loadDocumentFromDatabase({ editor, stores, documentId, doc
   markPerf('load:end');
   measurePerf('load:start', 'load:end', 'totalLoadMs');
   finalizeOpenPerf();
-  const idle = typeof requestIdleCallback === 'function' ? requestIdleCallback : setTimeout;
-  idle(() => {
-    if (!editor.isDestroyed && fileStore.currentFilePath === documentId) {
-      editorDocumentSettings.setCharacterCount(countTextUnitsZhEn(editor.getText()));
-    }
-  });
 }
 
 /**

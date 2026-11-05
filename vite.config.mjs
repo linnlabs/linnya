@@ -13,7 +13,7 @@ const rendererAliases = projectRendererViteAliases(
   import.meta.dirname,
   'vite',
 )
-const workspacePluginRendererOptimizeDependencies =
+const workspaceRendererOptimizeDependencies =
   discoverWorkspaceRendererOptimizeDependencies(import.meta.dirname)
 
 const RENDERER_VENDOR_CHUNKS = [
@@ -217,19 +217,10 @@ export default defineConfig(() => {
       'prosemirror-dropcursor',
       'prosemirror-gapcursor',
       'prosemirror-tables',
-      // stream-markdown-parser 的依赖
-      'markdown-it-footnote',
-      'markdown-it-ins',
-      'markdown-it-mark',
-      'markdown-it-sub',
-      'markdown-it-sup',
-      'markdown-it-task-checkbox',
-      'markdown-it-container',
-      'markdown-it-ts',
       'pinia',
       'vue',
-      // 具体插件依赖由 owner 的 package metadata 声明；Host 不保存插件实现清单。
-      ...workspacePluginRendererOptimizeDependencies,
+      // workspace package 依赖由 owner 的 package metadata 声明；Host 不保存插件实现清单。
+      ...workspaceRendererOptimizeDependencies,
     ],
     preserveSymlinks: true,
     esbuildOptions: {

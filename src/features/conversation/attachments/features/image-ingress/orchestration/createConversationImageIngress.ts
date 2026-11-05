@@ -163,7 +163,7 @@ export async function createConversationImageIngress(params: {
     const committed: CommittedConversationImageFile = {
       ...verified,
       uri: identity.uri,
-      localPath: identity.localPath,
+      storagePath: identity.storagePath,
     };
     record.committed = committed;
     return committed;

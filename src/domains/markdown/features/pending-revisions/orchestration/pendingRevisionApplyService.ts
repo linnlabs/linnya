@@ -1,4 +1,5 @@
 import { createDefaultMarkdownDocument } from '../../document-lifecycle';
+import { importPendingMarkdownRootBlock } from './importPendingMarkdownRootBlock';
 import { hydrateMarkdownDocumentImages } from '../../image-content';
 import { readPendingMarkdownImage, type MarkdownImageAttrs } from '@app/schemas';
 import { prepareEditorRevisionCommit, remainingRevisionMetadata, finalizeResolvedRevisionBaseline, promotePendingInserts } from '../functions/prepareEditorRevisionCommit';
@@ -94,6 +95,10 @@ export class PendingRevisionApplyService {
       ? await this.prepareAcceptReplacements(baseline, selected)
       : new Map<string, PreparedPendingReplacement>();
 
+    if (decision?.mode === 'resolve' && decision.remainingMarkdown !== null) {
+      await importPendingMarkdownRootBlock(decision.remainingMarkdown, this.importer);
+    }
+
     return this.markdownService.runInTransaction(() => {
       const version = this.markdownService.getLatestVersion(request.documentId);
       if (!version) throw new Error('Document version missing');
@@ -184,9 +189,9 @@ export class PendingRevisionApplyService {
       return createEmptyRootBlock(params.preserveId, params.oldRoot);
     }
 
-    const imported = await this.importer(params.markdown);
-    let docJson = imported.docJson;
-    if (!docJson) throw new Error(`Pending Markdown 解析未返回正文: blockId=${params.preserveId}`);
+    const imported = await importPendingMarkdownRootBlock(params.markdown, this.importer);
+    if (!imported) throw new Error(`Pending Markdown 解析未返回正文: blockId=${params.preserveId}`);
+    let docJson: MarkdownDocJson = { type: 'doc', content: [imported] };
     docJson = hydrateMarkdownDocumentImages(docJson, new Map(params.image ? [[params.image.id, params.image]] : []));
 
     if (params.citationHydration || params.citationLinkHydration) {
@@ -197,14 +202,7 @@ export class PendingRevisionApplyService {
       );
     }
 
-    const blocks = docJson.content.filter((node): node is MarkdownRootBlockJson =>
-      isRootBlock(node)
-    );
-    if (blocks.length !== 1) {
-      throw new Error(`Pending 必须对应一个 rootBlock，实际为 ${blocks.length}: blockId=${params.preserveId}`);
-    }
-
-    const root = blocks[0];
+    const [root] = docJson.content.filter(isRootBlock);
     const replacement = restorePendingListSpacing(params.oldRoot, root, params.listSeparatorBefore);
     return mergeRootBlockAttrs(params.oldRoot ?? root, replacement, params.preserveId);
   }

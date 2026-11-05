@@ -204,6 +204,19 @@ export interface ConversationControlToolCatalogPort {
   describe(
     toolNames: readonly ConversationControlToolName[]
   ): readonly ConversationControlToolDescriptor[];
+  /** 复用工具 owner 的参数准入，非法参数须在模型能力和 Flow 副作用之前返回。 */
+  validateArguments(
+    toolName: ConversationControlToolName,
+    args: Readonly<Record<string, unknown>>
+  ): { readonly success: boolean; readonly error?: string };
+  /**
+   * 按工具正式声明（参数决定的动态要求优先于静态要求）判断这次调用是否需要模型接收工具结果中的图片。
+   * CLI 工具调用不运行模型，无法核对模型能力。
+   */
+  requiresModelInput(
+    toolName: ConversationControlToolName,
+    args: Readonly<Record<string, unknown>>
+  ): boolean;
 }
 
 export interface ConversationControlUseCasePorts {

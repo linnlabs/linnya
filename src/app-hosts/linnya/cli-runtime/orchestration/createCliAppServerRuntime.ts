@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { resolveDevelopmentInstancePaths } from '../../../../shared/runtime-paths';
 import { CONVERSATION_CONTROL_CONNECTION_FILE_ENV, CONVERSATION_CONTROL_CONNECTION_FILE_NAME } from '@app/schemas';
 import { bootstrapDevEnv } from '../../../../infra/adapters/development-environment/functions/bootstrapDevEnv';
 
@@ -42,13 +43,15 @@ export async function createCliAppServerRuntime(
 ): Promise<CliAppServerRuntime> {
   const environment = { ...input.processEnvironment };
   bootstrapDevEnv({ isPackaged: false, developmentRoot: input.developmentRoot, environment });
-  const profileRoot = path.join(input.developmentRoot, '_dev_electron');
+  const { profileRoot } = resolveDevelopmentInstancePaths(
+    input.developmentRoot, environment.LINNYA_DEV_INSTANCE_ROOT,
+  );
   const runtimePathRoots = resolveBackendRuntimePathRoots({
     developmentRoot: input.developmentRoot,
     // profile 是内部运行数据，不能把整个源码 checkout 误列为受保护的 profile。
     userDataDirectory: profileRoot,
-    documentsDirectory: input.developmentRoot,
     developmentMode: true,
+    developmentInstanceRootOverride: environment.LINNYA_DEV_INSTANCE_ROOT,
     workspaceRootOverride: input.workspaceRootOverride ?? environment.LINNYA_WORKSPACE_DIR,
   });
   const mainBundleDirectory = resolveAppServerBundleDirectory({

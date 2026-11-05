@@ -2,6 +2,8 @@ export interface ManagedImageStoragePaths {
   readonly managedRoot: string;
   readonly stagingRoot: string;
   readonly contentRoot: string;
+  /** contentRoot 相对 AppData Root 的持久路径，是 `assets.local_path` 的前缀。 */
+  readonly contentStoragePath: string;
 }
 
 export interface ManagedImageWritableStoragePaths extends ManagedImageStoragePaths {

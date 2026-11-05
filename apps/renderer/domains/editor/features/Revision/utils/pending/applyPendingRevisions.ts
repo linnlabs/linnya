@@ -24,6 +24,7 @@ import { batchApplyInsertPendingRevisions } from './insertPendingRevisionApplier
 import { planPendingExecutionBatches } from './pendingBatchPlanner'
 import { applyChartPendingItems, partitionChartPendingRevisions } from './chart'
 import { applyImagePendingItems, partitionImagePendingRevisions } from './imagePendingRevision'
+import { applyMaterializedAtomicPendingItems, partitionMaterializedAtomicPendingRevisions } from './materializedAtomicPendingRevision'
 import { infoRevisionDebug, shouldLogRevisionDebug } from '../revisionDebugLogging'
 
 export interface ApplyPendingRevisionsPerfHooks {
@@ -137,10 +138,11 @@ export async function applyPendingRevisionsToEditor(
     partitionChartPendingRevisions(editor.state.doc, parsedRevisions)
   )
   const images = await partitionImagePendingRevisions(editor.state.doc, others)
-  const batches = measureStage(perfHooks, 'plan', () => planPendingExecutionBatches(images.others))
+  const atomic = await partitionMaterializedAtomicPendingRevisions(editor.state.doc, images.others)
+  const batches = measureStage(perfHooks, 'plan', () => planPendingExecutionBatches(atomic.others))
 
   await measureStageAsync(perfHooks, 'apply', async () => {
-    for (const detail of [...applyChartPendingItems(editor, chartItems), ...applyImagePendingItems(editor, images.imageItems)]) {
+    for (const detail of [...atomic.failures, ...applyChartPendingItems(editor, chartItems), ...applyImagePendingItems(editor, images.imageItems), ...applyMaterializedAtomicPendingItems(editor, atomic.items)]) {
       result.details.push(detail)
       if (detail.success) {
         result.successIds.push(detail.id)

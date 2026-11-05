@@ -1,4 +1,5 @@
 import os from 'node:os';
+import { resolveDevelopmentInstancePaths } from '../../../../src/shared/runtime-paths';
 import type { SourceCheckoutIdentity } from '../../../../src/shared/runtime-paths/definitions/sourceCheckoutIdentity';
 import { resolveCliSourceCheckout } from './resolveCliSourceCheckout';
 import path from 'node:path';
@@ -14,7 +15,10 @@ export function resolveConnectionFile(
 ): string {
   const override = environment[CONVERSATION_CONTROL_CONNECTION_FILE_ENV]?.trim();
   if (override) return path.resolve(override);
-  if (sourceCheckout) return path.join(sourceCheckout.root, '_dev_electron', 'runtime', CONVERSATION_CONTROL_CONNECTION_FILE_NAME);
+  if (sourceCheckout) {
+    const { profileRoot } = resolveDevelopmentInstancePaths(sourceCheckout.root, environment.LINNYA_DEV_INSTANCE_ROOT);
+    return path.join(profileRoot, 'runtime', CONVERSATION_CONTROL_CONNECTION_FILE_NAME);
+  }
   return path.join(
     homeDirectory,
     '.linnya',

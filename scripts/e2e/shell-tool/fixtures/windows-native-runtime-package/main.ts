@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 
 import { app } from 'electron';
+import { requireFixtureAbsolutePath } from '../../harness/requireFixtureEnvironment';
 import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/adapters/local-process-runtime/production-runtime';
 
 import {
@@ -17,18 +18,11 @@ import {
 } from '../../../../../src/infra/adapters/local-process-runtime/windows/functions/loadWindowsOwnedPipeNativeBinding';
 import { createWindowsJobOwnedPipeProcessLauncher } from '../../../../../src/infra/adapters/local-process-runtime/windows';
 
-const RESULT_PATH = process.env.LINNYA_WINDOWS_NATIVE_RUNTIME_RESULT_PATH;
-const RUN_ROOT = process.env.LINNYA_WINDOWS_NATIVE_RUNTIME_RUN_ROOT;
+const RESULT_PATH = requireFixtureAbsolutePath('LINNYA_WINDOWS_NATIVE_RUNTIME_RESULT_PATH');
+const RUN_ROOT = requireFixtureAbsolutePath('LINNYA_WINDOWS_NATIVE_RUNTIME_RUN_ROOT');
 declare const LINNYA_EXPECTED_WINDOWS_NATIVE_RUNTIME_VERSION: string;
 
 const EXPECTED_OUTPUT = 'packaged-native-runtime-ok';
-
-if (!RESULT_PATH || !path.isAbsolute(RESULT_PATH)) {
-  throw new Error('LINNYA_WINDOWS_NATIVE_RUNTIME_RESULT_PATH must be absolute');
-}
-if (!RUN_ROOT || !path.isAbsolute(RUN_ROOT)) {
-  throw new Error('LINNYA_WINDOWS_NATIVE_RUNTIME_RUN_ROOT must be absolute');
-}
 
 function publishResult(value: unknown): Promise<void> {
   const pendingPath = `${RESULT_PATH}.${process.pid}.pending`;

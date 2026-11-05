@@ -8,6 +8,7 @@ export {
 } from './functions/admitPendingCitationHydration';
 export { insertPendingRootBlock, removePendingRootBlock } from './functions/pendingRootBlockMutations';
 export { PendingRevisionApplyService } from './orchestration/pendingRevisionApplyService';
+export { importPendingMarkdownRootBlock } from './orchestration/importPendingMarkdownRootBlock';
 export type {
   MarkdownImporter,
 } from './definitions/pendingRevisionApply';

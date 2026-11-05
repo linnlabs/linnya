@@ -149,11 +149,7 @@ import {
 } from 'src/shared/utils/pathManager';
 import { createConversationImageIngress } from 'src/features/conversation/attachments/features/image-ingress';
 import type { ConversationImageIngressPort } from 'src/features/conversation/attachments/features/image-ingress';
-import {
-  createConversationAttachmentStoragePaths,
-  createLegacyAppConversationAttachmentStoragePaths,
-  createLegacyWorkspaceImageStoragePaths,
-} from 'src/features/conversation/attachments/shared/storage-paths';
+import { createConversationAttachmentStoragePaths } from 'src/features/conversation/attachments/shared/storage-paths';
 import { createWorkspaceLlmImageResolver } from 'src/features/workspace/assets/features/llm-image-resolution';
 import { createWorkspaceImagePreview } from 'src/features/workspace/assets/features/image-preview';
 import type { WorkspaceImagePreviewPort } from 'src/features/workspace/assets/features/image-preview';
@@ -551,15 +547,9 @@ export async function configureRoutes(
       appDataRoot,
       managedImageStoreId
     );
-    const legacyAppAttachmentPaths = createLegacyAppConversationAttachmentStoragePaths(appDataRoot);
-    const legacyAttachmentPaths = createLegacyWorkspaceImageStoragePaths(workspaceRoot);
     const verifiedImageLoader = createWorkspaceVerifiedImageLoader({
       db,
-      storageBoundaries: [
-        { boundaryRoot: appDataRoot, contentRoot: attachmentPaths.contentRoot },
-        { boundaryRoot: appDataRoot, contentRoot: legacyAppAttachmentPaths.contentRoot },
-        { boundaryRoot: workspaceRoot, contentRoot: legacyAttachmentPaths.contentRoot },
-      ],
+      storage: { appDataRoot, contentRoot: attachmentPaths.contentRoot },
       maxImagePixels: LINNYA_FLOW_IMAGE_INGRESS_POLICY.maxImagePixels,
     });
     imagePreview = createWorkspaceImagePreview({ verifiedImageLoader });
@@ -826,11 +816,7 @@ export async function configureRoutes(
           'v1',
           CONVERSATION_WORK_DIRECTORY_CONTENT_DIRECTORY
         ),
-        attachmentRoots: [
-          attachmentPaths.managedRoot,
-          legacyAppAttachmentPaths.managedRoot,
-          legacyAttachmentPaths.managedRoot,
-        ],
+        attachmentRoots: [attachmentPaths.managedRoot],
         diagnosticLogRoot: path.join(workspaceRoot, 'logs'),
         artifactsRoot: path.join(workspaceRoot, 'Artifacts', 'v1'),
       }),

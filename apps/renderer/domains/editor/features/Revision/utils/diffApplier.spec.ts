@@ -111,7 +111,7 @@ describe('buildInsertedInlineNodes', () => {
           type: 'inlineLatex',
           latexSource: 'E=mc^2',
           textRepresentation: '$E=mc^2$',
-          attrs: { latexSource: 'E=mc^2' }
+          attrs: { id: 'inline-latex-1', latexSource: 'E=mc^2' }
         }
       },
       [revisionMark]
@@ -126,5 +126,8 @@ describe('buildInsertedInlineNodes', () => {
         marks: [{ type: 'revisionMark', attrs: expect.any(Object) }]
       }
     ])
+    // parser 编的 inline-latex-N 不是编辑器身份，新增公式由编辑器生成 id。
+    expect(nodes[0]?.attrs.id).toEqual(expect.any(String))
+    expect(nodes[0]?.attrs.id).not.toBe('inline-latex-1')
   })
 })

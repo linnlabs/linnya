@@ -1,7 +1,7 @@
 import fs from 'node:fs';
-import path from 'node:path';
 
 import { app } from 'electron';
+import { requireFixtureAbsolutePath } from '../../harness/requireFixtureEnvironment';
 
 import { createAppShutdownLifecycle } from '../../../../../src/electron-main/app-lifecycle/orchestration/createAppShutdownLifecycle';
 import {
@@ -10,10 +10,7 @@ import {
   permitMainWindowCloseForAppShutdown,
 } from '../../../../../src/electron-main/window-manager';
 
-const resultPath = process.env.LINNYA_UPDATE_HANDOFF_RESULT_PATH;
-if (!resultPath || !path.isAbsolute(resultPath)) {
-  throw new Error('LINNYA_UPDATE_HANDOFF_RESULT_PATH must be an absolute path');
-}
+const resultPath = requireFixtureAbsolutePath('LINNYA_UPDATE_HANDOFF_RESULT_PATH');
 
 function publish(value: unknown): void {
   const pendingPath = `${resultPath}.${process.pid}.pending`;
@@ -23,6 +20,7 @@ function publish(value: unknown): void {
 
 void app.whenReady().then(async () => {
   const events: string[] = [];
+  let windowId: number;
   const lifecycle = createAppShutdownLifecycle({
     prepareAppShutdown: async intent => {
       events.push(`prepare:${intent}`);
@@ -54,7 +52,7 @@ void app.whenReady().then(async () => {
           version: 1,
           events,
           handoffPhase: lifecycle.getPhase(),
-          windowId: window.id,
+          windowId,
         });
         // 模拟 electron-updater quitAndInstall 的 Electron quit 事件语义。
         app.quit();
@@ -70,6 +68,7 @@ void app.whenReady().then(async () => {
   });
   const window = createWindow();
   if (!window) throw new Error('正式 window-manager 未创建测试窗口');
+  windowId = window.id;
   window.on('close', event => {
     events.push(`window_close_prevented:${event.defaultPrevented}`);
   });
@@ -90,7 +89,7 @@ void app.whenReady().then(async () => {
         version: 1,
         events,
         handoffPhase: lifecycle.getPhase(),
-        windowId: window.id,
+        windowId,
       });
       return;
     }

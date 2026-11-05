@@ -1196,7 +1196,7 @@ describe('SQLiteEventStore B3a.5 write session API', () => {
           width: attachment.width,
           height: attachment.height,
           sha256: attachment.sha256,
-          localPath: `/managed/${attachment.sha256}.png`,
+          storagePath: `managed/${attachment.sha256}.png`,
           createdAt: 1000,
         },
       ],

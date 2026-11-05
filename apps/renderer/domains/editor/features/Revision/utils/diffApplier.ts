@@ -155,10 +155,11 @@ export function buildInsertedNodesForRichSegment(
     if (inlineLatexType) {
       try {
         return [
+          // 新增公式只取内容属性；身份由编辑器生成。parser 给提议侧编的 `inline-latex-N`
+          // 不是编辑器身份，跨块会重复，不能随 attrs 带进文档。未改的公式走 equal 片段，保留基线节点。
           inlineLatexType.create(
             {
               id: generateBlockId(),
-              ...(inlineAtom.attrs ?? {}),
               latexSource: inlineAtom.latexSource,
             },
             null,

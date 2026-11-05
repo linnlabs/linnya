@@ -34,8 +34,8 @@ export interface ConversationImageDraft {
 export interface CommittedConversationImageFile extends ConversationImageDraft {
   /** 不含绝对路径、可安全写入 assets.uri 的内容寻址 URI。 */
   readonly uri: string;
-  /** 仅供 host 持久化与 materializer 使用，不能发送给 Renderer。 */
-  readonly localPath: string;
+  /** `assets.local_path` 的持久路径（相对 AppData Root），只供 host 持久化，不能发送给 Renderer。 */
+  readonly storagePath: string;
 }
 
 export type ConversationImageIngressErrorCode =

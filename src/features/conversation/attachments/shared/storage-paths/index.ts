@@ -4,6 +4,4 @@ export {
   createConversationAttachmentStoragePaths,
   isConversationAttachmentUri,
   conversationImageExtension,
-  createLegacyAppConversationAttachmentStoragePaths,
-  createLegacyWorkspaceImageStoragePaths,
 } from './functions/conversationAttachmentStoragePaths';

@@ -63,6 +63,13 @@ async function open(turns: Parameters<typeof createDurableFlowHarness>[1]) {
   return fixture;
 }
 type Fixture = Awaited<ReturnType<typeof open>>;
+interface CarrierCrashEvidence {
+  readonly boundary: CarrierBoundary;
+  readonly signal: NodeJS.Signals | null;
+  readonly exitCode: number | null;
+  readonly elapsedMs: number;
+  readonly output: string;
+}
 function installDeclaredEntry(
   resolveArgs: NonNullable<AgentDefinition['hostEntry']>['resolveArgs']
 ) {
@@ -121,7 +128,7 @@ async function parentCall(fixture: Fixture) {
     throw new Error('Missing parent decision');
   return decision;
 }
-async function assertCompleteTree(fixture: Fixture, parentRunId: string) {
+async function assertCompleteTree(fixture: Fixture, parentRunId: string, crashContext?: CarrierCrashEvidence) {
   const children = (
     await fixture.runtime.supervisor.list({ parentRunId: RunIdSchema.parse(parentRunId) })
   ).runs;
@@ -132,6 +139,9 @@ async function assertCompleteTree(fixture: Fixture, parentRunId: string) {
     event => event.type === 'tool_output' && event.tool_name === RESEARCH_CARRIER_TOOL
   );
   expect(outputs).toHaveLength(1);
+  // 先区分 Runtime 父结果失败与 UI 投影分歧；失败证据仅含本测试的合成事实。
+  expect(outputs[0], JSON.stringify({ phase: 'parent-tool-result', parentRunId, crashContext, output: outputs[0] }))
+    .toMatchObject({ status: 'success' });
   expect(
     events.filter(
       event => event.type === 'tool_call_decision' && event.tool_name === RESEARCH_CARRIER_TOOL
@@ -150,7 +160,9 @@ async function assertCompleteTree(fixture: Fixture, parentRunId: string) {
   const window = readTail(fixture.db, conversationId, 100);
   if (window.status !== 'ready') throw new Error('Missing reload projection');
   expect(window.messages.filter(message => message.message_type === 'tool_calls')).toHaveLength(1);
-  expect(window.messages.find(message => message.message_type === 'tool_calls')).toMatchObject({
+  expect(window.messages.find(message => message.message_type === 'tool_calls'), JSON.stringify({
+    phase: 'reloaded-tool-projection', parentRunId, crashContext, output: outputs[0], messages: window.messages,
+  })).toMatchObject({
     payload: { status: 'success' },
   });
   const decision = await parentCall(fixture);
@@ -172,7 +184,8 @@ async function assertCompleteTree(fixture: Fixture, parentRunId: string) {
 }
 
 async function crashAt(boundary: CarrierBoundary, projectId: string) {
-  return new Promise<{ signal: NodeJS.Signals | null; output: string }>((resolve, reject) => {
+  const started = performance.now();
+  return new Promise<CarrierCrashEvidence>((resolve, reject) => {
     const child = spawn(
       process.execPath,
       [
@@ -208,9 +221,10 @@ async function crashAt(boundary: CarrierBoundary, projectId: string) {
       clearTimeout(timeout);
       reject(error);
     });
-    child.once('exit', (_code, signal) => {
+    // close 等待 stdout/stderr 完整关闭，避免 SIGKILL 诊断丢失末尾 carrier 输出。
+    child.once('close', (exitCode, signal) => {
       clearTimeout(timeout);
-      resolve({ signal, output });
+      resolve({ boundary, signal, exitCode, elapsedMs: performance.now() - started, output });
     });
   });
 }
@@ -403,7 +417,7 @@ describe('Generic Host carrier through SQLite and published Linnkit', () => {
       const tool = new ResearchCarrierFixtureTool();
       installResearchCarrierFixture(tool);
       await continueRoot(resumed);
-      await assertCompleteTree(resumed, root.run_id);
+      await assertCompleteTree(resumed, root.run_id, crashed);
       expect(tool.invocations).toBe(1);
       expect(
         (await facts(resumed)).filter(event =>

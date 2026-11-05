@@ -5,7 +5,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  createLegacyAppManagedImageStoragePaths,
   createManagedImageStoragePaths,
   publishStagedManagedImage,
   type ManagedImageWritableStoragePaths,
@@ -17,6 +16,12 @@ import {
 } from '../index';
 
 const STORE_ID = 'f7bb8587-feaa-44df-82e3-4a1c93d9ba30';
+const OTHER_STORE_ID = 'db7e7dac-8f65-4c66-987b-d4a40c2dc1c5';
+
+/** 账本保存相对 AppData Root 的持久路径。 */
+function toStoragePath(appDataRoot: string, localPath: string): string {
+  return path.relative(appDataRoot, localPath).split(path.sep).join('/');
+}
 
 async function createPendingPublish(params: {
   readonly paths: ManagedImageWritableStoragePaths;
@@ -104,7 +109,10 @@ describe('managed image maintenance', () => {
 
     const db = new Database(':memory:');
     db.exec('CREATE TABLE assets (id TEXT PRIMARY KEY, local_path TEXT)');
-    db.prepare('INSERT INTO assets (id, local_path) VALUES (?, ?)').run('asset-1', registered.finalPath);
+    db.prepare('INSERT INTO assets (id, local_path) VALUES (?, ?)').run(
+      'asset-1',
+      toStoragePath(appDataRoot, registered.finalPath),
+    );
     const logger = { warn: vi.fn() };
     try {
       const stats = await recoverPendingManagedImagePublishesFromLedger({
@@ -134,9 +142,8 @@ describe('managed image maintenance', () => {
   });
 
   it('只有所有 ownership link 消失后才回收受管 asset 与文件', async () => {
-    const workspaceRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-managed-workspace-'));
     const appDataRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-managed-app-data-'));
-    tempDirs.push(workspaceRoot, appDataRoot);
+    tempDirs.push(appDataRoot);
     const paths = createManagedImageStoragePaths(appDataRoot, STORE_ID);
     const localPath = path.join(paths.contentRoot, 'aa', `${'a'.repeat(64)}.png`);
     await fsp.mkdir(path.dirname(localPath), { recursive: true });
@@ -145,7 +152,7 @@ describe('managed image maintenance', () => {
     db.prepare('INSERT INTO assets VALUES (?, ?, ?, ?)').run(
       'asset-linked',
       `/Resources/Attachments/aa/${'a'.repeat(64)}.png`,
-      localPath,
+      toStoragePath(appDataRoot, localPath),
       1,
     );
     db.prepare('INSERT INTO conversation_event_asset_links VALUES (?)').run('asset-linked');
@@ -157,7 +164,6 @@ describe('managed image maintenance', () => {
         db,
         appDataRoot,
         storeId: STORE_ID,
-        workspaceRoot,
         logger,
         createdBeforeMs: 2,
       })).toEqual({ deletedAssets: 0, deletedFiles: 0, failedFiles: 0 });
@@ -167,7 +173,6 @@ describe('managed image maintenance', () => {
         db,
         appDataRoot,
         storeId: STORE_ID,
-        workspaceRoot,
         logger,
         createdBeforeMs: 2,
       })).toEqual({ deletedAssets: 1, deletedFiles: 1, failedFiles: 0 });
@@ -180,9 +185,8 @@ describe('managed image maintenance', () => {
   });
 
   it('时间屏障同时保护本进程 pending 发布和刚登记但尚未绑定 event 的 asset', async () => {
-    const workspaceRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-current-workspace-'));
     const appDataRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-current-app-data-'));
-    tempDirs.push(workspaceRoot, appDataRoot);
+    tempDirs.push(appDataRoot);
     const paths = createManagedImageStoragePaths(appDataRoot, STORE_ID);
     const pending = await createPendingPublish({ paths, publishId: 'current', bytes: 'current-process-content' });
     const localPath = pending.finalPath;
@@ -190,7 +194,7 @@ describe('managed image maintenance', () => {
     db.prepare('INSERT INTO assets VALUES (?, ?, ?, ?)').run(
       'asset-current',
       `/Resources/Attachments/cc/${'c'.repeat(64)}.jpg`,
-      localPath,
+      toStoragePath(appDataRoot, localPath),
       2_000,
     );
     const logger = { warn: vi.fn() };
@@ -199,7 +203,6 @@ describe('managed image maintenance', () => {
         db,
         appDataRoot,
         storeId: STORE_ID,
-        workspaceRoot,
         logger,
         createdBeforeMs: 1_000,
       })).toEqual({ deletedAssets: 0, deletedFiles: 0, failedFiles: 0 });
@@ -224,9 +227,8 @@ describe('managed image maintenance', () => {
   });
 
   it('删除旧孤儿账本行后，若 canonical path 仍被当前账本占用则保留文件', async () => {
-    const workspaceRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-reused-workspace-'));
     const appDataRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-reused-app-data-'));
-    tempDirs.push(workspaceRoot, appDataRoot);
+    tempDirs.push(appDataRoot);
     const paths = createManagedImageStoragePaths(appDataRoot, STORE_ID);
     const localPath = path.join(paths.contentRoot, 'dd', `${'d'.repeat(64)}.png`);
     await fsp.mkdir(path.dirname(localPath), { recursive: true });
@@ -235,13 +237,13 @@ describe('managed image maintenance', () => {
     db.prepare('INSERT INTO assets VALUES (?, ?, ?, ?)').run(
       'asset-old-orphan',
       `/Resources/Attachments/dd/${'d'.repeat(64)}.png`,
-      localPath,
+      toStoragePath(appDataRoot, localPath),
       1,
     );
     db.prepare('INSERT INTO assets VALUES (?, ?, ?, ?)').run(
       'asset-current-owner',
       `/Resources/Attachments/dd/${'e'.repeat(64)}.png`,
-      localPath,
+      toStoragePath(appDataRoot, localPath),
       2,
     );
     db.prepare('INSERT INTO conversation_event_asset_links VALUES (?)').run('asset-current-owner');
@@ -251,7 +253,6 @@ describe('managed image maintenance', () => {
         db,
         appDataRoot,
         storeId: STORE_ID,
-        workspaceRoot,
         logger,
         createdBeforeMs: 3,
       })).toEqual({ deletedAssets: 1, deletedFiles: 0, failedFiles: 0 });
@@ -263,25 +264,41 @@ describe('managed image maintenance', () => {
     }
   });
 
-  it('空数据库的新 store 不会触碰旧 AppData v1 或另一个 store 的内容', async () => {
+  it('pending 账本里存在无法解析的持久路径时整体中止，不隔离任何文件', async () => {
+    const appDataRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-invalid-ledger-'));
+    tempDirs.push(appDataRoot);
+    const paths = createManagedImageStoragePaths(appDataRoot, STORE_ID);
+    const pending = await createPendingPublish({ paths, publishId: 'kept', bytes: 'kept-content' });
+    const previousProcessTime = new Date(Date.now() - 60_000);
+    await fsp.utimes(pending.receiptPath, previousProcessTime, previousProcessTime);
+    const db = new Database(':memory:');
+    db.exec('CREATE TABLE assets (id TEXT PRIMARY KEY, local_path TEXT)');
+    db.prepare('INSERT INTO assets (id, local_path) VALUES (?, ?)').run('asset-absolute', pending.finalPath);
+    try {
+      await expect(recoverPendingManagedImagePublishesFromLedger({
+        db,
+        appDataRoot,
+        storeId: STORE_ID,
+        logger: { warn: vi.fn() },
+        processStartedAtMs: Date.now(),
+        quarantineRetentionMs: 30 * 24 * 60 * 60 * 1_000,
+      })).rejects.toMatchObject({ name: 'AssetStoragePathError' });
+      await expect(fsp.readFile(pending.finalPath, 'utf8')).resolves.toBe('kept-content');
+      await expect(fsp.stat(pending.receiptPath)).resolves.toBeTruthy();
+      await expect(fsp.stat(paths.quarantineRoot)).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally {
+      db.close();
+    }
+  });
+
+  it('空数据库的新 store 不会触碰另一个 store 的内容', async () => {
     const appDataRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-isolated-store-'));
     tempDirs.push(appDataRoot);
     const currentPaths = createManagedImageStoragePaths(appDataRoot, STORE_ID);
-    const otherPaths = createManagedImageStoragePaths(
-      appDataRoot,
-      'db7e7dac-8f65-4c66-987b-d4a40c2dc1c5',
-    );
-    const legacyPaths = createLegacyAppManagedImageStoragePaths(appDataRoot);
+    const otherPaths = createManagedImageStoragePaths(appDataRoot, OTHER_STORE_ID);
     const otherFile = path.join(otherPaths.contentRoot, 'aa', `${'a'.repeat(64)}.png`);
-    const legacyFile = path.join(legacyPaths.contentRoot, 'bb', `${'b'.repeat(64)}.png`);
-    await Promise.all([
-      fsp.mkdir(path.dirname(otherFile), { recursive: true }),
-      fsp.mkdir(path.dirname(legacyFile), { recursive: true }),
-    ]);
-    await Promise.all([
-      fsp.writeFile(otherFile, 'other-store'),
-      fsp.writeFile(legacyFile, 'legacy-store'),
-    ]);
+    await fsp.mkdir(path.dirname(otherFile), { recursive: true });
+    await fsp.writeFile(otherFile, 'other-store');
     const logger = { warn: vi.fn() };
 
     expect(await recoverPendingManagedImagePublishes({
@@ -298,22 +315,34 @@ describe('managed image maintenance', () => {
       failed: 0,
     });
     await expect(fsp.readFile(otherFile, 'utf8')).resolves.toBe('other-store');
-    await expect(fsp.readFile(legacyFile, 'utf8')).resolves.toBe('legacy-store');
   });
 
-  it('旧 v1 asset 失去当前账本引用时只删账本行，不自动删除无 store 身份的字节', async () => {
-    const workspaceRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-legacy-row-workspace-'));
-    const appDataRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-legacy-row-app-data-'));
-    tempDirs.push(workspaceRoot, appDataRoot);
-    const legacyPaths = createLegacyAppManagedImageStoragePaths(appDataRoot);
-    const localPath = path.join(legacyPaths.contentRoot, 'aa', `${'a'.repeat(64)}.png`);
-    await fsp.mkdir(path.dirname(localPath), { recursive: true });
-    await fsp.writeFile(localPath, 'legacy-preserved');
+  it('孤儿账本行指向当前 store 之外或路径无效时只删账本行，保留字节并告警', async () => {
+    const appDataRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-foreign-row-app-data-'));
+    tempDirs.push(appDataRoot);
+    const otherPaths = createManagedImageStoragePaths(appDataRoot, OTHER_STORE_ID);
+    const foreignPath = path.join(otherPaths.contentRoot, 'aa', `${'a'.repeat(64)}.png`);
+    const currentPaths = createManagedImageStoragePaths(appDataRoot, STORE_ID);
+    const absolutePath = path.join(currentPaths.contentRoot, 'bb', `${'b'.repeat(64)}.png`);
+    await Promise.all([
+      fsp.mkdir(path.dirname(foreignPath), { recursive: true }),
+      fsp.mkdir(path.dirname(absolutePath), { recursive: true }),
+    ]);
+    await Promise.all([
+      fsp.writeFile(foreignPath, 'foreign-preserved'),
+      fsp.writeFile(absolutePath, 'absolute-preserved'),
+    ]);
     const db = createLifecycleDatabase();
     db.prepare('INSERT INTO assets VALUES (?, ?, ?, ?)').run(
-      'legacy-orphan',
+      'foreign-orphan',
       `/Resources/Attachments/aa/${'a'.repeat(64)}.png`,
-      localPath,
+      toStoragePath(appDataRoot, foreignPath),
+      1,
+    );
+    db.prepare('INSERT INTO assets VALUES (?, ?, ?, ?)').run(
+      'absolute-orphan',
+      `/Resources/Attachments/bb/${'b'.repeat(64)}.png`,
+      absolutePath,
       1,
     );
     const logger = { warn: vi.fn() };
@@ -322,12 +351,13 @@ describe('managed image maintenance', () => {
         db,
         appDataRoot,
         storeId: STORE_ID,
-        workspaceRoot,
         logger,
         createdBeforeMs: 2,
-      })).toEqual({ deletedAssets: 1, deletedFiles: 0, failedFiles: 0 });
+      })).toEqual({ deletedAssets: 2, deletedFiles: 0, failedFiles: 2 });
       expect(db.prepare('SELECT id FROM assets').all()).toEqual([]);
-      await expect(fsp.readFile(localPath, 'utf8')).resolves.toBe('legacy-preserved');
+      await expect(fsp.readFile(foreignPath, 'utf8')).resolves.toBe('foreign-preserved');
+      await expect(fsp.readFile(absolutePath, 'utf8')).resolves.toBe('absolute-preserved');
+      expect(logger.warn).toHaveBeenCalledTimes(2);
     } finally {
       db.close();
     }

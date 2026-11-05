@@ -79,6 +79,49 @@ it('SQLite 重建 collector 保留累计 usage 和 child 关系，缺失费用�
   }
 });
 
+it('恢复账本只保存累计合计与条目 ID，不随上下文分项增长；重建后快照不变', () => {
+  const db = new Database(':memory:');
+  try {
+    db.exec("CREATE TABLE runs (id TEXT PRIMARY KEY); INSERT INTO runs VALUES ('long-run');");
+    for (const provider of getRunCostSchemaProviders())
+      for (const ddl of provider.getSchema()) db.exec(ddl);
+    const collector = new LinnyaRunCostCollector(() => undefined, new SqliteRunCostStateStore(db));
+    const readStateBytes = () =>
+      (
+        db.prepare("SELECT length(state_json) AS bytes FROM agent_run_costs WHERE run_id = 'long-run'").get() as {
+          bytes: number;
+        }
+      ).bytes;
+    collector.ingest('long-run', contextBuildEvent({ runId: 'long-run' }));
+    collector.ingest('long-run', llmCallEvent({ runId: 'long-run', canonicalUsage: canonicalUsage() }));
+    const bytesAfterFirstCall = readStateBytes();
+    for (let index = 0; index < 50; index += 1) {
+      collector.ingest('long-run', contextBuildEvent({ runId: 'long-run' }));
+      collector.ingest('long-run', llmCallEvent({ runId: 'long-run', canonicalUsage: canonicalUsage() }));
+    }
+    const state = JSON.parse(
+      (db.prepare("SELECT state_json FROM agent_run_costs WHERE run_id = 'long-run'").get() as {
+        state_json: string;
+      }).state_json
+    ) as Record<string, unknown>;
+    expect(state).not.toHaveProperty('tokenLedgerEntries');
+    expect(JSON.stringify(state)).not.toContain('componentId');
+    expect(state.tokenLedgerAggregate).toMatchObject({
+      entryCount: 102,
+      llmCallCount: 51,
+      contextTokens: 51 * 25,
+      contextComponentCount: 51,
+    });
+    // 每多一次调用只多两条 ID，而不是再存一整份上下文分项。
+    expect(readStateBytes() - bytesAfterFirstCall).toBeLessThan(50 * 2 * 80);
+    const resumed = new LinnyaRunCostCollector(() => undefined, new SqliteRunCostStateStore(db));
+    expect(resumed.snapshot('long-run')).toEqual(collector.snapshot('long-run'));
+    expect(resumed.snapshot('long-run').tokenLedgerEntryIds).toHaveLength(102);
+  } finally {
+    db.close();
+  }
+});
+
 function contextBuildEvent(params?: {
   runId?: string;
   parentRunId?: string;

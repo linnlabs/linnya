@@ -65,6 +65,7 @@ function resolveShellRevisionHeaderSession(
     return {
       blockId,
       createdAt: canonicalSession.createdAt,
+      projectionFailed: canonicalSession.projection === 'failed',
       // 中文说明：投影刚完成时 activeRevisions 往往先拿到精确统计；
       // canonical 回填存在响应式时序差，因此 header 优先使用已投影统计。
       diffStats: activeRevision?.diffStats ?? canonicalSession.diffStats,
@@ -305,6 +306,7 @@ export function useShellBlockRevisionHeader(
   watch(
     [
       () => revisionStore.value?.canonicalPendingBlockCount.value ?? 0,
+      () => revisionStore.value?.canonicalPendingSessions.value,
       () => revisionStore.value?.activeRevisionCount.value ?? 0,
       () => revisionStore.value?.canonicalPendingStats.value.insertCount ?? 0,
       () => revisionStore.value?.canonicalPendingStats.value.deleteCount ?? 0,

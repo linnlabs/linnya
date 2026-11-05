@@ -60,6 +60,10 @@ function buildDefinition(tool: BaseTool): ToolRuntimeDefinition {
     modelInputRequirement: tool.modelInputRequirement,
     modelInputDelivery: tool.modelInputDelivery,
     streaming: tool.streaming,
+    // 与生产 toolRegistry 相同：动态要求优先于静态声明，测试夹具不能悄悄退回静态要求。
+    ...(tool.resolveModelInputRequirement
+      ? { resolveModelInputRequirement: (args: ToolArgs) => tool.resolveModelInputRequirement?.(args) }
+      : {}),
   };
 }
 

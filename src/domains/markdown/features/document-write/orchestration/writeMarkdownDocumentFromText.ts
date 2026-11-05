@@ -7,6 +7,7 @@ import { alignMarkdownAnnotationComments } from '../functions/alignMarkdownAnnot
 import { v4 as uuidv4 } from 'uuid';
 import { generateRefId } from '../../../../../shared/utils/refIdGenerator';
 import type { PendingRevisionMetadata } from '../../pending-revisions';
+import { importPendingMarkdownRootBlock } from '../../pending-revisions';
 import { buildMarkdownCitationReadProjection } from '../../document-read';
 import { planMarkdownBlocks } from '../../normalization';
 import { countMarkdownTextCharacters, serializeMarkdownBlocks, type FlattenedMarkdownBlock } from '../../../shared';
@@ -122,9 +123,10 @@ export async function writeMarkdownDocumentFromText(params: {
   const planned = await planMarkdownBlocks(params.targetText);
   const content = params.documentStore.getDocument(params.documentId);
   const pendings = params.documentStore.getPendingRevisions(params.documentId);
-  if (params.expectedSourceKey !== undefined && params.expectedSourceKey !== createMarkdownFileWriteSourceKey({
+  const sourceKey = createMarkdownFileWriteSourceKey({
     content, pendings, versionNumber: params.documentStore.getLatestVersion(params.documentId)?.version_number ?? null,
-  })) throw new MarkdownFileWriteConflictError();
+  });
+  if (params.expectedSourceKey !== undefined && params.expectedSourceKey !== sourceKey) throw new MarkdownFileWriteConflictError();
   // edit_file 的 old_string 来自 citation-aware VFS 文本。写入规划必须复用同一当前视图，
   // 否则持久层里的 UI label（如 `[1]`）会和 Agent 看到的 `[@ref]` 不同，导致未修改的引用块被误写。
   const currentProjection = buildMarkdownCitationReadProjection({
@@ -142,7 +144,7 @@ export async function writeMarkdownDocumentFromText(params: {
   const targetBlocks = planned.bodyBlocks;
   const targetComparisonBlocks = targetBlocks.map(normalizeMarkdownCitationTokenSpelling);
   const currentText = serializeMarkdownBlocks(currentProjection.viewBlocks);
-  // 解析等待期间可能发生 Editor 保存或其他工具修订；此后到同步事务之间不得再 await。
+  // 初次解析期间可能发生编辑：先校验 Agent 的读取快照，最终单块准入后还会复核完整来源版本。
   assertMarkdownWriteSourceCurrent(params.expectedCurrentText, currentText);
 
   const baseline = buildMarkdownCitationReadProjection({
@@ -170,6 +172,19 @@ export async function writeMarkdownDocumentFromText(params: {
   const imageWrites = planMarkdownImageWrites({
     target: planned.docJson, baseline: content, pendings, steps, admittedSources: params.imageSources,
   });
+
+  // 单块序列化并不天然保证再解析仍是一块。逐条准入最终将入库的 Markdown，任何失败均早于正文/Pending 写入。
+  for (const step of steps) {
+    if (step.kind === 'insert' || step.kind === 'update') {
+      await importPendingMarkdownRootBlock(imageWrites.get(step.targetIndex)?.markdown ?? step.markdown);
+    }
+  }
+  // 新增的异步导入期间也可能发生编辑；沿用完整来源快照检查，之后直到事务完成不再等待。
+  if (sourceKey !== createMarkdownFileWriteSourceKey({
+    content: params.documentStore.getDocument(params.documentId),
+    pendings: params.documentStore.getPendingRevisions(params.documentId),
+    versionNumber: params.documentStore.getLatestVersion(params.documentId)?.version_number ?? null,
+  })) throw new MarkdownFileWriteConflictError();
 
   const writeResult = params.documentStore.runInTransaction(() => {
     const annotationMutation = applyMarkdownAnnotationChanges({

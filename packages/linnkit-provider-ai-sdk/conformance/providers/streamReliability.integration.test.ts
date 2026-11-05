@@ -151,6 +151,35 @@ describe('AI SDK stream reliability integration', () => {
     expect(events.some(event => event.type === 'tool_call_end')).toBe(false);
   });
 
+  it.each([false, true])('无完成信号的流保持可重试中断，partial=%s', async partial => {
+    const diagnostics: AiSdkLanguageDiagnostic[] = [];
+    const model = modelWithStream(() => new ReadableStream<LanguageModelV4StreamPart>({
+      start(controller) {
+        controller.enqueue({ type: 'stream-start', warnings: [] });
+        if (partial) {
+          controller.enqueue({ type: 'text-start', id: 'text-1' });
+          controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'partial' });
+          controller.enqueue({ type: 'text-end', id: 'text-1' });
+        }
+        controller.enqueue({ type: 'finish', finishReason: { unified: 'interrupted', raw: undefined },
+          usage: { inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
+            outputTokens: { total: 1, text: 1, reasoning: undefined } } });
+        controller.close();
+      },
+    }));
+    const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
+      language_models: registry(model), diagnostic_sink: { publish: item => diagnostics.push(item) },
+    });
+    const events = await collect(capability.stream(invocation()));
+    expect(events.at(-1)).toEqual({ type: 'failure', kind: 'provider',
+      code: 'provider_stream_interrupted', retryable: true });
+    expect(events.filter(event => event.type === 'failure')).toHaveLength(1);
+    expect(events.some(event => event.type === 'finish')).toBe(false);
+    expect(events.some(event => event.type === 'answer_delta')).toBe(partial);
+    expect(diagnostics).toContainEqual(expect.objectContaining({ type: 'nonstandard_finish',
+      finish_reason: 'interrupted', projected_code: 'provider_stream_interrupted', retryable: true }));
+  });
+
   it('首个内容分片长时间未到达时触发可重试 idle timeout', async () => {
     const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
       language_models: registry(

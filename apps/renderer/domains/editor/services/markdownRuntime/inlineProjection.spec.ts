@@ -70,6 +70,18 @@ describe('markdownRuntime inlineProjection', () => {
     expect(nodes[1]?.attrs.latexSource).toBe('E=mc^2')
   })
 
+  it('does not adopt the parser-assigned inline-latex id as editor identity', () => {
+    const projection = blockEventToInlineProjection({
+      block_type: 'BaseBlock',
+      structured_content: [{ type: 'inlineLatex', attrs: { id: 'inline-latex-1', latexSource: 'x' } }],
+    })
+
+    const [node] = buildInlineNodesFromProjection(projection, workspaceMarkdownSchemaLite)
+    expect(node?.attrs.latexSource).toBe('x')
+    expect(node?.attrs.id).toEqual(expect.any(String))
+    expect(node?.attrs.id).not.toBe('inline-latex-1')
+  })
+
   it('supports first-block fallback for future pending/autocomplete callers', () => {
     const onDroppedBlocks = vi.fn()
     const events: BlockEventLike[] = [

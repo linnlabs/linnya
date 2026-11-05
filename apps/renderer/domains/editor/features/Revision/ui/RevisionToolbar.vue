@@ -33,6 +33,7 @@
     </button>
 
     <button
+      v-if="!summary.projectionFailed"
       class="toolbar-btn accept-btn"
       @click="handleAcceptAll"
       :title="editorMessage('editor.revision.toolbar.acceptAllTitle')"
@@ -48,11 +49,15 @@ import { FloatingToolbar } from '@linnya/renderer-ui';
 import { CheckmarkIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
+import { computed } from 'vue'
+import type { Editor } from '@tiptap/core'
+import { useRevisionIndicatorSummary } from '../readModel'
 
 const { editorMessage } = useEditorLocalization()
 
 // Props
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
+  editor: Editor
   /** 是否显示 */
   visible: boolean
   /** 块 ID */
@@ -68,6 +73,7 @@ withDefaults(defineProps<{
 }>(), {
   placement: 'block',
 })
+const summary = useRevisionIndicatorSummary(props.editor, computed(() => props.blockId))
 
 // Emits
 const emit = defineEmits<{

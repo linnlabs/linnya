@@ -69,7 +69,7 @@ describe('document image asset runtime', () => {
       }),
       imageLoader: createWorkspaceVerifiedImageLoader({
         db,
-        storageBoundaries: [{ boundaryRoot: appDataRoot, contentRoot: paths.contentRoot }],
+        storage: { appDataRoot, contentRoot: paths.contentRoot },
         maxImagePixels: 1_000_000,
       }),
       ownership: createSqliteDocumentAssetOwnership(db),
@@ -177,7 +177,7 @@ describe('document image asset runtime', () => {
       }),
       imageLoader: createWorkspaceVerifiedImageLoader({
         db,
-        storageBoundaries: [{ boundaryRoot: appDataRoot, contentRoot: managedPaths.contentRoot }],
+        storage: { appDataRoot, contentRoot: managedPaths.contentRoot },
         maxImagePixels: 1_000_000,
       }),
       ownership: createSqliteDocumentAssetOwnership(db),

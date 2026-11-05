@@ -26,6 +26,7 @@ import {
 } from '../../../app-hosts/linnya/application/provider-account-authorization';
 import { createAppServerActivityRpcGateway } from '../../../app-hosts/linnya/app-server-runtime/features/activity-rpc';
 import { createNodeAppServerProcessSupervisor } from '../../../infra/adapters/app-server-process';
+import type { AppServerStartupProgress } from '../../../app-hosts/linnya/app-server-control';
 import type { AppServerBackendConfiguration } from '../../../app-hosts/linnya/app-server-bootstrap';
 import type { BackendBootstrapFacts } from '../../../app-hosts/linnya/backend-runtime';
 import type { HostProcessEnvironment } from '../../../infra/adapters/command-runtime/environment';
@@ -58,6 +59,8 @@ export async function createElectronAppServerRuntime(input: {
   readonly directPluginDirectories: readonly string[];
   readonly backendStderrSink: Writable;
   readonly onAsyncFailure: (error: Error) => void;
+  /** 启动期数据库阶段进度；升级较久时 Desktop 显示“正在升级数据”。 */
+  readonly onStartupProgress?: (progress: AppServerStartupProgress) => void;
 }): Promise<ElectronAppServerRuntime> {
   const mailboxRoot = resolveBackendRendererRequestMailboxRoot(
     input.runtimePathRoots.appDataRoot,
@@ -135,6 +138,7 @@ export async function createElectronAppServerRuntime(input: {
     launch,
     rpcHandlers,
     stderrSink: input.backendStderrSink,
+    onStartupProgress: input.onStartupProgress,
   });
   const commands = createCommandDesktopRpcGateways({
     rpc: process,

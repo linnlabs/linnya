@@ -37,6 +37,7 @@ count surface、actual usage 校准样本和 run cost 聚合。
 - 长期 telemetry 存储、UI 展示或 Cloud 网关实现。
 
 最小恢复账本只含计数、价格可信度和关联，不保存 prompt/response/stream；随 run 删除级联清理。
+账本条目只并入累计合计（`tokenLedgerAggregate`）并记下条目 ID，不保存逐条上下文分项：每次 context build 都会重复整份上下文的分项，逐条保存会让长运行的账本随调用次数平方增长（v70 前开发库单行最大 19.4MB）。
 它不是永久诊断平台，也没有新增产品费用硬限制。
 
 AI SDK 的单 step raw usage projector 属于 `adapters/inference`；Linnkit 的 token

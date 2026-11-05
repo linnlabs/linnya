@@ -56,7 +56,8 @@ macOS 的 `test:shell-tool:production-command-approval-dom` 使用真实 Rendere
 产物和生产锁。不能只通过依赖覆盖声明兼容；运行合同与独立打包消费门禁都必须通过。
 
 开发入口按依赖图并行准备 runtime、WASM、资源和 workspace package。每个长期 watcher 只执行一次首次构建；
-收到本轮成功事件、完成资源复制和 Backend/原生依赖门禁后才启动 Electron。Vite 在自己的依赖就绪后提前启动并预热入口。
+收到本轮成功事件、完成资源复制和 Backend/原生依赖门禁后才启动 Electron。Vite 在自己的依赖就绪后提前启动并预热入口。workspace package 的额外预热依赖由各自 manifest 声明，
+从声明者的 `node_modules` 解析；不要把裸包名加到根 include 或在根补装包来掩盖 pnpm owner 边界。
 开发会话退出或首次构建失败时，统一关闭本次创建的进程和 Vite。只验证准备阶段、不打开应用可运行
 `pnpm run dev:electron --build-only`；多 worktree 可同时运行相同命令，隔离规则见[开发配置](./env-local.md)。具体职责见 [build-session](../../scripts/development/features/build-session/README.md)。
 
@@ -110,6 +111,11 @@ Sandbox 的跨平台打包验收入口是 `test:shell-tool:formal-electron-sandb
 从而运行整个测试发现范围。需要预览命中文件时使用 `pnpm exec vitest list <test-file> --filesOnly`，
 该命令只列出文件，不执行测试。
 
+`pnpm run test:renderer` 同时运行两个互斥 project：`renderer` 只消费生产 Renderer catalog；
+`renderer-host-integration` 复用根配置，覆盖真实 Markdown schema、normalization 与插件 manifest
+对照。跨层文件在 `scripts/test-runner/definitions/rendererTestScope.ts` 显式登记，不放宽生产 alias。
+可用 `--project renderer` 或 `--project renderer-host-integration` 定向验证；两类都属于正式 Renderer gate。
+
 根 Vitest 配置只从 `src/`、`apps/`、`packages/` 和 `scripts/` 发现测试，并排除依赖、
 构建输出、运行数据和临时目录；`_dev_data/` 中的冻结源码与 benchmark 产物不属于当前测试集。
 Vitest 不自动沿用 `.gitignore`，新增源码根或生成目录时必须同时检查发现边界。正式源码内的
@@ -119,7 +125,8 @@ Vitest 不自动沿用 `.gitignore`，新增源码根或生成目录时必须同
 
 公共源码净化门禁使用 `pnpm run guard:public-source-sanitization`。它扫描 Git 已跟踪和未忽略的候选文本文件，拒绝开发者用户目录、机器卷、盘符根开发 checkout、父级个人工作区路径、macOS 用户临时目录、绝对符号链接和已退役产品身份；文档与测试只能使用 `name`、`example`、`${变量}` 或 `<用户名>` 一类明确占位符，门禁本身不得记录真实用户名、本机路径或旧名称字面量。
 
-全仓仍有来自渐进式 JavaScript/TypeScript 迁移的存量类型错误。`guard:tsc-baseline` 将错误总数与 `.baseline/typescript-errors.txt` 对比，只允许减少、不允许增加，并在公共 CI 执行；错误减少后运行 `pnpm run guard:tsc-baseline:update` 收紧基线。这个债务门禁不能代替改动 owner 的严格 typecheck，新代码不得以“总数没有增加”为理由引入新的类型问题。
+全仓仍有来自渐进式 JavaScript/TypeScript 迁移的存量类型错误。`guard:tsc-baseline` 将错误总数与 `.baseline/typescript-errors.txt` 对比，只允许减少、不允许增加，并在公共 CI 执行；错误减少后运行 `pnpm run guard:tsc-baseline:update` 收紧基线。Shell E2E 的 `fixtures/` 与 `harness/` 已纳入根 TypeScript 发现范围，并在同一门禁中强制零错误；
+其错误不能被其他模块的基线下降抵消，也不能通过更新基线接纳。这个债务门禁不能代替改动 owner 的严格 typecheck，新代码不得以“总数没有增加”为理由引入新的类型问题。
 
 依赖升级后若大量错误集中在命名空间类型、公开导出或推断链上，应先验证实际 npm 包的声明产物，
 不能直接调高或重建基线把依赖回归记成存量债。Linnkit 只使用已发布的精确版本；声明问题在独立
@@ -127,6 +134,21 @@ Linnkit 仓修复并通过不含源码 alias 的产物类型门禁后发布，Li
 禁止修改 `node_modules`、回连相邻源码或扩大类型断言来绕过这条验收链。
 
 测试应覆盖真实业务流程、合同和失败语义。不要用 README snapshot、CSS 数值快照或无业务意义的覆盖率测试代替行为验收。
+
+### 全量并发故障的对照
+
+排查默认并发失败时，在同一源码、Node 和依赖环境中顺序对照 `pnpm exec vitest run` 与
+`pnpm exec vitest run --maxWorkers=4`，分别保留每轮耗时、失败断言与资源采样；两轮测试不能互相争用资源。
+限定 worker 是诊断手段，不是通过全量门禁的替代办法。
+
+组合行为测试的静态依赖应在模块收集阶段加载，通过 owner 的正式 reset 和环境变量恢复隔离每例。
+不要把 Vite 首次转换整个依赖图的时间算成某个同步行为的响应预算；专门的冷启动/import 边界测试仍应保留原目标。
+不能用加大 timeout、删除断言或跳过测试掩盖资源争用。
+
+真实子进程夹具应等待 `close` 收齐 stdout/stderr，并保留退出信号、耗时和失败时的业务事实。
+从 worker 请求 SIGKILL 后应停止执行并等待 OS 终止，不能紧接着抛占位异常：信号送达前异常可能已被业务层持久化。
+恢复测试需要先确认 Runtime tool output，再与 UI projection 对照，避免把工具失败误判为投影失败。
+脚本化 CLI bridge 使用共享协议常量、严格 handshake schema 和匹配当前 checkout 的实例身份，不能手抄旧版 wire shape。
 
 ## 4. 构建
 
@@ -208,7 +230,7 @@ Sharp 的公开入口可能是 JavaScript loader；PE 架构校验通过共享
 ## 并行 Desktop 回归
 
 完成 `pnpm run dev:electron --build-only` 后，macOS 可运行 `pnpm run test:development:parallel-desktop`。
-该 gate 用当前正式构建产物启动三个临时开发实例，覆盖 Renderer/API/Qdrant 端口、profile、CLI 描述、
+该 gate 用当前正式构建产物启动三个临时开发实例（其中两个直接在同一 checkout 设置独立实例根），覆盖 Renderer/API/Qdrant 端口、profile、CLI 描述、
 向量数据隔离、同目录单实例和独立退出；不读取开发者数据库或调用模型，结束后清理临时进程与文件。
 Windows 的 profile 与动态端口逻辑共用同一实现，仍需 Windows 真机验收；该 gate 不代替平台发布验收。
 

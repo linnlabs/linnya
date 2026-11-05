@@ -12,13 +12,9 @@ import {
 import { createSqliteLocalImageAssetLedger } from 'src/domains/assets/features/local-image-registration';
 import { createManagedImageIngress } from 'src/domains/assets/features/managed-image-ingress';
 import { readManagedImageStoreBinding } from 'src/domains/assets/features/managed-image-store-binding';
-import {
-  createLegacyAppManagedImageStoragePaths,
-  createLegacyWorkspaceManagedImageStoragePaths,
-  createManagedImageStoragePaths,
-} from 'src/domains/assets/shared/managed-image-storage';
+import { createManagedImageStoragePaths } from 'src/domains/assets/shared/managed-image-storage';
 import { createWorkspaceVerifiedImageLoader } from 'src/features/workspace/assets/shared/verified-image';
-import { getAppDataPath, getWorkspaceRoot } from 'src/shared/utils/pathManager';
+import { getAppDataPath } from 'src/shared/utils/pathManager';
 import { requireDocumentAssetDatabase } from './documentAssetRuntimeDatabase';
 
 let runtimeByDatabase = new WeakMap<Database.Database, PluginDocumentImageAssetRuntimePort>();
@@ -34,11 +30,8 @@ export function createDocumentImageAssetRuntime(
   const readConcreteRuntime = (): PluginDocumentImageAssetRuntimePort => {
     if (concreteRuntime) return concreteRuntime;
     const appDataRoot = getAppDataPath();
-    const workspaceRoot = getWorkspaceRoot();
     const { storeId } = readManagedImageStoreBinding(database);
     const managedPaths = createManagedImageStoragePaths(appDataRoot, storeId);
-    const legacyAppPaths = createLegacyAppManagedImageStoragePaths(appDataRoot);
-    const legacyWorkspacePaths = createLegacyWorkspaceManagedImageStoragePaths(workspaceRoot);
     concreteRuntime = createHostDocumentImageAssetRuntime({
       imageIngress: createManagedImageIngress({
         appDataRoot,
@@ -49,11 +42,7 @@ export function createDocumentImageAssetRuntime(
       }),
       imageLoader: createWorkspaceVerifiedImageLoader({
         db: database,
-        storageBoundaries: [
-          { boundaryRoot: appDataRoot, contentRoot: managedPaths.contentRoot },
-          { boundaryRoot: appDataRoot, contentRoot: legacyAppPaths.contentRoot },
-          { boundaryRoot: workspaceRoot, contentRoot: legacyWorkspacePaths.contentRoot },
-        ],
+        storage: { appDataRoot, contentRoot: managedPaths.contentRoot },
         maxImagePixels: LINNYA_FLOW_IMAGE_INGRESS_POLICY.maxImagePixels,
       }),
       ownership: createSqliteDocumentAssetOwnership(database),

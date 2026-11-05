@@ -8,7 +8,7 @@ export function resolveCliSourceCheckout(
   entryPath = process.argv[1]
 ): SourceCheckoutIdentity | null {
   if (!entryPath) return null;
-  const entry = realpathSync(entryPath);
+  const entry = realpathSync.native(entryPath);
   const cliRoot = path.resolve(path.dirname(entry), '..');
   const root = path.resolve(cliRoot, '../..');
   if (

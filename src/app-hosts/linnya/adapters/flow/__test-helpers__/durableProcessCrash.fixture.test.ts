@@ -18,7 +18,8 @@ it.skipIf(!process.env.LINNYA_TEST_CRASH_DB)('crash after managed owner commit',
     override async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
       await super.run(args, context);
       process.kill(process.pid, 'SIGKILL');
-      throw new Error('SIGKILL must stop this process');
+      // 与 carrier 崩溃边界一致：信号尚未终止进程时，不允许占位异常进入工具事实。
+      return new Promise<never>(() => {});
     }
   }
   const fixture = await createDurableFlowHarness(

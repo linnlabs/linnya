@@ -20,6 +20,7 @@ export const ROOT_BLOCK_SHELL_REVISION_HEADER_ACTIVE_ATTR =
 export interface ShellRevisionHeaderSession {
   blockId: string
   createdAt: number
+  projectionFailed?: boolean
   diffStats?: {
     insertCount: number
     deleteCount: number
@@ -32,6 +33,7 @@ interface ShellRevisionHeaderViewModel {
   deleteCount: number
   createdAt: number
   hasDetailedStats: boolean
+  projectionFailed: boolean
 }
 
 export interface ShellRevisionHeaderRenderOptions {
@@ -46,6 +48,7 @@ function toViewModel(session: ShellRevisionHeaderSession): ShellRevisionHeaderVi
     deleteCount: session.diffStats?.deleteCount ?? 0,
     createdAt: session.createdAt,
     hasDetailedStats: typeof session.diffStats === 'object',
+    projectionFailed: session.projectionFailed === true,
   }
 }
 
@@ -60,6 +63,7 @@ function buildRenderKey(
     viewModel.deleteCount,
     viewModel.createdAt,
     viewModel.hasDetailedStats ? 'stats' : 'pending',
+    viewModel.projectionFailed ? 'failed' : '',
   ].join('|')
 }
 
@@ -106,7 +110,7 @@ function createIndicator(
   if (!viewModel.hasDetailedStats) {
     indicator.append(createTextSpan(
       'shell-revision-pending',
-      editorMessage('editor.revision.indicator.pending')
+      editorMessage(viewModel.projectionFailed ? 'editor.revision.indicator.projectionFailed' : 'editor.revision.indicator.pending')
     ))
   }
 

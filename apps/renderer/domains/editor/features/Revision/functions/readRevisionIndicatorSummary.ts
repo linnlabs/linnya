@@ -8,6 +8,7 @@ export interface RevisionIndicatorSummary {
   createdAt?: number
   forceVisible: boolean
   pendingOnly: boolean
+  projectionFailed: boolean
 }
 
 const EMPTY_REVISION_INDICATOR_SUMMARY: RevisionIndicatorSummary = {
@@ -17,6 +18,7 @@ const EMPTY_REVISION_INDICATOR_SUMMARY: RevisionIndicatorSummary = {
   deleteCount: 0,
   forceVisible: false,
   pendingOnly: false,
+  projectionFailed: false,
 }
 
 /**
@@ -42,5 +44,6 @@ export function readRevisionIndicatorSummary(
     createdAt: canonicalSession.createdAt,
     forceVisible: true,
     pendingOnly: !hasDetailedStats,
+    projectionFailed: canonicalSession.projection === 'failed',
   }
 }

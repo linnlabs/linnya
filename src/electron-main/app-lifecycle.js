@@ -40,7 +40,7 @@ import {
 import { resolveAppServerBundleDirectory } from '../app-hosts/linnya/app-server-runtime/functions/resolveAppServerBundleDirectory.ts';
 import { createHostProcessEnvironment } from '../infra/adapters/command-runtime/environment/index.ts';
 import { createNodeEventLoopResponsivenessMonitor } from '../infra/observability/event-loop/index.ts';
-import { installRuntimePathRoots } from '../shared/runtime-paths/index.ts';
+import { installRuntimePathRoots, resolveProductionDataRoot } from '../shared/runtime-paths/index.ts';
 import { installDistributionIdentity } from '../shared/distribution-identity/index.ts';
 import { resolveElectronDistributionIdentity } from './distribution/index.ts';
 import { resolveAppVersion } from './app-lifecycle/functions/resolveAppVersion.ts';
@@ -50,6 +50,10 @@ import {
   registerBackendRendererRequestIpcHandlers,
 } from './app-server-runtime/index.ts';
 import { readDirectPluginDirsFromEnv } from './plugins/loader/pluginLayout.ts';
+import {
+  createDataUpgradeWindowController,
+  createElectronDataUpgradeWindowPort,
+} from './data-upgrade-window/index.ts';
 import { registerCommandPermissionSettingsHandlers } from './ipc/handlers/commands/command-permission-settings-ipc.ts';
 import { registerCommandApprovalHandlers } from './ipc/handlers/commands/command-approval-ipc.ts';
 import { registerCommandCardControlHandlers } from './ipc/handlers/commands/command-card-control-ipc.ts';
@@ -85,9 +89,16 @@ const runtimePathRoots = installRuntimePathRoots(resolveBackendRuntimePathRoots(
     ? path.join(process.resourcesPath, 'app.asar.unpacked')
     : process.cwd(),
   userDataDirectory: app.getPath('userData'),
-  documentsDirectory: app.getPath('documents'),
+  productionDataRoot: resolveProductionDataRoot({
+    platform: process.platform,
+    userDataDirectory: app.getPath('userData'),
+    homeDirectory: app.getPath('home'),
+    localAppDataDirectory: process.env.LOCALAPPDATA,
+    xdgDataHome: process.env.XDG_DATA_HOME,
+  }),
   developmentMode: process.env.LINNYA_DEV_MODE === 'true',
   workspaceRootOverride: process.env.LINNYA_WORKSPACE_DIR,
+  developmentInstanceRootOverride: process.env.LINNYA_DEV_INSTANCE_ROOT,
 }));
 
 // 设置日志文件路径
@@ -134,6 +145,10 @@ export function initialize() {
   mainEventLoopResponsiveness.start();
   
   let appServerRuntime;
+  // 数据格式升级超过 1 秒才显示的“正在升级数据”窗口；whenReady 后创建。
+  let dataUpgradeWindow;
+  // 此事实只由 supervisor 的真实退出通知写入，RPC 超时不能把仍存活的任务视为已结束。
+  let appServerExited = false;
   const appShutdownLifecycle = createAppShutdownLifecycle({
     prepareAppShutdown: prepareMainWindowForAppShutdown,
     commitWindowClosePermission: permitMainWindowCloseForAppShutdown,
@@ -174,6 +189,7 @@ export function initialize() {
 
   // 关闭确认使用动态后端引用，因此生命周期可以在启动初期就接管菜单退出和重开窗口闸门。
   configureMainWindowCloseLifecycle({
+    isBackendUnavailable: () => appServerExited,
     hasExecutingCommands: async () => (
       appServerRuntime
         ? (await appServerRuntime.activity.read()).hasExecutingCommands
@@ -188,7 +204,7 @@ export function initialize() {
   initializeAppUpdates({
     distributionIdentity,
     currentVersion: applicationVersion,
-    readActivityPort: () => appServerRuntime?.activity,
+    readActivityPort: () => appServerExited ? undefined : appServerRuntime?.activity,
     requestInstall: () => appShutdownLifecycle.requestInstallUpdate(),
   });
   
@@ -335,6 +351,13 @@ export function initialize() {
         configuredApiPort: process.env.LINNYA_API_PORT,
         rendererUrl: process.env.VITE_DEV_SERVER_URL,
       });
+      dataUpgradeWindow = createDataUpgradeWindowController({
+        port: createElectronDataUpgradeWindowPort({
+          locale: app.getLocale(),
+          isClosePermitted: () => appShutdownLifecycle.isWindowClosePermitted(),
+          onFailure: error => logger.warn('[DataUpgradeWindow] 升级窗口更新失败', error),
+        }),
+      });
       appServerRuntime = await createElectronAppServerRuntime({
         backendConfiguration,
         backendFacts: backendBootstrap,
@@ -346,8 +369,20 @@ export function initialize() {
         directPluginDirectories: readDirectPluginDirsFromEnv(),
         backendStderrSink: process.stderr,
         onAsyncFailure: error => logger.error('[App Server] 异步 Desktop RPC 失败', error),
+        onStartupProgress: progress => {
+          if (progress.state !== 'progress') {
+            logger.info('[App Server] 数据库启动阶段', progress);
+          }
+          dataUpgradeWindow.handleProgress(progress);
+        },
       });
-      appServerIdentity = await appServerRuntime.start();
+      const startup = appServerRuntime.start();
+      void appServerRuntime.process.waitForExit().then(exit => {
+        appServerExited = true;
+        if (!exit.expected) logger.error('[App Server] 后台进程意外退出', exit);
+      });
+      appServerIdentity = await startup;
+      await dataUpgradeWindow.settle();
       logger.info('✅ [APP-LIFECYCLE] STEP 1 (END) | App Server ready.', {
         pid: appServerIdentity.pid,
         apiPort: appServerIdentity.apiPort,
@@ -385,6 +420,8 @@ export function initialize() {
     // “返回继续”和“停止全部并关闭”，macOS 还会留下没有窗口的活动命令。
     logger.info('🚀 [APP-LIFECYCLE] STEP 3 (START) | Creating main browser window...');
     const mainWindow = createWindow();
+    // 主窗口已存在后才关闭升级窗口：先关会让 Windows/Linux 触发“最后一个窗口关闭”退出。
+    dataUpgradeWindow.close();
     logger.info('✅ [APP-LIFECYCLE] STEP 3 (END) | Main window created.');
     
     // 步骤 4: 将 API 端口号发送给前端
@@ -420,6 +457,7 @@ export function initialize() {
 
   }).catch((error) => {
     logger.error('[APP-LIFECYCLE] 启动失败，开始收口已创建资源:', error);
+    dataUpgradeWindow?.hide();
     // Backend 尚未 ready 时没有 Renderer；必须让用户看到可修复错误，不能静默退出。
     dialog.showErrorBox('Linnya 启动失败', error instanceof Error ? error.message : '无法启动应用，请查看诊断日志。');
     appShutdownLifecycle.requestStartupFailure();

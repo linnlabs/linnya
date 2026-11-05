@@ -6,7 +6,8 @@
   >
     <template v-for="item in items" :key="item.blockId">
       <RevisionToolbar
-        v-if="shouldRenderOverlayToolbar && item.showToolbar"
+        :editor="props.editor"
+        v-if="props.editor && shouldRenderOverlayToolbar && item.showToolbar"
         class="revision-overlay-toolbar"
         placement="absolute"
         :visible="true"

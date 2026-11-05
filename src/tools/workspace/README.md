@@ -58,6 +58,12 @@ Sources 附录不计入；物理文本行窗口统一换行成 LF，全文计量
 也不会通过“哪个文件存在”猜来源。物理 reader 按 magic bytes 识别 JPEG、PNG、WebP 并附加模型输入；
 AI 不声明媒体类型。图片不接纳任何行/字符窗口字段。inode 只属于 Workspace；每次调用与 locator 二选一。
 
+模型输入要求按每次调用的参数确定（`resolveModelInputRequirement`，不做 I/O）：`workspace:` 与 inode
+只读文本或 DocumentView，不要求模型能力；`conversation:` 与 `file:` 可能读成图片，声明可选的工具结果图片
+（`when_supported`），模型不收工具结果图片时降级为尺寸元数据。ToolNode 只对有要求的调用核对最近一次成功的
+模型，所以没有模型的 Host 直接调用（CLI `tools call`）可以读 Workspace 文本；物理 locator 由 CLI 入口在接纳前
+明确拒绝，见 [Conversation Control](../../app-hosts/linnya/application/conversation-control/README.md)。
+
 物理文本只接受严格 UTF-8（含可选 BOM），上限 20 MiB；SVG 按文本返回。图片复用 asset domain
 现有的 10 MiB、40 MP、完整解码、内容寻址和 tool-result claim。PDF、Office、压缩包、数据库、
 音视频及可执行文件须先用 Shell/CLI 显式转换。`read_file` 不依赖 Commands 的三档权限，因为三档

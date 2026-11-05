@@ -124,7 +124,10 @@ function mergeAdjacentSpans(spans: TextSpan[]): TextSpan[] {
 
   for (let i = 1; i < spans.length; i++) {
     const next = spans[i]
-    if (marksEqual(current, next)) {
+    // 原子节点（公式、引用）各自是一个比较单元；与 markdownRuntime 的提议侧投影一致，不能把
+    // 两个相同的相邻原子合成一个 span，否则基线少一个单元，未改内容也会显示为修改。
+    const isAtom = (span: TextSpan) => !!(span.inlineAtom || span.citation)
+    if (!isAtom(current) && !isAtom(next) && marksEqual(current, next)) {
       // 合并文本
       current.text += next.text
     } else {

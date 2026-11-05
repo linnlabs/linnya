@@ -1,3 +1,4 @@
+import { ProcessOutputCursorSchema } from '@app/schemas/commands';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -106,7 +107,7 @@ void app.whenReady().then(async () => {
   const appDataRoot = path.join(runRoot, 'app-data');
   fs.mkdirSync(appDataRoot, { recursive: true });
   const databaseService = new DatabaseService(path.join(runRoot, 'workspace.sqlite'));
-  databaseService.initialize({ lifecycleBootstrap: bootstrapBuiltinPluginLifecycle });
+  databaseService.initialize({ lifecycleBootstrap: db => bootstrapBuiltinPluginLifecycle(db, app.getVersion()) });
   const db = databaseService.getDb();
   const eventStore = new SQLiteEventStore(db);
   const lifecycle = createConversationRouteLifecycle({
@@ -118,6 +119,7 @@ void app.whenReady().then(async () => {
   const commandScope = await createElectronCommandProductionScope({
       credentialFilePath: path.resolve('credential-path-fixture/config/credentials.json'),
     db,
+    resolvePluginCli: () => undefined,
     conversationAdmission: lifecycle.workDirectoryAdmission,
     approvalHost: createCommandApprovalHost(),
     commandExecutionAudit: createCollectingCommandExecutionAuditPort(),
@@ -187,7 +189,7 @@ void app.whenReady().then(async () => {
         commandScope.shellToolRuntime.executeProcess({
           arguments: {
             process_handle: pipeStarted.processHandle,
-            action: { type: 'poll', cursor: 0 },
+            action: { type: 'poll', cursor: ProcessOutputCursorSchema.parse(0) },
           },
           conversationId,
           agentRunId: pipeAgentRunId,
@@ -199,7 +201,7 @@ void app.whenReady().then(async () => {
         commandScope.shellToolRuntime.executeProcess({
           arguments: {
             process_handle: ptyStarted.processHandle,
-            action: { type: 'poll', cursor: 0 },
+            action: { type: 'poll', cursor: ProcessOutputCursorSchema.parse(0) },
           },
           conversationId,
           agentRunId: ptyAgentRunId,
@@ -246,6 +248,11 @@ void app.whenReady().then(async () => {
       const decision = decisionCount === 1 ? 'return' : 'stop_and_close';
       appendEvent(`decision=${decision}`);
       return decision;
+    },
+    requestPreparationFailureDecision: async failure => {
+      assert.equal(failure.stage, 'renderer_save');
+      appendEvent('save-failure-decision=return');
+      return 'return';
     },
     requestShutdown: () => shutdownLifecycle.requestOrdinaryExit(),
     isWindowClosePermitted: () => shutdownLifecycle.isWindowClosePermitted(),

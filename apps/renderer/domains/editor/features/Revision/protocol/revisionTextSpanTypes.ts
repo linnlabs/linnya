@@ -40,6 +40,10 @@ export interface InlineLatexAtom {
   type: 'inlineLatex'
   latexSource: string
   textRepresentation: string
+  /**
+   * 来源节点的原始属性，含来源侧身份 `id`（编辑器 `block-xxxx` 或 parser `inline-latex-N`）。
+   * 只供诊断；比较只看 `latexSource`，物化新增公式时由编辑器生成新身份。
+   */
   attrs?: Record<string, unknown>
 }
 

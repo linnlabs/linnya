@@ -8,7 +8,3 @@ export {
   collectOrphanManagedImageAssets,
   recoverPendingManagedImagePublishesFromLedger,
 } from './infrastructure/sqlite/managedImageMaintenance';
-export {
-  migrateLegacyManagedImages,
-  type LegacyManagedImageMigrationStats,
-} from './infrastructure/sqlite/migrateLegacyManagedImages';

@@ -1,9 +1,8 @@
 /**
  * @file workspaceVfsSearchIndex.ts
- * @description Workspace Path Layer 的行级 grep 搜索索引。
+ * @description Workspace Path Layer 的行级 grep 搜索索引（SQLite FTS5 trigram 候选 + JS 字面量确认）。
  */
 
-import { createHash } from 'crypto';
 import { SEARCH_INDEX_VERSION, SearchIndexFreshnessSchema, type SearchIndexFreshnessRow } from '../definitions/workspaceVfsSearchIndex';
 import type { WorkspaceVfsNode } from '../definitions/workspaceVfsNode';
 import {
@@ -13,9 +12,11 @@ import {
   type WorkspaceVfsSearchMatch,
 } from '../definitions/workspaceVfsRead';
 import {
-  buildUniqueTrigrams,
+  buildShortPatternCaseVariants,
+  buildTrigramMatchExpression,
   compileWorkspaceSearchPattern,
   findLiteralMatchInLine,
+  type CompiledWorkspaceSearchPattern,
 } from '../functions/searchPattern';
 import { normalizeVfsPath } from '../functions/pathSegments';
 import type { ListWorkspaceVfsNodesParams, WorkspaceVfsDatabase } from './listWorkspaceVfsNodes';
@@ -28,24 +29,13 @@ const DEFAULT_MAX_RESULTS = 50;
 const DEFAULT_MAX_INDEXED_NODES = 5000;
 const MAX_QUERY_GRAMS = 16;
 const MAX_CANDIDATE_ROWS = 5000;
+const MAX_DELETE_BATCH_SIZE = 400;
 
-interface SearchIndexLineRow {
-  readonly id: string;
-  readonly project_id: string;
+interface SearchIndexCandidateRow {
   readonly inode: string;
-  readonly path: string;
-  readonly name: string;
-  readonly node_type: WorkspaceVfsNode['type'];
-  readonly source: WorkspaceVfsNode['source'];
-  readonly content_kind: string;
   readonly line_no: number;
   readonly text: string;
-  readonly text_lc: string;
-  readonly content_hash: string;
-  readonly node_updated_at: number;
-  readonly indexed_at: number;
 }
-
 
 interface SearchIndexInodeRow {
   readonly inode: string;
@@ -72,31 +62,10 @@ export function hasWorkspaceVfsSearchIndex(db: WorkspaceVfsDatabase): boolean {
   const tables = db.prepare(`
     SELECT name FROM sqlite_master
     WHERE type = 'table' AND name IN (
-      'workspace_vfs_search_lines', 'workspace_vfs_search_grams', 'workspace_vfs_search_files'
+      'workspace_vfs_search_index_files', 'workspace_vfs_search_index_lines', 'workspace_vfs_search_index_fts'
     )
   `).all();
   return tables.length === 3;
-}
-
-function hashText(text: string): string {
-  return createHash('sha256').update(text).digest('hex');
-}
-
-function hashLineId(params: {
-  readonly projectId: string;
-  readonly inode: string;
-  readonly contentKind: string;
-  readonly lineNo: number;
-}): string {
-  return createHash('sha1')
-    .update(params.projectId)
-    .update('\0')
-    .update(params.inode)
-    .update('\0')
-    .update(params.contentKind)
-    .update('\0')
-    .update(String(params.lineNo))
-    .digest('hex');
 }
 
 function clampPositiveInteger(value: number | undefined, fallback: number): number {
@@ -108,27 +77,6 @@ function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (matched) => `\\${matched}`);
 }
 
-function buildIndexedNode(row: SearchIndexLineRow): WorkspaceVfsNode {
-  return {
-    id: row.inode,
-    inode: row.inode,
-    path: row.path,
-    project_id: row.project_id,
-    parent_id: null,
-    type: row.node_type,
-    name: row.name,
-    icon: null,
-    created_at: row.indexed_at,
-    updated_at: row.node_updated_at,
-    deleted_at: null,
-    last_opened_at: null,
-    access_count: 0,
-    tags: null,
-    is_virtual: row.source !== 'workspace_node' && row.source !== 'resource_library',
-    source: row.source,
-  };
-}
-
 function readWorkspaceNodeIdFromInode(inode: string): string | null {
   const prefix = 'workspace:';
   return inode.startsWith(prefix) && inode.length > prefix.length
@@ -136,47 +84,73 @@ function readWorkspaceNodeIdFromInode(inode: string): string | null {
     : null;
 }
 
-function hasIndexedRowSnapshot(db: WorkspaceVfsDatabase, row: SearchIndexLineRow): boolean {
-  const nodeId = readWorkspaceNodeIdFromInode(row.inode);
+function hasIndexedTextSnapshot(db: WorkspaceVfsDatabase, inode: string): boolean {
+  const nodeId = readWorkspaceNodeIdFromInode(inode);
   return nodeId ? hasWorkspaceNodeTextSnapshot(db, nodeId) : false;
+}
+
+/** 索引写入只能整体生效；savepoint 复用当前连接，也不会提交调用方外层事务。 */
+function runInSearchIndexSavepoint<T>(db: WorkspaceVfsDatabase, name: string, write: () => T): T {
+  db.prepare(`SAVEPOINT ${name}`).run();
+  try {
+    const result = write();
+    db.prepare(`RELEASE SAVEPOINT ${name}`).run();
+    return result;
+  } catch (error) {
+    try {
+      db.prepare(`ROLLBACK TO SAVEPOINT ${name}`).run();
+      db.prepare(`RELEASE SAVEPOINT ${name}`).run();
+    } catch (rollbackError) {
+      // 数据库 I/O 等异常可能同时破坏事务；保留两项原始错误，不能用清理异常覆盖写入原因。
+      throw Object.assign(new Error('Workspace search index rollback failed.'), { cause: error, rollbackError });
+    }
+    throw error;
+  }
 }
 
 function readFreshness(db: WorkspaceVfsDatabase, projectId: string, inode: string): SearchIndexFreshnessRow | null {
   const row = db.prepare(`
     SELECT node_updated_at, path, index_version, max_file_chars, truncated
-    FROM workspace_vfs_search_files
+    FROM workspace_vfs_search_index_files
     WHERE project_id = ? AND inode = ?
   `).get(projectId, inode);
   return row === undefined ? null : SearchIndexFreshnessSchema.parse(row);
 }
 
-function updateIndexedNodeSnapshot(db: WorkspaceVfsDatabase, node: WorkspaceVfsNode): void {
+function updateIndexedPath(db: WorkspaceVfsDatabase, node: WorkspaceVfsNode): void {
   db.prepare(`
-    UPDATE workspace_vfs_search_files SET path = ?
+    UPDATE workspace_vfs_search_index_files SET path = ?
     WHERE project_id = ? AND inode = ?
   `).run(node.path, node.project_id, node.inode);
-  db.prepare(`
-    UPDATE workspace_vfs_search_lines
-    SET path = ?, name = ?, node_type = ?, source = ?, node_updated_at = ?
-    WHERE project_id = ? AND inode = ?
-  `).run(node.path, node.name, node.type, node.source, node.updated_at, node.project_id, node.inode);
 }
 
-function deleteIndexedNode(db: WorkspaceVfsDatabase, projectId: string, inode: string): void {
-  // 先撤回覆盖记录，最后重新发布；中途失败的行绝不能被当作有效索引使用。
-  db.prepare(`
-    DELETE FROM workspace_vfs_search_files WHERE project_id = ? AND inode = ?
-  `).run(projectId, inode);
-  db.prepare(`
-    DELETE FROM workspace_vfs_search_grams
-    WHERE line_id IN (
-      SELECT id FROM workspace_vfs_search_lines WHERE project_id = ? AND inode = ?
-    )
-  `).run(projectId, inode);
-  db.prepare(`
-    DELETE FROM workspace_vfs_search_lines
-    WHERE project_id = ? AND inode = ?
-  `).run(projectId, inode);
+/**
+ * 撤回文件的覆盖记录与全部索引行；FTS5 倒排项由行表触发器同步撤回。
+ * 行和覆盖记录在同一个 savepoint 中删除，不能留下“有覆盖记录但没有行”的假新鲜索引。
+ */
+export function deleteWorkspaceVfsSearchIndexEntries(params: {
+  readonly db: WorkspaceVfsDatabase;
+  readonly projectId: string;
+  readonly inodes: readonly string[];
+}): void {
+  if (params.inodes.length === 0) return;
+  runInSearchIndexSavepoint(params.db, 'workspace_vfs_search_delete', () => {
+    for (let offset = 0; offset < params.inodes.length; offset += MAX_DELETE_BATCH_SIZE) {
+      const inodes = params.inodes.slice(offset, offset + MAX_DELETE_BATCH_SIZE);
+      const placeholders = inodes.map(() => '?').join(', ');
+      params.db.prepare(`
+        DELETE FROM workspace_vfs_search_index_lines
+        WHERE file_id IN (
+          SELECT id FROM workspace_vfs_search_index_files
+          WHERE project_id = ? AND inode IN (${placeholders})
+        )
+      `).run(params.projectId, ...inodes);
+      params.db.prepare(`
+        DELETE FROM workspace_vfs_search_index_files
+        WHERE project_id = ? AND inode IN (${placeholders})
+      `).run(params.projectId, ...inodes);
+    }
+  });
 }
 
 function readIndexedInodesInScope(params: {
@@ -186,12 +160,9 @@ function readIndexedInodesInScope(params: {
 }): string[] {
   const pathPredicate = buildPathPredicate(params.startNode);
   const rows = params.db.prepare(`
-    SELECT DISTINCT l.inode
-    FROM (
-      SELECT project_id, inode, path FROM workspace_vfs_search_lines
-      UNION SELECT project_id, inode, path FROM workspace_vfs_search_files
-    ) l
-    WHERE l.project_id = ?${pathPredicate.sql}
+    SELECT f.inode
+    FROM workspace_vfs_search_index_files f
+    WHERE f.project_id = ?${pathPredicate.sql}
   `).all(
     params.projectId,
     ...pathPredicate.params,
@@ -205,68 +176,50 @@ function deleteStaleIndexedNodes(params: {
   readonly startNode: WorkspaceVfsNode | null;
   readonly liveInodes: ReadonlySet<string>;
 }): void {
-  for (const inode of readIndexedInodesInScope(params)) {
-    if (!params.liveInodes.has(inode)) {
-      deleteIndexedNode(params.db, params.projectId, inode);
-    }
+  deleteWorkspaceVfsSearchIndexEntries({
+    db: params.db,
+    projectId: params.projectId,
+    inodes: readIndexedInodesInScope(params).filter((inode) => !params.liveInodes.has(inode)),
+  });
+}
+
+function insertIndexedFile(params: {
+  readonly db: WorkspaceVfsDatabase;
+  readonly projectId: string;
+  readonly read: WorkspaceVfsReadSuccess;
+  readonly maxFileChars: number;
+}): number {
+  const row = params.db.prepare(`
+    INSERT INTO workspace_vfs_search_index_files (
+      project_id, inode, path, node_updated_at, index_version, max_file_chars, truncated
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    RETURNING id
+  `).get(params.projectId, params.read.node.inode, params.read.node.path, params.read.node.updated_at,
+    SEARCH_INDEX_VERSION, params.maxFileChars, params.read.truncated ? 1 : 0) as { readonly id: number } | undefined;
+  if (!row || !Number.isSafeInteger(row.id)) {
+    throw new Error('Workspace search index file id was not returned.');
   }
+  return row.id;
 }
 
 function insertIndexedLines(params: {
   readonly db: WorkspaceVfsDatabase;
-  readonly node: WorkspaceVfsNode;
+  readonly fileId: number;
   readonly text: string;
-  readonly contentHash: string;
-  readonly indexedAt: number;
 }): void {
-  const contentKind = 'content';
   const lines = params.text.split(/\r?\n/);
   const insertLine = params.db.prepare(`
-    INSERT INTO workspace_vfs_search_lines (
-      id, project_id, inode, path, name, node_type, source, content_kind,
-      line_no, text, text_lc, content_hash, node_updated_at, indexed_at
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  const insertGram = params.db.prepare(`
-    INSERT OR IGNORE INTO workspace_vfs_search_grams (project_id, gram, line_id)
+    INSERT INTO workspace_vfs_search_index_lines (file_id, line_no, text)
     VALUES (?, ?, ?)
   `);
-
   for (let index = 0; index < lines.length; index += 1) {
     const text = lines[index] ?? '';
     if (text.trim().length === 0) continue;
-    const lineNo = index + 1;
-    const lineId = hashLineId({
-      projectId: params.node.project_id ?? '',
-      inode: params.node.inode,
-      contentKind,
-      lineNo,
-    });
-    insertLine.run(
-      lineId,
-      params.node.project_id,
-      params.node.inode,
-      params.node.path,
-      params.node.name,
-      params.node.type,
-      params.node.source,
-      contentKind,
-      lineNo,
-      text,
-      text.toLowerCase(),
-      params.contentHash,
-      params.node.updated_at,
-      params.indexedAt,
-    );
-
-    for (const gram of buildUniqueTrigrams(text.toLowerCase())) {
-      insertGram.run(params.node.project_id, gram, lineId);
-    }
+    insertLine.run(params.fileId, index + 1, text);
   }
 }
 
-/** 异步正文投影完成后才进入同步批写；每个文件的行、grams 和覆盖记录一起提交。 */
+/** 异步正文投影完成后才进入同步批写；每个文件的行、FTS 倒排项和覆盖记录一起提交。 */
 function replaceIndexedNode(params: {
   readonly db: WorkspaceVfsDatabase;
   readonly projectId: string;
@@ -274,29 +227,11 @@ function replaceIndexedNode(params: {
   readonly maxFileChars: number;
 }): void {
   const { db, projectId, read } = params;
-  const contentHash = hashText(read.text);
-  // VFS 的窄读接口只有 prepare。SQLite savepoint 可复用当前连接，也不会提交调用方外层事务。
-  db.prepare('SAVEPOINT workspace_vfs_search_rebuild').run();
-  try {
-    deleteIndexedNode(db, projectId, read.node.inode);
-    insertIndexedLines({ db, node: read.node, text: read.text, contentHash, indexedAt: Date.now() });
-    db.prepare(`
-      INSERT INTO workspace_vfs_search_files (
-        project_id, inode, path, node_updated_at, index_version, max_file_chars, truncated
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(projectId, read.node.inode, read.node.path, read.node.updated_at,
-      SEARCH_INDEX_VERSION, params.maxFileChars, read.truncated ? 1 : 0);
-    db.prepare('RELEASE SAVEPOINT workspace_vfs_search_rebuild').run();
-  } catch (error) {
-    try {
-      db.prepare('ROLLBACK TO SAVEPOINT workspace_vfs_search_rebuild').run();
-      db.prepare('RELEASE SAVEPOINT workspace_vfs_search_rebuild').run();
-    } catch (rollbackError) {
-      // 数据库 I/O 等异常可能同时破坏事务；保留两项原始错误，不能用清理异常覆盖写入原因。
-      throw Object.assign(new Error('Workspace search index rollback failed.'), { cause: error, rollbackError });
-    }
-    throw error;
-  }
+  runInSearchIndexSavepoint(db, 'workspace_vfs_search_rebuild', () => {
+    deleteWorkspaceVfsSearchIndexEntries({ db, projectId, inodes: [read.node.inode] });
+    const fileId = insertIndexedFile({ db, projectId, read, maxFileChars: params.maxFileChars });
+    insertIndexedLines({ db, fileId, text: read.text });
+  });
 }
 
 async function ensureNodeIndexed(params: {
@@ -312,7 +247,7 @@ async function ensureNodeIndexed(params: {
     existing.max_file_chars === params.maxFileChars &&
     existing.node_updated_at === params.node.updated_at) {
     if (existing.path !== params.node.path) {
-      updateIndexedNodeSnapshot(params.base.db, params.node);
+      updateIndexedPath(params.base.db, params.node);
     }
     return {
       indexed: false, skippedFresh: true,
@@ -326,7 +261,7 @@ async function ensureNodeIndexed(params: {
     maxChars: params.maxFileChars,
   });
   if (!read.ok) {
-    deleteIndexedNode(params.base.db, projectId, params.node.inode);
+    deleteWorkspaceVfsSearchIndexEntries({ db: params.base.db, projectId, inodes: [params.node.inode] });
     return { indexed: false, skippedFresh: false, truncatedFile: false, incomplete: true };
   }
 
@@ -344,71 +279,73 @@ function buildPathPredicate(startNode: WorkspaceVfsNode | null): {
   }
 
   if (startNode.type !== 'folder') {
-    return { sql: ' AND l.path = ?', params: [startNode.path] };
+    return { sql: ' AND f.path = ?', params: [startNode.path] };
   }
 
   return {
-    sql: ' AND l.path LIKE ? ESCAPE \'\\\'',
+    sql: ' AND f.path LIKE ? ESCAPE \'\\\'',
     params: [`${escapeLike(startNode.path)}/%`],
   };
 }
 
+function buildShortPatternPredicate(compiled: CompiledWorkspaceSearchPattern): {
+  readonly sql: string;
+  readonly params: readonly unknown[];
+} {
+  if (compiled.caseSensitive) {
+    return { sql: 'instr(l.text, ?) > 0', params: [compiled.raw] };
+  }
+  const variants = buildShortPatternCaseVariants(compiled.raw);
+  return {
+    sql: `(${variants.map(() => "l.text LIKE ? ESCAPE '\\'").join(' OR ')})`,
+    params: variants.map((variant) => `%${escapeLike(variant)}%`),
+  };
+}
+
+/**
+ * 三字及以上：FTS5 trigram 倒排表给出同时含有这些三字组的行；不足三字：在范围内扫描行表。
+ * 两条路径都只产出候选，最终命中由调用方用 JS 字面量比较确认。
+ */
 function queryCandidateRows(params: {
   readonly db: WorkspaceVfsDatabase;
   readonly projectId: string;
   readonly startNode: WorkspaceVfsNode | null;
-  readonly patternComparable: string;
-  readonly grams: readonly string[];
+  readonly compiled: CompiledWorkspaceSearchPattern;
   readonly candidateLimit: number;
-}): SearchIndexLineRow[] {
+}): SearchIndexCandidateRow[] {
   const pathPredicate = buildPathPredicate(params.startNode);
-  if (params.grams.length > 0) {
-    const selectedGrams = params.grams.slice(0, MAX_QUERY_GRAMS);
-    const placeholders = selectedGrams.map(() => '?').join(', ');
+  const scopeSql = `f.project_id = ? AND f.index_version = ${SEARCH_INDEX_VERSION}${pathPredicate.sql}`;
+  if (params.compiled.grams.length > 0) {
     return params.db.prepare(`
-      SELECT
-        l.id, l.project_id, l.inode, l.path, l.name, l.node_type, l.source, l.content_kind,
-        l.line_no, l.text, l.text_lc, l.content_hash, l.node_updated_at, l.indexed_at
-      FROM workspace_vfs_search_lines l
-      JOIN workspace_vfs_search_files f
-        ON f.project_id = l.project_id AND f.inode = l.inode AND f.index_version = ${SEARCH_INDEX_VERSION}
-      JOIN (
-        SELECT line_id
-        FROM workspace_vfs_search_grams
-        WHERE project_id = ? AND gram IN (${placeholders})
-        GROUP BY line_id
-        HAVING COUNT(DISTINCT gram) = ?
-      ) c ON c.line_id = l.id
-      WHERE l.project_id = ?${pathPredicate.sql}
-      ORDER BY l.path ASC, l.line_no ASC
+      SELECT f.inode, l.line_no, l.text
+      FROM workspace_vfs_search_index_fts
+      JOIN workspace_vfs_search_index_lines l ON l.id = workspace_vfs_search_index_fts.rowid
+      JOIN workspace_vfs_search_index_files f ON f.id = l.file_id
+      WHERE workspace_vfs_search_index_fts MATCH ? AND ${scopeSql}
+      ORDER BY f.path ASC, l.line_no ASC
       LIMIT ?
     `).all(
-      params.projectId,
-      ...selectedGrams,
-      selectedGrams.length,
+      buildTrigramMatchExpression(params.compiled.grams.slice(0, MAX_QUERY_GRAMS)),
       params.projectId,
       ...pathPredicate.params,
       params.candidateLimit,
-    ) as SearchIndexLineRow[];
+    ) as SearchIndexCandidateRow[];
   }
 
+  const textPredicate = buildShortPatternPredicate(params.compiled);
   return params.db.prepare(`
-    SELECT
-      l.id, l.project_id, l.inode, l.path, l.name, l.node_type, l.source, l.content_kind,
-      l.line_no, l.text, l.text_lc, l.content_hash, l.node_updated_at, l.indexed_at
-    FROM workspace_vfs_search_lines l
-      JOIN workspace_vfs_search_files f
-        ON f.project_id = l.project_id AND f.inode = l.inode AND f.index_version = ${SEARCH_INDEX_VERSION}
-    WHERE l.project_id = ?${pathPredicate.sql}
-      AND l.text_lc LIKE ? ESCAPE '\\'
-    ORDER BY l.path ASC, l.line_no ASC
+    SELECT f.inode, l.line_no, l.text
+    FROM workspace_vfs_search_index_files f
+    JOIN workspace_vfs_search_index_lines l ON l.file_id = f.id
+    WHERE ${scopeSql} AND ${textPredicate.sql}
+    ORDER BY f.path ASC, l.line_no ASC
     LIMIT ?
   `).all(
     params.projectId,
     ...pathPredicate.params,
-    `%${escapeLike(params.patternComparable.toLowerCase())}%`,
+    ...textPredicate.params,
     params.candidateLimit,
-  ) as SearchIndexLineRow[];
+  ) as SearchIndexCandidateRow[];
 }
 
 export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGrepParams): Promise<WorkspaceVfsIndexedGrepResult> {
@@ -432,7 +369,8 @@ export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGre
   }
 
   const collected = await collectWorkspaceVfsSearchFiles(params, startNode, maxIndexedNodes);
-  const liveInodes = new Set(collected.files.map((node) => node.inode));
+  const liveNodes = new Map(collected.files.map((node) => [node.inode, node]));
+  const liveInodes = new Set(liveNodes.keys());
   let indexedNodes = 0;
   let skippedFreshNodes = 0;
   let truncatedFiles = 0;
@@ -465,8 +403,7 @@ export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGre
     db: params.db,
     projectId: params.projectId,
     startNode,
-    patternComparable: compiled.comparable,
-    grams: compiled.grams,
+    compiled,
     candidateLimit: candidateLimit + 1,
   });
 
@@ -474,11 +411,12 @@ export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGre
   const nodeTypeAccessPolicy = params.nodeTypeAccessPolicy;
   for (const row of candidateRows.slice(0, candidateLimit)) {
     // 未遍历的旧记录没有经过本次 freshness 检查，不把它们作为当前文件的命中。
-    if (!liveInodes.has(row.inode)) continue;
+    const node = liveNodes.get(row.inode);
+    if (!node) continue;
     if (
       nodeTypeAccessPolicy &&
-      !nodeTypeAccessPolicy.canReadContent(row.node_type) &&
-      !hasIndexedRowSnapshot(params.db, row)
+      !nodeTypeAccessPolicy.canReadContent(node.type) &&
+      !hasIndexedTextSnapshot(params.db, row.inode)
     ) {
       continue;
     }
@@ -488,7 +426,7 @@ export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGre
     });
     if (!match) continue;
     matches.push({
-      node: buildIndexedNode(row),
+      node,
       line: row.line_no,
       column: match.column,
       preview: match.preview,

@@ -143,7 +143,7 @@ function projectionFromFragments(
 
     spans.push({
       text: fragment.textRepresentation,
-      marks: [],
+      marks: pickSupportedSpanMarks(fragment.marks),
       inlineAtom: {
         type: 'inlineLatex',
         latexSource: fragment.latexSource,
@@ -212,6 +212,7 @@ export function structuredContentToInlineProjection(
         fragments.push({
           type: 'inlineLatex',
           attrs,
+          marks: toMarkArray(fragment.marks),
           latexSource,
           textRepresentation: latexSource ? `$${latexSource}$` : '$$',
         })
@@ -366,11 +367,12 @@ export function buildInlineNodesFromProjection(
 
     try {
       nodes.push(
+        // parser 给每个公式编的 `inline-latex-N` 不是编辑器身份（重启后从 1 重新计数，跨文档会重复），
+        // 与 Backend 导入相同，只保留内容属性并由编辑器生成 id。
         inlineLatexType.create({
           id: generateBlockId(),
-          ...fragment.attrs,
           latexSource: fragment.latexSource,
-        })
+        }, null, buildSchemaMarks(schema, fragment.marks))
       )
     } catch {
       nodes.push(schema.text(fragment.textRepresentation))

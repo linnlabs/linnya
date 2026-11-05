@@ -81,7 +81,7 @@ function assetCommit(ref: RuntimeResourceRef): WorkspaceAssetCommitRecord {
     width: ref.width,
     height: ref.height,
     sha256: ref.sha256,
-    localPath: `/managed/${ref.sha256}.png`,
+    storagePath: `managed/${ref.sha256}.png`,
     createdAt: 1000,
   };
 }
@@ -152,7 +152,7 @@ describe('SQLiteEventStore conversation event asset links', () => {
         height_px: 8,
         sha256: 'a'.repeat(64),
         storage_status: 'local',
-        local_path: `/managed/${'a'.repeat(64)}.png`,
+        local_path: `managed/${'a'.repeat(64)}.png`,
       },
       {
         id: 'asset-second',
@@ -162,7 +162,7 @@ describe('SQLiteEventStore conversation event asset links', () => {
         height_px: 8,
         sha256: 'b'.repeat(64),
         storage_status: 'local',
-        local_path: `/managed/${'b'.repeat(64)}.png`,
+        local_path: `managed/${'b'.repeat(64)}.png`,
       },
     ]);
     expect(db.prepare(`
@@ -211,7 +211,7 @@ describe('SQLiteEventStore conversation event asset links', () => {
     await store.ensureConversation(conversationId, [firstEvent], undefined, 'agent');
     const firstSession = await store.beginRunSession(conversationId, 'run-store-old', { kind: 'agent' });
     await store.appendEventToRun(firstSession, routeForSession(firstEvent, firstSession), {
-      assetCommits: [{ ...assetCommit(firstRef), localPath: '/legacy-v1/content.png' }],
+      assetCommits: [{ ...assetCommit(firstRef), storagePath: 'previous-store/content.png' }],
     });
 
     const secondRef = { ...firstRef, id: 'attachment-store-new' };
@@ -224,12 +224,12 @@ describe('SQLiteEventStore conversation event asset links', () => {
     );
     const secondSession = await store.beginRunSession(conversationId, 'run-store-new', { kind: 'agent' });
     await store.appendEventToRun(secondSession, routeForSession(secondEvent, secondSession), {
-      assetCommits: [{ ...assetCommit(secondRef), localPath: '/bound-v2/content.png' }],
+      assetCommits: [{ ...assetCommit(secondRef), storagePath: 'bound-store/content.png' }],
     });
 
     expect(db.prepare('SELECT id, local_path FROM assets').all()).toEqual([{
       id: 'asset-store-stable',
-      local_path: '/bound-v2/content.png',
+      local_path: 'bound-store/content.png',
     }]);
     expect(db.prepare('SELECT event_id, asset_id FROM conversation_event_asset_links ORDER BY event_id').all())
       .toEqual([

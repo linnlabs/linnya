@@ -39,7 +39,7 @@ function toRegistered(row: ManagedSvgAssetRow): RegisteredManagedSvgAsset {
     mediaType: MANAGED_SVG_MEDIA_TYPE,
     byteLength: row.size_bytes,
     sha256: row.sha256,
-    localPath: row.local_path,
+    storagePath: row.local_path,
     createdAt: row.created_at,
   };
 }
@@ -50,7 +50,7 @@ function assertCompatible(row: RegisteredManagedSvgAsset, facts: ManagedSvgAsset
     row.mediaType !== facts.mediaType ||
     row.byteLength !== facts.byteLength ||
     row.sha256 !== facts.sha256 ||
-    row.localPath !== facts.localPath
+    row.storagePath !== facts.storagePath
   ) {
     throw new ManagedSvgAssetError('storage_conflict');
   }
@@ -88,7 +88,7 @@ export function createSqliteManagedSvgAssetLedger(params: {
         facts.mediaType,
         facts.byteLength,
         facts.sha256,
-        facts.localPath,
+        facts.storagePath,
         facts.createdAt
       );
       const row = findByUri.get(facts.uri);

@@ -70,8 +70,12 @@ function runTsc() {
     .filter((line) => /error TS\d+/u.test(line))
     .length;
 
+  const strictFixtureErrors = portableOutput.split(/\r?\n/u).filter(line => (
+    /^scripts\/e2e\/shell-tool\/(fixtures|harness)\/.*error TS\d+/u.test(line.replaceAll('\\', '/'))
+  ));
   return {
     current,
+    strictFixtureErrors,
     logPath,
   };
 }
@@ -108,7 +112,12 @@ function updateBaseline(content, current) {
 
 const baseline = readBaseline();
 const tsc = runTsc();
+if (tsc.strictFixtureErrors.length > 0) {
+  console.error(tsc.strictFixtureErrors.join('\n'));
+  fail(`Shell E2E fixtures/harness 必须零类型错误；完整 log: ${tsc.logPath}`);
+}
 
+console.log('  Shell E2E fixtures/harness: 0 type errors');
 console.log(`  baseline = ${baseline.value}`);
 console.log(`  current  = ${tsc.current}`);
 

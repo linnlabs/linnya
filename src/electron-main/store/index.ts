@@ -4,16 +4,15 @@
  */
 import Store from 'electron-store';
 import { app } from 'electron';
-import path from 'path';
 
-// 统一将所有配置文件存储在 AppData/Roaming/Linnya 目录下
-const configDirectory = path.join(app.getPath('userData'), '..', 'Linnya');
-
+/**
+ * 主进程设置（更新安装标记、额度、最近文件）属于 Electron profile，与凭据同在 `userData`。
+ * 每个安装与开发实例的 profile 各自独立，验收安装不会读写正式版的设置。
+ * 正式版 macOS / Windows 的文件系统不区分大小写，旧位置 `userData/../Linnya` 与 `userData` 是同一目录。
+ */
 const store = new Store({
-  // 主配置文件，命名为 config.json
   name: 'config',
-  // 指定存储目录
-  cwd: configDirectory
+  cwd: app.getPath('userData'),
 });
 console.log('Electron main store path (config.json):', store.path);
 

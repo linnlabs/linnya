@@ -49,7 +49,8 @@ StreamingParser 与 blocks API 共用围栏规则：至少三个连续反引号�
 [`ContentFragment`](./src/model.rs) 的投影。解析事件保留完整嵌套栈；片段的
 `marks` 表达当前生效的样式集合，按类型与完整属性去重，保持首次出现的顺序。
 合法的同型嵌套 emphasis / strong / strikethrough 不生成重复 mark，内层结束也不结束外层样式。
-文本、软换行、硬换行与保留为文本的 HTML 片段共享该投影；表格单元格复用同一行内解析入口。
+文本、软换行、硬换行、行内公式与保留为文本的 HTML 片段共享该投影；表格单元格复用同一行内解析入口。
+公式的 marks 必须沿 Renderer 投影、物化和 Backend 导入保留，不能因公式是原子节点而清空。
 
 这里只生成格式语义，不依赖文档身份或持久化 schema。消费方仍执行自己的严格 schema
 校验，不通过接受重复 marks 或删除未知属性修复文档。Node 与 Web 构建使用同一 Rust 实现。

@@ -287,6 +287,11 @@ pnpm linnya:cli tools call write_file \
 `offset_chars/max_chars`。CLI 不重新解释这些字段，完整合同以
 `tools describe read_file` 返回的 App 当前 schema 为准。
 
+`tools call` 不运行模型，因此不要求 Workspace 配置模型。`read_file` 读 `workspace:` locator 或 inode 不需要模型；
+`conversation:` 与 `file:` 可能读成交给模型看的图片，Host 在创建会话前以 `capability_unavailable`
+（退出码 7）拒绝，并说明原因。需要模型查看这类文件时，改用 `send` 让接收工具结果图片的模型读取。
+工具参数先经过同一工具 owner 的准入：非法 locator、把 `write_file` 回执中的 inode 填进 locator 等返回参数错误（退出码 2），不会被误报为图片能力不可用，也不会创建工具运行。使用回执 inode 时应传 `inode` 字段；locator 只接受明确的地址。
+
 作用域规则只有三条：
 
 - 只传 `--project`：创建一个绑定该项目、前端可见的新 Conversation，并返回
@@ -406,7 +411,7 @@ execution 最多 64 条/1 MiB，且可能写入失败。没有记录的 run 标�
 `_dev_electron/runtime/conversation-control-v1.json`。例如在 `linnya-slides` 运行 `pnpm linnya:cli` 就只连接该 checkout。
 本目录没有实例或连接已过期时直接报错，不读取用户级连接作回退。
 `LINNYA_CLI_CONNECTION_FILE` 仍可覆盖发现路径，但 App 握手报告的真实源码根必须与 CLI 一致；
-符号链接归一后比较目录，分支名只用于诊断，不用来认定实例相同。细节见[开发配置](../../docs/development/env-local.md#多工作目录并行开发)。
+符号链接与 Windows 8.3 短名经原生 realpath 归一后比较目录；bundle 校验失败时的 `connection.source_root` 也遵守此规则。分支名只用于诊断，不用来认定实例相同。细节见[开发配置](../../docs/development/env-local.md#多工作目录并行开发)。
 
 ## 4. 状态与控制语义
 

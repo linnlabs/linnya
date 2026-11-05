@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema'
 import { ASSET_LEDGER_SCHEMAS } from 'src/domains/assets/features/asset-ledger/infrastructure/sqlite/schemas/assetLedger.schema'
 import { MARKDOWN_DOCUMENT_SCHEMAS } from '../../document-storage/infrastructure/sqlite/schemas/document.schema'
@@ -8,9 +8,11 @@ import { BLOCK_HISTORY_SCHEMAS } from '../../document-storage/infrastructure/sql
 import { IMAGE_BLOCK_SCHEMAS } from '../../document-storage/infrastructure/sqlite/schemas/blocks/image.schema'
 import { MarkdownDocumentService } from '../../document-storage'
 import { writeMarkdownDocumentFromText } from '../orchestration/writeMarkdownDocumentFromText'
+import { PendingRevisionApplyService } from '../../pending-revisions'
+import * as normalization from '../../normalization'
 
 const databases = []
-afterEach(() => databases.splice(0).forEach(db => db.close()))
+afterEach(() => { databases.splice(0).forEach(db => db.close()); vi.restoreAllMocks() })
 function setup(texts) {
   const db = new Database(':memory:')
   databases.push(db)
@@ -82,4 +84,46 @@ it('文首新增后批注仍绑定对齐的原段落，不能按位置串到其�
   expect(roots.find(root => root.attrs.id === 'b0').attrs.annotations ?? []).toEqual([])
   expect(rows()).toHaveLength(1)
   expect(rows()[0].operation).toBe('insert')
+})
+
+it('单块序列化异常变成多块时整次写入失败，保留既有正文与 Pending', async () => {
+  const { store, write, rows } = setup(['Alpha', 'Beta'])
+  await write('Existing proposal\n\nBeta')
+  const before = store.getDocument('test-document')
+  const pendingBefore = rows()
+  const versionBefore = store.getLatestVersion('test-document')
+  const planned = await normalization.planMarkdownBlocks('Valid proposal\n\nSecond proposal')
+  vi.spyOn(normalization, 'planMarkdownBlocks').mockResolvedValueOnce({
+    ...planned, bodyBlocks: ['Valid proposal', 'first paragraph\n\nsecond paragraph'],
+  })
+  await expect(write('Valid proposal\n\nSecond proposal')).rejects.toThrow('一个 rootBlock，实际为 2')
+  expect(store.getDocument('test-document')).toEqual(before)
+  expect(store.getLatestVersion('test-document')).toEqual(versionBefore)
+  expect(rows()).toEqual(pendingBefore)
+})
+
+it.each(['insert', 'update'])('公式 %s：真实写入、拒绝、接受、删除保持正式公式结构', async operation => {
+  const { store, write, rows } = setup(['Alpha'])
+  const apply = new PendingRevisionApplyService(store)
+  const target = operation === 'insert' ? 'Alpha\n\n$$\nx^2 + 1\n$$' : '$$\nx^2 + 1\n$$'
+  const request = mode => ({
+    documentId: 'test-document', expectedVersionNumber: store.getLatestVersion('test-document').version_number,
+    expectedPending: rows().map(row => ({ id: row.id, revision: row.revision })),
+    baseline: store.getDocument('test-document'), decision: { mode },
+  })
+  const baseline = store.getDocument('test-document')
+  await write(target)
+  expect(rows()[0].operation).toBe(operation)
+  await apply.commitEditorRevision(request('reject'))
+  expect(store.getDocument('test-document')).toEqual(baseline)
+  await write(target)
+  await apply.commitEditorRevision(request('accept'))
+  expect(rows()).toEqual([])
+  const roots = store.getDocument('test-document').content
+  expect(roots.at(-1).content[0]).toMatchObject({ type: 'latexBlock', attrs: { latexSource: 'x^2 + 1' } })
+  await write(operation === 'insert' ? 'Alpha' : '')
+  expect(rows()[0].operation).toBe('delete')
+  await apply.commitEditorRevision(request('accept'))
+  expect(rows()).toEqual([])
+  expect(store.getDocument('test-document').content.some(root => root.content[0].type === 'latexBlock')).toBe(false)
 })

@@ -19,7 +19,7 @@ export interface InitializeAppUpdatesOptions {
   readonly distributionIdentity: DistributionIdentity;
   /** App owner 启动时解析的产品版本；开发态 app.getVersion() 是 Electron 版本，不能用。 */
   readonly currentVersion: string;
-  /** Backend 启动前后都可能被调用；未就绪时返回 undefined，按没有任务处理。 */
+  /** 未启动或监督器已确认退出时返回 undefined；RPC 失败不能当作退出事实。 */
   readonly readActivityPort: () => AppUpdateActivityPort | undefined;
   readonly requestInstall: () => Promise<AppShutdownRequestOutcome>;
 }

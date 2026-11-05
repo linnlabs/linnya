@@ -16,7 +16,8 @@
     <span v-if="(insertCount ?? 0) > 0" class="indicator-insert">+{{ insertCount ?? 0 }}</span>
     <span v-if="(insertCount ?? 0) > 0 && (deleteCount ?? 0) > 0" class="indicator-separator">/</span>
     <span v-if="(deleteCount ?? 0) > 0" class="indicator-delete">-{{ deleteCount ?? 0 }}</span>
-    <span v-if="pendingOnly" class="indicator-pending">{{ editorMessage('editor.revision.indicator.pending') }}</span>
+    <span v-if="projectionFailed" class="indicator-pending" role="status">{{ editorMessage('editor.revision.indicator.projectionFailed') }}</span>
+    <span v-else-if="pendingOnly" class="indicator-pending">{{ editorMessage('editor.revision.indicator.pending') }}</span>
     <span v-if="formattedTime" class="indicator-time">{{ formattedTime }}</span>
   </div>
 </template>
@@ -46,6 +47,7 @@ const props = defineProps<{
   forceVisible?: boolean
   /** 是否展示“待处理”轻量态，而不是 +/- 统计。 */
   pendingOnly?: boolean
+  projectionFailed?: boolean
 }>()
 
 // 是否有修订

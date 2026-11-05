@@ -163,6 +163,12 @@ textColor/backgroundColor/textAlign 呈现属性，不复制与新块类型无�
 
 部分接受新增或在新增占位块保存本地输入后，该块已拥有正文，剩余意图转为 update；拒绝 insert 只删除空占位，保留用户已写入的正文。部分拒绝删除后，非空剩余提议也不能继续解释成整块 delete。提议更新不生成第二条 Pending。单块提议必须解析为恰好一个 rootBlock，不能截断多块内容后继续提交。
 
+`pending-revisions/importPendingMarkdownRootBlock` 是写入与接受共用的单块导入准入：file-style 写入逐条检查最终
+`newMarkdown`，任何多块或导入失败在正文、占位、批注和 Pending 写入前终止整次请求，错误返回工具。
+异步准入完成后再次比较完整来源版本，防止期间的 Editor 保存被旧规划覆盖；随后同步事务不再等待。
+行内部分决策的剩余提议与开发期批量种子也经过此入口；同步存储层只负责事务和持久化，不另建解析器。
+各生产块类型的单块序列化往返门禁见 `features/normalization/__tests__/markdownProjectionRoundTrip.test.ts`。
+
 CLI Agent 与内置 Agent 的已有 Markdown 文档写入均走同一 file-write provider。工具输出的待确认块数来自提交后的数据库清单，不使用本次操作条数。仅撤销提议也发布 Workspace mutation，Renderer 通过文档会话重读完整快照。
 
 写入回执分别表达本次实际变化与当前待确认总数。请求文本不同但规范化后等价时，

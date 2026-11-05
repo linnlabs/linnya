@@ -133,7 +133,7 @@ Core 和具体 Provider packages。
 - production → `@linnlabs/linnkit-provider-ai-sdk/conformance`。
 
 `@linnlabs/linnkit` 是显式 peer dependency，本 package 只使用公开 `/ports` 和
-`/contracts`。当前 peer 为 `^0.38.0`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
+`/contracts`。当前 peer 为 `^0.41.0`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
 `ai`、`@ai-sdk/provider`、全部 language Provider
 package、OpenRouter 官方 package 和经过审核的 `ai-sdk-ollama` community package 是本
 package 的精确直接依赖；根应用不再替它拥有这些版本。Embedding、Image
@@ -189,6 +189,8 @@ part 生命周期违规使用 `provider_stream_lifecycle_invalid`。Adapter 不�
 没有这些细分诊断的历史失败不能倒推到某一种 invariant。
 
 ## Provider 变更流程
+
+Google 当前固定 `4.0.94`。后续补丁的 Gemini 4 长输出自动续请求没有关闭开关，与当前单 attempt 的单请求合同不同；升级前需单独审核预算、审计与取消语义，不能作为普通补丁自动跟进。
 
 升级一个已有 Provider package 时：
 

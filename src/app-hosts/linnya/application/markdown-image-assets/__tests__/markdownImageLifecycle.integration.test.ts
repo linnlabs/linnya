@@ -168,12 +168,10 @@ describe('Markdown image lifecycle through Host providers', () => {
     expect(owned()).toEqual([images[0].assetId]);
     const loader = createWorkspaceVerifiedImageLoader({
       db,
-      storageBoundaries: [
-        {
-          boundaryRoot: root,
-          contentRoot: createManagedImageStoragePaths(root, storeId).contentRoot,
-        },
-      ],
+      storage: {
+        appDataRoot: root,
+        contentRoot: createManagedImageStoragePaths(root, storeId).contentRoot,
+      },
       maxImagePixels: 10000,
     });
     const loaded = await readDocumentImageAsset({ db, loader, assetId: images[0].assetId! });
@@ -241,18 +239,16 @@ describe('Markdown image lifecycle through Host providers', () => {
     const assetId = owned()[0];
     const loader = createWorkspaceVerifiedImageLoader({
       db,
-      storageBoundaries: [
-        {
-          boundaryRoot: root,
-          contentRoot: createManagedImageStoragePaths(root, storeId).contentRoot,
-        },
-      ],
+      storage: {
+        appDataRoot: root,
+        contentRoot: createManagedImageStoragePaths(root, storeId).contentRoot,
+      },
       maxImagePixels: 10000,
     });
     const asset = db
       .prepare<[string], { local_path: string }>('SELECT local_path FROM assets WHERE id = ?')
       .get(assetId)!;
-    await fs.writeFile(asset.local_path, 'corrupt bytes');
+    await fs.writeFile(path.join(root, ...asset.local_path.split('/')), 'corrupt bytes');
     await expect(readDocumentImageAsset({ db, loader, assetId })).rejects.toThrow();
     await expect(readDocumentImageAsset({ db, loader, assetId: 'unknown' })).rejects.toThrow(
       'asset_unavailable'

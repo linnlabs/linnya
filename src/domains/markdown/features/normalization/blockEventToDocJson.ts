@@ -109,8 +109,10 @@ function buildInlineNodes(
         const attrs = isRecord(fragment.attrs) ? fragment.attrs : {};
         const latexSource =
           typeof attrs.latexSource === 'string' ? attrs.latexSource : '';
+        const marks = toSupportedMarks(fragment.marks);
         inlineNodes.push({
           type: 'inlineLatex',
+          ...(marks.length > 0 ? { marks } : {}),
           attrs: {
             id: generateEditorBlockId(),
             latexSource

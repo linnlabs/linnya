@@ -53,7 +53,7 @@ interface LinnyaConversationControlUseCaseOwners {
   readonly telemetry: ExecutionAuditTelemetryPort;
   readonly events: ExecutionAuditEventPort;
   readonly auditControl: AuditControlPort;
-  readonly tools: Pick<ToolRuntimePort, 'getToolSchemas'>;
+  readonly tools: Pick<ToolRuntimePort, 'getToolSchemas' | 'getToolDefinition'>;
   readonly history: Pick<
     HistoryService,
     | 'listConversations'
@@ -207,6 +207,20 @@ export function createLinnyaConversationControlUseCase(
             parameters: JsonValueSchema.parse(schema.function.parameters),
           };
         });
+      },
+      validateArguments(toolName, args) {
+        const validate = owners.tools.getToolDefinition(toolName)?.validateArguments;
+        if (!validate) throw new Error(`CLI tool ${toolName} has no argument admission`);
+        return validate({ ...args });
+      },
+      requiresModelInput(toolName, args) {
+        const definition = owners.tools.getToolDefinition(toolName);
+        if (!definition) throw new Error(`CLI tool ${toolName} is not registered`);
+        // 与 ToolNode 相同的声明优先级：参数决定的动态要求覆盖静态要求。
+        const requirement = definition.resolveModelInputRequirement
+          ? definition.resolveModelInputRequirement({ ...args })
+          : definition.modelInputRequirement;
+        return requirement?.requires_image_input === true;
       },
     },
     audit,

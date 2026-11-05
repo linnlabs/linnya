@@ -144,11 +144,22 @@ function buildCitationCompareKey(citation: CitationInlineMeta): string {
   ].join('::')
 }
 
+/**
+ * 行内原子节点的比较键：只取决定内容与呈现的载荷（白名单），排除节点身份。
+ *
+ * - inlineLatex 只比较 `latexSource`。`attrs.id` 是节点身份：基线来自编辑器（如 `block-xxxx`），
+ *   提议由 parser 重新生成（如 `inline-latex-1`），同一个公式两侧永远不同；把它放进键会让未改的公式
+ *   显示成“删一个、加一个”。`textRepresentation` 由 `latexSource` 派生，也不单独比较。
+ * - citation 只比较来源载荷，`citationId` 与会话显示别名 `ref` 不进入键（见 buildCitationCompareKey）。
+ * - marks 不在键内，由相等区间的 inlineEqual 另行比较，粗体等呈现变化仍显示为修改。
+ *
+ * 新增属性时先判断它是内容还是身份；只有内容属性才能加入这里。
+ */
 function buildInlineAtomCompareKey(inlineAtom: InlineAtom): string {
   if (inlineAtom.type === 'citation') {
     return `citation:${buildCitationCompareKey(inlineAtom.citation)}`
   }
-  return `${inlineAtom.type}:${JSON.stringify(inlineAtom)}`
+  return `inlineLatex:${JSON.stringify(inlineAtom.latexSource)}`
 }
 
 /**
@@ -197,6 +208,37 @@ function buildComparableUnits(spans: TextSpan[]): ComparableUnit[] {
   return units
 }
 
+/**
+ * Markdown 强调范围的首尾空白会被 canonical serializer 移到 delimiter 外面。
+ * 比较时使用同一边界语义；原始 marks 留给插入/接受，不改字节、位置或范围内部的格式。
+ */
+function projectComparisonMarks(units: ComparableUnit[]): MarkName[][] {
+  const marks = units.map(unit => [...unit.marks])
+  const emphasisMarks: readonly MarkName[] = ['bold', 'italic', 'strike']
+  const isWhitespace = (index: number): boolean => (
+    !units[index].inlineAtom && !units[index].citation && /^\s+$/u.test(units[index].text)
+  )
+  for (const mark of emphasisMarks) {
+    for (let start = 0; start < units.length;) {
+      if (!units[start].marks.includes(mark)) { start += 1; continue }
+      let end = start + 1
+      while (end < units.length && units[end].marks.includes(mark)) end += 1
+      let left = start
+      while (left < end && isWhitespace(left)) {
+        marks[left] = marks[left].filter(value => value !== mark)
+        left += 1
+      }
+      let right = end - 1
+      while (right >= left && isWhitespace(right)) {
+        marks[right] = marks[right].filter(value => value !== mark)
+        right -= 1
+      }
+      start = end
+    }
+  }
+  return marks
+}
+
 function encodeComparableUnits(
   originalUnits: ComparableUnit[],
   newUnits: ComparableUnit[]
@@ -235,7 +277,9 @@ function pushRichSegment(target: RichDiffSegment[], segment: RichDiffSegment): v
   const sameCitationMeta = citationEqual(last?.citation, segment.citation)
   const sameInlineAtom = inlineAtomEqual(last?.inlineAtom, segment.inlineAtom)
 
-  if (last && sameType && sameMarks && sameCitationMeta && sameInlineAtom) {
+  // 每个原子节点必须是独立片段：应用层按片段创建一个节点，合并会丢掉相邻的同内容公式或引用。
+  const isAtom = (item: RichDiffSegment | undefined) => !!(item?.inlineAtom || item?.citation)
+  if (last && sameType && sameMarks && sameCitationMeta && sameInlineAtom && !isAtom(last) && !isAtom(segment)) {
     last.text += segment.text
     last.documentSize = (last.documentSize ?? 0) + (segment.documentSize ?? 0)
     return
@@ -251,7 +295,8 @@ function appendGroupedInsertUnits(target: RichDiffSegment[], units: ComparableUn
   while (start < units.length) {
     const base = units[start]
     let end = start + 1
-    while (end < units.length) {
+    // 原子单元各自成段，同内容的相邻公式或引用也不能合成一个节点。
+    while (!base.inlineAtom && !base.citation && end < units.length) {
       const next = units[end]
       if (
         !marksArrayEqual(base.marks, next.marks) ||
@@ -282,6 +327,8 @@ function buildRichSegmentsFromComparableUnits(
   newUnits: ComparableUnit[]
 ): RichDiffSegment[] {
   const result: RichDiffSegment[] = []
+  const originalComparisonMarks = projectComparisonMarks(originalUnits)
+  const newComparisonMarks = projectComparisonMarks(newUnits)
   let originalCursor = 0
   let newCursor = 0
 
@@ -308,20 +355,22 @@ function buildRichSegmentsFromComparableUnits(
 
     const equalOriginalUnits = originalUnits.slice(originalCursor, originalCursor + unitCount)
     const equalNewUnits = newUnits.slice(newCursor, newCursor + unitCount)
+    const equalOriginalMarks = originalComparisonMarks.slice(originalCursor, originalCursor + unitCount)
+    const equalNewMarks = newComparisonMarks.slice(newCursor, newCursor + unitCount)
 
     let groupStart = 0
     while (groupStart < unitCount) {
       const oldUnit = equalOriginalUnits[groupStart]
       const newUnit = equalNewUnits[groupStart]
       const sameInline = inlineEqual(
-        oldUnit?.marks ?? [],
-        newUnit?.marks ?? [],
+        equalOriginalMarks[groupStart],
+        equalNewMarks[groupStart],
         oldUnit?.citation,
         newUnit?.citation
       )
       const currentSignature = buildDiffSignature(
-        oldUnit?.marks ?? [],
-        newUnit?.marks ?? [],
+        equalOriginalMarks[groupStart],
+        equalNewMarks[groupStart],
         oldUnit?.citation,
         newUnit?.citation
       )
@@ -331,14 +380,14 @@ function buildRichSegmentsFromComparableUnits(
         const oldNext = equalOriginalUnits[groupEnd]
         const newNext = equalNewUnits[groupEnd]
         const nextSameInline = inlineEqual(
-          oldNext?.marks ?? [],
-          newNext?.marks ?? [],
+          equalOriginalMarks[groupEnd],
+          equalNewMarks[groupEnd],
           oldNext?.citation,
           newNext?.citation
         )
         const nextSignature = buildDiffSignature(
-          oldNext?.marks ?? [],
-          newNext?.marks ?? [],
+          equalOriginalMarks[groupEnd],
+          equalNewMarks[groupEnd],
           oldNext?.citation,
           newNext?.citation
         )

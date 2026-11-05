@@ -59,7 +59,7 @@ function toRegistered(row: LocalImageAssetRow): RegisteredLocalImageAsset {
     width: row.width_px,
     height: row.height_px,
     sha256: row.sha256,
-    localPath: row.local_path,
+    storagePath: row.local_path,
     createdAt: row.created_at,
   };
 }
@@ -97,7 +97,7 @@ export function createSqliteLocalImageAssetLedger(params: {
         facts.width,
         facts.height,
         facts.sha256,
-        facts.localPath,
+        facts.storagePath,
         facts.createdAt,
       );
       const row = selectByUri.get(facts.uri);
@@ -109,10 +109,10 @@ export function createSqliteLocalImageAssetLedger(params: {
       }
       assertCompatible(row, facts);
 
-      // 相同内容再次由生成器产出时，canonical asset 跟随最新可用的宿主文件。
-      if (row.local_path !== facts.localPath) {
-        updateLocalPath.run(facts.localPath, row.id);
-        return toRegistered({ ...row, local_path: facts.localPath });
+      // 相同内容进入另一个受管 store 时，canonical asset 跟随最新登记的文件。
+      if (row.local_path !== facts.storagePath) {
+        updateLocalPath.run(facts.storagePath, row.id);
+        return toRegistered({ ...row, local_path: facts.storagePath });
       }
       return toRegistered(row);
     },

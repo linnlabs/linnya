@@ -1,9 +1,41 @@
 # Host 数据库基线与迁移
 
 本目录只管理 Linnya Host 在 `workspace.sqlite` 中拥有的 Schema。当前不兼容开发基线是
-v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v68。
+v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v71。
 
 v67→v68 为 image_blocks 增加默认空字符串的 caption；已有 alt/title、尺寸、来源保持不变，旧图片不会自动显示文件名题注。
+
+v68→v69 删除自建 trigram grep 索引表 `workspace_vfs_search_files`、`workspace_vfs_search_lines`、`workspace_vfs_search_grams`。它们只是可重建的搜索缓存；新的 FTS5 索引表由 Workspace schema provider 建立，并在下一次目录 grep 时按需重建，旧行不迁移。DROP 释放的页留在数据库空闲列表里，可被后续写入复用，但文件本身要等 VACUUM 后才缩小；迁移不在启动时执行 VACUUM。删除耗时与旧索引体积成正比：2026-11 在开发库副本（23.4GB，其中旧索引 16.8GB）上实测，冷读 DROP 约 197s、系统缓存已热约 53s，随后 VACUUM 约 69s，文件降到 5.4GB。普通用户的旧索引通常在 GB 以内，一次性代价约为秒级到十几秒。
+
+v69→v70 把 `agent_run_costs.state_json` 的运行成本恢复账本改为只存累计合计与条目 ID。旧账本逐条保存每次 context build 的全部上下文分项（每条消息一项），长运行的账本随调用次数平方增长：2026-11 开发库 1,546 行平均 585KB、最大 19.4MB。合计等于对全部条目聚合的结果，快照与恢复只读合计；迁移按 `run_id` 分页改写全部旧行，无法识别的行让迁移失败并回滚，运行时代码不双读旧形状。
+
+v70→v71 把 `assets.local_path` 从本机绝对路径改为相对 AppData Root 的持久路径（合同见 [assets](../../../../domains/assets/README.md)）。迁移只截取 `ConversationAttachments/v2/stores/<store-id>/content/<xx>/<sha256>.<ext>` 这段受管内容后缀，统一成 `/` 分隔，不依赖旧前缀：换过位置或在 checkout 之间复制过的库同样能转换。不符合该结构的行让迁移失败并回滚；2026-11 各开发库共 5,514 行全部符合。`assets` 表的触发器由表阶段先于迁移建立，此后拒绝非相对路径写入。
+
+## 升级耗时与启动进度
+
+每个 Host 迁移步骤是独立事务：成功后才提升 `user_version`，中途退出只回滚当前步骤，下次启动从该步骤重来。每步完成后日志记录耗时和数据库大小，用来积累不同数据量下的实际耗时。
+
+迁移耗时取决于数据量和磁盘缓存冷热（v68→v69 同一份库冷读 197s、热缓存 53s），无法在开始前给出可靠的剩余时间，所以宿主只显示按步骤推进的进度，不显示预计时间。
+
+Desktop 启动时，App Server 经控制协议报告数据库阶段（打开、逐步迁移、插件迁移与建索引）的开始、每步完成和结束。宿主在这一阶段暂停 30 秒启动超时，阶段结束后重新计时；有数据格式升级且超过 1 秒仍未完成时，显示“正在升级数据”窗口（见 [Desktop 数据升级窗口](../../../data-upgrade-window/README.md)）。CLI 同样暂停超时，但不显示窗口。
+
+## 空闲页回收
+
+新建的数据库在建第一张表之前设为 `auto_vacuum = INCREMENTAL`。删除释放的页先留在空闲列表里，启动维护在空闲页超过 2048 页时分批归还磁盘（每批 2048 页，保留 512 页，批次之间让出事件循环、可取消）。已有数据库保持原来的 `auto_vacuum` 设定：切换需要整库 VACUUM，不在启动时做；对它们 `reclaimFreePages` 不执行任何操作。
+
+## 已发布数据库的升级保障
+
+Desktop 0.1.0 的公开数据基线是 v68（源码 `9c8186a8`）。公开用户不存在 v61–v67；
+未来收紧支持窗口时可以从 v68 起算，但不能删除 0.1.0 之后任一已发布 schema 到最新版本的升级路径。
+当前运行时仍支持 v61，本规则不改变现有准入范围。
+
+新增或修改迁移必须同时通过[新建库与发行夹具升级测试](../../../../../packages/plugins/__tests__/databaseUpgrade.sqlite.integration.test.ts)：
+它通过正式 DatabaseService 和插件升级 runner，比较表、列、类型、约束、索引、触发器、视图及随包插件表，
+并验证合成数据与 Pending 保留。新增 Host provider 即使不提升版本，也必须通过这道结构一致性门禁。
+每个新的已发布 schema 都应保留可复演的升级夹具；既有发行夹具不能随当前 DDL 更新而重建。
+
+0.1.0 的夹具来源、数据范围和重建入口见[夹具说明](../../../../../packages/plugins/__tests__/fixtures/database-0.1.0/README.md)。
+插件表仍走自己的版本账本，不能用 Host 的版本号替代插件升级验证。
 
 ## 为什么基线仍是 v61
 
