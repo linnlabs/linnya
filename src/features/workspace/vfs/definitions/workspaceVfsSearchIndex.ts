@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
-// 版本只由索引 owner 更新；旧行没有覆盖记录，或版本不同，都不具备可复用资格。
-export const SEARCH_INDEX_VERSION = 1;
+// 版本只由索引 owner 更新；没有覆盖记录或版本不同的文件都不具备可复用资格。
+// v2：FTS5 trigram 外部内容索引，替代自建 trigram 表（v1 的表由 Host v68→v69 迁移删除）。
+export const SEARCH_INDEX_VERSION = 2;
 
 export const SearchIndexFreshnessSchema = z.object({
   node_updated_at: z.number(),

@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { WorkspaceGrepResultSchema, WorkspaceWriteFileResultSchema } from '@app/schemas';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
-import { WORKSPACE_VFS_SEARCH_INDEX_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/search-index.schema';
 import { saveWorkspaceNodeTextSnapshot } from 'src/features/workspace/infrastructure/sqlite/node-text-snapshot/nodeTextSnapshot.service';
 import { searchWorkspaceVfsNodes } from 'src/features/workspace/vfs/orchestration/searchWorkspaceVfsNodes';
 import { grepWorkspaceVfsSearchIndex } from 'src/features/workspace/vfs/orchestration/workspaceVfsSearchIndex';
@@ -46,10 +45,17 @@ async function run(args: Record<string, unknown>) {
 
 function removeIndex(): void {
   database.getDb().exec(`
-    DROP TABLE workspace_vfs_search_grams;
-    DROP TABLE workspace_vfs_search_lines;
-    DROP TABLE workspace_vfs_search_files;
+    DROP TABLE workspace_vfs_search_index_fts;
+    DROP TABLE workspace_vfs_search_index_lines;
+    DROP TABLE workspace_vfs_search_index_files;
   `);
+}
+
+/** 外部内容 FTS5 的倒排项必须与行表逐行一致；integrity-check 失败会抛出 SQLITE_CORRUPT_VTAB。 */
+function expectFtsInSync(): void {
+  database.getDb().prepare(`
+    INSERT INTO workspace_vfs_search_index_fts(workspace_vfs_search_index_fts, rank) VALUES ('integrity-check', 1)
+  `).run();
 }
 
 describe('Workspace grep current text and honest coverage', () => {
@@ -90,21 +96,23 @@ describe('Workspace grep current text and honest coverage', () => {
     }).data.truncated).toBe(false);
   });
 
-  it('缺覆盖记录的旧前缀索引和旧版本都重建，即使 updated_at 没变化', async () => {
+  it('覆盖记录缺失或索引版本变化都重建，即使 updated_at 没变化', async () => {
     insertText('old', 'old.txt', `${'a'.repeat(120100)}\nTAIL`);
     await run({ pattern: 'TAIL' });
     const db = database.getDb();
-    // 模拟升级前 lines/grams 已存在，但不存在文件覆盖表；应用启动补建新表。
-    db.exec('DROP TABLE workspace_vfs_search_files');
-    for (const sql of WORKSPACE_VFS_SEARCH_INDEX_SCHEMAS) db.exec(sql);
+    // 覆盖记录被撤回时，行与 FTS 倒排项随之撤回；下一次 grep 不能把它当作新鲜索引。
+    db.prepare('DELETE FROM workspace_vfs_search_index_files').run();
+    expect(db.prepare('SELECT COUNT(*) AS count FROM workspace_vfs_search_index_lines').get()).toEqual({ count: 0 });
+    expectFtsInSync();
     const rebuilt = await run({ pattern: 'TAIL' });
     expect(rebuilt.data).toMatchObject({
       truncated: true, index: { indexed_nodes: 1, skipped_fresh_nodes: 0, truncated_files: 1 },
     });
-    db.prepare('UPDATE workspace_vfs_search_files SET index_version = 0').run();
+    db.prepare('UPDATE workspace_vfs_search_index_files SET index_version = 1').run();
     expect((await run({ pattern: 'TAIL' })).data.index).toMatchObject({ indexed_nodes: 1, skipped_fresh_nodes: 0 });
     expect(db.prepare('SELECT updated_at FROM workspace_nodes WHERE id = ?').get('old')).toEqual({ updated_at: 1 });
     expect((await run({ pattern: 'TAIL', inode: 'workspace:old' })).data.total_count).toBe(1);
+    expectFtsInSync();
   });
 
   it('重命名仍以 inode 更新索引地址，写入失效后搜索当前内容，显式失效删除覆盖记录', async () => {
@@ -124,9 +132,10 @@ describe('Workspace grep current text and honest coverage', () => {
     expect(reindexed.data).toMatchObject({ total_count: 1, index: { indexed_nodes: 1 } });
     expect((await run({ pattern: 'old phrase' })).data).toMatchObject({ total_count: 0, truncated: false });
     invalidateWorkspaceVfsSearchIndexNodes({ db, projectId, nodeIds: ['mutable'] });
-    for (const table of ['workspace_vfs_search_files', 'workspace_vfs_search_lines', 'workspace_vfs_search_grams']) {
+    for (const table of ['workspace_vfs_search_index_files', 'workspace_vfs_search_index_lines']) {
       expect(db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get()).toEqual({ count: 0 });
     }
+    expectFtsInSync();
     expect((await run({ pattern: 'new phrase' })).data.index).toMatchObject({ indexed_nodes: 1 });
   });
 
@@ -173,13 +182,37 @@ describe('Workspace grep current text and honest coverage', () => {
       .toMatchObject({ total_count: 1, truncated: false });
   });
 
+  it('短查询扫描与 FTS5 候选都保持字面量与大小写语义，查询语法字符按原文匹配', async () => {
+    insertText('literal', 'literal.txt', [
+      '数据库设计说明',
+      'ΣΟΦΙΑ 与 Ab',
+      'a "quoted" AND OR NEAR(x) * text',
+      'abc bcd',
+    ].join('\n'));
+    const expectLines = async (args: Record<string, unknown>, lines: number[]) => {
+      const result = await run(args);
+      expect(result.data.matches.map(match => match.line), JSON.stringify(args)).toEqual(lines);
+      expect(result.data.truncated, JSON.stringify(args)).toBe(false);
+    };
+    await expectLines({ pattern: '数据' }, [1]);
+    await expectLines({ pattern: 'σο' }, [2]);
+    await expectLines({ pattern: 'σοφ' }, [2]);
+    await expectLines({ pattern: 'ab' }, [2, 4]);
+    await expectLines({ pattern: 'ab', case_sensitive: true }, [4]);
+    await expectLines({ pattern: 'Ab', case_sensitive: true }, [2]);
+    await expectLines({ pattern: '"quoted" AND OR' }, [3]);
+    await expectLines({ pattern: 'NEAR(x) *' }, [3]);
+    await expectLines({ pattern: 'abcd' }, []);
+    expectFtsInSync();
+  });
+
   it('空文件也保存可复用覆盖记录，删除文件后清除无行的索引元信息', async () => {
     insertText('empty', 'empty.txt', '');
     expect((await run({ pattern: 'ABSENT' })).data).toMatchObject({ truncated: false, index: { indexed_nodes: 1 } });
     expect((await run({ pattern: 'ABSENT' })).data.index).toMatchObject({ skipped_fresh_nodes: 1 });
     database.getDb().prepare('UPDATE workspace_nodes SET deleted_at = 3 WHERE id = ?').run('empty');
     await run({ pattern: 'ABSENT' });
-    expect(database.getDb().prepare('SELECT COUNT(*) AS count FROM workspace_vfs_search_files').get()).toEqual({ count: 0 });
+    expect(database.getDb().prepare('SELECT COUNT(*) AS count FROM workspace_vfs_search_index_files').get()).toEqual({ count: 0 });
   });
 
   it('write_file 的 Markdown pending current 立即可搜，不复用旧索引正文', async () => {
@@ -211,25 +244,27 @@ describe('Workspace grep current text and honest coverage', () => {
     if (existing) await run({ pattern: 'Old' });
     const db = database.getDb();
     const readIndex = () => ({
-      files: db.prepare('SELECT * FROM workspace_vfs_search_files ORDER BY inode').all(),
-      lines: db.prepare('SELECT * FROM workspace_vfs_search_lines ORDER BY id').all(),
-      grams: db.prepare('SELECT * FROM workspace_vfs_search_grams ORDER BY line_id, gram').all(),
+      files: db.prepare('SELECT * FROM workspace_vfs_search_index_files ORDER BY inode').all(),
+      lines: db.prepare('SELECT * FROM workspace_vfs_search_index_lines ORDER BY id').all(),
+      ftsHits: db.prepare(`SELECT rowid FROM workspace_vfs_search_index_fts
+        WHERE workspace_vfs_search_index_fts MATCH '"old" AND "com"' ORDER BY rowid`).all(),
     });
     const previous = readIndex();
     saveWorkspaceNodeTextSnapshot({ db, nodeId: 'atomic', contentType: 'text/plain',
       text: 'First line is inserted successfully.\nSecond line has err and must fail.', updatedAt: 2 });
     db.prepare('UPDATE workspace_nodes SET updated_at = 2 WHERE id = ?').run('atomic');
-    db.exec(`CREATE TEMP TRIGGER fail_index_gram BEFORE INSERT ON workspace_vfs_search_grams
-      WHEN NEW.gram = 'err' BEGIN SELECT RAISE(ABORT, 'synthetic-index-gram-write-failed'); END`);
+    db.exec(`CREATE TEMP TRIGGER fail_index_line BEFORE INSERT ON workspace_vfs_search_index_lines
+      WHEN NEW.text LIKE '%has err%' BEGIN SELECT RAISE(ABORT, 'synthetic-index-line-write-failed'); END`);
     if (nested) {
       db.exec('CREATE TEMP TABLE caller_changes (value TEXT NOT NULL)');
       db.prepare('SAVEPOINT caller_owned').run();
       db.prepare('INSERT INTO caller_changes VALUES (?)').run('unrelated caller write');
     }
     await expect(grepWorkspaceVfsSearchIndex({ db, projectId, pattern: 'Second' }))
-      .rejects.toMatchObject({ code: 'SQLITE_CONSTRAINT_TRIGGER', message: 'synthetic-index-gram-write-failed' });
+      .rejects.toMatchObject({ code: 'SQLITE_CONSTRAINT_TRIGGER', message: 'synthetic-index-line-write-failed' });
     // 写入事务不包含正文读取/更新；只恢复先前完整索引，不能提交新行的部分结果。
     expect(readIndex()).toEqual(previous);
+    expectFtsInSync();
     expect(db.inTransaction).toBe(nested);
     if (nested) {
       expect(db.prepare('SELECT value FROM caller_changes').all()).toEqual([{ value: 'unrelated caller write' }]);
@@ -239,7 +274,7 @@ describe('Workspace grep current text and honest coverage', () => {
       expect(readIndex()).toEqual(previous);
       expect(db.inTransaction).toBe(false);
     }
-    db.exec('DROP TRIGGER fail_index_gram');
+    db.exec('DROP TRIGGER fail_index_line');
     expect((await run({ pattern: 'Second' })).data).toMatchObject({ total_count: 1, truncated: false });
     expect((await run({ pattern: 'Old' })).data).toMatchObject({ total_count: 0, truncated: false });
   });
@@ -251,11 +286,11 @@ describe('Workspace grep current text and honest coverage', () => {
     try {
       expect((await run({ pattern: 'Nested' })).data).toMatchObject({ total_count: 1, truncated: false });
       expect(db.inTransaction).toBe(true);
-      expect(db.prepare('SELECT COUNT(*) AS n FROM workspace_vfs_search_files').get()).toEqual({ n: 1 });
+      expect(db.prepare('SELECT COUNT(*) AS n FROM workspace_vfs_search_index_files').get()).toEqual({ n: 1 });
       db.prepare('ROLLBACK TO SAVEPOINT caller_owned').run();
-      expect(db.prepare('SELECT COUNT(*) AS n FROM workspace_vfs_search_files').get()).toEqual({ n: 0 });
-      expect(db.prepare('SELECT COUNT(*) AS n FROM workspace_vfs_search_lines').get()).toEqual({ n: 0 });
-      expect(db.prepare('SELECT COUNT(*) AS n FROM workspace_vfs_search_grams').get()).toEqual({ n: 0 });
+      expect(db.prepare('SELECT COUNT(*) AS n FROM workspace_vfs_search_index_files').get()).toEqual({ n: 0 });
+      expect(db.prepare('SELECT COUNT(*) AS n FROM workspace_vfs_search_index_lines').get()).toEqual({ n: 0 });
+      expectFtsInSync();
     } finally {
       db.prepare('RELEASE SAVEPOINT caller_owned').run();
     }

@@ -1,9 +1,11 @@
 # Host 数据库基线与迁移
 
 本目录只管理 Linnya Host 在 `workspace.sqlite` 中拥有的 Schema。当前不兼容开发基线是
-v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v68。
+v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v69。
 
 v67→v68 为 image_blocks 增加默认空字符串的 caption；已有 alt/title、尺寸、来源保持不变，旧图片不会自动显示文件名题注。
+
+v68→v69 删除自建 trigram grep 索引表 `workspace_vfs_search_files`、`workspace_vfs_search_lines`、`workspace_vfs_search_grams`。它们只是可重建的搜索缓存；新的 FTS5 索引表由 Workspace schema provider 建立，并在下一次目录 grep 时按需重建，旧行不迁移。DROP 释放的页留在数据库空闲列表里，可被后续写入复用，但文件本身要等 VACUUM 后才缩小；迁移不在启动时执行 VACUUM。删除耗时与旧索引体积成正比：2026-11 在开发库副本（23.4GB，其中旧索引 16.8GB）上实测，冷读 DROP 约 197s、系统缓存已热约 53s，随后 VACUUM 约 69s，文件降到 5.4GB。普通用户的旧索引通常在 GB 以内，一次性代价约为秒级到十几秒。
 
 ## 已发布数据库的升级保障
 
