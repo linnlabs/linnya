@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { readSourceCheckoutIdentity } from './readSourceCheckoutIdentity';
 
 const filesystem = vi.hoisted(() => ({
-  shortRoot: String.raw`C:\Users\RUNNER~1\linnya`,
-  nativeRoot: String.raw`C:\Users\runneradmin\linnya`,
+  shortRoot: String.raw`C:\fixtures\LONGDI~1\linnya`,
+  nativeRoot: String.raw`C:\fixtures\Long Directory\linnya`,
 }));
 vi.mock('node:fs', () => ({
   realpathSync: Object.assign(() => filesystem.shortRoot, { native: () => filesystem.nativeRoot }),

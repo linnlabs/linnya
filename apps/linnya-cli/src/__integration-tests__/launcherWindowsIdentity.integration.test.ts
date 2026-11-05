@@ -8,8 +8,8 @@ const launcher = readFileSync(new URL('../../bin/linnya.cjs', import.meta.url), 
 
 describe('Windows launcher source identity', () => {
   it('旧 bundle 的错误仍携带与原生路径解析一致的长目录身份', () => {
-    const shortRoot = String.raw`C:\Users\RUNNER~1\AppData\Local\Temp\linnya-cli-bundle-test`;
-    const nativeRoot = String.raw`C:\Users\runneradmin\AppData\Local\Temp\linnya-cli-bundle-test`;
+    const shortRoot = String.raw`C:\fixtures\LONGDI~1\linnya-cli-bundle-test`;
+    const nativeRoot = String.raw`C:\fixtures\Long Directory\linnya-cli-bundle-test`;
     const cliRoot = path.win32.join(shortRoot, 'apps/linnya-cli');
     const artifact = Buffer.from('module.exports = {};');
     const manifest = JSON.stringify({
