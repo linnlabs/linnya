@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import { afterEach, describe, expect, it } from 'vitest';
+import { resolveAssetStoragePath } from 'src/domains/assets/shared/asset-storage-path';
 import {
   createConversationImageIngress,
   createConversationAttachmentStoragePaths,
@@ -87,7 +88,10 @@ describe('workspace image ingress', () => {
 
     await fsp.unlink(sourcePath);
     const committed = await ingress.commitDraftFile(draft.draftId);
-    await expect(fsp.readFile(committed.localPath)).resolves.toEqual(png);
+    expect(committed.storagePath).toMatch(
+      new RegExp(`^ConversationAttachments/v2/stores/${STORE_ID}/content/[a-f0-9]{2}/[a-f0-9]{64}\\.png$`),
+    );
+    await expect(fsp.readFile(resolveAssetStoragePath(root, committed.storagePath))).resolves.toEqual(png);
     expect(committed.uri).toBe(
       `/Resources/Attachments/${draft.sha256.slice(0, 2)}/${draft.sha256}.png`,
     );
@@ -121,7 +125,7 @@ describe('workspace image ingress', () => {
       fileName: 'browser-upload.jpeg',
     });
     const committed = await ingress.commitDraftFile(draft.draftId);
-    await expect(fsp.readFile(committed.localPath)).resolves.toEqual(png);
+    await expect(fsp.readFile(resolveAssetStoragePath(root, committed.storagePath))).resolves.toEqual(png);
   });
 
   it('bytes 入口验证失败时不登记 draft 或留下 staging 文件', async () => {
@@ -244,12 +248,13 @@ describe('workspace image ingress', () => {
       ingress.commitDraftFile(first.draftId),
       ingress.commitDraftFile(second.draftId),
     ]);
-    expect(firstCommit.localPath).toBe(secondCommit.localPath);
+    expect(firstCommit.storagePath).toBe(secondCommit.storagePath);
     expect(await ingress.commitDraftFile(first.draftId)).toEqual(firstCommit);
-    await expect(fsp.readFile(firstCommit.localPath)).resolves.toEqual(bytes);
+    const finalPath = resolveAssetStoragePath(root, firstCommit.storagePath);
+    await expect(fsp.readFile(finalPath)).resolves.toEqual(bytes);
 
-    const contentDir = path.dirname(firstCommit.localPath);
-    expect(await fsp.readdir(contentDir)).toEqual([path.basename(firstCommit.localPath)]);
+    const contentDir = path.dirname(finalPath);
+    expect(await fsp.readdir(contentDir)).toEqual([path.basename(finalPath)]);
   });
 
   it('提交前复核草稿 hash；app 关闭后下次初始化清理旧 staging 但保留最终内容', async () => {

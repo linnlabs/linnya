@@ -118,9 +118,16 @@ src/domains/assets/features/local-image-registration/
 `asset_storage_bindings` 中持久化一次生成的
 `store-id`。带绑定的数据库始终恢复自己的身份；没有绑定的新库或旧库会生成新身份。启动维护不能遍历、认领或删除其他 store 的内容。数据库与 AppData 副本一起迁移时，原 store 身份保持不变。只恢复数据库、不恢复对应 AppData 内容时，历史引用会明确显示不可用，不会猜测另一个目录中的同名文件。
 
-会话模块原有路径 API 只是这组 asset 能力的兼容别名，不拥有第二套路径或发布规则。`ConversationAttachments/v1`
-与 Workspace `ManagedAssets/v1`
-都是不带 store 身份的历史只读边界；新内容不得再写入其中。
+会话模块原有路径 API 只是这组 asset 能力的别名，不拥有第二套路径或发布规则。早期不带 store 身份的
+`ConversationAttachments/v1` 与 Workspace `ManagedAssets/v1` 布局及其启动迁移已删除。
+
+`assets.local_path` 保存相对 AppData Root 的持久路径（`shared/asset-storage-path`），例如
+`ConversationAttachments/v2/stores/<store-id>/content/ab/<sha256>.png`：以 `/`
+分隔，只含字母、数字、`.`、`_`、`-`，没有空段、`.` 段或 `..`
+段。持久路径由内容身份直接给出，运行时不从绝对路径反推；只有打开、回收文件的代码按当前 AppData Root
+解析成本机路径。数据库因此不绑定某台机器上的某个目录，AppData 整体换位置后引用仍然有效。`assets`
+表上的 insert/update 触发器拒绝其他形式的写入，遗漏转换会在写入时失败。v70→v71
+迁移从旧绝对路径截取受管内容后缀完成转换，无法识别的行让迁移失败并回滚。
 
 内容发布使用同一文件系统内的 staging hard
 link，保证不会覆盖已有内容寻址目标。目标已存在时必须重新读取并核对 SHA-256；已损坏的同名目标会明确失败，不会被新上传静默修复。并发发布相同 bytes 则收敛到同一个最终文件。
@@ -131,7 +138,8 @@ staging 必须在当前 store 的受保护目录内新建并写入 bytes，不�
 
 发布者在创建正式 content 前先写入严格、版本化的 pending 凭证；凭证只保存当前 store 内的相对内容路径与预期 hash，不保存绝对路径。只有 asset
 ledger 或 event/link 事务取得 durable 所有权后，调用方才完成该凭证。进程中断留下的显式 pending 会在下次启动按当前账本裁决：已登记内容只清凭证，未登记内容先移动到
-`quarantine/`，隔离满 30 天后再删除。维护不扫描整个 `content/`
+`quarantine/`，隔离满 30 天后再删除。裁决时账本持久路径先按当前 AppData Root
+解析再与 pending 目标比较；任何一行无法解析都整体中止，不在账本不一致时隔离文件。维护不扫描整个 `content/`
 猜测孤儿，因此不能把“当前数据库不认识”误当作“任何数据库都不拥有”。
 
 历史图片入口继续使用 `ManagedImage*` 名称；新 consumer 使用窄小的
@@ -197,15 +205,13 @@ asset row 不是“已经可信的图片 bytes”。每次 preview 或 LLM
 materialization 前都必须经过 verified-image loader：
 
 1. asset 必须在当前 project 或 conversation scope 内有合法 link；
-2. `local_path` 的 realpath 必须位于显式受管 storage boundary；
+2. `local_path` 按当前 AppData Root 解析，realpath 必须位于当前 store 的 `content/`；无法解析的持久路径按越界处理；
 3. 路径和 content root 都不能通过符号链接逃逸；
 4. 文件必须是普通文件；
 5. 从同一 buffer 重新核对长度、hash、magic、尺寸和完整解码；
 6. 任一图片失败时整批失败，不返回部分结果或本地路径。
 
-当前受管图片边界包括数据库绑定的 AppData v2 store、历史 AppData
-`ConversationAttachments/v1` 和迁移期 Workspace
-`ManagedAssets/v1`。新增物理存储根时必须在 app
+loader 由 app assembly 注入 AppData Root 与数据库绑定 store 的 `content/`，后者必须位于前者之内。新增物理存储根时必须在 app
 assembly 显式注入，不能让 loader 接受整个 Workspace Root 或任意绝对路径。
 
 领域工具在已经持有合法 durable asset 身份时，可以内部声明
@@ -233,15 +239,11 @@ ID、URI、hash、locator 与宿主路径都不能进入 provider body。
 - 未引用 asset 的 GC 与 pending 恢复必须在任何上传、工具和会话 ingress 开放前完成；进程启动时间屏障继续保护本次启动创建的事实，不能代替启动时序互斥。
 
 `features/managed-image-maintenance`
-统一拥有受管图片的启动维护。应用在数据库初始化后同步等待旧数据迁移、asset
+统一拥有受管图片的启动维护。应用在数据库初始化后同步等待 asset
 GC 和 pending 恢复结束，完成后才装配插件、路由与 Agent ingress。维护以 asset
 ledger 和 project、conversation、document 三类引用为真源，先在事务中清理超出时间屏障的无引用 asset，再在事务提交后回收当前数据库绑定 store 内的内容文件；物理删除前还要复核当前是否仍有 asset
 row 占用同一
-`local_path`。工具派生图、用户附件和未来同存储布局的图片因此不会形成多套删除纪律。
-
-启动迁移只从当前账本的 `assets.local_path` 出发，把明确位于 AppData
-v1 或 Workspace `ManagedAssets/v1` 的健康图片复制到当前 v2
-store，并更新当前账本路径。它不反向扫描旧目录，也不删除 v1 字节：v1 没有 store 身份，同一份旧字节仍可能被另一份数据库备份引用。旧目录因此进入兼容读取和保留状态；未来若要物理清理，必须由显式备份/升级产品流程证明所有权，不能恢复旧的目录级推断 GC。
+`local_path`。持久路径无法解析或解析后不在当前 store 内时，只删除账本行并告警，不删除字节。工具派生图、用户附件和未来同存储布局的图片因此不会形成多套删除纪律。
 
 `generate_image`
 生成图目前仍使用 conversation 工作区文件作为业务结果的物理来源。若用户手动删除该文件，Renderer 的原始结果会损坏；视觉模型回图时另有受管副本用于模型输入，非视觉模型不会为未消费的增强附件制造受管副本。未来若产品要求生成图展示也独立于会话工作区文件永久回放，应在 asset

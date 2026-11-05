@@ -7,7 +7,7 @@ import {
   type WorkspaceVerifiedImageFailure,
   type WorkspaceVerifiedImageLoaderPort,
   type WorkspaceVerifiedImageRequest,
-  type WorkspaceVerifiedImageStorageBoundary,
+  type WorkspaceVerifiedImageStorage,
 } from '../definitions/workspaceVerifiedImage';
 import {
   inspectImageBytes,
@@ -15,6 +15,7 @@ import {
   type SupportedImageMediaType,
 } from 'src/shared/media/image-inspection';
 import { isPathInsideRoot } from 'src/shared/filesystem/managedPath';
+import { resolveAssetStoragePath } from 'src/domains/assets/shared/asset-storage-path';
 
 interface WorkspaceAssetImageRow {
   readonly id: string;
@@ -28,7 +29,7 @@ interface WorkspaceAssetImageRow {
 }
 
 interface WorkspaceImageLedgerIdentity extends WorkspaceVerifiedImageExpectation {
-  readonly localPath: string;
+  readonly storagePath: string;
 }
 
 function fail(
@@ -74,7 +75,7 @@ function readLedgerIdentity(
   if (!row.local_path) {
     fail(request, requestIndex, 'unavailable', 'file_missing');
   }
-  return { mediaType, byteLength, width, height, sha256, localPath: row.local_path };
+  return { mediaType, byteLength, width, height, sha256, storagePath: row.local_path };
 }
 
 function assertExpectedIdentity(
@@ -99,7 +100,8 @@ async function loadImage(params: {
   readonly request: WorkspaceVerifiedImageRequest;
   readonly requestIndex: number;
   readonly row: WorkspaceAssetImageRow | undefined;
-  readonly contentRootRealPaths: readonly string[];
+  readonly appDataRoot: string;
+  readonly contentRootRealPath: string;
   readonly maxImagePixels: number;
 }): Promise<VerifiedWorkspaceImage> {
   const { request, requestIndex, row } = params;
@@ -113,19 +115,25 @@ async function loadImage(params: {
   const ledger = readLedgerIdentity(row, request, requestIndex);
   assertExpectedIdentity(request.expected, ledger, request, requestIndex);
 
+  let localPath: string;
+  try {
+    localPath = resolveAssetStoragePath(params.appDataRoot, ledger.storagePath);
+  } catch {
+    fail(request, requestIndex, 'integrity_failed', 'managed_path_escape');
+  }
   let fileRealPath: string;
   try {
-    fileRealPath = await fsp.realpath(ledger.localPath);
+    fileRealPath = await fsp.realpath(localPath);
   } catch {
     fail(request, requestIndex, 'unavailable', 'file_missing');
   }
-  if (!params.contentRootRealPaths.some(root => isPathInsideRoot(root, fileRealPath))) {
+  if (!isPathInsideRoot(params.contentRootRealPath, fileRealPath)) {
     fail(request, requestIndex, 'integrity_failed', 'managed_path_escape');
   }
 
   let fileStat;
   try {
-    fileStat = await fsp.lstat(ledger.localPath);
+    fileStat = await fsp.lstat(localPath);
   } catch {
     fail(request, requestIndex, 'unavailable', 'file_missing');
   }
@@ -138,7 +146,7 @@ async function loadImage(params: {
 
   let bytes: Buffer;
   try {
-    bytes = await fsp.readFile(ledger.localPath);
+    bytes = await fsp.readFile(localPath);
   } catch {
     fail(request, requestIndex, 'unavailable', 'file_missing');
   }
@@ -180,47 +188,33 @@ async function loadImage(params: {
   };
 }
 
-async function resolveContentRootRealPaths(
-  boundaries: readonly WorkspaceVerifiedImageStorageBoundary[],
+async function resolveContentRootRealPath(
+  storage: WorkspaceVerifiedImageStorage,
   request: WorkspaceVerifiedImageRequest,
-): Promise<readonly string[]> {
-  const resolved: string[] = [];
-  for (const boundary of boundaries) {
-    let boundaryRootRealPath: string;
-    let contentRootRealPath: string;
-    try {
-      [boundaryRootRealPath, contentRootRealPath] = await Promise.all([
-        fsp.realpath(boundary.boundaryRoot),
-        fsp.realpath(boundary.contentRoot),
-      ]);
-    } catch (error: unknown) {
-      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-        continue;
-      }
-      fail(request, 0, 'unavailable', 'file_missing');
-    }
-    if (!isPathInsideRoot(boundaryRootRealPath, contentRootRealPath)) {
-      fail(request, 0, 'integrity_failed', 'managed_path_escape');
-    }
-    resolved.push(contentRootRealPath);
-  }
-  if (resolved.length === 0) {
+): Promise<string> {
+  let appDataRootRealPath: string;
+  let contentRootRealPath: string;
+  try {
+    [appDataRootRealPath, contentRootRealPath] = await Promise.all([
+      fsp.realpath(storage.appDataRoot),
+      fsp.realpath(storage.contentRoot),
+    ]);
+  } catch {
     fail(request, 0, 'unavailable', 'file_missing');
   }
-  return resolved;
+  if (!isPathInsideRoot(appDataRootRealPath, contentRootRealPath)) {
+    fail(request, 0, 'integrity_failed', 'managed_path_escape');
+  }
+  return contentRootRealPath;
 }
 
 export function createWorkspaceVerifiedImageLoader(params: {
   readonly db: Database.Database;
-  readonly storageBoundaries: readonly WorkspaceVerifiedImageStorageBoundary[];
+  readonly storage: WorkspaceVerifiedImageStorage;
   readonly maxImagePixels: number;
 }): WorkspaceVerifiedImageLoaderPort {
   if (!Number.isSafeInteger(params.maxImagePixels) || params.maxImagePixels <= 0) {
     throw new Error('maxImagePixels must be a positive safe integer');
-  }
-
-  if (params.storageBoundaries.length === 0) {
-    throw new Error('storageBoundaries must contain at least one managed root');
   }
   const getAsset = params.db.prepare<[string], WorkspaceAssetImageRow>(`
     SELECT id, media_type, size_bytes, width_px, height_px, sha256,
@@ -233,8 +227,8 @@ export function createWorkspaceVerifiedImageLoader(params: {
     async loadImages(requests): Promise<readonly VerifiedWorkspaceImage[]> {
       if (requests.length === 0) return [];
 
-      const contentRootRealPaths = await resolveContentRootRealPaths(
-        params.storageBoundaries,
+      const contentRootRealPath = await resolveContentRootRealPath(
+        params.storage,
         requests[0],
       );
 
@@ -244,7 +238,8 @@ export function createWorkspaceVerifiedImageLoader(params: {
           request,
           requestIndex,
           row: getAsset.get(request.assetId),
-          contentRootRealPaths,
+          appDataRoot: params.storage.appDataRoot,
+          contentRootRealPath,
           maxImagePixels: params.maxImagePixels,
         }));
       }

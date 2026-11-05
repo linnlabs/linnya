@@ -150,7 +150,7 @@ describe('Node physical file reader', () => {
         width: 1,
         height: 1,
         sha256: 'a'.repeat(64),
-        localPath: '/managed/asset-slide.png',
+        storagePath: 'managed/asset-slide.png',
         createdAt: 1,
       });
     const claims = createInMemoryToolResultAssetClaimRegistry({

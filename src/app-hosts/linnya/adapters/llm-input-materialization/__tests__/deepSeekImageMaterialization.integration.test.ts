@@ -165,14 +165,15 @@ async function createVerifiedAssetFixture() {
       sha256,
     };
     db.prepare('INSERT INTO assets VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-      reference.resourceId, reference.mediaType, bytes.length, width, height, sha256, 'local', localPath,
+      reference.resourceId, reference.mediaType, bytes.length, width, height, sha256, 'local',
+      path.relative(root, localPath).split(path.sep).join('/'),
     );
     return { reference, bytes, localPath };
   }));
   const resolver = createWorkspaceLlmImageResolver({
     verifiedImageLoader: createWorkspaceVerifiedImageLoader({
       db,
-      storageBoundaries: [{ boundaryRoot: root, contentRoot }],
+      storage: { appDataRoot: root, contentRoot },
       maxImagePixels: 1_000_000,
     }),
   });

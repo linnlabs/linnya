@@ -94,7 +94,7 @@ export function createManagedImageIngress(
         width: inspected.width,
         height: inspected.height,
         sha256: inspected.sha256,
-        localPath: identity.localPath,
+        storagePath: identity.storagePath,
         createdAt: Number.isFinite(parsedCreatedAt) ? parsedCreatedAt : Date.now(),
       });
       await completeManagedImagePublish(pendingPublish);

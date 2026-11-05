@@ -5,7 +5,8 @@ export interface ManagedSvgAssetFacts {
   readonly mediaType: typeof MANAGED_SVG_MEDIA_TYPE;
   readonly byteLength: number;
   readonly sha256: string;
-  readonly localPath: string;
+  /** `assets.local_path` 的持久路径（相对 AppData Root）；读文件前由 AppData Root 解析。 */
+  readonly storagePath: string;
   readonly createdAt: number;
 }
 

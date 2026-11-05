@@ -1,10 +1,10 @@
 import type { SupportedImageMediaType } from 'src/shared/media/image-inspection';
 
-export interface WorkspaceVerifiedImageStorageBoundary {
-  /** 允许受管内容存在的目录。 */
+export interface WorkspaceVerifiedImageStorage {
+  /** 当前 AppData Root；`assets.local_path` 是相对它的持久路径。 */
+  readonly appDataRoot: string;
+  /** 允许受管内容存在的目录；它的 realpath 必须位于 appDataRoot 内，防止整棵目录被符号链接替换。 */
   readonly contentRoot: string;
-  /** contentRoot 的 realpath 必须位于该边界内，防止整棵内容目录被符号链接替换。 */
-  readonly boundaryRoot: string;
 }
 
 export interface WorkspaceVerifiedImageExpectation {

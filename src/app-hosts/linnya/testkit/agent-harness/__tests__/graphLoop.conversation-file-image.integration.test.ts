@@ -119,10 +119,10 @@ describe.each<ToolImageProviderSurface>(['openai_responses', 'anthropic_messages
         const managedPaths = createManagedImageStoragePaths(appDataRoot, STORE_ID);
         const verifiedImageLoader = createWorkspaceVerifiedImageLoader({
           db,
-          storageBoundaries: [{
-            boundaryRoot: appDataRoot,
+          storage: {
+            appDataRoot,
             contentRoot: managedPaths.contentRoot,
-          }],
+          },
           maxImagePixels: 1_000_000,
         });
         const profile = surface === 'openai_responses'
@@ -225,12 +225,10 @@ describe.each<ToolImageProviderSurface>(['openai_responses', 'anthropic_messages
           FROM assets
           WHERE id = ?
         `).get(`conversation-file-asset-${surface}`);
-        expect(assetRow?.local_path).toBe(path.join(
-          managedPaths.contentRoot,
-          sha256.slice(0, 2),
-          `${sha256}.png`,
-        ));
-        expect(assetRow?.local_path).not.toBe(sourcePath);
+        // 账本只存相对 AppData Root 的持久路径，不存本机绝对路径。
+        expect(assetRow?.local_path).toBe(
+          `${managedPaths.contentStoragePath}/${sha256.slice(0, 2)}/${sha256}.png`,
+        );
 
         await fsp.rm(sourcePath);
         if (!materializationAttempt) {

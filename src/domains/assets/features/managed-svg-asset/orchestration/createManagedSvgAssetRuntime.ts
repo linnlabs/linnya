@@ -10,6 +10,7 @@ import {
   publishStagedManagedContent,
   type ManagedContentPendingPublish,
 } from '../../../shared/managed-image-storage';
+import { resolveAssetStoragePath } from '../../../shared/asset-storage-path';
 import {
   MANAGED_SVG_MEDIA_TYPE,
   ManagedSvgAssetError,
@@ -31,11 +32,17 @@ export function createManagedSvgAssetRuntime(
   async function materialize(
     registered: RegisteredManagedSvgAsset
   ): Promise<MaterializedManagedSvgAsset> {
-    const stat = await fsp.lstat(registered.localPath).catch(() => null);
+    let localPath: string;
+    try {
+      localPath = resolveAssetStoragePath(dependencies.appDataRoot, registered.storagePath);
+    } catch {
+      throw new ManagedSvgAssetError('integrity_failed');
+    }
+    const stat = await fsp.lstat(localPath).catch(() => null);
     if (!stat?.isFile()) throw new ManagedSvgAssetError('asset_unavailable');
     const [contentRoot, filePath] = await Promise.all([
       fsp.realpath(paths.contentRoot).catch(() => null),
-      fsp.realpath(registered.localPath).catch(() => null),
+      fsp.realpath(localPath).catch(() => null),
     ]);
     if (!contentRoot || !filePath || !isPathInsideRoot(contentRoot, filePath)) {
       throw new ManagedSvgAssetError('asset_unavailable');
@@ -111,7 +118,7 @@ export function createManagedSvgAssetRuntime(
           mediaType: MANAGED_SVG_MEDIA_TYPE,
           byteLength: bytes.byteLength,
           sha256,
-          localPath: identity.localPath,
+          storagePath: identity.storagePath,
           createdAt: Date.now(),
         });
         await completeManagedContentPublish(pending);

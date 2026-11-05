@@ -63,12 +63,13 @@ async function createFixture() {
 
   const verifiedImageLoader = createWorkspaceVerifiedImageLoader({
     db,
-    storageBoundaries: [{ boundaryRoot: workspaceRoot, contentRoot }],
+    storage: { appDataRoot: workspaceRoot, contentRoot },
     maxImagePixels: 1_000_000,
   });
   const toolResultClaims = createInMemoryToolResultAssetClaimRegistry();
   return {
     db,
+    workspaceRoot,
     contentRoot,
     verifiedImageLoader,
     toolResultClaims,
@@ -82,6 +83,7 @@ async function createFixture() {
 
 async function addPngAsset(params: {
   readonly db: Database.Database;
+  readonly workspaceRoot: string;
   readonly contentRoot: string;
   readonly assetId: string;
   readonly corruptAfterWrite?: boolean;
@@ -107,7 +109,12 @@ async function addPngAsset(params: {
     INSERT INTO assets (
       id, media_type, size_bytes, width_px, height_px, sha256, storage_status, local_path
     ) VALUES (?, 'image/png', ?, 6, 4, ?, 'local', ?)
-  `).run(params.assetId, bytes.length, sha256, localPath);
+  `).run(
+    params.assetId,
+    bytes.length,
+    sha256,
+    path.relative(params.workspaceRoot, localPath).split(path.sep).join('/'),
+  );
   if (params.corruptAfterWrite) {
     await fsp.writeFile(localPath, Buffer.alloc(bytes.length, 7));
   }

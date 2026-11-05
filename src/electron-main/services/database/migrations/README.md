@@ -1,13 +1,15 @@
 # Host 数据库基线与迁移
 
 本目录只管理 Linnya Host 在 `workspace.sqlite` 中拥有的 Schema。当前不兼容开发基线是
-v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v70。
+v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v71。
 
 v67→v68 为 image_blocks 增加默认空字符串的 caption；已有 alt/title、尺寸、来源保持不变，旧图片不会自动显示文件名题注。
 
 v68→v69 删除自建 trigram grep 索引表 `workspace_vfs_search_files`、`workspace_vfs_search_lines`、`workspace_vfs_search_grams`。它们只是可重建的搜索缓存；新的 FTS5 索引表由 Workspace schema provider 建立，并在下一次目录 grep 时按需重建，旧行不迁移。DROP 释放的页留在数据库空闲列表里，可被后续写入复用，但文件本身要等 VACUUM 后才缩小；迁移不在启动时执行 VACUUM。删除耗时与旧索引体积成正比：2026-11 在开发库副本（23.4GB，其中旧索引 16.8GB）上实测，冷读 DROP 约 197s、系统缓存已热约 53s，随后 VACUUM 约 69s，文件降到 5.4GB。普通用户的旧索引通常在 GB 以内，一次性代价约为秒级到十几秒。
 
 v69→v70 把 `agent_run_costs.state_json` 的运行成本恢复账本改为只存累计合计与条目 ID。旧账本逐条保存每次 context build 的全部上下文分项（每条消息一项），长运行的账本随调用次数平方增长：2026-11 开发库 1,546 行平均 585KB、最大 19.4MB。合计等于对全部条目聚合的结果，快照与恢复只读合计；迁移按 `run_id` 分页改写全部旧行，无法识别的行让迁移失败并回滚，运行时代码不双读旧形状。
+
+v70→v71 把 `assets.local_path` 从本机绝对路径改为相对 AppData Root 的持久路径（合同见 [assets](../../../../domains/assets/README.md)）。迁移只截取 `ConversationAttachments/v2/stores/<store-id>/content/<xx>/<sha256>.<ext>` 这段受管内容后缀，统一成 `/` 分隔，不依赖旧前缀：换过位置或在 checkout 之间复制过的库同样能转换。不符合该结构的行让迁移失败并回滚；2026-11 各开发库共 5,514 行全部符合。`assets` 表的触发器由表阶段先于迁移建立，此后拒绝非相对路径写入。
 
 ## 升级耗时与启动进度
 

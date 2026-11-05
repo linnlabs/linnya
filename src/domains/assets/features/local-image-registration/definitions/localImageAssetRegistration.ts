@@ -7,7 +7,8 @@ export interface LocalImageAssetFacts {
   readonly width: number;
   readonly height: number;
   readonly sha256: string;
-  readonly localPath: string;
+  /** `assets.local_path` 的持久路径（相对 AppData Root）；读文件前由 AppData Root 解析。 */
+  readonly storagePath: string;
   readonly createdAt: number;
 }
 
@@ -19,11 +20,7 @@ export interface LocalImageAssetLedgerPort {
   registerLocalImage(facts: LocalImageAssetFacts): RegisteredLocalImageAsset;
 }
 
-export type LocalImageAssetRegistrationErrorCode =
-  | 'invalid_pixel_limit'
-  | 'source_not_found'
-  | 'source_not_file'
-  | 'ledger_conflict';
+export type LocalImageAssetRegistrationErrorCode = 'ledger_conflict';
 
 export class LocalImageAssetRegistrationError extends Error {
   readonly name = 'LocalImageAssetRegistrationError';

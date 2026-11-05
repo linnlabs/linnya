@@ -162,7 +162,7 @@ describe('document SVG asset runtime', () => {
       )
       .get(adopted.assetId);
     if (!row) throw new Error('Expected managed SVG asset row.');
-    await fsp.writeFile(row.local_path, '<svg/>');
+    await fsp.writeFile(path.join(appDataRoot, ...row.local_path.split('/')), '<svg/>');
 
     await expect(
       runtime.readOwnedSvg({ documentId: 'slides-1', assetId: adopted.assetId })

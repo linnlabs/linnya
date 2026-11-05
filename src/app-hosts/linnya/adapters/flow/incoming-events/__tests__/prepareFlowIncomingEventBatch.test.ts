@@ -31,7 +31,7 @@ function committedImage(params: {
     sha256,
     fileName: params.fileName,
     uri: `/Resources/Attachments/${sha256.slice(0, 2)}/${sha256}.${extension}`,
-    localPath: `/managed/${sha256}.${extension}`,
+    storagePath: `managed/${sha256}.${extension}`,
   };
 }
 

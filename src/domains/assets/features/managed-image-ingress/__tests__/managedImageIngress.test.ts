@@ -10,6 +10,7 @@ import {
   createManagedImageContentIdentity,
   createManagedImageStoragePaths,
 } from '../../../shared/managed-image-storage';
+import { resolveAssetStoragePath } from '../../../shared/asset-storage-path';
 import { createManagedImageIngress } from '../index';
 
 const STORE_ID = 'f7bb8587-feaa-44df-82e3-4a1c93d9ba30';
@@ -93,8 +94,10 @@ describe('managed image ingress', () => {
       createdAt: Date.parse('2026-07-23T00:00:00.000Z'),
     });
     expect(asset.uri).toMatch(/^\/Resources\/Attachments\/[a-f0-9]{2}\/[a-f0-9]{64}\.png$/);
-    expect(asset.localPath).not.toBe(sourcePath);
-    await expect(fsp.readFile(asset.localPath)).resolves.toEqual(bytes);
+    expect(asset.storagePath).toBe(
+      `${createManagedImageStoragePaths(appDataRoot, STORE_ID).contentStoragePath}/${asset.sha256.slice(0, 2)}/${asset.sha256}.png`,
+    );
+    await expect(fsp.readFile(resolveAssetStoragePath(appDataRoot, asset.storagePath))).resolves.toEqual(bytes);
     const paths = createManagedImageStoragePaths(appDataRoot, STORE_ID);
     await expect(fsp.readdir(paths.pendingRoot)).resolves.toEqual([]);
     await expect(fsp.readdir(paths.stagingRoot)).resolves.toEqual([]);
@@ -127,7 +130,7 @@ describe('managed image ingress', () => {
       height: 7,
       createdAt: Date.parse('2026-08-20T00:00:00.000Z'),
     });
-    await expect(fsp.readFile(asset.localPath)).resolves.toEqual(bytes);
+    await expect(fsp.readFile(resolveAssetStoragePath(appDataRoot, asset.storagePath))).resolves.toEqual(bytes);
   });
 
   it('账本登记失败时保留 pending 恢复事实，但不保留 staging 副本', async () => {

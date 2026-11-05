@@ -197,7 +197,7 @@ export class SqliteEventAssetLinks {
         commit.width,
         commit.height,
         commit.sha256,
-        commit.localPath,
+        commit.storagePath,
         commit.createdAt,
       );
       row = this.readAssetById(commit.assetId);
@@ -220,7 +220,7 @@ export class SqliteEventAssetLinks {
         commit.width,
         commit.height,
         commit.sha256,
-        commit.localPath,
+        commit.storagePath,
         commit.assetId,
       );
       row = this.readAssetById(commit.assetId);

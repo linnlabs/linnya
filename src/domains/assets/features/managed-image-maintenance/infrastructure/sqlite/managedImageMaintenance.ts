@@ -7,11 +7,8 @@ import type {
   OrphanManagedImageAssetStats,
 } from '../../definitions/managedImageMaintenance';
 import { recoverPendingManagedImagePublishes } from '../../orchestration/recoverPendingManagedImagePublishes';
-import {
-  createLegacyAppManagedImageStoragePaths,
-  createLegacyWorkspaceManagedImageStoragePaths,
-  createManagedImageStoragePaths,
-} from '../../../../shared/managed-image-storage';
+import { createManagedImageStoragePaths } from '../../../../shared/managed-image-storage';
+import { resolveAssetStoragePath } from '../../../../shared/asset-storage-path';
 
 interface AssetLocalPathRow {
   readonly local_path: string;
@@ -31,12 +28,12 @@ function tableExists(db: Database.Database, tableName: string): boolean {
 /**
  * 删除失去全部业务引用的受管图片 asset。
  * 显式检查已知 ownership 表，不能依赖调用方是否开启 foreign_keys。
+ * `local_path` 是相对 AppData Root 的持久路径；只删除解析后位于当前 store 内容目录的文件。
  */
 export async function collectOrphanManagedImageAssets(params: {
   readonly db: Database.Database;
   readonly appDataRoot: string;
   readonly storeId: string;
-  readonly workspaceRoot: string;
   readonly logger: ManagedImageMaintenanceLogger;
   /** 只回收本进程启动前登记的 asset，避开 ingress → event transaction 窗口。 */
   readonly createdBeforeMs: number;
@@ -75,34 +72,31 @@ export async function collectOrphanManagedImageAssets(params: {
   `);
 
   const managedPaths = createManagedImageStoragePaths(params.appDataRoot, params.storeId);
-  const legacyAppPaths = createLegacyAppManagedImageStoragePaths(params.appDataRoot);
-  const legacyPaths = createLegacyWorkspaceManagedImageStoragePaths(params.workspaceRoot);
-  const allowedRoots = await Promise.all([
-    fsp.realpath(managedPaths.contentRoot).catch(() => null),
-    fsp.realpath(legacyAppPaths.contentRoot).catch(() => null),
-    fsp.realpath(legacyPaths.contentRoot).catch(() => null),
-  ]);
+  const currentStoreRoot = await fsp.realpath(managedPaths.contentRoot).catch(() => null);
   let deletedFiles = 0;
   let failedFiles = 0;
   for (const row of deletedRows) {
     if (!row.local_path) continue;
-    const fileRealPath = await fsp.realpath(row.local_path).catch(() => null);
-    if (!fileRealPath) continue;
-    if (!allowedRoots.some(root => root && isPathInsideRoot(root, fileRealPath))) {
+    let localPath: string;
+    try {
+      localPath = resolveAssetStoragePath(params.appDataRoot, row.local_path);
+    } catch {
       failedFiles += 1;
-      params.logger.warn(`受管图片文件回收跳过越界路径: assetId=${row.id}`);
+      params.logger.warn(`受管图片文件回收跳过无效路径: assetId=${row.id}`);
       continue;
     }
-    const currentStoreRoot = allowedRoots[0];
+    const fileRealPath = await fsp.realpath(localPath).catch(() => null);
+    if (!fileRealPath) continue;
     if (!currentStoreRoot || !isPathInsideRoot(currentStoreRoot, fileRealPath)) {
-      // v1 目录没有数据库身份，不能以当前账本的孤儿判断删除可能被旧备份引用的字节。
+      failedFiles += 1;
+      params.logger.warn(`受管图片文件回收跳过越界路径: assetId=${row.id}`);
       continue;
     }
     // 账本行删除与物理回收不是同一事务。启动维护虽然先于 ingress 开放，
     // 这里仍以当前账本为最终删除依据，避免共享 canonical path 被其他合法行占用。
     if (readCurrentPathOwner.get(row.local_path)) continue;
     try {
-      await fsp.unlink(row.local_path);
+      await fsp.unlink(localPath);
       deletedFiles += 1;
     } catch (error: unknown) {
       failedFiles += 1;
@@ -115,7 +109,11 @@ export async function collectOrphanManagedImageAssets(params: {
   return { deletedAssets: deletedRows.length, deletedFiles, failedFiles };
 }
 
-/** 账本只裁决当前 store 的显式 pending 发布，不扫描未知正式内容。 */
+/**
+ * 账本只裁决当前 store 的显式 pending 发布，不扫描未知正式内容。
+ * 已登记集合由持久路径解析成绝对路径后与 pending 目标比较；任何一行无法解析都整体中止，
+ * 不在账本不一致时隔离文件。
+ */
 export async function recoverPendingManagedImagePublishesFromLedger(params: {
   readonly db: Database.Database;
   readonly appDataRoot: string;
@@ -129,7 +127,9 @@ export async function recoverPendingManagedImagePublishesFromLedger(params: {
     FROM assets
     WHERE local_path IS NOT NULL
   `).all();
-  const registeredLocalPaths = new Set(rows.map(row => row.local_path));
+  const registeredLocalPaths = new Set(
+    rows.map(row => resolveAssetStoragePath(params.appDataRoot, row.local_path)),
+  );
   return recoverPendingManagedImagePublishes({
     paths: createManagedImageStoragePaths(params.appDataRoot, params.storeId),
     registeredLocalPaths,

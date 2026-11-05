@@ -79,7 +79,7 @@ describe('workspace image preview router', () => {
     const imagePreview = createWorkspaceImagePreview({
       verifiedImageLoader: createWorkspaceVerifiedImageLoader({
         db,
-        storageBoundaries: [{ boundaryRoot: root, contentRoot }],
+        storage: { appDataRoot: root, contentRoot },
         maxImagePixels: 1_000_000,
       }),
     });
@@ -121,7 +121,7 @@ describe('workspace image preview router', () => {
       8,
       params.sha256 ?? actualSha256,
       'local',
-      localPath,
+      path.relative(params.fixture.root, localPath).split(path.sep).join('/'),
     );
   }
 

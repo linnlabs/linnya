@@ -35,7 +35,6 @@
  *
  * 典型子目录结构（相对 Workspace Root）：
  * - `ResourceLibrary/`：用户上传原始文件库
- * - `ManagedAssets/`：历史会话附件的迁移兼容边界；新会话附件禁止写入
  * - `DocumentMedia/`：文本文档内嵌图片的私有副本
  * - `AudioRecordings/`：音频录音
  * - `Uploads/`：临时上传区
