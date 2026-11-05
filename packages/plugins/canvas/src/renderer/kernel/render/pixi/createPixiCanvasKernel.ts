@@ -430,7 +430,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.scene.finish(ids); this.bitmaps.finishTransitions(ids); this.notify?.({ kind: 'preview-changed' });
   }
   readDisplayPosition(id: CanvasCardId): CanvasPoint | null { const view = this.views.get(id); return view ? { x: view.container.x, y: view.container.y } : null; }
-  isMoving(): boolean { return this.dragOriginals.size > 0 || this.scene.isMoving(); }
+  isAnimating(): boolean { return this.dragOriginals.size > 0 || this.scene.isAnimating(); }
   private projectSceneMotion(ids: readonly CanvasCardId[], opacityChanged: boolean, cameraChanged: boolean): void {
     if (opacityChanged) this.spatial.setTranslucent(this.scene.translucentIds());
     if (ids.length) this.spatial.updateCards(ids.flatMap(id => { const card = this.cards.get(id); return card ? [card] : []; }));

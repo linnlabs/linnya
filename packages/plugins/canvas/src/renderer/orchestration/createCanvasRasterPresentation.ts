@@ -42,7 +42,8 @@ class CanvasRasterPresentation {
     this.cadence = createCanvasRasterCadence(() => this.refresh());
     this.queue = createLatestRasterQueue<CanvasCardRasterInput, CanvasCardRasterOutput>({
       batchSize: 64, executeBatch: createCanvasCardRasterBatch({ rasterizer: this.rasterizer, createContent: options.createContent }),
-      readBatchSize: inputs => chooseCanvasRasterBatchSize(inputs, this.cadence.moving() || options.kernel.isMoving()),
+      // 批量淡入也在每帧改透明度；不能因坐标不动就用静止批次挤占动画的绘制预算。
+      readBatchSize: inputs => chooseCanvasRasterBatchSize(inputs, this.cadence.moving() || options.kernel.isAnimating()),
       disposeResult: output => { if (output.kind === 'ready') for (const tile of output.tiles) tile.bitmap.close(); },
     });
     this.queueCapacity = this.queue.readStats().capacity;
