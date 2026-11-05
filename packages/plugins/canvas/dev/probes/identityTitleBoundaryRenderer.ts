@@ -4,6 +4,7 @@ import { CanvasMapLabels } from '../../src/renderer/kernel/render/pixi/CanvasMap
 import { createCanvasPlainTextDocument, readCanvasCardCssPalette, readCanvasCardPalette } from '../../src/shared';
 import { createVisibleUpdateFixture } from './visibleUpdateFixture';
 import { collectCanvasMapPlacementPixels } from './mapLabelPlacementRenderer';
+import { readCanvasVisualSampling } from './visualSampling';
 
 async function mapPrefix() {
   const app = new Application();
@@ -32,7 +33,7 @@ async function nearTitle(kind: string, source: string, expected: string, width: 
   const background = new Graphics().rect(0, 0, 1300, 120).fill(0xffffff); app.stage.addChild(background);
   const host = document.createElement('div'); host.style.cssText = 'width:1300px;height:120px'; document.body.append(host);
   try {
-    const kernel = await createPixiCanvasKernel({ host, width: 1300, height: 120, resolution: 2 });
+    const kernel = await createPixiCanvasKernel({ host, width: 1300, height: 120, resolution: 2, renderingMode: 'capture' });
     try {
       const card = createVisibleUpdateFixture('text')[0], x = Math.min(14, width / 8);
       const initial = { ...card, x: 0, y: 0, width, height: 96, data: { ...card.data, content: createCanvasPlainTextDocument('已被新输入替换的标题') } };
@@ -48,7 +49,7 @@ async function nearTitle(kind: string, source: string, expected: string, width: 
       const text = new Text({ text: expected, resolution: 2, style: { fill: 0xffffff, fontFamily: 'system-ui', fontSize: 15, wordWrap: false } });
       text.tint = readCanvasCardPalette('white', false).title; text.position.set(x, 12); app.stage.addChild(text); app.render();
       return { kind, expected, image, reference: await app.renderer.extract.base64({ target: app.stage, frame: new Rectangle(0, 0, 1300, 120), resolution: 2 }),
-        mode: 'ink', region: { x: 0, y: 20, width: Math.ceil(width * 2), height: 80 }, stats };
+        mode: 'ink', region: { x: 0, y: 20, width: Math.ceil(width * 2), height: 80 }, stats, sampling: readCanvasVisualSampling(kernel, 'capture') };
     } finally { kernel.destroy(); }
   } finally { background.destroy(); host.remove(); app.destroy(true, { children: true, texture: false }); }
 }

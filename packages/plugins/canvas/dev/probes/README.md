@@ -96,6 +96,8 @@ paint诊断另记录真实WebGL1/2的texImage2D/texSubImage2D原调用：区分C
 
 `node packages/plugins/canvas/dev/probes/run-identity-atlas-probe.mjs`验证身份牌图集和同机原Pixi Text：中文、ZWJ emoji、RTL、组合符、连字与Indic整串，在DPR1/2及分数世界缩放下比较真实RGBA墨迹，保存双方PNG后才按IoU≥.995/归一alpha误差≤.01断言。另验证同串共享、单页预算下DPR替换、隐藏页淘汰后复用、最后视图释放及生成器消费失败后的资源归还。它是独立功能像素门禁，不作帧率验收。原完整visual probe继续验证内核fallback、contextloss、正文实际draw/淡入与裁切。
 
+该identity入口以`CANVAS_PERFORMANCE_SOFTWARE=1`显式选择与visual/worker smoke相同的SwiftShader后端；未设置时不改启动开关。首次case前保存`rendering-environment.json`（请求profile、Electron/Chromium与实际GPU/feature事实），成功结果也包含该记录且`validHardwareRun:false`。独立Pixi矩阵仍核实际renderer resolution和每张600×800 CSS裁图对应的1x/2x物理尺寸；full Kernel的静态标题、地图、LOD与context恢复使用已有`renderingMode:'capture'`质量合同并逐图保存/严格核真实2x采样。软件`limited`状态保留，不拿interactive的1x降级图冒2x，也不修改原IoU、alpha或生命周期门；interactive降级与Native帧率仍由各自原入口独立验收。
+
 同一入口另以真实MapLabels/Kernel验证18/120个grapheme边界与宽度省略：已知完整emoji/ZWJ/音标前缀交给独立浏览器Canvas或原Pixi Text作参考，不调用被测prefix/fitting生成期望值。先保双方PNG及实际尺寸，再沿用IoU≥.995墨迹门；近景确认body为零且实际draw后身份牌存在，不以纯字符串结果代替GPU接线。
 
 地图排布同入口增加真实Kernel的60卡四列夹具：240×120卡、320×160间隔、1400×900视口，相机固定为`x=40,y=131.18644067796612,zoom=0.2796610169491525`。独立浏览器Canvas以真实13px system-ui量已知无需截断的短标题，以小夹具逐对矩形判断产生合理可见集合；不调用生产碰撞/拟合、不读取Kernel私有字段，也不承诺真实相交标题全显。参考保留地图层1x backing、实际Kernel resolution、浅灰底和纸面NineSlice组合，先存整图PNG/采样并严格核尺寸/字节，再沿用原IoU≥.995。实际证据是期望非重叠区域中的PNG墨迹；固定删首列的独立反例须由同一oracle拒绝。另有跨150px索引格的真实相交与恰好贴边场景，窄纸面避免整卡互遮改变该小夹具背景。

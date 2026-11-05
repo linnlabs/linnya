@@ -7,7 +7,7 @@ import { readCanvasVisualSampling } from './visualSampling';
 
 async function placement(kind: string, titles: readonly string[], positions: readonly { x: number; y: number }[], camera: CanvasCamera, width: number, height: number) {
   const host = document.createElement('div'); host.style.cssText = `width:${width}px;height:${height}px`; document.body.append(host);
-  const kernel = await createPixiCanvasKernel({ host, width, height, resolution: 2 });
+  const kernel = await createPixiCanvasKernel({ host, width, height, resolution: 2, renderingMode: 'capture' });
   const referenceApp = new Application(); let paperTexture: Texture | undefined, referenceTexture: Texture | undefined, referenceInitialized = false;
   try {
     const base = createVisibleUpdateFixture('text');
@@ -63,7 +63,7 @@ async function placement(kind: string, titles: readonly string[], positions: rea
     if (!accepted.some(row => row.column === missingColumn)) throw new Error('map_placement_missing_column_negative_has_no_expected_ink');
     const missingColumnImage = await renderReference(missingColumn);
     const labelPlacement: MapLabelPlacementEvidence = { qualification: 'full-kernel-system-font-map-placement', camera,
-      sampling: { ...readCanvasVisualSampling(kernel, 'interactive'), mapCanvasDensity: 1, referenceCanvasDensity: 1 },
+      sampling: { ...readCanvasVisualSampling(kernel, 'capture'), mapCanvasDensity: 1, referenceCanvasDensity: 1 },
       candidates, expectedIds: accepted.map(row => row.id),
       stats: kernel.readStats(), missingColumn, missingColumnImage, rawKernelImage };
     return { kind, expected: accepted.map(row => row.title).join('\n'), image: rawKernelImage, reference, mode: 'ink',
