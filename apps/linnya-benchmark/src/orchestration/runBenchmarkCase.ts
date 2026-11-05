@@ -15,6 +15,15 @@ import { resolveBenchmarkObservationOutcome } from '../functions/resolveBenchmar
 interface RunBenchmarkCaseOptions {
   readonly cli: BenchmarkConversationCliPort;
   readonly now?: () => number;
+  readonly sleep?: (ms: number) => Promise<void>;
+}
+
+/** 状态观察是只读的；App 短暂卡顿导致的可重试错误不应当把仍在运行的试跑停掉。 */
+const WATCH_RETRY_LIMIT = 5;
+const WATCH_RETRY_DELAY_MS = 3000;
+
+function isRetryableCliError(error: unknown): boolean {
+  return error instanceof BenchmarkConversationCliError && error.retryable;
 }
 
 function projectError(stage: string, error: unknown): BenchmarkRunError {
@@ -39,6 +48,7 @@ export async function runBenchmarkCase(
   options: RunBenchmarkCaseOptions,
 ): Promise<BenchmarkRunFacts> {
   const now = options.now ?? Date.now;
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)));
   const startedAt = now();
   const statusFrames: BenchmarkRunFacts['statusFrames'][number][] = [];
   const interactionResponses: BenchmarkRunFacts['interactionResponses'][number][] = [];
@@ -63,6 +73,7 @@ export async function runBenchmarkCase(
     });
     const deadline = startedAt + request.benchmark.definition.timeoutMs;
     let responseCount = 0;
+    let watchFailures = 0;
 
     while (true) {
       const remainingMs = deadline - now();
@@ -75,11 +86,21 @@ export async function runBenchmarkCase(
         outcome = stop.outcome;
         break;
       }
-      const watched = await options.cli.watchStatus({
-        conversationId: receipt.conversation_id,
-        runId: receipt.run_id,
-        timeoutMs: remainingMs,
-      });
+      let watched: Awaited<ReturnType<typeof options.cli.watchStatus>>;
+      try {
+        watched = await options.cli.watchStatus({
+          conversationId: receipt.conversation_id,
+          runId: receipt.run_id,
+          timeoutMs: remainingMs,
+        });
+        watchFailures = 0;
+      } catch (error: unknown) {
+        if (!isRetryableCliError(error) || watchFailures >= WATCH_RETRY_LIMIT) throw error;
+        watchFailures += 1;
+        errors.push(projectError('watch_retry', error));
+        await sleep(WATCH_RETRY_DELAY_MS);
+        continue;
+      }
       statusFrames.push(...watched.frames);
       lastSnapshot = watched.frames.at(-1)?.snapshot;
       if (watched.timedOut) {
