@@ -89,13 +89,13 @@ Renderer只读降级同时关闭编辑器、插图锚点、拖动/缩放、菜�
 
 ## CLI 与自动布局
 
-`linnya-canvas` 通过正式 Plugin CLI bridge 注入已冻结的项目、对话及 run 身份，路径解析和最终提交均复核项目归属。`read/show/find/neighbors/region/check/groups` 不创建写运行态；`apply` 先解析受管正文、批量真实测高，再作一次字段事务。`render` 只在授权 conversation 目录创建独占图像产物，返回正式 locator。Skill 维护模型可见语义操作合同，不开放磁盘数据库、批准标志或 Agent 坐标。
+`linnya-canvas` 通过正式 Plugin CLI bridge 注入已冻结的项目、对话及 run 身份，路径解析和最终提交均复核项目归属。`read/show/find/neighbors/region/check/groups/receipt` 不创建写运行态；`apply` 先解析受管正文、批量真实测高，再作一次字段事务。`render` 只在授权 conversation 目录创建独占图像产物，返回正式 locator。Skill 维护模型可见语义操作合同，不开放磁盘数据库、批准标志或 Agent 坐标。
 
 布局与检查在独立 Node worker 内执行，ELK 仅进入计算 worker 制品。取消、关闭视图和停用插件会终止未提交计算；最终提交保留已完成事实。新卡预测ID在进入事务前反绑本批临时名字，因此其他来源先分配同号卡也不会改错对象。期间尺寸改变、锁定、编辑声明及新增障碍按最新内容复核；布局只平移实际成功的目标组，不移动用户新增卡。
 
 布局 `diagnostics` 描述本次计算窗口；命中正式请求回执时返回空诊断数组，提交序号、分配ID和逐操作结果仍复用原回执，不重新测量或运行布局。
 
-Standalone `entry.command` 只提供 read/show/find/neighbors/region/check，显式指定 `--project`，可传 `--database`，用只读连接消费相同查询规则。help 不加载原生数据库；该制品不装配写入协调器、Agent审批或历史运行态。Agent facade 拒绝上述独立宿主参数；render 继续复用 App 已注册的正式 Hidden Worker。
+Standalone `entry.command` 只提供 read/show/find/neighbors/region/check/receipt，显式指定 `--project`，可传 `--database`，用只读连接消费相同查询规则；receipt还需显式 `--conversation`。help 不加载原生数据库；该制品不装配写入协调器、Agent审批或历史运行态，groups只在App facade提供。Agent facade 拒绝上述独立宿主参数；修改和render使用App，render继续复用已注册的正式 Hidden Worker。
 
 ## 格式与损坏隔离
 
