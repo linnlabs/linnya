@@ -29,4 +29,16 @@ it('12题通过加离线T8不获得正式13题资格，真实联网组仍按原�
   const network = summarizeCanvasAgentRuns(runs.map(run => run.taskId === 'T8' ? { ...run, evidenceMode: 'network' } : run));
   expect(network.groups[0]).toMatchObject({ complete: true, completionRate: 1, nonNetworkTasks: [], passed: true });
   expect(network.passed).toBe(true);
+  // 同样是12/13完成率，尚未审阅不能通过；明确失败仍按既定85%完成门槛统计。
+  for (const status of ['needs_review', 'failed'] as const) {
+    vi.mocked(evaluateCanvasAgentRun).mockImplementation(value => {
+      const report = actual.evaluateCanvasAgentRun(value);
+      return { ...report, firstSubmissionAccepted: true, correctionRetries: 0,
+        status: report.taskId === 'T7' ? status : 'passed', failures: [] };
+    });
+    const summary = summarizeCanvasAgentRuns(runs.map(run => run.taskId === 'T8' ? { ...run, evidenceMode: 'network' } : run));
+    expect(summary.groups[0]).toMatchObject({ complete: true, completionRate: 12 / 13,
+      pendingReviews: status === 'needs_review' ? ['T7:1'] : [], passed: status === 'failed' });
+    expect(summary.passed).toBe(status === 'failed');
+  }
 });

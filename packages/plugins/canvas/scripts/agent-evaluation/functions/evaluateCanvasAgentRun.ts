@@ -95,9 +95,11 @@ export function evaluateCanvasAgentRun(value: unknown) {
   if (run.imageCapability === 'no-vision') checks.push(assertion('no-unsupported-render', run.controls.renderCount === 0, `renderCount=${run.controls.renderCount}`));
   else checks.push(assertion('actual-render-and-read', run.controls.renderCount > 0 && run.controls.imageReadCount > 0 && run.controls.imageReadSequence === run.after.sequence,
     `renderCount=${run.controls.renderCount}, imageReadCount=${run.controls.imageReadCount}, imageReadSequence=${run.controls.imageReadSequence}, afterSequence=${run.after.sequence}`));
-  const automaticPassed = checks.every(check => check.passed), reviewed = run.review?.approved === true;
+  // 明确否决是已知失败；只有尚未给出人工结论的任务才是待审。
+  if (run.review?.approved === false) checks.push(assertion('semantic-review', false, run.review.notes));
+  const checksPassed = checks.every(check => check.passed), reviewed = run.review?.approved === true;
   return { fixtureVersion: 1, taskId: run.taskId, sourceRevision: run.sourceRevision, batchId: run.batchId, model: run.model, imageCapability: run.imageCapability, repetition: run.repetition,
-    evidenceMode: run.evidenceMode, status: !automaticPassed ? 'failed' : run.taskId === 'T8' && run.evidenceMode !== 'network' ? 'offline_baseline' : reviewed ? 'passed' : 'needs_review', firstSubmissionAccepted: run.attempts.find(attempt => attempt.phase === 'write')?.validationAccepted === true,
+    evidenceMode: run.evidenceMode, status: !checksPassed ? 'failed' : run.taskId === 'T8' && run.evidenceMode !== 'network' ? 'offline_baseline' : reviewed ? 'passed' : 'needs_review', firstSubmissionAccepted: run.attempts.find(attempt => attempt.phase === 'write')?.validationAccepted === true,
     correctionRetries: run.attempts.filter(attempt => attempt.correction).length, durationMs: run.finishedAt - run.startedAt, metrics: run.metrics,
     renderCount: run.controls.renderCount, imageReadCount: run.controls.imageReadCount, checks, requiredReview: task.review, review: run.review ?? null,
     evidenceFiles: run.evidenceFiles, failures: checks.filter(check => !check.passed) };

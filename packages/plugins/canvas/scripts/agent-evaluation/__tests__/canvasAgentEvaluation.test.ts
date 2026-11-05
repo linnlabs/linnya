@@ -44,7 +44,7 @@ it('T2只排除明确审定的组织卡，18条真实发现仍逐一检查来源
   const unlinked = { ...after, elements: after.elements.filter(element => element.id !== edge.id) };
   expect(evaluateCanvasAgentRun({ ...run, after: unlinked, check: checkCanvas(unlinked) }).failures)
     .toContainEqual(expect.objectContaining({ rule: 'finding-source-links' }));
-  expect(evaluateCanvasAgentRun({ ...run, review: { ...review, approved: false } }).status).toBe('needs_review');
+  expect(evaluateCanvasAgentRun({ ...run, review: { ...review, approved: false } }).status).toBe('failed');
 });
 it('T2组织卡审阅不能排除重复身份、不存在或非文字卡，也不能挪到别题', () => {
   const { after, review, run } = reviewedResearchGraph();
@@ -70,6 +70,8 @@ it('scores a real scene/dialogue graph and rejects a result that silently rewrit
   expect(evaluateCanvasAgentRun(run).status).toBe('needs_review');
   const reviewed = { ...run, review: { approved: true, reviewer: 'domain reviewer', notes: '已对照场景核对全部对白' } };
   expect(evaluateCanvasAgentRun(reviewed).status).toBe('passed');
+  expect(evaluateCanvasAgentRun({ ...run, review: { approved: false, reviewer: 'domain reviewer', notes: '对白提前使用尚未发生的剧情事实' } }))
+    .toMatchObject({ status: 'failed', failures: [{ rule: 'semantic-review', passed: false, detail: '对白提前使用尚未发生的剧情事实' }] });
   const broken = planCanvasCommit({ state: result.state, actor, origin: 'bad', claims: [], now: 3, operations: [CanvasCommandSchema.parse({ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } })] });
   expect(evaluateCanvasAgentRun({ ...reviewed, after: snapshot(broken.state), check: checkCanvas(snapshot(broken.state)) }).failures).toContainEqual(expect.objectContaining({ rule: 'original-scenes-unchanged', passed: false }));
 });

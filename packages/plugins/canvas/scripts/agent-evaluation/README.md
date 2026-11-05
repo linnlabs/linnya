@@ -4,7 +4,7 @@
 
 真实模型runner由Desktop验收入口负责：冻结provider/model/version、正式Skill/CLI commit、图像能力组与每题重复次数。固定首次基线为每模型、每图像能力组、每题1遍，全部首败与修正留痕；扩展重复测试时重复数需事先固定且各题一致。远端模型即使同版本也不声称输出确定；若服务商不公开精确版本，证据中明确记录此限制及调用日期。看图组记录check→render→实际read_file读取图片和后续修正；不看图组只check。T8提供三份带官方URL的历史资料摘要及offlinePrompt供离线来源结构基线；run.evidenceMode=offline时只记offline_baseline，不能算正式联网任务成功。正式T8使用原提示、evidenceMode=network，必须真实联网并记录官方页面、访问日期和支持结论的段落。
 
-`run.ts assess <run.json> <新report.json>` 解析唯一输入schema，校验与after相同sequence的正式check几何事实，再给出逐条断言与失败明细。退出0表示自动检查与人工审阅均通过，1表示自动失败，2表示待人工审阅或仅离线基线；缺人工结论绝不能当任务成功。输入合同见definitions/canvasAgentEvaluation.ts，任务与所有人工项见definitions/canvasAgentTasks.ts。人工项包括主题分片、来源事实、流程语义、对白质量、真正联网及未保存草稿。T5固定README的方向可自动精确核对；布局可读性仍需审阅。
+`run.ts assess <run.json> <新report.json>` 解析唯一输入schema，校验与after相同sequence的正式check几何事实，再给出逐条断言与失败明细。退出0表示自动检查与人工审阅均通过，1表示检查失败或人工明确否决，2表示尚待人工结论或仅离线基线；缺人工结论绝不能当任务成功。明确否决附带semantic-review失败及审阅说明，不当作尚未审阅。输入合同见definitions/canvasAgentEvaluation.ts，任务与所有人工项见definitions/canvasAgentTasks.ts。人工项包括主题分片、来源事实、流程语义、对白质量、真正联网及未保存草稿。T5固定README的方向可自动精确核对；布局可读性仍需审阅。
 
 run文件必须由可信runner收集before/after正式快照、结果同sequence的CLI check结果、原始逐条commit结果、每次写请求及响应证据文件、真实UI审批/编辑声明事实、开始/结束时间。模型输出不能自报通过、用户点击或计时。首次提交通过指首次正式写请求通过校验（pending也算通过校验，不算已执行）；修正重试指因格式/语义失败而改载荷重提，网络丢包同编号重放单独记录，不当模型修正。任务完成必须全部自动断言与来源/语义审阅通过。
 
@@ -15,6 +15,8 @@ T2的12至18条计数针对发现，不把总标题和支持/反对分组说明�
 `run.ts summarize <目录> <新summary.json>` 递归接纳名为run.json的记录并重算每题断言。缺少任务/重复、重复身份、待人工结论及仅离线T8均不能冒充整组达标；汇总保留每次失败和证据位置。
 
 正式组额外列出`nonNetworkTasks`：T8的offline或未声明联网模式只属于来源结构基线，即使其余12题使完成率达到85%，整组也不获得正式联网验收资格。原完成率与失败记录照常保留，不把离线资料伪装为模型真正访问官方页面。
+
+汇总的pendingReviews列出尚无结论的任务，非空时整组不能通过。明确失败仍按原完成率统计，不能以允许少量失败为由跳过人工审阅；覆盖完整性complete仍只表示题目与重复次数齐全。
 
 每条记录必须标明sourceRevision（实际实现的完整Git SHA）与batchId。修复产品缺陷后另开整批，保留原批首败，不能用后来成功覆盖旧记录或把不同实现的成功题拼成一组。最终验收在冻结实现上跑完整13题；Backend启动及Skill发现证据随批保存。
 
