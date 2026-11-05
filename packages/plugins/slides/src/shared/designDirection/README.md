@@ -11,6 +11,7 @@
 ```text
 designDirection/
 ├── definitions/
+│   ├── coverComposition.ts        # 封面构图编号（不进 build Worker）
 │   ├── directionContract.ts       # 场景、大胆度、各轴 id、手法卡类型、发放请求与 theme.direction 声明 schema
 │   └── directionToolContract.ts   # ppt_direction 参数、轻量 data 与结果 schema
 ├── pool/

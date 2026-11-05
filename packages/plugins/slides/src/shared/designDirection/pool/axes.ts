@@ -1,6 +1,5 @@
 import type {
   ColorLogicId,
-  CoverCompositionId,
   DirectionAxisOption,
   DirectionBoldness,
   DirectionScenario,
@@ -8,6 +7,7 @@ import type {
   ImageStrategyId,
   TypeStrategyId,
 } from '../definitions/directionContract';
+import type { CoverCompositionId } from '../definitions/coverComposition';
 
 export const COLOR_LOGICS: readonly DirectionAxisOption<ColorLogicId>[] = [
   { id: 'paper-ink', name: '染纸底配墨色', guide: '整页一种带色相的浅纸色（不要米白），文字用同色相的深墨，只留一种点题色。' },

@@ -1,4 +1,5 @@
 import * as z from 'zod';
+import type { CoverCompositionId } from './coverComposition';
 
 /**
  * 新建整稿时由程序发出的视觉方向（设计签）合同。
@@ -70,18 +71,6 @@ export const IMAGE_STRATEGY_IDS = [
   'typographic',
 ] as const;
 export type ImageStrategyId = (typeof IMAGE_STRATEGY_IDS)[number];
-
-export const COVER_COMPOSITION_IDS = [
-  'center-axis',
-  'bottom-band',
-  'top-masthead',
-  'right-title',
-  'vertical-axis',
-  'type-fill',
-  'mosaic',
-  'left-title',
-] as const;
-export type CoverCompositionId = (typeof COVER_COMPOSITION_IDS)[number];
 
 /** 画面里基本没有图片的策略；稿子必须有图片时不发。 */
 export const IMAGELESS_IMAGE_STRATEGY_IDS: readonly ImageStrategyId[] = ['diagram-only', 'typographic'];

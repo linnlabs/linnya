@@ -11,7 +11,7 @@ import type {
   TextStyle,
   ThemeSpec,
 } from '@plugin/slides/shared';
-import { DirectionDeclarationSchema } from '@plugin/slides/shared/designDirection';
+import { DirectionDeclarationSchema } from '@plugin/slides/shared/designDirection/definitions/directionContract';
 import { isReadingMode } from '@plugin/slides/shared/readingMode';
 import {
   isFontDeliveryTarget,

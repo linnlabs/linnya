@@ -1,7 +1,6 @@
 import * as z from 'zod';
 import {
   COLOR_LOGIC_IDS,
-  COVER_COMPOSITION_IDS,
   DIRECTION_BOLDNESS,
   DIRECTION_FAMILIES,
   DIRECTION_SCENARIOS,
@@ -9,6 +8,7 @@ import {
   IMAGE_STRATEGY_IDS,
   TYPE_STRATEGY_IDS,
 } from './directionContract';
+import { COVER_COMPOSITION_IDS } from './coverComposition';
 
 /** ppt_direction 的正式参数就是发方向请求本身。 */
 export const PptDirectionToolArgsSchema = DirectionDrawRequestSchema;
