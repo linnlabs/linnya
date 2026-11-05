@@ -48,7 +48,8 @@ import {
 import { providerOnboardingRuntimeBindingRegistry } from 'src/app-hosts/linnya/adapters/inference';
 import { runProviderConfigurationMigration } from 'src/app-hosts/linnya/application/provider-configuration-migration';
 import { runCustomApiGroupMigration } from 'src/app-hosts/linnya/application/custom-api-onboarding';
-import { getDatabaseService, DatabaseService } from './database'; // 导入 DatabaseService
+import { getDatabaseService, DatabaseService, type DatabaseInitializeOptions } from './database'; // 导入 DatabaseService
+import type { DatabaseStartupProgressPort } from './database/databaseStartupProgress';
 import { KnowledgeGraphQueueOrchestrator } from 'src/features/knowledge-base/graph/application/knowledgeGraphQueueOrchestrator';
 import { setPluginRuntimeDatabase } from '../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import {
@@ -108,7 +109,8 @@ export class ServiceInitializer {
   constructor(
     private readonly queueWorkerRuntime: QueueWorkerRuntime,
     private readonly runtimePathRoots: RuntimePathRoots,
-    private readonly applicationVersion: string
+    private readonly applicationVersion: string,
+    private readonly databaseStartupProgress?: DatabaseStartupProgressPort
   ) {
     this.serviceRegistry = ServiceRegistry.getInstance();
   }
@@ -209,9 +211,18 @@ export class ServiceInitializer {
     console.log('[ServiceInitializer] 💾 Step 1: 初始化数据库服务...');
     try {
       const dbService = getDatabaseService();
-      dbService.initialize({
+      const initializeOptions: DatabaseInitializeOptions = {
         lifecycleBootstrap: db => bootstrapBuiltinPluginLifecycle(db, this.applicationVersion),
-      });
+      };
+      if (this.databaseStartupProgress) {
+        // 宿主在这一阶段暂停启动超时，升级慢时显示进度；迁移步骤之间会让出事件循环。
+        await dbService.initializeWithStartupProgress({
+          ...initializeOptions,
+          progress: this.databaseStartupProgress,
+        });
+      } else {
+        dbService.initialize(initializeOptions);
+      }
       console.log('[ServiceInitializer] ✅ Step 1: 数据库服务初始化成功');
       return dbService; // +++ 返回实例
     } catch (error) {

@@ -12,6 +12,7 @@ import {
   type AppServerBootstrap,
 } from '../../../../app-hosts/linnya/app-server-bootstrap';
 import { createAppServerRpcPeer } from '../../../../app-hosts/linnya/app-server-rpc';
+import type { AppServerStartupProgress } from '../../../../app-hosts/linnya/app-server-control';
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, '../../../../..');
@@ -80,6 +81,54 @@ describe('Node App Server process supervisor', () => {
     await activeRequestExpectation;
     expect(stderr.join('')).toContain('fixture-owner-shutdown');
     expect(stderr.join('')).toContain('fixture-rpc-handler-aborted');
+  });
+
+  it('数据库启动阶段不计入启动超时，进度按顺序交给宿主', async () => {
+    const progress: AppServerStartupProgress[] = [];
+    const supervisor = createNodeAppServerProcessSupervisor({
+      launch: {
+        executablePath: process.execPath,
+        entryPath: fixturePath,
+        entryArguments: ['--database-startup-ms=1600'],
+        workingDirectory: repositoryRoot,
+        environment: collectTestEnvironment(),
+        bootstrapBytes: encodeAppServerBootstrap(createBootstrap()),
+      },
+      rpcHandlers: new Map([
+        ['desktop.fixture.echo', () => ({ acknowledged: true })],
+      ]),
+      // 足够 child 加载 tsx 并发出 started，但远短于模拟升级的 1.6 秒。
+      startTimeoutMs: 1_200,
+      onStartupProgress: event => progress.push(event),
+    });
+    await expect(supervisor.start()).resolves.toMatchObject({ databaseReady: true });
+    expect(progress).toEqual([
+      { state: 'started', upgrading: true, completedSteps: 0, totalSteps: 2 },
+      { state: 'progress', upgrading: true, completedSteps: 1, totalSteps: 2 },
+      { state: 'progress', upgrading: true, completedSteps: 2, totalSteps: 2 },
+      { state: 'finished', upgrading: true, completedSteps: 2, totalSteps: 2 },
+    ]);
+    await expect(supervisor.shutdown()).resolves.toBeUndefined();
+  });
+
+  it('数据库阶段结束后重新计时，之后迟迟不 ready 仍会超时', async () => {
+    const supervisor = createNodeAppServerProcessSupervisor({
+      launch: {
+        executablePath: process.execPath,
+        entryPath: fixturePath,
+        entryArguments: ['--database-startup-ms=0', '--ready-delay-after-database-ms=5000'],
+        workingDirectory: repositoryRoot,
+        environment: collectTestEnvironment(),
+        bootstrapBytes: encodeAppServerBootstrap(createBootstrap()),
+      },
+      rpcHandlers: new Map([
+        ['desktop.fixture.echo', () => ({ acknowledged: true })],
+      ]),
+      startTimeoutMs: 1_200,
+      controlTimeoutMs: 300,
+    });
+    await expect(supervisor.start()).rejects.toThrow('ready 超时（1200ms）');
+    await expect(supervisor.shutdown()).resolves.toBeUndefined();
   });
 
   it('真实 child 运行期被强杀时报告意外退出，随后的 shutdown 不再请求已死 Backend', async () => {

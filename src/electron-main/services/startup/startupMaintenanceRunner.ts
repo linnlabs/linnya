@@ -38,6 +38,7 @@ import {
 } from '../../../shared/utils/pathManager';
 import { LINNYA_FLOW_IMAGE_INGRESS_POLICY } from '../../../app-hosts/linnya/adapters/flow/incoming-events/definitions/flowImageIngressPolicy';
 import { cleanupToolOutputStoreByTime } from '../../../tools/tool_output/orchestration/cleanupToolOutputStore';
+import { reclaimFreePagesInBatches } from '../database/reclaimFreePagesInBatches';
 import { createFileCommandOutputArtifactMaintenancePort } from '../../../infra/adapters/command-runtime/output/createFileCommandOutputArtifactMaintenancePort';
 
 export interface StartupMaintenanceDeps {
@@ -261,6 +262,16 @@ export function scheduleStartupMaintenanceOnce(
       await runConversationMaintenanceOnce(deps.databaseService);
     } catch (e) {
       logger.warn(`Conversation 维护执行失败: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    if (signal.aborted) return;
+
+    // 1.6) 把数据库空闲页小步归还磁盘（仅 v70 起新建、开启增量回收的库；旧库直接跳过）
+    try {
+      const reclaimedPages = await reclaimFreePagesInBatches(deps.databaseService, signal);
+      if (reclaimedPages > 0) logger.info(`数据库已归还 ${reclaimedPages} 个空闲页`);
+    } catch (e) {
+      logger.warn(`数据库空闲页回收失败: ${e instanceof Error ? e.message : String(e)}`);
     }
 
     if (signal.aborted) return;

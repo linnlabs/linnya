@@ -64,6 +64,7 @@ export async function initializeAppServerBackend(
       hostDependencies.processRuntime.queueWorkers,
       hostDependencies.bootstrap.runtimePathRoots,
       hostDependencies.bootstrap.applicationVersion,
+      hostDependencies.databaseStartupProgress,
     );
     const port = await runtimeOwner.start(config);
     logger.info(`BackendRuntimeOwner 已启动: port=${port}`);

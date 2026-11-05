@@ -17,6 +17,8 @@ const ParentFrameSchema = z.object({
   operation: z.enum(['ping', 'shutdown']),
 }).strict();
 
+const StepCountSchema = z.number().int().nonnegative().max(1_000_000);
+
 const ChildFrameSchema = z.discriminatedUnion('kind', [
   z.object({
     schema_version: z.literal(APP_SERVER_CONTROL_SCHEMA_VERSION),
@@ -38,11 +40,27 @@ const ChildFrameSchema = z.discriminatedUnion('kind', [
   }).strict(),
   z.object({
     schema_version: z.literal(APP_SERVER_CONTROL_SCHEMA_VERSION),
+    kind: z.literal('startup_progress'),
+    state: z.enum(['started', 'progress', 'finished']),
+    upgrading: z.boolean(),
+    completed_steps: StepCountSchema,
+    total_steps: StepCountSchema.min(1),
+  }).strict(),
+  z.object({
+    schema_version: z.literal(APP_SERVER_CONTROL_SCHEMA_VERSION),
     kind: z.literal('fatal'),
     code: z.enum(['startup_failed', 'protocol_failed', 'shutdown_failed']),
     message: z.string().min(1).max(2_048),
   }).strict(),
-]);
+]).superRefine((frame, context) => {
+  if (frame.kind === 'startup_progress' && frame.completed_steps > frame.total_steps) {
+    context.addIssue({
+      code: 'custom',
+      message: 'startup_progress completed_steps 超过 total_steps',
+      path: ['completed_steps'],
+    });
+  }
+});
 
 export function parseAppServerParentControlFrame(
   value: unknown,

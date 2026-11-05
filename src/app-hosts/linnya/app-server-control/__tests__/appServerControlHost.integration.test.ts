@@ -77,6 +77,59 @@ describe('App Server control host', () => {
     });
   });
 
+  it('ready 前按顺序写出启动进度，写入完成后才 resolve', async () => {
+    const parentInput = new PassThrough();
+    const childOutput = new PassThrough();
+    const frames: AppServerChildControlFrame[] = [];
+    const decoder = createBoundedJsonLineDecoder({
+      protocolName: 'App Server control protocol',
+      maxFrameBytes: APP_SERVER_CONTROL_MAX_FRAME_BYTES,
+      onValue: value => frames.push(parseAppServerChildControlFrame(value)),
+      onFailure: error => { throw error; },
+    });
+    childOutput.on('data', chunk => decoder.push(chunk));
+    const readyGate: { release(): void } = {
+      release() {
+        throw new Error('ready gate 尚未创建');
+      },
+    };
+    const ready = new Promise<ReturnType<typeof createReadyFacts>>(resolve => {
+      readyGate.release = () => resolve(createReadyFacts());
+    });
+    const host = runAppServerControlHost({
+      input: parentInput,
+      output: childOutput,
+      daemonEpoch: 'epoch-progress',
+      lifecycle: { ready, shutdown: async () => undefined },
+    });
+    await host.reportStartupProgress({ state: 'started', upgrading: true, completedSteps: 0, totalSteps: 2 });
+    await host.reportStartupProgress({ state: 'finished', upgrading: true, completedSteps: 2, totalSteps: 2 });
+    readyGate.release();
+    await waitFor(() => frames.length === 3);
+    expect(frames.map(frame => frame.kind)).toEqual(['startup_progress', 'startup_progress', 'ready']);
+    expect(frames[0]).toEqual({
+      schema_version: APP_SERVER_CONTROL_SCHEMA_VERSION,
+      kind: 'startup_progress',
+      state: 'started',
+      upgrading: true,
+      completed_steps: 0,
+      total_steps: 2,
+    });
+    parentInput.end();
+    await host.completed;
+  });
+
+  it('拒绝已完成步骤超过总步骤的启动进度帧', () => {
+    expect(() => parseAppServerChildControlFrame({
+      schema_version: APP_SERVER_CONTROL_SCHEMA_VERSION,
+      kind: 'startup_progress',
+      state: 'progress',
+      upgrading: true,
+      completed_steps: 3,
+      total_steps: 2,
+    })).toThrow('completed_steps 超过 total_steps');
+  });
+
   it('stdin EOF 直接收口 owner，不等待另一个常驻心跳', async () => {
     const parentInput = new PassThrough();
     const childOutput = new PassThrough();

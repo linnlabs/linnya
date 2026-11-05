@@ -36,6 +36,7 @@ import type { QdrantProcessRuntime } from '../../../../infra/adapters/vector-sto
 import type { LaunchOwnedPipeProcess } from '../../../../shared/process-runtime';
 import type { QueueWorkerRuntime } from '../../../../infra/task-queue/definitions/queueWorkerRuntime';
 import type { RuntimePathRoots } from '../../../../shared/runtime-paths';
+import type { DatabaseStartupProgressPort } from '../../../../electron-main/services/database/databaseStartupProgress';
 import type { ProjectDeletionUseCasePort } from '../../application/project-deletion';
 import type {
   ForegroundAgentRunActivityPort,
@@ -100,12 +101,14 @@ export class BackendRuntimeOwner {
     queueWorkerRuntime: QueueWorkerRuntime,
     runtimePathRoots: RuntimePathRoots,
     applicationVersion: string,
+    databaseStartupProgress?: DatabaseStartupProgressPort,
   ) {
     this.apiServer = new ApiServer();
     this.serviceInitializer = new ServiceInitializer(
       queueWorkerRuntime,
       runtimePathRoots,
       applicationVersion,
+      databaseStartupProgress,
     );
     this.setupApiServer();
   }
@@ -491,6 +494,7 @@ export function getBackendRuntimeOwner(
   queueWorkerRuntime?: QueueWorkerRuntime,
   runtimePathRoots?: RuntimePathRoots,
   applicationVersion?: string,
+  databaseStartupProgress?: DatabaseStartupProgressPort,
 ): BackendRuntimeOwner {
   if (!instance) {
     if (
@@ -510,6 +514,7 @@ export function getBackendRuntimeOwner(
       queueWorkerRuntime,
       runtimePathRoots,
       applicationVersion,
+      databaseStartupProgress,
     );
     instanceQdrantProcessRuntime = qdrantProcessRuntime;
     instanceLaunchOwnedPipeProcess = launchOwnedPipeProcess;

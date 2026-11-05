@@ -14,6 +14,7 @@ import type {
 import type { BackendBootstrapFacts } from './backendBootstrapFacts';
 import type { WebPageRenderer } from '../../../../tools/web/webread/definitions/webPageRenderer';
 import type { AgentToolEnvironment } from './agentToolEnvironment';
+import type { DatabaseStartupProgressPort } from '../../../../electron-main/services/database/databaseStartupProgress';
 
 /** Backend 内部长期进程的物理运行依赖；Electron Main 与 App Server 只负责选择 adapter。 */
 export interface BackendProcessRuntimeDependencies {
@@ -27,6 +28,8 @@ export interface BackendHostDependencies {
   readonly agentToolEnvironment?: AgentToolEnvironment;
   readonly commandApprovalControl: CommandApprovalControlEndpointPort;
   readonly bootstrap: BackendBootstrapFacts;
+  /** 数据库启动阶段的进度出口；App Server 经控制协议交给 Desktop Host。 */
+  readonly databaseStartupProgress?: DatabaseStartupProgressPort;
   readonly processRuntime: BackendProcessRuntimeDependencies;
   readonly conversationExecutionRuntimeFactory: ConversationExecutionRuntimeFactoryPort;
   readonly credentialStorage: CredentialStoragePort;

@@ -9,6 +9,9 @@ adapter 不读取 PATH、不使用 `process.execPath` fallback，也不认识 El
 `waitForExit()` 只在 `start()` 后可用，并返回真实 code、signal 与是否由宿主 shutdown 发起。CLI Runtime
 用它把运行期 child 崩溃投影为失败；Desktop App owner 用它维护关闭/更新所需的已退出事实。正常 shutdown 仍以业务 owner 的收口屏障为准，不能只看进程消失。
 正常 shutdown 还要求 child 以退出码 0 自然结束；收到业务 ACK 后仍需信号终止的进程不能报告成功。
+启动超时（默认 30 秒）覆盖 spawn 到 ready，但不含数据库阶段：收到 `startup_progress` 的 `started`
+后暂停计时，`finished` 后重新开始完整计时。数据多的库升级可能需要几分钟，中途终止只会让当前迁移步骤
+回滚、下次启动重来。进度经 `onStartupProgress` 交给宿主；Desktop 据此显示升级窗口，CLI 不订阅。
 启动管道只在真实 `spawn` 后写入；启动失败与正常退出都以 `close` 收口，保留原始启动错误，
 不让不存在的 executable/cwd 再产生未捕获 EPIPE 或无限等待退出。
 
