@@ -112,7 +112,7 @@ export class CanvasSceneMotion {
   readOpacity(id: CanvasCardId): number { return this.cards.get(id)?.alpha ?? 1; }
   opaque(id: CanvasCardId): boolean { return !this.translucent.has(id); }
   translucentIds(): ReadonlySet<CanvasCardId> { return this.translucent; }
-  isAnimating(): boolean { return this.camera !== undefined || this.cards.size > 0; }
+  isMoving(): boolean { if (this.camera) return true; for (const node of this.cards.values()) if (node.kind === 'move' || node.kind === 'add') return true; return false; }
   setEnabled(enabled: boolean): void { this.enabled = enabled; if (!enabled) this.finish(); }
   readStats() { return { sceneTransitions: this.cards.size, cameraTransition: this.camera !== undefined }; }
   dispose(): void { clearTimeout(this.timer); this.timer = undefined; this.camera = undefined; this.cards.clear(); this.translucent.clear(); }

@@ -38,7 +38,7 @@ export interface CanvasKernel {
   animateCamera(camera: CanvasCamera, durationMs?: number): void;
   finishTransitions(ids?: readonly CanvasCardId[]): void;
   readDisplayPosition(id: CanvasCardId): CanvasPoint | null;
-  isAnimating(): boolean;
+  isMoving(): boolean;
   readRenderStatus(): CanvasRenderStatus;
   readResolution(): number;
   setSelection(ids: readonly CanvasCardId[]): void;
