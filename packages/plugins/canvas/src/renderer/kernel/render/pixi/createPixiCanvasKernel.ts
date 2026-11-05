@@ -436,7 +436,7 @@ class PixiCanvasKernel implements CanvasKernel {
     if (ids.length) this.spatial.updateCards(ids.flatMap(id => { const card = this.cards.get(id); return card ? [card] : []; }));
     if (ids.length || opacityChanged || cameraChanged) {
       this.refreshCamera(this.cameraStyleChanged); this.cameraStyleChanged = false;
-      if (ids.length) this.lines.preview(ids, this.cards, this.lineMask());
+      if (ids.length) this.lines.preview(ids, this.cards);
       this.redrawSelection(); this.redrawGuides();
     }
     this.mapLabels.invalidate(); this.updateLabels(); this.schedule();
@@ -507,7 +507,7 @@ class PixiCanvasKernel implements CanvasKernel {
     const movingIds = [...this.dragOriginals.keys()];
     this.spatial.updateCards(movingIds.flatMap(id => { const card = this.cards.get(id); return card ? [card] : []; }));
     this.projectCards(false);
-    this.lines.preview(movingIds, this.cards, this.lineMask()); this.redrawSelection(); this.schedule();
+    this.lines.preview(movingIds, this.cards); this.redrawSelection(); this.schedule();
     this.notify?.({ kind: 'preview-changed' });
   }
   clearDragPreview(): void {
