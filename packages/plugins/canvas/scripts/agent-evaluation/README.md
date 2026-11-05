@@ -32,6 +32,6 @@ attempts的phase明确区分dry-run预检与write正式写入。首写指标只�
 
 看图组controls.imageReadSequence必须来自同一实际Agent run先render、后成功read_file读取该conversation locator的配对事实，并等于after.sequence。attachment_status为attached或already_attached均表示图片在当前run上下文可用：前者为本次附加，后者由正式Host确认相同内容的附件仍在working history中；该指标不代表Provider新增消费。not_delivered不算。看过旧版本后继续改图，必须读取最终render返回的locator，不能只取旧render/read配对冒充最终检查。无此事实时填null并保持未验收。
 
-T13分开记录模型端到端耗时、Worker内布局P50、后端提交到包含变化帧的P95、相邻帧P95/最慢帧及平均fps。300新卡局部布局按<=500档要求Worker P50<=200ms；提交到画面P95<=300ms，上限档平均>=45fps/最慢帧<=50ms。9/17ms是Agent更新目标及回归基线，须另报，不能以50ms绝对门槛取代。不能用工具总耗时替代Worker耗时，也不能用共享CI或模型推理时长冒充固定真机性能。
+T13分开记录模型端到端耗时、Worker内布局P50、后端提交到包含变化帧的P95、相邻帧P95/最慢帧及平均fps。300新卡局部布局按<=500档要求Worker P50<=200ms；提交到画面P95<=300ms，上限档平均>=45fps/最慢帧<=50ms。9/17ms是Agent更新优化目标，原始小数保留，另按四舍五入到整数毫秒的值判断并独立报告；绝对门槛及同环境回归比较仍使用原始值，不能以50ms绝对门槛取代优化目标。回归基线取固定环境下已通过的commit与实测结果，不把目标数字当成已测基线。不能用工具总耗时替代Worker耗时，也不能用共享CI或模型推理时长冒充固定真机性能。
 
 T9需UI允许后检查；T12需UI拒绝后检查，CLI参数不能伪造批准。T11在模型操作期间为X正文登记并续订真实声明、保留草稿，终态后释放。审批和等待用户动作的时间单列，不计入Worker/帧指标。

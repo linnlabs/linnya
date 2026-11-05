@@ -42,7 +42,7 @@ WebGL适配器识别SwiftShader/llvmpipe软件绘图，交互模式自动将实�
 
 正式正文和产品调度的测量入口：`node packages/plugins/canvas/dev/probes/run-performance-probe.mjs`，真实显示窗口、原生 pointer/wheel、DPR 和实际帧间隔，输出三规模×均匀/聚簇结果。`CANVAS_PERFORMANCE_COUNTS=2500` 可定向复演。它输出证据，不自动宣称全部业务或硬件门槛通过；首次正文加载、停手清晰时限、输入回落和内存必须分别检查。
 
-加 `CANVAS_PERFORMANCE_DRAG=1` 可测最多500张选中卡的正式pointer预览与松手intent（这里只测内核，不代替Host提交验收）。整条轨迹必须在窗口内，松手没有产生完整move intent则探针失败。报告记录源码commit/dirty、解锁状态/锁屏事件、实际显示器频率、热状态及原始帧间隔；不得四舍五入原始值后判断门槛。
+加 `CANVAS_PERFORMANCE_DRAG=1` 可测最多500张选中卡的正式pointer预览与松手intent（这里只测内核，不代替Host提交验收）。整条轨迹必须在窗口内，松手没有产生完整move intent则探针失败。报告记录源码commit/dirty、解锁状态/锁屏事件、实际显示器频率、热状态及原始帧间隔。原始小数始终保留；9/17ms优化目标另按四舍五入到整数毫秒的值判断，绝对性能门槛及同环境回归比较仍使用原始值。优化目标与绝对门槛分别报告，不能互相冒充通过。
 
 `CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_PERFORMANCE_COUNTS=250` 运行独立SwiftShader/offscreen降级冒烟，输出到单独的canvas-software-probe并明确validHardwareRun=false。它验证自动简化、实际分辨率与状态，不证明真实显卡帧率或手感。
 
