@@ -33,7 +33,8 @@ try {
   // bundle 尚未通过校验，不能加载它获取诊断身份；这里只报告启动器已知的源码目录。
   const candidate = path.resolve(cliRoot, '../..');
   const sourceRoot = existsSync(path.join(cliRoot, 'src/main.ts')) && existsSync(path.join(candidate, 'pnpm-workspace.yaml'))
-    ? realpathSync(candidate) : null;
+    // Windows 8.3 短名也要展开，和 fs.promises.realpath 的目录身份保持一致。
+    ? realpathSync.native(candidate) : null;
   const git = sourceRoot && spawnSync('git', ['-C', sourceRoot, 'symbolic-ref', '--quiet', '--short', 'HEAD'], {
     encoding: 'utf8', timeout: 2000, windowsHide: true,
   });

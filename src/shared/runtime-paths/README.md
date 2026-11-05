@@ -2,7 +2,7 @@
 
 该模块定义跨业务、跨进程稳定的路径事实：当前运行域使用哪一组持久化根目录，以及源码 Host / CLI 的真实 checkout 身份。
 
-`readSourceCheckoutIdentity` 接收调用方已确定的代码根，用 realpath 归一目录，读取当前分支用于诊断；没有 Git 分支时为 null。
+`readSourceCheckoutIdentity` 接收调用方已确定的代码根，用 `realpathSync.native` 归一目录，读取当前分支用于诊断；没有 Git 分支时为 null。CLI 源码入口与 bundle 校验失败的诊断也使用同一原生路径语义，与 `fs.promises.realpath` 一致，避免 Windows 8.3 短名和长名表示同一目录却被当成不同源码身份；不手工替换短名、改大小写或放宽目录配对。
 源码目录与 Workspace 数据根分开。CLI 按自己的入口定位代码根，Backend 按实际 bundle 定位；不能从会话 cwd 推断，不能用相同分支名代替目录校验。
 
 `resolveDevelopmentInstancePaths` 统一解析源码运行的 `LINNYA_DEV_INSTANCE_ROOT`：默认保持 checkout，覆盖后同时移动 `_dev_data` 与 `_dev_electron`，源码身份不变。Desktop、CLI Runtime 与源码 CLI 连接解析共用该函数；显式 Workspace、profile 和连接文件覆盖保持优先。
