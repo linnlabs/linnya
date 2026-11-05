@@ -71,6 +71,18 @@ export const IMAGE_STRATEGY_IDS = [
 ] as const;
 export type ImageStrategyId = (typeof IMAGE_STRATEGY_IDS)[number];
 
+export const COVER_COMPOSITION_IDS = [
+  'center-axis',
+  'bottom-band',
+  'top-masthead',
+  'right-title',
+  'vertical-axis',
+  'type-fill',
+  'mosaic',
+  'left-title',
+] as const;
+export type CoverCompositionId = (typeof COVER_COMPOSITION_IDS)[number];
+
 /** 画面里基本没有图片的策略；稿子必须有图片时不发。 */
 export const IMAGELESS_IMAGE_STRATEGY_IDS: readonly ImageStrategyId[] = ['diagram-only', 'typographic'];
 
@@ -123,6 +135,8 @@ export interface DirectionDraw {
   readonly hue: HueBin | null;
   readonly typeStrategy: DirectionAxisOption<TypeStrategyId>;
   readonly imageStrategy: DirectionAxisOption<ImageStrategyId>;
+  /** 封面的重心安排：标题与主体放在哪里。比例、裁切与元素仍由 Agent 按内容决定。 */
+  readonly coverComposition: DirectionAxisOption<CoverCompositionId>;
   /** 从 Agent 提交的内容母题里挑出的那一个；没有提交母题时为 null。 */
   readonly motif: string | null;
 }

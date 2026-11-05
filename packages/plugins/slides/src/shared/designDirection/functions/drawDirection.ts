@@ -17,9 +17,12 @@ import {
   ATTRACTOR_HUE_FACTOR,
   BOLDNESS_WEIGHTS,
   COLOR_LOGICS,
+  COVER_COMPOSITION_FACTORS,
+  COVER_COMPOSITIONS,
   DEFAULT_BOLDNESS_BY_SCENARIO,
   HUE_BINS,
   HUELESS_COLOR_LOGICS,
+  IMAGE_DEPENDENT_COVER_COMPOSITIONS,
   IMAGE_STRATEGIES,
   SCENARIO_HUE_FACTORS,
   TYPE_STRATEGIES,
@@ -27,7 +30,7 @@ import {
 import { TECHNIQUE_CARDS } from '../pool/techniqueCards';
 
 /** 签池版本：卡片、轴或权重改动时递增，用于基准对账。 */
-export const DIRECTION_POOL_VERSION = '2026-11-04.3';
+export const DIRECTION_POOL_VERSION = '2026-11-05.1';
 
 /** 本机最近用过的方向，用来降权，避免同一个人连续拿到同一种手法。 */
 export interface DirectionHistory {
@@ -113,6 +116,12 @@ function drawOne(
   const imageStrategy = pickAxis(random, IMAGE_STRATEGIES, card.imageStrategies, (id) =>
     isImageStrategyAllowed(id, input) ? 1 : 0);
   if (colorLogic == null || typeStrategy == null || imageStrategy == null) return null;
+  const imageless = IMAGELESS_IMAGE_STRATEGY_IDS.includes(imageStrategy.id);
+  const coverComposition = pickWeighted(random, COVER_COMPOSITIONS, (option) =>
+    (imageless && IMAGE_DEPENDENT_COVER_COMPOSITIONS.includes(option.id) ? 0 : 1)
+    * (COVER_COMPOSITION_FACTORS[option.id] ?? 1)
+    * (batch.some((draw) => draw.coverComposition.id === option.id) ? 0.2 : 1));
+  if (coverComposition == null) return null;
 
   const hue = HUELESS_COLOR_LOGICS.includes(colorLogic.id)
     ? null
@@ -133,6 +142,7 @@ function drawOne(
     hue: hue ?? null,
     typeStrategy,
     imageStrategy,
+    coverComposition,
     motif: pickMotif(random, input.motifs, usedMotifs),
   };
 }

@@ -138,6 +138,7 @@ export class PptDirectionTool extends BaseTool {
         hueBin: draw.hue?.bin ?? null,
         typeStrategy: draw.typeStrategy.id,
         imageStrategy: draw.imageStrategy.id,
+        coverComposition: draw.coverComposition.id,
         motif: draw.motif,
         rejectedCardIds,
       },

@@ -1,6 +1,7 @@
 import * as z from 'zod';
 import {
   COLOR_LOGIC_IDS,
+  COVER_COMPOSITION_IDS,
   DIRECTION_BOLDNESS,
   DIRECTION_FAMILIES,
   DIRECTION_SCENARIOS,
@@ -28,6 +29,7 @@ export const PptDirectionToolDataSchema = z.object({
   hueBin: z.number().int().min(0).max(11).nullable(),
   typeStrategy: z.enum(TYPE_STRATEGY_IDS),
   imageStrategy: z.enum(IMAGE_STRATEGY_IDS),
+  coverComposition: z.enum(COVER_COMPOSITION_IDS),
   motif: z.string().trim().min(1).nullable(),
   rejectedCardIds: z.array(z.string().trim().min(1)),
 }).strict();

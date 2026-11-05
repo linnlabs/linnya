@@ -16,6 +16,7 @@ export function formatDirectionDrawForAgent(draw: DirectionDraw): string {
       : '主色相：从主图里取样，不另定色相。',
     `字体：${draw.typeStrategy.name}。${draw.typeStrategy.guide}`,
     `图片：${draw.imageStrategy.name}。${draw.imageStrategy.guide}`,
+    `封面构图：${draw.coverComposition.name}。${draw.coverComposition.guide}这只定标题与主体的位置，比例、裁切和元素按内容决定。`,
     draw.motif ? `内容母题：${draw.motif}。用它构成封面与章节页，并在内页以小尺度重复出现。` : '内容母题：自行从内容里选一个具体母题。',
     '',
     '执行要求：',

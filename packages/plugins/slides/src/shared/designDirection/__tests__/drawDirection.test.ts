@@ -60,7 +60,8 @@ describe('drawDirections', () => {
     }
     const maxShare = Math.max(...counts.values()) / runs;
     expect(maxShare).toBeLessThan(0.1);
-    expect(navy / runs).toBeLessThan(0.08);
+    // 商务稿色相总权重 8（七档各 1、紫 0.3、藏青两档共 0.7），藏青约占 8.7%；不降权时约占 21%。
+    expect(navy / runs).toBeLessThan(0.1);
   });
 
   it('投研汇报类稿子不发粉色系色相', () => {
@@ -68,6 +69,19 @@ describe('drawDirections', () => {
       const draw = drawDirections({ scenario: 'business', motifs: MOTIFS, seed: `pink-${index}` })[0]!;
       expect([10, 11]).not.toContain(draw.hue?.bin);
     }
+  });
+
+  it('封面构图分散，左题右图降权，无图稿不发多格拼贴', () => {
+    const counts = new Map<string, number>();
+    for (let index = 0; index < 1000; index += 1) {
+      const draw = drawDirections({ scenario: 'culture', motifs: MOTIFS, seed: `cover-${index}` })[0]!;
+      counts.set(draw.coverComposition.id, (counts.get(draw.coverComposition.id) ?? 0) + 1);
+      if (['diagram-only', 'typographic'].includes(draw.imageStrategy.id)) {
+        expect(draw.coverComposition.id).not.toBe('mosaic');
+      }
+    }
+    expect(counts.size).toBe(8);
+    expect(counts.get('left-title')!).toBeLessThan(80);
   });
 
   it('本机最近用过的手法会被降权', () => {

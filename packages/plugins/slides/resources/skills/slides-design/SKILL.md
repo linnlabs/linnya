@@ -115,7 +115,7 @@ presentation-owned 资产。
 - 内容与用户批准的计划或局部修改要求一致；事实和来源没有被臆造。
 - 新建或整体改版的文稿在 `compose({ theme })` 中声明了视觉系统；调用过 `ppt_direction` 的稿子同时声明了 `theme.direction`，inspect 的 `direction_background_off` 与 `direction_font_undeclared` 已处理或有明确理由保留。
 - 最终内容已核对语言一致性与单位表达，尤其区分百分比、百分点和其他容易混淆的口径。
-- 写入 observation 中没有未处理的 error；inspect 的 `buildStatus` 可用，findings 已结合证据和设计意图逐项判断。
+- 写入 observation 中没有未处理的 error；inspect 的 `buildStatus` 可用，P0 已清零；`font_size_below_floor` 同样必须清零，不能以设计意图、信息密度或“非阻断”为由保留，放不下就拆页、换结构或删字；其余 findings 结合证据和设计意图逐项判断。
 - 需要视觉确认的页面已经按最终 revision 的策略 render 并检查，而不是只凭 source 猜效果，也不是沿用较早 revision 的截图。
 - 仅能对真实成功渲染并已读图的页面声明视觉检查完成；render 失败页、未读页与旧版本图片都不能计入当前全页验收。文稿中的检查声明和最终答复遵循相同要求。
 - 最终渲染已经逐项通过 [`design.md`](./references/design.md#高频问题重点复核) 的高频问题复核；`inspect` 通过或最终回答自述不能代替像素判断。

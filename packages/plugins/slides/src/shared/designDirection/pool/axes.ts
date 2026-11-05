@@ -1,5 +1,6 @@
 import type {
   ColorLogicId,
+  CoverCompositionId,
   DirectionAxisOption,
   DirectionBoldness,
   DirectionScenario,
@@ -42,6 +43,24 @@ export const IMAGE_STRATEGIES: readonly DirectionAxisOption<ImageStrategyId>[] =
   { id: 'generated-illustration', name: '生成插画', guide: '用生图模型生成统一画风的插画作为封面主图和章节图；同一稿只用一种画风。' },
   { id: 'typographic', name: '以字为画', guide: '几乎不用图，画面靠超大字、数字和排版本身。' },
 ];
+
+/** 封面重心：只说标题与主体放在哪里，不给坐标和比例。 */
+export const COVER_COMPOSITIONS: readonly DirectionAxisOption<CoverCompositionId>[] = [
+  { id: 'center-axis', name: '居中轴线', guide: '标题落在画面中轴，主体或图片在标题正后方或正下方，左右大致对称；适合仪式感强、只有一个主体的稿子。' },
+  { id: 'bottom-band', name: '底部压题', guide: '上面大半是满版图或整块色面，标题和副题压在下方一条里，像海报或纪录片封面。' },
+  { id: 'top-masthead', name: '刊头在上', guide: '标题横排在上部，像杂志刊头；主图、物件或关键数字在下面展开。' },
+  { id: 'right-title', name: '标题在右', guide: '主体、图片或数字占左边，标题与信息靠右排，主体朝向标题。' },
+  { id: 'vertical-axis', name: '竖排做轴', guide: '中文标题竖排成一根轴，其余信息和图围绕它布置；西文标题改成旋转 90° 的大字。' },
+  { id: 'type-fill', name: '字就是画面', guide: '标题字放大到占版面一半以上，图片或色块只做衬底，或嵌进字里；不另摆一张图。' },
+  { id: 'mosaic', name: '多格拼贴', guide: '三到六张图或色块组成网格或错落拼贴，标题嵌在其中一格，或压在格子交界处。' },
+  { id: 'left-title', name: '左题右图', guide: '标题在左，右半边一张图；只在钩子正好是“一件东西加一句话”时合适。' },
+];
+
+/** 左题右图是模型最熟的封面，降权；多格拼贴离不开图片。 */
+export const COVER_COMPOSITION_FACTORS: Readonly<Partial<Record<CoverCompositionId, number>>> = {
+  'left-title': 0.25,
+};
+export const IMAGE_DEPENDENT_COVER_COMPOSITIONS: readonly CoverCompositionId[] = ['mosaic'];
 
 const HUE_NAMES = ['朱红', '铁锈橙', '琥珀', '橄榄', '草绿', '翠绿', '青', '湖蓝', '靛蓝', '紫', '梅紫', '胭脂'] as const;
 
