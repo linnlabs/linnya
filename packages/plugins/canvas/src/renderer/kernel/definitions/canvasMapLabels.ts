@@ -1,4 +1,11 @@
-import type { CanvasCamera, CanvasCard } from '../../../shared';
+import type { CanvasCamera, CanvasCard, CanvasRectangle } from '../../../shared';
+
+export interface CanvasMapLabelText { readonly text: string; readonly width: number }
+export interface CanvasMapLabelCollisionIndex {
+  blocksAnchor(x: number, y: number, lineHeight: number): boolean;
+  intersects(bounds: CanvasRectangle): boolean;
+  insert(bounds: CanvasRectangle): void;
+}
 
 export interface CanvasMapLabelsInput {
   readonly cards: readonly CanvasCard[];

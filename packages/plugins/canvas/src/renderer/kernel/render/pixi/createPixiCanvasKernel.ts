@@ -245,7 +245,7 @@ class PixiCanvasKernel implements CanvasKernel {
     this.identities.setActive(label, container.visible && label.visible);
     if (!wasVisible && container.visible && body.visible) { view.visibleAfterRender = this.renders; view.firstVisibleAfterRender = this.renders; }
     const bounds = this.identityBounds(card); label.position.set(bounds.x, bounds.y);
-    // 地图标签只在确定的屏幕格中保留一个，避免一屏几千张纹理和文字重叠。
+    // 地图标题以屏幕排版框避让；卡片远景淡影不参与标题优先序。
     view.lodAlpha = this.camera.zoom < 0.15 && !this.selected.has(card.id) ? 0.6 : 1;
     this.scene.apply(view);
   }
@@ -604,9 +604,9 @@ class PixiCanvasKernel implements CanvasKernel {
     for (const views of [this.views, this.retiringViews]) for (const [id, view] of views) {
       if (view.card.type !== 'document' || !changed.has(view.card.data.documentId)) continue;
       this.identities.setText(view.label, this.identityTitle(view.card)); sceneChanged ||= view.container.visible && view.label.visible;
-      mapChanged ||= this.mapLabels.hasLabel(id);
+      mapChanged ||= this.mapLabels.dependsOnTitle(id);
     }
-    // 标题不参与地图占位优先序；未实际绘制的候选改名不会改变现有代表标签。
+    // 优先序不随标题变化，但拟合宽度会影响避让；已量宽的隐藏候选也可能因改短重新露出。
     if (mapChanged) { this.mapLabels.invalidate(); this.updateLabels(); }
     if (mapChanged || sceneChanged) this.schedule();
   }

@@ -16,6 +16,8 @@
 
 地图标题保留160 CSS px边界余量，同倍率小范围平移只移动投影纹理；倍率、标题、主题、内容或尺寸改变才重新排版。正文提取按卡片对象缓存，短标题宽度缓存有4096项上限。遮挡淡影的mask复用同一世界可见条块，不能把已经完全遮住的整卡继续叠画到stencil。
 
+地图标题的150×24屏幕格只索引相邻碰撞候选；真正避让按已经拟合的advance宽度与当前字号1.2倍单行排版框判断，边缘相接允许保留。不能因为两张可读短标题的anchor同格就隐藏其中一个，也不能跨格漏掉实际相交。候选仍消费选中、染纸、文档与面积的既定稳定优先序；左边缘及已知行高已被先前排版框挡住时，在读取标题和measureText之前跳过，避免密集12k候选反复测宽。拟合结果和宽度共用原4096项缓存，18grapheme/140px限制、实际字体字号与LOD阈值不变。该“格子只作宽相位、矩形作最终判断”的边界也见[MapLibre标签碰撞流程](https://github.com/maplibre/maplibre-gl-js/blob/main/src/symbol/placement.ts)及[GridIndex](https://github.com/mapbox/grid-index)，这里不引入依赖或第二套世界空间索引。
+
 标题候选为空时隐藏地图标题Sprite、清理已绘ID与投影身份，不上传整层透明Canvas。纯图片与文档缩略图仍由正文层绘制；重新进入非空候选时必须按当前标题重画，不能复用空层前的旧文字。该规则只判断明确的空候选数组，不扩大到其他裁切或降级场景。
 
 标题前缀与宽度拟合共用浏览器[`Intl.Segmenter`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Segmenter)的grapheme边界，保留ZWJ emoji、旗帜及组合音标。UTF-16长度已不超过18/120上限且没有换行的完整短标题直接保留原串，因为grapheme数不会超过UTF-16长度；其余地图首行18组、近景首行120组的前缀仍按需迭代，不为五万字正文展开整篇字符数组；地图继续无省略号、近景与线标签继续使用省略号，既有缓存上限不变。
@@ -74,7 +76,7 @@ macOS硬件探针还读取当前console的IOConsoleLocked与CGS session锁屏事
 
 body的`firstPresented`只表示当前正文键已有新像素在非零透明度下完成实际draw，可在仍缺其他片或仍淡入时成立。位图替换和scene淡入分别记录首次alpha大于零时的render下界，上传、alpha零帧和旧正文键不算首显；`ready`继续等待全部可见正文和过渡结束后的draw。调用方以本次变化卡及当前revision关联这两个阶段，不能用首显替代完整正文完成。
 
-授权文档标题按目标差量更新身份牌；内容相同的元数据通知不启动新draw。地图标题的内容不参与占位优先序，只有已显示的代表标签改名时才需重画。thumbnail偏好只改变相应卡片正文/身份牌可见性和标题候选，不改变几何或遮挡，不重新扫描空间投影。退回身份牌仍重新选择代表标签，之后相机改变会按最新候选排版。
+授权文档标题按目标差量更新身份牌；内容相同的元数据通知不启动新draw。标题不参与地图优先序，但宽度影响碰撞；本轮已读取宽度的候选（含实际碰撞后被隐藏者）改名时重排，长标题改短后可以重新露出。anchor几何快拒绝的候选不依赖自身宽度，离屏候选也不使每条元数据触发整图重排；依赖集合随投影重建或空候选清除，`hasLabel`仍只代表真已绘制，以保留删除退休语义。thumbnail偏好只改变相应卡片正文/身份牌可见性和标题候选，不改变几何或遮挡，不重新扫描空间投影。退回身份牌仍重新选择代表标签，之后相机改变会按最新候选排版。
 
 初始化对1×1独立RenderTexture执行一次真实`no-batch`Graphics绘制，提前完成首次Graphics程序绑定；这部分成本进入开图耗时，不计主画布renders或正文receipt。临时Graphics/目标在成功和失败时均释放，保留共享白纹理。[Pixi prepare](https://github.com/pixijs/pixijs/blob/v8.22.0/src/prepare/PrepareUpload.ts#L71)仅上传几何/纹理，实际程序绑定发生在[Graphics adaptor](https://github.com/pixijs/pixijs/blob/v8.22.0/src/scene/graphics/gl/GlGraphicsAdaptor.ts#L81)；单小矩形默认batch不能代替这条路径。
 
