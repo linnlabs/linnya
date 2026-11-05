@@ -2,6 +2,8 @@
 
 本目录只用于 Electron 开发探针，不进入插件/Host 的生产入口。它比较同一次运行中、同字体/DPR下的 DOM、HTML-in-Canvas 与 Pixi，验证缺字、裁切、错位和作者颜色；不跨操作系统要求字体逐像素相等。
 
+`compareCanvasTitleInk.ts`仅提取既有身份牌标题边界的二值墨迹口径（alpha>16、ink模式各RGB<150、IoU≥.995），供该入口的地图排布正例与缺整列反例复用，不改正文oracle或阈值。CPU真实字形负例只证明这一拒绝规则；真实Kernel的字体、1x地图纹理与实际Pixi组合仍须独立运行取证。
+
 `collectVisualTextLayout.ts` 在字体准备完成后采集 reference 及刚完成 paint、尚未 dispose 的真实 staging clone。`Intl.Segmenter` 仅划分验收区域，Range 使用其 UTF-16 index/length；不拆开 emoji、组合字符或重做字体塑形。报告保存实际字簇矩形、逐行盒、computed 字体/样式与加载事实。KaTeX 的辅助 MathML 由其现有裁切样式隐藏，不当作可见文字；可见 HTML 字形和图形仍接受像素检查。
 
 原生列表 `::marker` 不属于 DOM Text/Range。它以独立 `geometryKind: marker-gutter` 保存真实li/ul矩形、首行Range、computed padding-inline-start与`::marker`样式，推导浏览器分配的marker槽，不冒充逐字簇边界。本固定夹具只接受ltr/outside/disc，未知布局保持失败。槽内仍有独立非空、质量、质心、实色和AA结构判定；槽外严格检查不变，另以真实“缺marker”损坏验证。它不是按已失败像素坐标加白名单。

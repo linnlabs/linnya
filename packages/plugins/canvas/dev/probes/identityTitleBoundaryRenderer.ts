@@ -3,6 +3,7 @@ import { createPixiCanvasKernel } from '../../src/renderer/kernel';
 import { CanvasMapLabels } from '../../src/renderer/kernel/render/pixi/CanvasMapLabels';
 import { createCanvasPlainTextDocument, readCanvasCardCssPalette, readCanvasCardPalette } from '../../src/shared';
 import { createVisibleUpdateFixture } from './visibleUpdateFixture';
+import { collectCanvasMapPlacementPixels } from './mapLabelPlacementRenderer';
 
 async function mapPrefix() {
   const app = new Application();
@@ -60,5 +61,5 @@ export async function collectCanvasTitleBoundaryPixels() {
   // 小卡内宽为总宽的3/4，恰好容纳已知完整前缀+省略号，下一W明显超宽。
   const width = (context.measureText(fitted).width + 0.25) / 0.75;
   return [await mapPrefix(), await nearTitle('near-120', prefix + '后文', prefix, 1200),
-    await nearTitle('near-width', 'e\u0301👨‍👩‍👧‍👦WWWWWW', fitted, width)];
+    await nearTitle('near-width', 'e\u0301👨‍👩‍👧‍👦WWWWWW', fitted, width), ...await collectCanvasMapPlacementPixels()];
 }

@@ -96,6 +96,10 @@ paint诊断另记录真实WebGL1/2的texImage2D/texSubImage2D原调用：区分C
 
 同一入口另以真实MapLabels/Kernel验证18/120个grapheme边界与宽度省略：已知完整emoji/ZWJ/音标前缀交给独立浏览器Canvas或原Pixi Text作参考，不调用被测prefix/fitting生成期望值。先保双方PNG及实际尺寸，再沿用IoU≥.995墨迹门；近景确认body为零且实际draw后身份牌存在，不以纯字符串结果代替GPU接线。
 
+地图排布同入口增加真实Kernel的60卡四列夹具：240×120卡、320×160间隔、1400×900视口，相机固定为`x=40,y=131.18644067796612,zoom=0.2796610169491525`。独立浏览器Canvas以真实13px system-ui量已知无需截断的短标题，以小夹具逐对矩形判断产生合理可见集合；不调用生产碰撞/拟合、不读取Kernel私有字段，也不承诺真实相交标题全显。参考保留地图层1x backing、实际Kernel resolution、浅灰底和纸面NineSlice组合，先存整图PNG/采样并严格核尺寸/字节，再沿用原IoU≥.995。实际证据是期望非重叠区域中的PNG墨迹；固定删首列的独立反例须由同一oracle拒绝。另有跨150px索引格的真实相交与恰好贴边场景，窄纸面避免整卡互遮改变该小夹具背景。
+
+完整visual入口的既有document metadata场景另覆盖隐藏长标题改短：只调用公开`setDocumentTitles`，等实际新draw后验证原空区域出现文字、先前优先标题像素不变，重复相同metadata不得额外draw。保存前后原PNG、真实采样、取样盒与draw计数；不靠重装elements、capture同步flush或新增生产观测口通过。上述均为功能像素门，不提供Native帧率资格；新增排布成本仍由原完整text六组及media四组性能入口验收，门槛不变。
+
 `CANVAS_PERFORMANCE_ZOOM_PAINT_TRACE=1 CANVAS_PERFORMANCE_ZOOM_TRACE=1`仅在正式100×20ms缩放段安装paint/GL来源分类，输出独立`canvas-zoom-paint-diagnostic`，不让2500张全景初载占满事件上限。开启后明确diagnostic/profiling且无硬件资格；事件仍有16384上限，overflow非零不能宣称完整分账。详帧增加实际camera、可见卡数、identityBytes与队列请求量；逐wheel保存Node发送区间和Renderer实际收到的同钟时间，不能用末端资源快照推峰期。trace不启用Screenshot，录制期间不截图；测量前既有PNG步骤和所有原动作不改。原默认Native入口及普通ZOOM_TRACE观察字段不变。
 
 `CANVAS_PERFORMANCE_COMPARISON=1`仅把固定版本对照标为`diagnostic:comparison`、`validHardwareRun:false`；未启用Profiler时`profiling`仍为false。该标记不改变动作、延时、窗口或Renderer，默认入口不变。对照必须各用独立输出/profile，并在外部manifest分别记录Renderer payload和共用Node harness的source/hash、实际driver与缓存温度；不能把混合来源或有限A/B/A结果当成完整硬件验收。

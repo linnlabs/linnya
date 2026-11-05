@@ -36,6 +36,14 @@ export function visualPixelOffset(frame: Required<ImageSize>, point: { readonly 
 export function visualCssPixelOffset(frame: Required<ImageSize>, point: { readonly x: number; readonly y: number }, resolution: number): number {
   return visualPixelOffset(frame, { x: Math.floor(point.x * resolution), y: Math.floor(point.y * resolution) });
 }
+/** 文字盒保留左右分数边缘；先核首末物理像素，不能让NativeImage.crop静默截短越界盒。 */
+export function visualCssPixelRegion(frame: Required<ImageSize>, region: { readonly x: number; readonly y: number; readonly width: number; readonly height: number }, resolution: number) {
+  if (region.width <= 0 || region.height <= 0) throw new Error('visual_region_dimensions_invalid');
+  const x = Math.floor(region.x * resolution), y = Math.floor(region.y * resolution);
+  const width = Math.ceil((region.x + region.width) * resolution) - x, height = Math.ceil((region.y + region.height) * resolution) - y;
+  visualPixelOffset(frame, { x, y }); visualPixelOffset(frame, { x: x + width - 1, y: y + height - 1 });
+  return { x, y, width, height };
+}
 export function assertSoftwareVisualSampling(sampling: VisualSampling): void {
   if (sampling.mode !== 'interactive' || sampling.resolution !== 1 || !sampling.status.limited) throw new Error('visual_software_interactive_sampling_mismatch');
 }

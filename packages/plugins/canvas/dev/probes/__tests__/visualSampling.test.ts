@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
-import { CanvasVisualSamplingSchema, readCanvasVisualSampling, assertVisualImageSampling, assertSoftwareVisualSampling, visualPixelOffset, visualCssPixelOffset } from '../visualSampling';
+import { CanvasVisualSamplingSchema, readCanvasVisualSampling, assertVisualImageSampling, assertSoftwareVisualSampling, visualPixelOffset, visualCssPixelOffset, visualCssPixelRegion } from '../visualSampling';
 
 const software = () => CanvasVisualSamplingSchema.parse({ mode: 'interactive', windowDpr: 2, resolution: 1, css: { width: 900, height: 600 },
   canvas: { width: 900, height: 600 }, status: { limited: true, phase: 'ready', message: 'software rendering' } });
@@ -53,4 +53,17 @@ it('同一CSS半像素图形点在1x取包含单元，2x仍保原位置，不能
   expect(Array.from(one.pixels.slice(first, first + 4))).toEqual([165, 123, 171, 255]);
   expect(Array.from(two.pixels.slice(second, second + 4))).toEqual([165, 123, 171, 255]);
   expect(() => visualCssPixelOffset(one, { x: 3, y: 0 }, 1)).toThrow('visual_pixel_out_of_bounds');
+});
+
+it('标题分数盒覆盖两侧完整像素，1x和2x分别按真实采样拒绝任何越界', () => {
+  const one = { width: 5, height: 3, pixels: new Uint8Array(5 * 3 * 4) };
+  const two = { width: 10, height: 6, pixels: new Uint8Array(10 * 6 * 4) };
+  const region = { x: 0.5, y: 0.25, width: 4.5, height: 2.75 };
+  expect(visualCssPixelRegion(one, region, 1)).toEqual({ x: 0, y: 0, width: 5, height: 3 });
+  expect(visualCssPixelRegion(two, region, 2)).toEqual({ x: 1, y: 0, width: 9, height: 6 });
+  for (const resolution of [1, 2]) {
+    const frame = resolution === 1 ? one : two;
+    expect(() => visualCssPixelRegion(frame, { ...region, width: 4.51 }, resolution)).toThrow('visual_pixel_out_of_bounds');
+    expect(() => visualCssPixelRegion(frame, { ...region, width: 0 }, resolution)).toThrow('visual_region_dimensions_invalid');
+  }
 });

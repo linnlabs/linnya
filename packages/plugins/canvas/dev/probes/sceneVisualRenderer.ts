@@ -187,7 +187,38 @@ async function documentMetadataVisual() {
   kernel.setThumbnailCards(new Set([documentCard.id])); await drawn(); const thumbnail = await kernel.captureImage('png');
   kernel.setThumbnailCards(new Set()); await drawn(); const identity = await kernel.captureImage('png');
   if (kernel.readStats().spatialCellBuilds !== cells) throw new Error('preview_preference_rebuilt_unchanged_geometry');
-  return { before, renamed, thumbnail, identity, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
+  const result = { before, renamed, thumbnail, identity, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
+  return { ...result, collision: await documentMapMetadataVisual() };
+}
+/** 隐藏候选改短只经公开metadata入口；不能靠重装elements或capture的同步flush让它露出。 */
+async function documentMapMetadataVisual() {
+  const kernel = await setup(), firstTitle = '优先', longTitle = '需要更新的文档', shortTitle = '短';
+  const first = CanvasCardSchema.parse({ ...card('c1', 632, 0), type: 'document', data: { documentId: 'first' } });
+  const second = CanvasCardSchema.parse({ ...card('c2', 472, 0), type: 'document', data: { documentId: 'second' } });
+  const context = document.createElement('canvas').getContext('2d'); if (!context) throw new Error('document_map_metadata_context_missing');
+  context.font = '13px system-ui';
+  const firstWidth = context.measureText(firstTitle).width, longWidth = context.measureText(longTitle).width, shortWidth = context.measureText(shortTitle).width;
+  // 第二锚点在第一左侧，长标题真实跨入第一框，短标题实际不相交；不依赖production fitting生成预期。
+  if (longWidth <= 40 || longWidth > 140 || shortWidth >= 40 || firstWidth <= 0) throw new Error('document_map_metadata_reference_degenerated');
+  const waitForDraw = async (renders: number) => {
+    const start = performance.now();
+    while (kernel.readStats().renders <= renders || kernel.readStats().sceneTransitions || kernel.readStats().cameraTransition) {
+      if (performance.now() - start > 5000) throw new Error('document_map_metadata_actual_draw_timeout');
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    }
+  };
+  kernel.setDocumentTitles(new Map([['first', firstTitle], ['second', longTitle]]));
+  const initialDraw = kernel.readStats().renders; kernel.setElements([first, second]); kernel.setCamera({ x: 40, y: 40, zoom: 0.25 });
+  await waitForDraw(initialDraw); const before = await kernel.captureImage('png'), beforeDraw = kernel.readStats().renders;
+  const updated = new Map([['first', firstTitle], ['second', shortTitle]]);
+  kernel.setDocumentTitles(updated); await waitForDraw(beforeDraw);
+  const after = await kernel.captureImage('png'), afterDraw = kernel.readStats().renders;
+  kernel.setDocumentTitles(updated); await drawn(); const duplicateDraw = kernel.readStats().renders;
+  if (duplicateDraw !== afterDraw) throw new Error('unchanged_hidden_document_title_scheduled_draw');
+  return { before, after, dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive'),
+    revealedRegion: { x: 160, y: 42, width: shortWidth, height: 13 * 1.2 },
+    unchangedRegion: { x: 200, y: 42, width: firstWidth, height: 13 * 1.2 },
+    renders: { before: beforeDraw, after: afterDraw, duplicate: duplicateDraw } };
 }
 async function coldProjectionVisual() {
   const kernel = await setup(), first = card('c1', 250), second = card('c2', 480);
