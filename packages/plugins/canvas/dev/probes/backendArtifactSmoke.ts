@@ -16,7 +16,7 @@ async function run() {
   assert.equal(worker.workerHtmlPath, path.join(artifactRoot, 'dist/render-worker/worker.html'));
   assert.equal(worker.preloadPath, path.join(artifactRoot, 'dist/backend/render-worker-preload.cjs'));
   await access(worker.workerHtmlPath); await access(worker.preloadPath);
-  assert.equal(contribution.pluginMigrations?.at(-1)?.version, 5);
+  assert.deepEqual(contribution.pluginMigrations?.map(migration => migration.version), [1]);
   console.log('[canvas-artifact] disk mode discovers isolated skills, worker and migrations');
 }
 void run().catch(error => { console.error(error); process.exitCode = 1; });
