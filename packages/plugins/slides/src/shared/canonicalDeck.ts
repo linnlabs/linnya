@@ -38,6 +38,8 @@ export interface CanonicalVisualHints extends SlideElementShapeVisual {
   fill?: string;
   /** 图片适应模式（仅 image 元素，由 PptxReader 推断）。 */
   fitMode?: 'fill' | 'contain' | 'cover' | 'stretch';
+  /** 图片四边裁剪比例（仅 image 元素，由 PptxReader 从 `a:srcRect` 读出）。 */
+  imageCrop?: { top: number; right: number; bottom: number; left: number };
   /**
    * 文本框 / shape 内文本的垂直对齐（imported 路径由 PptxReader 从
    * `bodyPr@anchor` 提取）。generated 路径走 specElement.style.valign，本字段为空。

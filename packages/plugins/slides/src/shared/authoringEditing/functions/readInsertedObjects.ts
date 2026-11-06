@@ -1,3 +1,4 @@
+import { readImageCropInput, readImageFocusInput } from '../../deckSpec/imageFraming';
 import { isRecord } from '../../valueRecord';
 import type { SlidesInsertedObject } from '../definitions/insertedObject';
 import { isSlidesAuthoringKey } from './authoringIdentity';
@@ -23,10 +24,15 @@ export function readInsertedObjects(value: unknown): { value: readonly SlidesIns
     } else if (entry.kind === 'shape' && only(entry, [...common, 'geometry', 'fill', 'content'])
       && (entry.geometry === 'rect' || entry.geometry === 'ellipse') && typeof entry.fill === 'string' && /^#[0-9a-f]{6}$/iu.test(entry.fill) && isEditableTextContent(entry.content)) {
       result.push({ ...base, kind: 'shape', geometry: entry.geometry, fill: entry.fill, content: entry.content });
-    } else if (entry.kind === 'image' && only(entry, [...common, 'assetId', 'fit', 'alt'])
+    } else if (entry.kind === 'image' && only(entry, [...common, 'assetId', 'fit', 'alt', 'crop', 'focus'])
       && typeof entry.assetId === 'string' && entry.assetId.length > 0
       && (entry.fit === 'contain' || entry.fit === 'cover') && typeof entry.alt === 'string') {
-      result.push({ ...base, kind: 'image', assetId: entry.assetId, fit: entry.fit, alt: entry.alt });
+      const crop = entry.crop === undefined ? undefined : readImageCropInput(entry.crop, `${entry.editKey}.crop`);
+      if (crop && 'error' in crop) return { error: `新增对象 ${entry.editKey} 的裁剪无效：${crop.error}` };
+      const focus = entry.focus === undefined ? undefined : readImageFocusInput(entry.focus, `${entry.editKey}.focus`);
+      if (focus && 'error' in focus) return { error: `新增对象 ${entry.editKey} 的焦点无效：${focus.error}` };
+      result.push({ ...base, kind: 'image', assetId: entry.assetId, fit: entry.fit, alt: entry.alt,
+        ...(crop?.value ? { crop: crop.value } : {}), ...(focus ? { focus: focus.value } : {}) });
     } else return { error: `新增对象 ${entry.editKey} 的类型或作者值无效。` };
     keys.add(entry.editKey);
   }

@@ -31,6 +31,7 @@ import type {
   DirectSlideInput,
   DirectElementInput,
 } from '../presentationComposeInput.js';
+import { readImageCropInput, readImageFocusInput } from '@plugin/slides/shared/deckSpec/imageFraming';
 import { readThemeSpecInput } from '../inputParsers/styleParsers.js';
 import {
   parseChartDataLike,
@@ -545,12 +546,18 @@ function buildImageElement(node: LayoutImageNode, position: Box): DirectElementI
   if (node.src == null || (typeof node.src === 'string' && node.src.trim().length === 0)) {
     throw new FlexComposeContractError('Image 节点必须提供 src。');
   }
+  const crop = node.crop == null ? undefined : readImageCropInput(node.crop, 'Image.crop');
+  if (crop && 'error' in crop) throw new FlexComposeContractError(crop.error);
+  const focus = node.focus == null ? undefined : readImageFocusInput(node.focus, 'Image.focus');
+  if (focus && 'error' in focus) throw new FlexComposeContractError(focus.error);
   return attachSourceSpan({
     type: 'image',
     position,
     src: node.src,
     alt: node.alt,
     fitMode: node.fitMode,
+    crop: crop?.value,
+    focus: focus?.value,
     maskShape: node.maskShape,
     rounding: node.rounding,
     transparency: node.transparency,

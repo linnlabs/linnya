@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs';
 import type { Box, ResolvedImageAsset } from '@plugin/slides/shared';
 import {
+  resolveImageCropRegion,
   resolveImageFitGeometry,
+  type ImageCropInsets,
   type ImageFitMode,
+  type ImageFocusPoint,
+  type NormalizedImageRect,
 } from '@plugin/slides/shared/render-geometry';
 
 export interface ImageDimensions {
@@ -38,19 +42,29 @@ export function readImageDimensions(asset: ResolvedImageAsset): ImageDimensions 
   return dimensions;
 }
 
+export interface PptxImageFraming {
+  readonly crop?: ImageCropInsets;
+  readonly focus?: ImageFocusPoint;
+}
+
 /**
  * 生成 PptxGenJS 图片定位。
  *
- * cover/crop 使用“保比例显示的大图 + crop source rect”，contain 使用居中的
- * 实际图片框。不能把目标框再作为 sizing 的原图尺寸，否则 PptxGenJS 会把
- * `srcRect` 算成 0，最终退化成 stretch。
+ * 几何统一来自 resolveImageFitGeometry：source 不是整图时（cover、作者裁剪），
+ * 使用“保比例显示的大图 + crop source rect”；contain 先缩成居中的实际图片框。
+ * 不能把目标框再作为 sizing 的原图尺寸，否则 PptxGenJS 会把 `srcRect`
+ * 算成 0，最终退化成 stretch。未写 fitMode 时与画布一致按 contain 处理。
  */
 export function resolvePptxImageFitOptions(
   position: Box,
   asset: ResolvedImageAsset,
   fitMode: ImageFitMode | undefined,
+  framing: PptxImageFraming = {},
 ): PptxImageFitOptions {
-  if (fitMode === 'fill' || fitMode === 'stretch') return position;
+  if (fitMode === 'fill' || fitMode === 'stretch') {
+    // 拉伸不依赖原图尺寸：裁剪区域直接撑满图片框。
+    return withSourceCrop(position, resolveImageCropRegion(framing.crop));
+  }
 
   const naturalSize = readImageDimensions(asset);
   const geometry = resolveImageFitGeometry({
@@ -58,33 +72,34 @@ export function resolvePptxImageFitOptions(
     naturalHeight: naturalSize.height,
     boxWidth: position.w,
     boxHeight: position.h,
-    fitMode,
+    fitMode: fitMode ?? 'contain',
+    crop: framing.crop,
+    focus: framing.focus,
   });
   const destination = geometry.destination;
-  const source = geometry.source;
+  return withSourceCrop({
+    x: position.x + destination.x * position.w,
+    y: position.y + destination.y * position.h,
+    w: destination.width * position.w,
+    h: destination.height * position.h,
+  }, geometry.source);
+}
 
-  if (fitMode === 'contain' || fitMode == null) {
-    return {
-      x: position.x + destination.x * position.w,
-      y: position.y + destination.y * position.h,
-      w: destination.width * position.w,
-      h: destination.height * position.h,
-    };
-  }
-
-  const displayWidth = position.w / source.width;
-  const displayHeight = position.h / source.height;
+function withSourceCrop(box: Box, source: NormalizedImageRect): PptxImageFitOptions {
+  if (source.x === 0 && source.y === 0 && source.width === 1 && source.height === 1) return box;
+  const displayWidth = box.w / source.width;
+  const displayHeight = box.h / source.height;
   return {
-    x: position.x,
-    y: position.y,
+    x: box.x,
+    y: box.y,
     w: displayWidth,
     h: displayHeight,
     sizing: {
       type: 'crop',
       x: source.x * displayWidth,
       y: source.y * displayHeight,
-      w: position.w,
-      h: position.h,
+      w: box.w,
+      h: box.h,
     },
   };
 }

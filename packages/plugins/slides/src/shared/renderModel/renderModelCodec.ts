@@ -610,6 +610,7 @@ function isImageRenderNode(value: Record<string, unknown>): boolean {
       'naturalSize',
       'fitMode',
       'crop',
+      'focus',
       'maskShape',
       'borderRadius',
       'shadow',
@@ -621,6 +622,7 @@ function isImageRenderNode(value: Record<string, unknown>): boolean {
     && isOptional(value.naturalSize, isNaturalSize)
     && isOptional(value.fitMode, mode => isOneOf(mode, ['fill', 'contain', 'cover', 'stretch']))
     && isOptional(value.crop, isCrop)
+    && isOptional(value.focus, isFocusPoint)
     && isOptional(value.maskShape, shape => isOneOf(shape, ['rect', 'circle']))
     && isOptional(value.borderRadius, isFiniteNumber)
     && isOptional(value.shadow, isRenderShadow)
@@ -736,6 +738,13 @@ function isNaturalSize(value: unknown): boolean {
     && hasOnlyKeys(value, ['width', 'height'])
     && isFiniteNumber(value.width)
     && isFiniteNumber(value.height);
+}
+
+function isFocusPoint(value: unknown): boolean {
+  return isRecord(value)
+    && hasOnlyKeys(value, ['x', 'y'])
+    && isFiniteNumber(value.x)
+    && isFiniteNumber(value.y);
 }
 
 function isCrop(value: unknown): boolean {

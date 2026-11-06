@@ -7,6 +7,8 @@ import type {
   TextRenderNode,
 } from '@plugin/slides/shared';
 import { DEFAULT_TEXT_LINE_SPACING_MULTIPLE } from '@plugin/slides/shared';
+import { resolveImageFitGeometry } from '@plugin/slides/shared/render-geometry';
+import { readImageDimensions } from '../../engine/assets/imageSizing.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 归一化层：两条管线输出 → NormalizedElement
@@ -100,10 +102,38 @@ export function normalizeRenderNode(node: RenderNode, index: number): Normalized
       base.table = normalizeTableNode(node);
       break;
     case 'image':
+      base.geometry = resolveVisibleImageFrame(node, base.geometry);
       break;
   }
 
   return base;
+}
+
+/**
+ * 图片比较的是真正显示图片的框：画布按 fitMode / crop / focus 在节点盒里画，
+ * PPTX 的 contain 会把 frame 缩成同一块区域。只有 data URI 能在这里读尺寸。
+ */
+function resolveVisibleImageFrame(
+  node: Extract<RenderNode, { kind: 'image' }>,
+  box: NormalizedGeometry,
+): NormalizedGeometry {
+  if (node.assetRef.type !== 'data') return box;
+  const natural = readImageDimensions({ kind: 'data_uri', dataUri: node.assetRef.dataUri });
+  const { destination } = resolveImageFitGeometry({
+    naturalWidth: natural.width,
+    naturalHeight: natural.height,
+    boxWidth: box.w,
+    boxHeight: box.h,
+    fitMode: node.fitMode,
+    crop: node.crop,
+    focus: node.focus,
+  });
+  return {
+    x: box.x + destination.x * box.w,
+    y: box.y + destination.y * box.h,
+    w: destination.width * box.w,
+    h: destination.height * box.h,
+  };
 }
 
 function normalizeTextNode(node: TextRenderNode): NormalizedTextProps {
@@ -215,8 +245,12 @@ export function normalizePptxCapture(cap: CapturedElement, index: number): Norma
     case 'addTable':
       base.table = normalizePptxTableOpts(opts);
       break;
-    case 'addImage':
+    case 'addImage': {
+      // 带 source crop 时 w/h 是放大后的整图尺寸，frame 才是 sizing.w/h。
+      const sizing = opts.sizing as { w?: unknown; h?: unknown } | undefined;
+      if (sizing) base.geometry = { ...base.geometry, w: toNumber(sizing.w), h: toNumber(sizing.h) };
       break;
+    }
   }
 
   return base;

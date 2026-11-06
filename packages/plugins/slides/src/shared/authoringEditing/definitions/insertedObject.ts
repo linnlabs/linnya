@@ -14,5 +14,13 @@ export type SlidesInsertedObject = SlidesInsertedObjectBase & (
     readonly heightMode?: 'content' | 'minimum';
   }
   | { readonly kind: 'shape'; readonly geometry: 'rect' | 'ellipse'; readonly fill: string; readonly content: SlidesEditableTextContent }
-  | { readonly kind: 'image'; readonly assetId: string; readonly fit: 'contain' | 'cover'; readonly alt: string }
+  | {
+    readonly kind: 'image';
+    readonly assetId: string;
+    readonly fit: 'contain' | 'cover';
+    readonly alt: string;
+    /** 复制带取景的图片时原样保留；语义同 deck.js `Image.crop` / `Image.focus`。 */
+    readonly crop?: { readonly top: number; readonly right: number; readonly bottom: number; readonly left: number };
+    readonly focus?: { readonly x: number; readonly y: number };
+  }
 );

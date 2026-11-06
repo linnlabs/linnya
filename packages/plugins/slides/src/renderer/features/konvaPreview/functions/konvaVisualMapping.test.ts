@@ -131,4 +131,23 @@ describe('konvaVisualMapping', () => {
       },
     });
   });
+  it('先按作者裁剪取区域，再按焦点放置 cover 取景窗', () => {
+    const config = resolveKonvaImageFitConfig({
+      naturalWidth: 1600,
+      naturalHeight: 900,
+      boxWidth: 300,
+      boxHeight: 300,
+      fitMode: 'cover',
+      crop: { top: 0, right: 0.25, bottom: 0, left: 0 },
+      focus: { x: 0, y: 0.5 },
+    });
+
+    expect(config).toEqual({
+      x: 0,
+      y: 0,
+      width: 300,
+      height: 300,
+      crop: { x: 0, y: 0, width: 900, height: 900 },
+    });
+  });
 });

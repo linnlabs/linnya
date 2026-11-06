@@ -38,10 +38,12 @@ function makeImageDemo(caption, image) {
 }
 
 // fitMode: "cover" 铺满并裁掉溢出部分，构图优先；"contain" 完整放下，可能留边。
-// "crop" 与 cover 在渲染上等价，用于表达"有意裁切"的语义。
+// crop 从原图四边裁掉的比例（0–1），只用局部；focus 是原图上的点，cover 裁溢出时取景窗尽量以它为中心。
 const coverDemo = createImage({
   src: "conversation:/images/REPLACE-cover.jpg",
   fitMode: "cover",
+  crop: { top: 0.4 },
+  focus: { x: 0.35, y: 0.7 },
 });
 const containDemo = createImage({
   src: "conversation:/images/REPLACE-contain.jpg",

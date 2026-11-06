@@ -38,6 +38,8 @@ export interface KonvaImageFitInput {
   boxWidth: number;
   boxHeight: number;
   fitMode?: KonvaImageFitMode;
+  crop?: ImageRenderNode['crop'];
+  focus?: ImageRenderNode['focus'];
 }
 
 export interface KonvaImageFitConfig {
@@ -176,6 +178,8 @@ export function resolveKonvaImageFitConfig(input: KonvaImageFitInput): KonvaImag
     boxWidth,
     boxHeight,
     fitMode,
+    crop: input.crop,
+    focus: input.focus,
   });
   const destination = geometry.destination;
   const source = geometry.source;

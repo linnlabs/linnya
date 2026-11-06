@@ -350,8 +350,10 @@ export interface ImageRenderNode extends RenderNodeBase {
   naturalSize?: { width: number; height: number };
   /** 图片适应模式 */
   fitMode?: 'fill' | 'contain' | 'cover' | 'stretch';
-  /** 裁剪区域（0~1 归一化比例） */
+  /** 从原图四边各裁掉的比例（0~1），先于 fitMode 生效；与 OOXML `a:srcRect` 同义。 */
   crop?: { top: number; right: number; bottom: number; left: number };
+  /** 原图上的归一化焦点（0~1）；cover 时取景窗尽量以它为中心。 */
+  focus?: { x: number; y: number };
   maskShape?: 'rect' | 'circle';
   borderRadius?: number;
   shadow?: RenderShadow;

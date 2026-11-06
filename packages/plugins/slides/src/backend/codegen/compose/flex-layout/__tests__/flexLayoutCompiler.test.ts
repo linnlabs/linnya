@@ -6,6 +6,7 @@ import {
   type TextMeasureAdapter,
 } from 'src/features/text-measurement';
 import { compileFlexInput, compileSlide } from '../FlexLayoutCompiler.js';
+import { buildDeckSpecFromDirectInput, readCompiledDirectComposeInput } from '../../presentationComposeInput.js';
 import { initYoga } from '../YogaAdapter.js';
 import { isFlexComposeInput } from '../LayoutTypes.js';
 import type {
@@ -962,6 +963,52 @@ describe('FlexLayoutCompiler', () => {
         src: { kind: 'generated_asset', assetId: '/abs/generated.png' },
         fitMode: 'cover',
       });
+    });
+
+    it('Image.crop 补齐省略的边，focus 原样进入编译结果并保留到 DeckSpec', () => {
+      const result = compileFlexInput({
+        title: '图片取景',
+        slides: [
+          makeSlide([
+            makeImage('/abs/vessel.png', {
+              width: 3,
+              height: 2,
+              fitMode: 'cover',
+              crop: { left: 0.3, bottom: 0.1 },
+              focus: { x: 0.5, y: 0.7 },
+            }),
+          ]),
+        ],
+      });
+
+      expect(result.error).toBeUndefined();
+      expect(result.input!.slides[0].elements[0]).toMatchObject({
+        type: 'image',
+        crop: { top: 0, right: 0, bottom: 0.1, left: 0.3 },
+        focus: { x: 0.5, y: 0.7 },
+      });
+      const reparsed = readCompiledDirectComposeInput(result.input as unknown as Record<string, unknown>);
+      expect(reparsed.error).toBeUndefined();
+      const slide = buildDeckSpecFromDirectInput(reparsed.input!).slides[0]!.spec;
+      expect('elements' in slide && slide.elements[0]).toMatchObject({
+        type: 'image',
+        crop: { top: 0, right: 0, bottom: 0.1, left: 0.3 },
+        focus: { x: 0.5, y: 0.7 },
+      });
+    });
+
+    it('Image.crop 越界时返回写法说明，而不是静默夹紧', () => {
+      const result = compileFlexInput({
+        title: '坏裁剪',
+        slides: [
+          makeSlide([
+            makeImage('/abs/vessel.png', { width: 3, height: 2, crop: { left: 0.7, right: 0.4 } }),
+          ]),
+        ],
+      });
+
+      expect(result.error).toContain('Image.crop.left 与 Image.crop.right 相加必须小于');
+      expect(result.input).toBeUndefined();
     });
 
     it('Image 节点缺少 src 时返回明确编译错误', () => {

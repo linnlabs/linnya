@@ -1219,7 +1219,12 @@ export function lintImageAspect(
     if (typeof el.imageNaturalAspect !== 'number' || el.imageNaturalAspect <= 0) continue;
 
     const elementAspect = el.position.w / el.position.h;
-    const deviation = Math.abs(elementAspect / el.imageNaturalAspect - 1);
+    // 拉伸的是裁剪后剩下的区域，比较对象是这块区域的宽高比。
+    const crop = el.imageCrop;
+    const naturalAspect = crop
+      ? el.imageNaturalAspect * Math.max(0.01, 1 - crop.left - crop.right) / Math.max(0.01, 1 - crop.top - crop.bottom)
+      : el.imageNaturalAspect;
+    const deviation = Math.abs(elementAspect / naturalAspect - 1);
     if (deviation <= IMAGE_ASPECT_TOLERANCE) continue;
 
     issues.push({
@@ -1232,7 +1237,7 @@ export function lintImageAspect(
         node: buildDiagnosticNodeRef(el),
         fitMode: 'stretch',
         frameAspect: elementAspect,
-        naturalAspect: el.imageNaturalAspect,
+        naturalAspect,
         deviationRatio: deviation,
         thresholdRatio: IMAGE_ASPECT_TOLERANCE,
       },

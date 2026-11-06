@@ -28,7 +28,10 @@ export function readCopyableAuthoringValue(element: FreeformElement | Structured
   }
   if (element.type === 'image' && typeof element.src === 'object' && element.src.kind === 'document_asset'
     && !element.rotate && !element.flipH && !element.flipV && !element.rounding && !element.shadow && !element.transparency && (!element.maskShape || element.maskShape === 'rect')) {
-    return { kind: 'image', assetId: element.src.assetId, fit: element.fitMode === 'contain' ? 'contain' : 'cover', alt: element.alt ?? '' };
+    return {
+      kind: 'image', assetId: element.src.assetId, fit: element.fitMode === 'contain' ? 'contain' : 'cover', alt: element.alt ?? '',
+      ...(element.crop ? { crop: { ...element.crop } } : {}), ...(element.focus ? { focus: { ...element.focus } } : {}),
+    };
   }
   return null;
 }

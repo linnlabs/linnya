@@ -462,6 +462,8 @@ interface LayoutImageConfig extends FlexProps, LayoutAuthoringTargetConfig {
   src?: LayoutImageSourceInput;
   alt?: string;
   fitMode?: 'cover' | 'contain' | 'crop';
+  crop?: LayoutImageCropInput;
+  focus?: LayoutImageFocusInput;
   maskShape?: 'rect' | 'circle';
   rounding?: boolean;
   /** 0 表示不透明，1 表示完全透明。 */
@@ -470,6 +472,20 @@ interface LayoutImageConfig extends FlexProps, LayoutAuthoringTargetConfig {
   rotate?: number;
   flipH?: boolean;
   flipV?: boolean;
+}
+
+/** 从原图四边各裁掉的比例（0–1），省略的边不裁。先裁剪，再按 fitMode 放进盒子。 */
+interface LayoutImageCropInput {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
+/** 原图上的点（0–1，左上为 0,0）；cover 裁掉溢出时，取景窗尽量以它为中心。 */
+interface LayoutImageFocusInput {
+  x: number;
+  y: number;
 }
 
 interface LayoutImageNode extends LayoutImageConfig, LayoutSourceMetadata {
@@ -936,7 +952,15 @@ type SlidesInsertedObject = SlidesInsertedObjectBase & (
     readonly heightMode?: 'content' | 'minimum';
   }
   | { readonly kind: 'shape'; readonly geometry: 'rect' | 'ellipse'; readonly fill: string; readonly content: SlidesEditableTextContent }
-  | { readonly kind: 'image'; readonly assetId: string; readonly fit: 'contain' | 'cover'; readonly alt: string }
+  | {
+    readonly kind: 'image';
+    readonly assetId: string;
+    readonly fit: 'contain' | 'cover';
+    readonly alt: string;
+    /** 复制带取景的图片时原样保留；语义同 deck.js `Image.crop` / `Image.focus`。 */
+    readonly crop?: { readonly top: number; readonly right: number; readonly bottom: number; readonly left: number };
+    readonly focus?: { readonly x: number; readonly y: number };
+  }
 );
 
 interface SlidesInsertedObjectBase {

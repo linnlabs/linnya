@@ -108,7 +108,7 @@ export class CanonicalBuilder {
   /**
    * 把 PptxReader 提取的视觉提示透传到 canonical：
    *   - shape：fill / shapeKind / border / cornerRadius / shadow
-   *   - image：fitMode
+   *   - image：fitMode / imageCrop
    *   - text / shape innerText：textVerticalAlign / textAutoFit / textPadding / textWrap（来自 OOXML `bodyPr`）
    * 段落文字与行距不属于 visual hint，已通过 CanonicalElement.paragraphs 原样透传。
    * 走 generated 主链时这些字段全为 undefined，CanonicalRenderModelMapper 会优先使用 specElement。
@@ -117,6 +117,7 @@ export class CanonicalBuilder {
     const shapeVisual = el.shapeVisual;
     const fill = el.fill;
     const fitMode = el.imageFit;
+    const imageCrop = el.imageCrop;
     const textVerticalAlign = el.textBody?.verticalAlign;
     const textAutoFit = el.textBody?.autoFit;
     const textPadding = el.textBody?.padding;
@@ -126,6 +127,7 @@ export class CanonicalBuilder {
       !shapeVisual
       && fill == null
       && fitMode == null
+      && imageCrop == null
       && textVerticalAlign == null
       && textAutoFit == null
       && textPadding == null
@@ -138,6 +140,7 @@ export class CanonicalBuilder {
       ...(shapeVisual ?? {}),
       ...(fill != null ? { fill } : {}),
       ...(fitMode != null ? { fitMode } : {}),
+      ...(imageCrop != null ? { imageCrop: { ...imageCrop } } : {}),
       ...(textVerticalAlign != null ? { textVerticalAlign } : {}),
       ...(textAutoFit != null ? { textAutoFit } : {}),
       ...(textPadding != null ? { textPadding } : {}),

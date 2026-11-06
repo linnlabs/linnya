@@ -263,6 +263,7 @@ function mapImageNode(
     // imported 默认按 OOXML `a:stretch` 行为给 'stretch'；如果 PptxReader 推断出别的（如 'fill'）就用提示值。
     // 这里不再硬编码 'contain'，避免 imported 预览与原始 PPT 行为漂移。
     fitMode: element.visual?.fitMode ?? 'stretch',
+    ...(element.visual?.imageCrop ? { crop: { ...element.visual.imageCrop } } : {}),
     editableTarget: base.editableTarget
       ? {
           ...base.editableTarget,

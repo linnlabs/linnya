@@ -19,6 +19,7 @@ function toLayoutNode(object: SlidesInsertedObject): LayoutNode {
       verticalAlign: object.style.valign, letterSpacing: object.style.letterSpacing,
       lineHeight: object.style.lineSpacing?.kind === 'multiple' ? object.style.lineSpacing.value : undefined };
     case 'shape': return { ...base, _type: 'Shape', geometry: object.geometry, fill: object.fill, content: object.content };
-    case 'image': return { ...base, _type: 'Image', src: { kind: 'document_asset', assetId: object.assetId }, fitMode: object.fit, alt: object.alt };
+    case 'image': return { ...base, _type: 'Image', src: { kind: 'document_asset', assetId: object.assetId }, fitMode: object.fit, alt: object.alt,
+      ...(object.crop ? { crop: { ...object.crop } } : {}), ...(object.focus ? { focus: { ...object.focus } } : {}) };
   }
 }

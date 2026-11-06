@@ -167,6 +167,20 @@ export interface LayoutTableBorderInput {
 
 export type LayoutTableCellValue = LayoutDisplayValue | LayoutTableCellInput;
 
+/** 从原图四边各裁掉的比例（0–1），省略的边不裁。先裁剪，再按 fitMode 放进盒子。 */
+export interface LayoutImageCropInput {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
+/** 原图上的点（0–1，左上为 0,0）；cover 裁掉溢出时，取景窗尽量以它为中心。 */
+export interface LayoutImageFocusInput {
+  x: number;
+  y: number;
+}
+
 export interface LayoutImageVisualShadowInput {
   color?: string;
   blur?: number;
@@ -516,6 +530,8 @@ export interface LayoutImageConfig extends FlexProps, LayoutAuthoringTargetConfi
   src?: LayoutImageSourceInput;
   alt?: string;
   fitMode?: 'cover' | 'contain' | 'crop';
+  crop?: LayoutImageCropInput;
+  focus?: LayoutImageFocusInput;
   maskShape?: 'rect' | 'circle';
   rounding?: boolean;
   /** 0 表示不透明，1 表示完全透明。 */

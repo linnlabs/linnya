@@ -388,7 +388,7 @@ export class StructuredCompiler {
     el: Extract<StructuredElement, { type: 'image' }>,
   ): void {
     const asset = resolveImageAsset(el.src);
-    const fitOptions = resolvePptxImageFitOptions(el.position, asset, el.fitMode);
+    const fitOptions = resolvePptxImageFitOptions(el.position, asset, el.fitMode, { crop: el.crop, focus: el.focus });
     const imgOpts: PptxGenJS.ImageProps = {
       ...fitOptions,
       ...toPptxImageSource(asset),

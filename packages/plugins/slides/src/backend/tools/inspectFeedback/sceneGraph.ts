@@ -291,6 +291,8 @@ function summarizeNodeContent(node: RenderNode): Record<string, unknown> | undef
       return {
         alt: node.alt,
         fitMode: node.fitMode,
+        crop: node.crop,
+        focus: node.focus,
         maskShape: node.maskShape,
         rounding: node.borderRadius != null && node.borderRadius > 0,
         transparency: node.opacity != null ? 1 - node.opacity : undefined,
