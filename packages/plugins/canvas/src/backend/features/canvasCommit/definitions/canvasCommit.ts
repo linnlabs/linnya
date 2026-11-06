@@ -1,6 +1,8 @@
 import type { CanvasElement, CanvasElementId, CanvasSource } from '../../../../shared';
 import type { CanvasOperationResult } from '../../../../shared/changeset/definitions/canvasCommands';
 
+export const CANVAS_CHANGE_LOG_LIMIT = 512;
+
 export interface CanvasStoredElement {
   readonly element: CanvasElement;
   readonly fieldOrigins: Readonly<Record<string, string>>;

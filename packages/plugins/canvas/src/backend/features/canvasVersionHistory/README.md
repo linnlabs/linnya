@@ -14,7 +14,7 @@
 
 ## 反放、锚点与裁剪
 
-每个恢复点保存 SHA-256，字段逆增量累计压缩字节超过完整快照时补锚点。锚点可独立预览，普通反放遵循实际 previous 身份，不按 sequence 减一猜父版本。维护单次反放并校验全部版本、锚点和资源集合，包括准备删除的记录。裁剪按字段操作合并相邻逆增量，不重新 diff 整张画布；最旧保留点变成完整锚点，版本身份和 hash 不改变。
+每个恢复点保存 SHA-256，字段逆增量累计压缩字节超过完整快照时补锚点。锚点可独立预览，普通反放遵循实际 previous 身份，不按 sequence 减一猜父版本。维护先校验链元数据并计算保留计划；没有实际删除就不解码快照或改写版本载荷。裁剪只接纳并合并跨越删除区间的逆增量，不重新 diff 整张画布；仍相邻的记录保持原对象与载荷。最旧保留点改变时才按预览同一路径验证并生成该点的一张锚点，不在内存里保存全部版本快照。版本身份和hash不变，未涉及的旧载荷仍在真正预览时接纳，不把维护当全库完整性审计。
 
 保留决策通过 Core documentHistory 计划。默认软预算一百 MiB，最近五版始终保留；计算值包含持久压缩载荷/序列化元数据与仅历史持有的资源事实，不把 SQLite 空闲页当作可回收字节。共享历史资产只计一次，分配给最新保留的持有版本，避免删旧版本就误以为仍共享的资源已经释放。重链后重算实际载荷，再向 Core 请求必要的进一步裁剪；不能以重链前估算冒充最终预算。超预算通过 budgetStatus / budgetChanged 明确返回。
 
@@ -24,6 +24,8 @@ Host 窄 port 提供 protectedAssetIds（current、undo、groups、pending）、
 
 `prepareRestore` 返回经过验证的目标 snapshot 与真实来源摘要；正式恢复仍经可 Cmd+Z 的 user transition，保留 open Agent groups。最终事务再次 assertCurrent，并把目标 elements 作为可信 retainedElements 交给 Host 引用登记。恢复的 onCommit 在外层 recordCommit 之后同事务 checkpoint 并保存 restoredFrom，不能在提交后另行补来源。恢复不回滚被引用的文档。
 
-组合层负责传入严格完整 current snapshot（由 readCanvasCommitState 构造），不能传 readCanvasSnapshot 的只读隔离投影。close/dispose 刷恢复点；afterCommit 调度独立维护，停用时取消 timer 并完成同步维护。
+组合层负责传入严格完整 current snapshot（由 readCanvasCommitState 构造），不能传 readCanvasSnapshot 的只读隔离投影。close/dispose 刷恢复点；新恢复点、超预算或历史持有者释放才安排独立维护，普通Agent写入和角标审阅只通知组状态，不启动全历史整理。停用时取消timer并完成同步维护。
+
+编码只接收已规范化的快照或严格逆增量；使用JSON标准replacer稳定对象键顺序，不为每次hash/压缩重复做JSON往返和通用schema克隆。未发布开发态的旧数据在初始化schema收敛时重建，不在读取路径兼容旧哈希算法。
 
 实现参考了 [tldraw 的 RecordsDiff](https://github.com/tldraw/tldraw/blob/main/packages/store/src/lib/RecordsDiff.ts) 对差分合并/反放的分离，以及本仓 Slides 的 source-history 校验与维护纪律。这里只借鉴行为和边界，没有引入外部 store、CRDT 或历史依赖库。

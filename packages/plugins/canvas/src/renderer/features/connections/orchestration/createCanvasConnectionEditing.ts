@@ -10,11 +10,10 @@ import { createCanvasConnectionLabelPreview } from './createCanvasConnectionLabe
 
 export function createCanvasConnectionEditing(session: CanvasDocumentSession, kernel: CanvasConnectionKernel, options: { finishText(): Promise<boolean>; createText(point: CanvasPoint, from: CanvasEndpoint): Promise<void>; clearCards(): void; report(failure: unknown): void; readDisplayVersion?(): number }) {
   const state = createCanvasConnectionState();
-  let renewal: ReturnType<typeof setInterval> | null = null;
   let pendingLabel: Promise<boolean> | null = null;
   const selected = computed(() => session.state.snapshot.value?.elements.find((element): element is CanvasEdge => element.id === state.selectedId.value && element.type === 'edge') ?? null);
   const labelPreview = createCanvasConnectionLabelPreview(id => session.state.snapshot.value?.elements.find((element): element is CanvasEdge => element.type === 'edge' && element.id === id) ?? null);
-  const releaseLabel = async () => { if (renewal) clearInterval(renewal); renewal = null; const id = state.label.value?.edge.id; if (id) await session.protect(id, [], 'line-label'); };
+  const releaseLabel = async () => { const id = state.label.value?.edge.id; if (id && session.state.snapshot.value) await session.protect(id, [], 'line-label'); };
   async function patch(edge: CanvasEdge, value: CanvasPatch) {
     if (edge.locked && value.locked !== false) throw new Error('请先解锁这条连线');
     await session.commit([{ op: 'update', id: edge.id, baseRevision: edge.revision, patch: value }]);
@@ -52,12 +51,11 @@ export function createCanvasConnectionEditing(session: CanvasDocumentSession, ke
     async beginLabel() {
       const edge = selected.value; if (!edge || edge.locked || state.label.value) return;
       await session.protect(edge.id, ['label'], 'line-label'); state.beginLabel(edge);
-      renewal = setInterval(() => { void session.protect(edge.id, ['label'], 'line-label').catch(options.report); }, 2000);
     },
     async remove() { if (selected.value?.locked) throw new Error('请先解锁这条连线'); if (!(await saveLabel())) return; const edge = selected.value; if (!edge) return; await session.commit([{ op: 'delete', id: edge.id, baseRevision: edge.revision }]); state.select(null); kernel.setSelectedEdge(null); },
     cancelLabel() { void releaseLabel().catch(options.report); state.endLabel(); },
     async suspend() { gesture.dispose(); await releaseLabel(); },
     start: gesture.start,
-    dispose() { labelPreview.dispose(); gesture.dispose(); if (renewal) clearInterval(renewal); },
+    dispose() { labelPreview.dispose(); gesture.dispose(); void releaseLabel().catch(options.report); },
   };
 }

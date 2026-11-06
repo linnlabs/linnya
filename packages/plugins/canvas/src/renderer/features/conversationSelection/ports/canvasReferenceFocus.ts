@@ -1,15 +1,17 @@
 import type { CanvasReferenceFocus } from '../definitions/canvasSelectionReference';
-const handlers = new Map<string, CanvasReferenceFocus>();
+const handlers = new Map<string, Set<CanvasReferenceFocus>>();
 const waiters = new Map<string, Set<(focus: CanvasReferenceFocus | null) => void>>();
 
 /** 注册的是表面的定位能力，不保存选择或正文；窗口之间由各自模块实例隔离。 */
 export function registerCanvasReferenceFocus(documentId: string, focus: CanvasReferenceFocus): () => void {
-  handlers.set(documentId, focus);
+  const documentHandlers = handlers.get(documentId) ?? new Set<CanvasReferenceFocus>();
+  documentHandlers.add(focus); handlers.set(documentId, documentHandlers);
   for (const waiter of waiters.get(documentId) ?? []) waiter(focus);
-  return () => { if (handlers.get(documentId) === focus) handlers.delete(documentId); };
+  return () => { documentHandlers.delete(focus); if (!documentHandlers.size && handlers.get(documentId) === documentHandlers) handlers.delete(documentId); };
 }
 export async function focusCanvasReference(documentId: string, ids: Parameters<CanvasReferenceFocus>[0]): Promise<void> {
-  const current = handlers.get(documentId);
+  // 与文档历史动作一致，优先最近注册且仍存活的表面。
+  const available = [...(handlers.get(documentId) ?? [])], current = available[available.length - 1];
   if (current) return current(ids);
   const focus = await new Promise<CanvasReferenceFocus | null>((resolve, reject) => {
     const waiting = waiters.get(documentId) ?? new Set<(focus: CanvasReferenceFocus | null) => void>();

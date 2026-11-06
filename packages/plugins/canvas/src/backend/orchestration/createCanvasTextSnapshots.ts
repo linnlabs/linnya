@@ -1,3 +1,4 @@
+import { CANVAS_TEXT_SNAPSHOT_INTERVAL_MS } from '../definitions/canvasProjectionLimits';
 import { saveWorkspaceNodeTextSnapshot, Logger } from '@plugin/backend/workspaceRuntime';
 import { CANVAS_PLUGIN_ID, CANVAS_DOCUMENT_TYPE } from '../../shared';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
@@ -30,6 +31,9 @@ export function createCanvasTextSnapshots(database: CanvasDatabase) {
       try { refresh(documentId); } catch (error) { logger.error('Canvas文本快照刷新失败', { documentId, error }); }
     }
   }
-  function schedule(documentId: string) { pending.add(documentId); if (!timer) timer = setTimeout(flush, 30000); }
+  function schedule(documentId: string) {
+    pending.add(documentId);
+    if (!timer) { timer = setTimeout(flush, CANVAS_TEXT_SNAPSHOT_INTERVAL_MS); timer.unref(); }
+  }
   return { refresh, flush, schedule };
 }

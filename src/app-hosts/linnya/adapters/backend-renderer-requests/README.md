@@ -8,7 +8,7 @@ App Server 进程注册，Electron Main 只向已登记 channel 转发 data-only
 `Uint8Array`/`ArrayBuffer`，拒绝函数、类实例和循环引用。它只是保持现有 Renderer API 的宿主 adapter，
 不是新的插件接口，也不能用于调用任意 App Server method。
 
-内部传输协议为 v2，Desktop 与 App Server 必须来自同一构建。纯 JSON 值经完整的有限数、普通对象、循环、深度和节点预算校验后，使用单个 `kind: json` envelope，不逐节点包装；含 undefined、bigint 或二进制的值继续使用 tagged 合同，不能静默转换。用户对象自身的 kind 字段位于 envelope 内。
+内部传输协议为 v3，Desktop 与 App Server 必须来自同一构建。纯 JSON 值经完整的有限数、普通对象、循环、深度和节点预算校验后，使用单个 `kind: json` envelope，不逐节点包装；含 undefined、bigint 或二进制的值继续使用 tagged 合同，不能静默转换。用户对象自身的 kind 字段位于 envelope 内。
 
 小请求和结果直接走有界 JSON RPC。超过内联上限，或含有 64 KiB 以上字符串/二进制 leaf 时，改走
 AppData 私有 mailbox；大 leaf 独立写入权限收紧的文件，RPC 只携带 operation id、随机 token 和提交事实，
@@ -24,3 +24,5 @@ domain/feature 逐步归位的物理目录债务，不代表它们运行在 Main
 Desktop file-reveal RPC 调用系统文件管理器，绝对路径不会返回 Renderer。
 
 文档引用请求由 document-references owner 处理；`document-references:backlinks` 与候选/身份解析采用相同 typed request 准入，当前项目校验先于已有反向索引读取。Preload、SDK、协议 shim 只透传该有界只读能力，不跨域查询正文或扩大插件管理权限。
+
+Main为每次主文档加载分配opaque会话UUID，主框架的非原地导航、渲染进程丢失和销毁通过Desktop专用RPC释放它。该RPC不登记成Renderer可调用channel。plugin:invoke通过上下文单独取得Host创建的AbortSignal，不接受业务payload代填身份；旧会话释放不会取消新一代。大mailbox加载前登记上下文，投递前复核取消，避免关闭后创建孤立视图。普通历史IPC registrar仍使用undefined event，Backend从不接收WebContents。

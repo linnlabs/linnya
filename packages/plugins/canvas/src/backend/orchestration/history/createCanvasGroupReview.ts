@@ -8,7 +8,7 @@ export function createCanvasGroupReview(options: {
   readonly database: CanvasDatabase; readonly ports?: CanvasCommitPorts;
   readonly recordUserHistory: (input: CanvasHistoryCommitInput) => (() => void) | undefined;
   readonly status: (documentId: string, viewId: string) => { canUndo: boolean; canRedo: boolean };
-  readonly pruneGuards: (documentId: string) => void; readonly notifyGroups: (documentId: string) => void;
+  readonly pruneGuards: (documentId: string) => void; readonly notifyGroups: (documentId: string, reason: 'review' | 'release') => void;
   readonly viewBaseline: (documentId: string, viewId: string) => number | undefined;
 }) {
   function listGroups(documentId: string, now: number, viewId?: string) {
@@ -35,15 +35,15 @@ export function createCanvasGroupReview(options: {
         return () => { updateOwn?.(); updateOuter?.(); };
       } },
     });
-    options.pruneGuards(request.documentId); options.notifyGroups(request.documentId);
+    options.pruneGuards(request.documentId); options.notifyGroups(request.documentId, 'release');
     return { commit: result, ...options.status(request.documentId, request.viewId) };
   }
   function closeGroup(input: { readonly documentId: string; readonly groupId: string }) {
     options.database.transaction(() => deleteCanvasAgentGroup(options.database, input.documentId, input.groupId)).immediate();
-    options.pruneGuards(input.documentId); options.notifyGroups(input.documentId);
+    options.pruneGuards(input.documentId); options.notifyGroups(input.documentId, 'release');
   }
   function reviewElement(input: { readonly documentId: string; readonly elementId: CanvasElementId; readonly groupId?: string }) {
-    options.database.transaction(() => reviewCanvasAgentElement(options.database, input)).immediate(); options.notifyGroups(input.documentId);
+    options.database.transaction(() => reviewCanvasAgentElement(options.database, input)).immediate(); options.notifyGroups(input.documentId, 'review');
   }
   return { listGroups, withdraw, closeGroup, reviewElement };
 }

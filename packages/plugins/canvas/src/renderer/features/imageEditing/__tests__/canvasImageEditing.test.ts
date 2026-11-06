@@ -50,7 +50,7 @@ describe('图片属性编辑闭环', () => {
       await f.editor.apply(); expect(f.editor.state.draft.value?.data.caption).toBe('新图注'); expect(f.editor.state.error.value).toBe('storage failed');
       await f.editor.apply(); expect(f.editor.state.draft.value).toBeNull();
       expect(f.session.state.snapshot.value?.elements[0]).toMatchObject({ x: 40, y: 40, width: 320, height: 120, data: { assetId: 'new', caption: '新图注', alt: '原替代文字', crop: { x: 0.1, y: 0.2, width: 0.8, height: 0.6 } } });
-      expect(f.protection).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] }));
+      expect(f.protection).toHaveBeenLastCalledWith(expect.objectContaining({ claims: [] }));
     } finally { f.editor.dispose(); await f.session.close(); }
   });
   it('取消不会提交，迟到的替换结果不会重开草稿', async () => {

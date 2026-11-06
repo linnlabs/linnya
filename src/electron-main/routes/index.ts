@@ -1,4 +1,5 @@
 import { bindMarkdownDocumentReferenceCapabilities } from 'src/app-hosts/linnya/application/markdown-document-references';
+import { clearDocumentReferenceMarkdownReader } from 'src/plugin-sdk/backend/documentReferences';
 import type { AuditControlPort } from 'src/domains/audit';
 import { readSourceCheckoutIdentity } from 'src/shared/runtime-paths/functions/readSourceCheckoutIdentity';
 import { realpathSync } from 'node:fs';
@@ -751,6 +752,7 @@ export async function configureRoutes(
     });
     const registeredChildRunInvoker = createRegisteredChildRunInvoker({
       runtime: agentRuntime,
+      releaseReferenceReads: (conversationId, runId) => clearDocumentReferenceMarkdownReader(db, JSON.stringify([conversationId, runId])),
       telemetryPort,
       commandRuntime: commandAgentRuntimes.child,
       childRunInvoker: dependencies.agentToolEnvironment

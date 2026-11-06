@@ -23,11 +23,11 @@ export const CanvasCliOperationSchema = z.union([
     linePattern: CanvasEdgeSchema.shape.linePattern.unwrap().optional(),
   }).strict().refine(value => value.text === undefined || value.append === undefined, 'text 与 append 不能同时使用')
     .refine(value => Object.keys(value).some(key => !['op', 'id', 'revision'].includes(key)), '至少给出一个要修改的字段'),
-  z.object({ op: z.literal('delete'), id, revision: z.number().int().positive().optional() }).strict(),
+  z.object({ op: z.literal('delete'), id, revision: z.number().int().positive() }).strict(),
   z.object({ op: z.literal('connect'), ref: placement.ref, from: CanvasLayoutTargetSchema, to: CanvasLayoutTargetSchema, label: z.string().default(''), direction: CanvasEdgeSchema.shape.direction.default('forward'),
     lineStyle: CanvasEdgeSchema.shape.lineStyle.default('curve'), linePattern: CanvasEdgeSchema.shape.linePattern,
   }).strict(),
-  z.object({ op: z.literal('disconnect'), id: z.string().regex(/^e[1-9]\d*$/), revision: z.number().int().positive().optional() }).strict(),
+  z.object({ op: z.literal('disconnect'), id: z.string().regex(/^e[1-9]\d*$/), revision: z.number().int().positive() }).strict(),
   CanvasArrangeOptionsSchema.extend({ op: z.literal('arrange') }),
 ]);
 export const CanvasCliBatchSchema = z.array(CanvasCliOperationSchema).min(1).max(500)

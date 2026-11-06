@@ -5,12 +5,13 @@ import { collectMarkdownDocumentReferences, referenceBaselineContent, type Markd
 import { flattenMarkdownDocumentBlocks } from '../../../shared';
 import type { PendingRevisionMetadata, MarkdownPendingRevisionLike } from '../../pending-revisions';
 import { serializeMarkdownFileWriteTarget } from '../functions/serializeMarkdownFileWriteTarget';
+import { encodedReferencePath } from '@linnya/markdown-document-core/references';
 
 function projectTag(bindings: readonly DocumentReferenceMarkdownBinding[], attrs: Readonly<Record<string, unknown>>): string {
   const binding = bindings.find(candidate => candidate.referenceId === attrs['referenceId']);
   if (!binding) throw new Error('Admitted document reference has no Markdown binding.');
   const label = binding.label.replace(/[\[\]\\]/g, character => '\\' + character);
-  const path = 'workspace:' + binding.path.slice('workspace:'.length).split('/').map(segment => encodeURIComponent(segment).replace(/[()]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase())).join('/');
+  const path = encodedReferencePath(binding.path);
   return `[${label}](${path})`;
 }
 /** 文件正文仍为 Markdown；只把已经解析、接纳的稳定身份写入对应 pending metadata。 */

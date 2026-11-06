@@ -13,8 +13,9 @@ here-doc 文件写入。动态变量、循环、管道、Python 生成载荷以�
 
 dryRuns 与正式 attempts 分开保留，pending 仅证明校验接纳，commits 仅从真实 committed 回执产生。同 requestId 的相同回执只记 replay；参数验证错误与未知 operation_failed 分开。修正仅在同一请求或文件载荷可证明改变时计算，原样稳定ID重试不算修正。
 
-图片链必须是同一模型 run 先实际 render，再 read_file 返回该 conversation
-locator 且 attachment_status=attached、MIME 为 image。runner 截图、其他 run 的读图、模型说“已检查”都不计。check 保留原始 sequence，后续草拟评测输入必须和 after 快照对齐。审批按钮、草稿键盘输入、人工语义、帧与 worker 性能均需另外的可信证据，不从 pending 或 CLI 耗时推算。
+图片链必须是同一模型 run 先实际 render，再由成功完成的 read_file 返回该 conversation
+locator、image MIME，以及 `attachment_status=attached` 或 `already_attached`。前者表示本次首次附加，后者由正式 [file-read owner](../../../../../../src/app-hosts/linnya/application/file-read/README.md) 确认相同内容的附件仍在当前 run 的 working history 中，不能当作未投递；`not_delivered` 不计。trace.imageReads 保留 `attachmentStatus` 区分两者，计数表示图片在上下文中可用的读取次数，不冒充新增附件数或 Provider 实际消费证明。原消息没有提供的 hash、复用附件身份与 Provider 输入归属不由评价器补造。
+runner 截图、其他 run 的读图、错 locator、先读后 render、模型说“已检查”都不计。check 保留原始 sequence，后续草拟评测输入必须和 after 快照对齐。审批按钮、草稿键盘输入、人工语义、帧与 worker 性能均需另外的可信证据，不从 pending 或 CLI 耗时推算。
 
 同一入口的 `draft REQUEST.json NEW-DIR`
 从 runner 的 state、before、指定 collectionLabel 下的 audit/result/messages-index/after 原件生成草稿。request 包含 runDirectory、collectionLabel，可显式给 controlsFile、metricsFile。正式结束时间取 result.completed_at，源码无效、未知工具事实、最终 sequence 的 check 缺失、UI事实缺失或schema不符时仅产出 run.partial.json 与 diagnostics.json，不能误交评分。事实完整时才产出 run.json；review 始终留空，metrics 缺失留空，不填0冒充性能。

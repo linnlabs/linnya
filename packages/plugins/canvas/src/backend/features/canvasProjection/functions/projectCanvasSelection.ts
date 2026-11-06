@@ -1,3 +1,4 @@
+import { canvasTextPrefix } from '../../../../shared';
 import type { CanvasCard } from '../../../../shared';
 import type { CanvasSelectionProjectionInput } from '../definitions/canvasProjection';
 import { projectCanvasCardBody } from './projectCanvasCardBody';
@@ -16,7 +17,7 @@ export function projectCanvasSelection(input: CanvasSelectionProjectionInput): s
   for (const card of cards) {
     const body = projectCanvasCardBody(card, context), title = `[${card.id}] ${card.type} revision=${card.revision}`;
     const complete = `\n${title}\n${body}\n`;
-    const summary = `\n${title} ${body.slice(0, 60).replace(/\n/g, ' ')}… 用 show ${card.id} 读取全文。\n`;
+    const summary = `\n${title} ${canvasTextPrefix(body, 60).replace(/\n/g, ' ')}… 用 show ${card.id} 读取全文。\n`;
     const addition = complete.length <= remaining - 200 ? complete : summary;
     if (addition.length <= remaining - 200) { parts.push(addition); remaining -= addition.length; } else omitted++;
   }

@@ -3,6 +3,7 @@ import { CanvasCardIdSchema } from '@plugin/canvas/shared';
 import { createCanvasSelectionReferenceKind, addCanvasSelectionReference } from '..';
 import type { CanvasSelectionReferencePort } from '..';
 import { createCanvasSelectionPreview } from '../orchestration/createCanvasSelectionPreview';
+import { registerCanvasReferenceFocus, focusCanvasReference } from '..';
 const id = CanvasCardIdSchema.parse('c1');
 const metadata = { documentId: 'doc', projectId: 'project', elementIds: [id], originalCount: 1 };
 const reference = { id: 'quote', pluginId: 'canvas', kind: 'canvas-selection', label: '画布 · 1 张卡', previewText: '旧', text: '旧', metadata };
@@ -13,6 +14,20 @@ function fixture() {
   return { save, read, add, focusComposer, port, kind: createCanvasSelectionReferenceKind(port) };
 }
 describe('画布选区引用', () => {
+  it('同文档多表面关闭最近注册后仍可定位剩余表面', async () => {
+    const first = vi.fn(async () => {}), second = vi.fn(async () => {});
+    const closeFirst = registerCanvasReferenceFocus('multiple', first), closeSecond = registerCanvasReferenceFocus('multiple', second);
+    try {
+      await focusCanvasReference('multiple', [id]); expect(second).toHaveBeenCalledOnce();
+      closeSecond(); await focusCanvasReference('multiple', [id]); expect(first).toHaveBeenCalledOnce();
+    } finally { closeFirst(); closeSecond(); }
+  });
+  it('预览预算不会截断组合emoji，完整正文仍随发送前刷新保留', async () => {
+    const f = fixture(), text = '中'.repeat(499) + '👨‍👩‍👧‍👦e\u0301🇨🇳';
+    f.read.mockResolvedValueOnce({ documentId: 'doc', sequence: 9, elementIds: [id], path: 'workspace:/画布.canvas', text });
+    const result = await f.kind.prepareForSend?.(reference, { conversationId: 'chat', projectId: 'project', signal: new AbortController().signal });
+    expect(result?.previewText).toBe('中'.repeat(499)); expect(result?.text).toBe(text);
+  });
   it('hover读取当前正文且不保存，关闭和切项目后不接纳迟到正文', async () => {
     const f = fixture(); let project: string | null = 'project';
     const preview = createCanvasSelectionPreview(f.read, () => project);

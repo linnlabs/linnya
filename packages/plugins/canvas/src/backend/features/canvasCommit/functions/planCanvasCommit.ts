@@ -15,12 +15,13 @@ export function planCanvasCommit(input: {
   readonly actor: CanvasCommitActor; readonly origin: string; readonly claims: readonly CanvasEditingClaim[]; readonly now: number; readonly reservedRectangles?: readonly CanvasRectangle[]; readonly layoutGroups?: readonly (readonly string[])[];
 }): CanvasCommitPlan {
   const plan: CanvasWorkingPlan = { layoutTargets: new Set(input.layoutGroups?.flat()), reservedRectangles: input.reservedRectangles ?? [], origin: input.origin, elements: new Map(input.state.elements.map(row => [row.element.id, row])), changes: [], results: [], refs: {},
-    nextCard: input.state.nextCard, nextEdge: input.state.nextEdge, actor: input.actor, claims: input.claims, now: input.now };
+    nextCard: input.state.nextCard, nextEdge: input.state.nextEdge, lastOrder: input.state.elements.reduce<string | null>((last, row) => last === null || row.element.order > last ? row.element.order : last, null), actor: input.actor, claims: input.claims, now: input.now };
   for (const command of input.operations) {
     validateCanvasCommandContent(command);
     if (command.op === 'update' || command.op === 'delete') plan.results.push(mutateCanvasElement(plan, command));
+    else if (command.op === 'connect') plan.results.push(connectCanvasCards(plan, command));
     else {
-      const id = command.op === 'connect' ? connectCanvasCards(plan, command) : createCanvasCard(plan, command);
+      const id = createCanvasCard(plan, command);
       plan.results.push({ index: plan.results.length, status: 'applied', id, reason: null, fieldResults: [{ field: '$existence', status: 'applied', reason: null }] });
     }
   }

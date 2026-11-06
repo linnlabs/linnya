@@ -11,12 +11,12 @@ function parseRecord(value: unknown): CanvasVersionRecord {
   try {
     const row = recordSchema.parse(value);
     return { versionId: row.version_id, sequence: row.sequence, createdAt: row.created_at, previousVersionId: row.previous_version_id, hash: row.state_hash, inverse: row.reverse_blob, anchor: row.anchor_blob, assetIds: z.array(z.string().min(1)).parse(JSON.parse(row.asset_ids_json)), ...(row.restored_from_json ? { restoredFrom: DocumentVersionSummarySchema.shape.restoredFrom.parse(JSON.parse(row.restored_from_json)) } : {}) };
-  } catch { throw new DocumentHistoryError('version_corrupt'); }
+  } catch (cause) { throw new DocumentHistoryError('version_corrupt', { cause }); }
 }
 export function createCanvasVersionRepository(database: CanvasDatabase) {
   function readHead(documentId: string): CanvasVersionHead | null {
     const raw = database.prepare('SELECT * FROM canvas_version_heads WHERE node_id = ?').get(documentId); if (!raw) return null;
-    try { const row = headSchema.parse(raw); return { latestVersionId: row.latest_version_id, sequence: row.head_sequence, changedAt: row.changed_at, dirtySince: row.dirty_since, inverse: row.reverse_blob, bytesSinceAnchor: row.bytes_since_anchor, usedBytes: row.used_bytes, overBudgetBytes: row.over_budget_bytes }; } catch { throw new DocumentHistoryError('version_corrupt'); }
+    try { const row = headSchema.parse(raw); return { latestVersionId: row.latest_version_id, sequence: row.head_sequence, changedAt: row.changed_at, dirtySince: row.dirty_since, inverse: row.reverse_blob, bytesSinceAnchor: row.bytes_since_anchor, usedBytes: row.used_bytes, overBudgetBytes: row.over_budget_bytes }; } catch (cause) { throw new DocumentHistoryError('version_corrupt', { cause }); }
   }
   function writeHead(documentId: string, head: CanvasVersionHead): void {
     database.prepare(`INSERT INTO canvas_version_heads(node_id, latest_version_id, head_sequence, changed_at, dirty_since, reverse_blob, bytes_since_anchor, used_bytes, over_budget_bytes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(node_id) DO UPDATE SET latest_version_id=excluded.latest_version_id, head_sequence=excluded.head_sequence, changed_at=excluded.changed_at, dirty_since=excluded.dirty_since, reverse_blob=excluded.reverse_blob, bytes_since_anchor=excluded.bytes_since_anchor, used_bytes=excluded.used_bytes, over_budget_bytes=excluded.over_budget_bytes`).run(documentId, head.latestVersionId, head.sequence, head.changedAt, head.dirtySince, head.inverse, head.bytesSinceAnchor, head.usedBytes, head.overBudgetBytes);

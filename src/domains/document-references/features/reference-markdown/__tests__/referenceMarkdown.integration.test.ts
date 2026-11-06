@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { parseMarkdownDocument, serializeMarkdownDocument } from '@linnya/markdown-document-core';
-import { createDocumentReferenceMarkdownRuntime } from 'src/plugin-sdk/backend/documentReferences';
+import { createDocumentReferenceMarkdownRuntime, clearDocumentReferenceMarkdownReader } from 'src/plugin-sdk/backend/documentReferences';
 import type { JsonValue } from '@app/schemas';
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema';
 
@@ -18,6 +18,24 @@ function fixture() {
 }
 
 describe('trusted Markdown document reference bindings', () => {
+  it('超过1024卡或其他reader的读取不挤掉活动基线，终态清理覆盖同库各实例', () => {
+    const f = fixture();
+    const other = createDocumentReferenceMarkdownRuntime(f.database);
+    try {
+      const text = serializeMarkdownDocument(f.read().content);
+      other.registerRead({ ...f.identity, content: tagged });
+      f.runtime.registerRead({ ...f.identity, readerId: 'another-active-run', content: tagged });
+      for (let i = 0; i < 1500; i++) f.runtime.registerRead({ ...f.identity, sourceKey: `card-${i}:1`, content: tagged });
+      for (let i = 0; i < 1100; i++) f.runtime.registerRead({ ...f.identity, readerId: `other-${i}`, content: tagged });
+      expect(f.write(text).references[0]?.targetDocumentId).toBe('target');
+      clearDocumentReferenceMarkdownReader(f.database, f.identity.readerId);
+      expect(() => f.write(text)).toThrow('可信读取');
+      expect(() => other.admit({ ...f.identity, existingContent: tagged, content: parseMarkdownDocument(text) })).toThrow('可信读取');
+      expect(f.runtime.admit({ ...f.identity, readerId: 'another-active-run', existingContent: tagged, content: parseMarkdownDocument(text) }).references[0]?.targetDocumentId).toBe('target');
+      other.dispose(); f.runtime.dispose();
+      expect(() => f.runtime.admit({ ...f.identity, readerId: 'another-active-run', existingContent: tagged, content: parseMarkdownDocument(text) })).toThrow('可信读取');
+    } finally { other.dispose(); f.runtime.dispose(); f.database.close(); }
+  });
   it('projects readable workspace paths and restores the original stable reference through the real parser', () => {
     const f = fixture();
     try {

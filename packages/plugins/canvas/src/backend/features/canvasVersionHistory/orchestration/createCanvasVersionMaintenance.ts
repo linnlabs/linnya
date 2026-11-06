@@ -1,3 +1,4 @@
+import { CANVAS_VERSION_IDLE_MS, CANVAS_VERSION_DEADLINE_MS, CANVAS_VERSION_MAINTENANCE_DELAY_MS } from '../definitions/canvasVersionMaintenance';
 import type { CanvasVersionMaintenanceOptions } from '../definitions/canvasVersionMaintenance';
 
 /** timer 属于实例生命周期；提交失败不调用这里，停用不遗留后台写入。 */
@@ -12,7 +13,7 @@ export function createCanvasVersionMaintenance(options: CanvasVersionMaintenance
     const timer = setTimeout(() => {
       maintenance.delete(documentId);
       try { if (options.readHead(documentId)) options.compact(documentId); } catch (error) { options.reportFailure(documentId, error); }
-    }, 1000);
+    }, CANVAS_VERSION_MAINTENANCE_DELAY_MS);
     timer.unref(); maintenance.set(documentId, timer);
   }
   function flush(documentId: string, reason: 'idle' | 'interval' | 'close'): void {
@@ -27,8 +28,8 @@ export function createCanvasVersionMaintenance(options: CanvasVersionMaintenance
     const head = options.readHead(documentId);
     if (!head || head.dirtySince === null) { cancelTimers(documentId); return; }
     const previous = timers.get(documentId); if (previous) clearTimeout(previous.idle);
-    const idle = setTimeout(() => flush(documentId, 'idle'), Math.max(0, 30_000 - (options.now() - head.changedAt)));
-    const deadlineAt = head.dirtySince + 600_000;
+    const idle = setTimeout(() => flush(documentId, 'idle'), Math.max(0, CANVAS_VERSION_IDLE_MS - (options.now() - head.changedAt)));
+    const deadlineAt = head.dirtySince + CANVAS_VERSION_DEADLINE_MS;
     if (previous && previous.deadlineAt !== deadlineAt) clearTimeout(previous.deadline);
     const deadline = previous?.deadlineAt === deadlineAt ? previous.deadline : setTimeout(() => flush(documentId, 'interval'), Math.max(0, deadlineAt - options.now()));
     idle.unref(); deadline.unref(); timers.set(documentId, { idle, deadline, deadlineAt });

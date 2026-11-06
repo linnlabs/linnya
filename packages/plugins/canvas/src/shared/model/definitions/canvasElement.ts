@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { JsonValueSchema, type JsonValue } from '@app/schemas';
+import { isCanvasContentWithinDepth } from '../functions/isCanvasContentWithinDepth';
+import { CANVAS_CONTENT_MAX_DEPTH } from './canvasContentLimits';
 
 export const CanvasCardIdSchema = z.string().regex(/^c[1-9]\d*$/).brand<'CanvasCardId'>();
 export const CanvasEdgeIdSchema = z.string().regex(/^e[1-9]\d*$/).brand<'CanvasEdgeId'>();
@@ -42,9 +44,15 @@ const contentNodeSchema = z.object({
   content: z.array(CanvasContentNodeSchema).optional(),
   marks: z.array(markSchema).optional(),
 }).strict();
-export const CanvasTextDocumentSchema = z.object({
+export const CanvasTextDocumentSchema = z.preprocess((value, context) => {
+  if (!isCanvasContentWithinDepth(value)) {
+    context.addIssue({ code: 'custom', message: `画布正文JSON超过${CANVAS_CONTENT_MAX_DEPTH}层，请简化嵌套结构。` });
+    return z.NEVER;
+  }
+  return value;
+}, z.object({
   type: z.literal('doc'), content: z.array(CanvasContentNodeSchema),
-}).strict();
+}).strict());
 
 const finite = z.number().finite();
 const identity = {

@@ -6,6 +6,8 @@
 
 provider 的 getRevision 来自内容 owner 的真实版本。派生图片按 documentId、revision、宽度、DPR 缓存；缓存目录来自 Host 的工作区根，64MB LRU，可删除重建。UI 请求新版本时保留已有图片到请求完成，保存正文不等待封面。渲染最多两个并行任务、64个未完成请求；相同版本请求合并，过载返回 preview_unavailable，调用方稍后可重试。图片/正文都经过正式 schema 接纳。
 
+磁盘条目JSON或schema损坏时删除该条并按未命中重建；文件不存在仍为未命中。权限、路径和其他磁盘错误继续上报，不能把存储故障当成缓存格式变化。
+
 Backend 插件经 `@plugin/backend/documentPreview.createDocumentPreviewReader(db)` 建立只读 reader；Renderer 经 `@plugin/renderer/documentPreview.readDocumentPreview` 调用统一 `document-preview:read`。Host wrapper 不公开数据库或物理路径。IPC/磁盘 resolver/renderer shim/external 必须一起更新。
 
 Markdown 的封面是无活动 HTML 的文字摘要 SVG，完整 Markdown 详情由标准只读 renderer 消费；它不是完整正文截图。Slides 第一页复用正式 Hidden Worker 页面光栅化管线，不写会话文件。`DocumentTypeContribution.readonlyPreviewComponent` 是详情档的可选增强，由内容 owner 懒贡献，接收 documentId/projectId；只在用户展开时挂载，不能让远景为每张卡挂一个实时 surface。Slides 详情复用插件的只读分页组件，离开即释放单页位图，Markdown 详情继续走标准只读 DOM。

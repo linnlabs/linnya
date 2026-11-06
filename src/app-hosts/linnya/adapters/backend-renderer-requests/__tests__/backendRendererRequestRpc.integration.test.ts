@@ -23,6 +23,37 @@ describe('Backend Renderer request RPC', () => {
     temporaryRoot = undefined;
   });
 
+  it('窗口重载释放旧上下文，新窗口与其他会话保持独立', async () => {
+    temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'linnya-renderer-session-'));
+    const closed: string[] = [];
+    const seen = new Set<AbortSignal>();
+    const pair = createPair(temporaryRoot, registry => {
+      registry.handleWithContext('plugin:invoke', (context, payload) => {
+        if (!context) throw new Error('Renderer context required');
+        if (!seen.has(context.signal)) {
+          seen.add(context.signal);
+          context.signal.addEventListener('abort', () => closed.push(context.rendererSessionId));
+        }
+        return { session: context.rendererSessionId, payload };
+      });
+    });
+    const first = '018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d21';
+    const second = '018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d22';
+    try {
+      await expect(pair.gateway.invoke('plugin:invoke', [{ rendererSessionId: second }], { rendererSessionId: first }))
+        .resolves.toEqual({ session: first, payload: { rendererSessionId: second } });
+      await pair.gateway.invoke('plugin:invoke', [], { rendererSessionId: first });
+      await pair.gateway.invoke('plugin:invoke', [], { rendererSessionId: second });
+      expect(seen.size).toBe(2);
+      await pair.gateway.releaseRendererSession(first);
+      await pair.gateway.releaseRendererSession(first);
+      expect(closed).toEqual([first]);
+      await expect(pair.gateway.invoke('plugin:invoke', [], { rendererSessionId: second })).resolves.toMatchObject({ session: second });
+      await pair.gateway.releaseRendererSession(second);
+      expect(closed).toEqual([first, second]);
+    } finally { pair.dispose(); }
+  });
+
   it('通过真实双向 RPC 保持 channel allowlist、参数顺序与 undefined', async () => {
     temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'linnya-renderer-rpc-'));
     const pair = createPair(temporaryRoot, registry => {

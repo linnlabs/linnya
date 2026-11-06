@@ -32,3 +32,5 @@ export type { CanvasVersionBudgetStatus } from './history/definitions/canvasVers
 export * from './history/definitions/canvasVersionRequests';
 
 export { readCanvasLinePalette, type CanvasLinePalette } from './appearance/functions/readCanvasLinePalette';
+
+export { canvasTextPrefix, canvasTextGraphemes } from './model/functions/canvasTextGraphemes';

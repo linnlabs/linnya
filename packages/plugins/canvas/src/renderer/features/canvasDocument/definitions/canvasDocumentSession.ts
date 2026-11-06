@@ -1,4 +1,4 @@
-import type { CanvasCardId, CanvasCommand, CanvasChangedEvent, CanvasCommitResult, CanvasEditingRequestSchema, CanvasSnapshot, CanvasSource, CanvasSynchronization, CanvasUndoRequest, CanvasUndoResult } from '@plugin/canvas/shared';
+import type { CanvasCardId, CanvasCommand, CanvasChangedEvent, CanvasCommitResult, CanvasEditingRequestSchema, CanvasEditingClaimSchema, CanvasSnapshot, CanvasSource, CanvasSynchronization, CanvasUndoRequest, CanvasUndoResult } from '@plugin/canvas/shared';
 import type { z } from 'zod';
 import type { Ref } from 'vue';
 import type { CanvasConfirmedMutation } from './canvasMutation';
@@ -34,7 +34,7 @@ export interface CanvasDocumentSession {
   synchronize(sequence: number): Promise<void>;
   commit(operations: readonly CanvasCommand[], historyGroupId?: string): Promise<CanvasCommitResult>;
   undo(direction: 'undo' | 'redo', options?: { readonly expectedActionId: string }): Promise<CanvasUndoResult>;
-  protect(elementId: z.infer<typeof CanvasEditingRequestSchema>['elementId'], fields: z.infer<typeof CanvasEditingRequestSchema>['fields'], owner: string): Promise<void>;
+  protect(elementId: z.infer<typeof CanvasEditingClaimSchema>['elementId'], fields: z.infer<typeof CanvasEditingClaimSchema>['fields'], owner: string): Promise<void>;
   confirmMutation<T>(operation: CanvasConfirmedMutation<T>): Promise<T>;
   retryDelivery(): Promise<void>;
   close(): Promise<void>;

@@ -1,10 +1,10 @@
-import type { CanvasElement, CanvasElementId } from '../../../../shared';
+import { CanvasElementIdSchema, type CanvasElement, type CanvasElementId } from '../../../../shared';
 import type { CanvasWorkingPlan } from '../definitions/canvasWorkingPlan';
 
 export function resolveCanvasPlanElement(plan: CanvasWorkingPlan, id: string): CanvasElementId | undefined {
   if (id.startsWith('$')) return plan.refs[id];
-  for (const key of plan.elements.keys()) if (key === id) return key;
-  return undefined;
+  const parsed = CanvasElementIdSchema.safeParse(id);
+  return parsed.success && plan.elements.has(parsed.data) ? parsed.data : undefined;
 }
 
 export function appendCanvasPlanChange(plan: CanvasWorkingPlan, before: CanvasElement | null, after: CanvasElement | null, fields: readonly string[]): void {
@@ -12,6 +12,7 @@ export function appendCanvasPlanChange(plan: CanvasWorkingPlan, before: CanvasEl
   if (!id) throw new Error('空变更没有元素身份');
   plan.changes.push({ id, before, after, fields });
   if (after) {
+    if (plan.lastOrder === null || after.order > plan.lastOrder) plan.lastOrder = after.order;
     const versions = { ...plan.elements.get(id)?.fieldVersions };
     const origins = { ...plan.elements.get(id)?.fieldOrigins };
     for (const field of fields) { versions[field] = after.revision; origins[field] = plan.origin; }

@@ -23,10 +23,10 @@ afterEach(() => vi.useRealTimers());
 it('连线标签保护续约，冲突保留草稿；取消释放字段不发旧修改', async () => {
   vi.useFakeTimers(); const f = await fixture(); await f.connection.select(edge.id); await f.connection.beginLabel();
   f.connection.state.updateLabel('新标签'); await vi.advanceTimersByTimeAsync(2100);
-  expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: ['label'] }));
+  expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ claims: [expect.objectContaining({ fields: ['label'] })] }));
   f.commit.mockRejectedValueOnce(new Error('revision_conflict')); expect(await f.connection.saveLabel()).toBe(false);
   expect(f.connection.state.label.value?.value).toBe('新标签'); expect(f.report).toHaveBeenCalledWith(expect.objectContaining({ message: 'revision_conflict' }));
-  f.connection.cancelLabel(); await vi.advanceTimersByTimeAsync(0); expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] })); await f.dispose();
+  f.connection.cancelLabel(); await vi.advanceTimersByTimeAsync(0); expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ claims: [] })); await f.dispose();
 });
 it('拖端点冻结起始revision，Escape/失焦取消不提交，松手一次提交并释放保护', async () => {
   const f = await fixture(); f.target.dispatchEvent(f.pointer('pointerdown')); f.target.dispatchEvent(f.pointer('pointermove'));
@@ -34,7 +34,7 @@ it('拖端点冻结起始revision，Escape/失焦取消不提交，松手一次�
   f.target.dispatchEvent(f.pointer('pointerdown')); f.target.dispatchEvent(f.pointer('pointerup', 250, 130));
   await vi.waitFor(() => expect(f.commands).toHaveLength(1));
   expect(f.commands[0]).toEqual([{ op: 'update', id: edge.id, baseRevision: 1, patch: { to: { kind: 'point', x: 250, y: 130 } } }]);
-  await vi.waitFor(() => expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] }))); await f.dispose();
+  await vi.waitFor(() => expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ claims: [] }))); await f.dispose();
 });
 it('新连线拖到空白只开启本地文字草稿，不提前写入历史', async () => {
   const f = await fixture();

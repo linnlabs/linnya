@@ -21,14 +21,21 @@ export function createDocumentReferenceOperations(db: ReferenceDatabase, nodes: 
         retained.set(identity.referenceId, identity.targetDocumentId);
       }
       const byReferenceId = new Map(existing.map(row => [row.reference_id, row.target_document_id]));
-      admitReferenceChanges(source, parsed.references.map(reference => ({
-        reference,
-        existingTargetId: byReferenceId.get(reference.referenceId) ?? retained.get(reference.referenceId),
-        target: nodes.read(reference.targetDocumentId),
-      })));
-      db.prepare('DELETE FROM document_references WHERE source_document_id = ?').run(parsed.sourceDocumentId);
-      const insert = db.prepare('INSERT INTO document_references(source_document_id, reference_id, target_document_id, kind) VALUES (?, ?, ?, ?)');
-      for (const reference of parsed.references) insert.run(parsed.sourceDocumentId, reference.referenceId, reference.targetDocumentId, reference.kind);
+      const targets = new Map<string, ReturnType<ReferenceNodePort['read']>>();
+      admitReferenceChanges(source, parsed.references.map(reference => {
+        const existingTargetId = byReferenceId.get(reference.referenceId) ?? retained.get(reference.referenceId);
+        // 既有稳定身份允许目标移出/删除，规则不需要再读目标；新目标在同一事务内只查一次。
+        if (existingTargetId === undefined && !targets.has(reference.targetDocumentId)) targets.set(reference.targetDocumentId, nodes.read(reference.targetDocumentId));
+        return { reference, existingTargetId, target: targets.get(reference.targetDocumentId) ?? null };
+      }));
+      const incoming = new Map(parsed.references.map(reference => [reference.referenceId, reference]));
+      const remove = db.prepare('DELETE FROM document_references WHERE source_document_id = ? AND reference_id = ?');
+      for (const row of existing) if (!incoming.has(row.reference_id)) remove.run(parsed.sourceDocumentId, row.reference_id);
+      const previous = new Map(existing.map(row => [row.reference_id, row]));
+      const insert = db.prepare('INSERT INTO document_references(source_document_id, reference_id, target_document_id, kind) VALUES (?, ?, ?, ?) ON CONFLICT(source_document_id, reference_id) DO UPDATE SET kind = excluded.kind');
+      for (const reference of parsed.references) if (previous.get(reference.referenceId)?.kind !== reference.kind) {
+        insert.run(parsed.sourceDocumentId, reference.referenceId, reference.targetDocumentId, reference.kind);
+      }
     },
     listBacklinks(targetDocumentId: string): readonly DocumentBacklink[] {
       const target = nodes.read(targetDocumentId);

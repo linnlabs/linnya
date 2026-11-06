@@ -45,6 +45,7 @@ metadata:
 - 每个逻辑写动作使用新的 request-id；响应丢失的重试复用原ID与原始数组。
 - 不同ID的相同新增内容会创建不同卡，程序不会按正文猜重复。
 - 若输出经过管道筛选或响应丢失，用`receipt <画布路径> <原request-id>`只读查询原始回执；不要换新ID再写一次来猜是否成功。提交回执保留逐项结果，不能用当前画面代替；查不到回执也不能证明原请求未尝试或未失败。
+- 每张画布保留最近1000条未固定终态回执，待确认及仍被未结束组引用的结果另行保留。超出窗口后查询可能返回null；先读取当前内容确认原动作结果，不要盲目重发旧新增或追加。
 - `--dry-run` 校验、真实测高并给出预测，不写入；正式ID与位置以提交回执为准。
 - 新卡用 `$name` 临时ref互相引用，提交后用回执refs取得真实cN/eN。不要猜下一个ID。
 - 操作判别字段是op，update/delete/disconnect用id指定已有对象；其余字段按[操作与示例](references/operations.md)和[可解析数组](references/examples.json)填写，不套用其他画布API的action/target字段。
@@ -58,7 +59,7 @@ metadata:
 - 文档标签用标准Markdown链接，例如`[资料](workspace:/资料.md)`；提交时转换成稳定身份。
 - 读取后引用目标改名、移动或同路径被替换会拒绝旧写；重新show后重试。
 - 含失效/越界标签的全文替换不能无损完成，会明确拒绝；可append，或先在界面处理引用。
-- delete/disconnect使用本画布cN/eN；不能跨画布引用这些局部编号。
+- delete/disconnect必须带show读到的revision，使用本画布cN/eN；不能跨画布引用这些局部编号。若已被修改，重新读取并判断是否仍应删除，不沿用旧意图强删。
 
 具体数组见 [操作与示例](references/operations.md)；可直接解析的示例在 [examples.json](references/examples.json)。
 
@@ -70,6 +71,8 @@ metadata:
 - grid支持`--columns 3`；layered使用ELK分层。方向为`--direction right|down`。
 - 未指定scope代表整张画布。整理新增卡时明确写它们的ref/ID，避免挪动原卡。
 - apply末尾也可放一个arrange，elementIds可含本批ref；新增、连接与排布仍一次原子提交。
+- 批量新增后需要局部排布时，优先把arrange放在同批末尾，并用elementIds明确本批ref。500条限制按原始CLI动作计算，arrange本身算一条；例如300次add加一次arrange共301条，布局展开的坐标更新仍在同一事务内。
+- 不带布局的大批新增可能沿默认空位搜索形成长横排；“显示全部”受最小缩放约束，未必能同时展示全部卡。新增与局部布局同批提交可避免这种暂态长横排。
 - groups是二维ID/ref数组，每组直接是一个数组，例如`[["$a","$b"],["$c"]]`，不是带elementIds或columns的对象数组；columns对整次grid生效。groups只把多个集合分开排，不建立二阶段的分组实体。锁定/编辑中的位置不会被挪动。
 
 ## 用户确认与撤回

@@ -9,11 +9,15 @@ export { commitCanvasTransition } from './orchestration/commitCanvasOperations';
 export { validateCanvasGraph } from './functions/validateCanvasGraph';
 export type { CanvasCommitState, CanvasStoredElement, CanvasEditingClaim } from './definitions/canvasCommit';
 
-export { readCanvasCommitState, readCanvasEditingClaims, readCanvasReceipt } from './persistence/canvasRepository';
+export { readCanvasCommitState, readCanvasEditingClaims } from './persistence/canvasRepository';
+export { readCanvasReceipt, readCanvasRequestReceipt, readCanvasPendingReceipt, listCanvasApprovalReceipts } from './queries';
+export { saveCanvasPendingReceipt, finishCanvasPendingReceipts, retainCanvasRequestForGroup, releaseCanvasGroupReceipts } from './persistence/canvasRequestRepository';
 export { planCanvasCommit } from './functions/planCanvasCommit';
-export { canvasSourceKey, canvasPayloadHash, canvasOperationsPayload } from './functions/canvasRequestIdentity';
+export { canvasSourceKey, canvasAgentSourceKey, canvasPayloadHash, canvasOperationsPayload } from './functions/canvasRequestIdentity';
 export { CanvasReadOnlyFormatError, CanvasContentPolicyError } from './definitions/canvasContentFailure';
+export { CanvasCommitFailure } from './definitions/canvasCommitFailure';
 export { validateCanvasPlanContent } from './functions/validateCanvasContent';
 export { releaseCanvasEditingClaims, pruneCanvasHistoryGuards } from './persistence/canvasRepository';
+export { replaceCanvasEditingClaims } from './persistence/replaceCanvasEditingClaims';
 
 export { readCanvasUpdateFieldUnits } from './functions/readCanvasUpdateFieldUnits';

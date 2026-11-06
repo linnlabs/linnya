@@ -91,6 +91,7 @@ describe('registered child cancellation SQLite lifecycle', () => {
     const abortObserved = createLatch();
     const releaseSettlement = createLatch();
     const auditEnvelopes: AuditEnvelope[] = [];
+    const releaseReferenceReads = vi.fn();
     const auditPort: AuditPort = {
       emit: vi.fn((envelope: AuditEnvelope) => {
         auditEnvelopes.push(envelope);
@@ -152,6 +153,7 @@ describe('registered child cancellation SQLite lifecycle', () => {
         },
         childRunInvoker,
         lifecycle: new LinnyaRegisteredChildRunLifecycle({
+          releaseReferenceReads,
           audit: { level: 'off', levelForRun: async () => 'off' },
           supervisor,
           eventStore: new graph.MemoryEventStore(),
@@ -203,6 +205,7 @@ describe('registered child cancellation SQLite lifecycle', () => {
         current_node: 'llm',
         iterations_used: null,
       });
+      expect(releaseReferenceReads).toHaveBeenCalledExactlyOnceWith(conversationId, childRunId);
       expect(JSON.parse(rowBeforeSettlement.error_json ?? 'null')).toMatchObject({
         errorCode: 'RUN_CANCELLED',
         message: 'user stopped parent task',

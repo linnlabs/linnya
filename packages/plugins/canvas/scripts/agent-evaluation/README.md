@@ -1,10 +1,14 @@
 # Canvas Agent 代表任务验收
 
+本目录的完整模型基准与产品功能回归分开记录。功能回归按受影响的能力选取代表场景，程序可检查的事务、保护、持久化和渲染行为优先复用业务集成或原生测试；规模性能用固定数据，避免为等价夹具反复调用模型。执行前明确样本范围、模型、重复数与停止条件，已完成结果和失败保留。精简子集的未跑项仍是未跑，不能据此宣称完整模型组达标。
+
 `pnpm exec tsx --tsconfig packages/plugins/canvas/scripts/agent-evaluation/tsconfig.json packages/plugins/canvas/scripts/agent-evaluation/run.ts fixtures <输出目录>` 生成固定版本的13题。每题包含用户提示、输入Markdown文档、以用户身份执行的Core种子操作、可信UI动作以及自动/人工断言。文档由runner在独立测试项目创建并把真实ID写入run.documentIds；用户种子操作按最多500条分批，不计入模型写入。每题重建独立夹具，T7不依赖T6模型结果。T3以已有问题为0层，要求再展开3层；分组是空间主题片区，不写保留的parentId。
 
 真实模型runner由Desktop验收入口负责：冻结provider/model/version、正式Skill/CLI commit、图像能力组与每题重复次数。固定首次基线为每模型、每图像能力组、每题1遍，全部首败与修正留痕；扩展重复测试时重复数需事先固定且各题一致。远端模型即使同版本也不声称输出确定；若服务商不公开精确版本，证据中明确记录此限制及调用日期。看图组记录check→render→实际read_file读取图片和后续修正；不看图组只check。T8提供三份带官方URL的历史资料摘要及offlinePrompt供离线来源结构基线；run.evidenceMode=offline时只记offline_baseline，不能算正式联网任务成功。正式T8使用原提示、evidenceMode=network，必须真实联网并记录官方页面、访问日期和支持结论的段落。
 
 `run.ts assess <run.json> <新report.json>` 解析唯一输入schema，校验与after相同sequence的正式check几何事实，再给出逐条断言与失败明细。退出0表示自动检查与人工审阅均通过，1表示检查失败或人工明确否决，2表示尚待人工结论或仅离线基线；缺人工结论绝不能当任务成功。明确否决附带semantic-review失败及审阅说明，不当作尚未审阅。输入合同见definitions/canvasAgentEvaluation.ts，任务与所有人工项见definitions/canvasAgentTasks.ts。人工项包括主题分片、来源事实、流程语义、对白质量、真正联网及未保存草稿。T5固定README的方向可自动精确核对；布局可读性仍需审阅。
+
+T1/T2/T5/T6/T7/T8明确要求的A→B连线由共同断言核对正式快照中的card端点与实际箭头：from为A、to为B且direction为forward才成立。shared/model的方向枚举只有none、forward、both，Renderer在to绘制forward箭头；none没有箭头，both增加反向箭头，均不能代替该单向关系。反转由交换完整from/to表达，固定边、卡片空间位置、曲直及虚实样式不改变方向。T5仍核对全部固定依赖，T6仍核对相邻场景的顺序线；来源忠实、布局与其他人工项仍需审阅。评测实现修订须另记版本并保留旧判定和原始模型结果，不改任务资料或本轮模型来源。
 
 run文件必须由可信runner收集before/after正式快照、结果同sequence的CLI check结果、原始逐条commit结果、每次写请求及响应证据文件、真实UI审批/编辑声明事实、开始/结束时间。模型输出不能自报通过、用户点击或计时。首次提交通过指首次正式写请求通过校验（pending也算通过校验，不算已执行）；修正重试指因格式/语义失败而改载荷重提，网络丢包同编号重放单独记录，不当模型修正。任务完成必须全部自动断言与来源/语义审阅通过。
 
@@ -18,14 +22,16 @@ T2的12至18条计数针对发现，不把总标题和支持/反对分组说明�
 
 汇总的pendingReviews列出尚无结论的任务，非空时整组不能通过。明确失败仍按原完成率统计，不能以允许少量失败为由跳过人工审阅；覆盖完整性complete仍只表示题目与重复次数齐全。
 
-每条记录必须标明sourceRevision（实际实现的完整Git SHA）与batchId。修复产品缺陷后另开整批，保留原批首败，不能用后来成功覆盖旧记录或把不同实现的成功题拼成一组。最终验收在冻结实现上跑完整13题；Backend启动及Skill发现证据随批保存。
+每条记录必须标明sourceRevision（实际实现的完整Git SHA）与batchId。修复产品缺陷后的新样本另记来源，受影响的功能回归只补相关场景；保留原批首败，不能用后来成功覆盖旧记录或把不同实现的成功题拼成一组。声称完整模型基准达标时，仍须在冻结实现上跑完整13题及一致重复数；Backend启动及Skill发现证据随批保存。只改评测实现时另记评测版本并重审原件，不因此重新调用模型生成产出。
+
+任务数不等于Provider请求数：一次Agent任务和审批续轮可能产生多次模型请求。预算观测应同时保留失败attempt与实际用量，通过现有正式停止入口收口；事后审计和轮询可能晚于在途请求，不能当成精确金额或请求数硬上限。固定数据的用户提交只能证明实际经过的技术链路，不替代Agent授权CLI、联网推理或模型内容质量的证据。
 
 `fixtureVersion=1`是证据格式版本，不是资料文案修订号。T2来源修订`research-observations-v2`将旧版重复的两类表述改为三份合成调研的独立观察：单人复核、多人交接、恢复与资源限制。每份含不同的支持与反对观察，可忠实提炼十二至十八条发现；样本编号或观察时长本身不算不同发现。原任务、数量和人工不重复标准保持不变。输入资料由完整sourceRevision以及setup保存的fixture/原文共同追溯；旧预检证据保留，不以新资料解释旧结果。来源支持和发现去重仍需人工语义审阅，不能以字符串不同或自动结构通过代替。
 
 attempts的phase明确区分dry-run预检与write正式写入。首写指标只取第一个write；只有预检而没有正式写入不能算通过。预检没有request-id时如实记录null，正式write必须保留真实ID。两阶段因格式或语义失败而改载荷重提的真实修正都计入correctionRetries，预检成功、重复检查坐标和同请求网络重放本身不算修正。
 
-看图组controls.imageReadSequence必须来自实际Agent render→attached image read的配对事实，并等于after.sequence；看过旧版本后继续改图，必须再看最终版本，旧图不能证明最终画布质量。无此事实时填null并保持未验收。
+看图组controls.imageReadSequence必须来自同一实际Agent run先render、后成功read_file读取该conversation locator的配对事实，并等于after.sequence。attachment_status为attached或already_attached均表示图片在当前run上下文可用：前者为本次附加，后者由正式Host确认相同内容的附件仍在working history中；该指标不代表Provider新增消费。not_delivered不算。看过旧版本后继续改图，必须读取最终render返回的locator，不能只取旧render/read配对冒充最终检查。无此事实时填null并保持未验收。
 
-T13分开记录模型端到端耗时、Worker内布局P50、后端提交到包含变化帧的P95、相邻帧P95/最慢帧及平均fps。300新卡局部布局按<=500档要求Worker P50<=200ms；提交到画面P95<=300ms，上限档平均>=45fps/最慢帧<=50ms。9/17ms是Agent更新目标及回归基线，须另报，不能以50ms绝对门槛取代。不能用工具总耗时替代Worker耗时，也不能用共享CI或模型推理时长冒充固定真机性能。
+T13分开记录模型端到端耗时、Worker内布局P50、后端提交到包含变化帧的P95、相邻帧P95/最慢帧及平均fps。300新卡局部布局按<=500档要求Worker P50<=200ms；提交到画面P95<=300ms，上限档平均>=45fps/最慢帧<=50ms。9/17ms是Agent更新优化目标，原始小数保留，另按四舍五入到整数毫秒的值判断并独立报告；绝对门槛及同环境回归比较仍使用原始值，不能以50ms绝对门槛取代优化目标。回归基线取固定环境下已通过的commit与实测结果，不把目标数字当成已测基线。不能用工具总耗时替代Worker耗时，也不能用共享CI或模型推理时长冒充固定真机性能。
 
 T9需UI允许后检查；T12需UI拒绝后检查，CLI参数不能伪造批准。T11在模型操作期间为X正文登记并续订真实声明、保留草稿，终态后释放。审批和等待用户动作的时间单列，不计入Worker/帧指标。

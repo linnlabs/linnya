@@ -9,7 +9,7 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 ## 边界与入口
 
 - `shared/model` 拥有卡片、连线、正文及提交快照合同；类型来自唯一 schema。
-- `backend/features/canvasCommit` 拥有当前内容的提交，跨 feature 步骤由 backend orchestration 装配。
+- `backend/features/canvasCommit` 拥有当前内容的提交及唯一的有界请求回执，跨 feature 步骤由 backend orchestration 装配。
 - `renderer/kernel` 只处理绘制与交互意图；Host 能力由适配器注入。
 - 包外只消费 shared/backend/renderer 与测试专用 backend-test-support 入口，不 deep import。
 - 文档引用、图片资产、历史保留、正文编辑器与 Conversation 权限仍由各 Host owner 通过窄门面提供。
@@ -24,7 +24,7 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 
 ## 用户撤销
 
-`createCanvasHistoryRuntime` 由 Backend 按数据库实例创建，用户栈按文档与视图隔离，视图退出时释放；Agent 写入不进入用户栈。连续自动保存通过调用方传入同一个 `historyGroupId` 归为一步。`undo` 接受稳定请求编号与方向，返回提交回执及当前可撤销/可重做状态；重试不再次移动栈。
+`createCanvasHistoryRuntime` 由 Backend 按数据库实例创建，用户栈按文档与视图隔离，视图退出时释放；主窗口重载、崩溃或销毁也通过 Host 的 opaque Renderer 会话释放同一状态。旧会话不影响重载后的新视图，只有最后一个视图关闭才建立关闭恢复点和刷新文本快照；插件停用由版本 owner 统一刷盘。Agent 写入不进入用户栈。连续自动保存通过调用方传入同一个 `historyGroupId` 归为一步。`undo` 接受稳定请求编号与方向，返回提交回执及当前可撤销/可重做状态；重试不再次移动栈。
 
 每个字段分开保存最后写版本与逻辑来源。撤销恢复旧逻辑来源，但修订号与字段版本继续增加，因此连续撤销能找到上一步，Agent 的过期写入仍会被拒绝。重做只反转实际撤销的子集。新增对象被其他来源修改或连接后整体保留，删除恢复必须匹配仍受历史记录持有的删除身份。删除身份不是正式元素或永久墓碑：用户栈退出、记录淘汰时回收。
 
@@ -58,7 +58,7 @@ Host侧集成测试会运行实际Canvas计算Worker，须先完成插件的back
 
 ## Agent 改动与确认
 
-Backend 按数据库实例持有 `createCanvasHistoryRuntime`。组合入口位于 `backend/orchestration/history`；用户栈与 Agent 组共用 `backend/shared/history` 的字段片段及逆变更规则。`agentChanges` 只拥有持久组、待确认批次与审批回执。组按对话与文档累计，子 run 共享组；没有对话的开发 CLI 使用该画布的命令行组。对话身份没有外键，删除对话不丢撤回记录。`closeGroup` 关闭当前组，后续写入创建新组。
+Backend 按数据库实例持有 `createCanvasHistoryRuntime`。组合入口位于 `backend/orchestration/history`；用户栈与 Agent 组共用 `backend/shared/history` 的字段片段及逆变更规则。`agentChanges`只拥有持久组与待确认批次，请求/审批回执共用canvasCommit的唯一owner。组按对话与文档累计，子 run 共享组；没有对话的开发 CLI 使用该画布的命令行组。对话身份没有外键，删除对话不丢撤回记录。`closeGroup` 关闭当前组，后续写入创建新组。
 
 `commitAgent` 返回 `committed` 或 `pending`。同一对话、请求编号的重试不受 run/工具视图变化影响；异载荷拒绝。删除用户创建的卡累计达到 20 张，或一批移动至少 20 张且覆盖当前用户卡九成时，整批保存为待确认。每组最多一批，新待确认替换旧批。只有可信 Renderer 入口调用 `resolveApproval`；CLI 不接收批准标志。批准按当前字段版本、编辑声明与预期删除修订重新验证；同意或拒绝后的重试有稳定结果。撤回或完成组使待确认过期。
 
@@ -92,6 +92,8 @@ Renderer只读降级同时关闭编辑器、插图锚点、拖动/缩放、菜�
 `linnya-canvas` 通过正式 Plugin CLI bridge 注入已冻结的项目、对话及 run 身份，路径解析和最终提交均复核项目归属。`read/show/find/neighbors/region/check/groups/receipt` 不创建写运行态；`apply` 先解析受管正文、批量真实测高，再作一次字段事务。`render` 只在授权 conversation 目录创建独占图像产物，返回正式 locator。Skill 维护模型可见语义操作合同，不开放磁盘数据库、批准标志或 Agent 坐标。
 
 布局与检查在独立 Node worker 内执行，ELK 仅进入计算 worker 制品。取消、关闭视图和停用插件会终止未提交计算；最终提交保留已完成事实。新卡预测ID在进入事务前反绑本批临时名字，因此其他来源先分配同号卡也不会改错对象。期间尺寸改变、锁定、编辑声明及新增障碍按最新内容复核；布局只平移实际成功的目标组，不移动用户新增卡。
+
+CLI每批最多500个原始动作；末尾arrange计一个动作，展开的坐标更新仍与新增、连接共用一次原子提交，不受另一份500条展开更新限制。批量新增并整理时，elementIds明确限定本批ref，避免先提交默认空位搜索产生的长横排；“显示全部”保持最小2%缩放，不能保证这种长横排全部进入视口。
 
 布局 `diagnostics` 描述本次计算窗口；命中正式请求回执时返回空诊断数组，提交序号、分配ID和逐操作结果仍复用原回执，不重新测量或运行布局。
 
@@ -138,3 +140,5 @@ Agent几何动效只消费正式增量中每张卡最后一次来源；用户提
 进入文字编辑时，低于30%先定位长卡顶部并放大到100%，随后等待正文当前倍率的精确位图接纳，再开启唯一DOM编辑器；切换选择或关闭会取消迟到的进入请求。精确位图能力失败时明确说明并继续正文编辑。线工具条按中点四方向和三档间距避让卡片、线与标签。
 
 正文编辑层通过embedded Markdown的通用onNavigate消费捏合与空格/中键平移，复用kernel同一相机纯函数；普通滚动仅滚正文。浏览器无法确定鼠标或触控板，连续离散滚轮仅触发一次本机提示，不自动改偏好，捏合永远缩放；明确接受后才启用普通滚轮缩放。[WheelEvent单位](https://developer.mozilla.org/en-US/docs/Web/API/WheelEvent/deltaMode)不能作为可靠设备身份。连线拖动在目标卡显示同一kernel描边及四个圆点，右键属性共用正式线patch入口。
+
+同文档多表面分别保留历史/引用定位注册。Host动作没有view参数时选择最近注册且仍存活的表面，关闭后恢复前一个。正文摘要预算维持UTF-16长度上限，按完整grapheme截断；完整正文不变。

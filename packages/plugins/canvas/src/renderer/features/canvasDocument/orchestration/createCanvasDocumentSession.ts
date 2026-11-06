@@ -8,6 +8,7 @@ import { createCanvasMutationQueue } from './createCanvasMutationQueue';
 import { createCanvasEditingClaims } from './createCanvasEditingClaims';
 import type { CanvasConfirmedMutation } from '../definitions/canvasMutation';
 import { readCanvasProjectionChanges } from '../functions/readCanvasProjectionChanges';
+import { createCanvasViewRequests } from './createCanvasViewRequests';
 
 /** 一个表面拥有一个会话；Host file handler 在关闭前先等待该表面的保存屏障。 */
 export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDocumentSession {
@@ -18,7 +19,8 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
   let synchronization: Promise<void> | null = null;
   let unsubscribe: (() => void) | null = null;
   const mutations = createCanvasMutationQueue();
-  const claims = createCanvasEditingClaims({ port, viewId, snapshot: () => state.snapshot.value });
+  const claims = createCanvasEditingClaims({ port, viewId, snapshot: () => state.snapshot.value, failed: error => state.fail(error instanceof Error ? error.message : String(error)) });
+  const views = createCanvasViewRequests({ port, viewId, flushClaims: claims.flush });
   const requireDocument = () => {
     const current = state.snapshot.value;
     if (!current) throw new Error('Canvas document is not open');
@@ -69,14 +71,11 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
     state, viewId, synchronize, deliveryNotice: mutations.state.notice, mutationPending: mutations.state.pending, retryDelivery: mutations.retry,
     confirmMutation,
     async open(documentId) {
-      const previousDocumentId = state.snapshot.value?.documentId;
       const token = ++sessionId;
       unsubscribe?.(); unsubscribe = null;
       synchronization = null; targetSequence = 0;
       claims.reset(); mutations.reset(); state.begin();
       try {
-        if (previousDocumentId) { await claims.flush(); await port.close(previousDocumentId, viewId); }
-        if (token !== sessionId) return;
         // 先订阅再读快照，接住读取期间其他来源的提交；loading阶段只累计目标版本。
         unsubscribe = port.subscribe(event => {
           if (token !== sessionId || event.documentId !== documentId) return;
@@ -85,9 +84,8 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
           if (!current || event.sequence <= current.sequence) return;
           void synchronize(event.sequence).catch(() => { /* 状态已记录失败，界面提供明确重开入口。 */ });
         });
-        const snapshot = await port.read(documentId, viewId);
-        if (token !== sessionId) return;
-        if (snapshot.documentId !== documentId) throw new Error('Canvas open response belongs to another document');
+        const snapshot = await views.open(documentId, () => token === sessionId);
+        if (token !== sessionId || !snapshot) return;
         state.install(snapshot);
         await synchronize(targetSequence);
       } catch (error) {
@@ -115,10 +113,9 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
       });
     },
     async close() {
-      const documentId = state.snapshot.value?.documentId;
       sessionId += 1; unsubscribe?.(); unsubscribe = null;
       synchronization = null; targetSequence = 0; claims.reset(); mutations.reset(); state.clear();
-      if (documentId) { await claims.flush(); await port.close(documentId, viewId); }
+      await views.close();
     },
   };
 }

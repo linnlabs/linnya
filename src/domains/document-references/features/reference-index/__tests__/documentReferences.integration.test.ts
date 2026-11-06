@@ -21,6 +21,24 @@ beforeEach(() => {
 afterEach(() => db.close());
 
 describe('document reference business lifecycle', () => {
+  it('unchanged references do not rewrite rows; removals and kind changes remain atomic', () => {
+    db.transaction(() => replace()).immediate();
+    const before = db.prepare('SELECT total_changes() AS n').get();
+    db.transaction(() => replace()).immediate();
+    expect(db.prepare('SELECT total_changes() AS n').get()).toEqual(before);
+    db.transaction(() => operations().replace({ sourceDocumentId: 'source', references: [
+      { referenceId: 'inline-1', targetDocumentId: 'target', kind: 'card' },
+      { referenceId: 'second', targetDocumentId: 'target', kind: 'inline' },
+    ] })).immediate();
+    expect(operations().listBacklinks('target').map(row => [row.referenceId, row.kind])).toEqual([['inline-1', 'card'], ['second', 'inline']]);
+    expect(() => db.transaction(() => {
+      operations().replace({ sourceDocumentId: 'source', references: [] });
+      throw new Error('content failed');
+    }).immediate()).toThrow('content failed');
+    expect(operations().listBacklinks('target')).toHaveLength(2);
+    db.transaction(() => replace()).immediate();
+    expect(operations().listBacklinks('target')).toHaveLength(1);
+  });
   it('paginates grouped backlinks without leaking moved/deleted sources or a foreign target', () => {
     const insert = db.prepare('INSERT INTO workspace_nodes VALUES (?, ?, ?, ?, NULL)');
     insert.run('source2', 'p1', 'Second', 'slides'); insert.run('moved', 'p1', 'Private', 'document'); insert.run('removed', 'p1', 'Deleted', 'document');

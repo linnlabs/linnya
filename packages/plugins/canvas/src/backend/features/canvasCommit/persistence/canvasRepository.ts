@@ -1,12 +1,14 @@
+import { CANVAS_CHANGE_LOG_LIMIT } from '../definitions/canvasCommit';
+import { CANVAS_EDITING_CLAIM_TTL_MS } from '../../../../shared';
 import { decodeCanvasPersistedRows, CanvasReadOnlyFormatError } from '../functions/decodeCanvasPersistedRows';
 import { z } from 'zod';
 import type { CanvasDatabase } from '../../../definitions/canvasDatabase';
-import { CanvasCommitDeltaSchema, type CanvasSnapshot, type CanvasSource } from '../../../../shared';
-import { CanvasCommitResultSchema, type CanvasCommitResult } from '../../../../shared/changeset/definitions/canvasCommands';
+import { CanvasCommitDeltaSchema, type CanvasSnapshot, type CanvasSource, type CanvasElementId, type CanvasElement } from '../../../../shared';
+import { type CanvasCommitResult } from '../../../../shared/changeset/definitions/canvasCommands';
+import { saveCanvasCommittedReceipt } from './canvasRequestRepository';
 import type { CanvasCommitPlan, CanvasCommitState, CanvasEditingClaim } from '../definitions/canvasCommit';
 
 const documentRowSchema = z.object({ schema_version: z.number().int(), sequence: z.number().int().nonnegative(), next_card: z.number().int().positive(), next_edge: z.number().int().positive(), maximum_revision: z.number().int().nonnegative() });
-const receiptRowSchema = z.object({ payload_hash: z.string(), result_json: z.string() });
 
 export function readCanvasSequence(database: Pick<CanvasDatabase, 'prepare'>, documentId: string): number {
   const raw = database.prepare('SELECT sequence FROM canvas_documents WHERE node_id = ?').get(documentId);
@@ -41,14 +43,27 @@ export function readCanvasSnapshot(database: Pick<CanvasDatabase, 'prepare'>, do
     ...(issues.length ? { integrity: { readOnly: true, formatVersion: row.schema_version, issues } } : {}) };
 }
 
-export function readCanvasReceipt(database: Pick<CanvasDatabase, 'prepare'>, input: {
-  readonly documentId: string; readonly sourceKey: string; readonly requestId: string;
-}): { readonly payloadHash: string; readonly result: CanvasCommitResult } | null {
-  const raw = database.prepare('SELECT payload_hash, result_json FROM canvas_requests WHERE node_id = ? AND source_key = ? AND request_id = ?')
-    .get(input.documentId, input.sourceKey, input.requestId);
-  if (!raw) return null;
-  const row = receiptRowSchema.parse(raw);
-  return { payloadHash: row.payload_hash, result: CanvasCommitResultSchema.parse(JSON.parse(row.result_json)) };
+/** 只编译一次元素写入语句；删除前值按最终一次非空 before 建索引，避免逐卡反扫整批。 */
+function persistCanvasElements(database: CanvasDatabase, documentId: string, plan: CanvasCommitPlan): void {
+  const upsert = database.prepare(`INSERT INTO canvas_elements (node_id, element_id, element_json, field_versions_json, field_origins_json)
+    VALUES (?, ?, ?, ?, ?) ON CONFLICT(node_id, element_id) DO UPDATE SET element_json = excluded.element_json, field_versions_json = excluded.field_versions_json, field_origins_json = excluded.field_origins_json`);
+  const remove = database.prepare('DELETE FROM canvas_elements WHERE node_id = ? AND element_id = ?');
+  const release = database.prepare('DELETE FROM canvas_history_guards WHERE node_id = ? AND element_id = ?');
+  const retain = database.prepare('INSERT INTO canvas_history_guards (node_id, element_id, origin, revision) VALUES (?, ?, ?, ?) ON CONFLICT(node_id, element_id) DO UPDATE SET origin = excluded.origin, revision = excluded.revision');
+  const finalRows = new Map(plan.state.elements.map(row => [row.element.id, row]));
+  const beforeElements = new Map<CanvasElementId, CanvasElement>();
+  for (const change of plan.changes) if (change.before) beforeElements.set(change.id, change.before);
+  for (const id of new Set(plan.changes.map(change => change.id))) {
+    const final = finalRows.get(id);
+    if (final) {
+      upsert.run(documentId, id, JSON.stringify(final.element), JSON.stringify(final.fieldVersions), JSON.stringify(final.fieldOrigins));
+      release.run(documentId, id);
+    } else {
+      remove.run(documentId, id);
+      const before = beforeElements.get(id);
+      if (before) retain.run(documentId, id, plan.origin, before.revision);
+    }
+  }
 }
 
 export function persistCanvasCommit(database: CanvasDatabase, input: {
@@ -56,20 +71,7 @@ export function persistCanvasCommit(database: CanvasDatabase, input: {
   readonly plan: CanvasCommitPlan; readonly result: CanvasCommitResult; readonly payloadHash: string; readonly now: number;
 }): void {
   const { plan, documentId } = input;
-  const finalRows = new Map(plan.state.elements.map(row => [row.element.id, row]));
-  for (const id of new Set(plan.changes.map(change => change.id))) {
-    const final = finalRows.get(id);
-    if (final) { database.prepare(`INSERT INTO canvas_elements (node_id, element_id, element_json, field_versions_json, field_origins_json)
-      VALUES (?, ?, ?, ?, ?) ON CONFLICT(node_id, element_id) DO UPDATE SET element_json = excluded.element_json, field_versions_json = excluded.field_versions_json, field_origins_json = excluded.field_origins_json`)
-      .run(documentId, id, JSON.stringify(final.element), JSON.stringify(final.fieldVersions), JSON.stringify(final.fieldOrigins));
-      database.prepare('DELETE FROM canvas_history_guards WHERE node_id = ? AND element_id = ?').run(documentId, id);
-    }
-    else {
-      database.prepare('DELETE FROM canvas_elements WHERE node_id = ? AND element_id = ?').run(documentId, id);
-      const before = [...plan.changes].reverse().find(change => change.id === id && change.before)?.before;
-      if (before) database.prepare('INSERT INTO canvas_history_guards (node_id, element_id, origin, revision) VALUES (?, ?, ?, ?) ON CONFLICT(node_id, element_id) DO UPDATE SET origin = excluded.origin, revision = excluded.revision').run(documentId, id, plan.origin, before.revision);
-    }
-  }
+  persistCanvasElements(database, documentId, plan);
   // 标量只增不减；guard/版本裁剪都不承担永久元素墓碑的职责。
   const maximumRevision = plan.changes.reduce((maximum, change) => Math.max(maximum,
     change.before?.revision ?? 0, change.after?.revision ?? 0), 0);
@@ -79,10 +81,9 @@ export function persistCanvasCommit(database: CanvasDatabase, input: {
     database.prepare('INSERT INTO canvas_changes (node_id, sequence, source_json, changes_json, created_at) VALUES (?, ?, ?, ?, ?)')
       .run(documentId, plan.state.sequence, JSON.stringify(input.source), JSON.stringify(plan.changes), input.now);
     // 同步日志有界，但请求回执独立保留；日志裁剪不能让写入重试重新执行。
-    database.prepare('DELETE FROM canvas_changes WHERE node_id = ? AND sequence <= ?').run(documentId, plan.state.sequence - 512);
+    database.prepare('DELETE FROM canvas_changes WHERE node_id = ? AND sequence <= ?').run(documentId, plan.state.sequence - CANVAS_CHANGE_LOG_LIMIT);
   }
-  database.prepare('INSERT INTO canvas_requests (node_id, source_key, request_id, payload_hash, result_json, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(documentId, input.sourceKey, input.result.requestId, input.payloadHash, JSON.stringify(input.result), input.now);
+  saveCanvasCommittedReceipt(database, { ...input, requestId: input.result.requestId });
 }
 
 export function readCanvasEditingClaims(database: Pick<CanvasDatabase, 'prepare'>, input: {
@@ -105,7 +106,7 @@ export function updateCanvasEditingClaim(database: CanvasDatabase, input: {
       .run(input.documentId, input.viewId, input.elementId);
   } else database.prepare(`INSERT INTO canvas_editing_claims (node_id, view_id, element_id, fields_json, expires_at) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(node_id, view_id, element_id) DO UPDATE SET fields_json = excluded.fields_json, expires_at = excluded.expires_at`)
-    .run(input.documentId, input.viewId, input.elementId, JSON.stringify(input.fields), input.now + 10_000);
+    .run(input.documentId, input.viewId, input.elementId, JSON.stringify(input.fields), input.now + CANVAS_EDITING_CLAIM_TTL_MS);
 }
 
 export function releaseCanvasEditingClaims(database: CanvasDatabase, viewId: string): void {

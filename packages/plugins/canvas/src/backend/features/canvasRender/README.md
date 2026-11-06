@@ -17,3 +17,5 @@ node packages/plugins/canvas/dev/probes/run-worker-smoke.mjs
 此 gate 真实经过 Host/IPC/preload/offscreen，验证单卡和 300 卡测量、PNG/JPEG、目标 DPR、宽卡切片、取消后继续请求与快照版本。输出仅在 `_dev_data/canvas-worker-smoke/`。跨 DPR 字形 hinting 可有差异，比例 smoke 不等于同 DPR 的像素一致性验收。
 
 Pixi 使用官方 `pixi.js/unsafe-eval` 静态 uniform polyfill 运行于严格 CSP；不放宽 `script-src`。该名字表示兼容禁止 eval 的环境，并不是启用动态 eval。
+
+Canvas隐藏worker显式声明htmlCanvas能力，Desktop只对该声明启用CanvasDrawElement；其他worker默认不启用。文档封面固定浅色纸面，保证同一内容版本的缓存不依赖当前窗口主题；CLI导出仍按显式theme参数绘制。

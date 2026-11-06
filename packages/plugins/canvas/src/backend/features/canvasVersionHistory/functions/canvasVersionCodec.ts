@@ -7,19 +7,23 @@ import type { CanvasElementChange } from '../../canvasCommit';
 import { CanvasVersionInverseSchema, type CanvasVersionElementInverse, type CanvasVersionInverse } from '../definitions/canvasVersionHistory';
 
 function json(value: unknown): JsonValue { const serialized: unknown = JSON.parse(JSON.stringify(value)); return JsonValueSchema.parse(serialized); }
-function canonical(value: JsonValue): string {
-  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
-  if (value !== null && typeof value === 'object') return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
-  return JSON.stringify(value);
+function canonical(value: unknown): string {
+  const serialized = JSON.stringify(value, (_key, current: unknown) => {
+    if (current === null || typeof current !== 'object' || Array.isArray(current)) return current;
+    return Object.fromEntries(Object.entries(current).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0));
+  });
+  if (serialized === undefined) throw new DocumentHistoryError('version_corrupt');
+  return serialized;
 }
 export function canvasVersionSnapshot(snapshot: CanvasSnapshot): CanvasSnapshot {
   if ('integrity' in snapshot) throw new DocumentHistoryError('history_unavailable');
   const parsed = CanvasSnapshotSchema.parse(snapshot);
   return { ...parsed, elements: [...parsed.elements].sort((left, right) => left.id.localeCompare(right.id)) };
 }
-export function canvasVersionHash(snapshot: CanvasSnapshot): string { return createHash('sha256').update(canonical(json(canvasVersionSnapshot(snapshot)))).digest('hex'); }
-export function encodeCanvasVersion(value: unknown): Uint8Array { return gzipSync(canonical(json(value))); }
-export function decodeCanvasVersion(bytes: Uint8Array): unknown { try { const value: unknown = JSON.parse(gunzipSync(bytes).toString('utf8')); return value; } catch { throw new DocumentHistoryError('version_corrupt'); } }
+/** 调用方先经canvasVersionSnapshot接纳并排序；编码不重复克隆/校验整张可信快照。 */
+export function canvasVersionHash(snapshot: CanvasSnapshot): string { return createHash('sha256').update(canonical(snapshot)).digest('hex'); }
+export function encodeCanvasVersion(value: CanvasSnapshot | CanvasVersionInverse): Uint8Array { return gzipSync(canonical(value)); }
+export function decodeCanvasVersion(bytes: Uint8Array): unknown { try { const value: unknown = JSON.parse(gunzipSync(bytes).toString('utf8')); return value; } catch (cause) { throw new DocumentHistoryError('version_corrupt', { cause }); } }
 export function decodeCanvasVersionInverse(bytes: Uint8Array | null): CanvasVersionInverse { return bytes ? CanvasVersionInverseSchema.parse(decodeCanvasVersion(bytes)) : []; }
 function object(value: JsonValue): { [key: string]: JsonValue } { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new DocumentHistoryError('version_corrupt'); return value; }
 function applyElement(element: CanvasElement | null, inverse: CanvasVersionElementInverse): CanvasElement | null {

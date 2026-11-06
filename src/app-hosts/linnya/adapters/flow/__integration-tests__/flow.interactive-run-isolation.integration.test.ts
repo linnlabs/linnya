@@ -560,7 +560,7 @@ describe('Flow interactive run isolation', () => {
 
     expect(cancelResolved).toBe(true);
     expect(runner.run).toHaveBeenCalledTimes(1);
-    expect(runner.discardCheckpoint).toHaveBeenCalledWith(interaction.run_id);
+    expect(runner.discardCheckpoint).toHaveBeenCalledWith(interaction.run_id, conversationId);
     expect(
       (
         await eventStore.readEvents(conversationId, {

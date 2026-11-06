@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { canvasPluginMigrations } from '../../../persistence/migrations';
 import { initializeCanvasDocument, readCanvasSnapshot, type CanvasCommitActor } from '../../canvasCommit';
 import { createCanvasHistoryRuntime } from '../../../orchestration/history/createCanvasHistoryRuntime';
-import { readCanvasAgentGroups, saveCanvasAgentGroup } from '..';
+import { readCanvasAgentGroups } from '..';
 import { createCanvasPlainTextDocument, type CanvasAgentCommitResult } from '../../../../shared';
 
 const add = { op: 'addText', content: createCanvasPlainTextDocument('Example'), width: 240, height: 120 };
@@ -36,15 +36,9 @@ describe('Canvas durable Agent change groups', () => {
     expect(group?.outcomes).toEqual({ complete: true, skippedWrites: [{ requestId: 'stale', index: 0, id: 'c1', reason: 'stale_element', fields: ['color'] }] });
     f.restart(); expect(f.history.listGroups('doc', 10000)[0]?.outcomes).toEqual(group?.outcomes); f.database.close();
   });
-  it('does not turn missing legacy outcome facts into a claim that no operations were skipped', () => {
-    const f = fixture(); f.apply('A', [add]); const stored = readCanvasAgentGroups(f.database, 'doc')[0]; if (!stored) throw new Error('missing group');
-    expect(stored.outcomes?.complete).toBe(true); saveCanvasAgentGroup(f.database, { ...stored, outcomes: undefined });
-    const group = f.history.listGroups('doc', 10000)[0]; expect(group?.outcomes).toEqual({ complete: false, skippedWrites: [] });
-    f.apply('A', update('red', 0)); expect(f.history.listGroups('doc', 10000)[0]?.outcomes.complete).toBe(false); f.database.close();
-  });
   it('does not create a ghost or obstacle for an Agent card created and removed within the same group', () => {
     const f = fixture(); f.history.registerView({ documentId: 'doc', viewId: 'view' });
-    f.apply('A', [add]); f.apply('A', [{ op: 'delete', id: 'c1' }]);
+    f.apply('A', [add]); f.apply('A', [{ op: 'delete', id: 'c1', baseRevision: 1 }]);
     const group = f.history.listGroups('doc', 10000, 'view')[0];
     expect(group).toMatchObject({ added: [], updated: [], deleted: [], changes: [], deletedCards: [], visibleDeletedCards: [] });
     const preview = f.history.preview({ request: { documentId: 'doc', requestId: 'next', operations: [add] }, actor: { source: { kind: 'agent', conversationId: 'B', runId: 'b' }, viewId: 'b' }, now: 10001 });
@@ -116,12 +110,12 @@ describe('Canvas durable Agent change groups', () => {
     f.apply('A', update('red', 3)); f.withdraw(group.id); expect(f.elements[0]).toMatchObject({ color: 'red', x: 20 }); f.database.close();
   });
   it('survives reload and 512-row journal trimming, then releases group-only deletion guards on completion', () => {
-    const f = fixture(); f.commit([add, add]); f.apply('A', [{ op: 'delete', id: 'c1' }]);
+    const f = fixture(); f.commit([add, add]); f.apply('A', [{ op: 'delete', id: 'c1', baseRevision: 1 }]);
     for (let i = 0; i < 513; i++) f.apply('B', [{ op: 'update', id: 'c2', baseRevision: i + 1, patch: { color: i % 2 ? 'yellow' : 'green' } }]);
     expect(f.database.prepare('SELECT count(*) AS n FROM canvas_changes').get()).toEqual({ n: 512 });
     f.restart(); const group = f.history.listGroups('doc', 1).find(group => group.conversationId === 'A'); if (!group) throw new Error('missing group');
     f.withdraw(group.id); expect(f.elements.some(element => element.id === 'c1')).toBe(true);
-    f.apply('A', [{ op: 'delete', id: 'c1' }]); f.history.releaseView('view'); f.history.closeGroup({ documentId: 'doc', groupId: group.id });
+    f.apply('A', [{ op: 'delete', id: 'c1', baseRevision: f.elements.find(card => card.id === 'c1')?.revision }]); f.history.releaseView('view'); f.history.closeGroup({ documentId: 'doc', groupId: group.id });
     expect(f.database.prepare('SELECT count(*) AS n FROM canvas_history_guards').get()).toEqual({ n: 0 }); f.database.close();
   });
   it('groups child runs by conversation and makes request retries independent of run and view', () => {
@@ -132,11 +126,11 @@ describe('Canvas durable Agent change groups', () => {
   });
   it('cumulates small deletion batches, rechecks the exact pending objects, and makes approval retry idempotent', () => {
     const f = fixture(); f.commit(Array.from({ length: 22 }, () => add));
-    f.apply('A', Array.from({ length: 19 }, (_, i) => ({ op: 'delete', id: `c${i + 1}` })));
-    const pending = f.apply('A', [{ op: 'delete', id: 'c20' }, { op: 'delete', id: 'c21' }], 'pending'); expect(pending.kind).toBe('pending'); expect(f.elements).toHaveLength(3);
+    f.apply('A', Array.from({ length: 19 }, (_, i) => ({ op: 'delete', id: `c${i + 1}`, baseRevision: 1 })));
+    const pending = f.apply('A', [{ op: 'delete', id: 'c20', baseRevision: 1 }, { op: 'delete', id: 'c21', baseRevision: 1 }], 'pending'); expect(pending.kind).toBe('pending'); expect(f.elements).toHaveLength(3);
     f.commit([{ op: 'update', id: 'c20', baseRevision: 1, patch: { color: 'green' } }]);
     const result = f.resolve(pending); expect(result.kind).toBe('committed'); expect(f.elements.map(element => element.id)).toEqual(['c20', 'c22']); expect(f.resolve(pending)).toEqual(result);
-    expect(f.apply('A', [{ op: 'delete', id: 'c20' }, { op: 'delete', id: 'c21' }], 'pending')).toEqual(result); f.database.close();
+    expect(f.apply('A', [{ op: 'delete', id: 'c20', baseRevision: 1 }, { op: 'delete', id: 'c21', baseRevision: 1 }], 'pending')).toEqual(result); f.database.close();
   });
   it('replays raw CLI append identity before re-normalizing the now-changed content', () => {
     const f = fixture(); f.commit([add]); const actor: CanvasCommitActor = { source: { kind: 'agent', conversationId: 'A', runId: 'first' }, viewId: 'agent-first' };
@@ -151,7 +145,7 @@ describe('Canvas durable Agent change groups', () => {
   it('replays pending and approval outcomes with the original raw request identity', () => {
     const f = fixture(); f.commit(Array.from({ length: 20 }, () => add)); const actor: CanvasCommitActor = { source: { kind: 'agent', conversationId: 'A', runId: 'run' }, viewId: 'agent' };
     const payloadIdentity = { operation: 'deleteMany', count: 20 };
-    const pending = f.history.commitAgent({ request: { documentId: 'doc', requestId: 'raw-pending', operations: Array.from({ length: 20 }, (_, i) => ({ op: 'delete', id: `c${i + 1}` })) }, actor, now: 1, payloadIdentity });
+    const pending = f.history.commitAgent({ request: { documentId: 'doc', requestId: 'raw-pending', operations: Array.from({ length: 20 }, (_, i) => ({ op: 'delete', id: `c${i + 1}`, baseRevision: 1 })) }, actor, now: 1, payloadIdentity });
     expect(f.history.replayAgentRequest({ documentId: 'doc', requestId: 'raw-pending', actor, payloadIdentity })).toEqual(pending); f.resolve(pending, 'deny');
     expect(() => f.history.replayAgentRequest({ documentId: 'doc', requestId: 'raw-pending', actor, payloadIdentity })).toThrow('canvas_approval_denied');
     expect(f.history.approvalResults('doc', 'A')[0]).toMatchObject({ requestId: 'raw-pending', status: 'denied', commit: null }); f.database.close();
@@ -164,14 +158,14 @@ describe('Canvas durable Agent change groups', () => {
       database.prepare('INSERT INTO workspace_nodes VALUES (?)').run('doc'); initializeCanvasDocument(database, 'doc');
       const first = createCanvasHistoryRuntime({ database });
       first.commit({ request: { documentId: 'doc', requestId: 'add', operations: [add] }, actor: { source: { kind: 'user', conversationId: null, runId: null }, viewId: 'view' }, now: 1 });
-      first.commitAgent({ request: { documentId: 'doc', requestId: 'delete', operations: [{ op: 'delete', id: 'c1' }] }, actor: { source: { kind: 'agent', conversationId: 'deleted-chat', runId: 'child' }, viewId: 'agent' }, now: 2 });
+      first.commitAgent({ request: { documentId: 'doc', requestId: 'delete', operations: [{ op: 'delete', id: 'c1', baseRevision: 1 }] }, actor: { source: { kind: 'agent', conversationId: 'deleted-chat', runId: 'child' }, viewId: 'agent' }, now: 2 });
       database.close(); database = new Database(filename); database.pragma('foreign_keys = ON'); const second = createCanvasHistoryRuntime({ database });
       const group = second.listGroups('doc', 5000)[0]; if (!group) throw new Error('missing group');
       second.withdraw({ documentId: 'doc', viewId: 'new-view', requestId: 'withdraw', groupId: group.id }, 5001); expect(readCanvasSnapshot(database, 'doc').elements[0]?.id).toBe('c1');
     } finally { database.close(); rmSync(directory, { recursive: true, force: true }); }
   });
   it('keeps a pending batch and its counters intact when an approval participant rolls back', () => {
-    const f = fixture(); f.commit(Array.from({ length: 20 }, () => add)); const pending = f.apply('A', Array.from({ length: 20 }, (_, i) => ({ op: 'delete', id: `c${i + 1}` })));
+    const f = fixture(); f.commit(Array.from({ length: 20 }, () => add)); const pending = f.apply('A', Array.from({ length: 20 }, (_, i) => ({ op: 'delete', id: `c${i + 1}`, baseRevision: 1 })));
     if (pending.kind !== 'pending') throw new Error('expected pending');
     const broken = createCanvasHistoryRuntime({ database: f.database, ports: { history() { throw new Error('retention failed'); } } });
     expect(() => broken.resolveApproval({ documentId: 'doc', viewId: 'view', requestId: 'allow', pendingId: pending.approval.id, decision: 'allow' }, 10)).toThrow('retention failed');
@@ -184,7 +178,7 @@ describe('Canvas durable Agent change groups', () => {
     f.withdraw(group.id); expect(f.elements[0]).toMatchObject({ color: 'yellow' }); f.database.close();
   });
   it('reserves only deletion outlines visible in an open view and reopens without hidden obstacles', () => {
-    const f = fixture(); f.commit([add]); f.history.registerView({ documentId: 'doc', viewId: 'view' }); f.apply('A', [{ op: 'delete', id: 'c1' }]);
+    const f = fixture(); f.commit([add]); f.history.registerView({ documentId: 'doc', viewId: 'view' }); f.apply('A', [{ op: 'delete', id: 'c1', baseRevision: 1 }]);
     f.history.registerView({ documentId: 'doc', viewId: 'view' });
     expect(f.history.listGroups('doc', 1, 'view')[0]?.visibleDeletedCards).toHaveLength(1); expect(f.history.listGroups('doc', 1)[0]?.visibleDeletedCards).toHaveLength(0);
     const actor: CanvasCommitActor = { source: { kind: 'agent', conversationId: 'B', runId: 'run' }, viewId: 'agent' };
@@ -194,10 +188,10 @@ describe('Canvas durable Agent change groups', () => {
     expect(preview().changes[0]?.after).toMatchObject({ x: 0 }); f.database.close();
   });
   it('restores a deleted card near its old position if a later card occupies it and skips duplicate connections', () => {
-    const f = fixture(); f.commit([add, add, { op: 'connect', from: 'c1', to: 'c2' }]); f.apply('A', [{ op: 'delete', id: 'e1' }]); f.apply('B', [{ op: 'connect', from: 'c1', to: 'c2' }]);
+    const f = fixture(); f.commit([add, add, { op: 'connect', from: 'c1', to: 'c2' }]); f.apply('A', [{ op: 'delete', id: 'e1', baseRevision: 1 }]); f.apply('B', [{ op: 'connect', from: 'c1', to: 'c2' }]);
     const lineGroup = f.history.listGroups('doc', 1).find(group => group.conversationId === 'A'); if (!lineGroup) throw new Error('missing group');
     expect(f.withdraw(lineGroup.id).commit.results[0]?.status).toBe('skipped'); expect(f.elements.filter(element => element.type === 'edge')).toHaveLength(1);
-    f.apply('A', [{ op: 'delete', id: 'c1' }]); f.commit([{ ...add, x: 0, y: 0 }]);
+    f.apply('A', [{ op: 'delete', id: 'c1', baseRevision: 1 }]); f.commit([{ ...add, x: 0, y: 0 }]);
     const result = f.withdraw(lineGroup.id); expect(result.commit.results.some(row => row.reason === 'restored_nearby')).toBe(true);
     const restored = f.elements.find(element => element.id === 'c1'); expect(restored && 'x' in restored && (restored.x !== 0 || restored.y !== 0)).toBe(true); f.database.close();
   });

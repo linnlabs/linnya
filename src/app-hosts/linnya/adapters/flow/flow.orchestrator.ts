@@ -245,7 +245,7 @@ export class FlowOrchestrator {
       runtime: {
         supervisor: this.runtime.supervisor,
         executionCompletions: this.executionCompletions,
-        discardCheckpoint: targetRunId => this.agentRunner.discardCheckpoint(targetRunId),
+        discardCheckpoint: targetRunId => this.agentRunner.discardCheckpoint(targetRunId, conversationId),
         releaseCost: targetRunId => this.runtime.costCollector.release(targetRunId),
       },
     });
@@ -270,7 +270,7 @@ export class FlowOrchestrator {
       runtime: {
         supervisor: this.runtime.supervisor,
         executionCompletions: this.executionCompletions,
-        discardCheckpoint: runId => this.agentRunner.discardCheckpoint(runId),
+        discardCheckpoint: runId => this.agentRunner.discardCheckpoint(runId, conversationId),
         releaseCost: runId => this.runtime.costCollector.release(runId),
       },
     });
@@ -585,7 +585,7 @@ export class FlowOrchestrator {
         try {
           await this.incomingEventPreparer.releaseCommittedDrafts(incomingBatch);
           if (replacedPausedRunId) {
-            await this.agentRunner.discardCheckpoint(replacedPausedRunId);
+            await this.agentRunner.discardCheckpoint(replacedPausedRunId, conversationId);
             this.runtime.costCollector.release(replacedPausedRunId);
           }
         } catch (cleanupError) {
@@ -666,7 +666,7 @@ export class FlowOrchestrator {
               message: error instanceof Error ? error.message : String(error),
               recoverable: false,
             });
-            await this.agentRunner.discardCheckpoint(runHandle.runId);
+            await this.agentRunner.discardCheckpoint(runHandle.runId, conversationId);
             this.runtime.costCollector.release(runHandle.runId);
           }
         } else if (!runnerDispatched) {

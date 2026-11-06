@@ -9,7 +9,8 @@ export interface DocumentHistoryCapability {
 
 export declare class DocumentHistoryError extends Error {
   readonly code: DocumentHistoryFailureCode;
-  constructor(code: DocumentHistoryFailureCode);
+  readonly cause?: unknown;
+  constructor(code: DocumentHistoryFailureCode, options?: { readonly cause: unknown });
 }
 
 /** 只返回身份集合；SQL、差分重建与内部必保依赖由文档类型拥有。 */

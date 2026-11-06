@@ -20,6 +20,26 @@ function fixture() {
 }
 
 describe('Canvas document session', () => {
+  it('加载中关闭清理迟到Host视图，A→B→A的旧close不释放新文档', async () => {
+    const response = Promise.withResolvers<CanvasSnapshot>(), started = Promise.withResolvers<void>();
+    const registered = new Set<string>(), calls: string[] = [];
+    let first = true;
+    const session = createCanvasDocumentSession({
+      read: async documentId => {
+        calls.push(`read:${documentId}`); registered.add(documentId);
+        if (first) { first = false; started.resolve(); return response.promise; }
+        return snapshot(documentId);
+      },
+      close: async documentId => { calls.push(`close:${documentId}`); registered.delete(documentId); },
+      changes: vi.fn(), commit: vi.fn(), editing: vi.fn(), undo: vi.fn(), subscribe: () => () => {},
+    });
+    const initial = session.open('a'); await started.promise;
+    const closed = session.close(), middle = session.open('b'), latest = session.open('a');
+    response.resolve(snapshot('a')); await Promise.all([initial, closed, middle, latest]);
+    expect(calls).toEqual(['read:a', 'close:a', 'read:a']);
+    expect(registered).toEqual(new Set(['a'])); expect(session.state.snapshot.value?.documentId).toBe('a');
+    await session.close(); expect(registered.size).toBe(0);
+  });
   it('打开→提交→连续增量→关闭，不为每次提交重读全量文档', async () => {
     const f = fixture();
     await f.session.open('doc');
@@ -38,11 +58,11 @@ describe('Canvas document session', () => {
     const id = (await import('@plugin/canvas/shared')).CanvasCardIdSchema.parse('c1');
     await f.session.protect(id, ['data'], 'text');
     await f.session.protect(id, ['x', 'y'], 'drag');
-    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: ['data', 'x', 'y'] }));
+    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ claims: [expect.objectContaining({ fields: ['data', 'x', 'y'] })] }));
     await f.session.protect(id, [], 'text');
-    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: ['x', 'y'] }));
+    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ claims: [expect.objectContaining({ fields: ['x', 'y'] })] }));
     await f.session.protect(id, [], 'drag');
-    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] }));
+    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ claims: [] }));
     await f.session.close();
   });
 
@@ -108,14 +128,16 @@ describe('Canvas document session', () => {
 
   it('A→B→A 的旧异步响应不能装进新的文档会话', async () => {
     const f = fixture();
+    const started = Promise.withResolvers<void>();
     let finishOld: ((value: CanvasSnapshot) => void) | undefined;
-    f.read.mockImplementationOnce(async () => new Promise(resolve => { finishOld = resolve; }));
-    const old = f.session.open('a');
-    await f.session.open('b');
+    f.read.mockImplementationOnce(async () => new Promise(resolve => { finishOld = resolve; started.resolve(); }));
+    const old = f.session.open('a'); await started.promise;
+    const latest = f.session.open('b');
     finishOld?.(snapshot('a', 10));
-    await old;
+    await Promise.all([old, latest]);
     expect(f.session.state.snapshot.value?.documentId).toBe('b');
     expect(f.session.state.snapshot.value?.sequence).toBe(0);
+    await f.session.close();
   });
 
   it('日志被裁剪时经正式 snapshot 恢复，旧重复推送不触发重读', async () => {
@@ -167,7 +189,7 @@ describe('Canvas document session', () => {
     expect(() => f.session.undo('undo')).toThrow('只读');
     await expect(f.session.protect(id, ['data'], 'text')).rejects.toThrow('只读');
     await f.session.protect(id, [], 'text');
-    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] }));
+    expect(f.editing).toHaveBeenLastCalledWith(expect.objectContaining({ claims: [] }));
     expect(f.commit).not.toHaveBeenCalled(); await f.session.close();
   });
 });

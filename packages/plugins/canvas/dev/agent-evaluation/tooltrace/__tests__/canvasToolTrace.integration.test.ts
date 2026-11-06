@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseCanvasToolTrace } from '../index';
+import { readCanvasImageReadSequence } from '../functions/readCanvasImageReadSequence';
 
 const scope = {
   conversationId: 'conv',
@@ -74,10 +75,10 @@ function shellOutputs(order: number, command: string, outputs: readonly unknown[
     }
   );
 }
-function parse(messages: readonly unknown[]) {
+function parse(messages: readonly unknown[], auditValue: unknown = audit) {
   return parseCanvasToolTrace({
     scope,
-    audit,
+    audit: auditValue,
     pages: [
       {
         sourceFile: 'messages.json',
@@ -279,35 +280,56 @@ describe('trusted Canvas tool trace', () => {
     expect(complete.commits).toHaveLength(1);
   });
 
-  it('counts only the selected model run reading an attached image returned by its earlier render', () => {
-    const image = {
-      source_kind: 'conversation_file',
-      locator: 'conversation:/render.png',
-      content_type: 'image/png',
-      attachment_status: 'attached',
-    };
-    const facts = parse([
-      shell(1, 'linnya-canvas render workspace:/T1.canvas', {
-        sequence: 1,
-        locator: image.locator,
-        width: 100,
-        height: 100,
-        format: 'png',
-      }),
-      message(2, 'read_file', { locator: image.locator }, image, 'runner-run'),
-      message(
-        3,
-        'read_file',
-        { locator: image.locator },
-        { ...image, locator: 'conversation:/other.png' }
-      ),
-      message(4, 'read_file', { locator: image.locator }, image),
-    ]);
-    expect(facts.renders).toHaveLength(1);
-    expect(facts.imageReads).toEqual([
-      expect.objectContaining({ toolCallId: 'call-4', renderToolCallId: 'call-1' }),
-    ]);
-  });
+  it.each(['attached', 'already_attached'])(
+    '%s 只接纳同 run 先 render 后读取相同 locator 的图片，排除未投递结果',
+    attachmentStatus => {
+      const image = {
+        source_kind: 'conversation_file',
+        locator: 'conversation:/render.png',
+        content_type: 'image/png',
+        attachment_status: attachmentStatus,
+      };
+      const facts = parse([
+        message(1, 'read_file', { locator: image.locator }, image),
+        shell(2, 'linnya-canvas render workspace:/T1.canvas', {
+          sequence: 1,
+          locator: image.locator,
+          width: 100,
+          height: 100,
+          format: 'png',
+        }),
+        message(3, 'read_file', { locator: image.locator }, image, 'runner-run'),
+        message(4, 'read_file', { locator: image.locator }, image, 'child-run'),
+        message(
+          5,
+          'read_file',
+          { locator: image.locator },
+          { ...image, locator: 'conversation:/other.png' }
+        ),
+        message(6, 'read_file', { locator: image.locator }, {
+          ...image,
+          attachment_status: 'not_delivered',
+        }),
+        message(7, 'read_file', { locator: image.locator }, image),
+      ], {
+        ...audit,
+        runs: [...audit.runs, {
+          run_id: 'child-run', parent_run_id: 'run', status: 'completed',
+          started_at: 1, updated_at: 20,
+        }],
+      });
+      expect(facts.needsReview).toBe(false);
+      expect(facts.renders).toHaveLength(1);
+      expect(readCanvasImageReadSequence(facts)).toBe(1);
+      expect(facts.imageReads).toEqual([
+        expect.objectContaining({
+          toolCallId: 'call-7',
+          renderToolCallId: 'call-2',
+          attachmentStatus,
+        }),
+      ]);
+    }
+  );
 
   it('does not execute here-doc text or guess control flow and generic failures', () => {
     const facts = parse([

@@ -1,4 +1,8 @@
-/** Renderer 保持既有 Electron IPC channel；Backend handler 只接收 data-only 参数。 */
+import type { BackendPluginRendererContext } from '@linnya/plugin-host-contract/backend/pluginIpcRuntime';
+
+export type BackendRendererRequestContext = BackendPluginRendererContext;
+
+/** Renderer 保持既有 Electron IPC channel；业务参数仍是 data-only。 */
 export type BackendRendererRequestHandler = (
   ...args: readonly unknown[]
 ) => unknown | Promise<unknown>;
@@ -8,8 +12,9 @@ export interface BackendRendererRequestRegistrarPort {
 }
 
 export interface BackendRendererRequestRegistryPort extends BackendRendererRequestRegistrarPort {
+  handleWithContext(channel: string, handler: (context: BackendRendererRequestContext | undefined, ...args: readonly unknown[]) => unknown | Promise<unknown>): void;
   listChannels(): readonly string[];
-  invoke(channel: string, args: readonly unknown[]): Promise<unknown>;
+  invoke(channel: string, args: readonly unknown[], context?: BackendRendererRequestContext): Promise<unknown>;
 }
 
 /**

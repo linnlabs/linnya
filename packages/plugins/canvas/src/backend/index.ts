@@ -26,9 +26,10 @@ export function createCanvasBackendPlugin(): PluginBackendContribution {
   let capabilities: ReturnType<typeof createCanvasBackendCapabilities> | null = null;
   const capabilitiesFor = () => capabilities ??= createCanvasBackendCapabilities(paths.computationWorkerPath);
   let references = new WeakMap<CanvasDatabase, ReturnType<typeof createDocumentReferenceMarkdownRuntime>>();
+  const referenceInstances = new Set<ReturnType<typeof createDocumentReferenceMarkdownRuntime>>();
   const referencesFor = (database: CanvasDatabase) => {
     let runtime = references.get(database);
-    if (!runtime) { runtime = createDocumentReferenceMarkdownRuntime(database); references.set(database, runtime); }
+    if (!runtime) { runtime = createDocumentReferenceMarkdownRuntime(database); references.set(database, runtime); referenceInstances.add(runtime); }
     return runtime;
   };
   let byDatabase = new WeakMap<CanvasDatabase, CanvasDocumentRuntime>();
@@ -65,6 +66,7 @@ export function createCanvasBackendPlugin(): PluginBackendContribution {
       for (const arrangement of arrangements) arrangement.dispose(); arrangements.clear();
       const previousCapabilities = capabilities; capabilities = null;
       for (const runtime of instances) runtime.dispose();
+      for (const runtime of referenceInstances) runtime.dispose(); referenceInstances.clear();
       instances.clear(); byDatabase = new WeakMap(); references = new WeakMap(); ipcServices = new WeakMap();
       await previousCapabilities?.computation.dispose();
     } }],

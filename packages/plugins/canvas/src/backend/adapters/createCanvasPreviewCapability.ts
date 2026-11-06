@@ -1,3 +1,5 @@
+import { CANVAS_PREVIEW_SUMMARY_LIMIT } from '../definitions/canvasProjectionLimits';
+import { canvasTextPrefix } from '../../shared';
 import { randomUUID } from 'node:crypto';
 import type { DocumentPreviewCapability } from '@plugin/backend/documentPreview';
 import type { CanvasBackendCapabilities } from '../definitions/canvasBackendCapabilities';
@@ -26,7 +28,7 @@ export function createCanvasPreviewCapability(capabilities: () => CanvasBackendC
       const result = await capabilities().rendering.render(CanvasRenderRequestSchema.parse({ protocol: 1, requestId: randomUUID(), kind: 'render', snapshot, ...resources,
         theme: 'light', width: input.widthPx, height: Math.round(input.widthPx * 0.625), dpr: input.pixelRatio, fontFamily: CANVAS_DEFAULT_FONT_FAMILY,
         fontSize: CANVAS_DEFAULT_FONT_SIZE, region: null, format: 'png', quality: 1, material: 'paper' }), signal);
-      return { revisionKey: String(snapshot.sequence), summary: projectCanvasSearchText(snapshot, readCanvasProjectionContext(database, snapshot)).slice(0, 16000),
+      return { revisionKey: String(snapshot.sequence), summary: canvasTextPrefix(projectCanvasSearchText(snapshot, readCanvasProjectionContext(database, snapshot)), CANVAS_PREVIEW_SUMMARY_LIMIT),
         image: { dataUri: `data:image/png;base64,${Buffer.from(result.bytes).toString('base64')}`, widthPx: result.width, heightPx: result.height } };
     },
   };

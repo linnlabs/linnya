@@ -82,7 +82,7 @@ export class CanvasLines {
     for (const region of mask) this.cardMask.rect(region.x, region.y, region.width, region.height);
     this.cardMask.fill(0xffffff);
   }
-  preview(cardIds: readonly CanvasCardId[], cards: ReadonlyMap<string, CanvasCard>, mask: readonly CanvasRectangle[]): void {
+  preview(cardIds: readonly CanvasCardId[], cards: ReadonlyMap<string, CanvasCard>): void {
     if (!this.layout) return;
     if (!this.previewIds) {
       // 邻卡的同侧连接也可能重新排开；这些线独立于不变的世界线层，不能每个pointer重建全图。
@@ -93,7 +93,8 @@ export class CanvasLines {
       this.previewIds = new Set(this.entries.filter(entry => [entry.edge.from, entry.edge.to].some(endpoint => endpoint.kind === 'card' && affectedCards.has(endpoint.cardId))).map(entry => entry.edge.id));
       this.key = '';
     }
-    this.previewState = { cardIds, cards }; this.refreshPreviewGeometry(); this.setMask(mask); this.update();
+    // 纸面遮罩由调用方先完成的空间投影统一更新；连线预览不能再次重建同一份Graphics。
+    this.previewState = { cardIds, cards }; this.refreshPreviewGeometry(); this.update();
   }
   private refreshPreviewGeometry(): void {
     if (!this.layout || !this.previewState) return;

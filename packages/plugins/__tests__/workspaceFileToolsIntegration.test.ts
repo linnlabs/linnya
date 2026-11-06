@@ -90,6 +90,7 @@ import {
   clearWorkspaceMutationPublisherForTesting,
   installWorkspaceMutationPublisher,
 } from 'src/features/workspace/orchestration/workspaceMutationPublisherRegistry';
+import { parseCanvasToolTrace } from '../canvas/dev/agent-evaluation/tooltrace';
 
 const slidesFileToolContribution = { ...slidesBackendPlugin, pluginCli: undefined };
 
@@ -1496,6 +1497,68 @@ describe('list_files / read_file', () => {
     });
     expect(duplicateImage).not.toHaveProperty('modelInput');
     expect(toolResultAssetClaims.issueClaims).toHaveBeenCalledOnce();
+
+    // 应用层集成只把真实 Host data 交给插件公开评价入口，不伪造 Provider 消费证据。
+    const traceMessages = [image, duplicateImage].flatMap((result, index) => {
+      const renderOrder = index * 2 + 1, readOrder = renderOrder + 1;
+      const row = (order: number, toolName: string, args: unknown, data: unknown) => ({
+        message_id: `image-trace-${order}`, conversation_id: 'conv-vfs-tools',
+        turn_id: 'turn-vfs-tools', run_id: runId, sort_seq: order, timestamp: order,
+        role: 'assistant', message_type: 'tool_calls', content: '',
+        merge_key: `image-trace-${order}`, presentation: null,
+        payload: {
+          tool_call_id: `image-call-${order}`, tool_name: toolName,
+          status: 'success', phase: 'complete', started_at: order, completed_at: order,
+          args, data,
+        },
+      });
+      return [
+        row(renderOrder, 'shell', { command: 'linnya-canvas render workspace:/T1.canvas' }, {
+          status: 'completed',
+          presentationText: 'stdout:\n' + JSON.stringify({
+            sequence: index === 0 ? 7 : 9, locator: result.data.locator,
+            width: 16, height: 9, format: 'png',
+          }),
+          display: {
+            mode: 'pipe', coverage: 'complete', outputPhase: 'closed',
+            textProjection: 'available',
+          },
+          terminal: { outcome: 'exited', exitCode: 0 },
+          command_output_store: { stdout: { status: 'published', completeness: 'complete' } },
+        }),
+        row(readOrder, 'read_file', { locator: result.data.locator }, result.data),
+      ];
+    });
+    const trace = parseCanvasToolTrace({
+      scope: {
+        conversationId: 'conv-vfs-tools', rootRunId: runId,
+        documentId: 'canvas-image-trace', locators: ['workspace:/T1.canvas'],
+      },
+      audit: {
+        schema_version: 1, ok: true, command: 'audit',
+        conversation_id: 'conv-vfs-tools', requested_run_id: runId,
+        completeness: {
+          run_registry: 'complete', event_store: 'complete',
+          telemetry: 'best_effort', telemetry_retention_days: 7,
+        },
+        runs: [{ run_id: runId, status: 'completed', started_at: 1, updated_at: 4 }],
+      },
+      pages: [{
+        sourceFile: 'host-image-read-messages.json',
+        value: {
+          schema_version: 1, ok: true, command: 'messages',
+          conversation_id: 'conv-vfs-tools', status: 'ready', messages: traceMessages,
+          has_more_before: false, has_more_after: false, revision: 1,
+        },
+      }],
+    });
+    expect(trace.needsReview).toBe(false);
+    expect(trace.imageReads.map(read => read.attachmentStatus)).toEqual([
+      'attached', 'already_attached',
+    ]);
+    const finalRead = trace.imageReads.at(-1);
+    expect(trace.renders.find(render => render.toolCallId === finalRead?.renderToolCallId)
+      ?.sequence).toBe(9);
 
     // run 是模型上下文边界；进入新 run 后必须重新附加，不能拿旧上下文事实去重。
     physicalContext.runId = RunIdSchema.parse('run-physical-read-next');

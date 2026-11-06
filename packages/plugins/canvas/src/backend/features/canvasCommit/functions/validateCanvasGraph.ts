@@ -1,17 +1,18 @@
 import { generateKeyBetween } from 'fractional-indexing';
 import type { CanvasElement } from '../../../../shared';
+import { CanvasCommitFailure } from '../definitions/canvasCommitFailure';
 
 type Card = Exclude<CanvasElement, { type: 'edge' }>;
 type Edge = Extract<CanvasElement, { type: 'edge' }>;
 
 function validateEdge(edge: Edge, cards: ReadonlyMap<string, Card>, edges: Set<string>) {
   for (const endpoint of [edge.from, edge.to]) {
-    if (endpoint.kind === 'card' && !cards.has(endpoint.cardId)) throw new Error('连线端点不存在');
+    if (endpoint.kind === 'card' && !cards.has(endpoint.cardId)) throw new CanvasCommitFailure('canvas_endpoint_missing');
   }
   if (edge.from.kind !== 'card' || edge.to.kind !== 'card') return;
-  if (edge.from.cardId === edge.to.cardId) throw new Error('不支持自连线');
+  if (edge.from.cardId === edge.to.cardId) throw new CanvasCommitFailure('canvas_self_connection');
   const key = `${edge.from.cardId}:${edge.to.cardId}`;
-  if (edges.has(key)) throw new Error('同方向连线重复');
+  if (edges.has(key)) throw new CanvasCommitFailure('canvas_duplicate_connection');
   edges.add(key);
 }
 
@@ -19,9 +20,9 @@ function validateGrouping(card: Card, cards: ReadonlyMap<string, Card>, complete
   const chain = new Set<string>();
   let current: Card | undefined = card;
   while (current && !completed.has(current.id)) {
-    if (chain.has(current.id)) throw new Error('分组不能成环');
+    if (chain.has(current.id)) throw new CanvasCommitFailure('canvas_group_cycle');
     chain.add(current.id);
-    if (current.parentId && !cards.has(current.parentId)) throw new Error('分组父卡不存在');
+    if (current.parentId && !cards.has(current.parentId)) throw new CanvasCommitFailure('canvas_group_parent_missing');
     current = current.parentId ? cards.get(current.parentId) : undefined;
   }
   for (const id of chain) completed.add(id);

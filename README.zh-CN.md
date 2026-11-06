@@ -18,7 +18,7 @@ Linnya 基于 Markdown 构建，并提供丰富的插件支持，可以带来新
 
 Linnya Slides 是首个开源的、由 AI 通过代码绘制高保真演示文稿，并导出真正可编辑的 PPTX 系统。它维护一份可读、可迭代的 `deck.js` 文稿源码，将其直接编译为 PowerPoint 对象，并让预览与导出共享同一份文稿事实。不是 HTML 转 PPT，也不是图片转 PPT。
 
-![使用 Linnya Slides 创建的四页演示文稿](docs/media/slides-showcase.png)
+![使用 Linnya Slides 创建的六份演示文稿](docs/media/slides-showcase.jpg)
 
 ## 这个仓库包含什么
 

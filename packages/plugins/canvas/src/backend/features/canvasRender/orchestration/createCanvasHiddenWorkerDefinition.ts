@@ -13,7 +13,7 @@ export function createCanvasHiddenWorkerDefinition(paths: {
     requestChannel: CANVAS_RENDER_CHANNELS.request, responseChannel: CANVAS_RENDER_CHANNELS.response,
     readyChannel: CANVAS_RENDER_CHANNELS.ready, cancelChannel: CANVAS_RENDER_CHANNELS.cancel,
     workerHtmlPath: paths.workerHtmlPath, preloadPath: paths.preloadPath,
-    renderingMode: 'offscreen', partition: 'hidden-worker:canvas-render',
+    renderingMode: 'offscreen', htmlCanvas: true, partition: 'hidden-worker:canvas-render',
     renderViewport: { channel: CANVAS_RENDER_CHANNELS.viewport, ...CANVAS_RENDER_VIEWPORT_LIMITS },
     readyTimeoutMs: 15000, requestTimeoutMs: 30000, idleTimeoutMs: 5 * 60 * 1000,
     createRequestPayload(value) {

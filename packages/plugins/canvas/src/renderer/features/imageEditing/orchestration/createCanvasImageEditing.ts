@@ -10,11 +10,11 @@ const editingFields = ['data', 'x', 'y', 'width', 'height'] as const;
 /** 图片只编辑可见范围和元数据；准备新资产不建立归属，正式提交与撤销沿用内容事务。 */
 export function createCanvasImageEditing(session: CanvasDocumentSession, port: CanvasImageEditingPort) {
   const state = createCanvasImageEditingState();
-  let generation = 0, renewal: ReturnType<typeof setInterval> | undefined;
+  let generation = 0;
   const fail = (error: unknown) => state.fail(error instanceof Error ? error.message : String(error));
   const target = (id: CanvasCardId) => resolveCanvasImageEditingTarget(requireWritableCanvas(session.state.snapshot.value), id);
   async function close() {
-    generation++; if (renewal) clearInterval(renewal); renewal = undefined;
+    generation++;
     const id = state.draft.value?.card.id; state.clear();
     // 视图关闭已统一释放声明；仍打开时只释放本图片编辑owner。
     if (id && session.state.phase.value === 'ready') await session.protect(id, [], 'image-properties');
@@ -26,7 +26,6 @@ export function createCanvasImageEditing(session: CanvasDocumentSession, port: C
       try {
         await session.protect(id, [...editingFields], 'image-properties');
         if (token !== generation) return;
-        renewal = setInterval(() => { void session.protect(id, [...editingFields], 'image-properties').catch(fail); }, 2000);
         const asset = await port.readImage(documentId, card.data.assetId);
         if (token === generation) state.installAsset(asset, card.data);
       } catch (error) { if (token === generation) fail(error); }
