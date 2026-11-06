@@ -1,13 +1,12 @@
 <template>
-  <section class="linnya-canvas" @keydown="keydown">
+  <section class="linnya-canvas" :style="cardFrameStyle" @keydown="keydown">
     <p :id="descriptionId" class="canvas-accessible-summary" role="status" aria-live="polite">
       {{ surface?.selectionDescription.value }}
     </p>
     <div ref="stage" class="canvas-stage" />
     <div
       ref="editorHost"
-      class="canvas-editor-overlay markdown-document-content"
-      :class="{ 'canvas-editor-provisional': surface?.creation.state.draft.value }"
+      class="canvas-editor-overlay"
       :style="editorStyle"
       @compositionstart="surface?.setComposing(true)"
       @compositionend="surface?.setComposing(false)"
@@ -32,20 +31,11 @@
       :readonly="readonly"
       @reveal="revealReview"
     />
-    <CanvasAgentReviewBar
-      v-if="review"
-      :review="review"
-      :readonly="readonly"
-      :elements="elements"
-      :document-titles="documentTitles"
-      @locate="surface?.locate($event)"
-      @reveal="revealReview"
-    />
     <CanvasConnectionControls
       v-if="surface && !draft && !readonly"
       :editing="surface.connections"
       :card="
-        camera.zoom >= 0.3
+        camera.zoom >= 0.3 && !surface.resizingCard.value
           ? (surface.hoveredCard.value ??
             (surface.selectedCards.value.length === 1
               ? (surface.selectedCards.value[0] ?? null)
@@ -54,6 +44,7 @@
       "
       :camera="camera"
       :run="run"
+      :menu-open="Boolean(contextAnchor)"
       @locate="surface.locateEndpoint($event)"
       @focus-canvas="surface?.focus()"
     />
@@ -67,15 +58,14 @@
     <CanvasCommandBar
       v-if="surface"
       :readonly="readonly"
-      :zoom="camera.zoom"
+      :saving="saving"
+      :unsaved="unsaved"
       @undo="run(() => surface?.undo('undo'))"
       @redo="run(() => surface?.undo('redo'))"
       @create-text="run(() => surface?.createText())"
       @add-document="run(() => creation?.showDocuments())"
       @add-image="imagePicker?.click()"
       @search="search?.state.show()"
-      @fit="surface.fit()"
-      @zoom="surface.zoom($event)"
     >
       <template #layout>
         <CanvasLayoutControls
@@ -87,7 +77,13 @@
       </template>
     </CanvasCommandBar>
     <CanvasSelectionBar
-      v-if="surface && selection.length && !draft && !surface.context.value"
+      v-if="
+        surface &&
+        selection.length &&
+        !draft &&
+        !surface.context.value &&
+        !surface.resizingCard.value
+      "
       :placement="surface.selectionStyle.value"
       :count="selection.length"
       :color="selectedColor"
@@ -122,24 +118,16 @@
         @pointerdown.stop.prevent="surface.resizeStart($event)"
       />
     </div>
-    <div
-      v-if="surface?.context.value"
-      class="canvas-context-menu"
-      :style="surface.contextStyle.value"
-      @pointerdown.stop
-    >
-      <CustomSelect
-        :options="contextActions"
-        :manual-mode="true"
-        :is-open="true"
-        min-width="170px"
-        semantic-role="menu"
-        :parent-is-open="true"
-        variant="minimal"
-        @update:model-value="elementAction"
-        @close="surface.closeContext()"
-      />
-    </div>
+    <CanvasPortalMenu
+      v-if="contextAnchor"
+      :key="`${contextAnchor.left},${contextAnchor.top}`"
+      label="画布操作"
+      :options="contextActions"
+      :anchor="contextAnchor"
+      min-width="170px"
+      @select="elementAction"
+      @close="surface?.closeContext()"
+    />
     <CanvasSearchPanel v-if="search" :search="search" @close="surface?.focus()" />
     <CanvasDocumentPicker v-if="creation && !readonly" :creation="creation" />
     <input
@@ -158,9 +146,26 @@
       @close="imagePreview = null"
     />
     <CanvasImageEditingControls v-if="imageEditing" :editor="imageEditing" />
-    <CanvasStatusArea :items="statusItems">
-      <CanvasWheelSuggestion v-if="wheelSuggestion" :suggestion="wheelSuggestion" />
-    </CanvasStatusArea>
+    <div class="canvas-bottom-dock">
+      <CanvasStatusArea :items="statusItems">
+        <CanvasWheelSuggestion v-if="wheelSuggestion" :suggestion="wheelSuggestion" />
+      </CanvasStatusArea>
+      <CanvasAgentReviewBar
+        v-if="review"
+        :review="review"
+        :readonly="readonly"
+        :elements="elements"
+        :document-titles="documentTitles"
+        @locate="surface?.locate($event)"
+        @reveal="revealReview"
+      />
+      <CanvasZoomControls
+        v-if="surface"
+        :zoom="camera.zoom"
+        @zoom="surface.zoom($event)"
+        @fit="surface.fit()"
+      />
+    </div>
     <AlertDialog
       :visible="discardVisible"
       title="使用已保存内容？"
@@ -179,7 +184,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import type { DocumentImageAsset } from '@app/schemas';
-import { CustomSelect, ImagePreviewModal, AlertDialog } from '@linnya/renderer-ui';
+import { ImagePreviewModal, AlertDialog } from '@linnya/renderer-ui';
 import {
   getActiveFileSession,
   markActiveFileDirty,
@@ -223,9 +228,21 @@ import { createCanvasImageEditing, CanvasImageEditingControls } from '../feature
 import { createCanvasSearch, CanvasSearchPanel } from '../features/canvasSearch';
 import { CanvasConnectionControls, CanvasConnectionLabelPreview } from '../features/connections';
 import { CanvasLayoutControls } from '../features/layoutCommands';
-import { CanvasCommandBar, CanvasSelectionBar, CanvasStatusArea } from '../features/canvasChrome';
+import {
+  CanvasCommandBar,
+  CanvasPortalMenu,
+  CanvasSelectionBar,
+  CanvasStatusArea,
+  CanvasZoomControls,
+  type CanvasMenuAnchor,
+} from '../features/canvasChrome';
 import { canvasStatusItems } from '../functions/canvasStatusItems';
-import { CanvasWheelSuggestion, installCanvasWheelSuggestion } from '../features/materialSetting';
+import {
+  CanvasWheelSuggestion,
+  installCanvasWheelSuggestion,
+  useCanvasPreferencesStore,
+} from '../features/materialSetting';
+import { CANVAS_CARD_CORNER_RADIUS, CANVAS_CARD_PAPER_INSET } from '../kernel/cardFrame';
 import { createCanvasArrangementPort } from '../adapters/createCanvasArrangementPort';
 import {
   CanvasDocumentDetail,
@@ -292,7 +309,15 @@ const saving = computed(() =>
       surface.value?.session.mutationPending.value
   )
 );
+// 有草稿而保存出错时，命令条显示“尚有未保存的修改”；具体原因与处理按钮仍在底部状态区。
+const unsaved = computed(() => Boolean(surface.value?.hasDraft.value && shownError.value));
 const editorStyle = computed(() => surface.value?.editorStyle.value ?? { display: 'none' });
+// 编辑器与文档详情叠在卡片上，纸面内缩与圆角取画布卡片同一规则；描边由画布绘制。
+const preferences = useCanvasPreferencesStore();
+const cardFrameStyle = computed(() => ({
+  '--canvas-card-radius': `${CANVAS_CARD_CORNER_RADIUS[preferences.preferences.material]}px`,
+  '--canvas-card-inset': `${CANVAS_CARD_PAPER_INSET}px`,
+}));
 const markers = computed(() =>
   review.value
     ? projectCanvasReviewMarkers({
@@ -320,6 +345,16 @@ const selectedImage = computed(() => {
 const moreActions = computed(() => {
   const selected = surface.value?.selectedCards.value ?? [];
   return canvasCardMenuActions(selected.length > 0 && selected.every(card => card.locked));
+});
+// 右键点相对画布宿主；换成视口坐标交给移到 body 的菜单。
+const contextAnchor = computed<CanvasMenuAnchor | null>(() => {
+  void camera.value;
+  const point = surface.value?.contextPoint.value,
+    rect = stage.value?.getBoundingClientRect();
+  if (!point || !rect) return null;
+  const left = rect.left + point.x,
+    top = rect.top + point.y;
+  return { left, top, right: left, bottom: top, align: 'start' };
 });
 const contextActions = computed(() =>
   canvasContextMenuActions({

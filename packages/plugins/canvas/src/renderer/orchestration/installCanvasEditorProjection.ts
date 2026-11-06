@@ -4,7 +4,7 @@ import type { EmbeddedMarkdownEditor } from '@plugin/renderer/embeddedMarkdownEd
 import type { CanvasCamera, CanvasCard, CanvasCardId } from '@plugin/canvas/shared';
 import { cardEditorStyle, type CanvasCardEditor } from '../features/cardEditing';
 import type { createCanvasTextCreation } from '../features/textCreation';
-import type { CanvasKernel } from '../kernel';
+import type { CanvasKernel, CanvasSelectionFrame } from '../kernel';
 import { installCanvasCardInk } from '../features/cardRendering/content';
 import { readCanvasIsDark } from '../functions/readCanvasAppearance';
 
@@ -14,7 +14,9 @@ export function installCanvasEditorProjection(options: {
   readonly editor: CanvasCardEditor;
   readonly creation: ReturnType<typeof createCanvasTextCreation>;
   readonly editable: Pick<EmbeddedMarkdownEditor, 'replaceContent' | 'focus'>;
-  readonly kernel: Pick<CanvasKernel, 'setEditingCard'>;
+  readonly kernel: Pick<CanvasKernel, 'setEditingCard' | 'setSelectionFrame'>;
+  /** 改尺寸拖动中的预览外框；与编辑外框一样交给 kernel，选中描边只有一套绘制。 */
+  readonly resizeFrame: () => CanvasSelectionFrame | null;
   readonly camera: Readonly<Ref<CanvasCamera>>;
   readonly detailId: Readonly<Ref<CanvasCardId | null>>;
   readonly cards: () => readonly CanvasCard[];
@@ -56,23 +58,34 @@ export function installCanvasEditorProjection(options: {
       }
     }
   );
-  const style = computed(() => {
-    if (options.creation.state.draft.value)
-      return cardEditorStyle(options.creation.state.draft.value, options.camera.value);
-    const draft = options.editor.state.draft.value,
-      card = options.cards().find(candidate => candidate.id === draft?.elementId);
-    return cardEditorStyle(
-      card?.type === 'text' && card.data.heightMode === 'auto' && draft?.measuredHeight
+  // 编辑器所在卡片的实时外框：新建草稿、自动高度的实测高度，或卡片自身。
+  const editingFrame = computed<CanvasSelectionFrame | null>(() => {
+    const created = options.creation.state.draft.value;
+    if (created) return { id: null, rectangle: created };
+    const draft = options.editor.state.draft.value;
+    if (!draft) return null;
+    const card = options.cards().find(candidate => candidate.id === draft.elementId);
+    const rectangle =
+      card?.type === 'text' && card.data.heightMode === 'auto' && draft.measuredHeight
         ? { ...card, height: draft.measuredHeight }
-        : (card ?? draft?.placement),
-      options.camera.value
-    );
+        : (card ?? draft.placement);
+    return rectangle ? { id: draft.elementId, rectangle } : null;
   });
+  const stopFrame = watch(
+    () => editingFrame.value ?? options.resizeFrame(),
+    frame => options.kernel.setSelectionFrame(frame),
+    { immediate: true }
+  );
+  const style = computed(() =>
+    cardEditorStyle(editingFrame.value?.rectangle, options.camera.value)
+  );
   return {
     style,
     refreshInk,
     dispose() {
       stop();
+      stopFrame();
+      options.kernel.setSelectionFrame(null);
       stopEditing();
       stopInk();
       bodyObserver.disconnect();

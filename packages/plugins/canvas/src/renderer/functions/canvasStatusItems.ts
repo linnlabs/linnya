@@ -58,6 +58,6 @@ export function canvasStatusItems(input: CanvasStatusInput): readonly CanvasStat
     });
   else if (!surface && !error)
     items.push({ id: 'opening', text: '正在打开画布…', tone: 'neutral' });
-  else if (saving) items.push({ id: 'saving', text: '正在保存…', tone: 'neutral' });
+
   return items;
 }

@@ -36,3 +36,10 @@ it('旋转照片按显示尺寸建框，编码尺寸和原资产身份保持不�
   expect(f.commit.mock.calls[0]?.[0].operations).toMatchObject([{ op: 'addImage', width: 80, height: 120, data: { assetId: asset.assetId } }]);
   f.creation.dispose(); await f.session.close();
 });
+it('文档候选不含当前画布自身', async () => {
+  const f = await fixture(), candidate = (documentId: string) => ({ documentId, title: documentId, nodeType: 'document', path: `workspace:/${documentId}`, projectId: 'project' });
+  const creation = createCanvasCardCreation(f.session, { prepareImage: f.prepareImage, queryDocuments: async () => [candidate('doc'), candidate('notes')] }, () => ({ x: 0, y: 0 }), f.select);
+  await creation.showDocuments();
+  expect(creation.picker.candidates.value.map(item => item.documentId)).toEqual(['notes']);
+  creation.dispose(); f.creation.dispose(); await f.session.close();
+});

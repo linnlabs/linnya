@@ -5,7 +5,11 @@
 .canvas-document-content {
   --canvas-card-font-size: 14px;
   --canvas-card-line-height: 1.7;
-  --canvas-card-padding: 16px 18px 18px;
+  --canvas-card-padding-top: 16px;
+  --canvas-card-padding-inline: 18px;
+  --canvas-card-padding-bottom: 18px;
+  --canvas-card-padding: var(--canvas-card-padding-top) var(--canvas-card-padding-inline)
+    var(--canvas-card-padding-bottom);
 }
 .canvas-image-content {
   position: relative;

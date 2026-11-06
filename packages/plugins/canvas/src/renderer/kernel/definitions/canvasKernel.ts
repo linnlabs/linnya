@@ -61,6 +61,11 @@ export interface CanvasChromeColors {
   readonly ink: number;
   readonly label: number;
 }
+/** 选中描边的实时外框；id 为 null 表示尚未提交的新卡。 */
+export interface CanvasSelectionFrame {
+  readonly id: CanvasCardId | null;
+  readonly rectangle: CanvasRectangle;
+}
 export interface CanvasAppearance {
   readonly dark: boolean;
   readonly material: 'paper' | 'card';
@@ -90,6 +95,8 @@ export interface CanvasKernel {
   setSelection(ids: readonly CanvasCardId[]): void;
   readSelection(): readonly CanvasCardId[];
   setEditingCard(id: CanvasCardId | null): void;
+  /** 编辑、新建草稿与改尺寸期间，选中描边跟随实时外框；编辑态与选中态共用同一段描边绘制。 */
+  setSelectionFrame(frame: CanvasSelectionFrame | null): void;
   hasBitmap(id: CanvasCardId, key: string): boolean;
   readRasterReceipt(
     id: CanvasCardId,

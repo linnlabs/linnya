@@ -1,5 +1,6 @@
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import type { CanvasColor } from '@plugin/canvas/shared';
+import { canvasChromeColorChoices } from '../features/canvasChrome';
 import { canvasConnectionContextActions } from '../features/connections';
 
 const palette: readonly { readonly color: CanvasColor; readonly text: string }[] = [
@@ -36,7 +37,11 @@ const layering = [
   { value: 'front', text: '置于顶层' },
   { value: 'back', text: '置于底层' },
 ];
-const colors: CustomSelectOption<string> = { text: '颜色', children: canvasColorMenuOptions };
+// 右键菜单的颜色子菜单与选中浮条的颜色菜单同样带纸色色块。
+const colors: CustomSelectOption<string> = {
+  text: '颜色',
+  children: canvasChromeColorChoices(palette, color => `color:${color}`),
+};
 const align: CustomSelectOption<string> = { text: '对齐', children: alignment };
 const distribute: CustomSelectOption<string> = { text: '分布', children: distribution };
 const layer: CustomSelectOption<string> = { text: '排列', children: layering };
@@ -51,7 +56,7 @@ export function canvasCardMenuActions(allLocked: boolean): readonly CustomSelect
     { value: 'arrange', text: '自动排布所选' },
     { value: 'fit-selection', text: '显示选中', shortcut: '⌘2' },
     separator,
-    { value: 'delete', text: '删除' },
+    { value: 'delete', text: '删除', shortcut: '⌫' },
   ];
 }
 const cardContext: readonly CustomSelectOption<string>[] = [
@@ -85,7 +90,7 @@ export function canvasContextMenuActions(input: {
           colors,
           layer,
           separator,
-          { value: 'delete', text: '删除' },
+          { value: 'delete', text: '删除', shortcut: '⌫' },
         ]
       : [
           ...cardContext,
@@ -93,7 +98,7 @@ export function canvasContextMenuActions(input: {
           layer,
           { value: 'fit-selection', text: '显示选中', shortcut: '⌘2' },
           separator,
-          { value: 'delete', text: '删除' },
+          { value: 'delete', text: '删除', shortcut: '⌫' },
         ];
   const actions = input.edge
     ? canvasConnectionContextActions

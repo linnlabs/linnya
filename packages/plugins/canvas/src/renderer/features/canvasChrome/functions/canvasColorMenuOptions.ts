@@ -16,3 +16,15 @@ export function canvasColorSwatchOptions(
     }),
   }));
 }
+
+/** 同一组色块选项，菜单值换成调用方自己的命令值（如右键菜单的 color:<颜色>）。 */
+export function canvasChromeColorChoices(
+  colors: readonly { readonly color: CanvasColor; readonly text: string }[],
+  toValue: (color: CanvasColor) => string
+): readonly CustomSelectOption<string>[] {
+  return canvasColorSwatchOptions(colors).map(option => ({
+    value: toValue(option.value ?? 'white'),
+    text: option.text,
+    iconComponent: option.iconComponent,
+  }));
+}

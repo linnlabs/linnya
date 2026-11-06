@@ -67,6 +67,7 @@ it('opens and reopens the actual surface when initial readonly cleanup synchrono
       setSelection() {},
       readSelection: () => [],
       setEditingCard() {},
+      setSelectionFrame() {},
       hasBitmap: () => false,
       readRasterReceipt: () => null,
       setDragPreview() {},

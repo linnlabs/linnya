@@ -19,8 +19,11 @@ export function createCanvasCardCreation(
     const token = ++generation;
     picker.start();
     try {
-      const candidates = await port.queryDocuments(keyword);
-      if (!controller.signal.aborted && token === generation) picker.install(candidates);
+      // 画布不能把自己放进自己：候选里去掉当前画布。
+      const self = documentId(),
+        candidates = await port.queryDocuments(keyword);
+      if (!controller.signal.aborted && token === generation)
+        picker.install(candidates.filter(candidate => candidate.documentId !== self));
     } catch (error) {
       if (token === generation) picker.fail(error instanceof Error ? error.message : String(error));
     }

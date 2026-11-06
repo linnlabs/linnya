@@ -18,7 +18,7 @@
     />
   </template>
   <FloatingToolbar
-    v-if="edge"
+    v-if="edge && !menuOpen"
     ref="bar"
     :show="true"
     :position="barPosition"
@@ -150,6 +150,8 @@ const props = defineProps<{
   card: CanvasCard | null;
   camera: CanvasCamera;
   run: (action: () => Promise<unknown>) => Promise<void>;
+  /** 右键菜单打开时收起连线浮条，与卡片选区浮条一致。 */
+  menuOpen: boolean;
 }>();
 const emit = defineEmits<{ focusCanvas: []; locate: [which: 'from' | 'to'] }>();
 const moreOptions = computed<readonly CustomSelectOption<string>[]>(() => [

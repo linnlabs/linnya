@@ -21,7 +21,11 @@ export interface CanvasCardPresentationContext {
   readDestroyed(): boolean;
 }
 export interface CanvasCardPresentationOptions {
-  readonly backgrounds: { readonly paper: Texture; readonly card: Texture };
+  readonly backgrounds: {
+    readonly paper: Texture;
+    readonly card: Texture;
+    readonly shadow: Texture;
+  };
   readonly identityContext: CanvasRenderingContext2D;
   readonly context: CanvasCardPresentationContext;
   readonly layer: Container;

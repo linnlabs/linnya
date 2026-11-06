@@ -28,7 +28,8 @@ export function createEmbeddedMarkdownEditor(
     extensions: createMarkdownDocumentExtensions([createEmbeddedMarkdownImage(options), createDocumentReferenceExtension(undefined, focus.registerPortal)]),
     editable: !options.readonly,
     editorProps: {
-      attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label },
+      // 根节点就是正文容器：与 createMarkdownDocumentFragment 的只读呈现共用 .markdown-document-content 规则（含首尾边距）。
+      attributes: { class: 'markdown-document-content', role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label },
       handleTextInput: (view, _from, _to, text) => space.capture(view, text),
     },
     onUpdate: () => options.onUpdate(JsonValueSchema.parse(editor.getJSON())),

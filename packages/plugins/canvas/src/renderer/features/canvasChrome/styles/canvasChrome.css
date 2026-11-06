@@ -1,17 +1,22 @@
 /* 画布外壳：命令条、选区浮条、工具条菜单、浮层面板与底部状态区。层级在 .linnya-canvas 内局部堆叠（0–9）。 */
+/* 命令条停靠带横跨画布，命令条居中；带宽即可用宽度，窄画布按下方容器查询收起保存文字。
+   停靠带内的下拉菜单都移到 body，容器查询不影响它们的定位。 */
 .canvas-command-dock {
   position: absolute;
   top: var(--space-3);
-  left: 50%;
+  right: var(--space-3);
+  left: var(--space-3);
   z-index: 6;
-  max-width: calc(100% - var(--space-6));
-  transform: translateX(-50%);
+  display: flex;
+  justify-content: safe center;
+  container-type: inline-size;
+  pointer-events: none;
 }
-/* 与 Slides 编辑命令条同一外观：常驻命令条用细描边 + 近影 + 远影的小元素阴影，不加边框。 */
-.canvas-command-bar {
+/* 顶部命令条与右下角缩放共用 Slides 编辑命令条的外观：细描边 + 近影 + 远影的小元素阴影，不加边框。 */
+.canvas-command-bar,
+.canvas-zoom-controls {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
   padding: var(--space-1);
   border-radius: calc(var(--radius-lg) + var(--space-0-5));
   background: var(--color-bg-default);
@@ -21,6 +26,20 @@
     0 8px 24px -4px var(--shadow-color-md);
   color: var(--color-text-primary);
   white-space: nowrap;
+}
+.canvas-command-bar {
+  gap: var(--space-1);
+  pointer-events: auto;
+}
+/* 窄画布：先把“已保存”收成对勾（读屏仍读到文字）。 */
+@container (max-width: 360px) {
+  .canvas-save-status.is-saved .canvas-save-status-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
 }
 /* 选区浮条沿用平台 FloatingToolbar 的外观，与 Slides 元素属性浮条一致。 */
 .canvas-selection-bar {
@@ -38,13 +57,36 @@
   font-size: var(--font-size-footnote);
   white-space: nowrap;
 }
-.canvas-zoom-select {
-  font-variant-numeric: tabular-nums;
+/* 右下角缩放的组织与 Slides 底栏缩放一致（− 百分比 +），位于底部停靠区最下方。 */
+.canvas-zoom-controls {
+  flex-shrink: 0;
+  align-self: flex-end;
+  gap: var(--space-0-5);
 }
-/* 极简触发器的右内边距小于箭头占位，紧凑工具条里数字会和箭头重叠。 */
-.canvas-zoom-select .select-trigger--minimal {
-  padding-right: calc(var(--linnya-ui-select-arrow-inset) + var(--linnya-ui-select-arrow-size));
-  color: var(--color-text-primary);
+/* 百分比按钮显示等宽数字，宽度固定在“400%”所需，比例变化时控件不跳动。 */
+.canvas-zoom-menu .canvas-zoom-value {
+  min-width: 5ch;
+  font-size: var(--font-size-body);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+/* 保存状态与 Slides 编辑命令条同一写法：平时“已保存”，失败用错误色。 */
+.canvas-save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-1-5) 0 var(--space-1);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  white-space: nowrap;
+}
+.canvas-save-status.is-failed {
+  color: var(--color-error-text);
+}
+.canvas-save-status-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-success);
 }
 .canvas-toolbar-menu {
   position: relative;
@@ -62,14 +104,11 @@
   margin-left: calc(var(--space-1) * -1);
   color: var(--color-text-tertiary);
 }
-.canvas-toolbar-menu-panel {
-  position: absolute;
-  top: calc(100% + var(--space-1));
-  left: 0;
-}
-.canvas-toolbar-menu-panel.is-end {
-  right: 0;
-  left: auto;
+/* 工具条菜单与右键菜单移到 body 后的定位层；位置由 placeCanvasMenu 按视口计算。 */
+.canvas-portal-menu {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-portal-menu);
+  width: max-content;
 }
 .canvas-color-swatch {
   display: inline-block;
@@ -162,18 +201,15 @@
   white-space: nowrap;
 }
 
-/* 底部状态区：进度、提示、错误按顺序堆叠，居中且不互相遮挡。 */
+/* 底部状态区：进度、提示、错误按顺序堆叠，与审阅面板同靠右缘，位于其上方。 */
 .canvas-status-area {
-  position: absolute;
-  bottom: var(--space-4);
-  left: 50%;
-  z-index: 7;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  flex-shrink: 0;
+  align-self: flex-end;
+  align-items: flex-end;
   gap: var(--space-2);
-  max-width: min(640px, calc(100% - var(--space-8)));
-  transform: translateX(-50%);
+  max-width: min(640px, 100%);
   pointer-events: none;
 }
 .canvas-status-item {

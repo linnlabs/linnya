@@ -12,8 +12,8 @@ it('首次保存保留同一个DOM编辑身份，切到真实卡时不取消正�
   const port: CanvasDocumentPort = { read: async () => ({ schemaVersion: 1, documentId: 'doc', sequence: 0, elements: [card] }), changes: vi.fn(), editing: async () => {}, undo: vi.fn(), close: async () => {}, subscribe: () => () => {}, commit: async input => ({ documentId: 'doc', requestId: input.requestId, sequence: 0, results: [{ index: 0, id: card.id, status: 'applied', reason: null }], refs: { $created: CanvasCardIdSchema.parse('c1') } }) };
   const session = createCanvasDocumentSession(port); await session.open('doc'); const editor = createCanvasCardEditor(session);
   const creation = createCanvasTextCreation(session, async (id, continuing, remaining, identity) => { if (continuing) { await editor.open(id, identity); const content = remaining(); if (content) editor.update(content); } });
-  const editable = { replaceContent: vi.fn(), focus: vi.fn() }, setEditingCard = vi.fn(), detailId = shallowRef<ReturnType<typeof CanvasCardIdSchema.parse> | null>(null);
-  const projection = installCanvasEditorProjection({ host: document.createElement('div'), editor, creation, editable, kernel: { setEditingCard }, camera: shallowRef({ x: 0, y: 0, zoom: 1 }), detailId, cards: () => [card], setDirty: vi.fn(), refresh: vi.fn() });
+  const editable = { replaceContent: vi.fn(), focus: vi.fn() }, setEditingCard = vi.fn(), setSelectionFrame = vi.fn(), detailId = shallowRef<ReturnType<typeof CanvasCardIdSchema.parse> | null>(null);
+  const projection = installCanvasEditorProjection({ host: document.createElement('div'), editor, creation, editable, kernel: { setEditingCard, setSelectionFrame }, resizeFrame: () => null, camera: shallowRef({ x: 0, y: 0, zoom: 1 }), detailId, cards: () => [card], setDirty: vi.fn(), refresh: vi.fn() });
   creation.begin({ x: 0, y: 0 }, null, '新内容'); await nextTick(); expect(editable.replaceContent).toHaveBeenCalledTimes(1);
   await creation.save(false); await nextTick(); expect(editable.replaceContent).toHaveBeenCalledTimes(1); expect(setEditingCard).toHaveBeenLastCalledWith(card.id);
   detailId.value = CanvasCardIdSchema.parse('c9'); expect(setEditingCard).toHaveBeenLastCalledWith(card.id);

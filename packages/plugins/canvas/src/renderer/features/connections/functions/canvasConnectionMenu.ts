@@ -1,5 +1,6 @@
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import type { CanvasPatch } from '@plugin/canvas/shared';
+import { canvasChromeColorChoices } from '../../canvasChrome';
 const directions = [
   { value: 'direction-none', text: '无箭头' },
   { value: 'direction-forward', text: '单向' },
@@ -12,15 +13,18 @@ const shapes: readonly CustomSelectOption<string>[] = [
   { value: 'pattern-solid', text: '实线' },
   { value: 'pattern-dashed', text: '虚线' },
 ];
-const colors = [
-  { value: 'color-white', text: '原色' },
-  { value: 'color-red', text: '红' },
-  { value: 'color-orange', text: '橙' },
-  { value: 'color-yellow', text: '黄' },
-  { value: 'color-green', text: '绿' },
-  { value: 'color-cyan', text: '青' },
-  { value: 'color-purple', text: '紫' },
-];
+const colors = canvasChromeColorChoices(
+  [
+    { color: 'white', text: '原色' },
+    { color: 'red', text: '红' },
+    { color: 'orange', text: '橙' },
+    { color: 'yellow', text: '黄' },
+    { color: 'green', text: '绿' },
+    { color: 'cyan', text: '青' },
+    { color: 'purple', text: '紫' },
+  ],
+  color => `color-${color}`
+);
 export const canvasConnectionContextActions: readonly CustomSelectOption<string>[] = [
   { value: 'label', text: '编辑标签', shortcut: '↩' },
   { text: '方向', children: directions },

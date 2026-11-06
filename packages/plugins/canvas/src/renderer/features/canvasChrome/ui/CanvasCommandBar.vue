@@ -36,60 +36,47 @@
         </ToolbarButton>
         <slot name="layout" />
       </ToolbarGroup>
-      <ToolbarGroup>
-        <ToolbarButton label="显示全部" data-linnya-tooltip="显示全部 (⌘1)" @click="emit('fit')">
-          <FullscreenIcon />
-        </ToolbarButton>
-        <ToolbarButton
-          label="缩小"
-          data-linnya-tooltip="缩小 (⌘−)"
-          @click="emit('zoom', zoom / 1.25)"
+      <span
+        v-if="!readonly"
+        class="canvas-save-status"
+        :class="`is-${saveStatus}`"
+        role="status"
+        aria-live="polite"
+      >
+        <CheckmarkIcon v-if="saveStatus === 'saved'" class="canvas-save-status-icon" /><span
+          class="canvas-save-status-text"
+          >{{ saveStatusText[saveStatus] }}</span
         >
-          <ZoomOutIcon />
-        </ToolbarButton>
-        <CustomSelect
-          :model-value="zoom"
-          :options="zoomOptions"
-          :placeholder="`${Math.round(zoom * 100)}%`"
-          trigger-aria-label="画布缩放比例"
-          min-width="72px"
-          variant="minimal"
-          :bordered="false"
-          class="canvas-zoom-select"
-          @update:model-value="emit('zoom', $event)"
-        />
-        <ToolbarButton
-          label="放大"
-          data-linnya-tooltip="放大 (⌘+)"
-          @click="emit('zoom', zoom * 1.25)"
-        >
-          <ZoomInIcon />
-        </ToolbarButton>
-      </ToolbarGroup>
+      </span>
     </div>
   </div>
 </template>
 <script setup lang="ts">
+import { ToolbarButton, ToolbarGroup } from '@linnya/renderer-ui';
+import { toRef } from 'vue';
 import {
-  CustomSelect,
-  ToolbarButton,
-  ToolbarGroup,
-  type CustomSelectOption,
-} from '@linnya/renderer-ui';
-import {
+  CheckmarkIcon,
   DocumentAddIcon,
-  FullscreenIcon,
   ImageIcon,
   RedoIcon,
   SearchIcon,
   TextIcon,
   UndoIcon,
-  ZoomInIcon,
-  ZoomOutIcon,
 } from '@linnya/renderer-ui/icons';
 
-/** 画布顶部命令条：只发出命令，执行与错误归页面编排。 */
-defineProps<{ readonly: boolean; zoom: number }>();
+import { useCanvasSaveStatus, type CanvasSaveStatus } from '../orchestration/useCanvasSaveStatus';
+
+/**
+ * 画布顶部命令条，与 Slides 编辑命令条同一组织：撤销重做、插入、画布命令，末尾是保存状态。
+ * 缩放与 Slides 一样不在顶部，见 CanvasZoomControls。只发出命令，执行与错误归页面编排。
+ */
+const props = defineProps<{ readonly: boolean; saving: boolean; unsaved: boolean }>();
+const saveStatus = useCanvasSaveStatus(toRef(props, 'saving'), toRef(props, 'unsaved'));
+const saveStatusText: Record<CanvasSaveStatus, string> = {
+  saved: '已保存',
+  saving: '正在保存…',
+  failed: '尚有未保存的修改',
+};
 const emit = defineEmits<{
   undo: [];
   redo: [];
@@ -97,18 +84,6 @@ const emit = defineEmits<{
   addDocument: [];
   addImage: [];
   search: [];
-  fit: [];
-  zoom: [value: number];
 }>();
 defineSlots<{ layout(): unknown }>();
-const zoomOptions: readonly CustomSelectOption<number>[] = [
-  { value: 0.1, text: '10%' },
-  { value: 0.25, text: '25%' },
-  { value: 0.5, text: '50%' },
-  { value: 0.75, text: '75%' },
-  { value: 1, text: '100%', shortcut: '⌘0' },
-  { value: 1.5, text: '150%' },
-  { value: 2, text: '200%' },
-  { value: 4, text: '400%' },
-];
 </script>

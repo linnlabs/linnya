@@ -1,5 +1,10 @@
 import { Container, NineSliceSprite } from 'pixi.js';
 import {
+  CANVAS_CARD_BACKGROUND_SLICE,
+  CANVAS_CARD_SHADOW_BLEED,
+  CANVAS_CARD_SHADOW_SLICE,
+} from './createCanvasCardBackground';
+import {
   readCanvasElementText,
   readCanvasCardPalette,
   type CanvasCard,
@@ -38,12 +43,18 @@ export class CanvasCardPresentation {
   }
 
   updateView(view: CanvasCardView): void {
-    const { card, background, body, label, container } = view;
+    const { card, shadow, background, body, label, container } = view;
     const wasVisible = container.visible && body.visible;
     container.visible = this.exposedIds.has(card.id);
-    background.texture = this.options.backgrounds[this.options.context.readAppearance().material];
+    const material = this.options.context.readAppearance().material;
+    background.texture = this.options.backgrounds[material];
     background.width = card.width;
     background.height = card.height;
+    shadow.visible = material === 'card';
+    if (shadow.visible) {
+      shadow.width = card.width + CANVAS_CARD_SHADOW_BLEED * 2;
+      shadow.height = card.height + CANVAS_CARD_SHADOW_BLEED * 2;
+    }
     const palette = readCanvasCardPalette(card.color, this.options.context.readAppearance().dark);
     background.tint = palette.paper;
     // 近景身份牌必须复用纹理；连续缩放不能每个事件重新生成几百张文字纹理。
@@ -122,21 +133,30 @@ export class CanvasCardPresentation {
 
   createView(card: CanvasCard): CanvasCardView {
     const container = new Container();
+    const shadow = new NineSliceSprite({
+      texture: this.options.backgrounds.shadow,
+      leftWidth: CANVAS_CARD_SHADOW_SLICE,
+      rightWidth: CANVAS_CARD_SHADOW_SLICE,
+      topHeight: CANVAS_CARD_SHADOW_SLICE,
+      bottomHeight: CANVAS_CARD_SHADOW_SLICE,
+    });
+    shadow.position.set(-CANVAS_CARD_SHADOW_BLEED);
     const background = new NineSliceSprite({
       texture: this.options.backgrounds[this.options.context.readAppearance().material],
-      leftWidth: 8,
-      rightWidth: 8,
-      topHeight: 8,
-      bottomHeight: 8,
+      leftWidth: CANVAS_CARD_BACKGROUND_SLICE,
+      rightWidth: CANVAS_CARD_BACKGROUND_SLICE,
+      topHeight: CANVAS_CARD_BACKGROUND_SLICE,
+      bottomHeight: CANVAS_CARD_BACKGROUND_SLICE,
     });
     const body = new Container();
     body.visible = false;
     const label = this.options.identities.create(this.identityTitle(card));
-    container.addChild(background, body, label);
+    container.addChild(shadow, background, body, label);
     this.options.layer.addChild(container);
     const view: CanvasCardView = {
       card,
       container,
+      shadow,
       background,
       body,
       label,
@@ -372,5 +392,6 @@ export class CanvasCardPresentation {
   destroyBackgrounds(): void {
     this.options.backgrounds.paper.destroy(true);
     this.options.backgrounds.card.destroy(true);
+    this.options.backgrounds.shadow.destroy(true);
   }
 }

@@ -30,6 +30,11 @@ export function installCanvasSurfaceBindings({
     creation,
     editable,
     kernel,
+    resizeFrame: () => {
+      const preview = base.resizing.state.preview.value,
+        [id] = selection.ids.value;
+      return preview && id && selection.ids.value.length === 1 ? { id, rectangle: preview } : null;
+    },
     camera,
     detailId: state.detailId,
     cards,

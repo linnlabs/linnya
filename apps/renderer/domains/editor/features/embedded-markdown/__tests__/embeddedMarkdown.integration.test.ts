@@ -23,6 +23,8 @@ describe('embedded Markdown surface', () => {
     expect(second.handle.readMarkdown()).toContain('另一个文档');
     expect(first.onUpdate).not.toHaveBeenCalled();
     expect(serializeEmbeddedMarkdown(first.handle.readContent())).toBe(first.handle.readMarkdown());
+    // 根节点即正文容器，首尾边距等只读呈现规则同样作用于编辑态。
+    expect(first.element.querySelector('.ProseMirror')?.classList.contains('markdown-document-content')).toBe(true);
   });
 
   it('未知节点和非法文档拒绝替换并保留当前正文', () => {

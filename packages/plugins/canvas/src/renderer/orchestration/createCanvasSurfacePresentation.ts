@@ -49,6 +49,8 @@ export function createCanvasSurfacePresentation({
       camera.value
     )
   );
+  // 改尺寸拖动中，选区浮条与连线锚点仍按旧外框定位，会压在预览框里；拖动期间收起。
+  const resizingCard = computed(() => resizing.state.preview.value !== null);
   const integrityNotice = computed(() => canvasIntegrityNotice(session.state.snapshot.value));
   const editingDraft = computed(() =>
     Boolean(editor.state.draft.value || creation.state.draft.value)
@@ -67,23 +69,21 @@ export function createCanvasSurfacePresentation({
       ports.readDocumentTitles?.() ?? new Map()
     )
   );
-  const contextStyle = computed(() => {
+  // 右键菜单只给出相对画布宿主的屏幕点；菜单移到 body 后由页面换算视口坐标并贴边收进视口。
+  const contextPoint = computed(() => {
     const point = context.value?.point;
-    const screen = point ? kernel.worldToScreen(point) : { x: 0, y: 0 };
-    return {
-      left: `${Math.min(Math.max(8, screen.x), options.host.clientWidth - 180)}px`,
-      top: `${Math.min(Math.max(8, screen.y), options.host.clientHeight - 320)}px`,
-    };
+    return point ? kernel.worldToScreen(point) : null;
   });
   return {
     selectedCards,
     selectionStyle,
     resizeStyle,
+    resizingCard,
     integrityNotice,
     editingDraft,
     hoveredCard,
     hasDraft,
     selectionDescription,
-    contextStyle,
+    contextPoint,
   };
 }

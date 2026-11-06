@@ -1,20 +1,24 @@
 /*
  * 画布页面。层级只在 .linnya-canvas 内局部堆叠（isolation），统一用 0–9：
- * -1 栅格暂存 · 2 正文编辑/文档详情 · 3 审阅标记 · 4 尺寸手柄 · 5 连线手柄与预览
- * 6 命令条/浮层面板/审阅面板 · 7 状态区 · 8 右键菜单。平台浮条与菜单自带层级 token。
+ * -1 栅格暂存（被舞台底色盖住）· 2 正文编辑/文档详情 · 3 审阅标记 · 4 尺寸手柄
+ * 5 连线手柄与预览 · 6 命令条/浮层面板/底部区。平台浮条自带层级 token；
+ * 工具条菜单与右键菜单移到 body（CanvasPortalMenu）。
  */
 .linnya-canvas {
   position: relative;
   isolation: isolate;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  /* clip 而非 hidden：聚焦画面外的元素时容器不能被滚走，整个画布错位。 */
+  overflow: clip;
   background: var(--color-bg-sidebar);
   color: var(--color-text-primary);
 }
 .canvas-stage {
   position: absolute;
   inset: 0;
+  /* Pixi 画布是透明的；舞台铺上画布底色，盖住下层的位图暂存区（z-index -1），否则暂存正文会透出成残影。 */
+  background: var(--color-bg-sidebar);
 }
 .canvas-stage canvas:focus-visible {
   outline: var(--focus-ring-width) solid var(--color-focus-ring);
@@ -22,29 +26,33 @@
 }
 
 /* 卡片正文排版变量由 cardRendering/styles/canvasMediaContent.css 定义，隐藏出图 worker 共用。 */
+/* 编辑器与文档详情叠在所选卡片上，纸面与画布卡片同一外框规则（kernel/cardFrame，页面注入变量）：
+   透明边框留出纸面阴影与选中描边的位置，纸色只铺在内缩后的纸面上；选中描边仍由画布绘制（kernel 的选中外框），
+   编辑态与选中态共用一套描边。内边距扣掉透明边框，正文与画布位图逐像素对齐。 */
+.canvas-editor-overlay,
+.canvas-document-detail {
+  border: var(--canvas-card-inset) solid transparent;
+  border-radius: calc(var(--canvas-card-radius) + var(--canvas-card-inset));
+  padding: calc(var(--canvas-card-padding-top) - var(--canvas-card-inset))
+    calc(var(--canvas-card-padding-inline) - var(--canvas-card-inset))
+    calc(var(--canvas-card-padding-bottom) - var(--canvas-card-inset));
+  background: var(--canvas-card-paper-color) padding-box;
+}
 .canvas-editor-overlay {
   position: absolute;
   top: 0;
   left: 0;
   z-index: 2;
   box-sizing: border-box;
-  padding: var(--canvas-card-padding);
   overflow: auto;
   overscroll-behavior: contain;
   transform-origin: 0 0;
   font-size: var(--canvas-card-font-size);
   line-height: var(--canvas-card-line-height);
-  background: var(--canvas-card-paper-color);
 }
 .canvas-editor-overlay .tiptap {
   min-height: 1em;
   outline: none;
-}
-.canvas-editor-provisional {
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-md);
-  background: var(--canvas-card-paper-color);
-  box-shadow: var(--shadow-floating-panel);
 }
 .canvas-card-content {
   box-sizing: border-box;
@@ -62,12 +70,10 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: var(--canvas-card-padding);
   overflow: hidden;
   transform-origin: 0 0;
   font-size: var(--canvas-card-font-size);
   line-height: var(--canvas-card-line-height);
-  background: var(--canvas-card-paper-color);
 }
 .canvas-document-detail-header {
   display: flex;
@@ -194,16 +200,31 @@
 }
 
 /* Agent 审阅面板：单一浮层表面，组之间用分隔线，不嵌套方框。 */
-.canvas-agent-review {
+/* 底部区靠右纵向排列：状态提示、审阅面板、缩放，窄窗口里也不互相压住；边距与顶部命令条一致。 */
+.canvas-bottom-dock {
   position: absolute;
-  right: var(--space-4);
-  bottom: var(--space-4);
+  right: var(--space-3);
+  bottom: var(--space-3);
+  left: var(--space-3);
   z-index: 6;
   display: flex;
   flex-direction: column;
+  gap: var(--space-2);
+  max-height: calc(100% - var(--space-10) - var(--space-10));
+  pointer-events: none;
+}
+.canvas-bottom-dock > * {
+  pointer-events: auto;
+}
+.canvas-agent-review {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 1;
+  align-self: flex-end;
   box-sizing: border-box;
-  width: min(420px, calc(100% - var(--space-8)));
-  max-height: 40%;
+  width: min(420px, 100%);
+  min-height: 0;
+  max-height: 40vh;
   padding: var(--space-1);
   overflow-y: auto;
   border-radius: var(--radius-lg);
@@ -431,11 +452,6 @@
   stroke: var(--color-accent);
   stroke-width: 1.5;
   stroke-dasharray: 5 3;
-}
-.canvas-context-menu {
-  position: absolute;
-  z-index: 8;
-  max-height: calc(100% - var(--space-4));
 }
 .canvas-file-input {
   display: none;

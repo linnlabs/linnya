@@ -24,6 +24,7 @@ import type {
   CanvasRasterTile,
   CanvasRenderStatus,
   CanvasSceneMotionOptions,
+  CanvasSelectionFrame,
 } from '../../definitions/canvasKernel';
 import { installCanvasInteraction } from '../../interaction/installCanvasInteraction';
 import { CanvasMapLabels } from './CanvasMapLabels';
@@ -51,7 +52,6 @@ export class PixiCanvasKernel implements CanvasKernel {
   private readonly world = new Container({ isRenderGroup: true });
   private readonly lines = new CanvasLines();
   private readonly cardLayer = new Container();
-  private readonly selectionProjection = new CanvasSelectionProjection();
   private readonly backgrounds = createCanvasCardBackgrounds();
   private readonly views = new Map<CanvasCardId, CanvasCardView>();
   private installingElements = false;
@@ -65,6 +65,7 @@ export class PixiCanvasKernel implements CanvasKernel {
   private targets = new Map<CanvasCardId, CanvasCard>();
   private cameraStyleChanged = false;
   private readonly selected = new Set<CanvasCardId>();
+  private readonly selectionProjection = new CanvasSelectionProjection(this.cards, this.selected);
   private readonly dragOriginals = new Map<CanvasCardId, CanvasCard>();
   private editingCard: CanvasCardId | null = null;
   private readonly mapLabels = new CanvasMapLabels();
@@ -206,8 +207,9 @@ export class PixiCanvasKernel implements CanvasKernel {
   private redrawGuides(): void {
     this.selectionProjection.drawGuides(this.camera.zoom);
   }
-  private redrawSelection(): void {
-    this.selectionProjection.drawSelection(this.cards, this.selected, this.camera.zoom);
+  private repaintSelection(): void {
+    this.selectionProjection.drawSelection(this.camera.zoom);
+    this.drawing.schedule();
   }
   setGuides(guides: readonly CanvasGuide[]): void {
     this.selectionProjection.setGuides(guides);
@@ -227,7 +229,7 @@ export class PixiCanvasKernel implements CanvasKernel {
     this.world.scale.set(this.camera.zoom);
     this.presentation.projectCards(styleChanged);
     this.updateLabels();
-    if (styleChanged) this.redrawSelection();
+    if (styleChanged) this.selectionProjection.drawSelection(this.camera.zoom);
     if (edgesChanged) this.redrawEdges();
     this.lines.setCamera(this.camera, this.width, this.height, this.app.renderer.resolution);
     this.drawing.schedule();
@@ -408,7 +410,7 @@ export class PixiCanvasKernel implements CanvasKernel {
     this.updateCameraState(next);
     this.refreshCamera(this.cameraStyleChanged);
     this.cameraStyleChanged = false;
-    this.redrawSelection();
+    this.selectionProjection.drawSelection(this.camera.zoom);
     this.redrawGuides();
   }
   animateCamera(camera: CanvasCamera, durationMs = 320): void {
@@ -443,7 +445,7 @@ export class PixiCanvasKernel implements CanvasKernel {
       this.refreshCamera(this.cameraStyleChanged);
       this.cameraStyleChanged = false;
       if (ids.length) this.lines.preview(ids, this.cards);
-      this.redrawSelection();
+      this.selectionProjection.drawSelection(this.camera.zoom);
       this.redrawGuides();
     }
     this.mapLabels.invalidate();
@@ -472,16 +474,14 @@ export class PixiCanvasKernel implements CanvasKernel {
     ids.forEach(id => this.selected.add(id));
     for (const id of [...previous, ...ids]) {
       const view = this.views.get(id);
-      if (view) {
-        view.lodAlpha = this.camera.zoom < 0.15 && !this.selected.has(id) ? 0.6 : 1;
-        this.scene.apply(view);
-      }
+      if (!view) continue;
+      view.lodAlpha = this.camera.zoom < 0.15 && !this.selected.has(id) ? 0.6 : 1;
+      this.scene.apply(view);
     }
     this.refreshTitleOrder();
     this.updateLabels();
     this.lines.setSelection(ids);
-    this.redrawSelection();
-    this.drawing.schedule();
+    this.repaintSelection();
   }
   readSelection(): readonly CanvasCardId[] {
     return [...this.selected];
@@ -494,17 +494,18 @@ export class PixiCanvasKernel implements CanvasKernel {
     const previous = this.editingCard;
     this.editingCard = id;
     for (const target of [previous, id]) {
-      if (target) {
-        const view = this.views.get(target);
-        if (view) this.presentation.updateView(view);
-      }
+      const view = target ? this.views.get(target) : undefined;
+      if (view) this.presentation.updateView(view);
     }
     this.drawing.schedule();
   }
+  setSelectionFrame(frame: CanvasSelectionFrame | null): void {
+    this.selectionProjection.setFrame(frame);
+    this.repaintSelection();
+  }
   setBrush(rectangle: CanvasRectangle | null): void {
     this.selectionProjection.setBrush(rectangle);
-    this.redrawSelection();
-    this.drawing.schedule();
+    this.repaintSelection();
   }
   setDragPreview(ids: readonly CanvasCardId[], dx: number, dy: number): void {
     this.scene.freeze(ids);
@@ -538,8 +539,7 @@ export class PixiCanvasKernel implements CanvasKernel {
     );
     this.presentation.projectCards(false);
     this.lines.preview(movingIds, this.cards);
-    this.redrawSelection();
-    this.drawing.schedule();
+    this.repaintSelection();
     this.notify?.({ kind: 'preview-changed' });
   }
   clearDragPreview(): void {
@@ -561,8 +561,7 @@ export class PixiCanvasKernel implements CanvasKernel {
     this.updateLabels();
     this.presentation.projectCards(false);
     this.redrawEdges();
-    this.redrawSelection();
-    this.drawing.schedule();
+    this.repaintSelection();
     this.notify?.({ kind: 'preview-changed' });
   }
 
@@ -592,7 +591,7 @@ export class PixiCanvasKernel implements CanvasKernel {
   setAppearance(next: CanvasAppearance): void {
     if (next.dark !== this.appearance.dark) this.invalidateBitmaps();
     this.appearance = next;
-    this.selectionProjection.setAccent((next.chrome ?? canvasStandaloneChrome(next.dark)).accent);
+    this.selectionProjection.setAppearance(next);
     this.lines.setAppearance(next);
     this.refreshCamera(true);
   }
