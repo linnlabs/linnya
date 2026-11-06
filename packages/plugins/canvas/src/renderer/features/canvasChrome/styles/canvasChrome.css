@@ -7,14 +7,35 @@
   max-width: calc(100% - var(--space-6));
   transform: translateX(-50%);
 }
+/* 与 Slides 编辑命令条同一外观：常驻命令条用细描边 + 近影 + 远影的小元素阴影，不加边框。 */
 .canvas-command-bar {
-  position: relative;
-  box-shadow: var(--shadow-floating-panel);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: calc(var(--radius-lg) + var(--space-0-5));
+  background: var(--color-bg-default);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 6%, transparent),
+    0 1px 3px var(--shadow-color-xs),
+    0 8px 24px -4px var(--shadow-color-md);
+  color: var(--color-text-primary);
   white-space: nowrap;
 }
+/* 选区浮条沿用平台 FloatingToolbar 的外观，与 Slides 元素属性浮条一致。 */
 .canvas-selection-bar {
-  box-shadow: var(--shadow-floating-panel);
   transform: translateX(-50%);
+  white-space: nowrap;
+}
+.canvas-selection-bar .canvas-selection-ai {
+  gap: var(--space-1);
+  color: var(--color-accent-text);
+  font-weight: var(--font-weight-semibold);
+}
+.canvas-selection-count {
+  padding: 0 var(--space-1);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
   white-space: nowrap;
 }
 .canvas-zoom-select {
@@ -38,6 +59,7 @@
 .canvas-toolbar-menu .linnya-toolbar-button > .canvas-toolbar-menu-arrow {
   width: 12px;
   height: 12px;
+  margin-left: calc(var(--space-1) * -1);
   color: var(--color-text-tertiary);
 }
 .canvas-toolbar-menu-panel {

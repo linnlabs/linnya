@@ -1,13 +1,6 @@
 <template>
   <div class="canvas-command-dock">
-    <FloatingToolbar
-      :show="true"
-      :position="{ top: 0, left: 0 }"
-      class="canvas-command-bar"
-      role="toolbar"
-      aria-label="画布命令"
-      @pointerdown.stop
-    >
+    <div class="canvas-command-bar" role="toolbar" aria-label="画布命令" @pointerdown.stop>
       <ToolbarGroup>
         <ToolbarButton
           label="撤销"
@@ -73,13 +66,12 @@
           <ZoomInIcon />
         </ToolbarButton>
       </ToolbarGroup>
-    </FloatingToolbar>
+    </div>
   </div>
 </template>
 <script setup lang="ts">
 import {
   CustomSelect,
-  FloatingToolbar,
   ToolbarButton,
   ToolbarGroup,
   type CustomSelectOption,

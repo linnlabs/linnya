@@ -8,9 +8,18 @@
     @pointerdown.stop
   >
     <ToolbarGroup>
-      <ToolbarButton label="加入对话" data-linnya-tooltip="加入对话 (⌘K)" @click="emit('converse')">
+      <ToolbarButton
+        class="canvas-selection-ai"
+        label="加入对话"
+        data-linnya-tooltip="加入对话 (⌘K)"
+        @click="emit('converse')"
+      >
         <LinnyaIcon />
+        <span>AI</span>
       </ToolbarButton>
+    </ToolbarGroup>
+    <ToolbarGroup v-if="count > 1">
+      <span class="canvas-selection-count">已选 {{ count }} 张</span>
     </ToolbarGroup>
     <ToolbarGroup>
       <ToolbarButton label="编辑或打开" data-linnya-tooltip="编辑或打开 (↩)" @click="emit('edit')">

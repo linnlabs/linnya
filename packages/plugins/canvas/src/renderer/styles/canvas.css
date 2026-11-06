@@ -395,7 +395,6 @@
   background: var(--color-accent);
 }
 .canvas-connection-bar {
-  box-shadow: var(--shadow-floating-panel);
   white-space: nowrap;
 }
 .canvas-connection-label-input {
