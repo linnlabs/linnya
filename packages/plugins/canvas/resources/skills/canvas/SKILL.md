@@ -45,6 +45,7 @@ metadata:
 - 每个逻辑写动作使用新的 request-id；响应丢失的重试复用原ID与原始数组。
 - 不同ID的相同新增内容会创建不同卡，程序不会按正文猜重复。
 - 若输出经过管道筛选或响应丢失，用`receipt <画布路径> <原request-id>`只读查询原始回执；不要换新ID再写一次来猜是否成功。提交回执保留逐项结果，不能用当前画面代替；查不到回执也不能证明原请求未尝试或未失败。
+- 每张画布保留最近1000条未固定终态回执，待确认及仍被未结束组引用的结果另行保留。超出窗口后查询可能返回null；先读取当前内容确认原动作结果，不要盲目重发旧新增或追加。
 - `--dry-run` 校验、真实测高并给出预测，不写入；正式ID与位置以提交回执为准。
 - 新卡用 `$name` 临时ref互相引用，提交后用回执refs取得真实cN/eN。不要猜下一个ID。
 - 操作判别字段是op，update/delete/disconnect用id指定已有对象；其余字段按[操作与示例](references/operations.md)和[可解析数组](references/examples.json)填写，不套用其他画布API的action/target字段。
@@ -58,7 +59,7 @@ metadata:
 - 文档标签用标准Markdown链接，例如`[资料](workspace:/资料.md)`；提交时转换成稳定身份。
 - 读取后引用目标改名、移动或同路径被替换会拒绝旧写；重新show后重试。
 - 含失效/越界标签的全文替换不能无损完成，会明确拒绝；可append，或先在界面处理引用。
-- delete/disconnect使用本画布cN/eN；不能跨画布引用这些局部编号。
+- delete/disconnect必须带show读到的revision，使用本画布cN/eN；不能跨画布引用这些局部编号。若已被修改，重新读取并判断是否仍应删除，不沿用旧意图强删。
 
 具体数组见 [操作与示例](references/operations.md)；可直接解析的示例在 [examples.json](references/examples.json)。
 

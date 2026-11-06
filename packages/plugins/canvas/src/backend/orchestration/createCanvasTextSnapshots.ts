@@ -30,6 +30,9 @@ export function createCanvasTextSnapshots(database: CanvasDatabase) {
       try { refresh(documentId); } catch (error) { logger.error('Canvas文本快照刷新失败', { documentId, error }); }
     }
   }
-  function schedule(documentId: string) { pending.add(documentId); if (!timer) timer = setTimeout(flush, 30000); }
+  function schedule(documentId: string) {
+    pending.add(documentId);
+    if (!timer) { timer = setTimeout(flush, 30000); timer.unref(); }
+  }
   return { refresh, flush, schedule };
 }

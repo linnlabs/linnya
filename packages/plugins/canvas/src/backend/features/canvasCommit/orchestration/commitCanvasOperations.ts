@@ -5,7 +5,9 @@ import { validateCanvasPlanContent } from '../functions/validateCanvasContent';
 import { planCanvasCommit } from '../functions/planCanvasCommit';
 import type { CanvasRectangle } from '../../../../shared/geometry/definitions/canvasGeometry';
 import { canvasPayloadHash, canvasSourceKey, canvasOperationsPayload } from '../functions/canvasRequestIdentity';
-import { persistCanvasCommit, readCanvasCommitState, readCanvasEditingClaims, readCanvasReceipt } from '../persistence/canvasRepository';
+import { persistCanvasCommit, readCanvasCommitState, readCanvasEditingClaims } from '../persistence/canvasRepository';
+import { readCanvasReceipt } from '../persistence/readCanvasRequestReceipts';
+import { pruneCanvasRequestReceipts } from '../persistence/canvasRequestRepository';
 import { performance } from 'node:perf_hooks';
 
 export interface CanvasHistoryCommitInput {
@@ -59,6 +61,7 @@ export function commitCanvasTransition(input: CanvasTransitionInput): CanvasComm
     persistCanvasCommit(input.database, { documentId: input.documentId, sourceKey, source: input.actor.source, plan, result, payloadHash, now: input.now });
     for (const participant of input.ports?.participants ?? []) participant.commit(plan, context);
     updateMemory = input.ports?.history?.({ context, before: state, plan, result, operations: input.operations });
+    pruneCanvasRequestReceipts(input.database, input.documentId);
     committedPlan = plan;
   }).immediate();
   const committedAt = performance.timeOrigin + performance.now();

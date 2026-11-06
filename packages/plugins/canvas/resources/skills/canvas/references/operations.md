@@ -8,9 +8,9 @@ arrange算一个原始动作，其展开的坐标更新不另占原始动作配�
 | --- | --- |
 | add | text，或type=document+document，或type=image+file；可选ref/near/after/in/side/width/color |
 | update | id/revision；可选text或append、color、locked、width、图片caption/alt、连线label/direction/lineStyle/linePattern；省略字段保持原值 |
-| delete | id，可选revision；连在被删卡上的线一起删除 |
+| delete | id、revision（show读取的版本）；连在被删卡上的线一起删除 |
 | connect | from/to，可选ref/label/direction(none/forward/both)/lineStyle(curve/straight)/linePattern(solid/dashed) |
-| disconnect | 线id，可选revision |
+| disconnect | 线id、revision（show读取的版本） |
 | arrange | algorithm(tree/grid/layered)，可选elementIds/direction/columns/groups；只可放最后 |
 
 图文归纳：先添加来源文档卡，再用文字卡记录结论，通过connect标明来源；文字中的证据链接使用当前workspace文档路径或普通外部网页链接。研究联网由既有工具完成，Canvas不自造搜索能力。

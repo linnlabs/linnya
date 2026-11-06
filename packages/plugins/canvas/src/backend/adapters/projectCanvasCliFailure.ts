@@ -2,7 +2,7 @@ import { ZodError } from 'zod';
 import { Logger } from '@plugin/backend/workspaceRuntime';
 import { CanvasCliFailure, formatCanvasCliInputError } from '../features/canvasCli';
 import { CanvasDocumentFailure } from '../features/canvasDocument';
-import { CanvasReadOnlyFormatError, CanvasContentPolicyError } from '../features/canvasCommit';
+import { CanvasReadOnlyFormatError, CanvasContentPolicyError, CanvasCommitFailure } from '../features/canvasCommit';
 import { CanvasWriteFailure } from '../features/canvasWrite';
 import { CanvasRenderingError } from '../features/canvasRender';
 
@@ -24,7 +24,7 @@ const messages: Readonly<Record<string, string>> = {
 export function createCanvasCliFailureProjector(logger: Logger) {
   return (error: unknown) => {
     if (error instanceof ZodError || error instanceof CanvasCliFailure) return formatCanvasCliInputError(error);
-    if (error instanceof CanvasDocumentFailure || error instanceof CanvasRenderingError || error instanceof CanvasReadOnlyFormatError || error instanceof CanvasContentPolicyError) return { code: error.code, message: error.message };
+    if (error instanceof CanvasDocumentFailure || error instanceof CanvasRenderingError || error instanceof CanvasReadOnlyFormatError || error instanceof CanvasContentPolicyError || error instanceof CanvasCommitFailure) return { code: error.code, message: error.message };
     if (error instanceof CanvasWriteFailure) return { code: error.code, message: error.message, operation: error.operation, field: error.field };
     if (error instanceof SyntaxError) return { code: 'invalid_json', message: 'ops-file必须是UTF-8 JSON操作数组，请修正语法后再提交。' };
     if (error instanceof Error && messages[error.message]) return { code: error.message, message: messages[error.message] };

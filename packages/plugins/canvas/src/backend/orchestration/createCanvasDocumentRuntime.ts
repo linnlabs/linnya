@@ -34,7 +34,10 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
       versions.checkpoint({ documentId, reason: 'agent-group', now,
         snapshot: { schemaVersion: 1, documentId, sequence: before.sequence, elements: before.elements.map(row => row.element) } });
     },
-    groupsChanged(documentId) { versions.requestMaintenance(documentId); broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_GROUPS_CHANGED_CHANNEL, { documentId }); },
+    groupsChanged(documentId, reason) {
+      if (reason === 'release') versions.requestMaintenance(documentId);
+      broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_GROUPS_CHANGED_CHANNEL, { documentId });
+    },
     ports: {
     // CLI 的正文/图片准入可跨过停用时刻；最终事务统一拒绝旧运行态，不能只检查入口。
     participants: [{ commit() { assertActive(); } }, ...admission.participants],

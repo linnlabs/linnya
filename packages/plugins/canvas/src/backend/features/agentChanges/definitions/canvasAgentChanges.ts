@@ -15,7 +15,7 @@ export interface CanvasAgentGroupStart {
 export const CanvasAgentGroupRecordSchema = z.object({
   id: z.string(), documentId: z.string(), conversationId: z.string().nullable(), runIds: z.array(z.string()),
   createdAt: z.number(), lastWriteAt: z.number(), entry: CanvasHistoryEntrySchema, reviewedElementIds: z.array(CanvasElementIdSchema), deletedUserCardIds: z.array(CanvasElementIdSchema), deletedAtSequence: z.record(z.string(), z.number().int().nonnegative()),
-  outcomes: CanvasGroupWriteOutcomesSchema.optional(),
+  outcomes: CanvasGroupWriteOutcomesSchema,
 }).strict();
 export const CanvasPendingBatchSchema = z.object({
   approval: CanvasPendingApprovalSchema, request: CanvasCommitRequestSchema,

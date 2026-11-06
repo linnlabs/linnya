@@ -2,11 +2,11 @@ import { decodeCanvasPersistedRows, CanvasReadOnlyFormatError } from '../functio
 import { z } from 'zod';
 import type { CanvasDatabase } from '../../../definitions/canvasDatabase';
 import { CanvasCommitDeltaSchema, type CanvasSnapshot, type CanvasSource } from '../../../../shared';
-import { CanvasCommitResultSchema, type CanvasCommitResult } from '../../../../shared/changeset/definitions/canvasCommands';
+import { type CanvasCommitResult } from '../../../../shared/changeset/definitions/canvasCommands';
+import { saveCanvasCommittedReceipt } from './canvasRequestRepository';
 import type { CanvasCommitPlan, CanvasCommitState, CanvasEditingClaim } from '../definitions/canvasCommit';
 
 const documentRowSchema = z.object({ schema_version: z.number().int(), sequence: z.number().int().nonnegative(), next_card: z.number().int().positive(), next_edge: z.number().int().positive(), maximum_revision: z.number().int().nonnegative() });
-const receiptRowSchema = z.object({ payload_hash: z.string(), result_json: z.string() });
 
 export function readCanvasSequence(database: Pick<CanvasDatabase, 'prepare'>, documentId: string): number {
   const raw = database.prepare('SELECT sequence FROM canvas_documents WHERE node_id = ?').get(documentId);
@@ -41,16 +41,6 @@ export function readCanvasSnapshot(database: Pick<CanvasDatabase, 'prepare'>, do
     ...(issues.length ? { integrity: { readOnly: true, formatVersion: row.schema_version, issues } } : {}) };
 }
 
-export function readCanvasReceipt(database: Pick<CanvasDatabase, 'prepare'>, input: {
-  readonly documentId: string; readonly sourceKey: string; readonly requestId: string;
-}): { readonly payloadHash: string; readonly result: CanvasCommitResult } | null {
-  const raw = database.prepare('SELECT payload_hash, result_json FROM canvas_requests WHERE node_id = ? AND source_key = ? AND request_id = ?')
-    .get(input.documentId, input.sourceKey, input.requestId);
-  if (!raw) return null;
-  const row = receiptRowSchema.parse(raw);
-  return { payloadHash: row.payload_hash, result: CanvasCommitResultSchema.parse(JSON.parse(row.result_json)) };
-}
-
 export function persistCanvasCommit(database: CanvasDatabase, input: {
   readonly documentId: string; readonly sourceKey: string; readonly source: CanvasSource;
   readonly plan: CanvasCommitPlan; readonly result: CanvasCommitResult; readonly payloadHash: string; readonly now: number;
@@ -81,8 +71,7 @@ export function persistCanvasCommit(database: CanvasDatabase, input: {
     // 同步日志有界，但请求回执独立保留；日志裁剪不能让写入重试重新执行。
     database.prepare('DELETE FROM canvas_changes WHERE node_id = ? AND sequence <= ?').run(documentId, plan.state.sequence - 512);
   }
-  database.prepare('INSERT INTO canvas_requests (node_id, source_key, request_id, payload_hash, result_json, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(documentId, input.sourceKey, input.result.requestId, input.payloadHash, JSON.stringify(input.result), input.now);
+  saveCanvasCommittedReceipt(database, { ...input, requestId: input.result.requestId });
 }
 
 export function readCanvasEditingClaims(database: Pick<CanvasDatabase, 'prepare'>, input: {

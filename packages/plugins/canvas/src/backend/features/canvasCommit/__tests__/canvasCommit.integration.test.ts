@@ -5,6 +5,8 @@ import { createEmptyCanvasDocument, readCanvasSnapshot, updateCanvasEditingClaim
 import { commitCanvasOperations } from '../orchestration/commitCanvasOperations';
 import { createCanvasPlainTextDocument } from '../../../../shared';
 import type { CanvasCommitActor } from '../definitions/canvasCommit';
+import { Logger } from '@plugin/backend/workspaceRuntime';
+import { createCanvasCliFailureProjector } from '../../../adapters/projectCanvasCliFailure';
 
 const user: CanvasCommitActor = { source: { kind: 'user', conversationId: null, runId: null }, viewId: 'view' };
 const agent: CanvasCommitActor = { source: { kind: 'agent', conversationId: 'conversation', runId: 'run' }, viewId: 'agent' };
@@ -21,6 +23,51 @@ function fixture() {
 }
 
 describe('Canvas atomic editing', () => {
+  it.each([
+    { operation: { op: 'connect', from: 'c1', to: 'c1' }, code: 'canvas_self_connection' },
+    { operation: { op: 'connect', from: 'c1', to: 'c999' }, code: 'canvas_endpoint_missing' },
+    { operation: { ...add('B'), near: 'c999' }, code: 'canvas_placement_target_missing' },
+  ])('returns an actionable CLI failure and rolls back the whole invalid batch: $code', ({ operation, code }) => {
+    const database = fixture();
+    try {
+      commitCanvasOperations({ database, actor: agent, now: 1, request: { documentId: 'canvas', requestId: 'seed', operations: [add('A')] } });
+      const before = readCanvasSnapshot(database, 'canvas');
+      const project = createCanvasCliFailureProjector(new Logger('CanvasCommitTest'));
+      let failure: unknown;
+      try { commitCanvasOperations({ database, actor: agent, now: 2, request: {
+        documentId: 'canvas', requestId: 'invalid', operations: [add('不应半提交'), operation],
+      } }); } catch (error) { failure = error; }
+      expect(project(failure)).toMatchObject({ code });
+      expect(readCanvasSnapshot(database, 'canvas')).toEqual(before);
+      expect(database.prepare("SELECT COUNT(*) AS n FROM canvas_requests WHERE request_id = 'invalid'").get()).toEqual({ n: 0 });
+    } finally { database.close(); }
+  });
+  it('skips an existing connection without discarding independent operations or consuming a new edge ID', () => {
+    const database = fixture();
+    try {
+      const write = (requestId: string, operations: unknown[]) => commitCanvasOperations({ database, actor: agent, now: 1,
+        request: { documentId: 'canvas', requestId, operations } });
+      write('seed', [add('A'), add('B'), { op: 'connect', from: 'c1', to: 'c2' }]);
+      const result = write('repeat-and-add', [{ op: 'connect', ref: '$existing', from: 'c1', to: 'c2', label: '不能覆盖原线' }, add('C')]);
+      expect(result.results).toMatchObject([{ status: 'skipped', id: 'e1', reason: 'connection_exists' }, { status: 'applied', id: 'c3' }]);
+      expect(result.refs.$existing).toBe('e1');
+      expect(write('new-edge', [{ op: 'connect', from: 'c2', to: 'c3' }]).results[0].id).toBe('e2');
+      expect(readCanvasSnapshot(database, 'canvas').elements.find(row => row.id === 'e1')).toMatchObject({ label: '' });
+    } finally { database.close(); }
+  });
+  it('requires an Agent deletion baseline and preserves cards changed after that baseline', () => {
+    const database = fixture();
+    try {
+      commitCanvasOperations({ database, actor: user, now: 1, request: { documentId: 'canvas', requestId: 'add', operations: [add('旧内容')] } });
+      commitCanvasOperations({ database, actor: user, now: 2, request: { documentId: 'canvas', requestId: 'edit', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'green' } }] } });
+      const remove = (requestId: string, baseRevision?: number) => commitCanvasOperations({ database, actor: agent, now: 3,
+        request: { documentId: 'canvas', requestId, operations: [{ op: 'delete', id: 'c1', baseRevision }] } });
+      expect(remove('no-baseline').results[0]).toMatchObject({ status: 'skipped', reason: 'revision_required' });
+      expect(remove('stale', 1).results[0]).toMatchObject({ status: 'skipped', reason: 'stale_element' });
+      expect(readCanvasSnapshot(database, 'canvas').elements[0]).toMatchObject({ revision: 2, color: 'green' });
+      expect(remove('current', 2).results[0].status).toBe('applied');
+    } finally { database.close(); }
+  });
   it('creates, edits and reopens through the same persisted model', () => {
     const database = fixture();
     const first = commitCanvasOperations({ database, request: { documentId: 'canvas', requestId: 'one', operations: [add('第一张'), add('第二张')] }, actor: user, now: 1 });

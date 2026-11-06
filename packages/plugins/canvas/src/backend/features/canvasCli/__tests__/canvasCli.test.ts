@@ -8,6 +8,10 @@ it('子命令help不要求文档路径或写参数，也不会进入写流程', 
 });
 
 it('requires explicit stable mutation IDs and keeps Agent-only paths and options narrow', () => {
+  for (const op of ['delete', 'disconnect']) {
+    expect(CanvasCliBatchSchema.safeParse([{ op, id: op === 'delete' ? 'c1' : 'e1' }]).success).toBe(false);
+    expect(CanvasCliBatchSchema.safeParse([{ op, id: op === 'delete' ? 'c1' : 'e1', revision: 1 }]).success).toBe(true);
+  }
   expect(parseCanvasCli(['apply', 'workspace:/讨论.canvas', '--ops-file', 'batch.json', '--request-id', 'retry-1', '--dry-run'])).toMatchObject({ kind: 'apply', requestId: 'retry-1', dryRun: true });
   expect(() => parseCanvasCli(['apply', 'workspace:/讨论.canvas', '--ops-file', 'batch.json'])).toThrow('request-id');
   expect(() => parseCanvasCli(['check', '/etc/passwd'])).toThrow('workspace:');

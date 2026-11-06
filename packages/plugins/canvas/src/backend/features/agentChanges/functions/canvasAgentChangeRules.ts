@@ -3,6 +3,12 @@ import type { CanvasCommitPlan, CanvasCommitState } from '../../canvasCommit';
 import type { CanvasHistoryEntry } from '../../../shared/history';
 import type { CanvasAgentGroupRecord } from '../definitions/canvasAgentChanges';
 
+export function markCanvasGroupElementsReviewed(group: CanvasAgentGroupRecord, elementIds: ReadonlySet<CanvasElementId>): CanvasAgentGroupRecord | null {
+  const reviewed = new Set(group.reviewedElementIds);
+  for (const change of group.entry.changes) if (elementIds.has(change.id)) reviewed.add(change.id);
+  return reviewed.size === group.reviewedElementIds.length ? null : { ...group, reviewedElementIds: [...reviewed] };
+}
+
 /** 只看实际成功删除/移动，拆成多个小批次也不能绕过删除累计门槛。 */
 export function evaluateCanvasApproval(before: CanvasCommitState, plan: CanvasCommitPlan, group: CanvasAgentGroupRecord | null) {
   const deletedUser = plan.changes.flatMap(change => change.before && !change.after && change.before.type !== 'edge' && change.before.createdBy.kind === 'user' ? [change.id] : []);
@@ -34,7 +40,7 @@ export function projectCanvasAgentGroup(group: CanvasAgentGroupRecord, pendingAp
     else if (kind === 'updated') updated.push(id);
   }
   const deletedCards = [...byId.values()].flatMap(records => { const last = records[records.length - 1]; return classifyCardChanges(records) === 'deleted' && last?.before && last.before.type !== 'edge' ? [last.before] : []; });
-  return { id: group.id, documentId: group.documentId, conversationId: group.conversationId, runIds: group.runIds, reviewedElementIds: group.reviewedElementIds, createdAt: group.createdAt, lastWriteAt: group.lastWriteAt, writing: group.entry.changes.length > 0 && now - group.lastWriteAt < 3000, added, updated, deleted, changes, outcomes: group.outcomes ?? { complete: false, skippedWrites: [] }, deletedCards, visibleDeletedCards: visibleAfterSequence === undefined ? [] : deletedCards.filter(card => (group.deletedAtSequence[card.id] ?? 0) > visibleAfterSequence), pendingApproval };
+  return { id: group.id, documentId: group.documentId, conversationId: group.conversationId, runIds: group.runIds, reviewedElementIds: group.reviewedElementIds, createdAt: group.createdAt, lastWriteAt: group.lastWriteAt, writing: group.entry.changes.length > 0 && now - group.lastWriteAt < 3000, added, updated, deleted, changes, outcomes: group.outcomes, deletedCards, visibleDeletedCards: visibleAfterSequence === undefined ? [] : deletedCards.filter(card => (group.deletedAtSequence[card.id] ?? 0) > visibleAfterSequence), pendingApproval };
 }
 export function selectCanvasGroupWithdrawal(entry: CanvasHistoryEntry, elementIds: readonly CanvasElementId[] | undefined): { selected: CanvasHistoryEntry; remaining: CanvasHistoryEntry } {
   if (!elementIds) return { selected: entry, remaining: { changes: [], groupId: null } };

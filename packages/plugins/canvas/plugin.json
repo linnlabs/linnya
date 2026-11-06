@@ -44,7 +44,6 @@
     "canvas_history_guards",
     "canvas_agent_groups",
     "canvas_pending_approvals",
-    "canvas_agent_requests",
     "canvas_versions",
     "canvas_version_heads"
   ],
@@ -58,23 +57,7 @@
   "migrations": [
     {
       "version": 1,
-      "description": "Canvas current content and atomic editing"
-    },
-    {
-      "version": 2,
-      "description": "Separate monotonic field versions from logical undo origins"
-    },
-    {
-      "version": 3,
-      "description": "Durable conversation change groups and trusted UI approvals"
-    },
-    {
-      "version": 4,
-      "description": "Reverse-field version history, anchors and soft retention budget"
-    },
-    {
-      "version": 5,
-      "description": "Monotonic document revision floor for historical entity restoration"
+      "description": "Canvas content, bounded request receipts, approvals and reverse history"
     }
   ]
 }

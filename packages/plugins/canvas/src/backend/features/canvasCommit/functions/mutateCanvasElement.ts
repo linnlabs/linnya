@@ -7,14 +7,19 @@ import type { CanvasStoredElement } from '../definitions/canvasCommit';
 import { planCanvasUpdateFields } from './planCanvasUpdateFields';
 
 type MutationCommand = Extract<CanvasCommand, { op: 'update' | 'delete' }>;
+function deletionBlockReason(plan: CanvasWorkingPlan, row: CanvasStoredElement, command: Extract<CanvasCommand, { op: 'delete' }>): string | null {
+  // 删除依赖整张读取基线，不能像样式字段一样接受后写；用户界面仍可删除当前选区。
+  if (plan.actor.source.kind === 'agent' && command.baseRevision === undefined) return 'revision_required';
+  if (command.baseRevision !== undefined && command.baseRevision !== row.element.revision) return 'stale_element';
+  const respectsClaims = plan.actor.source.kind === 'agent' || plan.layoutTargets.has(command.id) || plan.layoutTargets.has(row.element.id);
+  return respectsClaims && plan.claims.some(claim => claim.elementId === row.element.id && claim.fields.length) ? 'user_editing' : null;
+}
 function entityBlockReason(plan: CanvasWorkingPlan, row: CanvasStoredElement, command: MutationCommand): string | null {
   const unlocking = plan.actor.source.kind === 'user' && command.op === 'update' && command.patch.locked === false && Object.keys(command.patch).every(field => field === 'locked');
   if (row.element.locked && !unlocking) return 'element_locked';
   // 稳定ID被历史复活后仍是新的实例世代；样式LWW不能绕过这个边界。
   if (command.op === 'update' && (row.fieldVersions.$existence ?? 0) > command.baseRevision) return 'stale_element';
-  if (command.op !== 'delete') return null;
-  const respectsClaims = plan.actor.source.kind === 'agent' || plan.layoutTargets.has(command.id) || plan.layoutTargets.has(row.element.id);
-  return respectsClaims && plan.claims.some(claim => claim.elementId === row.element.id && claim.fields.length) ? 'user_editing' : null;
+  return command.op === 'delete' ? deletionBlockReason(plan, row, command) : null;
 }
 function updateElement(plan: CanvasWorkingPlan, row: CanvasStoredElement, command: Extract<CanvasCommand, { op: 'update' }>): CanvasOperationResult {
   // 原始完整输入先过格式约束，不能因某字段冲突而把坏正文偷偷当作合法部分成功。
@@ -29,15 +34,13 @@ function updateElement(plan: CanvasWorkingPlan, row: CanvasStoredElement, comman
   appendCanvasPlanChange(plan, row.element, after, fields);
   return { index: plan.results.length, id: row.element.id, status: 'applied', reason: skipped ? 'partial_fields_skipped' : null, fieldResults };
 }
-function deleteElement(plan: CanvasWorkingPlan, row: CanvasStoredElement, command: Extract<CanvasCommand, { op: 'delete' }>): string | null {
+function deleteElement(plan: CanvasWorkingPlan, row: CanvasStoredElement): void {
   const current = row.element;
-  if (command.baseRevision !== undefined && command.baseRevision !== current.revision) return 'stale_element';
   appendCanvasPlanChange(plan, current, null, ['$existence']);
-  if (current.type === 'edge') return null;
+  if (current.type === 'edge') return;
   const attached = [...plan.elements.values()].filter(row => row.element.type === 'edge'
     && ((row.element.from.kind === 'card' && row.element.from.cardId === current.id) || (row.element.to.kind === 'card' && row.element.to.cardId === current.id)));
   for (const edge of attached) appendCanvasPlanChange(plan, edge.element, null, ['$existence']);
-  return null;
 }
 export function mutateCanvasElement(plan: CanvasWorkingPlan, command: MutationCommand): CanvasOperationResult {
   const id = resolveCanvasPlanElement(plan, command.id), row = id ? plan.elements.get(id) : undefined;
@@ -46,6 +49,6 @@ export function mutateCanvasElement(plan: CanvasWorkingPlan, command: MutationCo
   if (!id || !row) return skip('element_missing');
   const blocked = entityBlockReason(plan, row, command); if (blocked) return skip(blocked);
   if (command.op === 'update') return updateElement(plan, row, command);
-  const conflict = deleteElement(plan, row, command); if (conflict) return skip(conflict);
+  deleteElement(plan, row);
   return { index: plan.results.length, id, status: 'applied', reason: null, fieldResults: [{ field: '$existence', status: 'applied', reason: null }] };
 }

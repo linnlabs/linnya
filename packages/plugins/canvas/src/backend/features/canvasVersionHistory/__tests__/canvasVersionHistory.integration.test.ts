@@ -24,10 +24,11 @@ function fixture(filename = ':memory:', budgetBytes?: number) {
     initializeCanvasDocument(database, 'doc');
   }
   const snapshot = (): CanvasSnapshot => { const state = readCanvasCommitState(database, 'doc'); return { schemaVersion: 1, documentId: 'doc', sequence: state.sequence, elements: state.elements.map(row => row.element) }; };
+  const readCurrent = vi.fn(snapshot);
   const facts = new Map<string, number>(), failures = vi.fn(), reconcile = vi.fn(); let notificationFailure = false; let releaseFailure = false, crashed = false; let restoredFrom: DocumentVersionSummary['restoredFrom'];
   let editing: ReturnType<typeof createCanvasHistoryRuntime>;
   const versions = createCanvasVersionHistoryRuntime({ database, budgetBytes, ports: {
-    readSnapshot: snapshot,
+    readSnapshot: readCurrent,
     protectedAssetIds: () => collectCanvasAssetIds([...snapshot().elements, ...editing.retainedElements('doc')]),
     assetByteFacts: (_documentId, assetIds) => assetIds.map(assetId => { const byteLength = facts.get(assetId); if (byteLength === undefined) throw new Error('Missing byte fact'); return { assetId, byteLength }; }),
     reconcileHistoryAssets: (_documentId, assetIds) => { if (releaseFailure) throw new Error('Ownership failed'); reconcile(assetIds); }, reportFailure: failures, budgetChanged() { if (notificationFailure) throw new Error('Broadcast failed'); },
@@ -55,13 +56,24 @@ function fixture(filename = ':memory:', budgetBytes?: number) {
     } }); } finally { restoredFrom = undefined; }
   }
   function crash() { crashed = true; database.close(); vi.clearAllTimers(); }
-  const value = { database, versions, editing, facts, failures, reconcile, snapshot, commit, update, checkpoint, restore, crash, failNotification: () => { notificationFailure = true; }, failRelease: () => { releaseFailure = true; }, get crashed() { return crashed; } };
+  const value = { database, versions, editing, facts, failures, reconcile, readCurrent, snapshot, commit, update, checkpoint, restore, crash, failNotification: () => { notificationFailure = true; }, failRelease: () => { releaseFailure = true; }, get crashed() { return crashed; } };
   fixtures.push(value); return value;
 }
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(1_000_000); });
 afterEach(() => { for (const value of fixtures.splice(0)) if (!value.crashed) { value.versions.dispose(); value.database.close(); } vi.useRealTimers(); for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true }); });
 
 describe('Canvas durable reverse-field version history', () => {
+  it('does not reconstruct snapshots when retention keeps every version under budget', () => {
+    const f = fixture(); f.commit([add]); f.checkpoint(); f.update({ x: 50 }); f.checkpoint();
+    const before = f.versions.list('doc'); f.readCurrent.mockClear();
+    const queries = vi.spyOn(f.database, 'prepare');
+    expect(f.versions.compact('doc').overBudgetBytes).toBe(0);
+    expect(f.readCurrent).not.toHaveBeenCalled();
+    expect(queries.mock.calls.some(([sql]) => sql.startsWith('INSERT INTO canvas_versions'))).toBe(false);
+    queries.mockRestore();
+    expect(f.versions.list('doc')).toEqual(before);
+    expect(f.versions.preview('doc', before[1].versionId).elements[0]).toMatchObject({ x: 0 });
+  });
   it('does not duplicate body JSON for moves, replays old states, records undo/redo and rejects stale restores', () => {
     const f = fixture(); f.commit([add]); f.checkpoint(); const first = f.versions.list('doc')[0];
     f.update({ x: 100 });
@@ -120,9 +132,10 @@ describe('Canvas durable reverse-field version history', () => {
     for (const row of clean.versions.list('doc')) expect(clean.versions.preview('doc', row.versionId).sequence).toBe(row.order - 1);
   });
   it('detects damaged deltas before pruning and rejects a readonly display projection as history truth', () => {
-    const f = fixture(); f.commit([add]); f.checkpoint(); f.update({ x: 50 }); f.checkpoint();
+    const f = fixture(); f.commit([add]); f.checkpoint();
+    for (let index = 1; index <= 12; index++) { f.update({ x: index * 50 }); f.checkpoint(); }
     const before = f.versions.list('doc').map(row => row.versionId);
-    f.database.prepare('UPDATE canvas_versions SET reverse_blob = ? WHERE version_id = ?').run(Buffer.from('damaged'), before[0]);
+    f.database.prepare('UPDATE canvas_versions SET reverse_blob = ? WHERE version_id = ?').run(Buffer.from('damaged'), 'canvas-version:2');
     expect(() => f.versions.compact('doc')).toThrow('version_corrupt'); expect(f.versions.list('doc').map(row => row.versionId)).toEqual(before);
     const display = { ...f.snapshot(), integrity: { readOnly: true } };
     expect(() => f.versions.checkpoint({ documentId: 'doc', reason: 'close', snapshot: display })).toThrow('history_unavailable');
@@ -146,7 +159,7 @@ describe('Canvas durable reverse-field version history', () => {
     for (let index = 1; index <= 20; index += 1) { f.update({ x: index * 10 }); f.checkpoint(); }
     const anchor = f.database.prepare<[], { version_id: string; sequence: number }>('SELECT version_id, sequence FROM canvas_versions WHERE anchor_blob IS NOT NULL AND sequence > 0 ORDER BY sequence LIMIT 1').get();
     if (!anchor) throw new Error('No threshold anchor'); const saved = f.versions.preview('doc', anchor.version_id);
-    const newest = f.versions.list('doc')[0]; f.database.prepare('UPDATE canvas_versions SET reverse_blob = ? WHERE version_id = ?').run(Buffer.from('broken'), newest.versionId);
+    f.database.prepare('UPDATE canvas_versions SET reverse_blob = ? WHERE version_id = ?').run(Buffer.from('broken'), 'canvas-version:5');
     expect(f.versions.preview('doc', anchor.version_id)).toEqual(saved); expect(() => f.versions.compact('doc')).toThrow('version_corrupt');
     f.database.prepare('UPDATE canvas_elements SET element_json = ? WHERE element_id = ?').run('{"type":"unknown"}', 'c1');
     expect(f.versions.preview('doc', anchor.version_id)).toEqual(saved);

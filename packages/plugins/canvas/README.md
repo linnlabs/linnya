@@ -9,7 +9,7 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 ## 边界与入口
 
 - `shared/model` 拥有卡片、连线、正文及提交快照合同；类型来自唯一 schema。
-- `backend/features/canvasCommit` 拥有当前内容的提交，跨 feature 步骤由 backend orchestration 装配。
+- `backend/features/canvasCommit` 拥有当前内容的提交及唯一的有界请求回执，跨 feature 步骤由 backend orchestration 装配。
 - `renderer/kernel` 只处理绘制与交互意图；Host 能力由适配器注入。
 - 包外只消费 shared/backend/renderer 与测试专用 backend-test-support 入口，不 deep import。
 - 文档引用、图片资产、历史保留、正文编辑器与 Conversation 权限仍由各 Host owner 通过窄门面提供。
@@ -58,7 +58,7 @@ Host侧集成测试会运行实际Canvas计算Worker，须先完成插件的back
 
 ## Agent 改动与确认
 
-Backend 按数据库实例持有 `createCanvasHistoryRuntime`。组合入口位于 `backend/orchestration/history`；用户栈与 Agent 组共用 `backend/shared/history` 的字段片段及逆变更规则。`agentChanges` 只拥有持久组、待确认批次与审批回执。组按对话与文档累计，子 run 共享组；没有对话的开发 CLI 使用该画布的命令行组。对话身份没有外键，删除对话不丢撤回记录。`closeGroup` 关闭当前组，后续写入创建新组。
+Backend 按数据库实例持有 `createCanvasHistoryRuntime`。组合入口位于 `backend/orchestration/history`；用户栈与 Agent 组共用 `backend/shared/history` 的字段片段及逆变更规则。`agentChanges`只拥有持久组与待确认批次，请求/审批回执共用canvasCommit的唯一owner。组按对话与文档累计，子 run 共享组；没有对话的开发 CLI 使用该画布的命令行组。对话身份没有外键，删除对话不丢撤回记录。`closeGroup` 关闭当前组，后续写入创建新组。
 
 `commitAgent` 返回 `committed` 或 `pending`。同一对话、请求编号的重试不受 run/工具视图变化影响；异载荷拒绝。删除用户创建的卡累计达到 20 张，或一批移动至少 20 张且覆盖当前用户卡九成时，整批保存为待确认。每组最多一批，新待确认替换旧批。只有可信 Renderer 入口调用 `resolveApproval`；CLI 不接收批准标志。批准按当前字段版本、编辑声明与预期删除修订重新验证；同意或拒绝后的重试有稳定结果。撤回或完成组使待确认过期。
 

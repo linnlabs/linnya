@@ -57,7 +57,7 @@ export const CanvasOperationFieldResultSchema = z.object({
 export const CanvasOperationResultSchema = z.object({
   index: z.number().int().nonnegative(), status: z.enum(['applied', 'skipped']),
   id: CanvasElementIdSchema.nullable(), reason: z.string().nullable(),
-  // 缺省表示旧回执或该类历史结果未记录字段细节，不能解释成没有跳过。
+  // 实体级历史反转可能不提供字段粒度；正式内容写入始终提供，不能把缺省解释成没有跳过。
   fieldResults: z.array(CanvasOperationFieldResultSchema).optional(),
 }).strict();
 export const CanvasCommitResultSchema = z.object({

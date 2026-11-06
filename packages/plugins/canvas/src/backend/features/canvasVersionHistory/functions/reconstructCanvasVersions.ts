@@ -28,19 +28,13 @@ export function reconstructCanvasVersion(input: { readonly documentId: string; r
   return snapshot;
 }
 
-/** 维护单次反放并校验全部版本及锚点，包括准备删除的记录，不能用锚点跳过坏增量。 */
-export function reconstructAllCanvasVersions(input: { readonly documentId: string; readonly records: readonly CanvasVersionRecord[]; readonly head: CanvasVersionHead; readonly current: CanvasSnapshot }): ReadonlyMap<string, CanvasSnapshot> {
-  const snapshots = new Map<string, CanvasSnapshot>(); const latest = input.records[0];
-  if (!latest || latest.versionId !== input.head.latestVersionId || input.current.sequence !== input.head.sequence) throw new DocumentHistoryError('version_corrupt');
-  let snapshot = applyCanvasVersionInverse(input.current, decodeCanvasVersionInverse(input.head.inverse), latest.sequence);
-  for (let index = 0; index < input.records.length; index += 1) {
-    const record = input.records[index];
-    snapshot = verified(snapshot, record, input.documentId); snapshots.set(record.versionId, snapshot);
-    if (record.anchor) verified(CanvasSnapshotSchema.parse(decodeCanvasVersion(record.anchor)), record, input.documentId);
-    const older = input.records[index + 1];
+/** 裁剪先验证链的元数据；载荷只在真正合并逆增量或生成新锚点时接纳。 */
+export function validateCanvasVersionChain(records: readonly CanvasVersionRecord[], head: CanvasVersionHead): void {
+  const latest = records[0];
+  if (!latest || latest.versionId !== head.latestVersionId || latest.sequence > head.sequence) throw new DocumentHistoryError('version_corrupt');
+  for (let index = 0; index < records.length; index++) {
+    const record = records[index], older = records[index + 1];
     if (record.previousVersionId !== (older?.versionId ?? null) || (older && older.sequence >= record.sequence)) throw new DocumentHistoryError('version_corrupt');
-    if (older) snapshot = applyCanvasVersionInverse(snapshot, decodeCanvasVersionInverse(record.inverse), older.sequence);
-    else if (!record.anchor || record.inverse) throw new DocumentHistoryError('version_corrupt');
+    if (!older && (!record.anchor || record.inverse)) throw new DocumentHistoryError('version_corrupt');
   }
-  return snapshots;
 }

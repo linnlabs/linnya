@@ -19,8 +19,9 @@ export function planCanvasCommit(input: {
   for (const command of input.operations) {
     validateCanvasCommandContent(command);
     if (command.op === 'update' || command.op === 'delete') plan.results.push(mutateCanvasElement(plan, command));
+    else if (command.op === 'connect') plan.results.push(connectCanvasCards(plan, command));
     else {
-      const id = command.op === 'connect' ? connectCanvasCards(plan, command) : createCanvasCard(plan, command);
+      const id = createCanvasCard(plan, command);
       plan.results.push({ index: plan.results.length, status: 'applied', id, reason: null, fieldResults: [{ field: '$existence', status: 'applied', reason: null }] });
     }
   }

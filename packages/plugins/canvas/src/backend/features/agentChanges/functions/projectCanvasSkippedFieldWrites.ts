@@ -1,6 +1,6 @@
 import type { CanvasCommitResult, CanvasGroupWriteOutcomes } from '../../../../shared';
 
-/** 只投影正式字段回执；旧结果没有细节时标未知，不能拿原patch猜哪些字段被跳过。 */
+/** 只投影正式字段事实；实体级历史结果没有细节时标未知，不能从原patch猜哪些字段被跳过。 */
 export function projectCanvasSkippedFieldWrites(result: CanvasCommitResult): CanvasGroupWriteOutcomes {
   const skippedWrites: CanvasGroupWriteOutcomes['skippedWrites'] = [];
   let complete = true;
