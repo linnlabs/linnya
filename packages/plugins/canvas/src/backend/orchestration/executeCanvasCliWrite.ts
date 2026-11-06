@@ -35,7 +35,7 @@ export async function executeCanvasCliWrite(command: Extract<CanvasCliCommand, {
     diagnostics = layout.diagnostics; computation = layout.computation;
   }
   scope.context.signal.throwIfAborted();
-  document.read(scope.documentId, scope.projectId);
+  document.assertDocument(scope.documentId, scope.projectId);
   services.referencesFor(scope.database).assertBindings({ sourceDocumentId: scope.documentId, bindings: request.referenceBindings ?? [] });
   if (command.dryRun) {
     const preview = document.editing.preview({ request, actor: scope.actor, now: Date.now() });

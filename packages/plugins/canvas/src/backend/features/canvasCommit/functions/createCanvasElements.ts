@@ -16,21 +16,18 @@ function cardPosition(plan: CanvasWorkingPlan, command: CardCommand) {
   const nearId = command.near ? resolveCanvasPlanElement(plan, command.near) : undefined;
   const near = nearId ? plan.elements.get(nearId)?.element : undefined;
   if (command.near && (!near || near.type === 'edge')) throw new CanvasCommitFailure('canvas_placement_target_missing');
+  if (plan.actor.source.kind === 'user' && command.x !== undefined && command.y !== undefined) return { x: command.x, y: command.y };
   const cards = [...plan.elements.values()].flatMap(row => row.element.type === 'edge' ? [] : [row.element]);
-  return plan.actor.source.kind === 'user' && command.x !== undefined && command.y !== undefined
-    ? { x: command.x, y: command.y }
-    : findCanvasPlacement({ width: command.width, height: command.height, near: near?.type === 'edge' ? undefined : near, side: command.side ?? 'right', occupied: [...cards, ...plan.reservedRectangles] });
+  return findCanvasPlacement({ width: command.width, height: command.height, near: near?.type === 'edge' ? undefined : near, side: command.side ?? 'right', occupied: [...cards, ...plan.reservedRectangles] });
 }
 
 export function createCanvasCard(plan: CanvasWorkingPlan, command: CardCommand): CanvasElementId {
   if (command.ref && plan.refs[command.ref]) throw new CanvasCommitFailure('canvas_duplicate_ref');
   const position = cardPosition(plan, command);
-  const orders = [...plan.elements.values()].map(row => row.element.order).sort();
-  const lastOrder = orders[orders.length - 1] ?? null;
   const data = command.op === 'addText' ? { contentVersion: 1, content: command.content, heightMode: command.heightMode ?? 'auto' } : command.data;
   const element = CanvasElementSchema.parse({
     id: `c${plan.nextCard++}`, type: command.op === 'addText' ? 'text' : command.op === 'addImage' ? 'image' : 'document',
-    schemaVersion: 1, revision: 1, order: generateKeyBetween(lastOrder, null), locked: command.locked ?? false,
+    schemaVersion: 1, revision: 1, order: generateKeyBetween(plan.lastOrder, null), locked: command.locked ?? false,
     color: command.color ?? 'white', createdBy: plan.actor.source, updatedBy: plan.actor.source,
     createdAt: plan.now, updatedAt: plan.now, ...position,
     width: command.width, height: command.height,
@@ -68,7 +65,7 @@ export function connectCanvasCards(plan: CanvasWorkingPlan, command: Extract<Can
   }
   const id = CanvasEdgeIdSchema.parse(`e${plan.nextEdge++}`);
   const edge = CanvasElementSchema.parse({
-    id, type: 'edge', schemaVersion: 1, revision: 1, order: generateKeyBetween(null, null),
+    id, type: 'edge', schemaVersion: 1, revision: 1, order: generateKeyBetween(plan.lastOrder, null),
     locked: command.locked ?? false, color: command.color ?? 'white', createdBy: plan.actor.source, updatedBy: plan.actor.source,
     createdAt: plan.now, updatedAt: plan.now,
     from, to,

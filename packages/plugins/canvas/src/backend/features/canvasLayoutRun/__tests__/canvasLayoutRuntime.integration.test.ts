@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { build } from 'esbuild';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,11 +17,13 @@ function fixture(count: number): CanvasSnapshot {
     from: { kind: 'card', cardId: cards[index].id, side: 'auto' }, to: { kind: 'card', cardId: child.id, side: 'auto' } }));
   return CanvasSnapshotSchema.parse({ schemaVersion: 1, documentId: 'layout-test', sequence: 41, elements: [...cards, ...edges] });
 }
-let temporary = '', workerPath = '';
+let temporary = '', workerPath = '', workerStarts = '';
 beforeAll(async () => {
   temporary = await mkdtemp(path.join(os.tmpdir(), 'canvas-layout-test-')); workerPath = path.join(temporary, 'layout-worker.cjs');
+  workerStarts = path.join(temporary, 'thread-starts');
   await build({ entryPoints: [fileURLToPath(new URL('../../../orchestration/canvasComputationWorker.ts', import.meta.url))], outfile: workerPath,
-    bundle: true, platform: 'node', format: 'cjs', tsconfig: fileURLToPath(new URL('../../../../../tsconfig.json', import.meta.url)) });
+    bundle: true, platform: 'node', format: 'cjs', tsconfig: fileURLToPath(new URL('../../../../../tsconfig.json', import.meta.url)),
+    banner: { js: `require('node:fs').appendFileSync(${JSON.stringify(workerStarts)}, 'started\\n');` } });
 });
 afterAll(async () => { await rm(temporary, { recursive: true, force: true }); });
 
@@ -85,3 +87,22 @@ it('check经同一真实计算worker读取精确快照，报告重叠而不移�
     expect(JSON.stringify(snapshot)).toBe(before);
   } finally { await runtime.dispose(); }
 });
+
+it('连续任务复用真实线程；运行中取消终止旧线程再执行下一快照', async () => {
+  const runtime = createCanvasComputationRuntime({ workerPath });
+  const readStarts = async () => (await readFile(workerStarts, 'utf8')).split('\n').filter(Boolean).length;
+  try {
+    await runtime.check(fixture(3)); const first = await readStarts();
+    for (let sequence = 50; sequence < 54; sequence++) {
+      const result = await runtime.check({ ...fixture(3), sequence }); expect(result.sequence).toBe(sequence);
+    }
+    expect(await readStarts()).toBe(first);
+    const controller = new AbortController();
+    const cancelled = runtime.layout({ requestId: 'cancel-warm', snapshot: fixture(12000), algorithm: 'layered', direction: 'right' }, controller.signal);
+    const after = runtime.check({ ...fixture(3), sequence: 99 });
+    controller.abort();
+    await expect(cancelled).rejects.toBeDefined();
+    expect((await after).sequence).toBe(99);
+    expect(await readStarts()).toBe(first + 1);
+  } finally { await runtime.dispose(); }
+}, 15_000);

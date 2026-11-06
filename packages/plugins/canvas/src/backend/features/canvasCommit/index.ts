@@ -18,5 +18,6 @@ export { CanvasReadOnlyFormatError, CanvasContentPolicyError } from './definitio
 export { CanvasCommitFailure } from './definitions/canvasCommitFailure';
 export { validateCanvasPlanContent } from './functions/validateCanvasContent';
 export { releaseCanvasEditingClaims, pruneCanvasHistoryGuards } from './persistence/canvasRepository';
+export { replaceCanvasEditingClaims } from './persistence/replaceCanvasEditingClaims';
 
 export { readCanvasUpdateFieldUnits } from './functions/readCanvasUpdateFieldUnits';

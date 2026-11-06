@@ -1,4 +1,6 @@
+import { CANVAS_COMPUTATION_TIMEOUT_MS, CANVAS_COMPUTATION_QUEUE_LIMIT } from './definitions/canvasComputationLimits';
 import { Worker } from 'node:worker_threads';
+import { Logger } from '@plugin/backend/workspaceRuntime';
 import type { CanvasComputationRuntime } from '../../../shared';
 import { CanvasComputationWorkerResponseSchema, type CanvasComputationRequest, type CanvasComputationResponse } from '../../orchestration/definitions/canvasComputationWorker';
 
@@ -20,35 +22,56 @@ function matchesRequest(request: CanvasComputationRequest, response: CanvasCompu
 export function createCanvasComputationRuntime(options: { readonly workerPath: string; readonly timeoutMs?: number }): CanvasComputationRuntime {
   const pending: Job[] = [];
   let running: { readonly worker: Worker; readonly cancel: () => void } | null = null;
+  let reusable: Worker | null = null;
   let disposed = false;
+  const logger = new Logger('CanvasComputation');
+  function createWorker(): Worker {
+    const worker = new Worker(options.workerPath);
+    worker.on('error', error => {
+      if (reusable === worker) reusable = null;
+      if (running?.worker !== worker) logger.error('Canvas 空闲计算线程异常，下一任务重新创建', { error });
+    });
+    worker.once('exit', () => { if (reusable === worker) reusable = null; });
+    return worker;
+  }
   const drain = () => {
     if (disposed || running) return;
     const job = pending.shift(); if (!job) return;
-    const worker = new Worker(options.workerPath);
+    // 正常任务复用已装入 ELK 的线程；取消/超时仍等旧线程终止后才接纳下一任务。
+    const worker = reusable ?? createWorker();
+    reusable = worker; worker.ref();
     let settled = false;
-    const settle = (result: CanvasComputationResponse | null, error?: unknown) => {
+    const settle = (result: CanvasComputationResponse | null, error?: unknown, reuse = false) => {
       if (settled) return; settled = true; clearTimeout(timeout); job.removeAbort();
+      worker.removeListener('message', message); worker.removeListener('error', failed); worker.removeListener('exit', exited);
       if (result) job.resolve(result); else job.reject(error);
-      void worker.terminate().finally(() => { running = null; drain(); });
+      if (reuse) { worker.unref(); running = null; drain(); }
+      else {
+        reusable = null;
+        void worker.terminate().finally(() => { running = null; drain(); });
+      }
     };
-    const timeout = setTimeout(() => settle(null, new Error('canvas_layout_timeout')), options.timeoutMs ?? 30000);
+    const timeout = setTimeout(() => settle(null, new Error('canvas_layout_timeout')), options.timeoutMs ?? CANVAS_COMPUTATION_TIMEOUT_MS);
     running = { worker, cancel: () => settle(null, job.signal?.reason ?? new Error('canvas_layout_cancelled')) };
-    worker.once('message', (value: unknown) => {
+    const message = (value: unknown) => {
       try {
         const response = CanvasComputationWorkerResponseSchema.parse(value);
-        if (response.status === 'failed') settle(null, new Error(response.message));
+        if (response.status === 'failed') settle(null, new Error(response.message), true);
         else if (!matchesRequest(job.request, response.response)) settle(null, new Error('canvas_computation_identity_mismatch'));
-        else settle(response.response);
+        else settle(response.response, undefined, true);
       } catch (error) { settle(null, error); }
-    });
-    worker.once('error', error => settle(null, error));
-    worker.once('exit', code => { if (!settled) settle(null, new Error(`canvas_layout_worker_exit:${code}`)); });
+    };
+    const failed = (error: Error) => settle(null, error);
+    const exited = (code: number) => settle(null, new Error(`canvas_layout_worker_exit:${code}`));
+    worker.once('message', message);
+    worker.once('error', failed);
+    worker.once('exit', exited);
     worker.postMessage(job.request);
   };
   const invoke = (request: CanvasComputationRequest, signal?: AbortSignal): Promise<CanvasComputationResponse> => {
       signal?.throwIfAborted();
       if (disposed) return Promise.reject(new Error('canvas_layout_disposed'));
-      if (pending.length >= 8) return Promise.reject(new Error('canvas_layout_queue_full'));
+      if (pending.length >= CANVAS_COMPUTATION_QUEUE_LIMIT) return Promise.reject(new Error('canvas_layout_queue_full'));
       return new Promise<CanvasComputationResponse>((resolve, reject) => {
         const abort = () => {
           const index = pending.indexOf(job);
@@ -73,7 +96,9 @@ export function createCanvasComputationRuntime(options: { readonly workerPath: s
     async dispose() {
       disposed = true;
       for (const job of pending.splice(0)) { job.removeAbort(); job.reject(new Error('canvas_layout_disposed')); }
-      const current = running; current?.cancel(); if (current) await current.worker.terminate();
+      const current = running; current?.cancel();
+      const worker = current?.worker ?? reusable; reusable = null;
+      if (worker) await worker.terminate();
     },
   };
 }

@@ -25,7 +25,7 @@ Core 拥有统一的历史选择、保留规则与文档类型分发；不读取
 这是一组 V1 工程默认值，不是对用户偏好的统计结论。保留数量受时间桶约束，不是十条。
 
 纯函数接受已由 DocumentVersionListSchema 验证的快照。插件合并 current、draft base 等结构依赖，
-先重建、校验全部保留载荷，再在事务内重新核对 current 并原子重链；Core 不了解 diff/checkpoint。
+先验证链元数据以及本次要重链的差分和锚点，再在事务内重新核对 current 并原子重链；未改动的载荷可在预览时验证，不把每次维护作为全库完整性扫描。Core 不了解 diff/checkpoint。
 成功保存与后续维护分开，维护失败不能回滚保存。资产只能通过 Host ownership 合同释放，不能由插件删 Host 表或物理文件。
 
 ## 实施边界

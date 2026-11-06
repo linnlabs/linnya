@@ -34,6 +34,8 @@ interface HiddenWorkerDefinitionBase {
   readonly partition?: string;
   /** 需要实际绘制的 worker 必须选择 offscreen；background 仅承诺排版。 */
   readonly renderingMode?: 'background' | 'offscreen';
+  /** 只有绘制 DOM 子树的 worker 才启用 HTML-in-Canvas 实验能力。 */
+  readonly htmlCanvas?: boolean;
   readonly renderViewport?: HiddenWorkerRenderViewport;
   readonly createRequestPayload: (request: unknown) => HiddenWorkerRequestEnvelope;
   readonly parseResponsePayload: (payload: unknown) => HiddenWorkerResponseEnvelope;

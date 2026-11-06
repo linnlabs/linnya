@@ -1,3 +1,4 @@
+import { canvasTextPrefix } from '../../../../shared';
 import type { CanvasCard, CanvasEdge, CanvasSnapshot } from '../../../../shared';
 import type { CanvasProjectionContext } from '../definitions/canvasProjection';
 import { projectCanvasCardBody } from './projectCanvasCardBody';
@@ -6,7 +7,7 @@ import { canvasProjectionRegions, groupCanvasProjectionRegions } from './groupCa
 function projectCardSummary(card: CanvasCard, context: CanvasProjectionContext, summary: boolean): readonly string[] {
   const body = projectCanvasCardBody(card, context), limit = summary ? 100 : 800;
   return [`- [${card.id}] ${card.type}〔${card.color}〕 revision=${card.revision}${card.locked ? '〔已锁定〕' : ''}`,
-    `  ${body.slice(0, limit).replace(/\n/g, '\n  ')}${body.length > limit ? `\n  … 已截断，用 show ${card.id} 读取全文。` : ''}`];
+    `  ${canvasTextPrefix(body, limit).replace(/\n/g, '\n  ')}${body.length > limit ? `\n  … 已截断，用 show ${card.id} 读取全文。` : ''}`];
 }
 
 function projectEdge(edge: CanvasEdge): string {

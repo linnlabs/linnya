@@ -28,3 +28,18 @@ it('两次面板的迟到恢复不能拿新capture清旧请求之后的输入，
   f.restore(second); await vi.waitFor(() => expect(f.discard).toHaveBeenCalledOnce()); expect(f.report).not.toHaveBeenCalled();
   f.dispose(); await f.session.close();
 });
+
+it('同文档多个表面保留独立注册，关闭最近表面后恢复前一个', async () => {
+  const first = await fixture(), second = await fixture();
+  try {
+    const latest = readCanvasHistorySession('doc');
+    expect(latest && decodeCanvasHistorySession(latest)?.viewId).toBe(second.session.viewId);
+    second.dispose();
+    const remaining = readCanvasHistorySession('doc');
+    expect(remaining && decodeCanvasHistorySession(remaining)?.viewId).toBe(first.session.viewId);
+    if (!remaining) throw new Error('missing remaining view');
+    first.restore(remaining);
+    await vi.waitFor(() => expect(first.discard).toHaveBeenCalledOnce());
+    expect(second.discard).not.toHaveBeenCalled();
+  } finally { first.dispose(); second.dispose(); await first.session.close(); await second.session.close(); }
+});

@@ -3,6 +3,14 @@ import type { PluginSqliteDatabaseLike } from '@linnya/plugin-host-contract/back
 import { createDocumentReferenceMarkdownRuntime as createMarkdownRuntime, createDocumentReferenceOperations, type ReferenceDatabase } from 'src/domains/document-references';
 import { readWorkspaceDocumentLocation, resolveWorkspaceDocumentPath, readWorkspaceDocumentIdentity } from './workspaceDocumentProjection';
 
+type MarkdownRuntime = ReturnType<typeof createMarkdownRuntime>;
+const readScopes = new WeakMap<object, Set<MarkdownRuntime>>();
+
+/** App Host 在 run 结算时调用，涵盖同一数据库上各插件持有的独立读取实例。 */
+export function clearDocumentReferenceMarkdownReader(db: object, readerId: string): void {
+  for (const runtime of readScopes.get(db) ?? []) runtime.clearReader(readerId);
+}
+
 interface ReferenceStatement { all(...values: readonly unknown[]): unknown[]; run(...values: readonly unknown[]): unknown }
 function isReferenceStatement(value: unknown): value is ReferenceStatement {
   return typeof value === 'object' && value !== null && 'all' in value && typeof value.all === 'function' && 'run' in value && typeof value.run === 'function';
@@ -31,7 +39,10 @@ export function resolveDocumentReference(db: PluginSqliteDatabaseLike, input: { 
 
 /** 实例由调用方持有；可信 CLI read/show 登记与写入使用同一实例。 */
 export function createDocumentReferenceMarkdownRuntime(db: Pick<PluginSqliteDatabaseLike, 'prepare'>) {
-  return createMarkdownRuntime({ read: documentId => readWorkspaceDocumentIdentity(db, documentId), location: documentId => readWorkspaceDocumentLocation(db, documentId), resolvePath: (projectId, path) => resolveWorkspaceDocumentPath(db, { projectId, path }) });
+  const runtime = createMarkdownRuntime({ read: documentId => readWorkspaceDocumentIdentity(db, documentId), location: documentId => readWorkspaceDocumentLocation(db, documentId), resolvePath: (projectId, path) => resolveWorkspaceDocumentPath(db, { projectId, path }) });
+  const scopes = readScopes.get(db) ?? new Set<MarkdownRuntime>();
+  readScopes.set(db, scopes); scopes.add(runtime);
+  return { ...runtime, dispose() { runtime.dispose(); scopes.delete(runtime); } };
 }
 
 export { ReferenceMarkdownError as DocumentReferenceMarkdownError } from 'src/domains/document-references';

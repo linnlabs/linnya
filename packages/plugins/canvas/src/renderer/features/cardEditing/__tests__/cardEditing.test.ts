@@ -37,7 +37,7 @@ describe('文字草稿提交屏障', () => {
     expect(f.editor.state.error.value).toBe('storage failed');
     expect(await f.editor.save(true)).toBe(true);
     expect(f.editor.state.draft.value).toBeNull();
-    expect(f.protection).toHaveBeenLastCalledWith(expect.objectContaining({ fields: [] }));
+    expect(f.protection).toHaveBeenLastCalledWith(expect.objectContaining({ claims: [] }));
     f.editor.dispose(); f.session.close();
   });
 

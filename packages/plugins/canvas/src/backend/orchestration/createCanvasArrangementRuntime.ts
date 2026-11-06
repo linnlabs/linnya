@@ -12,6 +12,7 @@ interface ArrangementResult { readonly commit: ReturnType<CanvasDocumentRuntime[
 /** 计算离开事务，最终提交重验字段、编辑声明和最新障碍；取消只终止尚未提交的工作。 */
 export function createCanvasArrangementRuntime(database: CanvasDatabase, document: CanvasDocumentRuntime, capabilities: CanvasBackendCapabilities) {
   const pending = new Map<string, ArrangementJob>();
+  const release = document.onViewClosed(close);
   function arrange(value: unknown): Promise<ArrangementResult> {
     const input = CanvasArrangeRequestSchema.parse(value);
     document.read(input.documentId);
@@ -56,6 +57,6 @@ export function createCanvasArrangementRuntime(database: CanvasDatabase, documen
       if (jobDocument === documentId && jobView === viewId) job.controller.abort(new Error('canvas_view_closed'));
     }
   }
-  function dispose() { for (const job of pending.values()) job.controller.abort(new Error('canvas_plugin_disabled')); }
+  function dispose() { release(); for (const job of pending.values()) job.controller.abort(new Error('canvas_plugin_disabled')); }
   return { arrange, cancel, close, dispose };
 }

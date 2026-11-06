@@ -18,9 +18,8 @@ function remember(key: string, source: string): void {
 }
 async function prepare(assetId: string, source: string, token: number): Promise<string> {
   if (token !== generation) throw new DOMException('Canvas image preparation disposed', 'AbortError');
-  const blob = imageBlob(source), digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
-  const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join(''), key = `${assetId}:${hash}`;
-  const cached = cache.get(key); if (cached) { cache.delete(key); cache.set(key, cached); return cached.source; }
+  const key = assetId;
+  const blob = imageBlob(source);
   const original = await createImageBitmap(blob); let resized: ImageBitmap | null = null;
   try {
     if (Math.max(original.width, original.height) <= 2048) { if (token === generation) remember(key, source); return source; }
@@ -33,6 +32,9 @@ async function prepare(assetId: string, source: string, token: number): Promise<
   } finally { resized?.close(); original.close(); }
 }
 function display(assetId: string, source: string): Promise<string> {
+  // 受管 assetId 对应不可变字节；命中时不再解码原图和计算整图散列。
+  const cached = cache.get(assetId);
+  if (cached) { cache.delete(assetId); cache.set(assetId, cached); return Promise.resolve(cached.source); }
   const current = pending.get(assetId); if (current?.input === source) return current.result;
   const token = generation;
   // 同时解码多张大图会绕过纹理预算；每次只持有一张原图bitmap，且从未先挂入DOM。
@@ -47,4 +49,4 @@ export async function resolveCanvasDisplayImages(assets: Readonly<Record<string,
   for (const [assetId, source] of Object.entries(assets)) { signal.throwIfAborted(); result[assetId] = await display(assetId, source); }
   signal.throwIfAborted(); return result;
 }
-export function clearCanvasDisplayImageCache(): void { generation++; cache.clear(); cachedBytes = 0; }
+export function clearCanvasDisplayImageCache(): void { generation++; cache.clear(); pending.clear(); cachedBytes = 0; }

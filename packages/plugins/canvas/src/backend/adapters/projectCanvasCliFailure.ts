@@ -19,16 +19,26 @@ const messages: Readonly<Record<string, string>> = {
   canvas_approval_replaced: '此批次已被新待确认批次替换。',
   canvas_approval_withdrawn: '此批次所属改动已撤回。',
   canvas_approval_closed: '此批次所属改动组已经完成。',
+  canvas_group_missing: '改动组已不存在，请刷新画布后重试。',
+  canvas_approval_expired: '待确认操作已失效，请刷新画布查看当前批次。',
+  canvas_history_head_changed: '后续操作已改变撤销顺序，请使用画布撤销逐步处理。',
 };
+
+/** Renderer 和 CLI 使用同一业务失败投影；只有未识别异常才算运行错误。 */
+export function projectCanvasBusinessFailure(error: unknown) {
+  if (error instanceof CanvasDocumentFailure || error instanceof CanvasRenderingError || error instanceof CanvasReadOnlyFormatError || error instanceof CanvasContentPolicyError || error instanceof CanvasCommitFailure) return { code: error.code, message: error.message };
+  if (error instanceof CanvasWriteFailure) return { code: error.code, message: error.message, operation: error.operation, field: error.field };
+  if (error instanceof Error && messages[error.message]) return { code: error.message, message: messages[error.message] };
+  if (error instanceof Error && error.name === 'AbortError') return { code: 'cancelled', message: '操作已取消。' };
+  return null;
+}
 /** 未识别的异常保留在Host日志；模型输出不携带磁盘路径、SQL或内部身份。 */
 export function createCanvasCliFailureProjector(logger: Logger) {
   return (error: unknown) => {
     if (error instanceof ZodError || error instanceof CanvasCliFailure) return formatCanvasCliInputError(error);
-    if (error instanceof CanvasDocumentFailure || error instanceof CanvasRenderingError || error instanceof CanvasReadOnlyFormatError || error instanceof CanvasContentPolicyError || error instanceof CanvasCommitFailure) return { code: error.code, message: error.message };
-    if (error instanceof CanvasWriteFailure) return { code: error.code, message: error.message, operation: error.operation, field: error.field };
+    const business = projectCanvasBusinessFailure(error);
+    if (business) return business;
     if (error instanceof SyntaxError) return { code: 'invalid_json', message: 'ops-file必须是UTF-8 JSON操作数组，请修正语法后再提交。' };
-    if (error instanceof Error && messages[error.message]) return { code: error.message, message: messages[error.message] };
-    if (error instanceof Error && error.name === 'AbortError') return { code: 'cancelled', message: '操作已取消。' };
     logger.error('Canvas CLI执行失败', { error });
     return { code: 'operation_failed', message: '操作失败，详细原因已记入应用日志。本次请求可用同一request-id查询或重试。' };
   };

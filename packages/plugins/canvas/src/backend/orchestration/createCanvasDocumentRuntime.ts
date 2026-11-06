@@ -1,3 +1,4 @@
+import { createCanvasGroupNotifications } from '../features/agentChanges';
 import { createWorkspaceService, publishWorkspaceDocumentUpdated, Logger } from '@plugin/backend/workspaceRuntime';
 import { createDocumentReferenceMarkdownRuntime } from '@plugin/backend/documentReferences';
 import { broadcastRendererPluginMessage } from '@plugin/backend/pluginRendererPush';
@@ -6,7 +7,7 @@ import {
   type CanvasSnapshot, type CanvasUndoRequest, type CanvasCommitRequest, CANVAS_HISTORY_BUDGET_CHANNEL, CANVAS_RESTORED_CHANNEL,
 } from '../../shared';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
-import { initializeCanvasDocument, readCanvasSnapshot, readCanvasSynchronization, updateCanvasEditingClaim } from '../features/canvasCommit';
+import { initializeCanvasDocument, readCanvasSnapshot, readCanvasSynchronization, replaceCanvasEditingClaims, type CanvasEditingClaim } from '../features/canvasCommit';
 import { createCanvasHistoryRuntime } from './history/createCanvasHistoryRuntime';
 import { createCanvasVersionHistoryRuntime } from '../features/canvasVersionHistory';
 import { createCanvasVersionHistoryPorts } from '../adapters/createCanvasVersionHistoryPorts';
@@ -16,12 +17,21 @@ import { createCanvasTextSnapshots } from './createCanvasTextSnapshots';
 import { createCanvasDocumentCommitParticipants } from '../adapters/createCanvasDocumentCommitParticipants';
 import { readCanvasProjectionContext } from '../features/canvasDocument';
 import { projectCanvasDocument } from '../features/canvasProjection';
+import type { BackendPluginRendererContext } from '@plugin/backend/pluginIpcRuntime';
+import { createCanvasViewLifecycle } from '../features/canvasDocument';
 
 export function createCanvasDocumentRuntime(database: CanvasDatabase, references = createDocumentReferenceMarkdownRuntime(database)) {
   const logger = new Logger('Canvas');
+  const groupNotifications = createCanvasGroupNotifications({ publish: documentId => broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_GROUPS_CHANGED_CHANNEL, { documentId }),
+    failed(error, documentId) { logger.error('Canvas 写入静默通知失败', { documentId, error }); } });
   const workspace = createWorkspaceService(database);
   const textSnapshots = createCanvasTextSnapshots(database);
-  const views = new Map<string, string>();
+  const viewClosed = new Set<(documentId: string, viewId: string) => void>();
+  const views = createCanvasViewLifecycle({ closed(documentId, viewId, lastView) {
+    for (const listener of viewClosed) listener(documentId, viewId);
+    editing.releaseView(viewId);
+    if (active && lastView) { textSnapshots.refresh(documentId); versions.close(documentId); }
+  }, failed(error, documentId) { logger.error('释放 Canvas 视图失败', { documentId, error }); } });
   let active = true;
   const assertActive = () => { if (!active) throw new CanvasDocumentFailure('runtime_closed', '画布运行态已停用，请重新打开后重试'); };
   const versionPorts = createCanvasVersionHistoryPorts({ database, retainedElements: documentId => editing.retainedElements(documentId),
@@ -36,7 +46,7 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
     },
     groupsChanged(documentId, reason) {
       if (reason === 'release') versions.requestMaintenance(documentId);
-      broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_GROUPS_CHANGED_CHANNEL, { documentId });
+      groupNotifications.changed(documentId, reason);
     },
     ports: {
     // CLI 的正文/图片准入可跨过停用时刻；最终事务统一拒绝旧运行态，不能只检查入口。
@@ -53,11 +63,14 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
     publicationFailed(error) { logger.error('Canvas 已提交，后续通知失败；客户端须按序号补拉', { error }); },
   } });
 
-  const history = createCanvasVersionActions({ database, versions, editing, hasView: (documentId, viewId) => active && views.get(viewId) === documentId,
+  const history = createCanvasVersionActions({ database, versions, editing, hasView: (documentId, viewId) => active && views.has(documentId, viewId),
     restored(event) { try { broadcastRendererPluginMessage(CANVAS_PLUGIN_ID, CANVAS_RESTORED_CHANNEL, event); } catch (error) { logger.error('Canvas版本已恢复，恢复通知失败', { error, documentId: event.documentId }); } } });
-  function read(documentId: string, projectId?: string, viewId?: string): CanvasSnapshot {
-    assertActive(); readCanvasDocumentIdentity(database, documentId, projectId);
-    if (viewId) { editing.registerView({ documentId, viewId }); views.set(viewId, documentId); }
+  function assertDocument(documentId: string, projectId?: string) {
+    assertActive(); return readCanvasDocumentIdentity(database, documentId, projectId);
+  }
+  function read(documentId: string, projectId?: string, viewId?: string, context?: BackendPluginRendererContext): CanvasSnapshot {
+    assertDocument(documentId, projectId);
+    if (viewId) { views.register(documentId, viewId, context); editing.registerView({ documentId, viewId }); }
     return readCanvasSnapshot(database, documentId);
   }
   function create(input: { readonly projectId: string; readonly parentId: string | null; readonly name: string; readonly content?: string }): string {
@@ -78,7 +91,7 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
   }
   function commitUser(request: CanvasCommitRequest, viewId: string, historyGroupId?: string) {
     assertActive(); readCanvasDocumentIdentity(database, request.documentId);
-    if (!views.has(viewId)) views.set(viewId, request.documentId);
+    if (!views.has(request.documentId, viewId)) throw new CanvasDocumentFailure('view_closed', '画布视图已关闭，请重新打开后重试');
     return editing.commit({ request, actor: { source: { kind: 'user', conversationId: null, runId: null }, viewId }, historyGroupId, now: Date.now() });
   }
   function undo(request: CanvasUndoRequest) {
@@ -93,21 +106,20 @@ export function createCanvasDocumentRuntime(database: CanvasDatabase, references
     assertActive(); readCanvasDocumentIdentity(database, documentId);
     return readCanvasSynchronization(database, { documentId, afterSequence });
   }
-  function protect(input: { documentId: string; viewId: string; elementId: string; fields: readonly string[] }) {
+  function protect(input: { documentId: string; viewId: string; claims: readonly CanvasEditingClaim[] }) {
     assertActive(); readCanvasDocumentIdentity(database, input.documentId);
-    updateCanvasEditingClaim(database, { ...input, now: Date.now() });
+    if (!views.has(input.documentId, input.viewId)) throw new CanvasDocumentFailure('view_closed', '画布视图已关闭，请重新打开后重试');
+    replaceCanvasEditingClaims(database, { ...input, now: Date.now() });
   }
   function close(documentId: string, viewId: string) {
-    try { textSnapshots.refresh(documentId); versions.close(documentId); }
-    finally { if (views.get(viewId) === documentId) { editing.releaseView(viewId); views.delete(viewId); } }
+    views.close(documentId, viewId);
   }
   function dispose() {
     if (!active) return; active = false;
-    textSnapshots.flush();
-    for (const [viewId, documentId] of views) { versions.close(documentId); editing.releaseView(viewId); }
-    views.clear(); versions.dispose();
+    groupNotifications.dispose(); textSnapshots.flush();
+    views.dispose(); viewClosed.clear(); versions.dispose();
   }
-  return { create, read, commit, commitUser, undo, changes, project, protect, close, dispose, refreshTextSnapshot: textSnapshots.refresh, editing, references, versions, history, pendingAssetIds: versionPorts.pendingAssetIds,
+  return { create, read, assertDocument, commit, commitUser, undo, changes, project, protect, close, dispose, onViewClosed(listener: (documentId: string, viewId: string) => void) { viewClosed.add(listener); return () => viewClosed.delete(listener); }, refreshTextSnapshot: textSnapshots.refresh, editing, references, versions, history, pendingAssetIds: versionPorts.pendingAssetIds,
   };
 }
 export type CanvasDocumentRuntime = ReturnType<typeof createCanvasDocumentRuntime>;

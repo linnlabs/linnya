@@ -410,7 +410,7 @@ describe('FlowOrchestrator interrupted termination', () => {
         }),
       ])
     );
-    expect(agentRunner.discardCheckpoint).toHaveBeenCalledWith(runId);
+    expect(agentRunner.discardCheckpoint).toHaveBeenCalledWith(runId, conversationId);
   });
 
   it('对话活动收口等待真实 Flow drain 与 Host finalize 后才返回', async () => {
@@ -491,7 +491,7 @@ describe('FlowOrchestrator interrupted termination', () => {
 
     const runId = capturedRunRequest?.runHandle.runId;
     if (!runId) throw new Error('expected Flow run identity before cleanup settlement');
-    expect(agentRunner.discardCheckpoint).toHaveBeenCalledWith(runId);
+    expect(agentRunner.discardCheckpoint).toHaveBeenCalledWith(runId, conversationId);
     await expect(
       persistence.runtimePersistence.supervisor.findActiveByConversation(conversationId, {
         includeChildren: true,

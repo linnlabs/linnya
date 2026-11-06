@@ -16,11 +16,13 @@ function fixture(context = true) {
 }
 it('大图先在bitmap阶段等比缩小，同资产并发请求去重，源与派生bitmap均关闭', async () => {
   const f = fixture(), signal = new AbortController().signal;
+  const decode = vi.spyOn(globalThis, 'atob');
   const [first, second] = await Promise.all([resolveCanvasDisplayImages({ asset: input }, signal), resolveCanvasDisplayImages({ asset: input }, signal)]);
   expect(first).toEqual(second); expect(first.asset).not.toBe(input);
   expect(f.create).toHaveBeenLastCalledWith(f.original, { resizeWidth: 2048, resizeHeight: 1024, resizeQuality: 'high' });
   expect(f.original.close).toHaveBeenCalledOnce(); expect(f.resized.close).toHaveBeenCalledOnce();
   await resolveCanvasDisplayImages({ asset: input }, signal); expect(f.create).toHaveBeenCalledTimes(2);
+  expect(decode).toHaveBeenCalledOnce(); decode.mockRestore();
 });
 it('显示编码失败也释放所有bitmap，取消后不开始后续原图解码', async () => {
   const f = fixture(false); await expect(resolveCanvasDisplayImages({ asset: input }, new AbortController().signal)).rejects.toThrow('image_display_context_unavailable');

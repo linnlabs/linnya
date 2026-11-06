@@ -1,3 +1,4 @@
+import { CANVAS_APPROVAL_QUERY_LIMIT } from '../definitions/canvasRequestReceipt';
 import { z } from 'zod';
 import { CanvasAgentRequestStatusSchema, CanvasCommitResultSchema } from '../../../../shared';
 import { type CanvasReceiptDatabase, type CanvasRequestReceipt } from '../definitions/canvasRequestReceipt';
@@ -24,6 +25,6 @@ export function readCanvasPendingReceipt(database: CanvasReceiptDatabase, docume
   return raw ? receipt(raw) : null;
 }
 export function listCanvasApprovalReceipts(database: CanvasReceiptDatabase, documentId: string, sourceKey: string): CanvasRequestReceipt[] {
-  return database.prepare(`SELECT ${columns} FROM canvas_requests WHERE node_id = ? AND source_key = ? AND pending_id IS NOT NULL ORDER BY rowid DESC LIMIT 50`)
-    .all(documentId, sourceKey).map(receipt);
+  return database.prepare(`SELECT ${columns} FROM canvas_requests WHERE node_id = ? AND source_key = ? AND pending_id IS NOT NULL ORDER BY rowid DESC LIMIT ?`)
+    .all(documentId, sourceKey, CANVAS_APPROVAL_QUERY_LIMIT).map(receipt);
 }

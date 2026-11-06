@@ -26,10 +26,8 @@ export function createCanvasAgentReview(session: CanvasDocumentSession, port: Ca
       await action(); await refresh(); state.finish();
     } catch (error) { fail(error); }
   };
-  const stop = watch(session.state.snapshot, snapshot => { if (snapshot) void refresh().catch(fail); });
+  const stop = watch(() => session.state.snapshot.value?.documentId, id => { if (id) void refresh().catch(fail); });
   const unsubscribe = port.subscribe(session.state.snapshot.value?.documentId ?? '', () => { void refresh().catch(fail); });
-  // writing 是时间派生值；静默结束不能依赖有下一次内容写入来刷新。
-  const timer = setInterval(() => { if (state.groups.value.some(group => group.writing)) void refresh().catch(fail); }, 2000);
   return { state, refresh,
     select: state.select,
     focus: state.focus,
@@ -55,6 +53,6 @@ export function createCanvasAgentReview(session: CanvasDocumentSession, port: Ca
     }, decision === 'allow'),
     complete: (groupId: string) => run(async () => { await port.complete(documentId(), groupId); }),
     review: (elementId: CanvasElementId, groupId?: string) => run(async () => { await port.review(documentId(), elementId, groupId); }),
-    dispose() { disposed = true; generation += 1; clearInterval(timer); stop(); unsubscribe(); },
+    dispose() { disposed = true; generation += 1; stop(); unsubscribe(); },
   };
 }

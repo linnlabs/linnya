@@ -74,7 +74,7 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   registerConversationFileLinkHandlers({ ipc, fileReveal: input.fileReveal });
 
   registerRegisteredBackendPluginIpcHandlers(input.runtimeOwner);
-  input.registry.handle('plugin:invoke', request => dispatchPluginInvoke(undefined, request, {
+  input.registry.handleWithContext('plugin:invoke', (context, request) => dispatchPluginInvoke(context, request, {
     getRuntimeState: getPluginRuntimeState,
     listAllowedChannels: getRegisteredBackendPluginIpcChannels,
     invokeHandler: invokeBackendPluginIpcHandler,

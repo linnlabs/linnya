@@ -7,9 +7,7 @@ import { resolveCanvasResize } from '../functions/resolveCanvasResize';
 export function createCanvasCardResize(session: CanvasDocumentSession, report: (error: unknown) => void) {
   const state = createCanvasResizeState();
   let gesture: CanvasResizeGesture | null = null;
-  let timer: ReturnType<typeof setInterval> | null = null;
   const release = (active: CanvasResizeGesture) => {
-    if (timer) clearInterval(timer); timer = null;
     active.target.removeEventListener('pointermove', move); active.target.removeEventListener('pointerup', up); active.target.removeEventListener('pointercancel', cancel);
     window.removeEventListener('keydown', escape, true); window.removeEventListener('blur', cancel);
     if (active.target.hasPointerCapture(active.pointer)) active.target.releasePointerCapture(active.pointer);
@@ -34,7 +32,6 @@ export function createCanvasCardResize(session: CanvasDocumentSession, report: (
       gesture.target.addEventListener('pointermove', move); gesture.target.addEventListener('pointerup', up); gesture.target.addEventListener('pointercancel', cancel);
       window.addEventListener('keydown', escape, true); window.addEventListener('blur', cancel);
       void session.protect(card.id, card.type === 'text' ? ['width', 'height', 'data'] : ['width', 'height'], 'resize').catch(report);
-      timer = setInterval(() => { void session.protect(card.id, card.type === 'text' ? ['width', 'height', 'data'] : ['width', 'height'], 'resize').catch(report); }, 2000);
     },
     dispose: cancel,
   };

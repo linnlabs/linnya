@@ -65,6 +65,7 @@ interface HiddenWorkerHostBaseOptions<TRequest, TResponse> {
   readonly preloadPath: string;
   readonly partition?: string;
   readonly renderingMode?: 'background' | 'offscreen';
+  readonly htmlCanvas?: boolean;
   readonly renderViewport?: HiddenWorkerRenderViewport;
   readonly createRequestPayload: (request: TRequest) => HiddenWorkerRequestEnvelope;
   readonly parseResponsePayload: (payload: unknown) => HiddenWorkerResponseEnvelope<TResponse>;
@@ -150,6 +151,7 @@ export class HiddenWorkerHost<TRequest, TResponse> {
   private readonly cancelChannel: string | undefined;
   private readonly workerHtmlPath: string;
   private readonly renderingMode: 'background' | 'offscreen';
+  private readonly htmlCanvas: boolean;
   private readonly renderViewport: HiddenWorkerRenderViewport | undefined;
   private readonly preloadPath: string;
   private readonly partition: string;
@@ -183,6 +185,7 @@ export class HiddenWorkerHost<TRequest, TResponse> {
     this.cancelChannel = options.cancelChannel;
     this.workerHtmlPath = options.workerHtmlPath;
     this.renderingMode = options.renderingMode ?? 'background';
+    this.htmlCanvas = options.htmlCanvas === true;
     this.renderViewport = options.renderViewport;
     this.preloadPath = options.preloadPath;
     this.partition = options.partition ?? `hidden-worker:${this.workerId}`;
@@ -385,7 +388,7 @@ export class HiddenWorkerHost<TRequest, TResponse> {
         nodeIntegration: false,
         contextIsolation: true,
         backgroundThrottling: false,
-        enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES,
+        ...(this.htmlCanvas ? { enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } : {}),
         offscreen: this.renderingMode === 'offscreen',
         sandbox: true,
         partition: this.partition,

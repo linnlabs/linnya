@@ -1,3 +1,5 @@
+import { CANVAS_AGENT_APPROVAL_CARD_THRESHOLD, CANVAS_AGENT_APPROVAL_MOVE_RATIO } from '../definitions/canvasAgentChanges';
+import { CANVAS_AGENT_WRITING_IDLE_MS } from '../definitions/canvasAgentChanges';
 import type { CanvasAgentGroup, CanvasElementId, CanvasPendingApproval, CanvasAgentCardChange } from '../../../../shared';
 import type { CanvasCommitPlan, CanvasCommitState } from '../../canvasCommit';
 import type { CanvasHistoryEntry } from '../../../shared/history';
@@ -15,7 +17,7 @@ export function evaluateCanvasApproval(before: CanvasCommitState, plan: CanvasCo
   const deletedUserCardCount = new Set([...(group?.deletedUserCardIds ?? []), ...deletedUser]).size;
   const userCards = before.elements.filter(row => row.element.type !== 'edge' && row.element.createdBy.kind === 'user');
   const moved = new Set(plan.changes.flatMap(change => change.before && change.after && change.before.type !== 'edge' && change.after.type !== 'edge' && change.before.createdBy.kind === 'user' && (change.before.x !== change.after.x || change.before.y !== change.after.y) ? [change.id] : []));
-  const reason: CanvasPendingApproval['reason'] | null = deletedUser.length && deletedUserCardCount >= 20 ? 'delete_threshold' : moved.size >= 20 && moved.size >= userCards.length * 0.9 ? 'arrange_threshold' : null;
+  const reason: CanvasPendingApproval['reason'] | null = deletedUser.length && deletedUserCardCount >= CANVAS_AGENT_APPROVAL_CARD_THRESHOLD ? 'delete_threshold' : moved.size >= CANVAS_AGENT_APPROVAL_CARD_THRESHOLD && moved.size >= userCards.length * CANVAS_AGENT_APPROVAL_MOVE_RATIO ? 'arrange_threshold' : null;
   return { reason, deletedUserCardCount, movedUserCardCount: moved.size };
 }
 
@@ -40,7 +42,7 @@ export function projectCanvasAgentGroup(group: CanvasAgentGroupRecord, pendingAp
     else if (kind === 'updated') updated.push(id);
   }
   const deletedCards = [...byId.values()].flatMap(records => { const last = records[records.length - 1]; return classifyCardChanges(records) === 'deleted' && last?.before && last.before.type !== 'edge' ? [last.before] : []; });
-  return { id: group.id, documentId: group.documentId, conversationId: group.conversationId, runIds: group.runIds, reviewedElementIds: group.reviewedElementIds, createdAt: group.createdAt, lastWriteAt: group.lastWriteAt, writing: group.entry.changes.length > 0 && now - group.lastWriteAt < 3000, added, updated, deleted, changes, outcomes: group.outcomes, deletedCards, visibleDeletedCards: visibleAfterSequence === undefined ? [] : deletedCards.filter(card => (group.deletedAtSequence[card.id] ?? 0) > visibleAfterSequence), pendingApproval };
+  return { id: group.id, documentId: group.documentId, conversationId: group.conversationId, runIds: group.runIds, reviewedElementIds: group.reviewedElementIds, createdAt: group.createdAt, lastWriteAt: group.lastWriteAt, writing: group.entry.changes.length > 0 && now - group.lastWriteAt < CANVAS_AGENT_WRITING_IDLE_MS, added, updated, deleted, changes, outcomes: group.outcomes, deletedCards, visibleDeletedCards: visibleAfterSequence === undefined ? [] : deletedCards.filter(card => (group.deletedAtSequence[card.id] ?? 0) > visibleAfterSequence), pendingApproval };
 }
 export function selectCanvasGroupWithdrawal(entry: CanvasHistoryEntry, elementIds: readonly CanvasElementId[] | undefined): { selected: CanvasHistoryEntry; remaining: CanvasHistoryEntry } {
   if (!elementIds) return { selected: entry, remaining: { changes: [], groupId: null } };

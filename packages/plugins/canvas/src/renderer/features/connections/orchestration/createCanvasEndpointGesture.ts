@@ -6,14 +6,14 @@ import { canvasEndpointAt } from '../functions/canvasConnectionAnchors';
 
 export function createCanvasEndpointGesture(options: { readonly session: CanvasDocumentSession; readonly kernel: CanvasConnectionKernel; readonly state: ReturnType<typeof createCanvasConnectionState>; readonly report: (failure: unknown) => void; readonly createText: (point: CanvasPoint, from: CanvasEndpoint) => Promise<void> }) {
   const { session, kernel, state, report, createText } = options;
-  let active: CanvasEndpointGesture | null = null, renewal: ReturnType<typeof setInterval> | null = null;
+  let active: CanvasEndpointGesture | null = null;
   const world = (event: PointerEvent) => { const bounds = kernel.canvas.getBoundingClientRect(); return kernel.screenToWorld({ x: event.clientX - bounds.left, y: event.clientY - bounds.top }); };
   const release = () => {
     if (!active) return null; const gesture = active; active = null;
     gesture.target.removeEventListener('pointermove', move); gesture.target.removeEventListener('pointerup', up); gesture.target.removeEventListener('pointercancel', cancel);
     window.removeEventListener('blur', cancel); window.removeEventListener('keydown', escape, true);
     if (gesture.target.hasPointerCapture(gesture.pointer)) gesture.target.releasePointerCapture(gesture.pointer);
-    if (renewal) clearInterval(renewal); renewal = null; state.setPreview(null); kernel.setHoveredCard(null); return gesture;
+    state.setPreview(null); kernel.setHoveredCard(null); return gesture;
   };
   const unprotect = (gesture: CanvasEndpointGesture) => gesture.edge ? session.protect(gesture.edge.id, [], 'line-endpoint') : Promise.resolve();
   const cancel = () => { const gesture = release(); if (gesture) void unprotect(gesture).catch(report); };
@@ -47,7 +47,7 @@ export function createCanvasEndpointGesture(options: { readonly session: CanvasD
       target.addEventListener('pointermove', move); target.addEventListener('pointerup', up); target.addEventListener('pointercancel', cancel);
       window.addEventListener('blur', cancel); window.addEventListener('keydown', escape, true);
       state.setPreview({ from: origin, to: origin });
-      if (edge) { void session.protect(edge.id, [field], 'line-endpoint').catch(report); renewal = setInterval(() => { void session.protect(edge.id, [field], 'line-endpoint').catch(report); }, 2000); }
+      if (edge) void session.protect(edge.id, [field], 'line-endpoint').catch(report);
     }, dispose: cancel,
   };
 }

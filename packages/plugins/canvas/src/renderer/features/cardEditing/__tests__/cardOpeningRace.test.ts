@@ -19,7 +19,7 @@ async function fixture() {
     },
   });
   await session.open('doc'); const editor = createCanvasCardEditor(session);
-  return { session, editor, editing, close, delay() { delayNext = true; release = undefined; }, async waiting() { await vi.waitFor(() => expect(release).toBeDefined()); }, resume() { release?.(); }, snapshot: () => snapshot, lastFields(elementId?: typeof c1) { const calls = editing.mock.calls.filter(([input]) => elementId === undefined || input.elementId === elementId); return calls[calls.length - 1]?.[0].fields; } };
+  return { session, editor, editing, close, delay() { delayNext = true; release = undefined; }, async waiting() { await vi.waitFor(() => expect(release).toBeDefined()); }, resume() { release?.(); }, snapshot: () => snapshot, lastFields(elementId?: typeof c1) { const claims = editing.mock.calls.at(-1)?.[0].claims ?? []; return elementId ? claims.find(claim => claim.elementId === elementId)?.fields ?? [] : claims.flatMap(claim => claim.fields); } };
 }
 afterEach(() => vi.restoreAllMocks());
 it('claim迟到时已切到另一卡，旧请求只释放旧owner且不装入旧草稿', async () => {

@@ -16,7 +16,6 @@ export function createDocumentReferenceMarkdownRuntime(port: ReferenceMarkdownPo
     const paths = new Map([...(previous?.baseline.bindings ?? []), ...projected.baseline.bindings].filter(binding => presentIds.has(binding.referenceId)).map(binding => [JSON.stringify([binding.referenceId, binding.targetDocumentId, binding.path, binding.label]), binding]));
     const baseline = { ...projected.baseline, bindings: [...paths.values()] };
     if (presentIds.size) { reads.delete(key(input)); reads.set(key(input), { readerId: input.readerId, baseline }); }
-    while (reads.size > 1024) { const oldest = reads.keys().next().value; if (oldest === undefined) break; reads.delete(oldest); }
     return { content: projected.content, ...baseline };
   }
   function admit(input: ReferenceReadInput & { readonly existingContent?: JsonValue }) {
@@ -30,12 +29,11 @@ export function createDocumentReferenceMarkdownRuntime(port: ReferenceMarkdownPo
     const previous = reads.get(key(input));
     const bindings = new Map([...(previous?.baseline.bindings ?? []), ...baseline.bindings].map(binding => [JSON.stringify(binding), binding]));
     reads.set(key(input), { readerId: input.readerId, baseline: { ...baseline, bindings: [...bindings.values()] } });
-    while (reads.size > 1024) { const oldest = reads.keys().next().value; if (oldest === undefined) break; reads.delete(oldest); }
   }
   function hydrate(input: { readonly content: JsonValue; readonly bindings: readonly DocumentReferenceMarkdownBinding[] }): JsonValue {
     return hydrateDocumentReferenceLinks(JsonValueSchema.parse(input.content), input.bindings.map(binding => DocumentReferenceMarkdownBindingSchema.parse(binding)));
   }
 
   function clearReader(readerId: string) { for (const [readKey, value] of reads) if (value.readerId === readerId) reads.delete(readKey); }
-  return { project: (input: { readonly sourceDocumentId: string; readonly content: JsonValue }) => { const result = projectReferenceMarkdown(input, port); return { content: result.content, ...result.baseline }; }, registerRead, registerBindings, hydrate, admit, assertBindings, clearReader };
+  return { project: (input: { readonly sourceDocumentId: string; readonly content: JsonValue }) => { const result = projectReferenceMarkdown(input, port); return { content: result.content, ...result.baseline }; }, registerRead, registerBindings, hydrate, admit, assertBindings, clearReader, dispose: () => reads.clear() };
 }

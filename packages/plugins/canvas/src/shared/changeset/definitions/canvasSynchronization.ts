@@ -22,12 +22,17 @@ export const CanvasChangedEventSchema = z.object({
   sourceKind: z.enum(['user', 'agent']).optional(), changedElementCount: z.number().int().nonnegative().optional(),
 }).strict();
 export type CanvasChangedEvent = z.infer<typeof CanvasChangedEventSchema>;
-export const CanvasEditingRequestSchema = z.object({
-  documentId: z.string().min(1), viewId: z.string().min(1), elementId: CanvasElementIdSchema,
+export const CanvasEditingClaimSchema = z.object({
+  elementId: CanvasElementIdSchema,
   fields: z.array(z.enum(['data', 'x', 'y', 'width', 'height', 'from', 'to', 'label'])),
+}).strict();
+export const CanvasEditingRequestSchema = z.object({
+  documentId: z.string().min(1), viewId: z.string().min(1), claims: z.array(CanvasEditingClaimSchema),
 }).strict();
 export const CanvasReadRequestSchema = z.object({ documentId: z.string().min(1), viewId: z.string().min(1).optional() }).strict();
 export const CanvasCloseRequestSchema = z.object({ documentId: z.string().min(1), viewId: z.string().min(1) }).strict();
 export const CanvasChangesRequestSchema = CanvasReadRequestSchema.extend({ afterSequence: z.number().int().nonnegative() });
 export const CANVAS_CHANGED_CHANNEL = 'canvas:changed';
 export const CANVAS_GROUPS_CHANGED_CHANNEL = 'canvas:groups-changed';
+export const CANVAS_EDITING_CLAIM_TTL_MS = 10_000;
+export const CANVAS_EDITING_RENEWAL_MS = 2000;

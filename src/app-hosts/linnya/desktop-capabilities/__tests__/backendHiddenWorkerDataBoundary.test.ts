@@ -29,6 +29,7 @@ describe('Backend hidden worker data boundary', () => {
     const definition: HiddenWorkerDefinition = {
       id: 'demo-worker',
       renderingMode: 'offscreen',
+      htmlCanvas: true,
       renderViewport: { channel: 'demo:viewport', maxWidth: 4096, maxHeight: 4096, maxPixels: 8_000_000 },
       requestChannel: 'demo:request',
       responseChannel: 'demo:response',
@@ -60,6 +61,7 @@ describe('Backend hidden worker data boundary', () => {
     expect(registeredDescriptor).toEqual({
       id: 'demo-worker',
       renderingMode: 'offscreen',
+      htmlCanvas: true,
       renderViewport: { channel: 'demo:viewport', maxWidth: 4096, maxHeight: 4096, maxPixels: 8_000_000 },
       requestChannel: 'demo:request',
       responseChannel: 'demo:response',

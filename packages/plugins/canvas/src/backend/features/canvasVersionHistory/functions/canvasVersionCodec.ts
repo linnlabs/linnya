@@ -23,7 +23,7 @@ export function canvasVersionSnapshot(snapshot: CanvasSnapshot): CanvasSnapshot 
 /** 调用方先经canvasVersionSnapshot接纳并排序；编码不重复克隆/校验整张可信快照。 */
 export function canvasVersionHash(snapshot: CanvasSnapshot): string { return createHash('sha256').update(canonical(snapshot)).digest('hex'); }
 export function encodeCanvasVersion(value: CanvasSnapshot | CanvasVersionInverse): Uint8Array { return gzipSync(canonical(value)); }
-export function decodeCanvasVersion(bytes: Uint8Array): unknown { try { const value: unknown = JSON.parse(gunzipSync(bytes).toString('utf8')); return value; } catch { throw new DocumentHistoryError('version_corrupt'); } }
+export function decodeCanvasVersion(bytes: Uint8Array): unknown { try { const value: unknown = JSON.parse(gunzipSync(bytes).toString('utf8')); return value; } catch (cause) { throw new DocumentHistoryError('version_corrupt', { cause }); } }
 export function decodeCanvasVersionInverse(bytes: Uint8Array | null): CanvasVersionInverse { return bytes ? CanvasVersionInverseSchema.parse(decodeCanvasVersion(bytes)) : []; }
 function object(value: JsonValue): { [key: string]: JsonValue } { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new DocumentHistoryError('version_corrupt'); return value; }
 function applyElement(element: CanvasElement | null, inverse: CanvasVersionElementInverse): CanvasElement | null {

@@ -12,6 +12,7 @@ export function appendCanvasPlanChange(plan: CanvasWorkingPlan, before: CanvasEl
   if (!id) throw new Error('空变更没有元素身份');
   plan.changes.push({ id, before, after, fields });
   if (after) {
+    if (plan.lastOrder === null || after.order > plan.lastOrder) plan.lastOrder = after.order;
     const versions = { ...plan.elements.get(id)?.fieldVersions };
     const origins = { ...plan.elements.get(id)?.fieldOrigins };
     for (const field of fields) { versions[field] = after.revision; origins[field] = plan.origin; }

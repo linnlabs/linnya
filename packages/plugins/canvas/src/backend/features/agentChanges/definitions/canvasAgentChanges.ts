@@ -4,6 +4,10 @@ import { CanvasHistoryEntrySchema } from '../../../shared/history';
 import type { CanvasDatabase } from '../../../definitions/canvasDatabase';
 import type { CanvasCommitState } from '../../canvasCommit';
 
+export const CANVAS_AGENT_WRITING_IDLE_MS = 3000;
+export const CANVAS_AGENT_APPROVAL_CARD_THRESHOLD = 20;
+export const CANVAS_AGENT_APPROVAL_MOVE_RATIO = 0.9;
+
 export type CanvasAgentReceiptDatabase = Pick<CanvasDatabase, 'prepare'>;
 /** 只由实际新建持久组触发；before可早于当前已落SQL的内容，不能再从current猜开组状态。 */
 export interface CanvasAgentGroupStart {

@@ -23,6 +23,20 @@ function fixture() {
 }
 
 describe('Canvas atomic editing', () => {
+  it('rejects deeply nested content as validation before recursive parsing and leaves no partial commit', () => {
+    const database = fixture();
+    try {
+      let node: unknown = { type: 'paragraph', content: [] };
+      for (let depth = 0; depth < 4096; depth++) node = { type: 'blockquote', content: [node] };
+      let failure: unknown;
+      try { commitCanvasOperations({ database, actor: agent, now: 1, request: { documentId: 'canvas', requestId: 'deep', operations: [
+        add('不得半提交'), { ...add('深层正文'), content: { type: 'doc', content: [node] } },
+      ] } }); } catch (error) { failure = error; }
+      expect(createCanvasCliFailureProjector(new Logger('CanvasDepthTest'))(failure)).toMatchObject({ code: 'invalid_operations', issues: expect.arrayContaining([expect.objectContaining({ message: expect.stringContaining('128层') })]) });
+      expect(readCanvasSnapshot(database, 'canvas').elements).toEqual([]);
+      expect(database.prepare('SELECT count(*) AS n FROM canvas_requests').get()).toEqual({ n: 0 });
+    } finally { database.close(); }
+  });
   it.each([
     { operation: { op: 'connect', from: 'c1', to: 'c1' }, code: 'canvas_self_connection' },
     { operation: { op: 'connect', from: 'c1', to: 'c999' }, code: 'canvas_endpoint_missing' },
