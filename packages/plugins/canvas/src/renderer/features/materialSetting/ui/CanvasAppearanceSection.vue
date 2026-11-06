@@ -1,32 +1,38 @@
 <template>
   <div class="canvas-settings">
-    <div class="canvas-settings-row">
+    <div class="canvas-settings-row is-field">
       <div class="canvas-settings-text">
         <span class="canvas-settings-label">卡片材质</span>
         <span class="canvas-settings-description">纸：直角、贴地阴影；卡：圆角、细描边</span>
       </div>
-      <CustomSelect
-        :model-value="store.preferences.material"
-        :options="materials"
-        trigger-aria-label="卡片材质"
-        min-width="120px"
-        @update:model-value="setMaterial"
-      />
+      <div class="canvas-settings-control">
+        <CustomSelect
+          :model-value="store.preferences.material"
+          :options="materials"
+          trigger-aria-label="卡片材质"
+          font-size="14px"
+          show-selected-checkmark
+          @update:model-value="setMaterial"
+        />
+      </div>
     </div>
-    <div class="canvas-settings-row">
+    <div class="canvas-settings-row is-field">
       <div class="canvas-settings-text">
         <span class="canvas-settings-label">远景显示</span>
         <span class="canvas-settings-description">缩小到看不清正文时，卡片上显示什么</span>
       </div>
-      <CustomSelect
-        :model-value="store.preferences.overview"
-        :options="overviews"
-        trigger-aria-label="远景显示"
-        min-width="120px"
-        @update:model-value="setOverview"
-      />
+      <div class="canvas-settings-control">
+        <CustomSelect
+          :model-value="store.preferences.overview"
+          :options="overviews"
+          trigger-aria-label="远景显示"
+          font-size="14px"
+          show-selected-checkmark
+          @update:model-value="setOverview"
+        />
+      </div>
     </div>
-    <div class="canvas-settings-row">
+    <div class="canvas-settings-row is-end">
       <div class="canvas-settings-text">
         <span class="canvas-settings-label">滚轮缩放</span>
         <span class="canvas-settings-description">关闭时滚轮平移画布；触控板捏合始终缩放</span>
@@ -37,7 +43,7 @@
         @update:model-value="setToggle('wheelZoom', $event)"
       />
     </div>
-    <div class="canvas-settings-row">
+    <div class="canvas-settings-row is-end">
       <div class="canvas-settings-text">
         <span class="canvas-settings-label">拖动吸附</span>
         <span class="canvas-settings-description">拖动时对齐其他卡片；按住 Alt 临时关闭</span>

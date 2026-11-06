@@ -6,6 +6,7 @@ import type {
   CanvasVersionBudgetObserver,
 } from '../definitions/canvasVersionRuntime';
 import {
+  readCanvasVersionChain,
   validateCanvasVersionChain,
   reconstructCanvasVersion,
 } from '../functions/reconstructCanvasVersions';
@@ -19,7 +20,10 @@ export function createCanvasVersionCompactor(
   const { repository, budgetBytes, requiredHead, budgetStatus, notifyBudget } = options;
   function compact(documentId: string): CanvasVersionBudgetStatus {
     const head = requiredHead(documentId),
-      records = repository.readRecords(documentId);
+      stored = repository.readRecords(documentId),
+      records = readCanvasVersionChain(stored, head),
+      chainIds = new Set(records.map(record => record.versionId));
+    // 链本身必须完整有效；只有这时链外残留才可安全删除，其余损坏照旧报错。
     validateCanvasVersionChain(records, head);
     const readCurrent = () => {
       const snapshot = options.ports.readSnapshot(documentId);
@@ -33,7 +37,9 @@ export function createCanvasVersionCompactor(
     const historicalAssets = [...new Set(records.flatMap(record => record.assetIds))].filter(
       id => !protectedAssets.has(id)
     );
-    const rows = repository.readSummaries(documentId, head);
+    const rows = repository
+      .readSummaries(documentId, head)
+      .filter(row => row.isCurrent || chainIds.has(row.versionId));
     const plan = planCanvasVersionCompaction({
       rows,
       records,
@@ -51,7 +57,10 @@ export function createCanvasVersionCompactor(
           throw new DocumentHistoryError('version_conflict');
         for (const record of plan.records)
           if (original.get(record.versionId) !== record) repository.writeRecord(documentId, record);
-        if (plan.keepVersionIds.length !== records.length)
+        // 保留列表可能含未封存的“当前”行，不能按条数判断；任一已封存记录不在保留集即须删除，
+        // 否则后继已重链跳过它，留下断链。
+        const keep = new Set(plan.keepVersionIds);
+        if (stored.some(record => !keep.has(record.versionId)))
           repository.deleteExcept(documentId, plan.keepVersionIds);
         if (live.usedBytes !== plan.usedBytes || live.overBudgetBytes !== plan.overBudgetBytes) {
           repository.writeHead(documentId, {

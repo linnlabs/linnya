@@ -67,6 +67,25 @@ export function reconstructCanvasVersion(input: {
   return snapshot;
 }
 
+/**
+ * 从版本头沿实际 previous 身份走出的链，按 sequence 降序。链外记录无法被预览或反放：
+ * 旧版维护曾在头上有未封存修改时漏删已被跳过的版本，留下这种残留，由维护在同一事务删除。
+ */
+export function readCanvasVersionChain(
+  records: readonly CanvasVersionRecord[],
+  head: CanvasVersionHead
+): CanvasVersionRecord[] {
+  const byId = new Map(records.map(record => [record.versionId, record]));
+  const chain: CanvasVersionRecord[] = [];
+  for (
+    let record = byId.get(head.latestVersionId);
+    record && chain.length < records.length;
+    record = record.previousVersionId ? byId.get(record.previousVersionId) : undefined
+  )
+    chain.push(record);
+  return chain;
+}
+
 /** 裁剪先验证链的元数据；载荷只在真正合并逆增量或生成新锚点时接纳。 */
 export function validateCanvasVersionChain(
   records: readonly CanvasVersionRecord[],

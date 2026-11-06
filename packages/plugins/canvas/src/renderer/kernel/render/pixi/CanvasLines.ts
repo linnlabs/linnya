@@ -13,6 +13,7 @@ import type { CanvasAppearance, CanvasChromeColors } from '../../definitions/can
 import { canvasStandaloneChrome } from './canvasStandaloneChrome';
 import { createCanvasEdgeLayout, type CanvasEdgeGeometry } from '../../geometry/canvasEdgeGeometry';
 import { canvasFitLineLabel, CANVAS_LINE_LABEL_FONT } from '../../geometry/canvasLineLabelFit';
+import { canvasLineLabelAnchor } from '../../geometry/canvasLineLabelAnchor';
 import { CanvasLineMesh } from './CanvasLineMesh';
 import { CanvasScreenTexture } from './CanvasScreenTexture';
 
@@ -82,6 +83,9 @@ export class CanvasLines {
   private builds = 0;
   private visibleCount = 0;
   private farEntries: readonly Entry[] = [];
+  private maskRegions: readonly CanvasRectangle[] = [];
+  /** 标签锚点只随几何与卡片遮挡变化；相机移动只重投影，不重复求交。 */
+  private labelAnchors = new WeakMap<CanvasEdgeGeometry, CanvasPoint | null>();
   constructor() {
     this.below.addChild(this.base.mesh, this.movingBase.mesh);
     this.ghostContainer.addChild(this.ghost.mesh, this.movingGhost.mesh);
@@ -126,12 +130,19 @@ export class CanvasLines {
     this.base.clearCache();
     this.movingBase.setGeometry([]);
     this.movingGhost.shareGeometry(this.movingBase);
-    this.setMask(mask);
+    this.applyMask(mask);
     this.key = '';
     this.emphasisKey = '';
     this.update();
   }
+  /** 卡片遮挡变化后标签可能换位（或被整条挡住而隐藏），有标签时随之重画。 */
   setMask(mask: readonly CanvasRectangle[]): void {
+    this.applyMask(mask);
+    if (this.entries.some(entry => entry.edge.label)) this.update();
+  }
+  private applyMask(mask: readonly CanvasRectangle[]): void {
+    this.maskRegions = mask;
+    this.labelAnchors = new WeakMap();
     this.cardMask.clear();
     for (const region of mask) this.cardMask.rect(region.x, region.y, region.width, region.height);
     this.cardMask.fill(0xffffff);
@@ -234,10 +245,21 @@ export class CanvasLines {
     this.hovered = id;
     this.update();
   }
+  /** DOM 标签编辑与连线工具条按标签实际所在位置摆放，与画布上的标签同一锚点。 */
   readGeometry(id: CanvasEdgeId): CanvasEdgeGeometry | null {
-    return this.far
+    const geometry = this.far
       ? (this.farEntries.find(entry => entry.edge.id === id)?.geometry ?? null)
       : (this.geometries.get(id) ?? null);
+    const anchor = geometry && this.labelAnchor(geometry);
+    return geometry && anchor ? { ...geometry, midpoint: anchor } : geometry;
+  }
+  private labelAnchor(geometry: CanvasEdgeGeometry): CanvasPoint | null {
+    let anchor = this.labelAnchors.get(geometry);
+    if (anchor === undefined) {
+      anchor = canvasLineLabelAnchor(geometry.points, geometry.midpoint, this.maskRegions);
+      this.labelAnchors.set(geometry, anchor);
+    }
+    return anchor;
   }
   private emphasized(edge: CanvasEdge): boolean {
     return [edge.from, edge.to].some(
@@ -387,9 +409,10 @@ export class CanvasLines {
     context.fillStyle = css(label);
     context.lineWidth = 5;
     for (const entry of labeled) {
+      const point = this.labelAnchor(entry.geometry);
+      if (!point) continue;
       const label = canvasFitLineLabel(entry.edge.label, text => context.measureText(text).width);
-      const point = entry.geometry.midpoint,
-        x = point.x * this.camera.zoom + this.camera.x,
+      const x = point.x * this.camera.zoom + this.camera.x,
         y = point.y * this.camera.zoom + this.camera.y;
       context.strokeText(label, x, y);
       context.fillText(label, x, y);

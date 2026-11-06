@@ -118,6 +118,27 @@ describe('Canvas durable reverse-field version history', () => {
     expect(images.versions.list('doc')).toHaveLength(5); expect(status.overBudgetBytes).toBeGreaterThan(0);
     for (const row of images.versions.list('doc')) expect(images.versions.preview('doc', row.versionId).elements).toHaveLength(1);
   });
+  it('deletes thinned versions while uncheckpointed edits are pending, keeping the chain valid', () => {
+    const f = fixture(); const at = (ms: number) => vi.setSystemTime(1_000_000 + ms);
+    at(7_000); f.commit([add]); f.checkpoint();
+    at(136_000); f.update({ x: 10 }); f.checkpoint();
+    for (let index = 1; index <= 3; index++) { at(2 * 60 * 60_000 + index * 60_000); f.update({ x: 10 + index }); f.checkpoint(); }
+    // 头上还有未封存的修改：保留列表多出“当前”一行，曾与已封存记录数恰好相等而漏删被裁掉的版本。
+    at(2 * 60 * 60_000 + 10 * 60_000); f.update({ x: 99 });
+    const before = f.versions.list('doc').map(row => row.versionId);
+    const rows = f.database.prepare('SELECT * FROM canvas_versions').all();
+    f.versions.compact('doc');
+    const after = f.versions.list('doc').map(row => row.versionId);
+    expect(after.length).toBeLessThan(before.length);
+    expect(() => f.versions.compact('doc')).not.toThrow();
+    for (const row of f.versions.list('doc')) expect(f.versions.preview('doc', row.versionId).sequence).toBe(row.order - 1);
+    // 旧版漏删留下的链外记录：链本身有效时维护将其删除，而不是每次都以 version_corrupt 失败。
+    const insert = f.database.prepare('INSERT OR IGNORE INTO canvas_versions VALUES (@node_id, @version_id, @sequence, @created_at, @schema_version, @previous_version_id, @state_hash, @reverse_blob, @anchor_blob, @asset_ids_json, @restored_from_json)');
+    for (const row of rows) insert.run(row);
+    expect(f.versions.list('doc').length).toBe(before.length);
+    expect(() => f.versions.compact('doc')).not.toThrow();
+    expect(f.versions.list('doc').map(row => row.versionId)).toEqual(after);
+  });
   it('counts a shared historical asset once, atomically rolls back prune/ownership failure, and keeps sparse chains replayable', () => {
     const f = fixture(undefined, 64 * 1024 * 1024); f.facts.set('shared', 50 * 1024 * 1024); f.facts.set('current', 1024);
     f.commit([{ op: 'addImage', width: 240, height: 120, data: { assetId: 'shared', caption: '0', alt: '', crop: null } }]); f.checkpoint();

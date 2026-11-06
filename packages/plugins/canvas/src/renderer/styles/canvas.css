@@ -54,6 +54,11 @@
   min-height: 1em;
   outline: none;
 }
+/* 编辑器根带共享正文类以复用首尾外边距规则；该类自带 1.55 行高，须改回卡片行高，
+   否则多行正文比栅格与后台测高矮，自动高度卡一进编辑就缩短。 */
+.canvas-editor-overlay .markdown-document-content {
+  line-height: var(--canvas-card-line-height);
+}
 .canvas-card-content {
   box-sizing: border-box;
   padding: var(--canvas-card-padding);
@@ -168,6 +173,8 @@
 }
 
 /* 设置分区：与设置页 SettingsRow 同一版式——标签与说明在左，控件贴右。 */
+/* 外观页里的插件分节：件套 SettingsRow 不对插件开放，这里按同一行合同排版，与上方各节对齐。
+   下拉是 field 行（标签列定宽、字段再收进一段、右缘对齐内容列），开关是 end 行（控件贴右）。 */
 .canvas-settings {
   display: flex;
   flex-direction: column;
@@ -175,28 +182,39 @@
 .canvas-settings-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding-block: var(--space-3);
 }
 .canvas-settings-row + .canvas-settings-row {
-  border-top: var(--border-width-hairline) solid var(--color-border-light);
+  margin-top: var(--space-5);
 }
 .canvas-settings-text {
   display: flex;
   flex-direction: column;
-  gap: var(--space-0-5);
   min-width: 0;
+}
+.canvas-settings-row.is-field > .canvas-settings-text {
+  flex-shrink: 0;
+  width: 200px; /* scale-exempt: 与设置件套 SettingsRow 的标签列同宽，跨分节对齐 */
+  padding-right: var(--space-4);
+}
+.canvas-settings-row.is-field > .canvas-settings-control {
+  flex: 1;
+  min-width: 0;
+  margin-left: 100px; /* scale-exempt: 与设置件套 SettingsRow 的字段缩进一致 */
+}
+.canvas-settings-row.is-end > .canvas-settings-text {
+  flex: 1;
+  padding-right: var(--space-6);
 }
 .canvas-settings-label {
   color: var(--color-text-primary);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
 .canvas-settings-description {
+  margin-top: var(--space-1-5);
   color: var(--color-text-tertiary);
-  font-size: var(--font-size-footnote);
-  line-height: var(--line-height-footnote);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
 }
 
 /* Agent 审阅面板：单一浮层表面，组之间用分隔线，不嵌套方框。 */
