@@ -1,4 +1,5 @@
 import type { BaseTool } from '@plugin/backend/toolRuntime';
+import { PptDirectionTool } from './tools/PptDirectionTool';
 import { PptPlanTool } from './tools/PptPlanTool';
 import { PptInspectTool } from './tools/PptInspectTool';
 import { PptExportTool } from './tools/PptExportTool';
@@ -9,7 +10,7 @@ function readToolName(ToolClass: SlidesBackendToolClass): string {
   return new ToolClass().name;
 }
 
-export const slidesBackendToolClasses = [PptPlanTool, PptInspectTool, PptExportTool] as const;
+export const slidesBackendToolClasses = [PptDirectionTool, PptPlanTool, PptInspectTool, PptExportTool] as const;
 
 export const slidesToolNames = slidesBackendToolClasses.map(readToolName);
 
@@ -17,6 +18,7 @@ export const slidesToolManifest = {
   classes: slidesBackendToolClasses,
   allNames: slidesToolNames,
   names: {
+    direction: readToolName(PptDirectionTool),
     plan: readToolName(PptPlanTool),
     inspect: readToolName(PptInspectTool),
     export: readToolName(PptExportTool),
@@ -27,6 +29,7 @@ export const slidesToolManifest = {
       'ask',
       'generate_image',
       'shell',
+      readToolName(PptDirectionTool),
       readToolName(PptPlanTool),
       'list_files',
       'read_file',

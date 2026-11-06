@@ -29,6 +29,7 @@ quality/
     ├── colorSampling.ts         # 页面色彩采样
     ├── chartReadability.ts      # 图表身份与标签容量规则
     ├── lintRules.ts             # aesthetic lint 规则
+    ├── directionRules.ts        # theme.direction 声明的背景、字体与颜色贯彻检查
     ├── repetition.ts            # 相邻页结构与文本重复检测
     └── metrics.ts               # 可复算的规则命中与相邻页相似度指标
 ```
@@ -68,6 +69,14 @@ PresentationRenderModel
 - quality 可以依赖 `@plugin/slides/shared` 的 `PresentationInfo`、render-model DTO 和稳定纯规则。
 - 文本测量或字体信息如需参与规则，必须通过平台 port 或上游已经计算好的 lint input，不在 quality 内部新建测量实现。
 - 字体规则只消费 run 级 `fontFamily + resolvedFontFamily + fontScript + fontResolution`：按脚本分别统计，weight/style 不算新 family，unresolved 单独形成 finding；requested/resolved family 不一致时输出 `font_family_substituted`，请求样式与 `resolvedBold/resolvedItalic` 不一致时输出 `font_style_substituted`。这些规则都禁止在 quality 内重新解析字体或退回第一 run 的原始 family 字符串猜测。
+- 字体可交付性由调用方传入 `fontTarget`（生成稿取 `theme.fontTarget`，缺省 `office`；导入稿不传）。`font_not_deliverable` 只看作者声明的 family，按 `shared/fontDelivery` 的 Office 字体表判断，本机装了也照报；目标为 `office` 时，Office 字体在本机缺失造成的预览替代不报 `font_family_substituted`，避免催 Agent 换成本机专属字体。
+- 字号下限由调用方传入 `readingMode`（生成稿取 `theme.reading`，缺省 `mixed`；导入稿与改稿不传）。生成稿按阅读方式分正文、图注标签（`caption`/`label`/`annotation`/`axis-label`）、脚注来源页码（`footnote`/`source`/`page-number`）三档，数值见 `thresholds.ts` 的 `READING_MODE_FONT_FLOORS_PT`，以 13.333in 页宽为基准等比折算；导入稿与改稿沿用 6.5pt / 5.5pt 固定下限，不催 Agent 改作者原有字号。5pt 近不可读阈值对两者一致。
+- 方向贯彻由调用方传入 `direction`（生成稿取 `theme.direction`，导入稿与未声明时不传），规则在 `aesthetic/directionRules.ts`，只对照声明与事实，不评价方向好坏：
+  - `direction_background_off`（P1）：整页底色按绘制顺序叠加页面背景与覆盖 95% 以上的纯色形状（含透明度混合），与声明的背景、墨色、强调色的 CIE76 色差都超过 12 时报告；满版照片、背景图与半透明以上的渐变满版形状不判；渐变页面背景任一色标落在声明里即可。
+  - `direction_font_undeclared`（P1）：文字 run 与表格单元格声明的字体不在 `fonts` 里时报告；Office 本地化名称（微软雅黑 / Microsoft YaHei）先归一。
+  - `direction_color_off_palette`（P2）：彩色填充或文字的色相与所有声明彩色相差超过 24°、色差也超过 18，且全稿累计面积至少占一页的 1% 时进入复核；同色相的深浅不算偏离。
+- 图片规则消费 RenderModel 的 `naturalSize`（生成稿由 `GeneratedPresentationRenderModelBuilder` 只读位图尺寸头后补齐，SVG 不填）：`image_aspect_distorted` 看 stretch 变形；`image_resolution_low` 按 fitMode 与 crop 估算可见区域每英寸源像素，与 1920px 宽全屏放映所需像素比较，低于 80% 报 medium-confidence warning，宽度不足 1in 的图不检查。
+- `content_area_underused` 只看文字不少于 200 字的页面：排除满版背景、细线、分组容器和底部 12% 带里的页脚/页码，把正文区切成 12 条，找每条里高于页高 20% 的空档（元素之间或最后一个元素之下）；相邻条带的空档纵向交集仍够高时连成一片，宽度超过正文区三分之一就报 medium-confidence warning。文字框用实际排版高度，表格用最后一行底边。
 - quality 不读取 PPTX zip，不访问 repository、workspace、IPC、renderer store。
 - quality 输出 issue/report 供内部分析；`ppt_inspect` 与 Slides CLI 只投影 `buildStatus + findings`，不输出综合分、passed 或 blocker。
 - generated 文本优先消费最终 `textLayout`：连续两位及以上数字若实际排成多行，`short_numeric_text_wrapped` 记录真实行数；非显式换行的段落若自动断行后末行只剩一个字素，`text_single_glyph_last_line` 记录段落与孤字。表格单元格不伪造 RenderNode，而是通过 table 节点上的窄 `tableInfo` 事实报告 `rows[row][column]`。这些规则只报告，不改文字、不重新测量、不强制不换行，也不替 Renderer 修正布局。
@@ -101,4 +110,4 @@ PresentationRenderModel
 - SVG 标签约定：`backend/codegen/__tests__/SvgGraphicExample.integration.test.ts`，验证真实示例在 lint 与空间分析两条链路的承载关系，以及反向层叠、跨 Frame 和标签碰撞等边界。
 - 插件全量：`pnpm run test:plugin:slides`
 
-Shape/Image 的 `role: background | decoration` 经 compiled 元数据进入空间诊断：越界保留 info 证据，边距与装饰碰撞不再要求修正；`bleed` 是节点级非负英寸授权，仅超出授权才产生越界 finding。未声明角色的细线只有在低透明度、位于文字后方时才豁免碰撞，前景相交继续报告。Text 的 `footnote/source/page-number` 角色不参与正文字号档位和字体族数量统计。CLI finding 的 `action` 与 inspect observation 共用处置短语。
+Shape/Image 的 `role: background | decoration` 经 compiled 元数据进入空间诊断：越界保留 info 证据，边距与装饰碰撞不再要求修正；`bleed` 是节点级非负英寸授权，仅超出授权才产生越界 finding。未声明角色的细线只有在低透明度、位于文字后方时才豁免碰撞，前景相交继续报告。Text 的 `footnote/source/page-number` 角色不参与正文字号档位和字体族数量统计；`caption/label` 只影响字号下限的档位。CLI finding 的 `action` 与 inspect observation 共用处置短语。

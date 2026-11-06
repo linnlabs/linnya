@@ -63,6 +63,9 @@ export class PresentationInspectionRuntime {
         sourceSpanUseCounts,
         ...(request.focus && request.focus.length > 0 ? { focus: request.focus } : {}),
         ...(sourceLocations ? { sourceLocations } : {}),
+        ...(snapshot.fontTarget ? { fontTarget: snapshot.fontTarget } : {}),
+        ...(snapshot.direction ? { direction: snapshot.direction } : {}),
+        ...(snapshot.readingMode ? { readingMode: snapshot.readingMode } : {}),
       },
     );
 

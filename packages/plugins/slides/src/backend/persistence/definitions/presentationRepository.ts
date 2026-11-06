@@ -47,6 +47,12 @@ export interface PresentationCommitResult {
   readonly revision: number;
 }
 
+export interface PresentationDirectionUse {
+  readonly cardId: string;
+  /** 声明的第一个强调色，用来推算色相区间。 */
+  readonly accent?: string;
+}
+
 export interface PresentationDocumentRecord {
   readonly nodeId: string;
   readonly currentRevisionId: string;
@@ -270,6 +276,8 @@ export interface PresentationRepositoryPort extends PresentationDocumentQueryPor
   ): Promise<boolean>;
   /** 仅供创建流程失败后的补偿回滚；不能用于普通用户删除文稿。 */
   discardCreatedPresentation?(nodeId: string): Promise<void>;
+  /** 最近新建、且声明了 theme.direction 的文稿用过的方向，由近到远。 */
+  listRecentDirectionUses?(limit: number): Promise<PresentationDirectionUse[]>;
   getRevisionSource(nodeId: string, revision: number): Promise<string | null>;
   listRevisions(nodeId: string): Promise<PresentationRevisionRecord[]>;
   getManualEditReceipt(commandId: string): Promise<PresentationManualEditReceiptRecord | null>;

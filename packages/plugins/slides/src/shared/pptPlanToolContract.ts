@@ -1,13 +1,16 @@
 import * as z from 'zod';
+import {
+  DirectionFontsSchema,
+  DirectionPaletteSchema,
+} from './designDirection/definitions/directionContract';
 
 const NonEmptyTextSchema = z.string().trim().min(1);
 
 /**
  * 新建整稿时由用户与 Agent 共同确认的最小视觉方向。
  *
- * 这里只保存设计判断，不复制最终 deck.js 的颜色、字体或图表调色板；后者仍由
- * `compose({ theme })` 拥有。三个字段分别约束整体理念、构图方法和唯一记忆点，避免重新
- * 引入已经删除的宽泛 styleDecision。
+ * 这里只保存设计判断；具体配色、字体和封面样张在 `look` 里。三个字段分别约束整体理念、
+ * 构图方法和唯一记忆点，避免重新引入已经删除的宽泛 styleDecision。
  */
 export const PptPlanVisualDirectionSchema = z.object({
   concept: NonEmptyTextSchema,
@@ -16,6 +19,37 @@ export const PptPlanVisualDirectionSchema = z.object({
 }).strict();
 
 export type PptPlanVisualDirection = z.infer<typeof PptPlanVisualDirectionSchema>;
+
+/**
+ * 新建整稿时给用户看的“样子”：封面样张、配色与字体。
+ *
+ * Agent 先只做封面一页再调用 ppt_plan，`presentation` 指向这份文稿；工具取它当前成功版本，
+ * 卡片按该版本渲染第 1 页。配色与字体是用户批准的内容，deck.js 的 `theme.direction` 照抄它们，
+ * inspect 再逐页核对。
+ */
+export const PptPlanLookArgsSchema = z.object({
+  presentation: z.string().trim().min(1),
+  palette: DirectionPaletteSchema,
+  fonts: DirectionFontsSchema,
+}).strict();
+
+export type PptPlanLookArgs = z.infer<typeof PptPlanLookArgsSchema>;
+
+/** 封面样张所在的文稿与成功版本；历史版本被清理后卡片只显示文字。 */
+export const PptPlanCoverSchema = z.object({
+  presentationId: NonEmptyTextSchema,
+  versionId: NonEmptyTextSchema,
+}).strict();
+
+export type PptPlanCover = z.infer<typeof PptPlanCoverSchema>;
+
+export const PptPlanLookDataSchema = z.object({
+  palette: DirectionPaletteSchema,
+  fonts: DirectionFontsSchema,
+  cover: PptPlanCoverSchema.optional(),
+}).strict();
+
+export type PptPlanLookData = z.infer<typeof PptPlanLookDataSchema>;
 
 export const PptPlanToolPageArgsSchema = z.object({
   title: NonEmptyTextSchema,
@@ -27,6 +61,7 @@ export const PptPlanToolArgsSchema = z.object({
   title: NonEmptyTextSchema,
   audience: NonEmptyTextSchema.optional(),
   visualDirection: PptPlanVisualDirectionSchema,
+  look: PptPlanLookArgsSchema.optional(),
   pages: z.array(PptPlanToolPageArgsSchema).min(1),
 }).strict();
 
@@ -42,6 +77,7 @@ export const PptPlanDataSchema = z.object({
   pageCount: z.number().int().positive(),
   audience: NonEmptyTextSchema.optional(),
   visualDirection: PptPlanVisualDirectionSchema,
+  look: PptPlanLookDataSchema.optional(),
   pages: z.array(PptPlanPageDataSchema).min(1),
 }).strict().superRefine((plan, context) => {
   if (plan.pageCount !== plan.pages.length) {
@@ -66,13 +102,22 @@ export const PptPlanDataSchema = z.object({
 export type PptPlanPageData = z.infer<typeof PptPlanPageDataSchema>;
 export type PptPlanData = z.infer<typeof PptPlanDataSchema>;
 
-/** 从已经校验的 Agent 参数生成可持久化、可审批的顺序计划。 */
-export function createPptPlanData(input: PptPlanToolArgs): PptPlanData {
+/** 从已经校验的 Agent 参数生成可持久化、可审批的顺序计划；封面版本由工具解析后传入。 */
+export function createPptPlanData(input: PptPlanToolArgs, cover?: PptPlanCover): PptPlanData {
   return PptPlanDataSchema.parse({
     title: input.title,
     pageCount: input.pages.length,
     ...(input.audience === undefined ? {} : { audience: input.audience }),
     visualDirection: input.visualDirection,
+    ...(input.look === undefined
+      ? {}
+      : {
+          look: {
+            palette: input.look.palette,
+            fonts: input.look.fonts,
+            ...(cover === undefined ? {} : { cover }),
+          },
+        }),
     pages: input.pages.map((page, index) => ({
       slideNumber: index + 1,
       title: page.title,

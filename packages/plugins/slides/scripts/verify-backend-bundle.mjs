@@ -17,8 +17,9 @@ import {
 } from './build/copyYogaRuntime.mjs';
 
 // App Server 入口只负责编排、查询与持久化；PPTX 生成依赖属于 build Worker。
-// Worker 必需的两份纯身份 schema 随插件内联，增加约 50 KiB；仍禁止整套物化栈回流。
-const MAX_BACKEND_ENTRY_BYTES = 2.15 * 1024 * 1024;
+// Worker 必需的两份纯身份 schema 随插件内联，增加约 50 KiB；ppt_direction 的视觉方向池与
+// inspect 的方向贯彻检查在 App Server 运行，约 95 KiB（池内中文按 \u 转义计）；仍禁止整套物化栈回流。
+const MAX_BACKEND_ENTRY_BYTES = 2.3 * 1024 * 1024;
 // TypeScript/Yoga、PptxGenJS/JSZip 与原生公式装配均归同一 build Worker；1.6 MiB
 // 只保留小幅依赖漂移空间，防止 parser、Host SDK 或完整 backend 被意外卷入。
 const MAX_PRESENTATION_BUILD_WORKER_BYTES = 1.6 * 1024 * 1024;

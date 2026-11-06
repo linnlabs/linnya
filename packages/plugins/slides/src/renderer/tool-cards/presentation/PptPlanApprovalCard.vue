@@ -7,7 +7,12 @@
         </span>
       </div>
 
-      <div class="ppt-plan-card__content" :class="{ 'ppt-plan-card__content--disabled': isCompleted }">
+      <div v-if="isFolded" class="ppt-plan-card__folded">
+        <PptPlanLook v-if="editablePlan.look?.cover" :look="editablePlan.look" compact />
+        <span>{{ foldedText }}</span>
+      </div>
+
+      <div v-else class="ppt-plan-card__content" :class="{ 'ppt-plan-card__content--disabled': isCompleted }">
         <div v-if="interactionStatus.status !== 'active'" class="ppt-plan-card__status">
           {{ interactionStatus.status === 'approved'
             ? slidesToolCardMessage('slides.plan.status.approved')
@@ -46,6 +51,8 @@
             <span>{{ slidesToolCardMessage('slides.plan.pageCount', { count: editablePlan.pageCount }) }}</span>
           </div>
         </section>
+
+        <PptPlanLook v-if="editablePlan.look" :look="editablePlan.look" />
 
         <section
           class="visual-direction-section"
@@ -303,6 +310,7 @@ import {
 } from '@linnya/renderer-ui/icons';
 import { useSlidesToolCardLocalization } from '../ui/useSlidesToolCardLocalization';
 import { usePptPlanInteraction } from './usePptPlanInteraction';
+import PptPlanLook from './PptPlanLook.vue';
 import type { PptPlanCardProps } from './usePptPlanInteraction';
 
 type PageMenuAction = 'insert-before' | 'insert-after' | 'move-up' | 'move-down' | 'delete';
@@ -371,6 +379,14 @@ const activePageMenuOptions = computed(() => {
   return pageIndex >= 0 ? buildPageMenuOptions(pageIndex) : [];
 });
 const isDraggingPage = computed(() => draggedPageLocalId.value !== null);
+// 已提交修改的旧计划收起成一行，新计划由 Agent 改完后另出一张卡。
+const isFolded = computed(() => interactionStatus.value.status === 'modified');
+const foldedText = computed(() => {
+  const notes = interactionStatus.value.notes?.trim();
+  return notes
+    ? slidesToolCardMessage('slides.plan.status.modifiedWithNotes', { notes })
+    : slidesToolCardMessage('slides.plan.status.modified');
+});
 const suppressHandleHover = ref(false);
 
 function readEditableText(event: Event): string {

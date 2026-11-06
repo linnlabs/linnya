@@ -19,6 +19,35 @@ const planArgs = {
 };
 
 describe('projectSlidesPlanPresentation', () => {
+  it('等待审批时从工具结果读取封面版本，参数里只有文稿路径', () => {
+    const look = {
+      presentation: 'workspace:/经营复盘.slides',
+      palette: { backgrounds: ['#FFFFFF'], ink: '#111111', accents: ['#E3332B'] },
+      fonts: ['Microsoft YaHei'],
+    };
+    const projected = projectSlidesPlanPresentation({
+      sourceToolName: 'ppt_plan',
+      uiKey: 'ppt_plan',
+      toolCallId: 'call-plan-cover',
+      args: { ...planArgs, look },
+      result: {
+        data: {
+          ...planArgs,
+          pageCount: 1,
+          pages: [{ slideNumber: 1, ...planArgs.pages[0] }],
+          look: {
+            palette: look.palette,
+            fonts: look.fonts,
+            cover: { presentationId: 'pres-1', versionId: 'ver-1' },
+          },
+        },
+      },
+      status: 'loading',
+      phase: 'start',
+    });
+    expect(projected.data.plan?.look?.cover).toEqual({ presentationId: 'pres-1', versionId: 'ver-1' });
+  });
+
   it('批准回复应从原始参数恢复计划，而不是把 action 结果当作计划', () => {
     expect(projectSlidesPlanPresentation({
       sourceToolName: 'ppt_plan',

@@ -4,6 +4,10 @@ import type {
 } from '@app/localization';
 
 export type SlidesToolCardMessageKey =
+  | 'slides.tool.title.direction'
+  | 'slides.tool.compact.direction'
+  | 'slides.tool.direction.loading'
+  | 'slides.tool.direction.error'
   | 'slides.tool.title.inspect'
   | 'slides.tool.title.inspectNamed'
   | 'slides.tool.title.export'
@@ -14,6 +18,15 @@ export type SlidesToolCardMessageKey =
   | 'slides.plan.heading'
   | 'slides.plan.status.approved'
   | 'slides.plan.status.modified'
+  | 'slides.plan.status.modifiedWithNotes'
+  | 'slides.plan.label.palette'
+  | 'slides.plan.label.fonts'
+  | 'slides.plan.look.paletteLegend'
+  | 'slides.plan.look.cover'
+  | 'slides.plan.look.coverExpand'
+  | 'slides.plan.look.coverCollapse'
+  | 'slides.plan.look.coverLoading'
+  | 'slides.plan.look.coverUnavailable'
   | 'slides.plan.label.designConcept'
   | 'slides.plan.label.composition'
   | 'slides.plan.label.visualSignature'
@@ -53,6 +66,10 @@ export type SlidesToolCardMessageResolver = (
 ) => string;
 
 export const SLIDES_TOOL_CARD_MESSAGE_FALLBACKS = {
+  'slides.tool.title.direction': '找灵感',
+  'slides.tool.compact.direction': '找灵感',
+  'slides.tool.direction.loading': '正在找灵感...',
+  'slides.tool.direction.error': '视觉方向没有生成，Agent 会按常规方式继续。',
   'slides.tool.title.inspect': '检查演示文稿',
   'slides.tool.title.inspectNamed': '检查演示文稿 · {title}',
   'slides.tool.title.export': '导出 PPTX',
@@ -63,6 +80,15 @@ export const SLIDES_TOOL_CARD_MESSAGE_FALLBACKS = {
   'slides.plan.heading': '演示文稿大纲',
   'slides.plan.status.approved': '已批准，Agent 继续执行。',
   'slides.plan.status.modified': '已提交修改，Linnya 将重新生成大纲。',
+  'slides.plan.status.modifiedWithNotes': '已提交修改：“{notes}”',
+  'slides.plan.label.palette': '配色',
+  'slides.plan.label.fonts': '字体',
+  'slides.plan.look.paletteLegend': '底色 · 文字 ｜ 强调色',
+  'slides.plan.look.cover': '封面样张',
+  'slides.plan.look.coverExpand': '点开看大图',
+  'slides.plan.look.coverCollapse': '收起',
+  'slides.plan.look.coverLoading': '正在显示封面…',
+  'slides.plan.look.coverUnavailable': '封面样张已不可用',
   'slides.plan.label.designConcept': '设计理念',
   'slides.plan.label.composition': '构图与节奏',
   'slides.plan.label.visualSignature': '视觉记忆点',
@@ -102,6 +128,10 @@ export const SLIDES_TOOL_CARD_MESSAGE_CATALOG: MessageCatalogContribution = {
   catalogs: {
     'zh-CN': SLIDES_TOOL_CARD_MESSAGE_FALLBACKS,
     'en-US': {
+      'slides.tool.title.direction': 'Finding inspiration',
+      'slides.tool.compact.direction': 'Find inspiration',
+      'slides.tool.direction.loading': 'Finding inspiration...',
+      'slides.tool.direction.error': 'No visual direction was produced. The Agent will continue as usual.',
       'slides.tool.title.inspect': 'Inspect presentation',
       'slides.tool.title.inspectNamed': 'Inspect presentation · {title}',
       'slides.tool.title.export': 'Export PPTX',
@@ -112,6 +142,15 @@ export const SLIDES_TOOL_CARD_MESSAGE_CATALOG: MessageCatalogContribution = {
       'slides.plan.heading': 'Presentation Outline',
       'slides.plan.status.approved': 'Approved. The Agent will continue.',
       'slides.plan.status.modified': 'Changes submitted. Linnya will regenerate the outline.',
+      'slides.plan.status.modifiedWithNotes': 'Changes submitted: “{notes}”',
+      'slides.plan.label.palette': 'Colors',
+      'slides.plan.label.fonts': 'Fonts',
+      'slides.plan.look.paletteLegend': 'Background · Text | Accents',
+      'slides.plan.look.cover': 'Cover preview',
+      'slides.plan.look.coverExpand': 'Click to enlarge',
+      'slides.plan.look.coverCollapse': 'Collapse',
+      'slides.plan.look.coverLoading': 'Showing the cover…',
+      'slides.plan.look.coverUnavailable': 'Cover preview is no longer available',
       'slides.plan.label.designConcept': 'Concept',
       'slides.plan.label.composition': 'Composition',
       'slides.plan.label.visualSignature': 'Signature',

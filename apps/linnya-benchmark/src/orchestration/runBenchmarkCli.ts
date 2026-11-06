@@ -10,12 +10,15 @@ import { runBenchmarkCase } from './runBenchmarkCase';
 import { runResearchWorkflow } from '../features/research-workflow/orchestration/runResearchWorkflow';
 import type { ResearchWorkflowCliPort } from '../features/research-workflow/definitions/researchWorkflow';
 import { preflightHistoricalCorpus } from '../features/historical-corpus/orchestration/preflightHistoricalCorpus';
+import type { SlidesDesignBatchCliPort } from '../features/slides-design-batch/definitions/slidesDesignBatch';
+import { runSlidesDesignBatch } from '../features/slides-design-batch/orchestration/runSlidesDesignBatch';
 
 interface RunBenchmarkCliOptions {
   readonly registry: BenchmarkRegistry;
   readonly conversationCli: BenchmarkConversationCliPort;
   readonly reports: BenchmarkReportPort;
   readonly researchCli?: ResearchWorkflowCliPort;
+  readonly slidesDesignCli?: SlidesDesignBatchCliPort;
   readonly io?: BenchmarkCliIo;
 }
 
@@ -28,6 +31,7 @@ export function benchmarkCliUsage(): string {
     '  pnpm benchmark:agent run <case-id> --project <workspace-project-id> --input key=value [--input key=value] [--output DIR] [--model ID] [--reasoning LEVEL] [--pretty]',
     '  pnpm benchmark:agent research-workflow --manifest FILE --output DIR [--resume-stage STAGE_ID] [--stop-after STAGE_ID]',
     '  pnpm benchmark:agent forecast-preflight --manifest FILE --output DIR',
+    '  pnpm benchmark:agent slides-design-batch --manifest FILE --output DIR',
     '',
     'Benchmark runs always use the real Linnya conversation CLI and a running Linnya App.',
     '',
@@ -80,6 +84,36 @@ export async function runBenchmarkCli(
       });
       io.write(serialize(report, true));
       return report.status === 'corpus_ready' ? 0 : 3;
+    }
+    if (invocation.kind === 'slides-design-batch') {
+      if (!options.slidesDesignCli) throw new Error('Slides design CLI adapter is not configured');
+      const output = path.resolve(invocation.output);
+      const state = await runSlidesDesignBatch({
+        manifestFile: invocation.manifestFile,
+        output,
+        cli: options.slidesDesignCli,
+        onProgress: run =>
+          io.writeError(serialize({ run: run.runKey, status: run.status, outcome: run.outcome }, false)),
+      });
+      const completed = state.runs.every(run => run.outcome === 'completed');
+      io.write(
+        serialize(
+          {
+            ok: completed,
+            output,
+            runs: state.runs.map(run => ({
+              run: run.runKey,
+              project_id: run.projectId,
+              status: run.status,
+              outcome: run.outcome,
+              duration_ms: run.durationMs,
+              error: run.error,
+            })),
+          },
+          true
+        )
+      );
+      return completed ? 0 : 3;
     }
     if (invocation.kind === 'research-workflow') {
       if (!options.researchCli) throw new Error('Research CLI adapter is not configured');

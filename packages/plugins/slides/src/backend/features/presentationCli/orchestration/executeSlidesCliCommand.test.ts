@@ -149,7 +149,7 @@ describe('executeSlidesCliCommand', () => {
     expect(JSON.parse(result.stdout)).toEqual({
       kind: 'linnya.slides.render-report',
       schemaVersion: 1,
-      cliVersion: '1.9.0',
+      cliVersion: '1.10.0',
       presentation: {
         id: 'deck-1',
         versionId: 'version-uuid-7',

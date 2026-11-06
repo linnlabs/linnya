@@ -77,6 +77,8 @@ compose({
   title: "Dual Chart · Runnable Template",
   slides: [slide],
   theme: {
+    // 经营复盘发出去读：reading 决定 inspect 的字号下限。
+    reading: "read",
     colors: { accent1: accent, background: "#FFFFFF", text: "#101820", muted: "#6B7480" },
     // theme.chart.palette 决定图表系列取色顺序；不写则由运行时默认调色板决定。
     chart: { palette: ["#12233F", "#4A7C94", "#9FB6C4"] },

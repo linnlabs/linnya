@@ -15,6 +15,7 @@ quality/aesthetic/
 ├── colorSampling.ts            ← samplePageChromaticColors / pickPrimaryHue
 ├── chartReadability.ts         ← 图表身份与标签容量规则（纯函数）
 ├── lintRules.ts                ← 通用 lint 规则（纯函数）
+├── directionRules.ts           ← theme.direction 贯彻检查（背景 / 字体 / 颜色）
 ├── repetition.ts               ← analyzeSlideRepetition + computeLongestRun
 └── metrics.ts                  ← computeMetrics
 ```
@@ -28,6 +29,7 @@ quality/aesthetic/
 | `elementUtils.ts` | 与"元素几何 / 文本"相关的纯工具：`findContainingShape` / `abbreviateLabel` / `clusterByGranularity` / `r3` | 任何 lint code 判定逻辑 |
 | `colorSampling.ts` | 把 slide 元素采样成 `ChromaticSample[]` + 提取主色 hue | lint issue 生成 |
 | `chartReadability.ts` | 从最终图例、轴和标签事实判断身份缺失与明显容量不足 | 标题语义猜测、完整 series data、I/O |
+| `directionRules.ts` | 生成稿声明 `theme.direction` 时，对照整页底色、字体与彩色是否还在声明里；`AestheticLintOptions.direction` 为空时不运行 | 评价方向本身、读取方向池 |
 | `lintRules.ts` | 通用规则纯函数：`(slideNumber, [slideSize], elements) → AestheticLintIssue[]`，或 deck-level `(info / aggregated) → ...` | 跨规则状态共享、I/O |
 | `repetition.ts` | 相邻页结构 + 文本指纹比对，输出 `slide_repetition` issues + `SlideRepetitionPair[]` | 综合评分 |
 | `metrics.ts` | `computeMetrics`：统计规则命中和相邻页相似度，不生成主观总分 | 新增 lint 规则 |

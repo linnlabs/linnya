@@ -329,9 +329,9 @@ createTable({
 })
 ```
 
-`width` 单位为 pt；当前语义是整张表的外框和内部网格线，前端预览与 PPTX 导出使用同一描边事实。第一版不开放逐单元格边框、`tableOptions`、`colW` 或 `rowH`，也不把底层 PptxGenJS/ECharts 参数泄漏到 deck.js。用逐格 `fill` 与 `style` 表达表头、强调列和结论行，比在表格外另加色块更可靠。
+`width` 单位为 pt；当前语义是整张表的外框和内部网格线，前端预览与 PPTX 导出使用同一描边事实。第一版不开放逐单元格边框、`tableOptions`、`colW` 或 `rowH`，也不把底层 PptxGenJS/ECharts 参数泄漏到 deck.js。用逐格 `fill` 与 `style` 表达表头、强调列和结论行，比在表格外另加色块更可靠。不写 `fill` 时表头是固定的浅灰、正文是白色，不跟随主题和页面底色，所以几乎每张表都要逐格写 `fill`（做法见 [`design.md`](./design.md) 高频问题第 6 条）。
 
-`tableData/body/data` 只用于兼容旧 source。原始 `tableOptions`、`colW`、`rowH` 不是 deck.js 正式语法；当前列宽与行高由表格布局链计算，不能借 PptxGenJS 参数绕过。
+`tableData/body/data` 只用于兼容旧 source。原始 `tableOptions`、`colW`、`rowH` 不是 deck.js 正式语法；当前列宽与行高由表格布局链计算，不能借 PptxGenJS 参数绕过。原生表格也没有单元格内边距，窄列的文字会贴得很近或单字成行；对列距有明确要求的核心证据表，可以改用 Text 加细线手排，代价是它不再是原生表格（做法见 [`style-consulting-report.md`](./style-consulting-report.md)）。
 
 表格 `width/height` 与其他布局节点相同，以英寸或百分比表达（不要与 `border.width` 的 pt 混淆）。正文较长时优先给定宽度、省略高度，让布局根据换行和合并单元格计算固有高度。显式高度或 `flex` 可以控制分配空间；空间不足时会压缩格线，应按 inspect 和截图调整布局，不能假定自动排版一定不溢出。
 
@@ -344,6 +344,7 @@ createTable({
 - `colors`：字符串键值对，常用键为 `accent1`、`accent2`、`accent3`、`background`、`text`、`muted`；
 - `fonts`：`{ major, minor }`，**两者必须同时提供**，只给一个会报错；
 - `chart`：`{ palette: [...] }`，见 §9；
+- `reading`：阅读方式，`'present' | 'mixed' | 'read'`，缺省 `mixed`。只决定 inspect 的字号下限，不影响渲染和导出；取值依据见 [`design.md`](./design.md#先定视觉系统再写页面)。
 
 `theme.logo` 当前虽可能被旧 parser 接受，但没有进入预览/PPTX 的稳定渲染消费链，因此不是公开视觉能力。Logo 请作为真实 Image 节点放进需要的页面；不要写一个不会显示的 theme 字段。
 
@@ -363,11 +364,11 @@ createTable({
 ### 容易混淆的尺寸和方向约定
 
 - `flex: N`（正数）表示 grow=N、shrink=1、basis=0。无 flex 的显式主轴宽高不被兄弟节点压缩；`minWidth/minHeight` 用于约束弹性节点。
-- Text 默认左右各 0.1 英寸、上下各 0.05 英寸内边距。自动宽度包含内边距，正文可用宽度须扣除左右内边距。
+- Text 默认左右各 0.1 英寸、上下各 0.05 英寸内边距。自动宽度包含内边距，正文可用宽度须扣除左右内边距。要让文字边缘与线、图、表对齐时，把文本框向外扩这些量（x 减 0.1、y 减 0.05、宽加 0.2）。
 - 线性渐变优先使用 `direction`，例如 `to-bottom` 表示向下；与 `angle` 二选一。角度为 0° →、90° ↓、180° ←、270° ↑，顺时针，**不是 CSS 角度**。斜向例子 `angle: 30` 从右方向下旋转；非正方形会按 OOXML scaled 语义进一步受宽高比缩放。
 - 每页必须在顶层显式调用一次 `createSlide()`，按源码顺序传入 compose。不要在 helper、循环或条件中创建页；分页读取、搜索和源码定位依赖每页对应的源码行区间。helper 可复用页内节点。
 
-Shape/Image 可声明 `role: "background" | "decoration"` 表达构图意图，并用 `bleed` 指定允许越出画布的英寸数。角色不改变图片 `decorative` 的无障碍语义。Text 的辅助信息可用 `role: "footnote" | "source" | "page-number"`，避免占用正文的字体层级统计。
+Shape/Image 可声明 `role: "background" | "decoration"` 表达构图意图，并用 `bleed` 指定允许越出画布的英寸数。角色不改变图片 `decorative` 的无障碍语义。Text 的辅助信息可用 `role: "footnote" | "source" | "page-number"`，避免占用正文的字体层级统计；图注和图上标签用 `role: "caption" | "label"`。inspect 按角色取字号下限：脚注、来源、页码最低，图注、标签其次，不写角色按正文。
 
 ### 页面身份规则
 

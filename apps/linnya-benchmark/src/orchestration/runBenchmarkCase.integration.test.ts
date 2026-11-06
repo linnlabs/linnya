@@ -245,6 +245,38 @@ describe('run Benchmark case', () => {
     expect(watchStatus).toHaveBeenCalledTimes(2);
   });
 
+  it('状态观察偶发可重试错误时重试，不停止仍在运行的 run', async () => {
+    const stop = vi.fn(commonCli({}).stop);
+    const sleep = vi.fn(async () => {});
+    const watchStatus = vi.fn(commonCli({}).watchStatus)
+      .mockRejectedValueOnce(new BenchmarkConversationCliError('transport_failure', 'status response timed out', true))
+      .mockResolvedValueOnce({ frames: [frame(0, 'completed')], timedOut: false });
+    const facts = await runBenchmarkCase({ benchmark: benchmark(), projectId: 'project-1' }, {
+      cli: commonCli({ watchStatus, stop }),
+      now: () => 100,
+      sleep,
+    });
+    expect(facts.outcome).toBe('completed');
+    expect(stop).not.toHaveBeenCalled();
+    expect(sleep).toHaveBeenCalledOnce();
+    expect(facts.errors).toMatchObject([{ stage: 'watch_retry', code: 'transport_failure', retryable: true }]);
+  });
+
+  it('状态观察连续失败超过上限或不可重试时，才按 runner 失败停止 run', async () => {
+    const stop = vi.fn(commonCli({}).stop);
+    const watchStatus = vi.fn(async () => {
+      throw new BenchmarkConversationCliError('transport_failure', 'status response timed out', true);
+    });
+    const facts = await runBenchmarkCase({ benchmark: benchmark(), projectId: 'project-1' }, {
+      cli: commonCli({ watchStatus, stop }),
+      now: () => 100,
+      sleep: async () => {},
+    });
+    expect(watchStatus).toHaveBeenCalledTimes(6);
+    expect(stop).toHaveBeenCalledWith(expect.objectContaining({ reason: 'Benchmark runner failed' }));
+    expect(facts.errors.at(-1)).toMatchObject({ stage: 'execution', code: 'transport_failure' });
+  });
+
   it('真实流程遇到 wait_user 时按 case 批准，再收集终态、消息和审计', async () => {
     let watches = 0;
     const approve = vi.fn(commonCli({}).approve);

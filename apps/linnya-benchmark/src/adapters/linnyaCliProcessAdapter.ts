@@ -5,6 +5,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import {
   ConversationControlAuditResponseSchema,
   ConversationControlErrorResponseSchema,
+  ConversationControlProjectsResponseSchema,
   ConversationControlMessagesResponseSchema,
   ConversationControlProgressFrameSchema,
   ConversationControlRespondResponseSchema,
@@ -18,6 +19,7 @@ import {
 import { z, type ZodType } from 'zod';
 import type { ResearchWorkflowCliPort } from '../features/research-workflow/definitions/researchWorkflow';
 import { BenchmarkConversationCliError } from '../definitions/conversationCliPort';
+import type { SlidesDesignBatchCliPort } from '../features/slides-design-batch/definitions/slidesDesignBatch';
 
 interface ProcessResult {
   readonly exitCode: number | null;
@@ -88,7 +90,7 @@ function parseProgressFrames(stdout: string) {
 
 export function createLinnyaCliProcessAdapter(
   options: LinnyaCliProcessAdapterOptions
-): ResearchWorkflowCliPort {
+): ResearchWorkflowCliPort & SlidesDesignBatchCliPort {
   const entry = path.join(options.repoRoot, 'apps/linnya-cli/src/main.ts');
 
   function execute(args: readonly string[], timeoutMs?: number): Promise<ProcessResult> {
@@ -133,6 +135,21 @@ export function createLinnyaCliProcessAdapter(
   }
 
   return {
+    async createProject(name) {
+      const response = await executeSingle(
+        ['projects', 'create', name],
+        ConversationControlProjectsResponseSchema
+      );
+      if (response.action !== 'create') {
+        throw new BenchmarkConversationCliError(
+          'protocol_incompatible',
+          'Linnya CLI did not return a created project',
+          false
+        );
+      }
+      return { projectId: response.project.project_id };
+    },
+
     async send(request) {
       const args = [
         'send',

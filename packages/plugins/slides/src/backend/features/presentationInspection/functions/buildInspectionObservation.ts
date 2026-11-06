@@ -351,12 +351,18 @@ function formatEvidence(
       return `assessment=${evidence.assessment} script=${evidence.script} resolved=${evidence.resolvedFamilies.join(',') || 'none'} unresolved=${evidence.unresolvedFamilies.join(',') || 'none'} families=${evidence.familyCount}/${evidence.limit} runs=${evidence.runCount}`;
     case 'font_resolution':
       return `difference=${evidence.difference} script=${evidence.script} family=${evidence.requestedFamily}->${evidence.resolvedFamily} style=${evidence.requestedStyle}->${evidence.resolvedStyle} resolution=${evidence.resolution} runs=${evidence.runCount} firstSlide=${evidence.firstAffectedSlide}`;
+    case 'font_delivery':
+      return `target=${evidence.target} family=${evidence.requestedFamily} script=${evidence.script} alternatives=${evidence.alternatives.join(',')} runs=${evidence.runCount} firstSlide=${evidence.firstAffectedSlide}`;
+    case 'direction_carry_through':
+      return `aspect=${evidence.aspect} card=${evidence.cardId} declared=${evidence.declared.join(',')} observed=${evidence.observed.join(',')} firstSlide=${evidence.firstAffectedSlide}`;
     case 'color_palette':
       return `hueClusters=${evidence.hueClusterCount}/${evidence.limit} colors=${evidence.sampleColors.join(',')} samples=${evidence.sampleCount}`;
     case 'hue_drift':
       return `mean=${formatNumber(evidence.circularMeanDegrees)}deg stddev=${formatNumber(evidence.circularStdDevDegrees)}deg threshold=${formatNumber(evidence.thresholdDegrees)}deg samples=${evidence.primaryHues.map((sample) => `${sample.slideNumber}:${formatNumber(sample.hueDegrees)}`).join(',')}`;
     case 'color_contrast':
       return `text=${node(evidence.textNode)} container=${node(evidence.containerNode)} colors=${evidence.textColor}/${evidence.backgroundColor} ratio=${formatNumber(evidence.contrastRatio)} threshold=${formatNumber(evidence.thresholdRatio)}`;
+    case 'image_resolution':
+      return `node=${node(evidence.node)} fit=${evidence.fitMode} visible=${evidence.visibleWidthPx}x${evidence.visibleHeightPx}px ppi=${evidence.effectivePpi}/${evidence.targetPpi} ratio=${formatRatio(evidence.ratio)} threshold=${formatRatio(evidence.thresholdRatio)}`;
     case 'image_aspect':
       return `node=${node(evidence.node)} fit=${evidence.fitMode} frame=${formatRatio(evidence.frameAspect)} natural=${formatRatio(evidence.naturalAspect)} deviation=${formatRatio(evidence.deviationRatio)} threshold=${formatRatio(evidence.thresholdRatio)}`;
     case 'chart_readability':
@@ -379,6 +385,7 @@ function collectEvidenceNodes(evidence: DiagnosticEvidence): DiagnosticNodeRef[]
     case 'node_size':
     case 'text_layout':
     case 'image_aspect':
+    case 'image_resolution':
     case 'chart_readability':
     case 'text_pattern':
       return [evidence.node];
@@ -398,6 +405,8 @@ function collectEvidenceNodes(evidence: DiagnosticEvidence): DiagnosticNodeRef[]
     case 'margin_balance':
     case 'font_inventory':
     case 'font_resolution':
+    case 'font_delivery':
+    case 'direction_carry_through':
     case 'color_palette':
     case 'hue_drift':
     case 'slide_similarity':

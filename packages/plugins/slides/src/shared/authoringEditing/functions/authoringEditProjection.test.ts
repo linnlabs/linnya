@@ -30,6 +30,17 @@ describe('authoring edit projection', () => {
     expect(isSlidesAuthoringEditProjection({ ...projection, text: { kind: 'rich_text', content: [{ text: 'A', style: { paint: 'red' } }] } })).toBe(false);
   });
 
+  it('accepts the element writing mode in the generated base style', () => {
+    const projection = (writingMode: unknown) => ({
+      capabilities: ['translate', 'set_text_content', 'set_text_style'],
+      text: { kind: 'rich_text', content: [{ text: '茶' }], baseStyle: { fontFamily: 'KaiTi', writingMode } },
+    });
+    // 生成稿映射总会写出 writingMode 键；横排时它的值是 undefined。
+    expect(isSlidesAuthoringEditProjection(projection(undefined))).toBe(true);
+    expect(isSlidesAuthoringEditProjection(projection('vertical-rl'))).toBe(true);
+    expect(isSlidesAuthoringEditProjection(projection('vertical-lr'))).toBe(false);
+  });
+
   it('accepts frame translation as an explicit authoring capability', () => {
     expect(isSlidesAuthoringEditProjection({
       capabilities: ['translate', 'set_fill_color', 'delete'],

@@ -25,6 +25,7 @@
 - FontCatalogQueryService 是面向插件的只读事实入口：`checkFamily` 按规范化 family 精确检查，`listFamilies` 按脚本稳定排序、去重、过滤点号前缀的系统内部 UI 字体、限制 1–100 项并以 offset 分页。查询结果只包含 family、脚本候选、regular/bold/italic 和 monospace，不暴露 file path、PostScript name、face index 或缓存信息。
 - 完整应用由 platform runtime effect 配置默认字体解析与查询；独立 backend 进程必须持有 `SystemFontResolutionRuntime`，等待同一份 catalog 扫描完成后再执行业务，并在进程生命周期结束时 dispose。只创建 `SystemFontCatalogQueryRuntime` 不能让默认排版解析器就绪。
 - `resolvedFamily` 是渲染/测量应使用的字体声明，`fontFamily/request.family` 是 PPTX 导出必须保留的原始声明。
+- 请求 family 本机缺失或不覆盖正文时，先按 `functions/crossPlatformEquivalents.ts` 的 Windows/Office ↔ macOS 同书体对照依次查找（如宋体 → Songti SC、微软雅黑 → PingFang SC、楷体 → Kaiti SC），候选须已安装且 cmap 覆盖正文；都不可用才进入通用打分。对照只收录系统自带或系统按需下载的字体，只换字形，不改写作者声明，也不提供被替代字体的度量。
 - 替换打分只表达“谁更接近”，不锁定绝对分数；候选 PANOSE 的 `0/Any` 与非正 `xAvgCharWidth` 是低置信 metadata，必须计入罚分，不能被当作零差异。请求 family 已安装但缺少当前字形时，仍必须用该 family 中最接近请求样式的 face 作为相似度参考，不能退回通用脚本基线。只要存在 bold/italic 完全匹配且 cmap 覆盖正文的 face，就只能在该样式集合内继续比较；样式不匹配的 face 只在没有匹配样式时参与选择。
 - 原始请求字体名和解析后的字体名要同时保留：渲染/测量使用解析结果，PPTX 导出继续写原始字体名。
 - OS/2 Unicode Range 只用于 `latin`、`eastAsian`、`complex` 候选池。bit 60 是 Private Use Area，不属于 CJK。最终覆盖事实来自 fontkit `characterSet` 压缩后的 cmap 闭区间；FontCatalog cache 持久化这些区间，不持久化字体文件本体。

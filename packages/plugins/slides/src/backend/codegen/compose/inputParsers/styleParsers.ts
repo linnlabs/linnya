@@ -11,7 +11,10 @@ import type {
   TextStyle,
   ThemeSpec,
 } from '@plugin/slides/shared';
+import { DirectionDeclarationSchema } from '@plugin/slides/shared/designDirection/definitions/directionContract';
+import { isReadingMode } from '@plugin/slides/shared/readingMode';
 import {
+  isFontDeliveryTarget,
   normalizeGradientPaint,
   normalizePaint,
   normalizeStrokePaint,
@@ -31,10 +34,13 @@ export type ThemeInput = {
     major: string;
     minor: string;
   }>;
+  fontTarget?: 'office' | 'local';
   chart?: {
     palette?: string[];
   };
   logo?: string;
+  direction?: unknown;
+  reading?: unknown;
 };
 
 export function parseTextStyle(value: unknown): TextStyle | null {
@@ -377,6 +383,13 @@ export function readThemeSpecInput(
     }
   }
 
+  if (value.fontTarget != null) {
+    if (!isFontDeliveryTarget(value.fontTarget)) {
+      return { error: "theme.fontTarget 只能是 'office' 或 'local'。" };
+    }
+    theme.fontTarget = value.fontTarget;
+  }
+
   if (value.chart != null) {
     if (!isRecord(value.chart)) {
       return { error: 'theme.chart 必须是对象。' };
@@ -395,6 +408,23 @@ export function readThemeSpecInput(
       return { error: 'theme.logo 必须是非空字符串。' };
     }
     theme.logo = value.logo;
+  }
+
+  if (value.reading != null) {
+    if (!isReadingMode(value.reading)) {
+      return { error: "theme.reading 只能是 'present'、'mixed' 或 'read'。" };
+    }
+    theme.reading = value.reading;
+  }
+
+  if (value.direction != null) {
+    const direction = DirectionDeclarationSchema.safeParse(value.direction);
+    if (!direction.success) {
+      const issue = direction.error.issues[0];
+      const path = issue?.path.length ? `.${issue.path.join('.')}` : '';
+      return { error: `theme.direction${path} 不合法：${issue?.message ?? '格式错误'}` };
+    }
+    theme.direction = direction.data;
   }
 
   const normalizedTheme = normalizeThemeSpecColors(theme);

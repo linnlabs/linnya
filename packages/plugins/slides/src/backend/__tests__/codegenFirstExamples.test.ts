@@ -86,6 +86,9 @@ const EXPECTED_EXAMPLES = [
   'native-formula',
   'svg-graphic',
   'complete-deck',
+  'style-consulting',
+  'style-catalog',
+  'style-cultural',
 ] as const;
 
 describe('slides-design runnable examples (closed loop)', () => {

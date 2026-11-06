@@ -18,6 +18,7 @@ export type {
   PresentationCommitOptions,
   PresentationCommitResult,
   PresentationCreateOptions,
+  PresentationDirectionUse,
   PresentationDocumentIdentity,
   PresentationDocumentQueryPort,
   PresentationDocumentRecord,
