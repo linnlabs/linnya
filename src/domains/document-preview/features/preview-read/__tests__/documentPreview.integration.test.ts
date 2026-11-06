@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { DocumentPreviewContent } from '@app/schemas';
@@ -19,6 +19,22 @@ function fixture() {
 }
 
 describe('document preview business lifecycle', () => {
+  it.each(['{broken', '{"revisionKey":3}'])('rebuilds a malformed cache entry without hiding filesystem failures: %s', async broken => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'document-preview-corrupt-'));
+    try {
+      const cache = createFilePreviewCache(root), content = { revisionKey: 'v1', summary: 'Current preview' };
+      await cache.write('identity', content);
+      const [filename] = await readdir(root);
+      await writeFile(path.join(root, filename), broken);
+      expect(await cache.read('identity')).toBeNull();
+      expect(await readdir(root)).toEqual([]);
+      await cache.write('identity', content);
+      expect(await cache.read('identity')).toEqual(content);
+      await rm(path.join(root, filename));
+      await writeFile(root + '-not-a-directory', 'file');
+      await expect(createFilePreviewCache(root + '-not-a-directory').read('identity')).rejects.toMatchObject({ code: 'ENOTDIR' });
+    } finally { await rm(root, { recursive: true, force: true }); await rm(root + '-not-a-directory', { force: true }); }
+  });
   it('reuses only the same content version and still follows title changes', async () => {
     const f = fixture();
     expect((await f.operations.read(request)).content?.summary).toBe('Current text');
