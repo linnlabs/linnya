@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { copyMeasurementWorkerAssets } from './copy-measurement-worker-assets.js';
-import { projectProductionPackageManifest } from './functions/productionPackageManifest.mjs';
+import { projectPackagedSchemasManifest, projectProductionPackageManifest } from './functions/productionPackageManifest.mjs';
 import { assertProductionPackageLock } from './functions/productionPackageLock.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -70,11 +70,18 @@ async function copyFiles() {
     console.log('Removed production main.cjs source artifact; preserved headless App Server CJS.');
 
     // 仅复制生产运行真正需要的本地包产物，避免 file: 依赖 symlink 指向整棵源码目录。
+    const schemasSource = path.join(rootDir, 'packages', 'schemas');
+    const schemasDestination = path.join(distBuildDir, 'packages', 'schemas');
+    await fs.outputJson(
+      path.join(schemasDestination, 'package.json'),
+      projectPackagedSchemasManifest(await fs.readJson(path.join(schemasSource, 'package.json'))),
+      { spaces: 2 }
+    );
     const localRuntimePackages = [
       {
-        sourceDir: path.join(rootDir, 'packages', 'schemas'),
-        destDir: path.join(distBuildDir, 'packages', 'schemas'),
-        include: ['package.json', 'dist']
+        sourceDir: schemasSource,
+        destDir: schemasDestination,
+        include: ['dist']
       },
       {
         sourceDir: path.join(rootDir, 'packages', 'parser-wasm', 'pkg'),
