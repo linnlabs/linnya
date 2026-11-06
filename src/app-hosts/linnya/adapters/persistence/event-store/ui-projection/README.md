@@ -11,6 +11,16 @@
 
 `projectEvent.ts` 与 `toolProjection.ts` 是生产入口，`types.ts` 的 row 联合只能从上述产品合同派生。`sqliteApplier.ts` 在落表前校验，`sqliteUiMessagesReader.ts` 在出表时再次校验。非法行必须失败并通过 disposable projection rebuild 处理，不允许读取期兼容、字段补造或 shape guessing。
 
+### 工具结果和思考正文的物理来源
+
+在 Host schema v72 中，工具卡保留身份、排序、状态、参数和展示元数据。其正文及结构化结果分别通过 `content_event_id` 和 `data_event_id` 引用提供该值的事实。普通结果来自 `tool_output`，交互表单来自 `requires_user_interaction.form`。提交审批时保留原表单；缺省 data 的后续输出可以更新正文并沿用此前的结果。两列分别引用 `events.id`，并建部分索引以支持事件删除时的外键检查。
+
+从 v73 起，思考消息保留同一行和第一次出现的排序，每次正文更新把 `content_event_id` 指向本次 thought 事件。合并用的思考消息 ID 可以与该事件 ID 不同。
+
+增量写入和按会话重建都使用 `sqliteUiMessageRow.ts` 的行编码。分页 SQL 在同一条读取语句内按来源主键和调用归属连接事件，装回完整工具卡后校验公开 DTO。来源无效会报告消息和事件身份。Renderer 继续消费同一个窗口 DTO 与实时 SSE 合同。原始事实回放及断点恢复继续走 EventStore。
+
+### 工具输出截断
+
 `tool_output.metadata.observationTruncation` 经 Linnkit 的正式 schema 接纳后，显式投影到工具
 payload 的 `observation_truncation`。blob 身份、字符与行计量从事实原样挑选；它描述外层 observation
 治理，不改写工具业务 `data` 的分页信息。字段缺省只表示未知，不能从正文标记补造或解释为未截断。
@@ -20,6 +30,8 @@ interaction 回复沿用原工具正文，因此同时保留原截断事实。
 
 `__tests__/toolObservationTruncation.integration.test.ts` 验证真实 SQLiteEventStore append、Runtime fact、
 SQL row、Host SSE、Renderer live/reload 与 rebuild；非法 metadata 必须拒绝本次写入且不结算原 loading 工具。
+
+### 引用与时间线
 
 Citation-bearing tool output 在增量 append、Subrun history projection 与全量 rebuild 时，经 Citation domain
 正式 admission 后写入 `conversation_ui_citation_facts`。`sqliteCitationFactIndex.ts` 只拥有 SQLite 规范化、

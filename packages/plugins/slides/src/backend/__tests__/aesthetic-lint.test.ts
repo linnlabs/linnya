@@ -598,6 +598,57 @@ describe('AestheticLint', () => {
 
       expect(report.aesthetic.find((issue) => issue.code === 'font_size_below_floor')).toBeUndefined();
     });
+
+    describe('reading mode floors for generated decks', () => {
+      function textInfo(width: number, fontSize: number, semanticRole?: string): PresentationInfo {
+        return makeInfo({
+          slideSize: { width, height: width * 9 / 16 },
+          slides: [{
+            number: 1,
+            elements: [{
+              name: 'Text',
+              type: 'text',
+              text: '正文',
+              ...(semanticRole ? { semanticRole } : {}),
+              position: { x: 1, y: 1, w: 6, h: 1 },
+              paragraphs: [{ runs: [{ text: '正文', fontSize }] }],
+            }],
+          }],
+        });
+      }
+      const floorOf = (report: ReturnType<typeof lint.lint>) =>
+        report.aesthetic.find((issue) => issue.code === 'font_size_below_floor');
+
+      it('requires 14pt body text on a 13.333in mixed deck', () => {
+        const report = lint.lint(textInfo(13.333, 12), { readingMode: 'mixed' });
+        expect(floorOf(report)?.evidence).toMatchObject({ threshold: 14, actual: 12 });
+        expect(floorOf(lint.lint(textInfo(13.333, 14), { readingMode: 'mixed' }))).toBeUndefined();
+      });
+
+      it('scales the floor with slide width', () => {
+        const report = lint.lint(textInfo(10, 10), { readingMode: 'mixed' });
+        expect(floorOf(report)?.evidence).toMatchObject({ threshold: 10.5 });
+        expect(floorOf(lint.lint(textInfo(10, 10.5), { readingMode: 'mixed' }))).toBeUndefined();
+      });
+
+      it('uses the caption and chrome tiers by role', () => {
+        expect(floorOf(lint.lint(textInfo(13.333, 10, 'caption'), { readingMode: 'mixed' }))).toBeUndefined();
+        expect(floorOf(lint.lint(textInfo(13.333, 10, 'label'), { readingMode: 'mixed' }))).toBeUndefined();
+        expect(floorOf(lint.lint(textInfo(13.333, 9, 'label'), { readingMode: 'mixed' }))?.evidence)
+          .toMatchObject({ threshold: 10 });
+        expect(floorOf(lint.lint(textInfo(13.333, 8, 'source'), { readingMode: 'mixed' }))).toBeUndefined();
+      });
+
+      it('applies the mode that the deck declares', () => {
+        expect(floorOf(lint.lint(textInfo(13.333, 16), { readingMode: 'present' }))?.evidence)
+          .toMatchObject({ threshold: 18 });
+        expect(floorOf(lint.lint(textInfo(13.333, 12), { readingMode: 'read' }))).toBeUndefined();
+      });
+
+      it('keeps the fixed floor when no reading mode is passed (imported decks)', () => {
+        expect(floorOf(lint.lint(textInfo(13.333, 12)))).toBeUndefined();
+      });
+    });
   });
 
   describe('font size tiers (Tier-1 Rule 3)', () => {
@@ -796,6 +847,161 @@ describe('AestheticLint', () => {
         });
       expect(report.aesthetic.find((issue) => issue.code === 'font_style_substituted'))
         .toBeUndefined();
+    });
+
+    it('文字多的页面在正文和底部脚注之间空出大片时报告，页脚不算正文', () => {
+      const text = (name: string, y: number, h: number, chars: number, x = 0.6, w = 12.1) => ({
+        name,
+        type: 'text' as const,
+        text: '字'.repeat(chars),
+        position: { x, y, w, h },
+      });
+      const sparse = lint.lint(makeInfo({
+        slideSize: { width: 13.333, height: 7.5 },
+        slides: [{
+          number: 1,
+          elements: [
+            text('title', 0.5, 0.6, 12),
+            text('body', 1.3, 2.0, 260),
+            text('footnote', 6.3, 0.3, 40),
+            text('footer', 7.0, 0.25, 10),
+          ],
+        }],
+      })).aesthetic.filter((issue) => issue.code === 'content_area_underused');
+      expect(sparse).toHaveLength(1);
+      expect(sparse[0]!.evidence).toMatchObject({ metric: 'unused_bottom_ratio', samples: [3.3, 6.3, 1] });
+
+      const filled = lint.lint(makeInfo({
+        slideSize: { width: 13.333, height: 7.5 },
+        slides: [{
+          number: 1,
+          elements: [
+            text('title', 0.5, 0.6, 12),
+            text('left', 1.3, 5.2, 260, 0.6, 6),
+            text('right', 1.3, 5.0, 260, 6.8, 6),
+            text('footer', 7.0, 0.25, 10),
+          ],
+        }],
+      })).aesthetic.filter((issue) => issue.code === 'content_area_underused');
+      expect(filled).toHaveLength(0);
+    });
+
+    it('字数少的封面和章节页不检查留白', () => {
+      const issues = lint.lint(makeInfo({
+        slideSize: { width: 13.333, height: 7.5 },
+        slides: [{
+          number: 1,
+          elements: [
+            { name: 'title', type: 'text', text: '宋代五大名窑', position: { x: 0.6, y: 2, w: 8, h: 1 } },
+            { name: 'sub', type: 'text', text: '汝官哥钧定', position: { x: 0.6, y: 3.2, w: 8, h: 0.5 } },
+          ],
+        }],
+      })).aesthetic.filter((issue) => issue.code === 'content_area_underused');
+      expect(issues).toHaveLength(0);
+    });
+
+    it('满版照片源像素不足时报告清晰度，contain 小图和高分辨率图不报', () => {
+      const image = (name: string, w: number, h: number, px: [number, number], fit: SlideElementInfo['imageFit']) => ({
+        name,
+        type: 'image' as const,
+        position: { x: 0, y: 0, w, h },
+        imageFit: fit,
+        imageNaturalSizePx: { width: px[0], height: px[1] },
+      });
+      const report = lint.lint(makeInfo({
+        slideSize: { width: 13.333, height: 7.5 },
+        slides: [{
+          number: 1,
+          elements: [
+            image('mural', 13.333, 7.5, [1200, 675], 'cover'),
+            image('plate', 4, 3, [1200, 900], 'contain'),
+            image('thumb', 0.8, 0.8, [40, 40], 'contain'),
+          ],
+        }],
+      }));
+
+      const issues = report.aesthetic.filter((issue) => issue.code === 'image_resolution_low');
+      expect(issues).toHaveLength(1);
+      expect(issues[0]).toMatchObject({
+        slides: [1],
+        evidence: { kind: 'image_resolution', fitMode: 'cover', visibleWidthPx: 1200, targetPpi: 144 },
+      });
+    });
+
+    it('裁剪掉的部分不计入可见像素', () => {
+      const report = lint.lint(makeInfo({
+        slideSize: { width: 10, height: 5.625 },
+        slides: [{
+          number: 1,
+          elements: [{
+            name: 'detail',
+            type: 'image',
+            position: { x: 0, y: 0, w: 5, h: 5 },
+            imageFit: 'cover',
+            imageNaturalSizePx: { width: 2000, height: 2000 },
+            imageCrop: { top: 0.35, right: 0.35, bottom: 0.35, left: 0.35 },
+          }],
+        }],
+      }));
+
+      expect(report.aesthetic.find((issue) => issue.code === 'image_resolution_low'))
+        .toMatchObject({ evidence: { visibleWidthPx: 600, effectivePpi: 120, targetPpi: 192 } });
+    });
+
+    it('Office 目标下报告 Mac 专属字体不可交付，并按 family 聚合', () => {
+      const info = makeInfo({
+        slides: [1, 3].map((number) => ({
+          number,
+          elements: [makeResolvedFontText({
+            name: `Body ${number}`,
+            text: '宋代瓷器',
+            declaredFamily: 'Songti SC',
+            script: 'eastAsian',
+          })],
+        })),
+      });
+
+      const officeIssues = lint.lint(info, { fontTarget: 'office' }).aesthetic
+        .filter((issue) => issue.code === 'font_not_deliverable');
+      expect(officeIssues).toEqual([expect.objectContaining({
+        severity: 'warning',
+        slides: [1, 3],
+        evidence: {
+          kind: 'font_delivery',
+          target: 'office',
+          requestedFamily: 'Songti SC',
+          script: 'eastAsian',
+          alternatives: ['SimSun', 'STZhongsong'],
+          runCount: 2,
+          firstAffectedSlide: 1,
+        },
+      })]);
+      expect(lint.lint(info, { fontTarget: 'local' }).aesthetic
+        .some((issue) => issue.code === 'font_not_deliverable')).toBe(false);
+      expect(lint.lint(info).aesthetic
+        .some((issue) => issue.code === 'font_not_deliverable')).toBe(false);
+    });
+
+    it('Office 字体在本机只是预览替代时不报替换，也不报不可交付', () => {
+      const info = makeInfo({
+        slides: [{
+          number: 1,
+          elements: [makeResolvedFontText({
+            name: 'Body',
+            text: '正文',
+            declaredFamily: '宋体',
+            resolvedFamily: 'Songti SC',
+            script: 'eastAsian',
+            resolution: 'substituted',
+          })],
+        }],
+      });
+
+      const officeCodes = lint.lint(info, { fontTarget: 'office' }).aesthetic.map((issue) => issue.code);
+      expect(officeCodes).not.toContain('font_family_substituted');
+      expect(officeCodes).not.toContain('font_not_deliverable');
+      expect(lint.lint(info, { fontTarget: 'local' }).aesthetic.map((issue) => issue.code))
+        .toContain('font_family_substituted');
     });
 
     it('ignores legacy inputs without resolved font facts', () => {

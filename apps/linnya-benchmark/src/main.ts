@@ -11,6 +11,7 @@ void runBenchmarkCli(process.argv.slice(2), {
   registry: builtinBenchmarkRegistry,
   conversationCli,
   researchCli: conversationCli,
+  slidesDesignCli: conversationCli,
   reports: createFileBenchmarkReportWriter(path.join(repoRoot, '_dev_data', 'benchmark-results')),
 }).then(exitCode => {
   process.exitCode = exitCode;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildShortPatternCaseVariants,
+  buildTrigramMatchExpression,
   buildUniqueTrigrams,
   compileWorkspaceSearchPattern,
   findLiteralMatchesInText,
@@ -11,6 +13,16 @@ describe('workspace grep search pattern', () => {
     expect(buildUniqueTrigrams('banana')).toEqual(['ban', 'ana', 'nan']);
     expect(buildUniqueTrigrams('中英文abc')).toEqual(['中英文', '英文a', '文ab', 'abc']);
     expect(buildUniqueTrigrams('ab')).toEqual([]);
+  });
+
+  it('trigram 以带引号的 FTS5 字符串组合，用户输入里的查询语法不被解释', () => {
+    expect(buildTrigramMatchExpression(['a"b', 'AND', 'x*y'])).toBe('"a""b" AND "AND" AND "x*y"');
+  });
+
+  it('短查询 LIKE 预筛补齐非 ASCII 大小写变体，ASCII 交给 LIKE 自身折叠', () => {
+    expect(buildShortPatternCaseVariants('Ab')).toEqual(['ab']);
+    expect(buildShortPatternCaseVariants('数据')).toEqual(['数据']);
+    expect(buildShortPatternCaseVariants('σο').sort()).toEqual(['ΣΟ', 'Σο', 'σΟ', 'σο'].sort());
   });
 
   it('默认大小写不敏感，返回 1-based 行列位置', () => {

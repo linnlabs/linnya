@@ -111,6 +111,7 @@ coverSpacer.flex = 1;
 
 const coverFooter = createText("Strategy & Operations · 2026-01-15");
 coverFooter.fontSize = 8;
+coverFooter.role = "footnote";
 coverFooter.color = muted;
 coverFooter.height = 0.22;
 
@@ -200,6 +201,7 @@ closingSpacer.flex = 1;
 
 const closingFooter = createText("Strategy & Operations · 2026-01-15");
 closingFooter.fontSize = 8;
+closingFooter.role = "footnote";
 closingFooter.color = "#7E93AC";
 closingFooter.height = 0.22;
 
@@ -217,6 +219,8 @@ compose({
   // 视觉系统写进 theme，后续增删页面时 DECK_DESIGN 会带着这些值回到 sandbox，
   // 跨页一致性才有据可依。新建文稿时不要省略这一段。
   theme: {
+    // 经营复盘发出去读：reading 决定 inspect 的字号下限。
+    reading: "read",
     colors: {
       accent1: navy,
       accent2: green,

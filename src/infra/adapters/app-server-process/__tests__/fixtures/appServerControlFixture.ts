@@ -34,13 +34,25 @@ async function main(): Promise<void> {
     output: rpcOutput,
     handlers,
   });
-  const ready = rpc.request('desktop.fixture.echo', { from: 'backend' }).then(result => {
+  const databaseStartupMs = readNumberArgument('--database-startup-ms');
+  const readyDelayAfterDatabaseMs = readNumberArgument('--ready-delay-after-database-ms');
+  const ready = rpc.request('desktop.fixture.echo', { from: 'backend' }).then(async result => {
     if (typeof result !== 'object'
       || result === null
       || Array.isArray(result)
       || result.acknowledged !== true) {
       throw new Error('Desktop reverse RPC 返回了无效确认');
     }
+    if (databaseStartupMs !== null) {
+      // 模拟耗时超过启动超时的数据格式升级：两个步骤，各占一半时间。
+      await host.reportStartupProgress({ state: 'started', upgrading: true, completedSteps: 0, totalSteps: 2 });
+      await delay(databaseStartupMs / 2);
+      await host.reportStartupProgress({ state: 'progress', upgrading: true, completedSteps: 1, totalSteps: 2 });
+      await delay(databaseStartupMs / 2);
+      await host.reportStartupProgress({ state: 'progress', upgrading: true, completedSteps: 2, totalSteps: 2 });
+      await host.reportStartupProgress({ state: 'finished', upgrading: true, completedSteps: 2, totalSteps: 2 });
+    }
+    if (readyDelayAfterDatabaseMs !== null) await delay(readyDelayAfterDatabaseMs);
     return {
       applicationVersion: bootstrap.backend_facts.applicationVersion,
       apiPort: bootstrap.backend_configuration.server.port,
@@ -78,6 +90,18 @@ void main().then(() => {
   process.stderr.write(`fixture-failure:${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 1;
 });
+
+function readNumberArgument(name: string): number | null {
+  const argument = process.argv.find(value => value.startsWith(`${name}=`));
+  if (!argument) return null;
+  const value = Number(argument.slice(name.length + 1));
+  if (!Number.isFinite(value) || value < 0) throw new Error(`fixture 参数无效：${argument}`);
+  return value;
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
 
 function waitForReadableEnd(input: Socket): Promise<void> {
   if (input.readableEnded || input.destroyed) return Promise.resolve();

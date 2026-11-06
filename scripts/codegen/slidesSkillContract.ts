@@ -91,6 +91,15 @@ export function renderChartPresetsReference(): string {
   ].join('\n');
 }
 
+/**
+ * Skill 体量预算：防止无意的膨胀，不是越小越好。
+ * 激活时 SKILL.md 全文进入上下文，资源只列一行路径、按需读取。
+ * 2026-11 的设计基准里，扩充后的规则与风格参考明显改善了真实成稿，于是预算放宽到当前体量；
+ * 再要增加，同样先用基准证明 Agent 的成稿变好，再调这里。
+ */
+export const SLIDES_SKILL_RESOURCE_BUDGET = 26;
+export const SLIDES_SKILL_INSTRUCTION_TOKEN_BUDGET = 6_500;
+
 export function estimateSkillInstructionTokens(content: string): number {
   const tokens = content.match(/[\u0080-\u{10FFFF}]|[A-Za-z0-9_]+|[^\sA-Za-z0-9_\u0080-\u{10FFFF}]/gu) ?? [];
   return tokens.reduce((total, token) => {
@@ -122,22 +131,22 @@ export function runSlidesSkillCheck(options: {
   }
 
   const resourceFiles = listFilesRecursively(skillRoot);
-  if (resourceFiles.length > 20) {
+  if (resourceFiles.length > SLIDES_SKILL_RESOURCE_BUDGET) {
     problems.push({
       kind: 'resource-budget',
       path: relativePath(skillRoot, skillRoot),
-      message: `Skill 资源共 ${resourceFiles.length} 个，超过 20 个的上下文预算。`,
+      message: `Skill 资源共 ${resourceFiles.length} 个，超过 ${SLIDES_SKILL_RESOURCE_BUDGET} 个的上下文预算。`,
     });
   }
 
   const skillPath = path.join(skillRoot, 'SKILL.md');
   const skill = readIfPresent(skillPath);
   const estimatedInstructionTokens = estimateSkillInstructionTokens(skill);
-  if (estimatedInstructionTokens > 5_000) {
+  if (estimatedInstructionTokens > SLIDES_SKILL_INSTRUCTION_TOKEN_BUDGET) {
     problems.push({
       kind: 'instruction-budget',
       path: 'SKILL.md',
-      message: `SKILL.md 估算为 ${estimatedInstructionTokens} tokens，超过 5000。`,
+      message: `SKILL.md 估算为 ${estimatedInstructionTokens} tokens，超过 ${SLIDES_SKILL_INSTRUCTION_TOKEN_BUDGET}。`,
     });
   }
 

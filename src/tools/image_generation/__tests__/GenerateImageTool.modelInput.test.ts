@@ -66,7 +66,7 @@ function createContext(input: {
         width: savedImage.width,
         height: savedImage.height,
         sha256: savedImage.sha256,
-        localPath: '/managed/asset-generated-image.png',
+        storagePath: 'managed/asset-generated-image.png',
         createdAt: Date.parse(savedImage.createdAt),
       }),
     };

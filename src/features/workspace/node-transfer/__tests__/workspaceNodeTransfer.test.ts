@@ -89,22 +89,17 @@ describe('workspace node cross-project transfer', () => {
       name: '旧稿.md',
       deletedAt: 10,
     });
+    const indexedFile = db.prepare(`
+      INSERT INTO workspace_vfs_search_index_files (project_id, inode, path, node_updated_at, index_version, max_file_chars, truncated)
+      VALUES ('project-1', 'workspace:doc-1', '/资料/二级/报告.md', 1, 2, 120000, 0)
+      RETURNING id
+    `).get() as { id: number };
     db.prepare(`
-      INSERT INTO workspace_vfs_search_lines (
-        id, project_id, inode, path, name, node_type, source, content_kind,
-        line_no, text, text_lc, content_hash, node_updated_at, indexed_at
-      ) VALUES ('line-1', 'project-1', 'workspace:doc-1', '/资料/二级/报告.md',
-        '报告.md', 'document', 'workspace_node', 'content', 1, '正文', '正文', 'hash', 1, 1)
-    `).run();
-    db.prepare(`
-      INSERT INTO workspace_vfs_search_grams (project_id, gram, line_id)
-      VALUES ('project-1', '正文', 'line-1')
-    `).run();
-
-    db.prepare(`
-      INSERT INTO workspace_vfs_search_files (project_id, inode, path, node_updated_at, index_version, max_file_chars, truncated)
-      VALUES ('project-1', 'workspace:doc-1', '/资料/二级/报告.md', 1, 1, 120000, 0)
-    `).run();
+      INSERT INTO workspace_vfs_search_index_lines (file_id, line_no, text) VALUES (?, 1, '来源正文')
+    `).run(indexedFile.id);
+    expect(db.prepare(`
+      SELECT COUNT(*) AS count FROM workspace_vfs_search_index_fts WHERE workspace_vfs_search_index_fts MATCH '"来源正"'
+    `).get()).toEqual({ count: 1 });
 
     const events: WorkspaceMutationEvent[] = [];
     const mutationPublisher: WorkspaceMutationPublisher = {
@@ -129,12 +124,13 @@ describe('workspace node cross-project transfer', () => {
       { id: 'folder-1', project_id: 'project-2', parent_id: null, deleted_at: null },
       { id: 'folder-2', project_id: 'project-2', parent_id: 'folder-1', deleted_at: null },
     ]);
-    expect(db.prepare('SELECT COUNT(*) AS count FROM workspace_vfs_search_lines').get())
+    expect(db.prepare('SELECT COUNT(*) AS count FROM workspace_vfs_search_index_lines').get())
       .toEqual({ count: 0 });
-    expect(db.prepare('SELECT COUNT(*) AS count FROM workspace_vfs_search_grams').get())
+    expect(db.prepare('SELECT COUNT(*) AS count FROM workspace_vfs_search_index_files').get())
       .toEqual({ count: 0 });
-    expect(db.prepare('SELECT COUNT(*) AS count FROM workspace_vfs_search_files').get())
-      .toEqual({ count: 0 });
+    expect(db.prepare(`
+      SELECT COUNT(*) AS count FROM workspace_vfs_search_index_fts WHERE workspace_vfs_search_index_fts MATCH '"来源正"'
+    `).get()).toEqual({ count: 0 });
 
     await flushMutationQueue();
     expect(events).toHaveLength(1);

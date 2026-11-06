@@ -124,6 +124,13 @@ function readImageDimensionsFromBytes(bytesOrText: DecodedDataUri | Buffer): Ima
     ?? readWebpDimensions(bytesOrText);
 }
 
+/** 只认 PNG/JPEG/WebP 位图头；SVG 是矢量，不参与像素清晰度判断。截断的字节读不到尺寸时返回 null。 */
+export function readRasterImageDimensions(bytes: Buffer): ImageDimensions | null {
+  return readPngDimensions(bytes)
+    ?? readJpegDimensions(bytes)
+    ?? readWebpDimensions(bytes);
+}
+
 function readPngDimensions(bytes: Buffer): ImageDimensions | null {
   if (
     bytes.length < 24

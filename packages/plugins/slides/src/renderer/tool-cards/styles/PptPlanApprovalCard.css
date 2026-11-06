@@ -3,6 +3,7 @@
   flex-direction: column;
   gap: 10px;
   overflow: visible;
+  container-type: inline-size;
 }
 
 .ppt-plan-card__heading {
@@ -449,4 +450,151 @@
   padding: 8px 0;
   font-size: 12px;
   font-style: italic;
+}
+
+/* 封面样张、配色与字体：封面在左，规格在右；窄卡片时上下排列。 */
+.ppt-plan-look {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(132px, 2fr);
+  gap: 16px;
+  align-items: start;
+  padding: 2px 6px;
+}
+
+.ppt-plan-look--expanded {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ppt-plan-look--compact {
+  display: block;
+  width: 120px;
+  padding: 0;
+}
+
+@container (max-width: 460px) {
+  .ppt-plan-look {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ppt-plan-look__cover {
+  margin: 0;
+  min-width: 0;
+}
+
+.ppt-plan-look__cover-button {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.ppt-plan-look--expanded .ppt-plan-look__cover-button {
+  cursor: zoom-out;
+}
+
+.ppt-plan-look__cover-button:disabled {
+  cursor: default;
+}
+
+.ppt-plan-look__cover-button:focus-visible {
+  outline: 2px solid var(--color-focus-ring, var(--color-text-secondary));
+  outline-offset: 2px;
+}
+
+.slides-version-cover {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 2px;
+  box-shadow:
+    0 1px 1.5px var(--shadow-color-xs),
+    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+}
+
+.ppt-plan-look__cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 9;
+  background: var(--color-bg-sidebar);
+  border-radius: 2px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.ppt-plan-look__caption {
+  margin: 7px 0 0;
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.ppt-plan-look__spec {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding-top: 2px;
+}
+
+.ppt-plan-look__spec dt {
+  margin-bottom: 5px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.ppt-plan-look__spec dd {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.ppt-plan-look__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.ppt-plan-look__swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 16%, transparent);
+}
+
+.ppt-plan-look__swatch-gap {
+  width: 6px;
+}
+
+.ppt-plan-look__legend {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+}
+
+.ppt-plan-look__fonts {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 已提交修改的旧计划收起成一行：封面小图 + 用户意见。 */
+.ppt-plan-card__folded {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.ppt-plan-card__folded .ppt-plan-look--compact {
+  flex: none;
+  opacity: 0.8;
 }

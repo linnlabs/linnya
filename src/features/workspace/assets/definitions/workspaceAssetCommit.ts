@@ -16,6 +16,7 @@ export interface WorkspaceAssetCommitRecord {
   readonly width: number;
   readonly height: number;
   readonly sha256: string;
-  readonly localPath: string;
+  /** `assets.local_path` 的持久路径（相对 AppData Root）。 */
+  readonly storagePath: string;
   readonly createdAt: number;
 }

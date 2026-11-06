@@ -249,6 +249,11 @@ void app.whenReady().then(async () => {
       appendEvent(`decision=${decision}`);
       return decision;
     },
+    requestPreparationFailureDecision: async failure => {
+      assert.equal(failure.stage, 'renderer_save');
+      appendEvent('save-failure-decision=return');
+      return 'return';
+    },
     requestShutdown: () => shutdownLifecycle.requestOrdinaryExit(),
     isWindowClosePermitted: () => shutdownLifecycle.isWindowClosePermitted(),
     canAcceptWindowRequests: () => shutdownLifecycle.canAcceptWindowRequest(),

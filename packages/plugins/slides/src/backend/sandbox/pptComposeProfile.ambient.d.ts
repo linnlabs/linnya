@@ -397,6 +397,23 @@ interface LayoutChartValueAxis {
 
 type LayoutContainerNode = LayoutSlideNode | LayoutViewNode;
 
+interface LayoutDirectionInput {
+  /** 照抄 ppt_direction 返回的 drawId。 */
+  drawId: string;
+  /** 照抄 ppt_direction 返回的 cardId。 */
+  cardId: string;
+  palette: {
+    /** 页面背景色（#RRGGBB）；第二个起可以是封面、章节页使用的反色底。 */
+    backgrounds: string[];
+    /** 正文墨色（#RRGGBB）。 */
+    ink: string;
+    /** 强调色（#RRGGBB），图表系列色也从这里取。 */
+    accents: string[];
+  };
+  /** 全稿实际使用的字体族，与文字的 fontFamily 写法一致。 */
+  fonts: string[];
+}
+
 type LayoutDisplayValue = string | number | boolean;
 
 interface LayoutFormulaConfig extends FlexProps, LayoutAuthoringTargetConfig {
@@ -653,8 +670,12 @@ type LayoutTextAlign = 'left' | 'center' | 'right';
  * 使用固定盒宽并自动换行；绝对定位且没有横向约束时，盒宽跟随内容，只响应显式换行符。
  */
 interface LayoutTextConfig extends FlexProps, LayoutAuthoringTargetConfig {
-  /** 页边辅助信息，不计入正文的字体层级与字体族数量。 */
-  role?: 'footnote' | 'source' | 'page-number';
+  /**
+   * 文字角色，决定 inspect 用哪一档字号下限。
+   * `footnote` / `source` / `page-number`：页边辅助信息，不计入正文的字体层级与字体族数量；
+   * `caption` / `label`：图注、图上标签等小字说明。不写按正文检查。
+   */
+  role?: 'footnote' | 'source' | 'page-number' | 'caption' | 'label';
   content?: string | LayoutTextRun[];
   fontSize?: number;
   fontWeight?: 'bold' | 'normal' | number;
@@ -720,9 +741,19 @@ interface LayoutThemeInput {
     major: string;
     minor: string;
   };
+  /** 字体面向的放映环境：`office`（默认，Windows 与 Mac 的 PowerPoint）或 `local`（只在本机放映）。 */
+  fontTarget?: 'office' | 'local';
   chart?: {
     palette: [string, ...string[]];
   };
+  /** 本稿声明的视觉方向，供 inspect 逐页对照；不影响渲染与导出。 */
+  direction?: LayoutDirectionInput;
+  /**
+   * 阅读方式，决定 inspect 的字号下限（13.333in 宽为基准，按页宽折算）：
+   * `present` 讲的稿，正文 ≥ 18pt；`mixed` 混合（缺省），正文 ≥ 14pt；`read` 读的稿，正文 ≥ 12pt。
+   * 不影响渲染与导出。
+   */
+  reading?: 'present' | 'mixed' | 'read';
 }
 
 /** @deprecated 使用 LayoutViewNode + flexDirection: 'column'。 */

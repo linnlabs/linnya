@@ -425,7 +425,7 @@ describe('PptPlanApprovalCard', () => {
     expect(Array.from(host.querySelectorAll('button')).some((button) => button.textContent?.includes('批准并继续'))).toBe(false);
   });
 
-  it('已完成且填写了其他意见时应展示灰态计划', () => {
+  it('提交修改后旧计划收起成一行，显示用户意见', () => {
     const modifiedPlan = createPlan([
       { slideNumber: 1, title: '背景', content: '介绍项目背景。' },
       { slideNumber: 2, title: '进展', content: '总结关键进展。' },
@@ -447,14 +447,33 @@ describe('PptPlanApprovalCard', () => {
     mountedApps.push(app);
 
     expect(host.textContent).toContain('演示文稿大纲');
-    expect(host.textContent).toContain('已提交修改，Linnya 将重新生成大纲。');
-    expect(host.querySelector<HTMLTextAreaElement>('[aria-label="整体修改备注"]')?.value)
-      .toBe('把结尾页语气收敛一点');
-    expect(host.querySelector('.ppt-plan-card__content')?.classList.contains('ppt-plan-card__content--disabled')).toBe(true);
-    expect(host.querySelectorAll('.page-insert-button')).toHaveLength(0);
-    expect(host.querySelectorAll('.page-drag-handle')).toHaveLength(0);
-    expect(host.querySelectorAll('[aria-label^="拖动或打开第"]')).toHaveLength(0);
-    expect(host.querySelector<HTMLElement>('.page-section__title')?.getAttribute('contenteditable')).toBe('false');
+    expect(host.querySelector('.ppt-plan-card__folded')?.textContent).toContain('已提交修改：“把结尾页语气收敛一点”');
+    expect(host.querySelector('.ppt-plan-card__content')).toBeNull();
+    expect(host.querySelectorAll('.page-section')).toHaveLength(0);
+  });
+
+  it('计划带 look 时显示配色色块与字体，没有封面版本时不渲染封面', () => {
+    const plan = createPlan([{ slideNumber: 1, title: '封面', content: '标题与副标题。' }]);
+    const data = {
+      ...plan.data,
+      look: {
+        palette: { backgrounds: ['#FFFFFF'], ink: '#111111', accents: ['#E3332B', '#1F6FC1'] },
+        fonts: ['Microsoft YaHei', 'Arial Black'],
+      },
+    };
+    const { app, host } = mountPptPlanApprovalCard(createCardProps({
+      args: toPlanArgs(plan.data),
+      result: { data },
+      status: 'success',
+      messageId: 'msg_look',
+      toolCallId: 'call_look',
+    }));
+    mountedApps.push(app);
+
+    expect(host.querySelectorAll('.ppt-plan-look__swatch')).toHaveLength(4);
+    expect(host.querySelector('.ppt-plan-look__fonts')?.textContent).toContain('Arial Black');
+    expect(host.querySelector('.ppt-plan-look__cover')).toBeNull();
+    expect(host.textContent).toContain('底色 · 文字 ｜ 强调色');
   });
 
   it('切换语言后应立即更新整张大纲卡的用户界面文案', async () => {

@@ -34,7 +34,6 @@ import {
 } from './json';
 import {
   buildInitialToolPayload,
-  buildToolContentFromPatch,
   parseToolCallArguments,
   patchToolPayload,
   readToolCallsFromPayload,
@@ -140,6 +139,7 @@ function projectThought(
     role: 'assistant',
     messageType: 'thought',
     content: nextContent,
+    contentEventId: event.id,
     payload,
     mergeKey,
     presentation: previous?.presentation ?? null,
@@ -293,6 +293,8 @@ function projectRequiresUserInteraction(
         },
       }),
       content: formObservation,
+      contentEventId: event.id,
+      dataEventId: event.id,
     },
   }];
 }
@@ -380,15 +382,18 @@ function upsertToolRow(
     throw new Error(`Tool merge key ${mergeKey} points to ${previous.messageType}`);
   }
   const basePayload = previous?.payload ?? buildInitialToolPayload(toolCallId, patch, event.timestamp);
-  const nextPayload = ConversationToolMessagePayloadSchema.parse(
-    patchToolPayload(basePayload, patch, event.timestamp),
-  );
-  const content = buildToolContentFromPatch(patch);
+  const interaction = readRecordField(patch.eventMetadata, 'interaction');
+  // 交互回复只结算已有表单；没有旧卡时沿用首次输出携带的 data。
+  const data = !previous || !interaction ? patch.data : undefined;
+  const content = interaction ? undefined : patch.observation;
+  const nextPayload = patchToolPayload(basePayload, patch, event.timestamp, data);
   const next = buildRow(event, {
     messageId: previous?.messageId ?? messageId,
     role: 'assistant',
     messageType: 'tool_calls',
     content: content ?? previous?.content ?? '',
+    contentEventId: content !== undefined ? event.id : previous?.contentEventId,
+    dataEventId: data !== undefined ? event.id : previous?.dataEventId,
     attachments: event.type === 'tool_output'
       ? mapRuntimeAttachmentsToUi(event.attachments)
       : previous?.attachments,

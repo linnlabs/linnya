@@ -2,39 +2,17 @@ import type Database from 'better-sqlite3';
 import { projectClientNoticeToUiRow } from '../../conversation-client-notices/projectClientNotice';
 import type { PersistedConversationClientNotice } from '../../conversation-client-notices/sqliteClientNoticeAdmission';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
-import {
-  ConversationUiMessageSchema,
-  type ConversationUiMessage,
-  type JsonRecord,
-} from '@app/schemas';
-import { isRecord, toSerializableValue } from './json';
+import type { ConversationUiMessage } from '@app/schemas';
+import { toUiMessageView, UI_ROWS_WITH_EVENT_SOURCES, writeUiMessageRow, type UiMessageSqlRow } from './sqliteUiMessageRow';
 import { projectEventToUiRowOps } from './projectEvent';
 import type {
   NewUiMessageRow,
-  UiMessagePayload,
   UiMessageRow,
   UiProjectionReadAccess,
   UiRowOp,
 } from './types';
-import { parseUiMessageAttachments, serializeUiMessageAttachments } from './attachments';
 import { SqliteConversationCitationFactIndex } from './sqliteCitationFactIndex';
 import { projectSubrunSummaryToUiRowOp } from './projectSubrunSummary';
-
-interface UiMessageSqlRow {
-  message_id: string;
-  conversation_id: string;
-  turn_id: string | null;
-  role: string;
-  message_type: string;
-  sort_seq: number;
-  timestamp: number;
-  content: string | null;
-  attachments_json: string | null;
-  payload_json: string | null;
-  merge_key: string | null;
-  presentation: string | null;
-  run_id: string | null;
-}
 
 interface ConversationEventCountRow {
   total_events: number;
@@ -52,7 +30,7 @@ export class SqliteUiProjectionAccess implements UiProjectionReadAccess {
       .prepare<unknown[], UiMessageSqlRow>(
         `
         SELECT *
-        FROM conversation_ui_messages
+        FROM ${UI_ROWS_WITH_EVENT_SOURCES}
         WHERE conversation_id = ? AND merge_key = ?
         LIMIT 1
       `
@@ -67,7 +45,7 @@ export class SqliteUiProjectionAccess implements UiProjectionReadAccess {
       .prepare<unknown[], UiMessageSqlRow>(
         `
         SELECT *
-        FROM conversation_ui_messages
+        FROM ${UI_ROWS_WITH_EVENT_SOURCES}
         WHERE conversation_id = ? AND message_id = ?
         LIMIT 1
       `
@@ -193,7 +171,7 @@ export class SqliteUiProjectionApplier {
           this.insertRow(op.row);
           break;
         case 'replace':
-          this.replaceRow(op.row);
+          writeUiMessageRow(this.db, op.row, 'upsert');
           break;
         case 'hide':
           this.hideRows(conversationId, op.messageIds);
@@ -207,66 +185,14 @@ export class SqliteUiProjectionApplier {
   private insertRow(row: NewUiMessageRow): void {
     const existing = this.access.getRowByMessageId(row.conversationId, row.messageId);
     if (existing) {
-      this.replaceRow({ ...row, sortSeq: existing.sortSeq });
+      writeUiMessageRow(this.db, { ...row, sortSeq: existing.sortSeq }, 'upsert');
       return;
     }
 
-    this.replaceRow({
+    writeUiMessageRow(this.db, {
       ...row,
       sortSeq: this.computeNextSortSeq(row.conversationId),
-    });
-  }
-
-  private replaceRow(row: UiMessageRow): void {
-    this.db
-      .prepare(
-        `
-        INSERT INTO conversation_ui_messages (
-          message_id,
-          conversation_id,
-          turn_id,
-          role,
-          message_type,
-          sort_seq,
-          timestamp,
-          content,
-          attachments_json,
-          payload_json,
-          merge_key,
-          presentation,
-          run_id
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(message_id) DO UPDATE SET
-          conversation_id = excluded.conversation_id,
-          turn_id = excluded.turn_id,
-          role = excluded.role,
-          message_type = excluded.message_type,
-          sort_seq = excluded.sort_seq,
-          timestamp = excluded.timestamp,
-          content = excluded.content,
-          attachments_json = excluded.attachments_json,
-          payload_json = excluded.payload_json,
-          merge_key = excluded.merge_key,
-          presentation = excluded.presentation,
-          run_id = excluded.run_id
-      `
-      )
-      .run(
-        row.messageId,
-        row.conversationId,
-        row.turnId,
-        row.role,
-        row.messageType,
-        row.sortSeq,
-        row.timestamp,
-        row.content,
-        serializeUiMessageAttachments(row.attachments),
-        serializePayload(row.payload),
-        row.mergeKey,
-        row.presentation,
-        row.runId
-      );
+    }, 'upsert');
   }
 
   private hideRows(conversationId: string, messageIds: readonly string[]): void {
@@ -354,31 +280,10 @@ export function isForeignKeyEnforcementEnabled(db: Database.Database): boolean {
 }
 
 function toUiMessageRow(row: UiMessageSqlRow): UiMessageRow {
-  const attachments = parseUiMessageAttachments(row.message_id, row.attachments_json);
-  const parsed = ConversationUiMessageSchema.safeParse({
-    message_id: row.message_id,
-    conversation_id: row.conversation_id,
-    turn_id: row.turn_id,
-    role: row.role,
-    message_type: row.message_type,
-    sort_seq: row.sort_seq,
-    timestamp: row.timestamp,
-    content: row.content,
-    ...(attachments ? { attachments } : {}),
-    payload: parsePayload(row.message_id, row.payload_json),
-    merge_key: row.merge_key,
-    presentation: row.presentation,
-    run_id: row.run_id,
-  });
-  if (!parsed.success) {
-    throw new Error(
-      `[SQLiteUiProjectionApplier] row ${row.message_id} violates the ConversationUiMessage contract: ${parsed.error.message}`
-    );
-  }
-  return mapUiMessageToInternalRow(parsed.data);
+  return mapUiMessageToInternalRow(toUiMessageView(row), row);
 }
 
-function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow {
+function mapUiMessageToInternalRow(message: ConversationUiMessage, row: UiMessageSqlRow): UiMessageRow {
   const common = {
     messageId: message.message_id,
     conversationId: message.conversation_id,
@@ -406,6 +311,7 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow
     case 'thought':
       return {
         ...common,
+        contentEventId: row.content_event_id ?? undefined,
         turnId: message.turn_id,
         runId: message.run_id,
         role: message.role,
@@ -415,6 +321,8 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow
     case 'tool_calls':
       return {
         ...common,
+        contentEventId: row.content_event_id ?? undefined,
+        dataEventId: row.data_event_id ?? undefined,
         turnId: message.turn_id,
         runId: message.run_id,
         role: message.role,
@@ -462,27 +370,4 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow
         payload: message.payload,
       };
   }
-}
-
-function serializePayload(payload: UiMessagePayload | null): string | null {
-  return payload ? JSON.stringify(payload) : null;
-}
-
-function parsePayload(messageId: string, payloadJson: string | null): JsonRecord | null {
-  if (!payloadJson) {
-    return null;
-  }
-
-  const parsed: unknown = JSON.parse(payloadJson);
-  if (!isRecord(parsed)) {
-    throw new Error(
-      `[SQLiteUiProjectionApplier] payload_json for message ${messageId} must be a JSON object`
-    );
-  }
-
-  const payload: JsonRecord = {};
-  for (const [key, value] of Object.entries(parsed)) {
-    payload[key] = toSerializableValue(value);
-  }
-  return payload;
 }

@@ -60,7 +60,7 @@
 | draft ID | 从上传到发送成功或释放 | Renderer 与 host 的上传合同 | 关联尚未提交的草稿 |
 | asset ID / resource ID | durable | event、projection、Runtime、工具合同 | 跨回放稳定引用同一个附件 |
 | durable URI | durable、无本机路径语义 | 资源账本 | 表达内容寻址身份 |
-| `assets.local_path` | host-only、本机真实路径 | SQLite adapter、verified-content loader | 打开受管副本并复核字节 |
+| `assets.local_path` | host-only、相对 AppData Root 的持久路径 | SQLite adapter、verified-content loader | 按当前 AppData Root 解析后打开受管副本并复核字节 |
 
 Renderer 不接触 `local_path`，provider 请求也不能收到 asset ID、durable URI、hash 或本地路径。未来 Bash 或本地资源工具若需要读取会话附件，应通过受控解析能力取得已经验证的真实路径，而不是自己把 durable URI 拼成文件路径。
 
@@ -135,7 +135,7 @@ child Agent 复用同一个 Tool Node、模型输入 resolver 和能力准入，
 
 文件发布前会先写入当前 store 内的 pending 凭证。数据库事务成功后释放 draft，同时完成凭证；事务失败或进程中断时，凭证保留发布事实。下次启动只检查这些显式凭证：账本已经登记的内容保留并清凭证，未登记内容移入隔离区，满 30 天后删除。启动维护不遍历正式 `content/` 反向猜测所有权。
 
-删除或截断会话时，先在事务中删除引用；只有当内容对象不再被 conversation、project 或 document 引用时，才允许删除 asset 记录。物理文件只允许从当前数据库绑定的 v2 store 回收；无 store 身份的 v1 历史字节不会因当前账本失去引用而被自动删除。
+删除或截断会话时，先在事务中删除引用；只有当内容对象不再被 conversation、project 或 document 引用时，才允许删除 asset 记录。物理文件只允许从当前数据库绑定的 v2 store 回收。
 
 ## 模块边界
 
@@ -181,19 +181,6 @@ explicit “add to resource library”
 
 `verified-image` 和 `createWorkspaceLlmInputMaterializer` 仍带有历史 workspace 命名，但它们已按显式受管存储边界读取 AppData 会话附件。这里是需要后续消除的命名债，不代表会话附件重新归属 workspace domain。
 
-## 旧数据迁移
+## 受管图片维护
 
-旧版本曾把上传图片放在 `<WorkspaceRoot>/ManagedAssets/v1/content`，后续版本又使用过 `<AppData>/ConversationAttachments/v1/content`；两种布局都没有数据库绑定的 store identity。旧逻辑还可能因项目会话自动创建 `project_asset_links(role='conversation_attachment')`。
-
-迁移必须幂等执行：
-
-1. 只从当前账本识别 `/Resources/Attachments/` 命名空间，且 `local_path` 明确属于上述两个 v1 root 的图片；
-2. 重新校验旧文件的长度、hash、MIME 和尺寸；
-3. 发布到当前数据库绑定的 AppData v2 store 后，更新当前 `assets.local_path`；
-4. v1 原字节进入只读保留状态，不随当前数据库迁移或失去引用而自动删除；
-5. 空账本不扫描、认领或删除旧目录中的未知图片；
-6. 缺失或损坏的旧文件保留原账本并报告迁移失败，不能伪造内容或静默标记成功；当前 v2 store 内的文件健康属于读取校验，不得重新进入旧迁移。
-
-迁移期间读取端允许的物理位置必须是显式存储合同：当前 AppData v2 store、旧 AppData v1 和旧 Workspace `ManagedAssets/v1`。迁移结束后，新写入只能进入当前数据库绑定的 v2 store。
-
-旧数据迁移与所有受管图片的通用维护统一属于 asset domain 的 `managed-image-maintenance`。conversation domain 只拥有 draft、用户导入和 event 提交所需事实，避免会话删除规则被工具派生图片等其他来源复制。
+所有受管图片的通用维护统一属于 asset domain 的 `managed-image-maintenance`。conversation domain 只拥有 draft、用户导入和 event 提交所需事实，避免会话删除规则被工具派生图片等其他来源复制。

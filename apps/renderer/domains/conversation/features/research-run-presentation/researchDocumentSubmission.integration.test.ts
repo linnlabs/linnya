@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { readPersistedResearchCards } from './__tests__/readPersistedResearchCards';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { SubmitResearchDocumentResultSchema } from '@app/schemas';
@@ -17,11 +17,7 @@ import { commonToolConfigs } from '../../ui/tools/configs/common';
 import { createInitialProjectionState, reduceEvent } from '../../services/messageProjection';
 import { runtimeEventToFrontendProjectionEvent } from '../../services/messageProjection/__tests__/helpers/runtimeEventToFrontendProjectionEvent';
 import { PROJECTION_TEST_SCOPE } from '../../services/messageProjection/__tests__/helpers/projectionTestScope';
-import { mapUiMessageDtoToConversationMessage } from '../../message-window/functions/mapUiMessageDto';
 import { createAppendOnlySubrunStepProjector } from '../subrun-trace/functions/createAppendOnlySubrunStepProjector';
-import { readTail } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection';
-import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
-import { SqliteUiProjectionApplier } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteApplier';
 import { projectResearchDocumentSubmission, projectResearchDocumentSubmissionCompactStep } from './functions/projectResearchDocumentSubmission';
 
 const toolName = 'submit_research_document';
@@ -71,23 +67,7 @@ function projectLive(events: readonly RuntimeEvent[]) {
     return message;
   });
 }
-function reload(events: readonly RuntimeEvent[]) {
-  const db = new Database(':memory:');
-  db.exec('CREATE TABLE projects (id TEXT PRIMARY KEY)');
-  for (const schema of CONVERSATION_SCHEMAS) db.exec(schema);
-  db.prepare('INSERT INTO conversations (conversation_id, created_at, last_event_at) VALUES (?, 1, 1)').run(conversationId);
-  const projector = new SqliteUiProjectionApplier(db);
-  try {
-    events.forEach((event, index) => projector.projectAppendedEvent(conversationId, runId, event, index));
-    const window = readTail(db, conversationId, 10);
-    if (window.status !== 'ready') throw new Error('Expected durable window');
-    return window.messages.map(message => {
-      const projected = mapUiMessageDtoToConversationMessage(message);
-      if (projected.type !== 'tool_calls') throw new Error('Expected a tool message');
-      return projected;
-    });
-  } finally { db.close(); }
-}
+
 function trace(callId: string, kind: SSESubRunTraceEvent['kind'], fields: Partial<SSESubRunTraceEvent>): SSESubRunTraceEvent {
   const input = createSubRunTraceEvent(`trace-${callId}-${kind}`, conversationId, turnId, 'parent-research', runId, kind, {
     source_event_id: `source-${callId}-${kind}`, tool_name: toolName, tool_call_id: ToolCallIdSchema.parse(callId),
@@ -114,10 +94,10 @@ describe('research stage submission presentation', () => {
   });
   afterEach(() => { unregisterFull?.(); unregisterCompact?.(); clearRendererPluginRegistryForTest(); });
 
-  it('preserves a failed submission and its corrected successor in live and durable history', () => {
+  it('preserves a failed submission and its corrected successor in live and durable history', async () => {
     const events = [decision('rejected'), failure('rejected'), decision('corrected'), success('corrected')];
     const live = projectLive(events);
-    expect(reload(events).map(message => message.toolPresentation)).toEqual(live.map(message => message.toolPresentation));
+    expect((await readPersistedResearchCards(conversationId, runId, events)).map(message => message.toolPresentation)).toEqual(live.map(message => message.toolPresentation));
     expect(live.map(message => message.toolPresentation?.title?.text.key)).toEqual([
       'conversation.tool.researchSubmit.failed', 'conversation.tool.researchSubmit.saved',
     ]);
@@ -126,7 +106,7 @@ describe('research stage submission presentation', () => {
     expect(JSON.stringify(live.map(message => message.toolPresentation))).not.toContain(args.content);
   });
 
-  it('replays parent investigation, draft and revision saves without manufacturing child or delivery state', () => {
+  it('replays parent investigation, draft and revision saves without manufacturing child or delivery state', async () => {
     for (const [stage, title] of [
       ['investigation', 'conversation.tool.researchSubmit.investigationSaved'],
       ['draft', 'conversation.tool.researchSubmit.draftSaved'],
@@ -140,7 +120,7 @@ describe('research stage submission presentation', () => {
       });
       const events = [decision(stage, parentArgs), success(stage, parentResult)];
       const live = projectLive(events);
-      expect(reload(events).map(message => message.toolPresentation)).toEqual(live.map(message => message.toolPresentation));
+      expect((await readPersistedResearchCards(conversationId, runId, events)).map(message => message.toolPresentation)).toEqual(live.map(message => message.toolPresentation));
       expect(live[0].toolPresentation?.data).toEqual({ kind: 'saved', artifactPath: parentResult.data.path });
       expect(live[0].toolPresentation?.title?.text.key).toBe(title);
       expect(projectResearchDocumentSubmissionCompactStep({
@@ -159,9 +139,9 @@ describe('research stage submission presentation', () => {
     }
   });
 
-  it('rejects a malformed saved result at live and reload admission without publishing a partial card', () => {
+  it('rejects a malformed saved result at live and reload admission without publishing a partial card', async () => {
     const malformed = { ...result, data: { ...result.data, quality_passed: true } };
-    expect(() => reload([decision('bad-result'), success('bad-result', malformed)])).toThrow();
+    await expect(readPersistedResearchCards(conversationId, runId, [decision('bad-result'), success('bad-result', malformed)])).rejects.toThrow();
     const current = state();
     const start = runtimeEventToFrontendProjectionEvent(decision('bad-result'), { ...PROJECTION_TEST_SCOPE, run_id: runId });
     const end = runtimeEventToFrontendProjectionEvent(success('bad-result', malformed), { ...PROJECTION_TEST_SCOPE, run_id: runId });

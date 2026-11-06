@@ -33,8 +33,15 @@ interface UiMessageRowFields<Message extends ConversationUiMessage> {
   readonly runId: Message['run_id'];
 }
 
+/** 同一张卡可能从旧事件保留 data，同时从新事件接收正文。来源只参与 Host 存储。 */
+interface ToolResultSources {
+  readonly contentEventId?: string;
+  readonly dataEventId?: string;
+}
+
 type UiMessageRowVariant<Message extends ConversationUiMessage> =
-  UiMessageRowFields<Message> & {
+  UiMessageRowFields<Message> & (Message extends { message_type: 'tool_calls' } ? ToolResultSources :
+    Message extends { message_type: 'thought' } ? Pick<ToolResultSources, 'contentEventId'> : unknown) & {
     readonly role: Message['role'];
     readonly messageType: Message['message_type'];
   };

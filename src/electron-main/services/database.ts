@@ -32,11 +32,17 @@ import { getPluginStateSchemaProviders } from '../../features/plugins/infrastruc
 import { getWorkspaceDataPath } from '../../shared/utils/pathManager';
 import {
   assertSupportedHostSchemaVersion,
+  runMigrationStep,
   runMigrations,
   SCHEMA_VERSION,
 } from './database/migrations';
+import type { DatabaseStartupProgressPort } from './database/databaseStartupProgress';
+import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
 
 export const DATABASE_BUSY_TIMEOUT_MS = 5000;
+
+/** `PRAGMA auto_vacuum` 的取值：2 = INCREMENTAL。 */
+const AUTO_VACUUM_INCREMENTAL = 2;
 
 export type DatabaseLifecycleBootstrap = (db: Database.Database) => void;
 
@@ -111,38 +117,7 @@ export class DatabaseService {
         assertSupportedHostSchemaVersion(currentVersion);
       }
 
-      this.configureConnection(db);
-
-      // ============================================================
-      // 核心契约：当前基线内，createTables() 每次 init 都跑。
-      //
-      // 原因：
-      // 1) 所有 schema-provider DDL 都是 CREATE TABLE/INDEX IF NOT EXISTS
-      //    形式，重复执行 100% 幂等无副作用。
-      // 2) 新增 schema-provider 表不需要再配一条重复 migration；当前基线内的
-      //    已有数据库也会执行幂等 DDL。
-      // 3) 受支持基线内，schema-provider 的表 DDL 先于 runMigrations()，索引 DDL 后于
-      //    runMigrations()。原因是 CREATE TABLE IF NOT EXISTS 不会给旧表补列，
-      //    但 CREATE INDEX 会立即解析列名；新增列必须先由 migration 补齐。
-      //
-      // 注意：依赖 schema-provider DDL 始终保持幂等。新增/修改 DDL 时
-      // 必须保持 IF NOT EXISTS / 不写 ALTER / 不写数据写入。
-      // 详见 services/database/migrations/README.md。
-      // ============================================================
-      if (isFreshDatabase) {
-        // 新库只建立“当前事实”，不能重放包含已暂停/退役能力的历史演进。
-        // 表结构与版本戳放在同一事务中；若进程中断，下次不会把半成品误认成当前库。
-        const bootstrapCurrentSchema = db.transaction(() => {
-          this.createTables();
-          db.pragma(`user_version = ${SCHEMA_VERSION}`);
-        });
-        bootstrapCurrentSchema();
-        console.log(
-          `[DatabaseService] Fresh database bootstrapped directly at schema v${SCHEMA_VERSION}.`
-        );
-      } else {
-        this.createTables();
-      }
+      this.prepareConnectionAndTables(db, isFreshDatabase);
 
       if (!isFreshDatabase) {
         if (currentVersion < SCHEMA_VERSION) {
@@ -161,7 +136,7 @@ export class DatabaseService {
       // - worker 只需要轻量 DB 连接，不能因为 import DatabaseService 静态加载 Electron/plugin runtime。
       options.lifecycleBootstrap?.(db);
 
-      this.createIndexes();
+      this.createDependentSchema();
 
       console.log('[DatabaseService] Database initialized successfully');
     } catch (error) {
@@ -169,6 +144,99 @@ export class DatabaseService {
       // 初始化失败后不能继续通过 getDb() 使用半初始化连接。事务负责回滚当前步骤，
       // 这里负责收口连接生命周期。
       this.close();
+      throw error;
+    }
+  }
+
+  /**
+   * 版本准入之后：新库先开启增量回收，再设置连接 pragma，然后建表。
+   */
+  private prepareConnectionAndTables(db: Database.Database, isFreshDatabase: boolean): void {
+    if (isFreshDatabase) {
+      // 只能在建第一张表之前设定。INCREMENTAL 让删除释放的页可以在空闲时小步归还磁盘，
+      // 不必整库 VACUUM；已有库保持原设定，切换要整库重写，不在启动时做。
+      db.pragma('auto_vacuum = INCREMENTAL');
+    }
+    this.configureConnection(db);
+
+    // ============================================================
+    // 核心契约：当前基线内，createTables() 每次 init 都跑。
+    //
+    // 原因：
+    // 1) 所有 schema-provider DDL 都是 CREATE TABLE/INDEX IF NOT EXISTS
+    //    形式，重复执行 100% 幂等无副作用。
+    // 2) 新增 schema-provider 表不需要再配一条重复 migration；当前基线内的
+    //    已有数据库也会执行幂等 DDL。
+    // 3) 受支持基线内，schema-provider 的表 DDL 先于 runMigrations()，索引 DDL 后于
+    //    runMigrations()。原因是 CREATE TABLE IF NOT EXISTS 不会给旧表补列，
+    //    但 CREATE INDEX 会立即解析列名；新增列必须先由 migration 补齐。
+    //
+    // 注意：依赖 schema-provider DDL 始终保持幂等。新增/修改 DDL 时
+    // 必须保持 IF NOT EXISTS / 不写 ALTER / 不写数据写入。
+    // 详见 services/database/migrations/README.md。
+    // ============================================================
+    if (isFreshDatabase) {
+      // 新库只建立“当前事实”，不能重放包含已暂停/退役能力的历史演进。
+      // 表结构与版本戳放在同一事务中；若进程中断，下次不会把半成品误认成当前库。
+      const bootstrapCurrentSchema = db.transaction(() => {
+        this.createTables();
+        db.pragma(`user_version = ${SCHEMA_VERSION}`);
+      });
+      bootstrapCurrentSchema();
+      console.log(
+        `[DatabaseService] Fresh database bootstrapped directly at schema v${SCHEMA_VERSION}.`
+      );
+    } else {
+      this.createTables();
+    }
+  }
+
+  /**
+   * 与 `initialize()` 相同的初始化顺序，但把进度交给宿主：先报告 `started` 并等它送达，
+   * 再执行可能很久的同步步骤；Host 迁移逐步执行，步骤之间让出事件循环，让进度及时送出。
+   */
+  async initializeWithStartupProgress(
+    options: DatabaseInitializeOptions & { readonly progress: DatabaseStartupProgressPort }
+  ): Promise<void> {
+    if (this.db) {
+      console.warn('[DatabaseService] Database already initialized');
+      return;
+    }
+    const isFreshDatabase = this.isFreshDatabaseTarget();
+    let opened = false;
+    try {
+      const db = this.openConnection();
+      opened = true;
+      const currentVersion = db.pragma('user_version', { simple: true }) as number;
+      if (!isFreshDatabase) assertSupportedHostSchemaVersion(currentVersion);
+      const pendingHostSteps = isFreshDatabase ? 0 : Math.max(0, SCHEMA_VERSION - currentVersion);
+      const upgrading = pendingHostSteps > 0;
+      const totalSteps = pendingHostSteps + 1;
+      await options.progress.report({ state: 'started', upgrading, completedSteps: 0, totalSteps });
+
+      this.prepareConnectionAndTables(db, isFreshDatabase);
+      for (let step = 0; step < pendingHostSteps; step += 1) {
+        runMigrationStep(db, currentVersion + step);
+        await options.progress.report({
+          state: 'progress',
+          upgrading,
+          completedSteps: step + 1,
+          totalSteps,
+        });
+        await yieldToEventLoop();
+      }
+      options.lifecycleBootstrap?.(db);
+      this.createDependentSchema();
+      await options.progress.report({
+        state: 'finished',
+        upgrading,
+        completedSteps: totalSteps,
+        totalSteps,
+      });
+      console.log('[DatabaseService] Database initialized successfully');
+    } catch (error) {
+      console.error('[DatabaseService] Failed to initialize database:', error);
+      if (opened) this.close();
       throw error;
     }
   }
@@ -242,8 +310,8 @@ export class DatabaseService {
     this.configureConnection(db);
   }
 
-  private isIndexDdl(ddl: string): boolean {
-    return /^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b/i.test(ddl);
+  private isDependentDdl(ddl: string): boolean {
+    return /^\s*CREATE\s+(?:(?:UNIQUE\s+)?INDEX|VIEW|TRIGGER)\b/i.test(ddl);
   }
 
   private applyProviderSchemas(options: {
@@ -287,26 +355,26 @@ export class DatabaseService {
    * 遍历所有 Schema Providers 并执行非索引 DDL。
    *
    * 中文备注：
-   * - 这里故意跳过 CREATE INDEX；
+   * - 索引、视图和触发器在表迁移完成后建立，避免引用正在替换的旧表；
    * - 老库的旧表不会因为 CREATE TABLE IF NOT EXISTS 自动补列；
    * - 因此索引必须等 runMigrations() 补完新增列之后再创建。
    */
   private createTables(): void {
     this.applyProviderSchemas({
       label: 'tables',
-      shouldApply: ddl => !this.isIndexDdl(ddl),
+      shouldApply: ddl => !this.isDependentDdl(ddl),
     });
 
     // this.applyPostSchemaMigrations(); // ⚠️ 废弃：迁移逻辑已移至 migrations.ts
   }
 
   /**
-   * 遍历所有 Schema Providers 并执行索引 DDL。
+   * 迁移后再创建依赖最终表结构的索引、视图与触发器。
    */
-  private createIndexes(): void {
+  private createDependentSchema(): void {
     this.applyProviderSchemas({
-      label: 'indexes',
-      shouldApply: ddl => this.isIndexDdl(ddl),
+      label: 'indexes, views and triggers',
+      shouldApply: ddl => this.isDependentDdl(ddl),
     });
   }
 
@@ -365,6 +433,37 @@ export class DatabaseService {
       this.db = null;
       console.log('[DatabaseService] Database connection closed');
     }
+  }
+
+  /**
+   * 把空闲页归还给文件系统，最多 `maxPages` 页，返回实际归还的页数。
+   *
+   * 只对 `auto_vacuum = INCREMENTAL` 的库生效（v70 起新建的库）；更早建立的库返回 0，
+   * 它们的空闲页仍会被后续写入复用，缩小文件需要整库 VACUUM。每次调用是一个短写事务，
+   * 调用方负责分批并在批次之间让出事件循环。
+   */
+  reclaimFreePages(maxPages: number): number {
+    if (!this.db) {
+      throw new Error('[DatabaseService] Database not initialized');
+    }
+    if (!Number.isSafeInteger(maxPages) || maxPages <= 0) {
+      throw new Error('[DatabaseService] reclaimFreePages 需要正整数页数');
+    }
+    if (this.db.pragma('auto_vacuum', { simple: true }) !== AUTO_VACUUM_INCREMENTAL) return 0;
+    const before = this.readFreePageCount();
+    if (before === 0) return 0;
+    this.db.pragma(`incremental_vacuum(${maxPages})`);
+    return before - this.readFreePageCount();
+  }
+
+  /** 当前空闲页数；页大小见 `PRAGMA page_size`。 */
+  readFreePageCount(): number {
+    if (!this.db) {
+      throw new Error('[DatabaseService] Database not initialized');
+    }
+    const value = this.db.pragma('freelist_count', { simple: true });
+    if (typeof value !== 'number') throw new Error('[DatabaseService] freelist_count 不是数字');
+    return value;
   }
 
   /**

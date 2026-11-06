@@ -23,12 +23,6 @@ export const BACKGROUND_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 export const BACKGROUND_CHECK_RETRY_MS = 30 * 60 * 1000;
 const PROGRESS_PUBLISH_INTERVAL_MS = 250;
 
-const EMPTY_ACTIVITY: AppUpdateActivitySnapshot = Object.freeze({
-  hasExecutingCommands: false,
-  activeAgentRuns: [],
-  knowledgeIngestionActive: false,
-});
-
 export interface AppUpdateController {
   getState(): AppUpdateState;
   /** 开始后台检查：立即检查一次，之后定时检查。重复调用无副作用。 */
@@ -309,12 +303,16 @@ export function createAppUpdateController(ports: AppUpdateControllerPorts): AppU
     async install(request: AppUpdateInstallRequest): Promise<AppUpdateInstallResult> {
       if (status !== 'ready') return { outcome: 'not_ready' };
 
-      let activity = EMPTY_ACTIVITY;
+      let activity: AppUpdateActivitySnapshot;
       try {
         activity = await ports.activity.read();
       } catch (error: unknown) {
-        // Backend 已不可用时没有可暂停的运行；继续交给 shutdown owner 收口。
-        ports.log('读取运行中任务失败，按无任务处理', { error: String(error) });
+        // 已确认 Backend 退出的空快照由 App owner 提供；查询失败不能冒充无任务绕过确认。
+        ports.log('安装前读取运行中任务失败', { error: String(error) });
+        status = 'failed';
+        failure = { kind: 'install', retryAt: null };
+        publish();
+        return { outcome: 'failed' };
       }
       const confirmed = new Set(request.confirmedActivityKeys);
       const activities = resolveUpdateActivities(activity);

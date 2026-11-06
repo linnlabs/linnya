@@ -40,6 +40,14 @@ export type AestheticLintCode =
   | 'font_family_substituted'
   /** 字体解析命中的真实 face 字重/斜体与作者请求不同，测量和绘制会采用真实样式 */
   | 'font_style_substituted'
+  /** 生成稿声明的字体在目标放映环境中不存在，打开时会被替换并重新断行 */
+  | 'font_not_deliverable'
+  /** 生成稿页面底色不在 theme.direction 声明的颜色里 */
+  | 'direction_background_off'
+  /** 生成稿用了 theme.direction 没有声明的字体 */
+  | 'direction_font_undeclared'
+  /** 生成稿出现了与 theme.direction 调色板色相都不相近的彩色 */
+  | 'direction_color_off_palette'
   /** P1 Tier-1：非全幅元素贴近画布边缘（< 0.3"），可能压迫视觉留白 */
   | 'element_edge_margin'
   /** P1 Tier-1：单页非中性主色 hue 簇 > 4，色彩使用过散 */
@@ -50,6 +58,10 @@ export type AestheticLintCode =
   | 'text_contrast_low'
   /** P1 Tier-1：图片 fit=stretch 且元素宽高比与原图差 > 10%，会压扁/拉伸 */
   | 'image_aspect_distorted'
+  /** 图片源像素不足，全屏放映时被明显放大发虚 */
+  | 'image_resolution_low'
+  /** 文字多的页面正文区下方大片空着，通常应放大字号或重新分配空间 */
+  | 'content_area_underused'
   /** P1 Tier-1：类别或系列缺少可见身份通道；外部文字可能补充，因此需 render 复核。 */
   | 'chart_identity_missing'
   /** P1 Tier-1：标签估算所需跨度明显超过图表可用跨度。 */

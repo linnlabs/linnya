@@ -71,6 +71,18 @@ describe('line-break regressions', () => {
     ]);
   });
 
+  it('keeps closing punctuation off the line start when it begins a new run', () => {
+    const lines = breakParagraphIntoLines(
+      { runs: [{ text: '爵、觚、斝、卣、壶' }, { text: '，一套接一套。' }] },
+      9 * ADVANCE_INCHES,
+      'word',
+      fixedAdvanceProvider,
+      resolveStyle,
+    ).map((line) => line.slices.map((slice) => slice.text).join(''));
+
+    expect(lines).toEqual(['爵、觚、斝、卣、', '壶，一套接一套。']);
+  });
+
   it('uses CJK break opportunities without requiring whitespace', () => {
     expect(lineTexts('中文混排继续', 3)).toEqual([
       '中文混',

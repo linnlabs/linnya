@@ -38,6 +38,8 @@ child fact 使用 `lane=child / visibility=parent-trace`，可供 child 恢复�
 
 `subrun_trace` 不进通用 `events`。Host 紧凑历史只保存展示所需的语义 payload，读取时再通过 Linnkit 合同校验 DTO。父工具 `tool_output.data` 与 `observation` 不是 trace 备份，不得用来补造 child 正文。
 
+v73 起，完整思考、回答正文和普通工具结果按同一 child run、来源事件及对应字段的 JSON 核对，相同才共享。父详情翻页和引用索引重建都通过同一视图取回原内容。来源缺失、输出独有或含额外展示字段时原样保存；若仅删除 child 事实，SQLite 在同一事务内先将仍属于父详情的正文写回轨迹。
+
 ---
 
 ## 2. 产品活动模型与发起路径

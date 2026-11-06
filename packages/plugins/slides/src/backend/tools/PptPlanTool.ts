@@ -1,12 +1,19 @@
 import { isRecord } from '@plugin/slides/shared/valueRecord';
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '@plugin/backend/toolRuntime';
 import type { StructuredToolResult } from '@plugin/backend/toolRuntime';
+import { parseFileLocator } from '@app/schemas/file-locator';
 import {
   createPptPlanData,
   PptPlanDataSchema,
   PptPlanToolArgsSchema,
+  type PptPlanCover,
   type PptPlanData,
+  type PptPlanLookArgs,
 } from '@plugin/slides/shared/pptPlanToolContract';
+import {
+  getPresentationCoordinator,
+  requirePresentationInspectTargetResolver,
+} from './toolSupport';
 
 
 function describeValueType(value: unknown): string {
@@ -78,6 +85,11 @@ function formatPlanForReview(data: PptPlanData): string {
   lines.push(`  设计理念：${data.visualDirection.concept}`);
   lines.push(`  构图与节奏：${data.visualDirection.composition}`);
   lines.push(`  视觉记忆点：${data.visualDirection.signature}`);
+  if (data.look) {
+    const { palette, fonts } = data.look;
+    lines.push(`  配色：底色 ${palette.backgrounds.join(' ')}；文字 ${palette.ink}；强调 ${palette.accents.join(' ')}`);
+    lines.push(`  字体：${fonts.join('、')}`);
+  }
 
   lines.push('');
 
@@ -99,9 +111,10 @@ export class PptPlanTool extends BaseTool {
     return [
       '生成 PPT 结构计划并呈现给用户审批。',
       '输出标题、受众、整稿视觉方向，以及每页标题和主要内容说明，供用户一次确认后再建稿。',
-      '视觉方向只描述设计理念、构图节奏和唯一记忆点；不要填写最终颜色值、字体名或每页样式。',
-      '本工具不创建 presentation，仅做规划。',
-      '用户同意后，AI 使用 write_file 写入 .slides 文件建稿。',
+      '视觉方向描述设计理念、构图节奏和唯一记忆点。',
+      '新建整稿时先只写好封面一页并构建成功，再用 look 传这份文稿的 locator、全稿配色和字体：卡片会显示真实封面给用户看效果。',
+      '编辑已有文稿或封面没做出来时可以不传 look。',
+      '用户同意后继续写其余页，封面保留为第 1 页；theme.direction 的 palette、fonts 与批准的 look 一致。',
     ].join(' ');
   }
 
@@ -136,6 +149,42 @@ export class PptPlanTool extends BaseTool {
           },
         },
         required: ['concept', 'composition', 'signature'],
+      },
+      look: {
+        type: 'object',
+        additionalProperties: false,
+        description: '新建整稿时给用户看的样子：已构建的封面所在文稿、全稿配色与字体。',
+        properties: {
+          presentation: {
+            type: 'string',
+            description: '只写了封面一页的文稿 locator，例如 workspace:/储能投研.slides。',
+          },
+          palette: {
+            type: 'object',
+            additionalProperties: false,
+            description: '全稿配色，与 deck.js 的 theme.direction.palette 一致。',
+            properties: {
+              backgrounds: {
+                type: 'array', minItems: 1, maxItems: 4,
+                description: '页面底色；第二个起可以是封面、章节页的反色底。',
+                items: { type: 'string', description: '#RRGGBB。' },
+              },
+              ink: { type: 'string', description: '正文文字色，#RRGGBB。' },
+              accents: {
+                type: 'array', minItems: 1, maxItems: 5,
+                description: '强调色。',
+                items: { type: 'string', description: '#RRGGBB。' },
+              },
+            },
+            required: ['backgrounds', 'ink', 'accents'],
+          },
+          fonts: {
+            type: 'array', minItems: 1, maxItems: 6,
+            description: '全稿用到的字体族名，与 theme.direction.fonts 一致。',
+            items: { type: 'string', description: '字体族名。' },
+          },
+        },
+        required: ['presentation', 'palette', 'fonts'],
       },
       pages: {
         type: 'array',
@@ -191,17 +240,22 @@ export class PptPlanTool extends BaseTool {
     }
   }
 
-  async run(args: Record<string, unknown>, _context: ToolContext): Promise<string> {
+  async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
     const validation = this.validateArguments(args);
     if (!validation.success) {
       throw new Error(validation.error ?? 'ppt_plan: invalid arguments.');
     }
 
-    const data = createPptPlanData(PptPlanToolArgsSchema.parse(args));
+    const input = PptPlanToolArgsSchema.parse(args);
+    const cover = input.look ? await resolvePlanCover(input.look, context) : undefined;
+    const data = createPptPlanData(input, cover?.cover);
+    const coverNote = cover?.problem
+      ? `\n\n封面样张没能显示（${cover.problem}），卡片只显示文字；修好封面后可以再调用一次 ppt_plan。`
+      : '';
 
     const toolResult: StructuredToolResult<PptPlanData> = {
       data,
-      observation: formatPlanForReview(data),
+      observation: formatPlanForReview(data) + coverNote,
       control: {
         requireUser: true,
         resumeStrategy: 'continue',
@@ -209,5 +263,32 @@ export class PptPlanTool extends BaseTool {
     };
 
     return JSON.stringify(toolResult);
+  }
+}
+
+/**
+ * 取封面样张所在文稿的当前成功版本。拿不到时只说明原因，不挡住审批：
+ * 卡片退回只显示文字，Agent 可修好封面后再提交一次计划。
+ */
+async function resolvePlanCover(
+  look: PptPlanLookArgs,
+  context: ToolContext,
+): Promise<{ readonly cover?: PptPlanCover; readonly problem?: string }> {
+  const coordinator = getPresentationCoordinator(context);
+  if (!coordinator) return { problem: '当前环境不能读取文稿' };
+  try {
+    const locator = parseFileLocator(look.presentation);
+    if (locator.kind !== 'workspace') return { problem: 'look.presentation 必须是 workspace: locator' };
+    const target = await requirePresentationInspectTargetResolver(context)({ path: locator.path });
+    const inspection = await coordinator.inspectPresentation({
+      presentationId: target.presentationId,
+      selection: { kind: 'single', slideNumber: 1 },
+      maxSlides: 1,
+      includeHeuristics: false,
+    });
+    if (inspection.totalSlideCount === 0) return { problem: '文稿还没有页面' };
+    return { cover: { presentationId: target.presentationId, versionId: inspection.versionId } };
+  } catch (error) {
+    return { problem: error instanceof Error ? error.message.slice(0, 160) : '读取文稿失败' };
   }
 }

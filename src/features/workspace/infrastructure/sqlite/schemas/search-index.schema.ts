@@ -1,11 +1,13 @@
 /**
  * @file search-index.schema.ts
- * @description Workspace Path Layer 的低内存 grep 搜索索引。
+ * @description Workspace Path Layer 的行级 grep 搜索索引（SQLite FTS5 trigram）。
  */
 
 export const WORKSPACE_VFS_SEARCH_INDEX_SCHEMAS = [
-  // 覆盖度属于整个文件，不能从任意一行或命中数量反推。旧索引没有这条记录，必须重建。
-  `CREATE TABLE IF NOT EXISTS workspace_vfs_search_files (
+  // 覆盖度属于整个文件，不能从任意一行或命中数量反推。path 只在这里保存一份，改名只更新一行。
+  // AUTOINCREMENT 保证文件 id 永不复用：即使出现遗留行，也不会被后来的文件认领。
+  `CREATE TABLE IF NOT EXISTS workspace_vfs_search_index_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id TEXT NOT NULL,
     inode TEXT NOT NULL,
     path TEXT NOT NULL,
@@ -13,41 +15,47 @@ export const WORKSPACE_VFS_SEARCH_INDEX_SCHEMAS = [
     index_version INTEGER NOT NULL,
     max_file_chars INTEGER NOT NULL,
     truncated INTEGER NOT NULL CHECK(truncated IN (0, 1)),
-    PRIMARY KEY(project_id, inode)
+    UNIQUE(project_id, inode)
   )`,
 
-  `CREATE TABLE IF NOT EXISTS workspace_vfs_search_lines (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL,
-    inode TEXT NOT NULL,
-    path TEXT NOT NULL,
-    name TEXT NOT NULL,
-    node_type TEXT NOT NULL,
-    source TEXT NOT NULL,
-    content_kind TEXT NOT NULL DEFAULT 'content',
+  // 非空行原文只存一份；FTS5 以外部内容方式引用它，不再复制正文或小写副本。
+  `CREATE TABLE IF NOT EXISTS workspace_vfs_search_index_lines (
+    id INTEGER PRIMARY KEY,
+    file_id INTEGER NOT NULL REFERENCES workspace_vfs_search_index_files(id) ON DELETE CASCADE,
     line_no INTEGER NOT NULL,
-    text TEXT NOT NULL,
-    text_lc TEXT NOT NULL,
-    content_hash TEXT NOT NULL,
-    node_updated_at INTEGER NOT NULL,
-    indexed_at INTEGER NOT NULL,
-    UNIQUE(project_id, inode, content_kind, line_no)
+    text TEXT NOT NULL
   )`,
 
-  `CREATE TABLE IF NOT EXISTS workspace_vfs_search_grams (
-    project_id TEXT NOT NULL,
-    gram TEXT NOT NULL,
-    line_id TEXT NOT NULL,
-    PRIMARY KEY(project_id, gram, line_id),
-    FOREIGN KEY(line_id) REFERENCES workspace_vfs_search_lines(id) ON DELETE CASCADE
+  // trigram 只用于缩小候选行；最终是否命中由 JS 字面量比较决定。
+  // detail=none、columnsize=0：只需要“哪些行含这些三字组”，不需要位置与排名。
+  `CREATE VIRTUAL TABLE IF NOT EXISTS workspace_vfs_search_index_fts USING fts5(
+    text,
+    content='workspace_vfs_search_index_lines',
+    content_rowid='id',
+    tokenize='trigram',
+    detail='none',
+    columnsize=0
   )`,
 
-  `CREATE INDEX IF NOT EXISTS idx_workspace_vfs_search_lines_project_path
-    ON workspace_vfs_search_lines(project_id, path)`,
+  // 外部内容 FTS 必须与行表同步；任何删除（含文件覆盖记录级联）都经由触发器撤回倒排项。
+  `CREATE TRIGGER IF NOT EXISTS workspace_vfs_search_index_lines_after_insert
+    AFTER INSERT ON workspace_vfs_search_index_lines BEGIN
+      INSERT INTO workspace_vfs_search_index_fts(rowid, text) VALUES (new.id, new.text);
+    END`,
 
-  `CREATE INDEX IF NOT EXISTS idx_workspace_vfs_search_lines_inode
-    ON workspace_vfs_search_lines(project_id, inode)`,
+  `CREATE TRIGGER IF NOT EXISTS workspace_vfs_search_index_lines_after_delete
+    AFTER DELETE ON workspace_vfs_search_index_lines BEGIN
+      INSERT INTO workspace_vfs_search_index_fts(workspace_vfs_search_index_fts, rowid, text)
+      VALUES ('delete', old.id, old.text);
+    END`,
 
-  `CREATE INDEX IF NOT EXISTS idx_workspace_vfs_search_grams_line
-    ON workspace_vfs_search_grams(line_id)`,
+  `CREATE TRIGGER IF NOT EXISTS workspace_vfs_search_index_lines_after_update
+    AFTER UPDATE OF id, text ON workspace_vfs_search_index_lines BEGIN
+      INSERT INTO workspace_vfs_search_index_fts(workspace_vfs_search_index_fts, rowid, text)
+      VALUES ('delete', old.id, old.text);
+      INSERT INTO workspace_vfs_search_index_fts(rowid, text) VALUES (new.id, new.text);
+    END`,
+
+  `CREATE INDEX IF NOT EXISTS idx_workspace_vfs_search_index_lines_file
+    ON workspace_vfs_search_index_lines(file_id, line_no)`,
 ];

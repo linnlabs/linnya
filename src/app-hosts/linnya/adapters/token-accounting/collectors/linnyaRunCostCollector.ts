@@ -31,7 +31,9 @@ interface RunCostAccumulator {
   tokensOutput: number;
   latencyMs: number;
   llmCallCount: number;
-  tokenLedgerEntries: TokenLedgerEntry[];
+  /** 本 run 自身条目的累计合计；不保存逐条上下文分项，避免账本随调用次数平方增长。 */
+  tokenLedgerAggregate: TokenLedgerAggregate;
+  tokenLedgerEntryIds: string[];
   tokenLedgerSequence: number;
   contextLedgerSequence: number;
   computedCostUsd: number;
@@ -90,7 +92,7 @@ export class LinnyaRunCostCollector implements RunCostCollector {
       const ledgerEntry =
         event.tokenLedgerEntry ??
         this.createLedgerEntry(runId, event, usage, metadata?.route, bucket);
-      bucket.tokenLedgerEntries.push(ledgerEntry);
+      appendLedgerEntry(bucket, ledgerEntry);
       this.recordCost(bucket, usage, metadata?.pricing);
     } else bucket.unknownActualCostCount += 1;
     this.persist(runId);
@@ -157,7 +159,7 @@ export class LinnyaRunCostCollector implements RunCostCollector {
 
     const childrenTotal = this.snapshotChildren(bucket.childRunIds);
     const tokenUsage = this.snapshotTokenUsage(bucket, childrenTotal?.tokenUsage);
-    const tokenLedgerEntryIds = collectTokenLedgerEntryIds(bucket);
+    const tokenLedgerEntryIds = [...bucket.tokenLedgerEntryIds];
     const totalCostUsd = this.snapshotCost(bucket);
 
     return {
@@ -247,7 +249,8 @@ export class LinnyaRunCostCollector implements RunCostCollector {
       tokensOutput: 0,
       latencyMs: 0,
       llmCallCount: 0,
-      tokenLedgerEntries: [],
+      tokenLedgerAggregate: tokenAccounting.aggregateTokenLedgerEntries([]),
+      tokenLedgerEntryIds: [],
       tokenLedgerSequence: 0,
       contextLedgerSequence: 0,
       computedCostUsd: 0,
@@ -300,7 +303,7 @@ export class LinnyaRunCostCollector implements RunCostCollector {
     if (!ledgerEntry) {
       return;
     }
-    bucket.tokenLedgerEntries.push(ledgerEntry);
+    appendLedgerEntry(bucket, ledgerEntry);
     this.persist(runId);
   }
 
@@ -349,11 +352,11 @@ export class LinnyaRunCostCollector implements RunCostCollector {
     bucket: RunCostAccumulator,
     children: RunTokenUsageAggregate | undefined
   ): RunTokenUsageAggregate | undefined {
-    if (bucket.tokenLedgerEntries.length === 0 && !children) {
+    if (bucket.tokenLedgerAggregate.entryCount === 0 && !children) {
       return undefined;
     }
 
-    const own = tokenAccounting.aggregateTokenLedgerEntries(bucket.tokenLedgerEntries);
+    const own = bucket.tokenLedgerAggregate;
     if (!children) {
       return { own };
     }
@@ -390,8 +393,13 @@ function readCanonicalUsage(
   return event.tokenLedgerEntry?.usage ?? event.canonicalUsage ?? event.usage?.canonicalUsage;
 }
 
-function collectTokenLedgerEntryIds(bucket: RunCostAccumulator): string[] {
-  return bucket.tokenLedgerEntries.map(entry => entry.id);
+/** 条目只并入累计合计并记下 ID；合计与对全部条目一次性聚合的结果相同。 */
+function appendLedgerEntry(bucket: RunCostAccumulator, entry: TokenLedgerEntry): void {
+  bucket.tokenLedgerAggregate = tokenAccounting.addLedgerAggregate(
+    bucket.tokenLedgerAggregate,
+    tokenAccounting.aggregateTokenLedgerEntries([entry])
+  );
+  bucket.tokenLedgerEntryIds.push(entry.id);
 }
 
 function emptyLedgerAggregate(): TokenLedgerAggregate {

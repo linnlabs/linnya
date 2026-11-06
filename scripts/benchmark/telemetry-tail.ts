@@ -15,7 +15,7 @@
  *   2. 环境变量 LINNYA_TELEMETRY_DB
  *   3. dev 模式默认路径：<projectRoot>/_dev_data/workspace/workspace.sqlite
  *
- * 生产模式数据库通常在 ~/Library/Application Support/<AppName>/AIService/...，
+ * 正式版数据库在 ~/Library/Application Support/<应用>/Workspace/workspace/workspace.sqlite，
  * 路径需要用户手动通过 --db 指定（不同打包名不同）。
  */
 
@@ -173,7 +173,7 @@ function main(): void {
     console.error('  - 开发模式默认路径: <repoRoot>/_dev_data/workspace/workspace.sqlite');
     console.error('  - 生产模式路径需要手动指定:');
     console.error(
-      `    macOS: ~/Library/Application Support/<AppName>/AIService/workspace/workspace.sqlite`,
+      `    macOS: ~/Library/Application Support/<应用>/Workspace/workspace/workspace.sqlite`,
     );
     console.error(`    用 --db=<path> 或环境变量 LINNYA_TELEMETRY_DB 指定`);
     process.exit(1);

@@ -8,6 +8,7 @@ import type {
 } from '@plugin/slides/shared';
 import {
   AestheticLint,
+  type AestheticLintOptions,
   type AestheticLintReport,
 } from '../../engine/quality/AestheticLint.js';
 import {
@@ -52,8 +53,9 @@ interface CollectDiagnosticsOptions {
 
 export function evaluateQualityAnalysis(
   renderModel: PresentationRenderModel,
+  options: AestheticLintOptions = {},
 ): AestheticLintReport {
-  return new AestheticLint().lint(renderModelToLintInfo(renderModel));
+  return new AestheticLint().lint(renderModelToLintInfo(renderModel), options);
 }
 
 /** quality draft → 正式 finding 的唯一 admission 边界。 */
@@ -158,6 +160,7 @@ function normalizeEvidenceNodes(
     case 'node_size':
     case 'text_layout':
     case 'image_aspect':
+    case 'image_resolution':
     case 'chart_readability':
     case 'text_pattern':
       return { ...evidence, node: normalizeNode(evidence.node, context) };
@@ -203,6 +206,8 @@ function normalizeEvidenceNodes(
     case 'margin_balance':
     case 'font_inventory':
     case 'font_resolution':
+    case 'font_delivery':
+    case 'direction_carry_through':
     case 'color_palette':
     case 'hue_drift':
     case 'slide_similarity':
@@ -239,6 +244,7 @@ function collectEvidenceNodeIds(evidence: DiagnosticEvidence): string[] {
     case 'node_size':
     case 'text_layout':
     case 'image_aspect':
+    case 'image_resolution':
     case 'chart_readability':
     case 'text_pattern':
       ids = [evidence.node.nodeId];
@@ -268,6 +274,8 @@ function collectEvidenceNodeIds(evidence: DiagnosticEvidence): string[] {
     case 'margin_balance':
     case 'font_inventory':
     case 'font_resolution':
+    case 'font_delivery':
+    case 'direction_carry_through':
     case 'color_palette':
     case 'hue_drift':
     case 'slide_similarity':

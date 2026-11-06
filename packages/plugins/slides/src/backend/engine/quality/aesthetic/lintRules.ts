@@ -14,7 +14,9 @@ import { hasDecorativeRole, isChromeTextRole } from '../SpatialSemantics';
  */
 
 import {
+  assessFontDelivery,
   flattenSlideElements,
+  type FontDeliveryTarget,
   type PresentationInfo,
   type SlideElementInfo,
   type SlideElementTextRunInfo,
@@ -29,23 +31,33 @@ import {
 import { clusterByGranularity, findContainingShape } from './elementUtils.js';
 import { buildDiagnosticNodeRef } from '../functions/buildDiagnosticNodeRef.js';
 import type { ChromaticSample } from './colorSampling.js';
+import type { ReadingMode } from '@plugin/slides/shared/readingMode';
 import {
   EDGE_MARGIN_MIN_IN,
   FONT_FAMILY_COUNT_PER_SCRIPT_LIMIT,
   FONT_SIZE_ANNOTATION_RECOMMENDED_FLOOR_PT,
   FONT_SIZE_NEAR_UNREADABLE_PT,
   FONT_SIZE_RECOMMENDED_FLOOR_PT,
+  READING_MODE_FONT_FLOOR_REFERENCE_WIDTH_IN,
+  READING_MODE_FONT_FLOORS_PT,
   FONT_SIZE_TIER_GRANULARITY_PT,
   FONT_SIZE_TIER_LIMIT,
   FULL_BLEED_RATIO,
   HUE_CLUSTER_GRANULARITY_DEG,
   IMAGE_ASPECT_TOLERANCE,
+  IMAGE_RESOLUTION_MIN_DISPLAY_IN,
+  IMAGE_RESOLUTION_MIN_RATIO,
+  IMAGE_RESOLUTION_REFERENCE_WIDTH_PX,
   MAX_ELEMENTS_PER_SLIDE,
   PALETTE_HUE_BUCKET_LIMIT,
   PRIMARY_HUE_DRIFT_THRESHOLD_DEG,
   TEXT_CONTRAST_MIN_RATIO,
   TEXT_DENSITY_HIGH,
   TEXT_DENSITY_LOW,
+  UNUSED_BOTTOM_CHROME_BAND_RATIO,
+  UNUSED_BOTTOM_MIN_TEXT_CHARS,
+  UNUSED_BOTTOM_RATIO,
+  UNUSED_BOTTOM_STRIPS,
   WHITESPACE_IMBALANCE,
 } from './thresholds.js';
 import type { AestheticLintIssue } from './types.js';
@@ -153,6 +165,121 @@ export function lintHierarchy(
 }
 
 // ─── Whitespace Balance ─────────────────────────────────────────────────────
+
+/**
+ * 正文区大片空置：排除满版背景、细线和底部带里的页脚/页码后，把正文区横向切成若干条，
+ * 找每条里高于页高 20% 的空档（元素之间或最后一个元素之下）。相邻条带的空档在纵向上
+ * 仍有这么高的交集时连成一片，宽度超过正文区三分之一就报告；分栏页只有一栏写短了、
+ * 表格和底部脚注之间空着，都能发现。
+ * 文字框优先用实际排版高度，避免把撑满的空文本框当成内容。
+ */
+export function lintUnusedContentArea(
+  slideNumber: number,
+  slideSize: { width: number; height: number },
+  elements: SlideElementInfo[],
+): AestheticLintIssue[] {
+  const { width, height } = slideSize;
+  const bandTop = height * (1 - UNUSED_BOTTOM_CHROME_BAND_RATIO);
+  const chrome: SlideElementInfo[] = [];
+  const content: SlideElementInfo[] = [];
+  for (const el of elements) {
+    const p = el.position;
+    // 分组只是布局容器，flex 撑满时会盖住空白；只看叶子元素。
+    if (!p || p.w <= 0 || p.h <= 0 || el.type === 'group' || (el.children?.length ?? 0) > 0) continue;
+    if (p.w * p.h >= width * height * 0.85 || hasDecorativeRole(el.semanticRole)) continue;
+    if (Math.min(p.w, p.h) <= 0.05) continue;
+    if (isChromeTextRole(el.semanticRole) || (el.type === 'text' && p.y >= bandTop && p.h <= 0.45)) {
+      chrome.push(el);
+      continue;
+    }
+    content.push(el);
+  }
+  const textChars = content.reduce((sum, el) => sum + countElementChars(el), 0);
+  if (content.length < 2 || textChars < UNUSED_BOTTOM_MIN_TEXT_CHARS) return [];
+
+  const frameBottom = chrome.length > 0 ? Math.min(...chrome.map((el) => el.position!.y)) : height;
+  const left = Math.min(...content.map((el) => el.position!.x));
+  const right = Math.max(...content.map((el) => el.position!.x + el.position!.w));
+  const stripWidth = (right - left) / UNUSED_BOTTOM_STRIPS;
+  const minGap = height * UNUSED_BOTTOM_RATIO;
+
+  // 每条带列出所有足够高的空档（元素之间，以及最后一个元素到正文区底边）；
+  // 相邻条带的空档纵向交集仍够高时连成一片，取最宽的一片。
+  let best: { strips: number; top: number; bottom: number } | null = null;
+  let runs: { strips: number; top: number; bottom: number }[] = [];
+  for (let index = 0; index < UNUSED_BOTTOM_STRIPS; index += 1) {
+    const x0 = left + index * stripWidth;
+    const x1 = x0 + stripWidth;
+    const spans = content
+      .filter((el) => el.position!.x < x1 && el.position!.x + el.position!.w > x0)
+      .map((el) => [el.position!.y, visibleBottom(el)] as const)
+      .sort((a, b) => a[0] - b[0]);
+    const gaps: [number, number][] = [];
+    let cursor = spans.length > 0 ? spans[0]![1] : Infinity;
+    for (const [top, bottom] of spans.slice(1)) {
+      if (top - cursor >= minGap) gaps.push([cursor, top]);
+      cursor = Math.max(cursor, bottom);
+    }
+    if (frameBottom - cursor >= minGap) gaps.push([cursor, frameBottom]);
+
+    const next: { strips: number; top: number; bottom: number }[] = [];
+    for (const [top, bottom] of gaps) {
+      const extended = runs
+        .map((run) => ({ strips: run.strips + 1, top: Math.max(run.top, top), bottom: Math.min(run.bottom, bottom) }))
+        .filter((run) => run.bottom - run.top >= minGap)
+        .sort((a, b) => b.strips - a.strips)[0];
+      next.push(extended ?? { strips: 1, top, bottom });
+    }
+    runs = next;
+    for (const run of runs) {
+      if (best == null || run.strips > best.strips) best = run;
+    }
+  }
+  if (best == null || best.strips * 3 < UNUSED_BOTTOM_STRIPS) return [];
+  const unusedRatio = (best.bottom - best.top) / height;
+  return [{
+    code: 'content_area_underused',
+    severity: 'warning',
+    confidence: 'medium',
+    slides: [slideNumber],
+    evidence: {
+      kind: 'scalar_metric',
+      metric: 'unused_bottom_ratio',
+      actual: unusedRatio,
+      operator: 'gt',
+      threshold: UNUSED_BOTTOM_RATIO,
+      unit: 'ratio',
+      sampleCount: 3,
+      samples: [best.top, best.bottom, best.strips / UNUSED_BOTTOM_STRIPS],
+    },
+  }];
+}
+
+function countElementChars(el: SlideElementInfo): number {
+  const text = el.tableInfo
+    ? el.tableInfo.cells.map((cell) => cell.text ?? paragraphText(cell.paragraphs)).join('')
+    : el.text ?? paragraphText(el.paragraphs ?? []);
+  return text.replace(/\s/gu, '').length;
+}
+
+function paragraphText(paragraphs: readonly { runs: readonly { text: string }[] }[]): string {
+  return paragraphs.map((paragraph) => paragraph.runs.map((run) => run.text).join('')).join('');
+}
+
+function visibleBottom(el: SlideElementInfo): number {
+  const p = el.position!;
+  // 表格行高不随外框拉伸，显式高度大于行高总和时下方是空的；以最后一行的底边为准。
+  const cells = el.tableInfo?.cells ?? [];
+  if (cells.length > 0) {
+    return Math.min(p.y + p.h, Math.max(...cells.map((cell) => cell.position.y + cell.position.h)));
+  }
+  const layout = el.textLayout;
+  const align = el.textBody?.verticalAlign;
+  if (el.type === 'text' && layout?.requiredHeightInches != null && (align == null || align === 'top')) {
+    return p.y + Math.min(p.h, layout.requiredHeightInches);
+  }
+  return p.y + p.h;
+}
 
 export function lintWhitespace(
   slideNumber: number,
@@ -319,12 +446,16 @@ export function lintVisualAnchor(
 // ─── P1 Tier-1: Font Size Floor ─────────────────────────────────────────────
 /**
  * 检查实际 run 的最小字号；旧输入没有 paragraphs 时才退回元素摘要字号。
- * near-unreadable 阈值对所有角色一致，annotation/source/caption/axis-label 使用更低的
- * 建议下限，避免用正文规则机械要求脚注。
+ * near-unreadable 阈值对所有角色一致。
+ *
+ * 生成稿传入阅读方式：正文、图注标签、脚注来源三档下限按阅读方式取值，再按页宽折算。
+ * 导入稿和改稿不传，沿用固定下限，避免催 Agent 改作者原有字号。
  */
 export function lintFontSizeFloor(
   slideNumber: number,
+  slideSize: { width: number },
   elements: SlideElementInfo[],
+  readingMode?: ReadingMode,
 ): AestheticLintIssue[] {
   const issues: AestheticLintIssue[] = [];
   for (const element of elements) {
@@ -332,7 +463,9 @@ export function lintFontSizeFloor(
     const sizes = collectElementFontSizes(element);
     if (sizes.length === 0) continue;
     const size = Math.min(...sizes);
-    const recommendedFloor = resolveRecommendedFontFloor(element.semanticRole);
+    const recommendedFloor = readingMode
+      ? resolveReadingModeFontFloor(element.semanticRole, readingMode, slideSize.width)
+      : resolveRecommendedFontFloor(element.semanticRole);
 
     if (size < FONT_SIZE_NEAR_UNREADABLE_PT) {
       issues.push({
@@ -377,7 +510,9 @@ export function lintFontSizeFloor(
   return issues;
 }
 
-const SMALL_TEXT_ROLES = new Set(['annotation', 'axis-label', 'caption', 'footnote', 'source']);
+const SMALL_TEXT_ROLES = new Set(['annotation', 'axis-label', 'caption', 'footnote', 'label', 'source']);
+const CAPTION_TEXT_ROLES = new Set(['annotation', 'axis-label', 'caption', 'label']);
+const CHROME_TEXT_ROLES = new Set(['footnote', 'page-number', 'source']);
 
 function collectElementFontSizes(element: SlideElementInfo): number[] {
   const runSizes = element.paragraphs
@@ -395,6 +530,21 @@ function resolveRecommendedFontFloor(semanticRole: string | undefined): number {
   return semanticRole != null && SMALL_TEXT_ROLES.has(semanticRole.trim().toLowerCase())
     ? FONT_SIZE_ANNOTATION_RECOMMENDED_FLOOR_PT
     : FONT_SIZE_RECOMMENDED_FLOOR_PT;
+}
+
+function resolveReadingModeFontFloor(
+  semanticRole: string | undefined,
+  readingMode: ReadingMode,
+  slideWidthIn: number,
+): number {
+  const floors = READING_MODE_FONT_FLOORS_PT[readingMode];
+  const role = semanticRole?.trim().toLowerCase() ?? '';
+  const base = CHROME_TEXT_ROLES.has(role)
+    ? floors.chrome
+    : CAPTION_TEXT_ROLES.has(role) ? floors.caption : floors.body;
+  const scale = slideWidthIn > 0 ? slideWidthIn / READING_MODE_FONT_FLOOR_REFERENCE_WIDTH_IN : 1;
+  // 折算到 0.25pt，避免 13.33 与 13.333 这类页宽差异产生 13.99pt 之类的阈值。
+  return Math.round(base * scale * 4) / 4;
 }
 
 // ─── P1 Tier-1: Font Size Tiers ─────────────────────────────────────────────
@@ -590,7 +740,10 @@ export function lintFontFamilyConsistency(info: PresentationInfo): AestheticLint
  * 字体族替换是确定性渲染事实，即使落地 face 的 bold/italic 与请求一致，也需要单独可观察。
  * 相同 requested -> resolved + script 映射聚合为一条 finding，避免按正文 run 重复刷屏。
  */
-export function lintFontFamilySubstitution(info: PresentationInfo): AestheticLintIssue[] {
+export function lintFontFamilySubstitution(
+  info: PresentationInfo,
+  fontTarget?: FontDeliveryTarget,
+): AestheticLintIssue[] {
   const substitutions = new Map<string, {
     firstSlide: number;
     slideNumbers: Set<number>;
@@ -612,6 +765,9 @@ export function lintFontFamilySubstitution(info: PresentationInfo): AestheticLin
           || !requestedFamily
           || !resolvedFamily
           || normalizeFontFamily(requestedFamily) === normalizeFontFamily(resolvedFamily)
+          // 目标是 Office 时，本机缺少的 Office 字体只是预览替代；放映端有原字体，不能催 Agent 换成本机字体。
+          || (fontTarget === 'office'
+            && assessFontDelivery(requestedFamily, fontTarget, run.fontScript).status !== 'unavailable')
         ) {
           continue;
         }
@@ -654,6 +810,68 @@ export function lintFontFamilySubstitution(info: PresentationInfo): AestheticLin
       resolution: 'substituted',
       runCount: substitution.runCount,
       firstAffectedSlide: substitution.firstSlide,
+    },
+  }));
+}
+
+/**
+ * 生成稿声明的字体在目标放映环境中不存在时报告，按 requested family 聚合。
+ * 只看作者声明的 family，不看本机解析结果：本机装了 Songti SC 不代表 Windows 上有。
+ */
+export function lintFontDelivery(
+  info: PresentationInfo,
+  fontTarget: FontDeliveryTarget | undefined,
+): AestheticLintIssue[] {
+  if (fontTarget == null || fontTarget === 'local') return [];
+  const missing = new Map<string, {
+    requestedFamily: string;
+    script: TextFontScript | 'unknown';
+    alternatives: readonly string[];
+    slideNumbers: Set<number>;
+    firstSlide: number;
+    runCount: number;
+  }>();
+
+  for (const slide of info.slides) {
+    for (const element of flattenSlideElements(slide.elements)) {
+      if (element.paragraphs == null) continue;
+      for (const run of element.paragraphs.flatMap((paragraph) => paragraph.runs)) {
+        const requestedFamily = run.fontFamily?.trim();
+        if (!requestedFamily || !/\S/u.test(run.text)) continue;
+        const assessment = assessFontDelivery(requestedFamily, fontTarget, run.fontScript);
+        if (assessment.status !== 'unavailable') continue;
+        const key = normalizeFontFamily(requestedFamily);
+        const existing = missing.get(key);
+        if (existing) {
+          existing.runCount += 1;
+          existing.slideNumbers.add(slide.number);
+          continue;
+        }
+        missing.set(key, {
+          requestedFamily,
+          script: run.fontScript ?? 'unknown',
+          alternatives: assessment.alternatives,
+          slideNumbers: new Set([slide.number]),
+          firstSlide: slide.number,
+          runCount: 1,
+        });
+      }
+    }
+  }
+
+  return [...missing.values()].map((usage) => ({
+    code: 'font_not_deliverable',
+    severity: 'warning',
+    confidence: 'high',
+    slides: [...usage.slideNumbers].sort((left, right) => left - right),
+    evidence: {
+      kind: 'font_delivery',
+      target: fontTarget,
+      requestedFamily: usage.requestedFamily,
+      script: usage.script,
+      alternatives: [...usage.alternatives],
+      runCount: usage.runCount,
+      firstAffectedSlide: usage.firstSlide,
     },
   }));
 }
@@ -933,6 +1151,62 @@ export function lintTextContrast(
  * 仅 stretch 模式有压扁/拉伸风险——cover/contain/fill 都保留宽高比或裁剪。
  * 缺少 imageNaturalAspect 时跳过（PptxReader 路径暂无该数据）。
  */
+/**
+ * 按 fitMode 估算图片可见区域在页面上每英寸分到多少源像素，与 1920px 宽放映所需像素比较。
+ * contain 取整图缩放，cover/fill 取覆盖缩放，stretch 取两轴中较差的一轴；裁剪先扣掉被裁部分。
+ */
+export function lintImageResolution(
+  slideNumber: number,
+  slideSize: { width: number; height: number },
+  elements: SlideElementInfo[],
+): AestheticLintIssue[] {
+  const issues: AestheticLintIssue[] = [];
+  const targetPpi = IMAGE_RESOLUTION_REFERENCE_WIDTH_PX / slideSize.width;
+  for (const el of elements) {
+    if (el.type !== 'image' || !el.position || !el.imageNaturalSizePx) continue;
+    const { w, h } = el.position;
+    if (w < IMAGE_RESOLUTION_MIN_DISPLAY_IN || h <= 0) continue;
+    const crop = el.imageCrop ?? { top: 0, right: 0, bottom: 0, left: 0 };
+    const visibleW = el.imageNaturalSizePx.width * Math.max(0, 1 - crop.left - crop.right);
+    const visibleH = el.imageNaturalSizePx.height * Math.max(0, 1 - crop.top - crop.bottom);
+    if (visibleW <= 0 || visibleH <= 0) continue;
+    const effectivePpi = resolveEffectivePpi(el.imageFit ?? 'contain', visibleW, visibleH, w, h);
+    const ratio = effectivePpi / targetPpi;
+    if (ratio >= IMAGE_RESOLUTION_MIN_RATIO) continue;
+    issues.push({
+      code: 'image_resolution_low',
+      severity: 'warning',
+      confidence: 'medium',
+      slides: [slideNumber],
+      evidence: {
+        kind: 'image_resolution',
+        node: buildDiagnosticNodeRef(el),
+        fitMode: el.imageFit ?? 'contain',
+        visibleWidthPx: Math.round(visibleW),
+        visibleHeightPx: Math.round(visibleH),
+        effectivePpi: Math.round(effectivePpi),
+        targetPpi: Math.round(targetPpi),
+        ratio,
+        thresholdRatio: IMAGE_RESOLUTION_MIN_RATIO,
+      },
+    });
+  }
+  return issues;
+}
+
+function resolveEffectivePpi(
+  fit: NonNullable<SlideElementInfo['imageFit']>,
+  pxW: number,
+  pxH: number,
+  inW: number,
+  inH: number,
+): number {
+  const horizontal = pxW / inW;
+  const vertical = pxH / inH;
+  if (fit === 'contain') return Math.max(horizontal, vertical);
+  return Math.min(horizontal, vertical);
+}
+
 export function lintImageAspect(
   slideNumber: number,
   elements: SlideElementInfo[],

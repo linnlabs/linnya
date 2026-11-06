@@ -29,6 +29,7 @@ import {
   type PresentationCreateOptions,
   type PresentationDocumentIdentity,
   type PresentationViewSourceRecord,
+  type PresentationDirectionUse,
   type PresentationDocumentRecord,
   type PresentationPreviewSourceRecord,
   type PresentationPptxArtifactSourceRecord,
@@ -521,6 +522,24 @@ export class PresentationRepository implements PresentationRepositoryPort {
         usageCount: summary.usage_count,
         createdAt: summary.created_at,
       };
+    });
+  }
+
+  async listRecentDirectionUses(limit: number): Promise<PresentationDirectionUse[]> {
+    const rows = this.db.prepare(
+      `SELECT json_extract(deck_spec_json, '$.theme.direction.cardId') AS card_id,
+              json_extract(deck_spec_json, '$.theme.direction.palette.accents[0]') AS accent
+         FROM presentation_documents
+        WHERE json_valid(deck_spec_json)
+          AND json_extract(deck_spec_json, '$.theme.direction.cardId') IS NOT NULL
+        ORDER BY created_at DESC
+        LIMIT ?`,
+    ).all(Math.max(0, Math.floor(limit)));
+    return rows.flatMap((row) => {
+      if (row == null || typeof row !== 'object') return [];
+      const { card_id: cardId, accent } = row as { card_id?: unknown; accent?: unknown };
+      if (typeof cardId !== 'string' || cardId.length === 0) return [];
+      return [{ cardId, ...(typeof accent === 'string' ? { accent } : {}) }];
     });
   }
 

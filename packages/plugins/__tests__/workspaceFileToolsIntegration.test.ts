@@ -1394,7 +1394,7 @@ describe('list_files / read_file', () => {
       },
     };
     const managedImageIngress = {
-      ingestLocalImage: vi.fn(async ({ sourcePath }: { readonly sourcePath: string }) => ({
+      ingestLocalImage: vi.fn(async (_input: { readonly sourcePath: string }) => ({
         assetId: 'asset-render',
         uri: 'asset://assets/asset-render',
         mediaType: 'image/png' as const,
@@ -1402,7 +1402,7 @@ describe('list_files / read_file', () => {
         width: 16,
         height: 9,
         sha256: 'a'.repeat(64),
-        localPath: sourcePath,
+        storagePath: 'ConversationAttachments/v2/stores/test/content/aa/render.png',
         createdAt: 1,
       })),
     };

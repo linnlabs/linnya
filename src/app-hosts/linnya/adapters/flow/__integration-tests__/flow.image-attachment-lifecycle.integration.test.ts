@@ -97,7 +97,7 @@ async function listenForConversationImages(params: {
   ).contentRoot;
   const verifiedImageLoader = createWorkspaceVerifiedImageLoader({
     db: params.db,
-    storageBoundaries: [{ boundaryRoot: params.appDataRoot, contentRoot }],
+    storage: { appDataRoot: params.appDataRoot, contentRoot },
     maxImagePixels: TEST_POLICY.maxImagePixels,
   });
   const app = express();
@@ -580,13 +580,11 @@ describe('Flow image attachment durable lifecycle', () => {
       workspaceResolver: createWorkspaceLlmImageResolver({
         verifiedImageLoader: createWorkspaceVerifiedImageLoader({
           db,
-          storageBoundaries: [
-            {
-              boundaryRoot: appDataRoot,
-              contentRoot: createConversationAttachmentStoragePaths(appDataRoot, STORE_ID)
-                .contentRoot,
-            },
-          ],
+          storage: {
+            appDataRoot,
+            contentRoot: createConversationAttachmentStoragePaths(appDataRoot, STORE_ID)
+              .contentRoot,
+          },
           maxImagePixels: TEST_POLICY.maxImagePixels,
         }),
       }),
@@ -621,11 +619,13 @@ describe('Flow image attachment durable lifecycle', () => {
       .prepare<[string], StoredAssetPathRow>(`SELECT local_path FROM assets WHERE id = ?`)
       .get('asset-first');
     if (!storedAsset?.local_path) throw new Error('fixture asset 缺少受管文件路径');
-    expect(storedAsset.local_path).toContain(
-      `${path.sep}ConversationAttachments${path.sep}v2${path.sep}stores${path.sep}${STORE_ID}${path.sep}content${path.sep}`
-    );
-    expect(path.relative(workspaceRoot, storedAsset.local_path).startsWith('..')).toBe(true);
-    await fsp.writeFile(storedAsset.local_path, Buffer.from('corrupted'));
+    // 账本存相对 AppData Root 的持久路径；文件在 AppData 的受管目录，不在 Workspace。
+    expect(storedAsset.local_path.startsWith(
+      `ConversationAttachments/v2/stores/${STORE_ID}/content/`
+    )).toBe(true);
+    const storedFile = path.join(appDataRoot, ...storedAsset.local_path.split('/'));
+    expect(path.relative(workspaceRoot, storedFile).startsWith('..')).toBe(true);
+    await fsp.writeFile(storedFile, Buffer.from('corrupted'));
     await expect(
       rendererPreviewApi.loadImage('asset-first', new AbortController().signal)
     ).rejects.toMatchObject({

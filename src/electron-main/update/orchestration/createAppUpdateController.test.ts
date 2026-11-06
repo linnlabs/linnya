@@ -58,6 +58,7 @@ function createHarness(options: {
   const ready: boolean[] = [];
   const pauseAgentRuns = vi.fn(async () => ({ pausedConversationIds: [], unpausableConversationIds: [] }));
   const requestInstall = vi.fn(async () => options.installOutcome ?? 'shutdown_committed' as AppShutdownRequestOutcome);
+  const readActivity = vi.fn(async () => activity);
 
   const controller = createAppUpdateController({
     enabled: options.enabled ?? true,
@@ -88,7 +89,7 @@ function createHarness(options: {
       onDownloadProgress(listener) { progressListener = listener; },
     },
     activity: {
-      read: async () => activity,
+      read: readActivity,
       pauseAgentRuns,
     },
     isInstallLocationSupported: () => options.locationSupported ?? true,
@@ -130,6 +131,7 @@ function createHarness(options: {
     ready,
     pauseAgentRuns,
     requestInstall,
+    readActivity,
     advance,
     emitProgress: (progress: AppUpdateDownloadProgress) => progressListener?.(progress),
     setActivity: (next: AppUpdateActivitySnapshot) => { activity = next; },
@@ -367,6 +369,16 @@ describe('createAppUpdateController', () => {
     await expect(harness.controller.install({ confirmedActivityKeys: [] })).resolves.toEqual({ outcome: 'kept_open' });
     expect(harness.pauseAgentRuns).not.toHaveBeenCalled();
     expect(harness.controller.getState().status).toBe('ready');
+  });
+
+  it('活动查询失败时明确报告安装失败，不能冒充空快照跳过任务确认', async () => {
+    const harness = createHarness();
+    await reachReady(harness);
+    harness.readActivity.mockRejectedValueOnce(new Error('activity RPC timeout'));
+    await expect(harness.controller.install({ confirmedActivityKeys: [] })).resolves.toEqual({ outcome: 'failed' });
+    expect(harness.controller.getState()).toMatchObject({ status: 'failed', failure: { kind: 'install' } });
+    expect(harness.pauseAgentRuns).not.toHaveBeenCalled();
+    expect(harness.requestInstall).not.toHaveBeenCalled();
   });
 
   it('安装请求抛错时进入 failed(install)，未下载完成时拒绝安装', async () => {

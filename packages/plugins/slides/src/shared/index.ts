@@ -132,6 +132,20 @@ export type {
   TextFontScript,
 } from './textFontIdentity';
 export {
+  DEFAULT_FONT_DELIVERY_TARGET,
+  OFFICE_FONT_FAMILIES,
+  assessFontDelivery,
+  isFontDeliveryTarget,
+  listOfficeFontFamilies,
+  resolveDeckFontDeliveryTarget,
+} from './fontDelivery';
+export type {
+  FontDeliveryAssessment,
+  FontDeliveryStatus,
+  FontDeliveryTarget,
+  OfficeFontFamily,
+} from './fontDelivery';
+export {
   DEFAULT_SVG_GRAPHIC_ADMISSION_POLICY,
   SVG_GRAPHIC_ADMISSION_FAILURE_CODES,
   SvgGraphicAdmissionError,

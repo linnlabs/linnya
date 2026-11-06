@@ -14,6 +14,7 @@ import {
   type SlidesToolCardMessageKey,
 } from '../definitions/slidesToolCardMessageCatalog';
 import type {
+  SlidesDirectionPresentationData,
   SlidesExportPresentationData,
   SlidesInspectPresentationData,
   PresentationPageSummary,
@@ -95,11 +96,13 @@ export function projectSlidesPlanPresentation(
 ): ToolPresentationProjection<SlidesPlanPresentationData> {
   if (!input.toolCallId) throw new Error('ppt_plan presentation 缺少 toolCallId');
   const interaction = projectPlanInteraction(input);
+  // 封面版本只在工具结果里（backend 解析 look.presentation 后写入），等待审批与审批之后都先读结果；
+  // 流式生成参数时还没有结果，或结果已被用户提交覆盖时，再退回原始参数。
   const plan = interaction.status === 'active'
     ? (input.status === 'success'
         ? requirePlan(input.result, 'ppt_plan result')
-        : readPptPlanData(input.args))
-    : requirePlanFromArgs(input.args);
+        : readPptPlanData(input.result) ?? readPptPlanData(input.args))
+    : readPptPlanData(input.result) ?? requirePlanFromArgs(input.args);
   return {
     data: {
       kind: 'plan',
@@ -152,6 +155,15 @@ function exportTitle(fileName: string | null): ToolTitleDescriptor {
     text: fileName
       ? localizedText('slides.tool.title.exportNamed', { fileName })
       : localizedText('slides.tool.title.export'),
+  };
+}
+
+export function projectSlidesDirectionPresentation(
+  _input: ToolPresentationProjectorInput,
+): ToolPresentationProjection<SlidesDirectionPresentationData> {
+  return {
+    data: { kind: 'direction' },
+    title: { text: localizedText('slides.tool.title.direction') },
   };
 }
 

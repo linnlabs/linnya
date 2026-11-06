@@ -3,6 +3,7 @@ import { MathFormulaError } from '../../mathFormula';
 import type { InlineBoxLineSlice, RunAdvanceProvider, TextLayoutResult, TextRunStyleResolver } from '../definitions/types';
 import { isRenderTextRun } from '../definitions/types';
 import { combineTextLayoutAdvanceSources } from './advanceSource';
+import { isKinsokuLineEndForbidden, isKinsokuLineStartForbidden } from '../definitions/kinsokuChars';
 import { segmentClusters, type TextCluster } from './segmentClusters';
 
 const WIDTH_EPSILON_INCHES = 1e-9;
@@ -62,7 +63,7 @@ export function breakParagraphIntoLines(
   keepClusters = false,
 ): BrokenLine[] {
   const toLine = (atoms: readonly FlatAtom[]) => buildLine(atoms, keepClusters);
-  const flat = flattenParagraph(paragraph, paragraphIndex, provider, resolveRunStyle, fontScale);
+  const flat = applyKinsokuAcrossRuns(flattenParagraph(paragraph, paragraphIndex, provider, resolveRunStyle, fontScale));
   if (flat.some((atom) => atom.kind === 'inlineBox' && atom.advance > usableWidthInches)) {
     throw new MathFormulaError(
       'slides.formula.inline_formula_too_wide',
@@ -102,6 +103,19 @@ export function breakParagraphIntoLines(
   }
   lines.push(flat.slice(lineStart));
   return lines.map(toLine);
+}
+
+/**
+ * segmentClusters 只能在单个 run 内判断避头尾。字体回退、样式切换会把一句话拆成多个 run，
+ * 例如“壶”与“，一套”分属两个 run 时，run 交界处仍不能让闭合标点落到行首。
+ */
+function applyKinsokuAcrossRuns(atoms: FlatAtom[]): FlatAtom[] {
+  return atoms.map((atom, index) => {
+    const next = atoms[index + 1];
+    if (atom.kind !== 'text' || next?.kind !== 'text' || next.runIndex === atom.runIndex) return atom;
+    if (!isKinsokuLineEndForbidden(atom.text) && !isKinsokuLineStartForbidden(next.text)) return atom;
+    return { ...atom, forbidBreakAfter: true, breakAfter: false };
+  });
 }
 
 function splitAtForcedBreaks(atoms: readonly FlatAtom[]): FlatAtom[][] {

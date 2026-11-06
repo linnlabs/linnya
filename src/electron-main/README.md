@@ -43,6 +43,7 @@ Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也�
 | --- | --- | --- |
 | 启动、单实例、窗口关闭、App 退出 | [`index.js`](./index.js)、[`app-lifecycle/`](./app-lifecycle/README.md)、`window-manager.js` | 只编排 App owner，不取得 Backend 内部对象 |
 | App Server 子进程、bootstrap、双向 RPC | [`app-server-runtime/`](./app-server-runtime/README.md) | Main 只托管进程并实现 Desktop reverse capability |
+| 启动时的“正在升级数据”窗口 | [`data-upgrade-window/`](./data-upgrade-window/README.md) | 只消费 App Server 启动进度；不读数据库、不决定迁移 |
 | Renderer 的 Preload API 与 IPC 白名单 | `preload/`、`ipc/index.js`、`ipc/handlers/index.ts` | 页面只见稳定 DTO；新增业务 handler 应注册到 App Server request registry |
 | App Server 业务请求转发 | `app-server-runtime/orchestration/registerBackendRendererRequestIpcHandlers.ts` | 只转发 App Server 已登记 channel，完整合同见 [Backend Renderer Requests](../app-hosts/linnya/adapters/backend-renderer-requests/README.md) |
 | OAuth browser、文件定位、PDF、隐藏窗口等 | `desktop-capabilities/`、`hidden-worker/`、`measurement/`、`web-render/` | 对外只实现 [Desktop capability ports](../app-hosts/linnya/desktop-capabilities/README.md) |

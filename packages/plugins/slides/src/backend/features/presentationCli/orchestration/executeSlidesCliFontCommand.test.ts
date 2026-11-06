@@ -43,8 +43,8 @@ describe('executeSlidesCliFontCommand', () => {
     expect(result.exitCode).toBe(SlidesCliExitCode.SUCCESS);
     expect(JSON.parse(result.stdout)).toEqual({
       kind: 'linnya.slides.font-check',
-      schemaVersion: 1,
-      cliVersion: '1.9.0',
+      schemaVersion: 2,
+      cliVersion: '1.10.0',
       requestedFamily: 'Georgia',
       installed: true,
       match: {
@@ -53,13 +53,57 @@ describe('executeSlidesCliFontCommand', () => {
         styles: ['regular', 'bold'],
         monospace: false,
       },
+      office: { status: 'core', officeFamily: 'Georgia', alternatives: [] },
     });
     expect(result.stderr).toBe('');
+  });
+
+  it('本机已安装的 Mac 专属字体仍报告 Office 不可交付，并给出替换方向', async () => {
+    const result = await executeSlidesCliFontCommand({
+      kind: 'fonts-check',
+      family: 'Songti SC',
+    }, createPort());
+
+    const report = JSON.parse(result.stdout);
+    expect(report.installed).toBe(true);
+    expect(report.office).toEqual({ status: 'unavailable', alternatives: ['SimSun', 'STZhongsong'] });
+  });
+
+  it('Office 目标列出两端 PowerPoint 都有的字体，并标明本机是否安装', async () => {
+    const port = createPort();
+    port.checkFontFamily = vi.fn(async (family) => ({
+      requestedFamily: family,
+      installed: family === 'STKaiti',
+    }));
+
+    const result = await executeSlidesCliFontCommand({
+      kind: 'fonts-list',
+      target: 'office',
+      script: 'eastAsian',
+    }, port);
+
+    const report = JSON.parse(result.stdout);
+    expect(report).toMatchObject({ kind: 'linnya.slides.font-list', target: 'office', script: 'eastAsian' });
+    expect(report.families).toContainEqual({
+      family: 'Microsoft YaHei',
+      localNames: ['微软雅黑'],
+      delivery: 'core',
+      installedHere: false,
+    });
+    expect(report.families).toContainEqual({
+      family: 'STKaiti',
+      localNames: ['华文楷体'],
+      delivery: 'cloud',
+      installedHere: true,
+    });
+    expect(report.families.some((entry: { family: string }) => entry.family === 'PingFang SC')).toBe(false);
+    expect(port.listFontFamilies).not.toHaveBeenCalled();
   });
 
   it('候选发现输出分页事实且不包含实现路径', async () => {
     const result = await executeSlidesCliFontCommand({
       kind: 'fonts-list',
+      target: 'local',
       request: { script: 'latin', offset: 0, limit: 30 },
     }, createPort());
 
@@ -79,6 +123,7 @@ describe('executeSlidesCliFontCommand', () => {
 
     const result = await executeSlidesCliFontCommand({
       kind: 'fonts-list',
+      target: 'local',
       request: { script: 'latin', offset: 0, limit: 30 },
     }, port);
 

@@ -4,13 +4,14 @@ import type { SlidesEditableTextContent } from '../definitions/editableText';
 
 export function isAuthorTextStyle(value: unknown): value is TextStyle {
   if (!record(value) || !Object.keys(value).every(key => ['fontSize', 'fontFamily', 'bold', 'italic', 'underline',
-    'color', 'align', 'valign', 'letterSpacing', 'lineSpacing'].includes(key))) return false;
+    'color', 'align', 'valign', 'writingMode', 'letterSpacing', 'lineSpacing'].includes(key))) return false;
   return (value.fontSize === undefined || finite(value.fontSize))
     && (value.fontFamily === undefined || typeof value.fontFamily === 'string')
     && ['bold', 'italic', 'underline'].every(key => value[key] === undefined || typeof value[key] === 'boolean')
     && (value.color === undefined || typeof value.color === 'string')
     && (value.align === undefined || ['left', 'center', 'right'].some(item => item === value.align))
     && (value.valign === undefined || ['top', 'middle', 'bottom'].some(item => item === value.valign))
+    && (value.writingMode === undefined || value.writingMode === 'vertical-rl')
     && (value.letterSpacing === undefined || finite(value.letterSpacing))
     && (value.lineSpacing === undefined || isTextLineSpacing(value.lineSpacing));
 }

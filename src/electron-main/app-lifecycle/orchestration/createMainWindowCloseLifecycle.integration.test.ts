@@ -9,6 +9,7 @@ function createFixture(input: {
 }) {
   const events: string[] = [];
   const lifecycle = createMainWindowCloseLifecycle({
+    isBackendUnavailable: () => false,
     hasExecutingCommands: () => input.executing,
     requestExecutingCommandsDecision: async () => {
       events.push('decision');
@@ -17,6 +18,7 @@ function createFixture(input: {
     prepareRendererForClose: async () => {
       events.push('renderer_prepared');
     },
+    requestPreparationFailureDecision: async () => 'return',
   });
   return { events, lifecycle };
 }
@@ -57,9 +59,11 @@ describe('createMainWindowCloseLifecycle', () => {
     }));
     const prepareRendererForClose = vi.fn(async () => undefined);
     const lifecycle = createMainWindowCloseLifecycle({
+      isBackendUnavailable: () => false,
       hasExecutingCommands: () => true,
       requestExecutingCommandsDecision,
       prepareRendererForClose,
+      requestPreparationFailureDecision: async () => 'return',
     });
 
     const first = lifecycle.requestClose('ordinary_exit');
@@ -77,12 +81,84 @@ describe('createMainWindowCloseLifecycle', () => {
       .mockRejectedValueOnce(new Error('save failed'))
       .mockResolvedValueOnce(undefined);
     const lifecycle = createMainWindowCloseLifecycle({
+      isBackendUnavailable: () => false,
       hasExecutingCommands: () => false,
       requestExecutingCommandsDecision: async () => 'return',
       prepareRendererForClose,
+      requestPreparationFailureDecision: async () => 'return',
     });
 
-    await expect(lifecycle.requestClose('ordinary_exit')).rejects.toThrow('save failed');
+    await expect(lifecycle.requestClose('ordinary_exit')).resolves.toBe('kept_open');
     await expect(lifecycle.requestClose('ordinary_exit')).resolves.toBe('ready_to_quit');
+  });
+
+  it('已观察到 Backend 退出时跳过活动 RPC，但仍执行 renderer 保存', async () => {
+    const hasExecutingCommands = vi.fn(() => { throw new Error('RPC not ready'); });
+    const prepareRendererForClose = vi.fn(async () => undefined);
+    const requestPreparationFailureDecision = vi.fn(async () => 'return' as const);
+    const lifecycle = createMainWindowCloseLifecycle({
+      isBackendUnavailable: () => true,
+      hasExecutingCommands,
+      requestExecutingCommandsDecision: async () => 'return',
+      requestPreparationFailureDecision,
+      prepareRendererForClose,
+    });
+    await expect(lifecycle.requestClose('ordinary_exit')).resolves.toBe('ready_to_quit');
+    expect(hasExecutingCommands).not.toHaveBeenCalled();
+    expect(prepareRendererForClose).toHaveBeenCalledOnce();
+    expect(requestPreparationFailureDecision).not.toHaveBeenCalled();
+  });
+
+  it.each(['return', 'close_anyway'] as const)('活动查询超时必须取得用户决定：%s', async decision => {
+    const failure = new Error('activity RPC timeout');
+    const prepareRendererForClose = vi.fn(async () => undefined);
+    const requestPreparationFailureDecision = vi.fn(async () => decision);
+    const lifecycle = createMainWindowCloseLifecycle({
+      isBackendUnavailable: () => false,
+      hasExecutingCommands: async () => { throw failure; },
+      requestExecutingCommandsDecision: async () => 'return',
+      requestPreparationFailureDecision,
+      prepareRendererForClose,
+    });
+    await expect(lifecycle.requestClose('ordinary_exit')).resolves.toBe(
+      decision === 'return' ? 'kept_open' : 'ready_to_quit',
+    );
+    expect(requestPreparationFailureDecision).toHaveBeenCalledExactlyOnceWith({
+      stage: 'activity_query', intent: 'ordinary_exit', error: failure,
+    });
+    expect(prepareRendererForClose).toHaveBeenCalledTimes(decision === 'return' ? 0 : 1);
+  });
+
+  it('活动查询期间 Backend 退出，按退出事实继续而不把已结束的命令当作未知任务', async () => {
+    let unavailable = false;
+    const requestPreparationFailureDecision = vi.fn(async () => 'return' as const);
+    const lifecycle = createMainWindowCloseLifecycle({
+      isBackendUnavailable: () => unavailable,
+      hasExecutingCommands: async () => {
+        unavailable = true;
+        throw new Error('child exited');
+      },
+      requestExecutingCommandsDecision: async () => 'return',
+      requestPreparationFailureDecision,
+      prepareRendererForClose: async () => undefined,
+    });
+    await expect(lifecycle.requestClose('ordinary_exit')).resolves.toBe('ready_to_quit');
+    expect(requestPreparationFailureDecision).not.toHaveBeenCalled();
+  });
+
+  it.each(['ordinary_exit', 'install_update'] as const)('未保存修改只有用户明确放弃后才能继续 %s', async intent => {
+    const failure = new Error('save failed');
+    const requestPreparationFailureDecision = vi.fn(async () => 'close_anyway' as const);
+    const lifecycle = createMainWindowCloseLifecycle({
+      isBackendUnavailable: () => true,
+      hasExecutingCommands: () => false,
+      requestExecutingCommandsDecision: async () => 'return',
+      requestPreparationFailureDecision,
+      prepareRendererForClose: async () => { throw failure; },
+    });
+    await expect(lifecycle.requestClose(intent)).resolves.toBe('ready_to_quit');
+    expect(requestPreparationFailureDecision).toHaveBeenCalledExactlyOnceWith({
+      stage: 'renderer_save', intent, error: failure,
+    });
   });
 });

@@ -185,13 +185,20 @@ describe('parseSlidesCliArgs', () => {
     });
   });
 
-  it('fonts list 解析脚本、限制和分页参数', () => {
+  it('fonts list 默认列 Office 通用字体，本机目录才分页', () => {
     expect(parseSlidesCliArgs([
-      'fonts', 'list', '--script', 'eastAsian', '--limit', '20', '--offset', '40',
+      'fonts', 'list', '--script', 'eastAsian',
+    ])).toEqual({
+      kind: 'command',
+      command: { kind: 'fonts-list', target: 'office', script: 'eastAsian' },
+    });
+    expect(parseSlidesCliArgs([
+      'fonts', 'list', '--script', 'eastAsian', '--target', 'local', '--limit', '20', '--offset', '40',
     ])).toEqual({
       kind: 'command',
       command: {
         kind: 'fonts-list',
+        target: 'local',
         request: { script: 'eastAsian', limit: 20, offset: 40 },
       },
     });
@@ -202,8 +209,17 @@ describe('parseSlidesCliArgs', () => {
       'fonts', 'list', '--script', 'chinese',
     ])).toThrow('--script must be one of');
     expect(() => parseSlidesCliArgs([
-      'fonts', 'list', '--script', 'latin', '--limit', '101',
+      'fonts', 'list', '--script', 'latin', '--target', 'local', '--limit', '101',
     ])).toThrow('--limit must not exceed 100');
+    expect(() => parseSlidesCliArgs([
+      'fonts', 'list', '--script', 'latin', '--limit', '10',
+    ])).toThrow('--limit and --offset require --target local');
+    expect(() => parseSlidesCliArgs([
+      'fonts', 'list', '--script', 'latin', '--target', 'windows',
+    ])).toThrow('--target must be one of');
+    expect(() => parseSlidesCliArgs([
+      'fonts', 'check', '--family', 'Georgia', '--target', 'office',
+    ])).toThrow('--target');
     expect(() => parseSlidesCliArgs([
       'fonts', 'check', '--family', 'Georgia', '--presentation', 'deck-1',
     ])).toThrow('Presentation options are not available');

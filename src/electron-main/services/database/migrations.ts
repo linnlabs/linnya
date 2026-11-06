@@ -35,6 +35,43 @@ export function assertSupportedHostSchemaVersion(currentVersion: number): void {
 }
 
 /**
+ * 执行一步迁移（v`version` → v`version + 1`），返回耗时毫秒数。
+ *
+ * 每步在独立事务中执行并写入版本号，失败回滚本步；已完成的步骤不会重做。
+ * 耗时连同数据库体积写入日志，用来积累各迁移的实际耗时。
+ */
+export function runMigrationStep(db: Database.Database, version: number): number {
+  const migration = migrations.find(candidate => candidate.fromVersion === version);
+  if (!migration) {
+    throw new Error(`[Migration] Missing migration function for v${version} -> v${version + 1}`);
+  }
+  console.log(`[Migration] Executing migration: v${version} -> v${version + 1}`);
+  const startedAt = performance.now();
+  try {
+    const transaction = db.transaction(() => {
+      migration.migrate(db);
+      db.pragma(`user_version = ${version + 1}`);
+    });
+    transaction();
+  } catch (error) {
+    console.error(`[Migration] ❌ Migration failed at v${version} -> v${version + 1}:`, error);
+    throw new Error(
+      `Database migration failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+  const elapsedMs = Math.round(performance.now() - startedAt);
+  const pageSize = db.pragma('page_size', { simple: true });
+  const pageCount = db.pragma('page_count', { simple: true });
+  const databaseBytes =
+    typeof pageSize === 'number' && typeof pageCount === 'number' ? pageSize * pageCount : null;
+  console.log(
+    `[Migration] ✅ Successfully migrated to v${version + 1} in ${elapsedMs}ms` +
+      (databaseBytes === null ? '' : ` (database ${Math.round(databaseBytes / 1048576)}MB)`)
+  );
+  return elapsedMs;
+}
+
+/**
  * 执行数据库迁移
  * @param db - better-sqlite3 数据库实例
  * @param currentVersion - 当前数据库版本
@@ -51,30 +88,8 @@ export function runMigrations(
   }
 
   console.log(`[Migration] Starting migration from v${currentVersion} to v${targetVersion}`);
-
   for (let version = currentVersion; version < targetVersion; version++) {
-    const migration = migrations.find(candidate => candidate.fromVersion === version);
-
-    if (!migration) {
-      throw new Error(`[Migration] Missing migration function for v${version} -> v${version + 1}`);
-    }
-
-    console.log(`[Migration] Executing migration: v${version} -> v${version + 1}`);
-
-    try {
-      const transaction = db.transaction(() => {
-        migration.migrate(db);
-        db.pragma(`user_version = ${version + 1}`);
-      });
-      transaction();
-      console.log(`[Migration] ✅ Successfully migrated to v${version + 1}`);
-    } catch (error) {
-      console.error(`[Migration] ❌ Migration failed at v${version} -> v${version + 1}:`, error);
-      throw new Error(
-        `Database migration failed: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    runMigrationStep(db, version);
   }
-
   console.log(`[Migration] 🎉 All migrations complete! Current version: v${targetVersion}`);
 }

@@ -27,7 +27,7 @@ const imageRef: RuntimeResourceRef = {
 function createStore(): Database.Database {
   const db = new Database(':memory:');
   db.pragma('foreign_keys = ON');
-  db.exec('CREATE TABLE projects (id TEXT PRIMARY KEY)');
+  db.exec('CREATE TABLE projects (id TEXT PRIMARY KEY); CREATE TABLE assets (id TEXT PRIMARY KEY)');
   for (const schema of CONVERSATION_SCHEMAS) db.exec(schema);
   db.prepare(
     `
@@ -236,6 +236,32 @@ describe('SqliteSubrunTraceHistoryProjector', () => {
     }
 
     db.close();
+  });
+
+  it('共用同一子运行的完整结果；只删除 child 时保留父轨迹，额外输出仍原样保存', () => {
+    const db = createStore();
+    try {
+      const projector = new SqliteSubrunTraceHistoryProjector(db);
+      db.prepare('INSERT INTO runs (id, conversation_id, kind, status, start_ts) VALUES (?,?,?,?,?)')
+        .run('subrun-a', 'conversation-a', 'agent', 'running', 1);
+      const output = { data: { values: [null, '原文'] }, observation: '结果' };
+      const insert = db.prepare('INSERT INTO events (id,run_id,type,payload,ts) VALUES (?,?,?,?,?)');
+      for (const id of ['same', 'extra']) {
+        insert.run(id, 'subrun-a', 'tool_output', JSON.stringify({
+          tool_call_id: 'child-tool-a', tool_name: 'search', status: 'success', ...output,
+        }), 100);
+        projector.project({ ...createTrace(id, 'tool_output'), output: id === 'same'
+          ? output : { ...output, display: '来自父轨迹' } });
+      }
+      const stored = db.prepare("SELECT source_event_id, payload_json ->> '$.body_from_event' AS shared FROM subrun_trace_items ORDER BY id");
+      expect(stored.all()).toEqual([{ source_event_id: 'same', shared: 1 }, { source_event_id: 'extra', shared: null }]);
+      const read = () => readSubrunTrace(db, 'conversation-a', 'parent-tool-a', 'subrun-a');
+      const before = read();
+      expect(before).toMatchObject({ events: [{ output }, { output: { ...output, display: '来自父轨迹' } }] });
+      db.prepare("DELETE FROM events WHERE run_id='subrun-a'").run();
+      expect(read()).toEqual(before);
+      expect(stored.all()).toEqual([{ source_event_id: 'same', shared: null }, { source_event_id: 'extra', shared: null }]);
+    } finally { db.close(); }
   });
 
   it('source_event_id 在 read model 中保持全局唯一', () => {

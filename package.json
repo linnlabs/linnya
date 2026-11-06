@@ -1,6 +1,6 @@
 {
   "name": "linnya",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "An agent-centered document database and extensible desktop workspace.",
@@ -90,6 +90,8 @@
     "build:linnya-cli": "pnpm --dir apps/linnya-cli run build",
     "build:linnya-runtime": "pnpm run prepare:headless-node-runtime && pnpm run prepare:qdrant-runtime && pnpm run build:backend && pnpm run build:worker && pnpm run build:linnya-cli",
     "benchmark:agent": "tsx apps/linnya-benchmark/src/main.ts",
+    "benchmark:slides-design": "tsx apps/linnya-benchmark/src/main.ts slides-design-batch",
+    "benchmark:slides-design:analyze": "tsx scripts/benchmark/slides-design/analyze.ts",
     "linnya:cli": "tsx apps/linnya-cli/src/main.ts",
     "linnya:runtime": "pnpm run build:linnya-runtime && tsx apps/linnya-cli/src/main.ts runtime start",
     "test:linnya-benchmark": "pnpm --dir apps/linnya-benchmark run test",

@@ -21,7 +21,8 @@ CLI 的 `--presentation` 接收 presentation ID，不接收 Workspace locator、
 | 构建状态、检查提示、证据和建议 | `ppt_inspect`（精简 observation）或 `linnya-slides inspect --presentation <id>`（完整机器 JSON） |
 | 指定页的 JPEG 检查图 locator | `linnya-slides render --presentation <id> --slide <number>` |
 | 检查某个字体族 | `linnya-slides fonts check --family <name>` |
-| 按脚本查候选字体 | `linnya-slides fonts list --script <latin\|eastAsian\|complex>` |
+| 按脚本查 Office 通用字体 | `linnya-slides fonts list --script <latin\|eastAsian\|complex>` |
+| 只在本机放映时查已安装字体 | `linnya-slides fonts list --script <...> --target local` |
 
 `inspect` 和 `render` 可用 `--slide N` 选择单页，或用 `--from N --to M` 选择闭区间；单页和范围不能同时传。省略这三项表示整份文稿。`inspect` 可用 `--max-slides N` 限制返回页数，也可用 `--heuristics` 附加 Tier-2 低置信提示。需要核对已知源码对象的最终几何时，可重复传 `--source-range start:end`，最多四次；范围是 1-based 闭区间。CLI 只执行显式选择，不会根据任务类型自动挑选页面。
 
@@ -33,10 +34,12 @@ CLI 的 `--presentation` 接收 presentation ID，不接收 Workspace locator、
 - `linnya-slides render --presentation example-presentation --slide 1`
 - `linnya-slides render --presentation example-presentation --from 2 --to 4`
 - `linnya-slides fonts check --family Inter`
-- `linnya-slides fonts list --script eastAsian --limit 20 --offset 0`
+- `linnya-slides fonts list --script eastAsian`
+- `linnya-slides fonts list --script eastAsian --target local --limit 20 --offset 0`
 
 ## Shell 与输出
 
+- `fonts check` 同时给出本机安装事实 `installed` 和 PowerPoint 交付事实 `office.status`：`core` 两端都有，`cloud` 需要 Microsoft 365 或 Office 2021 及以上联网下载，`unavailable` 会被替换，`office.alternatives` 是替换方向。`fonts list` 默认列 Office 通用字体，`installedHere=false` 表示本机预览用替代字体，放映端仍是原字体。
 - `inspect` 是只读命令。stdout 是一个紧凑 JSON report，运行日志在 stderr。
 - `inspect` 返回 `buildStatus + findingSummary + rootGroups + findings`，可选源码范围查询另返回 `focus`；不返回综合分、passed 或美学 blocker，也不复制 `read_file` 已能提供的页面结构。`focus` 只给匹配节点和每页、每对范围最近节点的横纵 `gap/overlap`，不输出全页距离矩阵。先处理 P0 确定性问题，再复核 P1；P2 要结合 render 判断。`shared_source` 根因组表示多条 finding 指向同一作者源码控制点，可优先一次修正，不代表视觉规则替用户决定设计。
 - `render` 会向当前 Conversation 工作目录写 JPEG 检查图，因此调用 Shell 时传 `requires_write_access: true`。Agent 模式不要传 `--output`、`--overwrite` 或 `--database`。

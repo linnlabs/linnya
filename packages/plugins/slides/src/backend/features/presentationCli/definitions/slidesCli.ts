@@ -1,4 +1,7 @@
 import type {
+  FontDeliveryAssessment,
+  FontDeliveryStatus,
+  OfficeFontFamily,
   PresentationInspectionRequest,
   ToolBuildStatus,
 } from '@plugin/slides/shared';
@@ -28,10 +31,10 @@ export const SLIDES_CLI_REPORT_KIND = 'linnya.slides.inspection-report' as const
 export const SLIDES_CLI_REPORT_VERSION = 10 as const;
 export const SLIDES_CLI_FONT_CHECK_KIND = 'linnya.slides.font-check' as const;
 export const SLIDES_CLI_FONT_LIST_KIND = 'linnya.slides.font-list' as const;
-export const SLIDES_CLI_FONT_REPORT_VERSION = 1 as const;
+export const SLIDES_CLI_FONT_REPORT_VERSION = 2 as const;
 export const SLIDES_CLI_RENDER_REPORT_KIND = 'linnya.slides.render-report' as const;
 export const SLIDES_CLI_RENDER_REPORT_VERSION = 1 as const;
-export const SLIDES_CLI_VERSION = '1.9.0' as const;
+export const SLIDES_CLI_VERSION = '1.10.0' as const;
 
 export const SlidesCliExitCode = {
   SUCCESS: 0,
@@ -71,11 +74,19 @@ export interface SlidesCliFontCheckCommand {
   readonly family: string;
 }
 
-export interface SlidesCliFontListCommand {
-  readonly format?: 'json' | 'pretty';
-  readonly kind: 'fonts-list';
-  readonly request: PluginFontFamilyListRequest;
-}
+export type SlidesCliFontListCommand =
+  | {
+    readonly format?: 'json' | 'pretty';
+    readonly kind: 'fonts-list';
+    readonly target: 'office';
+    readonly script: PluginFontFamilyListRequest['script'];
+  }
+  | {
+    readonly format?: 'json' | 'pretty';
+    readonly kind: 'fonts-list';
+    readonly target: 'local';
+    readonly request: PluginFontFamilyListRequest;
+  };
 
 export type SlidesCliFontCommand = SlidesCliFontCheckCommand | SlidesCliFontListCommand;
 export type SlidesCliCommand = SlidesCliPresentationCommand | SlidesCliFontCommand;
@@ -198,10 +209,32 @@ export interface SlidesCliFontCheckReport extends PluginFontFamilyCheckResult {
   readonly kind: typeof SLIDES_CLI_FONT_CHECK_KIND;
   readonly schemaVersion: typeof SLIDES_CLI_FONT_REPORT_VERSION;
   readonly cliVersion: typeof SLIDES_CLI_VERSION;
+  /** 本机安装事实之外，Windows 与 Mac 的 PowerPoint 能否打开这个字体。 */
+  readonly office: Pick<FontDeliveryAssessment, 'status' | 'officeFamily' | 'alternatives'>;
 }
 
-export interface SlidesCliFontListReport extends PluginFontFamilyListResult {
+export interface SlidesCliLocalFontListReport extends PluginFontFamilyListResult {
   readonly kind: typeof SLIDES_CLI_FONT_LIST_KIND;
   readonly schemaVersion: typeof SLIDES_CLI_FONT_REPORT_VERSION;
   readonly cliVersion: typeof SLIDES_CLI_VERSION;
+  readonly target: 'local';
 }
+
+export interface SlidesCliOfficeFontListItem {
+  readonly family: string;
+  readonly localNames: OfficeFontFamily['localNames'];
+  readonly delivery: Exclude<FontDeliveryStatus, 'unavailable'>;
+  /** 本机没有时，预览和测量用最接近的替代字体，PowerPoint 放映端仍用原字体。 */
+  readonly installedHere: boolean;
+}
+
+export interface SlidesCliOfficeFontListReport {
+  readonly kind: typeof SLIDES_CLI_FONT_LIST_KIND;
+  readonly schemaVersion: typeof SLIDES_CLI_FONT_REPORT_VERSION;
+  readonly cliVersion: typeof SLIDES_CLI_VERSION;
+  readonly target: 'office';
+  readonly script: PluginFontFamilyListRequest['script'];
+  readonly families: readonly SlidesCliOfficeFontListItem[];
+}
+
+export type SlidesCliFontListReport = SlidesCliLocalFontListReport | SlidesCliOfficeFontListReport;

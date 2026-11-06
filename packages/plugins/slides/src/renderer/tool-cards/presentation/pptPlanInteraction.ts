@@ -13,6 +13,7 @@ import {
 
 export type {
   PptPlanData,
+  PptPlanLookData,
   PptPlanPageData,
   PptPlanVisualDirection,
 } from '@plugin/slides/shared/pptPlanToolContract';
@@ -113,6 +114,8 @@ function normalizeEditablePptPlanData(data: EditablePptPlanData): EditablePptPla
     pageCount: data.pages.length,
     ...(data.audience === undefined ? {} : { audience: data.audience }),
     visualDirection: { ...data.visualDirection },
+    // 封面样张、配色与字体由 Agent 产出，卡片只展示不编辑；修改计划时原样带回。
+    ...(data.look === undefined ? {} : { look: data.look }),
     pages: data.pages.map((page, index) => ({
       localId: page.localId,
       slideNumber: index + 1,
@@ -131,6 +134,7 @@ export function createEditablePptPlanData(
     pageCount: data.pageCount,
     ...(data.audience === undefined ? {} : { audience: data.audience }),
     visualDirection: { ...data.visualDirection },
+    ...(data.look === undefined ? {} : { look: data.look }),
     pages: data.pages.map((page, index) => ({
       localId: createLocalId(page, index),
       slideNumber: page.slideNumber,
@@ -234,6 +238,7 @@ export function toPptPlanData(data: EditablePptPlanData): PptPlanData {
     pageCount: normalized.pageCount,
     ...(normalized.audience === undefined ? {} : { audience: normalized.audience }),
     visualDirection: normalized.visualDirection,
+    ...(normalized.look === undefined ? {} : { look: normalized.look }),
     pages: normalized.pages.map((page) => ({
       slideNumber: page.slideNumber,
       title: page.title,

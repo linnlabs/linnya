@@ -102,6 +102,8 @@ URL 身份归一和具体提示由 Host/Web owner 负责；没有新缓存、索
 
 这是新库破坏式合同，没有完整 payload 双读、格式探测或 migration fallback。旧开发库必须重建；不能在 parser 中根据 JSON 形状猜格式。
 
+v73 的工具决策可以在磁盘上只保留一份参数对象。只有顶层 `args` 与 `payload.args` 序列化完全一致时，写入端才记录共享标记并省略后者。恢复、回放及 UI 重建通过同一 codec 还原两处字段；参数缺省、不同的值、批内顺序和模型原始参数串各按原事件保存。
+
 Linnkit adapter 的 `PersistedEvent` 只有 `eventStoreId + event`。`eventStoreId` 是存储分页游标，`RuntimeEvent.id` 是业务事实身份；两者不得互相 fallback。adapter range 必须经 Host storage codec 重建完整事件，不能直接解析 payload body。
 
 ## 开发数据与诊断边界

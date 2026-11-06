@@ -11,6 +11,11 @@ import { migrateV64ToV65ConversationExecutionNotices } from './v64-to-v65-conver
 import { migrateV65ToV66ConversationClientNotice } from './v65-to-v66-conversation-client-notice';
 import { migrateV66ToV67ConversationCitationMetadata } from './v66-to-v67-conversation-citation-metadata';
 import { migrateV67ToV68MarkdownImageCaption } from './v67-to-v68-markdown-image-caption';
+import { migrateV68ToV69WorkspaceSearchFts } from './v68-to-v69-workspace-search-fts';
+import { migrateV69ToV70RunCostLedgerTotals } from './v69-to-v70-run-cost-ledger-totals';
+import { migrateV70ToV71AssetRelativeLocalPaths } from './v70-to-v71-asset-relative-local-paths';
+import { migrateV71ToV72ToolResultSources } from './v71-to-v72-tool-result-sources';
+import { migrateV72ToV73CompactConversationHistory } from './v72-to-v73-compact-conversation-history';
 import type { HostSchemaMigration } from './types';
 import { migrateV61ToV62SubrunSummaryTrace } from './v61-to-v62-subrun-summary-trace';
 import { migrateV62ToV63CitationFactIndex } from './v62-to-v63-citation-fact-index';
@@ -22,7 +27,7 @@ export type { HostSchemaMigration, MigrationFunction } from './types';
 export const HOST_SCHEMA_BASELINE_VERSION = 61;
 
 /** 当前 Host Schema 版本。修改既有表或数据语义时必须递增。 */
-export const SCHEMA_VERSION = 68;
+export const SCHEMA_VERSION = 73;
 
 /**
  * v61 基线之后的受支持迁移。
@@ -47,4 +52,9 @@ export const migrations: readonly HostSchemaMigration[] = [
   { fromVersion: 65, migrate: migrateV65ToV66ConversationClientNotice },
   { fromVersion: 66, migrate: migrateV66ToV67ConversationCitationMetadata },
   { fromVersion: 67, migrate: migrateV67ToV68MarkdownImageCaption },
+  { fromVersion: 68, migrate: migrateV68ToV69WorkspaceSearchFts },
+  { fromVersion: 69, migrate: migrateV69ToV70RunCostLedgerTotals },
+  { fromVersion: 70, migrate: migrateV70ToV71AssetRelativeLocalPaths },
+  { fromVersion: 71, migrate: migrateV71ToV72ToolResultSources },
+  { fromVersion: 72, migrate: migrateV72ToV73CompactConversationHistory },
 ];

@@ -169,7 +169,7 @@ export class FlowIncomingEventPreparer {
         width: committed.width,
         height: committed.height,
         sha256: committed.sha256,
-        localPath: committed.localPath,
+        storagePath: committed.storagePath,
         createdAt,
       });
     }

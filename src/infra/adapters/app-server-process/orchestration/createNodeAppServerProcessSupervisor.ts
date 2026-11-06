@@ -15,6 +15,8 @@ import {
   encodeAppServerControlFrame,
   parseAppServerChildControlFrame,
   type AppServerControlRequestFrame,
+  type AppServerControlStartupProgressFrame,
+  type AppServerStartupProgress,
 } from '../../../../app-hosts/linnya/app-server-control';
 import {
   createAppServerRpcPeer,
@@ -50,6 +52,8 @@ export function createNodeAppServerProcessSupervisor(input: {
   readonly idFactory?: { create(): string };
   readonly onStderr?: (text: string) => void;
   readonly stderrSink?: Writable;
+  /** 启动期数据库阶段进度；Desktop 据此决定是否显示“正在升级数据”。 */
+  readonly onStartupProgress?: (progress: AppServerStartupProgress) => void;
 }): AppServerProcessSupervisor {
   assertLaunch(input.launch);
   const startTimeoutMs = input.startTimeoutMs ?? DEFAULT_START_TIMEOUT_MS;
@@ -67,6 +71,9 @@ export function createNodeAppServerProcessSupervisor(input: {
   let startResolve: ((value: AppServerProcessIdentity) => void) | null = null;
   let startReject: ((error: Error) => void) | null = null;
   let startTimeout: NodeJS.Timeout | null = null;
+  // 数据库阶段（含数据格式升级）不计入启动超时：升级可能需要几分钟，中途终止只会让当前步骤
+  // 回滚、下次启动重来。阶段前后各自适用完整的 startTimeoutMs。
+  let databasePhase: 'pending' | 'active' | 'finished' = 'pending';
   let exitSettlement: Promise<void> | null = null;
   let exitResolve: (() => void) | null = null;
   let observedExitResolve: ((exit: AppServerProcessExit) => void) | null = null;
@@ -109,6 +116,10 @@ export function createNodeAppServerProcessSupervisor(input: {
       failProtocol(new Error(`App Server ${frame.code}: ${frame.message}`));
       return;
     }
+    if (frame.kind === 'startup_progress') {
+      handleStartupProgress(frame);
+      return;
+    }
     if (frame.kind === 'ready') {
       if (identity || !startResolve) {
         failProtocol(new Error('App Server 重复或越序发送 ready'));
@@ -140,6 +151,39 @@ export function createNodeAppServerProcessSupervisor(input: {
     pending.delete(frame.request_id);
     clearTimeout(request.timeout);
     request.resolve();
+  };
+
+  const handleStartupProgress = (frame: AppServerControlStartupProgressFrame): void => {
+    if (identity || !startResolve) {
+      failProtocol(new Error('App Server 在启动阶段之外发送 startup_progress'));
+      return;
+    }
+    const expectedPhase = frame.state === 'started' ? 'pending' : 'active';
+    if (databasePhase !== expectedPhase) {
+      failProtocol(new Error(`App Server startup_progress 越序：${frame.state}`));
+      return;
+    }
+    if (frame.state === 'started') {
+      databasePhase = 'active';
+      clearStartTimeout();
+    } else if (frame.state === 'finished') {
+      databasePhase = 'finished';
+      armStartTimeout();
+    }
+    input.onStartupProgress?.(Object.freeze({
+      state: frame.state,
+      upgrading: frame.upgrading,
+      completedSteps: frame.completed_steps,
+      totalSteps: frame.total_steps,
+    }));
+  };
+
+  const armStartTimeout = (): void => {
+    clearStartTimeout();
+    startTimeout = setTimeout(() => {
+      const failure = new Error(`App Server ready 超时（${startTimeoutMs}ms）`);
+      failProtocol(failure);
+    }, startTimeoutMs);
   };
 
   const clearStartTimeout = (): void => {
@@ -235,10 +279,7 @@ export function createNodeAppServerProcessSupervisor(input: {
     startSettlement = new Promise<AppServerProcessIdentity>((resolve, reject) => {
       startResolve = resolve;
       startReject = reject;
-      startTimeout = setTimeout(() => {
-        const failure = new Error(`App Server ready 超时（${startTimeoutMs}ms）`);
-        failProtocol(failure);
-      }, startTimeoutMs);
+      armStartTimeout();
     });
     launchedChild.once('spawn', () => {
       void writeBootstrapFrame(bootstrapInput, input.launch.bootstrapBytes).catch(error => {

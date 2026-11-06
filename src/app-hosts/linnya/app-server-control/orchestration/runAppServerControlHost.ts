@@ -7,6 +7,7 @@ import {
   APP_SERVER_CONTROL_SCHEMA_VERSION,
   type AppServerChildControlFrame,
   type AppServerControlRequestFrame,
+  type AppServerStartupProgress,
 } from '../definitions/appServerControlProtocol';
 import type { AppServerOwnedLifecycle } from '../definitions/appServerOwnedLifecycle';
 import { parseAppServerParentControlFrame } from '../functions/appServerControlCodec';
@@ -16,6 +17,11 @@ import { createBoundedJsonLineDecoder } from '../../app-server-transport';
 export interface AppServerControlHost {
   readonly daemonEpoch: string;
   readonly completed: Promise<void>;
+  /**
+   * 把启动期数据库阶段进度写给 parent。resolve 表示已写入 stdout；调用方随后才开始
+   * 可能很久的同步步骤，parent 因此能在步骤开始前暂停启动超时、显示升级界面。
+   */
+  reportStartupProgress(progress: AppServerStartupProgress): Promise<void>;
 }
 
 /**
@@ -172,7 +178,20 @@ export function runAppServerControlHost(input: {
     void shutdown('protocol_failure');
   });
 
-  return Object.freeze({ daemonEpoch, completed });
+  return Object.freeze({
+    daemonEpoch,
+    completed,
+    reportStartupProgress(progress: AppServerStartupProgress) {
+      return write({
+        schema_version: APP_SERVER_CONTROL_SCHEMA_VERSION,
+        kind: 'startup_progress',
+        state: progress.state,
+        upgrading: progress.upgrading,
+        completed_steps: progress.completedSteps,
+        total_steps: progress.totalSteps,
+      });
+    },
+  });
 }
 
 function toError(error: unknown): Error {

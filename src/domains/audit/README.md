@@ -32,8 +32,8 @@ evidence 也从同一个 `AuditPort` 进入当前数据库 sink；高体积证�
 | 运行域                         | `workspace.sqlite`                                                                    |
 | ------------------------------ | ------------------------------------------------------------------------------------- |
 | 开发（`LINNYA_DEV_MODE=true`） | `<repoRoot>/_dev_data/workspace/workspace.sqlite`                                     |
-| macOS 生产                     | `~/Documents/Linnya/workspace/workspace.sqlite`（由 Desktop Host 的用户文档目录决定） |
-| Windows 生产                   | `%USERPROFILE%/Documents/Linnya/workspace/workspace.sqlite`                           |
+| macOS 正式版                   | `~/Library/Application Support/<应用>/Workspace/workspace/workspace.sqlite`           |
+| Windows 正式版                 | `%LOCALAPPDATA%/<应用>/Workspace/workspace/workspace.sqlite`                          |
 
 如果宿主安装了自定义 Workspace
 Root，表中的根目录随宿主解析结果变化。Audit 不拥有路径解析，也不在

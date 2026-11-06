@@ -411,7 +411,7 @@ execution 最多 64 条/1 MiB，且可能写入失败。没有记录的 run 标�
 `_dev_electron/runtime/conversation-control-v1.json`。例如在 `linnya-slides` 运行 `pnpm linnya:cli` 就只连接该 checkout。
 本目录没有实例或连接已过期时直接报错，不读取用户级连接作回退。
 `LINNYA_CLI_CONNECTION_FILE` 仍可覆盖发现路径，但 App 握手报告的真实源码根必须与 CLI 一致；
-符号链接归一后比较目录，分支名只用于诊断，不用来认定实例相同。细节见[开发配置](../../docs/development/env-local.md#多工作目录并行开发)。
+符号链接与 Windows 8.3 短名经原生 realpath 归一后比较目录；bundle 校验失败时的 `connection.source_root` 也遵守此规则。分支名只用于诊断，不用来认定实例相同。细节见[开发配置](../../docs/development/env-local.md#多工作目录并行开发)。
 
 ## 4. 状态与控制语义
 

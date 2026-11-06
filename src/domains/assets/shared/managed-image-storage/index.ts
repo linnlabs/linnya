@@ -8,10 +8,9 @@ export {
   ManagedContentPublishError,
   ManagedImagePublishError,
 } from './definitions/managedImageStorage';
+export type { ManagedContentIdentity } from './functions/managedImageStoragePaths';
 export {
   createManagedContentIdentity,
-  createLegacyWorkspaceManagedImageStoragePaths,
-  createLegacyAppManagedImageStoragePaths,
   createManagedImageContentIdentity,
   createManagedImageStoragePaths,
   isManagedImageStoreId,

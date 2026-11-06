@@ -50,7 +50,6 @@ export async function createCliAppServerRuntime(
     developmentRoot: input.developmentRoot,
     // profile 是内部运行数据，不能把整个源码 checkout 误列为受保护的 profile。
     userDataDirectory: profileRoot,
-    documentsDirectory: input.developmentRoot,
     developmentMode: true,
     developmentInstanceRootOverride: environment.LINNYA_DEV_INSTANCE_ROOT,
     workspaceRootOverride: input.workspaceRootOverride ?? environment.LINNYA_WORKSPACE_DIR,

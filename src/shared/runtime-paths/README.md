@@ -2,12 +2,14 @@
 
 该模块定义跨业务、跨进程稳定的路径事实：当前运行域使用哪一组持久化根目录，以及源码 Host / CLI 的真实 checkout 身份。
 
-`readSourceCheckoutIdentity` 接收调用方已确定的代码根，用 realpath 归一目录，读取当前分支用于诊断；没有 Git 分支时为 null。
+`readSourceCheckoutIdentity` 接收调用方已确定的代码根，用 `realpathSync.native` 归一目录，读取当前分支用于诊断；没有 Git 分支时为 null。CLI 源码入口与 bundle 校验失败的诊断也使用同一原生路径语义，与 `fs.promises.realpath` 一致，避免 Windows 8.3 短名和长名表示同一目录却被当成不同源码身份；不手工替换短名、改大小写或放宽目录配对。
 源码目录与 Workspace 数据根分开。CLI 按自己的入口定位代码根，Backend 按实际 bundle 定位；不能从会话 cwd 推断，不能用相同分支名代替目录校验。
 
 `resolveDevelopmentInstancePaths` 统一解析源码运行的 `LINNYA_DEV_INSTANCE_ROOT`：默认保持 checkout，覆盖后同时移动 `_dev_data` 与 `_dev_electron`，源码身份不变。Desktop、CLI Runtime 与源码 CLI 连接解析共用该函数；显式 Workspace、profile 和连接文件覆盖保持优先。
 
 最外层 Host 是路径的唯一解析者。Desktop 读取 Electron 的 `userData` / `documents`、开发根目录和 `LINNYA_WORKSPACE_DIR`；源码 CLI Runtime 使用仓库 `_dev_data` 并接受显式 `--workspace`。两者都生成并冻结 `RuntimePathRoots`，再把纯数据事实传给 App Server 和 Queue Worker。App Server、Worker 与业务 domain 不得再次加载 Electron、读取自己的 `cwd` 或用用户 Home 目录猜另一套路径。
+
+正式版用户数据根由 `resolveProductionDataRoot` 按平台解析：macOS 为 `userData/Workspace`（`~/Library/Application Support/<应用>/Workspace`），Windows 为 `%LOCALAPPDATA%\<应用>\Workspace`，其他平台为 `$XDG_DATA_HOME/<应用>/Workspace`。正式版的 `appDataRoot` 与默认 `workspaceRoot` 都是这个目录，与开发态共用 `_dev_data` 的布局一致：数据库、受管文件、会话附件与工作目录、知识库和日志都在其中，可以作为一个文件夹备份或搬走。它不放在“文稿”目录（常被 iCloud“桌面与文稿”或 OneDrive 文件夹备份同步），Windows 也不放 Roaming（漫游配置文件会在登录、注销时整体同步）。浏览器 profile 与凭据仍在 Electron `userData`。
 
 `workspaceRoot` 是整套数据工作区的物理根，可包含多个 Project；项目 ID、项目 VFS 地址与会话工作目录均不能作为这个参数。Project 生命周期见[Project domain](../../domains/projects/README.md)。
 

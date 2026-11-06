@@ -41,11 +41,12 @@ it('Main 通过已认证后端显示文档图片，拒绝失去归属或字节�
   const imagePath = path.join(contentRoot, 'image.png');
   await fs.writeFile(imagePath, bytes);
   db.prepare('INSERT INTO assets VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(assetId, 'image/png', bytes.length, 12, 8, createHash('sha256').update(bytes).digest('hex'), 'local', imagePath);
+    .run(assetId, 'image/png', bytes.length, 12, 8, createHash('sha256').update(bytes).digest('hex'), 'local',
+      path.relative(root, imagePath).split(path.sep).join('/'));
   const own = () => db.prepare('INSERT INTO document_asset_links VALUES (?, ?)').run('test-document', assetId);
   own();
   const loader = createWorkspaceVerifiedImageLoader({
-    db, storageBoundaries: [{ boundaryRoot: root, contentRoot }], maxImagePixels: 10000,
+    db, storage: { appDataRoot: root, contentRoot }, maxImagePixels: 10000,
   });
   const app = express();
   app.use((req, res, next) => {

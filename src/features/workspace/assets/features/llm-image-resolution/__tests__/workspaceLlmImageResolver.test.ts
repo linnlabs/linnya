@@ -52,7 +52,7 @@ async function createFixture() {
   const resolver = createWorkspaceLlmImageResolver({
     verifiedImageLoader: createWorkspaceVerifiedImageLoader({
       db,
-      storageBoundaries: [{ boundaryRoot: workspaceRoot, contentRoot }],
+      storage: { appDataRoot: workspaceRoot, contentRoot },
       maxImagePixels: 1_000_000,
     }),
   });
@@ -70,8 +70,13 @@ async function makePng(width = 6, height = 4): Promise<Buffer> {
   }).png().toBuffer();
 }
 
+function toStoragePath(appDataRoot: string, localPath: string): string {
+  return path.relative(appDataRoot, localPath).split(path.sep).join('/');
+}
+
 async function addAsset(params: {
   readonly db: Database.Database;
+  readonly workspaceRoot: string;
   readonly contentRoot: string;
   readonly assetId: string;
   readonly attachmentId?: string;
@@ -83,6 +88,8 @@ async function addAsset(params: {
   readonly sha256?: string | null;
   readonly storageStatus?: string;
   readonly localPath?: string | null;
+  /** 直接写入账本的持久路径；缺省时由 localPath 换算成相对 AppData Root 的形式。 */
+  readonly storedPath?: string;
   readonly writeFile?: boolean;
 }): Promise<AssetFixture> {
   const bytes = params.bytes ?? await makePng();
@@ -113,7 +120,7 @@ async function addAsset(params: {
     height,
     sha256,
     params.storageStatus ?? 'local',
-    localPath,
+    params.storedPath ?? (localPath ? toStoragePath(params.workspaceRoot, localPath) : localPath),
   );
 
   return {
@@ -244,6 +251,23 @@ describe('workspace LLM image resolver', () => {
       'attachment_integrity_failed',
       'managed_path_escape',
     );
+
+    for (const [index, storedPath] of [
+      path.join(escaped.contentRoot, 'ab', 'absolute.png'),
+      'ConversationAttachments/../outside.png',
+      'ConversationAttachments\\v2\\outside.png',
+    ].entries()) {
+      const invalidAsset = await addAsset({
+        ...escaped,
+        assetId: `asset-invalid-stored-path-${index}`,
+        storedPath,
+      });
+      await expectResolutionFailure(
+        escaped.resolver.resolveImages([invalidAsset.reference]),
+        'attachment_integrity_failed',
+        'managed_path_escape',
+      );
+    }
 
     const linked = await createFixture();
     const outsideTarget = path.join(linked.workspaceRoot, 'outside-target.png');

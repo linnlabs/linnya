@@ -495,7 +495,7 @@ describe('childRunInvokerFactory', () => {
               width: imageRef.width ?? 0,
               height: imageRef.height ?? 0,
               sha256: imageRef.sha256 ?? '',
-              localPath: '/managed/asset-child-1.png',
+              storagePath: 'managed/asset-child-1.png',
               createdAt: 1,
             };
           }),

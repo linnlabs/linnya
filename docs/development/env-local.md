@@ -10,8 +10,9 @@
 # 开发模式：只影响路径、热加载和诊断等源码开发行为，不代表官方发行身份
 LINNYA_DEV_MODE=true
 
-# 可选：自定义工作区根目录（默认开发模式为 `<项目根>/_dev_data`）
-# LINNYA_WORKSPACE_DIR=/Users/you/Documents/Linnya
+# 可选：自定义 Workspace Root（默认开发模式为 `<项目根>/_dev_data`）。
+# 只移动数据库、项目资源、模型配置、知识库与日志；会话附件、`config/`、`skills/` 仍在 AppData Root（开发模式同为 `_dev_data`）。
+# LINNYA_WORKSPACE_DIR=/Users/you/LinnyaWorkspace
 
 # ========== 知识图谱调试 ==========
 # 开启：把图谱抽取的 LLM 原始输出 + 解析后的 JSON dump 到本地文件

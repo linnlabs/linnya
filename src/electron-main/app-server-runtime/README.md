@@ -15,3 +15,8 @@ App Server 不继承 Electron Main 的环境。命令所需的完整宿主登录
 
 窗口关闭前的“是否仍有命令运行”也通过独立 activity RPC 查询。它只返回布尔事实，不把 process handle、PID 或
 Commands owner 内部状态暴露给 Main，并允许原有关闭确认编排直接等待真实 App Server 状态。
+
+App owner 在启动后监听 supervisor 的真实退出结果，记录是否意外退出，并把退出事实提供给关闭和更新入口。
+进程已退出时不再发活动查询；RPC 超时不代表进程已退出，不能据此忽略仍可能运行的任务。
+此处不按名称扫描或强杀其它进程。Backend 后代的失主清理仍由公共平台 owner（macOS owner pipe /
+Windows Job）负责，Main 的正式 shutdown 继续清理自身 Desktop capability。

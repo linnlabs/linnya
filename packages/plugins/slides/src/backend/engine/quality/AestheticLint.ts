@@ -30,6 +30,7 @@
 
 import {
   flattenSlideElements,
+  type FontDeliveryTarget,
   type PresentationInfo,
 } from '@plugin/slides/shared';
 import { LayoutLint } from './LayoutLint.js';
@@ -39,20 +40,26 @@ import {
   lintEdgeMargins,
   lintElementCount,
   lintFontFamilyConsistency,
+  lintFontDelivery,
   lintFontFamilySubstitution,
   lintFontStyleSubstitution,
   lintFontSizeFloor,
   lintFontSizeTiers,
   lintHierarchy,
   lintImageAspect,
+  lintImageResolution,
   lintPaletteDiversity,
   lintPrimaryHueDrift,
   lintTextContrast,
   lintTextDensity,
   lintVisualAnchor,
+  lintUnusedContentArea,
   lintWhitespace,
 } from './aesthetic/lintRules.js';
 import { analyzeSlideRepetition } from './aesthetic/repetition.js';
+import type { DirectionDeclaration } from '@plugin/slides/shared/designDirection';
+import type { ReadingMode } from '@plugin/slides/shared/readingMode';
+import { lintDirectionCarryThrough } from './aesthetic/directionRules.js';
 import { computeMetrics } from './aesthetic/metrics.js';
 import type {
   AestheticLintIssue,
@@ -67,10 +74,19 @@ export type {
   SlideRepetitionPair,
 } from './aesthetic/types.js';
 
+export interface AestheticLintOptions {
+  /** 生成稿的字体目标环境；留空时不检查字体可交付性。 */
+  readonly fontTarget?: FontDeliveryTarget;
+  /** 生成稿在 theme.direction 声明的视觉方向；留空时不检查方向贯彻。 */
+  readonly direction?: DirectionDeclaration;
+  /** 生成稿的阅读方式，决定字号下限；导入稿和改稿留空，沿用固定下限。 */
+  readonly readingMode?: ReadingMode;
+}
+
 export class AestheticLint {
   private readonly layoutLint = new LayoutLint();
 
-  lint(info: PresentationInfo): AestheticLintReport {
+  lint(info: PresentationInfo, options: AestheticLintOptions = {}): AestheticLintReport {
     const layout = this.layoutLint.lint(info);
     const aesthetic: AestheticLintIssue[] = [];
 
@@ -82,10 +98,11 @@ export class AestheticLint {
       aesthetic.push(...lintTextDensity(slide.number, info.slideSize, positioned));
       aesthetic.push(...lintHierarchy(slide.number, positioned));
       aesthetic.push(...lintWhitespace(slide.number, info.slideSize, positioned));
+      aesthetic.push(...lintUnusedContentArea(slide.number, info.slideSize, positioned));
       aesthetic.push(...lintElementCount(slide.number, positioned));
       aesthetic.push(...lintVisualAnchor(slide.number, info.slideSize, positioned));
       /* P1 Tier-1：纯数值、零语义依赖 */
-      aesthetic.push(...lintFontSizeFloor(slide.number, positioned));
+      aesthetic.push(...lintFontSizeFloor(slide.number, info.slideSize, positioned, options.readingMode));
       aesthetic.push(...lintFontSizeTiers(slide.number, positioned));
       aesthetic.push(...lintEdgeMargins(slide.number, info.slideSize, positioned));
       /* P1 Tier-1：颜色 / fit 通道 */
@@ -93,6 +110,7 @@ export class AestheticLint {
       aesthetic.push(...lintPaletteDiversity(slide.number, sampled));
       aesthetic.push(...lintTextContrast(slide.number, positioned));
       aesthetic.push(...lintImageAspect(slide.number, positioned));
+      aesthetic.push(...lintImageResolution(slide.number, info.slideSize, positioned));
       aesthetic.push(...lintChartReadability(slide.number, positioned));
       const primary = pickPrimaryHue(sampled);
       if (primary != null) {
@@ -101,9 +119,11 @@ export class AestheticLint {
     }
 
     aesthetic.push(...lintFontFamilyConsistency(info));
-    aesthetic.push(...lintFontFamilySubstitution(info));
+    aesthetic.push(...lintFontFamilySubstitution(info, options.fontTarget));
+    aesthetic.push(...lintFontDelivery(info, options.fontTarget));
     aesthetic.push(...lintFontStyleSubstitution(info));
     aesthetic.push(...lintPrimaryHueDrift(slidePrimaryHues));
+    aesthetic.push(...lintDirectionCarryThrough(info, options.direction));
     const repetition = analyzeSlideRepetition(info);
     aesthetic.push(...repetition.issues);
 

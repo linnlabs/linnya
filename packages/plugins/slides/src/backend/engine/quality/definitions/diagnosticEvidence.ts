@@ -111,6 +111,7 @@ export const ScalarMetricSchema = z.object({
     'renderable_count',
     'font_size',
     'font_size_tiers',
+    'unused_bottom_ratio',
   ]),
   actual: z.number().finite(),
   operator: z.enum(['lt', 'gt']),
@@ -165,6 +166,26 @@ export const FontResolutionEvidenceSchema = z.object({
   firstAffectedSlide: z.number().int().positive(),
 }).strict();
 
+export const FontDeliveryEvidenceSchema = z.object({
+  kind: z.literal('font_delivery'),
+  target: z.literal('office'),
+  requestedFamily: z.string().trim().min(1),
+  script: z.enum(['latin', 'eastAsian', 'complex', 'unknown']),
+  alternatives: z.array(z.string().trim().min(1)).min(1),
+  runCount: z.number().int().positive(),
+  firstAffectedSlide: z.number().int().positive(),
+}).strict();
+
+/** 生成稿在 theme.direction 声明的方向与实际页面不一致。declared/observed 都是可直接对照的值。 */
+export const DirectionCarryThroughEvidenceSchema = z.object({
+  kind: z.literal('direction_carry_through'),
+  aspect: z.enum(['background', 'font', 'color']),
+  cardId: z.string().trim().min(1),
+  declared: z.array(z.string().trim().min(1)).min(1),
+  observed: z.array(z.string().trim().min(1)).min(1),
+  firstAffectedSlide: z.number().int().positive(),
+}).strict();
+
 export const ColorPaletteEvidenceSchema = z.object({
   kind: z.literal('color_palette'),
   hueClusterCount: z.number().int().nonnegative(),
@@ -203,6 +224,18 @@ export const ImageAspectEvidenceSchema = z.object({
   naturalAspect: z.number().finite().positive(),
   deviationRatio: z.number().finite().nonnegative(),
   thresholdRatio: z.number().finite().nonnegative(),
+}).strict();
+
+export const ImageResolutionEvidenceSchema = z.object({
+  kind: z.literal('image_resolution'),
+  node: DiagnosticNodeRefSchema,
+  fitMode: z.enum(['fill', 'contain', 'cover', 'stretch']),
+  visibleWidthPx: z.number().int().positive(),
+  visibleHeightPx: z.number().int().positive(),
+  effectivePpi: z.number().int().nonnegative(),
+  targetPpi: z.number().int().positive(),
+  ratio: z.number().finite().nonnegative(),
+  thresholdRatio: z.number().finite().positive(),
 }).strict();
 
 const ChartReadabilityBaseEvidenceSchema = z.object({
@@ -294,10 +327,13 @@ export const DIAGNOSTIC_EVIDENCE_SCHEMAS = {
   margin_balance: MarginBalanceEvidenceSchema,
   font_inventory: FontInventoryEvidenceSchema,
   font_resolution: FontResolutionEvidenceSchema,
+  font_delivery: FontDeliveryEvidenceSchema,
+  direction_carry_through: DirectionCarryThroughEvidenceSchema,
   color_palette: ColorPaletteEvidenceSchema,
   hue_drift: HueDriftEvidenceSchema,
   color_contrast: ColorContrastEvidenceSchema,
   image_aspect: ImageAspectEvidenceSchema,
+  image_resolution: ImageResolutionEvidenceSchema,
   chart_readability: ChartReadabilityEvidenceSchema,
   slide_similarity: SlideSimilarityEvidenceSchema,
   content_presence: ContentPresenceEvidenceSchema,

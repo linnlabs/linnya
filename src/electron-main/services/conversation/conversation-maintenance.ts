@@ -46,26 +46,33 @@ export async function runConversationMaintenanceOnce(databaseService: DatabaseSe
 
     let rebuilt = 0;
     let skipped = 0;
+    let failed = 0;
     let maxConversationCostMs = 0;
     for (const candidate of candidates) {
-      const result = rebuildConversationUiProjection(db, candidate.conversationId);
-      if (result.status === 'rebuilt') {
-        rebuilt += 1;
-        maxConversationCostMs = Math.max(maxConversationCostMs, result.durationMs);
-        logger.info(
-          `UI read model 重建完成: conversationId=${result.conversationId}, events=${result.eventCount}, messages=${result.messageCount}, skippedEvents=${result.skippedEventCount}, sqlExcludedEvents=${result.sqlExcludedEventCount}, revision=${result.previousRevision}->${result.nextRevision}, costMs=${result.durationMs}`,
-        );
-      } else {
-        skipped += 1;
-        logger.info(
-          `UI read model 跳过: conversationId=${result.conversationId}, reason=${result.reason}, costMs=${result.durationMs}`,
-        );
+      // 旧会话的坏事实只阻止其自身变为 ready，后面的健康会话仍须可读。
+      try {
+        const result = rebuildConversationUiProjection(db, candidate.conversationId);
+        if (result.status === 'rebuilt') {
+          rebuilt += 1;
+          maxConversationCostMs = Math.max(maxConversationCostMs, result.durationMs);
+          logger.info(
+            `UI read model 重建完成: conversationId=${result.conversationId}, events=${result.eventCount}, messages=${result.messageCount}, skippedEvents=${result.skippedEventCount}, sqlExcludedEvents=${result.sqlExcludedEventCount}, revision=${result.previousRevision}->${result.nextRevision}, costMs=${result.durationMs}`,
+          );
+        } else {
+          skipped += 1;
+          logger.info(
+            `UI read model 跳过: conversationId=${result.conversationId}, reason=${result.reason}, costMs=${result.durationMs}`,
+          );
+        }
+      } catch (error) {
+        failed += 1;
+        logger.error(`UI read model 重建失败: conversationId=${candidate.conversationId}, reason=${error instanceof Error ? error.message : String(error)}`);
       }
       await yieldToEventLoop();
     }
 
     logger.info(
-      `✅ 会话启动维护完成: total=${candidates.length}, rebuilt=${rebuilt}, skipped=${skipped}, maxConversationCostMs=${maxConversationCostMs}`,
+      `会话启动维护完成: total=${candidates.length}, rebuilt=${rebuilt}, skipped=${skipped}, failed=${failed}, maxConversationCostMs=${maxConversationCostMs}`,
     );
   } catch (e) {
     logger.error(`❌ 启动维护：会话维护失败: ${e instanceof Error ? e.message : String(e)}`);

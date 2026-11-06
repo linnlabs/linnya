@@ -32,6 +32,15 @@ export const MIN_FONT_SIZE_RANGE = 4;
 export const WHITESPACE_IMBALANCE = 0.4;
 
 /**
+ * 文字多的页面，正文区下方空出的高度占页高的比例上限。页脚、页码所在的底部带不算正文区；
+ * 字数少于下限的封面、章节页、引语页本来就靠留白成立，不检查。
+ */
+export const UNUSED_BOTTOM_RATIO = 0.2;
+export const UNUSED_BOTTOM_MIN_TEXT_CHARS = 200;
+export const UNUSED_BOTTOM_CHROME_BAND_RATIO = 0.12;
+export const UNUSED_BOTTOM_STRIPS = 12;
+
+/**
  * 页面结构相似度阈值。
  * 咨询风格 PPT 大量页面使用相同模板，结构相似度 90%+ 属于正常。
  * 只有结构 AND 内容都高度一致时才真正构成重复。
@@ -54,6 +63,23 @@ export const FONT_SIZE_RECOMMENDED_FLOOR_PT = 6.5;
 
 /** 脚注、来源、图注和坐标轴标签的建议下限；仍受 5pt 近不可读阈值约束。 */
 export const FONT_SIZE_ANNOTATION_RECOMMENDED_FLOOR_PT = 5.5;
+
+/**
+ * 生成稿按阅读方式定的字号下限，以 13.333 英寸宽为基准，按页宽等比折算
+ * （10 英寸宽 × 0.75）。上面两个固定下限只用于导入稿和改稿。
+ *
+ * - body：正文和未标角色的文字；
+ * - caption：图注、标签（`caption` / `label` / `annotation` / `axis-label`）；
+ * - chrome：脚注、来源、页码（`footnote` / `source` / `page-number`）。
+ */
+export const READING_MODE_FONT_FLOORS_PT = {
+  present: { body: 18, caption: 12, chrome: 10 },
+  mixed: { body: 14, caption: 10, chrome: 8 },
+  read: { body: 12, caption: 9, chrome: 7 },
+} as const;
+
+/** 阅读方式字号下限的基准页宽（英寸）。 */
+export const READING_MODE_FONT_FLOOR_REFERENCE_WIDTH_IN = 13.333;
 
 /**
  * 单页字号档位聚类粒度（pt）。差异 ≤ 该值的字号归为同一档。
@@ -129,6 +155,14 @@ export const TEXT_CONTRAST_MIN_RATIO = 3.0;
  * 5% 多数人看不出，避免误报 1px 抖动。
  */
 export const IMAGE_ASPECT_TOLERANCE = 0.1;
+
+/**
+ * 图片清晰度按 1920px 宽全屏放映估算：页面每英寸需要 1920 / 页宽 个源像素。
+ * 源像素不足 80%（放大超过 1.25 倍）时满版照片能看出发虚；宽度不足 1in 的小图不检查。
+ */
+export const IMAGE_RESOLUTION_REFERENCE_WIDTH_PX = 1920;
+export const IMAGE_RESOLUTION_MIN_RATIO = 0.8;
+export const IMAGE_RESOLUTION_MIN_DISPLAY_IN = 1;
 
 /**
  * 图表标签估算所需跨度 / 实际可用跨度超过该值才报告容量风险。

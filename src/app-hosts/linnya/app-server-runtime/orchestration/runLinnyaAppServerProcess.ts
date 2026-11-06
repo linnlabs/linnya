@@ -2,7 +2,11 @@ import { Socket } from 'node:net';
 import type { Writable } from 'node:stream';
 
 import { readAppServerBootstrap } from '../../app-server-bootstrap';
-import { runAppServerControlHost, type AppServerOwnedLifecycle } from '../../app-server-control';
+import {
+  runAppServerControlHost,
+  type AppServerControlHost,
+  type AppServerOwnedLifecycle,
+} from '../../app-server-control';
 import {
   createAppServerRpcPeer,
   type AppServerRpcHandler,
@@ -78,9 +82,12 @@ export async function runLinnyaAppServerProcess(
   let parentLiveness: ReturnType<typeof createParentProcessLivenessMonitor> | null = null;
   let workspaceOwnership: ReturnType<typeof acquireWorkspaceRuntimeOwnership> | null = null;
   let shutdownSettlement: Promise<void> | null = null;
+  const controlHostGate = createControlHostGate();
   const ready = (async () => {
     // 先建立 control host，再在任何数据库恢复或 GC 前排除第二个活 owner。
-    // 获取失败会成为有结构的 startup fatal 帧，而不是被 RPC EOF 抹成泛化错误。
+    // 获取失败会成为有结构的 startup fatal 帧，而不是被 RPC EOF 抹成泛化错误；
+    // 数据库启动进度也经它的 stdout writer 发给 parent。
+    const control = await controlHostGate.established;
     workspaceOwnership = acquireWorkspaceRuntimeOwnership(
       bootstrap.backend_facts.runtimePathRoots.workspaceRoot
     );
@@ -99,7 +106,12 @@ export async function runLinnyaAppServerProcess(
 
     const runtimeOwner = await initializeAppServerBackend(
       bootstrap.backend_configuration,
-      composition.backendHostDependencies
+      {
+        ...composition.backendHostDependencies,
+        databaseStartupProgress: {
+          report: event => control.reportStartupProgress(event),
+        },
+      }
     );
     registerRpcHandlers(rpcHandlers, createAppServerActivityRpcHandlers(runtimeOwner));
     const rendererRequests = createBackendRendererRequestRegistry();
@@ -158,6 +170,7 @@ export async function runLinnyaAppServerProcess(
     output: process.stdout,
     lifecycle,
   });
+  controlHostGate.establish(controlHost);
   parentLiveness = createParentProcessLivenessMonitor({
     expectedParentPid: bootstrap.host_process.pid,
     onParentLost() {
@@ -186,6 +199,21 @@ export async function runLinnyaAppServerProcess(
   }
   await endSocket(rpcOutput);
   await endSocket(process.stdout);
+}
+
+/** Backend 启动等 control host 建立后才开始；control host 又需要先拿到 ready promise。 */
+function createControlHostGate(): {
+  readonly established: Promise<AppServerControlHost>;
+  establish(controlHost: AppServerControlHost): void;
+} {
+  let resolveEstablished: (controlHost: AppServerControlHost) => void = () => undefined;
+  const established = new Promise<AppServerControlHost>(resolve => {
+    resolveEstablished = resolve;
+  });
+  return Object.freeze({
+    established,
+    establish: (controlHost: AppServerControlHost) => resolveEstablished(controlHost),
+  });
 }
 
 async function waitForRpcInputEnd(input: Socket): Promise<void> {

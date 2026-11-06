@@ -1,6 +1,4 @@
 export {
-  createLegacyAppManagedImageStoragePaths as createLegacyAppConversationAttachmentStoragePaths,
-  createLegacyWorkspaceManagedImageStoragePaths as createLegacyWorkspaceImageStoragePaths,
   createManagedImageContentIdentity as createConversationImageContentIdentity,
   createManagedImageStoragePaths as createConversationAttachmentStoragePaths,
   isManagedImageResourceUri as isConversationAttachmentUri,
