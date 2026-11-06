@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { projectProductionPackageManifest } from '../functions/productionPackageManifest.mjs';
+import { projectPackagedSchemasManifest, projectProductionPackageManifest } from '../functions/productionPackageManifest.mjs';
 import { assertProductionPackageLock } from '../functions/productionPackageLock.mjs';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -76,11 +76,8 @@ export function updateProductionPackageLock(input = {}) {
     const productionManifest = projectProductionPackageManifest(sourceManifest);
     writeJson(path.join(tempRoot, 'package.json'), productionManifest);
     const schemaPackageRoot = path.join(tempRoot, 'packages', 'schemas');
-    fs.mkdirSync(schemaPackageRoot, { recursive: true });
-    fs.copyFileSync(
-      path.join(rootDir, 'packages', 'schemas', 'package.json'),
-      path.join(schemaPackageRoot, 'package.json')
-    );
+    const sourceSchemas = JSON.parse(fs.readFileSync(path.join(rootDir, 'packages', 'schemas', 'package.json'), 'utf8'));
+    writeJson(path.join(schemaPackageRoot, 'package.json'), projectPackagedSchemasManifest(sourceSchemas));
     if (!fresh && fs.existsSync(outputPath)) {
       fs.copyFileSync(outputPath, path.join(tempRoot, 'package-lock.json'));
     }
