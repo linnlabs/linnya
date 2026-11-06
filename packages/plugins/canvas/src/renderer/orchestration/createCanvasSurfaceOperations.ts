@@ -51,7 +51,15 @@ export function createCanvasSurfaceOperations({
       if (card && selectedCards.value.length === 1) {
         kernel.finishTransitions([card.id]);
         const target = cards().find(item => item.id === card.id);
-        if (target) resizing.start(target, event, camera.value.zoom);
+        if (target)
+          resizing.start(target, event, camera.value.zoom, {
+            show: size => kernel.setResizePreview(target.id, size),
+            // 撤掉预览后按落地的新尺寸重排正文。
+            clear: () => {
+              kernel.clearDragPreview();
+              refreshView();
+            },
+          });
       }
     },
     closeContext() {

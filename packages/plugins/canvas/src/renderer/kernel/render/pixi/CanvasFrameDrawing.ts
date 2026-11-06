@@ -73,6 +73,20 @@ export class CanvasFrameDrawing {
     }
     this.scheduleDraw();
   }
+  /**
+   * 当场出一帧。改画布像素尺寸会立刻清空绘图缓冲，若等下一帧动画回调再画，这一帧合成的就是空白，
+   * 拖动窗口时整块画布一闪一闪。尺寸变化发生在 ResizeObserver 回调里，此处同步绘制仍在本帧合成之前。
+   * 身份牌尚待准备时沿用分帧准备，不在此同步排版。
+   */
+  drawNow(): void {
+    if (this.destroyed || this.contextLost) return;
+    if (this.options.readIdentities().needsPreparation(Math.max(1, this.app.renderer.resolution))) {
+      this.schedule();
+      return;
+    }
+    if (this.scheduled) cancelAnimationFrame(this.scheduled);
+    this.renderFrame();
+  }
   private scheduleDraw(): void {
     if (this.destroyed || this.contextLost || this.scheduled) return;
     this.scheduled = requestAnimationFrame(this.renderFrame);

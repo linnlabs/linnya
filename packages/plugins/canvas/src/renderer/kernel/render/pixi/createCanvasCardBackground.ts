@@ -1,7 +1,11 @@
 import { CanvasSource, Texture } from 'pixi.js';
 import { CANVAS_CARD_CORNER_RADIUS, CANVAS_CARD_PAPER_INSET } from '../../geometry/canvasCardFrame';
 
-/** 贴图按 4 倍密度绘制：放大到 400% 的 Retina 屏上，圆角与 0.5px 描边仍清晰。 */
+/**
+ * 贴图按 4 倍密度绘制：放大到 400% 的 Retina 屏上，圆角与 0.5px 描边仍清晰。
+ * 缩小视图时同一贴图被大幅缩采，不足一像素的描边会随采样落点时有时无（同一张卡有的边消失），
+ * 因此生成多级缩略图：缩小时取预先平均过的层级，四条边一样淡但都在。
+ */
 const DENSITY = 4;
 /** 纸面贴图边长与九宫格切片（世界坐标）；切片覆盖纸面内缩与圆角。 */
 const BACKGROUND_SIDE = 32;
@@ -21,7 +25,9 @@ function drawTexture(side: number, draw: (context: CanvasRenderingContext2D) => 
   if (!context) throw new Error('canvas_2d_unavailable');
   context.scale(DENSITY, DENSITY);
   draw(context);
-  return new Texture({ source: new CanvasSource({ resource: canvas, resolution: DENSITY }) });
+  return new Texture({
+    source: new CanvasSource({ resource: canvas, resolution: DENSITY, autoGenerateMipmaps: true }),
+  });
 }
 
 export function createCanvasCardBackground(material: 'paper' | 'card'): Texture {

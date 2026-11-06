@@ -16,6 +16,8 @@ export interface CanvasCardPresentationContext {
   readAppearance(): CanvasAppearance;
   readonly selected: ReadonlySet<CanvasCardId>;
   readEditingCard(): CanvasCardId | null;
+  /** 正在实时改尺寸的卡：旧排版正文盖不满新纸面，但不能因此补画占位标题。 */
+  readResizingCard(): CanvasCardId | null;
   readRenders(): number;
   readContextLost(): boolean;
   readDestroyed(): boolean;

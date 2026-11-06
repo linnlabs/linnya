@@ -107,6 +107,8 @@ export interface CanvasKernel {
     readonly rendered: boolean;
   } | null;
   setDragPreview(ids: readonly CanvasCardId[], dx: number, dy: number): void;
+  /** 改尺寸实时预览，与拖动共用预览通道，由 clearDragPreview 撤掉。 */
+  setResizePreview(id: CanvasCardId, size: Pick<CanvasRectangle, 'width' | 'height'>): void;
   clearDragPreview(): void;
   setBrush(rectangle: CanvasRectangle | null): void;
   setGuides(guides: readonly CanvasGuide[]): void;

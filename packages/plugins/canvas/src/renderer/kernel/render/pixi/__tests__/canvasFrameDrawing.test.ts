@@ -120,3 +120,34 @@ it('出图在准备后读取当前尺寸，出图期间丢失并恢复的上下�
   drawing.stop();
   drawing.dispose(() => {});
 });
+
+it('改画布尺寸当场出帧：取消已排的动画帧，身份牌待准备时仍走分帧准备', () => {
+  vi.useFakeTimers();
+  const frames = new Map<number, FrameRequestCallback>();
+  let nextFrame = 0,
+    pending = false;
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.set(++nextFrame, callback);
+    return nextFrame;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+  const app = new Application();
+  const drawing = new CanvasFrameDrawing(app, {
+    readIdentities: () => ({ needsPreparation: () => pending, flush: () => undefined }),
+    readCaptureFrame: () => ({ width: 100, height: 80, background: 0xf2f3ee }),
+    software: false,
+    restored() {},
+  });
+  drawing.schedule();
+  expect(frames.size).toBe(1);
+  drawing.drawNow();
+  expect(app.render).toHaveBeenCalledOnce();
+  expect(frames.size).toBe(0);
+  drawing.schedule();
+  expect(frames.size).toBe(1);
+  pending = true;
+  drawing.drawNow();
+  expect(app.render).toHaveBeenCalledOnce();
+  expect(frames.size).toBe(0);
+  expect(vi.getTimerCount()).toBe(1);
+});

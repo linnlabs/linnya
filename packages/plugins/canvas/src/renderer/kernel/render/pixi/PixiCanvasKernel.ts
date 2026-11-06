@@ -1,4 +1,5 @@
 import { CanvasSelectionProjection } from './CanvasSelectionProjection';
+import { CanvasCardPreview } from './CanvasCardPreview';
 import { CanvasCardPresentation } from './CanvasCardPresentation';
 import { createCanvasCardBackgrounds } from './createCanvasCardBackground';
 import type { CanvasCardView } from './definitions/canvasCardView';
@@ -67,6 +68,14 @@ export class PixiCanvasKernel implements CanvasKernel {
   private readonly selected = new Set<CanvasCardId>();
   private readonly selectionProjection = new CanvasSelectionProjection(this.cards, this.selected);
   private readonly dragOriginals = new Map<CanvasCardId, CanvasCard>();
+  private readonly preview = new CanvasCardPreview({
+    views: this.views,
+    cards: this.cards,
+    originals: this.dragOriginals,
+    freeze: ids => this.scene.freeze(ids),
+    move: view => this.scene.apply(view),
+    resize: view => this.presentation.updateView(view),
+  });
   private editingCard: CanvasCardId | null = null;
   private readonly mapLabels = new CanvasMapLabels();
   private overviewOrder: readonly CanvasCard[] = [];
@@ -341,6 +350,7 @@ export class PixiCanvasKernel implements CanvasKernel {
         readAppearance: () => this.appearance,
         selected: this.selected,
         readEditingCard: () => this.editingCard,
+        readResizingCard: () => this.preview.resizing,
         readRenders: () => this.drawing.readRenderCount(),
         readContextLost: () => this.drawing.hasContextLost(),
         readDestroyed: () => this.drawing.isDestroyed(),
@@ -375,7 +385,9 @@ export class PixiCanvasKernel implements CanvasKernel {
     return this.presentation.readRasterReceipt(id, key);
   }
   setBitmap(id: CanvasCardId, revision: number, key: string, bitmap: ImageBitmap): boolean {
-    return this.presentation.setBitmap(id, revision, key, bitmap);
+    return this.installed(id, revision, () =>
+      this.presentation.setBitmap(id, revision, key, bitmap)
+    );
   }
   setRasterTiles(
     id: CanvasCardId,
@@ -383,7 +395,17 @@ export class PixiCanvasKernel implements CanvasKernel {
     key: string,
     tiles: readonly CanvasRasterTile[]
   ): boolean {
-    return this.presentation.setRasterTiles(id, revision, key, tiles);
+    return this.installed(id, revision, () =>
+      this.presentation.setRasterTiles(id, revision, key, tiles)
+    );
+  }
+  private installed(id: CanvasCardId, revision: number, install: () => boolean): boolean {
+    // 改尺寸后的新排版直接替换旧排版：两种宽度的正文交叉淡变会叠出重影。
+    if (this.cards.get(id)?.revision === revision && this.preview.takeSwap(id))
+      this.bitmaps.remove(id);
+    const accepted = install();
+    if (accepted) this.preview.contentInstalled(id);
+    return accepted;
   }
   visibleCards(): readonly CanvasCard[] {
     return this.presentation.visibleCards();
@@ -392,7 +414,10 @@ export class PixiCanvasKernel implements CanvasKernel {
     return this.presentation.renderableCards();
   }
   rasterCards(): readonly CanvasCard[] {
-    return this.presentation.rasterCards();
+    // 改尺寸预览中的显示副本仍是旧修订，按它排版会把新宽度的正文记在旧版本名下。
+    const cards = this.presentation.rasterCards();
+    const resizing = this.preview.resizing;
+    return resizing ? cards.filter(card => card.id !== resizing) : cards;
   }
   readVisibleCardRegions(id: CanvasCardId): readonly CanvasRectangle[] {
     return this.presentation.readVisibleCardRegions(id);
@@ -508,54 +533,29 @@ export class PixiCanvasKernel implements CanvasKernel {
     this.repaintSelection();
   }
   setDragPreview(ids: readonly CanvasCardId[], dx: number, dy: number): void {
-    this.scene.freeze(ids);
-    const starting = this.dragOriginals.size === 0;
-    for (const id of ids) {
-      let view = this.views.get(id);
-      if (!view || view.card.locked) continue;
-      if (!this.dragOriginals.has(id)) {
-        this.dragOriginals.set(id, view.card);
-        // 只在手势开始时复制绘制投影，后续 pointermove 不逐卡分配对象。
-        const display = { ...view.card };
-        view.card = display;
-        this.cards.set(id, display);
-        this.views.set(id, view);
-      }
-      const original = this.dragOriginals.get(id);
-      if (!original) continue;
-      view.card.x = original.x + dx;
-      view.card.y = original.y + dy;
-      this.scene.apply(view);
-    }
+    const starting = this.preview.place(ids, (card, original) => {
+      card.x = original.x + dx;
+      card.y = original.y + dy;
+    });
+    this.previewChanged(starting);
+  }
+  /** 改尺寸与拖动共用预览通道：纸面、连线、描边逐帧跟随；正文旧排版裁在纸面内，提交后重排。 */
+  setResizePreview(id: CanvasCardId, size: Pick<CanvasRectangle, 'width' | 'height'>): void {
+    this.previewChanged(this.preview.resize(id, size));
+  }
+  private previewChanged(starting: boolean): void {
     if (starting) this.refreshOverviewCards();
     this.mapLabels.invalidate();
     if (this.camera.zoom < 0.3) this.updateLabels();
     const movingIds = [...this.dragOriginals.keys()];
-    this.spatial.updateCards(
-      movingIds.flatMap(id => {
-        const card = this.cards.get(id);
-        return card ? [card] : [];
-      })
-    );
+    this.spatial.updateCards(movingIds.flatMap(id => this.cards.get(id) ?? []));
     this.presentation.projectCards(false);
     this.lines.preview(movingIds, this.cards);
     this.repaintSelection();
     this.notify?.({ kind: 'preview-changed' });
   }
   clearDragPreview(): void {
-    const restored: CanvasCard[] = [];
-    for (const id of this.dragOriginals.keys()) {
-      const target = this.targets.get(id),
-        view = this.views.get(id);
-      if (target && view) {
-        this.cards.set(id, target);
-        view.card = target;
-        this.scene.apply(view);
-        restored.push(target);
-      }
-    }
-    this.spatial.updateCards(restored);
-    this.dragOriginals.clear();
+    this.spatial.updateCards(this.preview.restore(this.targets));
     this.refreshOverviewCards();
     this.mapLabels.invalidate();
     this.updateLabels();
@@ -604,6 +604,7 @@ export class PixiCanvasKernel implements CanvasKernel {
       this.reduced ? Math.min(1, resolution ?? this.app.renderer.resolution) : resolution
     );
     this.refreshCamera(true);
+    this.drawing.drawNow();
   }
   fit(rectangles: readonly CanvasRectangle[]): void {
     const camera = canvasFitCamera(rectangles, { width: this.width, height: this.height });
@@ -681,6 +682,7 @@ export class PixiCanvasKernel implements CanvasKernel {
     this.identities.destroy();
     this.mapLabels.destroy();
     this.lines.destroy();
+    this.preview.destroy();
     this.views.clear();
     this.retiringViews.clear();
     this.retiringLabels.clear();

@@ -1,6 +1,6 @@
 import type { CanvasCard } from '@plugin/canvas/shared';
 import type { CanvasDocumentSession } from '../../canvasDocument';
-import type { CanvasResizeGesture } from '../definitions/cardResizing';
+import type { CanvasResizeDisplay, CanvasResizeGesture } from '../definitions/cardResizing';
 import { createCanvasResizeState } from '../store/createCanvasResizeState';
 import { resolveCanvasResize } from '../functions/resolveCanvasResize';
 
@@ -25,11 +25,15 @@ export function createCanvasCardResize(
     if (gesture) {
       const active = gesture;
       release(active);
+      active.display.clear();
       void session.protect(active.card.id, [], 'resize').catch(report);
     }
   };
   const move = (event: PointerEvent) => {
-    if (gesture?.pointer === event.pointerId) state.set(resolveCanvasResize(gesture, event));
+    if (gesture?.pointer !== event.pointerId) return;
+    const size = resolveCanvasResize(gesture, event);
+    state.set(size);
+    gesture.display.show(size);
   };
   const up = (event: PointerEvent) => {
     if (!gesture || event.pointerId !== gesture.pointer) return;
@@ -53,6 +57,7 @@ export function createCanvasCardResize(
       ])
       .catch(report)
       .finally(() => {
+        active.display.clear();
         void session.protect(active.card.id, [], 'resize').catch(report);
       });
   };
@@ -65,7 +70,7 @@ export function createCanvasCardResize(
   };
   return {
     state,
-    start(card: CanvasCard, event: PointerEvent, zoom: number) {
+    start(card: CanvasCard, event: PointerEvent, zoom: number, display: CanvasResizeDisplay) {
       if (card.locked || event.button !== 0 || !(event.currentTarget instanceof HTMLElement))
         return;
       cancel();
@@ -76,6 +81,7 @@ export function createCanvasCardResize(
         clientY: event.clientY,
         target: event.currentTarget,
         zoom,
+        display,
       };
       gesture.target.setPointerCapture(event.pointerId);
       state.set(card);

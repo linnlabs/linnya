@@ -91,6 +91,7 @@ export class CanvasCardPresentation {
       this.options.context.readEditingCard() !== card.id &&
       !overview &&
       this.titleExposed(card) &&
+      !(this.options.context.readResizingCard() === card.id && this.options.bitmaps.has(card.id)) &&
       !this.options.bitmaps.covers(card.id, this.readVisibleCardRegions(card.id))
     );
   }

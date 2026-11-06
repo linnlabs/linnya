@@ -22,6 +22,10 @@ export function resolveCanvasDisplayCard(input: {
   };
 }
 
+/** heightMode 只表示高度由谁维护，高度另行比较；改尺寸把 auto 记成 fixed 不改变正文。 */
+const rasterData = (card: CanvasCard) =>
+  JSON.stringify(card.data, (key, value: unknown) => (key === 'heightMode' ? undefined : value));
+
 /** 位置与逻辑来源不改变正文，尺寸/染纸/正文改变才撤销当前采样。 */
 export function canvasCardRasterChanged(previous: CanvasCard, next: CanvasCard): boolean {
   return (
@@ -30,6 +34,6 @@ export function canvasCardRasterChanged(previous: CanvasCard, next: CanvasCard):
       previous.height !== next.height ||
       previous.color !== next.color ||
       previous.type !== next.type ||
-      JSON.stringify(previous.data) !== JSON.stringify(next.data))
+      rasterData(previous) !== rasterData(next))
   );
 }
