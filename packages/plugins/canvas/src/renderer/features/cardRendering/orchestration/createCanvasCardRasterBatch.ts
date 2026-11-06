@@ -7,6 +7,8 @@ import type {
 import { createCanvasRasterDom } from '../functions/createCanvasRasterDom';
 import { installCanvasCardInk } from '../functions/installCanvasCardInk';
 
+const CLIPPED_TOLERANCE = 1;
+
 type Prepared =
   | { readonly kind: 'ready'; readonly input: CanvasCardRasterInput; readonly element: HTMLElement }
   | { readonly kind: 'failed'; readonly error: unknown };
@@ -46,9 +48,10 @@ export function createCanvasCardRasterBatch(options: {
         prepared[index] = { kind: 'failed', error: measurement.reason };
         return;
       }
+      // 自动适配的卡高按三位小数保存，实测排版会多出零点零几像素；不足1px的差不算截断，否则会给完整正文画上淡出。
       item.element.classList.toggle(
         'canvas-card-content-clipped',
-        measurement.value > item.input.card.height
+        measurement.value - item.input.card.height >= CLIPPED_TOLERANCE
       );
       item.element.style.position = 'relative';
       item.element.style.height = `${item.input.card.height}px`;

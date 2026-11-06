@@ -101,7 +101,8 @@
 .canvas-line-label-preview {
   position: absolute;
   box-sizing: border-box;
-  padding: var(--space-3);
+  width: max-content;
+  padding: var(--space-2) var(--space-3);
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -396,6 +397,12 @@
 }
 .canvas-connection-bar {
   white-space: nowrap;
+}
+/* 线型图标本身是一段横线预览，比方形图标宽一些，但不撑长工具条。 */
+.canvas-connection-bar .canvas-line-style-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 16px;
 }
 .canvas-connection-label-input {
   position: absolute;

@@ -29,46 +29,30 @@
     @keydown.stop
   >
     <ToolbarGroup>
-      <CustomSelect
-        :model-value="edge.direction"
-        :options="directions"
-        trigger-aria-label="连线方向"
-        min-width="88px"
-        variant="minimal"
-        :bordered="false"
+      <CanvasToolbarMenu
+        label="连线样式"
+        :options="styleOptions"
         :disabled="edge.locked"
-        @update:model-value="setDirection"
-      />
-      <CustomSelect
-        :model-value="edge.lineStyle"
-        :options="styles"
-        trigger-aria-label="连线形状"
-        min-width="64px"
-        variant="minimal"
-        :bordered="false"
-        :disabled="edge.locked"
-        @update:model-value="setStyle"
-      />
-      <CustomSelect
-        :model-value="edge.linePattern"
-        :options="patterns"
-        trigger-aria-label="连线笔触"
-        min-width="64px"
-        variant="minimal"
-        :bordered="false"
-        :disabled="edge.locked"
-        @update:model-value="setPattern"
-      />
-      <CustomSelect
+        :show-selected-checkmark="true"
+        min-width="150px"
+        @select="setStyleOption"
+      >
+        <BorderStyleIcon
+          class="canvas-line-style-icon"
+          :style-type="edge.linePattern === 'dashed' ? 4 : 1"
+        />
+      </CanvasToolbarMenu>
+      <CanvasToolbarMenu
+        label="连线颜色"
+        :options="colorOptions"
         :model-value="edge.color"
-        :options="colors"
-        trigger-aria-label="连线颜色"
-        min-width="64px"
-        variant="minimal"
-        :bordered="false"
         :disabled="edge.locked"
-        @update:model-value="setColor"
-      />
+        :show-selected-checkmark="true"
+        min-width="140px"
+        @select="setColor"
+      >
+        <CanvasColorSwatch :color="edge.color" />
+      </CanvasToolbarMenu>
     </ToolbarGroup>
     <ToolbarGroup>
       <ToolbarButton label="编辑连线标签" :disabled="edge.locked" @click="run(editing.beginLabel)">
@@ -145,14 +129,13 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, onBeforeUnmount } from 'vue';
 import {
-  CustomSelect,
   FloatingToolbar,
   ToolbarButton,
   ToolbarGroup,
   type CustomSelectOption,
 } from '@linnya/renderer-ui';
-import { DeleteIcon, MoreIcon, TagIcon } from '@linnya/renderer-ui/icons';
-import { CanvasToolbarMenu } from '../../canvasChrome';
+import { BorderStyleIcon, DeleteIcon, MoreIcon, TagIcon } from '@linnya/renderer-ui/icons';
+import { CanvasColorSwatch, CanvasToolbarMenu, canvasColorSwatchOptions } from '../../canvasChrome';
 import {
   CanvasEdgeSchema,
   CanvasColorSchema,
@@ -236,41 +219,70 @@ const preview = computed(() => {
   return value ? { from: project(value.from), to: project(value.to) } : null;
 });
 const sideNames = { top: '上', right: '右', bottom: '下', left: '左' };
-const directions = [
-    { value: 'none', text: '无箭头' },
-    { value: 'forward', text: '单向' },
-    { value: 'both', text: '双向' },
-  ],
-  styles = [
-    { value: 'curve', text: '曲线' },
-    { value: 'straight', text: '直线' },
-  ],
-  patterns = [
-    { value: 'solid', text: '实线' },
-    { value: 'dashed', text: '虚线' },
-  ];
-const colors = [
-  { value: 'white', text: '原色' },
-  { value: 'red', text: '红' },
-  { value: 'orange', text: '橙' },
-  { value: 'yellow', text: '黄' },
-  { value: 'green', text: '绿' },
-  { value: 'cyan', text: '青' },
-  { value: 'purple', text: '紫' },
-];
+const styleGroups = [
+  {
+    label: '方向',
+    field: 'direction',
+    items: [
+      { value: 'none', text: '无箭头' },
+      { value: 'forward', text: '单向' },
+      { value: 'both', text: '双向' },
+    ],
+  },
+  {
+    label: '线形',
+    field: 'lineStyle',
+    items: [
+      { value: 'curve', text: '曲线' },
+      { value: 'straight', text: '直线' },
+    ],
+  },
+  {
+    label: '笔触',
+    field: 'linePattern',
+    items: [
+      { value: 'solid', text: '实线' },
+      { value: 'dashed', text: '虚线' },
+    ],
+  },
+] as const;
+/** 方向、线形、笔触合成一个分组菜单，每组各自标出当前值。 */
+const styleOptions = computed<readonly CustomSelectOption<string>[]>(() => {
+  const current = edge.value;
+  return styleGroups.flatMap((group, index) => [
+    ...(index ? [{ isSeparator: true }] : []),
+    { isGroup: true, label: group.label },
+    ...group.items.map(item => ({
+      value: `${group.field}:${item.value}`,
+      text: item.text,
+      selected: current?.[group.field] === item.value,
+    })),
+  ]);
+});
+const colorOptions = canvasColorSwatchOptions([
+  { color: 'white', text: '原色' },
+  { color: 'red', text: '红' },
+  { color: 'orange', text: '橙' },
+  { color: 'yellow', text: '黄' },
+  { color: 'green', text: '绿' },
+  { color: 'cyan', text: '青' },
+  { color: 'purple', text: '紫' },
+]);
 const patch = (value: Parameters<typeof props.editing.patch>[1]) =>
   props.run(async () => {
     const current = edge.value;
     if (current) await props.editing.patch(current, value);
   });
-const setDirection = (value: string | number | boolean) =>
-  patch({ direction: CanvasEdgeSchema.shape.direction.parse(value) });
-const setStyle = (value: string | number | boolean) =>
-  patch({ lineStyle: CanvasEdgeSchema.shape.lineStyle.parse(value) });
-const setPattern = (value: string | number | boolean) =>
-  patch({ linePattern: CanvasEdgeSchema.shape.linePattern.parse(value) });
-const setColor = (value: string | number | boolean) =>
-  patch({ color: CanvasColorSchema.parse(value) });
+const setStyleOption = (option: string) => {
+  const [field, value] = option.split(':');
+  if (field === 'direction')
+    void patch({ direction: CanvasEdgeSchema.shape.direction.parse(value) });
+  else if (field === 'lineStyle')
+    void patch({ lineStyle: CanvasEdgeSchema.shape.lineStyle.parse(value) });
+  else if (field === 'linePattern')
+    void patch({ linePattern: CanvasEdgeSchema.shape.linePattern.parse(value) });
+};
+const setColor = (value: string) => void patch({ color: CanvasColorSchema.parse(value) });
 const updateLabel = (event: Event) => {
   if (event.target instanceof HTMLInputElement) props.editing.state.updateLabel(event.target.value);
 };

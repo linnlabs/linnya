@@ -28,3 +28,23 @@ it('同批一张媒体准备失败不阻塞其他正文，消费者DOM身份仍�
   expect(calls).toHaveLength(1); expect(calls[0].element.classList.contains('provider-owned')).toBe(true);
   expect(calls[0].element.textContent).toBe('可见正文');
 });
+
+it('自动适配卡高的小数舍入差不算截断，真正超出1px以上才画淡出', async () => {
+  const source = { kind: 'user', conversationId: null, runId: null };
+  const card = (id: string, height: number) => CanvasCardSchema.parse({ id, type: 'text', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white',
+    createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, x: 0, y: 0, width: 280, height, parentId: null,
+    data: { contentVersion: 1, content: { type: 'doc', content: [] } } });
+  const painted: CardRasterRequest[] = [];
+  const rasterizer: CardRasterizer = {
+    measure: async () => { throw new Error('single measurement not expected'); },
+    measureBatch: async requests => requests.map(() => ({ status: 'fulfilled', value: 118.34 })),
+    rasterize: async () => { throw new Error('single paint not expected'); }, dispose() {},
+    rasterizeBatch: async requests => {
+      painted.push(...requests);
+      return requests.map(request => ({ bitmap: { width: 280, height: 120, close() {} }, width: request.width, height: request.height, contentHeight: 118 }));
+    },
+  };
+  const execute = createCanvasCardRasterBatch({ rasterizer, createContent: async () => document.createElement('div') });
+  await execute([card('c1', 118.328), card('c2', 100)].map(current => ({ card: current, scale: 1, dark: false, regions: [{ x: 0, y: 0, width: 280, height: current.height }] })), new AbortController().signal);
+  expect(painted.map(request => request.element.classList.contains('canvas-card-content-clipped'))).toEqual([false, true]);
+});

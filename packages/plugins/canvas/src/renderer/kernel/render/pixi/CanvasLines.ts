@@ -12,7 +12,7 @@ import type {
 import type { CanvasAppearance, CanvasChromeColors } from '../../definitions/canvasKernel';
 import { canvasStandaloneChrome } from './canvasStandaloneChrome';
 import { createCanvasEdgeLayout, type CanvasEdgeGeometry } from '../../geometry/canvasEdgeGeometry';
-import { canvasFitText } from '../../geometry/canvasFitText';
+import { canvasFitLineLabel, CANVAS_LINE_LABEL_FONT } from '../../geometry/canvasLineLabelFit';
 import { CanvasLineMesh } from './CanvasLineMesh';
 import { CanvasScreenTexture } from './CanvasScreenTexture';
 
@@ -378,7 +378,7 @@ export class CanvasLines {
       this.height * this.resolution
     );
     context.scale(this.resolution, this.resolution);
-    context.font = '12px system-ui';
+    context.font = CANVAS_LINE_LABEL_FONT;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     const { background, label } = this.chrome(),
@@ -387,7 +387,7 @@ export class CanvasLines {
     context.fillStyle = css(label);
     context.lineWidth = 5;
     for (const entry of labeled) {
-      const label = canvasFitText(entry.edge.label, text => context.measureText(text).width);
+      const label = canvasFitLineLabel(entry.edge.label, text => context.measureText(text).width);
       const point = entry.geometry.midpoint,
         x = point.x * this.camera.zoom + this.camera.x,
         y = point.y * this.camera.zoom + this.camera.y;
