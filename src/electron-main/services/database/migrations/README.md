@@ -1,7 +1,7 @@
 # Host 数据库基线与迁移
 
 本目录只管理 Linnya Host 在 `workspace.sqlite` 中拥有的 Schema。当前不兼容开发基线是
-v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v71。
+v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v72。
 
 v67→v68 为 image_blocks 增加默认空字符串的 caption；已有 alt/title、尺寸、来源保持不变，旧图片不会自动显示文件名题注。
 
@@ -10,6 +10,8 @@ v68→v69 删除自建 trigram grep 索引表 `workspace_vfs_search_files`、`wo
 v69→v70 把 `agent_run_costs.state_json` 的运行成本恢复账本改为只存累计合计与条目 ID。旧账本逐条保存每次 context build 的全部上下文分项（每条消息一项），长运行的账本随调用次数平方增长：2026-11 开发库 1,546 行平均 585KB、最大 19.4MB。合计等于对全部条目聚合的结果，快照与恢复只读合计；迁移按 `run_id` 分页改写全部旧行，无法识别的行让迁移失败并回滚，运行时代码不双读旧形状。
 
 v70→v71 把 `assets.local_path` 从本机绝对路径改为相对 AppData Root 的持久路径（合同见 [assets](../../../../domains/assets/README.md)）。迁移只截取 `ConversationAttachments/v2/stores/<store-id>/content/<xx>/<sha256>.<ext>` 这段受管内容后缀，统一成 `/` 分隔，不依赖旧前缀：换过位置或在 checkout 之间复制过的库同样能转换。不符合该结构的行让迁移失败并回滚；2026-11 各开发库共 5,514 行全部符合。`assets` 表的触发器由表阶段先于迁移建立，此后拒绝非相对路径写入。
+
+v71→v72 为工具卡的正文和结构化结果引入来源事件外键。迁移事务重新建立可再生的 UI 消息表，将会话投影标为 pending。启动维护按最近活动顺序逐会话重建并提交 ready；中断后从尚未完成的会话继续。单个会话的事实校验失败时记录会话身份，后续会话仍可恢复。事件、执行断点、客户端提示与子运行历史各自由原 owner 保留。
 
 ## 升级耗时与启动进度
 

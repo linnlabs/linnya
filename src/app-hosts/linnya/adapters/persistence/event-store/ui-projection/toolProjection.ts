@@ -104,6 +104,7 @@ export function patchToolPayload(
   existing: ConversationToolMessagePayload,
   patch: ToolProjectionPatch,
   timestamp: number,
+  data: SerializableJsonValue | undefined,
 ): ConversationToolMessagePayload {
   const payload: Record<string, JsonValue | undefined> = { ...existing };
 
@@ -113,8 +114,8 @@ export function patchToolPayload(
 
   const interaction = readRecordField(patch.eventMetadata, 'interaction');
   const hasInteraction = !!interaction;
-  if (patch.data !== undefined && !hasInteraction) {
-    payload.data = patch.data;
+  if (data !== undefined) {
+    payload.data = data;
   }
   const authoritativeSubrunIds = readStructuredToolResultSubrunIds(
     patch.data === undefined ? undefined : { data: patch.data },
@@ -174,15 +175,6 @@ export function patchToolPayload(
   }
 
   return ConversationToolMessagePayloadSchema.parse(compactRecord(payload));
-}
-
-export function buildToolContentFromPatch(
-  patch: ToolProjectionPatch,
-): string | null {
-  if (readRecordField(patch.eventMetadata, 'interaction')) {
-    return null;
-  }
-  return patch.observation ?? null;
 }
 
 function readSerializableField(

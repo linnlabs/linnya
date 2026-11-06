@@ -5,19 +5,14 @@ import {
   type SubRunTraceKind,
 } from '@linnlabs/linnkit/contracts';
 import {
-  ConversationUiMessageSchema,
   CONVERSATION_UI_WINDOW_MAX_ROWS,
   type ConversationUiWindowRefreshQuery,
   conversationVisualTurnIdFromUserMessageId,
   type ConversationUiMessage,
   type ConversationCompleteVisualTurnId,
-  type JsonRecord,
   type ConversationContextUsageSource,
 } from '@app/schemas';
-import { isRecord, toSerializableValue } from './json';
-import {
-  parseUiMessageAttachments,
-} from './attachments';
+import { toUiMessageView, UI_ROWS_WITH_TOOL_RESULTS, type UiMessageSqlRow } from './sqliteUiMessageRow';
 import type { DurableSubrunTraceKind } from '../../subrun-trace-history/definitions/subrunTraceHistory';
 import { decodeSubrunTraceHistoryEvent } from '../../subrun-trace-history/functions/subrunTraceHistoryPayload';
 import {
@@ -30,22 +25,6 @@ type ProjectionStateStatus = 'pending' | 'ready';
 interface ProjectionStateSqlRow {
   status: ProjectionStateStatus;
   revision: number;
-}
-
-interface UiMessageSqlRow {
-  message_id: string;
-  conversation_id: string;
-  turn_id: string | null;
-  role: string;
-  message_type: string;
-  sort_seq: number;
-  timestamp: number;
-  content: string | null;
-  attachments_json: string | null;
-  payload_json: string | null;
-  merge_key: string | null;
-  presentation: string | null;
-  run_id: string | null;
 }
 
 interface SortSeqRow {
@@ -171,7 +150,7 @@ export function readWindowRefresh(
     }
     // 保留窗口首行；到达容量上限后交回正式分页，不能在后台裁掉用户的阅读锚点。
     const rows = db.prepare<unknown[], UiMessageSqlRow>(`
-      SELECT * FROM conversation_ui_messages
+      SELECT * FROM ${UI_ROWS_WITH_TOOL_RESULTS}
       WHERE conversation_id = ? AND ${VISIBLE_ROW_SQL}
         AND sort_seq >= ? AND (? OR sort_seq <= ?)
       ORDER BY sort_seq ASC LIMIT ?
@@ -196,7 +175,7 @@ export function readTail(
   const rows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM conversation_ui_messages
+      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
       ORDER BY sort_seq DESC
@@ -222,7 +201,7 @@ export function readBefore(
   const rows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM conversation_ui_messages
+      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
         AND sort_seq < ?
@@ -249,7 +228,7 @@ export function readAfter(
   const rows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM conversation_ui_messages
+      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
         AND sort_seq > ?
@@ -277,7 +256,7 @@ export function readRunFinalAnswer(
   const row = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM conversation_ui_messages
+      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
       WHERE conversation_id = ?
         AND run_id = ?
         AND message_type = 'final_answer'
@@ -332,7 +311,7 @@ export function readAround(
   const beforeRows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM conversation_ui_messages
+      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
         AND sort_seq < ?
@@ -344,7 +323,7 @@ export function readAround(
   const anchorRow = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM conversation_ui_messages
+      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
       WHERE conversation_id = ? AND message_id = ?
       LIMIT 1
     `)
@@ -352,7 +331,7 @@ export function readAround(
   const afterRows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM conversation_ui_messages
+      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
         AND sort_seq > ?
@@ -381,7 +360,7 @@ export function readTurnIndex(
   const rows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM conversation_ui_messages
+      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
         AND message_type = 'user_input'
@@ -557,7 +536,7 @@ function readLatestContextUsage(
 ): ConversationContextUsageSource | null {
   // 来源可能早于整个 320 行窗口；只读取带成功快照的最新 user_input，不重放事件历史。
   const row = db.prepare<unknown[], UiMessageSqlRow>(`
-    SELECT * FROM conversation_ui_messages
+    SELECT * FROM ${UI_ROWS_WITH_TOOL_RESULTS}
     WHERE conversation_id = ? AND message_type = 'user_input'
       AND json_type(payload_json, '$.context_usage') = 'object'
     ORDER BY sort_seq DESC LIMIT 1
@@ -601,48 +580,6 @@ function hasVisibleRowsAfter(db: Database.Database, conversationId: string, sort
     `)
     .get(conversationId, sortSeq);
   return Boolean(row);
-}
-
-function toUiMessageView(row: UiMessageSqlRow): UiMessageView {
-  const attachments = parseUiMessageAttachments(row.message_id, row.attachments_json);
-  const parsed = ConversationUiMessageSchema.safeParse({
-    message_id: row.message_id,
-    conversation_id: row.conversation_id,
-    turn_id: row.turn_id,
-    role: row.role,
-    message_type: row.message_type,
-    sort_seq: row.sort_seq,
-    timestamp: row.timestamp,
-    content: row.content,
-    ...(attachments ? { attachments } : {}),
-    payload: parsePayload(row.message_id, row.payload_json),
-    merge_key: row.merge_key,
-    presentation: row.presentation,
-    run_id: row.run_id,
-  });
-  if (!parsed.success) {
-    throw new Error(
-      `[SQLiteUiMessagesReader] row ${row.message_id} violates the ConversationUiMessage contract: ${parsed.error.message}`,
-    );
-  }
-  return parsed.data;
-}
-
-function parsePayload(messageId: string, payloadJson: string | null): JsonRecord | null {
-  if (!payloadJson) {
-    return null;
-  }
-
-  const parsed: unknown = JSON.parse(payloadJson);
-  if (!isRecord(parsed)) {
-    throw new Error(`[SQLiteUiMessagesReader] payload_json for message ${messageId} must be a JSON object`);
-  }
-
-  const payload: JsonRecord = {};
-  for (const [key, value] of Object.entries(parsed)) {
-    payload[key] = toSerializableValue(value);
-  }
-  return payload;
 }
 
 function truncateSummary(content: string, maxLength: number): string {

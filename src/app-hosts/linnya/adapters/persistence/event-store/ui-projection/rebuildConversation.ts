@@ -6,8 +6,7 @@ import { parseRuntimeEventRoutingIdentity, type RuntimeEvent } from '@linnlabs/l
 import { RUNTIME_EVENT_TYPES_NEVER_REPLAYED_TO_UI } from '@linnlabs/linnkit/runtime-kernel/events';
 import { InMemoryUiProjectionAccess } from './memoryApplier';
 import { projectEventToUiRowOps } from './projectEvent';
-import type { UiMessagePayload, UiMessageRow } from './types';
-import { serializeUiMessageAttachments } from './attachments';
+import { writeUiMessageRow } from './sqliteUiMessageRow';
 import { parseStoredRuntimeEvent } from '../functions/runtimeEventStorageCodec';
 import { SqliteConversationCitationFactIndex } from './sqliteCitationFactIndex';
 import { SqliteUiProjectionApplier } from './sqliteApplier';
@@ -158,7 +157,7 @@ export function rebuildConversationUiProjection(
       conversationId
     );
     for (const row of projection.rows) {
-      insertSnapshotRow(db, row);
+      writeUiMessageRow(db, row, 'insert');
     }
     for (const event of projection.events) {
       if (event.type === 'tool_output') {
@@ -313,45 +312,4 @@ function readLastEventRowId(db: Database.Database, conversationId: string): numb
     )
     .get(conversationId);
   return row?.max_rowid ?? 0;
-}
-
-function insertSnapshotRow(db: Database.Database, row: UiMessageRow): void {
-  db.prepare(
-    `
-    INSERT INTO conversation_ui_messages (
-      message_id,
-      conversation_id,
-      turn_id,
-      role,
-      message_type,
-      sort_seq,
-      timestamp,
-      content,
-      attachments_json,
-      payload_json,
-      merge_key,
-      presentation,
-      run_id
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `
-  ).run(
-    row.messageId,
-    row.conversationId,
-    row.turnId,
-    row.role,
-    row.messageType,
-    row.sortSeq,
-    row.timestamp,
-    row.content,
-    serializeUiMessageAttachments(row.attachments),
-    serializePayload(row.payload),
-    row.mergeKey,
-    row.presentation,
-    row.runId
-  );
-}
-
-function serializePayload(payload: UiMessagePayload | null): string | null {
-  return payload ? JSON.stringify(payload) : null;
 }

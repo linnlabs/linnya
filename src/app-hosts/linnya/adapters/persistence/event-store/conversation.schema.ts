@@ -103,6 +103,8 @@ export const CONVERSATION_SCHEMAS = [
     merge_key TEXT,
     presentation TEXT,
     run_id TEXT,
+    content_event_id TEXT REFERENCES events(id),
+    data_event_id TEXT REFERENCES events(id),
     CHECK ((message_type = 'client_notice' AND run_id IS NULL AND turn_id IS NULL)
       OR (message_type != 'client_notice' AND run_id IS NOT NULL AND turn_id IS NOT NULL)),
     FOREIGN KEY(conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE
@@ -170,6 +172,8 @@ export const CONVERSATION_SCHEMAS = [
     ON subrun_trace_items(subrun_id, id)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_conversation_ui_messages_conv_sort_seq_unique ON conversation_ui_messages(conversation_id, sort_seq)`,
   `CREATE INDEX IF NOT EXISTS idx_conversation_ui_messages_conv_merge_key ON conversation_ui_messages(conversation_id, merge_key)`,
+  `CREATE INDEX IF NOT EXISTS idx_conversation_ui_content_event ON conversation_ui_messages(content_event_id) WHERE content_event_id IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_conversation_ui_data_event ON conversation_ui_messages(data_event_id) WHERE data_event_id IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS idx_conversation_ui_messages_conv_run_id ON conversation_ui_messages(conversation_id, run_id)`,
   `CREATE INDEX IF NOT EXISTS idx_conversation_ui_messages_conv_message_type ON conversation_ui_messages(conversation_id, message_type)`,
   // 最新用量是窗口外依赖；部分索引避免长对话每次翻页扫描/排序所有消息。

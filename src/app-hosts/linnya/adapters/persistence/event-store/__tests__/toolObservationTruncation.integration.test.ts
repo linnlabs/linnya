@@ -9,7 +9,6 @@ import {
   type SerializableJsonValue,
   type SSEEvent,
 } from '@linnlabs/linnkit/contracts';
-import { ConversationToolMessagePayloadSchema } from '@app/schemas';
 
 import { CONVERSATION_SCHEMAS } from '../conversation.schema';
 import { SQLiteEventStore } from '../sqlite.implementation';
@@ -96,12 +95,13 @@ describe('tool observation truncation through durable and live Conversation proj
       { originalChars: toolObservationTruncation.originalChars, previewChars: toolObservationTruncation.previewChars },
       undefined,
     ];
-    const rawRows = db.prepare<[], { payload_json: string }>(
-      'SELECT payload_json FROM conversation_ui_messages ORDER BY sort_seq',
+    // 编码后的物理行只保存卡片信息，完整载荷由窗口读取时恢复。
+    const rows = db.prepare<[], { content: string | null; data_type: string | null; source: string; data_source: string }>(
+      `SELECT content, json_type(payload_json, '$.data') AS data_type,
+        content_event_id AS source, data_event_id AS data_source FROM conversation_ui_messages ORDER BY sort_seq`,
     ).all();
-    expect(rawRows.map(row => ConversationToolMessagePayloadSchema.parse(
-      JSON.parse(row.payload_json),
-    ).observation_truncation)).toEqual(expected);
+    expect(rows).toEqual(toolObservationTruncationFixture.events.filter(e => e.type === 'tool_output')
+      .map(e => ({ content: null, data_type: null, source: e.id, data_source: e.id })));
 
     const durable = readMessages(db);
     const reloaded = durable.map(message => mapUiMessageDtoToConversationMessage(message));
