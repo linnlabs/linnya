@@ -22,6 +22,8 @@ export function installCanvasSurfaceBindings({
   const { kernel, refreshView, readAppearance } = rendering;
   const { editable, creation, setDirty, save } = drafts;
   const { connections, actions, select, createText } = commands;
+  // immediate只读投影会同步清掉kernel预览并回发意图，必须在分发能力装配完后安装。
+  const stopReadonly = commands.installReadonly();
   const projection = installCanvasEditorProjection({
     host: options.editorHost,
     editor,
@@ -94,6 +96,7 @@ export function installCanvasSurfaceBindings({
     report,
   });
   return {
+    stopReadonly,
     projection,
     stopDisplay,
     stopDoubleClick,

@@ -42,6 +42,34 @@ export async function createCanvasSurface(
     drafts,
     readViewport,
   });
+  const viewport = createCanvasViewportCommands({
+    kernel,
+    setCamera: state.setCamera,
+    refresh: refreshView,
+    cards: base.cards,
+    selected: base.selected,
+    elements: () => base.session.state.snapshot.value?.elements ?? [],
+    select: selection.trySelect,
+    selectEdge: async id => {
+      await selection.connections.select(id);
+      return selection.connections.selected.value?.id === id;
+    },
+  });
+  const dispatch = createCanvasSurfaceIntentHandler({
+    base,
+    rendering,
+    drafts,
+    selection,
+    viewport,
+  });
+  function handleIntent(intent: CanvasKernelIntent): Promise<void> {
+    // GPU 状态的首个通知来自初始化微任务，早于后续 DOM/编辑能力的安装。
+    if (intent.kind === 'render-status') {
+      state.setRenderNotice(intent.message);
+      return Promise.resolve();
+    }
+    return dispatch(intent);
+  }
   const bindings = installCanvasSurfaceBindings({
     options,
     ports,
@@ -59,19 +87,6 @@ export async function createCanvasSurface(
     selection,
     bindings,
   });
-  const viewport = createCanvasViewportCommands({
-    kernel,
-    setCamera: state.setCamera,
-    refresh: refreshView,
-    cards: base.cards,
-    selected: base.selected,
-    elements: () => base.session.state.snapshot.value?.elements ?? [],
-    select: selection.trySelect,
-    selectEdge: async id => {
-      await selection.connections.select(id);
-      return selection.connections.selected.value?.id === id;
-    },
-  });
   const userCommands = createCanvasSurfaceCommands({
     base,
     rendering,
@@ -80,21 +95,6 @@ export async function createCanvasSurface(
     bindings,
     viewport,
   });
-  const dispatch = createCanvasSurfaceIntentHandler({
-    base,
-    rendering,
-    drafts,
-    selection,
-    viewport,
-  });
-  function handleIntent(intent: CanvasKernelIntent): Promise<void> {
-    // GPU 状态的首个通知来自初始化微任务，早于后续 DOM/编辑能力的安装。
-    if (intent.kind === 'render-status') {
-      state.setRenderNotice(intent.message);
-      return Promise.resolve();
-    }
-    return dispatch(intent);
-  }
   try {
     kernel.setAppearance(readAppearance());
     await base.session.open(options.documentId);

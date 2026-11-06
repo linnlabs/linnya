@@ -11,7 +11,7 @@ export function createCanvasSurfaceDisposal({
   const { session, layout, editor, dragging, resizing, report } = base;
   const { kernel, raster } = rendering;
   const { editable } = drafts;
-  const { opening, connections, stopReadonly } = commands;
+  const { opening, connections } = commands;
   const { clipboard, removeSave, removeHistory, stopDisplay, projection, stopDoubleClick } =
     bindings;
   return () => {
@@ -23,7 +23,7 @@ export function createCanvasSurfaceDisposal({
     clipboard.dispose();
     removeSave();
     removeHistory();
-    stopReadonly();
+    bindings.stopReadonly();
     stopDisplay();
     projection.dispose();
     stopDoubleClick();

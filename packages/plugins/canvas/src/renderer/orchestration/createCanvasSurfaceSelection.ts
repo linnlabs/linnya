@@ -59,19 +59,6 @@ export function createCanvasSurfaceSelection({
     report,
     readDisplayVersion: () => state.displayVersion.value,
   });
-  const stopReadonly = installCanvasReadonlyProjection({
-    readonly,
-    editable,
-    clearPreview: () => kernel.clearDragPreview(),
-    cancelResize: resizing.dispose,
-    suspendEditor: editor.suspend,
-    suspendConnections: connections.suspend,
-    cancelDrag: dragging.cancel,
-    cancelLayout: async () => {
-      await layout?.cancel();
-    },
-    report,
-  });
   const actions = createCanvasElementActions(session, { read: () => selection.ids.value, select });
   const { createText, createTree } = createCanvasSurfaceCreation({
     options,
@@ -82,5 +69,30 @@ export function createCanvasSurfaceSelection({
     connections,
     readViewport,
   });
-  return { opening, connections, trySelect, select, stopReadonly, actions, createText, createTree };
+  // 构造能力不启动immediate订阅；组合根完成意图分发后再显式安装。
+  function installReadonly() {
+    return installCanvasReadonlyProjection({
+      readonly,
+      editable,
+      clearPreview: () => kernel.clearDragPreview(),
+      cancelResize: resizing.dispose,
+      suspendEditor: editor.suspend,
+      suspendConnections: connections.suspend,
+      cancelDrag: dragging.cancel,
+      cancelLayout: async () => {
+        await layout?.cancel();
+      },
+      report,
+    });
+  }
+  return {
+    opening,
+    connections,
+    trySelect,
+    select,
+    installReadonly,
+    actions,
+    createText,
+    createTree,
+  };
 }
