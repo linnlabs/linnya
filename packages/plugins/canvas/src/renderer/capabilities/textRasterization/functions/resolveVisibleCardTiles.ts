@@ -12,6 +12,7 @@ export function resolveVisibleCardTiles(input: {
   const start = Math.max(0, Math.floor((input.worldTop - input.cardY) / tileHeight) * tileHeight);
   const end = Math.min(input.cardHeight, input.worldBottom - input.cardY);
   const tiles: { offsetY: number; height: number }[] = [];
-  for (let offsetY = start; offsetY < end; offsetY += tileHeight) tiles.push({ offsetY, height: Math.min(tileHeight, input.cardHeight - offsetY) });
+  for (let offsetY = start; offsetY < end; offsetY += tileHeight)
+    tiles.push({ offsetY, height: Math.min(tileHeight, input.cardHeight - offsetY) });
   return tiles;
 }

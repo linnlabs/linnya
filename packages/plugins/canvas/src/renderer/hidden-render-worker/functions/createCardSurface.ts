@@ -2,7 +2,14 @@ import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import { JsonValueSchema } from '@app/schemas';
 import type { CanvasCard } from '../../../shared';
 import type { CanvasWorkerRequest, CanvasRenderRequest } from '../../../shared/rendering';
-import { hydrateCanvasManagedImages, hydrateCanvasDocumentTags, installCanvasCardInk, createCanvasImageSurface, createCanvasDocumentSurface, projectCanvasDocumentSurface } from '../../features/cardRendering/content';
+import {
+  hydrateCanvasManagedImages,
+  hydrateCanvasDocumentTags,
+  installCanvasCardInk,
+  createCanvasImageSurface,
+  createCanvasDocumentSurface,
+  projectCanvasDocumentSurface,
+} from '../../features/cardRendering/content';
 
 export function createCardSurface(card: CanvasCard, request: CanvasRenderRequest): HTMLElement {
   const element = createSurfaceElement(card, request);
@@ -10,22 +17,30 @@ export function createCardSurface(card: CanvasCard, request: CanvasRenderRequest
   installTypography(element, request);
   installCanvasCardInk(element, card.color, request.theme === 'dark');
   if (card.type === 'text') {
-    element.append(createMarkdownDocumentFragment(JsonValueSchema.parse(card.data.content), document));
-    hydrateCanvasManagedImages(element, request.assets); hydrateCanvasDocumentTags(element, request.documents);
+    element.append(
+      createMarkdownDocumentFragment(JsonValueSchema.parse(card.data.content), document)
+    );
+    hydrateCanvasManagedImages(element, request.assets);
+    hydrateCanvasDocumentTags(element, request.documents);
   }
   return element;
 }
 
 function createSurfaceElement(card: CanvasCard, request: CanvasRenderRequest): HTMLElement {
   if (card.type === 'image') {
-    const source = request.assets[card.data.assetId]; if (!source) throw new Error('resource_unavailable');
+    const source = request.assets[card.data.assetId];
+    if (!source) throw new Error('resource_unavailable');
     return createCanvasImageSurface(card, source, document);
   }
   if (card.type === 'document') {
-    return createCanvasDocumentSurface(projectCanvasDocumentSurface(request.documents[card.data.documentId]), document);
+    return createCanvasDocumentSurface(
+      projectCanvasDocumentSurface(request.documents[card.data.documentId]),
+      document
+    );
   }
   const element = document.createElement('div');
-  element.style.cssText = 'box-sizing:border-box;padding:16px 18px 18px;width:100%;overflow-wrap:anywhere';
+  element.style.cssText =
+    'box-sizing:border-box;padding:16px 18px 18px;width:100%;overflow-wrap:anywhere';
   return element;
 }
 

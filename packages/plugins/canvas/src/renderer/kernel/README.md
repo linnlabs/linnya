@@ -2,6 +2,10 @@
 
 内核消费 Canvas 元素快照，拥有场景、相机、命中、交互意图和绘制资源，不拥有保存、正文解析、Agent、Host store 或 Vue 状态。`index.ts` 只暴露 `CanvasKernel` 合同与创建入口。Pixi 仅出现在 `render/pixi`。
 
+内部职责按资源生命周期划分：`createPixiCanvasKernel` 只初始化 Pixi Application，`PixiCanvasKernel` 连接逻辑/显示场景、相机和原生交互；`CanvasCardPresentation` 拥有卡片可见投影、纸面/身份牌及采样回执，`CanvasSelectionProjection` 拥有选择与对齐辅助层，`CanvasFrameDrawing` 独占身份牌准备任务、纯绘制 RAF、上下文状态与出图。正文/身份牌纹理所有权仍分别属于原缓存，不能因投影拆分再持有或释放一份资源。
+
+实时相机、尺寸、主题及 render 下界通过构造时绑定一次的窄读取端口提供，不为每卡/每帧创建上下文对象或复制场景。场景投影仍发生在原输入/任务阶段；标记的纯绘制闭包只执行 Pixi render 与计数。显式出图在身份牌准备完成后读取尺寸/主题，保留上下文世代的前后校验；销毁仍在下一 task 完整释放 Application 和背景纹理，避免原生 paint 微任务中的 context-loss 崩溃。
+
 `setElements(elements,{animateIds,batch})` 安装已提交或由调用方明确管理的场景投影；调用方根据正式提交来源选择动画ID，kernel不识别Agent。`setSelection` 只更新选择。`worldToScreen` / `screenToWorld` 是 DOM 编辑表面定位的共同坐标真源。Pointer 意图由 `onIntent` 发给 feature，最终移动在松手时产生；保存、冲突校验、撤销和组合多选移动由调用方负责。
 
 整代元素安装期间，位图owner仍同步取消过渡、释放纹理和关闭失效ImageBitmap；资源变化回调只在该同步作用域内省去对旧view的重复投影，末尾统一完成新代的可见性、样式和绘制安排。作用域由finally释放，独立内容失效、预算回收和fade完成仍立即更新视图。首次创建/直接移动仍先应用显示位置再计算可见片段，避免旧container边界裁掉新卡。

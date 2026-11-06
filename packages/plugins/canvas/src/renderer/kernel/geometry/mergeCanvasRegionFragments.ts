@@ -1,14 +1,25 @@
 import type { CanvasRectangle } from '../../../shared';
 
 function mergeAxis(regions: readonly CanvasRectangle[], axis: 'x' | 'y'): CanvasRectangle[] {
-  const cross = axis === 'x' ? 'y' : 'x', span = axis === 'x' ? 'width' : 'height', crossSpan = axis === 'x' ? 'height' : 'width';
-  const sorted = regions.slice().sort((a, b) => a[cross] - b[cross] || a[crossSpan] - b[crossSpan] || a[axis] - b[axis]);
+  const cross = axis === 'x' ? 'y' : 'x',
+    span = axis === 'x' ? 'width' : 'height',
+    crossSpan = axis === 'x' ? 'height' : 'width';
+  const sorted = regions
+    .slice()
+    .sort((a, b) => a[cross] - b[cross] || a[crossSpan] - b[crossSpan] || a[axis] - b[axis]);
   const result: CanvasRectangle[] = [];
   for (const region of sorted) {
     const previous = result[result.length - 1];
-    if (previous && previous[cross] === region[cross] && previous[crossSpan] === region[crossSpan]
-      && previous[axis] + previous[span] === region[axis]) {
-      result[result.length - 1] = { ...previous, [span]: region[axis] + region[span] - previous[axis] };
+    if (
+      previous &&
+      previous[cross] === region[cross] &&
+      previous[crossSpan] === region[crossSpan] &&
+      previous[axis] + previous[span] === region[axis]
+    ) {
+      result[result.length - 1] = {
+        ...previous,
+        [span]: region[axis] + region[span] - previous[axis],
+      };
     } else result.push(region);
   }
   return result;

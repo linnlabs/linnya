@@ -4,7 +4,8 @@ export function installCanvasResolutionObserver(changed: () => void): () => void
   const update = () => {
     query.removeEventListener('change', update);
     query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-    query.addEventListener('change', update); changed();
+    query.addEventListener('change', update);
+    changed();
   };
   query.addEventListener('change', update);
   return () => query.removeEventListener('change', update);
