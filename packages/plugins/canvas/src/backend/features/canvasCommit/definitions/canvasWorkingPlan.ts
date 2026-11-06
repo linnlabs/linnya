@@ -1,7 +1,12 @@
 import type { CanvasElementId } from '../../../../shared';
 import type { CanvasOperationResult } from '../../../../shared/changeset/definitions/canvasCommands';
 import type { CanvasRectangle } from '../../../../shared/geometry/definitions/canvasGeometry';
-import type { CanvasCommitActor, CanvasEditingClaim, CanvasElementChange, CanvasStoredElement } from './canvasCommit';
+import type {
+  CanvasCommitActor,
+  CanvasEditingClaim,
+  CanvasElementChange,
+  CanvasStoredElement,
+} from './canvasCommit';
 
 export interface CanvasWorkingPlan {
   origin: string;

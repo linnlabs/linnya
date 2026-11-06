@@ -1,11 +1,12 @@
 import type { PluginMigrationDefinition } from '@plugin/backend/pluginMigration';
 
 /** 未发布开发态收敛为唯一初始化schema；旧测试数据显式重建，不在读取链保留兼容分支。 */
-export const canvasPluginMigrations: readonly PluginMigrationDefinition[] = [{
-  version: 1,
-  description: 'Canvas content, bounded request receipts, approvals and reverse history',
-  up(database) {
-    database.exec(`
+export const canvasPluginMigrations: readonly PluginMigrationDefinition[] = [
+  {
+    version: 1,
+    description: 'Canvas content, bounded request receipts, approvals and reverse history',
+    up(database) {
+      database.exec(`
       CREATE TABLE canvas_documents (
         node_id TEXT PRIMARY KEY REFERENCES workspace_nodes(id) ON DELETE CASCADE,
         schema_version INTEGER NOT NULL DEFAULT 1,
@@ -85,5 +86,6 @@ CREATE TABLE canvas_versions (
       dirty_since INTEGER, reverse_blob BLOB, bytes_since_anchor INTEGER NOT NULL DEFAULT 0,
       used_bytes INTEGER NOT NULL DEFAULT 0, over_budget_bytes INTEGER NOT NULL DEFAULT 0
     );`);
+    },
   },
-}];
+];

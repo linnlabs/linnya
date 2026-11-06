@@ -4,7 +4,8 @@ import { canvasRectanglesOverlap } from '../../../../shared/geometry/functions/c
 /** 原位可用就精确恢复；被后来卡片占住时，取四个方向中最近的可用位置。 */
 export function findCanvasRestorationPosition(card: CanvasCard, occupied: readonly CanvasCard[]) {
   function position(direction: 'left' | 'right' | 'top' | 'bottom') {
-    let x = card.x; let y = card.y;
+    let x = card.x;
+    let y = card.y;
     for (;;) {
       const obstruction = occupied.find(other => canvasRectanglesOverlap({ ...card, x, y }, other));
       if (!obstruction) return { x, y };
@@ -14,5 +15,12 @@ export function findCanvasRestorationPosition(card: CanvasCard, occupied: readon
       if (direction === 'bottom') y = obstruction.y + obstruction.height + 32;
     }
   }
-  return [position('right'), position('top'), position('bottom')].reduce((best, candidate) => Math.hypot(best.x - card.x, best.y - card.y) <= Math.hypot(candidate.x - card.x, candidate.y - card.y) ? best : candidate, position('left'));
+  return [position('right'), position('top'), position('bottom')].reduce(
+    (best, candidate) =>
+      Math.hypot(best.x - card.x, best.y - card.y) <=
+      Math.hypot(candidate.x - card.x, candidate.y - card.y)
+        ? best
+        : candidate,
+    position('left')
+  );
 }

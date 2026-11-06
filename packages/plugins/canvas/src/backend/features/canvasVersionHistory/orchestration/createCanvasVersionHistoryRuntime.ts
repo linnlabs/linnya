@@ -1,130 +1,70 @@
-import { createCanvasVersionMaintenance } from './createCanvasVersionMaintenance';
-import { planCanvasVersionCheckpoint } from '../functions/planCanvasVersionCheckpoint';
-import { z } from 'zod';
-import { DocumentHistoryError } from '@plugin/backend/documentHistory';
-import type { DocumentVersionRestoreRequest, DocumentVersionSummary } from '@app/schemas';
-import { type CanvasSnapshot } from '../../../../shared';
-import { collectCanvasAssetIds } from '../../canvasDocument';
-import type { CanvasHistoryCommitInput } from '../../canvasCommit';
-import type { CanvasVersionHistoryOptions, CanvasVersionRecord, CanvasVersionBudgetStatus } from '../definitions/canvasVersionHistory';
+import type {
+  CanvasVersionHistoryOptions,
+  CanvasVersionBudgetStatus,
+} from '../definitions/canvasVersionHistory';
 import { createCanvasVersionRepository } from '../persistence/canvasVersionRepository';
-import { canvasVersionId, canvasVersionRecordBytes, summarizeCanvasVersion } from '../functions/canvasVersionIdentity';
-import { canvasVersionHash, canvasVersionSnapshot, decodeCanvasVersionInverse, encodeCanvasVersion, mergeCanvasVersionHead } from '../functions/canvasVersionCodec';
-import { validateCanvasVersionChain, reconstructCanvasVersion } from '../functions/reconstructCanvasVersions';
-import { planCanvasVersionCompaction } from '../functions/planCanvasVersionCompaction';
-
-export interface CanvasCheckpointInput {
-  readonly documentId: string; readonly reason: 'initialize' | 'idle' | 'interval' | 'close' | 'agent-group' | 'restore' | 'migration';
-  readonly now?: number; readonly snapshot?: CanvasSnapshot; readonly restoredFrom?: DocumentVersionSummary['restoredFrom'];
-}
-/** 版本历史与会话撤销分开。recordCommit 是内容事务的一员，计时/维护只在成功提交之后执行。 */
+import { createCanvasVersionMaintenance } from './createCanvasVersionMaintenance';
+import { createCanvasVersionReads } from './createCanvasVersionReads';
+import { createCanvasVersionCheckpoints } from './createCanvasVersionCheckpoints';
+import { createCanvasVersionCompactor } from './createCanvasVersionCompactor';
+import { createCanvasVersionCommitRecorder } from './createCanvasVersionCommitRecorder';
+export type { CanvasCheckpointInput } from '../definitions/canvasVersionRuntime';
+/** 组合读模型、恢复点、内容事务与维护；各流程不反向调用运行态。 */
 export function createCanvasVersionHistoryRuntime(options: CanvasVersionHistoryOptions) {
-  const repository = createCanvasVersionRepository(options.database), now = options.now ?? Date.now;
-  const budgetBytes = options.budgetBytes ?? 100 * 1024 * 1024;
-  function requiredHead(documentId: string) { const head = repository.readHead(documentId); if (!head) throw new DocumentHistoryError('history_unavailable'); return head; }
-  function list(documentId: string): DocumentVersionSummary[] { const head = repository.readHead(documentId); return head ? repository.readSummaries(documentId, head) : []; }
-  function retainedAssetIds(documentId: string): readonly string[] { return repository.retainedAssetIds(documentId); }
-  function budgetStatus(documentId: string): CanvasVersionBudgetStatus { const head = requiredHead(documentId); return { documentId, usedBytes: head.usedBytes, budgetBytes, overBudgetBytes: head.overBudgetBytes }; }
-  function initialize(documentId: string, timestamp = now(), supplied?: CanvasSnapshot): void {
-    options.database.transaction(() => {
-      if (repository.readHead(documentId)) return;
-      const snapshot = canvasVersionSnapshot(supplied ?? options.ports.readSnapshot(documentId));
-      if (snapshot.documentId !== documentId) throw new DocumentHistoryError('version_conflict');
-      const record: CanvasVersionRecord = { versionId: canvasVersionId(snapshot.sequence), sequence: snapshot.sequence, createdAt: timestamp, previousVersionId: null, hash: canvasVersionHash(snapshot), inverse: null, anchor: encodeCanvasVersion(snapshot), assetIds: collectCanvasAssetIds(snapshot.elements) };
-      repository.writeRecord(documentId, record);
-      const usedBytes = canvasVersionRecordBytes(record);
-      repository.writeHead(documentId, { latestVersionId: record.versionId, sequence: record.sequence, changedAt: timestamp, dirtySince: null, inverse: null, bytesSinceAnchor: 0, usedBytes, overBudgetBytes: Math.max(0, usedBytes - budgetBytes) });
-      options.ports.reconcileHistoryAssets(documentId, record.assetIds);
-    }).immediate();
-  }
-  function checkpoint(input: CanvasCheckpointInput): DocumentVersionSummary | null {
-    return options.database.transaction(() => {
-      const snapshot = canvasVersionSnapshot(input.snapshot ?? options.ports.readSnapshot(input.documentId));
-      initialize(input.documentId, input.now ?? now(), snapshot);
-      const head = requiredHead(input.documentId);
-      if (snapshot.documentId !== input.documentId || head.sequence !== snapshot.sequence) throw new DocumentHistoryError('version_conflict');
-      if (input.reason === 'migration' && head.latestVersionId === canvasVersionId(head.sequence)) {
-        const record = repository.readRecords(input.documentId).find(row => row.versionId === head.latestVersionId);
-        if (!record || canvasVersionHash(snapshot) !== record.hash) throw new DocumentHistoryError('version_corrupt');
-        if (!record.anchor) {
-          const anchor = encodeCanvasVersion(snapshot), usedBytes = head.usedBytes + anchor.byteLength;
-          repository.writeRecord(input.documentId, { ...record, anchor });
-          repository.writeHead(input.documentId, { ...head, bytesSinceAnchor: 0, usedBytes, overBudgetBytes: Math.max(0, usedBytes - budgetBytes) });
-        }
-        return summarizeCanvasVersion(record, true);
-      }
-      if ((head.dirtySince === null || !head.inverse) && input.reason !== 'migration') return null;
-      const planned = planCanvasVersionCheckpoint({ head, snapshot, budgetBytes, migration: input.reason === 'migration', restoredFrom: input.restoredFrom });
-      repository.writeRecord(input.documentId, planned.record);
-      repository.writeHead(input.documentId, planned.head);
-      options.ports.reconcileHistoryAssets(input.documentId, repository.retainedAssetIds(input.documentId));
-      return summarizeCanvasVersion(planned.record, true);
-    }).immediate();
-  }
-  function report(documentId: string, error: unknown): void { options.ports.reportFailure(documentId, error); }
-  function notifyBudget(status: CanvasVersionBudgetStatus): void { try { options.ports.budgetChanged?.(status); } catch (error) { report(status.documentId, error); } }
-  function compact(documentId: string): CanvasVersionBudgetStatus {
-    const head = requiredHead(documentId), records = repository.readRecords(documentId);
-    validateCanvasVersionChain(records, head);
-    const readCurrent = () => {
-      const snapshot = options.ports.readSnapshot(documentId);
-      if (snapshot.sequence !== head.sequence) throw new DocumentHistoryError('version_conflict');
-      return snapshot;
-    };
-    const readSnapshot = (versionId: string) => reconstructCanvasVersion({ documentId, versionId, records, head, readCurrent });
-    const protectedAssetIds = options.ports.protectedAssetIds(documentId), protectedAssets = new Set(protectedAssetIds);
-    const historicalAssets = [...new Set(records.flatMap(record => record.assetIds))].filter(id => !protectedAssets.has(id));
-    const rows = repository.readSummaries(documentId, head);
-    const plan = planCanvasVersionCompaction({ rows, records, readSnapshot, headBytes: head.inverse?.byteLength ?? 0, budgetBytes, assetFacts: options.ports.assetByteFacts(documentId, historicalAssets), protectedAssetIds });
-    const original = new Map(records.map(record => [record.versionId, record]));
-    options.database.transaction(() => {
-      const live = requiredHead(documentId);
-      if (live.sequence !== head.sequence || live.latestVersionId !== head.latestVersionId) throw new DocumentHistoryError('version_conflict');
-      for (const record of plan.records) if (original.get(record.versionId) !== record) repository.writeRecord(documentId, record);
-      if (plan.keepVersionIds.length !== records.length) repository.deleteExcept(documentId, plan.keepVersionIds);
-      if (live.usedBytes !== plan.usedBytes || live.overBudgetBytes !== plan.overBudgetBytes) {
-        repository.writeHead(documentId, { ...live, usedBytes: plan.usedBytes, overBudgetBytes: plan.overBudgetBytes });
-      }
-      options.ports.reconcileHistoryAssets(documentId, [...new Set(plan.records.flatMap(record => record.assetIds))]);
-    }).immediate();
-    const status = budgetStatus(documentId); notifyBudget(status); return status;
-  }
-  function recordCommit(history: CanvasHistoryCommitInput): (() => void) | undefined {
-    if (!history.plan.changes.length) return undefined;
-    const documentId = history.context.documentId;
-    const before = { schemaVersion: 1, documentId, sequence: history.before.sequence, elements: history.before.elements.map(row => row.element) } satisfies CanvasSnapshot;
-    initialize(documentId, history.context.now, before);
-    const head = requiredHead(documentId); if (head.sequence !== history.before.sequence) throw new DocumentHistoryError('version_conflict');
-    const inverse = mergeCanvasVersionHead(decodeCanvasVersionInverse(head.inverse), history.plan.changes);
-    const encoded = inverse.length ? encodeCanvasVersion(inverse) : null;
-    const usedBytes = head.usedBytes + (encoded?.byteLength ?? 0) - (head.inverse?.byteLength ?? 0);
-    repository.writeHead(documentId, { ...head, sequence: history.plan.state.sequence, changedAt: history.context.now, dirtySince: inverse.length ? head.dirtySince ?? history.context.now : null, inverse: encoded, usedBytes, overBudgetBytes: Math.max(0, usedBytes - budgetBytes) });
-    return () => {
-      // 通知和计时失败发生在正式提交以后，只报告；不能把已保存内容说成保存失败。
-      try {
-        maintenance.schedule(documentId);
-        const current = requiredHead(documentId);
-        // 新恢复点或载荷超预算才安排整理，不能为每个普通Agent增量反放历史。
-        if (head.latestVersionId === canvasVersionId(history.before.sequence)
-          || current.latestVersionId !== head.latestVersionId || current.overBudgetBytes > 0) maintenance.requestMaintenance(documentId);
-        notifyBudget(budgetStatus(documentId));
-      } catch (error) { report(documentId, error); }
-    };
-  }
-  function assertCurrent(request: Pick<DocumentVersionRestoreRequest, 'documentId' | 'expectedCurrentVersionId'>): void { if (canvasVersionId(requiredHead(request.documentId).sequence) !== request.expectedCurrentVersionId) throw new DocumentHistoryError('version_conflict'); }
-  function preview(documentId: string, versionId: string): CanvasSnapshot {
-    const head = requiredHead(documentId);
-    const readCurrent = () => { const current = options.ports.readSnapshot(documentId); if (current.sequence !== head.sequence) throw new DocumentHistoryError('version_conflict'); return current; };
-    if (versionId === canvasVersionId(head.sequence)) return canvasVersionSnapshot(readCurrent());
-    try { return reconstructCanvasVersion({ documentId, versionId, records: repository.readRecords(documentId), head, readCurrent }); }
-    catch (error) { if (error instanceof z.ZodError) throw new DocumentHistoryError('version_corrupt'); throw error; }
-  }
-  function prepareRestore(request: DocumentVersionRestoreRequest) {
-    assertCurrent(request); const target = list(request.documentId).find(row => row.versionId === request.versionId);
-    if (!target) throw new DocumentHistoryError('version_not_found');
-    return { snapshot: preview(request.documentId, request.versionId), target };
-  }
-  const maintenance = createCanvasVersionMaintenance({ now, readHead: repository.readHead, dirtyDocuments: repository.dirtyDocuments,
-    checkpoint(documentId, reason) { checkpoint({ documentId, reason }); }, compact, reportFailure: report });
-  return { initialize, recordCommit, checkpoint, list, preview, prepareRestore, assertCurrent, compact, retainedAssetIds, budgetStatus, requestMaintenance: maintenance.requestMaintenance, close: maintenance.close, dispose: maintenance.dispose };
+  const repository = createCanvasVersionRepository(options.database);
+  const dependencies = {
+    ...options,
+    repository,
+    now: options.now ?? Date.now,
+    budgetBytes: options.budgetBytes ?? 100 * 1024 * 1024,
+  };
+  const { requiredHead, ...queries } = createCanvasVersionReads(dependencies);
+  const { initialize, checkpoint } = createCanvasVersionCheckpoints({
+    ...dependencies,
+    requiredHead,
+  });
+  const report = (documentId: string, error: unknown) =>
+    options.ports.reportFailure(documentId, error);
+  const notifyBudget = (status: CanvasVersionBudgetStatus) => {
+    try {
+      options.ports.budgetChanged?.(status);
+    } catch (error) {
+      report(status.documentId, error);
+    }
+  };
+  const compact = createCanvasVersionCompactor({
+    ...dependencies,
+    requiredHead,
+    budgetStatus: queries.budgetStatus,
+    notifyBudget,
+  });
+  const maintenance = createCanvasVersionMaintenance({
+    now: dependencies.now,
+    readHead: repository.readHead,
+    dirtyDocuments: repository.dirtyDocuments,
+    checkpoint(documentId, reason) {
+      checkpoint({ documentId, reason });
+    },
+    compact,
+    reportFailure: report,
+  });
+  const recordCommit = createCanvasVersionCommitRecorder({
+    ...dependencies,
+    requiredHead,
+    initialize,
+    maintenance,
+    report,
+    notifyBudget,
+    budgetStatus: queries.budgetStatus,
+  });
+  return {
+    initialize,
+    recordCommit,
+    checkpoint,
+    ...queries,
+    compact,
+    requestMaintenance: maintenance.requestMaintenance,
+    close: maintenance.close,
+    dispose: maintenance.dispose,
+  };
 }

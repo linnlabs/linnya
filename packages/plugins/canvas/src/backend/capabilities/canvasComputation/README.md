@@ -7,3 +7,5 @@
 正常任务顺序复用一个计算线程，保留已加载的ELK；空闲unref，不阻止进程退出。取消、超时、协议异常或线程失败时终止旧线程，等终止完成才接纳下一任务。销毁会拒绝待办并终止运行/空闲线程。线程复用参考[Node Worker文档](https://nodejs.org/api/worker_threads.html)，不引入通用线程池依赖。不能在失败后悄悄同步计算或返回估算结果。
 
 layout请求必须携带正式requestId。客户端将响应computation中的requestId、snapshot sequence及algorithm与在途请求核对后才接纳；executionMs由实际算法Worker填入，能力层不测含队列/IPC的总时长，也不为失败或取消造0ms记录。
+
+运行态持有待办队列、线程复用和销毁；`createCanvasComputationJob` 只拥有单个在途任务的响应身份校验、监听器、超时和结算。运行态先登记当前任务再开始投递，任务结算后由运行态决定复用或终止线程，不让旧任务的清理管理后继任务。

@@ -2,7 +2,11 @@ import { ZodError } from 'zod';
 import { Logger } from '@plugin/backend/workspaceRuntime';
 import { CanvasCliFailure, formatCanvasCliInputError } from '../features/canvasCli';
 import { CanvasDocumentFailure } from '../features/canvasDocument';
-import { CanvasReadOnlyFormatError, CanvasContentPolicyError, CanvasCommitFailure } from '../features/canvasCommit';
+import {
+  CanvasReadOnlyFormatError,
+  CanvasContentPolicyError,
+  CanvasCommitFailure,
+} from '../features/canvasCommit';
 import { CanvasWriteFailure } from '../features/canvasWrite';
 import { CanvasRenderingError } from '../features/canvasRender';
 
@@ -26,20 +30,43 @@ const messages: Readonly<Record<string, string>> = {
 
 /** Renderer 和 CLI 使用同一业务失败投影；只有未识别异常才算运行错误。 */
 export function projectCanvasBusinessFailure(error: unknown) {
-  if (error instanceof CanvasDocumentFailure || error instanceof CanvasRenderingError || error instanceof CanvasReadOnlyFormatError || error instanceof CanvasContentPolicyError || error instanceof CanvasCommitFailure) return { code: error.code, message: error.message };
-  if (error instanceof CanvasWriteFailure) return { code: error.code, message: error.message, operation: error.operation, field: error.field };
-  if (error instanceof Error && messages[error.message]) return { code: error.message, message: messages[error.message] };
-  if (error instanceof Error && error.name === 'AbortError') return { code: 'cancelled', message: '操作已取消。' };
+  if (
+    error instanceof CanvasDocumentFailure ||
+    error instanceof CanvasRenderingError ||
+    error instanceof CanvasReadOnlyFormatError ||
+    error instanceof CanvasContentPolicyError ||
+    error instanceof CanvasCommitFailure
+  )
+    return { code: error.code, message: error.message };
+  if (error instanceof CanvasWriteFailure)
+    return {
+      code: error.code,
+      message: error.message,
+      operation: error.operation,
+      field: error.field,
+    };
+  if (error instanceof Error && messages[error.message])
+    return { code: error.message, message: messages[error.message] };
+  if (error instanceof Error && error.name === 'AbortError')
+    return { code: 'cancelled', message: '操作已取消。' };
   return null;
 }
 /** 未识别的异常保留在Host日志；模型输出不携带磁盘路径、SQL或内部身份。 */
 export function createCanvasCliFailureProjector(logger: Logger) {
   return (error: unknown) => {
-    if (error instanceof ZodError || error instanceof CanvasCliFailure) return formatCanvasCliInputError(error);
+    if (error instanceof ZodError || error instanceof CanvasCliFailure)
+      return formatCanvasCliInputError(error);
     const business = projectCanvasBusinessFailure(error);
     if (business) return business;
-    if (error instanceof SyntaxError) return { code: 'invalid_json', message: 'ops-file必须是UTF-8 JSON操作数组，请修正语法后再提交。' };
+    if (error instanceof SyntaxError)
+      return {
+        code: 'invalid_json',
+        message: 'ops-file必须是UTF-8 JSON操作数组，请修正语法后再提交。',
+      };
     logger.error('Canvas CLI执行失败', { error });
-    return { code: 'operation_failed', message: '操作失败，详细原因已记入应用日志。本次请求可用同一request-id查询或重试。' };
+    return {
+      code: 'operation_failed',
+      message: '操作失败，详细原因已记入应用日志。本次请求可用同一request-id查询或重试。',
+    };
   };
 }

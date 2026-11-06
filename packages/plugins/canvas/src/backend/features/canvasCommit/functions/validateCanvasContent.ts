@@ -10,7 +10,8 @@ export function validateCanvasTextContent(content: CanvasTextDocument): void {
   function visit(node: CanvasContentNode) {
     if (node.type === 'image') {
       const assetId = node.attrs?.assetId;
-      if (typeof assetId !== 'string' || !assetId || node.attrs?.src !== `asset:${assetId}`) throw new CanvasContentPolicyError();
+      if (typeof assetId !== 'string' || !assetId || node.attrs?.src !== `asset:${assetId}`)
+        throw new CanvasContentPolicyError();
     }
     for (const child of node.content ?? []) visit(child);
   }
@@ -19,10 +20,20 @@ export function validateCanvasTextContent(content: CanvasTextDocument): void {
 /** 原始命令正文即使之后因租约/旧实例跳过，也不能把坏格式洗成合法批次。 */
 export function validateCanvasCommandContent(command: CanvasCommand): void {
   if (command.op === 'addText') validateCanvasTextContent(command.content);
-  if (command.op === 'update' && command.patch.data && 'content' in command.patch.data) validateCanvasTextContent(command.patch.data.content);
+  if (command.op === 'update' && command.patch.data && 'content' in command.patch.data)
+    validateCanvasTextContent(command.patch.data.content);
 }
 /** 恢复/撤回也经共同提交，不让可信历史绕过当前正文合同。 */
 export function validateCanvasPlanContent(plan: CanvasCommitPlan): void {
-  const changed = new Set(plan.changes.filter(change => change.after?.type === 'text' && (!change.before || change.fields.includes('data'))).map(change => change.id));
-  for (const row of plan.state.elements) if (row.element.type === 'text' && changed.has(row.element.id)) validateCanvasTextContent(row.element.data.content);
+  const changed = new Set(
+    plan.changes
+      .filter(
+        change =>
+          change.after?.type === 'text' && (!change.before || change.fields.includes('data'))
+      )
+      .map(change => change.id)
+  );
+  for (const row of plan.state.elements)
+    if (row.element.type === 'text' && changed.has(row.element.id))
+      validateCanvasTextContent(row.element.data.content);
 }

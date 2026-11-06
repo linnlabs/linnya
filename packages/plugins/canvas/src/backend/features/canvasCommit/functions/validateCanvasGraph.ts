@@ -7,7 +7,8 @@ type Edge = Extract<CanvasElement, { type: 'edge' }>;
 
 function validateEdge(edge: Edge, cards: ReadonlyMap<string, Card>, edges: Set<string>) {
   for (const endpoint of [edge.from, edge.to]) {
-    if (endpoint.kind === 'card' && !cards.has(endpoint.cardId)) throw new CanvasCommitFailure('canvas_endpoint_missing');
+    if (endpoint.kind === 'card' && !cards.has(endpoint.cardId))
+      throw new CanvasCommitFailure('canvas_endpoint_missing');
   }
   if (edge.from.kind !== 'card' || edge.to.kind !== 'card') return;
   if (edge.from.cardId === edge.to.cardId) throw new CanvasCommitFailure('canvas_self_connection');
@@ -22,14 +23,17 @@ function validateGrouping(card: Card, cards: ReadonlyMap<string, Card>, complete
   while (current && !completed.has(current.id)) {
     if (chain.has(current.id)) throw new CanvasCommitFailure('canvas_group_cycle');
     chain.add(current.id);
-    if (current.parentId && !cards.has(current.parentId)) throw new CanvasCommitFailure('canvas_group_parent_missing');
+    if (current.parentId && !cards.has(current.parentId))
+      throw new CanvasCommitFailure('canvas_group_parent_missing');
     current = current.parentId ? cards.get(current.parentId) : undefined;
   }
   for (const id of chain) completed.add(id);
 }
 
 export function validateCanvasGraph(elements: readonly CanvasElement[]): void {
-  const cards = new Map(elements.flatMap(element => element.type === 'edge' ? [] : [[element.id, element] as const]));
+  const cards = new Map(
+    elements.flatMap(element => (element.type === 'edge' ? [] : [[element.id, element] as const]))
+  );
   const edges = new Set<string>();
   const completed = new Set<string>();
   for (const element of elements) {
