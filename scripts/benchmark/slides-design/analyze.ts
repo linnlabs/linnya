@@ -15,15 +15,13 @@ import { promisify } from 'node:util';
 import sharp, { type OverlayOptions } from 'sharp';
 import {
   READING_MODE_FONT_FLOOR_REFERENCE_WIDTH_IN,
-  READING_MODE_FONT_FLOORS_PT,
-} from '../../../packages/plugins/slides/src/backend/engine/quality/aesthetic/thresholds';
+  resolveReadingModeFontFloor,
+  type ReadingMode,
+} from '@plugin/slides/shared';
 
 const run = promisify(execFile);
 const repoRoot = path.resolve(import.meta.dirname, '../../..');
 
-type ReadingMode = keyof typeof READING_MODE_FONT_FLOORS_PT;
-const CAPTION_ROLES = new Set(['caption', 'label', 'annotation', 'axis-label']);
-const CHROME_ROLES = new Set(['footnote', 'source', 'page-number']);
 const ANALYZE_CONCURRENCY = 3;
 
 interface BatchRun {
@@ -165,7 +163,6 @@ function analyzeSpec(deck: Record<string, unknown>) {
   const height = (width * 9) / 16;
   const pageArea = width * height;
   const reading = ((deck.theme as { reading?: ReadingMode } | undefined)?.reading ?? 'mixed') as ReadingMode;
-  const floors = READING_MODE_FONT_FLOORS_PT[reading];
   const scale = width / READING_MODE_FONT_FLOOR_REFERENCE_WIDTH_IN;
   const slides = (deck.slides as { spec: Record<string, unknown> }[]) ?? [];
   let chars = 0;
@@ -186,7 +183,7 @@ function analyzeSpec(deck: Record<string, unknown>) {
     for (const element of elements.filter(candidate => candidate.type === 'text')) {
       const role = String(element._semanticRole ?? element.role ?? '').toLowerCase();
       if (role === 'decoration') continue;
-      const floor = Math.round((CHROME_ROLES.has(role) ? floors.chrome : CAPTION_ROLES.has(role) ? floors.caption : floors.body) * scale * 4) / 4;
+      const floor = resolveReadingModeFontFloor(role, reading, width);
       for (const { text, size } of textRuns(element)) {
         const count = text.replace(/\s/gu, '').length;
         chars += count;

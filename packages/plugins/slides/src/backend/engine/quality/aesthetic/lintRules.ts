@@ -31,15 +31,13 @@ import {
 import { clusterByGranularity, findContainingShape } from './elementUtils.js';
 import { buildDiagnosticNodeRef } from '../functions/buildDiagnosticNodeRef.js';
 import type { ChromaticSample } from './colorSampling.js';
-import type { ReadingMode } from '@plugin/slides/shared/readingMode';
+import { resolveReadingModeFontFloor, type ReadingMode } from '@plugin/slides/shared/readingMode';
 import {
   EDGE_MARGIN_MIN_IN,
   FONT_FAMILY_COUNT_PER_SCRIPT_LIMIT,
   FONT_SIZE_ANNOTATION_RECOMMENDED_FLOOR_PT,
   FONT_SIZE_NEAR_UNREADABLE_PT,
   FONT_SIZE_RECOMMENDED_FLOOR_PT,
-  READING_MODE_FONT_FLOOR_REFERENCE_WIDTH_IN,
-  READING_MODE_FONT_FLOORS_PT,
   FONT_SIZE_TIER_GRANULARITY_PT,
   FONT_SIZE_TIER_LIMIT,
   FULL_BLEED_RATIO,
@@ -511,8 +509,6 @@ export function lintFontSizeFloor(
 }
 
 const SMALL_TEXT_ROLES = new Set(['annotation', 'axis-label', 'caption', 'footnote', 'label', 'source']);
-const CAPTION_TEXT_ROLES = new Set(['annotation', 'axis-label', 'caption', 'label']);
-const CHROME_TEXT_ROLES = new Set(['footnote', 'page-number', 'source']);
 
 function collectElementFontSizes(element: SlideElementInfo): number[] {
   const runSizes = element.paragraphs
@@ -530,21 +526,6 @@ function resolveRecommendedFontFloor(semanticRole: string | undefined): number {
   return semanticRole != null && SMALL_TEXT_ROLES.has(semanticRole.trim().toLowerCase())
     ? FONT_SIZE_ANNOTATION_RECOMMENDED_FLOOR_PT
     : FONT_SIZE_RECOMMENDED_FLOOR_PT;
-}
-
-function resolveReadingModeFontFloor(
-  semanticRole: string | undefined,
-  readingMode: ReadingMode,
-  slideWidthIn: number,
-): number {
-  const floors = READING_MODE_FONT_FLOORS_PT[readingMode];
-  const role = semanticRole?.trim().toLowerCase() ?? '';
-  const base = CHROME_TEXT_ROLES.has(role)
-    ? floors.chrome
-    : CAPTION_TEXT_ROLES.has(role) ? floors.caption : floors.body;
-  const scale = slideWidthIn > 0 ? slideWidthIn / READING_MODE_FONT_FLOOR_REFERENCE_WIDTH_IN : 1;
-  // 折算到 0.25pt，避免 13.33 与 13.333 这类页宽差异产生 13.99pt 之类的阈值。
-  return Math.round(base * scale * 4) / 4;
 }
 
 // ─── P1 Tier-1: Font Size Tiers ─────────────────────────────────────────────
