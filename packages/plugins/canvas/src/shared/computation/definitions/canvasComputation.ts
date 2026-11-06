@@ -1,4 +1,7 @@
-import type { CanvasLayoutRequest, CanvasLayoutResult } from '../../layout/definitions/canvasLayout';
+import type {
+  CanvasLayoutRequest,
+  CanvasLayoutResult,
+} from '../../layout/definitions/canvasLayout';
 import type { CanvasSnapshot } from '../../model/definitions/canvasElement';
 import type { CanvasCheckReport } from '../../query/definitions/canvasCheck';
 

@@ -184,7 +184,7 @@ it.each(['allow', 'deny', 'replace'] as const)('anchors the actual group start b
   const id = createCanvas('待审批组.canvas'); commit(id, Array.from({ length: 20 }, (_, index) => text(`用户原卡${index}`)));
   const before = runtime.read(id), original = await latest(id);
   const actor = { projectId, viewId: 'agent', source: { kind: 'agent' as const, conversationId: 'approval-chat', runId: 'approval-run' } };
-  const operations = before.elements.map(element => ({ op: 'delete', id: element.id }));
+  const operations = before.elements.map(element => ({ op: 'delete', id: element.id, baseRevision: element.revision }));
   const pending = runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'first-pending', operations } });
   if (pending.kind !== 'pending') throw new Error('Expected actual pending approval');
   expect(runtime.read(id)).toEqual(before);
@@ -214,11 +214,12 @@ it('anchors an all-skipped new group once and does not treat a withdrawn empty o
   const id = createCanvas('全保留组.canvas'); commit(id, [text('用户原文')]);
   const before = runtime.read(id), original = await latest(id);
   const actor = { projectId, viewId: 'agent', source: { kind: 'agent' as const, conversationId: 'skip-chat', runId: 'skip-run' } };
-  runtime.protect({ documentId: id, viewId: 'other-editor', elementId: 'c1', fields: ['data'] });
+  runtime.read(id, projectId, 'other-editor');
+  runtime.protect({ documentId: id, viewId: 'other-editor', claims: [{ elementId: 'c1', fields: ['data'] }] });
   const skipped = runtime.editing.commitAgent({ actor, now: Date.now(), request: { documentId: id, requestId: 'protected-write', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { data: { contentVersion: 1, content: createCanvasPlainTextDocument('Agent首尝试') } } }] } });
   expect(skipped).toMatchObject({ kind: 'committed', commit: { sequence: before.sequence, results: [{ status: 'skipped', reason: 'user_editing' }] } });
   const group = runtime.editing.listGroups(id, Date.now())[0]; if (!group) throw new Error('Missing skipped group');
-  runtime.protect({ documentId: id, viewId: 'other-editor', elementId: 'c1', fields: [] });
+  runtime.protect({ documentId: id, viewId: 'other-editor', claims: [] });
   commit(id, [text('用户后加')]); const intermediate = await latest(id);
   expect((await runtime.history.list(id)).map(row => row.versionId)).toContain(original.versionId);
   expect(await runtime.history.preview(id, original.versionId)).toEqual(before);
@@ -236,8 +237,8 @@ it.each(['pending', 'commit'] as const)('rolls a new %s group, its pre-group che
   const id = createCanvas('新组事务失败.canvas'); commit(id, Array.from({ length: mode === 'pending' ? 20 : 1 }, (_, index) => text(`用户原卡${index}`)));
   const before = runtime.read(id), original = await latest(id), versions = await runtime.history.list(id);
   const actor = { projectId, viewId: 'agent', source: { kind: 'agent' as const, conversationId: 'rollback-chat', runId: 'rollback-run' } };
-  const operations = mode === 'pending' ? before.elements.map(element => ({ op: 'delete', id: element.id })) : [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }];
-  const table = mode === 'pending' ? 'canvas_pending_approvals' : 'canvas_agent_requests';
+  const operations = mode === 'pending' ? before.elements.map(element => ({ op: 'delete', id: element.id, baseRevision: element.revision })) : [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }];
+  const table = mode === 'pending' ? 'canvas_pending_approvals' : 'canvas_agent_groups';
   database.exec(`CREATE TRIGGER fail_new_canvas_group BEFORE INSERT ON ${table} BEGIN SELECT RAISE(ABORT, 'new group transaction failed'); END`);
   publishPluginRendererPush.mockClear();
   try {

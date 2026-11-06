@@ -36,6 +36,10 @@ class FakeWebContents implements HiddenWorkerWebContentsLike {
     this.listeners.get(event)?.delete(listener);
   }
 
+  emit(event: string, ...values: readonly unknown[]): void {
+    for (const listener of this.listeners.get(event) ?? []) listener(...values);
+  }
+
   isDestroyed(): boolean {
     return false;
   }
@@ -162,10 +166,22 @@ function createHost(input: {
         createCancelPayload: requestId => ({ requestId }),
       })
     : new HiddenWorkerHost(common);
-  return { host, window, ipcMain };
+  return { host, window, ipcMain, logger: common.logger };
 }
 
 describe('HiddenWorkerHost cancellation', () => {
+  it('后台记录worker异常及来源，销毁后移除日志订阅', async () => {
+    const fixture = createHost({ supportsCancellation: false });
+    await fixture.host.ensureReady();
+    const details = { level: 'error', message: 'render failed: test-stack', sourceId: 'plugin://worker.js', lineNumber: 42 };
+    fixture.window.webContents.emit('console-message', details);
+    expect(fixture.logger.error).toHaveBeenCalledWith('Hidden worker console error', { workerId: 'test-worker', message: details.message, sourceId: details.sourceId, lineNumber: 42 });
+    fixture.window.webContents.emit('console-message', { ...details, level: 'info' });
+    expect(fixture.logger.error).toHaveBeenCalledOnce();
+    fixture.host.dispose();
+    fixture.window.webContents.emit('console-message', details);
+    expect(fixture.logger.error).toHaveBeenCalledOnce();
+  });
   it('并发调用共享尚未 ready 的启动过程，不提前公开 worker 窗口', async () => {
     const fixture = createHost({ supportsCancellation: false, autoReady: false });
 

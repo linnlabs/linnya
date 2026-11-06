@@ -29,6 +29,7 @@ port，不新增插件接口，也不改变 Renderer 的 Slides raster 等交互
 Hidden Worker 的 register/touch/invalidate 使用严格小 DTO；ready 与 invoke 使用带随机 operation/token 的 AppData
 私有 mailbox，因此 Slides 请求和 PNG 结果不会进入 1 MiB JSON frame。Desktop handler 由 composition 注入
 artifact path admission，Backend 不能借 worker descriptor 加载任意 HTML 或 preload。
+隐藏页面的 error/warning 控制台诊断由窗口 owner 接入 HostLogger，随窗口销毁解除监听；只传文本与源码位置，不传 Renderer/Electron 对象。插件应记录请求标识和异常原因，避免记录正文或资产字节；公开调用结果仍按 codec 返回稳定错误。
 
 Browser Pretext 文本测量也沿同一宿主边界拆分，但不并入插件 hidden worker 接口：Backend 继续拥有
 `MeasurementClient`、LRU cache、异步 prewarm 与同步 cache read/fallback 语义；Desktop Host 只拥有不可见

@@ -32,7 +32,7 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 
 ## 验证
 
-插件自身提供 typecheck、test、lint、build 入口。测试覆盖真实提交/重开、失败回滚、并发/撤回与插件生命周期；技术探针放在 `dev/probes`，本地结果不成为构建依赖。插件不属于默认官方发行目标。
+插件自身提供 typecheck、test、lint、build 入口。guard同时按仓内Prettier配置检查正式src文件，禁止压行规避物理行计量；保留120行函数上限及文件600提醒、700职责审查、800失败规则，不因格式化放宽阈值。测试覆盖真实提交/重开、失败回滚、并发/撤回与插件生命周期；技术探针放在 `dev/probes`，本地结果不成为构建依赖。插件不属于默认官方发行目标。
 
 [Canvas Regression](../../../.github/workflows/canvas-regression.yml) 在 macOS、Windows、Linux 分别验证业务结果、离屏绘制的确定性工作量、同机DOM与位图内容以及独立Canvas制品闭包，并保留合成图像证据。身份牌与远景标签像素另由现有 `run-identity-atlas-probe.mjs` 独立验证，归档其PNG与JSON；依赖及平台准备成功后，即使前面的视觉门失败也继续运行，任一失败仍使作业失败。Linux使用Xvfb、sandbox与显式软件后端，软件出图只提供功能资格。Linux不代表新增Desktop发行平台，制品验收也不会改变官方发行目标。共享CI不比较帧耗时，也不能代替真实GPU、输入法和屏幕交互验收。固定模型任务与完整证据的评分入口见 [Agent验收](./scripts/agent-evaluation/README.md)；模型评测与无凭据CI分开运行。
 

@@ -20,8 +20,19 @@ const dark: Readonly<Record<CanvasColor, CanvasCardPalette>> = {
   cyan: { paper: 0x252e31, title: 0xddeff4, body: 0xb5c8ce, muted: 0x82969c },
   purple: { paper: 0x302a31, title: 0xf2e7f3, body: 0xcbc0cd, muted: 0x9a8d9b },
 };
-export function readCanvasCardPalette(color: CanvasColor, isDark: boolean): CanvasCardPalette { return (isDark ? dark : light)[color]; }
-export function readCanvasCardCssPalette(color: CanvasColor, isDark: boolean): CanvasCardCssPalette {
-  const palette = readCanvasCardPalette(color, isDark), css = (value: number) => `#${value.toString(16).padStart(6, '0')}`;
-  return { paper: css(palette.paper), title: css(palette.title), body: css(palette.body), muted: css(palette.muted) };
+export function readCanvasCardPalette(color: CanvasColor, isDark: boolean): CanvasCardPalette {
+  return (isDark ? dark : light)[color];
+}
+export function readCanvasCardCssPalette(
+  color: CanvasColor,
+  isDark: boolean
+): CanvasCardCssPalette {
+  const palette = readCanvasCardPalette(color, isDark),
+    css = (value: number) => `#${value.toString(16).padStart(6, '0')}`;
+  return {
+    paper: css(palette.paper),
+    title: css(palette.title),
+    body: css(palette.body),
+    muted: css(palette.muted),
+  };
 }

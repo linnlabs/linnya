@@ -21,6 +21,11 @@ let runtime: ReturnType<typeof createCanvasDocumentRuntime>;
 let projectId: string;
 const push = vi.fn();
 const text = (value: string) => ({ op: 'addText', content: createCanvasPlainTextDocument(value), width: 240, height: 120 });
+// 手工驱动Renderer入口时也先完成read注册；关闭/崩溃后的旧view不能靠写入偷偷重建。
+function commitInView(input: { documentId: string; viewId: string; requestId: string; operations: readonly unknown[] }) {
+  runtime.read(input.documentId, projectId, input.viewId);
+  return runtime.commit(input);
+}
 beforeEach(() => {
   db = new Database(':memory:'); db.pragma('foreign_keys = ON');
   for (const ddl of [...CORE_SCHEMAS, ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS, ...CONVERSATION_SCHEMAS, ...ASSET_LEDGER_SCHEMAS]) db.exec(ddl);
@@ -40,10 +45,10 @@ beforeEach(() => {
 it('refreshes a closed canvas from a single committed version and keeps the sent snapshot immutable', () => {
   const id = runtime.create({ projectId, parentId: null, name: '发送.canvas' });
   db.prepare('INSERT INTO conversations(conversation_id,created_at,last_event_at,project_id) VALUES (?,1,1,?)').run('chat', projectId);
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('旧正文')] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('旧正文')] });
   runtime.close(id, 'view');
   const first = readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], conversationId: 'chat' });
-  runtime.commit({ documentId: id, viewId: 'another', requestId: 'edit', operations: [{ op: 'update', id: 'c1', baseRevision: 1,
+  commitInView({ documentId: id, viewId: 'another', requestId: 'edit', operations: [{ op: 'update', id: 'c1', baseRevision: 1,
     patch: { data: { contentVersion: 1, content: createCanvasPlainTextDocument('最新正文') } } }] });
   const refreshed = readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'], conversationId: 'chat' });
   expect(refreshed.sequence).toBe(2); expect(refreshed.text).toContain('最新正文');
@@ -55,8 +60,8 @@ it('refreshes a closed canvas from a single committed version and keeps the sent
 });
 it('sends only the committed deletion notice for an empty selection and rejects copying it', async () => {
   const id = runtime.create({ projectId, parentId: null, name: '删除.canvas' });
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('已选择')] });
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'delete', operations: [{ op: 'delete', id: 'c1' }] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('已选择')] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'delete', operations: [{ op: 'delete', id: 'c1' }] });
   const context = readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1'] });
   expect(context).toMatchObject({ sequence: 2, elementIds: [] });
   expect(context.text).toContain('已全部删除'); expect(context.text).not.toContain('已选择');
@@ -67,8 +72,8 @@ it('sends only the committed deletion notice for an empty selection and rejects 
 });
 it('refreshes a partially deleted selection using only remaining committed cards', () => {
   const id = runtime.create({ projectId, parentId: null, name: '部分.canvas' });
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('已删除'), text('仍存在')] });
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'delete', operations: [{ op: 'delete', id: 'c1' }] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'add', operations: [text('已删除'), text('仍存在')] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'delete', operations: [{ op: 'delete', id: 'c1' }] });
   const context = readCanvasSelectionContext(db, { documentId: id, elementIds: ['c1', 'c2'] });
   expect(context.elementIds).toEqual(['c2']); expect(context.text).toContain('仍存在'); expect(context.text).not.toContain('已删除');
 });
@@ -80,7 +85,7 @@ afterEach(async () => {
 it('creates, commits, closes and reopens through actual Host projection and current paths', () => {
   const id = runtime.create({ projectId, parentId: null, name: '讨论' });
   runtime.read(id, projectId, 'view');
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'first', operations: [text('中文正文')] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'first', operations: [text('中文正文')] });
   expect(push).toHaveBeenCalledWith(expect.objectContaining({ channel: 'canvas:changed', payload: expect.objectContaining({ documentId: id, sequence: 1, sourceKind: 'user', changedElementCount: 1, committedAt: expect.any(Number) }) }));
   runtime.close(id, 'view');
   expect(runtime.read(id).elements).toHaveLength(1);
@@ -90,15 +95,32 @@ it('creates, commits, closes and reopens through actual Host projection and curr
   workspace.renameNode(id, '重命名.canvas');
   expect(readWorkspaceDocumentLocation(db, id)?.path).toContain('重命名.canvas');
 });
+
+it('releases the actual Host view on Renderer loss and rejects writes that try to recreate it', () => {
+  const id = runtime.create({ projectId, parentId: null, name: '重载.canvas' });
+  const session = new AbortController();
+  runtime.read(id, projectId, 'old-view', { rendererSessionId: 'old-window', signal: session.signal });
+  runtime.commit({ documentId: id, viewId: 'old-view', requestId: 'before-reload', operations: [text('已保存')] });
+  runtime.protect({ documentId: id, viewId: 'old-view', claims: [{ elementId: 'c1', fields: ['data'] }] });
+  expect(runtime.editing.status(id, 'old-view').canUndo).toBe(true);
+  session.abort();
+  expect(runtime.editing.status(id, 'old-view')).toEqual({ canUndo: false, canRedo: false });
+  expect(db.prepare('SELECT count(*) AS n FROM canvas_editing_claims WHERE view_id = ?').get('old-view')).toEqual({ n: 0 });
+  expect(() => runtime.commit({ documentId: id, viewId: 'old-view', requestId: 'late-write', operations: [text('不得重新登记')] })).toThrow('视图已关闭');
+  expect(runtime.read(id).elements).toHaveLength(1);
+  runtime.read(id, projectId, 'new-view', { rendererSessionId: 'new-window', signal: new AbortController().signal });
+  runtime.commit({ documentId: id, viewId: 'new-view', requestId: 'after-reload', operations: [text('重载后')] });
+  expect(runtime.read(id).elements).toHaveLength(2);
+});
 it('keeps references atomic and hides moved targets without retargeting a reused name', () => {
   const workspace = new WorkspaceService(db);
   const target = workspace.createNode({ projectId, parentId: null, type: 'document', name: '资料' });
   const id = runtime.create({ projectId, parentId: null, name: '引用' });
   const operations = [{ op: 'addDocument', data: { documentId: target.id }, width: 240, height: 180 }];
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'reference', operations });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'reference', operations });
   const refs = createDocumentReferenceOperations(db, { read: key => readWorkspaceDocumentIdentity(db, key) });
   expect(refs.listBacklinks(target.id)).toHaveLength(1);
-  expect(() => runtime.commit({ documentId: id, viewId: 'view', requestId: 'bad', operations: [text('整批回滚'), { ...operations[0], data: { documentId: 'missing' } }] })).toThrow();
+  expect(() => commitInView({ documentId: id, viewId: 'view', requestId: 'bad', operations: [text('整批回滚'), { ...operations[0], data: { documentId: 'missing' } }] })).toThrow();
   expect(runtime.read(id).elements).toHaveLength(1);
   const otherProject = createProjectLifecycle(db).create({ name: '另一项目' });
   db.prepare('UPDATE workspace_nodes SET project_id = ? WHERE id = ?').run(otherProject, target.id);
@@ -160,7 +182,7 @@ it('runs the real semantic CLI against Host SQLite with frozen scope, idempotent
     await writeFile(path.join(root, 'append.json'), JSON.stringify([{ op: 'update', id: 'c1', revision: runtime.read(id).elements.find(element => element.id === 'c1')!.revision, append: '只追加一次' }]));
     const append = ['apply', 'workspace:/命令.canvas', '--ops-file', 'append.json', '--request-id', 'append'];
     const first = await run(append); expect(first.exitCode).toBe(0);
-    runtime.commit({ documentId: id, viewId: 'view', requestId: 'change-color', operations: [{ op: 'update', id: 'c1', baseRevision: runtime.read(id).elements.find(element => element.id === 'c1')!.revision, patch: { color: 'yellow' } }] });
+    commitInView({ documentId: id, viewId: 'view', requestId: 'change-color', operations: [{ op: 'update', id: 'c1', baseRevision: runtime.read(id).elements.find(element => element.id === 'c1')!.revision, patch: { color: 'yellow' } }] });
     const appendReplay = await run(append); expect(receipt.parse(JSON.parse(appendReplay.stdout))).toEqual(receipt.parse(JSON.parse(first.stdout)));
     expect(JSON.parse(appendReplay.stdout)).toMatchObject({ replayed: true, computation: null });
     const shown = await run(['show', 'workspace:/命令.canvas', 'c1']);
@@ -196,7 +218,7 @@ it('reads standalone queries from a genuinely read-only connection without creat
   const { readCanvasStandalone } = await import('@plugin/canvas/backend-test-support');
   const directory = await mkdtemp(path.join(tmpdir(), 'canvas-readonly-')); const file = path.join(directory, 'workspace.sqlite');
   const id = runtime.create({ projectId, parentId: null, name: '只读.canvas' });
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'readonly-source', operations: [text('可读不可写')] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'readonly-source', operations: [text('可读不可写')] });
   const agent = runtime.editing.commitAgent({ request: { documentId: id, requestId: 'readonly-receipt', operations: [text('原始Agent回执')] }, actor: { projectId, viewId: 'agent', source: { kind: 'agent', conversationId: 'chat', runId: 'run' } }, now: Date.now() });
   if (agent.kind !== 'committed') throw new Error('expected committed fixture');
   await db.backup(file);
@@ -215,7 +237,7 @@ it('reads standalone queries from a genuinely read-only connection without creat
 it('holds images for durable pending approval and keeps the prior proposal when replacement admission fails', () => {
   db.prepare('INSERT INTO assets(id, uri, storage_status, created_at, size_bytes) VALUES (?, ?, ?, ?, ?)').run('pending-image', 'asset:pending-image', 'local', 1, 4096);
   const id = runtime.create({ projectId, parentId: null, name: '待确认.canvas' });
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'user-cards', operations: Array.from({ length: 20 }, (_, index) => text(`用户 ${index}`)) });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'user-cards', operations: Array.from({ length: 20 }, (_, index) => text(`用户 ${index}`)) });
   const actor = { projectId, viewId: 'agent', source: { kind: 'agent' as const, conversationId: 'chat', runId: 'run' } };
   const propose = (requestId: string, assetId: string) => runtime.editing.commitAgent({ actor, now: 2, request: { documentId: id, requestId,
     operations: [{ op: 'addImage', data: { assetId, caption: '', alt: '', crop: null }, width: 240, height: 120 }, ...Array.from({ length: 20 }, (_, index) => ({ op: 'delete', id: `c${index + 1}`, baseRevision: 1 }))] } });
@@ -233,7 +255,7 @@ it('holds images for durable pending approval and keeps the prior proposal when 
 it('revalidates the frozen project after asynchronous read-only computation', async () => {
   const { executeCanvasCliCommand } = await import('@plugin/canvas/backend-test-support');
   const id = runtime.create({ projectId, parentId: null, name: '异步作用域.canvas' });
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'scope-source', operations: [text('不能越界返回')] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'scope-source', operations: [text('不能越界返回')] });
   const destination = createProjectLifecycle(db).create({ name: '移动目标' });
   const unused = async () => { throw new Error('Unexpected capability'); };
   const services: import('@plugin/canvas/backend-test-support').CanvasCliServices = {
@@ -264,16 +286,16 @@ it('rejects an in-flight Agent write against a disposed runtime and accepts it o
 it('confirms a lost restoration response without applying it twice and repeats only its captured-session notification', async () => {
   const id = runtime.create({ projectId, parentId: null, name: '恢复重试.canvas' });
   runtime.read(id, projectId, 'view');
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'restore-source', operations: [text('恢复目标')] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'restore-source', operations: [text('恢复目标')] });
   runtime.versions.checkpoint({ documentId: id, reason: 'close' });
   const target = runtime.history.list(id)[0];
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'before-restore', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'before-restore', operations: [{ op: 'update', id: 'c1', baseRevision: 1, patch: { color: 'red' } }] });
   const request = { documentId: id, versionId: target.versionId, expectedCurrentVersionId: runtime.history.list(id)[0].versionId,
     clientSessionId: encodeCanvasHistorySession('view', '09e16e02-7dc9-41a7-b690-96f7a8815a45') };
   await runtime.history.restore(request);
   const restoredSequence = runtime.read(id).sequence;
   const card = runtime.read(id).elements[0];
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'after-restore', operations: [{ op: 'update', id: 'c1', baseRevision: card.revision, patch: { color: 'green' } }] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'after-restore', operations: [{ op: 'update', id: 'c1', baseRevision: card.revision, patch: { color: 'green' } }] });
   const sequence = runtime.read(id).sequence;
   await runtime.history.restore(request);
   expect(runtime.read(id)).toMatchObject({ sequence, elements: [{ color: 'green' }] });
@@ -292,7 +314,7 @@ it('reports fresh Renderer arrangement computation and replays no-op receipts wi
   const unused = async () => { throw new Error('Unexpected capability'); };
   const arrangement = createCanvasArrangementRuntime(db, runtime, { computation, measurement: { measure: unused, measureBatch: unused }, rendering: { render: unused } });
   const id = runtime.create({ projectId, parentId: null, name: '排布计时.canvas' });
-  runtime.commit({ documentId: id, viewId: 'view', requestId: 'seed-layout', operations: [text('第一张'), text('第二张')] });
+  commitInView({ documentId: id, viewId: 'view', requestId: 'seed-layout', operations: [text('第一张'), text('第二张')] });
   try {
     const input = { documentId: id, viewId: 'view', requestId: 'layout-first', options: { algorithm: 'grid' }, operations: [] };
     const first = await arrangement.arrange(input);

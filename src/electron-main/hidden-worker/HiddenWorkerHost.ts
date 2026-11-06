@@ -104,6 +104,7 @@ interface PendingRequest<TResponse> {
 interface LifecycleRecord {
   readonly closed: () => void;
   readonly renderProcessGone: UnknownListener;
+  readonly consoleMessage: UnknownListener;
   readonly webContents: HiddenWorkerWebContentsLike;
 }
 
@@ -506,14 +507,27 @@ export class HiddenWorkerHost<TRequest, TResponse> {
       );
     };
 
+    // Electron 35+把控制台字段放在事件对象；只接诊断级别，不转发frame或Renderer对象。
+    const handleConsoleMessage = (event: unknown): void => {
+      if (typeof event !== 'object' || event === null || !('level' in event)
+        || !('message' in event) || typeof event.message !== 'string') return;
+      const context = { workerId: this.workerId, message: event.message,
+        sourceId: 'sourceId' in event ? event.sourceId : undefined,
+        lineNumber: 'lineNumber' in event ? event.lineNumber : undefined };
+      if (event.level === 'error') this.logger.error('Hidden worker console error', context);
+      else if (event.level === 'warning') this.logger.warn('Hidden worker console warning', context);
+    };
+
     const record: LifecycleRecord = {
       closed: handleClosed,
       renderProcessGone: handleRenderProcessGone,
+      consoleMessage: handleConsoleMessage,
       webContents: cachedWebContents,
     };
 
     workerWindow.on('closed', record.closed);
     cachedWebContents.on('render-process-gone', record.renderProcessGone);
+    cachedWebContents.on('console-message', record.consoleMessage);
     this.lifecycleMap.set(workerWindow, record);
   }
 
@@ -532,6 +546,7 @@ export class HiddenWorkerHost<TRequest, TResponse> {
     if (!record.webContents.isDestroyed()) {
       try {
         record.webContents.off('render-process-gone', record.renderProcessGone);
+        record.webContents.off('console-message', record.consoleMessage);
       } catch {
         // destroyed race：closed 后原生对象可能已经不可访问，跳过即可。
       }

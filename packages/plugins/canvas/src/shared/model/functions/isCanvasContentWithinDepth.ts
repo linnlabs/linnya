@@ -8,7 +8,8 @@ export function isCanvasContentWithinDepth(value: unknown): boolean {
     if (!current) break;
     if (current.depth > CANVAS_CONTENT_MAX_DEPTH) return false;
     if (typeof current.value !== 'object' || current.value === null) continue;
-    for (const child of Object.values(current.value)) pending.push({ value: child, depth: current.depth + 1 });
+    for (const child of Object.values(current.value))
+      pending.push({ value: child, depth: current.depth + 1 });
   }
   return true;
 }
