@@ -20,9 +20,11 @@
   /* Pixi 画布是透明的；舞台铺上画布底色，盖住下层的位图暂存区（z-index -1），否则暂存正文会透出成残影。 */
   background: var(--color-bg-sidebar);
 }
+/* 画布本身不画焦点框：键盘操作的对象由卡片选中描边表示；整块画布描边在按过一次键后
+   会一直亮着（随后的鼠标点击仍算键盘焦点），与常见白板一致不画。 */
+.canvas-stage canvas:focus,
 .canvas-stage canvas:focus-visible {
-  outline: var(--focus-ring-width) solid var(--color-focus-ring);
-  outline-offset: calc(var(--focus-ring-width) * -1);
+  outline: none;
 }
 
 /* 卡片正文排版变量由 cardRendering/styles/canvasMediaContent.css 定义，隐藏出图 worker 共用。 */
