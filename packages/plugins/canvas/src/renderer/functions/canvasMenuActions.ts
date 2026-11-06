@@ -40,30 +40,35 @@ const colors: CustomSelectOption<string> = { text: '颜色', children: canvasCol
 const align: CustomSelectOption<string> = { text: '对齐', children: alignment };
 const distribute: CustomSelectOption<string> = { text: '分布', children: distribution };
 const layer: CustomSelectOption<string> = { text: '排列', children: layering };
-export const canvasCardMenuActions: readonly CustomSelectOption<string>[] = [
-  { value: 'lock', text: '锁定 / 解锁' },
-  layer,
-  align,
-  distribute,
-  { value: 'arrange', text: '自动排布所选' },
-  { value: 'fit-selection', text: '显示选中 ⌘2' },
-  { value: 'delete', text: '删除' },
-];
+const separator: CustomSelectOption<string> = { isSeparator: true };
+/** 锁定是切换动作：全部已锁才显示“解锁”，与 buildLockCommands 的判定一致。 */
+export function canvasCardMenuActions(allLocked: boolean): readonly CustomSelectOption<string>[] {
+  return [
+    { value: 'lock', text: allLocked ? '解锁' : '锁定' },
+    layer,
+    align,
+    distribute,
+    { value: 'arrange', text: '自动排布所选' },
+    { value: 'fit-selection', text: '显示选中', shortcut: '⌘2' },
+    separator,
+    { value: 'delete', text: '删除' },
+  ];
+}
 const cardContext: readonly CustomSelectOption<string>[] = [
-  { value: 'ai', text: '加入对话 ⌘K' },
-  { value: 'edit', text: '编辑或打开 ↩' },
-  { value: 'copy', text: '复制 ⌘C' },
-  { value: 'cut', text: '剪切 ⌘X' },
-  { value: 'duplicate', text: '创建副本 ⌘D' },
+  { value: 'ai', text: '加入对话', shortcut: '⌘K' },
+  { value: 'edit', text: '编辑或打开', shortcut: '↩' },
+  { value: 'copy', text: '复制', shortcut: '⌘C' },
+  { value: 'cut', text: '剪切', shortcut: '⌘X' },
+  { value: 'duplicate', text: '创建副本', shortcut: '⌘D' },
 ];
 const emptyContext = [
-  { value: 'paste', text: '粘贴 ⌘V' },
+  { value: 'paste', text: '粘贴', shortcut: '⌘V' },
   { value: 'new', text: '新建文字卡' },
   { value: 'document', text: '添加文档…' },
   { value: 'image', text: '添加图片…' },
-  { value: 'select-all', text: '全选 ⌘A' },
+  { value: 'select-all', text: '全选', shortcut: '⌘A' },
   { value: 'arrange', text: '自动排布' },
-  { value: 'fit', text: '显示全部 ⌘1' },
+  { value: 'fit', text: '显示全部', shortcut: '⌘1' },
 ];
 export function canvasContextMenuActions(input: {
   readonly selectionCount: number;
@@ -79,13 +84,15 @@ export function canvasContextMenuActions(input: {
           { value: 'arrange', text: '自动排布所选' },
           colors,
           layer,
+          separator,
           { value: 'delete', text: '删除' },
         ]
       : [
           ...cardContext,
           colors,
           layer,
-          { value: 'fit-selection', text: '显示选中 ⌘2' },
+          { value: 'fit-selection', text: '显示选中', shortcut: '⌘2' },
+          separator,
           { value: 'delete', text: '删除' },
         ];
   const actions = input.edge

@@ -22,16 +22,25 @@
       </button>
       <div class="canvas-review-popover">
         <p>{{ marker.description }} · {{ marker.title }}</p>
-        <button
-          type="button"
-          :disabled="busy || readonly"
-          @click="review.withdraw(marker.groupId, [marker.id])"
-        >
-          {{ marker.kind === 'deleted' ? '恢复' : '撤回此卡' }}
-        </button>
-        <button type="button" :disabled="busy" @click="review.review(marker.id, marker.groupId)">
-          已查看
-        </button>
+        <div class="canvas-review-popover-actions">
+          <BaseButton
+            variant="plain"
+            size="sm"
+            :disabled="busy || readonly"
+            @click="review.withdraw(marker.groupId, [marker.id])"
+          >
+            {{ marker.kind === 'deleted' ? '恢复' : '撤回此卡' }}
+          </BaseButton>
+          <BaseButton
+            variant="plain"
+            tone="accent"
+            size="sm"
+            :disabled="busy"
+            @click="review.review(marker.id, marker.groupId)"
+          >
+            已查看
+          </BaseButton>
+        </div>
       </div>
     </div>
     <button
@@ -43,12 +52,15 @@
       :aria-label="`${directionLabels[hint.direction]}侧有 ${hint.targets.length} 张 Agent 改动卡片`"
       @click="revealFirst(hint)"
     >
-      {{ directionLabels[hint.direction] }} {{ hint.targets.length }}
+      <ChevronIcon :direction="chevrons[hint.direction]" class="canvas-review-direction-icon" />
+      {{ hint.targets.length }}
     </button>
   </div>
 </template>
 <script setup lang="ts">
 import { computed } from 'vue';
+import { BaseButton } from '@linnya/renderer-ui';
+import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import type {
   CanvasReviewDirection,
   CanvasReviewMarker,
@@ -70,7 +82,8 @@ const busy = computed(() => props.review.state.busy.value);
 const directions = computed(() =>
   props.viewport ? projectCanvasReviewDirections(props.markers, props.viewport) : []
 );
-const directionLabels = { left: '←', right: '→', top: '↑', bottom: '↓' };
+const directionLabels = { left: '左', right: '右', top: '上', bottom: '下' };
+const chevrons = { left: 'left', right: 'right', top: 'up', bottom: 'down' } as const;
 function reveal(target: CanvasReviewTarget) {
   props.review.focus(target.id);
   emit('reveal', target);

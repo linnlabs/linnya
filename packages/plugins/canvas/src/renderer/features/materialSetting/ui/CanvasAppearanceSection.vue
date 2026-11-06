@@ -1,37 +1,57 @@
 <template>
-  <div class="canvas-appearance-section">
-    <label
-      >材质
+  <div class="canvas-settings">
+    <div class="canvas-settings-row">
+      <div class="canvas-settings-text">
+        <span class="canvas-settings-label">卡片材质</span>
+        <span class="canvas-settings-description">纸：直角、贴地阴影；卡：圆角、细描边</span>
+      </div>
       <CustomSelect
         :model-value="store.preferences.material"
         :options="materials"
+        trigger-aria-label="卡片材质"
+        min-width="120px"
         @update:model-value="setMaterial"
-    /></label>
-    <label
-      ><input
-        type="checkbox"
-        :checked="store.preferences.wheelZoom"
-        @change="setToggle('wheelZoom', $event)"
-      />滚轮缩放（关闭时平移，捏合仍缩放）</label
-    >
-    <label
-      ><input
-        type="checkbox"
-        :checked="store.preferences.snapping"
-        @change="setToggle('snapping', $event)"
-      />拖动吸附（按住 Alt 临时关闭）</label
-    >
-    <label
-      >远景
+      />
+    </div>
+    <div class="canvas-settings-row">
+      <div class="canvas-settings-text">
+        <span class="canvas-settings-label">远景显示</span>
+        <span class="canvas-settings-description">缩小到看不清正文时，卡片上显示什么</span>
+      </div>
       <CustomSelect
         :model-value="store.preferences.overview"
         :options="overviews"
+        trigger-aria-label="远景显示"
+        min-width="120px"
         @update:model-value="setOverview"
-    /></label>
+      />
+    </div>
+    <div class="canvas-settings-row">
+      <div class="canvas-settings-text">
+        <span class="canvas-settings-label">滚轮缩放</span>
+        <span class="canvas-settings-description">关闭时滚轮平移画布；触控板捏合始终缩放</span>
+      </div>
+      <Switch
+        :model-value="store.preferences.wheelZoom"
+        v-bind="{ ariaLabel: '滚轮缩放' }"
+        @update:model-value="setToggle('wheelZoom', $event)"
+      />
+    </div>
+    <div class="canvas-settings-row">
+      <div class="canvas-settings-text">
+        <span class="canvas-settings-label">拖动吸附</span>
+        <span class="canvas-settings-description">拖动时对齐其他卡片；按住 Alt 临时关闭</span>
+      </div>
+      <Switch
+        :model-value="store.preferences.snapping"
+        v-bind="{ ariaLabel: '拖动吸附' }"
+        @update:model-value="setToggle('snapping', $event)"
+      />
+    </div>
   </div>
 </template>
 <script setup lang="ts">
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, Switch } from '@linnya/renderer-ui';
 import { useCanvasPreferencesStore } from '../store/canvasPreferencesStore';
 import { CanvasPreferencesSchema } from '../definitions/canvasPreferences';
 const store = useCanvasPreferencesStore();
@@ -47,14 +67,12 @@ const setMaterial = (value: string | number | boolean) =>
   store.replace(CanvasPreferencesSchema.parse({ ...store.preferences, material: value }));
 const setOverview = (value: string | number | boolean) =>
   store.replace(CanvasPreferencesSchema.parse({ ...store.preferences, overview: value }));
-const setToggle = (key: 'wheelZoom' | 'snapping', event: Event) => {
-  if (event.target instanceof HTMLInputElement)
-    store.replace(
-      CanvasPreferencesSchema.parse({
-        ...store.preferences,
-        [key]: event.target.checked,
-        ...(key === 'wheelZoom' ? { wheelSuggestionSeen: true } : {}),
-      })
-    );
-};
+const setToggle = (key: 'wheelZoom' | 'snapping', value: boolean) =>
+  store.replace(
+    CanvasPreferencesSchema.parse({
+      ...store.preferences,
+      [key]: value,
+      ...(key === 'wheelZoom' ? { wheelSuggestionSeen: true } : {}),
+    })
+  );
 </script>

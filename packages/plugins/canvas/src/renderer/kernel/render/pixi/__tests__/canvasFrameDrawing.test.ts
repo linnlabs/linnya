@@ -49,7 +49,7 @@ it('缺失身份牌先在独立任务准备，纯绘制帧只消费结果；销�
   });
   const drawing = new CanvasFrameDrawing(app, {
     readIdentities: () => ({ needsPreparation: () => pending, flush }),
-    readCaptureFrame: () => ({ width: 100, height: 80, dark: false }),
+    readCaptureFrame: () => ({ width: 100, height: 80, background: 0xf2f3ee }),
     software: false,
     restored() {},
   });
@@ -100,7 +100,7 @@ it('出图在准备后读取当前尺寸，出图期间丢失并恢复的上下�
         size = 120;
       },
     }),
-    readCaptureFrame: () => ({ width: size, height: 60, dark: true }),
+    readCaptureFrame: () => ({ width: size, height: 60, background: 0x222723 }),
     software: false,
     restored,
   });

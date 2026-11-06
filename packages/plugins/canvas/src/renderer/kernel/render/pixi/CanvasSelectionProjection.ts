@@ -8,6 +8,10 @@ export class CanvasSelectionProjection {
   readonly guideLayer = new Graphics();
   private guides: readonly CanvasGuide[] = [];
   private brush: CanvasRectangle | null = null;
+  private accent = 0x347b45;
+  setAccent(accent: number): void {
+    this.accent = accent;
+  }
   setGuides(guides: readonly CanvasGuide[]): void {
     this.guides = guides;
   }
@@ -18,7 +22,7 @@ export class CanvasSelectionProjection {
     this.guideLayer.clear();
     for (const guide of this.guides)
       this.guideLayer.moveTo(guide.from.x, guide.from.y).lineTo(guide.to.x, guide.to.y);
-    this.guideLayer.stroke({ width: 1 / zoom, color: 0x347b45, alpha: 0.75 });
+    this.guideLayer.stroke({ width: 1 / zoom, color: this.accent, alpha: 0.75 });
   }
   drawSelection(
     cards: ReadonlyMap<CanvasCardId, CanvasCard>,
@@ -29,14 +33,14 @@ export class CanvasSelectionProjection {
     if (this.brush)
       this.selectionLayer
         .rect(this.brush.x, this.brush.y, this.brush.width, this.brush.height)
-        .fill({ color: 0x347b45, alpha: 0.08 })
-        .stroke({ width: 1 / zoom, color: 0x347b45, alpha: 0.6 });
+        .fill({ color: this.accent, alpha: 0.08 })
+        .stroke({ width: 1 / zoom, color: this.accent, alpha: 0.6 });
     for (const id of selected) {
       const card = cards.get(id);
       if (card)
         this.selectionLayer
           .roundRect(card.x, card.y, card.width, card.height, 4)
-          .stroke({ width: 1.5 / zoom, color: 0x347b45 });
+          .stroke({ width: 1.5 / zoom, color: this.accent });
     }
   }
 }

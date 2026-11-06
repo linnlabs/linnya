@@ -54,10 +54,19 @@ export interface CanvasSceneMotionOptions {
   readonly animateIds?: readonly CanvasCardId[];
   readonly batch?: boolean;
 }
+/** 画布里属于界面而不是内容的颜色：选中与参考线、页面底色、连线墨色与标签字色。 */
+export interface CanvasChromeColors {
+  readonly accent: number;
+  readonly background: number;
+  readonly ink: number;
+  readonly label: number;
+}
 export interface CanvasAppearance {
   readonly dark: boolean;
   readonly material: 'paper' | 'card';
   readonly overview: 'titles' | 'thumbnails';
+  /** 有 DOM 主题的窗口由 Renderer UI token 解析；隐藏出图 worker 与探针没有主题，用画布自带浅/深色。 */
+  readonly chrome?: CanvasChromeColors;
 }
 export interface CanvasRasterTile {
   readonly bitmap: ImageBitmap;

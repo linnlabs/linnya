@@ -11,8 +11,8 @@
   >
     <header class="canvas-document-detail-header" @dblclick.stop="open">
       <strong>{{ title }}</strong>
-      <button type="button" @click="open">打开文档</button>
-      <button type="button" aria-label="关闭文档详情并回到画布" @click="close">关闭</button>
+      <BaseButton variant="plain" size="sm" @click="open">打开文档</BaseButton>
+      <IconButton label="关闭详情，回到画布" size="sm" @click="close"><CloseIcon /></IconButton>
     </header>
     <div
       ref="body"
@@ -25,6 +25,8 @@
   </section>
 </template>
 <script setup lang="ts">
+import { BaseButton, IconButton } from '@linnya/renderer-ui';
+import { CloseIcon } from '@linnya/renderer-ui/icons';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import type { CanvasCamera } from '@plugin/canvas/shared';
 import type {

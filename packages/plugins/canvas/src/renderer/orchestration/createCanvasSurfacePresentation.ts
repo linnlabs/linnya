@@ -33,13 +33,15 @@ export function createCanvasSurfacePresentation({
     const result = selected();
     return result.length === 1 ? result.map(displayCard) : result;
   });
-  const selectionStyle = computed(() =>
-    canvasSelectionToolbarStyle(
+  const selectionStyle = computed(() => {
+    const chosen = new Set(selectedCards.value.map(card => card.id));
+    return canvasSelectionToolbarStyle(
       canvasBounds(selectedCards.value),
       camera.value,
-      options.host.clientWidth
-    )
-  );
+      options.host.clientWidth,
+      { obstacles: chosen.size ? cards().filter(card => !chosen.has(card.id)) : [] }
+    );
+  });
   const resizeStyle = computed(() =>
     cardEditorStyle(
       resizing.state.preview.value ??

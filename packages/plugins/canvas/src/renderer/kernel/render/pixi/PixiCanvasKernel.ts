@@ -41,6 +41,7 @@ import {
 import { canvasFitCamera } from '../../geometry/canvasFitCamera';
 import type { CanvasIdentityAtlas } from './CanvasIdentityAtlas';
 import { CanvasFrameDrawing } from './CanvasFrameDrawing';
+import { canvasStandaloneChrome } from './canvasStandaloneChrome';
 import { createCanvasCardTextureCaches } from './createCanvasCardTextureCaches';
 
 const TEXTURE_BUDGET_BYTES = 256 * 1024 * 1024;
@@ -110,7 +111,8 @@ export class PixiCanvasKernel implements CanvasKernel {
       readCaptureFrame: () => ({
         width: this.width,
         height: this.height,
-        dark: this.appearance.dark,
+        background: (this.appearance.chrome ?? canvasStandaloneChrome(this.appearance.dark))
+          .background,
       }),
       restored: () => this.refreshCamera(true),
       software: this.software,
@@ -590,6 +592,7 @@ export class PixiCanvasKernel implements CanvasKernel {
   setAppearance(next: CanvasAppearance): void {
     if (next.dark !== this.appearance.dark) this.invalidateBitmaps();
     this.appearance = next;
+    this.selectionProjection.setAccent((next.chrome ?? canvasStandaloneChrome(next.dark)).accent);
     this.lines.setAppearance(next);
     this.refreshCamera(true);
   }

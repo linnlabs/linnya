@@ -64,138 +64,46 @@
       :viewport="viewport"
       @focus-canvas="surface.focus()"
     />
-    <div
+    <CanvasCommandBar
       v-if="surface"
-      class="canvas-command-bar"
-      role="toolbar"
-      aria-label="画布命令"
-      @pointerdown.stop
+      :readonly="readonly"
+      :zoom="camera.zoom"
+      @undo="run(() => surface?.undo('undo'))"
+      @redo="run(() => surface?.undo('redo'))"
+      @create-text="run(() => surface?.createText())"
+      @add-document="run(() => creation?.showDocuments())"
+      @add-image="imagePicker?.click()"
+      @search="search?.state.show()"
+      @fit="surface.fit()"
+      @zoom="surface.zoom($event)"
     >
-      <ToolbarGroup>
-        <ToolbarButton
-          label="撤销 ⌘Z"
-          :disabled="readonly"
-          @click="run(() => surface?.undo('undo'))"
-        >
-          <UndoIcon />
-        </ToolbarButton>
-        <ToolbarButton
-          label="重做 ⇧⌘Z"
-          :disabled="readonly"
-          @click="run(() => surface?.undo('redo'))"
-        >
-          <RedoIcon />
-        </ToolbarButton>
-      </ToolbarGroup>
-      <ToolbarGroup>
-        <ToolbarButton
-          label="新建文字卡"
-          :disabled="readonly"
-          @click="run(() => surface?.createText())"
-        >
-          <TextIcon />
-        </ToolbarButton>
-        <ToolbarButton
-          label="添加文档"
-          :disabled="readonly"
-          @click="run(() => creation?.showDocuments())"
-        >
-          <DocumentAddIcon />
-        </ToolbarButton>
-        <ToolbarButton label="添加图片" :disabled="readonly" @click="imagePicker?.click()">
-          <ImageIcon />
-        </ToolbarButton>
-        <ToolbarButton label="搜索画布 ⌘F" @click="search?.state.show()"> 搜索 </ToolbarButton>
-      </ToolbarGroup>
-      <ToolbarGroup>
+      <template #layout>
         <CanvasLayoutControls
           v-if="surface.layout && !readonly"
           :layout="surface.layout"
           :on-arrange="surface.arrange"
           :run="run"
         />
-      </ToolbarGroup>
-      <ToolbarGroup>
-        <ToolbarButton label="显示全部 ⌘1" @click="surface.fit()">
-          <FullscreenIcon />
-        </ToolbarButton>
-        <ToolbarButton label="缩小 ⌘−" @click="surface.zoom(camera.zoom / 1.25)">
-          <ZoomOutIcon />
-        </ToolbarButton>
-        <CustomSelect
-          :model-value="camera.zoom"
-          :options="zoomOptions"
-          :placeholder="`${Math.round(camera.zoom * 100)}%`"
-          title="选择画布缩放比例"
-          width="82px"
-          min-width="82px"
-          variant="minimal"
-          @update:model-value="changeZoom"
-        />
-        <ToolbarButton label="放大 ⌘+" @click="surface.zoom(camera.zoom * 1.25)">
-          <ZoomInIcon />
-        </ToolbarButton>
-      </ToolbarGroup>
-    </div>
-    <div
+      </template>
+    </CanvasCommandBar>
+    <CanvasSelectionBar
       v-if="surface && selection.length && !draft && !surface.context.value"
-      class="canvas-selection-bar"
-      :style="surface.selectionStyle.value"
-      role="toolbar"
-      aria-label="所选卡片"
-      @pointerdown.stop
-    >
-      <ToolbarButton label="加入对话 ⌘K" @click="addToConversation">
-        <LinnyaIcon />
-      </ToolbarButton>
-      <span class="canvas-selection-count">{{ selection.length }} 张卡</span>
-      <ToolbarButton label="编辑或打开 ↩" @click="run(() => surface?.edit())">
-        <EditIcon />
-      </ToolbarButton>
-      <ToolbarButton
-        v-if="selectedImage"
-        label="编辑图片（裁剪、图注、替换）"
-        :disabled="readonly || selectedImage.locked"
-        @click="editImage"
-      >
-        <ImageIcon />
-      </ToolbarButton>
-      <ToolbarButton
-        label="创建副本 ⌘D"
-        :disabled="readonly"
-        @click="run(() => surface?.actions.duplicate())"
-      >
-        <DuplicateIcon />
-      </ToolbarButton>
-      <ToolbarButton
-        v-if="selection.length === 2"
-        label="连接两张卡"
-        :disabled="readonly"
-        @click="run(() => surface?.connect())"
-      >
-        <LinkIcon />
-      </ToolbarButton>
-      <CustomSelect
-        :model-value="selectedColor"
-        :disabled="readonly"
-        :options="colors"
-        title="卡片颜色"
-        width="64px"
-        min-width="64px"
-        variant="minimal"
-        @update:model-value="changeColor"
-      />
-      <CustomSelect
-        :options="moreActions"
-        :disabled="readonly"
-        placeholder="更多"
-        title="更多卡片操作"
-        width="58px"
-        min-width="58px"
-        variant="minimal"
-        @update:model-value="elementAction"
-      />
-    </div>
+      :placement="surface.selectionStyle.value"
+      :count="selection.length"
+      :color="selectedColor"
+      :colors="canvasColorMenuOptions"
+      :more-actions="moreActions"
+      :readonly="readonly"
+      :image="Boolean(selectedImage)"
+      :image-locked="Boolean(selectedImage?.locked)"
+      @converse="addToConversation"
+      @edit="run(() => surface?.edit())"
+      @edit-image="editImage"
+      @duplicate="run(() => surface?.actions.duplicate())"
+      @connect="run(() => surface?.connect())"
+      @color="changeColor"
+      @action="elementAction"
+    />
     <div
       v-if="
         surface &&
@@ -225,25 +133,14 @@
         :manual-mode="true"
         :is-open="true"
         min-width="170px"
-        max-height="min(600px, 80vh)"
+        semantic-role="menu"
+        :parent-is-open="true"
         variant="minimal"
         @update:model-value="elementAction"
         @close="surface.closeContext()"
       />
     </div>
     <CanvasSearchPanel v-if="search" :search="search" @close="surface?.focus()" />
-    <CanvasWheelSuggestion v-if="wheelSuggestion" :suggestion="wheelSuggestion" />
-    <p v-if="surface?.layout?.state.busy.value" class="canvas-layout-status" role="status">
-      排布中…
-      <button type="button" @click="run(() => surface?.layout?.cancel())">取消排布（Esc）</button>
-    </p>
-    <p
-      v-else-if="surface?.layout?.state.diagnostics.value.length"
-      class="canvas-layout-status"
-      role="status"
-    >
-      {{ surface.layout.state.diagnostics.value.map(item => item.message).join('；') }}
-    </p>
     <CanvasDocumentPicker v-if="creation && !readonly" :creation="creation" />
     <input
       ref="imagePicker"
@@ -261,29 +158,9 @@
       @close="imagePreview = null"
     />
     <CanvasImageEditingControls v-if="imageEditing" :editor="imageEditing" />
-    <div
-      v-if="surface?.integrityNotice.value || surface?.renderNotice.value"
-      class="canvas-read-notice"
-      role="status"
-    >
-      <p v-if="surface.integrityNotice.value">
-        {{ surface.integrityNotice.value }}
-      </p>
-      <p v-if="surface.renderNotice.value">
-        {{ surface.renderNotice.value }}
-      </p>
-    </div>
-    <p v-if="shownError" class="canvas-status canvas-status-error" role="alert">
-      {{ shownError }}
-      <button
-        v-if="surface?.hasDraft.value"
-        type="button"
-        :disabled="saving || Boolean(surface.session.deliveryNotice.value)"
-        @click="discardVisible = true"
-      >
-        使用已保存内容
-      </button>
-    </p>
+    <CanvasStatusArea :items="statusItems">
+      <CanvasWheelSuggestion v-if="wheelSuggestion" :suggestion="wheelSuggestion" />
+    </CanvasStatusArea>
     <AlertDialog
       :visible="discardVisible"
       title="使用已保存内容？"
@@ -297,45 +174,19 @@
       @cancel="discardVisible = false"
       @close="discardVisible = false"
     />
-    <div v-if="surface?.session.deliveryNotice.value" class="canvas-read-notice" role="alert">
-      {{ surface.session.deliveryNotice.value }}
-      <button type="button" @click="run(() => surface?.session.retryDelivery())">重试确认</button>
-    </div>
-    <p v-else-if="!surface" class="canvas-status" role="status">正在打开画布…</p>
-    <p v-else-if="saving" class="canvas-status" role="status">正在保存…</p>
   </section>
 </template>
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import type { DocumentImageAsset } from '@app/schemas';
-import {
-  ToolbarButton,
-  ToolbarGroup,
-  CustomSelect,
-  ImagePreviewModal,
-  AlertDialog,
-} from '@linnya/renderer-ui';
-import {
-  TextIcon,
-  FullscreenIcon,
-  EditIcon,
-  ZoomInIcon,
-  ZoomOutIcon,
-  UndoIcon,
-  RedoIcon,
-  DuplicateIcon,
-  LinkIcon,
-  DocumentAddIcon,
-  ImageIcon,
-  LinnyaIcon,
-} from '@linnya/renderer-ui/icons';
+import { CustomSelect, ImagePreviewModal, AlertDialog } from '@linnya/renderer-ui';
 import {
   getActiveFileSession,
   markActiveFileDirty,
   getCurrentWorkspaceProjectId,
 } from '@plugin/renderer/workspaceRuntime';
 import { createEmbeddedMarkdownEditor } from '@plugin/renderer/embeddedMarkdownEditor';
-import { CanvasColorSchema, type CanvasCardId, type CanvasPoint } from '@plugin/canvas/shared';
+import type { CanvasCardId, CanvasColor, CanvasPoint } from '@plugin/canvas/shared';
 import { mountDocumentPreviewDetail } from '@plugin/renderer/documentPreview';
 import { createCanvasSurface } from '../orchestration/createCanvasSurface';
 import { createCanvasPageCommands } from '../orchestration/createCanvasPageCommands';
@@ -372,6 +223,8 @@ import { createCanvasImageEditing, CanvasImageEditingControls } from '../feature
 import { createCanvasSearch, CanvasSearchPanel } from '../features/canvasSearch';
 import { CanvasConnectionControls, CanvasConnectionLabelPreview } from '../features/connections';
 import { CanvasLayoutControls } from '../features/layoutCommands';
+import { CanvasCommandBar, CanvasSelectionBar, CanvasStatusArea } from '../features/canvasChrome';
+import { canvasStatusItems } from '../functions/canvasStatusItems';
 import { CanvasWheelSuggestion, installCanvasWheelSuggestion } from '../features/materialSetting';
 import { createCanvasArrangementPort } from '../adapters/createCanvasArrangementPort';
 import {
@@ -464,7 +317,10 @@ const selectedImage = computed(() => {
   const selected = surface.value?.selectedCards.value;
   return selected?.length === 1 && selected[0]?.type === 'image' ? selected[0] : null;
 });
-const moreActions = canvasCardMenuActions;
+const moreActions = computed(() => {
+  const selected = surface.value?.selectedCards.value ?? [];
+  return canvasCardMenuActions(selected.length > 0 && selected.every(card => card.locked));
+});
 const contextActions = computed(() =>
   canvasContextMenuActions({
     selectionCount: selection.value.length,
@@ -472,17 +328,17 @@ const contextActions = computed(() =>
     readonly: readonly.value,
   })
 );
-const colors = canvasColorMenuOptions.map(option => ({ value: option.color, text: option.text }));
-const zoomOptions = [
-  { value: 0.1, text: '10%' },
-  { value: 0.25, text: '25%' },
-  { value: 0.5, text: '50%' },
-  { value: 0.75, text: '75%' },
-  { value: 1, text: '100% ⌘0' },
-  { value: 1.5, text: '150%' },
-  { value: 2, text: '200%' },
-  { value: 4, text: '400%' },
-];
+const statusItems = computed(() =>
+  canvasStatusItems({
+    surface: surface.value,
+    error: shownError.value ?? null,
+    saving: saving.value,
+    run,
+    discard: () => {
+      discardVisible.value = true;
+    },
+  })
+);
 const report = (error: unknown) => {
   failure.value = error instanceof Error ? error.message : String(error);
 };
@@ -516,11 +372,7 @@ const confirmDiscard = () => {
     surface.value?.discardDraft();
   });
 };
-const changeColor = (value: string | number | boolean) =>
-  run(() => surface.value?.color(CanvasColorSchema.parse(value)));
-const changeZoom = (value: number) => {
-  surface.value?.zoom(value);
-};
+const changeColor = (value: CanvasColor) => run(() => surface.value?.color(value));
 let imagePoint: CanvasPoint | undefined;
 const menuCommand = createCanvasPageCommands({
   readSurface: () => surface.value,

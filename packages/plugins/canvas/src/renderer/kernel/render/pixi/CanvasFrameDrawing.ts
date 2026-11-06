@@ -120,7 +120,7 @@ export class CanvasFrameDrawing {
       quality,
       frame: new Rectangle(0, 0, frame.width, frame.height),
       resolution: this.app.renderer.resolution,
-      clearColor: frame.dark ? '#222723' : '#f2f3ee',
+      clearColor: `#${frame.background.toString(16).padStart(6, '0')}`,
     });
     if (this.contextLost || generation !== this.contextGeneration)
       throw new Error('canvas_graphics_context_lost');

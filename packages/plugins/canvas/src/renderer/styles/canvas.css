@@ -1,5 +1,11 @@
+/*
+ * 画布页面。层级只在 .linnya-canvas 内局部堆叠（isolation），统一用 0–9：
+ * -1 栅格暂存 · 2 正文编辑/文档详情 · 3 审阅标记 · 4 尺寸手柄 · 5 连线手柄与预览
+ * 6 命令条/浮层面板/审阅面板 · 7 状态区 · 8 右键菜单。平台浮条与菜单自带层级 token。
+ */
 .linnya-canvas {
   position: relative;
+  isolation: isolate;
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -11,81 +17,63 @@
   inset: 0;
 }
 .canvas-stage canvas:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: -2px;
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(var(--focus-ring-width) * -1);
 }
-.canvas-command-bar {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 4px;
-  border-radius: 10px;
-  background: var(--color-bg-default);
-  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 6%, transparent), 0 1px 3px var(--shadow-color-xs), 0 8px 24px -4px var(--shadow-color-md);
-  transform: translateX(-50%);
-  white-space: nowrap;
-}
-.canvas-command-bar :where(svg), .canvas-selection-bar :where(svg) {
-  width: 16px;
-  height: 16px;
-}
-.canvas-selection-bar {
-  position: absolute;
-  top: 66px;
-  left: 50%;
-  z-index: 9;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-default);
-  box-shadow: 0 2px 12px var(--shadow-color-md);
-  transform: translateX(-50%);
-  font-size: var(--font-size-footnote);
-}
+
+/* 卡片正文排版变量由 cardRendering/styles/canvasMediaContent.css 定义，隐藏出图 worker 共用。 */
 .canvas-editor-overlay {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 5;
+  z-index: 2;
   box-sizing: border-box;
-  padding: 16px 18px 18px;
+  padding: var(--canvas-card-padding);
   overflow: auto;
   overscroll-behavior: contain;
   transform-origin: 0 0;
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: var(--canvas-card-font-size);
+  line-height: var(--canvas-card-line-height);
   background: var(--canvas-card-paper-color);
 }
 .canvas-editor-overlay .tiptap {
   min-height: 1em;
   outline: none;
 }
+.canvas-editor-provisional {
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--canvas-card-paper-color);
+  box-shadow: var(--shadow-floating-panel);
+}
+.canvas-card-content {
+  box-sizing: border-box;
+  padding: var(--canvas-card-padding);
+  font-family: inherit;
+  font-size: var(--canvas-card-font-size);
+  line-height: var(--canvas-card-line-height);
+}
+
 .canvas-document-detail {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 5;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: 16px 18px 18px;
+  padding: var(--canvas-card-padding);
   overflow: hidden;
   transform-origin: 0 0;
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: var(--canvas-card-font-size);
+  line-height: var(--canvas-card-line-height);
   background: var(--canvas-card-paper-color);
 }
 .canvas-document-detail-header {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-1);
   color: var(--color-text-primary);
 }
 .canvas-document-detail-header strong {
@@ -93,15 +81,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.canvas-document-detail-header button {
-  border: 0;
-  border-radius: 4px;
-  padding: 2px 5px;
-  background: var(--canvas-card-paper-color);
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
 }
 .canvas-document-detail-body {
   flex: 1;
@@ -113,27 +92,23 @@
 }
 .canvas-document-detail-notice {
   margin: 0;
-  font-size: 12px;
   background: var(--canvas-card-paper-color);
-  color: var(--color-text-primary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
 }
+
 .canvas-line-label-preview {
   position: absolute;
-  z-index: var(--linnya-ui-layer-popover);
   box-sizing: border-box;
-  padding: 12px;
+  padding: var(--space-3);
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   user-select: text;
 }
-.canvas-line-label-preview p { margin: 0; }
-.canvas-card-content {
-  box-sizing: border-box;
-  padding: 16px 18px 18px;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.7;
+.canvas-line-label-preview p {
+  margin: 0;
 }
 .canvas-raster-staging {
   position: absolute;
@@ -142,174 +117,37 @@
   z-index: -1;
   pointer-events: none;
 }
-.canvas-status {
+
+/* 历史预览沿用同一套状态外观。 */
+.canvas-status,
+.canvas-read-notice {
   position: absolute;
-  bottom: var(--space-3);
+  bottom: var(--space-4);
   left: 50%;
-  z-index: 15;
-  max-width: 80%;
+  z-index: 7;
+  max-width: calc(100% - var(--space-8));
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-floating-panel);
   color: var(--color-text-secondary);
-  box-shadow: 0 2px 10px var(--shadow-color-md);
   transform: translateX(-50%);
-  font-size: var(--font-size-footnote);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+.canvas-read-notice {
+  bottom: calc(var(--space-4) + var(--space-10));
+}
+.canvas-read-notice p {
+  margin: 0;
 }
 .canvas-status-error {
-  color: var(--color-error);
-}
-.canvas-appearance-section {
-  display: grid;
-  gap: var(--space-3);
-}
-.canvas-appearance-section label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-.canvas-agent-review {
-  position: absolute;
-  bottom: var(--space-3);
-  right: var(--space-3);
-  z-index: 12;
-  max-width: min(620px, 90%);
-  max-height: 35%;
-  overflow: auto;
-  padding: var(--space-2);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-default);
-  box-shadow: var(--shadow-md);
-  font-size: var(--font-size-footnote);
-}
-.canvas-agent-group {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  padding: var(--space-1);
-}
-.canvas-agent-group.active { background: var(--color-accent-bg-subtle); }
-.canvas-agent-group-summary {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-.canvas-agent-group-summary small {
-  display: block;
-  color: var(--color-text-secondary);
-}
-.canvas-agent-status {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-text-tertiary);
-}
-.canvas-agent-status.writing { background: var(--color-accent); }
-.canvas-agent-counts { color: var(--color-text-secondary); }
-.canvas-review-markers { pointer-events: none; }
-.canvas-card-resize-box {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 7;
-  pointer-events: none;
-  transform-origin: 0 0;
-}
-.canvas-card-resize-handle {
-  position: absolute;
-  bottom: -5px;
-  right: -5px;
-  width: 10px;
-  height: 10px;
-  padding: 0;
-  border: 1px solid var(--color-accent);
-  border-radius: 2px;
-  background: var(--color-bg-default);
-  cursor: nwse-resize;
-  pointer-events: auto;
-}
-.canvas-context-menu {
-  max-height: calc(100% - 16px);
-  position: absolute;
-  z-index: 20;
-}
-.canvas-command-bar,
-.canvas-selection-bar {
-  max-width: calc(100% - 24px);
-  overflow-x: auto;
-  white-space: nowrap;
-}
-.canvas-selection-count { flex-shrink: 0; }
-.canvas-file-input { display: none; }
-.canvas-search-panel,
-.canvas-document-picker {
-  position: absolute;
-  top: 64px;
-  right: var(--space-3);
-  z-index: 30;
-  width: min(360px, calc(100% - 24px));
-  max-height: 60%;
-  overflow: auto;
-  padding: var(--space-2);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-default);
-  box-shadow: var(--shadow-lg);
-  font-size: var(--font-size-body);
-}
-.canvas-search-input-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.canvas-search-input-row input {
-  min-width: 0;
-  flex: 1;
-  padding: var(--space-2);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-default);
-  color: var(--color-text-primary);
-  font: inherit;
-}
-.canvas-search-panel ol,
-.canvas-document-picker ol {
-  list-style: none;
-  margin: var(--space-2) 0 0;
-  padding: 0;
-}
-.canvas-search-panel li button,
-.canvas-document-picker li button {
-  display: block;
-  width: 100%;
-  border: 0;
-  border-radius: var(--radius-sm);
-  padding: var(--space-2);
-  text-align: left;
-  background: transparent;
-  color: var(--color-text-primary);
-  font: inherit;
-  cursor: pointer;
-}
-.canvas-search-panel li button:hover,
-.canvas-search-panel li button.active,
-.canvas-document-picker li button:hover { background: var(--color-accent-bg-subtle); }
-.canvas-document-picker small {
-  display: block;
-  color: var(--color-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--color-error-text);
 }
 .canvas-history-preview {
   position: relative;
+  isolation: isolate;
   width: 100%;
   height: 440px;
   overflow: hidden;
@@ -319,96 +157,282 @@
   position: absolute;
   top: var(--space-2);
   right: var(--space-2);
-  z-index: 2;
+  z-index: 6;
 }
-.canvas-connection-anchor, .canvas-connection-endpoint {
-  position: absolute;
-  z-index: 12;
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--color-accent);
-  background: var(--color-bg-default);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  cursor: crosshair;
-  padding: 0;
+
+/* 设置分区：与设置页 SettingsRow 同一版式——标签与说明在左，控件贴右。 */
+.canvas-settings {
+  display: flex;
+  flex-direction: column;
 }
-.canvas-connection-anchor {
-  opacity: .6;
-}
-.canvas-connection-anchor:hover {
-  opacity: 1;
-}
-.canvas-connection-bar {
-  position: absolute;
-  z-index: 16;
-  left: 12px;
-  top: 68px;
+.canvas-settings-row {
   display: flex;
   align-items: center;
-  gap: 4px;
-  max-width: calc(100% - 24px);
-  overflow-x: auto;
-  padding: 6px;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+}
+.canvas-settings-row + .canvas-settings-row {
+  border-top: var(--border-width-hairline) solid var(--color-border-light);
+}
+.canvas-settings-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  min-width: 0;
+}
+.canvas-settings-label {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+.canvas-settings-description {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+/* Agent 审阅面板：单一浮层表面，组之间用分隔线，不嵌套方框。 */
+.canvas-agent-review {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(420px, calc(100% - var(--space-8)));
+  max-height: 40%;
+  padding: var(--space-1);
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-floating-panel);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+.canvas-agent-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+}
+.canvas-agent-group + .canvas-agent-group {
+  border-top: var(--border-width-hairline) solid var(--color-border-light);
+}
+/* 只有多组并列时才需要用底色标出当前组；单组不加色块。 */
+.canvas-agent-review:has(.canvas-agent-group + .canvas-agent-group) .canvas-agent-group.is-active {
+  background: var(--color-bg-active-subtle);
+}
+.canvas-agent-group.is-active .canvas-agent-status {
+  background: var(--color-accent);
+}
+.canvas-agent-group-summary {
+  flex: 1 1 180px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: var(--space-2);
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.canvas-agent-status,
+.canvas-agent-status-icon {
+  grid-row: span 2;
+}
+.canvas-agent-status {
+  width: 8px;
+  height: 8px;
+  margin: var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--color-text-tertiary);
+}
+.canvas-agent-title {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+.canvas-agent-counts {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  font-variant-numeric: tabular-nums;
+}
+.canvas-agent-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.canvas-agent-approval {
+  margin-right: auto;
+  padding-left: var(--space-1);
+  color: var(--color-warning-text);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+.canvas-review-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
+}
+.canvas-review-position {
+  min-width: 4ch;
+  color: var(--color-text-secondary);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.canvas-review-details {
+  width: 100%;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+.canvas-review-details summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  list-style: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.canvas-review-details summary::-webkit-details-marker {
+  display: none;
+}
+.canvas-review-details-arrow {
+  width: 12px;
+  height: 12px;
+  color: var(--color-text-tertiary);
+  transition: transform var(--duration-short) var(--ease-standard);
+}
+.canvas-review-details[open] .canvas-review-details-arrow {
+  transform: rotate(90deg);
+}
+.canvas-review-details summary:hover {
+  background: var(--color-bg-hover);
+}
+.canvas-review-details ul {
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.canvas-review-target {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.canvas-review-withdrawal {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2);
+  border-top: var(--border-width-hairline) solid var(--color-border-light);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+/* 卡片与连线手柄：连接点与端点是圆，尺寸手柄是方块；统一 10px、1px 强调色描边。 */
+.canvas-card-resize-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+.canvas-card-resize-handle {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-xs);
   background: var(--color-bg-default);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
+  cursor: nwse-resize;
+  pointer-events: auto;
+}
+.canvas-connection-anchor,
+.canvas-connection-endpoint {
+  position: absolute;
+  z-index: 5;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-default);
+  transform: translate(-50%, -50%);
+  cursor: crosshair;
+}
+.canvas-connection-anchor {
+  opacity: 0.6;
+  transition: opacity var(--duration-micro) var(--ease-standard);
+}
+.canvas-connection-anchor:hover,
+.canvas-connection-anchor:focus-visible {
+  opacity: 1;
+}
+.canvas-connection-endpoint {
+  background: var(--color-accent);
+}
+.canvas-connection-bar {
+  box-shadow: var(--shadow-floating-panel);
+  white-space: nowrap;
 }
 .canvas-connection-label-input {
   position: absolute;
-  z-index: 18;
+  z-index: 5;
+  box-sizing: border-box;
   width: 200px;
-  transform: translate(-50%, -50%);
-  padding: 5px 8px;
-  border: 1px solid var(--color-accent);
-  border-radius: 6px;
-  color: inherit;
+  height: var(--control-height-sm);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border-focus);
+  border-radius: var(--radius-md);
   background: var(--color-bg-default);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-body);
+  transform: translate(-50%, -50%);
 }
 .canvas-connection-preview {
   position: absolute;
   inset: 0;
+  z-index: 5;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 11;
 }
 .canvas-connection-preview line {
   stroke: var(--color-accent);
   stroke-width: 1.5;
   stroke-dasharray: 5 3;
 }
-.canvas-editor-provisional {
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-md);
-  background: var(--canvas-card-paper-color);
-  box-shadow: 0 2px 12px var(--shadow-color-md);
-}
-.canvas-layout-status {
+.canvas-context-menu {
   position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 40px;
-  z-index: 15;
-  max-height: 80px;
-  overflow: auto;
-  padding: var(--space-2);
-  margin: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-bg-default);
-  font-size: var(--font-size-footnote);
+  z-index: 8;
+  max-height: calc(100% - var(--space-4));
 }
-.canvas-read-notice {
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 48px;
-  z-index: 15;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-default);
-  color: var(--color-text-secondary);
+.canvas-file-input {
+  display: none;
 }
 .canvas-accessible-summary {
   position: absolute;
@@ -417,6 +441,12 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* 图片编辑弹窗 */
+.canvas-image-edit-hint {
+  margin: 0;
+  color: var(--color-text-secondary);
 }
 .canvas-image-crop-stage {
   display: flex;
@@ -434,10 +464,10 @@
 }
 .canvas-image-crop-source img {
   display: block;
-  max-width: 100%;
-  max-height: min(45vh, 360px);
   width: auto;
+  max-width: 100%;
   height: auto;
+  max-height: min(45vh, 360px);
   pointer-events: none;
 }
 .canvas-image-crop-range {
@@ -450,47 +480,34 @@
 .canvas-image-edit-fields {
   display: grid;
   gap: var(--space-2);
-  border: 0;
+  margin: 0;
   padding: 0;
+  border: 0;
 }
-.canvas-image-edit-fields label {
+.canvas-image-edit-legend {
+  margin-bottom: var(--space-1);
+  padding: 0;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+.canvas-image-edit-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
-.canvas-image-edit-fields input[type="range"],
+.canvas-image-edit-label {
+  flex-shrink: 0;
+  width: 5em;
+  color: var(--color-text-secondary);
+}
+.canvas-image-edit-slider,
 .canvas-image-edit-text {
   flex: 1;
   min-width: 0;
 }
-.canvas-image-edit-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
 .canvas-image-edit-fields output {
   min-width: 4ch;
+  color: var(--color-text-secondary);
   text-align: right;
-}
-
-.canvas-wheel-suggestion {
-  position: absolute;
-  bottom: 24px;
-  left: 24px;
-  z-index: 30;
-  max-width: 360px;
-  padding: 12px 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-bg-default);
-  color: var(--color-text-primary);
-}
-.canvas-wheel-suggestion p { margin: 0 0 8px; }
-.canvas-wheel-suggestion button {
-  margin-right: 8px;
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-bg-default);
-  color: inherit;
+  font-variant-numeric: tabular-nums;
 }

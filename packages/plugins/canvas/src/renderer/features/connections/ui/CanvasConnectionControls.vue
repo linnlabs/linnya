@@ -17,66 +17,77 @@
       "
     />
   </template>
-  <div
+  <FloatingToolbar
     v-if="edge"
     ref="bar"
+    :show="true"
+    :position="barPosition"
     class="canvas-connection-bar"
-    :style="barStyle"
     role="toolbar"
     aria-label="所选连线"
     @pointerdown.stop
     @keydown.stop
   >
-    <CustomSelect
-      :model-value="edge.direction"
-      :options="directions"
-      title="连线方向"
-      width="90px"
-      min-width="90px"
-      @update:model-value="setDirection"
-    />
-    <CustomSelect
-      :model-value="edge.lineStyle"
-      :options="styles"
-      title="连线形状"
-      width="70px"
-      min-width="70px"
-      @update:model-value="setStyle"
-    />
-    <CustomSelect
-      :model-value="edge.linePattern"
-      :options="patterns"
-      title="连线笔触"
-      width="70px"
-      min-width="70px"
-      @update:model-value="setPattern"
-    />
-    <CustomSelect
-      :model-value="edge.color"
-      :options="colors"
-      title="连线颜色"
-      width="64px"
-      min-width="64px"
-      @update:model-value="setColor"
-    />
-    <ToolbarButton label="编辑连线标签" :disabled="edge.locked" @click="run(editing.beginLabel)">
-      标签
-    </ToolbarButton>
-    <ToolbarButton
-      :label="edge.locked ? '解锁连线' : '锁定连线'"
-      @click="run(() => editing.patch(edge!, { locked: !edge!.locked }))"
-    >
-      {{ edge.locked ? '解锁' : '锁定' }}
-    </ToolbarButton>
-    <ToolbarButton label="反转连线方向" :disabled="edge.locked" @click="run(editing.reverse)">
-      反转
-    </ToolbarButton>
-    <ToolbarButton label="跳到连线起点" @click="emit('locate', 'from')"> 起点 </ToolbarButton>
-    <ToolbarButton label="跳到连线终点" @click="emit('locate', 'to')"> 终点 </ToolbarButton>
-    <ToolbarButton label="删除连线" :disabled="edge.locked" @click="run(editing.remove)">
-      删除
-    </ToolbarButton>
-  </div>
+    <ToolbarGroup>
+      <CustomSelect
+        :model-value="edge.direction"
+        :options="directions"
+        trigger-aria-label="连线方向"
+        min-width="88px"
+        variant="minimal"
+        :bordered="false"
+        :disabled="edge.locked"
+        @update:model-value="setDirection"
+      />
+      <CustomSelect
+        :model-value="edge.lineStyle"
+        :options="styles"
+        trigger-aria-label="连线形状"
+        min-width="64px"
+        variant="minimal"
+        :bordered="false"
+        :disabled="edge.locked"
+        @update:model-value="setStyle"
+      />
+      <CustomSelect
+        :model-value="edge.linePattern"
+        :options="patterns"
+        trigger-aria-label="连线笔触"
+        min-width="64px"
+        variant="minimal"
+        :bordered="false"
+        :disabled="edge.locked"
+        @update:model-value="setPattern"
+      />
+      <CustomSelect
+        :model-value="edge.color"
+        :options="colors"
+        trigger-aria-label="连线颜色"
+        min-width="64px"
+        variant="minimal"
+        :bordered="false"
+        :disabled="edge.locked"
+        @update:model-value="setColor"
+      />
+    </ToolbarGroup>
+    <ToolbarGroup>
+      <ToolbarButton label="编辑连线标签" :disabled="edge.locked" @click="run(editing.beginLabel)">
+        <TagIcon />
+      </ToolbarButton>
+      <ToolbarButton label="删除连线" :disabled="edge.locked" @click="run(editing.remove)">
+        <DeleteIcon />
+      </ToolbarButton>
+      <CanvasToolbarMenu
+        label="更多连线操作"
+        :options="moreOptions"
+        align="end"
+        :arrow="false"
+        @select="more"
+      >
+        <MoreIcon />
+      </CanvasToolbarMenu>
+    </ToolbarGroup>
+  </FloatingToolbar>
   <template v-if="edge && geometry">
     <button
       v-if="!edge.locked"
@@ -133,7 +144,15 @@
 </template>
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, onBeforeUnmount } from 'vue';
-import { ToolbarButton, CustomSelect } from '@linnya/renderer-ui';
+import {
+  CustomSelect,
+  FloatingToolbar,
+  ToolbarButton,
+  ToolbarGroup,
+  type CustomSelectOption,
+} from '@linnya/renderer-ui';
+import { DeleteIcon, MoreIcon, TagIcon } from '@linnya/renderer-ui/icons';
+import { CanvasToolbarMenu } from '../../canvasChrome';
 import {
   CanvasEdgeSchema,
   CanvasColorSchema,
@@ -150,13 +169,29 @@ const props = defineProps<{
   run: (action: () => Promise<unknown>) => Promise<void>;
 }>();
 const emit = defineEmits<{ focusCanvas: []; locate: [which: 'from' | 'to'] }>();
-const bar = ref<HTMLElement | null>(null),
+const moreOptions = computed<readonly CustomSelectOption<string>[]>(() => [
+  { value: 'lock', text: edge.value?.locked ? '解锁连线' : '锁定连线' },
+  { value: 'reverse', text: '反转方向', disabled: Boolean(edge.value?.locked) },
+  { isSeparator: true },
+  { value: 'from', text: '跳到起点' },
+  { value: 'to', text: '跳到终点' },
+]);
+const more = (value: string) => {
+  const current = edge.value;
+  if (!current) return;
+  if (value === 'lock')
+    void props.run(() => props.editing.patch(current, { locked: !current.locked }));
+  else if (value === 'reverse') void props.run(props.editing.reverse);
+  else if (value === 'from' || value === 'to') emit('locate', value);
+};
+const bar = ref<InstanceType<typeof FloatingToolbar> | null>(null),
   barSize = ref({ width: 720, height: 44 });
 const observer = new ResizeObserver(entries => {
   const entry = entries[0];
   if (entry) barSize.value = { width: entry.target.clientWidth, height: entry.target.clientHeight };
 });
-watch(bar, value => {
+const barElement = computed(() => bar.value?.element ?? null);
+watch(barElement, value => {
   observer.disconnect();
   if (value) observer.observe(value);
 });
@@ -184,17 +219,17 @@ const pointStyle = (point: CanvasPoint) => {
   const screen = project(point);
   return { left: `${screen.x}px`, top: `${screen.y}px` };
 };
-const barStyle = computed(() => {
+const barPosition = computed(() => {
   const shape = geometry.value,
-    host = bar.value?.parentElement;
-  if (!shape || !host) return undefined;
+    host = barElement.value?.parentElement;
+  if (!shape || !host) return { top: 0, left: 0 };
   const point = props.editing.toolbarPosition({
     geometry: shape,
     camera: props.camera,
     size: barSize.value,
     viewport: { width: host.clientWidth, height: host.clientHeight },
   });
-  return { left: `${point.x}px`, top: `${point.y}px` };
+  return { left: point.x, top: point.y };
 });
 const preview = computed(() => {
   const value = props.editing.state.preview.value;

@@ -1,4 +1,4 @@
-import { AlphaFilter, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { AlphaFilter, Container, Graphics, Rectangle } from 'pixi.js';
 import { readCanvasLinePalette } from '../../../../shared';
 import type {
   CanvasCamera,
@@ -9,10 +9,12 @@ import type {
   CanvasPoint,
   CanvasRectangle,
 } from '../../../../shared';
-import type { CanvasAppearance } from '../../definitions/canvasKernel';
+import type { CanvasAppearance, CanvasChromeColors } from '../../definitions/canvasKernel';
+import { canvasStandaloneChrome } from './canvasStandaloneChrome';
 import { createCanvasEdgeLayout, type CanvasEdgeGeometry } from '../../geometry/canvasEdgeGeometry';
 import { canvasFitText } from '../../geometry/canvasFitText';
 import { CanvasLineMesh } from './CanvasLineMesh';
+import { CanvasScreenTexture } from './CanvasScreenTexture';
 
 interface Entry {
   readonly edge: CanvasEdge;
@@ -55,9 +57,8 @@ export class CanvasLines {
   private readonly ghostArea = new Rectangle(0, 0, 1, 1);
   private readonly cardMask = new Graphics();
   private readonly endpoints = new Graphics();
-  private readonly labelCanvas = document.createElement('canvas');
-  private readonly labelTexture = Texture.from(this.labelCanvas);
-  private readonly labels = new Sprite(this.labelTexture);
+  private readonly labelLayer = new CanvasScreenTexture();
+  private readonly labels = this.labelLayer.sprite;
   private geometries: ReadonlyMap<CanvasEdgeId, CanvasEdgeGeometry> = new Map();
   private layout: ReturnType<typeof createCanvasEdgeLayout> | undefined;
   private previewIds: ReadonlySet<CanvasEdgeId> | undefined;
@@ -299,10 +300,12 @@ export class CanvasLines {
       this.emphasisKey = emphasisKey;
     }
   }
+  private chrome(): CanvasChromeColors {
+    return this.appearance.chrome ?? canvasStandaloneChrome(this.appearance.dark);
+  }
   private updateAppearance(): void {
     const { x, y, zoom } = this.camera;
-    const background = this.appearance.dark ? 0x222723 : 0xf2f3ee,
-      ink = this.appearance.dark ? 0xe8e9e3 : 0x252c27;
+    const { background, ink, accent } = this.chrome();
     const amount = zoom < 0.15 ? 0.1 : zoom < 0.3 ? 0.16 : 0.22;
     const palette = readCanvasLinePalette(this.appearance.dark);
     this.base.setColor(blend(ink, background, amount), 1, palette);
@@ -310,7 +313,7 @@ export class CanvasLines {
     this.ghost.setColor(ink, 1, palette);
     this.movingGhost.setColor(ink, 1, palette);
     this.highlight.setColor(blend(ink, background, 0.55), 1.25, palette);
-    this.selectedLine.setColor(0x347b45, 1.5);
+    this.selectedLine.setColor(accent, 1.5);
     for (const layer of [
       this.base,
       this.ghost,
@@ -334,14 +337,13 @@ export class CanvasLines {
         point.y * this.camera.zoom + this.camera.y,
         3
       )
-      .fill(this.appearance.dark ? 0x222723 : 0xf2f3ee)
+      .fill(this.chrome().background)
       .stroke({ width: 1, color });
   }
   private drawEndpoints(visible: readonly Entry[]): void {
     this.endpoints.clear();
     const palette = readCanvasLinePalette(this.appearance.dark),
-      background = this.appearance.dark ? 0x222723 : 0xf2f3ee;
-    const ink = this.appearance.dark ? 0xe8e9e3 : 0x252c27;
+      { background, ink, accent } = this.chrome();
     const neutral = blend(
       ink,
       background,
@@ -364,23 +366,25 @@ export class CanvasLines {
           point.y * this.camera.zoom + this.camera.y,
           3.5
         )
-        .fill(0x347b45)
-        .stroke({ width: 1, color: 0xffffff });
+        .fill(accent)
+        .stroke({ width: 1, color: background });
   }
   private drawLabels(visible: readonly Entry[]): void {
     const labeled = visible.filter(entry => entry.edge.label);
     this.labels.visible = labeled.length > 0;
     if (!labeled.length) return;
-    this.labelCanvas.width = Math.ceil(this.width * this.resolution);
-    this.labelCanvas.height = Math.ceil(this.height * this.resolution);
-    const context = this.labelCanvas.getContext('2d');
-    if (!context) throw new Error('canvas_line_labels_context_missing');
+    const context = this.labelLayer.prepare(
+      this.width * this.resolution,
+      this.height * this.resolution
+    );
     context.scale(this.resolution, this.resolution);
     context.font = '12px system-ui';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.strokeStyle = this.appearance.dark ? '#222723' : '#f2f3ee';
-    context.fillStyle = this.appearance.dark ? '#b5bcb3' : '#626b61';
+    const { background, label } = this.chrome(),
+      css = (color: number) => `#${color.toString(16).padStart(6, '0')}`;
+    context.strokeStyle = css(background);
+    context.fillStyle = css(label);
     context.lineWidth = 5;
     for (const entry of labeled) {
       const label = canvasFitText(entry.edge.label, text => context.measureText(text).width);
@@ -390,9 +394,7 @@ export class CanvasLines {
       context.strokeText(label, x, y);
       context.fillText(label, x, y);
     }
-    this.labelTexture.source.update();
-    this.labels.width = this.width;
-    this.labels.height = this.height;
+    this.labelLayer.commit(this.width, this.height);
   }
   hitTest(point: CanvasPoint): CanvasEdge | null {
     const tolerance = 6 / this.camera.zoom;
@@ -432,7 +434,7 @@ export class CanvasLines {
     this.highlight.destroy();
     this.selectedLine.destroy();
     this.base.destroy();
-    this.labelTexture.destroy(true);
+    this.labelLayer.destroy();
     this.below.destroy({ children: true });
     this.above.destroy({ children: true });
     this.ghostAlpha.destroy();

@@ -2,60 +2,80 @@
   <aside
     v-if="groups.length || withdrawal"
     class="canvas-agent-review"
-    aria-label="Agent 改动组"
+    aria-label="Agent 改动审阅"
     @pointerdown.stop
   >
-    <div
-      v-for="(group, index) in groups"
+    <section
+      v-for="group in groups"
       :key="group.id"
       class="canvas-agent-group"
-      :class="{ active: review.state.activeGroupId.value === group.id }"
+      :class="{ 'is-active': review.state.activeGroupId.value === group.id }"
     >
       <button type="button" class="canvas-agent-group-summary" @click="activate(group)">
-        <span class="canvas-agent-status" :class="{ writing: group.writing }" aria-hidden="true" />
-        <span
-          >Agent {{ index + 1 }}<small>{{ group.writing ? '写入中' : '已静默' }}</small></span
+        <LinnyaLoadingIcon
+          v-if="group.writing"
+          activity="generating"
+          class="canvas-agent-status-icon"
+        />
+        <span v-else class="canvas-agent-status" aria-hidden="true" />
+        <span class="canvas-agent-title"
+          >Agent 改动 · {{ describeCanvasAgentGroupTime(group) }}</span
         >
-        <span class="canvas-agent-counts"
-          >+{{ group.added.length }} · ~{{ group.updated.length }} · −{{
-            group.deleted.length
-          }}</span
-        >
+        <span class="canvas-agent-counts">
+          {{ describeCanvasAgentGroupCounts(group) }} · {{ group.writing ? '正在写入' : '已写完' }}
+        </span>
       </button>
-      <template v-if="group.pendingApproval">
-        <span class="canvas-approval-reason"
-          >{{
-            group.pendingApproval.reason === 'delete_threshold' ? '批量删除' : '大范围整理'
-          }}待确认（{{ group.pendingApproval.operationCount }}项）</span
-        >
-        <button
-          type="button"
-          :disabled="busy || readonly"
-          @click="review.approve(group.pendingApproval.id, 'allow')"
-        >
-          允许本批
-        </button>
-        <button
-          type="button"
-          :disabled="busy || readonly"
-          @click="review.approve(group.pendingApproval.id, 'deny')"
-        >
-          拒绝
-        </button>
-      </template>
-      <template v-else>
-        <button type="button" :disabled="busy || readonly" @click="review.withdraw(group.id)">
-          撤回本组
-        </button>
-        <button type="button" :disabled="busy || readonly" @click="review.complete(group.id)">
-          完成
-        </button>
-      </template>
+      <div class="canvas-agent-actions">
+        <template v-if="group.pendingApproval">
+          <span class="canvas-agent-approval">
+            {{
+              group.pendingApproval.reason === 'delete_threshold' ? '批量删除' : '大范围整理'
+            }}待确认（{{ group.pendingApproval.operationCount }} 项）
+          </span>
+          <BaseButton
+            variant="plain"
+            size="sm"
+            :disabled="busy || readonly"
+            @click="review.approve(group.pendingApproval.id, 'deny')"
+          >
+            拒绝
+          </BaseButton>
+          <BaseButton
+            variant="plain"
+            tone="accent"
+            size="sm"
+            :disabled="busy || readonly"
+            @click="review.approve(group.pendingApproval.id, 'allow')"
+          >
+            允许本批
+          </BaseButton>
+        </template>
+        <template v-else>
+          <BaseButton
+            variant="plain"
+            size="sm"
+            :disabled="busy || readonly"
+            @click="review.withdraw(group.id)"
+          >
+            撤回本组
+          </BaseButton>
+          <BaseButton
+            variant="plain"
+            tone="accent"
+            size="sm"
+            :disabled="busy || readonly"
+            @click="review.complete(group.id)"
+          >
+            完成审阅
+          </BaseButton>
+        </template>
+      </div>
       <details
         v-if="group.outcomes.skippedWrites.length || !group.outcomes.complete"
-        class="canvas-review-outcomes"
+        class="canvas-review-details"
       >
-        <summary :title="projectCanvasSkippedWrites(group, elements).join('\n')">
+        <summary>
+          <ChevronIcon direction="right" class="canvas-review-details-arrow" aria-hidden="true" />
           跳过 {{ group.outcomes.skippedWrites.length }} 项{{
             group.outcomes.complete ? '' : '（历史信息不全）'
           }}
@@ -66,21 +86,22 @@
           </li>
         </ul>
       </details>
-    </div>
+    </section>
     <nav
       v-if="activeGroup && targets.length"
       class="canvas-review-navigation"
       aria-label="逐卡审阅"
     >
-      <button type="button" :disabled="busy" aria-label="查看上一个改动" @click="navigate(-1)">
-        ‹
-      </button>
-      <span>{{ position }}/{{ targets.length }}</span>
-      <button type="button" :disabled="busy" aria-label="查看下一个改动" @click="navigate(1)">
-        ›
-      </button>
-      <button
-        type="button"
+      <IconButton label="上一个改动" size="xs" :disabled="busy" @click="navigate(-1)">
+        <ChevronIcon direction="left" />
+      </IconButton>
+      <span class="canvas-review-position">{{ position }} / {{ targets.length }}</span>
+      <IconButton label="下一个改动" size="xs" :disabled="busy" @click="navigate(1)">
+        <ChevronIcon direction="right" />
+      </IconButton>
+      <BaseButton
+        variant="plain"
+        size="sm"
         @click="
           emit(
             'locate',
@@ -89,40 +110,48 @@
         "
       >
         查看整组
-      </button>
-      <details class="canvas-review-deletions">
-        <summary>改动卡片</summary>
+      </BaseButton>
+      <details class="canvas-review-details">
+        <summary>
+          <ChevronIcon direction="right" class="canvas-review-details-arrow" aria-hidden="true" />
+          改动列表
+        </summary>
         <ul>
-          <li v-for="target in targets" :key="target.id">
-            <button type="button" @click="reveal(target)">
+          <li v-for="target in targets" :key="target.id" class="canvas-review-target">
+            <button type="button" class="canvas-panel-row" @click="reveal(target)">
               {{ target.description }} · {{ target.title }}
             </button>
-            <button
+            <BaseButton
               v-if="target.kind === 'deleted'"
-              type="button"
+              variant="plain"
+              tone="accent"
+              size="sm"
               :disabled="busy || readonly"
               @click="review.withdraw(target.groupId, [target.id])"
             >
               恢复
-            </button>
+            </BaseButton>
           </li>
         </ul>
       </details>
     </nav>
     <div v-if="withdrawal" class="canvas-review-withdrawal" role="status">
-      {{ withdrawal.mode === 'redo' ? '重做撤回' : '撤回' }}：{{
-        withdrawal.applied ? `已反转 ${withdrawal.applied} 项` : '未反转任何改动'
-      }}，保留 {{ withdrawal.retained }} 项后续修改，跳过 {{ withdrawal.skipped }} 项
-      <button
+      <span>
+        {{ withdrawal.mode === 'redo' ? '重做撤回' : '撤回' }}：{{
+          withdrawal.applied ? `已反转 ${withdrawal.applied} 项` : '未反转任何改动'
+        }}，保留 {{ withdrawal.retained }} 项后续修改，跳过 {{ withdrawal.skipped }} 项
+      </span>
+      <BaseButton
         v-if="withdrawal.canRedo"
-        type="button"
+        variant="plain"
+        size="sm"
         :disabled="busy || readonly"
         @click="review.redoWithdrawal()"
       >
         重做撤回
-      </button>
-      <details v-if="withdrawal.details.length">
-        <summary :title="withdrawal.details.join('\n')">查看部分保留与跳过原因</summary>
+      </BaseButton>
+      <details v-if="withdrawal.details.length" class="canvas-review-details">
+        <summary>查看保留与跳过原因</summary>
         <ul>
           <li v-for="(detail, row) in withdrawal.details" :key="row">
             {{ detail }}
@@ -130,13 +159,19 @@
         </ul>
       </details>
     </div>
-    <p v-if="review.state.error.value" role="alert">
+    <p v-if="review.state.error.value" class="canvas-panel-error" role="alert">
       {{ review.state.error.value }}
     </p>
   </aside>
 </template>
 <script setup lang="ts">
 import { computed } from 'vue';
+import { BaseButton, IconButton } from '@linnya/renderer-ui';
+import { ChevronIcon, LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
+import {
+  describeCanvasAgentGroupCounts,
+  describeCanvasAgentGroupTime,
+} from '../functions/describeCanvasAgentGroup';
 import type { CanvasAgentGroup, CanvasElement, CanvasElementId } from '@plugin/canvas/shared';
 import type { CanvasReviewTarget } from '../definitions/agentReview';
 import type { createCanvasAgentReview } from '../orchestration/createCanvasAgentReview';

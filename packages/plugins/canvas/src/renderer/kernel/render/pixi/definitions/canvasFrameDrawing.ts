@@ -11,5 +11,5 @@ export interface CanvasFrameDrawingOptions {
 export interface CanvasCaptureFrame {
   readonly width: number;
   readonly height: number;
-  readonly dark: boolean;
+  readonly background: number;
 }

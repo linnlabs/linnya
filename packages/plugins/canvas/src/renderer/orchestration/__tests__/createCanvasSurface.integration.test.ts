@@ -9,6 +9,14 @@ import type { CanvasSurfacePorts } from '../../definitions/canvasSurface';
 import { createCanvasSurface } from '../createCanvasSurface';
 
 vi.mock('../../kernel', () => ({ createPixiCanvasKernel: vi.fn() }));
+vi.mock('../../functions/readCanvasChrome', () => ({
+  readCanvasChrome: () => ({
+    accent: 0x347b45,
+    background: 0xf2f3ee,
+    ink: 0x252c27,
+    label: 0x626b61,
+  }),
+}));
 
 afterEach(() => {
   vi.unstubAllGlobals();

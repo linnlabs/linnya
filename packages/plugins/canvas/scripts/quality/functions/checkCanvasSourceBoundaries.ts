@@ -7,7 +7,7 @@ const normalize = (value: string) => value.replaceAll('\\', '/');
 const builtins = new Set([...builtinModules, ...builtinModules.map(name => `node:${name}`)]);
 // queries只公开正式只读合同，独立CLI不必经写入组合入口加载审批和历史运行态。
 const publicEntries = new Set(['index.ts', 'content.ts', 'worker.ts', 'queries.ts']);
-const publicResources = new Set(['renderer/features/cardRendering/styles/canvasCardInk.css', 'renderer/features/cardRendering/styles/canvasMediaContent.css', 'renderer/features/agentReview/styles/agentReview.css']);
+const publicResources = new Set(['renderer/features/cardRendering/styles/canvasCardInk.css', 'renderer/features/cardRendering/styles/canvasMediaContent.css', 'renderer/features/agentReview/styles/agentReview.css', 'renderer/features/canvasChrome/styles/canvasChrome.css']);
 function moduleName(node: ts.Node): string | undefined {
   if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) return node.moduleSpecifier.text;
   if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require')) && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) return node.arguments[0].text;

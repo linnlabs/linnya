@@ -437,7 +437,7 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 
 ## 12. 刻度棘轮
 
-`pnpm run guard:renderer-style-scale` 扫描 `apps/renderer` 与 `packages/renderer-ui/src` 的 CSS（token owner 文件除外），统计绕过 token 的写死值与基础色阶引用：
+`pnpm run guard:renderer-style-scale` 扫描 `apps/renderer`、`packages/renderer-ui/src` 与官方插件 `packages/plugins/*/src` 的 CSS（token owner 文件与即将退役的 Mindmap 除外），统计绕过 token 的写死值与基础色阶引用：
 
 | 规则 | 统计内容 |
 | --- | --- |
@@ -470,7 +470,7 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 - 部分业务 CSS 仍带有不在刻度上的值，由刻度棘轮和代码评审逐步收敛；基础色阶引用只剩第 2.6 节列出的有意例外。2026-10-17 的存量约 200 处，主要是三类：
   - 奇数内边距与间距（约 90 处，见第 4 节）：每处都在补偿边框或凑固定高度，要随组件迁到控件高度 token 时一起改，不批量吸附。
   - z-index（54 处）：局部堆叠的 10、20 等需要先给局部容器 `isolation: isolate` 再收敛到 0–9；1300、1200、1100 等跨 owner 的值需要先画出真实叠放顺序，再给现值命名新层级。
-- 动效刻度（`SCALE-07`、`SCALE-08`、`MOTION-01`）的存量已清零。仍在扫描之外的是 Slides 插件里约 20 处裸 `ease`（随 `linnya-slides` 分支处理）。
+- 动效刻度（`SCALE-07`、`SCALE-08`、`MOTION-01`）在 Host 与 Renderer UI 中已清零；2026-11-06 起插件样式也纳入扫描，Slides 的存量（含裸 `ease`）记在基线里，随 `linnya-slides` 分支收敛。
 - 提示还有三类没有迁到共享服务：带文字的按钮、色板与 `CustomSelect` 长选项的原生 `title`（见 7.4），以及知识库的 `tab-navigation`（另一套页签实现，没有滑动指示器）。
 - 文本对比度可以用应用内逐页扫描复核：遍历可见文本节点，按有效背景计算对比度并汇总低于 4.5:1（大字 3:1）的组合。2026-10-16 在浅色、暗色、moon-blue 三套主题的项目首页、对话、知识库、插件商店、设置各页和文档编辑页上扫描后，除装饰性的面包屑分隔符外没有低于要求的文字。
 - 按下态（active）只持续很短时间，outline info tone 按下时文字对比度约 3.8～4:1，未计入第 2.7 节的要求。

@@ -8,7 +8,9 @@
     @close="editor.dismiss()"
   >
     <template v-if="draft">
-      <p>在原图上拖出裁剪范围，或用下方滑块精确调整。原图始终保留。</p>
+      <p class="canvas-image-edit-hint">
+        在原图上拖出裁剪范围，或用下方滑块精确调整。原图始终保留。
+      </p>
       <div class="canvas-image-crop-stage">
         <div
           v-if="draft.asset"
@@ -24,16 +26,18 @@
         <p v-else role="status">正在读取图片…</p>
       </div>
       <fieldset class="canvas-image-edit-fields" :disabled="editor.state.busy.value">
-        <legend>裁剪边界</legend>
-        <label v-for="side in sides" :key="side.id"
-          >{{ side.label }}
-          <input
-            type="range"
-            min="0"
-            max="99"
-            step="1"
-            :value="insets[side.id]"
-            @input="inset(side.id, $event)"
+        <legend class="canvas-image-edit-legend">裁剪边界</legend>
+        <label v-for="side in sides" :key="side.id" class="canvas-image-edit-row">
+          <span class="canvas-image-edit-label">{{ side.label }}</span>
+          <CustomSlider
+            class="canvas-image-edit-slider"
+            :model-value="insets[side.id]"
+            :min="0"
+            :max="99"
+            :step="1"
+            variant="compact"
+            :aria-label="`裁剪${side.label}边`"
+            @update:model-value="inset(side.id, $event)"
           />
           <output>{{ Math.round(insets[side.id]) }}%</output>
         </label>
@@ -44,15 +48,17 @@
         >
           恢复完整原图
         </BaseButton>
-        <label
-          >图注<CustomTextInput
+        <label class="canvas-image-edit-row">
+          <span class="canvas-image-edit-label">图注</span
+          ><CustomTextInput
             class="canvas-image-edit-text"
             :model-value="draft.data.caption"
             :disabled="editor.state.busy.value"
             @update:model-value="editor.state.patch({ caption: $event })"
         /></label>
-        <label
-          >替代文字<CustomTextInput
+        <label class="canvas-image-edit-row">
+          <span class="canvas-image-edit-label">替代文字</span
+          ><CustomTextInput
             class="canvas-image-edit-text"
             :model-value="draft.data.alt"
             :disabled="editor.state.busy.value"
@@ -82,22 +88,14 @@
         {{ editor.deliveryNotice.value }}
         <BaseButton variant="secondary" @click="editor.retryDelivery()"> 重试确认 </BaseButton>
       </p>
-      <div class="canvas-image-edit-actions">
-        <BaseButton
-          variant="secondary"
-          :disabled="editor.state.busy.value"
-          @click="editor.dismiss()"
-        >
-          取消
-        </BaseButton>
-        <BaseButton
-          variant="primary"
-          :disabled="editor.state.busy.value || !draft?.asset"
-          @click="editor.apply()"
-        >
-          保存
-        </BaseButton>
-      </div>
+      <ActionButtons
+        primary-action-text="应用到卡片"
+        secondary-action-text="取消"
+        :is-primary-action-disabled="editor.state.busy.value || !draft?.asset"
+        :is-secondary-action-disabled="editor.state.busy.value"
+        @primary-click="editor.apply()"
+        @secondary-click="editor.dismiss()"
+      />
     </template>
   </Modal>
   <p v-if="!draft && editor.state.error.value" role="alert">
@@ -106,7 +104,13 @@
 </template>
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { Modal, BaseButton, CustomTextInput } from '@linnya/renderer-ui';
+import {
+  ActionButtons,
+  BaseButton,
+  CustomSlider,
+  CustomTextInput,
+  Modal,
+} from '@linnya/renderer-ui';
 import type { createCanvasImageEditing } from '../orchestration/createCanvasImageEditing';
 import { createCanvasImageCropGesture } from '../orchestration/createCanvasImageCropGesture';
 import { canvasImageCropInset, fullCanvasImageCrop } from '../functions/canvasImageCrop';
@@ -133,11 +137,8 @@ const sides = [
   { id: 'right', label: '右' },
   { id: 'bottom', label: '下' },
 ] as const;
-function inset(side: (typeof sides)[number]['id'], event: Event) {
-  if (event.target instanceof HTMLInputElement)
-    props.editor.state.patch({
-      crop: canvasImageCropInset(crop.value, side, event.target.valueAsNumber),
-    });
+function inset(side: (typeof sides)[number]['id'], value: number) {
+  props.editor.state.patch({ crop: canvasImageCropInset(crop.value, side, value) });
 }
 function replace(event: Event) {
   if (event.target instanceof HTMLInputElement) {

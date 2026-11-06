@@ -1,4 +1,3 @@
-import { Sprite, Texture } from 'pixi.js';
 import {
   readCanvasCardCssPalette,
   readCanvasElementText,
@@ -11,26 +10,18 @@ import type {
 } from '../../definitions/canvasMapLabels';
 import { canvasTextGraphemes, canvasTitlePrefix } from '../../geometry/canvasTextGraphemes';
 import { createCanvasMapLabelCollisionIndex } from '../../geometry/canvasMapLabelCollision';
+import { CanvasScreenTexture } from './CanvasScreenTexture';
 
 /** 地图标签在屏幕分辨率的单一图层绘制，不生成 1/zoom 倍的巨型文字纹理。 */
 export class CanvasMapLabels {
-  readonly sprite: Sprite;
-  private readonly canvas = document.createElement('canvas');
-  private readonly context: CanvasRenderingContext2D;
-  private readonly texture: Texture;
+  private readonly layer = new CanvasScreenTexture();
+  readonly sprite = this.layer.sprite;
+  private readonly context = this.layer.context;
   private projection: CanvasMapLabelsProjection | undefined;
   private readonly padding = 160;
   private readonly drawn = new Set<CanvasCard['id']>();
   private readonly titleDependents = new Set<CanvasCard['id']>();
   private readonly fittedTitles = new Map<string, CanvasMapLabelText>();
-
-  constructor() {
-    const context = this.canvas.getContext('2d');
-    if (!context) throw new Error('canvas_2d_unavailable');
-    this.context = context;
-    this.texture = Texture.from(this.canvas);
-    this.sprite = new Sprite(this.texture);
-  }
 
   private panCachedProjection(input: CanvasMapLabelsInput): boolean {
     const { width, height, camera } = input;
@@ -96,12 +87,7 @@ export class CanvasMapLabels {
     const { width, height, camera } = input;
     const renderWidth = width + this.padding * 2,
       renderHeight = height + this.padding * 2;
-    if (this.canvas.width !== renderWidth || this.canvas.height !== renderHeight) {
-      this.canvas.width = Math.max(1, renderWidth);
-      this.canvas.height = Math.max(1, renderHeight);
-    }
-    const context = this.context;
-    context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    const context = this.layer.prepare(renderWidth, renderHeight);
     this.drawn.clear();
     this.titleDependents.clear();
     const fontSize = camera.zoom < 0.15 ? 12 : 13;
@@ -136,9 +122,7 @@ export class CanvasMapLabels {
       context.fillText(fitted.text, anchorX, anchorY);
     }
     context.globalAlpha = 1;
-    this.texture.source.update();
-    this.sprite.width = renderWidth;
-    this.sprite.height = renderHeight;
+    this.layer.commit(renderWidth, renderHeight);
     this.sprite.position.set(-this.padding, -this.padding);
     this.projection = {
       cards: input.cards,
@@ -161,7 +145,6 @@ export class CanvasMapLabels {
   }
 
   destroy(): void {
-    this.sprite.destroy();
-    this.texture.destroy(true);
+    this.layer.destroy();
   }
 }
