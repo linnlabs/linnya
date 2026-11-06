@@ -1,7 +1,13 @@
 import type { Ref } from 'vue';
 import type { JsonValue } from '@app/schemas';
-import type { CanvasCardId, CanvasRectangle, CanvasTextCardSchema, CanvasTextDocument } from '@plugin/canvas/shared';
+import type {
+  CanvasCardId,
+  CanvasRectangle,
+  CanvasTextCardSchema,
+  CanvasTextDocument,
+} from '@plugin/canvas/shared';
 import type { z } from 'zod';
+import type { CanvasDocumentSession } from '../../canvasDocument';
 
 export interface CanvasTextEditingLease {
   readonly documentId: string;
@@ -40,3 +46,14 @@ export interface CanvasCardEditor {
   suspend(): Promise<void>;
   dispose(): void;
 }
+export interface CanvasCardSaveOptions {
+  readonly session: CanvasDocumentSession;
+  readonly state: CanvasCardEditingState;
+  readonly readLease: () => CanvasTextEditingLease | null;
+  readonly owns: (lease: CanvasTextEditingLease | null, draft: CanvasCardDraft) => boolean;
+  readonly finishDraft: (draft: CanvasCardDraft, mayFinish: () => boolean) => Promise<boolean>;
+  readonly isComposing: () => boolean;
+  readonly captureCurrent: () => () => boolean;
+}
+/** 打开流程可绑定自己的世代；对外编辑器仍只暴露finish参数。 */
+export type CanvasCardSave = (finish?: boolean, isCurrent?: () => boolean) => Promise<boolean>;

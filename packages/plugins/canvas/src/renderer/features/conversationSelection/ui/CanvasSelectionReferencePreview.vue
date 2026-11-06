@@ -12,8 +12,17 @@ import { getCurrentWorkspaceProjectId } from '@plugin/renderer/workspaceRuntime'
 import type { ConversationReferenceChipInput } from '@plugin/renderer/conversationInputContribution';
 import type { CanvasSelectionReferencePort } from '../definitions/canvasSelectionReference';
 import { createCanvasSelectionPreview } from '../orchestration/createCanvasSelectionPreview';
-const props = defineProps<{ reference: ConversationReferenceChipInput; read: CanvasSelectionReferencePort['read'] }>();
+const props = defineProps<{
+  reference: ConversationReferenceChipInput;
+  read: CanvasSelectionReferencePort['read'];
+}>();
 const preview = createCanvasSelectionPreview(props.read, getCurrentWorkspaceProjectId);
-watch([() => props.reference, getCurrentWorkspaceProjectId], () => { void preview.refresh(props.reference); }, { immediate: true });
+watch(
+  [() => props.reference, getCurrentWorkspaceProjectId],
+  () => {
+    void preview.refresh(props.reference);
+  },
+  { immediate: true }
+);
 onBeforeUnmount(preview.dispose);
 </script>

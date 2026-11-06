@@ -7,5 +7,6 @@ export interface CanvasCardRasterInput {
   readonly dark: boolean;
   readonly regions: ReturnType<typeof splitCardRasterRegions>;
 }
-export type CanvasCardRasterOutput = { readonly kind: 'ready'; readonly tiles: readonly CanvasRasterTile[] }
+export type CanvasCardRasterOutput =
+  | { readonly kind: 'ready'; readonly tiles: readonly CanvasRasterTile[] }
   | { readonly kind: 'failed'; readonly error: unknown };

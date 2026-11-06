@@ -11,7 +11,10 @@ export function createCanvasViewRequests(options: {
   let pending = Promise.resolve();
   function enqueue<T>(operation: () => Promise<T>): Promise<T> {
     const run = pending.then(operation);
-    pending = run.then(() => undefined, () => undefined);
+    pending = run.then(
+      () => undefined,
+      () => undefined
+    );
     return run;
   }
   async function closeCurrent(): Promise<void> {
@@ -31,12 +34,16 @@ export function createCanvasViewRequests(options: {
         let snapshot: CanvasSnapshot;
         try {
           snapshot = await options.port.read(documentId, options.viewId);
-          if (snapshot.documentId !== documentId) throw new Error('Canvas open response belongs to another document');
+          if (snapshot.documentId !== documentId)
+            throw new Error('Canvas open response belongs to another document');
         } catch (error) {
           await closeCurrent();
           throw error;
         }
-        if (!current()) { await closeCurrent(); return null; }
+        if (!current()) {
+          await closeCurrent();
+          return null;
+        }
         return snapshot;
       });
     },

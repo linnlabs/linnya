@@ -23,15 +23,42 @@ export interface CanvasRasterDemand {
   readonly regions: readonly CanvasRectangle[];
 }
 
-export interface CanvasRasterPending { readonly key: string; readonly contentKey: string; readonly scale: number; readonly completion: Promise<boolean> }
+export interface CanvasRasterPending {
+  readonly key: string;
+  readonly contentKey: string;
+  readonly scale: number;
+  readonly completion: Promise<boolean>;
+}
 
-export type CanvasRasterIdentity = Omit<CanvasRasterDemand, 'regions' | 'jobKey'> & { readonly physicalWidth: number };
-export interface CanvasRasterFrame { readonly count: number; readonly font: string; readonly precise?: boolean }
+export type CanvasRasterIdentity = Omit<CanvasRasterDemand, 'regions' | 'jobKey'> & {
+  readonly physicalWidth: number;
+};
+export interface CanvasRasterFrame {
+  readonly count: number;
+  readonly font: string;
+  readonly precise?: boolean;
+}
 
 export type CanvasRasterReadinessCard =
-  | { readonly id: CanvasCardId; readonly revision: number | null; readonly mode: 'outside'; readonly status: 'not_required' }
-  | { readonly id: CanvasCardId; readonly revision: number; readonly mode: 'overview' | 'thumbnail'; readonly status: 'not_required' }
-  | { readonly id: CanvasCardId; readonly revision: number; readonly mode: 'body'; readonly firstPresented: boolean; readonly status: 'ready' | 'awaiting_draw' | 'pending' | 'failed' };
+  | {
+      readonly id: CanvasCardId;
+      readonly revision: number | null;
+      readonly mode: 'outside';
+      readonly status: 'not_required';
+    }
+  | {
+      readonly id: CanvasCardId;
+      readonly revision: number;
+      readonly mode: 'overview' | 'thumbnail';
+      readonly status: 'not_required';
+    }
+  | {
+      readonly id: CanvasCardId;
+      readonly revision: number;
+      readonly mode: 'body';
+      readonly firstPresented: boolean;
+      readonly status: 'ready' | 'awaiting_draw' | 'pending' | 'failed';
+    };
 export interface CanvasRasterReadiness {
   readonly cards: readonly CanvasRasterReadinessCard[];
   readonly complete: boolean;

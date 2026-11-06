@@ -4,7 +4,8 @@ export function resolveCanvasResize(gesture: CanvasResizeGesture, event: Pointer
   let height = Math.max(60, gesture.card.height + (event.clientY - gesture.clientY) / gesture.zoom);
   if (event.shiftKey) {
     const ratio = gesture.card.width / gesture.card.height;
-    if (width / height > ratio) height = width / ratio; else width = height * ratio;
+    if (width / height > ratio) height = width / ratio;
+    else width = height * ratio;
   }
   return { x: gesture.card.x, y: gesture.card.y, width, height };
 }

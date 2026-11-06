@@ -1,36 +1,12 @@
 <template>
-  <section
-    class="canvas-history-preview"
-    aria-label="画布历史只读预览"
-  >
-    <div
-      ref="host"
-      class="canvas-stage"
-    />
-    <div
-      ref="staging"
-      class="canvas-raster-staging"
-      aria-hidden="true"
-    />
-    <button
-      type="button"
-      class="canvas-history-fit"
-      @click="preview?.fit()"
-    >
-      适合全部
-    </button>
-    <p
-      v-if="preview?.state.phase.value === 'loading'"
-      class="canvas-status"
-      role="status"
-    >
+  <section class="canvas-history-preview" aria-label="画布历史只读预览">
+    <div ref="host" class="canvas-stage" />
+    <div ref="staging" class="canvas-raster-staging" aria-hidden="true" />
+    <button type="button" class="canvas-history-fit" @click="preview?.fit()">适合全部</button>
+    <p v-if="preview?.state.phase.value === 'loading'" class="canvas-status" role="status">
       正在读取历史…
     </p>
-    <p
-      v-if="preview?.state.error.value"
-      class="canvas-status canvas-status-error"
-      role="alert"
-    >
+    <p v-if="preview?.state.error.value" class="canvas-status canvas-status-error" role="alert">
       {{ preview.state.error.value }}
     </p>
     <div
@@ -58,23 +34,44 @@ import { useCanvasPreferencesStore } from '../features/materialSetting';
 import { createCanvasHistoryPort } from '../adapters/createCanvasHistoryPort';
 import { readCanvasAppearance } from '../functions/readCanvasAppearance';
 const props = defineProps<{ documentId: string; versionId: string }>();
-const host = ref<HTMLElement | null>(null), staging = ref<HTMLElement | null>(null);
+const host = ref<HTMLElement | null>(null),
+  staging = ref<HTMLElement | null>(null);
 const preview = shallowRef<ReturnType<typeof createCanvasHistoryPreview> | null>(null);
 const preferences = useCanvasPreferencesStore();
-const budgetNotice = computed(() => canvasVersionBudgetNotice(preview.value?.state.budget.value ?? null));
-let removeBudget: (() => void) | null = null, theme: MutationObserver | null = null;
+const budgetNotice = computed(() =>
+  canvasVersionBudgetNotice(preview.value?.state.budget.value ?? null)
+);
+let removeBudget: (() => void) | null = null,
+  theme: MutationObserver | null = null;
 onMounted(() => {
-  const stage = host.value, stagingHost = staging.value;
+  const stage = host.value,
+    stagingHost = staging.value;
   if (!stage || !stagingHost) return;
   const port = createCanvasHistoryPort();
-  preview.value = createCanvasHistoryPreview({ host: stage, createContent: documentId => createCanvasCardContent(documentId, createCanvasCardMediaPort()), createRaster: settings => createCanvasRasterPresentation({ ...settings, host: stagingHost }),
-    read: port.read, readBudget: port.readBudget, readAppearance: () => readCanvasAppearance(preferences.preferences), observeResolution: installCanvasResolutionObserver,
+  preview.value = createCanvasHistoryPreview({
+    host: stage,
+    createContent: documentId => createCanvasCardContent(documentId, createCanvasCardMediaPort()),
+    createRaster: settings => createCanvasRasterPresentation({ ...settings, host: stagingHost }),
+    read: port.read,
+    readBudget: port.readBudget,
+    readAppearance: () => readCanvasAppearance(preferences.preferences),
+    observeResolution: installCanvasResolutionObserver,
   });
   removeBudget = port.subscribeBudget(status => preview.value?.budgetChanged(status));
-  theme = new MutationObserver(() => preview.value?.refreshAppearance()); theme.observe(document.documentElement, { attributes: true });
+  theme = new MutationObserver(() => preview.value?.refreshAppearance());
+  theme.observe(document.documentElement, { attributes: true });
   void preview.value.open(props.documentId, props.versionId);
 });
-watch([() => props.documentId, () => props.versionId], ([documentId, versionId]) => { void preview.value?.open(documentId, versionId); });
-watch(() => preferences.preferences, () => preview.value?.refreshAppearance());
-onBeforeUnmount(() => { removeBudget?.(); theme?.disconnect(); preview.value?.dispose(); });
+watch([() => props.documentId, () => props.versionId], ([documentId, versionId]) => {
+  void preview.value?.open(documentId, versionId);
+});
+watch(
+  () => preferences.preferences,
+  () => preview.value?.refreshAppearance()
+);
+onBeforeUnmount(() => {
+  removeBudget?.();
+  theme?.disconnect();
+  preview.value?.dispose();
+});
 </script>

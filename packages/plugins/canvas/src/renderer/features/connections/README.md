@@ -2,6 +2,8 @@
 
 公开 `createCanvasConnectionEditing` 拥有选中线、标签草稿及端点手势；位置与几何消费kernel公开合同，保存只调用正式文档会话。标签编辑有独立字段声明与续约，失败保留草稿。
 
+标签编辑的保护/保存屏障由 `createCanvasConnectionLabelEditing` 协调，端点手势只管理指针生命周期并交给 `commitCanvasEndpointGesture` 提交。浮条避让的屏幕投影在纯函数 `projectCanvasConnectionToolbar` 中计算；不在 UI 或 Store 中另算几何。
+
 选择、属性、标签和端点修改消费正式元素修订号；显示几何取kernel.readEdgeGeometry，不另算多线排开后的标签位置。标签与端点在编辑开始时保护实际字段，每两秒续约，结束或取消释放。冲突保留标签草稿，用户动作的跳过结果由CanvasDocumentSession明确报告。
 
 卡边圆点开始连线；已有端点拖到空白时变为自由点。新线拖到空白只要求textCreation开始临时草稿，不能提前创建空卡或用删除补偿取消。唯一正文编辑器由surface组合根连接，连线feature不直接访问Host编辑器。

@@ -1,9 +1,13 @@
 import type { CanvasSnapshot, CanvasSynchronization } from '@plugin/canvas/shared';
 
 /** 后端提交序号是唯一同步顺序，旧推送不能覆盖新事实。 */
-export function applyCanvasSynchronization(current: CanvasSnapshot, update: CanvasSynchronization): CanvasSnapshot {
+export function applyCanvasSynchronization(
+  current: CanvasSnapshot,
+  update: CanvasSynchronization
+): CanvasSnapshot {
   if (update.kind === 'snapshot') {
-    if (update.snapshot.documentId !== current.documentId) throw new Error('Canvas snapshot belongs to another document');
+    if (update.snapshot.documentId !== current.documentId)
+      throw new Error('Canvas snapshot belongs to another document');
     return update.snapshot.sequence < current.sequence ? current : update.snapshot;
   }
   if (update.documentId !== current.documentId || update.fromSequence !== current.sequence) {
@@ -19,6 +23,7 @@ export function applyCanvasSynchronization(current: CanvasSnapshot, update: Canv
     }
     sequence = commit.sequence;
   }
-  if (sequence !== update.sequence) throw new Error('Canvas delta terminal sequence is inconsistent');
+  if (sequence !== update.sequence)
+    throw new Error('Canvas delta terminal sequence is inconsistent');
   return { ...current, sequence, elements: [...elements.values()] };
 }

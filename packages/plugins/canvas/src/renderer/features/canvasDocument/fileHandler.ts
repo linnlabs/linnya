@@ -1,4 +1,9 @@
-import { notifyWorkspaceDocumentOpened, showWorkspaceNotification, throwIfFileSessionOpenCancelled, type FileTypeLifecycleHandler } from '@plugin/renderer/workspaceRuntime';
+import {
+  notifyWorkspaceDocumentOpened,
+  showWorkspaceNotification,
+  throwIfFileSessionOpenCancelled,
+  type FileTypeLifecycleHandler,
+} from '@plugin/renderer/workspaceRuntime';
 import { CANVAS_DOCUMENT_TYPE } from '@plugin/canvas/shared';
 import { saveCanvasDocumentDrafts } from './ports/canvasSaveParticipants';
 
@@ -12,7 +17,15 @@ export const canvasFileHandler: FileTypeLifecycleHandler = {
     throwIfFileSessionOpenCancelled(session);
   },
   async save({ session, reason }) {
-    try { return await saveCanvasDocumentDrafts(session.documentId, reason !== 'auto'); }
-    catch (error) { showWorkspaceNotification(error instanceof Error ? error.message : String(error), 'error', 5000); return false; }
+    try {
+      return await saveCanvasDocumentDrafts(session.documentId, reason !== 'auto');
+    } catch (error) {
+      showWorkspaceNotification(
+        error instanceof Error ? error.message : String(error),
+        'error',
+        5000
+      );
+      return false;
+    }
   },
 };
