@@ -3,7 +3,7 @@ import * as path from 'node:path';
 
 import type { ReleaseNotesInfo } from '../definitions/releaseManifest';
 
-const RELEASE_TITLE_PATTERN = /^测试版 v(\d+\.\d+\.\d+)\s*$/;
+const RELEASE_TITLE_PATTERN = /^(?:Linnya|测试版) v(\d+\.\d+\.\d+)\s*$/;
 
 export function parseReleaseNotesMarkdown(rawMarkdown: string): ReleaseNotesInfo {
   const lines = rawMarkdown.split(/\r?\n/);
@@ -11,7 +11,7 @@ export function parseReleaseNotesMarkdown(rawMarkdown: string): ReleaseNotesInfo
   const match = RELEASE_TITLE_PATTERN.exec(title);
 
   if (!match) {
-    throw new Error('release-notes.md 第一行必须是“测试版 vX.Y.Z”。');
+    throw new Error('release-notes.md 第一行必须是“Linnya vX.Y.Z”（历史测试版标题也可读取）。');
   }
 
   const version = match[1];

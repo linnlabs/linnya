@@ -113,7 +113,7 @@ macOS 正式构建接受 `security find-identity` 显示的完整 Developer ID A
 - `package.json#version`
 - `pnpm-lock.yaml`（锁源码 workspace 安装，不重复存储主应用版本）
 - `production-package-lock.json`（锁定当前公共 manifest 投影的 Desktop 生产依赖，由正式命令更新与复核）
-- `release-notes.md`
+- `release-notes.md`（当前正式版本以 `Linnya vX.Y.Z` 开头，解析器保留历史测试版标题的读取）
 - `apps/renderer/domains/settings/definitions/currentRelease.generated.ts`
 
 常用流程：
