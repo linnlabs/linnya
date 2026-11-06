@@ -433,8 +433,16 @@
 .canvas-connection-anchor:focus-visible {
   opacity: 1;
 }
+/* 选中线的两端不常驻控制点：选中已由线本身变色表示，端点上只留可拖区域，悬停时显出空心圈提示可改接。 */
 .canvas-connection-endpoint {
-  background: var(--color-accent);
+  border-color: transparent;
+  background: transparent;
+  cursor: grab;
+}
+.canvas-connection-endpoint:hover,
+.canvas-connection-endpoint:focus-visible {
+  border-color: var(--color-accent);
+  background: var(--color-bg-default);
 }
 .canvas-connection-bar {
   white-space: nowrap;

@@ -365,7 +365,7 @@ export class CanvasLines {
   private drawEndpoints(visible: readonly Entry[]): void {
     this.endpoints.clear();
     const palette = readCanvasLinePalette(this.appearance.dark),
-      { background, ink, accent } = this.chrome();
+      { background, ink } = this.chrome();
     const neutral = blend(
       ink,
       background,
@@ -373,23 +373,12 @@ export class CanvasLines {
     );
     for (const { edge, geometry } of visible) {
       const color = edge.color === 'white' ? neutral : palette[edge.color];
-      // 只有无箭头的悬空端才是空心圆；选中后的实心点另作拖动控制点。
+      // 只有无箭头的悬空端才是空心圆。选中线的端点不画点：改接手柄由 DOM 层提供，悬停才显示。
       if (edge.from.kind === 'point' && edge.direction !== 'both')
         this.drawLooseEnd(geometry.from, color);
       if (edge.to.kind === 'point' && edge.direction === 'none')
         this.drawLooseEnd(geometry.to, color);
     }
-    const geometry = this.selected ? this.geometries.get(this.selected) : undefined;
-    if (!geometry) return;
-    for (const point of [geometry.from, geometry.to])
-      this.endpoints
-        .circle(
-          point.x * this.camera.zoom + this.camera.x,
-          point.y * this.camera.zoom + this.camera.y,
-          3.5
-        )
-        .fill(accent)
-        .stroke({ width: 1, color: background });
   }
   private drawLabels(visible: readonly Entry[]): void {
     const labeled = visible.filter(entry => entry.edge.label);
