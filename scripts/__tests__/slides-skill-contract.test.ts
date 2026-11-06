@@ -7,6 +7,8 @@ import {
   estimateSkillInstructionTokens,
   renderChartPresetsReference,
   runSlidesSkillCheck,
+  SLIDES_SKILL_INSTRUCTION_TOKEN_BUDGET,
+  SLIDES_SKILL_RESOURCE_BUDGET,
 } from '../codegen/slidesSkillContract.js';
 
 describe('Slides Skill guard', () => {
@@ -19,8 +21,8 @@ describe('Slides Skill guard', () => {
         .join('\n'));
     }
 
-    expect(result.resourceCount).toBeLessThanOrEqual(20);
-    expect(result.estimatedInstructionTokens).toBeLessThanOrEqual(5_000);
+    expect(result.resourceCount).toBeLessThanOrEqual(SLIDES_SKILL_RESOURCE_BUDGET);
+    expect(result.estimatedInstructionTokens).toBeLessThanOrEqual(SLIDES_SKILL_INSTRUCTION_TOKEN_BUDGET);
     expect(result.validatedExamples).toEqual([
       'brush-artwork.js',
       'card-grid.js',
@@ -31,6 +33,9 @@ describe('Slides Skill guard', () => {
       'manual-edits.js',
       'media-and-paint.js',
       'native-formula.js',
+      'style-catalog.js',
+      'style-consulting.js',
+      'style-cultural.js',
       'svg-graphic.js',
       'table.js',
       'timeline.js',
