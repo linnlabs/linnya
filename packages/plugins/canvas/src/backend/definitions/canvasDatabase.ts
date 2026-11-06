@@ -3,8 +3,16 @@ import type { PluginSqliteDatabasePort } from '@plugin/backend/toolRuntime';
 export type CanvasDatabase = PluginSqliteDatabasePort;
 
 export function isCanvasDatabase(value: unknown): value is CanvasDatabase {
-  return typeof value === 'object' && value !== null && 'prepare' in value && typeof value.prepare === 'function'
-    && 'transaction' in value && typeof value.transaction === 'function' && 'exec' in value && typeof value.exec === 'function';
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'prepare' in value &&
+    typeof value.prepare === 'function' &&
+    'transaction' in value &&
+    typeof value.transaction === 'function' &&
+    'exec' in value &&
+    typeof value.exec === 'function'
+  );
 }
 
 export function requireCanvasDatabase(value: unknown): CanvasDatabase {

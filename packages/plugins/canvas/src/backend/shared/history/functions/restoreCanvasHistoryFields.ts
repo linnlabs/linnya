@@ -12,7 +12,10 @@ export function restoreCanvasHistoryFields(
     if (field !== '$existence') patch[field] = Reflect.get(before, field);
   }
   return CanvasElementSchema.parse({
-    ...(current ?? before), ...patch, revision: metadata.revision,
-    updatedBy: metadata.source, updatedAt: metadata.now,
+    ...(current ?? before),
+    ...patch,
+    revision: metadata.revision,
+    updatedBy: metadata.source,
+    updatedAt: metadata.now,
   });
 }

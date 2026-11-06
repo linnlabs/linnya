@@ -1,4 +1,8 @@
-import { CANVAS_RENDER_WORKER_ID, CanvasWorkerResultSchema, type CanvasRenderRequest } from '../../../../shared/rendering';
+import {
+  CANVAS_RENDER_WORKER_ID,
+  CanvasWorkerResultSchema,
+  type CanvasRenderRequest,
+} from '../../../../shared/rendering';
 import type { CanvasRenderWorkerPort } from '../../../definitions/canvasRenderWorkerPort';
 import { readCanvasRenderedImage } from '../functions/readCanvasRenderedImage';
 
@@ -7,7 +11,9 @@ export function createCanvasRenderRuntime(port: CanvasRenderWorkerPort) {
   return {
     async render(request: CanvasRenderRequest, signal?: AbortSignal) {
       signal?.throwIfAborted();
-      const result = CanvasWorkerResultSchema.parse(await port.invoke(CANVAS_RENDER_WORKER_ID, request, { signal }));
+      const result = CanvasWorkerResultSchema.parse(
+        await port.invoke(CANVAS_RENDER_WORKER_ID, request, { signal })
+      );
       return readCanvasRenderedImage(request, result);
     },
   };

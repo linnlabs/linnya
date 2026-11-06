@@ -15,7 +15,9 @@ export interface CanvasCommitState {
   readonly nextCard: number;
   readonly nextEdge: number;
   readonly elements: readonly CanvasStoredElement[];
-  readonly deletedOrigins: Readonly<Record<string, { readonly origin: string; readonly revision: number }>>;
+  readonly deletedOrigins: Readonly<
+    Record<string, { readonly origin: string; readonly revision: number }>
+  >;
 }
 export interface CanvasElementChange {
   readonly id: CanvasElementId;
