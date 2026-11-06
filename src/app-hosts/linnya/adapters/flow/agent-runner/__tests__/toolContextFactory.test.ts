@@ -135,6 +135,30 @@ describe('createToolContext', () => {
     expect(getDbSpy).not.toHaveBeenCalled();
   });
 
+  it('根运行写入自己为根；durable child 沿用 RunContext 的根；patch 不能伪造', () => {
+    const { hostPorts } = createRuntimeHostPorts('conv_root_run', 'turn_root_run');
+    const build = (runContext: Parameters<typeof createToolContext>[0]['runContext']) => createToolContext({
+      hostServices: createHostServices(),
+      hostPorts,
+      request: { query: 'root run', model_id: 'model-test', promptKey: 'default' },
+      runContext,
+      toolContextPatch: { rootRunId: 'forged_root' },
+      history: [],
+      conversationId: 'conv_root_run',
+      turnId: 'turn_root_run',
+    });
+
+    expect(build({ runId: RunIdSchema.parse('run_root'), traceId: 'trace_root', tags: {} }).rootRunId)
+      .toBe('run_root');
+    expect(build({
+      runId: RunIdSchema.parse('run_child'),
+      parentId: RunIdSchema.parse('run_parent'),
+      rootRunId: RunIdSchema.parse('run_root'),
+      traceId: 'trace_root',
+      tags: {},
+    }).rootRunId).toBe('run_root');
+  });
+
   it('toolContextPatch 不得覆盖 runtime-owned capability 与 execution meta', () => {
     const patchedView = {
       getWorkingHistoryEvents: vi.fn(() => ['patched-working']),

@@ -15,6 +15,7 @@ import {
 import { ReadFileTool } from 'src/tools/workspace/read_file/ReadFileTool';
 import { WriteFileTool } from 'src/tools/workspace/write_file/WriteFileTool';
 import { SubagentTool } from '../subagentTool';
+import { createSqliteActionLedger } from 'src/domains/action-ledger';
 import {
   createSubagentWorkspaceTestFixture,
   type SubagentWorkspaceTestFixture,
@@ -86,6 +87,8 @@ describe('SubagentTool Workspace 集成', () => {
       patch: {
         modelId: 'scripted-test-model',
         runId: RunIdSchema.parse('run_subagent_workspace_parent'),
+        // 生产根上下文由 createToolContext 按 RunContext 写入；child 从这里继承。
+        rootRunId: 'run_subagent_workspace_parent',
         parentToolCallId: ToolCallIdSchema.parse('call_subagent_workspace'),
         createSubRunTracePublisher: () => ({ publish: vi.fn() }),
         registeredChildRunInvoker: childRunHarness.invoker,
@@ -111,6 +114,18 @@ describe('SubagentTool Workspace 集成', () => {
       JSON.parse(await new ReadFileTool().run({ locator: DOCUMENT_LOCATOR }, context))
     );
     expect(readResult.observation).toContain('发现 A');
+    const changes = createSqliteActionLedger(fixture.db).listDocumentChanges({
+      projectId: fixture.projectId, rootRunId: 'run_subagent_workspace_parent', limit: 10,
+    });
+    expect(changes.changes).toEqual([
+      expect.objectContaining({
+        actorKind: 'subrun',
+        actions: ['create'],
+        rootRunId: 'run_subagent_workspace_parent',
+        parentRunId: 'run_subagent_workspace_parent',
+      }),
+    ]);
+    expect(changes.changes[0]?.runId).not.toBe('run_subagent_workspace_parent');
     childRunHarness.assertAllTurnsConsumed();
   });
 });

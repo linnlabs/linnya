@@ -36,5 +36,7 @@ Markdown 的 `resultCommit`
 将普通文件工具的完整结果与新文档同事务提交，支持中断后按原调用复取结果；回调只消费正式文档身份，不把上层任务生命周期写入 Workspace
 owner。创建成功不代表正文内容已经核验。
 
+每次成功新建记一条行动账本粗账：Markdown 与新文档同事务，插件在 `createDocument` 成功后另行写入；规则见[行动账本](../../../domains/action-ledger/README.md)。
+
 业务验证：`src/tools/workspace/write_file/workspaceFileCreateFolders.integration.test.ts`
 覆盖真实 SQLite、ToolNode、嵌套写读/列表、并发复用、冲突、Markdown 原子回滚、mutation 与回执、插件异步失败的真实边界。

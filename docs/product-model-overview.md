@@ -416,6 +416,7 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 | Web 工具边界 | `src/tools/web/README.md` |
 | ToolOutput 续读边界 | `src/tools/tool_output/README.md` |
 | Asset 模型输入边界 | `src/domains/assets/README.md` |
+| 行动账本（谁在哪次运行改了哪份文档） | `src/domains/action-ledger/README.md` |
 | 会话物理文件 | `src/domains/conversation-files/README.md` |
 | 文档 Citation 阅读 | `src/domains/citation/features/document-read/README.md` |
 | Evidence 边界 | `src/domains/evidence/README.md` |
