@@ -59,9 +59,15 @@ ipcRenderer.on(CANVAS_RENDER_CHANNELS.request, async (_event, value: unknown) =>
   try {
     const result = await handler(request);
     if (!cancelled.has(request.requestId)) send(result);
-  } catch {
-    if (!cancelled.has(request.requestId))
+  } catch (error) {
+    if (!cancelled.has(request.requestId)) {
+      // 正文和资产留在请求边界内；日志只补充任务身份和内部异常诊断。
+      const detail = error instanceof Error ? (error.stack ?? error.message) : String(error);
+      console.error(
+        `Canvas rendering failed requestId=${request.requestId} kind=${request.kind}: ${detail}`
+      );
       failure(request.requestId, 'render_failed', 'Canvas rendering failed');
+    }
   } finally {
     active.delete(request.requestId);
     cancelled.delete(request.requestId);

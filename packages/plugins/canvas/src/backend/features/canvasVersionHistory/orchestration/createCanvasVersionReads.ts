@@ -57,7 +57,8 @@ export function createCanvasVersionReads(options: CanvasVersionRuntimeDependenci
         readCurrent,
       });
     } catch (error) {
-      if (error instanceof z.ZodError) throw new DocumentHistoryError('version_corrupt');
+      if (error instanceof z.ZodError)
+        throw new DocumentHistoryError('version_corrupt', { cause: error });
       throw error;
     }
   }
