@@ -1,3 +1,4 @@
+import { recordScopedDocumentAction } from 'src/domains/action-ledger';
 import { createMarkdownDocumentStore } from 'src/app-hosts/linnya/application/markdown-image-assets';
 import { MarkdownRevisionCommitSchema } from '@app/schemas';
 /**
@@ -99,7 +100,12 @@ export function registerMarkdownDocumentHandlers(
       const db = databaseService.getDb();
       const node = new WorkspaceService(db).getNode(request.documentId);
       if (node?.type !== 'document') throw new Error('Markdown document not found');
-      const result = await new PendingRevisionApplyService(createMarkdownDocumentStore(db)).commitEditorRevision(request);
+      const result = await new PendingRevisionApplyService(createMarkdownDocumentStore(db)).commitEditorRevision(request, (before, after) => {
+        if (node.project_id) recordScopedDocumentAction(db, {
+          projectId: node.project_id, documentId: node.id, documentType: node.type, action: 'update',
+          beforeRef: String(before), afterRef: String(after),
+        });
+      });
       workspaceMutationPublisher.publish(createWorkspaceDocumentUpdatedEvent({
         node, mutationKind: 'version', versionNumber: result.versionNumber, source: 'user',
       }));

@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3';
 import type { ToolContext } from '../../types';
 import {
   createSqliteActionLedger,
+  currentActionActor,
   resolveToolRunActor,
   type ActionLedgerRecorder,
 } from '../../../domains/action-ledger';
@@ -12,7 +13,7 @@ export function createFileToolActionLedger(
   context: ToolContext,
   db: Database.Database
 ): ActionLedgerRecorder | undefined {
-  const actor = resolveToolRunActor(context);
+  const actor = resolveToolRunActor(context) ?? currentActionActor();
   return actor ? createSqliteActionLedger(db).recorderFor(actor, 'coarse') : undefined;
 }
 

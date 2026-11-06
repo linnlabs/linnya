@@ -1,3 +1,4 @@
+import { migrateV73ToV74DocumentActions } from './v73-to-v74-document-actions';
 /**
  * @file migrations/index.ts
  * @description Host Schema 基线与增量迁移注册表。
@@ -27,7 +28,7 @@ export type { HostSchemaMigration, MigrationFunction } from './types';
 export const HOST_SCHEMA_BASELINE_VERSION = 61;
 
 /** 当前 Host Schema 版本。修改既有表或数据语义时必须递增。 */
-export const SCHEMA_VERSION = 73;
+export const SCHEMA_VERSION = 74;
 
 /**
  * v61 基线之后的受支持迁移。
@@ -57,4 +58,5 @@ export const migrations: readonly HostSchemaMigration[] = [
   { fromVersion: 70, migrate: migrateV70ToV71AssetRelativeLocalPaths },
   { fromVersion: 71, migrate: migrateV71ToV72ToolResultSources },
   { fromVersion: 72, migrate: migrateV72ToV73CompactConversationHistory },
+  { fromVersion: 73, migrate: migrateV73ToV74DocumentActions },
 ];

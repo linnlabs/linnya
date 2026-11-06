@@ -1,3 +1,4 @@
+import { resolveToolRunActor } from 'src/domains/action-ledger';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type Database from 'better-sqlite3';
 import { runtimeKernel } from '@linnlabs/linnkit';
@@ -157,6 +158,10 @@ describe('createToolContext', () => {
       traceId: 'trace_root',
       tags: {},
     }).rootRunId).toBe('run_root');
+    const missingRoot = build({
+      runId: RunIdSchema.parse('run_child'), parentId: RunIdSchema.parse('run_parent'), traceId: 'trace_root', tags: {},
+    });
+    expect(() => resolveToolRunActor(missingRoot)).toThrow('缺少根运行');
   });
 
   it('toolContextPatch 不得覆盖 runtime-owned capability 与 execution meta', () => {

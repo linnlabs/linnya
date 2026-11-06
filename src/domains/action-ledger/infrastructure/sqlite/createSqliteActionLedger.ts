@@ -13,6 +13,8 @@ import {
   type ActionLedgerRecorder,
 } from '../../definitions/actionLedger';
 
+import { pruneDocumentActions } from './pruneDocumentActions';
+
 const ACTIONS: readonly ActionLedgerAction[] = ['create', 'update'];
 const ACTOR_KINDS: readonly ActionActorKind[] = ['user', 'run', 'subrun', 'plugin', 'external'];
 const GRANULARITIES: readonly ActionLedgerGranularity[] = ['coarse', 'fine'];
@@ -63,48 +65,48 @@ export function createSqliteActionLedger(
     recorderFor(actor, granularity) {
       assertOneOf(granularity, GRANULARITIES, 'granularity');
       const run = actor.kind === 'run' || actor.kind === 'subrun' ? actor : null;
-      return {
-        record(entry: ActionLedgerEntryInput): void {
-          assertOneOf(entry.action, ACTIONS, 'action');
-          // owner 细账在自己的事务里先写；同一调用同一文档已有细账时，Host 粗账不再重复。
-          if (
-            granularity === 'coarse' && run?.toolCallId &&
-            hasFineEntryForCall.get(run.rootRunId, run.runId, run.toolCallId, entry.documentId)
-          ) {
-            return;
-          }
-          insert.run(
-            now(),
-            entry.projectId,
-            entry.documentId,
-            entry.documentType,
-            entry.action,
-            granularity,
-            entry.part ?? null,
-            entry.beforeRef ?? null,
-            entry.afterRef ?? null,
-            entry.summary ? JSON.stringify(entry.summary) : null,
-            actor.kind,
-            actor.kind === 'plugin' ? actor.pluginId : null,
-            entry.authorRunId ?? null,
-            run?.conversationId ?? null,
-            run?.runId ?? null,
-            run?.rootRunId ?? null,
-            run?.parentRunId ?? null,
-            run?.toolCallId ?? null
-          );
-        },
-      };
+      const record = db.transaction((entry: ActionLedgerEntryInput): void => {
+        assertOneOf(entry.action, ACTIONS, 'action');
+        // owner 细账在自己的事务里先写；同一调用同一文档已有细账时，Host 粗账不再重复。
+        if (
+          granularity === 'coarse' && run?.toolCallId &&
+          hasFineEntryForCall.get(run.rootRunId, run.runId, run.toolCallId, entry.documentId)
+        ) {
+          return;
+        }
+        insert.run(
+          now(),
+          entry.projectId,
+          entry.documentId,
+          entry.documentType,
+          entry.action,
+          granularity,
+          entry.part ?? null,
+          entry.beforeRef ?? null,
+          entry.afterRef ?? null,
+          entry.summary ? JSON.stringify(entry.summary) : null,
+          actor.kind,
+          actor.kind === 'plugin' ? actor.pluginId : null,
+          entry.authorRunId ?? null,
+          run?.conversationId ?? null,
+          run?.runId ?? null,
+          run?.rootRunId ?? null,
+          run?.parentRunId ?? null,
+          run?.toolCallId ?? null
+        );
+        pruneDocumentActions(db, entry.documentId);
+      });
+      return { record: record.immediate };
     },
 
     listDocumentChanges(query) {
       if (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > ACTION_LEDGER_MAX_QUERY_LIMIT) {
         throw new RangeError(`limit 须为 1–${ACTION_LEDGER_MAX_QUERY_LIMIT} 的整数`);
       }
-      const where = ['project_id = ?'];
+      const where = ['node.project_id = ?'];
       const args: (string | number)[] = [query.projectId];
       if (query.rootRunId !== undefined) {
-        where.push('root_run_id = ?');
+        where.push('entry.project_id = node.project_id AND entry.root_run_id = ?');
         args.push(query.rootRunId);
       }
       if (query.since !== undefined) {
@@ -116,13 +118,22 @@ export function createSqliteActionLedger(
         args.push(query.until);
       }
       const rows = db.prepare(`
+        WITH visible AS (
+          SELECT entry.document_id, entry.document_type, entry.actor_kind, entry.action, entry.granularity, entry.recorded_at,
+            CASE WHEN entry.project_id = node.project_id THEN entry.actor_plugin_id END AS actor_plugin_id,
+            CASE WHEN entry.project_id = node.project_id THEN entry.run_id END AS run_id,
+            CASE WHEN entry.project_id = node.project_id THEN entry.root_run_id END AS root_run_id,
+            CASE WHEN entry.project_id = node.project_id THEN entry.parent_run_id END AS parent_run_id,
+            CASE WHEN entry.project_id = node.project_id THEN entry.conversation_id END AS conversation_id
+          FROM workspace_nodes node JOIN action_ledger_entries entry ON entry.document_id = node.id
+          WHERE ${where.join(' AND ')}
+        )
         SELECT document_id, MIN(document_type) AS document_type, actor_kind, actor_plugin_id, run_id,
           MIN(root_run_id) AS root_run_id, MIN(parent_run_id) AS parent_run_id, MIN(conversation_id) AS conversation_id,
           GROUP_CONCAT(DISTINCT action) AS actions, COUNT(*) AS entry_count,
           MIN(granularity) AS min_granularity, MAX(granularity) AS max_granularity,
           MIN(recorded_at) AS first_recorded_at, MAX(recorded_at) AS last_recorded_at
-        FROM action_ledger_entries
-        WHERE ${where.join(' AND ')}
+        FROM visible
         GROUP BY document_id, actor_kind, actor_plugin_id, run_id
         ORDER BY last_recorded_at DESC, document_id, run_id
         LIMIT ?

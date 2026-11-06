@@ -1,3 +1,6 @@
+import { createBackendRendererRequestRegistry } from 'src/app-hosts/linnya/adapters/backend-renderer-requests';
+import { syncBackendPluginRuntimeEffects } from 'src/app-hosts/linnya/plugin-registry/runtimeEffectRuntime';
+import { transferWorkspaceNode } from 'src/features/workspace/node-transfer/orchestration/transferWorkspaceNode';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
@@ -107,6 +110,43 @@ describe('文件工具的 Host 粗账', () => {
     ]);
     const refs = database.getDb().prepare('SELECT action, after_ref FROM action_ledger_entries ORDER BY id').all();
     expect(refs).toEqual([{ action: 'create', after_ref: null }, { action: 'update', after_ref: '1' }]);
+  });
+
+  it('文档连同子树移入新项目，旧项目的删除不会删账，查询不能取得原运行与对话', async () => {
+    const write = new WriteFileTool();
+    await write.run({ locator: 'workspace:/folder/move.md', content: 'move' }, contextFor({ runId: 'private-run', callId: 'm1' }));
+    const db = database.getDb();
+    const ledger = createSqliteActionLedger(db);
+    const target = createProjectLifecycle(db).create({ name: 'Target' });
+    const [folder] = workspace.getChildNodes(null, projectId);
+    expect(folder).toBeDefined();
+    if (!folder) throw new Error('Expected the created folder');
+    transferWorkspaceNode({ db, nodeId: folder.id, targetProjectId: target });
+    expect(changes().changes).toHaveLength(0);
+    expect(ledger.listDocumentChanges({ projectId: target, rootRunId: 'private-run', limit: 5 }).changes).toHaveLength(0);
+    createProjectLifecycle(db).delete(projectId);
+    expect(ledger.listDocumentChanges({ projectId: target, limit: 5 }).changes).toEqual([
+      expect.objectContaining({ runId: null, rootRunId: null, conversationId: null, actions: ['create'] }),
+    ]);
+  });
+
+  it('交错的界面与插件后台调用由 Host 绑定身份，参数不能冒充另一个执行者', async () => {
+    const write = new WriteFileTool();
+    const registry = createBackendRendererRequestRegistry();
+    registry.handle('workspace:test-write', () => write.run({ locator: 'workspace:/user.md', content: 'user' }, contextFor({ callId: 'u' })));
+    try {
+      await Promise.all([
+        registry.invoke('workspace:test-write', [{ actor: 'plugin' }]),
+        syncBackendPluginRuntimeEffects([{ pluginId: 'fixture', effect: {
+          id: 'write', activate: async () => {
+            await write.run({ locator: 'workspace:/plugin.md', content: 'plugin' }, contextFor({ callId: 'p' }));
+          }, deactivate: () => {},
+        } }]),
+      ]);
+      expect(changes().changes.map(c => [c.actorKind, c.pluginId])).toEqual(expect.arrayContaining([['user', null], ['plugin', 'fixture']]));
+    } finally {
+      await syncBackendPluginRuntimeEffects([]);
+    }
   });
 
   it('没有运行编号的上下文照常写入但不入账；不同运行分开查询', async () => {

@@ -1,3 +1,4 @@
+import { withActionActor } from 'src/domains/action-ledger';
 import type { AuditControlPort } from 'src/domains/audit';
 import { readSourceCheckoutIdentity } from 'src/shared/runtime-paths/functions/readSourceCheckoutIdentity';
 import { realpathSync } from 'node:fs';
@@ -306,6 +307,8 @@ export async function configureRoutes(
   // ==================== 核心服务路由 ====================
 
   // 健康检查路由
+  app.use('/api/v1', (_request, _response, next) => withActionActor({ kind: 'user' }, next));
+  app.use(CONVERSATION_CONTROL_BRIDGE_PATH, (_request, _response, next) => withActionActor({ kind: 'external' }, next));
   app.use('/health', createHealthRouter(getServiceStatus));
   logger.info('✅ 健康检查路由已挂载: /health');
 

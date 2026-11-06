@@ -25,5 +25,6 @@ export function resolveToolRunActor(identity: ToolRunIdentity): ActionRunActor |
     return { kind: 'run', runId, rootRunId: runId, parentRunId: null, conversationId, toolCallId };
   }
   if (!rootRunId) throw new Error(`子运行 ${runId} 缺少根运行身份，不能记入行动账本`);
+  if (rootRunId === runId) throw new Error(`子运行 ${runId} 不能以自己为根运行`);
   return { kind: 'subrun', runId, rootRunId, parentRunId, conversationId, toolCallId };
 }

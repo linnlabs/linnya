@@ -115,6 +115,19 @@ describe('行动账本', () => {
     expect(db.prepare('SELECT document_id FROM action_ledger_entries ORDER BY id').pluck().all()).toEqual(['doc-b']);
   });
 
+  it('保留整个工具调用的细账；密集编辑按文档历史的时间桶精简', () => {
+    const db = createDb();
+    const ledger = createSqliteActionLedger(db, { now: clock() });
+    for (let i = 0; i < 20; i++) {
+      const recorder = ledger.recorderFor({ ...rootRun, toolCallId: String(i) }, 'fine');
+      for (const part of ['a', 'b']) recorder.record({
+        projectId: 'p1', documentId: 'doc-a', documentType: 'document', action: 'update', part,
+      });
+    }
+    const calls = db.prepare('SELECT tool_call_id, COUNT(*) AS n FROM action_ledger_entries GROUP BY tool_call_id ORDER BY MIN(id)').all();
+    expect(calls).toEqual([0, 15, 16, 17, 18, 19].map(i => ({ tool_call_id: String(i), n: 2 })));
+  });
+
   it('数据库拒绝缺运行身份的运行记录，读取拒绝合同外的动作', () => {
     const db = createDb();
     expect(() => db.prepare(`

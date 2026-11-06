@@ -3,13 +3,13 @@
  *
  * 动作和执行者种类在应用层校验，不写成 CHECK：后续接入删除、移动、属性等动作时
  * 不必为改约束重建表。运行身份的完整性写成 CHECK，因为它不随动作扩展而变化。
- * 文档或项目被物理删除时，账本随外键级联删除；对话删除不影响已发生的文档改动。
+ * 账本跟随文档删除；project_id 只标识改动发生地，不能让旧项目删除已转移文档的历史。
  */
 export const ACTION_LEDGER_SCHEMAS = [
   `CREATE TABLE IF NOT EXISTS action_ledger_entries (
     id INTEGER PRIMARY KEY,
     recorded_at INTEGER NOT NULL,
-    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL,
     document_id TEXT NOT NULL REFERENCES workspace_nodes(id) ON DELETE CASCADE,
     document_type TEXT NOT NULL,
     action TEXT NOT NULL,
@@ -36,4 +36,4 @@ export const ACTION_LEDGER_SCHEMAS = [
     ON action_ledger_entries(root_run_id, recorded_at) WHERE root_run_id IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS idx_action_ledger_document
     ON action_ledger_entries(document_id)`,
-];
+] as const;

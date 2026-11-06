@@ -1,3 +1,4 @@
+import { recordScopedDocumentAction } from 'src/domains/action-ledger';
 import { createMarkdownDocumentStore } from '../../application/markdown-image-assets';
 import type Database from 'better-sqlite3';
 import { getDocumentTypeBackendHook } from '@plugin/backend/documentTypeBackendHook';
@@ -53,16 +54,22 @@ export function createWorkspaceDocumentEditorProviderResolver(params: {
       ...(registeredHook.writeEditorDocument
         ? {
             write: async (identity, content) => {
-              const result = enabledHook?.writeEditorDocument?.({
-                db: hookDb,
-                documentId: identity.documentId,
-                documentName: identity.documentName,
-                content,
-              });
-              if (!result) {
-                throw new Error(`${registeredHook.displayName} 插件未启用，无法编辑该文档。`);
-              }
-              return result;
+              return params.db.transaction(() => {
+                const result = enabledHook?.writeEditorDocument?.({
+                  db: hookDb,
+                  documentId: identity.documentId,
+                  documentName: identity.documentName,
+                  content,
+                });
+                if (!result) {
+                  throw new Error(`${registeredHook.displayName} 插件未启用，无法编辑该文档。`);
+                }
+                if (identity.projectId) recordScopedDocumentAction(params.db, {
+                  projectId: identity.projectId, documentId: identity.documentId, documentType: identity.documentType, action: 'update',
+                  ...(result.versionNumber === undefined ? {} : { afterRef: String(result.versionNumber) }),
+                });
+                return result;
+              }).immediate();
             },
           }
         : {}),
@@ -85,9 +92,13 @@ function createMarkdownEditorProvider(params: {
     }),
     write: async (identity, content) => {
       const result = writeMarkdownEditorDocument({
-        documentId: identity.documentId,
-        content,
-        documentStore,
+        documentId: identity.documentId, content, documentStore,
+        onChange: (before, after) => {
+          if (identity.projectId) recordScopedDocumentAction(params.db, {
+            projectId: identity.projectId, documentId: identity.documentId, documentType: identity.documentType, action: 'update',
+            ...(before === undefined ? {} : { beforeRef: String(before) }), afterRef: String(after),
+          });
+        },
       });
       params.mutationPublisher.publish(createWorkspaceDocumentUpdatedEvent({
         node: {

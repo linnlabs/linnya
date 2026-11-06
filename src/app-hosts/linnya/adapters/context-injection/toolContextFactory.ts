@@ -135,7 +135,7 @@ export function createToolContext(options: ToolContextFactoryOptions): ToolConte
     registeredChildRunInvoker: options.hostPorts.registeredChildRunInvoker,
     abortSignal: options.hostServices.signal,
     // 嵌套 child 只知道直接父运行；根运行随上下文继承，行动账本据此把改动归到这次请求。
-    rootRunId: options.runContext.rootRunId ?? options.runContext.runId,
+    rootRunId: options.runContext.rootRunId ?? (options.runContext.parentId ? undefined : options.runContext.runId),
   };
 
   tools.ensureToolContextRuntimeCapability({
