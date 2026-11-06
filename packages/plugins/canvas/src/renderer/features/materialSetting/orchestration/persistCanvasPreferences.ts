@@ -7,5 +7,9 @@ export function persistCanvasPreferences(): () => void {
   const store = useCanvasPreferencesStore();
   const saved = localStorage.getItem(storageKey);
   if (saved !== null) store.replace(CanvasPreferencesSchema.parse(JSON.parse(saved)));
-  return watch(() => store.preferences, value => localStorage.setItem(storageKey, JSON.stringify(value)), { flush: 'sync' });
+  return watch(
+    () => store.preferences,
+    value => localStorage.setItem(storageKey, JSON.stringify(value)),
+    { flush: 'sync' }
+  );
 }

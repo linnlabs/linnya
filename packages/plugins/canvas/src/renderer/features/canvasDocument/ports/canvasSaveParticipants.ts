@@ -6,7 +6,10 @@ export function registerCanvasSaveParticipant(participant: CanvasSaveParticipant
   participants.add(participant);
   return () => participants.delete(participant);
 }
-export async function saveCanvasDocumentDrafts(documentId: string, finish = true): Promise<boolean> {
+export async function saveCanvasDocumentDrafts(
+  documentId: string,
+  finish = true
+): Promise<boolean> {
   for (const participant of participants) {
     if (participant.documentId === documentId && !(await participant.save(finish))) return false;
   }

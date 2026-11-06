@@ -2,6 +2,8 @@
 
 审阅状态属于当前画布表面，持久事实来自 Backend 的正式组 DTO。新实际写入默认替换当前显示组，旧组仍可在工具条选择及撤回；布局移动不进入内容角标或计数。
 
+`createCanvasAgentReview` 统一处理保存屏障、忙碌状态和组刷新；`withdrawCanvasReviewGroup` 与 `resolveCanvasReviewApproval` 分别拥有撤回及审批的请求身份、确认和正文追平。动作内部的重放不重新运行保存屏障，失败仍由同一审阅状态报告。
+
 公开 `projectCanvasReviewTargets` 按卡片 x、y 排序，保留已查看卡的导航位置。`projectCanvasReviewMarkers` 只显示当前组、未查看卡，缩放低于 0.3 时隐藏；删除框只消费该视图正式的 visibleDeletedCards。重新打开后，历史删除仍可从工具条列表定位和恢复，不画旧幽灵框。文档标题只能由调用方注入当前授权 documentTitles；缺失时显示通用“文档”，不展示内部身份。
 
 两个 UI 组件发出 `reveal(CanvasReviewTarget)`，只提供真实卡片身份及世界 bounds；Page 负责以最多 100% 的倍率飞行，活卡选择、删除卡只定位。Markers 可注入 viewport，方向提示只合并完全离屏的标记。`locate` 仅用于显式“查看整组”。Page/Surface 不属于本 feature。

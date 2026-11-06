@@ -3,7 +3,9 @@ export interface CanvasClipboardPort {
   canHandle(): boolean;
   canWrite(): boolean;
   read(): readonly CanvasElement[];
-  prepare(elementIds: readonly CanvasElementId[]): Promise<{ readonly elements: readonly CanvasElement[]; readonly text: string }>;
+  prepare(
+    elementIds: readonly CanvasElementId[]
+  ): Promise<{ readonly elements: readonly CanvasElement[]; readonly text: string }>;
   pastePoint(): CanvasPoint;
   pasteElements(elements: readonly CanvasElement[], point: CanvasPoint): Promise<void>;
   pasteText(text: string, point: CanvasPoint): Promise<void>;

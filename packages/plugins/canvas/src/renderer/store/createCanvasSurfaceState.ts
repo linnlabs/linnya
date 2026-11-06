@@ -11,9 +11,42 @@ export function createCanvasSurfaceState(initialViewport: CanvasViewportSize): C
   const displayVersion = shallowRef(0);
   const viewport = shallowRef(initialViewport);
   const context = shallowRef<Parameters<CanvasSurfaceState['setContext']>[0]>(null);
-  return { camera: shallowReadonly(camera), error: shallowReadonly(error), context: shallowReadonly(context), renderNotice: shallowReadonly(renderNotice), hoveredId: shallowReadonly(hoveredId), detailId: shallowReadonly(detailId), displayVersion: shallowReadonly(displayVersion), viewport: shallowReadonly(viewport),
-    setViewport(value) { viewport.value = value; },
-    advanceDisplay() { displayVersion.value += 1; },
-    setDetailVisible(id, visible) { if (visible) detailId.value = id; else if (detailId.value === id) detailId.value = null; },
-    setCamera(value) { camera.value = value; }, fail(message) { error.value = message; }, clearFailure() { error.value = null; }, setContext(value) { context.value = value; }, setRenderNotice(message) { renderNotice.value = message; }, setHovered(value) { hoveredId.value = value; } };
+  return {
+    camera: shallowReadonly(camera),
+    error: shallowReadonly(error),
+    context: shallowReadonly(context),
+    renderNotice: shallowReadonly(renderNotice),
+    hoveredId: shallowReadonly(hoveredId),
+    detailId: shallowReadonly(detailId),
+    displayVersion: shallowReadonly(displayVersion),
+    viewport: shallowReadonly(viewport),
+    setViewport(value) {
+      viewport.value = value;
+    },
+    advanceDisplay() {
+      displayVersion.value += 1;
+    },
+    setDetailVisible(id, visible) {
+      if (visible) detailId.value = id;
+      else if (detailId.value === id) detailId.value = null;
+    },
+    setCamera(value) {
+      camera.value = value;
+    },
+    fail(message) {
+      error.value = message;
+    },
+    clearFailure() {
+      error.value = null;
+    },
+    setContext(value) {
+      context.value = value;
+    },
+    setRenderNotice(message) {
+      renderNotice.value = message;
+    },
+    setHovered(value) {
+      hoveredId.value = value;
+    },
+  };
 }

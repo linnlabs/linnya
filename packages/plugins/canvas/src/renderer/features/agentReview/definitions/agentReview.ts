@@ -1,5 +1,15 @@
 import type { Ref } from 'vue';
-import type { CanvasAgentGroup, CanvasApprovalResolution, CanvasCardId, CanvasElementId, CanvasRectangle, CanvasResolveApprovalRequest, CanvasUndoResult, CanvasWithdrawGroupRequest } from '@plugin/canvas/shared';
+import type { CanvasDocumentSession } from '../../canvasDocument';
+import type {
+  CanvasAgentGroup,
+  CanvasApprovalResolution,
+  CanvasCardId,
+  CanvasElementId,
+  CanvasRectangle,
+  CanvasResolveApprovalRequest,
+  CanvasUndoResult,
+  CanvasWithdrawGroupRequest,
+} from '@plugin/canvas/shared';
 export interface CanvasAgentReviewOptions {
   /** 只在会改正文的审阅动作前保存当前表面草稿；false时不创建写请求。 */
   readonly beforeMutation?: () => Promise<boolean>;
@@ -55,4 +65,19 @@ export interface CanvasAgentReviewState {
   start(): void;
   finish(): void;
   fail(message: string): void;
+}
+export interface CanvasReviewWithdrawalInput {
+  readonly session: CanvasDocumentSession;
+  readonly port: Pick<CanvasAgentReviewPort, 'withdraw'>;
+  readonly state: CanvasAgentReviewState;
+  readonly documentId: string;
+  readonly groupId: string;
+  readonly elementIds?: readonly CanvasElementId[];
+}
+export interface CanvasReviewApprovalInput {
+  readonly session: CanvasDocumentSession;
+  readonly port: Pick<CanvasAgentReviewPort, 'approve'>;
+  readonly documentId: string;
+  readonly pendingId: string;
+  readonly decision: 'allow' | 'deny';
 }

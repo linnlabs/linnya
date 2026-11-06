@@ -18,4 +18,23 @@ export interface CanvasKeyboardActions {
   move(ids: readonly CanvasCardId[], dx: number, dy: number): Promise<void>;
   navigation(direction: CanvasNavigationDirection): (() => Promise<void>) | null;
 }
-export type CanvasShortcut = 'delete' | 'edit' | 'escape' | 'all' | 'actual' | 'fit' | 'fit-selection' | 'zoom-in' | 'zoom-out' | 'undo' | 'redo' | 'duplicate' | 'left' | 'right' | 'up' | 'down' | 'tree-child' | 'tree-sibling' | 'navigate';
+export type CanvasShortcut =
+  | 'delete'
+  | 'edit'
+  | 'escape'
+  | 'all'
+  | 'actual'
+  | 'fit'
+  | 'fit-selection'
+  | 'zoom-in'
+  | 'zoom-out'
+  | 'undo'
+  | 'redo'
+  | 'duplicate'
+  | 'left'
+  | 'right'
+  | 'up'
+  | 'down'
+  | 'tree-child'
+  | 'tree-sibling'
+  | 'navigate';
