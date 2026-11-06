@@ -223,7 +223,11 @@ describe('DatabaseService.initialize() — createTables-always invariants', () =
     const bootstrap = new DatabaseService(dbPath);
     initializeWithTestPluginLifecycle(bootstrap);
     const old = bootstrap.getDb();
+    // 用当前库还原 v61 夹具时一并移除 v73 的依赖对象；真实 v61 库尚无这些视图。
     old.exec(`
+      DROP TRIGGER restore_subrun_body_before_event_delete;
+      DROP VIEW subrun_trace_history_items;
+      DROP VIEW subrun_trace_body_sources;
       ALTER TABLE markdown_block_pending_revisions DROP COLUMN revision;
       ALTER TABLE image_blocks DROP COLUMN caption;
       ALTER TABLE subrun_trace_runs ADD COLUMN child_run_id TEXT;

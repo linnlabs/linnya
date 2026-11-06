@@ -318,16 +318,8 @@ function seedConversations(projectId) {
       }
       const sha256 = createHash('sha256').update(subrunPreviewBytes).digest('hex');
       const relativeResourcePath = `${sha256.slice(0, 2)}/${sha256}.png`;
-      const localPath = join(
-        userDataRoot,
-        'Workspace',
-        'ConversationAttachments',
-        'v2',
-        'stores',
-        binding.storage_id,
-        'content',
-        relativeResourcePath,
-      );
+      const storedPath = `ConversationAttachments/v2/stores/${binding.storage_id}/content/${relativeResourcePath}`;
+      const localPath = join(userDataRoot, 'Workspace', storedPath);
       mkdirSync(dirname(localPath), { recursive: true });
       writeFileSync(localPath, subrunPreviewBytes);
       db.prepare(`
@@ -340,7 +332,7 @@ function seedConversations(projectId) {
         `/Resources/Attachments/${relativeResourcePath}`,
         subrunPreviewBytes.byteLength,
         sha256,
-        localPath,
+        storedPath,
         now,
       );
       return {

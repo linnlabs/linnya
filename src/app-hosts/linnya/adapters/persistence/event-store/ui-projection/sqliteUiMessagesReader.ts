@@ -12,7 +12,7 @@ import {
   type ConversationCompleteVisualTurnId,
   type ConversationContextUsageSource,
 } from '@app/schemas';
-import { toUiMessageView, UI_ROWS_WITH_TOOL_RESULTS, type UiMessageSqlRow } from './sqliteUiMessageRow';
+import { toUiMessageView, UI_ROWS_WITH_EVENT_SOURCES, type UiMessageSqlRow } from './sqliteUiMessageRow';
 import type { DurableSubrunTraceKind } from '../../subrun-trace-history/definitions/subrunTraceHistory';
 import { decodeSubrunTraceHistoryEvent } from '../../subrun-trace-history/functions/subrunTraceHistoryPayload';
 import {
@@ -46,7 +46,7 @@ interface SubrunTraceSqlRow {
   source_event_id: string;
   kind: DurableSubrunTraceKind;
   timestamp: number;
-  payload_json: string;
+  payload_json: string | null;
 }
 
 /** Host 仅保留命名风格别名，取值集合由 Linnkit `SubRunTraceKind` 唯一拥有。 */
@@ -150,7 +150,7 @@ export function readWindowRefresh(
     }
     // 保留窗口首行；到达容量上限后交回正式分页，不能在后台裁掉用户的阅读锚点。
     const rows = db.prepare<unknown[], UiMessageSqlRow>(`
-      SELECT * FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+      SELECT * FROM ${UI_ROWS_WITH_EVENT_SOURCES}
       WHERE conversation_id = ? AND ${VISIBLE_ROW_SQL}
         AND sort_seq >= ? AND (? OR sort_seq <= ?)
       ORDER BY sort_seq ASC LIMIT ?
@@ -175,7 +175,7 @@ export function readTail(
   const rows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+      FROM ${UI_ROWS_WITH_EVENT_SOURCES}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
       ORDER BY sort_seq DESC
@@ -201,7 +201,7 @@ export function readBefore(
   const rows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+      FROM ${UI_ROWS_WITH_EVENT_SOURCES}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
         AND sort_seq < ?
@@ -228,7 +228,7 @@ export function readAfter(
   const rows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+      FROM ${UI_ROWS_WITH_EVENT_SOURCES}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
         AND sort_seq > ?
@@ -256,7 +256,7 @@ export function readRunFinalAnswer(
   const row = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+      FROM ${UI_ROWS_WITH_EVENT_SOURCES}
       WHERE conversation_id = ?
         AND run_id = ?
         AND message_type = 'final_answer'
@@ -311,7 +311,7 @@ export function readAround(
   const beforeRows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+      FROM ${UI_ROWS_WITH_EVENT_SOURCES}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
         AND sort_seq < ?
@@ -323,7 +323,7 @@ export function readAround(
   const anchorRow = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+      FROM ${UI_ROWS_WITH_EVENT_SOURCES}
       WHERE conversation_id = ? AND message_id = ?
       LIMIT 1
     `)
@@ -331,7 +331,7 @@ export function readAround(
   const afterRows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+      FROM ${UI_ROWS_WITH_EVENT_SOURCES}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
         AND sort_seq > ?
@@ -360,7 +360,7 @@ export function readTurnIndex(
   const rows = db
     .prepare<unknown[], UiMessageSqlRow>(`
       SELECT *
-      FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+      FROM ${UI_ROWS_WITH_EVENT_SOURCES}
       WHERE conversation_id = ?
         AND ${VISIBLE_ROW_SQL}
         AND message_type = 'user_input'
@@ -427,7 +427,7 @@ export function readSubrunTrace(
         i.kind,
         i.timestamp,
         i.payload_json
-      FROM subrun_trace_items i
+      FROM subrun_trace_history_items i
       JOIN subrun_trace_runs r ON r.subrun_id = i.subrun_id
       WHERE r.conversation_id = ?
         AND r.parent_tool_call_id = ?
@@ -536,7 +536,7 @@ function readLatestContextUsage(
 ): ConversationContextUsageSource | null {
   // 来源可能早于整个 320 行窗口；只读取带成功快照的最新 user_input，不重放事件历史。
   const row = db.prepare<unknown[], UiMessageSqlRow>(`
-    SELECT * FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+    SELECT * FROM ${UI_ROWS_WITH_EVENT_SOURCES}
     WHERE conversation_id = ? AND message_type = 'user_input'
       AND json_type(payload_json, '$.context_usage') = 'object'
     ORDER BY sort_seq DESC LIMIT 1

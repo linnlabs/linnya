@@ -9,6 +9,7 @@
  * 4. conversation_ui_messages / conversation_ui_citation_facts: 可重建的前端历史窗口 read model
  */
 
+import { SUBRUN_TRACE_BODY_SCHEMA } from '../subrun-trace-history/functions/subrunTraceBodyStorage';
 import { CONVERSATION_CLIENT_NOTICE_SCHEMA } from '../conversation-client-notices/schema';
 
 export const CONVERSATION_SCHEMAS = [
@@ -87,6 +88,8 @@ export const CONVERSATION_SCHEMAS = [
     payload_json TEXT NOT NULL,
     FOREIGN KEY(subrun_id) REFERENCES subrun_trace_runs(subrun_id) ON DELETE CASCADE
   )`,
+
+  ...SUBRUN_TRACE_BODY_SCHEMA,
 
   // 会话 UI read model：按前端渲染窗口查询优化的消息投影。
   `CREATE TABLE IF NOT EXISTS conversation_ui_messages (

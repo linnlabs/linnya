@@ -1,7 +1,7 @@
 # Host 数据库基线与迁移
 
 本目录只管理 Linnya Host 在 `workspace.sqlite` 中拥有的 Schema。当前不兼容开发基线是
-v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v72。
+v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v73。
 
 v67→v68 为 image_blocks 增加默认空字符串的 caption；已有 alt/title、尺寸、来源保持不变，旧图片不会自动显示文件名题注。
 
@@ -12,6 +12,8 @@ v69→v70 把 `agent_run_costs.state_json` 的运行成本恢复账本改为只�
 v70→v71 把 `assets.local_path` 从本机绝对路径改为相对 AppData Root 的持久路径（合同见 [assets](../../../../domains/assets/README.md)）。迁移只截取 `ConversationAttachments/v2/stores/<store-id>/content/<xx>/<sha256>.<ext>` 这段受管内容后缀，统一成 `/` 分隔，不依赖旧前缀：换过位置或在 checkout 之间复制过的库同样能转换。不符合该结构的行让迁移失败并回滚；2026-11 各开发库共 5,514 行全部符合。`assets` 表的触发器由表阶段先于迁移建立，此后拒绝非相对路径写入。
 
 v71→v72 为工具卡的正文和结构化结果引入来源事件外键。迁移事务重新建立可再生的 UI 消息表，将会话投影标为 pending。启动维护按最近活动顺序逐会话重建并提交 ready；中断后从尚未完成的会话继续。单个会话的事实校验失败时记录会话身份，后续会话仍可恢复。事件、执行断点、客户端提示与子运行历史各自由原 owner 保留。
+
+v72→v73 将含思考消息的界面投影标记为待重建，同一思考的正文改为引用实际提供该值的事件。迁移逐项比较子运行工具输出、思考及回答，通过同一来源精确还原的内容只存一份；其余轨迹完整保存。工具决策事件的两份参数相同时使用存储标记，读取恢复原有字段。迁移和新写入遵循同一合同。
 
 ## 升级耗时与启动进度
 
@@ -65,11 +67,10 @@ Host 只运行上述当前 Schema 初始化与受支持的增量迁移，不提�
 ## 初始化合同
 
 - 文件不存在、空文件和内存数据库属于 fresh target。Host schema providers 在同一事务中建立
-  当前表并写入当前 `SCHEMA_VERSION`，随后 app-level 编排运行已安装插件 lifecycle，最后建立 Host 索引。
+  当前表并写入当前 `SCHEMA_VERSION`，随后 app-level 编排运行已安装插件 lifecycle，最后建立 Host 索引、视图和触发器。
 - 已有数据库先读取 `PRAGMA user_version`。低于 v61 或高于当前版本时立即失败，且失败前不执行
   schema provider、插件 lifecycle 或索引 DDL。
-- 当前受支持范围内，Host 的非索引 provider DDL 每次初始化都会幂等执行；需要增量迁移时，
-  迁移完成后再建立可能依赖新列的索引。
+- 当前受支持范围内，Host 的表 DDL 在迁移前幂等执行；依赖最终表结构的索引、视图和触发器在迁移后建立。迁移自身需要使用的视图由对应步骤在事务内建立。
 - worker 的 connection-only 路径只接受与当前 `SCHEMA_VERSION` 完全相同的数据库，不负责建表、
   迁移或插件启动。
 

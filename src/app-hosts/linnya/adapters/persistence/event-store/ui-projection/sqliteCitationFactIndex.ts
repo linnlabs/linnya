@@ -52,7 +52,7 @@ interface SubrunTraceSqlRow {
   readonly source_event_id: string;
   readonly kind: DurableSubrunTraceKind;
   readonly timestamp: number;
-  readonly payload_json: string;
+  readonly payload_json: string | null;
 }
 
 interface CitationFactRegistration {
@@ -226,7 +226,7 @@ export class SqliteConversationCitationFactIndex {
           i.kind,
           i.timestamp,
           i.payload_json
-        FROM subrun_trace_items i
+        FROM subrun_trace_history_items i
         JOIN subrun_trace_runs r ON r.subrun_id = i.subrun_id
         WHERE r.conversation_id = ? AND i.kind = 'tool_output'
         ORDER BY i.id ASC

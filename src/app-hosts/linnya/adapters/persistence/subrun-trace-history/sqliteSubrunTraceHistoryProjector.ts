@@ -5,6 +5,7 @@ import {
   encodeSubrunTraceHistoryPayload,
   isDurableSubrunTraceEvent,
 } from './functions/subrunTraceHistoryPayload';
+import { encodeSubrunTraceBody } from './functions/subrunTraceBodyStorage';
 import { SqliteConversationCitationFactIndex } from '../event-store/ui-projection/sqliteCitationFactIndex';
 import { SqliteUiProjectionApplier } from '../event-store/ui-projection/sqliteApplier';
 
@@ -66,11 +67,13 @@ export class SqliteSubrunTraceHistoryProjector implements SubrunTraceHistoryProj
       }
 
       if (isDurableSubrunTraceEvent(event)) {
+        const payload = JSON.stringify(encodeSubrunTraceHistoryPayload(event));
+        const storedPayload = encodeSubrunTraceBody(this.db, event.kind, event.subrun_id, event.source_event_id, payload);
         this.db.prepare(`
           INSERT INTO subrun_trace_items (subrun_id, source_event_id, kind, timestamp, payload_json)
           VALUES (?, ?, ?, ?, ?)
         `).run(event.subrun_id, event.source_event_id, event.kind, event.timestamp,
-          JSON.stringify(encodeSubrunTraceHistoryPayload(event)));
+          storedPayload);
       }
 
       const parentChanged = event.run_id !== undefined && this.uiProjection.projectSubrunSummary(

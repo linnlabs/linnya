@@ -139,6 +139,7 @@ function projectThought(
     role: 'assistant',
     messageType: 'thought',
     content: nextContent,
+    contentEventId: event.id,
     payload,
     mergeKey,
     presentation: previous?.presentation ?? null,

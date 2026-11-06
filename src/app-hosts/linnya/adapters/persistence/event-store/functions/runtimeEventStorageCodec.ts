@@ -31,16 +31,15 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
  */
 export function serializeStoredRuntimeEvent(event: RoutedRuntimeEvent): string {
   runtimeEvents.requirePersistableRoutedRuntimeEvent(event);
-  const {
-    id: _eventId,
-    type: _eventType,
-    conversation_id: _conversationId,
-    run_id: _runId,
-    parent_run_id: _parentRunId,
-    timestamp: _timestamp,
-    ...body
-  } = event;
-
+  const body: Record<string, unknown> = { ...event };
+  for (const key of STORED_IDENTITY_KEYS) delete body[key];
+  if (event.type === 'tool_call_decision' && event.args !== undefined && isJsonObject(event.payload)
+      && JSON.stringify(event.args) === JSON.stringify(event.payload.args)) {
+    const payload = { ...event.payload };
+    delete payload.args;
+    body.payload = payload;
+    body.__linnya_shared_tool_args = true;
+  }
   return JSON.stringify(body);
 }
 
@@ -69,6 +68,14 @@ export function parseStoredRuntimeEvent(
     }
   }
 
+  // 标记只属于磁盘格式。缺省、显式 null 或不同的参数不能在读回时互相替代。
+  if (identity.eventType === 'tool_call_decision' && body.__linnya_shared_tool_args === true) {
+    if (!Object.prototype.hasOwnProperty.call(body, 'args') || !isJsonObject(body.payload) || Object.prototype.hasOwnProperty.call(body.payload, 'args')) {
+      throw new Error(`[SQLiteEventStore] invalid shared tool arguments in event ${identity.eventId}`);
+    }
+    body.payload.args = body.args;
+    delete body.__linnya_shared_tool_args;
+  }
   return runtimeEvents.requirePersistableRoutedRuntimeEvent(
     parseRoutedRuntimeEvent({
       ...body,

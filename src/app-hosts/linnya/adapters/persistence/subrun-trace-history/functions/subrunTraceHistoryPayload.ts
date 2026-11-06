@@ -106,8 +106,11 @@ export function decodeSubrunTraceHistoryEvent(input: {
   readonly sourceEventId: string;
   readonly kind: DurableSubrunTraceKind;
   readonly timestamp: number;
-  readonly payloadJson: string;
+  readonly payloadJson: string | null;
 }): SubRunTraceEvent {
+  if (input.payloadJson === null) {
+    throw new Error(`[SubrunTraceHistory] missing body source ${input.sourceEventId} for item ${input.itemId}`);
+  }
   const payload: unknown = JSON.parse(input.payloadJson);
   const parsed = RuntimeEvent.parse({
     id: `subrun-history-${input.itemId}`,

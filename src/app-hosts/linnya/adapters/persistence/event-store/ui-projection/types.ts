@@ -40,7 +40,8 @@ interface ToolResultSources {
 }
 
 type UiMessageRowVariant<Message extends ConversationUiMessage> =
-  UiMessageRowFields<Message> & (Message extends { message_type: 'tool_calls' } ? ToolResultSources : unknown) & {
+  UiMessageRowFields<Message> & (Message extends { message_type: 'tool_calls' } ? ToolResultSources :
+    Message extends { message_type: 'thought' } ? Pick<ToolResultSources, 'contentEventId'> : unknown) & {
     readonly role: Message['role'];
     readonly messageType: Message['message_type'];
   };
