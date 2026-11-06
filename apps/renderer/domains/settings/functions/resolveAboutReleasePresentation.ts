@@ -10,13 +10,13 @@ export interface AboutReleasePresentation {
 }
 
 const ABOUT_RELEASE_NOTE_KEYS: readonly SettingsMessageKey[] = [
-  'settings.about.release.note.pluginStore',
-  'settings.about.release.note.mindmapRuntime',
-  'settings.about.release.note.pluginState',
-  'settings.about.release.note.pluginStoreUi',
-  'settings.about.release.note.layoutFixes',
-  'settings.about.release.note.defaultWorkspaceProtection',
-  'settings.about.release.note.pluginDocs',
+  'settings.about.release.note.dataCompatibility',
+  'settings.about.release.note.dataStorage',
+  'settings.about.release.note.actionHistory',
+  'settings.about.release.note.slidesDesign',
+  'settings.about.release.note.desktopReliability',
+  'settings.about.release.note.pluginAvailability',
+  'settings.about.release.note.modelSetup',
 ];
 
 export function resolveAboutReleasePresentation(

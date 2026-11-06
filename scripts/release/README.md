@@ -115,6 +115,7 @@ macOS 正式构建接受 `security find-identity` 显示的完整 Developer ID A
 - `production-package-lock.json`（锁定当前公共 manifest 投影的 Desktop 生产依赖，由正式命令更新与复核）
 - `release-notes.md`（当前正式版本以 `Linnya vX.Y.Z` 开头，解析器保留历史测试版标题的读取）
 - `apps/renderer/domains/settings/definitions/currentRelease.generated.ts`
+- 关于页双语摘要：`apps/renderer/domains/settings/definitions/settingsMessageCatalog.ts` 的 release 段，须与当次实际发布范围一致。
 
 常用流程：
 
