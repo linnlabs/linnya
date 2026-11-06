@@ -33,7 +33,7 @@ function createV70Ledger(rows: ReadonlyArray<readonly [string, string | null]>):
     INSERT INTO assets (id, uri, storage_status, local_path, created_at) VALUES (?, ?, 'local', ?, 1)
   `);
   for (const [id, localPath] of rows) insert.run(id, `/Resources/Attachments/${id}`, localPath);
-  // 启动时表阶段先于迁移建立触发器；迁移写入的相对路径必须能通过它。
+  // 启动时触发器在迁移之后建立；这里先装上它，确认迁移写出的路径本身就符合约束。
   db.exec('CREATE TABLE workspace_nodes (id TEXT PRIMARY KEY); CREATE TABLE projects (id TEXT PRIMARY KEY);');
   for (const statement of ASSET_LEDGER_SCHEMAS) db.exec(statement);
   return db;
