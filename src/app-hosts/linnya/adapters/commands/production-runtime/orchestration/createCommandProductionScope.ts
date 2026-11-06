@@ -1,3 +1,4 @@
+import { createCoreCli } from '../../../../application/core-cli';
 import type Database from 'better-sqlite3';
 import { SQLiteEventStore } from 'src/app-hosts/linnya/adapters/persistence/event-store';
 
@@ -86,6 +87,7 @@ export async function createCommandProductionScope(input: {
   const conversationFacts = new SQLiteEventStore(input.db);
   const pluginCliBridge = await startPluginCliShellBridgeRuntime({
     resolveCli: input.resolvePluginCli,
+    coreCli: createCoreCli(input.db, COMMAND_TEXT_PROJECTION_LIMITS.maxCharactersPerStream),
     readConversationProjectId: async conversationId => (
       (await conversationFacts.getConversationMetadata(conversationId))?.project_id
     ),

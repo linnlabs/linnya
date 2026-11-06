@@ -1,3 +1,8 @@
+import { createCoreCli } from '../../core-cli';
+import { createSqliteActionLedger } from 'src/domains/action-ledger';
+import { createProjectLifecycle } from 'src/domains/projects';
+import { DatabaseService } from 'src/electron-main/services/database';
+import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { spawn } from 'node:child_process';
 import { promises as fsp } from 'node:fs';
 import os from 'node:os';
@@ -211,6 +216,7 @@ async function invoke(input: {
   readonly endpoint: string;
   readonly token: string;
   readonly argv: readonly string[];
+  readonly core?: boolean;
 }): Promise<{ readonly status: number; readonly frames: PluginCliBridgeFrameV1[] }> {
   const response = await fetch(input.endpoint, {
     method: 'POST',
@@ -220,8 +226,7 @@ async function invoke(input: {
     },
     body: JSON.stringify({
       protocol_version: 1,
-      kind: 'plugin_cli_invoke',
-      plugin_id: 'slides',
+      ...(input.core ? { kind: 'core_cli_invoke' } : { kind: 'plugin_cli_invoke', plugin_id: 'slides' }),
       argv: input.argv,
     }),
   });
@@ -235,6 +240,68 @@ async function invoke(input: {
 }
 
 describe('Plugin CLI Shell bridge', () => {
+  it('内建 changes 只按父对话读取昨日记录，拒绝跨项目参数、拒绝未授权读取，并明说截断', async () => {
+    const database = new DatabaseService(':memory:');
+    database.initialize();
+    try {
+      const db = database.getDb();
+      const projects = createProjectLifecycle(db);
+      const projectId = projects.create({ name: '当前项目' });
+      const other = projects.create({ name: '其他项目' });
+      const workspace = new WorkspaceService(db);
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const yesterday = new Date(start);
+      yesterday.setDate(yesterday.getDate() - 1);
+      for (const [project, name, date] of [
+        [projectId, 'one.md', yesterday], [projectId, 'two.md', yesterday],
+        [other, 'private.md', yesterday], [projectId, 'today.md', start],
+      ] as const) {
+        const id = workspace.createDocument(project, name, null, 'document');
+        createSqliteActionLedger(db, { now: () => date.getTime() }).recorderFor({ kind: 'user' }, 'coarse')
+          .record({ projectId: project, documentId: id, documentType: 'document', action: 'create' });
+      }
+      const readProject = vi.fn(async () => projectId);
+      const bridge = await startPluginCliShellBridgeRuntime({
+        resolveCli: () => { throw new Error('Core commands must not resolve a plugin'); },
+        coreCli: createCoreCli(db, 8000), readConversationProjectId: readProject,
+        internalDataContext: {}, diagnostics: { recordUnexpectedFailure: () => {} },
+      });
+      bridges.push(bridge);
+      const query = async (argv: string[], internalDataAccess: 'allowed' | 'denied') => {
+        const launch = createLaunch({ internalDataAccess });
+        const prepared = createPreparedRuntime(launch);
+        const scope = bridge.prepareExecution(launch);
+        const runtime = scope.decorate(prepared.runtime);
+        await runtime.start();
+        const endpoint = scope.internalEnvironment[LINNYA_INTERNAL_PLUGIN_CLI_ENDPOINT_ENV];
+        const token = scope.internalEnvironment[LINNYA_INTERNAL_PLUGIN_CLI_TOKEN_ENV];
+        if (!endpoint || !token) throw new Error('Missing test execution scope');
+        const { frames } = await invoke({ endpoint, token, argv, core: true });
+        prepared.terminal.resolve(createTerminal(launch));
+        await runtime.terminal;
+        const stdout = frames.flatMap(frame => frame.kind === 'plugin_cli_output' && frame.channel === 'stdout'
+          ? [Buffer.from(frame.bytes_base64, 'base64').toString()] : []).join('');
+        return { terminal: frames[frames.length - 1], stdout };
+      };
+      expect((await query(['changes', '--day', 'yesterday'], 'denied')).terminal)
+        .toMatchObject({ code: 'permission_denied', exit_code: 77 });
+      expect((await query(['changes', '--project', other], 'allowed')).terminal).toMatchObject({ exit_code: 2 });
+      expect(readProject).not.toHaveBeenCalled();
+      const { stdout } = await query(['changes', '--day', 'yesterday'], 'allowed');
+      expect(JSON.parse(stdout)).toMatchObject({ truncated: false, changes: expect.arrayContaining([
+        expect.objectContaining({ path: 'workspace:/one.md' }), expect.objectContaining({ path: 'workspace:/two.md' }),
+      ]) });
+      expect(stdout).not.toMatch(/today\.md|private\.md/u);
+      expect(JSON.parse((await query(['changes', '--day', 'yesterday', '--limit', '1'], 'allowed')).stdout))
+        .toMatchObject({ truncated: true, notice: expect.stringContaining('最近的一部分') });
+      expect(readProject).toHaveBeenCalledWith('conversation-plugin-cli-bridge');
+    } finally {
+      await new Promise(resolve => setTimeout(resolve, 0));
+      database.close();
+    }
+  });
+
   it('只在父 Shell start 后接纳 token，并把插件结果投影成真实 CLI frame', async () => {
     const execute = vi.fn(async () => ({ exitCode: 3, stdout: 'result\n', stderr: 'warning\n' }));
     const registration = registerCli({

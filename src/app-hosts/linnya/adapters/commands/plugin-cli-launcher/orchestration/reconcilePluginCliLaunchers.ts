@@ -143,6 +143,8 @@ export async function reconcilePluginCliLaunchers(input: {
   const desiredFiles = new Set(enabledPluginIds.map(pluginId => (
     resolvePluginCliLauncherFileName(pluginId)
   )));
+  // Core 命令不依赖插件目录；插件命令仍只占用 linnya-<id> 的命名空间。
+  await copyExecutableAtomically(input.clientExecutablePath, path.join(input.directory, process.platform === 'win32' ? 'linnya.exe' : 'linnya'));
   const launchers: PluginCliLauncher[] = [];
 
   for (const pluginId of enabledPluginIds) {

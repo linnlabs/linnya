@@ -64,6 +64,8 @@ Host 不再记粗账，查询结果不会重复列出。只有粗账的文档类
 
 ## 查询
 
+Agent 通过 [Shell 内建命令](../../app-hosts/linnya/application/core-cli/README.md) 查询。
+
 `listDocumentChanges({ projectId, rootRunId?, since?, until?, limit })` 只读当前项目：
 
 - 按根运行查询包含当前项目内它的全部子运行；时间段含起点、不含终点。文档转移后，目标项目仍可列出发生过的改动，但其他来源项目的插件、对话、运行身份不可见，也不能用原运行编号匹配。

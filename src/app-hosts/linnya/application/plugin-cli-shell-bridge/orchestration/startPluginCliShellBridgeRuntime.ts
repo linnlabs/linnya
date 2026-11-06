@@ -1,3 +1,4 @@
+import type { BackendPluginCliContribution } from '@linnya/plugin-host-contract/backend';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
@@ -210,6 +211,7 @@ function closeServer(server: Server): Promise<void> {
  * reservation、审批、输出 writer 或终态；真实 stdout/stderr 仍由 thin client 写回 Shell。
  */
 export async function startPluginCliShellBridgeRuntime(input: {
+  readonly coreCli?: BackendPluginCliContribution;
   readonly resolveCli: (
     pluginId: string,
   ) => BackendPluginCliRegistration | undefined;
@@ -262,27 +264,23 @@ export async function startPluginCliShellBridgeRuntime(input: {
     let pluginLease: ReturnType<typeof acquireBackendPluginCliInvocation>;
     let signals: CombinedSignal | undefined;
     try {
-      const registration = input.resolveCli(request.plugin_id);
-      if (!registration) {
-        throw new PluginCliBridgeFailure(
-          'plugin_unavailable',
-          69,
-          'Plugin CLI is unavailable.',
-        );
+      let cli: BackendPluginCliContribution;
+      if (request.kind === 'core_cli_invoke') {
+        if (!input.coreCli) throw new PluginCliBridgeFailure('runtime_failure', 69, 'Core CLI is unavailable.');
+        cli = input.coreCli;
+        signals = combineAbortSignals([lease.signal, clientSignal]);
+      } else {
+        const registration = input.resolveCli(request.plugin_id);
+        if (!registration) throw new PluginCliBridgeFailure('plugin_unavailable', 69, 'Plugin CLI is unavailable.');
+        stage = 'acquire_plugin';
+        pluginLease = acquireBackendPluginCliInvocation(registration);
+        if (!pluginLease) throw new PluginCliBridgeFailure('plugin_unavailable', 69, 'Plugin CLI is not accepting work.');
+        cli = registration.cli;
+        signals = combineAbortSignals([lease.signal, pluginLease.signal, clientSignal]);
       }
-      stage = 'acquire_plugin';
-      pluginLease = acquireBackendPluginCliInvocation(registration);
-      if (!pluginLease) {
-        throw new PluginCliBridgeFailure(
-          'plugin_unavailable',
-          69,
-          'Plugin CLI is not accepting work.',
-        );
-      }
-      signals = combineAbortSignals([lease.signal, pluginLease.signal, clientSignal]);
       signals.signal.throwIfAborted();
       stage = 'prepare';
-      const preparation = registration.cli.prepare({
+      const preparation = cli.prepare({
         argv: request.argv,
         invocationId,
         conversationRoot: lease.launch.conversation_root,
@@ -346,7 +344,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
       throw normalizeUnexpectedFailure(error, {
         stage,
         lease,
-        pluginId: request.plugin_id,
+        ...(request.kind === 'plugin_cli_invoke' ? { pluginId: request.plugin_id } : {}),
         invocationId,
       });
     } finally {
@@ -395,7 +393,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
       writeFrames(response, [failureFrame(normalizeUnexpectedFailure(error, {
         stage,
         lease,
-        ...(invocation ? { pluginId: invocation.plugin_id } : {}),
+        ...(invocation?.kind === 'plugin_cli_invoke' ? { pluginId: invocation.plugin_id } : {}),
       }))]);
     } finally {
       clientAbort.dispose();
