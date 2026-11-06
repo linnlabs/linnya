@@ -103,6 +103,8 @@ Standalone `entry.command` 只提供 read/show/find/neighbors/region/check/recei
 
 当前内容格式为1。读取时仅把可验证的元素交给显示投影；未知类型、非法正文/字段版本/排序、坏分组及依赖隔离卡片的线保留原始SQLite行，并返回 `integrity` 诊断。出现任何此类问题或更高格式版本时整张画布只读，当前提交、撤销、批准与恢复共享提交入口并拒绝写入，避免老版本剥离未来字段。隔离只影响展示，不写占位节点、不回存过滤后的快照。未来增加真正内容格式迁移时，必须先用版本历史保留迁移前状态。
 
+插件尚未发布，数据库初始化只保留一个v1；旧开发态v1～v5及旧哈希内容通过明确重建测试数据处理，不保留双读或回填分支。模型、会话与其他文档数据不属于Canvas重建范围。正式发布后的格式变化仍需正常版本迁移与样本验证。
+
 兼容策略参考 [Excalidraw对未知属性保留的修复](https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/CHANGELOG.md) 与 [tldraw的schema迁移owner约定](https://github.com/tldraw/tldraw/blob/main/packages/tlschema/README.md)；本插件以只读和原始行保留避免静默损失。
 
 ## Renderer 写确认

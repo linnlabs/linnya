@@ -52,6 +52,8 @@ jobs:
         run: pnpm --filter @plugin/canvas typecheck
       - name: Check Canvas architecture and frame closure
         run: pnpm exec tsx packages/plugins/canvas/scripts/guard.ts
+      - name: Lint Canvas production code
+        run: pnpm --filter @plugin/canvas lint
       - name: Verify source formatting guard rejects compressed statements
         run: pnpm --filter @plugin/canvas exec vitest run --config vitest.config.ts scripts/quality/__tests__/canvasSourceFormatting.test.ts
       - name: Build schemas for browser subpath imports
