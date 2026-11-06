@@ -1,17 +1,17 @@
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import type { CanvasPatch } from '@plugin/canvas/shared';
-import { canvasChromeColorChoices } from '../../canvasChrome';
+import { canvasChromeColorChoices, canvasMenuIcons } from '../../canvasChrome';
 const directions = [
-  { value: 'direction-none', text: '无箭头' },
-  { value: 'direction-forward', text: '单向' },
-  { value: 'direction-both', text: '双向' },
+  { value: 'direction-none', text: '无箭头', iconComponent: canvasMenuIcons['direction:none'] },
+  { value: 'direction-forward', text: '单向', iconComponent: canvasMenuIcons['direction:forward'] },
+  { value: 'direction-both', text: '双向', iconComponent: canvasMenuIcons['direction:both'] },
 ];
 const shapes: readonly CustomSelectOption<string>[] = [
-  { value: 'shape-curve', text: '曲线' },
-  { value: 'shape-straight', text: '直线' },
+  { value: 'shape-curve', text: '曲线', iconComponent: canvasMenuIcons['lineStyle:curve'] },
+  { value: 'shape-straight', text: '直线', iconComponent: canvasMenuIcons['lineStyle:straight'] },
   { isSeparator: true },
-  { value: 'pattern-solid', text: '实线' },
-  { value: 'pattern-dashed', text: '虚线' },
+  { value: 'pattern-solid', text: '实线', iconComponent: canvasMenuIcons['linePattern:solid'] },
+  { value: 'pattern-dashed', text: '虚线', iconComponent: canvasMenuIcons['linePattern:dashed'] },
 ];
 const colors = canvasChromeColorChoices(
   [

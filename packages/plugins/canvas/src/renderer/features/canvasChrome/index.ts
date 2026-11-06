@@ -10,4 +10,5 @@ export {
   canvasChromeColorChoices,
 } from './functions/canvasColorMenuOptions';
 export { default as CanvasPortalMenu } from './ui/CanvasPortalMenu.vue';
+export { canvasMenuIcons } from './functions/canvasMenuIcons';
 export type { CanvasMenuAnchor } from './definitions/canvasMenu';

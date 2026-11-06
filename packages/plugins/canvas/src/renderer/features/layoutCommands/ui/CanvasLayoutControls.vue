@@ -16,7 +16,7 @@
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import { ArrangeIcon } from '@linnya/renderer-ui/icons';
 import type { CanvasArrangeRequest } from '@plugin/canvas/shared';
-import { CanvasToolbarMenu } from '../../canvasChrome';
+import { CanvasToolbarMenu, canvasMenuIcons } from '../../canvasChrome';
 import type { createCanvasLayoutCommands } from '../orchestration/createCanvasLayoutCommands';
 import { canvasLayoutPreset } from '../functions/canvasLayoutPreset';
 const props = defineProps<{
@@ -26,13 +26,20 @@ const props = defineProps<{
 }>();
 const TREE_KEYBOARD = 'tree-keyboard';
 const options: readonly CustomSelectOption<string>[] = [
-  { value: 'tree-right', text: '横向树状' },
-  { value: 'tree-down', text: '纵向树状' },
-  { value: 'grid', text: '网格' },
-  { value: 'layered-right', text: '横向分层' },
-  { value: 'layered-down', text: '纵向分层' },
+  ...[
+    { value: 'tree-right', text: '横向树状' },
+    { value: 'tree-down', text: '纵向树状' },
+    { value: 'grid', text: '网格' },
+    { value: 'layered-right', text: '横向分层' },
+    { value: 'layered-down', text: '纵向分层' },
+  ].map(option => ({ ...option, iconComponent: canvasMenuIcons[`layout:${option.value}`] })),
   { isSeparator: true },
-  { value: TREE_KEYBOARD, text: '树状键盘模式', shortcut: 'Tab / Enter' },
+  {
+    value: TREE_KEYBOARD,
+    text: '树状键盘模式',
+    shortcut: 'Tab / Enter',
+    iconComponent: canvasMenuIcons[`layout:${TREE_KEYBOARD}`],
+  },
 ];
 const choose = (value: string) => {
   if (value === TREE_KEYBOARD) {

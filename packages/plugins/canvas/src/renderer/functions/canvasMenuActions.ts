@@ -1,6 +1,6 @@
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import type { CanvasColor } from '@plugin/canvas/shared';
-import { canvasChromeColorChoices } from '../features/canvasChrome';
+import { canvasChromeColorChoices, canvasMenuIcons } from '../features/canvasChrome';
 import { canvasConnectionContextActions } from '../features/connections';
 
 const palette: readonly { readonly color: CanvasColor; readonly text: string }[] = [
@@ -21,21 +21,21 @@ export function readCanvasCardMenuColor(value: string): CanvasColor | null {
   return cardColors.get(value) ?? null;
 }
 const alignment: readonly CustomSelectOption<string>[] = [
-  { value: 'left', text: '左对齐' },
-  { value: 'center-x', text: '水平居中' },
-  { value: 'right', text: '右对齐' },
-  { value: 'top', text: '顶部对齐' },
-  { value: 'center-y', text: '垂直居中' },
-  { value: 'bottom', text: '底部对齐' },
-  { value: 'grid', text: '网格排列' },
+  { value: 'left', text: '左对齐', iconComponent: canvasMenuIcons['align:left'] },
+  { value: 'center-x', text: '水平居中', iconComponent: canvasMenuIcons['align:center-x'] },
+  { value: 'right', text: '右对齐', iconComponent: canvasMenuIcons['align:right'] },
+  { value: 'top', text: '顶部对齐', iconComponent: canvasMenuIcons['align:top'] },
+  { value: 'center-y', text: '垂直居中', iconComponent: canvasMenuIcons['align:center-y'] },
+  { value: 'bottom', text: '底部对齐', iconComponent: canvasMenuIcons['align:bottom'] },
+  { value: 'grid', text: '网格排列', iconComponent: canvasMenuIcons['layout:grid'] },
 ];
 const distribution = [
-  { value: 'distribute-x', text: '水平等距分布' },
-  { value: 'distribute-y', text: '垂直等距分布' },
+  { value: 'distribute-x', text: '水平等距分布', iconComponent: canvasMenuIcons['distribute:x'] },
+  { value: 'distribute-y', text: '垂直等距分布', iconComponent: canvasMenuIcons['distribute:y'] },
 ];
 const layering = [
-  { value: 'front', text: '置于顶层' },
-  { value: 'back', text: '置于底层' },
+  { value: 'front', text: '置于顶层', iconComponent: canvasMenuIcons['layer:front'] },
+  { value: 'back', text: '置于底层', iconComponent: canvasMenuIcons['layer:back'] },
 ];
 // 右键菜单的颜色子菜单与选中浮条的颜色菜单同样带纸色色块。
 const colors: CustomSelectOption<string> = {

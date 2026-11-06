@@ -37,9 +37,9 @@
         min-width="150px"
         @select="setStyleOption"
       >
-        <BorderStyleIcon
-          class="canvas-line-style-icon"
-          :style-type="edge.linePattern === 'dashed' ? 4 : 1"
+        <LineIcon
+          :arrows="edge.direction === 'forward' ? 'end' : edge.direction"
+          :dashed="edge.linePattern === 'dashed'"
         />
       </CanvasToolbarMenu>
       <CanvasToolbarMenu
@@ -134,8 +134,14 @@ import {
   ToolbarGroup,
   type CustomSelectOption,
 } from '@linnya/renderer-ui';
-import { BorderStyleIcon, DeleteIcon, MoreIcon, TagIcon } from '@linnya/renderer-ui/icons';
-import { CanvasColorSwatch, CanvasToolbarMenu, canvasColorSwatchOptions } from '../../canvasChrome';
+import { DeleteIcon, MoreIcon, TagIcon } from '@linnya/renderer-ui/icons';
+import {
+  CanvasColorSwatch,
+  CanvasToolbarMenu,
+  canvasColorSwatchOptions,
+  canvasMenuIcons,
+} from '../../canvasChrome';
+import LineIcon from '../../../icon/LineIcon.vue';
 import {
   CanvasEdgeSchema,
   CanvasColorSchema,
@@ -257,6 +263,7 @@ const styleOptions = computed<readonly CustomSelectOption<string>[]>(() => {
     ...group.items.map(item => ({
       value: `${group.field}:${item.value}`,
       text: item.text,
+      iconComponent: canvasMenuIcons[`${group.field}:${item.value}`],
       selected: current?.[group.field] === item.value,
     })),
   ]);

@@ -447,12 +447,6 @@
 .canvas-connection-bar {
   white-space: nowrap;
 }
-/* 线型图标本身是一段横线预览，比方形图标宽一些，但不撑长工具条。 */
-.canvas-connection-bar .canvas-line-style-icon {
-  flex-shrink: 0;
-  width: 24px;
-  height: 16px;
-}
 .canvas-connection-label-input {
   position: absolute;
   z-index: 5;

@@ -48,7 +48,7 @@
         :disabled="readonly"
         @click="emit('connect')"
       >
-        <LinkIcon />
+        <ConnectorIcon />
       </ToolbarButton>
     </ToolbarGroup>
     <ToolbarGroup>
@@ -89,10 +89,10 @@ import {
   DuplicateIcon,
   EditIcon,
   ImageIcon,
-  LinkIcon,
   LinnyaIcon,
   MoreIcon,
 } from '@linnya/renderer-ui/icons';
+import ConnectorIcon from '../../../icon/ConnectorIcon.vue';
 import type { CanvasColor } from '@plugin/canvas/shared';
 import { canvasColorSwatchOptions } from '../functions/canvasColorMenuOptions';
 import CanvasColorSwatch from './CanvasColorSwatch.vue';
