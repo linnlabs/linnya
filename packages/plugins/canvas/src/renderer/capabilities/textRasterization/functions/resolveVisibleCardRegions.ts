@@ -13,10 +13,21 @@ export function resolveVisibleCardRegions(input: {
   readonly scale: number;
   readonly maxTextureEdge?: number;
 }) {
-  const columns = resolveVisibleCardTiles({ cardY: input.cardX, cardHeight: input.cardWidth,
-    worldTop: input.worldLeft, worldBottom: input.worldRight, scale: input.scale, maxTextureEdge: input.maxTextureEdge });
+  const columns = resolveVisibleCardTiles({
+    cardY: input.cardX,
+    cardHeight: input.cardWidth,
+    worldTop: input.worldLeft,
+    worldBottom: input.worldRight,
+    scale: input.scale,
+    maxTextureEdge: input.maxTextureEdge,
+  });
   const rows = resolveVisibleCardTiles(input);
-  return rows.flatMap((row) => columns.map((column) => ({
-    offsetX: column.offsetY, offsetY: row.offsetY, width: column.height, height: row.height,
-  })));
+  return rows.flatMap(row =>
+    columns.map(column => ({
+      offsetX: column.offsetY,
+      offsetY: row.offsetY,
+      width: column.height,
+      height: row.height,
+    }))
+  );
 }

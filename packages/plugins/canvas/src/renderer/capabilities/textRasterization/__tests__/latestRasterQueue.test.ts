@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createLatestRasterQueue } from '../functions/createLatestRasterQueue';
+import { createLatestRasterQueue } from '../orchestration/createLatestRasterQueue';
 
 describe('latest card raster queue', () => {
   it('缩放积压时有界，并释放已完成但被新版本替代的位图', async () => {

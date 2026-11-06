@@ -10,7 +10,8 @@ export function createCanvasTreeCreation(options: {
 }) {
   return async (kind: 'child' | 'sibling') => {
     if (!(await options.finish())) return;
-    const plan = options.plan(kind); if (!plan) return;
+    const plan = options.plan(kind);
+    if (!plan) return;
     const draft = await options.create(plan);
     if (draft) options.reveal(draft);
   };

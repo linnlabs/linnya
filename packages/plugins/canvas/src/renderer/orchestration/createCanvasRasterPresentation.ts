@@ -1,13 +1,33 @@
 import type { CanvasCard, CanvasCardId, CanvasPoint } from '@plugin/canvas/shared';
-import { cardRasterKey, createHtmlCardRasterizer, createLatestRasterQueue, splitCardRasterRegions,
-  type RasterQueueResult } from '../capabilities/textRasterization';
-import { createCanvasCardRasterBatch, chooseCanvasRasterBatchSize, type CanvasCardRasterInput, type CanvasCardRasterOutput } from '../features/cardRendering';
-import type { CanvasRasterReadiness, CanvasRasterReadinessCard, CanvasRasterDemand, CanvasRasterIdentity, CanvasRasterFrame, CanvasRasterPending, CanvasRasterPresentationOptions } from '../definitions/canvasRasterPresentation';
+import {
+  cardRasterKey,
+  createHtmlCardRasterizer,
+  createLatestRasterQueue,
+  splitCardRasterRegions,
+  type RasterQueueResult,
+} from '../capabilities/textRasterization';
+import {
+  createCanvasCardRasterBatch,
+  chooseCanvasRasterBatchSize,
+  type CanvasCardRasterInput,
+  type CanvasCardRasterOutput,
+} from '../features/cardRendering';
+import type {
+  CanvasRasterReadiness,
+  CanvasRasterReadinessCard,
+  CanvasRasterDemand,
+  CanvasRasterIdentity,
+  CanvasRasterFrame,
+  CanvasRasterPending,
+  CanvasRasterPresentationOptions,
+} from '../definitions/canvasRasterPresentation';
 import { createCanvasRasterCadence } from '../functions/createCanvasRasterCadence';
 import { prioritizeCanvasRasterCards } from '../functions/prioritizeCanvasRasterCards';
 
 /** 可见内容的派生投影；正文/相机/主题都由各owner提供，不另存一份正文。 */
-export function createCanvasRasterPresentation(options: CanvasRasterPresentationOptions) { return new CanvasRasterPresentation(options); }
+export function createCanvasRasterPresentation(options: CanvasRasterPresentationOptions) {
+  return new CanvasRasterPresentation(options);
+}
 
 class CanvasRasterPresentation {
   private readonly rasterizer;
@@ -32,7 +52,9 @@ class CanvasRasterPresentation {
     this.pointer = { x: event.offsetX, y: event.offsetY };
     if (event.type === 'pointermove' && event.buttons) this.cadence.move();
   };
-  private readonly pointerLeft = () => { this.pointer = null; };
+  private readonly pointerLeft = () => {
+    this.pointer = null;
+  };
   private readonly visibilityChanged = () => {
     if (this.suspended()) this.cancelPending();
     else this.refresh();
@@ -41,48 +63,111 @@ class CanvasRasterPresentation {
     this.rasterizer = createHtmlCardRasterizer({ host: options.host });
     this.cadence = createCanvasRasterCadence(() => this.refresh());
     this.queue = createLatestRasterQueue<CanvasCardRasterInput, CanvasCardRasterOutput>({
-      batchSize: 64, executeBatch: createCanvasCardRasterBatch({ rasterizer: this.rasterizer, createContent: options.createContent }),
-      readBatchSize: inputs => chooseCanvasRasterBatchSize(inputs, this.cadence.moving() || options.kernel.isMoving()),
-      disposeResult: output => { if (output.kind === 'ready') for (const tile of output.tiles) tile.bitmap.close(); },
+      batchSize: 64,
+      executeBatch: createCanvasCardRasterBatch({
+        rasterizer: this.rasterizer,
+        createContent: options.createContent,
+      }),
+      readBatchSize: inputs =>
+        chooseCanvasRasterBatchSize(inputs, this.cadence.moving() || options.kernel.isMoving()),
+      disposeResult: output => {
+        if (output.kind === 'ready') for (const tile of output.tiles) tile.bitmap.close();
+      },
     });
     this.queueCapacity = this.queue.readStats().capacity;
     options.host.ownerDocument.addEventListener('visibilitychange', this.visibilityChanged);
     options.kernel.canvas.addEventListener('pointermove', this.pointerChanged, true);
-    options.kernel.canvas.addEventListener('wheel', this.pointerChanged, { capture: true, passive: true });
+    options.kernel.canvas.addEventListener('wheel', this.pointerChanged, {
+      capture: true,
+      passive: true,
+    });
     options.kernel.canvas.addEventListener('pointerleave', this.pointerLeft);
   }
-  private suspended(): boolean { return this.options.suspendWhenHidden !== false && this.options.host.ownerDocument.visibilityState === 'hidden'; }
-  private cancelPending(): void { for (const id of this.pending.keys()) this.queue.cancel(id); this.pending.clear(); }
+  private suspended(): boolean {
+    return (
+      this.options.suspendWhenHidden !== false &&
+      this.options.host.ownerDocument.visibilityState === 'hidden'
+    );
+  }
+  private cancelPending(): void {
+    for (const id of this.pending.keys()) this.queue.cancel(id);
+    this.pending.clear();
+  }
   private descriptor(card: CanvasCard): string {
     const existing = this.descriptors.get(card);
     if (existing) return existing;
     // 移动递增revision但不改变正文；染纸改变深墨，因此颜色必须入键。
     const value = JSON.stringify([card.type, card.width, card.height, card.color, card.data]);
-    this.descriptors.set(card, value); return value;
+    this.descriptors.set(card, value);
+    return value;
   }
   private schedule(): void {
     if (this.pump || this.disposed) return;
     // 补图准备是有界工作批次，不进入纯绘制RAF闭包；同批Promise回执合并一次需求刷新。
-    this.pump = true; queueMicrotask(() => { this.pump = false; this.refresh(); });
+    this.pump = true;
+    queueMicrotask(() => {
+      this.pump = false;
+      this.refresh();
+    });
   }
   private identity(card: CanvasCard, frame: CanvasRasterFrame): CanvasRasterIdentity {
-    const camera = this.options.kernel.readCamera(), pixelRatio = this.options.kernel.readResolution();
+    const camera = this.options.kernel.readCamera(),
+      pixelRatio = this.options.kernel.readResolution();
     const appearance = this.options.readAppearance();
     const screenWidth = card.width * camera.zoom * pixelRatio;
-    const content = this.descriptor(card), externalKey = this.options.readContentKey?.(card) ?? '';
-    const baseKey = cardRasterKey({ revision: 0, theme: appearance.dark ? 'dark' : 'light', dpr: pixelRatio,
-      material: 'body', lod: 0, font: `${frame.font}/14/1.7`, uiScale: 1 }) + content + externalKey;
-    const exactKey = baseKey + JSON.stringify(['exact', screenWidth]), focused = this.preciseCards.get(card.id);
+    const content = this.descriptor(card),
+      externalKey = this.options.readContentKey?.(card) ?? '';
+    const baseKey =
+      cardRasterKey({
+        revision: 0,
+        theme: appearance.dark ? 'dark' : 'light',
+        dpr: pixelRatio,
+        material: 'body',
+        lod: 0,
+        font: `${frame.font}/14/1.7`,
+        uiScale: 1,
+      }) +
+      content +
+      externalKey;
+    const exactKey = baseKey + JSON.stringify(['exact', screenWidth]),
+      focused = this.preciseCards.get(card.id);
     if (focused && focused !== exactKey) this.preciseCards.delete(card.id);
-    const precise = frame.precise ?? (focused === exactKey || camera.zoom >= 0.75 && frame.count <= 40);
-    const physicalWidth = precise ? screenWidth : screenWidth <= 140 ? 70 : screenWidth <= 280 ? 280 : screenWidth <= 560 ? 560 : 1120;
-    const scale = physicalWidth / card.width, key = precise ? exactKey : baseKey + 'bucket';
-    return { card, key, content, externalKey, scale, precise, dark: appearance.dark, physicalWidth };
+    const precise =
+      frame.precise ?? (focused === exactKey || (camera.zoom >= 0.75 && frame.count <= 40));
+    const physicalWidth = precise
+      ? screenWidth
+      : screenWidth <= 140
+        ? 70
+        : screenWidth <= 280
+          ? 280
+          : screenWidth <= 560
+            ? 560
+            : 1120;
+    const scale = physicalWidth / card.width,
+      key = precise ? exactKey : baseKey + 'bucket';
+    return {
+      card,
+      key,
+      content,
+      externalKey,
+      scale,
+      precise,
+      dark: appearance.dark,
+      physicalWidth,
+    };
   }
   private demand(card: CanvasCard, frame: CanvasRasterFrame): CanvasRasterDemand {
-    const identity = this.identity(card, frame), { key, scale, precise, physicalWidth } = identity;
-    const regions = splitCardRasterRegions(this.options.kernel.readMissingBitmapRegions(card.id, key,
-      this.options.kernel.readVisibleCardRegions(card.id), { scale, exact: precise }), scale);
+    const identity = this.identity(card, frame),
+      { key, scale, precise, physicalWidth } = identity;
+    const regions = splitCardRasterRegions(
+      this.options.kernel.readMissingBitmapRegions(
+        card.id,
+        key,
+        this.options.kernel.readVisibleCardRegions(card.id),
+        { scale, exact: precise }
+      ),
+      scale
+    );
     return { ...identity, jobKey: key + physicalWidth + JSON.stringify(regions), regions };
   }
   private accept(demand: CanvasRasterDemand): boolean {
@@ -91,61 +176,113 @@ class CanvasRasterPresentation {
     // 相机/遮挡改变的是需求区域，不是卡内正文。保留同内容同采样的在途片，
     // 接纳后只补最新缺片；否则每个pointer都会丢弃仍正确的paint结果并重复排版。
     if (pending?.contentKey === demand.key && pending.scale === demand.scale) return false;
-    if (this.pending.has(demand.card.id)) { this.queue.cancel(demand.card.id); this.pending.delete(demand.card.id); }
+    if (this.pending.has(demand.card.id)) {
+      this.queue.cancel(demand.card.id);
+      this.pending.delete(demand.card.id);
+    }
     return true;
   }
   private enqueue(demand: CanvasRasterDemand): Promise<boolean> {
     for (const region of demand.regions) {
-      this.requestedTiles++; this.requestedPixels += Math.ceil(region.width * demand.scale) * Math.ceil(region.height * demand.scale);
+      this.requestedTiles++;
+      this.requestedPixels +=
+        Math.ceil(region.width * demand.scale) * Math.ceil(region.height * demand.scale);
       if (Math.min(region.width, region.height) * demand.scale < 0.001) this.subPixelTiles++;
     }
-    const completion: Promise<boolean> = this.queue.enqueue(demand.card.id, { card: demand.card, scale: demand.scale, dark: demand.dark, regions: demand.regions })
+    const completion: Promise<boolean> = this.queue
+      .enqueue(demand.card.id, {
+        card: demand.card,
+        scale: demand.scale,
+        dark: demand.dark,
+        regions: demand.regions,
+      })
       .then(result => this.complete(demand, result, job));
-    const job: CanvasRasterPending = { key: demand.jobKey, contentKey: demand.key, scale: demand.scale, completion }; this.pending.set(demand.card.id, job);
+    const job: CanvasRasterPending = {
+      key: demand.jobKey,
+      contentKey: demand.key,
+      scale: demand.scale,
+      completion,
+    };
+    this.pending.set(demand.card.id, job);
     return completion;
   }
-  private complete(demand: CanvasRasterDemand, result: RasterQueueResult<CanvasCardRasterOutput>, job: CanvasRasterPending): boolean {
+  private complete(
+    demand: CanvasRasterDemand,
+    result: RasterQueueResult<CanvasCardRasterOutput>,
+    job: CanvasRasterPending
+  ): boolean {
     let installed = false;
     if (this.pending.get(demand.card.id) === job) this.pending.delete(demand.card.id);
     if (result.status === 'ready' && result.value.kind === 'ready') {
       const current = this.options.kernel.readCard(demand.card.id);
-      if (current && this.options.kernel.readVisibleCardRegions(current.id).length && this.identity(current, { count: 1, font: this.fontKey(), precise: demand.precise }).key === demand.key) {
-        installed = this.options.kernel.setRasterTiles(current.id, current.revision, demand.key, result.value.tiles);
+      if (
+        current &&
+        this.options.kernel.readVisibleCardRegions(current.id).length &&
+        this.identity(current, { count: 1, font: this.fontKey(), precise: demand.precise }).key ===
+          demand.key
+      ) {
+        installed = this.options.kernel.setRasterTiles(
+          current.id,
+          current.revision,
+          demand.key,
+          result.value.tiles
+        );
       } else for (const tile of result.value.tiles) tile.bitmap.close();
     } else if (result.status === 'failed') this.fail(demand, result.error);
-    else if (result.status === 'ready' && result.value.kind === 'failed') this.fail(demand, result.value.error);
+    else if (result.status === 'ready' && result.value.kind === 'failed')
+      this.fail(demand, result.value.error);
     if (result.status === 'ready') this.schedule();
     return installed;
   }
   private fail(demand: CanvasRasterDemand, error: unknown): void {
-    this.failed.set(demand.card.id, demand.key); this.options.reportFailure(error instanceof Error ? error.message : String(error));
+    this.failed.set(demand.card.id, demand.key);
+    this.options.reportFailure(error instanceof Error ? error.message : String(error));
   }
   private reconcileInterest(visible: readonly CanvasCard[]): boolean {
     const ids = new Set(visible.map(card => card.id));
-    for (const card of visible) this.options.kernel.setRasterContentKey(card.id, this.options.readContentKey?.(card) ?? '');
-    for (const id of this.pending.keys()) if (!ids.has(id) && !this.preparingEdits.has(id)) { this.queue.cancel(id); this.pending.delete(id); }
+    for (const card of visible)
+      this.options.kernel.setRasterContentKey(card.id, this.options.readContentKey?.(card) ?? '');
+    for (const id of this.pending.keys())
+      if (!ids.has(id) && !this.preparingEdits.has(id)) {
+        this.queue.cancel(id);
+        this.pending.delete(id);
+      }
     for (const id of this.preciseCards.keys()) if (!ids.has(id)) this.preciseCards.delete(id);
     if (this.cadence.paused(visible.length, this.options.kernel.readRenderStatus().limited)) {
-      for (const id of this.pending.keys()) if (!this.preparingEdits.has(id)) { this.queue.cancel(id); this.pending.delete(id); }
+      for (const id of this.pending.keys())
+        if (!this.preparingEdits.has(id)) {
+          this.queue.cancel(id);
+          this.pending.delete(id);
+        }
       return false;
     }
     return true;
   }
   private prioritized(visible: readonly CanvasCard[]): readonly CanvasCard[] {
     if (this.cadence.reorder() || visible.some(card => !this.priority.has(card.id))) {
-      this.priority = prioritizeCanvasRasterCards(visible, id => this.options.kernel.readVisibleCardRegions(id), this.pointer ? this.options.kernel.screenToWorld(this.pointer) : null);
+      this.priority = prioritizeCanvasRasterCards(
+        visible,
+        id => this.options.kernel.readVisibleCardRegions(id),
+        this.pointer ? this.options.kernel.screenToWorld(this.pointer) : null
+      );
     }
-    const prioritized = visible.slice().sort((a, b) => (this.priority.get(a.id) ?? Infinity) - (this.priority.get(b.id) ?? Infinity));
+    const prioritized = visible
+      .slice()
+      .sort(
+        (a, b) => (this.priority.get(a.id) ?? Infinity) - (this.priority.get(b.id) ?? Infinity)
+      );
     this.queue.prioritize([...this.preparingEdits.keys(), ...prioritized.map(card => card.id)]);
     return prioritized;
   }
   refresh(): void {
     if (this.disposed || this.suspended()) return;
-    const started = performance.now(), camera = this.options.kernel.readCamera();
+    const started = performance.now(),
+      camera = this.options.kernel.readCamera();
     this.cadence.observe(camera, this.options.kernel.readResolution());
     const visible = this.options.kernel.rasterCards();
     if (!this.reconcileInterest(visible)) return;
-    const font = this.fontKey(), prioritized = this.prioritized(visible);
+    const font = this.fontKey(),
+      prioritized = this.prioritized(visible);
     for (const card of prioritized) {
       if (this.preparingEdits.has(card.id)) continue;
       const demand = this.demand(card, { count: visible.length, font });
@@ -154,17 +291,23 @@ class CanvasRasterPresentation {
       if (this.pending.size >= this.queueCapacity) break;
       void this.enqueue(demand);
     }
-    this.refreshes++; this.maximumRefreshMs = Math.max(this.maximumRefreshMs, performance.now() - started);
+    this.refreshes++;
+    this.maximumRefreshMs = Math.max(this.maximumRefreshMs, performance.now() - started);
   }
   private fontKey(): string {
     const style = getComputedStyle(this.options.host);
     return `${style.fontFamily}/${style.getPropertyValue('-webkit-font-smoothing')}`;
   }
   prepareEditing(id: CanvasCardId): Promise<'ready' | 'unavailable'> {
-    const existing = this.preparingEdits.get(id); if (existing) return existing;
-    const preparation = this.prepareExact(id); this.preparingEdits.set(id, preparation);
-    const release = () => { if (this.preparingEdits.get(id) === preparation) this.preparingEdits.delete(id); };
-    void preparation.then(release, release); return preparation;
+    const existing = this.preparingEdits.get(id);
+    if (existing) return existing;
+    const preparation = this.prepareExact(id);
+    this.preparingEdits.set(id, preparation);
+    const release = () => {
+      if (this.preparingEdits.get(id) === preparation) this.preparingEdits.delete(id);
+    };
+    void preparation.then(release, release);
+    return preparation;
   }
   private async prepareExact(id: CanvasCardId): Promise<'ready' | 'unavailable'> {
     if (this.disposed || this.suspended()) return 'unavailable';
@@ -172,56 +315,122 @@ class CanvasRasterPresentation {
     if (!card || !this.options.kernel.readVisibleCardRegions(id).length) return 'unavailable';
     this.options.kernel.setRasterContentKey(id, this.options.readContentKey?.(card) ?? '');
     const demand = this.demand(card, { count: 1, font: this.fontKey(), precise: true });
-    if (!demand.regions.length) { this.preciseCards.set(id, demand.key); return 'ready'; }
+    if (!demand.regions.length) {
+      this.preciseCards.set(id, demand.key);
+      return 'ready';
+    }
     if (this.failed.get(id) === demand.key) return 'unavailable';
     const existing = this.pending.get(id);
-    if (existing?.key === demand.jobKey) { this.queue.prioritize([id]); return this.pinPrepared(demand, await existing.completion); }
-    if (existing) { this.queue.cancel(id); this.pending.delete(id); }
+    if (existing?.key === demand.jobKey) {
+      this.queue.prioritize([id]);
+      return this.pinPrepared(demand, await existing.completion);
+    }
+    if (existing) {
+      this.queue.cancel(id);
+      this.pending.delete(id);
+    }
     // 单卡进入编辑优先于远处补图，但仍保留同一全局有界队列和结果所有权。
-    if (this.pending.size >= this.queueCapacity) { const first = this.pending.keys().next(); if (!first.done) { this.queue.cancel(first.value); this.pending.delete(first.value); } }
-    const preparation = this.enqueue(demand); this.queue.prioritize([id]);
+    if (this.pending.size >= this.queueCapacity) {
+      const first = this.pending.keys().next();
+      if (!first.done) {
+        this.queue.cancel(first.value);
+        this.pending.delete(first.value);
+      }
+    }
+    const preparation = this.enqueue(demand);
+    this.queue.prioritize([id]);
     return this.pinPrepared(demand, await preparation);
   }
   private pinPrepared(demand: CanvasRasterDemand, installed: boolean): 'ready' | 'unavailable' {
     if (!installed) return 'unavailable';
     // 精确图在DOM编辑器接管前不能又被普通队列降回档位；离开视口或环境改变即释放。
-    this.preciseCards.set(demand.card.id, demand.key); return 'ready';
+    this.preciseCards.set(demand.card.id, demand.key);
+    return 'ready';
   }
   readReadiness(ids: readonly CanvasCardId[]): CanvasRasterReadiness {
-    if (this.disposed) return { cards: ids.map((id): CanvasRasterReadinessCard => ({ id, revision: null, mode: 'outside', status: 'not_required' })),
-      complete: false, precisionSettling: false, suspended: true };
+    if (this.disposed)
+      return {
+        cards: ids.map(
+          (id): CanvasRasterReadinessCard => ({
+            id,
+            revision: null,
+            mode: 'outside',
+            status: 'not_required',
+          })
+        ),
+        complete: false,
+        precisionSettling: false,
+        suspended: true,
+      };
     const targets = new Set(this.options.kernel.rasterCards().map(card => card.id));
     const frame = { count: targets.size, font: this.fontKey() };
     const cards = ids.map(id => this.readCardReadiness(id, targets, frame));
     const visible = cards.filter(card => card.mode !== 'outside');
     const precisionSettling = false;
     const suspended = this.disposed || this.suspended();
-    return { cards, precisionSettling, suspended,
-      complete: !suspended && !precisionSettling && visible.length > 0 && visible.every(card => card.mode === 'body' && card.status === 'ready') };
+    return {
+      cards,
+      precisionSettling,
+      suspended,
+      complete:
+        !suspended &&
+        !precisionSettling &&
+        visible.length > 0 &&
+        visible.every(card => card.mode === 'body' && card.status === 'ready'),
+    };
   }
-  private readCardReadiness(id: CanvasCardId, targets: ReadonlySet<CanvasCardId>, frame: CanvasRasterFrame): CanvasRasterReadinessCard {
+  private readCardReadiness(
+    id: CanvasCardId,
+    targets: ReadonlySet<CanvasCardId>,
+    frame: CanvasRasterFrame
+  ): CanvasRasterReadinessCard {
     const card = this.options.kernel.readCard(id);
-    if (!card || !this.options.kernel.readVisibleCardRegions(id).length) return { id, revision: card?.revision ?? null, mode: 'outside', status: 'not_required' };
-    if (!targets.has(id)) return { id, revision: card.revision, mode: 'overview', status: 'not_required' };
-    if (this.options.kernel.readCamera().zoom < 0.3) return { id, revision: card.revision, mode: 'thumbnail', status: 'not_required' };
+    if (!card || !this.options.kernel.readVisibleCardRegions(id).length)
+      return { id, revision: card?.revision ?? null, mode: 'outside', status: 'not_required' };
+    if (!targets.has(id))
+      return { id, revision: card.revision, mode: 'overview', status: 'not_required' };
+    if (this.options.kernel.readCamera().zoom < 0.3)
+      return { id, revision: card.revision, mode: 'thumbnail', status: 'not_required' };
     const demand = this.demand(card, frame);
     const receipt = this.options.kernel.readRasterReceipt(id, demand.key);
-    const body = { id, revision: card.revision, mode: 'body', firstPresented: receipt?.firstPresented ?? false } as const;
+    const body = {
+      id,
+      revision: card.revision,
+      mode: 'body',
+      firstPresented: receipt?.firstPresented ?? false,
+    } as const;
     if (this.failed.get(id) === demand.key) return { ...body, status: 'failed' };
     if (demand.regions.length) return { ...body, status: 'pending' };
     return { ...body, status: receipt?.rendered ? 'ready' : 'awaiting_draw' };
   }
-  retry(): void { this.failed.clear(); this.refresh(); }
-  readStats() { return { ...this.queue.readStats(), failed: this.failed.size, refreshes: this.refreshes,
-    maximumRefreshMs: this.maximumRefreshMs, requestedTiles: this.requestedTiles, requestedPixels: this.requestedPixels, subPixelTiles: this.subPixelTiles }; }
+  retry(): void {
+    this.failed.clear();
+    this.refresh();
+  }
+  readStats() {
+    return {
+      ...this.queue.readStats(),
+      failed: this.failed.size,
+      refreshes: this.refreshes,
+      maximumRefreshMs: this.maximumRefreshMs,
+      requestedTiles: this.requestedTiles,
+      requestedPixels: this.requestedPixels,
+      subPixelTiles: this.subPixelTiles,
+    };
+  }
   dispose(): void {
-    this.disposed = true; this.cadence.dispose(); this.cancelPending(); this.preciseCards.clear();
-    this.priority.clear(); this.pointer = null;
+    this.disposed = true;
+    this.cadence.dispose();
+    this.cancelPending();
+    this.preciseCards.clear();
+    this.priority.clear();
+    this.pointer = null;
     this.options.host.ownerDocument.removeEventListener('visibilitychange', this.visibilityChanged);
     this.options.kernel.canvas.removeEventListener('pointermove', this.pointerChanged, true);
     this.options.kernel.canvas.removeEventListener('wheel', this.pointerChanged, true);
     this.options.kernel.canvas.removeEventListener('pointerleave', this.pointerLeft);
-    this.queue.dispose(); this.rasterizer.dispose();
+    this.queue.dispose();
+    this.rasterizer.dispose();
   }
 }
 

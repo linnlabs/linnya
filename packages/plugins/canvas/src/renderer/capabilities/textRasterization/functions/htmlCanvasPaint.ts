@@ -1,39 +1,89 @@
-import type { HtmlElementImageCanvas, HtmlElementImageContext } from '../definitions/htmlCanvasElementImage';
+import type {
+  HtmlElementImageCanvas,
+  HtmlElementImageContext,
+} from '../definitions/htmlCanvasElementImage';
 
-interface PaintCanvas extends HTMLCanvasElement { requestPaint(): void }
-export function canCaptureHtmlElement(canvas: HTMLCanvasElement): canvas is HtmlElementImageCanvas { return typeof Reflect.get(canvas, 'captureElementImage') === 'function'; }
-export function canDrawHtmlElement(context: OffscreenCanvasRenderingContext2D): context is HtmlElementImageContext { return typeof Reflect.get(context, 'drawElementImage') === 'function'; }
-function canRequest(canvas: HTMLCanvasElement): canvas is PaintCanvas { return typeof Reflect.get(canvas, 'requestPaint') === 'function'; }
-export async function waitForRasterFonts(document: Document, signal?: AbortSignal): Promise<void> {
-  signal?.throwIfAborted(); await document.fonts.ready;
+interface PaintCanvas extends HTMLCanvasElement {
+  requestPaint(): void;
 }
-export async function prepareRasterImages(element: HTMLElement, signal?: AbortSignal): Promise<void> {
-  await Promise.all(Array.from(element.querySelectorAll('img'), async image => {
-    const source = image.currentSrc || image.src;
-    if (source && !source.startsWith('blob:') && !source.startsWith('data:')) throw new Error('raster_image_requires_managed_bytes');
-    if (source) await image.decode();
-  }));
+export function canCaptureHtmlElement(canvas: HTMLCanvasElement): canvas is HtmlElementImageCanvas {
+  return typeof Reflect.get(canvas, 'captureElementImage') === 'function';
+}
+export function canDrawHtmlElement(
+  context: OffscreenCanvasRenderingContext2D
+): context is HtmlElementImageContext {
+  return typeof Reflect.get(context, 'drawElementImage') === 'function';
+}
+function canRequest(canvas: HTMLCanvasElement): canvas is PaintCanvas {
+  return typeof Reflect.get(canvas, 'requestPaint') === 'function';
+}
+export async function waitForRasterFonts(document: Document, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
+  await document.fonts.ready;
+}
+export async function prepareRasterImages(
+  element: HTMLElement,
+  signal?: AbortSignal
+): Promise<void> {
+  await Promise.all(
+    Array.from(element.querySelectorAll('img'), async image => {
+      const source = image.currentSrc || image.src;
+      if (source && !source.startsWith('blob:') && !source.startsWith('data:'))
+        throw new Error('raster_image_requires_managed_bytes');
+      if (source) await image.decode();
+    })
+  );
   signal?.throwIfAborted();
 }
 export async function prepareRasterDom(element: HTMLElement, signal?: AbortSignal): Promise<void> {
   await waitForRasterFonts(element.ownerDocument, signal);
   await prepareRasterImages(element, signal);
 }
-export function waitForHtmlCanvasPaint(canvas: HTMLCanvasElement, draw: () => void, timeoutMs: number, signal?: AbortSignal): Promise<void> {
+export function waitForHtmlCanvasPaint(
+  canvas: HTMLCanvasElement,
+  draw: () => void,
+  timeoutMs: number,
+  signal?: AbortSignal
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const cleanup = () => { clearTimeout(timer); canvas.removeEventListener('paint', onPaint); signal?.removeEventListener('abort', onAbort); };
-    const onAbort = () => { cleanup(); reject(signal?.reason ?? new Error('raster_cancelled')); };
-    const onPaint = () => { cleanup(); try { signal?.throwIfAborted(); draw(); resolve(); } catch (error) { reject(error); } };
+    const cleanup = () => {
+      clearTimeout(timer);
+      canvas.removeEventListener('paint', onPaint);
+      signal?.removeEventListener('abort', onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(signal?.reason ?? new Error('raster_cancelled'));
+    };
+    const onPaint = () => {
+      cleanup();
+      try {
+        signal?.throwIfAborted();
+        draw();
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    };
     const timer = setTimeout(() => {
       cleanup();
       // 只记录能力和生命周期现场，不包含正文、图片地址或任何Host配置。
-      console.error('[Canvas] HTML paint timeout', { visibility: canvas.ownerDocument.visibilityState,
-        connected: canvas.isConnected, requestPaint: canRequest(canvas), htmlBitmapWidth: canvas.width, htmlBitmapHeight: canvas.height,
-        cssWidth: canvas.style.width, cssHeight: canvas.style.height,
-        display: canvas.ownerDocument.defaultView?.getComputedStyle(canvas).display, timeoutMs });
+      console.error('[Canvas] HTML paint timeout', {
+        visibility: canvas.ownerDocument.visibilityState,
+        connected: canvas.isConnected,
+        requestPaint: canRequest(canvas),
+        htmlBitmapWidth: canvas.width,
+        htmlBitmapHeight: canvas.height,
+        cssWidth: canvas.style.width,
+        cssHeight: canvas.style.height,
+        display: canvas.ownerDocument.defaultView?.getComputedStyle(canvas).display,
+        timeoutMs,
+      });
       reject(new Error('raster_paint_timeout'));
     }, timeoutMs);
-    canvas.addEventListener('paint', onPaint); signal?.addEventListener('abort', onAbort, { once: true });
-    if (signal?.aborted) onAbort(); else if (canRequest(canvas)) canvas.requestPaint();
+    canvas.addEventListener('paint', onPaint);
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+    else if (canRequest(canvas)) canvas.requestPaint();
   });
 }
