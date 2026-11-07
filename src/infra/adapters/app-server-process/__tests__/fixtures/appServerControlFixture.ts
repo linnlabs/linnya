@@ -56,6 +56,12 @@ async function main(): Promise<void> {
     }
     if (readyDelayAfterDatabaseMs !== null) await delay(readyDelayAfterDatabaseMs);
     if (startupFailureCode !== null) {
+      if (process.argv.includes('--close-rpc-before-startup-failure')) {
+        // 模拟 RPC pipe 先于 stdout 的 fatal 帧被宿主观察到：两条 pipe 互不保序。
+        rpcOutput.destroy();
+        rpcInput.destroy();
+        await delay(300);
+      }
       // 模拟启动阶段的 SQLite / 系统错误，验证类别经控制帧到达宿主。
       throw Object.assign(new Error(`fixture startup failure ${startupFailureCode}`), {
         code: startupFailureCode,

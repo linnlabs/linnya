@@ -161,6 +161,31 @@ describe('Node App Server process supervisor', () => {
     await expect(supervisor.shutdown()).resolves.toBeUndefined();
   });
 
+  it('RPC pipe 先于 fatal 帧断开时，仍以 fatal 帧里的启动失败原因为准', async () => {
+    const supervisor = createNodeAppServerProcessSupervisor({
+      launch: {
+        executablePath: process.execPath,
+        entryPath: fixturePath,
+        entryArguments: ['--startup-failure-code=SQLITE_FULL', '--close-rpc-before-startup-failure'],
+        workingDirectory: repositoryRoot,
+        environment: collectTestEnvironment(),
+        bootstrapBytes: encodeAppServerBootstrap(createBootstrap()),
+      },
+      rpcHandlers: new Map([
+        ['desktop.fixture.echo', () => ({ acknowledged: true })],
+      ]),
+      controlTimeoutMs: 300,
+    });
+    const failure = await supervisor.start().then(
+      () => { throw new Error('expected startup failure'); },
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(AppServerStartupFailedError);
+    if (!(failure instanceof AppServerStartupFailedError)) throw new Error('unreachable');
+    expect(failure.startupFailure.reason).toBe('disk_full');
+    await expect(supervisor.shutdown()).resolves.toBeUndefined();
+  });
+
   it('真实 child 运行期被强杀时报告意外退出，随后的 shutdown 不再请求已死 Backend', async () => {
     const supervisor = createNodeAppServerProcessSupervisor({
       launch: {
