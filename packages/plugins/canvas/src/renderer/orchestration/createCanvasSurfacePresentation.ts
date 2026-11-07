@@ -1,9 +1,9 @@
 import { canvasBounds, type CanvasCard } from '@plugin/canvas/shared';
 import { computed } from 'vue';
 import { describeCanvasSelection } from '../features/accessibility';
-import { cardEditorStyle } from '../features/cardEditing';
 import { canvasIntegrityNotice } from '../functions/canvasIntegrityNotice';
 import { canvasSelectionToolbarStyle } from '../functions/canvasSelectionToolbarStyle';
+import { canvasSelectionOutlineCenter } from '../kernel/cardFrame';
 
 import type { CanvasSurfacePresentationOptions } from './definitions/canvasSurfaceComposition';
 
@@ -42,13 +42,19 @@ export function createCanvasSurfacePresentation({
       { obstacles: chosen.size ? cards().filter(card => !chosen.has(card.id)) : [] }
     );
   });
-  const resizeStyle = computed(() =>
-    cardEditorStyle(
+  // 尺寸手柄和连线圆点一样压在选中描边上：圆心在描边右下转角，屏幕尺寸不随缩放变化。
+  const resizeHandleStyle = computed(() => {
+    const card =
       resizing.state.preview.value ??
-        (selectedCards.value.length === 1 ? selectedCards.value[0] : undefined),
-      camera.value
-    )
-  );
+      (selectedCards.value.length === 1 ? selectedCards.value[0] : undefined);
+    if (!card) return { display: 'none' };
+    const { x, y, zoom } = camera.value,
+      inset = canvasSelectionOutlineCenter(base.readAppearance().material, zoom);
+    return {
+      left: `${x + (card.x + card.width - inset) * zoom}px`,
+      top: `${y + (card.y + card.height - inset) * zoom}px`,
+    };
+  });
   // 改尺寸拖动中，选区浮条与连线锚点仍按旧外框定位，会压在预览框里；拖动期间收起。
   const resizingCard = computed(() => resizing.state.preview.value !== null);
   const integrityNotice = computed(() => canvasIntegrityNotice(session.state.snapshot.value));
@@ -77,7 +83,7 @@ export function createCanvasSurfacePresentation({
   return {
     selectedCards,
     selectionStyle,
-    resizeStyle,
+    resizeHandleStyle,
     resizingCard,
     integrityNotice,
     editingDraft,

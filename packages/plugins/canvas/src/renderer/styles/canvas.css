@@ -452,19 +452,10 @@
   padding-inline: 0;
 }
 
-/* 卡片与连线手柄：连接点与端点是圆，尺寸手柄是方块；统一 10px、1px 强调色描边。 */
-.canvas-card-resize-box {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 4;
-  pointer-events: none;
-  transform-origin: 0 0;
-}
+/* 卡片与连线手柄：连接点与端点是圆，尺寸手柄是方块；统一 10px 屏幕尺寸、1px 强调色描边，圆心都压在选中描边上。 */
 .canvas-card-resize-handle {
   position: absolute;
-  right: -5px;
-  bottom: -5px;
+  z-index: 4;
   box-sizing: border-box;
   width: 10px;
   height: 10px;
@@ -472,8 +463,8 @@
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-xs);
   background: var(--color-bg-default);
+  transform: translate(-50%, -50%);
   cursor: nwse-resize;
-  pointer-events: auto;
 }
 .canvas-connection-anchor,
 .canvas-connection-endpoint {

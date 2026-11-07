@@ -100,7 +100,7 @@
       @color="changeColor"
       @action="elementAction"
     />
-    <div
+    <button
       v-if="
         surface &&
         !readonly &&
@@ -108,16 +108,12 @@
         !draft &&
         !surface.selectedCards.value[0]?.locked
       "
-      class="canvas-card-resize-box"
-      :style="surface.resizeStyle.value"
-    >
-      <button
-        type="button"
-        class="canvas-card-resize-handle"
-        aria-label="调整卡片大小，Shift保持比例"
-        @pointerdown.stop.prevent="surface.resizeStart($event)"
-      />
-    </div>
+      type="button"
+      class="canvas-card-resize-handle"
+      :style="surface.resizeHandleStyle.value"
+      aria-label="调整卡片大小，Shift保持比例"
+      @pointerdown.stop.prevent="surface.resizeStart($event)"
+    />
     <CanvasPortalMenu
       v-if="contextAnchor"
       :key="`${contextAnchor.left},${contextAnchor.top}`"
