@@ -91,6 +91,8 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     await expect(manager.start(BACKEND_CONFIGURATION)).rejects.toMatchObject({
       name: BackendRuntimeStartupError.name,
       startupFailure: initializationFailure,
+      // 启动失败说明沿 cause 归类；收口失败只在诊断里。
+      cause: initializationFailure,
       cleanupFailure: expect.objectContaining({
         name: BackendRuntimeShutdownError.name,
         failures: [cleanupFailure],

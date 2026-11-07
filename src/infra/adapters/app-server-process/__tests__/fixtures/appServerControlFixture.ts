@@ -10,6 +10,7 @@ import {
   type AppServerRpcHandlerRegistry,
 } from '../../../../../app-hosts/linnya/app-server-rpc';
 import { installAppServerChildSignalOwnership } from '../../../../../app-hosts/linnya/app-server-runtime/functions/installAppServerChildSignalOwnership';
+import { describeAppServerStartupFailure } from '../../../../../app-hosts/linnya/app-server-runtime/functions/describeAppServerStartupFailure';
 
 async function main(): Promise<void> {
   const signalOwnership = installAppServerChildSignalOwnership();
@@ -36,6 +37,7 @@ async function main(): Promise<void> {
   });
   const databaseStartupMs = readNumberArgument('--database-startup-ms');
   const readyDelayAfterDatabaseMs = readNumberArgument('--ready-delay-after-database-ms');
+  const startupFailureCode = readStringArgument('--startup-failure-code');
   const ready = rpc.request('desktop.fixture.echo', { from: 'backend' }).then(async result => {
     if (typeof result !== 'object'
       || result === null
@@ -53,6 +55,12 @@ async function main(): Promise<void> {
       await host.reportStartupProgress({ state: 'finished', upgrading: true, completedSteps: 2, totalSteps: 2 });
     }
     if (readyDelayAfterDatabaseMs !== null) await delay(readyDelayAfterDatabaseMs);
+    if (startupFailureCode !== null) {
+      // 模拟启动阶段的 SQLite / 系统错误，验证类别经控制帧到达宿主。
+      throw Object.assign(new Error(`fixture startup failure ${startupFailureCode}`), {
+        code: startupFailureCode,
+      });
+    }
     return {
       applicationVersion: bootstrap.backend_facts.applicationVersion,
       apiPort: bootstrap.backend_configuration.server.port,
@@ -62,6 +70,7 @@ async function main(): Promise<void> {
   });
   // stdout 是控制协议专用数据面；fixture 的可观察日志与正式 App Server 一样只走 stderr。
   const host = runAppServerControlHost({
+    describeStartupFailure: describeAppServerStartupFailure,
     input: process.stdin,
     output: process.stdout,
     lifecycle: {
@@ -97,6 +106,11 @@ function readNumberArgument(name: string): number | null {
   const value = Number(argument.slice(name.length + 1));
   if (!Number.isFinite(value) || value < 0) throw new Error(`fixture 参数无效：${argument}`);
   return value;
+}
+
+function readStringArgument(name: string): string | null {
+  const argument = process.argv.find(value => value.startsWith(`${name}=`));
+  return argument ? argument.slice(name.length + 1) : null;
 }
 
 function delay(milliseconds: number): Promise<void> {

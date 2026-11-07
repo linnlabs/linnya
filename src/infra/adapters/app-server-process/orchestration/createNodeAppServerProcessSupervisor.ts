@@ -26,11 +26,12 @@ import {
 } from '../../../../app-hosts/linnya/app-server-rpc';
 import { createBoundedJsonLineDecoder } from '../../../../app-hosts/linnya/app-server-transport';
 import { APP_SERVER_BOOTSTRAP_MAX_FRAME_BYTES } from '../../../../app-hosts/linnya/app-server-bootstrap';
-import type {
-  AppServerProcessIdentity,
-  AppServerProcessExit,
-  AppServerProcessLaunch,
-  AppServerProcessSupervisor,
+import {
+  AppServerStartupFailedError,
+  type AppServerProcessIdentity,
+  type AppServerProcessExit,
+  type AppServerProcessLaunch,
+  type AppServerProcessSupervisor,
 } from '../definitions/appServerProcess';
 
 const DEFAULT_START_TIMEOUT_MS = 30_000;
@@ -113,7 +114,9 @@ export function createNodeAppServerProcessSupervisor(input: {
       return;
     }
     if (frame.kind === 'fatal') {
-      failProtocol(new Error(`App Server ${frame.code}: ${frame.message}`));
+      failProtocol(frame.code === 'startup_failed' && frame.startup_failure
+        ? new AppServerStartupFailedError(frame.message, frame.startup_failure)
+        : new Error(`App Server ${frame.code}: ${frame.message}`));
       return;
     }
     if (frame.kind === 'startup_progress') {

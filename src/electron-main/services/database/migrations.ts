@@ -12,14 +12,18 @@
  */
 
 import type Database from 'better-sqlite3';
+import { HostMigrationStepError, HostSchemaVersionError } from './hostSchemaErrors';
 import { HOST_SCHEMA_BASELINE_VERSION, SCHEMA_VERSION, migrations } from './migrations/index';
 
 export { HOST_SCHEMA_BASELINE_VERSION, SCHEMA_VERSION, migrations };
 export type { HostSchemaMigration, MigrationFunction } from './migrations/types';
+export { HostMigrationStepError, HostSchemaVersionError } from './hostSchemaErrors';
 
 export function assertSupportedHostSchemaVersion(currentVersion: number): void {
   if (currentVersion < HOST_SCHEMA_BASELINE_VERSION) {
-    throw new Error(
+    throw new HostSchemaVersionError(
+      'older',
+      currentVersion,
       '这份数据由较早版本的林芽创建，当前版本无法直接升级或打开。原数据未被修改。' +
         '请退出当前应用，保留完整的数据目录和旧版应用，使用旧版继续访问；不要删除或重置原数据。' +
         `（数据格式 v${currentVersion}，当前支持 v${HOST_SCHEMA_BASELINE_VERSION}–v${SCHEMA_VERSION}）`
@@ -27,7 +31,9 @@ export function assertSupportedHostSchemaVersion(currentVersion: number): void {
   }
 
   if (currentVersion > SCHEMA_VERSION) {
-    throw new Error(
+    throw new HostSchemaVersionError(
+      'newer',
+      currentVersion,
       '这份数据由更新版本的林芽创建，当前版本无法打开。原数据未被修改。' +
         `请使用创建这份数据的版本或更新版本。（数据格式 v${currentVersion}，当前最高支持 v${SCHEMA_VERSION}）`
     );
@@ -55,9 +61,7 @@ export function runMigrationStep(db: Database.Database, version: number): number
     transaction();
   } catch (error) {
     console.error(`[Migration] ❌ Migration failed at v${version} -> v${version + 1}:`, error);
-    throw new Error(
-      `Database migration failed: ${error instanceof Error ? error.message : String(error)}`
-    );
+    throw new HostMigrationStepError(version, error);
   }
   const elapsedMs = Math.round(performance.now() - startedAt);
   const pageSize = db.pragma('page_size', { simple: true });

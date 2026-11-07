@@ -32,6 +32,7 @@ import { createAppServerDiagnosticLogForwarder } from '../features/diagnostic-lo
 import { createNodeEventLoopResponsivenessMonitor } from '../../../../infra/observability/event-loop';
 import { acquireWorkspaceRuntimeOwnership } from '../../backend-runtime/features/workspace-ownership/acquireWorkspaceRuntimeOwnership';
 import { createParentProcessLivenessMonitor } from '../functions/createParentProcessLivenessMonitor';
+import { describeAppServerStartupFailure } from '../functions/describeAppServerStartupFailure';
 
 /**
  * fd 3/4/5 分别是 bootstrap、child→Main RPC 与 Main→child RPC。完整 Backend 只在本进程创建；
@@ -169,6 +170,7 @@ export async function runLinnyaAppServerProcess(
     input: process.stdin,
     output: process.stdout,
     lifecycle,
+    describeStartupFailure: describeAppServerStartupFailure,
   });
   controlHostGate.establish(controlHost);
   parentLiveness = createParentProcessLivenessMonitor({

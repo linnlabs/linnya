@@ -63,6 +63,11 @@ export class BackendRuntimeStartupError extends Error {
     super('App Server Backend 启动失败，且已启动资源未能完整收口');
     this.name = 'BackendRuntimeStartupError';
   }
+
+  /** 启动失败的说明按原始失败归类，收口失败只追加在诊断里。 */
+  get cause(): unknown {
+    return this.startupFailure;
+  }
 }
 
 /**

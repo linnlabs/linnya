@@ -19,6 +19,22 @@ const ParentFrameSchema = z.object({
 
 const StepCountSchema = z.number().int().nonnegative().max(1_000_000);
 
+const StartupFailureSchema = z.object({
+  reason: z.enum([
+    'disk_full',
+    'cannot_access',
+    'io_error',
+    'busy',
+    'older_data',
+    'newer_data',
+    'migration_failed',
+    'corrupt',
+    'unknown',
+  ]),
+  code: z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/).nullable(),
+  migration_from_version: z.number().int().nonnegative().max(1_000_000).nullable(),
+}).strict();
+
 const ChildFrameSchema = z.discriminatedUnion('kind', [
   z.object({
     schema_version: z.literal(APP_SERVER_CONTROL_SCHEMA_VERSION),
@@ -51,8 +67,16 @@ const ChildFrameSchema = z.discriminatedUnion('kind', [
     kind: z.literal('fatal'),
     code: z.enum(['startup_failed', 'protocol_failed', 'shutdown_failed']),
     message: z.string().min(1).max(2_048),
+    startup_failure: StartupFailureSchema.optional(),
   }).strict(),
 ]).superRefine((frame, context) => {
+  if (frame.kind === 'fatal' && (frame.code === 'startup_failed') !== (frame.startup_failure !== undefined)) {
+    context.addIssue({
+      code: 'custom',
+      message: 'fatal startup_failure 只在 startup_failed 时出现，且必须出现',
+      path: ['startup_failure'],
+    });
+  }
   if (frame.kind === 'startup_progress' && frame.completed_steps > frame.total_steps) {
     context.addIssue({
       code: 'custom',

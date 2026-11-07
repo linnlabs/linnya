@@ -3,7 +3,8 @@
  * @description 管理 Electron 应用的生命周期事件，作为应用的启动协调器。
  */
 
-import { app, BrowserWindow, dialog, session, systemPreferences } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, session, systemPreferences } from 'electron';
+import os from 'node:os';
 import {
   configureMainWindowCloseLifecycle,
   createWindow,
@@ -58,6 +59,7 @@ import { registerCommandPermissionSettingsHandlers } from './ipc/handlers/comman
 import { registerCommandApprovalHandlers } from './ipc/handlers/commands/command-approval-ipc.ts';
 import { registerCommandCardControlHandlers } from './ipc/handlers/commands/command-card-control-ipc.ts';
 import { registerCommandProtectedInputHandler } from './ipc/handlers/commands/command-protected-input-ipc.ts';
+import { presentStartupFailureDialog } from './app-lifecycle/orchestration/presentStartupFailureDialog.ts';
 
 const logger = new Logger('app-lifecycle');
 // 版本只在 App owner 启动时解析一次，发行身份与 Backend/CLI 共享同一产品事实。
@@ -455,11 +457,33 @@ export function initialize() {
       }
     });
 
-  }).catch((error) => {
+  }).catch(async (error) => {
     logger.error('[APP-LIFECYCLE] 启动失败，开始收口已创建资源:', error);
     dataUpgradeWindow?.hide();
-    // Backend 尚未 ready 时没有 Renderer；必须让用户看到可修复错误，不能静默退出。
-    dialog.showErrorBox('Linnya 启动失败', error instanceof Error ? error.message : '无法启动应用，请查看诊断日志。');
+    // Backend 尚未 ready 时没有 Renderer；必须让用户看到原因和下一步，不能静默退出。
+    const choice = await presentStartupFailureDialog({
+      error,
+      context: {
+        locale: app.getLocale(),
+        applicationVersion,
+        distributionKind: distributionIdentity.kind,
+        platform: process.platform,
+        osRelease: os.release(),
+        arch: process.arch,
+        dataDirectory: runtimePathRoots.workspaceRoot,
+        homeDirectory: app.getPath('home'),
+      },
+      port: {
+        showMessageBox: options => dialog.showMessageBox(options),
+        writeClipboardText: text => clipboard.writeText(text),
+      },
+    }).catch((dialogError) => {
+      logger.error('[APP-LIFECYCLE] 启动失败对话框无法显示:', dialogError);
+      dialog.showErrorBox('Linnya 启动失败', error instanceof Error ? error.message : String(error));
+      return 'quit';
+    });
+    // 重新启动由 Electron 在本进程按启动失败收口退出后拉起新进程。
+    if (choice === 'restart') app.relaunch();
     appShutdownLifecycle.requestStartupFailure();
   });
 

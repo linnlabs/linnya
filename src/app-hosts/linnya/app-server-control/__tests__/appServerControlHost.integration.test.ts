@@ -9,6 +9,7 @@ import {
   parseAppServerChildControlFrame,
   runAppServerControlHost,
   type AppServerChildControlFrame,
+  type AppServerStartupFailure,
 } from '..';
 import { createBoundedJsonLineDecoder } from '../../app-server-transport';
 
@@ -33,6 +34,7 @@ describe('App Server control host', () => {
       shutdownGate.release = resolve;
     }));
     const host = runAppServerControlHost({
+      describeStartupFailure: describeUnknownStartupFailure,
       input: parentInput,
       output: childOutput,
       daemonEpoch: 'epoch-test',
@@ -97,6 +99,7 @@ describe('App Server control host', () => {
       readyGate.release = () => resolve(createReadyFacts());
     });
     const host = runAppServerControlHost({
+      describeStartupFailure: describeUnknownStartupFailure,
       input: parentInput,
       output: childOutput,
       daemonEpoch: 'epoch-progress',
@@ -119,6 +122,58 @@ describe('App Server control host', () => {
     await host.completed;
   });
 
+  it('ready 失败时写出带类别的 fatal 帧，过长文案截断到 parent 可接收的长度', async () => {
+    const parentInput = new PassThrough();
+    const childOutput = new PassThrough();
+    const frames: AppServerChildControlFrame[] = [];
+    const decoder = createBoundedJsonLineDecoder({
+      protocolName: 'App Server control protocol',
+      maxFrameBytes: APP_SERVER_CONTROL_MAX_FRAME_BYTES,
+      onValue: value => frames.push(parseAppServerChildControlFrame(value)),
+      onFailure: error => { throw error; },
+    });
+    childOutput.on('data', chunk => decoder.push(chunk));
+    const failure = Object.assign(new Error(`磁盘已满 ${'x'.repeat(3_000)}`), { code: 'SQLITE_FULL' });
+    const host = runAppServerControlHost({
+      input: parentInput,
+      output: childOutput,
+      daemonEpoch: 'epoch-startup-failure',
+      lifecycle: { ready: Promise.reject(failure), shutdown: async () => undefined },
+      describeStartupFailure: error => ({
+        reason: 'disk_full',
+        code: Reflect.get(error, 'code') === 'SQLITE_FULL' ? 'SQLITE_FULL' : null,
+        migration_from_version: 72,
+      }),
+    });
+    await expect(host.completed).rejects.toBe(failure);
+    await waitFor(() => frames.length === 1);
+    const [frame] = frames;
+    if (frame?.kind !== 'fatal') throw new Error('expected fatal frame');
+    expect(frame.code).toBe('startup_failed');
+    expect(frame.message.length).toBe(2_048);
+    expect(frame.startup_failure).toEqual({
+      reason: 'disk_full',
+      code: 'SQLITE_FULL',
+      migration_from_version: 72,
+    });
+  });
+
+  it('startup_failed 必须带类别，其它 fatal 不能带', () => {
+    const base = { schema_version: APP_SERVER_CONTROL_SCHEMA_VERSION, kind: 'fatal' as const, message: 'x' };
+    expect(() => parseAppServerChildControlFrame({ ...base, code: 'startup_failed' }))
+      .toThrow('startup_failure');
+    expect(() => parseAppServerChildControlFrame({
+      ...base,
+      code: 'shutdown_failed',
+      startup_failure: { reason: 'unknown', code: null, migration_from_version: null },
+    })).toThrow('startup_failure');
+    expect(parseAppServerChildControlFrame({
+      ...base,
+      code: 'startup_failed',
+      startup_failure: { reason: 'corrupt', code: 'SQLITE_NOTADB', migration_from_version: null },
+    })).toMatchObject({ startup_failure: { reason: 'corrupt' } });
+  });
+
   it('拒绝已完成步骤超过总步骤的启动进度帧', () => {
     expect(() => parseAppServerChildControlFrame({
       schema_version: APP_SERVER_CONTROL_SCHEMA_VERSION,
@@ -135,6 +190,7 @@ describe('App Server control host', () => {
     const childOutput = new PassThrough();
     const shutdown = vi.fn(async () => undefined);
     const host = runAppServerControlHost({
+      describeStartupFailure: describeUnknownStartupFailure,
       input: parentInput,
       output: childOutput,
       lifecycle: { ready: Promise.resolve(createReadyFacts()), shutdown },
@@ -153,6 +209,7 @@ describe('App Server control host', () => {
       releaseShutdown = resolve;
     }));
     const host = runAppServerControlHost({
+      describeStartupFailure: describeUnknownStartupFailure,
       input: parentInput,
       output: childOutput,
       lifecycle: { ready: Promise.resolve(createReadyFacts()), shutdown },
@@ -173,6 +230,7 @@ describe('App Server control host', () => {
     const parentInput = new PassThrough();
     const childOutput = new GatedWritable();
     const host = runAppServerControlHost({
+      describeStartupFailure: describeUnknownStartupFailure,
       input: parentInput,
       output: childOutput,
       daemonEpoch: 'epoch-backpressure',
@@ -268,4 +326,8 @@ async function waitFor(predicate: () => boolean): Promise<void> {
     if (Date.now() >= deadline) throw new Error('等待 App Server 控制帧超时');
     await new Promise(resolve => setTimeout(resolve, 1));
   }
+}
+
+function describeUnknownStartupFailure(): AppServerStartupFailure {
+  return { reason: 'unknown', code: null, migration_from_version: null };
 }
