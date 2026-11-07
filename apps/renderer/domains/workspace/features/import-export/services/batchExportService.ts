@@ -5,23 +5,19 @@
  * 设计说明（中文）：
  * - 导出源：当前项目下的所有 Markdown 文档（type === 'document'）
  * - 导出目标：用户在系统对话框中选择的“本地目录”
- * - 仅导出 type === 'document' 的 platform Markdown 节点；插件文档由各自的导出能力负责
+ * - 仅导出 type === 'document' 的 platform Markdown 节点；插件文档由各自的导出能力负责，结果里只报份数
+ * - 逐篇处理：某篇读取或解析失败时记下文档名继续下一篇，写出全部成功的文档；不另写结果清单文件
+ * - 正文由 Editor 域按打开文档时的同一 schema 严格解析，不取自活动编辑器：没有打开任何文档时也能导出
  * - 文件名重名处理：同一批次/目标目录内如果冲突，按 `name(1).md`、`name(2).md` 递增
  */
 
 import { workspaceGateway } from '../../../../../shared/ipc/workspaceGateway';
 import { createMarkdownSerializer, type MarkdownExportSettings } from '../../../../../shared/utils/markdownSerializer';
 import type { MessageParams } from '@app/localization';
-import type { UserFacingMessage } from '@app/schemas';
 import type { WorkspaceMessageKey, WorkspaceMessageResolver } from '../../../definitions/workspaceMessages';
 import { buildWorkspaceMarkdownSerializerLabels } from '../../../functions/markdownSerializerLabels';
 import type { WorkspaceNode } from '../../../store/WorkspaceTreeStore';
-import { Node as ProsemirrorNode } from 'prosemirror-model';
-import type { Schema } from 'prosemirror-model';
-
-type UIStoreLike = {
-  getEditor: () => { state: { schema: Schema } } | null;
-};
+import { parseMarkdownDocumentForExport } from '../../../../editor/document-export';
 
 type TreeStoreLike = {
   findNodeById: (nodeId: string) => WorkspaceNode | null;
@@ -29,37 +25,27 @@ type TreeStoreLike = {
   projectTree: WorkspaceNode[];
 };
 
-type ElectronApiLike = {
-  openDirectoryDialog: (options: unknown) => Promise<{
-    success: boolean;
-    data?: { canceled: boolean; filePaths: string[] };
-    error?: string;
-    userMessage?: UserFacingMessage;
-  }>;
-  exportFilesToDirectory: (payload: { directoryPath: string; files: Array<{ fileName: string; content: string }> }) => Promise<{
-    success: boolean;
-    data?: { writtenPaths: string[] };
-    error?: string;
-    userMessage?: UserFacingMessage;
-  }>;
-};
-
 type BatchExportFailure = {
   readonly key: Extract<
     WorkspaceMessageKey,
     | 'workspace.export.batch.apiUnavailable'
-    | 'workspace.export.batch.schemaUnavailable'
     | 'workspace.export.batch.noDocuments'
     | 'workspace.export.batch.openDirectoryFailed'
     | 'workspace.export.batch.directorySelectionCanceled'
-    | 'workspace.export.batch.readDocumentFailed'
     | 'workspace.export.batch.writeFailed'
   >;
   readonly params?: MessageParams;
 };
 
-type BatchExportResult =
-  | { readonly success: true; readonly exportedCount: number }
+export type BatchExportResult =
+  | {
+      readonly success: true;
+      readonly exportedCount: number;
+      /** 读取或解析失败、没有写出的文档名，按目录顺序。 */
+      readonly failedDocumentNames: readonly string[];
+      /** 不在 Markdown 导出范围内的插件文档份数。 */
+      readonly skippedPluginDocumentCount: number;
+    }
   | { readonly success: false; readonly error: BatchExportFailure };
 
 function sanitizeFileBaseName(input: string): string {
@@ -103,17 +89,19 @@ function buildUniqueNames(fileBaseNames: string[]): string[] {
 async function collectDocumentsRecursively(params: {
   treeStore: TreeStoreLike;
   startNodes: WorkspaceNode[];
-}): Promise<WorkspaceNode[]> {
+}): Promise<{ readonly documents: WorkspaceNode[]; readonly pluginDocumentCount: number }> {
   const { treeStore, startNodes } = params;
   const docs: WorkspaceNode[] = [];
+  let pluginDocumentCount = 0;
 
   const walk = async (node: WorkspaceNode): Promise<void> => {
     if (node.type === 'document') {
       docs.push(node);
       return;
     }
-    // 中文说明：目前树节点类型里 folder 才有 children；其他文档类型直接跳过
+    // 中文说明：目前树节点类型里 folder 才有 children；其他文档类型是插件文档，只计数
     if (node.type !== 'folder') {
+      if (!node.isVirtual) pluginDocumentCount += 1;
       return;
     }
 
@@ -129,29 +117,26 @@ async function collectDocumentsRecursively(params: {
   for (const n of startNodes) {
     await walk(n);
   }
-  return docs;
+  return { documents: docs, pluginDocumentCount };
 }
 
 export async function batchExportProjectAsMarkdown(params: {
   treeStore: TreeStoreLike;
-  uiStore: UIStoreLike;
   settings: MarkdownExportSettings;
   workspaceMessage: WorkspaceMessageResolver;
 }): Promise<BatchExportResult> {
-  const { treeStore, uiStore, settings, workspaceMessage } = params;
+  const { treeStore, settings, workspaceMessage } = params;
 
   const electronAPI = window.electronAPI;
   if (typeof electronAPI?.openDirectoryDialog !== 'function' || typeof electronAPI?.exportFilesToDirectory !== 'function') {
     return { success: false, error: { key: 'workspace.export.batch.apiUnavailable' } };
   }
 
-  const editor = uiStore.getEditor();
-  if (!editor) {
-    return { success: false, error: { key: 'workspace.export.batch.schemaUnavailable' } };
-  }
-
-  // 1) 递归收集当前项目所有 platform document 节点（插件文档自动跳过）
-  const documentNodes = await collectDocumentsRecursively({ treeStore, startNodes: treeStore.projectTree });
+  // 1) 递归收集当前项目所有 platform document 节点（插件文档只计数）
+  const { documents: documentNodes, pluginDocumentCount } = await collectDocumentsRecursively({
+    treeStore,
+    startNodes: treeStore.projectTree,
+  });
   if (documentNodes.length === 0) {
     return { success: false, error: { key: 'workspace.export.batch.noDocuments' } };
   }
@@ -175,46 +160,45 @@ export async function batchExportProjectAsMarkdown(params: {
     ...settings,
     labels: buildWorkspaceMarkdownSerializerLabels(workspaceMessage),
   });
-  const schema = editor.state.schema;
-
   const baseNames = documentNodes.map((n) => withMdExtension(sanitizeFileBaseName(n.name)));
   const uniqueNames = buildUniqueNames(baseNames);
 
   const files: Array<{ fileName: string; content: string }> = [];
+  const failedDocumentNames: string[] = [];
   for (let i = 0; i < documentNodes.length; i += 1) {
     const node = documentNodes[i];
     const fileName = uniqueNames[i];
 
-    const readResult = await workspaceGateway['read-document']({ documentId: node.id });
-    if (!readResult.success) {
-      console.error('[BatchExportService] 读取文档失败:', {
+    try {
+      const readResult = await workspaceGateway['read-document']({ documentId: node.id });
+      if (!readResult.success) throw new Error(readResult.error);
+      const pmDoc = await parseMarkdownDocumentForExport(readResult.data.content);
+      files.push({ fileName, content: serializer.serialize(pmDoc) });
+    } catch (error: unknown) {
+      // 一篇读不出或解析失败只跳过这一篇，其余照常导出。
+      console.error('[BatchExportService] 导出文档失败:', {
         documentId: node.id,
         documentName: node.name,
-        error: readResult.error,
+        error: error instanceof Error ? error.message : String(error),
       });
-      return {
-        success: false,
-        error: {
-          key: 'workspace.export.batch.readDocumentFailed',
-          params: { documentName: node.name },
-        },
-      };
+      failedDocumentNames.push(node.name);
     }
-
-    const contentJson = readResult.data.content;
-    // 中文说明：使用“当前编辑器的 schema”解析其他文档 JSON，避免重复构建 schema（保持一致性）
-    const pmDoc = ProsemirrorNode.fromJSON(schema, contentJson);
-    const markdown = serializer.serialize(pmDoc);
-
-    files.push({ fileName, content: markdown });
   }
 
   // 4) 主进程批量写文件（主进程侧会二次处理“磁盘已存在”的重名）
-  const exportResult = await electronAPI.exportFilesToDirectory({ directoryPath, files });
-  if (!exportResult.success) {
-    return { success: false, error: { key: 'workspace.export.batch.writeFailed' } };
+  let exportedCount = 0;
+  if (files.length > 0) {
+    const exportResult = await electronAPI.exportFilesToDirectory({ directoryPath, files });
+    if (!exportResult.success) {
+      return { success: false, error: { key: 'workspace.export.batch.writeFailed' } };
+    }
+    exportedCount = exportResult.data?.writtenPaths?.length ?? files.length;
   }
 
-  const exportedCount = exportResult.data?.writtenPaths?.length ?? files.length;
-  return { success: true, exportedCount };
+  return {
+    success: true,
+    exportedCount,
+    failedDocumentNames,
+    skippedPluginDocumentCount: pluginDocumentCount,
+  };
 }

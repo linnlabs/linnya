@@ -3,6 +3,10 @@ export {
 } from './infrastructure/sqlite/markdownDocumentService';
 export { MarkdownDocumentVersionReader } from './infrastructure/sqlite/markdownDocumentVersionReader';
 export type { MarkdownDocumentVersion as DocumentVersion } from './definitions/documentVersion';
+export {
+  MarkdownDocumentContentError,
+  type MarkdownDocumentContentFailure,
+} from './definitions/markdownDocumentContentError';
 export { countMarkdownTextUnits } from './functions/countMarkdownTextUnits';
 export { assertExpectedMarkdownDocumentVersion } from './functions/assertExpectedMarkdownDocumentVersion';
 export {

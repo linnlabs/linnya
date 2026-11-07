@@ -1,12 +1,20 @@
 import { recordScopedDocumentAction } from 'src/domains/action-ledger';
 import { createMarkdownDocumentStore } from 'src/app-hosts/linnya/application/markdown-image-assets';
-import { MarkdownRevisionCommitSchema } from '@app/schemas';
+import {
+  MarkdownRevisionCommitSchema,
+  createOperationFailure,
+  createUserFacingMessage,
+} from '@app/schemas';
 /**
  * @file src/electron-main/ipc/handlers/documents/markdown_document/document-ipc.ts
  * @description 文档读写 IPC 通道处理器（按 node.type 路由）与 MarkdownDocument 专属操作。
  */
 
-import { PendingRevisionApplyService, importPendingMarkdownRootBlock } from 'src/domains/markdown';
+import {
+  MarkdownDocumentContentError,
+  PendingRevisionApplyService,
+  importPendingMarkdownRootBlock,
+} from 'src/domains/markdown';
 import type { BackendRuntimeOwner } from '../../../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
 import { WorkspaceService } from '../../../../../services/workspace/workspace';
 import { Logger } from '../../../../../../shared/logger';
@@ -63,6 +71,15 @@ export function registerMarkdownDocumentHandlers(
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       logger.error('[workspace:read-document] Error:', error);
+      if (error instanceof MarkdownDocumentContentError) {
+        // 单篇正文坏了：告诉用户是读取错误还是格式错误，不能让编辑器显示成空文档。
+        return createOperationFailure(message, createUserFacingMessage(
+          error.failure === 'unreadable'
+            ? 'workspace.fileManager.markdown.contentUnreadable'
+            : 'workspace.fileManager.markdown.contentInvalidFormat',
+          { diagnostic: message },
+        ));
+      }
       return { success: false, error: message };
     }
   });
