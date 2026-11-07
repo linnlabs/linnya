@@ -34,8 +34,15 @@ import {
   runCommandOutputArtifactStartupMaintenance,
   runToolOutputStoreStartupMaintenance,
   scheduleStartupMaintenanceOnce,
+  type KnowledgeBaseMaintenanceDeps,
   type StartupMaintenanceLifecycle,
 } from './startup/startupMaintenanceRunner';
+import {
+  describeStartupCapabilityFailure,
+  type StartupCapability,
+  type StartupCapabilityFailure,
+  type StartupVectorStore,
+} from './startup/startupCapabilityFailure';
 import { QueueManager } from 'src/infra/task-queue/queues';
 import { modelCatalog } from 'src/domains/model-catalog';
 import { providerCatalog } from '@linnya/provider-catalog';
@@ -77,14 +84,26 @@ import { requireInstalledDistributionIdentity } from 'src/shared/distribution-id
  * 服务初始化结果接口
  */
 export interface InitializedServices {
-  knowledgeBaseService: KnowledgeBaseService;
-  projectKnowledgeBaseLinksService: ProjectKnowledgeBaseLinksService; // +++ 添加
+  /** 向量库或知识库服务没有启动时为 null；原因见 capabilityFailures。 */
+  knowledgeBaseService: KnowledgeBaseService | null;
+  projectKnowledgeBaseLinksService: ProjectKnowledgeBaseLinksService;
   transcriptionService: TranscriptionService;
-  databaseService: DatabaseService; // +++ 添加
+  databaseService: DatabaseService;
   documentOcr: DocumentOcrPort;
+  /** 本次启动停掉的能力；为空表示全部启动成功。 */
+  capabilityFailures: readonly StartupCapabilityFailure[];
   disposeRendererIntegration(): void;
-  // agentService 已移除
-  // chatService 已移除，使用新的统一架构
+}
+
+const CAPABILITY_FAILURE_SUMMARIES: Readonly<Record<StartupCapability, string>> = Object.freeze({
+  'knowledge-base': '知识库服务没有启动成功',
+  'background-tasks': '后台任务队列没有启动成功',
+  models: '模型配置没有加载成功',
+});
+
+interface InitializedKnowledgeBase {
+  readonly service: KnowledgeBaseService;
+  readonly maintenance: KnowledgeBaseMaintenanceDeps;
 }
 
 /**
@@ -124,12 +143,31 @@ export class ServiceInitializer {
    */
   public async initializeServices(
     config: ServiceInitializationConfig,
-    qdrantManagerConfig?: { url?: string }
+    vectorStore: StartupVectorStore
   ): Promise<InitializedServices> {
     console.log('[🔥 SERVICE-INIT] ===== initializeServices() METHOD CALLED =====');
     console.log('[ServiceInitializer] 🔧 开始详细的服务初始化...');
 
     let disposeRendererIntegration: (() => void) | null = null;
+    this.qdrantUrl = null;
+    const capabilityFailures: StartupCapabilityFailure[] = [];
+    // 能力步骤失败只停掉这项能力并记一条诊断日志；必需步骤仍然直接抛出，由启动失败对话框说明。
+    const runCapabilityStep = async <T>(
+      capability: StartupCapability,
+      step: () => Promise<T>
+    ): Promise<T | null> => {
+      try {
+        return await step();
+      } catch (error: unknown) {
+        const failure = Object.freeze({
+          capability,
+          message: describeStartupCapabilityFailure(CAPABILITY_FAILURE_SUMMARIES[capability], error),
+        });
+        capabilityFailures.push(failure);
+        console.error(`[ServiceInitializer] 能力未启动: ${capability}`, error);
+        return null;
+      }
+    };
     try {
       // 步骤1：初始化数据库服务
       const databaseService = await this.initializeDatabaseService();
@@ -151,24 +189,41 @@ export class ServiceInitializer {
       // 步骤2：准备环境变量
       await this.prepareEnvironmentVariables();
 
-      // 步骤3：初始化产品模型目录
-      disposeRendererIntegration = await this.initializeModelCatalog(config);
-
-      // 步骤4：初始化适配器
-      const qdrantAdapterInstance = await this.initializeAdapters(config, qdrantManagerConfig);
+      // 步骤3：初始化产品模型目录（能力：失败时模型相关入口说明原因，不覆写已有配置）
+      disposeRendererIntegration = await runCapabilityStep('models', () =>
+        this.initializeModelCatalog(config)
+      );
 
       // 步骤5：装配独立推理能力窄端口
       const embedding = createEmbeddingPort();
       const reranking = createRerankingPort();
       const documentOcr = createDocumentOcrPort({ catalog: modelCatalog });
 
-      // 步骤6：初始化知识库服务
-      const knowledgeBaseService = await this.initializeKnowledgeBaseService(
-        qdrantAdapterInstance,
-        embedding,
-        reranking,
-        documentOcr
-      );
+      // 步骤4 + 6：Qdrant 适配器与知识库服务（能力：向量库没有启动时整组跳过）
+      let knowledgeBase: InitializedKnowledgeBase | null = null;
+      if (vectorStore.kind === 'unavailable') {
+        capabilityFailures.push(Object.freeze({
+          capability: 'knowledge-base',
+          message: vectorStore.message,
+        }));
+        console.error(`[ServiceInitializer] 能力未启动: knowledge-base（${vectorStore.message}）`);
+      } else {
+        knowledgeBase = await runCapabilityStep('knowledge-base', async () => {
+          const qdrantAdapterInstance = await this.initializeAdapters(config, vectorStore.url);
+          return this.initializeKnowledgeBaseService(
+            qdrantAdapterInstance,
+            embedding,
+            reranking,
+            documentOcr
+          );
+        });
+      }
+
+      // 启动后一次性维护任务（Phase 2）：Workspace、会话与数据库维护不依赖知识库。
+      this.startupMaintenance = scheduleStartupMaintenanceOnce({
+        databaseService,
+        knowledgeBase: knowledgeBase?.maintenance ?? null,
+      });
 
       // 步骤6.5：初始化项目-知识库关联服务
       const projectKnowledgeBaseLinksService =
@@ -177,18 +232,28 @@ export class ServiceInitializer {
       // 步骤7：初始化转录服务
       const transcriptionService = await this.initializeTranscriptionService();
 
-      // 步骤8：初始化队列系统
-      await this.initializeQueueSystem();
+      // 步骤8：初始化队列系统（能力：知识库导入与长音频预处理不可用）
+      await runCapabilityStep('background-tasks', () => this.initializeQueueSystem());
 
-      console.log('[ServiceInitializer] ✨ 所有服务初始化成功!');
+      if (capabilityFailures.length === 0) {
+        console.log('[ServiceInitializer] ✨ 所有服务初始化成功!');
+      } else {
+        console.warn(
+          `[ServiceInitializer] 服务初始化完成，未启动的能力: ${capabilityFailures
+            .map(failure => failure.capability)
+            .join(', ')}`
+        );
+      }
 
+      const disposeModelCatalogUpdates = disposeRendererIntegration;
       return {
-        knowledgeBaseService,
+        knowledgeBaseService: knowledgeBase?.service ?? null,
         projectKnowledgeBaseLinksService,
         transcriptionService,
-        databaseService, // +++ 添加
+        databaseService,
         documentOcr,
-        disposeRendererIntegration,
+        capabilityFailures: Object.freeze([...capabilityFailures]),
+        disposeRendererIntegration: () => disposeModelCatalogUpdates?.(),
       };
     } catch (error) {
       await this.stopStartupMaintenance();
@@ -304,12 +369,12 @@ export class ServiceInitializer {
    */
   private async initializeAdapters(
     config: ServiceInitializationConfig,
-    qdrantManagerConfig?: { url?: string }
+    qdrantUrl: string
   ): Promise<QdrantAdapter> {
     console.log('[ServiceInitializer] 🔌 Step 4: 初始化Qdrant适配器...');
 
     const qdrantConfig: QdrantConfig = {
-      url: qdrantManagerConfig?.url || `http://localhost:6333`,
+      url: qdrantUrl,
       apiKey: config.qdrant?.apiKey,
       timeout: config.qdrant?.timeout || 30000,
     };
@@ -329,7 +394,7 @@ export class ServiceInitializer {
     embedding: ReturnType<typeof createEmbeddingPort>,
     reranking: ReturnType<typeof createRerankingPort>,
     documentOcr: DocumentOcrPort
-  ): Promise<KnowledgeBaseService> {
+  ): Promise<InitializedKnowledgeBase> {
     console.log('[ServiceInitializer] 📚 Step 6: 初始化知识库服务依赖...');
 
     // 获取路径（SoT 与原始 PDF 仓储仍然使用文件系统）
@@ -349,17 +414,6 @@ export class ServiceInitializer {
     const sotRepository = new FileSotRepository(sotPath);
     const originalDocumentRepository = new FileOriginalDocumentRepository(originalDocumentsPath);
     console.log('[ServiceInitializer] ✅ Step 6: 知识库存储库初始化完成');
-
-    // 启动后一次性维护任务（Phase 2）：统一编排 workspace 清理 + 知识库一致性清理
-    console.log('[ServiceInitializer] 🧹 Step 6.1: 调度启动维护任务(仅一次)...');
-    this.startupMaintenance = scheduleStartupMaintenanceOnce({
-      databaseService,
-      metadataRepository,
-      qdrantRepository,
-      sotRepository,
-      originalDocumentRepository,
-    });
-    console.log('[ServiceInitializer] ✅ Step 6.1: 启动维护任务已调度');
 
     // 创建搜索服务
     console.log('[ServiceInitializer] 🔍 Step 7: 创建搜索服务...');
@@ -396,7 +450,15 @@ export class ServiceInitializer {
     });
     console.log('[ServiceInitializer] ✅ Step 8: 知识库服务初始化完成');
 
-    return knowledgeBaseService;
+    return {
+      service: knowledgeBaseService,
+      maintenance: {
+        metadataRepository,
+        qdrantRepository,
+        sotRepository,
+        originalDocumentRepository,
+      },
+    };
   }
 
   /**

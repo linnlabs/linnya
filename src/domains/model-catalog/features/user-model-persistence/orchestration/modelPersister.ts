@@ -45,8 +45,17 @@ export class ModelPersister {
   async loadState(): Promise<StoredUserModelState> {
     const userModelsPath = await this.requireUserModelsPath();
     const fileContent = await fs.readFile(userModelsPath, 'utf8');
-    const parsed: unknown = JSON.parse(fileContent);
-    return readStoredUserModelState(parsed);
+    try {
+      return readStoredUserModelState(JSON.parse(fileContent));
+    } catch (error: unknown) {
+      // 只写文件名：启动失败的原因会展示给用户，不需要完整路径。
+      throw Object.assign(
+        new Error(
+          `${path.basename(userModelsPath)} 无法读取：${error instanceof Error ? error.message : String(error)}`
+        ),
+        { cause: error }
+      );
+    }
   }
 
   async saveState(

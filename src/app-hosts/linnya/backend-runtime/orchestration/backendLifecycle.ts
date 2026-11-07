@@ -84,6 +84,7 @@ export async function initializeAppServerBackend(
         knowledgeBaseService: services.knowledgeBaseService || undefined,
         transcriptionService: services.transcriptionService || undefined,
         documentOcr: services.documentOcr,
+        startupCapabilityFailures: runtimeOwner.getStartupCapabilityFailures(),
         backendBootstrap: hostDependencies.bootstrap,
         externalAuthorizationBrowser: hostDependencies.externalAuthorizationBrowser,
         rendererIntegration: hostDependencies.rendererIntegration,

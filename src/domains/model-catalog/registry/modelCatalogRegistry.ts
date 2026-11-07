@@ -91,6 +91,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private envVars: Record<string, string> = {};
   private initialized = false;
   private initializationStarted = false;
+  /** 初始化本身在全部准入通过后会回写一次迁移结果；除此之外，未初始化成功时禁止写用户配置。 */
+  private persistingInitialState = false;
   private modelReasoningResolver: ModelReasoningResolver | undefined;
   private cloudModelRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private cloudModelRetryAttemptCount = 0;
@@ -134,8 +136,14 @@ export class ModelCatalogRegistry implements ModelCatalog {
 
     this.loadUserModels(userState.models);
     // 旧文件完整通过准入后才覆盖；任何损坏都不能留下半迁移目录。
-    if (userState.requiresMigration)
-      await this.persistUserState(this.models, this.inferenceEndpoints);
+    if (userState.requiresMigration) {
+      this.persistingInitialState = true;
+      try {
+        await this.persistUserState(this.models, this.inferenceEndpoints);
+      } finally {
+        this.persistingInitialState = false;
+      }
+    }
     this.initialized = true;
     logger.info(`[ModelCatalog] 初始化完成，共 ${this.models.size} 个模型`);
   }
@@ -574,6 +582,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
     expectedRevision?: number
   ): Promise<void> {
     const result = this.userMutationTail.then(async () => {
+      // 初始化没有成功时连凭据也不准备：写入会以不完整的内存状态覆盖用户原有配置。
+      this.assertUserConfigurationWritable();
       // 在目录事务内部校验，检查与提交之间不能插入另一个编辑或删除。
       if (expectedRevision !== undefined && expectedRevision !== this.userRevision) {
         throw new ModelCatalogConflictError();
@@ -679,11 +689,19 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return processedModel;
   }
 
+  private assertUserConfigurationWritable(): void {
+    if (this.initialized) return;
+    // 启动时目录没有初始化成功（例如用户配置文件损坏）：内存里只有不完整的状态，
+    // 写回会覆盖用户原有的模型配置。保持原文件不动，等问题解决后重新启动。
+    throw new Error('模型目录在启动时没有初始化成功，暂时不能保存模型配置；原配置文件保持不变');
+  }
+
   private async persistUserState(
     models: Map<string, ModelConfig>,
     inferenceEndpoints: Map<string, InferenceEndpoint>,
     groups: ReadonlyMap<string, CustomApiGroup> = this.customApiGroups
   ): Promise<void> {
+    if (!this.persistingInitialState) this.assertUserConfigurationWritable();
     const userModels = Array.from(models.values())
       .filter(model => model.catalog_source === 'user')
       .map(model => projectUserModelForPersistence(model, this.modelReasoningResolver));

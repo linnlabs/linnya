@@ -20,7 +20,8 @@ type RunContext = runContext.RunContext;
 type ToolContextPatch = tools.ToolContextPatch;
 
 export interface ToolContextHostServices {
-  knowledgeBaseService: KnowledgeBaseService;
+  /** 知识库本次没有启动时缺省；知识库工具自行说明不可用。 */
+  knowledgeBaseService?: KnowledgeBaseService;
   databaseService: DatabaseService;
   workspaceMutationPublisher?: WorkspaceMutationPublisher;
   shellToolRuntime?: ShellToolRuntimePort;

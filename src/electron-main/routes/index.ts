@@ -20,7 +20,11 @@ import { createProviderModelDiscoveryUseCase } from 'src/app-hosts/linnya/applic
  * 副作用：将所有路由挂载到Express应用上
  */
 
-import { Application } from 'express';
+import type { Application, RequestHandler } from 'express';
+import {
+  findStartupCapabilityFailure,
+  type StartupCapabilityFailure,
+} from '../services/startup/startupCapabilityFailure';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { createModelRouter } from './modelRouter';
@@ -212,6 +216,22 @@ import {
 
 const logger = getLogger('RouteConfig');
 
+/** 模型能力没有启动时，这些入口统一说明原因；Provider 目录是随包静态数据，照常可读。 */
+const MODEL_CAPABILITY_ROUTE_PATHS = Object.freeze([
+  '/api/v1/models',
+  '/api/v1/model-picker',
+  '/api/v1/provider-accounts',
+  '/api/v1/provider-onboarding',
+  '/api/v1/custom-api-onboarding',
+  '/api/v1/ollama-onboarding',
+]);
+
+function respondCapabilityUnavailable(message: string): RequestHandler {
+  return (_request, response) => {
+    response.status(503).json({ error: message });
+  };
+}
+
 /**
  * 路由配置依赖接口
  */
@@ -222,6 +242,8 @@ export interface RouteDependencies {
   knowledgeBaseService?: KnowledgeBaseService;
   transcriptionService?: TranscriptionService;
   documentOcr: DocumentOcrPort;
+  /** 本次启动停掉的能力；对应入口返回不可用和原因，其余路由照常挂载。 */
+  readonly startupCapabilityFailures: readonly StartupCapabilityFailure[];
   readonly backendBootstrap: BackendBootstrapFacts;
   readonly externalAuthorizationBrowser: ExternalAuthorizationBrowserPort;
   readonly rendererIntegration: BackendRendererIntegrationPort;
@@ -316,6 +338,18 @@ export async function configureRoutes(
   app.use('/api/v1/skills', createSkillManagementRouter(skillManagement));
   app.use('/api/v1/providers', createProviderCatalogRouter());
   logger.info('✅ Provider Catalog 路由已挂载: /api/v1/providers');
+  const modelsFailure = findStartupCapabilityFailure(
+    dependencies.startupCapabilityFailures,
+    'models'
+  );
+  if (modelsFailure) {
+    // 注册表没有加载成功：不做启动刷新，也不让任何入口读写半加载的配置。
+    const unavailable = respondCapabilityUnavailable(
+      `模型相关功能暂不可用：${modelsFailure.message}。重新启动 Linnya 后会再试一次。`
+    );
+    for (const routePath of MODEL_CAPABILITY_ROUTE_PATHS) app.use(routePath, unavailable);
+    logger.warn('⚠️ 模型配置没有加载成功，模型相关入口返回不可用');
+  }
   const configuredModelRemoval = createConfiguredModelRemovalUseCase({
     modelCatalog,
     providerConfigurations: providerConfigurationRegistry,
@@ -365,7 +399,7 @@ export async function configureRoutes(
     },
     idFactory: { create: randomUUID },
   });
-  for (const configuredProvider of providerConfigurationRegistry.list()) {
+  for (const configuredProvider of modelsFailure ? [] : providerConfigurationRegistry.list()) {
     const catalogEntry = providerCatalog.getConnection(
       configuredProvider.provider_connection_definition_id
     );
@@ -388,7 +422,8 @@ export async function configureRoutes(
     modelCatalog,
     runtimeBindings: providerOnboardingRuntimeBindingRegistry,
   });
-  const connectedChatGpt = providerAccountRegistry.hasCredential(CHATGPT_PROVIDER_ACCOUNT_ID);
+  const connectedChatGpt =
+    !modelsFailure && providerAccountRegistry.hasCredential(CHATGPT_PROVIDER_ACCOUNT_ID);
   if (connectedChatGpt) {
     providerAccountModels.synchronize(
       CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID,
@@ -502,6 +537,18 @@ export async function configureRoutes(
     );
     logger.info('✅ 知识库服务路由已挂载: /api/v1/knowledge-base');
   } else {
+    const knowledgeBaseFailure = findStartupCapabilityFailure(
+      dependencies.startupCapabilityFailures,
+      'knowledge-base'
+    );
+    if (knowledgeBaseFailure) {
+      app.use(
+        '/api/v1/knowledge-base',
+        respondCapabilityUnavailable(
+          `知识库暂不可用：${knowledgeBaseFailure.message}。重新启动 Linnya 后会再试一次。`
+        )
+      );
+    }
     logger.warn('⚠️ 知识库服务未初始化，跳过路由挂载');
   }
 
@@ -530,10 +577,8 @@ export async function configureRoutes(
 
   try {
     logger.info('🔧 初始化会话服务...');
+    // 知识库本次没有启动时会话照常可用；知识库工具在调用时说明不可用。
     const knowledgeBaseService = dependencies.knowledgeBaseService;
-    if (!knowledgeBaseService) {
-      throw new Error('会话服务初始化失败：knowledgeBaseService 不可用。');
-    }
 
     // B1（linnkit Phase D 后续）: Checkpointer 改用 SQLite 实现，
     // EngineState 落 workspace.sqlite 的 engine_checkpoints 表，
@@ -862,6 +907,7 @@ export async function configureRoutes(
       executionProgress: checkpointer,
       modelCatalog,
       providerAccounts: providerAccountRegistry,
+      modelsUnavailableReason: modelsFailure?.message ?? null,
       history: initializedHistoryService,
       telemetry: telemetryPort,
       events: createEventStoreExecutionAuditEventPort(conversationEventStore),

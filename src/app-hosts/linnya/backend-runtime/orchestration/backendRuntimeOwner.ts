@@ -36,6 +36,13 @@ import type { QdrantProcessRuntime } from '../../../../infra/adapters/vector-sto
 import type { LaunchOwnedPipeProcess } from '../../../../shared/process-runtime';
 import type { QueueWorkerRuntime } from '../../../../infra/task-queue/definitions/queueWorkerRuntime';
 import type { RuntimePathRoots } from '../../../../shared/runtime-paths';
+import {
+  describeStartupCapabilityFailure,
+  findStartupCapabilityFailure,
+  type StartupCapability,
+  type StartupCapabilityFailure,
+  type StartupVectorStore,
+} from '../../../../electron-main/services/startup/startupCapabilityFailure';
 import type { DatabaseStartupProgressPort } from '../../../../electron-main/services/database/databaseStartupProgress';
 import type { ProjectDeletionUseCasePort } from '../../application/project-deletion';
 import type {
@@ -154,14 +161,9 @@ export class BackendRuntimeOwner {
     try {
       console.log('[Backend Service] 🚀 开始服务初始化...');
 
-      // 步骤1：启动Qdrant服务
+      // 步骤1：启动Qdrant服务（能力：失败时只停掉知识库）
       console.log('[Backend Service] 📊 Step 1: 启动Qdrant服务...');
-      this.qdrantManager = new QdrantManager({
-        host: config.qdrant.host,
-        port: config.qdrant.port,
-      }, this.qdrantProcessRuntime, this.launchOwnedPipeProcess);
-      await this.qdrantManager.start();
-      console.log('[Backend Service] ✅ Step 1: Qdrant服务启动成功');
+      const vectorStore = await this.startVectorStore(config);
 
       // 步骤2：初始化全部 Backend services
       console.log('[Backend Service] ⚙️ Step 2: 初始化 Backend services...');
@@ -171,7 +173,7 @@ export class BackendRuntimeOwner {
 
       this.services = await this.serviceInitializer.initializeServices(
         serviceConfig,
-        this.qdrantManager.getConfig(),
+        vectorStore,
       );
       console.log('[Backend Service] ✅ Step 2: Backend services 初始化完成');
 
@@ -195,6 +197,44 @@ export class BackendRuntimeOwner {
       }
       throw error;
     }
+  }
+
+  /**
+   * Qdrant 没有启动时收口已拉起的进程，把原因交给服务初始化跳过知识库；不回退到默认地址。
+   * 收口本身失败时保留 manager，交给正式停止流程再试一次。
+   */
+  private async startVectorStore(config: AppServerBackendConfiguration): Promise<StartupVectorStore> {
+    const qdrantManager = new QdrantManager({
+      host: config.qdrant.host,
+      port: config.qdrant.port,
+    }, this.qdrantProcessRuntime, this.launchOwnedPipeProcess);
+    this.qdrantManager = qdrantManager;
+    try {
+      await qdrantManager.start();
+      console.log('[Backend Service] ✅ Step 1: Qdrant服务启动成功');
+      return Object.freeze({ kind: 'ready', url: qdrantManager.getConfig().url });
+    } catch (error: unknown) {
+      console.error('[Backend Service] ❌ Step 1: Qdrant服务启动失败，知识库本次不可用:', error);
+      try {
+        await qdrantManager.stop();
+        this.qdrantManager = null;
+      } catch (stopError: unknown) {
+        console.error('[Backend Service] ❌ 收口未启动成功的 Qdrant 时出错:', stopError);
+      }
+      return Object.freeze({
+        kind: 'unavailable',
+        message: describeStartupCapabilityFailure('向量库没有启动成功', error),
+      });
+    }
+  }
+
+  /** 本次启动停掉的能力；Backend 未启动时为空。 */
+  getStartupCapabilityFailures(): readonly StartupCapabilityFailure[] {
+    return this.services?.capabilityFailures ?? [];
+  }
+
+  getStartupCapabilityFailure(capability: StartupCapability): StartupCapabilityFailure | null {
+    return findStartupCapabilityFailure(this.getStartupCapabilityFailures(), capability);
   }
 
   /** 停止 App Server Backend 拥有的全部服务。 */
@@ -344,6 +384,8 @@ export class BackendRuntimeOwner {
   /** 知识库摄入队列是否还有待处理或执行中的任务；Backend 未就绪或正在收口时为 false。 */
   hasActiveKnowledgeIngestion(): boolean {
     if (!this.services || this.shutdownSettlement) return false;
+    // 队列没有启动时不会有导入任务；不能让退出确认因此每次都查询失败。
+    if (this.getStartupCapabilityFailure('background-tasks')) return false;
     const stats = QueueManager.getInstance().getQueueStats();
     return stats.pending + stats.running > 0;
   }
