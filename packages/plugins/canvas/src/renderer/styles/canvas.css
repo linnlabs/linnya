@@ -219,8 +219,7 @@
   line-height: var(--line-height-normal);
 }
 
-/* Agent 审阅面板：单一浮层表面，组之间用分隔线，不嵌套方框。 */
-/* 底部区靠右纵向排列：状态提示、审阅面板、缩放，窄窗口里也不互相压住；边距与顶部命令条一致。 */
+/* 底部区靠右纵向排列：状态提示在上，审阅条与缩放同一行；窄画布里审阅条换到缩放上方。边距与顶部命令条一致。 */
 .canvas-bottom-dock {
   position: absolute;
   right: var(--space-3);
@@ -236,15 +235,98 @@
 .canvas-bottom-dock > * {
   pointer-events: auto;
 }
+.canvas-bottom-dock > .canvas-bottom-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+.canvas-bottom-row > * {
+  pointer-events: auto;
+}
+/* Agent 审阅：收起时是与缩放同高的一行（外观与缩放同源，见 canvasChrome.css）；详情面板贴着这一行向上展开、与它同宽。 */
 .canvas-agent-review {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+.canvas-agent-review-bar {
+  gap: var(--space-0-5);
+}
+.canvas-agent-review-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  height: var(--control-height-sm);
+  padding: 0 var(--space-1-5) 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-body);
+  cursor: pointer;
+  transition: background-color var(--duration-micro) var(--ease-standard);
+}
+.canvas-agent-review-summary:hover,
+.canvas-agent-review-summary[aria-expanded='true'] {
+  background: var(--color-bg-hover);
+}
+.canvas-agent-review-summary.is-warning {
+  color: var(--color-warning-text);
+}
+.canvas-agent-summary-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.canvas-agent-review-summary .canvas-agent-summary-arrow {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-tertiary);
+}
+.canvas-agent-status,
+.canvas-agent-status-icon {
+  flex-shrink: 0;
+}
+.canvas-agent-status {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+}
+.canvas-agent-status-icon {
+  width: 14px;
+  height: 14px;
+}
+.canvas-agent-review-divider {
+  flex-shrink: 0;
+  width: var(--border-width-hairline);
+  height: var(--space-4);
+  margin: 0 var(--space-1);
+  background: var(--color-border-light);
+}
+.canvas-review-position {
+  min-width: 4ch;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.canvas-agent-review-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-2));
+  left: 0;
   display: flex;
   flex-direction: column;
-  flex-shrink: 1;
-  align-self: flex-end;
   box-sizing: border-box;
-  width: min(420px, 100%);
-  min-height: 0;
-  max-height: 40vh;
+  min-width: 300px;
+  max-height: min(420px, 50vh);
   padding: var(--space-1);
   overflow-y: auto;
   border-radius: var(--radius-lg);
@@ -253,91 +335,73 @@
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
 }
-.canvas-agent-group {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1);
-  border-radius: var(--radius-md);
-}
-.canvas-agent-group + .canvas-agent-group {
+.canvas-agent-review-panel > * + * {
   border-top: var(--border-width-hairline) solid var(--color-border-light);
 }
-/* 只有多组并列时才需要用底色标出当前组；单组不加色块。 */
-.canvas-agent-review:has(.canvas-agent-group + .canvas-agent-group) .canvas-agent-group.is-active {
-  background: var(--color-bg-active-subtle);
+.canvas-agent-review-error {
+  padding: var(--space-1-5) var(--space-2);
 }
-.canvas-agent-group.is-active .canvas-agent-status {
-  background: var(--color-accent);
-}
-.canvas-agent-group-summary {
-  flex: 1 1 180px;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  column-gap: var(--space-2);
-  padding: var(--space-1);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.canvas-agent-status,
-.canvas-agent-status-icon {
-  grid-row: span 2;
-}
-.canvas-agent-status {
-  width: 8px;
-  height: 8px;
-  margin: var(--space-1);
-  border-radius: var(--radius-full);
-  background: var(--color-text-tertiary);
+.canvas-agent-review-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-2);
 }
 .canvas-agent-title {
   color: var(--color-text-primary);
   font-weight: var(--font-weight-medium);
 }
-.canvas-agent-counts {
+.canvas-agent-meta {
   color: var(--color-text-tertiary);
   font-size: var(--font-size-footnote);
   line-height: var(--line-height-footnote);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.canvas-agent-actions {
-  margin-left: auto;
+.canvas-agent-groups {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--space-1);
+}
+.canvas-review-targets {
+  flex-shrink: 0;
+  padding: var(--space-1) 0;
+}
+.canvas-review-target {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
   gap: var(--space-1);
 }
-.canvas-agent-approval {
-  margin-right: auto;
-  padding-left: var(--space-1);
-  color: var(--color-warning-text);
+.canvas-review-target .canvas-panel-row {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  white-space: nowrap;
+}
+.canvas-review-target-kind {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
   font-size: var(--font-size-footnote);
-  line-height: var(--line-height-footnote);
 }
-.canvas-review-navigation {
+.canvas-review-target .is-active .canvas-review-target-kind {
+  color: inherit;
+}
+.canvas-review-target-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.canvas-agent-review-foot {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  padding: 0 var(--space-1);
+  justify-content: space-between;
+  padding-top: var(--space-1);
 }
-.canvas-review-position {
-  min-width: 4ch;
-  color: var(--color-text-secondary);
-  text-align: center;
-  font-variant-numeric: tabular-nums;
+.canvas-agent-review-foot > :only-child {
+  margin-left: auto;
 }
 .canvas-review-details {
-  width: 100%;
   color: var(--color-text-secondary);
   font-size: var(--font-size-footnote);
   line-height: var(--line-height-footnote);
@@ -346,7 +410,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-1);
+  padding: var(--space-1-5) var(--space-2);
   list-style: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -367,25 +431,25 @@
   background: var(--color-bg-hover);
 }
 .canvas-review-details ul {
-  margin: var(--space-1) 0 0;
-  padding: 0;
+  margin: 0;
+  padding: 0 var(--space-2) var(--space-1-5);
   list-style: none;
-}
-.canvas-review-target {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
 }
 .canvas-review-withdrawal {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-2);
-  padding: var(--space-2);
-  border-top: var(--border-width-hairline) solid var(--color-border-light);
+  padding: var(--space-1-5) var(--space-2);
   color: var(--color-text-secondary);
   font-size: var(--font-size-footnote);
   line-height: var(--line-height-footnote);
+}
+.canvas-review-withdrawal .canvas-review-details {
+  width: 100%;
+}
+.canvas-review-withdrawal .canvas-review-details summary {
+  padding-inline: 0;
 }
 
 /* 卡片与连线手柄：连接点与端点是圆，尺寸手柄是方块；统一 10px、1px 强调色描边。 */

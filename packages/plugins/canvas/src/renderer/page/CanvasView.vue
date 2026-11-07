@@ -150,21 +150,23 @@
       <CanvasStatusArea :items="statusItems">
         <CanvasWheelSuggestion v-if="wheelSuggestion" :suggestion="wheelSuggestion" />
       </CanvasStatusArea>
-      <CanvasAgentReviewBar
-        v-if="review"
-        :review="review"
-        :readonly="readonly"
-        :elements="elements"
-        :document-titles="documentTitles"
-        @locate="surface?.locate($event)"
-        @reveal="revealReview"
-      />
-      <CanvasZoomControls
-        v-if="surface"
-        :zoom="camera.zoom"
-        @zoom="surface.zoom($event)"
-        @fit="surface.fit()"
-      />
+      <div class="canvas-bottom-row">
+        <CanvasAgentReviewBar
+          v-if="review"
+          :review="review"
+          :readonly="readonly"
+          :elements="elements"
+          :document-titles="documentTitles"
+          @locate="surface?.locate($event)"
+          @reveal="revealReview"
+        />
+        <CanvasZoomControls
+          v-if="surface"
+          :zoom="camera.zoom"
+          @zoom="surface.zoom($event)"
+          @fit="surface.fit()"
+        />
+      </div>
     </div>
     <AlertDialog
       :visible="discardVisible"

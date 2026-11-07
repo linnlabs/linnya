@@ -17,10 +17,10 @@
     aria-hidden="true"
     focusable="false"
   >
-    <circle cx="6.5" cy="16.5" r="2" />
-    <circle cx="17.5" cy="7.5" r="2" />
-    <path v-if="props.shape === 'curve'" d="M8.5 16.5C12 16.5 12 7.5 15.5 7.5" />
-    <path v-if="props.shape === 'straight'" d="M8.05 15.23L15.95 8.77" />
+    <circle cx="6.5" cy="17.5" r="2" />
+    <circle cx="17.5" cy="6.5" r="2" />
+    <path v-if="props.shape === 'curve'" d="M6.5 15.5A9 9 0 0 1 15.5 6.5" />
+    <path v-if="props.shape === 'straight'" d="M7.91 16.09L16.09 7.91" />
   </svg>
 </template>
 

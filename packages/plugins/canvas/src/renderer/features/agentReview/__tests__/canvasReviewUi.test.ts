@@ -104,6 +104,15 @@ it('真实审阅组件用正文呈现删除身份，只读禁恢复但仍可逐�
   try {
     app.mount(root);
     await nextTick();
+    // 收起态只有一行：摘要、翻页与完成审阅；改动列表在展开面板里。
+    const toggle = root.querySelector<HTMLButtonElement>('.canvas-agent-review-summary');
+    expect(toggle?.textContent).toContain('Agent 删除 1 张');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(root.querySelector('.canvas-agent-review-panel')).toBeNull();
+    toggle?.click();
+    await nextTick();
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+    expect(root.querySelector('.canvas-agent-review-panel')?.textContent).toContain('原始删除标题');
     expect(root.textContent).toContain('原始删除标题');
     expect(root.textContent).not.toContain('c1');
     const restore = [...root.querySelectorAll('button')].filter(

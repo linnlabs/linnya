@@ -12,9 +12,10 @@
   container-type: inline-size;
   pointer-events: none;
 }
-/* 顶部命令条与右下角缩放共用 Slides 编辑命令条的外观：细描边 + 近影 + 远影的小元素阴影，不加边框。 */
+/* 顶部命令条、右下角缩放与 Agent 审阅条共用 Slides 编辑命令条的外观：细描边 + 近影 + 远影的小元素阴影，不加边框。 */
 .canvas-command-bar,
-.canvas-zoom-controls {
+.canvas-zoom-controls,
+.canvas-agent-review-bar {
   display: flex;
   align-items: center;
   padding: var(--space-1);
