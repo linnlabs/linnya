@@ -194,8 +194,9 @@ const anchors = computed(() => {
   const target = props.editing.state.preview.value?.target,
     cards = props.card && !props.card.locked ? [props.card] : [];
   if (target && !cards.some(card => card.id === target.id)) cards.push(target);
+  const inset = props.editing.anchorInset(props.camera.zoom);
   return cards.flatMap(card =>
-    canvasConnectionAnchors(card).map(anchor => ({ ...anchor, cardId: card.id }))
+    canvasConnectionAnchors(card, inset).map(anchor => ({ ...anchor, cardId: card.id }))
   );
 });
 const geometry = computed(() => {

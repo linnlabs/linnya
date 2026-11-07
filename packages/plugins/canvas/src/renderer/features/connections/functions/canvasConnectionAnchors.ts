@@ -1,21 +1,28 @@
 import type { CanvasCard, CanvasEndpoint, CanvasPoint } from '@plugin/canvas/shared';
-export function canvasConnectionAnchors(card: CanvasCard) {
+/**
+ * 四边中点的连线圆点。inset 是从几何边向内的距离（世界坐标），由宿主按选中描边中线给出，
+ * 使圆点压在看得见的卡边上；不传时落在几何边。
+ */
+export function canvasConnectionAnchors(card: CanvasCard, inset = 0) {
+  const cx = card.x + card.width / 2,
+    cy = card.y + card.height / 2;
   return [
-    { side: 'top' as const, x: card.x + card.width / 2, y: card.y },
-    { side: 'right' as const, x: card.x + card.width, y: card.y + card.height / 2 },
-    { side: 'bottom' as const, x: card.x + card.width / 2, y: card.y + card.height },
-    { side: 'left' as const, x: card.x, y: card.y + card.height / 2 },
+    { side: 'top' as const, x: cx, y: card.y + inset },
+    { side: 'right' as const, x: card.x + card.width - inset, y: cy },
+    { side: 'bottom' as const, x: cx, y: card.y + card.height - inset },
+    { side: 'left' as const, x: card.x + inset, y: cy },
   ];
 }
 export function canvasEndpointAt(
   point: CanvasPoint,
   cards: readonly CanvasCard[],
-  zoom: number
+  zoom: number,
+  inset = 0
 ): CanvasEndpoint {
-  // 圆点直径按屏幕16px；落在卡片内而非圆点时使用自动端点。
+  // 圆点直径按屏幕16px，与画出来的圆点同心；落在卡片内而非圆点时使用自动端点。
   const radius = 8 / zoom;
   const dot = cards
-    .flatMap(card => canvasConnectionAnchors(card).map(anchor => ({ card, anchor })))
+    .flatMap(card => canvasConnectionAnchors(card, inset).map(anchor => ({ card, anchor })))
     .find(({ anchor }) => Math.hypot(anchor.x - point.x, anchor.y - point.y) <= radius);
   if (dot) return { kind: 'card', cardId: dot.card.id, side: dot.anchor.side };
   const card = [...cards]

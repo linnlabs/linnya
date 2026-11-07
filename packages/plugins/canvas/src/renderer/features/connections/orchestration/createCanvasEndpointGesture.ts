@@ -1,3 +1,4 @@
+import type { CanvasPoint } from '@plugin/canvas/shared';
 import { commitCanvasEndpointGesture } from './commitCanvasEndpointGesture';
 import type {
   CanvasEndpointGesture,
@@ -7,8 +8,12 @@ import type {
 import { canvasEndpointAt } from '../functions/canvasConnectionAnchors';
 
 export function createCanvasEndpointGesture(options: CanvasEndpointGestureOptions) {
-  const { session, kernel, state, report, createText } = options;
+  const { session, kernel, state, report, createText, anchorInset } = options;
   let active: CanvasEndpointGesture | null = null;
+  const endpointAt = (point: CanvasPoint, cards: Parameters<typeof canvasEndpointAt>[1]) => {
+    const zoom = kernel.readCamera().zoom;
+    return canvasEndpointAt(point, cards, zoom, anchorInset(zoom));
+  };
   const world = (event: PointerEvent) => {
     const bounds = kernel.canvas.getBoundingClientRect();
     return kernel.screenToWorld({ x: event.clientX - bounds.left, y: event.clientY - bounds.top });
@@ -43,9 +48,7 @@ export function createCanvasEndpointGesture(options: CanvasEndpointGestureOption
     const point = world(event),
       previous = state.preview.value?.target;
     const nearPrevious =
-      previous && canvasEndpointAt(point, [previous], kernel.readCamera().zoom).kind === 'card'
-        ? previous
-        : null;
+      previous && endpointAt(point, [previous]).kind === 'card' ? previous : null;
     const target = kernel.hitTest(point) ?? nearPrevious;
     state.setPreview({ from: active.origin, to: point, target });
     kernel.setHoveredCard(target?.id ?? null);
@@ -63,7 +66,7 @@ export function createCanvasEndpointGesture(options: CanvasEndpointGestureOption
       return;
     }
     const point = world(event),
-      target = canvasEndpointAt(point, kernel.visibleCards(), kernel.readCamera().zoom);
+      target = endpointAt(point, kernel.visibleCards());
     const completed = commitCanvasEndpointGesture({ session, gesture, target, point, createText });
     if (gesture.edge)
       void completed.catch(report).finally(() => {

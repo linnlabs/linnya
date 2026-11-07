@@ -65,6 +65,8 @@ export interface CanvasEndpointGestureOptions {
   readonly state: CanvasConnectionState;
   readonly report: (failure: unknown) => void;
   readonly createText: (point: CanvasPoint, from: CanvasEndpoint) => Promise<void>;
+  /** 连线圆点离卡片几何边的内缩距离（世界坐标），命中判定与画出的圆点同心。 */
+  readonly anchorInset: (zoom: number) => number;
 }
 export interface CanvasEndpointCommitInput {
   readonly session: CanvasDocumentSession;
@@ -79,6 +81,8 @@ export interface CanvasConnectionEditingOptions {
   clearCards(): void;
   report(failure: unknown): void;
   readDisplayVersion?(): number;
+  /** 连线圆点压在选中描边中线上；描边随卡片材质变化，由宿主给出离几何边的内缩距离。 */
+  readAnchorInset?(zoom: number): number;
 }
 export interface CanvasConnectionLabelEditingOptions {
   readonly session: CanvasDocumentSession;

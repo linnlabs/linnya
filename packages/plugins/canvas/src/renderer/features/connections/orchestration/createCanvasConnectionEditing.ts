@@ -45,15 +45,18 @@ export function createCanvasConnectionEditing(
     report: options.report,
   });
   const saveLabel = labels.save;
+  const anchorInset = (zoom: number) => options.readAnchorInset?.(zoom) ?? 0;
   const gesture = createCanvasEndpointGesture({
     session,
     kernel,
     state,
     report: options.report,
     createText: options.createText,
+    anchorInset,
   });
   return {
     state,
+    anchorInset,
     selected,
     patch,
     saveLabel,

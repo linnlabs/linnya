@@ -6,6 +6,7 @@ import { createCanvasCardOpening } from './createCanvasCardOpening';
 import { installCanvasReadonlyProjection } from './installCanvasReadonlyProjection';
 
 import { createCanvasSurfaceCreation } from './createCanvasSurfaceCreation';
+import { canvasSelectionOutlineCenter } from '../kernel/cardFrame';
 import type { CanvasSurfaceSelectionOptions } from './definitions/canvasSurfaceComposition';
 
 /** 卡片切换、打开和连线编辑的协作边界；切换前统一完成当前草稿。 */
@@ -58,6 +59,7 @@ export function createCanvasSurfaceSelection({
     },
     report,
     readDisplayVersion: () => state.displayVersion.value,
+    readAnchorInset: zoom => canvasSelectionOutlineCenter(base.readAppearance().material, zoom),
   });
   const actions = createCanvasElementActions(session, { read: () => selection.ids.value, select });
   const { createText, createTree } = createCanvasSurfaceCreation({

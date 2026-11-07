@@ -55,9 +55,8 @@ export class CanvasSelectionProjection {
         .rect(this.brush.x, this.brush.y, this.brush.width, this.brush.height)
         .fill({ color: this.accent, alpha: 0.08 })
         .stroke({ width: 1 / zoom, color: this.accent, alpha: 0.6 });
-    const { inset, radius, width, halo } = this.outlineStyle;
-    const line = width / zoom,
-      glow = halo / zoom;
+    const { inset, radius, width } = this.outlineStyle;
+    const line = width / zoom;
     // alignment 0 向外描边：线不进纸面，编辑时 DOM 叠层盖住纸面也不会遮掉半条线。
     const outline = (box: CanvasRectangle) => {
       const x = box.x + inset,
@@ -67,10 +66,6 @@ export class CanvasSelectionProjection {
       this.selectionLayer
         .roundRect(x, y, w, h, radius)
         .stroke({ width: line, color: this.accent, alignment: 0 });
-      if (glow > 0)
-        this.selectionLayer
-          .roundRect(x - line, y - line, w + line * 2, h + line * 2, radius + line)
-          .stroke({ width: glow, color: this.accent, alpha: 0.18, alignment: 0 });
     };
     for (const id of selected) {
       const box = frame?.id === id ? frame.rectangle : cards.get(id);
