@@ -37,4 +37,24 @@ describe('resolveConversationRowTailLayout', () => {
       ownsTrailingStatus: false,
     });
   });
+
+  it('没有回答但本轮改过文档时，仍由 turn-end row 承载改动清单', () => {
+    expect(resolveConversationRowTailLayout({
+      isTurnEnd: true,
+      isLastRow: false,
+      hasAnswerActions: false,
+      trailingStatusActive: false,
+      hasRunDocumentChanges: true,
+    })).toEqual({
+      ownsTailRegion: true,
+      ownsTrailingStatus: false,
+    });
+    expect(resolveConversationRowTailLayout({
+      isTurnEnd: false,
+      isLastRow: false,
+      hasAnswerActions: false,
+      trailingStatusActive: false,
+      hasRunDocumentChanges: true,
+    }).ownsTailRegion).toBe(false);
+  });
 });

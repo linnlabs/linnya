@@ -18,6 +18,16 @@ function readMessageRunId(message: BaseMessage): string | null {
   }
 }
 
+/** 一轮可视回复里出现过的运行编号，按出现顺序去重。 */
+export function collectVisualTurnRunIds(turnMessages: readonly BaseMessage[]): string[] {
+  const runIds = new Set<string>();
+  for (const message of turnMessages) {
+    const runId = readMessageRunId(message);
+    if (runId) runIds.add(runId);
+  }
+  return [...runIds];
+}
+
 /** 一行只有携带当前 active run 的正式归属身份时，才进入 streaming 生命周期。 */
 export function isVisualTurnOwnedByActiveRun(
   turnMessages: readonly BaseMessage[],

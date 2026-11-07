@@ -26,6 +26,7 @@ import { dispatchPluginInvoke } from 'src/electron-main/ipc/handlers/plugins/plu
 import type { BackendRendererRequestRegistryPort } from '../definitions/backendRendererRequest';
 import { createBackendRendererIpcStyleRegistrar } from './createBackendRendererIpcStyleRegistrar';
 import { registerDocumentHistoryRequests } from './registerDocumentHistoryRequests';
+import { registerConversationRunDocumentChangesRequests } from './registerConversationRunDocumentChangesRequests';
 import type {
   BackendRendererIntegrationPort,
   DesktopFileRevealPort,
@@ -68,6 +69,7 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
     credentialStorage: input.credentialStorage,
   });
   registerConversationFileLinkHandlers({ ipc, fileReveal: input.fileReveal });
+  registerConversationRunDocumentChangesRequests(input.runtimeOwner, input.registry);
 
   registerRegisteredBackendPluginIpcHandlers(input.runtimeOwner);
   input.registry.handle('plugin:invoke', request => dispatchPluginInvoke(undefined, request, {

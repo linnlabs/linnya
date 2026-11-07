@@ -75,6 +75,7 @@ export * from './conversation/selected-agent';
 export * from './conversation/history';
 export * from './conversation/ui-window-refresh';
 export * from './conversation/file-link';
+export * from './conversation/run-document-changes';
 export * from './conversation/run-continuation';
 
 // ============ Storage Space HTTP 合同 ============

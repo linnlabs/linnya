@@ -64,7 +64,8 @@ Host 不再记粗账，查询结果不会重复列出。只有粗账的文档类
 
 ## 查询
 
-Agent 通过 [Shell 内建命令](../../app-hosts/linnya/application/core-cli/README.md) 查询。
+Agent 通过 [Shell 内建命令](../../app-hosts/linnya/application/core-cli/README.md) 查询；对话界面经
+[`run-document-changes`](../../app-hosts/linnya/application/run-document-changes/README.md) 按一轮回复的根运行查询。
 
 `listDocumentChanges({ projectId, rootRunId?, since?, until?, limit })` 只读当前项目：
 
