@@ -15,8 +15,8 @@ const CONTEXT: StartupFailureDialogContext = {
   platform: 'darwin',
   osRelease: '25.6.0',
   arch: 'arm64',
-  dataDirectory: '/Users/someone/Library/Application Support/Linnya/Workspace',
-  homeDirectory: '/Users/someone',
+  dataDirectory: '/Users/user/Library/Application Support/Linnya/Workspace',
+  homeDirectory: '/Users/user',
 };
 
 function scriptedPort(responses: readonly number[]) {
@@ -116,13 +116,13 @@ describe('启动失败对话框', () => {
   });
 
   it('Main 自身的启动失败没有类别：按原因未知说明，附上错误文案并把主目录写成 ~', async () => {
-    const error = new Error('cannot read /Users/someone/Library/models.json');
+    const error = new Error('cannot read /Users/user/Library/models.json');
     const { port, shown, copied } = scriptedPort([1, 2]);
     await presentStartupFailureDialog({ error, context: CONTEXT, port });
     expect(shown[0]?.message).toBe('Linnya 启动失败');
     expect(shown[0]?.detail).toContain('错误：cannot read ~/Library/models.json');
     expect(copied[0]).toContain('reason: unknown');
-    expect(copied[0]).not.toContain('/Users/someone');
+    expect(copied[0]).not.toContain('/Users/user');
   });
 
   it('英文系统使用英文文案', () => {
