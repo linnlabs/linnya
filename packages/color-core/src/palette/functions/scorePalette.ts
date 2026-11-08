@@ -2,28 +2,36 @@ import type { Oklab, Oklch } from '../../definitions/color.js'
 import { deltaEOK, oklabToOklch, rgbToOklab } from '../../functions/colorSpace.js'
 import { isHueWithinArc } from '../../functions/hue.js'
 import { parseColor } from '../../functions/parseColor.js'
+import { colorFamily } from '../definitions/hueNames.js'
 import type { Palette } from '../definitions/palette.js'
 import {
   ACCENT_INK_MIN_DISTANCE,
   ACCENT_TOO_CLOSE_FACTOR,
+  BASE_DISTANCE,
   CHART_MIN_STEP_DISTANCE,
   CHART_SERIES_COUNT,
   CHART_TOO_CLOSE_FACTOR,
+  COLOR_DISTANCE_WEIGHT,
   DISLIKED_CHART_FACTOR,
   DISLIKED_HUES,
   DISLIKED_MAX_LIGHTNESS,
   DISLIKED_MIN_CHROMA,
   DISLIKED_ROLE_FACTOR,
   DISTANCE_WEIGHTS,
+  FAMILY_DISTANCE_WEIGHT,
+  FAMILY_MIN_CHROMA,
   LOUD_ACCENT_CHROMA,
   LOUD_BG_CHROMA,
   LOUD_FACTOR,
-  STRUCTURE_DISTANCE,
+  RAINBOW_FACTOR,
+  RAINBOW_MEAN_CHROMA,
+  RAINBOW_MIN_FAMILIES,
+  TINTED_BG_CHROMA,
 } from '../definitions/paletteConstants.js'
 
 /**
- * 候选配色的评分与彼此的感知距离。评分是显式规则的系数之积，不用学来的权重；
- * 距离是按角色加权的 ΔEOK 平均（底、点题、图表这些显眼的角色权重大），结构不同（底色明暗、关系、色调）再加一点。
+ * 候选配色的评分与彼此的距离。评分是显式规则的系数之积，不用学来的权重。距离以“色系组合”为主：
+ * 一眼看过去是不是同一类颜色（绿、褐、蓝……），只换深浅的几套算作相近；其次是底色明暗，再次才是颜色差。
  */
 
 export interface PaletteColors {
@@ -34,6 +42,8 @@ export interface PaletteColors {
   readonly accent: readonly Oklab[]
   /** 按 CHART_SERIES_COUNT 重采样，系列数不同的配色也能逐位比较。 */
   readonly chart: readonly Oklab[]
+  /** 这套配色用到的色系：强调色的色系，底色有明显颜色时加上底的色系。 */
+  readonly families: ReadonlySet<string>
 }
 
 function labOf(hex: string): Oklab {
@@ -49,15 +59,34 @@ function resample(colors: readonly Oklab[], count: number): Oklab[] {
   })
 }
 
+function familiesOf(bg: Oklab, accents: readonly Oklab[]): Set<string> {
+  const families = new Set<string>()
+  for (const accent of accents) {
+    const family = colorFamily(oklabToOklch(accent), FAMILY_MIN_CHROMA)
+    if (family) families.add(family)
+  }
+  const ground = colorFamily(oklabToOklch(bg), TINTED_BG_CHROMA)
+  if (ground) families.add(ground)
+  return families
+}
+
 export function paletteColors(palette: Palette): PaletteColors {
+  const bg = labOf(palette.bg)
+  const accent = palette.accent.map(labOf)
   return {
-    bg: labOf(palette.bg),
+    bg,
     surface: labOf(palette.surface),
     ink: labOf(palette.ink),
     muted: labOf(palette.muted),
-    accent: palette.accent.map(labOf),
+    accent,
     chart: resample(palette.chart.map(labOf), CHART_SERIES_COUNT),
+    families: familiesOf(bg, accent),
   }
+}
+
+/** 这套配色用到的色系名（如 绿、橙褐、黄），按出现顺序。 */
+export function paletteFamilies(palette: Palette): string[] {
+  return [...paletteColors(palette).families]
 }
 
 function isDisliked(color: Oklch): boolean {
@@ -78,10 +107,12 @@ export function scorePalette(palette: Palette, colors: PaletteColors): number {
   const steps = original.slice(1).map((color, index) => deltaEOK(color, original[index] ?? color))
   if (steps.some(step => step < CHART_MIN_STEP_DISTANCE)) score *= CHART_TOO_CLOSE_FACTOR
   if (accent && oklabToOklch(colors.bg).c >= LOUD_BG_CHROMA && oklabToOklch(accent).c >= LOUD_ACCENT_CHROMA) score *= LOUD_FACTOR
+  const meanAccentChroma = colors.accent.reduce((sum, color) => sum + oklabToOklch(color).c, 0) / Math.max(1, colors.accent.length)
+  if (colors.families.size >= RAINBOW_MIN_FAMILIES && meanAccentChroma > RAINBOW_MEAN_CHROMA) score *= RAINBOW_FACTOR
   return score
 }
 
-function weightedDistance(left: PaletteColors, right: PaletteColors): number {
+function weightedColorDistance(left: PaletteColors, right: PaletteColors): number {
   const parts: (readonly [number, number])[] = [
     [DISTANCE_WEIGHTS.bg, deltaEOK(left.bg, right.bg)],
     [DISTANCE_WEIGHTS.surface, deltaEOK(left.surface, right.surface)],
@@ -101,11 +132,17 @@ function weightedDistance(left: PaletteColors, right: PaletteColors): number {
   return parts.reduce((sum, [weight, distance]) => sum + weight * distance, 0) / totalWeight
 }
 
-/** 两套配色的感知距离：角色加权 ΔEOK，加上结构差异。 */
+/** 色系组合的 Jaccard 距离：0 表示用的是同一组色系，1 表示完全不同；都没有色系（全灰）时算相同。 */
+function familyDistance(left: ReadonlySet<string>, right: ReadonlySet<string>): number {
+  const union = new Set([...left, ...right])
+  if (union.size === 0) return 0
+  const shared = [...left].filter(family => right.has(family)).length
+  return 1 - shared / union.size
+}
+
+/** 两套配色的距离：色系组合为主，底色明暗不同加一项，颜色差（角色加权 ΔEOK）只作细分。 */
 export function paletteDistance(left: Palette, right: Palette, leftColors = paletteColors(left), rightColors = paletteColors(right)): number {
-  let distance = weightedDistance(leftColors, rightColors)
-  if (left.base !== right.base) distance += STRUCTURE_DISTANCE.base
-  if (left.relation !== right.relation) distance += STRUCTURE_DISTANCE.relation
-  if (left.tone !== right.tone) distance += STRUCTURE_DISTANCE.tone
-  return distance
+  return FAMILY_DISTANCE_WEIGHT * familyDistance(leftColors.families, rightColors.families)
+    + (left.base !== right.base ? BASE_DISTANCE : 0)
+    + COLOR_DISTANCE_WEIGHT * weightedColorDistance(leftColors, rightColors)
 }

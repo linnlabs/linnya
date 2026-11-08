@@ -1,6 +1,6 @@
-import type { Oklch, RgbChannels } from '../../definitions/color.js'
-import { maxSrgbChroma } from '../../functions/colorSpace.js'
-import { isHueWithinArc, normalizeHue } from '../../functions/hue.js'
+import type { Oklab, Oklch, RgbChannels } from '../../definitions/color.js'
+import { deltaEOK, maxSrgbChroma, oklabToOklch, oklchToOklab, rgbToOklab } from '../../functions/colorSpace.js'
+import { hueDistance, isHueWithinArc, normalizeHue } from '../../functions/hue.js'
 import { parseColor } from '../../functions/parseColor.js'
 import type { HueRange, Palette, PaletteBase, PaletteRelation, PaletteTone } from '../definitions/palette.js'
 import {
@@ -8,8 +8,9 @@ import {
   ACCENT_LIGHTNESS_JITTER,
   ACCENT_MIN_CHROMA,
   ACCENT_MIN_CONTRAST,
+  ACCENT_MIN_SEPARATION,
+  ACCENT_TONE_STEP,
   ACCENT_TONES,
-  ANALOG_HUE_SHIFT,
   BEIGE_HUES,
   CHART_CHROMA_TAPER,
   CHART_DARK_GROUND_GAP,
@@ -22,19 +23,27 @@ import {
   CHART_RELATIVE_CHROMA,
   CHART_SERIES_COUNT,
   COOL_NEUTRAL_HUE,
-  DUAL_SWAP_PROBABILITY,
+  DEFAULT_ACCENT_COUNT,
   EMPHASIS_GRAY_CHROMA,
   EXCLUSION_MARGIN,
   type GroundVariant,
+  IMAGE_PARTNER_PROBABILITY,
   INK_MIN_CONTRAST,
   INK_RELATION_MAX_CHROMA,
+  MAX_ACCENT_COUNT,
   MAX_ACCENT_HUE_SHIFT,
+  MULTI_MAX_HUES,
+  MULTI_MIN_SUBJECTS,
   MUTED_MIN_CONTRAST,
   NATIVE_ACCENT_CHROMA,
   NATIVE_DARK_LIGHTNESS_LIFT,
+  PARTNER_MIN_HUE_DIFFERENCE,
+  PRIMARY_SUBJECT_WEIGHTS,
   type RangeValue,
+  RELATION_HUE_SHIFT,
+  SPOT_PRIMARY_WEIGHT,
+  SYNTHESIZED_HUE_SHIFT_MAX,
   TEXT_TONES,
-  type ToneSpec,
   type ToneSurface,
 } from '../definitions/paletteConstants.js'
 import { isColorExcluded, isHueExcluded, nearestAllowedHue } from './excludedHues.js'
@@ -42,9 +51,9 @@ import { fitLightness, oklchHex } from './fitLightness.js'
 import { randomBetween, type RandomSource } from './random.js'
 
 /**
- * 按一组风格基因生成一套配色的六个角色：关系定色相，底面变体定纸，色调定点题与图表的鲜浊深浅，
- * 图表明度区间、彩度收尾与色相漂移在区间里随机取。墨、弱墨、点题色在期望明度上保证对比度下限；
- * 所有有彩颜色都避开排除区，做不到就返回 null，由调用方丢掉这个候选。
+ * 按一组风格基因生成一套配色：关系定用哪几个色相（图片里真有的颜色优先），底面变体定纸，色调定强调色与图表的
+ * 鲜浊深浅；强调色按色相轮流取，色相用完后换一档色调（tone-on-tone）。墨、弱墨、强调色在期望明度上保证对比度
+ * 下限；所有有彩颜色都避开排除区，做不到就返回 null，由调用方丢掉这个候选。
  */
 
 export interface PaletteRecipe {
@@ -53,10 +62,20 @@ export interface PaletteRecipe {
   readonly base: PaletteBase
   readonly ground: GroundVariant
   readonly tone: PaletteTone
-  /** 题材本色，第一种为主。 */
+  /** 题材本色，按排名；点缀色排在后面。 */
   readonly subject: readonly Oklch[]
+  /** 与 `subject` 一一对应：是否点缀色。 */
+  readonly spots?: readonly boolean[]
   readonly excluded: readonly HueRange[]
   readonly random: RandomSource
+  /** 强调色个数，1–6；不传按关系默认。 */
+  readonly accentCount?: number
+}
+
+/** 一个用到的色相：`source` 是取它的明度与彩度时参照的颜色（图片色本身，或合成时借主色的明度与彩度）。 */
+interface Anchor {
+  readonly hue: number
+  readonly source: Oklch
 }
 
 function clamp(value: number, range: RangeValue): number {
@@ -67,11 +86,6 @@ function between(recipe: PaletteRecipe, range: RangeValue): number {
   return randomBetween(recipe.random, range.min, range.max)
 }
 
-function signedHueDifference(from: number, to: number): number {
-  const difference = normalizeHue(to - from)
-  return difference > 180 ? difference - 360 : difference
-}
-
 function isBeige(color: Oklch): boolean {
   return isHueWithinArc(color.h, BEIGE_HUES.min, BEIGE_HUES.max)
 }
@@ -80,50 +94,102 @@ function surfaceOf(base: PaletteBase): ToneSurface {
   return base === 'dark' ? 'dark' : 'paper'
 }
 
-function hueStepsAllowed(recipe: PaletteRecipe, hues: readonly number[]): boolean {
-  return hues.every(hue => !isHueExcluded(hue, recipe.excluded, EXCLUSION_MARGIN))
+function isAllowed(recipe: PaletteRecipe, hue: number): boolean {
+  return !isHueExcluded(hue, recipe.excluded, EXCLUSION_MARGIN)
 }
 
-function rampHues(from: number, span: number): number[] {
-  return Array.from({ length: CHART_SERIES_COUNT }, (_, index) => normalizeHue(from + (span * index) / (CHART_SERIES_COUNT - 1)))
+function pickWeighted<T>(items: readonly T[], weights: readonly number[], random: RandomSource): T | undefined {
+  const total = weights.reduce((sum, weight) => sum + weight, 0)
+  let target = random() * total
+  for (let index = 0; index < items.length; index += 1) {
+    target -= weights[index] ?? 0
+    if (target <= 0) return items[index]
+  }
+  return items[items.length - 1]
 }
 
-function analogShift(recipe: PaletteRecipe, hue: number): number | null {
-  const magnitude = between(recipe, ANALOG_HUE_SHIFT)
+/** 主色：按本色排名加权抽，每次主色不同，色系才不同。染纸底不铺米色（灰 + 主色的底几乎无彩，不受影响）。 */
+function pickPrimary(recipe: PaletteRecipe): Oklch | undefined {
+  const avoidBeige = recipe.base === 'tint' && recipe.relation !== 'ink'
+  const candidates = recipe.subject.filter(color => !avoidBeige || !isBeige(color))
+  if (recipe.relation === 'multi') return candidates.find(color => !recipe.spots?.[recipe.subject.indexOf(color)])
+  const weights = candidates.map(color => {
+    const index = recipe.subject.indexOf(color)
+    return recipe.spots?.[index] ? SPOT_PRIMARY_WEIGHT : PRIMARY_SUBJECT_WEIGHTS[index] ?? 0.2
+  })
+  if (weights.every(weight => weight <= 0)) return undefined
+  return pickWeighted(candidates, weights, recipe.random)
+}
+
+/** 按关系定用到的色相。邻近、中差、对照优先用色相差落在区间里的图片色，没有再合成。 */
+function huePlan(recipe: PaletteRecipe, primary: Oklch): Anchor[] | null {
+  const main: Anchor = { hue: primary.h, source: primary }
+  if (recipe.relation === 'mono' || recipe.relation === 'ink') return [main]
+  if (recipe.relation === 'multi') {
+    // 其余本色随机排序后依次挑：与已挑的每种都看得出不同才要，最多三种。每次挑到的组合不同。
+    const others = shuffled(recipe, recipe.subject.filter(color => color !== primary && isAllowed(recipe, color.h)))
+    const chosen: Oklch[] = [primary]
+    for (const color of others) {
+      if (chosen.length >= MULTI_MAX_HUES) break
+      if (chosen.every(existing => hueDifference(existing, color) >= PARTNER_MIN_HUE_DIFFERENCE)) chosen.push(color)
+    }
+    if (chosen.length < MULTI_MIN_SUBJECTS) return null
+    return chosen.map(color => ({ hue: color.h, source: color }))
+  }
+  const band = RELATION_HUE_SHIFT[recipe.relation]
+  const imagePartners = recipe.subject.filter(color => {
+    const distance = hueDistance(color.h, primary.h)
+    return color !== primary && distance >= band.min && distance <= band.max && isAllowed(recipe, color.h)
+      && hueDifference(primary, color) >= PARTNER_MIN_HUE_DIFFERENCE
+  })
+  if (imagePartners.length > 0 && recipe.random() < IMAGE_PARTNER_PROBABILITY) {
+    const partner = imagePartners[Math.floor(recipe.random() * imagePartners.length)] ?? imagePartners[0]
+    if (partner) return [main, { hue: partner.h, source: partner }]
+  }
+  const magnitude = between(recipe, { min: band.min, max: Math.min(band.max, SYNTHESIZED_HUE_SHIFT_MAX) })
   const preferred = recipe.random() < 0.5 ? 1 : -1
   for (const sign of [preferred, -preferred]) {
-    if (hueStepsAllowed(recipe, rampHues(hue, sign * magnitude))) return sign * magnitude
+    const hue = normalizeHue(primary.h + sign * magnitude)
+    if (isAllowed(recipe, hue)) return [main, { hue, source: { ...primary, h: hue } }]
   }
   return null
 }
 
-/** 同色系图表的色相漂移：有一定概率不漂；漂移会碰到排除区时也不漂。 */
-function monoDrift(recipe: PaletteRecipe, hue: number): number {
-  if (recipe.random() < CHART_NO_DRIFT_PROBABILITY) return 0
-  const drift = (recipe.random() < 0.5 ? -1 : 1) * between(recipe, CHART_HUE_DRIFT)
-  return hueStepsAllowed(recipe, rampHues(hue, drift)) ? drift : 0
+function shuffled<T>(recipe: PaletteRecipe, items: readonly T[]): T[] {
+  const result = [...items]
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(recipe.random() * (index + 1))
+    const current = result[index]
+    const other = result[swap]
+    if (current !== undefined && other !== undefined) {
+      result[index] = other
+      result[swap] = current
+    }
+  }
+  return result
 }
 
-function toneSpec(recipe: PaletteRecipe): ToneSpec | null {
-  return ACCENT_TONES[surfaceOf(recipe.base)][recipe.tone] ?? null
+/** 色调顺序：第一档是这套的主色调，之后几档给同一色相的第二、三个强调色（tone-on-tone）。 */
+function toneSequence(recipe: PaletteRecipe): PaletteTone[] {
+  const others = (Object.keys(ACCENT_TONES[surfaceOf(recipe.base)]) as PaletteTone[]).filter(tone => tone !== recipe.tone)
+  return [recipe.tone, ...shuffled(recipe, others)]
 }
 
-/** 相对彩度：彩度 ÷ 该明度色相下 sRGB 的最大彩度。 */
 function relativeChromaOf(color: Oklch): number {
   const max = maxSrgbChroma(color.l, color.h)
   return max > 0 ? Math.min(1, color.c / max) : 0
 }
 
-function accentFrom(recipe: PaletteRecipe, source: Oklch, wantedHue: number, background: RgbChannels): Oklch | null {
-  const spec = toneSpec(recipe)
+function accentAt(recipe: PaletteRecipe, anchor: Anchor, tone: PaletteTone, background: RgbChannels): Oklch | null {
+  const spec = ACCENT_TONES[surfaceOf(recipe.base)][tone]
   if (!spec) return null
-  const hue = nearestAllowedHue(wantedHue, recipe.excluded, EXCLUSION_MARGIN, MAX_ACCENT_HUE_SHIFT)
+  const hue = nearestAllowedHue(anchor.hue, recipe.excluded, EXCLUSION_MARGIN, MAX_ACCENT_HUE_SHIFT)
   if (hue === null) return null
   let target: Oklch
-  if (recipe.tone === 'native') {
-    const preferred = recipe.base === 'dark' ? source.l + NATIVE_DARK_LIGHTNESS_LIFT : source.l
+  if (tone === 'native') {
+    const preferred = recipe.base === 'dark' ? anchor.source.l + NATIVE_DARK_LIGHTNESS_LIFT : anchor.source.l
     const lightness = clamp(preferred + randomBetween(recipe.random, -ACCENT_LIGHTNESS_JITTER, ACCENT_LIGHTNESS_JITTER), spec.lightness)
-    const chroma = clamp(source.c * (1 + randomBetween(recipe.random, -ACCENT_CHROMA_JITTER, ACCENT_CHROMA_JITTER)), NATIVE_ACCENT_CHROMA)
+    const chroma = clamp(anchor.source.c * (1 + randomBetween(recipe.random, -ACCENT_CHROMA_JITTER, ACCENT_CHROMA_JITTER)), NATIVE_ACCENT_CHROMA)
     target = { l: lightness, c: chroma, h: hue }
   } else {
     const lightness = between(recipe, spec.lightness)
@@ -131,6 +197,39 @@ function accentFrom(recipe: PaletteRecipe, source: Oklch, wantedHue: number, bac
     target = { l: lightness, c: Math.max(ACCENT_MIN_CHROMA, chroma), h: hue }
   }
   return fitLightness(target, background, ACCENT_MIN_CONTRAST, recipe.base === 'dark' ? 'lighter' : 'darker')
+}
+
+/** 按最终写出的 sRGB 颜色比较：映射进色域后可能靠近，不能只看映射前的目标色。 */
+function shownLab(color: Oklch): Oklab {
+  const parsed = parseColor(oklchHex(color))
+  return parsed ? rgbToOklab(parsed.channels) : oklchToOklab(color)
+}
+
+function nearestAccentDistance(color: Oklch, others: readonly Oklch[]): number {
+  const lab = shownLab(color)
+  return Math.min(Number.POSITIVE_INFINITY, ...others.map(other => deltaEOK(lab, shownLab(other))))
+}
+
+/** 两个颜色的色相差在 OKLab 里的大小（ΔH）：彩度低时，色相差再大也看不出来。 */
+function hueDifference(left: Oklch, right: Oklch): number {
+  return 2 * Math.sqrt(left.c * right.c) * Math.sin((hueDistance(left.h, right.h) * Math.PI) / 360)
+}
+
+function visibleHueDifference(left: Oklch, right: Oklch): number {
+  return hueDifference(oklabToOklch(shownLab(left)), oklabToOklch(shownLab(right)))
+}
+
+/** 与已有强调色太近时沿明度拉开（先往对比度更安全的方向），仍分不开返回 null。 */
+function separated(recipe: PaletteRecipe, color: Oklch, others: readonly Oklch[], background: RgbChannels): Oklch | null {
+  if (nearestAccentDistance(color, others) >= ACCENT_MIN_SEPARATION) return color
+  const step = between(recipe, ACCENT_TONE_STEP)
+  const direction = recipe.base === 'dark' ? 'lighter' : 'darker'
+  const shifts = recipe.base === 'dark' ? [step, -step] : [-step, step]
+  for (const shift of shifts) {
+    const moved = fitLightness({ ...color, l: Math.min(0.97, Math.max(0.12, color.l + shift)) }, background, ACCENT_MIN_CONTRAST, direction)
+    if (moved && nearestAccentDistance(moved, others) >= ACCENT_MIN_SEPARATION) return moved
+  }
+  return null
 }
 
 /** 图表首尾明度：浅底从深到浅、深底从浅到深；深底上最暗一档与底色拉开。 */
@@ -141,6 +240,48 @@ function chartLightness(recipe: PaletteRecipe, background: Oklch): readonly [num
   if (recipe.base === 'dark') end = Math.min(start - CHART_MIN_LIGHTNESS_SPAN, Math.max(end, background.l + CHART_DARK_GROUND_GAP))
   else end = Math.max(end, start + CHART_MIN_LIGHTNESS_SPAN)
   return [start, end]
+}
+
+/** 单色相图表：Cubehelix 的思路，明度单调、色相沿途缓慢转动；有一定概率不转，转动会碰到排除区时也不转。 */
+function singleHueChart(recipe: PaletteRecipe, hue: number): number[] {
+  const drift = recipe.random() < CHART_NO_DRIFT_PROBABILITY ? 0 : (recipe.random() < 0.5 ? -1 : 1) * between(recipe, CHART_HUE_DRIFT)
+  const drifted = Array.from({ length: CHART_SERIES_COUNT }, (_, index) => normalizeHue(hue + (drift * index) / (CHART_SERIES_COUNT - 1)))
+  return drifted.every(step => isAllowed(recipe, step)) ? drifted : drifted.map(() => hue)
+}
+
+/**
+ * 多色相图表的色相路径：各色相沿色环排好（不跨最大空档），本身更深的颜色放在深色一端，再按明度单调渐变
+ * （グラデーション）。渐变经过排除区时改为各色相轮流。
+ */
+function multiHueChart(recipe: PaletteRecipe, anchors: readonly Anchor[]): number[] {
+  const sorted = [...anchors].sort((left, right) => left.hue - right.hue)
+  let gapIndex = 0
+  let largestGap = -1
+  sorted.forEach((anchor, index) => {
+    const next = sorted[(index + 1) % sorted.length] ?? anchor
+    const gap = normalizeHue(next.hue - anchor.hue) || 360
+    if (gap > largestGap) {
+      largestGap = gap
+      gapIndex = index
+    }
+  })
+  const forwardOrder = [...sorted.slice(gapIndex + 1), ...sorted.slice(0, gapIndex + 1)]
+  const first = forwardOrder[0]
+  const last = forwardOrder[forwardOrder.length - 1]
+  const deepFirst = recipe.base !== 'dark'
+  const reverse = first !== undefined && last !== undefined && (deepFirst ? last.source.l < first.source.l : last.source.l > first.source.l)
+  const ordered = reverse ? [...forwardOrder].reverse() : forwardOrder
+  const segments = ordered.length - 1
+  const hues = Array.from({ length: CHART_SERIES_COUNT }, (_, index) => {
+    const position = (index / (CHART_SERIES_COUNT - 1)) * segments
+    const segment = Math.min(segments - 1, Math.floor(position))
+    const from = ordered[segment]?.hue ?? 0
+    const to = ordered[segment + 1]?.hue ?? from
+    const span = reverse ? -normalizeHue(from - to) : normalizeHue(to - from)
+    return normalizeHue(from + span * (position - segment))
+  })
+  if (hues.every(hue => isAllowed(recipe, hue))) return hues
+  return hues.map((_, index) => ordered[index % ordered.length]?.hue ?? 0)
 }
 
 function chartRamp(recipe: PaletteRecipe, accent: Oklch, hues: readonly number[], lightness: readonly [number, number]): Oklch[] {
@@ -156,7 +297,7 @@ function chartRamp(recipe: PaletteRecipe, accent: Oklch, hues: readonly number[]
   })
 }
 
-/** 墨色主导：点题色打头，其余是近中性的灰阶，明度单调。 */
+/** 灰 + 主色：主色打头，其余是近中性的灰阶，明度单调。 */
 function emphasisChart(recipe: PaletteRecipe, accent: Oklch, neutralHue: number, background: Oklch): Oklch[] {
   const dark = recipe.base === 'dark'
   const step = 0.08
@@ -171,24 +312,13 @@ function emphasisChart(recipe: PaletteRecipe, accent: Oklch, neutralHue: number,
 export function buildPalette(recipe: PaletteRecipe): Palette | null {
   const text = TEXT_TONES[recipe.base]
   const ground = recipe.ground
-  const [first, second] = recipe.subject
-  if (!first) return null
   const inkRelation = recipe.relation === 'ink'
-  // 墨色主导要的是近中性的纸，不配本色深底。
+  // 灰 + 主色要的是近中性的纸，不配本色深底。
   if (inkRelation && ground.key === 'deep') return null
-  // 双本色时两种本色都可以做底与墨，另一种做点题（例如铜锈绿做底、铜金点题；深朱做酒红底、叶绿点题）。
-  // 染纸底只让非米色的本色做底。
-  const dual = recipe.relation === 'dual' && second !== undefined
-  const swap = dual && (recipe.base === 'tint'
-    ? isBeige(first) && !isBeige(second)
-    : recipe.random() < DUAL_SWAP_PROBABILITY)
-  // 染纸底不铺米色：同色系、邻近色改用第一种非米色本色；墨色主导的底几乎无彩，不受影响。
-  const paperSubject = recipe.base === 'tint' && recipe.relation !== 'dual' && !inkRelation && isBeige(first)
-    ? recipe.subject.find(color => !isBeige(color))
-    : undefined
-  const primary = swap && second ? second : paperSubject ?? first
-  const partner = swap ? first : second
-  if (recipe.base === 'tint' && !inkRelation && isBeige(primary)) return null
+  const primary = pickPrimary(recipe)
+  if (!primary) return null
+  const anchors = huePlan(recipe, primary)
+  if (!anchors) return null
   const hue = primary.h
   const neutralHue = ground.neutralHue === 'cool' ? COOL_NEUTRAL_HUE : hue
   const capInk = (chroma: number) => inkRelation ? Math.min(chroma, INK_RELATION_MAX_CHROMA) : chroma
@@ -212,32 +342,30 @@ export function buildPalette(recipe: PaletteRecipe): Palette | null {
   const muted = fitLightness({ l: text.mutedLightness, c: textChroma(text.mutedChroma), h: neutralHue }, background, MUTED_MIN_CONTRAST, textDirection)
   if (!ink || !muted) return null
 
-  let accents: Oklch[]
+  // 强调色：按色相轮流取，色相用完后换下一档色调。
+  const count = Math.min(MAX_ACCENT_COUNT, Math.max(1, Math.round(recipe.accentCount ?? DEFAULT_ACCENT_COUNT[recipe.relation])))
+  const tones = toneSequence(recipe)
+  const accents: Oklch[] = []
+  for (let index = 0; index < count; index += 1) {
+    const anchor = anchors[index % anchors.length]
+    const tone = tones[Math.min(Math.floor(index / anchors.length), tones.length - 1)]
+    if (!anchor || !tone) return null
+    const raw = accentAt(recipe, anchor, tone, background)
+    const accent = raw ? separated(recipe, raw, accents, background) : null
+    if (!accent) return null
+    accents.push(accent)
+  }
+  // 第一轮是各色相各一个：彼此要看得出是不同颜色，否则“邻近色”“多色”实际只是一种颜色。
+  const firstRound = accents.slice(0, anchors.length)
+  if (firstRound.some((accent, index) => firstRound.slice(index + 1).some(other => visibleHueDifference(accent, other) < PARTNER_MIN_HUE_DIFFERENCE))) return null
+  const mainAccent = accents[0]
+  if (!mainAccent) return null
+
   let chart: Oklch[]
-  if (recipe.relation === 'analog') {
-    const shift = analogShift(recipe, hue)
-    if (shift === null) return null
-    const accent = accentFrom(recipe, primary, normalizeHue(hue + shift), background)
-    if (!accent) return null
-    accents = [accent]
-    chart = chartRamp(recipe, accent, rampHues(hue, shift), chartLightness(recipe, bgColor))
-  } else if (recipe.relation === 'dual') {
-    if (!partner) return null
-    const secondAccent = accentFrom(recipe, partner, partner.h, background)
-    const firstAccent = accentFrom(recipe, primary, hue, background)
-    if (!secondAccent || !firstAccent) return null
-    accents = [secondAccent, firstAccent]
-    // 本身更暗的本色占色阶的深色一端（例如深朱在深端、叶绿在浅端）。
-    const [deepEnd, paleEnd] = partner.l < primary.l ? [partner, primary] : [primary, partner]
-    const [startHue, endHue] = recipe.base === 'dark' ? [paleEnd.h, deepEnd.h] : [deepEnd.h, paleEnd.h]
-    chart = chartRamp(recipe, firstAccent, rampHues(startHue, signedHueDifference(startHue, endHue)), chartLightness(recipe, bgColor))
-  } else {
-    const accent = accentFrom(recipe, primary, hue, background)
-    if (!accent) return null
-    accents = [accent]
-    chart = inkRelation
-      ? emphasisChart(recipe, accent, neutralHue, bgColor)
-      : chartRamp(recipe, accent, rampHues(hue, monoDrift(recipe, hue)), chartLightness(recipe, bgColor))
+  if (inkRelation) chart = emphasisChart(recipe, mainAccent, neutralHue, bgColor)
+  else {
+    const hues = anchors.length === 1 ? singleHueChart(recipe, hue) : multiHueChart(recipe, anchors)
+    chart = chartRamp(recipe, mainAccent, hues, chartLightness(recipe, bgColor))
   }
 
   const everyColor = [bgColor, surfaceColor, ink, muted, ...accents, ...chart]

@@ -30,7 +30,7 @@ export function subjectColorName(color: Oklch): string {
   const base = hueName(color.h)
   if (isHueWithinArc(color.h, 42, 85) && color.l < 0.58 && color.c < 0.13) return color.l < 0.4 ? '深褐' : '褐'
   if (isHueWithinArc(color.h, 85, 125) && color.l < 0.62 && color.c < 0.11) return '橄榄'
-  if (isHueWithinArc(color.h, 70, 100) && color.l >= 0.58 && color.l < 0.82 && color.c >= 0.08) return '金'
+  if (isHueWithinArc(color.h, 70, 100) && color.l >= 0.58 && color.l < 0.9 && color.c >= 0.08) return '金'
   if (color.c < 0.05) return `灰${base}`
   if (color.l < 0.42) return `深${base}`
   if (color.l > 0.82) return `浅${base}`
@@ -54,4 +54,33 @@ export const PALETTE_TONE_NAMES: Readonly<Record<PaletteTone, string>> = {
   deep: '深',
   dark: '暗',
   grayish: '灰',
+}
+
+/**
+ * 粗分的色系：一眼看过去算“同一类颜色”的范围，用来衡量几套配色是不是只换了深浅。
+ * 按 OKLCH 色相分类（OKLCH 里纯红约 29°、橙 55°、黄 110°、绿 142°、青 195°、蓝 264°、品红 328°）；暖色相里偏暗或偏灰的看起来是褐（铜、木、驼色），暗的黄绿看起来是橄榄，各算一类。
+ * 彩度很低的颜色不算色系。
+ */
+const COLOR_FAMILY_BINS: readonly { readonly from: number; readonly to: number; readonly name: string }[] = [
+  { from: 355, to: 40, name: '红' },
+  { from: 40, to: 70, name: '橙' },
+  { from: 70, to: 115, name: '黄' },
+  { from: 115, to: 175, name: '绿' },
+  { from: 175, to: 215, name: '青' },
+  { from: 215, to: 275, name: '蓝' },
+  { from: 275, to: 320, name: '紫' },
+  { from: 320, to: 355, name: '品红' },
+]
+
+/** 暖色相（40°–100°）低于这个明度或彩度时算褐；100°–130° 低于这个明度时算橄榄。暗红（低于 40°）仍算红。 */
+const BROWN_HUES = { min: 40, max: 100 } as const
+const OLIVE_HUES = { min: 100, max: 130 } as const
+const EARTHY_MAX_LIGHTNESS = 0.66
+const EARTHY_MAX_CHROMA = 0.07
+
+export function colorFamily(color: Oklch, minChroma: number): string | null {
+  if (color.c < minChroma) return null
+  if (isHueWithinArc(color.h, BROWN_HUES.min, BROWN_HUES.max) && (color.l < EARTHY_MAX_LIGHTNESS || color.c < EARTHY_MAX_CHROMA)) return '褐'
+  if (isHueWithinArc(color.h, OLIVE_HUES.min, OLIVE_HUES.max) && color.l < EARTHY_MAX_LIGHTNESS) return '橄榄'
+  return COLOR_FAMILY_BINS.find(bin => isHueWithinArc(color.h, bin.from, bin.to))?.name ?? '红'
 }

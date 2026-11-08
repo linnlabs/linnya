@@ -1,5 +1,5 @@
 import type { Oklch } from '../../definitions/color.js'
-import { oklabToOklch, oklchToRgb } from '../../functions/colorSpace.js'
+import { deltaEOK, oklabToOklch, oklchToOklab, oklchToRgb } from '../../functions/colorSpace.js'
 import { hueDistance, normalizeHue } from '../../functions/hue.js'
 import { toHex } from '../../functions/parseColor.js'
 import { subjectColorName } from '../definitions/hueNames.js'
@@ -11,16 +11,21 @@ import {
   HUE_FAMILY_RADIUS,
   IMAGE_PRESENCE_MIN_SHARE,
   MAX_NEUTRAL_COLORS,
+  MAX_SPOT_COLORS,
   MAX_SUBJECT_COLORS,
   PRIMARY_IMAGE_MIN_WEIGHT,
   PRIMARY_IMAGE_SHARE,
   SECONDARY_SUBJECT_MIN_SCORE_RATIO,
   SINGLE_IMAGE_PENALTY,
+  SPOT_MIN_CHROMA,
+  SPOT_MIN_SHARE,
   SUBJECT_CHROMA_WEIGHT,
   SUBJECT_MAX_HUE_SPREAD,
   SUBJECT_PRESENCE_WEIGHT,
   SUBJECT_MIN_HUE_SEPARATION,
   SUBJECT_MIN_SHARE,
+  SUBJECT_NEAR_HUE_SEPARATION,
+  SUBJECT_NEAR_MIN_DELTA_E,
   SUBJECT_SHARE_WEIGHT,
   SUBJECT_TARGET_CHROMA,
 } from '../definitions/paletteConstants.js'
@@ -29,7 +34,7 @@ import type { QuantizedColor } from './quantizeImage.js'
 /**
  * 从多张图的量化结果里找题材本色：低彩度或过暗过亮的颜色只当中性色；彩色按色相聚成族，
  * 记录总占比和出现在几张图里；占比为主、跨图出现次数与接近目标彩度为辅打分，只在一张非主图里出现的降权；
- * 最多选 3 种，彼此色相至少差 SUBJECT_MIN_HUE_SEPARATION、至多差 SUBJECT_MAX_HUE_SPREAD。
+ * 本色最多 4 种，再加最多 2 种面积小但鲜明的点缀色；彼此要看得出是不同颜色，且不落进彼此的对侧。
  */
 
 interface Entry {
@@ -47,6 +52,9 @@ interface Family {
   chromaSum: number
   hueSin: number
   hueCos: number
+  /** 族里“占比 × 彩度”最大的实际颜色：点缀色用它，取的是那一小块最鲜明的颜色，不取平均。 */
+  vivid: Oklch
+  vividScore: number
   readonly imageWeights: Map<number, number>
 }
 
@@ -67,6 +75,10 @@ function addToFamily(family: Family, entry: Entry): void {
   family.chromaSum += entry.color.c * entry.weight
   family.hueSin += Math.sin(radians) * hueWeight
   family.hueCos += Math.cos(radians) * hueWeight
+  if (hueWeight > family.vividScore) {
+    family.vivid = entry.color
+    family.vividScore = hueWeight
+  }
   family.imageWeights.set(entry.image, (family.imageWeights.get(entry.image) ?? 0) + entry.weight)
 }
 
@@ -115,7 +127,7 @@ export function extractSubjectColors(images: readonly (readonly QuantizedColor[]
       addToFamily(home, entry)
       continue
     }
-    const family: Family = { seed: entry.color, weight: 0, lightnessSum: 0, chromaSum: 0, hueSin: 0, hueCos: 0, imageWeights: new Map() }
+    const family: Family = { seed: entry.color, weight: 0, lightnessSum: 0, chromaSum: 0, hueSin: 0, hueCos: 0, vivid: entry.color, vividScore: 0, imageWeights: new Map() }
     addToFamily(family, entry)
     families.push(family)
   }
@@ -135,28 +147,44 @@ export function extractSubjectColors(images: readonly (readonly QuantizedColor[]
         + SUBJECT_PRESENCE_WEIGHT * (presence / largestPresence)
         + SUBJECT_CHROMA_WEIGHT * chromaFit)
         * (onlyOneSecondaryImage ? SINGLE_IMAGE_PENALTY : 1)
-      return { color, share, presence, score }
+      return { color, share, presence, score, vivid: family.vivid, spot: false }
     })
+  const ranked = scored
     .filter(candidate => candidate.share >= SUBJECT_MIN_SHARE)
     .sort((left, right) => right.score - left.score)
 
-  const picked: typeof scored = []
-  for (const candidate of scored) {
+  const conflicts = (picked: readonly { readonly color: Oklch }[], color: Oklch) => picked.some(existing => {
+    const distance = hueDistance(existing.color.h, color.h)
+    if (distance > SUBJECT_MAX_HUE_SPREAD) return true
+    if (distance >= SUBJECT_MIN_HUE_SEPARATION) return false
+    return distance < SUBJECT_NEAR_HUE_SEPARATION || deltaEOK(oklchToOklab(existing.color), oklchToOklab(color)) < SUBJECT_NEAR_MIN_DELTA_E
+  })
+
+  const picked: (typeof scored)[number][] = []
+  for (const candidate of ranked) {
     if (picked.length >= MAX_SUBJECT_COLORS) break
     const first = picked[0]
     if (first && candidate.score < first.score * SECONDARY_SUBJECT_MIN_SCORE_RATIO) break
-    if (picked.some(existing => {
-      const distance = hueDistance(existing.color.h, candidate.color.h)
-      return distance < SUBJECT_MIN_HUE_SEPARATION || distance > SUBJECT_MAX_HUE_SPREAD
-    })) continue
+    if (conflicts(picked, candidate.color)) continue
     picked.push(candidate)
+  }
+
+  // 点缀色：没选上的族里，按“占比 × 彩度”找面积小但鲜明的颜色，取那一小块最鲜明的实际颜色。
+  const spots = scored
+    .filter(candidate => !picked.includes(candidate) && candidate.share >= SPOT_MIN_SHARE && candidate.vivid.c >= SPOT_MIN_CHROMA)
+    .sort((left, right) => right.share * right.vivid.c - left.share * left.vivid.c)
+  for (const candidate of spots) {
+    if (picked.filter(item => item.spot).length >= MAX_SPOT_COLORS) break
+    if (conflicts(picked, candidate.vivid)) continue
+    picked.push({ ...candidate, color: candidate.vivid, spot: true })
   }
 
   const subject = picked.map(candidate => ({
     hex: toHex(oklchToRgb(candidate.color, { jnd: 0 })),
     name: subjectColorName(candidate.color),
-    share: Math.round(candidate.share * 100) / 100,
+    share: Math.round(candidate.share * 1000) / 1000,
     images: Math.max(1, candidate.presence),
+    spot: candidate.spot,
     oklch: candidate.color,
   }))
 

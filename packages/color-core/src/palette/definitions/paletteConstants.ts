@@ -32,21 +32,34 @@ export const IMAGE_PRESENCE_MIN_SHARE = 0.02
 export const SUBJECT_MIN_SHARE = 0.025
 /** 只在一张图里出现（且不是主图）的颜色降权。 */
 export const SINGLE_IMAGE_PENALTY = 0.4
-/** 次要本色的分数至少是首位的这个比例。 */
-export const SECONDARY_SUBJECT_MIN_SCORE_RATIO = 0.22
+/** 其余本色的分数至少是首位的这个比例。小面积但鲜明的颜色（展厅的红墙、机柜上的绿条）也要留下，供多色系搭配用。 */
+export const SECONDARY_SUBJECT_MIN_SCORE_RATIO = 0.15
 /** 本色之间至少相差的色相。 */
 export const SUBJECT_MIN_HUE_SEPARATION = 30
 /**
- * 次要本色与已选本色最多相差的色相。更远的颜色落在对侧一带（例如叶绿与切片染色的紫），
- * 与主题色同稿就是用户明确不要的“相反色同框”，不选为本色。
+ * 色相差不到 30° 但一眼看去是两种颜色（例如青铜的亮金与橄榄，一亮而鲜、一暗而浊）：色相差至少 10° 且
+ * ΔEOK 至少 0.2 时也算两种。两种发灰的绿这类只差深浅的，仍算一种。
  */
-export const SUBJECT_MAX_HUE_SPREAD = 120
+export const SUBJECT_NEAR_HUE_SEPARATION = 10
+export const SUBJECT_NEAR_MIN_DELTA_E = 0.2
+/**
+ * 本色之间最多相差的色相：不能落进彼此的对侧排除区（150°–210°，再留 6° 余量）。更远的颜色（例如叶绿与
+ * 切片染色的紫）与主题色同稿就是用户明确不要的“相反色同框”，不选为本色。
+ */
+export const SUBJECT_MAX_HUE_SPREAD = 144
 /** 打分：占比为主，其次是出现在几张图里（跨图共识），再次是接近目标彩度。 */
 export const SUBJECT_TARGET_CHROMA = 0.1
 export const SUBJECT_SHARE_WEIGHT = 0.6
 export const SUBJECT_PRESENCE_WEIGHT = 0.25
 export const SUBJECT_CHROMA_WEIGHT = 0.15
-export const MAX_SUBJECT_COLORS = 3
+export const MAX_SUBJECT_COLORS = 4
+/**
+ * 点缀色：面积小但鲜明的颜色（展厅的红墙、机柜上的绿条）。设计师从照片取色时会留下它们做点缀，
+ * 按“占比 × 彩度”排，最多留 MAX_SPOT_COLORS 种，同样要和本色拉开、不落进彼此的对侧。
+ */
+export const SPOT_MIN_SHARE = 0.004
+export const SPOT_MIN_CHROMA = 0.08
+export const MAX_SPOT_COLORS = 2
 export const MAX_NEUTRAL_COLORS = 3
 
 // —— 排除区 ——
@@ -127,12 +140,12 @@ export const GROUND_VARIANTS: Readonly<Record<PaletteBase, readonly GroundVarian
   ],
 }
 
-/** “墨色主导”时底、面、墨、弱墨的彩度上限：几乎中性，只留一丝本色。 */
+/** “灰 + 主色”时底、面、墨、弱墨的彩度上限：几乎中性，只留一丝本色。 */
 export const INK_RELATION_MAX_CHROMA = 0.006
 
 /**
  * 米色带：这一段色相的浅色调读作米色、奶油色，是基准里反复出现的默认底色（用户要求染纸“不要米白”）。
- * 染纸底与双本色的底色色相避开这一段；没有别的本色时不出染纸底。
+ * 染纸底的主色避开这一段（灰 + 主色的底几乎无彩，不受影响）；没有别的本色时不出染纸底。
  */
 export const BEIGE_HUES: RangeValue = { min: 45, max: 100 }
 
@@ -204,22 +217,66 @@ export const CHART_CHROMA_TAPER: RangeValue = { min: 0.45, max: 0.8 }
 /** 同色系图表的色相漂移（Cubehelix 的思路：明度单调，色相沿途缓慢转动）；有一定概率不漂移。 */
 export const CHART_HUE_DRIFT: RangeValue = { min: 6, max: 18 }
 export const CHART_NO_DRIFT_PROBABILITY = 0.4
-/** 墨色主导图表里灰阶的彩度。 */
+/** 灰 + 主色图表里灰阶的彩度。 */
 export const EMPHASIS_GRAY_CHROMA = 0.004
 
-/** 双本色时由第二种本色做底与墨的概率（例如光合作用的深朱做酒红底、叶绿点题）。 */
-export const DUAL_SWAP_PROBABILITY = 0.5
+// —— 色相关系（借鉴 PCCS 按色相差分的配色类别）——
+//
+// 同色系（同一色相）、灰 + 主色、邻近色（类似色相）、中差色、对照色、图片多色（三种以上图片色同一色调）。
+// 补色（对侧 150°–210°）不用：用户明确不要“相反色同框”，由排除区保证。
 
-/** 邻近色：点题色与本色的色相差。 */
-export const ANALOG_HUE_SHIFT: RangeValue = { min: 20, max: 60 }
-
-/** 关系 × 底色的先验权重。 */
-export const COMBINATION_WEIGHTS: Readonly<Record<PaletteRelation, Readonly<Record<PaletteBase, number>>>> = {
-  mono: { light: 0.6, tint: 1, dark: 0.8 },
-  analog: { light: 0.7, tint: 0.6, dark: 0.6 },
-  ink: { light: 1, tint: 0.5, dark: 0.7 },
-  dual: { light: 0.8, tint: 0.8, dark: 1 },
+/** 邻近色、中差色、对照色与主色的色相差。对照色上限留出排除区余量。 */
+export const RELATION_HUE_SHIFT: Readonly<Record<'analog' | 'medium' | 'contrast', RangeValue>> = {
+  analog: { min: 25, max: 50 },
+  medium: { min: 60, max: 105 },
+  contrast: { min: 110, max: 144 },
 }
+/**
+ * 合成（图片里没有）的对照色最多离主色这么远。再远就接近补色，例如黄绿配蓝紫，用户读作相反色；
+ * 128°–144° 只用图片里真有的颜色。
+ */
+export const SYNTHESIZED_HUE_SHIFT_MAX = 128
+/** 点缀色不当主色：面积小，只做搭配色（用它打底会与题材不符，例如储能稿以绿条为主色）。 */
+export const SPOT_PRIMARY_WEIGHT = 0
+/** 色相差落在对应区间里的图片色优先当搭配色（图片里真有的颜色），没有才按色相差合成。 */
+export const IMAGE_PARTNER_PROBABILITY = 0.75
+/** 图片多色至少要几种本色；一套最多用几种（主色加两种，三色搭配最常见，再多容易花）。 */
+export const MULTI_MIN_SUBJECTS = 3
+export const MULTI_MAX_HUES = 3
+/** 选哪种本色当主色：按本色排名的权重，第一种最常用，其余也有机会（每次主色不同，色系才不同）。 */
+export const PRIMARY_SUBJECT_WEIGHTS: readonly number[] = [1, 0.55, 0.4, 0.3, 0.25]
+
+/** 关系 × 底色的先验权重：只决定采样频率。同色系与灰 + 主色要有，但不能占多数。 */
+export const RELATION_WEIGHTS: Readonly<Record<PaletteRelation, Readonly<Record<PaletteBase, number>>>> = {
+  mono: { light: 0.5, tint: 0.8, dark: 0.6 },
+  ink: { light: 0.8, tint: 0.4, dark: 0.6 },
+  analog: { light: 0.7, tint: 0.7, dark: 0.6 },
+  medium: { light: 0.9, tint: 0.8, dark: 0.8 },
+  contrast: { light: 0.7, tint: 0.6, dark: 0.7 },
+  multi: { light: 1, tint: 0.8, dark: 0.9 },
+}
+
+// —— 强调色数量 ——
+
+/** 每种关系默认给几个强调色；调用方可以指定 1–6 个（PowerPoint 主题色有 accent1–accent6 六个槽位）。 */
+export const DEFAULT_ACCENT_COUNT: Readonly<Record<PaletteRelation, number>> = {
+  mono: 3,
+  ink: 2,
+  analog: 3,
+  medium: 3,
+  contrast: 3,
+  multi: 4,
+}
+export const MAX_ACCENT_COUNT = 6
+/** 强调色彼此至少相差的 ΔEOK；太近时沿明度拉开。 */
+export const ACCENT_MIN_SEPARATION = 0.07
+/**
+ * 不同色相的强调色之间，色相差在 OKLab 里至少要有这么大（ΔH = 2√(c₁c₂)·sin(Δh/2)），否则一眼看上去是同一种颜色：
+ * 例如灰绿配灰青，色相差 40° 但彩度只有 0.04，看起来仍是一种灰绿。达不到的候选丢掉。
+ */
+export const PARTNER_MIN_HUE_DIFFERENCE = 0.035
+/** 同一色相的第二、三个强调色与前一个的明度差（tone-on-tone：同色相、明度拉开）。 */
+export const ACCENT_TONE_STEP: RangeValue = { min: 0.1, max: 0.16 }
 
 // —— 评分 ——
 
@@ -239,6 +296,10 @@ export const ACCENT_TOO_CLOSE_FACTOR = 0.5
 /** 图表相邻两档太近分不清（O'Donovan 2011：配色里的颜色不能太相似）。 */
 export const CHART_MIN_STEP_DISTANCE = 0.04
 export const CHART_TOO_CLOSE_FACTOR = 0.6
+/** 三种以上色系又都很鲜，就是用户否掉的“彩虹色”；多色系要靠统一的低彩色调收住。 */
+export const RAINBOW_MIN_FAMILIES = 3
+export const RAINBOW_MEAN_CHROMA = 0.1
+export const RAINBOW_FACTOR = 0.5
 /** 底色有明显彩度时点题再用高彩度，整页太“吵”。 */
 export const LOUD_BG_CHROMA = 0.02
 export const LOUD_ACCENT_CHROMA = 0.15
@@ -249,18 +310,24 @@ export const LOUD_FACTOR = 0.6
 /** 每次采样的候选数。 */
 export const CANDIDATE_COUNT = 240
 /**
- * 挑选：每套与已选各套的感知距离至少为门槛（O'Donovan 2011 给多条建议的做法），门槛从高到低放宽；
+ * 挑选：每套与已选各套的距离至少为门槛（O'Donovan 2011 给多条建议的做法），门槛从高到低放宽；
  * 满足门槛的候选里先只看没用过的关系，再在分数不低于最高分这个比例的里按分数加权随机抽一套。
+ * 距离以“色系组合”为主（一眼看过去是不是同一类颜色），见 scorePalette.paletteDistance。
  */
-export const MIN_PALETTE_DISTANCES: readonly number[] = [0.16, 0.12, 0.09, 0.06, 0.03, 0]
+export const MIN_PALETTE_DISTANCES: readonly number[] = [0.7, 0.55, 0.4, 0.25, 0.1, 0]
 export const QUALITY_BAND = 0.75
 /**
  * 感知距离里各角色的权重（ΔEOK 加权平均）。墨与弱墨几乎总是深灰或浅灰，权重大了会把差异稀释掉；
  * 看一套配色时先看到的是纸、点题和图表。
  */
 export const DISTANCE_WEIGHTS = { bg: 0.75, surface: 0.25, ink: 0.125, muted: 0.125, accent: 1, chart: 1 } as const
-/** 结构不同的额外距离：底色明暗、关系、色调。 */
-export const STRUCTURE_DISTANCE = { base: 0.04, relation: 0.02, tone: 0.02 } as const
+/** 距离 = 色系组合的 Jaccard 距离 + 底色明暗不同的加项 + 颜色差（角色加权 ΔEOK）× 系数。 */
+export const FAMILY_DISTANCE_WEIGHT = 1
+export const BASE_DISTANCE = 0.25
+export const COLOR_DISTANCE_WEIGHT = 0.5
+/** 低于这个彩度的颜色不算色系（中性）；底色彩度达到 TINTED_BG_CHROMA 才把底的色系算进去。 */
+export const FAMILY_MIN_CHROMA = 0.03
+export const TINTED_BG_CHROMA = 0.012
 
 export const DEFAULT_PALETTE_COUNT = 3
 export const MAX_PALETTE_COUNT = 5

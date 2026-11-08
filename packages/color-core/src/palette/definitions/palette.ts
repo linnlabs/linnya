@@ -8,8 +8,11 @@ export interface PaletteImagePixels {
   readonly data: Uint8Array | Uint8ClampedArray
 }
 
-/** 每套配色的搭配关系。 */
-export type PaletteRelation = 'mono' | 'analog' | 'ink' | 'dual'
+/**
+ * 每套配色的色相关系（借鉴 PCCS 按色相差的分类）：同色系、灰 + 主色、邻近色（25°–50°）、中差色（60°–105°）、
+ * 对照色（110°–144°）、图片多色（三种以上图片色统一色调）。不用补色。
+ */
+export type PaletteRelation = 'mono' | 'ink' | 'analog' | 'medium' | 'contrast' | 'multi'
 
 /** 底色明暗：浅底（近白纸）、染纸底、深底。 */
 export type PaletteBase = 'light' | 'tint' | 'dark'
@@ -28,6 +31,8 @@ export interface SubjectColor {
   readonly share: number
   /** 出现在几张图里。 */
   readonly images: number
+  /** 点缀色：面积小但鲜明（如展厅的红墙、机柜上的绿条），只在多色系搭配里出现。 */
+  readonly spot: boolean
   readonly oklch: Oklch
 }
 
@@ -40,7 +45,7 @@ export interface Palette {
   readonly surface: string
   readonly ink: string
   readonly muted: string
-  /** 1–2 种点题色，第一种最重要。 */
+  /** 强调色，第一种最重要（主色）；数量默认按关系给，调用方可以指定 1–6 个，对应 PowerPoint 的 accent1–6。 */
   readonly accent: readonly string[]
   /** 图表系列，按明度单调排列；数组顺序即视觉顺序。 */
   readonly chart: readonly string[]
@@ -71,6 +76,8 @@ export interface SuggestPalettesInput {
   readonly count?: number
   /** 只要某种底色明暗。 */
   readonly base?: PaletteBase
+  /** 每套几个强调色，1–6；不传则按关系给默认数量。 */
+  readonly accentCount?: number
   /** 额外排除的颜色，按其色相 ±30° 排除。 */
   readonly avoidColors?: readonly string[]
   /** 之前结果的编号（如 `pl8f2a`）；不传则随机。 */

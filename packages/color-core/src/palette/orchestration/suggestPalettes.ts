@@ -16,13 +16,15 @@ import type {
 import {
   ACCENT_TONES,
   CANDIDATE_COUNT,
-  COMBINATION_WEIGHTS,
   DEFAULT_PALETTE_COUNT,
   GROUND_VARIANTS,
   type GroundVariant,
   MAX_PALETTE_COUNT,
   MIN_PALETTE_DISTANCES,
+  MAX_ACCENT_COUNT,
+  MULTI_MIN_SUBJECTS,
   QUALITY_BAND,
+  RELATION_WEIGHTS,
   SUBJECT_MIN_HUE_SEPARATION,
 } from '../definitions/paletteConstants.js'
 import { buildPalette } from '../functions/buildPalette.js'
@@ -35,7 +37,7 @@ import { paletteColors, paletteDistance, type PaletteColors, scorePalette } from
 /** 一次最多处理的图片数。 */
 export const MAX_PALETTE_IMAGES = 20
 
-const RELATIONS: readonly PaletteRelation[] = ['mono', 'analog', 'ink', 'dual']
+const RELATIONS: readonly PaletteRelation[] = ['mono', 'ink', 'analog', 'medium', 'contrast', 'multi']
 const BASES: readonly PaletteBase[] = ['light', 'tint', 'dark']
 
 /** 风格基因里离散的那几维；其余连续取值在 buildPalette 里按同一随机源采样。 */
@@ -59,7 +61,7 @@ function parseOklch(hex: string): Oklch | null {
 }
 
 function seedSubject(color: Oklch, hex: string): SubjectColor {
-  return { hex, name: subjectColorName(color), share: 0, images: 0, oklch: color }
+  return { hex, name: subjectColorName(color), share: 0, images: 0, spot: false, oklch: color }
 }
 
 function pickWeighted<T>(items: readonly T[], weightOf: (item: T) => number, random: RandomSource): T | null {
@@ -77,7 +79,7 @@ function pickWeighted<T>(items: readonly T[], weightOf: (item: T) => number, ran
 function styleSpace(relations: readonly PaletteRelation[], bases: readonly PaletteBase[]): Style[] {
   return relations.flatMap(relation => bases.flatMap(base => GROUND_VARIANTS[base].flatMap(ground => {
     const tones = Object.entries(ACCENT_TONES[base === 'dark' ? 'dark' : 'paper']) as [PaletteTone, { readonly weight: number }][]
-    return tones.map(([tone, spec]) => ({ relation, base, ground, tone, weight: COMBINATION_WEIGHTS[relation][base] * ground.weight * spec.weight }))
+    return tones.map(([tone, spec]) => ({ relation, base, ground, tone, weight: RELATION_WEIGHTS[relation][base] * ground.weight * spec.weight }))
   })))
 }
 
@@ -138,11 +140,12 @@ export function suggestPalettes(input: SuggestPalettesInput): PaletteSuggestion 
   const avoid = (input.avoidColors ?? []).map(parseOklch).filter((color): color is Oklch => color !== null)
   const excluded = excludedHueRanges(subject.map(color => color.oklch), avoid)
   const subjectColors = subject.map(color => color.oklch)
-  const secondary = subjectColors[1]
-  const dualAvailable = secondary !== undefined && !isHueExcluded(secondary.h, excluded)
+  const spotFlags = subject.map(color => color.spot)
+  const multiAvailable = subjectColors.filter(color => !isHueExcluded(color.h, excluded)).length >= MULTI_MIN_SUBJECTS
+  const accentCount = input.accentCount === undefined ? undefined : Math.min(MAX_ACCENT_COUNT, Math.max(1, Math.round(input.accentCount)))
 
   const styles = styleSpace(
-    RELATIONS.filter(relation => relation !== 'dual' || dualAvailable),
+    RELATIONS.filter(relation => relation !== 'multi' || multiAvailable),
     BASES.filter(base => input.base === undefined || base === input.base),
   )
 
@@ -152,7 +155,7 @@ export function suggestPalettes(input: SuggestPalettesInput): PaletteSuggestion 
   for (let attempt = 0; attempt < CANDIDATE_COUNT; attempt += 1) {
     const style = pickWeighted(styles, item => item.weight, random)
     if (!style) break
-    const palette = buildPalette({ id, relation: style.relation, base: style.base, ground: style.ground, tone: style.tone, subject: subjectColors, excluded, random })
+    const palette = buildPalette({ id, relation: style.relation, base: style.base, ground: style.ground, tone: style.tone, subject: subjectColors, spots: spotFlags, excluded, random, accentCount })
     if (!palette) continue
     const colors = paletteColors(palette)
     candidates.push({ palette, colors, quality: scorePalette(palette, colors) })

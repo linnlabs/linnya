@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { rgbToOklch } from '../../functions/colorSpace.js'
+import { deltaEOK, rgbToOklab, rgbToOklch } from '../../functions/colorSpace.js'
 import { contrastRatio } from '../../functions/contrast.js'
 import { hueDistance } from '../../functions/hue.js'
 import { parseColor } from '../../functions/parseColor.js'
 import type { Palette, PaletteImagePixels, PaletteSuggestion } from '../definitions/palette.js'
-import { NEUTRAL_MAX_CHROMA } from '../definitions/paletteConstants.js'
+import { ACCENT_MIN_SEPARATION, NEUTRAL_MAX_CHROMA } from '../definitions/paletteConstants.js'
 import { isHueExcluded } from '../functions/excludedHues.js'
 import { createRandom, decodeRngId, encodeRngId } from '../functions/random.js'
-import { paletteDistance } from '../functions/scorePalette.js'
+import { paletteFamilies } from '../functions/scorePalette.js'
 import { suggestPalettes } from './suggestPalettes.js'
 
 type Rgb = readonly [number, number, number]
@@ -38,6 +38,7 @@ const PATINA_GREEN: Rgb = [89, 114, 100]
 const BRONZE: Rgb = [151, 120, 88]
 const MUSEUM_BLACK: Rgb = [24, 22, 20]
 const WALL_GRAY: Rgb = [200, 200, 198]
+const VERMILION: Rgb = [196, 62, 40]
 
 function palettesOf(result: ReturnType<typeof suggestPalettes>): PaletteSuggestion {
   if (result.kind !== 'palettes') throw new Error(`expected palettes, got ${result.kind}`)
@@ -61,10 +62,22 @@ function colorsOf(palette: Palette): string[] {
   return [palette.bg, palette.surface, palette.ink, palette.muted, ...palette.accent, ...palette.chart]
 }
 
+/** 一套配色的色系组合（如 “绿+褐”），用来判断几套是不是一眼看上去同一类颜色。 */
+function familySignature(palette: Palette): string {
+  return paletteFamilies(palette).sort().join('+')
+}
+
 const BRONZE_IMAGES = [
   blocks([[PATINA_GREEN, 50], [MUSEUM_BLACK, 40], [BRONZE, 10]], 64, 6, 1),
   blocks([[BRONZE, 45], [MUSEUM_BLACK, 45], [PATINA_GREEN, 10]], 64, 6, 2),
   blocks([[PATINA_GREEN, 35], [WALL_GRAY, 45], [BRONZE, 20]], 64, 6, 3),
+]
+
+/** 主图里有一小块朱红（如器物上的朱砂、标签），面积 2%。 */
+const BRONZE_WITH_SPOT_IMAGES = [
+  blocks([[PATINA_GREEN, 50], [MUSEUM_BLACK, 38], [BRONZE, 10], [VERMILION, 2]], 64, 6, 1),
+  BRONZE_IMAGES[1] ?? blocks([[BRONZE, 1]]),
+  BRONZE_IMAGES[2] ?? blocks([[BRONZE, 1]]),
 ]
 
 describe('取色', () => {
@@ -93,6 +106,23 @@ describe('取色', () => {
     expect(suggestPalettes({ images: [rubbing, rubbing] }).kind).toBe('no_subject_color')
   })
 
+  it('面积小但鲜明的颜色作点缀色：进入本色并标出，只做搭配色，不当主色', () => {
+    const vermilionHue = rgbToOklch(VERMILION).h
+    const first = palettesOf(suggestPalettes({ images: BRONZE_WITH_SPOT_IMAGES, rng: 'pl0006' }))
+    const spot = first.subject.find(color => color.spot)
+    expect(spot && hueDistance(spot.oklch.h, vermilionHue)).toBeLessThan(10)
+    expect(first.subject.filter(color => !color.spot)).toHaveLength(2)
+    let usedAsPartner = false
+    for (let seed = 0; seed < 50; seed += 1) {
+      for (const palette of palettesOf(suggestPalettes({ images: BRONZE_WITH_SPOT_IMAGES, rng: encodeRngId(seed) })).palettes) {
+        const main = palette.accent[0]
+        if (main) expect(hueDistance(oklchOf(main).h, vermilionHue), `${palette.id} ${main}`).toBeGreaterThan(10)
+        if (palette.accent.slice(1).some(hex => hueDistance(oklchOf(hex).h, vermilionHue) < 10)) usedAsPartner = true
+      }
+    }
+    expect(usedAsPartner).toBe(true)
+  })
+
   it('没有图片时用种子色作本色', () => {
     const result = palettesOf(suggestPalettes({ seedColors: ['#2f6b57'], rng: 'pl0003' }))
     expect(result.subject[0]?.hex).toBe('#2f6b57')
@@ -103,10 +133,11 @@ describe('取色', () => {
 describe('出配色', () => {
   const inputs = [
     { images: BRONZE_IMAGES },
+    { images: BRONZE_WITH_SPOT_IMAGES, accentCount: 6 },
     { seedColors: ['#4f813a', '#683833'] },
-    { seedColors: ['#77a5c4'] },
+    { seedColors: ['#77a5c4'], accentCount: 1 },
     { seedColors: ['#c0392b'] },
-    { seedColors: ['#e0b000', '#2e5e8c'] },
+    { seedColors: ['#e0b000', '#2e5e8c'], accentCount: 5 },
   ]
 
   it('随机 1000 次：任何有彩颜色都不落入排除区，对比度都达标，图表按明度单调', () => {
@@ -123,41 +154,74 @@ describe('出配色', () => {
         expect(contrast(palette.ink, palette.bg)).toBeGreaterThanOrEqual(7)
         expect(contrast(palette.muted, palette.bg)).toBeGreaterThanOrEqual(4.5)
         for (const accent of palette.accent) expect(contrast(accent, palette.bg)).toBeGreaterThanOrEqual(3)
+        if (input.accentCount === undefined) expect(palette.accent.length).toBeGreaterThanOrEqual(2)
+        else expect(palette.accent, `${rng} ${palette.id}`).toHaveLength(input.accentCount)
         const lightness = palette.chart.map(hex => oklchOf(hex).l)
         const steps = lightness.slice(1).map((value, index) => value - (lightness[index] ?? 0))
         const direction = palette.base === 'dark' ? -1 : 1
         expect(steps.every(step => step * direction > 0), `${rng} ${palette.id} ${palette.chart.join(',')}`).toBe(true)
       }
     }
-  })
+  }, 30_000)
 
-  it('同一次的 3 套两两明显不同（角色加权 ΔEOK 加结构差异 ≥ 0.09）', () => {
-    for (let seed = 0; seed < 100; seed += 1) {
-      const result = palettesOf(suggestPalettes({ images: BRONZE_IMAGES, rng: encodeRngId(seed) }))
-      expect(result.palettes).toHaveLength(3)
-      const [a, b, c] = result.palettes
-      if (!a || !b || !c) throw new Error('missing palette')
-      for (const [left, right] of [[a, b], [a, c], [b, c]] as const) expect(paletteDistance(left, right), encodeRngId(seed)).toBeGreaterThanOrEqual(0.09)
-    }
-  })
-
-  it('只要一种底色时，3 套都用它，彼此仍不同', () => {
-    const result = palettesOf(suggestPalettes({ images: BRONZE_IMAGES, base: 'dark', rng: 'pl00a0' }))
-    expect(result.palettes).toHaveLength(3)
-    expect(result.palettes.every(palette => palette.base === 'dark')).toBe(true)
-    const [a, b, c] = result.palettes
-    if (!a || !b || !c) throw new Error('missing palette')
-    for (const [left, right] of [[a, b], [a, c], [b, c]] as const) expect(paletteDistance(left, right)).toBeGreaterThanOrEqual(0.06)
-  })
-
-  it('每次不同是看得出的不同：同样的图调用 100 次，可区分的配色（角色加权距离 ≥ 0.05）超过 40 种', () => {
-    const representatives: Palette[] = []
-    for (let seed = 0; seed < 100; seed += 1) {
-      for (const palette of palettesOf(suggestPalettes({ images: BRONZE_IMAGES, rng: encodeRngId(seed * 31 + 7) })).palettes) {
-        if (representatives.every(existing => paletteDistance(existing, palette) >= 0.05)) representatives.push(palette)
+  it('同一次的 3 套是一眼看得出的不同搭配：色系组合各不相同', () => {
+    for (const input of [{ images: BRONZE_IMAGES }, { seedColors: ['#77a5c4'] }]) {
+      for (let seed = 0; seed < 100; seed += 1) {
+        const result = palettesOf(suggestPalettes({ ...input, rng: encodeRngId(seed) }))
+        expect(result.palettes).toHaveLength(3)
+        const signatures = result.palettes.map(familySignature)
+        expect(new Set(signatures).size, `${encodeRngId(seed)} ${signatures.join(' / ')}`).toBe(3)
       }
     }
-    expect(representatives.length).toBeGreaterThan(40)
+  })
+
+  it('只要一种底色时，3 套都用它，色系组合仍各不相同', () => {
+    for (let seed = 0; seed < 20; seed += 1) {
+      const result = palettesOf(suggestPalettes({ images: BRONZE_IMAGES, base: 'dark', rng: encodeRngId(seed) }))
+      expect(result.palettes).toHaveLength(3)
+      expect(result.palettes.every(palette => palette.base === 'dark')).toBe(true)
+      expect(new Set(result.palettes.map(familySignature)).size, encodeRngId(seed)).toBe(3)
+    }
+  })
+
+  it('多次调用的搭配多样：同样的图 100 次，色系组合超过 12 种；单一色系、灰 + 主色、多色系都有，单一色系不到一半', () => {
+    const signatures = new Set<string>()
+    const relations = new Set<string>()
+    let single = 0
+    let multiFamily = 0
+    let total = 0
+    for (let seed = 0; seed < 100; seed += 1) {
+      for (const palette of palettesOf(suggestPalettes({ images: BRONZE_IMAGES, rng: encodeRngId(seed * 31 + 7) })).palettes) {
+        signatures.add(familySignature(palette))
+        relations.add(palette.relation)
+        const families = paletteFamilies(palette).length
+        if (families <= 1) single += 1
+        if (families >= 3) multiFamily += 1
+        total += 1
+      }
+    }
+    expect(signatures.size).toBeGreaterThan(12)
+    expect(relations.has('mono') && relations.has('ink')).toBe(true)
+    expect(multiFamily).toBeGreaterThan(0)
+    expect(single / total).toBeLessThan(0.5)
+  })
+
+  it('强调色数量可以指定：1 个就 1 个，6 个时彼此仍分得开', () => {
+    const one = palettesOf(suggestPalettes({ images: BRONZE_IMAGES, accentCount: 1, rng: 'pl0007' }))
+    expect(one.palettes.every(palette => palette.accent.length === 1)).toBe(true)
+    for (let seed = 0; seed < 20; seed += 1) {
+      for (const palette of palettesOf(suggestPalettes({ images: BRONZE_WITH_SPOT_IMAGES, accentCount: 6, rng: encodeRngId(seed) })).palettes) {
+        expect(palette.accent).toHaveLength(6)
+        const labs = palette.accent.map(hex => {
+          const parsed = parseColor(hex)
+          if (!parsed) throw new Error(`bad hex ${hex}`)
+          return rgbToOklab(parsed.channels)
+        })
+        labs.forEach((lab, index) => labs.slice(index + 1).forEach(other => {
+          expect(deltaEOK(lab, other), `${palette.id} ${palette.accent.join(',')}`).toBeGreaterThanOrEqual(ACCENT_MIN_SEPARATION)
+        }))
+      }
+    }
   })
 
   it('avoid 的颜色两侧不出现', () => {
