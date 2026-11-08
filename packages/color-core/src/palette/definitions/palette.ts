@@ -33,6 +33,8 @@ export interface SubjectColor {
   readonly images: number
   /** 点缀色：面积小但鲜明（如展厅的红墙、机柜上的绿条），只在多色系搭配里出现。 */
   readonly spot: boolean
+  /** 用户指定的颜色：排在最前，是每套的主色，不来自图片（`share`、`images` 为 0）。 */
+  readonly pinned: boolean
   readonly oklch: Oklch
 }
 
@@ -63,15 +65,23 @@ export interface PaletteSuggestion {
   readonly palettes: readonly Palette[]
 }
 
-export interface PaletteFailure {
-  readonly kind: 'no_subject_color'
-}
+export type PaletteFailure =
+  | { readonly kind: 'no_subject_color' }
+  /** 指定色太接近黑白灰，没有色相，不能当主色。 */
+  | { readonly kind: 'pinned_color_neutral'; readonly hex: string }
+  /** 指定色在要求的底色上达不到对比度（如浅黄配浅底），一套也做不出。 */
+  | { readonly kind: 'pinned_color_conflict' }
 
 export interface SuggestPalettesInput {
   /** 第一张是主图，权重更高。 */
   readonly images?: readonly PaletteImagePixels[]
   /** 额外的本色（无图时就是本色）。 */
   readonly seedColors?: readonly string[]
+  /**
+   * 用户指定的颜色，1–6 个，第一个是主色。每套的前几个强调色就是这些色值；对比度不够时调底色明暗，不改指定色。
+   * 排除区以它为准：落在指定色对侧的图片色被丢弃。
+   */
+  readonly pinnedColors?: readonly string[]
   /** 套数，1–5，默认 3。 */
   readonly count?: number
   /** 只要某种底色明暗。 */
@@ -82,4 +92,41 @@ export interface SuggestPalettesInput {
   readonly avoidColors?: readonly string[]
   /** 之前结果的编号（如 `pl8f2a`）；不传则随机。 */
   readonly rng?: string
+}
+
+/** 待检查的一套配色（Agent 自己写的，或用户给的色板）。 */
+export interface PaletteDraft {
+  readonly bg: string
+  readonly surface: string
+  readonly ink: string
+  readonly muted: string
+  readonly accent: readonly string[]
+  readonly chart: readonly string[]
+}
+
+export type PaletteCheckRule = 'invalid_color' | 'ink_contrast' | 'muted_contrast' | 'accent_contrast' | 'excluded_hue' | 'chart_order'
+
+export interface PaletteFinding {
+  readonly rule: PaletteCheckRule
+  /** 角色：`bg`、`surface`、`ink`、`muted`、`accent[0]`、`chart[2]`；`chart_order` 时是 `chart`。 */
+  readonly role: string
+  readonly value: string
+  /** 对比度规则的实测值与下限。 */
+  readonly measured?: number
+  readonly required?: number
+}
+
+export interface CheckPaletteInput {
+  readonly palette: PaletteDraft
+  /** 之前 `suggestPalettes` 返回的排除区；不传则不查。 */
+  readonly excludedHues?: readonly HueRange[]
+  /** 用户指定的颜色：出现在任何角色上都不改动，也不受排除区约束。 */
+  readonly pinnedColors?: readonly string[]
+}
+
+export interface PaletteCheckResult {
+  readonly ok: boolean
+  readonly findings: readonly PaletteFinding[]
+  /** 改动最少的合格版本：只动有问题的角色。已合格或改不出来（如两个指定色彼此对比度不够）时为 null。 */
+  readonly suggested: PaletteDraft | null
 }

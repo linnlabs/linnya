@@ -185,6 +185,7 @@ export function extractSubjectColors(images: readonly (readonly QuantizedColor[]
     share: Math.round(candidate.share * 1000) / 1000,
     images: Math.max(1, candidate.presence),
     spot: candidate.spot,
+    pinned: false,
     oklch: candidate.color,
   }))
 

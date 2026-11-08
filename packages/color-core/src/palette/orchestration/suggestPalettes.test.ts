@@ -157,6 +157,9 @@ describe('出配色', () => {
     { seedColors: ['#77a5c4'], accentCount: 1 },
     { seedColors: ['#c0392b'] },
     { seedColors: ['#e0b000', '#2e5e8c'], accentCount: 5 },
+    { images: BRONZE_IMAGES, pinnedColors: ['#1f3a5f'] },
+    { images: BRONZE_WITH_SPOT_IMAGES, pinnedColors: ['#c0392b', '#d9a520'], accentCount: 4 },
+    { pinnedColors: ['#fecb38'] },
   ]
 
   it('随机 1000 次：任何有彩颜色都不落入排除区，对比度都达标，图表按明度单调', () => {
@@ -252,6 +255,82 @@ describe('出配色', () => {
         if (color.c >= NEUTRAL_MAX_CHROMA) expect(hueDistance(color.h, avoidHue)).toBeGreaterThan(30)
       }
     }
+  })
+})
+
+describe('用户指定颜色', () => {
+  const NAVY = '#1f3a5f'
+  const PALE_YELLOW = '#fecb38'
+
+  it('3 套都以指定色为主色，第一个强调色就是原色值，排在本色最前', () => {
+    const result = palettesOf(suggestPalettes({ images: BRONZE_IMAGES, pinnedColors: [NAVY.toUpperCase()], rng: 'pl0100' }))
+    expect(result.subject[0]).toMatchObject({ hex: NAVY, pinned: true, share: 0, images: 0 })
+    expect(result.palettes).toHaveLength(3)
+    for (const palette of result.palettes) {
+      expect(palette.accent[0]).toBe(NAVY)
+      expect(contrast(NAVY, palette.bg)).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('一次的 3 套仍是不同的色系组合，图片色继续做搭配色', () => {
+    let usedImageColor = false
+    const patinaHue = rgbToOklch(PATINA_GREEN).h
+    for (let seed = 0; seed < 50; seed += 1) {
+      const result = palettesOf(suggestPalettes({ images: BRONZE_IMAGES, pinnedColors: [NAVY], rng: encodeRngId(seed) }))
+      expect(new Set(result.palettes.map(familySignature)).size, encodeRngId(seed)).toBe(3)
+      if (result.palettes.some(palette => palette.accent.slice(1).some(hex => hueDistance(oklchOf(hex).h, patinaHue) < 12))) usedImageColor = true
+    }
+    expect(usedImageColor).toBe(true)
+  })
+
+  it('对比度不够时调底色而不改指定色：浅黄只能配深底', () => {
+    for (let seed = 0; seed < 30; seed += 1) {
+      for (const palette of palettesOf(suggestPalettes({ pinnedColors: [PALE_YELLOW], rng: encodeRngId(seed) })).palettes) {
+        expect(palette.accent[0]).toBe(PALE_YELLOW)
+        expect(palette.base).toBe('dark')
+      }
+    }
+  })
+
+  it('要求的底色做不到时返回 pinned_color_conflict，不偷偷改色', () => {
+    expect(suggestPalettes({ pinnedColors: [PALE_YELLOW], base: 'light', rng: 'pl0101' }).kind).toBe('pinned_color_conflict')
+  })
+
+  it('排除区以指定色为准：图片色在其对侧时丢图片色', () => {
+    const magenta = '#8e2a6b'
+    const result = palettesOf(suggestPalettes({ images: BRONZE_IMAGES, pinnedColors: [magenta], rng: 'pl0102' }))
+    const patinaHue = rgbToOklch(PATINA_GREEN).h
+    expect(result.subject.some(color => hueDistance(color.oklch.h, patinaHue) < 15)).toBe(false)
+    expect(isHueExcluded(oklchOf(magenta).h, result.excludedHues)).toBe(false)
+    for (const palette of result.palettes) expect(palette.accent[0]).toBe(magenta)
+  })
+
+  it('多个指定色全部用上且顺序不变；个数多于 accentCount 时不丢', () => {
+    const pins = ['#c0392b', '#d9a520', '#1f5fa8']
+    for (const palette of palettesOf(suggestPalettes({ pinnedColors: pins, accentCount: 1, rng: 'pl0103' })).palettes) {
+      expect(palette.accent.slice(0, 3)).toEqual(pins)
+      expect(palette.relation).toBe('multi')
+    }
+  })
+
+  it('两个指定色互为对侧或 avoid 压到指定色时，仍按用户说的做', () => {
+    const opposite = palettesOf(suggestPalettes({ pinnedColors: ['#2e7d32', '#ad1457'], rng: 'pl0104' }))
+    expect(opposite.palettes.length).toBeGreaterThan(0)
+    for (const palette of opposite.palettes) expect(palette.accent.slice(0, 2)).toEqual(['#2e7d32', '#ad1457'])
+    const avoided = palettesOf(suggestPalettes({ pinnedColors: [NAVY], avoidColors: [NAVY], rng: 'pl0105' }))
+    for (const palette of avoided.palettes) expect(palette.accent[0]).toBe(NAVY)
+  })
+
+  it('黑白灰没有色相，不能当主色；写错的色值报错', () => {
+    expect(suggestPalettes({ pinnedColors: ['#222222'] })).toEqual({ kind: 'pinned_color_neutral', hex: '#222222' })
+    expect(() => suggestPalettes({ pinnedColors: ['nope'] })).toThrow('Invalid pinned color')
+    expect(() => suggestPalettes({ pinnedColors: Array.from({ length: 7 }, () => NAVY) })).toThrow('At most 6')
+  })
+
+  it('同一编号结果相同；不指定颜色时结果不受影响', () => {
+    const input = { images: BRONZE_IMAGES, pinnedColors: [NAVY], rng: 'pl0106' }
+    expect(suggestPalettes(input)).toEqual(suggestPalettes(input))
+    expect(palettesOf(suggestPalettes({ images: BRONZE_IMAGES, rng: 'pl0106' })).subject.every(color => !color.pinned)).toBe(true)
   })
 })
 

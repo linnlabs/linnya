@@ -56,6 +56,11 @@ function mergeHueRanges(ranges: readonly HueRange[]): HueRange[] {
   })
 }
 
+/** 指定色优先：包含指定色相的排除段作废（两个指定色互为对侧、`avoid` 压到指定色等情况）。 */
+export function withoutPinnedHues(ranges: readonly HueRange[], pinnedHues: readonly number[]): HueRange[] {
+  return ranges.filter(([from, to]) => !pinnedHues.some(hue => isHueWithinArc(hue, from, to)))
+}
+
 export function isHueExcluded(hue: number, ranges: readonly HueRange[], margin = 0): boolean {
   return ranges.some(([from, to]) => isHueWithinArc(hue, from - margin, to + margin))
 }

@@ -1,5 +1,6 @@
 import type { Oklab, Oklch, RgbChannels } from '../../definitions/color.js'
 import { deltaEOK, maxSrgbChroma, oklabToOklch, oklchToOklab, rgbToOklab } from '../../functions/colorSpace.js'
+import { contrastRatio } from '../../functions/contrast.js'
 import { hueDistance, isHueWithinArc, normalizeHue } from '../../functions/hue.js'
 import { parseColor } from '../../functions/parseColor.js'
 import type { HueRange, Palette, PaletteBase, PaletteRelation, PaletteTone } from '../definitions/palette.js'
@@ -69,6 +70,8 @@ export interface PaletteRecipe {
   readonly random: RandomSource
   /** 强调色个数，1–6；不传按关系默认。 */
   readonly accentCount?: number
+  /** 用户指定的颜色，与 `subject` 开头几个一一对应；原样作为前几个强调色，第一个是主色。 */
+  readonly pinnedHexes?: readonly string[]
 }
 
 /** 一个用到的色相：`source` 是取它的明度与彩度时参照的颜色（图片色本身，或合成时借主色的明度与彩度）。 */
@@ -109,6 +112,7 @@ function pickWeighted<T>(items: readonly T[], weights: readonly number[], random
 
 /** 主色：按本色排名加权抽，每次主色不同，色系才不同。染纸底不铺米色（灰 + 主色的底几乎无彩，不受影响）。 */
 function pickPrimary(recipe: PaletteRecipe): Oklch | undefined {
+  if (recipe.pinnedHexes?.length) return recipe.subject[0]
   const avoidBeige = recipe.base === 'tint' && recipe.relation !== 'ink'
   const candidates = recipe.subject.filter((color, index) => !recipe.partnerOnly?.[index] && (!avoidBeige || !isBeige(color)))
   if (recipe.relation === 'multi') return candidates[0]
@@ -118,6 +122,15 @@ function pickPrimary(recipe: PaletteRecipe): Oklch | undefined {
 
 /** 按关系定用到的色相。邻近、中差、对照优先用色相差落在区间里的图片色，没有再合成。 */
 function huePlan(recipe: PaletteRecipe, primary: Oklch): Anchor[] | null {
+  const pinnedCount = recipe.pinnedHexes?.length ?? 0
+  if (pinnedCount >= 2) {
+    // 色相已由用户定下；多数时候再从图片里借一种看得出不同的颜色做后面的强调色，几套之间才有区别。
+    const pinnedColors = recipe.subject.slice(0, pinnedCount)
+    const extras = recipe.subject.slice(pinnedCount).filter(color => isAllowed(recipe, color.h)
+      && pinnedColors.every(pin => hueDifference(pin, color) >= PARTNER_MIN_HUE_DIFFERENCE))
+    const extra = recipe.random() < IMAGE_PARTNER_PROBABILITY ? extras[Math.floor(recipe.random() * extras.length)] : undefined
+    return [...pinnedColors, ...(extra ? [extra] : [])].map(color => ({ hue: color.h, source: color }))
+  }
   const main: Anchor = { hue: primary.h, source: primary }
   if (recipe.relation === 'mono' || recipe.relation === 'ink') return [main]
   if (recipe.relation === 'multi') {
@@ -227,6 +240,20 @@ function separated(recipe: PaletteRecipe, color: Oklch, others: readonly Oklch[]
   return null
 }
 
+/** 指定色不能改，对比度不够时沿“离开它”的方向调底色；调到头也不够返回 null。 */
+function groundForPinned(recipe: PaletteRecipe, ground: Oklch): Oklch | null {
+  const pinned = (recipe.pinnedHexes ?? []).map(hex => parseColor(hex)?.channels)
+  const direction = recipe.base === 'dark' ? 'darker' : 'lighter'
+  let fitted: Oklch | null = ground
+  for (const channels of pinned) {
+    if (!channels || !fitted) return null
+    fitted = fitLightness(fitted, channels, ACCENT_MIN_CONTRAST, direction)
+  }
+  if (!fitted) return null
+  const final = parseColor(oklchHex(fitted))?.channels
+  return final && pinned.every(channels => channels && contrastRatio(channels, final) >= ACCENT_MIN_CONTRAST) ? fitted : null
+}
+
 /** 图表首尾明度：浅底从深到浅、深底从浅到深；深底上最暗一档与底色拉开。 */
 function chartLightness(recipe: PaletteRecipe, background: Oklch): readonly [number, number] {
   const range = CHART_LIGHTNESS[surfaceOf(recipe.base)]
@@ -281,6 +308,12 @@ function multiHueChart(recipe: PaletteRecipe, anchors: readonly Anchor[]): numbe
   return hues.map((_, index) => ordered[index % ordered.length]?.hue ?? 0)
 }
 
+/** 两个以上指定色：图表只用这几个色相轮流，不沿色环插值，否则蓝配金的图表中间会冒出绿。 */
+function pinnedChartHues(recipe: PaletteRecipe): number[] {
+  const count = recipe.pinnedHexes?.length ?? 1
+  return Array.from({ length: CHART_SERIES_COUNT }, (_, index) => recipe.subject[index % count]?.h ?? 0)
+}
+
 function chartRamp(recipe: PaletteRecipe, accent: Oklch, hues: readonly number[], lightness: readonly [number, number]): Oklch[] {
   const [from, to] = lightness
   const firstRelative = clamp(relativeChromaOf(accent) * randomBetween(recipe.random, 0.8, 1), CHART_RELATIVE_CHROMA)
@@ -320,11 +353,12 @@ export function buildPalette(recipe: PaletteRecipe): Palette | null {
   const neutralHue = ground.neutralHue === 'cool' ? COOL_NEUTRAL_HUE : hue
   const capInk = (chroma: number) => inkRelation ? Math.min(chroma, INK_RELATION_MAX_CHROMA) : chroma
 
-  const bgColor: Oklch = {
+  const bgColor = groundForPinned(recipe, {
     l: between(recipe, ground.bgLightness),
     c: capInk(Math.min(between(recipe, ground.bgChroma), primary.c * ground.maxSubjectChromaRatio)),
     h: neutralHue,
-  }
+  })
+  if (!bgColor) return null
   const bgHex = oklchHex(bgColor)
   const background = parseColor(bgHex)?.channels
   if (!background) return null
@@ -340,10 +374,16 @@ export function buildPalette(recipe: PaletteRecipe): Palette | null {
   if (!ink || !muted) return null
 
   // 强调色：按色相轮流取，色相用完后换下一档色调。
-  const count = Math.min(MAX_ACCENT_COUNT, Math.max(1, Math.round(recipe.accentCount ?? DEFAULT_ACCENT_COUNT[recipe.relation])))
+  const pinnedCount = recipe.pinnedHexes?.length ?? 0
+  const count = Math.max(pinnedCount, Math.min(MAX_ACCENT_COUNT, Math.max(1, Math.round(recipe.accentCount ?? DEFAULT_ACCENT_COUNT[recipe.relation]))))
   const tones = toneSequence(recipe)
   const accents: Oklch[] = []
   for (let index = 0; index < count; index += 1) {
+    const pinnedAccent = index < pinnedCount ? recipe.subject[index] : undefined
+    if (pinnedAccent) {
+      accents.push(pinnedAccent)
+      continue
+    }
     const anchor = anchors[index % anchors.length]
     const tone = tones[Math.min(Math.floor(index / anchors.length), tones.length - 1)]
     if (!anchor || !tone) return null
@@ -354,14 +394,18 @@ export function buildPalette(recipe: PaletteRecipe): Palette | null {
   }
   // 第一轮是各色相各一个：彼此要看得出是不同颜色，否则“邻近色”“多色”实际只是一种颜色。
   const firstRound = accents.slice(0, anchors.length)
-  if (firstRound.some((accent, index) => firstRound.slice(index + 1).some(other => visibleHueDifference(accent, other) < PARTNER_MIN_HUE_DIFFERENCE))) return null
+  const tooSimilar = firstRound.some((accent, index) => firstRound.slice(index + 1).some((other, offset) => {
+    const bothPinned = index + 1 + offset < pinnedCount
+    return !bothPinned && visibleHueDifference(accent, other) < PARTNER_MIN_HUE_DIFFERENCE
+  }))
+  if (tooSimilar) return null
   const mainAccent = accents[0]
   if (!mainAccent) return null
 
   let chart: Oklch[]
   if (inkRelation) chart = emphasisChart(recipe, mainAccent, neutralHue, bgColor)
   else {
-    const hues = anchors.length === 1 ? singleHueChart(recipe, hue) : multiHueChart(recipe, anchors)
+    const hues = pinnedCount >= 2 ? pinnedChartHues(recipe) : anchors.length === 1 ? singleHueChart(recipe, hue) : multiHueChart(recipe, anchors)
     chart = chartRamp(recipe, mainAccent, hues, chartLightness(recipe, bgColor))
   }
 
@@ -377,7 +421,7 @@ export function buildPalette(recipe: PaletteRecipe): Palette | null {
     surface: oklchHex(surfaceColor),
     ink: oklchHex(ink),
     muted: oklchHex(muted),
-    accent: accents.map(oklchHex),
+    accent: accents.map((color, index) => recipe.pinnedHexes?.[index] ?? oklchHex(color)),
     chart: chart.map(oklchHex),
   }
 }

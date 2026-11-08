@@ -271,6 +271,8 @@ export const DEFAULT_ACCENT_COUNT: Readonly<Record<PaletteRelation, number>> = {
   multi: 4,
 }
 export const MAX_ACCENT_COUNT = 6
+/** 指定色最多几个：每个都要占一个强调色位置。 */
+export const MAX_PINNED_COLORS = MAX_ACCENT_COUNT
 /** 强调色彼此至少相差的 ΔEOK；太近时沿明度拉开。 */
 export const ACCENT_MIN_SEPARATION = 0.07
 /**

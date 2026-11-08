@@ -1,7 +1,7 @@
 import type { Oklch } from '../../definitions/color.js'
 import { rgbToOklch } from '../../functions/colorSpace.js'
 import { hueDistance } from '../../functions/hue.js'
-import { parseColor } from '../../functions/parseColor.js'
+import { parseColor, toHex } from '../../functions/parseColor.js'
 import { subjectColorName } from '../definitions/hueNames.js'
 import type {
   Palette,
@@ -22,14 +22,18 @@ import {
   MAX_PALETTE_COUNT,
   MIN_PALETTE_DISTANCES,
   MAX_ACCENT_COUNT,
+  MAX_PINNED_COLORS,
   MULTI_MIN_SUBJECTS,
+  NEUTRAL_MAX_CHROMA,
   PRIMARY_MIN_IMAGES_FOR_PRESENCE,
   QUALITY_BAND,
+  RELATION_HUE_SHIFT,
   RELATION_WEIGHTS,
+  SUBJECT_MAX_HUE_SPREAD,
   SUBJECT_MIN_HUE_SEPARATION,
 } from '../definitions/paletteConstants.js'
 import { buildPalette } from '../functions/buildPalette.js'
-import { excludedHueRanges, isHueExcluded } from '../functions/excludedHues.js'
+import { excludedHueRanges, isHueExcluded, withoutPinnedHues } from '../functions/excludedHues.js'
 import { extractSubjectColors } from '../functions/extractSubjectColors.js'
 import { quantizeImage } from '../functions/quantizeImage.js'
 import { createRandom, decodeRngId, encodeRngId, freshSeed, type RandomSource } from '../functions/random.js'
@@ -62,7 +66,25 @@ function parseOklch(hex: string): Oklch | null {
 }
 
 function seedSubject(color: Oklch, hex: string): SubjectColor {
-  return { hex, name: subjectColorName(color), share: 0, images: 0, spot: false, oklch: color }
+  return { hex, name: subjectColorName(color), share: 0, images: 0, spot: false, pinned: false, oklch: color }
+}
+
+function parsePinnedColors(hexes: readonly string[]): SubjectColor[] {
+  if (hexes.length > MAX_PINNED_COLORS) throw new RangeError(`At most ${MAX_PINNED_COLORS} pinned colors are accepted`)
+  return hexes.map(hex => {
+    const parsed = parseColor(hex)
+    if (!parsed) throw new RangeError(`Invalid pinned color: ${hex}`)
+    return { ...seedSubject(rgbToOklch(parsed.channels), toHex(parsed.channels)), pinned: true }
+  })
+}
+
+/** 两个以上指定色时色相就定了，关系由它们的色相差决定，不再采样。 */
+function relationOfPinned(pinned: readonly SubjectColor[]): PaletteRelation {
+  const [first, second] = pinned
+  if (!first || !second || pinned.length > 2) return 'multi'
+  const distance = hueDistance(first.oklch.h, second.oklch.h)
+  if (distance <= RELATION_HUE_SHIFT.analog.max) return 'analog'
+  return distance <= RELATION_HUE_SHIFT.medium.max ? 'medium' : 'contrast'
 }
 
 function pickWeighted<T>(items: readonly T[], weightOf: (item: T) => number, random: RandomSource): T | null {
@@ -128,25 +150,33 @@ export function suggestPalettes(input: SuggestPalettesInput): PaletteSuggestion 
   const random = createRandom(seed)
   const count = Math.min(MAX_PALETTE_COUNT, Math.max(1, Math.round(input.count ?? DEFAULT_PALETTE_COUNT)))
 
+  const pinned = parsePinnedColors(input.pinnedColors ?? [])
+  const neutralPin = pinned.find(color => color.oklch.c < NEUTRAL_MAX_CHROMA)
+  if (neutralPin) return { kind: 'pinned_color_neutral', hex: neutralPin.hex }
+
   const extracted = extractSubjectColors(images.map(image => quantizeImage(image)))
-  const subject: SubjectColor[] = [...extracted.subject]
+  const found: SubjectColor[] = [...extracted.subject]
   for (const hex of input.seedColors ?? []) {
     const color = parseOklch(hex)
     if (!color) continue
-    if (subject.some(existing => hueDistance(existing.oklch.h, color.h) < SUBJECT_MIN_HUE_SEPARATION)) continue
-    subject.push(seedSubject(color, hex.toLowerCase()))
+    if (found.some(existing => hueDistance(existing.oklch.h, color.h) < SUBJECT_MIN_HUE_SEPARATION)) continue
+    found.push(seedSubject(color, hex.toLowerCase()))
   }
+  // 指定色优先：落在它对侧的图片色不要，其余图片色仍可做搭配色。
+  const compatible = found.filter(color => !pinned.some(pin => hueDistance(pin.oklch.h, color.oklch.h) > SUBJECT_MAX_HUE_SPREAD))
+  const subject: SubjectColor[] = [...pinned, ...compatible]
   if (subject.length === 0) return { kind: 'no_subject_color' }
 
   const avoid = (input.avoidColors ?? []).map(parseOklch).filter((color): color is Oklch => color !== null)
-  const excluded = excludedHueRanges(subject.map(color => color.oklch), avoid)
+  const excluded = withoutPinnedHues(excludedHueRanges(subject.map(color => color.oklch), avoid), pinned.map(color => color.oklch.h))
   const subjectColors = subject.map(color => color.oklch)
   const partnerOnly = subject.map(color => color.spot || (images.length >= PRIMARY_MIN_IMAGES_FOR_PRESENCE && color.images > 0 && color.images < 2))
   const multiAvailable = subjectColors.filter(color => !isHueExcluded(color.h, excluded)).length >= MULTI_MIN_SUBJECTS
   const accentCount = input.accentCount === undefined ? undefined : Math.min(MAX_ACCENT_COUNT, Math.max(1, Math.round(input.accentCount)))
 
+  const pinnedHexes = pinned.map(color => color.hex)
   const styles = styleSpace(
-    RELATIONS.filter(relation => relation !== 'multi' || multiAvailable),
+    pinned.length >= 2 ? [relationOfPinned(pinned)] : RELATIONS.filter(relation => relation !== 'multi' || multiAvailable),
     BASES.filter(base => input.base === undefined || base === input.base),
   )
 
@@ -156,13 +186,14 @@ export function suggestPalettes(input: SuggestPalettesInput): PaletteSuggestion 
   for (let attempt = 0; attempt < CANDIDATE_COUNT; attempt += 1) {
     const style = pickWeighted(styles, item => item.weight, random)
     if (!style) break
-    const palette = buildPalette({ id, relation: style.relation, base: style.base, ground: style.ground, tone: style.tone, subject: subjectColors, partnerOnly, excluded, random, accentCount })
+    const palette = buildPalette({ id, relation: style.relation, base: style.base, ground: style.ground, tone: style.tone, subject: subjectColors, partnerOnly, excluded, random, accentCount, pinnedHexes })
     if (!palette) continue
     const colors = paletteColors(palette)
     candidates.push({ palette, colors, quality: scorePalette(palette, colors) })
   }
 
   const palettes: Palette[] = selectDiverse(candidates, count, random).map((candidate, index) => ({ ...candidate.palette, id: `${id}-${index + 1}` }))
+  if (pinned.length > 0 && palettes.length === 0) return { kind: 'pinned_color_conflict' }
 
   return { kind: 'palettes', id, subject, neutrals: extracted.neutrals, excludedHues: excluded, palettes }
 }
