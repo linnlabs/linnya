@@ -1,5 +1,6 @@
 import type { Oklch } from '../../definitions/color.js'
 import { isHueWithinArc, normalizeHue } from '../../functions/hue.js'
+import type { PaletteTone } from './palette.js'
 
 /**
  * 按 OKLCH 色相锚定的中文色名。区间不等宽：按各色相在 OKLCH 里的实际位置划分
@@ -40,4 +41,17 @@ export function subjectColorName(color: Oklch): string {
 export function hueRangeLabel(from: number, to: number): string {
   const middle = normalizeHue(from + normalizeHue(to - from) / 2)
   return `${hueName(middle)}${Math.round(normalizeHue(from))}°-${Math.round(normalizeHue(to))}°`
+}
+
+/** 色调的中文名，沿用 PCCS 的叫法。 */
+export const PALETTE_TONE_NAMES: Readonly<Record<PaletteTone, string>> = {
+  native: '本色',
+  light: '浅',
+  bright: '明',
+  soft: '柔',
+  dull: '浊',
+  strong: '强',
+  deep: '深',
+  dark: '暗',
+  grayish: '灰',
 }

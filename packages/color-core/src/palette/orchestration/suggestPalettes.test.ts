@@ -8,6 +8,7 @@ import type { Palette, PaletteImagePixels, PaletteSuggestion } from '../definiti
 import { NEUTRAL_MAX_CHROMA } from '../definitions/paletteConstants.js'
 import { isHueExcluded } from '../functions/excludedHues.js'
 import { createRandom, decodeRngId, encodeRngId } from '../functions/random.js'
+import { paletteDistance } from '../functions/scorePalette.js'
 import { suggestPalettes } from './suggestPalettes.js'
 
 type Rgb = readonly [number, number, number]
@@ -130,18 +131,33 @@ describe('出配色', () => {
     }
   })
 
-  it('同一次的 3 套关系与底色都不同（组合够用时）', () => {
-    for (let seed = 0; seed < 200; seed += 1) {
+  it('同一次的 3 套两两明显不同（角色加权 ΔEOK 加结构差异 ≥ 0.09）', () => {
+    for (let seed = 0; seed < 100; seed += 1) {
       const result = palettesOf(suggestPalettes({ images: BRONZE_IMAGES, rng: encodeRngId(seed) }))
-      expect(new Set(result.palettes.map(palette => palette.relation)).size).toBe(3)
-      expect(new Set(result.palettes.map(palette => palette.base)).size).toBe(3)
+      expect(result.palettes).toHaveLength(3)
+      const [a, b, c] = result.palettes
+      if (!a || !b || !c) throw new Error('missing palette')
+      for (const [left, right] of [[a, b], [a, c], [b, c]] as const) expect(paletteDistance(left, right), encodeRngId(seed)).toBeGreaterThanOrEqual(0.09)
     }
   })
 
-  it('只要一种底色时，3 套关系不同', () => {
+  it('只要一种底色时，3 套都用它，彼此仍不同', () => {
     const result = palettesOf(suggestPalettes({ images: BRONZE_IMAGES, base: 'dark', rng: 'pl00a0' }))
+    expect(result.palettes).toHaveLength(3)
     expect(result.palettes.every(palette => palette.base === 'dark')).toBe(true)
-    expect(new Set(result.palettes.map(palette => palette.relation)).size).toBe(3)
+    const [a, b, c] = result.palettes
+    if (!a || !b || !c) throw new Error('missing palette')
+    for (const [left, right] of [[a, b], [a, c], [b, c]] as const) expect(paletteDistance(left, right)).toBeGreaterThanOrEqual(0.06)
+  })
+
+  it('每次不同是看得出的不同：同样的图调用 100 次，可区分的配色（角色加权距离 ≥ 0.05）超过 40 种', () => {
+    const representatives: Palette[] = []
+    for (let seed = 0; seed < 100; seed += 1) {
+      for (const palette of palettesOf(suggestPalettes({ images: BRONZE_IMAGES, rng: encodeRngId(seed * 31 + 7) })).palettes) {
+        if (representatives.every(existing => paletteDistance(existing, palette) >= 0.05)) representatives.push(palette)
+      }
+    }
+    expect(representatives.length).toBeGreaterThan(40)
   })
 
   it('avoid 的颜色两侧不出现', () => {

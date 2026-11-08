@@ -68,6 +68,25 @@ export function isLinearRgbInGamut(linear: readonly [number, number, number]): b
   return linear.every(value => value >= -GAMUT_EPSILON && value <= 1 + GAMUT_EPSILON)
 }
 
+const MAX_CHROMA_SEARCH_LIMIT = 0.4
+const MAX_CHROMA_SEARCH_STEPS = 18
+
+/**
+ * 给定明度与色相，sRGB 内能达到的最大 OKLCH 彩度（二分，误差约 2e-6）。“相对彩度”= 彩度 ÷ 这个值，
+ * 即 Okhsl 的饱和度：不同色相上同一档相对彩度看起来一样鲜，用它定义色调不会让黄绿发灰、让蓝紫过艳。
+ */
+export function maxSrgbChroma(lightness: number, hue: number): number {
+  if (lightness <= 0 || lightness >= 1) return 0
+  let low = 0
+  let high = MAX_CHROMA_SEARCH_LIMIT
+  for (let step = 0; step < MAX_CHROMA_SEARCH_STEPS; step += 1) {
+    const middle = (low + high) / 2
+    if (inSrgbGamut({ l: lightness, c: middle, h: hue })) low = middle
+    else high = middle
+  }
+  return low
+}
+
 /** 两个 OKLab 颜色的欧氏距离（ΔEOK）。 */
 export function deltaEOK(left: Oklab, right: Oklab): number {
   return Math.hypot(left.l - right.l, left.a - right.a, left.b - right.b)

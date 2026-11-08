@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deltaEOK, oklchToRgb, rgbToOklab, rgbToOklch, type RgbChannels } from './colorSpace.js'
+import { deltaEOK, isLinearRgbInGamut, maxSrgbChroma, oklabToLinearRgb, oklchToOklab, oklchToRgb, rgbToOklab, rgbToOklch, type RgbChannels } from './colorSpace.js'
 
 describe('sRGB ↔ OKLCH', () => {
   it('已知值：黑、白、中性灰没有彩度，红的色相在 29° 附近', () => {
@@ -72,6 +72,21 @@ describe('CSS Color 4 色域映射', () => {
         expect(Math.abs(actual.l - l)).toBeLessThan(0.002)
         expect(Math.min(Math.abs(actual.h - h), 360 - Math.abs(actual.h - h))).toBeLessThan(0.5)
       }
+    }
+  })
+})
+
+describe('sRGB 最大彩度', () => {
+  it('黑白处为 0；同明度下蓝紫能到的彩度远高于黄绿以外的青；结果在色域边界上', () => {
+    expect(maxSrgbChroma(0, 120)).toBe(0)
+    expect(maxSrgbChroma(1, 120)).toBe(0)
+    const blue = maxSrgbChroma(0.45, 264)
+    const cyan = maxSrgbChroma(0.45, 200)
+    expect(blue).toBeGreaterThan(cyan * 2)
+    for (const [l, h] of [[0.3, 30], [0.6, 145], [0.9, 110], [0.45, 264]] as const) {
+      const max = maxSrgbChroma(l, h)
+      expect(isLinearRgbInGamut(oklabToLinearRgb(oklchToOklab({ l, c: max, h })))).toBe(true)
+      expect(isLinearRgbInGamut(oklabToLinearRgb(oklchToOklab({ l, c: max + 0.002, h })))).toBe(false)
     }
   })
 })

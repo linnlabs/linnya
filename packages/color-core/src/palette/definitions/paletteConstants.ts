@@ -1,4 +1,4 @@
-import type { PaletteBase, PaletteRelation } from './palette.js'
+import type { PaletteBase, PaletteRelation, PaletteTone } from './palette.js'
 
 /**
  * 配色系统的常量。数值来自离线样张标定（青铜器、光合作用、工商业储能三组 Agent 实际收集的图），
@@ -67,70 +67,65 @@ export const INK_MIN_CONTRAST = 7
 export const MUTED_MIN_CONTRAST = 4.5
 export const ACCENT_MIN_CONTRAST = 3
 
-// —— 生成：各底色明暗下的角色明度与彩度 ——
+// —— 生成：风格基因 ——
+//
+// 一套配色 = 关系 × 底色明暗 × 底面变体 × 色调，再加图表明度区间、彩度收尾、色相漂移等连续取值。
+// 每次先按这些维度采样一批候选，过约束、打分，再按感知差异挑出几套（见 orchestration/suggestPalettes）。
 
 export interface RangeValue {
   readonly min: number
   readonly max: number
 }
 
-export interface BaseTones {
-  readonly bgLightness: RangeValue
-  readonly bgChroma: RangeValue
-  /** 面色相对底色的明度差（深底为正、浅底为负）。 */
-  readonly surfaceLightnessOffset: number
-  readonly surfaceChromaOffset: number
+/** 墨与弱墨的期望明度与彩度；对比度不够时由 fitLightness 沿明度调整。 */
+export interface TextTones {
   readonly inkLightness: number
   readonly inkChroma: number
   readonly mutedLightness: number
   readonly mutedChroma: number
-  /** 点题色的期望明度区间；本色明度会被夹进来。 */
-  readonly accentLightness: RangeValue
-  /** 图表系列首尾的明度。 */
-  readonly chartLightness: readonly [number, number]
 }
 
-export const BASE_TONES: Readonly<Record<PaletteBase, BaseTones>> = {
-  light: {
-    bgLightness: { min: 0.982, max: 0.99 },
-    bgChroma: { min: 0.002, max: 0.006 },
-    surfaceLightnessOffset: -0.03,
-    surfaceChromaOffset: 0.003,
-    inkLightness: 0.24,
-    inkChroma: 0.018,
-    mutedLightness: 0.5,
-    mutedChroma: 0.02,
-    accentLightness: { min: 0.4, max: 0.58 },
-    chartLightness: [0.42, 0.87],
-  },
-  tint: {
-    bgLightness: { min: 0.948, max: 0.962 },
-    bgChroma: { min: 0.013, max: 0.022 },
-    surfaceLightnessOffset: -0.035,
-    surfaceChromaOffset: 0.004,
-    inkLightness: 0.26,
-    inkChroma: 0.034,
-    mutedLightness: 0.49,
-    mutedChroma: 0.034,
-    accentLightness: { min: 0.38, max: 0.55 },
-    chartLightness: [0.4, 0.84],
-  },
-  dark: {
-    bgLightness: { min: 0.185, max: 0.215 },
-    bgChroma: { min: 0.012, max: 0.024 },
-    surfaceLightnessOffset: 0.05,
-    surfaceChromaOffset: 0.004,
-    inkLightness: 0.94,
-    inkChroma: 0.012,
-    mutedLightness: 0.74,
-    mutedChroma: 0.02,
-    accentLightness: { min: 0.68, max: 0.8 },
-    chartLightness: [0.86, 0.46],
-  },
+export const TEXT_TONES: Readonly<Record<PaletteBase, TextTones>> = {
+  light: { inkLightness: 0.24, inkChroma: 0.018, mutedLightness: 0.5, mutedChroma: 0.02 },
+  tint: { inkLightness: 0.26, inkChroma: 0.034, mutedLightness: 0.49, mutedChroma: 0.034 },
+  dark: { inkLightness: 0.94, inkChroma: 0.012, mutedLightness: 0.74, mutedChroma: 0.02 },
 }
 
-/** 底色彩度不超过本色彩度的这个比例：本色本身发灰（如灰青铜锈），纸也跟着收，不染成薄荷。 */
-export const PAPER_MAX_SUBJECT_CHROMA_RATIO = 0.5
+/** 底色的中性色相：随本色，或偏冷（蓝灰）。彩度都很低，不受排除区限制。 */
+export type NeutralHue = 'subject' | 'cool'
+export const COOL_NEUTRAL_HUE = 250
+
+/** 底面变体：同一种底色明暗下，纸的明度、彩度与冷暖不同。 */
+export interface GroundVariant {
+  readonly key: string
+  readonly bgLightness: RangeValue
+  readonly bgChroma: RangeValue
+  /** 底色彩度不超过本色彩度的这个比例：本色发灰时纸也跟着收。 */
+  readonly maxSubjectChromaRatio: number
+  readonly neutralHue: NeutralHue
+  /** 面色相对底色的明度差（深底为正、浅底为负）。 */
+  readonly surfaceLightnessOffset: number
+  readonly surfaceChromaOffset: number
+  /** 先验权重。 */
+  readonly weight: number
+}
+
+export const GROUND_VARIANTS: Readonly<Record<PaletteBase, readonly GroundVariant[]>> = {
+  light: [
+    { key: 'tinted', bgLightness: { min: 0.978, max: 0.992 }, bgChroma: { min: 0.002, max: 0.007 }, maxSubjectChromaRatio: 0.5, neutralHue: 'subject', surfaceLightnessOffset: -0.03, surfaceChromaOffset: 0.003, weight: 1 },
+    { key: 'cool', bgLightness: { min: 0.978, max: 0.99 }, bgChroma: { min: 0.002, max: 0.005 }, maxSubjectChromaRatio: 1, neutralHue: 'cool', surfaceLightnessOffset: -0.032, surfaceChromaOffset: 0.002, weight: 0.5 },
+    { key: 'white', bgLightness: { min: 0.995, max: 1 }, bgChroma: { min: 0, max: 0.0015 }, maxSubjectChromaRatio: 1, neutralHue: 'subject', surfaceLightnessOffset: -0.035, surfaceChromaOffset: 0.003, weight: 0.5 },
+  ],
+  tint: [
+    { key: 'pale', bgLightness: { min: 0.948, max: 0.968 }, bgChroma: { min: 0.01, max: 0.02 }, maxSubjectChromaRatio: 0.5, neutralHue: 'subject', surfaceLightnessOffset: -0.035, surfaceChromaOffset: 0.004, weight: 1 },
+    { key: 'paper', bgLightness: { min: 0.922, max: 0.946 }, bgChroma: { min: 0.016, max: 0.028 }, maxSubjectChromaRatio: 0.5, neutralHue: 'subject', surfaceLightnessOffset: -0.035, surfaceChromaOffset: 0.004, weight: 0.6 },
+  ],
+  dark: [
+    { key: 'ink', bgLightness: { min: 0.17, max: 0.215 }, bgChroma: { min: 0.008, max: 0.022 }, maxSubjectChromaRatio: 1, neutralHue: 'subject', surfaceLightnessOffset: 0.05, surfaceChromaOffset: 0.004, weight: 1 },
+    // 本色深底：藏青、墨绿、酒红这类有颜色的深底，基准里模型常选、用户也认可。
+    { key: 'deep', bgLightness: { min: 0.25, max: 0.32 }, bgChroma: { min: 0.03, max: 0.055 }, maxSubjectChromaRatio: 1.1, neutralHue: 'subject', surfaceLightnessOffset: 0.045, surfaceChromaOffset: 0.006, weight: 0.8 },
+  ],
+}
 
 /** “墨色主导”时底、面、墨、弱墨的彩度上限：几乎中性，只留一丝本色。 */
 export const INK_RELATION_MAX_CHROMA = 0.006
@@ -141,28 +136,131 @@ export const INK_RELATION_MAX_CHROMA = 0.006
  */
 export const BEIGE_HUES: RangeValue = { min: 45, max: 100 }
 
-/** 点题色彩度区间：本色彩度夹进来，既不脏也不艳。 */
-export const ACCENT_CHROMA: RangeValue = { min: 0.07, max: 0.15 }
-/** 图表系列首色的彩度区间；越浅越淡。 */
-export const CHART_CHROMA: RangeValue = { min: 0.06, max: 0.13 }
-/** 图表末色相对首色保留的彩度比例。 */
-export const CHART_CHROMA_TAPER = 0.45
-export const CHART_SERIES_COUNT = 5
+/**
+ * 色调（借鉴日本色研 PCCS 的色调体系）：点题色与图表的“鲜浊深浅”。明度用 OKLCH，彩度用相对彩度
+ * （彩度 ÷ 该明度色相下 sRGB 的最大彩度），不同色相的同一档看起来一样鲜。`native` 是本色自己的色调。
+ * 浅底与染纸（paper）上点题要够深，深底（dark）上要够浅，两边各有一套。
+ */
+export interface ToneSpec {
+  readonly lightness: RangeValue
+  readonly relativeChroma: RangeValue
+  /** 绝对彩度上限：高彩度只给小面积角色。 */
+  readonly maxChroma: number
+  readonly weight: number
+}
 
-/** 邻近色：点题色与本色的色相差。 */
-export const ANALOG_HUE_SHIFT: RangeValue = { min: 30, max: 55 }
+export type ToneSurface = 'paper' | 'dark'
 
-/** 每次随机的微调幅度。 */
+export const ACCENT_TONES: Readonly<Record<ToneSurface, Readonly<Partial<Record<PaletteTone, ToneSpec>>>>> = {
+  paper: {
+    native: { lightness: { min: 0.3, max: 0.62 }, relativeChroma: { min: 0, max: 1 }, maxChroma: 0.15, weight: 1 },
+    soft: { lightness: { min: 0.56, max: 0.64 }, relativeChroma: { min: 0.3, max: 0.42 }, maxChroma: 0.12, weight: 0.9 },
+    dull: { lightness: { min: 0.46, max: 0.54 }, relativeChroma: { min: 0.26, max: 0.38 }, maxChroma: 0.11, weight: 0.9 },
+    deep: { lightness: { min: 0.36, max: 0.45 }, relativeChroma: { min: 0.55, max: 0.75 }, maxChroma: 0.15, weight: 1 },
+    dark: { lightness: { min: 0.27, max: 0.34 }, relativeChroma: { min: 0.35, max: 0.55 }, maxChroma: 0.1, weight: 0.6 },
+    strong: { lightness: { min: 0.5, max: 0.58 }, relativeChroma: { min: 0.7, max: 0.9 }, maxChroma: 0.19, weight: 0.45 },
+    grayish: { lightness: { min: 0.46, max: 0.56 }, relativeChroma: { min: 0.2, max: 0.3 }, maxChroma: 0.06, weight: 0.4 },
+  },
+  dark: {
+    native: { lightness: { min: 0.68, max: 0.8 }, relativeChroma: { min: 0, max: 1 }, maxChroma: 0.15, weight: 1 },
+    light: { lightness: { min: 0.78, max: 0.85 }, relativeChroma: { min: 0.4, max: 0.6 }, maxChroma: 0.12, weight: 0.9 },
+    soft: { lightness: { min: 0.7, max: 0.77 }, relativeChroma: { min: 0.3, max: 0.45 }, maxChroma: 0.11, weight: 1 },
+    bright: { lightness: { min: 0.74, max: 0.82 }, relativeChroma: { min: 0.7, max: 0.9 }, maxChroma: 0.19, weight: 0.45 },
+    grayish: { lightness: { min: 0.7, max: 0.78 }, relativeChroma: { min: 0.2, max: 0.3 }, maxChroma: 0.06, weight: 0.4 },
+  },
+}
+
+/** 点题色的最低彩度：再灰就读成文字，不像强调色（“灰”色调也不低于它）。 */
+export const ACCENT_MIN_CHROMA = 0.035
+/** `native` 色调下本色彩度的夹取区间：太灰的本色点题会读成文字。 */
+export const NATIVE_ACCENT_CHROMA: RangeValue = { min: 0.045, max: 0.15 }
+/** `native` 色调在深底上相对本色提亮的明度。 */
+export const NATIVE_DARK_LIGHTNESS_LIFT = 0.22
 export const ACCENT_LIGHTNESS_JITTER = 0.04
 export const ACCENT_CHROMA_JITTER = 0.1
 
-/** 组合的先验权重；随机抽取时按此加权。 */
+/** 点题色落入排除区时沿色相轴移到最近的允许色相，移动超过这个角度就放弃该候选。 */
+export const MAX_ACCENT_HUE_SHIFT = 30
+
+// —— 图表 ——
+
+export const CHART_SERIES_COUNT = 5
+/** 图表系列首尾明度（浅底从深到浅，深底从浅到深），各端在区间里随机取。 */
+export const CHART_LIGHTNESS: Readonly<Record<ToneSurface, { readonly start: RangeValue; readonly end: RangeValue }>> = {
+  paper: { start: { min: 0.36, max: 0.5 }, end: { min: 0.82, max: 0.92 } },
+  dark: { start: { min: 0.82, max: 0.9 }, end: { min: 0.42, max: 0.55 } },
+}
+/** 图表首尾明度至少相差这么多，系列才按深浅读得出顺序。 */
+export const CHART_MIN_LIGHTNESS_SPAN = 0.32
+/** 深底上图表最暗一档至少比底色亮这么多。 */
+export const CHART_DARK_GROUND_GAP = 0.2
+/** 图表首色的相对彩度（由色调给出，再夹进这个区间）与绝对彩度上限。 */
+export const CHART_RELATIVE_CHROMA: RangeValue = { min: 0.15, max: 0.6 }
+export const CHART_MAX_CHROMA = 0.14
+/** 图表末色的绝对彩度上限占首色上限的比例：浅端保持低饱和，不出亮薄荷、亮青这类糖果色。 */
+export const CHART_END_MAX_CHROMA_RATIO = 0.5
+/** 图表末色保留首色相对彩度的比例。 */
+export const CHART_CHROMA_TAPER: RangeValue = { min: 0.45, max: 0.8 }
+/** 同色系图表的色相漂移（Cubehelix 的思路：明度单调，色相沿途缓慢转动）；有一定概率不漂移。 */
+export const CHART_HUE_DRIFT: RangeValue = { min: 6, max: 18 }
+export const CHART_NO_DRIFT_PROBABILITY = 0.4
+/** 墨色主导图表里灰阶的彩度。 */
+export const EMPHASIS_GRAY_CHROMA = 0.004
+
+/** 双本色时由第二种本色做底与墨的概率（例如光合作用的深朱做酒红底、叶绿点题）。 */
+export const DUAL_SWAP_PROBABILITY = 0.5
+
+/** 邻近色：点题色与本色的色相差。 */
+export const ANALOG_HUE_SHIFT: RangeValue = { min: 20, max: 60 }
+
+/** 关系 × 底色的先验权重。 */
 export const COMBINATION_WEIGHTS: Readonly<Record<PaletteRelation, Readonly<Record<PaletteBase, number>>>> = {
   mono: { light: 0.6, tint: 1, dark: 0.8 },
   analog: { light: 0.7, tint: 0.6, dark: 0.6 },
   ink: { light: 1, tint: 0.5, dark: 0.7 },
   dual: { light: 0.8, tint: 0.8, dark: 1 },
 }
+
+// —— 评分 ——
+
+/**
+ * 暗黄绿：色彩偏好研究里普遍不受欢迎（Palmer、Schloss 2010；Material 的 DislikeAnalyzer 同据）。
+ * Material 的阈值是 HCT 色相 90–111、彩度 > 16、色调 < 65，这里换算到 OKLCH。
+ */
+export const DISLIKED_HUES: RangeValue = { min: 95, max: 120 }
+export const DISLIKED_MIN_CHROMA = 0.045
+export const DISLIKED_MAX_LIGHTNESS = 0.69
+/** 点题、底、面落入暗黄绿时的分数系数；图表按落入的比例折算。 */
+export const DISLIKED_ROLE_FACTOR = 0.35
+export const DISLIKED_CHART_FACTOR = 0.5
+/** 点题与墨太近会读成文字。 */
+export const ACCENT_INK_MIN_DISTANCE = 0.1
+export const ACCENT_TOO_CLOSE_FACTOR = 0.5
+/** 图表相邻两档太近分不清（O'Donovan 2011：配色里的颜色不能太相似）。 */
+export const CHART_MIN_STEP_DISTANCE = 0.04
+export const CHART_TOO_CLOSE_FACTOR = 0.6
+/** 底色有明显彩度时点题再用高彩度，整页太“吵”。 */
+export const LOUD_BG_CHROMA = 0.02
+export const LOUD_ACCENT_CHROMA = 0.15
+export const LOUD_FACTOR = 0.6
+
+// —— 挑选 ——
+
+/** 每次采样的候选数。 */
+export const CANDIDATE_COUNT = 240
+/**
+ * 挑选：每套与已选各套的感知距离至少为门槛（O'Donovan 2011 给多条建议的做法），门槛从高到低放宽；
+ * 满足门槛的候选里先只看没用过的关系，再在分数不低于最高分这个比例的里按分数加权随机抽一套。
+ */
+export const MIN_PALETTE_DISTANCES: readonly number[] = [0.16, 0.12, 0.09, 0.06, 0.03, 0]
+export const QUALITY_BAND = 0.75
+/**
+ * 感知距离里各角色的权重（ΔEOK 加权平均）。墨与弱墨几乎总是深灰或浅灰，权重大了会把差异稀释掉；
+ * 看一套配色时先看到的是纸、点题和图表。
+ */
+export const DISTANCE_WEIGHTS = { bg: 0.75, surface: 0.25, ink: 0.125, muted: 0.125, accent: 1, chart: 1 } as const
+/** 结构不同的额外距离：底色明暗、关系、色调。 */
+export const STRUCTURE_DISTANCE = { base: 0.04, relation: 0.02, tone: 0.02 } as const
 
 export const DEFAULT_PALETTE_COUNT = 3
 export const MAX_PALETTE_COUNT = 5

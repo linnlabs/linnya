@@ -4,6 +4,7 @@ export {
   isLinearRgbInGamut,
   linearToSrgbChannel,
   deltaEOK,
+  maxSrgbChroma,
   oklabToLinearRgb,
   oklabToOklch,
   oklchToOklab,

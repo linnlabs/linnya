@@ -14,6 +14,12 @@ export type PaletteRelation = 'mono' | 'analog' | 'ink' | 'dual'
 /** 底色明暗：浅底（近白纸）、染纸底、深底。 */
 export type PaletteBase = 'light' | 'tint' | 'dark'
 
+/**
+ * 点题与图表的色调（借鉴 PCCS）：`native` 是本色自己的色调；浅底与染纸上有柔、浊、深、暗、强、灰，
+ * 深底上有浅、柔、明、灰。
+ */
+export type PaletteTone = 'native' | 'light' | 'bright' | 'soft' | 'dull' | 'strong' | 'deep' | 'dark' | 'grayish'
+
 export interface SubjectColor {
   readonly hex: string
   /** 中文短名，只作说明；调用方可以改叫更贴切的名字。 */
@@ -29,6 +35,7 @@ export interface Palette {
   readonly id: string
   readonly relation: PaletteRelation
   readonly base: PaletteBase
+  readonly tone: PaletteTone
   readonly bg: string
   readonly surface: string
   readonly ink: string
