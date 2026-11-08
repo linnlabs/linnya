@@ -1,6 +1,10 @@
 import type { CanvasCard } from '@plugin/canvas/shared';
 import type { CanvasDocumentSession } from '../../canvasDocument';
-import type { CanvasResizeDisplay, CanvasResizeGesture } from '../definitions/cardResizing';
+import type {
+  CanvasResizeDisplay,
+  CanvasResizeEdge,
+  CanvasResizeGesture,
+} from '../definitions/cardResizing';
 import { createCanvasResizeState } from '../store/createCanvasResizeState';
 import { resolveCanvasResize } from '../functions/resolveCanvasResize';
 
@@ -47,6 +51,8 @@ export function createCanvasCardResize(
           id: active.card.id,
           baseRevision: active.card.revision,
           patch: {
+            ...(size.x !== active.card.x ? { x: size.x } : {}),
+            ...(size.y !== active.card.y ? { y: size.y } : {}),
             width: size.width,
             height: size.height,
             ...(active.card.type === 'text'
@@ -70,12 +76,21 @@ export function createCanvasCardResize(
   };
   return {
     state,
-    start(card: CanvasCard, event: PointerEvent, zoom: number, display: CanvasResizeDisplay) {
+    start(
+      card: CanvasCard,
+      event: PointerEvent,
+      {
+        edge,
+        zoom,
+        display,
+      }: { edge: CanvasResizeEdge; zoom: number; display: CanvasResizeDisplay }
+    ) {
       if (card.locked || event.button !== 0 || !(event.currentTarget instanceof HTMLElement))
         return;
       cancel();
       gesture = {
         card,
+        edge,
         pointer: event.pointerId,
         clientX: event.clientX,
         clientY: event.clientY,
@@ -93,7 +108,9 @@ export function createCanvasCardResize(
       void session
         .protect(
           card.id,
-          card.type === 'text' ? ['width', 'height', 'data'] : ['width', 'height'],
+          card.type === 'text'
+            ? ['x', 'y', 'width', 'height', 'data']
+            : ['x', 'y', 'width', 'height'],
           'resize'
         )
         .catch(report);

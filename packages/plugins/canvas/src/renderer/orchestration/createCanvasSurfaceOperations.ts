@@ -1,4 +1,5 @@
 import { type CanvasArrangeRequest, type CanvasCardId } from '@plugin/canvas/shared';
+import type { CanvasResizeEdge } from '../features/cardResizing';
 
 import type { CanvasSurfaceOperationsOptions } from './definitions/canvasSurfaceComposition';
 
@@ -45,19 +46,23 @@ export function createCanvasSurfaceOperations({
       raster.retry();
       refreshView();
     },
-    resizeStart(event: PointerEvent) {
+    resizeStart(event: PointerEvent, edge: CanvasResizeEdge) {
       if (readonly.value) return;
       const card = selectedCards.value[0];
       if (card && selectedCards.value.length === 1) {
         kernel.finishTransitions([card.id]);
         const target = cards().find(item => item.id === card.id);
         if (target)
-          resizing.start(target, event, camera.value.zoom, {
-            show: size => kernel.setResizePreview(target.id, size),
-            // 撤掉预览后按落地的新尺寸重排正文。
-            clear: () => {
-              kernel.clearDragPreview();
-              refreshView();
+          resizing.start(target, event, {
+            edge,
+            zoom: camera.value.zoom,
+            display: {
+              show: frame => kernel.setResizePreview(target.id, frame),
+              // 撤掉预览后按落地的新尺寸重排正文。
+              clear: () => {
+                kernel.clearDragPreview();
+                refreshView();
+              },
             },
           });
       }

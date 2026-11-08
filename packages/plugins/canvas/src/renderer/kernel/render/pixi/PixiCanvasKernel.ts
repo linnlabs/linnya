@@ -540,8 +540,8 @@ export class PixiCanvasKernel implements CanvasKernel {
     this.previewChanged(starting);
   }
   /** 改尺寸与拖动共用预览通道：纸面、连线、描边逐帧跟随；正文旧排版裁在纸面内，提交后重排。 */
-  setResizePreview(id: CanvasCardId, size: Pick<CanvasRectangle, 'width' | 'height'>): void {
-    this.previewChanged(this.preview.resize(id, size));
+  setResizePreview(id: CanvasCardId, frame: CanvasRectangle): void {
+    this.previewChanged(this.preview.resize(id, frame));
   }
   private previewChanged(starting: boolean): void {
     if (starting) this.refreshOverviewCards();

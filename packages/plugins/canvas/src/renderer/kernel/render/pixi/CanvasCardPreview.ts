@@ -52,11 +52,14 @@ export class CanvasCardPreview {
     }
     return starting;
   }
-  resize(id: CanvasCardId, size: Pick<CanvasRectangle, 'width' | 'height'>): boolean {
+  /** 从上边或左边拖时外框原点也会变，所以整框替换；正文旧排版贴着新左上角裁剪。 */
+  resize(id: CanvasCardId, frame: CanvasRectangle): boolean {
     this.resizingId = id;
     const starting = this.place([id], card => {
-      card.width = size.width;
-      card.height = size.height;
+      card.x = frame.x;
+      card.y = frame.y;
+      card.width = frame.width;
+      card.height = frame.height;
     });
     const view = this.context.views.get(id);
     if (view) this.context.resize(view);

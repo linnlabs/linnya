@@ -42,8 +42,8 @@ export function createCanvasSurfacePresentation({
       { obstacles: chosen.size ? cards().filter(card => !chosen.has(card.id)) : [] }
     );
   });
-  // 尺寸手柄和连线圆点一样压在选中描边上：圆心在描边右下转角，屏幕尺寸不随缩放变化。
-  const resizeHandleStyle = computed(() => {
+  // 改尺寸不画手柄：沿选中描边中线铺一圈不可见的拖动区，屏幕宽度不随缩放变化。
+  const resizeFrameStyle = computed(() => {
     const card =
       resizing.state.preview.value ??
       (selectedCards.value.length === 1 ? selectedCards.value[0] : undefined);
@@ -51,8 +51,10 @@ export function createCanvasSurfacePresentation({
     const { x, y, zoom } = camera.value,
       inset = canvasSelectionOutlineCenter(base.readAppearance().material, zoom);
     return {
-      left: `${x + (card.x + card.width - inset) * zoom}px`,
-      top: `${y + (card.y + card.height - inset) * zoom}px`,
+      left: `${x + (card.x + inset) * zoom}px`,
+      top: `${y + (card.y + inset) * zoom}px`,
+      width: `${(card.width - inset * 2) * zoom}px`,
+      height: `${(card.height - inset * 2) * zoom}px`,
     };
   });
   // 改尺寸拖动中，选区浮条与连线锚点仍按旧外框定位，会压在预览框里；拖动期间收起。
@@ -83,7 +85,7 @@ export function createCanvasSurfacePresentation({
   return {
     selectedCards,
     selectionStyle,
-    resizeHandleStyle,
+    resizeFrameStyle,
     resizingCard,
     integrityNotice,
     editingDraft,

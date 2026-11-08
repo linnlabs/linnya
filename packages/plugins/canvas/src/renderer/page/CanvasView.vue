@@ -100,7 +100,8 @@
       @color="changeColor"
       @action="elementAction"
     />
-    <button
+    <!-- 改尺寸不画手柄：选中描边四边四角是不可见的拖动区，悬停时光标变为双向箭头；Shift 保持比例。 -->
+    <div
       v-if="
         surface &&
         !readonly &&
@@ -108,12 +109,18 @@
         !draft &&
         !surface.selectedCards.value[0]?.locked
       "
-      type="button"
-      class="canvas-card-resize-handle"
-      :style="surface.resizeHandleStyle.value"
-      aria-label="调整卡片大小，Shift保持比例"
-      @pointerdown.stop.prevent="surface.resizeStart($event)"
-    />
+      class="canvas-card-resize-frame"
+      :style="surface.resizeFrameStyle.value"
+      aria-hidden="true"
+    >
+      <span
+        v-for="edge in CANVAS_RESIZE_EDGES"
+        :key="edge"
+        class="canvas-card-resize-zone"
+        :data-edge="edge"
+        @pointerdown.stop.prevent="surface.resizeStart($event, edge)"
+      />
+    </div>
     <CanvasPortalMenu
       v-if="contextAnchor"
       :key="`${contextAnchor.left},${contextAnchor.top}`"
@@ -226,6 +233,7 @@ import { createCanvasImageEditing, CanvasImageEditingControls } from '../feature
 import { createCanvasSearch, CanvasSearchPanel } from '../features/canvasSearch';
 import { CanvasConnectionControls, CanvasConnectionLabelPreview } from '../features/connections';
 import { CanvasLayoutControls } from '../features/layoutCommands';
+import { CANVAS_RESIZE_EDGES } from '../features/cardResizing';
 import {
   CanvasCommandBar,
   CanvasPortalMenu,

@@ -452,19 +452,77 @@
   padding-inline: 0;
 }
 
-/* 卡片与连线手柄：连接点与端点是圆，尺寸手柄是方块；统一 10px 屏幕尺寸、1px 强调色描边，圆心都压在选中描边上。 */
-.canvas-card-resize-handle {
+/*
+ * 改尺寸区：框与选中描边中线重合，四边是跨线的窄带、四角是稍大的方块，全部不可见，只靠光标提示。
+ * 连线圆点叠在上层（z-index 5），边中点留给连线；角排在边之后，交叠处归角。
+ */
+.canvas-card-resize-frame {
+  --canvas-resize-band: 8px;
+  --canvas-resize-corner: 14px;
   position: absolute;
   z-index: 4;
-  box-sizing: border-box;
-  width: 10px;
-  height: 10px;
-  padding: 0;
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-xs);
-  background: var(--color-bg-default);
-  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.canvas-card-resize-zone {
+  position: absolute;
+  pointer-events: auto;
+}
+.canvas-card-resize-zone[data-edge='n'],
+.canvas-card-resize-zone[data-edge='s'] {
+  right: calc(var(--canvas-resize-corner) / 2);
+  left: calc(var(--canvas-resize-corner) / 2);
+  height: var(--canvas-resize-band);
+  cursor: ns-resize;
+}
+.canvas-card-resize-zone[data-edge='e'],
+.canvas-card-resize-zone[data-edge='w'] {
+  top: calc(var(--canvas-resize-corner) / 2);
+  bottom: calc(var(--canvas-resize-corner) / 2);
+  width: var(--canvas-resize-band);
+  cursor: ew-resize;
+}
+.canvas-card-resize-zone[data-edge='n'] {
+  top: calc(var(--canvas-resize-band) / -2);
+}
+.canvas-card-resize-zone[data-edge='s'] {
+  bottom: calc(var(--canvas-resize-band) / -2);
+}
+.canvas-card-resize-zone[data-edge='e'] {
+  right: calc(var(--canvas-resize-band) / -2);
+}
+.canvas-card-resize-zone[data-edge='w'] {
+  left: calc(var(--canvas-resize-band) / -2);
+}
+.canvas-card-resize-zone[data-edge='nw'],
+.canvas-card-resize-zone[data-edge='ne'],
+.canvas-card-resize-zone[data-edge='sw'],
+.canvas-card-resize-zone[data-edge='se'] {
+  width: var(--canvas-resize-corner);
+  height: var(--canvas-resize-corner);
+}
+.canvas-card-resize-zone[data-edge='nw'],
+.canvas-card-resize-zone[data-edge='ne'] {
+  top: calc(var(--canvas-resize-corner) / -2);
+}
+.canvas-card-resize-zone[data-edge='sw'],
+.canvas-card-resize-zone[data-edge='se'] {
+  bottom: calc(var(--canvas-resize-corner) / -2);
+}
+.canvas-card-resize-zone[data-edge='ne'],
+.canvas-card-resize-zone[data-edge='se'] {
+  right: calc(var(--canvas-resize-corner) / -2);
+}
+.canvas-card-resize-zone[data-edge='nw'],
+.canvas-card-resize-zone[data-edge='sw'] {
+  left: calc(var(--canvas-resize-corner) / -2);
+}
+.canvas-card-resize-zone[data-edge='nw'],
+.canvas-card-resize-zone[data-edge='se'] {
   cursor: nwse-resize;
+}
+.canvas-card-resize-zone[data-edge='ne'],
+.canvas-card-resize-zone[data-edge='sw'] {
+  cursor: nesw-resize;
 }
 .canvas-connection-anchor,
 .canvas-connection-endpoint {

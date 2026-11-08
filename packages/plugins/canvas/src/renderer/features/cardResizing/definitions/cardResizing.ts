@@ -1,7 +1,10 @@
 import type { Ref } from 'vue';
 import type { CanvasCard, CanvasRectangle } from '@plugin/canvas/shared';
+/** 从哪条边或哪个角拖：n/s/e/w 为上下右左，两字母为角。上边与左边拖动时卡片位置跟着变，对边不动。 */
+export type CanvasResizeEdge = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 export interface CanvasResizeGesture {
   readonly card: CanvasCard;
+  readonly edge: CanvasResizeEdge;
   readonly pointer: number;
   readonly clientX: number;
   readonly clientY: number;
