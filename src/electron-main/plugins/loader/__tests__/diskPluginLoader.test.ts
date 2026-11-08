@@ -146,6 +146,7 @@ describe('disk plugin backend loader', () => {
     expect(resolveBackendPluginHostModuleForTest('@plugin/backend/hiddenWorkerRuntime')).toBeTruthy();
     expect(resolveBackendPluginHostModuleForTest('@plugin/backend/imageInspection')).toBeTruthy();
     expect(resolveBackendPluginHostModuleForTest('@plugin/backend/imageTranscoding')).toBeTruthy();
+    expect(resolveBackendPluginHostModuleForTest('@plugin/backend/colorPalette')).toBeTruthy();
     expect(resolveBackendPluginHostModuleForTest('@plugin/backend/toolRuntime')).toBeTruthy();
     expect(resolveBackendPluginHostModuleForTest('@plugin/backend/sandboxRuntime')).toBeTruthy();
     expect(resolveBackendPluginHostModuleForTest('@plugin/backend/textMeasurement')).toBeTruthy();

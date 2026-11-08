@@ -103,6 +103,7 @@
 ## 消费方
 
 - Editor 图表（`apps/renderer/domains/editor/features/chart-reading`）：细线色派生与填充内文字色。
+- [color-palette domain](../../src/domains/color-palette/README.md)：`./palette` 接到 Host，对外是 `linnya palette` 和 `@plugin/backend/colorPalette`。
 
 ## 验证
 
