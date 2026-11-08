@@ -9,7 +9,7 @@
   >
     <ToolbarGroup>
       <ToolbarButton
-        class="canvas-selection-ai"
+        class="canvas-toolbar-button canvas-selection-ai"
         label="加入对话"
         data-linnya-tooltip="加入对话 (⌘K)"
         @click="emit('converse')"
@@ -22,11 +22,17 @@
       <span class="canvas-selection-count">已选 {{ count }} 张</span>
     </ToolbarGroup>
     <ToolbarGroup>
-      <ToolbarButton label="编辑或打开" data-linnya-tooltip="编辑或打开 (↩)" @click="emit('edit')">
+      <ToolbarButton
+        class="canvas-toolbar-button"
+        label="编辑或打开"
+        data-linnya-tooltip="编辑或打开 (↩)"
+        @click="emit('edit')"
+      >
         <EditIcon />
       </ToolbarButton>
       <ToolbarButton
         v-if="image"
+        class="canvas-toolbar-button"
         label="编辑图片"
         data-linnya-tooltip="编辑图片：裁剪、图注、替换"
         :disabled="readonly || imageLocked"
@@ -35,6 +41,7 @@
         <ImageIcon />
       </ToolbarButton>
       <ToolbarButton
+        class="canvas-toolbar-button"
         label="创建副本"
         data-linnya-tooltip="创建副本 (⌘D)"
         :disabled="readonly"
@@ -44,6 +51,7 @@
       </ToolbarButton>
       <ToolbarButton
         v-if="count === 2"
+        class="canvas-toolbar-button"
         label="连接两张卡"
         :disabled="readonly"
         @click="emit('connect')"

@@ -1,6 +1,7 @@
 <template>
   <span ref="root" class="canvas-toolbar-menu">
     <ToolbarButton
+      class="canvas-toolbar-button"
       :label="label"
       :data-linnya-tooltip="tooltip ?? label"
       :active="Boolean(anchor)"

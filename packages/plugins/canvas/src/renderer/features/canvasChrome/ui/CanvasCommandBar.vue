@@ -3,6 +3,7 @@
     <div class="canvas-command-bar" role="toolbar" aria-label="画布命令" @pointerdown.stop>
       <ToolbarGroup>
         <ToolbarButton
+          class="canvas-toolbar-button"
           label="撤销"
           data-linnya-tooltip="撤销 (⌘Z)"
           :disabled="readonly"
@@ -11,6 +12,7 @@
           <UndoIcon />
         </ToolbarButton>
         <ToolbarButton
+          class="canvas-toolbar-button"
           label="重做"
           data-linnya-tooltip="重做 (⇧⌘Z)"
           :disabled="readonly"
@@ -20,18 +22,38 @@
         </ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup>
-        <ToolbarButton label="新建文字卡" :disabled="readonly" @click="emit('createText')">
+        <ToolbarButton
+          class="canvas-toolbar-button"
+          label="新建文字卡"
+          :disabled="readonly"
+          @click="emit('createText')"
+        >
           <TextIcon />
         </ToolbarButton>
-        <ToolbarButton label="添加文档" :disabled="readonly" @click="emit('addDocument')">
+        <ToolbarButton
+          class="canvas-toolbar-button"
+          label="添加文档"
+          :disabled="readonly"
+          @click="emit('addDocument')"
+        >
           <DocumentAddIcon />
         </ToolbarButton>
-        <ToolbarButton label="添加图片" :disabled="readonly" @click="emit('addImage')">
+        <ToolbarButton
+          class="canvas-toolbar-button"
+          label="添加图片"
+          :disabled="readonly"
+          @click="emit('addImage')"
+        >
           <ImageIcon />
         </ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup>
-        <ToolbarButton label="搜索画布" data-linnya-tooltip="搜索画布 (⌘F)" @click="emit('search')">
+        <ToolbarButton
+          class="canvas-toolbar-button"
+          label="搜索画布"
+          data-linnya-tooltip="搜索画布 (⌘F)"
+          @click="emit('search')"
+        >
           <SearchIcon />
         </ToolbarButton>
         <slot name="layout" />

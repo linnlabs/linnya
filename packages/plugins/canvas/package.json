@@ -61,7 +61,7 @@
     "zod": "4.6.7"
   },
   "peerDependencies": {
-    "@linnya/renderer-ui": "^3.0.0",
+    "@linnya/renderer-ui": "^3.3.0",
     "pinia": ">=3.0.0 <4",
     "vue": ">=3.5.0 <4"
   },

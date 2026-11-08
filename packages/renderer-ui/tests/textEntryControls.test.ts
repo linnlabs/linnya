@@ -6,6 +6,7 @@ import {
   applyTextareaAutoResize,
   CustomTextarea,
   CustomTextInput,
+  InlineTextInput,
   SecretInput,
 } from '@linnya/renderer-ui';
 
@@ -220,5 +221,83 @@ describe('text entry controls', () => {
     });
     expect(textarea.scrollTop).toBe(220);
     textarea.remove();
+  });
+});
+
+describe('InlineTextInput', () => {
+  function mountInline(options: { readonly autofocus?: boolean } = {}) {
+    const events: string[] = [];
+    const values: string[] = [];
+    let parentKeys = 0;
+    const host = mountControl(() =>
+      h('div', { onKeydown: () => (parentKeys += 1) }, [
+        h(InlineTextInput, {
+          modelValue: '旧名称',
+          autofocus: options.autofocus,
+          'aria-label': '重命名',
+          'onUpdate:modelValue': (value: string) => values.push(value),
+          onCommit: (value: string) => events.push(`commit:${value}`),
+          onCancel: () => events.push('cancel'),
+        }),
+      ])
+    );
+    const input = host.querySelector('input');
+    if (!(input instanceof HTMLInputElement)) throw new Error('InlineTextInput not found');
+    const key = (init: KeyboardEventInit) =>
+      input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }));
+    return { input, events, values, key, parentKeys: () => parentKeys };
+  }
+
+  it('挂载即聚焦全选，输入同步草稿，宿主收不到键盘事件', () => {
+    const { input, values, key, parentKeys } = mountInline();
+    expect(document.activeElement).toBe(input);
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, 3]);
+    expect(input.getAttribute('aria-label')).toBe('重命名');
+    input.value = '新名称';
+    input.dispatchEvent(new Event('input'));
+    expect(values).toEqual(['新名称']);
+    key({ key: 'a' });
+    expect(parentKeys()).toBe(0);
+  });
+
+  it('回车提交一次，之后的失焦不再重复提交', () => {
+    const { input, events, key } = mountInline();
+    input.value = '新名称';
+    expect(key({ key: 'Enter' })).toBe(false);
+    input.blur();
+    expect(events).toEqual(['commit:新名称']);
+  });
+
+  it('宿主保存失败保留编辑框时，改字后回车可以再次提交', () => {
+    const { input, events, key } = mountInline();
+    key({ key: 'Enter' });
+    key({ key: 'Enter' });
+    input.value = '再试一次';
+    input.dispatchEvent(new Event('input'));
+    key({ key: 'Enter' });
+    expect(events).toEqual(['commit:旧名称', 'commit:再试一次']);
+  });
+
+  it('输入法组字中的回车与 Esc 不结束编辑', () => {
+    const { events, key } = mountInline();
+    key({ key: 'Enter', isComposing: true });
+    key({ key: 'Enter', keyCode: 229 });
+    key({ key: 'Escape', isComposing: true });
+    expect(events).toEqual([]);
+  });
+
+  it('Esc 取消，取消后的失焦不提交；失焦本身算提交', () => {
+    const first = mountInline();
+    first.key({ key: 'Escape' });
+    first.input.blur();
+    expect(first.events).toEqual(['cancel']);
+    const second = mountInline();
+    second.input.blur();
+    expect(second.events).toEqual(['commit:旧名称']);
+  });
+
+  it('关掉自动聚焦时由宿主调用 focus/select', () => {
+    const { input } = mountInline({ autofocus: false });
+    expect(document.activeElement).not.toBe(input);
   });
 });

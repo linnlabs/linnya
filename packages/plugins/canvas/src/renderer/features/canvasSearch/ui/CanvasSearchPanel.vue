@@ -28,7 +28,7 @@
         <button
           type="button"
           class="canvas-panel-row"
-          :class="{ 'is-active': search.state.index.value === index }"
+          :class="{ 'canvas-panel-row--active': search.state.index.value === index }"
           :aria-current="search.state.index.value === index ? 'true' : undefined"
           @click="search.jump(index)"
         >

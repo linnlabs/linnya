@@ -2,6 +2,7 @@
   <!-- 与 Slides 底栏的舞台缩放同一组织：“− 百分比 +”，百分比菜单里先放适应视图，再放常用档位。 -->
   <div class="canvas-zoom-controls" role="group" aria-label="画布缩放" @pointerdown.stop>
     <ToolbarButton
+      class="canvas-toolbar-button"
       label="缩小"
       data-linnya-tooltip="缩小 (⌘−)"
       :disabled="zoom <= CANVAS_ZOOM_LIMITS.min"
@@ -22,6 +23,7 @@
       <span class="canvas-zoom-value">{{ Math.round(zoom * 100) }}%</span>
     </CanvasToolbarMenu>
     <ToolbarButton
+      class="canvas-toolbar-button"
       label="放大"
       data-linnya-tooltip="放大 (⌘+)"
       :disabled="zoom >= CANVAS_ZOOM_LIMITS.max"

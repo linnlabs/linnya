@@ -80,19 +80,6 @@
   flex-shrink: 0; /* 防止被压缩 */
 }
 
-/* 重命名输入框 */
-.workspace-sidebar .tree-item .rename-input {
-  flex-grow: 1;
-  background: var(--color-bg-surface);
-  border: 1px solid var(--color-border-focus);
-  border-radius: var(--radius-sm);
-  padding: var(--space-0-5) var(--space-1-5);
-  font-size: var(--font-size-body);
-  outline: none;
-  width: calc(100% - 50px);
-  color: var(--color-text-secondary);
-}
-
 .workspace-sidebar .tree-item .item-actions {
   flex-shrink: 0;
 }

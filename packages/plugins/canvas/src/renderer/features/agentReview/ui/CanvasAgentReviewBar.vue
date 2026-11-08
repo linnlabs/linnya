@@ -48,7 +48,7 @@
           :key="group.id"
           type="button"
           class="canvas-panel-row"
-          :class="{ 'is-active': activeGroup?.id === group.id }"
+          :class="{ 'canvas-panel-row--active': activeGroup?.id === group.id }"
           :aria-current="activeGroup?.id === group.id ? 'true' : undefined"
           @click="activate(group)"
         >
@@ -71,7 +71,7 @@
             <button
               type="button"
               class="canvas-panel-row"
-              :class="{ 'is-active': target.id === review.state.targetId.value }"
+              :class="{ 'canvas-panel-row--active': target.id === review.state.targetId.value }"
               :title="`${target.description} · ${target.title}`"
               @click="reveal(target)"
             >
@@ -176,11 +176,21 @@
       <template v-else-if="activeGroup">
         <template v-if="targets.length">
           <span class="canvas-agent-review-divider" aria-hidden="true" />
-          <ToolbarButton label="上一个改动" :disabled="busy" @click="navigate(-1)">
+          <ToolbarButton
+            class="canvas-toolbar-button"
+            label="上一个改动"
+            :disabled="busy"
+            @click="navigate(-1)"
+          >
             <ChevronIcon direction="left" />
           </ToolbarButton>
           <span class="canvas-review-position">{{ position }} / {{ targets.length }}</span>
-          <ToolbarButton label="下一个改动" :disabled="busy" @click="navigate(1)">
+          <ToolbarButton
+            class="canvas-toolbar-button"
+            label="下一个改动"
+            :disabled="busy"
+            @click="navigate(1)"
+          >
             <ChevronIcon direction="right" />
           </ToolbarButton>
         </template>

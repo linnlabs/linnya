@@ -93,13 +93,13 @@
   position: relative;
   display: inline-flex;
 }
-/* 平台图标没有统一的固有尺寸，画布工具条里的图标统一为 16px。 */
-.linnya-canvas .linnya-toolbar-button > .linnya-ui-icon {
+/* 平台图标没有统一的固有尺寸，画布工具条里的图标统一为 16px；按钮带画布自己的 class，不选组件内部 class。 */
+.canvas-toolbar-button > svg:not(.canvas-toolbar-menu-arrow) {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
 }
-.canvas-toolbar-menu .linnya-toolbar-button > .canvas-toolbar-menu-arrow {
+.canvas-toolbar-button > .canvas-toolbar-menu-arrow {
   width: 12px;
   height: 12px;
   margin-left: calc(var(--space-1) * -1);
@@ -185,7 +185,7 @@
 .canvas-panel-row:hover {
   background: var(--color-bg-hover);
 }
-.canvas-panel-row.is-active {
+.canvas-panel-row--active {
   background: var(--color-accent-bg);
   color: var(--color-accent-text);
 }

@@ -43,6 +43,7 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 | 加载占位 | `@linnya/renderer-ui` 的 `SkeletonRows`、`Skeleton`、`SkeletonBlock` | 结构已知的列表、卡片、消息加载时的骨架；延迟出现、自带读屏状态，形状与真实布局一致。 |
 | 主/次操作按钮组 | `@linnya/renderer-ui` 的 `ActionButtons` | 弹窗、表单、卡片底部的确认/取消按钮；主操作支持 default、danger、accent 三种严格视觉语义和胶囊形态。 |
 | 单行输入 | `@linnya/renderer-ui` 的 `CustomTextInput` | 标准文本输入；支持两档尺寸、无边框模式、提交式更新和使用共享图标的可清除搜索。 |
+| 就地编辑 | `@linnya/renderer-ui` 的 `InlineTextInput` | 重命名、连线标签等临时打开、在原位置改一段短文本的框；回车或失焦提交、Esc 取消，组字中不误提交。 |
 | 密文输入 | `@linnya/renderer-ui` 的 `SecretInput` | API Key、访问令牌和密码输入；统一显隐按钮、禁用状态及整组 hover/focus 边框。 |
 | 多行输入 | `@linnya/renderer-ui` 的 `CustomTextarea` | 标准多行输入；支持 `bordered=false` 无边框模式、自动增高、起始高度和最大高度滚动。 |
 | 下拉选择/动作菜单 | `@linnya/renderer-ui` 的 `CustomSelect` | 标准选择器、动作菜单、Portal 和二级子菜单；通过公开 option 合同与 `classNames` 扩展，不覆盖组件内部 selector。 |
@@ -242,6 +243,30 @@ domain/feature 命名空间；`.tt-tag-chip*`、`.checkbox-*` 与 `.radio-*` 都
 ```
 
 搜索框需要显式清除入口时使用 `type="search"` 和 `clearable`。组件会隐藏浏览器原生清除按钮，统一使用共享 `CloseIcon`，并在清除时同步发出 `update:modelValue` 与 `change-value`。
+
+### `InlineTextInput`
+
+用于“点一下才出现、改完就消失”的短文本编辑：文件与对话重命名、画布连线标签。常驻的属性字段仍用
+`CustomTextInput`（需要时 `:bordered="false"`）。
+
+```vue
+<InlineTextInput
+  v-if="renaming"
+  v-model="nameDraft"
+  aria-label="重命名"
+  @commit="saveName"
+  @cancel="renaming = false"
+/>
+```
+
+- 编辑中只有一种外观：28px 高、主题色细描边、不透明底色、主文字色，字体继承所在位置。
+- `variant="inline"`（默认）嵌在列表行里，占满剩余宽度，并向左让出内边距与描边，文字与被替换的那行文字对齐。
+- `variant="floating"` 浮在画布等内容上：宽度随文字在 96–280px 间伸缩、文字居中，带浮层阴影；位置由宿主决定。
+- 回车与失焦发出 `commit`，Esc 发出 `cancel`；一次编辑只结束一次，提交后宿主卸载或移走焦点不会再次提交。
+  输入法组字中的回车与 Esc 留给输入法。键盘事件不再冒泡，宿主快捷键不会在编辑时触发。
+- 默认挂载即聚焦并全选。从右键菜单等会在关闭时归还焦点的入口打开时，传 `:autofocus="false"`，待菜单收起后再调用
+  组件暴露的 `focus()` / `select()`，否则归还焦点造成的失焦会立刻结束编辑。
+- 组件不做校验与保存，不管理“正在编辑哪一项”；名称清洗、失败提示与重试仍由业务 owner 负责。
 
 ### `CustomTextarea`
 

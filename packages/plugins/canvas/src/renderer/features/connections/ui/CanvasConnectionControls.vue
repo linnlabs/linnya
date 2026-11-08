@@ -18,7 +18,7 @@
     />
   </template>
   <FloatingToolbar
-    v-if="edge && !menuOpen"
+    v-if="edge && !menuOpen && !editing.state.label.value"
     ref="bar"
     :show="true"
     :position="barPosition"
@@ -55,10 +55,20 @@
       </CanvasToolbarMenu>
     </ToolbarGroup>
     <ToolbarGroup>
-      <ToolbarButton label="编辑连线标签" :disabled="edge.locked" @click="run(editing.beginLabel)">
+      <ToolbarButton
+        class="canvas-toolbar-button"
+        label="编辑连线标签"
+        :disabled="edge.locked"
+        @click="run(editing.beginLabel)"
+      >
         <TagIcon />
       </ToolbarButton>
-      <ToolbarButton label="删除连线" :disabled="edge.locked" @click="run(editing.remove)">
+      <ToolbarButton
+        class="canvas-toolbar-button"
+        label="删除连线"
+        :disabled="edge.locked"
+        @click="run(editing.remove)"
+      >
         <DeleteIcon />
       </ToolbarButton>
       <CanvasToolbarMenu
@@ -107,19 +117,16 @@
         })
       "
     />
-    <input
+    <InlineTextInput
       v-if="editing.state.label.value"
-      ref="labelInput"
       class="canvas-connection-label-input"
+      variant="floating"
       :style="pointStyle(geometry.midpoint)"
-      :value="editing.state.label.value.value"
+      :model-value="editing.state.label.value.value"
       aria-label="连线标签"
-      @input="updateLabel"
-      @blur="run(editing.saveLabel)"
-      @keydown.enter.prevent="finishLabel"
-      @keydown.esc.prevent.stop="finishLabel"
-      @keydown.stop
-      @pointerdown.stop
+      @update:model-value="editing.state.updateLabel"
+      @commit="finishLabel"
+      @cancel="cancelLabel"
     />
   </template>
   <svg v-if="preview" class="canvas-connection-preview" aria-hidden="true">
@@ -127,9 +134,10 @@
   </svg>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, ref, watch, onBeforeUnmount } from 'vue';
+import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import {
   FloatingToolbar,
+  InlineTextInput,
   ToolbarButton,
   ToolbarGroup,
   type CustomSelectOption,
@@ -187,8 +195,7 @@ watch(barElement, value => {
   if (value) observer.observe(value);
 });
 onBeforeUnmount(() => observer.disconnect());
-const edge = computed(() => props.editing.selected.value),
-  labelInput = ref<HTMLInputElement | null>(null);
+const edge = computed(() => props.editing.selected.value);
 const anchors = computed(() => {
   if (props.camera.zoom < 0.3) return [];
   const target = props.editing.state.preview.value?.target,
@@ -293,21 +300,15 @@ const setStyleOption = (option: string) => {
     void patch({ linePattern: CanvasEdgeSchema.shape.linePattern.parse(value) });
 };
 const setColor = (value: string) => void patch({ color: CanvasColorSchema.parse(value) });
-const updateLabel = (event: Event) => {
-  if (event.target instanceof HTMLInputElement) props.editing.state.updateLabel(event.target.value);
-};
+/** 回车或失焦都保存；只有焦点没被用户移到别处（回车、点画布）时才把焦点还给画布。 */
 const finishLabel = () =>
   props.run(async () => {
-    if (await props.editing.saveLabel()) emit('focusCanvas');
+    if (!(await props.editing.saveLabel())) return;
+    const active = document.activeElement;
+    if (!active || active === document.body) emit('focusCanvas');
   });
-watch(
-  () => props.editing.state.label.value?.edge.id,
-  async id => {
-    if (id) {
-      await nextTick();
-      labelInput.value?.focus();
-      labelInput.value?.select();
-    }
-  }
-);
+const cancelLabel = () => {
+  props.editing.cancelLabel();
+  emit('focusCanvas');
+};
 </script>
