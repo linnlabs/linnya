@@ -4,7 +4,7 @@
  */
 
 import type { ChartMarkColors } from '../chartPalette'
-import { withAlpha } from '../chartPalette'
+import { withAlpha } from '@linnya/color-core'
 
 export const MARK_STYLE = Object.freeze({ lineWidth: 2, markerSize: 5 })
 

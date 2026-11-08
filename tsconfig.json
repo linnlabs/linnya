@@ -98,6 +98,9 @@
       "@linnya/renderer-ui/font-stack": [
         "packages/renderer-ui/src/features/font-stack/index.ts"
       ],
+      "@linnya/color-core": [
+        "packages/color-core/src/index.ts"
+      ],
       "@linnya/text-measurement-core": [
         "packages/text-measurement-core/src/index.ts"
       ],

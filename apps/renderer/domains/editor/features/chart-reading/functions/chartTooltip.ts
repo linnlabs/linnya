@@ -8,7 +8,7 @@
  */
 
 import type { ChartThemeTokens } from '../definitions/chartTheme'
-import { withAlpha } from './chartPalette'
+import { withAlpha } from '@linnya/color-core'
 
 export type ChartTooltipKeyShape = 'bar' | 'line' | 'dot'
 

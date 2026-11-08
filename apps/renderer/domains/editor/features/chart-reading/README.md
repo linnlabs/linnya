@@ -21,7 +21,7 @@ ECharts 运行时、主题解析和阅读规则都是内部实现，其他模块
 
 ```text
 definitions/    纯类型与常量：阅读状态、渲染上下文、主题 token 与色系（chartTheme.ts）、option 形状
-functions/      纯规则：阅读状态变换、域与刻度、图例、数据表、数字格式、过渡判定、色彩运算(chartColorSpace / chartPalette)、option 构建(option/)
+functions/      纯规则：阅读状态变换、域与刻度、图例、数据表、数字格式、过渡判定、取色与细线色派生(chartPalette；颜色运算来自 `@linnya/color-core`)、option 构建(option/)
 orchestration/  副作用与时序：ECharts 懒加载与实例控制、主题读取、导出图片、useChartSurfaceRuntime
 store/          会话级阅读状态（Pinia，只同步持有状态，不含规则，不持有 ECharts 实例）
 ui/             薄 Vue：ChartSurface / ChartLegend / ChartReadingOptions / ChartDataTable

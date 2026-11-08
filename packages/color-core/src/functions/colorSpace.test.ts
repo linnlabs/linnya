@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { oklchToRgb, rgbToOklch, type RgbChannels } from './chartColorSpace'
+import { oklchToRgb, rgbToOklch, type RgbChannels } from './colorSpace.js'
 
 describe('sRGB ↔ OKLCH', () => {
   it('已知值：黑、白、中性灰没有彩度，红的色相在 29° 附近', () => {

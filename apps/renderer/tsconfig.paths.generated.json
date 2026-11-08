@@ -24,6 +24,9 @@
       "@linnya/citation-domain/markdown-reference": [
         "../../src/domains/citation/markdown-reference.ts"
       ],
+      "@linnya/color-core": [
+        "../../packages/color-core/src/index.ts"
+      ],
       "@linnya/markdown-domain/editing": [
         "../../src/domains/markdown/editing.ts"
       ],
