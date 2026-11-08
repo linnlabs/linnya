@@ -7,8 +7,9 @@ import type { Oklab, Oklch, RgbChannels } from '../definitions/color.js'
  */
 
 const GAMUT_EPSILON = 1e-4
-const MAX_COMPRESSION_STEPS = 80
-const COMPRESSION_FACTOR = 0.97
+/** CSS Color 4 色域映射：剪裁误差低于这个 ΔEOK 即视为看不出差别。 */
+const GAMUT_MAPPING_JND = 0.02
+const GAMUT_MAPPING_EPSILON = 1e-4
 
 /** 0–255 的 sRGB 通道 → 0–1 的线性光。 */
 export function srgbChannelToLinear(channel: number): number {
@@ -67,19 +68,62 @@ export function isLinearRgbInGamut(linear: readonly [number, number, number]): b
   return linear.every(value => value >= -GAMUT_EPSILON && value <= 1 + GAMUT_EPSILON)
 }
 
+/** 两个 OKLab 颜色的欧氏距离（ΔEOK）。 */
+export function deltaEOK(left: Oklab, right: Oklab): number {
+  return Math.hypot(left.l - right.l, left.a - right.a, left.b - right.b)
+}
+
+function clipToSrgb(color: Oklch): { readonly rgb: [number, number, number]; readonly lab: Oklab } {
+  const linear = oklabToLinearRgb(oklchToOklab(color))
+  const rgb: [number, number, number] = [linearToSrgbChannel(linear[0]), linearToSrgbChannel(linear[1]), linearToSrgbChannel(linear[2])]
+  return { rgb, lab: rgbToOklab(rgb) }
+}
+
+function inSrgbGamut(color: Oklch): boolean {
+  return isLinearRgbInGamut(oklabToLinearRgb(oklchToOklab(color)))
+}
+
+export interface OklchToRgbOptions {
+  /**
+   * 剪裁容差（ΔEOK）。默认 0.02，即 CSS Color 4：允许看不出差别的剪裁以保留彩度，代价是低彩度时
+   * 色相可能偏几度。传 0 时只降彩度、不剪裁，明度与色相严格不变；按色相判断颜色关系的场合用它。
+   */
+  readonly jnd?: number
+}
+
 /**
- * OKLCH → sRGB。超出 sRGB 色域时保持明度与色相、逐步降低彩度，直到落入色域：
- * 低饱和色系不会因为色域截断而偷偷改变明度或色相。
+ * OKLCH → sRGB（0–255，可带小数）。超出色域时按 CSS Color 4 的色域映射：保持明度与色相，二分降低彩度，
+ * 直到剪裁结果与目标的 ΔEOK 小于 `jnd`。明度 ≥ 1 或 ≤ 0 时直接给白或黑。
  */
-export function oklchToRgb(color: Oklch): [number, number, number] {
-  let chroma = Math.max(0, color.c)
-  for (let step = 0; step < MAX_COMPRESSION_STEPS; step += 1) {
-    const linear = oklabToLinearRgb(oklchToOklab({ l: color.l, c: chroma, h: color.h }))
-    if (isLinearRgbInGamut(linear)) {
-      return [linearToSrgbChannel(linear[0]), linearToSrgbChannel(linear[1]), linearToSrgbChannel(linear[2])]
+export function oklchToRgb(color: Oklch, options: OklchToRgbOptions = {}): [number, number, number] {
+  const jnd = Math.max(0, options.jnd ?? GAMUT_MAPPING_JND)
+  if (color.l >= 1) return [255, 255, 255]
+  if (color.l <= 0) return [0, 0, 0]
+  const origin: Oklch = { l: color.l, c: Math.max(0, color.c), h: color.h }
+  if (inSrgbGamut(origin)) return clipToSrgb(origin).rgb
+  let clipped = clipToSrgb(origin)
+  if (jnd > 0 && deltaEOK(clipped.lab, oklchToOklab(origin)) < jnd) return clipped.rgb
+  let min = 0
+  let max = origin.c
+  let minInGamut = true
+  while (max - min > GAMUT_MAPPING_EPSILON) {
+    const chroma = (min + max) / 2
+    const current: Oklch = { l: origin.l, c: chroma, h: origin.h }
+    if (minInGamut && inSrgbGamut(current)) {
+      min = chroma
+      continue
     }
-    chroma *= COMPRESSION_FACTOR
+    if (jnd > 0) {
+      clipped = clipToSrgb(current)
+      const error = deltaEOK(clipped.lab, oklchToOklab(current))
+      if (error < jnd) {
+        if (jnd - error < GAMUT_MAPPING_EPSILON) return clipped.rgb
+        minInGamut = false
+        min = chroma
+        continue
+      }
+    }
+    max = chroma
   }
-  const gray = linearToSrgbChannel(color.l ** 3)
-  return [gray, gray, gray]
+  return jnd > 0 ? clipped.rgb : clipToSrgb({ l: origin.l, c: min, h: origin.h }).rgb
 }

@@ -12,13 +12,17 @@
 | 对比度 | WCAG 2.x 相对亮度；sRGB 线性化阈值 0.04045，对 8 位通道与 WCAG 文中的 0.03928 结果相同 |
 | 解析 | `#RRGGBB`、`#RGB`、`rgb()` / `rgba()`；其他写法返回 null，不猜颜色 |
 | 输出 | `toHex` 取整并截到 0–255，输出小写 `#rrggbb` |
-| 色域 | `oklchToRgb` 超出 sRGB 时保持明度与色相、逐步降低彩度 |
+| 色域 | `oklchToRgb` 超出 sRGB 时按 CSS Color 4 映射：保持明度与色相、二分降低彩度，剪裁误差小于 ΔEOK 0.02 即停。低彩度时这点剪裁会让色相偏几度，按色相判断颜色关系的调用方传 `{ jnd: 0 }`，只降彩度、明度与色相严格不变 |
+| 色差 | ΔEOK（OKLab 欧氏距离） |
+| 色觉异常 | Machado、Oliveira、Fernandes 2009 严重度 1.0 矩阵，作用在线性 sRGB 上；是最坏情况 |
 
 ## 公开入口
 
 - `parseColor`、`toHex`、`mixColors`、`withAlpha`
 - `rgbToOklab`、`oklabToLinearRgb`、`oklabToOklch`、`oklchToOklab`、`rgbToOklch`、`oklchToRgb`、`isLinearRgbInGamut`、`srgbChannelToLinear`、`linearToSrgbChannel`
-- `relativeLuminance`、`contrastRatio`
+- `relativeLuminance`、`contrastRatio`、`deltaEOK`
+- `normalizeHue`、`hueDistance`、`isHueWithinArc`
+- `simulateColorVisionDeficiency`、`COLOR_VISION_DEFICIENCY_MATRICES`（矩阵也可直接用于 SVG `feColorMatrix`，其默认在线性 RGB 中运算）
 
 ## 消费方
 
@@ -26,4 +30,4 @@
 
 ## 验证
 
-`pnpm exec vitest run packages/color-core`：已知值、往返误差、色域压缩、解析与混色。
+`pnpm exec vitest run packages/color-core`：已知值、往返误差、两种色域映射、ΔEOK、色觉模拟、色相区间、解析与混色。CSS Color 4 映射曾与 colorjs.io 的 `toGamut({ method: 'css' })` 在 4560 个 OKLCH 采样点上对照，最大差 ΔEOK 0.012（近黑处 1 个通道值）。
