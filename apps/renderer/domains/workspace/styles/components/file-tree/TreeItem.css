@@ -26,7 +26,8 @@
   --workspace-sidebar-row-active-color: var(--workspace-project-row-active-color, var(--color-text-primary));
 }
 
-.workspace-sidebar .tree-item:hover .tree-item-content,
+/* 悬停时给“更多”按钮让出右侧空间；重命名时按钮隐藏，编辑框占满整行，不再让位。 */
+.workspace-sidebar .tree-item:not(.is-renaming):hover .tree-item-content,
 .workspace-sidebar .tree-item.is-more-menu-open .tree-item-content {
   --workspace-sidebar-row-padding-right: 33px;
 }

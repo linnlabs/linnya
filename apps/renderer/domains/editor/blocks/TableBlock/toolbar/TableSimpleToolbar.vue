@@ -25,12 +25,14 @@
     <ToolbarGroup>
       <ToolbarButton
         :title="editorMessage('editor.tableBlock.toolbar.deleteRow')"
+        danger
         @click="deleteRowCommand"
       >
         {{ editorMessage('editor.tableBlock.toolbar.deleteRow') }}
       </ToolbarButton>
       <ToolbarButton
         :title="editorMessage('editor.tableBlock.toolbar.deleteColumn')"
+        danger
         @click="deleteColumnCommand"
       >
         {{ editorMessage('editor.tableBlock.toolbar.deleteColumn') }}

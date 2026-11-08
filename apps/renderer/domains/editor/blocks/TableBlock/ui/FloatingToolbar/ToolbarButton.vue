@@ -1,6 +1,6 @@
 <template>
   <button 
-    :class="['toolbar-button', { 'is-disabled': disabled }]" 
+    :class="['toolbar-button', { 'is-disabled': disabled, 'is-danger': danger }]"
     @click="handleClick"
     :disabled="disabled"
     :data-linnya-tooltip="title"
@@ -19,6 +19,11 @@ const props = defineProps({
   title: {
     type: String,
     default: ''
+  },
+  /** 删除行、列等会去掉内容的操作：静止保持中性，悬停显示错误色（同 IconButton 的 danger）。 */
+  danger: {
+    type: Boolean,
+    default: false
   }
 });
 
