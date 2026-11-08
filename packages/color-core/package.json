@@ -6,7 +6,8 @@
   "license": "Apache-2.0",
   "description": "Deterministic color math shared by Linnya hosts, renderers, workers and plugins.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./palette": "./src/palette/index.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

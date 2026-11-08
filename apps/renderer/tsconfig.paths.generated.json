@@ -27,6 +27,9 @@
       "@linnya/color-core": [
         "../../packages/color-core/src/index.ts"
       ],
+      "@linnya/color-core/palette": [
+        "../../packages/color-core/src/palette/index.ts"
+      ],
       "@linnya/markdown-domain/editing": [
         "../../src/domains/markdown/editing.ts"
       ],
