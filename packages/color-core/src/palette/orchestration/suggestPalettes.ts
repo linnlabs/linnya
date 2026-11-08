@@ -23,6 +23,7 @@ import {
   MIN_PALETTE_DISTANCES,
   MAX_ACCENT_COUNT,
   MULTI_MIN_SUBJECTS,
+  PRIMARY_MIN_IMAGES_FOR_PRESENCE,
   QUALITY_BAND,
   RELATION_WEIGHTS,
   SUBJECT_MIN_HUE_SEPARATION,
@@ -140,7 +141,7 @@ export function suggestPalettes(input: SuggestPalettesInput): PaletteSuggestion 
   const avoid = (input.avoidColors ?? []).map(parseOklch).filter((color): color is Oklch => color !== null)
   const excluded = excludedHueRanges(subject.map(color => color.oklch), avoid)
   const subjectColors = subject.map(color => color.oklch)
-  const spotFlags = subject.map(color => color.spot)
+  const partnerOnly = subject.map(color => color.spot || (images.length >= PRIMARY_MIN_IMAGES_FOR_PRESENCE && color.images > 0 && color.images < 2))
   const multiAvailable = subjectColors.filter(color => !isHueExcluded(color.h, excluded)).length >= MULTI_MIN_SUBJECTS
   const accentCount = input.accentCount === undefined ? undefined : Math.min(MAX_ACCENT_COUNT, Math.max(1, Math.round(input.accentCount)))
 
@@ -155,7 +156,7 @@ export function suggestPalettes(input: SuggestPalettesInput): PaletteSuggestion 
   for (let attempt = 0; attempt < CANDIDATE_COUNT; attempt += 1) {
     const style = pickWeighted(styles, item => item.weight, random)
     if (!style) break
-    const palette = buildPalette({ id, relation: style.relation, base: style.base, ground: style.ground, tone: style.tone, subject: subjectColors, spots: spotFlags, excluded, random, accentCount })
+    const palette = buildPalette({ id, relation: style.relation, base: style.base, ground: style.ground, tone: style.tone, subject: subjectColors, partnerOnly, excluded, random, accentCount })
     if (!palette) continue
     const colors = paletteColors(palette)
     candidates.push({ palette, colors, quality: scorePalette(palette, colors) })

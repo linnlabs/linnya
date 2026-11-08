@@ -123,6 +123,25 @@ describe('取色', () => {
     expect(usedAsPartner).toBe(true)
   })
 
+  it('只在一张图里出现的颜色（如主图背景的暗红）只做搭配色，不当主色', () => {
+    const backdropRed: Rgb = [92, 40, 36]
+    const images = [
+      blocks([[LEAF_GREEN, 45], [backdropRed, 35], [WALL_GRAY, 20]], 64, 6, 8),
+      blocks([[LEAF_GREEN, 60], [WALL_GRAY, 40]], 64, 6, 9),
+      blocks([[LEAF_GREEN, 50], [WALL_GRAY, 50]], 64, 6, 10),
+    ]
+    const redHue = rgbToOklch(backdropRed).h
+    const first = palettesOf(suggestPalettes({ images, rng: 'pl0008' }))
+    const red = first.subject.find(color => hueDistance(color.oklch.h, redHue) < 15)
+    expect(red?.images).toBe(1)
+    for (let seed = 0; seed < 50; seed += 1) {
+      for (const palette of palettesOf(suggestPalettes({ images, rng: encodeRngId(seed) })).palettes) {
+        const main = palette.accent[0]
+        if (main) expect(hueDistance(oklchOf(main).h, redHue), `${palette.id} ${main}`).toBeGreaterThan(15)
+      }
+    }
+  })
+
   it('没有图片时用种子色作本色', () => {
     const result = palettesOf(suggestPalettes({ seedColors: ['#2f6b57'], rng: 'pl0003' }))
     expect(result.subject[0]?.hex).toBe('#2f6b57')

@@ -236,8 +236,11 @@ export const RELATION_HUE_SHIFT: Readonly<Record<'analog' | 'medium' | 'contrast
  * 128°–144° 只用图片里真有的颜色。
  */
 export const SYNTHESIZED_HUE_SHIFT_MAX = 128
-/** 点缀色不当主色：面积小，只做搭配色（用它打底会与题材不符，例如储能稿以绿条为主色）。 */
-export const SPOT_PRIMARY_WEIGHT = 0
+/**
+ * 至少给了这么多张图时，只在一张图里出现的本色只做搭配色、不当主色：多半是某张图的背景或灯光，
+ * 例如光合作用主图背景的暗红，整套铺成暗红就离题了。点缀色同样只做搭配色。
+ */
+export const PRIMARY_MIN_IMAGES_FOR_PRESENCE = 3
 /** 色相差落在对应区间里的图片色优先当搭配色（图片里真有的颜色），没有才按色相差合成。 */
 export const IMAGE_PARTNER_PROBABILITY = 0.75
 /** 图片多色至少要几种本色；一套最多用几种（主色加两种，三色搭配最常见，再多容易花）。 */

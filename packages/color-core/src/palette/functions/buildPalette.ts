@@ -41,7 +41,6 @@ import {
   PRIMARY_SUBJECT_WEIGHTS,
   type RangeValue,
   RELATION_HUE_SHIFT,
-  SPOT_PRIMARY_WEIGHT,
   SYNTHESIZED_HUE_SHIFT_MAX,
   TEXT_TONES,
   type ToneSurface,
@@ -64,8 +63,8 @@ export interface PaletteRecipe {
   readonly tone: PaletteTone
   /** 题材本色，按排名；点缀色排在后面。 */
   readonly subject: readonly Oklch[]
-  /** 与 `subject` 一一对应：是否点缀色。 */
-  readonly spots?: readonly boolean[]
+  /** 与 `subject` 一一对应：只做搭配色、不当主色（点缀色，或只在一张图里出现的颜色）。 */
+  readonly partnerOnly?: readonly boolean[]
   readonly excluded: readonly HueRange[]
   readonly random: RandomSource
   /** 强调色个数，1–6；不传按关系默认。 */
@@ -111,14 +110,10 @@ function pickWeighted<T>(items: readonly T[], weights: readonly number[], random
 /** 主色：按本色排名加权抽，每次主色不同，色系才不同。染纸底不铺米色（灰 + 主色的底几乎无彩，不受影响）。 */
 function pickPrimary(recipe: PaletteRecipe): Oklch | undefined {
   const avoidBeige = recipe.base === 'tint' && recipe.relation !== 'ink'
-  const candidates = recipe.subject.filter(color => !avoidBeige || !isBeige(color))
-  if (recipe.relation === 'multi') return candidates.find(color => !recipe.spots?.[recipe.subject.indexOf(color)])
-  const weights = candidates.map(color => {
-    const index = recipe.subject.indexOf(color)
-    return recipe.spots?.[index] ? SPOT_PRIMARY_WEIGHT : PRIMARY_SUBJECT_WEIGHTS[index] ?? 0.2
-  })
-  if (weights.every(weight => weight <= 0)) return undefined
-  return pickWeighted(candidates, weights, recipe.random)
+  const candidates = recipe.subject.filter((color, index) => !recipe.partnerOnly?.[index] && (!avoidBeige || !isBeige(color)))
+  if (recipe.relation === 'multi') return candidates[0]
+  if (candidates.length === 0) return undefined
+  return pickWeighted(candidates, candidates.map(color => PRIMARY_SUBJECT_WEIGHTS[recipe.subject.indexOf(color)] ?? 0.2), recipe.random)
 }
 
 /** 按关系定用到的色相。邻近、中差、对照优先用色相差落在区间里的图片色，没有再合成。 */
@@ -250,7 +245,7 @@ function singleHueChart(recipe: PaletteRecipe, hue: number): number[] {
 }
 
 /**
- * 多色相图表的色相路径：各色相沿色环排好（不跨最大空档），本身更深的颜色放在深色一端，再按明度单调渐变
+ * 多色相图表的色相路径：各色相沿色环排好（不跨最大空档），主色打头，再按明度单调渐变
  * （グラデーション）。渐变经过排除区时改为各色相轮流。
  */
 function multiHueChart(recipe: PaletteRecipe, anchors: readonly Anchor[]): number[] {
@@ -268,8 +263,10 @@ function multiHueChart(recipe: PaletteRecipe, anchors: readonly Anchor[]): numbe
   const forwardOrder = [...sorted.slice(gapIndex + 1), ...sorted.slice(0, gapIndex + 1)]
   const first = forwardOrder[0]
   const last = forwardOrder[forwardOrder.length - 1]
+  const primary = anchors[0]
   const deepFirst = recipe.base !== 'dark'
-  const reverse = first !== undefined && last !== undefined && (deepFirst ? last.source.l < first.source.l : last.source.l > first.source.l)
+  // 主色在一端时放在打头那一档（最显眼）；在中间时，本身更深的一端打头。
+  const reverse = last === primary || (first !== primary && first !== undefined && last !== undefined && (deepFirst ? last.source.l < first.source.l : last.source.l > first.source.l))
   const ordered = reverse ? [...forwardOrder].reverse() : forwardOrder
   const segments = ordered.length - 1
   const hues = Array.from({ length: CHART_SERIES_COUNT }, (_, index) => {
