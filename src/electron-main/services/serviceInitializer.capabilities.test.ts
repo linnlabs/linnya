@@ -4,6 +4,8 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const graphConstruction = vi.hoisted(() => vi.fn<() => void>());
+
 // 启动清理、插件运行资源与知识库实现都会读写本机数据目录或拉起 Worker；本组全部替换，
 // 只用临时目录里的真实数据库。
 vi.mock('./startup/startupMaintenanceRunner', () => ({
@@ -25,13 +27,26 @@ vi.mock('src/features/knowledge-base/index', () => ({
   DefaultSearchService: class {},
 }));
 vi.mock('src/features/knowledge-base/graph/application/knowledgeGraphQueueOrchestrator', () => ({
-  KnowledgeGraphQueueOrchestrator: class {},
+  KnowledgeGraphQueueOrchestrator: class {
+    constructor() { graphConstruction(); }
+    start() {}
+  },
 }));
 
+import * as databaseModule from './database';
 import { DatabaseService } from './database';
 import { ServiceInitializer } from './serviceInitializer';
 import { scheduleStartupMaintenanceOnce } from './startup/startupMaintenanceRunner';
 import { syncRegisteredBackendPluginRuntimeResources } from '../../app-hosts/linnya/plugin-registry/builtin';
+import * as rendererIntegration from '../../app-hosts/linnya/desktop-capabilities';
+import { installDistributionIdentity } from '../../shared/distribution-identity';
+import { QueueManager } from '../../infra/task-queue/queues';
+import { IngestionJobPayloadSchema } from '../../infra/task-queue/jobs';
+import { DEFAULT_CONFIG } from '../../features/transcription/audio-preprocessing/config';
+
+class TestQueueOwner extends QueueManager {
+  constructor() { super(); }
+}
 
 type StepName =
   | 'initializeDatabaseService'
@@ -74,6 +89,7 @@ function createInitializer(): ServiceInitializer {
 }
 
 beforeEach(() => {
+  graphConstruction.mockReset();
   root = mkdtempSync(path.join(tmpdir(), 'linnya-service-capabilities-'));
   database = new DatabaseService(path.join(root, 'workspace.sqlite'));
   database.initialize();
@@ -167,6 +183,55 @@ describe('服务初始化：能力步骤失败只停掉这项能力', () => {
       capability: 'background-tasks',
       message: '后台任务队列没有启动成功（worker script missing）',
     }]);
+  });
+
+  it('队列已建好但图谱装配失败：先回收队列，再降级继续启动，不能继续接任务', async () => {
+    // 保留真实队列生命周期，只替换图谱故障与宿主发布端口；不启动 Worker 或访问用户数据。
+    stubStep('initializeQueueSystem', async () => undefined).mockRestore();
+    const queue = new TestQueueOwner();
+    vi.spyOn(QueueManager, 'getInstance').mockReturnValue(queue);
+    vi.spyOn(databaseModule, 'getDatabaseService').mockReturnValue(database);
+    installDistributionIdentity({ kind: 'source', packaged: false });
+    vi.spyOn(rendererIntegration, 'getBackendRendererIntegrationPort').mockReturnValue({
+      connectModelCatalogUpdates: async () => () => undefined,
+      publishIngestionStatus: vi.fn(),
+      queueJobPresentationPublisher: {
+        publishProgress: vi.fn(), publishCompletion: vi.fn(), publishFailure: vi.fn(),
+      },
+      publishKnowledgeGraphProgress: vi.fn(),
+      publishTranscriptionProgress: vi.fn(),
+      publishWorkspaceMutation: vi.fn(),
+      publishPluginRendererPush: vi.fn(),
+      publishTodosChanged: vi.fn(),
+      publishPluginsChanged: vi.fn(),
+      publishModelsChanged: vi.fn(),
+    });
+    const reason = 'EACCES: source_of_truth unavailable';
+    graphConstruction.mockImplementationOnce(() => {
+      // 故障发生在 QueueManager.initialize 完成之后，而非队列内部初始化阶段。
+      expect(queue.getQueueStats()).toMatchObject({ pending: 0, running: 0 });
+      throw new Error(reason);
+    });
+
+    try {
+      const services = await createInitializer().initializeServices({}, READY);
+      expect(graphConstruction).toHaveBeenCalledOnce();
+      expect(services.capabilityFailures).toEqual([{
+        capability: 'background-tasks',
+        message: expect.stringContaining(reason),
+      }]);
+      expect(services.knowledgeBaseService).toBe(KNOWLEDGE_BASE);
+      expect(services.databaseService.getDb().prepare('SELECT 1 AS value').get()).toEqual({ value: 1 });
+      expect(() => queue.getQueueStats()).toThrow('队列管理器未初始化');
+      await expect(queue.addIngestionTask(IngestionJobPayloadSchema.parse({
+        taskId: 'ingestion', kbId: 'kb', docId: 'doc', embeddingModelId: 'embedding',
+        filename: 'doc.txt', filePath: path.join(root, 'doc.txt'),
+      }))).rejects.toThrow('摄入队列未初始化');
+      expect(() => queue.processAudio(path.join(root, 'audio.wav'), DEFAULT_CONFIG))
+        .toThrow('音频处理队列未初始化');
+    } finally {
+      await queue.shutdown();
+    }
   });
 
   it('几项能力同时失败时逐项记录', async () => {

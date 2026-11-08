@@ -499,25 +499,25 @@ export class ServiceInitializer {
   private async initializeQueueSystem(): Promise<void> {
     console.log('[ServiceInitializer] 🧵 Step 12: 初始化智能多线程队列系统...');
 
-    try {
-      const queueManager = QueueManager.getInstance();
-      await queueManager.initialize({
-        workerRuntime: this.queueWorkerRuntime,
-        runtimePathRoots: this.runtimePathRoots,
-        distributionIdentity: requireInstalledDistributionIdentity(),
-        qdrantUrl: this.qdrantUrl ?? undefined,
-        jobPresentationPublisher: getBackendRendererIntegrationPort().queueJobPresentationPublisher,
-        ingestionLifecycleObserver: {
-          onProgress: ({ job, data }) => {
-            syncProgressToIngestionStore(data, { filename: job.data.filename });
-          },
-          onCompleted: ({ job, result }) => {
-            syncCompletionToIngestionStore(result, { filename: job.data.filename });
-          },
+    const queueManager = QueueManager.getInstance();
+    // 队列内部初始化失败由 QueueManager 自行回收；后续图谱装配失败由当前编排层回收。
+    await queueManager.initialize({
+      workerRuntime: this.queueWorkerRuntime,
+      runtimePathRoots: this.runtimePathRoots,
+      distributionIdentity: requireInstalledDistributionIdentity(),
+      qdrantUrl: this.qdrantUrl ?? undefined,
+      jobPresentationPublisher: getBackendRendererIntegrationPort().queueJobPresentationPublisher,
+      ingestionLifecycleObserver: {
+        onProgress: ({ job, data }) => {
+          syncProgressToIngestionStore(data, { filename: job.data.filename });
         },
-      });
-      console.log('[ServiceInitializer] ✅ Step 12: 智能多线程队列系统初始化成功');
+        onCompleted: ({ job, result }) => {
+          syncCompletionToIngestionStore(result, { filename: job.data.filename });
+        },
+      },
+    });
 
+    try {
       // Graph Queue Orchestration（feature 层）
       // 说明：这里启动“图谱抽取编排器”，让 task-queue 保持通用。
       const databaseService = getDatabaseService();
@@ -528,9 +528,12 @@ export class ServiceInitializer {
       });
       kgOrchestrator.start();
       this.serviceRegistry.register('knowledgeGraphQueueOrchestrator', () => kgOrchestrator, true);
+      console.log('[ServiceInitializer] ✅ Step 12: 智能多线程队列系统初始化成功');
     } catch (queueError) {
       console.error('[ServiceInitializer] ❌ Step 12: 队列系统初始化失败:', queueError);
-      throw new Error(`队列系统初始化失败: ${queueError}`);
+      // 外层会降级并继续启动，必须先停掉已建队列，避免不可用的能力仍在接收任务。
+      await queueManager.shutdown();
+      throw queueError;
     }
   }
 }
