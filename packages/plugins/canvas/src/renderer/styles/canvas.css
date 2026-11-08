@@ -538,13 +538,14 @@
   transform: translate(-50%, -50%);
   cursor: crosshair;
 }
+/* 常态只把描边调淡，底色保持不透明：圆点压在连线端头上时盖住线，而不是透出线来。 */
 .canvas-connection-anchor {
-  opacity: 0.6;
-  transition: opacity var(--duration-micro) var(--ease-standard);
+  border-color: color-mix(in srgb, var(--color-accent) 60%, var(--color-bg-default));
+  transition: border-color var(--duration-micro) var(--ease-standard);
 }
 .canvas-connection-anchor:hover,
 .canvas-connection-anchor:focus-visible {
-  opacity: 1;
+  border-color: var(--color-accent);
 }
 /* 选中线的两端不常驻控制点：选中已由线本身变色表示，端点上只留可拖区域，悬停时显出空心圈提示可改接。 */
 .canvas-connection-endpoint {
