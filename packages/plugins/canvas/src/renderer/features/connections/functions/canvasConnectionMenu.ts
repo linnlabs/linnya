@@ -34,7 +34,7 @@ export const canvasConnectionContextActions: readonly CustomSelectOption<string>
   { value: 'jump-from', text: '跳到起点' },
   { value: 'jump-to', text: '跳到终点' },
   { isSeparator: true },
-  { value: 'delete', text: '删除连线', shortcut: '⌫' },
+  { value: 'delete', text: '删除连线', shortcut: '⌫', variant: 'danger' },
 ];
 const patches: ReadonlyMap<string, CanvasPatch> = new Map([
   ['direction-none', { direction: 'none' }],

@@ -56,7 +56,7 @@ export function canvasCardMenuActions(allLocked: boolean): readonly CustomSelect
     { value: 'arrange', text: '自动排布所选' },
     { value: 'fit-selection', text: '显示选中', shortcut: '⌘2' },
     separator,
-    { value: 'delete', text: '删除', shortcut: '⌫' },
+    { value: 'delete', text: '删除', shortcut: '⌫', variant: 'danger' },
   ];
 }
 const cardContext: readonly CustomSelectOption<string>[] = [
@@ -80,7 +80,7 @@ export function canvasContextMenuActions(input: {
   readonly edge: boolean;
   readonly readonly: boolean;
 }): readonly CustomSelectOption<string>[] {
-  const selected =
+  const selected: readonly CustomSelectOption<string>[] =
     input.selectionCount > 1
       ? [
           ...cardContext,
@@ -90,7 +90,7 @@ export function canvasContextMenuActions(input: {
           colors,
           layer,
           separator,
-          { value: 'delete', text: '删除', shortcut: '⌫' },
+          { value: 'delete', text: '删除', shortcut: '⌫', variant: 'danger' },
         ]
       : [
           ...cardContext,
@@ -98,7 +98,7 @@ export function canvasContextMenuActions(input: {
           layer,
           { value: 'fit-selection', text: '显示选中', shortcut: '⌘2' },
           separator,
-          { value: 'delete', text: '删除', shortcut: '⌫' },
+          { value: 'delete', text: '删除', shortcut: '⌫', variant: 'danger' },
         ];
   const actions = input.edge
     ? canvasConnectionContextActions
