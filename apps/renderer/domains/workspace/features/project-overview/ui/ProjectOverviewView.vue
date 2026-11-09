@@ -146,11 +146,18 @@
               v-for="item in virtualizer.getVirtualItems()"
               :key="sortedRows[item.index]?.documentId ?? item.index"
               class="project-overview__row"
+              :data-document-id="sortedRows[item.index]?.documentId"
+              :class="{ 'is-selected': sortedRows[item.index]?.documentId === selectedDocumentId }"
               role="row"
               tabindex="0"
+              :aria-selected="sortedRows[item.index]?.documentId === selectedDocumentId"
               :style="{ transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)` }"
-              @click="openRow(sortedRows[item.index])"
+              @click="selectRow(sortedRows[item.index])"
+              @focus="selectRow(sortedRows[item.index])"
+              @dblclick="openRow(sortedRows[item.index])"
               @keydown.enter.self="openRow(sortedRows[item.index])"
+              @keydown.up.self.prevent="moveSelection(item.index, -1)"
+              @keydown.down.self.prevent="moveSelection(item.index, 1)"
             >
               <template v-if="sortedRows[item.index]">
                 <div class="project-overview__cell project-overview__cell--name" role="cell">
@@ -159,9 +166,16 @@
                     class="project-overview__type-icon"
                     :class="presentation.documentType(sortedRows[item.index]!.nodeType).iconClass"
                   />
-                  <span class="project-overview__name" :title="sortedRows[item.index]!.title">
+                  <button
+                    type="button"
+                    tabindex="-1"
+                    class="project-overview__name"
+                    :title="sortedRows[item.index]!.title"
+                    @click.stop="openRow(sortedRows[item.index])"
+                    @dblclick.stop
+                  >
                     {{ sortedRows[item.index]!.title }}
-                  </span>
+                  </button>
                 </div>
                 <div
                   v-for="column in visibleColumns"
@@ -207,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, toRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, toRef, watch } from 'vue';
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import { SkeletonRows } from '@linnya/renderer-ui';
@@ -261,7 +275,7 @@ const emit = defineEmits<{
 }>();
 
 const ALL = '__all__';
-const ROW_HEIGHT = 40;
+const ROW_HEIGHT = 36;
 const COLUMN_GAP = 16;
 const CONTENT_SEARCH_LIMIT = PROJECT_OVERVIEW_CONTENT_SEARCH_MAX_MATCHES;
 
@@ -488,8 +502,30 @@ const virtualizer = useVirtualizer(computed(() => ({
 })));
 watch(bodyRef, body => { bodyOffset.value = body?.offsetTop ?? 0; }, { flush: 'post' });
 
+/*
+ * 行交互：文件名和“生成于”是链接，单击打开；点行内其他位置只选中这一行，
+ * 双击或按 Enter 打开，↑↓ 在行间移动。选中为以后的批量操作留位置。
+ */
+const selectedDocumentId = ref<string | null>(null);
+watch(projectIdRef, () => { selectedDocumentId.value = null; });
+
+function selectRow(row: ProjectOverviewRow | undefined): void {
+  if (row) selectedDocumentId.value = row.documentId;
+}
+
 function openRow(row: ProjectOverviewRow | undefined): void {
   if (row) emit('open-document', row);
+}
+
+function moveSelection(index: number, offset: -1 | 1): void {
+  const target = sortedRows.value[index + offset];
+  if (!target) return;
+  selectedDocumentId.value = target.documentId;
+  virtualizer.value.scrollToIndex(index + offset);
+  void nextTick(() => {
+    const element = scrollRef.value?.querySelector<HTMLElement>(`[data-document-id="${CSS.escape(target.documentId)}"]`);
+    element?.focus({ preventScroll: true });
+  });
 }
 
 function timeText(timestamp: number): string {

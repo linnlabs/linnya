@@ -101,7 +101,16 @@ export async function runProjectOverviewScenario({ cdp, evaluate, waitFor, proje
   await waitFor(() => evaluate(cdp, `!document.querySelector('.project-overview') && document.body.innerText.includes('E2E 对话 A 回答')`), '打开生成对话');
   await openOverview();
   await waitFor(() => evaluate(cdp, `document.querySelectorAll('.project-overview__row').length === 2`), '从对话返回概览');
-  await evaluate(cdp, `Array.from(document.querySelectorAll('.project-overview__row')).find(el=>el.textContent.includes('更新报告')).click()`);
+  // 行交互：点行内非链接处只选中，不打开；双击打开；文件名是链接，单击打开。
+  await evaluate(cdp, `Array.from(document.querySelectorAll('.project-overview__row')).find(el=>el.textContent.includes('更新报告')).querySelector('.project-overview__cell:not(.project-overview__cell--name)').click()`);
+  await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('.project-overview__row.is-selected')) && Boolean(document.querySelector('.project-overview'))`), '单击行只选中');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  assert.equal(await evaluate(cdp, `Boolean(document.querySelector('.project-overview'))`), true, '单击行不应打开文件');
+  await evaluate(cdp, `Array.from(document.querySelectorAll('.project-overview__row')).find(el=>el.textContent.includes('更新报告')).dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))`);
+  await waitFor(() => evaluate(cdp, `!document.querySelector('.project-overview') && Boolean(document.querySelector('.tiptap'))`), '双击行打开文件');
+  await evaluate(cdp, `document.querySelector('.project-nav-overview-entry').click()`);
+  await waitFor(() => evaluate(cdp, `document.querySelectorAll('.project-overview__row').length === 2`), '再次返回概览');
+  await evaluate(cdp, `Array.from(document.querySelectorAll('.project-overview__row')).find(el=>el.textContent.includes('更新报告')).querySelector('.project-overview__name').click()`);
   await waitFor(() => evaluate(cdp, `!document.querySelector('.project-overview') && Boolean(document.querySelector('.tiptap'))`), '点击文件进入编辑器');
   await evaluate(cdp, `document.querySelector('.project-nav-overview-entry').click()`);
   await waitFor(() => evaluate(cdp, `document.querySelectorAll('.project-overview__row').length === 2`), '返回概览');

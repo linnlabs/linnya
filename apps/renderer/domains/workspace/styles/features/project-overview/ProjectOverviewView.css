@@ -6,7 +6,7 @@
   --project-overview-content-width: 1180px;
   /* 窄窗口时两侧留白跟着收，尽量把宽度让给表格，避免出现水平滚动。 */
   --project-overview-gutter: clamp(var(--space-4), 3vw, var(--space-8));
-  --project-overview-row-height: 40px;
+  --project-overview-row-height: 36px;
   --project-overview-column-gap: var(--space-4);
   display: flex;
   flex: 1;
@@ -484,11 +484,15 @@ body.project-overview-is-resizing {
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   color: var(--color-text-secondary);
-  cursor: pointer;
+  cursor: default;
 }
 
 .project-overview__row:hover {
-  background-color: var(--color-bg-hover);
+  background-color: color-mix(in srgb, var(--color-bg-hover) 55%, transparent);
+}
+
+.project-overview__row.is-selected {
+  background-color: var(--color-bg-active-subtle);
 }
 
 .project-overview__row:focus-visible {
@@ -523,10 +527,26 @@ body.project-overview-is-resizing {
   color: var(--color-text-tertiary);
 }
 
+/* 文件名是打开文件的链接：悬停出下划线和手形光标。 */
 .project-overview__name {
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.project-overview__name:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-hover);
+  text-underline-offset: 3px;
 }
 
 .project-overview__cell--location,
@@ -569,6 +589,7 @@ body.project-overview-is-resizing {
 
 .project-overview__conversation:hover .project-overview__conversation-text {
   text-decoration: underline;
+  text-decoration-color: var(--color-border-hover);
   text-underline-offset: 3px;
 }
 
