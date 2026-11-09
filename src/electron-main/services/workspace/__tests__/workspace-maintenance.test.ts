@@ -112,7 +112,7 @@ describe('runWorkspaceMaintenanceOnce', () => {
     expect(pendingTargets(unreadable)).toEqual(['root-gone0002']);
     expect(pendingTargets(trashed)).toEqual(['root-gone0003']);
     expect(warn.mock.calls.map(([message]) => message)).toEqual([
-      `清理文档失败: documentId=${unreadable}, err=codeBlock language "linnya-chart" is reserved for chartBlock`,
+      `清理文档失败: documentId=${unreadable}, err=这篇文档的格式不正确，无法打开（codeBlock language "linnya-chart" is reserved for chartBlock）`,
     ]);
     const messages = info.mock.calls.map(([message]) => message);
     expect(messages.filter(message => message.startsWith('文档清理:'))).toEqual([
