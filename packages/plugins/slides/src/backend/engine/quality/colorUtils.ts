@@ -1,13 +1,18 @@
 /**
- * 颜色工具函数集
+ * AestheticLint 的颜色工具。
  *
- * 服务于 AestheticLint 颜色 / 对比度 / 跨页主色一致性规则。
+ * 解析、相对亮度与对比度来自 `@linnya/color-core`，这里只保留 lint 输入需要的容错
+ * （无 `#`、带透明度的 hex）和尚未换口径的 HSL 判断；后者在 inspect 改 OKLCH 时一并替换。
  *
- * 设计原则：
- * - 纯函数、无状态、零外部依赖
- * - 输入容错：所有解析函数对非法输入返回 `null`，不抛错
- * - 单位精确：HSL 中 H 用度（0-360），S/L 用 0-1 范围
+ * 所有解析函数对非法输入返回 `null`，不抛错；HSL 中 H 用度（0-360），S/L 用 0-1。
  */
+
+import {
+  contrastRatio,
+  parseColor,
+  relativeLuminance as relativeLuminanceOfChannels,
+  type RgbChannels,
+} from '@linnya/color-core';
 
 export interface RgbColor {
   r: number; // 0-255
@@ -32,30 +37,12 @@ export interface HslColor {
  */
 export function parseHex(input: string | undefined | null): RgbColor | null {
   if (typeof input !== 'string') return null;
-  const trimmed = input.trim().replace(/^#/, '');
-  if (trimmed.length === 0) return null;
-
-  let hex: string;
-  if (trimmed.length === 3 || trimmed.length === 4) {
-    /* #RGB / #RGBA */
-    hex = trimmed
-      .slice(0, 3)
-      .split('')
-      .map((c) => c + c)
-      .join('');
-  } else if (trimmed.length === 6 || trimmed.length === 8) {
-    hex = trimmed.slice(0, 6);
-  } else {
-    return null;
-  }
-
-  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return null;
-
-  return {
-    r: parseInt(hex.slice(0, 2), 16),
-    g: parseInt(hex.slice(2, 4), 16),
-    b: parseInt(hex.slice(4, 6), 16),
-  };
+  const digits = input.trim().replace(/^#/, '');
+  const opaque = digits.length === 4 ? digits.slice(0, 3) : digits.length === 8 ? digits.slice(0, 6) : digits;
+  const parsed = parseColor(`#${opaque}`);
+  if (!parsed) return null;
+  const [r, g, b] = parsed.channels;
+  return { r, g, b };
 }
 
 /**
@@ -108,28 +95,14 @@ export function isNeutralColor(hsl: HslColor): boolean {
   return false;
 }
 
-/**
- * sRGB → 相对亮度（WCAG 2.x 定义）。返回 0-1。
- * 用于对比度计算。
- */
+/** WCAG 2.x 相对亮度，0-1。 */
 export function relativeLuminance(rgb: RgbColor): number {
-  const channel = (c: number): number => {
-    const v = clamp01(c / 255);
-    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  };
-  return 0.2126 * channel(rgb.r) + 0.7152 * channel(rgb.g) + 0.0722 * channel(rgb.b);
+  return relativeLuminanceOfChannels(toChannels(rgb));
 }
 
-/**
- * WCAG 对比度比 = (Lmax + 0.05) / (Lmin + 0.05)。
- * 范围 1.0（同色）— 21.0（纯黑/纯白）。
- */
+/** WCAG 对比度，1.0（同色）— 21.0（纯黑/纯白）。 */
 export function wcagContrastRatio(c1: RgbColor, c2: RgbColor): number {
-  const l1 = relativeLuminance(c1);
-  const l2 = relativeLuminance(c2);
-  const lmax = Math.max(l1, l2);
-  const lmin = Math.min(l1, l2);
-  return (lmax + 0.05) / (lmin + 0.05);
+  return contrastRatio(toChannels(c1), toChannels(c2));
 }
 
 /**
@@ -175,6 +148,10 @@ export function circularMeanDeg(huesDeg: number[]): number {
   }
   const degrees = (Math.atan2(sumSin, sumCos) * 180) / Math.PI;
   return degrees < 0 ? degrees + 360 : degrees;
+}
+
+function toChannels(rgb: RgbColor): RgbChannels {
+  return [rgb.r, rgb.g, rgb.b];
 }
 
 function clamp01(v: number): number {

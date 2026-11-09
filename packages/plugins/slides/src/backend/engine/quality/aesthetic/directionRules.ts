@@ -8,6 +8,7 @@
  * - 颜色：彩色填充或文字的色相离所有声明彩色都远 → 复核；同色相的深浅不算偏离。
  */
 
+import { hueDistance, toHex } from '@linnya/color-core';
 import type { DirectionDeclaration } from '@plugin/slides/shared/designDirection';
 import {
   assessFontDelivery,
@@ -63,7 +64,7 @@ export function lintDirectionBackground(
     const matched = background.some((rgb) =>
       declaredRgb.some((candidate) => deltaE76(rgb, candidate) <= BACKGROUND_DELTA_E_LIMIT));
     if (matched) continue;
-    const key = toHex(background[0]!);
+    const key = toUpperHex(background[0]!);
     offSlides.set(key, [...(offSlides.get(key) ?? []), slide.number]);
   }
   if (offSlides.size === 0) return [];
@@ -232,7 +233,7 @@ export function lintDirectionPalette(
         const nearHue = chromaticHues.some((hue) => hueDistance(hue, hsl.h) <= PALETTE_HUE_LIMIT_DEG);
         const nearColor = paletteRgb.some((candidate) => deltaE76(rgb, candidate) <= PALETTE_DELTA_E_LIMIT);
         if (nearHue || nearColor) continue;
-        const key = toHex(rgb);
+        const key = toUpperHex(rgb);
         const entry = offColors.get(key) ?? { slides: new Set<number>(), area: 0 };
         entry.slides.add(slide.number);
         entry.area += area;
@@ -264,11 +265,6 @@ export function lintDirectionPalette(
 
 // ─── 颜色工具 ──────────────────────────────────────────────────────────────
 
-function hueDistance(left: number, right: number): number {
-  const delta = Math.abs(left - right) % 360;
-  return delta > 180 ? 360 - delta : delta;
-}
-
 function mixRgb(base: RgbColor, top: RgbColor, opacity: number): RgbColor {
   const alpha = Math.max(0, Math.min(1, opacity));
   return {
@@ -278,9 +274,8 @@ function mixRgb(base: RgbColor, top: RgbColor, opacity: number): RgbColor {
   };
 }
 
-function toHex(rgb: RgbColor): string {
-  const channel = (value: number) => Math.round(Math.max(0, Math.min(255, value))).toString(16).padStart(2, '0');
-  return `#${channel(rgb.r)}${channel(rgb.g)}${channel(rgb.b)}`.toUpperCase();
+function toUpperHex(rgb: RgbColor): string {
+  return toHex([rgb.r, rgb.g, rgb.b]).toUpperCase();
 }
 
 /** sRGB → CIE Lab（D65），用于 CIE76 色差。 */

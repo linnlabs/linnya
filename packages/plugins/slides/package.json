@@ -65,6 +65,7 @@
   },
   "dependencies": {
     "@app/schemas": "workspace:*",
+    "@linnya/color-core": "workspace:*",
     "@linnya/text-measurement-core": "workspace:*",
     "@mathjax/mathjax-stix2-font": "4.1.3",
     "@mathjax/src": "4.1.3",
