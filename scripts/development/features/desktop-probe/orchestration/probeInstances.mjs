@@ -7,7 +7,7 @@ import { waitFor } from '../infrastructure/cdpClient.mjs';
 import {
   instanceRoot, instancesRoot, prepareInstance, readSession, touchInstance, withLifecycleLock, writeSession,
 } from '../infrastructure/instanceStore.mjs';
-import { sameProcess, signalOwner } from '../infrastructure/processTree.mjs';
+import { observeTree, readProcessTable, sameProcess, signalOwner, stopOwnedTree } from '../infrastructure/processTree.mjs';
 
 const supervisorEntry = fileURLToPath(new URL('./probeSupervisor.mjs', import.meta.url));
 const dist = join(repoRoot, 'dist/main/main.cjs');
@@ -28,10 +28,18 @@ function buildStatus() {
   return { distMtime, distStale, gitHead: git('rev-parse', 'HEAD') };
 }
 
+function sessionSummary(session) {
+  // 子进程的完整命令只用于核对归属，留在实例目录，避免进入工具输出。
+  const summary = { ...session };
+  delete summary.processes;
+  return summary;
+}
+
 export function probeStatus(name) {
   const root = instanceRoot(name);
-  const session = readSession(root);
-  if (!session) return { state: 'stopped', root };
+  const current = readSession(root);
+  if (!current) return { state: 'stopped', root };
+  const session = sessionSummary(current);
   if (['starting', 'ready'].includes(session.state) && session.supervisor && !sameProcess(session.supervisor)) {
     return { ...session, state: 'failed', failure: { code: 'OWNER_EXITED', message: '探针看管进程已退出' } };
   }
@@ -46,20 +54,45 @@ export function listProbes() {
     .map(entry => probeStatus(entry.name));
 }
 
-async function start(root, options, fresh) {
-  const previous = readSession(root);
-  if (previous?.state === 'starting' && !previous.supervisor && Date.now() - previous.startedAt < 45_000) {
+function checkSupervisorHandoff(session) {
+  if (session?.state === 'starting' && !session.supervisor && Date.now() - session.startedAt < 45_000) {
     throw new ProbeError('BUSY', '看管进程正在发布启动身份');
   }
+}
+
+async function recoverOrphaned(root, session) {
+  if (!session || (session.cleanup?.remaining.length === 0 && session.failure?.code !== 'STOP_FAILED')) {
+    return session?.cleanup;
+  }
+  const table = readProcessTable();
+  const desktop = observeTree(session.electron, table);
+  const vite = observeTree(session.vite, table);
+  const observed = new Map((session.processes ?? []).map(entry => [entry.pid, entry]));
+  for (const [pid, entry] of desktop) observed.set(pid, entry);
+  for (const [pid, entry] of vite) observed.set(pid, entry);
+
+  await stopOwnedTree(session.electron, desktop);
+  for (const [pid, entry] of desktop) observed.set(pid, entry);
+  const cleanup = await stopOwnedTree(undefined, observed, 120);
+  const failure = cleanup.remaining.length ? { code: 'STOP_FAILED', message: '探针仍有自有进程未退出' } : undefined;
+  writeSession(root, {
+    ...session, processes: [...observed.values()], state: failure ? 'failed' : 'stopped',
+    cleanup, failure, stopReason: 'owner-exited', stoppedAt: Date.now(),
+  });
+  if (failure) throw new ProbeError(failure.code, failure.message, session.logs.supervisor);
+  return cleanup;
+}
+
+async function start(root, options, fresh) {
+  const previous = readSession(root);
+  checkSupervisorHandoff(previous);
   if (sameProcess(previous?.supervisor)) {
     if (fresh) throw new ProbeError('BUSY', '请先停止当前实例再使用 --fresh');
     touchInstance(root);
-    if (previous.state === 'ready') return { ...previous, reused: true };
+    if (previous.state === 'ready') return { ...sessionSummary(previous), reused: true };
     throw new ProbeError('BUSY', '实例正在启动或停止');
   }
-  if (sameProcess(previous?.electron) || previous?.cleanup?.remaining?.length || previous?.failure?.code === 'STOP_FAILED') {
-    throw new ProbeError('STOP_FAILED', '上次探针未完成进程清理', '检查该实例的 supervisor.log');
-  }
+  await recoverOrphaned(root, previous);
   const build = options.entry === 'toy' ? {} : buildStatus();
   if (fresh) rmSync(root, { recursive: true, force: true });
   prepareInstance(root);
@@ -93,7 +126,7 @@ async function start(root, options, fresh) {
       if (launchError || child.exitCode !== null || child.signalCode !== null) {
         throw new ProbeError('START_FAILED', launchError ?? '看管进程提前退出', logs.supervisor);
       }
-      return current.state === 'ready' && { ...current, reused: false };
+      return current.state === 'ready' && { ...sessionSummary(current), reused: false };
     }, '探针启动', 45_000);
   } catch (error) {
     const owner = readSession(root)?.supervisor;
@@ -104,20 +137,14 @@ async function start(root, options, fresh) {
 
 async function stop(root, clean) {
   const session = readSession(root);
-  const requested = sameProcess(session?.supervisor);
-  if (requested) {
+  checkSupervisorHandoff(session);
+  if (sameProcess(session?.supervisor)) {
     signalOwner(session.supervisor, 'SIGTERM');
     await waitFor(() => !sameProcess(session.supervisor), '探针退出', 22_000);
   }
-  const finished = readSession(root);
-  if (requested && !['stopped', 'failed'].includes(finished?.state)) {
-    throw new ProbeError('STOP_FAILED', '看管进程退出前未发布清理结果', session.logs.supervisor);
-  }
-  if (sameProcess(finished?.electron) || finished?.cleanup?.remaining?.length || finished?.failure?.code === 'STOP_FAILED') {
-    throw new ProbeError('STOP_FAILED', '探针仍有自有进程未退出', finished.logs.supervisor);
-  }
+  const cleanup = await recoverOrphaned(root, readSession(root));
   if (clean) rmSync(root, { recursive: true, force: true });
-  return { state: 'stopped', root, cleanup: finished?.cleanup };
+  return { state: 'stopped', root, cleanup };
 }
 
 export function changeProbeInstance(command, options, { fresh = false, clean = false } = {}) {

@@ -10,6 +10,14 @@ const special = {
   Enter: 13, Escape: 27, Tab: 9, Backspace: 8, Delete: 46, ArrowLeft: 37, ArrowUp: 38,
   ArrowRight: 39, ArrowDown: 40, Home: 36, End: 35, PageUp: 33, PageDown: 34, Space: 32,
 };
+const macEditingCommands = { A: 'selectAll', C: 'copy', X: 'cut', V: 'paste', Z: 'undo' };
+
+function macEditingCommand(key, modifiers) {
+  if (process.platform !== 'darwin') return undefined;
+  const mask = modifiers.reduce((combined, modifier) => combined | modifier.mask, 0);
+  if (mask === modifierKeys.Meta.mask) return macEditingCommands[key];
+  if (mask === (modifierKeys.Meta.mask | modifierKeys.Shift.mask) && key === 'Z') return 'redo';
+}
 
 export function resolveKeySequence(input) {
   const parts = input.split('+');
@@ -25,5 +33,8 @@ export function resolveKeySequence(input) {
   if (!/^[A-Za-z0-9]$/.test(key)) usage(`未知按键 ${key}`);
   const upper = key.toUpperCase();
   const text = parts.includes('Shift') ? upper : key.toLowerCase();
-  return { modifiers, key: text, code: /^[0-9]$/.test(key) ? `Digit${key}` : `Key${upper}`, virtual: upper.charCodeAt(0), text };
+  return {
+    modifiers, key: text, code: /^[0-9]$/.test(key) ? `Digit${key}` : `Key${upper}`,
+    virtual: upper.charCodeAt(0), text, editingCommand: macEditingCommand(upper, modifiers),
+  };
 }

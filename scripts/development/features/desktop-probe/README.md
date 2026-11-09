@@ -6,7 +6,7 @@
 
 ## 从快照到回归
 
-1. `pnpm -s probe up --size 1400x900` 启动或复用当前 worktree 的 `default` 实例。用 `--name <实例>` 并行验证其他场景。
+1. `pnpm -s probe up --size 1400x900` 启动或复用当前 worktree 的 `default` 实例。用 `--name <实例>` 并行验证其他场景。结果中的 `viewport` 是启动时实测的内容区尺寸。如果窗口最小尺寸等约束调整了请求值，`sizeAdjusted` 为 `true`，原请求保存在 `options`。
 2. `pnpm -s probe snapshot` 先看文本。按返回的 `@n…` 执行 `click`、`hover`，或用 `shot @n… --pad 8` 截取局部。页面刷新后重新取引用。
 3. `pnpm -s probe wait --selector '.project-overview' --state visible` 等业务条件成立。看动画结束画面用 `wait --settle`，看过程用 `record`。
 4. 拖动验收用 `drag --by 80,0 --steps 8 --sample '<求值表达式>' --expect-follow x`。表达式返回分隔线或目标的 CSS 像素坐标，探针比较每一步的值与指针位移。
@@ -22,22 +22,24 @@
 | `status` / `stop` | `status --all` 列出当前 worktree 的实例。状态含 CDP、Vite、API 端口和日志位置。停止会先关 Desktop 再关 Vite。 |
 | `snapshot` / `shot` | `snapshot --within @n25 --all --max-lines 100 --json`。截图接受引用、`--selector <css>` 或 `--clip x,y,w,h`，支持 `--pad`、`--device`、`--jpeg`。默认 1× CSS 像素。`timing` 分别报告等待画面稳定和 CDP 抓取的耗时。 |
 | `click` / `dblclick` / `hover` | 目标为 `@n25`、`--selector <css>` 或 `--at x,y`。选择器和引用会检查可见性、位置稳定和命中。坐标用于明确指定像素位置。 |
-| `type` / `press` | `type '中文' [@n25]`，`press Meta+A`、`press Escape`。常见控制键、方向键、字母和数字均可用。 |
+| `type` / `press` | `type '中文' [@n25]`，`press Meta+A`、`press Escape`。macOS 编辑快捷键支持 `Meta+A/C/X/V/Z` 和 `Shift+Meta+Z`。复制、剪切和粘贴使用系统剪贴板。 |
 | `drag` / `scroll` | `drag <目标> --by=80,0` 或 `--to <目标>`。支持 `--sample`、`--expect-follow x\|y`、`--tolerance 2`。`scroll <目标> --dy 400`。 |
 | `wait` / `eval` / `reload` | `wait --selector <css> --state attached\|visible\|hidden\|detached`，或 `--text`、`--expr`、`--settle`。`eval` 的表达式在 Renderer 执行，返回 JSON 值。 |
 | `logs` | `--source renderer\|desktop\|vite\|supervisor`、`--level error\|warn`、`--since <cursor>`、`--grep <文字>`、`--limit 50`。重启会开启新日志，旧 cursor 需重置。 |
 | `record curve` | `record curve --target '.menu' --props opacity,width --duration 800 -- click @n25`。逐帧取计算样式及包围盒，曲线时间从开始采样算起，数字属性附时长、进度、超调与单调性。 |
-| `record frames` | `record frames --target '.menu' --at 0,40,80,160,300 -- click @n25`。暂停目标 CSS/WAAPI 动效，按时间拼图，然后恢复。JS 驱动的变化用曲线。 |
+| `record frames` | `record frames --target '.menu' --at 0,40,80,160,300 -- click @n25`。动作完成后逐帧等候 CSS/WAAPI 动效，最多 300 ms。捕获后暂停、按时间拼图，再恢复。动作后才挂载的菜单用 CSS 选择器。JS 驱动的变化用曲线。 |
 | `fixture project-overview` | 通过该实例的开发 CLI 生成独立项目、嵌套文件夹、Markdown 和 Slides。返回项目 ID，验证时打开该项目的概览。 |
 
-`--name` 适用于每条命令。负数参数使用等号，如 `--by=-60,0`。默认隐藏模式仍使用真实页面绘制和 CDP 可信输入。探针主窗口禁用 Electron 后台绘制节流，保证长时间隐藏后仍能快速抓图。`--window inactive` 适合人眼旁观，`visible` 允许正常激活窗口。系统菜单、原生对话框、输入法候选窗和系统拖放需走对应的桌面验收。
+`--name` 适用于每条命令。负数参数使用等号，如 `--by=-60,0`。默认隐藏模式仍使用真实页面绘制和 CDP 可信输入。探针主窗口禁用 Electron 后台绘制节流，保证长时间隐藏后仍能快速抓图。隐藏和 `inactive` 模式会模拟应用收到的窗口焦点通知，悬停提示可用，系统前台应用保持不变。`--window inactive` 适合人眼旁观，`visible` 允许正常激活窗口。系统菜单、原生对话框、输入法候选窗和系统拖放需走对应的桌面验收。
 
 ## 归属与测试
 
 常驻看管进程保存状态、Renderer 日志和进程身份，CLI 每次临时连入。Vite 单独运行，因为它的信号处理会结束所在进程。Desktop 以本次启动的就绪日志为准，CDP 只开放本机回环。停止只向探针记录且身份匹配的进程发送信号。30 分钟没有命令时实例自动退出。临时目录只对当前用户开放，CDP 可被同一台机器上的其他进程访问，应用仅供开发验证。
 
-- `pnpm run test:desktop-probe` 运行输入合同和隔离边界检查，再跑玩具 Electron。验收含可信点击、中文输入、拖动通过与失败、动效曲线、定格一致性和清理。
-- `pnpm run test:desktop-probe:real` 在真实 Linnya 验证知识库跳转、项目夹具、逐步列宽、Slides、截图和进程归属。
+看管器意外退出后，`stop` 会清理身份匹配的 Electron、Vite 和已记录的子进程，`up` 也可清理后复用原隔离数据。启动和停止由 Node 内置 SQLite 的文件锁互斥，持锁命令退出后由系统释放。旁边的 `*.lock/owner.json` 记录持锁 PID 与启动时间，强制退出留下的记录会在下次接管时更新。
+
+- `pnpm run test:desktop-probe` 运行输入合同和隔离边界检查，再跑玩具 Electron。验收含可信点击、中文输入、编辑快捷键、逐步拖动、延迟两帧的过渡、定格一致性、看管器强杀及锁接管。
+- `pnpm run test:desktop-probe:real` 在真实 Linnya 验证知识库跳转、项目夹具、真实筛选菜单定格、隐藏及 inactive 的设置提示、逐步列宽、Slides、实际窗口尺寸和异常退出后的进程清理。
 - `pnpm run test:desktop-probe:idle` 让真实隐藏实例空闲 10 分钟，验证帧率、定时器和截图。
 - 场景脚本复用 CDP 与动作模块。交互回归继续走真实应用的正式导航、读写和持久化合同。
 

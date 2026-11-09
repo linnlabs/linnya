@@ -15,6 +15,13 @@ async function call(cdp, objectId, fn, values = []) {
   }));
 }
 
+async function recordingObject(cdp, target) {
+  if (target.ref) return resolveTarget(cdp, target);
+  const response = await cdp.send('Runtime.evaluate', { expression: 'window', objectGroup: 'probe' });
+  unwrapCdpResult(response);
+  return response.result.objectId;
+}
+
 async function beginCurve(cdp, target, properties, duration) {
   // 返回仅存活于本次 CDP 会话的采样对象。selector 可在动作之后才出现。
   const prepare = function (selector, props, duration) {
@@ -39,8 +46,7 @@ async function beginCurve(cdp, target, properties, duration) {
     return { finish() { cancelAnimationFrame(frameId); return samples; } };
   };
   const response = await cdp.send('Runtime.callFunctionOn', {
-    objectId: target.ref ? await resolveTarget(cdp, target) :
-      (await cdp.send('Runtime.evaluate', { expression: 'window', objectGroup: 'probe' })).result.objectId,
+    objectId: await recordingObject(cdp, target),
     functionDeclaration: prepare.toString(),
     arguments: [target.selector ?? null, properties, duration].map(value => ({ value })),
     objectGroup: 'probe',
@@ -70,8 +76,28 @@ async function recordCurve(cdp, session, target, values, action) {
 }
 
 async function freezeAnimations(cdp, target) {
-  const freeze = async function () {
-    const animations = this.getAnimations({ subtree: true });
+  const freeze = async function (selector) {
+    const anchor = selector ? null : this;
+    // Vue 等框架会先挂载元素，再在后续绘制帧创建 CSS transition。
+    const animations = await new Promise(resolve => {
+      let frame;
+      const timer = setTimeout(() => {
+        cancelAnimationFrame(frame);
+        resolve([]);
+      }, 300);
+      function poll() {
+        const element = anchor ?? document.querySelector(selector);
+        const active = element?.getAnimations({ subtree: true }).filter(animation =>
+          animation.playState === 'running' || animation.playState === 'paused');
+        if (active?.length) {
+          clearTimeout(timer);
+          resolve(active);
+        } else {
+          frame = requestAnimationFrame(poll);
+        }
+      }
+      poll();
+    });
     const states = animations.map(animation => ({ animation, running: animation.playState === 'running', time: animation.currentTime }));
     for (const state of states) state.animation.pause();
     await Promise.all(states.map(state => state.animation.ready));
@@ -89,7 +115,8 @@ async function freezeAnimations(cdp, target) {
     };
   };
   const response = await cdp.send('Runtime.callFunctionOn', {
-    objectId: await resolveTarget(cdp, target), functionDeclaration: freeze.toString(),
+    objectId: await recordingObject(cdp, target), functionDeclaration: freeze.toString(),
+    arguments: [{ value: target.selector ?? null }],
     objectGroup: 'probe', awaitPromise: true,
   });
   unwrapCdpResult(response);

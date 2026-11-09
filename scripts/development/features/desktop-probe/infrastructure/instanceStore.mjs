@@ -6,6 +6,7 @@ import {
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { ProbeError, repoRoot } from '../definitions/probeContract.mjs';
+import { readProcessTable } from './processTree.mjs';
 
 const key = createHash('sha256').update(repoRoot).digest('hex').slice(0, 12);
 export const instancesRoot = join(tmpdir(), 'linnya-dev-probe', `${basename(repoRoot)}-${key}`);
@@ -51,25 +52,30 @@ export function touchInstance(root) {
 }
 
 export async function withLifecycleLock(root, action) {
+  const { DatabaseSync } = await import('node:sqlite');
   mkdirSync(instancesRoot, { recursive: true, mode: 0o700 });
-  const lock = `${root}.lock`;
+  const ownerDir = `${root}.lock`;
+  const lock = new DatabaseSync(`${root}.lock.sqlite`, { timeout: 0 });
   try {
-    mkdirSync(lock, { mode: 0o700 });
-  } catch (error) {
-    if (error.code === 'EEXIST') throw new ProbeError('BUSY', '该实例正在启动或停止', '用 probe status 检查当前会话。');
-    throw error;
-  }
-  const release = () => rmSync(lock, { recursive: true, force: true });
-  const interrupt = () => { release(); process.exit(130); };
-  const terminate = () => { release(); process.exit(143); };
-  process.once('SIGINT', interrupt);
-  process.once('SIGTERM', terminate);
-  try {
-    return await action();
+    try {
+      // 进程被强杀时，内核会释放 SQLite 的文件锁。所有接管者使用同一文件，避免误删新锁。
+      lock.exec('BEGIN IMMEDIATE');
+    } catch (error) {
+      if (error.code === 'ERR_SQLITE_ERROR' && error.errcode === 5) {
+        throw new ProbeError('BUSY', '该实例正在启动或停止', '用 probe status 检查当前会话。');
+      }
+      throw error;
+    }
+    try {
+      mkdirSync(ownerDir, { recursive: true, mode: 0o700 });
+      const { pid, startedAt } = readProcessTable().get(process.pid);
+      writeFileSync(join(ownerDir, 'owner.json'), JSON.stringify({ pid, startedAt }), { mode: 0o600 });
+      return await action();
+    } finally {
+      rmSync(ownerDir, { recursive: true, force: true });
+    }
   } finally {
-    process.off('SIGINT', interrupt);
-    process.off('SIGTERM', terminate);
-    release();
+    lock.close();
   }
 }
 

@@ -34,6 +34,11 @@ if (process.type === 'browser') {
         { ...options, ...size, ...background, ...(hidden ? { show: false } : {}) },
         ...rest,
       ], newTarget === ProbeWindow ? target : newTarget);
+      if (hidden && wantsShow) {
+        // Tooltip 从主进程订阅窗口焦点。只模拟通知，保持系统前台窗口不变。
+        win.isFocused = () => !win.isDestroyed();
+        win.webContents.on('did-finish-load', () => win.emit('focus'));
+      }
       if (wantsShow && mode === 'inactive') win.showInactive();
       console.log(`[probe-bootstrap] window intercepted mode=${mode} wantsShow=${wantsShow}`);
       return win;

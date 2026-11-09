@@ -11,7 +11,7 @@ import { idleMs, ProbeError, repoRoot } from '../definitions/probeContract.mjs';
 import { connectCdp, evaluate, findPage, waitFor } from '../infrastructure/cdpClient.mjs';
 import { readOptional, readSession, writeSession } from '../infrastructure/instanceStore.mjs';
 import { startIsolatedRenderer } from '../infrastructure/rendererProcess.mjs';
-import { observeTree, readProcessTable, stopOwnedTree } from '../infrastructure/processTree.mjs';
+import { observeTree, readProcessTable, sameProcess, stopOwnedTree } from '../infrastructure/processTree.mjs';
 
 const require = createRequire(import.meta.url);
 const root = process.argv[2];
@@ -131,6 +131,12 @@ function observeChildren() {
     if (pid !== process.pid) ownedChildren.set(pid, entry);
   }
   for (const [pid, entry] of observeTree(session.electron, table)) owned.set(pid, entry);
+  // 子进程可能在看管器退出后改挂到 launchd，接管时仍需要此前确认过的进程身份。
+  const live = [...ownedChildren.values()].filter(entry => sameProcess(entry, table));
+  if (live.length !== session.processes?.length ||
+      live.some((entry, index) => !sameProcess(session.processes[index], table) || session.processes[index].pid !== entry.pid)) {
+    save({ processes: live });
+  }
 }
 
 let failure;
@@ -164,6 +170,7 @@ try {
     return readProcessTable().get(electron.pid);
   }, 'Electron 进程身份', 2_000);
   save({ electron: identity });
+  observeChildren();
   const port = await waitFor(() => {
     checkStarting();
     // dev 模式把 Chromium sessionData 放到 profile/session，端口以本次 Electron 输出为准。
@@ -179,9 +186,10 @@ try {
     if (!log.includes('[probe-bootstrap] ok') || !log.includes(`[probe-bootstrap] window intercepted mode=${options.window} wantsShow=true`)) {
       throw new ProbeError('BOOTSTRAP_FAILED', 'Electron 窗口引导未生效');
     }
-    const mounted = await evaluate(cdp, toy ? 'Boolean(document.querySelector("button"))' :
-      'Boolean(document.querySelector(".project-row, .project-chat-panel"))');
-    return mounted && (toy ? {} : marker);
+    const selector = toy ? 'button' : '.project-row, .project-chat-panel';
+    const viewport = await evaluate(cdp, `document.querySelector(${JSON.stringify(selector)}) &&
+      ({ width: innerWidth, height: innerHeight })`);
+    return viewport && { ...marker, viewport };
   }, 'Desktop 就绪', 25_000);
   if (!toy && (
     new URL(ready.rendererUrl).origin !== session.viteUrl ||
@@ -190,7 +198,9 @@ try {
     throw new ProbeError('START_FAILED', 'Desktop 实际 Renderer 或 profile 不属于此探针');
   }
   observeChildren();
-  save({ state: 'ready', apiPort: ready.apiPort, readyMs: Date.now() - session.startedAt });
+  const { viewport } = ready;
+  const sizeAdjusted = viewport.width !== options.width || viewport.height !== options.height;
+  save({ state: 'ready', apiPort: ready.apiPort, viewport, sizeAdjusted, readyMs: Date.now() - session.startedAt });
   while (!stopReason) {
     observeChildren();
     if (Date.now() - statSync(join(root, 'last-used')).mtimeMs > idleMs) requestStop('idle');

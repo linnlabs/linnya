@@ -23,7 +23,8 @@
   const find = id => document.getElementById(id);
   find('verify').onclick = event => { find('status').textContent = String(event.isTrusted); };
   find('verify').ondblclick = () => { find('status').textContent = 'double'; };
-  find('animate').onclick = () => find('animated').classList.toggle('wide');
+  find('animate').onclick = () => requestAnimationFrame(() =>
+    requestAnimationFrame(() => find('animated').classList.toggle('wide')));
   find('input').onkeydown = event => {
     if (event.key === 'Enter') find('status').textContent = 'enter:' + find('input').value;
   };

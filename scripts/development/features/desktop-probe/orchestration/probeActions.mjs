@@ -52,8 +52,8 @@ export async function dragTarget(cdp, target, { by, to, steps = 10, sample, foll
 
 async function press(cdp, input) {
   const sequence = resolveKeySequence(input);
-  const event = (type, key, modifiers, text) => cdp.send('Input.dispatchKeyEvent', {
-    type, key: key.key, code: key.code, windowsVirtualKeyCode: key.virtual, modifiers, text,
+  const event = (type, key, modifiers, extra = {}) => cdp.send('Input.dispatchKeyEvent', {
+    type, key: key.key, code: key.code, windowsVirtualKeyCode: key.virtual, modifiers, ...extra,
   });
   const held = [];
   let mask = 0;
@@ -64,7 +64,10 @@ async function press(cdp, input) {
       held.push(modifier);
     }
     const text = mask & 7 ? undefined : sequence.text;
-    await event(text ? 'keyDown' : 'rawKeyDown', sequence, mask, text);
+    // 合成按键绕过 macOS 原生菜单，编辑指令需要随按下事件交给 Chromium。
+    await event(text ? 'keyDown' : 'rawKeyDown', sequence, mask, {
+      text, commands: sequence.editingCommand ? [sequence.editingCommand] : undefined,
+    });
     await event('keyUp', sequence, mask);
   } finally {
     for (const modifier of held.reverse()) {

@@ -3,10 +3,17 @@ import { copyFileSync, mkdtempSync, readdirSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { repoRoot } from '../definitions/probeContract.mjs';
+import { waitFor } from '../infrastructure/cdpClient.mjs';
+import { sameProcess, signalOwner } from '../infrastructure/processTree.mjs';
 import { acceptance } from './probeAcceptance.mjs';
 
 const test = acceptance(`real-${process.pid}`);
 const { run } = test;
+async function checkSettingsTooltip() {
+  await run('hover', '--selector', '[data-linnya-tooltip="设置"]');
+  await run('wait', '--expr', `[...document.querySelectorAll('[role="tooltip"]')]
+    .some(tooltip => tooltip.textContent.trim() === '设置' && tooltip.checkVisibility({ opacityProperty: true }))`);
+}
 const dist = join(repoRoot, 'dist');
 function buildFiles() {
   return readdirSync(dist, { recursive: true, withFileTypes: true }).filter(entry => entry.isFile()).map(entry => {
@@ -22,6 +29,9 @@ try {
   const up = await run('up', '--size', '1400x900', '--mode', 'dev');
   assert.ok(up.readyMs < 10_000, `冷启动 ${up.readyMs}ms`);
   assert.equal(up.options.mode, 'dev');
+  assert.deepEqual(up.viewport, { width: 1400, height: 900 });
+  assert.equal(up.sizeAdjusted, false);
+  await checkSettingsTooltip();
   const snapshot = await run('snapshot', '--json');
   assert.ok(Buffer.byteLength(snapshot.snapshot) < 2048);
   assert.deepEqual([snapshot.page.width, snapshot.page.height], [1400, 900]);
@@ -41,6 +51,13 @@ try {
   assert.match(overview.snapshot, /行业报告/);
   assert.match(overview.snapshot, /演示稿/);
   copyFileSync(overview.artifacts[0].path, join(evidence, 'overview.txt'));
+  const menu = '.project-overview-filter__menu';
+  const frames = await run('record', 'frames', '--target', menu, '--at', '20,75,130', '--',
+    'click', '--selector', '.project-overview-filter__trigger');
+  assert.equal(new Set(frames.frames.map(frame => frame.sha256)).size, 3, '真实菜单的三个定格时刻应呈现不同画面');
+  copyFileSync(frames.artifacts[0].path, join(evidence, 'overview-filter-frames.png'));
+  await run('press', 'Escape');
+  await run('wait', '--selector', menu, '--state', 'detached');
   const handle = '.project-overview__resize';
   const divider = `(() => {const r=document.querySelector('${handle}').getBoundingClientRect();return r.x+r.width/2})()`;
   const drag = await run('drag', handle, '--by', '80,0', '--steps', '8', '--sample', divider, '--expect-follow', 'x');
@@ -55,8 +72,22 @@ try {
   copyFileSync(slides.artifacts[0].path, join(evidence, 'slides.png'));
   const logs = await run('logs', '--level', 'error');
   assert.equal(logs.total, 0, JSON.stringify(logs.entries));
+  signalOwner(up.supervisor, 'SIGKILL');
+  await waitFor(() => !sameProcess(up.supervisor), '看管进程强制退出', 5000);
+  assert.ok(sameProcess(up.electron));
+  const orphanStop = await run('stop');
+  assert.deepEqual(orphanStop.cleanup.remaining, []);
+  const compact = await run('up', '--window', 'inactive', '--size', '800x600');
+  assert.equal(compact.sizeAdjusted, true);
+  assert.ok(compact.viewport.width > 800);
+  const page = (await run('snapshot')).page;
+  assert.deepEqual(compact.viewport, { width: page.width, height: page.height });
+  await checkSettingsTooltip();
   assert.deepEqual(buildFiles(), initialBuild, '探针启动不能重写 dist');
-  result = { readyMs: up.readyMs, snapshotBytes: Buffer.byteLength(snapshot.snapshot), fixture, drag: drag.samples, evidence, distUnchanged: true };
+  result = {
+    readyMs: up.readyMs, snapshotBytes: Buffer.byteLength(snapshot.snapshot), fixture, drag: drag.samples,
+    evidence, distUnchanged: true, compactViewport: compact.viewport, orphanCleanup: orphanStop.cleanup,
+  };
 } catch (error) {
   console.error(error);
   throw error;

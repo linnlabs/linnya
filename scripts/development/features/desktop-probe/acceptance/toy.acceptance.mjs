@@ -1,16 +1,43 @@
 import assert from 'node:assert/strict';
-import { utimesSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { existsSync, mkdirSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import { waitFor } from '../infrastructure/cdpClient.mjs';
-import { readSession } from '../infrastructure/instanceStore.mjs';
+import { instanceRoot, readOptional, readSession } from '../infrastructure/instanceStore.mjs';
+import { sameProcess, signalOwner } from '../infrastructure/processTree.mjs';
 import { acceptance } from './probeAcceptance.mjs';
 
-const test = acceptance(`toy-${process.pid}`);
+const name = `toy-${process.pid}`;
+const root = instanceRoot(name);
+const test = acceptance(name);
 const { run, probe } = test;
 let result;
 try {
+  // 旧版留下的无主锁目录也应当能直接接管。
+  const ownerFile = join(`${root}.lock`, 'owner.json');
+  mkdirSync(`${root}.lock`, { recursive: true });
   const up = await run('up', '--entry', 'toy', '--size', '960x640');
+  assert.ok(readSession(root).processes.some(entry => entry.pid === up.electron.pid));
+  assert.ok(!Object.hasOwn(up, 'processes'));
+  const store = new URL('../infrastructure/instanceStore.mjs', import.meta.url);
+  const holder = spawn(process.execPath, ['--input-type=module', '-e',
+    `import { withLifecycleLock } from ${JSON.stringify(store.href)};
+    await withLifecycleLock(process.argv[1], () => new Promise(() => setInterval(() => {}, 1000)));`,
+    root], { stdio: 'ignore' });
+  const holderExit = once(holder, 'exit');
+  try {
+    const owner = await waitFor(() => JSON.parse(readOptional(ownerFile) ?? 'null'), '生命周期锁', 2000);
+    assert.equal(owner.pid, holder.pid);
+    assert.ok(owner.startedAt);
+    assert.equal((await probe('stop')).error?.code, 'BUSY');
+  } finally {
+    holder.kill('SIGKILL');
+    await holderExit;
+  }
+  assert.ok(existsSync(ownerFile), 'SIGKILL 后应留下用于验证接管的身份记录');
   const reused = await run('up');
+  assert.ok(!existsSync(ownerFile));
   assert.equal(reused.supervisor.pid, up.supervisor.pid);
   assert.equal(reused.reused, true);
   assert.ok(reused.ms < 500, 'warm up 超过 500ms');
@@ -25,6 +52,16 @@ try {
   await run('type', '中文输入', '#input');
   await run('press', 'Enter');
   await run('wait', '--text', 'enter:中文输入');
+  await run('press', 'Meta+A');
+  const selection = await run('eval', '(() => { const input = document.querySelector("#input"); return [input.selectionStart, input.selectionEnd]; })()');
+  assert.deepEqual(selection.value, [0, '中文输入'.length]);
+  const inputValue = () => run('eval', 'document.querySelector("#input").value').then(result => result.value);
+  await run('type', '替换');
+  assert.equal(await inputValue(), '替换');
+  await run('press', 'Meta+Z');
+  assert.equal(await inputValue(), '中文输入');
+  await run('press', 'Shift+Meta+Z');
+  assert.equal(await inputValue(), '替换');
   await run('hover', '#hover');
   assert.equal((await run('eval', 'getComputedStyle(document.querySelector("#hover")).color')).value, 'rgb(255, 0, 0)');
   await run('scroll', '#scrollbox', '--dy', '170');
@@ -52,10 +89,16 @@ try {
   const restarted = await run('restart');
   assert.notEqual(restarted.supervisor.pid, up.supervisor.pid);
   assert.equal((await run('eval', "localStorage.getItem('restart-test')")).value, 'kept');
+  signalOwner(restarted.supervisor, 'SIGKILL');
+  await waitFor(() => !sameProcess(restarted.supervisor), '看管进程强制退出', 5000);
+  assert.ok(sameProcess(restarted.electron));
+  const recovered = await run('up', '--entry', 'toy', '--size', '960x640');
+  assert.notEqual(recovered.electron.pid, restarted.electron.pid);
+  assert.equal((await run('eval', "localStorage.getItem('restart-test')")).value, 'kept');
   const expired = new Date(Date.now() - 31 * 60_000);
-  utimesSync(join(restarted.root, 'last-used'), expired, expired);
-  await waitFor(() => readSession(restarted.root)?.stopReason === 'idle', '空闲自动关闭', 10_000);
-  result = { idleExit: true, readyMs: up.readyMs, reuseMs: reused.ms, drag: drag.samples, curve: curve.metrics, frames: frames.frames };
+  utimesSync(join(recovered.root, 'last-used'), expired, expired);
+  await waitFor(() => readSession(recovered.root)?.stopReason === 'idle', '空闲自动关闭', 10_000);
+  result = { idleExit: true, orphanRecovered: true, staleLockRecovered: true, readyMs: up.readyMs, reuseMs: reused.ms, drag: drag.samples, curve: curve.metrics, frames: frames.frames };
 } catch (error) {
   console.error(error);
   throw error;
