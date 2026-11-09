@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { JsonValueSchema } from './json-value';
+import { DocumentReferencePresentationSchema } from './document-references';
 
 export const DocumentPreviewRequestSchema = z.object({
   documentId: z.string().min(1),
@@ -12,13 +14,29 @@ export const DocumentPreviewImageSchema = z.object({
   widthPx: z.number().int().positive(),
   heightPx: z.number().int().positive(),
 }).strict();
+/** 正式文档的只读快照；资产字节由 Host 按来源文档归属准入，不把 Agent 的文本定位符交给 UI。 */
+export const WorkspaceMarkdownPreviewSchema = z.object({
+  format: z.literal('workspace-markdown'),
+  document: JsonValueSchema,
+  assets: z.record(z.string(), z.string().max(32 * 1024 * 1024)
+    .regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/)),
+  references: z.record(z.string(), DocumentReferencePresentationSchema.pick({
+    documentId: true, status: true, title: true, nodeType: true,
+  })),
+}).strict();
+export type WorkspaceMarkdownPreview = z.infer<typeof WorkspaceMarkdownPreviewSchema>;
+export const DocumentPreviewDetailSchema = z.union([
+  z.object({ format: z.enum(['markdown', 'text']), text: z.string().max(1_000_000) }).strict(),
+  WorkspaceMarkdownPreviewSchema,
+]);
+export type DocumentPreviewDetail = z.infer<typeof DocumentPreviewDetailSchema>;
 export const DocumentPreviewContentSchema = z.object({
   revisionKey: z.string().min(1),
   summary: z.string().max(16_000),
   /** 内容owner声明远景偏好；有摘要图片不代表适合保留缩略图。 */
   overview: z.enum(['title', 'thumbnail']).optional(),
   image: DocumentPreviewImageSchema.optional(),
-  detail: z.object({ format: z.enum(['markdown', 'text']), text: z.string().max(1_000_000) }).strict().optional(),
+  detail: DocumentPreviewDetailSchema.optional(),
 }).strict();
 export type DocumentPreviewContent = z.infer<typeof DocumentPreviewContentSchema>;
 export const DocumentPreviewResultSchema = z.object({
