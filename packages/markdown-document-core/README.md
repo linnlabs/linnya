@@ -32,7 +32,7 @@ Tiptap 固定为 3.31.3；mathematics 的 peer 仅接受 KaTeX 0.16～0.18，因
 
 - 图片只消费 DTO 中已准入的 data URI：有 assetId 用 assetId，否则用 imageBlock.id；不自行打开持久化 src。出现可见图片资源缺失时明确失败，不伪装成完整预览。
 - 按真实 DOM 布局逐 rootBlock 准备，等待当前块图片和字体后测量，到与最大高度相交的块即停。屏下图表和图片不会初始化；未传最大高度时生成全部内容。空 Pending 投影可显示空白，但保存 schema 仍为 rootBlock+。
-- `./workspace-presentation` 由正式 Editor 与预览共用文本/图片 DOM、根块语义、列表编号与公式排版；颜色 token 在 `./workspace-colors.css`。Editor 的交互和 NodeView 生命周期仍留在 Editor。
+- `./workspace-presentation` 由正式 Editor 与预览共用文本/图片 DOM、根块语义、列表编号与公式排版；颜色 token 在 `./workspace-colors.css`。预览 CSS 显式拥有根块宽度、缩进、图片和引用排版，不继承 Editor 为手柄/交互预留的全局样式；真实 Electron 对照覆盖 Host CSS 的加载顺序。Editor 的交互和 NodeView 生命周期仍留在 Editor。
 - `./workspace-charts` 拥有唯一图表规则、主题、option、懒加载运行时和静态 SVG 出图；Editor 阅读面、PDF 和预览都消费它。预览按当前主题和宽度出图，重内容没有第二套简化实现。
 - `./workspace-citations` 拥有引用去重、编号和参考文献派生/格式化。稳定文档引用只显示静态身份和标题，不递归挂载其他预览。
 - 链接保持用户可读外观，点击不直接导航；文档打开和预览交互由统一外壳负责。dispose 或 abort 立即移除测量 DOM 和已交付正文，不留下异步复活的旧内容。

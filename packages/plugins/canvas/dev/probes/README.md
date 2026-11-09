@@ -113,3 +113,11 @@ paint诊断另记录真实WebGL1/2的texImage2D/texSubImage2D原调用：区分C
 `CANVAS_PERFORMANCE_INPUT_TRACE=1`固定单次image2500uniform与拖500，输出独立`canvas-input-diagnostic`。它保持原输入动作、延时与焦点策略，绝不自动focus或重试；[Electron43官方合同](https://github.com/electron/electron/blob/v43.8.1/docs/api/web-contents.md#contentssendinputeventinputevent)要求所属BrowserWindow已聚焦，macOS的webContents焦点也不能代替窗口焦点。因此Node同时记录Window/webContents focus/blur、每个原send的前后时间与isFocused；Renderer只观察本夹具pointer/focus及既有intent，保存mainCanvas目标、坐标、相机、选择与命中卡当前正文receipt，不读取键入正文/其它页面内容。两端各限512条且保留overflow，结束移除监听；未知或截断不能冒完整分账。该模式始终diagnostic且无硬件资格，`profiling`仍只陈述实际Profiler/trace是否开启。默认不安装逐输入诊断观察器，失败原件不因新诊断回填。
 
 正式Native另有窄焦点资格，区别于逐输入诊断：pan/zoom/drag各自开始/结束读取Window和webContents焦点，既有采集start/finish携带documentFocus。活动段仅保留两进程首次blur，重新聚焦不能抹掉段内失焦；不记录pointer或正文，不增加正常IPC、阶段磁盘I/O或每帧工作。末尾`inputQualification`保存三段事实与首次违反原因，`validHardwareRun`要求它合格；动作即使move500成功也不能补资格。所有段末/失败收口卸载owned监听，失焦只标未具资格，不自动focus、等待或重试。旧647/77c/9e原件未记录这些事实，仍按当时字段解释并明确焦点证据缺失，不能回填或借新诊断升级资格。
+
+## 文档预览一致性与小样本实测
+
+`node packages/plugins/canvas/dev/probes/run-preview-parity-probe.mjs` 只验证正式 Workspace Markdown 的用户预览，不调用模型，也不运行完整性能 suite。每次创建独立的 `_dev_data/document-preview-parity-<timestamp>/` 与 Electron profile，保留全部 PNG、布局/字体事实、原始像素差和报告。
+
+固定正文含真实 PNG、ECharts SSR、KaTeX、嵌套列表、表格、彩色正文、稳定引用与参考文献。标签首屏/全文、`createCanvasCardContent` 前台投影、`createCardSurface` 隐藏窗口实际 HTML-in-Canvas 光栅共同覆盖亮暗主题、240/400px 卡宽与首屏截取。独立 CSS 页面与晚加载正式 Editor 全局 CSS 的页面相互对照；DOM 路径要求零像素差，光栅沿用现有逐字视觉 oracle，不能用整幅白底稀释文字缺失。overflow 隐藏的 Range 不当成可见字簇，截断交界仍受外部像素检查约束。
+
+同时记录一个 50 块、3 张本地图片、1 个表格样本的首屏/全文调用与单图 SSR；每种模式新建 Renderer，cold 为首调用，warm 为一次立即重复，不包含 bundle 启动。100 张 240×320px 卡必须真正完成光栅、保留全部位图并合成为 2400×3200px 图像；分别记录 DOM 准备、paint、总时间、明确位图字节和 Electron Browser/GPU/Tab 内存。Chromium 的 JS heap 指标可能量化，只作辅助事实。所有原始小数均保存，不以这些小图片和单次样本承诺大图、真实项目加载或 120Hz 性能。

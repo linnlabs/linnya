@@ -22,7 +22,12 @@
     "./__tests__/visualDocumentVector.test.ts",
     "./__tests__/visualDiagnostic.test.ts",
     "./__tests__/visualSampling.test.ts",
-    "./__tests__/canvasTitleInk.test.ts"
+    "./__tests__/canvasTitleInk.test.ts",
+    "./previewParityRenderer.ts",
+    "./previewParityHostRenderer.ts",
+    "./previewParityElectron.ts",
+    "./previewParityFixture.ts",
+    "./previewTimingRenderer.ts"
   ],
   "exclude": []
 }

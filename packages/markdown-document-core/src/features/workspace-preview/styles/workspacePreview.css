@@ -35,30 +35,36 @@
 .workspace-markdown-preview .base-block-outer,
 .workspace-markdown-preview .heading-block-outer,
 .workspace-markdown-preview .list-item-block-outer,
-.workspace-markdown-preview .quote-block-outer {
+.workspace-markdown-preview .quote-block-outer,
+.workspace-markdown-preview .image-block-outer {
   position: relative;
   display: block;
   margin: 0;
   padding: 0;
   min-height: 0;
+  /* Editor 根块预留手柄宽度；静态预览没有 chrome，必须清除这条宿主宽度。 */
+  width: auto;
   max-width: 100%;
   font-size: inherit;
   line-height: inherit;
   border: 0;
+  border-radius: 0;
   box-shadow: none;
   transition: none;
 }
 .workspace-markdown-preview .root-block::after,
-.workspace-markdown-preview .editor-block::after { content: none; }
+.workspace-markdown-preview .editor-block::after,
+.workspace-markdown-preview .quote-block::before { content: none; }
 .workspace-markdown-preview :is(.base-block, .heading-block, .list-item-block, .quote-block) {
   white-space: pre-wrap;
   min-height: 1lh;
 }
-.workspace-markdown-preview .table-cell-content-block { white-space: pre-wrap; }
+.workspace-markdown-preview .table-cell-content-block { width: auto; min-height: 1lh; font: inherit; white-space: pre-wrap; }
+.workspace-markdown-preview .root-block :is(.base-block, .heading-block) { padding: 0; }
 .workspace-markdown-preview h1.heading-block { font-size: 20px; line-height: 1.35; font-weight: 700; }
 .workspace-markdown-preview h2.heading-block { font-size: 17px; line-height: 1.45; font-weight: 600; }
 .workspace-markdown-preview :is(h3, h4, h5, h6).heading-block { font-size: 15px; line-height: 1.5; font-weight: 600; }
-.workspace-markdown-preview .quote-block { border-inline-start: 3px solid var(--workspace-preview-line); padding-inline-start: 10px; }
+.workspace-markdown-preview .root-block .quote-block-outer .quote-block { color: inherit; border-inline-start: 3px solid var(--workspace-preview-line); padding-inline-start: 10px; }
 .workspace-markdown-preview .base-block[data-indent='1'],
 .workspace-markdown-preview .heading-block[data-indent='1'],
 .workspace-markdown-preview .quote-block[data-indent='1'] { margin-inline-start: 20px; }
@@ -68,7 +74,7 @@
 .workspace-markdown-preview .base-block[data-indent='3'],
 .workspace-markdown-preview .heading-block[data-indent='3'],
 .workspace-markdown-preview .quote-block[data-indent='3'] { margin-inline-start: 60px; }
-.workspace-markdown-preview .list-item-block { padding-inline-start: 1.6em; }
+.workspace-markdown-preview .root-block .list-item-block { padding-inline-start: 1.6em; }
 .workspace-markdown-preview .list-item-block.level-1 { margin-inline-start: 20px; }
 .workspace-markdown-preview .list-item-block.level-2 { margin-inline-start: 40px; }
 .workspace-markdown-preview .list-item-block.level-3 { margin-inline-start: 60px; }
@@ -98,16 +104,16 @@
 .workspace-markdown-preview .image-block { display: block; max-width: 100%; margin: 0 auto; padding: 0; }
 .workspace-markdown-preview .image-block.align-left { margin-inline-start: 0; }
 .workspace-markdown-preview .image-block.align-right { margin-inline-end: 0; }
-.workspace-markdown-preview img { display: block; max-width: 100%; height: auto; }
+.workspace-markdown-preview img { display: block; max-width: 100%; height: auto; border-radius: 0; box-shadow: none; }
 .workspace-markdown-preview .figure-caption { margin-top: 6px; color: var(--workspace-preview-muted); font-size: 12px; line-height: 1.5; text-align: center; }
 .workspace-markdown-preview .empty-image { padding: 20px; background: var(--workspace-preview-wash); color: var(--workspace-preview-muted); }
 .workspace-markdown-preview .workspace-preview-chart { margin: 0; }
 .workspace-markdown-preview .workspace-preview-chart img { width: 100%; }
-.workspace-markdown-preview .workspace-preview-math { overflow-x: auto; }
+.workspace-markdown-preview .workspace-preview-math { overflow-x: auto; overflow-y: hidden; }
 .workspace-markdown-preview .katex-display { margin: 4px 0; }
 .workspace-markdown-preview .markdown-document-reference { display: inline-flex; vertical-align: baseline; border-radius: 4px; background: var(--workspace-preview-wash); padding: 0 4px; max-width: 100%; }
 .workspace-markdown-preview .markdown-document-reference-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.workspace-markdown-preview .citation-mark { font-size: .85em; vertical-align: super; color: #337ea9; }
+.workspace-markdown-preview .citation-mark { display: inline; padding: 0; border-radius: 0; line-height: inherit; cursor: text; transition: none; font-size: .85em; vertical-align: super; color: #337ea9; }
 .workspace-markdown-preview .workspace-preview-bibliography { font-size: 12px; }
 .workspace-markdown-preview .workspace-preview-bibliography h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
 .workspace-markdown-preview .workspace-preview-bibliography ul { padding: 0; list-style: none; }
