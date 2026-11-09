@@ -4,8 +4,8 @@ import {
   registerAppearanceSection,
   unregisterAppearanceSection,
 } from '@plugin/renderer/settingsContribution';
-import { DocumentTextIcon } from '@linnya/renderer-ui/icons';
 import { canvasPluginMeta, CANVAS_PLUGIN_ID, CANVAS_DOCUMENT_TYPE } from '@plugin/canvas/shared';
+import CanvasIcon from './icon/CanvasIcon.vue';
 import { canvasFileHandler, readCanvasHistorySession } from './features/canvasDocument';
 import {
   createCanvasSelectionReferenceKind,
@@ -76,7 +76,7 @@ export const rendererPlugin: RendererPluginContribution = {
       label: '画布',
       createLabel: '新建画布',
       defaultName: '未命名画布',
-      iconComponent: DocumentTextIcon,
+      iconComponent: CanvasIcon,
       iconClass: 'canvas-icon',
       createPriority: 25,
       entityReferences: [
