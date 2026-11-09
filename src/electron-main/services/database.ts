@@ -465,20 +465,6 @@ export class DatabaseService {
     if (typeof value !== 'number') throw new Error('[DatabaseService] freelist_count 不是数字');
     return value;
   }
-
-  /**
-   * 执行数据库备份
-   * @param backupPath 备份文件路径
-   */
-  backup(backupPath: string): void {
-    if (!this.db) {
-      throw new Error('[DatabaseService] Database not initialized');
-    }
-
-    console.log(`[DatabaseService] Creating backup at: ${backupPath}`);
-    this.db.backup(backupPath);
-    console.log('[DatabaseService] Backup completed successfully');
-  }
 }
 
 // 导出单例实例
