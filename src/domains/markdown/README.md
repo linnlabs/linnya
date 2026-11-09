@@ -217,3 +217,7 @@ App Server 启动维护只复查仍挂有卫星行的文档（`MarkdownOrphanBlo
 AudioBlock 已从生产 Renderer/backend schema、创建入口和 Editor 运行时依赖中撤下，但实现源码与专属表暂时保留，供未来独立 Audio domain 设计时研究。保留代码不等于继续支持 `audioBlock` 文档：含该节点的旧 doc JSON 会按严格 schema 拒绝加载，不做兼容或降级。
 
 图片事实与跨领域归属端口见 [image-content](features/image-content/README.md)；资产接管由 Host 编排，不将会话文件读取或资产账本引入 Markdown domain。
+
+## 用户只读预览
+
+[document-preview](features/document-preview/README.md) 直接读取正式正文与已存 Pending，输出保留图表、图片、样式和引用身份的 canonical JSON；它与修订接受复用同一无写入准备/应用规则。Agent Markdown 投影不再作为用户预览的数据源。资源读取与项目可见身份由 Host 注入窄 port，Markdown 不跨域查询资产或 Workspace 表。

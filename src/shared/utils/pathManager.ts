@@ -290,12 +290,16 @@ export function getDocumentMediaPath(): string {
  * - documentNodeId 来自 workspace_nodes.id，需要先做路径段清洗，避免把业务 ID 当路径拼接；
  * - 清洗后目录名仍稳定可预测，便于后续按文档做人工排查或清理。
  */
+/** 只解析地址，供只读预览使用；读取不能顺带建立文档媒体目录。 */
+export function resolveDocumentMediaDirForNode(documentNodeId: string): string {
+  const safeDocumentNodeId = sanitizePathSegment(assertNonEmptyId('documentNodeId', documentNodeId), 120);
+  return path.join(getWorkspaceRoot(), 'DocumentMedia', safeDocumentNodeId);
+}
+
 export function getDocumentMediaDirForNode(documentNodeId: string): string {
-  const safeDocumentNodeId = sanitizePathSegment(
-    assertNonEmptyId('documentNodeId', documentNodeId),
-    120
-  );
-  return getAndCreateWorkspaceSubDirectory(path.join('DocumentMedia', safeDocumentNodeId));
+  const directory = resolveDocumentMediaDirForNode(documentNodeId);
+  fs.mkdirSync(directory, { recursive: true });
+  return directory;
 }
 
 /**

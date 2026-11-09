@@ -1,7 +1,6 @@
 import { createDefaultMarkdownDocument } from '../../document-lifecycle';
 import { importPendingMarkdownRootBlock } from './importPendingMarkdownRootBlock';
-import { hydrateMarkdownDocumentImages } from '../../image-content';
-import { readPendingMarkdownImage, type MarkdownImageAttrs } from '@app/schemas';
+import { preparePendingReplacements } from './preparePendingReplacements';
 import { prepareEditorRevisionCommit, remainingRevisionMetadata, finalizeResolvedRevisionBaseline, promotePendingInserts } from '../functions/prepareEditorRevisionCommit';
 import type { MarkdownRevisionCommit, MarkdownRevisionSnapshot } from '@app/schemas';
 import { projectMarkdownEditorPendingRevisions } from '../functions/projectMarkdownEditorPendingRevisions';
@@ -17,66 +16,21 @@ import { assertMarkdownRevisionExpectation } from '../functions/assertMarkdownRe
  */
 
 import {
-  attachCitationNodesToDocJson,
   importMarkdownToDocJson,
-  type CitationLinkHydrationData,
-  type CitationNodeHydrationData,
   type MarkdownDocJson,
-  type ProseMirrorJsonNode,
   validateMarkdownDocJson,
 } from '../../normalization/runtime';
-import { generateEditorBlockId } from 'src/shared/utils/idUtils';
 import type { MarkdownDocumentService } from '../../document-storage';
 import type { PendingRevisionMetadata } from '../definitions/pendingRevision';
-import type { PendingRevision } from '../definitions/pendingRevision';
-import {
-  extractPendingCitationHydration,
-  extractPendingCitationLinkHydration,
-} from '../functions/admitPendingCitationHydration';
 import type {
   MarkdownImporter,
-  MarkdownRootBlockJson,
   PreparedPendingReplacement,
 } from '../definitions/pendingRevisionApply';
 import {
   applyAcceptedPendingsToDocument,
   applyRejectedPendingsToDocument,
-  buildRootBlockIndex,
   isMarkdownDocJson,
-  isRecord,
-  isRootBlock,
-  mergeRootBlockAttrs,
-  restorePendingListSpacing,
-  parsePendingMetadata,
-  resolvePendingOperation,
 } from '../functions/pendingRevisionApplyRules';
-
-function createEmptyRootBlock(
-  preserveId: string,
-  oldRoot?: ProseMirrorJsonNode
-): MarkdownRootBlockJson {
-  const oldAttrs = isRecord(oldRoot?.attrs) ? oldRoot.attrs : {};
-  const oldInner = Array.isArray(oldRoot?.content) ? oldRoot.content[0] : undefined;
-  const oldInnerId =
-    isRecord(oldInner?.attrs) && typeof oldInner.attrs.id === 'string'
-      ? oldInner.attrs.id
-      : generateEditorBlockId();
-
-  return {
-    type: 'rootBlock',
-    attrs: {
-      ...oldAttrs,
-      id: preserveId,
-    },
-    content: [
-      {
-        type: 'baseBlock',
-        attrs: { id: oldInnerId },
-        content: [],
-      },
-    ],
-  };
-}
 
 export class PendingRevisionApplyService {
   constructor(
@@ -93,7 +47,10 @@ export class PendingRevisionApplyService {
     const { baseline, selected, decision } = prepareEditorRevisionCommit(
       request, this.readMarkdownDoc(request.documentId), initialPendings);
     const prepared = decision?.mode === 'accept'
-      ? await this.prepareAcceptReplacements(baseline, selected)
+      ? await preparePendingReplacements({
+        document: baseline, pendings: selected, importer: this.importer,
+        hydrateReferences: (content, metadata) => this.markdownService.hydratePendingDocumentReferences(content, metadata),
+      })
       : new Map<string, PreparedPendingReplacement>();
 
     const remaining = new Map<string, { readonly markdown: string; readonly metadata: PendingRevisionMetadata }>();
@@ -148,69 +105,5 @@ export class PendingRevisionApplyService {
       throw new Error(`[PendingRevisionApplyService] 文档结构异常: documentId=${documentId}`);
     }
     return docUnknown;
-  }
-
-  private async prepareAcceptReplacements(
-    docJson: MarkdownDocJson,
-    pendings: PendingRevision[]
-  ): Promise<Map<string, PreparedPendingReplacement>> {
-    const rootIndex = buildRootBlockIndex(docJson.content);
-    const prepared = new Map<string, PreparedPendingReplacement>();
-
-    for (const pending of pendings) {
-      const metadata = parsePendingMetadata(pending.meta_json);
-      const operation = resolvePendingOperation(pending, metadata);
-      if (operation === 'delete') continue;
-
-      const oldRoot = docJson.content[rootIndex.get(pending.target_block_id) ?? -1];
-      const replacement = await this.parseMarkdownToSingleRootBlock({
-        markdown: pending.new_markdown,
-        preserveId: pending.target_block_id,
-        oldRoot,
-        listSeparatorBefore: metadata?.listSeparatorBefore,
-        referenceMetadata: metadata,
-        citationHydration: extractPendingCitationHydration(metadata, pending.target_block_id),
-        image: readPendingMarkdownImage(metadata),
-        citationLinkHydration: extractPendingCitationLinkHydration(metadata, pending.target_block_id),
-      });
-
-      prepared.set(pending.id, {
-        rootBlock: replacement,
-      });
-    }
-
-    return prepared;
-  }
-
-  private async parseMarkdownToSingleRootBlock(params: {
-    markdown: string;
-    preserveId: string;
-    oldRoot?: ProseMirrorJsonNode;
-    listSeparatorBefore?: unknown;
-    referenceMetadata?: unknown;
-    citationHydration?: Record<string, CitationNodeHydrationData> | null;
-    image?: MarkdownImageAttrs | null;
-    citationLinkHydration?: Record<string, CitationLinkHydrationData> | null;
-  }): Promise<MarkdownRootBlockJson> {
-    if (!params.markdown.trim()) {
-      return createEmptyRootBlock(params.preserveId, params.oldRoot);
-    }
-
-    const imported = await importPendingMarkdownRootBlock(params.markdown, this.importer);
-    if (!imported) throw new Error(`Pending Markdown 解析未返回正文: blockId=${params.preserveId}`);
-    let docJson: MarkdownDocJson = this.markdownService.hydratePendingDocumentReferences({ type: 'doc', content: [imported] }, params.referenceMetadata);
-    docJson = hydrateMarkdownDocumentImages(docJson, new Map(params.image ? [[params.image.id, params.image]] : []));
-
-    if (params.citationHydration || params.citationLinkHydration) {
-      docJson = attachCitationNodesToDocJson(
-        docJson,
-        params.citationHydration ?? {},
-        params.citationLinkHydration ?? {},
-      );
-    }
-
-    const [root] = docJson.content.filter(isRootBlock);
-    const replacement = restorePendingListSpacing(params.oldRoot, root, params.listSeparatorBefore);
-    return mergeRootBlockAttrs(params.oldRoot ?? root, replacement, params.preserveId);
   }
 }

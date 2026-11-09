@@ -15,3 +15,6 @@ export type {
 
 export { projectMarkdownEditorPendingRevisions } from './functions/projectMarkdownEditorPendingRevisions';
 export { resolvePendingOperation } from './functions/pendingRevisionApplyRules';
+
+export { preparePendingReplacements } from './orchestration/preparePendingReplacements';
+export { applyAcceptedPendingsToDocument } from './functions/pendingRevisionApplyRules';
