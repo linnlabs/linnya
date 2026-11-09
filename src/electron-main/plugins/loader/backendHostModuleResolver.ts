@@ -1,4 +1,5 @@
 import * as childRunDelivery from '../../../plugin-sdk/backend/childRunDelivery';
+import * as colorPalette from '../../../plugin-sdk/backend/colorPalette';
 import * as runInputQuote from '../../../plugin-sdk/backend/runInputQuote';
 import Module from 'node:module';
 import fs from 'node:fs';
@@ -54,6 +55,7 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/blockReferenceRuntime', blockReferenceRuntime],
   ['@plugin/backend/citationSourceRuntime', citationSourceRuntime],
   ['@plugin/backend/childRunDelivery', childRunDelivery],
+  ['@plugin/backend/colorPalette', colorPalette],
   ['@plugin/backend/runInputQuote', runInputQuote],
   ['@plugin/backend/documentTypeBackendHook', documentTypeBackendHook],
   ['@plugin/backend/documentImageAsset', documentImageAsset],

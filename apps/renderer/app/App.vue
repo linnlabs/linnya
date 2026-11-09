@@ -50,6 +50,8 @@ import {
 import { describeRendererPluginRegistryForDiagnostics } from './plugins/registry';
 import { registerConversationResourceLinkPort } from '@/domains/conversation/features/resource-link';
 import { createConversationResourceLinkPort } from './workflows/conversation-resource-link/orchestration/createConversationResourceLinkPort';
+import { registerRunDocumentChangesPort } from '@/domains/conversation/features/run-document-changes';
+import { createRunDocumentChangesPort } from './workflows/conversation-run-document-changes/orchestration/createRunDocumentChangesPort';
 
 const layoutStore = useLayoutStore();
 // 整个应用共享一个悬停提示服务：任何带 data-linnya-tooltip 的元素（含图标按钮、编辑器工具条）都由它绘制。
@@ -69,6 +71,7 @@ registerWorkspaceNodeTransferPort(createWorkspaceNodeTransfer());
 registerDocumentSurfaceRuntimePort(createDocumentSurfaceRuntime());
 registerMarkdownDocumentEditorRuntimePort(createMarkdownDocumentEditorRuntime());
 registerConversationResourceLinkPort(createConversationResourceLinkPort());
+registerRunDocumentChangesPort(createRunDocumentChangesPort());
 useWorkspaceVfsRuntimeContextSync();
 useWorkspaceMutationSubscription();
 useActiveDocumentPluginAvailabilityGuard();

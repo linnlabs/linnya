@@ -11,3 +11,5 @@
 验证入口：`orchestration/prepareMarkdownHtmlForPdf.test.ts`，使用正式 ChartBlock HTML 序列化与真实 ECharts SSR，覆盖八类图表、文本与图例完整性、非法规格和渲染失败。最终 PDF 的清晰度与分页需要真实 Electron 导出后逐页视觉检查。
 
 图表图片中的题注和说明排在绘图区、图例及量尺脚注之后；替换 figure 时去掉原 DOM 题注，避免 PDF 重复。普通图片的 HTML 序列化保留独立 figcaption，空题注不输出占位。
+
+`parseMarkdownDocumentForExport` 供 Workspace 批量导出使用：用与编辑器相同的 extension registry 构建生产 schema（首次导出时才加载并缓存），再走打开文档时的同一严格解析。它不依赖活动编辑器，没有打开任何文档时也能导出；未知属性或结构不合法时抛出，由调用方把这一篇记为失败。

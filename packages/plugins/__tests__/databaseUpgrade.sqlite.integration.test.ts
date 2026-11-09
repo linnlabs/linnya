@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { expect, it } from 'vitest';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { SCHEMA_VERSION } from 'src/electron-main/services/database/migrations';
+import { createSqliteActionLedger } from 'src/domains/action-ledger';
 import { PluginStateService } from 'src/features/plugins/infrastructure/sqlite/plugin-state.service';
 import { PluginUpgradeRunner } from 'src/features/plugins/infrastructure/sqlite/plugin-upgrade.runner';
 import { SLIDES_PLUGIN_META, SLIDES_OWNED_TABLES } from '../slides/src/shared';
@@ -102,6 +103,18 @@ it('upgrades the released v68 database to the same complete structure as a fresh
     }
     expect(db.prepare('SELECT schema_version FROM installed_plugins WHERE plugin_id=?').get(SLIDES_PLUGIN_META.id))
       .toEqual({ schema_version: slidesPluginMigrations.at(-1)?.version });
+    // 升级后的库直接可记行动账本，外键指向发行夹具里已有的项目与文档。
+    const node = db.prepare<[], { id: string; type: string }>(
+      "SELECT id, type FROM workspace_nodes WHERE project_id='fixture-project' AND type != 'folder' LIMIT 1",
+    ).get();
+    if (!node) throw new Error('Fixture must contain a document node');
+    const ledger = createSqliteActionLedger(db);
+    ledger.recorderFor(
+      { kind: 'run', runId: 'fixture-run', rootRunId: 'fixture-run', parentRunId: null, conversationId: null, toolCallId: null },
+      'coarse',
+    ).record({ projectId: 'fixture-project', documentId: node.id, documentType: node.type, action: 'update' });
+    expect(ledger.listDocumentChanges({ projectId: 'fixture-project', rootRunId: 'fixture-run', limit: 5 }).changes)
+      .toEqual([expect.objectContaining({ documentId: node.id, actions: ['update'] })]);
     // 再打开一次，确保迁移后的账本与建表路径可重入且不会删除提议。
     upgraded.close();
     upgraded.initialize({ lifecycleBootstrap: bootstrapSlides });

@@ -17,6 +17,7 @@
       :actions-visible="hoveredVisualTurnId === placement.item.visualTurnId"
       :is-last-row="placement.index === items.length - 1"
       :trailing-status="trailingStatus"
+      :shows-run-document-changes="showsRunDocumentChanges"
       @row-mouseenter="hoveredVisualTurnId = $event.visualTurnId"
       @row-mouseleave="handleRowMouseLeave"
       @edit-message="$emit('edit-message', $event)"
@@ -61,6 +62,7 @@ const props = withDefaults(defineProps<{
   activeRunIds?: readonly string[];
   answerRenderWidthPx?: number;
   trailingStatus?: ConversationMessageCanvasTrailingStatus;
+  showsRunDocumentChanges?: boolean;
 }>(), {
   placements: undefined,
   heightPx: undefined,
@@ -68,6 +70,7 @@ const props = withDefaults(defineProps<{
   activeRunIds: () => [],
   answerRenderWidthPx: 720,
   trailingStatus: () => ({ active: false, visible: false }),
+  showsRunDocumentChanges: false,
 });
 
 defineEmits<{

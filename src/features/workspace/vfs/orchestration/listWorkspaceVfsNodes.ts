@@ -150,6 +150,35 @@ function buildWorkspaceNodePath(db: WorkspaceVfsDatabase, row: WorkspaceNodeRow)
   return `/${segments.join('/')}`;
 }
 
+export interface WorkspaceNodeIdentity {
+  readonly id: string;
+  readonly projectId: string | null;
+  readonly parentId: string | null;
+  readonly type: string;
+  /** 展示名：去掉文档类型后缀，与 VFS display_name 一致。 */
+  readonly title: string;
+  readonly deleted: boolean;
+}
+
+/**
+ * 改动记录需要已删除文档的名字。只给身份与展示名，不给路径；已删除节点不能借此打开或读取。
+ */
+export function readWorkspaceNodeIdentityIncludingDeleted(
+  db: WorkspaceVfsDatabase,
+  nodeId: string
+): WorkspaceNodeIdentity | null {
+  const row = db.prepare('SELECT * FROM workspace_nodes WHERE id = ?').get(nodeId) as WorkspaceNodeRow | undefined;
+  if (!row || !isVisibleWorkspaceNode(row)) return null;
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    parentId: row.parent_id,
+    type: row.type,
+    title: deriveWorkspaceNodeDisplayName(row) ?? row.name,
+    deleted: row.deleted_at !== null,
+  };
+}
+
 /** 同步 owner 事务内读取刚提交的节点身份；不遍历系统虚拟视图。 */
 export function readPersistedWorkspaceVfsNode(
   db: WorkspaceVfsDatabase,

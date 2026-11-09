@@ -429,20 +429,21 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.modelDetails.apiAddressRequired': 'API 地址不能为空。',
   'settings.modelDetails.inferenceRouteMissing': '该模型缺少正式推理路由，请删除后重新添加。',
   'settings.modelDetails.updateFailed': '更新模型失败',
-  'settings.about.release.title': '测试版 v{version}',
-  'settings.about.release.note.pluginStore':
-    '新增插件商店能力，支持插件列表、详情页、远程安装、卸载和自动更新检查。',
-  'settings.about.release.note.mindmapRuntime':
-    '完善 Mindmap 官方插件运行时发布链路，支持磁盘加载、远程 artifact 分阶段安装、迁移、失败回滚和 R2 上传校验。',
-  'settings.about.release.note.pluginState':
-    '优化插件状态与能力注册，插件启用状态改为数据库持久化，并按文件格式归属路由创建工具。',
-  'settings.about.release.note.pluginStoreUi':
-    '改进插件商店界面，补齐展示元数据、状态标签、缺失插件详情和发布说明折叠。',
-  'settings.about.release.note.layoutFixes':
-    '修复页面滚动、对话滚动控件、Slides 分隔线和部分布局外壳样式问题。',
-  'settings.about.release.note.defaultWorkspaceProtection':
-    '加强默认工作区项目保护，避免关键项目被误操作。',
-  'settings.about.release.note.pluginDocs': '更新插件运行时、发布流程和插件化规划文档。',
+  'settings.about.release.title': 'Linnya v{version}',
+  'settings.about.release.note.dataCompatibility':
+    '0.2.0 正式开放下载，作为后续数据兼容的起点。数据格式变化随版本升级，耗时较长时显示升级进度。',
+  'settings.about.release.note.dataStorage':
+    '统一应用数据目录，对话与工具输出共用已有内容，减少重复存储。',
+  'settings.about.release.note.actionHistory':
+    '可在对话中查询某天或某次运行改了哪些文件。文档跨项目移动后保留记录，并隔离原项目的会话信息。',
+  'settings.about.release.note.slidesDesign':
+    'Slides 提供更丰富的视觉方向，先展示封面、颜色和字体，并按阅读方式检查字号。',
+  'settings.about.release.note.desktopReliability':
+    '完善项目侧栏、Markdown 修订、文件引用与后台退出，验证两端安装与更新。',
+  'settings.about.release.note.pluginAvailability':
+    '本版随包提供 Slides，远程插件安装与更新暂未开放。',
+  'settings.about.release.note.modelSetup':
+    '在线模型与 API 凭据由用户自行配置，当前不提供 Linnya Cloud 模型服务。',
   'settings.about.contact.title': '联系我们',
   'settings.about.contact.intro': '产品目前仍处于内测阶段，功能和体验会持续优化中。',
   'settings.about.contact.feedbackGuidance':
@@ -921,21 +922,21 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.modelDetails.inferenceRouteMissing':
         'This model has no explicit inference route. Delete it and add it again.',
       'settings.modelDetails.updateFailed': 'Failed to update model',
-      'settings.about.release.title': 'Beta v{version}',
-      'settings.about.release.note.pluginStore':
-        'Added Plugin Store capabilities, including plugin lists, detail pages, remote installation, uninstall, and automatic update checks.',
-      'settings.about.release.note.mindmapRuntime':
-        'Improved the official Mindmap plugin runtime release pipeline with disk loading, staged remote artifact installation, migration, rollback on failure, and R2 upload verification.',
-      'settings.about.release.note.pluginState':
-        'Improved plugin state and capability registration. Plugin enabled state is now persisted in the database, and creation tools route by file format ownership.',
-      'settings.about.release.note.pluginStoreUi':
-        'Refined the Plugin Store interface with richer metadata, state badges, missing-plugin details, and collapsible release notes.',
-      'settings.about.release.note.layoutFixes':
-        'Fixed page scrolling, conversation scroll controls, Slides dividers, and several layout shell styles.',
-      'settings.about.release.note.defaultWorkspaceProtection':
-        'Strengthened default workspace project protection to prevent accidental changes to critical projects.',
-      'settings.about.release.note.pluginDocs':
-        'Updated plugin runtime, release workflow, and pluginization planning docs.',
+      'settings.about.release.title': 'Linnya v{version}',
+      'settings.about.release.note.dataCompatibility':
+        'Version 0.2.0 opens public downloads and starts ongoing data compatibility. Future format changes run during upgrades, with progress shown for longer operations.',
+      'settings.about.release.note.dataStorage':
+        'Application data now shares one storage root. Conversations and tool results reuse existing content to reduce duplicate storage.',
+      'settings.about.release.note.actionHistory':
+        'Ask which files changed on a date or during a run. History follows transferred documents while the source project’s conversation details stay private.',
+      'settings.about.release.note.slidesDesign':
+        'Slides offers more visual directions, previews the cover, colors and fonts, and checks font sizes for the intended reading mode.',
+      'settings.about.release.note.desktopReliability':
+        'Improved project navigation, Markdown revisions, file references and backend exit, with installation and update checks on both platforms.',
+      'settings.about.release.note.pluginAvailability':
+        'Slides is bundled. Remote plugin installation and updates remain unavailable.',
+      'settings.about.release.note.modelSetup':
+        'Configure your own online models and API credentials. Linnya Cloud model services are currently unavailable.',
       'settings.about.contact.title': 'Contact us',
       'settings.about.contact.intro':
         'The product is still in beta, and both features and experience will continue to improve.',

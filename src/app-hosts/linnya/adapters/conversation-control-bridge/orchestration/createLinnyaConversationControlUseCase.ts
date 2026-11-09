@@ -10,6 +10,7 @@ import type { ModelCatalog } from 'src/domains/model-catalog';
 import type { ProviderAccountRegistry } from 'src/domains/provider-account';
 import type { ToolRuntimePort } from '@linnlabs/linnkit/runtime-kernel';
 import {
+  ConversationControlError,
   createConversationControlUseCase,
   projectConversationControlModels,
   type ConversationControlRunRecord,
@@ -50,6 +51,8 @@ interface LinnyaConversationControlUseCaseOwners {
     'getModels' | 'getModel' | 'getInferenceEndpoints' | 'hasCredential'
   >;
   readonly providerAccounts: Pick<ProviderAccountRegistry, 'hasCredential'>;
+  /** 本次启动模型配置没有加载成功时的原因；模型入口返回不可用，不列出半加载的目录。 */
+  readonly modelsUnavailableReason: string | null;
   readonly telemetry: ExecutionAuditTelemetryPort;
   readonly events: ExecutionAuditEventPort;
   readonly auditControl: AuditControlPort;
@@ -70,6 +73,14 @@ interface LinnyaConversationControlUseCaseOwners {
 export function createLinnyaConversationControlUseCase(
   owners: LinnyaConversationControlUseCaseOwners,
 ): ConversationControlUseCase {
+  const requireModels = (): void => {
+    if (owners.modelsUnavailableReason) {
+      throw new ConversationControlError(
+        'capability_unavailable',
+        `模型相关功能暂不可用：${owners.modelsUnavailableReason}`,
+      );
+    }
+  };
   const modelAvailabilityContext = (): ModelRuntimeAvailabilityContext => ({
     inferenceEndpoints: owners.modelCatalog.getInferenceEndpoints(),
     hasModelCredential: modelId => owners.modelCatalog.hasCredential(modelId),
@@ -114,10 +125,12 @@ export function createLinnyaConversationControlUseCase(
     projects: owners.projects,
     models: {
       list() {
+        requireModels();
         const context = modelAvailabilityContext();
         return projectConversationControlModels(owners.modelCatalog.getModels(), context);
       },
       evaluate(modelId, capability) {
+        requireModels();
         const model = owners.modelCatalog.getModel(modelId);
         return model
           ? evaluateModelRuntimeAvailability({

@@ -31,6 +31,8 @@ import { workspaceGateway } from '../../../../../shared/ipc/workspaceGateway';
 import { documentLoaderService } from '@app/services/documentLoaderService';
 import { saveMarkdownDocumentSession, closeMarkdownDocumentSession } from '../../../../editor/features/document-session';
 import { resolveCurrentWorkspaceMessage } from '../../../functions/resolveCurrentWorkspaceMessage';
+import { resolveWorkspaceOperationFailure } from '../../../functions/resolveWorkspaceOperationFailure';
+import { parseUserFacingMessage } from '@app/schemas';
 
 /**
  * Markdown 文件 Handler 实现
@@ -79,10 +81,17 @@ export const markdownHandler: FileTypeLifecycleHandler = {
         throw error;
       }
       console.error('[MarkdownHandler] Failed to open markdown document:', error);
+      const userMessage = error instanceof Error
+        ? parseUserFacingMessage(Reflect.get(error, 'userMessage')) ?? undefined
+        : undefined;
       notificationStore.show(
-        resolveCurrentWorkspaceMessage('workspace.fileManager.markdown.openFailed'),
+        resolveWorkspaceOperationFailure(
+          { error: error instanceof Error ? error.message : String(error), userMessage },
+          resolveCurrentWorkspaceMessage,
+          'workspace.fileManager.markdown.openFailed',
+        ),
         'error',
-        3000,
+        userMessage ? 8000 : 3000,
       );
       throw error;
     } finally {

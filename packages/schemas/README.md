@@ -32,6 +32,7 @@
 - Model inference 的 language/embedding/reranking、document OCR 与音频转写跨端 route 合同；完整模块边界见 [Model Inference README](../../src/domains/model-inference/README.md)。
 - Provider Catalog 的公开生成资产和 HTTP list/get read model；Host 私有 runtime binding 不属于共享合同。
 - Provider Account 授权状态、授权结果和脱敏错误的 HTTP 合同；OAuth token 与刷新凭据不属于共享合同。
+- 配色建议与配色检查的入参、DTO 和错误码（`./color-palette`）；算法归 `@linnya/color-core/palette`，流程归 [color-palette domain](../../src/domains/color-palette/README.md)。
 - Custom API 注册的 strict wire request、Host admission command 与模型发现 DTO；request 和 admission 后的类型不得混用。
 
 Language route 的图片来源与模型视觉能力分别接纳。Profile 的 `tool_result_image`

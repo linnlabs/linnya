@@ -31,6 +31,8 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
   browser('@app/schemas', 'packages/schemas/src/index.ts', 'exact'),
   browser('@app/schemas', 'packages/schemas/src', 'subpath'),
   browser('@linnya/app-lifecycle-contract', 'src/shared/app-lifecycle/definitions/windowCloseProtocol.ts', 'exact'),
+  browser('@linnya/color-core', 'packages/color-core/src/index.ts', 'exact'),
+  browser('@linnya/color-core/palette', 'packages/color-core/src/palette/index.ts', 'exact'),
   browser('@linnya/plugin-host-contract', 'packages/plugin-host-contract/index.ts', 'exact', false),
   browser('@linnya/plugin-host-contract/renderer', 'packages/plugin-host-contract/renderer/index.ts', 'exact', false),
   browser('@linnya/plugin-host-contract/renderer', 'packages/plugin-host-contract/renderer', 'subpath', false),

@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { readPersistedResearchCards } from './__tests__/readPersistedResearchCards';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -23,11 +23,6 @@ import { commonToolConfigs } from '../../ui/tools/configs/common';
 import { createInitialProjectionState, reduceEvent } from '../../services/messageProjection';
 import { runtimeEventToFrontendProjectionEvent } from '../../services/messageProjection/__tests__/helpers/runtimeEventToFrontendProjectionEvent';
 import { PROJECTION_TEST_SCOPE } from '../../services/messageProjection/__tests__/helpers/projectionTestScope';
-import { mapUiMessageDtoToConversationMessage } from '../../message-window/functions/mapUiMessageDto';
-import { readTail } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection';
-import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
-import { SqliteUiProjectionApplier } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteApplier';
-import { SqliteSubrunTraceHistoryProjector } from 'src/app-hosts/linnya/adapters/persistence/subrun-trace-history/sqliteSubrunTraceHistoryProjector';
 import type { ToolCallMessage } from '../../types';
 import { projectResearchRunCompactStep, projectResearchRunPresentation } from './functions/projectResearchRunPresentation';
 
@@ -93,28 +88,6 @@ function live(events: readonly RuntimeEvent[]): ToolCallMessage {
   return message;
 }
 
-function reloaded(events: readonly RuntimeEvent[]): ToolCallMessage {
-  const db = new Database(':memory:');
-  db.exec('CREATE TABLE projects (id TEXT PRIMARY KEY)');
-  for (const schema of CONVERSATION_SCHEMAS) db.exec(schema);
-  db.prepare('INSERT INTO conversations (conversation_id, created_at, last_event_at) VALUES (?, 1, 1)').run(conversationId);
-  const parentProjection = new SqliteUiProjectionApplier(db);
-  const traceProjection = new SqliteSubrunTraceHistoryProjector(db);
-  try {
-    events.forEach((event, index) => {
-      if (event.type === 'subrun_trace') traceProjection.project(event);
-      else parentProjection.projectAppendedEvent(conversationId, runId, event, index);
-    });
-    const window = readTail(db, conversationId, 10);
-    if (window.status !== 'ready' || !window.messages[0]) throw new Error('Expected a durable parent tool row');
-    const message = mapUiMessageDtoToConversationMessage(window.messages[0]);
-    if (message.type !== 'tool_calls') throw new Error('Expected a reloaded research parent tool message');
-    return message;
-  } finally {
-    db.close();
-  }
-}
-
 describe('research run live and reload presentation', () => {
   let unregister: (() => void) | undefined;
   beforeEach(() => {
@@ -132,10 +105,10 @@ describe('research run live and reload presentation', () => {
     clearRendererPluginRegistryForTest();
   });
 
-  it('shows only actually started children while running and preserves arrival identity after reload', () => {
+  it('shows only actually started children while running and preserves arrival identity after reload', async () => {
     const events = [decision(), trace('child-source-review', 1), trace('child-argument-review', 2)];
     const current = live(events);
-    expect(reloaded(events).toolPresentation).toEqual(current.toolPresentation);
+    expect((await readPersistedResearchCards(conversationId, runId, events))[0]?.toolPresentation).toEqual(current.toolPresentation);
     expect(current.toolPresentation?.data).toMatchObject({
       kind: 'lifecycle',
       items: [
@@ -145,14 +118,14 @@ describe('research run live and reload presentation', () => {
     });
   });
 
-  it('preserves every started child after a parent failure in live and reloaded history', () => {
+  it('preserves every started child after a parent failure in live and reloaded history', async () => {
     const failed = route(createToolOutputEvent('failed-research', conversationId, turnId, 'research_run', callId, {
       status: 'error', error: 'Invalid citation token', observation: 'Correct the citation.',
     }, { timestamp: 20 }));
     const ids = stages.map(stage => `started-${stage}`);
     const events = [decision(), ...ids.map((id, index) => trace(id, index)), failed];
     const current = live(events);
-    expect(reloaded(events).toolPresentation).toEqual(current.toolPresentation);
+    expect((await readPersistedResearchCards(conversationId, runId, events))[0]?.toolPresentation).toEqual(current.toolPresentation);
     expect(current.toolPresentation).toMatchObject({
       status: 'error', title: { text: { key: 'conversation.tool.researchRun.failed' } },
       data: { kind: 'lifecycle', items: ids.map(subrunId => ({ subrunId })) },
@@ -160,11 +133,11 @@ describe('research run live and reload presentation', () => {
     expect(JSON.stringify(current.toolPresentation)).not.toContain('artifactPath');
   });
 
-  it('adopts saved artifact identities, labels and order without claiming the article passed', () => {
+  it('adopts saved artifact identities, labels and order without claiming the article passed', async () => {
     const result = output();
     const events = [decision(), trace('explicit-child-4', 1), trace('explicit-child-3', 2), terminal(result)];
     const current = live(events);
-    expect(reloaded(events).toolPresentation).toEqual(current.toolPresentation);
+    expect((await readPersistedResearchCards(conversationId, runId, events))[0]?.toolPresentation).toEqual(current.toolPresentation);
     const expected = projectResearchRunPresentation({
       sourceToolName: 'research_run', uiKey: 'research_run', args, result,
       status: 'success', phase: 'complete',
@@ -180,7 +153,7 @@ describe('research run live and reload presentation', () => {
     }).title.key).toBe('conversation.tool.researchRun.delivered');
   });
 
-  it('retains saved originals and unsaved child trace when materials change', () => {
+  it('retains saved originals and unsaved child trace when materials change', async () => {
     const result = ResearchRunStructuredResultSchema.parse({
       data: {
         status: 'inputs_changed', model_id: 'chosen-model',
@@ -190,7 +163,7 @@ describe('research run live and reload presentation', () => {
     });
     const events = [decision(), trace('unsaved-child', 1), terminal(result)];
     const current = live(events);
-    expect(reloaded(events).toolPresentation).toEqual(current.toolPresentation);
+    expect((await readPersistedResearchCards(conversationId, runId, events))[0]?.toolPresentation).toEqual(current.toolPresentation);
     expect(current.toolPresentation).toMatchObject({
       title: { text: { key: 'conversation.tool.researchRun.inputsChanged' } },
       data: {
@@ -204,9 +177,9 @@ describe('research run live and reload presentation', () => {
     });
   });
 
-  it('rejects malformed successful output at both admissions while error lifecycle remains visible', () => {
+  it('rejects malformed successful output at both admissions while error lifecycle remains visible', async () => {
     const malformed = { ...output(), data: { ...output().data, artifacts: [] } };
-    expect(() => reloaded([decision(), terminal(malformed)])).toThrow();
+    await expect(readPersistedResearchCards(conversationId, runId, [decision(), terminal(malformed)])).rejects.toThrow();
     const state = createInitialProjectionState({
       id: conversationId, title: 'Research', titleOrigin: 'explicit', createdAt: 1, updatedAt: 1,
       selectedAgentId: null, messages: [],

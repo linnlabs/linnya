@@ -280,6 +280,8 @@ reference；不得复用 InferenceEndpoint 或恢复模型顶层 `provider`
 
 能力查询在初始化开始前冻结，default、Cloud、account、user 的加载和每条更新准入均使用同一解析器。显式能力冲突沿用现有加载语义：用户/default 目录冲突会使初始化失败并保留原文件；Cloud 准入失败保留此前目录并报告刷新失败，不额外跳过非法模型。
 
+初始化没有成功时（例如 `user_models.json` 无法读取，错误里写明文件名），目录拒绝任何写入用户配置的操作，原文件保持不变；初始化自身在全部准入通过后回写一次迁移结果不受此限。启动把模型配置当作可停掉的能力，见 [Backend 启动步骤](../../app-hosts/linnya/backend-runtime/README.md#启动步骤分两类)。
+
 Model
 Catalog 不再保存或归一化顶层通用 API 地址。用户输入地址的格式处理属于对应 onboarding
 command；进入目录后，language/embedding/reranking/image/OCR/ASR 只读取各自 typed

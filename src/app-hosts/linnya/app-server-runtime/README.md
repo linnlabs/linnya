@@ -28,3 +28,5 @@ parent-liveness monitor 保留到该传输收口屏障结束，保证 parent 在
 
 凭据文件由本 composition 创建，模型、OAuth、插件和 Web 设置共享一个窄 storage port。路径使用
 已冻结的 profileRoot，与 Workspace 分离。读写、权限、并发和故障合同见[文件凭据存储](../../../infra/adapters/credential-storage/file/README.md)。
+
+Backend 启动失败时，`functions/describeAppServerStartupFailure.ts` 沿 `cause` 链（最多 8 层）归类：版本准入错误归为更早或更新的数据；其次看第一个错误码，SQLite 与系统 errno 的磁盘已满、权限、I/O、占用、损坏这几类环境原因优先，并保留迁移步骤；剩下的迁移步骤错误归为数据升级失败；其余如实报告原因未知，只保留可识别的错误码。损坏数据的测试全部在系统临时目录现场生成，不提交损坏的二进制库。

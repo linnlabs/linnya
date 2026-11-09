@@ -57,6 +57,7 @@ Citation 窗口只接收实际取得的正文，不包含截断提示。正文�
 `MarkdownDocumentService.saveNewVersion()` 是正文版本进入 SQLite 前的强制闸门：先执行完整 schema 校验和规范化，再保存规范化后的 JSON；`readMarkdownVfsContent()` 和 `getDocument()` 读回时也重复校验。块历史快照通过 `validateBlockHistoryContentJson()` 使用同一 schema，并要求快照的 `rootBlock.id` 与目标块一致；BlockHistory 的查询路径也会重新校验已存快照。旧格式不做兼容或降级。
 
 编辑器读取、DocumentView 与 file-style 写入准备都只经 `getDocument()` 严格读取一次，不做读取前的占位规范化。
+`getDocument()` 读不出时按两类抛 `MarkdownDocumentContentError`：正文不是合法 JSON 为 `unreadable`，能解析但不符合格式为 `invalid_format`。它只影响这一篇，目录与其他文档照常可用；读取 IPC 把它投影成对应的用户消息键，编辑器据此说明原因，不显示成空文档。真实数据库夹具见 `app-hosts/linnya/adapters/document-editor/__tests__/damagedDocumentIsolation.integration.test.ts`。
 早期把原文存进 `baseBlock.attrs.rawMarkdownSource` 的占位正文不是合法属性，按旧格式拒绝加载；新建文档始终先编译为结构化 JSON 再提交。
 
 Markdown 导入结果必须经过这份校验。pending 单块和文档级 Accept/Reject 在事务内合并完成后，也必须先校验最终完整 `docJson`，再保存版本并清理 pending；校验失败时正文和 pending 均保持不变。新增可持久化语义时，必须同时更新 schema、序列化/物化能力和生产 Editor conformance fixture，禁止让调用方自行猜测或静默降级。

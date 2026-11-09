@@ -372,6 +372,33 @@ describe('Registry default model by capability', () => {
     expect(registry.getFunctionalDefaultModelId('knowledge_graph_extraction')).toBeUndefined();
   });
 
+  it('初始化没有成功时拒绝写入用户配置：不准备凭据，也不覆写原文件', async () => {
+    persisterMock.loadState.mockRejectedValueOnce(
+      new Error('user_models.json 无法读取：Unexpected end of JSON input')
+    );
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await expect(registry.initialize(createSourceDistributionIdentity())).rejects.toThrow(
+      'user_models.json 无法读取'
+    );
+
+    await expect(
+      registry.registerUserModel(buildUserModel('first-user-model', 'shared-endpoint'), {
+        kind: 'create',
+        endpoint: {
+          id: 'shared-endpoint',
+          route_profile_id: 'openai_chat',
+          endpoint_id: 'deepseek',
+          base_url: 'https://api.linnyai.com/proxy/deepseek',
+          auth_profile: 'bearer',
+          credential_secret: 'secret-value',
+        },
+      })
+    ).rejects.toThrow('模型目录在启动时没有初始化成功');
+    expect(credentialStoreMock.put).not.toHaveBeenCalled();
+    expect(persisterMock.saveState).not.toHaveBeenCalled();
+  });
+
   it('同一 InferenceEndpoint 可跨模型复用，持久化快照不包含明文凭据', async () => {
     fetchCloudModelsMock.mockResolvedValueOnce({
       success: true,

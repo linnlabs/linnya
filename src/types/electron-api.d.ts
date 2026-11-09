@@ -211,6 +211,9 @@ declare global {
       showItemInFolder: (filePath: string) => Promise<{ 
         success: boolean; 
       } & SystemOperationFailureFields>;
+      listConversationRunDocumentChanges: (
+        request: import('@app/schemas').ConversationRunDocumentChangesRequest,
+      ) => Promise<unknown>;
       resolveConversationFileLink: (
         request: import('@app/schemas').ConversationFileLinkResolveRequest,
       ) => Promise<import('@app/schemas').OperationResult<

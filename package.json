@@ -1,6 +1,6 @@
 {
   "name": "linnya",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "An agent-centered document database and extensible desktop workspace.",
@@ -299,6 +299,8 @@
     "guard:conversation-types-exports:update": "node --import tsx ./scripts/guards/conversation-types-export-ratchet.ts --update-baseline --stage-baseline",
     "guard:conversation-agent-choice-naming": "node --import tsx ./scripts/guards/conversation-agent-choice-naming-ratchet.ts",
     "guard:conversation-agent-choice-naming:update": "node --import tsx ./scripts/guards/conversation-agent-choice-naming-ratchet.ts --update-baseline --stage-baseline",
+    "guard:plugin-table-ownership": "node --import tsx ./scripts/guards/plugin-table-ownership-ratchet.ts",
+    "guard:plugin-table-ownership:update": "node --import tsx ./scripts/guards/plugin-table-ownership-ratchet.ts --update-baseline --stage-baseline",
     "guard:renderer-style-scale": "node --import tsx ./scripts/guards/renderer-style-scale-ratchet.ts",
     "guard:renderer-style-scale:update": "node --import tsx ./scripts/guards/renderer-style-scale-ratchet.ts --update-baseline --stage-baseline",
     "guard:application-layer-naming": "node scripts/guards/application-layer-naming-guard.mjs",

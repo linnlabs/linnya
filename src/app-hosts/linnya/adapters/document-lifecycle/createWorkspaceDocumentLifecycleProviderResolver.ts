@@ -1,3 +1,4 @@
+import { recordScopedDocumentAction } from 'src/domains/action-ledger';
 import { createMarkdownDocumentStore } from '../../application/markdown-image-assets';
 import type Database from 'better-sqlite3';
 import {
@@ -60,6 +61,7 @@ function createMarkdownLifecycleProvider(params: {
           'document',
         );
         documentStore.createDocument(documentId, createDefaultMarkdownDocument());
+        recordScopedDocumentAction(params.db, { projectId: request.projectId, documentId, documentType: 'document', action: 'create' });
       }).immediate();
       return { documentId };
     },
@@ -74,6 +76,7 @@ function createMarkdownLifecycleProvider(params: {
           'document',
         );
         documentStore.createDocument(documentId, content);
+        recordScopedDocumentAction(params.db, { projectId: request.projectId, documentId, documentType: 'document', action: 'create' });
       }).immediate();
       return { documentId };
     },
@@ -101,7 +104,11 @@ function createPluginLifecycleProvider(params: {
           create: async request => {
             const create = params.enabledHook?.createDocument;
             if (!create) throw new Error(unavailableMessage);
-            return create({ context, ...request });
+            const result = await create({ context, ...request });
+            if (result) recordScopedDocumentAction(params.databaseService.getDb(), {
+              projectId: request.projectId, documentId: result.documentId, documentType: params.registeredHook.docType, action: 'create',
+            });
+            return result;
           },
         }
       : {}),
@@ -110,13 +117,17 @@ function createPluginLifecycleProvider(params: {
           duplicate: async request => {
             const duplicate = params.enabledHook?.duplicateDocument;
             if (!duplicate) throw new Error(unavailableMessage);
-            return duplicate({
+            const result = await duplicate({
               context,
               sourceDocumentId: request.sourceDocumentId,
               projectId: request.projectId,
               parentId: request.parentId,
               name: request.name,
             });
+            if (result) recordScopedDocumentAction(params.databaseService.getDb(), {
+              projectId: request.projectId, documentId: result.documentId, documentType: params.registeredHook.docType, action: 'create',
+            });
+            return result;
           },
         }
       : {}),

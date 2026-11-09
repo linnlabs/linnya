@@ -3,7 +3,7 @@ import { projectClientNoticeToUiRow } from '../../conversation-client-notices/pr
 import type { PersistedConversationClientNotice } from '../../conversation-client-notices/sqliteClientNoticeAdmission';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { ConversationUiMessage } from '@app/schemas';
-import { toUiMessageView, UI_ROWS_WITH_TOOL_RESULTS, writeUiMessageRow, type UiMessageSqlRow } from './sqliteUiMessageRow';
+import { toUiMessageView, UI_ROWS_WITH_EVENT_SOURCES, writeUiMessageRow, type UiMessageSqlRow } from './sqliteUiMessageRow';
 import { projectEventToUiRowOps } from './projectEvent';
 import type {
   NewUiMessageRow,
@@ -30,7 +30,7 @@ export class SqliteUiProjectionAccess implements UiProjectionReadAccess {
       .prepare<unknown[], UiMessageSqlRow>(
         `
         SELECT *
-        FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+        FROM ${UI_ROWS_WITH_EVENT_SOURCES}
         WHERE conversation_id = ? AND merge_key = ?
         LIMIT 1
       `
@@ -45,7 +45,7 @@ export class SqliteUiProjectionAccess implements UiProjectionReadAccess {
       .prepare<unknown[], UiMessageSqlRow>(
         `
         SELECT *
-        FROM ${UI_ROWS_WITH_TOOL_RESULTS}
+        FROM ${UI_ROWS_WITH_EVENT_SOURCES}
         WHERE conversation_id = ? AND message_id = ?
         LIMIT 1
       `
@@ -311,6 +311,7 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage, row: UiMessag
     case 'thought':
       return {
         ...common,
+        contentEventId: row.content_event_id ?? undefined,
         turnId: message.turn_id,
         runId: message.run_id,
         role: message.role,

@@ -56,7 +56,12 @@ export function registerKnowledgeBaseHandlers(
   const getKbService = (): KnowledgeBaseService => {
     const service = runtimeOwner.getServices().knowledgeBaseService;
     if (!service) {
-      throw new Error('KnowledgeBaseService 未初始化');
+      const failure = runtimeOwner.getStartupCapabilityFailure('knowledge-base');
+      throw new Error(
+        failure
+          ? `知识库暂不可用：${failure.message}。重新启动 Linnya 后会再试一次。`
+          : 'KnowledgeBaseService 未初始化'
+      );
     }
     return service;
   };

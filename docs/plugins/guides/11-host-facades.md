@@ -97,6 +97,8 @@ Backend 的 `@plugin/backend/documentImageAsset`
 ID、已复核媒体事实和 data URI；受管路径、`assets`、
 `document_asset_links`、存储根与内容完整性校验均留在 Host。该门面按 workspace 数据库装配独立 runtime，不能被扩成通用 asset 查询器，也不能接受“跳过文档归属”的读取参数。
 
+Backend 的 `@plugin/backend/colorPalette` 给插件提供配色建议和配色检查。插件提交自己读好的图片 bytes，取得 `@app/schemas/color-palette` 的 DTO；可预期的失败以稳定错误码返回。图片路径、资产归属和“选哪一套”都留在插件。需要在 Renderer 里预览或换色时直接用 `@linnya/color-core`，不走这个门面。
+
 Backend 的 `@plugin/backend/imageTranscoding` 是不透明内存图片转码窄门面。插件提交已经在自身领域完成背景合成的 bytes，以及明确 JPEG quality、chroma subsampling 和输入像素门禁，只取得编码后的 bytes；Host 发现真实透明像素时直接拒绝，不能猜测或静默补入白底。文件路径、Sharp pipeline、asset 登记、Conversation 生命周期和业务默认值都留在各自 owner。该门面不能扩成通用图片 manager，也不能接受“自动选择质量”或静默降级参数。
 
 ## 门面设计纪律

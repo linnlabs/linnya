@@ -6,7 +6,7 @@ import { Readable, Writable } from 'node:stream';
 import type { JsonValue } from '@app/schemas';
 import { describe, expect, it } from 'vitest';
 
-import { createNodeAppServerProcessSupervisor } from '..';
+import { AppServerStartupFailedError, createNodeAppServerProcessSupervisor } from '..';
 import {
   encodeAppServerBootstrap,
   type AppServerBootstrap,
@@ -128,6 +128,61 @@ describe('Node App Server process supervisor', () => {
       controlTimeoutMs: 300,
     });
     await expect(supervisor.start()).rejects.toThrow('ready 超时（1200ms）');
+    await expect(supervisor.shutdown()).resolves.toBeUndefined();
+  });
+
+  it('child 启动失败时把类别交给宿主，并保留原始文案用于诊断', async () => {
+    const supervisor = createNodeAppServerProcessSupervisor({
+      launch: {
+        executablePath: process.execPath,
+        entryPath: fixturePath,
+        entryArguments: ['--startup-failure-code=SQLITE_FULL'],
+        workingDirectory: repositoryRoot,
+        environment: collectTestEnvironment(),
+        bootstrapBytes: encodeAppServerBootstrap(createBootstrap()),
+      },
+      rpcHandlers: new Map([
+        ['desktop.fixture.echo', () => ({ acknowledged: true })],
+      ]),
+      controlTimeoutMs: 300,
+    });
+    const failure = await supervisor.start().then(
+      () => { throw new Error('expected startup failure'); },
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(AppServerStartupFailedError);
+    if (!(failure instanceof AppServerStartupFailedError)) throw new Error('unreachable');
+    expect(failure.startupFailure).toEqual({
+      reason: 'disk_full',
+      code: 'SQLITE_FULL',
+      migration_from_version: null,
+    });
+    expect(failure.message).toContain('fixture startup failure SQLITE_FULL');
+    await expect(supervisor.shutdown()).resolves.toBeUndefined();
+  });
+
+  it('RPC pipe 先于 fatal 帧断开时，仍以 fatal 帧里的启动失败原因为准', async () => {
+    const supervisor = createNodeAppServerProcessSupervisor({
+      launch: {
+        executablePath: process.execPath,
+        entryPath: fixturePath,
+        entryArguments: ['--startup-failure-code=SQLITE_FULL', '--close-rpc-before-startup-failure'],
+        workingDirectory: repositoryRoot,
+        environment: collectTestEnvironment(),
+        bootstrapBytes: encodeAppServerBootstrap(createBootstrap()),
+      },
+      rpcHandlers: new Map([
+        ['desktop.fixture.echo', () => ({ acknowledged: true })],
+      ]),
+      controlTimeoutMs: 300,
+    });
+    const failure = await supervisor.start().then(
+      () => { throw new Error('expected startup failure'); },
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(AppServerStartupFailedError);
+    if (!(failure instanceof AppServerStartupFailedError)) throw new Error('unreachable');
+    expect(failure.startupFailure.reason).toBe('disk_full');
     await expect(supervisor.shutdown()).resolves.toBeUndefined();
   });
 

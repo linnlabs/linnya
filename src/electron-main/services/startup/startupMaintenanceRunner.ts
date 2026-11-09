@@ -39,12 +39,17 @@ import { cleanupToolOutputStoreByTime } from '../../../tools/tool_output/orchest
 import { reclaimFreePagesInBatches } from '../database/reclaimFreePagesInBatches';
 import { createFileCommandOutputArtifactMaintenancePort } from '../../../infra/adapters/command-runtime/output/createFileCommandOutputArtifactMaintenancePort';
 
-export interface StartupMaintenanceDeps {
-  databaseService: DatabaseService;
+export interface KnowledgeBaseMaintenanceDeps {
   metadataRepository: MetadataRepository;
   qdrantRepository: QdrantRepository;
   sotRepository: SotRepository;
   originalDocumentRepository: OriginalDocumentRepository;
+}
+
+export interface StartupMaintenanceDeps {
+  databaseService: DatabaseService;
+  /** 知识库没有启动时为 null：Workspace、会话与数据库维护照常执行，只跳过知识库一致性清理。 */
+  knowledgeBase: KnowledgeBaseMaintenanceDeps | null;
 }
 
 export interface StartupMaintenanceOptions {
@@ -264,6 +269,11 @@ export function scheduleStartupMaintenanceOnce(
     if (signal.aborted) return;
 
     // 2) 知识库一致性清理（SQLite + SoT + Qdrant）
+    const knowledgeBase = deps.knowledgeBase;
+    if (!knowledgeBase) {
+      logger.info(`✅ 启动维护任务结束(知识库未启动，跳过知识库维护): costMs=${Date.now() - start}`);
+      return;
+    }
     try {
       /**
        * 根因修复（稳健性）：
@@ -273,7 +283,7 @@ export function scheduleStartupMaintenanceOnce(
        * 这里等待一段时间（最多 2 分钟），仍不可达则跳过本轮知识库维护（不做破坏性动作）
        */
       const qdrantReachable = await waitForQdrantReachable({
-        qdrantRepository: deps.qdrantRepository,
+        qdrantRepository: knowledgeBase.qdrantRepository,
         logger,
         maxWaitMs: 120_000,
         pollIntervalMs: 5_000,
@@ -289,11 +299,11 @@ export function scheduleStartupMaintenanceOnce(
       }
 
       const stats = await runKnowledgeBaseStartupMaintenanceOnce(
-        deps.metadataRepository,
-        deps.qdrantRepository,
-        deps.sotRepository,
+        knowledgeBase.metadataRepository,
+        knowledgeBase.qdrantRepository,
+        knowledgeBase.sotRepository,
         new BetterSqliteKnowledgeGraphRepository(deps.databaseService),
-        deps.originalDocumentRepository
+        knowledgeBase.originalDocumentRepository
       );
       logger.info(
         `知识库维护汇总: totalFailed=${stats.totalFailed}, sqliteCleared=${stats.sqliteCleared}, qdrantCleared=${stats.qdrantCleared}, sotCleared=${stats.sotCleared}`
@@ -301,8 +311,8 @@ export function scheduleStartupMaintenanceOnce(
 
       if (signal.aborted) return;
       const chunkStats = await runChunkCollectionStartupMaintenanceOnce(
-        deps.metadataRepository,
-        deps.qdrantRepository
+        knowledgeBase.metadataRepository,
+        knowledgeBase.qdrantRepository
       );
       logger.info(
         `chunk collection 启动维护汇总: scanned=${chunkStats.scannedCollections}, recreated=${chunkStats.recreatedCollections}, deletedEmpty=${chunkStats.deletedEmptyCollections}, skipped=${chunkStats.skippedCollections}, failed=${chunkStats.failedCollections}`

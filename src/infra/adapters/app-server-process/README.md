@@ -19,3 +19,7 @@ fd 3 是一次性 bootstrap pipe：Host 写入已经由 App Host codec 校验的
 owner 前读取并复核。fd 4 只允许 child 向 Host 写 RPC，fd 5 只允许 Host 向 child 写 RPC；数据面不复用控制
 stdout，也不经过 Renderer IPC。RPC 只暴露 composition 注入的 handler registry，业务层必须再用严格 DTO adapter
 包装 raw method，不能持有 supervisor 或 transport peer。
+
+控制 stdout 与 RPC pipe 互不保序。ready 之前 RPC 或 bootstrap pipe 先报错时，supervisor 最多等 2 秒的 fatal 帧或
+进程退出再判失败：child 因数据库等原因启动失败时，宿主拿到的是 fatal 帧里的失败类别，而不是 `write EPIPE`
+之类的传输错误。ready 之后的传输失败立即按协议错误处理。

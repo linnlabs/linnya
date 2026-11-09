@@ -20,27 +20,29 @@ export interface UiMessageSqlRow {
   run_id: string | null;
   content_event_id: string | null;
   data_event_id: string | null;
-  tool_content_json: string | null;
+  source_content_json: string | null;
   tool_data_json: string | null;
 }
 
 // 外层窗口仍按 conversation/sort_seq 索引分页；每个来源由事件主键定位。
 // 用 -> 保留 JSON 的 null、字符串、数组等类型，与字段缺失（SQL NULL）区分。
-export const UI_ROWS_WITH_TOOL_RESULTS = `(
+export const UI_ROWS_WITH_EVENT_SOURCES = `(
   SELECT m.*,
-    CASE c.type WHEN 'tool_output' THEN c.payload -> '$.observation'
-      WHEN 'requires_user_interaction' THEN c.payload -> '$.form.observation' END AS tool_content_json,
+    CASE c.type WHEN 'thought' THEN c.payload -> '$.content'
+      WHEN 'tool_output' THEN c.payload -> '$.observation'
+      WHEN 'requires_user_interaction' THEN c.payload -> '$.form.observation' END AS source_content_json,
     CASE d.type WHEN 'tool_output' THEN d.payload -> '$.data'
       WHEN 'requires_user_interaction' THEN d.payload -> '$.form.data' END AS tool_data_json
   FROM conversation_ui_messages m
   LEFT JOIN events c ON c.id = m.content_event_id AND c.run_id = m.run_id
-    AND c.payload ->> '$.tool_call_id' = m.payload_json ->> '$.tool_call_id'
+    AND ((m.message_type = 'thought' AND c.type = 'thought')
+      OR (m.message_type = 'tool_calls' AND c.payload ->> '$.tool_call_id' = m.payload_json ->> '$.tool_call_id'))
   LEFT JOIN events d ON d.id = m.data_event_id AND d.run_id = m.run_id
     AND d.payload ->> '$.tool_call_id' = m.payload_json ->> '$.tool_call_id'
 )`;
 
 function readReferencedField(messageId: string, eventId: string, json: string | null): unknown {
-  if (json === null) throw new Error(`Tool message ${messageId} cannot read its result from event ${eventId}`);
+  if (json === null) throw new Error(`Message ${messageId} cannot read its result from event ${eventId}`);
   return JSON.parse(json);
 }
 
@@ -52,7 +54,7 @@ export function toUiMessageView(row: UiMessageSqlRow): ConversationUiMessage {
     payload = { ...payload, data: readReferencedField(row.message_id, row.data_event_id, row.tool_data_json) };
   }
   const content = row.content_event_id === null ? row.content
-    : readReferencedField(row.message_id, row.content_event_id, row.tool_content_json);
+    : readReferencedField(row.message_id, row.content_event_id, row.source_content_json);
   const parsed = ConversationUiMessageSchema.safeParse({
     message_id: row.message_id,
     conversation_id: row.conversation_id,
@@ -77,10 +79,11 @@ export function toUiMessageView(row: UiMessageSqlRow): ConversationUiMessage {
 /** append 与 rebuild 共用同一物理行编码；来源身份不进入对外 DTO。 */
 export function writeUiMessageRow(db: Database.Database, row: UiMessageRow, mode: 'insert' | 'upsert'): void {
   let payload = row.payload;
-  let contentEventId: string | undefined;
+  const contentEventId = row.messageType === 'thought' || row.messageType === 'tool_calls'
+    ? row.contentEventId : undefined;
   let dataEventId: string | undefined;
   if (row.messageType === 'tool_calls') {
-    ({ contentEventId, dataEventId } = row);
+    dataEventId = row.dataEventId;
     const { data, ...card } = row.payload;
     if (data !== undefined && dataEventId === undefined) {
       throw new Error(`Tool message ${row.messageId} has data without a source event`);

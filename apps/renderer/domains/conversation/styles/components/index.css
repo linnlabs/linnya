@@ -58,4 +58,5 @@
 @import './WebSearchCard.css';
 @import './WorkspaceDocumentViewCard.css';
 @import '../../features/context-window-usage/styles/ContextWindowUsage.css';
+@import '../../features/run-document-changes/styles/RunDocumentChanges.css';
 @import '../../features/context-window-usage/styles/ContextWindowUsagePanel.css';

@@ -43,6 +43,8 @@ import {
   validateMarkdownDocJson,
   type MarkdownDocJson,
 } from '../../../normalization/runtime';
+import { MarkdownDocumentContentError } from '../../definitions/markdownDocumentContentError';
+
 export class MarkdownDocumentService {
   private db: Database.Database;
   private readonly versionRepository: MarkdownDocumentVersionRepository;
@@ -177,9 +179,19 @@ export class MarkdownDocumentService {
     if (!version) {
       throw new Error(`Document not found: ${documentNodeId}`);
     }
-    const document = validateMarkdownDocJson(parseMarkdownDocJson(JSON.parse(version.content_json)));
-    assertMarkdownDocumentBlockIdentities(document);
-    return document;
+    let raw: unknown;
+    try {
+      raw = JSON.parse(version.content_json);
+    } catch (error: unknown) {
+      throw new MarkdownDocumentContentError('unreadable', documentNodeId, error);
+    }
+    try {
+      const document = validateMarkdownDocJson(parseMarkdownDocJson(raw));
+      assertMarkdownDocumentBlockIdentities(document);
+      return document;
+    } catch (error: unknown) {
+      throw new MarkdownDocumentContentError('invalid_format', documentNodeId, error);
+    }
   }
 
   /**

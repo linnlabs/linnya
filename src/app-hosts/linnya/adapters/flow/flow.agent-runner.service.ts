@@ -113,12 +113,12 @@ export class AgentRunnerService {
    * 构造函数
    *
    * @param {GraphExecutor} engine - 图执行引擎，用于驱动Agent模式的状态图执行
-   * @param {KnowledgeBaseService} knowledgeBaseService - 知识库服务，为工具执行提供上下文
+   * @param {KnowledgeBaseService | undefined} knowledgeBaseService - 知识库服务；本次没有启动时缺省，知识库工具自行说明不可用
    * @param {DatabaseService} databaseService - 工作区数据库服务，供 Workspace 类工具使用
    */
   constructor(
     private readonly engine: GraphExecutor,
-    private readonly knowledgeBaseService: KnowledgeBaseService,
+    private readonly knowledgeBaseService: KnowledgeBaseService | undefined,
     private readonly databaseService: DatabaseService,
     private readonly runtime: AgentRunnerRuntimePort
   ) {}

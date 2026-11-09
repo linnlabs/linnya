@@ -7,6 +7,7 @@ import {
   APP_SERVER_CONTROL_SCHEMA_VERSION,
   type AppServerChildControlFrame,
   type AppServerControlRequestFrame,
+  type AppServerStartupFailure,
   type AppServerStartupProgress,
 } from '../definitions/appServerControlProtocol';
 import type { AppServerOwnedLifecycle } from '../definitions/appServerOwnedLifecycle';
@@ -32,6 +33,8 @@ export function runAppServerControlHost(input: {
   readonly input: Readable;
   readonly output: Writable;
   readonly lifecycle: AppServerOwnedLifecycle;
+  /** 产品 composition 提供：把启动失败归到用户能理解的类别，随 fatal 帧发给 parent。 */
+  readonly describeStartupFailure: (error: Error) => AppServerStartupFailure;
   readonly pid?: number;
   readonly daemonEpoch?: string;
 }): AppServerControlHost {
@@ -172,7 +175,8 @@ export function runAppServerControlHost(input: {
       schema_version: APP_SERVER_CONTROL_SCHEMA_VERSION,
       kind: 'fatal',
       code: 'startup_failed',
-      message: failure.message,
+      message: limitFatalMessage(failure.message),
+      startup_failure: describeStartupFailureSafely(input.describeStartupFailure, failure),
     }).catch(() => undefined);
     completedReject?.(failure);
     void shutdown('protocol_failure');
@@ -196,4 +200,26 @@ export function runAppServerControlHost(input: {
 
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
+}
+
+const FATAL_MESSAGE_MAX_LENGTH = 2_048;
+
+/** parent 只接受 2,048 字以内的 fatal 文案；过长的启动错误截断，避免整帧被判无效。 */
+function limitFatalMessage(message: string): string {
+  const text = message.length > 0 ? message : 'App Server 启动失败';
+  return text.length <= FATAL_MESSAGE_MAX_LENGTH
+    ? text
+    : `${text.slice(0, FATAL_MESSAGE_MAX_LENGTH - 1)}…`;
+}
+
+function describeStartupFailureSafely(
+  describe: (error: Error) => AppServerStartupFailure,
+  failure: Error,
+): AppServerStartupFailure {
+  try {
+    return describe(failure);
+  } catch {
+    // 分类只用于说明；分类自身出错时如实报告“原因未知”，不能吞掉启动失败本身。
+    return Object.freeze({ reason: 'unknown', code: null, migration_from_version: null });
+  }
 }

@@ -9,6 +9,7 @@
     :active-run-ids="activeRunIds"
     :answer-render-width-px="answerRenderWidthPx"
     :trailing-status="trailingStatus"
+    shows-run-document-changes
     @edit-message="$emit('edit-message', $event)"
     @regenerate-response="$emit('regenerate-response', $event)"
   />

@@ -11,7 +11,7 @@ import { buildShareTooltipContent, shareOuterRatio } from './shareOption'
 import { buildScatterTooltipContent } from './scatterOption'
 import { buildRadarTooltipContent } from './radarOption'
 import { deriveChartReadingView } from '../chartReadingView'
-import { parseColor } from '../chartPalette'
+import { parseColor } from '@linnya/color-core'
 
 function option(type: Parameters<typeof chartFixture>[0], patch: Record<string, unknown> = {}, state = DEFAULT_CHART_READING_STATE, ctx = chartTestContext()) {
   return buildChartOption(chartFixture(type, patch), state, ctx)

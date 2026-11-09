@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { readPersistedResearchCards } from './__tests__/readPersistedResearchCards';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { CompleteResearchResultSchema } from '@app/schemas';
@@ -14,10 +14,6 @@ import { commonToolConfigs } from '../../ui/tools/configs/common';
 import { createInitialProjectionState, reduceEvent } from '../../services/messageProjection';
 import { runtimeEventToFrontendProjectionEvent } from '../../services/messageProjection/__tests__/helpers/runtimeEventToFrontendProjectionEvent';
 import { PROJECTION_TEST_SCOPE } from '../../services/messageProjection/__tests__/helpers/projectionTestScope';
-import { mapUiMessageDtoToConversationMessage } from '../../message-window/functions/mapUiMessageDto';
-import { readTail } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection';
-import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
-import { SqliteUiProjectionApplier } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteApplier';
 import { projectResearchCompletionCompactStep } from './functions/projectResearchCompletion';
 
 const toolName = 'complete_research';
@@ -67,23 +63,7 @@ function projectLive(events: readonly RuntimeEvent[]) {
     return message;
   });
 }
-function reload(events: readonly RuntimeEvent[]) {
-  const db = new Database(':memory:');
-  db.exec('CREATE TABLE projects (id TEXT PRIMARY KEY)');
-  for (const schema of CONVERSATION_SCHEMAS) db.exec(schema);
-  db.prepare('INSERT INTO conversations (conversation_id, created_at, last_event_at) VALUES (?, 1, 1)').run(conversationId);
-  const projector = new SqliteUiProjectionApplier(db);
-  try {
-    events.forEach((event, index) => projector.projectAppendedEvent(conversationId, runId, event, index));
-    const window = readTail(db, conversationId, 10);
-    if (window.status !== 'ready') throw new Error('Expected durable window');
-    return window.messages.map(message => {
-      const projected = mapUiMessageDtoToConversationMessage(message);
-      if (projected.type !== 'tool_calls') throw new Error('Expected a tool message');
-      return projected;
-    });
-  } finally { db.close(); }
-}
+
 
 describe('research completion through live and durable admission', () => {
   let unregister: (() => void) | undefined;
@@ -99,13 +79,13 @@ describe('research completion through live and durable admission', () => {
   });
   afterEach(() => { unregister?.(); clearRendererPluginRegistryForTest(); });
 
-  it('keeps an unsuccessful delivery distinct from a later verified document handoff', () => {
+  it('keeps an unsuccessful delivery distinct from a later verified document handoff', async () => {
     const failure = route(createToolOutputEvent('output-rejected', conversationId, turnId, toolName, 'rejected', {
       status: 'error', error: 'The source review input changed', observation: 'Read the changed document before proceeding.',
     }, { timestamp: 2 }));
     const events = [decision('rejected'), failure, decision('delivered'), success('delivered')];
     const live = projectLive(events);
-    expect(reload(events).map(message => message.toolPresentation)).toEqual(live.map(message => message.toolPresentation));
+    expect((await readPersistedResearchCards(conversationId, runId, events)).map(message => message.toolPresentation)).toEqual(live.map(message => message.toolPresentation));
     expect(live[0].toolPresentation?.data).toEqual({ kind: 'lifecycle' });
     expect(live[1].toolPresentation?.data).toEqual({
       kind: 'delivered', articlePath: args.document,
@@ -123,7 +103,7 @@ describe('research completion through live and durable admission', () => {
     }).title).toEqual(live[1].toolPresentation?.title?.text);
   });
 
-  it('delivers a parent-authored revision with the same independent review links in live and reload', () => {
+  it('delivers a parent-authored revision with the same independent review links in live and reload', async () => {
     const revision = {
       stage: 'revision', path: args.document, inode: result.data.artifact.inode,
       sha256: result.data.artifact.sha256, citation_sha256: result.data.artifact.citation_sha256,
@@ -133,7 +113,7 @@ describe('research completion through live and durable admission', () => {
     });
     const events = [decision('parent-delivery'), success('parent-delivery', parentResult)];
     const live = projectLive(events);
-    expect(reload(events).map(message => message.toolPresentation)).toEqual(live.map(message => message.toolPresentation));
+    expect((await readPersistedResearchCards(conversationId, runId, events)).map(message => message.toolPresentation)).toEqual(live.map(message => message.toolPresentation));
     expect(live[0].toolPresentation?.data).toEqual(projectLive([decision('child-delivery'), success('child-delivery')])[0].toolPresentation?.data);
     expect(projectResearchCompletionCompactStep({
       sourceToolName: toolName, uiKey: toolName, toolCallId: 'parent-delivery',
@@ -141,9 +121,9 @@ describe('research completion through live and durable admission', () => {
     }).title).toEqual(live[0].toolPresentation?.title?.text);
   });
 
-  it('rejects malformed delivery facts atomically in live, replay and compact presentation', () => {
+  it('rejects malformed delivery facts atomically in live, replay and compact presentation', async () => {
     const malformed = { ...result, data: { ...result.data, quality_passed: true } };
-    expect(() => reload([decision('invalid'), success('invalid', malformed)])).toThrow();
+    await expect(readPersistedResearchCards(conversationId, runId, [decision('invalid'), success('invalid', malformed)])).rejects.toThrow();
     const current = state();
     const start = runtimeEventToFrontendProjectionEvent(decision('invalid'), { ...PROJECTION_TEST_SCOPE, run_id: runId });
     const end = runtimeEventToFrontendProjectionEvent(success('invalid', malformed), { ...PROJECTION_TEST_SCOPE, run_id: runId });

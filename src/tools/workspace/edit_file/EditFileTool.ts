@@ -31,6 +31,7 @@ import { validateWorkspaceFileToolArguments } from '../shared/workspaceFileToolC
 import { applyExactTextReplacement, ExactTextReplacementError, type ExactTextReplacementResult } from '../../../features/workspace/document-file-write/functions/applyExactTextReplacement';
 import type { WorkspaceDocumentFileWriteResult } from '../../../features/workspace/document-file-write/definitions/workspaceDocumentFileWrite';
 import { createFileToolResultCommit } from '../shared/fileToolRecovery';
+import { createFileToolActionLedger, withActionLedger } from '../shared/fileToolActionLedger';
 import { appendCurrentTextMetrics } from '../shared/textMetricsObservation';
 
 const MAX_EDIT_SOURCE_CHARS = 1_500_000;
@@ -234,6 +235,7 @@ export class EditFileTool extends BaseTool {
       db: databaseService.getDb(),
       context: resolvedContext.context,
       resultCommit: createFileToolResultCommit(context, this.name, write => serialize(write)),
+      ...withActionLedger(createFileToolActionLedger(context, databaseService.getDb())),
       ...(context.workspaceMutationPublisher
         ? { mutationPublisher: context.workspaceMutationPublisher }
         : {}),

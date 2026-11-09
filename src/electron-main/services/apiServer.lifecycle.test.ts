@@ -37,6 +37,7 @@ function createRouteDependencies(): RouteDependencies {
       resolveModelProfile: async () => undefined,
       recognizeDocument: async () => ({ pages: [] }),
     },
+    startupCapabilityFailures: [],
     backendBootstrap: {
       applicationVersion: '0.0.38',
       applicationExecutablePath: '/Applications/Linnya.app/Contents/MacOS/Linnya',

@@ -12,7 +12,7 @@ import type { ChartRenderContext } from '../../definitions/chartRender'
 import type { ChartThemeTokens } from '../../definitions/chartTheme'
 import type { ChartReadingView } from '../chartReadingView'
 import { formatChartDisplayValue } from '../chartNumbers'
-import { withAlpha } from '../chartPalette'
+import { withAlpha } from '@linnya/color-core'
 
 export type ChartSpec = MarkdownChartSpecReadView
 export type ChartSeries = MarkdownChartSeriesReadView

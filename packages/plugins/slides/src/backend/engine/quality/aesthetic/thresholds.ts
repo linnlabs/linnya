@@ -65,23 +65,6 @@ export const FONT_SIZE_RECOMMENDED_FLOOR_PT = 6.5;
 export const FONT_SIZE_ANNOTATION_RECOMMENDED_FLOOR_PT = 5.5;
 
 /**
- * 生成稿按阅读方式定的字号下限，以 13.333 英寸宽为基准，按页宽等比折算
- * （10 英寸宽 × 0.75）。上面两个固定下限只用于导入稿和改稿。
- *
- * - body：正文和未标角色的文字；
- * - caption：图注、标签（`caption` / `label` / `annotation` / `axis-label`）；
- * - chrome：脚注、来源、页码（`footnote` / `source` / `page-number`）。
- */
-export const READING_MODE_FONT_FLOORS_PT = {
-  present: { body: 18, caption: 12, chrome: 10 },
-  mixed: { body: 14, caption: 10, chrome: 8 },
-  read: { body: 12, caption: 9, chrome: 7 },
-} as const;
-
-/** 阅读方式字号下限的基准页宽（英寸）。 */
-export const READING_MODE_FONT_FLOOR_REFERENCE_WIDTH_IN = 13.333;
-
-/**
  * 单页字号档位聚类粒度（pt）。差异 ≤ 该值的字号归为同一档。
  * 0.5pt 能兼容部分渲染引擎的微量抖动，同时避免把刻意区分的 16/16.5 合并。
  */

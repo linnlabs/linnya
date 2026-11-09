@@ -193,8 +193,8 @@ import { CustomSelect } from '@linnya/renderer-ui';
 import { LinnyaIcon } from '@linnya/renderer-ui/icons';
 import BatchExportMarkdownModal from '../../../features/import-export/ui/export/BatchExportMarkdownModal.vue';
 import { batchExportProjectAsMarkdown } from '../../../features/import-export/services/batchExportService';
+import { describeBatchExportResult } from '../../../functions/describeBatchExportResult';
 import { useWorkspaceTreeStore } from '../../../store/index.js';
-import { useUIStore } from '../../../../../shared/stores/ui';
 import { useNotificationStore } from '@/app/notification';
 import { useFixedDropdownPosition } from '../composables/useFixedDropdownPosition';
 import { useLocalizedCreatableDocumentTypes } from '@/app/plugins/ui/useDocumentTypePresentation';
@@ -227,7 +227,6 @@ const emit = defineEmits(['item-click', 'create-file', 'create-folder', 'show-co
 
 const isHeaderHovered = ref(false);
 const treeStore = useWorkspaceTreeStore();
-const uiStore = useUIStore();
 const notificationStore = useNotificationStore();
 const { workspaceMessage } = useWorkspaceLocalization();
 
@@ -335,13 +334,13 @@ const handleMoreMenuSelection = (value) => {
 const handleBatchExportConfirm = async (settings) => {
   const result = await batchExportProjectAsMarkdown({
     treeStore,
-    uiStore,
     settings,
     workspaceMessage,
   });
 
   if (result.success) {
-    notificationStore.show(workspaceMessage('workspace.sidebar.fileTree.batchExportComplete', { count: result.exportedCount }), 'success');
+    const notice = describeBatchExportResult(result, workspaceMessage);
+    notificationStore.show(notice.message, notice.type, notice.durationMs);
     isBatchExportModalVisible.value = false;
     return;
   }

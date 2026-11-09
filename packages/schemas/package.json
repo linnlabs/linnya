@@ -38,6 +38,12 @@
       "require": "./dist/api-dtos.js",
       "default": "./dist/esm/api-dtos.js"
     },
+    "./color-palette": {
+      "types": "./dist/color-palette.d.ts",
+      "import": "./dist/esm/color-palette.js",
+      "require": "./dist/color-palette.js",
+      "default": "./dist/esm/color-palette.js"
+    },
     "./file-locator": {
       "types": "./dist/file-locator.d.ts",
       "import": "./dist/esm/file-locator.js",

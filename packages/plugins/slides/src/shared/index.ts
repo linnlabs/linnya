@@ -1,4 +1,9 @@
 export {
+  READING_MODE_FONT_FLOOR_REFERENCE_WIDTH_IN,
+  resolveReadingModeFontFloor,
+  type ReadingMode,
+} from './readingMode';
+export {
   SLIDES_ACTIVE_DOCUMENT_TYPE,
   SLIDES_DOCUMENT_TYPE,
   SLIDES_FILE_EXTENSION,

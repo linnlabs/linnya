@@ -34,5 +34,5 @@ Main 的 event-loop 响应性 monitor 同样由 App owner 创建和停止。它�
 Desktop 通过 bootstrap 一次传入当前 Renderer origin 和 API/Qdrant 动态端口请求；Backend 不自行读取
 Vite 环境或猜默认地址。详见[并行开发](../../../docs/development/env-local.md)。
 
-Backend ready 之前的启动失败由 Main 显示错误对话框，再走同一启动失败收口。
+Backend ready 之前的启动失败由 Main 显示原生对话框，再走同一启动失败收口。对话框不依赖主窗口、Renderer 或 Preload，只有「重新启动」「复制诊断信息」「退出」三个按钮；复制后重新显示同一对话框，不提供删除数据、重置或跳过迁移。原因来自 App Server 的 `startup_failure` 类别（磁盘已满、无法读写数据目录、磁盘读写出错、数据被占用、数据来自更早或更新的版本、数据升级失败、数据文件损坏）；Main 自身的启动失败没有类别，按原因未知说明并附上错误文案。只有版本准入拒绝时才说“原数据没有改动”；迁移失败如实说明停在哪一步、这一步已回滚。诊断信息只含版本、系统、类别、错误码、迁移步骤、数据目录和错误文案，用户主目录写成 `~`。文案与诊断由 `functions/describeStartupFailureDialog.ts` 生成，按钮循环在 `orchestration/presentStartupFailureDialog.ts`。
 凭据文件损坏等可修复错误不能只记日志后静默退出；文件适配器仅提供不含凭据内容的错误消息。

@@ -27,6 +27,7 @@ import { getTelemetrySchemaProviders } from '../../app-hosts/linnya/adapters/tel
 import { getKnowledgeBaseSchemaProviders } from '../../features/knowledge-base/infrastructure/sqlite/schema-providers';
 import { getAssetSchemaProviders } from '../../domains/assets/features/asset-ledger/infrastructure/sqlite/schemaProviders';
 import { getMarkdownSchemaProviders } from '../../domains/markdown/features/document-storage/infrastructure/sqlite/schemaProviders';
+import { getActionLedgerSchemaProviders } from '../../domains/action-ledger/infrastructure/sqlite/schemaProviders';
 import { getPluginStateSchemaProviders } from '../../features/plugins/infrastructure/sqlite/schema-providers';
 import { getWorkspaceDataPath } from '../../shared/utils/pathManager';
 import {
@@ -72,6 +73,7 @@ export class DatabaseService {
       ...getWorkspaceSchemaProviders(),
       ...getAssetSchemaProviders(),
       ...getMarkdownSchemaProviders(),
+      ...getActionLedgerSchemaProviders(),
       ...getPluginStateSchemaProviders(),
       ...getConversationSchemaProviders(),
       ...getProjectDeletionSchemaProviders(),
@@ -134,7 +136,7 @@ export class DatabaseService {
       // - worker 只需要轻量 DB 连接，不能因为 import DatabaseService 静态加载 Electron/plugin runtime。
       options.lifecycleBootstrap?.(db);
 
-      this.createIndexes();
+      this.createDependentSchema();
 
       console.log('[DatabaseService] Database initialized successfully');
     } catch (error) {
@@ -224,7 +226,7 @@ export class DatabaseService {
         await yieldToEventLoop();
       }
       options.lifecycleBootstrap?.(db);
-      this.createIndexes();
+      this.createDependentSchema();
       await options.progress.report({
         state: 'finished',
         upgrading,
@@ -308,8 +310,8 @@ export class DatabaseService {
     this.configureConnection(db);
   }
 
-  private isIndexDdl(ddl: string): boolean {
-    return /^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b/i.test(ddl);
+  private isDependentDdl(ddl: string): boolean {
+    return /^\s*CREATE\s+(?:(?:UNIQUE\s+)?INDEX|VIEW|TRIGGER)\b/i.test(ddl);
   }
 
   private applyProviderSchemas(options: {
@@ -353,26 +355,26 @@ export class DatabaseService {
    * 遍历所有 Schema Providers 并执行非索引 DDL。
    *
    * 中文备注：
-   * - 这里故意跳过 CREATE INDEX；
+   * - 索引、视图和触发器在表迁移完成后建立，避免引用正在替换的旧表；
    * - 老库的旧表不会因为 CREATE TABLE IF NOT EXISTS 自动补列；
    * - 因此索引必须等 runMigrations() 补完新增列之后再创建。
    */
   private createTables(): void {
     this.applyProviderSchemas({
       label: 'tables',
-      shouldApply: ddl => !this.isIndexDdl(ddl),
+      shouldApply: ddl => !this.isDependentDdl(ddl),
     });
 
     // this.applyPostSchemaMigrations(); // ⚠️ 废弃：迁移逻辑已移至 migrations.ts
   }
 
   /**
-   * 遍历所有 Schema Providers 并执行索引 DDL。
+   * 迁移后再创建依赖最终表结构的索引、视图与触发器。
    */
-  private createIndexes(): void {
+  private createDependentSchema(): void {
     this.applyProviderSchemas({
-      label: 'indexes',
-      shouldApply: ddl => this.isIndexDdl(ddl),
+      label: 'indexes, views and triggers',
+      shouldApply: ddl => this.isDependentDdl(ddl),
     });
   }
 

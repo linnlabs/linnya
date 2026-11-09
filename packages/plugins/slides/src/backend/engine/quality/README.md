@@ -70,7 +70,7 @@ PresentationRenderModel
 - 文本测量或字体信息如需参与规则，必须通过平台 port 或上游已经计算好的 lint input，不在 quality 内部新建测量实现。
 - 字体规则只消费 run 级 `fontFamily + resolvedFontFamily + fontScript + fontResolution`：按脚本分别统计，weight/style 不算新 family，unresolved 单独形成 finding；requested/resolved family 不一致时输出 `font_family_substituted`，请求样式与 `resolvedBold/resolvedItalic` 不一致时输出 `font_style_substituted`。这些规则都禁止在 quality 内重新解析字体或退回第一 run 的原始 family 字符串猜测。
 - 字体可交付性由调用方传入 `fontTarget`（生成稿取 `theme.fontTarget`，缺省 `office`；导入稿不传）。`font_not_deliverable` 只看作者声明的 family，按 `shared/fontDelivery` 的 Office 字体表判断，本机装了也照报；目标为 `office` 时，Office 字体在本机缺失造成的预览替代不报 `font_family_substituted`，避免催 Agent 换成本机专属字体。
-- 字号下限由调用方传入 `readingMode`（生成稿取 `theme.reading`，缺省 `mixed`；导入稿与改稿不传）。生成稿按阅读方式分正文、图注标签（`caption`/`label`/`annotation`/`axis-label`）、脚注来源页码（`footnote`/`source`/`page-number`）三档，数值见 `thresholds.ts` 的 `READING_MODE_FONT_FLOORS_PT`，以 13.333in 页宽为基准等比折算；导入稿与改稿沿用 6.5pt / 5.5pt 固定下限，不催 Agent 改作者原有字号。5pt 近不可读阈值对两者一致。
+- 字号下限由调用方传入 `readingMode`（生成稿取 `theme.reading`，缺省 `mixed`；导入稿与改稿不传）。生成稿按阅读方式分正文、图注标签（`caption`/`label`/`annotation`/`axis-label`）、脚注来源页码（`footnote`/`source`/`page-number`）三档，质量检查和设计基准共用 [阅读方式的字号规则](../../../shared/readingMode.ts)（公开入口 `@plugin/slides/shared`），以 13.333in 页宽为基准等比折算；导入稿与改稿沿用 6.5pt / 5.5pt 固定下限，不催 Agent 改作者原有字号。5pt 近不可读阈值对两者一致。
 - 方向贯彻由调用方传入 `direction`（生成稿取 `theme.direction`，导入稿与未声明时不传），规则在 `aesthetic/directionRules.ts`，只对照声明与事实，不评价方向好坏：
   - `direction_background_off`（P1）：整页底色按绘制顺序叠加页面背景与覆盖 95% 以上的纯色形状（含透明度混合），与声明的背景、墨色、强调色的 CIE76 色差都超过 12 时报告；满版照片、背景图与半透明以上的渐变满版形状不判；渐变页面背景任一色标落在声明里即可。
   - `direction_font_undeclared`（P1）：文字 run 与表格单元格声明的字体不在 `fonts` 里时报告；Office 本地化名称（微软雅黑 / Microsoft YaHei）先归一。

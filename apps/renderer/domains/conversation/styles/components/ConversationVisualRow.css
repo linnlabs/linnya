@@ -48,25 +48,46 @@
 }
 
 /*
- * tail region 是最后一轮 duration/actions/waiting 的唯一几何 owner。
- * 子元素全部绝对定位，图标延迟显隐和 disabled actions 都不能改变虚拟行高度。
+ * tail region 是最后一轮 duration/actions/waiting/改动清单的唯一几何 owner。
+ * 首行固定 42px，子元素全部绝对定位，图标延迟显隐和 disabled actions 都不能改变虚拟行高度。
+ * 本轮改了文档时，尾注占首行左侧，展开的清单和已工作时长依次排在首行下方。
  */
 .conversation-visual-row__tail {
+  position: relative;
+}
+
+.conversation-visual-row__tail-line {
   position: relative;
   height: 42px;
 }
 
-.conversation-visual-row__tail > .turn-work-duration-hint {
+.conversation-visual-row__tail-line > .turn-work-duration-hint {
   position: absolute;
   inset: 0;
   min-height: 0;
   margin-top: 0;
 }
 
-.conversation-visual-row__tail > .conversation-answer-actions--turn {
+.conversation-visual-row__tail-line > .conversation-answer-actions--turn {
   position: absolute;
   top: 9px;
   right: 0;
+}
+
+/* 给右侧转存 / 复制留出位置，长标题截断。 */
+.conversation-visual-row__tail-line > .run-document-changes-note {
+  position: absolute;
+  top: 9px;
+  left: calc(-1 * var(--space-1-5));
+  max-width: calc(100% - 64px);
+}
+
+.conversation-visual-row__tail > .turn-work-duration-hint.conversation-visual-row__tail-duration {
+  margin-top: var(--space-1);
+}
+
+.conversation-visual-row__tail > .run-document-changes-list + .turn-work-duration-hint.conversation-visual-row__tail-duration {
+  margin-top: var(--space-3);
 }
 
 .conversation-visual-row__waiting-indicator {

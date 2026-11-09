@@ -15,6 +15,8 @@ Host resolver 组合两类实现：
 - 永久启用的内建 Markdown provider；
 - 贡献了 `writeDocument` 的插件 provider，并保留插件启停检查。
 
+每次成功写入在这里记一条行动账本粗账，执行者取自工具上下文；规则见[行动账本](../../../domains/action-ledger/README.md)。
+
 `write_file` 负责提供目标全文；`edit_file` 重读通用 VFS 后，可经 provider 的内部 `prepareEdit`
 取得与正式读取一致的可编辑文本，再完成一次 exact replacement，并把目标全文交给同一个 provider。
 provider 不重复实现字符串替换，也不反向依赖 Agent Tool 类。未声明 `prepareEdit` 的插件继续使用原 VFS 文本。
