@@ -340,7 +340,7 @@
 }
 
 /* 表格 */
-/* 滚动条走共享的 OverlayScrollbars linnya 主题；水平滚动只在窗口窄到放不下最小列宽时出现。 */
+/* 滚动条走共享的 OverlayScrollbars linnya 主题；列总宽超过可视区时才出现水平滚动。 */
 .project-overview__scroll-host {
   position: relative;
   display: flex;
@@ -428,7 +428,7 @@
 .project-overview__resize {
   position: absolute;
   top: 6px;
-  left: calc(var(--project-overview-column-gap) / -2 - 4px);
+  right: calc(var(--project-overview-column-gap) / -2 - 4px);
   bottom: 6px;
   z-index: 1;
   width: 8px;

@@ -6,6 +6,7 @@ import {
   moveProjectOverviewColumn,
   normalizeProjectOverviewLayout,
   resizeProjectOverviewColumn,
+  resizeProjectOverviewName,
   toggleProjectOverviewColumn,
 } from '../functions/projectOverviewLayout';
 
@@ -31,11 +32,15 @@ export const useProjectOverviewLayoutStore = defineStore('workspace-project-over
     savedLayout.value = resizeProjectOverviewColumn(layout.value, id, width);
   }
 
+  function resizeName(width: number): void {
+    savedLayout.value = resizeProjectOverviewName(layout.value, width);
+  }
+
   function reset(): void {
     savedLayout.value = null;
   }
 
-  return { savedLayout, layout, toggleColumn, moveColumn, resizeColumn, reset };
+  return { savedLayout, layout, toggleColumn, moveColumn, resizeColumn, resizeName, reset };
 }, {
   persist: {
     key: 'project-overview-layout',

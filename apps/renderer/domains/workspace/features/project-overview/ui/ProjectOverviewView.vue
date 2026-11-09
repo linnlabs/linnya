@@ -86,7 +86,7 @@
     >
       <div ref="scrollMountRef" class="project-overview__scroll" data-overlayscrollbars-initialize>
         <div class="project-overview__table" role="table" :style="tableStyle">
-          <div ref="headerRef" class="project-overview__header" role="row">
+          <div class="project-overview__header" role="row">
             <div
               v-for="column in headerColumns"
               :key="column.id"
@@ -109,7 +109,6 @@
                 />
               </button>
               <span
-                v-if="column.id !== 'name'"
                 class="project-overview__resize"
                 role="separator"
                 aria-orientation="vertical"
@@ -226,7 +225,7 @@ import {
   type ProjectOverviewSort,
   type ProjectOverviewSortKey,
 } from '../definitions/projectOverview';
-import { DEFAULT_PROJECT_OVERVIEW_LAYOUT, clampColumnWidth } from '../functions/projectOverviewLayout';
+import { DEFAULT_PROJECT_OVERVIEW_LAYOUT, clampColumnWidth, clampNameWidth } from '../functions/projectOverviewLayout';
 import {
   defaultProjectOverviewSortDirection,
   formatProjectOverviewActor,
@@ -263,7 +262,6 @@ const emit = defineEmits<{
 
 const ALL = '__all__';
 const ROW_HEIGHT = 40;
-const NAME_COLUMN_MIN_WIDTH = 200;
 const COLUMN_GAP = 16;
 const CONTENT_SEARCH_LIMIT = PROJECT_OVERVIEW_CONTENT_SEARCH_MAX_MATCHES;
 
@@ -391,7 +389,8 @@ function setLocationFilter(value: string): void {
 }
 
 // 列：名称固定在最前；其余按列配置。拖动列宽时先改草稿，松手再保存。
-const draftWidths = ref<Partial<Record<ProjectOverviewColumnId, number>>>({});
+const draftWidths = ref<Partial<Record<ProjectOverviewSortKey, number>>>({});
+const nameWidth = computed(() => draftWidths.value.name ?? layoutStore.layout.nameWidth);
 const visibleColumns = computed(() => layoutStore.layout.columns
   .filter(column => column.visible)
   .map(column => ({ ...column, width: draftWidths.value[column.id] ?? column.width })));
@@ -400,41 +399,37 @@ const headerColumns = computed<{ readonly id: ProjectOverviewSortKey }[]>(() => 
   ...visibleColumns.value.map(column => ({ id: column.id })),
 ]);
 const tableStyle = computed(() => {
-  const widths = visibleColumns.value.map(column => column.width);
-  const minWidth = NAME_COLUMN_MIN_WIDTH + widths.reduce((sum, width) => sum + width + COLUMN_GAP, 0);
+  const widths = [nameWidth.value, ...visibleColumns.value.map(column => column.width)];
+  const contentWidth = widths.reduce((sum, width) => sum + width, 0) + COLUMN_GAP * (widths.length - 1);
   return {
-    '--project-overview-columns': [`minmax(${NAME_COLUMN_MIN_WIDTH}px, 1fr)`, ...widths.map(width => `${width}px`)].join(' '),
-    '--project-overview-table-min-width': `${minWidth}px`,
+    '--project-overview-columns': widths.map(width => `${width}px`).join(' '),
+    '--project-overview-table-min-width': `${contentWidth}px`,
   };
 });
 
 /*
- * 名称列吃掉剩余宽度，其余列等于贴着表格右侧排。所以手柄放在每列的左边界：
- * 往左拖这一列变宽、名称列让出同样宽度，分隔线始终跟着指针。名称列到最小宽度就停，
- * 拖动本身不会把表格撑出水平滚动。
+ * 与 Excel 一致：每列（含名称列）都是固定宽度，从左往右排；拖某列右边界只改这一列，
+ * 右边的列整体跟着平移，分隔线始终在指针下。总宽超过可视区时出现水平滚动。
  */
-const headerRef = ref<HTMLElement | null>(null);
 let resizeCleanup: (() => void) | null = null;
 function startResize(event: PointerEvent, id: ProjectOverviewSortKey): void {
-  if (id === 'name' || event.button !== 0) return;
-  const column = visibleColumns.value.find(item => item.id === id);
-  if (!column) return;
+  if (event.button !== 0) return;
+  const startWidth = id === 'name' ? nameWidth.value : visibleColumns.value.find(item => item.id === id)?.width;
+  if (startWidth === undefined) return;
   event.preventDefault();
   const handle = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
   handle?.setPointerCapture(event.pointerId);
   const startX = event.clientX;
-  const startWidth = column.width;
-  const columnId = column.id;
-  const nameCell = headerRef.value?.firstElementChild;
-  const nameWidth = nameCell instanceof HTMLElement ? nameCell.getBoundingClientRect().width : NAME_COLUMN_MIN_WIDTH;
-  const maxWidth = startWidth + Math.max(0, nameWidth - NAME_COLUMN_MIN_WIDTH);
+  const clamp = id === 'name' ? clampNameWidth : clampColumnWidth;
   const onMove = (moveEvent: PointerEvent) => {
-    const width = Math.min(maxWidth, startWidth + startX - moveEvent.clientX);
-    draftWidths.value = { [columnId]: clampColumnWidth(width) };
+    draftWidths.value = { [id]: clamp(startWidth + moveEvent.clientX - startX) };
   };
   const onUp = () => {
-    const width = draftWidths.value[columnId];
-    if (width !== undefined) layoutStore.resizeColumn(columnId, width);
+    const width = draftWidths.value[id];
+    if (width !== undefined) {
+      if (id === 'name') layoutStore.resizeName(width);
+      else layoutStore.resizeColumn(id, width);
+    }
     draftWidths.value = {};
     resizeCleanup?.();
   };
@@ -453,7 +448,10 @@ function startResize(event: PointerEvent, id: ProjectOverviewSortKey): void {
 onBeforeUnmount(() => resizeCleanup?.());
 
 function resetColumnWidth(id: ProjectOverviewSortKey): void {
-  if (id === 'name') return;
+  if (id === 'name') {
+    layoutStore.resizeName(DEFAULT_PROJECT_OVERVIEW_LAYOUT.nameWidth);
+    return;
+  }
   const width = DEFAULT_PROJECT_OVERVIEW_LAYOUT.columns.find(column => column.id === id)?.width;
   if (width !== undefined) layoutStore.resizeColumn(id, width);
 }

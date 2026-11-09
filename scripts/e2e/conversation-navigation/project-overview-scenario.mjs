@@ -120,14 +120,22 @@ export async function runProjectOverviewScenario({ cdp, evaluate, waitFor, proje
   // 默认列在常规窗口里放得下，不出现水平滚动；滚动条由共享 OverlayScrollbars 接管。
   assert.equal(await evaluate(cdp, `(() => { const s=document.querySelector('.project-overview__scroll'); return s.scrollWidth <= s.clientWidth + 1; })()`), true, '默认列宽不应出现水平滚动');
   assert.equal(await evaluate(cdp, `document.querySelector('.project-overview__scroll-host').hasAttribute('data-overlayscrollbars')`), true, '应使用共享滚动条');
-  // 手柄在列的左边界：往左拖 40px，这一列宽 40px，分隔线跟着指针走 40px。
-  await cdp.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:resize.x-20,y:resize.y,button:'left',buttons:1});
-  const midway = await evaluate(cdp, `document.querySelector('.project-overview__resize').getBoundingClientRect().x + document.querySelector('.project-overview__resize').getBoundingClientRect().width/2`);
-  assert.ok(Math.abs(midway - (resize.x - 20)) < 2, `拖动中分隔线应跟手：${midway} vs ${resize.x - 20}`);
-  await cdp.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:resize.x-40,y:resize.y,button:'left',buttons:1});
-  await cdp.send('Input.dispatchMouseEvent', {type:'mouseReleased',x:resize.x-40,y:resize.y,button:'left',clickCount:1});
+  // 与 Excel 一致：手柄在列右边界，拖动中分隔线跟手，右侧各列整体平移；松手后宽度落库。
+  const secondHeaderX = await evaluate(cdp, `document.querySelectorAll('.project-overview__header-cell')[1].getBoundingClientRect().x`);
+  await cdp.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:resize.x+20,y:resize.y,button:'left',buttons:1});
+  const midway = await evaluate(cdp, `(() => { const r=document.querySelector('.project-overview__resize').getBoundingClientRect(); return r.x + r.width/2; })()`);
+  assert.ok(Math.abs(midway - (resize.x + 20)) < 2, `拖动中分隔线应跟手：${midway} vs ${resize.x + 20}`);
+  const shifted = await evaluate(cdp, `document.querySelectorAll('.project-overview__header-cell')[1].getBoundingClientRect().x`);
+  assert.ok(Math.abs(shifted - (secondHeaderX + 20)) < 2, '右侧列应整体平移');
+  await cdp.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:resize.x+40,y:resize.y,button:'left',buttons:1});
+  await cdp.send('Input.dispatchMouseEvent', {type:'mouseReleased',x:resize.x+40,y:resize.y,button:'left',clickCount:1});
   await waitFor(() => evaluate(cdp, `Math.abs(document.querySelector('.project-overview__resize').parentElement.getBoundingClientRect().width - ${resize.width + 40}) < 2`), '鼠标调整列宽');
-  assert.equal(await evaluate(cdp, `(() => { const s=document.querySelector('.project-overview__scroll'); return s.scrollWidth <= s.clientWidth + 1; })()`), true, '拖宽列不应撑出水平滚动');
+  // 往回拖也要能拖动（缩窄）。
+  const back = await evaluate(cdp, `(() => { const r=document.querySelector('.project-overview__resize').getBoundingClientRect(); return {x:r.x+r.width/2, y:r.y+r.height/2}; })()`);
+  await cdp.send('Input.dispatchMouseEvent', {type:'mousePressed',x:back.x,y:back.y,button:'left',clickCount:1});
+  await cdp.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:back.x-60,y:back.y,button:'left',buttons:1});
+  await cdp.send('Input.dispatchMouseEvent', {type:'mouseReleased',x:back.x-60,y:back.y,button:'left',clickCount:1});
+  await waitFor(() => evaluate(cdp, `Math.abs(document.querySelector('.project-overview__resize').parentElement.getBoundingClientRect().width - ${resize.width - 20}) < 2`), '鼠标缩窄列宽');
   await evaluate(cdp, `document.querySelector('.project-overview__resize').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))`);
   assert.equal(await evaluate(cdp, `document.querySelector('.project-overview__resize').parentElement.getBoundingClientRect().width`), resize.width);
   const added = await evaluate(cdp, `(async () => {const {workspaceGateway:g}=await import('/apps/renderer/shared/ipc/workspaceGateway.ts');const r=await g['create-document']({projectId:${value},name:'临时文件'});if(!r.success)throw new Error(r.error);return r.data.documentId})()`);

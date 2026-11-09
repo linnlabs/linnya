@@ -8,11 +8,14 @@ import {
 
 export const PROJECT_OVERVIEW_MIN_COLUMN_WIDTH = 72;
 export const PROJECT_OVERVIEW_MAX_COLUMN_WIDTH = 480;
+export const PROJECT_OVERVIEW_MIN_NAME_WIDTH = 160;
+export const PROJECT_OVERVIEW_MAX_NAME_WIDTH = 720;
+const DEFAULT_NAME_WIDTH = 280;
 
 const DEFAULT_COLUMNS: readonly ProjectOverviewColumnLayout[] = [
-  { id: 'location', visible: true, width: 132 },
+  { id: 'location', visible: true, width: 120 },
   { id: 'source', visible: true, width: 84 },
-  { id: 'conversation', visible: true, width: 220 },
+  { id: 'conversation', visible: true, width: 200 },
   { id: 'modified', visible: true, width: 168 },
   { id: 'pending', visible: true, width: 112 },
   { id: 'type', visible: false, width: 96 },
@@ -21,8 +24,14 @@ const DEFAULT_COLUMNS: readonly ProjectOverviewColumnLayout[] = [
 
 export const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = Object.freeze({
   version: PROJECT_OVERVIEW_LAYOUT_VERSION,
+  nameWidth: DEFAULT_NAME_WIDTH,
   columns: DEFAULT_COLUMNS,
 });
+
+export function clampNameWidth(width: number): number {
+  if (!Number.isFinite(width)) return DEFAULT_NAME_WIDTH;
+  return Math.round(Math.min(PROJECT_OVERVIEW_MAX_NAME_WIDTH, Math.max(PROJECT_OVERVIEW_MIN_NAME_WIDTH, width)));
+}
 
 function isColumnId(value: unknown): value is ProjectOverviewColumnId {
   return typeof value === 'string' && PROJECT_OVERVIEW_COLUMN_IDS.some(id => id === value);
@@ -64,7 +73,8 @@ export function normalizeProjectOverviewLayout(saved: unknown): ProjectOverviewL
     const insertAt = columns.reduce((index, item, position) => (before.includes(item.id) ? position + 1 : index), 0);
     columns.splice(insertAt, 0, column);
   });
-  return { version: PROJECT_OVERVIEW_LAYOUT_VERSION, columns };
+  const nameWidth = typeof record.nameWidth === 'number' ? clampNameWidth(record.nameWidth) : DEFAULT_NAME_WIDTH;
+  return { version: PROJECT_OVERVIEW_LAYOUT_VERSION, nameWidth, columns };
 }
 
 export function toggleProjectOverviewColumn(layout: ProjectOverviewLayout, id: ProjectOverviewColumnId): ProjectOverviewLayout {
@@ -89,6 +99,10 @@ export function moveProjectOverviewColumn(
   if (!moved) return layout;
   columns.splice(to, 0, moved);
   return { ...layout, columns };
+}
+
+export function resizeProjectOverviewName(layout: ProjectOverviewLayout, width: number): ProjectOverviewLayout {
+  return { ...layout, nameWidth: clampNameWidth(width) };
 }
 
 export function resizeProjectOverviewColumn(

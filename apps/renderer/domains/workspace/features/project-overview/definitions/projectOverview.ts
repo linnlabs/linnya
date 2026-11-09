@@ -28,6 +28,8 @@ export interface ProjectOverviewColumnLayout {
 
 export interface ProjectOverviewLayout {
   readonly version: typeof PROJECT_OVERVIEW_LAYOUT_VERSION;
+  /** 名称列固定在最前，只记宽度。 */
+  readonly nameWidth: number;
   readonly columns: readonly ProjectOverviewColumnLayout[];
 }
 

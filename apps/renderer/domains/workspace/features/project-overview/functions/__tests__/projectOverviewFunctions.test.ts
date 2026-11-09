@@ -7,6 +7,8 @@ import {
   PROJECT_OVERVIEW_MIN_COLUMN_WIDTH,
   moveProjectOverviewColumn,
   normalizeProjectOverviewLayout,
+  PROJECT_OVERVIEW_MIN_NAME_WIDTH,
+  resizeProjectOverviewName,
   resizeProjectOverviewColumn,
   toggleProjectOverviewColumn,
 } from '../projectOverviewLayout';
@@ -68,6 +70,14 @@ describe('列配置', () => {
     expect(moved.columns.map(column => column.id).slice(0, 3)).toEqual(['pending', 'location', 'source']);
     const resized = resizeProjectOverviewColumn(DEFAULT_PROJECT_OVERVIEW_LAYOUT, 'source', 20);
     expect(resized.columns.find(column => column.id === 'source')?.width).toBe(PROJECT_OVERVIEW_MIN_COLUMN_WIDTH);
+  });
+});
+
+describe('名称列宽', () => {
+  it('旧配置没有名称列宽时用默认；保存的宽度按上下限收紧', () => {
+    expect(normalizeProjectOverviewLayout({ version: 1, columns: [] }).nameWidth).toBe(DEFAULT_PROJECT_OVERVIEW_LAYOUT.nameWidth);
+    expect(normalizeProjectOverviewLayout({ version: 1, nameWidth: 20, columns: [] }).nameWidth).toBe(PROJECT_OVERVIEW_MIN_NAME_WIDTH);
+    expect(resizeProjectOverviewName(DEFAULT_PROJECT_OVERVIEW_LAYOUT, 333).nameWidth).toBe(333);
   });
 });
 
