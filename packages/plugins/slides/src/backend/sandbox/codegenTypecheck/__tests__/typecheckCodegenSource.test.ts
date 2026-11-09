@@ -251,6 +251,16 @@ compose({ title: "x", slides: [createSlide()], theme: { direction } });
     expect(r.records.map((record) => `${record.code}:${record.message}`)).toEqual([]);
     expect(r.ok).toBe(true);
   });
+
+  it('图表色从 direction 取值：theme.chart.palette 接受常量里的数组', () => {
+    const source = deckWith('{ id: "pl8f2a-1", excludedHues: [] }').replace(
+      'theme: { direction }',
+      'theme: { chart: { palette: direction.palette.chart }, direction }',
+    );
+    const r = typecheckCodegenSource(source);
+    expect(r.records.map((record) => `${record.code}:${record.message}`)).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
 });
 
 describe('typecheckCodegenSource — rejects TypeScript syntax in deck.js (TS80xx)', () => {

@@ -142,6 +142,20 @@ describe('取色', () => {
     }
   })
 
+  it('每种本色都只在一张图里出现时（主图、显微图、黑白肖像各一张），仍按面积出 3 套，不返回空', () => {
+    const leafBrown: Rgb = [140, 103, 92]
+    const images = [
+      blocks([[leafBrown, 30], [MUSEUM_BLACK, 70]], 64, 6, 11),
+      blocks([[LEAF_GREEN, 55], [WALL_GRAY, 45]], 64, 6, 12),
+      blocks([[[60, 60, 60], 50], [[210, 210, 208], 50]], 64, 10, 13),
+    ]
+    for (let seed = 0; seed < 20; seed += 1) {
+      const result = palettesOf(suggestPalettes({ images, rng: encodeRngId(seed) }))
+      expect(result.subject.every(color => color.images === 1)).toBe(true)
+      expect(result.palettes, encodeRngId(seed)).toHaveLength(3)
+    }
+  })
+
   it('没有图片时用种子色作本色', () => {
     const result = palettesOf(suggestPalettes({ seedColors: ['#2f6b57'], rng: 'pl0003' }))
     expect(result.subject[0]?.hex).toBe('#2f6b57')

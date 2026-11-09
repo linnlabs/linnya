@@ -107,6 +107,19 @@ function styleSpace(relations: readonly PaletteRelation[], bases: readonly Palet
 }
 
 /**
+ * 只做搭配色、不当主色的本色：点缀色，以及给了足够多图时只在一张图里出现的颜色。
+ * 没有一种本色出现在两张以上的图里时，出现次数分不出主体和背景（例如主图、显微图、黑白肖像各一张），
+ * 退回只限制点缀色；全是点缀色时都可以当主色，否则一套也出不来。
+ */
+function partnerOnlyFlags(subject: readonly SubjectColor[], imageCount: number): boolean[] {
+  const byPresence = subject.map(color => color.spot
+    || (imageCount >= PRIMARY_MIN_IMAGES_FOR_PRESENCE && color.images > 0 && color.images < 2))
+  if (byPresence.some(flag => !flag)) return byPresence
+  const bySpot = subject.map(color => color.spot)
+  return bySpot.some(flag => !flag) ? bySpot : subject.map(() => false)
+}
+
+/**
  * 按差异挑选：第一套在高分段里按分数加权抽；之后每套必须与已选各套的感知距离不低于门槛（门槛从高到低放宽），
  * 满足门槛的候选里优先没用过的关系，再按分数加权抽。这样每套都好，彼此又尽量不同。
  */
@@ -170,7 +183,7 @@ export function suggestPalettes(input: SuggestPalettesInput): PaletteSuggestion 
   const avoid = (input.avoidColors ?? []).map(parseOklch).filter((color): color is Oklch => color !== null)
   const excluded = withoutPinnedHues(excludedHueRanges(subject.map(color => color.oklch), avoid), pinned.map(color => color.oklch.h))
   const subjectColors = subject.map(color => color.oklch)
-  const partnerOnly = subject.map(color => color.spot || (images.length >= PRIMARY_MIN_IMAGES_FOR_PRESENCE && color.images > 0 && color.images < 2))
+  const partnerOnly = partnerOnlyFlags(subject, images.length)
   const multiAvailable = subjectColors.filter(color => !isHueExcluded(color.h, excluded)).length >= MULTI_MIN_SUBJECTS
   const accentCount = input.accentCount === undefined ? undefined : Math.min(MAX_ACCENT_COUNT, Math.max(1, Math.round(input.accentCount)))
 

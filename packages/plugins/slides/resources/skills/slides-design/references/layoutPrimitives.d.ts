@@ -772,7 +772,8 @@ interface LayoutThemeInput {
   /** 字体面向的放映环境：`office`（默认，Windows 与 Mac 的 PowerPoint）或 `local`（只在本机放映）。 */
   fontTarget?: 'office' | 'local';
   chart?: {
-    palette: [string, ...string[]];
+    /** 图表系列色，非空。常从 direction.palette.chart 取值，那里是 string[]，所以这里不用元组；非空由运行时校验。 */
+    palette: string[];
   };
   /** 本稿声明的视觉方向，供 inspect 逐页对照；不影响渲染与导出。 */
   direction?: LayoutDirectionInput;
