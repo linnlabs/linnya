@@ -22,6 +22,26 @@ export type SlidesToolCardMessageKey =
   | 'slides.plan.label.palette'
   | 'slides.plan.label.fonts'
   | 'slides.plan.look.paletteLegend'
+  | 'slides.plan.look.paletteName'
+  | 'slides.plan.look.paletteCurrent'
+  | 'slides.plan.look.paletteHint'
+  | 'slides.plan.look.familyPair'
+  | 'slides.plan.look.familySeparator'
+  | 'slides.plan.look.familyNone'
+  | 'slides.plan.look.base.light'
+  | 'slides.plan.look.base.tint'
+  | 'slides.plan.look.base.dark'
+  | 'slides.plan.look.family.red'
+  | 'slides.plan.look.family.orange'
+  | 'slides.plan.look.family.yellow'
+  | 'slides.plan.look.family.green'
+  | 'slides.plan.look.family.cyan'
+  | 'slides.plan.look.family.blue'
+  | 'slides.plan.look.family.purple'
+  | 'slides.plan.look.family.magenta'
+  | 'slides.plan.look.family.brown'
+  | 'slides.plan.look.family.olive'
+  | 'slides.plan.status.modifiedPalette'
   | 'slides.plan.look.cover'
   | 'slides.plan.look.coverExpand'
   | 'slides.plan.look.coverCollapse'
@@ -84,6 +104,26 @@ export const SLIDES_TOOL_CARD_MESSAGE_FALLBACKS = {
   'slides.plan.label.palette': '配色',
   'slides.plan.label.fonts': '字体',
   'slides.plan.look.paletteLegend': '底色 · 文字 ｜ 强调色',
+  'slides.plan.look.paletteName': '{base} · {families}',
+  'slides.plan.look.paletteCurrent': '当前',
+  'slides.plan.look.paletteHint': '点另一套，提交修改后按它重做封面',
+  'slides.plan.look.familyPair': '{first}配{second}',
+  'slides.plan.look.familySeparator': '、',
+  'slides.plan.look.familyNone': '无彩',
+  'slides.plan.look.base.light': '浅底',
+  'slides.plan.look.base.tint': '染纸',
+  'slides.plan.look.base.dark': '深底',
+  'slides.plan.look.family.red': '红',
+  'slides.plan.look.family.orange': '橙',
+  'slides.plan.look.family.yellow': '黄',
+  'slides.plan.look.family.green': '绿',
+  'slides.plan.look.family.cyan': '青',
+  'slides.plan.look.family.blue': '蓝',
+  'slides.plan.look.family.purple': '紫',
+  'slides.plan.look.family.magenta': '品红',
+  'slides.plan.look.family.brown': '褐',
+  'slides.plan.look.family.olive': '橄榄',
+  'slides.plan.status.modifiedPalette': '已提交修改：换一套配色',
   'slides.plan.look.cover': '封面样张',
   'slides.plan.look.coverExpand': '点开看大图',
   'slides.plan.look.coverCollapse': '收起',
@@ -146,6 +186,26 @@ export const SLIDES_TOOL_CARD_MESSAGE_CATALOG: MessageCatalogContribution = {
       'slides.plan.label.palette': 'Colors',
       'slides.plan.label.fonts': 'Fonts',
       'slides.plan.look.paletteLegend': 'Background · Text | Accents',
+      'slides.plan.look.paletteName': '{base} · {families}',
+      'slides.plan.look.paletteCurrent': 'Current',
+      'slides.plan.look.paletteHint': 'Pick another set; submit changes to redo the cover in it',
+      'slides.plan.look.familyPair': '{first} & {second}',
+      'slides.plan.look.familySeparator': ', ',
+      'slides.plan.look.familyNone': 'Neutral',
+      'slides.plan.look.base.light': 'Light',
+      'slides.plan.look.base.tint': 'Tinted',
+      'slides.plan.look.base.dark': 'Dark',
+      'slides.plan.look.family.red': 'Red',
+      'slides.plan.look.family.orange': 'Orange',
+      'slides.plan.look.family.yellow': 'Yellow',
+      'slides.plan.look.family.green': 'Green',
+      'slides.plan.look.family.cyan': 'Cyan',
+      'slides.plan.look.family.blue': 'Blue',
+      'slides.plan.look.family.purple': 'Purple',
+      'slides.plan.look.family.magenta': 'Magenta',
+      'slides.plan.look.family.brown': 'Brown',
+      'slides.plan.look.family.olive': 'Olive',
+      'slides.plan.status.modifiedPalette': 'Changes submitted: switch to another palette',
       'slides.plan.look.cover': 'Cover preview',
       'slides.plan.look.coverExpand': 'Click to enlarge',
       'slides.plan.look.coverCollapse': 'Collapse',

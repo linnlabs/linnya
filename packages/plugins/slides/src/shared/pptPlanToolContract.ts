@@ -27,9 +27,25 @@ export type PptPlanVisualDirection = z.infer<typeof PptPlanVisualDirectionSchema
  * 卡片按该版本渲染第 1 页。配色与字体是用户批准的内容，deck.js 的 `theme.direction` 照抄它们，
  * inspect 再逐页核对。
  */
+const PaletteIdSchema = z.string().trim().min(1).max(80);
+
+/** 计划卡上并列显示、用户可以换成的另一套配色；`id` 是 `linnya palette suggest` 给这一套的编号。 */
+export const PptPlanPaletteOptionSchema = DirectionPaletteSchema.extend({
+  id: PaletteIdSchema.optional(),
+}).strict();
+export type PptPlanPaletteOption = z.infer<typeof PptPlanPaletteOptionSchema>;
+
+/** 选定的一套之外最多再列几套：配色建议一次最多给 5 套。 */
+export const MAX_PLAN_PALETTE_ALTERNATIVES = 4;
+const PaletteAlternativesSchema = z.array(PptPlanPaletteOptionSchema).min(1).max(MAX_PLAN_PALETTE_ALTERNATIVES);
+
 export const PptPlanLookArgsSchema = z.object({
   presentation: z.string().trim().min(1),
   palette: DirectionPaletteSchema,
+  /** 选定这一套在配色建议里的编号。 */
+  paletteId: PaletteIdSchema.optional(),
+  /** 配色建议里没选的几套，卡片与选定的一套并列显示。 */
+  alternatives: PaletteAlternativesSchema.optional(),
   fonts: DirectionFontsSchema,
 }).strict();
 
@@ -45,6 +61,8 @@ export type PptPlanCover = z.infer<typeof PptPlanCoverSchema>;
 
 export const PptPlanLookDataSchema = z.object({
   palette: DirectionPaletteSchema,
+  paletteId: PaletteIdSchema.optional(),
+  alternatives: PaletteAlternativesSchema.optional(),
   fonts: DirectionFontsSchema,
   cover: PptPlanCoverSchema.optional(),
 }).strict();
@@ -114,6 +132,8 @@ export function createPptPlanData(input: PptPlanToolArgs, cover?: PptPlanCover):
       : {
           look: {
             palette: input.look.palette,
+            ...(input.look.paletteId === undefined ? {} : { paletteId: input.look.paletteId }),
+            ...(input.look.alternatives === undefined ? {} : { alternatives: input.look.alternatives }),
             fonts: input.look.fonts,
             ...(cover === undefined ? {} : { cover }),
           },

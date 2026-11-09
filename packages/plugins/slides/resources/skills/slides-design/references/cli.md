@@ -63,6 +63,8 @@ pl8f2a-1 同色系·染纸·绿 bg#e8eddf sf#f4f6ee ink#1f2a1e mu#5a6656 ac#4f7a
 
 配色来源写 `direction.imagePalette`：用了取色结果写 `{ id: "pl8f2a-1", excludedHues: [[315, 15]] }`，度数照抄“排除”那一项，没有排除项写 `[]`；报 `no_subject_color` 时写 `{ unavailable: "no_subject_color" }`，按方向里的配色逻辑配色；最后没用照片时写 `{ unavailable: "no_photos" }`。排除色相里的颜色不要用，inspect 会报 `direction_color_excluded_hue`。
 
+提交计划时把选定那套的编号写进 `ppt_plan` 的 `look.paletteId`，没选的几套按同样的角色写进 `look.alternatives`（各带 `id`）。用户在卡上换了一套时，修改结果带 `paletteChanged: true`，按新的 `look.palette` 改 `direction` 与 `theme`，`imagePalette.id` 换成 `look.paletteId`，重做封面后再提交计划。
+
 用户直接给了整套配色时用 `check`，不合格会给出改动最少的版本，退出码为 1。
 
 ## Shell 与输出

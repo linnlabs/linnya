@@ -4,6 +4,7 @@ import type { ToolCardPresentation } from '@linnya/plugin-host-contract/renderer
 import type { SlidesPlanPresentationData } from '../definitions/slidesToolPresentation';
 import type { SlidesToolCardMessageResolver } from '../definitions/slidesToolCardMessageCatalog';
 import {
+  applyPaletteChoice,
   arePptPlansEqual,
   buildApproveSubmission,
   buildModifySubmission,
@@ -37,6 +38,8 @@ export function usePptPlanInteraction(
   const interactionStatus = computed(() => resolvedProps.value.presentation.data.interaction);
   const editablePlan = ref<EditablePptPlanData | null>(null);
   const notes = ref('');
+  /** 用户点中的备选配色（look.alternatives 的下标）；null 表示仍用 Agent 选定的一套。 */
+  const selectedAlternative = ref<number | null>(null);
   const isSubmitting = ref(false);
   const submissionFailed = ref(false);
   const deletedPage = ref<DeletedEditablePptPlanPage | null>(null);
@@ -56,6 +59,7 @@ export function usePptPlanInteraction(
         return `ppt-plan-source-${resolvedProps.value.messageId}-${page.slideNumber}-${index}`;
       });
       notes.value = interactionNotes ?? '';
+      selectedAlternative.value = null;
       submissionFailed.value = false;
       deletedPage.value = null;
     },
@@ -82,7 +86,9 @@ export function usePptPlanInteraction(
   });
   const isDirty = computed(() => {
     const trimmedNotes = notes.value.trim();
-    return !arePptPlansEqual(sourcePlan.value, normalizedEditablePlan.value) || trimmedNotes.length > 0;
+    return !arePptPlansEqual(sourcePlan.value, normalizedEditablePlan.value)
+      || trimmedNotes.length > 0
+      || selectedAlternative.value !== null;
   });
 
   const canApprove = computed(() => {
@@ -120,6 +126,12 @@ export function usePptPlanInteraction(
     deletedPage.value = null;
   }
 
+  function selectAlternative(index: number | null): void {
+    if (isCompleted.value) return;
+    const count = editablePlan.value?.look?.alternatives?.length ?? 0;
+    selectedAlternative.value = index !== null && index >= 0 && index < count ? index : null;
+  }
+
   function normalizeForSubmission(): PptPlanData | null {
     return editablePlan.value ? toPptPlanData(editablePlan.value) : null;
   }
@@ -154,7 +166,10 @@ export function usePptPlanInteraction(
     submissionFailed.value = false;
     isSubmitting.value = true;
     try {
-      const submission = buildModifySubmission(plan, notes.value.trim());
+      const choice = selectedAlternative.value;
+      const submission = choice === null
+        ? buildModifySubmission(plan, notes.value.trim())
+        : buildModifySubmission(applyPaletteChoice(plan, choice), notes.value.trim(), true);
       await concludeInteractiveToolInteraction({
         observation: submission.observation,
         data: submission.data,
@@ -179,6 +194,8 @@ export function usePptPlanInteraction(
     editablePlan,
     interactionStatus,
     notes,
+    selectedAlternative,
+    selectAlternative,
     isSubmitting,
     isCompleted,
     isDirty,

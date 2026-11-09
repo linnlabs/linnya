@@ -27,7 +27,7 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
    - 若你有 `ppt_direction` 工具：传入场景和母题调用一次，按返回的手法、配色逻辑、主色相、字体与图片策略设计。用户要求配图，或内容离不开图片（器物、人物、现场、实验装置）时传 `requireImages: true`。手法明显不适合内容时，带 `rejected`（cardId 与一句理由）再调用一次；不要因为不熟悉就退回。
    - 若无 `ppt_direction` 工具：按 [`styles.md`](./references/styles.md) 自行判断方向。
    - 编辑已有文稿、用户指定了风格或给了参考稿时，不调用 `ppt_direction`。
-3. 方向要求用图时，先找齐封面和主要内页的图（找图见 [`assets.md`](./references/assets.md)），在 Shell 运行 `linnya palette suggest <图片...>`，第一张放主图。从返回的几套里按内容选一套作为全稿配色；用法和角色对应见 [`cli.md`](./references/cli.md#配色linnya-palette)。
+3. 方向要求用图时，先找齐封面和主要内页的图（找图见 [`assets.md`](./references/assets.md)），在 Shell 运行 `linnya palette suggest <图片...>`，第一张放主图。从返回的几套里按内容选一套作为全稿配色；用法、角色和计划卡见 [`cli.md`](./references/cli.md#配色linnya-palette)。
 4. 新建整份文稿时，先只做封面给用户看效果：定下全稿配色、字体和阅读方式（按场合定，见 design.md 视觉系统第 5 项）并写进 `compose({ theme })`（调用过 `ppt_direction` 时同时写进 deck.js 顶部的 `direction` 对象，见“创建与编辑”第 4 步），用 `write_file` 写好封面这一页并构建成功，render 封面确认像素。封面就是正式稿的第 1 页，按正式质量做，批准后不重做。
 5. 向用户提交一份计划，明确目的、受众、标题、视觉方向、样子和逐页主要内容。视觉方向回答三件事：`concept` 说明整稿遵循什么设计理念以及为什么，`composition` 说明构图、信息密度与页面节奏，`signature` 只声明一个整稿核心视觉记忆点。逐页内容里用一句话写明这一页的视觉主角，例如“何尊内底铭文拓片”“三条限制因素曲线并排”；并列的一组页各写各的看点，不写成同一句。
 - 拿到了 `ppt_direction` 的方向时，用自己的话把它写进这三项，不提方向是怎么来的。

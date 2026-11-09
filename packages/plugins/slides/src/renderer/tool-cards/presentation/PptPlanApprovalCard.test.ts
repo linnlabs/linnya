@@ -9,6 +9,7 @@ import {
   useLocalizationStore,
 } from '@app/localization';
 import type { ToolPresentationProjectorInput } from '@linnya/plugin-host-contract/renderer/toolUi';
+import { concludeInteractiveToolInteraction } from '@plugin/renderer/interactiveTool';
 import PptPlanApprovalCard from './PptPlanApprovalCard.vue';
 import { SLIDES_TOOL_CARD_MESSAGE_CATALOG } from '../definitions/slidesToolCardMessageCatalog';
 import { projectSlidesPlanPresentation } from '../functions/projectSlidesToolPresentation';
@@ -474,6 +475,100 @@ describe('PptPlanApprovalCard', () => {
     expect(host.querySelector('.ppt-plan-look__fonts')?.textContent).toContain('Arial Black');
     expect(host.querySelector('.ppt-plan-look__cover')).toBeNull();
     expect(host.textContent).toContain('底色 · 文字 ｜ 强调色');
+  });
+
+  describe('备选配色', () => {
+    const current = { backgrounds: ['#F0F5FC', '#E3E9F4'], ink: '#1A2435', accents: ['#6884AF', '#4B9495', '#415676'] };
+    const light = { id: 'plzsjd-1', backgrounds: ['#FAFBF8', '#F0F2ED'], ink: '#1E2117', accents: ['#3E4A1F', '#30548B', '#78835F'] };
+    const dark = { id: 'plzsjd-2', backgrounds: ['#141619', '#202124'], ink: '#E9EBEF', accents: ['#90B5EE', '#93A1B7'] };
+
+    function mountWithAlternatives(messageId: string) {
+      const plan = createPlan([{ slideNumber: 1, title: '封面', content: '标题与副标题。' }]);
+      const data = { ...plan.data, look: { palette: current, paletteId: 'plzsjd-3', alternatives: [light, dark], fonts: ['DengXian'] } };
+      const mounted = mountPptPlanApprovalCard(createCardProps({
+        args: toPlanArgs(plan.data), result: { data }, status: 'success', messageId, toolCallId: `call_${messageId}`,
+      }));
+      mountedApps.push(mounted.app);
+      return mounted;
+    }
+
+    const options = (host: HTMLElement) => Array.from(host.querySelectorAll<HTMLButtonElement>('.ppt-plan-look__palette-option'));
+    const optionText = (option: HTMLElement | undefined) => option?.textContent?.replace(/\s+/g, ' ').trim();
+    const actionButton = (host: HTMLElement, text: string) => Array.from(host.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.trim() === text);
+
+    it('三套同列，名字由颜色算出；当前一套标“当前”并选中，不再显示色块', () => {
+      const { host } = mountWithAlternatives('msg_alt_list');
+      const items = options(host);
+      expect(items.map(optionText)).toEqual(['当前 · 染纸 · 蓝配青', '浅底 · 橄榄配蓝', '深底 · 蓝']);
+      expect(items.map((item) => item.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false']);
+      expect(host.querySelectorAll('.ppt-plan-look__swatch')).toHaveLength(0);
+      expect(host.textContent).toContain('点另一套，提交修改后按它重做封面');
+    });
+
+    it('点另一套后可以提交修改、不能直接批准；点回当前一套恢复原状', async () => {
+      const { host } = mountWithAlternatives('msg_alt_select');
+      expect(actionButton(host, '提交修改')?.disabled).toBe(true);
+      expect(actionButton(host, '批准并继续')?.disabled).toBe(false);
+
+      options(host)[2]?.click();
+      await nextTick();
+      expect(options(host).map((item) => item.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true']);
+      expect(actionButton(host, '提交修改')?.disabled).toBe(false);
+      expect(actionButton(host, '批准并继续')?.disabled).toBe(true);
+
+      options(host)[0]?.click();
+      await nextTick();
+      expect(options(host)[0]?.getAttribute('aria-checked')).toBe('true');
+      expect(actionButton(host, '提交修改')?.disabled).toBe(true);
+      expect(actionButton(host, '批准并继续')?.disabled).toBe(false);
+    });
+
+    it('提交时计划换成选中的一套，并告诉 Agent 换了配色', async () => {
+      vi.mocked(concludeInteractiveToolInteraction).mockClear();
+      const { host } = mountWithAlternatives('msg_alt_submit');
+      options(host)[1]?.click();
+      await nextTick();
+      actionButton(host, '提交修改')?.click();
+      await nextTick();
+
+      const submitted = vi.mocked(concludeInteractiveToolInteraction).mock.calls[0]?.[0];
+      const { id: _id, ...lightPalette } = light;
+      expect(JSON.parse(submitted?.observation ?? '{}')).toMatchObject({
+        action: 'modify',
+        paletteChanged: true,
+        plan: { look: { palette: lightPalette, paletteId: 'plzsjd-1', alternatives: [{ ...current, id: 'plzsjd-3' }, dark] } },
+      });
+    });
+
+    it('英文界面的配色名也按语言显示', async () => {
+      const { host, pinia } = mountWithAlternatives('msg_alt_locale');
+      setLocale(pinia, 'en-US');
+      await nextTick();
+      expect(options(host).map(optionText)).toEqual(['Current · Tinted · Blue & Cyan', 'Light · Olive & Blue', 'Dark · Blue']);
+    });
+
+    it('已批准的计划只显示，不能再换，也不显示提示', () => {
+      const plan = createPlan([{ slideNumber: 1, title: '封面', content: '标题与副标题。' }]);
+      const data = { ...plan.data, look: { palette: current, alternatives: [light], fonts: ['DengXian'] } };
+      const { app, host } = mountPptPlanApprovalCard(createCardProps({
+        args: toPlanArgs(plan.data), result: { data }, status: 'success', messageId: 'msg_alt_done', toolCallId: 'call_alt_done',
+        interaction: { status: 'approved', response: { action: 'approve' } },
+      }));
+      mountedApps.push(app);
+      expect(options(host).every((item) => item.disabled)).toBe(true);
+      expect(host.textContent).not.toContain('点另一套');
+    });
+
+    it('只换了配色、没写意见时，收起的旧计划说明换了配色', () => {
+      const plan = createPlan([{ slideNumber: 1, title: '封面', content: '标题与副标题。' }]);
+      const { app, host } = mountPptPlanApprovalCard(createCardProps({
+        args: toPlanArgs(plan.data), result: { data: { action: 'modify', plan: plan.data, notes: '', paletteChanged: true } }, status: 'success', messageId: 'msg_alt_fold', toolCallId: 'call_alt_fold',
+        interaction: { status: 'modified', response: { notes: '', paletteChanged: true, plan: plan.data } },
+      }));
+      mountedApps.push(app);
+      expect(host.querySelector('.ppt-plan-card__folded')?.textContent).toContain('已提交修改：换一套配色');
+    });
   });
 
   it('切换语言后应立即更新整张大纲卡的用户界面文案', async () => {

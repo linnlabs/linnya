@@ -259,12 +259,35 @@ export function buildApproveSubmission(): PptPlanSubmission {
   };
 }
 
-export function buildModifySubmission(plan: PptPlanData, notes: string): PptPlanSubmission {
+/**
+ * 用户在卡上换成第 `index` 套备选配色：选中的一套成为 `look.palette`，原来那套放回备选最前，
+ * 其余顺序不变。提交的计划就是用户批准的样子，Agent 照它改 theme 与 direction、重做封面。
+ */
+export function applyPaletteChoice(plan: PptPlanData, index: number): PptPlanData {
+  const look = plan.look;
+  const chosen = look?.alternatives?.[index];
+  if (!look?.alternatives || !chosen) return plan;
+  const { id, ...palette } = chosen;
+  const previous = { ...look.palette, ...(look.paletteId === undefined ? {} : { id: look.paletteId }) };
+  return {
+    ...plan,
+    look: {
+      palette,
+      ...(id === undefined ? {} : { paletteId: id }),
+      alternatives: [previous, ...look.alternatives.filter((_, other) => other !== index)],
+      fonts: look.fonts,
+      ...(look.cover === undefined ? {} : { cover: look.cover }),
+    },
+  };
+}
+
+export function buildModifySubmission(plan: PptPlanData, notes: string, paletteChanged = false): PptPlanSubmission {
   const admittedPlan = PptPlanDataSchema.parse(plan);
   const outputPayload = {
     action: 'modify',
     plan: admittedPlan,
     notes,
+    ...(paletteChanged ? { paletteChanged: true } : {}),
   };
 
   return {

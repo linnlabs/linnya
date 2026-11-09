@@ -58,3 +58,27 @@ describe('PptPlanDataSchema', () => {
     })).toThrow('slideNumber 必须为 1');
   });
 });
+
+describe('look 的备选配色', () => {
+  const palette = { backgrounds: ['#F0F5FC', '#E3E9F4'], ink: '#1A2435', accents: ['#6884AF'] };
+  const option = { id: 'plzsjd-1', backgrounds: ['#FAFBF8'], ink: '#1E2117', muted: '#616559', accents: ['#3E4A1F'], chart: ['#5B6939'] };
+  const look = { presentation: 'workspace:/储能.slides', palette, paletteId: 'plzsjd-3', fonts: ['DengXian'] };
+
+  it('选定一套的编号和备选配色原样进入计划数据', () => {
+    const args = PptPlanToolArgsSchema.parse({ ...makeArgs(), look: { ...look, alternatives: [option] } });
+    expect(createPptPlanData(args).look).toEqual({ palette, paletteId: 'plzsjd-3', alternatives: [option], fonts: ['DengXian'] });
+  });
+
+  it('不传备选时计划数据里没有这两个字段', () => {
+    const args = PptPlanToolArgsSchema.parse({ ...makeArgs(), look: { presentation: look.presentation, palette, fonts: look.fonts } });
+    expect(createPptPlanData(args).look).toEqual({ palette, fonts: ['DengXian'] });
+  });
+
+  it.each([
+    ['空数组', []],
+    ['超过 4 套', [option, option, option, option, option]],
+    ['未知字段', [{ ...option, name: '浅底' }]],
+  ])('拒绝备选配色：%s', (_name, alternatives) => {
+    expect(PptPlanToolArgsSchema.safeParse({ ...makeArgs(), look: { ...look, alternatives } }).success).toBe(false);
+  });
+});

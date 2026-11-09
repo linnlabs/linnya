@@ -1,8 +1,9 @@
 import { isRecord } from '@plugin/slides/shared/valueRecord';
-import { BaseTool, type ToolContext, type ToolParameterSchema } from '@plugin/backend/toolRuntime';
+import { BaseTool, type ToolContext, type ToolParameterProperty, type ToolParameterSchema } from '@plugin/backend/toolRuntime';
 import type { StructuredToolResult } from '@plugin/backend/toolRuntime';
 import { parseFileLocator } from '@app/schemas/file-locator';
 import {
+  MAX_PLAN_PALETTE_ALTERNATIVES,
   createPptPlanData,
   PptPlanDataSchema,
   PptPlanToolArgsSchema,
@@ -89,6 +90,7 @@ function formatPlanForReview(data: PptPlanData): string {
     const { palette, fonts } = data.look;
     lines.push(`  配色：底色 ${palette.backgrounds.join(' ')}；文字 ${palette.ink}；强调 ${palette.accents.join(' ')}`);
     lines.push(`  字体：${fonts.join('、')}`);
+    if (data.look.alternatives) lines.push(`  备选配色：${data.look.alternatives.length} 套，卡片并列显示`);
   }
 
   lines.push('');
@@ -98,6 +100,31 @@ function formatPlanForReview(data: PptPlanData): string {
     lines.push(`  主要内容：${page.content}`);
   }
   return lines.join('\n');
+}
+
+const HEX_ITEMS: ToolParameterProperty = { type: 'string', description: '#RRGGBB。' };
+
+const PALETTE_PROPERTIES: Record<string, ToolParameterProperty> = {
+  backgrounds: {
+    type: 'array', minItems: 1, maxItems: 4,
+    description: '页面底色；第二个起可以是封面、章节页的反色底。',
+    items: HEX_ITEMS,
+  },
+  ink: { type: 'string', description: '正文文字色，#RRGGBB。' },
+  muted: { type: 'string', description: '次要文字色，#RRGGBB。' },
+  accents: { type: 'array', minItems: 1, maxItems: 6, description: '强调色。', items: HEX_ITEMS },
+  chart: { type: 'array', minItems: 1, maxItems: 8, description: '图表系列色。', items: HEX_ITEMS },
+};
+
+/** look 里一套配色的参数形状，与 DirectionPaletteSchema 一致。 */
+function paletteParameter(description: string, extra: Record<string, ToolParameterProperty> = {}): ToolParameterProperty {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    description,
+    properties: { ...PALETTE_PROPERTIES, ...extra },
+    required: ['backgrounds', 'ink', 'accents'],
+  };
 }
 
 export class PptPlanTool extends BaseTool {
@@ -115,6 +142,7 @@ export class PptPlanTool extends BaseTool {
       '新建整稿时先只写好封面一页并构建成功，再用 look 传这份文稿的 locator、全稿配色和字体：卡片会显示真实封面给用户看效果。',
       '编辑已有文稿或封面没做出来时可以不传 look。',
       '用户同意后继续写其余页，封面保留为第 1 页；theme.direction 的 palette、fonts 与批准的 look 一致。',
+      '用户在卡上换了配色时，修改结果带 paletteChanged: true，plan.look.palette 与 paletteId 是新的一套：按它改 theme 和 direction（imagePalette.id 写 paletteId），重做封面后再提交计划。',
     ].join(' ');
   }
 
@@ -159,24 +187,12 @@ export class PptPlanTool extends BaseTool {
             type: 'string',
             description: '只写了封面一页的文稿 locator，例如 workspace:/储能投研.slides。',
           },
-          palette: {
-            type: 'object',
-            additionalProperties: false,
-            description: '全稿配色，与 deck.js 的 theme.direction.palette 一致。',
-            properties: {
-              backgrounds: {
-                type: 'array', minItems: 1, maxItems: 4,
-                description: '页面底色；第二个起可以是封面、章节页的反色底。',
-                items: { type: 'string', description: '#RRGGBB。' },
-              },
-              ink: { type: 'string', description: '正文文字色，#RRGGBB。' },
-              accents: {
-                type: 'array', minItems: 1, maxItems: 5,
-                description: '强调色。',
-                items: { type: 'string', description: '#RRGGBB。' },
-              },
-            },
-            required: ['backgrounds', 'ink', 'accents'],
+          palette: paletteParameter('全稿配色，与 deck.js 的 theme.direction.palette 一致。'),
+          paletteId: { type: 'string', description: '这套配色在 linnya palette suggest 结果里的编号，如 plzsjd-3；不是取色得来的不写。' },
+          alternatives: {
+            type: 'array', minItems: 1, maxItems: MAX_PLAN_PALETTE_ALTERNATIVES,
+            description: '取色返回的几套里没选的，按返回顺序写；卡片与选定的一套并列显示，用户可以换。',
+            items: paletteParameter('另一套配色，角色对应同 palette。', { id: { type: 'string', description: '这一套的编号。' } }),
           },
           fonts: {
             type: 'array', minItems: 1, maxItems: 6,
