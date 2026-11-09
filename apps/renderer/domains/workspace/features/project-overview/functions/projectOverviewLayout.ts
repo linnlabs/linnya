@@ -11,7 +11,7 @@ export const PROJECT_OVERVIEW_MAX_COLUMN_WIDTH = 480;
 
 const DEFAULT_COLUMNS: readonly ProjectOverviewColumnLayout[] = [
   { id: 'location', visible: true, width: 132 },
-  { id: 'source', visible: true, width: 104 },
+  { id: 'source', visible: true, width: 84 },
   { id: 'conversation', visible: true, width: 220 },
   { id: 'modified', visible: true, width: 168 },
   { id: 'pending', visible: true, width: 112 },
