@@ -31,9 +31,7 @@ export function readCanvasChrome(): CanvasChromeColors {
   document.body.append(probe);
   try {
     return {
-      // 选中框只有 1.5px：用主题给“强调色落在底色上”准备的文字色，暗色主题自动换成亮绿，
-      // 落在深色或染色卡上也看得清；浅色主题与主色几乎相同。
-      accent: resolveColor(probe, '--color-accent-text'),
+      accent: resolveColor(probe, '--color-accent'),
       background: resolveColor(probe, '--color-bg-sidebar'),
       ink: resolveColor(probe, '--color-text-primary'),
       label: resolveColor(probe, '--color-text-secondary'),

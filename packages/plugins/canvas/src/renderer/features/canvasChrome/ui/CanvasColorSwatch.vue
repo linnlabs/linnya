@@ -1,19 +1,23 @@
 <template>
-  <span
-    class="canvas-color-swatch"
-    :style="{
-      backgroundColor: palette.paper,
-      borderColor: `color-mix(in srgb, ${palette.title} 38%, transparent)`,
-    }"
-    aria-hidden="true"
-  />
+  <span class="canvas-color-swatch" :style="swatch" aria-hidden="true" />
 </template>
 <script setup lang="ts">
-import { computed } from 'vue';
-import { readCanvasCardCssPalette, type CanvasColor } from '@plugin/canvas/shared';
+import { computed, onBeforeUnmount, shallowRef } from 'vue';
+import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
+import type { CanvasColor } from '@plugin/canvas/shared';
+import { readCanvasSwatchStyle } from '../functions/readCanvasSwatchStyle';
 import { readCanvasIsDark } from '../../../functions/readCanvasAppearance';
 
-/** 卡片纸色的真实样子；描边取同色相墨色，让很淡的染纸色在白底上也能分辨。 */
 const props = defineProps<{ color: CanvasColor }>();
-const palette = computed(() => readCanvasCardCssPalette(props.color, readCanvasIsDark()));
+// 工具条上的色块在选中期间常驻；切换主题时要跟着换，不能停在挂载时的主题。
+const dark = shallowRef(readCanvasIsDark());
+const theme = new MutationObserver(() => {
+  dark.value = readCanvasIsDark();
+});
+theme.observe(document.documentElement, {
+  attributes: true,
+  attributeFilter: [RENDERER_UI_THEME_ATTRIBUTE],
+});
+onBeforeUnmount(() => theme.disconnect());
+const swatch = computed(() => readCanvasSwatchStyle(props.color, dark.value));
 </script>

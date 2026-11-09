@@ -543,7 +543,7 @@
   width: 10px;
   height: 10px;
   padding: 0;
-  border: 1px solid var(--color-accent-text);
+  border: 1px solid var(--color-accent);
   border-radius: var(--radius-full);
   background: var(--color-bg-default);
   transform: translate(-50%, -50%);
@@ -551,12 +551,12 @@
 }
 /* 常态只把描边调淡，底色保持不透明：圆点压在连线端头上时盖住线，而不是透出线来。 */
 .canvas-connection-anchor {
-  border-color: color-mix(in srgb, var(--color-accent-text) 60%, var(--color-bg-default));
+  border-color: color-mix(in srgb, var(--color-accent) 60%, var(--color-bg-default));
   transition: border-color var(--duration-micro) var(--ease-standard);
 }
 .canvas-connection-anchor:hover,
 .canvas-connection-anchor:focus-visible {
-  border-color: var(--color-accent-text);
+  border-color: var(--color-accent);
 }
 /* 选中线的两端不常驻控制点：选中已由线本身变色表示，端点上只留可拖区域，悬停时显出空心圈提示可改接。 */
 .canvas-connection-endpoint {
@@ -566,7 +566,7 @@
 }
 .canvas-connection-endpoint:hover,
 .canvas-connection-endpoint:focus-visible {
-  border-color: var(--color-accent-text);
+  border-color: var(--color-accent);
   background: var(--color-bg-default);
 }
 .canvas-connection-bar {
