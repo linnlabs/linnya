@@ -2,7 +2,9 @@ import { execFileSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 export function readProcessTable() {
-  const rows = execFileSync('/bin/ps', ['-axww', '-o', 'pid=,ppid=,pgid=,lstart=,command='], {
+  const args = ['-axww', '-o', 'pid=,ppid=,pgid=,lstart=,command='];
+  const observerCommand = ['/bin/ps', ...args].join(' ');
+  const rows = execFileSync('/bin/ps', args, {
     encoding: 'utf8', maxBuffer: 8 * 1024 * 1024, env: { ...process.env, LC_ALL: 'C' },
   });
   const table = new Map();
@@ -10,6 +12,8 @@ export function readProcessTable() {
     const match = line.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(.{24})\s+(.+)$/);
     if (!match) continue;
     const [, pid, parent, group, startedAt, command] = match;
+    // ps 能看到执行本次快照的自己。这是观测进程，不能算作 Desktop 或 Vite 的残留。
+    if (Number(parent) === process.pid && command === observerCommand) continue;
     table.set(Number(pid), { pid: Number(pid), parent: Number(parent), group: Number(group), startedAt, command });
   }
   return table;

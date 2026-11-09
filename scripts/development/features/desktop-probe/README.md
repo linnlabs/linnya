@@ -20,7 +20,7 @@
 | --- | --- |
 | `up` / `restart` | `--name <实例>`、`--window hidden\|inactive\|visible`、`--mode dev\|bundled`、`--size 1400x900`、`--fresh`。默认 `dev` 加载当前工作区的开发插件。仅在停止后用 `up --fresh` 清空隔离数据。用 `restart` 应用新启动选项。 |
 | `status` / `stop` | `status --all` 列出当前 worktree 的实例。状态含 CDP、Vite、API 端口和日志位置。停止会先关 Desktop 再关 Vite。 |
-| `snapshot` / `shot` | `snapshot --within @n25 --all --max-lines 100 --json`。截图接受引用、`--selector <css>` 或 `--clip x,y,w,h`，支持 `--pad`、`--device`、`--jpeg`。默认 1× CSS 像素。 |
+| `snapshot` / `shot` | `snapshot --within @n25 --all --max-lines 100 --json`。截图接受引用、`--selector <css>` 或 `--clip x,y,w,h`，支持 `--pad`、`--device`、`--jpeg`。默认 1× CSS 像素。`timing` 分别报告等待画面稳定和 CDP 抓取的耗时。 |
 | `click` / `dblclick` / `hover` | 目标为 `@n25`、`--selector <css>` 或 `--at x,y`。选择器和引用会检查可见性、位置稳定和命中。坐标用于明确指定像素位置。 |
 | `type` / `press` | `type '中文' [@n25]`，`press Meta+A`、`press Escape`。常见控制键、方向键、字母和数字均可用。 |
 | `drag` / `scroll` | `drag <目标> --by=80,0` 或 `--to <目标>`。支持 `--sample`、`--expect-follow x\|y`、`--tolerance 2`。`scroll <目标> --dy 400`。 |

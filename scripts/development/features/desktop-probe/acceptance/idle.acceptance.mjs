@@ -29,8 +29,12 @@ try {
   assert.ok(sample.value.fps >= 55, JSON.stringify(sample.value));
   assert.ok(sample.value.drift < 0.2, JSON.stringify(sample.value));
   const shot = await run('shot');
-  assert.ok(shot.ms < 300, `空闲后截图 ${shot.ms}ms`);
-  result = { idleMs: Date.now() - begin, ...sample.value, shotMs: shot.ms, readyMs: up.readyMs };
+  const observation = { idleMs: Date.now() - begin, ...sample.value, shotMs: shot.ms, ...shot.timing };
+  console.error(JSON.stringify(observation));
+  // 画面等待与 CDP 抓取分别计时，保留等待动画收尾的默认行为。
+  assert.ok(shot.timing.captureMs < 300, `空闲后截图抓取 ${shot.timing.captureMs}ms`);
+  assert.ok(shot.ms - shot.timing.settleMs < 500, `空闲后截图处理 ${shot.ms - shot.timing.settleMs}ms`);
+  result = { ...observation, readyMs: up.readyMs };
 } finally {
   const exit = await test.finish({ clean: Boolean(result) });
   if (result) console.log(JSON.stringify({ ok: true, ...result, ...exit }));

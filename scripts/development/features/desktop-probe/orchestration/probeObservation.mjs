@@ -19,7 +19,9 @@ export async function snapshotPage(cdp, session, { target, all, limit = 50, json
 }
 
 export async function capturePage(cdp, { target, clip, pad = 0, device = false, jpeg = false, settle = true } = {}) {
+  const settleStarted = performance.now();
   const settled = settle ? await settlePage(cdp) : undefined;
+  const settleMs = Math.round(performance.now() - settleStarted);
   const viewport = await pageFacts(cdp);
   let [left, top, width, height] = clip ?? [0, 0, viewport.width, viewport.height];
   if (target) {
@@ -32,23 +34,25 @@ export async function capturePage(cdp, { target, clip, pad = 0, device = false, 
   height = Math.min(viewport.height, Math.ceil(top + height)) - y;
   if (width <= 0 || height <= 0) throw new ProbeError('NOT_VISIBLE', '截图范围不在视口内');
   const format = jpeg ? 'jpeg' : 'png';
+  const captureStarted = performance.now();
   const response = await cdp.send('Page.captureScreenshot', {
     format, ...(jpeg ? { quality: 80 } : {}),
     clip: { x, y, width, height, scale: device ? 1 : 1 / viewport.dpr },
     captureBeyondViewport: false,
   });
+  const timing = { settleMs, captureMs: Math.round(performance.now() - captureStarted) };
   const buffer = Buffer.from(response.data, 'base64');
   if (jpeg) {
     const { loadImage } = await import('@napi-rs/canvas');
     const image = await loadImage(buffer);
-    return { buffer, format, width: image.width, height: image.height, settled };
+    return { buffer, format, width: image.width, height: image.height, settled, timing };
   }
-  return { buffer, format, width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20), settled };
+  return { buffer, format, width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20), settled, timing };
 }
 
 export async function shotPage(cdp, session, options) {
-  const { buffer, format, width, height, settled } = await capturePage(cdp, options);
-  return { settled, artifacts: [{ ...writeArtifact(session.root, 'shot', format, buffer), width, height }] };
+  const { buffer, format, width, height, settled, timing } = await capturePage(cdp, options);
+  return { settled, timing, artifacts: [{ ...writeArtifact(session.root, 'shot', format, buffer), width, height }] };
 }
 
 export async function waitForPage(cdp, values) {
