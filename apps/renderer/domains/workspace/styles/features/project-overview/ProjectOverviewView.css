@@ -402,7 +402,7 @@
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: var(--font-size-footnote);
+  font-size: var(--font-size-body);
   color: var(--color-text-tertiary);
   cursor: pointer;
 }
