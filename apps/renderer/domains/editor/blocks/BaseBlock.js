@@ -1,3 +1,4 @@
+import { renderWorkspaceTextBlock } from '@linnya/markdown-document-core/workspace-presentation'
 // src/renderer/extensions/blocks/BaseBlock.js
 
 import { Node, mergeAttributes } from '@tiptap/core'
@@ -104,63 +105,8 @@ export const BaseBlock = Node.create({
   },
   
   // 定义节点的HTML结构 - 使用两层DOM结构
-  renderHTML({ HTMLAttributes, node }) {
-    // 创建外层元素
-    const outer = document.createElement('div');
-    outer.className = 'base-block-outer';
-    outer.setAttribute('data-node-type', 'baseBlockOuter');
-    //在外层也添加data-indent，以供 placeholder CSS 使用
-    if (node.attrs.indent > 0) {
-      outer.setAttribute('data-indent', node.attrs.indent);
-    }
-    
-    // ++ 文字颜色继承策略：仅将文字色应用到外层容器（用于控制装饰元素） ++
-    // 背景色由 RootBlock 控制（保持圆角）
-    // 注意：不再直接设置 color 样式，而是设置 CSS 变量，
-    // 防止文本内容意外继承块颜色（文本颜色应完全由 Mark 控制）。
-    if (node.attrs.textColor) {
-      outer.setAttribute('data-text-color', node.attrs.textColor);
-      const textCssVar = `--block-text-${node.attrs.textColor.replace('_text', '')}`;
-      // 设置一个局部变量，供伪元素（如列表点、引用线）使用，而不影响主文本
-      outer.style.setProperty('--local-block-text-color', `var(${textCssVar})`);
-    }
-    // ++ 颜色继承策略结束 ++
-    
-    // 创建内层元素
-    const inner = document.createElement('div');
-    inner.className = 'base-block editor-block';
-    inner.setAttribute('data-node-type', 'baseBlock');
-    inner.setAttribute('data-type', 'base-block');
-    inner.setAttribute('data-block-id', node.attrs.id);
-    
-    // 设置其他属性
-    if (node.attrs.blockType) {
-      inner.setAttribute('data-block-type', node.attrs.blockType);
-    }
-    
-    // 占位符相关代码已移至 PlaceholderPlugin
-    
-    if (node.attrs.textAlign && node.attrs.textAlign !== 'left') {
-      inner.style.textAlign = node.attrs.textAlign;
-    }
-    
-    // --- 新增：根据 indent 属性设置 data-indent --- 
-    if (node.attrs.indent > 0) { // 内层也保留data-indent，以供文本缩进 CSS 使用
-       inner.setAttribute('data-indent', node.attrs.indent);
-    }
-    // --- 结束新增 ---
-    
-    // 设置是否为空
-    const isEmpty = node.content.size === 0;
-    inner.setAttribute('data-is-empty', isEmpty ? 'true' : 'false');
-    
-    // 组装DOM结构
-    outer.appendChild(inner);
-    
-    return {
-      dom: outer,
-      contentDOM: inner
-    };
+  renderHTML({ node }) {
+    return renderWorkspaceTextBlock(node, document)
   },
   
   // 从HTML解析节点

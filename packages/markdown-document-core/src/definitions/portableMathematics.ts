@@ -1,9 +1,8 @@
 import type { Attributes, JSONContent, MarkdownParseHelpers, MarkdownRendererHelpers, MarkdownToken, MarkdownTokenizer } from '@tiptap/core';
 import { BlockMath, InlineMath } from '@tiptap/extension-mathematics';
-import type { KatexOptions } from 'katex';
+import { markdownMathOptions } from './markdownMathOptions';
+export { markdownMathOptions } from './markdownMathOptions';
 
-// 两条投影共用信任与错误策略；公式源文始终保留，TeX 不授予 HTML/链接执行权限。
-export const markdownMathOptions: KatexOptions = { throwOnError: false, trust: false, strict: 'ignore' };
 function mathMarkdown(name: 'inlineMath' | 'blockMath') {
   const block = name === 'blockMath';
   const tokenizer: MarkdownTokenizer = {

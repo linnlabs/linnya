@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_CHART_READING_STATE } from '../definitions/chartReadingState'
+import { DEFAULT_CHART_READING_STATE } from '@linnya/markdown-document-core/workspace-charts'
 import { chartFixture, chartTestTheme } from '../testing/chartTestFixtures'
-import { composeChartImage, escapeXml, wrapText, type TextMeasurer } from './chartImageComposition'
-import { buildChartLegend } from './chartLegend'
+import { composeChartImage, escapeXml, wrapText, type TextMeasurer } from '@linnya/markdown-document-core/workspace-charts'
+import { buildChartLegend } from '@linnya/markdown-document-core/workspace-charts'
 
 /** 每个字符固定宽度，使换行与高度可确定。 */
 const measure: TextMeasurer = (text, size) => [...text].length * size * 0.6

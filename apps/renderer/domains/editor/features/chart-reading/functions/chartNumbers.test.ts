@@ -6,7 +6,7 @@ import {
   formatChartAxisTick,
   formatChartDisplayValue,
   resolveAxisDomain,
-} from './chartNumbers'
+} from '@linnya/markdown-document-core/workspace-charts'
 
 describe('cleanFloat', () => {
   it('清理浮点噪声并把 -0 归零', () => {

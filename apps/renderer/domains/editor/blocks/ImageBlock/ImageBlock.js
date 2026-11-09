@@ -1,3 +1,4 @@
+import { renderWorkspaceImageBlock } from '@linnya/markdown-document-core/workspace-presentation'
 import { Node } from '@tiptap/core'
 import { Plugin, PluginKey, NodeSelection } from 'prosemirror-state'
 import { generateBlockId } from '../../../../shared/utils/idUtils'
@@ -143,65 +144,9 @@ export const ImageBlock = Node.create({
 
   // 定义节点的HTML结构 - 使用两层DOM结构，类似其他块
   renderHTML({ node }) {
-    // 创建外层元素
-    const outer = document.createElement('div');
-    outer.className = 'image-block-outer';
-    outer.setAttribute('data-node-type', 'imageBlockOuter');
-
-    // 创建内层元素
-    const inner = document.createElement('figure');
-    inner.className = 'image-block editor-block';
-    inner.setAttribute('data-node-type', 'imageBlock');
-    inner.setAttribute('data-type', 'image-block');
-    inner.setAttribute('data-block-id', node.attrs.id);
-    inner.setAttribute('data-block-type', node.attrs.blockType);
-    if (node.attrs.uploadedAt != null) inner.setAttribute('data-uploaded-at', node.attrs.uploadedAt);
-    inner.setAttribute('data-caption', node.attrs.caption || '');
-    if (node.attrs.width) inner.style.width = `${node.attrs.width}px`;
-    if (node.attrs.assetId) inner.setAttribute('data-asset-id', node.attrs.assetId);
-
-    // 设置对齐方式
-    if (node.attrs.alignment) {
-      inner.setAttribute('data-alignment', node.attrs.alignment);
-      inner.classList.add(`align-${node.attrs.alignment}`);
-    }
-
-    // 创建图片元素
-    if (node.attrs.src) {
-      const img = document.createElement('img');
-      img.src = node.attrs.src;
-
-      if (node.attrs.alt) img.alt = node.attrs.alt;
-      if (node.attrs.title) img.title = node.attrs.title;
-      if (node.attrs.width) img.width = node.attrs.width;
-      if (node.attrs.height) img.height = node.attrs.height;
-
-      // 设置图片样式
-      img.style.maxWidth = '100%';
-      img.className = 'image-block-img';
-
-      // 添加图片到内层元素
-      inner.appendChild(img);
-    } else {
-      // 如果没有图片源，显示占位符
-      inner.classList.add('empty-image');
-      inner.textContent = resolveCurrentEditorMessage('editor.imageBlock.empty');
-    }
-
-    if (node.attrs.caption) {
-      const caption = document.createElement('figcaption');
-      caption.className = 'figure-caption';
-      caption.textContent = node.attrs.caption;
-      inner.appendChild(caption);
-    }
-
-    // 组装DOM结构
-    outer.appendChild(inner);
-
-    return {
-      dom: outer,
-      contentDOM: null // 原子节点不需要contentDOM
-    };
+    return renderWorkspaceImageBlock(node, document, {
+      emptyImageLabel: resolveCurrentEditorMessage('editor.imageBlock.empty'),
+    })
   },
 
   // 从HTML解析节点

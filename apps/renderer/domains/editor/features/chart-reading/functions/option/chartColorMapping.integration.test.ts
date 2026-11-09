@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_CHART_READING_STATE } from '../../definitions/chartReadingState'
+import { DEFAULT_CHART_READING_STATE } from '@linnya/markdown-document-core/workspace-charts'
 import { chartFixture, chartTestContext, chartTestTheme } from '../../testing/chartTestFixtures'
-import { loadChartRuntime } from '../../orchestration/chartRuntime'
-import { buildChartLegend } from '../chartLegend'
-import { setCategoryRange, toggleEmphasis, toggleSeriesVisibility, reconcileReadingState } from '../chartReadingState'
-import { deriveChartReadingView } from '../chartReadingView'
-import { buildChartOption } from './buildChartOption'
-import { buildCartesianTooltipContent } from './cartesianOption'
-import { buildShareTooltipContent } from './shareOption'
+import { loadChartRuntime } from '@linnya/markdown-document-core/workspace-charts'
+import { buildChartLegend } from '@linnya/markdown-document-core/workspace-charts'
+import { setCategoryRange, toggleEmphasis, toggleSeriesVisibility, reconcileReadingState } from '@linnya/markdown-document-core/workspace-charts'
+import { deriveChartReadingView } from '@linnya/markdown-document-core/workspace-charts'
+import { buildChartOption } from '@linnya/markdown-document-core/workspace-charts'
+import { buildCartesianTooltipContent } from '@linnya/markdown-document-core/workspace-charts'
+import { buildShareTooltipContent } from '@linnya/markdown-document-core/workspace-charts'
 
 const categories = ['论文', '报告', '披露', '访谈', '统计', '专利', '新闻', '档案']
 const values = [28, 21, 15, 12, 9, 7, 5, 3]

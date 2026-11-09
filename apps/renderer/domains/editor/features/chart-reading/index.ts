@@ -6,7 +6,7 @@
  */
 
 export { default as ChartSurface } from './ui/ChartSurface.vue'
-export type { ChartReadingKey, ChartReadingVariant } from './definitions/chartReadingState'
+export type { ChartReadingKey, ChartReadingVariant } from '@linnya/markdown-document-core/workspace-charts'
 export {
   createChartReadingSessionId,
   disposeChartReadingBlock,
@@ -19,6 +19,6 @@ export {
   type ChartDataTableModel,
 } from './functions/chartDataTable'
 
-export { plotHeightOf } from './functions/chartLayout'
-export { resolveLegendPosition } from './functions/chartLegend'
+export { plotHeightOf } from '@linnya/markdown-document-core/workspace-charts'
+export { resolveLegendPosition } from '@linnya/markdown-document-core/workspace-charts'
 export { renderChartPrintImage } from './orchestration/renderChartPrintImage'

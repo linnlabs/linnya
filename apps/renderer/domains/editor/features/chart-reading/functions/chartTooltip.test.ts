@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { chartTestTheme } from '../testing/chartTestFixtures'
-import { renderChartTooltip, type ChartTooltipContent } from './chartTooltip'
+import { renderChartTooltip, type ChartTooltipContent } from '@linnya/markdown-document-core/workspace-charts'
 
 const content: ChartTooltipContent = {
   heading: 'Q2',

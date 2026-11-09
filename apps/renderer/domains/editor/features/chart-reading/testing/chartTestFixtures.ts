@@ -4,8 +4,8 @@
  */
 
 import { admitMarkdownChartSpec, type MarkdownChartPalette, type MarkdownChartSpec, type MarkdownChartType } from '@app/schemas'
-import { baseChartTheme, type ChartScheme, type ChartThemeTokens } from '../definitions/chartTheme'
-import type { ChartRenderContext } from '../definitions/chartRender'
+import { baseChartTheme, type ChartScheme, type ChartThemeTokens } from '@linnya/markdown-document-core/workspace-charts'
+import type { ChartRenderContext } from '@linnya/markdown-document-core/workspace-charts'
 
 export const chartFixtureInputs: Readonly<Record<MarkdownChartType, Record<string, unknown>>> = {
   bar: {

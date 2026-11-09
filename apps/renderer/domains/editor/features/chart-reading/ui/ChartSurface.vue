@@ -144,7 +144,7 @@ import { ChevronIcon, CopyIcon, RefreshIcon } from '@linnya/renderer-ui/icons'
 import type { MarkdownChartSpec } from '@app/schemas'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
 import { useChartSurfaceRuntime } from '../orchestration/useChartSurfaceRuntime'
-import type { ChartReadingKey } from '../definitions/chartReadingState'
+import type { ChartReadingKey } from '@linnya/markdown-document-core/workspace-charts'
 import ChartLegend from './ChartLegend.vue'
 import { FigureCaption } from '../../figure-caption'
 

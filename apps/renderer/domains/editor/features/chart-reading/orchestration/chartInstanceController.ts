@@ -11,12 +11,12 @@
 
 import type { MarkdownChartSpecReadView } from '@app/schemas'
 import type { EChartsType } from 'echarts/core'
-import type { ChartReadingState } from '../definitions/chartReadingState'
-import type { ChartOptionMessages } from '../definitions/chartRender'
-import type { ChartThemeTokens } from '../definitions/chartTheme'
-import { plotHeightOf } from '../functions/chartLayout'
-import { buildChartOption } from '../functions/option/buildChartOption'
-import { chartFamilyOf, loadChartRuntime } from './chartRuntime'
+import type { ChartReadingState } from '@linnya/markdown-document-core/workspace-charts'
+import type { ChartOptionMessages } from '@linnya/markdown-document-core/workspace-charts'
+import type { ChartThemeTokens } from '@linnya/markdown-document-core/workspace-charts'
+import { plotHeightOf } from '@linnya/markdown-document-core/workspace-charts'
+import { buildChartOption } from '@linnya/markdown-document-core/workspace-charts'
+import { chartFamilyOf, loadChartRuntime } from '@linnya/markdown-document-core/workspace-charts'
 
 export interface ChartControllerInput {
   readonly spec: MarkdownChartSpecReadView
