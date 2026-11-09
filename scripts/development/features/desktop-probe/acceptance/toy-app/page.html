@@ -1,0 +1,40 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Probe fixture</title>
+<style>
+  body { font: 16px system-ui; }
+  #handle { position: absolute; top: 105px; left: 50px; touch-action: none; }
+  #animated { margin-top: 150px; width: 60px; height: 48px; background: #2547c4; transition: width 400ms linear; }
+  #animated.wide { width: 260px; }
+  #hover:hover { color: rgb(255, 0, 0); }
+  #scrollbox { height: 80px; overflow: auto; }
+  #scrollbox div { height: 600px; }
+</style>
+<button id="verify">检查点击</button>
+<button id="hover">悬停</button>
+<button id="animate">开始过渡</button>
+<label>输入 <input id="input"></label>
+<button id="handle">拖动</button>
+<div id="animated"></div>
+<div id="scrollbox" aria-label="滚动区域"><div>滚动内容</div></div>
+<output id="status"></output>
+<script>
+  console.error('probe fixture startup error');
+  const find = id => document.getElementById(id);
+  find('verify').onclick = event => { find('status').textContent = String(event.isTrusted); };
+  find('verify').ondblclick = () => { find('status').textContent = 'double'; };
+  find('animate').onclick = () => find('animated').classList.toggle('wide');
+  find('input').onkeydown = event => {
+    if (event.key === 'Enter') find('status').textContent = 'enter:' + find('input').value;
+  };
+  let drag;
+  const handle = find('handle');
+  handle.onpointerdown = event => {
+    handle.setPointerCapture(event.pointerId);
+    drag = { x: event.clientX, left: handle.offsetLeft };
+  };
+  handle.onpointermove = event => {
+    if (drag) handle.style.left = drag.left + event.clientX - drag.x + 'px';
+  };
+  handle.onpointerup = () => { drag = null; };
+</script>

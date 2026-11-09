@@ -1,16 +1,9 @@
-import { spawn } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import http from 'node:http';
-import net from 'node:net';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { connectProbePage, createProbeClient } from '../development/features/desktop-probe/orchestration/probeClient.mjs';
+import { evaluate } from '../development/features/desktop-probe/infrastructure/cdpClient.mjs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-// 脚本位于 scripts/benchmark；所有构建产物、依赖和 extraResources 都以仓库根目录为基准。
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-let debugPort = Number(process.env.LINNYA_STYLE_SMOKE_DEBUG_PORT ?? 0);
 const outputDir = resolve(process.env.LINNYA_STYLE_SMOKE_OUTPUT_DIR ?? '/tmp/linnya-style-smoke');
-const runtimePluginRoot = resolve(outputDir, 'runtime/plugins');
-const userDataRoot = resolve(outputDir, 'runtime/user-data');
 
 const screenshotCases = [
   { path: 'light-main.png', theme: 'light', view: 'main' },
@@ -25,7 +18,7 @@ const screenshotCases = [
 
 const requiredTexts = {
   main: ['新对话', '新项目'],
-  settings: ['设置', '外观', '选择主题'],
+  settings: ['设置', '外观', '跟随系统'],
   knowledgebase: ['知识库', '新建知识库'],
   pluginstore: ['插件', 'Mindmap'],
 };
@@ -38,222 +31,6 @@ function wait(ms) {
   return new Promise((resolveWait) => {
     setTimeout(resolveWait, ms);
   });
-}
-
-function canListenOnPort(port) {
-  return new Promise((resolveCheck) => {
-    const server = net.createServer();
-    server.once('error', () => {
-      resolveCheck(false);
-    });
-    server.once('listening', () => {
-      server.close(() => {
-        resolveCheck(true);
-      });
-    });
-    server.listen(port, '127.0.0.1');
-  });
-}
-
-async function findAvailableDebugPort(startPort = 9223) {
-  for (let port = startPort; port < startPort + 100; port += 1) {
-    if (await canListenOnPort(port)) {
-      return port;
-    }
-  }
-
-  throw new Error(`没有找到可用的 Electron CDP 端口: ${startPort}-${startPort + 99}`);
-}
-
-async function findAvailableVitePort() {
-  for (const port of [5173, 5174]) {
-    if (await canListenOnPort(port)) {
-      return port;
-    }
-  }
-
-  throw new Error('没有找到可用的 Vite 端口: 5173/5174');
-}
-
-function spawnLogged(command, args, options = {}) {
-  const child = spawn(command, args, {
-    cwd: repoRoot,
-    env: {
-      ...process.env,
-      ...options.env,
-    },
-    detached: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  const label = options.label ?? command;
-
-  child.stdout.on('data', (chunk) => {
-    process.stdout.write(`[${label}] ${chunk}`);
-  });
-  child.stderr.on('data', (chunk) => {
-    process.stderr.write(`[${label}] ${chunk}`);
-  });
-
-  return child;
-}
-
-function terminateProcessTree(child, signal) {
-  if (!child.pid || child.killed) {
-    return;
-  }
-
-  try {
-    process.kill(-child.pid, signal);
-  } catch {
-    child.kill(signal);
-  }
-}
-
-function cleanupProcesses(electronProcess, viteProcess) {
-  terminateProcessTree(electronProcess, 'SIGINT');
-  terminateProcessTree(viteProcess, 'SIGTERM');
-
-  setTimeout(() => {
-    terminateProcessTree(electronProcess, 'SIGKILL');
-    terminateProcessTree(viteProcess, 'SIGKILL');
-  }, 3000).unref();
-}
-
-async function waitForHttpJson(path, timeoutMs = 30000) {
-  const deadline = Date.now() + timeoutMs;
-  let lastError = null;
-
-  while (Date.now() < deadline) {
-    try {
-      return await getHttpJson(path);
-    } catch (error) {
-      lastError = error;
-      await wait(250);
-    }
-  }
-
-  throw new Error(`等待 ${path} 超时: ${lastError?.message ?? 'unknown error'}`);
-}
-
-async function waitForPageTarget(timeoutMs = 45000) {
-  const deadline = Date.now() + timeoutMs;
-  let lastTargets = [];
-
-  while (Date.now() < deadline) {
-    const targets = await getHttpJson('/json/list');
-    lastTargets = targets;
-    const page = targets.find((target) => target.type === 'page' && target.webSocketDebuggerUrl);
-    if (page) {
-      return page;
-    }
-
-    await wait(500);
-  }
-
-  throw new Error(`没有找到 Electron page target，最后 targets=${JSON.stringify(lastTargets)}`);
-}
-
-function getHttpJson(path) {
-  return new Promise((resolveJson, rejectJson) => {
-    const request = http.get({
-      host: '127.0.0.1',
-      port: debugPort,
-      path,
-    }, (response) => {
-      let data = '';
-      response.on('data', (chunk) => {
-        data += chunk;
-      });
-      response.on('end', () => {
-        try {
-          resolveJson(JSON.parse(data));
-        } catch (error) {
-          rejectJson(error);
-        }
-      });
-    });
-
-    request.on('error', rejectJson);
-    request.setTimeout(3000, () => {
-      request.destroy(new Error(`请求 ${path} 超时`));
-    });
-  });
-}
-
-let nextMessageId = 1;
-
-async function connectCdp(webSocketUrl) {
-  const socket = new globalThis.WebSocket(webSocketUrl);
-  const pending = new Map();
-
-  await new Promise((resolveOpen, rejectOpen) => {
-    const timer = setTimeout(() => {
-      rejectOpen(new Error('CDP WebSocket 连接超时'));
-    }, 5000);
-
-    socket.addEventListener('open', () => {
-      clearTimeout(timer);
-      resolveOpen();
-    });
-    socket.addEventListener('error', rejectOpen);
-  });
-
-  socket.addEventListener('message', (event) => {
-    const message = JSON.parse(event.data);
-    if (!message.id || !pending.has(message.id)) {
-      return;
-    }
-
-    const call = pending.get(message.id);
-    pending.delete(message.id);
-    clearTimeout(call.timer);
-
-    if (message.error) {
-      call.reject(new Error(JSON.stringify(message.error)));
-      return;
-    }
-
-    call.resolve(message.result);
-  });
-
-  return {
-    send(method, params = {}, timeoutMs = 10000) {
-      const id = nextMessageId;
-      nextMessageId += 1;
-      socket.send(JSON.stringify({ id, method, params }));
-
-      return new Promise((resolveSend, rejectSend) => {
-        const timer = setTimeout(() => {
-          pending.delete(id);
-          rejectSend(new Error(`${method} 超时`));
-        }, timeoutMs);
-
-        pending.set(id, {
-          resolve: resolveSend,
-          reject: rejectSend,
-          timer,
-        });
-      });
-    },
-    close() {
-      socket.close();
-    },
-  };
-}
-
-async function evaluate(cdp, expression) {
-  const result = await cdp.send('Runtime.evaluate', {
-    expression,
-    awaitPromise: true,
-    returnByValue: true,
-  });
-
-  if (result.exceptionDetails) {
-    throw new Error(JSON.stringify(result.exceptionDetails));
-  }
-
-  return result.result?.value;
 }
 
 async function captureScreenshot(cdp, filePath) {
@@ -368,6 +145,7 @@ async function assertViewState(cdp, expected) {
     oldThemeClasses: ['light-mode', 'green-mode', 'pink-mode', 'brown-mode']
       .filter((className) => document.documentElement.classList.contains(className) || document.body.classList.contains(className)),
     themeOptions: document.querySelectorAll('.appearance-theme-option').length,
+    themeSelector: document.querySelector('.appearance-theme-selector')?.getAttribute('aria-label'),
     text: document.body.innerText,
     hasUpdateDialog: document.body.innerText.includes('发现新版本'),
     brokenImages: Array.from(document.images)
@@ -395,8 +173,8 @@ async function assertViewState(cdp, expected) {
     throw new Error(`${expected.path} 出现旧主题 class: ${state.oldThemeClasses.join(', ')}`);
   }
 
-  if (expected.view === 'settings' && state.themeOptions < 2) {
-    throw new Error(`${expected.path} 设置页主题选项数量少于 2: ${state.themeOptions}`);
+  if (expected.view === 'settings' && (state.themeOptions < 2 || state.themeSelector !== '选择主题')) {
+    throw new Error(`${expected.path} 设置页主题选择器不完整`);
   }
 
   if (state.hasUpdateDialog) {
@@ -426,52 +204,13 @@ async function assertViewState(cdp, expected) {
 }
 
 async function runSmoke() {
-  if (debugPort === 0) {
-    debugPort = await findAvailableDebugPort();
-  }
-
-  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
-  console.log(`[electron-style-smoke] 使用 Electron CDP 端口: ${debugPort}`);
-  const vitePort = await findAvailableVitePort();
-  const viteUrl = `http://127.0.0.1:${vitePort}`;
-  console.log(`[electron-style-smoke] 使用 Vite URL: ${viteUrl}`);
-
-  const viteProcess = spawnLogged('npx', ['vite', '--host', '127.0.0.1', '--port', String(vitePort), '--strictPort'], {
-    label: 'vite',
-  });
-
-  const electronProcess = spawnLogged('./node_modules/.bin/electron', [
-    `--remote-debugging-port=${debugPort}`,
-    `--user-data-dir=${userDataRoot}`,
-    'dist/main/main.cjs',
-  ], {
-    label: 'electron',
-    env: {
-      NODE_ENV: 'development',
-      LINNYA_DEV_MODE: 'true',
-      LINNYA_DISABLE_UPDATE_CHECKS: '1',
-      LINNYA_PLUGIN_ROOT: runtimePluginRoot,
-      LINNYA_BUNDLED_PLUGIN_ROOT: resolve(repoRoot, 'extraResources/plugins'),
-      VITE_DEV_SERVER_URL: viteUrl,
-      APP_VERSION: process.env.npm_package_version ?? '0.0.0',
-    },
-  });
-
-  const cleanup = () => {
-    cleanupProcesses(electronProcess, viteProcess);
-  };
-
-  process.once('SIGINT', () => {
-    cleanup();
-    process.exit(130);
-  });
-
+  const name = `style-smoke-${process.pid}`;
+  const probe = createProbeClient({ name });
+  let cdp;
   try {
-    await waitForHttpJson('/json/version');
-    const page = await waitForPageTarget();
-
-    const cdp = await connectCdp(page.webSocketDebuggerUrl);
+    await probe.run('up');
+    ({ cdp } = await connectProbePage(name));
     await cdp.send('Runtime.enable');
     await cdp.send('Page.enable');
     await cdp.send('Emulation.setDeviceMetricsOverride', {
@@ -500,11 +239,11 @@ async function runSmoke() {
       });
     }
 
-    cdp.close();
     writeFileSync(resolve(outputDir, 'summary.json'), `${JSON.stringify(results, null, 2)}\n`);
     console.log(`[electron-style-smoke] 通过，截图输出: ${outputDir}`);
   } finally {
-    cleanup();
+    cdp?.close();
+    await probe.run('stop', '--clean');
   }
 }
 

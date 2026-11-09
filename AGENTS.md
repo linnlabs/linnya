@@ -34,6 +34,8 @@ Agent 产品的主要前端是 [`domains/conversation`](./apps/renderer/domains/
 
 Workspace 树、编辑器、Knowledge 和模型配置等其他前端 owner 从 [Renderer domains 地图](./apps/renderer/domains/README.md)进入。
 
+前端调试与本机界面验收优先使用隔离的 [Desktop 开发探针](./scripts/development/features/desktop-probe/README.md)（`pnpm -s probe`），用快照定位、用元素截图取证，拖动用逐步采样。
+
 ## 4. 后端：App Server、数据库与 Workspace
 
 ### 4.1 后端进程

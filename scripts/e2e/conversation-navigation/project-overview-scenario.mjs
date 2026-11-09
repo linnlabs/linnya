@@ -1,3 +1,4 @@
+import { dragTarget, clickTarget } from '../../development/features/desktop-probe/orchestration/probeActions.mjs';
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -118,35 +119,22 @@ export async function runProjectOverviewScenario({ cdp, evaluate, waitFor, proje
   const sorted = await evaluate(cdp, `Array.from(document.querySelectorAll('.project-overview__name'),el=>el.textContent.trim())`);
   await evaluate(cdp, `document.querySelector('.project-overview__cell--name .project-overview__sort').click()`);
   assert.deepEqual(await evaluate(cdp, `Array.from(document.querySelectorAll('.project-overview__name'),el=>el.textContent.trim())`), sorted.reverse());
-  let lastResizeRect = null;
-  const resize = await waitFor(async () => {
-    const rect = await evaluate(cdp, `(() => {const el=document.querySelector('.project-overview__resize'); const r=el.getBoundingClientRect();const x=r.x+r.width/2,y=r.y+r.height/2;return {x,y,width:el.parentElement.getBoundingClientRect().width,hit:document.elementFromPoint(x,y)===el}})()`);
-    const settled = rect.hit && lastResizeRect?.x === rect.x && lastResizeRect?.y === rect.y;
-    lastResizeRect = rect;
-    return settled ? rect : null;
-  }, '导航过渡结束后列宽手柄可点击');
-  await cdp.send('Input.dispatchMouseEvent', {type:'mousePressed',x:resize.x,y:resize.y,button:'left',clickCount:1});
-  // 默认列在常规窗口里放得下，不出现水平滚动；滚动条由共享 OverlayScrollbars 接管。
+  // 同探针 CLI 使用一套真实鼠标驱动，并验证每一步跟随而非只比较最终宽度。
   assert.equal(await evaluate(cdp, `(() => { const s=document.querySelector('.project-overview__scroll'); return s.scrollWidth <= s.clientWidth + 1; })()`), true, '默认列宽不应出现水平滚动');
   assert.equal(await evaluate(cdp, `document.querySelector('.project-overview__scroll-host').hasAttribute('data-overlayscrollbars')`), true, '应使用共享滚动条');
-  // 与 Excel 一致：手柄在列右边界，拖动中分隔线跟手，右侧各列整体平移；松手后宽度落库。
-  const secondHeaderX = await evaluate(cdp, `document.querySelectorAll('.project-overview__header-cell')[1].getBoundingClientRect().x`);
-  await cdp.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:resize.x+20,y:resize.y,button:'left',buttons:1});
-  const midway = await evaluate(cdp, `(() => { const r=document.querySelector('.project-overview__resize').getBoundingClientRect(); return r.x + r.width/2; })()`);
-  assert.ok(Math.abs(midway - (resize.x + 20)) < 2, `拖动中分隔线应跟手：${midway} vs ${resize.x + 20}`);
-  const shifted = await evaluate(cdp, `document.querySelectorAll('.project-overview__header-cell')[1].getBoundingClientRect().x`);
-  assert.ok(Math.abs(shifted - (secondHeaderX + 20)) < 2, '右侧列应整体平移');
-  await cdp.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:resize.x+40,y:resize.y,button:'left',buttons:1});
-  await cdp.send('Input.dispatchMouseEvent', {type:'mouseReleased',x:resize.x+40,y:resize.y,button:'left',clickCount:1});
-  await waitFor(() => evaluate(cdp, `Math.abs(document.querySelector('.project-overview__resize').parentElement.getBoundingClientRect().width - ${resize.width + 40}) < 2`), '鼠标调整列宽');
-  // 往回拖也要能拖动（缩窄）。
-  const back = await evaluate(cdp, `(() => { const r=document.querySelector('.project-overview__resize').getBoundingClientRect(); return {x:r.x+r.width/2, y:r.y+r.height/2}; })()`);
-  await cdp.send('Input.dispatchMouseEvent', {type:'mousePressed',x:back.x,y:back.y,button:'left',clickCount:1});
-  await cdp.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:back.x-60,y:back.y,button:'left',buttons:1});
-  await cdp.send('Input.dispatchMouseEvent', {type:'mouseReleased',x:back.x-60,y:back.y,button:'left',clickCount:1});
-  await waitFor(() => evaluate(cdp, `Math.abs(document.querySelector('.project-overview__resize').parentElement.getBoundingClientRect().width - ${resize.width - 20}) < 2`), '鼠标缩窄列宽');
-  await evaluate(cdp, `document.querySelector('.project-overview__resize').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))`);
-  assert.equal(await evaluate(cdp, `document.querySelector('.project-overview__resize').parentElement.getBoundingClientRect().width`), resize.width);
+  const handle = { selector: '.project-overview__resize' };
+  const divider = `(() => {const r=document.querySelector('.project-overview__resize').getBoundingClientRect();return r.x+r.width/2})()`;
+  const headerWidth = `document.querySelector('.project-overview__resize').parentElement.getBoundingClientRect().width`;
+  const initialWidth = await evaluate(cdp, headerWidth);
+  const secondHeader = `document.querySelectorAll('.project-overview__header-cell')[1].getBoundingClientRect().x`;
+  const secondHeaderX = await evaluate(cdp, secondHeader);
+  await dragTarget(cdp, handle, { by: [40, 0], steps: 4, sample: divider, follow: 'x' });
+  assert.ok(Math.abs(await evaluate(cdp, secondHeader) - secondHeaderX - 40) < 2, '右侧列应整体平移');
+  await waitFor(async () => Math.abs(await evaluate(cdp, headerWidth) - initialWidth - 40) < 2, '鼠标调整列宽');
+  await dragTarget(cdp, handle, { by: [-60, 0], steps: 6, sample: divider, follow: 'x' });
+  await waitFor(async () => Math.abs(await evaluate(cdp, headerWidth) - initialWidth + 20) < 2, '鼠标缩窄列宽');
+  await clickTarget(cdp, handle, { count: 2 });
+  assert.equal(await evaluate(cdp, headerWidth), initialWidth);
   const added = await evaluate(cdp, `(async () => {const {workspaceGateway:g}=await import('/apps/renderer/shared/ipc/workspaceGateway.ts');const r=await g['create-document']({projectId:${value},name:'临时文件'});if(!r.success)throw new Error(r.error);return r.data.documentId})()`);
   await waitFor(() => evaluate(cdp, `document.querySelectorAll('.project-overview__row').length === 3`), '新建自动刷新');
   await evaluate(cdp, `(async () => {const {workspaceGateway:g}=await import('/apps/renderer/shared/ipc/workspaceGateway.ts');const r=await g['delete-node']({nodeId:${JSON.stringify(added)}});if(!r.success)throw new Error(r.error)})()`);
