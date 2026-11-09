@@ -1,5 +1,5 @@
 import { DocumentImageAssetSchema, DocumentPreviewResultSchema } from '@app/schemas';
-import { readDocumentPreview } from '@plugin/renderer/documentPreview';
+import { readDocumentPreview, readDocumentPreviewTypeIcon } from '@plugin/renderer/documentPreview';
 import {
   getCurrentWorkspaceProjectId,
   subscribeWorkspaceMutations,
@@ -33,6 +33,7 @@ export function createCanvasCardMediaPort(
         listener(changes.flatMap(change => change.documentNodeTypes))
       ),
     projectId: () => projectId,
+    typeIcon: readDocumentPreviewTypeIcon,
     openDocument: (documentId, nodeType, displayName) =>
       getWorkspaceNavigationPort().openDocumentByNodeType({
         documentId,

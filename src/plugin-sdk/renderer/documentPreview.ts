@@ -1,3 +1,4 @@
+import type { Component } from 'vue';
 import type {
   DocumentPreviewDetailMountInput,
   RendererDocumentPreviewPort,
@@ -35,6 +36,10 @@ export async function listDocumentPreviewTypes() {
 let rendererPort: RendererDocumentPreviewPort | null = null;
 export function registerRendererDocumentPreviewPort(port: RendererDocumentPreviewPort): void {
   rendererPort = port;
+}
+/** 预览卡片标出文档类型时用，与文件树同一图标；Host 端口未安装时返回 null。 */
+export function readDocumentPreviewTypeIcon(nodeType: string): Component | null {
+  return rendererPort?.readTypeIcon?.(nodeType) ?? null;
 }
 /** DOM只留在可信Renderer，不经IPC，也不让插件读取App store或文档类型正文DTO。 */
 export function mountDocumentPreviewDetail(

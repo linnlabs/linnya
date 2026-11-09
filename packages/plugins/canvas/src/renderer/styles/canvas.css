@@ -82,23 +82,18 @@
   font-size: var(--canvas-card-font-size);
   line-height: var(--canvas-card-line-height);
 }
-.canvas-document-detail-header {
-  display: flex;
+/* 详情顶部即文档卡的小标签（canvasMediaContent.css），这里只让它不被正文挤压。 */
+.canvas-document-detail > .canvas-document-label {
   flex-shrink: 0;
-  align-items: center;
-  gap: var(--space-1);
-  color: var(--color-text-primary);
-}
-.canvas-document-detail-header strong {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .canvas-document-detail-body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+/* 正文可用滚轮继续往下读，但不画滚动条：滚动条会挤窄正文，选中前后换行就不一样了。 */
+.canvas-document-detail-body * {
+  scrollbar-width: none;
 }
 .canvas-document-detail-loading {
   visibility: hidden;

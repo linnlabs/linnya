@@ -15,7 +15,17 @@ export function projectCanvasDocumentSurface(
   return {
     title: resource.title,
     status,
-    ...(available && resource.image ? { image: resource.image } : {}),
     ...((available || snapshot) && resource.summary ? { summary: resource.summary } : {}),
+    ...(available ? availablePreview(resource) : {}),
+  };
+}
+/** 可显示时才带出封面、正文与缩略图偏好。 */
+function availablePreview(
+  resource: NonNullable<CanvasRenderRequest['documents'][string]>
+): Partial<CanvasDocumentSurfacePresentation> {
+  return {
+    ...(resource.image ? { image: resource.image } : {}),
+    ...(resource.body ? { body: resource.body } : {}),
+    ...(resource.keepThumbnail ? { thumbnail: true } : {}),
   };
 }

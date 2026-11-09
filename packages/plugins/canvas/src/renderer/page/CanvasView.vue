@@ -20,6 +20,7 @@
       :camera="camera"
       :project-id="detailProjectId"
       :title="detailTitle"
+      :icon="detailIcon"
       :port="detailPort"
       @close="dismissedDetail = detailCard.id"
     />
@@ -188,7 +189,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, type Component } from 'vue';
 import type { DocumentImageAsset } from '@app/schemas';
 import { ImagePreviewModal, AlertDialog } from '@linnya/renderer-ui';
 import {
@@ -297,6 +298,17 @@ const detailCard = computed(() =>
     projectId: detailProjectId.value,
     dismissed: dismissedDetail.value,
   })
+);
+// 详情顶部标签与出图同一个类型图标；预览读完前先用通用文件图标。
+const detailIcon = shallowRef<Component | null>(null);
+watch(
+  () => detailCard.value,
+  async card => {
+    detailIcon.value = null;
+    if (!card || !content) return;
+    const icon = await content.documentIcon(card).catch(() => null);
+    if (detailCard.value === card) detailIcon.value = icon;
+  }
 );
 const detailTitle = computed(() =>
   detailCard.value

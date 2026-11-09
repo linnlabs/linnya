@@ -35,7 +35,8 @@ function createSurfaceElement(card: CanvasCard, request: CanvasRenderRequest): H
   if (card.type === 'document') {
     return createCanvasDocumentSurface(
       projectCanvasDocumentSurface(request.documents[card.data.documentId]),
-      document
+      document,
+      card.height
     );
   }
   const element = document.createElement('div');

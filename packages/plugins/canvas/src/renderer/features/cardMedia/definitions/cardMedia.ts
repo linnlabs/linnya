@@ -1,3 +1,4 @@
+import type { Component } from 'vue';
 import type {
   DocumentImageAsset,
   DocumentPreviewRequest,
@@ -50,6 +51,8 @@ export interface CanvasCardMediaPort {
   subscribeAvailability(listener: (documentNodeTypes: readonly string[]) => void): () => void;
   projectId(): string | null;
   openDocument(documentId: string, nodeType: string, title: string | null): Promise<void>;
+  /** 文档类型在文件树里的图标；Host 未提供时为 null。 */
+  typeIcon?(nodeType: string): Component | null;
 }
 /** 单目标身份世代与整组变代计数；预览结果返回本身不改变身份世代。 */
 export interface CanvasDocumentReferenceVersions {
@@ -66,6 +69,8 @@ export interface CanvasCardContent {
   resolveImageSource(source: string): Promise<string>;
   open(card: CanvasCard, opening?: (id: CanvasCardId) => void): Promise<void>;
   documentTitles(): ReadonlyMap<string, string>;
+  /** 文档卡标签用的类型图标；预览不可用时为 null。 */
+  documentIcon(card: CanvasCard): Promise<Component | null>;
   contentKey(card: CanvasCard): string;
   refreshReferences(cards: readonly CanvasCard[]): Promise<void>;
   refreshVisible(cards: readonly CanvasCard[]): void;

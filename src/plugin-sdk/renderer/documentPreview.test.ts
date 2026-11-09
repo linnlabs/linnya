@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { readDocumentPreview, listDocumentPreviewTypes } from './documentPreview';
+import { readDocumentPreview, listDocumentPreviewTypes, readDocumentPreviewTypeIcon, registerRendererDocumentPreviewPort } from './documentPreview';
 afterEach(() => vi.unstubAllGlobals());
 describe('document preview renderer admission', () => {
   it('passes only admitted requests and rejects invalid provider output', async () => {
@@ -9,5 +9,14 @@ describe('document preview renderer admission', () => {
     expect((await listDocumentPreviewTypes())[0]?.nodeType).toBe('fake');
     await expect(readDocumentPreview({ documentId: 'doc', projectId: 'p1', widthPx: 0, pixelRatio: 1 })).rejects.toThrow();
     expect(read).toHaveBeenCalledTimes(1);
+  });
+});
+describe('document preview type icon', () => {
+  it('reads the Host icon for a node type and returns null without a Host port', () => {
+    const icon = { name: 'SlidesIcon' };
+    registerRendererDocumentPreviewPort({ mountDetail: async () => () => {} });
+    expect(readDocumentPreviewTypeIcon('slides')).toBeNull();
+    registerRendererDocumentPreviewPort({ mountDetail: async () => () => {}, readTypeIcon: type => (type === 'slides' ? icon : { name: 'DocumentIcon' }) });
+    expect(readDocumentPreviewTypeIcon('slides')).toBe(icon);
   });
 });

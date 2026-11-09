@@ -13,3 +13,5 @@ Renderer 组合层调度只补当前世界可见片段中尚无纹理的部分�
 墨色样式是公开资源 `styles/canvasCardInk.css`；正式 Renderer contribution 显式声明其 URL，隐藏 worker 与探针各自显式导入同一文件。函数入口不隐式注入样式，也不复制 fade 规则。
 
 短纯文字的合批按实际输出片段像素与DOM内容成本判断：额外扩展到64张时，累计不超过1Mi像素、512个普通段落/文字节点和16Ki字符；移动时容量与工作量减半。复杂正文、图片解码、公式和标签保持原32/16批次，不改变采样质量、单页4096边长、64任务容量或位图预算。这样小卡不必为每32张串行等待一次paint，也不会把64张复杂卡当作同一份轻量工作。
+
+文档卡由 `createCanvasDocumentSurface` 生成：顶部一行小标签（文档类型图标加文件名，图标经 `readDocumentPreviewTypeIcon` 取 Host 文件树的同一组件，后台出图拿不到时用通用文件图标），下面直接排文档正文，文档自己的大标题就是卡片标题。正文取预览结果的 `detail`，按 `canvasDocumentPreviewBody` 截在段落边界，用与 Host 只读详情相同的 Markdown 解析与渲染；内容方声明缩略图优先（`overview: 'thumbnail'`，如演示文稿）时改用封面图。选中后的只读详情复用同一标签和正文排版（`canvasMediaContent.css`），所以选中只多一圈描边；打开文档走选中浮条与双击。

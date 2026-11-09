@@ -21,7 +21,8 @@ it('前台当前文档卡与后台出图保留相同的授权标题和无封面�
     const frontend = await content.create(card, new AbortController().signal);
     const worker = createCardSurface(card, { ...request, documents: { 'internal-target-id': { title, status: 'available', previewStatus: 'ready', summary } } });
     for (const element of [frontend, worker]) {
-      expect(element.querySelector('strong.canvas-card-title')?.textContent).toBe(title);
+      expect(element.querySelector('.canvas-document-label-text')?.textContent).toBe(title);
+      expect(element.querySelector('.canvas-document-label svg')).not.toBeNull();
       expect(element.querySelector('.canvas-document-summary')?.textContent).toBe(summary);
       expect(element.querySelector('img,small')).toBeNull();
     }
@@ -44,4 +45,59 @@ it('停用插件显示当前授权文本快照及恢复提示，仍不显示旧�
   const element = createCardSurface(card, { ...request, documents: { 'internal-target-id': { title: '仍在项目中的文档', status: 'plugin_unavailable', previewStatus: 'plugin_unavailable', summary: '已保存的文本快照', image: 'data:image/png;base64,YWJj' } } });
   expect(element.querySelector('.canvas-document-summary')?.textContent).toBe('已保存的文本快照');
   expect(element.querySelector('img')).toBeNull(); expect(element.textContent).toContain('启用或安装');
+});
+it('有正文且内容方未声明缩略图时，前台与后台都按 Markdown 排版而不用封面图，并固定为卡片高度', async () => {
+  const body = { format: 'markdown' as const, text: '# 季度复盘\n\n本季度围绕**画布**推进。\n\n- 第一项\n- 第二项' };
+  const port: CanvasCardMediaPort = {
+    projectId: () => 'project',
+    preview: async input => ({
+      documentId: input.documentId,
+      title: '复盘',
+      nodeType: 'text',
+      status: 'ready',
+      content: { revisionKey: 'v1', summary: '# 季度复盘 本季度围绕**画布**推进。', detail: body, image: { dataUri: 'data:image/png;base64,YWJj', widthPx: 10, heightPx: 10 } },
+    }),
+    reference: async documentId => ({ documentId, title: '复盘', nodeType: 'text', status: 'available', path: 'workspace:/复盘' }),
+    subscribe: () => () => {},
+    subscribeAvailability: () => () => {},
+    readImage: async () => {
+      throw new Error('unexpected image read');
+    },
+    openDocument: async () => {},
+  };
+  const content = createCanvasCardContent('current', port);
+  try {
+    const frontend = await content.create(card, new AbortController().signal);
+    const worker = createCardSurface(card, {
+      ...request,
+      documents: { 'internal-target-id': { title: '复盘', status: 'available', previewStatus: 'ready', summary: 'x', body, image: 'data:image/png;base64,YWJj' } },
+    });
+    for (const element of [frontend, worker]) {
+      expect(element.querySelector('.canvas-document-markdown h1')?.textContent).toBe('季度复盘');
+      expect(element.querySelector('.canvas-document-markdown strong')?.textContent).toBe('画布');
+      expect(element.querySelectorAll('.canvas-document-markdown li')).toHaveLength(2);
+      expect(element.textContent).not.toMatch(/[#*]/);
+      expect(element.querySelector('.canvas-document-summary, img')).toBeNull();
+      expect(element.style.height).toBe(`${card.height}px`);
+    }
+  } finally {
+    content.dispose();
+  }
+});
+it('内容方声明缩略图时仍用封面图，正文不进卡片', () => {
+  const element = createCardSurface(card, {
+    ...request,
+    documents: {
+      'internal-target-id': {
+        title: '路演',
+        status: 'available',
+        previewStatus: 'ready',
+        image: 'data:image/png;base64,YWJj',
+        keepThumbnail: true,
+        body: { format: 'markdown', text: '# 不应出现' },
+      },
+    },
+  });
+  expect(element.querySelector('img.canvas-document-cover')).not.toBeNull();
+  expect(element.querySelector('.canvas-document-markdown')).toBeNull();
 });

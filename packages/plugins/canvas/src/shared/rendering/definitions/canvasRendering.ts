@@ -48,6 +48,11 @@ const common = {
           status: DocumentReferencePresentationSchema.shape.status.optional(),
           previewStatus: DocumentPreviewResultSchema.shape.status.optional(),
           summary: DocumentPreviewContentSchema.shape.summary.optional(),
+          /** 卡片上排出的正文开头，见 canvasDocumentPreviewBody。 */
+          body: z
+            .object({ format: z.enum(['markdown', 'text']), text: z.string().max(8000) })
+            .strict()
+            .optional(),
           keepThumbnail: z.boolean().optional(),
           image: DocumentPreviewImageSchema.shape.dataUri.optional(),
         })

@@ -5,7 +5,7 @@ import {
 } from '@plugin/backend/documentPreview';
 import { resolveDocumentReference } from '@plugin/backend/documentReferences';
 import { CANVAS_DOCUMENT_TYPE, type CanvasSnapshot } from '../../shared';
-import type { CanvasRenderRequest } from '../../shared/rendering';
+import { canvasDocumentPreviewBody, type CanvasRenderRequest } from '../../shared/rendering';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
 import { collectCanvasAssetIds, readCanvasDocumentIdentity } from '../features/canvasDocument';
 import { listCanvasReferencedDocuments } from '../features/canvasProjection';
@@ -78,6 +78,9 @@ async function readDocumentCover(
           keepThumbnail: preview.content.overview === 'thumbnail',
         }
       : {}),
+    ...(preview.status === 'ready' && canvasDocumentPreviewBody(preview.content?.detail)
+      ? { body: canvasDocumentPreviewBody(preview.content?.detail) }
+      : {}),
   };
 }
 function refreshResourceTitles(
@@ -108,6 +111,7 @@ function refreshResourceTitles(
             image: previous.image,
             keepThumbnail: previous.keepThumbnail,
             summary: previous.summary,
+            body: previous.body,
           }
         : snapshot
           ? { summary: previous.summary }

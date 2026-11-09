@@ -1,6 +1,7 @@
 import { JsonValueSchema } from '@app/schemas';
 import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import type { CanvasCardContent, CanvasCardMediaPort } from '../definitions/cardMedia';
+import { canvasDocumentPreviewBody } from '../../../../shared/rendering';
 import { createCanvasContentNotifications } from './createCanvasContentNotifications';
 import { createCanvasReferenceMetadata } from './createCanvasReferenceMetadata';
 import { createCanvasImageSources } from './createCanvasImageSources';
@@ -72,14 +73,20 @@ export function createCanvasCardContent(
       if (card.type === 'document') {
         const result = await previews.read(card);
         signal.throwIfAborted();
+        const body = canvasDocumentPreviewBody(result.content?.detail);
+        const icon = result.nodeType ? (port.typeIcon?.(result.nodeType) ?? null) : null;
         return createCanvasDocumentSurface(
           {
             title: result.title,
             status: result.status,
             summary: result.content?.summary,
             image: result.content?.image?.dataUri,
+            ...(body ? { body } : {}),
+            ...(result.content?.overview === 'thumbnail' ? { thumbnail: true } : {}),
+            ...(icon ? { icon } : {}),
           },
-          document
+          document,
+          card.height
         );
       }
       return element;
@@ -94,6 +101,11 @@ export function createCanvasCardContent(
       await port.openDocument(card.data.documentId, result.nodeType, result.title);
     },
     documentTitles: metadata.titles,
+    async documentIcon(card) {
+      if (card.type !== 'document') return null;
+      const result = await previews.read(card);
+      return result.nodeType ? (port.typeIcon?.(result.nodeType) ?? null) : null;
+    },
     contentKey: card => `${metadata.key(card)}:${previews.key(card)}`,
     refreshReferences: async cards => {
       previews.setCards(cards);
