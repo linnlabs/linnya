@@ -129,3 +129,93 @@ it('detailOnly renders readonly Markdown immediately, blocks nested navigation a
   expect(ports.stopMutation).toHaveBeenCalledOnce();
   expect(ports.stopAvailability).toHaveBeenCalledOnce();
 });
+
+it('the first screen and expanded document share formal content and resize without scaling', async () => {
+  vi.clearAllMocks();
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  );
+  const { ref } = await import('vue');
+  const { WorkspaceMarkdownPreviewSchema } = await import('@app/schemas');
+  await import('@linnya/markdown-document-core/workspace-preview');
+  const content = WorkspaceMarkdownPreviewSchema.parse({
+    format: 'workspace-markdown',
+    assets: {},
+    references: {},
+    document: {
+      type: 'doc',
+      content: [
+        {
+          type: 'rootBlock',
+          attrs: { id: 'root' },
+          content: [
+            {
+              type: 'baseBlock',
+              attrs: { id: 'body' },
+              content: [{ type: 'text', text: '正式正文：按卡宽换行，首屏不显示原始代码。' }],
+            },
+          ],
+        },
+      ],
+    },
+  });
+  const identity = {
+    documentId: 'doc',
+    status: 'available',
+    title: '同一文档',
+    nodeType: 'document',
+    path: 'workspace:/Doc.md',
+  };
+  const preview = {
+    documentId: 'doc',
+    title: '同一文档',
+    nodeType: 'document',
+    status: 'ready',
+    content: { revisionKey: '1', summary: 'Agent 摘要不能冒充正文', detail: content },
+  };
+  ports.read.mockResolvedValue(identity);
+  ports.preview.mockResolvedValue(preview);
+  ports.availability.mockReturnValue(ports.stopAvailability);
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  useNavigationScope().enterProject('project');
+  const width = ref(280),
+    host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp({
+    render: () =>
+      h(ReadonlyDocumentPreview, {
+        readTarget: () => ({ documentId: 'doc', projectId: 'project' }),
+        widthPx: width.value,
+      }),
+  }).use(pinia);
+  try {
+    app.mount(host);
+    await vi.waitFor(() => expect(host.textContent).toContain('正式正文'));
+    expect(host.querySelector('.document-preview-first-screen')).not.toBeNull();
+    expect(host.textContent).not.toContain('Agent 摘要');
+    expect(host.querySelector('.workspace-markdown-preview')?.getAttribute('style')).toContain(
+      '244px'
+    );
+    host.querySelector('.readonly-document-preview')?.dispatchEvent(new MouseEvent('mouseenter'));
+    await vi.waitFor(() => expect(host.querySelector('.document-preview-first-screen')).toBeNull());
+    expect(host.textContent).toContain('正式正文');
+    width.value = 420;
+    await vi.waitFor(() =>
+      expect(host.querySelector('.workspace-markdown-preview')?.getAttribute('style')).toContain(
+        '384px'
+      )
+    );
+    expect(ports.preview).toHaveBeenCalledOnce();
+    expect(host.querySelector('[contenteditable]')).toBeNull();
+  } finally {
+    app.unmount();
+    host.remove();
+    vi.unstubAllGlobals();
+  }
+  expect(ports.stopMutation).toHaveBeenCalledOnce();
+});

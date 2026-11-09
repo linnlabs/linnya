@@ -28,6 +28,4 @@ export declare function registerRendererDocumentPreviewPort(
 ): void;
 /** 预览卡片标出文档类型时用，与文件树同一图标；Host 未安装时返回 null，调用方自行兜底。 */
 export declare function readDocumentPreviewTypeIcon(nodeType: string): Component | null;
-export declare function mountDocumentPreview(
-  input: DocumentPreviewMountInput
-): Promise<() => void>;
+export declare function mountDocumentPreview(input: DocumentPreviewMountInput): Promise<() => void>;
