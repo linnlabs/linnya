@@ -6,11 +6,6 @@ import {
   type CanvasSelectionReferencePort,
 } from '../definitions/canvasSelectionReference';
 import { buildCanvasSelectionReference } from '../functions/buildCanvasSelectionReference';
-import { defineAsyncComponent, defineComponent, h } from 'vue';
-import type { ConversationReferenceChipInput } from '@plugin/renderer/conversationInputContribution';
-const SelectionPreview = defineAsyncComponent(
-  () => import('../ui/CanvasSelectionReferencePreview.vue')
-);
 export function createCanvasSelectionReferenceKind(
   port: CanvasSelectionReferencePort
 ): ConversationReferenceKindContribution {
@@ -18,11 +13,8 @@ export function createCanvasSelectionReferenceKind(
     pluginId: CANVAS_PLUGIN_ID,
     kind: CANVAS_SELECTION_REFERENCE_KIND,
     chip: { label: reference => reference.label, preview: reference => reference.label },
-    previewComponent: defineComponent(
-      (props: { readonly reference: ConversationReferenceChipInput }) => () =>
-        h(SelectionPreview, { reference: props.reference, read: port.read }),
-      { props: { reference: { type: Object, required: true } } }
-    ),
+    // “画布 · N 张卡”已说清来源；悬停弹层会遮挡输入框，点击即回到画布定位卡片。
+    hoverPreview: false,
     isValid: reference =>
       CanvasSelectionReferenceMetadataSchema.safeParse(reference.metadata).success,
     async prepareForSend(reference, context) {

@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { CanvasCardIdSchema } from '@plugin/canvas/shared';
 import { createCanvasSelectionReferenceKind, addCanvasSelectionReference } from '..';
 import type { CanvasSelectionReferencePort } from '..';
-import { createCanvasSelectionPreview } from '../orchestration/createCanvasSelectionPreview';
 import { registerCanvasReferenceFocus, focusCanvasReference } from '..';
 const id = CanvasCardIdSchema.parse('c1');
 const metadata = { documentId: 'doc', projectId: 'project', elementIds: [id], originalCount: 1 };
@@ -28,17 +27,9 @@ describe('画布选区引用', () => {
     const result = await f.kind.prepareForSend?.(reference, { conversationId: 'chat', projectId: 'project', signal: new AbortController().signal });
     expect(result?.previewText).toBe('中'.repeat(499)); expect(result?.text).toBe(text);
   });
-  it('hover读取当前正文且不保存，关闭和切项目后不接纳迟到正文', async () => {
-    const f = fixture(); let project: string | null = 'project';
-    const preview = createCanvasSelectionPreview(f.read, () => project);
-    await preview.refresh(reference);
-    expect(preview.content.value).toBe('发送瞬间的最新正文'); expect(f.save).not.toHaveBeenCalled();
-    let finish: (() => void) | undefined;
-    f.read.mockImplementationOnce(() => new Promise(resolve => { finish = () => resolve({ documentId: 'doc', sequence: 8, elementIds: [id], path: 'workspace:/画布.canvas', text: '迟到内容' }); }));
-    const pending = preview.refresh(reference); preview.dispose(); finish?.(); await pending;
-    expect(preview.content.value).toBe('');
-    project = null; await preview.refresh(reference);
-    expect(preview.error.value).toContain('不在当前项目'); expect(f.read).toHaveBeenCalledTimes(2);
+  it('画布引用不弹悬停预览，点击仍交回画布定位', () => {
+    const f = fixture();
+    expect(f.kind.hoverPreview).toBe(false); expect(f.kind.previewComponent).toBeUndefined(); expect(f.kind.onActivate).toBeTypeOf('function');
   });
   it('先保存调用方草稿，发送时后台读一次冻结版本，保留原引用快照', async () => {
     const f = fixture();

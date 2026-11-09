@@ -64,6 +64,7 @@ export function resolveConversationReferenceChipPresentation(
     label: contribution.chip.label(reference),
     preview: contribution.chip.preview(reference),
     ...(contribution.previewComponent ? { previewComponent: contribution.previewComponent } : {}),
+    ...(contribution.hoverPreview === false ? { hoverPreview: false as const } : {}),
     ...(contribution.onActivate ? { activate: () => activateConversationReference(reference) } : {}),
   };
 }

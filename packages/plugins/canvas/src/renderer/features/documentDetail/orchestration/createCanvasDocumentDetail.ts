@@ -17,9 +17,9 @@ export function createCanvasDocumentDetail(options: {
     release: (() => void) | null = null;
   async function mount() {
     try {
-      const precision = await options.port.prepare(options.card.id);
+      // 精确图只影响退出详情时位图与正文能否无缝衔接；拿不到也照常显示详情，不打扰用户。
+      await options.port.prepare(options.card.id);
       if (disposed) return;
-      if (precision === 'unavailable') state.setNotice('精确预览暂不可用，已继续显示只读详情。');
       const unmount = await options.port.mount({
         element: options.element,
         documentId: options.card.data.documentId,

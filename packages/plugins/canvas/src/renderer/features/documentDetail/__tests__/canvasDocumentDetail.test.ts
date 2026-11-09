@@ -37,10 +37,10 @@ describe('单张近景文档详情', () => {
     const pending = late.mount(); await Promise.resolve(); late.dispose(); mounted.resolve(release); await pending;
     expect(release).toHaveBeenCalledTimes(1); expect(lateHost.visible).not.toHaveBeenCalledWith(card().id, true);
   });
-  it('精确位图不可用仍允许详情；权限拒绝保留封面并显示正式错误', async () => {
+  it('精确位图不可用仍静默显示详情；权限拒绝保留封面并显示正式错误', async () => {
     const host = port(); host.prepare = async () => 'unavailable';
     const detail = createCanvasDocumentDetail({ card: card(), projectId: 'project', element: document.createElement('div'), port: host }); await detail.mount();
-    expect(detail.state.ready.value).toBe(true); expect(detail.state.notice.value).toContain('精确预览'); detail.dispose();
+    expect(detail.state.ready.value).toBe(true); expect(detail.state.notice.value).toBeNull(); detail.dispose();
     const denied = port(); denied.mount = async () => { throw new Error('目标已移出当前项目'); };
     const failure = createCanvasDocumentDetail({ card: card(), projectId: 'project', element: document.createElement('div'), port: denied }); await failure.mount();
     expect(failure.state.ready.value).toBe(false); expect(failure.state.notice.value).toBe('目标已移出当前项目'); expect(denied.visible).not.toHaveBeenCalled(); failure.dispose();

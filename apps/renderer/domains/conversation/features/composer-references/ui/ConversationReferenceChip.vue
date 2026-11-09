@@ -2,7 +2,7 @@
   <div
     class="ai-assistant-quote-preview__pill"
     :aria-label="presentation.label"
-    @mouseenter="hover.enter()"
+    @mouseenter="hoverable && hover.enter()"
     @mouseleave="hover.leave()"
   >
     <button
@@ -10,7 +10,7 @@
       type="button"
       class="ai-assistant-quote-preview__pill-text ai-assistant-quote-preview__pill-action"
       @click="activate"
-      @focus="hover.enter(true)"
+      @focus="hoverable && hover.enter(true)"
       @keydown.esc="hover.escape()"
     >
       {{ presentation.preview }}
@@ -40,9 +40,10 @@
         direction="up"
         class="conversation-reference-hover__content"
       >
+        <template v-if="!hoverable" />
         <component
           :is="presentation.previewComponent"
-          v-if="presentation.previewComponent"
+          v-else-if="presentation.previewComponent"
           :reference="reference"
         />
         <template v-else>
@@ -59,7 +60,7 @@
   </Teleport>
 </template>
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { DropdownPanel } from '@linnya/renderer-ui';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import type { ConversationReferenceChipInput } from '@linnya/plugin-host-contract/renderer';
@@ -68,8 +69,10 @@ import { createComposerReferenceHover } from '../orchestration/createComposerRef
 const props = defineProps<{ reference: ConversationReferenceChipInput; presentation: ConversationReferenceChipPresentation; removeLabel: string }>();
 defineEmits<{ remove: [] }>();
 const anchor = ref<HTMLElement | null>(null), panel = ref<HTMLElement | null>(null), error = ref<string | null>(null);
+// 不弹预览的引用只在点击失败时借弹层显示错误。
+const hoverable = computed(() => props.presentation.hoverPreview !== false);
 const hover = createComposerReferenceHover({ anchor: () => anchor.value, panel: () => panel.value });
-async function activate() { if (!props.presentation.activate) { hover.enter(true); return; } try { await props.presentation.activate(); hover.close(); } catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); hover.enter(true); } }
+async function activate() { if (!props.presentation.activate) { if (hoverable.value) hover.enter(true); return; } try { await props.presentation.activate(); hover.close(); } catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); hover.enter(true); } }
 watch(() => props.reference, () => { hover.close(); error.value = null; });
 onBeforeUnmount(hover.dispose);
 </script>

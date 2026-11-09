@@ -56,7 +56,9 @@ class CanvasRasterPresentation {
     this.pointer = null;
   };
   private readonly visibilityChanged = () => {
-    if (this.suspended()) this.cancelPending();
+    // 隐藏只停普通补图；详情/编辑正在等的精确图保留，回到前台后继续完成。
+    // 窗口被遮挡或切桌面都会短暂隐藏，若一并取消，详情会误判精确图不可用。
+    if (this.suspended()) this.cancelPending(id => !this.preparingEdits.has(id));
     else this.refresh();
   };
   constructor(private readonly options: CanvasRasterPresentationOptions) {
@@ -89,9 +91,12 @@ class CanvasRasterPresentation {
       this.options.host.ownerDocument.visibilityState === 'hidden'
     );
   }
-  private cancelPending(): void {
-    for (const id of this.pending.keys()) this.queue.cancel(id);
-    this.pending.clear();
+  private cancelPending(include: (id: CanvasCardId) => boolean = () => true): void {
+    for (const id of [...this.pending.keys()])
+      if (include(id)) {
+        this.queue.cancel(id);
+        this.pending.delete(id);
+      }
   }
   private descriptor(card: CanvasCard): string {
     const existing = this.descriptors.get(card);
