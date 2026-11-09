@@ -21,32 +21,42 @@
     >
       <CloseIcon />
     </button>
-    <div v-if="isOpen" class="project-overview-filter__menu">
-      <CustomSelect
-        :model-value="modelValue"
-        :options="options"
-        :manual-mode="true"
-        :parent-is-open="isOpen"
-        semantic-role="menu"
-        variant="minimal"
-        :bordered="false"
-        :external-trigger-ref="triggerRef"
-        :enable-keyboard-nav="true"
-        :show-selected-checkmark="true"
-        options-max-height="320px"
-        option-label-overflow="ellipsis"
-        :class-names="{ options: 'project-overview-filter__options' }"
-        @update:model-value="handleSelect"
-        @close="isOpen = false"
-      />
-    </div>
+    <Teleport to="body">
+      <Transition name="project-overview-filter-menu-fade">
+        <div
+          v-if="isOpen"
+          ref="menuRef"
+          class="project-overview-filter__menu"
+          :style="menuStyle"
+        >
+          <CustomSelect
+            :model-value="modelValue"
+            :options="options"
+            :manual-mode="true"
+            :parent-is-open="isOpen"
+            semantic-role="menu"
+            variant="minimal"
+            :bordered="false"
+            :external-trigger-ref="triggerRef"
+            :enable-keyboard-nav="true"
+            :show-selected-checkmark="true"
+            options-max-height="320px"
+            option-label-overflow="ellipsis"
+            :class-names="{ options: 'project-overview-filter__options' }"
+            @update:model-value="handleSelect"
+            @close="isOpen = false"
+          />
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { CustomSelect, type CustomSelectOption } from '@linnya/renderer-ui';
 import { ChevronIcon, CloseIcon } from '@linnya/renderer-ui/icons';
+import { useFixedDropdownPosition } from '@/domains/workspace/ui/sidebar';
 
 const props = defineProps<{
   label: string;
@@ -66,6 +76,15 @@ const emit = defineEmits<{
 
 const triggerRef = ref<HTMLButtonElement | null>(null);
 const isOpen = ref(false);
+// 与侧栏“新建”菜单同一套：挂到 body、按触发按钮定位、共享弹出动效。
+const {
+  dropdownRef: menuRef,
+  dropdownStyle: menuStyle,
+  positionDropdownAfterRender,
+} = useFixedDropdownPosition({ align: 'start' });
+watch(isOpen, open => {
+  if (open) void positionDropdownAfterRender(triggerRef.value);
+}, { flush: 'post' });
 const triggerText = computed(() => (props.valueText === null ? props.label : props.activeText));
 
 function handleSelect(value: string | null): void {

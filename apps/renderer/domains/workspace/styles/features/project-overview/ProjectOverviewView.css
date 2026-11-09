@@ -107,10 +107,6 @@
   color: var(--color-text-tertiary);
 }
 
-.project-overview__search:focus-within {
-  box-shadow: 0 0 0 1px var(--color-border-focus);
-}
-
 .project-overview__search-icon {
   flex-shrink: 0;
   width: 16px;
@@ -232,10 +228,28 @@
 }
 
 .project-overview-filter__menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: var(--linnya-ui-layer-inline-menu);
+  position: fixed;
+  z-index: var(--linnya-ui-layer-popover);
+}
+
+.project-overview-filter-menu-fade-enter-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-enter);
+}
+
+.project-overview-filter-menu-fade-leave-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-leave);
+}
+
+.project-overview-filter-menu-fade-enter-from {
+  opacity: 0;
+  transform: var(--popup-enter-down);
+}
+
+.project-overview-filter-menu-fade-leave-to {
+  opacity: 0;
+  transform: var(--popup-leave);
 }
 
 .project-overview-filter__menu .project-overview-filter__options {
