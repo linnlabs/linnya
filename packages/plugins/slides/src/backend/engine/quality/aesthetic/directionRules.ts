@@ -6,9 +6,12 @@
  * - 背景：整页底色（满版形状优先于页面背景）离所有声明颜色都远 → 报告；满版照片不判。
  * - 字体：文字 run 声明的字体不在 fonts 里 → 报告；Office 本地化名称归一后再比。
  * - 颜色：彩色填充或文字的色相离所有声明彩色都远 → 复核；同色相的深浅不算偏离。
+ * - 排除色相：底色、彩色填充或文字落进 imagePalette.excludedHues（OKLCH）→ 报告。
+ * - 配色来源：有照片却没声明 imagePalette → 报告。手绘图和照片在这里分不开，全是手绘时由 Agent 声明 no_photos。
  */
 
-import { hueDistance, toHex } from '@linnya/color-core';
+import { hueDistance, rgbToOklch, toHex } from '@linnya/color-core';
+import { hueRangeLabel, isColorExcluded, type HueRange } from '@linnya/color-core/palette';
 import type { DirectionDeclaration } from '@plugin/slides/shared/designDirection';
 import {
   assessFontDelivery,
@@ -30,6 +33,8 @@ const PALETTE_HUE_LIMIT_DEG = 24;
 const PALETTE_DELTA_E_LIMIT = 18;
 /** 偏离色在全稿累计面积至少占一页的这个比例才报告，图标与小标记不算。 */
 const OFF_PALETTE_MIN_AREA_RATIO = 0.01;
+/** 图片至少占一页的这个比例才算照片，图标与小标记不算。 */
+const PHOTO_MIN_AREA_RATIO = 0.05;
 const MAX_OBSERVED = 6;
 
 export function lintDirectionCarryThrough(
@@ -41,6 +46,8 @@ export function lintDirectionCarryThrough(
     ...lintDirectionBackground(info, direction),
     ...lintDirectionFonts(info, direction),
     ...lintDirectionPalette(info, direction),
+    ...lintDirectionExcludedHues(info, direction),
+    ...lintDirectionImagePalette(info, direction),
   ];
 }
 
@@ -210,43 +217,33 @@ export function lintDirectionPalette(
   info: PresentationInfo,
   direction: DirectionDeclaration,
 ): AestheticLintIssue[] {
-  const paletteRgb = [
-    ...direction.palette.backgrounds,
+  const declaredInk = [
     direction.palette.ink,
+    ...(direction.palette.muted ? [direction.palette.muted] : []),
     ...direction.palette.accents,
-  ].map(parseHex).filter((rgb): rgb is RgbColor => rgb != null);
+    ...(direction.palette.chart ?? []),
+  ];
+  const paletteRgb = [...direction.palette.backgrounds, ...declaredInk]
+    .map(parseHex).filter((rgb): rgb is RgbColor => rgb != null);
   const chromaticHues = paletteRgb
     .map(rgbToHsl)
     .filter((hsl) => !isNeutralColor(hsl))
     .map((hsl) => hsl.h);
-  const offColors = new Map<string, { slides: Set<number>; area: number }>();
-  const minArea = info.slideSize.width * info.slideSize.height * OFF_PALETTE_MIN_AREA_RATIO;
+  const offColors: ColorTally = new Map();
 
   for (const slide of info.slides) {
-    for (const element of flattenSlideElements(slide.elements)) {
-      const area = element.position ? element.position.w * element.position.h : 0;
-      for (const hex of [element.fill, element.textColor]) {
-        const rgb = parseHex(hex);
-        if (rgb == null) continue;
-        const hsl = rgbToHsl(rgb);
-        if (isNeutralColor(hsl)) continue;
-        const nearHue = chromaticHues.some((hue) => hueDistance(hue, hsl.h) <= PALETTE_HUE_LIMIT_DEG);
-        const nearColor = paletteRgb.some((candidate) => deltaE76(rgb, candidate) <= PALETTE_DELTA_E_LIMIT);
-        if (nearHue || nearColor) continue;
-        const key = toUpperHex(rgb);
-        const entry = offColors.get(key) ?? { slides: new Set<number>(), area: 0 };
-        entry.slides.add(slide.number);
-        entry.area += area;
-        offColors.set(key, entry);
-      }
+    for (const { rgb, area } of elementColors(slide)) {
+      const hsl = rgbToHsl(rgb);
+      if (isNeutralColor(hsl)) continue;
+      const nearHue = chromaticHues.some((hue) => hueDistance(hue, hsl.h) <= PALETTE_HUE_LIMIT_DEG);
+      const nearColor = paletteRgb.some((candidate) => deltaE76(rgb, candidate) <= PALETTE_DELTA_E_LIMIT);
+      if (nearHue || nearColor) continue;
+      tallyColor(offColors, rgb, slide.number, area);
     }
   }
-  const ranked = [...offColors.entries()]
-    .filter(([, entry]) => entry.area >= minArea)
-    .sort((left, right) => right[1].area - left[1].area);
+  const ranked = rankColors(offColors, info);
   if (ranked.length === 0) return [];
-  const slides = [...new Set(ranked.flatMap(([, entry]) => [...entry.slides]))]
-    .sort((left, right) => left - right);
+  const slides = slidesOf(ranked);
   return [{
     code: 'direction_color_off_palette',
     severity: 'warning',
@@ -256,8 +253,106 @@ export function lintDirectionPalette(
       kind: 'direction_carry_through',
       aspect: 'color',
       cardId: direction.cardId,
-      declared: [direction.palette.ink, ...direction.palette.accents],
+      declared: declaredInk,
       observed: ranked.map(([hex]) => hex).slice(0, MAX_OBSERVED),
+      firstAffectedSlide: slides[0]!,
+    },
+  }];
+}
+
+type ColorTally = Map<string, { slides: Set<number>; area: number }>;
+
+function* elementColors(slide: SlideInfo): Generator<{ rgb: RgbColor; area: number }> {
+  for (const element of flattenSlideElements(slide.elements)) {
+    const area = element.position ? element.position.w * element.position.h : 0;
+    for (const hex of [element.fill, element.textColor]) {
+      const rgb = parseHex(hex);
+      if (rgb != null) yield { rgb, area };
+    }
+  }
+}
+
+function tallyColor(tally: ColorTally, rgb: RgbColor, slideNumber: number, area: number): void {
+  const key = toUpperHex(rgb);
+  const entry = tally.get(key) ?? { slides: new Set<number>(), area: 0 };
+  entry.slides.add(slideNumber);
+  entry.area += area;
+  tally.set(key, entry);
+}
+
+/** 累计面积够大的颜色，面积大的在前。 */
+function rankColors(tally: ColorTally, info: PresentationInfo) {
+  const minArea = info.slideSize.width * info.slideSize.height * OFF_PALETTE_MIN_AREA_RATIO;
+  return [...tally.entries()]
+    .filter(([, entry]) => entry.area >= minArea)
+    .sort((left, right) => right[1].area - left[1].area);
+}
+
+function slidesOf(ranked: ReturnType<typeof rankColors>): number[] {
+  return [...new Set(ranked.flatMap(([, entry]) => [...entry.slides]))]
+    .sort((left, right) => left - right);
+}
+
+// ─── 排除色相与配色来源 ────────────────────────────────────────────────────
+
+export function lintDirectionExcludedHues(
+  info: PresentationInfo,
+  direction: DirectionDeclaration,
+): AestheticLintIssue[] {
+  const source = direction.imagePalette;
+  const ranges: readonly HueRange[] = source != null && 'excludedHues' in source ? source.excludedHues : [];
+  if (ranges.length === 0) return [];
+
+  const excluded: ColorTally = new Map();
+  const slideArea = info.slideSize.width * info.slideSize.height;
+  const record = (rgb: RgbColor, slideNumber: number, area: number) => {
+    if (isColorExcluded(rgbToOklch([rgb.r, rgb.g, rgb.b]), ranges)) tallyColor(excluded, rgb, slideNumber, area);
+  };
+  for (const slide of info.slides) {
+    for (const rgb of resolveEffectiveBackground(slide, info.slideSize) ?? []) record(rgb, slide.number, slideArea);
+    for (const { rgb, area } of elementColors(slide)) record(rgb, slide.number, area);
+  }
+  const ranked = rankColors(excluded, info);
+  if (ranked.length === 0) return [];
+  const slides = slidesOf(ranked);
+  return [{
+    code: 'direction_color_excluded_hue',
+    severity: 'warning',
+    confidence: 'medium',
+    slides,
+    evidence: {
+      kind: 'direction_carry_through',
+      aspect: 'excluded_hue',
+      cardId: direction.cardId,
+      declared: ranges.map(([from, to]) => hueRangeLabel(from, to)),
+      observed: ranked.map(([hex]) => hex).slice(0, MAX_OBSERVED),
+      firstAffectedSlide: slides[0]!,
+    },
+  }];
+}
+
+export function lintDirectionImagePalette(
+  info: PresentationInfo,
+  direction: DirectionDeclaration,
+): AestheticLintIssue[] {
+  if (direction.imagePalette != null) return [];
+  const minArea = info.slideSize.width * info.slideSize.height * PHOTO_MIN_AREA_RATIO;
+  const slides = info.slides
+    .filter((slide) => slide.backgroundImage === true || flattenSlideElements(slide.elements).some((element) =>
+      element.type === 'image' && element.position != null && element.position.w * element.position.h >= minArea))
+    .map((slide) => slide.number);
+  if (slides.length === 0) return [];
+  return [{
+    code: 'direction_image_palette_missing',
+    severity: 'warning',
+    confidence: 'medium',
+    slides,
+    evidence: {
+      kind: 'direction_carry_through',
+      aspect: 'image_palette',
+      cardId: direction.cardId,
+      declared: ['未声明 imagePalette'],
+      observed: [`${slides.length} 页有照片`],
       firstAffectedSlide: slides[0]!,
     },
   }];

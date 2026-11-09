@@ -26,6 +26,7 @@
       "@linnya/plugin-host-contract/renderer": ["packages/plugin-host-contract/renderer/index.ts"],
       "@linnya/plugin-host-contract/renderer/*": ["packages/plugin-host-contract/renderer/*"],
       "@linnya/color-core": ["packages/color-core/src/index.ts"],
+      "@linnya/color-core/palette": ["packages/color-core/src/palette/index.ts"],
       "@linnya/text-measurement-core": ["packages/text-measurement-core/src/index.ts"],
       "@plugin/*": ["src/plugin-sdk/*"],
       "@app/localization": ["packages/plugin-host-contract/renderer/localization.ts"],

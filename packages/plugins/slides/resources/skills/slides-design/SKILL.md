@@ -27,8 +27,9 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
    - 若你有 `ppt_direction` 工具：传入场景和母题调用一次，按返回的手法、配色逻辑、主色相、字体与图片策略设计。用户要求配图，或内容离不开图片（器物、人物、现场、实验装置）时传 `requireImages: true`。手法明显不适合内容时，带 `rejected`（cardId 与一句理由）再调用一次；不要因为不熟悉就退回。
    - 若无 `ppt_direction` 工具：按 [`styles.md`](./references/styles.md) 自行判断方向。
    - 编辑已有文稿、用户指定了风格或给了参考稿时，不调用 `ppt_direction`。
-3. 新建整份文稿时，先只做封面给用户看效果：定下全稿配色、字体和阅读方式（按场合定，见 design.md 视觉系统第 5 项）并写进 `compose({ theme })`（调用过 `ppt_direction` 时同时写进 deck.js 顶部的 `direction` 对象，见“创建与编辑”第 4 步），用 `write_file` 写好封面这一页并构建成功，render 封面确认像素。封面就是正式稿的第 1 页，按正式质量做，批准后不重做。
-4. 向用户提交一份计划，明确目的、受众、标题、视觉方向、样子和逐页主要内容。视觉方向回答三件事：`concept` 说明整稿遵循什么设计理念以及为什么，`composition` 说明构图、信息密度与页面节奏，`signature` 只声明一个整稿核心视觉记忆点。逐页内容里用一句话写明这一页的视觉主角，例如“何尊内底铭文拓片”“三条限制因素曲线并排”；并列的一组页各写各的看点，不写成同一句。
+3. 方向要求用图时，先找齐封面和主要内页的图（找图见 [`assets.md`](./references/assets.md)），在 Shell 运行 `linnya palette suggest <图片...>`，第一张放主图。从返回的几套里按内容选一套作为全稿配色；用法和角色对应见 [`cli.md`](./references/cli.md#配色linnya-palette)。
+4. 新建整份文稿时，先只做封面给用户看效果：定下全稿配色、字体和阅读方式（按场合定，见 design.md 视觉系统第 5 项）并写进 `compose({ theme })`（调用过 `ppt_direction` 时同时写进 deck.js 顶部的 `direction` 对象，见“创建与编辑”第 4 步），用 `write_file` 写好封面这一页并构建成功，render 封面确认像素。封面就是正式稿的第 1 页，按正式质量做，批准后不重做。
+5. 向用户提交一份计划，明确目的、受众、标题、视觉方向、样子和逐页主要内容。视觉方向回答三件事：`concept` 说明整稿遵循什么设计理念以及为什么，`composition` 说明构图、信息密度与页面节奏，`signature` 只声明一个整稿核心视觉记忆点。逐页内容里用一句话写明这一页的视觉主角，例如“何尊内底铭文拓片”“三条限制因素曲线并排”；并列的一组页各写各的看点，不写成同一句。
 - 拿到了 `ppt_direction` 的方向时，用自己的话把它写进这三项，不提方向是怎么来的。
 - 若你有 `ppt_plan` 工具：用它提交 `title`、可选 `audience`、`visualDirection: { concept, composition, signature }`、`look: { presentation, palette, fonts }` 和逐页 `pages[{title, content}]`。`look.presentation` 是封面所在文稿的 locator，`palette`、`fonts` 与 `direction` 对象一致；卡片会显示真实封面、色块和字体。页数由 `pages` 自动推导，不传 `pageCount`。observation 说封面样张没能显示时，先修好封面再提交一次。
 - 若无 `ppt_plan` 工具：直接在对话中按相同结构输出标题、受众、三项视觉方向、配色与字体、总页数和逐页计划，并说明封面已写入哪个文稿；不能省略视觉方向或改用另一套自由格式。
@@ -41,7 +42,7 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 2. 按任务读取下表中的最少资源，了解Slides的语法。不要一次加载全部 reference。
 3. deck.js 用 plain JavaScript；顶层逐页 `createSlide()`，最终一次 `compose()`。系统分配编辑身份；保留已有源码标记、key 与 `manualEdits`。见 [`syntax.md`](./references/syntax.md)。
 4. 新建文稿或整体改版时，把用户已批准的 `visualDirection` 落实为页面设计，再确定颜色、字体和图表调色板并写进 `compose({ theme })`。`visualDirection` 约束方向，`theme` 保存实际视觉常量；后者是跨页一致性的唯一运行时依据，也是后续编辑读到的 `DECK_DESIGN` 的来源。判断依据见 [`design.md`](./references/design.md)。
-   调用过 `ppt_direction` 时，在 deck.js 顶部写一个 `direction` 对象：`drawId`、`cardId` 照抄返回值，`palette: { backgrounds, ink, accents }` 写全稿用到的背景色、正文墨色和强调色，`fonts` 写全稿用到的字体，二者与用户批准的计划 `look` 一致。颜色、字体和图表调色板都从它取值，并在 `compose({ theme: { ..., direction } })` 里声明。inspect 会按它逐页对照底色、字体和颜色（`direction_*`）；确实要加颜色或字体，先补进 `direction` 再用。
+   调用过 `ppt_direction` 时，在 deck.js 顶部写一个 `direction` 对象：`drawId`、`cardId` 照抄返回值，`palette: { backgrounds, ink, muted, accents, chart }` 写全稿用到的颜色，`imagePalette` 写配色来源（见 [`cli.md`](./references/cli.md#配色linnya-palette)），`fonts` 写全稿用到的字体，二者与用户批准的计划 `look` 一致。颜色、字体和图表调色板都从它取值，并在 `compose({ theme: { ..., direction } })` 里声明。inspect 会按它逐页对照底色、字体和颜色（`direction_*`）；确实要加颜色或字体，先补进 `direction` 再用。
 5. 新建文稿使用 `write_file`，只传 `locator="workspace:/.../*.slides"`，不传 inode。计划前已经写好封面时，批准后用 `edit_file` 加入其余页面，封面保留为第 1 页。
 6. 局部替换优先 `edit_file`；整体重写才用 `write_file`。示例文件都是独立 source 起点，不能直接互相拼接。同一份 Slides 的写操作必须串行。修改声明与引用时先用 `grep` 找全关联处；删除按“先移除引用、后删除声明”，新增按“先增加声明、后增加引用”，保证每次写入都是可编译状态。能由一段更大且唯一的 `old_string` 覆盖时，优先一次完成关联修改。
    长文稿不要在一次工具调用中生成全部页面：预计达到 10 页，或包含较多图表、SVG、Brush、图片等复杂页面时，按章节每批创建 3–5 页；复杂批次缩小到 1–2 页。第一批用 `write_file` 写入共享 theme、共享常量、首批完整页面和唯一的 `compose()`；后续用 `edit_file` 原子加入一批完整的顶层页面声明，并同步更新同一个 `compose({ slides })`。每批写入后先处理 observation 中的编译与文档诊断，恢复到可编译状态后才能继续下一批；不要逐页制造无谓版本，也不要在最后一次性重写已经成功的页面。最终仍按第 9–10 步做整稿验收。
@@ -113,7 +114,7 @@ presentation-owned 资产。
 审美上的打磨（P2、间距、配色微调这类不影响能否读懂的问题）在整稿最终 render 看完后只做一轮：把要改的页一次改完，重新 render 这些页看一次，就交付。同一页不要反复“渲染 → 看图 → 改一处”；看完一页又想改，就记下来和其他页合并进这一轮。
 
 - 内容与用户批准的计划或局部修改要求一致；事实和来源没有被臆造。
-- 新建或整体改版的文稿在 `compose({ theme })` 中声明了视觉系统；调用过 `ppt_direction` 的稿子同时声明了 `theme.direction`，inspect 的 `direction_background_off` 与 `direction_font_undeclared` 已处理或有明确理由保留。
+- 新建或整体改版的文稿在 `compose({ theme })` 中声明了视觉系统；调用过 `ppt_direction` 的稿子同时声明了 `theme.direction`，inspect 的 `direction_background_off`、`direction_font_undeclared`、`direction_color_excluded_hue` 与 `direction_image_palette_missing` 已处理或有明确理由保留。
 - 最终内容已核对语言一致性与单位表达，尤其区分百分比、百分点和其他容易混淆的口径。
 - 写入 observation 中没有未处理的 error；inspect 的 `buildStatus` 可用，P0 已清零；`font_size_below_floor` 同样必须清零，不能以设计意图、信息密度或“非阻断”为由保留，放不下就拆页、换结构或删字；其余 findings 结合证据和设计意图逐项判断。
 - 需要视觉确认的页面已经按最终 revision 的策略 render 并检查，而不是只凭 source 猜效果，也不是沿用较早 revision 的截图。

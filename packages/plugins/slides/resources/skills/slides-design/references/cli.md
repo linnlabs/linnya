@@ -23,6 +23,8 @@ CLI 的 `--presentation` 接收 presentation ID，不接收 Workspace locator、
 | 检查某个字体族 | `linnya-slides fonts check --family <name>` |
 | 按脚本查 Office 通用字体 | `linnya-slides fonts list --script <latin\|eastAsian\|complex>` |
 | 只在本机放映时查已安装字体 | `linnya-slides fonts list --script <...> --target local` |
+| 按图片取色、出几套配色 | `linnya palette suggest <图片...>`（Linnya 内置命令，见下方“配色”） |
+| 检查用户给的整套配色 | `linnya palette check --bg ... --sf ... --ink ... --mu ... --ac ... --ch ...` |
 
 `inspect` 和 `render` 可用 `--slide N` 选择单页，或用 `--from N --to M` 选择闭区间；单页和范围不能同时传。省略这三项表示整份文稿。`inspect` 可用 `--max-slides N` 限制返回页数，也可用 `--heuristics` 附加 Tier-2 低置信提示。需要核对已知源码对象的最终几何时，可重复传 `--source-range start:end`，最多四次；范围是 1-based 闭区间。CLI 只执行显式选择，不会根据任务类型自动挑选页面。
 
@@ -36,6 +38,32 @@ CLI 的 `--presentation` 接收 presentation ID，不接收 Workspace locator、
 - `linnya-slides fonts check --family Inter`
 - `linnya-slides fonts list --script eastAsian`
 - `linnya-slides fonts list --script eastAsian --target local --limit 20 --offset 0`
+
+## 配色：linnya palette
+
+`linnya palette` 是 Linnya 内置命令，不属于 `linnya-slides`。图片写工作目录相对路径或 `conversation:/...`；颜色写 6 位、不带 `#`，否则 Shell 会当成注释。
+
+```text
+linnya palette suggest assets/cover.jpg assets/p3.jpg assets/p7.jpg
+本色 青铜绿#5f7a5c(62%,3图) 土褐#8a6a4a(21%,2图) | 排除 紫红315°-15°
+pl8f2a-1 同色系·染纸·绿 bg#e8eddf sf#f4f6ee ink#1f2a1e mu#5a6656 ac#4f7a4a ch#2f5a30,#4f7a4a,#7a9a70,#a3bb98,#c8d6bf
+```
+
+首行是取色结论和要避开的色相，之后一行一套。按内容选一套，不必选第一套；都不合适时再运行一次，每次结果不同。可选 `--color` 指定必须出现的颜色（用户指定颜色时用）、`--avoid` 排除颜色、`--base light|tint|dark` 定底色明暗、`--accents 1-6` 定强调色数量。
+
+写进 deck.js：
+
+| 输出 | `direction.palette` | `theme` |
+|---|---|---|
+| `bg`、`sf` | `backgrounds: [bg, sf]` | 背景与面板 |
+| `ink` | `ink` | 正文 |
+| `mu` | `muted` | 次要文字 |
+| `ac` | `accents` | `accent1`–`accent6` |
+| `ch` | `chart` | `chart.palette` |
+
+配色来源写 `direction.imagePalette`：用了取色结果写 `{ id: "pl8f2a-1", excludedHues: [[315, 15]] }`，度数照抄“排除”那一项，没有排除项写 `[]`；报 `no_subject_color` 时写 `{ unavailable: "no_subject_color" }`，按方向里的配色逻辑配色；最后没用照片时写 `{ unavailable: "no_photos" }`。排除色相里的颜色不要用，inspect 会报 `direction_color_excluded_hue`。
+
+用户直接给了整套配色时用 `check`，不合格会给出改动最少的版本，退出码为 1。
 
 ## Shell 与输出
 

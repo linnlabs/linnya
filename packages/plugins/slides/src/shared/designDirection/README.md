@@ -50,6 +50,7 @@ designDirection/
 - deck.js 在 `compose({ theme: { direction } })` 声明方向；`styleParsers` 用
   `DirectionDeclarationSchema` 严格校验，存入 `ThemeSpec.direction`，不写入 PPTX。
 - inspect 用 `resolveDeckDirection` 取得声明，交给 quality 的方向贯彻检查
-  （`direction_background_off`、`direction_font_undeclared`、`direction_color_off_palette`），
+  （`direction_background_off`、`direction_font_undeclared`、`direction_color_off_palette`、
+  `direction_color_excluded_hue`、`direction_image_palette_missing`），
   见 [quality README](../../backend/engine/quality/README.md)。
 - 依赖方向：本目录只依赖 `zod`，不依赖 backend、renderer 或 Core。

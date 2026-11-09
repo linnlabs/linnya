@@ -115,6 +115,101 @@ describe('direction carry-through', () => {
     })]);
   });
 
+  it('声明的 muted、chart 算在调色板里', () => {
+    const declared: DirectionDeclaration = {
+      ...DIRECTION,
+      palette: { ...DIRECTION.palette, muted: '#2255CC', chart: ['#14A05A'] },
+    };
+    const issues = codes(info([{
+      number: 1,
+      backgroundPaint: { type: 'solid', color: '#F2E6D0' },
+      elements: [
+        { name: 'muted', type: 'shape', fill: '#2255CC', position: { x: 1, y: 1, w: 2, h: 1 } },
+        { name: 'chart', type: 'shape', fill: '#14A05A', position: { x: 4, y: 1, w: 2, h: 1 } },
+      ],
+    }]), declared);
+    expect(issues).toEqual([]);
+  });
+
+  describe('排除色相', () => {
+    /** 青铜绿主图排除紫红；OKLCH 色相 315°–15° 覆盖洋红、紫红。 */
+    const EXCLUDING: DirectionDeclaration = {
+      ...DIRECTION,
+      imagePalette: { id: 'pl1-1', excludedHues: [[315, 15]] },
+    };
+    const paper = { type: 'solid', color: '#F2E6D0' } as const;
+    const shape = (fill: string, w: number, h: number): SlideElementInfo => ({
+      name: fill, type: 'shape', fill, position: { x: 1, y: 1, w, h },
+    });
+    const excludedIssue = (presentation: PresentationInfo) =>
+      codes(presentation, EXCLUDING).filter((issue) => issue.code === 'direction_color_excluded_hue');
+
+    it('大面积紫红报告，并列出排除的色相与观察到的颜色', () => {
+      expect(excludedIssue(info([{ number: 1, backgroundPaint: paper, elements: [shape('#B0247A', 3, 2)] }]))).toEqual([
+        expect.objectContaining({
+          slides: [1],
+          evidence: expect.objectContaining({
+            aspect: 'excluded_hue',
+            declared: [expect.stringContaining('315°-15°')],
+            observed: ['#B0247A'],
+          }),
+        }),
+      ]);
+    });
+
+    it('页面底色落进排除区也报告', () => {
+      expect(excludedIssue(info([{ number: 2, backgroundPaint: { type: 'solid', color: '#B0247A' }, elements: [] }])))
+        .toEqual([expect.objectContaining({ slides: [2] })]);
+    });
+
+    it('小标记、无彩色、排除区外的颜色不报告', () => {
+      expect(excludedIssue(info([{
+        number: 1,
+        backgroundPaint: paper,
+        elements: [shape('#B0247A', 0.3, 0.3), shape('#808080', 6, 4), shape('#E8442E', 6, 4)],
+      }]))).toEqual([]);
+    });
+
+    it('取不出颜色的声明没有排除区，不报告', () => {
+      const issues = codes(info([{ number: 1, backgroundPaint: paper, elements: [shape('#B0247A', 3, 2)] }]), {
+        ...DIRECTION,
+        imagePalette: { unavailable: 'no_subject_color' },
+      });
+      expect(issues.map((issue) => issue.code)).not.toContain('direction_color_excluded_hue');
+    });
+  });
+
+  describe('配色来源', () => {
+    const photo = (w: number, h: number): SlideElementInfo => ({
+      name: 'photo', type: 'image', position: { x: 1, y: 1, w, h },
+    });
+    const paper = { type: 'solid', color: '#F2E6D0' } as const;
+    const missing = (presentation: PresentationInfo, direction: DirectionDeclaration = DIRECTION) =>
+      codes(presentation, direction).filter((issue) => issue.code === 'direction_image_palette_missing');
+
+    it('有照片没声明来源时报告有图的页', () => {
+      expect(missing(info([
+        { number: 1, backgroundPaint: paper, elements: [photo(6, 4)] },
+        { number: 2, backgroundPaint: paper, elements: [] },
+        { number: 3, backgroundImage: true, elements: [] },
+      ]))).toEqual([expect.objectContaining({
+        slides: [1, 3],
+        evidence: expect.objectContaining({ aspect: 'image_palette', firstAffectedSlide: 1 }),
+      })]);
+    });
+
+    it('只有小图，或已声明来源时不报告', () => {
+      expect(missing(info([{ number: 1, backgroundPaint: paper, elements: [photo(1, 1)] }]))).toEqual([]);
+      for (const imagePalette of [
+        { id: 'pl1-1', excludedHues: [] },
+        { unavailable: 'no_subject_color' },
+        { unavailable: 'no_photos' },
+      ] satisfies DirectionDeclaration['imagePalette'][]) {
+        expect(missing(info([{ number: 1, backgroundPaint: paper, elements: [photo(6, 4)] }]), { ...DIRECTION, imagePalette })).toEqual([]);
+      }
+    });
+  });
+
   it('AestheticLint 通过 options.direction 接入，优先级为背景/字体 P1、颜色 P2 的 warning', () => {
     const report = new AestheticLint().lint(info([{ number: 1, elements: [text('t', 'Arial', '#2255CC')] }]), {
       direction: DIRECTION,

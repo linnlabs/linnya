@@ -407,9 +407,20 @@ interface LayoutDirectionInput {
     backgrounds: string[];
     /** 正文墨色（#RRGGBB）。 */
     ink: string;
-    /** 强调色（#RRGGBB），图表系列色也从这里取。 */
+    /** 次要文字色（#RRGGBB）。 */
+    muted?: string;
+    /** 强调色（#RRGGBB），最多 6 个。 */
     accents: string[];
+    /** 图表系列色（#RRGGBB），最多 8 个；不写时图表色从 accents 取。 */
+    chart?: string[];
   };
+  /**
+   * 配色来源。取自 `linnya palette suggest` 时写这一套的 id 和排除色相（OKLCH 度数，起止可跨 0°，如 [[315, 15]]）；
+   * 图里取不出颜色写 `{ unavailable: 'no_subject_color' }`，最后没用照片写 `{ unavailable: 'no_photos' }`。
+   */
+  imagePalette?:
+    | { id: string; excludedHues: Array<[number, number]> }
+    | { unavailable: 'no_subject_color' | 'no_photos' };
   /** 全稿实际使用的字体族，与文字的 fontFamily 写法一致。 */
   fonts: string[];
 }
