@@ -6,7 +6,7 @@
  * 改写读者看到的图。这里只做纯解释：何时提交、何时清除、何时继续等待。
  */
 
-import type { ChartValueRange } from '../definitions/chartReadingState'
+import type { ChartValueRange } from '@linnya/markdown-document-core/workspace-charts'
 
 export interface ChartValueRangeDraft {
   readonly min: string

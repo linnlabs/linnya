@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_CHART_READING_STATE } from '../definitions/chartReadingState'
+import { DEFAULT_CHART_READING_STATE } from '@linnya/markdown-document-core/workspace-charts'
 import { chartFixture, chartTestTheme } from '../testing/chartTestFixtures'
-import { buildChartLegend, resolveLegendPosition, usesEndLabels } from './chartLegend'
-import { toggleEmphasis, toggleSeriesVisibility } from './chartReadingState'
-import { canTransitionBetween } from './chartTransition'
+import { buildChartLegend, resolveLegendPosition, usesEndLabels } from '@linnya/markdown-document-core/workspace-charts'
+import { toggleEmphasis, toggleSeriesVisibility } from '@linnya/markdown-document-core/workspace-charts'
+import { canTransitionBetween } from '@linnya/markdown-document-core/workspace-charts'
 import { buildChartDataTable, chartDataTableToTsv } from './chartDataTable'
 
 describe('图例', () => {

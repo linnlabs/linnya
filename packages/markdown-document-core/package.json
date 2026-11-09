@@ -4,12 +4,19 @@
   "type": "module",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Portable Markdown document schema, conversion and DOM projection shared by editors and rendering workers.",
+  "description": "Portable and Workspace Markdown schemas and user-facing presentation shared by editors and rendering workers.",
   "exports": {
     ".": "./src/index.ts",
     "./style.css": "./src/style.css",
     "./validation": "./src/functions/assertMarkdownDocument.ts",
-    "./references": "./src/references.ts"
+    "./references": "./src/references.ts",
+    "./workspace-schema": "./src/features/workspace-schema/index.ts",
+    "./workspace-charts": "./src/features/workspace-charts/index.ts",
+    "./workspace-citations": "./src/features/workspace-citations/index.ts",
+    "./workspace-preview": "./src/features/workspace-preview/index.ts",
+    "./workspace-preview.css": "./src/features/workspace-preview/styles/workspacePreview.css",
+    "./workspace-presentation": "./src/features/workspace-preview/functions/workspaceBlockPresentation.ts",
+    "./workspace-colors.css": "./src/features/workspace-preview/styles/workspaceColors.css"
   },
   "types": "./src/index.ts",
   "scripts": {
@@ -31,7 +38,8 @@
     "@tiptap/markdown": "3.31.3",
     "@tiptap/pm": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
-    "katex": "0.18.10"
+    "katex": "0.18.10",
+    "echarts": "6.1.0"
   },
   "sideEffects": [
     "**/*.css"

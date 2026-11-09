@@ -149,10 +149,10 @@ import { computed, ref, watch } from 'vue'
 import { BaseButton, CustomCheckbox, CustomNumberInput, CustomSelect } from '@linnya/renderer-ui'
 import type { MarkdownChartSpec } from '@app/schemas'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
-import type { ChartValueRange } from '../definitions/chartReadingState'
-import type { ChartLegendItem } from '../functions/chartLegend'
-import { emphasisTargetsCategories } from '../functions/chartReadingState'
-import type { ChartReadingView } from '../functions/chartReadingView'
+import type { ChartValueRange } from '@linnya/markdown-document-core/workspace-charts'
+import type { ChartLegendItem } from '@linnya/markdown-document-core/workspace-charts'
+import { emphasisTargetsCategories } from '@linnya/markdown-document-core/workspace-charts'
+import type { ChartReadingView } from '@linnya/markdown-document-core/workspace-charts'
 import {
   draftMatchesRange,
   draftOfRange,

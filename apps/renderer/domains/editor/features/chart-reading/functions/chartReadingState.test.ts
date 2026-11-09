@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { admitMarkdownChartSpec, type MarkdownChartSpec } from '@app/schemas'
-import { DEFAULT_CHART_READING_STATE } from '../definitions/chartReadingState'
-import { deriveChartReadingView } from './chartReadingView'
+import { DEFAULT_CHART_READING_STATE } from '@linnya/markdown-document-core/workspace-charts'
+import { deriveChartReadingView } from '@linnya/markdown-document-core/workspace-charts'
 import {
   isDefaultReadingState,
   normalizeReadingState,
@@ -10,7 +10,7 @@ import {
   setValueRanges,
   toggleEmphasis,
   toggleSeriesVisibility,
-} from './chartReadingState'
+} from '@linnya/markdown-document-core/workspace-charts'
 
 function admit(input: Record<string, unknown>): MarkdownChartSpec {
   const result = admitMarkdownChartSpec(input)

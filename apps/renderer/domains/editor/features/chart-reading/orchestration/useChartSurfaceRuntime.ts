@@ -13,11 +13,11 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef, unref, watch, ty
 import { encodeMarkdownChartFence, serializeMarkdownChartSpec, type MarkdownChartSpec } from '@app/schemas'
 import { useNotificationStore } from '@/app/notification'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
-import { DEFAULT_CHART_READING_STATE, type ChartReadingKey, type ChartReadingState } from '../definitions/chartReadingState'
-import type { ChartOptionMessages } from '../definitions/chartRender'
-import { baseChartTheme, type ChartThemeTokens } from '../definitions/chartTheme'
-import { buildChartLegend, resolveLegendPosition } from '../functions/chartLegend'
-import { plotHeightOf } from '../functions/chartLayout'
+import { DEFAULT_CHART_READING_STATE, type ChartReadingKey, type ChartReadingState } from '@linnya/markdown-document-core/workspace-charts'
+import type { ChartOptionMessages } from '@linnya/markdown-document-core/workspace-charts'
+import { baseChartTheme, type ChartThemeTokens } from '@linnya/markdown-document-core/workspace-charts'
+import { buildChartLegend, resolveLegendPosition } from '@linnya/markdown-document-core/workspace-charts'
+import { plotHeightOf } from '@linnya/markdown-document-core/workspace-charts'
 import {
   emphasisTargetsCategories,
   reconcileReadingState,
@@ -30,12 +30,12 @@ import {
   supportsValueRange,
   toggleEmphasis,
   toggleSeriesVisibility,
-} from '../functions/chartReadingState'
-import { deriveChartReadingView } from '../functions/chartReadingView'
-import { canTransitionBetween } from '../functions/chartTransition'
+} from '@linnya/markdown-document-core/workspace-charts'
+import { deriveChartReadingView } from '@linnya/markdown-document-core/workspace-charts'
+import { canTransitionBetween } from '@linnya/markdown-document-core/workspace-charts'
 import { useChartReadingStore } from '../store/chartReadingStore'
 import { createChartController, type ChartController } from './chartInstanceController'
-import { renderChartImagePng } from './exportChartImage'
+import { renderChartImagePng } from '@linnya/markdown-document-core/workspace-charts'
 import { chartSchemeOfTheme, observeChartTheme, readActiveChartTheme, resolveChartTheme } from './readChartTheme'
 
 export type ChartRuntimeStatus = 'idle' | 'loading' | 'ready' | 'failed'
