@@ -170,7 +170,6 @@
                     type="button"
                     tabindex="-1"
                     class="project-overview__name"
-                    :title="sortedRows[item.index]!.title"
                     @click.stop="openRow(sortedRows[item.index])"
                     @dblclick.stop
                   >
@@ -190,7 +189,6 @@
                       type="button"
                       class="project-overview__conversation"
                       :aria-label="`${workspaceMessage('workspace.projectOverview.openConversation')}：${conversationText(sortedRows[item.index]!)}`"
-                      :title="conversationText(sortedRows[item.index]!)"
                       @click.stop="emit('open-conversation', sortedRows[item.index]!.conversationId!)"
                     >
                       <span class="project-overview__conversation-text">{{ conversationText(sortedRows[item.index]!) }}</span>
@@ -207,7 +205,7 @@
                     v-else-if="column.id === 'pending'"
                     class="project-overview__pending"
                   >{{ pendingText(sortedRows[item.index]!) }}</span>
-                  <span v-else :title="cellText(column.id, sortedRows[item.index]!)">
+                  <span v-else>
                     {{ cellText(column.id, sortedRows[item.index]!) }}
                   </span>
                 </div>
