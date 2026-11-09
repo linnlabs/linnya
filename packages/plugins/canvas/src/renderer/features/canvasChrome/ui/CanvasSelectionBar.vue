@@ -61,6 +61,7 @@
     </ToolbarGroup>
     <ToolbarGroup>
       <CanvasToolbarMenu
+        v-if="colorable"
         label="卡片颜色"
         :options="colorOptions"
         :model-value="color"
@@ -116,6 +117,8 @@ const props = defineProps<{
   readonly: boolean;
   image: boolean;
   imageLocked: boolean;
+  /** 选区里有可染色的卡；纯图片选区不给颜色：图片铺满纸面，纸色看不见。 */
+  colorable: boolean;
 }>();
 const emit = defineEmits<{
   converse: [];

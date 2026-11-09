@@ -15,6 +15,12 @@ export class CanvasResizeClip {
   fit(view: CanvasCardView | undefined): void {
     if (!view) return;
     if (this.view && this.view !== view) this.release();
+    // 图片卡自带纸面遮罩（圆角、内缩），它本身就随卡片尺寸重画，不再叠一层矩形。
+    if (view.paperClip && !view.paperClip.destroyed) {
+      view.body.mask = view.paperClip;
+      this.view = view;
+      return;
+    }
     if (!this.mask || this.mask.destroyed) this.mask = new Graphics();
     if (this.mask.parent !== view.container) view.container.addChild(this.mask);
     view.body.mask = this.mask;
@@ -28,7 +34,8 @@ export class CanvasResizeClip {
     else this.fit(this.view);
   }
   private release(): void {
-    if (this.view && !this.view.container.destroyed) this.view.body.mask = null;
+    if (this.view && !this.view.container.destroyed)
+      this.view.body.mask = this.view.paperClip?.destroyed ? null : this.view.paperClip;
     this.mask?.removeFromParent();
     this.view = null;
   }

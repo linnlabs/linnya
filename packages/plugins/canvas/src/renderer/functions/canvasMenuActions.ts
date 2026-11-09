@@ -77,6 +77,8 @@ const emptyContext = [
 ];
 export function canvasContextMenuActions(input: {
   readonly selectionCount: number;
+  /** 纯图片选区没有颜色子菜单；省略时视为可染色。 */
+  readonly colorable?: boolean;
   readonly edge: boolean;
   readonly readonly: boolean;
 }): readonly CustomSelectOption<string>[] {
@@ -103,7 +105,9 @@ export function canvasContextMenuActions(input: {
   const actions = input.edge
     ? canvasConnectionContextActions
     : input.selectionCount
-      ? selected
+      ? input.colorable === false
+        ? selected.filter(item => item !== colors)
+        : selected
       : emptyContext;
   return input.readonly
     ? actions.filter(

@@ -80,7 +80,7 @@ export function createCanvasTextCreation(
           canvasTextCreationRectangle(
             draft.anchor,
             draft.from,
-            canvasAutomaticTextHeight(Math.ceil(height))
+            canvasAutomaticTextHeight(Math.round(height * 1000) / 1000)
           )
         );
     },

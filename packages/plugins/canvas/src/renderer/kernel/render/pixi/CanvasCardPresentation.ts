@@ -16,6 +16,7 @@ import { intersectCanvasRegion } from '../../geometry/canvasVisibleRegions';
 import { canvasFitText } from '../../geometry/canvasFitText';
 import { canvasTitlePrefix } from '../../geometry/canvasTextGraphemes';
 import type { CanvasCardView } from './definitions/canvasCardView';
+import { fitCanvasPaperClip } from './canvasPaperClip';
 import type { CanvasCardPresentationOptions } from './definitions/canvasCardPresentation';
 
 /** 卡片的纸面、身份牌与采样回执；不拥有逻辑元素、相机或场景时钟。 */
@@ -51,6 +52,7 @@ export class CanvasCardPresentation {
     background.width = card.width;
     background.height = card.height;
     shadow.visible = material === 'card';
+    fitCanvasPaperClip(view, material);
     if (shadow.visible) {
       shadow.width = card.width + CANVAS_CARD_SHADOW_BLEED * 2;
       shadow.height = card.height + CANVAS_CARD_SHADOW_BLEED * 2;
@@ -165,6 +167,7 @@ export class CanvasCardPresentation {
       firstVisibleAfterRender: this.options.context.readRenders(),
       rasterContentKey: undefined,
       lodAlpha: 1,
+      paperClip: null,
     };
     return view;
   }

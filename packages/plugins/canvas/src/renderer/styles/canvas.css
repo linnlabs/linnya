@@ -174,9 +174,25 @@
   z-index: 6;
 }
 
-/* 设置分区：与设置页 SettingsRow 同一版式——标签与说明在左，控件贴右。 */
-/* 外观页里的插件分节：件套 SettingsRow 不对插件开放，这里按同一行合同排版，与上方各节对齐。
+/* 画布设置页（“文档与插件”分组）：件套 SettingsPage / SettingsSection / SettingsRow 不对插件开放，
+   这里按同一版式合同排版：内容列与设置壳标题同宽居中，分区之间一道细线，分区标题与行间距同件套。
    下拉是 field 行（标签列定宽、字段再收进一段、右缘对齐内容列），开关是 end 行（控件贴右）。 */
+.canvas-settings-page {
+  max-width: 720px; /* scale-exempt: 与设置壳内容列同宽，标题与正文左缘对齐 */
+  margin-inline: auto;
+}
+.canvas-settings-section + .canvas-settings-section {
+  padding-top: 26px; /* scale-exempt: 与件套分区间距一致 */
+  margin-top: 26px; /* scale-exempt: 与件套分区间距一致 */
+  border-top: 1px solid var(--settings-hairline, var(--color-border-default));
+}
+.canvas-settings-heading {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+}
 .canvas-settings {
   display: flex;
   flex-direction: column;

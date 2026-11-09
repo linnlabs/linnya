@@ -92,6 +92,7 @@
       :readonly="readonly"
       :image="Boolean(selectedImage)"
       :image-locked="Boolean(selectedImage?.locked)"
+      :colorable="colorable"
       @converse="addToConversation"
       @edit="run(() => surface?.edit())"
       @edit-image="editImage"
@@ -343,6 +344,9 @@ const shownError = computed(
     surface.value?.session.state.error.value ??
     surface.value?.error.value
 );
+const colorable = computed(() =>
+  (surface.value?.selectedCards.value ?? []).some(card => card.type !== 'image')
+);
 const selectedColor = computed(() => surface.value?.selectedCards.value[0]?.color ?? 'white');
 const selectedImage = computed(() => {
   const selected = surface.value?.selectedCards.value;
@@ -365,6 +369,7 @@ const contextAnchor = computed<CanvasMenuAnchor | null>(() => {
 const contextActions = computed(() =>
   canvasContextMenuActions({
     selectionCount: selection.value.length,
+    colorable: colorable.value,
     edge: Boolean(surface.value?.connections.selected.value),
     readonly: readonly.value,
   })

@@ -88,7 +88,8 @@ export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCa
       state.update(CanvasTextDocumentSchema.parse(content));
     },
     measure(height) {
-      state.measure(canvasAutomaticTextHeight(Math.ceil(height)));
+      // 与后台测高同一精度（三位小数）；向上取整会让卡片一进编辑就高出不到 1px，保存后还会留下来。
+      state.measure(canvasAutomaticTextHeight(Math.round(height * 1000) / 1000));
     },
     setComposing(value) {
       composing = value;

@@ -38,3 +38,10 @@ it('选择颜色与排布菜单最终调用已有正式表面动作，未知值�
   expect(f.close).toHaveBeenCalledTimes(2);
   await expect(f.command('color:magenta')).rejects.toThrow('未知画布菜单动作'); expect(f.color).toHaveBeenCalledOnce(); expect(f.close).toHaveBeenCalledTimes(2);
 });
+it('纯图片选区的右键菜单不给颜色：图片铺满纸面，纸色看不见', () => {
+  const image = leaves(canvasContextMenuActions({ selectionCount: 1, colorable: false, edge: false, readonly: false }));
+  const text = leaves(canvasContextMenuActions({ selectionCount: 1, colorable: true, edge: false, readonly: false }));
+  expect(image.some(value => value.startsWith('color:'))).toBe(false);
+  expect(text.some(value => value.startsWith('color:'))).toBe(true);
+  expect(image).toContain('delete');
+});

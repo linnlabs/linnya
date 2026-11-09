@@ -1,8 +1,8 @@
 import { defineAsyncComponent, type Component } from 'vue';
 import type { RendererPluginContribution } from '@plugin/renderer/pluginContribution';
 import {
-  registerAppearanceSection,
-  unregisterAppearanceSection,
+  registerSettingsContribution,
+  unregisterSettingsContribution,
 } from '@plugin/renderer/settingsContribution';
 import { canvasPluginMeta, CANVAS_PLUGIN_ID, CANVAS_DOCUMENT_TYPE } from '@plugin/canvas/shared';
 import CanvasIcon from './icon/CanvasIcon.vue';
@@ -12,7 +12,7 @@ import {
   clearCanvasReferenceFocus,
 } from './features/conversationSelection';
 import { createCanvasSelectionReferencePort } from './adapters/createCanvasSelectionReferencePort';
-import { persistCanvasPreferences, CanvasAppearanceSection } from './features/materialSetting';
+import { persistCanvasPreferences, CanvasSettingsPage } from './features/materialSetting';
 import canvasStyles from './styles/canvas.css?url';
 import markdownStyles from '@linnya/markdown-document-core/style.css?url';
 import cardInkStyles from './features/cardRendering/styles/canvasCardInk.css?url';
@@ -21,6 +21,7 @@ import { clearCanvasDisplayImageCache } from './features/cardRendering/content';
 import canvasAgentReviewStyles from './features/agentReview/styles/agentReview.css?url';
 import canvasChromeStyles from './features/canvasChrome/styles/canvasChrome.css?url';
 
+const CANVAS_SETTINGS_ID = `${CANVAS_PLUGIN_ID}:settings`;
 let stopPreferences: (() => void) | null = null;
 const modules = import.meta.glob<{ default: Component }>('./page/CanvasView.vue');
 const CanvasView = defineAsyncComponent(async () => {
@@ -44,12 +45,13 @@ export const rendererPlugin: RendererPluginContribution = {
   },
   activate() {
     stopPreferences = persistCanvasPreferences();
-    registerAppearanceSection({
-      pluginId: CANVAS_PLUGIN_ID,
-      id: 'material',
+    // 画布的偏好只影响画布，放在“文档与插件”里自成一页，不混进全局外观。
+    registerSettingsContribution({
+      id: CANVAS_SETTINGS_ID,
       title: '画布',
-      order: 10,
-      component: CanvasAppearanceSection,
+      group: 'document-types',
+      order: 40,
+      component: CanvasSettingsPage,
     });
   },
   deactivate() {
@@ -57,7 +59,7 @@ export const rendererPlugin: RendererPluginContribution = {
     clearCanvasDisplayImageCache();
     stopPreferences?.();
     stopPreferences = null;
-    unregisterAppearanceSection(CANVAS_PLUGIN_ID, 'material');
+    unregisterSettingsContribution(CANVAS_SETTINGS_ID);
   },
   documentTypes: [
     {

@@ -38,11 +38,19 @@ export function createCanvasSurfaceSelection({
   });
   async function trySelect(ids: readonly CanvasCardId[], additive = false) {
     opening.cancel();
-    if (!(await finish())) return false;
-    if (!(await connections.saveLabel())) return false;
+    // 先换到新选区再收尾草稿：草稿一结束，编辑中的卡会按“仍被选中”露出浮条与连线点，
+    // 等保存回来才清掉，看起来就是先闪一下选中。收尾失败时恢复原选区，草稿仍在。
+    const previous = selection.ids.value;
+    const apply = (next: readonly CanvasCardId[]) => {
+      selection.select(next);
+      kernel.setSelection(next);
+    };
+    apply(mergeCanvasSelection(previous, ids, additive));
+    if (!(await finish()) || !(await connections.saveLabel())) {
+      apply(previous);
+      return false;
+    }
     if (ids.length || !additive) await connections.select(null);
-    selection.select(mergeCanvasSelection(selection.ids.value, ids, additive));
-    kernel.setSelection(selection.ids.value);
     return true;
   }
   const select = async (ids: readonly CanvasCardId[], additive = false) => {

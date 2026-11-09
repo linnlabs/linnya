@@ -1,4 +1,4 @@
-import type { Container, NineSliceSprite, Sprite } from 'pixi.js';
+import type { Container, Graphics, NineSliceSprite, Sprite } from 'pixi.js';
 import type { CanvasMotionView } from '../CanvasSceneMotion';
 
 export interface CanvasCardView extends CanvasMotionView {
@@ -7,6 +7,8 @@ export interface CanvasCardView extends CanvasMotionView {
   readonly background: NineSliceSprite;
   readonly body: Container;
   readonly label: Sprite;
+  /** 图片卡把位图裁在纸面里（内缩与圆角同纸面）；其他卡的正文有内边距，不需要常驻遮罩。 */
+  paperClip: Graphics | null;
   visibleAfterRender: number;
   firstVisibleAfterRender: number;
   rasterContentKey: string | undefined;
