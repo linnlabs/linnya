@@ -11,13 +11,17 @@ import {
   projectCanvasDocumentSurface,
 } from '../../features/cardRendering/content';
 
-export async function createCardSurface(card: CanvasCard, request: CanvasRenderRequest, signal = new AbortController().signal): Promise<HTMLElement> {
+export async function createCardSurface(
+  card: CanvasCard,
+  request: CanvasRenderRequest,
+  signal = new AbortController().signal
+): Promise<HTMLElement> {
   const element = await createSurfaceElement(card, request, signal);
   if (card.type !== 'document') {
     element.classList.add('markdown-document-content');
     installTypography(element, request);
   }
-  installCanvasCardInk(element, card.color, request.theme === 'dark');
+  if (card.type !== 'document') installCanvasCardInk(element, card.color, request.theme === 'dark');
   if (card.type === 'text') {
     element.append(
       createMarkdownDocumentFragment(JsonValueSchema.parse(card.data.content), document)
@@ -28,7 +32,11 @@ export async function createCardSurface(card: CanvasCard, request: CanvasRenderR
   return element;
 }
 
-async function createSurfaceElement(card: CanvasCard, request: CanvasRenderRequest, signal: AbortSignal): Promise<HTMLElement> {
+async function createSurfaceElement(
+  card: CanvasCard,
+  request: CanvasRenderRequest,
+  signal: AbortSignal
+): Promise<HTMLElement> {
   if (card.type === 'image') {
     const source = request.assets[card.data.assetId];
     if (!source) throw new Error('resource_unavailable');
@@ -37,9 +45,12 @@ async function createSurfaceElement(card: CanvasCard, request: CanvasRenderReque
   if (card.type === 'document') {
     return createCanvasDocumentSurface(
       projectCanvasDocumentSurface(request.documents[card.data.documentId]),
-      document,
-      { documentId: card.data.documentId, width: card.width, height: card.height },
-      signal, request.theme
+      {
+        document,
+        card: { documentId: card.data.documentId, width: card.width, height: card.height },
+        signal,
+        theme: request.theme,
+      }
     );
   }
   const element = document.createElement('div');

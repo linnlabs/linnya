@@ -1,7 +1,10 @@
 import path from 'node:path';
 import { createMarkdownPreviewResources } from './createMarkdownPreviewResources';
 import type { PluginSqliteDatabaseLike } from '@linnya/plugin-host-contract/backend/workspaceRuntime';
-import { createDocumentPreviewOperations, createFilePreviewCache } from 'src/domains/document-preview';
+import {
+  createDocumentPreviewOperations,
+  createFilePreviewCache,
+} from 'src/domains/document-preview';
 import { getDocumentTypeBackendHook } from 'src/plugin-sdk/backend/documentTypeBackendHook';
 import { readWorkspaceDocumentIdentity } from 'src/plugin-sdk/backend/workspaceDocumentProjection';
 import { readWorkspaceNodeTextSnapshot } from 'src/features/workspace/infrastructure/sqlite/node-text-snapshot/nodeTextSnapshot.service';
@@ -15,7 +18,8 @@ export function createWorkspaceDocumentPreviewReader(db: PluginSqliteDatabaseLik
     context: { databaseService: { getDb: () => db } },
     readNode: id => readWorkspaceDocumentIdentity(db, id),
     readTextSnapshot: id => readWorkspaceNodeTextSnapshot(db, id)?.text ?? null,
-    resolveProvider: nodeType => nodeType === 'document' ? markdown : getDocumentTypeBackendHook(nodeType)?.preview ?? null,
+    resolveProvider: nodeType =>
+      nodeType === 'document' ? markdown : (getDocumentTypeBackendHook(nodeType)?.preview ?? null),
     cache: createFilePreviewCache(path.join(getWorkspaceDataPath(), 'document-previews')),
   });
 }

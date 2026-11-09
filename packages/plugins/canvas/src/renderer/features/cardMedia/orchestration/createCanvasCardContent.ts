@@ -85,10 +85,15 @@ export function createCanvasCardContent(
             ...(result.content?.overview === 'thumbnail' ? { thumbnail: true } : {}),
             ...(icon ? { icon } : {}),
           },
-          document,
-          { documentId: card.data.documentId, width: card.width, height: card.height },
-          signal,
-          document.documentElement.getAttribute(RENDERER_UI_THEME_ATTRIBUTE) === 'dark' ? 'dark' : 'light'
+          {
+            document,
+            card: { documentId: card.data.documentId, width: card.width, height: card.height },
+            signal,
+            theme:
+              document.documentElement.getAttribute(RENDERER_UI_THEME_ATTRIBUTE) === 'dark'
+                ? 'dark'
+                : 'light',
+          }
         );
       }
       return element;

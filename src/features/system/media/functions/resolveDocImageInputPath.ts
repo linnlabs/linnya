@@ -16,7 +16,10 @@ export function isInsideDirectory(filePath: string, directoryPath: string): bool
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
 }
 
-export async function resolveDocImageInputPath(relativePath: string, documentDirectory?: string): Promise<string> {
+export async function resolveDocImageInputPath(
+  relativePath: string,
+  documentDirectory?: string
+): Promise<string> {
   if (typeof relativePath !== 'string' || relativePath.trim().length === 0) {
     throw new MediaInvalidFilePathError(DOC_IMAGE_MEDIA_OPERATION);
   }
@@ -26,12 +29,14 @@ export async function resolveDocImageInputPath(relativePath: string, documentDir
   }
 
   const rawSegments = relativePath.split(/[\\/]+/);
-  if (rawSegments.some((segment) => segment === '..')) {
+  if (rawSegments.some(segment => segment === '..')) {
     throw new MediaInvalidFilePathError(DOC_IMAGE_MEDIA_OPERATION);
   }
 
   const normalizedRelativePath = path.normalize(relativePath);
-  const documentMediaRoot = documentDirectory ? path.dirname(documentDirectory) : getDocumentMediaPath();
+  const documentMediaRoot = documentDirectory
+    ? path.dirname(documentDirectory)
+    : getDocumentMediaPath();
   const resolvedPath = path.resolve(documentMediaRoot, normalizedRelativePath);
   const documentMediaRootRealPath = await fs.realpath(documentMediaRoot);
   const resolvedRealPath = await fs.realpath(resolvedPath);
@@ -41,8 +46,8 @@ export async function resolveDocImageInputPath(relativePath: string, documentDir
 
   if (documentDirectory) {
     const documentRealPath = await fs.realpath(documentDirectory);
-    if (!isInsideDirectory(resolvedRealPath, documentRealPath)) throw new MediaPathNotAllowedError(resolvedRealPath);
+    if (!isInsideDirectory(resolvedRealPath, documentRealPath))
+      throw new MediaPathNotAllowedError(resolvedRealPath);
   }
   return resolvedRealPath;
 }
-

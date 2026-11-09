@@ -18,6 +18,7 @@ const input = () => ({
   element: document.createElement('div'),
   documentId: 'doc',
   projectId: 'project',
+  mode: 'detail' as const,
 });
 it('owns each element across overlapping imports and an old dispose cannot unmount the newer detail', async () => {
   let finish: ((component: Component) => void) | undefined;

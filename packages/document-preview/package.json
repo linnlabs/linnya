@@ -5,13 +5,23 @@
   "type": "module",
   "license": "Apache-2.0",
   "description": "Shared user-facing document preview presentation for references and document surfaces.",
-  "exports": { ".": "./src/index.ts", "./style.css": "./src/style.css" },
-  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json", "test": "vitest run src" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./style.css": "./src/style.css"
+  },
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "test": "vitest run src"
+  },
   "dependencies": {
     "@app/schemas": "workspace:*",
     "@linnya/markdown-document-core": "workspace:*",
     "@linnya/renderer-ui": "workspace:*"
   },
-  "peerDependencies": { "vue": ">=3.5.0 <4" },
-  "sideEffects": ["**/*.css"]
+  "peerDependencies": {
+    "vue": ">=3.5.0 <4"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ]
 }

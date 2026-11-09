@@ -26,7 +26,13 @@ vi.mock('@/app/plugins/documentTypePresentation', () => ({
   readDocumentTypeRecoveryAction: () => null,
 }));
 it('detailOnly renders readonly Markdown immediately, blocks nested navigation and removes content on availability or project changes', async () => {
-  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  );
   await import('@linnya/markdown-document-core');
   ports.read.mockResolvedValue({
     documentId: 'doc',

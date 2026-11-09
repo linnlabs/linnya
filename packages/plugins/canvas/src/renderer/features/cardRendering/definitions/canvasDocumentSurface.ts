@@ -13,3 +13,10 @@ export interface CanvasDocumentSurfacePresentation {
   /** 内容方声明缩略图更能代表文档（如演示文稿第一页）；否则有正文时排正文，不用封面图。 */
   readonly thumbnail?: boolean;
 }
+
+export interface CanvasDocumentSurfaceContext {
+  readonly document: Document;
+  readonly card: { readonly documentId: string; readonly width: number; readonly height: number };
+  readonly signal: AbortSignal;
+  readonly theme: 'light' | 'dark';
+}

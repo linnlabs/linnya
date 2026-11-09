@@ -42,9 +42,7 @@ export function readDocumentPreviewTypeIcon(nodeType: string): Component | null 
   return rendererPort?.readTypeIcon?.(nodeType) ?? null;
 }
 /** DOM只留在可信Renderer，不经IPC，也不让插件读取App store或文档类型正文DTO。 */
-export function mountDocumentPreview(
-  input: DocumentPreviewMountInput
-): Promise<() => void> {
+export function mountDocumentPreview(input: DocumentPreviewMountInput): Promise<() => void> {
   if (!rendererPort) throw new Error('Document preview renderer port is not installed');
   return rendererPort.mount(input);
 }

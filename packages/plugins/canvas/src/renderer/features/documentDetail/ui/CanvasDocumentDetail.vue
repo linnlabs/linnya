@@ -1,7 +1,7 @@
 <template>
   <section
     ref="overlay"
-    class="canvas-document-detail canvas-card-ink"
+    class="canvas-document-detail"
     :class="{ 'canvas-document-detail-ready': detail?.state.ready.value }"
     :style="style"
     aria-label="所选文档只读详情"

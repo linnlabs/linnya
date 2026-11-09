@@ -32,7 +32,7 @@ export function createCanvasDocumentPreviewCache(readVersion: (documentId: strin
         keep: result.status === 'ready' && result.content?.overview === 'thumbnail',
         revision: `${result.status}:${result.content?.revisionKey ?? ''}`,
       });
-      // DTO 携带最长 1M 的只读详情；预算包括全文，不能只计封面和摘要。
+      // DTO 携带正式正文及内联图片；预算计算整个载荷，不能只计封面和摘要。
       const size = JSON.stringify(result).length * 2;
       if (size > CANVAS_DOCUMENT_PREVIEW_CACHE_BYTES) return;
       while (

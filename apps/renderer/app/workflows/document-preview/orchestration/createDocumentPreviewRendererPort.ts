@@ -42,7 +42,10 @@ export function createDocumentPreviewRendererPort(
         input.signal?.throwIfAborted();
         if (disposed) return;
         assertDocumentPreviewScope(target, ports.currentProjectId());
-        if (presentation.status === 'deleted' || presentation.status === 'outside_project')
+        if (
+          input.mode === 'detail' &&
+          (presentation.status === 'deleted' || presentation.status === 'outside_project')
+        )
           throw new Error('文档已删除或不在当前项目，无法预览');
       };
       try {
@@ -54,7 +57,12 @@ export function createDocumentPreviewRendererPort(
         await verify();
         if (disposed) return ownership.dispose;
         render(
-          createVNode(component, { readTarget: () => target, detailOnly: input.mode === 'detail', widthPx: input.widthPx, onReady: input.onReady }),
+          createVNode(component, {
+            readTarget: () => target,
+            detailOnly: input.mode === 'detail',
+            widthPx: input.widthPx,
+            onReady: input.onReady,
+          }),
           input.element
         );
         mounted = true;

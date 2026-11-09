@@ -30,29 +30,91 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
 
   browser('@app/schemas', 'packages/schemas/src/index.ts', 'exact'),
   browser('@app/schemas', 'packages/schemas/src', 'subpath'),
-  browser('@linnya/app-lifecycle-contract', 'src/shared/app-lifecycle/definitions/windowCloseProtocol.ts', 'exact'),
+  browser(
+    '@linnya/app-lifecycle-contract',
+    'src/shared/app-lifecycle/definitions/windowCloseProtocol.ts',
+    'exact'
+  ),
   browser('@linnya/plugin-host-contract', 'packages/plugin-host-contract/index.ts', 'exact', false),
-  browser('@linnya/plugin-host-contract/renderer', 'packages/plugin-host-contract/renderer/index.ts', 'exact', false),
-  browser('@linnya/plugin-host-contract/renderer', 'packages/plugin-host-contract/renderer', 'subpath', false),
+  browser(
+    '@linnya/plugin-host-contract/renderer',
+    'packages/plugin-host-contract/renderer/index.ts',
+    'exact',
+    false
+  ),
+  browser(
+    '@linnya/plugin-host-contract/renderer',
+    'packages/plugin-host-contract/renderer',
+    'subpath',
+    false
+  ),
   browser('@linnya/renderer-ui', 'packages/renderer-ui/src/index.ts', 'exact'),
-  browser('@linnya/renderer-ui/font-stack', 'packages/renderer-ui/src/features/font-stack/index.ts', 'exact'),
+  browser(
+    '@linnya/renderer-ui/font-stack',
+    'packages/renderer-ui/src/features/font-stack/index.ts',
+    'exact'
+  ),
   browser('@linnya/renderer-ui/icons', 'packages/renderer-ui/src/icons/index.ts', 'exact'),
-  browser('@linnya/renderer-ui/localization', 'packages/renderer-ui/src/localization/index.ts', 'exact'),
+  browser(
+    '@linnya/renderer-ui/localization',
+    'packages/renderer-ui/src/localization/index.ts',
+    'exact'
+  ),
   browser('@linnya/renderer-ui/scroll', 'packages/renderer-ui/src/scroll/index.ts', 'exact'),
   browser('@linnya/renderer-ui/theme', 'packages/renderer-ui/src/theme/index.ts', 'exact'),
   browser('@linnya/renderer-ui/version', 'packages/renderer-ui/src/version.ts', 'exact'),
   browser('@linnya/document-preview', 'packages/document-preview/src/index.ts', 'exact'),
-  browser('@linnya/markdown-document-core/workspace-schema', 'packages/markdown-document-core/src/features/workspace-schema/index.ts', 'exact'),
-  browser('@linnya/markdown-document-core/workspace-charts', 'packages/markdown-document-core/src/features/workspace-charts/index.ts', 'exact'),
-  browser('@linnya/markdown-document-core/workspace-citations', 'packages/markdown-document-core/src/features/workspace-citations/index.ts', 'exact'),
-  browser('@linnya/markdown-document-core/workspace-preview', 'packages/markdown-document-core/src/features/workspace-preview/index.ts', 'exact'),
-  browser('@linnya/markdown-document-core/workspace-presentation', 'packages/markdown-document-core/src/features/workspace-preview/functions/workspaceBlockPresentation.ts', 'exact'),
-  browser('@linnya/markdown-document-core', 'packages/markdown-document-core/src/index.ts', 'exact'),
-  browser('@linnya/markdown-document-core/references', 'packages/markdown-document-core/src/references.ts', 'exact'),
-  browser('@linnya/markdown-document-core/validation', 'packages/markdown-document-core/src/functions/assertMarkdownDocument.ts', 'exact'),
+  browser(
+    '@linnya/markdown-document-core/workspace-schema',
+    'packages/markdown-document-core/src/features/workspace-schema/index.ts',
+    'exact'
+  ),
+  browser(
+    '@linnya/markdown-document-core/workspace-charts',
+    'packages/markdown-document-core/src/features/workspace-charts/index.ts',
+    'exact'
+  ),
+  browser(
+    '@linnya/markdown-document-core/workspace-citations',
+    'packages/markdown-document-core/src/features/workspace-citations/index.ts',
+    'exact'
+  ),
+  browser(
+    '@linnya/markdown-document-core/workspace-preview',
+    'packages/markdown-document-core/src/features/workspace-preview/index.ts',
+    'exact'
+  ),
+  browser(
+    '@linnya/markdown-document-core/workspace-presentation',
+    'packages/markdown-document-core/src/features/workspace-preview/functions/workspaceBlockPresentation.ts',
+    'exact'
+  ),
+  browser(
+    '@linnya/markdown-document-core',
+    'packages/markdown-document-core/src/index.ts',
+    'exact'
+  ),
+  browser(
+    '@linnya/markdown-document-core/references',
+    'packages/markdown-document-core/src/references.ts',
+    'exact'
+  ),
+  browser(
+    '@linnya/markdown-document-core/validation',
+    'packages/markdown-document-core/src/functions/assertMarkdownDocument.ts',
+    'exact'
+  ),
   browser('@linnya/text-measurement-core', 'packages/text-measurement-core/src/index.ts', 'exact'),
-  browser('@linnya/citation-domain/conversation-presentation', 'src/domains/citation/conversation-presentation.ts', 'exact'),
-  browser('@linnya/citation-domain/markdown-reference', 'src/domains/citation/markdown-reference.ts', 'exact'),
+  browser(
+    '@linnya/citation-domain/conversation-presentation',
+    'src/domains/citation/conversation-presentation.ts',
+    'exact'
+  ),
+  browser(
+    '@linnya/citation-domain/markdown-reference',
+    'src/domains/citation/markdown-reference.ts',
+    'exact'
+  ),
   browser('@linnya/markdown-domain/editing', 'src/domains/markdown/editing.ts', 'exact'),
   browser('stream-markdown-parser', 'packages/stream-markdown-parser/src/index.ts', 'exact'),
   browser('stream-markdown-parser', 'packages/stream-markdown-parser/src', 'subpath'),
@@ -67,7 +129,7 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
 function local(
   specifier: string,
   canonicalTarget: string,
-  match: RendererModuleMatch,
+  match: RendererModuleMatch
 ): RendererModuleResolutionEntry {
   return entry(specifier, canonicalTarget, match, 'renderer-local', true);
 }
@@ -76,7 +138,7 @@ function browser(
   specifier: string,
   canonicalTarget: string,
   match: RendererModuleMatch,
-  allowsValueImports = true,
+  allowsValueImports = true
 ): RendererModuleResolutionEntry {
   return entry(specifier, canonicalTarget, match, 'browser-package', allowsValueImports);
 }
@@ -84,7 +146,7 @@ function browser(
 function facade(
   specifier: string,
   canonicalTarget: string,
-  match: RendererModuleMatch,
+  match: RendererModuleMatch
 ): RendererModuleResolutionEntry {
   return entry(specifier, canonicalTarget, match, 'renderer-host-facade', true);
 }
@@ -92,7 +154,7 @@ function facade(
 function pluginEntry(
   specifier: string,
   canonicalTarget: string,
-  match: RendererModuleMatch,
+  match: RendererModuleMatch
 ): RendererModuleResolutionEntry {
   return entry(specifier, canonicalTarget, match, 'plugin-renderer-entry', true);
 }
@@ -102,7 +164,7 @@ function entry(
   canonicalTarget: string,
   match: RendererModuleMatch,
   category: RendererModuleCategory,
-  allowsValueImports: boolean,
+  allowsValueImports: boolean
 ): RendererModuleResolutionEntry {
   return {
     specifier,

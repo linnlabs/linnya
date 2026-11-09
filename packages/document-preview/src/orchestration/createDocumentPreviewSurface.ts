@@ -1,7 +1,13 @@
 import type { DocumentPreviewDetail } from '@app/schemas';
-import type { DocumentPreviewSurface, DocumentPreviewSurfaceInput } from '../definitions/documentPreviewSurface';
+import type {
+  DocumentPreviewSurface,
+  DocumentPreviewSurfaceInput,
+} from '../definitions/documentPreviewSurface';
 import { DOCUMENT_PREVIEW_LAYOUT as layout } from '../definitions/documentPreviewSurface';
-import { createDocumentPreviewIcon, documentPreviewMessage } from '../functions/documentPreviewPresentation';
+import {
+  createDocumentPreviewIcon,
+  documentPreviewMessage,
+} from '../functions/documentPreviewPresentation';
 
 const releases = new WeakMap<HTMLElement, () => void>();
 /** 光栅消费方在 paint 完成/失败后和 live 预览在卸载时走同一释放口。 */
@@ -11,20 +17,42 @@ export function disposeDocumentPreviewSurface(element: HTMLElement): void {
 
 async function renderBody(detail: DocumentPreviewDetail, input: DocumentPreviewSurfaceInput) {
   const widthPx = Math.max(1, input.widthPx - layout.paddingInline * 2);
-  const maxHeight = input.maxHeight === undefined ? undefined : Math.max(1,
-    input.maxHeight - layout.paddingTop - layout.paddingBottom - layout.titleHeight - layout.titleGap);
+  const maxHeight =
+    input.maxHeight === undefined
+      ? undefined
+      : Math.max(
+          1,
+          input.maxHeight -
+            layout.paddingTop -
+            layout.paddingBottom -
+            layout.titleHeight -
+            layout.titleGap
+        );
   if (detail.format === 'workspace-markdown') {
-    const { createWorkspaceMarkdownPreview } = await import('@linnya/markdown-document-core/workspace-preview');
+    const { createWorkspaceMarkdownPreview } = await import(
+      '@linnya/markdown-document-core/workspace-preview'
+    );
     input.signal.throwIfAborted();
-    return createWorkspaceMarkdownPreview({ content: detail, document: input.document,
-      widthPx, maxHeight, theme: input.theme, signal: input.signal });
+    return createWorkspaceMarkdownPreview({
+      content: detail,
+      document: input.document,
+      widthPx,
+      maxHeight,
+      theme: input.theme,
+      signal: input.signal,
+    });
   }
   const element = input.document.createElement('div');
   element.className = 'markdown-document-content document-preview-portable';
   if (detail.format === 'markdown') {
     const markdown = await import('@linnya/markdown-document-core');
     input.signal.throwIfAborted();
-    element.append(markdown.createMarkdownDocumentFragment(markdown.parseMarkdownDocument(detail.text), input.document));
+    element.append(
+      markdown.createMarkdownDocumentFragment(
+        markdown.parseMarkdownDocument(detail.text),
+        input.document
+      )
+    );
   } else {
     element.classList.add('document-preview-plain');
     element.textContent = detail.text;
@@ -33,15 +61,18 @@ async function renderBody(detail: DocumentPreviewDetail, input: DocumentPreviewS
 }
 
 /** 超级标签、对话引用、画布位图和 live 详情的唯一用户预览呈现，不处理持久化或导航授权。 */
-export async function createDocumentPreviewSurface(input: DocumentPreviewSurfaceInput): Promise<DocumentPreviewSurface> {
+export async function createDocumentPreviewSurface(
+  input: DocumentPreviewSurfaceInput
+): Promise<DocumentPreviewSurface> {
   input.signal.throwIfAborted();
   const { document, preview } = input;
   const element = document.createElement('section');
   element.className = 'document-preview-surface';
-  element.dataset.theme = input.theme;
+  element.setAttribute('data-linnya-ui-theme', input.theme);
   element.dataset.documentId = preview.documentId;
   element.style.width = `${input.widthPx}px`;
-  for (const [key, value] of Object.entries(layout)) element.style.setProperty(`--preview-${key}`, `${value}px`);
+  for (const [key, value] of Object.entries(layout))
+    element.style.setProperty(`--preview-${key}`, `${value}px`);
   if (input.maxHeight !== undefined) {
     element.style.height = `${input.maxHeight}px`;
     element.classList.add('document-preview-first-screen');
@@ -75,7 +106,12 @@ export async function createDocumentPreviewSurface(input: DocumentPreviewSurface
     releases.delete(element);
   };
   try {
-    if (!input.externalBody && preview.status === 'ready' && preview.content?.detail && preview.content.overview !== 'thumbnail') {
+    if (
+      !input.externalBody &&
+      preview.status === 'ready' &&
+      preview.content?.detail &&
+      preview.content.overview !== 'thumbnail'
+    ) {
       const rendered = await renderBody(preview.content.detail, input);
       releaseBody = rendered.dispose;
       body.append(rendered.element);
@@ -88,8 +124,10 @@ export async function createDocumentPreviewSurface(input: DocumentPreviewSurface
     } else if (!input.externalBody) {
       const text = document.createElement('p');
       text.className = 'document-preview-summary';
-      text.textContent = preview.status === 'ready' || preview.status === 'plugin_unavailable'
-        ? preview.content?.summary ?? '' : '';
+      text.textContent =
+        preview.status === 'ready' || preview.status === 'plugin_unavailable'
+          ? (preview.content?.summary ?? '')
+          : '';
       body.append(text);
     }
     if (preview.status !== 'ready') {

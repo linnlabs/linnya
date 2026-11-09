@@ -24,6 +24,9 @@
       "@linnya/citation-domain/markdown-reference": [
         "../../src/domains/citation/markdown-reference.ts"
       ],
+      "@linnya/document-preview": [
+        "../../packages/document-preview/src/index.ts"
+      ],
       "@linnya/markdown-document-core": [
         "../../packages/markdown-document-core/src/index.ts"
       ],
@@ -32,6 +35,21 @@
       ],
       "@linnya/markdown-document-core/validation": [
         "../../packages/markdown-document-core/src/functions/assertMarkdownDocument.ts"
+      ],
+      "@linnya/markdown-document-core/workspace-charts": [
+        "../../packages/markdown-document-core/src/features/workspace-charts/index.ts"
+      ],
+      "@linnya/markdown-document-core/workspace-citations": [
+        "../../packages/markdown-document-core/src/features/workspace-citations/index.ts"
+      ],
+      "@linnya/markdown-document-core/workspace-presentation": [
+        "../../packages/markdown-document-core/src/features/workspace-preview/functions/workspaceBlockPresentation.ts"
+      ],
+      "@linnya/markdown-document-core/workspace-preview": [
+        "../../packages/markdown-document-core/src/features/workspace-preview/index.ts"
+      ],
+      "@linnya/markdown-document-core/workspace-schema": [
+        "../../packages/markdown-document-core/src/features/workspace-schema/index.ts"
       ],
       "@linnya/markdown-domain/editing": [
         "../../src/domains/markdown/editing.ts"

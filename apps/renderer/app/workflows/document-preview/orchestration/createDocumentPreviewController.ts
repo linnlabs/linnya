@@ -91,8 +91,18 @@ export function createDocumentPreviewController(
         const identity = target();
         const presentation = await readDocumentReference(identity);
         target();
-        if (disposed || state.result.value !== value || presentation.status !== 'available' || !presentation.nodeType) return;
-        await getWorkspaceNavigationPort().openDocumentByNodeType({ ...identity, nodeType: presentation.nodeType, displayName: presentation.title });
+        if (
+          disposed ||
+          state.result.value !== value ||
+          presentation.status !== 'available' ||
+          !presentation.nodeType
+        )
+          return;
+        await getWorkspaceNavigationPort().openDocumentByNodeType({
+          ...identity,
+          nodeType: presentation.nodeType,
+          displayName: presentation.title,
+        });
       } catch (failure) {
         if (!disposed) state.failed(failure instanceof Error ? failure.message : '无法打开文档');
       }

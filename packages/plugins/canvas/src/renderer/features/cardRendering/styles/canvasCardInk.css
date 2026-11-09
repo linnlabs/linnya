@@ -1,5 +1,21 @@
-.canvas-card-ink :is(h1,h2,h3,h4,h5,h6), .canvas-card-ink .canvas-card-title { color: var(--canvas-card-title-color); }
-.canvas-card-ink .canvas-card-auxiliary, .canvas-card-ink .document-preview-title { color: var(--canvas-card-muted-color); }
+.canvas-card-ink :is(h1, h2, h3, h4, h5, h6),
+.canvas-card-ink .canvas-card-title {
+  color: var(--canvas-card-title-color);
+}
+.canvas-card-ink .canvas-card-auxiliary,
+.canvas-card-ink .document-preview-title {
+  color: var(--canvas-card-muted-color);
+}
 /* 位图铺满卡片几何框，看得见的纸面却四周内缩 CANVAS_CARD_PAPER_INSET（3px）；淡出层按纸面内缩并带底部圆角，
    否则不透明的渐变尾部会画出纸外、盖住投影并露出直角。圆角取卡片材质的 6px：纸材质圆角更小，多出的角落透出的是同色纸面。 */
-.canvas-card-ink.canvas-card-content-clipped::after { content: ''; position: absolute; left: 3px; right: 3px; bottom: 3px; height: 24px; border-radius: 0 0 6px 6px; /* scale-exempt: 隐藏出图 worker 不加载 Renderer UI token，须与纸面几何一致 */ pointer-events: none; background: linear-gradient(transparent, var(--canvas-card-paper-color)); }
+.canvas-card-ink.canvas-card-content-clipped::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  height: 24px;
+  border-radius: 0 0 6px 6px; /* scale-exempt: 隐藏出图 worker 不加载 Renderer UI token，须与纸面几何一致 */
+  pointer-events: none;
+  background: linear-gradient(transparent, var(--canvas-card-paper-color));
+}

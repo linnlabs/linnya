@@ -2,16 +2,30 @@ import { readPendingMarkdownImage } from '@app/schemas';
 import { generateEditorBlockId } from 'src/shared/utils/idUtils';
 import { hydrateMarkdownDocumentImages } from '../../image-content';
 import {
-  attachCitationNodesToDocJson, importMarkdownToDocJson,
-  type MarkdownDocJson, type ProseMirrorJsonNode,
+  attachCitationNodesToDocJson,
+  importMarkdownToDocJson,
+  type MarkdownDocJson,
+  type ProseMirrorJsonNode,
 } from '../../normalization/runtime';
 import type { PendingRevision } from '../definitions/pendingRevision';
-import type { MarkdownImporter, MarkdownRootBlockJson, PreparedPendingReplacement } from '../definitions/pendingRevisionApply';
+import type {
+  MarkdownImporter,
+  MarkdownRootBlockJson,
+  PreparedPendingReplacement,
+} from '../definitions/pendingRevisionApply';
 import {
-  buildRootBlockIndex, isRecord, isRootBlock, mergeRootBlockAttrs,
-  parsePendingMetadata, resolvePendingOperation, restorePendingListSpacing,
+  buildRootBlockIndex,
+  isRecord,
+  isRootBlock,
+  mergeRootBlockAttrs,
+  parsePendingMetadata,
+  resolvePendingOperation,
+  restorePendingListSpacing,
 } from '../functions/pendingRevisionApplyRules';
-import { extractPendingCitationHydration, extractPendingCitationLinkHydration } from '../functions/admitPendingCitationHydration';
+import {
+  extractPendingCitationHydration,
+  extractPendingCitationLinkHydration,
+} from '../functions/admitPendingCitationHydration';
 import { importPendingMarkdownRootBlock } from './importPendingMarkdownRootBlock';
 
 function createEmptyRootBlock(
@@ -57,21 +71,30 @@ export async function preparePendingReplacements(input: {
     if (resolvePendingOperation(pending, metadata) === 'delete') continue;
     const oldRoot = input.document.content[rootIndex.get(pending.target_block_id) ?? -1];
     if (!pending.new_markdown.trim()) {
-      prepared.set(pending.id, { rootBlock: createEmptyRootBlock(pending.target_block_id, oldRoot) });
+      prepared.set(pending.id, {
+        rootBlock: createEmptyRootBlock(pending.target_block_id, oldRoot),
+      });
       continue;
     }
-    const imported = await importPendingMarkdownRootBlock(pending.new_markdown, input.importer ?? importMarkdownToDocJson);
+    const imported = await importPendingMarkdownRootBlock(
+      pending.new_markdown,
+      input.importer ?? importMarkdownToDocJson
+    );
     input.signal?.throwIfAborted();
-    if (!imported) throw new Error(`Pending Markdown 解析未返回正文: blockId=${pending.target_block_id}`);
+    if (!imported)
+      throw new Error(`Pending Markdown 解析未返回正文: blockId=${pending.target_block_id}`);
     let content = input.hydrateReferences({ type: 'doc', content: [imported] }, metadata);
     const image = readPendingMarkdownImage(metadata);
     content = hydrateMarkdownDocumentImages(content, new Map(image ? [[image.id, image]] : []));
     const citations = extractPendingCitationHydration(metadata, pending.target_block_id);
     const links = extractPendingCitationLinkHydration(metadata, pending.target_block_id);
-    if (citations || links) content = attachCitationNodesToDocJson(content, citations ?? {}, links ?? {});
+    if (citations || links)
+      content = attachCitationNodesToDocJson(content, citations ?? {}, links ?? {});
     const [root] = content.content.filter(isRootBlock);
     const replacement = restorePendingListSpacing(oldRoot, root, metadata?.listSeparatorBefore);
-    prepared.set(pending.id, { rootBlock: mergeRootBlockAttrs(oldRoot ?? root, replacement, pending.target_block_id) });
+    prepared.set(pending.id, {
+      rootBlock: mergeRootBlockAttrs(oldRoot ?? root, replacement, pending.target_block_id),
+    });
   }
   return prepared;
 }

@@ -26,7 +26,6 @@ export function createCanvasDocumentDetail(options: {
         projectId: options.projectId,
         signal: cancellation.signal,
         mode: 'detail',
-        widthPx: options.card.width,
         onReady: () => {
           if (disposed) return;
           options.port.visible(options.card.id, true);
@@ -38,7 +37,6 @@ export function createCanvasDocumentDetail(options: {
         return;
       }
       release = unmount;
-
     } catch (error) {
       if (!disposed) state.setNotice(error instanceof Error ? error.message : String(error));
     }
