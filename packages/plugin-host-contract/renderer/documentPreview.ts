@@ -8,14 +8,18 @@ export declare function listDocumentPreviewTypes(): Promise<
 >;
 
 /** 调用方提供可信Renderer容器；项目和稳定身份由Host重新解析，组件必须只读。 */
-export interface DocumentPreviewDetailMountInput {
+export interface DocumentPreviewMountInput {
   readonly element: HTMLElement;
   readonly documentId: string;
   readonly projectId: string;
   readonly signal?: AbortSignal;
+  readonly mode?: 'first-screen' | 'detail';
+  readonly widthPx?: number;
+  /** 正文呈现完成后通知消费方，可据此撤下位图。 */
+  readonly onReady?: () => void;
 }
 export interface RendererDocumentPreviewPort {
-  mountDetail(input: DocumentPreviewDetailMountInput): Promise<() => void>;
+  mount(input: DocumentPreviewMountInput): Promise<() => void>;
   /** 文档类型在侧栏里用的图标；未注册的类型由 Host 给通用文件图标。 */
   readTypeIcon?(nodeType: string): Component;
 }
@@ -24,6 +28,6 @@ export declare function registerRendererDocumentPreviewPort(
 ): void;
 /** 预览卡片标出文档类型时用，与文件树同一图标；Host 未安装时返回 null，调用方自行兜底。 */
 export declare function readDocumentPreviewTypeIcon(nodeType: string): Component | null;
-export declare function mountDocumentPreviewDetail(
-  input: DocumentPreviewDetailMountInput
+export declare function mountDocumentPreview(
+  input: DocumentPreviewMountInput
 ): Promise<() => void>;

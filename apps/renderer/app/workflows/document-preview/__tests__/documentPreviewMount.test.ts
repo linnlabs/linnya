@@ -4,7 +4,7 @@ import { expect, it, vi } from 'vitest';
 import type { DocumentReferencePresentation } from '@app/schemas';
 import {
   registerRendererDocumentPreviewPort,
-  mountDocumentPreviewDetail,
+  mountDocumentPreview,
 } from '@plugin/renderer/documentPreview';
 import { createDocumentPreviewRendererPort } from '../orchestration/createDocumentPreviewRendererPort';
 const available: DocumentReferencePresentation = {
@@ -50,9 +50,9 @@ it('owns each element across overlapping imports and an old dispose cannot unmou
     load,
   });
   const target = input(),
-    older = port.mountDetail(target);
+    older = port.mount(target);
   await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
-  const close = await port.mountDetail(target);
+  const close = await port.mount(target);
   expect(target.element.textContent).toBe('new');
   finish?.(stale);
   (await older)();
@@ -80,7 +80,7 @@ it('checks project again after loading and rejects a moved target before mountin
     },
   });
   const target = input();
-  await expect(port.mountDetail(target)).rejects.toThrow('不在当前项目');
+  await expect(port.mount(target)).rejects.toThrow('不在当前项目');
   expect(target.element.childNodes).toHaveLength(0);
   expect(setup).not.toHaveBeenCalled();
   const moved = createDocumentPreviewRendererPort({
@@ -91,7 +91,7 @@ it('checks project again after loading and rejects a moved target before mountin
     currentProjectId: () => 'project',
     load: async () => component,
   });
-  await expect(moved.mountDetail(target)).rejects.toThrow('不在当前项目');
+  await expect(moved.mount(target)).rejects.toThrow('不在当前项目');
   expect(setup).not.toHaveBeenCalled();
 });
 it('disposing an async document component before its chunk resolves leaves no VNode or subscription', async () => {
@@ -109,7 +109,7 @@ it('disposing an async document component before its chunk resolves leaves no VN
     load: async () => component,
   });
   const target = input(),
-    close = await port.mountDetail(target);
+    close = await port.mount(target);
   close();
   finish?.(
     defineComponent({
@@ -152,7 +152,7 @@ it('aborts before a deferred import can mount and releases a mounted detail imme
   });
   const abort = new AbortController(),
     target = input(),
-    mounting = port.mountDetail({ ...target, signal: abort.signal });
+    mounting = port.mount({ ...target, signal: abort.signal });
   await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
   abort.abort();
   finish?.(component);
@@ -161,7 +161,7 @@ it('aborts before a deferred import can mount and releases a mounted detail imme
   expect(target.element.childNodes).toHaveLength(0);
   registerRendererDocumentPreviewPort(port);
   const active = new AbortController(),
-    dispose = await mountDocumentPreviewDetail({ ...target, signal: active.signal });
+    dispose = await mountDocumentPreview({ ...target, signal: active.signal });
   expect(setup).toHaveBeenCalledOnce();
   active.abort();
   expect(target.element.childNodes).toHaveLength(0);

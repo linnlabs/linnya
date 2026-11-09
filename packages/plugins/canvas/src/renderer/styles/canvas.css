@@ -31,8 +31,7 @@
 /* 编辑器与文档详情叠在所选卡片上，纸面与画布卡片同一外框规则（kernel/cardFrame，页面注入变量）：
    透明边框留出纸面阴影与选中描边的位置，纸色只铺在内缩后的纸面上；选中描边仍由画布绘制（kernel 的选中外框），
    编辑态与选中态共用一套描边。内边距扣掉透明边框，正文与画布位图逐像素对齐。 */
-.canvas-editor-overlay,
-.canvas-document-detail {
+.canvas-editor-overlay {
   border: var(--canvas-card-inset) solid transparent;
   border-radius: calc(var(--canvas-card-radius) + var(--canvas-card-inset));
   padding: calc(var(--canvas-card-padding-top) - var(--canvas-card-inset))
@@ -70,6 +69,10 @@
 }
 
 .canvas-document-detail {
+  border: 0;
+  border-radius: calc(var(--canvas-card-radius) + var(--canvas-card-inset));
+  padding: 0;
+  background: transparent;
   position: absolute;
   top: 0;
   left: 0;
@@ -81,10 +84,6 @@
   transform-origin: 0 0;
   font-size: var(--canvas-card-font-size);
   line-height: var(--canvas-card-line-height);
-}
-/* 详情顶部即文档卡的小标签（canvasMediaContent.css），这里只让它不被正文挤压。 */
-.canvas-document-detail > .canvas-document-label {
-  flex-shrink: 0;
 }
 .canvas-document-detail-body {
   flex: 1;
@@ -670,4 +669,14 @@
   color: var(--color-text-secondary);
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* live 与位图共用完整卡宽；纸张内缩只影响背景，不能让正文换行偏移。 */
+.canvas-document-detail-ready::before {
+  content: '';
+  position: absolute;
+  inset: var(--canvas-card-inset);
+  background: var(--canvas-card-paper-color);
+  border-radius: var(--canvas-card-radius);
+  z-index: -1;
 }

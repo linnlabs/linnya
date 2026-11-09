@@ -197,7 +197,7 @@ const rendererHostShims = new Map<string, string>([
   ])],
   ['/plugin-renderer/documentReferences.js', buildNamedHostShim('@plugin/renderer/documentReferences', ['queryDocumentReferences', 'readDocumentReference', 'readDocumentBacklinks', 'previewDocumentDeletionReferences'])],
   ['/plugin-renderer/pluginRuntime.js', buildNamedHostShim('@plugin/renderer/pluginRuntime', ['readRendererPluginAvailability', 'subscribeRendererPluginAvailability'])],
-  ['/plugin-renderer/documentPreview.js', buildNamedHostShim('@plugin/renderer/documentPreview', ['readDocumentPreview', 'listDocumentPreviewTypes', 'readDocumentPreviewTypeIcon', 'mountDocumentPreviewDetail'])],
+  ['/plugin-renderer/documentPreview.js', buildNamedHostShim('@plugin/renderer/documentPreview', ['readDocumentPreview', 'listDocumentPreviewTypes', 'readDocumentPreviewTypeIcon', 'mountDocumentPreview'])],
   ['/plugin-renderer/workspaceRuntime.js', buildNamedHostShim('@plugin/renderer/workspaceRuntime', [
     'getCurrentWorkspaceProjectId',
     'subscribeWorkspaceMutations',

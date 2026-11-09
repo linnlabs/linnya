@@ -14,6 +14,7 @@ import {
 import { createCanvasSelectionReferencePort } from './adapters/createCanvasSelectionReferencePort';
 import { persistCanvasPreferences, CanvasSettingsPage } from './features/materialSetting';
 import canvasStyles from './styles/canvas.css?url';
+import documentPreviewStyles from '@linnya/document-preview/style.css?url';
 import markdownStyles from '@linnya/markdown-document-core/style.css?url';
 import cardInkStyles from './features/cardRendering/styles/canvasCardInk.css?url';
 import cardMediaStyles from './features/cardRendering/styles/canvasMediaContent.css?url';
@@ -33,6 +34,7 @@ export const rendererPlugin: RendererPluginContribution = {
   meta: canvasPluginMeta,
   stylesheets: [
     markdownStyles,
+    documentPreviewStyles,
     canvasStyles,
     cardInkStyles,
     cardMediaStyles,

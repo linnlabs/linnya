@@ -2,6 +2,7 @@
   <section
     ref="overlay"
     class="canvas-document-detail canvas-card-ink"
+    :class="{ 'canvas-document-detail-ready': detail?.state.ready.value }"
     :style="style"
     aria-label="所选文档只读详情"
     tabindex="0"
@@ -9,16 +10,9 @@
     @wheel.stop
     @keydown="keydown"
   >
-    <!-- 与未选中时的出图同一个标签和正文排版：选中只多一圈描边。打开文档走浮条与双击。 -->
-    <header class="canvas-document-label" :title="`双击打开“${title}”`" @dblclick.stop="open">
-      <span class="canvas-document-label-icon" aria-hidden="true">
-        <component :is="icon ?? DocumentIcon" />
-      </span>
-      <span class="canvas-document-label-text">{{ title }}</span>
-    </header>
     <div
       ref="body"
-      class="canvas-document-detail-body canvas-document-markdown"
+      class="canvas-document-detail-body"
       :class="{ 'canvas-document-detail-loading': !detail?.state.ready.value }"
     />
     <p v-if="detail?.state.notice.value" class="canvas-document-detail-notice" role="status">
@@ -27,8 +21,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { DocumentIcon } from '@linnya/renderer-ui/icons';
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, type Component } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import type { CanvasCamera } from '@plugin/canvas/shared';
 import type {
   CanvasDocumentDetailCard,
@@ -44,8 +37,6 @@ const props = defineProps<{
   card: CanvasDocumentDetailCard;
   camera: CanvasCamera;
   projectId: string;
-  title: string;
-  icon: Component | null;
   port: CanvasDocumentDetailPort;
 }>();
 const emit = defineEmits<{ close: [] }>();
@@ -70,9 +61,6 @@ let stopNavigation: (() => void) | null = null,
 const close = () => {
   emit('close');
   props.port.focus();
-};
-const open = async () => {
-  await props.port.open(props.card);
 };
 const keydown = (event: KeyboardEvent) => {
   // 正文保留原生选字与只读导航，画布搜索/加入对话仍由页面同一快捷键入口处理。

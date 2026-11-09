@@ -14,9 +14,9 @@ describe('document preview renderer admission', () => {
 describe('document preview type icon', () => {
   it('reads the Host icon for a node type and returns null without a Host port', () => {
     const icon = { name: 'SlidesIcon' };
-    registerRendererDocumentPreviewPort({ mountDetail: async () => () => {} });
+    registerRendererDocumentPreviewPort({ mount: async () => () => {} });
     expect(readDocumentPreviewTypeIcon('slides')).toBeNull();
-    registerRendererDocumentPreviewPort({ mountDetail: async () => () => {}, readTypeIcon: type => (type === 'slides' ? icon : { name: 'DocumentIcon' }) });
+    registerRendererDocumentPreviewPort({ mount: async () => () => {}, readTypeIcon: type => (type === 'slides' ? icon : { name: 'DocumentIcon' }) });
     expect(readDocumentPreviewTypeIcon('slides')).toBe(icon);
   });
 });

@@ -19,31 +19,31 @@ it('前台当前文档卡与后台出图保留相同的授权标题和无封面�
   const content = createCanvasCardContent('current', port);
   try {
     const frontend = await content.create(card, new AbortController().signal);
-    const worker = createCardSurface(card, { ...request, documents: { 'internal-target-id': { title, status: 'available', previewStatus: 'ready', summary } } });
+    const worker = await createCardSurface(card, { ...request, documents: { 'internal-target-id': { title, status: 'available', previewStatus: 'ready', summary } } });
     for (const element of [frontend, worker]) {
-      expect(element.querySelector('.canvas-document-label-text')?.textContent).toBe(title);
-      expect(element.querySelector('.canvas-document-label svg')).not.toBeNull();
-      expect(element.querySelector('.canvas-document-summary')?.textContent).toBe(summary);
+      expect(element.querySelector('.document-preview-name')?.textContent).toBe(title);
+      expect(element.querySelector('.document-preview-title svg')).not.toBeNull();
+      expect(element.querySelector('.document-preview-summary')?.textContent).toBe(summary);
       expect(element.querySelector('img,small')).toBeNull();
     }
   } finally { content.dispose(); }
 });
-it('权限状态优先于迟到预览，不可访问卡和缺失metadata不泄露摘要、封面或内部ID', () => {
+it('权限状态优先于迟到预览，不可访问卡和缺失metadata不泄露摘要、封面或内部ID', async () => {
   for (const status of ['deleted', 'outside_project', 'plugin_unavailable'] as const) {
-    const element = createCardSurface(card, { ...request, documents: { 'internal-target-id': { title: '已授权身份', status, previewStatus: 'ready', summary: '不得出现的摘要', image: 'data:image/png;base64,YWJj' } } });
-    expect(element.querySelector('img,.canvas-document-summary')).toBeNull();
-    expect(element.querySelector('.canvas-card-auxiliary')?.textContent).toBeTruthy();
+    const element = await createCardSurface(card, { ...request, documents: { 'internal-target-id': { title: '已授权身份', status, previewStatus: 'ready', summary: '不得出现的摘要', image: 'data:image/png;base64,YWJj' } } });
+    expect(element.querySelector('img,.document-preview-summary')).toBeNull();
+    expect(element.querySelector('.document-preview-status')?.textContent).toBeTruthy();
     expect(element.textContent).not.toContain('不得出现');
   }
-  const unavailable = createCardSurface(card, { ...request, documents: { 'internal-target-id': { title: '当前标题', status: 'available', previewStatus: 'preview_unavailable', summary: '旧摘要' } } });
-  expect(unavailable.querySelector('.canvas-document-summary')).toBeNull();
+  const unavailable = await createCardSurface(card, { ...request, documents: { 'internal-target-id': { title: '当前标题', status: 'available', previewStatus: 'preview_unavailable', summary: '旧摘要' } } });
+  expect(unavailable.querySelector('.document-preview-summary')).toBeNull();
   expect(unavailable.textContent).toContain('暂时没有可用预览');
-  const missing = createCardSurface(card, request);
+  const missing = await createCardSurface(card, request);
   expect(missing.textContent).toContain('文档当前不可访问'); expect(missing.textContent).not.toContain('internal-target-id');
 });
-it('停用插件显示当前授权文本快照及恢复提示，仍不显示旧封面', () => {
-  const element = createCardSurface(card, { ...request, documents: { 'internal-target-id': { title: '仍在项目中的文档', status: 'plugin_unavailable', previewStatus: 'plugin_unavailable', summary: '已保存的文本快照', image: 'data:image/png;base64,YWJj' } } });
-  expect(element.querySelector('.canvas-document-summary')?.textContent).toBe('已保存的文本快照');
+it('停用插件显示当前授权文本快照及恢复提示，仍不显示旧封面', async () => {
+  const element = await createCardSurface(card, { ...request, documents: { 'internal-target-id': { title: '仍在项目中的文档', status: 'plugin_unavailable', previewStatus: 'plugin_unavailable', summary: '已保存的文本快照', image: 'data:image/png;base64,YWJj' } } });
+  expect(element.querySelector('.document-preview-summary')?.textContent).toBe('已保存的文本快照');
   expect(element.querySelector('img')).toBeNull(); expect(element.textContent).toContain('启用或安装');
 });
 it('有正文且内容方未声明缩略图时，前台与后台都按 Markdown 排版而不用封面图，并固定为卡片高度', async () => {
@@ -68,24 +68,24 @@ it('有正文且内容方未声明缩略图时，前台与后台都按 Markdown 
   const content = createCanvasCardContent('current', port);
   try {
     const frontend = await content.create(card, new AbortController().signal);
-    const worker = createCardSurface(card, {
+    const worker = await createCardSurface(card, {
       ...request,
       documents: { 'internal-target-id': { title: '复盘', status: 'available', previewStatus: 'ready', summary: 'x', body, image: 'data:image/png;base64,YWJj' } },
     });
     for (const element of [frontend, worker]) {
-      expect(element.querySelector('.canvas-document-markdown h1')?.textContent).toBe('季度复盘');
-      expect(element.querySelector('.canvas-document-markdown strong')?.textContent).toBe('画布');
-      expect(element.querySelectorAll('.canvas-document-markdown li')).toHaveLength(2);
+      expect(element.querySelector('.document-preview-portable h1')?.textContent).toBe('季度复盘');
+      expect(element.querySelector('.document-preview-portable strong')?.textContent).toBe('画布');
+      expect(element.querySelectorAll('.document-preview-portable li')).toHaveLength(2);
       expect(element.textContent).not.toMatch(/[#*]/);
-      expect(element.querySelector('.canvas-document-summary, img')).toBeNull();
+      expect(element.querySelector('.document-preview-summary, img')).toBeNull();
       expect(element.style.height).toBe(`${card.height}px`);
     }
   } finally {
     content.dispose();
   }
 });
-it('内容方声明缩略图时仍用封面图，正文不进卡片', () => {
-  const element = createCardSurface(card, {
+it('内容方声明缩略图时仍用封面图，正文不进卡片', async () => {
+  const element = await createCardSurface(card, {
     ...request,
     documents: {
       'internal-target-id': {
@@ -98,6 +98,6 @@ it('内容方声明缩略图时仍用封面图，正文不进卡片', () => {
       },
     },
   });
-  expect(element.querySelector('img.canvas-document-cover')).not.toBeNull();
-  expect(element.querySelector('.canvas-document-markdown')).toBeNull();
+  expect(element.querySelector('img.document-preview-cover')).not.toBeNull();
+  expect(element.querySelector('.document-preview-portable')).toBeNull();
 });

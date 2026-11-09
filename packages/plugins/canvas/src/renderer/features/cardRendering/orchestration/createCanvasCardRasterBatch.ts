@@ -1,3 +1,4 @@
+import { disposeDocumentPreviewSurface } from '@linnya/document-preview';
 import type { CanvasCard } from '../../../../shared';
 import type { CardRasterizer, CardRasterRequest } from '../../../capabilities/textRasterization';
 import type {
@@ -21,13 +22,15 @@ export function createCanvasCardRasterBatch(options: {
     signal: AbortSignal
   ): Promise<readonly CanvasCardRasterOutput[]> => {
     const prepared: Prepared[] = [];
+    try {
     for (const input of inputs) {
       try {
         signal.throwIfAborted();
         const element = options.createContent
           ? await options.createContent(input.card, signal)
           : createCanvasRasterDom(input);
-        element.classList.add('markdown-document-content', 'canvas-card-content');
+        if (input.card.type !== 'document')
+          element.classList.add('markdown-document-content', 'canvas-card-content');
         installCanvasCardInk(element, input.card.color, input.dark);
         prepared.push({ kind: 'ready', input, element });
       } catch (error) {
@@ -80,5 +83,8 @@ export function createCanvasCardRasterBatch(options: {
       }));
       return { kind: 'ready', tiles };
     });
+    } finally {
+      for (const item of prepared) if (item.kind === 'ready') disposeDocumentPreviewSurface(item.element);
+    }
   };
 }

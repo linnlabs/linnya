@@ -9,7 +9,7 @@ import { installCanvasDocumentNavigation } from '../orchestration/installCanvasD
 import CanvasDocumentDetail from '../ui/CanvasDocumentDetail.vue';
 
 function card() { return CanvasDocumentCardSchema.parse({ id: 'c1', type: 'document', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white', createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null }, createdAt: 0, updatedAt: 0, x: 0, y: 0, width: 280, height: 180, parentId: null, data: { documentId: 'target' } }); }
-function port(): CanvasDocumentDetailPort { return { prepare: vi.fn(async () => 'ready'), mount: vi.fn(async () => vi.fn()), visible: vi.fn(), focus: vi.fn(), open: vi.fn(), navigate: vi.fn() }; }
+function port(): CanvasDocumentDetailPort { return { prepare: vi.fn(async () => 'ready'), mount: vi.fn(async input => { input.onReady?.(); return vi.fn(); }), visible: vi.fn(), focus: vi.fn(), open: vi.fn(), navigate: vi.fn() }; }
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { resolve, promise }; }
 
 describe('单张近景文档详情', () => {
@@ -25,7 +25,8 @@ describe('单张近景文档详情', () => {
     const element = document.createElement('div'), detail = createCanvasDocumentDetail({ card: card(), projectId: 'project', element, port: host });
     const waiting = detail.mount(); expect(host.mount).not.toHaveBeenCalled();
     prepared.resolve('ready'); await Promise.resolve(); expect(host.mount).toHaveBeenCalledWith(expect.objectContaining({ documentId: 'target', projectId: 'project', element })); expect(host.visible).not.toHaveBeenCalled();
-    mounted.resolve(release); await waiting; expect(host.visible).toHaveBeenLastCalledWith(card().id, true); expect(detail.state.ready.value).toBe(true);
+    mounted.resolve(release); await waiting; expect(host.visible).not.toHaveBeenCalled();
+    vi.mocked(host.mount).mock.calls[0][0].onReady?.(); expect(host.visible).toHaveBeenLastCalledWith(card().id, true); expect(detail.state.ready.value).toBe(true);
     detail.dispose(); detail.dispose(); expect(release).toHaveBeenCalledTimes(1); expect(host.visible).toHaveBeenLastCalledWith(card().id, false);
   });
   it('切卡/关闭发生在准备中时不挂载；懒加载迟到时只释放自身挂载', async () => {
@@ -55,7 +56,7 @@ describe('单张近景文档详情', () => {
   });
   it('真实只读覆盖层承接Host正文，Esc回焦，卸载释放Host实例和活DOM槽', async () => {
     const host = port(), release = vi.fn(), close = vi.fn();
-    host.mount = async input => { const paragraph = document.createElement('p'); paragraph.textContent = '只读正文，可选择复制'; input.element.append(paragraph); return release; };
+    host.mount = async input => { const paragraph = document.createElement('p'); paragraph.textContent = '只读正文，可选择复制'; input.element.append(paragraph); input.onReady?.(); return release; };
     const root = document.createElement('div'); document.body.append(root);
     const app = createApp(CanvasDocumentDetail, { card: card(), camera: { x: 10, y: 20, zoom: 1 }, projectId: 'project', title: '项目文档', port: host, onClose: close });
     app.mount(root); await Promise.resolve(); await Promise.resolve(); await nextTick();

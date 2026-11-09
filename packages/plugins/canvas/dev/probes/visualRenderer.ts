@@ -1,3 +1,4 @@
+import '@linnya/document-preview/style.css';
 import { readCanvasVisualSampling, assertSoftwareVisualSampling } from './visualSampling';
 import { waitForCanvasPerformanceDraw } from './waitForCanvasPerformanceDraw';
 import './sceneVisualRenderer';
@@ -44,7 +45,7 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', colo
   const request = CanvasRenderRequestSchema.parse({ protocol: 1, requestId: 'visual', kind: 'render', theme, material,
     fontFamily: 'system-ui', fontSize: 14, dpr: devicePixelRatio, width: 1000, height: 600, region: null,
     quality: 1, format: 'png', snapshot: { schemaVersion: 1, documentId: 'visual', sequence: 1, elements: [card] }, assets: {}, documents: { 'visual-document': { title: '同源标签', status: 'available' } } });
-  const reference = createCardSurface(card, request);
+  const reference = await createCardSurface(card, request);
   if (!reference.querySelector('.katex') || !reference.querySelector('.katex-display')) throw new Error('visual_math_is_not_formal_katex');
   const background = readCanvasCardCssPalette(card.color, theme === 'dark').paper;
   reference.style.cssText += `;position:absolute;left:20px;top:20px;width:360px;height:500px;background:${background}`;
@@ -52,7 +53,7 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', colo
   document.body.append(reference, staging);
   const rasterizer = createHtmlCardRasterizer({ host: staging });
   const broken = document.createElement('div'), brokenImage = document.createElement('img'); brokenImage.src = 'data:image/png;base64,AA=='; broken.append(brokenImage);
-  const measurements = await rasterizer.measureBatch([... [180, 360, 720].map(width => ({ element: createCardSurface(card, request), width })), { element: broken, width: 360 }]);
+  const measurements = await rasterizer.measureBatch([...await Promise.all([180, 360, 720].map(async width => ({ element: await createCardSurface(card, request), width }))), { element: broken, width: 360 }]);
   const measuredHeights = measurements.map(result => result.status === 'fulfilled' ? result.value : null);
   if (measurements[0].status !== 'fulfilled' || measurements[1].status !== 'fulfilled' || measurements[2].status !== 'fulfilled'
     || measurements[3].status !== 'rejected' || measurements[0].value <= measurements[2].value || measurements[0].value < measurements[1].value) throw new Error('batch_measurement_width_or_failure_isolation_mismatch');
@@ -60,7 +61,7 @@ async function prepare(theme: 'light' | 'dark', material: 'paper' | 'card', colo
   const paperColor = getComputedStyle(reference).backgroundColor;
   const referenceLayout = collectVisualTextLayout(reference, paperColor);
   if (referenceLayout.vectors.length !== 1) throw new Error('visual_document_icon_fixture_missing');
-  const sources = Array.from({ length: 8 }, () => createCardSurface(card, request));
+  const sources = await Promise.all(Array.from({ length: 8 }, () => createCardSurface(card, request)));
   const mutation = negative ? sources.map(element => applyVisualNegative(element, negative, referenceLayout)) : null;
   const rasters = await rasterizer.rasterizeBatch(sources.map(element => ({ element, width: 360, height: 500, scale: devicePixelRatio })));
   // 返回时真实paint源clone仍在staging；在dispose之前读它们，不用另造“近似相同”的测量DOM。
@@ -211,8 +212,8 @@ async function mixedLodVisual(theme: 'light' | 'dark') {
     documents: { 'visual-document': { title: '同源标签', status: 'available' } } });
   const staging = document.createElement('div'); document.body.append(staging); const rasterizer = createHtmlCardRasterizer({ host: staging });
   try {
-    const low = await rasterizer.rasterize({ element: createCardSurface(card, request), width: 360, height: 500, scale: devicePixelRatio });
-    const high = await rasterizer.rasterize({ element: createCardSurface(card, request), width: 360, tileWidth: 180, height: 250, offsetX: 20, offsetY: 60, scale: devicePixelRatio * 2 });
+    const low = await rasterizer.rasterize({ element: await createCardSurface(card, request), width: 360, height: 500, scale: devicePixelRatio });
+    const high = await rasterizer.rasterize({ element: await createCardSurface(card, request), width: 360, tileWidth: 180, height: 250, offsetX: 20, offsetY: 60, scale: devicePixelRatio * 2 });
     const expected = document.createElement('canvas'); expected.width = 360 * devicePixelRatio; expected.height = 500 * devicePixelRatio;
     const context = expected.getContext('2d'); if (!context) throw new Error('lod_oracle_context_missing');
     const factor = devicePixelRatio * 0.6; context.fillStyle = readCanvasCardCssPalette(card.color, theme === 'dark').paper; context.fillRect(0, 0, expected.width, expected.height);
@@ -293,7 +294,7 @@ async function prepareEditingVisual() {
     try {
       const request = CanvasRenderRequestSchema.parse({ protocol: 1, requestId: 'editing-exact', kind: 'render', theme: 'light', material: 'paper', fontFamily: 'system-ui', fontSize: 14,
         dpr: kernel.readResolution(), width: 900, height: 600, region: null, quality: 1, format: 'png', snapshot: { schemaVersion: 1, documentId: 'exact', sequence: 1, elements: [cards[0]] } });
-      const result = await direct.rasterize({ element: createCardSurface(cards[0], request), width: 80, height: 80, scale: kernel.readResolution() });
+      const result = await direct.rasterize({ element: await createCardSurface(cards[0], request), width: 80, height: 80, scale: kernel.readResolution() });
       const expected = new OffscreenCanvas(result.bitmap.width, result.bitmap.height), context = expected.getContext('2d'); if (!context) throw new Error('editing_oracle_context_missing');
       context.fillStyle = '#fff'; context.fillRect(0, 0, expected.width, expected.height); context.drawImage(result.bitmap, 0, 0); result.bitmap.close();
       const blob = await expected.convertToBlob({ type: 'image/png' });

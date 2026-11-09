@@ -54,7 +54,7 @@ async function executeCanvasWorkerRequest(
       const cards = kernel.rasterCards();
       const renderBatch = createCanvasCardRasterBatch({
         rasterizer,
-        createContent: async card => createCardSurface(card, request),
+        createContent: (card, cancellation) => createCardSurface(card, request, cancellation),
       });
       const scale = Math.max(0.25, camera.zoom * request.dpr);
       // 前后台使用同一正文测高、裁切提示和批量paint，不另写一套逐片正文路径。

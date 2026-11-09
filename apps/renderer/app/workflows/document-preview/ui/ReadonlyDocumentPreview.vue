@@ -1,151 +1,63 @@
 <template>
-  <section
-    class="readonly-document-preview"
-    :aria-label="label || '文档只读预览'"
-    @mouseenter="
-      pointerInside = true;
-      expanded = true;
-    "
-    @mouseleave="pointerInside = false"
-  >
-    <p
-      v-if="controller.error.value"
-      role="status"
-    >
-      {{ controller.error.value }}
-    </p>
-    <template v-else-if="current">
-      <strong v-if="!detailOnly">{{ current.preview.title ?? label }}</strong>
-      <template v-if="!expanded">
-        <img
-          v-if="current.preview.content?.image"
-          :src="current.preview.content.image.dataUri"
-          :alt="current.preview.title ?? ''"
-        >
-        <p>{{ current.preview.content?.summary ?? unavailable }}</p>
-      </template>
-      <button
-        v-if="recovery"
-        type="button"
-        @click="controller.recover(recovery)"
-      >
-        {{ recovery.label }}
-      </button>
-      <button
-        v-if="!expanded && hasDetail"
-        type="button"
-        @click="expanded = true"
-      >
-        展开
-      </button>
-      <component
-        :is="detailComponent"
-        v-if="expanded && detailComponent"
-        :document-id="current.target.documentId"
-        :project-id="current.target.projectId"
-      />
-      <template v-else-if="expanded && markdownDetail">
-        <p
-          v-if="markdown.phase.value === 'loading'"
-          role="status"
-        >
-          正在加载详情…
-        </p>
-        <p
-          v-else-if="markdown.phase.value === 'failed'"
-          role="alert"
-        >
-          详情暂不可用，请重新打开预览。
-        </p>
-        <div
-          ref="detail"
-          class="markdown-document-content readonly-document-preview__detail"
-          :aria-busy="markdown.phase.value === 'loading'"
-          @click="preventPreviewNavigation"
-        />
-      </template>
-      <p v-else-if="expanded">
-        {{ current.preview.content?.summary ?? unavailable }}
-      </p>
-    </template>
-    <p
-      v-else
-      role="status"
-    >
-      正在读取文档预览…
-    </p>
+  <section class="readonly-document-preview" :aria-label="label || '文档只读预览'"
+    @mouseenter="pointerInside = true; expanded = true" @mouseleave="pointerInside = false">
+    <p v-if="controller.error.value" role="status">{{ controller.error.value }}</p>
+    <p v-else-if="!current" role="status">正在读取文档预览…</p>
+    <p v-if="surface.phase.value === 'failed'" role="alert">详情暂不可用，请重新打开预览。</p>
+    <div ref="viewport" class="readonly-document-preview__viewport" @click="preventPreviewNavigation" />
+    <Teleport v-if="detailComponent && expanded && surface.body.value && current" :to="surface.body.value">
+      <component :is="detailComponent" :document-id="current.target.documentId" :project-id="current.target.projectId" />
+    </Teleport>
+    <button v-if="recovery" type="button" @click="controller.recover(recovery)">{{ recovery.label }}</button>
+    <button v-if="!expanded && hasDetail" type="button" @click="expanded = true">展开</button>
   </section>
 </template>
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
+import { DOCUMENT_PREVIEW_LAYOUT } from '@linnya/document-preview';
+import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
 import { useNavigationScope } from '@/app/navigation';
-import {
-  readDocumentTypePreviewComponent,
-  readDocumentTypeRecoveryAction,
-} from '@/app/plugins/documentTypePresentation';
+import { readDocumentTypeIcon, readDocumentTypePreviewComponent, readDocumentTypeRecoveryAction } from '@/app/plugins/documentTypePresentation';
 import type { DocumentPreviewTarget } from '../definitions/documentPreview';
 import { createDocumentPreviewController } from '../orchestration/createDocumentPreviewController';
-import { createReadonlyMarkdownDetail } from '../orchestration/createReadonlyMarkdownDetail';
-const props = defineProps<{
-  readTarget: () => DocumentPreviewTarget;
-  detailOnly?: boolean;
-  label?: string;
-}>();
-const scope = useNavigationScope(),
-  expanded = ref(Boolean(props.detailOnly)),
-  pointerInside = ref(false),
-  detail = ref<HTMLElement | null>(null);
-const controller = createDocumentPreviewController(props.readTarget, () => scope.currentProjectId),
-  current = controller.result;
-const markdown = createReadonlyMarkdownDetail({
-  element: () => detail.value,
-  load: () => import('@linnya/markdown-document-core'),
-  report: failure => console.warn('[document-preview] readonly Markdown detail failed', failure),
-});
-const unavailable = computed(() =>
-  current.value?.presentation.status === 'plugin_unavailable'
-    ? '需要启用或安装对应插件'
-    : '文档当前不可预览'
-);
-const recovery = computed(() =>
-  current.value?.presentation.status === 'plugin_unavailable' && current.value.presentation.nodeType
-    ? readDocumentTypeRecoveryAction(current.value.presentation.nodeType)
-    : null
-);
-const detailComponent = computed(() =>
-  current.value?.presentation.status === 'available' &&
-  current.value.preview.status === 'ready' &&
-  current.value.presentation.nodeType
-    ? readDocumentTypePreviewComponent(current.value.presentation.nodeType)
-    : null
-);
-const markdownDetail = computed(() =>
-  current.value?.presentation.status === 'available' && current.value.preview.status === 'ready'
-    ? current.value.preview.content?.detail
-    : null
-);
-const hasDetail = computed(() => Boolean(detailComponent.value || markdownDetail.value));
+import { createReadonlyDocumentSurface } from '../orchestration/createReadonlyDocumentSurface';
+const props = defineProps<{ readTarget: () => DocumentPreviewTarget; detailOnly?: boolean; label?: string; widthPx?: number }>();
+const emit = defineEmits<{ ready: [] }>();
+const scope = useNavigationScope(), expanded = ref(Boolean(props.detailOnly)), pointerInside = ref(false);
+const viewport = ref<HTMLElement | null>(null), measuredWidth = ref(0);
+const theme = ref<'light' | 'dark'>('light');
+const controller = createDocumentPreviewController(props.readTarget, () => scope.currentProjectId), current = controller.result;
+const surface = createReadonlyDocumentSurface({ element: () => viewport.value,
+  ready: () => emit('ready'), report: failure => console.warn('[document-preview] presentation failed', failure) });
+const recovery = computed(() => current.value?.presentation.status === 'plugin_unavailable' && current.value.presentation.nodeType
+  ? readDocumentTypeRecoveryAction(current.value.presentation.nodeType) : null);
+const detailComponent = computed(() => current.value?.presentation.status === 'available' && current.value.preview.status === 'ready' && current.value.presentation.nodeType
+  ? readDocumentTypePreviewComponent(current.value.presentation.nodeType) : null);
+const hasDetail = computed(() => Boolean(detailComponent.value || current.value?.preview.content?.detail));
 function preventPreviewNavigation(event: MouseEvent) {
   if (event.target instanceof Element && event.target.closest('a')) event.preventDefault();
 }
-// getter在controller的try内运行，失效引用显示状态而不是在Vue watcher中抛出。
-watchEffect(() => {
-  void controller.refresh();
+// 使用未变换的布局宽度；画布相机缩放不能改变正文的换行。
+let resize: ResizeObserver | undefined, appearance: MutationObserver | undefined;
+onMounted(() => {
+  const root = document.documentElement;
+  const readTheme = () => { theme.value = root.getAttribute(RENDERER_UI_THEME_ATTRIBUTE) === 'dark' ? 'dark' : 'light'; };
+  readTheme(); appearance = new MutationObserver(readTheme);
+  appearance.observe(root, { attributes: true, attributeFilter: [RENDERER_UI_THEME_ATTRIBUTE] });
+  resize = new ResizeObserver(entries => { const entry = entries[0]; if (entry) measuredWidth.value = entry.contentRect.width; });
+  if (viewport.value) resize.observe(viewport.value);
 });
-watch(current, () => {
-  expanded.value = Boolean(props.detailOnly || pointerInside.value);
-});
-watch([expanded, current], ([value]) => {
-  const identity = current.value,
-    content = markdownDetail.value;
-  if (!value || detailComponent.value || !content || !identity) {
-    markdown.clear();
-    return;
-  }
-  void markdown.render(content, () => controller.isCurrent(identity) && expanded.value);
-});
-onBeforeUnmount(() => {
-  markdown.clear();
-  controller.dispose();
-});
+watchEffect(() => { void controller.refresh(); });
+watch(current, () => { expanded.value = Boolean(props.detailOnly || pointerInside.value); });
+watch([current, expanded, theme, measuredWidth, () => props.widthPx], () => {
+  const identity = current.value, width = props.widthPx ?? measuredWidth.value;
+  if (!identity || width <= 0) { surface.clear(); return; }
+  void surface.render({ preview: identity.preview, widthPx: width,
+    maxHeight: expanded.value ? undefined : DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight,
+    theme: theme.value, icon: identity.presentation.nodeType ? readDocumentTypeIcon(identity.presentation.nodeType) : null,
+    externalBody: expanded.value && Boolean(detailComponent.value),
+    onOpen: identity.presentation.status === 'available' ? () => { void controller.open(identity); } : undefined,
+  }, () => controller.isCurrent(identity));
+}, { flush: 'post' });
+onBeforeUnmount(() => { resize?.disconnect(); appearance?.disconnect(); surface.clear(); controller.dispose(); });
 </script>

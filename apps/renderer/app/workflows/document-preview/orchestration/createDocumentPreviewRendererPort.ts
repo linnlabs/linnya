@@ -18,7 +18,7 @@ export function createDocumentPreviewRendererPort(
 ): RendererDocumentPreviewPort {
   const owners = new WeakMap<HTMLElement, DocumentPreviewMountOwnership>();
   return {
-    async mountDetail(input) {
+    async mount(input) {
       const target = { documentId: input.documentId, projectId: input.projectId };
       owners.get(input.element)?.dispose();
       let disposed = false,
@@ -54,7 +54,7 @@ export function createDocumentPreviewRendererPort(
         await verify();
         if (disposed) return ownership.dispose;
         render(
-          createVNode(component, { readTarget: () => target, detailOnly: true }),
+          createVNode(component, { readTarget: () => target, detailOnly: input.mode === 'detail', widthPx: input.widthPx, onReady: input.onReady }),
           input.element
         );
         mounted = true;

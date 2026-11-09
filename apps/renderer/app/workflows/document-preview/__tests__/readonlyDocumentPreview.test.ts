@@ -22,9 +22,11 @@ vi.mock('@/shared/ipc/workspaceMutationSubscription', () => ({
 }));
 vi.mock('@/app/plugins/documentTypePresentation', () => ({
   readDocumentTypePreviewComponent: () => null,
+  readDocumentTypeIcon: () => null,
   readDocumentTypeRecoveryAction: () => null,
 }));
 it('detailOnly renders readonly Markdown immediately, blocks nested navigation and removes content on availability or project changes', async () => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
   await import('@linnya/markdown-document-core');
   ports.read.mockResolvedValue({
     documentId: 'doc',
@@ -64,6 +66,7 @@ it('detailOnly renders readonly Markdown immediately, blocks nested navigation a
       h(ReadonlyDocumentPreview, {
         readTarget: () => ({ documentId: 'doc', projectId: 'project' }),
         detailOnly: true,
+        widthPx: 320,
       }),
   }).use(pinia);
   const began = performance.now(),

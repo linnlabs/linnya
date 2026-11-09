@@ -9,7 +9,6 @@ export {
 export { createCanvasImageSurface } from './functions/createCanvasImageSurface';
 export {
   createCanvasDocumentSurface,
-  createCanvasDocumentLabel,
   canvasDocumentPreviewMessage,
 } from './functions/createCanvasDocumentSurface';
 export { projectCanvasDocumentSurface } from './functions/projectCanvasDocumentSurface';

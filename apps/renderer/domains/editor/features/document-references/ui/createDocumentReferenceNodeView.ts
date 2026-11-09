@@ -22,10 +22,12 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
   let timer: ReturnType<typeof setTimeout> | undefined;
   let popup: HTMLElement | null = null;
   let disposeDetail: (() => void) | undefined;
+  let cancellation: AbortController | undefined;
   let releaseFocus: (() => void) | undefined;
   let stopPosition: (() => void) | undefined;
   function close() {
     if (timer) clearTimeout(timer);
+    cancellation?.abort(); cancellation = undefined;
     const release = releaseFocus, panel = popup, detail = disposeDetail, stop = stopPosition;
     releaseFocus = undefined; popup = null; disposeDetail = undefined; stopPosition = undefined;
     // 保存回调可以同步销毁NodeView；先交出资源，不能重入释放同一详情。
@@ -48,41 +50,19 @@ export function createDocumentReferenceNodeView(documentId: string, referenceId:
     panel.className = 'document-reference-preview'; panel.setAttribute('aria-label', '文档预览');
     // 预览正文不是可编辑区；点击段落/空白也要把焦点落在所属浮层，不能退到body。
     panel.tabIndex = -1;
-    let pointerInPanel = false;
-    let expandDetail: (() => void) | null = null;
-    panel.addEventListener('mouseenter', () => { pointerInPanel = true; if (timer) clearTimeout(timer); expandDetail?.(); });
-    panel.addEventListener('mouseleave', () => { pointerInPanel = false; timer = setTimeout(close, 200); });
-    const title = document.createElement('strong'); title.textContent = dom.textContent; panel.append(title);
+    panel.addEventListener('mouseenter', () => { if (timer) clearTimeout(timer); });
+    panel.addEventListener('mouseleave', () => { timer = setTimeout(close, 200); });
     document.body.append(panel); popup = panel;
     stopPosition = positionDocumentReferencePreview({ reference: dom, panel, report: port.report });
     releaseFocus = registerFocusPortal?.(panel);
-    const recovery = port.recoveryAction(info);
-    if (recovery) {
-      const action = document.createElement('button'); action.type = 'button'; action.textContent = recovery.label;
-      action.onclick = () => { action.disabled = true; void recovery.activate().then(async () => { const refreshed = await refresh(); if (refreshed?.status === 'available') { close(); await port.open(refreshed); } }).catch(error => { action.disabled = false; port.report(error); }); };
-      panel.append(action);
-    }
-    const preview = await port.preview(documentId);
-    if (destroyed || popup !== panel) return;
-    if (preview.content?.image) { const image = document.createElement('img'); image.src = preview.content.image.dataUri; image.alt = preview.title ?? '文档封面'; panel.append(image); }
-    const summary = document.createElement('p'); summary.textContent = preview.content?.summary ?? (preview.status === 'plugin_unavailable' ? '需要启用或安装对应插件' : '预览不可用'); panel.append(summary);
-    const detail = preview.content?.detail;
-    const renderDetail = port.readDetailRenderer(info) ?? (detail ? (element: HTMLElement) => port.renderDetail(element, detail.text) : null);
-    if (renderDetail) {
-      const expand = document.createElement('button'); expand.type = 'button'; expand.textContent = '展开';
-      let loading = false;
-      expandDetail = () => {
-        if (disposeDetail || loading) return;
-        loading = true;
-        panel.querySelector(':scope > img')?.remove(); summary.remove();
-        const content = document.createElement('div'); content.className = 'document-reference-detail'; panel.append(content);
-        void renderDetail(content).then(dispose => {
-          if (destroyed || popup !== panel) { dispose(); return; }
-          disposeDetail = dispose; expand.remove();
-        }).catch(error => { loading = false; content.remove(); port.report(error); });
-      };
-      expand.onclick = expandDetail; panel.append(expand);
-      if (pointerInPanel) expandDetail();
+    const active = new AbortController(); cancellation = active;
+    try {
+      // 浮层只管理定位与编辑焦点；首屏、展开、恢复和打开由共用预览拥有。
+      const dispose = await port.mountPreview(documentId, panel, active.signal);
+      if (destroyed || popup !== panel || active.signal.aborted) { dispose(); return; }
+      disposeDetail = dispose;
+    } catch (failure) {
+      if (!active.signal.aborted) port.report(failure);
     }
   }
   dom.addEventListener('mouseenter', () => { const generation = ++hoverGeneration; if (timer) clearTimeout(timer); timer = setTimeout(() => { void show(generation).catch(port.report); }, 400); });

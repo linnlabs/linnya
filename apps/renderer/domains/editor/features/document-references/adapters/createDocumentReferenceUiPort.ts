@@ -4,7 +4,7 @@ import { subscribeRendererPluginAvailability } from '@plugin/renderer/pluginRunt
 import type { DocumentReferencePresentation } from '@app/schemas';
 import { queryDocumentReferences, readDocumentReference } from '@plugin/renderer/documentReferences';
 import { getCurrentWorkspaceProjectId, showWorkspaceNotification } from '@plugin/renderer/workspaceRuntime';
-import { readDocumentPreview } from '@plugin/renderer/documentPreview';
+import { mountDocumentPreview } from '@plugin/renderer/documentPreview';
 import { getWorkspaceNavigationPort } from '@plugin/renderer/workspaceNavigation';
 import { subscribeToWorkspaceMutation } from '@shared/ipc/workspaceMutationSubscription';
 import type { DocumentReferenceUiPort } from '../definitions/documentReferenceUi';
@@ -55,28 +55,12 @@ export function createDocumentReferenceUiPort(): DocumentReferenceUiPort {
       pending.set(requestKey, request); return request;
     },
     renderIcon(nodeType, element) { render(createVNode(getDocumentTypePresentationPort().readIcon(nodeType)), element); return () => render(null, element); },
-    recoveryAction: presentation => presentation.status === 'plugin_unavailable' && presentation.nodeType ? getDocumentTypePresentationPort().readRecoveryAction(presentation.nodeType) : null,
-    preview: documentId => readDocumentPreview({ documentId, projectId: projectId(), widthPx: 640, pixelRatio: Math.min(window.devicePixelRatio, 2) }),
+    mountPreview: (documentId, element, signal) => mountDocumentPreview({ documentId, element, signal, projectId: projectId(), mode: 'first-screen' }),
     async open(presentation) {
       if (presentation.status !== 'available' || !presentation.nodeType) {
         showWorkspaceNotification(presentation.status === 'deleted' ? '引用的文档已删除' : presentation.status === 'outside_project' ? '文档在其他项目，当前不可访问' : '需要启用或安装对应插件后打开', 'info'); return;
       }
       await getWorkspaceNavigationPort().openDocumentByNodeType({ documentId: presentation.documentId, projectId: projectId(), nodeType: presentation.nodeType, displayName: presentation.title });
-    },
-    readDetailRenderer(presentation) {
-      if (presentation.status !== 'available' || !presentation.nodeType) return null;
-      const component = getDocumentTypePresentationPort().readPreviewComponent(presentation.nodeType);
-      if (!component) return null;
-      const scope = projectId();
-      return async element => { render(createVNode(component, { documentId: presentation.documentId, projectId: scope }), element); return () => render(null, element); };
-    },
-    async renderDetail(element, markdown) {
-      const runtime = await import('@linnya/markdown-document-core');
-      element.classList.add('markdown-document-content'); element.append(runtime.createMarkdownDocumentFragment(runtime.parseMarkdownDocument(markdown), element.ownerDocument));
-      const preventNavigation = (event: Event) => { if (event.target instanceof Element && event.target.closest('a')) event.preventDefault(); };
-      element.addEventListener('click', preventNavigation);
-      // 展开只创建只读 DOM，不装 NodeView，互相引用的文档不会递归请求预览。
-      return () => { element.removeEventListener('click', preventNavigation); element.replaceChildren(); };
     },
     dispose() { unsubscribe?.(); unsubscribe = undefined; unsubscribeAvailability?.(); unsubscribeAvailability = undefined; listeners.clear(); presentations.clear(); pending.clear(); },
     report(error) { console.warn('[document-reference] interaction failed', error); },

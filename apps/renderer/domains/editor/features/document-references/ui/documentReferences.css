@@ -15,29 +15,15 @@
   color: var(--color-text-primary);
   box-shadow: var(--shadow-floating-panel);
 }
-.document-reference-preview img {
-  width: 100%;
-  max-height: 14rem;
-  object-fit: contain;
-}
 .document-reference-preview {
   /* FloatingUI通过内联样式更新可用区域；首次定位前沿用相同的视口约束。 */
   --document-reference-available-width: calc(100vw - 1rem);
   --document-reference-available-height: 80vh;
 
+  padding: 0;
   box-sizing: border-box;
   max-width: var(--document-reference-available-width);
   max-height: min(32rem, 80vh, var(--document-reference-available-height));
-}
-.document-reference-preview p {
-  white-space: pre-wrap;
-  max-height: 8rem;
-  overflow: hidden;
-}
-.document-reference-detail {
-  max-height: 20rem;
-  overflow: auto;
-  user-select: text;
 }
 .document-reference-suggestions {
   display: flex;

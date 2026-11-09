@@ -1,25 +1,16 @@
+@import '@linnya/document-preview/style.css';
 .readonly-document-preview {
   min-width: 0;
   min-height: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
-  color: var(--color-text-primary);
+  color: inherit;
 }
-.readonly-document-preview > img {
-  display: block;
-  max-width: 100%;
-  max-height: 320px;
-  object-fit: contain;
-}
-.readonly-document-preview > p {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.readonly-document-preview__detail {
+.readonly-document-preview__viewport {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  max-height: 100%;
+  scrollbar-width: none;
   user-select: text;
 }

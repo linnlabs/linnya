@@ -1,3 +1,4 @@
+import '@linnya/document-preview/style.css';
 import {
   CANVAS_RENDER_PROTOCOL,
   canvasWorkerViewport,

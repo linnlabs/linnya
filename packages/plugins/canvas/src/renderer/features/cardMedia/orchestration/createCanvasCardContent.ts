@@ -1,7 +1,7 @@
 import { JsonValueSchema } from '@app/schemas';
 import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import type { CanvasCardContent, CanvasCardMediaPort } from '../definitions/cardMedia';
-import { canvasDocumentPreviewBody } from '../../../../shared/rendering';
+import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
 import { createCanvasContentNotifications } from './createCanvasContentNotifications';
 import { createCanvasReferenceMetadata } from './createCanvasReferenceMetadata';
 import { createCanvasImageSources } from './createCanvasImageSources';
@@ -73,7 +73,7 @@ export function createCanvasCardContent(
       if (card.type === 'document') {
         const result = await previews.read(card);
         signal.throwIfAborted();
-        const body = canvasDocumentPreviewBody(result.content?.detail);
+        const body = result.content?.detail;
         const icon = result.nodeType ? (port.typeIcon?.(result.nodeType) ?? null) : null;
         return createCanvasDocumentSurface(
           {
@@ -86,7 +86,9 @@ export function createCanvasCardContent(
             ...(icon ? { icon } : {}),
           },
           document,
-          card.height
+          { documentId: card.data.documentId, width: card.width, height: card.height },
+          signal,
+          document.documentElement.getAttribute(RENDERER_UI_THEME_ATTRIBUTE) === 'dark' ? 'dark' : 'light'
         );
       }
       return element;

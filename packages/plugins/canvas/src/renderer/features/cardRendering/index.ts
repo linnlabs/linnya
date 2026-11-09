@@ -9,7 +9,6 @@ export { hydrateCanvasDocumentTags } from './functions/hydrateCanvasDocumentTags
 export { createCanvasImageSurface } from './functions/createCanvasImageSurface';
 export {
   createCanvasDocumentSurface,
-  createCanvasDocumentLabel,
   canvasDocumentPreviewMessage,
 } from './functions/createCanvasDocumentSurface';
 export type { CanvasDocumentSurfacePresentation } from './definitions/canvasDocumentSurface';

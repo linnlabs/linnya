@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   DocumentPreviewImageSchema,
   DocumentPreviewContentSchema,
+  DocumentPreviewDetailSchema,
   DocumentPreviewResultSchema,
   DocumentReferencePresentationSchema,
 } from '@app/schemas';
@@ -48,11 +49,8 @@ const common = {
           status: DocumentReferencePresentationSchema.shape.status.optional(),
           previewStatus: DocumentPreviewResultSchema.shape.status.optional(),
           summary: DocumentPreviewContentSchema.shape.summary.optional(),
-          /** 卡片上排出的正文开头，见 canvasDocumentPreviewBody。 */
-          body: z
-            .object({ format: z.enum(['markdown', 'text']), text: z.string().max(8000) })
-            .strict()
-            .optional(),
+          /** 内容 owner 的完整预览载荷，首屏由共享预览按实际布局裁切。 */
+          body: DocumentPreviewDetailSchema.optional(),
           keepThumbnail: z.boolean().optional(),
           image: DocumentPreviewImageSchema.shape.dataUri.optional(),
         })

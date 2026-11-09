@@ -1,3 +1,4 @@
+import { getWorkspaceNavigationPort } from '@plugin/renderer/workspaceNavigation';
 import { readDocumentReference } from '@plugin/renderer/documentReferences';
 import { readDocumentPreview } from '@plugin/renderer/documentPreview';
 import { subscribeRendererPluginAvailability } from '@plugin/renderer/pluginRuntime';
@@ -62,8 +63,10 @@ export function createDocumentPreviewController(
             : 'nodeId' in event
               ? [event.nodeId]
               : [];
+    const detail = state.result.value?.preview.content?.detail;
     if (
       ids.includes(documentId) ||
+      (detail?.format === 'workspace-markdown' && ids.some(id => id in detail.references)) ||
       event.type === 'project.deleted' ||
       ('nodeType' in event && event.nodeType === 'folder')
     )
@@ -81,6 +84,18 @@ export function createDocumentPreviewController(
       return (
         !disposed && state.result.value === value && value.target.projectId === currentProjectId()
       );
+    },
+    async open(value: DocumentPreviewPresentation) {
+      if (state.result.value !== value) return;
+      try {
+        const identity = target();
+        const presentation = await readDocumentReference(identity);
+        target();
+        if (disposed || state.result.value !== value || presentation.status !== 'available' || !presentation.nodeType) return;
+        await getWorkspaceNavigationPort().openDocumentByNodeType({ ...identity, nodeType: presentation.nodeType, displayName: presentation.title });
+      } catch (failure) {
+        if (!disposed) state.failed(failure instanceof Error ? failure.message : '无法打开文档');
+      }
     },
     async recover(action: DocumentTypeRecoveryAction) {
       try {

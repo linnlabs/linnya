@@ -25,14 +25,20 @@ export function createCanvasDocumentDetail(options: {
         documentId: options.card.data.documentId,
         projectId: options.projectId,
         signal: cancellation.signal,
+        mode: 'detail',
+        widthPx: options.card.width,
+        onReady: () => {
+          if (disposed) return;
+          options.port.visible(options.card.id, true);
+          state.setReady(true);
+        },
       });
       if (disposed) {
         unmount();
         return;
       }
       release = unmount;
-      options.port.visible(options.card.id, true);
-      state.setReady(true);
+
     } catch (error) {
       if (!disposed) state.setNotice(error instanceof Error ? error.message : String(error));
     }
