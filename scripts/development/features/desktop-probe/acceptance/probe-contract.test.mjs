@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import { repoRoot } from '../definitions/probeContract.mjs';
 import { launchOptions, parseProbeArgs } from '../functions/parseProbeArgs.mjs';
 import { instanceRoot } from '../infrastructure/instanceStore.mjs';

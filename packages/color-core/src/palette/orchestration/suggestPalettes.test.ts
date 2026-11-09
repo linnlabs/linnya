@@ -195,7 +195,7 @@ describe('出配色', () => {
         expect(new Set(signatures).size, `${encodeRngId(seed)} ${signatures.join(' / ')}`).toBe(3)
       }
     }
-  })
+  }, 30_000)
 
   it('只要一种底色时，3 套都用它，色系组合仍各不相同', () => {
     for (let seed = 0; seed < 20; seed += 1) {

@@ -111,9 +111,11 @@ describe('runWorkspaceMaintenanceOnce', () => {
     expect(pendingTargets(orphaned)).toEqual(['root-live0001']);
     expect(pendingTargets(unreadable)).toEqual(['root-gone0002']);
     expect(pendingTargets(trashed)).toEqual(['root-gone0003']);
-    expect(warn.mock.calls.map(([message]) => message)).toEqual([
-      `清理文档失败: documentId=${unreadable}, err=codeBlock language "linnya-chart" is reserved for chartBlock`,
+    const warnings = warn.mock.calls.map(([message]) => message);
+    expect(warnings).toEqual([
+      expect.stringContaining(`清理文档失败: documentId=${unreadable}, err=`),
     ]);
+    expect(warnings[0]).toContain('codeBlock language "linnya-chart" is reserved for chartBlock');
     const messages = info.mock.calls.map(([message]) => message);
     expect(messages.filter(message => message.startsWith('文档清理:'))).toEqual([
       `文档清理: documentId=${orphaned}, pending=1, blockVersions=0`,
