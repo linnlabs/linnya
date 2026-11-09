@@ -42,7 +42,7 @@ export function formatDirectionDrawForAgent(draw: DirectionDraw): string {
     `2. deck.js 顶部写一个 direction 对象 ${usesImages ? '{ drawId, cardId, palette: { backgrounds, ink, muted, accents, chart }, imagePalette, fonts }' : '{ drawId, cardId, palette: { backgrounds, ink, accents }, fonts }'}，颜色、字体和图表调色板都从它取值，并在 compose({ theme: { ..., direction } }) 里声明：`,
     `   drawId 写 "${draw.drawId}"，cardId 写 "${card.id}"；palette 写全稿用到的背景色、正文墨色与强调色，fonts 写全稿用到的字体。确实要加颜色或字体时，先补进 direction 再用。`,
     ...(usesImages
-      ? ['   用了取色结果时：bg、sf 进 backgrounds，mu 进 muted，ac 进 accents，ch 进 chart；imagePalette 写 { id: 这一套的编号, excludedHues: 排除色相的起止度数 }，例如“排除 紫红315°-15°”写 [[315, 15]]。取不出颜色写 { unavailable: "no_subject_color" }，最后没用照片写 { unavailable: "no_photos" }。']
+      ? ['   用了取色结果时：bg、sf 进 backgrounds，mu 进 muted，ac 进 accents，ch 进 chart；imagePalette 写 { id: 这一套的编号, excludedHues: 排除色相的起止度数 }，例如“排除 品红315°-15°”写 [[315, 15]]。取不出颜色写 { unavailable: "no_subject_color" }，最后没用照片写 { unavailable: "no_photos" }。']
       : []),
     '3. 手法要贯彻到每一页，包括图表系列色、表格表头、页眉页码；inspect 会逐页对照背景、字体与颜色，中途换回别的底色或字体会被报出来。',
     '4. 手法只决定表达方式，内容要求、数据核对、字号下限与已有设计规则不变。',

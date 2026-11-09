@@ -223,6 +223,36 @@ compose({
   });
 });
 
+describe('typecheckCodegenSource — theme.direction 写成顶部常量', () => {
+  const deckWith = (imagePalette: string) => `
+const direction = {
+  drawId: "d-1",
+  cardId: "risograph",
+  palette: {
+    backgrounds: ["#E8EDDF", "#F4F6EE"],
+    ink: "#1F2A1E",
+    muted: "#5A6656",
+    accents: ["#4F7A4A"],
+    chart: ["#2F5A30", "#4F7A4A"],
+  },
+  imagePalette: ${imagePalette},
+  fonts: ["Microsoft YaHei"],
+};
+compose({ title: "x", slides: [createSlide()], theme: { direction } });
+`;
+
+  it.each([
+    ['取色结果', '{ id: "pl8f2a-1", excludedHues: [[315, 15], [225, 285]] }'],
+    ['没有排除色相', '{ id: "pl8f2a-1", excludedHues: [] }'],
+    ['取不出颜色', '{ unavailable: "no_subject_color" }'],
+    ['没用照片', '{ unavailable: "no_photos" }'],
+  ])('接受 imagePalette：%s', (_name, imagePalette) => {
+    const r = typecheckCodegenSource(deckWith(imagePalette));
+    expect(r.records.map((record) => `${record.code}:${record.message}`)).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+});
+
 describe('typecheckCodegenSource — rejects TypeScript syntax in deck.js (TS80xx)', () => {
   it('rejects variable type annotations with TS8010 and the deck.js hint', () => {
     const r = typecheckCodegenSource('let x: number = 5;');

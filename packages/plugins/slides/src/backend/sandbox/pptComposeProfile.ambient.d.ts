@@ -417,10 +417,11 @@ interface LayoutDirectionInput {
   /**
    * 配色来源。取自 `linnya palette suggest` 时写这一套的 id 和排除色相（OKLCH 度数，起止可跨 0°，如 [[315, 15]]）；
    * 图里取不出颜色写 `{ unavailable: 'no_subject_color' }`，最后没用照片写 `{ unavailable: 'no_photos' }`。
+   * direction 通常先写成顶部常量，常量里的字面量会被放宽，这里不用元组和字面量联合，取值由运行时校验。
    */
   imagePalette?:
-    | { id: string; excludedHues: Array<[number, number]> }
-    | { unavailable: 'no_subject_color' | 'no_photos' };
+    | { id: string; excludedHues: number[][] }
+    | { unavailable: string };
   /** 全稿实际使用的字体族，与文字的 fontFamily 写法一致。 */
   fonts: string[];
 }

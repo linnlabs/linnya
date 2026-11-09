@@ -45,7 +45,7 @@ CLI 的 `--presentation` 接收 presentation ID，不接收 Workspace locator、
 
 ```text
 linnya palette suggest assets/cover.jpg assets/p3.jpg assets/p7.jpg
-本色 青铜绿#5f7a5c(62%,3图) 土褐#8a6a4a(21%,2图) | 排除 紫红315°-15°
+本色 青铜绿#5f7a5c(62%,3图) 土褐#8a6a4a(21%,2图) | 排除 品红315°-15°
 pl8f2a-1 同色系·染纸·绿 bg#e8eddf sf#f4f6ee ink#1f2a1e mu#5a6656 ac#4f7a4a ch#2f5a30,#4f7a4a,#7a9a70,#a3bb98,#c8d6bf
 ```
 
