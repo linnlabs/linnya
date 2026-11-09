@@ -79,121 +79,127 @@
       </p>
     </header>
 
-    <div ref="scrollRef" class="project-overview__scroll">
-      <div class="project-overview__table" role="table" :style="tableStyle">
-        <div class="project-overview__header" role="row">
-          <div
-            v-for="column in headerColumns"
-            :key="column.id"
-            class="project-overview__header-cell"
-            :class="`project-overview__cell--${column.id}`"
-            role="columnheader"
-            :aria-sort="ariaSort(column.id)"
-          >
-            <button
-              type="button"
-              class="project-overview__sort"
-              :class="{ 'is-sorted': sort.key === column.id }"
-              @click="toggleSort(column.id)"
+    <div
+      ref="scrollHostRef"
+      class="project-overview__scroll-host"
+      data-overlay-scroll-theme="linnya"
+    >
+      <div ref="scrollMountRef" class="project-overview__scroll" data-overlayscrollbars-initialize>
+        <div class="project-overview__table" role="table" :style="tableStyle">
+          <div ref="headerRef" class="project-overview__header" role="row">
+            <div
+              v-for="column in headerColumns"
+              :key="column.id"
+              class="project-overview__header-cell"
+              :class="`project-overview__cell--${column.id}`"
+              role="columnheader"
+              :aria-sort="ariaSort(column.id)"
             >
-              <span>{{ workspaceMessage(projectOverviewColumnMessageKey(column.id)) }}</span>
-              <ChevronIcon
-                v-if="sort.key === column.id"
-                class="project-overview__sort-icon"
-                :direction="sort.direction === 'desc' ? 'down' : 'up'"
-              />
-            </button>
-            <span
-              v-if="column.id !== 'name'"
-              class="project-overview__resize"
-              role="separator"
-              aria-orientation="vertical"
-              :aria-label="workspaceMessage('workspace.projectOverview.columns.resize')"
-              @pointerdown="startResize($event, column.id)"
-              @dblclick="resetColumnWidth(column.id)"
-            />
-          </div>
-        </div>
-
-        <div v-if="status === 'loading'" class="project-overview__state">
-          <SkeletonRows :label="workspaceMessage('workspace.projectOverview.loading')" :rows="8" icon />
-        </div>
-        <p v-else-if="status === 'error'" class="project-overview__state project-overview__state--text">
-          {{ workspaceMessage('workspace.projectOverview.loadFailed') }}
-        </p>
-        <p v-else-if="allRows.length === 0" class="project-overview__state project-overview__state--text">
-          {{ workspaceMessage('workspace.projectOverview.empty') }}
-        </p>
-        <div v-else-if="sortedRows.length === 0" class="project-overview__state project-overview__state--text">
-          <span>{{ workspaceMessage('workspace.projectOverview.noMatch') }}</span>
-          <button type="button" class="project-overview__clear-all" @click="clearFilters">
-            {{ workspaceMessage('workspace.projectOverview.clearFilter') }}
-          </button>
-        </div>
-
-        <div
-          v-else
-          ref="bodyRef"
-          class="project-overview__body"
-          role="rowgroup"
-          :style="{ height: `${virtualizer.getTotalSize()}px` }"
-        >
-          <div
-            v-for="item in virtualizer.getVirtualItems()"
-            :key="sortedRows[item.index]?.documentId ?? item.index"
-            class="project-overview__row"
-            role="row"
-            tabindex="0"
-            :style="{ transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)` }"
-            @click="openRow(sortedRows[item.index])"
-            @keydown.enter.self="openRow(sortedRows[item.index])"
-          >
-            <template v-if="sortedRows[item.index]">
-              <div class="project-overview__cell project-overview__cell--name" role="cell">
-                <component
-                  :is="presentation.documentType(sortedRows[item.index]!.nodeType).iconComponent"
-                  class="project-overview__type-icon"
-                  :class="presentation.documentType(sortedRows[item.index]!.nodeType).iconClass"
-                />
-                <span class="project-overview__name" :title="sortedRows[item.index]!.title">
-                  {{ sortedRows[item.index]!.title }}
-                </span>
-              </div>
-              <div
-                v-for="column in visibleColumns"
-                :key="column.id"
-                class="project-overview__cell"
-                :class="`project-overview__cell--${column.id}`"
-                role="cell"
+              <button
+                type="button"
+                class="project-overview__sort"
+                :class="{ 'is-sorted': sort.key === column.id }"
+                @click="toggleSort(column.id)"
               >
-                <template v-if="column.id === 'conversation'">
-                  <button
-                    v-if="sortedRows[item.index]!.conversationId && sortedRows[item.index]!.conversationTitle !== null"
-                    type="button"
-                    class="project-overview__conversation"
-                    :aria-label="`${workspaceMessage('workspace.projectOverview.openConversation')}：${conversationText(sortedRows[item.index]!)}`"
-                    :title="conversationText(sortedRows[item.index]!)"
-                    @click.stop="emit('open-conversation', sortedRows[item.index]!.conversationId!)"
-                  >
-                    <span class="project-overview__conversation-text">{{ conversationText(sortedRows[item.index]!) }}</span>
-                    <ChatIcon class="project-overview__conversation-icon" />
-                  </button>
-                </template>
-                <template v-else-if="column.id === 'modified'">
-                  <span v-if="modifiedActorText(sortedRows[item.index]!)" class="project-overview__actor">
-                    {{ modifiedActorText(sortedRows[item.index]!) }}
+                <span>{{ workspaceMessage(projectOverviewColumnMessageKey(column.id)) }}</span>
+                <ChevronIcon
+                  v-if="sort.key === column.id"
+                  class="project-overview__sort-icon"
+                  :direction="sort.direction === 'desc' ? 'down' : 'up'"
+                />
+              </button>
+              <span
+                v-if="column.id !== 'name'"
+                class="project-overview__resize"
+                role="separator"
+                aria-orientation="vertical"
+                :aria-label="workspaceMessage('workspace.projectOverview.columns.resize')"
+                @pointerdown="startResize($event, column.id)"
+                @dblclick="resetColumnWidth(column.id)"
+              />
+            </div>
+          </div>
+
+          <div v-if="status === 'loading'" class="project-overview__state">
+            <SkeletonRows :label="workspaceMessage('workspace.projectOverview.loading')" :rows="8" icon />
+          </div>
+          <p v-else-if="status === 'error'" class="project-overview__state project-overview__state--text">
+            {{ workspaceMessage('workspace.projectOverview.loadFailed') }}
+          </p>
+          <p v-else-if="allRows.length === 0" class="project-overview__state project-overview__state--text">
+            {{ workspaceMessage('workspace.projectOverview.empty') }}
+          </p>
+          <div v-else-if="sortedRows.length === 0" class="project-overview__state project-overview__state--text">
+            <span>{{ workspaceMessage('workspace.projectOverview.noMatch') }}</span>
+            <button type="button" class="project-overview__clear-all" @click="clearFilters">
+              {{ workspaceMessage('workspace.projectOverview.clearFilter') }}
+            </button>
+          </div>
+
+          <div
+            v-else
+            ref="bodyRef"
+            class="project-overview__body"
+            role="rowgroup"
+            :style="{ height: `${virtualizer.getTotalSize()}px` }"
+          >
+            <div
+              v-for="item in virtualizer.getVirtualItems()"
+              :key="sortedRows[item.index]?.documentId ?? item.index"
+              class="project-overview__row"
+              role="row"
+              tabindex="0"
+              :style="{ transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)` }"
+              @click="openRow(sortedRows[item.index])"
+              @keydown.enter.self="openRow(sortedRows[item.index])"
+            >
+              <template v-if="sortedRows[item.index]">
+                <div class="project-overview__cell project-overview__cell--name" role="cell">
+                  <component
+                    :is="presentation.documentType(sortedRows[item.index]!.nodeType).iconComponent"
+                    class="project-overview__type-icon"
+                    :class="presentation.documentType(sortedRows[item.index]!.nodeType).iconClass"
+                  />
+                  <span class="project-overview__name" :title="sortedRows[item.index]!.title">
+                    {{ sortedRows[item.index]!.title }}
                   </span>
-                  <span>{{ timeText(sortedRows[item.index]!.lastModifiedAt) }}</span>
-                </template>
-                <span
-                  v-else-if="column.id === 'pending'"
-                  class="project-overview__pending"
-                >{{ pendingText(sortedRows[item.index]!) }}</span>
-                <span v-else :title="cellText(column.id, sortedRows[item.index]!)">
-                  {{ cellText(column.id, sortedRows[item.index]!) }}
-                </span>
-              </div>
-            </template>
+                </div>
+                <div
+                  v-for="column in visibleColumns"
+                  :key="column.id"
+                  class="project-overview__cell"
+                  :class="`project-overview__cell--${column.id}`"
+                  role="cell"
+                >
+                  <template v-if="column.id === 'conversation'">
+                    <button
+                      v-if="sortedRows[item.index]!.conversationId && sortedRows[item.index]!.conversationTitle !== null"
+                      type="button"
+                      class="project-overview__conversation"
+                      :aria-label="`${workspaceMessage('workspace.projectOverview.openConversation')}：${conversationText(sortedRows[item.index]!)}`"
+                      :title="conversationText(sortedRows[item.index]!)"
+                      @click.stop="emit('open-conversation', sortedRows[item.index]!.conversationId!)"
+                    >
+                      <span class="project-overview__conversation-text">{{ conversationText(sortedRows[item.index]!) }}</span>
+                      <ChatIcon class="project-overview__conversation-icon" />
+                    </button>
+                  </template>
+                  <template v-else-if="column.id === 'modified'">
+                    <span v-if="modifiedActorText(sortedRows[item.index]!)" class="project-overview__actor">
+                      {{ modifiedActorText(sortedRows[item.index]!) }}
+                    </span>
+                    <span>{{ timeText(sortedRows[item.index]!.lastModifiedAt) }}</span>
+                  </template>
+                  <span
+                    v-else-if="column.id === 'pending'"
+                    class="project-overview__pending"
+                  >{{ pendingText(sortedRows[item.index]!) }}</span>
+                  <span v-else :title="cellText(column.id, sortedRows[item.index]!)">
+                    {{ cellText(column.id, sortedRows[item.index]!) }}
+                  </span>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -204,6 +210,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, toRef, watch } from 'vue';
 import { useVirtualizer } from '@tanstack/vue-virtual';
+import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import { SkeletonRows } from '@linnya/renderer-ui';
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import { ChatIcon, ChevronIcon, LibraryIcon, SearchIcon } from '@linnya/renderer-ui/icons';
@@ -256,7 +263,7 @@ const emit = defineEmits<{
 
 const ALL = '__all__';
 const ROW_HEIGHT = 40;
-const NAME_COLUMN_MIN_WIDTH = 240;
+const NAME_COLUMN_MIN_WIDTH = 200;
 const COLUMN_GAP = 16;
 const CONTENT_SEARCH_LIMIT = PROJECT_OVERVIEW_CONTENT_SEARCH_MAX_MATCHES;
 
@@ -401,6 +408,12 @@ const tableStyle = computed(() => {
   };
 });
 
+/*
+ * 名称列吃掉剩余宽度，其余列等于贴着表格右侧排。所以手柄放在每列的左边界：
+ * 往左拖这一列变宽、名称列让出同样宽度，分隔线始终跟着指针。名称列到最小宽度就停，
+ * 拖动本身不会把表格撑出水平滚动。
+ */
+const headerRef = ref<HTMLElement | null>(null);
 let resizeCleanup: (() => void) | null = null;
 function startResize(event: PointerEvent, id: ProjectOverviewSortKey): void {
   if (id === 'name' || event.button !== 0) return;
@@ -412,8 +425,12 @@ function startResize(event: PointerEvent, id: ProjectOverviewSortKey): void {
   const startX = event.clientX;
   const startWidth = column.width;
   const columnId = column.id;
+  const nameCell = headerRef.value?.firstElementChild;
+  const nameWidth = nameCell instanceof HTMLElement ? nameCell.getBoundingClientRect().width : NAME_COLUMN_MIN_WIDTH;
+  const maxWidth = startWidth + Math.max(0, nameWidth - NAME_COLUMN_MIN_WIDTH);
   const onMove = (moveEvent: PointerEvent) => {
-    draftWidths.value = { [columnId]: clampColumnWidth(startWidth + moveEvent.clientX - startX) };
+    const width = Math.min(maxWidth, startWidth + startX - moveEvent.clientX);
+    draftWidths.value = { [columnId]: clampColumnWidth(width) };
   };
   const onUp = () => {
     const width = draftWidths.value[columnId];
@@ -453,12 +470,19 @@ function ariaSort(key: ProjectOverviewSortKey): 'ascending' | 'descending' | 'no
 }
 
 // 表体：在整页滚动区里按行虚拟渲染。
+const scrollHostRef = ref<HTMLElement | null>(null);
+const scrollMountRef = ref<HTMLElement | null>(null);
 const scrollRef = ref<HTMLElement | null>(null);
+const overlayScroll = useOverlayScrollViewport({
+  bindings: { hostRef: scrollHostRef, viewportMountRef: scrollMountRef, viewportRef: scrollRef },
+  options: { overflow: { x: 'scroll', y: 'scroll' } },
+});
+onMounted(() => overlayScroll.init());
 const bodyRef = ref<HTMLElement | null>(null);
 const bodyOffset = ref(0);
 const virtualizer = useVirtualizer(computed(() => ({
   count: sortedRows.value.length,
-  getScrollElement: () => scrollRef.value,
+  getScrollElement: () => scrollRef.value ?? scrollMountRef.value,
   estimateSize: () => ROW_HEIGHT,
   overscan: 8,
   scrollMargin: bodyOffset.value,

@@ -4,7 +4,8 @@
  */
 .project-overview {
   --project-overview-content-width: 1180px;
-  --project-overview-gutter: var(--space-8);
+  /* 窄窗口时两侧留白跟着收，尽量把宽度让给表格，避免出现水平滚动。 */
+  --project-overview-gutter: clamp(var(--space-4), 3vw, var(--space-8));
   --project-overview-row-height: 40px;
   --project-overview-column-gap: var(--space-4);
   display: flex;
@@ -339,12 +340,20 @@
 }
 
 /* 表格 */
+/* 滚动条走共享的 OverlayScrollbars linnya 主题；水平滚动只在窗口窄到放不下最小列宽时出现。 */
+.project-overview__scroll-host {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .project-overview__scroll {
   position: relative;
   flex: 1;
   min-height: 0;
   overflow: auto;
-  scrollbar-gutter: stable;
 }
 
 .project-overview__table {
@@ -419,7 +428,7 @@
 .project-overview__resize {
   position: absolute;
   top: 6px;
-  right: calc(var(--project-overview-column-gap) / -2 - 4px);
+  left: calc(var(--project-overview-column-gap) / -2 - 4px);
   bottom: 6px;
   z-index: 1;
   width: 8px;
@@ -437,14 +446,9 @@
   content: '';
 }
 
-.project-overview__header-cell:hover .project-overview__resize::after,
+.project-overview__resize:hover::after,
 .project-overview__resize:active::after {
   background-color: var(--color-border-default);
-}
-
-/* 表头最后一列的手柄缩回单元格内，避免伸出表格。 */
-.project-overview__header-cell:last-child .project-overview__resize {
-  right: 0;
 }
 
 body.project-overview-is-resizing {
