@@ -25,8 +25,13 @@ if (process.type === 'browser') {
     construct(target, [options = {}, ...rest], newTarget) {
       const wantsShow = options.show !== false;
       const size = wantsShow ? { width, height, useContentSize: true } : {};
+      // JS 定时器持续运行并不保证隐藏窗口继续交换合成帧。只让探针主窗口保持绘制，
+      // 避免空闲后首次抓图等待重新提交画面。插件 Worker 保留自己的设置。
+      const background = hidden && wantsShow
+        ? { webPreferences: { ...options.webPreferences, backgroundThrottling: false } }
+        : {};
       const win = Reflect.construct(target, [
-        { ...options, ...size, ...(hidden ? { show: false } : {}) },
+        { ...options, ...size, ...background, ...(hidden ? { show: false } : {}) },
         ...rest,
       ], newTarget === ProbeWindow ? target : newTarget);
       if (wantsShow && mode === 'inactive') win.showInactive();
