@@ -5,12 +5,12 @@
  * 只对照声明与事实，不评价方向本身好坏：
  * - 背景：整页底色（满版形状优先于页面背景）离所有声明颜色都远 → 报告；满版照片不判。
  * - 字体：文字 run 声明的字体不在 fonts 里 → 报告；Office 本地化名称归一后再比。
- * - 颜色：彩色填充或文字的色相离所有声明彩色都远 → 复核；同色相的深浅不算偏离。
+ * - 颜色：彩色填充或文字的色相（OKLCH）离所有声明颜色都远 → 复核；同色相的深浅不算偏离。
  * - 排除色相：底色、彩色填充或文字落进 imagePalette.excludedHues（OKLCH）→ 报告。
  * - 配色来源：有照片却没声明 imagePalette → 报告。手绘图和照片在这里分不开，全是手绘时由 Agent 声明 no_photos。
  */
 
-import { hueDistance, rgbToOklch, toHex } from '@linnya/color-core';
+import { hueDistance, toHex } from '@linnya/color-core';
 import { hueRangeLabel, isColorExcluded, type HueRange } from '@linnya/color-core/palette';
 import type { DirectionDeclaration } from '@plugin/slides/shared/designDirection';
 import {
@@ -20,17 +20,19 @@ import {
   type SlideElementInfo,
   type SlideInfo,
 } from '@plugin/slides/shared';
-import { isNeutralColor, parseHex, rgbToHsl, type RgbColor } from '../colorUtils.js';
+import { colorDistance, isNeutralColor, parseHex, toOklch, type RgbColor } from '../colorUtils.js';
 import type { AestheticLintIssue } from './types.js';
 
 /** 满版判定：覆盖页面面积的比例。 */
 const FULL_BLEED_COVERAGE = 0.95;
-/** 背景与声明颜色的最大 CIE76 色差；超过即视为换了底色。 */
-const BACKGROUND_DELTA_E_LIMIT = 12;
-/** 彩色与声明彩色的最大色相差（度）；同色相的深浅都在这个范围内。 */
-const PALETTE_HUE_LIMIT_DEG = 24;
-/** 色相差超限但色差仍很小时（低饱和色色相不稳），仍算在调色板里。 */
-const PALETTE_DELTA_E_LIMIT = 18;
+/** 背景与声明颜色的最大 ΔEOK；超过即视为换了底色（米色 #EDE5D3 与纯白约 0.08）。 */
+const BACKGROUND_DELTA_E_LIMIT = 0.06;
+/** 彩色与声明颜色的最大 OKLCH 色相差（度）；同色相的深浅都在这个范围内。 */
+const PALETTE_HUE_LIMIT_DEG = 30;
+/** 色相差超限但 ΔEOK 仍很小时（低饱和色色相不稳），仍算在调色板里。 */
+const PALETTE_DELTA_E_LIMIT = 0.08;
+/** 声明的颜色达到这个彩度就算有色相，这样声明了纸色时，页面上同一族的米色不算偏离。 */
+const DECLARED_HUE_MIN_CHROMA = 0.01;
 /** 偏离色在全稿累计面积至少占一页的这个比例才报告，图标与小标记不算。 */
 const OFF_PALETTE_MIN_AREA_RATIO = 0.01;
 /** 图片至少占一页的这个比例才算照片，图标与小标记不算。 */
@@ -69,7 +71,7 @@ export function lintDirectionBackground(
     const background = resolveEffectiveBackground(slide, info.slideSize);
     if (background == null) continue;
     const matched = background.some((rgb) =>
-      declaredRgb.some((candidate) => deltaE76(rgb, candidate) <= BACKGROUND_DELTA_E_LIMIT));
+      declaredRgb.some((candidate) => colorDistance(rgb, candidate) <= BACKGROUND_DELTA_E_LIMIT));
     if (matched) continue;
     const key = toUpperHex(background[0]!);
     offSlides.set(key, [...(offSlides.get(key) ?? []), slide.number]);
@@ -225,18 +227,18 @@ export function lintDirectionPalette(
   ];
   const paletteRgb = [...direction.palette.backgrounds, ...declaredInk]
     .map(parseHex).filter((rgb): rgb is RgbColor => rgb != null);
-  const chromaticHues = paletteRgb
-    .map(rgbToHsl)
-    .filter((hsl) => !isNeutralColor(hsl))
-    .map((hsl) => hsl.h);
+  const declaredHues = paletteRgb
+    .map(toOklch)
+    .filter((color) => color.c >= DECLARED_HUE_MIN_CHROMA)
+    .map((color) => color.h);
   const offColors: ColorTally = new Map();
 
   for (const slide of info.slides) {
     for (const { rgb, area } of elementColors(slide)) {
-      const hsl = rgbToHsl(rgb);
-      if (isNeutralColor(hsl)) continue;
-      const nearHue = chromaticHues.some((hue) => hueDistance(hue, hsl.h) <= PALETTE_HUE_LIMIT_DEG);
-      const nearColor = paletteRgb.some((candidate) => deltaE76(rgb, candidate) <= PALETTE_DELTA_E_LIMIT);
+      const color = toOklch(rgb);
+      if (isNeutralColor(color)) continue;
+      const nearHue = declaredHues.some((hue) => hueDistance(hue, color.h) <= PALETTE_HUE_LIMIT_DEG);
+      const nearColor = paletteRgb.some((candidate) => colorDistance(rgb, candidate) <= PALETTE_DELTA_E_LIMIT);
       if (nearHue || nearColor) continue;
       tallyColor(offColors, rgb, slide.number, area);
     }
@@ -306,7 +308,7 @@ export function lintDirectionExcludedHues(
   const excluded: ColorTally = new Map();
   const slideArea = info.slideSize.width * info.slideSize.height;
   const record = (rgb: RgbColor, slideNumber: number, area: number) => {
-    if (isColorExcluded(rgbToOklch([rgb.r, rgb.g, rgb.b]), ranges)) tallyColor(excluded, rgb, slideNumber, area);
+    if (isColorExcluded(toOklch(rgb), ranges)) tallyColor(excluded, rgb, slideNumber, area);
   };
   for (const slide of info.slides) {
     for (const rgb of resolveEffectiveBackground(slide, info.slideSize) ?? []) record(rgb, slide.number, slideArea);
@@ -371,29 +373,4 @@ function mixRgb(base: RgbColor, top: RgbColor, opacity: number): RgbColor {
 
 function toUpperHex(rgb: RgbColor): string {
   return toHex([rgb.r, rgb.g, rgb.b]).toUpperCase();
-}
-
-/** sRGB → CIE Lab（D65），用于 CIE76 色差。 */
-function rgbToLab(rgb: RgbColor): [number, number, number] {
-  const linear = (value: number) => {
-    const channel = value / 255;
-    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-  };
-  const r = linear(rgb.r);
-  const g = linear(rgb.g);
-  const b = linear(rgb.b);
-  const x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
-  const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
-  const z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
-  const f = (value: number) => (value > 0.008856 ? Math.cbrt(value) : 7.787 * value + 16 / 116);
-  const fx = f(x);
-  const fy = f(y);
-  const fz = f(z);
-  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
-}
-
-export function deltaE76(left: RgbColor, right: RgbColor): number {
-  const [l1, a1, b1] = rgbToLab(left);
-  const [l2, a2, b2] = rgbToLab(right);
-  return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
 }

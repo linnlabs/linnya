@@ -1,7 +1,7 @@
 /**
  * colorUtils 单元测试
  */
-import { describe, expect, it } from 'vitest';import { circularStdDeviationDeg, isNeutralColor, parseHex, relativeLuminance, rgbToHsl, wcagContrastRatio } from '../engine/quality/colorUtils.js';
+import { describe, expect, it } from 'vitest';import { circularStdDeviationDeg, colorDistance, isNeutralColor, parseHex, relativeLuminance, toOklch, wcagContrastRatio } from '../engine/quality/colorUtils.js';
 
 describe('parseHex', () => {
   it('parses 6-digit hex with #', () => {
@@ -34,54 +34,28 @@ describe('parseHex', () => {
   });
 });
 
-describe('rgbToHsl', () => {
-  it('converts pure red to hue=0, s=1, l=0.5', () => {
-    const { h, s, l } = rgbToHsl({ r: 255, g: 0, b: 0 });
-    expect(h).toBeCloseTo(0, 5);
-    expect(s).toBeCloseTo(1, 5);
-    expect(l).toBeCloseTo(0.5, 5);
+const neutral = (hex: string) => isNeutralColor(toOklch(parseHex(hex)!));
+
+describe('isNeutralColor', () => {
+  it('灰、带色调的灰和墨色都算中性', () => {
+    for (const hex of ['#808080', '#7C8C84', '#6B7080', '#241A1D', '#20251C']) expect(neutral(hex), hex).toBe(true);
   });
 
-  it('converts pure green to hue=120', () => {
-    expect(rgbToHsl({ r: 0, g: 255, b: 0 }).h).toBeCloseTo(120, 5);
+  it('白和染纸淡色算中性', () => {
+    for (const hex of ['#FFFFFF', '#F5F0E6', '#EFE4E6', '#F0F5FC']) expect(neutral(hex), hex).toBe(true);
   });
 
-  it('converts pure blue to hue=240', () => {
-    expect(rgbToHsl({ r: 0, g: 0, b: 255 }).h).toBeCloseTo(240, 5);
-  });
-
-  it('returns h=0, s=0 for grayscale', () => {
-    const gray = rgbToHsl({ r: 128, g: 128, b: 128 });
-    expect(gray.h).toBe(0);
-    expect(gray.s).toBe(0);
-    expect(gray.l).toBeCloseTo(0.502, 2);
-  });
-
-  it('returns h=0, s=0 for white and black', () => {
-    expect(rgbToHsl({ r: 255, g: 255, b: 255 })).toEqual({ h: 0, s: 0, l: 1 });
-    expect(rgbToHsl({ r: 0, g: 0, b: 0 })).toEqual({ h: 0, s: 0, l: 0 });
+  it('看得出色相的颜色不算中性，包括暗色和浅色', () => {
+    for (const hex of ['#1F6FC1', '#7A5A2E', '#1B2A44', '#F4C9A0', '#6E725C']) expect(neutral(hex), hex).toBe(false);
   });
 });
 
-describe('isNeutralColor', () => {
-  it('flags low-saturation grays', () => {
-    expect(isNeutralColor({ h: 200, s: 0.05, l: 0.5 })).toBe(true);
-  });
-
-  it('flags near-black', () => {
-    expect(isNeutralColor({ h: 30, s: 0.5, l: 0.05 })).toBe(true);
-  });
-
-  it('flags near-white', () => {
-    expect(isNeutralColor({ h: 30, s: 0.5, l: 0.95 })).toBe(true);
-  });
-
-  it('keeps saturated mid-tone colors', () => {
-    expect(isNeutralColor({ h: 210, s: 0.6, l: 0.5 })).toBe(false);
-  });
-
-  it('keeps low-saturation but distinctly tinted color (s = 0.15)', () => {
-    expect(isNeutralColor({ h: 30, s: 0.15, l: 0.5 })).toBe(false);
+describe('colorDistance', () => {
+  it('同色为 0，米色与纯白约 0.08，黑白约 1', () => {
+    const white = parseHex('#FFFFFF')!;
+    expect(colorDistance(white, white)).toBe(0);
+    expect(colorDistance(white, parseHex('#EDE5D3')!)).toBeCloseTo(0.081, 2);
+    expect(colorDistance(white, parseHex('#000000')!)).toBeCloseTo(1, 2);
   });
 });
 

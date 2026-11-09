@@ -358,7 +358,7 @@ function formatEvidence(
     case 'color_palette':
       return `hueClusters=${evidence.hueClusterCount}/${evidence.limit} colors=${evidence.sampleColors.join(',')} samples=${evidence.sampleCount}`;
     case 'hue_drift':
-      return `mean=${formatNumber(evidence.circularMeanDegrees)}deg stddev=${formatNumber(evidence.circularStdDevDegrees)}deg threshold=${formatNumber(evidence.thresholdDegrees)}deg samples=${evidence.primaryHues.map((sample) => `${sample.slideNumber}:${formatNumber(sample.hueDegrees)}`).join(',')}`;
+      return `stddev=${formatNumber(evidence.circularStdDevDegrees)}deg threshold=${formatNumber(evidence.thresholdDegrees)}deg samples=${evidence.primaryHues.map((sample) => `${sample.slideNumber}:${sample.hueName}`).join(',')}`;
     case 'color_contrast':
       return `text=${node(evidence.textNode)} container=${node(evidence.containerNode)} colors=${evidence.textColor}/${evidence.backgroundColor} ratio=${formatNumber(evidence.contrastRatio)} threshold=${formatNumber(evidence.thresholdRatio)}`;
     case 'image_resolution':

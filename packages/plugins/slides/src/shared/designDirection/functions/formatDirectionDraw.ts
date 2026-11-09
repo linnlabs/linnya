@@ -7,7 +7,7 @@ function colorLogicLines(draw: DirectionDraw): string[] {
   return [
     `配色逻辑：${draw.colorLogic.name}。${draw.colorLogic.guide}`,
     draw.hue
-      ? `主色相：${draw.hue.name}（色相 ${draw.hue.from}°–${draw.hue.to}°）。主色或信号色落在这个区间，其余颜色按配色逻辑配。`
+      ? `主色相：${draw.hue.name}（参考色 ${draw.hue.reference}）。主色或信号色取这个色相，深浅和浓淡不必照抄参考色，其余颜色按配色逻辑配。`
       : '主色相：从主图里取样，不另定色相。',
   ];
 }

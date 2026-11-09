@@ -72,9 +72,9 @@ PresentationRenderModel
 - 字体可交付性由调用方传入 `fontTarget`（生成稿取 `theme.fontTarget`，缺省 `office`；导入稿不传）。`font_not_deliverable` 只看作者声明的 family，按 `shared/fontDelivery` 的 Office 字体表判断，本机装了也照报；目标为 `office` 时，Office 字体在本机缺失造成的预览替代不报 `font_family_substituted`，避免催 Agent 换成本机专属字体。
 - 字号下限由调用方传入 `readingMode`（生成稿取 `theme.reading`，缺省 `mixed`；导入稿与改稿不传）。生成稿按阅读方式分正文、图注标签（`caption`/`label`/`annotation`/`axis-label`）、脚注来源页码（`footnote`/`source`/`page-number`）三档，质量检查和设计基准共用 [阅读方式的字号规则](../../../shared/readingMode.ts)（公开入口 `@plugin/slides/shared`），以 13.333in 页宽为基准等比折算；导入稿与改稿沿用 6.5pt / 5.5pt 固定下限，不催 Agent 改作者原有字号。5pt 近不可读阈值对两者一致。
 - 方向贯彻由调用方传入 `direction`（生成稿取 `theme.direction`，导入稿与未声明时不传），规则在 `aesthetic/directionRules.ts`，只对照声明与事实，不评价方向好坏：
-  - `direction_background_off`（P1）：整页底色按绘制顺序叠加页面背景与覆盖 95% 以上的纯色形状（含透明度混合），与声明的背景、墨色、强调色的 CIE76 色差都超过 12 时报告；满版照片、背景图与半透明以上的渐变满版形状不判；渐变页面背景任一色标落在声明里即可。
+  - `direction_background_off`（P1）：整页底色按绘制顺序叠加页面背景与覆盖 95% 以上的纯色形状（含透明度混合），与声明的背景、墨色、强调色的 ΔEOK 都超过 0.06 时报告；满版照片、背景图与半透明以上的渐变满版形状不判；渐变页面背景任一色标落在声明里即可。
   - `direction_font_undeclared`（P1）：文字 run 与表格单元格声明的字体不在 `fonts` 里时报告；Office 本地化名称（微软雅黑 / Microsoft YaHei）先归一。
-  - `direction_color_off_palette`（P2）：彩色填充或文字的色相与所有声明彩色相差超过 24°、色差也超过 18，且全稿累计面积至少占一页的 1% 时进入复核；同色相的深浅不算偏离。
+  - `direction_color_off_palette`（P2）：彩色填充或文字的 OKLCH 色相与所有声明颜色相差超过 30°、ΔEOK 也超过 0.08，且全稿累计面积至少占一页的 1% 时进入复核；OKLCH 彩度低于 0.03 的灰、墨和染纸不判，同色相的深浅不算偏离。
   - `direction_color_excluded_hue`（P1）：页面底色、彩色填充或文字落进 `imagePalette.excludedHues`（OKLCH，无彩色不判），累计面积至少占一页的 1% 时报告。
   - `direction_image_palette_missing`（P1）：有占一页 5% 以上的图片或背景图，却没声明 `imagePalette`。手绘图在这里和照片分不开，全是手绘或示意图的稿子由 Agent 声明 `unavailable: 'no_photos'`。
 - 图片规则消费 RenderModel 的 `naturalSize`（生成稿由 `GeneratedPresentationRenderModelBuilder` 只读位图尺寸头后补齐，SVG 不填）：`image_aspect_distorted` 看 stretch 变形；`image_resolution_low` 按 fitMode 与 crop 估算可见区域每英寸源像素，与 1920px 宽全屏放映所需像素比较，低于 80% 报 medium-confidence warning，宽度不足 1in 的图不检查。

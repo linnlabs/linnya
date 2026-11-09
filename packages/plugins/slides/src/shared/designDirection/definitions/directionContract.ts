@@ -105,11 +105,14 @@ export interface DirectionAxisOption<TId extends string> {
 }
 
 export interface HueBin {
-  /** 0–11，每档 30°。 */
+  /** 0–11。 */
   readonly bin: number;
+  /** OKLCH 色相区间（度），可跨 0°；只用来归档，不给 Agent 看。 */
   readonly from: number;
   readonly to: number;
   readonly name: string;
+  /** 这一档的参考色（hex），Agent 据此理解“这个颜色大概什么样”。 */
+  readonly reference: string;
 }
 
 export interface DirectionDraw {

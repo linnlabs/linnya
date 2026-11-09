@@ -106,24 +106,17 @@ export const EDGE_MARGIN_MIN_IN = 0.15;
 export const FULL_BLEED_RATIO = 0.95;
 
 /**
- * 单页非中性主色 hue 簇上限。≤ 该值视为色彩使用克制；超出 → warning。
+ * 单页非中性色相名（12 档）的种数上限。≤ 该值视为色彩使用克制；超出 → warning。
  * 4 = 主色 + 强调色 + 第二强调 + 警示色（极限），多于此通常是配色失控。
  */
 export const PALETTE_HUE_BUCKET_LIMIT = 4;
 
 /**
- * Hue 聚类粒度（度）。差异 ≤ 此值视为同色簇。
- * 30° ≈ 把色环 12 等分（红/橙/黄/绿/青/蓝/紫各占 1-2 格）。
- * 太大（60°）会把"蓝色 + 青色"合并；太小（10°）易把同主色的浅深 tone 误判为多色。
+ * 跨页主色色相漂移阈值（OKLCH 圆形 stddev，单位：度）。
+ * 按 150 份存量稿回放定的：12 页里 1 页换成相反主色约 35°（封面、封底常见，不算），
+ * 12 页里 2 页约 52°、20 页里 4 页约 53°（约一成以上的页面主色跑开才报）。
  */
-export const HUE_CLUSTER_GRANULARITY_DEG = 30;
-
-/**
- * 跨页主色 hue 漂移阈值（圆形 stddev，单位：度）。
- * 25° 经验值：保留正常的"主色 + 1-2 个强调色穿插"，
- * 但能捕捉到"每页都换主色"或"红/绿/蓝主题随机用"的真正紊乱。
- */
-export const PRIMARY_HUE_DRIFT_THRESHOLD_DEG = 25;
+export const PRIMARY_HUE_DRIFT_THRESHOLD_DEG = 40;
 
 /**
  * WCAG 文本-背景对比度阈值。低于此值 → warning。

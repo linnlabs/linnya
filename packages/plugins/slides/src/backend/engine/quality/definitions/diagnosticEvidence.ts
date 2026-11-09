@@ -199,6 +199,7 @@ export const HueDriftEvidenceSchema = z.object({
   primaryHues: z.array(z.object({
     slideNumber: z.number().int().positive(),
     hueDegrees: z.number().finite().min(0).max(360),
+    hueName: z.string().trim().min(1),
   }).strict()).min(2),
   circularMeanDegrees: z.number().finite().min(0).max(360),
   circularStdDevDegrees: z.number().finite().nonnegative(),

@@ -115,6 +115,33 @@ describe('direction carry-through', () => {
     })]);
   });
 
+  it('看不出色相的灰和同族的米色不算偏离，鲜明的异色才算', () => {
+    const declared: DirectionDeclaration = {
+      ...DIRECTION,
+      palette: { backgrounds: ['#F4EEDF'], ink: '#1A1A1A', accents: ['#1F6FC1'] },
+    };
+    const shape = (name: string, fill: string): SlideElementInfo => ({ name, type: 'shape', fill, position: { x: 1, y: 1, w: 3, h: 2 } });
+    const issues = codes(info([{
+      number: 1,
+      backgroundPaint: { type: 'solid', color: '#F4EEDF' },
+      elements: [shape('gray-green', '#B9BCA9'), shape('beige', '#C9BCA6'), shape('magenta', '#B0247A')],
+    }]), declared);
+    expect(issues).toEqual([expect.objectContaining({
+      code: 'direction_color_off_palette',
+      evidence: expect.objectContaining({ observed: ['#B0247A'] }),
+    })]);
+  });
+
+  it('底色差出明显一档才算换底：米色声明下的纯白要报，几乎一样的白不报', () => {
+    const declared: DirectionDeclaration = {
+      ...DIRECTION,
+      palette: { backgrounds: ['#EDE5D3'], ink: '#100E0B', accents: ['#1F6FC1'] },
+    };
+    const page = (number: number, color: string): SlideInfo => ({ number, backgroundPaint: { type: 'solid', color }, elements: [] });
+    expect(codes(info([page(1, '#FFFFFF')]), declared)).toEqual([expect.objectContaining({ code: 'direction_background_off', slides: [1] })]);
+    expect(codes(info([page(1, '#EFE7D6')]), declared)).toEqual([]);
+  });
+
   it('声明的 muted、chart 算在调色板里', () => {
     const declared: DirectionDeclaration = {
       ...DIRECTION,

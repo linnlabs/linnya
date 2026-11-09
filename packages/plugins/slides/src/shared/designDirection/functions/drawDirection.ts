@@ -30,7 +30,7 @@ import {
 import { TECHNIQUE_CARDS } from '../pool/techniqueCards';
 
 /** 签池版本：卡片、轴或权重改动时递增，用于基准对账。 */
-export const DIRECTION_POOL_VERSION = '2026-11-09.1';
+export const DIRECTION_POOL_VERSION = '2026-11-09.2';
 
 /** 本机最近用过的方向，用来降权，避免同一个人连续拿到同一种手法。 */
 export interface DirectionHistory {

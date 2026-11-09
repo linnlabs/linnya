@@ -62,14 +62,28 @@ export const COVER_COMPOSITION_FACTORS: Readonly<Partial<Record<CoverComposition
 };
 export const IMAGE_DEPENDENT_COVER_COMPOSITIONS: readonly CoverCompositionId[] = ['mosaic'];
 
-const HUE_NAMES = ['朱红', '铁锈橙', '琥珀', '橄榄', '草绿', '翠绿', '青', '湖蓝', '靛蓝', '紫', '梅紫', '胭脂'] as const;
+/** OKLCH 彩度达到这个值，页面上才看得出色相；更低的是灰、墨和染纸，不算用了某个颜色。 */
+export const VISIBLE_HUE_MIN_CHROMA = 0.03;
 
-export const HUE_BINS: readonly HueBin[] = HUE_NAMES.map((name, bin) => ({
-  bin,
-  from: bin * 30,
-  to: bin * 30 + 30,
-  name,
-}));
+/**
+ * 12 档主色相。度数是 OKLCH，分界与 color-core 的色相名一致，所以各档宽度不等；
+ * 这里写成静态数据，因为方向定义会打进 build Worker。
+ * 给 Agent 的是名称和参考色，度数只用来把用过的颜色归档。
+ */
+export const HUE_BINS: readonly HueBin[] = [
+  { bin: 0, from: 20, to: 42, name: '朱红', reference: '#CB4832' },
+  { bin: 1, from: 42, to: 62, name: '铁锈橙', reference: '#B05925' },
+  { bin: 2, from: 62, to: 88, name: '琥珀', reference: '#D79628' },
+  { bin: 3, from: 88, to: 115, name: '橄榄', reference: '#716C26' },
+  { bin: 4, from: 115, to: 138, name: '草绿', reference: '#648828' },
+  { bin: 5, from: 138, to: 165, name: '翠绿', reference: '#258651' },
+  { bin: 6, from: 165, to: 205, name: '青', reference: '#1C8580' },
+  { bin: 7, from: 205, to: 245, name: '湖蓝', reference: '#007CA5' },
+  { bin: 8, from: 245, to: 280, name: '靛蓝', reference: '#2C488E' },
+  { bin: 9, from: 280, to: 318, name: '紫', reference: '#6A499B' },
+  { bin: 10, from: 318, to: 350, name: '梅紫', reference: '#883C7A' },
+  { bin: 11, from: 350, to: 20, name: '胭脂', reference: '#AF355C' },
+];
 
 /** 不需要另给色相的配色逻辑：颜色取自照片，或者整稿只有黑白（信号色另由色相给出）。 */
 export const HUELESS_COLOR_LOGICS: readonly ColorLogicId[] = ['photo-sampled'];

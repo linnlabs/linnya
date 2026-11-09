@@ -1,29 +1,28 @@
 /**
  * AestheticLint 的颜色工具。
  *
- * 解析、相对亮度与对比度来自 `@linnya/color-core`，这里只保留 lint 输入需要的容错
- * （无 `#`、带透明度的 hex）和尚未换口径的 HSL 判断；后者在 inspect 改 OKLCH 时一并替换。
+ * 解析、色彩空间、相对亮度与对比度来自 `@linnya/color-core`，这里只保留 lint 输入需要的容错
+ * （无 `#`、带透明度的 hex）和“算不算有颜色”的判断。色相与色差都用 OKLCH / ΔEOK。
  *
- * 所有解析函数对非法输入返回 `null`，不抛错；HSL 中 H 用度（0-360），S/L 用 0-1。
+ * 所有解析函数对非法输入返回 `null`，不抛错。
  */
 
 import {
   contrastRatio,
+  deltaEOK,
   parseColor,
   relativeLuminance as relativeLuminanceOfChannels,
+  rgbToOklab,
+  rgbToOklch,
+  type Oklch,
   type RgbChannels,
 } from '@linnya/color-core';
+import { VISIBLE_HUE_MIN_CHROMA } from '@plugin/slides/shared/designDirection';
 
 export interface RgbColor {
   r: number; // 0-255
   g: number; // 0-255
   b: number; // 0-255
-}
-
-export interface HslColor {
-  h: number; // 0-360 (灰阶时为 0)
-  s: number; // 0-1
-  l: number; // 0-1
 }
 
 /**
@@ -45,54 +44,18 @@ export function parseHex(input: string | undefined | null): RgbColor | null {
   return { r, g, b };
 }
 
-/**
- * 将 RGB（0-255）转 HSL。H 用度（0-360），S/L 用 0-1。
- * 灰阶（max == min）H 返回 0，S 返回 0。
- */
-export function rgbToHsl(rgb: RgbColor): HslColor {
-  const r = clamp01(rgb.r / 255);
-  const g = clamp01(rgb.g / 255);
-  const b = clamp01(rgb.b / 255);
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-
-  if (max === min) return { h: 0, s: 0, l };
-
-  const d = max - min;
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-  let h = 0;
-  switch (max) {
-    case r:
-      h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
-      break;
-    case g:
-      h = ((b - r) / d + 2) * 60;
-      break;
-    case b:
-      h = ((r - g) / d + 4) * 60;
-      break;
-  }
-  return { h, s, l };
+export function toOklch(rgb: RgbColor): Oklch {
+  return rgbToOklch(toChannels(rgb));
 }
 
-/**
- * 中性色判定：饱和度极低 / 极暗 / 极亮 视为中性，不参与"主色"统计。
- *
- * 阈值参考：
- * - s < 0.10：低饱和（近灰）
- * - l < 0.08：近黑
- * - l > 0.92：近白
- *
- * 中性色阈值刻意保守——边界模糊地带（如低饱和米色 #F5F0E8）保留为主色，
- * 避免漏报"用了 5 种相近米色"这种实际仍紊乱的设计。
- */
-export function isNeutralColor(hsl: HslColor): boolean {
-  if (hsl.s < 0.1) return true;
-  if (hsl.l < 0.08) return true;
-  if (hsl.l > 0.92) return true;
-  return false;
+/** 中性色不参与色相统计：彩度太低，页面上看不出色相。近黑、近白的彩度本来就低，不另设明度条件。 */
+export function isNeutralColor(color: Oklch): boolean {
+  return color.c < VISIBLE_HUE_MIN_CHROMA;
+}
+
+/** 两个颜色的 ΔEOK（OKLab 欧氏距离，明度 0-1 的尺度）。 */
+export function colorDistance(left: RgbColor, right: RgbColor): number {
+  return deltaEOK(rgbToOklab(toChannels(left)), rgbToOklab(toChannels(right)));
 }
 
 /** WCAG 2.x 相对亮度，0-1。 */
@@ -152,10 +115,4 @@ export function circularMeanDeg(huesDeg: number[]): number {
 
 function toChannels(rgb: RgbColor): RgbChannels {
   return [rgb.r, rgb.g, rgb.b];
-}
-
-function clamp01(v: number): number {
-  if (v < 0) return 0;
-  if (v > 1) return 1;
-  return v;
 }
