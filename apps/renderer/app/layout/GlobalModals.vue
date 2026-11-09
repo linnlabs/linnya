@@ -76,11 +76,11 @@
       @close="cancelConfirmDialog"
     />
 
-    <ProjectOverviewModal
-      :is-visible="projectOverviewModalStore.visible"
-      :project-id="projectOverviewModalStore.projectId"
-      :project-name="projectOverviewModalStore.projectName"
-      @close="projectOverviewModalStore.close"
+    <ProjectKnowledgeBaseModal
+      :is-visible="projectKnowledgeBaseModalStore.visible"
+      :project-id="projectKnowledgeBaseModalStore.projectId"
+      :project-name="projectKnowledgeBaseModalStore.projectName"
+      @close="projectKnowledgeBaseModalStore.close"
     />
   </Teleport>
 </template>
@@ -91,8 +91,8 @@ import { useNavigationScope } from '@/app/navigation';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { SettingsModal } from '@/domains/settings';
 import { ExportSettingsModal } from '@/domains/workspace/features/import-export';
-import { useProjectOverviewModalStore } from '@/domains/workspace/features/project-overview/store/projectOverviewModalStore';
-import ProjectOverviewModal from '@/domains/workspace/features/project-overview/ui/ProjectOverviewModal.vue';
+import { useProjectKnowledgeBaseModalStore } from '@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore';
+import ProjectKnowledgeBaseModal from '@/domains/workspace/features/project-overview/ui/ProjectKnowledgeBaseModal.vue';
 // import KnowledgeBaseModal from '@/domains/knowledgebase/ui/KnowledgeBaseModal.vue';
 import UpdateRestartConfirmDialog from '@/app/update/ui/UpdateRestartConfirmDialog.vue';
 import { FindReplacePanel } from '@/domains/editor/features/FindReplace';
@@ -112,7 +112,7 @@ import {
 
 const uiStore = useUIStore();
 const citationStore = useCitationPanelStore();
-const projectOverviewModalStore = useProjectOverviewModalStore();
+const projectKnowledgeBaseModalStore = useProjectKnowledgeBaseModalStore();
 const navigationScope = useNavigationScope();
 const navigation = getWorkspaceNavigationPort();
 /**

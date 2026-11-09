@@ -2,6 +2,10 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.3.0 - 2026-11-09
+
+- 新增 `GlanceIcon`（Fluent glance 几何，四块错落的卡片）作为项目概览入口图标，新增 `OptionsIcon`（Fluent options 几何，两条滑轨各带一个圆钮）用于打开显示设置。
+
 ## 3.2.0 - 2026-11-03
 
 - `CustomSelect` 新增可选 `showSelectedCheckmark`（默认 `false`）：开启后每个可直接选中的选项右侧保留一个 16px 定宽槽位，选中项在槽位里显示 `CheckmarkIcon`，未选中项留空，所以切换选择时标签宽度不变。选中不再只靠强调色表达；对勾颜色与选中底色沿用既有选中样式，槽位和图标 `aria-hidden`，选中语义仍由 `aria-selected` / `aria-current` 承担。带子菜单的父项右侧已有箭头、行内数字项右侧是输入控件，都不占槽位；开关同时作用于主菜单、一级与二级子菜单里的叶子项。默认关闭时 DOM 与外观不变，现有 `^3.0.0` 插件保持兼容。

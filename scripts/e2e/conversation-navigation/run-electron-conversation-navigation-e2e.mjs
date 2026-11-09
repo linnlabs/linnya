@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { runProjectOverviewScenario } from './project-overview-scenario.mjs';
 import { seedBottomReturnHistory, runBottomReturnScenario } from './bottom-return-scenario.mjs';
 import { runHistoryLoadFailureScenario } from './history-load-failure-scenario.mjs';
 import { runSidebarResizeScenario } from './sidebar-resize-scenario.mjs';
@@ -1537,6 +1538,16 @@ async function run() {
       () => evaluate(cdp, `document.querySelectorAll('.chat-list-item').length >= 2`),
       '两条历史会话进入侧栏',
     );
+
+    if (scenario === 'project-overview') {
+      if (sourceDatabasePath) throw new Error('项目概览门禁只使用隔离测试数据');
+      await runProjectOverviewScenario({ cdp, evaluate, waitFor, projectId, openNodeDatabase });
+      await assertRendererHealthy(cdp, rendererErrors, '项目概览');
+      await evaluate(cdp, "window.electronAPI.windowAction('close')");
+      cdp.close();
+      assert.equal(await waitForProcessExit(electronProcess, 10_000), true, '项目概览场景未正常退出');
+      return;
+    }
 
     if (scenario === 'sidebar-resize') {
       await runSidebarResizeScenario({ cdp, evaluate, clickConversation });

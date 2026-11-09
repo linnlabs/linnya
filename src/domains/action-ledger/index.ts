@@ -5,6 +5,7 @@ export type {
   ActionLedgerChangeList,
   ActionLedgerChangeQuery,
   ActionLedgerDocumentChange,
+  ActionLedgerDocumentSummary,
   ActionLedgerEntryInput,
   ActionLedgerGranularity,
   ActionLedgerRecorder,

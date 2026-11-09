@@ -1,0 +1,140 @@
+import { describe, expect, it } from 'vitest';
+import { WORKSPACE_MESSAGE_FALLBACKS } from '@/domains/workspace/definitions/workspaceMessageCatalog';
+import type { WorkspaceMessageResolver } from '@/domains/workspace/definitions/workspaceMessages';
+import { EMPTY_PROJECT_OVERVIEW_FILTERS, type ProjectOverviewRow } from '../../definitions/projectOverview';
+import {
+  DEFAULT_PROJECT_OVERVIEW_LAYOUT,
+  PROJECT_OVERVIEW_MIN_COLUMN_WIDTH,
+  moveProjectOverviewColumn,
+  normalizeProjectOverviewLayout,
+  resizeProjectOverviewColumn,
+  toggleProjectOverviewColumn,
+} from '../projectOverviewLayout';
+import { formatProjectOverviewActor, formatProjectOverviewTime } from '../projectOverviewPresentation';
+import {
+  filterProjectOverviewRows,
+  listProjectOverviewLocations,
+  modifiedRangeStart,
+  sortProjectOverviewRows,
+} from '../projectOverviewRows';
+
+const message: WorkspaceMessageResolver = (key, params) => {
+  let text: string = WORKSPACE_MESSAGE_FALLBACKS[key];
+  for (const [name, value] of Object.entries(params ?? {})) text = text.replace(`{${name}}`, String(value));
+  return text;
+};
+
+const row = (overrides: Partial<ProjectOverviewRow> & { readonly documentId: string }): ProjectOverviewRow => ({
+  nodeType: 'document',
+  title: overrides.documentId,
+  parentId: null,
+  location: [],
+  createdAt: 0,
+  creatorActor: null,
+  creatorPluginId: null,
+  conversationId: null,
+  conversationTitle: null,
+  lastModifiedAt: 0,
+  lastModifiedActor: null,
+  lastModifiedPluginId: null,
+  pendingRevisionCount: null,
+  ...overrides,
+});
+
+describe('列配置', () => {
+  it('格式坏了或版本不对时用默认；认不出的列丢掉，缺的列按默认位置补上', () => {
+    expect(normalizeProjectOverviewLayout(null)).toBe(DEFAULT_PROJECT_OVERVIEW_LAYOUT);
+    expect(normalizeProjectOverviewLayout({ version: 2, columns: [] })).toBe(DEFAULT_PROJECT_OVERVIEW_LAYOUT);
+    const layout = normalizeProjectOverviewLayout({
+      version: 1,
+      columns: [
+        { id: 'modified', visible: false, width: 9999 },
+        { id: 'unknown', visible: true, width: 100 },
+        { id: 'location', visible: true, width: 10 },
+        { id: 'modified', visible: true, width: 100 },
+      ],
+    });
+    expect(layout.columns.map(column => column.id)).toEqual([
+      'modified', 'location', 'source', 'conversation', 'pending', 'type', 'created',
+    ]);
+    expect(layout.columns[0]).toEqual({ id: 'modified', visible: false, width: 480 });
+    expect(layout.columns[1]?.width).toBe(PROJECT_OVERVIEW_MIN_COLUMN_WIDTH);
+  });
+
+  it('显示、顺序、宽度各自只改一项', () => {
+    const toggled = toggleProjectOverviewColumn(DEFAULT_PROJECT_OVERVIEW_LAYOUT, 'type');
+    expect(toggled.columns.find(column => column.id === 'type')?.visible).toBe(true);
+    const moved = moveProjectOverviewColumn(DEFAULT_PROJECT_OVERVIEW_LAYOUT, 'pending', 'location');
+    expect(moved.columns.map(column => column.id).slice(0, 3)).toEqual(['pending', 'location', 'source']);
+    const resized = resizeProjectOverviewColumn(DEFAULT_PROJECT_OVERVIEW_LAYOUT, 'source', 20);
+    expect(resized.columns.find(column => column.id === 'source')?.width).toBe(PROJECT_OVERVIEW_MIN_COLUMN_WIDTH);
+  });
+});
+
+describe('筛选与排序', () => {
+  const now = new Date(2026, 10, 9, 15, 0);
+  const rows = [
+    row({ documentId: 'a', title: '行业报告', location: ['报告'], lastModifiedAt: now.getTime() - 60_000 }),
+    row({ documentId: 'b', title: '访谈纪要', location: ['资料', '访谈'], nodeType: 'canvas', lastModifiedAt: new Date(2026, 10, 1).getTime() }),
+    row({ documentId: 'c', title: '目标', location: [], lastModifiedAt: new Date(2026, 9, 1).getTime() }),
+  ];
+
+  it('类型、时间、位置与搜索取交集；搜索同时看名称和正文命中', () => {
+    const filter = (filters: Partial<typeof EMPTY_PROJECT_OVERVIEW_FILTERS>, contentMatches: ReadonlySet<string> | null = null) =>
+      filterProjectOverviewRows(rows, { ...EMPTY_PROJECT_OVERVIEW_FILTERS, ...filters }, { now, contentMatches })
+        .map(item => item.documentId);
+    expect(filter({ nodeType: 'canvas' })).toEqual(['b']);
+    expect(filter({ modified: 'today' })).toEqual(['a']);
+    expect(filter({ modified: 'week' })).toEqual(['a']);
+    expect(filter({ modified: 'month' })).toEqual(['a', 'b']);
+    expect(filter({ location: ['资料'] })).toEqual(['b']);
+    expect(filter({ location: [] })).toEqual(['c']);
+    expect(filter({ query: '报告' })).toEqual(['a']);
+    expect(filter({ query: '储能' }, new Set(['c']))).toEqual(['c']);
+    expect(filter({ query: '储能', location: ['报告'] }, new Set(['c']))).toEqual([]);
+  });
+
+  it('“今天”从本地零点算，“最近 7 天”含今天', () => {
+    expect(modifiedRangeStart('today', now)).toBe(new Date(2026, 10, 9).getTime());
+    expect(modifiedRangeStart('week', now)).toBe(new Date(2026, 10, 3).getTime());
+  });
+
+  it('位置列出所有出现过文档的文件夹及其上级', () => {
+    expect(listProjectOverviewLocations(rows)).toEqual([['报告'], ['资料'], ['资料', '访谈']]);
+  });
+
+  it('按最近修改倒序；空值不论升降序都排在最后', () => {
+    const labels = { typeLabel: (type: string) => type };
+    expect(sortProjectOverviewRows(rows, { key: 'modified', direction: 'desc' }, labels).map(item => item.documentId))
+      .toEqual(['a', 'b', 'c']);
+    const withPending = [
+      row({ documentId: 'x', pendingRevisionCount: 2 }),
+      row({ documentId: 'y', pendingRevisionCount: null }),
+      row({ documentId: 'z', pendingRevisionCount: 5 }),
+    ];
+    expect(sortProjectOverviewRows(withPending, { key: 'pending', direction: 'desc' }, labels).map(item => item.documentId))
+      .toEqual(['z', 'x', 'y']);
+    expect(sortProjectOverviewRows(withPending, { key: 'pending', direction: 'asc' }, labels).map(item => item.documentId))
+      .toEqual(['x', 'z', 'y']);
+  });
+});
+
+describe('展示文案', () => {
+  const now = new Date(2026, 10, 9, 15, 0);
+  it('刚刚、几分钟前、今天、昨天、今年、往年', () => {
+    expect(formatProjectOverviewTime(now.getTime() - 10_000, now, 'zh-CN', message)).toBe('刚刚');
+    expect(formatProjectOverviewTime(now.getTime() - 12 * 60_000, now, 'zh-CN', message)).toBe('12 分钟前');
+    expect(formatProjectOverviewTime(new Date(2026, 10, 9, 9, 5).getTime(), now, 'zh-CN', message)).toBe('09:05');
+    expect(formatProjectOverviewTime(new Date(2026, 10, 8, 18, 20).getTime(), now, 'zh-CN', message)).toBe('昨天 18:20');
+    expect(formatProjectOverviewTime(new Date(2026, 10, 7).getTime(), now, 'zh-CN', message)).toBe('11月7日');
+    expect(formatProjectOverviewTime(new Date(2025, 9, 3).getTime(), now, 'zh-CN', message)).toBe('2025年10月3日');
+  });
+
+  it('来源：Linnya AI、用户、外部 Agent；插件用插件名', () => {
+    expect(formatProjectOverviewActor('linnya_ai', null, message)).toBe('Linnya AI');
+    expect(formatProjectOverviewActor('user', null, message)).toBe('用户');
+    expect(formatProjectOverviewActor('external', null, message)).toBe('外部 Agent');
+    expect(formatProjectOverviewActor('plugin', 'Slides', message)).toBe('Slides');
+    expect(formatProjectOverviewActor('plugin', null, message)).toBe('插件');
+  });
+});

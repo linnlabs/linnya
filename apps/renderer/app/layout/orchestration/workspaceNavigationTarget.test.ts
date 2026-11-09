@@ -26,8 +26,8 @@ vi.mock('@/app/plugins/enabledPluginsStore', () => ({ useEnabledPluginsStore: ()
 vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({ useWorkspaceTreeStore: vi.fn() }));
 vi.mock('@/domains/conversation/history/store/historyLoaderStore', () => ({ useHistoryLoaderStore: vi.fn() }));
 vi.mock('@/domains/conversation/store/assistantStore', () => ({ useAssistantStore: vi.fn() }));
-vi.mock('@/domains/workspace/features/project-overview/store/projectOverviewModalStore', () => ({
-  useProjectOverviewModalStore: () => ({ close: vi.fn() }),
+vi.mock('@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore', () => ({
+  useProjectKnowledgeBaseModalStore: () => ({ close: vi.fn() }),
 }));
 
 import { createWorkspaceNavigation } from './workspaceNavigation';

@@ -47,7 +47,8 @@ describe('workspace document activity', () => {
     expect(result[0]).toMatchObject({ id: 'doc-a', project_name: '项目 A' });
   });
 
-  it('打开文档时原子更新最近时间和访问次数', () => {
+  it('打开文档时原子更新最近打开时间和访问次数，不改修改时间', () => {
+    const before = db.prepare(`SELECT updated_at FROM workspace_nodes WHERE id = 'doc-a'`).get();
     notifyWorkspaceDocumentOpened({ db, nodeId: 'doc-a' });
 
     expect(db.prepare(`
@@ -55,5 +56,6 @@ describe('workspace document activity', () => {
       FROM workspace_nodes
       WHERE id = 'doc-a'
     `).get()).toEqual({ access_count: 2, opened_after_seed: 1 });
+    expect(db.prepare(`SELECT updated_at FROM workspace_nodes WHERE id = 'doc-a'`).get()).toEqual(before);
   });
 });

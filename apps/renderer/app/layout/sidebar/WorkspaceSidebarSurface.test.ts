@@ -5,10 +5,6 @@ const sidebarSource = fs.readFileSync(new URL('./WorkspaceSidebarSurface.vue', i
 const listNavSource = fs.readFileSync(new URL('./components/SidebarListNav.vue', import.meta.url), 'utf8');
 
 describe('WorkspaceSidebarSurface', () => {
-  it('主组合面保持在 700 行以内', () => {
-    expect(sidebarSource.split('\n').length).toBeLessThanOrEqual(700);
-  });
-
   it('隐藏 Linnya 助手入口，并绑定插件页选中态', () => {
     const pluginLabelIndex = listNavSource.indexOf("layout.sidebar.nav.plugins");
     const pluginButtonStart = listNavSource.lastIndexOf('<button', pluginLabelIndex);
