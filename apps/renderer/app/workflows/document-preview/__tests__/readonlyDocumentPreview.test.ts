@@ -11,6 +11,8 @@ const ports = vi.hoisted(() => ({
   availability: vi.fn(),
   stopMutation: vi.fn(),
   stopAvailability: vi.fn(),
+  recovery: vi.fn(),
+  open: vi.fn(),
 }));
 vi.mock('@plugin/renderer/documentReferences', () => ({ readDocumentReference: ports.read }));
 vi.mock('@plugin/renderer/documentPreview', () => ({ readDocumentPreview: ports.preview }));
@@ -23,7 +25,10 @@ vi.mock('@/shared/ipc/workspaceMutationSubscription', () => ({
 vi.mock('@/app/plugins/documentTypePresentation', () => ({
   readDocumentTypePreviewComponent: () => null,
   readDocumentTypeIcon: () => null,
-  readDocumentTypeRecoveryAction: () => null,
+  readDocumentTypeRecoveryAction: ports.recovery,
+}));
+vi.mock('@plugin/renderer/workspaceNavigation', () => ({
+  getWorkspaceNavigationPort: () => ({ openDocumentByNodeType: ports.open }),
 }));
 it('detailOnly renders readonly Markdown immediately, blocks nested navigation and removes content on availability or project changes', async () => {
   vi.stubGlobal(
@@ -218,4 +223,85 @@ it('the first screen and expanded document share formal content and resize witho
     vi.unstubAllGlobals();
   }
   expect(ports.stopMutation).toHaveBeenCalledOnce();
+});
+
+it('plugin recovery is explicit and shared preview opening rechecks the current document scope', async () => {
+  vi.clearAllMocks();
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  );
+  const identity = {
+    documentId: 'doc',
+    status: 'plugin_unavailable',
+    title: '文档',
+    nodeType: 'example',
+    path: 'workspace:/Doc',
+  };
+  ports.read.mockResolvedValue(identity);
+  ports.preview.mockResolvedValue({
+    ...identity,
+    content: { revisionKey: '1', summary: '已保存的快照' },
+  });
+  ports.availability.mockReturnValue(ports.stopAvailability);
+  const activate = vi.fn(async () => {
+    ports.read.mockResolvedValue({ ...identity, status: 'available' });
+    ports.preview.mockResolvedValue({
+      ...identity,
+      status: 'ready',
+      content: { revisionKey: '2', summary: '', detail: { format: 'text', text: '最新正文' } },
+    });
+  });
+  ports.recovery.mockReturnValue({ label: '启用插件', activate });
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  useNavigationScope().enterProject('project');
+  const host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp({
+    render: () =>
+      h(ReadonlyDocumentPreview, {
+        readTarget: () => ({ documentId: 'doc', projectId: 'project' }),
+        widthPx: 300,
+      }),
+  }).use(pinia);
+  try {
+    app.mount(host);
+    await vi.waitFor(() => expect(host.textContent).toContain('已保存的快照'));
+    expect(activate).not.toHaveBeenCalled();
+    expect(ports.open).not.toHaveBeenCalled();
+    const recovery = Array.from(host.querySelectorAll('button')).find(
+      button => button.textContent === '启用插件'
+    );
+    if (!recovery) throw new Error('Recovery action missing');
+    recovery.click();
+    await vi.waitFor(() => expect(host.textContent).toContain('最新正文'));
+    expect(activate).toHaveBeenCalledOnce();
+    expect(ports.open).not.toHaveBeenCalled();
+    host.querySelector<HTMLButtonElement>('button.document-preview-title')?.click();
+    await vi.waitFor(() =>
+      expect(ports.open).toHaveBeenCalledWith(
+        expect.objectContaining({ documentId: 'doc', projectId: 'project' })
+      )
+    );
+    ports.open.mockClear();
+    ports.read.mockResolvedValue({
+      ...identity,
+      status: 'outside_project',
+      title: null,
+      path: null,
+    });
+    host.querySelector<HTMLButtonElement>('button.document-preview-title')?.click();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(ports.open).not.toHaveBeenCalled();
+  } finally {
+    app.unmount();
+    host.remove();
+    ports.recovery.mockReset();
+    vi.unstubAllGlobals();
+  }
 });

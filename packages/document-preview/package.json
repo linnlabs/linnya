@@ -10,8 +10,7 @@
     "./style.css": "./src/style.css"
   },
   "scripts": {
-    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
-    "test": "vitest run src"
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@app/schemas": "workspace:*",

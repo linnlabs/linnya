@@ -12,3 +12,11 @@ Markdown 的块呈现归
 返回 DOM 和独立 disposer；字体/图片的最终绘制屏障由实际绘制宿主完成。live 消费者换目标或卸载时释放；光栅消费者在 paint 结束或失败时调用
 `disposeDocumentPreviewSurface`。自定义交互详情通过 `externalBody`
 共用标题与正文槽，不能再在消费方复制标题/正文外观。
+
+表面显式持有明暗主题，加载 Renderer
+UI 正式语义 token。Canvas 不对文档表面额外着墨或覆盖标题颜色；纸张材质属于外层。真实 Workspace 根节点的布局隔离由内容 owner 负责，Host 编辑器的全局留白、图注和字号不得污染预览。
+
+业务回归在 Host
+workflow 的首屏/展开/恢复/范围生命周期、Canvas 文档表面的前后台一致性，以及
+`dev/probes/run-preview-parity-probe.mjs`
+的真实 Electron 图像对照中完成；本包不复制一套只断言 DOM 字段的测试。
