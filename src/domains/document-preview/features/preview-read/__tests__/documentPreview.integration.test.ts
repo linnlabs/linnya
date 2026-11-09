@@ -68,6 +68,35 @@ describe('document preview business lifecycle', () => {
     });
     expect((await f.operations.read(request)).status).toBe('outside_project');
   });
+  it('discards content when its revision changes during generation', async () => {
+    const f = fixture();
+    f.render.mockImplementationOnce(async () => {
+      f.update();
+      return { revisionKey: 'v1', summary: 'Stale reference title' };
+    });
+    const stale = await f.operations.read(request);
+    expect(stale.status).toBe('preview_unavailable'); expect(stale.content).toBeUndefined();
+    expect((await f.operations.read(request)).content?.revisionKey).toBe('v2');
+    expect(f.render).toHaveBeenCalledTimes(2);
+  });
+  it('rechecks revisions after disk reads and cache writes before publishing', async () => {
+    let revision = 'v1';
+    let mutateOnRead = true;
+    const cached = { revisionKey: 'v1', summary: 'Cached private reference' };
+    const provider = { getRevision: () => revision, render: async () => ({ revisionKey: revision, summary: 'Rendered reference' }) };
+    const operations = createDocumentPreviewOperations({ context: {},
+      readNode: () => ({ id: 'doc', projectId: 'p1', name: 'Doc', nodeType: 'fake', deletedAt: null }),
+      readTextSnapshot: () => null, resolveProvider: () => provider,
+      cache: {
+        read: async () => { if (mutateOnRead) { revision = 'v2'; return cached; } return null; },
+        write: async () => { revision = 'v3'; },
+      },
+    });
+    expect((await operations.read(request)).content).toBeUndefined();
+    mutateOnRead = false;
+    expect((await operations.read(request)).content).toBeUndefined();
+    expect((await operations.read(request)).content?.revisionKey).toBe('v3');
+  });
   it('coalesces simultaneous requests for the same immutable version', async () => {
     const f = fixture();
     const results = await Promise.all(Array.from({ length: 8 }, () => f.operations.read(request)));

@@ -24,13 +24,21 @@ export function createDocumentPreviewOperations(deps: DocumentPreviewDependencie
     const input = DocumentPreviewRequestSchema.parse(value);
     const initial = currentResult(input);
     if (initial.status !== 'preview_unavailable' || !initial.nodeType) return initial;
-    const provider = deps.resolveProvider(initial.nodeType);
+    const nodeType = initial.nodeType;
+    const provider = deps.resolveProvider(nodeType);
     if (!provider) return currentResult(input);
     const providerInput = { context: deps.context, documentId: input.documentId, widthPx: input.widthPx, pixelRatio: input.pixelRatio };
     const revision = await provider.getRevision(providerInput);
-    const key = JSON.stringify([input.documentId, revision, input.widthPx, input.pixelRatio]);
+    const key = JSON.stringify([input.projectId, input.documentId, revision, input.widthPx, input.pixelRatio]);
+    const admitCurrent = async (content: DocumentPreviewContent): Promise<DocumentPreviewResult> => {
+      const state = currentResult(input, content);
+      if (state.status !== 'ready') return state;
+      // 图片读取、缓存 IO 和 provider 渲染都会让出事件循环，正文/引用呈现须在发布时仍属同一版本。
+      if (await provider.getRevision(providerInput) !== content.revisionKey) return currentResult(input);
+      return currentResult(input, content);
+    };
     const cached = await deps.cache.read(key);
-    if (cached) return currentResult(input, cached);
+    if (cached) return admitCurrent(cached);
     const existing = pending.get(key);
     if (existing) return existing;
     // 封面是派生内容；快速滚动不能积压数千个重型文稿渲染任务。
@@ -40,10 +48,10 @@ export function createDocumentPreviewOperations(deps: DocumentPreviewDependencie
       try {
         const content = DocumentPreviewContentSchema.parse(await provider.render(providerInput));
         if (content.revisionKey !== revision) return currentResult(input);
-        const admitted = currentResult(input, content);
+        const admitted = await admitCurrent(content);
         if (admitted.status !== 'ready') return admitted;
         await deps.cache.write(key, content);
-        return currentResult(input, content);
+        return admitCurrent(content);
       } finally { pending.delete(key); release(); }
     })();
     pending.set(key, result);
