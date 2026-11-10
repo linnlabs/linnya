@@ -31,7 +31,7 @@ import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeSt
 import { useHistoryLoaderStore } from '@/domains/conversation/history/store/historyLoaderStore';
 import type { HistoryLoadingIntent } from '@/domains/conversation/history/definitions/historyLoader';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
-import { useProjectOverviewModalStore } from '@/domains/workspace/features/project-overview/store/projectOverviewModalStore';
+import { useProjectKnowledgeBaseModalStore } from '@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore';
 
 interface DocumentOpenIntent {
   id: number;
@@ -176,7 +176,7 @@ function setNavigationScope(scope: WorkspaceNavigationScope): void {
 }
 
 function setWorkspaceView(scope: WorkspaceNavigationScope): void {
-  useProjectOverviewModalStore().close();
+  useProjectKnowledgeBaseModalStore().close();
   setNavigationScope(scope);
 }
 
@@ -250,7 +250,7 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
     async openKnowledgeBase() {
       await leaveDocumentRuntimeThen(() => {
         const layoutStore = useLayoutStore();
-        useProjectOverviewModalStore().close();
+        useProjectKnowledgeBaseModalStore().close();
         layoutStore.openBypassView({ type: 'knowledge-base' });
       });
 
@@ -261,10 +261,20 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
       await kbStore.ensureDataLoaded();
     },
 
+    async openProjectOverview(projectId) {
+      await leaveDocumentRuntimeThen(() => {
+        const layoutStore = useLayoutStore();
+        useProjectKnowledgeBaseModalStore().close();
+        setNavigationScope({ kind: 'project', projectId });
+        layoutStore.setSidebarNav('project');
+        layoutStore.openBypassView({ type: 'project-overview', projectId });
+      });
+    },
+
     async openPluginStore() {
       await leaveDocumentRuntimeThen(() => {
         const layoutStore = useLayoutStore();
-        useProjectOverviewModalStore().close();
+        useProjectKnowledgeBaseModalStore().close();
         layoutStore.setSidebarNav('list');
         layoutStore.openBypassView({ type: 'plugin-store' });
       });
@@ -311,7 +321,7 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
       const fileStore = useFileStore();
       const layoutStore = useLayoutStore();
       const intent = beginDocumentOpenIntent();
-      useProjectOverviewModalStore().close();
+      useProjectKnowledgeBaseModalStore().close();
       setNavigationScope({ kind: 'project', projectId });
       await saveCurrentSessionBeforeReplacingSurface(null);
       if (!isCurrentDocumentOpenIntent(intent)) return;

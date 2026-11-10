@@ -5,10 +5,11 @@ import { useHoverTooltipService } from '@linnya/renderer-ui';
 // 布局组件
 import AppLayout from './layout/AppLayout.vue';
 
-// 四个 scene 互斥，按当前 scene 加载，避免把非首屏业务页面合进应用入口。
+// scene 互斥，按当前 scene 加载，避免把非首屏业务页面合进应用入口。
 const WorkspaceStage = defineAsyncComponent(() => import('./pages/WorkspaceStage/WorkspaceStage.vue'));
 const KnowledgeBasePage = defineAsyncComponent(() => import('./pages/KnowledgeBasePage/KnowledgeBasePage.vue'));
 const PluginStorePage = defineAsyncComponent(() => import('./pages/PluginStorePage/PluginStorePage.vue'));
+const ProjectOverviewPage = defineAsyncComponent(() => import('./pages/ProjectOverviewPage/ProjectOverviewPage.vue'));
 
 // Stores
 import { useLayoutStore } from './layout/store/layoutStore';
@@ -99,6 +100,9 @@ const scene = computed(() => layoutStore.state.scene);
 const isWorkspaceStageView = computed(() => scene.value.kind === 'workspace');
 const isKnowledgeBaseView = computed(() => scene.value.kind === 'knowledge-base');
 const isPluginStoreView = computed(() => scene.value.kind === 'plugin-store');
+const projectOverviewProjectId = computed(() => (
+  scene.value.kind === 'project-overview' ? scene.value.projectId : null
+));
 
 // 初始状态检查
 console.log('[App.vue] Initializing with scene:', scene.value.kind);
@@ -185,6 +189,7 @@ onBeforeUnmount(() => {
     <WorkspaceStage v-if="isWorkspaceStageView" />
     <KnowledgeBasePage v-else-if="isKnowledgeBaseView" />
     <PluginStorePage v-else-if="isPluginStoreView" />
+    <ProjectOverviewPage v-else-if="projectOverviewProjectId" :project-id="projectOverviewProjectId" />
   </AppLayout>
   <FloatingToolbarContainer />
 </template>

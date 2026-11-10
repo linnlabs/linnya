@@ -1,3 +1,4 @@
+import { connectCdp, evaluate, findPage } from '../../development/features/desktop-probe/infrastructure/cdpClient.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
@@ -8,8 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { startRendererDevelopmentServer } from '../../development/orchestration/startElectronDevelopment.mjs';
 import { discoverWorkspaceDiskBackendPlugins } from '../../development/features/plugin-backend-composition/functions/discoverWorkspaceDiskBackendPlugins.mjs';
 import {
-  isSameMacosProcessInstanceAlive, readMacosDescendantInstances,
-} from '../shell-tool/harness/macosElectronProcessObservation.mjs';
+  readDescendantIdentities, signalOwner, waitForObservedExit,
+} from '../../development/features/desktop-probe/infrastructure/processTree.mjs';
 
 // 使用当前仓的正式 Main/Backend/Worker 制品，临时 cwd 只隔离各实例的运行数据。
 // 不读取开发者数据库、不请求模型，也不关闭既有开发会话。
@@ -76,49 +77,15 @@ function launch(directory, rendererUrl, instanceRoot = directory) {
 async function connectPage(app) {
   const match = await waitFor('CDP endpoint', () => app.output.match(/DevTools listening on (ws:\/\/[^\s]+)/u), app);
   const browserUrl = new URL(match[1]);
-  const pages = await waitFor('Renderer target', async () => {
-    const targets = await (await fetch(`http://${browserUrl.host}/json/list`)).json();
-    return targets.find(target => target.type === 'page' && target.url.startsWith(app.rendererUrl));
-  }, app);
-  const socket = new WebSocket(pages.webSocketDebuggerUrl);
-  await new Promise((resolve, reject) => {
-    socket.addEventListener('open', resolve, { once: true });
-    socket.addEventListener('error', reject, { once: true });
-  });
-  let sequence = 0;
-  const pending = new Map();
-  socket.addEventListener('message', event => {
-    const message = JSON.parse(event.data);
+  const page = await waitFor('Renderer target', () => findPage(Number(browserUrl.port), app.rendererUrl), app);
+  const cdp = await connectCdp(page.webSocketDebuggerUrl);
+  cdp.evaluate = expression => evaluate(cdp, expression);
+  cdp.onEvent(message => {
     if (message.method === 'Runtime.exceptionThrown'
       || (message.method === 'Runtime.consoleAPICalled' && message.params.type === 'error')) {
       app.output += `\n[Renderer] ${JSON.stringify(message.params)}\n`;
     }
-    const request = pending.get(message.id);
-    if (!request) return;
-    pending.delete(message.id);
-    clearTimeout(request.timer);
-    if (message.error) request.reject(new Error(JSON.stringify(message.error)));
-    else request.resolve(message.result);
   });
-  const cdp = {
-    socket,
-    send(method, params = {}) {
-      return new Promise((resolve, reject) => {
-        const id = ++sequence;
-        const timer = setTimeout(() => {
-          pending.delete(id);
-          reject(new Error(`CDP timeout: ${method}`));
-        }, 10_000);
-        pending.set(id, { resolve, reject, timer });
-        socket.send(JSON.stringify({ id, method, params }));
-      });
-    },
-    async evaluate(expression) {
-      const result = await cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
-      if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
-      return result.result.value;
-    },
-  };
   app.cdp = cdp;
   await cdp.send('Runtime.enable');
   return cdp;
@@ -146,11 +113,8 @@ async function closeApp(app) {
   await app.cdp.evaluate("window.electronAPI.windowAction('close'); true");
   const exit = await Promise.race([app.exit, pause(15_000).then(() => { throw new Error('Desktop close timed out'); })]);
   assert.equal(exit.code, 0);
-  app.cdp.socket.close();
-  await waitFor('Desktop process tree empty', async () => {
-    const alive = await Promise.all(app.descendants.map(isSameMacosProcessInstanceAlive));
-    return alive.every(value => !value);
-  });
+  app.cdp.close();
+  assert.deepEqual(await waitForObservedExit(app.descendants), [], 'Desktop process tree empty');
 }
 
 try {
@@ -166,7 +130,7 @@ try {
   }
   const instances = [...applications];
   await Promise.all(instances.map(app => waitFor('Desktop ready', () => app.output.includes('[Desktop] ready'), app)));
-  for (const app of instances) app.descendants = await readMacosDescendantInstances(app.child.pid);
+  for (const app of instances) app.descendants = readDescendantIdentities(app.child.pid);
   const descriptors = await Promise.all(instances.map(handshake));
   for (const app of instances) {
     assert.ok(app.output.includes(`profile=${path.join(app.instanceRoot, '_dev_electron')}`));
@@ -242,22 +206,18 @@ try {
 } finally {
   for (const app of applications) {
     if (app.child.exitCode === null && app.child.signalCode === null) {
-      app.descendants = await readMacosDescendantInstances(app.child.pid);
+      app.descendants = readDescendantIdentities(app.child.pid);
     }
   }
   for (const app of applications) {
-    app.cdp?.socket.close();
+    app.cdp?.close();
     if (app.child.exitCode === null && app.child.signalCode === null) app.child.kill('SIGTERM');
   }
   await Promise.all(applications.map(app => app.exit));
   await Promise.all(renderers.map(renderer => renderer.viteServer.close()));
   // 失败清理也只处理本测试记录过且 identity 未变的后代，不按进程名扫全机。
-  for (const instance of applications.flatMap(app => app.descendants)) {
-    if (await isSameMacosProcessInstanceAlive(instance)) process.kill(instance.pid, 'SIGKILL');
-  }
-  await waitFor('test child cleanup', async () => {
-    const alive = await Promise.all(applications.flatMap(app => app.descendants).map(isSameMacosProcessInstanceAlive));
-    return alive.every(value => !value);
-  });
+  const descendants = applications.flatMap(app => app.descendants);
+  for (const instance of descendants) signalOwner(instance, 'SIGKILL');
+  assert.deepEqual(await waitForObservedExit(descendants), [], 'test child cleanup');
   await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }

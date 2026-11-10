@@ -40,6 +40,17 @@
     </div>
 
     <button
+      class="sidebar-entry project-nav-overview-entry"
+      :class="{ 'is-selected': overviewSelected }"
+      type="button"
+      :aria-current="overviewSelected ? 'page' : undefined"
+      @click="$emit('open-overview')"
+    >
+      <GlanceIcon class="nav-icon" />
+      <span class="nav-label">{{ layoutMessage('layout.sidebar.project.overview') }}</span>
+    </button>
+
+    <button
       v-if="sidebarMode === 'chat'"
       class="project-nav-create-button"
       type="button"
@@ -122,6 +133,7 @@ import { ChatIcon } from '@linnya/renderer-ui/icons';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { SearchIcon } from '@linnya/renderer-ui/icons';
+import { GlanceIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect, HoverTooltip, IconButton } from '@linnya/renderer-ui';
 import { useFixedDropdownPosition } from '@/domains/workspace/ui/sidebar';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
@@ -137,6 +149,8 @@ export interface ProjectCreateOption {
 const props = defineProps<{
   projectName: string;
   sidebarMode: WorkspaceSidebarMode;
+  /** 当前正在看这个项目的概览页。 */
+  overviewSelected: boolean;
   chatSearchQuery: string;
   fileSearchQuery: string;
   showCreateMenu: boolean;
@@ -145,6 +159,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   back: [];
+  'open-overview': [];
   'set-mode': [mode: WorkspaceSidebarMode];
   'new-conversation': [];
   'toggle-create-menu': [];

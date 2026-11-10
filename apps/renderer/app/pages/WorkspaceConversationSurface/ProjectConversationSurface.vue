@@ -51,7 +51,7 @@ import type {
   ConversationEmptyComposerPlacement,
   ConversationSurfaceVariant,
 } from '@/domains/conversation/definitions/conversationPresentation';
-import { useProjectOverviewModalStore } from '@/domains/workspace/features/project-overview/store/projectOverviewModalStore';
+import { useProjectKnowledgeBaseModalStore } from '@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore';
 
 const props = withDefaults(defineProps<{
   variant?: ConversationSurfaceVariant;
@@ -70,7 +70,7 @@ const projectsStore = useWorkspaceProjectsStore();
 const treeStore = useWorkspaceTreeStore();
 const kbStore = useKnowledgeBaseStore();
 const assistantStore = useAssistantStore();
-const projectOverviewModalStore = useProjectOverviewModalStore();
+const projectKnowledgeBaseModalStore = useProjectKnowledgeBaseModalStore();
 const startupEmptySubtitle = useStartupEmptySubtitle();
 const { conversationMessage } = useConversationLocalization();
 
@@ -94,7 +94,7 @@ const projectAssistantPlaceholder = computed(() => {
 
 const handleOpenKnowledgeBaseManager = () => {
   if (!projectId.value) return;
-  projectOverviewModalStore.open({
+  projectKnowledgeBaseModalStore.open({
     projectId: projectId.value,
     projectName: currentProject.value?.name ?? null,
   });

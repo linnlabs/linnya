@@ -27,6 +27,7 @@ import type { BackendRendererRequestRegistryPort } from '../definitions/backendR
 import { createBackendRendererIpcStyleRegistrar } from './createBackendRendererIpcStyleRegistrar';
 import { registerDocumentHistoryRequests } from './registerDocumentHistoryRequests';
 import { registerConversationRunDocumentChangesRequests } from './registerConversationRunDocumentChangesRequests';
+import { registerProjectOverviewRequests } from './registerProjectOverviewRequests';
 import type {
   BackendRendererIntegrationPort,
   DesktopFileRevealPort,
@@ -70,6 +71,7 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   });
   registerConversationFileLinkHandlers({ ipc, fileReveal: input.fileReveal });
   registerConversationRunDocumentChangesRequests(input.runtimeOwner, input.registry);
+  registerProjectOverviewRequests(input.runtimeOwner, input.registry);
 
   registerRegisteredBackendPluginIpcHandlers(input.runtimeOwner);
   input.registry.handle('plugin:invoke', request => dispatchPluginInvoke(undefined, request, {

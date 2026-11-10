@@ -1,0 +1,639 @@
+/*
+ * 项目概览页。页头与工具条固定在上方；下方滚动区占满主区宽度，内容列居中，
+ * 这样滚动条贴主区右侧，不会落在内容列中间。
+ */
+.project-overview {
+  --project-overview-content-width: 1180px;
+  /* 窄窗口时两侧留白跟着收，尽量把宽度让给表格，避免出现水平滚动。 */
+  --project-overview-gutter: clamp(var(--space-4), 3vw, var(--space-8));
+  --project-overview-row-height: 36px;
+  --project-overview-column-gap: var(--space-4);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background-color: var(--color-bg-default);
+}
+
+.project-overview__top {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(var(--project-overview-content-width) + 2 * var(--project-overview-gutter));
+  margin: 0 auto;
+  padding: calc(var(--space-8) + var(--space-1)) var(--project-overview-gutter) 0;
+}
+
+.project-overview__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.project-overview__heading {
+  min-width: 0;
+}
+
+.project-overview__title {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--font-size-headline);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-headline);
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-overview__stats {
+  min-height: var(--line-height-body);
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-tertiary);
+}
+
+.project-overview__knowledge-base {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--control-height-md);
+  padding: 0 var(--space-2-5);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.project-overview__knowledge-base:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.project-overview__knowledge-base svg {
+  width: 18px;
+  height: 18px;
+}
+
+.project-overview__knowledge-base-count {
+  color: var(--color-text-tertiary);
+}
+
+/* 工具条 */
+.project-overview__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-5);
+}
+
+.project-overview__search {
+  display: flex;
+  flex-shrink: 1;
+  align-items: center;
+  box-sizing: border-box;
+  width: 280px;
+  min-width: 160px;
+  height: var(--control-height-md);
+  margin-right: var(--space-2);
+  padding: 0 var(--space-2-5);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-search);
+  color: var(--color-text-tertiary);
+}
+
+.project-overview__search-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-right: var(--space-1-5);
+}
+
+.project-overview__search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+}
+
+.project-overview__search-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.project-overview__search-input::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+
+.project-overview__spacer {
+  flex: 1;
+}
+
+.project-overview__count {
+  margin-right: var(--space-2);
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.project-overview__hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-tertiary);
+}
+
+/* 筛选按钮：未筛选时是文字加箭头，筛选后变成带清除按钮的浅底标签。 */
+.project-overview-filter {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: var(--control-height-md);
+  border-radius: var(--radius-md);
+}
+
+.project-overview-filter.is-active {
+  background-color: var(--color-bg-subtle);
+}
+
+.project-overview-filter__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 100%;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.project-overview-filter__trigger:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.project-overview-filter.is-active .project-overview-filter__trigger {
+  padding-right: var(--space-1);
+  color: var(--color-text-primary);
+}
+
+.project-overview-filter__text {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-overview-filter__chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.project-overview-filter__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: var(--space-1);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.project-overview-filter__clear:hover {
+  background-color: var(--color-bg-hover-strong);
+  color: var(--color-text-primary);
+}
+
+.project-overview-filter__clear svg {
+  width: 14px;
+  height: 14px;
+}
+
+.project-overview-filter__menu {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-popover);
+}
+
+.project-overview-filter-menu-fade-enter-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-enter);
+}
+
+.project-overview-filter-menu-fade-leave-active {
+  transform-origin: top left;
+  transition: var(--popup-transition-leave);
+}
+
+.project-overview-filter-menu-fade-enter-from {
+  opacity: 0;
+  transform: var(--popup-enter-down);
+}
+
+.project-overview-filter-menu-fade-leave-to {
+  opacity: 0;
+  transform: var(--popup-leave);
+}
+
+.project-overview-filter__menu .project-overview-filter__options {
+  min-width: 180px;
+  max-width: 320px;
+}
+
+/* 列设置 */
+.project-overview-columns {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.project-overview-columns__panel {
+  top: calc(100% + 4px);
+  right: 0;
+  width: 236px;
+  padding: var(--space-1-5);
+  box-shadow: var(--shadow-floating-panel);
+  color: var(--color-text-secondary);
+}
+
+.project-overview-columns__label {
+  padding: var(--space-1-5) var(--space-2) var(--space-1);
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-tertiary);
+}
+
+.project-overview-columns__item,
+.project-overview-columns__reset {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--space-2) 0 var(--space-0-5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-overview-columns__item:hover,
+.project-overview-columns__reset:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.project-overview-columns__item.is-hidden {
+  color: var(--color-text-tertiary);
+}
+
+.project-overview-columns__item.is-dragging {
+  opacity: 0.5;
+}
+
+.project-overview-columns__item.is-drop-target {
+  box-shadow: inset 0 2px 0 var(--color-accent);
+}
+
+.project-overview-columns__drag {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-right: var(--space-1);
+  color: var(--color-text-tertiary);
+  cursor: grab;
+}
+
+.project-overview-columns__item.is-hidden .project-overview-columns__drag {
+  visibility: hidden;
+}
+
+.project-overview-columns__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-overview-columns__check {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-primary);
+}
+
+.project-overview-columns__divider {
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  background-color: var(--color-border-light);
+}
+
+.project-overview-columns__reset {
+  padding-left: var(--space-2);
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-tertiary);
+}
+
+/* 表格 */
+/* 滚动条走共享的 OverlayScrollbars linnya 主题；列总宽超过可视区时才出现水平滚动。 */
+.project-overview__scroll-host {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.project-overview__scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.project-overview__table {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: calc(var(--project-overview-table-min-width) + 2 * var(--project-overview-gutter) + 2 * var(--space-2));
+  max-width: calc(var(--project-overview-content-width) + 2 * var(--project-overview-gutter));
+  margin: 0 auto;
+  padding: var(--space-3) var(--project-overview-gutter) var(--space-8);
+}
+
+.project-overview__header,
+.project-overview__row {
+  display: grid;
+  grid-template-columns: var(--project-overview-columns);
+  column-gap: var(--project-overview-column-gap);
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0 var(--space-2);
+}
+
+.project-overview__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 32px;
+  border-bottom: 1px solid var(--color-border-light);
+  background-color: var(--color-bg-default);
+}
+
+.project-overview__header-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+}
+
+.project-overview__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0-5);
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.project-overview__sort span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-overview__sort:hover,
+.project-overview__sort.is-sorted {
+  color: var(--color-text-secondary);
+}
+
+.project-overview__sort-icon {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+}
+
+/* 列宽手柄落在两列之间的空隙里，悬停时显示一条细线。 */
+.project-overview__resize {
+  position: absolute;
+  top: 6px;
+  right: calc(var(--project-overview-column-gap) / -2 - 4px);
+  bottom: 6px;
+  z-index: 1;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.project-overview__resize::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3.5px;
+  width: 1px;
+  background-color: transparent;
+  content: '';
+}
+
+.project-overview__resize:hover::after,
+.project-overview__resize:active::after {
+  background-color: var(--color-border-default);
+}
+
+body.project-overview-is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.project-overview__body {
+  position: relative;
+}
+
+.project-overview__row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--project-overview-row-height);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+  cursor: default;
+}
+
+.project-overview__row:hover {
+  background-color: color-mix(in srgb, var(--color-bg-hover) 55%, transparent);
+}
+
+.project-overview__row.is-selected {
+  background-color: var(--color-bg-active-subtle);
+}
+
+.project-overview__row:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.project-overview__cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.project-overview__cell > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-overview__cell--name {
+  font-size: var(--font-size-prose);
+  color: var(--color-text-primary);
+}
+
+.project-overview__type-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-right: var(--space-2);
+  color: var(--color-text-tertiary);
+}
+
+/* 文件名是打开文件的链接：悬停出下划线和手形光标。 */
+.project-overview__name {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.project-overview__name:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-hover);
+  text-underline-offset: 3px;
+}
+
+.project-overview__cell--location,
+.project-overview__cell--type,
+.project-overview__cell--created {
+  color: var(--color-text-tertiary);
+}
+
+.project-overview__conversation {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-overview__conversation-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-overview__conversation-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+}
+
+.project-overview__row:hover .project-overview__conversation {
+  color: var(--color-text-primary);
+}
+
+.project-overview__conversation:hover .project-overview__conversation-text {
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-hover);
+  text-underline-offset: 3px;
+}
+
+.project-overview__row:hover .project-overview__conversation-icon,
+.project-overview__conversation:focus-visible .project-overview__conversation-icon {
+  opacity: 1;
+}
+
+.project-overview__actor {
+  flex-shrink: 0;
+  margin-right: var(--space-1-5);
+  color: var(--color-text-tertiary);
+}
+
+.project-overview__pending {
+  color: var(--color-accent-text);
+}
+
+/* 加载、空表、没有匹配 */
+.project-overview__state {
+  padding: var(--space-4) var(--space-2);
+}
+
+.project-overview__state--text {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding-top: var(--space-6);
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+}
+
+.project-overview__clear-all {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.project-overview__clear-all:hover {
+  color: var(--color-text-primary);
+}

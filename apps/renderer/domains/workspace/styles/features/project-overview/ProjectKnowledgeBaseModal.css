@@ -1,0 +1,42 @@
+.project-knowledge-base-modal-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--space-3) var(--space-8) var(--space-6);
+}
+
+/*
+ * 弹窗选择 internal 模式：关联列表各自滚动，保存区由业务面板固定。
+ * 这些约束只作用于当前嵌入场景，不改变 ProjectKbSettingsPanel 在其它页面的自适应高度。
+ */
+.project-knowledge-base-modal-body .kb-settings-embedded {
+  flex: 1;
+  min-height: 0;
+}
+
+.project-knowledge-base-modal-body .kb-settings-embedded .project-kb-header,
+.project-knowledge-base-modal-body .kb-settings-embedded .project-kb-footer {
+  flex-shrink: 0;
+}
+
+.project-knowledge-base-modal-body .kb-settings-embedded .project-kb-body,
+.project-knowledge-base-modal-body .kb-settings-embedded .columns,
+.project-knowledge-base-modal-body .kb-settings-embedded .column-wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.project-knowledge-base-modal-body .kb-settings-embedded .columns {
+  align-items: stretch;
+}
+
+.project-knowledge-base-modal-body .kb-settings-embedded .column-wrapper {
+  flex-direction: column;
+}
+
+.project-knowledge-base-modal-body .kb-settings-embedded .column {
+  min-height: 0;
+  max-height: none;
+}

@@ -157,6 +157,7 @@ describe('Subrun progress virtual row integration', () => {
       openEmptyProjectFiles: async () => undefined,
       openKnowledgeBase: async () => undefined,
       openPluginStore: async () => undefined,
+      openProjectOverview: async () => undefined,
       openDocumentTarget: async () => undefined,
       openConversation: async () => undefined,
       openDocument: async () => undefined,

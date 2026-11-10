@@ -8,6 +8,7 @@ import {
   type ActionLedgerChangeList,
   type ActionLedgerChangeQuery,
   type ActionLedgerDocumentChange,
+  type ActionLedgerDocumentSummary,
   type ActionLedgerEntryInput,
   type ActionLedgerGranularity,
   type ActionLedgerRecorder,
@@ -23,6 +24,22 @@ export interface SqliteActionLedger {
   /** 为一个入口绑定执行者；返回的端口不接受身份字段。 */
   recorderFor(actor: ActionActor, granularity: ActionLedgerGranularity): ActionLedgerRecorder;
   listDocumentChanges(query: ActionLedgerChangeQuery): ActionLedgerChangeList;
+  /**
+   * 当前项目里每份有账的文档各一项：最早一条若是新建则给出新建者，另给最近一条。
+   * 给了 `documentIds` 时只看这些文档。没有上限：每份文档一项，规模随项目文档数。
+   */
+  summarizeProjectDocuments(projectId: string, documentIds?: readonly string[]): ActionLedgerDocumentSummary[];
+}
+
+interface SummaryRow {
+  readonly document_id: string;
+  readonly first_action: string;
+  readonly first_actor_kind: string;
+  readonly first_plugin_id: string | null;
+  readonly first_conversation_id: string | null;
+  readonly last_actor_kind: string;
+  readonly last_plugin_id: string | null;
+  readonly last_recorded_at: number;
 }
 
 interface ChangeRow {
@@ -142,6 +159,51 @@ export function createSqliteActionLedger(
         changes: rows.slice(0, query.limit).map(toDocumentChange),
         truncated: rows.length > query.limit,
       };
+    },
+
+    summarizeProjectDocuments(projectId, documentIds) {
+      const documentFilter = documentIds === undefined
+        ? ''
+        : 'AND node.id IN (SELECT value FROM json_each(?))';
+      const args: string[] = documentIds === undefined ? [projectId] : [projectId, JSON.stringify(documentIds)];
+      // 同一毫秒内的多条按自增 id 定先后；插件、对话身份只在改动发生在当前项目时可见。
+      const rows = db.prepare<string[], SummaryRow>(`
+        WITH ranked AS (
+          SELECT entry.document_id, entry.action, entry.actor_kind, entry.recorded_at,
+            CASE WHEN entry.project_id = node.project_id THEN entry.actor_plugin_id END AS plugin_id,
+            CASE WHEN entry.project_id = node.project_id THEN entry.conversation_id END AS conversation_id,
+            ROW_NUMBER() OVER (PARTITION BY entry.document_id ORDER BY entry.recorded_at, entry.id) AS first_rank,
+            ROW_NUMBER() OVER (PARTITION BY entry.document_id ORDER BY entry.recorded_at DESC, entry.id DESC) AS last_rank
+          FROM workspace_nodes node JOIN action_ledger_entries entry ON entry.document_id = node.id
+          WHERE node.project_id = ? AND node.deleted_at IS NULL ${documentFilter}
+        )
+        SELECT first.document_id,
+          first.action AS first_action, first.actor_kind AS first_actor_kind,
+          first.plugin_id AS first_plugin_id, first.conversation_id AS first_conversation_id,
+          last.actor_kind AS last_actor_kind, last.plugin_id AS last_plugin_id, last.recorded_at AS last_recorded_at
+        FROM ranked first JOIN ranked last ON last.document_id = first.document_id AND last.last_rank = 1
+        WHERE first.first_rank = 1
+      `).all(...args);
+      return rows.map(toDocumentSummary);
+    },
+  };
+}
+
+function toDocumentSummary(row: SummaryRow): ActionLedgerDocumentSummary {
+  const created = assertOneOf(row.first_action, ACTIONS, 'action') === 'create';
+  return {
+    documentId: row.document_id,
+    creator: created
+      ? {
+          actorKind: assertOneOf(row.first_actor_kind, ACTOR_KINDS, 'actor_kind'),
+          pluginId: row.first_plugin_id,
+          conversationId: row.first_conversation_id,
+        }
+      : null,
+    last: {
+      actorKind: assertOneOf(row.last_actor_kind, ACTOR_KINDS, 'actor_kind'),
+      pluginId: row.last_plugin_id,
+      recordedAt: row.last_recorded_at,
     },
   };
 }

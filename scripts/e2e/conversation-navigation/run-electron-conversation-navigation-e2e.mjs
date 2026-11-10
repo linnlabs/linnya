@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import { startIsolatedRenderer } from '../../development/features/desktop-probe/infrastructure/rendererProcess.mjs';
+import { connectCdp, evaluate, findPage, waitFor } from '../../development/features/desktop-probe/infrastructure/cdpClient.mjs';
+import { readDesktopCdpPort, readDesktopReady } from '../../development/features/desktop-probe/functions/desktopLaunchMarkers.mjs';
+import { runProjectOverviewScenario } from './project-overview-scenario.mjs';
 import { seedBottomReturnHistory, runBottomReturnScenario } from './bottom-return-scenario.mjs';
 import { runHistoryLoadFailureScenario } from './history-load-failure-scenario.mjs';
 import { runSidebarResizeScenario } from './sidebar-resize-scenario.mjs';
@@ -7,8 +11,6 @@ import { runProjectDeletionScenario } from './project-deletion-scenario.mjs';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import http from 'node:http';
-import net from 'node:net';
 import os from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
@@ -19,11 +21,8 @@ import {
 import {
   runProjectionSettlementReplay,
 } from './projection-settlement-scenario.mjs';
-import {
-  isSameMacosProcessInstanceAlive,
-  readMacosDescendantInstances,
-  readMacosLaunchServicesApplicationRecords,
-} from '../shell-tool/harness/macosElectronProcessObservation.mjs';
+import { readMacosLaunchServicesApplicationRecords } from '../shell-tool/harness/macosElectronProcessObservation.mjs';
+import { readDescendantIdentities, waitForObservedExit } from '../../development/features/desktop-probe/infrastructure/processTree.mjs';
 
 const require = createRequire(import.meta.url);
 const Database = require('better-sqlite3');
@@ -55,37 +54,6 @@ const subrunPreviewBytes = Buffer.from(
 );
 
 const wait = (ms) => new Promise(resolveWait => setTimeout(resolveWait, ms));
-
-function canListenOnPort(port, host = '127.0.0.1') {
-  return new Promise((resolveCheck) => {
-    const server = net.createServer();
-    server.once('error', () => resolveCheck(false));
-    server.once('listening', () => server.close(() => resolveCheck(true)));
-    server.listen(port, host);
-  });
-}
-
-async function findAvailablePort(candidates) {
-  for (const port of candidates) {
-    if (await canListenOnPort(port)) return port;
-  }
-  throw new Error(`没有可用端口: ${candidates.join(', ')}`);
-}
-
-async function findAvailableViteEndpoint() {
-  for (const port of [5173, 5174]) {
-    if (await canListenOnPort(port)) {
-      return { listenHost: '127.0.0.1', urlHost: '127.0.0.1', port };
-    }
-  }
-  for (const port of [5173, 5174]) {
-    if (await canListenOnPort(port, '::1')) {
-      // CORS 的正式开发合同允许 localhost:5173/5174；这里只切换 loopback 地址族。
-      return { listenHost: '::1', urlHost: 'localhost', port };
-    }
-  }
-  throw new Error('没有可用的 Vite loopback endpoint: 5173, 5174');
-}
 
 function spawnLogged(command, args, options) {
   const child = spawn(command, args, {
@@ -138,7 +106,7 @@ async function stopProcessTree(child, gracefulSignal) {
 
 async function observeMacosAppServerIdentity(electronRootPid) {
   if (process.platform !== 'darwin') return null;
-  const descendants = await readMacosDescendantInstances(electronRootPid);
+  const descendants = readDescendantIdentities(electronRootPid);
   const appServer = descendants.find(instance => (
     instance.command.includes('app-server-entry.cjs')
   ));
@@ -160,117 +128,6 @@ async function observeMacosAppServerIdentity(electronRootPid) {
     '固定 headless Node App Server 不得注册 LaunchServices App identity',
   );
   return Object.freeze({ appServer, descendants });
-}
-
-async function waitForObservedDescendantsExit(instances, timeoutMs = 5_000) {
-  const deadline = Date.now() + timeoutMs;
-  let survivors = instances;
-  do {
-    survivors = [];
-    for (const instance of instances) {
-      if (await isSameMacosProcessInstanceAlive(instance)) survivors.push(instance);
-    }
-    if (survivors.length === 0) return survivors;
-    await wait(50);
-  } while (Date.now() < deadline);
-  return survivors;
-}
-
-function getHttpJson(port, path) {
-  return new Promise((resolveJson, rejectJson) => {
-    const request = http.get({ host: '127.0.0.1', port, path }, (response) => {
-      let body = '';
-      response.on('data', chunk => { body += chunk; });
-      response.on('end', () => {
-        try {
-          resolveJson(JSON.parse(body));
-        } catch (error) {
-          rejectJson(error);
-        }
-      });
-    });
-    request.once('error', rejectJson);
-    request.setTimeout(2000, () => request.destroy(new Error(`${path} 请求超时`)));
-  });
-}
-
-async function waitFor(check, description, timeoutMs = 45_000) {
-  const deadline = Date.now() + timeoutMs;
-  let lastError;
-  while (Date.now() < deadline) {
-    try {
-      const value = await check();
-      if (value) return value;
-    } catch (error) {
-      lastError = error;
-    }
-    await wait(100);
-  }
-  throw new Error(`等待${description}超时${lastError ? `: ${lastError.message}` : ''}`);
-}
-
-async function connectCdp(webSocketUrl) {
-  const socket = new globalThis.WebSocket(webSocketUrl);
-  const pending = new Map();
-  const eventListeners = new Set();
-  let nextMessageId = 1;
-
-  await new Promise((resolveOpen, rejectOpen) => {
-    const timer = setTimeout(() => rejectOpen(new Error('CDP 连接超时')), 5000);
-    socket.addEventListener('open', () => {
-      clearTimeout(timer);
-      resolveOpen();
-    });
-    socket.addEventListener('error', rejectOpen);
-  });
-
-  socket.addEventListener('message', (event) => {
-    const message = JSON.parse(event.data);
-    if (!message.id) {
-      for (const listener of eventListeners) listener(message);
-      return;
-    }
-    const call = pending.get(message.id);
-    if (!call) return;
-    pending.delete(message.id);
-    clearTimeout(call.timer);
-    if (message.error) call.reject(new Error(JSON.stringify(message.error)));
-    else call.resolve(message.result);
-  });
-
-  return {
-    send(method, params = {}, timeoutMs = 10_000) {
-      const id = nextMessageId;
-      nextMessageId += 1;
-      socket.send(JSON.stringify({ id, method, params }));
-      return new Promise((resolveSend, rejectSend) => {
-        const timer = setTimeout(() => {
-          pending.delete(id);
-          rejectSend(new Error(`${method} 超时`));
-        }, timeoutMs);
-        pending.set(id, { resolve: resolveSend, reject: rejectSend, timer });
-      });
-    },
-    onEvent(listener) {
-      eventListeners.add(listener);
-      return () => eventListeners.delete(listener);
-    },
-    close() {
-      socket.close();
-    },
-  };
-}
-
-async function evaluate(cdp, expression) {
-  const response = await cdp.send('Runtime.evaluate', {
-    expression,
-    awaitPromise: true,
-    returnByValue: true,
-  });
-  if (response.exceptionDetails) {
-    throw new Error(response.exceptionDetails.exception?.description ?? response.exceptionDetails.text);
-  }
-  return response.result?.value;
 }
 
 function openNodeDatabase(options = {}) {
@@ -1389,19 +1246,17 @@ async function run() {
   mkdirSync(pluginRoot, { recursive: true });
   await restoreSourceDatabaseSnapshot();
 
-  const viteEndpoint = await findAvailableViteEndpoint();
-  const debugPort = await findAvailablePort(Array.from({ length: 50 }, (_, index) => 9323 + index));
-  const apiPort = await findAvailablePort(Array.from({ length: 100 }, (_, index) => 34000 + index));
-  const viteUrl = `http://${viteEndpoint.urlHost}:${viteEndpoint.port}`;
-  const viteProcess = spawnLogged('pnpm', [
-    'exec', 'vite', '--host', viteEndpoint.listenHost,
-    '--port', String(viteEndpoint.port), '--strictPort',
-  ], { label: 'vite', env: {} });
+  const renderer = await startIsolatedRenderer({ cacheDir: join(tempRoot, 'vite-cache') });
+  const viteUrl = renderer.url;
   let electronOutputTail = '';
   let duplicateDiagnosticLogOwnerFailure = false;
   let observedProcessTree = null;
-  const electronProcess = spawnLogged('./node_modules/.bin/electron', [
-    `--remote-debugging-port=${debugPort}`,
+  let debugPort;
+  let desktopReady;
+  const electronProcess = spawnLogged(require('electron'), [
+    '--remote-debugging-port=0',
+    '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
     `--user-data-dir=${userDataRoot}`,
     'dist/main/main.cjs',
   ], {
@@ -1410,15 +1265,19 @@ async function run() {
       NODE_ENV: 'development',
       LINNYA_DEV_MODE: 'false',
       LINNYA_DISABLE_UPDATE_CHECKS: '1',
-      LINNYA_API_PORT: String(apiPort),
+      LINNYA_API_PORT: '',
+      LINNYA_CLI_CONNECTION_FILE: join(tempRoot, 'runtime', 'conversation-control-v1.json'),
       LINNYA_WORKSPACE_DIR: workspaceRoot,
       LINNYA_PLUGIN_ROOT: pluginRoot,
       LINNYA_BUNDLED_PLUGIN_ROOT: join(repoRoot, 'extraResources/plugins'),
       VITE_DEV_SERVER_URL: viteUrl,
-      APP_VERSION: '0.0.0-e2e',
+      APP_VERSION: require(join(repoRoot, 'package.json')).version,
     },
     observeOutput(chunk) {
-      electronOutputTail = `${electronOutputTail}${chunk}`.slice(-2048);
+      const output = `${electronOutputTail}${chunk}`;
+      debugPort ??= readDesktopCdpPort(output);
+      desktopReady ??= readDesktopReady(output);
+      electronOutputTail = output.slice(-2048);
       duplicateDiagnosticLogOwnerFailure ||= (
         electronOutputTail.includes('Failed to enable file logging')
         || electronOutputTail.includes('活动日志 writer 已启动，不能在同一生命周期切换文件路径')
@@ -1429,14 +1288,14 @@ async function run() {
   const cleanup = async () => {
     await Promise.all([
       stopProcessTree(electronProcess, 'SIGINT'),
-      stopProcessTree(viteProcess, 'SIGTERM'),
+      renderer.close(),
     ]);
   };
 
   try {
-    await waitFor(() => getHttpJson(debugPort, '/json/version'), 'Electron CDP');
+    await waitFor(() => debugPort, 'Electron CDP');
     // 数据只能在完整 migration 与 route admission 之后写入；仅看到表已创建并不代表 schema bootstrap 已结束。
-    await waitFor(() => getHttpJson(apiPort, '/health'), '隔离后端完成启动');
+    await waitFor(() => desktopReady, '隔离后端完成启动');
     observedProcessTree = await observeMacosAppServerIdentity(electronProcess.pid);
     if (duplicateDiagnosticLogOwnerFailure) {
       throw new Error('Electron Main 与 App Server 竞争诊断日志 writer');
@@ -1450,10 +1309,7 @@ async function run() {
           .includes('[App-Server-Backend] Initializing App Server Backend...'));
     }, 'App Server 日志进入 App 唯一文件 writer');
     await waitFor(() => existsSync(databasePath), '隔离 workspace.sqlite');
-    const page = await waitFor(async () => {
-      const targets = await getHttpJson(debugPort, '/json/list');
-      return targets.find(target => target.type === 'page' && target.webSocketDebuggerUrl);
-    }, 'Electron 页面');
+    const page = await waitFor(() => findPage(debugPort, viteUrl), 'Electron 页面');
     const projectId = await waitFor(() => {
       const db = openNodeDatabase({ readonly: true });
       try {
@@ -1537,6 +1393,16 @@ async function run() {
       () => evaluate(cdp, `document.querySelectorAll('.chat-list-item').length >= 2`),
       '两条历史会话进入侧栏',
     );
+
+    if (scenario === 'project-overview') {
+      if (sourceDatabasePath) throw new Error('项目概览门禁只使用隔离测试数据');
+      await runProjectOverviewScenario({ cdp, evaluate, waitFor, projectId, openNodeDatabase });
+      await assertRendererHealthy(cdp, rendererErrors, '项目概览');
+      await evaluate(cdp, "window.electronAPI.windowAction('close')");
+      cdp.close();
+      assert.equal(await waitForProcessExit(electronProcess, 10_000), true, '项目概览场景未正常退出');
+      return;
+    }
 
     if (scenario === 'sidebar-resize') {
       await runSidebarResizeScenario({ cdp, evaluate, clickConversation });
@@ -1841,7 +1707,7 @@ async function run() {
       if (observedProcessTree) {
         // Main 退出与 owner watchdog 确认整树为空是两个异步终态；必须有界等待，
         // 但超时后仍按启动时身份精确报告泄漏，不用 PID 瞬时复用做判断。
-        const survivingDescendants = await waitForObservedDescendantsExit(
+        const survivingDescendants = await waitForObservedExit(
           observedProcessTree.descendants,
         );
         assert.deepEqual(
