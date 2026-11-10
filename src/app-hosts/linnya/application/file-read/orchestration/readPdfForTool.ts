@@ -120,13 +120,19 @@ function requirePageInRange(pageNumber: number, pageCount: number): void {
 const formatSpan = (from: number, to: number) => (from === to ? String(from) : `${from}-${to}`);
 const call = (args: Record<string, string>) => `read_file(${JSON.stringify(args)})`;
 
-function describeLayout(pages: readonly PdfPageText[], locator: string): string[] {
+/**
+ * 无文字层页的去向与读图同一规则：当前模型接收工具结果图片时建议 page_image；不接收时（ToolNode
+ * 绑定 admitted=false）明确告知读不到，不指向它看不到的图片，也不调用另配的视觉解析模型。
+ */
+function describeLayout(pages: readonly PdfPageText[], input: PdfReadInput): string[] {
+  const locator = input.source.locator;
   const noText = pages.filter(page => page.layout === 'no_text').map(page => page.pageNumber);
   const complex = pages.filter(page => page.layout === 'complex').map(page => page.pageNumber);
+  const noTextHint = input.imageDelivery === 'attach'
+    ? `They are scans or images; ${call({ locator, view: 'page_image', pages: String(noText[0]) })} attaches one page as an image.`
+    : 'They are scans or images, and the current model connection does not receive images, so their content cannot be read here. Do not guess what they say; state that these pages were not checked.';
   return [
-    ...(noText.length
-      ? [`Pages without a text layer: ${noText.join(', ')}. They are scans or images; ${call({ locator, view: 'page_image', pages: String(noText[0]) })} shows one page to a model that can see images.`]
-      : []),
+    ...(noText.length ? [`Pages without a text layer: ${noText.join(', ')}. ${noTextHint}`] : []),
     ...(complex.length ? [`Pages with irregular layout (reading order may be off): ${complex.join(', ')}.`] : []),
   ];
 }
@@ -182,7 +188,7 @@ async function readPages(input: PdfReadInput, session: PdfSession, pagesArg: str
     `PDF ${locator}: ${session.pageCount} pages; returned pages ${formatSpan(from, to)}. Text comes from the PDF text layer; no OCR was run.`,
     ...(requested && requested.to > session.pageCount ? [`Requested pages beyond ${session.pageCount} do not exist.`] : []),
     ...(stoppedEarly ? [`Stopped after page ${to} to keep this result within the output limit; continue with the next pages call below.`] : []),
-    ...describeLayout(pages, locator),
+    ...describeLayout(pages, input),
     '',
     body.join('\n\n'),
     ...(nextPages ? ['', `[read_file: next pages: ${call({ locator, pages: nextPages })}]`] : []),
@@ -225,7 +231,7 @@ async function findPages(input: PdfReadInput, session: PdfSession, query: string
   const truncated = contexts.length < hitCount;
   const observation = [
     `PDF ${locator}: ${session.pageCount} pages. Searched pages ${formatSpan(from, to)} for ${JSON.stringify(query)}, ignoring full/half width, case and whitespace: ${hitCount} ${hitCount === 1 ? 'match' : 'matches'}${hitPages.length ? ` on pages ${hitPages.join(', ')}` : ''}.`,
-    ...describeLayout(pages, locator).map(line => (line.startsWith('Pages without') ? `${line} Text on those pages was not searched.` : line)),
+    ...describeLayout(pages, input).map(line => (line.startsWith('Pages without') ? `${line} Text on those pages was not searched.` : line)),
     ...(contexts.length ? ['', ...contexts] : []),
     ...(truncated ? ['', `Only the first ${contexts.length} matches are shown.`] : []),
     ...(hitPages.length ? ['', `Read a whole page with ${call({ locator, pages: String(hitPages[0]) })}.`] : []),

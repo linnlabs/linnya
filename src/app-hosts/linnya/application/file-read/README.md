@@ -34,8 +34,12 @@ Workspace VFS、conversation 工作目录、Assets 和工具运行时之间的 a
 - `view:"page_image"` + 单页 `pages`：把该页渲染为 1536px 长边 JPEG，经 `ingestImageBytes` 内容寻址登记后
   走与普通图片相同的 claim、`already_attached` 和 `not_delivered` 规则。selection id 由 locator 与页码派生。
 
-没有文字层的页列入 `pages_without_text`，版面无法用几何方式稳定排序的页列入 `complex_layout_pages`，
-observation 都建议对这些页用 `page_image` 看图。文字层原样返回，不承诺表格结构。PDF 参数与
+没有文字层的页列入 `pages_without_text`，版面无法用几何方式稳定排序的页列入 `complex_layout_pages`。
+能否看图沿用读图片的同一判断：物理文件的每次 `read_file`（含 PDF 的 `pages`/`find`）都声明工具结果图片要求，
+ToolNode 按当前 Agent 模型在模型目录中的 `input_support` 绑定 `modelInputAdmission`。模型接收图片时，
+observation 建议对无文字层页用 `page_image`；不接收时明确说明这些页读不到、不得猜测内容，`page_image`
+本身也只返回尺寸（`not_delivered`）。这里不调用知识库另配的 PDF OCR 或图片理解模型，用户没有配置它们
+也不影响读取。因此 CLI `tools call`（没有模型）与读图片一样不能读取物理文件中的 PDF。文字层原样返回，不承诺表格结构。PDF 参数与
 `offset/limit` 互斥（`READ_FILE_PDF_WINDOW_CONFLICT`），用在非 PDF 上返回 `READ_FILE_PDF_OPTION_UNSUPPORTED`，
 PDF.js 打不开返回 `READ_FILE_PDF_UNREADABLE`；这些检查在任何副作用之前完成。
 

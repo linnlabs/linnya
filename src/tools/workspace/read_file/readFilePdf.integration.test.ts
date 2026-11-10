@@ -135,14 +135,21 @@ describe('read_file 读取 PDF', () => {
     expect(notDelivered.ingestImageBytes).not.toHaveBeenCalled();
   });
 
-  it('PDF 文字读取不要求模型看图，page_image 与不带 PDF 参数的物理文件仍要求', () => {
+  it('物理文件的 PDF 读取都声明图片要求，让 ToolNode 绑定当前模型能否看图', () => {
     const tool = new ReadFileTool();
     const locator = 'file:///tmp/report.pdf';
-    expect(tool.resolveModelInputRequirement({ locator, pages: '3' })).toBeUndefined();
-    expect(tool.resolveModelInputRequirement({ locator, find: 'tariff' })).toBeUndefined();
-    expect(tool.resolveModelInputRequirement({ locator, view: 'page_image', pages: '3' }))
-      .toMatchObject({ requires_image_input: true });
-    expect(tool.resolveModelInputRequirement({ locator })).toMatchObject({ requires_image_input: true });
+    for (const args of [{ locator }, { locator, pages: '3' }, { locator, find: 'tariff' }, { locator, view: 'page_image', pages: '3' }]) {
+      expect(tool.resolveModelInputRequirement(args)).toMatchObject({ requires_image_input: true });
+    }
+  });
+
+  it('当前模型不收图时，无文字层页说明读不到，不建议 page_image', async () => {
+    const locator = await writePdf([['Cover'], null, ['Appendix']]);
+    const { result } = await read({ locator, pages: '1-3' }, { imageAdmitted: false });
+    expect(result.data).toMatchObject({ pages_without_text: [2] });
+    expect(result.observation).toContain('does not receive images');
+    expect(result.observation).toContain('state that these pages were not checked');
+    expect(result.observation).not.toContain('page_image');
   });
 
   it('错误以稳定错误码返回：越界页、行窗口、非 PDF 用 PDF 参数、损坏文件', async () => {
