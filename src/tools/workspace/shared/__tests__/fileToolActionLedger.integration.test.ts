@@ -6,7 +6,7 @@ import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 import { createProjectLifecycle } from 'src/domains/projects';
 import { attachCitationSourceResolver } from 'src/domains/citation';
-import { createSqliteActionLedger } from 'src/domains/action-ledger';
+import { createSqliteActionLedger, withActionActor } from 'src/domains/action-ledger';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import {
@@ -147,6 +147,34 @@ describe('文件工具的 Host 粗账', () => {
     } finally {
       await syncBackendPluginRuntimeEffects([]);
     }
+  });
+
+  it('外部控制桥接纳的原始 Host 工具调用记为 external 并带运行身份；同入口的模型调用和界面的 Host 调用仍记为运行', async () => {
+    const write = new WriteFileTool();
+    const hostCall = (callId: string, runId: string): ToolContext => ({
+      ...contextFor({ runId, callId }),
+      authorizedHostToolCall: { toolName: 'write_file', toolCallId: ToolCallIdSchema.parse(callId) },
+    });
+    // CLI tools call：桥入口 + 那次原始 Host 调用。
+    await withActionActor({ kind: 'external' }, () =>
+      write.run({ locator: 'workspace:/cli.md', content: '# CLI' }, hostCall('h1', 'run-cli')));
+    // CLI send：桥入口，但写入来自模型自己的调用，不是原始 Host 调用。
+    await withActionActor({ kind: 'external' }, () =>
+      write.run({ locator: 'workspace:/send.md', content: '# Send' }, contextFor({ runId: 'run-send', callId: 'm1' })));
+    // 界面的 Host 调用（表格填充等）：入口身份是用户。
+    await withActionActor({ kind: 'user' }, () =>
+      write.run({ locator: 'workspace:/ui.md', content: '# UI' }, hostCall('h2', 'run-ui')));
+
+    expect(changes('run-cli').changes).toEqual([
+      expect.objectContaining({
+        actorKind: 'external', runId: 'run-cli', rootRunId: 'run-cli', conversationId: 'conv-ledger', actions: ['create'],
+      }),
+    ]);
+    expect(changes('run-send').changes.map(change => change.actorKind)).toEqual(['run']);
+    expect(changes('run-ui').changes.map(change => change.actorKind)).toEqual(['run']);
+    const toolCall = database.getDb()
+      .prepare("SELECT tool_call_id FROM action_ledger_entries WHERE actor_kind = 'external'").pluck().get();
+    expect(toolCall).toBe('h1');
   });
 
   it('没有运行编号的上下文照常写入但不入账；不同运行分开查询', async () => {
