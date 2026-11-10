@@ -76,6 +76,9 @@ export interface ProjectOverviewRow {
   readonly pendingRevisionCount: number | null;
 }
 
+/** 打开一份文档需要的身份；文件页的行和对话详情里改过的文档都给出这些。 */
+export type ProjectOverviewDocumentTarget = Pick<ProjectOverviewRow, 'documentId' | 'nodeType' | 'title' | 'parentId'>;
+
 /** 文档类型的显示方式由页面从插件注册表查好传进来，领域视图不直接依赖注册表。 */
 export interface ProjectOverviewDocumentTypePresentation {
   readonly label: string;
@@ -87,6 +90,8 @@ export interface ProjectOverviewPresentation {
   readonly documentType: (nodeType: string) => ProjectOverviewDocumentTypePresentation;
   /** 插件显示名；插件已卸载等查不到时为 null。 */
   readonly pluginName: (pluginId: string) => string | null;
+  /** Agent 显示名；null 是默认 Agent。查不到时由调用方显示 ID。 */
+  readonly agentName: (agentId: string | null) => string | null;
 }
 
 /** 工作区变更触发的读取范围。 */

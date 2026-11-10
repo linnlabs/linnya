@@ -70,6 +70,8 @@ export interface ActionLedgerChangeQuery {
   readonly projectId: string;
   /** 根运行：包含它的全部子运行。 */
   readonly rootRunId?: string;
+  /** 对话：这个对话里全部运行的改动；只匹配发生在当前项目的记录。 */
+  readonly conversationId?: string;
   /** 毫秒时间戳，含起点。 */
   readonly since?: number;
   /** 毫秒时间戳，不含终点。 */

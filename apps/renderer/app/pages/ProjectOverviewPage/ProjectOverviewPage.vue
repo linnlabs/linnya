@@ -1,8 +1,8 @@
 <!--
   apps/renderer/app/pages/ProjectOverviewPage/ProjectOverviewPage.vue
 
-  项目概览页面：装配 workspace 领域的项目概览视图，并把打开文件、对话和知识库设置
-  接到 app 层导航。
+  项目概览页面：装配 workspace 领域的项目概览视图，并把打开文件、对话、知识库设置
+  和对话的写操作（置顶、改名、删除）接到 app 层导航与对话领域。
 -->
 <template>
   <ProjectOverviewView
@@ -10,6 +10,9 @@
     :project-name="projectName"
     :knowledge-base-count="knowledgeBaseCount"
     :presentation="presentation"
+    :conversation-actions="conversationActions"
+    :running-conversation-ids="runningConversationIds"
+    :conversation-history-key="conversationHistoryKey"
     @open-document="handleOpenDocument"
     @open-conversation="handleOpenConversation"
     @open-knowledge-base="handleOpenKnowledgeBase"
@@ -17,22 +20,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, toRef, watch } from 'vue';
 import { useLocalization } from '@app/localization';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
-import { useDocumentTypes } from '@/app/plugins/composables';
+import { useConversationAgentChoices, useDocumentTypes } from '@/app/plugins/composables';
 import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
-import { resolveDocumentTypeTextPresentation } from '@/app/plugins/functions/pluginContributionPresentation';
+import {
+  resolveConversationAgentChoiceTextPresentation,
+  resolveDocumentTypeTextPresentation,
+} from '@/app/plugins/functions/pluginContributionPresentation';
 import ProjectOverviewView from '@/domains/workspace/features/project-overview/ui/ProjectOverviewView.vue';
 import { useProjectKnowledgeBaseModalStore } from '@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store';
+import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
+import { useProjectOverviewConversations } from './orchestration/useProjectOverviewConversations';
 import { useProjectOverviewDocumentNavigation } from './orchestration/useProjectOverviewDocumentNavigation';
 import type {
+  ProjectOverviewDocumentTarget,
   ProjectOverviewDocumentTypePresentation,
   ProjectOverviewPresentation,
-  ProjectOverviewRow,
 } from '@/domains/workspace/features/project-overview/definitions/projectOverview';
 
 const props = defineProps<{
@@ -44,8 +52,15 @@ const knowledgeBaseModalStore = useProjectKnowledgeBaseModalStore();
 const navigation = getWorkspaceNavigationPort();
 const openDocument = useProjectOverviewDocumentNavigation();
 const documentTypes = useDocumentTypes();
+const agentChoices = useConversationAgentChoices();
+const {
+  actions: conversationActions,
+  runningConversationIds,
+  conversationHistoryKey,
+} = useProjectOverviewConversations(toRef(props, 'projectId'));
 const pluginsStore = useEnabledPluginsStore();
 const { t } = useLocalization();
+const { workspaceMessage } = useWorkspaceLocalization();
 
 // 文档类型和插件名从插件注册表查；注册表变化（插件启停）时整体重算。
 const presentation = computed<ProjectOverviewPresentation>(() => {
@@ -57,9 +72,17 @@ const presentation = computed<ProjectOverviewPresentation>(() => {
     }]),
   );
   const pluginNames = new Map(pluginsStore.states.map(state => [state.meta.id, state.meta.name]));
+  const agentNames = new Map<string, string>(agentChoices.value.map(choice => [
+    choice.agentId,
+    resolveConversationAgentChoiceTextPresentation(choice, t).pillText,
+  ]));
   return {
     documentType: nodeType => byNodeType.get(nodeType) ?? { label: nodeType, iconComponent: DocumentIcon, iconClass: '' },
     pluginName: pluginId => pluginNames.get(pluginId) ?? null,
+    // 默认 Agent 不进选择器，统一叫 Linnya AI（与文件页“来源”一致）。
+    agentName: agentId => (agentId === null
+      ? workspaceMessage('workspace.projectOverview.actor.linnyaAi')
+      : agentNames.get(agentId) ?? null),
   };
 });
 
@@ -89,7 +112,7 @@ watch(() => knowledgeBaseModalStore.visible, (visible, wasVisible) => {
   if (wasVisible && !visible) void loadKnowledgeBaseCount(props.projectId);
 });
 
-function handleOpenDocument(row: ProjectOverviewRow): void {
+function handleOpenDocument(row: ProjectOverviewDocumentTarget): void {
   void openDocument(row, props.projectId);
 }
 

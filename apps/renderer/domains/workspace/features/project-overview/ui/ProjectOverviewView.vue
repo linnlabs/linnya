@@ -1,6 +1,6 @@
 <!--
-  项目概览：项目里所有文件的一览表。页头、工具条固定；表头吸顶，表体按行虚拟渲染。
-  数据只读，打开文件、对话和知识库设置交给页面装配层。
+  项目概览：文件、对话两页。文件页是项目里所有文件的一览表：页头、工具条固定，表头吸顶，表体按行虚拟渲染。
+  对话页见 ProjectConversationsPanel。数据只读；打开文件、对话、知识库设置和对话的写操作交给页面装配层。
 -->
 <template>
   <section class="project-overview">
@@ -8,7 +8,7 @@
       <div class="project-overview__head">
         <div class="project-overview__heading">
           <h1 class="project-overview__title" :title="displayProjectName">{{ displayProjectName }}</h1>
-          <p class="project-overview__stats">{{ statsText }}</p>
+          <p class="project-overview__stats">{{ page === 'files' ? statsText : conversationStatsText }}</p>
         </div>
         <button type="button" class="project-overview__knowledge-base" @click="emit('open-knowledge-base')">
           <LibraryIcon />
@@ -19,7 +19,23 @@
         </button>
       </div>
 
-      <div class="project-overview__toolbar">
+      <nav class="project-overview__pages" role="tablist" :aria-label="workspaceMessage('workspace.projectOverview.page.label')">
+        <button
+          v-for="item in PAGES"
+          :key="item.id"
+          type="button"
+          role="tab"
+          class="project-overview__page"
+          :class="{ 'is-active': page === item.id }"
+          :aria-selected="page === item.id"
+          @click="setPage(item.id)"
+        >
+          {{ workspaceMessage(item.key) }}
+          <span v-if="pageCount(item.id) !== null" class="project-overview__page-count">{{ pageCount(item.id) }}</span>
+        </button>
+      </nav>
+
+      <div v-show="page === 'files'" class="project-overview__toolbar">
         <label class="project-overview__search">
           <SearchIcon class="project-overview__search-icon" />
           <input
@@ -71,15 +87,16 @@
           @reset="layoutStore.reset"
         />
       </div>
-      <p v-if="searchFailed" class="project-overview__hint" role="status">
+      <p v-if="page === 'files' && searchFailed" class="project-overview__hint" role="status">
         {{ workspaceMessage('workspace.projectOverview.searchFailed') }}
       </p>
-      <p v-if="searchTruncated" class="project-overview__hint">
+      <p v-if="page === 'files' && searchTruncated" class="project-overview__hint">
         {{ workspaceMessage('workspace.projectOverview.searchTruncated', { count: CONTENT_SEARCH_LIMIT }) }}
       </p>
     </header>
 
     <div
+      v-show="page === 'files'"
       ref="scrollHostRef"
       class="project-overview__scroll-host"
       data-overlay-scroll-theme="linnya"
@@ -215,8 +232,26 @@
         </div>
       </div>
     </div>
+
+    <ProjectConversationsPanel
+      v-if="conversationsMounted"
+      v-show="page === 'conversations'"
+      :project-id="projectId"
+      :rows="conversationRows"
+      :status="conversationStatus"
+      :revision="conversationRevision"
+      :presentation="presentation"
+      :actions="conversationActions"
+      :running-conversation-ids="runningConversationIds"
+      @open-document="target => emit('open-document', target)"
+      @remeasure="remeasureConversation"
+    />
   </section>
 </template>
+
+<script lang="ts">
+const lastPageByProject = new Map<string, 'files' | 'conversations'>();
+</script>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, toRef, watch } from 'vue';
@@ -230,6 +265,7 @@ import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLoc
 import {
   EMPTY_PROJECT_OVERVIEW_FILTERS,
   type ProjectOverviewColumnId,
+  type ProjectOverviewDocumentTarget,
   type ProjectOverviewFilters,
   type ProjectOverviewModifiedRange,
   type ProjectOverviewPresentation,
@@ -256,6 +292,11 @@ import {
   useProjectOverviewContentSearch,
 } from '../orchestration/useProjectOverviewContentSearch';
 import { useProjectOverviewLayoutStore } from '../store/projectOverviewLayoutStore';
+import type { ProjectConversationActions, ProjectOverviewPage } from '../definitions/projectConversations';
+import { projectConversationsTotalBytes } from '../functions/projectConversationRows';
+import { useProjectConversationsData } from '../orchestration/useProjectConversationsData';
+import { formatStorageBytes } from '@/shared/utils/formatStorageBytes';
+import ProjectConversationsPanel from './ProjectConversationsPanel.vue';
 import ProjectOverviewColumnsMenu from './ProjectOverviewColumnsMenu.vue';
 import ProjectOverviewFilterMenu from './ProjectOverviewFilterMenu.vue';
 
@@ -264,10 +305,15 @@ const props = defineProps<{
   projectName: string | null;
   knowledgeBaseCount: number | null;
   presentation: ProjectOverviewPresentation;
+  conversationActions: ProjectConversationActions;
+  /** 本窗口观察到正在回复的对话。 */
+  runningConversationIds: ReadonlySet<string>;
+  /** 对话历史（新对话、改名、置顶、删除、新回复）的签名；变化时重读对话列表。 */
+  conversationHistoryKey: string;
 }>();
 
 const emit = defineEmits<{
-  'open-document': [row: ProjectOverviewRow];
+  'open-document': [target: ProjectOverviewDocumentTarget];
   'open-conversation': [conversationId: string];
   'open-knowledge-base': [];
 }>();
@@ -281,6 +327,45 @@ const { workspaceMessage, currentLocale } = useWorkspaceLocalization();
 const layoutStore = useProjectOverviewLayoutStore();
 const projectIdRef = toRef(props, 'projectId');
 const { rows, folderCount, characterCount, status, revision } = useProjectOverviewData(projectIdRef);
+
+// 页：每个项目记住上次看的页（本次运行内）。对话页第一次打开时才挂载。
+const PAGES: readonly { readonly id: ProjectOverviewPage; readonly key: WorkspaceMessageKey }[] = [
+  { id: 'files', key: 'workspace.projectOverview.page.files' },
+  { id: 'conversations', key: 'workspace.projectOverview.page.conversations' },
+];
+const page = ref<ProjectOverviewPage>(lastPageByProject.get(props.projectId) ?? 'files');
+const conversationsMounted = ref(page.value === 'conversations');
+function setPage(next: ProjectOverviewPage): void {
+  page.value = next;
+  lastPageByProject.set(props.projectId, next);
+  if (next === 'conversations') conversationsMounted.value = true;
+}
+watch(projectIdRef, projectId => { setPage(lastPageByProject.get(projectId) ?? 'files'); });
+
+const {
+  rows: conversationRows,
+  status: conversationStatus,
+  revision: conversationRevision,
+  remeasure: remeasureConversation,
+} = useProjectConversationsData(
+  projectIdRef,
+  toRef(props, 'conversationHistoryKey'),
+  computed(() => page.value === 'conversations'),
+);
+const conversationStatsText = computed(() => {
+  if (conversationStatus.value !== 'ready') return '';
+  const total = projectConversationsTotalBytes(conversationRows.value);
+  return [
+    workspaceMessage('workspace.projectOverview.conversations.stats.count', { count: conversationRows.value.length }),
+    total === null
+      ? workspaceMessage('workspace.projectOverview.conversations.stats.measuring')
+      : workspaceMessage('workspace.projectOverview.conversations.stats.storage', { size: formatStorageBytes(total, currentLocale.value) }),
+  ].join(' · ');
+});
+function pageCount(id: ProjectOverviewPage): number | null {
+  if (id === 'files') return status.value === 'ready' ? allRows.value.length : null;
+  return conversationStatus.value === 'ready' ? conversationRows.value.length : null;
+}
 
 const filters = ref<ProjectOverviewFilters>({ ...EMPTY_PROJECT_OVERVIEW_FILTERS });
 const sort = ref<ProjectOverviewSort>({ key: 'modified', direction: 'desc' });

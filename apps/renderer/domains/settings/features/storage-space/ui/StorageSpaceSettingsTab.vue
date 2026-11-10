@@ -56,56 +56,6 @@
           </SettingsListRow>
         </SettingsList>
       </SettingsSection>
-
-      <SettingsSection :title="settingsMessage('settings.storageSpace.conversations')">
-        <SettingsState
-          v-if="store.overview.conversations.length === 0"
-          kind="empty"
-          :message="settingsMessage('settings.storageSpace.empty')"
-        />
-        <SettingsList
-          v-else
-          class="storage-space-list storage-space-conversation-list"
-        >
-          <SettingsListRow
-            v-for="conversation in store.overview.conversations"
-            :key="conversation.conversation_id"
-            :title="projectStorageConversationTitle(
-              conversation.title,
-              settingsMessage('settings.storageSpace.unnamedConversation'),
-            )"
-          >
-            <template #meta>
-              {{ settingsMessage(projectStorageWorkFilesStateMessage(conversation.work_files_state)) }}
-              <span
-                v-if="clearFailureText(conversation.conversation_id)"
-                class="storage-space-row-error"
-                role="status"
-              >
-                {{ clearFailureText(conversation.conversation_id) }}
-              </span>
-            </template>
-            <template #trailing>
-              <span class="storage-space-size">
-                {{ conversation.byte_size === null
-                  ? settingsMessage('settings.storageSpace.valueUnavailable')
-                  : formatStorageBytes(conversation.byte_size, locale) }}
-              </span>
-              <BaseButton
-                variant="plain"
-                tone="danger"
-                :disabled="store.isPending(conversation.conversation_id)
-                  || conversation.work_files_state !== 'available'"
-                @click="clear(conversation.conversation_id)"
-              >
-                {{ settingsMessage(store.isPending(conversation.conversation_id)
-                  ? 'settings.storageSpace.actions.clearing'
-                  : 'settings.storageSpace.actions.clear') }}
-              </BaseButton>
-            </template>
-          </SettingsListRow>
-        </SettingsList>
-      </SettingsSection>
     </template>
   </SettingsPage>
 </template>
@@ -114,7 +64,6 @@
 import { BaseButton } from '@linnya/renderer-ui';
 import { onMounted } from 'vue';
 
-import { confirm } from '@shared/composables/confirmDialog';
 import {
   SettingsList,
   SettingsListRow,
@@ -123,14 +72,8 @@ import {
   SettingsState,
 } from '../../../ui/kit';
 import { useSettingsLocalization } from '../../../ui/useSettingsLocalization';
-import { formatStorageBytes } from '../functions/formatStorageBytes';
-import { projectStorageConversationTitle } from '../functions/projectStorageConversationTitle';
-import {
-  projectStorageCategoryMessage,
-  projectStorageClearFailureMessage,
-  projectStorageWorkFilesStateMessage,
-} from '../functions/projectStorageSpaceMessages';
-import { clearConversationWorkDirectory } from '../orchestration/clearConversationWorkDirectory';
+import { formatStorageBytes } from '@/shared/utils/formatStorageBytes';
+import { projectStorageCategoryMessage } from '../functions/projectStorageSpaceMessages';
 import { loadStorageSpaceOverview } from '../orchestration/loadStorageSpaceOverview';
 import { useStorageSpaceStore } from '../store/storageSpaceStore';
 
@@ -145,26 +88,8 @@ function formatMeasuredAt(measuredAtMs: number): string {
   }).format(new Date(measuredAtMs));
 }
 
-function clearFailureText(conversationId: string): string | undefined {
-  const failure = store.failureFor(conversationId);
-  return failure ? settingsMessage(projectStorageClearFailureMessage(failure)) : undefined;
-}
-
 function refresh(): void {
   void loadStorageSpaceOverview();
-}
-
-function clear(conversationId: string): void {
-  void clearConversationWorkDirectory({
-    conversationId,
-    confirmClear: () => confirm({
-      title: settingsMessage('settings.storageSpace.confirm.title'),
-      message: settingsMessage('settings.storageSpace.confirm.message'),
-      confirmText: settingsMessage('settings.storageSpace.confirm.confirm'),
-      cancelText: settingsMessage('settings.storageSpace.confirm.cancel'),
-      isDangerousAction: true,
-    }),
-  });
 }
 
 onMounted(refresh);

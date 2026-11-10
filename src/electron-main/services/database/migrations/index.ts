@@ -1,6 +1,7 @@
 import { migrateV73ToV74DocumentActions } from './v73-to-v74-document-actions';
 import { migrateV74ToV75RetireWorkspaceNodeTags } from './v74-to-v75-retire-workspace-node-tags';
 import { migrateV75ToV76ActionLedgerAgent } from './v75-to-v76-action-ledger-agent';
+import { migrateV76ToV77ReadableConversationIndex } from './v76-to-v77-readable-conversation-index';
 /**
  * @file migrations/index.ts
  * @description Host Schema 基线与增量迁移注册表。
@@ -30,7 +31,7 @@ export type { HostSchemaMigration, MigrationFunction } from './types';
 export const HOST_SCHEMA_BASELINE_VERSION = 61;
 
 /** 当前 Host Schema 版本。修改既有表或数据语义时必须递增。 */
-export const SCHEMA_VERSION = 76;
+export const SCHEMA_VERSION = 77;
 
 /**
  * v61 基线之后的受支持迁移。
@@ -63,4 +64,5 @@ export const migrations: readonly HostSchemaMigration[] = [
   { fromVersion: 73, migrate: migrateV73ToV74DocumentActions },
   { fromVersion: 74, migrate: migrateV74ToV75RetireWorkspaceNodeTags },
   { fromVersion: 75, migrate: migrateV75ToV76ActionLedgerAgent },
+  { fromVersion: 76, migrate: migrateV76ToV77ReadableConversationIndex },
 ];

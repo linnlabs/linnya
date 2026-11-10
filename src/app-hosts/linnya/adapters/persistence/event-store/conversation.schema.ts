@@ -1,3 +1,4 @@
+import { READABLE_CONVERSATION_SCHEMAS } from '../readable-conversation/readableConversation.schema';
 /**
  * @file src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema.ts
  * @description 定义 Linnya backend conversation event-store 的表结构。
@@ -156,6 +157,18 @@ export const CONVERSATION_SCHEMAS = [
     FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE RESTRICT
   )`,
 
+  // 对话占用的存储（测量结果缓存）。可整体丢弃重建；measured_at 早于对话最近活动即视为过期。
+  `CREATE TABLE IF NOT EXISTS conversation_storage_usage (
+    conversation_id TEXT PRIMARY KEY,
+    record_bytes INTEGER NOT NULL,
+    attachment_bytes INTEGER NOT NULL,
+    has_shared_attachments INTEGER NOT NULL CHECK(has_shared_attachments IN (0, 1)),
+    work_file_bytes INTEGER,
+    work_files_state TEXT NOT NULL,
+    measured_at INTEGER NOT NULL,
+    FOREIGN KEY(conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE
+  )`,
+
   // 索引优化
   `CREATE INDEX IF NOT EXISTS idx_conversations_last_event ON conversations(last_event_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_conversations_pinned ON conversations(is_pinned DESC, pinned_at DESC, last_event_at DESC)`,
@@ -192,4 +205,6 @@ export const CONVERSATION_SCHEMAS = [
   `CREATE INDEX IF NOT EXISTS idx_conversation_event_asset_links_asset ON conversation_event_asset_links(asset_id)`,
   `CREATE INDEX IF NOT EXISTS idx_conversation_event_asset_links_conversation_event_ordinal
     ON conversation_event_asset_links(conversation_id, event_id, ordinal)`,
+  // 可读对话全文索引：表随建表执行，视图与触发器在迁移之后建立。
+  ...READABLE_CONVERSATION_SCHEMAS,
 ];

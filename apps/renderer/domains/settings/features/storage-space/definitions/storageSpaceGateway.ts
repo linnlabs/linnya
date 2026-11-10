@@ -5,7 +5,6 @@ import type {
 
 export interface StorageSpaceGateway {
   readOverview(): Promise<StorageSpaceOverviewResponse>;
-  clearConversationWorkDirectory(conversationId: string): Promise<void>;
 }
 
 export class StorageSpaceGatewayError extends Error {

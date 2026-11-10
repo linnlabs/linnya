@@ -29,19 +29,3 @@ export async function loadStorageSpaceOverview(
   const store = useStorageSpaceStore();
   return pendingLoads.get(store) ?? startLoad(gateway);
 }
-
-/**
- * 清理成功后的读取必须发生在 DELETE 204 之后。若用户恰好正在手动刷新，先等旧读取结束，
- * 再开始一次新读取，不能复用可能包含清理前事实的请求。
- */
-export function reloadStorageSpaceOverviewAfterClear(
-  gateway: StorageSpaceGateway = storageSpaceGateway,
-): Promise<boolean> {
-  const store = useStorageSpaceStore();
-  const pending = pendingLoads.get(store);
-  if (!pending) return startLoad(gateway);
-
-  // 不同对话可以并发删除，但删除后的概览读取必须排队。否则两个 204 几乎同时返回时，
-  // 较早启动的旧快照可能最后完成并覆盖较新的存储事实。
-  return pending.then(() => reloadStorageSpaceOverviewAfterClear(gateway));
-}

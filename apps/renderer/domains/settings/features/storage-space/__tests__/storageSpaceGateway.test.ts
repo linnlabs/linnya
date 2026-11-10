@@ -34,30 +34,16 @@ describe('storage-space HTTP gateway', () => {
     await expect(gateway.readOverview()).rejects.toMatchObject({ name: 'ZodError' });
   });
 
-  it('编码对话身份，并且 204 不读取空响应正文', async () => {
-    let requestedUrl = '';
-    const gateway = createStorageSpaceGateway({
-      getBaseUrl: async () => 'http://127.0.0.1:3000',
-      fetch: async (input) => {
-        requestedUrl = String(input);
-        return new Response(null, { status: 204 });
-      },
-    });
-    await gateway.clearConversationWorkDirectory('conversation/a b');
-    expect(requestedUrl.endsWith(
-      '/conversations/conversation%2Fa%20b/work-directory',
-    )).toBe(true);
-  });
 
   it('非成功响应只接受共享错误合同', async () => {
     const known = createStorageSpaceGateway({
       getBaseUrl: async () => 'http://127.0.0.1:3000',
       fetch: async () => new Response(JSON.stringify({
-        code: 'storage_space.conversation_not_found',
-      }), { status: 404 }),
+        code: 'storage_space.overview_failed',
+      }), { status: 500 }),
     });
-    await expect(known.clearConversationWorkDirectory('conversation-a')).rejects.toEqual(
-      new StorageSpaceGatewayError('storage_space.conversation_not_found'),
+    await expect(known.readOverview()).rejects.toEqual(
+      new StorageSpaceGatewayError('storage_space.overview_failed'),
     );
 
     const malformed = createStorageSpaceGateway({

@@ -7,8 +7,6 @@ import { StorageSpaceOverviewResponseSchema } from '@app/schemas';
 
 const mocks = vi.hoisted(() => ({
   readOverview: vi.fn(),
-  clearConversationWorkDirectory: vi.fn(),
-  confirm: vi.fn(),
 }));
 
 vi.mock('../infrastructure/storageSpaceGateway', () => ({
@@ -19,12 +17,7 @@ vi.mock('../infrastructure/storageSpaceGateway', () => ({
   },
   storageSpaceGateway: {
     readOverview: mocks.readOverview,
-    clearConversationWorkDirectory: mocks.clearConversationWorkDirectory,
   },
-}));
-
-vi.mock('@shared/composables/confirmDialog', () => ({
-  confirm: mocks.confirm,
 }));
 
 vi.mock('../../../ui/useSettingsLocalization', () => ({
@@ -35,10 +28,8 @@ vi.mock('../../../ui/useSettingsLocalization', () => ({
 
 import StorageSpaceSettingsTab from '../ui/StorageSpaceSettingsTab.vue';
 
-function overview(
-  state: 'available' | 'previous_files_unavailable' | 'unavailable' = 'available',
-) {
-  const workBytes = state === 'available' ? 9 : 0;
+function overview() {
+  const workBytes = 9;
   return StorageSpaceOverviewResponseSchema.parse({
     measured_at_ms: 1_786_104_003_000,
     total_byte_size: workBytes,
@@ -54,9 +45,9 @@ function overview(
       conversation_id: 'conversation-a',
       title: '报告整理',
       project_id: null,
-      work_files_state: state,
-      byte_size: state === 'unavailable' ? null : workBytes,
-      file_count: state === 'unavailable' ? null : state === 'available' ? 1 : 0,
+      work_files_state: 'available',
+      byte_size: workBytes,
+      file_count: 1,
     }],
   });
 }
@@ -81,8 +72,6 @@ describe('StorageSpaceSettingsTab', () => {
 
   beforeEach(() => {
     mocks.readOverview.mockReset();
-    mocks.clearConversationWorkDirectory.mockReset();
-    mocks.confirm.mockReset();
     container = document.createElement('div');
     document.body.append(container);
   });
@@ -93,51 +82,23 @@ describe('StorageSpaceSettingsTab', () => {
     app = undefined;
   });
 
-  it('首次挂载读取概览，清理前确认并在单行 pending 时禁用重复点击', async () => {
-    let finishClear: (() => void) | undefined;
-    const clearPending = new Promise<void>((resolve) => {
-      finishClear = resolve;
-    });
-    mocks.readOverview
-      .mockResolvedValueOnce(overview())
-      .mockResolvedValueOnce(overview('previous_files_unavailable'));
-    mocks.confirm.mockResolvedValue(true);
-    mocks.clearConversationWorkDirectory.mockReturnValue(clearPending);
-
+  it('只显示总量和分类，不再列出每个对话（对话的占用在项目概览）', async () => {
+    mocks.readOverview.mockResolvedValueOnce(overview());
     app = createApp(StorageSpaceSettingsTab);
     app.use(createPinia());
     app.mount(container);
     await flushUi();
 
     expect(mocks.readOverview).toHaveBeenCalledTimes(1);
-    expect(container.textContent).toContain('报告整理');
-    const clearButton = findButton(container, 'settings.storageSpace.actions.clear');
-    clearButton.click();
-    await flushUi();
-
-    expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({
-      isDangerousAction: true,
-      message: 'settings.storageSpace.confirm.message',
-    }));
-    const pendingButton = findButton(container, 'settings.storageSpace.actions.clearing');
-    expect(pendingButton.disabled).toBe(true);
-    pendingButton.click();
-    expect(mocks.clearConversationWorkDirectory).toHaveBeenCalledTimes(1);
-
-    if (!finishClear) throw new Error('clear completion was not initialized');
-    finishClear();
-    await flushUi();
-    expect(mocks.readOverview).toHaveBeenCalledTimes(2);
-    expect(container.textContent).toContain(
-      'settings.storageSpace.status.previousFilesUnavailable',
-    );
+    expect(container.textContent).toContain('settings.storageSpace.total');
+    expect(container.textContent).toContain('settings.storageSpace.category.conversationWorkFiles');
+    expect(container.textContent).not.toContain('报告整理');
   });
 
   it('进入 tab 自动读取概览，失败时在错误状态提供重试入口', async () => {
     mocks.readOverview
       .mockResolvedValueOnce(overview())
       .mockRejectedValueOnce(new Error('network unavailable'));
-    mocks.confirm.mockResolvedValue(false);
     app = createApp(StorageSpaceSettingsTab);
     app.use(createPinia());
     app.mount(container);
@@ -157,17 +118,5 @@ describe('StorageSpaceSettingsTab', () => {
     expect(mocks.readOverview).toHaveBeenCalledTimes(2);
     expect(container.textContent).toContain('settings.storageSpace.unavailable');
     expect(findButton(container, 'settings.storageSpace.actions.refresh')).toBeTruthy();
-  });
-
-  it('单个目录无法计量时保留概览，并明确禁用该行清理', async () => {
-    mocks.readOverview.mockResolvedValue(overview('unavailable'));
-    app = createApp(StorageSpaceSettingsTab);
-    app.use(createPinia());
-    app.mount(container);
-    await flushUi();
-
-    expect(container.textContent).toContain('settings.storageSpace.status.unavailable');
-    expect(container.textContent).toContain('settings.storageSpace.valueUnavailable');
-    expect(findButton(container, 'settings.storageSpace.actions.clear').disabled).toBe(true);
   });
 });

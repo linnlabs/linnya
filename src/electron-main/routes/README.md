@@ -37,6 +37,7 @@ Provider route 装配完成本地 durable intent 恢复与账号能力投影后�
 - `/api/v1/providers`、`provider-accounts`、`provider-onboarding`、`custom-api-onboarding`、`ollama-onboarding`、`models`、`model-picker`：模型与 Provider 产品接口；
 - `/api/v1/transcription`、`/api/v1/knowledge-base`：业务服务接口；
 - `/api/v1/conversation`、`/api/v1/workspace`、`/api/v1/storage-space`：Conversation、受管资源和存储空间；
+- `/api/v1/project-conversations`：项目概览的对话页（列表、详情、搜索、占用测量），见 [Project Conversations](../../app-hosts/linnya/application/project-conversations/README.md)；
 - `/api/v1/conversation-control`：本机 CLI 使用的独立鉴权控制桥；
 - `/api/v1/ollama`：本机 Ollama 代理；
 - `/api/v1/debug/provider-outbound`：仅开发模式开放的只读诊断接口；

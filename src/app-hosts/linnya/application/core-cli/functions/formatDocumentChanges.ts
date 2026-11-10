@@ -7,6 +7,7 @@ function projectChange(change: ActionLedgerDocumentChange, path: string | null) 
   return {
     path, documentId: change.documentId, actions: change.actions, actor: change.actorKind,
     ...(change.runId ? { runId: change.runId, rootRunId: change.rootRunId } : {}),
+    ...(change.agentId ? { agent: change.agentId } : {}),
     ...(change.pluginId ? { pluginId: change.pluginId } : {}),
     entryCount: change.entryCount,
     firstRecordedAt: new Date(change.firstRecordedAt).toISOString(),

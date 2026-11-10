@@ -27,17 +27,6 @@ export function createStorageSpaceGateway(
       }
       return StorageSpaceOverviewResponseSchema.parse(await response.json());
     },
-
-    async clearConversationWorkDirectory(conversationId: string) {
-      const baseUrl = await dependencies.getBaseUrl();
-      const response = await dependencies.fetch(
-        `${baseUrl}/api/v1/storage-space/conversations/${encodeURIComponent(conversationId)}/work-directory`,
-        { method: 'DELETE' },
-      );
-      if (response.status === 204) return;
-      const error = StorageSpaceErrorResponseSchema.parse(await response.json());
-      throw new StorageSpaceGatewayError(error.code);
-    },
   });
 }
 

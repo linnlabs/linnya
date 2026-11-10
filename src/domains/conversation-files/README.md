@@ -68,7 +68,7 @@ cleanup job 以 conversation identity 为唯一键，拥有不可复用的 job i
 
 ## 6. 占用计量
 
-计量是只读、非事务快照。对未创建目录返回 `not_created`，历史文件不可读取返回 `previous_files_unavailable`，正常扫描返回 `available`。它不创建目录、不承诺文件系统实际分配块数，也不负责磁盘监控；存储空间设置页应对单个 unsafe/不可读项目降级，而不是让整个总览失败。
+计量是只读、非事务快照。对未创建目录返回 `not_created`，历史文件不可读取返回 `previous_files_unavailable`，正常扫描返回 `available`。它不创建目录、不承诺文件系统实际分配块数，也不负责磁盘监控；存储空间总览与项目概览的对话页应对单个 unsafe/不可读项目降级，而不是让整个总览失败。
 
 ## 7. 风险和维护要求
 

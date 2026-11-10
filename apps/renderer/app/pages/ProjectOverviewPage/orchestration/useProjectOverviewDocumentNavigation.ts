@@ -4,7 +4,7 @@ import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
 import { resolveDocumentTypeByNodeType } from '@/app/plugins/registry';
 import { getDocumentTypeUnavailableMessage } from '@/app/plugins/functions/documentTypeUnavailablePresentation';
 import { resolveDocumentTypeTextPresentation } from '@/app/plugins/functions/pluginContributionPresentation';
-import type { ProjectOverviewRow } from '@/domains/workspace/features/project-overview/definitions/projectOverview';
+import type { ProjectOverviewDocumentTarget } from '@/domains/workspace/features/project-overview/definitions/projectOverview';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 
@@ -16,7 +16,7 @@ export function useProjectOverviewDocumentNavigation() {
   const { workspaceMessage } = useWorkspaceLocalization();
   const { t } = useLocalization();
 
-  return async (row: ProjectOverviewRow, projectId: string): Promise<void> => {
+  return async (row: ProjectOverviewDocumentTarget, projectId: string): Promise<void> => {
     const availability = resolveDocumentTypeByNodeType(row.nodeType, plugins.enabledPluginIds, plugins.states);
     if (availability.state !== 'enabled') {
       notifications.show(getDocumentTypeUnavailableMessage(availability, {

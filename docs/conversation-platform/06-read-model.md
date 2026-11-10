@@ -275,7 +275,23 @@ UI 空态 / 加载态判断**禁止各自拼 messages 信号**。`historyLoading
 
 ---
 
-## 8. 禁止清单
+## 8. 可读对话
+
+可读对话是对话里写给人看的那部分：`user_input`、`final_answer`、`tool_preamble`、`partial_answer` 四类 UI 消息。思考、工具调用与结果、系统提示、压缩摘要都不算，子运行轨迹也不算。类型清单只在 `readable-conversation/readableConversation.schema.ts` 定义一份，下列消费者共用：
+
+- 其他 Agent 读别的对话（Shell 内建 `linnya conversations`，见 [Core CLI](../../src/app-hosts/linnya/application/core-cli/README.md)）；
+- 项目概览对话页的搜索与详情（第一个问题、最后的答复）；
+- 对话全文搜索的 FTS5 索引。
+
+可读对话不是执行日志：要复演一次运行或审计工具调用，读事件与子运行轨迹，不读这里。
+
+**索引**：`conversation_readable_fts` 是 trigram、`detail='none'` 的 FTS5 表，外部内容指向视图 `conversation_readable_messages`，内容只在 UI 消息表存一份。触发器随 UI 消息写入同步；`detail='none'` 不支持短语查询，调用方把查询拆成三字组相与缩小候选，再按字面比较确认命中，不足三字时逐条扫描可读消息。索引可整体 `rebuild`，丢失时不影响对话本身。
+
+**读取范围**：读别的对话时，范围由调用方按授权传入。项目里的 Agent 只看本项目的对话；跨项目的个人 Agent 以后另加范围种类，不在读取处写死项目。
+
+---
+
+## 9. 禁止清单
 
 | # | 禁止 | 正确做法 |
 |---|---|---|
@@ -291,3 +307,4 @@ UI 空态 / 加载态判断**禁止各自拼 messages 信号**。`historyLoading
 | 10 | 只截断投影或只截断窗口 | 两侧同步（§6） |
 | 11 | 用"live 为空"判断新会话 | 分槽无生命周期语义（§1.1） |
 | 12 | 在 merge 里 catch 掉类型冲突 | 让 `rejectIdentityChange` 抛出（§3.2） |
+| 13 | 在别处另写一份“可读消息”类型清单，或把工具过程当可读内容给其他 Agent | 只用可读对话的类型清单（§8） |

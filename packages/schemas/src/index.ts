@@ -205,6 +205,7 @@ export * from './markdown-image';
 export * from './skills';
 export * from './project';
 export * from './project-overview';
+export * from './project-conversations';
 export * from './project-mutation-events';
 
 export * from './document-references';

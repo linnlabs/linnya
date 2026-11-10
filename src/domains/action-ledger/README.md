@@ -70,12 +70,16 @@ Host 不再记粗账，查询结果不会重复列出。只有粗账的文档类
 Agent 通过 [Shell 内建命令](../../app-hosts/linnya/application/core-cli/README.md) 查询；对话界面经
 [`run-document-changes`](../../app-hosts/linnya/application/run-document-changes/README.md) 按一轮回复的根运行查询。
 
-`listDocumentChanges({ projectId, rootRunId?, since?, until?, limit })` 只读当前项目：
+`listDocumentChanges({ projectId, rootRunId?, conversationId?, since?, until?, limit })` 只读当前项目：
 
 - 按根运行查询包含当前项目内它的全部子运行；时间段含起点、不含终点。文档转移后，目标项目仍可列出发生过的改动，但其他来源项目的插件、对话、运行身份不可见，也不能用原运行编号匹配。
 - 同一执行者对同一文档的多次改动合成一项，按最近改动倒序。
 - `limit` 为 1–200；超出时 `truncated` 为 true，调用方必须明说结果不完整。
 - 返回文档身份，不读文档树；路径、名称和是否在回收站由调用方经 Workspace/VFS 解析。
+
+按对话查询（项目概览对话页的“改过的文档”）只匹配改动发生在当前项目的记录，与按运行查询的可见规则相同。
+
+`countDocumentsByConversation(projectId)` 给对话页的列表用：每个对话在当前项目改过几份文档（去重），文档已物理删除的不计。
 
 `summarizeProjectDocuments(projectId, documentIds?)` 给项目概览用：每份有账的文档一项，最早一条若是新建则给出新建者，
 另给最近一条。插件、对话身份与按运行查询一样，只在改动发生在当前项目时可见。

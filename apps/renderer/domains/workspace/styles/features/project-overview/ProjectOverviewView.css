@@ -637,3 +637,339 @@ body.project-overview-is-resizing {
 .project-overview__clear-all:hover {
   color: var(--color-text-primary);
 }
+
+/* 页签：文件 / 对话。下划线标出当前页，数量是浅色小字。 */
+.project-overview__pages {
+  display: flex;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.project-overview__page {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1-5);
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-body);
+  line-height: 34px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.project-overview__page:hover {
+  color: var(--color-text-secondary);
+}
+
+.project-overview__page.is-active {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.project-overview__page.is-active::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1.5px;
+  background-color: var(--color-text-primary);
+  content: '';
+}
+
+.project-overview__page:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.project-overview__page-count {
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.project-overview__pages + .project-overview__toolbar {
+  margin-top: var(--space-3);
+}
+
+/* 对话页：工具条在上，下面是对话表和右侧详情。 */
+.project-conversations {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.project-conversations__top {
+  padding-top: 0;
+}
+
+.project-conversations__top .project-overview__toolbar {
+  margin-top: var(--space-3);
+}
+
+.project-conversations__split {
+  display: flex;
+  flex: 1;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 0;
+  max-width: calc(var(--project-overview-content-width) + 2 * var(--project-overview-gutter));
+  margin: 0 auto;
+  padding: 0 var(--project-overview-gutter);
+  container-type: inline-size;
+}
+
+.project-conversations__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-conversations__table {
+  --project-overview-columns: minmax(200px, 1fr) 96px 48px 88px 104px 80px;
+  min-width: 0;
+  max-width: none;
+  padding: var(--space-3) 0 var(--space-8);
+}
+
+.project-conversations__row {
+  position: relative;
+}
+
+.project-conversations__numeric {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.project-conversations__muted {
+  color: var(--color-text-tertiary);
+}
+
+.project-conversations__pin {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-left: var(--space-1-5);
+  color: var(--color-text-tertiary);
+}
+
+.project-conversations__running {
+  color: var(--color-accent-text);
+}
+
+/* 详情栏：左侧一条细线隔开，不做卡片。 */
+.project-conversations__detail {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 340px;
+  margin: var(--space-3) 0 var(--space-6) var(--space-6);
+  padding: var(--space-1) 0 0 var(--space-6);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-left: 1px solid var(--color-border-light);
+}
+
+/* 窄窗口时先保证表格，详情栏收起；双击或点标题仍可打开对话。 */
+@container (max-width: 860px) {
+  .project-conversations__detail {
+    display: none;
+  }
+}
+
+.project-conversations__detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.project-conversations__detail-title {
+  min-width: 0;
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-title);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.project-conversations__rename {
+  flex: 1;
+  min-width: 0;
+  margin-top: var(--space-0-5);
+}
+
+.project-conversations__detail-meta,
+.project-conversations__detail-note {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-tertiary);
+}
+
+.project-conversations__section {
+  margin-top: var(--space-5);
+}
+
+.project-conversations__label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1-5);
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-tertiary);
+}
+
+.project-conversations__label-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.project-conversations__quote {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-prose);
+  color: var(--color-text-secondary);
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.project-conversations__docs {
+  margin: 0 0 0 calc(-1 * var(--space-2));
+  padding: 0;
+  list-style: none;
+}
+
+.project-conversations__doc {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 34px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-conversations__doc:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+.project-conversations__doc:disabled {
+  color: var(--color-text-tertiary);
+  cursor: default;
+}
+
+.project-conversations__doc .project-conversations__doc-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.project-conversations__doc-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-conversations__doc-meta {
+  flex-shrink: 0;
+  margin-left: var(--space-2);
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-tertiary);
+}
+
+.project-conversations__storage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  margin: 0;
+}
+
+.project-conversations__storage > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-body);
+}
+
+.project-conversations__storage dt {
+  color: var(--color-text-secondary);
+}
+
+.project-conversations__storage dd {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.project-conversations__link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-hover);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.project-conversations__link:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.project-conversations__link:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.project-conversations__foot {
+  margin-top: var(--space-6);
+  padding-bottom: var(--space-6);
+}
+
+.project-conversations__open {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--control-height-md);
+  padding: 0 var(--space-2-5);
+  border: 0;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-subtle);
+  font: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.project-conversations__open:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.project-conversations__open svg {
+  width: 16px;
+  height: 16px;
+}

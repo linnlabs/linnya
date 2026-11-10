@@ -29,6 +29,8 @@ export interface SqliteActionLedger {
    * 给了 `documentIds` 时只看这些文档。没有上限：每份文档一项，规模随项目文档数。
    */
   summarizeProjectDocuments(projectId: string, documentIds?: readonly string[]): ActionLedgerDocumentSummary[];
+  /** 每个对话在这个项目里改过多少份文档（去重）。只数发生在本项目的记录，文档仍在本项目。 */
+  countDocumentsByConversation(projectId: string): ReadonlyMap<string, number>;
 }
 
 interface SummaryRow {
@@ -133,6 +135,10 @@ export function createSqliteActionLedger(
         where.push('entry.project_id = node.project_id AND entry.root_run_id = ?');
         args.push(query.rootRunId);
       }
+      if (query.conversationId !== undefined) {
+        where.push('entry.project_id = node.project_id AND entry.conversation_id = ?');
+        args.push(query.conversationId);
+      }
       if (query.since !== undefined) {
         where.push('recorded_at >= ?');
         args.push(query.since);
@@ -197,6 +203,16 @@ export function createSqliteActionLedger(
         WHERE first.first_rank = 1
       `).all(...args);
       return rows.map(toDocumentSummary);
+    },
+
+    countDocumentsByConversation(projectId) {
+      const rows = db.prepare<[string], { conversation_id: string; document_count: number }>(`
+        SELECT entry.conversation_id, COUNT(DISTINCT entry.document_id) AS document_count
+        FROM action_ledger_entries entry JOIN workspace_nodes node ON node.id = entry.document_id
+        WHERE entry.project_id = ? AND node.project_id = entry.project_id AND entry.conversation_id IS NOT NULL
+        GROUP BY entry.conversation_id
+      `).all(projectId);
+      return new Map(rows.map(row => [row.conversation_id, row.document_count]));
     },
   };
 }

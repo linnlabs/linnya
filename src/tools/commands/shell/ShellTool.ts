@@ -71,6 +71,10 @@ For questions about document changes in this project, run linnya changes. Use --
 or --day today for local dates, --run <root-run-id> for a run, or linnya changes --help for ranges.
 Report only recorded creations and updates; mention truncation. An empty result cannot rule out other actions.
 
+To learn what was discussed in other conversations of this project, run linnya conversations list
+(--query <text> searches titles and messages), then linnya conversations read <id> (--after <seq> for the
+next page). Only user messages and AI replies are returned, not thinking or tool activity.
+
 The default working directory is this conversation's physical work directory. Use relative OS
 paths for temporary and derived files. workspace:/ documents live in Linnya's database VFS,
 not as ordinary files on disk; use formal document tools to read or change them. conversation:/

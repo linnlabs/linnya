@@ -202,6 +202,11 @@ import {
 } from 'src/app-hosts/linnya/application/storage-space';
 import { createLocalManagedStorageInventoryPort } from 'src/infra/adapters/storage-space/local-inventory';
 import { createStorageSpaceRouter } from 'src/features/storage-space/storageSpace.router';
+import { createProjectConversationsRouter } from 'src/features/project-conversations/projectConversations.router';
+import {
+  createProjectConversationStorageMeasurer,
+  type ProjectConversationStorageMeasurer,
+} from 'src/app-hosts/linnya/application/project-conversations';
 import { CONVERSATION_CONTROL_BRIDGE_PATH } from '@app/schemas';
 import type { ConversationControlUseCase } from 'src/app-hosts/linnya/application/conversation-control';
 import { createProjectLifecycle } from 'src/domains/projects';
@@ -574,6 +579,7 @@ export async function configureRoutes(
   let commandProductionScope: CommandProductionScope | null = null;
   let sandboxProductionScope: SandboxProductionScope | null = null;
   let storageSpaceUseCase: StorageSpaceUseCasePort | null = null;
+  let projectConversationMeasurer: ProjectConversationStorageMeasurer | null = null;
   let conversationControlUseCase: ConversationControlUseCase | null = null;
   let auditControl: AuditControlPort | null = null;
   let conversationInitError: unknown = null;
@@ -876,6 +882,10 @@ export async function configureRoutes(
       workDirectoryUsage: conversationLifecycle.workDirectoryUsage,
       cleanup: conversationCleanup,
     });
+    projectConversationMeasurer = createProjectConversationStorageMeasurer({
+      db,
+      workDirectoryUsage: conversationLifecycle.workDirectoryUsage,
+    });
 
     // cleanup job 是崩溃前已经持久化的用户意图。必须在开放 History/Flow 路由前重放，
     // 否则旧对话可能先接收新消息，再被恢复流程删除。
@@ -958,6 +968,7 @@ export async function configureRoutes(
       commandProductionScope = null;
       sandboxProductionScope = null;
       storageSpaceUseCase = null;
+      projectConversationMeasurer = null;
       throw new ConversationRuntimeInitializationError(e, cleanupFailures);
     }
     logger.error('⚠️ 会话服务初始化失败:', e);
@@ -981,6 +992,7 @@ export async function configureRoutes(
     commandProductionScope &&
     sandboxProductionScope &&
     storageSpaceUseCase &&
+    projectConversationMeasurer &&
     conversationControlUseCase &&
     auditControl
   ) {
@@ -1003,6 +1015,7 @@ export async function configureRoutes(
         history: createHistoryRouter(historyService),
         flow: createConversationFlowRouter(flowOrchestrator),
         storageSpace: createStorageSpaceRouter(storageSpaceUseCase),
+        projectConversations: createProjectConversationsRouter({ db, measurer: projectConversationMeasurer }),
       }),
       registerCommandOwner: lifecycle =>
         dependencies.commandOwnerLifecycleRegistration.register(lifecycle),
@@ -1021,6 +1034,7 @@ export async function configureRoutes(
     app.use('/api/v1/conversation', preparedRoutes.history);
     app.use('/api/v1/conversation', preparedRoutes.flow);
     app.use('/api/v1/storage-space', preparedRoutes.storageSpace);
+    app.use('/api/v1/project-conversations', preparedRoutes.projectConversations);
     app.use(
       CONVERSATION_CONTROL_BRIDGE_PATH,
       createConversationControlBridgeRouter({
@@ -1111,6 +1125,10 @@ export function getRouteSummary(
         'GET /api/v1/markdown/assets/images/:assetId/content',
         'GET /api/v1/storage-space/overview',
         'DELETE /api/v1/storage-space/conversations/:conversationId/work-directory',
+        'GET /api/v1/project-conversations/:projectId',
+        'GET /api/v1/project-conversations/:projectId/search?q=',
+        'GET /api/v1/project-conversations/:projectId/conversations/:conversationId',
+        'POST /api/v1/project-conversations/:projectId/storage/measure',
         'POST /api/v1/conversation/next (统一端点，支持 Chat 和 Agent 模式)',
       ]
     : [];
