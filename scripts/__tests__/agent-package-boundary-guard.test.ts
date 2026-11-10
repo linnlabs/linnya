@@ -1377,23 +1377,18 @@ describe('PLUGIN-GUARD-07-no-static-agent-definition-snapshot-in-production', ()
 describe('PLUGIN-GUARD-17/18/19 plugin contract source', () => {
   const fixturePluginRoot = path.join(repoRoot, 'packages/plugins/__guard_fixture_plugin__');
 
-  function writeFixturePlugin(): void {
+  function writeFixturePlugin(paths: Readonly<Record<string, readonly string[]>>): void {
     fs.rmSync(fixturePluginRoot, { recursive: true, force: true });
-    fs.mkdirSync(path.join(fixturePluginRoot, 'host-types/backend'), { recursive: true });
-    fs.writeFileSync(
-      path.join(fixturePluginRoot, 'host-types/backend/workspaceRuntime.d.ts'),
-      'export declare const WorkspaceService: unknown;\n',
-      'utf8',
-    );
+    fs.mkdirSync(fixturePluginRoot, { recursive: true });
     fs.writeFileSync(
       path.join(fixturePluginRoot, 'tsconfig.json'),
       JSON.stringify({
         compilerOptions: {
           paths: {
-            '@plugin/backend/*': ['packages/plugins/__guard_fixture_plugin__/host-types/backend/*.d.ts'],
+            '@plugin/backend/*': ['packages/plugin-host-contract/backend/*.ts'],
             '@plugin/renderer/*': ['packages/plugin-host-contract/renderer/*.ts'],
             '@app/localization': ['packages/plugin-host-contract/renderer/localization.ts'],
-            '@/domains/*': ['apps/renderer/domains/*'],
+            ...paths,
           },
         },
       }, null, 2),
@@ -1403,13 +1398,39 @@ describe('PLUGIN-GUARD-17/18/19 plugin contract source', () => {
 
   it('flags SDK mirror host-types and host-internal tsconfig paths', () => {
     try {
-      writeFixturePlugin();
+      writeFixturePlugin({
+        '@plugin/backend/*': ['packages/plugins/__guard_fixture_plugin__/host-types/backend/*.d.ts'],
+        '@/domains/*': ['apps/renderer/domains/*'],
+      });
+      fs.mkdirSync(path.join(fixturePluginRoot, 'host-types/backend'), { recursive: true });
+      fs.writeFileSync(
+        path.join(fixturePluginRoot, 'host-types/backend/workspaceRuntime.d.ts'),
+        'export declare const WorkspaceService: unknown;\n',
+        'utf8',
+      );
 
       const ruleIds = collectPluginContractGuardViolations().map((violation) => violation.ruleId);
 
       expect(ruleIds).toContain('PLUGIN-GUARD-17-no-plugin-host-types-mirror');
       expect(ruleIds).toContain('PLUGIN-GUARD-18-plugin-tsconfig-uses-host-contract');
       expect(ruleIds).toContain('PLUGIN-GUARD-19-no-plugin-tsconfig-host-internal-path');
+    } finally {
+      fs.rmSync(fixturePluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('allows the public color-core entries in plugin tsconfig paths', () => {
+    try {
+      writeFixturePlugin({
+        '@linnya/color-core': ['packages/color-core/src/index.ts'],
+        '@linnya/color-core/palette': ['packages/color-core/src/palette/index.ts'],
+      });
+
+      const violations = collectPluginContractGuardViolations().filter(
+        (violation) => violation.file === 'packages/plugins/__guard_fixture_plugin__/tsconfig.json',
+      );
+
+      expect(violations).toEqual([]);
     } finally {
       fs.rmSync(fixturePluginRoot, { recursive: true, force: true });
     }
