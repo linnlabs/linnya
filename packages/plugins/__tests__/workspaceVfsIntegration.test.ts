@@ -175,14 +175,13 @@ class FakeStatement implements WorkspaceVfsStatement {
 
   run(...params: readonly unknown[]): unknown {
     if (this.sql.includes('INSERT INTO workspace_nodes')) {
-      const [id, projectId, name, createdAt, updatedAt, tags] = params;
+      const [id, projectId, name, createdAt, updatedAt] = params;
       if (
         typeof id !== 'string' ||
         typeof projectId !== 'string' ||
         typeof name !== 'string' ||
         typeof createdAt !== 'number' ||
-        typeof updatedAt !== 'number' ||
-        typeof tags !== 'string'
+        typeof updatedAt !== 'number'
       ) {
         throw new Error('invalid insert params');
       }
@@ -193,7 +192,6 @@ class FakeStatement implements WorkspaceVfsStatement {
         name,
         createdAt,
         updatedAt,
-        tags,
       });
     }
     return { changes: 1 };
@@ -220,7 +218,6 @@ class FakeVfsDatabase implements WorkspaceVfsDatabase {
     parentId?: string | null;
     type: string;
     name: string;
-    tags?: string | null;
     createdAt?: number;
     updatedAt?: number;
   }): void {
@@ -237,7 +234,6 @@ class FakeVfsDatabase implements WorkspaceVfsDatabase {
       deleted_at: null,
       last_opened_at: null,
       access_count: 0,
-      tags: params.tags ?? null,
     });
   }
 

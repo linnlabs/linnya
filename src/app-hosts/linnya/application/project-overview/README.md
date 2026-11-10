@@ -3,7 +3,7 @@
 回答“这个项目里有哪些文档，各自从哪来、最近谁改过、还有什么待处理”。共享合同位于
 `packages/schemas/src/project-overview.ts`，channel 为 `project-overview:list`。
 
-- 文档：[VFS](../../../../features/workspace/vfs/README.md) 一次查询列出项目里全部可见文档和所在文件夹；资源库、
+- 文档：[VFS](../../../../features/workspace/vfs/README.md) 一次查询列出项目里全部可见文档和所在文件夹；
   父节点已删除的残留节点不出现，与逐级列目录看到的一致。
 - 来源与最近修改：[行动账本](../../../../domains/action-ledger/README.md) 每份文档给首尾两条。最早一条是新建时给出新建者；
   主运行和子运行都显示为 `linnya_ai`，`external` 是经外部控制入口写入的改动，界面显示为 Linnya CLI（分不出调用方是人、脚本还是外部 Agent），`plugin` 是插件后台自动化。

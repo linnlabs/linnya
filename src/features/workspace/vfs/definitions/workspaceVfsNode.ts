@@ -43,7 +43,6 @@ export interface WorkspaceVfsNode {
   readonly deleted_at: number | null;
   readonly last_opened_at: number | null;
   readonly access_count: number;
-  readonly tags: string | null;
   readonly is_virtual: boolean;
   readonly source: WorkspaceVfsNodeSource;
   readonly payload?: WorkspaceVfsNodePayload;
@@ -53,6 +52,6 @@ export const WorkspaceNodeRowSchema = z.object({
   id: z.string(), project_id: z.string().nullable(), parent_id: z.string().nullable(),
   type: z.string(), name: z.string(), icon: z.string().nullable(),
   created_at: z.number(), updated_at: z.number(), deleted_at: z.number().nullable(),
-  last_opened_at: z.number().nullable(), access_count: z.number(), tags: z.string().nullable(),
+  last_opened_at: z.number().nullable(), access_count: z.number(),
 });
 export type WorkspaceNodeRow = Readonly<z.infer<typeof WorkspaceNodeRowSchema>>;

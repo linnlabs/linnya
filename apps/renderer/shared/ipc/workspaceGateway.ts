@@ -54,7 +54,6 @@ export interface WorkspaceNodeDTO {
   deleted_at: number | null;
   last_opened_at: number | null;
   access_count: number;
-  tags: string | null;
   is_virtual?: boolean;
   source?: string;
   payload?: Record<string, unknown>;

@@ -10,7 +10,6 @@ export interface PluginWorkspaceRuntimeNode {
   readonly deleted_at?: number | null;
   readonly last_opened_at?: number | null;
   readonly access_count?: number;
-  readonly tags?: string | null;
 }
 
 export interface PluginWorkspaceServicePort {

@@ -26,6 +26,7 @@ export const ACTION_LEDGER_SCHEMAS = [
     root_run_id TEXT,
     parent_run_id TEXT,
     tool_call_id TEXT,
+    agent_id TEXT,
     CHECK (actor_kind NOT IN ('run', 'subrun') OR (run_id IS NOT NULL AND root_run_id IS NOT NULL)),
     CHECK (actor_kind <> 'subrun' OR parent_run_id IS NOT NULL),
     CHECK (actor_kind <> 'plugin' OR actor_plugin_id IS NOT NULL)

@@ -43,7 +43,7 @@ export function readConversationRunDocumentChanges(
   const documents: ConversationRunDocumentChange[] = [];
   for (const change of mergeRunDocumentChanges(changes)) {
     const node = readWorkspaceNodeIdentityIncludingDeleted(db, change.documentId);
-    // 账本只列当前项目的改动；节点不可见（如资源库）或已转走时不展示。
+    // 账本只列当前项目的改动；节点已转走时不展示。
     if (!node || node.projectId !== projectId) continue;
     documents.push({
       document_id: node.id,

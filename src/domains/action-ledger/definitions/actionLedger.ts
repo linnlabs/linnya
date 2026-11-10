@@ -87,6 +87,8 @@ export interface ActionLedgerDocumentChange {
   readonly rootRunId: string | null;
   readonly parentRunId: string | null;
   readonly conversationId: string | null;
+  /** 执行这次运行的 Agent（注册表 ID）；用户、插件和没有 Agent 的运行为 null。 */
+  readonly agentId: string | null;
   readonly actions: readonly ActionLedgerAction[];
   readonly entryCount: number;
   readonly granularity: ActionLedgerGranularity | 'mixed';
@@ -111,10 +113,12 @@ export interface ActionLedgerDocumentSummary {
     readonly pluginId: string | null;
     /** 新建发生在别的项目（文档后来转入）时为 null，与按运行查询的可见规则一致。 */
     readonly conversationId: string | null;
+    readonly agentId: string | null;
   } | null;
   readonly last: {
     readonly actorKind: ActionActorKind;
     readonly pluginId: string | null;
+    readonly agentId: string | null;
     readonly recordedAt: number;
   };
 }

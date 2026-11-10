@@ -45,6 +45,34 @@ const grandchildRun: ActionRunActor = {
 };
 
 describe('行动账本', () => {
+  it('运行执行者的 Agent 由账本从运行记录查出；运行被删除后账本仍保留 Agent', () => {
+    const db = createDb();
+    db.exec(`ALTER TABLE workspace_nodes ADD COLUMN deleted_at INTEGER;
+      CREATE TABLE runs (id TEXT PRIMARY KEY, agent_spec_id TEXT);
+      INSERT INTO runs VALUES ('run-1', 'research_v1'), ('run-1-child', 'research_source_review_v1');`);
+    const ledger = createSqliteActionLedger(db, { now: clock() });
+    ledger.recorderFor(rootRun, 'coarse').record({ projectId: 'p1', documentId: 'doc-a', documentType: 'document', action: 'create' });
+    ledger.recorderFor(childRun, 'coarse').record({ projectId: 'p1', documentId: 'doc-b', documentType: 'document', action: 'update' });
+    ledger.recorderFor({ kind: 'user' }, 'coarse').record({ projectId: 'p1', documentId: 'doc-a', documentType: 'document', action: 'update' });
+    db.exec('DELETE FROM runs');
+
+    const changes = ledger.listDocumentChanges({ projectId: 'p1', limit: 10 });
+    expect(changes.changes.map(change => [change.documentId, change.actorKind, change.agentId])).toEqual([
+      ['doc-a', 'user', null],
+      ['doc-b', 'subrun', 'research_source_review_v1'],
+      ['doc-a', 'run', 'research_v1'],
+    ]);
+    const summary = ledger.summarizeProjectDocuments('p1').find(item => item.documentId === 'doc-a');
+    expect(summary?.creator?.agentId).toBe('research_v1');
+    expect(summary?.last.agentId).toBeNull();
+  });
+
+  it('没有运行表的装配里 Agent 记为空', () => {
+    const ledger = createSqliteActionLedger(createDb(), { now: clock() });
+    ledger.recorderFor(rootRun, 'coarse').record({ projectId: 'p1', documentId: 'doc-a', documentType: 'document', action: 'create' });
+    expect(ledger.listDocumentChanges({ projectId: 'p1', limit: 10 }).changes[0]?.agentId).toBeNull();
+  });
+
   it('同一执行者对同一文档的多次改动合成一项；按根运行查询包含各层子运行', () => {
     const ledger = createSqliteActionLedger(createDb(), { now: clock() });
     const root = ledger.recorderFor(rootRun, 'coarse');

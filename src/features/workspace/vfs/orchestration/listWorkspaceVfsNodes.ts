@@ -11,7 +11,6 @@ import { WorkspaceNodeRowSchema, type WorkspaceNodeRow, type WorkspaceVfsNode } 
 import type { WorkspaceVfsDatabase } from '../definitions/workspaceVfsDatabase';
 export type { WorkspaceVfsDatabase, WorkspaceVfsStatement } from '../definitions/workspaceVfsDatabase';
 import { getWorkspaceVfsNodeRow as getNodeById, buildWorkspaceNodePath } from '../persistence/workspaceVfsNodeRows';
-import { hasResourceLibraryRole } from '../functions/resourceLibraryRole';
 import {
   isSystemByInodeFolderId,
   isSystemRootFolderId,
@@ -81,15 +80,9 @@ function toVfsWorkspaceNode(row: WorkspaceNodeRow, pathValue: string): Workspace
     deleted_at: row.deleted_at,
     last_opened_at: row.last_opened_at,
     access_count: row.access_count,
-    tags: row.tags,
     is_virtual: false,
     source: 'workspace_node',
   };
-}
-
-function isVisibleWorkspaceNode(row: WorkspaceNodeRow): boolean {
-  // 资源库及其历史子树是技术投影，不再作为项目文档命名空间暴露。
-  return !hasResourceLibraryRole(row.tags);
 }
 
 function getChildRows(
@@ -132,7 +125,7 @@ export function readWorkspaceNodeIdentityIncludingDeleted(
   nodeId: string
 ): WorkspaceNodeIdentity | null {
   const row = db.prepare('SELECT * FROM workspace_nodes WHERE id = ?').get(nodeId) as WorkspaceNodeRow | undefined;
-  if (!row || !isVisibleWorkspaceNode(row)) return null;
+  if (!row) return null;
   return {
     id: row.id,
     projectId: row.project_id,
@@ -163,7 +156,7 @@ export interface WorkspaceProjectDocumentList {
 
 /**
  * 一次查询列出项目里全部可见文档（非文件夹节点）及其所在位置。只从项目根出发连接父子：
- * 父节点已删除的残留节点、资源库及其子树都不出现，与逐级列目录看到的一致。
+ * 父节点已删除的残留节点不出现，与逐级列目录看到的一致。
  */
 export function listWorkspaceProjectDocuments(
   db: WorkspaceVfsDatabase,
@@ -187,7 +180,6 @@ export function listWorkspaceProjectDocuments(
   ];
   for (let next = pending.pop(); next; next = pending.pop()) {
     for (const row of childrenByParent.get(next.parentId) ?? []) {
-      if (!isVisibleWorkspaceNode(row)) continue;
       const title = deriveWorkspaceNodeDisplayName(row) ?? row.name;
       if (row.type === 'folder') {
         folderCount += 1;
@@ -214,7 +206,7 @@ export function readPersistedWorkspaceVfsNode(
   nodeId: string
 ): WorkspaceVfsNode | null {
   const row = getNodeById(db, nodeId);
-  return row && isVisibleWorkspaceNode(row)
+  return row
     ? toVfsWorkspaceNode(row, buildWorkspaceNodePath(db, row))
     : null;
 }
@@ -228,7 +220,6 @@ export async function listWorkspaceVfsNodes(
 
   if (parentId === null) {
     const rootNodes = getChildRows(params.db, projectId, null)
-      .filter(isVisibleWorkspaceNode)
       .map(row => toVfsWorkspaceNode(row, buildWorkspaceNodePath(params.db, row)));
     if (!params.includeSystemNodes) return rootNodes;
     return [...rootNodes, buildSystemRootNode(projectId, timestamp)];
@@ -251,10 +242,6 @@ export async function listWorkspaceVfsNodes(
     return listSystemInodeFiles({ projectId, parentId, workspaceRow });
   }
 
-  const parentRow = getNodeById(params.db, parentId);
-  if (parentRow && hasResourceLibraryRole(parentRow.tags)) return [];
-
   return getChildRows(params.db, projectId, parentId)
-    .filter(isVisibleWorkspaceNode)
     .map(row => toVfsWorkspaceNode(row, buildWorkspaceNodePath(params.db, row)));
 }

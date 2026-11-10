@@ -6,7 +6,6 @@ import { attachCitationSourceResolver } from 'src/domains/citation';
 import { createProjectLifecycle } from 'src/domains/projects';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
-import { buildResourceLibraryTags } from 'src/features/workspace/vfs/functions/resourceLibraryRole';
 import type { ToolContext } from 'src/tools/types';
 import { WriteFileTool } from 'src/tools/workspace/write_file/WriteFileTool';
 import { readProjectOverview } from '../orchestration/readProjectOverview';
@@ -56,12 +55,9 @@ function context(run: { readonly runId: string; readonly callId: string; readonl
 const write = (locator: string, content: string, ctx: ToolContext) => new WriteFileTool().run({ locator, content }, ctx);
 
 describe('项目概览', () => {
-  it('跨文件夹列出文档：来源、生成于哪个对话、最近谁改、待审阅数，资源库不出现', async () => {
+  it('跨文件夹列出文档：来源、生成于哪个对话、最近谁改、待审阅数', async () => {
     const reports = workspace.createFolder(projectId, '报告');
     workspace.createFolder(projectId, '访谈', reports);
-    const library = workspace.createFolder(projectId, '资源库');
-    database.getDb().prepare('UPDATE workspace_nodes SET tags = ? WHERE id = ?').run(buildResourceLibraryTags(), library);
-    workspace.createDocument(projectId, 'hidden.md', library);
 
     await write('workspace:/报告/行业报告.md', '# 报告\n\n初稿。', context({ runId: 'run-a', callId: 'c1' }));
     await write('workspace:/报告/行业报告.md', '# 报告\n\n修改。', context({ runId: 'run-a', callId: 'c2' }));

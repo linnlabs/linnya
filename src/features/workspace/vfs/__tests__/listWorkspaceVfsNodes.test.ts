@@ -4,7 +4,6 @@ import os from 'os';
 import path from 'path';
 import { listWorkspaceVfsNodes, type WorkspaceVfsDatabase, type WorkspaceVfsStatement } from '../orchestration/listWorkspaceVfsNodes';
 import type { WorkspaceNodeRow } from '../definitions/workspaceVfsNode';
-import { buildResourceLibraryTags } from '../functions/resourceLibraryRole';
 import { ensureBuiltinBackendPluginsRegistered } from '../../../../app-hosts/linnya/plugin-registry/builtin';
 import { backendPluginRegistry } from '../../../../app-hosts/linnya/plugin-registry/registry';
 import {
@@ -122,7 +121,6 @@ class FakeStatement implements WorkspaceVfsStatement {
         name,
         createdAt,
         updatedAt,
-        tags,
       ] = params;
 
       if (
@@ -130,8 +128,7 @@ class FakeStatement implements WorkspaceVfsStatement {
         typeof projectId !== 'string' ||
         typeof name !== 'string' ||
         typeof createdAt !== 'number' ||
-        typeof updatedAt !== 'number' ||
-        typeof tags !== 'string'
+        typeof updatedAt !== 'number'
       ) {
         throw new Error('invalid insert params');
       }
@@ -143,7 +140,6 @@ class FakeStatement implements WorkspaceVfsStatement {
         name,
         createdAt,
         updatedAt,
-        tags,
       });
     }
 
@@ -175,7 +171,6 @@ class FakeWorkspaceVfsDatabase implements WorkspaceVfsDatabase {
     parentId?: string | null;
     type: string;
     name: string;
-    tags?: string | null;
     createdAt?: number;
     updatedAt?: number;
   }): void {
@@ -193,7 +188,6 @@ class FakeWorkspaceVfsDatabase implements WorkspaceVfsDatabase {
       deleted_at: null,
       last_opened_at: null,
       access_count: 0,
-      tags: params.tags ?? null,
     });
   }
 }
@@ -307,37 +301,6 @@ describe('listWorkspaceVfsNodes', () => {
     expect(root[0]?.name).toBe('插件画布.canvas');
     expect(root[0]?.path).toBe('/插件画布.canvas');
     expect(root[0]?.display_name).toBe('插件画布');
-  });
-
-  it('历史资源库节点不再作为项目 VFS 节点暴露', async () => {
-    db.insertNode({
-      id: 'aaa-folder',
-      projectId: 'project-1',
-      type: 'folder',
-      name: 'AAA 文件夹',
-    });
-    db.insertNode({
-      id: 'resource-library',
-      projectId: 'project-1',
-      type: 'folder',
-      name: '资源库',
-      tags: buildResourceLibraryTags(),
-    });
-    db.insertNode({
-      id: 'manual-folder',
-      projectId: 'project-1',
-      parentId: 'resource-library',
-      type: 'folder',
-      name: '手动素材',
-    });
-
-    const firstRoot = await listWorkspaceVfsNodes({
-      db,
-      projectId: 'project-1',
-      generatedImagesDir: tempDir,
-    });
-    expect(firstRoot.map((node) => node.name)).toEqual(['AAA 文件夹']);
-    expect(firstRoot.some((node) => node.source === 'resource_library')).toBe(false);
   });
 
   it('会话工作区图片不会进入项目 VFS', async () => {

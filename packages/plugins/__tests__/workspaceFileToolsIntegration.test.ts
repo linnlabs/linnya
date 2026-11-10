@@ -247,14 +247,13 @@ class FakeStatement implements WorkspaceVfsStatement {
   run(...params: readonly unknown[]): unknown {
     if (this.sql.includes('INSERT INTO workspace_nodes')) {
       if (params.length === 6) {
-        const [id, projectId, name, createdAt, updatedAt, tags] = params;
+        const [id, projectId, name, createdAt, updatedAt] = params;
         if (
           typeof id !== 'string' ||
           typeof projectId !== 'string' ||
           typeof name !== 'string' ||
           typeof createdAt !== 'number' ||
-          typeof updatedAt !== 'number' ||
-          typeof tags !== 'string'
+          typeof updatedAt !== 'number'
         ) {
           throw new Error('invalid resource folder insert params');
         }
@@ -265,7 +264,6 @@ class FakeStatement implements WorkspaceVfsStatement {
           name,
           createdAt,
           updatedAt,
-          tags,
         });
         return { changes: 1 };
       }
@@ -434,7 +432,6 @@ class FakeVfsDatabase implements WorkspaceVfsDatabase {
     readonly parentId?: string | null;
     readonly type: string;
     readonly name: string;
-    readonly tags?: string | null;
     readonly createdAt?: number;
     readonly updatedAt?: number;
   }): void {
@@ -451,7 +448,6 @@ class FakeVfsDatabase implements WorkspaceVfsDatabase {
       deleted_at: null,
       last_opened_at: null,
       access_count: 0,
-      tags: params.tags ?? null,
     });
   }
 
