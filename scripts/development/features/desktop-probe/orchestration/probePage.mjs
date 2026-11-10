@@ -29,6 +29,20 @@ export async function settlePage(cdp) {
   })`, 2600);
 }
 
+/** text= 目标：先找直接含有这段文字的可见元素；文字被拆成多段时，取包含它的最内层可见元素。 */
+function findByText(text) {
+  return `(() => {
+    const needle = ${JSON.stringify(text)};
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const element = walker.currentNode.parentElement;
+      if (walker.currentNode.data.includes(needle) && element?.checkVisibility()) return element;
+    }
+    return [...document.body.querySelectorAll('*')]
+      .filter(element => element.checkVisibility() && element.innerText?.includes(needle)).at(-1) ?? null;
+  })()`;
+}
+
 export async function resolveTarget(cdp, target) {
   if (target.ref) {
     const match = /^@n(\d+)$/.exec(target.ref);
@@ -41,12 +55,16 @@ export async function resolveTarget(cdp, target) {
     }
   }
   const response = await cdp.send('Runtime.evaluate', {
-    expression: `document.querySelector(${JSON.stringify(target.selector)})`,
+    expression: target.text === undefined ? `document.querySelector(${JSON.stringify(target.selector)})` : findByText(target.text),
     objectGroup: 'probe',
   });
   unwrapCdpResult(response);
   const objectId = response.result?.objectId;
-  if (!objectId) throw new ProbeError('NOT_FOUND', `找不到 ${target.selector}`);
+  if (!objectId) {
+    throw target.text === undefined
+      ? new ProbeError('NOT_FOUND', `找不到 ${target.selector}`)
+      : new ProbeError('NOT_FOUND', `找不到可见文字 ${target.text}`, '用 probe snapshot --grep 查看页面上的实际文字');
+  }
   return objectId;
 }
 

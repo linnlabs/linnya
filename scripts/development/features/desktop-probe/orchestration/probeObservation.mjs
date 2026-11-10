@@ -6,14 +6,14 @@ import { evaluate, waitFor } from '../infrastructure/cdpClient.mjs';
 import { readOptional, writeArtifact } from '../infrastructure/instanceStore.mjs';
 import { locateTarget, pageFacts, resolveTarget, settlePage } from './probePage.mjs';
 
-export async function snapshotPage(cdp, session, { target, all, limit = 50, json } = {}) {
+export async function snapshotPage(cdp, session, { target, all, limit = 50, json, grep, roles } = {}) {
   const page = await pageFacts(cdp);
   const { nodes } = target
     ? await cdp.send('Accessibility.queryAXTree', { objectId: await resolveTarget(cdp, target) })
     : await cdp.send('Accessibility.getFullAXTree');
-  const snapshot = renderSnapshot(nodes, { all, limit });
+  const snapshot = renderSnapshot(nodes, { all, limit, grep, roles });
   const header = `# ${session.options.name} · ${page.path} · ${page.width}×${page.height} · ${snapshot.entries.length}/${snapshot.total}`;
-  const text = `${header}\n${snapshot.text}${snapshot.truncated ? '\n… 使用 --within 或 --max-lines 查看更多' : ''}`;
+  const text = `${header}\n${snapshot.text}${snapshot.truncated ? '\n… 使用 --grep、--role、--within 或 --max-lines 缩小范围' : ''}`;
   const artifact = writeArtifact(session.root, 'snapshot', 'txt', text + '\n');
   return { page, snapshot: text, ...(json ? { entries: snapshot.entries } : {}), artifacts: [artifact] };
 }

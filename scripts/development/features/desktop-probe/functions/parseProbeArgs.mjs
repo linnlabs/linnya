@@ -2,12 +2,14 @@ import { parseArgs } from 'node:util';
 import { defaultOptions, ProbeError } from '../definitions/probeContract.mjs';
 
 const definitions = {
-  up: { string: ['mode', 'window', 'size', 'entry'], boolean: ['fresh'] },
-  restart: { string: ['mode', 'window', 'size'], boolean: ['fresh'] },
+  up: { string: ['mode', 'window', 'size', 'entry', 'clone-data'], boolean: ['fresh', 'no-build'] },
+  restart: { string: ['mode', 'window', 'size'], boolean: ['fresh', 'no-build'] },
   status: { boolean: ['all'] },
   stop: { boolean: ['clean'] },
   reload: {},
-  snapshot: { string: ['within', 'max-lines'], boolean: ['all', 'json'] },
+  snapshot: { string: ['within', 'max-lines', 'grep', 'role'], boolean: ['all', 'json'] },
+  open: { boolean: ['overview'] },
+  fonts: {},
   shot: { string: ['selector', 'clip', 'pad'], boolean: ['device', 'jpeg'] },
   click: { string: ['selector', 'at', 'button'] },
   dblclick: { string: ['selector', 'at', 'button'] },

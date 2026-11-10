@@ -51,11 +51,12 @@ export function touchInstance(root) {
   utimesSync(file, now, now);
 }
 
-export async function withLifecycleLock(root, action) {
+export async function withLifecycleLock(root, action, { timeoutMs = 0 } = {}) {
   const { DatabaseSync } = await import('node:sqlite');
   mkdirSync(instancesRoot, { recursive: true, mode: 0o700 });
   const ownerDir = `${root}.lock`;
-  const lock = new DatabaseSync(`${root}.lock.sqlite`, { timeout: 0 });
+  // 实例生命周期遇忙立即报 BUSY；共享构建锁则排队等待前一个构建结束。
+  const lock = new DatabaseSync(`${root}.lock.sqlite`, { timeout: timeoutMs });
   try {
     try {
       // 进程被强杀时，内核会释放 SQLite 的文件锁。所有接管者使用同一文件，避免误删新锁。

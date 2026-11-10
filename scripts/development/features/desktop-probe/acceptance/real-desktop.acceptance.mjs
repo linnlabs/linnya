@@ -26,7 +26,8 @@ const initialBuild = buildFiles();
 const evidence = mkdtempSync(join(tmpdir(), 'linnya-probe-real-'));
 let result;
 try {
-  const up = await run('up', '--size', '1400x900', '--mode', 'dev');
+  // 本验收要证明探针不改动构建产物，因此不让它自动重建；产物过期时会明确报 BUILD_STALE。
+  const up = await run('up', '--size', '1400x900', '--mode', 'dev', '--no-build');
   assert.ok(up.readyMs < 10_000, `冷启动 ${up.readyMs}ms`);
   assert.equal(up.options.mode, 'dev');
   assert.deepEqual(up.viewport, { width: 1400, height: 900 });
@@ -40,12 +41,11 @@ try {
   await run('click', kb.ref);
   await run('wait', '--text', '新建知识库');
   const fixture = await run('fixture', 'project-overview');
-  const project = JSON.stringify(fixture.projectId);
-  await run('eval', `(async () => {
-    const { getWorkspaceNavigationPort } = await import('/apps/renderer/shared/ports/workspaceNavigationPort.ts');
-    await getWorkspaceNavigationPort().openProjectOverview(${project});
-    return true;
-  })()`);
+  const opened = await run('open', fixture.projectId, '--overview');
+  assert.equal(opened.opened.kind, 'overview');
+  const fonts = await run('fonts', 'text=行业报告');
+  assert.ok(fonts.fonts[0].rendered.length > 0);
+  assert.ok((await run('snapshot', '--grep', '演示稿')).snapshot.includes('演示稿'));
   await run('wait', '--expr', `document.querySelectorAll('.project-overview__row').length === ${fixture.documents}`);
   const overview = await run('snapshot', '--within', '.project-overview', '--all', '--max-lines', '100');
   assert.match(overview.snapshot, /行业报告/);

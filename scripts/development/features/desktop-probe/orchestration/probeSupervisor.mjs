@@ -56,7 +56,8 @@ function watchRenderer(event) {
     text = params.exceptionDetails.exception?.description ?? params.exceptionDetails.text;
   } else if (method === 'Log.entryAdded') {
     level = params.entry.level === 'warning' ? 'warn' : params.entry.level;
-    text = params.entry.text;
+    // “资源加载失败”本身不说是哪个地址；带上 URL 才能直接定位，不必再抓网络请求。
+    text = params.entry.url ? `${params.entry.text} ${params.entry.url}` : params.entry.text;
   } else {
     return;
   }
@@ -182,14 +183,20 @@ try {
     checkStarting();
     const log = readOptional(logs.desktop);
     const marker = readDesktopReady(log);
+    // Renderer 与 Backend 产物不同步时 RPC 会被拒，Desktop 永远等不到首屏；直接报出原因，不等超时。
+    const mismatch = log?.match(/^.*RPC 字段不合法.*$/m);
+    if (mismatch) throw new ProbeError('BUILD_MISMATCH', mismatch[0].slice(0, 200), 'Renderer 与 Backend 产物不同步：运行 pnpm -s probe restart（会自动重建）');
     if (!toy && !marker) return false;
     if (!log.includes('[probe-bootstrap] ok') || !log.includes(`[probe-bootstrap] window intercepted mode=${options.window} wantsShow=true`)) {
       throw new ProbeError('BOOTSTRAP_FAILED', 'Electron 窗口引导未生效');
     }
     const selector = toy ? 'button' : '.project-row, .project-chat-panel';
-    const viewport = await evaluate(cdp, `document.querySelector(${JSON.stringify(selector)}) &&
-      ({ width: innerWidth, height: innerHeight })`);
-    return viewport && { ...marker, viewport };
+    // 首屏出现时插件可能仍在加载；等加载结束再报就绪，否则紧接着打开插件文档会碰到“未注册类型”。
+    const plugins = toy ? 'null' : 'globalThis.__LINNYA_RENDERER_PLUGIN_LOADER_DIAGNOSTICS__?.status';
+    const facts = await evaluate(cdp, `document.querySelector(${JSON.stringify(selector)}) &&
+      ({ viewport: { width: innerWidth, height: innerHeight }, plugins: ${plugins} })`);
+    if (!facts || (!toy && !['success', 'failed'].includes(facts.plugins))) return false;
+    return { ...marker, viewport: facts.viewport, plugins: facts.plugins };
   }, 'Desktop 就绪', 25_000);
   if (!toy && (
     new URL(ready.rendererUrl).origin !== session.viteUrl ||
@@ -200,7 +207,10 @@ try {
   observeChildren();
   const { viewport } = ready;
   const sizeAdjusted = viewport.width !== options.width || viewport.height !== options.height;
-  save({ state: 'ready', apiPort: ready.apiPort, viewport, sizeAdjusted, readyMs: Date.now() - session.startedAt });
+  save({
+    state: 'ready', apiPort: ready.apiPort, viewport, sizeAdjusted, readyMs: Date.now() - session.startedAt,
+    ...(ready.plugins === 'failed' && { pluginLoad: 'failed' }),
+  });
   while (!stopReason) {
     observeChildren();
     if (Date.now() - statSync(join(root, 'last-used')).mtimeMs > idleMs) requestStop('idle');

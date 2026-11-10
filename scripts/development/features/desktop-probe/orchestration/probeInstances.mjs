@@ -1,32 +1,17 @@
-import { spawn, execFileSync } from 'node:child_process';
-import { closeSync, existsSync, openSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { execFileSync, spawn } from 'node:child_process';
+import { closeSync, existsSync, openSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultOptions, ProbeError, repoRoot } from '../definitions/probeContract.mjs';
 import { waitFor } from '../infrastructure/cdpClient.mjs';
+import { cloneWorkspaceData } from '../infrastructure/workspaceClone.mjs';
+import { buildFreshness, ensureFreshBuild } from './probeBuild.mjs';
 import {
   instanceRoot, instancesRoot, prepareInstance, readSession, touchInstance, withLifecycleLock, writeSession,
 } from '../infrastructure/instanceStore.mjs';
 import { observeTree, readProcessTable, sameProcess, signalOwner, stopOwnedTree } from '../infrastructure/processTree.mjs';
 
 const supervisorEntry = fileURLToPath(new URL('./probeSupervisor.mjs', import.meta.url));
-const dist = join(repoRoot, 'dist/main/main.cjs');
-
-function git(...args) {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim();
-}
-
-function buildStatus() {
-  for (const file of [dist, join(repoRoot, 'dist/main/preload.js'), join(repoRoot, 'dist/main/app-server-backend.cjs')]) {
-    if (!existsSync(file)) throw new ProbeError('BUILD_MISSING', `缺少 ${file}`, '先运行 pnpm run dev:electron --build-only');
-  }
-  const distMtime = statSync(dist).mtimeMs;
-  const sourceChanges = git('status', '--porcelain', '--', 'src', 'packages').split('\n')
-    .filter(Boolean).map(line => line.slice(3).split(' -> ').at(-1));
-  const distStale = Number(git('log', '-1', '--format=%ct', '--', 'src', 'packages')) * 1000 > distMtime ||
-    sourceChanges.some(file => (statSync(join(repoRoot, file), { throwIfNoEntry: false })?.mtimeMs ?? Date.now()) > distMtime);
-  return { distMtime, distStale, gitHead: git('rev-parse', 'HEAD') };
-}
 
 function sessionSummary(session) {
   // 子进程的完整命令只用于核对归属，留在实例目录，避免进入工具输出。
@@ -83,24 +68,34 @@ async function recoverOrphaned(root, session) {
   return cleanup;
 }
 
-async function start(root, options, fresh) {
+async function start(root, options, { fresh = false, noBuild = false, cloneData } = {}) {
   const previous = readSession(root);
   checkSupervisorHandoff(previous);
   if (sameProcess(previous?.supervisor)) {
-    if (fresh) throw new ProbeError('BUSY', '请先停止当前实例再使用 --fresh');
+    if (fresh || cloneData) throw new ProbeError('BUSY', '请先停止当前实例再使用 --fresh 或 --clone-data');
     touchInstance(root);
-    if (previous.state === 'ready') return { ...sessionSummary(previous), reused: true };
+    if (previous.state === 'ready') {
+      // 复用旧实例时，源码可能已在其启动后变化；只提示，不打断正在使用它的人。
+      const freshness = previous.options?.entry === 'toy' ? { stale: false } : buildFreshness();
+      return { ...sessionSummary(previous), reused: true, ...(freshness.stale && {
+        buildStale: freshness.reason, hint: '运行 pnpm -s probe restart 以载入新构建',
+      }) };
+    }
     throw new ProbeError('BUSY', '实例正在启动或停止');
   }
   await recoverOrphaned(root, previous);
-  const build = options.entry === 'toy' ? {} : buildStatus();
+  const build = options.entry === 'toy' ? {} : {
+    build: await ensureFreshBuild({ build: !noBuild }),
+    gitHead: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim(),
+  };
   if (fresh) rmSync(root, { recursive: true, force: true });
   prepareInstance(root);
+  const dataClone = cloneData ? await cloneWorkspaceData(cloneData, join(root, 'workspace')) : undefined;
   const logs = Object.fromEntries(['desktop', 'vite', 'renderer', 'supervisor'].map(source => [
     source, join(root, 'logs', `${source}.${source === 'renderer' ? 'jsonl' : 'log'}`),
   ]));
   const session = {
-    state: 'starting', options, root, repoRoot, logs, startedAt: Date.now(), ...build,
+    state: 'starting', options, root, repoRoot, logs, startedAt: Date.now(), ...build, ...(dataClone && { dataClone }),
     // Chromium 的界面偏好按 origin 保存，重启时优先复用本实例的端口。
     preferredRendererPort: !fresh && previous?.viteUrl ? Number(new URL(previous.viteUrl).port) : undefined,
     connectionFile: join(root, 'runtime', 'conversation-control-v1.json'),
@@ -147,16 +142,18 @@ async function stop(root, clean) {
   return { state: 'stopped', root, cleanup };
 }
 
-export function changeProbeInstance(command, options, { fresh = false, clean = false } = {}) {
+export function changeProbeInstance(command, options, {
+  fresh = false, clean = false, 'no-build': noBuild = false, 'clone-data': cloneData,
+} = {}) {
   const root = instanceRoot(options.name);
   return withLifecycleLock(root, async () => {
     if (command === 'stop') return stop(root, clean);
     if (command === 'restart') {
       const old = readSession(root);
       await stop(root, false);
-      return start(root, { ...defaultOptions, ...old?.options, ...options }, fresh);
+      return start(root, { ...defaultOptions, ...old?.options, ...options }, { fresh, noBuild });
     }
-    return start(root, { ...defaultOptions, ...options }, fresh);
+    return start(root, { ...defaultOptions, ...options }, { fresh, noBuild, cloneData });
   });
 }
 

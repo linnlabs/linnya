@@ -15,7 +15,12 @@ function numericList(raw, length, label) {
 }
 
 export function probeTarget(raw) {
-  return raw.startsWith('@') ? { ref: raw } : { selector: raw };
+  if (raw.startsWith('@')) return { ref: raw };
+  if (raw.startsWith('text=')) {
+    if (raw.length === 5) usage('text= 后需要文字');
+    return { text: raw.slice(5) };
+  }
+  return { selector: raw };
 }
 
 function actionTarget(raw, values) {
@@ -112,9 +117,21 @@ export async function runProbeCommand(parsed) {
         '新页面加载', 15_000);
       return { reloaded: true };
     }
+    if (command === 'open') {
+      if (positionals.length !== 1) usage('open 需要一个对话、文档或项目 ID（或 assistant）');
+      const { openWorkspaceObject } = await import('./probeOpen.mjs');
+      return await openWorkspaceObject(cdp, session, positionals[0], { overview: values.overview });
+    }
+    if (command === 'fonts') {
+      if (!positionals.length) usage('fonts 需要至少一个目标：@引用、选择器或 text=<文字>');
+      const { inspectFonts } = await import('./probeFonts.mjs');
+      return await inspectFonts(cdp, positionals.map(probeTarget));
+    }
     if (command === 'snapshot') {
+      if (positionals.length) usage('snapshot 用 --within 指定范围、--grep 过滤文字');
       return await snapshotPage(cdp, session, {
         target: values.within && probeTarget(values.within), all: values.all, json: values.json,
+        grep: values.grep, roles: values.role && new Set(values.role.split(',')),
         limit: numberOption(values['max-lines'] ?? '50', '--max-lines', { min: 1, max: 1000, integer: true }),
       });
     }
