@@ -24,7 +24,7 @@ const ACTION_BY_CODE = {
   direction_background_off: '把这些页的底色换回 theme.direction 声明的背景色；确有理由换底时，把该色补进 palette.backgrounds',
   direction_font_undeclared: '改用 theme.direction.fonts 里的字体；确实需要这款字体时，把它补进 fonts',
   direction_color_off_palette: '复核这些颜色：改成声明的强调色或其深浅，确有需要时补进 palette.accents',
-  direction_color_excluded_hue: '把这些颜色换成 theme.direction.palette 里的颜色；这些色相与主图的颜色相冲',
+  direction_color_excluded_hue: '把这些颜色换成 theme.direction.palette 里的颜色；这些色相与主图的颜色或主色相冲',
   direction_image_palette_missing: '运行 linnya palette suggest <主图...>，选一套写进 theme.direction 的 palette 和 imagePalette；全是手绘或示意图时写 imagePalette: { unavailable: "no_photos" }',
   palette_too_diverse: '复核颜色角色并减少无必要色相',
   primary_hue_drift: '统一跨页主色角色或确认主题切换有意',

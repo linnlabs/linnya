@@ -142,6 +142,35 @@ describe('direction carry-through', () => {
     expect(codes(info([page(1, '#EFE7D6')]), declared)).toEqual([]);
   });
 
+  it('没有取色结果时，主色对面的信号色要报，浅米纸不报', () => {
+    const declared: DirectionDeclaration = {
+      ...DIRECTION,
+      palette: { backgrounds: ['#F5F0E4'], ink: '#1A1A1A', accents: ['#2C488E', '#C48A00', '#0E7568'] },
+    };
+    const shape = (name: string, fill: string): SlideElementInfo => ({ name, type: 'shape', fill, position: { x: 1, y: 1, w: 3, h: 2 } });
+    const issues = lintDirectionCarryThrough(info([{
+      number: 1,
+      backgroundPaint: { type: 'solid', color: '#F5F0E4' },
+      elements: [shape('navy', '#2C488E'), shape('amber', '#C48A00'), shape('teal', '#0E7568')],
+    }]), declared).filter((issue) => issue.code === 'direction_color_excluded_hue');
+    expect(issues).toEqual([expect.objectContaining({
+      evidence: expect.objectContaining({ observed: ['#C48A00'], declared: [expect.stringContaining('主色靛的对面')] }),
+    })]);
+  });
+
+  it('有取色结果时只按它的排除区，不再按主色对面', () => {
+    const declared: DirectionDeclaration = {
+      ...DIRECTION,
+      palette: { backgrounds: ['#F5F0E4'], ink: '#1A1A1A', accents: ['#2C488E', '#C48A00'] },
+      imagePalette: { id: 'plabcd-1', excludedHues: [] },
+    };
+    const issues = lintDirectionCarryThrough(info([{
+      number: 1,
+      elements: [{ name: 'amber', type: 'shape', fill: '#C48A00', position: { x: 1, y: 1, w: 3, h: 2 } }],
+    }]), declared).filter((issue) => issue.code === 'direction_color_excluded_hue');
+    expect(issues).toEqual([]);
+  });
+
   it('声明的 muted、chart 算在调色板里', () => {
     const declared: DirectionDeclaration = {
       ...DIRECTION,

@@ -42,7 +42,6 @@ import {
   PRIMARY_SUBJECT_WEIGHTS,
   type RangeValue,
   RELATION_HUE_SHIFT,
-  SYNTHESIZED_HUE_SHIFT_MAX,
   TEXT_TONES,
   type ToneSurface,
 } from '../definitions/paletteConstants.js'
@@ -120,7 +119,7 @@ function pickPrimary(recipe: PaletteRecipe): Oklch | undefined {
   return pickWeighted(candidates, candidates.map(color => PRIMARY_SUBJECT_WEIGHTS[recipe.subject.indexOf(color)] ?? 0.2), recipe.random)
 }
 
-/** 按关系定用到的色相。邻近、中差、对照优先用色相差落在区间里的图片色，没有再合成。 */
+/** 按关系定用到的色相。邻近、中差优先用色相差落在区间里的图片色，没有再合成；对照色只用图片色。 */
 function huePlan(recipe: PaletteRecipe, primary: Oklch): Anchor[] | null {
   const pinnedCount = recipe.pinnedHexes?.length ?? 0
   if (pinnedCount >= 2) {
@@ -150,11 +149,14 @@ function huePlan(recipe: PaletteRecipe, primary: Oklch): Anchor[] | null {
     return color !== primary && distance >= band.min && distance <= band.max && isAllowed(recipe, color.h)
       && hueDifference(primary, color) >= PARTNER_MIN_HUE_DIFFERENCE
   })
-  if (imagePartners.length > 0 && recipe.random() < IMAGE_PARTNER_PROBABILITY) {
+  // 对照色只用图片里真有的颜色：合成的对照色离主色远、又不在照片里，常读作相反色（黄绿配粉红）。
+  const mustUseImage = recipe.relation === 'contrast'
+  if (imagePartners.length > 0 && (mustUseImage || recipe.random() < IMAGE_PARTNER_PROBABILITY)) {
     const partner = imagePartners[Math.floor(recipe.random() * imagePartners.length)] ?? imagePartners[0]
     if (partner) return [main, { hue: partner.h, source: partner }]
   }
-  const magnitude = between(recipe, { min: band.min, max: Math.min(band.max, SYNTHESIZED_HUE_SHIFT_MAX) })
+  if (mustUseImage) return null
+  const magnitude = between(recipe, band)
   const preferred = recipe.random() < 0.5 ? 1 : -1
   for (const sign of [preferred, -preferred]) {
     const hue = normalizeHue(primary.h + sign * magnitude)

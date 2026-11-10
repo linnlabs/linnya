@@ -7,8 +7,11 @@ function colorLogicLines(draw: DirectionDraw): string[] {
   return [
     `配色逻辑：${draw.colorLogic.name}。${draw.colorLogic.guide}`,
     draw.hue
-      ? `主色相：${draw.hue.name}（参考色 ${draw.hue.reference}）。主色或信号色取这个色相，深浅和浓淡不必照抄参考色，其余颜色按配色逻辑配。`
+      ? `主色相：${draw.hue.name}（参考色 ${draw.hueReference}）。主色或信号色取这个色相，写在 palette.accents 第一个；深浅和浓淡不必照抄参考色，其余颜色按配色逻辑配。`
       : '主色相：从主图里取样，不另定色相。',
+    ...(draw.oppositeHues.length > 0
+      ? [`不用的颜色：${draw.oppositeHues.map((entry) => entry.name).join('、')}一带在主色相的对面，信号色和图表色都不用，底色也别染成这个色调；inspect 会按 accents 第一个颜色检查。`]
+      : []),
   ];
 }
 

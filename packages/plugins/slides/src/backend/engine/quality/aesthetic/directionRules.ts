@@ -6,13 +6,14 @@
  * - 背景：整页底色（满版形状优先于页面背景）离所有声明颜色都远 → 报告；满版照片不判。
  * - 字体：文字 run 声明的字体不在 fonts 里 → 报告；Office 本地化名称归一后再比。
  * - 颜色：彩色填充或文字的色相（OKLCH）离所有声明颜色都远 → 复核；同色相的深浅不算偏离。
- * - 排除色相：底色、彩色填充或文字落进 imagePalette.excludedHues（OKLCH）→ 报告。
+ * - 排除色相：底色、彩色填充或文字落进 imagePalette.excludedHues（OKLCH）→ 报告。没有取色结果时，
+ *   排除区是主色（第一个看得出色相的强调色）对面的 150°–210°，只判彩度 ≥ 0.06 的颜色。
  * - 配色来源：有照片却没声明 imagePalette → 报告。手绘图和照片在这里分不开，全是手绘时由 Agent 声明 no_photos。
  */
 
 import { hueDistance, toHex } from '@linnya/color-core';
-import { hueRangeLabel, isColorExcluded, type HueRange } from '@linnya/color-core/palette';
-import type { DirectionDeclaration } from '@plugin/slides/shared/designDirection';
+import { excludedHueRanges, hueName, hueRangeLabel, isColorExcluded, type HueRange } from '@linnya/color-core/palette';
+import { VISIBLE_HUE_MIN_CHROMA, type DirectionDeclaration } from '@plugin/slides/shared/designDirection';
 import {
   assessFontDelivery,
   flattenSlideElements,
@@ -38,6 +39,11 @@ const OFF_PALETTE_MIN_AREA_RATIO = 0.01;
 /** 图片至少占一页的这个比例才算照片，图标与小标记不算。 */
 const PHOTO_MIN_AREA_RATIO = 0.05;
 const MAX_OBSERVED = 6;
+/**
+ * 按主色对面检查时，颜色至少要这么鲜明才算“用了对面的颜色”。F 批违例的琥珀、朱色彩度都在 0.12 以上，
+ * 米色、牛皮纸、带色调的灰在 0.05 以下（如 #C9BCA6 为 0.034）。
+ */
+const OPPOSITE_MIN_CHROMA = 0.06;
 
 export function lintDirectionCarryThrough(
   info: PresentationInfo,
@@ -301,14 +307,15 @@ export function lintDirectionExcludedHues(
   info: PresentationInfo,
   direction: DirectionDeclaration,
 ): AestheticLintIssue[] {
-  const source = direction.imagePalette;
-  const ranges: readonly HueRange[] = source != null && 'excludedHues' in source ? source.excludedHues : [];
-  if (ranges.length === 0) return [];
+  const exclusion = resolveExclusion(direction);
+  if (exclusion == null) return [];
+  const { ranges, label, minChroma } = exclusion;
 
   const excluded: ColorTally = new Map();
   const slideArea = info.slideSize.width * info.slideSize.height;
   const record = (rgb: RgbColor, slideNumber: number, area: number) => {
-    if (isColorExcluded(toOklch(rgb), ranges)) tallyColor(excluded, rgb, slideNumber, area);
+    const color = toOklch(rgb);
+    if (color.c >= minChroma && isColorExcluded(color, ranges)) tallyColor(excluded, rgb, slideNumber, area);
   };
   for (const slide of info.slides) {
     for (const rgb of resolveEffectiveBackground(slide, info.slideSize) ?? []) record(rgb, slide.number, slideArea);
@@ -326,11 +333,35 @@ export function lintDirectionExcludedHues(
       kind: 'direction_carry_through',
       aspect: 'excluded_hue',
       cardId: direction.cardId,
-      declared: ranges.map(([from, to]) => hueRangeLabel(from, to)),
+      declared: label,
       observed: ranked.map(([hex]) => hex).slice(0, MAX_OBSERVED),
       firstAffectedSlide: slides[0]!,
     },
   }];
+}
+
+/**
+ * 有取色结果时用它的排除区；没有时（无图稿、取不出颜色）按主色算对面一段。
+ * 主色对面只判鲜明的颜色：米色、牛皮纸、带色调的灰不算用了那个颜色。
+ */
+function resolveExclusion(direction: DirectionDeclaration): { ranges: readonly HueRange[]; label: string[]; minChroma: number } | null {
+  const source = direction.imagePalette;
+  if (source != null && 'excludedHues' in source) {
+    if (source.excludedHues.length === 0) return null;
+    return { ranges: source.excludedHues, label: source.excludedHues.map(([from, to]) => hueRangeLabel(from, to)), minChroma: 0 };
+  }
+  const main = direction.palette.accents
+    .map(parseHex)
+    .filter((rgb): rgb is RgbColor => rgb != null)
+    .map(toOklch)
+    .find((color) => color.c >= VISIBLE_HUE_MIN_CHROMA);
+  if (main == null) return null;
+  const ranges = excludedHueRanges([main], []);
+  return {
+    ranges,
+    label: ranges.map(([from, to]) => `主色${hueName(main.h)}的对面 ${hueRangeLabel(from, to)}`),
+    minChroma: OPPOSITE_MIN_CHROMA,
+  };
 }
 
 export function lintDirectionImagePalette(

@@ -30,7 +30,11 @@ import {
 import { TECHNIQUE_CARDS } from '../pool/techniqueCards';
 
 /** 签池版本：卡片、轴或权重改动时递增，用于基准对账。 */
-export const DIRECTION_POOL_VERSION = '2026-11-09.2';
+/** 主色相对面：与 color-core 的 OPPOSITE_HUE_FROM/TO 一致（这里会打进 build Worker，不引入 color-core）。 */
+const OPPOSITE_HUE_FROM_DEG = 150;
+const OPPOSITE_HUE_TO_DEG = 210;
+
+export const DIRECTION_POOL_VERSION = '2026-11-10.1';
 
 /** 本机最近用过的方向，用来降权，避免同一个人连续拿到同一种手法。 */
 export interface DirectionHistory {
@@ -140,6 +144,8 @@ function drawOne(
     card,
     colorLogic,
     hue: hue ?? null,
+    hueReference: hue ? hue.references[Math.floor(random() * hue.references.length)] ?? hue.references[1] : null,
+    oppositeHues: hue ? findOppositeHueBins(hue) : [],
     typeStrategy,
     imageStrategy,
     coverComposition,
@@ -225,6 +231,22 @@ export function createSeededRandom(seed: string): () => number {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/** 主色相对面的几档：色相差 150°–210° 的弧覆盖一半以上的档。与 color-core 排除区同一口径。 */
+export function findOppositeHueBins(hue: HueBin): HueBin[] {
+  const width = (hue.to - hue.from + 360) % 360;
+  const center = hue.from + width / 2;
+  const arcFrom = center + OPPOSITE_HUE_FROM_DEG;
+  return HUE_BINS.filter((entry) => {
+    const entryWidth = (entry.to - entry.from + 360) % 360;
+    let covered = 0;
+    for (let step = 0; step < entryWidth; step += 1) {
+      const degree = entry.from + step + 0.5;
+      if ((((degree - arcFrom) % 360) + 360) % 360 <= OPPOSITE_HUE_TO_DEG - OPPOSITE_HUE_FROM_DEG) covered += 1;
+    }
+    return covered * 2 > entryWidth;
+  });
 }
 
 export function findHueBin(bin: number): HueBin | undefined {

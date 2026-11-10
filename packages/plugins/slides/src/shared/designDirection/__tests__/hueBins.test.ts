@@ -2,6 +2,7 @@ import { parseColor, rgbToOklch } from '@linnya/color-core';
 import { hueName } from '@linnya/color-core/palette';
 import { describe, expect, it } from 'vitest';
 import { HUE_BINS, VISIBLE_HUE_MIN_CHROMA, buildDirectionHistory, drawDirections, formatDirectionDrawForAgent } from '../index';
+import { findOppositeHueBins } from '../functions/drawDirection';
 import { ATTRACTOR_HUE_BINS, SCENARIO_HUE_FACTORS } from '../pool/axes';
 
 function oklch(hex: string) {
@@ -13,6 +14,30 @@ function oklch(hex: string) {
 const nameOf = (bin: number) => HUE_BINS.find((entry) => entry.bin === bin)?.name;
 
 describe('12 档主色相', () => {
+  it('对面的档：靛蓝对琥珀、橄榄，湖蓝对朱红、铁锈橙，草绿对紫、梅紫', () => {
+    const opposite = (name: string) => findOppositeHueBins(HUE_BINS.find((entry) => entry.name === name)!).map((entry) => entry.name);
+    expect(opposite('靛蓝')).toEqual(['琥珀', '橄榄']);
+    expect(opposite('湖蓝')).toEqual(['朱红', '铁锈橙']);
+    expect(opposite('草绿')).toEqual(['紫', '梅紫']);
+    for (const entry of HUE_BINS) {
+      const names = opposite(entry.name);
+      expect(names.length, entry.name).toBeGreaterThan(0);
+      expect(names, entry.name).not.toContain(entry.name);
+    }
+  });
+
+  it('说明里写出对面的档名', () => {
+    for (let seed = 0; seed < 20; seed += 1) {
+      for (const draw of drawDirections({ scenario: 'business', count: 3, seed: `opp-${seed}`, motifs: [{ text: '电芯', typicality: 0.3 }] })) {
+        if (!draw.hue || draw.colorLogic.id === 'photo-sampled') continue;
+        const text = formatDirectionDrawForAgent(draw);
+        expect(text).toContain(`不用的颜色：${draw.oppositeHues.map((entry) => entry.name).join('、')}一带`);
+        return;
+      }
+    }
+    throw new Error('no draw with hue');
+  });
+
   it('首尾相接铺满色环，分界与 color-core 的色相名一一对应', () => {
     const coreNames = HUE_BINS.map((entry, index) => {
       const next = HUE_BINS[(index + 1) % HUE_BINS.length]!;
@@ -26,9 +51,12 @@ describe('12 档主色相', () => {
 
   it('参考色落在自己这一档，看得出色相', () => {
     for (const entry of HUE_BINS) {
-      const color = oklch(entry.reference);
-      expect(color.c, entry.name).toBeGreaterThan(VISIBLE_HUE_MIN_CHROMA);
-      expect(buildDirectionHistory([{ cardId: 'c', accent: entry.reference }]).hueBins, entry.name).toEqual([entry.bin]);
+      for (const reference of entry.references) {
+        expect(oklch(reference).c, `${entry.name} ${reference}`).toBeGreaterThan(VISIBLE_HUE_MIN_CHROMA);
+        expect(buildDirectionHistory([{ cardId: 'c', accent: reference }]).hueBins, `${entry.name} ${reference}`).toEqual([entry.bin]);
+      }
+      const [deep, , light] = entry.references.map(oklch);
+      expect(deep!.l, entry.name).toBeLessThan(light!.l);
     }
   });
 
@@ -55,7 +83,8 @@ describe('12 档主色相', () => {
         if (!draw.hue || draw.colorLogic.id === 'photo-sampled') continue;
         const text = formatDirectionDrawForAgent(draw);
         const line = text.split('\n').find((entry) => entry.startsWith('主色相：'));
-        expect(line).toContain(`主色相：${draw.hue.name}（参考色 ${draw.hue.reference}）`);
+        expect(draw.hue.references).toContain(draw.hueReference);
+        expect(line).toContain(`主色相：${draw.hue.name}（参考色 ${draw.hueReference}）`);
         expect(line).not.toMatch(/\d+°/u);
         checked += 1;
       }

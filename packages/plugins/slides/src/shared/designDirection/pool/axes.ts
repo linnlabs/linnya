@@ -68,21 +68,22 @@ export const VISIBLE_HUE_MIN_CHROMA = 0.03;
 /**
  * 12 档主色相。度数是 OKLCH，分界与 color-core 的色相名一致，所以各档宽度不等；
  * 这里写成静态数据，因为方向定义会打进 build Worker。
- * 给 Agent 的是名称和参考色，度数只用来把用过的颜色归档。
+ * 给 Agent 的是名称和一个参考色（深、中、浅三档按稿随机取一个，免得各稿照抄同一个色值），
+ * 度数只用来把用过的颜色归档和算对面色相。
  */
 export const HUE_BINS: readonly HueBin[] = [
-  { bin: 0, from: 20, to: 42, name: '朱红', reference: '#CB4832' },
-  { bin: 1, from: 42, to: 62, name: '铁锈橙', reference: '#B05925' },
-  { bin: 2, from: 62, to: 88, name: '琥珀', reference: '#D79628' },
-  { bin: 3, from: 88, to: 115, name: '橄榄', reference: '#716C26' },
-  { bin: 4, from: 115, to: 138, name: '草绿', reference: '#648828' },
-  { bin: 5, from: 138, to: 165, name: '翠绿', reference: '#258651' },
-  { bin: 6, from: 165, to: 205, name: '青', reference: '#1C8580' },
-  { bin: 7, from: 205, to: 245, name: '湖蓝', reference: '#007CA5' },
-  { bin: 8, from: 245, to: 280, name: '靛蓝', reference: '#2C488E' },
-  { bin: 9, from: 280, to: 318, name: '紫', reference: '#6A499B' },
-  { bin: 10, from: 318, to: 350, name: '梅紫', reference: '#883C7A' },
-  { bin: 11, from: 350, to: 20, name: '胭脂', reference: '#AF355C' },
+  { bin: 0, from: 20, to: 42, name: '朱红', references: ['#802013', '#CB4832', '#EA6C58'] },
+  { bin: 1, from: 42, to: 62, name: '铁锈橙', references: ['#6C3814', '#B05925', '#DE7A34'] },
+  { bin: 2, from: 62, to: 88, name: '琥珀', references: ['#5E4114', '#D79628', '#C48C34'] },
+  { bin: 3, from: 88, to: 115, name: '橄榄', references: ['#504914', '#716C26', '#A89A35'] },
+  { bin: 4, from: 115, to: 138, name: '草绿', references: ['#3B5015', '#648828', '#81A835'] },
+  { bin: 5, from: 138, to: 165, name: '翠绿', references: ['#18552E', '#258651', '#3CB266'] },
+  { bin: 6, from: 165, to: 205, name: '青', references: ['#18524C', '#1C8580', '#3CADA0'] },
+  { bin: 7, from: 205, to: 245, name: '湖蓝', references: ['#174F62', '#007CA5', '#3BA6CB'] },
+  { bin: 8, from: 245, to: 280, name: '靛蓝', references: ['#123E9C', '#2C488E', '#6796F0'] },
+  { bin: 9, from: 280, to: 318, name: '紫', references: ['#562990', '#6A499B', '#A77FEC'] },
+  { bin: 10, from: 318, to: 350, name: '梅紫', references: ['#741A68', '#883C7A', '#D26EC1'] },
+  { bin: 11, from: 350, to: 20, name: '胭脂', references: ['#7F1A3E', '#AF355C', '#E7688B'] },
 ];
 
 /** 不需要另给色相的配色逻辑：颜色取自照片，或者整稿只有黑白（信号色另由色相给出）。 */

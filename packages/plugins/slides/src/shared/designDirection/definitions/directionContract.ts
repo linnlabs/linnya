@@ -111,8 +111,8 @@ export interface HueBin {
   readonly from: number;
   readonly to: number;
   readonly name: string;
-  /** 这一档的参考色（hex），Agent 据此理解“这个颜色大概什么样”。 */
-  readonly reference: string;
+  /** 这一档的参考色（hex），深、中、浅各一个；Agent 据此理解“这个颜色大概什么样”。 */
+  readonly references: readonly [string, string, string];
 }
 
 export interface DirectionDraw {
@@ -125,6 +125,10 @@ export interface DirectionDraw {
   readonly colorLogic: DirectionAxisOption<ColorLogicId>;
   /** 主色相区间；配色取自主图或纯黑白时为 null。 */
   readonly hue: HueBin | null;
+  /** 给 Agent 的参考色：hue.references 里按稿随机取的一个；hue 为 null 时也为 null。 */
+  readonly hueReference: string | null;
+  /** 主色相对面的几档（色相差 150°–210° 覆盖过半的档），本稿不用；hue 为 null 时为空。 */
+  readonly oppositeHues: readonly HueBin[];
   readonly typeStrategy: DirectionAxisOption<TypeStrategyId>;
   readonly imageStrategy: DirectionAxisOption<ImageStrategyId>;
   /** 封面的重心安排：标题与主体放在哪里。比例、裁切与元素仍由 Agent 按内容决定。 */

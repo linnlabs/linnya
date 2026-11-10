@@ -242,6 +242,32 @@ describe('出配色', () => {
     expect(single / total).toBeLessThan(0.5)
   })
 
+  it('对照色只用图片里真有的颜色：只有黄绿时不合成远处的粉红、玫红，仍出 3 套', () => {
+    const images = [blocks([[LEAF_GREEN, 55], [WALL_GRAY, 45]], 64, 6, 3), blocks([[[112, 138, 39], 60], [MUSEUM_BLACK, 40]], 64, 6, 4)]
+    for (let seed = 0; seed < 200; seed += 1) {
+      const result = palettesOf(suggestPalettes({ images, rng: encodeRngId(seed) }))
+      expect(result.palettes).toHaveLength(3)
+      const primaryHue = oklchOf(result.subject[0]!.hex).h
+      for (const palette of result.palettes) {
+        for (const hex of palette.accent) {
+          const color = oklchOf(hex)
+          if (color.c < NEUTRAL_MAX_CHROMA) continue
+          expect(hueDistance(color.h, primaryHue), `${palette.id} ${hex}`).toBeLessThan(110)
+        }
+      }
+    }
+  })
+
+  it('图片里真有色相差大的颜色时，对照色照样用它（铜褐配铜锈青）', () => {
+    const patinaTeal: Rgb = [64, 134, 124]
+    const images = [blocks([[patinaTeal, 50], [MUSEUM_BLACK, 40], [BRONZE, 10]], 64, 6, 1), blocks([[BRONZE, 50], [patinaTeal, 20], [WALL_GRAY, 30]], 64, 6, 2)]
+    const relations = new Set<string>()
+    for (let seed = 0; seed < 60; seed += 1) {
+      for (const palette of palettesOf(suggestPalettes({ images, rng: encodeRngId(seed) })).palettes) relations.add(palette.relation)
+    }
+    expect(relations.has('contrast')).toBe(true)
+  })
+
   it('强调色数量可以指定：1 个就 1 个，6 个时彼此仍分得开', () => {
     const one = palettesOf(suggestPalettes({ images: BRONZE_IMAGES, accentCount: 1, rng: 'pl0007' }))
     expect(one.palettes.every(palette => palette.accent.length === 1)).toBe(true)
