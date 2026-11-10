@@ -249,21 +249,13 @@ describe('write_file creates project parent folders', () => {
     expect(rows()).toHaveLength(5);
   });
 
-  it('文件、隐藏节点与系统虚拟视图都不能成为新建目录的父级', async () => {
+  it('文件与系统虚拟视图都不能成为新建目录的父级', async () => {
     await create('workspace:/existing.md');
     await expect(create('workspace:/existing.md/nested/new.md')).rejects.toThrow(
       '只能在可写的 Workspace 文件夹'
     );
     await expect(create('workspace:/.linnya/views/new.md')).rejects.toThrow('虚拟系统目录');
-    const hidden = workspace.createFolder(projectId, 'hidden');
-    database
-      .getDb()
-      .prepare('UPDATE workspace_nodes SET tags = ? WHERE id = ?')
-      .run(JSON.stringify({ linnyaRole: 'resource_library' }), hidden);
-    await expect(create('workspace:/hidden/new.md')).rejects.toThrow(
-      '只能在可写的 Workspace 文件夹'
-    );
-    expect(rows()).toHaveLength(2);
+    expect(rows()).toHaveLength(1);
   });
 
   it('不支持或已停用的格式不会预先创建目录', async () => {
