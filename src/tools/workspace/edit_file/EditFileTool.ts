@@ -16,6 +16,7 @@ import { writeWorkspaceDocumentFile } from '../../../features/workspace/document
 import { createWorkspaceDocumentFileWriteProviderResolver } from '../../../app-hosts/linnya/adapters/document-file-write/createWorkspaceDocumentFileWriteProviderResolver';
 import { ensureWorkspaceServiceToolContext } from '../shared/workspaceToolContext';
 import { resolveWorkspaceFileToolRuntime } from '../shared/fileToolContext';
+import { admitDocumentPropertySection, DocumentPropertySectionError, readDocumentPropertySection } from '../../../app-hosts/linnya/application/document-properties';
 import { toFileToolEntry } from '../shared/fileToolOutput';
 import { pluginWorkspaceVfsNodeTypeAccessPolicy } from '../../../app-hosts/linnya/plugin-registry/pluginWorkspaceVfsNodeTypeAccessPolicy';
 import {
@@ -192,8 +193,8 @@ export class EditFileTool extends BaseTool {
     const parsedArgs = WorkspaceEditFileArgsSchema.parse(args);
     const { locator, inode } = parsedArgs;
     const path = locator ? workspacePathFromLocator(locator) : undefined;
-    const oldString = parsedArgs.old_string;
-    const newString = parsedArgs.new_string;
+    let oldString = parsedArgs.old_string;
+    let newString = parsedArgs.new_string;
 
     const runtime = resolveWorkspaceFileToolRuntime(context);
     const resolved = await resolveWorkspaceVfsNode({
@@ -230,6 +231,12 @@ export class EditFileTool extends BaseTool {
     if (!databaseService) {
       throw new Error('Workspace database not available in tool context.');
     }
+    // 属性段不在正文里：原样带回的去掉；改过的，或只剩属性段可替换时，拒绝并提示改用 linnya props。
+    const nodeLocator = formatWorkspaceFileLocator(node.path);
+    const propertySection = readDocumentPropertySection(databaseService.getDb(), runtime.projectId, node.id);
+    oldString = admitDocumentPropertySection(oldString, propertySection, nodeLocator);
+    newString = admitDocumentPropertySection(newString, propertySection, nodeLocator);
+    if (oldString.trim() === '' && parsedArgs.old_string.trim() !== '') throw new DocumentPropertySectionError(nodeLocator);
     const resolvedContext = ensureWorkspaceServiceToolContext(context);
     const resolveProvider = createWorkspaceDocumentFileWriteProviderResolver({
       db: databaseService.getDb(),
@@ -257,7 +264,11 @@ export class EditFileTool extends BaseTool {
       if (!(error instanceof ExactTextReplacementError) || error.code !== 'OLD_STRING_NOT_FOUND') throw error;
       const equivalent = provider?.enabled && provider.resolveEquivalentEditText
         ? await provider.resolveEquivalentEditText({ source: editText, oldString }) : null;
-      if (equivalent === null) throw error;
+      if (equivalent === null) {
+        // 想改的是属性段里的一行（它不在正文里）：给出 CLI 用法，而不是笼统的“没找到”。
+        if (oldString.trim() && propertySection?.includes(oldString.trim())) throw new DocumentPropertySectionError(nodeLocator);
+        throw error;
+      }
       replacement = applyExactTextReplacement({
         source: editText, oldString: equivalent, newString, replaceAll: false,
       });

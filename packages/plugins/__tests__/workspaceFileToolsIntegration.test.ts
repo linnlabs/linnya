@@ -37,6 +37,9 @@ import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schem
 import { WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/node-text-snapshot.schema';
 import { ASSET_LEDGER_SCHEMAS } from 'src/domains/assets/features/asset-ledger/infrastructure/sqlite/schemas/assetLedger.schema';
 import { DOCUMENT_REFERENCE_SCHEMAS } from 'src/domains/document-references';
+import { SEMANTIC_LAYER_SCHEMAS } from 'src/domains/semantic-layer/infrastructure/sqlite/semanticLayer.schema';
+import { createSqliteSemanticLayer } from 'src/domains/semantic-layer';
+import { readWorkspaceDocumentIdentity } from 'src/features/workspace/infrastructure/sqlite/workspaceDocumentProjection';
 import { MARKDOWN_DOCUMENT_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/document.schema';
 import { PENDING_REVISION_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/pending-revision.schema';
 import { IMAGE_BLOCK_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/image.schema';
@@ -528,6 +531,8 @@ function createMindMapFileToolFixture(): {
     ...ASSET_LEDGER_SCHEMAS,
     ...MARKDOWN_DOCUMENT_SCHEMAS,
     ...MINDMAP_DOCUMENT_SCHEMAS,
+    ...DOCUMENT_REFERENCE_SCHEMAS,
+    ...SEMANTIC_LAYER_SCHEMAS,
   ]) {
     db.exec(statement);
   }
@@ -579,6 +584,7 @@ function createMarkdownFileToolFixture(events: WorkspaceMutationEvent[]): {
     ...PENDING_REVISION_SCHEMAS,
     ...IMAGE_BLOCK_SCHEMAS,
     ...DOCUMENT_REFERENCE_SCHEMAS,
+    ...SEMANTIC_LAYER_SCHEMAS,
   ]) {
     db.exec(statement);
   }
@@ -2399,6 +2405,59 @@ describe('list_files / read_file', () => {
         mutationKind: 'pending',
         source: 'tool',
       });
+    } finally {
+      fixture.db.close();
+    }
+  });
+
+  it('read_file 在正文前给出只读属性段；原样带回可写，改动属性段被拒绝并提示 linnya props', async () => {
+    const fixture = createMarkdownFileToolFixture([]);
+    try {
+      // 语义层的对话外键在生产库里指向对话表；本夹具只建文档表，补一张最小对话表。
+      fixture.db.exec('CREATE TABLE conversations (conversation_id TEXT PRIMARY KEY)');
+      const { id } = fixture.db.prepare("SELECT id FROM workspace_nodes WHERE name = '研究.md'").get() as { id: string };
+      const layer = createSqliteSemanticLayer(fixture.db, { read: nodeId => readWorkspaceDocumentIdentity(fixture.db, nodeId) });
+      layer.defineProperty({ name: '作者', valueType: 'text' });
+      layer.defineProperty({ name: '年份', valueType: 'number' });
+      layer.defineTag({ name: '论文', fields: [{ propertyId: '作者' }, { propertyId: '年份' }] });
+      const tagged = layer.tagObject({ projectId: 'project-1', ref: { kind: 'document', id }, expectedRevision: 0 }, ['论文']);
+      layer.setValues({ projectId: 'project-1', ref: tagged.ref, expectedRevision: tagged.revision }, { 作者: 'Ada' });
+
+      const locator = 'workspace:/项目资料/研究.md';
+      const read = parseToolOutput<unknown>(
+        await new ReadFileTool().run({ locator }, fixture.context),
+      );
+      const section = '[属性 · 只读，不属于正文；改用 Shell：linnya props]\n标签：论文\n作者：Ada\n未填：年份\n[/属性]';
+      expect(read.observation).toContain(`${section}\n\n1 | Alpha content`);
+
+      await new WriteFileTool().run({ locator, content: `${section}\n\nBeta content` }, fixture.context);
+      const after = parseToolOutput<unknown>(await new ReadFileTool().run({ locator }, fixture.context));
+      expect(after.observation).toContain(`${section}\n\n1 | Beta content`);
+
+      // 续读下一页时不重复属性段。
+      const folderId = (fixture.db.prepare("SELECT id FROM workspace_nodes WHERE name = '项目资料'").get() as { id: string }).id;
+      const longId = new WorkspaceService(fixture.db).createDocument('project-1', '长文.md', folderId);
+      new MarkdownDocumentService(fixture.db).createDocument(longId, JSON.stringify({
+        type: 'doc',
+        content: ['第一段', '第二段'].map((text, index) => ({
+          type: 'rootBlock', attrs: { id: `long-${index}` }, content: [{ type: 'baseBlock', content: [{ type: 'text', text }] }],
+        })),
+      }));
+      layer.tagObject({ projectId: 'project-1', ref: { kind: 'document', id: longId }, expectedRevision: 0 }, ['论文']);
+      const longLocator = 'workspace:/项目资料/长文.md';
+      expect(parseToolOutput<unknown>(await new ReadFileTool().run({ locator: longLocator }, fixture.context)).observation).toContain('标签：论文');
+      const secondPage = parseToolOutput<unknown>(await new ReadFileTool().run({ locator: longLocator, offset: 2 }, fixture.context));
+      expect(secondPage.observation).not.toContain('[属性');
+
+      await expect(new WriteFileTool().run({ locator, content: section.replace('Ada', 'Bob') + '\n\nGamma' }, fixture.context))
+        .rejects.toThrow(/DOCUMENT_PROPERTIES_READONLY[\s\S]*linnya props set workspace:\/项目资料\/研究\.md/u);
+      await expect(new EditFileTool().run({ locator, old_string: '作者：Ada', new_string: '作者：Bob' }, fixture.context))
+        .rejects.toThrow('DOCUMENT_PROPERTIES_READONLY');
+      await expect(new EditFileTool().run({ locator, old_string: section, new_string: '' }, fixture.context))
+        .rejects.toThrow('DOCUMENT_PROPERTIES_READONLY');
+      await new EditFileTool().run({ locator, old_string: `${section}\n\nBeta`, new_string: `${section}\n\nDelta` }, fixture.context);
+      expect(parseToolOutput<unknown>(await new ReadFileTool().run({ locator }, fixture.context)).observation)
+        .toContain('1 | Delta content');
     } finally {
       fixture.db.close();
     }

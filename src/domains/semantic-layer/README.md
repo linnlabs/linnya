@@ -7,7 +7,7 @@
 ## 负责与不负责
 
 - 负责：标签、字段定义；对象的标签与值；值的校验与空值合同；对象版本与恢复；查询描述与编译；向[行动账本](../action-ledger/README.md)登记改动。
-- 不负责：`read_file` 属性段、界面、关系字段（随来龙去脉的关系表一起做）。命令行入口在 [Shell 内建 CLI](../../app-hosts/linnya/application/core-cli/README.md)。
+- 不负责：界面、关系字段（随来龙去脉的关系表一起做）。命令行入口在 [Shell 内建 CLI](../../app-hosts/linnya/application/core-cli/README.md)，给 Agent 看的 `read_file` 属性段在 [文档属性段](../../app-hosts/linnya/application/document-properties/README.md)。
 - 插件不能直接读写这些表，只能经 Host 端口。
 
 ## 对象 =（种类，ID）

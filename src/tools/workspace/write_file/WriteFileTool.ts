@@ -20,6 +20,7 @@ import {
 } from '../../../app-hosts/linnya/adapters/document-file-create/createWorkspaceDocumentFileCreateProviderResolver';
 import { splitNormalizedVfsPath } from '../../../features/workspace/vfs/functions/pathSegments';
 import { resolveWorkspaceFileToolRuntime } from '../shared/fileToolContext';
+import { admitDocumentPropertySection, readDocumentPropertySection } from '../../../app-hosts/linnya/application/document-properties';
 import { toFileToolEntry } from '../shared/fileToolOutput';
 import { ensureWorkspaceServiceToolContext } from '../shared/workspaceToolContext';
 import { pluginWorkspaceVfsNodeTypeAccessPolicy } from '../../../app-hosts/linnya/plugin-registry/pluginWorkspaceVfsNodeTypeAccessPolicy';
@@ -211,8 +212,9 @@ export class WriteFileTool extends BaseTool {
   }
 
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
-    const { locator, inode, content } = WorkspaceWriteFileArgsSchema.parse(args);
+    const { locator, inode, content: rawContent } = WorkspaceWriteFileArgsSchema.parse(args);
     const path = locator ? workspacePathFromLocator(locator) : undefined;
+    let content = rawContent;
 
     const runtime = resolveWorkspaceFileToolRuntime(context);
     const resolved = await resolveWorkspaceVfsNode({
@@ -228,7 +230,7 @@ export class WriteFileTool extends BaseTool {
         ? undefined
         : await this.createMissingFile({
             path,
-            content,
+            content: admitDocumentPropertySection(content, null, locator ?? ''),
             context,
             runtime,
           });
@@ -244,6 +246,10 @@ export class WriteFileTool extends BaseTool {
       throw new Error('Workspace database not available in tool context.');
     }
     const db = databaseService.getDb();
+    // 读到的属性段原样带回时去掉；改过的属性段拒绝，提示改用 linnya props。
+    content = admitDocumentPropertySection(
+      content, readDocumentPropertySection(db, runtime.projectId, node.id), formatWorkspaceFileLocator(node.path),
+    );
     const resolvedContext = ensureWorkspaceServiceToolContext(context);
     const serialize = (write: WorkspaceDocumentFileWriteResult): string => {
       const diagnostics = renderDocumentDiagnostics(write.diagnostics);

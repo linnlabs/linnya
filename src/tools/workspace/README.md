@@ -25,6 +25,8 @@
 
 `read_file` 的默认结果是 VFS 的普通文本投影，使用业界主流的 1-based 行窗口：`offset` 是起始行，`limit` 是最多读取的行数，默认/上限均为 2,000 行。observation 以 `行号 | 原文` 展示，行号和分隔符只是定位信息，不属于文件内容；传给 `edit_file.old_string` 时必须去掉它们。这样 `grep`、Slides inspect 与读取定位使用同一行号语义，`read_file -> edit_file` 仍基于精确原文。
 
+有标签或被引用的文档，第一页正文前另有一段不编行号的只读属性段（`[属性 · 只读 …]` 到 `[/属性]`）。它不属于文件内容：`write_file` / `edit_file` 原样带回时去掉，改动它则整次写入被拒绝（`DOCUMENT_PROPERTIES_READONLY`），提示改用 Shell 的 `linnya props`。规则见[文档属性段](../../app-hosts/linnya/application/document-properties/README.md)。
+
 结构化 DocumentView（例如 MindMap 的 `[#ref]`、outline 和插件 presentation）属于同一工具的显式读取模式，字符窗口只能使用语义明确的 `offset_chars/max_chars`，不复用普通文本的 `offset/limit`。超长普通文本 observation 继续由既有 ToolOutputStore 接管；即使一行很长，也不为 `read_file` 增加第二套字符分页语义。
 
 普通文本读回及支持真实 current 文本的写入 provider 返回可选 `text_metrics`：`characters` 按 Unicode

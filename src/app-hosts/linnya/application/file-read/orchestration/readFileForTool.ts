@@ -27,6 +27,7 @@ import type { ToolContext } from 'src/tools/types';
 import { PhysicalFileReadError } from '../definitions/physicalFileRead';
 import { hasRunImageAttachment } from '../functions/hasRunImageAttachment';
 import { remapWorkspaceCitationRefs } from '../functions/remapWorkspaceCitationRefs';
+import { readDocumentPropertySection } from '../../document-properties';
 import { registerDeliveredDocumentReferences, stripDocumentReferenceReadMetadata } from './registerDeliveredDocumentReferences';
 import { readPhysicalFileForTool } from './readPhysicalFileForTool';
 
@@ -228,6 +229,15 @@ async function resolveWorkspaceIdentity(input: {
   return { runtime, node: resolved.node };
 }
 
+/** 属性段只放在第一页之前：续读下一页时不重复。 */
+function withPropertySection(
+  context: ToolContext, projectId: string, documentId: string, firstWindow: boolean, observation: string,
+): string {
+  const db = context.databaseService?.getDb();
+  const section = firstWindow && db ? readDocumentPropertySection(db, projectId, documentId) : null;
+  return section ? `${section}\n\n${observation}` : observation;
+}
+
 async function readWorkspaceLocator(input: {
   readonly args: WorkspaceReadFileArgs;
   readonly context: ToolContext;
@@ -298,7 +308,9 @@ async function readWorkspaceLocator(input: {
             : visibleDocument,
           ...(citationFields ?? {}),
         },
-        observation: observation + nextPage,
+        observation: withPropertySection(
+          input.context, runtime.projectId, node.id, (input.args.offset_chars ?? 0) === 0, observation + nextPage,
+        ),
         observationPreviewMeta: document.observationPreviewMeta,
       }),
       null,
@@ -378,18 +390,21 @@ async function readWorkspaceLocator(input: {
   return JSON.stringify(
     WorkspaceReadFileResultSchema.parse({
       data,
-      observation: prependReadTextMetrics(formatTextLineWindow({
-        locator,
-        window,
-        text: returnedText,
-        ...(citationWindow?.observationSuffix
-          ? {
-              supplement: citationProjection
-                ? citationProjection.remapText(citationWindow.observationSuffix)
-                : citationWindow.observationSuffix,
-            }
-          : {}),
-      }), textMetrics),
+      observation: prependReadTextMetrics(withPropertySection(
+        input.context, runtime.projectId, node.id, (input.args.offset ?? 1) === 1,
+        formatTextLineWindow({
+          locator,
+          window,
+          text: returnedText,
+          ...(citationWindow?.observationSuffix
+            ? {
+                supplement: citationProjection
+                  ? citationProjection.remapText(citationWindow.observationSuffix)
+                  : citationWindow.observationSuffix,
+              }
+            : {}),
+        }),
+      ), textMetrics),
     }),
     null,
     2
