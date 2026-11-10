@@ -22,9 +22,10 @@ export function createSealedObservationFixture(root: string) {
   const config = { evidenceDirectory: directory, observationSourceRevision: 'b'.repeat(40), productionSourceRevision: CANVAS_CLI_FROZEN_PRODUCER_SOURCE,
     originalBackendSha256: hash(original), payloadManifestSha256: hash(readFileSync(payloadFile)) };
   save(path.join(artifact, 'cli-observation-build.json'), { ...config, wrapperSha256: hash(wrapper), copiedPayloadCount: 1 });
-  const packageRoot = fileURLToPath(new URL('../../../../', import.meta.url));
+  // 冻结源字节随测试保存：现行源码已演进，CI 浅克隆也读不到 61bddb73。
+  const frozenSources = fileURLToPath(new URL('./frozen-producer-sources/', import.meta.url));
   for (const name of Object.keys(CANVAS_CLI_PRODUCER_FILES)) {
-    const target = path.join(sources, name); mkdirSync(path.dirname(target), { recursive: true }); copyFileSync(path.join(packageRoot, name), target);
+    const target = path.join(sources, name); mkdirSync(path.dirname(target), { recursive: true }); copyFileSync(path.join(frozenSources, `${name}.frozen`), target);
   }
   const logFile = path.join(root, 'official-build.log'); writeFileSync(logFile, 'CPU fixture official-build boundary; not a real build proof\n');
   const provenanceFile = path.join(root, 'production-build-provenance.json'); save(provenanceFile, {

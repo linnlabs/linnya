@@ -2,7 +2,8 @@
 import { Editor, Node } from '@tiptap/core';
 import Document from '@tiptap/extension-document';
 import StarterKit from '@tiptap/starter-kit';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownImageAttrsSchema } from '@app/schemas';
 import { DOMParser } from '@tiptap/pm/model';
 import { BaseBlock } from '../../../../../blocks/BaseBlock';
@@ -65,6 +66,7 @@ function setup() {
   editors.push(editor);
   return editor;
 }
+beforeEach(() => setActivePinia(createPinia()));
 afterEach(() => editors.splice(0).forEach(editor => editor.destroy()));
 const event = (caption: string) => ({
   block_type: 'ImageBlock',
