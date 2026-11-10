@@ -4,17 +4,8 @@
  * @brief 搜索/删除通用过滤器构建（领域过滤器 -> Qdrant filter）
  */
 
+import type { QdrantFieldCondition, QdrantFilter } from '@infra/adapters/vector-store/qdrant';
 import type { SearchFilterOptions } from '../qdrantRepository';
-
-type QdrantFilter = {
-  must: QdrantFieldCondition[];
-};
-
-type QdrantFieldCondition = {
-  key: string;
-  match?: { any: string[] } | { value: string } | { any: string[] | number[] } | { value: string | number | boolean };
-  range?: { gte?: number; lte?: number };
-};
 
 /**
  * 功能：将领域层过滤条件转换为 Qdrant 原生 filter 结构。
@@ -76,14 +67,16 @@ export function buildQdrantFilter(filterOptions?: SearchFilterOptions): QdrantFi
       } else if ('any' in cond) {
         const anyList = cond.any;
         if (!Array.isArray(anyList) || anyList.length === 0) continue;
-        const normalized: Array<string | number> = [];
-        for (const item of anyList) {
-          if (typeof item === 'string' && item.trim().length > 0) normalized.push(item);
-          else if (typeof item === 'number' && Number.isFinite(item)) normalized.push(item);
+        const normalized = anyList.filter((item) =>
+          typeof item === 'string' ? item.trim().length > 0 : Number.isFinite(item)
+        );
+        if (normalized.length === 0) continue;
+        if (!normalized.every((item) => typeof item === 'string')
+          && !normalized.every((item) => typeof item === 'number')) {
+          // 不能静默忽略一类值，否则会改变查询或删除的匹配范围。
+          throw new TypeError(`Qdrant filter ${qdrantKey} must not mix strings and numbers`);
         }
-        if (normalized.length > 0) {
-          must.push({ key: qdrantKey, match: { any: normalized } });
-        }
+        must.push({ key: qdrantKey, match: { any: normalized } });
       }
     }
   }

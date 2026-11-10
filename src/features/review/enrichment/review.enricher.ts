@@ -10,7 +10,7 @@
 
 import type { RequestEnricher, EnrichmentContext, EnrichmentResult } from '@linnlabs/linnkit/runtime-kernel';
 import type { CoreInvokeRequest } from '../../../core/invoke-request.types';
-import type { AgentInvokeRequest } from '../../app-hosts/linnya/context/agent/schemas';
+import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import { AgentsService } from '../../workspace/infrastructure/sqlite/services/agents.service';
 import { PromptKeys } from '@app/schemas';
 import {
@@ -29,13 +29,8 @@ export class ReviewRequestEnricher implements RequestEnricher {
   }
 
   async enrich(context: EnrichmentContext): Promise<EnrichmentResult> {
-    /**
-     * 中文备注：
-     * - core 层 EnrichmentContext.request 是 CoreInvokeRequest（最小协议面）；
-     * - Review enricher 在 features 层，运行时收到的实际值一定是 AgentInvokeRequest；
-     * - 这里在 features 边界做安全窄化以访问 review 专属字段。
-     */
-    const request = context.request as AgentInvokeRequest;
+    // Host 的审阅字段在合同上可缺省，由增强器在使用前检查。
+    const request: AgentInvokeRequest = context.request;
     const { runContext } = context;
 
     const documentId = this.extractDocumentIdFromDocumentFragment(request.document_fragment);
@@ -84,17 +79,17 @@ export class ReviewRequestEnricher implements RequestEnricher {
       resolvedKnowledge = agent.knowledge;
     }
 
-    // 3. 构造增强结果
+    const enrichedRequest: AgentInvokeRequest = {
+      ...request,
+      agent_name: resolvedAgentName,
+      agent_system_prompt: resolvedSystemPrompt,
+      agent_knowledge: resolvedKnowledge,
+      review_background: reviewBackground,
+      review_goal: reviewGoal,
+    };
+
     return {
-      // 增强 Request：注入解析后的变量
-      request: {
-        ...request,
-        agent_name: resolvedAgentName,
-        agent_system_prompt: resolvedSystemPrompt,
-        agent_knowledge: resolvedKnowledge,
-        review_background: reviewBackground,
-        review_goal: reviewGoal,
-      },
+      request: enrichedRequest,
       // 增强 ToolContext：注入工具所需的元信息
       toolContextPatch: {
         // 当前文档 ID：供 markdown_create_annotations 工具自动落库使用（模型无需传参）

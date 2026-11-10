@@ -23,6 +23,8 @@ export type {
   MultiVectorCollectionConfig,
   QdrantCollectionInfo,
   QdrantConfig,
+  QdrantFieldCondition,
+  QdrantFilter,
   QdrantScrollOffset,
   SearchParams,
   SearchResult,

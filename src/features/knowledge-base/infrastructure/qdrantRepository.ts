@@ -130,11 +130,12 @@ export interface SearchFilterOptions {
    * 注意：
    * - 这是 Qdrant filter 的能力暴露，不代表业务一定要用；
    * - key 不包含 `metadata.` 前缀，构建器会自动拼接为 `metadata.${key}`。
+   * - any 列表只匹配同一类型的值，不能混合字符串和数字。
    */
   metadataMatch?: Record<
     string,
     | { value: string | number | boolean }
-    | { any: Array<string | number> }
+    | { any: string[] | number[] }
   >;
 }
 
@@ -302,7 +303,7 @@ export interface QdrantRepository {
     indexed_vectors_count: number;
     points_count: number;
     segments_count: number;
-    config: any;
+    config: Record<string, unknown>;
   }>;
 
   /**

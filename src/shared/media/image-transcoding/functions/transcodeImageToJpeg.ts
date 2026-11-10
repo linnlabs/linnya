@@ -1,4 +1,4 @@
-import sharp from 'sharp';
+import sharp, { type Sharp } from 'sharp';
 import {
   ImageTranscodingError,
   type JpegTranscodingOptions,
@@ -53,7 +53,7 @@ function assertOptions(options: JpegTranscodingOptions): void {
   }
 }
 
-async function assertOpaqueImage(image: sharp.Sharp): Promise<void> {
+async function assertOpaqueImage(image: Sharp): Promise<void> {
   const metadata = await image.metadata();
   if (!metadata.hasAlpha) return;
 

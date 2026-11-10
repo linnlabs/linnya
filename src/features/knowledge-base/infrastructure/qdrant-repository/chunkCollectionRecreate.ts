@@ -4,6 +4,7 @@
  * @brief chunk collection 启动收缩 / 重建编排
  */
 
+import type { QdrantScrollOffset } from '@infra/adapters/vector-store/qdrant';
 import type { Logger } from '@shared/logger';
 
 import type {
@@ -37,10 +38,10 @@ type ChunkCollectionRecreateDeps = {
   getCollectionInfo: () => Promise<CollectionInfoSnapshot>;
   scrollPointsPageWithVector: (
     limit: number,
-    offset?: unknown
+    offset?: QdrantScrollOffset
   ) => Promise<{
     points: ScrolledPointWithVector[];
-    nextOffset?: unknown;
+    nextOffset?: QdrantScrollOffset;
   }>;
   deleteCollection: () => Promise<void>;
   createCollection: (params: {
@@ -150,7 +151,7 @@ async function exportAllPointsWithVector(
   deps: ChunkCollectionRecreateDeps
 ): Promise<QdrantPoint[]> {
   const exportedPoints: QdrantPoint[] = [];
-  let offset: unknown = undefined;
+  let offset: QdrantScrollOffset | undefined;
 
   while (true) {
     const page = await deps.scrollPointsPageWithVector(SCROLL_PAGE_SIZE, offset);
