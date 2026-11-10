@@ -44,6 +44,9 @@ export async function createCanvasDocumentSurface(
     signal,
     theme,
     icon: presentation?.icon,
+    ...(presentation?.referenceTypeIcon
+      ? { referenceTypeIcon: presentation.referenceTypeIcon }
+      : {}),
     widthPx: card.width,
     maxHeight: card.height,
     // 位图铺满卡片几何框，看得见的纸面四周内缩；正文和淡出在纸边结束，和选中详情一致。

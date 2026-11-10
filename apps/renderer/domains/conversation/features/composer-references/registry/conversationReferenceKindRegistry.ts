@@ -1,3 +1,4 @@
+import type { Component } from 'vue';
 import type {
   ConversationReferenceChipInput,
   ConversationReferenceKindContribution,
@@ -63,10 +64,22 @@ export function resolveConversationReferenceChipPresentation(
   return {
     label: contribution.chip.label(reference),
     preview: contribution.chip.preview(reference),
+    ...(contribution.chip.icon ? { icon: contribution.chip.icon(reference) } : {}),
     ...(contribution.previewComponent ? { previewComponent: contribution.previewComponent } : {}),
     ...(contribution.hoverPreview === false ? { hoverPreview: false as const } : {}),
     ...(contribution.onActivate ? { activate: () => activateConversationReference(reference) } : {}),
   };
+}
+
+/**
+ * 历史消息只问“这条引用是否声明了对象图标”，不按 kind 分支；
+ * 类型未注册、已停用或判定失效时返回 null，由调用方按正文引用显示。
+ */
+export function readConversationReferenceIcon(reference: ConversationReferenceChipInput): Component | null {
+  const contribution = referenceKinds.get(buildReferenceKindKey(reference.pluginId, reference.kind));
+  if (!contribution?.chip.icon || contribution.isAvailable?.() === false) return null;
+  if (contribution.isValid && !contribution.isValid(reference)) return null;
+  return contribution.chip.icon(reference);
 }
 
 export function clearConversationReferenceKindsForTest(): void {

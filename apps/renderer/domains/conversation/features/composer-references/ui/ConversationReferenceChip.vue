@@ -13,7 +13,14 @@
       @focus="hoverable && hover.enter(true)"
       @keydown.esc="hover.escape()"
     >
-      {{ presentation.preview }}
+      <span
+        v-if="presentation.icon"
+        class="ai-assistant-quote-preview__pill-icon"
+        aria-hidden="true"
+      >
+        <component :is="presentation.icon" />
+      </span>
+      <span class="ai-assistant-quote-preview__pill-label">{{ presentation.preview }}</span>
     </button>
     <button
       type="button"

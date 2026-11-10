@@ -28,6 +28,7 @@ export function createDocumentReferenceNodeView(
   label.dataset.documentReferenceLabel = '';
   label.textContent = '文档';
   dom.append(icon, label);
+  let iconType: string | null = null;
   let destroyed = false;
   let hoverGeneration = 0;
   let refreshGeneration = 0;
@@ -67,6 +68,13 @@ export function createDocumentReferenceNodeView(
           : (result.title ?? '文档');
     dom.dataset.status = result.status;
     dom.setAttribute('aria-label', label.textContent);
+    // 与文件树同一类型图标；目标失效后不再声称类型，回到通用文档图标。
+    const nodeType = result.status === 'deleted' || result.status === 'outside_project' ? null : result.nodeType;
+    if (nodeType !== iconType) {
+      iconType = nodeType;
+      if (nodeType) port.renderIcon(nodeType, icon);
+      else render(createVNode(DocumentIcon), icon);
+    }
     return result;
   }
   async function show(generation: number) {

@@ -13,7 +13,9 @@ rename/move/delete/transfer 与插件启停事件刷新当前标题和可用状�
 
 悬停先显示只读图片与摘要，进入预览浮层后自动展开 provider 的只读详情，也保留显式展开按钮。Markdown 展开只生成 portable
 DOM，不装 NodeView、不递归请求引用文档；有 readonlyPreviewComponent 的类型改为懒挂载它自己的只读详情，离开后立即卸载。离开或销毁后不会打开晚到的预览，详情异步返回后也会释放。窗口内的候选和预览采用 Renderer
-UI token；图标复用公开 DocumentIcon。
+UI token。
+
+标签外观（“淡墨”：只取 currentColor 的淡底、4px 圆角、无边，不撑高正文行）只在 `markdown-document-core` 的 `style.css` 定义一次，编辑器、悬停预览、画布卡和渲染 worker 共用；本 feature 只补悬停加深与键盘焦点环。标签解析出类型后改用与文件树同一的类型图标（`renderIcon`），目标删除或越界时回到通用 DocumentIcon。
 
 独立正文消费者通过 Host 工厂的同名 extension
 override 装配。Workspace 的正式注册点是

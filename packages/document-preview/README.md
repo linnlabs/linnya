@@ -8,6 +8,8 @@ Markdown 的块呈现归
 调用方显式提供 Document、逻辑容器宽度、主题、AbortSignal 与可选首屏高度。宽度不包含相机缩放或 DPR；正文默认 14px、按可用宽度换行。主窗口与隐藏 worker 显式导入同一个
 `style.css`，不注入另一份样式。调用方负责身份和项目范围、数据读取、订阅与打开文档的授权；本包不接触 Host、数据库或可写编辑会话。
 
+正文里的超级标签沿用 `markdown-document-core` 的同一外观。调用方可传 `referenceTypeIcon(nodeType)`，标签显示与文件树同一的类型图标；隐藏 worker 等拿不到类型图标的消费方省略它，标签用通用文件图标，与标题图标的降级一致。
+
 `createDocumentPreviewSurface`
 返回 DOM 和独立 disposer；字体/图片的最终绘制屏障由实际绘制宿主完成。live 消费者换目标或卸载时释放；光栅消费者在 paint 结束或失败时调用
 `disposeDocumentPreviewSurface`。自定义交互详情通过 `externalBody`

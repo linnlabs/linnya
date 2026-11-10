@@ -16,8 +16,11 @@
 .markdown-document-content [data-type='block-math'] { overflow-x: auto; margin-block: 0.6em; }
 .markdown-document-content [data-type='inline-math'] { display: inline; }
 
-.markdown-document-reference { display: inline-flex; align-items: center; max-width: 24em; padding-inline: .3em; border: .5px solid currentColor; border-radius: .3em; vertical-align: baseline; white-space: nowrap; }
-.markdown-document-reference-icon { display: inline-flex; flex: none; width: 14px; height: 14px; margin-inline-end: .2em; }
-.markdown-document-reference-icon svg { width: 100%; height: 100%; }
+/* 超级标签“淡墨”：所有正文消费者共用这一份。底色和图标只取 currentColor，随纸色/主题走，也不依赖 Host token（渲染 worker 没有）。 */
+.markdown-document-reference { display: inline-flex; align-items: baseline; max-width: min(24em, 100%); padding: .08em .32em .08em .26em; margin-inline: .04em; border-radius: 4px; background: color-mix(in srgb, currentColor 6%, transparent); line-height: 1.4; vertical-align: baseline; white-space: nowrap; }
+.markdown-document-reference-icon { display: inline-flex; flex: none; align-self: center; width: 1.06em; height: 1.06em; margin-inline-end: .22em; color: color-mix(in srgb, currentColor 62%, transparent); }
+.markdown-document-reference-icon:empty { display: none; }
+.markdown-document-reference-icon svg { width: 100%; height: 100%; stroke-width: 1.15; }
 .markdown-document-reference-label { overflow: hidden; text-overflow: ellipsis; }
-.markdown-document-reference[data-status='deleted'], .markdown-document-reference[data-status='outside_project'] { opacity: .65; }
+.markdown-document-reference:is([data-status='deleted'], [data-status='outside_project'], [data-reference-status='deleted'], [data-reference-status='outside_project']) { background: transparent; box-shadow: inset 0 0 0 .5px color-mix(in srgb, currentColor 16%, transparent); color: color-mix(in srgb, currentColor 52%, transparent); }
+.markdown-document-reference:is([data-status='plugin_unavailable'], [data-reference-status='plugin_unavailable']) .markdown-document-reference-label { color: color-mix(in srgb, currentColor 72%, transparent); }

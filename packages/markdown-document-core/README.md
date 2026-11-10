@@ -35,6 +35,7 @@ Tiptap 固定为 3.31.3；mathematics 的 peer 仅接受 KaTeX 0.16～0.18，因
 - `./workspace-presentation` 由正式 Editor 与预览共用文本/图片 DOM、根块语义、列表编号与公式排版；颜色 token 在 `./workspace-colors.css`。预览 CSS 显式拥有根块宽度、缩进、图片和引用排版，不继承 Editor 为手柄/交互预留的全局样式；真实 Electron 对照覆盖 Host CSS 的加载顺序。Editor 的交互和 NodeView 生命周期仍留在 Editor。
 - `./workspace-charts` 拥有唯一图表规则、主题、option、懒加载运行时和静态 SVG 出图；Editor 阅读面、PDF 和预览都消费它。预览按当前主题和宽度出图，重内容没有第二套简化实现。
 - `./workspace-citations` 拥有引用去重、编号和参考文献派生/格式化。稳定文档引用只显示静态身份和标题，不递归挂载其他预览。
+- 文档引用（超级标签）的外观只在 `./style.css` 定义一次，预览 CSS 不另行覆盖；颜色只取 currentColor，随纸色与主题变化，渲染 worker 无 Host token 也能正确绘制。标签图标位与编辑器、画布同一 DOM 合同，本包不带图标资源：调用方经可选 `referenceIcon` 提供图标节点，在量高前就位；缺省只显示标题。
 - 链接保持用户可读外观，点击不直接导航；文档打开和预览交互由统一外壳负责。dispose 或 abort 立即移除测量 DOM 和已交付正文，不留下异步复活的旧内容。
 
 验证入口：`pnpm --dir packages/markdown-document-core typecheck`；仓库根运行 `pnpm exec vitest run packages/markdown-document-core/src apps/renderer/domains/editor/features/chart-reading apps/renderer/domains/editor/features/citation apps/renderer/domains/editor/core/extensionRegistry.conformance.test.ts src/domains/markdown/features/normalization`。DOM 业务测试覆盖真实 ECharts SSR、公式、引用、受管/历史图片、屏下资源跳过与中途取消；实际字体、换行、主题和静态/详情一致性仍须在浏览器验收。

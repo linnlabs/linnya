@@ -41,6 +41,11 @@ async function renderBody(detail: DocumentPreviewDetail, input: DocumentPreviewS
       maxHeight,
       theme: input.theme,
       signal: input.signal,
+      referenceIcon: nodeType =>
+        createDocumentPreviewIcon(
+          input.document,
+          (nodeType ? input.referenceTypeIcon?.(nodeType) : null) ?? undefined
+        ),
     });
   }
   const element = input.document.createElement('div');

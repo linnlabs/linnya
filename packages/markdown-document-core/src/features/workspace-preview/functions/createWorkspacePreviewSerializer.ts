@@ -15,13 +15,21 @@ function math(node: ProseMirrorNode, document: Document): HTMLElement {
   element.innerHTML = renderWorkspaceLatex(string(node, 'latexSource'), displayMode);
   return element;
 }
-function documentReference(node: ProseMirrorNode, content: WorkspaceMarkdownPreview, document: Document, locale: string): HTMLElement {
+function documentReference(node: ProseMirrorNode, content: WorkspaceMarkdownPreview, document: Document, locale: string, referenceIcon?: (nodeType: string | null) => Node): HTMLElement {
   const element = document.createElement('span');
   const id = string(node, 'documentId'), presentation = content.references[id];
   element.className = 'markdown-document-reference';
   element.setAttribute('data-document-id', id);
   element.setAttribute('data-reference-id', string(node, 'referenceId'));
   element.setAttribute('data-reference-status', presentation?.status ?? 'deleted');
+  // 图标位与编辑器、画布同一 DOM 合同；portable core 不带图标资源，由呈现宿主提供，须在量高前就位。
+  const icon = document.createElement('span');
+  icon.className = 'markdown-document-reference-icon';
+  icon.setAttribute('data-document-reference-icon', '');
+  icon.setAttribute('aria-hidden', 'true');
+  const available = presentation?.status === 'available' || presentation?.status === 'plugin_unavailable';
+  if (referenceIcon) icon.append(referenceIcon(available ? presentation.nodeType : null));
+  element.append(icon);
   const label = document.createElement('span');
   label.className = 'markdown-document-reference-label';
   label.setAttribute('data-document-reference-label', '');
@@ -84,8 +92,9 @@ export function createWorkspacePreviewSerializer(input: {
   readonly node: ProseMirrorNode;
   readonly document: Document;
   readonly locale: string;
+  readonly referenceIcon?: (nodeType: string | null) => Node;
 }): DOMSerializer {
-  const { content, node: root, document, locale } = input;
+  const { content, node: root, document, locale, referenceIcon } = input;
   const style = getBibliographyStyleId(root), citations = deriveCitations(root, style);
   const textBlock = (node: ProseMirrorNode) => renderWorkspaceTextBlock(node, document);
   return new DOMSerializer({
@@ -104,7 +113,7 @@ export function createWorkspacePreviewSerializer(input: {
     table: () => ['div', { class: 'workspace-preview-table' }, ['table', ['tbody', 0]]],
     tableRow: () => ['tr', 0], tableCell: node => tableCell(node, document), tableHeader: node => tableCell(node, document),
     tableCellContentBlock: () => ['p', { class: 'table-cell-content-block' }, 0],
-    documentReference: node => documentReference(node, content, document, locale),
+    documentReference: node => documentReference(node, content, document, locale, referenceIcon),
     citationNode: node => ['span', { class: 'citation-mark' }, citations.labelByCitationId.get(string(node, 'citationId')) ?? '[?]'],
     bibliographyBlock: () => bibliography(citations, style, document, locale),
     columnReference: node => ['span', { class: 'workspace-preview-column-reference' }, string(node, 'label') || string(node, 'refKey')],

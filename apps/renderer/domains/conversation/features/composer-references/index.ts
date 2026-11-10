@@ -1,6 +1,7 @@
 export {
   activateConversationReference,
   clearConversationReferenceKindsForTest,
+  readConversationReferenceIcon,
   registerConversationReferenceKind,
   resolveConversationReferenceChipPresentation,
   unregisterConversationReferenceKind,

@@ -1,5 +1,14 @@
+/* 外观在 markdown-document-core 的共享样式；这里只加可交互态。 */
 .markdown-document-reference {
   cursor: pointer;
+  transition: background-color var(--duration-short) var(--ease-standard);
+}
+.markdown-document-reference:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.markdown-document-reference:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 1px;
 }
 .document-reference-preview,
 .document-reference-suggestions {

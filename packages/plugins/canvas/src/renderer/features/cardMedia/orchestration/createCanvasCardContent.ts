@@ -20,9 +20,15 @@ const previewFailure = (status: Parameters<typeof canvasDocumentPreviewMessage>[
   new Error(canvasDocumentPreviewMessage(status) || canvasText('canvas.error.documentNotOpenable'));
 const hydrateDocumentTags = (
   element: HTMLElement,
-  presentations: Parameters<typeof hydrateCanvasDocumentTags>[1]
+  presentations: Parameters<typeof hydrateCanvasDocumentTags>[1],
+  typeIcon: CanvasCardMediaPort['typeIcon']
 ) =>
-  hydrateCanvasDocumentTags(element, presentations, canvasText('canvas.error.documentUnavailable'));
+  hydrateCanvasDocumentTags(
+    element,
+    presentations,
+    canvasText('canvas.error.documentUnavailable'),
+    typeIcon ? nodeType => typeIcon(nodeType) : undefined
+  );
 
 /** 内容投影只持有有界资源缓存；文档与图片的持久身份仍归各自owner。 */
 export function createCanvasCardContent(
@@ -53,7 +59,7 @@ export function createCanvasCardContent(
           createMarkdownDocumentFragment(JsonValueSchema.parse(card.data.content), document)
         );
         const assets: Record<string, string> = {},
-          presentations: Record<string, { title: string }> = {};
+          presentations: Record<string, { title: string; nodeType: string | null }> = {};
         await Promise.all(
           Array.from(element.querySelectorAll('img'), async img => {
             const assetId = img.getAttribute('data-asset-id');
@@ -67,12 +73,12 @@ export function createCanvasCardContent(
               (reference.status === 'available' || reference.status === 'plugin_unavailable') &&
               reference.title
             )
-              presentations[id] = { title: reference.title };
+              presentations[id] = { title: reference.title, nodeType: reference.nodeType };
           })
         );
         signal.throwIfAborted();
         hydrateCanvasManagedImages(element, assets);
-        hydrateDocumentTags(element, presentations);
+        hydrateDocumentTags(element, presentations, port.typeIcon);
       }
       if (card.type === 'image') {
         const source = await images.read(card.data.assetId);
@@ -93,6 +99,7 @@ export function createCanvasCardContent(
             ...(body ? { body } : {}),
             ...(result.content?.overview === 'thumbnail' ? { thumbnail: true } : {}),
             ...(icon ? { icon } : {}),
+            referenceTypeIcon: nodeType => port.typeIcon?.(nodeType) ?? null,
           },
           {
             document,

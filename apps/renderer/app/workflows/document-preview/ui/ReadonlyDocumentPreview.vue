@@ -163,6 +163,7 @@ watch(
         icon: identity.presentation.nodeType
           ? readDocumentTypeIcon(identity.presentation.nodeType)
           : null,
+        referenceTypeIcon: readDocumentTypeIcon,
         externalBody: expanded.value && Boolean(detailComponent.value),
         onOpen:
           identity.presentation.status === 'available'

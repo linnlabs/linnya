@@ -64,6 +64,11 @@ export interface ConversationReferenceChipInput {
 export interface ConversationReferenceChipDescriptor {
   readonly label: (reference: ConversationReferenceChipInput) => string;
   readonly preview: (reference: ConversationReferenceChipInput) => string;
+  /**
+   * 引用的是一个对象（如文档）时给出它的类型图标，与文件树同一图标。
+   * 声明后输入框标签带图标，已发送消息里也按标签显示；选中文字这类正文引用不声明，历史中仍是引用块。
+   */
+  readonly icon?: (reference: ConversationReferenceChipInput) => Component;
 }
 
 /**
