@@ -53,5 +53,13 @@ if (process.type === 'browser') {
   Module._load = function load(request, parent, isMain) {
     return request === 'electron' ? patched : originalLoad.call(this, request, parent, isMain);
   };
+  // 探针用 SIGINT 结束 Desktop。Electron 默认直接退出，Chromium 来不及把 localStorage 等写盘，
+  // 重启后界面偏好与视口记忆就会丢失。改为先写盘再走 app.quit()，与用户正常退出同一条路径。
+  process.once('SIGINT', () => {
+    const sessions = new Set(electron.webContents.getAllWebContents().map(contents => contents.session));
+    if (electron.session.defaultSession) sessions.add(electron.session.defaultSession);
+    for (const session of sessions) session.flushStorageData();
+    app.quit();
+  });
   console.log(`[probe-bootstrap] ok mode=${mode}`);
 }
