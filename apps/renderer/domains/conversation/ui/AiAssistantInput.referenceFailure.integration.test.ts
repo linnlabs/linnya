@@ -40,6 +40,8 @@ vi.mock('../features/model-selection/orchestration/useConversationModelSelection
 vi.mock('@/app/plugins/composables', () => ({ useConversationAgentChoices: () => ref([]) }));
 vi.mock('../features/interactive-run', async () => ({
   ...await import('../features/interactive-run/functions/resolveComposerRunControl'),
+  isInteractiveRunBusy: (await import('../features/interactive-run/functions/interactiveRunTransitions'))
+    .isInteractiveRunBusy,
   useDetachedInteractiveRunObservation: vi.fn(),
   useInteractiveRunStore: () => ({ snapshotFor: () => undefined }),
 }));
