@@ -6,7 +6,10 @@
 .markdown-document-content ul, .markdown-document-content ol { margin: 0.5em 0; padding-inline-start: 1.5em; }
 .markdown-document-content blockquote { margin: 0.5em 0; padding-inline-start: 0.8em; border-inline-start: 0.18em solid currentColor; }
 .markdown-document-content pre { white-space: pre-wrap; font: 0.9em/1.5 monospace; margin: 0.5em 0; }
-.markdown-document-content code { font-family: monospace; }
+/* 只读片段与画布卡片的编辑态、隐藏出图共用这里，出图 worker 不加载 Renderer UI token，所以只用 currentColor 与 em。
+   单写 monospace 会触发 Chromium 的等宽字号缩小规则，因此给出具体字体。 */
+.markdown-document-content code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.markdown-document-content :not(pre) > code { font-size: 0.9em; padding: 0.1em 0.25em; border-radius: 0.25em; background: color-mix(in srgb, currentColor 10%, transparent); }
 .markdown-document-content table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .markdown-document-content td, .markdown-document-content th { border: 1px solid currentColor; padding: 0.25em 0.4em; vertical-align: top; }
 .markdown-document-content img { max-width: 100%; height: auto; }

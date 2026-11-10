@@ -1,5 +1,18 @@
 /* App 导航语义不属于基础组件包，由 Host application owner 持有。 */
 
+/*
+ * 行内代码底色，编辑区与对话共用。浅色与月蓝取正文色 7%（与页面底的 OKLab L 差约 5）；
+ * 深色同样比例在深底上几乎看不出，取 12%（L 差约 10）。
+ */
+[data-linnya-ui-theme='light'],
+[data-linnya-ui-theme='moon-blue'] {
+  --color-bg-inline-code: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
+}
+
+[data-linnya-ui-theme='dark'] {
+  --color-bg-inline-code: color-mix(in srgb, var(--color-text-primary) 12%, transparent);
+}
+
 [data-linnya-ui-theme='light'],
 [data-linnya-ui-theme='dark'],
 [data-linnya-ui-theme='moon-blue'] {

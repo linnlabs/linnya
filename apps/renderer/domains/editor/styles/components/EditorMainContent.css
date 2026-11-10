@@ -21,6 +21,15 @@
    */
 }
 
+/* 行内代码：与对话一致的等宽字体、字号与浅底，一眼能和正文区分；代码块的 code 在 pre 里，不受影响。 */
+.editor-main-content .ProseMirror :not(pre) > code {
+  font-family: var(--font-family-mono);
+  font-size: 0.9em;
+  padding: var(--space-0-5) var(--space-1);
+  background: var(--color-bg-inline-code);
+  border-radius: var(--radius-sm);
+}
+
 .editor-context-container {
   flex: 1;
   display: flex;
