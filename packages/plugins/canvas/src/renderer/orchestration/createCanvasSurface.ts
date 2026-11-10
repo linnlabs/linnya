@@ -1,6 +1,8 @@
 import type { CanvasSurfaceOptions, CanvasSurfacePorts } from '../definitions/canvasSurface';
 import { createPixiCanvasKernel, type CanvasKernelIntent } from '../kernel';
 import { canvasKernelText } from '../features/localization';
+import { createCanvasViewMemory, resolveCanvasOpeningCamera } from '../features/viewMemory';
+import { watch } from 'vue';
 import { createCanvasSurfaceRendering } from './createCanvasSurfaceRendering';
 import { createCanvasSurfaceCommands } from './createCanvasSurfaceCommands';
 import { createCanvasSurfaceDisposal } from './createCanvasSurfaceDisposal';
@@ -97,12 +99,25 @@ export async function createCanvasSurface(
     bindings,
     viewport,
   });
+  const viewMemory = createCanvasViewMemory(options.documentId);
   try {
     kernel.setAppearance(readAppearance());
     await base.session.open(options.documentId);
+    const opening = resolveCanvasOpeningCamera(
+      viewMemory.read(),
+      base.session.state.snapshot.value?.elements ?? [],
+      { width: kernel.canvas.clientWidth, height: kernel.canvas.clientHeight }
+    );
+    if (opening) {
+      kernel.setCamera(opening);
+      state.setCamera(kernel.readCamera());
+      refreshView();
+    }
   } catch (failure) {
     report(failure);
   }
+  // 打开后的每次平移缩放都记下来，下次打开回到这里。
+  const stopViewMemory = watch(state.camera, camera => viewMemory.remember(camera));
   const operations = createCanvasSurfaceOperations({
     options,
     ports,
@@ -113,7 +128,12 @@ export async function createCanvasSurface(
     presentation,
     viewport,
   });
-  const destroy = createCanvasSurfaceDisposal({ base, rendering, drafts, selection, bindings });
+  const dispose = createCanvasSurfaceDisposal({ base, rendering, drafts, selection, bindings });
+  const destroy = () => {
+    stopViewMemory();
+    viewMemory.flush();
+    dispose();
+  };
   return createCanvasSurfaceFacade({
     options,
     ports,
