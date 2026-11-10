@@ -73,6 +73,7 @@ App Server ready 仍要求本地数据库、目录恢复和正式路由可用；
 启动失败时先修复最早失败的 owner gate；不要通过删除用户数据、增加 fallback 或绕过合同校验掩盖构建问题。
 
 Renderer 业务代码由 Rollup 按依赖图和动态 import 分块；不要按 Editor、Conversation 等目录强制切割互相引用的模块。
+标准正文的 `@linnya/markdown-document-core` 在各消费者构建时内联，生产安装清单按既有bundled workspace规则移除开发软链；它不需要安装包在源码仓外解析 `workspace:*`。
 这种切割曾使正式包在常量初始化前访问它而白屏，开发服务器并不能复现。构建将 `CIRCULAR_CHUNK`
 视为错误；第三方 vendor 缓存块和独立的图表动态入口仍保留。修改分块必须验证编译后的成品首次开窗，不能只看 Vite 构建退出码。
 
@@ -134,6 +135,7 @@ Linnkit 仓修复并通过不含源码 alias 的产物类型门禁后发布，Li
 禁止修改 `node_modules`、回连相邻源码或扩大类型断言来绕过这条验收链。
 
 测试应覆盖真实业务流程、合同和失败语义。不要用 README snapshot、CSS 数值快照或无业务意义的覆盖率测试代替行为验收。
+`test:workspace-plugins`按包依次运行，包内仍由各自Vitest并行；避免多个测试池同时按整台机器分配worker，令共享CI上的真实历史/日志裁剪业务用例因CPU争用超时。原生性能门槛仍由独立固定硬件验收。
 
 ### 全量并发故障的对照
 

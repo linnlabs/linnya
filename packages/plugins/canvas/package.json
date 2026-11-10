@@ -1,0 +1,85 @@
+{
+  "name": "@plugin/canvas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "Linnya free canvas document plugin",
+  "linnya": {
+    "development": {
+      "backendLoading": "disk",
+      "backendWatchConfig": "tsup.plugin.config.ts",
+      "additionalBuilds": [
+        {
+          "id": "renderer",
+          "type": "configured",
+          "builder": "vite",
+          "config": "vite.plugin.config.mts"
+        },
+        {
+          "id": "render-worker",
+          "type": "configured",
+          "builder": "vite",
+          "config": "vite.render-worker.config.mts"
+        },
+        {
+          "id": "render-preload",
+          "type": "script",
+          "script": "build:preload",
+          "dependencies": [
+            "backend"
+          ]
+        }
+      ]
+    }
+  },
+  "exports": {
+    "./shared": "./src/shared/index.ts",
+    "./backend": "./src/backend/index.ts",
+    "./renderer": "./src/renderer/index.ts",
+    "./backend-test-support": "./src/backend/test-support.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json && vue-tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts src",
+    "lint": "eslint src --max-warnings 0",
+    "build:backend": "node scripts/build/cleanBackend.mjs && tsup --config tsup.plugin.config.ts",
+    "build:renderer": "vite build --config vite.plugin.config.mts",
+    "build": "pnpm run build:backend && pnpm run build:renderer && pnpm run build:render-worker && pnpm run build:preload",
+    "build:render-worker": "vite build --config vite.render-worker.config.mts",
+    "build:preload": "esbuild src/backend/features/canvasRender/infrastructure/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/backend/render-worker-preload.cjs",
+    "guard": "tsx scripts/guard.ts",
+    "guard:artifact": "node scripts/verify-artifact.mjs",
+    "package:artifact": "pnpm run build && node ../../../scripts/release/package-plugin-artifact.mjs canvas && pnpm run guard:artifact"
+  },
+  "dependencies": {
+    "@app/schemas": "workspace:*",
+    "@linnya/markdown-document-core": "workspace:*",
+    "elkjs": "0.12.1",
+    "fractional-indexing": "4.0.0",
+    "pixi.js": "8.22.0",
+    "zod": "4.6.7",
+    "@linnya/document-preview": "workspace:*"
+  },
+  "peerDependencies": {
+    "@linnya/renderer-ui": "^3.4.0",
+    "pinia": ">=3.0.0 <4",
+    "vue": ">=3.5.0 <4"
+  },
+  "devDependencies": {
+    "@linnya/plugin-host-contract": "workspace:*",
+    "@linnya/renderer-ui": "workspace:*",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "better-sqlite3": "13.0.3",
+    "fast-check": "4.10.2",
+    "pixelmatch": "7.1.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.4",
+    "vite": "^6.2.0",
+    "vitest": "^4.1.12",
+    "vue": "^3.5.44",
+    "vue-tsc": "~3.1.0"
+  }
+}

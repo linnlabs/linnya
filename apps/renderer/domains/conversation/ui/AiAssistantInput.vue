@@ -96,16 +96,26 @@
             外层蒙版约束光的轮廓，内部两块连续渐变沿 Motion Path 移动。
             不能省掉蒙版：沿路径旋转一根长条仍然会在圆角处露出直线。
           -->
-          <span class="ai-assistant-input__model-setup-border-flow-track" aria-hidden="true">
+          <span
+            class="ai-assistant-input__model-setup-border-flow-track"
+            aria-hidden="true"
+          >
             <span class="ai-assistant-input__model-setup-border-flow-beam" />
             <span class="ai-assistant-input__model-setup-border-flow-beam" />
           </span>
           <span class="ai-assistant-input__model-setup-content">
-            <span class="ai-assistant-input__model-setup-dot" aria-hidden="true" />
+            <span
+              class="ai-assistant-input__model-setup-dot"
+              aria-hidden="true"
+            />
             <span class="ai-assistant-input__model-setup-label">
               {{ conversationMessage('conversation.input.model.configure') }}
             </span>
-            <ChevronIcon direction="right" class="ai-assistant-input__model-setup-arrow" aria-hidden="true" />
+            <ChevronIcon
+              direction="right"
+              class="ai-assistant-input__model-setup-arrow"
+              aria-hidden="true"
+            />
           </span>
         </button>
 
@@ -128,7 +138,8 @@
 </template>
 
 <script setup lang="ts">
-import { captureConversationClientNotice } from '../features/client-notices';
+import { registerComposerInputFocus } from '../features/composer-focus';
+import { captureConversationClientNotice, currentClientNoticeDraftKey } from '../features/client-notices';
 import { computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { Editor as TiptapEditor, EditorContent } from '@tiptap/vue-3';
 import type { Content, Editor as TiptapCoreEditor } from '@tiptap/core';
@@ -177,6 +188,7 @@ import {
 import { useConversationReferenceSuggestion } from '../features/reference-mention';
 import { useConversationModelSelection } from '../features/model-selection/orchestration/useConversationModelSelection';
 import { useConversationLocalization } from './useConversationLocalization';
+import { useConversationInputPlaceholder } from './composables/useConversationInputPlaceholder';
 import {
   ConversationImageAttachmentDraftStrip,
   ConversationImageAttachmentPicker,
@@ -192,6 +204,7 @@ import {
   projectConversationInformation,
   useContextWindowUsagePresentation,
 } from '../features/context-window-usage';
+import { prepareComposerReferencesForSubmit } from '../features/composer-references';
 import { useHistoryListStore } from '../history/store/historyListStore';
 import { useUIStore } from '../../../shared/stores/ui';
 import {
@@ -219,6 +232,7 @@ const conversationState = useConversationState();
 const conversationSelectors = useConversationSelectors(conversationState);
 const historyListStore = useHistoryListStore();
 const composerReferences = useComposerReferences();
+let referencePreparation: AbortController | undefined;
 const modelCatalog = useModelCatalogReadModel();
 const modelPicker = useModelPickerReadModel();
 const modelBindings = useModelPurposeBindings();
@@ -291,6 +305,11 @@ type EditorForEditorContent = InstanceType<typeof EditorContent>['$props']['edit
  * - 传给 `<EditorContent>` 时用 `editor ?? undefined` 转换为 `undefined`，与 props 类型对齐。
  */
 const editor = shallowRef<EditorForEditorContent | null>(null);
+const unregisterInputFocus = registerComposerInputFocus(() => {
+  const current = editor.value;
+  if (!current || !current.view.dom.getClientRects().length) return false;
+  return current.commands.focus();
+});
 
 const inputContextBarHandles: ConversationInputContextBarHandles = {
   composer: {
@@ -562,6 +581,7 @@ const inputPlaceholder = computed(() => {
   }
   return conversationMessage('conversation.input.placeholder');
 });
+useConversationInputPlaceholder(inputPlaceholder, () => editor.value);
 
 const conversationModelSelection = useConversationModelSelection({
   modelCatalog,
@@ -641,15 +661,26 @@ const handleSubmit = async () => {
   // 在清空之前快照当前扩展与引用，确保结构化 userQuote 不因清空 composer 丢失。
   const extensionSnapshot = activeInputExtension.value;
   const conversationReferencesSnapshot = [...composerReferences.references.value];
-  const userQuotePayload = buildUserQuotePayloadFromConversationReferences(
-    conversationReferencesSnapshot
-  );
-  const extensionSubmitPayload: ConversationInputExtensionSubmitPayload = {
-    text: message,
-    references: conversationReferencesSnapshot,
-  };
-
+  const projectId = navigationScope.currentProjectId;
+  const preparation = new AbortController();
+  referencePreparation = preparation;
   try {
+    const preparedReferences = await prepareComposerReferencesForSubmit({
+      references: conversationReferencesSnapshot,
+      conversationId, projectId,
+      signal: preparation.signal,
+      isCurrent: () => assistantStore.activeConversationId === conversationId
+        && navigationScope.currentProjectId === projectId
+        && activeInputExtension.value === extensionSnapshot
+        && composerReferences.references.value.length === conversationReferencesSnapshot.length
+        && composerReferences.references.value.every((reference, index) => reference.id === conversationReferencesSnapshot[index]?.id),
+    });
+    if (preparedReferences === null) return;
+    const userQuotePayload = buildUserQuotePayloadFromConversationReferences(preparedReferences);
+    const extensionSubmitPayload: ConversationInputExtensionSubmitPayload = {
+      text: message,
+      references: preparedReferences,
+    };
     if (extensionSnapshot) {
       await executeConversationInputExtensionSubmit({
         extension: extensionSnapshot,
@@ -668,8 +699,10 @@ const handleSubmit = async () => {
     }
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') return;
+    assistantStore.setError(error instanceof Error ? error.message : String(error));
     console.error('[AiAssistantInput] 发送消息失败:', error);
   } finally {
+    if (referencePreparation === preparation) referencePreparation = undefined;
     isSubmissionStarting.value = false;
   }
 };
@@ -715,6 +748,10 @@ watch(
 );
 
 watch(isInputDisabled, syncEditorEditable);
+watch(
+  () => [assistantStore.activeConversationId, currentClientNoticeDraftKey()],
+  () => referencePreparation?.abort(),
+);
 
 watch(activeInputExtension, (nextExtension, previousExtension) => {
   if (previousExtension && previousExtension.id !== nextExtension?.id) {
@@ -801,6 +838,8 @@ onMounted(() => {
 });
 // 组件销毁前销毁Tiptap编辑器
 onBeforeUnmount(() => {
+  unregisterInputFocus();
+  referencePreparation?.abort();
   if (editor.value) {
     editor.value.destroy();
   }

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_CHART_READING_STATE } from '../../definitions/chartReadingState'
+import { DEFAULT_CHART_READING_STATE } from '@linnya/markdown-document-core/workspace-charts'
 import { chartFixture, chartTestContext } from '../../testing/chartTestFixtures'
-import { loadChartRuntime } from '../../orchestration/chartRuntime'
-import { buildChartOption } from './buildChartOption'
-import { formatChartDisplayValue, resolveAxisDomain } from '../chartNumbers'
+import { loadChartRuntime } from '@linnya/markdown-document-core/workspace-charts'
+import { buildChartOption } from '@linnya/markdown-document-core/workspace-charts'
+import { formatChartDisplayValue, resolveAxisDomain } from '@linnya/markdown-document-core/workspace-charts'
 
 function property(value: unknown, name: string): unknown {
   return typeof value === 'object' && value !== null ? Reflect.get(value, name) : undefined

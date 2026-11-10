@@ -1,0 +1,238 @@
+/* 画布外壳：命令条、选区浮条、工具条菜单、浮层面板与底部状态区。层级在 .linnya-canvas 内局部堆叠（0–9）。 */
+/* 命令条停靠带横跨画布，命令条居中；带宽即可用宽度，窄画布按下方容器查询收起保存文字。
+   停靠带内的下拉菜单都移到 body，容器查询不影响它们的定位。 */
+.canvas-command-dock {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  left: var(--space-3);
+  z-index: 6;
+  display: flex;
+  justify-content: safe center;
+  container-type: inline-size;
+  pointer-events: none;
+}
+/* 顶部命令条、右下角缩放与 Agent 审阅条共用 Slides 编辑命令条的外观：细描边 + 近影 + 远影的小元素阴影，不加边框。 */
+.canvas-command-bar,
+.canvas-zoom-controls,
+.canvas-agent-review-bar {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1);
+  border-radius: calc(var(--radius-lg) + var(--space-0-5));
+  background: var(--color-bg-default);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 6%, transparent),
+    0 1px 3px var(--shadow-color-xs),
+    0 8px 24px -4px var(--shadow-color-md);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.canvas-command-bar {
+  gap: var(--space-1);
+  pointer-events: auto;
+}
+/* 窄画布：先把“已保存”收成对勾（读屏仍读到文字）。 */
+@container (max-width: 360px) {
+  .canvas-save-status.is-saved .canvas-save-status-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+/* 选区浮条沿用平台 FloatingToolbar 的外观，与 Slides 元素属性浮条一致。 */
+.canvas-selection-bar {
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.canvas-selection-bar .canvas-selection-ai {
+  gap: var(--space-1);
+  color: var(--color-accent-text);
+  font-weight: var(--font-weight-semibold);
+}
+.canvas-selection-count {
+  padding: 0 var(--space-1);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  white-space: nowrap;
+}
+/* 右下角缩放的组织与 Slides 底栏缩放一致（− 百分比 +），位于底部停靠区最下方。 */
+.canvas-zoom-controls {
+  flex-shrink: 0;
+  align-self: flex-end;
+  gap: var(--space-0-5);
+}
+/* 百分比按钮显示等宽数字，宽度固定在“400%”所需，比例变化时控件不跳动。 */
+.canvas-zoom-menu .canvas-zoom-value {
+  min-width: 5ch;
+  font-size: var(--font-size-body);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+/* 保存状态与 Slides 编辑命令条同一写法：平时“已保存”，失败用错误色。 */
+.canvas-save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-1-5) 0 var(--space-1);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  white-space: nowrap;
+}
+.canvas-save-status.is-failed {
+  color: var(--color-error-text);
+}
+.canvas-save-status-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-success);
+}
+.canvas-toolbar-menu {
+  position: relative;
+  display: inline-flex;
+}
+/* 平台图标没有统一的固有尺寸，画布工具条里的图标统一为 16px；按钮带画布自己的 class，不选组件内部 class。 */
+.canvas-toolbar-button > svg:not(.canvas-toolbar-menu-arrow) {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+.canvas-toolbar-button > .canvas-toolbar-menu-arrow {
+  width: 12px;
+  height: 12px;
+  margin-left: calc(var(--space-1) * -1);
+  color: var(--color-text-tertiary);
+}
+/* 工具条菜单与右键菜单移到 body 后的定位层；位置由 placeCanvasMenu 按视口计算。 */
+.canvas-portal-menu {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-portal-menu);
+  width: max-content;
+}
+.canvas-color-swatch {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 1px solid;
+  border-radius: var(--radius-xs);
+}
+
+/* 浮层面板：平台浮层表面，不另画闭合边框以外的分区框。 */
+.canvas-floating-panel {
+  position: absolute;
+  /* 命令条下方：顶部留白 + 工具条高度（28px 控件 + 上下 4px）+ 间距。 */
+  top: calc(var(--space-3) + var(--control-height-sm) + var(--space-2) + var(--space-3));
+  right: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  width: min(360px, calc(100% - var(--space-6)));
+  max-height: 60%;
+  padding: var(--space-2);
+  overflow: hidden;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+.canvas-panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.canvas-panel-input {
+  flex: 1;
+  min-width: 0;
+}
+.canvas-panel-meta {
+  margin: 0;
+  padding-inline: var(--space-2);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  font-variant-numeric: tabular-nums;
+}
+.canvas-panel-error {
+  margin: 0;
+  color: var(--color-error-text);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+.canvas-panel-list {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.canvas-panel-row {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-1-5) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: background-color var(--duration-micro) var(--ease-standard);
+}
+.canvas-panel-row:hover {
+  background: var(--color-bg-hover);
+}
+.canvas-panel-row--active {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-text);
+}
+.canvas-panel-row-title {
+  display: block;
+}
+.canvas-panel-row small {
+  display: block;
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 底部状态区：进度、提示、错误按顺序堆叠，与审阅面板同靠右缘，位于其上方。 */
+.canvas-status-area {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-self: flex-end;
+  align-items: flex-end;
+  gap: var(--space-2);
+  max-width: min(640px, 100%);
+  pointer-events: none;
+}
+.canvas-status-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  max-width: 100%;
+  margin: 0;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-floating-panel);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  pointer-events: auto;
+}
+.canvas-status-item.is-error {
+  color: var(--color-error-text);
+}
+.canvas-status-text {
+  padding-block: var(--space-1);
+  overflow-wrap: anywhere;
+}

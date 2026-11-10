@@ -56,6 +56,7 @@ export interface ContextFenceInjection {
 }
 
 export interface ConversationReference {
+  deduplicationKey?: string;
   id: ConversationReferenceId;
   /** 贡献该引用能力的插件。平台内置引用使用 platform。 */
   pluginId: string;

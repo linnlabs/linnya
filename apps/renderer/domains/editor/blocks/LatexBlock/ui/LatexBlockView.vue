@@ -35,7 +35,7 @@
 <script setup>
 import { computed, ref, watch, onMounted, nextTick, inject } from 'vue';
 import { NodeViewWrapper, nodeViewProps, NodeViewContent } from '@tiptap/vue-3'; // Added NodeViewContent if needed, maybe not
-import katex from 'katex';
+import { renderWorkspaceLatex } from '@linnya/markdown-document-core/workspace-presentation';
 import { useLatexEditorStore } from '../store/latexEditor';
 import { useCurrentBlockActivation } from '../../../ui/composables/useCurrentBlockActivation';
 import { EDITOR_KEY } from '../../../core/tokens';
@@ -78,12 +78,7 @@ const renderLatex = (source, origin = 'unknown') => {
       newHtml = '';
       newError = null;
     } else {
-      newHtml = katex.renderToString(sourceToUse, {
-        throwOnError: false,
-        displayMode: true,
-        output: 'html',
-        strict: false,
-      });
+      newHtml = renderWorkspaceLatex(sourceToUse, true);
       newError = null;
     }
     renderedHtml.value = newHtml;

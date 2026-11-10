@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { admitMarkdownChartSpec, MARKDOWN_CHART_PALETTES, type MarkdownChartSpec } from '@app/schemas'
-import { baseChartTheme } from '../definitions/chartTheme'
+import { baseChartTheme } from '@linnya/markdown-document-core/workspace-charts'
 import { mixColors, parseColor, rgbToOklch } from '@linnya/color-core'
 import {
   categoryMarkColors,
@@ -9,7 +9,7 @@ import {
   paletteMarkColors,
   readableTextOn,
   seriesMarkColors,
-} from './chartPalette'
+} from '@linnya/markdown-document-core/workspace-charts'
 
 function admit(input: Record<string, unknown>): MarkdownChartSpec {
   const result = admitMarkdownChartSpec(input)

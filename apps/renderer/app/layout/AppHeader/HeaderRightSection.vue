@@ -305,7 +305,17 @@
       :key="activeDocumentId"
       :document-id="activeDocumentId"
       :preview-component="historyPreviewComponent"
+      :client-session-id="historyClientSessionId"
       @close="showDocumentHistory = false"
+    />
+
+    <DocumentBacklinksPanel
+      v-if="showDocumentBacklinks && activeDocumentId && navigationScope.currentProjectId"
+      :key="`${navigationScope.currentProjectId}:${activeDocumentId}`"
+      :document-id="activeDocumentId"
+      :project-id="navigationScope.currentProjectId"
+      :read-icon="readDocumentTypeIcon"
+      @close="showDocumentBacklinks = false"
     />
 
     <!-- 添加到知识库弹窗 -->
@@ -359,6 +369,8 @@ import { useWorkspaceProjectsStore, useWorkspaceTreeStore } from '@/domains/work
 import { useNotificationStore } from '@/app/notification';
 import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase';
 import { useDocumentActionMenu, useDocumentTypeAvailabilityByActiveType } from '@/app/plugins/composables';
+import { DocumentBacklinksPanel, useBacklinksMessages } from '@/domains/document-references';
+import { readDocumentTypeIcon } from '@/app/plugins/documentTypePresentation';
 import { DocumentHistoryPanel, useHistoryMessages } from '@/domains/document-history';
 import { getDocumentTypeByActiveType, getDocumentTypeByNodeType } from '@/app/plugins/registry';
 import type { DocumentActionMenuOptionValue } from '@/app/plugins/types';
@@ -421,9 +433,12 @@ const documentAvailability = useDocumentTypeAvailabilityByActiveType(activeDocum
 const historyPreviewComponent = computed(() => documentAvailability.value?.state === 'enabled'
   ? documentAvailability.value.documentType.historyPreviewComponent : undefined);
 const showDocumentHistory = ref(false);
+const showDocumentBacklinks = ref(false);
+const { message: backlinksMessage } = useBacklinksMessages();
+const historyClientSessionId = ref<string>();
 const { message: historyMessage } = useHistoryMessages();
 const pluginDocumentActionMenu = useDocumentActionMenu(activeDocumentType);
-watch([activeDocumentId, historyPreviewComponent], () => { showDocumentHistory.value = false; showDocMenu.value = false; });
+watch([activeDocumentId, historyPreviewComponent], () => { showDocumentHistory.value = false; showDocumentBacklinks.value = false; showDocMenu.value = false; });
 // 对话里点“历史”会先打开文档再请求历史面板；post flush 保证在上面的切换复位之后执行。
 const documentHistoryRequest = useDocumentHistoryPanelRequest();
 watch([documentHistoryRequest, activeDocumentId, historyPreviewComponent], () => {
@@ -793,6 +808,7 @@ const docMenuOptions = computed<CustomSelectOption<Exclude<DocMenuValue, null>>[
 });
 
 const combinedDocMenuOptions = computed<CustomSelectOption<DocumentActionMenuOptionValue>[]>(() => [
+  ...(activeDocumentId.value && navigationScope.currentProjectId ? [{ value: 'document-backlinks', text: backlinksMessage('backlinks.title') }] : []),
   ...(historyPreviewComponent.value ? [{ value: 'document-history', text: historyMessage('history.title') }] : []),
   ...docMenuOptions.value,
   ...(pluginDocumentActionMenu.value?.isAvailable() ? pluginDocumentActionMenu.value.getOptions() : []),
@@ -870,7 +886,16 @@ type DocMenuValue =
 // 处理文档菜单选项选择
 const handleDocMenuSelect = async (value: unknown) => {
   showDocMenu.value = false;
-  if (value === 'document-history' && historyPreviewComponent.value) { showDocumentHistory.value = true; return; }
+  if (value === 'document-backlinks' && activeDocumentId.value && navigationScope.currentProjectId) { showDocumentBacklinks.value = true; return; }
+  if (value === 'document-history' && historyPreviewComponent.value && activeDocumentId.value) {
+    // 会话属于实际打开的文档表面；确认期间固定它，不能把恢复计入后来切换的视图。
+    const availability = documentAvailability.value;
+    historyClientSessionId.value = availability?.state === 'enabled'
+      ? availability.documentType.historyClientSessionId?.(activeDocumentId.value) ?? undefined
+      : undefined;
+    showDocumentHistory.value = true;
+    return;
+  }
   const menu = pluginDocumentActionMenu.value;
   if (menu?.isAvailable() && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')) {
     await menu.select(value);

@@ -1,0 +1,125 @@
+name: Canvas Regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canvas-regression-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  deterministic:
+    name: Canvas business and drawing counts (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # Linux 仅验证插件业务与离屏绘制，不表示新增 Desktop 发行平台。
+        os: [ubuntu-24.04, macos-latest, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        id: dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Prepare Linux offscreen display
+        id: linux-display
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' }}
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64 fonts-noto-cjk
+      - name: Prepare Linux Electron sandbox helper
+        id: linux-sandbox
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' }}
+        # Raw Electron installs need the SUID helper: chromium/docs/linux/suid_sandbox_development.md.
+        run: |
+          sandbox_helper="$(node -e 'const path = require("node:path"); process.stdout.write(path.join(path.dirname(require("electron")), "chrome-sandbox"));')"
+          sudo chown root:root "$sandbox_helper"
+          sudo chmod 4755 "$sandbox_helper"
+      - name: Typecheck Canvas
+        run: pnpm --filter @plugin/canvas typecheck
+      - name: Check Canvas architecture and frame closure
+        run: pnpm exec tsx packages/plugins/canvas/scripts/guard.ts
+      - name: Lint Canvas production code
+        run: pnpm --filter @plugin/canvas lint
+      - name: Verify source formatting guard rejects compressed statements
+        run: pnpm --filter @plugin/canvas exec vitest run --config vitest.config.ts scripts/quality/__tests__/canvasSourceFormatting.test.ts
+      - name: Build schemas for browser subpath imports
+        run: pnpm run build:schemas
+      - name: Build the actual computation worker
+        run: pnpm --filter @plugin/canvas build:backend
+      - name: Run Canvas business cases
+        run: pnpm --filter @plugin/canvas test
+      - name: Run actual Host persistence and restoration cases
+        run: pnpm exec vitest run packages/plugins/__tests__/canvasDocument.sqlite.integration.test.ts packages/plugins/__tests__/canvasVersionHistory.sqlite.integration.test.ts
+      - name: Check drawing workload on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_PERFORMANCE_DETERMINISTIC=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
+      - name: Check drawing workload on macOS and Windows
+        if: runner.os != 'Linux'
+        run: pnpm exec cross-env CANVAS_PERFORMANCE_OFFSCREEN=1 CANVAS_PERFORMANCE_DETERMINISTIC=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
+      - name: Verify software drawing counts and bounded resources on Linux
+        if: runner.os == 'Linux'
+        run: node packages/plugins/canvas/dev/probes/verify-counts.mjs _dev_data/canvas-deterministic-counts-probe/results.json --deterministic
+      - name: Verify drawing counts and bounded resources on macOS and Windows
+        if: runner.os != 'Linux'
+        run: node packages/plugins/canvas/dev/probes/verify-counts.mjs _dev_data/canvas-deterministic-counts-probe/results.json --deterministic
+      - name: Compare DOM and bitmap content on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 node packages/plugins/canvas/dev/probes/run-visual-probe.mjs
+      - name: Compare DOM and bitmap content on macOS and Windows
+        if: runner.os != 'Linux'
+        run: node packages/plugins/canvas/dev/probes/run-visual-probe.mjs
+      - name: Verify identity and overview label pixels on Linux
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' && steps.linux-display.outcome == 'success' && steps.linux-sandbox.outcome == 'success' }}
+        # 身份牌与远景标签是独立像素门；前面的视觉失败仍须保留本门原件。
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 node packages/plugins/canvas/dev/probes/run-identity-atlas-probe.mjs
+      - name: Verify identity and overview label pixels on macOS and Windows
+        if: ${{ !cancelled() && runner.os != 'Linux' && steps.dependencies.outcome == 'success' }}
+        run: node packages/plugins/canvas/dev/probes/run-identity-atlas-probe.mjs
+      - name: Diagnose Linux large-cluster paint lifecycle independently
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' && steps.linux-display.outcome == 'success' && steps.linux-sandbox.outcome == 'success' }}
+        # 单例诊断保留失败现场；不替代上面的六组计数，也不提供硬件性能资格。
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_PERFORMANCE_COUNTS=12000 CANVAS_PERFORMANCE_DISTRIBUTIONS=cluster CANVAS_PERFORMANCE_PAINT_TRACE=1 CANVAS_PERFORMANCE_BODY_PROFILE=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs
+      - name: Verify isolated Canvas artifact on Linux
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' && steps.linux-display.outcome == 'success' && steps.linux-sandbox.outcome == 'success' }}
+        run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 pnpm run smoke:plugin:canvas:artifact
+      - name: Verify isolated Canvas artifact on macOS and Windows
+        if: ${{ !cancelled() && runner.os != 'Linux' && steps.dependencies.outcome == 'success' }}
+        run: pnpm run smoke:plugin:canvas:artifact
+      - name: Retain drawing and visual evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: canvas-evidence-${{ matrix.os }}
+          path: |
+            _dev_data/canvas-counts-probe/results.json
+            _dev_data/canvas-software-probe/results.json
+            _dev_data/canvas-deterministic-counts-probe/*.json
+            _dev_data/canvas-deterministic-counts-probe/*.png
+            _dev_data/canvas-deterministic-counts-probe/renderer.js
+            _dev_data/canvas-deterministic-counts-probe/electron.cjs
+            _dev_data/canvas-deterministic-counts-probe/renderer.css
+            _dev_data/canvas-deterministic-counts-probe/index.html
+            _dev_data/canvas-visual-probe/*.json
+            _dev_data/canvas-visual-probe/*.png
+            _dev_data/canvas-identity-atlas-probe/*.json
+            _dev_data/canvas-identity-atlas-probe/*.png
+            _dev_data/canvas-worker-smoke/*.json
+            _dev_data/canvas-worker-smoke/*.png
+            _dev_data/canvas-paint-diagnostic/*.json
+            _dev_data/canvas-paint-diagnostic/*.cpuprofile
+          if-no-files-found: warn
+          retention-days: 7

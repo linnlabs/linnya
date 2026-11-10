@@ -1,4 +1,5 @@
 import * as z from 'zod';
+import { readPersistedWorkspaceDocumentLocation, splitNormalizedVfsPath, type WorkspaceVfsStatement } from '../../vfs/projection';
 
 interface WorkspaceProjectionDatabase {
   prepare(sql: string): unknown;
@@ -75,4 +76,50 @@ export function touchWorkspaceDocument(
       ).run(updatedAt, nodeId)
     );
   if (result.changes !== 1) throw new Error(`Workspace document not found: ${nodeId}`);
+}
+
+const identitySchema = z.object({ id: z.string(), project_id: z.string().nullable(), name: z.string(), type: z.string(), deleted_at: z.number().nullable() });
+
+/** 引用生命周期需要区分软删除与越界；调用方不读取 Workspace 内部表。 */
+export function readWorkspaceDocumentIdentity(db: WorkspaceProjectionDatabase, nodeId: string) {
+  const row = readStatement(db, 'SELECT id, project_id, name, type, deleted_at FROM workspace_nodes WHERE id = ?').get(nodeId);
+  if (row === undefined) return null;
+  const node = identitySchema.parse(row);
+  return { id: node.id, projectId: node.project_id, name: node.name, nodeType: node.type, deletedAt: node.deleted_at };
+}
+
+function isVfsStatement(value: unknown): value is WorkspaceVfsStatement {
+  return typeof value === 'object' && value !== null && 'get' in value && typeof value.get === 'function'
+    && 'all' in value && typeof value.all === 'function' && 'run' in value && typeof value.run === 'function';
+}
+
+export function readWorkspaceDocumentLocation(db: WorkspaceProjectionDatabase, nodeId: string) {
+  return readPersistedWorkspaceDocumentLocation({ prepare(sql) {
+    const statement = db.prepare(sql);
+    if (!isVfsStatement(statement)) throw new Error('Workspace location requires a complete statement port');
+    return statement;
+  } }, nodeId);
+}
+
+const candidateRowsSchema = z.array(z.object({ id: z.string(), name: z.string(), type: z.string(), project_id: z.string() }));
+export function searchWorkspaceDocumentIdentities(db: WorkspaceProjectionDatabase, input: { readonly projectId: string; readonly keyword: string; readonly limit: number }) {
+  const statement: unknown = db.prepare(`SELECT id, name, type, project_id FROM workspace_nodes WHERE project_id = ? AND type != 'folder' AND deleted_at IS NULL AND name LIKE ? ESCAPE '!' ORDER BY COALESCE(last_opened_at, 0) DESC, updated_at DESC, name LIMIT ?`);
+  if (typeof statement !== 'object' || statement === null || !('all' in statement) || typeof statement.all !== 'function') throw new Error('Workspace search requires a readable statement');
+  const keyword = input.keyword.replace(/[!%_]/g, char => '!' + char);
+  const rows: unknown = Reflect.apply(statement.all, statement, [input.projectId, '%' + keyword + '%', input.limit]);
+  return candidateRowsSchema.parse(rows);
+}
+
+/** 只解析当前项目的正式持久节点；不把系统视图或文件系统路径接纳为引用目标。 */
+export function resolveWorkspaceDocumentPath(db: WorkspaceProjectionDatabase, input: { readonly projectId: string; readonly path: string }) {
+  if (!input.path.startsWith('workspace:/')) throw new Error('Workspace document reference requires a workspace:/ path');
+  const segments = splitNormalizedVfsPath(input.path.slice('workspace:'.length));
+  let parentId: string | null = null;
+  for (const segment of segments) {
+    const raw = readStatement(db, 'SELECT id FROM workspace_nodes WHERE project_id = ? AND parent_id IS ? AND name = ? AND deleted_at IS NULL').get(input.projectId, parentId, segment);
+    if (raw === undefined) return null;
+    parentId = z.object({ id: z.string() }).parse(raw).id;
+  }
+  if (!parentId || !readWorkspaceDocumentLocation(db, parentId)) return null;
+  return readWorkspaceDocumentIdentity(db, parentId);
 }

@@ -333,6 +333,13 @@
   background-color: var(--color-bg-hover);
 }
 
+/* 菜单项的键盘焦点用与悬停相同的底色表达，不画全局焦点环。 */
+.custom-select__options .select-option:focus-visible,
+.custom-select__submenu .select-option:focus-visible {
+  outline: none;
+  background-color: var(--color-bg-hover);
+}
+
 .custom-select__options .select-option.is-selected,
 .custom-select__submenu .select-option.is-selected {
   font-weight: var(--font-weight-medium);
@@ -341,6 +348,8 @@
 }
 
 .custom-select__options .select-option.is-selected:hover,
+.custom-select__options .select-option.is-selected:focus-visible,
+.custom-select__submenu .select-option.is-selected:focus-visible,
 .custom-select__options .select-option.is-selected.is-keyboard-selected,
 .custom-select__submenu .select-option.is-selected:hover {
   background-color: var(--color-accent-bg-hover);

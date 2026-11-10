@@ -1,0 +1,35 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "strict": true,
+    "types": [
+      "node",
+      "vite/client"
+    ],
+    "paths": {
+      "@app/localization": ["packages/plugin-host-contract/renderer/localization.ts"],
+      "@plugin/backend/*": [
+        "packages/plugin-host-contract/backend/*.ts"
+      ],
+      "@plugin/renderer/*": [
+        "packages/plugin-host-contract/renderer/*.ts"
+      ],
+      "@app/schemas": [
+        "packages/schemas/src/index.ts"
+      ],
+      "@app/schemas/*": [
+        "packages/schemas/src/*"
+      ],
+      "@plugin/canvas/shared": [
+        "packages/plugins/canvas/src/shared/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/__tests__/**"
+  ]
+}

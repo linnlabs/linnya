@@ -87,6 +87,9 @@ export default defineConfig({
       { find: /^@plugin\/slides\/backend-tools$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/slides/src/backend/tools/index.ts') },
       { find: /^@linnya\/slides-mathjax-runtime$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/slides/src/backend/engine/mathFormula/runtime/mathJaxSvgRuntime.ts') },
       { find: /^@plugin\/slides\/renderer$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/slides/src/renderer/index.ts') },
+      { find: /^@plugin\/canvas\/backend-test-support$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/canvas/src/backend/test-support.ts') },
+      { find: /^@plugin\/canvas\/backend$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/canvas/src/backend/index.ts') },
+      { find: /^@plugin\/canvas\/shared$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/canvas/src/shared/index.ts') },
       { find: /^@plugin\/(.+)$/, replacement: path.resolve(import.meta.dirname, 'src/plugin-sdk/$1') },
 
       // npm 包：@app/schemas（workspace 本地包）

@@ -1,17 +1,24 @@
 export * from './persistence';
 export type { MarkdownPendingRevisionLike } from './definitions/pendingRevisionView';
-export { normalizeToolPendingIntent, type NormalizedToolPendingIntent } from './functions/normalizeToolPendingIntent';
+export {
+  normalizeToolPendingIntent,
+  type NormalizedToolPendingIntent,
+} from './functions/normalizeToolPendingIntent';
 export { parsePendingMetadata } from './functions/pendingRevisionApplyRules';
 export {
   extractPendingCitationHydration,
   extractPendingCitationLinkHydration,
 } from './functions/admitPendingCitationHydration';
-export { insertPendingRootBlock, removePendingRootBlock } from './functions/pendingRootBlockMutations';
+export {
+  insertPendingRootBlock,
+  removePendingRootBlock,
+} from './functions/pendingRootBlockMutations';
 export { PendingRevisionApplyService } from './orchestration/pendingRevisionApplyService';
 export { importPendingMarkdownRootBlock } from './orchestration/importPendingMarkdownRootBlock';
-export type {
-  MarkdownImporter,
-} from './definitions/pendingRevisionApply';
+export type { MarkdownImporter } from './definitions/pendingRevisionApply';
 
 export { projectMarkdownEditorPendingRevisions } from './functions/projectMarkdownEditorPendingRevisions';
 export { resolvePendingOperation } from './functions/pendingRevisionApplyRules';
+
+export { preparePendingReplacements } from './orchestration/preparePendingReplacements';
+export { applyAcceptedPendingsToDocument } from './functions/pendingRevisionApplyRules';

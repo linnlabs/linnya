@@ -1,4 +1,4 @@
-import type { UserFacingMessage } from '@app/schemas';
+import type { UserFacingMessage, WorkspaceMutationEvent } from '@app/schemas';
 
 export type OperationResult<T = unknown> =
   | { success: true; data?: T }
@@ -69,6 +69,7 @@ export interface CreateWorkspaceDocumentOutput {
 }
 
 export type WorkspaceRuntimePort = {
+  subscribeMutations(callback: (event: WorkspaceMutationEvent) => void): () => void;
   getCurrentProjectId(): string | null;
   getActiveFileSession(): FileSessionDescriptor | null;
   markActiveFileDirty(dirty?: boolean): void;
@@ -123,3 +124,5 @@ export declare function createWorkspaceDocument(
   args: CreateWorkspaceDocumentInput,
 ): Promise<OperationResultWithData<CreateWorkspaceDocumentOutput>>;
 export declare function listProjectKnowledgeBaseIds(args: { projectId: string }): Promise<OperationResultWithData<string[]>>;
+
+export declare function subscribeWorkspaceMutations(callback: (event: WorkspaceMutationEvent) => void): () => void;

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
-import { analyzeShellToolBoundarySource } from '../guards/shell-tool-boundary-guard';
+import { analyzeShellToolBoundarySource, collectShellToolBoundaryViolations } from '../guards/shell-tool-boundary-guard';
 
 function ruleIds(file: string, source: string): readonly string[] {
   return analyzeShellToolBoundarySource(file, source).map(violation => violation.ruleId);
@@ -59,5 +62,24 @@ describe('shell tool high-value boundary guard', () => {
       'src/tools/commands/shell/__tests__/ShellTool.test.ts',
       "import { spawn } from 'node:child_process';",
     )).toContain('SHELL-BOUNDARY-01-no-process-spawn-in-ui-or-tool');
+  });
+
+  it('扫描真实owner源码，跳过pnpm中扩展名为.js的依赖目录链接', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'shell-boundary-source-'));
+    try {
+      const ownDirectory = path.join(root, 'src/tools/commands/shell');
+      const dependencies = path.join(root, 'packages/plugins/canvas/node_modules');
+      const external = path.join(root, 'dependency-fixture');
+      await Promise.all([mkdir(ownDirectory, { recursive: true }), mkdir(dependencies, { recursive: true }), mkdir(external)]);
+      await writeFile(path.join(ownDirectory, 'Owned.ts'), "import { spawn } from 'node:child_process';");
+      await writeFile(path.join(external, 'index.js'), 'const plugin_command = true;');
+      // Windows junction不要求开发者模式，仍复现Dirent把目录链接报告成非普通目录的边界。
+      await symlink(external, path.join(dependencies, 'pixi.js'), 'junction');
+      expect(collectShellToolBoundaryViolations(root)).toMatchObject([
+        { file: 'src/tools/commands/shell/Owned.ts', ruleId: 'SHELL-BOUNDARY-01-no-process-spawn-in-ui-or-tool' },
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

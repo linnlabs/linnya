@@ -10,6 +10,8 @@
  */
 
 import type { Database } from 'better-sqlite3';
+import { createAspectRatioSlideRasterProfile } from '@plugin/slides/shared/slideRasterization';
+import { PresentationPageRasterizationRuntime } from '../features/presentationPageRasterization';
 import { DocumentHistoryError, type DocumentHistoryCapability } from '@plugin/backend/documentHistory';
 import {
   createConversationFilePathResolver,
@@ -154,5 +156,30 @@ export const slidesDocumentHistoryCapability: DocumentHistoryCapability = {
     const coordinator = getSharedPptCoordinator(readDatabaseService(readToolContext(input.context)).getDb());
     if (!coordinator.history) throw new DocumentHistoryError('history_unavailable');
     return coordinator.history.restore(input);
+  },
+};
+
+/** 第一页封面复用正式页面光栅化管线，不写会话目录，也不影响保存事务。 */
+export const slidesDocumentPreviewCapability: import('@plugin/backend/documentPreview').DocumentPreviewCapability = {
+  async getRevision(input) {
+    const coordinator = getSharedPptCoordinator(readDatabaseService(readToolContext(input.context)).getDb());
+    return (await coordinator.getDocumentBuildState(input.documentId)).versionId;
+  },
+  async render(input) {
+    const coordinator = getSharedPptCoordinator(readDatabaseService(readToolContext(input.context)).getDb());
+    const identity = await coordinator.getDocumentBuildState(input.documentId);
+    const model = await coordinator.getRenderModel(input.documentId);
+    if (model.version !== identity.versionNumber) throw new Error('Presentation preview source changed');
+    const profile = createAspectRatioSlideRasterProfile({ id: 'document-preview', slideSize: model.slideSize, viewportWidthPx: input.widthPx, pixelRatio: input.pixelRatio });
+    const result = await new PresentationPageRasterizationRuntime().render({ source: { renderModel: model }, slideNumbers: [1], profile }, input.signal ? { signal: input.signal } : {});
+    const page = result.pages[0];
+    if (!page) throw new Error('Presentation preview has no first slide');
+    const preview = await coordinator.getPreview(input.documentId);
+    return {
+      revisionKey: identity.versionId,
+      overview: 'thumbnail',
+      summary: preview.slides.flatMap(slide => slide.elements.flatMap(element => element.text ? [element.text] : [])).join('\n').slice(0, 4000),
+      image: { dataUri: 'data:image/png;base64,' + Buffer.from(page.bytes).toString('base64'), widthPx: page.widthPx, heightPx: page.heightPx },
+    };
   },
 };

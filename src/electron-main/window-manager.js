@@ -4,6 +4,7 @@
  */
 
 import { app, BrowserWindow, dialog, Menu, ipcMain } from 'electron';
+import { HTML_CANVAS_BLINK_FEATURES } from './desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences.js';
 import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { createMainWindowCloseLifecycle } from './app-lifecycle/orchestration/createMainWindowCloseLifecycle.ts';
@@ -231,6 +232,7 @@ function createWindow() {
       preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: true,
+      enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES,
       webSecurity: true,
     }
   };

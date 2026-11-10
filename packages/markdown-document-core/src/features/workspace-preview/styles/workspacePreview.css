@@ -1,0 +1,119 @@
+@import 'katex/dist/katex.min.css';
+@import './workspaceColors.css';
+
+/* 用户预览正文唯一排版：Canvas、标签、对话和隐藏出图均加载本文件。 */
+.workspace-markdown-preview {
+  box-sizing: border-box;
+  display: flow-root;
+  min-width: 0;
+  max-width: 100%;
+  color: inherit;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  text-align: start;
+  overflow-wrap: anywhere;
+  user-select: text;
+  --workspace-preview-muted: #737373;
+  --workspace-preview-line: #d4d4d4;
+  --workspace-preview-wash: #f5f5f5;
+}
+.workspace-markdown-preview[data-linnya-ui-theme='dark'] {
+  --workspace-preview-muted: #a3a3a3;
+  --workspace-preview-line: #525252;
+  --workspace-preview-wash: #303030;
+}
+.workspace-markdown-preview :where(div, p, figure, h1, h2, h3, h4, h5, h6, pre, ul, li) {
+  box-sizing: border-box;
+  margin: 0;
+}
+.workspace-markdown-preview .workspace-preview-block { padding: 0; margin: 8px 0 0; }
+.workspace-markdown-preview .workspace-preview-block:first-child { margin-top: 0; }
+.workspace-markdown-preview .root-block-outer,
+.workspace-markdown-preview .root-block,
+.workspace-markdown-preview .editor-block,
+.workspace-markdown-preview .base-block-outer,
+.workspace-markdown-preview .heading-block-outer,
+.workspace-markdown-preview .list-item-block-outer,
+.workspace-markdown-preview .quote-block-outer,
+.workspace-markdown-preview .image-block-outer {
+  position: relative;
+  display: block;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  /* Editor 根块预留手柄宽度；静态预览没有 chrome，必须清除这条宿主宽度。 */
+  width: auto;
+  max-width: 100%;
+  font-size: inherit;
+  line-height: inherit;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transition: none;
+}
+.workspace-markdown-preview .root-block::after,
+.workspace-markdown-preview .editor-block::after,
+.workspace-markdown-preview .quote-block::before { content: none; }
+.workspace-markdown-preview :is(.base-block, .heading-block, .list-item-block, .quote-block) {
+  white-space: pre-wrap;
+  min-height: 1lh;
+}
+.workspace-markdown-preview .table-cell-content-block { width: auto; min-height: 1lh; font: inherit; white-space: pre-wrap; }
+.workspace-markdown-preview .root-block :is(.base-block, .heading-block) { padding: 0; }
+.workspace-markdown-preview h1.heading-block { font-size: 20px; line-height: 1.35; font-weight: 700; }
+.workspace-markdown-preview h2.heading-block { font-size: 17px; line-height: 1.45; font-weight: 600; }
+.workspace-markdown-preview :is(h3, h4, h5, h6).heading-block { font-size: 15px; line-height: 1.5; font-weight: 600; }
+.workspace-markdown-preview .root-block .quote-block-outer .quote-block { color: inherit; border-inline-start: 3px solid var(--workspace-preview-line); padding-inline-start: 10px; }
+.workspace-markdown-preview .base-block[data-indent='1'],
+.workspace-markdown-preview .heading-block[data-indent='1'],
+.workspace-markdown-preview .quote-block[data-indent='1'] { margin-inline-start: 20px; }
+.workspace-markdown-preview .base-block[data-indent='2'],
+.workspace-markdown-preview .heading-block[data-indent='2'],
+.workspace-markdown-preview .quote-block[data-indent='2'] { margin-inline-start: 40px; }
+.workspace-markdown-preview .base-block[data-indent='3'],
+.workspace-markdown-preview .heading-block[data-indent='3'],
+.workspace-markdown-preview .quote-block[data-indent='3'] { margin-inline-start: 60px; }
+.workspace-markdown-preview .root-block .list-item-block { padding-inline-start: 1.6em; }
+.workspace-markdown-preview .list-item-block.level-1 { margin-inline-start: 20px; }
+.workspace-markdown-preview .list-item-block.level-2 { margin-inline-start: 40px; }
+.workspace-markdown-preview .list-item-block.level-3 { margin-inline-start: 60px; }
+.workspace-markdown-preview .root-block .list-item-block[data-list-type]::before {
+  position: absolute; left: 0; inset-inline-start: 0; top: 0; margin: 0;
+  width: 1.3em; height: auto; border: 0; border-radius: 0;
+  transform: none; background: none; text-align: end;
+  font: inherit; color: var(--local-block-text-color, currentColor);
+  content: '•';
+}
+.workspace-markdown-preview .root-block .list-item-block[data-list-type='ordered']::before { content: attr(data-ordered-index) '.'; }
+.workspace-markdown-preview .root-block .list-item-block[data-list-type='bullet'].level-1::before { content: '◦'; }
+.workspace-markdown-preview .root-block .list-item-block[data-list-type='bullet']:is(.level-2, .level-3)::before { content: '▪'; }
+.workspace-markdown-preview .workspace-preview-code {
+  padding: 10px; border-radius: 4px; background: var(--workspace-preview-wash);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.workspace-markdown-preview code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.workspace-markdown-preview :not(pre) > code { border-radius: 3px; background: var(--workspace-preview-wash); padding: 1px 3px; }
+.workspace-markdown-preview hr { border: 0; border-top: 1px solid var(--workspace-preview-line); margin: 12px 0; }
+.workspace-markdown-preview .workspace-preview-table { max-width: 100%; overflow-x: auto; }
+.workspace-markdown-preview table { border-collapse: collapse; table-layout: auto; width: 100%; font-size: inherit; }
+.workspace-markdown-preview :is(td, th) { border: 1px solid var(--workspace-preview-line); padding: 5px 8px; min-width: 2em; vertical-align: top; }
+.workspace-markdown-preview th { background: var(--workspace-preview-wash); font-weight: 600; }
+.workspace-markdown-preview td p, .workspace-markdown-preview th p { margin: 0; }
+.workspace-markdown-preview .image-block { display: block; max-width: 100%; margin: 0 auto; padding: 0; }
+.workspace-markdown-preview .image-block.align-left { margin-inline-start: 0; }
+.workspace-markdown-preview .image-block.align-right { margin-inline-end: 0; }
+.workspace-markdown-preview img { display: block; max-width: 100%; height: auto; border-radius: 0; box-shadow: none; }
+.workspace-markdown-preview .figure-caption { margin-top: 6px; color: var(--workspace-preview-muted); font-size: 12px; line-height: 1.5; text-align: center; }
+.workspace-markdown-preview .empty-image { padding: 20px; background: var(--workspace-preview-wash); color: var(--workspace-preview-muted); }
+.workspace-markdown-preview .workspace-preview-chart { margin: 0; }
+.workspace-markdown-preview .workspace-preview-chart img { width: 100%; }
+.workspace-markdown-preview .workspace-preview-math { overflow-x: auto; overflow-y: hidden; }
+.workspace-markdown-preview .katex-display { margin: 4px 0; }
+.workspace-markdown-preview .citation-mark { display: inline; padding: 0; border-radius: 0; line-height: inherit; cursor: text; transition: none; font-size: .85em; vertical-align: super; color: #337ea9; }
+.workspace-markdown-preview .workspace-preview-bibliography { font-size: 12px; }
+.workspace-markdown-preview .workspace-preview-bibliography h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.workspace-markdown-preview .workspace-preview-bibliography ul { padding: 0; list-style: none; }
+.workspace-markdown-preview .workspace-preview-bibliography li + li { margin-top: 6px; }
+.workspace-markdown-preview a { color: inherit; text-decoration: underline; cursor: text; }

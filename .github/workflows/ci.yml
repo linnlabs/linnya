@@ -113,6 +113,9 @@ jobs:
       - name: Build Backend and its workspace dependencies
         # build:backend 已拥有 schemas 的准备；不再提前重复编译一次。
         run: pnpm run build:backend
+      - name: Build Canvas worker for Host integration tests
+        # Canvas不在发行目标里；真实Host测试仍须在本job拥有自己的实际Worker产物。
+        run: pnpm --filter @plugin/canvas build:backend
       - name: Build Electron Main
         run: pnpm run build:main
       - name: Run tests without external credentials

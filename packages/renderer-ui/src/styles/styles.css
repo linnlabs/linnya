@@ -18,6 +18,7 @@
 @import '../features/feedback/styles/Skeleton.css';
 @import '../features/text-entry/styles/CustomTextField.css';
 @import '../features/text-entry/styles/SecretInput.css';
+@import '../features/text-entry/styles/InlineTextInput.css';
 @import '../features/number-entry/styles/CustomNumberInput.css';
 @import '../features/number-entry/styles/CustomSlider.css';
 @import '../features/number-entry/styles/NumberSpinButtons.css';

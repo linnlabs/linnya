@@ -103,7 +103,7 @@ function mergeAdjacentSpans(spans: TextSpan[]): TextSpan[] {
   return merged
 }
 
-function projectionFromFragments(
+export function projectionFromFragments(
   fragments: MarkdownInlineFragment[],
   sourceBlockCount: number,
   droppedBlockCount: number
@@ -125,6 +125,11 @@ function projectionFromFragments(
         marks: pickSupportedSpanMarks(fragment.marks),
       })
       continue
+    }
+
+    if (fragment.type === 'documentReference') {
+      spans.push({ text: fragment.textRepresentation, marks: pickSupportedSpanMarks(fragment.marks), inlineAtom: { type: 'documentReference', ...fragment.attrs, textRepresentation: fragment.textRepresentation } });
+      continue;
     }
 
     if (fragment.type === 'citationNode') {
@@ -346,6 +351,13 @@ export function buildInlineNodesFromProjection(
         nodes.push(schema.text('\n', marks.length > 0 ? marks : undefined))
       }
       continue
+    }
+
+    if (fragment.type === 'documentReference') {
+      const node = schema.nodes.documentReference;
+      if (!node) throw new Error('Pending schema does not support document references.');
+      nodes.push(node.create(fragment.attrs, null, buildSchemaMarks(schema, fragment.marks)));
+      continue;
     }
 
     if (fragment.type === 'citationNode') {

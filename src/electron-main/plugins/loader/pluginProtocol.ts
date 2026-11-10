@@ -28,6 +28,7 @@ const missingExports = [
   'createStaticVNode',
   'render',
   'shallowRef',
+  'shallowReadonly',
   'ref',
   'isRef',
   'triggerRef',
@@ -90,6 +91,7 @@ export const createVNode = host.createVNode;
 export const createStaticVNode = host.createStaticVNode;
 export const render = host.render;
 export const shallowRef = host.shallowRef;
+export const shallowReadonly = host.shallowReadonly;
 export const ref = host.ref;
 export const isRef = host.isRef;
 export const triggerRef = host.triggerRef;
@@ -149,6 +151,7 @@ const host = globalThis.__LINNYA_RENDERER_PLUGIN_HOST_MODULES__?.pinia;
 if (!host) throw new Error('Linnya renderer plugin host Pinia module is not installed.');
 export const createPinia = host.createPinia;
 export const defineStore = host.defineStore;
+export const getActivePinia = host.getActivePinia;
 export const setActivePinia = host.setActivePinia;
 export const storeToRefs = host.storeToRefs;
 export default host;
@@ -181,6 +184,7 @@ const rendererHostShims = new Map<string, string>([
   ['/plugin-renderer/composerCommandPort.js', buildNamedHostShim('@plugin/renderer/composerCommandPort', [
     'addComposerReference',
     'removeComposerReference',
+    'focusComposerInput',
   ])],
   ['/plugin-renderer/conversationSubrunInvocationPort.js', buildNamedHostShim('@plugin/renderer/conversationSubrunInvocationPort', [
     'startConversationSubruns',
@@ -192,8 +196,12 @@ const rendererHostShims = new Map<string, string>([
     'validateWebManualForm',
     'listKnowledgeBasesForPlugin',
   ])],
+  ['/plugin-renderer/documentReferences.js', buildNamedHostShim('@plugin/renderer/documentReferences', ['queryDocumentReferences', 'readDocumentReference', 'readDocumentBacklinks', 'previewDocumentDeletionReferences'])],
+  ['/plugin-renderer/pluginRuntime.js', buildNamedHostShim('@plugin/renderer/pluginRuntime', ['readRendererPluginAvailability', 'subscribeRendererPluginAvailability'])],
+  ['/plugin-renderer/documentPreview.js', buildNamedHostShim('@plugin/renderer/documentPreview', ['readDocumentPreview', 'listDocumentPreviewTypes', 'readDocumentPreviewTypeIcon', 'mountDocumentPreview'])],
   ['/plugin-renderer/workspaceRuntime.js', buildNamedHostShim('@plugin/renderer/workspaceRuntime', [
     'getCurrentWorkspaceProjectId',
+    'subscribeWorkspaceMutations',
     'listProjectKnowledgeBaseIds',
     'isActiveFileDirty',
     'showWorkspaceNotification',
@@ -233,6 +241,7 @@ const rendererHostShims = new Map<string, string>([
     'unregisterDocumentReferenceRuntimeHandler',
     'listDocumentReferenceRuntimeHandlers',
   ])],
+  ['/plugin-renderer/embeddedMarkdownEditor.js', buildNamedHostShim('@plugin/renderer/embeddedMarkdownEditor', ['createEmbeddedMarkdownEditor', 'parseEmbeddedMarkdown', 'serializeEmbeddedMarkdown'])],
   ['/plugin-renderer/exportArtifact.js', buildNamedHostShim('@plugin/renderer/exportArtifact', [
     'requestExportArtifactTarget',
   ])],
@@ -243,6 +252,10 @@ const rendererHostShims = new Map<string, string>([
   ['/plugin-renderer/referenceLinkUi.js', buildNamedHostShim('@plugin/renderer/referenceLinkUi', ['WorkspaceRefLink'])],
   ['/plugin-renderer/settingsContribution.js', buildNamedHostShim('@plugin/renderer/settingsContribution', [
     'clearSettingsContributionsForTest',
+    'clearAppearanceSectionsForTest',
+    'listAppearanceSections',
+    'registerAppearanceSection',
+    'unregisterAppearanceSection',
     'listSettingsContributions',
     'registerSettingsContribution',
     'unregisterSettingsContribution',

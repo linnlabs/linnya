@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { promises as fs } from 'node:fs';
+import { promises as fs, realpathSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -63,7 +63,8 @@ bundleSuite('actual built CLI launcher freshness', () => {
       expect(result.code).toBe(4);
       expect(result.error).toContain('bundle is stale');
       expect(JSON.parse(result.error)).toMatchObject({
-        connection: { source_root: await fs.realpath(root), state: 'not_connected', instance: null },
+        // 启动器同步解析身份；Windows 的异步 realpath 可能把同一目录的 8.3 别名展开成长路径。
+        connection: { source_root: realpathSync(root), state: 'not_connected', instance: null },
       });
     },
   );

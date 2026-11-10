@@ -50,6 +50,8 @@ import {
 } from './plugins/loader/runtimeRendererPluginLoader';
 import { describeRendererPluginRegistryForDiagnostics } from './plugins/registry';
 import { registerConversationResourceLinkPort } from '@/domains/conversation/features/resource-link';
+import { registerDocumentTypePresentationPort } from '@/domains/editor/features/document-references';
+import { readDocumentTypeIcon, readDocumentTypeRecoveryAction, readDocumentTypePreviewComponent } from './plugins/documentTypePresentation';
 import { createConversationResourceLinkPort } from './workflows/conversation-resource-link/orchestration/createConversationResourceLinkPort';
 import { registerRunDocumentChangesPort } from '@/domains/conversation/features/run-document-changes';
 import { createRunDocumentChangesPort } from './workflows/conversation-run-document-changes/orchestration/createRunDocumentChangesPort';
@@ -72,6 +74,7 @@ registerWorkspaceNodeTransferPort(createWorkspaceNodeTransfer());
 registerDocumentSurfaceRuntimePort(createDocumentSurfaceRuntime());
 registerMarkdownDocumentEditorRuntimePort(createMarkdownDocumentEditorRuntime());
 registerConversationResourceLinkPort(createConversationResourceLinkPort());
+registerDocumentTypePresentationPort({ readIcon: readDocumentTypeIcon, readPreviewComponent: readDocumentTypePreviewComponent, readRecoveryAction: readDocumentTypeRecoveryAction });
 registerRunDocumentChangesPort(createRunDocumentChangesPort());
 useWorkspaceVfsRuntimeContextSync();
 useWorkspaceMutationSubscription();

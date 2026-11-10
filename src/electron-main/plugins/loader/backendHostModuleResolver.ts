@@ -16,6 +16,9 @@ import * as citationSourceRuntime from '../../../plugin-sdk/backend/citationSour
 import * as documentTypeBackendHook from '../../../plugin-sdk/backend/documentTypeBackendHook';
 import * as documentImageAsset from '../../../plugin-sdk/backend/documentImageAsset';
 import * as documentHistory from '../../../plugin-sdk/backend/documentHistory';
+import * as conversationProjection from '../../../plugin-sdk/backend/conversationProjection';
+import * as documentReferences from '../../../plugin-sdk/backend/documentReferences';
+import * as documentPreview from '../../../plugin-sdk/backend/documentPreview';
 import * as documentAssetOwnership from '../../../plugin-sdk/backend/documentAssetOwnership';
 import * as documentSvgAsset from '../../../plugin-sdk/backend/documentSvgAsset';
 import * as exportArtifact from '../../../plugin-sdk/backend/exportArtifact';
@@ -60,6 +63,9 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/documentTypeBackendHook', documentTypeBackendHook],
   ['@plugin/backend/documentImageAsset', documentImageAsset],
   ['@plugin/backend/documentHistory', documentHistory],
+  ['@plugin/backend/conversationProjection', conversationProjection],
+  ['@plugin/backend/documentReferences', documentReferences],
+  ['@plugin/backend/documentPreview', documentPreview],
   ['@plugin/backend/documentAssetOwnership', documentAssetOwnership],
   ['@plugin/backend/documentSvgAsset', documentSvgAsset],
   ['@plugin/backend/exportArtifact', exportArtifact],

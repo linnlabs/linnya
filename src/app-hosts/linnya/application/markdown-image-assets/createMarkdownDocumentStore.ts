@@ -1,3 +1,4 @@
+import { bindMarkdownDocumentReferenceCapabilities } from '../markdown-document-references';
 import type Database from 'better-sqlite3';
 import { bindMarkdownImageOwnership, MarkdownDocumentService } from 'src/domains/markdown';
 import {
@@ -41,5 +42,6 @@ export function bindMarkdownDocumentImageOwnership(db: Database.Database): void 
 
 export function createMarkdownDocumentStore(db: Database.Database): MarkdownDocumentService {
   bindMarkdownDocumentImageOwnership(db);
+  bindMarkdownDocumentReferenceCapabilities(db);
   return new MarkdownDocumentService(db);
 }

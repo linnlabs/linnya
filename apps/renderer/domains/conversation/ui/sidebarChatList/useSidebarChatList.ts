@@ -78,7 +78,6 @@ export function useSidebarChatList(
   const editingConversationId = ref<string | null>(null);
   const editingTitle = ref('');
   const isSubmittingRename = ref(false);
-  const renameInputRef = ref<HTMLInputElement | null>(null);
   const activeMenuConversationId = ref<string | null>(null);
   const menuButtonRefs = new Map<string, HTMLButtonElement>();
   const menuDropdownRef = ref<HTMLElement | null>(null);
@@ -350,10 +349,6 @@ export function useSidebarChatList(
     );
   };
 
-  const setRenameInputRef = (element: Element | ComponentPublicInstance | null): void => {
-    renameInputRef.value = element instanceof HTMLInputElement ? element : null;
-  };
-
   const activeMenuConversation = computed(() => {
     if (!activeMenuConversationId.value) return null;
     return conversations.value.find(conversation => (
@@ -463,12 +458,8 @@ export function useSidebarChatList(
 
   const startRename = (conversation: ConversationListItem): void => {
     editingConversationId.value = conversation.conversation_id;
+    // 就地编辑框挂载即聚焦全选。
     editingTitle.value = conversation.title || conversationMessage('conversation.sidebar.untitled');
-
-    void nextTick(() => {
-      renameInputRef.value?.focus();
-      renameInputRef.value?.select();
-    });
   };
 
   const cancelRename = (): void => {
@@ -709,7 +700,6 @@ export function useSidebarChatList(
     editingConversationId,
     editingTitle,
     setMenuButtonRef,
-    setRenameInputRef,
     confirmRename,
     cancelRename,
     formatListTime,

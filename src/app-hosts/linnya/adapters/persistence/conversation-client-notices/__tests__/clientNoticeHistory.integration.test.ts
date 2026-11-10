@@ -21,10 +21,10 @@ function setup() {
 function command() { return ConversationClientNoticeCommandSchema.parse({ notice_id: randomUUID(), observed_at: 30, error_kind: 'connection', operation: 'send' }); }
 
 describe('client notice durable history', () => {
-  it('accepts without a run; duplicate admission returns original receipt; strict payload cannot inject runtime/raw fields', async () => {
+  it('accepts a reference preparation failure without a run; duplicate admission returns original receipt; strict payload cannot inject runtime/raw fields', async () => {
     const { db, store, admission } = setup();
     await store.ensureConversation('conv', []);
-    const input = command();
+    const input = ConversationClientNoticeCommandSchema.parse({ ...command(), error_kind: 'validation', reason_code: 'reference_preparation_failed' });
     const result = admission.accept('conv', input);
     expect(admission.accept('conv', input)).toEqual(result);
     expect(admission.accept('conv', { ...input, operation: 'pause' })).toEqual({ status: 'identity-conflict' });
@@ -34,7 +34,7 @@ describe('client notice durable history', () => {
     expect(rows.status).toBe('ready');
     if (rows.status !== 'ready') throw new Error('not ready');
     expect(rows.messages).toHaveLength(1);
-    expect(ConversationUiMessageSchema.parse(rows.messages[0])).toMatchObject({ message_type: 'client_notice', run_id: null, turn_id: null, payload: { origin: 'client' } });
+    expect(ConversationUiMessageSchema.parse(rows.messages[0])).toMatchObject({ message_type: 'client_notice', run_id: null, turn_id: null, payload: { ...input, origin: 'client' } });
     expect(db.prepare('SELECT * FROM events').all()).toHaveLength(0);
     expect(db.prepare('SELECT * FROM runs').all()).toHaveLength(0);
     db.close();

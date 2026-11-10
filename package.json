@@ -213,7 +213,7 @@
     "benchmark:web:search-free": "tsx scripts/benchmark/web-reliability/free-search-runner.ts",
     "test:plugin:mindmap": "vitest run packages/plugins/mindmap/src",
     "test:plugin:slides": "vitest run packages/plugins/slides/src",
-    "test:workspace-plugins": "pnpm --filter './packages/plugins/*' --if-present run test",
+    "test:workspace-plugins": "pnpm --workspace-concurrency=1 --filter './packages/plugins/*' --if-present run test",
     "harness:plugin:slides": "pnpm --dir packages/plugins/slides run harness",
     "slides:cli": "pnpm --dir packages/plugins/slides run cli",
     "test:watch": "vitest",
@@ -348,7 +348,10 @@
     "release:lock:production:verify": "node scripts/build/orchestration/updateProductionPackageLock.mjs --verify",
     "release:lock:production:install-smoke": "node scripts/build/orchestration/updateProductionPackageLock.mjs --verify-install",
     "test:production-package-lock": "vitest run scripts/build/functions/productionPackageManifest.test.ts scripts/build/functions/productionPackageLock.test.ts",
-    "release:checklist": "node --import tsx ./scripts/release/orchestration/printUploadChecklist.ts"
+    "release:checklist": "node --import tsx ./scripts/release/orchestration/printUploadChecklist.ts",
+    "guard:canvas": "pnpm --filter @plugin/canvas guard",
+    "package:plugin:canvas": "pnpm --dir packages/plugins/canvas run package:artifact",
+    "smoke:plugin:canvas:artifact": "pnpm run build:schemas && pnpm run package:plugin:canvas && node packages/plugins/canvas/scripts/smoke-artifact.mjs"
   },
   "keywords": [],
   "author": "",
@@ -647,7 +650,9 @@
     "yaml": "2.8.3",
     "yauzl": "^3.2.0",
     "yoga-layout": "^3.2.1",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "@linnya/markdown-document-core": "workspace:*",
+    "@linnya/document-preview": "workspace:*"
   },
   "devDependencies": {
     "@electron/asar": "3.4.1",

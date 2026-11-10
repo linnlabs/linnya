@@ -1,0 +1,64 @@
+/* 外观在 markdown-document-core 的共享样式；这里只加可交互态。 */
+.markdown-document-reference {
+  cursor: pointer;
+  transition: background-color var(--duration-short) var(--ease-standard);
+}
+.markdown-document-reference:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.markdown-document-reference:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+.document-reference-preview,
+.document-reference-suggestions {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-popover);
+  width: 22rem;
+  max-height: min(32rem, 80vh);
+  overflow: auto;
+  padding: var(--space-3);
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-floating-panel);
+}
+.document-reference-preview {
+  /* FloatingUI通过内联样式更新可用区域；首次定位前沿用相同的视口约束。 */
+  --document-reference-available-width: calc(100vw - 1rem);
+  --document-reference-available-height: 80vh;
+  --document-preview-fade-color: var(--color-bg-elevated);
+  --document-preview-fade-radius: var(--radius-lg);
+
+  padding: 0;
+  box-sizing: border-box;
+  max-width: var(--document-reference-available-width);
+  max-height: min(32rem, 80vh, var(--document-reference-available-height));
+}
+.document-reference-suggestions {
+  display: flex;
+  flex-direction: column;
+}
+.document-reference-suggestions button {
+  text-align: start;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: var(--space-1-5);
+}
+.document-reference-suggestions [aria-selected='true'] {
+  background: var(--color-bg-subtle);
+}
+
+.document-reference-candidate-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-inline-end: var(--space-1-5);
+}
+.document-reference-candidate-icon svg {
+  width: 100%;
+  height: 100%;
+}

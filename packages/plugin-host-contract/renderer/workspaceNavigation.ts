@@ -15,6 +15,11 @@ export interface WorkspaceDocumentNavigationRequest {
   readonly parameters?: WorkspaceDocumentNavigationParameters;
 }
 
+/** Workspace持久节点类型与界面activeDocumentType是两种身份，由Host registry负责映射。 */
+export interface WorkspaceNodeDocumentNavigationRequest extends Omit<WorkspaceDocumentNavigationRequest, 'type'> {
+  readonly nodeType: string;
+}
+
 export interface WorkspaceConversationNavigationRequest {
   readonly conversationId: string;
   readonly scope: WorkspaceNavigationScope;
@@ -32,6 +37,7 @@ export interface WorkspaceNavigationPort {
   openKnowledgeBase(): Promise<void>;
   openPluginStore(): Promise<void>;
   openDocumentTarget(request: WorkspaceDocumentNavigationRequest): Promise<void>;
+  openDocumentByNodeType(request: WorkspaceNodeDocumentNavigationRequest): Promise<void>;
   openConversation(request: WorkspaceConversationNavigationRequest): Promise<void>;
   openDocument(request: WorkspaceDocumentNavigationRequest): Promise<void>;
   toggleWorkspacePanePlacement(): void;

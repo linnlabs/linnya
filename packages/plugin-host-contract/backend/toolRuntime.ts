@@ -35,14 +35,15 @@ export interface PluginSqliteStatementPort {
   run(...params: readonly unknown[]): unknown;
 }
 
-export interface PluginSqliteTransactionPort {
-  immediate(): void;
+export interface PluginSqliteTransactionPort<T = void> {
+  immediate(): T;
 }
 
 export interface PluginSqliteDatabasePort {
   prepare(sql: string): PluginSqliteStatementPort;
   exec(sql: string): unknown;
-  transaction(fn: () => void): PluginSqliteTransactionPort;
+  /** 与原生同步 SQLite 事务一致，保留回调结果；不接受异步事务回调。 */
+  transaction<T>(fn: () => T): PluginSqliteTransactionPort<T>;
 }
 
 export interface PluginKnowledgeBaseServicePort {

@@ -1,0 +1,388 @@
+import { SampledVisualSchema, recordCanvasVisualFrame, visualFrameColor } from './visualFrameElectron';
+import { assertSoftwareVisualSampling, visualPixelOffset } from './visualSampling';
+import { verifyCanvasLineVisual } from './verifyCanvasLineVisual';
+import { readCanvasVisualDiagnostic, runCanvasSoftwareLineDiagnostic } from './visualDiagnostic';
+import { verifySceneVisual } from './sceneVisualElectron';
+import { readCanvasLinePalette } from '../../src/shared';
+import { app, BrowserWindow, nativeImage, type WebContents, type Event, type RenderProcessGoneDetails } from 'electron';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { z } from 'zod';
+import { HTML_CANVAS_BLINK_FEATURES } from '../../../../../src/electron-main/desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences';
+import { captureCanvasVisualPage, withNativeVisualViewport } from './captureCanvasVisualPage';
+import { VisualTextLayoutSchema, VisualNegativeSchema, evaluateVisualTextOracle, verifyVisualTextNegatives, visualImageFromBgra, visualTextEnvironment, readBitmapGhostPreservation } from './visualOracle';
+
+const rectangle = z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() });
+const prepared = z.object({ viewportWidth: z.number(), viewportHeight: z.number(), dpr: z.number(), reference: rectangle, raster: rectangle, pixi: rectangle, ghostY: z.number(), measuredHeights: z.array(z.number().nullable()),
+  textLayout: z.object({ reference: VisualTextLayoutSchema, rasters: z.array(VisualTextLayoutSchema) }),
+  negative: VisualNegativeSchema.nullable(), mutation: z.array(z.unknown()).nullable(), ghostErasure: z.object({ fromY: z.number(), toY: z.number() }).nullable(),
+  kernelCapture: z.object({ mode: z.literal('capture'), resolution: z.number().positive(), canvas: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }),
+    status: z.object({ limited: z.boolean(), phase: z.enum(['ready', 'restoring']), message: z.string().nullable() }) }) });
+const visualViewport = z.object({ scrollX: z.number(), scrollY: z.number(), width: z.number().positive(), height: z.number().positive(),
+  innerWidth: z.number().positive(), innerHeight: z.number().positive(), dpr: z.number().positive() });
+const nativeCaptureWindow = z.object({ contentSize: z.tuple([z.number().positive(), z.number().positive()]),
+  contentBounds: rectangle.extend({ width: z.number().positive(), height: z.number().positive() }), zoomFactor: z.number().positive() });
+// clientWidth/Height是整数；Windows原生滚动条在页面缩放后可占半个CSS像素，必须保留真实分数视口。
+const viewportExpression = '({scrollX:visualViewport.pageLeft,scrollY:visualViewport.pageTop,width:visualViewport.width,height:visualViewport.height,innerWidth,innerHeight,dpr:devicePixelRatio})';
+const output = process.argv[2];
+if (!output) throw new Error('Visual output directory required');
+app.setPath('userData', path.join(output, 'profile'));
+const softwareProfile = process.env.CANVAS_PERFORMANCE_SOFTWARE === '1';
+const diagnostic = readCanvasVisualDiagnostic(process.env.CANVAS_VISUAL_DIAGNOSTIC, softwareProfile);
+if (softwareProfile) { app.commandLine.appendSwitch('use-angle', 'swiftshader'); app.commandLine.appendSwitch('enable-unsafe-swiftshader'); }
+app.on('window-all-closed', () => {});
+
+async function evaluate(webContents: WebContents, expression: string): Promise<unknown> {
+  console.log(`[canvas visual] ${expression}`);
+  // Blink的DOMException跨executeJavaScript可能只剩{}；原名/消息/栈先在Renderer日志落盘。
+  const observed = `(async()=>{try{return await (${expression});}catch(error){const detail=error instanceof Error||error instanceof DOMException?error.name+': '+error.message+'\\n'+(error.stack??''):String(error);console.error('[canvas visual renderer error]',detail);throw new Error(detail);}})()`;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let removeCrashListener = () => {};
+  try {
+    return await Promise.race([webContents.executeJavaScript(observed), new Promise<never>((_, reject) => {
+      const gone = (_event: Event, details: RenderProcessGoneDetails) => reject(new Error(`visual_renderer_gone:${details.reason}:${details.exitCode}:${expression}`));
+      webContents.once('render-process-gone', gone); removeCrashListener = () => { webContents.removeListener('render-process-gone', gone); };
+      timer = setTimeout(() => reject(new Error(`visual_case_timeout:${expression}`)), 45000);
+    })]);
+  } finally { clearTimeout(timer); removeCrashListener(); }
+}
+
+async function captureComparison(win: BrowserWindow, state: z.infer<typeof prepared>, stem: string) {
+  await writeFile(path.join(output, `${stem}-kernel-capture.json`), JSON.stringify({ dpr: state.dpr, pixi: state.pixi, kernelCapture: state.kernelCapture }, null, 2));
+  // PNG裁切尺寸不能证明Kernel真的以同DPR绘制；1x画布在截图里放大成2x仍是不合格输入。
+  if (state.kernelCapture.resolution !== state.dpr || state.kernelCapture.canvas.width !== Math.round(state.pixi.width * state.dpr)
+    || state.kernelCapture.canvas.height !== Math.round(state.pixi.height * state.dpr)) throw new Error('visual_kernel_capture_sampling_mismatch');
+  let tileIndex = 0;
+  const readNative = () => nativeCaptureWindow.parse({ contentSize: win.getContentSize(), contentBounds: win.getContentBounds(), zoomFactor: win.webContents.getZoomFactor() });
+  const observe = (dom: unknown) => {
+    const domViewport = visualViewport.parse(dom), nativeWindow = readNative();
+    return { domViewport, nativeWindow, viewport: withNativeVisualViewport(domViewport, nativeWindow) };
+  };
+  let observation = observe(await evaluate(win.webContents, viewportExpression));
+  const captured = await captureCanvasVisualPage({
+    async readViewport() { return observation.viewport; },
+    async scrollTo(x, y) {
+      // 两次真实rAF让滚动后的静态图层完成绘制；读取实际位置，不能假设末块没有被浏览器clamp。
+      observation = observe(await evaluate(win.webContents, `(async()=>{scrollTo({left:${x},top:${y},behavior:'instant'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));return ${viewportExpression}})()`));
+      return observation.viewport;
+    },
+    async capture() {
+      const before = observation;
+      const png = (await win.webContents.capturePage()).toPNG();
+      const tile = `${stem}-tile-${tileIndex++}`;
+      await writeFile(path.join(output, `${tile}.png`), png);
+      // PNG解码为唯一物理像素表示，避免NativeImage的DIP/多scale表示影响后续裁切。
+      const image = nativeImage.createFromBuffer(png);
+      const result = { ...image.getSize(), pixels: image.toBitmap() };
+      // 在严格拼接检查之前保存同一次capture的native身份；失败也不能丢掉推导依据。
+      await writeFile(path.join(output, `${tile}.json`), JSON.stringify({ viewport: before.viewport, domViewport: before.domViewport,
+        nativeWindowBefore: before.nativeWindow, nativeWindowAfter: readNative(), size: image.getSize(), bytes: result.pixels.length }, null, 2));
+      return result;
+    },
+  }, { rectangles: [state.reference, state.raster, state.pixi], dpr: state.dpr });
+  const screenshot = nativeImage.createFromBitmap(captured.pixels, { width: captured.width, height: captured.height });
+  const facts = { state, ratio: state.dpr, ...readNative(), region: captured.region, tiles: captured.tiles, expectedSize: captured.expectedSize };
+  await writeFile(path.join(output, `${stem}-capture.json`), JSON.stringify(facts, null, 2));
+  await writeFile(path.join(output, `${stem}-capture.png`), screenshot.toPNG());
+  return { screenshot, facts };
+}
+
+async function verifyTextNegatives(win: BrowserWindow) {
+  const result = await verifyVisualTextNegatives(async negative => {
+    const state = prepared.parse(await evaluate(win.webContents, `window.prepareCanvasVisualProbe('light','paper','white',${JSON.stringify(negative)})`));
+    const { screenshot } = await captureComparison(win, state, `negative-${negative}`);
+    const crop = async (name: string, rect: z.infer<typeof rectangle>) => {
+      const image = screenshot.crop({ x: Math.round(rect.x * state.dpr), y: Math.round(rect.y * state.dpr),
+        width: Math.round(rect.width * state.dpr), height: Math.round(rect.height * state.dpr) });
+      await writeFile(path.join(output, `negative-${negative}-${name}.png`), image.toPNG());
+      const size = image.getSize(); return visualImageFromBgra(image.toBitmap(), size.width, size.height);
+    };
+    return { reference: await crop('dom', state.reference), raster: await crop('raster', state.raster), pixi: await crop('pixi', state.pixi), layout: state.textLayout };
+  });
+  await writeFile(path.join(output, 'text-oracle-negatives.json'), JSON.stringify(result, null, 2));
+  return result;
+}
+
+async function verifyGhostErasure(win: BrowserWindow) {
+  const state = prepared.parse(await evaluate(win.webContents, 'window.prepareCanvasGhostEraseProbe()'));
+  const { screenshot } = await captureComparison(win, state, 'negative-ghost-erasure');
+  const images = [];
+  for (const [name, rect] of [['raster', state.raster], ['pixi', state.pixi]] as const) {
+    const image = screenshot.crop({ x: Math.round(rect.x * state.dpr), y: Math.round(rect.y * state.dpr), width: Math.round(rect.width * state.dpr), height: Math.round(rect.height * state.dpr) });
+    await writeFile(path.join(output, `negative-ghost-erasure-${name}.png`), image.toPNG());
+    images.push(visualImageFromBgra(image.toBitmap(), image.getSize().width, image.getSize().height));
+  }
+  const result = readBitmapGhostPreservation(images[0], images[1], { theme: 'light', dpr: state.dpr, ghostY: state.ghostY });
+  await writeFile(path.join(output, 'negative-ghost-erasure.json'), JSON.stringify({ ...result, actualErasure: state.ghostErasure, expected: 'ghost_guard_itself_must_reject' }, null, 2));
+  return state.ghostErasure !== null && !result.pass && result.sourceInk >= 10;
+}
+
+const fadeState = SampledVisualSchema.extend({ image: z.string(), elapsed: z.number(), oldWidth: z.number(), blueWidth: z.number(), greenWidth: z.number(),
+  rendered: z.boolean(), reduced: z.boolean(), stats: z.object({ fadingCards: z.number(), retiringBytes: z.number(), bitmapBytes: z.number(), bitmapBudgetBytes: z.number() }) });
+async function verifyFade(win: BrowserWindow) {
+  win.webContents.debugger.attach('1.3');
+  try {
+    await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    const initial = fadeState.extend({ before: z.string(), oldBaseline: z.object({ previousRenders: z.number(), renders: z.number(),
+      receipt: z.object({ firstPresented: z.boolean(), rendered: z.boolean(), acceptedAfterRender: z.number() }) }),
+      uploaded: z.object({ firstPresented: z.boolean(), rendered: z.boolean() }) }).parse(await evaluate(win.webContents, softwareProfile ? 'window.beginCanvasFadeVisualProbe(true)' : 'window.beginCanvasFadeVisualProbe()'));
+    if (!initial.oldBaseline.receipt.rendered || !initial.oldBaseline.receipt.firstPresented
+      || initial.oldBaseline.renders <= initial.oldBaseline.previousRenders || initial.oldBaseline.renders <= initial.oldBaseline.receipt.acceptedAfterRender)
+      throw new Error('fade_old_body_actual_draw_baseline_missing');
+    if (softwareProfile) {
+      assertSoftwareVisualSampling(initial.sampling);
+      if (initial.reduced || initial.stats.fadingCards || initial.stats.retiringBytes || !initial.rendered || initial.oldWidth || initial.stats.bitmapBytes !== 28000
+        || initial.uploaded.firstPresented || initial.uploaded.rendered) throw new Error('software_texture_replacement_not_immediate_or_draw_not_observed');
+    } else if (initial.stats.fadingCards !== 1 || initial.rendered || initial.oldWidth !== 50 || initial.stats.bitmapBytes !== 35000) throw new Error('real_texture_fade_did_not_start');
+    await recordCanvasVisualFrame({ ...initial, data: initial.image }, output, 'fade-initial', softwareProfile);
+    await new Promise(resolve => setTimeout(resolve, 40));
+    const middle = fadeState.parse(await evaluate(win.webContents, 'window.readCanvasFadeVisualProbe()'));
+    const middleFrame = await recordCanvasVisualFrame({ ...middle, data: middle.image }, output, 'fade-midpoint', softwareProfile);
+    const mixed = visualFrameColor(middleFrame, { x: 100, y: 80 }), midpointObserved = middle.stats.fadingCards > 0;
+    if (softwareProfile && (middle.stats.fadingCards || middle.stats.retiringBytes || !middle.rendered
+      || mixed.r !== 32 || mixed.g !== 48 || mixed.b !== 224)) throw new Error('software_texture_final_blue_pixels_missing');
+    if (midpointObserved && (mixed.r < 50 || mixed.b < 60)) throw new Error(`fade_midpoint_pixels_missing:${JSON.stringify(mixed)}`);
+    await evaluate(win.webContents, softwareProfile ? 'window.replaceCanvasFadeVisualProbe(true)' : 'window.replaceCanvasFadeVisualProbe()');
+    await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    const reduced = fadeState.parse(await evaluate(win.webContents, 'window.finishCanvasFadePreferenceVisualProbe()'));
+    const reducedFrame = await recordCanvasVisualFrame({ ...reduced, data: reduced.image }, output, 'fade-reduced', softwareProfile);
+    const green = visualFrameColor(reducedFrame, { x: 100, y: 80 });
+    if (!reduced.reduced || reduced.stats.fadingCards || reduced.stats.retiringBytes || !reduced.rendered || reduced.oldWidth || reduced.blueWidth
+      || reduced.greenWidth !== 150 || reduced.stats.bitmapBytes !== 63000 || green.g < 190 || green.r > 45) throw new Error('reduced_motion_did_not_finish_actual_texture_fade');
+    if (Math.max(initial.stats.bitmapBytes, middle.stats.bitmapBytes, reduced.stats.bitmapBytes) > initial.stats.bitmapBudgetBytes) throw new Error('fade_exceeded_bitmap_budget');
+    await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    const budget: unknown = await evaluate(win.webContents, 'window.prepareCanvasFadeBudgetVisualProbe()');
+    return { profile: softwareProfile ? 'software-immediate' : 'hardware-fade', sampling: initial.sampling, oldBaseline: initial.oldBaseline, uploaded: initial.uploaded, midpointObserved, mixed, green, initialBytes: initial.stats.bitmapBytes, oldAndNewBytes: softwareProfile ? null : initial.stats.bitmapBytes, reducedBytes: reduced.stats.bitmapBytes, reducedRendered: reduced.rendered, budget };
+  } finally { await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [] }); win.webContents.debugger.detach(); }
+}
+
+async function run() {
+  await app.whenReady();
+  if (process.platform === 'darwin') app.setActivationPolicy('accessory');
+  const win = new BrowserWindow({ show: false, width: 2400, height: 1200, webPreferences: { sandbox: true, contextIsolation: true,
+    offscreen: true, backgroundThrottling: false, enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
+  win.webContents.on('console-message', details => { if (details.level === 'error' || details.level === 'warning' || details.message.startsWith('[canvas visual')) console.error(details.message); });
+  win.webContents.on('render-process-gone', (_event, details) => console.error('[canvas visual renderer gone]', details));
+  try {
+    await win.loadFile(path.join(output, 'index.html'));
+    win.webContents.setZoomFactor(2);
+    if (diagnostic) {
+      await runCanvasSoftwareLineDiagnostic({ runLine: () => verifyCanvasLineVisual(win, output, evaluate, softwareProfile),
+        writeEvidence: (name, facts) => writeFile(path.join(output, name), JSON.stringify(facts, null, 2)) });
+      return;
+    }
+    // 所有正例都经过局部检查，即使raw95已通过也不绕开单字/标点缺失检测。
+    const negativeQualification = await verifyTextNegatives(win);
+    const ghostNegativeRejected = await verifyGhostErasure(win);
+    const reports = [];
+    const failedCases = negativeQualification.reports.filter(report => !report.qualifiedEnvironment || !report.rasterRejected || !report.pixiRejected).map(report => `negative:${report.negative}`);
+    if (!ghostNegativeRejected) failedCases.push('negative:ghost-erasure');
+    for (const theme of ['light', 'dark']) for (const material of ['paper', 'card']) for (const color of material === 'paper' ? ['white', 'red', 'green'] : ['white']) {
+      const state = prepared.parse(await evaluate(win.webContents, `window.prepareCanvasVisualProbe(${JSON.stringify(theme)},${JSON.stringify(material)},${JSON.stringify(color)})`));
+      const { screenshot, facts } = await captureComparison(win, state, `${theme}-${material}-${color}`);
+      const size = screenshot.getSize();
+      const ratio = state.dpr;
+      const crop = (rect: z.infer<typeof rectangle>) => screenshot.crop({ x: Math.round(rect.x * ratio), y: Math.round(rect.y * ratio),
+        width: Math.round(rect.width * ratio), height: Math.round(rect.height * ratio) });
+      const dom = crop(state.reference); const raster = crop(state.raster); const pixi = crop(state.pixi);
+      const a = dom.toBitmap(); const b = raster.toBitmap(); const c = pixi.toBitmap();
+      if (size.width !== facts.expectedSize.width || size.height !== facts.expectedSize.height
+        || a.length !== b.length || a.length !== c.length || a.length !== Math.round(state.reference.width * ratio) * Math.round(state.reference.height * ratio) * 4) {
+        // CI平台的DIP、PNG像素与裁切范围必须留下原件，不能仅凭长度差猜测字体或放宽对比。
+        const stem = `${theme}-${material}-${color}`;
+        await writeFile(path.join(output, `${stem}-sizes.json`), JSON.stringify({ ...facts,
+          screenshot: { size, scales: screenshot.getScaleFactors() },
+          crops: { dom: { size: dom.getSize(), bytes: a.length }, raster: { size: raster.getSize(), bytes: b.length }, pixi: { size: pixi.getSize(), bytes: c.length } },
+        }, null, 2));
+        await Promise.all([
+          writeFile(path.join(output, `${stem}-dom.png`), dom.toPNG()),
+          writeFile(path.join(output, `${stem}-raster.png`), raster.toPNG()),
+          writeFile(path.join(output, `${stem}-pixi.png`), pixi.toPNG()),
+        ]);
+        throw new Error('visual_sizes_mismatch');
+      }
+      const width = dom.getSize().width;
+      const ink = (pixels: Uint8Array, i: number) => theme === 'light' ? pixels[i] < 180 && pixels[i + 1] < 180 && pixels[i + 2] < 180
+        : pixels[i] > 150 && pixels[i + 1] > 150 && pixels[i + 2] > 150;
+      let left = width; let right = 0; let top = dom.getSize().height; let bottom = 0;
+      for (let i = 0; i < a.length; i += 4) if (ink(a, i)) {
+        const x = i / 4 % width; const y = Math.floor(i / 4 / width);
+        left = Math.min(left, x); right = Math.max(right, x); top = Math.min(top, y); bottom = Math.max(bottom, y);
+      }
+      let referenceInk = 0; let rasterInk = 0; let intersection = 0; let union = 0;
+      let pixiInk = 0; let pixiIntersection = 0; let pixiUnion = 0;
+      let crossedText = 0, preservedText = 0;
+      const authored = { dom: 0, raster: 0, pixi: 0 };
+      for (let i = 0; i < a.length; i += 4) {
+        const aa = ink(a, i); const bb = ink(b, i); const cc = ink(c, i);
+        const red = (pixels: Uint8Array) => pixels[i + 2] > 160 && pixels[i + 1] < 80 && pixels[i] < 80;
+        if (red(a)) authored.dom++; if (red(b)) authored.raster++; if (red(c)) authored.pixi++;
+        if (aa) referenceInk++; if (bb) rasterInk++; if (aa && bb) intersection++; if (aa || bb) union++;
+        // Pixi 包含纸片阴影/边框；正文比较区来自实时 DOM 墨迹范围，不锁定外观数值。
+        const x = i / 4 % width; const y = Math.floor(i / 4 / width);
+        if (Math.abs(y / state.dpr - state.ghostY) < 2 && aa) { crossedText++; if (cc) preservedText++; }
+        if (x >= left && x <= right && y >= top && y <= bottom) {
+          if (cc) pixiInk++; if (aa && cc) pixiIntersection++; if (aa || cc) pixiUnion++;
+        }
+      }
+      const inkIou = intersection / union;
+      const pixiIou = pixiIntersection / pixiUnion;
+      const ghostPreservation = preservedText / crossedText;
+      const imageHeight = dom.getSize().height;
+      const textOracle = evaluateVisualTextOracle({ reference: visualImageFromBgra(a, width, imageHeight), raster: visualImageFromBgra(b, width, imageHeight),
+        pixi: visualImageFromBgra(c, width, imageHeight), layout: state.textLayout });
+      const bitmapGhost = readBitmapGhostPreservation(visualImageFromBgra(b, width, imageHeight), visualImageFromBgra(c, width, imageHeight),
+        { theme: theme === 'light' ? 'light' : 'dark', dpr: state.dpr, ghostY: state.ghostY });
+      const qualifiedEnvironment = visualTextEnvironment(state.textLayout.reference) === negativeQualification.referenceEnvironment;
+      const report = { theme, material, color, dpr: state.dpr, size: dom.getSize(), referenceInk, rasterInk, pixiInk, inkIou, pixiIou, crossedText, ghostPreservation,
+        measuredHeights: state.measuredHeights, authored, raw95: inkIou >= 0.95 && pixiIou >= 0.95, textOraclePass: textOracle.pass, qualifiedEnvironment, bitmapGhost };
+      reports.push(report);
+      await writeFile(path.join(output, `${theme}-${material}-${color}-text-oracle.json`), JSON.stringify({ report, textOracle, negativeQualification: negativeQualification.pass }, null, 2));
+      await writeFile(path.join(output, `${theme}-${material}-${color}-dom.png`), dom.toPNG());
+      await writeFile(path.join(output, `${theme}-${material}-${color}-raster.png`), raster.toPNG());
+      await writeFile(path.join(output, `${theme}-${material}-${color}-pixi.png`), pixi.toPNG());
+      if (referenceInk < 100 || rasterInk < 100 || pixiInk < 100 || !textOracle.pass || !negativeQualification.pass || !qualifiedEnvironment || crossedText < 10 || !bitmapGhost.pass
+        || Math.min(authored.dom, authored.raster, authored.pixi) < 10) failedCases.push(`${theme}-${material}-${color}`);
+    }
+    await writeFile(path.join(output, 'text-comparison-results.json'), JSON.stringify({ reports, failedCases, negatives: negativeQualification.pass }, null, 2));
+    if (failedCases.length) throw new Error(`visual_content_mismatch:${JSON.stringify(failedCases)}`);
+    const { dashInk, dashGap, dashPeriodRatio, looseEndpoints } = await verifyCanvasLineVisual(win, output, evaluate, softwareProfile);
+    const coloredLines = SampledVisualSchema.extend({ light: z.string(), dark: z.string(), colors: z.array(z.enum(['red', 'orange', 'yellow', 'green', 'cyan', 'purple'])) })
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasLineColorsVisualProbe()'));
+    const colorReports = [];
+    for (const theme of ['light', 'dark'] as const) {
+      const frame = await recordCanvasVisualFrame({ ...coloredLines, data: coloredLines[theme] }, output, `lines-colors-${theme}`, softwareProfile);
+      const image = frame.image, pixels = frame.pixels, palette = readCanvasLinePalette(theme === 'dark');
+      for (const [index, color] of coloredLines.colors.entries()) {
+        const expected = palette[color], r = expected >> 16 & 255, g = expected >> 8 & 255, b = expected & 255;
+        let matching = 0;
+        for (let x = 80 * coloredLines.dpr; x < 800 * coloredLines.dpr; x++) for (let y = (59 + index * 70) * coloredLines.dpr; y <= (61 + index * 70) * coloredLines.dpr; y++) {
+          const offset = visualPixelOffset(frame, { x, y });
+          if (Math.abs(pixels[offset] - b) <= 4 && Math.abs(pixels[offset + 1] - g) <= 4 && Math.abs(pixels[offset + 2] - r) <= 4) matching++;
+        }
+        if (matching < 500) throw new Error(`edge_color_missing:${theme}:${color}:${matching}`);
+        colorReports.push({ theme, color, matching });
+      }
+      await writeFile(path.join(output, `lines-colors-${theme}.png`), image.toPNG());
+    }
+    const occlusion = SampledVisualSchema.extend({ before: z.string(), during: z.string(), after: z.string() })
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasDragOcclusionVisualProbe()'));
+    const magenta = async (data: string, name: string) => {
+      const frame = await recordCanvasVisualFrame({ ...occlusion, data }, output, `drag-${name}`, softwareProfile), pixels = frame.pixels; let count = 0;
+      for (let y = 80 * occlusion.dpr; y < 200 * occlusion.dpr; y++) for (let x = 70 * occlusion.dpr; x < 300 * occlusion.dpr; x++) {
+        const offset = visualPixelOffset(frame, { x, y }); if (pixels[offset + 2] > 170 && pixels[offset + 1] < 40 && pixels[offset] > 150) count++;
+      }
+      return count;
+    };
+    const dragOcclusion = { before: await magenta(occlusion.before, 'before'), during: await magenta(occlusion.during, 'during'), after: await magenta(occlusion.after, 'after') };
+    if (dragOcclusion.before || dragOcclusion.after || dragOcclusion.during < 1000) throw new Error(`drag_occlusion_stale:${JSON.stringify(dragOcclusion)}`);
+    await writeFile(path.join(output, 'drag-revealed-body.png'), nativeImage.createFromDataURL(occlusion.during).toPNG());
+    const guides = SampledVisualSchema.extend({ shown: z.string(), hidden: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasGuidesVisualProbe()'));
+    const greenPixels = async (data: string, name: string) => {
+      const { pixels } = await recordCanvasVisualFrame({ ...guides, data }, output, `guides-${name}`, softwareProfile); let count = 0;
+      for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 1] > pixels[i + 2] + 20 && pixels[i + 1] > pixels[i] + 20) count++;
+      return count;
+    };
+    const snapGuides = { shown: await greenPixels(guides.shown, 'shown'), hidden: await greenPixels(guides.hidden, 'hidden') };
+    if (snapGuides.shown < 1000 || snapGuides.hidden !== 0) throw new Error(`snap_guides_not_projected_or_cleared:${JSON.stringify(snapGuides)}`);
+    const map = SampledVisualSchema.extend({ before: z.string(), after: z.string(), dx: z.number(), dy: z.number() }).parse(await evaluate(win.webContents, 'window.prepareCanvasMapPanVisualProbe()'));
+    const beforeFrame = await recordCanvasVisualFrame({ ...map, data: map.before }, output, 'map-before', softwareProfile);
+    const afterFrame = await recordCanvasVisualFrame({ ...map, data: map.after }, output, 'map-after', softwareProfile);
+    const mapBefore = beforeFrame.image, mapAfter = afterFrame.image, beforePixels = beforeFrame.pixels, afterPixels = afterFrame.pixels, mapSize = mapBefore.getSize();
+    let mapInk = 0, mapPreserved = 0;
+    for (let y = 0; y < mapSize.height - map.dy * map.dpr; y++) for (let x = 0; x < mapSize.width - map.dx * map.dpr; x++) {
+      const a = visualPixelOffset(beforeFrame, { x, y }), b = visualPixelOffset(afterFrame, { x: x + map.dx * map.dpr, y: y + map.dy * map.dpr });
+      if (beforePixels[a] < 150 && beforePixels[a + 1] < 150 && beforePixels[a + 2] < 150) {
+        mapInk++; if (afterPixels[b] < 150 && afterPixels[b + 1] < 150 && afterPixels[b + 2] < 150) mapPreserved++;
+      }
+    }
+    if (mapInk < 100 || mapPreserved / mapInk < 0.95) throw new Error(`map_pan_labels_mismatch:${mapInk}:${mapPreserved}`);
+    await writeFile(path.join(output, 'map-before.png'), mapBefore.toPNG()); await writeFile(path.join(output, 'map-after.png'), mapAfter.toPNG());
+    const selectedMap = SampledVisualSchema.extend({ before: z.string(), selected: z.string(), reference: z.string() })
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasSelectedMapVisualProbe()'));
+    const beforeMap = (await recordCanvasVisualFrame({ ...selectedMap, data: selectedMap.before }, output, 'selected-map-before', softwareProfile)).pixels;
+    const chosenMap = (await recordCanvasVisualFrame({ ...selectedMap, data: selectedMap.selected }, output, 'selected-map-chosen', softwareProfile)).pixels;
+    const expectedMap = (await recordCanvasVisualFrame({ ...selectedMap, data: selectedMap.reference }, output, 'selected-map-reference', softwareProfile)).pixels; let selectedInk = 0, selectedIntersection = 0, selectedUnion = 0, selectionChanges = 0;
+    for (let i = 0; i < expectedMap.length; i += 4) {
+      const ink = (pixels: Uint8Array) => pixels[i] < 150 && pixels[i + 1] < 150 && pixels[i + 2] < 150;
+      const expected = ink(expectedMap), actual = ink(chosenMap);
+      if (expected) selectedInk++; if (expected && actual) selectedIntersection++; if (expected || actual) selectedUnion++;
+      if (actual !== ink(beforeMap)) selectionChanges++;
+    }
+    const selectedLabels = { selectedInk, selectionChanges, ratio: selectedIntersection / selectedUnion };
+    if (selectedInk < 100 || selectionChanges < 100 || selectedLabels.ratio < 0.99) throw new Error(`selected_map_priority_missing:${JSON.stringify(selectedLabels)}`);
+    const thumbnails = SampledVisualSchema.extend({ titles: z.string(), thumbnails: z.string() }).parse(await evaluate(win.webContents, 'window.prepareCanvasThumbnailVisualProbe()'));
+    const thumbReports = [];
+    for (const mode of ['titles', 'thumbnails'] as const) {
+      const frame = await recordCanvasVisualFrame({ ...thumbnails, data: thumbnails[mode] }, output, `thumbnail-${mode}`, softwareProfile);
+      const image = frame.image, pixels = frame.pixels;
+      const counts = [100, 250, 400].map(left => {
+        let count = 0;
+        for (let y = 100 * thumbnails.dpr; y < 160 * thumbnails.dpr; y++) for (let x = left * thumbnails.dpr; x < (left + 100) * thumbnails.dpr; x++) {
+          const index = visualPixelOffset(frame, { x, y });
+          if (pixels[index + 2] > 170 && pixels[index + 1] < 160 && pixels[index] > 160) count++;
+        }
+        return count;
+      });
+      if (counts[0] < 500 || counts[1] < 500 || (mode === 'titles' ? counts[2] !== 0 : counts[2] < 500)) throw new Error(`far_thumbnail_semantics_mismatch:${mode}:${counts}`);
+      thumbReports.push({ mode, counts }); await writeFile(path.join(output, `thumbnail-${mode}.png`), image.toPNG());
+    }
+    const lodReports = [];
+    for (const theme of ['light', 'dark']) {
+      const lod = SampledVisualSchema.extend({ expected: z.string(), actual: z.string() }).parse(await evaluate(win.webContents, `window.prepareCanvasMixedLodVisualProbe(${JSON.stringify(theme)})`));
+      const reference = await recordCanvasVisualFrame({ ...lod, data: lod.expected }, output, `mixed-lod-${theme}-expected`, softwareProfile);
+      const target = await recordCanvasVisualFrame({ ...lod, data: lod.actual }, output, `mixed-lod-${theme}`, softwareProfile);
+      const actual = target.image, a = reference.pixels, b = target.pixels;
+      let union = 0, intersection = 0;
+      const ink = (pixels: Uint8Array, index: number) => theme === 'light' ? pixels[index] < 180 && pixels[index + 1] < 180 && pixels[index + 2] < 180 : pixels[index] > 150 && pixels[index + 1] > 150 && pixels[index + 2] > 150;
+      for (let index = 0; index < a.length; index += 4) { const aa = ink(a, index), bb = ink(b, index); if (aa || bb) union++; if (aa && bb) intersection++; }
+      if (union < 100 || intersection / union < 0.95) throw new Error(`mixed_lod_composite_mismatch:${theme}:${intersection / union}`);
+      lodReports.push({ theme, union, intersection, ratio: intersection / union }); await writeFile(path.join(output, `mixed-lod-${theme}.png`), actual.toPNG());
+    }
+    const fade = await verifyFade(win);
+    const scene = await verifySceneVisual(win, output, evaluate, softwareProfile);
+    const context = SampledVisualSchema.extend({ before: z.string(), after: z.string(), rejected: z.boolean(), beforeStats: z.object({ cards: z.number(), bitmaps: z.number() }), afterStats: z.object({ cards: z.number(), bitmaps: z.number() }) })
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasContextLossVisualProbe()'));
+    const contextSource = await recordCanvasVisualFrame({ ...context, data: context.before }, output, 'context-before', softwareProfile);
+    const contextTarget = await recordCanvasVisualFrame({ ...context, data: context.after }, output, 'context-restored', softwareProfile);
+    const contextBefore = contextSource.pixels, contextAfterImage = contextTarget.image, contextAfter = contextTarget.pixels;
+    let contextInk = 0, contextPreserved = 0;
+    for (let index = 0; index < contextBefore.length; index += 4) if (contextBefore[index] < 180 && contextBefore[index + 1] < 180 && contextBefore[index + 2] < 180) {
+      contextInk++; if (contextAfter[index] < 180 && contextAfter[index + 1] < 180 && contextAfter[index + 2] < 180) contextPreserved++;
+    }
+    if (contextInk < 100 || contextPreserved / contextInk < 0.95 || context.afterStats.cards !== context.beforeStats.cards || context.afterStats.bitmaps !== context.beforeStats.bitmaps) throw new Error('context_restore_content_missing');
+    await writeFile(path.join(output, 'context-restored.png'), contextAfterImage.toPNG());
+    const editing = SampledVisualSchema.extend({ expected: z.string(), actual: z.string(), visible: z.number(), status: z.string(), again: z.string(), smoothing: z.string() })
+      .parse(await evaluate(win.webContents, 'window.prepareCanvasEditingVisualProbe()'));
+    const editingExpected = nativeImage.createFromDataURL(editing.expected), expectedPixels = editingExpected.toBitmap();
+    const editingFrame = await recordCanvasVisualFrame({ ...editing, data: editing.actual }, output, 'editing-exact-actual', softwareProfile);
+    const editingActual = editingFrame.image, actualPixels = editingFrame.pixels, editingWidth = editingExpected.getSize().width;
+    if (editingWidth !== Math.round(80 * editing.dpr) || editingExpected.getSize().height !== Math.round(80 * editing.dpr)) throw new Error('editing_reference_sampling_mismatch');
+    const expectedFrame = { pixels: expectedPixels, width: editingWidth, height: editingExpected.getSize().height };
+    let editingInk = 0, editingIntersection = 0, editingUnion = 0;
+    for (let y = 8 * editing.dpr; y < editingWidth - 8 * editing.dpr; y++) for (let x = 8 * editing.dpr; x < editingWidth - 8 * editing.dpr; x++) {
+      const a = visualPixelOffset(expectedFrame, { x, y }), b = visualPixelOffset(editingFrame, { x, y });
+      const expected = expectedPixels[a] < 180 && expectedPixels[a + 1] < 180 && expectedPixels[a + 2] < 180;
+      const actual = actualPixels[b] < 180 && actualPixels[b + 1] < 180 && actualPixels[b + 2] < 180;
+      if (expected) editingInk++; if (expected && actual) editingIntersection++; if (expected || actual) editingUnion++;
+    }
+    await writeFile(path.join(output, 'editing-exact-expected.png'), editingExpected.toPNG());
+    await writeFile(path.join(output, 'editing-exact-actual.png'), editingActual.toPNG());
+    if (editing.visible <= 40 || editingInk < 10 || editingIntersection / editingUnion < 0.95) throw new Error(`editing_exact_pixels_missing:${editingIntersection}:${editingUnion}`);
+    const unsupported = new BrowserWindow({ show: false, width: 900, height: 600, webPreferences: { sandbox: true, contextIsolation: true, offscreen: true, backgroundThrottling: false, disableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } });
+    let fallbackInk = 0;
+    try {
+      await unsupported.loadFile(path.join(output, 'index.html'));
+      const fallback = SampledVisualSchema.extend({ image: z.string(), errors: z.array(z.string()) }).parse(await evaluate(unsupported.webContents, 'window.prepareCanvasUnsupportedApiVisualProbe()'));
+      const fallbackFrame = await recordCanvasVisualFrame({ ...fallback, data: fallback.image }, output, 'api-unavailable-identity', softwareProfile);
+      const fallbackImage = fallbackFrame.image, pixels = fallbackFrame.pixels;
+      for (let index = 0; index < pixels.length; index += 4) if (pixels[index] < 150 && pixels[index + 1] < 150 && pixels[index + 2] < 150) fallbackInk++;
+      if (fallbackInk < 100) throw new Error('unsupported_api_identity_is_empty');
+      await writeFile(path.join(output, 'api-unavailable-identity.png'), fallbackImage.toPNG());
+    } finally { unsupported.destroy(); }
+    await writeFile(path.join(output, 'results.json'), JSON.stringify({ versions: process.versions, renderingProfile: softwareProfile ? 'offscreen-swiftshader' : 'offscreen', reports, lines: { dashInk, dashGap, dashPeriodRatio, looseEndpoints, colors: colorReports }, dragOcclusion, snapGuides, map: { mapInk, mapPreserved, ratio: mapPreserved / mapInk, selectedLabels }, thumbnails: thumbReports,
+      mixedLod: lodReports, fade, scene, editing: { visible: editing.visible, editingInk, ratio: editingIntersection / editingUnion, smoothing: editing.smoothing }, contextLoss: { rejected: context.rejected, contextInk, contextPreserved, ratio: contextPreserved / contextInk, before: context.beforeStats, after: context.afterStats }, apiFallback: { fallbackInk } }, null, 2));
+    console.log(JSON.stringify(reports, null, 2));
+  } finally { win.destroy(); }
+}
+void mkdir(output, { recursive: true }).then(run).then(() => app.exit(0), (error: unknown) => { console.error(error); app.exit(1); });

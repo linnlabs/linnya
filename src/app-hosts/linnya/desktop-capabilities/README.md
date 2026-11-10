@@ -25,9 +25,11 @@ Electron 对象。当前 Electron adapter 继续拥有隐藏 `BrowserWindow`/`ip
 注册表和插件 SDK 不再 import `electron-main`。迁移到 App Server 后由 reverse Desktop RPC 实现同一个 data-only host
 port，不新增插件接口，也不改变 Renderer 的 Slides raster 等交互。正式 RPC server 还必须对 HTML/preload artifact
 路径做 admission，不能把任意路径加载能力开放给 Backend 请求。
+需要实际绘制的Worker可显式声明`renderViewport`，其中channel只接受该Worker当前窗口的物理像素尺寸申请，并限制长宽与总像素。Worker在自身串行任务开始时经preload等待视口调整；Host按窗口所属屏幕倍率换算content尺寸并返回实际CSS尺寸与scaleFactor。不能在Backend请求入队时调整窗口，否则排队任务会改变正在绘制任务的视口。默认Worker保持原窗口行为，销毁注册时释放申请channel。
 Hidden Worker 的 register/touch/invalidate 使用严格小 DTO；ready 与 invoke 使用带随机 operation/token 的 AppData
 私有 mailbox，因此 Slides 请求和 PNG 结果不会进入 1 MiB JSON frame。Desktop handler 由 composition 注入
 artifact path admission，Backend 不能借 worker descriptor 加载任意 HTML 或 preload。
+隐藏页面的 error/warning 控制台诊断由窗口 owner 接入 HostLogger，随窗口销毁解除监听；只传文本与源码位置，不传 Renderer/Electron 对象。插件应记录请求标识和异常原因，避免记录正文或资产字节；公开调用结果仍按 codec 返回稳定错误。
 
 Browser Pretext 文本测量也沿同一宿主边界拆分，但不并入插件 hidden worker 接口：Backend 继续拥有
 `MeasurementClient`、LRU cache、异步 prewarm 与同步 cache read/fallback 语义；Desktop Host 只拥有不可见

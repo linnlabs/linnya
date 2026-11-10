@@ -24,7 +24,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue';
-import katex from 'katex';
+import { renderWorkspaceLatex } from '@linnya/markdown-document-core/workspace-presentation';
 
 const props = defineProps({
   latex: {
@@ -37,12 +37,7 @@ const renderedHtml = ref('');
 
 const render = () => {
   try {
-    renderedHtml.value = katex.renderToString(props.latex, {
-      throwOnError: false,
-      displayMode: false, // 确保以内联模式渲染，适合按钮
-      output: 'html',
-      strict: false,
-    });
+    renderedHtml.value = renderWorkspaceLatex(props.latex, false);
   } catch (error) {
     console.error('[KatexRenderer] KaTeX rendering error:', error);
     // 在按钮内提供一个清晰的错误指示

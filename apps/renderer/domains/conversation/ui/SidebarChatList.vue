@@ -53,17 +53,11 @@
             class="chat-list-status-icon"
           />
         </span>
-        <input
+        <InlineTextInput
           v-if="editingConversationId === conversation.conversation_id"
-          :ref="setRenameInputRef"
           v-model="editingTitle"
-          class="chat-list-rename-input"
-          type="text"
-          @blur="confirmRename(conversation)"
-          @click.stop
-          @keydown.enter.stop.prevent="confirmRename(conversation)"
-          @keydown.esc.stop.prevent="cancelRename"
-          @keydown.stop
+          @commit="confirmRename(conversation)"
+          @cancel="cancelRename"
         />
         <span v-else class="workspace-sidebar-row-label chat-list-title">
           {{ conversation.title || conversationMessage('conversation.sidebar.untitled') }}
@@ -164,7 +158,7 @@ import { useSidebarChatList } from './sidebarChatList/useSidebarChatList';
 import type { SidebarChatListEmit, SidebarChatListProps } from './sidebarChatList/definitions';
 import { PinIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect, IconButton, SkeletonRows } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton, InlineTextInput, SkeletonRows } from '@linnya/renderer-ui';
 const props = defineProps<SidebarChatListProps>();
 const emit = defineEmits<SidebarChatListEmit>();
 
@@ -185,7 +179,6 @@ const {
   editingConversationId,
   editingTitle,
   setMenuButtonRef,
-  setRenameInputRef,
   confirmRename,
   cancelRename,
   formatListTime,

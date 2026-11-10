@@ -1,3 +1,5 @@
+import { buildMarkdownReferenceReadProjection } from '../../document-references';
+import { createMarkdownFileWriteSourceKey } from '../../../shared/markdownDocumentSourceKey';
 import type { MarkdownReadDatabase } from '../../../definitions/markdownReadDatabase';
 import { MarkdownDocumentVersionReader } from '../../document-storage';
 import { MarkdownPendingRevisionReader } from '../../pending-revisions';
@@ -23,9 +25,10 @@ export function readMarkdownVfsContent(params: {
   const content = validateMarkdownDocJson(parseMarkdownDocJson(parsed));
   const pendings = new MarkdownPendingRevisionReader(params.db)
     .getPendingRevisions(params.documentId);
+  const references = buildMarkdownReferenceReadProjection(params.db.references, params.documentId, content, pendings);
   const currentView = buildMarkdownCitationReadProjection({
-    content,
-    pendings,
+    content: references.content,
+    pendings: references.pendings,
     viewMode: 'preview',
   });
 
@@ -37,6 +40,7 @@ export function readMarkdownVfsContent(params: {
       versionId: version.id,
       view: 'current',
       pendingCount: pendings.length,
+      documentReferences: { sourceKey: createMarkdownFileWriteSourceKey({ content, pendings, versionNumber: version.version_number }), bindings: references.bindings, unprojectableReferenceIds: references.unprojectableReferenceIds },
     },
     citationProjection: currentView.citationProjection,
   };

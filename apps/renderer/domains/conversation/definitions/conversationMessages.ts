@@ -25,6 +25,7 @@ export type ConversationMessageKey =
   | 'conversation.clientNotice.reason.missing_message'
   | 'conversation.clientNotice.reason.agent_choice_not_saved'
   | 'conversation.clientNotice.reason.missing_context'
+  | 'conversation.clientNotice.reason.reference_preparation_failed'
   | 'conversation.execution.running'
   | 'conversation.execution.paused'
   | 'conversation.execution.finished'

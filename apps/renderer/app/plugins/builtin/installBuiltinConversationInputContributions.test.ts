@@ -82,9 +82,11 @@ describe('installBuiltinConversationInputContributions', () => {
       label: 'Roadmap',
       previewText: 'Roadmap',
       text: 'workspace reference',
-    })).toEqual({
+    })).toMatchObject({
       label: 'Roadmap',
       preview: 'Roadmap',
+      previewComponent: expect.any(Object),
+      activate: expect.any(Function),
     });
     expect(readConversationReferenceProviders().map(provider => `${provider.pluginId}:${provider.id}`))
       .toEqual(['platform:workspace-document']);

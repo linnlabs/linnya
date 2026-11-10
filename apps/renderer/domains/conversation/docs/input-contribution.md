@@ -65,6 +65,10 @@
 
 `ConversationReferenceInput` 是公共单一真源。provider 候选可携带 resolve 所需的私有字段，但宿主不解析。候选 `icon` 收窄为标准菜单可渲染的 Vue `Component`（不接受无法渲染的 string 假能力）。
 
+引用chip沿用注册的`chip.preview`作为展示文字、`chip.label`作为可访问名称；普通选文保留正文摘要，文档/选区owner返回标题或数量。悬停400ms或键盘聚焦时，宿主懒挂载kind的`previewComponent`，只传标准`reference` DTO；关闭、移除或替换引用时卸载。贡献组件时内边距和正文排版归组件；未贡献组件时显示只读文字预览；kind声明`hoverPreview: false`时不弹悬停层，只在点击失败时借弹层显示错误。弹层打开期间固定在引用一侧并朝远离引用的方向生长，可进入、可聚焦并以Escape关闭。点击通过`onActivate`交回owner；owner负责源文档当前项目与可用性复核。hover读取不修改引用正文，发送前刷新仍独立等待`prepareForSend`并冻结本次结果。App装配的Workspace引用复用正式文档preview与类型贡献的只读详情组件，不在Conversation识别插件类型。
+
+引用标签是超级标签“淡墨”外观的紧凑档：淡墨底、小圆角、无边，13px；kind 声明 `chip.icon` 时在标题前显示类型图标。已发送消息只问注册表“该引用是否声明了对象图标”（`readConversationReferenceIcon`）：声明且可用的显示为同样的静态标签，其余（正文引用、未注册或已停用的 kind）保持引用块，不按具体 kind 分支。
+
 ### 2.2 Input Extension 契约（宿主内部完整契约）
 
 | 字段 | 语义 |
@@ -177,6 +181,7 @@ Accessory 或插件贡献点。它读取正式 `user_input.metadata.context_usag
 - **插件**通过 `RendererPluginContribution.conversationInput`（`PluginConversationInputContribution`，仅 `referenceKinds` + `referenceProviders` + 运行期 `accessories`）声明，由 runtime loader 自动注册 / 失败回滚 / 禁用卸载，**镜像 `toolCards` 范式但不逐行照抄**。
 - **激活事务**：登记时只保存声明；`activate` 前事务注册 kind / provider / accessory，但统一叠加 active gate，异步 activate 期间保持不可用（active gate 必须显式订阅 renderer registry revision，不能只闭包读非响应式 Set）。`activate` 失败立即回滚全部输入贡献；`deactivate` 只有在插件自身清理成功后才清该插件未发送的 draft references 并注销注册，失败则维持原 active 事实。禁用后 contribution 声明留在 registry，重新启用无需再次 import 插件入口。
 - **状态归属**：composer reference 状态在 feature 自有 store（`composer-references/store`），避免生命周期窄入口反向加载整个 assistant / workspace / AI 聚合链。
+- **发送前准备失败**：保留草稿和所有引用，不回退旧正文、不启动发送；通过既有 client-notices 呈现安全的 `reference_preparation_failed` 原因。准备期固定会话及 Workspace 草稿身份，切换后的取消或晚到失败不能写入新输入。
 
 ---
 
@@ -217,3 +222,5 @@ Accessory 或插件贡献点。它读取正式 `user_input.metadata.context_usag
 - **provider resolve ownership 运行期强校验**：`resolveReference()` 返回的 `pluginId/kind` 目前是可选字段，guide 已要求插件显式返回 owner + kind；运行期校验与类型收窄另立小项，不加临时 fallback。
 
 > 上述能力**代码零预留**（沿用 N4 与「不做清单」）。启动时另开条目，不往本文回灌施工细节。
+
+Workspace 文档 chip 的预览 wrapper 复用 App `workflows/document-preview` 唯一只读装配，不再自建读取、订阅或 Markdown 详情流程。其 metadata 身份解析继续属于 Workspace 引用 kind，发送前刷新也保持原有独立流程。

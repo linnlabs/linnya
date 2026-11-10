@@ -8,13 +8,6 @@ import { RESOURCE_LIBRARY_CANONICAL_NAME } from '../definitions/workspaceVfsReso
 export const RESOURCE_LIBRARY_ROLE = 'resource_library';
 export const RESOURCE_LIBRARY_DEFAULT_NAME = RESOURCE_LIBRARY_CANONICAL_NAME;
 
-interface ResourceLibraryTags {
-  readonly linnyaRole?: string;
-  readonly workspacePathLayer?: {
-    readonly version?: number;
-  };
-}
-
 export function buildResourceLibraryTags(): string {
   return JSON.stringify({
     linnyaRole: RESOURCE_LIBRARY_ROLE,
@@ -25,8 +18,8 @@ export function buildResourceLibraryTags(): string {
 export function hasResourceLibraryRole(tags: string | null): boolean {
   if (!tags) return false;
   try {
-    const parsed = JSON.parse(tags) as ResourceLibraryTags;
-    return parsed.linnyaRole === RESOURCE_LIBRARY_ROLE;
+    const parsed: unknown = JSON.parse(tags);
+    return typeof parsed === 'object' && parsed !== null && 'linnyaRole' in parsed && parsed.linnyaRole === RESOURCE_LIBRARY_ROLE;
   } catch {
     return false;
   }

@@ -263,25 +263,20 @@
   gap: var(--space-1-5);
 }
 
-.user-message-container .edit-quote-pill {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  padding: var(--space-1) var(--space-2-5);
-  border-radius: var(--radius-full);
-  background-color: var(--color-bg-hover-light);
-  color: var(--color-text-primary);
-  font-size: var(--font-size-footnote);
-}
-
-.user-message-container .edit-quote-pill-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .user-message-container .quote-section {
   margin-bottom: var(--space-1-5);
+}
+
+/* 引用标签沿用输入框的紧凑标签（AiAssistantQuotePreview.css），这里只排布。 */
+.user-message-container .quote-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+  margin-bottom: var(--space-1);
+}
+
+.user-message-container .quote-tags:last-child {
+  margin-bottom: 0;
 }
 
 .user-message-container .quote-block {

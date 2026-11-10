@@ -80,5 +80,6 @@ export interface FlowAgentRunnerPort {
   readCheckpointRevision?(runId: string): Promise<number | null>;
   prepareRecoveryInputs?(request: FlowRunInputPreparation): Promise<RunDescriptor>;
   run(request: FlowAgentRunRequest): FlowAgentRunExecution;
-  discardCheckpoint(runId: string): Promise<void>;
+  /** 终态/被替换的 run 同时释放断点与可信读取基线；等待用户时不调用。 */
+  discardCheckpoint(runId: string, conversationId: string): Promise<void>;
 }

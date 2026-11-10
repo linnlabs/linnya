@@ -458,6 +458,30 @@ describe('CustomSelect 子菜单交互与定位', () => {
       .toContain('is-selected');
   });
 
+
+  it.each([
+    ['pointerdown', false],
+    ['keydown', true],
+  ] as const)('only keyboard input shows focus (last: %s)', async (input, visible) => {
+    const mounted = mountCustomSelect();
+    mountedSelects.push(mounted);
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+
+    // 先按键再指针，模拟“按过键后右键”：只有最后一次输入决定是否显示。
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    window.dispatchEvent(new Event(input));
+    const trigger = mounted.host.querySelector('.select-trigger');
+    if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
+    trigger.click();
+    await flushRendering();
+    await flushRendering();
+
+    const option = mounted.host.querySelector('.custom-select__options .select-option');
+    expect(document.activeElement).toBe(option);
+    expect(focus).toHaveBeenCalledWith({ focusVisible: visible });
+    focus.mockRestore();
+  });
+
   it('打开时只聚焦当前父项，右方向键才展开并聚焦已选子项', async () => {
     const mounted = mountCustomSelect();
     mountedSelects.push(mounted);

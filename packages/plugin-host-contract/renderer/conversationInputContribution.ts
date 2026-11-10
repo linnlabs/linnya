@@ -2,6 +2,8 @@ import type { Component } from 'vue';
 
 /** 创建 composer 引用所需的宿主无关输入。引用 id 由宿主在真正入栈时生成。 */
 export interface ConversationReferenceInput {
+  /** 仅composer内同owner/kind去重，移除或发送后可再次加入。 */
+  readonly deduplicationKey?: string;
   readonly text: string;
   readonly previewText?: string;
   readonly source?: Record<string, unknown>;
@@ -62,19 +64,43 @@ export interface ConversationReferenceChipInput {
 export interface ConversationReferenceChipDescriptor {
   readonly label: (reference: ConversationReferenceChipInput) => string;
   readonly preview: (reference: ConversationReferenceChipInput) => string;
+  /**
+   * 引用的是一个对象（如文档）时给出它的类型图标，与文件树同一图标。
+   * 声明后输入框标签带图标，已发送消息里也按标签显示；选中文字这类正文引用不声明，历史中仍是引用块。
+   */
+  readonly icon?: (reference: ConversationReferenceChipInput) => Component;
 }
 
 /**
  * 一个插件内的引用类型贡献。
  *
- * 首版只定义宿主标准 pill 已消费的展示与校验能力。点击导航和自定义组件
- * 等到出现真实消费者后再扩展，避免提前背负无实现的兼容契约。
+ * 标准 pill 展示、校验及显式点击动作；动态正文只在发送准备阶段解析一次。
  */
+export interface ConversationReferencePreparationContext {
+  readonly projectId: string | null;
+  readonly conversationId: string | null;
+  readonly signal: AbortSignal;
+}
+
+/** 已确认发送的正文快照；owner/kind/id 不允许刷新 provider 改写。 */
+export type ConversationReferencePreparedContent = Omit<ConversationReferenceInput, 'pluginId' | 'kind'>;
+
 export interface ConversationReferenceKindContribution {
   readonly pluginId: string;
   readonly kind: string;
   readonly chip: ConversationReferenceChipDescriptor;
+  /** 悬停时才挂载，只读；接收reference标准DTO，关闭/移除后卸载。 */
+  readonly previewComponent?: Component;
+  /** false 时胶囊不弹悬停预览：引用文字已说清来源、弹层只会遮挡输入框时使用；点击仍交给 onActivate。 */
+  readonly hoverPreview?: false;
   readonly isValid?: (reference: ConversationReferenceChipInput) => boolean;
+  readonly isAvailable?: () => boolean;
+  /** 发送前由 Host 等待；失败保留草稿，成功结果冻结进本次消息。 */
+  readonly prepareForSend?: (
+    reference: ConversationReferenceChipInput,
+    context: ConversationReferencePreparationContext,
+  ) => Promise<ConversationReferencePreparedContent>;
+  readonly onActivate?: (reference: ConversationReferenceChipInput) => void | Promise<void>;
 }
 
 /** Accessory 经宿主绑定 owner 后可新增的引用，不允许组件冒用其他插件身份。 */

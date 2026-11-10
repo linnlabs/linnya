@@ -1,3 +1,4 @@
+import { readPendingDocumentReferenceBindings } from './documentReferenceHydration';
 /**
  * nonInsertPendingRevisionBatchApplier
  *
@@ -306,6 +307,7 @@ async function prepareNonInsertRevision(
         operation: 'batchApplyUpdatePendingRevisions.prepare',
         blockId,
         listSeparatorBefore: parsed.metadata?.listSeparatorBefore,
+        documentReferenceBindings: readPendingDocumentReferenceBindings(parsed.metadata),
         hydration: hydrationPrepared.hydration,
       })
     )
@@ -650,6 +652,7 @@ async function batchApplyNonInsertPendingRevisionsSerial(
       operation: 'batchApplyUpdatePendingRevisions',
       blockId,
       listSeparatorBefore: parsed.metadata?.listSeparatorBefore,
+        documentReferenceBindings: readPendingDocumentReferenceBindings(parsed.metadata),
       hydration: hydrationPrepared.hydration,
     })
     applyResolutionConversionToTr(megaTr, blockPos, resolution)

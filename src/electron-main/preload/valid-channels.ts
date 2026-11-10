@@ -113,6 +113,12 @@ const WEB_READ_CONFIG_CHANNELS = [
 // --- Workspace 数据库架构通道 ---
 const WORKSPACE_CHANNELS = [
   'workspace:create-project',
+  'document-preview:types',
+  'document-preview:read',
+  'document-references:deletion-preview',
+  'document-references:search',
+  'document-references:resolve',
+  'document-references:backlinks',
   'document-history:list',
   'document-history:restore',
   'workspace:ensure-default-project',

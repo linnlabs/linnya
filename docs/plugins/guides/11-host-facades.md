@@ -101,6 +101,13 @@ Backend 的 `@plugin/backend/colorPalette` 给插件提供配色建议和配色�
 
 Backend 的 `@plugin/backend/imageTranscoding` 是不透明内存图片转码窄门面。插件提交已经在自身领域完成背景合成的 bytes，以及明确 JPEG quality、chroma subsampling 和输入像素门禁，只取得编码后的 bytes；Host 发现真实透明像素时直接拒绝，不能猜测或静默补入白底。文件路径、Sharp pipeline、asset 登记、Conversation 生命周期和业务默认值都留在各自 owner。该门面不能扩成通用图片 manager，也不能接受“自动选择质量”或静默降级参数。
 
+文档预览与引用是 Backend、Renderer 都有的门面，也是超级标签背后的平台能力：
+
+- `@plugin/backend/documentPreview` 提供提供方合同 `DocumentPreviewCapability`（由文档类型 hook 的 `preview` 贡献）和 `createDocumentPreviewReader(db)`；`@plugin/renderer/documentPreview` 提供 `readDocumentPreview`、`listDocumentPreviewTypes`、`readDocumentPreviewTypeIcon` 与 `mountDocumentPreview`。Renderer 挂载由 Host 在 app 层通过 `registerRendererDocumentPreviewPort` 注册实现，插件只调用，不注册。
+- `@plugin/backend/documentReferences.replaceDocumentReferences` 在正文同步事务内登记稳定引用；`@plugin/renderer/documentReferences` 读取引用与反向链接。
+
+两组门面都只做身份、项目范围和启停检查，不解释插件内部模型；用法见 [05 文档类型 · 只读文档预览](./05-document-types.md#只读文档预览与稳定引用)。
+
 ## 门面设计纪律
 
 文档历史通过 `@plugin/backend/documentHistory` 获取窄 capability/error 合同与纯保留计划，不传表名给 Host。
@@ -140,3 +147,9 @@ Backend 的 `@plugin/backend/imageTranscoding` 是不透明内存图片转码窄
 - **门面不能只照顾当前插件**：比如本轮把图片资源解析、plugin runtime、workspace
   VFS 解析、structured context
   requirement 都做成通用门面。判断标准很简单：未来另一个重型插件能不能不改 Host 直接复用。
+
+## 可嵌入正文与外观分节
+
+`@plugin/renderer/embeddedMarkdownEditor` 提供独立 Markdown 表面：外层文档传入 JsonValue、容器和更新回调，取得读取/替换/只读/焦点/销毁句柄。它复用 Editor 的正文扩展，不持有 Workspace 文档会话、保存或状态。正文转换同样只返回 JSON/Markdown，非法节点和属性会拒绝。实现与验收见 [Editor 独立表面](../../../apps/renderer/domains/editor/features/embedded-markdown/README.md)。
+
+`@plugin/renderer/settingsContribution` 的 `registerAppearanceSection` 可在外观主题下面贡献一节。贡献声明 pluginId、局部 id、标题、顺序、组件和可用性；同一 owner/id 不得重复。组件只绘制内容，Settings 绘制分节壳。插件激活时注册、停用时精确注销自己的分节，不接管整张外观页。

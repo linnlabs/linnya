@@ -33,6 +33,13 @@ export function createElectronDevelopmentBuilds({ repositoryRoot, pnpmCli, plugi
     ...plugins.map(plugin => configured(
       `plugin-${plugin.pluginId}`, 'tsup', plugin.backendWatchConfig, backendDependencies, plugin.packageDir,
     )),
+    ...plugins.flatMap(plugin => (plugin.additionalBuilds ?? []).map(build => {
+      const id = `plugin-${plugin.pluginId}-${build.id}`;
+      const dependencies = [...backendDependencies, ...build.dependencies.map(dependency => dependency === 'backend' ? `plugin-${plugin.pluginId}` : `plugin-${plugin.pluginId}-${dependency}`)];
+      return build.type === 'configured'
+        ? configured(id, build.builder, build.config, dependencies, plugin.packageDir)
+        : { id, dependencies, cwd: plugin.packageDir, file: process.execPath, args: [pnpmCli, 'run', build.script], watch: false };
+    })),
     configured('slides-raster-worker', 'vite', 'vite.raster-worker.config.mts', ['schemas'], path.join(repositoryRoot, 'packages/plugins/slides')),
     configured('slides-brush-worker', 'vite', 'vite.brush-worker.config.mts', ['schemas'], path.join(repositoryRoot, 'packages/plugins/slides')),
     // CLI bridge 共享 backend 中的 MathJax runtime，按 owner 完成顺序构建。

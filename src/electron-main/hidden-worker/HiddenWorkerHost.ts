@@ -1,5 +1,7 @@
-import { BrowserWindow, ipcMain, type BrowserWindowConstructorOptions } from 'electron';
+import { BrowserWindow, ipcMain, screen, type BrowserWindowConstructorOptions, type Rectangle } from 'electron';
+import type { HiddenWorkerRenderViewport } from '@linnya/plugin-host-contract/backend/hiddenWorkerRuntime';
 import { Logger } from '../../shared/logger.js';
+import { HTML_CANVAS_BLINK_FEATURES } from '../desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences.js';
 
 const DEFAULT_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_READY_TIMEOUT_MS = 2_000;
@@ -32,11 +34,16 @@ export interface HiddenWorkerBrowserWindowLike {
   on(event: 'closed', listener: () => void): this;
   off(event: 'closed', listener: () => void): this;
   isDestroyed(): boolean;
+  getBounds(): Rectangle;
+  getContentSize(): number[];
+  setContentSize(width: number, height: number): void;
 }
 
 export interface HiddenWorkerIpcMainLike {
   on(channel: string, listener: (event: HiddenWorkerIpcEventLike, payload: unknown) => void): void;
   off(channel: string, listener: (event: HiddenWorkerIpcEventLike, payload: unknown) => void): void;
+  handle(channel: string, listener: (event: HiddenWorkerIpcEventLike, payload: unknown) => unknown): void;
+  removeHandler(channel: string): void;
 }
 
 export interface HiddenWorkerRequestEnvelope {
@@ -57,12 +64,16 @@ interface HiddenWorkerHostBaseOptions<TRequest, TResponse> {
   readonly workerHtmlPath: string;
   readonly preloadPath: string;
   readonly partition?: string;
+  readonly renderingMode?: 'background' | 'offscreen';
+  readonly htmlCanvas?: boolean;
+  readonly renderViewport?: HiddenWorkerRenderViewport;
   readonly createRequestPayload: (request: TRequest) => HiddenWorkerRequestEnvelope;
   readonly parseResponsePayload: (payload: unknown) => HiddenWorkerResponseEnvelope<TResponse>;
   readonly parseReadyPayload: (payload: unknown) => void;
   readonly extractRequestIdFromInvalidPayload?: (payload: unknown) => string | null;
   readonly createBrowserWindow?: (options: BrowserWindowConstructorOptions) => HiddenWorkerBrowserWindowLike;
   readonly ipcMain?: HiddenWorkerIpcMainLike;
+  readonly readDisplayScaleFactor?: (window: HiddenWorkerBrowserWindowLike) => number;
   readonly idleTimeoutMs?: number;
   readonly readyTimeoutMs?: number;
   readonly requestTimeoutMs?: number;
@@ -93,6 +104,7 @@ interface PendingRequest<TResponse> {
 interface LifecycleRecord {
   readonly closed: () => void;
   readonly renderProcessGone: UnknownListener;
+  readonly consoleMessage: UnknownListener;
   readonly webContents: HiddenWorkerWebContentsLike;
 }
 
@@ -139,6 +151,9 @@ export class HiddenWorkerHost<TRequest, TResponse> {
   private readonly readyChannel: string;
   private readonly cancelChannel: string | undefined;
   private readonly workerHtmlPath: string;
+  private readonly renderingMode: 'background' | 'offscreen';
+  private readonly htmlCanvas: boolean;
+  private readonly renderViewport: HiddenWorkerRenderViewport | undefined;
   private readonly preloadPath: string;
   private readonly partition: string;
   private readonly createRequestPayload: (request: TRequest) => HiddenWorkerRequestEnvelope;
@@ -170,6 +185,9 @@ export class HiddenWorkerHost<TRequest, TResponse> {
     this.readyChannel = options.readyChannel;
     this.cancelChannel = options.cancelChannel;
     this.workerHtmlPath = options.workerHtmlPath;
+    this.renderingMode = options.renderingMode ?? 'background';
+    this.htmlCanvas = options.htmlCanvas === true;
+    this.renderViewport = options.renderViewport;
     this.preloadPath = options.preloadPath;
     this.partition = options.partition ?? `hidden-worker:${this.workerId}`;
     this.createRequestPayload = options.createRequestPayload;
@@ -189,6 +207,19 @@ export class HiddenWorkerHost<TRequest, TResponse> {
       this.handleResponse(event, payload);
     };
 
+    if (this.renderViewport) {
+      const limits = this.renderViewport;
+      const readScale = options.readDisplayScaleFactor ?? (window => screen.getDisplayMatching(window.getBounds()).scaleFactor);
+      // Worker在自身串行执行开始时申请；Main接收Backend请求时不能提前改变在途绘图视口。
+      this.ipcMainLike.handle(limits.channel, (event, payload) => {
+        const window = this.findWorkerBySender(event.sender);
+        if (this.disposed || !window || isWindowDestroyed(window)) throw new Error('hidden_worker_viewport_sender_invalid');
+        const { width, height } = readRenderViewportSize(payload, limits), scaleFactor = readScale(window);
+        window.setContentSize(Math.ceil(width / scaleFactor), Math.ceil(height / scaleFactor));
+        const [contentWidth, contentHeight] = window.getContentSize();
+        return { width: contentWidth, height: contentHeight, scaleFactor };
+      });
+    }
     this.ipcMainLike.on(this.responseChannel, this.responseListener);
   }
 
@@ -336,6 +367,7 @@ export class HiddenWorkerHost<TRequest, TResponse> {
     this.disposed = true;
     this.clearIdleTimer();
     this.ipcMainLike.off(this.responseChannel, this.responseListener);
+    if (this.renderViewport) this.ipcMainLike.removeHandler(this.renderViewport.channel);
     this.rejectPendingRequestsForSender(null, new Error(`Hidden worker host disposed: ${this.workerId}`));
 
     const win = this.workerWindow;
@@ -357,6 +389,8 @@ export class HiddenWorkerHost<TRequest, TResponse> {
         nodeIntegration: false,
         contextIsolation: true,
         backgroundThrottling: false,
+        ...(this.htmlCanvas ? { enableBlinkFeatures: HTML_CANVAS_BLINK_FEATURES } : {}),
+        offscreen: this.renderingMode === 'offscreen',
         sandbox: true,
         partition: this.partition,
         devTools: false,
@@ -473,14 +507,27 @@ export class HiddenWorkerHost<TRequest, TResponse> {
       );
     };
 
+    // Electron 35+把控制台字段放在事件对象；只接诊断级别，不转发frame或Renderer对象。
+    const handleConsoleMessage = (event: unknown): void => {
+      if (typeof event !== 'object' || event === null || !('level' in event)
+        || !('message' in event) || typeof event.message !== 'string') return;
+      const context = { workerId: this.workerId, message: event.message,
+        sourceId: 'sourceId' in event ? event.sourceId : undefined,
+        lineNumber: 'lineNumber' in event ? event.lineNumber : undefined };
+      if (event.level === 'error') this.logger.error('Hidden worker console error', context);
+      else if (event.level === 'warning') this.logger.warn('Hidden worker console warning', context);
+    };
+
     const record: LifecycleRecord = {
       closed: handleClosed,
       renderProcessGone: handleRenderProcessGone,
+      consoleMessage: handleConsoleMessage,
       webContents: cachedWebContents,
     };
 
     workerWindow.on('closed', record.closed);
     cachedWebContents.on('render-process-gone', record.renderProcessGone);
+    cachedWebContents.on('console-message', record.consoleMessage);
     this.lifecycleMap.set(workerWindow, record);
   }
 
@@ -499,6 +546,7 @@ export class HiddenWorkerHost<TRequest, TResponse> {
     if (!record.webContents.isDestroyed()) {
       try {
         record.webContents.off('render-process-gone', record.renderProcessGone);
+        record.webContents.off('console-message', record.consoleMessage);
       } catch {
         // destroyed race：closed 后原生对象可能已经不可访问，跳过即可。
       }
@@ -600,4 +648,16 @@ export class HiddenWorkerHost<TRequest, TResponse> {
     clearTimeout(this.idleTimer);
     this.idleTimer = null;
   }
+}
+
+/** 入站是Worker IPC，不依赖插件codec；只允许正整数物理像素及声明的资源预算。 */
+function readRenderViewportSize(payload: unknown, limits: HiddenWorkerRenderViewport) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)
+    || Object.keys(payload).length !== 2) throw new Error('hidden_worker_viewport_size_invalid');
+  const width: unknown = Reflect.get(payload, 'width'), height: unknown = Reflect.get(payload, 'height');
+  if (typeof width !== 'number' || typeof height !== 'number'
+    || !Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0
+    || width > limits.maxWidth || height > limits.maxHeight || width * height > limits.maxPixels)
+    throw new Error('hidden_worker_viewport_size_invalid');
+  return { width, height };
 }

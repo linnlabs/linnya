@@ -1,0 +1,25 @@
+# Desktop 验收执行桥
+
+此目录只服务本机固定项目的真实Renderer验收，不进入生产入口或插件制品。Node桥只排队固定schema动作；用户来源提交、草稿、编辑声明和绘制仍由Renderer composition通过正式Host端口执行，没有SQL、任意JavaScript或模型自填用户身份入口。
+
+`bridge/runBridge.ts` 接受项目ID、当前Vite origin、该工作目录的index.html、一个尚不存在的connection.json。连接只绑定127.0.0.1；nonce只写0600 descriptor，不输出到普通日志。临时module脚本带独占marker，正常SIGINT/SIGTERM退出时仅移除自己的标签，保留期间其他HTML改动并删除自身descriptor。不要同时给同一HTML注入第二个桥。
+
+可信runner带x-canvas-evaluation-token调用POST /invoke，Renderer以GET /next长轮询取schema命令并POST /result回传正式结果。相同编号同负载只投递一次，未确认的在途写不会因重试再次执行；结果未知时应恢复确认或结束该批，不猜测未提交。Renderer自己校验绑定项目，Node也拒绝跨项目mount。T9/T12批准仍通过真实产品按钮，桥不提供approve动作。
+
+启动前先吸收同一稳定实现，正常重启该工作目录的App并核对模型、Skill和实例身份。批次记录完整sourceRevision与batchId；运行期间冻结实现。结束后正常停止桥，检查index.html未留下临时标签。异常强制退出时先检查marker所属的本机进程与descriptor，不能批量删除其他任务标签或profile。
+
+`stats`另外保存正式canvas:changed事件到实际kernel draw计数增加的观测上界。只有Backend带committedAt的事件生成commitToFrameUpperBoundMs；记录sequence、来源、接收/绘制UTC时间与当时已显示序号。隐藏、关闭或超时分别保留明确状态，不用RAF回调数量冒充包含变化的绘制。此数据仍需独立硬件/锁屏证据才能作为原生性能验收。
+
+正式时延分为`geometry`和`body.frame`：前者只证明包含该序号的几何draw，后者还要求当前可见正文的相同环境/内容身份已上传且随后实际绘制，并等待精确倍率稳定。通过正式changes返回的delta逐sequence记录该批真实卡片ID/revision，不额外IPC读取或把整份snapshot差异算给一批；补拉只有snapshot时标记unattributed。`visibleBodyIds`是实际可见body交集，overview/thumbnail/outside均不冒充正文，隐藏、失败、5秒未完成和被后续版本替代保留各自事实。最终500卡指标必须核对交集数量和supersededCardIds，不能只用push总计数。
+
+每批`row.frames`是实时订阅诊断：只保存收到正式commit通知后、终态回调结束订阅前已完成的帧间隔，不回溯此前的跨commit首帧，也可能缺少终态之后才完成的跨尾帧。因此不能用它判定正式40轮的完整工作窗FPS/P95/最慢帧。正式帧指标通过下述`frame-window`固定查询`[committedAt, body.frame.observedAt]`，等真实首尾完整interval齐全后再保存证据、reset与释放下一轮；没有强制draw或把晚到空闲帧扩大进统计窗。原实时诊断仍保留，无样本为null，不填120FPS。
+
+初开没有commit事件，可信客户端可用typed只读`readiness`读取指定卡片的实际mode/status/revision、正式draw计数与Renderer UTC时刻，并记录当时相机、屏幕DPR、页面可见性和主题/字体环境。此状态复用正式Surface的当前内容与排版环境校验，不暴露正文key；overview/outside不冒充body。客户端核对返回documentId仍为固定挂载文档，再记录mount请求到实际首个body与全部可见body终态的观测上界，包含HTTP桥等待，不能当作纯kernel耗时。没有可见body、隐藏、失败或超时必须保留状态，不能填0或只用renders判成功。
+
+Agent正文观测分别保存`body.firstVisible`（首个当前修订新纹理alpha>0实际draw）、`body.allVisible`（全部当前可见目标均首显）和`body.frame`（全部可见正文/fade/scene稳定后的draw）。每个首显时刻保留当时的可见和已展示ID集合，≤50/500批不能用第一张卡的时间冒充整批。目标被更新到更晚修订标为incomplete并保留superseded，不能以更晚正文ready代替该次写入。可信性能门禁只在目标修订、实际交集、superseded为空和终态均满足后释放下一轮。
+
+T13预先固定视口观测协议：先保留旧2000卡fit后的自然视口事实；每个正式Agent delta只调用一次既有“显示全部”，不改fixture、提示或持久数据。`fit`在任何await之前返回更新后的相机、draw计数与Renderer UTC；该计数只作等待基线。新增ID当前revision必须全部非outside、sceneTransitions归零，并且在归零观测之后再有一次真实draw，才记录从Backend committedAt到该观测的保守上界，明确包括导航与HTTP开销、实际LOD和可见交集。overview geometry不冒充body，缺少正文要求或可见变化分别保留未要求/缺证；独立50/500正文批不能替T13填值。每批保留真实样本数，N=1只报告该次样本及工作窗帧分位，不称稳定总体P95。
+
+无选区的“显示全部”同步完成当前卡片动效，再fit；响应从同次stats读取`sceneTransitions`。若这一同步baseline已为0，则此后的`renders>baseline`且目标当前revision/可见性正确，已能证明归零之后实际draw，不再要求静止引擎额外画一帧。若baseline非0，仍须保留之后归零的观测基线，再等待真实draw；不能用首次HTTP读到0之前的绘制猜测先后。带elementIds的定位可能保留其他卡动效，不套用全图fit的0假设。
+
+`frame-window`只读查询显式UTC `since`至`until`，复用4096条有界RAF样本，不启动新计时器或绘制。T13按本次delta/fit至确认变化后的实际draw观测时刻查询；不能用此前已结束的`no-visible-body`提交工作窗代替。返回原始UTC帧时刻；主统计取与工作窗相交的完整间隔，并列出`boundarySamples`，以免剔除跨起点首帧时漏掉真正卡顿。它是保守完整帧统计，可能包含首尾少量窗外时间；另列`contained`仅供诊断，不能用它隐藏边界长帧。`retentionComplete`同时要求真实首sample起点不晚于since、末sample终点不早于until；初始化首个RAF之前、空样本、窗口被reset/淘汰或尾帧未完成都保持false。隐藏会推进有效retention边界且不回退，旧raw仍供诊断，不能把隐藏前后的不连续interval合称完整窗口。collector独立复核相邻链无洞或重叠，只容`2*Number.EPSILON*最大数值量级`的IEEE表示舍入，不是可调的毫秒质量容差。采集端可在原边界不变的前提下有界只读轮询，晚RAF只闭合端点，不改变统计窗；超时保留缺证据。缓存随挂载生命周期清空，返回文档身份须与当前固定文档相同；页面可见/锁屏资格仍独立记录，RAF帧间隔不冒充GPU实际draw时间。

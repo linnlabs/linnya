@@ -8,7 +8,7 @@
 
 [`index.ts`](./index.ts) 只导出：`ChartSurface`（外壳组件）、阅读状态键 `ChartReadingKey` / `ChartReadingVariant`、会话清理
 `createChartReadingSessionId` / `disposeChartReadingSession` / `disposeChartReadingBlock`，绘图区尺寸合同 `plotHeightOf`（块估高复用），以及数据表读模型 `buildChartDataTable` / `chartDataTableToTsv`（剪贴板 HTML 复用）。
-ECharts 运行时、主题解析和阅读规则都是内部实现，其他模块不得绕过出口引用。
+ECharts 运行时、基础主题、阅读纯规则和静态出图集中在 `@linnya/markdown-document-core/workspace-charts`；本文域只拥有会话状态、主题 token 接入和交互生命周期。跨表面消费者使用 package 子路径，不 deep import 本域内部。
 
 `renderChartPrintImage` 是文档打印的窄入口：从完整规格生成包含标题、说明、图例和脚注的静态 SVG 图片，固定浅色默认视图；内部复用复制图片的构图与 SSR 渲染，不读取会话状态或已挂载图表。
 
@@ -20,9 +20,9 @@ ECharts 运行时、主题解析和阅读规则都是内部实现，其他模块
 ## 分层
 
 ```text
-definitions/    纯类型与常量：阅读状态、渲染上下文、主题 token 与色系（chartTheme.ts）、option 形状
-functions/      纯规则：阅读状态变换、域与刻度、图例、数据表、数字格式、过渡判定、取色与细线色派生(chartPalette；颜色运算来自 `@linnya/color-core`)、option 构建(option/)
-orchestration/  副作用与时序：ECharts 懒加载与实例控制、主题读取、导出图片、useChartSurfaceRuntime
+markdown-document-core/workspace-charts  共用纯类型、色系（颜色运算来自 `@linnya/color-core`）、option、图例、阅读变换、懒加载运行时和静态出图
+functions/      交互数据表读模型、范围输入；既有图表业务测试从 package 公共入口回归
+orchestration/  Editor 实例控制、主题读取、打印装配、useChartSurfaceRuntime
 store/          会话级阅读状态（Pinia，只同步持有状态，不含规则，不持有 ECharts 实例）
 ui/             薄 Vue：ChartSurface / ChartLegend / ChartReadingOptions / ChartDataTable
 testing/        测试用固定数据（八类图表）
@@ -36,7 +36,7 @@ testing/        测试用固定数据（八类图表）
   取色依据完整规格中的实体位置和数量：少于八类用递增子序列，多色色带的五类使用核心五色；八类使用全部；更多实体沿相邻色插值，不循环回第一色。作者应优先拆图或聚合，颜色不能独立承担高密度身份识别。
   分组/堆叠按系列取色，饼/环与 `bar.colorBy: category` 按类目取色；筛选、聚焦、默认视图导出都共用同一规则。后者坐标轴已有标签，默认不重复图例。
   显式 `color` / `pointColors` 保留作者色值；普通柱的 null 沿用系列色，按类目着色时沿用类目默认色。多色色带在亮暗主题保留原色，单色阶按主题调整明度；细线只在对背景不足 3:1 时调整明度，保持色相，不把原色统一压灰。
-- **正文呈现**：标记规则集中在 [`chartMarkStyle.ts`](./functions/option/chartMarkStyle.ts)。柱、扇区、散点与图例键无装饰性描边；折线保留真实观测点和行末标签；面积低透明度平铺，网格为中性发丝实线。外壳无边框、无独立底色；环形厚度为外半径的 34%，扇区不加圆角以保持比例。
+- **正文呈现**：标记规则集中在 [`chartMarkStyle.ts`](../../../../../../packages/markdown-document-core/src/features/workspace-charts/functions/option/chartMarkStyle.ts)。柱、扇区、散点与图例键无装饰性描边；折线保留真实观测点和行末标签；面积低透明度平铺，网格为中性发丝实线。外壳无边框、无独立底色；环形厚度为外半径的 34%，扇区不加圆角以保持比例。
   文字与表面读取 renderer-ui 语义 token。数量标签使用常规字重；百分比堆叠标签显示完整分母下的份额，tooltip 与数据表保留原始数量。
   文档中的块间距与选中提示统一由 RootBlock 管理，图表不额外叠加绿色描边或光圈；题注统一由 `figure-caption` 放在绘图区、图例与脚注下方，居中自然换行。
   工具栏浮在绘图区右上角；题注与说明不占用图内轴标签空间。独立脚注和阅读提示位于图形与题注之间。

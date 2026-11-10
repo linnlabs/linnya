@@ -1,4 +1,5 @@
 export {
+  importMarkdownToDocJsonSync,
   importMarkdownToDocJson,
   type MarkdownBlockParser,
   type MarkdownImportResult,

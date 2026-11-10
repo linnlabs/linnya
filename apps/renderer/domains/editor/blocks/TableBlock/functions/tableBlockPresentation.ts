@@ -35,15 +35,6 @@ export function buildTableBlockInsertOptions(
   ];
 }
 
-export function buildTableBlockDeleteOptions(
-  editorMessage: EditorMessageResolver,
-): ReadonlyArray<TableBlockMenuOption> {
-  return [
-    { value: 'deleteRow', text: editorMessage('editor.tableBlock.toolbar.deleteRow') },
-    { value: 'deleteColumn', text: editorMessage('editor.tableBlock.toolbar.deleteColumn') },
-  ];
-}
-
 export function buildTableBlockAiOptions(
   editorMessage: EditorMessageResolver,
 ): ReadonlyArray<TableBlockMenuOption> {

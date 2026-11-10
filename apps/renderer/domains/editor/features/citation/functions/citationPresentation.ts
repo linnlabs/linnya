@@ -1,3 +1,5 @@
+import { formatBibliographyAuthors } from '@linnya/markdown-document-core/workspace-citations'
+export { formatCitationDate } from '@linnya/markdown-document-core/workspace-citations'
 import type { EditorMessageKey, EditorMessageResolver } from '../../../definitions/editorMessages'
 import type { CitationSourceType } from '../types'
 
@@ -29,16 +31,7 @@ export function formatCitationAuthors(
   authors: ReadonlyArray<string>,
   editorMessage: EditorMessageResolver,
 ): string {
-  if (authors.length === 0) return ''
-  if (authors.length === 1) return authors[0]
-  if (authors.length === 2) return `${authors[0]} & ${authors[1]}`
-
-  return `${authors[0]} ${editorMessage('editor.citation.author.othersSuffix')}`
-}
-
-export function formatCitationDate(date: string): string {
-  const yearMatch = date.match(/\d{4}/)
-  return yearMatch ? yearMatch[0] : date
+  return formatBibliographyAuthors(authors, editorMessage('editor.citation.author.othersSuffix'))
 }
 
 export function formatCitationKbInsertLabel(

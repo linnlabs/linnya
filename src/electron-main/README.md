@@ -55,6 +55,10 @@ Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也�
 
 跨进程 DTO 与 schema 统一归 [`packages/schemas`](../../packages/schemas/README.md)，不能在 Main 和 Renderer 各自复制 shape。
 
+受管文档窗口使用 `CanvasDrawElement` 单一 Blink 能力，不启用全量实验特性。隐藏 Worker 的 `renderingMode` 由通用 descriptor 明确选择：默认后台窗口只承诺排版，需要实际绘制时使用 Electron offscreen。选择经严格 RPC codec 传递，不按插件身份判断；生命周期、取消和销毁仍由 HiddenWorkerHost 拥有。
+
+实际绘图还需有效viewport。`renderViewport`是显式光栅能力：由Worker在串行执行边界申请有界物理尺寸，Main校验窗口身份、按所属屏幕倍率调整content尺寸；后续排队请求不能提前改变在途绘图。不能用测高成功或paint事件代替正文像素验收。
+
 ## 历史物理目录债务
 
 以下内容目前仍在 `src/electron-main/**`，但其运行 owner 是 App Server：

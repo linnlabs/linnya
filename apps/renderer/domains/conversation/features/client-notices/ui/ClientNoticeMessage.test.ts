@@ -51,6 +51,11 @@ it.each<{
     zh: '请先选择项目',
     en: 'Select a project first',
   },
+  {
+    failure: { error_kind: 'validation', operation: 'send', reason_code: 'reference_preparation_failed' },
+    zh: '引用读取失败，消息尚未发送。草稿和引用已保留，请检查引用后重试。',
+    en: 'Could not read the references. The message was not sent. Your draft and references are preserved. Check the references and try again.',
+  },
 ])('local, saved and reloaded notices keep the same useful message: $zh', async ({ failure, zh, en }) => {
   const id = '3bc05782-a8f4-400b-8a87-ded268962652';
   const command = { notice_id: id, observed_at: 10, ...failure };

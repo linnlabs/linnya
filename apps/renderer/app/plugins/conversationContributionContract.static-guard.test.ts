@@ -79,11 +79,11 @@ describe('conversation plugin contribution public contract', () => {
     'packages/plugin-host-contract/renderer/conversationSubrunInvocationPort.ts',
   );
 
-  it('ComposerCommandPort 只允许精确增删引用', () => {
+  it('ComposerCommandPort 只允许精确增删引用与聚焦输入框', () => {
     expectExactInterfaceKeys(
       composerContract,
       'RendererComposerCommandPort',
-      ['addReference', 'removeReference'],
+      ['addReference', 'removeReference', 'focusInput'],
     );
   });
 

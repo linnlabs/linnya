@@ -2,7 +2,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { MARKDOWN_CHART_TYPES } from '@app/schemas'
 import { getInstanceByDom } from 'echarts/core'
-import { DEFAULT_CHART_READING_STATE } from '../definitions/chartReadingState'
+import { DEFAULT_CHART_READING_STATE } from '@linnya/markdown-document-core/workspace-charts'
 import { chartFixture, chartTestTheme } from '../testing/chartTestFixtures'
 import { createChartController, getLiveChartInstanceCount, type ChartControllerInput } from './chartInstanceController'
 

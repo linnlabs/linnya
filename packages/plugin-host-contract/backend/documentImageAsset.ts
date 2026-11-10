@@ -1,16 +1,10 @@
-export type PluginDocumentImageMediaType = 'image/jpeg' | 'image/png' | 'image/webp';
-
-export interface PluginDocumentImageAsset {
-  readonly assetId: string;
-  readonly mediaType: PluginDocumentImageMediaType;
-  readonly byteLength: number;
-  readonly width: number;
-  readonly height: number;
-  readonly sha256: string;
-  readonly dataUri: string;
-}
+import type { DocumentImageAsset } from '@app/schemas';
+export type PluginDocumentImageAsset = DocumentImageAsset;
+export type PluginDocumentImageMediaType = DocumentImageAsset['mediaType'];
 
 export interface PluginDocumentImageAssetRuntimePort {
+  /** 准备受管字节与媒体事实，不建立文档归属；归属由调用方提交事务登记。 */
+  prepareImageBytes(input: { readonly documentId: string; readonly bytes: Uint8Array }): Promise<PluginDocumentImageAsset>;
   adoptLocalImage(input: {
     readonly documentId: string;
     readonly sourcePath: string;
@@ -56,3 +50,5 @@ export class PluginDocumentImageAssetError extends Error {
 export declare function createDocumentImageAssetRuntime(
   databaseValue: unknown
 ): PluginDocumentImageAssetRuntimePort;
+/** dry-run使用与正式图片准入相同的产品预算，不建立资源或归属。 */
+export declare function readDocumentImageAssetLimits(): { readonly maxImageBytes: number; readonly maxImagePixels: number };

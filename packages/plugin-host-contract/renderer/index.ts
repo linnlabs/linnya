@@ -24,3 +24,8 @@ export type * from './toolRefreshPort';
 export type * from './toolUi';
 export type * from './workspaceNavigation';
 export type * from './workspaceRuntime';
+export type * from './pluginRuntime';
+export type * from './embeddedMarkdownEditor';
+export type * from './documentPreview';
+
+export type * from './documentReferences';

@@ -25,6 +25,7 @@ describe('buildUserMessageQuoteDisplay', () => {
     expect(buildUserMessageQuoteDisplay(item)).toEqual({
       item,
       displayText: 'abcd...wxyz',
+      icon: null,
     });
   });
 
@@ -37,10 +38,23 @@ describe('buildUserMessageQuoteDisplay', () => {
       metadata: { documentId: 'document-1', inode: 'workspace:document-1' },
     });
 
-    expect(buildUserMessageQuoteDisplay(item)).toEqual({
+    const icon = { name: 'TypeIcon' };
+    const seen: unknown[] = [];
+    expect(buildUserMessageQuoteDisplay(item, reference => { seen.push(reference); return icon; })).toEqual({
       item,
       displayText: '需求说明.md',
+      icon,
     });
+    // 图标判定只拿到引用类型的通用展示输入，不读 wire 字段名。
+    expect(seen).toEqual([{
+      id: item.quote_id,
+      pluginId: 'platform',
+      kind: 'workspace-document',
+      label: '需求说明.md',
+      previewText: item.text,
+      text: item.text,
+      metadata: { documentId: 'document-1', inode: 'workspace:document-1' },
+    }]);
   });
 
   it('业务引用没有可用 label 时退回正文预览，空正文不展示', () => {
