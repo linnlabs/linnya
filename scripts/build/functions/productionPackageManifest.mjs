@@ -88,3 +88,10 @@ export function projectProductionPackageManifest(sourceManifest) {
 }
 
 export const productionBundledWorkspaceDependencyNames = bundledWorkspaceDependencyNames;
+
+/** Desktop 携带 schemas 已编译的 dist；npm 不应再解析这个本地包的构建与测试工具。 */
+export function projectPackagedSchemasManifest(sourceManifest) {
+  return Object.fromEntries(Object.entries(sourceManifest).filter(
+    ([field]) => field !== 'scripts' && field !== 'devDependencies'
+  ));
+}

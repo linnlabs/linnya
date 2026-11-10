@@ -18,6 +18,8 @@ import { buildBlockHistoryPreloadApi } from './modules/block-history-preload';
 import { buildPluginsPreloadApi } from './modules/plugins-preload';
 import { buildMediaUrlPreloadApi } from './modules/media-url';
 import { buildConversationFileLinkPreloadApi } from './modules/conversation-file-link-preload';
+import { buildConversationRunDocumentChangesPreloadApi } from './modules/conversation-run-document-changes-preload';
+import { buildProjectOverviewPreloadApi } from './modules/project-overview-preload';
 
 // 向渲染进程暴露安全的 API（保持 window.electronAPI 的字段与行为不变）
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -36,6 +38,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ...buildBlockHistoryPreloadApi(ipcRenderer),
   ...buildPluginsPreloadApi(ipcRenderer),
   ...buildConversationFileLinkPreloadApi(ipcRenderer),
+  ...buildConversationRunDocumentChangesPreloadApi(ipcRenderer),
+  ...buildProjectOverviewPreloadApi(ipcRenderer),
 });
 
 // 媒体资源 URL 只能由 preload 统一构造，避免渲染层手写 media:// 字符串重新暴露路径边界。

@@ -1,4 +1,5 @@
 import type { JsonValue } from '@app/schemas';
+import type { AppServerStartupFailure } from '../../../../app-hosts/linnya/app-server-control';
 import type { AppServerRpcRequestOptions } from '../../../../app-hosts/linnya/app-server-rpc';
 
 export interface AppServerProcessLaunch {
@@ -38,4 +39,18 @@ export interface AppServerProcessSupervisor {
   ): Promise<JsonValue>;
   ping(): Promise<void>;
   shutdown(): Promise<void>;
+}
+
+/**
+ * App Server 在 ready 前报告了启动失败。`startupFailure` 是 child 给出的类别，宿主据此向用户说明原因；
+ * `message` 保留 child 的原始文案，用于诊断。
+ */
+export class AppServerStartupFailedError extends Error {
+  constructor(
+    message: string,
+    readonly startupFailure: AppServerStartupFailure,
+  ) {
+    super(`App Server startup_failed: ${message}`);
+    this.name = 'AppServerStartupFailedError';
+  }
 }

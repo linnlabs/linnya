@@ -398,6 +398,10 @@ import {
 import { useConversationLocalization } from '@/domains/conversation/ui/useConversationLocalization';
 import { computeHeaderPaneGeometry } from '@/app/layout/functions/headerPaneGeometry';
 import { revealSidebarConversationHistory } from '@/app/layout/orchestration/revealSidebarConversationHistory';
+import {
+  consumeDocumentHistoryPanelRequest,
+  useDocumentHistoryPanelRequest,
+} from '@/app/layout/orchestration/documentHistoryPanelRequest';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
 import { projectConversationHeaderBreadcrumbSegments } from '@/domains/conversation/functions/conversationTitlePresentation';
 import { startDraftConversation } from '@/domains/conversation/services/orchestration/startDraftConversation';
@@ -435,6 +439,15 @@ const historyClientSessionId = ref<string>();
 const { message: historyMessage } = useHistoryMessages();
 const pluginDocumentActionMenu = useDocumentActionMenu(activeDocumentType);
 watch([activeDocumentId, historyPreviewComponent], () => { showDocumentHistory.value = false; showDocumentBacklinks.value = false; showDocMenu.value = false; });
+// 对话里点“历史”会先打开文档再请求历史面板；post flush 保证在上面的切换复位之后执行。
+const documentHistoryRequest = useDocumentHistoryPanelRequest();
+watch([documentHistoryRequest, activeDocumentId, historyPreviewComponent], () => {
+  if (!historyPreviewComponent.value) return;
+  if (consumeDocumentHistoryPanelRequest(activeDocumentId.value)) {
+    showDocMenu.value = false;
+    showDocumentHistory.value = true;
+  }
+}, { flush: 'post' });
 const canShowProjectConversationHistory = computed(() => {
   return scene.value.kind === 'workspace' && navigationScope.currentProjectId !== null;
 });

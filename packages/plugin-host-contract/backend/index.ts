@@ -9,6 +9,7 @@ export type * from './documentSvgAsset';
 export type * from './exportArtifact';
 export type * from './hiddenWorkerRuntime';
 export type * from './imageInspection';
+export type * from './colorPalette';
 export type * from './imageTranscoding';
 export type * from './pluginContribution';
 export type * from './pluginCli';

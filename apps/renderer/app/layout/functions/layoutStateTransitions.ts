@@ -317,10 +317,16 @@ export function setPreferredRightPaneWidthState(state: LayoutState, width: numbe
 
 export function openBypassViewState(state: LayoutState, bypassView: NonNullable<BypassView>): LayoutState {
   const next = cloneState(state);
-  if (bypassView.type === 'knowledge-base') {
-    next.scene = { kind: 'knowledge-base' };
-  } else {
-    next.scene = { kind: 'plugin-store' };
+  switch (bypassView.type) {
+    case 'knowledge-base':
+      next.scene = { kind: 'knowledge-base' };
+      break;
+    case 'plugin-store':
+      next.scene = { kind: 'plugin-store' };
+      break;
+    case 'project-overview':
+      next.scene = { kind: 'project-overview', projectId: bypassView.projectId };
+      break;
   }
   next.bypassView = { ...bypassView };
   next.documentPane = {

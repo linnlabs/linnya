@@ -1,3 +1,4 @@
+import { withActionActor } from 'src/domains/action-ledger';
 import type { PluginId } from '@app/schemas';
 import { pluginDiagnostics } from './diagnostics';
 import type { BackendPluginRuntimeEffectRegistration } from './registry';
@@ -95,7 +96,7 @@ async function runEffectStep(
   fn: () => void | Promise<void>,
 ): Promise<void> {
   try {
-    await fn();
+    await withActionActor({ kind: 'plugin', pluginId }, fn);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     recordRuntimeEffectError(pluginId, effectId, `runtime effect ${step} failed: ${message}`);

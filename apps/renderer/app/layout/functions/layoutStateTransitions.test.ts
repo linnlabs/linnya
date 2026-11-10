@@ -259,6 +259,16 @@ describe('layoutStateTransitions', () => {
     expect(state.activeDocument).toBeNull();
   });
 
+  it('opens a project overview and hides the previous document and conversation panes', () => {
+    const active = openDocumentInRightPaneState(createInitialLayoutState(), {
+      type: 'mindmap', id: 'doc', projectId: 'old-project',
+    });
+    const state = openBypassViewState(active, { type: 'project-overview', projectId: 'project' });
+    expect(state.scene).toEqual({ kind: 'project-overview', projectId: 'project' });
+    expect(state.documentPane.visible).toBe(false);
+    expect(state.conversationPane.visible).toBe(false);
+  });
+
   it('opens the plugin store as a full bypass scene', () => {
     const activeWorkspace = openDocumentInRightPaneState(createInitialLayoutState(), {
       type: 'mindmap',

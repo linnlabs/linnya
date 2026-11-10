@@ -27,6 +27,15 @@
 - 事后插件化迁移允许使用 `CREATE TABLE IF NOT EXISTS` 同时覆盖缺表建表和老库收养；确认插件 lifecycle 在首次业务访问前执行后，必须退役对应 host schema provider，避免双真源漂移。
 - `ownedTables` 声明必须与迁移真实建出的表一致，并有契约测试比对；声明表不存在时升级备份会 fail-fast，防止数据归属契约漂移被静默跳过。
 
+## 表归属
+
+插件运行时代码只直接读写 `ownedTables` 声明的自有表。自有表可以用外键引用 `workspace_nodes(id)` 或 `projects(id)` 并 `ON DELETE CASCADE`，让插件数据随节点或项目一起删除；这两张身份表的读取和写入，以及文本快照等其他 Host 表、其他插件的表，都走 Host 端口，例如 [`backend/workspaceDocumentProjection`](../../../packages/plugin-host-contract/README.md#workspace-文档投影端口) 的节点查询与更新时间写入。
+
+- `pnpm run guard:plugin-table-ownership` 扫描 `packages/plugins/<id>/src` 里的 SQL，按“插件 × 访问方式 × 表”比对 `.baseline/plugin-table-access.txt`。访问方式分读取、写入、建表改表和外键引用；测试与 `dev/` 脚本不在范围内。
+- baseline 记录守卫建立时已有的跨表访问，只允许减少。去掉一项后运行 `pnpm run guard:plugin-table-ownership:update` 收紧。
+- 新增跨表访问会让门禁失败。先改用端口；端口确实缺能力时补端口。只有确需直接访问时才手工写入 baseline，并在提交说明里写明理由。
+- 表名由模板插值拼出时记为动态表名，按文件登记；SQL 关键字须大写，小写写成的完整语句会被直接拦下。
+
 ## 语义口径（必须知道）
 
 - **禁用 ≠ 数据冻结**：已安装但禁用的插件，启动时仍会执行 pending 迁移，保证重新启用即可用（如未来调整该口径需同步更新本节）。

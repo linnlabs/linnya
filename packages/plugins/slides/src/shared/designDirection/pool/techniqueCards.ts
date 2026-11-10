@@ -3,7 +3,7 @@ import type { TechniqueCard } from '../definitions/directionContract';
 /**
  * 手法卡：每张借用一种成熟的视觉体裁，只写方法，不写坐标和固定色值。
  *
- * 新增或删改后运行签池测试；上线前用同题样张筛选（见 W-0149 Proposal 的造卡流程）。
+ * 新增或删改后运行签池测试；上线前用同一题目各出样张，对比筛选后再收入。
  */
 export const TECHNIQUE_CARDS: readonly TechniqueCard[] = [
   // ── 信息设计 ────────────────────────────────────────────

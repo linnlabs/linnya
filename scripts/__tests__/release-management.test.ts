@@ -9,6 +9,10 @@ import { validateReleaseState } from '../release/functions/validateReleaseState'
 import { bumpReleaseVersion } from '../release/orchestration/bumpRelease';
 
 describe('release management', () => {
+  it('正式标题可被关于页与发布校验共同读取', () => {
+    expect(parseReleaseNotesMarkdown('Linnya v0.2.0\n - 正式发布。')).toMatchObject({ version: '0.2.0', title: 'Linnya v0.2.0' });
+  });
+
   it('derives platform artifact names from package metadata', () => {
     expect(deriveReleaseArtifactNames({ productName: '林芽', version: '0.0.36' })).toEqual({
       macDmg: '林芽-0.0.36-arm64.dmg',
@@ -96,7 +100,7 @@ describe('release management', () => {
 
     expect(packageJson.version).toBe('0.0.36');
     expect(fs.existsSync(path.join(fixture, 'package-lock.json'))).toBe(false);
-    expect(notes.startsWith('测试版 v0.0.36')).toBe(true);
+    expect(notes.startsWith('Linnya v0.0.36')).toBe(true);
   });
 
   it('rejects a stale npm lockfile in a pnpm workspace', () => {

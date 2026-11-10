@@ -45,7 +45,8 @@ export class PendingRevisionApplyService {
 
   /** Editor 保存、块决策和文档决策共用一个带版本校验的提交入口。 */
   async commitEditorRevision(
-    request: MarkdownRevisionCommit
+    request: MarkdownRevisionCommit,
+    onChange?: (before: number, after: number) => void,
   ): Promise<MarkdownRevisionSnapshot & { content: MarkdownDocJson }> {
     const initialPendings = this.markdownService.getPendingRevisions(request.documentId);
     const initialVersion = this.markdownService.getLatestVersion(request.documentId);
@@ -139,6 +140,10 @@ export class PendingRevisionApplyService {
       }
       const latestVersion = this.markdownService.getLatestVersion(request.documentId);
       if (!latestVersion) throw new Error('Document version missing after commit');
+      // 用户接受或拒绝也会改变提议，正文版本可能保持原值。
+      if (latestVersion.version_number !== version.version_number || selected.length > 0) {
+        onChange?.(version.version_number, latestVersion.version_number);
+      }
       return {
         content: this.readMarkdownDoc(request.documentId),
         pendingRevisions: projectMarkdownEditorPendingRevisions(

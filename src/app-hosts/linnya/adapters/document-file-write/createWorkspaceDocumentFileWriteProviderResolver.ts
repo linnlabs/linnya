@@ -26,6 +26,7 @@ import type {
   WorkspaceDocumentFileWriteResult,
 } from '../../../../features/workspace/document-file-write/definitions/workspaceDocumentFileWrite';
 import type { ToolOwnerResultCommit } from '../../application/run-resumption';
+import type { ActionLedgerRecorder } from '../../../../domains/action-ledger';
 import type { WorkspaceMutationPublisher } from '../../../../features/workspace/definitions/workspaceMutationPublisher';
 import { createWorkspaceDocumentUpdatedEvent } from '../../../../features/workspace/functions/createWorkspaceDocumentMutationEvent';
 import { createSqliteWorkspaceDocumentMutationPort } from '../../../../features/workspace/document-mutation/infrastructure/sqlite/createSqliteWorkspaceDocumentMutationPort';
@@ -37,6 +38,8 @@ export function createWorkspaceDocumentFileWriteProviderResolver(params: {
   readonly context: PluginToolContext & MarkdownImageSourceContext;
   readonly mutationPublisher?: WorkspaceMutationPublisher;
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileWriteResult>;
+  /** Host 分发口的粗账：每次成功写入记一条，绑定的执行者来自工具上下文。 */
+  readonly actionLedger?: ActionLedgerRecorder;
 }): WorkspaceDocumentFileWriteProviderResolver {
   const markdownProvider = createMarkdownFileWriteProvider(params);
   return documentType => {
@@ -50,6 +53,7 @@ export function createWorkspaceDocumentFileWriteProviderResolver(params: {
       registeredHook,
       enabledHook: getDocumentTypeBackendHook(documentType),
       context: params.context,
+      ...(params.actionLedger ? { actionLedger: params.actionLedger } : {}),
     });
   };
 }
@@ -59,6 +63,7 @@ function createMarkdownFileWriteProvider(params: {
   readonly context: PluginToolContext & MarkdownImageSourceContext;
   readonly mutationPublisher?: WorkspaceMutationPublisher;
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileWriteResult>;
+  readonly actionLedger?: ActionLedgerRecorder;
 }): WorkspaceDocumentFileWriteProvider {
   const documentStore = createMarkdownDocumentStore(params.db);
   const workspaceMutation = createSqliteWorkspaceDocumentMutationPort(params.db);
@@ -138,14 +143,20 @@ function createMarkdownFileWriteProvider(params: {
           },
         },
         touchDocumentUpdatedAt: workspaceMutation.touchDocumentUpdatedAt,
-        commitResult: write => params.resultCommit?.commit(formatResult(write)),
+        commitResult: write => {
+          params.resultCommit?.commit(formatResult(write));
+          // 与正文、pending 同事务；规范化后无变化的写入不算改动。
+          if (hasMarkdownWriteChanges(write)) {
+            params.actionLedger?.record({
+              projectId: request.identity.projectId,
+              documentId: request.identity.documentId,
+              documentType: request.identity.documentType,
+              action: 'update',
+            });
+          }
+        },
       });
-      if (
-        write.edits.length > 0 || write.cancelledCount > 0 ||
-        write.createdAnnotationIds.length > 0 ||
-        write.updatedAnnotationIds.length > 0 ||
-        write.deletedAnnotationIds.length > 0
-      ) {
+      if (hasMarkdownWriteChanges(write)) {
         const hasAnnotationChanges =
           write.createdAnnotationIds.length > 0 ||
           write.updatedAnnotationIds.length > 0 ||
@@ -166,6 +177,19 @@ function createMarkdownFileWriteProvider(params: {
       return formatResult(write);
     },
   };
+}
+
+function hasMarkdownWriteChanges(write: {
+  readonly edits: readonly unknown[];
+  readonly cancelledCount: number;
+  readonly createdAnnotationIds: readonly string[];
+  readonly updatedAnnotationIds: readonly string[];
+  readonly deletedAnnotationIds: readonly string[];
+}): boolean {
+  return write.edits.length > 0 || write.cancelledCount > 0 ||
+    write.createdAnnotationIds.length > 0 ||
+    write.updatedAnnotationIds.length > 0 ||
+    write.deletedAnnotationIds.length > 0;
 }
 
 function buildMarkdownFileWriteObservation(params: {
@@ -211,6 +235,7 @@ function createPluginFileWriteProvider(params: {
   readonly registeredHook: DocumentTypeBackendHook;
   readonly enabledHook: DocumentTypeBackendHook | undefined;
   readonly context: PluginToolContext & MarkdownImageSourceContext;
+  readonly actionLedger?: ActionLedgerRecorder;
 }): WorkspaceDocumentFileWriteProvider {
   const unavailableMessage = buildPluginFileWriteUnavailableMessage(params.registeredHook);
   return {
@@ -227,6 +252,14 @@ function createPluginFileWriteProvider(params: {
         documentName: request.identity.documentName,
         content: request.content,
         ...(request.expectedSourceKey ? { expectedSourceKey: request.expectedSourceKey } : {}),
+      });
+      // 插件写入是异步边界，粗账在插件提交成功后另行写入；插件细账接入后由同事务登记取代。
+      params.actionLedger?.record({
+        projectId: request.identity.projectId,
+        documentId: request.identity.documentId,
+        documentType: request.identity.documentType,
+        action: 'update',
+        ...(result.versionNumber !== undefined ? { afterRef: String(result.versionNumber) } : {}),
       });
       const observation = params.enabledHook?.formatWriteObservation
         ? params.enabledHook.formatWriteObservation({

@@ -30,6 +30,7 @@ import {
 import { workspacePathFromLocator } from '../shared/workspaceFileLocator';
 import { validateWorkspaceFileToolArguments } from '../shared/workspaceFileToolContract';
 import { createFileToolResultCommit } from '../shared/fileToolRecovery';
+import { createFileToolActionLedger, withActionLedger } from '../shared/fileToolActionLedger';
 import { readPersistedWorkspaceVfsNode } from '../../../features/workspace/vfs';
 import type { WorkspaceVfsNode } from '../../../features/workspace/vfs/definitions/workspaceVfsNode';
 import type { WorkspaceDocumentFileCreateResult } from '../../../features/workspace/document-file-create/definitions/workspaceDocumentFileCreate';
@@ -280,6 +281,7 @@ export class WriteFileTool extends BaseTool {
         db,
         context: resolvedContext.context,
         resultCommit: createFileToolResultCommit(context, this.name, serialize),
+        ...withActionLedger(createFileToolActionLedger(context, db)),
         ...(context.workspaceMutationPublisher
           ? { mutationPublisher: context.workspaceMutationPublisher }
           : {}),
@@ -323,6 +325,7 @@ export class WriteFileTool extends BaseTool {
         db,
         context: resolvedContext.context,
         workspaceService: resolvedContext.workspaceService,
+        ...withActionLedger(createFileToolActionLedger(context, db)),
         resultCommit: createFileToolResultCommit(
           context,
           this.name,

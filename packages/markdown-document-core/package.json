@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@app/schemas": "workspace:*",
+    "@linnya/color-core": "workspace:*",
     "@tiptap/core": "3.31.3",
     "@tiptap/extension-code-block": "3.31.3",
     "@tiptap/extension-highlight": "3.31.3",

@@ -5,10 +5,11 @@ import { useHoverTooltipService } from '@linnya/renderer-ui';
 // 布局组件
 import AppLayout from './layout/AppLayout.vue';
 
-// 四个 scene 互斥，按当前 scene 加载，避免把非首屏业务页面合进应用入口。
+// scene 互斥，按当前 scene 加载，避免把非首屏业务页面合进应用入口。
 const WorkspaceStage = defineAsyncComponent(() => import('./pages/WorkspaceStage/WorkspaceStage.vue'));
 const KnowledgeBasePage = defineAsyncComponent(() => import('./pages/KnowledgeBasePage/KnowledgeBasePage.vue'));
 const PluginStorePage = defineAsyncComponent(() => import('./pages/PluginStorePage/PluginStorePage.vue'));
+const ProjectOverviewPage = defineAsyncComponent(() => import('./pages/ProjectOverviewPage/ProjectOverviewPage.vue'));
 
 // Stores
 import { useLayoutStore } from './layout/store/layoutStore';
@@ -52,6 +53,8 @@ import { registerConversationResourceLinkPort } from '@/domains/conversation/fea
 import { registerDocumentTypePresentationPort } from '@/domains/editor/features/document-references';
 import { readDocumentTypeIcon, readDocumentTypeRecoveryAction, readDocumentTypePreviewComponent } from './plugins/documentTypePresentation';
 import { createConversationResourceLinkPort } from './workflows/conversation-resource-link/orchestration/createConversationResourceLinkPort';
+import { registerRunDocumentChangesPort } from '@/domains/conversation/features/run-document-changes';
+import { createRunDocumentChangesPort } from './workflows/conversation-run-document-changes/orchestration/createRunDocumentChangesPort';
 
 const layoutStore = useLayoutStore();
 // 整个应用共享一个悬停提示服务：任何带 data-linnya-tooltip 的元素（含图标按钮、编辑器工具条）都由它绘制。
@@ -72,6 +75,7 @@ registerDocumentSurfaceRuntimePort(createDocumentSurfaceRuntime());
 registerMarkdownDocumentEditorRuntimePort(createMarkdownDocumentEditorRuntime());
 registerConversationResourceLinkPort(createConversationResourceLinkPort());
 registerDocumentTypePresentationPort({ readIcon: readDocumentTypeIcon, readPreviewComponent: readDocumentTypePreviewComponent, readRecoveryAction: readDocumentTypeRecoveryAction });
+registerRunDocumentChangesPort(createRunDocumentChangesPort());
 useWorkspaceVfsRuntimeContextSync();
 useWorkspaceMutationSubscription();
 useActiveDocumentPluginAvailabilityGuard();
@@ -99,6 +103,9 @@ const scene = computed(() => layoutStore.state.scene);
 const isWorkspaceStageView = computed(() => scene.value.kind === 'workspace');
 const isKnowledgeBaseView = computed(() => scene.value.kind === 'knowledge-base');
 const isPluginStoreView = computed(() => scene.value.kind === 'plugin-store');
+const projectOverviewProjectId = computed(() => (
+  scene.value.kind === 'project-overview' ? scene.value.projectId : null
+));
 
 // 初始状态检查
 console.log('[App.vue] Initializing with scene:', scene.value.kind);
@@ -185,6 +192,7 @@ onBeforeUnmount(() => {
     <WorkspaceStage v-if="isWorkspaceStageView" />
     <KnowledgeBasePage v-else-if="isKnowledgeBaseView" />
     <PluginStorePage v-else-if="isPluginStoreView" />
+    <ProjectOverviewPage v-else-if="projectOverviewProjectId" :project-id="projectOverviewProjectId" />
   </AppLayout>
   <FloatingToolbarContainer />
 </template>

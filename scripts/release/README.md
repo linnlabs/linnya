@@ -113,8 +113,9 @@ macOS 正式构建接受 `security find-identity` 显示的完整 Developer ID A
 - `package.json#version`
 - `pnpm-lock.yaml`（锁源码 workspace 安装，不重复存储主应用版本）
 - `production-package-lock.json`（锁定当前公共 manifest 投影的 Desktop 生产依赖，由正式命令更新与复核）
-- `release-notes.md`
+- `release-notes.md`（当前正式版本以 `Linnya vX.Y.Z` 开头，解析器保留历史测试版标题的读取）
 - `apps/renderer/domains/settings/definitions/currentRelease.generated.ts`
+- 关于页双语摘要：`apps/renderer/domains/settings/definitions/settingsMessageCatalog.ts` 的 release 段，须与当次实际发布范围一致。
 
 常用流程：
 
@@ -130,7 +131,7 @@ pnpm run release:checklist
 `pnpm run release:lock:production:update` 并审阅 lock
 diff。正式构建不会重新解析依赖，而是把经过合同校验的 lock 投影为
 `dist_build/package-lock.json`，再执行
-`npm ci --omit=dev`。生产 lock 生成器从当前公共仓的 manifest 投影最小 Desktop 依赖，在独立临时目录使用公共 registry 解析；不读取相邻私有仓，也不以删除私有 owner 作为构建前提。正式构建和 CI 使用受跟踪的 lock 冻结安装，Desktop 内容 BOM 记录其 SHA-256。
+`npm ci --omit=dev`。生产 lock 生成器从当前公共仓的 manifest 投影最小 Desktop 依赖，在独立临时目录使用公共 registry 解析；不读取相邻私有仓，也不以删除私有 owner 作为构建前提。发行目录和 lock 生成器共用同一份本地 `@app/schemas` manifest：保留运行时入口与依赖，剔除源码的开发工具和 scripts。正式构建和 CI 使用受跟踪的 lock 冻结安装，Desktop 内容 BOM 记录其 SHA-256。
 
 两份 lock 中的同名依赖可能版本不同；更新生产 lock 时，须同时核对新增版本的随包许可文本，
 在 `dependencyLegalPolicy.ts` 登记需要选择的精确版本，不能只用 pnpm Source BOM 代替成品验证。

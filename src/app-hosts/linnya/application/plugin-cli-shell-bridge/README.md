@@ -13,6 +13,8 @@ Agent shell
   -> enabled pluginCli contribution
 ```
 
+Core 的 `linnya` 通过同一原生客户端发送独立的 `core_cli_invoke` 帧，沿用相同的父 Shell 身份、访问校验和终止条件。命令与输出由 [Core CLI](../core-cli/README.md) 拥有。
+
 ## 所有权边界
 
 - 父 Shell 拥有 permission snapshot、approval、owner reservation、process handle、stdout/stderr、审计与 terminal。

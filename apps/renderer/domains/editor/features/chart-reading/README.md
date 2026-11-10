@@ -20,7 +20,7 @@ ECharts 运行时、基础主题、阅读纯规则和静态出图集中在 `@lin
 ## 分层
 
 ```text
-markdown-document-core/workspace-charts  共用纯类型、色系、option、图例、阅读变换、懒加载运行时和静态出图
+markdown-document-core/workspace-charts  共用纯类型、色系（颜色运算来自 `@linnya/color-core`）、option、图例、阅读变换、懒加载运行时和静态出图
 functions/      交互数据表读模型、范围输入；既有图表业务测试从 package 公共入口回归
 orchestration/  Editor 实例控制、主题读取、打印装配、useChartSurfaceRuntime
 store/          会话级阅读状态（Pinia，只同步持有状态，不含规则，不持有 ECharts 实例）

@@ -9,10 +9,7 @@ import { scheduleStartupMaintenanceOnce, type StartupMaintenanceDeps } from './s
 const unexpectedStorageAccess = vi.fn((): never => { throw new Error('停止后不应访问存储'); });
 const deps: StartupMaintenanceDeps = {
   get databaseService() { return unexpectedStorageAccess(); },
-  get metadataRepository() { return unexpectedStorageAccess(); },
-  get qdrantRepository() { return unexpectedStorageAccess(); },
-  get sotRepository() { return unexpectedStorageAccess(); },
-  get originalDocumentRepository() { return unexpectedStorageAccess(); },
+  get knowledgeBase() { return unexpectedStorageAccess(); },
 };
 
 afterEach(() => {

@@ -1,6 +1,6 @@
 LINNYA THIRD-PARTY PRODUCTION DEPENDENCY NOTICE
 
-Project: linnya@0.1.0
+Project: linnya@0.2.0
 Target: darwin/arm64
 
 This deterministic inventory is generated from the installed production dependency graph.

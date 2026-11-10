@@ -26,4 +26,9 @@ ConversationMessageCanvas
 高度。waiting 只由最后一行拥有，terminal 后释放；有回答操作时 tail 继续存在。Subrun 详情不传
 trailing status，不能从 foreground store 反向推断生成态。
 
+tail 首行固定 42px。主时间线（`showsRunDocumentChanges`）在本轮结束后还会列出这轮运行改过的文档：
+尾注占首行左侧，展开的清单和“已工作”时长依次排在首行下方；没有改动时时长仍居中在首行。没有回答的轮次（停止、失败）只要改过文档，
+也由 turn-end row 承载 tail。清单的数据、
+状态与打开方式见 [`features/run-document-changes`](../../features/run-document-changes/README.md)。
+
 回答复制/转存的离屏真实渲染宿主跟随 `ConversationMessageCanvas` 存续，因为它服务 visual-row 操作，而不是虚拟列表。画布只通过 `ui/tools/knowledge/clipboard/index.ts` 的窄公开出口消费既有能力，不依赖该 feature 内部目录。新增完整消息 surface 时应复用画布公开入口，不应自行复制 provider。

@@ -101,7 +101,7 @@ app/layout/
 
 `layoutStore` 只保存布局和几何状态，例如：
 
-- `scene`：`workspace`、`knowledge-base`、`plugin-store`
+- `scene`：`workspace`、`knowledge-base`、`plugin-store`、`project-overview`
 - `layoutMode`：`chat-centric` 或 `editor-centric`
 - `sidebarMode`：对话/文件模式
 - `activeDocument`：当前打开文档引用
@@ -133,7 +133,8 @@ app/layout/
 
 - `workspace`：显示 `WorkspaceStage`，内部承载对话和文档；
 - `knowledge-base`：显示知识库页面；
-- `plugin-store`：显示插件商店。
+- `plugin-store`：显示插件商店；
+- `project-overview`：携带项目身份的全部文件表，通过 workspace navigation 保存并停用旧文档后进入。
 
 进入知识库或插件商店前，必须先通过 `workspaceNavigation` 保存并停用当前文档 runtime。不能直接让 `App.vue` 或组件切场景，否则会产生“文档 surface 已卸载，但 file-manager session 仍然活着”的断层。
 

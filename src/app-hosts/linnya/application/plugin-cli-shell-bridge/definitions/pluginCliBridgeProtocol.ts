@@ -21,12 +21,14 @@ const PluginCliArgSchema = z.string()
   .max(PLUGIN_CLI_MAX_ARG_LENGTH)
   .refine(value => !value.includes('\0'), 'plugin CLI arguments must not contain NUL');
 
-export const PluginCliBridgeInvocationRequestV1Schema = z.object({
+const PluginInvocation = z.object({
   protocol_version: z.literal(PLUGIN_CLI_BRIDGE_PROTOCOL_VERSION),
   kind: z.literal('plugin_cli_invoke'),
   plugin_id: PluginCliIdSchema,
   argv: z.array(PluginCliArgSchema).max(PLUGIN_CLI_MAX_ARG_COUNT),
 }).strict();
+const CoreInvocation = PluginInvocation.omit({ plugin_id: true }).extend({ kind: z.literal('core_cli_invoke') });
+export const PluginCliBridgeInvocationRequestV1Schema = z.discriminatedUnion('kind', [PluginInvocation, CoreInvocation]);
 export type PluginCliBridgeInvocationRequestV1 = z.infer<
   typeof PluginCliBridgeInvocationRequestV1Schema
 >;

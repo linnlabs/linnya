@@ -9,6 +9,7 @@ import { rebaseEditorDocument } from '../../../functions/rebaseEditorDocument';
 import { loadDocumentJsonAtomically } from '../../../services/editorDocumentStateLoader';
 import { bindDocumentSession, getDocumentSession, unbindDocumentSession, setDocumentSnapshot } from '../store/documentSessions';
 import type { MarkdownDocumentSession, MarkdownDocumentSessionPorts } from '../definitions/documentSession';
+import { DocumentReadFailedError } from '../definitions/documentReadFailedError';
 
 function isCurrent(editor: Editor, session: MarkdownDocumentSession): boolean {
   return !editor.isDestroyed && getDocumentSession(editor) === session;
@@ -19,7 +20,8 @@ function samePending(left: MarkdownRevisionSnapshot, right: MarkdownRevisionSnap
 }
 async function readSnapshot(documentId: string): Promise<MarkdownRevisionSnapshot> {
   const response = await workspaceGateway['read-document']({ documentId });
-  if (!response.success) throw new Error(response.error);
+  // 保留后端给出的用户消息，打开入口据此说明是读取错误还是格式错误。
+  if (!response.success) throw new DocumentReadFailedError(response.error, response.userMessage);
   return MarkdownRevisionSnapshotSchema.parse(response.data);
 }
 async function installSnapshot(editor: Editor, session: MarkdownDocumentSession, snapshot: MarkdownRevisionSnapshot,

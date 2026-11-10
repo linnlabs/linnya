@@ -63,6 +63,8 @@
             'for-knowledge-base': isKnowledgeBaseScene,
             // 插件视图：独立整页管理页，滚动由 editor-shell 统一管理
             'for-plugin-store': isPluginStoreScene,
+            // 项目概览：整页一览表，表头固定、表体自己滚动
+            'for-project-overview': isProjectOverviewScene,
             // 对话居中工作台：全屏无留白，由对话主导页内部管理布局
             'for-chat-centric': isWorkspaceScene && !isWorkspaceDocumentActive,
             'for-workspace-stage': isWorkspaceStageActive,
@@ -142,6 +144,7 @@ const scene = computed(() => layoutStore.state.scene);
 const isWorkspaceScene = computed(() => scene.value.kind === 'workspace');
 const isKnowledgeBaseScene = computed(() => scene.value.kind === 'knowledge-base');
 const isPluginStoreScene = computed(() => scene.value.kind === 'plugin-store');
+const isProjectOverviewScene = computed(() => scene.value.kind === 'project-overview');
 const isWorkspaceStageActive = computed(() => isWorkspaceScene.value);
 const activeDocumentType = computed(() => layoutStore.state.activeDocument?.type ?? null);
 const isWorkspaceDocumentActive = computed(() => {

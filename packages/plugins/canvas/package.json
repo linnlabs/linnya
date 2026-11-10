@@ -62,7 +62,7 @@
     "@linnya/document-preview": "workspace:*"
   },
   "peerDependencies": {
-    "@linnya/renderer-ui": "^3.3.0",
+    "@linnya/renderer-ui": "^3.4.0",
     "pinia": ">=3.0.0 <4",
     "vue": ">=3.5.0 <4"
   },

@@ -94,7 +94,6 @@
 1	SCALE-05-spacing	apps/renderer/domains/workspace/styles/components/sidebar/CreateProjectModal.css
 1	SCALE-06-z-index	apps/renderer/domains/workspace/styles/components/sidebar/ProjectListView.css
 1	SCALE-05-spacing	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
-1	SCALE-03-line-height	apps/renderer/domains/workspace/styles/features/project-overview/ProjectOverviewModal.css
 3	SCALE-05-spacing	apps/renderer/domains/workspace/styles/features/todo/TodoSidebar.css
 1	SCALE-01-font-size	packages/plugins/slides/src/renderer/features/deckNavigator/ui/DeckFilmstrip.css
 1	SCALE-02-font-weight	packages/plugins/slides/src/renderer/features/deckNavigator/ui/DeckFilmstrip.css

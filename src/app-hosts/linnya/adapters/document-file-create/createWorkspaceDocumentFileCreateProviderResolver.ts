@@ -29,6 +29,7 @@ import type {
   WorkspaceDocumentFileCreateResult,
 } from '../../../../features/workspace/document-file-create/definitions/workspaceDocumentFileCreate';
 import type { ToolOwnerResultCommit } from '../../application/run-resumption';
+import type { ActionLedgerRecorder } from '../../../../domains/action-ledger';
 import type { WorkspaceService } from '../../../../electron-main/services/workspace/workspace';
 import {
   findFormatOwnershipByExtension,
@@ -41,6 +42,8 @@ export function createWorkspaceDocumentFileCreateProviderResolver(params: {
   readonly context: PluginToolContext & MarkdownImageSourceContext;
   readonly workspaceService: WorkspaceService;
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileCreateResult>;
+  /** Host 分发口的粗账：每次成功新建记一条，绑定的执行者来自工具上下文。 */
+  readonly actionLedger?: ActionLedgerRecorder;
 }): WorkspaceDocumentFileCreateProviderResolver {
   const markdownProvider = createMarkdownFileCreateProvider(params);
   return fileName => {
@@ -52,6 +55,7 @@ export function createWorkspaceDocumentFileCreateProviderResolver(params: {
         context: params.context,
         db: params.db,
         workspaceService: params.workspaceService,
+        ...(params.actionLedger ? { actionLedger: params.actionLedger } : {}),
       });
     }
 
@@ -92,6 +96,7 @@ function createMarkdownFileCreateProvider(params: {
   readonly context: PluginToolContext & MarkdownImageSourceContext;
   readonly workspaceService: WorkspaceService;
   readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileCreateResult>;
+  readonly actionLedger?: ActionLedgerRecorder;
 }): WorkspaceDocumentFileCreateProvider {
   const documentStore = createMarkdownDocumentStore(params.db);
   const references = getMarkdownDocumentReferences(params.db);
@@ -136,6 +141,12 @@ function createMarkdownFileCreateProvider(params: {
           const admitted = references.admit({ readerId: JSON.stringify([params.context.conversationId, params.context.runId]), sourceDocumentId: documentId, sourceKey: 'create', content: JsonValueSchema.parse(built.content) });
           references.assertBindings({ sourceDocumentId: documentId, bindings: admitted.bindings });
           documentStore.createDocument(documentId, admitted.content);
+          params.actionLedger?.record({
+            projectId: request.projectId,
+            documentId,
+            documentType: 'document',
+            action: 'create',
+          });
           // 与编辑回执使用同一领域投影；普通链接、代码中的引用示例不冒充来源。
           const currentProjection = buildMarkdownCitationReadProjection({
             content: projectMarkdownReferenceContent(references, documentId, documentStore.getDocument(documentId)).content,
@@ -164,6 +175,7 @@ function createPluginFileCreateProvider(params: {
   readonly registeredHook: DocumentTypeBackendHook;
   readonly enabledHook: DocumentTypeBackendHook | undefined;
   readonly context: PluginToolContext & MarkdownImageSourceContext;
+  readonly actionLedger?: ActionLedgerRecorder;
 }): WorkspaceDocumentFileCreateProvider {
   const unavailableMessage = buildPluginFileCreateUnavailableMessage(params.registeredHook);
   return {
@@ -203,6 +215,13 @@ function createPluginFileCreateProvider(params: {
         if (parent.createdFolders.length === 0) throw error;
         throw new WorkspaceDocumentFileCreateFailure(error, parent.createdFolders);
       }
+      // 插件新建是异步边界，粗账在插件提交成功后另行写入。
+      params.actionLedger?.record({
+        projectId: request.projectId,
+        documentId: result.documentId,
+        documentType: params.registeredHook.docType,
+        action: 'create',
+      });
       return {
         documentId: result.documentId,
         createdFolders: parent.createdFolders,

@@ -26,16 +26,20 @@ import {
 } from '../../../../app-hosts/linnya/app-server-rpc';
 import { createBoundedJsonLineDecoder } from '../../../../app-hosts/linnya/app-server-transport';
 import { APP_SERVER_BOOTSTRAP_MAX_FRAME_BYTES } from '../../../../app-hosts/linnya/app-server-bootstrap';
-import type {
-  AppServerProcessIdentity,
-  AppServerProcessExit,
-  AppServerProcessLaunch,
-  AppServerProcessSupervisor,
+import {
+  AppServerStartupFailedError,
+  type AppServerProcessIdentity,
+  type AppServerProcessExit,
+  type AppServerProcessLaunch,
+  type AppServerProcessSupervisor,
 } from '../definitions/appServerProcess';
 
 const DEFAULT_START_TIMEOUT_MS = 30_000;
 const DEFAULT_CONTROL_TIMEOUT_MS = 5_000;
 const MAX_PENDING_CONTROL_REQUESTS = 8;
+// 启动期 child 因数据库等原因失败退出时，RPC pipe 可能先于 stdout 上的 fatal 帧报错（两条 pipe 互不保序）。
+// ready 之前的传输失败先等这段时间：fatal 帧或进程退出先到，用户就看到真正原因。
+const STARTUP_TRANSPORT_FAILURE_GRACE_MS = 2_000;
 
 interface PendingRequest {
   readonly operation: AppServerControlRequestFrame['operation'];
@@ -81,6 +85,15 @@ export function createNodeAppServerProcessSupervisor(input: {
     observedExitResolve = resolve;
   });
   const pending = new Map<string, PendingRequest>();
+  let deferredStartupFailure: { readonly error: Error; readonly timer: NodeJS.Timeout } | null = null;
+
+  const clearDeferredStartupFailure = (): Error | null => {
+    if (!deferredStartupFailure) return null;
+    clearTimeout(deferredStartupFailure.timer);
+    const { error } = deferredStartupFailure;
+    deferredStartupFailure = null;
+    return error;
+  };
 
   const rejectPending = (error: Error): void => {
     for (const request of pending.values()) {
@@ -91,6 +104,7 @@ export function createNodeAppServerProcessSupervisor(input: {
   };
 
   const failProtocol = (error: Error): void => {
+    clearDeferredStartupFailure();
     clearStartTimeout();
     startReject?.(error);
     startReject = null;
@@ -103,6 +117,19 @@ export function createNodeAppServerProcessSupervisor(input: {
     child?.kill('SIGTERM');
   };
 
+  /** RPC 或 bootstrap pipe 失败；ready 之前先等 fatal 帧或进程退出，ready 之后立即按协议失败处理。 */
+  const failTransport = (error: Error): void => {
+    if (identity || !startReject) {
+      failProtocol(error);
+      return;
+    }
+    if (deferredStartupFailure) return;
+    deferredStartupFailure = {
+      error,
+      timer: setTimeout(() => failProtocol(error), STARTUP_TRANSPORT_FAILURE_GRACE_MS),
+    };
+  };
+
   const handleFrame = (value: unknown): void => {
     let frame;
     try {
@@ -113,7 +140,9 @@ export function createNodeAppServerProcessSupervisor(input: {
       return;
     }
     if (frame.kind === 'fatal') {
-      failProtocol(new Error(`App Server ${frame.code}: ${frame.message}`));
+      failProtocol(frame.code === 'startup_failed' && frame.startup_failure
+        ? new AppServerStartupFailedError(frame.message, frame.startup_failure)
+        : new Error(`App Server ${frame.code}: ${frame.message}`));
       return;
     }
     if (frame.kind === 'startup_progress') {
@@ -226,7 +255,7 @@ export function createNodeAppServerProcessSupervisor(input: {
     });
     void rpcPeer.completed.catch((error: unknown) => {
       const detail = error instanceof Error ? error.message : String(error);
-      failProtocol(new Error(`App Server RPC 失败：${detail}`));
+      failTransport(new Error(`App Server RPC 失败：${detail}`));
     });
     exitSettlement = new Promise<void>(resolve => {
       exitResolve = resolve;
@@ -256,6 +285,7 @@ export function createNodeAppServerProcessSupervisor(input: {
     // spawn 失败没有 exit，但仍会 close；统一等待进程与 stdio 收口，避免失败后 shutdown 永久等待。
     launchedChild.once('close', (code, signal) => {
       clearStartTimeout();
+      const deferredFailure = clearDeferredStartupFailure();
       exitResolve?.();
       exitResolve = null;
       observedExitResolve?.(Object.freeze({
@@ -270,7 +300,7 @@ export function createNodeAppServerProcessSupervisor(input: {
       rpcPeer?.dispose(failure);
       rpcPeer = null;
       rpcToChild = null;
-      if (!identity) startReject?.(failure);
+      if (!identity) startReject?.(deferredFailure ?? failure);
       rejectPending(failure);
       child = null;
       identity = null;
@@ -283,7 +313,7 @@ export function createNodeAppServerProcessSupervisor(input: {
     });
     launchedChild.once('spawn', () => {
       void writeBootstrapFrame(bootstrapInput, input.launch.bootstrapBytes).catch(error => {
-        failProtocol(error);
+        failTransport(error);
       });
     });
     return startSettlement;

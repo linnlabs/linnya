@@ -17,6 +17,7 @@ export interface PublicPackagePrivatePluginViolation {
 const PUBLIC_OWNER_ROOTS = [
   'apps/linnya-benchmark',
   'apps/linnya-cli',
+  'packages/color-core',
   'packages/linnkit-provider-ai-sdk',
   'packages/parser-wasm',
   'packages/plugin-host-contract',

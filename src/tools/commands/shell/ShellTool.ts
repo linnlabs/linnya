@@ -67,6 +67,10 @@ returns its final result. A command still running after the initial wait returns
 for the process tool. Set interactive only when the command requires a real terminal. Set
 requires_write_access when the command may create, modify, install, move, or delete files.
 
+For questions about document changes in this project, run linnya changes. Use --day yesterday
+or --day today for local dates, --run <root-run-id> for a run, or linnya changes --help for ranges.
+Report only recorded creations and updates; mention truncation. An empty result cannot rule out other actions.
+
 The default working directory is this conversation's physical work directory. Use relative OS
 paths for temporary and derived files. workspace:/ documents live in Linnya's database VFS,
 not as ordinary files on disk; use formal document tools to read or change them. conversation:/

@@ -28,6 +28,7 @@ import { getTelemetrySchemaProviders } from '../../app-hosts/linnya/adapters/tel
 import { getKnowledgeBaseSchemaProviders } from '../../features/knowledge-base/infrastructure/sqlite/schema-providers';
 import { getAssetSchemaProviders } from '../../domains/assets/features/asset-ledger/infrastructure/sqlite/schemaProviders';
 import { getMarkdownSchemaProviders } from '../../domains/markdown/features/document-storage/infrastructure/sqlite/schemaProviders';
+import { getActionLedgerSchemaProviders } from '../../domains/action-ledger/infrastructure/sqlite/schemaProviders';
 import { getPluginStateSchemaProviders } from '../../features/plugins/infrastructure/sqlite/schema-providers';
 import { getWorkspaceDataPath } from '../../shared/utils/pathManager';
 import {
@@ -74,6 +75,7 @@ export class DatabaseService {
       ...getDocumentReferenceSchemaProviders(),
       ...getAssetSchemaProviders(),
       ...getMarkdownSchemaProviders(),
+      ...getActionLedgerSchemaProviders(),
       ...getPluginStateSchemaProviders(),
       ...getConversationSchemaProviders(),
       ...getProjectDeletionSchemaProviders(),

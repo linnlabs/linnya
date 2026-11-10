@@ -75,6 +75,7 @@ export * from './conversation/selected-agent';
 export * from './conversation/history';
 export * from './conversation/ui-window-refresh';
 export * from './conversation/file-link';
+export * from './conversation/run-document-changes';
 export * from './conversation/run-continuation';
 
 // ============ Storage Space HTTP 合同 ============
@@ -198,10 +199,12 @@ export function isIncrementalEvent(event: unknown): event is IncrementalEvent {
 
 export * from './tools/research-run';
 export * from './tools/complete-research';
+export * from './color-palette';
 export * from './markdown-image';
 
 export * from './skills';
 export * from './project';
+export * from './project-overview';
 export * from './project-mutation-events';
 
 export * from './document-references';

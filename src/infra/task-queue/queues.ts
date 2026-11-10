@@ -54,6 +54,16 @@ export type QueueManagerEvents = {
   'graphIndexing:taskFailed': (payload: { taskId: string; error?: string }) => void;
 };
 
+export interface QueueManagerInitializeOptions {
+  workerRuntime: QueueWorkerRuntime;
+  runtimePathRoots: RuntimePathRoots;
+  distributionIdentity: DistributionIdentity;
+  maxConcurrency?: number;
+  qdrantUrl?: string;
+  ingestionLifecycleObserver?: WorkerJobLifecycleObserver<IngestionJobPayload>;
+  jobPresentationPublisher?: QueueJobPresentationPublisher;
+}
+
 export class QueueManager extends EventEmitter {
   private static instance: QueueManager | null = null;
   private ingestionQueue: WorkerThreadQueue<IngestionJobPayload> | null = null;
@@ -61,6 +71,7 @@ export class QueueManager extends EventEmitter {
   private graphIndexingQueue: WorkerThreadQueue<GraphIndexingJobPayloadInput> | null = null;
   private readonly audioProcessingQueue = new AudioProcessingQueue();
   private qdrantUrl: string | null = null;
+  private initializationFailure: string | null = null;
   protected constructor() {
     super();
   }
@@ -84,15 +95,21 @@ export class QueueManager extends EventEmitter {
    * 输出 (Output): 无
    * 副作用 (Side-effects): 创建摄入任务队列和音频处理队列
    */
-  async initialize(options: {
-    workerRuntime: QueueWorkerRuntime;
-    runtimePathRoots: RuntimePathRoots;
-    distributionIdentity: DistributionIdentity;
-    maxConcurrency?: number;
-    qdrantUrl?: string;
-    ingestionLifecycleObserver?: WorkerJobLifecycleObserver<IngestionJobPayload>;
-    jobPresentationPublisher?: QueueJobPresentationPublisher;
-  }): Promise<void> {
+  async initialize(options: QueueManagerInitializeOptions): Promise<void> {
+    this.initializationFailure = null;
+    try {
+      await this.initializeQueues(options);
+    } catch (error: unknown) {
+      // 启动把队列当作可停掉的能力：收掉已建好的部分，记下原因，之后的入口按原因说明。
+      this.initializationFailure = error instanceof Error ? error.message : String(error);
+      await this.shutdown().catch((shutdownError: unknown) => {
+        console.error('[QueueManager] 收口未初始化完成的队列时出错:', shutdownError);
+      });
+      throw error;
+    }
+  }
+
+  private async initializeQueues(options: QueueManagerInitializeOptions): Promise<void> {
     console.log('[QueueManager] 正在初始化任务队列系统...');
     this.qdrantUrl = options.qdrantUrl || null;
 
@@ -200,7 +217,7 @@ export class QueueManager extends EventEmitter {
    */
   async addIngestionTask(taskData: IngestionJobPayload): Promise<string> {
     if (!this.ingestionQueue) {
-      throw new Error('摄入队列未初始化');
+      throw this.unavailableError('摄入队列未初始化');
     }
     const taskWithWorkerEnv: IngestionJobPayload = {
       ...taskData,
@@ -251,7 +268,13 @@ export class QueueManager extends EventEmitter {
    * 副作用 (Side-effects): 在后台线程中流式处理音频解码、重采样和切分
    */
   processAudio(filePath: string, config: AudioPreprocessingConfig): EventEmitter {
+    if (this.initializationFailure) throw this.unavailableError('音频处理队列未初始化');
     return this.audioProcessingQueue.processAudio(filePath, config);
+  }
+
+  private unavailableError(fallback: string): Error {
+    if (!this.initializationFailure) return new Error(fallback);
+    return new Error(`后台任务队列没有启动成功，暂时不能执行（${this.initializationFailure}）`);
   }
 
   /**
@@ -262,7 +285,7 @@ export class QueueManager extends EventEmitter {
    */
   async cancelIngestionTask(taskId: string): Promise<boolean> {
     if (!this.ingestionQueue) {
-      throw new Error('摄入队列未初始化');
+      throw this.unavailableError('摄入队列未初始化');
     }
     return await this.ingestionQueue.cancelTask(taskId);
   }
@@ -312,7 +335,7 @@ export class QueueManager extends EventEmitter {
    */
   async pauseIngestionTask(taskId: string): Promise<boolean> {
     if (!this.ingestionQueue) {
-      throw new Error('摄入队列未初始化');
+      throw this.unavailableError('摄入队列未初始化');
     }
     return await this.ingestionQueue.pauseTask(taskId);
   }
@@ -325,7 +348,7 @@ export class QueueManager extends EventEmitter {
    */
   async resumeIngestionTask(taskId: string): Promise<boolean> {
     if (!this.ingestionQueue) {
-      throw new Error('摄入队列未初始化');
+      throw this.unavailableError('摄入队列未初始化');
     }
     return await this.ingestionQueue.resumeTask(taskId);
   }
@@ -338,7 +361,7 @@ export class QueueManager extends EventEmitter {
    */
   getTaskStatuses(taskIds: string[]): Record<string, unknown> {
     if (!this.ingestionQueue) {
-      throw new Error('队列管理器未初始化');
+      throw this.unavailableError('队列管理器未初始化');
     }
     return this.ingestionQueue.getTaskStatuses(taskIds);
   }
@@ -351,7 +374,7 @@ export class QueueManager extends EventEmitter {
    */
   getQueueStats() {
     if (!this.ingestionQueue) {
-      throw new Error('队列管理器未初始化');
+      throw this.unavailableError('队列管理器未初始化');
     }
     return this.ingestionQueue.getQueueStats();
   }
@@ -364,7 +387,7 @@ export class QueueManager extends EventEmitter {
    */
   getTaskById(taskId: string): IngestionWorkerJob | undefined {
     if (!this.ingestionQueue) {
-      throw new Error('队列管理器未初始化');
+      throw this.unavailableError('队列管理器未初始化');
     }
     const task = this.ingestionQueue.getTask(taskId);
     if (!task) return undefined;

@@ -2,7 +2,6 @@ export * from './definitions/chartOption';
 export * from './definitions/chartReadingState';
 export * from './definitions/chartRender';
 export * from './definitions/chartTheme';
-export * from './functions/chartColorSpace';
 export * from './functions/chartDomains';
 export * from './functions/chartImageComposition';
 export * from './functions/chartLayout';

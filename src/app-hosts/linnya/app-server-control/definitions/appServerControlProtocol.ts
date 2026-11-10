@@ -1,5 +1,5 @@
 export const APP_SERVER_CONTROL_SCHEMA_VERSION = 1 as const;
-export const APP_SERVER_CONTROL_PROTOCOL_VERSION = 3 as const;
+export const APP_SERVER_CONTROL_PROTOCOL_VERSION = 4 as const;
 export const APP_SERVER_CONTROL_MAX_FRAME_BYTES = 16 * 1024;
 
 export interface AppServerControlReadyFrame {
@@ -50,11 +50,36 @@ export interface AppServerControlStartupProgressFrame {
   readonly total_steps: number;
 }
 
+/**
+ * 启动失败的类别。Desktop 据此告诉用户原因和该做什么；判断依据是错误类别与
+ * SQLite / 系统错误码，不是错误文案。
+ */
+export type AppServerStartupFailureReason =
+  | 'disk_full'
+  | 'cannot_access'
+  | 'io_error'
+  | 'busy'
+  | 'older_data'
+  | 'newer_data'
+  | 'migration_failed'
+  | 'corrupt'
+  | 'unknown';
+
+export interface AppServerStartupFailure {
+  readonly reason: AppServerStartupFailureReason;
+  /** 识别出的 SQLite 或系统错误码，例如 `SQLITE_FULL`、`ENOSPC`；没有则为 null。 */
+  readonly code: string | null;
+  /** 失败发生在哪一步 Host 迁移（来源版本）；不是迁移阶段则为 null。 */
+  readonly migration_from_version: number | null;
+}
+
 export interface AppServerControlFatalFrame {
   readonly schema_version: typeof APP_SERVER_CONTROL_SCHEMA_VERSION;
   readonly kind: 'fatal';
   readonly code: 'startup_failed' | 'protocol_failed' | 'shutdown_failed';
   readonly message: string;
+  /** 只在 `startup_failed` 时出现，且必须出现。 */
+  readonly startup_failure?: AppServerStartupFailure;
 }
 
 export type AppServerParentControlFrame = AppServerControlRequestFrame;

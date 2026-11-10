@@ -65,6 +65,7 @@ apps/renderer/domains/workspace/
 
 ## 重要约定
 
+- 批量导出 Markdown 逐篇处理：某篇读取或解析失败时记下文档名继续，写出全部成功的文档，结束时提示“已导出 N 篇，M 篇失败：…”，并说明有几份插件文档不在 Markdown 导出范围内；不另写结果清单文件。正文由 Editor 公开入口 `parseMarkdownDocumentForExport` 解析，不取自活动编辑器。
 - Markdown PDF 导出通过 Editor 公开入口 `prepareMarkdownHtmlForPdf` 生成完整静态内容后再交给 Electron；Workspace 只拥有纸张、打印 CSS、保存框与交付。图表不能直接使用 `editor.getHTML()` 中仅用于往返的标题和规格，也不能截取可能被虚拟化卸载的 NodeView；任一图表生成失败时中止导出并提示错误。
 - 工作区同一项目、同一父目录下的未删除节点名必须唯一；历史重名由数据库迁移自动改为 `名称 (1)`、`名称 (2)`。
 - `WorkspaceTreeStore` 只持有响应式状态、同步 action 和 feature 组合；VFS 加载/刷新归属 `tree-loading`，异步节点变更归属 `tree-node-mutations`。树 DTO 投影属于 workspace domain shared，禁止全局 shared 反向依赖 Store 内部类型。

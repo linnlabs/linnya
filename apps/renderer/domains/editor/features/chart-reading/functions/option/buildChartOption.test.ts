@@ -11,7 +11,7 @@ import { buildShareTooltipContent, shareOuterRatio } from '@linnya/markdown-docu
 import { buildScatterTooltipContent } from '@linnya/markdown-document-core/workspace-charts'
 import { buildRadarTooltipContent } from '@linnya/markdown-document-core/workspace-charts'
 import { deriveChartReadingView } from '@linnya/markdown-document-core/workspace-charts'
-import { parseColor } from '@linnya/markdown-document-core/workspace-charts'
+import { parseColor } from '@linnya/color-core'
 
 function option(type: Parameters<typeof chartFixture>[0], patch: Record<string, unknown> = {}, state = DEFAULT_CHART_READING_STATE, ctx = chartTestContext()) {
   return buildChartOption(chartFixture(type, patch), state, ctx)

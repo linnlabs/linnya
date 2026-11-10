@@ -28,7 +28,8 @@ struct Endpoint {
 struct InvocationRequest<'a> {
     protocol_version: u8,
     kind: &'static str,
-    plugin_id: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    plugin_id: Option<&'a str>,
     argv: &'a [String],
 }
 
@@ -192,10 +193,19 @@ fn read_response(mut stream: TcpStream) -> Result<u8, ()> {
     terminal_exit_code.ok_or(())
 }
 
-fn invoke(endpoint: &Endpoint, token: &str, plugin_id: &str, argv: &[String]) -> Result<u8, ()> {
+fn invoke(
+    endpoint: &Endpoint,
+    token: &str,
+    plugin_id: Option<&str>,
+    argv: &[String],
+) -> Result<u8, ()> {
     let body = serde_json::to_vec(&InvocationRequest {
         protocol_version: PROTOCOL_VERSION,
-        kind: "plugin_cli_invoke",
+        kind: if plugin_id.is_some() {
+            "plugin_cli_invoke"
+        } else {
+            "core_cli_invoke"
+        },
         plugin_id,
         argv,
     })
@@ -218,6 +228,29 @@ fn invoke(endpoint: &Endpoint, token: &str, plugin_id: &str, argv: &[String]) ->
     read_response(stream)
 }
 
+// Core 与插件共享传输，但 Core 没有插件身份。只剥 Windows 可执行扩展名，保留插件名里的点。
+fn invocation_plugin(name: &str) -> Result<Option<&str>, ()> {
+    let stem = if cfg!(windows) {
+        name.strip_suffix(".exe").unwrap_or(name)
+    } else {
+        name
+    };
+    if stem == "linnya" {
+        return Ok(None);
+    }
+    let id = stem.strip_prefix("linnya-").ok_or(())?;
+    if id == "plugin-cli-client"
+        || id.len() > 128
+        || !id.starts_with(|c: char| c.is_ascii_lowercase() || c.is_ascii_digit())
+        || !id
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "._-".contains(c))
+    {
+        return Err(());
+    }
+    Ok(Some(id))
+}
+
 fn run() -> Result<u8, ()> {
     let endpoint = parse_endpoint(&env::var(ENDPOINT_ENV).map_err(|_| ())?)?;
     let token = env::var(TOKEN_ENV).map_err(|_| ())?;
@@ -225,27 +258,11 @@ fn run() -> Result<u8, ()> {
         return Err(());
     }
     let executable = env::args_os().next().ok_or(())?;
-    let executable_stem = Path::new(&executable)
-        .file_stem()
+    let name = Path::new(&executable)
+        .file_name()
         .and_then(|value| value.to_str())
         .ok_or(())?;
-    let plugin_id = executable_stem.strip_prefix("linnya-").ok_or(())?;
-    if plugin_id == "plugin-cli-client" {
-        return Err(());
-    }
-    let mut plugin_id_characters = plugin_id.chars();
-    if !plugin_id_characters
-        .next()
-        .is_some_and(|character| character.is_ascii_lowercase() || character.is_ascii_digit())
-        || plugin_id.len() > 128
-        || !plugin_id.chars().all(|character| {
-            character.is_ascii_lowercase()
-                || character.is_ascii_digit()
-                || "._-".contains(character)
-        })
-    {
-        return Err(());
-    }
+    let plugin_id = invocation_plugin(name)?;
     // Unix argv 允许非 UTF-8 字节；bridge JSON 不允许。显式拒绝而不是让 env::args() panic，
     // 保持所有 client-side 输入失败都落到稳定 transport exit code。
     let argv: Vec<String> = env::args_os()

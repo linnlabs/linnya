@@ -1,0 +1,196 @@
+/*
+ * 一轮回复末尾的“改了哪些文档”。层级只靠字号、字重和字色深浅，不加色块或边框。
+ * 尾注在 tail 首行左侧（与转存 / 复制同一行），清单展开在首行下方。
+ */
+.run-document-changes-note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  height: 24px;
+  padding: 0 var(--space-1) 0 var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font: inherit;
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--duration-medium) var(--ease-standard),
+    background-color var(--duration-medium) var(--ease-standard);
+}
+
+.run-document-changes-note:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.run-document-changes-note:focus-visible,
+.run-document-changes-row:focus-visible,
+.run-document-changes-row__action:focus-visible,
+.run-document-changes-list__more:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 0;
+}
+
+.run-document-changes-note.is-static {
+  cursor: default;
+}
+
+.run-document-changes-note__summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.run-document-changes-note__separator {
+  flex: none;
+  color: var(--color-text-placeholder);
+}
+
+.run-document-changes-note__state {
+  flex: none;
+}
+
+.run-document-changes-note__state.is-pending {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.run-document-changes-note__chevron {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.run-document-changes-list {
+  /* 图标列宽；“再显示”和截断说明与文档名左对齐。 */
+  --run-document-changes-icon-column: 20px;
+
+  margin: 0 calc(-1 * var(--space-1-5));
+}
+
+.run-document-changes-row {
+  display: grid;
+  grid-template-columns: var(--run-document-changes-icon-column) minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: var(--space-2);
+  min-height: 30px;
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--duration-medium) var(--ease-standard);
+}
+
+.run-document-changes-row:hover:not(.is-disabled) {
+  background: var(--color-bg-hover);
+}
+
+.run-document-changes-row.is-disabled {
+  cursor: default;
+}
+
+.run-document-changes-row__icon {
+  width: 16px;
+  height: 16px;
+  justify-self: center;
+  color: var(--color-text-secondary);
+}
+
+.run-document-changes-row__main {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.run-document-changes-row__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-document-changes-row__meta {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  white-space: nowrap;
+}
+
+.run-document-changes-row.is-disabled .run-document-changes-row__name,
+.run-document-changes-row.is-disabled .run-document-changes-row__icon {
+  color: var(--color-text-muted);
+}
+
+.run-document-changes-row__state {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  white-space: nowrap;
+}
+
+.run-document-changes-row__state.is-pending {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.run-document-changes-row__action {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-caption);
+  cursor: pointer;
+  transition:
+    color var(--duration-medium) var(--ease-standard),
+    background-color var(--duration-medium) var(--ease-standard);
+}
+
+.run-document-changes-row__action.is-placeholder {
+  visibility: hidden;
+}
+
+.run-document-changes-row:hover .run-document-changes-row__action {
+  background: var(--color-bg-hover-strong);
+  color: var(--color-text-primary);
+}
+
+.run-document-changes-list__more {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  margin: var(--space-0-5) 0 0 calc(var(--run-document-changes-icon-column) + var(--space-2));
+  padding: 0 var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font: inherit;
+  font-size: var(--font-size-caption);
+  cursor: pointer;
+}
+
+.run-document-changes-list__more:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.run-document-changes-list__truncated {
+  margin: var(--space-1) 0 0 calc(var(--space-1-5) + var(--run-document-changes-icon-column) + var(--space-2));
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+}

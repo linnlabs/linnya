@@ -422,6 +422,17 @@ describe('durable root Flow continuation, production Audit off', () => {
       expect(await resumed.flow.getActiveForegroundRun(conversationId)).toMatchObject({
         run: null,
       });
+      // 账本与原写入同事务，恢复只复取结果，不重复登记，也不记在恢复后的执行上。
+      expect(resumed.db.prepare(
+        'SELECT action, run_id, root_run_id, parent_run_id, tool_call_id, conversation_id FROM action_ledger_entries'
+      ).all()).toEqual([{
+        action: operation,
+        run_id: original.run_id,
+        root_run_id: original.run_id,
+        parent_run_id: null,
+        tool_call_id: 'original-write',
+        conversation_id: conversationId,
+      }]);
       resumed.ai.assertAllTurnsConsumed();
     }
   );
@@ -460,6 +471,7 @@ describe('durable root Flow continuation, production Audit off', () => {
     expect(
       fixture.db.prepare("SELECT id FROM workspace_nodes WHERE name = 'rollback.md'").all()
     ).toHaveLength(0);
+    expect(fixture.db.prepare('SELECT id FROM action_ledger_entries').all()).toHaveLength(0);
     const facts = (await fixture.eventStore.readEvents(conversationId, { limit: 100 })).events;
     expect(
       facts.find(event => event.type === 'tool_output' && event.tool_call_id === 'rollback-write')

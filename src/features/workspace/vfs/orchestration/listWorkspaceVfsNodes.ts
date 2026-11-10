@@ -114,6 +114,100 @@ function getChildRows(
     : db.prepare(query).all(parentId, projectId));
 }
 
+export interface WorkspaceNodeIdentity {
+  readonly id: string;
+  readonly projectId: string | null;
+  readonly parentId: string | null;
+  readonly type: string;
+  /** 展示名：去掉文档类型后缀，与 VFS display_name 一致。 */
+  readonly title: string;
+  readonly deleted: boolean;
+}
+
+/**
+ * 改动记录需要已删除文档的名字。只给身份与展示名，不给路径；已删除节点不能借此打开或读取。
+ */
+export function readWorkspaceNodeIdentityIncludingDeleted(
+  db: WorkspaceVfsDatabase,
+  nodeId: string
+): WorkspaceNodeIdentity | null {
+  const row = db.prepare('SELECT * FROM workspace_nodes WHERE id = ?').get(nodeId) as WorkspaceNodeRow | undefined;
+  if (!row || !isVisibleWorkspaceNode(row)) return null;
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    parentId: row.parent_id,
+    type: row.type,
+    title: deriveWorkspaceNodeDisplayName(row) ?? row.name,
+    deleted: row.deleted_at !== null,
+  };
+}
+
+export interface WorkspaceProjectDocument {
+  readonly id: string;
+  readonly type: string;
+  /** 展示名：去掉文档类型后缀，与 VFS display_name 一致。 */
+  readonly title: string;
+  readonly parentId: string | null;
+  /** 从项目根到所在文件夹的文件夹名；在根目录时为空数组。 */
+  readonly location: readonly string[];
+  readonly createdAt: number;
+  /** 节点时间：正文提交、改名、移动都会更新；打开文档不更新。 */
+  readonly updatedAt: number;
+}
+
+export interface WorkspaceProjectDocumentList {
+  readonly documents: readonly WorkspaceProjectDocument[];
+  readonly folderCount: number;
+}
+
+/**
+ * 一次查询列出项目里全部可见文档（非文件夹节点）及其所在位置。只从项目根出发连接父子：
+ * 父节点已删除的残留节点、资源库及其子树都不出现，与逐级列目录看到的一致。
+ */
+export function listWorkspaceProjectDocuments(
+  db: WorkspaceVfsDatabase,
+  projectIdInput: string
+): WorkspaceProjectDocumentList {
+  const projectId = normalizeProjectId(projectIdInput);
+  const rows = db.prepare(`
+    SELECT * FROM workspace_nodes WHERE project_id = ? AND deleted_at IS NULL
+    ORDER BY type DESC, name ASC
+  `).all(projectId) as WorkspaceNodeRow[];
+  const childrenByParent = new Map<string | null, WorkspaceNodeRow[]>();
+  for (const row of rows) {
+    const siblings = childrenByParent.get(row.parent_id) ?? [];
+    siblings.push(row);
+    childrenByParent.set(row.parent_id, siblings);
+  }
+  const documents: WorkspaceProjectDocument[] = [];
+  let folderCount = 0;
+  const pending: { readonly parentId: string | null; readonly location: readonly string[] }[] = [
+    { parentId: null, location: [] },
+  ];
+  for (let next = pending.pop(); next; next = pending.pop()) {
+    for (const row of childrenByParent.get(next.parentId) ?? []) {
+      if (!isVisibleWorkspaceNode(row)) continue;
+      const title = deriveWorkspaceNodeDisplayName(row) ?? row.name;
+      if (row.type === 'folder') {
+        folderCount += 1;
+        pending.push({ parentId: row.id, location: [...next.location, title] });
+        continue;
+      }
+      documents.push({
+        id: row.id,
+        type: row.type,
+        title,
+        parentId: row.parent_id,
+        location: next.location,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      });
+    }
+  }
+  return { documents, folderCount };
+}
+
 /** 同步 owner 事务内读取刚提交的节点身份；不遍历系统虚拟视图。 */
 export function readPersistedWorkspaceVfsNode(
   db: WorkspaceVfsDatabase,

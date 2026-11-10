@@ -20,10 +20,10 @@ function replaceReleaseNotesVersion(content: string, version: string): string {
   const lines = content.split(/\r?\n/);
   const firstContentLine = lines.findIndex((line) => line.trim().length > 0);
   if (firstContentLine === -1) {
-    return `测试版 v${version}\n`;
+    return `Linnya v${version}\n`;
   }
 
-  lines[firstContentLine] = `测试版 v${version}`;
+  lines[firstContentLine] = `Linnya v${version}`;
   return lines.join('\n');
 }
 

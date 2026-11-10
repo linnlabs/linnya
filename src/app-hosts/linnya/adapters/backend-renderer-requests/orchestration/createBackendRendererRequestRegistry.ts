@@ -1,3 +1,4 @@
+import { withActionActor } from 'src/domains/action-ledger';
 import type {
   BackendRendererRequestRegistryPort,
 } from '../definitions/backendRendererRequest';
@@ -47,7 +48,7 @@ export function createBackendRendererRequestRegistry(): BackendRendererRequestRe
         throw new Error(`Backend Renderer request channel 未注册: ${channel}`);
       }
       context?.signal.throwIfAborted();
-      return handler(context, ...args);
+      return withActionActor({ kind: 'user' }, () => handler(context, ...args));
     },
   };
   return Object.freeze(registry);

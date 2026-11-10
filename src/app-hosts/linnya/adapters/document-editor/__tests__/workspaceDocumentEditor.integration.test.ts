@@ -1,3 +1,5 @@
+import { getActionLedgerSchemaProviders, createSqliteActionLedger } from 'src/domains/action-ledger';
+import { createBackendRendererRequestRegistry } from 'src/app-hosts/linnya/adapters/backend-renderer-requests';
 import { createProjectLifecycle } from 'src/domains/projects';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
@@ -94,6 +96,28 @@ function readCount(value: unknown): number {
 }
 
 describe('Workspace document Editor provider integration', () => {
+  it('用户重复保存相同的正文，只在实际变更的事务中记一笔', async () => {
+    const db = createDb();
+    try {
+      for (const provider of getActionLedgerSchemaProviders()) for (const ddl of provider.getSchema()) db.exec(ddl);
+      const projectId = createProjectLifecycle(db).create({ name: 'Ledger' });
+      const workspaceService = new WorkspaceService(db);
+      const documentId = workspaceService.createDocument(projectId, '编辑.md', null, 'document');
+      new MarkdownDocumentService(db).createDocument(documentId, markdownDocument('before'));
+      const registry = createBackendRendererRequestRegistry();
+      const resolveProvider = createWorkspaceDocumentEditorProviderResolver({ db, mutationPublisher: createRecordingPublisher([]) });
+      registry.handle('workspace:save-document', () => writeWorkspaceEditorDocument({
+        documentId, workspaceService, resolveProvider, content: markdownDocument('after'),
+      }));
+      await registry.invoke('workspace:save-document', []);
+      await registry.invoke('workspace:save-document', []);
+      expect(createSqliteActionLedger(db).listDocumentChanges({ projectId, limit: 5 }).changes)
+        .toEqual([expect.objectContaining({ documentId, actorKind: 'user', actions: ['update'], entryCount: 1 })]);
+    } finally {
+      db.close();
+    }
+  });
+
   it('通过内建 Markdown provider 读写状态化文档并发布版本事件', async () => {
     const db = createDb();
     try {

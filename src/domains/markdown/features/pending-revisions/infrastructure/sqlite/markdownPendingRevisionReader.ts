@@ -79,6 +79,25 @@ export class MarkdownPendingRevisionReader {
     return result.count;
   }
 
+  /** 一次查询多份文档的待审阅数；没有待审阅修订的文档不出现在结果里。 */
+  getPendingRevisionCounts(documentIds: readonly string[]): Map<string, number> {
+    const counts = new Map<string, number>();
+    if (documentIds.length === 0) return counts;
+    const rows = this.readDb.all(`
+      SELECT document_node_id, COUNT(*) AS count
+      FROM markdown_block_pending_revisions
+      WHERE document_node_id IN (SELECT value FROM json_each(?))
+      GROUP BY document_node_id
+    `, [JSON.stringify(documentIds)]);
+    for (const row of rows) {
+      if (!isRecord(row) || typeof row.document_node_id !== 'string' || typeof row.count !== 'number') {
+        throw new Error('pending revisions count query returned an invalid row');
+      }
+      counts.set(row.document_node_id, row.count);
+    }
+    return counts;
+  }
+
   parseMetadata(revision: PendingRevision): PendingRevisionMetadata | null {
     if (!revision.meta_json) return null;
     try {
