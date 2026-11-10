@@ -608,6 +608,25 @@ body.project-overview-is-resizing {
   color: var(--color-accent-text);
 }
 
+/* 标签：纸面上的淡灰小签，不分颜色；放不下的截掉，不换行 */
+.project-overview__tags {
+  display: flex;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.project-overview__tag {
+  flex: none;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 18px;
+  white-space: nowrap;
+}
+
 /* 加载、空表、没有匹配 */
 .project-overview__state {
   padding: var(--space-4) var(--space-2);

@@ -22,7 +22,7 @@ function deferred<T>() {
 function overview(project = 'p', title = 'old'): ProjectOverview {
   return { project_id: project, folder_count: 0, documents: [{
     document_id: 'doc', node_type: 'document', title, parent_id: null, location: [],
-    created_at: 1, creator: null, last_modified_at: 2, last_modified_by: null, pending_revision_count: 0,
+    created_at: 1, creator: null, last_modified_at: 2, last_modified_by: null, pending_revision_count: 0, tags: [],
   }] };
 }
 const updated = (projectId: string): WorkspaceMutationEvent => ({

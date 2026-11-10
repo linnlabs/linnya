@@ -32,6 +32,7 @@ export function projectOverviewDocument(input: {
   readonly summary: ActionLedgerDocumentSummary | undefined;
   readonly conversationTitles: ReadonlyMap<string, string>;
   readonly pendingRevisionCount: number | null;
+  readonly tags: readonly { readonly id: string; readonly name: string }[];
 }): ProjectOverviewDocument {
   const { document, summary } = input;
   const ledgerAt = summary?.last.recordedAt ?? null;
@@ -62,5 +63,6 @@ export function projectOverviewDocument(input: {
       ? { actor: toProjectOverviewActor(summary.last.actorKind), plugin_id: summary.last.pluginId }
       : null,
     pending_revision_count: input.pendingRevisionCount,
+    tags: input.tags.map(tag => ({ id: tag.id, name: tag.name })),
   };
 }

@@ -13,6 +13,7 @@ export const PROJECT_OVERVIEW_MAX_NAME_WIDTH = 720;
 const DEFAULT_NAME_WIDTH = 280;
 
 const DEFAULT_COLUMNS: readonly ProjectOverviewColumnLayout[] = [
+  { id: 'tags', visible: true, width: 160 },
   { id: 'location', visible: true, width: 120 },
   { id: 'source', visible: true, width: 84 },
   { id: 'conversation', visible: true, width: 200 },

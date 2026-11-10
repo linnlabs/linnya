@@ -3,6 +3,7 @@ import type { ProjectOverviewActor } from '@app/schemas';
 
 /** 名称列固定在最前、占满剩余宽度，不进列配置。 */
 export const PROJECT_OVERVIEW_COLUMN_IDS = [
+  'tags',
   'location',
   'source',
   'conversation',
@@ -48,6 +49,8 @@ export interface ProjectOverviewFilters {
   readonly modified: ProjectOverviewModifiedRange;
   /** 所在文件夹路径（含子文件夹）；null 为全部位置，空数组为根目录本身。 */
   readonly location: readonly string[] | null;
+  /** 同时带有这些标签（ID）；空数组为不按标签筛选。 */
+  readonly tags: readonly string[];
   readonly query: string;
 }
 
@@ -55,6 +58,7 @@ export const EMPTY_PROJECT_OVERVIEW_FILTERS: ProjectOverviewFilters = Object.fre
   nodeType: null,
   modified: 'any',
   location: null,
+  tags: [],
   query: '',
 });
 
@@ -74,6 +78,8 @@ export interface ProjectOverviewRow {
   readonly lastModifiedActor: ProjectOverviewActor | null;
   readonly lastModifiedPluginId: string | null;
   readonly pendingRevisionCount: number | null;
+  /** 当前标签，按打标签的先后。 */
+  readonly tags: readonly { readonly id: string; readonly name: string }[];
 }
 
 /** 打开一份文档需要的身份；文件页的行和对话详情里改过的文档都给出这些。 */

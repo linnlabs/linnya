@@ -22,6 +22,7 @@ export function toProjectOverviewRow(document: ProjectOverviewDocument): Project
     lastModifiedActor: document.last_modified_by?.actor ?? null,
     lastModifiedPluginId: document.last_modified_by?.plugin_id ?? null,
     pendingRevisionCount: document.pending_revision_count,
+    tags: document.tags,
   };
 }
 
@@ -55,12 +56,20 @@ export function filterProjectOverviewRows(
     if (filters.nodeType !== null && row.nodeType !== filters.nodeType) return false;
     if (since !== null && row.lastModifiedAt < since) return false;
     if (filters.location !== null && !isInLocation(row, filters.location)) return false;
+    if (!filters.tags.every(tagId => row.tags.some(tag => tag.id === tagId))) return false;
     if (query) {
       const nameMatches = row.title.toLocaleLowerCase().includes(query);
       if (!nameMatches && !options.contentMatches?.has(row.documentId)) return false;
     }
     return true;
   });
+}
+
+/** 项目文档上出现过的标签，按名称排好，供“标签”筛选。 */
+export function listProjectOverviewTags(rows: readonly ProjectOverviewRow[]): { readonly id: string; readonly name: string }[] {
+  const seen = new Map<string, { readonly id: string; readonly name: string }>();
+  for (const row of rows) for (const tag of row.tags) seen.set(tag.id, tag);
+  return [...seen.values()].sort((left, right) => collator.compare(left.name, right.name));
 }
 
 /** 项目里出现过文档的文件夹路径（含上级），按路径排好，供“位置”筛选。 */
@@ -101,6 +110,7 @@ export function sortProjectOverviewRows(
   const keyed = (row: ProjectOverviewRow): { value: string | number | null; text: boolean } => {
     switch (sort.key) {
       case 'name': return { value: row.title, text: true };
+      case 'tags': return { value: row.tags.length ? row.tags.map(tag => tag.name).join('、') : null, text: true };
       case 'location': return { value: row.location.join('/'), text: true };
       case 'source': return { value: row.creatorActor === null ? null : ACTOR_ORDER[row.creatorActor], text: false };
       case 'conversation': return { value: row.conversationTitle, text: true };

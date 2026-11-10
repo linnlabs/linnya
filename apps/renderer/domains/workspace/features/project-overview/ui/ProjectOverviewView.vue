@@ -76,6 +76,17 @@
           @update:model-value="setLocationFilter"
           @clear="setLocationFilter(ALL)"
         />
+        <ProjectOverviewFilterMenu
+          v-if="tagOptions.length > 0"
+          :label="workspaceMessage('workspace.projectOverview.filter.tag')"
+          :value-text="tagFilterText"
+          :active-text="filterText('workspace.projectOverview.filter.tag', tagFilterText)"
+          :clear-label="workspaceMessage('workspace.projectOverview.clearFilter')"
+          :model-value="filters.tags[0] ?? ALL"
+          :options="tagOptions"
+          @update:model-value="setTagFilter"
+          @clear="setTagFilter(ALL)"
+        />
         <div class="project-overview__spacer" />
         <span v-if="isFiltering && status === 'ready'" class="project-overview__count" aria-live="polite">
           {{ workspaceMessage('workspace.projectOverview.resultCount', { count: sortedRows.length }) }}
@@ -200,7 +211,17 @@
                   :class="`project-overview__cell--${column.id}`"
                   role="cell"
                 >
-                  <template v-if="column.id === 'conversation'">
+                  <span
+                    v-if="column.id === 'tags'"
+                    class="project-overview__tags"
+                  >
+                    <span
+                      v-for="tag in sortedRows[item.index]!.tags"
+                      :key="tag.id"
+                      class="project-overview__tag"
+                    >{{ tag.name }}</span>
+                  </span>
+                  <template v-else-if="column.id === 'conversation'">
                     <button
                       v-if="sortedRows[item.index]!.conversationId && sortedRows[item.index]!.conversationTitle !== null"
                       type="button"
@@ -284,6 +305,7 @@ import {
 import {
   filterProjectOverviewRows,
   listProjectOverviewLocations,
+  listProjectOverviewTags,
   sortProjectOverviewRows,
 } from '../functions/projectOverviewRows';
 import { useProjectOverviewData } from '../orchestration/useProjectOverviewData';
@@ -407,6 +429,7 @@ const isFiltering = computed(() => (
   filters.value.nodeType !== null
   || filters.value.modified !== 'any'
   || filters.value.location !== null
+  || filters.value.tags.length > 0
   || filters.value.query.trim().length > 0
 ));
 const typeLabel = (nodeType: string): string => props.presentation.documentType(nodeType).label;
@@ -483,6 +506,20 @@ const locationFilterText = computed(() => (
 function setLocationFilter(value: string): void {
   const path = value === ALL ? null : value === '' ? [] : locationPaths.value.find(item => locationKey(item) === value) ?? null;
   filters.value = { ...filters.value, location: path };
+}
+
+const projectTags = computed(() => listProjectOverviewTags(allRows.value));
+const tagOptions = computed<CustomSelectOption<string>[]>(() => projectTags.value.length === 0 ? [] : [
+  { value: ALL, text: workspaceMessage('workspace.projectOverview.filter.tagAll') },
+  { isSeparator: true },
+  ...projectTags.value.map(tag => ({ value: tag.id, text: tag.name })),
+]);
+const tagFilterText = computed(() => {
+  const id = filters.value.tags[0];
+  return id === undefined ? null : projectTags.value.find(tag => tag.id === id)?.name ?? null;
+});
+function setTagFilter(value: string): void {
+  filters.value = { ...filters.value, tags: value === ALL ? [] : [value] };
 }
 
 // 列：名称固定在最前；其余按列配置。拖动列宽时先改草稿，松手再保存。
@@ -635,6 +672,8 @@ function pendingText(row: ProjectOverviewRow): string {
 
 function cellText(id: ProjectOverviewColumnId, row: ProjectOverviewRow): string {
   switch (id) {
+    case 'tags':
+      return row.tags.map(tag => tag.name).join('、');
     case 'location':
       return row.location.length > 0 ? row.location.join(' / ') : workspaceMessage('workspace.projectOverview.location.root');
     case 'source':

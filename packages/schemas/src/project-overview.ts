@@ -44,6 +44,8 @@ export const ProjectOverviewDocumentSchema = z.object({
   }).strict().nullable(),
   /** 只对有待审阅修订的文档类型（内建 Markdown）给出；其他类型为 null。 */
   pending_revision_count: z.number().int().nonnegative().nullable(),
+  /** 当前标签，按打标签的先后；没有标签时为空数组。 */
+  tags: z.array(z.object({ id: z.string().min(1), name: z.string().min(1) }).strict()),
 }).strict();
 
 export const ProjectOverviewSchema = z.object({

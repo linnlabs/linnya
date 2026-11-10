@@ -9,6 +9,7 @@ import {
   type DefineSemanticTagInput,
   type SemanticDocumentPort,
   type SemanticObjectField,
+  type SemanticObjectKind,
   type SemanticObjectRef,
   type SemanticObjectState,
   type SemanticObjectWrite,
@@ -310,6 +311,29 @@ export function createSqliteSemanticLayer(
   return {
     listProperties: properties,
     listTags: tags,
+
+    /**
+     * 一批对象各自的标签，按打标签的先后；给列表一次读出，不逐个 readObject。
+     * 不校验对象是否存在或在哪个项目，范围由调用方给出的 ID 决定。
+     */
+    listObjectTags(kind: SemanticObjectKind, objectIds: readonly string[]): ReadonlyMap<string, readonly { readonly id: string; readonly name: string }[]> {
+      const wanted = new Set(objectIds);
+      const result = new Map<string, { id: string; name: string }[]>();
+      if (!wanted.size) return result;
+      const rows = db.prepare<[string], { object_id: string; id: string; name: string }>(`
+        SELECT object_tag.object_id, tag.id, tag.name FROM semantic_object_tags object_tag
+        JOIN semantic_tags tag ON tag.id = object_tag.tag_id AND tag.deleted_at IS NULL
+        WHERE object_tag.object_kind = ?
+        ORDER BY object_tag.object_id, object_tag.created_at, object_tag.tag_id
+      `).all(kind);
+      for (const row of rows) {
+        if (!wanted.has(row.object_id)) continue;
+        const list = result.get(row.object_id) ?? [];
+        list.push({ id: row.id, name: row.name });
+        result.set(row.object_id, list);
+      }
+      return result;
+    },
 
     /** 新建前查相近名称，给调用方提示复用。 */
     findSimilar(kind: 'tag' | 'property', name: string) {

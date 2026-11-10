@@ -15,6 +15,7 @@ import {
 import { formatProjectOverviewActor, formatProjectOverviewTime } from '../projectOverviewPresentation';
 import {
   filterProjectOverviewRows,
+  listProjectOverviewTags,
   listProjectOverviewLocations,
   modifiedRangeStart,
   sortProjectOverviewRows,
@@ -40,6 +41,7 @@ const row = (overrides: Partial<ProjectOverviewRow> & { readonly documentId: str
   lastModifiedActor: null,
   lastModifiedPluginId: null,
   pendingRevisionCount: null,
+  tags: [],
   ...overrides,
 });
 
@@ -57,17 +59,17 @@ describe('列配置', () => {
       ],
     });
     expect(layout.columns.map(column => column.id)).toEqual([
-      'modified', 'location', 'source', 'conversation', 'pending', 'type', 'created',
+      'tags', 'modified', 'location', 'source', 'conversation', 'pending', 'type', 'created',
     ]);
-    expect(layout.columns[0]).toEqual({ id: 'modified', visible: false, width: 480 });
-    expect(layout.columns[1]?.width).toBe(PROJECT_OVERVIEW_MIN_COLUMN_WIDTH);
+    expect(layout.columns[1]).toEqual({ id: 'modified', visible: false, width: 480 });
+    expect(layout.columns[2]?.width).toBe(PROJECT_OVERVIEW_MIN_COLUMN_WIDTH);
   });
 
   it('显示、顺序、宽度各自只改一项', () => {
     const toggled = toggleProjectOverviewColumn(DEFAULT_PROJECT_OVERVIEW_LAYOUT, 'type');
     expect(toggled.columns.find(column => column.id === 'type')?.visible).toBe(true);
     const moved = moveProjectOverviewColumn(DEFAULT_PROJECT_OVERVIEW_LAYOUT, 'pending', 'location');
-    expect(moved.columns.map(column => column.id).slice(0, 3)).toEqual(['pending', 'location', 'source']);
+    expect(moved.columns.map(column => column.id).slice(0, 3)).toEqual(['tags', 'pending', 'location']);
     const resized = resizeProjectOverviewColumn(DEFAULT_PROJECT_OVERVIEW_LAYOUT, 'source', 20);
     expect(resized.columns.find(column => column.id === 'source')?.width).toBe(PROJECT_OVERVIEW_MIN_COLUMN_WIDTH);
   });
@@ -102,6 +104,21 @@ describe('筛选与排序', () => {
     expect(filter({ query: '报告' })).toEqual(['a']);
     expect(filter({ query: '储能' }, new Set(['c']))).toEqual(['c']);
     expect(filter({ query: '储能', location: ['报告'] }, new Set(['c']))).toEqual([]);
+  });
+
+  it('标签筛选要求同时带有；标签选项按名称去重', () => {
+    const paper = { id: 't1', name: '论文' };
+    const unread = { id: 't2', name: '待读' };
+    const tagged = [
+      row({ documentId: 'p', tags: [paper, unread] }),
+      row({ documentId: 'q', tags: [paper] }),
+      row({ documentId: 'r' }),
+    ];
+    const filter = (tags: string[]) => filterProjectOverviewRows(tagged, { ...EMPTY_PROJECT_OVERVIEW_FILTERS, tags }, { now, contentMatches: null })
+      .map(item => item.documentId);
+    expect(filter(['t1'])).toEqual(['p', 'q']);
+    expect(filter(['t1', 't2'])).toEqual(['p']);
+    expect(listProjectOverviewTags(tagged).map(tag => tag.name)).toEqual(['待读', '论文']);
   });
 
   it('“今天”从本地零点算，“最近 7 天”含今天', () => {

@@ -8,6 +8,8 @@ import { DatabaseService } from 'src/electron-main/services/database';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import type { ToolContext } from 'src/tools/types';
 import { WriteFileTool } from 'src/tools/workspace/write_file/WriteFileTool';
+import { createSqliteSemanticLayer } from 'src/domains/semantic-layer';
+import { readWorkspaceDocumentIdentity } from 'src/features/workspace/infrastructure/sqlite/workspaceDocumentProjection';
 import { readProjectOverview } from '../orchestration/readProjectOverview';
 
 let database: DatabaseService;
@@ -113,6 +115,24 @@ describe('项目概览', () => {
     const partial = readProjectOverview(database.getDb(), { project_id: projectId, document_ids: [a.id, 'missing'] });
     expect(partial.folder_count).toBeNull();
     expect(partial.documents.map(document => document.title)).toEqual(['a.md']);
+  });
+
+  it('每份文档带当前标签，按打标签的先后；已删除的标签不出现', async () => {
+    await write('workspace:/a.md', '# A', context(null));
+    await write('workspace:/b.md', '# B', context(null));
+    const a = workspace.getChildNodes(null, projectId).find(item => item.name === 'a.md');
+    if (!a) throw new Error('expected a.md');
+    const db = database.getDb();
+    const layer = createSqliteSemanticLayer(db, { read: id => readWorkspaceDocumentIdentity(db, id) });
+    layer.defineTag({ name: '论文' });
+    layer.defineTag({ name: '待读' });
+    layer.tagObject({ projectId, ref: { kind: 'document', id: a.id }, expectedRevision: 0 }, ['待读']);
+    layer.tagObject({ projectId, ref: { kind: 'document', id: a.id }, expectedRevision: 1 }, ['论文']);
+
+    const overview = readProjectOverview(db, { project_id: projectId });
+    expect(overview.documents.map(document => [document.title, document.tags.map(tag => tag.name)])).toEqual(
+      expect.arrayContaining([['a.md', ['待读', '论文']], ['b.md', []]]),
+    );
   });
 
   it('5,000 个节点、深 6 层时一次读完', () => {

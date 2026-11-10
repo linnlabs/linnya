@@ -51,6 +51,7 @@ export function formatProjectOverviewCharacters(count: number, locale: LinnyaLoc
 export function projectOverviewColumnMessageKey(id: ProjectOverviewSortKey): WorkspaceMessageKey {
   switch (id) {
     case 'name': return 'workspace.projectOverview.column.name';
+    case 'tags': return 'workspace.projectOverview.column.tags';
     case 'location': return 'workspace.projectOverview.column.location';
     case 'source': return 'workspace.projectOverview.column.source';
     case 'conversation': return 'workspace.projectOverview.column.conversation';
