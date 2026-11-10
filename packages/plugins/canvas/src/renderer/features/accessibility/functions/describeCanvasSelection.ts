@@ -1,5 +1,8 @@
 import {
+  orderCanvasCardsForReading,
+  readCanvasCardConnections,
   readCanvasElementSearchText,
+  type CanvasCard,
   type CanvasElement,
   type CanvasElementId,
 } from '@plugin/canvas/shared';
@@ -10,14 +13,21 @@ const typeKeys = {
   document: 'canvas.a11y.document',
   edge: 'canvas.a11y.edge',
 } as const;
-/** 有界摘要供读屏与键盘选择共用，正文投影沿用搜索规则，绝不以内部文档ID代替标题。 */
+/** 有界摘要供读屏与键盘选择共用：按画布阅读顺序列出并报第几张，正文投影沿用搜索规则，绝不以内部文档ID代替标题。 */
 export function describeCanvasSelection(
   elements: readonly CanvasElement[],
   selected: readonly CanvasElementId[],
   documentTitles: ReadonlyMap<string, string>
 ): string {
   const ids = new Set(selected),
-    items = elements.filter(element => ids.has(element.id));
+    order = orderCanvasCardsForReading(
+      elements.filter((element): element is CanvasCard => element.type !== 'edge'),
+      readCanvasCardConnections(elements)
+    ),
+    index = new Map(order.map((card, position) => [card.id, position + 1])),
+    items = [...order, ...elements.filter(element => element.type === 'edge')].filter(element =>
+      ids.has(element.id)
+    );
   if (!items.length) return canvasText('canvas.a11y.empty');
   const descriptions = items.slice(0, 5).map(element =>
     canvasText('canvas.a11y.item', {
@@ -30,8 +40,8 @@ export function describeCanvasSelection(
         element.type === 'edge'
           ? ''
           : canvasText('canvas.a11y.position', {
-              x: Math.round(element.x),
-              y: Math.round(element.y),
+              index: index.get(element.id) ?? 0,
+              total: order.length,
             }),
     })
   );
