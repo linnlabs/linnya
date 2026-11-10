@@ -37,10 +37,17 @@ export type {
 } from './textGeometry';
 
 export type {
+  ImageCropInsets,
   ImageFitGeometry,
   ImageFitGeometryInput,
   ImageFitMode,
+  ImageFocusPoint,
   NormalizedImageRect,
 } from './imageGeometry';
-export { resolveImageFitGeometry } from './imageGeometry';
+export {
+  hasImageCrop,
+  IMAGE_CROP_MIN_VISIBLE,
+  resolveImageCropRegion,
+  resolveImageFitGeometry,
+} from './imageGeometry';
 export { resolveBoxRotation } from './boxRotation';

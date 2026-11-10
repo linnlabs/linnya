@@ -352,7 +352,7 @@ export class FreeformPptxCompiler {
     if (!el.src) return;
     const asset = resolveImageAsset(el.src);
     const position = this.applyTransform(el.position, transform);
-    const fitOptions = resolvePptxImageFitOptions(position, asset, el.fitMode);
+    const fitOptions = resolvePptxImageFitOptions(position, asset, el.fitMode, { crop: el.crop, focus: el.focus });
     const imgOpts: PptxGenJS.ImageProps = {
       ...fitOptions,
       ...toPptxImageSource(asset),

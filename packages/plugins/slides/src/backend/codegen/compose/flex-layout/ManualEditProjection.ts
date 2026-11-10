@@ -149,7 +149,15 @@ function applyPreLayoutManualEdits(
         ...(edit.content !== undefined ? { content: edit.content } : {}),
       };
     }
-    case 'Image': return edit?.kind === 'image' ? { ...node, ...(edit.assetId ? { src: { kind: 'document_asset', assetId: edit.assetId } } : {}), ...(edit.fit ? { fitMode: edit.fit } : {}) } : node;
+    case 'Image': {
+      if (edit?.kind !== 'image') return node;
+      const image = { ...node, ...(edit.fit ? { fitMode: edit.fit } : {}) };
+      if (!edit.assetId) return image;
+      // 裁剪与焦点描述的是旧图上的区域；换图时与 PowerPoint、Google Slides 一样重置取景。
+      delete image.crop;
+      delete image.focus;
+      return { ...image, src: { kind: 'document_asset', assetId: edit.assetId } };
+    }
     case 'Chart':
     case 'Table':
     case 'SvgGraphic':

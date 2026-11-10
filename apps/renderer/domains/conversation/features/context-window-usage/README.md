@@ -19,7 +19,7 @@ Host 从 EventStore 读取前台正文事实，以 Linnkit 的正式上下文构
 | 状态 | 语义 |
 |---|---|
 | `hidden` | 没有已保存会话，或没有可估算的模型 |
-| `loading` | 正在估算。圆环中心以明暗变化提示进度，并支持系统减少动态效果设置 |
+| `loading` | 正在估算。复用共享的 `LinnyaLoadingIcon` 处理态 |
 | `unavailable` | 本次估算未成功，可查看中性提示 |
 | `current` | 当前用量已就绪 |
 | `overflow` | 占用超过模型和 Agent 共同约束的有效窗口 |

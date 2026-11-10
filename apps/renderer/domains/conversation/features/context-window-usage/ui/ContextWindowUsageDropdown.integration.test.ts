@@ -133,12 +133,13 @@ describe('ContextWindowUsageDropdown integration', () => {
     expect(document.body.querySelector('.usage-breakdown-panel')).toBeNull();
   });
 
-  it('估算期间保留圆环入口，并向辅助技术报告加载状态', async () => {
+  it('估算期间显示 Linnya 加载图标，并向辅助技术报告加载状态', async () => {
     const mounted = mountContextUsage({ status: 'loading' });
     mountedViews.push(mounted);
     const trigger = mounted.host.querySelector('.context-window-usage-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('context usage trigger not found');
     expect(trigger.getAttribute('aria-busy')).toBe('true');
+    expect(trigger.querySelector('[data-icon="linnya-loading"]')).not.toBeNull();
 
     trigger.click();
     await nextTick();

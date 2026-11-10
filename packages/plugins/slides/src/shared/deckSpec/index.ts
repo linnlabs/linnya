@@ -60,6 +60,8 @@ export type {
   FreeformInlineRun,
   ImageSourceInput,
   ImageSourceRef,
+  ImageCropSpec,
+  ImageFocusSpec,
   ImageVisualOptions,
   ImageVisualShadow,
   PatchOperation,

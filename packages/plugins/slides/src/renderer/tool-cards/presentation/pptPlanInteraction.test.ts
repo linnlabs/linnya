@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyPaletteChoice,
   arePptPlansEqual,
   buildApproveSubmission,
   buildModifySubmission,
@@ -80,6 +81,54 @@ describe('pptPlanInteraction helpers', () => {
           notes: '把结论页拆成两页',
         },
       },
+    });
+  });
+
+  describe('换配色', () => {
+    const current = { backgrounds: ['#F0F5FC'], ink: '#1A2435', accents: ['#6884AF'] };
+    const light = { backgrounds: ['#FAFBF8'], ink: '#1E2117', accents: ['#3E4A1F'] };
+    const dark = { backgrounds: ['#141619'], ink: '#E9EBEF', accents: ['#90B5EE'] };
+    const plan = {
+      title: 'Growth Review',
+      pageCount: 1,
+      visualDirection: createVisualDirection(),
+      look: {
+        palette: current,
+        paletteId: 'pl-3',
+        alternatives: [{ ...light, id: 'pl-1' }, { ...dark, id: 'pl-2' }],
+        fonts: ['DengXian'],
+        cover: { presentationId: 'p1', versionId: 'v1' },
+      },
+      pages: [{ slideNumber: 1, title: 'Overview', content: '这一页讲清业务回顾的结论和关键数据。' }],
+    };
+
+    it('选中的一套成为 look.palette，原来那套放回备选最前，其余信息不变', () => {
+      expect(applyPaletteChoice(plan, 1)).toEqual({
+        ...plan,
+        look: {
+          palette: dark,
+          paletteId: 'pl-2',
+          alternatives: [{ ...current, id: 'pl-3' }, { ...light, id: 'pl-1' }],
+          fonts: ['DengXian'],
+          cover: { presentationId: 'p1', versionId: 'v1' },
+        },
+      });
+    });
+
+    it('下标不存在或计划没有备选时原样返回', () => {
+      expect(applyPaletteChoice(plan, 5)).toBe(plan);
+      const noLook = { ...plan, look: undefined };
+      expect(applyPaletteChoice(noLook, 0)).toBe(noLook);
+    });
+
+    it('换配色的修改提交带 paletteChanged，并能通过计划合同', () => {
+      const submission = buildModifySubmission(applyPaletteChoice(plan, 0), '', true);
+      expect(JSON.parse(submission.observation)).toMatchObject({ action: 'modify', paletteChanged: true, plan: { look: { palette: light, paletteId: 'pl-1' } } });
+      expect(submission.interactionResponse.response).toMatchObject({ paletteChanged: true });
+    });
+
+    it('普通修改提交不带 paletteChanged', () => {
+      expect(JSON.parse(buildModifySubmission(plan, '改标题').observation)).not.toHaveProperty('paletteChanged');
     });
   });
 

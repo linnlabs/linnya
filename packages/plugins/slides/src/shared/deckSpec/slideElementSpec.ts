@@ -89,8 +89,24 @@ export interface ImageVisualShadow {
   opacity?: number;
 }
 
+/** 从原图四边各裁掉的比例（0–1）；与 PowerPoint 裁剪、OOXML `a:srcRect` 同义，先于 fitMode 生效。 */
+export interface ImageCropSpec {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/** 原图上的归一化点（0–1）；cover 时取景窗尽量以它为中心。 */
+export interface ImageFocusSpec {
+  x: number;
+  y: number;
+}
+
 export interface ImageVisualOptions {
   fitMode?: 'cover' | 'contain' | 'crop';
+  crop?: ImageCropSpec;
+  focus?: ImageFocusSpec;
   maskShape?: 'rect' | 'circle';
   rounding?: boolean;
   transparency?: number;
@@ -217,6 +233,8 @@ export type StructuredElement =
       position: Box;
       alt?: string;
       fitMode?: ImageVisualOptions['fitMode'];
+      crop?: ImageCropSpec;
+      focus?: ImageFocusSpec;
       maskShape?: ImageVisualOptions['maskShape'];
       rounding?: boolean;
       transparency?: number;
@@ -334,6 +352,8 @@ export interface FreeformImageElement extends FreeformElementBase {
   src?: ImageSourceInput;
   alt?: string;
   fitMode?: ImageVisualOptions['fitMode'];
+  crop?: ImageCropSpec;
+  focus?: ImageFocusSpec;
   maskShape?: ImageVisualOptions['maskShape'];
   rounding?: boolean;
   transparency?: number;

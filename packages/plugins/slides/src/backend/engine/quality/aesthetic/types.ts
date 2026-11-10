@@ -48,6 +48,10 @@ export type AestheticLintCode =
   | 'direction_font_undeclared'
   /** 生成稿出现了与 theme.direction 调色板色相都不相近的彩色 */
   | 'direction_color_off_palette'
+  /** 生成稿出现了落在 imagePalette.excludedHues 里的颜色 */
+  | 'direction_color_excluded_hue'
+  /** 生成稿有照片，却没有声明配色来源 imagePalette */
+  | 'direction_image_palette_missing'
   /** P1 Tier-1：非全幅元素贴近画布边缘（< 0.3"），可能压迫视觉留白 */
   | 'element_edge_margin'
   /** P1 Tier-1：单页非中性主色 hue 簇 > 4，色彩使用过散 */

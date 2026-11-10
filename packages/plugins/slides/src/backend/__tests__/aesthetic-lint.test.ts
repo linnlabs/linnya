@@ -1405,6 +1405,52 @@ describe('AestheticLint', () => {
       expect(issue!.severity).toBe('warning');
     });
 
+    it('reports hue names so the agent does not have to read OKLCH degrees', () => {
+      const report = lint.lint(makeInfo({
+        slideCount: 2,
+        slides: [
+          { number: 1, elements: [{ name: 'A', type: 'shape', fill: '#1F4F8A', position: { x: 0, y: 0, w: 5, h: 3 } }] },
+          { number: 2, elements: [{ name: 'B', type: 'shape', fill: '#C25311', position: { x: 0, y: 0, w: 5, h: 3 } }] },
+        ],
+      }));
+      const issue = report.aesthetic.find((i) => i.code === 'primary_hue_drift');
+      expect(issue?.evidence).toMatchObject({
+        kind: 'hue_drift',
+        primaryHues: [{ slideNumber: 1, hueName: '靛' }, { slideNumber: 2, hueName: '橙' }],
+      });
+    });
+
+    it('一页换成相反的主色不算漂移，两页才算', () => {
+      const deck = (orangePages: number[]) => lint.lint(makeInfo({
+        slideCount: 12,
+        slides: Array.from({ length: 12 }, (_, index) => ({
+          number: index + 1,
+          elements: [{
+            name: 'Hero',
+            type: 'shape' as const,
+            fill: orangePages.includes(index + 1) ? '#C25311' : '#1C8FB5',
+            position: { x: 0, y: 0, w: 5, h: 3 },
+          }],
+        })),
+      })).aesthetic.find((i) => i.code === 'primary_hue_drift');
+      expect(deck([12])).toBeUndefined();
+      expect(deck([6, 12])).toBeDefined();
+    });
+
+    it('染纸和带色调的墨色不决定主色：色调不同也不算漂移', () => {
+      const report = lint.lint(makeInfo({
+        slideCount: 4,
+        slides: ['#EFE4E6', '#DCE3D6', '#241A1D', '#20251C'].map((tint, index) => ({
+          number: index + 1,
+          elements: [
+            { name: 'Panel', type: 'shape' as const, fill: tint, position: { x: 0, y: 0, w: 10, h: 6 } },
+            { name: 'Mark', type: 'shape' as const, fill: '#1F4F8A', position: { x: 0, y: 0, w: 1, h: 1 } },
+          ],
+        })),
+      }));
+      expect(report.aesthetic.find((i) => i.code === 'primary_hue_drift')).toBeUndefined();
+    });
+
     it('does not warn when slides have no chromatic fills (all neutral)', () => {
       const report = lint.lint(makeInfo({
         slideCount: 3,

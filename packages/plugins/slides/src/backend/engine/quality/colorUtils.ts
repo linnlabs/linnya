@@ -1,24 +1,28 @@
 /**
- * 颜色工具函数集
+ * AestheticLint 的颜色工具。
  *
- * 服务于 AestheticLint 颜色 / 对比度 / 跨页主色一致性规则。
+ * 解析、色彩空间、相对亮度与对比度来自 `@linnya/color-core`，这里只保留 lint 输入需要的容错
+ * （无 `#`、带透明度的 hex）和“算不算有颜色”的判断。色相与色差都用 OKLCH / ΔEOK。
  *
- * 设计原则：
- * - 纯函数、无状态、零外部依赖
- * - 输入容错：所有解析函数对非法输入返回 `null`，不抛错
- * - 单位精确：HSL 中 H 用度（0-360），S/L 用 0-1 范围
+ * 所有解析函数对非法输入返回 `null`，不抛错。
  */
+
+import {
+  contrastRatio,
+  deltaEOK,
+  parseColor,
+  relativeLuminance as relativeLuminanceOfChannels,
+  rgbToOklab,
+  rgbToOklch,
+  type Oklch,
+  type RgbChannels,
+} from '@linnya/color-core';
+import { VISIBLE_HUE_MIN_CHROMA } from '@plugin/slides/shared/designDirection';
 
 export interface RgbColor {
   r: number; // 0-255
   g: number; // 0-255
   b: number; // 0-255
-}
-
-export interface HslColor {
-  h: number; // 0-360 (灰阶时为 0)
-  s: number; // 0-1
-  l: number; // 0-1
 }
 
 /**
@@ -32,104 +36,36 @@ export interface HslColor {
  */
 export function parseHex(input: string | undefined | null): RgbColor | null {
   if (typeof input !== 'string') return null;
-  const trimmed = input.trim().replace(/^#/, '');
-  if (trimmed.length === 0) return null;
-
-  let hex: string;
-  if (trimmed.length === 3 || trimmed.length === 4) {
-    /* #RGB / #RGBA */
-    hex = trimmed
-      .slice(0, 3)
-      .split('')
-      .map((c) => c + c)
-      .join('');
-  } else if (trimmed.length === 6 || trimmed.length === 8) {
-    hex = trimmed.slice(0, 6);
-  } else {
-    return null;
-  }
-
-  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return null;
-
-  return {
-    r: parseInt(hex.slice(0, 2), 16),
-    g: parseInt(hex.slice(2, 4), 16),
-    b: parseInt(hex.slice(4, 6), 16),
-  };
+  const digits = input.trim().replace(/^#/, '');
+  const opaque = digits.length === 4 ? digits.slice(0, 3) : digits.length === 8 ? digits.slice(0, 6) : digits;
+  const parsed = parseColor(`#${opaque}`);
+  if (!parsed) return null;
+  const [r, g, b] = parsed.channels;
+  return { r, g, b };
 }
 
-/**
- * 将 RGB（0-255）转 HSL。H 用度（0-360），S/L 用 0-1。
- * 灰阶（max == min）H 返回 0，S 返回 0。
- */
-export function rgbToHsl(rgb: RgbColor): HslColor {
-  const r = clamp01(rgb.r / 255);
-  const g = clamp01(rgb.g / 255);
-  const b = clamp01(rgb.b / 255);
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-
-  if (max === min) return { h: 0, s: 0, l };
-
-  const d = max - min;
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-  let h = 0;
-  switch (max) {
-    case r:
-      h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
-      break;
-    case g:
-      h = ((b - r) / d + 2) * 60;
-      break;
-    case b:
-      h = ((r - g) / d + 4) * 60;
-      break;
-  }
-  return { h, s, l };
+export function toOklch(rgb: RgbColor): Oklch {
+  return rgbToOklch(toChannels(rgb));
 }
 
-/**
- * 中性色判定：饱和度极低 / 极暗 / 极亮 视为中性，不参与"主色"统计。
- *
- * 阈值参考：
- * - s < 0.10：低饱和（近灰）
- * - l < 0.08：近黑
- * - l > 0.92：近白
- *
- * 中性色阈值刻意保守——边界模糊地带（如低饱和米色 #F5F0E8）保留为主色，
- * 避免漏报"用了 5 种相近米色"这种实际仍紊乱的设计。
- */
-export function isNeutralColor(hsl: HslColor): boolean {
-  if (hsl.s < 0.1) return true;
-  if (hsl.l < 0.08) return true;
-  if (hsl.l > 0.92) return true;
-  return false;
+/** 中性色不参与色相统计：彩度太低，页面上看不出色相。近黑、近白的彩度本来就低，不另设明度条件。 */
+export function isNeutralColor(color: Oklch): boolean {
+  return color.c < VISIBLE_HUE_MIN_CHROMA;
 }
 
-/**
- * sRGB → 相对亮度（WCAG 2.x 定义）。返回 0-1。
- * 用于对比度计算。
- */
+/** 两个颜色的 ΔEOK（OKLab 欧氏距离，明度 0-1 的尺度）。 */
+export function colorDistance(left: RgbColor, right: RgbColor): number {
+  return deltaEOK(rgbToOklab(toChannels(left)), rgbToOklab(toChannels(right)));
+}
+
+/** WCAG 2.x 相对亮度，0-1。 */
 export function relativeLuminance(rgb: RgbColor): number {
-  const channel = (c: number): number => {
-    const v = clamp01(c / 255);
-    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  };
-  return 0.2126 * channel(rgb.r) + 0.7152 * channel(rgb.g) + 0.0722 * channel(rgb.b);
+  return relativeLuminanceOfChannels(toChannels(rgb));
 }
 
-/**
- * WCAG 对比度比 = (Lmax + 0.05) / (Lmin + 0.05)。
- * 范围 1.0（同色）— 21.0（纯黑/纯白）。
- */
+/** WCAG 对比度，1.0（同色）— 21.0（纯黑/纯白）。 */
 export function wcagContrastRatio(c1: RgbColor, c2: RgbColor): number {
-  const l1 = relativeLuminance(c1);
-  const l2 = relativeLuminance(c2);
-  const lmax = Math.max(l1, l2);
-  const lmin = Math.min(l1, l2);
-  return (lmax + 0.05) / (lmin + 0.05);
+  return contrastRatio(toChannels(c1), toChannels(c2));
 }
 
 /**
@@ -177,8 +113,6 @@ export function circularMeanDeg(huesDeg: number[]): number {
   return degrees < 0 ? degrees + 360 : degrees;
 }
 
-function clamp01(v: number): number {
-  if (v < 0) return 0;
-  if (v > 1) return 1;
-  return v;
+function toChannels(rgb: RgbColor): RgbChannels {
+  return [rgb.r, rgb.g, rgb.b];
 }

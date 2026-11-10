@@ -34,7 +34,8 @@ function projectInsertionPreview(entry: EditingInsertionPreview, index: number):
     return { ...base, kind: 'shape', geometry: { type: 'preset', name: object.geometry }, fill: fill.value };
   }
   if (object.kind === 'image' && entry.imageSource) {
-    return { ...base, kind: 'image', assetRef: { type: 'data', dataUri: entry.imageSource }, fitMode: object.fit, alt: object.alt };
+    return { ...base, kind: 'image', assetRef: { type: 'data', dataUri: entry.imageSource }, fitMode: object.fit, alt: object.alt,
+      ...(object.crop ? { crop: { ...object.crop } } : {}), ...(object.focus ? { focus: { ...object.focus } } : {}) };
   }
   return null;
 }

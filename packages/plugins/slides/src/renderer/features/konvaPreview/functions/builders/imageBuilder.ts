@@ -56,6 +56,8 @@ export function buildImageNodeConfig(
     boxWidth: width,
     boxHeight: height,
     fitMode: node.fitMode,
+    crop: node.crop,
+    focus: node.focus,
   });
 
   return {

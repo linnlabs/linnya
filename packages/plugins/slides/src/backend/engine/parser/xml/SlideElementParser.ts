@@ -33,6 +33,7 @@ import {
   type GroupTransform,
 } from './GeometryParser.js';
 import {
+  extractImageCrop,
   extractImageFitMode,
   extractShapeVisual,
   parseRotationDegrees,
@@ -157,7 +158,7 @@ export function parseShape(
 
 /**
  * 解析 `p:pic`（图片）。
- * 图片资源路径通过 `slideRelMap` 解析；fitMode 走 §4.5 契约（默认 stretch / 含 a:tile ⇒ fill / 含 srcRect ⇒ cover）。
+ * 图片资源路径通过 `slideRelMap` 解析；fitMode 走 §4.5 契约（默认 stretch / 含 a:tile ⇒ fill）；`a:srcRect` 原样读成 imageCrop。
  */
 export function parsePicture(
   pic: XmlElement,
@@ -182,6 +183,7 @@ export function parsePicture(
   const xfrm = spPr ? getElementByTag(spPr, 'a:xfrm') : null;
   const rotation = parseRotationDegrees(xfrm);
   const imageFit = extractImageFitMode(blipFill);
+  const imageCrop = extractImageCrop(blipFill);
   const altText = cNvPr ? getAttr(cNvPr, 'descr')?.trim() || undefined : undefined;
 
   if (svgBlip) {
@@ -213,6 +215,7 @@ export function parsePicture(
       position,
       rotation,
       imageFit,
+      ...(imageCrop ? { imageCrop } : {}),
       importFidelity: {
         status: 'raster-fallback',
         reason: svgEmbedId
@@ -231,6 +234,7 @@ export function parsePicture(
     position,
     rotation,
     imageFit,
+    ...(imageCrop ? { imageCrop } : {}),
   };
 }
 

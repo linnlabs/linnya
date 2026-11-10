@@ -11,6 +11,8 @@ export interface SlidesPlanInteractionPresentation {
   readonly status: 'active' | 'approved' | 'modified';
   readonly submittedAt?: number;
   readonly notes?: string;
+  /** 用户在卡上换了一套配色后提交。 */
+  readonly paletteChanged?: true;
   readonly modifiedPlan?: PptPlanData;
 }
 

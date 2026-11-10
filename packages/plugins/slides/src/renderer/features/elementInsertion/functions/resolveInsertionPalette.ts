@@ -1,3 +1,4 @@
+import { contrastRatio, parseColor } from '@linnya/color-core';
 import type { SlideBackgroundModel } from '../../../types/render';
 
 export interface InsertionPalette {
@@ -17,9 +18,9 @@ export function resolveInsertionPalette(
 ): InsertionPalette {
   const backdrop = readBackdropColor(background);
   const themed = canonicalHex(themeColors?.text);
-  const readable = contrastRatio(themed ?? DARK_TEXT, backdrop) >= 3;
+  const readable = hexContrast(themed ?? DARK_TEXT, backdrop) >= 3;
   const text = readable ? themed ?? DARK_TEXT
-    : contrastRatio(DARK_TEXT, backdrop) >= contrastRatio(LIGHT_TEXT, backdrop) ? DARK_TEXT : LIGHT_TEXT;
+    : hexContrast(DARK_TEXT, backdrop) >= hexContrast(LIGHT_TEXT, backdrop) ? DARK_TEXT : LIGHT_TEXT;
   return { text, fill: canonicalHex(themeColors?.accent1) ?? FALLBACK_FILL };
 }
 
@@ -35,13 +36,9 @@ function canonicalHex(value: string | undefined): string | undefined {
   return color && HEX_COLOR.test(color) ? color : undefined;
 }
 
-function contrastRatio(left: string, right: string): number {
-  const [light, dark] = [luminance(left), luminance(right)].sort((a, b) => b - a);
-  return (light + 0.05) / (dark + 0.05);
-}
-
-function luminance(hex: string): number {
-  const channels = [1, 3, 5].map(offset => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255)
-    .map(value => value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
-  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+/** 两个参数都已是 canonicalHex 或内置常量，一定能解析；解析不了时按不可读处理。 */
+function hexContrast(left: string, right: string): number {
+  const a = parseColor(left);
+  const b = parseColor(right);
+  return a && b ? contrastRatio(a.channels, b.channels) : 1;
 }

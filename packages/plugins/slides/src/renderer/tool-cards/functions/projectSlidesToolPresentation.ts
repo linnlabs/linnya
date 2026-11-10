@@ -85,6 +85,7 @@ function projectPlanInteraction(
       status: 'modified',
       ...(interaction.submittedAt === undefined ? {} : { submittedAt: interaction.submittedAt }),
       ...(notes ? { notes } : {}),
+      ...(interaction.response['paletteChanged'] === true ? { paletteChanged: true } : {}),
       modifiedPlan: requirePlan(interaction.response['plan'], 'ppt_plan modified response.plan'),
     };
   }

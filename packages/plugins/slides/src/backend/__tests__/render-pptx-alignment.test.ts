@@ -6,6 +6,8 @@
 
 import { describe, expect, it } from 'vitest';
 import type { StructuredElement } from '@plugin/slides/shared';
+
+const TWO_BY_ONE_PNG_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAD0lEQVQImWP4z8Dwn4EBAAj+Af/KOtJRAAAAAElFTkSuQmCC';
 import {
   THEME,
   TINY_PNG_DATA_URI,
@@ -217,6 +219,19 @@ describe('Konva-PPTX 元素级对齐', () => {
   });
 
   describe('图片元素对齐', () => {
+    it.each([
+      ['contain + crop', { fitMode: 'contain', crop: { top: 0, right: 0, bottom: 0, left: 0.5 } }],
+      ['cover + crop + focus', { fitMode: 'cover', crop: { top: 0.2, right: 0, bottom: 0, left: 0 }, focus: { x: 0.2, y: 0.9 } }],
+    ] as const)('image %s 的显示框对齐', (_name, framing) => {
+      const result = runDualPipeline([
+        { ...makeImage(TWO_BY_ONE_PNG_DATA_URI, { x: 1, y: 1, w: 4, h: 3 }, '取景图片'), ...framing } as StructuredElement,
+      ], THEME);
+      const geoErrors = result.diffs.filter(
+        (d) => d.category === 'GEOMETRY' && d.severity === 'error',
+      );
+      expect(geoErrors).toHaveLength(0);
+    });
+
     it('image 几何对齐', () => {
       const result = runDualPipeline([
         makeImage(TINY_PNG_DATA_URI, { x: 5, y: 1, w: 4, h: 3 }, '示例图片'),

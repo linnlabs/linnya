@@ -40,6 +40,7 @@ designDirection/
 - 一次发多个方向时，任意两个至少在家族、配色逻辑、图片策略中两项不同。
 - Agent 传 `requireImages`（用户要求配图，或内容离不开图片）时，不发“只用图解”“以字为画”，也不发只有这两种图片策略的卡。
 - “生成插画”只在明确有生图模型时进入；当前工具上下文拿不到这项能力，第 1 期一律不发。
+- 12 档主色相的分界是 OKLCH，与 color-core 的色相名一致；给 Agent 的是名称和参考色，不写度数（模型会按 HSL 理解度数）；参考色每档有深、中、浅三个，按稿随机给一个。主色相对面 150°–210° 覆盖过半的档写进说明，本稿不用，inspect 按 accents 第一个颜色检查。
 - 卡片、轴或权重变化时递增 `DIRECTION_POOL_VERSION`，基准按版本对账。
 
 ## 与其他模块的关系
@@ -50,6 +51,7 @@ designDirection/
 - deck.js 在 `compose({ theme: { direction } })` 声明方向；`styleParsers` 用
   `DirectionDeclarationSchema` 严格校验，存入 `ThemeSpec.direction`，不写入 PPTX。
 - inspect 用 `resolveDeckDirection` 取得声明，交给 quality 的方向贯彻检查
-  （`direction_background_off`、`direction_font_undeclared`、`direction_color_off_palette`），
+  （`direction_background_off`、`direction_font_undeclared`、`direction_color_off_palette`、
+  `direction_color_excluded_hue`、`direction_image_palette_missing`），
   见 [quality README](../../backend/engine/quality/README.md)。
 - 依赖方向：本目录只依赖 `zod`，不依赖 backend、renderer 或 Core。

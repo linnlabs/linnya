@@ -35,7 +35,42 @@
     <dl v-if="!compact" class="ppt-plan-look__spec">
       <div>
         <dt>{{ slidesToolCardMessage('slides.plan.label.palette') }}</dt>
-        <dd>
+        <dd v-if="paletteOptions.length > 0">
+          <div
+            class="ppt-plan-look__palette-options"
+            role="radiogroup"
+            :aria-label="slidesToolCardMessage('slides.plan.label.palette')"
+          >
+            <button
+              v-for="option in paletteOptions"
+              :key="option.index ?? 'current'"
+              type="button"
+              role="radio"
+              class="ppt-plan-look__palette-option"
+              :class="{ 'ppt-plan-look__palette-option--selected': option.index === (selectedAlternative ?? null) }"
+              :aria-checked="option.index === (selectedAlternative ?? null)"
+              :disabled="disabled"
+              :title="option.colors"
+              @click="emit('select-alternative', option.index)"
+            >
+              <span class="ppt-plan-look__strip">
+                <span
+                  v-for="(segment, index) in option.segments"
+                  :key="index"
+                  :style="{ background: segment.color, flexGrow: segment.weight }"
+                />
+              </span>
+              <span class="ppt-plan-look__palette-name">
+                <template v-if="option.index === null">
+                  <span class="ppt-plan-look__palette-current">{{ slidesToolCardMessage('slides.plan.look.paletteCurrent') }}</span> ·
+                </template>
+                {{ option.name }}
+              </span>
+            </button>
+          </div>
+          <span v-if="!disabled" class="ppt-plan-look__legend">{{ slidesToolCardMessage('slides.plan.look.paletteHint') }}</span>
+        </dd>
+        <dd v-else>
           <span class="ppt-plan-look__swatches">
             <span
               v-for="(color, index) in baseColors"
@@ -69,6 +104,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref } from 'vue';
 import type { PptPlanLookData } from './pptPlanInteraction';
+import { planPaletteOptions } from './pptPlanPaletteOptions';
 import { useSlidesToolCardLocalization } from '../ui/useSlidesToolCardLocalization';
 
 // 栅格化依赖较重，只有计划带封面时才加载。
@@ -76,10 +112,20 @@ const SlidesVersionCover = defineAsyncComponent(
   () => import('../../features/presentationHistory/ui/SlidesVersionCover.vue'),
 );
 
-const props = defineProps<{ look: PptPlanLookData; compact?: boolean }>();
+const props = defineProps<{
+  look: PptPlanLookData;
+  compact?: boolean;
+  /** 用户点中的备选配色下标；null 或不传表示 Agent 选定的一套。 */
+  selectedAlternative?: number | null;
+  /** 计划已批准或已提交修改时不能再换。 */
+  disabled?: boolean;
+}>();
+const emit = defineEmits<{ 'select-alternative': [index: number | null] }>();
 const { slidesToolCardMessage } = useSlidesToolCardLocalization();
 
 const expanded = ref(false);
 const coverPhase = ref<'loading' | 'ready' | 'failed'>('loading');
 const baseColors = computed(() => [...props.look.palette.backgrounds, props.look.palette.ink]);
+// 有备选时三套同列，可以换；没有备选时仍是原来的色块。
+const paletteOptions = computed(() => planPaletteOptions(props.look, slidesToolCardMessage));
 </script>

@@ -1,6 +1,6 @@
 import { DOMParser } from '@xmldom/xmldom';
 import { describe, expect, it } from 'vitest';
-import { extractImageFitMode, extractShapeVisual } from './ShapeVisualParser';
+import { extractImageCrop, extractImageFitMode, extractShapeVisual } from './ShapeVisualParser';
 
 describe('ShapeVisualParser custom geometry', () => {
   it('回读 move/line/quadratic/cubic/close typed path', () => {
@@ -46,7 +46,7 @@ describe('ShapeVisualParser custom geometry', () => {
     expect(extractShapeVisual(doc.documentElement).visual?.geometry).toBeUndefined();
   });
 
-  it('回读 PPTX 的 srcRect 为 cover，而不是误判成 stretch', () => {
+  it('回读 PPTX 的 srcRect 为原样裁剪，再按 stretch 撑满 frame', () => {
     const doc = new DOMParser().parseFromString(`
       <p:blipFill xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
         xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
@@ -55,6 +55,20 @@ describe('ShapeVisualParser custom geometry', () => {
         <a:stretch><a:fillRect/></a:stretch>
       </p:blipFill>
     `, 'application/xml');
-    expect(extractImageFitMode(doc.documentElement)).toBe('cover');
+    expect(extractImageFitMode(doc.documentElement)).toBe('stretch');
+    expect(extractImageCrop(doc.documentElement)).toEqual({ top: 0, right: 0.25, bottom: 0, left: 0.25 });
+  });
+
+  it('srcRect 全零或只有负值时不视为裁剪', () => {
+    const parse = (rect: string) => new DOMParser().parseFromString(`
+      <p:blipFill xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+        xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+        ${rect}
+        <a:stretch><a:fillRect/></a:stretch>
+      </p:blipFill>
+    `, 'application/xml').documentElement;
+    expect(extractImageCrop(parse('<a:srcRect/>'))).toBeUndefined();
+    expect(extractImageCrop(parse('<a:srcRect l="-10000" r="-10000"/>'))).toBeUndefined();
+    expect(extractImageCrop(parse('<a:srcRect t="12500" b="-5000"/>'))).toEqual({ top: 0.125, right: 0, bottom: 0, left: 0 });
   });
 });

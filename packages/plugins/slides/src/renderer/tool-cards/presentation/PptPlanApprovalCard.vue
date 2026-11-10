@@ -52,7 +52,13 @@
           </div>
         </section>
 
-        <PptPlanLook v-if="editablePlan.look" :look="editablePlan.look" />
+        <PptPlanLook
+          v-if="editablePlan.look"
+          :look="editablePlan.look"
+          :selected-alternative="selectedAlternative"
+          :disabled="isCompleted"
+          @select-alternative="selectAlternative"
+        />
 
         <section
           class="visual-direction-section"
@@ -351,6 +357,8 @@ const {
   editablePlan,
   interactionStatus,
   notes,
+  selectedAlternative,
+  selectAlternative,
   isSubmitting,
   isCompleted,
   canApprove,
@@ -383,8 +391,9 @@ const isDraggingPage = computed(() => draggedPageLocalId.value !== null);
 const isFolded = computed(() => interactionStatus.value.status === 'modified');
 const foldedText = computed(() => {
   const notes = interactionStatus.value.notes?.trim();
-  return notes
-    ? slidesToolCardMessage('slides.plan.status.modifiedWithNotes', { notes })
+  if (notes) return slidesToolCardMessage('slides.plan.status.modifiedWithNotes', { notes });
+  return interactionStatus.value.paletteChanged
+    ? slidesToolCardMessage('slides.plan.status.modifiedPalette')
     : slidesToolCardMessage('slides.plan.status.modified');
 });
 const suppressHandleHover = ref(false);

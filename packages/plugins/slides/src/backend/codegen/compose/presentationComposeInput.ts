@@ -19,6 +19,8 @@ import type {
   FreeformTextRun,
   GeneratedLayoutConstraintEvidence,
   GradientPaint,
+  ImageCropSpec,
+  ImageFocusSpec,
   ImageSourceInput,
   ImageVisualShadow,
   MathFormulaSource,
@@ -54,6 +56,7 @@ import {
   isSlidesAuthoringAncestorRefs,
   normalizeMathFormulaSource,
 } from '@plugin/slides/shared';
+import { readImageCropInput, readImageFocusInput } from '@plugin/slides/shared/deckSpec/imageFraming';
 import { isRecord, isNonEmptyString, isFiniteNumber } from './inputParsers/typeGuards.js';
 import {
   createParseContext,
@@ -117,6 +120,8 @@ export interface DirectElementInput extends LayoutChartControls {
   src?: ImageSourceInput;
   alt?: string;
   fitMode?: 'cover' | 'contain' | 'crop';
+  crop?: ImageCropSpec;
+  focus?: ImageFocusSpec;
   maskShape?: 'rect' | 'circle';
   rounding?: boolean;
   transparency?: number;
@@ -517,6 +522,14 @@ function parseElementInput(
   if (normalizedImageShadow && 'error' in normalizedImageShadow) {
     return { error: normalizedImageShadow.error };
   }
+  const imageCrop = type === 'image' && value.crop != null
+    ? readImageCropInput(value.crop, `${prefix}.crop`)
+    : undefined;
+  if (imageCrop && 'error' in imageCrop) return { error: imageCrop.error };
+  const imageFocus = type === 'image' && value.focus != null
+    ? readImageFocusInput(value.focus, `${prefix}.focus`)
+    : undefined;
+  if (imageFocus && 'error' in imageFocus) return { error: imageFocus.error };
 
   let geometry: ShapeGeometrySpec | undefined;
   if (type === 'shape') {
@@ -596,6 +609,8 @@ function parseElementInput(
     fitMode: value.fitMode === 'cover' || value.fitMode === 'contain' || value.fitMode === 'crop'
       ? value.fitMode
       : undefined,
+    crop: imageCrop?.value,
+    focus: imageFocus?.value,
     maskShape: value.maskShape === 'rect' || value.maskShape === 'circle' ? value.maskShape : undefined,
     rounding: typeof value.rounding === 'boolean' ? value.rounding : undefined,
     transparency: isFiniteNumber(value.transparency) ? value.transparency : undefined,
@@ -792,6 +807,8 @@ function buildStructuredElement(el: DirectElementInput): StructuredElement {
         position: el.position,
         alt: el.alt,
         fitMode: el.fitMode,
+        crop: el.crop,
+        focus: el.focus,
         maskShape: el.maskShape,
         rounding: el.rounding,
         transparency: el.transparency,
@@ -882,6 +899,8 @@ function buildFreeformElement(el: DirectElementInput): FreeformElement {
         src: el.src,
         alt: el.alt,
         fitMode: el.fitMode,
+        crop: el.crop,
+        focus: el.focus,
         maskShape: el.maskShape,
         rounding: el.rounding,
         transparency: el.transparency,

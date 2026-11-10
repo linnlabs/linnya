@@ -105,11 +105,14 @@ export interface DirectionAxisOption<TId extends string> {
 }
 
 export interface HueBin {
-  /** 0–11，每档 30°。 */
+  /** 0–11。 */
   readonly bin: number;
+  /** OKLCH 色相区间（度），可跨 0°；只用来归档，不给 Agent 看。 */
   readonly from: number;
   readonly to: number;
   readonly name: string;
+  /** 这一档的参考色（hex），深、中、浅各一个；Agent 据此理解“这个颜色大概什么样”。 */
+  readonly references: readonly [string, string, string];
 }
 
 export interface DirectionDraw {
@@ -122,6 +125,10 @@ export interface DirectionDraw {
   readonly colorLogic: DirectionAxisOption<ColorLogicId>;
   /** 主色相区间；配色取自主图或纯黑白时为 null。 */
   readonly hue: HueBin | null;
+  /** 给 Agent 的参考色：hue.references 里按稿随机取的一个；hue 为 null 时也为 null。 */
+  readonly hueReference: string | null;
+  /** 主色相对面的几档（色相差 150°–210° 覆盖过半的档），本稿不用；hue 为 null 时为空。 */
+  readonly oppositeHues: readonly HueBin[];
   readonly typeStrategy: DirectionAxisOption<TypeStrategyId>;
   readonly imageStrategy: DirectionAxisOption<ImageStrategyId>;
   /** 封面的重心安排：标题与主体放在哪里。比例、裁切与元素仍由 Agent 按内容决定。 */
@@ -160,9 +167,28 @@ export const DirectionPaletteSchema = z.object({
   /** 页面背景色；第二个起可以是封面、章节页使用的反色底。 */
   backgrounds: z.array(HexColorSchema).min(1).max(4),
   ink: HexColorSchema,
-  accents: z.array(HexColorSchema).min(1).max(5),
+  /** 次要文字色。 */
+  muted: HexColorSchema.optional(),
+  accents: z.array(HexColorSchema).min(1).max(6),
+  /** 图表系列色；不写时图表色从 accents 取。 */
+  chart: z.array(HexColorSchema).min(1).max(8).optional(),
 }).strict();
 export type DirectionPalette = z.infer<typeof DirectionPaletteSchema>;
+
+const DirectionHueSchema = z.number().min(0).max(360);
+
+/**
+ * 全稿配色的来源：取自 `linnya palette suggest` 时写套的编号和排除色相（OKLCH 度数，起止可跨 0°）；
+ * 图里取不出颜色或本稿最后没用照片时写明原因。inspect 用它检查排除色相，并找出有照片却没取色的稿子。
+ */
+export const DirectionImagePaletteSchema = z.union([
+  z.object({
+    id: z.string().trim().min(1).max(80),
+    excludedHues: z.array(z.tuple([DirectionHueSchema, DirectionHueSchema])).max(12),
+  }).strict(),
+  z.object({ unavailable: z.enum(['no_subject_color', 'no_photos']) }).strict(),
+]);
+export type DirectionImagePalette = z.infer<typeof DirectionImagePaletteSchema>;
 
 /** 全稿允许出现的字体族（PPTX 中可见的字体名）。 */
 export const DirectionFontsSchema = z.array(z.string().trim().min(1)).min(1).max(6);
@@ -176,6 +202,7 @@ export const DirectionDeclarationSchema = z.object({
   drawId: z.string().trim().min(1).max(80),
   cardId: z.string().trim().min(1).max(80),
   palette: DirectionPaletteSchema,
+  imagePalette: DirectionImagePaletteSchema.optional(),
   fonts: DirectionFontsSchema,
 }).strict();
 export type DirectionDeclaration = z.infer<typeof DirectionDeclarationSchema>;

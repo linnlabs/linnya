@@ -206,11 +206,14 @@ absolute 节点按父容器内的添加顺序形成层级。需要让装饰位�
 
 Workspace 虚拟路径不是图片二进制地址。不要捏造 locator；图片首次成功编译时会自动复制为 presentation-owned 受控资产，之后不依赖原文件。
 
-**图片来源与预处理**：图片可以来自 `generate_image` 工具的产出、用户提供的素材，或用命令行处理后的结果。deck.js 本身不做像素级裁切——`fitMode` 只是把图放进给定的盒子。需要真正改变图片本身（按比例裁切、缩放、导出特定尺寸、转格式）时，在写 deck.js 之前用命令行处理，再引用处理后的产物。macOS 自带 `sips`，例如裁成 16:9 或缩到指定宽度；处理前用 `sips -g pixelWidth -g pixelHeight` 读取原始尺寸，不要凭猜测传参。产生新文件的命令遵循上面的 conversation 落盘合同，并用产物的真实 locator 引用它。
+**图片来源与预处理**：图片可以来自 `generate_image` 工具的产出、用户提供的素材，或用命令行处理后的结果。只用一张图的局部、调整取景时，直接在 Image 上写 `crop` / `focus`，不要另存裁过的图：原图保留在文稿里，导出 PPTX 后仍是 PowerPoint 里可以再调的裁剪。缩放、导出特定尺寸、转格式、去背这类改变像素的处理，才在写 deck.js 之前用命令行完成，再引用处理后的产物。macOS 自带 `sips`；处理前用 `sips -g pixelWidth -g pixelHeight` 读取原始尺寸，不要凭猜测传参。产生新文件的命令遵循上面的 conversation 落盘合同，并用产物的真实 locator 引用它。
 
 **图片视觉字段**：
 
-- `fitMode`：`"cover"` 铺满并裁掉溢出（构图优先）、`"contain"` 完整放下（可能留边）、`"crop"` 与 cover 等价但表达"有意裁切"的语义。
+- `fitMode`：`"cover"` 铺满并裁掉溢出（构图优先）、`"contain"` 完整放下（可能留边）；`"crop"` 是 cover 的旧写法。
+- `crop`：`{ top, right, bottom, left }`，从原图这一边裁掉的比例（0–1），省略的边不裁。先裁剪，再按 `fitMode` 放进盒子；cover 时剩下的区域比盒子宽或高，还会再裁掉溢出。
+- `focus`：`{ x, y }`，原图上的点（0–1，左上为 0,0）。cover 裁溢出时取景窗尽量以它为中心，到边就停；用户在编辑器里改盒子尺寸后仍围绕它取景。只想让人脸、器物主体不被裁掉时，写 `focus` 就够了，不必算 `crop`。
+- 比例按原图量：先看图确定主体位置；看不到像素时用读到的像素尺寸换算，不要凭猜测。裁剪后剩下的部分仍要够清晰，质量检查按裁剪后的像素计算清晰度。例如取器物内底铭文做特写：`createImage({ src, fitMode: "cover", crop: { top: 0.55, left: 0.3, right: 0.3 }, focus: { x: 0.5, y: 0.75 } })`。用户在编辑器里换图会清掉原来的 `crop` / `focus`。
 - `maskShape`：`"rect"` 或 `"circle"`，后者适合人像。
 - `transparency`：0–1，把图片压成背景层。
 - `shadow`：`{ color, blur, angle, distance, opacity }`。

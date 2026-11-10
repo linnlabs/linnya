@@ -20,9 +20,11 @@ import {
 // Worker 必需的两份纯身份 schema 随插件内联，增加约 50 KiB；ppt_direction 的视觉方向池与
 // inspect 的方向贯彻检查在 App Server 运行，约 95 KiB（池内中文按 \u 转义计）；仍禁止整套物化栈回流。
 const MAX_BACKEND_ENTRY_BYTES = 2.3 * 1024 * 1024;
-// TypeScript/Yoga、PptxGenJS/JSZip 与原生公式装配均归同一 build Worker；1.6 MiB
-// 只保留小幅依赖漂移空间，防止 parser、Host SDK 或完整 backend 被意外卷入。
-const MAX_PRESENTATION_BUILD_WORKER_BYTES = 1.6 * 1024 * 1024;
+// TypeScript/Yoga、PptxGenJS/JSZip 与原生公式装配均归同一 build Worker；预算只保留小幅
+// 依赖漂移空间，防止 parser、Host SDK 或完整 backend 被意外卷入（这类回流都是数百 KiB 起）。
+// 2026-11 图片取景（crop/focus 的作者校验、几何与 srcRect 导出）增加约 5 KiB，当时余量仅
+// 1.4 KiB，故由 1.6 MiB 放宽到 1.65 MiB；再放宽同样要先确认增量是正常功能代码。
+const MAX_PRESENTATION_BUILD_WORKER_BYTES = 1.65 * 1024 * 1024;
 // TypeScript compiler artifact约 6.3 MiB；MathJax/STIX2 作为 backend、build Worker 与 CLI
 // 共用的单一自包含 runtime 约 1.8 MiB。13.5 MiB 为当前完整制品保留约 10% 漂移空间，
 // 不能通过再次内联 MathJax、复制 runtime 或顺带打入新依赖来消耗。

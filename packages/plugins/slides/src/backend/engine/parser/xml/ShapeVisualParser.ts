@@ -17,6 +17,7 @@ import type {
 } from '@plugin/slides/shared';
 import type { Paint } from '@plugin/slides/shared';
 import { emuToInches } from '@plugin/backend/textMeasurement';
+import { hasImageCrop } from '@plugin/slides/shared/render-geometry';
 import { directChildren, getAttr, getElementByTag } from './XmlNode.js';
 
 const OOXML_ANGLE_UNIT = 60_000;
@@ -367,24 +368,32 @@ function readPointElement(point: XmlElement): { x: number; y: number } | undefin
 
 /**
  * 从 `p:blipFill` 推断图片 fitMode。
- * - 含有效 `a:srcRect` → 'cover'（图片在 frame 内保比例裁剪）
- * - 含 `a:stretch`（OOXML 默认且最常见）→ 'stretch'（imported PPT 中的"撑满 frame"行为）
  * - 含 `a:tile` → 'fill'（铺贴退化）
- * - 兜底 'stretch'，与 OOXML 规范默认一致
+ * - 其余（`a:stretch` 是 OOXML 默认且最常见）→ 'stretch'：裁剪区域撑满 frame。
+ *   `a:srcRect` 的裁剪由 extractImageCrop 原样读出，不再推断成居中 cover，
+ *   否则作者在 PowerPoint 里调过的取景会在预览里丢失。
  */
 export function extractImageFitMode(
   blipFill: XmlElement | null,
 ): 'fill' | 'contain' | 'cover' | 'stretch' {
   if (!blipFill) return 'stretch';
   if (getElementByTag(blipFill, 'a:tile')) return 'fill';
-  const sourceRect = getElementByTag(blipFill, 'a:srcRect');
-  if (sourceRect && hasCrop(sourceRect)) return 'cover';
   return 'stretch';
 }
 
-function hasCrop(sourceRect: XmlElement): boolean {
-  return ['l', 'r', 't', 'b'].some((attribute) => {
-    const value = Number(getAttr(sourceRect, attribute) ?? '0');
-    return Number.isFinite(value) && value !== 0;
-  });
+/**
+ * 读出 `a:srcRect` 的四边裁剪（OOXML 单位为 1/100000），换成 0–1 比例。
+ * 负值表示向外留白，当前按不裁处理；全零或无效时返回 undefined。
+ */
+export function extractImageCrop(
+  blipFill: XmlElement | null,
+): { top: number; right: number; bottom: number; left: number } | undefined {
+  const sourceRect = blipFill ? getElementByTag(blipFill, 'a:srcRect') : null;
+  if (!sourceRect || getElementByTag(blipFill!, 'a:tile')) return undefined;
+  const read = (attribute: 'l' | 't' | 'r' | 'b'): number => {
+    const value = Number(getAttr(sourceRect, attribute) ?? '0') / 100000;
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  };
+  const crop = { top: read('t'), right: read('r'), bottom: read('b'), left: read('l') };
+  return hasImageCrop(crop) ? crop : undefined;
 }

@@ -25,7 +25,7 @@ export type {
   TechniqueCard,
   TypeStrategyId,
 } from './definitions/directionContract';
-export { COLOR_LOGICS, HUE_BINS, IMAGE_STRATEGIES, TYPE_STRATEGIES } from './pool/axes';
+export { COLOR_LOGICS, HUE_BINS, IMAGE_STRATEGIES, TYPE_STRATEGIES, VISIBLE_HUE_MIN_CHROMA } from './pool/axes';
 export { TECHNIQUE_CARDS } from './pool/techniqueCards';
 export {
   DIRECTION_POOL_VERSION,

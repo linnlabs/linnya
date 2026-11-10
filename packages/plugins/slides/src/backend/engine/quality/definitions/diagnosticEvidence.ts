@@ -179,7 +179,7 @@ export const FontDeliveryEvidenceSchema = z.object({
 /** 生成稿在 theme.direction 声明的方向与实际页面不一致。declared/observed 都是可直接对照的值。 */
 export const DirectionCarryThroughEvidenceSchema = z.object({
   kind: z.literal('direction_carry_through'),
-  aspect: z.enum(['background', 'font', 'color']),
+  aspect: z.enum(['background', 'font', 'color', 'excluded_hue', 'image_palette']),
   cardId: z.string().trim().min(1),
   declared: z.array(z.string().trim().min(1)).min(1),
   observed: z.array(z.string().trim().min(1)).min(1),
@@ -199,6 +199,7 @@ export const HueDriftEvidenceSchema = z.object({
   primaryHues: z.array(z.object({
     slideNumber: z.number().int().positive(),
     hueDegrees: z.number().finite().min(0).max(360),
+    hueName: z.string().trim().min(1),
   }).strict()).min(2),
   circularMeanDegrees: z.number().finite().min(0).max(360),
   circularStdDevDegrees: z.number().finite().nonnegative(),

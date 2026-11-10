@@ -167,6 +167,20 @@ export interface LayoutTableBorderInput {
 
 export type LayoutTableCellValue = LayoutDisplayValue | LayoutTableCellInput;
 
+/** 从原图四边各裁掉的比例（0–1），省略的边不裁。先裁剪，再按 fitMode 放进盒子。 */
+export interface LayoutImageCropInput {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
+/** 原图上的点（0–1，左上为 0,0）；cover 裁掉溢出时，取景窗尽量以它为中心。 */
+export interface LayoutImageFocusInput {
+  x: number;
+  y: number;
+}
+
 export interface LayoutImageVisualShadowInput {
   color?: string;
   blur?: number;
@@ -184,7 +198,8 @@ export interface LayoutThemeInput {
   /** 字体面向的放映环境：`office`（默认，Windows 与 Mac 的 PowerPoint）或 `local`（只在本机放映）。 */
   fontTarget?: 'office' | 'local';
   chart?: {
-    palette: [string, ...string[]];
+    /** 图表系列色，非空。常从 direction.palette.chart 取值，那里是 string[]，所以这里不用元组；非空由运行时校验。 */
+    palette: string[];
   };
   /** 本稿声明的视觉方向，供 inspect 逐页对照；不影响渲染与导出。 */
   direction?: LayoutDirectionInput;
@@ -206,9 +221,21 @@ export interface LayoutDirectionInput {
     backgrounds: string[];
     /** 正文墨色（#RRGGBB）。 */
     ink: string;
-    /** 强调色（#RRGGBB），图表系列色也从这里取。 */
+    /** 次要文字色（#RRGGBB）。 */
+    muted?: string;
+    /** 强调色（#RRGGBB），最多 6 个。 */
     accents: string[];
+    /** 图表系列色（#RRGGBB），最多 8 个；不写时图表色从 accents 取。 */
+    chart?: string[];
   };
+  /**
+   * 配色来源。取自 `linnya palette suggest` 时写这一套的 id 和排除色相（OKLCH 度数，起止可跨 0°，如 [[315, 15]]）；
+   * 图里取不出颜色写 `{ unavailable: 'no_subject_color' }`，最后没用照片写 `{ unavailable: 'no_photos' }`。
+   * direction 通常先写成顶部常量，常量里的字面量会被放宽，这里不用元组和字面量联合，取值由运行时校验。
+   */
+  imagePalette?:
+    | { id: string; excludedHues: number[][] }
+    | { unavailable: string };
   /** 全稿实际使用的字体族，与文字的 fontFamily 写法一致。 */
   fonts: string[];
 }
@@ -516,6 +543,8 @@ export interface LayoutImageConfig extends FlexProps, LayoutAuthoringTargetConfi
   src?: LayoutImageSourceInput;
   alt?: string;
   fitMode?: 'cover' | 'contain' | 'crop';
+  crop?: LayoutImageCropInput;
+  focus?: LayoutImageFocusInput;
   maskShape?: 'rect' | 'circle';
   rounding?: boolean;
   /** 0 表示不透明，1 表示完全透明。 */

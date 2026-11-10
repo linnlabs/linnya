@@ -142,6 +142,19 @@ describe('drawDirections', () => {
     expect(text).toContain(`cardId 写 "${draw.card.id}"`);
     expect(text).toContain('theme: { ..., direction');
   });
+
+  it('用图的方向先取色，配色逻辑只做退路；不用图的方向不提取色', () => {
+    const draw = drawDirections({ scenario: 'business', motifs: MOTIFS, seed: 'fmt' })[0]!;
+    const withImages = formatDirectionDrawForAgent({ ...draw, imageStrategy: { ...draw.imageStrategy, id: 'documentary-color' } });
+    expect(withImages).toContain('linnya palette suggest');
+    expect(withImages).toContain('imagePalette');
+    expect(withImages.indexOf('linnya palette suggest')).toBeLessThan(withImages.indexOf('配色逻辑：'));
+
+    const imageless = formatDirectionDrawForAgent({ ...draw, imageStrategy: { ...draw.imageStrategy, id: 'typographic' } });
+    expect(imageless).not.toContain('linnya palette');
+    expect(imageless).not.toContain('imagePalette');
+    expect(imageless).toContain('配色逻辑：');
+  });
 });
 
 describe('DirectionDeclarationSchema', () => {
@@ -154,5 +167,31 @@ describe('DirectionDeclarationSchema', () => {
     };
     expect(DirectionDeclarationSchema.safeParse(declaration).success).toBe(true);
     expect(DirectionDeclarationSchema.safeParse({ ...declaration, palette: { ...declaration.palette, ink: 'black' } }).success).toBe(false);
+  });
+
+  it('接受取色结果的全部角色和配色来源', () => {
+    const base = {
+      drawId: 'abc-1',
+      cardId: 'metro-map',
+      fonts: ['Microsoft YaHei'],
+    };
+    const palette = {
+      backgrounds: ['#E8EDDF', '#F4F6EE'],
+      ink: '#1F2A1E',
+      muted: '#5A6656',
+      accents: ['#111111', '#222222', '#333333', '#444444', '#555555', '#666666'],
+      chart: ['#2F5A30', '#4F7A4A'],
+    };
+    const parse = (imagePalette: unknown) => DirectionDeclarationSchema.safeParse({ ...base, palette, imagePalette }).success;
+    expect(parse({ id: 'pl8f2a-1', excludedHues: [[315, 15]] })).toBe(true);
+    expect(parse({ id: 'pl8f2a-1', excludedHues: [] })).toBe(true);
+    expect(parse({ unavailable: 'no_subject_color' })).toBe(true);
+    expect(parse({ unavailable: 'no_photos' })).toBe(true);
+    expect(parse({ id: 'pl8f2a-1' })).toBe(false);
+    expect(parse({ id: 'pl8f2a-1', excludedHues: [[400, 15]] })).toBe(false);
+    expect(DirectionDeclarationSchema.safeParse({
+      ...base,
+      palette: { ...palette, accents: [...palette.accents, '#777777'] },
+    }).success).toBe(false);
   });
 });

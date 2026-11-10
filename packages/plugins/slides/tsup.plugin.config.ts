@@ -132,6 +132,7 @@ export default defineConfig({
     // 数字格式是插件自带的纯计算；宿主没有提供这个 schemas 子入口，Backend 与 Worker 都必须内联。
     '@app/schemas/chart-number-format',
     '@xmldom/xmldom',
+    '@linnya/color-core',
     '@linnya/text-measurement-core',
     'acorn',
     'diff-match-patch',

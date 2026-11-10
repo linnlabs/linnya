@@ -1,3 +1,4 @@
+import { hueName } from '@linnya/color-core/palette';
 import { hasDecorativeRole, isChromeTextRole } from '../SpatialSemantics';
 /**
  * AestheticLint 通用规则（slide-level + deck-level）
@@ -41,7 +42,6 @@ import {
   FONT_SIZE_TIER_GRANULARITY_PT,
   FONT_SIZE_TIER_LIMIT,
   FULL_BLEED_RATIO,
-  HUE_CLUSTER_GRANULARITY_DEG,
   IMAGE_ASPECT_TOLERANCE,
   IMAGE_RESOLUTION_MIN_DISPLAY_IN,
   IMAGE_RESOLUTION_MIN_RATIO,
@@ -992,7 +992,7 @@ function normalizeFontFamily(family: string): string {
  *
  * 流程：
  * 1. 采样所有元素的 fill / textColor，过滤中性色（近灰/近白/近黑）。
- * 2. 按 30° hue 桶聚类，统计**非空桶**数量（即"色相簇数"）。
+ * 2. 按 OKLCH 色相名（12 档）聚类，统计用到几种（即"色相簇数"）。
  * 3. 桶数 > 4 → warning。
  *
  * 为什么不直接 distinct hex？
@@ -1004,9 +1004,9 @@ export function lintPaletteDiversity(
   sampled: ChromaticSample[],
 ): AestheticLintIssue[] {
   if (sampled.length === 0) return [];
-  const buckets = new Set<number>();
+  const buckets = new Set<string>();
   for (const s of sampled) {
-    buckets.add(Math.floor(s.hsl.h / HUE_CLUSTER_GRANULARITY_DEG));
+    buckets.add(hueName(s.color.h));
   }
   if (buckets.size <= PALETTE_HUE_BUCKET_LIMIT) return [];
 
@@ -1037,7 +1037,7 @@ export function lintPaletteDiversity(
 
 // ─── P1 Tier-1: Primary Hue Drift (Rule 8, deck-level) ─────────────────────
 /**
- * 跨页主色 hue 圆形 stddev > 25° → warning。
+ * 跨页主色 OKLCH 色相圆形 stddev > 阈值 → warning。
  *
  * 主色定义：每页"非中性色簇中按面积加权的最大者"——见 `pickPrimaryHue`。
  *
@@ -1061,6 +1061,7 @@ export function lintPrimaryHueDrift(
       primaryHues: primaries.map((primary) => ({
         slideNumber: primary.slideNumber,
         hueDegrees: primary.hue,
+        hueName: hueName(primary.hue),
       })),
       circularMeanDegrees: circularMeanDeg(primaries.map((primary) => primary.hue)),
       circularStdDevDegrees: stddev,
@@ -1200,7 +1201,12 @@ export function lintImageAspect(
     if (typeof el.imageNaturalAspect !== 'number' || el.imageNaturalAspect <= 0) continue;
 
     const elementAspect = el.position.w / el.position.h;
-    const deviation = Math.abs(elementAspect / el.imageNaturalAspect - 1);
+    // 拉伸的是裁剪后剩下的区域，比较对象是这块区域的宽高比。
+    const crop = el.imageCrop;
+    const naturalAspect = crop
+      ? el.imageNaturalAspect * Math.max(0.01, 1 - crop.left - crop.right) / Math.max(0.01, 1 - crop.top - crop.bottom)
+      : el.imageNaturalAspect;
+    const deviation = Math.abs(elementAspect / naturalAspect - 1);
     if (deviation <= IMAGE_ASPECT_TOLERANCE) continue;
 
     issues.push({
@@ -1213,7 +1219,7 @@ export function lintImageAspect(
         node: buildDiagnosticNodeRef(el),
         fitMode: 'stretch',
         frameAspect: elementAspect,
-        naturalAspect: el.imageNaturalAspect,
+        naturalAspect,
         deviationRatio: deviation,
         thresholdRatio: IMAGE_ASPECT_TOLERANCE,
       },
