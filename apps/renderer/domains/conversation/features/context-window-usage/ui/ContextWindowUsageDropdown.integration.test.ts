@@ -56,7 +56,6 @@ const availablePresentation: ContextWindowUsagePresentation = {
   level: 'normal',
   ratio: 0.53,
   drawPercent: 53,
-  isHistoricalModel: false,
   contextWindowTokens: 100_000,
   segments: [
     { id: 'system_prompt', tokens: 5_000, share: 0.05 },
@@ -126,25 +125,26 @@ describe('ContextWindowUsageDropdown integration', () => {
     expect(document.body.querySelector('.usage-breakdown-panel')).toBe(panel);
   });
 
-  it('没有快照时不渲染圆环和面板', () => {
-    const mounted = mountContextUsage({ status: 'unavailable' });
+  it('没有对话时不渲染圆环和面板', () => {
+    const mounted = mountContextUsage({ status: 'hidden' });
     mountedViews.push(mounted);
     expect(mounted.host.querySelector('.context-window-usage-trigger')).toBeNull();
     expect(mounted.host.querySelector('.context-window-usage-trigger__value')).toBeNull();
     expect(document.body.querySelector('.usage-breakdown-panel')).toBeNull();
   });
 
-  it('历史窗口不含尾部时保留诊断入口', async () => {
-    const mounted = mountContextUsage({ status: 'tail_unavailable' });
+  it('估算期间保留圆环入口，并向辅助技术报告加载状态', async () => {
+    const mounted = mountContextUsage({ status: 'loading' });
     mountedViews.push(mounted);
     const trigger = mounted.host.querySelector('.context-window-usage-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('context usage trigger not found');
+    expect(trigger.getAttribute('aria-busy')).toBe('true');
 
     trigger.click();
     await nextTick();
 
     const panel = document.body.querySelector('.usage-breakdown-panel');
-    expect(panel?.textContent).toContain('conversation.contextUsage.empty.tailUnavailable');
+    expect(panel?.textContent).toContain('conversation.contextUsage.trigger.loading');
     expect(panel?.querySelector('[role="progressbar"]')).toBeNull();
   });
 });

@@ -129,15 +129,9 @@ startConversationSubruns({
 
 ### 2.5 Host 自有输入状态不属于贡献
 
-发送按钮旁的上下文用量圆环是 Conversation 宿主对自身 read model 的展示，不是 Reference、Input Extension、
-Accessory 或插件贡献点。它读取正式 `user_input.metadata.context_usage`：运行中由每次成功 Prompt 的临时快照刷新，结算时
-由 durable metrics 收敛；不会把模型预算、tokenizer、Prompt 分类或
-弹层状态开放给插件。
-
-该 feature 不接管 submit，不改变输入扩展生命周期；第一次新 Prompt 成功前继续显示上一份快照，之后按成功 LLM 调用
-刷新。插件通过 `skill` 工具读入的
-内容已经成为 Conversation 消息；默认 `<available_skills>` catalog 则属于 System prompt。宿主只展示后端已经归因的
-三项数字，不在 Renderer 按插件或 skill 身份重新分类。
+发送按钮旁的上下文用量圆环是 Conversation 宿主功能。打开会话后独立查询后端本地估算，当前运行中的正式 Prompt 快照
+可以即时更新显示。它不接管 submit，也不向插件开放模型预算、tokenizer、Prompt 分类或弹层状态。详见
+[用量 owner](../features/context-window-usage/README.md)。
 
 ---
 

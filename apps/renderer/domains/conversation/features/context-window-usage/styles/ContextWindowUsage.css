@@ -58,12 +58,21 @@
   stroke: var(--color-error);
 }
 
-.context-window-usage-trigger.is-unavailable {
-  color: var(--color-text-muted);
+.context-window-usage-trigger__pulse {
+  fill: var(--color-accent);
+  opacity: 0.6;
+  animation: context-window-usage-pulse 1.2s ease-in-out infinite alternate;
 }
 
-.context-window-usage-trigger.is-historical .context-window-usage-trigger__track {
-  stroke-dasharray: 2 2;
+@keyframes context-window-usage-pulse {
+  from { opacity: 0.28; }
+  to { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .context-window-usage-trigger__pulse {
+    animation: none;
+  }
 }
 
 .context-window-usage-panel-wrapper.linnya-dropdown-surface {

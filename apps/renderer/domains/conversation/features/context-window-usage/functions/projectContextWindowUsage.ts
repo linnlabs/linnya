@@ -1,4 +1,4 @@
-import type { ConversationContextUsage, ConversationContextUsageSource } from '@app/schemas';
+import type { ConversationContextUsage } from '@app/schemas';
 import type { BaseMessage } from '../../../types';
 import type {
   ContextWindowUsageLevel,
@@ -6,29 +6,19 @@ import type {
   ContextWindowUsageSegment,
 } from '../definitions/contextWindowUsage';
 
-export interface ProjectContextWindowUsageInput {
-  readonly hasActiveConversation: boolean;
-  readonly messages: readonly BaseMessage[];
-  readonly durableUsage: ConversationContextUsageSource | null;
-  readonly includesConversationTail: boolean;
-  readonly currentModelId: string | null;
-}
-
-export function findLatestContextUsage(
+export function findLiveContextUsage(
   messages: readonly BaseMessage[],
-  durableUsage: ConversationContextUsageSource | null = null,
+  runId: string,
+  modelId: string,
 ): ConversationContextUsage | null {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
-    if (message?.type === 'user_input' && message.metadata?.context_usage) {
-      // 相同来源采用 window ∪ live 的最新投影；旧 live 轮次不能覆盖窗口外更新的 durable 来源。
-      return !durableUsage || message.id === durableUsage.user_message_id
-        || message.timestamp >= durableUsage.timestamp
-        ? message.metadata.context_usage
-        : durableUsage.usage;
+    if (message?.type === 'user_input' && message.metadata?.run_id === runId
+      && message.metadata.context_usage?.budget_model_id === modelId) {
+      return message.metadata.context_usage;
     }
   }
-  return durableUsage?.usage ?? null;
+  return null;
 }
 
 function resolveUsageLevel(ratio: number): ContextWindowUsageLevel {
@@ -63,33 +53,18 @@ function buildSegments(
 }
 
 export function projectContextWindowUsage(
-  input: ProjectContextWindowUsageInput,
+  usage: ConversationContextUsage,
 ): ContextWindowUsagePresentation {
-  if (!input.hasActiveConversation) return { status: 'unavailable' };
-  if (!input.includesConversationTail) return { status: 'tail_unavailable' };
-
-  const usage = findLatestContextUsage(input.messages, input.durableUsage);
-  if (!usage) return { status: 'unavailable' };
-
   // 快照中的输入预算已经扣除输出额度；二者相加还原当次 route/policy 共同约束后的完整有效窗口。
   const contextWindowTokens = usage.input_budget_tokens + usage.output_limit_tokens;
   const ratio = usage.used_tokens / contextWindowTokens;
-  const isHistoricalModel = input.currentModelId !== null
-    && input.currentModelId !== usage.budget_model_id;
-  const status = ratio > 1
-    ? 'overflow'
-    : isHistoricalModel
-      ? 'historical_model'
-      : 'current';
-
   return {
-    status,
+    status: ratio > 1 ? 'overflow' : 'current',
     usage,
     contextWindowTokens,
     level: resolveUsageLevel(ratio),
     ratio,
     drawPercent: Math.min(ratio * 100, 100),
-    isHistoricalModel,
     segments: buildSegments(usage, contextWindowTokens),
   };
 }

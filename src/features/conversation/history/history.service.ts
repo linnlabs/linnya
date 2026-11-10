@@ -47,7 +47,7 @@ import type { RunFinalAnswerResult } from '../../../app-hosts/linnya/adapters/pe
 import { Logger } from '../../../shared/logger';
 import { decodeConversationListCursor } from '../../../app-hosts/linnya/adapters/persistence/event-store/conversation-list-cursor';
 import { RUNTIME_EVENT_TYPES_NEVER_REPLAYED_TO_UI } from '@linnlabs/linnkit/runtime-kernel/events';
-import type { ConversationSelectedAgentId, ConversationUiWindowRefreshQuery } from '@app/schemas';
+import type { ConversationContextUsage, ConversationSelectedAgentId, ConversationUiWindowRefreshQuery } from '@app/schemas';
 import type { ConversationDeletionPort } from './definitions/conversationDeletionPort';
 import type { ConversationCleanupStatusPort } from './definitions/conversationCleanupStatusPort';
 import type { ConversationCleanupRetryOutcome } from '@app/schemas';
@@ -99,6 +99,7 @@ export class HistoryService {
     private readonly repository: HistoryRepository,
     private readonly deletion: ConversationDeletionPort,
     private readonly cleanupStatus: ConversationCleanupStatusPort,
+    readonly readContextUsage: (conversationId: string, modelId: string) => Promise<ConversationContextUsage | null>,
   ) {}
 
   /**

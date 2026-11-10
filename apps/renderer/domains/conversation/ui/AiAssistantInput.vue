@@ -212,6 +212,7 @@ import {
   pauseInteractiveRun,
   continueInteractiveRun,
   useDetachedInteractiveRunObservation,
+  isInteractiveRunBusy,
   resolveComposerRunControl,
 } from '../features/interactive-run';
 
@@ -240,12 +241,15 @@ const uiStore = useUIStore();
 const navigationScope = useNavigationScope();
 const { conversationMessage } = useConversationLocalization();
 const { t } = useLocalization();
+const composerRun = computed(() => interactiveRunStore.snapshotFor(assistantStore.activeConversationId));
 const contextWindowUsage = useContextWindowUsagePresentation({
-  hasActiveConversation: conversationSelectors.hasActiveConversation,
-  messages: conversationSelectors.activeMessages,
-  durableUsage: conversationSelectors.activeContextUsageSource,
-  includesConversationTail: conversationSelectors.activeMessageWindowIncludesConversationTail,
-  currentModelId: modelBindings.effectivePrimaryModelId,
+  conversationId: computed(() => conversationSelectors.activeConversation.value?.id ?? null),
+  modelId: modelBindings.effectivePrimaryModelId,
+  agentId: computed(() => conversationSelectors.activeConversation.value?.selectedAgentId ?? null),
+  revision: conversationSelectors.activeMessageWindowRevision,
+  busy: computed(() => isInteractiveRunBusy(composerRun.value)),
+  runId: computed(() => composerRun.value?.runId),
+  liveMessages: computed(() => conversationSelectors.activeConversation.value?.messages ?? []),
 });
 const contextWindowConversationInformation = computed(() => {
   const conversation = conversationSelectors.activeConversation.value;
@@ -485,7 +489,7 @@ const primaryControl = computed(() =>
     hasDraft: imageSubmitPreflight.value.ok || imageSubmitPreflight.value.reason !== 'empty_input',
     run: activeInputExtension.value
       ? undefined
-      : interactiveRunStore.snapshotFor(assistantStore.activeConversationId),
+      : composerRun.value,
     extensionStreaming: Boolean(activeInputExtension.value && isStreaming.value),
   })
 );

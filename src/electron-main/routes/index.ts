@@ -46,6 +46,7 @@ import { createProviderOutboundDebugRouter } from './providerOutboundDebugRouter
 import ollamaRouter from './ollamaRouter';
 import { GraphExecutor, ToolNode, UserNode, WaitUserNode } from '@linnlabs/linnkit/runtime-kernel';
 import { createDefaultLlmNode } from '../../app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
+import { createConversationContextUsageReader } from '../../app-hosts/linnya/adapters/flow/context-usage/orchestration/createConversationContextUsageReader';
 import { SqliteCheckpointer } from '../../app-hosts/linnya/adapters/persistence/checkpointer/sqlite.implementation';
 import { SqliteTelemetryAdapter } from '../../app-hosts/linnya/adapters/telemetry/sqlite.implementation';
 import { bootstrapAgentRuntimeSingletons } from '../services/agentRuntimeSingletons';
@@ -898,7 +899,13 @@ export async function configureRoutes(
     const initializedHistoryService = new HistoryService(
       historyRepository,
       conversationCleanup,
-      conversationCleanup
+      conversationCleanup,
+      createConversationContextUsageReader({
+        readMetadata: conversationId => conversationEventStore.getConversationMetadata(conversationId),
+        readHistory: async conversationId => (await historyRepository.readForegroundFrom(conversationId)).events,
+        toolRuntime: dependencies.agentToolEnvironment?.toolRuntime ?? defaultToolRuntimePort,
+        toolManager: dependencies.agentToolEnvironment?.toolManager,
+      }),
     );
     historyService = initializedHistoryService;
     conversationControlUseCase = createLinnyaConversationControlUseCase({
@@ -1087,6 +1094,7 @@ export function getRouteSummary(
         'GET /api/v1/conversation/list',
         'GET /api/v1/conversation/:id/events/paginated',
         'GET /api/v1/conversation/:id/ui-messages/tail',
+        'GET /api/v1/conversation/:id/context-usage',
         'GET /api/v1/conversation/:id/ui-messages/before',
         'GET /api/v1/conversation/:id/ui-messages/after',
         'GET /api/v1/conversation/:id/ui-messages/around',

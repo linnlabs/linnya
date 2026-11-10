@@ -117,6 +117,20 @@ export function createHistoryRouter(service: HistoryService): Router {
     }
   });
 
+  router.get('/:id/context-usage', async (req: Request, res: Response) => {
+    try {
+      const conversationId = readConversationId(req);
+      if (!conversationId) return sendMissingConversationId(res);
+      const modelId = req.query.model_id;
+      if (typeof modelId !== 'string' || !modelId.trim()) {
+        return sendInvalidQuery(res, 'model_id must be a non-empty string');
+      }
+      return res.json(await service.readContextUsage(conversationId, modelId.trim()));
+    } catch (error: unknown) {
+      return sendRouteError(res, 'Failed to estimate conversation context usage', error);
+    }
+  });
+
   router.get('/:id/ui-messages/refresh', async (req: Request, res: Response) => {
     try {
       const conversationId = readConversationId(req);

@@ -54,6 +54,7 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.input.reasoning.high': '高',
   'conversation.input.reasoning.xhigh': '超高',
   'conversation.contextUsage.title': '上下文用量',
+  'conversation.contextUsage.trigger.loading': '正在估算上下文用量',
   'conversation.contextUsage.trigger.unavailable': '上下文用量暂不可用',
   'conversation.contextUsage.trigger.available':
     '上下文已使用 {percentage}，{used} / {budget} Tokens',
@@ -62,8 +63,6 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.contextUsage.row.systemPrompt': '系统提示词',
   'conversation.contextUsage.row.conversation': '对话消息',
   'conversation.contextUsage.row.toolDefinitions': '工具定义',
-  'conversation.contextUsage.empty.tailUnavailable':
-    '当前只加载了部分历史消息；回到对话尾部后才能确定最近一次上下文用量。',
   'conversation.contextUsage.conversationInfo.createdAt': '创建时间',
   'conversation.contextUsage.conversationInfo.userMessageCount': '用户消息数',
   'conversation.input.actionMenu.open': '添加',
@@ -794,6 +793,7 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.input.reasoning.high': 'High',
       'conversation.input.reasoning.xhigh': 'Extra high',
       'conversation.contextUsage.title': 'Context Usage',
+      'conversation.contextUsage.trigger.loading': 'Estimating context usage',
       'conversation.contextUsage.trigger.unavailable': 'Context usage is not available yet',
       'conversation.contextUsage.trigger.available':
         'Context {percentage} used, {used} / {budget} Tokens',
@@ -802,8 +802,6 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.contextUsage.row.systemPrompt': 'System prompt',
       'conversation.contextUsage.row.conversation': 'Conversation',
       'conversation.contextUsage.row.toolDefinitions': 'Tool definitions',
-      'conversation.contextUsage.empty.tailUnavailable':
-        'Only part of the history is loaded. Return to the conversation tail to resolve the latest context usage.',
       'conversation.contextUsage.conversationInfo.createdAt': 'Created',
       'conversation.contextUsage.conversationInfo.userMessageCount': 'User messages',
       'conversation.input.actionMenu.open': 'Add',
