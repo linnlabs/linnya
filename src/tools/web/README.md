@@ -563,6 +563,18 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 
 不纳入本次验收：浏览器交互式检索、用户侧独立“深度研究”入口、旧 Deep Research 的恢复。
 
+### 8.1 信息获取基准（真实 Agent 端到端）
+
+`scripts/benchmark/web-acquisition/` 冻结一组“必须取得什么”的题目（政策原文、最近日期、超长页面、外语 PDF、限定站点、图片素材），用真实默认 Agent 跑，再只读分析工作区数据库。判定只看取得事实：原文片段是否出现在某次成功读取（`web_read`、`read_file`、Shell 解析等）的输出里，且指定来源是否成功取得过；搜索摘要和转载页不算。不打答案质量分。
+
+```bash
+pnpm -s benchmark:web-acquisition manifest --model <模型 ID> --keys zh-policy-136,long-rfc-421 --output /tmp/acq.json
+pnpm benchmark:agent slides-design-batch --manifest /tmp/acq.json --output <批次目录>
+pnpm -s benchmark:web-acquisition analyze --batch <批次目录>
+```
+
+每次改动只跑受影响的 2–3 题；全量只在里程碑跑，先报份数与预计花费。题目的原文与地址在 `tasks.ts` 的 `note` 里，过期时更新检查项而不是放宽判定。
+
 ---
 
 ## 9. 产品与扩展边界
