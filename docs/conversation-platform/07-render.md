@@ -208,7 +208,7 @@ useConversationScrollController    → 只维护产品意图
 
 发送按钮左侧固定保留 24px 点击区，内部使用 16px 圆环；发送按钮本身的 regular / compact 尺寸不变。圆环按真实
 `used_tokens / (input_budget_tokens + output_limit_tokens)` 分为 `<70%`、`70%–<90%`、`90%–100%` 三档颜色，超过 100% 时弧长只在
-视觉上封顶，文案与 ARIA 仍显示真实百分比。打开会话时以不旋转的圆形加载图标占位，估算结果不受历史翻页影响。
+视觉上封顶，文案与 ARIA 仍显示真实百分比。估算时以共享的 `LinnyaLoadingIcon` 占位，结果不受历史翻页影响。
 
 点击圆环通过共享 `BaseDropdown` 打开 `UsageBreakdownPanel`，Teleport 容器复用 `CustomSelect` 的标准 dropdown
 surface。面板没有关闭按钮，只通过再次点击触发器、点击外部或 Escape 关闭；Escape 后焦点返回触发器。Teleport 面板

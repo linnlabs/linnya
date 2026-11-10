@@ -15,7 +15,7 @@
         :aria-expanded="isOpen"
         @click="handleTriggerClick($event, toggle, isOpen)"
       >
-        <ContextUsageLoadingIcon v-if="props.presentation.status === 'loading'" />
+        <LinnyaLoadingIcon v-if="props.presentation.status === 'loading'" />
         <svg
           v-else
           class="context-window-usage-trigger__ring"
@@ -79,6 +79,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { BaseDropdown, DROPDOWN_SURFACE_CLASSES } from '@linnya/renderer-ui';
+import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
 import type {
   ContextWindowUsagePanelDetailRow,
   ContextWindowUsagePanelRow,
@@ -99,7 +100,6 @@ import {
 } from '../functions/projectConversationInformation';
 import { resolveContextUsagePanelPosition } from '../functions/resolveContextUsagePanelPosition';
 import ContextWindowUsagePanel from './ContextWindowUsagePanel.vue';
-import ContextUsageLoadingIcon from './ContextUsageLoadingIcon.vue';
 
 const props = defineProps<{
   readonly presentation: ContextWindowUsagePresentation;
